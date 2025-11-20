@@ -20,6 +20,7 @@ func NewServer(port int, userService user.Service) *Server {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/execute", handler.ExecuteHandler)
 	mux.HandleFunc("/user/register", handler.RegisterUserHandler(userService))
+	mux.HandleFunc("/message/handle", handler.HandleMessageHandler(userService))
 
 	return &Server{
 		httpServer: &http.Server{

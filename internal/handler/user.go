@@ -8,15 +8,16 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/user"
 )
 
-// RegisterUserRequest represents the body of the register user request
+// RegisterUserRequest represents the request to register or link a user.
 type RegisterUserRequest struct {
-	InternalID string `json:"internal_id"`
-	Username   string `json:"username"`
-	PlatformID string `json:"platform_id"`
-	Platform   string `json:"platform"`
+	Username        string `json:"username"`
+	KnownPlatform   string `json:"known_platform"`
+	KnownPlatformID string `json:"known_platform_id"`
+	NewPlatform     string `json:"new_platform"`
+	NewPlatformID   string `json:"new_platform_id"`
 }
 
-// RegisterUserHandler handles the /user/register endpoint
+// RegisterUserHandler handles user registration and account linking.
 func RegisterUserHandler(userService user.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -30,24 +31,54 @@ func RegisterUserHandler(userService user.Service) http.HandlerFunc {
 			return
 		}
 
-		if req.InternalID == "" || req.Username == "" {
+		if req.KnownPlatform == "" || req.KnownPlatformID == "" || req.NewPlatform == "" || req.NewPlatformID == "" {
 			http.Error(w, "Missing required fields", http.StatusBadRequest)
 			return
 		}
 
-		newUser := domain.User{
-			ID:         req.InternalID,
-			Username:   req.Username,
-			PlatformID: req.PlatformID,
-			Platform:   req.Platform,
+		// Find user by the known platform ID.
+		user, err := userService.FindUserByPlatformID(req.KnownPlatform, req.KnownPlatformID)
+		isNewUser := false
+		if err != nil {
+			if req.Username == "" {
+				http.Error(w, "Username is required for new users", http.StatusBadRequest)
+				return
+			}
+			isNewUser = true
+			// If user does not exist, create a new one.
+			user = &domain.User{
+				Username: req.Username,
+			}
+			// Set the known platform ID on the new user.
+			updatePlatformID(user, req.KnownPlatform, req.KnownPlatformID)
 		}
 
-		if err := userService.RegisterUser(newUser); err != nil {
-			http.Error(w, err.Error(), http.StatusConflict)
+		// Link the new platform ID.
+		updatePlatformID(user, req.NewPlatform, req.NewPlatformID)
+
+		updatedUser, err := userService.RegisterUser(*user)
+		if err != nil {
+			http.Error(w, "Failed to register user", http.StatusInternalServerError)
 			return
 		}
 
-		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(map[string]string{"status": "created"})
+		w.Header().Set("Content-Type", "application/json")
+		if isNewUser {
+			w.WriteHeader(http.StatusCreated)
+		} else {
+			w.WriteHeader(http.StatusOK)
+		}
+		json.NewEncoder(w).Encode(updatedUser)
+	}
+}
+
+func updatePlatformID(user *domain.User, platform, platformID string) {
+	switch platform {
+	case "twitch":
+		user.TwitchId = platformID
+	case "youtube":
+		user.YoutubeId = platformID
+	case "discord":
+		user.DiscordId = platformID
 	}
 }

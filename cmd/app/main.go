@@ -9,6 +9,7 @@ import (
 
 func main() {
 	userService := user.NewService()
+
 	srv := server.NewServer(8080, userService)
 
 	if err := srv.Start(); err != nil {
