@@ -4,10 +4,12 @@ import (
 	"log"
 
 	"github.com/osse101/BrandishBot_Go/internal/server"
+	"github.com/osse101/BrandishBot_Go/internal/user"
 )
 
 func main() {
-	srv := server.NewServer(8080)
+	userService := user.NewService()
+	srv := server.NewServer(8080, userService)
 
 	if err := srv.Start(); err != nil {
 		log.Fatalf("Server failed to start: %v", err)

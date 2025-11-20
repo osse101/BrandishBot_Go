@@ -5,24 +5,28 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/osse101/BrandishBot_Go/internal/server/handler"
+	"github.com/osse101/BrandishBot_Go/internal/handler"
+	"github.com/osse101/BrandishBot_Go/internal/user"
 )
 
 // Server represents the HTTP server
 type Server struct {
-	httpServer *http.Server
+	httpServer  *http.Server
+	userService user.Service
 }
 
 // NewServer creates a new Server instance
-func NewServer(port int) *Server {
+func NewServer(port int, userService user.Service) *Server {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/execute", handler.ExecuteHandler)
+	mux.HandleFunc("/user/register", handler.RegisterUserHandler(userService))
 
 	return &Server{
 		httpServer: &http.Server{
 			Addr:    fmt.Sprintf(":%d", port),
 			Handler: mux,
 		},
+		userService: userService,
 	}
 }
 
