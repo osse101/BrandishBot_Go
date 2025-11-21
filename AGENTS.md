@@ -6,7 +6,7 @@ This document describes the core agents, services, and communication patterns wi
 
 The system utilizes an **Event Broker** as the central message bus. Services publish **Events** (simple struct messages) to the broker, and other services act as **Event Handlers** by subscribing to relevant events and executing their business logic.
 
-This pattern ensures **decoupling** between services, allowing them to operate independently and scale separately. 
+This pattern ensures **decoupling** between services, allowing them to operate independently and scale separately.
 
 | Component | Type | Primary Function | Communication |
 | :--- | :--- | :--- | :--- |
@@ -56,3 +56,65 @@ type EventBroker interface {
     // Subscribe registers a handler function for a specific event type
     Subscribe(eventType string, handler func(event Event))
 }
+```
+
+## Future Considerations
+
+As this system grows, we will incrementally add bounded contexts:
+
+- **Stats Service** – Listens to inventory events and recomputes user statistics asynchronously.
+- **Class Service** – Listens to XP-gain events and triggers ability unlocks or level-ups.
+
+Each service will consume an event stream published by the core inventory system, keeping them loosely coupled yet consistent.
+
+---
+
+## 🤖 AI Agent Best Practices
+
+### Process Management & Cleanup
+
+When testing the application, AI agents should follow these cleanup practices:
+
+**Starting Background Processes:**
+```powershell
+# Background commands return a command ID
+go run cmd/app/main.go
+# Returns: Background command ID: abc123-def456-...
+```
+
+**Tracking Command IDs:**
+- **ALWAYS** store the command ID returned from `run_command` when starting background processes
+- Use this ID for targeted cleanup instead of searching by port/name
+- Track IDs in a list throughout the session
+
+**Cleanup Process:**
+```powershell
+# ✅ CORRECT: Use the tracked command ID
+send_command_input(CommandId: "abc123-def456-...", Terminate: true)
+
+# ❌ AVOID: Searching for processes by port (unreliable, can kill wrong processes)
+# Get-NetTCPConnection -LocalPort 8080 | ... | Stop-Process
+```
+
+**End-of-Session Cleanup:**
+- **MANDATORY**: Terminate ALL background processes at the end of testing
+- Track all started command IDs during the session
+- Clean up in reverse order (newest to oldest)
+- Verify cleanup success with `command_status` tool
+
+**Example Workflow:**
+```
+1. Start server → Track: cmd_id_server
+2. Run tests
+3. Start debug script → Track: cmd_id_debug
+4. Verify results
+5. Cleanup: send_command_input(cmd_id_debug, Terminate=true)
+6. Cleanup: send_command_input(cmd_id_server, Terminate=true)
+7. Verify: command_status for both IDs shows "DONE"
+```
+
+**Why This Matters:**
+- Prevents resource leaks
+- Avoids port conflicts in future sessions
+- Ensures clean state for next agent interaction
+- More reliable than port-based process killing
