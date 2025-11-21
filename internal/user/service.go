@@ -16,6 +16,7 @@ type Repository interface {
 	GetItemByName(ctx context.Context, itemName string) (*domain.Item, error)
 	GetUserByUsername(ctx context.Context, username string) (*domain.User, error)
 	GetSellablePrices(ctx context.Context) ([]domain.Item, error)
+	IsItemBuyable(ctx context.Context, itemName string) (bool, error)
 }
 
 // Service defines the interface for user operations
@@ -28,6 +29,7 @@ type Service interface {
 	GiveItem(ctx context.Context, ownerUsername, receiverUsername, platform, itemName string, quantity int) error
 	GetSellablePrices(ctx context.Context) ([]domain.Item, error)
 	SellItem(ctx context.Context, username, platform, itemName string, quantity int) (moneyGained int, itemsSold int, err error)
+	BuyItem(ctx context.Context, username, platform, itemName string, quantity int) (bought int, err error)
 }
 
 // service implements the Service interface
@@ -58,7 +60,10 @@ func (s *service) FindUserByPlatformID(ctx context.Context, platform, platformID
 // HandleIncomingMessage checks if a user exists for an incoming message and creates one if not.
 func (s *service) HandleIncomingMessage(ctx context.Context, platform, platformID, username string) (domain.User, error) {
 	user, err := s.repo.GetUserByPlatformID(ctx, platform, platformID)
-	if err == nil {
+	if err != nil {
+		return domain.User{}, fmt.Errorf("failed to get user: %w", err)
+	}
+	if user != nil {
 		return *user, nil
 	}
 
@@ -390,5 +395,107 @@ func (s *service) SellItem(ctx context.Context, username, platform, itemName str
 	}
 
 	return moneyGained, actualSellQuantity, nil
+}
+
+func (s *service) BuyItem(ctx context.Context, username, platform, itemName string, quantity int) (int, error) {
+	// 1. Get User
+	user, err := s.repo.GetUserByUsername(ctx, username)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get user: %w", err)
+	}
+	if user == nil {
+		return 0, fmt.Errorf("user not found: %s", username)
+	}
+
+	// 2. Get Item to Buy
+	item, err := s.repo.GetItemByName(ctx, itemName)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get item: %w", err)
+	}
+	if item == nil {
+		return 0, fmt.Errorf("item not found: %s", itemName)
+	}
+
+	// 3. Check if Item is Buyable
+	isBuyable, err := s.repo.IsItemBuyable(ctx, itemName)
+	if err != nil {
+		return 0, fmt.Errorf("failed to check if item is buyable: %w", err)
+	}
+	if !isBuyable {
+		return 0, fmt.Errorf("item %s is not buyable", itemName)
+	}
+
+	// 4. Get Money Item
+	moneyItem, err := s.repo.GetItemByName(ctx, "money")
+	if err != nil {
+		return 0, fmt.Errorf("failed to get money item: %w", err)
+	}
+	if moneyItem == nil {
+		return 0, fmt.Errorf("money item not found")
+	}
+
+	// 5. Get Inventory
+	inventory, err := s.repo.GetInventory(ctx, user.ID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get inventory: %w", err)
+	}
+
+	// 6. Check Money Balance
+	var moneyBalance int = 0
+	var moneySlotIndex int = -1
+	for i, slot := range inventory.Slots {
+		if slot.ItemID == moneyItem.ID {
+			moneyBalance = slot.Quantity
+			moneySlotIndex = i
+			break
+		}
+	}
+
+	if moneyBalance <= 0 {
+		return 0, fmt.Errorf("insufficient funds")
+	}
+
+	// 7. Calculate Affordable Quantity
+	maxAffordable := moneyBalance / item.BaseValue
+	if maxAffordable == 0 {
+		return 0, fmt.Errorf("insufficient funds to buy even one %s (cost: %d, balance: %d)", itemName, item.BaseValue, moneyBalance)
+	}
+
+	actualQuantity := quantity
+	if actualQuantity > maxAffordable {
+		actualQuantity = maxAffordable
+	}
+
+	// 8. Deduct Money
+	cost := actualQuantity * item.BaseValue
+	if inventory.Slots[moneySlotIndex].Quantity == cost {
+		// Remove money slot if balance becomes 0
+		inventory.Slots = append(inventory.Slots[:moneySlotIndex], inventory.Slots[moneySlotIndex+1:]...)
+	} else {
+		inventory.Slots[moneySlotIndex].Quantity -= cost
+	}
+
+	// 9. Add Bought Items
+	itemFound := false
+	for i, slot := range inventory.Slots {
+		if slot.ItemID == item.ID {
+			inventory.Slots[i].Quantity += actualQuantity
+			itemFound = true
+			break
+		}
+	}
+	if !itemFound {
+		inventory.Slots = append(inventory.Slots, domain.InventorySlot{
+			ItemID:   item.ID,
+			Quantity: actualQuantity,
+		})
+	}
+
+	// 10. Update Inventory
+	if err := s.repo.UpdateInventory(ctx, user.ID, *inventory); err != nil {
+		return 0, fmt.Errorf("failed to update inventory: %w", err)
+	}
+
+	return actualQuantity, nil
 }
 

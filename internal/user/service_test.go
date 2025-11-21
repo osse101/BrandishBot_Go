@@ -85,6 +85,14 @@ func (m *MockRepository) GetSellablePrices(ctx context.Context) ([]domain.Item, 
 	return items, nil
 }
 
+func (m *MockRepository) IsItemBuyable(ctx context.Context, itemName string) (bool, error) {
+	// For testing, assume lootbox0 and lootbox1 are buyable
+	if itemName == "lootbox0" || itemName == "lootbox1" {
+		return true, nil
+	}
+	return false, nil
+}
+
 // Helper to setup test data
 func setupTestData(repo *MockRepository) {
 	// Add test users
@@ -397,5 +405,82 @@ func TestHandleIncomingMessage_ExistingUser(t *testing.T) {
 
 	if user.ID != "user-alice" {
 		t.Error("Should have returned existing user")
+	}
+}
+
+func TestBuyItem(t *testing.T) {
+	repo := NewMockRepository()
+	setupTestData(repo)
+	svc := NewService(repo)
+	ctx := context.Background()
+
+	// Setup: Give alice some money
+	svc.AddItem(ctx, "alice", "twitch", "money", 500)
+
+	// Test buying items (lootbox1 cost 50)
+	bought, err := svc.BuyItem(ctx, "alice", "twitch", "lootbox1", 2)
+	if err != nil {
+		t.Fatalf("BuyItem failed: %v", err)
+	}
+
+	if bought != 2 {
+		t.Errorf("Expected 2 bought, got %d", bought)
+	}
+
+	// Verify inventory
+	inv, _ := repo.GetInventory(ctx, "user-alice")
+	
+	// Should have 2 slots: money (400 left) and lootbox1 (2)
+	var moneySlot, lootboxSlot *domain.InventorySlot
+	for i := range inv.Slots {
+		if inv.Slots[i].ItemID == 3 {
+			moneySlot = &inv.Slots[i]
+		}
+		if inv.Slots[i].ItemID == 1 {
+			lootboxSlot = &inv.Slots[i]
+		}
+	}
+
+	if moneySlot == nil || moneySlot.Quantity != 400 {
+		t.Errorf("Expected 400 money, got %+v", moneySlot)
+	}
+	if lootboxSlot == nil || lootboxSlot.Quantity != 2 {
+		t.Errorf("Expected 2 lootbox1, got %+v", lootboxSlot)
+	}
+
+	// Test buying more than affordable (partial fulfillment)
+	// Has 400 money, lootbox1 cost 50. Can buy 8 max.
+	// Try to buy 10
+	bought, err = svc.BuyItem(ctx, "alice", "twitch", "lootbox1", 10)
+	if err != nil {
+		t.Fatalf("BuyItem failed: %v", err)
+	}
+
+	if bought != 8 {
+		t.Errorf("Expected 8 bought (max affordable), got %d", bought)
+	}
+
+	// Verify inventory - money should be 0 (removed)
+	inv, _ = repo.GetInventory(ctx, "user-alice")
+	moneySlot = nil
+	for i := range inv.Slots {
+		if inv.Slots[i].ItemID == 3 {
+			moneySlot = &inv.Slots[i]
+		}
+	}
+	if moneySlot != nil {
+		t.Errorf("Expected money slot to be removed, got %+v", moneySlot)
+	}
+
+	// Test buying with no money
+	_, err = svc.BuyItem(ctx, "alice", "twitch", "lootbox1", 1)
+	if err == nil {
+		t.Error("Expected error when buying with no money")
+	}
+
+	// Test buying non-buyable item
+	_, err = svc.BuyItem(ctx, "alice", "twitch", "lootbox2", 1)
+	if err == nil {
+		t.Error("Expected error when buying non-buyable item")
 	}
 }

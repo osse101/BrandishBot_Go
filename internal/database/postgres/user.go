@@ -231,3 +231,21 @@ func (r *UserRepository) GetSellablePrices(ctx context.Context) ([]domain.Item, 
 	return items, nil
 }
 
+// IsItemBuyable checks if an item has the 'buyable' type
+func (r *UserRepository) IsItemBuyable(ctx context.Context, itemName string) (bool, error) {
+	query := `
+		SELECT EXISTS (
+			SELECT 1
+			FROM items i
+			JOIN item_type_assignments ita ON i.item_id = ita.item_id
+			JOIN item_types it ON ita.item_type_id = it.item_type_id
+			WHERE i.item_name = $1 AND it.type_name = 'buyable'
+		)
+	`
+	var isBuyable bool
+	err := r.db.QueryRow(ctx, query, itemName).Scan(&isBuyable)
+	if err != nil {
+		return false, fmt.Errorf("failed to check if item is buyable: %w", err)
+	}
+	return isBuyable, nil
+}

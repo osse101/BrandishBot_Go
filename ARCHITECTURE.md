@@ -37,13 +37,13 @@ BrandishBot_Go/
 │   ├── setup/         # Database setup utility
 │   └── debug/         # Database inspection utility
 ├── internal/
-│   ├── database/      # Database connection and schema
-│   │   ├── postgres/  # PostgreSQL repository implementations
-│   │   └── schema/    # SQL schema definitions
+│   ├── database/      # Database connection
+│   │   └── postgres/  # PostgreSQL repository implementations
 │   ├── domain/        # Domain models (User, Item, Inventory)
 │   ├── handler/       # HTTP request handlers
 │   ├── server/        # HTTP server configuration
 │   └── user/          # User service and interfaces
+├── migrations/        # SQL migration files
 └── .env              # Environment configuration
 ```
 
@@ -235,7 +235,8 @@ Environment variables (`.env`):
 ## Utilities
 
 ### Setup (`cmd/setup/`)
-Initializes database schema from `internal/database/schema/schema.go`.
+### Setup (`cmd/setup/`)
+Initializes database schema using SQL migrations from `migrations/`.
 
 ### Debug (`cmd/debug/`)
 Dumps database contents for inspection:
@@ -253,7 +254,7 @@ Dumps database contents for inspection:
 2. **Normalized User-Platform Links**: Supports multiple platforms per user
 3. **Repository Pattern**: Decouples data access from business logic
 4. **Interface-Based Services**: Enables testing and extensibility
-5. **Consolidated Schema**: Single SQL file instead of migrations for simplicity
+5. **Incremental Migrations**: Uses SQL migration files for version control
 
 ## Future Considerations
 
