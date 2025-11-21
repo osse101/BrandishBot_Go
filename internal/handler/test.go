@@ -12,7 +12,7 @@ import (
 type TestRequest struct {
 	Username   string `json:"username"`
 	Platform   string `json:"platform"`
-	PlatformID string `json:"platformId"`
+	PlatformID string `json:"platform_id"`
 }
 
 // TestResponse represents the response body for the test endpoint

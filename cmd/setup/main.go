@@ -5,14 +5,13 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/joho/godotenv"
+	"github.com/osse101/BrandishBot_Go/internal/database/schema"
 )
 
 func main() {
-	// Load .env file
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found")
 	}
@@ -60,19 +59,12 @@ func main() {
 	}
 	defer targetConn.Close(context.Background())
 
-	// 4. Read migration file
-	migrationPath := filepath.Join("migrations", "0001_initial_schema.up.sql")
-	migrationSQL, err := os.ReadFile(migrationPath)
+	// 4. Execute schema
+	fmt.Println("Applying database schema...")
+	_, err = targetConn.Exec(context.Background(), schema.SchemaSQL)
 	if err != nil {
-		log.Fatalf("Failed to read migration file: %v", err)
+		log.Fatalf("Failed to execute schema: %v", err)
 	}
 
-	// 5. Execute migration
-	fmt.Println("Running migration...")
-	_, err = targetConn.Exec(context.Background(), string(migrationSQL))
-	if err != nil {
-		log.Fatalf("Failed to execute migration: %v", err)
-	}
-
-	fmt.Println("Migration completed successfully.")
+	fmt.Println("Schema applied successfully.")
 }

@@ -4,13 +4,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/uuid"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
 // Repository defines the interface for user persistence
 type Repository interface {
-	UpsertUser(ctx context.Context, user domain.User) error
+	UpsertUser(ctx context.Context, user *domain.User) error
 	GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error)
 }
 
@@ -35,10 +34,7 @@ func NewService(repo Repository) Service {
 
 // RegisterUser registers a new user
 func (s *service) RegisterUser(ctx context.Context, user domain.User) (domain.User, error) {
-	if user.ID == "" {
-		user.ID = uuid.New().String()
-	}
-	if err := s.repo.UpsertUser(ctx, user); err != nil {
+	if err := s.repo.UpsertUser(ctx, &user); err != nil {
 		return domain.User{}, err
 	}
 	return user, nil

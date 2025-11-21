@@ -20,22 +20,35 @@ func NewUserRepository(db *pgxpool.Pool) *UserRepository {
 }
 
 // UpsertUser inserts a new user or updates existing platform IDs if the user exists
-func (r *UserRepository) UpsertUser(ctx context.Context, user domain.User) error {
-	query := `
-		INSERT INTO users (id, username, twitch_id, youtube_id, discord_id, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
-		ON CONFLICT (id) DO UPDATE
-		SET
-			username = EXCLUDED.username,
-			twitch_id = COALESCE(NULLIF(EXCLUDED.twitch_id, ''), users.twitch_id),
-			youtube_id = COALESCE(NULLIF(EXCLUDED.youtube_id, ''), users.youtube_id),
-			discord_id = COALESCE(NULLIF(EXCLUDED.discord_id, ''), users.discord_id),
-			updated_at = NOW()
-	`
-
-	_, err := r.db.Exec(ctx, query, user.ID, user.Username, user.TwitchID, user.YoutubeID, user.DiscordID)
-	if err != nil {
-		return fmt.Errorf("failed to upsert user: %w", err)
+func (r *UserRepository) UpsertUser(ctx context.Context, user *domain.User) error {
+	if user.ID == "" {
+		// Insert new user and get the generated ID
+		query := `
+			INSERT INTO users (username, twitch_id, youtube_id, discord_id, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, NOW(), NOW())
+			RETURNING user_id
+		`
+		err := r.db.QueryRow(ctx, query, user.Username, user.TwitchID, user.YoutubeID, user.DiscordID).Scan(&user.ID)
+		if err != nil {
+			return fmt.Errorf("failed to insert user: %w", err)
+		}
+	} else {
+		// Update existing user
+		query := `
+			INSERT INTO users (user_id, username, twitch_id, youtube_id, discord_id, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+			ON CONFLICT (user_id) DO UPDATE
+			SET
+				username = EXCLUDED.username,
+				twitch_id = COALESCE(NULLIF(EXCLUDED.twitch_id, ''), users.twitch_id),
+				youtube_id = COALESCE(NULLIF(EXCLUDED.youtube_id, ''), users.youtube_id),
+				discord_id = COALESCE(NULLIF(EXCLUDED.discord_id, ''), users.discord_id),
+				updated_at = NOW()
+		`
+		_, err := r.db.Exec(ctx, query, user.ID, user.Username, user.TwitchID, user.YoutubeID, user.DiscordID)
+		if err != nil {
+			return fmt.Errorf("failed to upsert user: %w", err)
+		}
 	}
 
 	return nil
@@ -46,11 +59,11 @@ func (r *UserRepository) GetUserByPlatformID(ctx context.Context, platform, plat
 	var query string
 	switch platform {
 	case "twitch":
-		query = `SELECT id, username, twitch_id, youtube_id, discord_id FROM users WHERE twitch_id = $1`
+		query = `SELECT user_id, username, twitch_id, youtube_id, discord_id FROM users WHERE twitch_id = $1`
 	case "youtube":
-		query = `SELECT id, username, twitch_id, youtube_id, discord_id FROM users WHERE youtube_id = $1`
+		query = `SELECT user_id, username, twitch_id, youtube_id, discord_id FROM users WHERE youtube_id = $1`
 	case "discord":
-		query = `SELECT id, username, twitch_id, youtube_id, discord_id FROM users WHERE discord_id = $1`
+		query = `SELECT user_id, username, twitch_id, youtube_id, discord_id FROM users WHERE discord_id = $1`
 	default:
 		return nil, fmt.Errorf("unsupported platform: %s", platform)
 	}
