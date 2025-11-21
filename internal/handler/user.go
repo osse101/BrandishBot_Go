@@ -17,8 +17,8 @@ type RegisterUserRequest struct {
 	NewPlatformID   string `json:"new_platform_id"`
 }
 
-// RegisterUserHandler handles user registration and account linking.
-func RegisterUserHandler(userService user.Service) http.HandlerFunc {
+// HandleRegisterUser handles user registration and account linking.
+func HandleRegisterUser(userService user.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)

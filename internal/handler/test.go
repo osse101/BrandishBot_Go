@@ -21,7 +21,7 @@ type TestResponse struct {
 }
 
 // TestHandler handles the /test endpoint
-func TestHandler(userService user.Service) http.HandlerFunc {
+func HandleTest(userService user.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)

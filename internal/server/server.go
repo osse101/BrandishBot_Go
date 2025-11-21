@@ -19,9 +19,10 @@ type Server struct {
 // NewServer creates a new Server instance
 func NewServer(port int, userService user.Service) *Server {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/user/register", handler.RegisterUserHandler(userService))
+	mux.HandleFunc("/user/register", handler.HandleRegisterUser(userService))
 	mux.HandleFunc("/message/handle", handler.HandleMessageHandler(userService))
-	mux.HandleFunc("/test", handler.TestHandler(userService))
+	mux.HandleFunc("/test", handler.HandleTest(userService))
+	mux.HandleFunc("/user/item/add", handler.HandleAddItem(userService))
 
 	// Wrap mux with logging middleware
 	loggedMux := loggingMiddleware(mux)

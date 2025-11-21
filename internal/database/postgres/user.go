@@ -170,3 +170,31 @@ func (r *UserRepository) UpdateInventory(ctx context.Context, userID string, inv
 	}
 	return nil
 }
+
+// GetItemByName retrieves an item by its name
+func (r *UserRepository) GetItemByName(ctx context.Context, itemName string) (*domain.Item, error) {
+	query := `SELECT item_id, item_name, item_description, base_value FROM items WHERE item_name = $1`
+	var item domain.Item
+	err := r.db.QueryRow(ctx, query, itemName).Scan(&item.ID, &item.Name, &item.Description, &item.BaseValue)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get item by name: %w", err)
+	}
+	return &item, nil
+}
+
+// GetUserByUsername retrieves a user by their username
+func (r *UserRepository) GetUserByUsername(ctx context.Context, username string) (*domain.User, error) {
+	query := `SELECT user_id, username, created_at, updated_at FROM users WHERE username = $1`
+	var user domain.User
+	err := r.db.QueryRow(ctx, query, username).Scan(&user.ID, &user.Username, &user.CreatedAt, &user.UpdatedAt)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get user by username: %w", err)
+	}
+	return &user, nil
+}

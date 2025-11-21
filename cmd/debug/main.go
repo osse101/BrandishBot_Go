@@ -107,4 +107,60 @@ func main() {
 			fmt.Printf("UserID: %s, Data: %v\n", userID, data)
 		}
 	}
+
+	// Dump Items
+	fmt.Println("\n--- Items ---")
+	rows, err = dbPool.Query(ctx, "SELECT item_id, item_name FROM items")
+	if err != nil {
+		log.Printf("Failed to query items: %v", err)
+	} else {
+		defer rows.Close()
+		for rows.Next() {
+			var id int
+			var name string
+			if err := rows.Scan(&id, &name); err != nil {
+				log.Printf("Failed to scan item: %v", err)
+			}
+			fmt.Printf("ID: %d, Name: %s\n", id, name)
+		}
+	}
+
+	// Dump Item Types
+	fmt.Println("\n--- Item Types ---")
+	rows, err = dbPool.Query(ctx, "SELECT item_type_id, type_name FROM item_types")
+	if err != nil {
+		log.Printf("Failed to query item types: %v", err)
+	} else {
+		defer rows.Close()
+		for rows.Next() {
+			var id int
+			var name string
+			if err := rows.Scan(&id, &name); err != nil {
+				log.Printf("Failed to scan item type: %v", err)
+			}
+			fmt.Printf("ID: %d, Name: %s\n", id, name)
+		}
+	}
+
+	// Dump Item Assignments
+	fmt.Println("\n--- Item Assignments ---")
+	query = `
+		SELECT i.item_name, t.type_name
+		FROM item_type_assignments ita
+		JOIN items i ON ita.item_id = i.item_id
+		JOIN item_types t ON ita.item_type_id = t.item_type_id
+	`
+	rows, err = dbPool.Query(ctx, query)
+	if err != nil {
+		log.Printf("Failed to query assignments: %v", err)
+	} else {
+		defer rows.Close()
+		for rows.Next() {
+			var itemName, typeName string
+			if err := rows.Scan(&itemName, &typeName); err != nil {
+				log.Printf("Failed to scan assignment: %v", err)
+			}
+			fmt.Printf("Item: %s, Type: %s\n", itemName, typeName)
+		}
+	}
 }
