@@ -90,4 +90,21 @@ func main() {
 			fmt.Printf("LinkID: %d, User: %s, Platform: %s, ExternalID: %s\n", id, username, platform, externalID)
 		}
 	}
+
+	// Dump Inventory
+	fmt.Println("\n--- User Inventory ---")
+	rows, err = dbPool.Query(ctx, "SELECT user_id, inventory_data FROM user_inventory")
+	if err != nil {
+		log.Printf("Failed to query inventory: %v", err)
+	} else {
+		defer rows.Close()
+		for rows.Next() {
+			var userID string
+			var data interface{}
+			if err := rows.Scan(&userID, &data); err != nil {
+				log.Printf("Failed to scan inventory: %v", err)
+			}
+			fmt.Printf("UserID: %s, Data: %v\n", userID, data)
+		}
+	}
 }

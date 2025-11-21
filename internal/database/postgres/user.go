@@ -140,3 +140,33 @@ func (r *UserRepository) GetUserByPlatformID(ctx context.Context, platform, plat
 
 	return &user, nil
 }
+
+// GetInventory retrieves the user's inventory
+func (r *UserRepository) GetInventory(ctx context.Context, userID string) (*domain.Inventory, error) {
+	query := `SELECT inventory_data FROM user_inventory WHERE user_id = $1`
+	var inventory domain.Inventory
+	err := r.db.QueryRow(ctx, query, userID).Scan(&inventory)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			// Return empty inventory if not found
+			return &domain.Inventory{Slots: []domain.InventorySlot{}}, nil
+		}
+		return nil, fmt.Errorf("failed to get inventory: %w", err)
+	}
+	return &inventory, nil
+}
+
+// UpdateInventory updates the user's inventory
+func (r *UserRepository) UpdateInventory(ctx context.Context, userID string, inventory domain.Inventory) error {
+	query := `
+		INSERT INTO user_inventory (user_id, inventory_data)
+		VALUES ($1, $2)
+		ON CONFLICT (user_id) DO UPDATE
+		SET inventory_data = EXCLUDED.inventory_data
+	`
+	_, err := r.db.Exec(ctx, query, userID, inventory)
+	if err != nil {
+		return fmt.Errorf("failed to update inventory: %w", err)
+	}
+	return nil
+}

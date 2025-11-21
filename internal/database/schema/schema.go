@@ -54,4 +54,14 @@ CREATE TABLE IF NOT EXISTS item_type_assignments (
     item_type_id INTEGER REFERENCES item_types(item_type_id) ON DELETE CASCADE,
     PRIMARY KEY (item_id, item_type_id)
 );
+
+-- User Inventory Table (JSONB)
+CREATE TABLE IF NOT EXISTS user_inventory (
+    user_id UUID PRIMARY KEY REFERENCES users(user_id) ON DELETE CASCADE,
+    inventory_data JSONB NOT NULL DEFAULT '{"slots": []}'
+);
+
+-- Index for fast inventory lookups
+CREATE INDEX IF NOT EXISTS idx_inventory_item_id ON user_inventory USING GIN (inventory_data);
+
 `
