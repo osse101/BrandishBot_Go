@@ -1,0 +1,401 @@
+package user
+
+import (
+	"context"
+	"testing"
+
+	"github.com/osse101/BrandishBot_Go/internal/domain"
+)
+
+// MockRepository implements Repository interface for testing
+type MockRepository struct {
+	users      map[string]*domain.User
+	items      map[string]*domain.Item
+	inventories map[string]*domain.Inventory
+}
+
+func NewMockRepository() *MockRepository {
+	return &MockRepository{
+		users:       make(map[string]*domain.User),
+		items:       make(map[string]*domain.Item),
+		inventories: make(map[string]*domain.Inventory),
+	}
+}
+
+func (m *MockRepository) UpsertUser(ctx context.Context, user *domain.User) error {
+	if user.ID == "" {
+		user.ID = "user-" + user.Username
+	}
+	m.users[user.Username] = user
+	return nil
+}
+
+func (m *MockRepository) GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error) {
+	for _, u := range m.users {
+		switch platform {
+		case "twitch":
+			if u.TwitchID == platformID {
+				return u, nil
+			}
+		case "youtube":
+			if u.YoutubeID == platformID {
+				return u, nil
+			}
+		case "discord":
+			if u.DiscordID == platformID {
+				return u, nil
+			}
+		}
+	}
+	return nil, nil
+}
+
+func (m *MockRepository) GetInventory(ctx context.Context, userID string) (*domain.Inventory, error) {
+	if inv, ok := m.inventories[userID]; ok {
+		return inv, nil
+	}
+	// Return empty inventory if not exists
+	return &domain.Inventory{Slots: []domain.InventorySlot{}}, nil
+}
+
+func (m *MockRepository) UpdateInventory(ctx context.Context, userID string, inventory domain.Inventory) error {
+	m.inventories[userID] = &inventory
+	return nil
+}
+
+func (m *MockRepository) GetItemByName(ctx context.Context, itemName string) (*domain.Item, error) {
+	if item, ok := m.items[itemName]; ok {
+		return item, nil
+	}
+	return nil, nil
+}
+
+func (m *MockRepository) GetUserByUsername(ctx context.Context, username string) (*domain.User, error) {
+	if user, ok := m.users[username]; ok {
+		return user, nil
+	}
+	return nil, nil
+}
+
+func (m *MockRepository) GetSellablePrices(ctx context.Context) ([]domain.Item, error) {
+	var items []domain.Item
+	for _, item := range m.items {
+		items = append(items, *item)
+	}
+	return items, nil
+}
+
+// Helper to setup test data
+func setupTestData(repo *MockRepository) {
+	// Add test users
+	repo.users["alice"] = &domain.User{
+		ID:       "user-alice",
+		Username: "alice",
+		TwitchID: "alice123",
+	}
+	repo.users["bob"] = &domain.User{
+		ID:       "user-bob",
+		Username: "bob",
+		TwitchID: "bob456",
+	}
+
+	// Add test items
+	repo.items["lootbox1"] = &domain.Item{
+		ID:          1,
+		Name:        "lootbox1",
+		Description: "Basic Lootbox",
+		BaseValue:   50,
+	}
+	repo.items["lootbox2"] = &domain.Item{
+		ID:          2,
+		Name:        "lootbox2",
+		Description: "Good Lootbox",
+		BaseValue:   100,
+	}
+	repo.items["money"] = &domain.Item{
+		ID:          3,
+		Name:        "money",
+		Description: "Currency",
+		BaseValue:   1,
+	}
+}
+
+func TestAddItem(t *testing.T) {
+	repo := NewMockRepository()
+	setupTestData(repo)
+	svc := NewService(repo)
+	ctx := context.Background()
+
+	// Test adding item to empty inventory
+	err := svc.AddItem(ctx, "alice", "twitch", "lootbox1", 5)
+	if err != nil {
+		t.Fatalf("AddItem failed: %v", err)
+	}
+
+	// Verify inventory
+	inv, _ := repo.GetInventory(ctx, "user-alice")
+	if len(inv.Slots) != 1 {
+		t.Errorf("Expected 1 slot, got %d", len(inv.Slots))
+	}
+	if inv.Slots[0].ItemID != 1 || inv.Slots[0].Quantity != 5 {
+		t.Errorf("Unexpected inventory state: %+v", inv.Slots[0])
+	}
+
+	// Test adding more of same item
+	err = svc.AddItem(ctx, "alice", "twitch", "lootbox1", 3)
+	if err != nil {
+		t.Fatalf("AddItem failed: %v", err)
+	}
+
+	inv, _ = repo.GetInventory(ctx, "user-alice")
+	if inv.Slots[0].Quantity != 8 {
+		t.Errorf("Expected quantity 8, got %d", inv.Slots[0].Quantity)
+	}
+
+	// Test adding different item
+	err = svc.AddItem(ctx, "alice", "twitch", "lootbox2", 2)
+	if err != nil {
+		t.Fatalf("AddItem failed: %v", err)
+	}
+
+	inv, _ = repo.GetInventory(ctx, "user-alice")
+	if len(inv.Slots) != 2 {
+		t.Errorf("Expected 2 slots, got %d", len(inv.Slots))
+	}
+}
+
+func TestRemoveItem(t *testing.T) {
+	repo := NewMockRepository()
+	setupTestData(repo)
+	svc := NewService(repo)
+	ctx := context.Background()
+
+	// Setup: Add items first
+	svc.AddItem(ctx, "alice", "twitch", "lootbox1", 10)
+
+	// Test removing partial quantity
+	removed, err := svc.RemoveItem(ctx, "alice", "twitch", "lootbox1", 3)
+	if err != nil {
+		t.Fatalf("RemoveItem failed: %v", err)
+	}
+	if removed != 3 {
+		t.Errorf("Expected 3 removed, got %d", removed)
+	}
+
+	inv, _ := repo.GetInventory(ctx, "user-alice")
+	if inv.Slots[0].Quantity != 7 {
+		t.Errorf("Expected quantity 7, got %d", inv.Slots[0].Quantity)
+	}
+
+	// Test removing more than available (should remove all)
+	removed, err = svc.RemoveItem(ctx, "alice", "twitch", "lootbox1", 100)
+	if err != nil {
+		t.Fatalf("RemoveItem failed: %v", err)
+	}
+	if removed != 7 {
+		t.Errorf("Expected 7 removed, got %d", removed)
+	}
+
+	inv, _ = repo.GetInventory(ctx, "user-alice")
+	if len(inv.Slots) != 0 {
+		t.Errorf("Expected empty inventory, got %d slots", len(inv.Slots))
+	}
+
+	// Test removing from empty inventory
+	_, err = svc.RemoveItem(ctx, "alice", "twitch", "lootbox1", 1)
+	if err == nil {
+		t.Error("Expected error when removing from empty inventory")
+	}
+}
+
+func TestGiveItem(t *testing.T) {
+	repo := NewMockRepository()
+	setupTestData(repo)
+	svc := NewService(repo)
+	ctx := context.Background()
+
+	// Setup: Give alice some items
+	svc.AddItem(ctx, "alice", "twitch", "lootbox1", 10)
+
+	// Test giving items
+	err := svc.GiveItem(ctx, "alice", "bob", "twitch", "lootbox1", 3)
+	if err != nil {
+		t.Fatalf("GiveItem failed: %v", err)
+	}
+
+	// Verify alice has 7 left
+	aliceInv, _ := repo.GetInventory(ctx, "user-alice")
+	if aliceInv.Slots[0].Quantity != 7 {
+		t.Errorf("Alice should have 7, got %d", aliceInv.Slots[0].Quantity)
+	}
+
+	// Verify bob has 3
+	bobInv, _ := repo.GetInventory(ctx, "user-bob")
+	if len(bobInv.Slots) != 1 || bobInv.Slots[0].Quantity != 3 {
+		t.Errorf("Bob should have 3, got %+v", bobInv.Slots)
+	}
+
+	// Test giving more than owned (should error)
+	err = svc.GiveItem(ctx, "alice", "bob", "twitch", "lootbox1", 100)
+	if err == nil {
+		t.Error("Expected error when giving more than owned")
+	}
+
+	// Verify no changes after failed give
+	aliceInv, _ = repo.GetInventory(ctx, "user-alice")
+	if aliceInv.Slots[0].Quantity != 7 {
+		t.Error("Alice's inventory should be unchanged after failed give")
+	}
+}
+
+func TestSellItem(t *testing.T) {
+	repo := NewMockRepository()
+	setupTestData(repo)
+	svc := NewService(repo)
+	ctx := context.Background()
+
+	// Setup: Give alice some lootboxes
+	svc.AddItem(ctx, "alice", "twitch", "lootbox1", 10)
+
+	// Test selling items
+	moneyGained, itemsSold, err := svc.SellItem(ctx, "alice", "twitch", "lootbox1", 3)
+	if err != nil {
+		t.Fatalf("SellItem failed: %v", err)
+	}
+
+	// lootbox1 base_value is 50, so 3 * 50 = 150
+	if moneyGained != 150 {
+		t.Errorf("Expected 150 money, got %d", moneyGained)
+	}
+	if itemsSold != 3 {
+		t.Errorf("Expected 3 sold, got %d", itemsSold)
+	}
+
+	// Verify inventory
+	inv, _ := repo.GetInventory(ctx, "user-alice")
+	
+	// Should have 2 slots: lootbox1 (7 left) and money (150)
+	if len(inv.Slots) != 2 {
+		t.Fatalf("Expected 2 slots, got %d", len(inv.Slots))
+	}
+
+	// Find lootbox1 and money slots
+	var lootboxSlot, moneySlot *domain.InventorySlot
+	for i := range inv.Slots {
+		if inv.Slots[i].ItemID == 1 {
+			lootboxSlot = &inv.Slots[i]
+		}
+		if inv.Slots[i].ItemID == 3 {
+			moneySlot = &inv.Slots[i]
+		}
+	}
+
+	if lootboxSlot == nil || lootboxSlot.Quantity != 7 {
+		t.Errorf("Expected 7 lootbox1, got %+v", lootboxSlot)
+	}
+	if moneySlot == nil || moneySlot.Quantity != 150 {
+		t.Errorf("Expected 150 money, got %+v", moneySlot)
+	}
+
+	// Test selling more than owned (should sell all)
+	moneyGained, itemsSold, err = svc.SellItem(ctx, "alice", "twitch", "lootbox1", 100)
+	if err != nil {
+		t.Fatalf("SellItem failed: %v", err)
+	}
+
+	// Should sell all 7 remaining: 7 * 50 = 350
+	if moneyGained != 350 {
+		t.Errorf("Expected 350 money, got %d", moneyGained)
+	}
+	if itemsSold != 7 {
+		t.Errorf("Expected 7 sold, got %d", itemsSold)
+	}
+
+	// Verify inventory - should only have money now
+	inv, _ = repo.GetInventory(ctx, "user-alice")
+	if len(inv.Slots) != 1 {
+		t.Errorf("Expected 1 slot (money only), got %d", len(inv.Slots))
+	}
+	if inv.Slots[0].ItemID != 3 || inv.Slots[0].Quantity != 500 {
+		t.Errorf("Expected 500 money total, got %+v", inv.Slots[0])
+	}
+}
+
+func TestSellItem_NotInInventory(t *testing.T) {
+	repo := NewMockRepository()
+	setupTestData(repo)
+	svc := NewService(repo)
+	ctx := context.Background()
+
+	// Try to sell item not in inventory
+	_, _, err := svc.SellItem(ctx, "alice", "twitch", "lootbox1", 1)
+	if err == nil {
+		t.Error("Expected error when selling item not in inventory")
+	}
+}
+
+func TestRegisterUser(t *testing.T) {
+	repo := NewMockRepository()
+	svc := NewService(repo)
+	ctx := context.Background()
+
+	user := domain.User{
+		Username: "charlie",
+		TwitchID: "charlie789",
+	}
+
+	registered, err := svc.RegisterUser(ctx, user)
+	if err != nil {
+		t.Fatalf("RegisterUser failed: %v", err)
+	}
+
+	if registered.ID == "" {
+		t.Error("Expected user ID to be set")
+	}
+	if registered.Username != "charlie" {
+		t.Errorf("Expected username charlie, got %s", registered.Username)
+	}
+
+	// Verify user in repo
+	found, _ := repo.GetUserByUsername(ctx, "charlie")
+	if found == nil {
+		t.Error("User not found in repository")
+	}
+}
+
+func TestHandleIncomingMessage_NewUser(t *testing.T) {
+	repo := NewMockRepository()
+	svc := NewService(repo)
+	ctx := context.Background()
+
+	user, err := svc.HandleIncomingMessage(ctx, "twitch", "newuser123", "newuser")
+	if err != nil {
+		t.Fatalf("HandleIncomingMessage failed: %v", err)
+	}
+
+	if user.Username != "newuser" || user.TwitchID != "newuser123" {
+		t.Errorf("Unexpected user: %+v", user)
+	}
+
+	// Verify user was created
+	found, _ := repo.GetUserByPlatformID(ctx, "twitch", "newuser123")
+	if found == nil {
+		t.Error("User should have been created")
+	}
+}
+
+func TestHandleIncomingMessage_ExistingUser(t *testing.T) {
+	repo := NewMockRepository()
+	setupTestData(repo)
+	svc := NewService(repo)
+	ctx := context.Background()
+
+	user, err := svc.HandleIncomingMessage(ctx, "twitch", "alice123", "alice")
+	if err != nil {
+		t.Fatalf("HandleIncomingMessage failed: %v", err)
+	}
+
+	if user.ID != "user-alice" {
+		t.Error("Should have returned existing user")
+	}
+}
