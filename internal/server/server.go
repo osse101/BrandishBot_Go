@@ -23,6 +23,7 @@ func NewServer(port int, userService user.Service) *Server {
 	mux.HandleFunc("/message/handle", handler.HandleMessageHandler(userService))
 	mux.HandleFunc("/test", handler.HandleTest(userService))
 	mux.HandleFunc("/user/item/add", handler.HandleAddItem(userService))
+	mux.HandleFunc("/user/item/remove", handler.HandleRemoveItem(userService))
 
 	// Wrap mux with logging middleware
 	loggedMux := loggingMiddleware(mux)

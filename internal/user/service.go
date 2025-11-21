@@ -23,6 +23,7 @@ type Service interface {
 	FindUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error)
 	HandleIncomingMessage(ctx context.Context, platform, platformID, username string) (domain.User, error)
 	AddItem(ctx context.Context, username, platform, itemName string, quantity int) error
+	RemoveItem(ctx context.Context, username, platform, itemName string, quantity int) (int, error)
 }
 
 // service implements the Service interface
@@ -130,3 +131,65 @@ func (s *service) AddItem(ctx context.Context, username, platform, itemName stri
 
 	return nil
 }
+
+func (s *service) RemoveItem(ctx context.Context, username, platform, itemName string, quantity int) (int, error) {
+	// 1. Get User
+	user, err := s.repo.GetUserByUsername(ctx, username)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get user: %w", err)
+	}
+	if user == nil {
+		return 0, fmt.Errorf("user not found: %s", username)
+	}
+
+	// 2. Get Item
+	item, err := s.repo.GetItemByName(ctx, itemName)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get item: %w", err)
+	}
+	if item == nil {
+		return 0, fmt.Errorf("item not found: %s", itemName)
+	}
+
+	// 3. Get Inventory
+	inventory, err := s.repo.GetInventory(ctx, user.ID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get inventory: %w", err)
+	}
+
+	// 4. Find and remove from inventory
+	var removed int
+	found := false
+	for i, slot := range inventory.Slots {
+		if slot.ItemID == item.ID {
+			found = true
+			// Calculate how many we can actually remove
+			removed = quantity
+			if slot.Quantity < quantity {
+				removed = slot.Quantity
+			}
+			
+			// Update or remove the slot
+			if slot.Quantity <= quantity {
+				// Remove the slot entirely
+				inventory.Slots = append(inventory.Slots[:i], inventory.Slots[i+1:]...)
+			} else {
+				// Just decrease the quantity
+				inventory.Slots[i].Quantity -= removed
+			}
+			break
+		}
+	}
+
+	if !found {
+		return 0, fmt.Errorf("item %s not in inventory", itemName)
+	}
+
+	// 5. Save Inventory
+	if err := s.repo.UpdateInventory(ctx, user.ID, *inventory); err != nil {
+		return 0, fmt.Errorf("failed to update inventory: %w", err)
+	}
+
+	return removed, nil
+}
+

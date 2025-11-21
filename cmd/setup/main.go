@@ -5,66 +5,107 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
+	"sort"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/joho/godotenv"
-	"github.com/osse101/BrandishBot_Go/internal/database/schema"
+	"github.com/osse101/BrandishBot_Go/internal/database"
 )
 
 func main() {
+	// Load .env file
 	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found")
+		log.Println("No .env file found, using environment variables")
 	}
 
-	host := os.Getenv("DB_HOST")
-	port := os.Getenv("DB_PORT")
-	user := os.Getenv("DB_USER")
-	password := os.Getenv("DB_PASSWORD")
-	dbname := os.Getenv("DB_NAME")
+	// Construct connection string
+	connString := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
+		os.Getenv("DB_USER"),
+		os.Getenv("DB_PASSWORD"),
+		os.Getenv("DB_HOST"),
+		os.Getenv("DB_PORT"),
+		os.Getenv("DB_NAME"),
+	)
 
-	// 1. Connect to default 'postgres' database to create the new database
-	defaultConnString := fmt.Sprintf("postgres://%s:%s@%s:%s/postgres?sslmode=disable", user, password, host, port)
-	conn, err := pgx.Connect(context.Background(), defaultConnString)
+	// Connect to PostgreSQL server (without database name to create it if needed)
+	serverConnString := fmt.Sprintf("postgres://%s:%s@%s:%s/postgres?sslmode=disable",
+		os.Getenv("DB_USER"),
+		os.Getenv("DB_PASSWORD"),
+		os.Getenv("DB_HOST"),
+		os.Getenv("DB_PORT"),
+	)
+
+	serverPool, err := database.NewPool(serverConnString)
 	if err != nil {
-		log.Fatalf("Unable to connect to postgres database: %v", err)
+		log.Fatalf("Failed to connect to PostgreSQL server: %v", err)
 	}
-	defer conn.Close(context.Background())
+	defer serverPool.Close()
 
-	// 2. Check if database exists
+	// Create database if it doesn't exist
+	dbName := os.Getenv("DB_NAME")
+	ctx := context.Background()
+
 	var exists bool
-	err = conn.QueryRow(context.Background(), "SELECT EXISTS(SELECT 1 FROM pg_database WHERE datname = $1)", dbname).Scan(&exists)
+	err = serverPool.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM pg_database WHERE datname = $1)", dbName).Scan(&exists)
 	if err != nil {
 		log.Fatalf("Failed to check if database exists: %v", err)
 	}
 
 	if !exists {
-		fmt.Printf("Creating database %s...\n", dbname)
-		_, err = conn.Exec(context.Background(), fmt.Sprintf("CREATE DATABASE %s", dbname))
+		_, err = serverPool.Exec(ctx, fmt.Sprintf("CREATE DATABASE %s", dbName))
 		if err != nil {
 			log.Fatalf("Failed to create database: %v", err)
 		}
-		fmt.Println("Database created successfully.")
+		log.Printf("Database %s created successfully.\n", dbName)
 	} else {
-		fmt.Printf("Database %s already exists.\n", dbname)
+		log.Printf("Database %s already exists.\n", dbName)
 	}
 
-	// Close connection to postgres db
-	conn.Close(context.Background())
+	// Close server connection
+	serverPool.Close()
 
-	// 3. Connect to the new database to run migrations
-	targetConnString := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", user, password, host, port, dbname)
-	targetConn, err := pgx.Connect(context.Background(), targetConnString)
+	// Connect to the specific database
+	dbPool, err := database.NewPool(connString)
 	if err != nil {
-		log.Fatalf("Unable to connect to %s database: %v", dbname, err)
+		log.Fatalf("Failed to connect to database: %v", err)
 	}
-	defer targetConn.Close(context.Background())
+	defer dbPool.Close()
 
-	// 4. Execute schema
-	fmt.Println("Applying database schema...")
-	_, err = targetConn.Exec(context.Background(), schema.SchemaSQL)
+	// Read and apply migrations
+	log.Println("Applying database migrations...")
+	
+	migrationsDir := "migrations"
+	files, err := os.ReadDir(migrationsDir)
 	if err != nil {
-		log.Fatalf("Failed to execute schema: %v", err)
+		log.Fatalf("Failed to read migrations directory: %v", err)
 	}
 
-	fmt.Println("Schema applied successfully.")
+	// Filter and sort .up.sql files
+	var upFiles []string
+	for _, file := range files {
+		if !file.IsDir() && filepath.Ext(file.Name()) == ".sql" {
+			if len(file.Name()) > 7 && file.Name()[len(file.Name())-7:] == ".up.sql" {
+				upFiles = append(upFiles, file.Name())
+			}
+		}
+	}
+	sort.Strings(upFiles)
+
+	// Apply each migration
+	for _, filename := range upFiles {
+		log.Printf("Applying migration: %s\n", filename)
+		
+		filePath := filepath.Join(migrationsDir, filename)
+		content, err := os.ReadFile(filePath)
+		if err != nil {
+			log.Fatalf("Failed to read migration file %s: %v", filename, err)
+		}
+
+		_, err = dbPool.Exec(ctx, string(content))
+		if err != nil {
+			log.Fatalf("Failed to apply migration %s: %v", filename, err)
+		}
+	}
+
+	log.Println("All migrations applied successfully!")
 }

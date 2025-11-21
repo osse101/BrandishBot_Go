@@ -36,3 +36,39 @@ func HandleAddItem(svc user.Service) http.HandlerFunc {
 		w.Write([]byte("Item added successfully"))
 	}
 }
+
+type RemoveItemRequest struct {
+	Username string `json:"username"`
+	Platform string `json:"platform"`
+	ItemName string `json:"item_name"`
+	Quantity int    `json:"quantity"`
+}
+
+type RemoveItemResponse struct {
+	Removed int `json:"removed"`
+}
+
+func HandleRemoveItem(svc user.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req RemoveItemRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		if req.Username == "" || req.ItemName == "" || req.Quantity <= 0 {
+			http.Error(w, "Missing required fields or invalid quantity", http.StatusBadRequest)
+			return
+		}
+
+		removed, err := svc.RemoveItem(r.Context(), req.Username, req.Platform, req.ItemName, req.Quantity)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(RemoveItemResponse{Removed: removed})
+	}
+}
