@@ -181,3 +181,47 @@ func HandleBuyItem(svc user.Service) http.HandlerFunc {
 		})
 	}
 }
+
+type UseItemRequest struct {
+	Username       string `json:"username"`
+	Platform       string `json:"platform"`
+	ItemName       string `json:"item_name"`
+	Quantity       int    `json:"quantity"`
+	TargetUsername string `json:"target_username"`
+}
+
+type UseItemResponse struct {
+	Message string `json:"message"`
+}
+
+func HandleUseItem(svc user.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req UseItemRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		// Default quantity to 1 if not provided (0)
+		if req.Quantity <= 0 {
+			req.Quantity = 1
+		}
+
+		if req.Username == "" || req.ItemName == "" {
+			http.Error(w, "Missing required fields", http.StatusBadRequest)
+			return
+		}
+
+		message, err := svc.UseItem(r.Context(), req.Username, req.Platform, req.ItemName, req.Quantity, req.TargetUsername)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(UseItemResponse{
+			Message: message,
+		})
+	}
+}

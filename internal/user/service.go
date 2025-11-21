@@ -30,6 +30,7 @@ type Service interface {
 	GetSellablePrices(ctx context.Context) ([]domain.Item, error)
 	SellItem(ctx context.Context, username, platform, itemName string, quantity int) (moneyGained int, itemsSold int, err error)
 	BuyItem(ctx context.Context, username, platform, itemName string, quantity int) (bought int, err error)
+	UseItem(ctx context.Context, username, platform, itemName string, quantity int, targetUsername string) (message string, err error)
 }
 
 // service implements the Service interface
@@ -497,5 +498,109 @@ func (s *service) BuyItem(ctx context.Context, username, platform, itemName stri
 	}
 
 	return actualQuantity, nil
+}
+
+func (s *service) UseItem(ctx context.Context, username, platform, itemName string, quantity int, targetUsername string) (string, error) {
+	// 1. Get User
+	user, err := s.repo.GetUserByUsername(ctx, username)
+	if err != nil {
+		return "", fmt.Errorf("failed to get user: %w", err)
+	}
+	if user == nil {
+		return "", fmt.Errorf("user not found: %s", username)
+	}
+
+	// 2. Get Inventory
+	inventory, err := s.repo.GetInventory(ctx, user.ID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get inventory: %w", err)
+	}
+
+	// 3. Get Item to Use
+	itemToUse, err := s.repo.GetItemByName(ctx, itemName)
+	if err != nil {
+		return "", fmt.Errorf("failed to get item: %w", err)
+	}
+	if itemToUse == nil {
+		return "", fmt.Errorf("item not found: %s", itemName)
+	}
+
+	// 4. Check if user has enough of the item
+	var itemSlotIndex int = -1
+	for i, slot := range inventory.Slots {
+		if slot.ItemID == itemToUse.ID {
+			itemSlotIndex = i
+			break
+		}
+	}
+
+	if itemSlotIndex == -1 || inventory.Slots[itemSlotIndex].Quantity < quantity {
+		return "", fmt.Errorf("insufficient quantity of %s", itemName)
+	}
+
+	// 5. Handle Item Effects
+	var message string
+	switch itemName {
+	case "lootbox1":
+		// Effect: Consume 1 lootbox1, Grant 1 lootbox0
+		
+		// Get lootbox0
+		lootbox0, err := s.repo.GetItemByName(ctx, "lootbox0")
+		if err != nil {
+			return "", fmt.Errorf("failed to get lootbox0: %w", err)
+		}
+		if lootbox0 == nil {
+			return "", fmt.Errorf("lootbox0 not found")
+		}
+
+		// Remove lootbox1
+		if inventory.Slots[itemSlotIndex].Quantity == quantity {
+			inventory.Slots = append(inventory.Slots[:itemSlotIndex], inventory.Slots[itemSlotIndex+1:]...)
+		} else {
+			inventory.Slots[itemSlotIndex].Quantity -= quantity
+		}
+
+		// Add lootbox0
+		found := false
+		for i, slot := range inventory.Slots {
+			if slot.ItemID == lootbox0.ID {
+				inventory.Slots[i].Quantity += quantity
+				found = true
+				break
+			}
+		}
+		if !found {
+			inventory.Slots = append(inventory.Slots, domain.InventorySlot{
+				ItemID:   lootbox0.ID,
+				Quantity: quantity,
+			})
+		}
+		message = fmt.Sprintf("Used %d lootbox1", quantity)
+
+	case "blaster":
+		// Effect: Consume quantity blasters, return message
+		if targetUsername == "" {
+			return "", fmt.Errorf("target username is required for blaster")
+		}
+
+		// Remove blaster
+		if inventory.Slots[itemSlotIndex].Quantity == quantity {
+			inventory.Slots = append(inventory.Slots[:itemSlotIndex], inventory.Slots[itemSlotIndex+1:]...)
+		} else {
+			inventory.Slots[itemSlotIndex].Quantity -= quantity
+		}
+
+		message = fmt.Sprintf("%s has BLASTED %s %d times!", username, targetUsername, quantity)
+
+	default:
+		return "", fmt.Errorf("item %s cannot be used", itemName)
+	}
+
+	// 6. Update Inventory
+	if err := s.repo.UpdateInventory(ctx, user.ID, *inventory); err != nil {
+		return "", fmt.Errorf("failed to update inventory: %w", err)
+	}
+
+	return message, nil
 }
 

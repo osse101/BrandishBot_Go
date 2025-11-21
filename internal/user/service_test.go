@@ -126,6 +126,18 @@ func setupTestData(repo *MockRepository) {
 		Description: "Currency",
 		BaseValue:   1,
 	}
+	repo.items["lootbox0"] = &domain.Item{
+		ID:          4,
+		Name:        "lootbox0",
+		Description: "Empty Lootbox",
+		BaseValue:   10,
+	}
+	repo.items["blaster"] = &domain.Item{
+		ID:          5,
+		Name:        "blaster",
+		Description: "So anyway, I started blasting",
+		BaseValue:   10,
+	}
 }
 
 func TestAddItem(t *testing.T) {
@@ -482,5 +494,98 @@ func TestBuyItem(t *testing.T) {
 	_, err = svc.BuyItem(ctx, "alice", "twitch", "lootbox2", 1)
 	if err == nil {
 		t.Error("Expected error when buying non-buyable item")
+	}
+}
+
+func TestUseItem(t *testing.T) {
+	repo := NewMockRepository()
+	setupTestData(repo)
+	svc := NewService(repo)
+	ctx := context.Background()
+
+	// Setup: Give alice some lootbox1
+	svc.AddItem(ctx, "alice", "twitch", "lootbox1", 5)
+
+	// Test using lootbox1 (consumes 1 lootbox1, gives 1 lootbox0)
+	message, err := svc.UseItem(ctx, "alice", "twitch", "lootbox1", 1, "")
+	if err != nil {
+		t.Fatalf("UseItem failed: %v", err)
+	}
+
+	if message != "Used 1 lootbox1" {
+		t.Errorf("Expected message 'Used 1 lootbox1', got '%s'", message)
+	}
+
+	// Verify inventory
+	inv, _ := repo.GetInventory(ctx, "user-alice")
+	
+	// Should have 2 slots: lootbox1 (4 left) and lootbox0 (1)
+	var lootbox1Slot, lootbox0Slot *domain.InventorySlot
+	for i := range inv.Slots {
+		if inv.Slots[i].ItemID == 1 {
+			lootbox1Slot = &inv.Slots[i]
+		}
+		if inv.Slots[i].ItemID == 4 {
+			lootbox0Slot = &inv.Slots[i]
+		}
+	}
+
+	if lootbox1Slot == nil || lootbox1Slot.Quantity != 4 {
+		t.Errorf("Expected 4 lootbox1, got %+v", lootbox1Slot)
+	}
+	if lootbox0Slot == nil || lootbox0Slot.Quantity != 1 {
+		t.Errorf("Expected 1 lootbox0, got %+v", lootbox0Slot)
+	}
+
+	// Test using more than available
+	_, err = svc.UseItem(ctx, "alice", "twitch", "lootbox1", 10, "")
+	if err == nil {
+		t.Error("Expected error when using more than available")
+	}
+
+	// Test using unknown item
+	_, err = svc.UseItem(ctx, "alice", "twitch", "unknown_item", 1, "")
+	if err == nil {
+		t.Error("Expected error when using unknown item")
+	}
+
+	// Test using item with no effect (lootbox2)
+	svc.AddItem(ctx, "alice", "twitch", "lootbox2", 1)
+	_, err = svc.UseItem(ctx, "alice", "twitch", "lootbox2", 1, "")
+	if err == nil {
+		t.Error("Expected error when using item with no effect")
+	}
+}
+
+func TestUseItem_Blaster(t *testing.T) {
+	repo := NewMockRepository()
+	setupTestData(repo)
+	svc := NewService(repo)
+	ctx := context.Background()
+
+	// Setup: Give alice some blasters
+	svc.AddItem(ctx, "alice", "twitch", "blaster", 5)
+
+	// Test using blaster on bob
+	message, err := svc.UseItem(ctx, "alice", "twitch", "blaster", 2, "bob")
+	if err != nil {
+		t.Fatalf("UseItem failed: %v", err)
+	}
+
+	expectedMsg := "alice has BLASTED bob 2 times!"
+	if message != expectedMsg {
+		t.Errorf("Expected message '%s', got '%s'", expectedMsg, message)
+	}
+
+	// Verify inventory
+	inv, _ := repo.GetInventory(ctx, "user-alice")
+	if inv.Slots[0].Quantity != 3 {
+		t.Errorf("Expected 3 blasters left, got %d", inv.Slots[0].Quantity)
+	}
+
+	// Test using blaster without target
+	_, err = svc.UseItem(ctx, "alice", "twitch", "blaster", 1, "")
+	if err == nil {
+		t.Error("Expected error when using blaster without target")
 	}
 }

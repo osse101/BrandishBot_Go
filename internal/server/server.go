@@ -27,6 +27,7 @@ func NewServer(port int, userService user.Service) *Server {
 	mux.HandleFunc("/user/item/give", handler.HandleGiveItem(userService))
 	mux.HandleFunc("/user/item/sell", handler.HandleSellItem(userService))
 	mux.HandleFunc("/user/item/buy", handler.HandleBuyItem(userService))
+	mux.HandleFunc("/user/item/use", handler.HandleUseItem(userService))
 	mux.HandleFunc("/prices", handler.HandleGetPrices(userService))
 
 	// Wrap mux with logging middleware
