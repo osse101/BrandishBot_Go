@@ -3,13 +3,14 @@ package server
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
+	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/handler"
 	"github.com/osse101/BrandishBot_Go/internal/user"
 )
 
-// Server represents the HTTP server
 type Server struct {
 	httpServer  *http.Server
 	userService user.Service
@@ -22,13 +23,27 @@ func NewServer(port int, userService user.Service) *Server {
 	mux.HandleFunc("/message/handle", handler.HandleMessageHandler(userService))
 	mux.HandleFunc("/test", handler.TestHandler(userService))
 
+	// Wrap mux with logging middleware
+	loggedMux := loggingMiddleware(mux)
+
 	return &Server{
 		httpServer: &http.Server{
 			Addr:    fmt.Sprintf(":%d", port),
-			Handler: mux,
+			Handler: loggedMux,
 		},
 		userService: userService,
 	}
+}
+
+func loggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		log.Printf("Started %s %s from %s", r.Method, r.URL.Path, r.RemoteAddr)
+
+		next.ServeHTTP(w, r)
+
+		log.Printf("Completed %s %s in %v", r.Method, r.URL.Path, time.Since(start))
+	})
 }
 
 // Start starts the server
