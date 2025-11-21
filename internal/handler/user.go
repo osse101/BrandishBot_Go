@@ -37,7 +37,7 @@ func RegisterUserHandler(userService user.Service) http.HandlerFunc {
 		}
 
 		// Find user by the known platform ID.
-		user, err := userService.FindUserByPlatformID(req.KnownPlatform, req.KnownPlatformID)
+		user, err := userService.FindUserByPlatformID(r.Context(), req.KnownPlatform, req.KnownPlatformID)
 		isNewUser := false
 		if err != nil {
 			if req.Username == "" {
@@ -56,7 +56,7 @@ func RegisterUserHandler(userService user.Service) http.HandlerFunc {
 		// Link the new platform ID.
 		updatePlatformID(user, req.NewPlatform, req.NewPlatformID)
 
-		updatedUser, err := userService.RegisterUser(*user)
+		updatedUser, err := userService.RegisterUser(r.Context(), *user)
 		if err != nil {
 			http.Error(w, "Failed to register user", http.StatusInternalServerError)
 			return
@@ -75,10 +75,10 @@ func RegisterUserHandler(userService user.Service) http.HandlerFunc {
 func updatePlatformID(user *domain.User, platform, platformID string) {
 	switch platform {
 	case "twitch":
-		user.TwitchId = platformID
+		user.TwitchID = platformID
 	case "youtube":
-		user.YoutubeId = platformID
+		user.YoutubeID = platformID
 	case "discord":
-		user.DiscordId = platformID
+		user.DiscordID = platformID
 	}
 }

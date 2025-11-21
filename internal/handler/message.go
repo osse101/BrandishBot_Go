@@ -33,7 +33,7 @@ func HandleMessageHandler(userService user.Service) http.HandlerFunc {
 			return
 		}
 
-		user, err := userService.HandleIncomingMessage(req.Platform, req.PlatformID, req.Username)
+		user, err := userService.HandleIncomingMessage(r.Context(), req.Platform, req.PlatformID, req.Username)
 		if err != nil {
 			http.Error(w, "Failed to handle message", http.StatusInternalServerError)
 			return

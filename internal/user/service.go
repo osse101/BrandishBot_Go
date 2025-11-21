@@ -1,93 +1,81 @@
 package user
 
 import (
-	"errors"
-	"sync"
+	"context"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
+// Repository defines the interface for user persistence
+type Repository interface {
+	UpsertUser(ctx context.Context, user domain.User) error
+	GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error)
+}
+
 // Service defines the interface for user operations
 type Service interface {
-	RegisterUser(user domain.User) (domain.User, error)
-	FindUserByPlatformID(platform, platformID string) (*domain.User, error)
-	HandleIncomingMessage(platform, platformID, username string) (domain.User, error)
+	RegisterUser(ctx context.Context, user domain.User) (domain.User, error)
+	FindUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error)
+	HandleIncomingMessage(ctx context.Context, platform, platformID, username string) (domain.User, error)
 }
 
 // service implements the Service interface
 type service struct {
-	users map[string]domain.User
-	mu    sync.RWMutex
+	repo Repository
 }
 
 // NewService creates a new user service
-func NewService() Service {
+func NewService(repo Repository) Service {
 	return &service{
-		users: make(map[string]domain.User),
+		repo: repo,
 	}
 }
 
-// RegisterUser registers or updates a user.
-// If the user's InternalID is empty, a new user is created.
-// If the user's InternalID is not empty, the user's details are updated.
-func (s *service) RegisterUser(user domain.User) (domain.User, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if user.InternalID == "" {
-		user.InternalID = uuid.New().String()
+// RegisterUser registers a new user
+func (s *service) RegisterUser(ctx context.Context, user domain.User) (domain.User, error) {
+	if user.ID == "" {
+		user.ID = uuid.New().String()
 	}
-
-	s.users[user.InternalID] = user
+	if err := s.repo.UpsertUser(ctx, user); err != nil {
+		return domain.User{}, err
+	}
 	return user, nil
 }
 
 // FindUserByPlatformID finds a user by their platform-specific ID
-func (s *service) FindUserByPlatformID(platform, platformID string) (*domain.User, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	for _, u := range s.users {
-		switch platform {
-		case "twitch":
-			if u.TwitchId == platformID {
-				return &u, nil
-			}
-		case "youtube":
-			if u.YoutubeId == platformID {
-				return &u, nil
-			}
-		case "discord":
-			if u.DiscordId == platformID {
-				return &u, nil
-			}
-		}
-	}
-	return nil, errors.New("user not found")
+func (s *service) FindUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error) {
+	return s.repo.GetUserByPlatformID(ctx, platform, platformID)
 }
 
 // HandleIncomingMessage checks if a user exists for an incoming message and creates one if not.
-func (s *service) HandleIncomingMessage(platform, platformID, username string) (domain.User, error) {
-	user, err := s.FindUserByPlatformID(platform, platformID)
+func (s *service) HandleIncomingMessage(ctx context.Context, platform, platformID, username string) (domain.User, error) {
+	user, err := s.repo.GetUserByPlatformID(ctx, platform, platformID)
 	if err == nil {
-		// User found, return it
 		return *user, nil
 	}
 
-	// User not found, create a new one
+	// TODO: Check if error is actually "not found"
+
 	newUser := domain.User{
 		Username: username,
 	}
 
 	switch platform {
 	case "twitch":
-		newUser.TwitchId = platformID
+		newUser.TwitchID = platformID
 	case "youtube":
-		newUser.YoutubeId = platformID
+		newUser.YoutubeID = platformID
 	case "discord":
-		newUser.DiscordId = platformID
+		newUser.DiscordID = platformID
+	default:
+		return domain.User{}, fmt.Errorf("unsupported platform: %s", platform)
 	}
 
-	return s.RegisterUser(newUser)
+	if _, err := s.RegisterUser(ctx, newUser); err != nil {
+		return domain.User{}, err
+	}
+
+	return newUser, nil
 }
