@@ -70,6 +70,15 @@ func (m *MockRepository) GetItemByName(ctx context.Context, itemName string) (*d
 	return nil, nil
 }
 
+func (m *MockRepository) GetItemByID(ctx context.Context, id int) (*domain.Item, error) {
+	for _, item := range m.items {
+		if item.ID == id {
+			return item, nil
+		}
+	}
+	return nil, nil
+}
+
 func (m *MockRepository) GetUserByUsername(ctx context.Context, username string) (*domain.User, error) {
 	if user, ok := m.users[username]; ok {
 		return user, nil
@@ -587,5 +596,54 @@ func TestUseItem_Blaster(t *testing.T) {
 	_, err = svc.UseItem(ctx, "alice", "twitch", "blaster", 1, "")
 	if err == nil {
 		t.Error("Expected error when using blaster without target")
+	}
+}
+
+func TestGetInventory(t *testing.T) {
+	repo := NewMockRepository()
+	setupTestData(repo)
+	svc := NewService(repo)
+	ctx := context.Background()
+
+	// Setup: Give alice some items
+	svc.AddItem(ctx, "alice", "twitch", "lootbox1", 2)
+	svc.AddItem(ctx, "alice", "twitch", "money", 100)
+
+	// Test GetInventory
+	items, err := svc.GetInventory(ctx, "alice")
+	if err != nil {
+		t.Fatalf("GetInventory failed: %v", err)
+	}
+
+	if len(items) != 2 {
+		t.Errorf("Expected 2 items, got %d", len(items))
+	}
+
+	// Verify item details
+	foundLootbox := false
+	foundMoney := false
+	for _, item := range items {
+		if item.Name == "lootbox1" {
+			foundLootbox = true
+			if item.Quantity != 2 {
+				t.Errorf("Expected 2 lootbox1, got %d", item.Quantity)
+			}
+			if item.Value != 50 {
+				t.Errorf("Expected value 50 for lootbox1, got %d", item.Value)
+			}
+		}
+		if item.Name == "money" {
+			foundMoney = true
+			if item.Quantity != 100 {
+				t.Errorf("Expected 100 money, got %d", item.Quantity)
+			}
+		}
+	}
+
+	if !foundLootbox {
+		t.Error("Expected lootbox1 in inventory")
+	}
+	if !foundMoney {
+		t.Error("Expected money in inventory")
 	}
 }

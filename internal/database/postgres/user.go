@@ -185,6 +185,20 @@ func (r *UserRepository) GetItemByName(ctx context.Context, itemName string) (*d
 	return &item, nil
 }
 
+// GetItemByID retrieves an item by its ID
+func (r *UserRepository) GetItemByID(ctx context.Context, id int) (*domain.Item, error) {
+	query := `SELECT item_id, item_name, item_description, base_value FROM items WHERE item_id = $1`
+	var item domain.Item
+	err := r.db.QueryRow(ctx, query, id).Scan(&item.ID, &item.Name, &item.Description, &item.BaseValue)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get item by id: %w", err)
+	}
+	return &item, nil
+}
+
 // GetUserByUsername retrieves a user by their username
 func (r *UserRepository) GetUserByUsername(ctx context.Context, username string) (*domain.User, error) {
 	query := `SELECT user_id, username, created_at, updated_at FROM users WHERE username = $1`

@@ -14,6 +14,7 @@ type Repository interface {
 	GetInventory(ctx context.Context, userID string) (*domain.Inventory, error)
 	UpdateInventory(ctx context.Context, userID string, inventory domain.Inventory) error
 	GetItemByName(ctx context.Context, itemName string) (*domain.Item, error)
+	GetItemByID(ctx context.Context, id int) (*domain.Item, error)
 	GetUserByUsername(ctx context.Context, username string) (*domain.User, error)
 	GetSellablePrices(ctx context.Context) ([]domain.Item, error)
 	IsItemBuyable(ctx context.Context, itemName string) (bool, error)
@@ -31,6 +32,14 @@ type Service interface {
 	SellItem(ctx context.Context, username, platform, itemName string, quantity int) (moneyGained int, itemsSold int, err error)
 	BuyItem(ctx context.Context, username, platform, itemName string, quantity int) (bought int, err error)
 	UseItem(ctx context.Context, username, platform, itemName string, quantity int, targetUsername string) (message string, err error)
+	GetInventory(ctx context.Context, username string) ([]UserInventoryItem, error)
+}
+
+type UserInventoryItem struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Quantity    int    `json:"quantity"`
+	Value       int    `json:"value"`
 }
 
 // service implements the Service interface
@@ -602,5 +611,44 @@ func (s *service) UseItem(ctx context.Context, username, platform, itemName stri
 	}
 
 	return message, nil
+}
+
+func (s *service) GetInventory(ctx context.Context, username string) ([]UserInventoryItem, error) {
+	// 1. Get User
+	user, err := s.repo.GetUserByUsername(ctx, username)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+	if user == nil {
+		return nil, fmt.Errorf("user not found: %s", username)
+	}
+
+	// 2. Get Inventory
+	inventory, err := s.repo.GetInventory(ctx, user.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get inventory: %w", err)
+	}
+
+	// 3. Enrich with Item Details
+	var items []UserInventoryItem
+	for _, slot := range inventory.Slots {
+		item, err := s.repo.GetItemByID(ctx, slot.ItemID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get item details for id %d: %w", slot.ItemID, err)
+		}
+		if item == nil {
+			// Skip items that don't exist (shouldn't happen with referential integrity, but good for safety)
+			continue
+		}
+
+		items = append(items, UserInventoryItem{
+			Name:        item.Name,
+			Description: item.Description,
+			Quantity:    slot.Quantity,
+			Value:       item.BaseValue,
+		})
+	}
+
+	return items, nil
 }
 

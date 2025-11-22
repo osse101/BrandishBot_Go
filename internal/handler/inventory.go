@@ -225,3 +225,29 @@ func HandleUseItem(svc user.Service) http.HandlerFunc {
 		})
 	}
 }
+
+type GetInventoryResponse struct {
+	Items []user.UserInventoryItem `json:"items"`
+}
+
+func HandleGetInventory(svc user.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		username := r.URL.Query().Get("username")
+		if username == "" {
+			http.Error(w, "Missing username query parameter", http.StatusBadRequest)
+			return
+		}
+
+		items, err := svc.GetInventory(r.Context(), username)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(GetInventoryResponse{
+			Items: items,
+		})
+	}
+}
