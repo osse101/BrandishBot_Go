@@ -3,11 +3,11 @@ package server
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/handler"
+	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/user"
 )
 
@@ -43,15 +43,73 @@ func NewServer(port int, userService user.Service) *Server {
 	}
 }
 
+// responseWriter wraps http.ResponseWriter to capture the status code
+type responseWriter struct {
+	http.ResponseWriter
+	statusCode int
+	written    bool
+}
+
+func newResponseWriter(w http.ResponseWriter) *responseWriter {
+	return &responseWriter{
+		ResponseWriter: w,
+		statusCode:     http.StatusOK, // default status
+	}
+}
+
+func (rw *responseWriter) WriteHeader(statusCode int) {
+	if !rw.written {
+		rw.statusCode = statusCode
+		rw.written = true
+		rw.ResponseWriter.WriteHeader(statusCode)
+	}
+}
+
+func (rw *responseWriter) Write(b []byte) (int, error) {
+	if !rw.written {
+		rw.WriteHeader(http.StatusOK)
+	}
+	return rw.ResponseWriter.Write(b)
+}
+
 func loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		slog.Info("Started request", "method", r.Method, "path", r.URL.Path, "remote_addr", r.RemoteAddr)
-		slog.Debug("Request details", "headers", r.Header)
-
-		next.ServeHTTP(w, r)
-
-		slog.Info("Completed request", "method", r.Method, "path", r.URL.Path, "duration", time.Since(start))
+		
+		// Generate unique request ID
+		requestID := logger.GenerateRequestID()
+		
+		// Add request ID to context
+		ctx := logger.WithRequestID(r.Context(), requestID)
+		r = r.WithContext(ctx)
+		
+		// Get scoped logger
+		log := logger.FromContext(ctx)
+		
+		// Log request start with details
+		log.Info("Request started",
+			"method", r.Method,
+			"path", r.URL.Path,
+			"remote_addr", r.RemoteAddr,
+			"content_length", r.ContentLength,
+			"user_agent", r.UserAgent())
+		
+		log.Debug("Request headers", "headers", r.Header)
+		
+		// Wrap response writer to capture status code
+		rw := newResponseWriter(w)
+		
+		// Process request
+		next.ServeHTTP(rw, r)
+		
+		// Log request completion with metrics
+		duration := time.Since(start)
+		log.Info("Request completed",
+			"method", r.Method,
+			"path", r.URL.Path,
+			"status", rw.statusCode,
+			"duration_ms", duration.Milliseconds(),
+			"duration", duration)
 	})
 }
 

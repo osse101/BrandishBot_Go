@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/user"
 )
 
@@ -16,21 +17,33 @@ type AddItemRequest struct {
 
 func HandleAddItem(svc user.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromContext(r.Context())
+		
 		var req AddItemRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			log.Error("Failed to decode add item request", "error", err)
 			http.Error(w, "Invalid request body", http.StatusBadRequest)
 			return
 		}
+		
+		log.Debug("Add item request",
+			"username", req.Username,
+			"item", req.ItemName,
+			"quantity", req.Quantity)
 
 		if req.Username == "" || req.ItemName == "" || req.Quantity <= 0 {
+			log.Warn("Invalid add item request", "username", req.Username, "item", req.ItemName, "quantity", req.Quantity)
 			http.Error(w, "Missing required fields or invalid quantity", http.StatusBadRequest)
 			return
 		}
 
 		if err := svc.AddItem(r.Context(), req.Username, req.Platform, req.ItemName, req.Quantity); err != nil {
+			log.Error("Failed to add item", "error", err, "username", req.Username, "item", req.ItemName)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+		
+		log.Info("Item added successfully", "username", req.Username, "item", req.ItemName, "quantity", req.Quantity)
 
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("Item added successfully"))
@@ -50,22 +63,31 @@ type RemoveItemResponse struct {
 
 func HandleRemoveItem(svc user.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromContext(r.Context())
+		
 		var req RemoveItemRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			log.Error("Failed to decode remove item request", "error", err)
 			http.Error(w, "Invalid request body", http.StatusBadRequest)
 			return
 		}
+		
+		log.Debug("Remove item request", "username", req.Username, "item", req.ItemName, "quantity", req.Quantity)
 
 		if req.Username == "" || req.ItemName == "" || req.Quantity <= 0 {
+			log.Warn("Invalid remove item request", "username", req.Username, "item", req.ItemName, "quantity", req.Quantity)
 			http.Error(w, "Missing required fields or invalid quantity", http.StatusBadRequest)
 			return
 		}
 
 		removed, err := svc.RemoveItem(r.Context(), req.Username, req.Platform, req.ItemName, req.Quantity)
 		if err != nil {
+			log.Error("Failed to remove item", "error", err, "username", req.Username, "item", req.ItemName)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+		
+		log.Info("Item removed successfully", "username", req.Username, "item", req.ItemName, "removed", removed)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -83,21 +105,34 @@ type GiveItemRequest struct {
 
 func HandleGiveItem(svc user.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromContext(r.Context())
+		
 		var req GiveItemRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			log.Error("Failed to decode give item request", "error", err)
 			http.Error(w, "Invalid request body", http.StatusBadRequest)
 			return
 		}
+		
+		log.Debug("Give item request",
+			"owner", req.Owner,
+			"receiver", req.Receiver,
+			"item", req.ItemName,
+			"quantity", req.Quantity)
 
 		if req.Owner == "" || req.Receiver == "" || req.ItemName == "" || req.Quantity <= 0 {
+			log.Warn("Invalid give item request")
 			http.Error(w, "Missing required fields or invalid quantity", http.StatusBadRequest)
 			return
 		}
 
 		if err := svc.GiveItem(r.Context(), req.Owner, req.Receiver, req.Platform, req.ItemName, req.Quantity); err != nil {
+			log.Error("Failed to give item", "error", err, "owner", req.Owner, "receiver", req.Receiver, "item", req.ItemName)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+		
+		log.Info("Item transferred successfully", "owner", req.Owner, "receiver", req.Receiver, "item", req.ItemName, "quantity", req.Quantity)
 
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("Item transferred successfully"))
@@ -118,22 +153,35 @@ type SellItemResponse struct {
 
 func HandleSellItem(svc user.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromContext(r.Context())
+		
 		var req SellItemRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			log.Error("Failed to decode sell item request", "error", err)
 			http.Error(w, "Invalid request body", http.StatusBadRequest)
 			return
 		}
+		
+		log.Debug("Sell item request", "username", req.Username, "item", req.ItemName, "quantity", req.Quantity)
 
 		if req.Username == "" || req.ItemName == "" || req.Quantity <= 0 {
+			log.Warn("Invalid sell item request", "username", req.Username, "item", req.ItemName, "quantity", req.Quantity)
 			http.Error(w, "Missing required fields or invalid quantity", http.StatusBadRequest)
 			return
 		}
 
 		moneyGained, itemsSold, err := svc.SellItem(r.Context(), req.Username, req.Platform, req.ItemName, req.Quantity)
 		if err != nil {
+			log.Error("Failed to sell item", "error", err, "username", req.Username, "item", req.ItemName)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+		
+		log.Info("Item sold successfully",
+			"username", req.Username,
+			"item", req.ItemName,
+			"items_sold", itemsSold,
+			"money_gained", moneyGained)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -157,22 +205,34 @@ type BuyItemResponse struct {
 
 func HandleBuyItem(svc user.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromContext(r.Context())
+		
 		var req BuyItemRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			log.Error("Failed to decode buy item request", "error", err)
 			http.Error(w, "Invalid request body", http.StatusBadRequest)
 			return
 		}
+		
+		log.Debug("Buy item request", "username", req.Username, "item", req.ItemName, "quantity", req.Quantity)
 
 		if req.Username == "" || req.ItemName == "" || req.Quantity <= 0 {
+			log.Warn("Invalid buy item request", "username", req.Username, "item", req.ItemName, "quantity", req.Quantity)
 			http.Error(w, "Missing required fields or invalid quantity", http.StatusBadRequest)
 			return
 		}
 
 		bought, err := svc.BuyItem(r.Context(), req.Username, req.Platform, req.ItemName, req.Quantity)
 		if err != nil {
+			log.Error("Failed to buy item", "error", err, "username", req.Username, "item", req.ItemName)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+		
+		log.Info("Item purchased successfully",
+			"username", req.Username,
+			"item", req.ItemName,
+			"items_bought", bought)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -196,8 +256,11 @@ type UseItemResponse struct {
 
 func HandleUseItem(svc user.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromContext(r.Context())
+		
 		var req UseItemRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			log.Error("Failed to decode use item request", "error", err)
 			http.Error(w, "Invalid request body", http.StatusBadRequest)
 			return
 		}
@@ -206,17 +269,31 @@ func HandleUseItem(svc user.Service) http.HandlerFunc {
 		if req.Quantity <= 0 {
 			req.Quantity = 1
 		}
+		
+		log.Debug("Use item request",
+			"username", req.Username,
+			"item", req.ItemName,
+			"quantity", req.Quantity,
+			"target", req.TargetUsername)
 
 		if req.Username == "" || req.ItemName == "" {
+			log.Warn("Missing required fields", "username", req.Username, "item", req.ItemName)
 			http.Error(w, "Missing required fields", http.StatusBadRequest)
 			return
 		}
 
 		message, err := svc.UseItem(r.Context(), req.Username, req.Platform, req.ItemName, req.Quantity, req.TargetUsername)
 		if err != nil {
+			log.Error("Failed to use item", "error", err, "username", req.Username, "item", req.ItemName)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+		
+		log.Info("Item used successfully",
+			"username", req.Username,
+			"item", req.ItemName,
+			"quantity", req.Quantity,
+			"message", message)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -232,17 +309,25 @@ type GetInventoryResponse struct {
 
 func HandleGetInventory(svc user.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromContext(r.Context())
+		
 		username := r.URL.Query().Get("username")
 		if username == "" {
+			log.Warn("Missing username query parameter")
 			http.Error(w, "Missing username query parameter", http.StatusBadRequest)
 			return
 		}
+		
+		log.Debug("Get inventory request", "username", username)
 
 		items, err := svc.GetInventory(r.Context(), username)
 		if err != nil {
+			log.Error("Failed to get inventory", "error", err, "username", username)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+		
+		log.Info("Inventory retrieved", "username", username, "item_count", len(items))
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
