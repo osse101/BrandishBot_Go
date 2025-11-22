@@ -1,12 +1,16 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log/slog"
+	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -106,8 +110,30 @@ func main() {
 	userService := user.NewService(userRepo)
 	srv := server.NewServer(8080, userService)
 
-	if err := srv.Start(); err != nil {
-		slog.Error("Server failed to start", "error", err)
-		os.Exit(1)
+	// Run server in a goroutine
+	go func() {
+		slog.Info("Starting server", "port", 8080)
+		if err := srv.Start(); err != nil && err != http.ErrServerClosed {
+			slog.Error("Server failed", "error", err)
+			os.Exit(1)
+		}
+	}()
+
+	// Wait for interrupt signal for graceful shutdown
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	slog.Info("Shutting down server...")
+
+	// Create a deadline for shutdown
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// Gracefully shutdown the server
+	if err := srv.Stop(shutdownCtx); err != nil {
+		slog.Error("Server forced to shutdown", "error", err)
 	}
+
+	slog.Info("Server stopped")
 }

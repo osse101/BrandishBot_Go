@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
 
 // MockRepository implements Repository interface for testing
@@ -100,6 +101,31 @@ func (m *MockRepository) IsItemBuyable(ctx context.Context, itemName string) (bo
 		return true, nil
 	}
 	return false, nil
+}
+
+// MockTx wraps MockRepository for transaction testing
+type MockTx struct {
+	repo *MockRepository
+}
+
+func (m *MockRepository) BeginTx(ctx context.Context) (repository.Tx, error) {
+	return &MockTx{repo: m}, nil
+}
+
+func (mt *MockTx) GetInventory(ctx context.Context, userID string) (*domain.Inventory, error) {
+	return mt.repo.GetInventory(ctx, userID)
+}
+
+func (mt *MockTx) UpdateInventory(ctx context.Context, userID string, inventory domain.Inventory) error {
+	return mt.repo.UpdateInventory(ctx, userID, inventory)
+}
+
+func (mt *MockTx) Commit(ctx context.Context) error {
+	return nil // No-op for mock
+}
+
+func (mt *MockTx) Rollback(ctx context.Context) error {
+	return nil // No-op for mock
 }
 
 // Helper to setup test data

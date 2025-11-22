@@ -155,3 +155,236 @@ Update relevant documentation:
 | 3 | Missing platform data: "no rows in result set" | Identified need to seed platforms table |
 
 **Result**: DEBUG logs provided complete visibility into the data flow, enabling rapid root cause identification.
+
+---
+
+## 🔒 Concurrency Best Practices
+
+When working with this Go application, follow these guidelines to ensure thread-safety and prevent race conditions.
+
+### Database Transactions for Atomic Operations
+
+**Always use transactions when updating multiple related resources:**
+
+```go
+// ✅ CORRECT: Use transactions for atomic multi-resource updates
+func (s *service) GiveItem(ctx context.Context, ownerUsername, receiverUsername, itemName string, quantity int) error {
+    // Begin transaction
+    tx, err := s.repo.BeginTx(ctx)
+    if err != nil {
+        return fmt.Errorf("failed to begin transaction: %w", err)
+    }
+    defer tx.Rollback(ctx) // Always defer rollback
+    
+    // Get both inventories within transaction
+    ownerInv, _ := tx.GetInventory(ctx, ownerID)
+    receiverInv, _ := tx.GetInventory(ctx, receiverID)
+    
+    // Modify both inventories
+    // ... update logic ...
+    
+    // Update both within transaction
+    tx.UpdateInventory(ctx, ownerID, *ownerInv)
+    tx.UpdateInventory(ctx, receiverID, *receiverInv)
+    
+    // Commit - both succeed or both fail
+    return tx.Commit(ctx)
+}
+
+// ❌ WRONG: Separate updates can leave inconsistent state
+func (s *service) GiveItem(ctx context.Context, ownerUsername, receiverUsername, itemName string, quantity int) error {
+    // Update owner
+    s.repo.UpdateInventory(ctx, ownerID, *ownerInv)
+    
+    // ⚠️ If this fails, owner already lost items!
+    s.repo.UpdateInventory(ctx, receiverID, *receiverInv)
+}
+```
+
+When to use transactions:
+
+- Transferring items between users (GiveItem)
+- Any operation modifying multiple database rows
+- Operations where partial completion would be invalid
+
+**Repository Interface Pattern**
+The repository.Tx interface lives in its own package to avoid circular dependencies:
+
+internal/
+  ├── repository/      # Transaction interface
+  │   └── tx.go
+  ├── user/           # Service layer (uses repository.Tx)
+  │   └── service.go
+  └── database/       # Implementation (implements repository.Tx)
+      └── postgres/
+          └── user.go
+
+**Concurrency-Safe Patterns Already in Use**
+These patterns are already thread-safe and don't need additional synchronization:
+
+- HTTP Handlers - Each request runs in its own goroutine (built into net/http)
+- Database Connection Pool - pgxpool.Pool is thread-safe
+- Context Propagation - context.Context is immutable and safe for concurrent use
+- Logger - log/slog is goroutine-safe
+- Stateless Services - Services don't hold mutable state between requests
+
+**When to Add Synchronization**
+Protect shared mutable state with sync.RWMutex:
+
+```go
+type service struct {
+    repo         Repository
+    itemHandlers map[string]ItemEffectHandler
+    mu           sync.RWMutex  // Protects itemHandlers
+}
+
+// Read operations use RLock (multiple readers allowed)
+func (s *service) getHandler(name string) (ItemEffectHandler, bool) {
+    s.mu.RLock()
+    defer s.mu.RUnlock()
+    handler, ok := s.itemHandlers[name]
+    return handler, ok
+}
+
+// Write operations use Lock (exclusive access)
+func (s *service) registerHandler(name string, handler ItemEffectHandler) {
+    s.mu.Lock()
+    defer s.mu.Unlock()
+    s.itemHandlers[name] = handler
+}
+```
+
+Current state: The itemHandlers map is write-once during
+NewService()
+, so no mutex is needed yet. Add one if dynamic registration is implemented.
+
+**Testing for Race Conditions**
+Before deploying changes that affect concurrency:
+
+```powershell
+# Run tests with race detector (Linux/Mac/Windows amd64)
+go test -race ./...
+
+# Build with race detector for debugging
+go build -race cmd/app/main.go
+
+# Run specific concurrent tests
+go test -race -run TestGiveItem ./internal/user/...
+```
+
+Note: Race detector is not available on Windows/386. Test on Linux or Windows/amd64 for full verification.
+
+### Common Pitfalls to Avoid
+
+1. Loop Variable Capture in Goroutines
+
+```go
+// ❌ WRONG: All goroutines reference the same loop variable
+for _, item := range items {
+    go func() {
+        process(item) // All goroutines see the last item!
+    }()
+}
+
+// ✅ CORRECT: Pass as parameter or shadow
+for _, item := range items {
+    item := item // Shadow the loop variable
+    go func() {
+        process(item)
+    }()
+}
+```
+
+1. Closing Channels
+
+```go
+// ✅ CORRECT: Only sender closes channels
+ch := make(chan int)
+go func() {
+    defer close(ch) // Sender closes
+    for i := 0; i < 10; i++ {
+        ch <- i
+    }
+}()
+
+for val := range ch { // Receiver reads
+    process(val)
+}
+```
+
+1. Context Cancellation
+
+```go
+// ✅ CORRECT: Always check context cancellation in long operations
+func (s *service) processLongOperation(ctx context.Context) error {
+    for i := 0; i < 1000; i++ {
+        select {
+        case <-ctx.Done():
+            return ctx.Err() // Respect cancellation
+        default:
+            // Continue processing
+        }
+        
+        // ... do work ...
+    }
+    return nil
+}
+```
+
+### Graceful Shutdown
+
+The application includes graceful shutdown to handle concurrent requests cleanly:
+
+```go
+// Server runs in goroutine
+func() {
+    srv.Start()
+}()
+
+// Wait for signal
+quit := make(chan os.Signal, 1)
+signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+<-quit
+
+// Shutdown with timeout for in-flight requests
+shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+defer cancel()
+srv.Stop(shutdownCtx)
+```
+
+### Benefits
+
+- In-flight HTTP requests complete (up to 30 seconds)
+- Database connections close cleanly
+- No orphaned goroutines or resource leaks
+
+### Performance Considerations
+
+Database Connection Pool Settings ([database/database.go](internal/database/database.go)):
+
+```go
+config.MaxConns = 10        // Maximum concurrent connections
+config.MinConns = 2         // Minimum pooled connections
+config.MaxConnLifetime = time.Hour
+config.MaxConnIdleTime = 30 * time.Minute
+```
+
+Adjust based on your deployment:
+
+- Low traffic: MaxConns: 5-10
+- High traffic: MaxConns: 20-50 (don't exceed PostgreSQL max_connections)
+- CPU-bound: MaxConns ≈ NumCPU
+- I/O-bound: MaxConns ≈ NumCPU * 2
+
+### Summary Checklist
+
+When adding new concurrent features:
+
+- Use transactions for multi-resource updates
+- Avoid shared mutable state (prefer stateless design)
+- If shared state is needed, protect with sync.RWMutex
+- Always defer Unlock() or Rollback() calls
+- Pass contexts through the call chain
+- Test with -race flag on supported platforms
+- Handle graceful shutdown for new goroutines
+- Document concurrency assumptions in code comments

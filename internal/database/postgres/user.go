@@ -7,6 +7,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
 
 // UserRepository implements the user repository for PostgreSQL
@@ -17,6 +18,59 @@ type UserRepository struct {
 // NewUserRepository creates a new UserRepository
 func NewUserRepository(db *pgxpool.Pool) *UserRepository {
 	return &UserRepository{db: db}
+}
+
+// UserTx implements transactional operations
+type UserTx struct {
+	tx pgx.Tx
+}
+
+// BeginTx starts a new transaction
+func (r *UserRepository) BeginTx(ctx context.Context) (repository.Tx, error) {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	return &UserTx{tx: tx}, nil
+}
+
+// GetInventory retrieves inventory within a transaction
+func (t *UserTx) GetInventory(ctx context.Context, userID string) (*domain.Inventory, error) {
+	query := `SELECT inventory_data FROM user_inventory WHERE user_id = $1`
+	var inventory domain.Inventory
+	err := t.tx.QueryRow(ctx, query, userID).Scan(&inventory)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return &domain.Inventory{Slots: []domain.InventorySlot{}}, nil
+		}
+		return nil, fmt.Errorf("failed to get inventory: %w", err)
+	}
+	return &inventory, nil
+}
+
+// UpdateInventory updates inventory within a transaction
+func (t *UserTx) UpdateInventory(ctx context.Context, userID string, inventory domain.Inventory) error {
+	query := `
+		INSERT INTO user_inventory (user_id, inventory_data)
+		VALUES ($1, $2)
+		ON CONFLICT (user_id) DO UPDATE
+		SET inventory_data = EXCLUDED.inventory_data
+	`
+	_, err := t.tx.Exec(ctx, query, userID, inventory)
+	if err != nil {
+		return fmt.Errorf("failed to update inventory: %w", err)
+	}
+	return nil
+}
+
+// Commit commits the transaction
+func (t *UserTx) Commit(ctx context.Context) error {
+	return t.tx.Commit(ctx)
+}
+
+// Rollback rolls back the transaction
+func (t *UserTx) Rollback(ctx context.Context) error {
+	return t.tx.Rollback(ctx)
 }
 
 // UpsertUser inserts a new user or updates existing user and their platform links

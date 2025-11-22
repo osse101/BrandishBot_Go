@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
 
 // Repository defines the interface for user persistence
@@ -18,6 +19,7 @@ type Repository interface {
 	GetUserByUsername(ctx context.Context, username string) (*domain.User, error)
 	GetSellablePrices(ctx context.Context) ([]domain.Item, error)
 	IsItemBuyable(ctx context.Context, itemName string) (bool, error)
+	BeginTx(ctx context.Context) (repository.Tx, error)
 }
 
 // Service defines the interface for user operations
@@ -254,8 +256,15 @@ func (s *service) GiveItem(ctx context.Context, ownerUsername, receiverUsername,
 		return fmt.Errorf("item not found: %s", itemName)
 	}
 
-	// 4. Get Owner's Inventory and Validate
-	ownerInventory, err := s.repo.GetInventory(ctx, owner.ID)
+	// 4. Begin transaction for atomic inventory updates
+	tx, err := s.repo.BeginTx(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx) // Rollback if not committed
+
+	// 5. Get Owner's Inventory within transaction
+	ownerInventory, err := tx.GetInventory(ctx, owner.ID)
 	if err != nil {
 		return fmt.Errorf("failed to get owner inventory: %w", err)
 	}
@@ -282,13 +291,13 @@ func (s *service) GiveItem(ctx context.Context, ownerUsername, receiverUsername,
 			itemName, ownerInventory.Slots[ownerSlotIndex].Quantity, quantity)
 	}
 
-	// 5. Get Receiver's Inventory
-	receiverInventory, err := s.repo.GetInventory(ctx, receiver.ID)
+	// 6. Get Receiver's Inventory within transaction
+	receiverInventory, err := tx.GetInventory(ctx, receiver.ID)
 	if err != nil {
 		return fmt.Errorf("failed to get receiver inventory: %w", err)
 	}
 
-	// 6. Remove from owner
+	// 7. Remove from owner
 	if ownerInventory.Slots[ownerSlotIndex].Quantity == quantity {
 		// Remove slot entirely
 		ownerInventory.Slots = append(ownerInventory.Slots[:ownerSlotIndex], ownerInventory.Slots[ownerSlotIndex+1:]...)
@@ -297,7 +306,7 @@ func (s *service) GiveItem(ctx context.Context, ownerUsername, receiverUsername,
 		ownerInventory.Slots[ownerSlotIndex].Quantity -= quantity
 	}
 
-	// 7. Add to receiver
+	// 8. Add to receiver
 	found := false
 	for i, slot := range receiverInventory.Slots {
 		if slot.ItemID == item.ID {
@@ -313,15 +322,18 @@ func (s *service) GiveItem(ctx context.Context, ownerUsername, receiverUsername,
 		})
 	}
 
-	// 8. Update both inventories
-	if err := s.repo.UpdateInventory(ctx, owner.ID, *ownerInventory); err != nil {
+	// 9. Update both inventories within the transaction
+	if err := tx.UpdateInventory(ctx, owner.ID, *ownerInventory); err != nil {
 		return fmt.Errorf("failed to update owner inventory: %w", err)
 	}
 
-	if err := s.repo.UpdateInventory(ctx, receiver.ID, *receiverInventory); err != nil {
-		// Note: In a real application, this should be wrapped in a database transaction
-		// to ensure atomicity. For now, we have a small risk of inconsistent state.
+	if err := tx.UpdateInventory(ctx, receiver.ID, *receiverInventory); err != nil {
 		return fmt.Errorf("failed to update receiver inventory: %w", err)
+	}
+
+	// 10. Commit transaction - both updates succeed or both fail
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	return nil
