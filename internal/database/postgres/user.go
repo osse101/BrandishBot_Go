@@ -69,17 +69,17 @@ func (r *UserRepository) UpsertUser(ctx context.Context, user *domain.User) erro
 
 		// Get Platform ID
 		var platformID int
-		err := tx.QueryRow(ctx, "SELECT platform_id FROM platforms WHERE platform_name = $1", platformName).Scan(&platformID)
+		err := tx.QueryRow(ctx, "SELECT platform_id FROM platforms WHERE name = $1", platformName).Scan(&platformID)
 		if err != nil {
 			return fmt.Errorf("failed to get platform id for %s: %w", platformName, err)
 		}
 
 		// Upsert Link
 		linkQuery := `
-			INSERT INTO user_platform_links (user_id, platform_id, external_id)
+			INSERT INTO user_platform_links (user_id, platform_id, platform_user_id)
 			VALUES ($1, $2, $3)
 			ON CONFLICT (user_id, platform_id) DO UPDATE
-			SET external_id = EXCLUDED.external_id
+			SET platform_user_id = EXCLUDED.platform_user_id
 		`
 		_, err = tx.Exec(ctx, linkQuery, userID, platformID, externalID)
 		if err != nil {
@@ -99,7 +99,7 @@ func (r *UserRepository) GetUserByPlatformID(ctx context.Context, platform, plat
 		FROM users u
 		JOIN user_platform_links upl ON u.user_id = upl.user_id
 		JOIN platforms p ON upl.platform_id = p.platform_id
-		WHERE p.platform_name = $1 AND upl.external_id = $2
+		WHERE p.name = $1 AND upl.platform_user_id = $2
 	`
 	var user domain.User
 	err := r.db.QueryRow(ctx, query, platform, platformID).Scan(&user.ID, &user.Username)
@@ -112,7 +112,7 @@ func (r *UserRepository) GetUserByPlatformID(ctx context.Context, platform, plat
 
 	// 2. Fetch all platform links for this user
 	linksQuery := `
-		SELECT p.platform_name, upl.external_id
+		SELECT p.name, upl.platform_user_id
 		FROM user_platform_links upl
 		JOIN platforms p ON upl.platform_id = p.platform_id
 		WHERE upl.user_id = $1

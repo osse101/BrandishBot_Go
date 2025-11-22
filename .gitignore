@@ -27,4 +27,4 @@ go.work.sum
 # Output directory
 Output/
 
-app.log
+logs/

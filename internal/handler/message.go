@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 
 	"github.com/osse101/BrandishBot_Go/internal/user"
@@ -35,6 +36,7 @@ func HandleMessageHandler(userService user.Service) http.HandlerFunc {
 
 		user, err := userService.HandleIncomingMessage(r.Context(), req.Platform, req.PlatformID, req.Username)
 		if err != nil {
+			slog.Error("Failed to handle message", "error", err)
 			http.Error(w, "Failed to handle message", http.StatusInternalServerError)
 			return
 		}

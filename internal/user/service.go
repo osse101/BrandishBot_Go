@@ -84,7 +84,7 @@ func (s *service) FindUserByPlatformID(ctx context.Context, platform, platformID
 // HandleIncomingMessage checks if a user exists for an incoming message and creates one if not.
 func (s *service) HandleIncomingMessage(ctx context.Context, platform, platformID, username string) (domain.User, error) {
 	user, err := s.repo.GetUserByPlatformID(ctx, platform, platformID)
-	if err != nil {
+	if err != nil && err.Error() != "user not found" {
 		return domain.User{}, fmt.Errorf("failed to get user: %w", err)
 	}
 	if user != nil {

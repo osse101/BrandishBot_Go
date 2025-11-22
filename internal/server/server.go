@@ -3,7 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -46,11 +46,12 @@ func NewServer(port int, userService user.Service) *Server {
 func loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		log.Printf("Started %s %s from %s", r.Method, r.URL.Path, r.RemoteAddr)
+		slog.Info("Started request", "method", r.Method, "path", r.URL.Path, "remote_addr", r.RemoteAddr)
+		slog.Debug("Request details", "headers", r.Header)
 
 		next.ServeHTTP(w, r)
 
-		log.Printf("Completed %s %s in %v", r.Method, r.URL.Path, time.Since(start))
+		slog.Info("Completed request", "method", r.Method, "path", r.URL.Path, "duration", time.Since(start))
 	})
 }
 

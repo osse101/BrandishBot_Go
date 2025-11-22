@@ -76,6 +76,7 @@ Each service will consume an event stream published by the core inventory system
 When testing the application, AI agents should follow these cleanup practices:
 
 **Starting Background Processes:**
+
 ```powershell
 # Background commands return a command ID
 go run cmd/app/main.go
@@ -83,11 +84,13 @@ go run cmd/app/main.go
 ```
 
 **Tracking Command IDs:**
+
 - **ALWAYS** store the command ID returned from `run_command` when starting background processes
 - Use this ID for targeted cleanup instead of searching by port/name
 - Track IDs in a list throughout the session
 
 **Cleanup Process:**
+
 ```powershell
 # ✅ CORRECT: Use the tracked command ID
 send_command_input(CommandId: "abc123-def456-...", Terminate: true)
@@ -97,13 +100,15 @@ send_command_input(CommandId: "abc123-def456-...", Terminate: true)
 ```
 
 **End-of-Session Cleanup:**
+
 - **MANDATORY**: Terminate ALL background processes at the end of testing
 - Track all started command IDs during the session
 - Clean up in reverse order (newest to oldest)
 - Verify cleanup success with `command_status` tool
 
 **Example Workflow:**
-```
+
+```powershell
 1. Start server → Track: cmd_id_server
 2. Run tests
 3. Start debug script → Track: cmd_id_debug
@@ -114,7 +119,39 @@ send_command_input(CommandId: "abc123-def456-...", Terminate: true)
 ```
 
 **Why This Matters:**
+
 - Prevents resource leaks
 - Avoids port conflicts in future sessions
 - Ensures clean state for next agent interaction
 - More reliable than port-based process killing
+
+**Key principle**: Log errors at the boundary where they occur, with full context.
+
+### 6. Verify Fixes
+
+After implementing a fix:
+
+1. **Rebuild** the application
+2. **Re-run** the reproduction script
+3. **Check logs** for successful execution
+4. **Verify** expected behavior matches actual outcome
+
+### 7. Document Findings
+
+Update relevant documentation:
+
+- Fix schema mismatches in migration files or code
+- Add comments explaining non-obvious error handling
+- Update ARCHITECTURE.md if design assumptions were wrong
+
+---
+
+**Real Example Summary (lootbox1):**
+
+| Attempt | Error Discovered | Fix Applied |
+|---------|------------------|-------------|
+| 1 | SQL column `p.platform_name` doesn't exist | Changed to `p.name` in queries |
+| 2 | Logic error: "user not found" treated as fatal | Changed to check error message and continue |
+| 3 | Missing platform data: "no rows in result set" | Identified need to seed platforms table |
+
+**Result**: DEBUG logs provided complete visibility into the data flow, enabling rapid root cause identification.
