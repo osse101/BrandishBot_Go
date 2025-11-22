@@ -558,9 +558,9 @@ func TestUseItem(t *testing.T) {
 		t.Error("Expected error when using unknown item")
 	}
 
-	// Test using item with no effect (lootbox2)
-	svc.AddItem(ctx, "alice", "twitch", "lootbox2", 1)
-	_, err = svc.UseItem(ctx, "alice", "twitch", "lootbox2", 1, "")
+	// Test using item with no effect (money)
+	svc.AddItem(ctx, "alice", "twitch", "money", 1)
+	_, err = svc.UseItem(ctx, "alice", "twitch", "money", 1, "")
 	if err == nil {
 		t.Error("Expected error when using item with no effect")
 	}
@@ -645,5 +645,65 @@ func TestGetInventory(t *testing.T) {
 	}
 	if !foundMoney {
 		t.Error("Expected money in inventory")
+	}
+}
+
+func TestUseItem_Lootbox0(t *testing.T) {
+	repo := NewMockRepository()
+	setupTestData(repo)
+	svc := NewService(repo)
+	ctx := context.Background()
+
+	// Setup: Give alice lootbox0
+	svc.AddItem(ctx, "alice", "twitch", "lootbox0", 1)
+
+	// Test using lootbox0
+	msg, err := svc.UseItem(ctx, "alice", "twitch", "lootbox0", 1, "")
+	if err != nil {
+		t.Fatalf("UseItem failed: %v", err)
+	}
+
+	if msg != "The lootbox was empty!" {
+		t.Errorf("Expected 'The lootbox was empty!', got '%s'", msg)
+	}
+
+	// Verify inventory (should be empty)
+	inv, _ := repo.GetInventory(ctx, "user-alice")
+	if len(inv.Slots) != 0 {
+		t.Errorf("Expected empty inventory, got %d slots", len(inv.Slots))
+	}
+}
+
+func TestUseItem_Lootbox2(t *testing.T) {
+	repo := NewMockRepository()
+	setupTestData(repo)
+	svc := NewService(repo)
+	ctx := context.Background()
+
+	// Setup: Give alice lootbox2
+	svc.AddItem(ctx, "alice", "twitch", "lootbox2", 1)
+
+	// Test using lootbox2
+	msg, err := svc.UseItem(ctx, "alice", "twitch", "lootbox2", 1, "")
+	if err != nil {
+		t.Fatalf("UseItem failed: %v", err)
+	}
+
+	expectedMsg := "Used 1 lootbox2"
+	if msg != expectedMsg {
+		t.Errorf("Expected '%s', got '%s'", expectedMsg, msg)
+	}
+
+	// Verify inventory: should have 1 lootbox1
+	inv, _ := repo.GetInventory(ctx, "user-alice")
+	if len(inv.Slots) != 1 {
+		t.Errorf("Expected 1 slot, got %d", len(inv.Slots))
+	}
+	
+	if inv.Slots[0].ItemID != 1 { // lootbox1 ID is 1
+		t.Errorf("Expected lootbox1 (ID 1), got ID %d", inv.Slots[0].ItemID)
+	}
+	if inv.Slots[0].Quantity != 1 {
+		t.Errorf("Expected quantity 1, got %d", inv.Slots[0].Quantity)
 	}
 }
