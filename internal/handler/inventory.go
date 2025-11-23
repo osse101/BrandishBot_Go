@@ -31,15 +31,39 @@ func HandleAddItem(svc user.Service) http.HandlerFunc {
 			"item", req.ItemName,
 			"quantity", req.Quantity)
 
-		if req.Username == "" || req.ItemName == "" || req.Quantity <= 0 {
-			log.Warn("Invalid add item request", "username", req.Username, "item", req.ItemName, "quantity", req.Quantity)
-			http.Error(w, "Missing required fields or invalid quantity", http.StatusBadRequest)
+		// Validate platform
+		if req.Platform != "" {
+			if err := ValidatePlatform(req.Platform); err != nil {
+				log.Warn("Invalid platform", "platform", req.Platform)
+				http.Error(w, "Invalid platform", http.StatusBadRequest)
+				return
+			}
+		}
+
+		// Validate username
+		if err := ValidateUsername(req.Username); err != nil {
+			log.Warn("Invalid username", "error", err)
+			http.Error(w, "Invalid username", http.StatusBadRequest)
+			return
+		}
+
+		// Validate item name
+		if err := ValidateItemName(req.ItemName); err != nil {
+			log.Warn("Invalid item name", "error", err)
+			http.Error(w, "Invalid item name", http.StatusBadRequest)
+			return
+		}
+
+		// Validate quantity
+		if err := ValidateQuantity(req.Quantity); err != nil {
+			log.Warn("Invalid quantity", "quantity", req.Quantity, "error", err)
+			http.Error(w, "Invalid quantity", http.StatusBadRequest)
 			return
 		}
 
 		if err := svc.AddItem(r.Context(), req.Username, req.Platform, req.ItemName, req.Quantity); err != nil {
 			log.Error("Failed to add item", "error", err, "username", req.Username, "item", req.ItemName)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, "Failed to add item", http.StatusInternalServerError) // Generic error
 			return
 		}
 		

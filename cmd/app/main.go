@@ -65,10 +65,18 @@ func main() {
 	slog.SetDefault(logger)
 
 	slog.Info("Logging initialized", "level", level)
-
+	// Connect to database with retry logic
 	dbPool, err := database.NewPool(cfg.GetDBConnString())
 	if err != nil {
 		slog.Error("Failed to connect to database", "error", err)
+		slog.Error("Database connection failed",
+			"host", cfg.DBHost,
+			"port", cfg.DBPort,
+			"database", cfg.DBName,
+			"user", cfg.DBUser)
+		slog.Info("💡 Hint: If using Docker, ensure the database is running:")
+		slog.Info("   Run: ./scripts/check_db.sh")
+		slog.Info("   Or: docker-compose up -d db")
 		os.Exit(1)
 	}
 	defer dbPool.Close()
@@ -79,7 +87,7 @@ func main() {
 	statsRepo := postgres.NewStatsRepository(dbPool)
 	statsService := stats.NewService(statsRepo)
 	
-	srv := server.NewServer(cfg.Port, userService, statsService)
+	srv := server.NewServer(cfg.Port, cfg.APIKey, userService, statsService)
 
 	// Run server in a goroutine
 	go func() {

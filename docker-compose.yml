@@ -5,28 +5,33 @@ services:
     build: .
     ports:
       - "8080:8080"
-    environment:
-      - DB_HOST=db
-      - DB_PORT=5432
-      - DB_USER=dev
-      - DB_PASSWORD=pass
-      - DB_NAME=app
-      - LOG_LEVEL=INFO
+    env_file:
+      - .env
     depends_on:
       - db
     restart: unless-stopped
+    networks:
+      - backend
 
   db:
     image: postgres:15
     environment:
-      - POSTGRES_USER=dev
-      - POSTGRES_PASSWORD=pass
-      - POSTGRES_DB=app
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
     ports:
+      # Port binding for local development
+      # Note: On some systems, use firewall to restrict access if needed
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    networks:
+      - backend
     restart: unless-stopped
 
 volumes:
   pgdata:
+
+networks:
+  backend:
+    driver: bridge

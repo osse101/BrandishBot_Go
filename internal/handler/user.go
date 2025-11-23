@@ -41,7 +41,20 @@ func HandleRegisterUser(userService user.Service) http.HandlerFunc {
 			"known_platform", req.KnownPlatform,
 			"new_platform", req.NewPlatform)
 
-		if req.KnownPlatform == "" || req.KnownPlatformID == "" || req.NewPlatform == "" || req.NewPlatformID == "" {
+		// Validate platforms
+		if err := ValidatePlatform(req.KnownPlatform); err != nil {
+			log.Warn("Invalid known platform", "platform", req.KnownPlatform)
+			http.Error(w, "Invalid platform", http.StatusBadRequest)
+			return
+		}
+		if err := ValidatePlatform(req.NewPlatform); err != nil {
+			log.Warn("Invalid new platform", "platform", req.NewPlatform)
+			http.Error(w, "Invalid platform", http.StatusBadRequest)
+			return
+		}
+
+		// Validate required fields
+		if req.KnownPlatformID == "" || req.NewPlatformID == "" {
 			log.Warn("Missing required fields")
 			http.Error(w, "Missing required fields", http.StatusBadRequest)
 			return
@@ -55,6 +68,12 @@ func HandleRegisterUser(userService user.Service) http.HandlerFunc {
 			if req.Username == "" {
 				log.Warn("Username required for new user")
 				http.Error(w, "Username is required for new users", http.StatusBadRequest)
+				return
+			}
+			// Validate username
+			if err := ValidateUsername(req.Username); err != nil {
+				log.Warn("Invalid username for new user", "error", err)
+				http.Error(w, "Invalid username", http.StatusBadRequest)
 				return
 			}
 			isNewUser = true

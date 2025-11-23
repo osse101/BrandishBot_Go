@@ -39,15 +39,33 @@ func HandleTest(userService user.Service) http.HandlerFunc {
 			return
 		}
 		
-		log.Debug("Test request", "username", req.Username, "platform", req.Platform)
+		log.Debug("Decoded test request",
+			"username", req.Username,
+			"platform", req.Platform,
+			"platform_id", req.PlatformID)
 
-		if req.Username == "" || req.Platform == "" || req.PlatformID == "" {
-			log.Warn("Missing required fields", "username", req.Username, "platform", req.Platform)
+		// Validate platform
+		if err := ValidatePlatform(req.Platform); err != nil {
+			log.Warn("Invalid platform", "platform", req.Platform)
+			http.Error(w, "Invalid platform", http.StatusBadRequest)
+			return
+		}
+
+		// Validate username
+		if err := ValidateUsername(req.Username); err != nil {
+			log.Warn("Invalid username", "error", err)
+			http.Error(w, "Invalid username", http.StatusBadRequest)
+			return
+		}
+
+		if req.PlatformID == "" {
+			log.Warn("Missing platform ID")
 			http.Error(w, "Missing required fields", http.StatusBadRequest)
 			return
 		}
 
 		// Check if user exists, create if not
+		log.Info("HandleIncomingMessage called", "platform", req.Platform, "platformID", req.PlatformID, "username", req.Username)
 		_, err := userService.HandleIncomingMessage(r.Context(), req.Platform, req.PlatformID, req.Username)
 		if err != nil {
 			log.Error("Failed to process user", "error", err, "username", req.Username)

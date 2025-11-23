@@ -19,7 +19,7 @@ type Server struct {
 }
 
 // NewServer creates a new Server instance
-func NewServer(port int, userService user.Service, statsService stats.Service) *Server {
+func NewServer(port int, apiKey string, userService user.Service, statsService stats.Service) *Server {
 	mux := http.NewServeMux()
 	
 	// User routes
@@ -43,13 +43,24 @@ func NewServer(port int, userService user.Service, statsService stats.Service) *
 	mux.HandleFunc("/stats/system", handler.HandleGetSystemStats(statsService))
 	mux.HandleFunc("/stats/leaderboard", handler.HandleGetLeaderboard(statsService))
 
-	// Wrap mux with logging middleware
-	loggedMux := loggingMiddleware(mux)
+	// Build middleware stack (applied in reverse order)
+	// 1. Request logging (innermost - logs final status)
+	handler := loggingMiddleware(mux)
+	
+	// 2. Request size limit
+	handler = RequestSizeLimitMiddleware(1 << 20)(handler) // 1MB limit
+	
+	// 3. Security logging with suspicious activity detection
+	detector := NewSuspiciousActivityDetector()
+	handler = SecurityLoggingMiddleware(detector)(handler)
+	
+	// 4. Authentication (outermost - validates first)
+	handler = AuthMiddleware(apiKey)(handler)
 
 	return &Server{
 		httpServer: &http.Server{
 			Addr:    fmt.Sprintf(":%d", port),
-			Handler: loggedMux,
+			Handler: handler,
 		},
 		userService:  userService,
 		statsService: statsService,

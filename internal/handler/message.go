@@ -38,11 +38,22 @@ func HandleMessageHandler(userService user.Service) http.HandlerFunc {
 			"platform_id", req.PlatformID,
 			"username", req.Username)
 
-		if req.Platform == "" || req.PlatformID == "" || req.Username == "" {
-			log.Warn("Missing required fields",
-				"platform_empty", req.Platform == "",
-				"platform_id_empty", req.PlatformID == "",
-				"username_empty", req.Username == "")
+		// Validate platform
+		if err := ValidatePlatform(req.Platform); err != nil {
+			log.Warn("Invalid platform", "platform", req.Platform)
+			http.Error(w, "Invalid platform", http.StatusBadRequest)
+			return
+		}
+
+		// Validate username
+		if err := ValidateUsername(req.Username); err != nil {
+			log.Warn("Invalid username", "error", err)
+			http.Error(w, "Invalid username", http.StatusBadRequest)
+			return
+		}
+
+		if req.PlatformID == "" {
+			log.Warn("Missing platform ID")
 			http.Error(w, "Missing required fields", http.StatusBadRequest)
 			return
 		}
