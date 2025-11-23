@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
+	"github.com/osse101/BrandishBot_Go/internal/user"
 )
 
 // UserRepository implements the user repository for PostgreSQL
@@ -317,3 +318,77 @@ func (r *UserRepository) IsItemBuyable(ctx context.Context, itemName string) (bo
 	}
 	return isBuyable, nil
 }
+
+// GetRecipeByTargetItemID retrieves a recipe by its target item ID
+func (r *UserRepository) GetRecipeByTargetItemID(ctx context.Context, itemID int) (*domain.Recipe, error) {
+	query := `SELECT recipe_id, target_item_id, base_cost, created_at FROM crafting_recipes WHERE target_item_id = $1`
+	var recipe domain.Recipe
+	err := r.db.QueryRow(ctx, query, itemID).Scan(&recipe.ID, &recipe.TargetItemID, &recipe.BaseCost, &recipe.CreatedAt)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get recipe by target item id: %w", err)
+	}
+	return &recipe, nil
+}
+
+// IsRecipeUnlocked checks if a user has unlocked a specific recipe
+func (r *UserRepository) IsRecipeUnlocked(ctx context.Context, userID string, recipeID int) (bool, error) {
+	query := `SELECT EXISTS (SELECT 1 FROM recipe_unlocks WHERE user_id = $1 AND recipe_id = $2)`
+	var unlocked bool
+	err := r.db.QueryRow(ctx, query, userID, recipeID).Scan(&unlocked)
+	if err != nil {
+		return false, fmt.Errorf("failed to check if recipe is unlocked: %w", err)
+	}
+	return unlocked, nil
+}
+
+// UnlockRecipe unlocks a recipe for a user
+func (r *UserRepository) UnlockRecipe(ctx context.Context, userID string, recipeID int) error {
+	query := `
+		INSERT INTO recipe_unlocks (user_id, recipe_id, unlocked_at)
+		VALUES ($1, $2, NOW())
+		ON CONFLICT (user_id, recipe_id) DO NOTHING
+	`
+	_, err := r.db.Exec(ctx, query, userID, recipeID)
+	if err != nil {
+		return fmt.Errorf("failed to unlock recipe: %w", err)
+	}
+	return nil
+}
+
+
+// GetUnlockedRecipesForUser retrieves all recipes unlocked by a specific user
+func (r *UserRepository) GetUnlockedRecipesForUser(ctx context.Context, userID string) ([]user.UnlockedRecipeInfo, error) {
+	query := `
+		SELECT i.item_name, r.target_item_id
+		FROM crafting_recipes r
+		JOIN recipe_unlocks ru ON r.recipe_id = ru.recipe_id
+		JOIN items i ON r.target_item_id = i.item_id
+		WHERE ru.user_id = $1
+		ORDER BY i.item_name
+	`
+	
+	rows, err := r.db.Query(ctx, query, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query unlocked recipes: %w", err)
+	}
+	defer rows.Close()
+	
+	var recipes []user.UnlockedRecipeInfo
+	for rows.Next() {
+		var recipe user.UnlockedRecipeInfo
+		if err := rows.Scan(&recipe.ItemName, &recipe.ItemID); err != nil {
+			return nil, fmt.Errorf("failed to scan recipe: %w", err)
+		}
+		recipes = append(recipes, recipe)
+	}
+	
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating rows: %w", err)
+	}
+	
+	return recipes, nil
+}
+

@@ -397,3 +397,7 @@ To keep the workspace clean and prevent console buffer issues on Windows, verbos
 - Naming Convention: test_output_\<description\>.txt
 - Location: Output/ (e.g., Output/test_output_final.txt)
 - Usage: Redirect stdout/stderr to these files when running verbose tests (e.g., go test -v ./... > Output/test_output.txt 2>&1), then inspect the file content to diagnose failures.
+
+### Development Security
+
+- It is forbidden to expose sensitive information in the codebase, terminal history, or when describing thoughts to the user

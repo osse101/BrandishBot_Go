@@ -13,6 +13,8 @@ type MockRepository struct {
 	users      map[string]*domain.User
 	items      map[string]*domain.Item
 	inventories map[string]*domain.Inventory
+	recipes     map[int]*domain.Recipe
+	unlocks     map[string]map[int]bool // userID -> recipeID -> unlocked
 }
 
 func NewMockRepository() *MockRepository {
@@ -20,6 +22,8 @@ func NewMockRepository() *MockRepository {
 		users:       make(map[string]*domain.User),
 		items:       make(map[string]*domain.Item),
 		inventories: make(map[string]*domain.Inventory),
+		recipes:     make(map[int]*domain.Recipe),
+		unlocks:     make(map[string]map[int]bool),
 	}
 }
 
@@ -127,6 +131,54 @@ func (mt *MockTx) Commit(ctx context.Context) error {
 func (mt *MockTx) Rollback(ctx context.Context) error {
 	return nil // No-op for mock
 }
+
+func (m *MockRepository) GetRecipeByTargetItemID(ctx context.Context, itemID int) (*domain.Recipe, error) {
+	if recipe, ok := m.recipes[itemID]; ok {
+		return recipe, nil
+	}
+	return nil, nil
+}
+
+func (m *MockRepository) IsRecipeUnlocked(ctx context.Context, userID string, recipeID int) (bool, error) {
+	if userUnlocks, ok := m.unlocks[userID]; ok {
+		return userUnlocks[recipeID], nil
+	}
+	return false, nil
+}
+
+func (m *MockRepository) UnlockRecipe(ctx context.Context, userID string, recipeID int) error {
+	if m.unlocks[userID] == nil {
+		m.unlocks[userID] = make(map[int]bool)
+	}
+	m.unlocks[userID][recipeID] = true
+	return nil
+}
+
+func (m *MockRepository) GetUnlockedRecipesForUser(ctx context.Context, userID string) ([]UnlockedRecipeInfo, error) {
+	var recipes []UnlockedRecipeInfo
+	
+	// For each unlocked recipe, get the recipe and item info
+	if userUnlocks, ok := m.unlocks[userID]; ok {
+		for recipeID := range userUnlocks {
+			if recipe, exists := m.recipes[recipeID]; exists {
+				// Find the item name
+				for _, item := range m.items {
+					if item.ID == recipe.TargetItemID {
+						recipes = append(recipes, UnlockedRecipeInfo{
+							ItemName: item.Name,
+							ItemID:   item.ID,
+						})
+						break
+					}
+				}
+			}
+		}
+	}
+	
+	return recipes, nil
+}
+
+
 
 // Helper to setup test data
 func setupTestData(repo *MockRepository) {

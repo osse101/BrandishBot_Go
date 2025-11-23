@@ -32,6 +32,8 @@ func NewServer(port int, userService user.Service, statsService stats.Service) *
 	mux.HandleFunc("/user/item/sell", handler.HandleSellItem(userService))
 	mux.HandleFunc("/user/item/buy", handler.HandleBuyItem(userService))
 	mux.HandleFunc("/user/item/use", handler.HandleUseItem(userService))
+	mux.HandleFunc("/user/item/upgrade", handler.HandleUpgradeItem(userService))
+	mux.HandleFunc("/recipes", handler.HandleGetRecipes(userService))
 	mux.HandleFunc("/user/inventory", handler.HandleGetInventory(userService))
 	mux.HandleFunc("/prices", handler.HandleGetPrices(userService))
 	
