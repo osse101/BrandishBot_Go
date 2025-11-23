@@ -71,10 +71,10 @@ func NewService(repo Repository) Service {
 }
 
 func (s *service) registerHandlers() {
-    s.itemHandlers["lootbox1"] = s.handleLootbox1
-    s.itemHandlers["blaster"] = s.handleBlaster
-    s.itemHandlers["lootbox0"] = s.handleLootbox0
-    s.itemHandlers["lootbox2"] = s.handleLootbox2
+    s.itemHandlers[domain.ItemLootbox1] = s.handleLootbox1
+    s.itemHandlers[domain.ItemBlaster] = s.handleBlaster
+    s.itemHandlers[domain.ItemLootbox0] = s.handleLootbox0
+    s.itemHandlers[domain.ItemLootbox2] = s.handleLootbox2
 }
 
 // RegisterUser registers a new user
@@ -241,74 +241,67 @@ func (s *service) RemoveItem(ctx context.Context, username, platform, itemName s
 func (s *service) GiveItem(ctx context.Context, ownerUsername, receiverUsername, platform, itemName string, quantity int) error {
     log := logger.FromContext(ctx)
     log.Info("GiveItem called", "owner", ownerUsername, "receiver", receiverUsername, "item", itemName, "quantity", quantity)
-    owner, err := s.repo.GetUserByUsername(ctx, ownerUsername)
+
+    owner, err := s.validateUser(ctx, ownerUsername)
     if err != nil {
-        log.Error("Failed to get owner", "error", err, "ownerUsername", ownerUsername)
-        return fmt.Errorf("failed to get owner: %w", err)
+        return err
     }
-    if owner == nil {
-        log.Warn("Owner not found", "ownerUsername", ownerUsername)
-        return fmt.Errorf("owner not found: %s", ownerUsername)
-    }
-    receiver, err := s.repo.GetUserByUsername(ctx, receiverUsername)
+
+    receiver, err := s.validateUser(ctx, receiverUsername)
     if err != nil {
-        log.Error("Failed to get receiver", "error", err, "receiverUsername", receiverUsername)
-        return fmt.Errorf("failed to get receiver: %w", err)
+        return err
     }
-    if receiver == nil {
-        log.Warn("Receiver not found", "receiverUsername", receiverUsername)
-        return fmt.Errorf("receiver not found: %s", receiverUsername)
-    }
-    item, err := s.repo.GetItemByName(ctx, itemName)
+
+    item, err := s.validateItem(ctx, itemName)
     if err != nil {
-        log.Error("Failed to get item", "error", err, "itemName", itemName)
-        return fmt.Errorf("failed to get item: %w", err)
+        return err
     }
-    if item == nil {
-        log.Warn("Item not found", "itemName", itemName)
-        return fmt.Errorf("item not found: %s", itemName)
-    }
+
+    return s.executeGiveItemTx(ctx, owner, receiver, item, quantity)
+}
+
+func (s *service) executeGiveItemTx(ctx context.Context, owner, receiver *domain.User, item *domain.Item, quantity int) error {
+    log := logger.FromContext(ctx)
     tx, err := s.repo.BeginTx(ctx)
     if err != nil {
         log.Error("Failed to begin transaction", "error", err)
         return fmt.Errorf("failed to begin transaction: %w", err)
     }
     defer tx.Rollback(ctx)
+
     ownerInventory, err := tx.GetInventory(ctx, owner.ID)
     if err != nil {
-        log.Error("Failed to get owner inventory", "error", err, "ownerID", owner.ID)
         return fmt.Errorf("failed to get owner inventory: %w", err)
     }
+
     ownerSlotIndex := -1
-    ownerHasEnough := false
     for i, slot := range ownerInventory.Slots {
         if slot.ItemID == item.ID {
             ownerSlotIndex = i
-            if slot.Quantity >= quantity {
-                ownerHasEnough = true
-            }
             break
         }
     }
+
     if ownerSlotIndex == -1 {
-        log.Warn("Owner does not have item", "itemName", itemName)
-        return fmt.Errorf("owner does not have item %s in inventory", itemName)
+        return fmt.Errorf("owner does not have item %s in inventory", item.Name)
     }
-    if !ownerHasEnough {
-        log.Warn("Owner insufficient quantity", "itemName", itemName, "available", ownerInventory.Slots[ownerSlotIndex].Quantity, "required", quantity)
-        return fmt.Errorf("owner does not have enough %s (has %d, needs %d)", itemName, ownerInventory.Slots[ownerSlotIndex].Quantity, quantity)
+
+    if ownerInventory.Slots[ownerSlotIndex].Quantity < quantity {
+        return fmt.Errorf("owner does not have enough %s (has %d, needs %d)", item.Name, ownerInventory.Slots[ownerSlotIndex].Quantity, quantity)
     }
+
     receiverInventory, err := tx.GetInventory(ctx, receiver.ID)
     if err != nil {
-        log.Error("Failed to get receiver inventory", "error", err, "receiverID", receiver.ID)
         return fmt.Errorf("failed to get receiver inventory: %w", err)
     }
+
     // Remove from owner
     if ownerInventory.Slots[ownerSlotIndex].Quantity == quantity {
         ownerInventory.Slots = append(ownerInventory.Slots[:ownerSlotIndex], ownerInventory.Slots[ownerSlotIndex+1:]...)
     } else {
         ownerInventory.Slots[ownerSlotIndex].Quantity -= quantity
     }
+
     // Add to receiver
     found := false
     for i, slot := range receiverInventory.Slots {
@@ -321,19 +314,19 @@ func (s *service) GiveItem(ctx context.Context, ownerUsername, receiverUsername,
     if !found {
         receiverInventory.Slots = append(receiverInventory.Slots, domain.InventorySlot{ItemID: item.ID, Quantity: quantity})
     }
+
     if err := tx.UpdateInventory(ctx, owner.ID, *ownerInventory); err != nil {
-        log.Error("Failed to update owner inventory", "error", err, "ownerID", owner.ID)
         return fmt.Errorf("failed to update owner inventory: %w", err)
     }
     if err := tx.UpdateInventory(ctx, receiver.ID, *receiverInventory); err != nil {
-        log.Error("Failed to update receiver inventory", "error", err, "receiverID", receiver.ID)
         return fmt.Errorf("failed to update receiver inventory: %w", err)
     }
+
     if err := tx.Commit(ctx); err != nil {
-        log.Error("Failed to commit transaction", "error", err)
         return fmt.Errorf("failed to commit transaction: %w", err)
     }
-    log.Info("Item transferred", "owner", ownerUsername, "receiver", receiverUsername, "item", itemName, "quantity", quantity)
+
+    log.Info("Item transferred", "owner", owner.Username, "receiver", receiver.Username, "item", item.Name, "quantity", quantity)
     return nil
 }
 
@@ -364,7 +357,7 @@ func (s *service) SellItem(ctx context.Context, username, platform, itemName str
         log.Warn("Item not found", "itemName", itemName)
         return 0, 0, fmt.Errorf("item not found: %s", itemName)
     }
-    moneyItem, err := s.repo.GetItemByName(ctx, "money")
+    moneyItem, err := s.repo.GetItemByName(ctx, domain.ItemMoney)
     if err != nil {
         log.Error("Failed to get money item", "error", err)
         return 0, 0, fmt.Errorf("failed to get money item: %w", err)
@@ -423,24 +416,17 @@ func (s *service) SellItem(ctx context.Context, username, platform, itemName str
 func (s *service) BuyItem(ctx context.Context, username, platform, itemName string, quantity int) (int, error) {
     log := logger.FromContext(ctx)
     log.Info("BuyItem called", "username", username, "item", itemName, "quantity", quantity)
-    user, err := s.repo.GetUserByUsername(ctx, username)
+
+    user, err := s.validateUser(ctx, username)
     if err != nil {
-        log.Error("Failed to get user", "error", err, "username", username)
-        return 0, fmt.Errorf("failed to get user: %w", err)
+        return 0, err
     }
-    if user == nil {
-        log.Warn("User not found", "username", username)
-        return 0, fmt.Errorf("user not found: %s", username)
-    }
-    item, err := s.repo.GetItemByName(ctx, itemName)
+
+    item, err := s.validateItem(ctx, itemName)
     if err != nil {
-        log.Error("Failed to get item", "error", err, "itemName", itemName)
-        return 0, fmt.Errorf("failed to get item: %w", err)
+        return 0, err
     }
-    if item == nil {
-        log.Warn("Item not found", "itemName", itemName)
-        return 0, fmt.Errorf("item not found: %s", itemName)
-    }
+
     isBuyable, err := s.repo.IsItemBuyable(ctx, itemName)
     if err != nil {
         log.Error("Failed to check buyable", "error", err, "itemName", itemName)
@@ -450,7 +436,8 @@ func (s *service) BuyItem(ctx context.Context, username, platform, itemName stri
         log.Warn("Item not buyable", "itemName", itemName)
         return 0, fmt.Errorf("item %s is not buyable", itemName)
     }
-    moneyItem, err := s.repo.GetItemByName(ctx, "money")
+
+    moneyItem, err := s.repo.GetItemByName(ctx, domain.ItemMoney)
     if err != nil {
         log.Error("Failed to get money item", "error", err)
         return 0, fmt.Errorf("failed to get money item: %w", err)
@@ -459,11 +446,13 @@ func (s *service) BuyItem(ctx context.Context, username, platform, itemName stri
         log.Error("Money item not found")
         return 0, fmt.Errorf("money item not found")
     }
+
     inventory, err := s.repo.GetInventory(ctx, user.ID)
     if err != nil {
         log.Error("Failed to get inventory", "error", err, "userID", user.ID)
         return 0, fmt.Errorf("failed to get inventory: %w", err)
     }
+
     moneyBalance := 0
     moneySlotIndex := -1
     for i, slot := range inventory.Slots {
@@ -473,26 +462,31 @@ func (s *service) BuyItem(ctx context.Context, username, platform, itemName stri
             break
         }
     }
+
     if moneyBalance <= 0 {
         log.Warn("Insufficient funds", "username", username)
         return 0, fmt.Errorf("insufficient funds")
     }
+
     maxAffordable := moneyBalance / item.BaseValue
     if maxAffordable == 0 {
         log.Warn("Insufficient funds for any quantity", "username", username, "item", itemName)
         return 0, fmt.Errorf("insufficient funds to buy even one %s (cost: %d, balance: %d)", itemName, item.BaseValue, moneyBalance)
     }
+
     actualQuantity := quantity
     if actualQuantity > maxAffordable {
         actualQuantity = maxAffordable
         log.Info("Adjusted purchase quantity due to funds", "requested", quantity, "actual", actualQuantity)
     }
+
     cost := actualQuantity * item.BaseValue
     if inventory.Slots[moneySlotIndex].Quantity == cost {
         inventory.Slots = append(inventory.Slots[:moneySlotIndex], inventory.Slots[moneySlotIndex+1:]...)
     } else {
         inventory.Slots[moneySlotIndex].Quantity -= cost
     }
+
     itemFound := false
     for i, slot := range inventory.Slots {
         if slot.ItemID == item.ID {
@@ -504,10 +498,12 @@ func (s *service) BuyItem(ctx context.Context, username, platform, itemName stri
     if !itemFound {
         inventory.Slots = append(inventory.Slots, domain.InventorySlot{ItemID: item.ID, Quantity: actualQuantity})
     }
+
     if err := s.repo.UpdateInventory(ctx, user.ID, *inventory); err != nil {
         log.Error("Failed to update inventory", "error", err, "userID", user.ID)
         return 0, fmt.Errorf("failed to update inventory: %w", err)
     }
+
     log.Info("Item purchased", "username", username, "item", itemName, "quantity", actualQuantity)
     return actualQuantity, nil
 }
@@ -602,7 +598,8 @@ func (s *service) GetInventory(ctx context.Context, username string) ([]UserInve
     return items, nil
 }
 
-// TimeoutUser times out a user for a specified duration
+// TimeoutUser times out a user for a specified duration.
+// Note: Timeouts are currently in-memory and will be lost on server restart. This is a known design choice.
 func (s *service) TimeoutUser(ctx context.Context, username string, duration time.Duration, reason string) error {
     log := logger.FromContext(ctx)
     log.Info("TimeoutUser called", "username", username, "duration", duration, "reason", reason)
@@ -634,7 +631,7 @@ func (s *service) TimeoutUser(ctx context.Context, username string, duration tim
 func (s *service) handleLootbox1(ctx context.Context, _ *service, _ *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, _ map[string]interface{}) (string, error) {
     log := logger.FromContext(ctx)
     log.Info("handleLootbox1 called", "quantity", quantity)
-    lootbox0, err := s.repo.GetItemByName(ctx, "lootbox0")
+    lootbox0, err := s.repo.GetItemByName(ctx, domain.ItemLootbox0)
     if err != nil {
         log.Error("Failed to get lootbox0", "error", err)
         return "", fmt.Errorf("failed to get lootbox0: %w", err)
@@ -741,7 +738,7 @@ func (s *service) handleLootbox0(ctx context.Context, _ *service, _ *domain.User
 func (s *service) handleLootbox2(ctx context.Context, _ *service, _ *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, _ map[string]interface{}) (string, error) {
     log := logger.FromContext(ctx)
     log.Info("handleLootbox2 called", "quantity", quantity)
-    lootbox1, err := s.repo.GetItemByName(ctx, "lootbox1")
+    lootbox1, err := s.repo.GetItemByName(ctx, domain.ItemLootbox1)
     if err != nil {
         log.Error("Failed to get lootbox1", "error", err)
         return "", fmt.Errorf("failed to get lootbox1: %w", err)
@@ -780,4 +777,28 @@ func (s *service) handleLootbox2(ctx context.Context, _ *service, _ *domain.User
     }
     log.Info("lootbox2 consumed, lootbox1 granted", "quantity", quantity)
     return fmt.Sprintf("Used %d lootbox2", quantity), nil
+}
+
+// Helper methods
+
+func (s *service) validateUser(ctx context.Context, username string) (*domain.User, error) {
+    user, err := s.repo.GetUserByUsername(ctx, username)
+    if err != nil {
+        return nil, fmt.Errorf("failed to get user: %w", err)
+    }
+    if user == nil {
+        return nil, fmt.Errorf("user not found: %s", username)
+    }
+    return user, nil
+}
+
+func (s *service) validateItem(ctx context.Context, itemName string) (*domain.Item, error) {
+    item, err := s.repo.GetItemByName(ctx, itemName)
+    if err != nil {
+        return nil, fmt.Errorf("failed to get item: %w", err)
+    }
+    if item == nil {
+        return nil, fmt.Errorf("item not found: %s", itemName)
+    }
+    return item, nil
 }

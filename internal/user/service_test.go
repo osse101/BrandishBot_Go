@@ -97,7 +97,7 @@ func (m *MockRepository) GetSellablePrices(ctx context.Context) ([]domain.Item, 
 
 func (m *MockRepository) IsItemBuyable(ctx context.Context, itemName string) (bool, error) {
 	// For testing, assume lootbox0 and lootbox1 are buyable
-	if itemName == "lootbox0" || itemName == "lootbox1" {
+	if itemName == domain.ItemLootbox0 || itemName == domain.ItemLootbox1 {
 		return true, nil
 	}
 	return false, nil
@@ -143,33 +143,33 @@ func setupTestData(repo *MockRepository) {
 	}
 
 	// Add test items
-	repo.items["lootbox1"] = &domain.Item{
+	repo.items[domain.ItemLootbox1] = &domain.Item{
 		ID:          1,
-		Name:        "lootbox1",
+		Name:        domain.ItemLootbox1,
 		Description: "Basic Lootbox",
 		BaseValue:   50,
 	}
-	repo.items["lootbox2"] = &domain.Item{
+	repo.items[domain.ItemLootbox2] = &domain.Item{
 		ID:          2,
-		Name:        "lootbox2",
+		Name:        domain.ItemLootbox2,
 		Description: "Good Lootbox",
 		BaseValue:   100,
 	}
-	repo.items["money"] = &domain.Item{
+	repo.items[domain.ItemMoney] = &domain.Item{
 		ID:          3,
-		Name:        "money",
+		Name:        domain.ItemMoney,
 		Description: "Currency",
 		BaseValue:   1,
 	}
-	repo.items["lootbox0"] = &domain.Item{
+	repo.items[domain.ItemLootbox0] = &domain.Item{
 		ID:          4,
-		Name:        "lootbox0",
+		Name:        domain.ItemLootbox0,
 		Description: "Empty Lootbox",
 		BaseValue:   10,
 	}
-	repo.items["blaster"] = &domain.Item{
+	repo.items[domain.ItemBlaster] = &domain.Item{
 		ID:          5,
-		Name:        "blaster",
+		Name:        domain.ItemBlaster,
 		Description: "So anyway, I started blasting",
 		BaseValue:   10,
 	}
@@ -182,7 +182,7 @@ func TestAddItem(t *testing.T) {
 	ctx := context.Background()
 
 	// Test adding item to empty inventory
-	err := svc.AddItem(ctx, "alice", "twitch", "lootbox1", 5)
+	err := svc.AddItem(ctx, "alice", "twitch", domain.ItemLootbox1, 5)
 	if err != nil {
 		t.Fatalf("AddItem failed: %v", err)
 	}
@@ -197,7 +197,7 @@ func TestAddItem(t *testing.T) {
 	}
 
 	// Test adding more of same item
-	err = svc.AddItem(ctx, "alice", "twitch", "lootbox1", 3)
+	err = svc.AddItem(ctx, "alice", "twitch", domain.ItemLootbox1, 3)
 	if err != nil {
 		t.Fatalf("AddItem failed: %v", err)
 	}
@@ -208,7 +208,7 @@ func TestAddItem(t *testing.T) {
 	}
 
 	// Test adding different item
-	err = svc.AddItem(ctx, "alice", "twitch", "lootbox2", 2)
+	err = svc.AddItem(ctx, "alice", "twitch", domain.ItemLootbox2, 2)
 	if err != nil {
 		t.Fatalf("AddItem failed: %v", err)
 	}
@@ -226,10 +226,10 @@ func TestRemoveItem(t *testing.T) {
 	ctx := context.Background()
 
 	// Setup: Add items first
-	svc.AddItem(ctx, "alice", "twitch", "lootbox1", 10)
+	svc.AddItem(ctx, "alice", "twitch", domain.ItemLootbox1, 10)
 
 	// Test removing partial quantity
-	removed, err := svc.RemoveItem(ctx, "alice", "twitch", "lootbox1", 3)
+	removed, err := svc.RemoveItem(ctx, "alice", "twitch", domain.ItemLootbox1, 3)
 	if err != nil {
 		t.Fatalf("RemoveItem failed: %v", err)
 	}
@@ -243,7 +243,7 @@ func TestRemoveItem(t *testing.T) {
 	}
 
 	// Test removing more than available (should remove all)
-	removed, err = svc.RemoveItem(ctx, "alice", "twitch", "lootbox1", 100)
+	removed, err = svc.RemoveItem(ctx, "alice", "twitch", domain.ItemLootbox1, 100)
 	if err != nil {
 		t.Fatalf("RemoveItem failed: %v", err)
 	}
@@ -257,7 +257,7 @@ func TestRemoveItem(t *testing.T) {
 	}
 
 	// Test removing from empty inventory
-	_, err = svc.RemoveItem(ctx, "alice", "twitch", "lootbox1", 1)
+	_, err = svc.RemoveItem(ctx, "alice", "twitch", domain.ItemLootbox1, 1)
 	if err == nil {
 		t.Error("Expected error when removing from empty inventory")
 	}
@@ -270,10 +270,10 @@ func TestGiveItem(t *testing.T) {
 	ctx := context.Background()
 
 	// Setup: Give alice some items
-	svc.AddItem(ctx, "alice", "twitch", "lootbox1", 10)
+	svc.AddItem(ctx, "alice", "twitch", domain.ItemLootbox1, 10)
 
 	// Test giving items
-	err := svc.GiveItem(ctx, "alice", "bob", "twitch", "lootbox1", 3)
+	err := svc.GiveItem(ctx, "alice", "bob", "twitch", domain.ItemLootbox1, 3)
 	if err != nil {
 		t.Fatalf("GiveItem failed: %v", err)
 	}
@@ -291,7 +291,7 @@ func TestGiveItem(t *testing.T) {
 	}
 
 	// Test giving more than owned (should error)
-	err = svc.GiveItem(ctx, "alice", "bob", "twitch", "lootbox1", 100)
+	err = svc.GiveItem(ctx, "alice", "bob", "twitch", domain.ItemLootbox1, 100)
 	if err == nil {
 		t.Error("Expected error when giving more than owned")
 	}
@@ -310,10 +310,10 @@ func TestSellItem(t *testing.T) {
 	ctx := context.Background()
 
 	// Setup: Give alice some lootboxes
-	svc.AddItem(ctx, "alice", "twitch", "lootbox1", 10)
+	svc.AddItem(ctx, "alice", "twitch", domain.ItemLootbox1, 10)
 
 	// Test selling items
-	moneyGained, itemsSold, err := svc.SellItem(ctx, "alice", "twitch", "lootbox1", 3)
+	moneyGained, itemsSold, err := svc.SellItem(ctx, "alice", "twitch", domain.ItemLootbox1, 3)
 	if err != nil {
 		t.Fatalf("SellItem failed: %v", err)
 	}
@@ -353,7 +353,7 @@ func TestSellItem(t *testing.T) {
 	}
 
 	// Test selling more than owned (should sell all)
-	moneyGained, itemsSold, err = svc.SellItem(ctx, "alice", "twitch", "lootbox1", 100)
+	moneyGained, itemsSold, err = svc.SellItem(ctx, "alice", "twitch", domain.ItemLootbox1, 100)
 	if err != nil {
 		t.Fatalf("SellItem failed: %v", err)
 	}
@@ -383,7 +383,7 @@ func TestSellItem_NotInInventory(t *testing.T) {
 	ctx := context.Background()
 
 	// Try to sell item not in inventory
-	_, _, err := svc.SellItem(ctx, "alice", "twitch", "lootbox1", 1)
+	_, _, err := svc.SellItem(ctx, "alice", "twitch", domain.ItemLootbox1, 1)
 	if err == nil {
 		t.Error("Expected error when selling item not in inventory")
 	}
@@ -462,10 +462,10 @@ func TestBuyItem(t *testing.T) {
 	ctx := context.Background()
 
 	// Setup: Give alice some money
-	svc.AddItem(ctx, "alice", "twitch", "money", 500)
+	svc.AddItem(ctx, "alice", "twitch", domain.ItemMoney, 500)
 
 	// Test buying items (lootbox1 cost 50)
-	bought, err := svc.BuyItem(ctx, "alice", "twitch", "lootbox1", 2)
+	bought, err := svc.BuyItem(ctx, "alice", "twitch", domain.ItemLootbox1, 2)
 	if err != nil {
 		t.Fatalf("BuyItem failed: %v", err)
 	}
@@ -498,7 +498,7 @@ func TestBuyItem(t *testing.T) {
 	// Test buying more than affordable (partial fulfillment)
 	// Has 400 money, lootbox1 cost 50. Can buy 8 max.
 	// Try to buy 10
-	bought, err = svc.BuyItem(ctx, "alice", "twitch", "lootbox1", 10)
+	bought, err = svc.BuyItem(ctx, "alice", "twitch", domain.ItemLootbox1, 10)
 	if err != nil {
 		t.Fatalf("BuyItem failed: %v", err)
 	}
@@ -520,13 +520,13 @@ func TestBuyItem(t *testing.T) {
 	}
 
 	// Test buying with no money
-	_, err = svc.BuyItem(ctx, "alice", "twitch", "lootbox1", 1)
+	_, err = svc.BuyItem(ctx, "alice", "twitch", domain.ItemLootbox1, 1)
 	if err == nil {
 		t.Error("Expected error when buying with no money")
 	}
 
 	// Test buying non-buyable item
-	_, err = svc.BuyItem(ctx, "alice", "twitch", "lootbox2", 1)
+	_, err = svc.BuyItem(ctx, "alice", "twitch", domain.ItemLootbox2, 1)
 	if err == nil {
 		t.Error("Expected error when buying non-buyable item")
 	}
@@ -539,10 +539,10 @@ func TestUseItem(t *testing.T) {
 	ctx := context.Background()
 
 	// Setup: Give alice some lootbox1
-	svc.AddItem(ctx, "alice", "twitch", "lootbox1", 5)
+	svc.AddItem(ctx, "alice", "twitch", domain.ItemLootbox1, 5)
 
 	// Test using lootbox1 (consumes 1 lootbox1, gives 1 lootbox0)
-	message, err := svc.UseItem(ctx, "alice", "twitch", "lootbox1", 1, "")
+	message, err := svc.UseItem(ctx, "alice", "twitch", domain.ItemLootbox1, 1, "")
 	if err != nil {
 		t.Fatalf("UseItem failed: %v", err)
 	}
@@ -573,7 +573,7 @@ func TestUseItem(t *testing.T) {
 	}
 
 	// Test using more than available
-	_, err = svc.UseItem(ctx, "alice", "twitch", "lootbox1", 10, "")
+	_, err = svc.UseItem(ctx, "alice", "twitch", domain.ItemLootbox1, 10, "")
 	if err == nil {
 		t.Error("Expected error when using more than available")
 	}
@@ -585,8 +585,8 @@ func TestUseItem(t *testing.T) {
 	}
 
 	// Test using item with no effect (money)
-	svc.AddItem(ctx, "alice", "twitch", "money", 1)
-	_, err = svc.UseItem(ctx, "alice", "twitch", "money", 1, "")
+	svc.AddItem(ctx, "alice", "twitch", domain.ItemMoney, 1)
+	_, err = svc.UseItem(ctx, "alice", "twitch", domain.ItemMoney, 1, "")
 	if err == nil {
 		t.Error("Expected error when using item with no effect")
 	}
@@ -599,10 +599,10 @@ func TestUseItem_Blaster(t *testing.T) {
 	ctx := context.Background()
 
 	// Setup: Give alice some blasters
-	svc.AddItem(ctx, "alice", "twitch", "blaster", 5)
+	svc.AddItem(ctx, "alice", "twitch", domain.ItemBlaster, 5)
 
 	// Test using blaster on bob
-	message, err := svc.UseItem(ctx, "alice", "twitch", "blaster", 2, "bob")
+	message, err := svc.UseItem(ctx, "alice", "twitch", domain.ItemBlaster, 2, "bob")
 	if err != nil {
 		t.Fatalf("UseItem failed: %v", err)
 	}
@@ -619,7 +619,7 @@ func TestUseItem_Blaster(t *testing.T) {
 	}
 
 	// Test using blaster without target
-	_, err = svc.UseItem(ctx, "alice", "twitch", "blaster", 1, "")
+	_, err = svc.UseItem(ctx, "alice", "twitch", domain.ItemBlaster, 1, "")
 	if err == nil {
 		t.Error("Expected error when using blaster without target")
 	}
@@ -632,8 +632,8 @@ func TestGetInventory(t *testing.T) {
 	ctx := context.Background()
 
 	// Setup: Give alice some items
-	svc.AddItem(ctx, "alice", "twitch", "lootbox1", 2)
-	svc.AddItem(ctx, "alice", "twitch", "money", 100)
+	svc.AddItem(ctx, "alice", "twitch", domain.ItemLootbox1, 2)
+	svc.AddItem(ctx, "alice", "twitch", domain.ItemMoney, 100)
 
 	// Test GetInventory
 	items, err := svc.GetInventory(ctx, "alice")
@@ -649,7 +649,7 @@ func TestGetInventory(t *testing.T) {
 	foundLootbox := false
 	foundMoney := false
 	for _, item := range items {
-		if item.Name == "lootbox1" {
+		if item.Name == domain.ItemLootbox1 {
 			foundLootbox = true
 			if item.Quantity != 2 {
 				t.Errorf("Expected 2 lootbox1, got %d", item.Quantity)
@@ -658,7 +658,7 @@ func TestGetInventory(t *testing.T) {
 				t.Errorf("Expected value 50 for lootbox1, got %d", item.Value)
 			}
 		}
-		if item.Name == "money" {
+		if item.Name == domain.ItemMoney {
 			foundMoney = true
 			if item.Quantity != 100 {
 				t.Errorf("Expected 100 money, got %d", item.Quantity)
@@ -681,10 +681,10 @@ func TestUseItem_Lootbox0(t *testing.T) {
 	ctx := context.Background()
 
 	// Setup: Give alice lootbox0
-	svc.AddItem(ctx, "alice", "twitch", "lootbox0", 1)
+	svc.AddItem(ctx, "alice", "twitch", domain.ItemLootbox0, 1)
 
 	// Test using lootbox0
-	msg, err := svc.UseItem(ctx, "alice", "twitch", "lootbox0", 1, "")
+	msg, err := svc.UseItem(ctx, "alice", "twitch", domain.ItemLootbox0, 1, "")
 	if err != nil {
 		t.Fatalf("UseItem failed: %v", err)
 	}
@@ -707,10 +707,10 @@ func TestUseItem_Lootbox2(t *testing.T) {
 	ctx := context.Background()
 
 	// Setup: Give alice lootbox2
-	svc.AddItem(ctx, "alice", "twitch", "lootbox2", 1)
+	svc.AddItem(ctx, "alice", "twitch", domain.ItemLootbox2, 1)
 
 	// Test using lootbox2
-	msg, err := svc.UseItem(ctx, "alice", "twitch", "lootbox2", 1, "")
+	msg, err := svc.UseItem(ctx, "alice", "twitch", domain.ItemLootbox2, 1, "")
 	if err != nil {
 		t.Fatalf("UseItem failed: %v", err)
 	}
