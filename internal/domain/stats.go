@@ -1,0 +1,55 @@
+package domain
+
+import "time"
+
+// EventType represents the type of event being tracked
+type EventType string
+
+const (
+	EventUserRegistered   EventType = "user_registered"
+	EventItemAdded        EventType = "item_added"
+	EventItemRemoved      EventType = "item_removed"
+	EventItemUsed         EventType = "item_used"
+	EventItemSold         EventType = "item_sold"
+	EventItemBought       EventType = "item_bought"
+	EventItemTransferred  EventType = "item_transferred"
+	EventMessageReceived  EventType = "message_received"
+)
+
+// StatsEvent represents a single tracked event
+type StatsEvent struct {
+	EventID   int64                  `json:"event_id"`
+	UserID    string                 `json:"user_id"`
+	EventType EventType              `json:"event_type"`
+	EventData map[string]interface{} `json:"event_data,omitempty"`
+	CreatedAt time.Time              `json:"created_at"`
+}
+
+// StatsAggregate represents pre-calculated statistics for a time period
+type StatsAggregate struct {
+	AggregateID int                    `json:"aggregate_id"`
+	Period      string                 `json:"period"` // daily, weekly, monthly
+	PeriodStart time.Time              `json:"period_start"`
+	PeriodEnd   time.Time              `json:"period_end"`
+	Metrics     map[string]interface{} `json:"metrics"`
+	CreatedAt   time.Time              `json:"created_at"`
+	UpdatedAt   time.Time              `json:"updated_at"`
+}
+
+// StatsSummary represents a summary of statistics for API responses
+type StatsSummary struct {
+	Period      string                 `json:"period"`
+	StartTime   time.Time              `json:"start_time"`
+	EndTime     time.Time              `json:"end_time"`
+	TotalEvents int                    `json:"total_events"`
+	EventCounts map[EventType]int      `json:"event_counts"`
+	Metrics     map[string]interface{} `json:"metrics,omitempty"`
+}
+
+// LeaderboardEntry represents a user's position in a leaderboard
+type LeaderboardEntry struct {
+	UserID    string `json:"user_id"`
+	Username  string `json:"username,omitempty"`
+	Count     int    `json:"count"`
+	EventType string `json:"event_type"`
+}

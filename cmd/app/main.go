@@ -17,6 +17,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/database"
 	"github.com/osse101/BrandishBot_Go/internal/database/postgres"
 	"github.com/osse101/BrandishBot_Go/internal/server"
+	"github.com/osse101/BrandishBot_Go/internal/stats"
 	"github.com/osse101/BrandishBot_Go/internal/user"
 )
 
@@ -108,7 +109,11 @@ func main() {
 
 	userRepo := postgres.NewUserRepository(dbPool)
 	userService := user.NewService(userRepo)
-	srv := server.NewServer(8080, userService)
+	
+	statsRepo := postgres.NewStatsRepository(dbPool)
+	statsService := stats.NewService(statsRepo)
+	
+	srv := server.NewServer(8080, userService, statsService)
 
 	// Run server in a goroutine
 	go func() {

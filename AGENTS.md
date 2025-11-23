@@ -388,3 +388,12 @@ When adding new concurrent features:
 - Test with -race flag on supported platforms
 - Handle graceful shutdown for new goroutines
 - Document concurrency assumptions in code comments
+
+### Testing and Debugging
+
+Test Output Management
+To keep the workspace clean and prevent console buffer issues on Windows, verbose test outputs should be redirected to files within the Output/ directory.
+
+- Naming Convention: test_output_\<description\>.txt
+- Location: Output/ (e.g., Output/test_output_final.txt)
+- Usage: Redirect stdout/stderr to these files when running verbose tests (e.g., go test -v ./... > Output/test_output.txt 2>&1), then inspect the file content to diagnose failures.

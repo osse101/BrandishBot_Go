@@ -3,6 +3,8 @@ package user
 import (
 	"context"
 	"fmt"
+	"sync"
+	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
@@ -36,6 +38,7 @@ type Service interface {
     BuyItem(ctx context.Context, username, platform, itemName string, quantity int) (int, error)
     UseItem(ctx context.Context, username, platform, itemName string, quantity int, targetUsername string) (string, error)
     GetInventory(ctx context.Context, username string) ([]UserInventoryItem, error)
+    TimeoutUser(ctx context.Context, username string, duration time.Duration, reason string) error
 }
 
 type UserInventoryItem struct {
@@ -52,11 +55,17 @@ type ItemEffectHandler func(ctx context.Context, s *service, user *domain.User, 
 type service struct {
     repo         Repository
     itemHandlers map[string]ItemEffectHandler
+    timeoutMu    sync.Mutex
+    timeouts     map[string]*time.Timer
 }
 
 // NewService creates a new user service
 func NewService(repo Repository) Service {
-    s := &service{repo: repo, itemHandlers: make(map[string]ItemEffectHandler)}
+    s := &service{
+        repo:         repo,
+        itemHandlers: make(map[string]ItemEffectHandler),
+        timeouts:     make(map[string]*time.Timer),
+    }
     s.registerHandlers()
     return s
 }
@@ -593,6 +602,34 @@ func (s *service) GetInventory(ctx context.Context, username string) ([]UserInve
     return items, nil
 }
 
+// TimeoutUser times out a user for a specified duration
+func (s *service) TimeoutUser(ctx context.Context, username string, duration time.Duration, reason string) error {
+    log := logger.FromContext(ctx)
+    log.Info("TimeoutUser called", "username", username, "duration", duration, "reason", reason)
+
+    s.timeoutMu.Lock()
+    defer s.timeoutMu.Unlock()
+
+    // If user is already timed out, stop the existing timer
+    if timer, exists := s.timeouts[username]; exists {
+        timer.Stop()
+        log.Info("Existing timeout cancelled", "username", username)
+    }
+
+    // Create a new timer
+    timer := time.AfterFunc(duration, func() {
+        s.timeoutMu.Lock()
+        delete(s.timeouts, username)
+        s.timeoutMu.Unlock()
+        // In a real app, we might send a message here
+        fmt.Printf("User %s timeout expired\n", username)
+    })
+
+    s.timeouts[username] = timer
+    log.Info("User timed out", "username", username, "duration", duration)
+    return nil
+}
+
 // Item effect handlers
 func (s *service) handleLootbox1(ctx context.Context, _ *service, _ *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, _ map[string]interface{}) (string, error) {
     log := logger.FromContext(ctx)
@@ -665,8 +702,16 @@ func (s *service) handleBlaster(ctx context.Context, _ *service, _ *domain.User,
     } else {
         inventory.Slots[itemSlotIndex].Quantity -= quantity
     }
+
+    // Apply timeout
+    timeoutDuration := 60 * time.Second
+    if err := s.TimeoutUser(ctx, targetUsername, timeoutDuration, "Blasted by " + username); err != nil {
+        log.Error("Failed to timeout user", "error", err, "target", targetUsername)
+        // Continue anyway, as the item was used
+    }
+
     log.Info("blaster used", "target", targetUsername, "quantity", quantity)
-    return fmt.Sprintf("%s has BLASTED %s %d times!", username, targetUsername, quantity), nil
+    return fmt.Sprintf("%s has BLASTED %s %d times! They are timed out for %v.", username, targetUsername, quantity, timeoutDuration), nil
 }
 
 func (s *service) handleLootbox0(ctx context.Context, _ *service, _ *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, _ map[string]interface{}) (string, error) {

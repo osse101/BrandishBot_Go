@@ -8,17 +8,21 @@ import (
 
 	"github.com/osse101/BrandishBot_Go/internal/handler"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
+	"github.com/osse101/BrandishBot_Go/internal/stats"
 	"github.com/osse101/BrandishBot_Go/internal/user"
 )
 
 type Server struct {
-	httpServer  *http.Server
-	userService user.Service
+	httpServer   *http.Server
+	userService  user.Service
+	statsService stats.Service
 }
 
 // NewServer creates a new Server instance
-func NewServer(port int, userService user.Service) *Server {
+func NewServer(port int, userService user.Service, statsService stats.Service) *Server {
 	mux := http.NewServeMux()
+	
+	// User routes
 	mux.HandleFunc("/user/register", handler.HandleRegisterUser(userService))
 	mux.HandleFunc("/message/handle", handler.HandleMessageHandler(userService))
 	mux.HandleFunc("/test", handler.HandleTest(userService))
@@ -30,6 +34,12 @@ func NewServer(port int, userService user.Service) *Server {
 	mux.HandleFunc("/user/item/use", handler.HandleUseItem(userService))
 	mux.HandleFunc("/user/inventory", handler.HandleGetInventory(userService))
 	mux.HandleFunc("/prices", handler.HandleGetPrices(userService))
+	
+	// Stats routes
+	mux.HandleFunc("/stats/event", handler.HandleRecordEvent(statsService))
+	mux.HandleFunc("/stats/user", handler.HandleGetUserStats(statsService))
+	mux.HandleFunc("/stats/system", handler.HandleGetSystemStats(statsService))
+	mux.HandleFunc("/stats/leaderboard", handler.HandleGetLeaderboard(statsService))
 
 	// Wrap mux with logging middleware
 	loggedMux := loggingMiddleware(mux)
@@ -39,7 +49,8 @@ func NewServer(port int, userService user.Service) *Server {
 			Addr:    fmt.Sprintf(":%d", port),
 			Handler: loggedMux,
 		},
-		userService: userService,
+		userService:  userService,
+		statsService: statsService,
 	}
 }
 
