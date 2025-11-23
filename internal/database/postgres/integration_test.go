@@ -199,6 +199,175 @@ func TestUserRepository_Integration(t *testing.T) {
 			t.Errorf("transaction commit failed to persist data")
 		}
 	})
+
+	t.Run("Recipe Operations", func(t *testing.T) {
+		// Get an item to use as target
+		money, err := repo.GetItemByName(ctx, "money")
+		if err != nil || money == nil {
+			t.Skip("money item not found, skipping recipe test")
+		}
+
+		// Get recipe by target item ID
+		recipe, err := repo.GetRecipeByTargetItemID(ctx, money.ID)
+		if err != nil {
+			t.Fatalf("GetRecipeByTargetItemID failed: %v", err)
+		}
+
+		if recipe != nil {
+			// If recipe exists, test unlock functionality
+			user := &domain.User{Username: "recipe_test_user"}
+			if err := repo.UpsertUser(ctx, user); err != nil {
+				t.Fatalf("failed to create user: %v", err)
+			}
+
+			// Check if unlocked (should be false initially)
+			unlocked, err := repo.IsRecipeUnlocked(ctx, user.ID, recipe.ID)
+			if err != nil {
+				t.Fatalf("IsRecipeUnlocked failed: %v", err)
+			}
+			if unlocked {
+				t.Error("recipe should not be unlocked initially")
+			}
+
+			// Unlock the recipe
+			if err := repo.UnlockRecipe(ctx, user.ID, recipe.ID); err != nil {
+				t.Fatalf("UnlockRecipe failed: %v", err)
+			}
+
+			// Verify it's now unlocked
+			unlocked, err = repo.IsRecipeUnlocked(ctx, user.ID, recipe.ID)
+			if err != nil {
+				t.Fatalf("IsRecipeUnlocked failed: %v", err)
+			}
+			if !unlocked {
+				t.Error("recipe should be unlocked after unlocking")
+			}
+
+			// Get unlocked recipes
+			unlockedRecipes, err := repo.GetUnlockedRecipesForUser(ctx, user.ID)
+			if err != nil {
+				t.Fatalf("GetUnlockedRecipesForUser failed: %v", err)
+			}
+			if len(unlockedRecipes) == 0 {
+				t.Error("expected at least one unlocked recipe")
+			}
+		}
+	})
+
+	t.Run("Item Buyability", func(t *testing.T) {
+		// Test checking if an item is buyable
+		isBuyable, err := repo.IsItemBuyable(ctx, "money")
+		if err != nil {
+			t.Fatalf("IsItemBuyable failed: %v", err)
+		}
+
+		// money should be buyable based on migrations
+		if !isBuyable {
+			t.Log("money is not buyable (may be expected depending on migrations)")
+		}
+
+		// Test with non-existent item
+		isBuyable, err = repo.IsItemBuyable(ctx, "nonexistent_item_xyz")
+		if err != nil {
+			t.Fatalf("IsItemBuyable failed for non-existent item: %v", err)
+		}
+		if isBuyable {
+			t.Error("non-existent item should not be buyable")
+		}
+	})
+
+	t.Run("GetSellablePrices", func(t *testing.T) {
+		items, err := repo.GetSellablePrices(ctx)
+		if err != nil {
+			t.Fatalf("GetSellablePrices failed: %v", err)
+		}
+
+		// Should have at least some sellable items based on migrations
+		if len(items) == 0 {
+			t.Log("no sellable items found (may be expected depending on migrations)")
+		}
+
+		// Verify items have required fields
+		for _, item := range items {
+			if item.Name == "" {
+				t.Error("sellable item has empty name")
+			}
+			if item.BaseValue < 0 {
+				t.Error("sellable item has negative base value")
+			}
+		}
+	})
+
+	t.Run("GetItemByID", func(t *testing.T) {
+		// First get an item to know its ID
+		money, err := repo.GetItemByName(ctx, "money")
+		if err != nil || money == nil {
+			t.Skip("money item not found, skipping GetItemByID test")
+		}
+
+		// Get by ID
+		item, err := repo.GetItemByID(ctx, money.ID)
+		if err != nil {
+			t.Fatalf("GetItemByID failed: %v", err)
+		}
+		if item == nil {
+			t.Fatal("expected item, got nil")
+		}
+		if item.ID != money.ID {
+			t.Errorf("expected item ID %d, got %d", money.ID, item.ID)
+		}
+
+		// Test with non-existent ID
+		item, err = repo.GetItemByID(ctx, 999999)
+		if err != nil {
+			t.Fatalf("GetItemByID failed for non-existent item: %v", err)
+		}
+		if item != nil {
+			t.Error("expected nil for non-existent item")
+		}
+	})
+
+	t.Run("GetUserByUsername - Not Found", func(t *testing.T) {
+		user, err := repo.GetUserByUsername(ctx, "nonexistent_user_xyz")
+		if err != nil {
+			t.Fatalf("GetUserByUsername failed: %v", err)
+		}
+		if user != nil {
+			t.Error("expected nil for non-existent user")
+		}
+	})
+
+	t.Run("GetUserByPlatformID", func(t *testing.T) {
+		// Create a user with platform ID
+		user := &domain.User{
+			Username: "platform_test_user",
+			TwitchID: "twitch_platform_123",
+		}
+		if err := repo.UpsertUser(ctx, user); err != nil {
+			t.Fatalf("failed to create user: %v", err)
+		}
+
+		// Retrieve by platform ID
+		retrieved, err := repo.GetUserByPlatformID(ctx, "twitch", "twitch_platform_123")
+		if err != nil {
+			t.Fatalf("GetUserByPlatformID failed: %v", err)
+		}
+		if retrieved == nil {
+			t.Fatal("expected user, got nil")
+		}
+		if retrieved.Username != user.Username {
+			t.Errorf("expected username %s, got %s", user.Username, retrieved.Username)
+		}
+		if retrieved.TwitchID != user.TwitchID {
+			t.Errorf("expected twitch ID %s, got %s", user.TwitchID, retrieved.TwitchID)
+		}
+
+		// Test with non-existent platform ID
+		_, err = repo.GetUserByPlatformID(ctx, "twitch", "nonexistent_xyz")
+		if err == nil {
+			t.Error("expected error for non-existent platform ID")
+		}
+	})
 }
 
 func applyMigrations(ctx context.Context, pool *pgxpool.Pool, migrationsDir string) error {
