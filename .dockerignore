@@ -1,0 +1,35 @@
+# Version control
+.git
+.gitignore
+
+# Build artifacts
+bin/
+dist/
+*.exe
+*.test
+*.out
+
+# Dependencies
+vendor/
+
+# Logs
+logs/
+*.log
+
+# Environment variables
+.env
+
+# IDE settings
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Docker
+docker-compose.yml
+Dockerfile
+setup_env.sh
+scripts/
+
+# Documentation
+*.md
