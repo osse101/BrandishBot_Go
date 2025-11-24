@@ -2,7 +2,10 @@ package handler
 
 import (
 	"errors"
+	"fmt"
 	"strings"
+
+	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
 // Platform validation
@@ -15,10 +18,10 @@ var ValidPlatforms = map[string]bool{
 // ValidatePlatform checks if the platform is supported
 func ValidatePlatform(platform string) error {
 	if platform == "" {
-		return errors.New("platform cannot be empty")
+		return fmt.Errorf("%w: platform cannot be empty", domain.ErrInvalidInput)
 	}
 	if !ValidPlatforms[platform] {
-		return errors.New("unsupported platform")
+		return fmt.Errorf("%w: %s", domain.ErrInvalidPlatform, platform)
 	}
 	return nil
 }
@@ -28,16 +31,16 @@ func ValidateUsername(username string) error {
 	const MaxUsernameLength = 100
 	
 	if username == "" {
-		return errors.New("username cannot be empty")
+		return fmt.Errorf("%w: username cannot be empty", domain.ErrInvalidInput)
 	}
 	
 	if len(username) > MaxUsernameLength {
-		return errors.New("username too long")
+		return fmt.Errorf("%w: username too long", domain.ErrInvalidInput)
 	}
 	
 	// Check for control characters that could cause issues
 	if strings.ContainsAny(username, "\x00\n\r\t") {
-		return errors.New("username contains invalid characters")
+		return fmt.Errorf("%w: username contains invalid characters", domain.ErrInvalidInput)
 	}
 	
 	return nil
@@ -48,11 +51,11 @@ func ValidateItemName(itemName string) error {
 	const MaxItemNameLength = 100
 	
 	if itemName == "" {
-		return errors.New("item name cannot be empty")
+		return fmt.Errorf("%w: item name cannot be empty", domain.ErrInvalidInput)
 	}
 	
 	if len(itemName) > MaxItemNameLength {
-		return errors.New("item name too long")
+		return fmt.Errorf("%w: item name too long", domain.ErrInvalidInput)
 	}
 	
 	return nil
@@ -64,11 +67,11 @@ func ValidateQuantity(quantity int) error {
 	const MaxQuantity = 10000
 	
 	if quantity < MinQuantity {
-		return errors.New("quantity must be at least 1")
+		return fmt.Errorf("%w: quantity must be at least 1", domain.ErrInvalidInput)
 	}
 	
 	if quantity > MaxQuantity {
-		return errors.New("quantity exceeds maximum allowed")
+		return fmt.Errorf("%w: quantity exceeds maximum allowed", domain.ErrInvalidInput)
 	}
 	
 	return nil

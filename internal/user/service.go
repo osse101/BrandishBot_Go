@@ -15,7 +15,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
-var ErrUserNotFound = errors.New("user not found")
+
 
 // Repository defines the interface for user persistence
 type Repository interface {
@@ -138,10 +138,11 @@ func (s *service) HandleIncomingMessage(ctx context.Context, platform, platformI
     log := logger.FromContext(ctx)
     log.Info("HandleIncomingMessage called", "platform", platform, "platformID", platformID, "username", username)
     user, err := s.repo.GetUserByPlatformID(ctx, platform, platformID)
-    if err != nil && !errors.Is(err, ErrUserNotFound) {
-        log.Error("Failed to get user", "error", err, "platform", platform, "platformID", platformID)
-        return domain.User{}, fmt.Errorf("failed to get user: %w", err)
-    }
+    // If user not found, create new user
+	if err != nil && !errors.Is(err, domain.ErrUserNotFound) {
+		log.Error("Failed to get user", "error", err, "platform", platform, "platformID", platformID)
+		return domain.User{}, fmt.Errorf("failed to get user: %w", err)
+	}
     if user != nil {
         log.Info("Existing user found", "userID", user.ID)
         return *user, nil
@@ -227,7 +228,7 @@ func (s *service) RemoveItem(ctx context.Context, username, platform, itemName s
     }
     if user == nil {
         log.Warn("User not found", "username", username)
-        return 0, fmt.Errorf("user not found: %s", username)
+        return 0, fmt.Errorf("%w: %s", domain.ErrUserNotFound, username)
     }
 
     lock := s.getUserLock(user.ID)
@@ -240,9 +241,8 @@ func (s *service) RemoveItem(ctx context.Context, username, platform, itemName s
         return 0, fmt.Errorf("failed to get item: %w", err)
     }
     if item == nil {
-        log.Warn("Item not found", "itemName", itemName)
-        return 0, fmt.Errorf("item not found: %s", itemName)
-    }
+		return 0, fmt.Errorf("%w: %s", domain.ErrItemNotFound, itemName)
+	}
     inventory, err := s.repo.GetInventory(ctx, user.ID)
     if err != nil {
         log.Error("Failed to get inventory", "error", err, "userID", user.ID)
@@ -343,8 +343,8 @@ func (s *service) executeGiveItemTx(ctx context.Context, owner, receiver *domain
     }
 
     if ownerInventory.Slots[ownerSlotIndex].Quantity < quantity {
-        return fmt.Errorf("owner does not have enough %s (has %d, needs %d)", item.Name, ownerInventory.Slots[ownerSlotIndex].Quantity, quantity)
-    }
+		return fmt.Errorf("%w: has %d, needs %d", domain.ErrInsufficientQuantity, ownerInventory.Slots[ownerSlotIndex].Quantity, quantity)
+	}
 
     receiverInventory, err := tx.GetInventory(ctx, receiver.ID)
     if err != nil {
@@ -397,7 +397,7 @@ func (s *service) UseItem(ctx context.Context, username, platform, itemName stri
     }
     if user == nil {
         log.Warn("User not found", "username", username)
-        return "", fmt.Errorf("user not found: %s", username)
+        return "", fmt.Errorf("%w: %s", domain.ErrUserNotFound, username)
     }
 
     lock := s.getUserLock(user.ID)
@@ -416,7 +416,7 @@ func (s *service) UseItem(ctx context.Context, username, platform, itemName stri
     }
     if itemToUse == nil {
         log.Warn("Item not found", "itemName", itemName)
-        return "", fmt.Errorf("item not found: %s", itemName)
+        return "", fmt.Errorf("%w: %s", domain.ErrItemNotFound, itemName)
     }
     itemSlotIndex := -1
     for i, slot := range inventory.Slots {
@@ -426,9 +426,8 @@ func (s *service) UseItem(ctx context.Context, username, platform, itemName stri
         }
     }
     if itemSlotIndex == -1 || inventory.Slots[itemSlotIndex].Quantity < quantity {
-        log.Warn("Insufficient quantity", "itemName", itemName, "available", inventory.Slots[itemSlotIndex].Quantity, "required", quantity)
-        return "", fmt.Errorf("insufficient quantity of %s", itemName)
-    }
+		return "", fmt.Errorf("%w: %s", domain.ErrInsufficientQuantity, itemName)
+	}
     handler, exists := s.itemHandlers[itemName]
     if !exists {
         log.Warn("No handler for item", "itemName", itemName)
@@ -457,9 +456,8 @@ func (s *service) GetInventory(ctx context.Context, username string) ([]UserInve
         return nil, fmt.Errorf("failed to get user: %w", err)
     }
     if user == nil {
-        log.Warn("User not found", "username", username)
-        return nil, fmt.Errorf("user not found: %s", username)
-    }
+		return nil, fmt.Errorf("%w: %s", domain.ErrUserNotFound, username)
+	}
     inventory, err := s.repo.GetInventory(ctx, user.ID)
     if err != nil {
         log.Error("Failed to get inventory", "error", err, "userID", user.ID)
@@ -519,8 +517,8 @@ func (s *service) validateUser(ctx context.Context, username string) (*domain.Us
         return nil, fmt.Errorf("failed to get user: %w", err)
     }
     if user == nil {
-        return nil, fmt.Errorf("user not found: %s", username)
-    }
+		return nil, fmt.Errorf("%w: %s", domain.ErrUserNotFound, username)
+	}
     return user, nil
 }
 
@@ -530,8 +528,7 @@ func (s *service) validateItem(ctx context.Context, itemName string) (*domain.It
         return nil, fmt.Errorf("failed to get item: %w", err)
     }
     if item == nil {
-        return nil, fmt.Errorf("item not found: %s", itemName)
-    }
+		return nil, fmt.Errorf("%w: %s", domain.ErrItemNotFound, itemName)
+	}
     return item, nil
 }
-
