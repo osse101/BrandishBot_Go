@@ -3,12 +3,12 @@ package user
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"strings"
 	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
+	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
 // Item effect handlers
@@ -62,10 +62,10 @@ func (s *service) processLootbox(ctx context.Context, inventory *domain.Inventor
 	
 	for i := 0; i < quantity; i++ {
 		for _, loot := range table {
-			if rand.Float64() <= loot.Chance {
+			if utils.RandomFloat() <= loot.Chance {
 				qty := loot.Min
 				if loot.Max > loot.Min {
-					qty += rand.Intn(loot.Max - loot.Min + 1)
+					qty = utils.RandomInt(loot.Min, loot.Max)
 				}
 				drops[loot.ItemName] += qty
 			}

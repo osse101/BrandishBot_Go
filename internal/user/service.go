@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"encoding/json"
-	"os"
 	"sync"
 	"time"
 
@@ -14,6 +12,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
+	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
 var ErrUserNotFound = errors.New("user not found")
@@ -88,13 +87,9 @@ func NewService(repo Repository, lockManager *concurrency.LockManager) Service {
 }
 
 func (s *service) LoadLootTables(path string) error {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return fmt.Errorf("failed to read loot tables file: %w", err)
-	}
 	var tables map[string][]LootItem
-	if err := json.Unmarshal(data, &tables); err != nil {
-		return fmt.Errorf("failed to unmarshal loot tables: %w", err)
+	if err := utils.LoadJSON(path, &tables); err != nil {
+		return err
 	}
 	s.lootTables = tables
 	return nil
