@@ -15,6 +15,7 @@ import (
 type Repository interface {
 	GetUserByUsername(ctx context.Context, username string) (*domain.User, error)
 	GetItemByName(ctx context.Context, itemName string) (*domain.Item, error)
+	GetItemByID(ctx context.Context, id int) (*domain.Item, error)
 	GetInventory(ctx context.Context, userID string) (*domain.Inventory, error)
 	UpdateInventory(ctx context.Context, userID string, inventory domain.Inventory) error
 	GetRecipeByTargetItemID(ctx context.Context, itemID int) (*domain.Recipe, error)
@@ -22,6 +23,10 @@ type Repository interface {
 	UnlockRecipe(ctx context.Context, userID string, recipeID int) error
 	GetUnlockedRecipesForUser(ctx context.Context, userID string) ([]UnlockedRecipeInfo, error)
 	BeginTx(ctx context.Context) (repository.Tx, error)
+	
+	// Disassemble methods
+	GetDisassembleRecipeBySourceItemID(ctx context.Context, itemID int) (*domain.DisassembleRecipe, error)
+	GetAssociatedUpgradeRecipeID(ctx context.Context, disassembleRecipeID int) (int, error)
 }
 
 // RecipeInfo represents recipe information with lock status
@@ -42,6 +47,7 @@ type Service interface {
 	UpgradeItem(ctx context.Context, username, platform, itemName string, quantity int) (string, int, error)
 	GetRecipe(ctx context.Context, itemName, username string) (*RecipeInfo, error)
 	GetUnlockedRecipes(ctx context.Context, username string) ([]UnlockedRecipeInfo, error)
+	DisassembleItem(ctx context.Context, username, platform, itemName string, quantity int) (map[string]int, int, error)
 }
 
 type service struct {
@@ -288,4 +294,144 @@ func (s *service) GetUnlockedRecipes(ctx context.Context, username string) ([]Un
 
 	log.Info("Unlocked recipes retrieved", "username", username, "count", len(unlockedRecipes))
 	return unlockedRecipes, nil
+}
+
+// DisassembleItem disassembles items into their component materials
+// Returns a map of item names to quantities and the number of items disassembled
+func (s *service) DisassembleItem(ctx context.Context, username, platform, itemName string, quantity int) (map[string]int, int, error) {
+	log := logger.FromContext(ctx)
+	log.Info("DisassembleItem called", "username", username, "item", itemName, "quantity", quantity)
+
+	// Validate user
+	user, err := s.validateUser(ctx, username)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Validate source item
+	item, err := s.validateItem(ctx, itemName)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Get disassemble recipe for source item
+	recipe, err := s.repo.GetDisassembleRecipeBySourceItemID(ctx, item.ID)
+	if err != nil {
+		log.Error("Failed to get disassemble recipe", "error", err, "itemID", item.ID)
+		return nil, 0, fmt.Errorf("failed to get disassemble recipe: %w", err)
+	}
+	if recipe == nil {
+		log.Warn("No disassemble recipe found for item", "itemName", itemName)
+		return nil, 0, fmt.Errorf("no disassemble recipe found for item: %s", itemName)
+	}
+
+	// Get associated upgrade recipe ID to check if unlocked
+	upgradeRecipeID, err := s.repo.GetAssociatedUpgradeRecipeID(ctx, recipe.ID)
+	if err != nil {
+		log.Error("Failed to get associated upgrade recipe", "error", err, "disassembleRecipeID", recipe.ID)
+		return nil, 0, fmt.Errorf("failed to get associated upgrade recipe: %w", err)
+	}
+
+	// Check if user has unlocked the associated upgrade recipe
+	unlocked, err := s.repo.IsRecipeUnlocked(ctx, user.ID, upgradeRecipeID)
+	if err != nil {
+		log.Error("Failed to check recipe unlock", "error", err, "recipeID", upgradeRecipeID)
+		return nil, 0, fmt.Errorf("failed to check recipe unlock: %w", err)
+	}
+	if !unlocked {
+		log.Warn("Recipe not unlocked", "username", username, "recipeID", upgradeRecipeID)
+		return nil, 0, fmt.Errorf("disassemble recipe for %s is not unlocked", itemName)
+	}
+
+	// Begin transaction
+	tx, err := s.repo.BeginTx(ctx)
+	if err != nil {
+		log.Error("Failed to begin transaction", "error", err)
+		return nil, 0, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	// Get user's inventory
+	inventory, err := tx.GetInventory(ctx, user.ID)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to get inventory: %w", err)
+	}
+
+	// Find how many source items the user has
+	userQuantity := 0
+	sourceSlotIndex := -1
+	for i, slot := range inventory.Slots {
+		if slot.ItemID == item.ID {
+			userQuantity = slot.Quantity
+			sourceSlotIndex = i
+			break
+		}
+	}
+
+	// Calculate max possible disassembles
+	maxPossible := userQuantity / recipe.QuantityConsumed
+	if maxPossible == 0 {
+		log.Warn("Insufficient items", "username", username, "item", itemName, "available", userQuantity, "needed", recipe.QuantityConsumed)
+		return nil, 0, fmt.Errorf("insufficient items to disassemble %s (need %d, have %d)", itemName, recipe.QuantityConsumed, userQuantity)
+	}
+
+	// Actual quantity to disassemble
+	actualQuantity := maxPossible
+	if actualQuantity > quantity {
+		actualQuantity = quantity
+	}
+
+	// Calculate total consumed
+	totalConsumed := recipe.QuantityConsumed * actualQuantity
+
+	// Remove the source items
+	if inventory.Slots[sourceSlotIndex].Quantity == totalConsumed {
+		// Remove the slot entirely
+		inventory.Slots = append(inventory.Slots[:sourceSlotIndex], inventory.Slots[sourceSlotIndex+1:]...)
+	} else {
+		inventory.Slots[sourceSlotIndex].Quantity -= totalConsumed
+	}
+
+	// Add output items and build result map
+	outputMap := make(map[string]int)
+	for _, output := range recipe.Outputs {
+		totalOutput := output.Quantity * actualQuantity
+
+		// Get item name for the output
+		outputItem, err := s.repo.GetItemByID(ctx, output.ItemID)
+		if err != nil {
+			log.Error("Failed to get output item", "error", err, "itemID", output.ItemID)
+			return nil, 0, fmt.Errorf("failed to get output item: %w", err)
+		}
+		outputMap[outputItem.Name] = totalOutput
+
+		// Add to inventory
+		found := false
+		for i, slot := range inventory.Slots {
+			if slot.ItemID == output.ItemID {
+				inventory.Slots[i].Quantity += totalOutput
+				found = true
+				break
+			}
+		}
+		if !found {
+			inventory.Slots = append(inventory.Slots, domain.InventorySlot{
+				ItemID:   output.ItemID,
+				Quantity: totalOutput,
+			})
+		}
+	}
+
+	// Update inventory
+	if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
+		return nil, 0, fmt.Errorf("failed to update inventory: %w", err)
+	}
+
+	// Commit transaction
+	if err := tx.Commit(ctx); err != nil {
+		return nil, 0, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	log.Info("Items disassembled", "username", username, "item", itemName, "quantity", actualQuantity, "outputs", outputMap)
+	return outputMap, actualQuantity, nil
 }

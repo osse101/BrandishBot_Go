@@ -37,6 +37,7 @@ func NewServer(port int, apiKey string, userService user.Service, economyService
 	mux.HandleFunc("/user/item/buy", handler.HandleBuyItem(economyService))
 	mux.HandleFunc("/user/item/use", handler.HandleUseItem(userService))
 	mux.HandleFunc("/user/item/upgrade", handler.HandleUpgradeItem(craftingService))
+	mux.HandleFunc("/user/item/disassemble", handler.HandleDisassembleItem(craftingService))
 	mux.HandleFunc("/recipes", handler.HandleGetRecipes(craftingService))
 	mux.HandleFunc("/user/inventory", handler.HandleGetInventory(userService))
 	mux.HandleFunc("/prices", handler.HandleGetPrices(economyService))

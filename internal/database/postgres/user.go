@@ -393,3 +393,73 @@ func (r *UserRepository) GetUnlockedRecipesForUser(ctx context.Context, userID s
 	return recipes, nil
 }
 
+
+// GetDisassembleRecipeBySourceItemID retrieves a disassemble recipe for a given source item
+func (r *UserRepository ) GetDisassembleRecipeBySourceItemID(ctx context.Context, itemID int) (*domain.DisassembleRecipe, error) {
+	// Get the recipe details
+	var recipe domain.DisassembleRecipe
+	query := `
+		SELECT recipe_id, source_item_id, quantity_consumed, created_at
+		FROM disassemble_recipes
+		WHERE source_item_id = $1
+	`
+	
+	err := r.db.QueryRow(ctx, query, itemID).Scan(
+		&recipe.ID,
+		&recipe.SourceItemID,
+		&recipe.QuantityConsumed,
+		&recipe.CreatedAt,
+	)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, nil // No recipe found
+		}
+		return nil, fmt.Errorf("failed to query disassemble recipe: %w", err)
+	}
+
+	// Get the outputs for this recipe
+	outputQuery := `
+		SELECT item_id, quantity
+		FROM disassemble_outputs
+		WHERE recipe_id = $1
+		ORDER BY item_id
+	`
+
+	rows, err := r.db.Query(ctx, outputQuery, recipe.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query disassemble outputs: %w", err)
+	}
+	defer rows.Close()
+
+	var outputs []domain.RecipeOutput
+	for rows.Next() {
+		var output domain.RecipeOutput
+		if err := rows.Scan(&output.ItemID, &output.Quantity); err != nil {
+			return nil, fmt.Errorf("failed to scan output: %w", err)
+		}
+		outputs = append(outputs, output)
+	}
+
+	recipe.Outputs = outputs
+	return &recipe, nil
+}
+
+// GetAssociatedUpgradeRecipeID retrieves the upgrade recipe ID associated with a disassemble recipe
+func (r *UserRepository) GetAssociatedUpgradeRecipeID(ctx context.Context, disassembleRecipeID int) (int, error) {
+	var upgradeRecipeID int
+	query := `
+		SELECT upgrade_recipe_id
+		FROM recipe_associations
+		WHERE disassemble_recipe_id = $1
+	`
+
+	err := r.db.QueryRow(ctx, query, disassembleRecipeID).Scan(&upgradeRecipeID)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return 0, fmt.Errorf("no associated upgrade recipe found for disassemble recipe %d", disassembleRecipeID)
+		}
+		return 0, fmt.Errorf("failed to query associated upgrade recipe: %w", err)
+	}
+
+	return upgradeRecipeID, nil
+}
