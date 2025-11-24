@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"strings"
 	"testing"
 	
 
@@ -437,7 +438,13 @@ func TestUseItem(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
 	lockManager := concurrency.NewLockManager()
-	svc := NewService(repo, lockManager)
+	svc := NewService(repo, lockManager).(*service)
+	
+	// Setup loot tables
+	svc.lootTables[domain.ItemLootbox1] = []LootItem{
+		{ItemName: domain.ItemLootbox0, Min: 1, Max: 1, Chance: 1.0}, // Force drop for test
+	}
+
 	ctx := context.Background()
 
 	// Setup: Give alice some lootbox1
@@ -449,8 +456,10 @@ func TestUseItem(t *testing.T) {
 		t.Fatalf("UseItem failed: %v", err)
 	}
 
-	if message != "Used 1 lootbox1" {
-		t.Errorf("Expected message 'Used 1 lootbox1', got '%s'", message)
+	// The message format changed in the new implementation
+	expectedMsg := "Opened 1 lootbox1 and received: 1x lootbox0"
+	if message != expectedMsg {
+		t.Errorf("Expected message '%s', got '%s'", expectedMsg, message)
 	}
 
 	// Verify inventory
@@ -582,7 +591,13 @@ func TestUseItem_Lootbox0(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
 	lockManager := concurrency.NewLockManager()
-	svc := NewService(repo, lockManager)
+	svc := NewService(repo, lockManager).(*service)
+	
+	// Setup loot tables
+	svc.lootTables[domain.ItemLootbox0] = []LootItem{
+		{ItemName: domain.ItemMoney, Min: 1, Max: 10, Chance: 1.0},
+	}
+	
 	ctx := context.Background()
 
 	// Setup: Give alice lootbox0
@@ -594,14 +609,23 @@ func TestUseItem_Lootbox0(t *testing.T) {
 		t.Fatalf("UseItem failed: %v", err)
 	}
 
-	if msg != "The lootbox was empty!" {
-		t.Errorf("Expected 'The lootbox was empty!', got '%s'", msg)
+	// Message format changed
+	// "Opened 1 lootbox0 and received: 5x money" (random amount)
+	// We check if it contains expected parts
+	if !strings.Contains(msg, "Opened 1 lootbox0") {
+		t.Errorf("Expected message to contain 'Opened 1 lootbox0', got '%s'", msg)
+	}
+	if !strings.Contains(msg, "money") {
+		t.Errorf("Expected message to contain 'money', got '%s'", msg)
 	}
 
-	// Verify inventory (should be empty)
+	// Verify inventory (should have money now)
 	inv, _ := repo.GetInventory(ctx, "user-alice")
-	if len(inv.Slots) != 0 {
-		t.Errorf("Expected empty inventory, got %d slots", len(inv.Slots))
+	if len(inv.Slots) != 1 {
+		t.Errorf("Expected 1 slot (money), got %d slots", len(inv.Slots))
+	}
+	if inv.Slots[0].ItemID != 3 { // Money ID is 3
+		t.Errorf("Expected money (ID 3), got ID %d", inv.Slots[0].ItemID)
 	}
 }
 
@@ -609,7 +633,13 @@ func TestUseItem_Lootbox2(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
 	lockManager := concurrency.NewLockManager()
-	svc := NewService(repo, lockManager)
+	svc := NewService(repo, lockManager).(*service)
+	
+	// Setup loot tables
+	svc.lootTables[domain.ItemLootbox2] = []LootItem{
+		{ItemName: domain.ItemLootbox1, Min: 1, Max: 1, Chance: 1.0}, // Force drop
+	}
+	
 	ctx := context.Background()
 
 	// Setup: Give alice lootbox2
@@ -621,7 +651,8 @@ func TestUseItem_Lootbox2(t *testing.T) {
 		t.Fatalf("UseItem failed: %v", err)
 	}
 
-	expectedMsg := "Used 1 lootbox2"
+	// Message format changed
+	expectedMsg := "Opened 1 lootbox2 and received: 1x lootbox1"
 	if msg != expectedMsg {
 		t.Errorf("Expected '%s', got '%s'", expectedMsg, msg)
 	}

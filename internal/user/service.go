@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"encoding/json"
+	"os"
 	"sync"
 	"time"
 
@@ -18,40 +20,41 @@ var ErrUserNotFound = errors.New("user not found")
 
 // Repository defines the interface for user persistence
 type Repository interface {
-    UpsertUser(ctx context.Context, user *domain.User) error
-    GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error)
-    GetInventory(ctx context.Context, userID string) (*domain.Inventory, error)
-    UpdateInventory(ctx context.Context, userID string, inventory domain.Inventory) error
-    GetItemByName(ctx context.Context, itemName string) (*domain.Item, error)
-    GetItemByID(ctx context.Context, id int) (*domain.Item, error)
-    GetUserByUsername(ctx context.Context, username string) (*domain.User, error)
-    GetSellablePrices(ctx context.Context) ([]domain.Item, error)
-    IsItemBuyable(ctx context.Context, itemName string) (bool, error)
-    BeginTx(ctx context.Context) (repository.Tx, error)
-    GetRecipeByTargetItemID(ctx context.Context, itemID int) (*domain.Recipe, error)
-    IsRecipeUnlocked(ctx context.Context, userID string, recipeID int) (bool, error)
-    UnlockRecipe(ctx context.Context, userID string, recipeID int) error
-    GetUnlockedRecipesForUser(ctx context.Context, userID string) ([]crafting.UnlockedRecipeInfo, error)
+	UpsertUser(ctx context.Context, user *domain.User) error
+	GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error)
+	GetInventory(ctx context.Context, userID string) (*domain.Inventory, error)
+	UpdateInventory(ctx context.Context, userID string, inventory domain.Inventory) error
+	GetItemByName(ctx context.Context, itemName string) (*domain.Item, error)
+	GetItemByID(ctx context.Context, id int) (*domain.Item, error)
+	GetUserByUsername(ctx context.Context, username string) (*domain.User, error)
+	GetSellablePrices(ctx context.Context) ([]domain.Item, error)
+	IsItemBuyable(ctx context.Context, itemName string) (bool, error)
+	BeginTx(ctx context.Context) (repository.Tx, error)
+	GetRecipeByTargetItemID(ctx context.Context, itemID int) (*domain.Recipe, error)
+	IsRecipeUnlocked(ctx context.Context, userID string, recipeID int) (bool, error)
+	UnlockRecipe(ctx context.Context, userID string, recipeID int) error
+	GetUnlockedRecipesForUser(ctx context.Context, userID string) ([]crafting.UnlockedRecipeInfo, error)
 }
 
 // Service defines the interface for user operations
 type Service interface {
-    RegisterUser(ctx context.Context, user domain.User) (domain.User, error)
-    FindUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error)
-    HandleIncomingMessage(ctx context.Context, platform, platformID, username string) (domain.User, error)
-    AddItem(ctx context.Context, username, platform, itemName string, quantity int) error
-    RemoveItem(ctx context.Context, username, platform, itemName string, quantity int) (int, error)
-    GiveItem(ctx context.Context, ownerUsername, receiverUsername, platform, itemName string, quantity int) error
-    UseItem(ctx context.Context, username, platform, itemName string, quantity int, targetUsername string) (string, error)
-    GetInventory(ctx context.Context, username string) ([]UserInventoryItem, error)
-    TimeoutUser(ctx context.Context, username string, duration time.Duration, reason string) error
+	RegisterUser(ctx context.Context, user domain.User) (domain.User, error)
+	FindUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error)
+	HandleIncomingMessage(ctx context.Context, platform, platformID, username string) (domain.User, error)
+	AddItem(ctx context.Context, username, platform, itemName string, quantity int) error
+	RemoveItem(ctx context.Context, username, platform, itemName string, quantity int) (int, error)
+	GiveItem(ctx context.Context, ownerUsername, receiverUsername, platform, itemName string, quantity int) error
+	UseItem(ctx context.Context, username, platform, itemName string, quantity int, targetUsername string) (string, error)
+	GetInventory(ctx context.Context, username string) ([]UserInventoryItem, error)
+	TimeoutUser(ctx context.Context, username string, duration time.Duration, reason string) error
+	LoadLootTables(path string) error
 }
 
 type UserInventoryItem struct {
-    Name        string `json:"name"`
-    Description string `json:"description"`
-    Quantity    int    `json:"quantity"`
-    Value       int    `json:"value"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Quantity    int    `json:"quantity"`
+	Value       int    `json:"value"`
 }
 
 
@@ -60,23 +63,41 @@ type ItemEffectHandler func(ctx context.Context, s *service, user *domain.User, 
 
 // service implements the Service interface
 type service struct {
-    repo         Repository
-    itemHandlers map[string]ItemEffectHandler
-    timeoutMu    sync.Mutex
-    timeouts     map[string]*time.Timer
-    lockManager  *concurrency.LockManager
+	repo         Repository
+	itemHandlers map[string]ItemEffectHandler
+	timeoutMu    sync.Mutex
+	timeouts     map[string]*time.Timer
+	lockManager  *concurrency.LockManager
+	lootTables   map[string][]LootItem
 }
 
 // NewService creates a new user service
 func NewService(repo Repository, lockManager *concurrency.LockManager) Service {
-    s := &service{
-        repo:         repo,
-        itemHandlers: make(map[string]ItemEffectHandler),
-        timeouts:     make(map[string]*time.Timer),
-        lockManager:  lockManager,
-    }
-    s.registerHandlers()
-    return s
+	s := &service{
+		repo:         repo,
+		itemHandlers: make(map[string]ItemEffectHandler),
+		timeouts:     make(map[string]*time.Timer),
+		lockManager:  lockManager,
+		lootTables:   make(map[string][]LootItem),
+	}
+	s.registerHandlers()
+	// Attempt to load default loot tables, ignore error if file doesn't exist (will be empty)
+	// In a real app we might want to pass config path in NewService
+	_ = s.LoadLootTables("configs/loot_tables.json")
+	return s
+}
+
+func (s *service) LoadLootTables(path string) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("failed to read loot tables file: %w", err)
+	}
+	var tables map[string][]LootItem
+	if err := json.Unmarshal(data, &tables); err != nil {
+		return fmt.Errorf("failed to unmarshal loot tables: %w", err)
+	}
+	s.lootTables = tables
+	return nil
 }
 
 func (s *service) registerHandlers() {
