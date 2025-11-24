@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -10,6 +11,8 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
+
+var ErrUserNotFound = errors.New("user not found")
 
 // Repository defines the interface for user persistence
 type Repository interface {
@@ -134,7 +137,7 @@ func (s *service) HandleIncomingMessage(ctx context.Context, platform, platformI
     log := logger.FromContext(ctx)
     log.Info("HandleIncomingMessage called", "platform", platform, "platformID", platformID, "username", username)
     user, err := s.repo.GetUserByPlatformID(ctx, platform, platformID)
-    if err != nil && err.Error() != "user not found" {
+    if err != nil && !errors.Is(err, ErrUserNotFound) {
         log.Error("Failed to get user", "error", err, "platform", platform, "platformID", platformID)
         return domain.User{}, fmt.Errorf("failed to get user: %w", err)
     }
@@ -142,7 +145,7 @@ func (s *service) HandleIncomingMessage(ctx context.Context, platform, platformI
         log.Info("Existing user found", "userID", user.ID)
         return *user, nil
     }
-    // TODO: Check if error is actually "not found"
+    // User not found, register new user
     newUser := domain.User{Username: username}
     switch platform {
     case "twitch":

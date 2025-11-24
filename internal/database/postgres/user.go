@@ -8,7 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
-	"github.com/osse101/BrandishBot_Go/internal/user"
+	userpkg "github.com/osse101/BrandishBot_Go/internal/user"
 )
 
 // UserRepository implements the user repository for PostgreSQL
@@ -160,7 +160,7 @@ func (r *UserRepository) GetUserByPlatformID(ctx context.Context, platform, plat
 	err := r.db.QueryRow(ctx, query, platform, platformID).Scan(&user.ID, &user.Username)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return nil, fmt.Errorf("user not found")
+			return nil, userpkg.ErrUserNotFound
 		}
 		return nil, fmt.Errorf("failed to get user core data: %w", err)
 	}
