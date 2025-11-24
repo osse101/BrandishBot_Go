@@ -76,6 +76,7 @@ type service struct {
     itemHandlers map[string]ItemEffectHandler
     timeoutMu    sync.Mutex
     timeouts     map[string]*time.Timer
+    userLocks    sync.Map // map[string]*sync.Mutex
 }
 
 // NewService creates a new user service
@@ -94,6 +95,11 @@ func (s *service) registerHandlers() {
     s.itemHandlers[domain.ItemBlaster] = s.handleBlaster
     s.itemHandlers[domain.ItemLootbox0] = s.handleLootbox0
     s.itemHandlers[domain.ItemLootbox2] = s.handleLootbox2
+}
+
+func (s *service) getUserLock(userID string) *sync.Mutex {
+    lock, _ := s.userLocks.LoadOrStore(userID, &sync.Mutex{})
+    return lock.(*sync.Mutex)
 }
 
 // RegisterUser registers a new user
@@ -169,6 +175,11 @@ func (s *service) AddItem(ctx context.Context, username, platform, itemName stri
         log.Warn("User not found", "username", username)
         return fmt.Errorf("user not found: %s", username)
     }
+
+    lock := s.getUserLock(user.ID)
+    lock.Lock()
+    defer lock.Unlock()
+
     item, err := s.repo.GetItemByName(ctx, itemName)
     if err != nil {
         log.Error("Failed to get item", "error", err, "itemName", itemName)
@@ -214,6 +225,11 @@ func (s *service) RemoveItem(ctx context.Context, username, platform, itemName s
         log.Warn("User not found", "username", username)
         return 0, fmt.Errorf("user not found: %s", username)
     }
+
+    lock := s.getUserLock(user.ID)
+    lock.Lock()
+    defer lock.Unlock()
+
     item, err := s.repo.GetItemByName(ctx, itemName)
     if err != nil {
         log.Error("Failed to get item", "error", err, "itemName", itemName)
@@ -274,6 +290,23 @@ func (s *service) GiveItem(ctx context.Context, ownerUsername, receiverUsername,
     item, err := s.validateItem(ctx, itemName)
     if err != nil {
         return err
+    }
+
+    // Acquire locks in consistent order to prevent deadlocks
+    firstLock := s.getUserLock(owner.ID)
+    secondLock := s.getUserLock(receiver.ID)
+    
+    if owner.ID > receiver.ID {
+        firstLock, secondLock = secondLock, firstLock
+    }
+    
+    firstLock.Lock()
+    defer firstLock.Unlock()
+    
+    // If IDs are same (giving to self), we already have the lock
+    if owner.ID != receiver.ID {
+        secondLock.Lock()
+        defer secondLock.Unlock()
     }
 
     return s.executeGiveItemTx(ctx, owner, receiver, item, quantity)
@@ -367,6 +400,11 @@ func (s *service) SellItem(ctx context.Context, username, platform, itemName str
         log.Warn("User not found", "username", username)
         return 0, 0, fmt.Errorf("user not found: %s", username)
     }
+
+    lock := s.getUserLock(user.ID)
+    lock.Lock()
+    defer lock.Unlock()
+
     item, err := s.repo.GetItemByName(ctx, itemName)
     if err != nil {
         log.Error("Failed to get item", "error", err, "itemName", itemName)
@@ -445,6 +483,10 @@ func (s *service) BuyItem(ctx context.Context, username, platform, itemName stri
     if err != nil {
         return 0, err
     }
+
+    lock := s.getUserLock(user.ID)
+    lock.Lock()
+    defer lock.Unlock()
 
     isBuyable, err := s.repo.IsItemBuyable(ctx, itemName)
     if err != nil {
@@ -539,6 +581,11 @@ func (s *service) UseItem(ctx context.Context, username, platform, itemName stri
         log.Warn("User not found", "username", username)
         return "", fmt.Errorf("user not found: %s", username)
     }
+
+    lock := s.getUserLock(user.ID)
+    lock.Lock()
+    defer lock.Unlock()
+
     inventory, err := s.repo.GetInventory(ctx, user.ID)
     if err != nil {
         log.Error("Failed to get inventory", "error", err, "userID", user.ID)
