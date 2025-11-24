@@ -2,7 +2,8 @@ package user
 
 import (
 	"context"
-
+	"log/slog"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -45,6 +46,12 @@ func TestConcurrency_AddItem(t *testing.T) {
 	concurrency := 100
 	var wg sync.WaitGroup
 	wg.Add(concurrency)
+
+	// Suppress INFO logs during bulk operation
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelWarn})))
+	defer slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})))
+
+	t.Logf("Starting %d concurrent AddItem operations...", concurrency)
 
 	for i := 0; i < concurrency; i++ {
 		go func() {
@@ -104,6 +111,12 @@ func TestConcurrency_BuyItem(t *testing.T) {
 	
 	successCount := 0
 	var mu sync.Mutex
+
+	// Suppress INFO logs during bulk operation
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelWarn})))
+	defer slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})))
+
+	t.Logf("Starting %d concurrent BuyItem operations...", concurrency)
 
 	for i := 0; i < concurrency; i++ {
 		go func() {

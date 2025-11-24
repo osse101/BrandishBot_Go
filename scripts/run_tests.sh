@@ -48,7 +48,10 @@ fi
 
 # Run tests
 echo "Running tests..."
-go test ./...
+mkdir -p logs
+LOG_FILE="logs/test_results.txt"
+echo "Logging test results to $LOG_FILE"
+go test -v ./... | tee "$LOG_FILE"
 TEST_EXIT_CODE=$?
 
 if [ $TEST_EXIT_CODE -eq 0 ]; then
