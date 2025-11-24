@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/osse101/BrandishBot_Go/internal/crafting"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
-	"github.com/osse101/BrandishBot_Go/internal/user"
 )
 
 type UpgradeItemRequest struct {
@@ -20,7 +20,7 @@ type UpgradeItemResponse struct {
 	QuantityUpgraded int    `json:"quantity_upgraded"`
 }
 
-func HandleUpgradeItem(svc user.Service) http.HandlerFunc {
+func HandleUpgradeItem(svc crafting.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
 		
@@ -67,7 +67,7 @@ func HandleUpgradeItem(svc user.Service) http.HandlerFunc {
 // ?item=X - returns base recipe for item X
 // ?item=X&user=Y - returns recipe for item X with lock status for user Y
 // ?user=Y - returns all unlocked recipes for user Y
-func HandleGetRecipes(svc user.Service) http.HandlerFunc {
+func HandleGetRecipes(svc crafting.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
 		
@@ -117,4 +117,3 @@ func HandleGetRecipes(svc user.Service) http.HandlerFunc {
 		http.Error(w, "Must provide either 'item' or 'user' query parameter", http.StatusBadRequest)
 	}
 }
-

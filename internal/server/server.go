@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/osse101/BrandishBot_Go/internal/crafting"
+	"github.com/osse101/BrandishBot_Go/internal/economy"
 	"github.com/osse101/BrandishBot_Go/internal/handler"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/stats"
@@ -13,13 +15,15 @@ import (
 )
 
 type Server struct {
-	httpServer   *http.Server
-	userService  user.Service
-	statsService stats.Service
+	httpServer      *http.Server
+	userService     user.Service
+	economyService  economy.Service
+	craftingService crafting.Service
+	statsService    stats.Service
 }
 
 // NewServer creates a new Server instance
-func NewServer(port int, apiKey string, userService user.Service, statsService stats.Service) *Server {
+func NewServer(port int, apiKey string, userService user.Service, economyService economy.Service, craftingService crafting.Service, statsService stats.Service) *Server {
 	mux := http.NewServeMux()
 	
 	// User routes
@@ -29,13 +33,13 @@ func NewServer(port int, apiKey string, userService user.Service, statsService s
 	mux.HandleFunc("/user/item/add", handler.HandleAddItem(userService))
 	mux.HandleFunc("/user/item/remove", handler.HandleRemoveItem(userService))
 	mux.HandleFunc("/user/item/give", handler.HandleGiveItem(userService))
-	mux.HandleFunc("/user/item/sell", handler.HandleSellItem(userService))
-	mux.HandleFunc("/user/item/buy", handler.HandleBuyItem(userService))
+	mux.HandleFunc("/user/item/sell", handler.HandleSellItem(economyService))
+	mux.HandleFunc("/user/item/buy", handler.HandleBuyItem(economyService))
 	mux.HandleFunc("/user/item/use", handler.HandleUseItem(userService))
-	mux.HandleFunc("/user/item/upgrade", handler.HandleUpgradeItem(userService))
-	mux.HandleFunc("/recipes", handler.HandleGetRecipes(userService))
+	mux.HandleFunc("/user/item/upgrade", handler.HandleUpgradeItem(craftingService))
+	mux.HandleFunc("/recipes", handler.HandleGetRecipes(craftingService))
 	mux.HandleFunc("/user/inventory", handler.HandleGetInventory(userService))
-	mux.HandleFunc("/prices", handler.HandleGetPrices(userService))
+	mux.HandleFunc("/prices", handler.HandleGetPrices(economyService))
 	
 	// Stats routes
 	mux.HandleFunc("/stats/event", handler.HandleRecordEvent(statsService))
@@ -62,8 +66,10 @@ func NewServer(port int, apiKey string, userService user.Service, statsService s
 			Addr:    fmt.Sprintf(":%d", port),
 			Handler: handler,
 		},
-		userService:  userService,
-		statsService: statsService,
+		userService:     userService,
+		economyService:  economyService,
+		craftingService: craftingService,
+		statsService:    statsService,
 	}
 }
 

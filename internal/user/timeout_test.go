@@ -4,12 +4,15 @@ import (
 	"context"
 	"testing"
 	"time"
+
+	"github.com/osse101/BrandishBot_Go/internal/concurrency"
 )
 
 func TestTimeoutUser(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo)
+	lockManager := concurrency.NewLockManager()
+	svc := NewService(repo, lockManager)
 	ctx := context.Background()
 
 	// Test setting a timeout
@@ -34,7 +37,8 @@ func TestTimeoutUser(t *testing.T) {
 func TestHandleBlaster_Timeout(t *testing.T) {
     repo := NewMockRepository()
     setupTestData(repo)
-    svc := NewService(repo)
+    lockManager := concurrency.NewLockManager()
+    svc := NewService(repo, lockManager)
     ctx := context.Background()
 
     // Setup: Give alice a blaster

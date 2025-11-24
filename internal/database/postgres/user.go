@@ -6,6 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/osse101/BrandishBot_Go/internal/crafting"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 	userpkg "github.com/osse101/BrandishBot_Go/internal/user"
@@ -360,7 +361,7 @@ func (r *UserRepository) UnlockRecipe(ctx context.Context, userID string, recipe
 
 
 // GetUnlockedRecipesForUser retrieves all recipes unlocked by a specific user
-func (r *UserRepository) GetUnlockedRecipesForUser(ctx context.Context, userID string) ([]user.UnlockedRecipeInfo, error) {
+func (r *UserRepository) GetUnlockedRecipesForUser(ctx context.Context, userID string) ([]crafting.UnlockedRecipeInfo, error) {
 	query := `
 		SELECT i.item_name, r.target_item_id
 		FROM crafting_recipes r
@@ -376,9 +377,9 @@ func (r *UserRepository) GetUnlockedRecipesForUser(ctx context.Context, userID s
 	}
 	defer rows.Close()
 	
-	var recipes []user.UnlockedRecipeInfo
+	var recipes []crafting.UnlockedRecipeInfo
 	for rows.Next() {
-		var recipe user.UnlockedRecipeInfo
+		var recipe crafting.UnlockedRecipeInfo
 		if err := rows.Scan(&recipe.ItemName, &recipe.ItemID); err != nil {
 			return nil, fmt.Errorf("failed to scan recipe: %w", err)
 		}

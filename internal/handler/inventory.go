@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/osse101/BrandishBot_Go/internal/economy"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/user"
 )
@@ -175,7 +176,7 @@ type SellItemResponse struct {
 	ItemsSold   int `json:"items_sold"`
 }
 
-func HandleSellItem(svc user.Service) http.HandlerFunc {
+func HandleSellItem(svc economy.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
 		
@@ -227,7 +228,7 @@ type BuyItemResponse struct {
 	ItemsBought int `json:"items_bought"`
 }
 
-func HandleBuyItem(svc user.Service) http.HandlerFunc {
+func HandleBuyItem(svc economy.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
 		

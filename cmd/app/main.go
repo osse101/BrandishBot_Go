@@ -13,9 +13,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/osse101/BrandishBot_Go/internal/concurrency"
 	"github.com/osse101/BrandishBot_Go/internal/config"
+	"github.com/osse101/BrandishBot_Go/internal/crafting"
 	"github.com/osse101/BrandishBot_Go/internal/database"
 	"github.com/osse101/BrandishBot_Go/internal/database/postgres"
+	"github.com/osse101/BrandishBot_Go/internal/economy"
 	"github.com/osse101/BrandishBot_Go/internal/server"
 	"github.com/osse101/BrandishBot_Go/internal/stats"
 	"github.com/osse101/BrandishBot_Go/internal/user"
@@ -81,13 +84,16 @@ func main() {
 	}
 	defer dbPool.Close()
 
+	lockManager := concurrency.NewLockManager()
 	userRepo := postgres.NewUserRepository(dbPool)
-	userService := user.NewService(userRepo)
+	userService := user.NewService(userRepo, lockManager)
+	economyService := economy.NewService(userRepo, lockManager)
+	craftingService := crafting.NewService(userRepo, lockManager)
 	
 	statsRepo := postgres.NewStatsRepository(dbPool)
 	statsService := stats.NewService(statsRepo)
 	
-	srv := server.NewServer(cfg.Port, cfg.APIKey, userService, statsService)
+	srv := server.NewServer(cfg.Port, cfg.APIKey, userService, economyService, craftingService, statsService)
 
 	// Run server in a goroutine
 	go func() {

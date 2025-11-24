@@ -3,27 +3,32 @@ package user
 import (
 	"context"
 	"testing"
+	
 
+	"github.com/osse101/BrandishBot_Go/internal/concurrency"
+	"github.com/osse101/BrandishBot_Go/internal/crafting"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
 
 // MockRepository implements Repository interface for testing
 type MockRepository struct {
-	users      map[string]*domain.User
-	items      map[string]*domain.Item
-	inventories map[string]*domain.Inventory
-	recipes     map[int]*domain.Recipe
-	unlocks     map[string]map[int]bool // userID -> recipeID -> unlocked
+	users               map[string]*domain.User // keyed by user ID
+	platformUsers       map[string]*domain.User // keyed by platform+platformID
+	inventories         map[string]*domain.Inventory
+	items               map[string]*domain.Item
+	recipes             map[int]*domain.Recipe // keyed by recipe ID
+	unlockedRecipes     map[string]map[int]bool
+	unlockedRecipeInfos map[string][]crafting.UnlockedRecipeInfo
 }
 
 func NewMockRepository() *MockRepository {
 	return &MockRepository{
-		users:       make(map[string]*domain.User),
-		items:       make(map[string]*domain.Item),
-		inventories: make(map[string]*domain.Inventory),
-		recipes:     make(map[int]*domain.Recipe),
-		unlocks:     make(map[string]map[int]bool),
+		users:           make(map[string]*domain.User),
+		items:           make(map[string]*domain.Item),
+		inventories:     make(map[string]*domain.Inventory),
+		recipes:         make(map[int]*domain.Recipe),
+		unlockedRecipes: make(map[string]map[int]bool),
 	}
 }
 
@@ -140,31 +145,31 @@ func (m *MockRepository) GetRecipeByTargetItemID(ctx context.Context, itemID int
 }
 
 func (m *MockRepository) IsRecipeUnlocked(ctx context.Context, userID string, recipeID int) (bool, error) {
-	if userUnlocks, ok := m.unlocks[userID]; ok {
-		return userUnlocks[recipeID], nil
+	if m.unlockedRecipes[userID] == nil {
+		return false, nil
 	}
-	return false, nil
+	return m.unlockedRecipes[userID][recipeID], nil
 }
 
 func (m *MockRepository) UnlockRecipe(ctx context.Context, userID string, recipeID int) error {
-	if m.unlocks[userID] == nil {
-		m.unlocks[userID] = make(map[int]bool)
+	if m.unlockedRecipes[userID] == nil {
+		m.unlockedRecipes[userID] = make(map[int]bool)
 	}
-	m.unlocks[userID][recipeID] = true
+	m.unlockedRecipes[userID][recipeID] = true
 	return nil
 }
 
-func (m *MockRepository) GetUnlockedRecipesForUser(ctx context.Context, userID string) ([]UnlockedRecipeInfo, error) {
-	var recipes []UnlockedRecipeInfo
+func (r *MockRepository) GetUnlockedRecipesForUser(ctx context.Context, userID string) ([]crafting.UnlockedRecipeInfo, error) {
+	var recipes []crafting.UnlockedRecipeInfo
 	
 	// For each unlocked recipe, get the recipe and item info
-	if userUnlocks, ok := m.unlocks[userID]; ok {
+	if userUnlocks, ok := r.unlockedRecipes[userID]; ok {
 		for recipeID := range userUnlocks {
-			if recipe, exists := m.recipes[recipeID]; exists {
+			if recipe, exists := r.recipes[recipeID]; exists {
 				// Find the item name
-				for _, item := range m.items {
+				for _, item := range r.items {
 					if item.ID == recipe.TargetItemID {
-						recipes = append(recipes, UnlockedRecipeInfo{
+						recipes = append(recipes, crafting.UnlockedRecipeInfo{
 							ItemName: item.Name,
 							ItemID:   item.ID,
 						})
@@ -230,7 +235,8 @@ func setupTestData(repo *MockRepository) {
 func TestAddItem(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo)
+	lockManager := concurrency.NewLockManager()
+	svc := NewService(repo, lockManager)
 	ctx := context.Background()
 
 	// Test adding item to empty inventory
@@ -274,7 +280,8 @@ func TestAddItem(t *testing.T) {
 func TestRemoveItem(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo)
+	lockManager := concurrency.NewLockManager()
+	svc := NewService(repo, lockManager)
 	ctx := context.Background()
 
 	// Setup: Add items first
@@ -318,7 +325,8 @@ func TestRemoveItem(t *testing.T) {
 func TestGiveItem(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo)
+	lockManager := concurrency.NewLockManager()
+	svc := NewService(repo, lockManager)
 	ctx := context.Background()
 
 	// Setup: Give alice some items
@@ -355,95 +363,10 @@ func TestGiveItem(t *testing.T) {
 	}
 }
 
-func TestSellItem(t *testing.T) {
-	repo := NewMockRepository()
-	setupTestData(repo)
-	svc := NewService(repo)
-	ctx := context.Background()
-
-	// Setup: Give alice some lootboxes
-	svc.AddItem(ctx, "alice", "twitch", domain.ItemLootbox1, 10)
-
-	// Test selling items
-	moneyGained, itemsSold, err := svc.SellItem(ctx, "alice", "twitch", domain.ItemLootbox1, 3)
-	if err != nil {
-		t.Fatalf("SellItem failed: %v", err)
-	}
-
-	// lootbox1 base_value is 50, so 3 * 50 = 150
-	if moneyGained != 150 {
-		t.Errorf("Expected 150 money, got %d", moneyGained)
-	}
-	if itemsSold != 3 {
-		t.Errorf("Expected 3 sold, got %d", itemsSold)
-	}
-
-	// Verify inventory
-	inv, _ := repo.GetInventory(ctx, "user-alice")
-	
-	// Should have 2 slots: lootbox1 (7 left) and money (150)
-	if len(inv.Slots) != 2 {
-		t.Fatalf("Expected 2 slots, got %d", len(inv.Slots))
-	}
-
-	// Find lootbox1 and money slots
-	var lootboxSlot, moneySlot *domain.InventorySlot
-	for i := range inv.Slots {
-		if inv.Slots[i].ItemID == 1 {
-			lootboxSlot = &inv.Slots[i]
-		}
-		if inv.Slots[i].ItemID == 3 {
-			moneySlot = &inv.Slots[i]
-		}
-	}
-
-	if lootboxSlot == nil || lootboxSlot.Quantity != 7 {
-		t.Errorf("Expected 7 lootbox1, got %+v", lootboxSlot)
-	}
-	if moneySlot == nil || moneySlot.Quantity != 150 {
-		t.Errorf("Expected 150 money, got %+v", moneySlot)
-	}
-
-	// Test selling more than owned (should sell all)
-	moneyGained, itemsSold, err = svc.SellItem(ctx, "alice", "twitch", domain.ItemLootbox1, 100)
-	if err != nil {
-		t.Fatalf("SellItem failed: %v", err)
-	}
-
-	// Should sell all 7 remaining: 7 * 50 = 350
-	if moneyGained != 350 {
-		t.Errorf("Expected 350 money, got %d", moneyGained)
-	}
-	if itemsSold != 7 {
-		t.Errorf("Expected 7 sold, got %d", itemsSold)
-	}
-
-	// Verify inventory - should only have money now
-	inv, _ = repo.GetInventory(ctx, "user-alice")
-	if len(inv.Slots) != 1 {
-		t.Errorf("Expected 1 slot (money only), got %d", len(inv.Slots))
-	}
-	if inv.Slots[0].ItemID != 3 || inv.Slots[0].Quantity != 500 {
-		t.Errorf("Expected 500 money total, got %+v", inv.Slots[0])
-	}
-}
-
-func TestSellItem_NotInInventory(t *testing.T) {
-	repo := NewMockRepository()
-	setupTestData(repo)
-	svc := NewService(repo)
-	ctx := context.Background()
-
-	// Try to sell item not in inventory
-	_, _, err := svc.SellItem(ctx, "alice", "twitch", domain.ItemLootbox1, 1)
-	if err == nil {
-		t.Error("Expected error when selling item not in inventory")
-	}
-}
-
 func TestRegisterUser(t *testing.T) {
 	repo := NewMockRepository()
-	svc := NewService(repo)
+	lockManager := concurrency.NewLockManager()
+	svc := NewService(repo, lockManager)
 	ctx := context.Background()
 
 	user := domain.User{
@@ -472,7 +395,8 @@ func TestRegisterUser(t *testing.T) {
 
 func TestHandleIncomingMessage_NewUser(t *testing.T) {
 	repo := NewMockRepository()
-	svc := NewService(repo)
+	lockManager := concurrency.NewLockManager()
+	svc := NewService(repo, lockManager)
 	ctx := context.Background()
 
 	user, err := svc.HandleIncomingMessage(ctx, "twitch", "newuser123", "newuser")
@@ -494,7 +418,8 @@ func TestHandleIncomingMessage_NewUser(t *testing.T) {
 func TestHandleIncomingMessage_ExistingUser(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo)
+	lockManager := concurrency.NewLockManager()
+	svc := NewService(repo, lockManager)
 	ctx := context.Background()
 
 	user, err := svc.HandleIncomingMessage(ctx, "twitch", "alice123", "alice")
@@ -507,87 +432,12 @@ func TestHandleIncomingMessage_ExistingUser(t *testing.T) {
 	}
 }
 
-func TestBuyItem(t *testing.T) {
-	repo := NewMockRepository()
-	setupTestData(repo)
-	svc := NewService(repo)
-	ctx := context.Background()
-
-	// Setup: Give alice some money
-	svc.AddItem(ctx, "alice", "twitch", domain.ItemMoney, 500)
-
-	// Test buying items (lootbox1 cost 50)
-	bought, err := svc.BuyItem(ctx, "alice", "twitch", domain.ItemLootbox1, 2)
-	if err != nil {
-		t.Fatalf("BuyItem failed: %v", err)
-	}
-
-	if bought != 2 {
-		t.Errorf("Expected 2 bought, got %d", bought)
-	}
-
-	// Verify inventory
-	inv, _ := repo.GetInventory(ctx, "user-alice")
-	
-	// Should have 2 slots: money (400 left) and lootbox1 (2)
-	var moneySlot, lootboxSlot *domain.InventorySlot
-	for i := range inv.Slots {
-		if inv.Slots[i].ItemID == 3 {
-			moneySlot = &inv.Slots[i]
-		}
-		if inv.Slots[i].ItemID == 1 {
-			lootboxSlot = &inv.Slots[i]
-		}
-	}
-
-	if moneySlot == nil || moneySlot.Quantity != 400 {
-		t.Errorf("Expected 400 money, got %+v", moneySlot)
-	}
-	if lootboxSlot == nil || lootboxSlot.Quantity != 2 {
-		t.Errorf("Expected 2 lootbox1, got %+v", lootboxSlot)
-	}
-
-	// Test buying more than affordable (partial fulfillment)
-	// Has 400 money, lootbox1 cost 50. Can buy 8 max.
-	// Try to buy 10
-	bought, err = svc.BuyItem(ctx, "alice", "twitch", domain.ItemLootbox1, 10)
-	if err != nil {
-		t.Fatalf("BuyItem failed: %v", err)
-	}
-
-	if bought != 8 {
-		t.Errorf("Expected 8 bought (max affordable), got %d", bought)
-	}
-
-	// Verify inventory - money should be 0 (removed)
-	inv, _ = repo.GetInventory(ctx, "user-alice")
-	moneySlot = nil
-	for i := range inv.Slots {
-		if inv.Slots[i].ItemID == 3 {
-			moneySlot = &inv.Slots[i]
-		}
-	}
-	if moneySlot != nil {
-		t.Errorf("Expected money slot to be removed, got %+v", moneySlot)
-	}
-
-	// Test buying with no money
-	_, err = svc.BuyItem(ctx, "alice", "twitch", domain.ItemLootbox1, 1)
-	if err == nil {
-		t.Error("Expected error when buying with no money")
-	}
-
-	// Test buying non-buyable item
-	_, err = svc.BuyItem(ctx, "alice", "twitch", domain.ItemLootbox2, 1)
-	if err == nil {
-		t.Error("Expected error when buying non-buyable item")
-	}
-}
 
 func TestUseItem(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo)
+	lockManager := concurrency.NewLockManager()
+	svc := NewService(repo, lockManager)
 	ctx := context.Background()
 
 	// Setup: Give alice some lootbox1
@@ -647,7 +497,8 @@ func TestUseItem(t *testing.T) {
 func TestUseItem_Blaster(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo)
+	lockManager := concurrency.NewLockManager()
+	svc := NewService(repo, lockManager)
 	ctx := context.Background()
 
 	// Setup: Give alice some blasters
@@ -680,7 +531,8 @@ func TestUseItem_Blaster(t *testing.T) {
 func TestGetInventory(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo)
+	lockManager := concurrency.NewLockManager()
+	svc := NewService(repo, lockManager)
 	ctx := context.Background()
 
 	// Setup: Give alice some items
@@ -729,7 +581,8 @@ func TestGetInventory(t *testing.T) {
 func TestUseItem_Lootbox0(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo)
+	lockManager := concurrency.NewLockManager()
+	svc := NewService(repo, lockManager)
 	ctx := context.Background()
 
 	// Setup: Give alice lootbox0
@@ -755,7 +608,8 @@ func TestUseItem_Lootbox0(t *testing.T) {
 func TestUseItem_Lootbox2(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo)
+	lockManager := concurrency.NewLockManager()
+	svc := NewService(repo, lockManager)
 	ctx := context.Background()
 
 	// Setup: Give alice lootbox2

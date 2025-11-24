@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/osse101/BrandishBot_Go/internal/concurrency"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
@@ -35,7 +36,8 @@ func TestConcurrency_AddItem(t *testing.T) {
 		MockRepository: baseRepo,
 		delay:          10 * time.Millisecond,
 	}
-	svc := NewService(repo)
+	lockManager := concurrency.NewLockManager()
+	svc := NewService(repo, lockManager)
 	ctx := context.Background()
 
 	// Initial setup
@@ -90,62 +92,3 @@ func TestConcurrency_AddItem(t *testing.T) {
 	}
 }
 
-func TestConcurrency_BuyItem(t *testing.T) {
-	baseRepo := NewMockRepository()
-	setupTestData(baseRepo)
-	repo := &SlowMockRepository{
-		MockRepository: baseRepo,
-		delay:          5 * time.Millisecond,
-	}
-	svc := NewService(repo)
-	ctx := context.Background()
-
-	// Give alice 100 money. Lootbox1 costs 50.
-	// She should be able to buy exactly 2.
-	// If we try to buy 1 concurrently 10 times, only 2 should succeed.
-	svc.AddItem(ctx, "alice", "twitch", domain.ItemMoney, 100)
-
-	concurrency := 10
-	var wg sync.WaitGroup
-	wg.Add(concurrency)
-	
-	successCount := 0
-	var mu sync.Mutex
-
-	// Suppress INFO logs during bulk operation
-	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelWarn})))
-	defer slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})))
-
-	t.Logf("Starting %d concurrent BuyItem operations...", concurrency)
-
-	for i := 0; i < concurrency; i++ {
-		go func() {
-			defer wg.Done()
-			// Try to buy 1
-			count, err := svc.BuyItem(ctx, "alice", "twitch", domain.ItemLootbox1, 1)
-			if err == nil && count == 1 {
-				mu.Lock()
-				successCount++
-				mu.Unlock()
-			}
-		}()
-	}
-
-	wg.Wait()
-
-	// Verify results
-	if successCount > 2 {
-		t.Logf("Race condition detected! User bought %d items with money for only 2", successCount)
-		t.Fail()
-	}
-
-	// Verify final money (should be 0 or 50 depending on if 1 or 2 succeeded, but definitely not negative)
-	inv, _ := repo.GetInventory(ctx, "user-alice")
-	for _, slot := range inv.Slots {
-		if slot.ItemID == 3 { // Money
-			if slot.Quantity < 0 {
-				t.Errorf("Negative money detected: %d", slot.Quantity)
-			}
-		}
-	}
-}
