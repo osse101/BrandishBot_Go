@@ -12,21 +12,23 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/economy"
 	"github.com/osse101/BrandishBot_Go/internal/handler"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
+	"github.com/osse101/BrandishBot_Go/internal/progression"
 	"github.com/osse101/BrandishBot_Go/internal/stats"
 	"github.com/osse101/BrandishBot_Go/internal/user"
 )
 
 type Server struct {
-	httpServer      *http.Server
-	dbPool          database.Pool
-	userService     user.Service
-	economyService  economy.Service
-	craftingService crafting.Service
-	statsService    stats.Service
+	httpServer         *http.Server
+	dbPool             database.Pool
+	userService        user.Service
+	economyService     economy.Service
+	craftingService    crafting.Service
+	statsService       stats.Service
+	progressionService progression.Service
 }
 
 // NewServer creates a new Server instance
-func NewServer(port int, apiKey string, dbPool database.Pool, userService user.Service, economyService economy.Service, craftingService crafting.Service, statsService stats.Service) *Server {
+func NewServer(port int, apiKey string, dbPool database.Pool, userService user.Service, economyService economy.Service, craftingService crafting.Service, statsService stats.Service, progressionService progression.Service) *Server {
 	mux := http.NewServeMux()
 	
 	// Health check routes
@@ -55,6 +57,18 @@ func NewServer(port int, apiKey string, dbPool database.Pool, userService user.S
 	mux.HandleFunc("/stats/system", handler.HandleGetSystemStats(statsService))
 	mux.HandleFunc("/stats/leaderboard", handler.HandleGetLeaderboard(statsService))
 	
+	// Progression routes
+	progressionHandlers := handler.NewProgressionHandlers(progressionService)
+	mux.HandleFunc("/progression/tree", progressionHandlers.HandleGetTree())
+	mux.HandleFunc("/progression/available", progressionHandlers.HandleGetAvailable())
+	mux.HandleFunc("/progression/vote", progressionHandlers.HandleVote())
+	mux.HandleFunc("/progression/status", progressionHandlers.HandleGetStatus())
+	mux.HandleFunc("/progression/engagement", progressionHandlers.HandleGetEngagement())
+	mux.HandleFunc("/progression/admin/unlock", progressionHandlers.HandleAdminUnlock())
+	mux.HandleFunc("/progression/admin/relock", progressionHandlers.HandleAdminRelock())
+	mux.HandleFunc("/progression/admin/instant-unlock", progressionHandlers.HandleAdminInstantUnlock())
+	mux.HandleFunc("/progression/admin/reset", progressionHandlers.HandleAdminReset())
+	
 	// Swagger documentation
 	mux.HandleFunc("/swagger/", httpSwagger.WrapHandler)
 
@@ -78,11 +92,12 @@ func NewServer(port int, apiKey string, dbPool database.Pool, userService user.S
 			Addr:    fmt.Sprintf(":%d", port),
 			Handler: handler,
 		},
-		dbPool:          dbPool,
-		userService:     userService,
-		economyService:  economyService,
-		craftingService: craftingService,
-		statsService:    statsService,
+		dbPool:             dbPool,
+		userService:        userService,
+		economyService:     economyService,
+		craftingService:    craftingService,
+		statsService:       statsService,
+		progressionService: progressionService,
 	}
 }
 
