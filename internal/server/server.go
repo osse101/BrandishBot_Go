@@ -6,7 +6,9 @@ import (
 	"net/http"
 	"time"
 
+	httpSwagger "github.com/swaggo/http-swagger"
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
+	"github.com/osse101/BrandishBot_Go/internal/database"
 	"github.com/osse101/BrandishBot_Go/internal/economy"
 	"github.com/osse101/BrandishBot_Go/internal/handler"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
@@ -16,6 +18,7 @@ import (
 
 type Server struct {
 	httpServer      *http.Server
+	dbPool          database.Pool
 	userService     user.Service
 	economyService  economy.Service
 	craftingService crafting.Service
@@ -23,8 +26,12 @@ type Server struct {
 }
 
 // NewServer creates a new Server instance
-func NewServer(port int, apiKey string, userService user.Service, economyService economy.Service, craftingService crafting.Service, statsService stats.Service) *Server {
+func NewServer(port int, apiKey string, dbPool database.Pool, userService user.Service, economyService economy.Service, craftingService crafting.Service, statsService stats.Service) *Server {
 	mux := http.NewServeMux()
+	
+	// Health check routes
+	mux.HandleFunc("/healthz", handler.HandleHealthz())
+	mux.HandleFunc("/readyz", handler.HandleReadyz(dbPool))
 	
 	// User routes
 	mux.HandleFunc("/user/register", handler.HandleRegisterUser(userService))
@@ -47,6 +54,10 @@ func NewServer(port int, apiKey string, userService user.Service, economyService
 	mux.HandleFunc("/stats/user", handler.HandleGetUserStats(statsService))
 	mux.HandleFunc("/stats/system", handler.HandleGetSystemStats(statsService))
 	mux.HandleFunc("/stats/leaderboard", handler.HandleGetLeaderboard(statsService))
+	
+	// Swagger documentation
+	mux.HandleFunc("/swagger/", httpSwagger.WrapHandler)
+
 
 	// Build middleware stack (applied in reverse order)
 	// 1. Request logging (innermost - logs final status)
@@ -67,6 +78,7 @@ func NewServer(port int, apiKey string, userService user.Service, economyService
 			Addr:    fmt.Sprintf(":%d", port),
 			Handler: handler,
 		},
+		dbPool:          dbPool,
 		userService:     userService,
 		economyService:  economyService,
 		craftingService: craftingService,

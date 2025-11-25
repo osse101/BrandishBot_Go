@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	_ "github.com/osse101/BrandishBot_Go/docs/swagger"
 	"github.com/osse101/BrandishBot_Go/internal/concurrency"
 	"github.com/osse101/BrandishBot_Go/internal/config"
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
@@ -23,6 +24,17 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/stats"
 	"github.com/osse101/BrandishBot_Go/internal/user"
 )
+
+// @title BrandishBot API
+// @version 1.0
+// @description API for BrandishBot game engine - inventory, crafting, economy, and stats management
+// @contact.name API Support
+// @contact.url https://github.com/osse101/BrandishBot_Go
+// @host localhost:8080
+// @BasePath /
+// @securityDefinitions.apikey ApiKeyAuth
+// @in header
+// @name X-API-Key
 
 func main() {
 	// Load configuration
@@ -93,7 +105,7 @@ func main() {
 	statsRepo := postgres.NewStatsRepository(dbPool)
 	statsService := stats.NewService(statsRepo)
 	
-	srv := server.NewServer(cfg.Port, cfg.APIKey, userService, economyService, craftingService, statsService)
+	srv := server.NewServer(cfg.Port, cfg.APIKey, dbPool, userService, economyService, craftingService, statsService)
 
 	// Run server in a goroutine
 	go func() {

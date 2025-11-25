@@ -9,6 +9,13 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// Pool interface for database connection pool operations
+type Pool interface {
+	Ping(ctx context.Context) error
+	Close()
+}
+
+
 // NewPool creates a new PostgreSQL connection pool
 func NewPool(connString string) (*pgxpool.Pool, error) {
 	config, err := pgxpool.ParseConfig(connString)

@@ -11,14 +11,14 @@ import (
 
 // MockRepository for crafting tests
 type MockRepository struct {
-	users               map[string]*domain.User
-	items               map[string]*domain.Item
-	itemsByID           map[int]*domain.Item
-	inventories         map[string]*domain.Inventory
-	recipes             map[int]*domain.Recipe
-	disassembleRecipes  map[int]*domain.DisassembleRecipe
-	recipeAssociations  map[int]int // disassemble recipe ID -> upgrade recipe ID
-	unlockedRecipes     map[string]map[int]bool
+	users              map[string]*domain.User
+	items              map[string]*domain.Item
+	itemsByID          map[int]*domain.Item
+	inventories        map[string]*domain.Inventory
+	recipes            map[int]*domain.Recipe
+	disassembleRecipes map[int]*domain.DisassembleRecipe
+	recipeAssociations map[int]int // disassemble recipe ID -> upgrade recipe ID
+	unlockedRecipes    map[string]map[int]bool
 }
 
 func NewMockRepository() *MockRepository {
@@ -97,7 +97,22 @@ func (m *MockRepository) UnlockRecipe(ctx context.Context, userID string, recipe
 }
 
 func (m *MockRepository) GetUnlockedRecipesForUser(ctx context.Context, userID string) ([]UnlockedRecipeInfo, error) {
-	return []UnlockedRecipeInfo{}, nil
+	var result []UnlockedRecipeInfo
+	if m.unlockedRecipes[userID] == nil {
+		return result, nil
+	}
+	
+	for recipeID := range m.unlockedRecipes[userID] {
+		if recipe, ok := m.recipes[recipeID]; ok {
+			if item, ok := m.itemsByID[recipe.TargetItemID]; ok {
+				result = append(result, UnlockedRecipeInfo{
+					ItemName: item.Name,
+					ItemID:   item.ID,
+				})
+			}
+		}
+	}
+	return result, nil
 }
 
 func (m *MockRepository) BeginTx(ctx context.Context) (repository.Tx, error) {
@@ -185,6 +200,8 @@ func setupTestData(repo *MockRepository) {
 	}
 }
 
+// ==================== Disassemble Tests ====================
+
 func TestDisassembleItem_Success(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
@@ -242,7 +259,7 @@ func TestDisassembleItem_InsufficientItems(t *testing.T) {
 	svc := NewService(repo, lockManager)
 	ctx := context.Background()
 
-	// Give alice only 1 lootbox1
+	// Give alice only 1 loot box1
 	repo.inventories["user-alice"].Slots = append(repo.inventories["user-alice"].Slots,
 		domain.InventorySlot{ItemID: 2, Quantity: 1})
 
@@ -338,5 +355,283 @@ func TestDisassembleItem_RemovesSlotWhenEmpty(t *testing.T) {
 		if slot.ItemID == 2 {
 			t.Error("Expected lootbox1 slot to be removed")
 		}
+	}
+}
+
+// ==================== UpgradeItem Tests ====================
+
+func TestUpgradeItem_Success(t *testing.T) {
+	repo := NewMockRepository()
+	setupTestData(repo)
+	lockManager := concurrency.NewLockManager()
+	svc := NewService(repo, lockManager)
+	ctx := context.Background()
+
+	// Give alice 2 lootbox0
+	repo.inventories["user-alice"].Slots = append(repo.inventories["user-alice"].Slots,
+		domain.InventorySlot{ItemID: 1, Quantity: 2})
+
+	// Unlock the upgrade recipe
+	repo.UnlockRecipe(ctx, "user-alice", 1)
+
+	// Upgrade 2 lootbox0 to 2 lootbox1
+	itemName, quantity, err := svc.UpgradeItem(ctx, "alice", "twitch", "lootbox1", 2)
+	if err != nil {
+		t.Fatalf("UpgradeItem failed: %v", err)
+	}
+
+	if itemName != "lootbox1" {
+		t.Errorf("Expected itemName lootbox1, got %s", itemName)
+	}
+
+	if quantity != 2 {
+		t.Errorf("Expected 2 upgraded, got %d", quantity)
+	}
+
+	// Verify inventory
+	inv, _ := repo.GetInventory(ctx, "user-alice")
+	var lootbox1Count, lootbox0Count int
+	for _, slot := range inv.Slots {
+		if slot.ItemID == 2 {
+			lootbox1Count = slot.Quantity
+		}
+		if slot.ItemID == 1 {
+			lootbox0Count = slot.Quantity
+		}
+	}
+
+	if lootbox1Count != 2 {
+		t.Errorf("Expected 2 lootbox1, got %d", lootbox1Count)
+	}
+	if lootbox0Count != 0 {
+		t.Errorf("Expected 0 lootbox0, got %d", lootbox0Count)
+	}
+}
+
+func TestUpgradeItem_InsufficientMaterials(t *testing.T) {
+	repo := NewMockRepository()
+	setupTestData(repo)
+	lockManager := concurrency.NewLockManager()
+	svc := NewService(repo, lockManager)
+	ctx := context.Background()
+
+	// Give alice only 1 lootbox0
+	repo.inventories["user-alice"].Slots = append(repo.inventories["user-alice"].Slots,
+		domain.InventorySlot{ItemID: 1, Quantity: 1})
+
+	// Unlock the recipe
+	repo.UnlockRecipe(ctx, "user-alice", 1)
+
+	// Try to upgrade 2 (should only process 1)
+	_, quantity, err := svc.UpgradeItem(ctx, "alice", "twitch", "lootbox1", 2)
+	if err != nil {
+		t.Fatalf("UpgradeItem failed: %v", err)
+	}
+
+	if quantity != 1 {
+		t.Errorf("Expected 1 upgraded (max available), got %d", quantity)
+	}
+}
+
+func TestUpgradeItem_NoMaterials(t *testing.T) {
+	repo := NewMockRepository()
+	setupTestData(repo)
+	lockManager := concurrency.NewLockManager()
+	svc := NewService(repo, lockManager)
+	ctx := context.Background()
+
+	// Unlock recipe but alice has no materials
+	repo.UnlockRecipe(ctx, "user-alice", 1)
+
+	// Try to upgrade
+	_, _, err := svc.UpgradeItem(ctx, "alice", "twitch", "lootbox1", 1)
+	if err == nil {
+		t.Error("Expected error when upgrading with no materials")
+	}
+}
+
+func TestUpgradeItem_RecipeNotUnlocked(t *testing.T) {
+	repo := NewMockRepository()
+	setupTestData(repo)
+	lockManager := concurrency.NewLockManager()
+	svc := NewService(repo, lockManager)
+	ctx := context.Background()
+
+	// Give alice materials but don't unlock recipe
+	repo.inventories["user-alice"].Slots = append(repo.inventories["user-alice"].Slots,
+		domain.InventorySlot{ItemID: 1, Quantity: 1})
+
+	// Try to upgrade without unlocked recipe
+	_, _, err := svc.UpgradeItem(ctx, "alice", "twitch", "lootbox1", 1)
+	if err == nil {
+		t.Error("Expected error when recipe is not unlocked")
+	}
+}
+
+func TestUpgradeItem_NoRecipe(t *testing.T) {
+	repo := NewMockRepository()
+	setupTestData(repo)
+	lockManager := concurrency.NewLockManager()
+	svc := NewService(repo, lockManager)
+	ctx := context.Background()
+
+	// Try to upgrade lootbox0 which has no recipe
+	_, _, err := svc.UpgradeItem(ctx, "alice", "twitch", "lootbox0", 1)
+	if err == nil {
+		t.Error("Expected error when item has no recipe")
+	}
+}
+
+func TestUpgradeItem_UserNotFound(t *testing.T) {
+	repo := NewMockRepository()
+	setupTestData(repo)
+	lockManager := concurrency.NewLockManager()
+	svc := NewService(repo, lockManager)
+	ctx := context.Background()
+
+	// Try with non-existent user
+	_, _, err := svc.UpgradeItem(ctx, "nonexistent", "twitch", "lootbox1", 1)
+	if err == nil {
+		t.Error("Expected error for non-existent user")
+	}
+}
+
+// ==================== GetRecipe Tests ====================
+
+func TestGetRecipe_WithoutUsername(t *testing.T) {
+	repo := NewMockRepository()
+	setupTestData(repo)
+	lockManager := concurrency.NewLockManager()
+	svc := NewService(repo, lockManager)
+	ctx := context.Background()
+
+	// Get recipe without username (no lock status)
+	recipe, err := svc.GetRecipe(ctx, "lootbox1", "")
+	if err != nil {
+		t.Fatalf("GetRecipe failed: %v", err)
+	}
+
+	if recipe.ItemName != "lootbox1" {
+		t.Errorf("Expected itemName lootbox1, got %s", recipe.ItemName)
+	}
+
+	if recipe.Locked {
+		t.Error("Locked should be false when no username provided")
+	}
+
+	if len(recipe.BaseCost) != 1 {
+		t.Errorf("Expected 1 base cost, got %d", len(recipe.BaseCost))
+	}
+}
+
+func TestGetRecipe_Unlocked(t *testing.T) {
+	repo := NewMockRepository()
+	setupTestData(repo)
+	lockManager := concurrency.NewLockManager()
+	svc := NewService(repo, lockManager)
+	ctx := context.Background()
+
+	// Unlock the recipe
+	repo.UnlockRecipe(ctx, "user-alice", 1)
+
+	// Get recipe with username
+	recipe, err := svc.GetRecipe(ctx, "lootbox1", "alice")
+	if err != nil {
+		t.Fatalf("GetRecipe failed: %v", err)
+	}
+
+	if recipe.Locked {
+		t.Error("Recipe should be unlocked")
+	}
+}
+
+func TestGetRecipe_Locked(t *testing.T) {
+	repo := NewMockRepository()
+	setupTestData(repo)
+	lockManager := concurrency.NewLockManager()
+	svc := NewService(repo, lockManager)
+	ctx := context.Background()
+
+	// Don't unlock the recipe
+	recipe, err := svc.GetRecipe(ctx, "lootbox1", "alice")
+	if err != nil {
+		t.Fatalf("GetRecipe failed: %v", err)
+	}
+
+	if !recipe.Locked {
+		t.Error("Recipe should be locked")
+	}
+}
+
+func TestGetRecipe_ItemNotFound(t *testing.T) {
+	repo := NewMockRepository()
+	setupTestData(repo)
+	lockManager := concurrency.NewLockManager()
+	svc := NewService(repo, lockManager)
+	ctx := context.Background()
+
+	// Try to get recipe for non-existent item
+	_, err := svc.GetRecipe(ctx, "nonexistent", "")
+	if err == nil {
+		t.Error("Expected error for non-existent item")
+	}
+}
+
+// ==================== GetUnlockedRecipes Tests ====================
+
+func TestGetUnlockedRecipes_Success(t *testing.T) {
+	repo := NewMockRepository()
+	setupTestData(repo)
+	lockManager := concurrency.NewLockManager()
+	svc := NewService(repo, lockManager)
+	ctx := context.Background()
+
+	// Unlock recipe for alice
+	repo.UnlockRecipe(ctx, "user-alice", 1)
+
+	// Get unlocked recipes
+	recipes, err := svc.GetUnlockedRecipes(ctx, "alice")
+	if err != nil {
+		t.Fatalf("GetUnlockedRecipes failed: %v", err)
+	}
+
+	if len(recipes) != 1 {
+		t.Errorf("Expected 1 unlocked recipe, got %d", len(recipes))
+	}
+
+	if len(recipes) > 0 && recipes[0].ItemName != "lootbox1" {
+		t.Errorf("Expected recipe for lootbox1, got %s", recipes[0].ItemName)
+	}
+}
+
+func TestGetUnlockedRecipes_NoUnlockedRecipes(t *testing.T) {
+	repo := NewMockRepository()
+	setupTestData(repo)
+	lockManager := concurrency.NewLockManager()
+	svc := NewService(repo, lockManager)
+	ctx := context.Background()
+
+	// Don't unlock any recipes
+	recipes, err := svc.GetUnlockedRecipes(ctx, "alice")
+	if err != nil {
+		t.Fatalf("GetUnlockedRecipes failed: %v", err)
+	}
+
+	if len(recipes) != 0 {
+		t.Errorf("Expected 0 unlocked recipes, got %d", len(recipes))
+	}
+}
+
+func TestGetUnlockedRecipes_UserNotFound(t *testing.T) {
+	repo := NewMockRepository()
+	setupTestData(repo)
+	lockManager := concurrency.NewLockManager()
+	svc := NewService(repo, lockManager)
+	ctx := context.Background()
+
+	// Try with non-existent user
+	_, err := svc.GetUnlockedRecipes(ctx, "nonexistent")
+	if err == nil {
+		t.Error("Expected error for non-existent user")
 	}
 }

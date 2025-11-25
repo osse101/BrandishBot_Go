@@ -1,0 +1,56 @@
+basePath: /
+definitions:
+  handler.HealthResponse:
+    properties:
+      message:
+        type: string
+      status:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    name: API Support
+    url: https://github.com/osse101/BrandishBot_Go
+  description: API for BrandishBot game engine - inventory, crafting, economy, and
+    stats management
+  title: BrandishBot API
+  version: "1.0"
+paths:
+  /healthz:
+    get:
+      description: Returns OK if the service is running
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.HealthResponse'
+      summary: Liveness check
+      tags:
+      - health
+  /readyz:
+    get:
+      description: Returns OK if the service is ready to accept traffic (database
+        connected)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.HealthResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/handler.HealthResponse'
+      summary: Readiness check
+      tags:
+      - health
+securityDefinitions:
+  ApiKeyAuth:
+    in: header
+    name: X-API-Key
+    type: apiKey
+swagger: "2.0"
