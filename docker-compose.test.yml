@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  test-db:
+    image: postgres:15
+    container_name: brandishbot_test_db
+    environment:
+      POSTGRES_USER: testuser
+      POSTGRES_PASSWORD: testpass
+      POSTGRES_DB: testdb
+    ports:
+      - "5433:5432"  # Different port to avoid conflict with dev DB
+    volumes:
+      - test_pgdata:/var/lib/postgresql/data
+      - ./scripts:/docker-entrypoint-initdb.d:ro  # Auto-load seed scripts
+    networks:
+      - test_backend
+    restart: unless-stopped
+
+volumes:
+  test_pgdata:
+    name: brandishbot_go_test_pgdata
+
+networks:
+  test_backend:
+    driver: bridge
