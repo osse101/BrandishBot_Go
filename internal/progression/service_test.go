@@ -362,6 +362,42 @@ func setupTestTree(repo *MockRepository) {
 	repo.nodes[economyID] = economy
 	repo.nodesByKey["feature_economy"] = economy
 	
+	// Buy node (child of economy)
+	buyID := 6
+	buyParent := economyID
+	buy := &domain.ProgressionNode{
+		ID:           buyID,
+		NodeKey:      FeatureBuy,
+		NodeType:     "feature",
+		DisplayName:  "Buy Items",
+		Description:  "Buy items feature",
+		ParentNodeID: &buyParent,
+		MaxLevel:     1,
+		UnlockCost:   800,
+		SortOrder:    11,
+		CreatedAt:    time.Now(),
+	}
+	repo.nodes[buyID] = buy
+	repo.nodesByKey[FeatureBuy] = buy
+	
+	// Sell node (child of economy)
+	sellID := 7
+	sellParent := economyID
+	sell := &domain.ProgressionNode{
+		ID:           sellID,
+		NodeKey:      FeatureSell,
+		NodeType:     "feature",
+		DisplayName:  "Sell Items",
+		Description:  "Sell items feature",
+		ParentNodeID: &sellParent,
+		MaxLevel:     1,
+		UnlockCost:   800,
+		SortOrder:    12,
+		CreatedAt:    time.Now(),
+	}
+	repo.nodes[sellID] = sell
+	repo.nodesByKey[FeatureSell] = sell
+	
 	// Lootbox0 node (child of root)
 	lootbox0ID := 4
 	lb0Parent := rootID
@@ -380,7 +416,61 @@ func setupTestTree(repo *MockRepository) {
 	repo.nodes[lootbox0ID] = lootbox0
 	repo.nodesByKey["item_lootbox0"] = lootbox0
 	
-	// Cooldown reduction (multi-level node)
+	// Upgrade node (child of lootbox0)
+	upgradeID := 8
+	upgradeParent := lootbox0ID
+	upgrade := &domain.ProgressionNode{
+		ID:           upgradeID,
+		NodeKey:      FeatureUpgrade,
+		NodeType:     "feature",
+		DisplayName:  "Upgrade Items",
+		Description:  "Upgrade system",
+		ParentNodeID: &upgradeParent,
+		MaxLevel:     1,
+		UnlockCost:   1500,
+		SortOrder:    20,
+		CreatedAt:    time.Now(),
+	}
+	repo.nodes[upgradeID] = upgrade
+	repo.nodesByKey[FeatureUpgrade] = upgrade
+	
+	// Disassemble node (child of lootbox0)
+	disassembleID := 9
+	disassembleParent := lootbox0ID
+	disassemble := &domain.ProgressionNode{
+		ID:           disassembleID,
+		NodeKey:      FeatureDisassemble,
+		NodeType:     "feature",
+		DisplayName:  "Disassemble Items",
+		Description:  "Disassemble system",
+		ParentNodeID: &disassembleParent,
+		MaxLevel:     1,
+		UnlockCost:   1000,
+		SortOrder:    21,
+		CreatedAt:    time.Now(),
+	}
+	repo.nodes[disassembleID] = disassemble
+	repo.nodesByKey[FeatureDisassemble] = disassemble
+	
+	// Search node (child of lootbox0)
+	searchID := 10
+	searchParent := lootbox0ID
+	search := &domain.ProgressionNode{
+		ID:           searchID,
+		NodeKey:      FeatureSearch,
+		NodeType:     "feature",
+		DisplayName:  "Search System",
+		Description:  "Search system",
+		ParentNodeID: &searchParent,
+		MaxLevel:     1,
+		UnlockCost:   1000,
+		SortOrder:    23,
+		CreatedAt:    time.Now(),
+	}
+	repo.nodes[searchID] = search
+	repo.nodesByKey[FeatureSearch] = search
+	
+	// Cooldown reduction (multi-level node, child of economy)
 	cooldownID := 5
 	cdParent := economyID
 	cooldown := &domain.ProgressionNode{
@@ -412,8 +502,8 @@ func TestGetProgressionTree(t *testing.T) {
 		t.Fatalf("GetProgressionTree failed: %v", err)
 	}
 	
-	if len(tree) != 5 {
-		t.Errorf("Expected 5 nodes, got %d", len(tree))
+	if len(tree) != 10 {
+		t.Errorf("Expected 10 nodes, got %d", len(tree))
 	}
 	
 	// Check root is unlocked

@@ -6,6 +6,7 @@ import (
 
 	"github.com/osse101/BrandishBot_Go/internal/economy"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
+	"github.com/osse101/BrandishBot_Go/internal/progression"
 	"github.com/osse101/BrandishBot_Go/internal/user"
 )
 
@@ -176,9 +177,22 @@ type SellItemResponse struct {
 	ItemsSold   int `json:"items_sold"`
 }
 
-func HandleSellItem(svc economy.Service) http.HandlerFunc {
+func HandleSellItem(svc economy.Service, progressionSvc progression.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
+		
+		// Check if sell feature is unlocked
+		unlocked, err := progressionSvc.IsFeatureUnlocked(r.Context(), progression.FeatureSell)
+		if err != nil {
+			log.Error("Failed to check feature unlock status", "error", err)
+			http.Error(w, "Failed to check feature availability", http.StatusInternalServerError)
+			return
+		}
+		if !unlocked {
+			log.Warn("Sell feature is locked")
+			http.Error(w, "Sell feature is not yet unlocked", http.StatusForbidden)
+			return
+		}
 		
 		var req SellItemRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -228,9 +242,22 @@ type BuyItemResponse struct {
 	ItemsBought int `json:"items_bought"`
 }
 
-func HandleBuyItem(svc economy.Service) http.HandlerFunc {
+func HandleBuyItem(svc economy.Service, progressionSvc progression.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
+		
+		// Check if buy feature is unlocked
+		unlocked, err := progressionSvc.IsFeatureUnlocked(r.Context(), progression.FeatureBuy)
+		if err != nil {
+			log.Error("Failed to check feature unlock status", "error", err)
+			http.Error(w, "Failed to check feature availability", http.StatusInternalServerError)
+			return
+		}
+		if !unlocked {
+			log.Warn("Buy feature is locked")
+			http.Error(w, "Buy feature is not yet unlocked", http.StatusForbidden)
+			return
+		}
 		
 		var req BuyItemRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

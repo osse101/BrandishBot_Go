@@ -6,6 +6,7 @@ import (
 
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
+	"github.com/osse101/BrandishBot_Go/internal/progression"
 )
 
 type UpgradeItemRequest struct {
@@ -20,9 +21,22 @@ type UpgradeItemResponse struct {
 	QuantityUpgraded int    `json:"quantity_upgraded"`
 }
 
-func HandleUpgradeItem(svc crafting.Service) http.HandlerFunc {
+func HandleUpgradeItem(svc crafting.Service, progressionSvc progression.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
+		
+		// Check if upgrade feature is unlocked
+		unlocked, err := progressionSvc.IsFeatureUnlocked(r.Context(), progression.FeatureUpgrade)
+		if err != nil {
+			log.Error("Failed to check feature unlock status", "error", err)
+			http.Error(w, "Failed to check feature availability", http.StatusInternalServerError)
+			return
+		}
+		if !unlocked {
+			log.Warn("Upgrade feature is locked")
+			http.Error(w, "Upgrade feature is not yet unlocked", http.StatusForbidden)
+			return
+		}
 		
 		var req UpgradeItemRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
