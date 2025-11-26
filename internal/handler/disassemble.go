@@ -6,6 +6,7 @@ import (
 
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
+	"github.com/osse101/BrandishBot_Go/internal/middleware"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 )
 
@@ -68,6 +69,14 @@ func HandleDisassembleItem(svc crafting.Service, progressionSvc progression.Serv
 			"item", req.Item,
 			"quantity_processed", quantityProcessed,
 			"outputs", outputs)
+
+		// Track engagement for disassembly (counts as crafting activity)
+		middleware.TrackEngagementFromContext(
+			middleware.WithUserID(r.Context(), req.Username),
+			progressionSvc,
+			"item_crafted",
+			quantityProcessed,
+		)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)

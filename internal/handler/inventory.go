@@ -6,6 +6,7 @@ import (
 
 	"github.com/osse101/BrandishBot_Go/internal/economy"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
+	"github.com/osse101/BrandishBot_Go/internal/middleware"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 	"github.com/osse101/BrandishBot_Go/internal/user"
 )
@@ -306,7 +307,7 @@ type UseItemResponse struct {
 	Message string `json:"message"`
 }
 
-func HandleUseItem(svc user.Service) http.HandlerFunc {
+func HandleUseItem(svc user.Service, progressionSvc progression.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
 		
@@ -346,6 +347,14 @@ func HandleUseItem(svc user.Service) http.HandlerFunc {
 			"item", req.ItemName,
 			"quantity", req.Quantity,
 			"message", message)
+
+	// Track engagement for item usage
+	middleware.TrackEngagementFromContext(
+		middleware.WithUserID(r.Context(), req.Username),
+		progressionSvc,
+		"item_used",
+		req.Quantity,
+	)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)

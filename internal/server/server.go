@@ -37,14 +37,14 @@ func NewServer(port int, apiKey string, dbPool database.Pool, userService user.S
 	
 	// User routes
 	mux.HandleFunc("/user/register", handler.HandleRegisterUser(userService))
-	mux.HandleFunc("/message/handle", handler.HandleMessageHandler(userService))
+	mux.HandleFunc("/message/handle", handler.HandleMessageHandler(userService, progressionService))
 	mux.HandleFunc("/test", handler.HandleTest(userService))
 	mux.HandleFunc("/user/item/add", handler.HandleAddItem(userService))
 	mux.HandleFunc("/user/item/remove", handler.HandleRemoveItem(userService))
 	mux.HandleFunc("/user/item/give", handler.HandleGiveItem(userService))
 	mux.HandleFunc("/user/item/sell", handler.HandleSellItem(economyService, progressionService))
 	mux.HandleFunc("/user/item/buy", handler.HandleBuyItem(economyService, progressionService))
-	mux.HandleFunc("/user/item/use", handler.HandleUseItem(userService))
+	mux.HandleFunc("/user/item/use", handler.HandleUseItem(userService, progressionService))
 	mux.HandleFunc("/user/item/upgrade", handler.HandleUpgradeItem(craftingService, progressionService))
 	mux.HandleFunc("/user/item/disassemble", handler.HandleDisassembleItem(craftingService, progressionService))
 	mux.HandleFunc("/recipes", handler.HandleGetRecipes(craftingService))

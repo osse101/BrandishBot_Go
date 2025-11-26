@@ -6,6 +6,7 @@ import (
 
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
+	"github.com/osse101/BrandishBot_Go/internal/middleware"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 )
 
@@ -67,6 +68,14 @@ func HandleUpgradeItem(svc crafting.Service, progressionSvc progression.Service)
 			"username", req.Username,
 			"item", req.Item,
 			"quantity_upgraded", quantityUpgraded)
+
+		// Track engagement for crafting
+		middleware.TrackEngagementFromContext(
+			middleware.WithUserID(r.Context(), req.Username),
+			progressionSvc,
+			"item_crafted",
+			quantityUpgraded,
+		)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
