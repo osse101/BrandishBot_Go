@@ -9,13 +9,18 @@
 *.dylib
 bin/
 
+# Built binaries
+/cmd/app/app
+/main
+
 # Test binary, built with `go test -c`
 *.test
 
-# Output of the go coverage tool, specifically when used with LiteIDE
-*.out
-*_coverage.out
-coverage.html
+# Output of the go coverage tool
+# Root coverage files (prefer logs/ directory)
+/coverage.out
+/coverage.html
+/*.out
 backup.sql
 
 # Dependency directories (remove the comment below to include it)
@@ -31,4 +36,6 @@ go.work.sum
 # Output directory
 Output/
 
+# Log files
 logs/
+*.log

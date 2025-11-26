@@ -10,15 +10,24 @@ import (
 
 // Config holds the application configuration
 type Config struct {
+	// Server
 	Port       int
-	LogLevel   string
+	APIKey     string // API key for authentication
+	
+	// Logging
+	LogLevel      string
+	LogFormat     string // "json" or "text"
+	LogDir        string
+	ServiceName   string
+	Version       string
+	Environment   string // "dev", "staging", "prod"
+	
+	// Database
 	DBUser     string
 	DBPassword string
 	DBHost     string
 	DBPort     string
 	DBName     string
-	LogDir     string
-	APIKey     string // API key for authentication
 }
 
 // Load loads the configuration from environment variables
@@ -27,13 +36,22 @@ func Load() (*Config, error) {
 	_ = godotenv.Load()
 
 	cfg := &Config{
-		LogLevel:   getEnv("LOG_LEVEL", "INFO"),
+		// Logging config
+		LogLevel:    getEnv("LOG_LEVEL", "info"),
+		LogFormat:   getEnv("LOG_FORMAT", "text"),
+		LogDir:      getEnv("LOG_DIR", "logs"),
+		ServiceName: getEnv("SERVICE_NAME", "brandish-bot"),
+		Version:     getEnv("VERSION", "dev"),
+		Environment: getEnv("ENVIRONMENT", "dev"),
+		
+		// Database config
 		DBUser:     getEnv("DB_USER", "postgres"),
 		DBPassword: getEnv("DB_PASSWORD", "postgres"),
 		DBHost:     getEnv("DB_HOST", "localhost"),
 		DBPort:     getEnv("DB_PORT", "5432"),
 		DBName:     getEnv("DB_NAME", "brandishbot"),
-		LogDir:     getEnv("LOG_DIR", "logs"),
+		
+		// Server config
 		APIKey:     getEnv("API_KEY", ""),
 	}
 

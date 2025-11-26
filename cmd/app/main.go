@@ -38,11 +38,28 @@ import (
 // @name X-API-Key
 
 func main() {
-	// Load configuration
+	// Load configuration FIRST (single source of truth)
 	cfg, err := config.Load()
 	if err != nil {
-		panic(fmt.Sprintf("Failed to load configuration: %v", err))
+		// Can't use structured logger yet, use basic logging
+		fmt.Fprintf(os.Stderr, "Failed to load configuration: %v\n", err)
+		os.Exit(1)
 	}
+	
+	// Initialize logger based on config
+	initLogger(cfg)
+	
+	slog.Info("Starting BrandishBot",
+		"environment", cfg.Environment,
+		"log_level", cfg.LogLevel,
+		"log_format", cfg.LogFormat,
+		"version", cfg.Version)
+	
+	slog.Debug("Configuration loaded", 
+		"db_host", cfg.DBHost,
+		"db_port", cfg.DBPort,
+		"db_name", cfg.DBName,
+		"port", cfg.Port)
 
 	// Setup logging
 	if err := os.MkdirAll(cfg.LogDir, 0755); err != nil {

@@ -60,10 +60,10 @@ test:
 	@go test ./... -cover -race
 
 test-coverage:
-	@echo "Generating coverage report..."
-	@go test ./... -coverprofile=coverage.out
-	@go tool cover -html=coverage.out -o coverage.html
-	@echo "Coverage report generated: coverage.html"
+	@mkdir -p logs
+	go test ./... -coverprofile=logs/coverage.out -covermode=atomic
+	go tool cover -html=logs/coverage.out -o logs/coverage.html
+	@echo "Coverage report generated: logs/coverage.html"
 
 build:
 	@echo "Building binaries..."
