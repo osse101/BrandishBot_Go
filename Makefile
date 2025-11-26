@@ -101,6 +101,11 @@ test-integration:
 	@echo "Running integration tests..."
 	@go test ./internal/database/postgres -v -timeout=30s
 
+test-staging:
+	@echo "Running staging integration tests..."
+	@echo "Target: $${STAGING_URL:-http://localhost:8080}"
+	@go test -tags=staging -v ./tests/staging
+
 db-test-up:
 	@echo "Starting test database..."
 	@docker-compose -f docker-compose.test.yml up -d
