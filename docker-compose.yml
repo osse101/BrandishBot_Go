@@ -9,11 +9,19 @@ services:
       - .env
     environment:
       - DB_HOST=db
+    # Optional: Mount configs for hot-reload
+    # volumes:
+    #   - ./configs:/app/configs:ro
     depends_on:
       - db
     restart: unless-stopped
     networks:
       - backend
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   db:
     image: postgres:15
@@ -29,6 +37,11 @@ services:
       - pgdata:/var/lib/postgresql/data
     networks:
       - backend
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     restart: unless-stopped
 
 volumes:

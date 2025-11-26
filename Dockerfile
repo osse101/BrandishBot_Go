@@ -23,7 +23,7 @@ COPY . .
 # Build the application
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    CGO_ENABLED=0 GOOS=linux go build -o brandishbot ./cmd/app
+    CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o brandishbot ./cmd/app
 
 # Runtime stage
 FROM alpine:latest
