@@ -1,5 +1,9 @@
 .PHONY: help migrate-up migrate-down migrate-status migrate-create test build run
 
+# Tool paths
+GOOSE := $(shell command -v goose 2> /dev/null || echo $(HOME)/go/bin/goose)
+SWAG := $(shell command -v swag 2> /dev/null || echo $(HOME)/go/bin/swag)
+
 # Default target
 help:
 	@echo "BrandishBot_Go - Makefile Commands"
@@ -36,15 +40,15 @@ DB_URL ?= postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?
 # Migration commands
 migrate-up:
 	@echo "Running migrations..."
-	@goose -dir migrations postgres "$(DB_URL)" up
+	@$(GOOSE) -dir migrations postgres "$(DB_URL)" up
 
 migrate-down:
 	@echo "Rolling back migration..."
-	@goose -dir migrations postgres "$(DB_URL)" down
+	@$(GOOSE) -dir migrations postgres "$(DB_URL)" down
 
 migrate-status:
 	@echo "Migration status:"
-	@goose -dir migrations postgres "$(DB_URL)" status
+	@$(GOOSE) -dir migrations postgres "$(DB_URL)" status
 
 migrate-create:
 	@if [ -z "$(NAME)" ]; then \
@@ -52,7 +56,7 @@ migrate-create:
 		exit 1; \
 	fi
 	@echo "Creating migration: $(NAME)"
-	@goose -dir migrations create $(NAME) sql
+	@$(GOOSE) -dir migrations create $(NAME) sql
 
 # Development commands
 test:

@@ -1,3 +1,4 @@
+-- +goose Up
 -- Seed Item Types
 INSERT INTO item_types (type_name) VALUES ('consumable'), ('upgradeable') ON CONFLICT DO NOTHING;
 
@@ -15,3 +16,11 @@ FROM items i, item_types t
 WHERE i.item_name IN ('lootbox0', 'lootbox1', 'lootbox2')
   AND t.type_name IN ('consumable', 'upgradeable')
 ON CONFLICT DO NOTHING;
+
+-- +goose Down
+-- Remove seed data
+DELETE FROM item_type_assignments WHERE item_id IN (
+    SELECT item_id FROM items WHERE item_name IN ('lootbox0', 'lootbox1', 'lootbox2')
+);
+DELETE FROM items WHERE item_name IN ('lootbox0', 'lootbox1', 'lootbox2');
+DELETE FROM item_types WHERE type_name IN ('consumable', 'upgradeable');

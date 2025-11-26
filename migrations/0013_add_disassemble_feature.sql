@@ -1,3 +1,4 @@
+-- +goose Up
 -- Migration: Add Disassemble Feature
 -- Description: Creates tables for disassemble recipes and adds the example lootbox1 -> lootbox0 recipe
 
@@ -65,3 +66,5 @@ JOIN items upgrade_target ON cr.target_item_id = upgrade_target.item_id
 JOIN disassemble_recipes dr ON dr.source_item_id = upgrade_target.item_id
 WHERE upgrade_target.item_name = 'lootbox1'
 ON CONFLICT (upgrade_recipe_id, disassemble_recipe_id) DO NOTHING;
+
+-- +goose Down

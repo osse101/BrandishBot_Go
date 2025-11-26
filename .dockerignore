@@ -29,7 +29,6 @@ logs/
 docker-compose.yml
 Dockerfile
 setup_env.sh
-scripts/
 
 # Documentation
 *.md

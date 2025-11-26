@@ -380,7 +380,7 @@ func applyMigrations(ctx context.Context, pool *pgxpool.Pool, migrationsDir stri
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			name := entry.Name()
-			// Accept both .up.sql and .sql files (exclude .down.sql)
+			// Accept both .up.sql and .sql files (exclude .down.sql and archive dir)
 			if (strings.HasSuffix(name, ".up.sql") || strings.HasSuffix(name, ".sql")) && !strings.HasSuffix(name, ".down.sql") {
 				migrationFiles = append(migrationFiles, filepath.Join(migrationsDir, name))
 			}
@@ -399,11 +399,21 @@ func applyMigrations(ctx context.Context, pool *pgxpool.Pool, migrationsDir stri
 			return fmt.Errorf("failed to read migration file %s: %w", file, err)
 		}
 
-		// Strip out the "Down" section if it exists (goose-style migrations)
 		contentStr := string(content)
+		
+		// Strip out goose markers (for goose v3 compatibility)
+		// Remove "-- +goose Up" from the beginning
+		contentStr = strings.Replace(contentStr, "-- +goose Up\n", "", 1)
+		// Remove "-- +goose Up" without newline
+		contentStr = strings.Replace(contentStr, "-- +goose Up", "", 1)
+		
+		// Strip out the "Down" section if it exists (goose-style migrations)
 		if downIdx := strings.Index(contentStr, "-- +goose Down"); downIdx != -1 {
 			contentStr = contentStr[:downIdx]
 		}
+
+		// Trim any leading/trailing whitespace
+		contentStr = strings.TrimSpace(contentStr)
 
 		fmt.Printf("Executing: %s\n", filepath.Base(file))
 		_, err = pool.Exec(ctx, contentStr)

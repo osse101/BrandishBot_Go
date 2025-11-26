@@ -1,3 +1,4 @@
+-- +goose Up
 -- Create platforms table
 CREATE TABLE IF NOT EXISTS platforms (
     platform_id SERIAL PRIMARY KEY,
@@ -23,3 +24,9 @@ CREATE TABLE IF NOT EXISTS user_platform_links (
 
 -- Create index on platform_user_id for fast lookups
 CREATE INDEX IF NOT EXISTS idx_platform_user_id ON user_platform_links(platform_user_id);
+
+-- +goose Down
+-- Drop tables in reverse order
+DROP TABLE IF EXISTS user_platform_links;
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS platforms;

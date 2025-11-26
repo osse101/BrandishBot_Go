@@ -1,3 +1,4 @@
+-- +goose Up
 -- Create stats_events table for tracking all user activities
 CREATE TABLE IF NOT EXISTS stats_events (
     event_id BIGSERIAL PRIMARY KEY,
@@ -27,3 +28,8 @@ CREATE TABLE IF NOT EXISTS stats_aggregates (
 
 -- Create index for efficient aggregate lookups
 CREATE INDEX IF NOT EXISTS idx_stats_aggregates_period ON stats_aggregates(period, period_start);
+
+-- +goose Down
+-- Drop stats tables
+DROP TABLE IF EXISTS stats_aggregates;
+DROP TABLE IF EXISTS stats_events;

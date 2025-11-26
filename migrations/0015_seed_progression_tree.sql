@@ -1,6 +1,7 @@
 -- +goose Up
 -- Seed initial progression tree
 
+
 -- Root: Unlock progression system itself (auto-unlocked, cost 0)
 INSERT INTO progression_nodes (node_key, node_type, display_name, description, parent_node_id, max_level, unlock_cost, sort_order) VALUES
 ('progression_system', 'feature', 'Progression System', 'Unlock the community progression system', NULL, 1, 0, 0);
@@ -45,3 +46,5 @@ DELETE FROM progression_nodes WHERE node_key IN (
     'feature_sell', 'item_lootbox1', 'feature_gamble', 'feature_duel',
     'feature_expedition', 'upgrade_cooldown_reduction'
 );
+
+-- +goose Down

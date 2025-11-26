@@ -1,3 +1,4 @@
+-- +goose Up
 -- Create items table
 CREATE TABLE IF NOT EXISTS items (
     item_id SERIAL PRIMARY KEY,
@@ -5,3 +6,7 @@ CREATE TABLE IF NOT EXISTS items (
     item_description TEXT,
     base_value INTEGER DEFAULT 0
 );
+
+-- +goose Down
+-- Drop items table
+DROP TABLE IF EXISTS items;

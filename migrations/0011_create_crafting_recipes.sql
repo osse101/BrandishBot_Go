@@ -1,3 +1,4 @@
+-- +goose Up
 -- Create crafting_recipes table
 CREATE TABLE IF NOT EXISTS crafting_recipes (
     recipe_id SERIAL PRIMARY KEY,
@@ -20,3 +21,10 @@ CREATE INDEX IF NOT EXISTS idx_recipes_target_item ON crafting_recipes(target_it
 
 -- Index for fast unlock checks
 CREATE INDEX IF NOT EXISTS idx_recipe_unlocks_user ON recipe_unlocks(user_id);
+
+-- +goose Down
+-- Drop recipe_unlocks table first (due to foreign key)
+DROP TABLE IF EXISTS recipe_unlocks;
+
+-- Drop crafting_recipes table
+DROP TABLE IF EXISTS crafting_recipes;
