@@ -72,6 +72,7 @@ Visit http://localhost:8080/swagger/index.html
 ├── cmd/              # Entry points
 │   ├── app/         # Main application
 │   ├── setup/       # Database setup
+│   ├── reset/       # Database reset utility
 │   └── debug/       # Debug tools
 ├── internal/        # Application code
 │   ├── handler/     # HTTP handlers

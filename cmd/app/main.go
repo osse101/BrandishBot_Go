@@ -46,22 +46,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Initialize logger based on config
-	initLogger(cfg)
-
-	slog.Info("Starting BrandishBot",
-		"environment", cfg.Environment,
-		"log_level", cfg.LogLevel,
-		"log_format", cfg.LogFormat,
-		"version", cfg.Version)
-
-	slog.Debug("Configuration loaded",
-		"db_host", cfg.DBHost,
-		"db_port", cfg.DBPort,
-		"db_name", cfg.DBName,
-		"port", cfg.Port)
-
-	// Setup logging
+	// Setup logging directory and file
 	if err := os.MkdirAll(cfg.LogDir, 0755); err != nil {
 		panic(fmt.Sprintf("Failed to create logs directory: %v", err))
 	}
@@ -78,6 +63,7 @@ func main() {
 	}
 	defer logFile.Close()
 
+	// Initialize logger with MultiWriter (stdout + file)
 	mw := io.MultiWriter(os.Stdout, logFile)
 
 	var level slog.Level
@@ -98,6 +84,17 @@ func main() {
 	slog.SetDefault(logger)
 
 	slog.Info("Logging initialized", "level", level)
+	slog.Info("Starting BrandishBot",
+		"environment", cfg.Environment,
+		"log_level", cfg.LogLevel,
+		"log_format", cfg.LogFormat,
+		"version", cfg.Version)
+
+	slog.Debug("Configuration loaded",
+		"db_host", cfg.DBHost,
+		"db_port", cfg.DBPort,
+		"db_name", cfg.DBName,
+		"port", cfg.Port)
 	// Connect to database with retry logic
 	dbPool, err := database.NewPool(cfg.GetDBConnString())
 	if err != nil {
