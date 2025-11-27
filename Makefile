@@ -16,6 +16,10 @@ help:
 	@echo ""
 	@echo "Development Commands:"
 	@echo "  make test                 - Run all tests with coverage"
+	@echo "  make test-coverage        - Generate  HTML coverage report"
+	@echo "  make test-coverage-check  - Verify 80%+ coverage threshold"
+	@echo "  make lint                 - Run code linters"
+	@echo "  make lint-fix             - Run linters with auto-fix"
 	@echo "  make build                - Build all binaries"
 	@echo "  make run                  - Run the application"
 	@echo "  make swagger              - Generate Swagger docs"
@@ -65,10 +69,36 @@ test:
 	@go test ./... -cover -race
 
 test-coverage:
+	@echo "Running tests with coverage..."
 	@mkdir -p logs
-	go test ./... -coverprofile=logs/coverage.out -covermode=atomic
-	go tool cover -html=logs/coverage.out -o logs/coverage.html
-	@echo "Coverage report generated: logs/coverage.html"
+	@go test -coverprofile=logs/coverage.out -covermode=atomic ./...
+	@go tool cover -html=logs/coverage.out -o logs/coverage.html
+	@COVERAGE=$$(go tool cover -func=logs/coverage.out | grep total | awk '{print $$3}'); \
+	echo "Coverage report generated: logs/coverage.html"; \
+	echo "Total Coverage: $$COVERAGE"
+
+test-coverage-check:
+	@echo "Checking coverage threshold (80%)..."
+	@mkdir -p logs
+	@go test -coverprofile=logs/coverage.out -covermode=atomic ./... >/dev/null 2>&1
+	@COVERAGE=$$(go tool cover -func=logs/coverage.out | grep total | awk '{print $$3}' | sed 's/%//'); \
+	THRESHOLD=80; \
+	if [ $$(echo "$$COVERAGE < $$THRESHOLD" | bc -l) -eq 1 ]; then \
+		echo "❌ Coverage $$COVERAGE% is below $$THRESHOLD% threshold"; \
+		exit 1; \
+	else \
+		echo "✅ Coverage $$COVERAGE% meets $$THRESHOLD% threshold"; \
+	fi
+
+lint:
+	@echo "Running linters..."
+	@which golangci-lint \u003e /dev/null || (echo "golangci-lint not installed. Install with: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest" ; exit 1)
+	@golangci-lint run ./...
+
+lint-fix:
+	@echo "Running linters with auto-fix..."
+	@which golangci-lint \u003e /dev/null || (echo "golangci-lint not installed. Install with: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest" ; exit 1)
+	@golangci-lint run --fix ./...
 
 build:
 	@echo "Building binaries..."

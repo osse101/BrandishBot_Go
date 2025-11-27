@@ -67,6 +67,10 @@ As this system grows, we will incrementally add bounded contexts:
 
 Each service will consume an event stream published by the core inventory system, keeping them loosely coupled yet consistent.
 
+## Feature Development Guide
+
+When developing a new feature, or modifying an existing one, always refer to the [Feature Development Guide](docs/development/FEATURE_DEVELOPMENT_GUIDE.md).
+
 ---
 
 ## 🤖 AI Agent Best Practices

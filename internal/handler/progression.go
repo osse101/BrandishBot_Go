@@ -362,23 +362,3 @@ type AdminResetRequest struct {
 	Reason                  string `json:"reason"`
 	PreserveUserProgression bool   `json:"preserve_user_progression"`
 }
-
-type SuccessResponse struct {
-	Message string `json:"message"`
-}
-
-type ErrorResponse struct {
-	Error string `json:"error"`
-}
-
-// Helper functions
-
-func respondJSON(w http.ResponseWriter, status int, payload interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(payload)
-}
-
-func respondError(w http.ResponseWriter, status int, message string) {
-	respondJSON(w, status, ErrorResponse{Error: message})
-}
