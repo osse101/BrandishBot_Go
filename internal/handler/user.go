@@ -109,7 +109,7 @@ func HandleRegisterUser(userService user.Service) http.HandlerFunc {
 		} else {
 			w.WriteHeader(http.StatusOK)
 		}
-		json.NewEncoder(w).Encode(updatedUser)
+		respondJSON(w, http.StatusOK, updatedUser)
 	}
 }
 

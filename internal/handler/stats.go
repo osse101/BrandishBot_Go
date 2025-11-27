@@ -45,8 +45,7 @@ func HandleRecordEvent(svc stats.Service) http.HandlerFunc {
 
 		log.Info("Event recorded successfully", "user_id", req.UserID, "event_type", req.EventType)
 
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("Event recorded successfully"))
+		respondJSON(w, http.StatusOK, SuccessResponse{Message: "Event recorded successfully"})
 	}
 }
 
@@ -80,7 +79,7 @@ func HandleGetUserStats(svc stats.Service) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(summary)
+		respondJSON(w, http.StatusOK, summary)
 	}
 }
 
@@ -107,7 +106,7 @@ func HandleGetSystemStats(svc stats.Service) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(summary)
+		respondJSON(w, http.StatusOK, summary)
 	}
 }
 
@@ -153,7 +152,7 @@ func HandleGetLeaderboard(svc stats.Service) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		respondJSON(w, http.StatusOK, map[string]interface{}{
 			"event_type": eventType,
 			"period":     period,
 			"entries":    entries,

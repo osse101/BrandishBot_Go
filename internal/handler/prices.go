@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/osse101/BrandishBot_Go/internal/economy"
@@ -23,6 +22,6 @@ func HandleGetPrices(svc economy.Service) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(items)
+		respondJSON(w, http.StatusOK, items)
 	}
 }

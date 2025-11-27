@@ -79,7 +79,7 @@ func HandleUpgradeItem(svc crafting.Service, progressionSvc progression.Service)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(UpgradeItemResponse{
+		respondJSON(w, http.StatusOK, UpgradeItemResponse{
 			NewItem:          newItem,
 			QuantityUpgraded: quantityUpgraded,
 		})
@@ -112,7 +112,7 @@ func HandleGetRecipes(svc crafting.Service) http.HandlerFunc {
 
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			respondJSON(w, http.StatusOK, map[string]interface{}{
 				"recipes": recipes,
 			})
 			return
@@ -131,7 +131,7 @@ func HandleGetRecipes(svc crafting.Service) http.HandlerFunc {
 
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(recipe)
+			respondJSON(w, http.StatusOK, recipe)
 			return
 		}
 

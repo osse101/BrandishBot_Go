@@ -633,7 +633,7 @@ func (s *service) HandleSearch(ctx context.Context, username, platform string) (
 		resultMessage = fmt.Sprintf("You have found 1x %s", item.Name)
 		log.Info("Search successful - lootbox found", "username", username, "item", item.Name)
 	} else {
-		resultMessage = domain.MsgNothingFound
+		resultMessage = domain.MsgSearchNothingFound
 		log.Info("Search successful - nothing found", "username", username)
 	}
 

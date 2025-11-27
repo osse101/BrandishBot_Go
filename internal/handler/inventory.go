@@ -72,8 +72,7 @@ func HandleAddItem(svc user.Service) http.HandlerFunc {
 
 		log.Info("Item added successfully", "username", req.Username, "item", req.ItemName, "quantity", req.Quantity)
 
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("Item added successfully"))
+		respondJSON(w, http.StatusOK, SuccessResponse{Message: "Item added successfully"})
 	}
 }
 
@@ -118,7 +117,7 @@ func HandleRemoveItem(svc user.Service) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(RemoveItemResponse{Removed: removed})
+		respondJSON(w, http.StatusOK, RemoveItemResponse{Removed: removed})
 	}
 }
 
@@ -161,8 +160,7 @@ func HandleGiveItem(svc user.Service) http.HandlerFunc {
 
 		log.Info("Item transferred successfully", "owner", req.Owner, "receiver", req.Receiver, "item", req.ItemName, "quantity", req.Quantity)
 
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("Item transferred successfully"))
+		respondJSON(w, http.StatusOK, SuccessResponse{Message: "Item transferred successfully"})
 	}
 }
 
@@ -223,9 +221,7 @@ func HandleSellItem(svc economy.Service, progressionSvc progression.Service) htt
 			"items_sold", itemsSold,
 			"money_gained", moneyGained)
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(SellItemResponse{
+		respondJSON(w, http.StatusOK, SellItemResponse{
 			MoneyGained: moneyGained,
 			ItemsSold:   itemsSold,
 		})
@@ -287,9 +283,7 @@ func HandleBuyItem(svc economy.Service, progressionSvc progression.Service) http
 			"item", req.ItemName,
 			"items_bought", bought)
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(BuyItemResponse{
+		respondJSON(w, http.StatusOK, BuyItemResponse{
 			ItemsBought: bought,
 		})
 	}
@@ -356,9 +350,7 @@ func HandleUseItem(svc user.Service, progressionSvc progression.Service) http.Ha
 			req.Quantity,
 		)
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(UseItemResponse{
+		respondJSON(w, http.StatusOK, UseItemResponse{
 			Message: message,
 		})
 	}
@@ -390,9 +382,7 @@ func HandleGetInventory(svc user.Service) http.HandlerFunc {
 
 		log.Info("Inventory retrieved", "username", username, "item_count", len(items))
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(GetInventoryResponse{
+		respondJSON(w, http.StatusOK, GetInventoryResponse{
 			Items: items,
 		})
 	}

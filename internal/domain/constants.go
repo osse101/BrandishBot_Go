@@ -35,7 +35,7 @@ const (
 
 // Message constants
 const (
-	MsgNothingFound = "You have found nothing"
+	MsgSearchNothingFound = "You have found nothing"
 )
 
 // Period constants

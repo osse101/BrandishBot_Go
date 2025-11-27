@@ -87,6 +87,6 @@ func HandleMessageHandler(userService user.Service, progressionSvc progression.S
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(user)
+		respondJSON(w, http.StatusOK, user)
 	}
 }

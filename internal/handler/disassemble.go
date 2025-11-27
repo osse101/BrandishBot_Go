@@ -80,7 +80,7 @@ func HandleDisassembleItem(svc crafting.Service, progressionSvc progression.Serv
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(DisassembleItemResponse{
+		respondJSON(w, http.StatusOK, DisassembleItemResponse{
 			Outputs:           outputs,
 			QuantityProcessed: quantityProcessed,
 		})

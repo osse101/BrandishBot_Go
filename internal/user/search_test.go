@@ -131,7 +131,7 @@ func TestHandleSearch_NewUser(t *testing.T) {
 	}
 
 	// Verify result message
-	if message != "You have found 1x "+domain.ItemLootbox0 && message != "You have found nothing" {
+	if message != "You have found 1x "+domain.ItemLootbox0 && message != domain.MsgSearchNothingFound {
 		t.Errorf("Unexpected message: %s", message)
 	}
 
@@ -170,7 +170,7 @@ func TestHandleSearch_ExistingUser(t *testing.T) {
 	}
 
 	// Verify result message
-	if message != "You have found 1x "+domain.ItemLootbox0 && message != "You have found nothing" {
+	if message != "You have found 1x "+domain.ItemLootbox0 && message != domain.MsgSearchNothingFound {
 		t.Errorf("Unexpected message: %s", message)
 	}
 }
@@ -250,7 +250,7 @@ func TestHandleSearch_CooldownExpired(t *testing.T) {
 	}
 
 	// Should be able to search again
-	if message != "You have found 1x "+domain.ItemLootbox0 && message != "You have found nothing" {
+	if message != "You have found 1x "+domain.ItemLootbox0 && message != domain.MsgSearchNothingFound {
 		t.Errorf("Expected search result, got: %s", message)
 	}
 

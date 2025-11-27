@@ -165,11 +165,11 @@ func setupTestData(repo *MockRepository) {
 
 	// Setup items
 	repo.items["lootbox0"] = &domain.Item{ID: 1, Name: "lootbox0", Description: "Basic lootbox"}
-	repo.items["lootbox1"] = &domain.Item{ID: 2, Name: "lootbox1", Description: "Advanced lootbox"}
+	repo.items[domain.ItemLootbox1] = &domain.Item{ID: 2, Name: domain.ItemLootbox1, Description: "Advanced lootbox"}
 	repo.items["lootbox2"] = &domain.Item{ID: 3, Name: "lootbox2", Description: "Premium lootbox"}
 
 	repo.itemsByID[1] = repo.items["lootbox0"]
-	repo.itemsByID[2] = repo.items["lootbox1"]
+	repo.itemsByID[2] = repo.items[domain.ItemLootbox1]
 	repo.itemsByID[3] = repo.items["lootbox2"]
 
 	// Setup upgrade recipe: lootbox0 -> lootbox1
@@ -217,7 +217,7 @@ func TestDisassembleItem_Success(t *testing.T) {
 	repo.UnlockRecipe(ctx, "user-alice", 1)
 
 	// Disassemble 2 lootbox1
-	outputs, processed, err := svc.DisassembleItem(ctx, "alice", "twitch", "lootbox1", 2)
+	outputs, processed, err := svc.DisassembleItem(ctx, "alice", "twitch", domain.ItemLootbox1, 2)
 	if err != nil {
 		t.Fatalf("DisassembleItem failed: %v", err)
 	}
@@ -267,7 +267,7 @@ func TestDisassembleItem_InsufficientItems(t *testing.T) {
 	repo.UnlockRecipe(ctx, "user-alice", 1)
 
 	// Try to disassemble 2 (should only process 1)
-	outputs, processed, err := svc.DisassembleItem(ctx, "alice", "twitch", "lootbox1", 2)
+	outputs, processed, err := svc.DisassembleItem(ctx, "alice", "twitch", domain.ItemLootbox1, 2)
 	if err != nil {
 		t.Fatalf("DisassembleItem failed: %v", err)
 	}
@@ -292,7 +292,7 @@ func TestDisassembleItem_NoItems(t *testing.T) {
 	repo.UnlockRecipe(ctx, "user-alice", 1)
 
 	// Try to disassemble
-	_, _, err := svc.DisassembleItem(ctx, "alice", "twitch", "lootbox1", 1)
+	_, _, err := svc.DisassembleItem(ctx, "alice", "twitch", domain.ItemLootbox1, 1)
 	if err == nil {
 		t.Error("Expected error when disassembling with no items")
 	}
@@ -310,7 +310,7 @@ func TestDisassembleItem_RecipeNotUnlocked(t *testing.T) {
 		domain.InventorySlot{ItemID: 2, Quantity: 1})
 
 	// Try to disassemble without unlocked recipe
-	_, _, err := svc.DisassembleItem(ctx, "alice", "twitch", "lootbox1", 1)
+	_, _, err := svc.DisassembleItem(ctx, "alice", "twitch", domain.ItemLootbox1, 1)
 	if err == nil {
 		t.Error("Expected error when recipe is not unlocked")
 	}
@@ -344,7 +344,7 @@ func TestDisassembleItem_RemovesSlotWhenEmpty(t *testing.T) {
 	repo.UnlockRecipe(ctx, "user-alice", 1)
 
 	// Disassemble all lootbox1
-	_, _, err := svc.DisassembleItem(ctx, "alice", "twitch", "lootbox1", 1)
+	_, _, err := svc.DisassembleItem(ctx, "alice", "twitch", domain.ItemLootbox1, 1)
 	if err != nil {
 		t.Fatalf("DisassembleItem failed: %v", err)
 	}
@@ -375,12 +375,12 @@ func TestUpgradeItem_Success(t *testing.T) {
 	repo.UnlockRecipe(ctx, "user-alice", 1)
 
 	// Upgrade 2 lootbox0 to 2 lootbox1
-	itemName, quantity, err := svc.UpgradeItem(ctx, "alice", "twitch", "lootbox1", 2)
+	itemName, quantity, err := svc.UpgradeItem(ctx, "alice", "twitch", domain.ItemLootbox1, 2)
 	if err != nil {
 		t.Fatalf("UpgradeItem failed: %v", err)
 	}
 
-	if itemName != "lootbox1" {
+	if itemName != domain.ItemLootbox1 {
 		t.Errorf("Expected itemName lootbox1, got %s", itemName)
 	}
 
@@ -423,7 +423,7 @@ func TestUpgradeItem_InsufficientMaterials(t *testing.T) {
 	repo.UnlockRecipe(ctx, "user-alice", 1)
 
 	// Try to upgrade 2 (should only process 1)
-	_, quantity, err := svc.UpgradeItem(ctx, "alice", "twitch", "lootbox1", 2)
+	_, quantity, err := svc.UpgradeItem(ctx, "alice", "twitch", domain.ItemLootbox1, 2)
 	if err != nil {
 		t.Fatalf("UpgradeItem failed: %v", err)
 	}
@@ -444,7 +444,7 @@ func TestUpgradeItem_NoMaterials(t *testing.T) {
 	repo.UnlockRecipe(ctx, "user-alice", 1)
 
 	// Try to upgrade
-	_, _, err := svc.UpgradeItem(ctx, "alice", "twitch", "lootbox1", 1)
+	_, _, err := svc.UpgradeItem(ctx, "alice", "twitch", domain.ItemLootbox1, 1)
 	if err == nil {
 		t.Error("Expected error when upgrading with no materials")
 	}
@@ -462,7 +462,7 @@ func TestUpgradeItem_RecipeNotUnlocked(t *testing.T) {
 		domain.InventorySlot{ItemID: 1, Quantity: 1})
 
 	// Try to upgrade without unlocked recipe
-	_, _, err := svc.UpgradeItem(ctx, "alice", "twitch", "lootbox1", 1)
+	_, _, err := svc.UpgradeItem(ctx, "alice", "twitch", domain.ItemLootbox1, 1)
 	if err == nil {
 		t.Error("Expected error when recipe is not unlocked")
 	}
@@ -490,7 +490,7 @@ func TestUpgradeItem_UserNotFound(t *testing.T) {
 	ctx := context.Background()
 
 	// Try with non-existent user
-	_, _, err := svc.UpgradeItem(ctx, "nonexistent", "twitch", "lootbox1", 1)
+	_, _, err := svc.UpgradeItem(ctx, "nonexistent", "twitch", domain.ItemLootbox1, 1)
 	if err == nil {
 		t.Error("Expected error for non-existent user")
 	}

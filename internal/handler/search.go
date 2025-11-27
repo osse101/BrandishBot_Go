@@ -82,7 +82,7 @@ func HandleSearch(svc user.Service, progressionSvc progression.Service) http.Han
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(SearchResponse{
+		respondJSON(w, http.StatusOK, SearchResponse{
 			Message: message,
 		})
 	}

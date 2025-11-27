@@ -80,6 +80,6 @@ func HandleTest(userService user.Service) http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		respondJSON(w, http.StatusOK, resp)
 	}
 }

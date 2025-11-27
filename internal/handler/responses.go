@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 )
 
@@ -29,7 +30,10 @@ type DataResponse struct {
 func respondJSON(w http.ResponseWriter, status int, payload interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(payload)
+	if err := json.NewEncoder(w).Encode(payload); err != nil {
+		// Log the error - we can't write to response at this point since headers are sent
+		slog.Error("Failed to encode JSON response", "error", err)
+	}
 }
 
 // respondError sends a JSON error response
