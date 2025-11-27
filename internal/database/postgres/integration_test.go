@@ -168,7 +168,7 @@ func TestUserRepository_Integration(t *testing.T) {
 		// Note: UpsertUser uses its own tx, so we can't use the tx interface for it directly
 		// unless we refactor UpsertUser to take a DB interface.
 		// But we can test GetInventory/UpdateInventory with the tx.
-		
+
 		// Create user outside tx first
 		if err := repo.UpsertUser(ctx, user); err != nil {
 			t.Fatalf("failed to create user: %v", err)
@@ -400,13 +400,13 @@ func applyMigrations(ctx context.Context, pool *pgxpool.Pool, migrationsDir stri
 		}
 
 		contentStr := string(content)
-		
+
 		// Strip out goose markers (for goose v3 compatibility)
 		// Remove "-- +goose Up" from the beginning
 		contentStr = strings.Replace(contentStr, "-- +goose Up\n", "", 1)
 		// Remove "-- +goose Up" without newline
 		contentStr = strings.Replace(contentStr, "-- +goose Up", "", 1)
-		
+
 		// Strip out the "Down" section if it exists (goose-style migrations)
 		if downIdx := strings.Index(contentStr, "-- +goose Down"); downIdx != -1 {
 			contentStr = contentStr[:downIdx]

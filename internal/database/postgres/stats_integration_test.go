@@ -153,7 +153,7 @@ func TestStatsRepository_Integration(t *testing.T) {
 
 	t.Run("GetEventsByType", func(t *testing.T) {
 		now := time.Now()
-		
+
 		// Record events of different types
 		eventTypes := []domain.EventType{
 			domain.EventItemAdded,
@@ -205,7 +205,7 @@ func TestStatsRepository_Integration(t *testing.T) {
 		}
 
 		now := time.Now()
-		
+
 		// Record 3 events for testUser
 		for i := 0; i < 3; i++ {
 			event := &domain.StatsEvent{
@@ -252,7 +252,7 @@ func TestStatsRepository_Integration(t *testing.T) {
 
 	t.Run("GetEventCounts", func(t *testing.T) {
 		now := time.Now()
-		
+
 		// Record various events
 		eventTypes := []domain.EventType{
 			domain.EventItemSold,
@@ -290,7 +290,7 @@ func TestStatsRepository_Integration(t *testing.T) {
 
 	t.Run("GetUserEventCounts", func(t *testing.T) {
 		now := time.Now()
-		
+
 		// Record various events for specific user
 		eventTypes := []domain.EventType{
 			domain.EventItemTransferred,
@@ -329,7 +329,7 @@ func TestStatsRepository_Integration(t *testing.T) {
 
 	t.Run("GetTotalEventCount", func(t *testing.T) {
 		now := time.Now()
-		
+
 		// Record some events
 		for i := 0; i < 5; i++ {
 			event := &domain.StatsEvent{

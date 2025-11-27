@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"time"
 
-	httpSwagger "github.com/swaggo/http-swagger"
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
 	"github.com/osse101/BrandishBot_Go/internal/database"
 	"github.com/osse101/BrandishBot_Go/internal/economy"
@@ -15,6 +14,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 	"github.com/osse101/BrandishBot_Go/internal/stats"
 	"github.com/osse101/BrandishBot_Go/internal/user"
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 type Server struct {
@@ -30,11 +30,11 @@ type Server struct {
 // NewServer creates a new Server instance
 func NewServer(port int, apiKey string, dbPool database.Pool, userService user.Service, economyService economy.Service, craftingService crafting.Service, statsService stats.Service, progressionService progression.Service) *Server {
 	mux := http.NewServeMux()
-	
+
 	// Health check routes
 	mux.HandleFunc("/healthz", handler.HandleHealthz())
 	mux.HandleFunc("/readyz", handler.HandleReadyz(dbPool))
-	
+
 	// User routes
 	mux.HandleFunc("/user/register", handler.HandleRegisterUser(userService))
 	mux.HandleFunc("/message/handle", handler.HandleMessageHandler(userService, progressionService))
@@ -51,13 +51,13 @@ func NewServer(port int, apiKey string, dbPool database.Pool, userService user.S
 	mux.HandleFunc("/user/inventory", handler.HandleGetInventory(userService))
 	mux.HandleFunc("/user/search", handler.HandleSearch(userService, progressionService))
 	mux.HandleFunc("/prices", handler.HandleGetPrices(economyService))
-	
+
 	// Stats routes
 	mux.HandleFunc("/stats/event", handler.HandleRecordEvent(statsService))
 	mux.HandleFunc("/stats/user", handler.HandleGetUserStats(statsService))
 	mux.HandleFunc("/stats/system", handler.HandleGetSystemStats(statsService))
 	mux.HandleFunc("/stats/leaderboard", handler.HandleGetLeaderboard(statsService))
-	
+
 	// Progression routes
 	progressionHandlers := handler.NewProgressionHandlers(progressionService)
 	mux.HandleFunc("/progression/tree", progressionHandlers.HandleGetTree())
@@ -69,29 +69,29 @@ func NewServer(port int, apiKey string, dbPool database.Pool, userService user.S
 	mux.HandleFunc("/progression/admin/relock", progressionHandlers.HandleAdminRelock())
 	mux.HandleFunc("/progression/admin/instant-unlock", progressionHandlers.HandleAdminInstantUnlock())
 	mux.HandleFunc("/progression/admin/reset", progressionHandlers.HandleAdminReset())
-	
+
 	// Swagger documentation
 	mux.HandleFunc("/swagger/", httpSwagger.WrapHandler)
-
 
 	// Build middleware stack (applied in reverse order)
 	// 1. Request logging (innermost - logs final status)
 	handler := loggingMiddleware(mux)
-	
+
 	// 2. Request size limit
 	handler = RequestSizeLimitMiddleware(1 << 20)(handler) // 1MB limit
-	
+
 	// 3. Security logging with suspicious activity detection
 	detector := NewSuspiciousActivityDetector()
 	handler = SecurityLoggingMiddleware(detector)(handler)
-	
+
 	// 4. Authentication (outermost - validates first)
 	handler = AuthMiddleware(apiKey)(handler)
 
 	return &Server{
 		httpServer: &http.Server{
-			Addr:    fmt.Sprintf(":%d", port),
-			Handler: handler,
+			Addr:              fmt.Sprintf(":%d", port),
+			Handler:           handler,
+			ReadHeaderTimeout: 5 * time.Second,
 		},
 		dbPool:             dbPool,
 		userService:        userService,
@@ -134,17 +134,17 @@ func (rw *responseWriter) Write(b []byte) (int, error) {
 func loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		
+
 		// Generate unique request ID
 		requestID := logger.GenerateRequestID()
-		
+
 		// Add request ID to context
 		ctx := logger.WithRequestID(r.Context(), requestID)
 		r = r.WithContext(ctx)
-		
+
 		// Get scoped logger
 		log := logger.FromContext(ctx)
-		
+
 		// Log request start with details
 		log.Info("Request started",
 			"method", r.Method,
@@ -152,15 +152,15 @@ func loggingMiddleware(next http.Handler) http.Handler {
 			"remote_addr", r.RemoteAddr,
 			"content_length", r.ContentLength,
 			"user_agent", r.UserAgent())
-		
+
 		log.Debug("Request headers", "headers", r.Header)
-		
+
 		// Wrap response writer to capture status code
 		rw := newResponseWriter(w)
-		
+
 		// Process request
 		next.ServeHTTP(rw, r)
-		
+
 		// Log request completion with metrics
 		duration := time.Since(start)
 		log.Info("Request completed",

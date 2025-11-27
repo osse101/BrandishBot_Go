@@ -11,17 +11,17 @@ import (
 // Config holds the application configuration
 type Config struct {
 	// Server
-	Port       int
-	APIKey     string // API key for authentication
-	
+	Port   int
+	APIKey string // API key for authentication
+
 	// Logging
-	LogLevel      string
-	LogFormat     string // "json" or "text"
-	LogDir        string
-	ServiceName   string
-	Version       string
-	Environment   string // "dev", "staging", "prod"
-	
+	LogLevel    string
+	LogFormat   string // "json" or "text"
+	LogDir      string
+	ServiceName string
+	Version     string
+	Environment string // "dev", "staging", "prod"
+
 	// Database
 	DBUser     string
 	DBPassword string
@@ -43,16 +43,16 @@ func Load() (*Config, error) {
 		ServiceName: getEnv("SERVICE_NAME", "brandish-bot"),
 		Version:     getEnv("VERSION", "dev"),
 		Environment: getEnv("ENVIRONMENT", "dev"),
-		
+
 		// Database config
 		DBUser:     getEnv("DB_USER", "postgres"),
 		DBPassword: getEnv("DB_PASSWORD", "postgres"),
 		DBHost:     getEnv("DB_HOST", "localhost"),
 		DBPort:     getEnv("DB_PORT", "5432"),
 		DBName:     getEnv("DB_NAME", "brandishbot"),
-		
+
 		// Server config
-		APIKey:     getEnv("API_KEY", ""),
+		APIKey: getEnv("API_KEY", ""),
 	}
 
 	portStr := getEnv("PORT", "8080")

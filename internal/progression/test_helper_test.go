@@ -11,15 +11,15 @@ func TestUnlockAllFeatures(t *testing.T) {
 	setupTestTree(repo)
 	service := NewService(repo)
 	ctx := context.Background()
-	
+
 	helper := NewTestHelper(service)
-	
+
 	// Unlock all features
 	err := helper.UnlockAllFeatures(ctx)
 	if err != nil {
 		t.Fatalf("UnlockAllFeatures failed: %v", err)
 	}
-	
+
 	// Verify features are unlocked
 	features := []string{
 		FeatureBuy,
@@ -27,7 +27,7 @@ func TestUnlockAllFeatures(t *testing.T) {
 		FeatureUpgrade,
 		FeatureDisassemble,
 	}
-	
+
 	for _, feature := range features {
 		unlocked, err := service.IsFeatureUnlocked(ctx, feature)
 		if err != nil {
@@ -45,15 +45,15 @@ func TestUnlockFeature(t *testing.T) {
 	setupTestTree(repo)
 	service := NewService(repo)
 	ctx := context.Background()
-	
+
 	helper := NewTestHelper(service)
-	
+
 	// Unlock buy feature
 	err := helper.UnlockFeature(ctx, FeatureBuy)
 	if err != nil {
 		t.Fatalf("UnlockFeature failed: %v", err)
 	}
-	
+
 	// Verify it's unlocked
 	unlocked, err := service.IsFeatureUnlocked(ctx, FeatureBuy)
 	if err != nil {

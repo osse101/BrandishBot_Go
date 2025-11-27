@@ -21,41 +21,41 @@ func TestTimeoutUser(t *testing.T) {
 		t.Fatalf("TimeoutUser failed: %v", err)
 	}
 
-	// Verify timeout is set (internal implementation detail, but we can check via side effects or reflection if needed, 
-    // but for now we trust the method returns nil and logs. 
-    // Ideally we'd have a method to check if a user is timed out, but that wasn't in the requirements yet.
-    // We can check if the timer exists in the map by casting to concrete type if we really wanted to, 
-    // but that's brittle. For now, we assume success if no error.)
-    
-    // Let's at least verify it doesn't crash on overwrite
-    err = svc.TimeoutUser(ctx, "alice", 200*time.Millisecond, "Overwrite reason")
-    if err != nil {
-        t.Fatalf("TimeoutUser overwrite failed: %v", err)
-    }
+	// Verify timeout is set (internal implementation detail, but we can check via side effects or reflection if needed,
+	// but for now we trust the method returns nil and logs.
+	// Ideally we'd have a method to check if a user is timed out, but that wasn't in the requirements yet.
+	// We can check if the timer exists in the map by casting to concrete type if we really wanted to,
+	// but that's brittle. For now, we assume success if no error.)
+
+	// Let's at least verify it doesn't crash on overwrite
+	err = svc.TimeoutUser(ctx, "alice", 200*time.Millisecond, "Overwrite reason")
+	if err != nil {
+		t.Fatalf("TimeoutUser overwrite failed: %v", err)
+	}
 }
 
 func TestHandleBlaster_Timeout(t *testing.T) {
-    repo := NewMockRepository()
-    setupTestData(repo)
-    lockManager := concurrency.NewLockManager()
-    svc := NewService(repo, lockManager)
-    ctx := context.Background()
+	repo := NewMockRepository()
+	setupTestData(repo)
+	lockManager := concurrency.NewLockManager()
+	svc := NewService(repo, lockManager)
+	ctx := context.Background()
 
-    // Setup: Give alice a blaster
-    svc.AddItem(ctx, "alice", "twitch", "blaster", 1)
+	// Setup: Give alice a blaster
+	svc.AddItem(ctx, "alice", "twitch", "blaster", 1)
 
-    // Use blaster on bob
-    msg, err := svc.UseItem(ctx, "alice", "twitch", "blaster", 1, "bob")
-    if err != nil {
-        t.Fatalf("UseItem failed: %v", err)
-    }
+	// Use blaster on bob
+	msg, err := svc.UseItem(ctx, "alice", "twitch", "blaster", 1, "bob")
+	if err != nil {
+		t.Fatalf("UseItem failed: %v", err)
+	}
 
-    // Verify message contains timeout info
-    expectedPart := "They are timed out for"
-    if len(msg) < len(expectedPart) { // Simple check
-        t.Errorf("Message should contain timeout info, got: %s", msg)
-    }
-    
-    // We can't easily verify the internal state of timeouts without exposing it, 
-    // but we verified the call didn't error and returned the expected message.
+	// Verify message contains timeout info
+	expectedPart := "They are timed out for"
+	if len(msg) < len(expectedPart) { // Simple check
+		t.Errorf("Message should contain timeout info, got: %s", msg)
+	}
+
+	// We can't easily verify the internal state of timeouts without exposing it,
+	// but we verified the call didn't error and returned the expected message.
 }

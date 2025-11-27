@@ -22,7 +22,7 @@ type RegisterUserRequest struct {
 func HandleRegisterUser(userService user.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
-		
+
 		if r.Method != http.MethodPost {
 			log.Warn("Method not allowed", "method", r.Method)
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -35,7 +35,7 @@ func HandleRegisterUser(userService user.Service) http.HandlerFunc {
 			http.Error(w, "Invalid request body", http.StatusBadRequest)
 			return
 		}
-		
+
 		log.Debug("Register user request",
 			"username", req.Username,
 			"known_platform", req.KnownPlatform,
@@ -97,7 +97,7 @@ func HandleRegisterUser(userService user.Service) http.HandlerFunc {
 			http.Error(w, "Failed to register user", http.StatusInternalServerError)
 			return
 		}
-		
+
 		log.Info("User registered successfully",
 			"user_id", updatedUser.ID,
 			"username", updatedUser.Username,

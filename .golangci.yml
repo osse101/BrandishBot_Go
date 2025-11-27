@@ -18,6 +18,10 @@ linters-settings:
     min-len: 3
     min-occurrences: 3
   
+  errcheck:
+    check-type-assertions: false
+    check-blank: false
+  
   gocyclo:
     min-complexity: 15
   

@@ -22,7 +22,7 @@ type SearchResponse struct {
 func HandleSearch(svc user.Service, progressionSvc progression.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
-		
+
 		// Check if search feature is unlocked
 		unlocked, err := progressionSvc.IsFeatureUnlocked(r.Context(), progression.FeatureSearch)
 		if err != nil {
@@ -35,14 +35,14 @@ func HandleSearch(svc user.Service, progressionSvc progression.Service) http.Han
 			http.Error(w, "Search feature is not yet unlocked", http.StatusForbidden)
 			return
 		}
-		
+
 		var req SearchRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			log.Error("Failed to decode search request", "error", err)
 			http.Error(w, "Invalid request body", http.StatusBadRequest)
 			return
 		}
-		
+
 		log.Debug("Search request", "username", req.Username, "platform", req.Platform)
 
 		// Validate username
@@ -67,7 +67,7 @@ func HandleSearch(svc user.Service, progressionSvc progression.Service) http.Han
 			http.Error(w, "Failed to perform search", http.StatusInternalServerError)
 			return
 		}
-		
+
 		log.Info("Search completed successfully",
 			"username", req.Username,
 			"message", message)

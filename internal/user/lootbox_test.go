@@ -145,7 +145,7 @@ func TestProcessLootbox(t *testing.T) {
 	t.Run("Lootbox0 drops money", func(t *testing.T) {
 		repo := new(MockRepo)
 		svc := createTestService(repo)
-		
+
 		// Setup loot table manually for test
 		svc.lootTables[domain.ItemLootbox0] = []LootItem{
 			{ItemName: domain.ItemMoney, Min: 1, Max: 10, Chance: 1.0},
@@ -170,7 +170,7 @@ func TestProcessLootbox(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Contains(t, msg, "Opened 1 lootbox0")
 		assert.Contains(t, msg, "money")
-		
+
 		// Verify inventory changes
 		// Should have consumed lootbox0 and gained money
 		foundLootbox := false

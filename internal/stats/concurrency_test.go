@@ -19,7 +19,7 @@ type ThreadSafeMockRepository struct {
 func (m *ThreadSafeMockRepository) RecordEvent(ctx context.Context, event *domain.StatsEvent) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	if m.recordEventError != nil {
 		return m.recordEventError
 	}
@@ -31,7 +31,7 @@ func (m *ThreadSafeMockRepository) RecordEvent(ctx context.Context, event *domai
 func (m *ThreadSafeMockRepository) GetEventsByUser(ctx context.Context, userID string, startTime, endTime time.Time) ([]domain.StatsEvent, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	var filtered []domain.StatsEvent
 	for _, event := range m.events {
 		if event.UserID == userID && event.CreatedAt.After(startTime) && event.CreatedAt.Before(endTime) {
@@ -44,7 +44,7 @@ func (m *ThreadSafeMockRepository) GetEventsByUser(ctx context.Context, userID s
 func (m *ThreadSafeMockRepository) GetEventsByType(ctx context.Context, eventType domain.EventType, startTime, endTime time.Time) ([]domain.StatsEvent, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	var filtered []domain.StatsEvent
 	for _, event := range m.events {
 		if event.EventType == eventType && event.CreatedAt.After(startTime) && event.CreatedAt.Before(endTime) {
@@ -57,14 +57,14 @@ func (m *ThreadSafeMockRepository) GetEventsByType(ctx context.Context, eventTyp
 func (m *ThreadSafeMockRepository) GetTopUsers(ctx context.Context, eventType domain.EventType, startTime, endTime time.Time, limit int) ([]domain.LeaderboardEntry, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	counts := make(map[string]int)
 	for _, event := range m.events {
 		if event.EventType == eventType && event.CreatedAt.After(startTime) && event.CreatedAt.Before(endTime) {
 			counts[event.UserID]++
 		}
 	}
-	
+
 	var entries []domain.LeaderboardEntry
 	for userID, count := range counts {
 		entries = append(entries, domain.LeaderboardEntry{
@@ -73,14 +73,14 @@ func (m *ThreadSafeMockRepository) GetTopUsers(ctx context.Context, eventType do
 			EventType: string(eventType),
 		})
 	}
-	
+
 	return entries, nil
 }
 
 func (m *ThreadSafeMockRepository) GetEventCounts(ctx context.Context, startTime, endTime time.Time) (map[domain.EventType]int, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	counts := make(map[domain.EventType]int)
 	for _, event := range m.events {
 		if event.CreatedAt.After(startTime) && event.CreatedAt.Before(endTime) {
@@ -93,7 +93,7 @@ func (m *ThreadSafeMockRepository) GetEventCounts(ctx context.Context, startTime
 func (m *ThreadSafeMockRepository) GetUserEventCounts(ctx context.Context, userID string, startTime, endTime time.Time) (map[domain.EventType]int, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	counts := make(map[domain.EventType]int)
 	for _, event := range m.events {
 		if event.UserID == userID && event.CreatedAt.After(startTime) && event.CreatedAt.Before(endTime) {
@@ -106,7 +106,7 @@ func (m *ThreadSafeMockRepository) GetUserEventCounts(ctx context.Context, userI
 func (m *ThreadSafeMockRepository) GetTotalEventCount(ctx context.Context, startTime, endTime time.Time) (int, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	count := 0
 	for _, event := range m.events {
 		if event.CreatedAt.After(startTime) && event.CreatedAt.Before(endTime) {

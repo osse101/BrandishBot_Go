@@ -50,7 +50,7 @@ func (m *mockStatsRepository) GetTopUsers(ctx context.Context, eventType domain.
 			counts[event.UserID]++
 		}
 	}
-	
+
 	var entries []domain.LeaderboardEntry
 	for userID, count := range counts {
 		entries = append(entries, domain.LeaderboardEntry{
@@ -59,7 +59,7 @@ func (m *mockStatsRepository) GetTopUsers(ctx context.Context, eventType domain.
 			EventType: string(eventType),
 		})
 	}
-	
+
 	return entries, nil
 }
 
@@ -96,24 +96,24 @@ func (m *mockStatsRepository) GetTotalEventCount(ctx context.Context, startTime,
 func TestRecordUserEvent(t *testing.T) {
 	repo := &mockStatsRepository{}
 	svc := NewService(repo)
-	
+
 	ctx := context.Background()
 	userID := "test-user-123"
 	eventType := domain.EventItemAdded
 	metadata := map[string]interface{}{
-		"item": "sword",
+		"item":     "sword",
 		"quantity": 5,
 	}
-	
+
 	err := svc.RecordUserEvent(ctx, userID, eventType, metadata)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
-	
+
 	if len(repo.events) != 1 {
 		t.Fatalf("Expected 1 event, got %d", len(repo.events))
 	}
-	
+
 	event := repo.events[0]
 	if event.UserID != userID {
 		t.Errorf("Expected user ID %s, got %s", userID, event.UserID)
@@ -126,7 +126,7 @@ func TestRecordUserEvent(t *testing.T) {
 func TestRecordUserEventEmptyUserID(t *testing.T) {
 	repo := &mockStatsRepository{}
 	svc := NewService(repo)
-	
+
 	ctx := context.Background()
 	err := svc.RecordUserEvent(ctx, "", domain.EventItemAdded, nil)
 	if err == nil {
@@ -157,15 +157,15 @@ func TestGetUserStats(t *testing.T) {
 			},
 		},
 	}
-	
+
 	svc := NewService(repo)
 	ctx := context.Background()
-	
+
 	summary, err := svc.GetUserStats(ctx, "user-123", "daily")
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
-	
+
 	if summary.TotalEvents != 2 {
 		t.Errorf("Expected 2 events, got %d", summary.TotalEvents)
 	}
@@ -179,19 +179,19 @@ func TestGetSystemStats(t *testing.T) {
 			{EventID: 3, UserID: "user-3", EventType: domain.EventItemAdded, CreatedAt: time.Now().Add(-20 * time.Minute)},
 		},
 	}
-	
+
 	svc := NewService(repo)
 	ctx := context.Background()
-	
+
 	summary, err := svc.GetSystemStats(ctx, "daily")
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
-	
+
 	if summary.TotalEvents != 3 {
 		t.Errorf("Expected 3 events, got %d", summary.TotalEvents)
 	}
-	
+
 	if summary.EventCounts[domain.EventItemAdded] != 2 {
 		t.Errorf("Expected 2 item_added events, got %d", summary.EventCounts[domain.EventItemAdded])
 	}
@@ -205,25 +205,25 @@ func TestGetLeaderboard(t *testing.T) {
 			{EventID: 3, UserID: "user-2", EventType: domain.EventItemSold, CreatedAt: time.Now().Add(-30 * time.Minute)},
 		},
 	}
-	
+
 	svc := NewService(repo)
 	ctx := context.Background()
-	
+
 	leaderboard, err := svc.GetLeaderboard(ctx, domain.EventItemSold, "daily", 10)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
-	
+
 	if len(leaderboard) != 2 {
 		t.Fatalf("Expected 2 leaderboard entries, got %d", len(leaderboard))
 	}
-	
+
 	// Check that users are counted correctly
 	userCounts := make(map[string]int)
 	for _, entry := range leaderboard {
 		userCounts[entry.UserID] = entry.Count
 	}
-	
+
 	if userCounts["user-1"] != 2 {
 		t.Errorf("Expected user-1 to have 2 events, got %d", userCounts["user-1"])
 	}

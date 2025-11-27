@@ -73,7 +73,7 @@ func main() {
 
 	// Read and apply migrations
 	log.Println("Applying database migrations...")
-	
+
 	migrationsDir := "migrations"
 	files, err := os.ReadDir(migrationsDir)
 	if err != nil {
@@ -94,7 +94,7 @@ func main() {
 	// Apply each migration
 	for _, filename := range upFiles {
 		log.Printf("Applying migration: %s\n", filename)
-		
+
 		filePath := filepath.Join(migrationsDir, filename)
 		content, err := os.ReadFile(filePath)
 		if err != nil {

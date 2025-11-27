@@ -25,13 +25,13 @@ func (h *TestHelper) UnlockAllFeatures(ctx context.Context) error {
 		FeatureEconomy,
 		FeatureSearch,
 	}
-	
+
 	for _, feature := range features {
 		if err := h.service.AdminUnlock(ctx, feature, 1); err != nil {
 			return err
 		}
 	}
-	
+
 	return nil
 }
 

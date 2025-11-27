@@ -9,7 +9,7 @@ import (
 func initLogger(cfg *config.Config) {
 	// Determine if we should add source info (only in dev)
 	addSource := cfg.Environment == "dev" || cfg.Environment == "development"
-	
+
 	loggerConfig := logger.NewConfig(
 		cfg.LogLevel,
 		cfg.LogFormat,
@@ -18,6 +18,6 @@ func initLogger(cfg *config.Config) {
 		cfg.Environment,
 		addSource,
 	)
-	
+
 	logger.InitLogger(loggerConfig)
 }

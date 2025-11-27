@@ -6,14 +6,14 @@ import "time"
 type EventType string
 
 const (
-	EventUserRegistered   EventType = "user_registered"
-	EventItemAdded        EventType = "item_added"
-	EventItemRemoved      EventType = "item_removed"
-	EventItemUsed         EventType = "item_used"
-	EventItemSold         EventType = "item_sold"
-	EventItemBought       EventType = "item_bought"
-	EventItemTransferred  EventType = "item_transferred"
-	EventMessageReceived  EventType = "message_received"
+	EventUserRegistered  EventType = "user_registered"
+	EventItemAdded       EventType = "item_added"
+	EventItemRemoved     EventType = "item_removed"
+	EventItemUsed        EventType = "item_used"
+	EventItemSold        EventType = "item_sold"
+	EventItemBought      EventType = "item_bought"
+	EventItemTransferred EventType = "item_transferred"
+	EventMessageReceived EventType = "message_received"
 )
 
 // StatsEvent represents a single tracked event

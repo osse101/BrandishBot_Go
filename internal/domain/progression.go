@@ -6,7 +6,7 @@ import "time"
 type ProgressionNode struct {
 	ID           int       `json:"id"`
 	NodeKey      string    `json:"node_key"`
-	NodeType     string    `json:"node_type"`     // 'feature', 'item', 'mechanic', 'upgrade'
+	NodeType     string    `json:"node_type"` // 'feature', 'item', 'mechanic', 'upgrade'
 	DisplayName  string    `json:"display_name"`
 	Description  string    `json:"description"`
 	ParentNodeID *int      `json:"parent_node_id"` // NULL for root
@@ -18,23 +18,23 @@ type ProgressionNode struct {
 
 // ProgressionUnlock represents a globally unlocked node
 type ProgressionUnlock struct {
-	ID               int       `json:"id"`
-	NodeID           int       `json:"node_id"`
-	CurrentLevel     int       `json:"current_level"`
-	UnlockedAt       time.Time `json:"unlocked_at"`
-	UnlockedBy       string    `json:"unlocked_by"` // 'vote', 'admin', 'auto', 'instant_override'
-	EngagementScore  int       `json:"engagement_score"`
+	ID              int       `json:"id"`
+	NodeID          int       `json:"node_id"`
+	CurrentLevel    int       `json:"current_level"`
+	UnlockedAt      time.Time `json:"unlocked_at"`
+	UnlockedBy      string    `json:"unlocked_by"` // 'vote', 'admin', 'auto', 'instant_override'
+	EngagementScore int       `json:"engagement_score"`
 }
 
 // ProgressionVoting represents active voting for a node
 type ProgressionVoting struct {
-	ID               int       `json:"id"`
-	NodeID           int       `json:"node_id"`
-	TargetLevel      int       `json:"target_level"`
-	VoteCount        int       `json:"vote_count"`
-	VotingStartedAt  time.Time `json:"voting_started_at"`
-	VotingEndsAt     *time.Time `json:"voting_ends_at"`
-	IsActive         bool      `json:"is_active"`
+	ID              int        `json:"id"`
+	NodeID          int        `json:"node_id"`
+	TargetLevel     int        `json:"target_level"`
+	VoteCount       int        `json:"vote_count"`
+	VotingStartedAt time.Time  `json:"voting_started_at"`
+	VotingEndsAt    *time.Time `json:"voting_ends_at"`
+	IsActive        bool       `json:"is_active"`
 }
 
 // UserVote represents a user's vote for a specific node/level
@@ -98,7 +98,7 @@ type ProgressionStatus struct {
 }
 
 // EngagementBreakdown shows user's contribution by type
-type EngagementBreakdown struct{
+type EngagementBreakdown struct {
 	MessagesSent int `json:"messages_sent"`
 	CommandsUsed int `json:"commands_used"`
 	ItemsCrafted int `json:"items_crafted"`

@@ -161,7 +161,7 @@ func TestProgressionRepository_Integration(t *testing.T) {
 		if err != nil {
 			t.Fatalf("GetActiveVoting failed: %v", err)
 		}
-		if voting == nil || voting.NodeID !=money.ID {
+		if voting == nil || voting.NodeID != money.ID {
 			t.Error("Expected active voting for money node")
 		}
 

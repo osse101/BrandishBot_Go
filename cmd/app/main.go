@@ -45,17 +45,17 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Failed to load configuration: %v\n", err)
 		os.Exit(1)
 	}
-	
+
 	// Initialize logger based on config
 	initLogger(cfg)
-	
+
 	slog.Info("Starting BrandishBot",
 		"environment", cfg.Environment,
 		"log_level", cfg.LogLevel,
 		"log_format", cfg.LogFormat,
 		"version", cfg.Version)
-	
-	slog.Debug("Configuration loaded", 
+
+	slog.Debug("Configuration loaded",
 		"db_host", cfg.DBHost,
 		"db_port", cfg.DBPort,
 		"db_name", cfg.DBName,
@@ -119,13 +119,13 @@ func main() {
 	userService := user.NewService(userRepo, lockManager)
 	economyService := economy.NewService(userRepo, lockManager)
 	craftingService := crafting.NewService(userRepo, lockManager)
-	
+
 	statsRepo := postgres.NewStatsRepository(dbPool)
 	statsService := stats.NewService(statsRepo)
-	
+
 	progressionRepo := postgres.NewProgressionRepository(dbPool)
 	progressionService := progression.NewService(progressionRepo)
-	
+
 	srv := server.NewServer(cfg.Port, cfg.APIKey, dbPool, userService, economyService, craftingService, statsService, progressionService)
 
 	// Run server in a goroutine

@@ -24,20 +24,14 @@ type LootItem struct {
 
 func (s *service) processLootbox(ctx context.Context, inventory *domain.Inventory, lootboxItem *domain.Item, quantity int) (string, error) {
 	log := logger.FromContext(ctx)
-	
+
 	// 1. Validate and consume lootboxes
-	itemSlotIndex := -1
-	for i, slot := range inventory.Slots {
-		if slot.ItemID == lootboxItem.ID {
-			itemSlotIndex = i
-			break
-		}
-	}
+	itemSlotIndex, slotQuantity := utils.FindSlot(inventory, lootboxItem.ID)
 	if itemSlotIndex == -1 {
 		return "", fmt.Errorf("item not found in inventory")
 	}
-	
-	if inventory.Slots[itemSlotIndex].Quantity < quantity {
+
+	if slotQuantity < quantity {
 		return "", fmt.Errorf("not enough items in inventory")
 	}
 
@@ -55,11 +49,11 @@ func (s *service) processLootbox(ctx context.Context, inventory *domain.Inventor
 	}
 
 	drops := make(map[string]int)
-	
+
 	// Seed random source if not already done globally (Go 1.20+ seeds automatically, but good to be safe if older)
-	// assuming global rand is seeded or we use a local source. 
+	// assuming global rand is seeded or we use a local source.
 	// For simplicity using global math/rand here, assuming it's seeded in main.
-	
+
 	for i := 0; i < quantity; i++ {
 		for _, loot := range table {
 			if utils.RandomFloat() <= loot.Chance {
@@ -79,7 +73,7 @@ func (s *service) processLootbox(ctx context.Context, inventory *domain.Inventor
 	// 3. Add drops to inventory and build message
 	var msgBuilder strings.Builder
 	msgBuilder.WriteString(fmt.Sprintf("Opened %d %s and received: ", quantity, lootboxItem.Name))
-	
+
 	first := true
 	for itemName, qty := range drops {
 		item, err := s.repo.GetItemByName(ctx, itemName)
@@ -93,15 +87,10 @@ func (s *service) processLootbox(ctx context.Context, inventory *domain.Inventor
 		}
 
 		// Add to inventory
-		found := false
-		for i, slot := range inventory.Slots {
-			if slot.ItemID == item.ID {
-				inventory.Slots[i].Quantity += qty
-				found = true
-				break
-			}
-		}
-		if !found {
+		i, _ := utils.FindSlot(inventory, item.ID)
+		if i != -1 {
+			inventory.Slots[i].Quantity += qty
+		} else {
 			inventory.Slots = append(inventory.Slots, domain.InventorySlot{ItemID: item.ID, Quantity: qty})
 		}
 
@@ -129,16 +118,14 @@ func (s *service) handleBlaster(ctx context.Context, _ *service, _ *domain.User,
 	}
 	username, _ := args["username"].(string)
 	// Find blaster slot
-	itemSlotIndex := -1
-	for i, slot := range inventory.Slots {
-		if slot.ItemID == item.ID {
-			itemSlotIndex = i
-			break
-		}
-	}
+	itemSlotIndex, slotQuantity := utils.FindSlot(inventory, item.ID)
 	if itemSlotIndex == -1 {
 		log.Warn("blaster not in inventory")
 		return "", fmt.Errorf("item not found in inventory")
+	}
+	if slotQuantity < quantity {
+		log.Warn("not enough blasters in inventory")
+		return "", fmt.Errorf("not enough items in inventory")
 	}
 	if inventory.Slots[itemSlotIndex].Quantity == quantity {
 		inventory.Slots = append(inventory.Slots[:itemSlotIndex], inventory.Slots[itemSlotIndex+1:]...)

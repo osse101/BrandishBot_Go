@@ -26,7 +26,10 @@ func init() {
 // GenerateRequestID creates a new UUID for tracing requests
 func GenerateRequestID() string {
 	b := make([]byte, 16)
-	rand.Read(b)
+	if _, err := rand.Read(b); err != nil {
+		// This should never happen, but handle it safely
+		return "00000000-0000-0000-0000-000000000000"
+	}
 	// Format as UUID-like string
 	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
 }
@@ -34,22 +37,22 @@ func GenerateRequestID() string {
 // InitLogger initializes the global logger with the given configuration
 func InitLogger(config Config) {
 	var handler slog.Handler
-	
+
 	opts := &slog.HandlerOptions{
 		Level:     config.LogLevel(),
 		AddSource: config.AddSource,
 	}
-	
+
 	// Create appropriate handler based on format
 	if config.IsJSON() {
 		handler = slog.NewJSONHandler(os.Stdout, opts)
 	} else {
 		handler = slog.NewTextHandler(os.Stdout, opts)
 	}
-	
+
 	// Wrap with base attributes
 	handler = handler.WithAttrs(config.BaseAttributes())
-	
+
 	// Set as default
 	defaultLogger = slog.New(handler)
 	slog.SetDefault(defaultLogger)
@@ -58,18 +61,18 @@ func InitLogger(config Config) {
 // InitLoggerWithWriter initializes logger with custom writer (for testing)
 func InitLoggerWithWriter(config Config, w io.Writer) {
 	var handler slog.Handler
-	
+
 	opts := &slog.HandlerOptions{
 		Level:     config.LogLevel(),
 		AddSource: config.AddSource,
 	}
-	
+
 	if config.IsJSON() {
 		handler = slog.NewJSONHandler(w, opts)
 	} else {
 		handler = slog.NewTextHandler(w, opts)
 	}
-	
+
 	handler = handler.WithAttrs(config.BaseAttributes())
 	defaultLogger = slog.New(handler)
 	slog.SetDefault(defaultLogger)

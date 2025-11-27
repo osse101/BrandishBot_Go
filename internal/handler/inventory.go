@@ -21,14 +21,14 @@ type AddItemRequest struct {
 func HandleAddItem(svc user.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
-		
+
 		var req AddItemRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			log.Error("Failed to decode add item request", "error", err)
 			http.Error(w, "Invalid request body", http.StatusBadRequest)
 			return
 		}
-		
+
 		log.Debug("Add item request",
 			"username", req.Username,
 			"item", req.ItemName,
@@ -69,7 +69,7 @@ func HandleAddItem(svc user.Service) http.HandlerFunc {
 			http.Error(w, "Failed to add item", http.StatusInternalServerError) // Generic error
 			return
 		}
-		
+
 		log.Info("Item added successfully", "username", req.Username, "item", req.ItemName, "quantity", req.Quantity)
 
 		w.WriteHeader(http.StatusOK)
@@ -91,14 +91,14 @@ type RemoveItemResponse struct {
 func HandleRemoveItem(svc user.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
-		
+
 		var req RemoveItemRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			log.Error("Failed to decode remove item request", "error", err)
 			http.Error(w, "Invalid request body", http.StatusBadRequest)
 			return
 		}
-		
+
 		log.Debug("Remove item request", "username", req.Username, "item", req.ItemName, "quantity", req.Quantity)
 
 		if req.Username == "" || req.ItemName == "" || req.Quantity <= 0 {
@@ -113,7 +113,7 @@ func HandleRemoveItem(svc user.Service) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		
+
 		log.Info("Item removed successfully", "username", req.Username, "item", req.ItemName, "removed", removed)
 
 		w.Header().Set("Content-Type", "application/json")
@@ -133,14 +133,14 @@ type GiveItemRequest struct {
 func HandleGiveItem(svc user.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
-		
+
 		var req GiveItemRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			log.Error("Failed to decode give item request", "error", err)
 			http.Error(w, "Invalid request body", http.StatusBadRequest)
 			return
 		}
-		
+
 		log.Debug("Give item request",
 			"owner", req.Owner,
 			"receiver", req.Receiver,
@@ -158,7 +158,7 @@ func HandleGiveItem(svc user.Service) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		
+
 		log.Info("Item transferred successfully", "owner", req.Owner, "receiver", req.Receiver, "item", req.ItemName, "quantity", req.Quantity)
 
 		w.WriteHeader(http.StatusOK)
@@ -181,7 +181,7 @@ type SellItemResponse struct {
 func HandleSellItem(svc economy.Service, progressionSvc progression.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
-		
+
 		// Check if sell feature is unlocked
 		unlocked, err := progressionSvc.IsFeatureUnlocked(r.Context(), progression.FeatureSell)
 		if err != nil {
@@ -194,14 +194,14 @@ func HandleSellItem(svc economy.Service, progressionSvc progression.Service) htt
 			http.Error(w, "Sell feature is not yet unlocked", http.StatusForbidden)
 			return
 		}
-		
+
 		var req SellItemRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			log.Error("Failed to decode sell item request", "error", err)
 			http.Error(w, "Invalid request body", http.StatusBadRequest)
 			return
 		}
-		
+
 		log.Debug("Sell item request", "username", req.Username, "item", req.ItemName, "quantity", req.Quantity)
 
 		if req.Username == "" || req.ItemName == "" || req.Quantity <= 0 {
@@ -216,7 +216,7 @@ func HandleSellItem(svc economy.Service, progressionSvc progression.Service) htt
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		
+
 		log.Info("Item sold successfully",
 			"username", req.Username,
 			"item", req.ItemName,
@@ -246,7 +246,7 @@ type BuyItemResponse struct {
 func HandleBuyItem(svc economy.Service, progressionSvc progression.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
-		
+
 		// Check if buy feature is unlocked
 		unlocked, err := progressionSvc.IsFeatureUnlocked(r.Context(), progression.FeatureBuy)
 		if err != nil {
@@ -259,14 +259,14 @@ func HandleBuyItem(svc economy.Service, progressionSvc progression.Service) http
 			http.Error(w, "Buy feature is not yet unlocked", http.StatusForbidden)
 			return
 		}
-		
+
 		var req BuyItemRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			log.Error("Failed to decode buy item request", "error", err)
 			http.Error(w, "Invalid request body", http.StatusBadRequest)
 			return
 		}
-		
+
 		log.Debug("Buy item request", "username", req.Username, "item", req.ItemName, "quantity", req.Quantity)
 
 		if req.Username == "" || req.ItemName == "" || req.Quantity <= 0 {
@@ -281,7 +281,7 @@ func HandleBuyItem(svc economy.Service, progressionSvc progression.Service) http
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		
+
 		log.Info("Item purchased successfully",
 			"username", req.Username,
 			"item", req.ItemName,
@@ -310,7 +310,7 @@ type UseItemResponse struct {
 func HandleUseItem(svc user.Service, progressionSvc progression.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
-		
+
 		var req UseItemRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			log.Error("Failed to decode use item request", "error", err)
@@ -322,7 +322,7 @@ func HandleUseItem(svc user.Service, progressionSvc progression.Service) http.Ha
 		if req.Quantity <= 0 {
 			req.Quantity = 1
 		}
-		
+
 		log.Debug("Use item request",
 			"username", req.Username,
 			"item", req.ItemName,
@@ -341,20 +341,20 @@ func HandleUseItem(svc user.Service, progressionSvc progression.Service) http.Ha
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		
+
 		log.Info("Item used successfully",
 			"username", req.Username,
 			"item", req.ItemName,
 			"quantity", req.Quantity,
 			"message", message)
 
-	// Track engagement for item usage
-	middleware.TrackEngagementFromContext(
-		middleware.WithUserID(r.Context(), req.Username),
-		progressionSvc,
-		"item_used",
-		req.Quantity,
-	)
+		// Track engagement for item usage
+		middleware.TrackEngagementFromContext(
+			middleware.WithUserID(r.Context(), req.Username),
+			progressionSvc,
+			"item_used",
+			req.Quantity,
+		)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -371,14 +371,14 @@ type GetInventoryResponse struct {
 func HandleGetInventory(svc user.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
-		
+
 		username := r.URL.Query().Get("username")
 		if username == "" {
 			log.Warn("Missing username query parameter")
 			http.Error(w, "Missing username query parameter", http.StatusBadRequest)
 			return
 		}
-		
+
 		log.Debug("Get inventory request", "username", username)
 
 		items, err := svc.GetInventory(r.Context(), username)
@@ -387,7 +387,7 @@ func HandleGetInventory(svc user.Service) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		
+
 		log.Info("Inventory retrieved", "username", username, "item_count", len(items))
 
 		w.Header().Set("Content-Type", "application/json")

@@ -15,7 +15,6 @@ type Pool interface {
 	Close()
 }
 
-
 // NewPool creates a new PostgreSQL connection pool
 func NewPool(connString string) (*pgxpool.Pool, error) {
 	config, err := pgxpool.ParseConfig(connString)

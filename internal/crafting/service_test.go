@@ -101,7 +101,7 @@ func (m *MockRepository) GetUnlockedRecipesForUser(ctx context.Context, userID s
 	if m.unlockedRecipes[userID] == nil {
 		return result, nil
 	}
-	
+
 	for recipeID := range m.unlockedRecipes[userID] {
 		if recipe, ok := m.recipes[recipeID]; ok {
 			if item, ok := m.itemsByID[recipe.TargetItemID]; ok {
@@ -232,7 +232,7 @@ func TestDisassembleItem_Success(t *testing.T) {
 
 	// Verify inventory
 	inv, _ := repo.GetInventory(ctx, "user-alice")
-	
+
 	// Should have 1 lootbox1 left and 2 lootbox0
 	var lootbox1Count, lootbox0Count int
 	for _, slot := range inv.Slots {

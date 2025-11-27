@@ -33,7 +33,7 @@ func HandleHealthz() http.HandlerFunc {
 		response := HealthResponse{
 			Status: "ok",
 		}
-		
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(response)
@@ -56,12 +56,12 @@ func HandleReadyz(dbPool database.Pool) http.HandlerFunc {
 		// Check database connectivity
 		if err := dbPool.Ping(ctx); err != nil {
 			slog.Error("Readiness check failed", "error", err)
-			
+
 			response := HealthResponse{
 				Status:  "unavailable",
 				Message: "database connection failed",
 			}
-			
+
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusServiceUnavailable)
 			json.NewEncoder(w).Encode(response)
@@ -71,7 +71,7 @@ func HandleReadyz(dbPool database.Pool) http.HandlerFunc {
 		response := HealthResponse{
 			Status: "ok",
 		}
-		
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(response)

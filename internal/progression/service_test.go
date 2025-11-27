@@ -12,12 +12,12 @@ import (
 
 // MockRepository implements Repository for testing
 type MockRepository struct {
-	nodes            map[int]*domain.ProgressionNode
-	nodesByKey       map[string]*domain.ProgressionNode
-	unlocks          map[int]map[int]*domain.ProgressionUnlock // nodeID -> level -> unlock
-	voting           *domain.ProgressionVoting
-	userVotes        map[string]map[int]map[int]bool // userID -> nodeID -> level -> voted
-	userProgressions map[string]map[string]map[string]*domain.UserProgression
+	nodes             map[int]*domain.ProgressionNode
+	nodesByKey        map[string]*domain.ProgressionNode
+	unlocks           map[int]map[int]*domain.ProgressionUnlock // nodeID -> level -> unlock
+	voting            *domain.ProgressionVoting
+	userVotes         map[string]map[int]map[int]bool // userID -> nodeID -> level -> voted
+	userProgressions  map[string]map[string]map[string]*domain.UserProgression
 	engagementWeights map[string]float64
 	engagementMetrics []*domain.EngagementMetric
 }
@@ -95,7 +95,7 @@ func (m *MockRepository) IsNodeUnlocked(ctx context.Context, nodeKey string, lev
 	if err != nil || node == nil {
 		return false, err
 	}
-	
+
 	if levels, ok := m.unlocks[node.ID]; ok {
 		if _, ok := levels[level]; ok {
 			return true, nil
@@ -108,7 +108,7 @@ func (m *MockRepository) UnlockNode(ctx context.Context, nodeID int, level int, 
 	if m.unlocks[nodeID] == nil {
 		m.unlocks[nodeID] = make(map[int]*domain.ProgressionUnlock)
 	}
-	
+
 	m.unlocks[nodeID][level] = &domain.ProgressionUnlock{
 		ID:              len(m.unlocks) + 1,
 		NodeID:          nodeID,
@@ -136,13 +136,13 @@ func (m *MockRepository) GetActiveVoting(ctx context.Context) (*domain.Progressi
 
 func (m *MockRepository) StartVoting(ctx context.Context, nodeID int, level int, endsAt *time.Time) error {
 	m.voting = &domain.ProgressionVoting{
-		ID:               1,
-		NodeID:           nodeID,
-		TargetLevel:      level,
-		VoteCount:        0,
-		VotingStartedAt:  time.Now(),
-		VotingEndsAt:     endsAt,
-		IsActive:         true,
+		ID:              1,
+		NodeID:          nodeID,
+		TargetLevel:     level,
+		VoteCount:       0,
+		VotingStartedAt: time.Now(),
+		VotingEndsAt:    endsAt,
+		IsActive:        true,
 	}
 	return nil
 }
@@ -195,7 +195,7 @@ func (m *MockRepository) UnlockUserProgression(ctx context.Context, userID strin
 	if m.userProgressions[userID][progressionType] == nil {
 		m.userProgressions[userID][progressionType] = make(map[string]*domain.UserProgression)
 	}
-	
+
 	m.userProgressions[userID][progressionType][key] = &domain.UserProgression{
 		UserID:          userID,
 		ProgressionType: progressionType,
@@ -247,15 +247,15 @@ func (m *MockRepository) GetEngagementScore(ctx context.Context, since *time.Tim
 
 func (m *MockRepository) GetUserEngagement(ctx context.Context, userID string) (*domain.EngagementBreakdown, error) {
 	breakdown := &domain.EngagementBreakdown{}
-	
+
 	for _, metric := range m.engagementMetrics {
 		if metric.UserID != userID {
 			continue
 		}
-		
+
 		weight := m.engagementWeights[metric.MetricType]
 		breakdown.TotalScore += int(float64(metric.MetricValue) * weight)
-		
+
 		switch metric.MetricType {
 		case "message":
 			breakdown.MessagesSent += metric.MetricValue
@@ -267,7 +267,7 @@ func (m *MockRepository) GetUserEngagement(ctx context.Context, userID string) (
 			breakdown.ItemsUsed += metric.MetricValue
 		}
 	}
-	
+
 	return breakdown, nil
 }
 
@@ -284,14 +284,14 @@ func (m *MockRepository) ResetTree(ctx context.Context, resetBy string, reason s
 		}
 	}
 	m.unlocks = newUnlocks
-	
+
 	m.voting = nil
 	m.userVotes = make(map[string]map[int]map[int]bool)
-	
+
 	if !preserveUserData {
 		m.userProgressions = make(map[string]map[string]map[string]*domain.UserProgression)
 	}
-	
+
 	return nil
 }
 
@@ -322,10 +322,10 @@ func setupTestTree(repo *MockRepository) {
 	}
 	repo.nodes[rootID] = root
 	repo.nodesByKey["progression_system"] = root
-	
+
 	// Unlock root
 	repo.UnlockNode(context.Background(), rootID, 1, "auto", 0)
-	
+
 	// Money node (child of root)
 	moneyID := 2
 	parentID := rootID
@@ -343,7 +343,7 @@ func setupTestTree(repo *MockRepository) {
 	}
 	repo.nodes[moneyID] = money
 	repo.nodesByKey["item_money"] = money
-	
+
 	// Economy node (child of money)
 	economyID := 3
 	ecoParent := moneyID
@@ -361,7 +361,7 @@ func setupTestTree(repo *MockRepository) {
 	}
 	repo.nodes[economyID] = economy
 	repo.nodesByKey["feature_economy"] = economy
-	
+
 	// Buy node (child of economy)
 	buyID := 6
 	buyParent := economyID
@@ -379,7 +379,7 @@ func setupTestTree(repo *MockRepository) {
 	}
 	repo.nodes[buyID] = buy
 	repo.nodesByKey[FeatureBuy] = buy
-	
+
 	// Sell node (child of economy)
 	sellID := 7
 	sellParent := economyID
@@ -397,7 +397,7 @@ func setupTestTree(repo *MockRepository) {
 	}
 	repo.nodes[sellID] = sell
 	repo.nodesByKey[FeatureSell] = sell
-	
+
 	// Lootbox0 node (child of root)
 	lootbox0ID := 4
 	lb0Parent := rootID
@@ -415,7 +415,7 @@ func setupTestTree(repo *MockRepository) {
 	}
 	repo.nodes[lootbox0ID] = lootbox0
 	repo.nodesByKey["item_lootbox0"] = lootbox0
-	
+
 	// Upgrade node (child of lootbox0)
 	upgradeID := 8
 	upgradeParent := lootbox0ID
@@ -433,7 +433,7 @@ func setupTestTree(repo *MockRepository) {
 	}
 	repo.nodes[upgradeID] = upgrade
 	repo.nodesByKey[FeatureUpgrade] = upgrade
-	
+
 	// Disassemble node (child of lootbox0)
 	disassembleID := 9
 	disassembleParent := lootbox0ID
@@ -451,7 +451,7 @@ func setupTestTree(repo *MockRepository) {
 	}
 	repo.nodes[disassembleID] = disassemble
 	repo.nodesByKey[FeatureDisassemble] = disassemble
-	
+
 	// Search node (child of lootbox0)
 	searchID := 10
 	searchParent := lootbox0ID
@@ -469,7 +469,7 @@ func setupTestTree(repo *MockRepository) {
 	}
 	repo.nodes[searchID] = search
 	repo.nodesByKey[FeatureSearch] = search
-	
+
 	// Cooldown reduction (multi-level node, child of economy)
 	cooldownID := 5
 	cdParent := economyID
@@ -496,16 +496,16 @@ func TestGetProgressionTree(t *testing.T) {
 	setupTestTree(repo)
 	service := NewService(repo)
 	ctx := context.Background()
-	
+
 	tree, err := service.GetProgressionTree(ctx)
 	if err != nil {
 		t.Fatalf("GetProgressionTree failed: %v", err)
 	}
-	
+
 	if len(tree) != 10 {
 		t.Errorf("Expected 10 nodes, got %d", len(tree))
 	}
-	
+
 	// Check root is unlocked
 	var rootNode *domain.ProgressionTreeNode
 	for _, node := range tree {
@@ -514,7 +514,7 @@ func TestGetProgressionTree(t *testing.T) {
 			break
 		}
 	}
-	
+
 	if rootNode == nil {
 		t.Fatal("Root node not found")
 	}
@@ -531,17 +531,17 @@ func TestGetAvailableUnlocks(t *testing.T) {
 	setupTestTree(repo)
 	service := NewService(repo)
 	ctx := context.Background()
-	
+
 	// Initially, only money and lootbox0 should be available (root is unlocked)
 	available, err := service.GetAvailableUnlocks(ctx)
 	if err != nil {
 		t.Fatalf("GetAvailableUnlocks failed: %v", err)
 	}
-	
+
 	if len(available) != 2 {
 		t.Errorf("Expected 2 available nodes, got %d", len(available))
 	}
-	
+
 	// Check money is available
 	moneyAvailable := false
 	for _, node := range available {
@@ -559,19 +559,19 @@ func TestVoteForUnlock(t *testing.T) {
 	setupTestTree(repo)
 	service := NewService(repo)
 	ctx := context.Background()
-	
+
 	// Vote for money
 	err := service.VoteForUnlock(ctx, "user1", "item_money")
 	if err != nil {
 		t.Fatalf("VoteForUnlock failed: %v", err)
 	}
-	
+
 	// Verify vote was recorded
 	hasVoted, _ := repo.HasUserVoted(ctx, "user1", 2, 1) // money node ID is 2
 	if !hasVoted {
 		t.Error("User vote should be recorded")
 	}
-	
+
 	// Try to vote again - should fail
 	err = service.VoteForUnlock(ctx, "user1", "item_money")
 	if err == nil {
@@ -584,7 +584,7 @@ func TestIsFeatureUnlocked(t *testing.T) {
 	setupTestTree(repo)
 	service := NewService(repo)
 	ctx := context.Background()
-	
+
 	// Progression system should be unlocked
 	unlocked, err := service.IsFeatureUnlocked(ctx, "progression_system")
 	if err != nil {
@@ -593,7 +593,7 @@ func TestIsFeatureUnlocked(t *testing.T) {
 	if !unlocked {
 		t.Error("Progression system should be unlocked")
 	}
-	
+
 	// Economy should not be unlocked
 	unlocked, err = service.IsFeatureUnlocked(ctx, "feature_economy")
 	if err != nil {
@@ -609,7 +609,7 @@ func TestIsItemUnlocked(t *testing.T) {
 	setupTestTree(repo)
 	service := NewService(repo)
 	ctx := context.Background()
-	
+
 	// Money should not be unlocked
 	unlocked, err := service.IsItemUnlocked(ctx, "money")
 	if err != nil {
@@ -618,10 +618,10 @@ func TestIsItemUnlocked(t *testing.T) {
 	if unlocked {
 		t.Error("Money should not be unlocked yet")
 	}
-	
+
 	// Unlock money
 	repo.UnlockNode(ctx, 2, 1, "test", 0)
-	
+
 	unlockedNow, err := service.IsItemUnlocked(ctx, "money")
 	if err != nil {
 		t.Fatalf("IsItemUnlocked failed: %v", err)
@@ -635,37 +635,37 @@ func TestEngagementTracking(t *testing.T) {
 	repo := NewMockRepository()
 	service := NewService(repo)
 	ctx := context.Background()
-	
+
 	// Record engagement metrics
 	service.RecordEngagement(ctx, "user1", "message", 10)
 	service.RecordEngagement(ctx, "user1", "command", 5)
 	service.RecordEngagement(ctx, "user2", "item_crafted", 3)
-	
+
 	// Get user1 engagement
 	breakdown, err := service.GetUserEngagement(ctx, "user1")
 	if err != nil {
 		t.Fatalf("GetUserEngagement failed: %v", err)
 	}
-	
+
 	if breakdown.MessagesSent != 10 {
 		t.Errorf("Expected 10 messages, got %d", breakdown.MessagesSent)
 	}
 	if breakdown.CommandsUsed != 5 {
 		t.Errorf("Expected 5 commands, got %d", breakdown.CommandsUsed)
 	}
-	
+
 	// Check weighted score: 10*1.0 + 5*2.0 = 20
 	expectedScore := 20
 	if breakdown.TotalScore != expectedScore {
 		t.Errorf("Expected total score %d, got %d", expectedScore, breakdown.TotalScore)
 	}
-	
+
 	// Get total engagement score
 	totalScore, err := service.GetEngagementScore(ctx)
 	if err != nil {
 		t.Fatalf("GetEngagementScore failed: %v", err)
 	}
-	
+
 	// 10*1.0 + 5*2.0 + 3*3.0 = 29
 	expectedTotal := 29
 	if totalScore != expectedTotal {
@@ -678,13 +678,13 @@ func TestAdminUnlock(t *testing.T) {
 	setupTestTree(repo)
 	service := NewService(repo)
 	ctx := context.Background()
-	
+
 	// Admin unlock money
 	err := service.AdminUnlock(ctx, "item_money", 1)
 	if err != nil {
 		t.Fatalf("AdminUnlock failed: %v", err)
 	}
-	
+
 	// Verify it's unlocked
 	unlocked, err := service.IsItemUnlocked(ctx, "money")
 	if err != nil {
@@ -700,14 +700,14 @@ func TestAdminRelock(t *testing.T) {
 	setupTestTree(repo)
 	service := NewService(repo)
 	ctx := context.Background()
-	
+
 	// Unlock then relock
 	service.AdminUnlock(ctx, "item_money", 1)
 	err := service.AdminRelock(ctx, "item_money", 1)
 	if err != nil {
 		t.Fatalf("AdminRelock failed: %v", err)
 	}
-	
+
 	// Verify it's locked again
 	unlocked, err := service.IsItemUnlocked(ctx, "money")
 	if err != nil {
@@ -723,32 +723,32 @@ func TestResetProgressionTree(t *testing.T) {
 	setupTestTree(repo)
 	service := NewService(repo)
 	ctx := context.Background()
-	
+
 	// Unlock some nodes
 	service.AdminUnlock(ctx, "item_money", 1)
 	service.AdminUnlock(ctx, "feature_economy", 1)
-	
+
 	// Add user progression
 	repo.UnlockUserProgression(ctx, "user1", "recipe", "recipe_lootbox1", nil)
-	
+
 	// Reset without preserving user data
 	err := service.ResetProgressionTree(ctx, "admin", "test reset", false)
 	if err != nil {
 		t.Fatalf("ResetProgressionTree failed: %v", err)
 	}
-	
+
 	// Check root is still unlocked
 	rootUnlocked, _ := service.IsFeatureUnlocked(ctx, "progression_system")
 	if !rootUnlocked {
 		t.Error("Root should remain unlocked after reset")
 	}
-	
+
 	// Check money is locked
 	moneyUnlocked, _ := service.IsItemUnlocked(ctx, "money")
 	if moneyUnlocked {
 		t.Error("Money should be locked after reset")
 	}
-	
+
 	// Check user progression was cleared
 	progressions, _ := repo.GetUserProgressions(ctx, "user1", "recipe")
 	if len(progressions) != 0 {
@@ -761,21 +761,21 @@ func TestMultiLevelUnlock(t *testing.T) {
 	setupTestTree(repo)
 	service := NewService(repo)
 	ctx := context.Background()
-	
+
 	// Unlock economy first (prerequisite for cooldown reduction)
 	repo.UnlockNode(ctx, 2, 1, "test", 0) // money
 	repo.UnlockNode(ctx, 3, 1, "test", 0) // economy
-	
+
 	// Unlock cooldown reduction level 1
 	service.AdminUnlock(ctx, "upgrade_cooldown_reduction", 1)
-	
+
 	// Unlock level 2
 	service.AdminUnlock(ctx, "upgrade_cooldown_reduction", 2)
-	
+
 	// Check both levels are unlocked
 	level1, _ := repo.IsNodeUnlocked(ctx, "upgrade_cooldown_reduction", 1)
 	level2, _ := repo.IsNodeUnlocked(ctx, "upgrade_cooldown_reduction", 2)
-	
+
 	if !level1 {
 		t.Error("Cooldown reduction level 1 should be unlocked")
 	}

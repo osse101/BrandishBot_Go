@@ -14,14 +14,12 @@ import (
 
 // MockRepository implements Repository interface for testing
 type MockRepository struct {
-	users               map[string]*domain.User // keyed by user ID
-	platformUsers       map[string]*domain.User // keyed by platform+platformID
-	inventories         map[string]*domain.Inventory
-	items               map[string]*domain.Item
-	recipes             map[int]*domain.Recipe // keyed by recipe ID
-	unlockedRecipes     map[string]map[int]bool
-	unlockedRecipeInfos map[string][]crafting.UnlockedRecipeInfo
-	cooldowns           map[string]map[string]*time.Time // userID -> action -> timestamp
+	users           map[string]*domain.User // keyed by user ID
+	inventories     map[string]*domain.Inventory
+	items           map[string]*domain.Item
+	recipes         map[int]*domain.Recipe // keyed by recipe ID
+	unlockedRecipes map[string]map[int]bool
+	cooldowns       map[string]map[string]*time.Time // userID -> action -> timestamp
 }
 
 func NewMockRepository() *MockRepository {
@@ -164,7 +162,7 @@ func (m *MockRepository) UnlockRecipe(ctx context.Context, userID string, recipe
 
 func (r *MockRepository) GetUnlockedRecipesForUser(ctx context.Context, userID string) ([]crafting.UnlockedRecipeInfo, error) {
 	var recipes []crafting.UnlockedRecipeInfo
-	
+
 	// For each unlocked recipe, get the recipe and item info
 	if userUnlocks, ok := r.unlockedRecipes[userID]; ok {
 		for recipeID := range userUnlocks {
@@ -182,7 +180,7 @@ func (r *MockRepository) GetUnlockedRecipesForUser(ctx context.Context, userID s
 			}
 		}
 	}
-	
+
 	return recipes, nil
 }
 
@@ -200,7 +198,6 @@ func (m *MockRepository) UpdateCooldown(ctx context.Context, userID, action stri
 	m.cooldowns[userID][action] = &timestamp
 	return nil
 }
-
 
 // Helper to setup test data
 func setupTestData(repo *MockRepository) {
@@ -449,13 +446,12 @@ func TestHandleIncomingMessage_ExistingUser(t *testing.T) {
 	}
 }
 
-
 func TestUseItem(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
 	lockManager := concurrency.NewLockManager()
 	svc := NewService(repo, lockManager).(*service)
-	
+
 	// Setup loot tables
 	svc.lootTables[domain.ItemLootbox1] = []LootItem{
 		{ItemName: domain.ItemLootbox0, Min: 1, Max: 1, Chance: 1.0}, // Force drop for test
@@ -480,7 +476,7 @@ func TestUseItem(t *testing.T) {
 
 	// Verify inventory
 	inv, _ := repo.GetInventory(ctx, "user-alice")
-	
+
 	// Should have 2 slots: lootbox1 (4 left) and lootbox0 (1)
 	var lootbox1Slot, lootbox0Slot *domain.InventorySlot
 	for i := range inv.Slots {
@@ -608,12 +604,12 @@ func TestUseItem_Lootbox0(t *testing.T) {
 	setupTestData(repo)
 	lockManager := concurrency.NewLockManager()
 	svc := NewService(repo, lockManager).(*service)
-	
+
 	// Setup loot tables
 	svc.lootTables[domain.ItemLootbox0] = []LootItem{
 		{ItemName: domain.ItemMoney, Min: 1, Max: 10, Chance: 1.0},
 	}
-	
+
 	ctx := context.Background()
 
 	// Setup: Give alice lootbox0
@@ -650,12 +646,12 @@ func TestUseItem_Lootbox2(t *testing.T) {
 	setupTestData(repo)
 	lockManager := concurrency.NewLockManager()
 	svc := NewService(repo, lockManager).(*service)
-	
+
 	// Setup loot tables
 	svc.lootTables[domain.ItemLootbox2] = []LootItem{
 		{ItemName: domain.ItemLootbox1, Min: 1, Max: 1, Chance: 1.0}, // Force drop
 	}
-	
+
 	ctx := context.Background()
 
 	// Setup: Give alice lootbox2
@@ -678,7 +674,7 @@ func TestUseItem_Lootbox2(t *testing.T) {
 	if len(inv.Slots) != 1 {
 		t.Errorf("Expected 1 slot, got %d", len(inv.Slots))
 	}
-	
+
 	if inv.Slots[0].ItemID != 1 { // lootbox1 ID is 1
 		t.Errorf("Expected lootbox1 (ID 1), got ID %d", inv.Slots[0].ItemID)
 	}

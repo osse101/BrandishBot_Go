@@ -3,6 +3,7 @@
 # Tool paths
 GOOSE := $(shell command -v goose 2> /dev/null || echo $(HOME)/go/bin/goose)
 SWAG := $(shell command -v swag 2> /dev/null || echo $(HOME)/go/bin/swag)
+LINT := $(shell command -v golangci-lint 2> /dev/null || echo $(HOME)/go/bin/golangci-lint)
 
 # Default target
 help:
@@ -92,13 +93,11 @@ test-coverage-check:
 
 lint:
 	@echo "Running linters..."
-	@which golangci-lint \u003e /dev/null || (echo "golangci-lint not installed. Install with: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest" ; exit 1)
-	@golangci-lint run ./...
+	@$(LINT) run ./...
 
 lint-fix:
 	@echo "Running linters with auto-fix..."
-	@which golangci-lint \u003e /dev/null || (echo "golangci-lint not installed. Install with: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest" ; exit 1)
-	@golangci-lint run --fix ./...
+	@$(LINT) run --fix ./...
 
 build:
 	@echo "Building binaries..."

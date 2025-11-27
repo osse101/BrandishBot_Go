@@ -17,7 +17,7 @@ func main() {
 	}
 
 	dbName := os.Getenv("DB_NAME")
-	
+
 	// Connect to PostgreSQL server (postgres database to manage other databases)
 	serverConnString := fmt.Sprintf("postgres://%s:%s@%s:%s/postgres?sslmode=disable",
 		os.Getenv("DB_USER"),

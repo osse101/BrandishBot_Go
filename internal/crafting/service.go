@@ -3,12 +3,12 @@ package crafting
 import (
 	"context"
 	"fmt"
-	"sync"
 
 	"github.com/osse101/BrandishBot_Go/internal/concurrency"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
+	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
 // Repository defines the interface for data access required by the crafting service
@@ -23,7 +23,7 @@ type Repository interface {
 	UnlockRecipe(ctx context.Context, userID string, recipeID int) error
 	GetUnlockedRecipesForUser(ctx context.Context, userID string) ([]UnlockedRecipeInfo, error)
 	BeginTx(ctx context.Context) (repository.Tx, error)
-	
+
 	// Disassemble methods
 	GetDisassembleRecipeBySourceItemID(ctx context.Context, itemID int) (*domain.DisassembleRecipe, error)
 	GetAssociatedUpgradeRecipeID(ctx context.Context, disassembleRecipeID int) (int, error)
@@ -61,10 +61,6 @@ func NewService(repo Repository, lockManager *concurrency.LockManager) Service {
 		repo:        repo,
 		lockManager: lockManager,
 	}
-}
-
-func (s *service) getUserLock(userID string) *sync.Mutex {
-	return s.lockManager.GetLock(userID)
 }
 
 func (s *service) validateUser(ctx context.Context, username string) (*domain.User, error) {
@@ -134,7 +130,7 @@ func (s *service) UpgradeItem(ctx context.Context, username, platform, itemName 
 		log.Error("Failed to begin transaction", "error", err)
 		return "", 0, fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer repository.SafeRollback(ctx, tx)
 
 	// Get user's inventory
 	inventory, err := tx.GetInventory(ctx, user.ID)
@@ -146,13 +142,8 @@ func (s *service) UpgradeItem(ctx context.Context, username, platform, itemName 
 	maxPossible := quantity
 	for _, cost := range recipe.BaseCost {
 		// Find how many of this material the user has
-		userQuantity := 0
-		for _, slot := range inventory.Slots {
-			if slot.ItemID == cost.ItemID {
-				userQuantity = slot.Quantity
-				break
-			}
-		}
+		// Find how many of this material the user has
+		_, userQuantity := utils.FindSlot(inventory, cost.ItemID)
 
 		// Calculate how many upgrades this material allows
 		if cost.Quantity > 0 {
@@ -177,24 +168,21 @@ func (s *service) UpgradeItem(ctx context.Context, username, platform, itemName 
 	// Consume materials
 	for _, cost := range recipe.BaseCost {
 		totalNeeded := cost.Quantity * actualQuantity
-		
-		// Find the slot with this material
-		for i, slot := range inventory.Slots {
-			if slot.ItemID == cost.ItemID {
-				if slot.Quantity < totalNeeded {
-					// This should not happen due to our earlier check, but handle it anyway
-					return "", 0, fmt.Errorf("insufficient material (itemID: %d)", cost.ItemID)
-				}
 
-				// Remove the materials
-				if slot.Quantity == totalNeeded {
-					// Remove the slot entirely
-					inventory.Slots = append(inventory.Slots[:i], inventory.Slots[i+1:]...)
-				} else {
-					inventory.Slots[i].Quantity -= totalNeeded
-				}
-				break
-			}
+		// Find the slot with this material
+		// Find the slot with this material
+		i, slotQuantity := utils.FindSlot(inventory, cost.ItemID)
+		if i == -1 || slotQuantity < totalNeeded {
+			// This should not happen due to our earlier check, but handle it anyway
+			return "", 0, fmt.Errorf("insufficient material (itemID: %d)", cost.ItemID)
+		}
+
+		// Remove the materials
+		if slotQuantity == totalNeeded {
+			// Remove the slot entirely
+			inventory.Slots = append(inventory.Slots[:i], inventory.Slots[i+1:]...)
+		} else {
+			inventory.Slots[i].Quantity -= totalNeeded
 		}
 	}
 
@@ -349,7 +337,7 @@ func (s *service) DisassembleItem(ctx context.Context, username, platform, itemN
 		log.Error("Failed to begin transaction", "error", err)
 		return nil, 0, fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer repository.SafeRollback(ctx, tx)
 
 	// Get user's inventory
 	inventory, err := tx.GetInventory(ctx, user.ID)
@@ -358,15 +346,8 @@ func (s *service) DisassembleItem(ctx context.Context, username, platform, itemN
 	}
 
 	// Find how many source items the user has
-	userQuantity := 0
-	sourceSlotIndex := -1
-	for i, slot := range inventory.Slots {
-		if slot.ItemID == item.ID {
-			userQuantity = slot.Quantity
-			sourceSlotIndex = i
-			break
-		}
-	}
+	// Find how many source items the user has
+	sourceSlotIndex, userQuantity := utils.FindSlot(inventory, item.ID)
 
 	// Calculate max possible disassembles
 	maxPossible := userQuantity / recipe.QuantityConsumed

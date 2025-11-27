@@ -81,7 +81,7 @@ func (r *UserRepository) UpsertUser(ctx context.Context, user *domain.User) erro
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer SafeRollback(ctx, tx)
 
 	// 1. Upsert User Core Data
 	var userID string
@@ -359,7 +359,6 @@ func (r *UserRepository) UnlockRecipe(ctx context.Context, userID string, recipe
 	return nil
 }
 
-
 // GetUnlockedRecipesForUser retrieves all recipes unlocked by a specific user
 func (r *UserRepository) GetUnlockedRecipesForUser(ctx context.Context, userID string) ([]crafting.UnlockedRecipeInfo, error) {
 	query := `
@@ -370,13 +369,13 @@ func (r *UserRepository) GetUnlockedRecipesForUser(ctx context.Context, userID s
 		WHERE ru.user_id = $1
 		ORDER BY i.item_name
 	`
-	
+
 	rows, err := r.db.Query(ctx, query, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query unlocked recipes: %w", err)
 	}
 	defer rows.Close()
-	
+
 	var recipes []crafting.UnlockedRecipeInfo
 	for rows.Next() {
 		var recipe crafting.UnlockedRecipeInfo
@@ -385,17 +384,16 @@ func (r *UserRepository) GetUnlockedRecipesForUser(ctx context.Context, userID s
 		}
 		recipes = append(recipes, recipe)
 	}
-	
+
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("error iterating rows: %w", err)
 	}
-	
+
 	return recipes, nil
 }
 
-
 // GetDisassembleRecipeBySourceItemID retrieves a disassemble recipe for a given source item
-func (r *UserRepository ) GetDisassembleRecipeBySourceItemID(ctx context.Context, itemID int) (*domain.DisassembleRecipe, error) {
+func (r *UserRepository) GetDisassembleRecipeBySourceItemID(ctx context.Context, itemID int) (*domain.DisassembleRecipe, error) {
 	// Get the recipe details
 	var recipe domain.DisassembleRecipe
 	query := `
@@ -403,7 +401,7 @@ func (r *UserRepository ) GetDisassembleRecipeBySourceItemID(ctx context.Context
 		FROM disassemble_recipes
 		WHERE source_item_id = $1
 	`
-	
+
 	err := r.db.QueryRow(ctx, query, itemID).Scan(
 		&recipe.ID,
 		&recipe.SourceItemID,
@@ -472,7 +470,7 @@ func (r *UserRepository) GetLastCooldown(ctx context.Context, userID, action str
 		FROM user_cooldowns
 		WHERE user_id = $1 AND action_name = $2
 	`
-	
+
 	err := r.db.QueryRow(ctx, query, userID, action).Scan(&lastUsed)
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -491,7 +489,7 @@ func (r *UserRepository) UpdateCooldown(ctx context.Context, userID, action stri
 		ON CONFLICT (user_id, action_name) DO UPDATE
 		SET last_used_at = EXCLUDED.last_used_at
 	`
-	
+
 	_, err := r.db.Exec(ctx, query, userID, action, timestamp)
 	if err != nil {
 		return fmt.Errorf("failed to update cooldown: %w", err)

@@ -21,7 +21,7 @@ type HandleMessageRequest struct {
 func HandleMessageHandler(userService user.Service, progressionSvc progression.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
-		
+
 		if r.Method != http.MethodPost {
 			log.Warn("Method not allowed", "method", r.Method)
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -34,8 +34,8 @@ func HandleMessageHandler(userService user.Service, progressionSvc progression.S
 			http.Error(w, "Invalid request body", http.StatusBadRequest)
 			return
 		}
-		
-		log.Debug("Decoded request", 
+
+		log.Debug("Decoded request",
 			"platform", req.Platform,
 			"platform_id", req.PlatformID,
 			"username", req.Username)
@@ -62,7 +62,7 @@ func HandleMessageHandler(userService user.Service, progressionSvc progression.S
 
 		user, err := userService.HandleIncomingMessage(r.Context(), req.Platform, req.PlatformID, req.Username)
 		if err != nil {
-			log.Error("Failed to handle message", 
+			log.Error("Failed to handle message",
 				"error", err,
 				"platform", req.Platform,
 				"platform_id", req.PlatformID,
@@ -70,9 +70,9 @@ func HandleMessageHandler(userService user.Service, progressionSvc progression.S
 			http.Error(w, "Failed to handle message", http.StatusInternalServerError)
 			return
 		}
-		
+
 		log.Info("Message processed", "username", req.Username)
-		
+
 		// Track engagement for message
 		middleware.TrackEngagementFromContext(
 			middleware.WithUserID(r.Context(), user.ID),
@@ -80,7 +80,7 @@ func HandleMessageHandler(userService user.Service, progressionSvc progression.S
 			"message",
 			1,
 		)
-		
+
 		log.Info("Message handled successfully",
 			"user_id", user.ID,
 			"username", user.Username)

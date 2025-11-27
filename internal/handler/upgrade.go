@@ -25,7 +25,7 @@ type UpgradeItemResponse struct {
 func HandleUpgradeItem(svc crafting.Service, progressionSvc progression.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
-		
+
 		// Check if upgrade feature is unlocked
 		unlocked, err := progressionSvc.IsFeatureUnlocked(r.Context(), progression.FeatureUpgrade)
 		if err != nil {
@@ -38,14 +38,14 @@ func HandleUpgradeItem(svc crafting.Service, progressionSvc progression.Service)
 			http.Error(w, "Upgrade feature is not yet unlocked", http.StatusForbidden)
 			return
 		}
-		
+
 		var req UpgradeItemRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			log.Error("Failed to decode upgrade item request", "error", err)
 			http.Error(w, "Invalid request body", http.StatusBadRequest)
 			return
 		}
-		
+
 		log.Debug("Upgrade item request",
 			"username", req.Username,
 			"item", req.Item,
@@ -63,7 +63,7 @@ func HandleUpgradeItem(svc crafting.Service, progressionSvc progression.Service)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		
+
 		log.Info("Item upgraded successfully",
 			"username", req.Username,
 			"item", req.Item,
@@ -93,10 +93,10 @@ func HandleUpgradeItem(svc crafting.Service, progressionSvc progression.Service)
 func HandleGetRecipes(svc crafting.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
-		
+
 		itemName := r.URL.Query().Get("item")
 		username := r.URL.Query().Get("user")
-		
+
 		log.Debug("Get recipes request", "item", itemName, "user", username)
 
 		// Case 1: Only user provided - return unlocked recipes
@@ -107,9 +107,9 @@ func HandleGetRecipes(svc crafting.Service) http.HandlerFunc {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			
+
 			log.Info("Unlocked recipes retrieved", "username", username, "count", len(recipes))
-			
+
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(map[string]interface{}{
@@ -126,9 +126,9 @@ func HandleGetRecipes(svc crafting.Service) http.HandlerFunc {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			
+
 			log.Info("Recipe retrieved", "item", itemName, "user", username)
-			
+
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(recipe)

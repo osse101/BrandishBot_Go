@@ -25,7 +25,7 @@ type DisassembleItemResponse struct {
 func HandleDisassembleItem(svc crafting.Service, progressionSvc progression.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
-		
+
 		// Check if disassemble feature is unlocked
 		unlocked, err := progressionSvc.IsFeatureUnlocked(r.Context(), progression.FeatureDisassemble)
 		if err != nil {
@@ -38,14 +38,14 @@ func HandleDisassembleItem(svc crafting.Service, progressionSvc progression.Serv
 			http.Error(w, "Disassemble feature is not yet unlocked", http.StatusForbidden)
 			return
 		}
-		
+
 		var req DisassembleItemRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			log.Error("Failed to decode disassemble item request", "error", err)
 			http.Error(w, "Invalid request body", http.StatusBadRequest)
 			return
 		}
-		
+
 		log.Debug("Disassemble item request",
 			"username", req.Username,
 			"item", req.Item,
@@ -63,7 +63,7 @@ func HandleDisassembleItem(svc crafting.Service, progressionSvc progression.Serv
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		
+
 		log.Info("Item disassembled successfully",
 			"username", req.Username,
 			"item", req.Item,

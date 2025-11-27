@@ -81,7 +81,9 @@ func (m *mockSearchRepo) UpdateCooldown(ctx context.Context, userID, action stri
 func (m *mockSearchRepo) GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error) {
 	return nil, nil
 }
-func (m *mockSearchRepo) GetItemByID(ctx context.Context, id int) (*domain.Item, error) { return nil, nil }
+func (m *mockSearchRepo) GetItemByID(ctx context.Context, id int) (*domain.Item, error) {
+	return nil, nil
+}
 func (m *mockSearchRepo) GetSellablePrices(ctx context.Context) ([]domain.Item, error) {
 	return nil, nil
 }

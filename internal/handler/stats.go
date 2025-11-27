@@ -64,7 +64,7 @@ func HandleGetUserStats(svc stats.Service) http.HandlerFunc {
 
 		period := r.URL.Query().Get("period")
 		if period == "" {
-			period = "daily" // Default to daily
+			period = domain.PeriodDaily // Default to daily
 		}
 
 		log.Debug("Get user stats request", "user_id", userID, "period", period)
@@ -91,7 +91,7 @@ func HandleGetSystemStats(svc stats.Service) http.HandlerFunc {
 
 		period := r.URL.Query().Get("period")
 		if period == "" {
-			period = "daily" // Default to daily
+			period = domain.PeriodDaily // Default to daily
 		}
 
 		log.Debug("Get system stats request", "period", period)
@@ -125,7 +125,7 @@ func HandleGetLeaderboard(svc stats.Service) http.HandlerFunc {
 
 		period := r.URL.Query().Get("period")
 		if period == "" {
-			period = "daily" // Default to daily
+			period = domain.PeriodDaily // Default to daily
 		}
 
 		limitStr := r.URL.Query().Get("limit")

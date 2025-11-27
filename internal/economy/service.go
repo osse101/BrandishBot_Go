@@ -3,11 +3,11 @@ package economy
 import (
 	"context"
 	"fmt"
-	"sync"
 
 	"github.com/osse101/BrandishBot_Go/internal/concurrency"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
+	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
 // Repository defines the interface for data access required by the economy service
@@ -38,10 +38,6 @@ func NewService(repo Repository, lockManager *concurrency.LockManager) Service {
 		repo:        repo,
 		lockManager: lockManager,
 	}
-}
-
-func (s *service) getUserLock(userID string) *sync.Mutex {
-	return s.lockManager.GetLock(userID)
 }
 
 func (s *service) GetSellablePrices(ctx context.Context) ([]domain.Item, error) {
@@ -90,22 +86,14 @@ func (s *service) SellItem(ctx context.Context, username, platform, itemName str
 		log.Error("Failed to get inventory", "error", err, "userID", user.ID)
 		return 0, 0, fmt.Errorf("failed to get inventory: %w", err)
 	}
-	itemSlotIndex := -1
-	actualSellQuantity := 0
-	for i, slot := range inventory.Slots {
-		if slot.ItemID == item.ID {
-			itemSlotIndex = i
-			if slot.Quantity < quantity {
-				actualSellQuantity = slot.Quantity
-			} else {
-				actualSellQuantity = quantity
-			}
-			break
-		}
-	}
+	itemSlotIndex, slotQuantity := utils.FindSlot(inventory, item.ID)
 	if itemSlotIndex == -1 {
 		log.Warn("Item not in inventory", "itemName", itemName)
 		return 0, 0, fmt.Errorf("item %s not in inventory", itemName)
+	}
+	actualSellQuantity := quantity
+	if slotQuantity < quantity {
+		actualSellQuantity = slotQuantity
 	}
 	moneyGained := actualSellQuantity * item.BaseValue
 	if inventory.Slots[itemSlotIndex].Quantity <= actualSellQuantity {
@@ -186,34 +174,22 @@ func (s *service) BuyItem(ctx context.Context, username, platform, itemName stri
 		return 0, fmt.Errorf("failed to get inventory: %w", err)
 	}
 
-	moneyBalance := 0
-	moneySlotIndex := -1
-	for i, slot := range inventory.Slots {
-		if slot.ItemID == moneyItem.ID {
-			moneyBalance = slot.Quantity
-			moneySlotIndex = i
-			break
-		}
-	}
-
+	moneySlotIndex, moneyBalance := utils.FindSlot(inventory, moneyItem.ID)
 	if moneyBalance <= 0 {
 		log.Warn("Insufficient funds", "username", username)
 		return 0, fmt.Errorf("insufficient funds")
 	}
 
-	maxAffordable := moneyBalance / item.BaseValue
-	if maxAffordable == 0 {
+	actualQuantity, cost := calculateAffordableQuantity(quantity, item.BaseValue, moneyBalance)
+	if actualQuantity == 0 {
 		log.Warn("Insufficient funds for any quantity", "username", username, "item", itemName)
 		return 0, fmt.Errorf("insufficient funds to buy even one %s (cost: %d, balance: %d)", itemName, item.BaseValue, moneyBalance)
 	}
-
-	actualQuantity := quantity
-	if actualQuantity > maxAffordable {
-		actualQuantity = maxAffordable
+	
+	if quantity > actualQuantity {
 		log.Info("Adjusted purchase quantity due to funds", "requested", quantity, "actual", actualQuantity)
 	}
 
-	cost := actualQuantity * item.BaseValue
 	if inventory.Slots[moneySlotIndex].Quantity == cost {
 		inventory.Slots = append(inventory.Slots[:moneySlotIndex], inventory.Slots[moneySlotIndex+1:]...)
 	} else {

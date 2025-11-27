@@ -28,7 +28,7 @@ func (e *EngagementTracker) Track(metricType string, getValue func(*http.Request
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Call the actual handler first
 			next.ServeHTTP(w, r)
-			
+
 			// Track engagement after successful execution
 			// Extract user ID from request context or body
 			userID := extractUserID(r)
@@ -37,7 +37,7 @@ func (e *EngagementTracker) Track(metricType string, getValue func(*http.Request
 				if getValue != nil {
 					value = getValue(r)
 				}
-				
+
 				// Record engagement asynchronously to not block response
 				go func() {
 					ctx := context.Background()
@@ -57,7 +57,7 @@ func (e *EngagementTracker) TrackCommand(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Execute handler
 		next.ServeHTTP(w, r)
-		
+
 		// Track command usage
 		userID := extractUserID(r)
 		if userID != "" {
@@ -67,7 +67,7 @@ func (e *EngagementTracker) TrackCommand(next http.Handler) http.Handler {
 					"endpoint": r.URL.Path,
 					"method":   r.Method,
 				}
-				
+
 				metric := &domain.EngagementMetric{
 					UserID:      userID,
 					MetricType:  "command",
@@ -75,7 +75,7 @@ func (e *EngagementTracker) TrackCommand(next http.Handler) http.Handler {
 					RecordedAt:  time.Now(),
 					Metadata:    metadata,
 				}
-				
+
 				err := e.progressionService.RecordEngagement(ctx, userID, metric.MetricType, metric.MetricValue)
 				if err != nil {
 					log := logger.FromContext(r.Context())
@@ -95,16 +95,16 @@ func extractUserID(r *http.Request) string {
 			return uid
 		}
 	}
-	
+
 	// Try query parameter
 	if userID := r.URL.Query().Get("username"); userID != "" {
 		return userID
 	}
-	
+
 	// For POST requests, we'd need to parse the body
 	// But that would consume the body, so we rely on handlers to track engagement
 	// or use context to pass user_id
-	
+
 	return ""
 }
 
@@ -139,7 +139,7 @@ func TrackEngagementFromContext(ctx context.Context, progressionService progress
 	if userID == "" {
 		return
 	}
-	
+
 	go func() {
 		err := progressionService.RecordEngagement(context.Background(), userID, metricType, value)
 		if err != nil {

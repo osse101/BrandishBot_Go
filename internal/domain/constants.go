@@ -25,3 +25,25 @@ const (
 	// Future durations can be added here
 	// DailyCooldownDuration  = 24 * time.Hour
 )
+
+// Platform constants
+const (
+	PlatformTwitch  = "twitch"
+	PlatformYoutube = "youtube"
+	PlatformDiscord = "discord"
+)
+
+// Message constants
+const (
+	MsgNothingFound = "You have found nothing"
+)
+
+// Period constants
+const (
+	PeriodDaily = "daily"
+)
+
+// Error messages
+const (
+	ErrMsgTxClosed = "tx is closed"
+)

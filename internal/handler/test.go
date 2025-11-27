@@ -25,7 +25,7 @@ type TestResponse struct {
 func HandleTest(userService user.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
-		
+
 		if r.Method != http.MethodPost {
 			log.Warn("Method not allowed", "method", r.Method)
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -38,7 +38,7 @@ func HandleTest(userService user.Service) http.HandlerFunc {
 			http.Error(w, "Invalid request body", http.StatusBadRequest)
 			return
 		}
-		
+
 		log.Debug("Decoded test request",
 			"username", req.Username,
 			"platform", req.Platform,
@@ -72,7 +72,7 @@ func HandleTest(userService user.Service) http.HandlerFunc {
 			http.Error(w, "Failed to process user: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
-		
+
 		log.Info("Test request completed", "username", req.Username)
 
 		resp := TestResponse{
