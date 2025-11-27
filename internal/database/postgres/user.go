@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -461,4 +462,39 @@ func (r *UserRepository) GetAssociatedUpgradeRecipeID(ctx context.Context, disas
 	}
 
 	return upgradeRecipeID, nil
+}
+
+// GetLastCooldown retrieves the last time a user performed an action
+func (r *UserRepository) GetLastCooldown(ctx context.Context, userID, action string) (*time.Time, error) {
+	var lastUsed time.Time
+	query := `
+		SELECT last_used_at
+		FROM user_cooldowns
+		WHERE user_id = $1 AND action_name = $2
+	`
+	
+	err := r.db.QueryRow(ctx, query, userID, action).Scan(&lastUsed)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, nil // No cooldown record
+		}
+		return nil, fmt.Errorf("failed to get cooldown: %w", err)
+	}
+	return &lastUsed, nil
+}
+
+// UpdateCooldown updates or creates a cooldown record for a user action
+func (r *UserRepository) UpdateCooldown(ctx context.Context, userID, action string, timestamp time.Time) error {
+	query := `
+		INSERT INTO user_cooldowns (user_id, action_name, last_used_at)
+		VALUES ($1, $2, $3)
+		ON CONFLICT (user_id, action_name) DO UPDATE
+		SET last_used_at = EXCLUDED.last_used_at
+	`
+	
+	_, err := r.db.Exec(ctx, query, userID, action, timestamp)
+	if err != nil {
+		return fmt.Errorf("failed to update cooldown: %w", err)
+	}
+	return nil
 }

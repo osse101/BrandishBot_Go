@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 	"testing"
-	
+	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/concurrency"
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
@@ -21,6 +21,7 @@ type MockRepository struct {
 	recipes             map[int]*domain.Recipe // keyed by recipe ID
 	unlockedRecipes     map[string]map[int]bool
 	unlockedRecipeInfos map[string][]crafting.UnlockedRecipeInfo
+	cooldowns           map[string]map[string]*time.Time // userID -> action -> timestamp
 }
 
 func NewMockRepository() *MockRepository {
@@ -30,6 +31,7 @@ func NewMockRepository() *MockRepository {
 		inventories:     make(map[string]*domain.Inventory),
 		recipes:         make(map[int]*domain.Recipe),
 		unlockedRecipes: make(map[string]map[int]bool),
+		cooldowns:       make(map[string]map[string]*time.Time),
 	}
 }
 
@@ -184,6 +186,20 @@ func (r *MockRepository) GetUnlockedRecipesForUser(ctx context.Context, userID s
 	return recipes, nil
 }
 
+func (m *MockRepository) GetLastCooldown(ctx context.Context, userID, action string) (*time.Time, error) {
+	if userCooldowns, ok := m.cooldowns[userID]; ok {
+		return userCooldowns[action], nil
+	}
+	return nil, nil
+}
+
+func (m *MockRepository) UpdateCooldown(ctx context.Context, userID, action string, timestamp time.Time) error {
+	if _, ok := m.cooldowns[userID]; !ok {
+		m.cooldowns[userID] = make(map[string]*time.Time)
+	}
+	m.cooldowns[userID][action] = &timestamp
+	return nil
+}
 
 
 // Helper to setup test data

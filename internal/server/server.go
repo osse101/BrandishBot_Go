@@ -49,6 +49,7 @@ func NewServer(port int, apiKey string, dbPool database.Pool, userService user.S
 	mux.HandleFunc("/user/item/disassemble", handler.HandleDisassembleItem(craftingService, progressionService))
 	mux.HandleFunc("/recipes", handler.HandleGetRecipes(craftingService))
 	mux.HandleFunc("/user/inventory", handler.HandleGetInventory(userService))
+	mux.HandleFunc("/user/search", handler.HandleSearch(userService, progressionService))
 	mux.HandleFunc("/prices", handler.HandleGetPrices(economyService))
 	
 	// Stats routes

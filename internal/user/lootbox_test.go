@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
@@ -113,6 +114,19 @@ func (m *MockRepo) GetUnlockedRecipesForUser(ctx context.Context, userID string)
 		return nil, args.Error(1)
 	}
 	return args.Get(0).([]crafting.UnlockedRecipeInfo), args.Error(1)
+}
+
+func (m *MockRepo) GetLastCooldown(ctx context.Context, userID, action string) (*time.Time, error) {
+	args := m.Called(ctx, userID, action)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*time.Time), args.Error(1)
+}
+
+func (m *MockRepo) UpdateCooldown(ctx context.Context, userID, action string, timestamp time.Time) error {
+	args := m.Called(ctx, userID, action, timestamp)
+	return args.Error(0)
 }
 
 // Helper to create a service with a mock repo

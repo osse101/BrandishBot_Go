@@ -12,3 +12,13 @@ type User struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
+
+// Cooldown action names
+const (
+	ActionSearch = "search"
+)
+
+// Cooldown durations
+const (
+	SearchCooldownDuration = 30 * time.Minute
+)

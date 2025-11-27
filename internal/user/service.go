@@ -33,6 +33,8 @@ type Repository interface {
 	IsRecipeUnlocked(ctx context.Context, userID string, recipeID int) (bool, error)
 	UnlockRecipe(ctx context.Context, userID string, recipeID int) error
 	GetUnlockedRecipesForUser(ctx context.Context, userID string) ([]crafting.UnlockedRecipeInfo, error)
+	GetLastCooldown(ctx context.Context, userID, action string) (*time.Time, error)
+	UpdateCooldown(ctx context.Context, userID, action string, timestamp time.Time) error
 }
 
 // Service defines the interface for user operations
@@ -47,6 +49,7 @@ type Service interface {
 	GetInventory(ctx context.Context, username string) ([]UserInventoryItem, error)
 	TimeoutUser(ctx context.Context, username string, duration time.Duration, reason string) error
 	LoadLootTables(path string) error
+	HandleSearch(ctx context.Context, username, platform string) (string, error)
 }
 
 type UserInventoryItem struct {
@@ -531,4 +534,124 @@ func (s *service) validateItem(ctx context.Context, itemName string) (*domain.It
 		return nil, fmt.Errorf("%w: %s", domain.ErrItemNotFound, itemName)
 	}
     return item, nil
+}
+
+// HandleSearch performs a search action for a user with cooldown tracking
+func (s *service) HandleSearch(ctx context.Context, username, platform string) (string, error) {
+	log := logger.FromContext(ctx)
+	log.Info("HandleSearch called", "username", username, "platform", platform)
+
+	// Get or create user
+	user, err := s.repo.GetUserByUsername(ctx, username)
+	if err != nil {
+		log.Error("Failed to get user", "error", err, "username", username)
+		return "", fmt.Errorf("failed to get user: %w", err)
+	}
+	
+	// If user doesn't exist, register them first
+	if user == nil {
+		log.Info("User not found, registering new user", "username", username)
+		newUser := domain.User{Username: username}
+		
+		// Set platform ID based on platform parameter
+		// Note: We don't have platformID here, so we'll just set username as ID
+		// In production, this should come from the actual platform integration
+		switch platform {
+		case "twitch":
+			newUser.TwitchID = username
+		case "youtube":
+			newUser.YoutubeID = username
+		case "discord":
+			newUser.DiscordID = username
+		default:
+			newUser.TwitchID = username // Default to twitch
+		}
+		
+		registeredUser, err := s.RegisterUser(ctx, newUser)
+		if err != nil {
+			log.Error("Failed to register new user", "error", err, "username", username)
+			return "", fmt.Errorf("failed to register user: %w", err)
+		}
+		user = &registeredUser
+		log.Info("New user registered for search", "userID", user.ID, "username", username)
+	}
+
+	// Lock the user for the duration of this operation
+	lock := s.getUserLock(user.ID)
+	lock.Lock()
+	defer lock.Unlock()
+
+	// Check cooldown
+	lastUsed, err := s.repo.GetLastCooldown(ctx, user.ID, domain.ActionSearch)
+	if err != nil {
+		log.Error("Failed to get cooldown", "error", err, "userID", user.ID)
+		return "", fmt.Errorf("failed to check cooldown: %w", err)
+	}
+
+	now := time.Now()
+	if lastUsed != nil {
+		elapsed := now.Sub(*lastUsed)
+		if elapsed < domain.SearchCooldownDuration {
+			remaining := domain.SearchCooldownDuration - elapsed
+			minutes := int(remaining.Minutes())
+			seconds := int(remaining.Seconds()) % 60
+			
+			log.Info("Search on cooldown", "username", username, "remaining", remaining)
+			return fmt.Sprintf("You can search again in %dm %ds", minutes, seconds), nil
+		}
+	}
+
+	// Perform search - 80% chance of lootbox0
+	var resultMessage string
+	if utils.RandomFloat() <= 0.8 {
+		// Give lootbox0
+		item, err := s.repo.GetItemByName(ctx, domain.ItemLootbox0)
+		if err != nil {
+			log.Error("Failed to get lootbox0 item", "error", err)
+			return "", fmt.Errorf("failed to get reward item: %w", err)
+		}
+		if item == nil {
+			log.Error("Lootbox0 item not found in database")
+			return "", fmt.Errorf("reward item not configured")
+		}
+
+		// Add to inventory
+		inventory, err := s.repo.GetInventory(ctx, user.ID)
+		if err != nil {
+			log.Error("Failed to get inventory", "error", err, "userID", user.ID)
+			return "", fmt.Errorf("failed to get inventory: %w", err)
+		}
+
+		found := false
+		for i, slot := range inventory.Slots {
+			if slot.ItemID == item.ID {
+				inventory.Slots[i].Quantity++
+				found = true
+				break
+			}
+		}
+		if !found {
+			inventory.Slots = append(inventory.Slots, domain.InventorySlot{ItemID: item.ID, Quantity: 1})
+		}
+
+		if err := s.repo.UpdateInventory(ctx, user.ID, *inventory); err != nil {
+			log.Error("Failed to update inventory", "error", err, "userID", user.ID)
+			return "", fmt.Errorf("failed to update inventory: %w", err)
+		}
+
+		resultMessage = fmt.Sprintf("You have found 1x %s", item.Name)
+		log.Info("Search successful - lootbox found", "username", username, "item", item.Name)
+	} else {
+		resultMessage = "You have found nothing"
+		log.Info("Search successful - nothing found", "username", username)
+	}
+
+	// Update cooldown
+	if err := s.repo.UpdateCooldown(ctx, user.ID, domain.ActionSearch, now); err != nil {
+		log.Error("Failed to update cooldown", "error", err, "userID", user.ID)
+		// Don't fail the search, just log the error
+	}
+
+	log.Info("Search completed", "username", username, "result", resultMessage)
+	return resultMessage, nil
 }
