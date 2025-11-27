@@ -26,6 +26,7 @@ help:
 	@echo ""
 	@echo "Test Database Commands:"
 	@echo "  make test-integration     - Run integration tests (uses testcontainers)"
+	@echo "  make test-staging         - Run staging integration tests"
 	@echo "  make db-test-up           - Start test database on port 5433"
 	@echo "  make db-test-down         - Stop test database"
 	@echo "  make migrate-up-test      - Run migrations on test database"

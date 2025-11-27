@@ -29,9 +29,39 @@ go test -tags=staging -v ./tests/staging
 
 ## Test Structure
 
-- `main_test.go`: Setup and configuration. Reads `STAGING_URL`.
-- `health_test.go`: Basic health check (`/healthz`).
-- `smoke_test.go`: Verifies core functionality (e.g., progression tree availability).
+- **`main_test.go`**: Setup and configuration. Reads `STAGING_URL` and `API_KEY`.
+- **`health_test.go`**: Basic health check (`/healthz`).
+- **`smoke_test.go`**: Verifies core functionality (progression tree availability).
+- **`progression_test.go`**: Comprehensive progression endpoint tests (tree, voting, engagement).
+- **`user_test.go`**: User and economy tests (registration, inventory, prices, recipes).
+- **`stats_test.go`**: Stats endpoint tests (system stats, leaderboard, event recording).
+
+### Test Coverage
+
+The staging test suite includes **11 tests** covering:
+
+1. **Health & Smoke Tests** (2 tests)
+   - `/healthz` - Health check
+   - `/progression/tree` - Basic progression tree
+
+2. **Progression Tests** (4 tests)
+   - `/progression/tree` - Full tree endpoint
+   - `/progression/available` - Available unlocks
+   - `/progression/status` - Voting status
+   - `/progression/vote` - Voting flow
+   - `/progression/engagement` - Engagement tracking
+
+3. **User & Economy Tests** (4 tests)
+   - `/user/register` - User registration
+   - `/user/inventory` - Inventory retrieval
+   - `/prices` - Price information
+   - `/recipes` - Crafting recipes
+
+4. **Stats Tests** (4 tests)
+   - `/stats/system` - System statistics
+   - `/stats/leaderboard` - Leaderboard
+   - `/stats/user` - User-specific stats
+   - `/stats/event` - Event recording
 
 ## Adding New Tests
 
