@@ -395,12 +395,18 @@ When adding new concurrent features:
 
 ### Testing and Debugging
 
-Test Output Management
+**Test Output Management**
 To keep the workspace clean and prevent console buffer issues on Windows, verbose test outputs should be redirected to files within the Output/ directory.
 
 - Naming Convention: test_output_\<description\>.txt
 - Location: Output/ (e.g., Output/test_output_final.txt)
 - Usage: Redirect stdout/stderr to these files when running verbose tests (e.g., go test -v ./... > Output/test_output.txt 2>&1), then inspect the file content to diagnose failures.
+
+**Debugging**
+
+- Your job is to debug the application and fix any issues that arise.
+- Modiying the tests purely for tests to pass, or suppressing errors is not allowed.
+- If a fix would increase the complexity of the current task, you may create an issue describing the problem and suggest a fix and leave it unresolved.
 
 ### Development Security
 
