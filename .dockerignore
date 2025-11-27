@@ -1,6 +1,7 @@
 # Version control
 .git
 .gitignore
+.github
 
 # Build artifacts
 bin/
@@ -8,6 +9,8 @@ dist/
 *.exe
 *.test
 *.out
+coverage.out
+coverage.html
 
 # Dependencies
 vendor/
@@ -16,19 +19,38 @@ vendor/
 logs/
 *.log
 
-# Environment variables
+# Environment variables (not needed in image)
 .env
+.env.*
 
 # IDE settings
 .vscode/
 .idea/
 *.swp
 *.swo
+*~
 
-# Docker
-docker-compose.yml
-Dockerfile
-setup_env.sh
+# Docker files (not needed in image)
+docker-compose*.yml
+Dockerfile*
 
-# Documentation
+# Scripts (only docker-entrypoint.sh is needed)
+scripts/test_*.sh
+scripts/setup_env.sh
+
+# Documentation (but keep swagger docs needed for build)
 *.md
+docs/
+!docs/swagger/
+
+# Test files
+*_test.go
+testdata/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Artifacts (agent brain data)
+.gemini/
