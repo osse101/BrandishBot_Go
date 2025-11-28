@@ -94,7 +94,6 @@ func createInventoryWithMoney(amount int) *domain.Inventory {
 // Test boundary constants - from business requirements spec
 const (
 	MinQuantity   = 1
-	MaxQuantity   = 10000
 	BaseItemPrice = 100
 )
 
@@ -293,9 +292,9 @@ func TestSellItem_QuantityBoundaries(t *testing.T) {
 		{"low range", 5, false, "Small valid quantity should succeed"},
 		{"mid range", 500, false, "Mid-range valid quantity should succeed"},
 		{"high range", 5000, false, "Large valid quantity should succeed"},
-		{"near max", MaxQuantity - 100, false, "Quantity near maximum should succeed"},
-		{"max boundary", MaxQuantity, false, "Maximum valid quantity should succeed"},
-		{"over max boundary", MaxQuantity + 1, true, "Quantities over maximum must be rejected"},
+		{"near max", domain.MaxTransactionQuantity - 100, false, "Quantity near maximum should succeed"},
+		{"max boundary", domain.MaxTransactionQuantity, false, "Maximum valid quantity should succeed"},
+		{"over max boundary", domain.MaxTransactionQuantity + 1, true, "Quantities over maximum must be rejected"},
 	}
 
 	for _, tt := range tests {
@@ -603,9 +602,9 @@ func TestBuyItem_QuantityBoundaries(t *testing.T) {
 		{"low range", 3, false, "Small valid quantity should succeed"},
 		{"mid range", 250, false, "Mid-range valid quantity should succeed"},
 		{"high range", 7500, false, "Large valid quantity should succeed"},
-		{"near max", MaxQuantity - 50, false, "Quantity near maximum should succeed"},
-		{"max boundary", MaxQuantity, false, "Maximum valid quantity should succeed"},
-		{"over max boundary", MaxQuantity + 1, true, "Quantities over maximum must be rejected"},
+		{"near max", domain.MaxTransactionQuantity - 50, false, "Quantity near maximum should succeed"},
+		{"max boundary", domain.MaxTransactionQuantity, false, "Maximum valid quantity should succeed"},
+		{"over max boundary", domain.MaxTransactionQuantity + 1, true, "Quantities over maximum must be rejected"},
 	}
 
 	for _, tt := range tests {

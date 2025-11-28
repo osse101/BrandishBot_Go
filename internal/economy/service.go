@@ -49,6 +49,14 @@ func (s *service) GetSellablePrices(ctx context.Context) ([]domain.Item, error) 
 func (s *service) SellItem(ctx context.Context, username, platform, itemName string, quantity int) (int, int, error) {
 	log := logger.FromContext(ctx)
 	log.Info("SellItem called", "username", username, "item", itemName, "quantity", quantity)
+
+	if quantity <= 0 {
+		return 0, 0, fmt.Errorf("invalid quantity: %d", quantity)
+	}
+	if quantity > domain.MaxTransactionQuantity {
+		return 0, 0, fmt.Errorf("quantity %d exceeds maximum %d", quantity, domain.MaxTransactionQuantity)
+	}
+
 	user, err := s.repo.GetUserByUsername(ctx, username)
 	if err != nil {
 		log.Error("Failed to get user", "error", err, "username", username)
@@ -123,6 +131,14 @@ func (s *service) SellItem(ctx context.Context, username, platform, itemName str
 func (s *service) BuyItem(ctx context.Context, username, platform, itemName string, quantity int) (int, error) {
 	log := logger.FromContext(ctx)
 	log.Info("BuyItem called", "username", username, "item", itemName, "quantity", quantity)
+
+	if quantity <= 0 {
+		return 0, fmt.Errorf("invalid quantity: %d", quantity)
+	}
+	if quantity > domain.MaxTransactionQuantity {
+		return 0, fmt.Errorf("quantity %d exceeds maximum %d", quantity, domain.MaxTransactionQuantity)
+	}
+
 
 	user, err := s.repo.GetUserByUsername(ctx, username)
 	if err != nil {
