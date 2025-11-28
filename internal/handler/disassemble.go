@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
@@ -11,10 +12,10 @@ import (
 )
 
 type DisassembleItemRequest struct {
-	Username string `json:"username"`
-	Platform string `json:"platform"`
-	Item     string `json:"item"`
-	Quantity int    `json:"quantity"`
+	Username string `json:"username" validate:"required,max=100,excludesall=\x00\n\r\t"`
+	Platform string `json:"platform" validate:"omitempty,platform"`
+	Item     string `json:"item" validate:"required,max=100"`
+	Quantity int    `json:"quantity" validate:"min=1,max=10000"`
 }
 
 type DisassembleItemResponse struct {
@@ -22,6 +23,18 @@ type DisassembleItemResponse struct {
 	QuantityProcessed int            `json:"quantity_processed"`
 }
 
+// HandleDisassembleItem handles disassembling items
+// @Summary Disassemble item
+// @Description Disassemble an item into materials
+// @Tags crafting
+// @Accept json
+// @Produce json
+// @Param request body DisassembleItemRequest true "Disassemble details"
+// @Success 200 {object} DisassembleItemResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 403 {object} ErrorResponse "Feature locked"
+// @Failure 500 {object} ErrorResponse
+// @Router /user/item/disassemble [post]
 func HandleDisassembleItem(svc crafting.Service, progressionSvc progression.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
@@ -51,9 +64,10 @@ func HandleDisassembleItem(svc crafting.Service, progressionSvc progression.Serv
 			"item", req.Item,
 			"quantity", req.Quantity)
 
-		if req.Username == "" || req.Item == "" || req.Quantity <= 0 {
-			log.Warn("Invalid disassemble item request")
-			http.Error(w, "Missing required fields or invalid quantity", http.StatusBadRequest)
+		// Validate request
+		if err := GetValidator().ValidateStruct(req); err != nil {
+			log.Warn("Invalid request", "error", err)
+			http.Error(w, fmt.Sprintf("Invalid request: %v", err), http.StatusBadRequest)
 			return
 		}
 

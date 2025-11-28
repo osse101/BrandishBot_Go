@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/osse101/BrandishBot_Go/internal/logger"
@@ -11,14 +12,27 @@ import (
 )
 
 type SearchRequest struct {
-	Username string `json:"username"`
-	Platform string `json:"platform"`
+	Username string `json:"username" validate:"required,max=100,excludesall=\x00\n\r\t"`
+	Platform string `json:"platform" validate:"omitempty,platform"`
 }
 
 type SearchResponse struct {
 	Message string `json:"message"`
 }
 
+// HandleSearch handles searching for items
+// @Summary Search for items
+// @Description Search for items (lootbox mechanic)
+// @Tags user
+// @Accept json
+// @Produce json
+// @Param request body SearchRequest true "Search details"
+// @Success 200 {object} SearchResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 403 {object} ErrorResponse "Feature locked"
+// @Failure 429 {object} ErrorResponse "Cooldown"
+// @Failure 500 {object} ErrorResponse
+// @Router /user/search [post]
 func HandleSearch(svc user.Service, progressionSvc progression.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
@@ -45,20 +59,11 @@ func HandleSearch(svc user.Service, progressionSvc progression.Service) http.Han
 
 		log.Debug("Search request", "username", req.Username, "platform", req.Platform)
 
-		// Validate username
-		if err := ValidateUsername(req.Username); err != nil {
-			log.Warn("Invalid username", "error", err)
-			http.Error(w, "Invalid username", http.StatusBadRequest)
+		// Validate request
+		if err := GetValidator().ValidateStruct(req); err != nil {
+			log.Warn("Invalid request", "error", err)
+			http.Error(w, fmt.Sprintf("Invalid request: %v", err), http.StatusBadRequest)
 			return
-		}
-
-		// Validate platform (allow empty as service handles default)
-		if req.Platform != "" {
-			if err := ValidatePlatform(req.Platform); err != nil {
-				log.Warn("Invalid platform", "platform", req.Platform)
-				http.Error(w, "Invalid platform", http.StatusBadRequest)
-				return
-			}
 		}
 
 		message, err := svc.HandleSearch(r.Context(), req.Username, req.Platform)

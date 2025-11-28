@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
@@ -98,12 +99,8 @@ func (h *ProgressionHandlers) HandleVote() http.HandlerFunc {
 		}
 
 		// Validate request
-		if req.UserID == "" {
-			respondError(w, http.StatusBadRequest, "user_id is required")
-			return
-		}
-		if req.NodeKey == "" {
-			respondError(w, http.StatusBadRequest, "node_key is required")
+		if err := GetValidator().ValidateStruct(req); err != nil {
+			respondError(w, http.StatusBadRequest, fmt.Sprintf("Invalid request: %v", err))
 			return
 		}
 
@@ -197,12 +194,10 @@ func (h *ProgressionHandlers) HandleAdminUnlock() http.HandlerFunc {
 			return
 		}
 
-		if req.NodeKey == "" {
-			respondError(w, http.StatusBadRequest, "node_key is required")
+		// Validate request
+		if err := GetValidator().ValidateStruct(req); err != nil {
+			respondError(w, http.StatusBadRequest, fmt.Sprintf("Invalid request: %v", err))
 			return
-		}
-		if req.Level <= 0 {
-			req.Level = 1 // Default to level 1
 		}
 
 		err := h.service.AdminUnlock(r.Context(), req.NodeKey, req.Level)
@@ -238,12 +233,10 @@ func (h *ProgressionHandlers) HandleAdminRelock() http.HandlerFunc {
 			return
 		}
 
-		if req.NodeKey == "" {
-			respondError(w, http.StatusBadRequest, "node_key is required")
+		// Validate request
+		if err := GetValidator().ValidateStruct(req); err != nil {
+			respondError(w, http.StatusBadRequest, fmt.Sprintf("Invalid request: %v", err))
 			return
-		}
-		if req.Level <= 0 {
-			req.Level = 1
 		}
 
 		err := h.service.AdminRelock(r.Context(), req.NodeKey, req.Level)
@@ -306,10 +299,12 @@ func (h *ProgressionHandlers) HandleAdminReset() http.HandlerFunc {
 			return
 		}
 
-		if req.ResetBy == "" {
-			respondError(w, http.StatusBadRequest, "reset_by is required")
+		// Validate request
+		if err := GetValidator().ValidateStruct(req); err != nil {
+			respondError(w, http.StatusBadRequest, fmt.Sprintf("Invalid request: %v", err))
 			return
 		}
+
 		if req.Reason == "" {
 			req.Reason = "Annual reset"
 		}
@@ -338,18 +333,18 @@ type AvailableUnlocksResponse struct {
 }
 
 type VoteRequest struct {
-	UserID  string `json:"user_id"`
-	NodeKey string `json:"node_key"`
+	UserID  string `json:"user_id" validate:"required,max=100,excludesall=\x00\n\r\t"`
+	NodeKey string `json:"node_key" validate:"required,max=50"`
 }
 
 type AdminUnlockRequest struct {
-	NodeKey string `json:"node_key"`
-	Level   int    `json:"level"`
+	NodeKey string `json:"node_key" validate:"required,max=50"`
+	Level   int    `json:"level" validate:"min=1"`
 }
 
 type AdminRelockRequest struct {
-	NodeKey string `json:"node_key"`
-	Level   int    `json:"level"`
+	NodeKey string `json:"node_key" validate:"required,max=50"`
+	Level   int    `json:"level" validate:"min=1"`
 }
 
 type AdminInstantUnlockResponse struct {
@@ -358,7 +353,7 @@ type AdminInstantUnlockResponse struct {
 }
 
 type AdminResetRequest struct {
-	ResetBy                 string `json:"reset_by"`
-	Reason                  string `json:"reason"`
+	ResetBy                 string `json:"reset_by" validate:"required,max=100"`
+	Reason                  string `json:"reason" validate:"omitempty,max=255"`
 	PreserveUserProgression bool   `json:"preserve_user_progression"`
 }

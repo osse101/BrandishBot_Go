@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
@@ -11,10 +12,10 @@ import (
 )
 
 type UpgradeItemRequest struct {
-	Username string `json:"username"`
-	Platform string `json:"platform"`
-	Item     string `json:"item"`
-	Quantity int    `json:"quantity"`
+	Username string `json:"username" validate:"required,max=100,excludesall=\x00\n\r\t"`
+	Platform string `json:"platform" validate:"omitempty,platform"`
+	Item     string `json:"item" validate:"required,max=100"`
+	Quantity int    `json:"quantity" validate:"min=1,max=10000"`
 }
 
 type UpgradeItemResponse struct {
@@ -22,6 +23,18 @@ type UpgradeItemResponse struct {
 	QuantityUpgraded int    `json:"quantity_upgraded"`
 }
 
+// HandleUpgradeItem handles upgrading an item
+// @Summary Upgrade item
+// @Description Upgrade an item to a higher tier
+// @Tags crafting
+// @Accept json
+// @Produce json
+// @Param request body UpgradeItemRequest true "Upgrade details"
+// @Success 200 {object} UpgradeItemResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 403 {object} ErrorResponse "Feature locked"
+// @Failure 500 {object} ErrorResponse
+// @Router /user/item/upgrade [post]
 func HandleUpgradeItem(svc crafting.Service, progressionSvc progression.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
@@ -51,9 +64,10 @@ func HandleUpgradeItem(svc crafting.Service, progressionSvc progression.Service)
 			"item", req.Item,
 			"quantity", req.Quantity)
 
-		if req.Username == "" || req.Item == "" || req.Quantity <= 0 {
-			log.Warn("Invalid upgrade item request")
-			http.Error(w, "Missing required fields or invalid quantity", http.StatusBadRequest)
+		// Validate request
+		if err := GetValidator().ValidateStruct(req); err != nil {
+			log.Warn("Invalid request", "error", err)
+			http.Error(w, fmt.Sprintf("Invalid request: %v", err), http.StatusBadRequest)
 			return
 		}
 
@@ -87,9 +101,16 @@ func HandleUpgradeItem(svc crafting.Service, progressionSvc progression.Service)
 }
 
 // HandleGetRecipes returns recipe information based on query parameters
-// ?item=X - returns base recipe for item X
-// ?item=X&user=Y - returns recipe for item X with lock status for user Y
-// ?user=Y - returns all unlocked recipes for user Y
+// @Summary Get recipes
+// @Description Get recipe information. Can filter by item or get all unlocked recipes for a user.
+// @Tags crafting
+// @Produce json
+// @Param item query string false "Item name to get recipe for"
+// @Param user query string false "Username to get unlocked recipes for"
+// @Success 200 {object} map[string]interface{} "Recipes or single recipe"
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /recipes [get]
 func HandleGetRecipes(svc crafting.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())

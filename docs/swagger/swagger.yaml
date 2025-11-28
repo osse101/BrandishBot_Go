@@ -1,11 +1,427 @@
 basePath: /
 definitions:
+  domain.EngagementBreakdown:
+    properties:
+      commands_used:
+        type: integer
+      items_crafted:
+        type: integer
+      items_used:
+        type: integer
+      messages_sent:
+        type: integer
+      total_score:
+        type: integer
+    type: object
+  domain.Item:
+    properties:
+      base_value:
+        type: integer
+      item_description:
+        type: string
+      item_id:
+        type: integer
+      item_name:
+        type: string
+    type: object
+  domain.ProgressionNode:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      display_name:
+        type: string
+      id:
+        type: integer
+      max_level:
+        type: integer
+      node_key:
+        type: string
+      node_type:
+        description: '''feature'', ''item'', ''mechanic'', ''upgrade'''
+        type: string
+      parent_node_id:
+        description: NULL for root
+        type: integer
+      sort_order:
+        type: integer
+      unlock_cost:
+        type: integer
+    type: object
+  domain.ProgressionStatus:
+    properties:
+      active_voting:
+        $ref: '#/definitions/domain.ProgressionVoting'
+      engagement_score:
+        type: integer
+      total_unlocked:
+        type: integer
+    type: object
+  domain.ProgressionTreeNode:
+    properties:
+      children:
+        description: Child node IDs
+        items:
+          type: integer
+        type: array
+      created_at:
+        type: string
+      description:
+        type: string
+      display_name:
+        type: string
+      id:
+        type: integer
+      is_unlocked:
+        type: boolean
+      max_level:
+        type: integer
+      node_key:
+        type: string
+      node_type:
+        description: '''feature'', ''item'', ''mechanic'', ''upgrade'''
+        type: string
+      parent_node_id:
+        description: NULL for root
+        type: integer
+      sort_order:
+        type: integer
+      unlock_cost:
+        type: integer
+      unlocked_level:
+        description: 0 if not unlocked
+        type: integer
+    type: object
+  domain.ProgressionUnlock:
+    properties:
+      current_level:
+        type: integer
+      engagement_score:
+        type: integer
+      id:
+        type: integer
+      node_id:
+        type: integer
+      unlocked_at:
+        type: string
+      unlocked_by:
+        description: '''vote'', ''admin'', ''auto'', ''instant_override'''
+        type: string
+    type: object
+  domain.ProgressionVoting:
+    properties:
+      id:
+        type: integer
+      is_active:
+        type: boolean
+      node_id:
+        type: integer
+      target_level:
+        type: integer
+      vote_count:
+        type: integer
+      voting_ends_at:
+        type: string
+      voting_started_at:
+        type: string
+    type: object
+  domain.StatsSummary:
+    properties:
+      end_time:
+        type: string
+      event_counts:
+        additionalProperties:
+          type: integer
+        type: object
+      metrics:
+        additionalProperties: true
+        type: object
+      period:
+        type: string
+      start_time:
+        type: string
+      total_events:
+        type: integer
+    type: object
+  domain.User:
+    properties:
+      created_at:
+        type: string
+      discord_id:
+        type: string
+      internal_id:
+        type: string
+      twitch_id:
+        type: string
+      updated_at:
+        type: string
+      username:
+        type: string
+      youtube_id:
+        type: string
+    type: object
+  handler.AddItemRequest:
+    properties:
+      item_name:
+        type: string
+      platform:
+        type: string
+      quantity:
+        type: integer
+      username:
+        type: string
+    type: object
+  handler.AdminInstantUnlockResponse:
+    properties:
+      message:
+        type: string
+      unlock:
+        $ref: '#/definitions/domain.ProgressionUnlock'
+    type: object
+  handler.AdminRelockRequest:
+    properties:
+      level:
+        type: integer
+      node_key:
+        type: string
+    type: object
+  handler.AdminResetRequest:
+    properties:
+      preserve_user_progression:
+        type: boolean
+      reason:
+        type: string
+      reset_by:
+        type: string
+    type: object
+  handler.AdminUnlockRequest:
+    properties:
+      level:
+        type: integer
+      node_key:
+        type: string
+    type: object
+  handler.AvailableUnlocksResponse:
+    properties:
+      available:
+        items:
+          $ref: '#/definitions/domain.ProgressionNode'
+        type: array
+      current:
+        $ref: '#/definitions/domain.ProgressionVoting'
+    type: object
+  handler.BuyItemRequest:
+    properties:
+      item_name:
+        type: string
+      platform:
+        type: string
+      quantity:
+        type: integer
+      username:
+        type: string
+    type: object
+  handler.BuyItemResponse:
+    properties:
+      items_bought:
+        type: integer
+    type: object
+  handler.DisassembleItemRequest:
+    properties:
+      item:
+        type: string
+      platform:
+        type: string
+      quantity:
+        type: integer
+      username:
+        type: string
+    type: object
+  handler.DisassembleItemResponse:
+    properties:
+      outputs:
+        additionalProperties:
+          type: integer
+        type: object
+      quantity_processed:
+        type: integer
+    type: object
+  handler.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  handler.GetInventoryResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/user.UserInventoryItem'
+        type: array
+    type: object
+  handler.GiveItemRequest:
+    properties:
+      item_name:
+        type: string
+      owner:
+        type: string
+      platform:
+        type: string
+      quantity:
+        type: integer
+      receiver:
+        type: string
+    type: object
+  handler.HandleMessageRequest:
+    properties:
+      platform:
+        type: string
+      platform_id:
+        type: string
+      username:
+        type: string
+    type: object
   handler.HealthResponse:
     properties:
       message:
         type: string
       status:
         type: string
+    type: object
+  handler.ProgressionTreeResponse:
+    properties:
+      nodes:
+        items:
+          $ref: '#/definitions/domain.ProgressionTreeNode'
+        type: array
+    type: object
+  handler.RecordEventRequest:
+    properties:
+      event_data:
+        additionalProperties: true
+        type: object
+      event_type:
+        type: string
+      user_id:
+        type: string
+    type: object
+  handler.RegisterUserRequest:
+    properties:
+      known_platform:
+        type: string
+      known_platform_id:
+        type: string
+      new_platform:
+        type: string
+      new_platform_id:
+        type: string
+      username:
+        type: string
+    type: object
+  handler.RemoveItemRequest:
+    properties:
+      item_name:
+        type: string
+      platform:
+        type: string
+      quantity:
+        type: integer
+      username:
+        type: string
+    type: object
+  handler.RemoveItemResponse:
+    properties:
+      removed:
+        type: integer
+    type: object
+  handler.SearchRequest:
+    properties:
+      platform:
+        type: string
+      username:
+        type: string
+    type: object
+  handler.SearchResponse:
+    properties:
+      message:
+        type: string
+    type: object
+  handler.SellItemRequest:
+    properties:
+      item_name:
+        type: string
+      platform:
+        type: string
+      quantity:
+        type: integer
+      username:
+        type: string
+    type: object
+  handler.SellItemResponse:
+    properties:
+      items_sold:
+        type: integer
+      money_gained:
+        type: integer
+    type: object
+  handler.SuccessResponse:
+    properties:
+      message:
+        type: string
+    type: object
+  handler.UpgradeItemRequest:
+    properties:
+      item:
+        type: string
+      platform:
+        type: string
+      quantity:
+        type: integer
+      username:
+        type: string
+    type: object
+  handler.UpgradeItemResponse:
+    properties:
+      new_item:
+        type: string
+      quantity_upgraded:
+        type: integer
+    type: object
+  handler.UseItemRequest:
+    properties:
+      item_name:
+        type: string
+      platform:
+        type: string
+      quantity:
+        type: integer
+      target_username:
+        type: string
+      username:
+        type: string
+    type: object
+  handler.UseItemResponse:
+    properties:
+      message:
+        type: string
+    type: object
+  handler.VoteRequest:
+    properties:
+      node_key:
+        type: string
+      user_id:
+        type: string
+    type: object
+  user.UserInventoryItem:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+      quantity:
+        type: integer
+      value:
+        type: integer
     type: object
 host: localhost:8080
 info:
@@ -30,6 +446,277 @@ paths:
       summary: Liveness check
       tags:
       - health
+  /message/handle:
+    post:
+      consumes:
+      - application/json
+      description: Process a chat message for potential commands or triggers
+      parameters:
+      - description: Message details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.HandleMessageRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.User'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Handle chat message
+      tags:
+      - message
+  /prices:
+    get:
+      description: Get current sell prices for items
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.Item'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Get item prices
+      tags:
+      - economy
+  /progression/admin/instant-unlock:
+    post:
+      description: Force immediate unlock of current vote leader (overrides 24hr timer)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.AdminInstantUnlockResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Admin instant unlock
+      tags:
+      - progression
+      - admin
+  /progression/admin/relock:
+    post:
+      consumes:
+      - application/json
+      description: Relock a specific node/level (admin only, for testing)
+      parameters:
+      - description: Admin relock request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.AdminRelockRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Admin relock node
+      tags:
+      - progression
+      - admin
+  /progression/admin/reset:
+    post:
+      consumes:
+      - application/json
+      description: Reset progression tree (annual reset, clears unlocks/voting)
+      parameters:
+      - description: Reset request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.AdminResetRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Admin reset tree
+      tags:
+      - progression
+      - admin
+  /progression/admin/unlock:
+    post:
+      consumes:
+      - application/json
+      description: Force unlock a specific node/level (admin only)
+      parameters:
+      - description: Admin unlock request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.AdminUnlockRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Admin unlock node
+      tags:
+      - progression
+      - admin
+  /progression/available:
+    get:
+      description: Returns nodes that are available for voting (prerequisites met,
+        not maxed out)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.AvailableUnlocksResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Get available unlocks
+      tags:
+      - progression
+  /progression/engagement:
+    get:
+      description: Returns user's engagement contribution breakdown by type
+      parameters:
+      - description: User ID
+        in: query
+        name: user_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.EngagementBreakdown'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Get user engagement
+      tags:
+      - progression
+  /progression/status:
+    get:
+      description: Returns current community progression status including unlocks
+        and engagement
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.ProgressionStatus'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Get progression status
+      tags:
+      - progression
+  /progression/tree:
+    get:
+      description: Returns the complete progression tree with unlock status for each
+        node
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.ProgressionTreeResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Get progression tree
+      tags:
+      - progression
+  /progression/vote:
+    post:
+      consumes:
+      - application/json
+      description: Cast a vote for the next unlock (one vote per user per node/level)
+      parameters:
+      - description: Vote request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.VoteRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Vote for unlock
+      tags:
+      - progression
   /readyz:
     get:
       description: Returns OK if the service is ready to accept traffic (database
@@ -48,6 +735,512 @@ paths:
       summary: Readiness check
       tags:
       - health
+  /recipes:
+    get:
+      description: Get recipe information. Can filter by item or get all unlocked
+        recipes for a user.
+      parameters:
+      - description: Item name to get recipe for
+        in: query
+        name: item
+        type: string
+      - description: Username to get unlocked recipes for
+        in: query
+        name: user
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Recipes or single recipe
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Get recipes
+      tags:
+      - crafting
+  /stats/event:
+    post:
+      consumes:
+      - application/json
+      description: Record a custom user event
+      parameters:
+      - description: Event details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.RecordEventRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Record event
+      tags:
+      - stats
+  /stats/leaderboard:
+    get:
+      description: Get leaderboard for a specific event type
+      parameters:
+      - description: Event Type
+        in: query
+        name: event_type
+        required: true
+        type: string
+      - description: Period (daily, weekly, all_time)
+        in: query
+        name: period
+        type: string
+      - description: Limit (default 10)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Get leaderboard
+      tags:
+      - stats
+  /stats/system:
+    get:
+      description: Get system-wide statistics
+      parameters:
+      - description: Period (daily, weekly, all_time)
+        in: query
+        name: period
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.StatsSummary'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Get system stats
+      tags:
+      - stats
+  /stats/user:
+    get:
+      description: Get statistics for a specific user
+      parameters:
+      - description: User ID
+        in: query
+        name: user_id
+        required: true
+        type: string
+      - description: Period (daily, weekly, all_time)
+        in: query
+        name: period
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.StatsSummary'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Get user stats
+      tags:
+      - stats
+  /user/inventory:
+    get:
+      description: Get all items in a user's inventory
+      parameters:
+      - description: Username
+        in: query
+        name: username
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.GetInventoryResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Get user inventory
+      tags:
+      - inventory
+  /user/item/add:
+    post:
+      consumes:
+      - application/json
+      description: Add an item to a user's inventory (admin/system action)
+      parameters:
+      - description: Item details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.AddItemRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Add item to inventory
+      tags:
+      - inventory
+  /user/item/buy:
+    post:
+      consumes:
+      - application/json
+      description: Buy an item with currency
+      parameters:
+      - description: Buy details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.BuyItemRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.BuyItemResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "403":
+          description: Feature locked
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Buy item
+      tags:
+      - economy
+  /user/item/disassemble:
+    post:
+      consumes:
+      - application/json
+      description: Disassemble an item into materials
+      parameters:
+      - description: Disassemble details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.DisassembleItemRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.DisassembleItemResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "403":
+          description: Feature locked
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Disassemble item
+      tags:
+      - crafting
+  /user/item/give:
+    post:
+      consumes:
+      - application/json
+      description: Transfer an item from one user to another
+      parameters:
+      - description: Transfer details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.GiveItemRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Give item to another user
+      tags:
+      - inventory
+  /user/item/remove:
+    post:
+      consumes:
+      - application/json
+      description: Remove an item from a user's inventory
+      parameters:
+      - description: Item details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.RemoveItemRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.RemoveItemResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Remove item from inventory
+      tags:
+      - inventory
+  /user/item/sell:
+    post:
+      consumes:
+      - application/json
+      description: Sell an item for currency
+      parameters:
+      - description: Sell details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.SellItemRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.SellItemResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "403":
+          description: Feature locked
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Sell item
+      tags:
+      - economy
+  /user/item/upgrade:
+    post:
+      consumes:
+      - application/json
+      description: Upgrade an item to a higher tier
+      parameters:
+      - description: Upgrade details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.UpgradeItemRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.UpgradeItemResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "403":
+          description: Feature locked
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Upgrade item
+      tags:
+      - crafting
+  /user/item/use:
+    post:
+      consumes:
+      - application/json
+      description: Use an item from inventory
+      parameters:
+      - description: Usage details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.UseItemRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.UseItemResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Use item
+      tags:
+      - inventory
+  /user/register:
+    post:
+      consumes:
+      - application/json
+      description: Register a new user or link an existing user to a new platform
+      parameters:
+      - description: Registration details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.RegisterUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User updated
+          schema:
+            $ref: '#/definitions/domain.User'
+        "201":
+          description: User created
+          schema:
+            $ref: '#/definitions/domain.User'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Register or link a user
+      tags:
+      - user
+  /user/search:
+    post:
+      consumes:
+      - application/json
+      description: Search for items (lootbox mechanic)
+      parameters:
+      - description: Search details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.SearchRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.SearchResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "403":
+          description: Feature locked
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "429":
+          description: Cooldown
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Search for items
+      tags:
+      - user
 securityDefinitions:
   ApiKeyAuth:
     in: header

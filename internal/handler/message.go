@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/osse101/BrandishBot_Go/internal/logger"
@@ -12,12 +13,22 @@ import (
 
 // HandleMessageRequest represents the request to handle an incoming message.
 type HandleMessageRequest struct {
-	Platform   string `json:"platform"`
-	PlatformID string `json:"platform_id"`
-	Username   string `json:"username"`
+	Platform   string `json:"platform" validate:"required,platform"`
+	PlatformID string `json:"platform_id" validate:"required"`
+	Username   string `json:"username" validate:"required,max=100,excludesall=\x00\n\r\t"`
 }
 
 // HandleMessageHandler handles the incoming message flow.
+// @Summary Handle chat message
+// @Description Process a chat message for potential commands or triggers
+// @Tags message
+// @Accept json
+// @Produce json
+// @Param request body HandleMessageRequest true "Message details"
+// @Success 200 {object} domain.User
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /message/handle [post]
 func HandleMessageHandler(userService user.Service, progressionSvc progression.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
@@ -40,23 +51,10 @@ func HandleMessageHandler(userService user.Service, progressionSvc progression.S
 			"platform_id", req.PlatformID,
 			"username", req.Username)
 
-		// Validate platform
-		if err := ValidatePlatform(req.Platform); err != nil {
-			log.Warn("Invalid platform", "platform", req.Platform)
-			http.Error(w, "Invalid platform", http.StatusBadRequest)
-			return
-		}
-
-		// Validate username
-		if err := ValidateUsername(req.Username); err != nil {
-			log.Warn("Invalid username", "error", err)
-			http.Error(w, "Invalid username", http.StatusBadRequest)
-			return
-		}
-
-		if req.PlatformID == "" {
-			log.Warn("Missing platform ID")
-			http.Error(w, "Missing required fields", http.StatusBadRequest)
+		// Validate request
+		if err := GetValidator().ValidateStruct(req); err != nil {
+			log.Warn("Invalid request", "error", err)
+			http.Error(w, fmt.Sprintf("Invalid request: %v", err), http.StatusBadRequest)
 			return
 		}
 

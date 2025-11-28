@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/osse101/BrandishBot_Go/internal/economy"
@@ -12,12 +13,23 @@ import (
 )
 
 type AddItemRequest struct {
-	Username string `json:"username"`
-	Platform string `json:"platform"`
-	ItemName string `json:"item_name"`
-	Quantity int    `json:"quantity"`
+	Username string `json:"username" validate:"required,max=100,excludesall=\x00\n\r\t"`
+	Platform string `json:"platform" validate:"omitempty,platform"`
+	ItemName string `json:"item_name" validate:"required,max=100"`
+	Quantity int    `json:"quantity" validate:"min=1,max=10000"`
 }
 
+// HandleAddItem handles adding items to a user's inventory
+// @Summary Add item to inventory
+// @Description Add an item to a user's inventory (admin/system action)
+// @Tags inventory
+// @Accept json
+// @Produce json
+// @Param request body AddItemRequest true "Item details"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /user/item/add [post]
 func HandleAddItem(svc user.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
@@ -34,33 +46,10 @@ func HandleAddItem(svc user.Service) http.HandlerFunc {
 			"item", req.ItemName,
 			"quantity", req.Quantity)
 
-		// Validate platform
-		if req.Platform != "" {
-			if err := ValidatePlatform(req.Platform); err != nil {
-				log.Warn("Invalid platform", "platform", req.Platform)
-				http.Error(w, "Invalid platform", http.StatusBadRequest)
-				return
-			}
-		}
-
-		// Validate username
-		if err := ValidateUsername(req.Username); err != nil {
-			log.Warn("Invalid username", "error", err)
-			http.Error(w, "Invalid username", http.StatusBadRequest)
-			return
-		}
-
-		// Validate item name
-		if err := ValidateItemName(req.ItemName); err != nil {
-			log.Warn("Invalid item name", "error", err)
-			http.Error(w, "Invalid item name", http.StatusBadRequest)
-			return
-		}
-
-		// Validate quantity
-		if err := ValidateQuantity(req.Quantity); err != nil {
-			log.Warn("Invalid quantity", "quantity", req.Quantity, "error", err)
-			http.Error(w, "Invalid quantity", http.StatusBadRequest)
+		// Validate request
+		if err := GetValidator().ValidateStruct(req); err != nil {
+			log.Warn("Invalid request", "error", err)
+			http.Error(w, fmt.Sprintf("Invalid request: %v", err), http.StatusBadRequest)
 			return
 		}
 
@@ -77,16 +66,27 @@ func HandleAddItem(svc user.Service) http.HandlerFunc {
 }
 
 type RemoveItemRequest struct {
-	Username string `json:"username"`
-	Platform string `json:"platform"`
-	ItemName string `json:"item_name"`
-	Quantity int    `json:"quantity"`
+	Username string `json:"username" validate:"required,max=100,excludesall=\x00\n\r\t"`
+	Platform string `json:"platform" validate:"omitempty,platform"`
+	ItemName string `json:"item_name" validate:"required,max=100"`
+	Quantity int    `json:"quantity" validate:"min=1,max=10000"`
 }
 
 type RemoveItemResponse struct {
 	Removed int `json:"removed"`
 }
 
+// HandleRemoveItem handles removing items from a user's inventory
+// @Summary Remove item from inventory
+// @Description Remove an item from a user's inventory
+// @Tags inventory
+// @Accept json
+// @Produce json
+// @Param request body RemoveItemRequest true "Item details"
+// @Success 200 {object} RemoveItemResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /user/item/remove [post]
 func HandleRemoveItem(svc user.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
@@ -100,9 +100,10 @@ func HandleRemoveItem(svc user.Service) http.HandlerFunc {
 
 		log.Debug("Remove item request", "username", req.Username, "item", req.ItemName, "quantity", req.Quantity)
 
-		if req.Username == "" || req.ItemName == "" || req.Quantity <= 0 {
-			log.Warn("Invalid remove item request", "username", req.Username, "item", req.ItemName, "quantity", req.Quantity)
-			http.Error(w, "Missing required fields or invalid quantity", http.StatusBadRequest)
+		// Validate request
+		if err := GetValidator().ValidateStruct(req); err != nil {
+			log.Warn("Invalid request", "error", err)
+			http.Error(w, fmt.Sprintf("Invalid request: %v", err), http.StatusBadRequest)
 			return
 		}
 
@@ -122,13 +123,24 @@ func HandleRemoveItem(svc user.Service) http.HandlerFunc {
 }
 
 type GiveItemRequest struct {
-	Owner    string `json:"owner"`
-	Receiver string `json:"receiver"`
-	Platform string `json:"platform"`
-	ItemName string `json:"item_name"`
-	Quantity int    `json:"quantity"`
+	Owner    string `json:"owner" validate:"required,max=100,excludesall=\x00\n\r\t"`
+	Receiver string `json:"receiver" validate:"required,max=100,excludesall=\x00\n\r\t"`
+	Platform string `json:"platform" validate:"omitempty,platform"`
+	ItemName string `json:"item_name" validate:"required,max=100"`
+	Quantity int    `json:"quantity" validate:"min=1,max=10000"`
 }
 
+// HandleGiveItem handles transferring items between users
+// @Summary Give item to another user
+// @Description Transfer an item from one user to another
+// @Tags inventory
+// @Accept json
+// @Produce json
+// @Param request body GiveItemRequest true "Transfer details"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /user/item/give [post]
 func HandleGiveItem(svc user.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
@@ -146,9 +158,10 @@ func HandleGiveItem(svc user.Service) http.HandlerFunc {
 			"item", req.ItemName,
 			"quantity", req.Quantity)
 
-		if req.Owner == "" || req.Receiver == "" || req.ItemName == "" || req.Quantity <= 0 {
-			log.Warn("Invalid give item request")
-			http.Error(w, "Missing required fields or invalid quantity", http.StatusBadRequest)
+		// Validate request
+		if err := GetValidator().ValidateStruct(req); err != nil {
+			log.Warn("Invalid request", "error", err)
+			http.Error(w, fmt.Sprintf("Invalid request: %v", err), http.StatusBadRequest)
 			return
 		}
 
@@ -165,10 +178,10 @@ func HandleGiveItem(svc user.Service) http.HandlerFunc {
 }
 
 type SellItemRequest struct {
-	Username string `json:"username"`
-	Platform string `json:"platform"`
-	ItemName string `json:"item_name"`
-	Quantity int    `json:"quantity"`
+	Username string `json:"username" validate:"required,max=100,excludesall=\x00\n\r\t"`
+	Platform string `json:"platform" validate:"omitempty,platform"`
+	ItemName string `json:"item_name" validate:"required,max=100"`
+	Quantity int    `json:"quantity" validate:"min=1,max=10000"`
 }
 
 type SellItemResponse struct {
@@ -176,6 +189,18 @@ type SellItemResponse struct {
 	ItemsSold   int `json:"items_sold"`
 }
 
+// HandleSellItem handles selling items for currency
+// @Summary Sell item
+// @Description Sell an item for currency
+// @Tags economy
+// @Accept json
+// @Produce json
+// @Param request body SellItemRequest true "Sell details"
+// @Success 200 {object} SellItemResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 403 {object} ErrorResponse "Feature locked"
+// @Failure 500 {object} ErrorResponse
+// @Router /user/item/sell [post]
 func HandleSellItem(svc economy.Service, progressionSvc progression.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
@@ -202,9 +227,10 @@ func HandleSellItem(svc economy.Service, progressionSvc progression.Service) htt
 
 		log.Debug("Sell item request", "username", req.Username, "item", req.ItemName, "quantity", req.Quantity)
 
-		if req.Username == "" || req.ItemName == "" || req.Quantity <= 0 {
-			log.Warn("Invalid sell item request", "username", req.Username, "item", req.ItemName, "quantity", req.Quantity)
-			http.Error(w, "Missing required fields or invalid quantity", http.StatusBadRequest)
+		// Validate request
+		if err := GetValidator().ValidateStruct(req); err != nil {
+			log.Warn("Invalid request", "error", err)
+			http.Error(w, fmt.Sprintf("Invalid request: %v", err), http.StatusBadRequest)
 			return
 		}
 
@@ -229,16 +255,28 @@ func HandleSellItem(svc economy.Service, progressionSvc progression.Service) htt
 }
 
 type BuyItemRequest struct {
-	Username string `json:"username"`
-	Platform string `json:"platform"`
-	ItemName string `json:"item_name"`
-	Quantity int    `json:"quantity"`
+	Username string `json:"username" validate:"required,max=100,excludesall=\x00\n\r\t"`
+	Platform string `json:"platform" validate:"omitempty,platform"`
+	ItemName string `json:"item_name" validate:"required,max=100"`
+	Quantity int    `json:"quantity" validate:"min=1,max=10000"`
 }
 
 type BuyItemResponse struct {
 	ItemsBought int `json:"items_bought"`
 }
 
+// HandleBuyItem handles buying items with currency
+// @Summary Buy item
+// @Description Buy an item with currency
+// @Tags economy
+// @Accept json
+// @Produce json
+// @Param request body BuyItemRequest true "Buy details"
+// @Success 200 {object} BuyItemResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 403 {object} ErrorResponse "Feature locked"
+// @Failure 500 {object} ErrorResponse
+// @Router /user/item/buy [post]
 func HandleBuyItem(svc economy.Service, progressionSvc progression.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
@@ -265,9 +303,10 @@ func HandleBuyItem(svc economy.Service, progressionSvc progression.Service) http
 
 		log.Debug("Buy item request", "username", req.Username, "item", req.ItemName, "quantity", req.Quantity)
 
-		if req.Username == "" || req.ItemName == "" || req.Quantity <= 0 {
-			log.Warn("Invalid buy item request", "username", req.Username, "item", req.ItemName, "quantity", req.Quantity)
-			http.Error(w, "Missing required fields or invalid quantity", http.StatusBadRequest)
+		// Validate request
+		if err := GetValidator().ValidateStruct(req); err != nil {
+			log.Warn("Invalid request", "error", err)
+			http.Error(w, fmt.Sprintf("Invalid request: %v", err), http.StatusBadRequest)
 			return
 		}
 
@@ -290,17 +329,28 @@ func HandleBuyItem(svc economy.Service, progressionSvc progression.Service) http
 }
 
 type UseItemRequest struct {
-	Username       string `json:"username"`
-	Platform       string `json:"platform"`
-	ItemName       string `json:"item_name"`
-	Quantity       int    `json:"quantity"`
-	TargetUsername string `json:"target_username"`
+	Username       string `json:"username" validate:"required,max=100,excludesall=\x00\n\r\t"`
+	Platform       string `json:"platform" validate:"omitempty,platform"`
+	ItemName       string `json:"item_name" validate:"required,max=100"`
+	Quantity       int    `json:"quantity" validate:"min=1,max=10000"`
+	TargetUsername string `json:"target_username" validate:"omitempty,max=100,excludesall=\x00\n\r\t"`
 }
 
 type UseItemResponse struct {
 	Message string `json:"message"`
 }
 
+// HandleUseItem handles using an item
+// @Summary Use item
+// @Description Use an item from inventory
+// @Tags inventory
+// @Accept json
+// @Produce json
+// @Param request body UseItemRequest true "Usage details"
+// @Success 200 {object} UseItemResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /user/item/use [post]
 func HandleUseItem(svc user.Service, progressionSvc progression.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
@@ -323,9 +373,10 @@ func HandleUseItem(svc user.Service, progressionSvc progression.Service) http.Ha
 			"quantity", req.Quantity,
 			"target", req.TargetUsername)
 
-		if req.Username == "" || req.ItemName == "" {
-			log.Warn("Missing required fields", "username", req.Username, "item", req.ItemName)
-			http.Error(w, "Missing required fields", http.StatusBadRequest)
+		// Validate request
+		if err := GetValidator().ValidateStruct(req); err != nil {
+			log.Warn("Invalid request", "error", err)
+			http.Error(w, fmt.Sprintf("Invalid request: %v", err), http.StatusBadRequest)
 			return
 		}
 
@@ -360,6 +411,16 @@ type GetInventoryResponse struct {
 	Items []user.UserInventoryItem `json:"items"`
 }
 
+// HandleGetInventory handles retrieving a user's inventory
+// @Summary Get user inventory
+// @Description Get all items in a user's inventory
+// @Tags inventory
+// @Produce json
+// @Param username query string true "Username"
+// @Success 200 {object} GetInventoryResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /user/inventory [get]
 func HandleGetInventory(svc user.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())

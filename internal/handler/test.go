@@ -11,9 +11,9 @@ import (
 
 // TestRequest represents the request body for the test endpoint
 type TestRequest struct {
-	Username   string `json:"username"`
-	Platform   string `json:"platform"`
-	PlatformID string `json:"platform_id"`
+	Username   string `json:"username" validate:"required,max=100,excludesall=\x00\n\r\t"`
+	Platform   string `json:"platform" validate:"required,platform"`
+	PlatformID string `json:"platform_id" validate:"required"`
 }
 
 // TestResponse represents the response body for the test endpoint
@@ -44,23 +44,10 @@ func HandleTest(userService user.Service) http.HandlerFunc {
 			"platform", req.Platform,
 			"platform_id", req.PlatformID)
 
-		// Validate platform
-		if err := ValidatePlatform(req.Platform); err != nil {
-			log.Warn("Invalid platform", "platform", req.Platform)
-			http.Error(w, "Invalid platform", http.StatusBadRequest)
-			return
-		}
-
-		// Validate username
-		if err := ValidateUsername(req.Username); err != nil {
-			log.Warn("Invalid username", "error", err)
-			http.Error(w, "Invalid username", http.StatusBadRequest)
-			return
-		}
-
-		if req.PlatformID == "" {
-			log.Warn("Missing platform ID")
-			http.Error(w, "Missing required fields", http.StatusBadRequest)
+		// Validate request
+		if err := GetValidator().ValidateStruct(req); err != nil {
+			log.Warn("Invalid request", "error", err)
+			http.Error(w, fmt.Sprintf("Invalid request: %v", err), http.StatusBadRequest)
 			return
 		}
 

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
@@ -11,14 +12,25 @@ import (
 
 // RegisterUserRequest represents the request to register or link a user.
 type RegisterUserRequest struct {
-	Username        string `json:"username"`
-	KnownPlatform   string `json:"known_platform"`
-	KnownPlatformID string `json:"known_platform_id"`
-	NewPlatform     string `json:"new_platform"`
-	NewPlatformID   string `json:"new_platform_id"`
+	Username        string `json:"username" validate:"required,max=100,excludesall=\x00\n\r\t"`
+	KnownPlatform   string `json:"known_platform" validate:"required,platform"`
+	KnownPlatformID string `json:"known_platform_id" validate:"required"`
+	NewPlatform     string `json:"new_platform" validate:"required,platform"`
+	NewPlatformID   string `json:"new_platform_id" validate:"required"`
 }
 
 // HandleRegisterUser handles user registration and account linking.
+// @Summary Register or link a user
+// @Description Register a new user or link an existing user to a new platform
+// @Tags user
+// @Accept json
+// @Produce json
+// @Param request body RegisterUserRequest true "Registration details"
+// @Success 200 {object} domain.User "User updated"
+// @Success 201 {object} domain.User "User created"
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /user/register [post]
 func HandleRegisterUser(userService user.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
@@ -41,22 +53,10 @@ func HandleRegisterUser(userService user.Service) http.HandlerFunc {
 			"known_platform", req.KnownPlatform,
 			"new_platform", req.NewPlatform)
 
-		// Validate platforms
-		if err := ValidatePlatform(req.KnownPlatform); err != nil {
-			log.Warn("Invalid known platform", "platform", req.KnownPlatform)
-			http.Error(w, "Invalid platform", http.StatusBadRequest)
-			return
-		}
-		if err := ValidatePlatform(req.NewPlatform); err != nil {
-			log.Warn("Invalid new platform", "platform", req.NewPlatform)
-			http.Error(w, "Invalid platform", http.StatusBadRequest)
-			return
-		}
-
-		// Validate required fields
-		if req.KnownPlatformID == "" || req.NewPlatformID == "" {
-			log.Warn("Missing required fields")
-			http.Error(w, "Missing required fields", http.StatusBadRequest)
+		// Validate request
+		if err := GetValidator().ValidateStruct(req); err != nil {
+			log.Warn("Invalid request", "error", err)
+			http.Error(w, fmt.Sprintf("Invalid request: %v", err), http.StatusBadRequest)
 			return
 		}
 
@@ -68,12 +68,6 @@ func HandleRegisterUser(userService user.Service) http.HandlerFunc {
 			if req.Username == "" {
 				log.Warn("Username required for new user")
 				http.Error(w, "Username is required for new users", http.StatusBadRequest)
-				return
-			}
-			// Validate username
-			if err := ValidateUsername(req.Username); err != nil {
-				log.Warn("Invalid username for new user", "error", err)
-				http.Error(w, "Invalid username", http.StatusBadRequest)
 				return
 			}
 			isNewUser = true

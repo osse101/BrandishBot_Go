@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -12,12 +13,22 @@ import (
 
 // RecordEventRequest represents a request to record a custom event
 type RecordEventRequest struct {
-	UserID    string                 `json:"user_id"`
-	EventType string                 `json:"event_type"`
+	UserID    string                 `json:"user_id" validate:"required,max=100,excludesall=\x00\n\r\t"`
+	EventType string                 `json:"event_type" validate:"required,max=50"`
 	EventData map[string]interface{} `json:"event_data,omitempty"`
 }
 
 // HandleRecordEvent handles POST requests to record custom events
+// @Summary Record event
+// @Description Record a custom user event
+// @Tags stats
+// @Accept json
+// @Produce json
+// @Param request body RecordEventRequest true "Event details"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /stats/event [post]
 func HandleRecordEvent(svc stats.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
@@ -31,9 +42,10 @@ func HandleRecordEvent(svc stats.Service) http.HandlerFunc {
 
 		log.Debug("Record event request", "user_id", req.UserID, "event_type", req.EventType)
 
-		if req.UserID == "" || req.EventType == "" {
-			log.Warn("Missing required fields", "user_id", req.UserID, "event_type", req.EventType)
-			http.Error(w, "Missing required fields: user_id and event_type", http.StatusBadRequest)
+		// Validate request
+		if err := GetValidator().ValidateStruct(req); err != nil {
+			log.Warn("Invalid request", "error", err)
+			http.Error(w, fmt.Sprintf("Invalid request: %v", err), http.StatusBadRequest)
 			return
 		}
 
@@ -50,6 +62,16 @@ func HandleRecordEvent(svc stats.Service) http.HandlerFunc {
 }
 
 // HandleGetUserStats handles GET requests for user statistics
+// @Summary Get user stats
+// @Description Get statistics for a specific user
+// @Tags stats
+// @Produce json
+// @Param user_id query string true "User ID"
+// @Param period query string false "Period (daily, weekly, all_time)"
+// @Success 200 {object} domain.StatsSummary
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /stats/user [get]
 func HandleGetUserStats(svc stats.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
@@ -84,6 +106,14 @@ func HandleGetUserStats(svc stats.Service) http.HandlerFunc {
 }
 
 // HandleGetSystemStats handles GET requests for system-wide statistics
+// @Summary Get system stats
+// @Description Get system-wide statistics
+// @Tags stats
+// @Produce json
+// @Param period query string false "Period (daily, weekly, all_time)"
+// @Success 200 {object} domain.StatsSummary
+// @Failure 500 {object} ErrorResponse
+// @Router /stats/system [get]
 func HandleGetSystemStats(svc stats.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
@@ -111,6 +141,17 @@ func HandleGetSystemStats(svc stats.Service) http.HandlerFunc {
 }
 
 // HandleGetLeaderboard handles GET requests for leaderboards
+// @Summary Get leaderboard
+// @Description Get leaderboard for a specific event type
+// @Tags stats
+// @Produce json
+// @Param event_type query string true "Event Type"
+// @Param period query string false "Period (daily, weekly, all_time)"
+// @Param limit query int false "Limit (default 10)"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /stats/leaderboard [get]
 func HandleGetLeaderboard(svc stats.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
