@@ -6,19 +6,19 @@ import (
 	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
-	"github.com/osse101/BrandishBot_Go/internal/progression"
 )
 
 // EngagementTracker is middleware that automatically tracks user engagement
 type EngagementTracker struct {
-	progressionService progression.Service
+	eventBus event.Bus
 }
 
 // NewEngagementTracker creates a new engagement tracking middleware
-func NewEngagementTracker(progressionService progression.Service) *EngagementTracker {
+func NewEngagementTracker(eventBus event.Bus) *EngagementTracker {
 	return &EngagementTracker{
-		progressionService: progressionService,
+		eventBus: eventBus,
 	}
 }
 
@@ -38,15 +38,21 @@ func (e *EngagementTracker) Track(metricType string, getValue func(*http.Request
 					value = getValue(r)
 				}
 
-				// Record engagement asynchronously to not block response
-				go func() {
-					ctx := context.Background()
-					err := e.progressionService.RecordEngagement(ctx, userID, metricType, value)
-					if err != nil {
-						log := logger.FromContext(r.Context())
-						log.Error("Failed to record engagement", "error", err, "user_id", userID, "metric", metricType)
-					}
-				}()
+				// Publish engagement event
+				evt := event.Event{
+					Type: "engagement",
+					Payload: &domain.EngagementMetric{
+						UserID:      userID,
+						MetricType:  metricType,
+						MetricValue: value,
+						RecordedAt:  time.Now(),
+					},
+				}
+
+				if err := e.eventBus.Publish(context.Background(), evt); err != nil {
+					log := logger.FromContext(r.Context())
+					log.Error("Failed to publish engagement event", "error", err, "user_id", userID, "metric", metricType)
+				}
 			}
 		})
 	}
@@ -61,27 +67,29 @@ func (e *EngagementTracker) TrackCommand(next http.Handler) http.Handler {
 		// Track command usage
 		userID := extractUserID(r)
 		if userID != "" {
-			go func() {
-				ctx := context.Background()
-				metadata := map[string]interface{}{
-					"endpoint": r.URL.Path,
-					"method":   r.Method,
-				}
+			metadata := map[string]interface{}{
+				"endpoint": r.URL.Path,
+				"method":   r.Method,
+			}
 
-				metric := &domain.EngagementMetric{
-					UserID:      userID,
-					MetricType:  "command",
-					MetricValue: 1,
-					RecordedAt:  time.Now(),
-					Metadata:    metadata,
-				}
+			metric := &domain.EngagementMetric{
+				UserID:      userID,
+				MetricType:  "command",
+				MetricValue: 1,
+				RecordedAt:  time.Now(),
+				Metadata:    metadata,
+			}
 
-				err := e.progressionService.RecordEngagement(ctx, userID, metric.MetricType, metric.MetricValue)
-				if err != nil {
-					log := logger.FromContext(r.Context())
-					log.Error("Failed to record command engagement", "error", err, "user_id", userID)
-				}
-			}()
+			// Publish engagement event
+			evt := event.Event{
+				Type:    "engagement",
+				Payload: metric,
+			}
+
+			if err := e.eventBus.Publish(context.Background(), evt); err != nil {
+				log := logger.FromContext(r.Context())
+				log.Error("Failed to publish command engagement event", "error", err, "user_id", userID)
+			}
 		}
 	})
 }
@@ -134,17 +142,26 @@ func GetUserID(ctx context.Context) string {
 }
 
 // TrackEngagementFromContext records engagement using info from context
-func TrackEngagementFromContext(ctx context.Context, progressionService progression.Service, metricType string, value int) {
+func TrackEngagementFromContext(ctx context.Context, eventBus event.Bus, metricType string, value int) {
 	userID := GetUserID(ctx)
 	if userID == "" {
 		return
 	}
 
-	go func() {
-		err := progressionService.RecordEngagement(context.Background(), userID, metricType, value)
-		if err != nil {
-			log := logger.FromContext(ctx)
-			log.Error("Failed to record engagement from context", "error", err, "user_id", userID, "metric", metricType)
-		}
-	}()
+	metric := &domain.EngagementMetric{
+		UserID:      userID,
+		MetricType:  metricType,
+		MetricValue: value,
+		RecordedAt:  time.Now(),
+	}
+
+	evt := event.Event{
+		Type:    "engagement",
+		Payload: metric,
+	}
+
+	if err := eventBus.Publish(context.Background(), evt); err != nil {
+		log := logger.FromContext(ctx)
+		log.Error("Failed to publish engagement event from context", "error", err, "user_id", userID, "metric", metricType)
+	}
 }

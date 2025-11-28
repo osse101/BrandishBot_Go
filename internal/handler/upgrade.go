@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
+	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/middleware"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
@@ -35,7 +36,19 @@ type UpgradeItemResponse struct {
 // @Failure 403 {object} ErrorResponse "Feature locked"
 // @Failure 500 {object} ErrorResponse
 // @Router /user/item/upgrade [post]
-func HandleUpgradeItem(svc crafting.Service, progressionSvc progression.Service) http.HandlerFunc {
+// HandleUpgradeItem handles upgrading an item
+// @Summary Upgrade item
+// @Description Upgrade an item to a higher tier
+// @Tags crafting
+// @Accept json
+// @Produce json
+// @Param request body UpgradeItemRequest true "Upgrade details"
+// @Success 200 {object} UpgradeItemResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 403 {object} ErrorResponse "Feature locked"
+// @Failure 500 {object} ErrorResponse
+// @Router /user/item/upgrade [post]
+func HandleUpgradeItem(svc crafting.Service, progressionSvc progression.Service, eventBus event.Bus) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
 
@@ -86,7 +99,7 @@ func HandleUpgradeItem(svc crafting.Service, progressionSvc progression.Service)
 		// Track engagement for crafting
 		middleware.TrackEngagementFromContext(
 			middleware.WithUserID(r.Context(), req.Username),
-			progressionSvc,
+			eventBus,
 			"item_crafted",
 			quantityUpgraded,
 		)

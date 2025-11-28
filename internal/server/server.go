@@ -9,6 +9,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
 	"github.com/osse101/BrandishBot_Go/internal/database"
 	"github.com/osse101/BrandishBot_Go/internal/economy"
+	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/handler"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
@@ -28,7 +29,7 @@ type Server struct {
 }
 
 // NewServer creates a new Server instance
-func NewServer(port int, apiKey string, dbPool database.Pool, userService user.Service, economyService economy.Service, craftingService crafting.Service, statsService stats.Service, progressionService progression.Service) *Server {
+func NewServer(port int, apiKey string, dbPool database.Pool, userService user.Service, economyService economy.Service, craftingService crafting.Service, statsService stats.Service, progressionService progression.Service, eventBus event.Bus) *Server {
 	mux := http.NewServeMux()
 
 	// Health check routes
@@ -37,19 +38,19 @@ func NewServer(port int, apiKey string, dbPool database.Pool, userService user.S
 
 	// User routes
 	mux.HandleFunc("/user/register", handler.HandleRegisterUser(userService))
-	mux.HandleFunc("/message/handle", handler.HandleMessageHandler(userService, progressionService))
+	mux.HandleFunc("/message/handle", handler.HandleMessageHandler(userService, progressionService, eventBus))
 	mux.HandleFunc("/test", handler.HandleTest(userService))
 	mux.HandleFunc("/user/item/add", handler.HandleAddItem(userService))
 	mux.HandleFunc("/user/item/remove", handler.HandleRemoveItem(userService))
 	mux.HandleFunc("/user/item/give", handler.HandleGiveItem(userService))
 	mux.HandleFunc("/user/item/sell", handler.HandleSellItem(economyService, progressionService))
 	mux.HandleFunc("/user/item/buy", handler.HandleBuyItem(economyService, progressionService))
-	mux.HandleFunc("/user/item/use", handler.HandleUseItem(userService, progressionService))
-	mux.HandleFunc("/user/item/upgrade", handler.HandleUpgradeItem(craftingService, progressionService))
-	mux.HandleFunc("/user/item/disassemble", handler.HandleDisassembleItem(craftingService, progressionService))
+	mux.HandleFunc("/user/item/use", handler.HandleUseItem(userService, eventBus))
+	mux.HandleFunc("/user/item/upgrade", handler.HandleUpgradeItem(craftingService, progressionService, eventBus))
+	mux.HandleFunc("/user/item/disassemble", handler.HandleDisassembleItem(craftingService, progressionService, eventBus))
 	mux.HandleFunc("/recipes", handler.HandleGetRecipes(craftingService))
 	mux.HandleFunc("/user/inventory", handler.HandleGetInventory(userService))
-	mux.HandleFunc("/user/search", handler.HandleSearch(userService, progressionService))
+	mux.HandleFunc("/user/search", handler.HandleSearch(userService, progressionService, eventBus))
 	mux.HandleFunc("/prices", handler.HandleGetPrices(economyService))
 
 	// Stats routes

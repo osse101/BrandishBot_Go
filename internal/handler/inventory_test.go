@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 	"github.com/osse101/BrandishBot_Go/internal/user"
 	"github.com/stretchr/testify/assert"
@@ -138,6 +139,20 @@ func (m *MockProgressionService) IsItemUnlocked(ctx context.Context, itemName st
 func (m *MockProgressionService) RecordEngagement(ctx context.Context, userID, eventType string, count int) error {
 	args := m.Called(ctx, userID, eventType, count)
 	return args.Error(0)
+}
+
+// MockEventBus mocks the event.Bus interface
+type MockEventBus struct {
+	mock.Mock
+}
+
+func (m *MockEventBus) Publish(ctx context.Context, evt event.Event) error {
+	args := m.Called(ctx, evt)
+	return args.Error(0)
+}
+
+func (m *MockEventBus) Subscribe(eventType event.Type, handler event.Handler) {
+	m.Called(eventType, handler)
 }
 
 func (m *MockProgressionService) GetProgressionTree(ctx context.Context) ([]*domain.ProgressionTreeNode, error) {
@@ -505,7 +520,7 @@ func TestHandleUseItem(t *testing.T) {
 	tests := []struct {
 		name           string
 		requestBody    interface{}
-		setupMock      func(*MockUserService, *MockProgressionService)
+		setupMock      func(*MockUserService, *MockEventBus)
 		expectedStatus int
 		expectedBody   string
 	}{
@@ -516,10 +531,12 @@ func TestHandleUseItem(t *testing.T) {
 				ItemName: "Potion",
 				Quantity: 1,
 			},
-			setupMock: func(u *MockUserService, p *MockProgressionService) {
+			setupMock: func(u *MockUserService, e *MockEventBus) {
 				u.On("UseItem", mock.Anything, "testuser", "", "Potion", 1, "").Return("Used potion", nil)
-				// Allow RecordEngagement to be called (async), but don't enforce it strictly
-				p.On("RecordEngagement", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
+				// Expect Publish to be called
+				e.On("Publish", mock.Anything, mock.MatchedBy(func(evt event.Event) bool {
+					return evt.Type == "engagement"
+				})).Return(nil).Maybe()
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `{"message":"Used potion"}`,
@@ -531,7 +548,7 @@ func TestHandleUseItem(t *testing.T) {
 				ItemName: "Potion",
 				Quantity: 1,
 			},
-			setupMock: func(u *MockUserService, p *MockProgressionService) {
+			setupMock: func(u *MockUserService, e *MockEventBus) {
 				u.On("UseItem", mock.Anything, "testuser", "", "Potion", 1, "").Return("", errors.New("service error"))
 			},
 			expectedStatus: http.StatusInternalServerError,
@@ -542,10 +559,10 @@ func TestHandleUseItem(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockUser := &MockUserService{}
-			mockProg := &MockProgressionService{}
-			tt.setupMock(mockUser, mockProg)
+			mockBus := &MockEventBus{}
+			tt.setupMock(mockUser, mockBus)
 
-			handler := HandleUseItem(mockUser, mockProg)
+			handler := HandleUseItem(mockUser, mockBus)
 
 			body, _ := json.Marshal(tt.requestBody)
 			req := httptest.NewRequest("POST", "/user/item/use", bytes.NewBuffer(body))
@@ -558,7 +575,7 @@ func TestHandleUseItem(t *testing.T) {
 				assert.Contains(t, w.Body.String(), tt.expectedBody)
 			}
 			mockUser.AssertExpectations(t)
-			mockProg.AssertExpectations(t)
+			mockBus.AssertExpectations(t)
 		})
 	}
 }

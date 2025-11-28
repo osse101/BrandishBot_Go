@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -19,7 +20,7 @@ func TestHandleSearch(t *testing.T) {
 	tests := []struct {
 		name           string
 		requestBody    interface{}
-		setupMock      func(*MockUserService, *MockProgressionService)
+		setupMock      func(*MockUserService, *MockProgressionService, *MockEventBus)
 		expectedStatus int
 		expectedBody   string
 	}{
@@ -29,11 +30,13 @@ func TestHandleSearch(t *testing.T) {
 				Username: "testuser",
 				Platform: "twitch",
 			},
-			setupMock: func(u *MockUserService, p *MockProgressionService) {
+			setupMock: func(u *MockUserService, p *MockProgressionService, e *MockEventBus) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSearch).Return(true, nil)
 				u.On("HandleSearch", mock.Anything, "testuser", "twitch").Return("Found a sword!", nil)
-				// Allow RecordEngagement (async)
-				p.On("RecordEngagement", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
+				// Expect Publish to be called
+				e.On("Publish", mock.Anything, mock.MatchedBy(func(evt event.Event) bool {
+					return evt.Type == "engagement"
+				})).Return(nil).Maybe()
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `"message":"Found a sword!"`,
@@ -44,7 +47,7 @@ func TestHandleSearch(t *testing.T) {
 				Username: "testuser",
 				Platform: "twitch",
 			},
-			setupMock: func(u *MockUserService, p *MockProgressionService) {
+			setupMock: func(u *MockUserService, p *MockProgressionService, e *MockEventBus) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSearch).Return(false, nil)
 			},
 			expectedStatus: http.StatusForbidden,
@@ -56,7 +59,7 @@ func TestHandleSearch(t *testing.T) {
 				Username: "testuser",
 				Platform: "twitch",
 			},
-			setupMock: func(u *MockUserService, p *MockProgressionService) {
+			setupMock: func(u *MockUserService, p *MockProgressionService, e *MockEventBus) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSearch).Return(true, nil)
 				u.On("HandleSearch", mock.Anything, "testuser", "twitch").Return("", errors.New("service error"))
 			},
@@ -69,9 +72,10 @@ func TestHandleSearch(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mockUser := &MockUserService{}
 			mockProg := &MockProgressionService{}
-			tt.setupMock(mockUser, mockProg)
+			mockBus := &MockEventBus{}
+			tt.setupMock(mockUser, mockProg, mockBus)
 
-			handler := HandleSearch(mockUser, mockProg)
+			handler := HandleSearch(mockUser, mockProg, mockBus)
 
 			body, _ := json.Marshal(tt.requestBody)
 			req := httptest.NewRequest("POST", "/user/search", bytes.NewBuffer(body))
@@ -85,6 +89,7 @@ func TestHandleSearch(t *testing.T) {
 			}
 			mockUser.AssertExpectations(t)
 			mockProg.AssertExpectations(t)
+			mockBus.AssertExpectations(t)
 		})
 	}
 }

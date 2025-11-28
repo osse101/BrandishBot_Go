@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/middleware"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
@@ -33,7 +34,20 @@ type SearchResponse struct {
 // @Failure 429 {object} ErrorResponse "Cooldown"
 // @Failure 500 {object} ErrorResponse
 // @Router /user/search [post]
-func HandleSearch(svc user.Service, progressionSvc progression.Service) http.HandlerFunc {
+// HandleSearch handles searching for items
+// @Summary Search for items
+// @Description Search for items (lootbox mechanic)
+// @Tags user
+// @Accept json
+// @Produce json
+// @Param request body SearchRequest true "Search details"
+// @Success 200 {object} SearchResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 403 {object} ErrorResponse "Feature locked"
+// @Failure 429 {object} ErrorResponse "Cooldown"
+// @Failure 500 {object} ErrorResponse
+// @Router /user/search [post]
+func HandleSearch(svc user.Service, progressionSvc progression.Service, eventBus event.Bus) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
 
@@ -80,7 +94,7 @@ func HandleSearch(svc user.Service, progressionSvc progression.Service) http.Han
 		// Track engagement for search
 		middleware.TrackEngagementFromContext(
 			middleware.WithUserID(r.Context(), req.Username),
-			progressionSvc,
+			eventBus,
 			"search_performed",
 			1,
 		)

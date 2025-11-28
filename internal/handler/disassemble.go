@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
+	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/middleware"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
@@ -35,7 +36,19 @@ type DisassembleItemResponse struct {
 // @Failure 403 {object} ErrorResponse "Feature locked"
 // @Failure 500 {object} ErrorResponse
 // @Router /user/item/disassemble [post]
-func HandleDisassembleItem(svc crafting.Service, progressionSvc progression.Service) http.HandlerFunc {
+// HandleDisassembleItem handles disassembling items
+// @Summary Disassemble item
+// @Description Disassemble an item into materials
+// @Tags crafting
+// @Accept json
+// @Produce json
+// @Param request body DisassembleItemRequest true "Disassemble details"
+// @Success 200 {object} DisassembleItemResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 403 {object} ErrorResponse "Feature locked"
+// @Failure 500 {object} ErrorResponse
+// @Router /user/item/disassemble [post]
+func HandleDisassembleItem(svc crafting.Service, progressionSvc progression.Service, eventBus event.Bus) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
 
@@ -87,7 +100,7 @@ func HandleDisassembleItem(svc crafting.Service, progressionSvc progression.Serv
 		// Track engagement for disassembly (counts as crafting activity)
 		middleware.TrackEngagementFromContext(
 			middleware.WithUserID(r.Context(), req.Username),
-			progressionSvc,
+			eventBus,
 			"item_crafted",
 			quantityProcessed,
 		)

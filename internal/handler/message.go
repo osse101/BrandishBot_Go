@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/middleware"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
@@ -29,7 +30,18 @@ type HandleMessageRequest struct {
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /message/handle [post]
-func HandleMessageHandler(userService user.Service, progressionSvc progression.Service) http.HandlerFunc {
+// HandleMessageHandler handles the incoming message flow.
+// @Summary Handle chat message
+// @Description Process a chat message for potential commands or triggers
+// @Tags message
+// @Accept json
+// @Produce json
+// @Param request body HandleMessageRequest true "Message details"
+// @Success 200 {object} domain.User
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /message/handle [post]
+func HandleMessageHandler(userService user.Service, progressionSvc progression.Service, eventBus event.Bus) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
 
@@ -74,7 +86,7 @@ func HandleMessageHandler(userService user.Service, progressionSvc progression.S
 		// Track engagement for message
 		middleware.TrackEngagementFromContext(
 			middleware.WithUserID(r.Context(), user.ID),
-			progressionSvc,
+			eventBus,
 			"message",
 			1,
 		)

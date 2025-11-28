@@ -20,10 +20,12 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/database"
 	"github.com/osse101/BrandishBot_Go/internal/database/postgres"
 	"github.com/osse101/BrandishBot_Go/internal/economy"
+	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 	"github.com/osse101/BrandishBot_Go/internal/server"
 	"github.com/osse101/BrandishBot_Go/internal/stats"
 	"github.com/osse101/BrandishBot_Go/internal/user"
+	"github.com/osse101/BrandishBot_Go/internal/worker"
 )
 
 // @title BrandishBot API
@@ -123,7 +125,20 @@ func main() {
 	progressionRepo := postgres.NewProgressionRepository(dbPool)
 	progressionService := progression.NewService(progressionRepo)
 
-	srv := server.NewServer(cfg.Port, cfg.APIKey, dbPool, userService, economyService, craftingService, statsService, progressionService)
+	// Initialize Event Bus
+	eventBus := event.NewMemoryBus()
+
+	// Initialize Worker Pool
+	// Start with 5 workers as per plan
+	workerPool := worker.NewPool(5, 100)
+	workerPool.Start()
+	defer workerPool.Stop()
+
+	// Register Event Handlers
+	progressionHandler := progression.NewEventHandler(progressionService)
+	progressionHandler.Register(eventBus)
+
+	srv := server.NewServer(cfg.Port, cfg.APIKey, dbPool, userService, economyService, craftingService, statsService, progressionService, eventBus)
 
 	// Run server in a goroutine
 	go func() {
