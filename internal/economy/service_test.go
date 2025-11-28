@@ -201,11 +201,13 @@ func TestSellItem_PartialQuantity(t *testing.T) {
 // CASE 4: INVALID CASE - Bad inputs
 func TestSellItem_InvalidInputs(t *testing.T) {
 	tests := []struct {
-		name     string
-		setup    func(*MockRepository)
-		username string
-		itemName string
-		wantErr  string
+		name        string
+		setup       func(*MockRepository)
+		username    string
+		itemName    string
+		expectErr   bool
+		errorMsg    string
+		description string
 	}{
 		{
 			name: "user not found",
@@ -213,9 +215,11 @@ func TestSellItem_InvalidInputs(t *testing.T) {
 				m.On("GetUserByUsername", mock.Anything, "nonexistent").
 					Return(nil, nil)
 			},
-			username: "nonexistent",
-			itemName: "Sword",
-			wantErr:  "user not found",
+			username:    "nonexistent",
+			itemName:    "Sword",
+			expectErr:   true,
+			errorMsg:    "user not found",
+			description: "Should fail when user does not exist",
 		},
 		{
 			name: "item not found",
@@ -224,9 +228,11 @@ func TestSellItem_InvalidInputs(t *testing.T) {
 				m.On("GetUserByUsername", mock.Anything, "testuser").Return(user, nil)
 				m.On("GetItemByName", mock.Anything, "InvalidItem").Return(nil, nil)
 			},
-			username: "testuser",
-			itemName: "InvalidItem",
-			wantErr:  "item not found",
+			username:    "testuser",
+			itemName:    "InvalidItem",
+			expectErr:   true,
+			errorMsg:    "item not found",
+			description: "Should fail when item does not exist",
 		},
 		{
 			name: "item not in inventory",
@@ -241,9 +247,11 @@ func TestSellItem_InvalidInputs(t *testing.T) {
 				m.On("GetItemByName", mock.Anything, domain.ItemMoney).Return(moneyItem, nil)
 				m.On("GetInventory", mock.Anything, user.ID).Return(emptyInventory, nil)
 			},
-			username: "testuser",
-			itemName: "Sword",
-			wantErr:  "not in inventory",
+			username:    "testuser",
+			itemName:    "Sword",
+			expectErr:   true,
+			errorMsg:    "not in inventory",
+			description: "Should fail when user does not own the item",
 		},
 	}
 
@@ -259,8 +267,12 @@ func TestSellItem_InvalidInputs(t *testing.T) {
 			_, _, err := service.SellItem(ctx, tt.username, "twitch", tt.itemName, 1)
 
 			// ASSERT
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), tt.wantErr)
+			if tt.expectErr {
+				require.Error(t, err, tt.description)
+				assert.Contains(t, err.Error(), tt.errorMsg)
+			} else {
+				require.NoError(t, err, tt.description)
+			}
 		})
 	}
 }
@@ -320,48 +332,64 @@ func TestSellItem_QuantityBoundaries(t *testing.T) {
 
 // CASE 5: HOSTILE CASE - Database errors and malicious scenarios
 func TestSellItem_DatabaseErrors(t *testing.T) {
-	t.Run("database error on GetUser", func(t *testing.T) {
-		// ARRANGE
-		mockRepo := &MockRepository{}
-		service := NewService(mockRepo, concurrency.NewLockManager())
-		ctx := context.Background()
+	tests := []struct {
+		name        string
+		setup       func(*MockRepository, context.Context)
+		expectErr   bool
+		errorMsg    string
+		description string
+	}{
+		{
+			name: "database error on GetUser",
+			setup: func(m *MockRepository, ctx context.Context) {
+				dbError := errors.New("database connection lost")
+				m.On("GetUserByUsername", ctx, "testuser").Return(nil, dbError)
+			},
+			expectErr:   true,
+			errorMsg:    "failed to get user",
+			description: "Should fail when database connection is lost during user fetch",
+		},
+		{
+			name: "database error on UpdateInventory",
+			setup: func(m *MockRepository, ctx context.Context) {
+				user := createTestUser()
+				item := createTestItem(10, "Sword", 100)
+				moneyItem := createMoneyItem()
+				inventory := createInventoryWithItem(10, 5)
 
-		dbError := errors.New("database connection lost")
-		mockRepo.On("GetUserByUsername", ctx, "testuser").Return(nil, dbError)
+				m.On("GetUserByUsername", ctx, "testuser").Return(user, nil)
+				m.On("GetItemByName", ctx, "Sword").Return(item, nil)
+				m.On("GetItemByName", ctx, domain.ItemMoney).Return(moneyItem, nil)
+				m.On("GetInventory", ctx, user.ID).Return(inventory, nil)
+				m.On("UpdateInventory", ctx, user.ID, mock.Anything).
+					Return(errors.New("deadlock detected"))
+			},
+			expectErr:   true,
+			errorMsg:    "failed to update inventory",
+			description: "Should fail when database deadlock occurs during inventory update",
+		},
+	}
 
-		// ACT
-		_, _, err := service.SellItem(ctx, "testuser", "twitch", "Sword", 1)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// ARRANGE
+			mockRepo := &MockRepository{}
+			service := NewService(mockRepo, concurrency.NewLockManager())
+			ctx := context.Background()
+			tt.setup(mockRepo, ctx)
 
-		// ASSERT
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to get user")
-	})
+			// ACT
+			_, _, err := service.SellItem(ctx, "testuser", "twitch", "Sword", 1)
 
-	t.Run("database error on UpdateInventory", func(t *testing.T) {
-		// ARRANGE - Simulate DB failure during transaction
-		mockRepo := &MockRepository{}
-		service := NewService(mockRepo, concurrency.NewLockManager())
-		ctx := context.Background()
-
-		user := createTestUser()
-		item := createTestItem(10, "Sword", 100)
-		moneyItem := createMoneyItem()
-		inventory := createInventoryWithItem(10, 5)
-
-		mockRepo.On("GetUserByUsername", ctx, "testuser").Return(user, nil)
-		mockRepo.On("GetItemByName", ctx, "Sword").Return(item, nil)
-		mockRepo.On("GetItemByName", ctx, domain.ItemMoney).Return(moneyItem, nil)
-		mockRepo.On("GetInventory", ctx, user.ID).Return(inventory, nil)
-		mockRepo.On("UpdateInventory", ctx, user.ID, mock.Anything).
-			Return(errors.New("deadlock detected"))
-
-		// ACT
-		_, _, err := service.SellItem(ctx, "testuser", "twitch", "Sword", 1)
-
-		// ASSERT
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to update inventory")
-	})
+			// ASSERT
+			if tt.expectErr {
+				require.Error(t, err, tt.description)
+				assert.Contains(t, err.Error(), tt.errorMsg)
+			} else {
+				require.NoError(t, err, tt.description)
+			}
+		})
+	}
 }
 
 // =============================================================================
@@ -617,16 +645,20 @@ func TestBuyItem_QuantityBoundaries(t *testing.T) {
 // CASE 4: INVALID CASE
 func TestBuyItem_InvalidInputs(t *testing.T) {
 	tests := []struct {
-		name    string
-		setup   func(*MockRepository, context.Context)
-		wantErr string
+		name        string
+		setup       func(*MockRepository, context.Context)
+		expectErr   bool
+		errorMsg    string
+		description string
 	}{
 		{
 			name: "user not found",
 			setup: func(m *MockRepository, ctx context.Context) {
 				m.On("GetUserByUsername", ctx, "testuser").Return(nil, nil)
 			},
-			wantErr: "user not found",
+			expectErr:   true,
+			errorMsg:    "user not found",
+			description: "Should fail when user does not exist",
 		},
 		{
 			name: "item not found",
@@ -634,7 +666,9 @@ func TestBuyItem_InvalidInputs(t *testing.T) {
 				m.On("GetUserByUsername", ctx, "testuser").Return(createTestUser(), nil)
 				m.On("GetItemByName", ctx, "Sword").Return(nil, nil)
 			},
-			wantErr: "item not found",
+			expectErr:   true,
+			errorMsg:    "item not found",
+			description: "Should fail when item does not exist",
 		},
 		{
 			name: "item not buyable",
@@ -645,7 +679,9 @@ func TestBuyItem_InvalidInputs(t *testing.T) {
 				m.On("GetItemByName", ctx, "Sword").Return(item, nil)
 				m.On("IsItemBuyable", ctx, "Sword").Return(false, nil)
 			},
-			wantErr: "is not buyable",
+			expectErr:   true,
+			errorMsg:    "is not buyable",
+			description: "Should fail when item is not buyable",
 		},
 	}
 
@@ -661,38 +697,65 @@ func TestBuyItem_InvalidInputs(t *testing.T) {
 			_, err := service.BuyItem(ctx, "testuser", "twitch", "Sword", 1)
 
 			// ASSERT
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), tt.wantErr)
+			if tt.expectErr {
+				require.Error(t, err, tt.description)
+				assert.Contains(t, err.Error(), tt.errorMsg)
+			} else {
+				require.NoError(t, err, tt.description)
+			}
 		})
 	}
 }
 
 // CASE 5: HOSTILE CASE - Database errors
 func TestBuyItem_DatabaseErrors(t *testing.T) {
-	t.Run("database error on UpdateInventory", func(t *testing.T) {
-		// ARRANGE
-		mockRepo := &MockRepository{}
-		service := NewService(mockRepo, concurrency.NewLockManager())
-		ctx := context.Background()
+	tests := []struct {
+		name        string
+		setup       func(*MockRepository, context.Context)
+		expectErr   bool
+		errorMsg    string
+		description string
+	}{
+		{
+			name: "database error on UpdateInventory",
+			setup: func(m *MockRepository, ctx context.Context) {
+				user := createTestUser()
+				item := createTestItem(10, "Sword", 100)
+				moneyItem := createMoneyItem()
+				inventory := createInventoryWithMoney(500)
 
-		user := createTestUser()
-		item := createTestItem(10, "Sword", 100)
-		moneyItem := createMoneyItem()
-		inventory := createInventoryWithMoney(500)
+				m.On("GetUserByUsername", ctx, "testuser").Return(user, nil)
+				m.On("GetItemByName", ctx, "Sword").Return(item, nil)
+				m.On("IsItemBuyable", ctx, "Sword").Return(true, nil)
+				m.On("GetItemByName", ctx, domain.ItemMoney).Return(moneyItem, nil)
+				m.On("GetInventory", ctx, user.ID).Return(inventory, nil)
+				m.On("UpdateInventory", ctx, user.ID, mock.Anything).
+					Return(errors.New("deadlock detected"))
+			},
+			expectErr:   true,
+			errorMsg:    "failed to update inventory",
+			description: "Should fail when database deadlock occurs during inventory update",
+		},
+	}
 
-		mockRepo.On("GetUserByUsername", ctx, "testuser").Return(user, nil)
-		mockRepo.On("GetItemByName", ctx, "Sword").Return(item, nil)
-		mockRepo.On("IsItemBuyable", ctx, "Sword").Return(true, nil)
-		mockRepo.On("GetItemByName", ctx, domain.ItemMoney).Return(moneyItem, nil)
-		mockRepo.On("GetInventory", ctx, user.ID).Return(inventory, nil)
-		mockRepo.On("UpdateInventory", ctx, user.ID, mock.Anything).
-			Return(errors.New("deadlock detected"))
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// ARRANGE
+			mockRepo := &MockRepository{}
+			service := NewService(mockRepo, concurrency.NewLockManager())
+			ctx := context.Background()
+			tt.setup(mockRepo, ctx)
 
-		// ACT
-		_, err := service.BuyItem(ctx, "testuser", "twitch", "Sword", 1)
+			// ACT
+			_, err := service.BuyItem(ctx, "testuser", "twitch", "Sword", 1)
 
-		// ASSERT
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to update inventory")
-	})
+			// ASSERT
+			if tt.expectErr {
+				require.Error(t, err, tt.description)
+				assert.Contains(t, err.Error(), tt.errorMsg)
+			} else {
+				require.NoError(t, err, tt.description)
+			}
+		})
+	}
 }
