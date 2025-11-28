@@ -15,6 +15,13 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
+// validPlatforms defines the supported platform values
+var validPlatforms = map[string]bool{
+	"twitch":  true,
+	"youtube": true,
+	"discord": true,
+}
+
 // Repository defines the interface for user persistence
 type Repository interface {
 	UpsertUser(ctx context.Context, user *domain.User) error
@@ -68,6 +75,18 @@ type service struct {
 	timeouts     map[string]*time.Timer
 	lockManager  *concurrency.LockManager
 	lootTables   map[string][]LootItem
+}
+
+// setPlatformID sets the appropriate platform-specific ID field on a user
+func setPlatformID(user *domain.User, platform, platformID string) {
+	switch platform {
+	case "twitch":
+		user.TwitchID = platformID
+	case "youtube":
+		user.YoutubeID = platformID
+	case "discord":
+		user.DiscordID = platformID
+	}
 }
 
 // NewService creates a new user service
@@ -537,6 +556,20 @@ func (s *service) HandleSearch(ctx context.Context, username, platform string) (
 	log := logger.FromContext(ctx)
 	log.Info("HandleSearch called", "username", username, "platform", platform)
 
+	// Validate username
+	if username == "" {
+		return "", fmt.Errorf("username cannot be empty")
+	}
+
+	// Validate and normalize platform
+	if platform == "" {
+		// Default to twitch for backwards compatibility
+		platform = "twitch"
+		log.Info("Platform not specified, defaulting to twitch", "username", username)
+	} else if !validPlatforms[platform] {
+		return "", fmt.Errorf("invalid platform '%s': must be one of: twitch, youtube, discord", platform)
+	}
+
 	// Get or create user
 	user, err := s.repo.GetUserByUsername(ctx, username)
 	if err != nil {
@@ -549,19 +582,8 @@ func (s *service) HandleSearch(ctx context.Context, username, platform string) (
 		log.Info("User not found, registering new user", "username", username)
 		newUser := domain.User{Username: username}
 
-		// Set platform ID based on platform parameter
-		// Note: We don't have platformID here, so we'll just set username as ID
-		// In production, this should come from the actual platform integration
-		switch platform {
-		case "twitch":
-			newUser.TwitchID = username
-		case "youtube":
-			newUser.YoutubeID = username
-		case "discord":
-			newUser.DiscordID = username
-		default:
-			newUser.TwitchID = username // Default to twitch
-		}
+		// Set platform-specific ID based on validated platform
+		setPlatformID(&newUser, platform, username)
 
 		registeredUser, err := s.RegisterUser(ctx, newUser)
 		if err != nil {
