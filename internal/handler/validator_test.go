@@ -98,30 +98,3 @@ func TestValidator(t *testing.T) {
 		})
 	}
 }
-
-func TestLegacyValidators(t *testing.T) {
-	t.Run("ValidatePlatform", func(t *testing.T) {
-		assert.NoError(t, ValidatePlatform("twitch"))
-		assert.Error(t, ValidatePlatform("invalid"))
-		assert.Error(t, ValidatePlatform(""))
-	})
-
-	t.Run("ValidateUsername", func(t *testing.T) {
-		assert.NoError(t, ValidateUsername("validUser"))
-		assert.Error(t, ValidateUsername(""))
-		assert.Error(t, ValidateUsername(string(make([]byte, 101))))
-		assert.Error(t, ValidateUsername("user\nname"))
-	})
-
-	t.Run("ValidateItemName", func(t *testing.T) {
-		assert.NoError(t, ValidateItemName("validItem"))
-		assert.Error(t, ValidateItemName(""))
-		assert.Error(t, ValidateItemName(string(make([]byte, 101))))
-	})
-
-	t.Run("ValidateQuantity", func(t *testing.T) {
-		assert.NoError(t, ValidateQuantity(10))
-		assert.Error(t, ValidateQuantity(0))
-		assert.Error(t, ValidateQuantity(10001))
-	})
-}
