@@ -395,6 +395,8 @@ When adding new concurrent features:
 
 ### Testing and Debugging
 
+Refer to [Test Guidance.md](docs/testing/TEST_GUIDANCE.md) for test writing guidelines.
+
 **Test Output Management**
 To keep the workspace clean and prevent console buffer issues on Windows, verbose test outputs should be redirected to files within the Output/ directory.
 
