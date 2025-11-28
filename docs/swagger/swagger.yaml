@@ -164,13 +164,20 @@ definitions:
   handler.AddItemRequest:
     properties:
       item_name:
+        maxLength: 100
         type: string
       platform:
         type: string
       quantity:
+        maximum: 10000
+        minimum: 1
         type: integer
       username:
+        maxLength: 100
         type: string
+    required:
+    - item_name
+    - username
     type: object
   handler.AdminInstantUnlockResponse:
     properties:
@@ -182,25 +189,37 @@ definitions:
   handler.AdminRelockRequest:
     properties:
       level:
+        minimum: 1
         type: integer
       node_key:
+        maxLength: 50
         type: string
+    required:
+    - node_key
     type: object
   handler.AdminResetRequest:
     properties:
       preserve_user_progression:
         type: boolean
       reason:
+        maxLength: 255
         type: string
       reset_by:
+        maxLength: 100
         type: string
+    required:
+    - reset_by
     type: object
   handler.AdminUnlockRequest:
     properties:
       level:
+        minimum: 1
         type: integer
       node_key:
+        maxLength: 50
         type: string
+    required:
+    - node_key
     type: object
   handler.AvailableUnlocksResponse:
     properties:
@@ -214,13 +233,20 @@ definitions:
   handler.BuyItemRequest:
     properties:
       item_name:
+        maxLength: 100
         type: string
       platform:
         type: string
       quantity:
+        maximum: 10000
+        minimum: 1
         type: integer
       username:
+        maxLength: 100
         type: string
+    required:
+    - item_name
+    - username
     type: object
   handler.BuyItemResponse:
     properties:
@@ -230,13 +256,20 @@ definitions:
   handler.DisassembleItemRequest:
     properties:
       item:
+        maxLength: 100
         type: string
       platform:
         type: string
       quantity:
+        maximum: 10000
+        minimum: 1
         type: integer
       username:
+        maxLength: 100
         type: string
+    required:
+    - item
+    - username
     type: object
   handler.DisassembleItemResponse:
     properties:
@@ -262,15 +295,24 @@ definitions:
   handler.GiveItemRequest:
     properties:
       item_name:
+        maxLength: 100
         type: string
       owner:
+        maxLength: 100
         type: string
       platform:
         type: string
       quantity:
+        maximum: 10000
+        minimum: 1
         type: integer
       receiver:
+        maxLength: 100
         type: string
+    required:
+    - item_name
+    - owner
+    - receiver
     type: object
   handler.HandleMessageRequest:
     properties:
@@ -279,7 +321,12 @@ definitions:
       platform_id:
         type: string
       username:
+        maxLength: 100
         type: string
+    required:
+    - platform
+    - platform_id
+    - username
     type: object
   handler.HealthResponse:
     properties:
@@ -301,9 +348,14 @@ definitions:
         additionalProperties: true
         type: object
       event_type:
+        maxLength: 50
         type: string
       user_id:
+        maxLength: 100
         type: string
+    required:
+    - event_type
+    - user_id
     type: object
   handler.RegisterUserRequest:
     properties:
@@ -316,18 +368,32 @@ definitions:
       new_platform_id:
         type: string
       username:
+        maxLength: 100
         type: string
+    required:
+    - known_platform
+    - known_platform_id
+    - new_platform
+    - new_platform_id
+    - username
     type: object
   handler.RemoveItemRequest:
     properties:
       item_name:
+        maxLength: 100
         type: string
       platform:
         type: string
       quantity:
+        maximum: 10000
+        minimum: 1
         type: integer
       username:
+        maxLength: 100
         type: string
+    required:
+    - item_name
+    - username
     type: object
   handler.RemoveItemResponse:
     properties:
@@ -339,7 +405,10 @@ definitions:
       platform:
         type: string
       username:
+        maxLength: 100
         type: string
+    required:
+    - username
     type: object
   handler.SearchResponse:
     properties:
@@ -349,13 +418,20 @@ definitions:
   handler.SellItemRequest:
     properties:
       item_name:
+        maxLength: 100
         type: string
       platform:
         type: string
       quantity:
+        maximum: 10000
+        minimum: 1
         type: integer
       username:
+        maxLength: 100
         type: string
+    required:
+    - item_name
+    - username
     type: object
   handler.SellItemResponse:
     properties:
@@ -372,13 +448,20 @@ definitions:
   handler.UpgradeItemRequest:
     properties:
       item:
+        maxLength: 100
         type: string
       platform:
         type: string
       quantity:
+        maximum: 10000
+        minimum: 1
         type: integer
       username:
+        maxLength: 100
         type: string
+    required:
+    - item
+    - username
     type: object
   handler.UpgradeItemResponse:
     properties:
@@ -390,15 +473,23 @@ definitions:
   handler.UseItemRequest:
     properties:
       item_name:
+        maxLength: 100
         type: string
       platform:
         type: string
       quantity:
+        maximum: 10000
+        minimum: 1
         type: integer
       target_username:
+        maxLength: 100
         type: string
       username:
+        maxLength: 100
         type: string
+    required:
+    - item_name
+    - username
     type: object
   handler.UseItemResponse:
     properties:
@@ -408,9 +499,14 @@ definitions:
   handler.VoteRequest:
     properties:
       node_key:
+        maxLength: 50
         type: string
       user_id:
+        maxLength: 100
         type: string
+    required:
+    - node_key
+    - user_id
     type: object
   user.UserInventoryItem:
     properties:
@@ -450,7 +546,10 @@ paths:
     post:
       consumes:
       - application/json
-      description: Process a chat message for potential commands or triggers
+      - application/json
+      description: |-
+        Process a chat message for potential commands or triggers
+        Process a chat message for potential commands or triggers
       parameters:
       - description: Message details
         in: body
@@ -458,7 +557,14 @@ paths:
         required: true
         schema:
           $ref: '#/definitions/handler.HandleMessageRequest'
+      - description: Message details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.HandleMessageRequest'
       produces:
+      - application/json
       - application/json
       responses:
         "200":
@@ -475,6 +581,7 @@ paths:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Handle chat message
       tags:
+      - message
       - message
   /prices:
     get:
@@ -981,7 +1088,10 @@ paths:
     post:
       consumes:
       - application/json
-      description: Disassemble an item into materials
+      - application/json
+      description: |-
+        Disassemble an item into materials
+        Disassemble an item into materials
       parameters:
       - description: Disassemble details
         in: body
@@ -989,7 +1099,14 @@ paths:
         required: true
         schema:
           $ref: '#/definitions/handler.DisassembleItemRequest'
+      - description: Disassemble details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.DisassembleItemRequest'
       produces:
+      - application/json
       - application/json
       responses:
         "200":
@@ -1010,6 +1127,7 @@ paths:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Disassemble item
       tags:
+      - crafting
       - crafting
   /user/item/give:
     post:
@@ -1109,7 +1227,10 @@ paths:
     post:
       consumes:
       - application/json
-      description: Upgrade an item to a higher tier
+      - application/json
+      description: |-
+        Upgrade an item to a higher tier
+        Upgrade an item to a higher tier
       parameters:
       - description: Upgrade details
         in: body
@@ -1117,7 +1238,14 @@ paths:
         required: true
         schema:
           $ref: '#/definitions/handler.UpgradeItemRequest'
+      - description: Upgrade details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.UpgradeItemRequest'
       produces:
+      - application/json
       - application/json
       responses:
         "200":
@@ -1138,6 +1266,7 @@ paths:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Upgrade item
       tags:
+      - crafting
       - crafting
   /user/item/use:
     post:
@@ -1207,7 +1336,10 @@ paths:
     post:
       consumes:
       - application/json
-      description: Search for items (lootbox mechanic)
+      - application/json
+      description: |-
+        Search for items (lootbox mechanic)
+        Search for items (lootbox mechanic)
       parameters:
       - description: Search details
         in: body
@@ -1215,7 +1347,14 @@ paths:
         required: true
         schema:
           $ref: '#/definitions/handler.SearchRequest'
+      - description: Search details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.SearchRequest'
       produces:
+      - application/json
       - application/json
       responses:
         "200":
@@ -1240,6 +1379,7 @@ paths:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Search for items
       tags:
+      - user
       - user
 securityDefinitions:
   ApiKeyAuth:

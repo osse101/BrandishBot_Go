@@ -40,18 +40,30 @@ const docTemplate = `{
         },
         "/message/handle": {
             "post": {
-                "description": "Process a chat message for potential commands or triggers",
+                "description": "Process a chat message for potential commands or triggers\nProcess a chat message for potential commands or triggers",
                 "consumes": [
+                    "application/json",
                     "application/json"
                 ],
                 "produces": [
+                    "application/json",
                     "application/json"
                 ],
                 "tags": [
+                    "message",
                     "message"
                 ],
                 "summary": "Handle chat message",
                 "parameters": [
+                    {
+                        "description": "Message details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.HandleMessageRequest"
+                        }
+                    },
                     {
                         "description": "Message details",
                         "name": "request",
@@ -841,18 +853,30 @@ const docTemplate = `{
         },
         "/user/item/disassemble": {
             "post": {
-                "description": "Disassemble an item into materials",
+                "description": "Disassemble an item into materials\nDisassemble an item into materials",
                 "consumes": [
+                    "application/json",
                     "application/json"
                 ],
                 "produces": [
+                    "application/json",
                     "application/json"
                 ],
                 "tags": [
+                    "crafting",
                     "crafting"
                 ],
                 "summary": "Disassemble item",
                 "parameters": [
+                    {
+                        "description": "Disassemble details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.DisassembleItemRequest"
+                        }
+                    },
                     {
                         "description": "Disassemble details",
                         "name": "request",
@@ -1037,18 +1061,30 @@ const docTemplate = `{
         },
         "/user/item/upgrade": {
             "post": {
-                "description": "Upgrade an item to a higher tier",
+                "description": "Upgrade an item to a higher tier\nUpgrade an item to a higher tier",
                 "consumes": [
+                    "application/json",
                     "application/json"
                 ],
                 "produces": [
+                    "application/json",
                     "application/json"
                 ],
                 "tags": [
+                    "crafting",
                     "crafting"
                 ],
                 "summary": "Upgrade item",
                 "parameters": [
+                    {
+                        "description": "Upgrade details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.UpgradeItemRequest"
+                        }
+                    },
                     {
                         "description": "Upgrade details",
                         "name": "request",
@@ -1187,18 +1223,30 @@ const docTemplate = `{
         },
         "/user/search": {
             "post": {
-                "description": "Search for items (lootbox mechanic)",
+                "description": "Search for items (lootbox mechanic)\nSearch for items (lootbox mechanic)",
                 "consumes": [
+                    "application/json",
                     "application/json"
                 ],
                 "produces": [
+                    "application/json",
                     "application/json"
                 ],
                 "tags": [
+                    "user",
                     "user"
                 ],
                 "summary": "Search for items",
                 "parameters": [
+                    {
+                        "description": "Search details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.SearchRequest"
+                        }
+                    },
                     {
                         "description": "Search details",
                         "name": "request",
@@ -1489,18 +1537,26 @@ const docTemplate = `{
         },
         "handler.AddItemRequest": {
             "type": "object",
+            "required": [
+                "item_name",
+                "username"
+            ],
             "properties": {
                 "item_name": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 100
                 },
                 "platform": {
                     "type": "string"
                 },
                 "quantity": {
-                    "type": "integer"
+                    "type": "integer",
+                    "maximum": 10000,
+                    "minimum": 1
                 },
                 "username": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 100
                 }
             }
         },
@@ -1517,37 +1573,52 @@ const docTemplate = `{
         },
         "handler.AdminRelockRequest": {
             "type": "object",
+            "required": [
+                "node_key"
+            ],
             "properties": {
                 "level": {
-                    "type": "integer"
+                    "type": "integer",
+                    "minimum": 1
                 },
                 "node_key": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 50
                 }
             }
         },
         "handler.AdminResetRequest": {
             "type": "object",
+            "required": [
+                "reset_by"
+            ],
             "properties": {
                 "preserve_user_progression": {
                     "type": "boolean"
                 },
                 "reason": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255
                 },
                 "reset_by": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 100
                 }
             }
         },
         "handler.AdminUnlockRequest": {
             "type": "object",
+            "required": [
+                "node_key"
+            ],
             "properties": {
                 "level": {
-                    "type": "integer"
+                    "type": "integer",
+                    "minimum": 1
                 },
                 "node_key": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 50
                 }
             }
         },
@@ -1567,18 +1638,26 @@ const docTemplate = `{
         },
         "handler.BuyItemRequest": {
             "type": "object",
+            "required": [
+                "item_name",
+                "username"
+            ],
             "properties": {
                 "item_name": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 100
                 },
                 "platform": {
                     "type": "string"
                 },
                 "quantity": {
-                    "type": "integer"
+                    "type": "integer",
+                    "maximum": 10000,
+                    "minimum": 1
                 },
                 "username": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 100
                 }
             }
         },
@@ -1592,18 +1671,26 @@ const docTemplate = `{
         },
         "handler.DisassembleItemRequest": {
             "type": "object",
+            "required": [
+                "item",
+                "username"
+            ],
             "properties": {
                 "item": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 100
                 },
                 "platform": {
                     "type": "string"
                 },
                 "quantity": {
-                    "type": "integer"
+                    "type": "integer",
+                    "maximum": 10000,
+                    "minimum": 1
                 },
                 "username": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 100
                 }
             }
         },
@@ -1642,26 +1729,41 @@ const docTemplate = `{
         },
         "handler.GiveItemRequest": {
             "type": "object",
+            "required": [
+                "item_name",
+                "owner",
+                "receiver"
+            ],
             "properties": {
                 "item_name": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 100
                 },
                 "owner": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 100
                 },
                 "platform": {
                     "type": "string"
                 },
                 "quantity": {
-                    "type": "integer"
+                    "type": "integer",
+                    "maximum": 10000,
+                    "minimum": 1
                 },
                 "receiver": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 100
                 }
             }
         },
         "handler.HandleMessageRequest": {
             "type": "object",
+            "required": [
+                "platform",
+                "platform_id",
+                "username"
+            ],
             "properties": {
                 "platform": {
                     "type": "string"
@@ -1670,7 +1772,8 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "username": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 100
                 }
             }
         },
@@ -1698,21 +1801,34 @@ const docTemplate = `{
         },
         "handler.RecordEventRequest": {
             "type": "object",
+            "required": [
+                "event_type",
+                "user_id"
+            ],
             "properties": {
                 "event_data": {
                     "type": "object",
                     "additionalProperties": true
                 },
                 "event_type": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 50
                 },
                 "user_id": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 100
                 }
             }
         },
         "handler.RegisterUserRequest": {
             "type": "object",
+            "required": [
+                "known_platform",
+                "known_platform_id",
+                "new_platform",
+                "new_platform_id",
+                "username"
+            ],
             "properties": {
                 "known_platform": {
                     "type": "string"
@@ -1727,24 +1843,33 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "username": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 100
                 }
             }
         },
         "handler.RemoveItemRequest": {
             "type": "object",
+            "required": [
+                "item_name",
+                "username"
+            ],
             "properties": {
                 "item_name": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 100
                 },
                 "platform": {
                     "type": "string"
                 },
                 "quantity": {
-                    "type": "integer"
+                    "type": "integer",
+                    "maximum": 10000,
+                    "minimum": 1
                 },
                 "username": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 100
                 }
             }
         },
@@ -1758,12 +1883,16 @@ const docTemplate = `{
         },
         "handler.SearchRequest": {
             "type": "object",
+            "required": [
+                "username"
+            ],
             "properties": {
                 "platform": {
                     "type": "string"
                 },
                 "username": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 100
                 }
             }
         },
@@ -1777,18 +1906,26 @@ const docTemplate = `{
         },
         "handler.SellItemRequest": {
             "type": "object",
+            "required": [
+                "item_name",
+                "username"
+            ],
             "properties": {
                 "item_name": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 100
                 },
                 "platform": {
                     "type": "string"
                 },
                 "quantity": {
-                    "type": "integer"
+                    "type": "integer",
+                    "maximum": 10000,
+                    "minimum": 1
                 },
                 "username": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 100
                 }
             }
         },
@@ -1813,18 +1950,26 @@ const docTemplate = `{
         },
         "handler.UpgradeItemRequest": {
             "type": "object",
+            "required": [
+                "item",
+                "username"
+            ],
             "properties": {
                 "item": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 100
                 },
                 "platform": {
                     "type": "string"
                 },
                 "quantity": {
-                    "type": "integer"
+                    "type": "integer",
+                    "maximum": 10000,
+                    "minimum": 1
                 },
                 "username": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 100
                 }
             }
         },
@@ -1841,21 +1986,30 @@ const docTemplate = `{
         },
         "handler.UseItemRequest": {
             "type": "object",
+            "required": [
+                "item_name",
+                "username"
+            ],
             "properties": {
                 "item_name": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 100
                 },
                 "platform": {
                     "type": "string"
                 },
                 "quantity": {
-                    "type": "integer"
+                    "type": "integer",
+                    "maximum": 10000,
+                    "minimum": 1
                 },
                 "target_username": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 100
                 },
                 "username": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 100
                 }
             }
         },
@@ -1869,12 +2023,18 @@ const docTemplate = `{
         },
         "handler.VoteRequest": {
             "type": "object",
+            "required": [
+                "node_key",
+                "user_id"
+            ],
             "properties": {
                 "node_key": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 50
                 },
                 "user_id": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 100
                 }
             }
         },
