@@ -91,6 +91,13 @@ func createInventoryWithMoney(amount int) *domain.Inventory {
 	return createInventoryWithItem(1, amount) // ItemID 1 is money
 }
 
+// Test boundary constants - from business requirements spec
+const (
+	MinQuantity   = 1
+	MaxQuantity   = 10000
+	BaseItemPrice = 100
+)
+
 // =============================================================================
 // SellItem Tests - Demonstrating 5-Case Testing Model
 // =============================================================================
@@ -258,32 +265,25 @@ func TestSellItem_InvalidInputs(t *testing.T) {
 	}
 }
 
+
+
 // Quantity Boundary Tests - Critical for validating input constraints
 func TestSellItem_QuantityBoundaries(t *testing.T) {
 	tests := []struct {
-		name     string
-		quantity int
-		wantErr  bool
-		errMsg   string
+		name        string
+		quantity    int
+		expectErr   bool
+		description string
 	}{
-		{
-			name:     "negative quantity",
-			quantity: -1,
-			wantErr:  true,
-			errMsg:   "", // Currently no validation - documents bug!
-		},
-		{
-			name:     "zero quantity",
-			quantity: 0,
-			wantErr:  true,
-			errMsg:   "", // Currently no validation - documents bug!
-		},
-		{
-			name:     "over max boundary",
-			quantity: 10001, // Assuming max is 10000
-			wantErr:  true,
-			errMsg:   "", // Currently no validation - documents bug!
-		},
+		{"negative quantity", -1, true, "Negative quantities must be rejected"},
+		{"zero quantity", 0, true, "Zero quantity is invalid"},
+		{"min boundary", MinQuantity, false, "Minimum valid quantity should succeed"},
+		{"low range", 5, false, "Small valid quantity should succeed"},
+		{"mid range", 500, false, "Mid-range valid quantity should succeed"},
+		{"high range", 5000, false, "Large valid quantity should succeed"},
+		{"near max", MaxQuantity - 100, false, "Quantity near maximum should succeed"},
+		{"max boundary", MaxQuantity, false, "Maximum valid quantity should succeed"},
+		{"over max boundary", MaxQuantity + 1, true, "Quantities over maximum must be rejected"},
 	}
 
 	for _, tt := range tests {
@@ -298,7 +298,6 @@ func TestSellItem_QuantityBoundaries(t *testing.T) {
 			moneyItem := createMoneyItem()
 			inventory := createInventoryWithItem(10, 100)
 
-			// Setup mocks - allow UpdateInventory to see what happens
 			mockRepo.On("GetUserByUsername", ctx, "testuser").Return(user, nil)
 			mockRepo.On("GetItemByName", ctx, "Sword").Return(item, nil)
 			mockRepo.On("GetItemByName", ctx, domain.ItemMoney).Return(moneyItem, nil)
@@ -306,21 +305,14 @@ func TestSellItem_QuantityBoundaries(t *testing.T) {
 			mockRepo.On("UpdateInventory", ctx, user.ID, mock.Anything).Return(nil)
 
 			// ACT
-			moneyGained, quantitySold, err := service.SellItem(ctx, "testuser", "twitch", "Sword", tt.quantity)
+			_, _, err := service.SellItem(ctx, "testuser", "twitch", "Sword", tt.quantity)
 
 			// ASSERT
-			// TODO: These should all fail validation, but currently don't!
-			// This test DOCUMENTS the bugs found
-			if tt.wantErr {
-				t.Logf("BUG FOUND: quantity=%d should be rejected but passes through!", tt.quantity)
-				t.Logf("Result: money=%d, qty=%d, err=%v", moneyGained, quantitySold, err)
-				// When validation is added, uncomment:
-				// require.Error(t, err)
-				// if tt.errMsg != "" {
-				// 	assert.Contains(t, err.Error(), tt.errMsg)
-				// }
+			if tt.expectErr {
+				require.Error(t, err, tt.description)
+				assert.Contains(t, err.Error(), "quantity")
 			} else {
-				require.NoError(t, err)
+				require.NoError(t, err, tt.description)
 			}
 		})
 	}
@@ -416,4 +408,291 @@ func TestGetSellablePrices_DatabaseError(t *testing.T) {
 	require.Error(t, err)
 	assert.Nil(t, items)
 	assert.Contains(t, err.Error(), "connection timeout")
+}
+
+// =============================================================================
+// BuyItem Tests - 5-Case Testing Model
+// =============================================================================
+
+// CASE 1: BEST CASE
+func TestBuyItem_Success(t *testing.T) {
+	// ARRANGE
+	mockRepo := &MockRepository{}
+	service := NewService(mockRepo, concurrency.NewLockManager())
+	ctx := context.Background()
+
+	user := createTestUser()
+	item := createTestItem(10, "Sword", 100)
+	moneyItem := createMoneyItem()
+	inventory := &domain.Inventory{
+		Slots: []domain.InventorySlot{
+			{ItemID: moneyItem.ID, Quantity: 500}, // Enough for 5 items
+		},
+	}
+
+	mockRepo.On("GetUserByUsername", ctx, "testuser").Return(user, nil)
+	mockRepo.On("GetItemByName", ctx, "Sword").Return(item, nil)
+	mockRepo.On("IsItemBuyable", ctx, "Sword").Return(true, nil)
+	mockRepo.On("GetItemByName", ctx, domain.ItemMoney).Return(moneyItem, nil)
+	mockRepo.On("GetInventory", ctx, user.ID).Return(inventory, nil)
+	mockRepo.On("UpdateInventory", ctx, user.ID, mock.Anything).Return(nil)
+
+	// ACT
+	purchased, err := service.BuyItem(ctx, "testuser", "twitch", "Sword", 3)
+
+	// ASSERT
+	require.NoError(t, err)
+	assert.Equal(t, 3, purchased)
+	mockRepo.AssertExpectations(t)
+}
+
+// CASE 2: BOUNDARY CASE - Money boundaries
+func TestBuyItem_MoneyBoundaries(t *testing.T) {
+	tests := []struct {
+		name           string
+		moneyBalance   int
+		itemPrice      int
+		quantityWanted int
+		expectedQty    int
+		expectErr      bool
+		description    string
+	}{
+		// Lower boundaries
+		{
+			name:           "no money",
+			moneyBalance:   0,
+			itemPrice:      BaseItemPrice,
+			quantityWanted: 1,
+			expectedQty:    0,
+			expectErr:      true,
+			description:    "Buying with no money should fail",
+		},
+		{
+			name:           "not enough for one",
+			moneyBalance:   50,
+			itemPrice:      BaseItemPrice,
+			quantityWanted: 1,
+			expectedQty:    0,
+			expectErr:      true,
+			description:    "Buying when cannot afford one should fail",
+		},
+		{
+			name:           "exactly enough for one",
+			moneyBalance:   BaseItemPrice,
+			itemPrice:      BaseItemPrice,
+			quantityWanted: 1,
+			expectedQty:    1,
+			expectErr:      false,
+			description:    "Buying exactly one with exact funds should succeed",
+		},
+		{
+			name:           "can afford one but wants more",
+			moneyBalance:   BaseItemPrice,
+			itemPrice:      BaseItemPrice,
+			quantityWanted: 5,
+			expectedQty:    1,
+			expectErr:      false,
+			description:    "Should buy only what can be afforded",
+		},
+		
+		// Upper boundaries
+		{
+			name:           "exact money for all",
+			moneyBalance:   500,
+			itemPrice:      BaseItemPrice,
+			quantityWanted: 5,
+			expectedQty:    5,
+			expectErr:      false,
+			description:    "Buying all requested with exact funds should succeed",
+		},
+		{
+			name:           "extra money leftover",
+			moneyBalance:   550,
+			itemPrice:      BaseItemPrice,
+			quantityWanted: 5,
+			expectedQty:    5,
+			expectErr:      false,
+			description:    "Buying all requested with extra funds should succeed",
+		},
+		
+		// Partial purchase
+		{
+			name:           "can afford half",
+			moneyBalance:   250,
+			itemPrice:      BaseItemPrice,
+			quantityWanted: 5,
+			expectedQty:    2,
+			expectErr:      false,
+			description:    "Should buy partial quantity based on funds",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// ARRANGE
+			mockRepo := &MockRepository{}
+			service := NewService(mockRepo, concurrency.NewLockManager())
+			ctx := context.Background()
+
+			user := createTestUser()
+			item := createTestItem(10, "Sword", tt.itemPrice)
+			moneyItem := createMoneyItem()
+			inventory := createInventoryWithMoney(tt.moneyBalance)
+
+			mockRepo.On("GetUserByUsername", ctx, "testuser").Return(user, nil)
+			mockRepo.On("GetItemByName", ctx, "Sword").Return(item, nil)
+			mockRepo.On("IsItemBuyable", ctx, "Sword").Return(true, nil)
+			mockRepo.On("GetItemByName", ctx, domain.ItemMoney).Return(moneyItem, nil)
+			mockRepo.On("GetInventory", ctx, user.ID).Return(inventory, nil)
+			mockRepo.On("UpdateInventory", ctx, user.ID, mock.Anything).Return(nil).Maybe()
+
+			// ACT
+			purchased, err := service.BuyItem(ctx, "testuser", "twitch", "Sword", tt.quantityWanted)
+
+			// ASSERT
+			if tt.expectErr {
+				require.Error(t, err, tt.description)
+				assert.Contains(t, err.Error(), "insufficient funds")
+			} else {
+				require.NoError(t, err, tt.description)
+				assert.Equal(t, tt.expectedQty, purchased)
+			}
+		})
+	}
+}
+
+// CASE 2: BOUNDARY CASE - Quantity boundaries
+func TestBuyItem_QuantityBoundaries(t *testing.T) {
+	tests := []struct {
+		name        string
+		quantity    int
+		expectErr   bool
+		description string
+	}{
+		{"negative quantity", -1, true, "Negative quantities must be rejected"},
+		{"zero quantity", 0, true, "Zero quantity is invalid"},
+		{"min boundary", MinQuantity, false, "Minimum valid quantity should succeed"},
+		{"low range", 3, false, "Small valid quantity should succeed"},
+		{"mid range", 250, false, "Mid-range valid quantity should succeed"},
+		{"high range", 7500, false, "Large valid quantity should succeed"},
+		{"near max", MaxQuantity - 50, false, "Quantity near maximum should succeed"},
+		{"max boundary", MaxQuantity, false, "Maximum valid quantity should succeed"},
+		{"over max boundary", MaxQuantity + 1, true, "Quantities over maximum must be rejected"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// ARRANGE
+			mockRepo := &MockRepository{}
+			service := NewService(mockRepo, concurrency.NewLockManager())
+			ctx := context.Background()
+
+			user := createTestUser()
+			item := createTestItem(10, "Sword", 100)
+			moneyItem := createMoneyItem()
+			inventory := createInventoryWithMoney(10000000)
+
+			mockRepo.On("GetUserByUsername", ctx, "testuser").Return(user, nil)
+			mockRepo.On("GetItemByName", ctx, "Sword").Return(item, nil)
+			mockRepo.On("IsItemBuyable", ctx, "Sword").Return(true, nil)
+			mockRepo.On("GetItemByName", ctx, domain.ItemMoney).Return(moneyItem, nil)
+			mockRepo.On("GetInventory", ctx, user.ID).Return(inventory, nil)
+			mockRepo.On("UpdateInventory", ctx, user.ID, mock.Anything).Return(nil)
+
+			// ACT
+			purchased, err := service.BuyItem(ctx, "testuser", "twitch", "Sword", tt.quantity)
+
+			// ASSERT
+			if tt.expectErr {
+				require.Error(t, err, tt.description)
+				assert.Contains(t, err.Error(), "quantity")
+			} else {
+				require.NoError(t, err, tt.description)
+				assert.Equal(t, tt.quantity, purchased)
+			}
+		})
+	}
+}
+
+// CASE 4: INVALID CASE
+func TestBuyItem_InvalidInputs(t *testing.T) {
+	tests := []struct {
+		name    string
+		setup   func(*MockRepository, context.Context)
+		wantErr string
+	}{
+		{
+			name: "user not found",
+			setup: func(m *MockRepository, ctx context.Context) {
+				m.On("GetUserByUsername", ctx, "testuser").Return(nil, nil)
+			},
+			wantErr: "user not found",
+		},
+		{
+			name: "item not found",
+			setup: func(m *MockRepository, ctx context.Context) {
+				m.On("GetUserByUsername", ctx, "testuser").Return(createTestUser(), nil)
+				m.On("GetItemByName", ctx, "Sword").Return(nil, nil)
+			},
+			wantErr: "item not found",
+		},
+		{
+			name: "item not buyable",
+			setup: func(m *MockRepository, ctx context.Context) {
+				user := createTestUser()
+				item := createTestItem(10, "Sword", 100)
+				m.On("GetUserByUsername", ctx, "testuser").Return(user, nil)
+				m.On("GetItemByName", ctx, "Sword").Return(item, nil)
+				m.On("IsItemBuyable", ctx, "Sword").Return(false, nil)
+			},
+			wantErr: "is not buyable",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// ARRANGE
+			mockRepo := &MockRepository{}
+			service := NewService(mockRepo, concurrency.NewLockManager())
+			ctx := context.Background()
+			tt.setup(mockRepo, ctx)
+
+			// ACT
+			_, err := service.BuyItem(ctx, "testuser", "twitch", "Sword", 1)
+
+			// ASSERT
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tt.wantErr)
+		})
+	}
+}
+
+// CASE 5: HOSTILE CASE - Database errors
+func TestBuyItem_DatabaseErrors(t *testing.T) {
+	t.Run("database error on UpdateInventory", func(t *testing.T) {
+		// ARRANGE
+		mockRepo := &MockRepository{}
+		service := NewService(mockRepo, concurrency.NewLockManager())
+		ctx := context.Background()
+
+		user := createTestUser()
+		item := createTestItem(10, "Sword", 100)
+		moneyItem := createMoneyItem()
+		inventory := createInventoryWithMoney(500)
+
+		mockRepo.On("GetUserByUsername", ctx, "testuser").Return(user, nil)
+		mockRepo.On("GetItemByName", ctx, "Sword").Return(item, nil)
+		mockRepo.On("IsItemBuyable", ctx, "Sword").Return(true, nil)
+		mockRepo.On("GetItemByName", ctx, domain.ItemMoney).Return(moneyItem, nil)
+		mockRepo.On("GetInventory", ctx, user.ID).Return(inventory, nil)
+		mockRepo.On("UpdateInventory", ctx, user.ID, mock.Anything).
+			Return(errors.New("deadlock detected"))
+
+		// ACT
+		_, err := service.BuyItem(ctx, "testuser", "twitch", "Sword", 1)
+
+		// ASSERT
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to update inventory")
+	})
 }
