@@ -24,18 +24,39 @@ func TestSellItem_Success(t *testing.T) {
 }
 ```
 
-### 2. Worst Case  
-Valid but extreme/boundary inputs.
+### 2. Boundary Case ⭐
+**Critical: Test every boundary three ways**
+
+1. **On the boundary** - Exact limit value
+2. **Just inside** - One unit within valid range
+3. **Just outside** - One unit beyond valid range
 
 ```go
-func TestSellItem_MaxQuantity(t *testing.T) {
-    // Sell 10,000 items (max allowed)
-    // Verify no overflow, correct calculation
+func TestSellItem_QuantityBoundaries(t *testing.T) {
+    tests := []struct {
+        name     string
+        quantity int
+        valid    bool
+    }{
+        {"negative (beyond lower)", -1, false},
+        {"zero (on lower boundary)", 0, false},
+        {"one (just inside)", 1, true},
+        {"max (on upper boundary)", 10000, true},
+        {"over max (beyond upper)", 10001, false},
+    }
+    // Test each boundary case
 }
 ```
 
+**Common Boundaries:**
+- Numeric: min/max values, zero, negative
+- Collections: empty, single item, max capacity
+- Strings: empty, max length, unicode edge cases
+- Time: past/future, timezone boundaries
+- Permissions: just below/at/above threshold
+
 ### 3. Edge Case
-Unusual but legal scenarios.
+Unusual but legal scenarios within valid range.
 
 ```go
 func TestSellItem_LastItem(t *testing.T) {
@@ -49,7 +70,7 @@ Malformed or incorrect inputs.
 
 ```go
 func TestSellItem_InvalidInputs(t *testing.T) {
-    // Empty username, negative quantity, non-existent item
+    // Empty username, non-existent item
     // All should return appropriate errors
 }
 ```
@@ -294,6 +315,31 @@ basePrice := 100
 discountPercent := 0.42
 expected := int(basePrice * discountPercent)
 assert.Equal(t, expected, result)
+```
+
+### Define Test Boundaries as Constants
+
+```go
+const (
+    MinQuantity = 1
+    MaxQuantity = 10000
+    MinUsernameLength = 3
+    MaxUsernameLength = 32
+)
+
+func TestQuantityValidation(t *testing.T) {
+    tests := []struct {
+        name  string
+        qty   int
+        valid bool
+    }{
+        {"below min", MinQuantity - 1, false},
+        {"at min", MinQuantity, true},
+        {"at max", MaxQuantity, true},
+        {"above max", MaxQuantity + 1, false},
+    }
+    // Clear, self-documenting boundaries
+}
 ```
 
 ---
@@ -587,6 +633,7 @@ Before submitting tests, verify:
 
 - [ ] Tests all 5 cases where applicable
 - [ ] Test names clearly describe scenario
+- [ ] Boundaries defined as named constants
 - [ ] No magic numbers or strings
 - [ ] Appropriate assertions used
 - [ ] Mocks used minimally
