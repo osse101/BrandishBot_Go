@@ -55,6 +55,31 @@ func TestSellItem_QuantityBoundaries(t *testing.T) {
 - Time: past/future, timezone boundaries
 - Permissions: just below/at/above threshold
 
+**Handling "Unbounded" Values:**
+
+Even "unbounded" values have practical boundaries:
+
+1. **Type limits**: `int32`, `int64` have max values - test near these
+2. **Business limits**: Most cases impose logical constraints (e.g., max inventory = 10000)
+3. **Representative large values**: Test with sufficiently large numbers that exercise the logic
+
+```go
+// Example: Testing "any positive integer" quantity
+const MaxReasonableQuantity = 1000000 // Practical upper bound
+
+tests := []struct {
+    name  string
+    qty   int
+    valid bool
+}{
+    {"zero", 0, false},              // Lower boundary
+    {"one", 1, true},                // Just inside
+    {"typical", 100, true},          // Normal case
+    {"large", MaxReasonableQuantity, true}, // Practical upper
+    {"overflow risk", math.MaxInt32, true}, // Type boundary
+}
+```
+
 ### 3. Edge Case
 Unusual but legal scenarios within valid range.
 
