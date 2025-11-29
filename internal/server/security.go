@@ -14,6 +14,16 @@ import (
 func AuthMiddleware(apiKey string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Allow public access to documentation and health check endpoints
+			publicPaths := []string{"/swagger/", "/healthz", "/readyz"}
+			for _, path := range publicPaths {
+				if strings.HasPrefix(r.URL.Path, path) {
+					next.ServeHTTP(w, r)
+					return
+				}
+			}
+
+			// Validate API key for all other endpoints
 			providedKey := r.Header.Get("X-API-Key")
 
 			if providedKey != apiKey {

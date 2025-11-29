@@ -1,4 +1,4 @@
-.PHONY: help migrate-up migrate-down migrate-status migrate-create test build run
+.PHONY: help migrate-up migrate-down migrate-status migrate-create test build run docker-build docker-up docker-down
 
 # Tool paths
 GOOSE := $(shell command -v goose 2> /dev/null || echo $(HOME)/go/bin/goose)
@@ -28,6 +28,7 @@ help:
 	@echo "Docker Commands:"
 	@echo "  make docker-up            - Start services with Docker Compose"
 	@echo "  make docker-down          - Stop services"
+	@echo "  make docker-build         - Rebuild Docker images (use after code changes)"
 	@echo ""
 	@echo "Test Database Commands:"
 	@echo "  make test-integration     - Run integration tests (uses testcontainers)"
@@ -122,6 +123,11 @@ docker-up:
 docker-down:
 	@echo "Stopping Docker services..."
 	@docker-compose down
+
+docker-build:
+	@echo "Rebuilding Docker images..."
+	@docker-compose build --no-cache
+	@echo "Docker images rebuilt successfully"
 
 docker-logs:
 	@docker-compose logs -f
