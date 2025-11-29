@@ -55,11 +55,17 @@ func (e *EventMetricsCollector) HandleEvent(ctx context.Context, evt event.Event
 		if itemName, ok := payload["item_name"].(string); ok {
 			ItemsSold.WithLabelValues(itemName).Inc()
 		}
+		// Track money earned from sales
+		if moneyGained, ok := payload["money_gained"].(int); ok {
+			MoneyEarned.Add(float64(moneyGained))
+		}
 
 	case "item.bought":
 		if itemName, ok := payload["item_name"].(string); ok {
 			ItemsBought.WithLabelValues(itemName).Inc()
 		}
+		// Note: We don't have money_spent in the payload yet
+		// This would require modifying the economy.Service.BuyItem to return cost
 
 	case "item.upgraded":
 		sourceItem, okSource := payload["source_item"].(string)

@@ -99,4 +99,18 @@ var (
 			Help: "Total number of searches performed",
 		},
 	)
+
+	MoneyEarned = promauto.NewCounter(
+		prometheus.CounterOpts{
+			Name: "money_earned_total",
+			Help: "Total money earned from selling items",
+		},
+	)
+
+	MoneySpent = promauto.NewCounter(
+		prometheus.CounterOpts{
+			Name: "money_spent_total",
+			Help: "Total money spent buying items",
+		},
+	)
 )

@@ -255,7 +255,7 @@ func HandleSellItem(svc economy.Service, progressionSvc progression.Service, eve
 				"user_id":      req.Username,
 				"item_name":    req.ItemName,
 				"quantity":     itemsSold,
-				"gold_gained":  moneyGained,
+				"money_gained":  moneyGained,
 			},
 		}); err != nil {
 			log.Error("Failed to publish item.sold event", "error", err)
