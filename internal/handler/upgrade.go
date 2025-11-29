@@ -8,7 +8,6 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
-	"github.com/osse101/BrandishBot_Go/internal/middleware"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 )
 
@@ -96,13 +95,18 @@ func HandleUpgradeItem(svc crafting.Service, progressionSvc progression.Service,
 			"item", req.Item,
 			"quantity_upgraded", quantityUpgraded)
 
-		// Track engagement for crafting
-		middleware.TrackEngagementFromContext(
-			middleware.WithUserID(r.Context(), req.Username),
-			eventBus,
-			"item_crafted",
-			quantityUpgraded,
-		)
+		// Publish item.upgraded event
+		if err := eventBus.Publish(r.Context(), event.Event{
+			Type: "item.upgraded",
+			Payload: map[string]interface{}{
+				"user_id":            req.Username,
+				"source_item":        req.Item,
+				"result_item":        newItem,
+				"quantity_upgraded":  quantityUpgraded,
+			},
+		}); err != nil {
+			log.Error("Failed to publish item.upgraded event", "error", err)
+		}
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)

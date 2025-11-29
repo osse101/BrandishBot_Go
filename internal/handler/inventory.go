@@ -202,7 +202,7 @@ type SellItemResponse struct {
 // @Failure 403 {object} ErrorResponse "Feature locked"
 // @Failure 500 {object} ErrorResponse
 // @Router /user/item/sell [post]
-func HandleSellItem(svc economy.Service, progressionSvc progression.Service) http.HandlerFunc {
+func HandleSellItem(svc economy.Service, progressionSvc progression.Service, eventBus event.Bus) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
 
@@ -248,6 +248,19 @@ func HandleSellItem(svc economy.Service, progressionSvc progression.Service) htt
 			"items_sold", itemsSold,
 			"money_gained", moneyGained)
 
+		// Publish item.sold event
+		if err := eventBus.Publish(r.Context(), event.Event{
+			Type: "item.sold",
+			Payload: map[string]interface{}{
+				"user_id":      req.Username,
+				"item_name":    req.ItemName,
+				"quantity":     itemsSold,
+				"gold_gained":  moneyGained,
+			},
+		}); err != nil {
+			log.Error("Failed to publish item.sold event", "error", err)
+		}
+
 		respondJSON(w, http.StatusOK, SellItemResponse{
 			MoneyGained: moneyGained,
 			ItemsSold:   itemsSold,
@@ -278,7 +291,7 @@ type BuyItemResponse struct {
 // @Failure 403 {object} ErrorResponse "Feature locked"
 // @Failure 500 {object} ErrorResponse
 // @Router /user/item/buy [post]
-func HandleBuyItem(svc economy.Service, progressionSvc progression.Service) http.HandlerFunc {
+func HandleBuyItem(svc economy.Service, progressionSvc progression.Service, eventBus event.Bus) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
 
@@ -322,6 +335,19 @@ func HandleBuyItem(svc economy.Service, progressionSvc progression.Service) http
 			"username", req.Username,
 			"item", req.ItemName,
 			"items_bought", bought)
+
+		// Publish item.bought event
+		// Note: We don't have the exact cost here, would need to modify economy.Service to return it
+		if err := eventBus.Publish(r.Context(), event.Event{
+			Type: "item.bought",
+			Payload: map[string]interface{}{
+				"user_id":   req.Username,
+				"item_name": req.ItemName,
+				"quantity":  bought,
+			},
+		}); err != nil {
+			log.Error("Failed to publish item.bought event", "error", err)
+		}
 
 		respondJSON(w, http.StatusOK, BuyItemResponse{
 			ItemsBought: bought,
@@ -401,6 +427,20 @@ func HandleUseItem(svc user.Service, eventBus event.Bus) http.HandlerFunc {
 			"item_used",
 			req.Quantity,
 		)
+
+		// Publish item.used event
+		if err := eventBus.Publish(r.Context(), event.Event{
+			Type: "item.used",
+			Payload: map[string]interface{}{
+				"user_id":  req.Username,
+				"item":     req.ItemName,
+				"quantity": req.Quantity,
+				"target":   req.TargetUsername,
+				"result":   message,
+			},
+		}); err != nil {
+			log.Error("Failed to publish item.used event", "error", err)
+		}
 
 		respondJSON(w, http.StatusOK, UseItemResponse{
 			Message: message,

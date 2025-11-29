@@ -8,7 +8,6 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
-	"github.com/osse101/BrandishBot_Go/internal/middleware"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 )
 
@@ -97,13 +96,18 @@ func HandleDisassembleItem(svc crafting.Service, progressionSvc progression.Serv
 			"quantity_processed", quantityProcessed,
 			"outputs", outputs)
 
-		// Track engagement for disassembly (counts as crafting activity)
-		middleware.TrackEngagementFromContext(
-			middleware.WithUserID(r.Context(), req.Username),
-			eventBus,
-			"item_crafted",
-			quantityProcessed,
-		)
+		// Publish item.disassembled event
+		if err := eventBus.Publish(r.Context(), event.Event{
+			Type: "item.disassembled",
+			Payload: map[string]interface{}{
+				"user_id":             req.Username,
+				"item":                req.Item,
+				"quantity_processed":  quantityProcessed,
+				"materials_gained":    outputs,
+			},
+		}); err != nil {
+			log.Error("Failed to publish item.disassembled event", "error", err)
+		}
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)

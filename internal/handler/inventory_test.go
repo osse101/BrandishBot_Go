@@ -309,9 +309,14 @@ func TestHandleSellItem(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mockEco := &MockEconomyService{}
 			mockProg := &MockProgressionService{}
+			mockBus := &MockEventBus{}
 			tt.setupMock(mockEco, mockProg)
+			// Allow event publishing
+			mockBus.On("Publish", mock.Anything, mock.MatchedBy(func(evt event.Event) bool {
+				return evt.Type == "item.sold"
+			})).Return(nil).Maybe()
 
-			handler := HandleSellItem(mockEco, mockProg)
+			handler := HandleSellItem(mockEco, mockProg, mockBus)
 
 			body, _ := json.Marshal(tt.requestBody)
 			req := httptest.NewRequest("POST", "/user/item/sell", bytes.NewBuffer(body))
@@ -494,9 +499,14 @@ func TestHandleBuyItem(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mockEco := &MockEconomyService{}
 			mockProg := &MockProgressionService{}
+			mockBus := &MockEventBus{}
 			tt.setupMock(mockEco, mockProg)
+			// Allow event publishing
+			mockBus.On("Publish", mock.Anything, mock.MatchedBy(func(evt event.Event) bool {
+				return evt.Type == "item.bought"
+			})).Return(nil).Maybe()
 
-			handler := HandleBuyItem(mockEco, mockProg)
+			handler := HandleBuyItem(mockEco, mockProg, mockBus)
 
 			body, _ := json.Marshal(tt.requestBody)
 			req := httptest.NewRequest("POST", "/user/item/buy", bytes.NewBuffer(body))
@@ -533,9 +543,9 @@ func TestHandleUseItem(t *testing.T) {
 			},
 			setupMock: func(u *MockUserService, e *MockEventBus) {
 				u.On("UseItem", mock.Anything, "testuser", "", "Potion", 1, "").Return("Used potion", nil)
-				// Expect Publish to be called
+				// Expect both engagement and item.used events
 				e.On("Publish", mock.Anything, mock.MatchedBy(func(evt event.Event) bool {
-					return evt.Type == "engagement"
+					return evt.Type == "engagement" || evt.Type == "item.used"
 				})).Return(nil).Maybe()
 			},
 			expectedStatus: http.StatusOK,

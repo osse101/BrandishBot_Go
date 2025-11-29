@@ -99,6 +99,18 @@ func HandleSearch(svc user.Service, progressionSvc progression.Service, eventBus
 			1,
 		)
 
+		// Publish search.performed event
+		if err := eventBus.Publish(r.Context(), event.Event{
+			Type: "search.performed",
+			Payload: map[string]interface{}{
+				"user_id":  req.Username,
+				"platform": req.Platform,
+				"message":  message,
+			},
+		}); err != nil {
+			log.Error("Failed to publish search.performed event", "error", err)
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		respondJSON(w, http.StatusOK, SearchResponse{

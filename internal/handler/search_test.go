@@ -33,9 +33,9 @@ func TestHandleSearch(t *testing.T) {
 			setupMock: func(u *MockUserService, p *MockProgressionService, e *MockEventBus) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSearch).Return(true, nil)
 				u.On("HandleSearch", mock.Anything, "testuser", "twitch").Return("Found a sword!", nil)
-				// Expect Publish to be called
+				// Expect both engagement and search.performed events
 				e.On("Publish", mock.Anything, mock.MatchedBy(func(evt event.Event) bool {
-					return evt.Type == "engagement"
+					return evt.Type == "engagement" || evt.Type == "search.performed"
 				})).Return(nil).Maybe()
 			},
 			expectedStatus: http.StatusOK,
