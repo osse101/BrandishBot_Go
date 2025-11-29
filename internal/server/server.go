@@ -12,10 +12,12 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/handler"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
+	"github.com/osse101/BrandishBot_Go/internal/metrics"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 	"github.com/osse101/BrandishBot_Go/internal/stats"
 	"github.com/osse101/BrandishBot_Go/internal/user"
 	httpSwagger "github.com/swaggo/http-swagger"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type Server struct {
@@ -35,6 +37,9 @@ func NewServer(port int, apiKey string, dbPool database.Pool, userService user.S
 	// Health check routes
 	mux.HandleFunc("/healthz", handler.HandleHealthz())
 	mux.HandleFunc("/readyz", handler.HandleReadyz(dbPool))
+
+	// Metrics endpoint (public, for Prometheus scraping)
+	mux.Handle("/metrics", promhttp.Handler())
 
 	// User routes
 	mux.HandleFunc("/user/register", handler.HandleRegisterUser(userService))
@@ -78,14 +83,17 @@ func NewServer(port int, apiKey string, dbPool database.Pool, userService user.S
 	// 1. Request logging (innermost - logs final status)
 	handler := loggingMiddleware(mux)
 
-	// 2. Request size limit
+	// 2. Metrics collection
+	handler = metrics.MetricsMiddleware(handler)
+
+	// 3. Request size limit
 	handler = RequestSizeLimitMiddleware(1 << 20)(handler) // 1MB limit
 
-	// 3. Security logging with suspicious activity detection
+	// 4. Security logging with suspicious activity detection
 	detector := NewSuspiciousActivityDetector()
 	handler = SecurityLoggingMiddleware(detector)(handler)
 
-	// 4. Authentication (outermost - validates first)
+	// 5. Authentication (outermost - validates first)
 	handler = AuthMiddleware(apiKey)(handler)
 
 	return &Server{

@@ -21,6 +21,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/database/postgres"
 	"github.com/osse101/BrandishBot_Go/internal/economy"
 	"github.com/osse101/BrandishBot_Go/internal/event"
+	"github.com/osse101/BrandishBot_Go/internal/metrics"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 	"github.com/osse101/BrandishBot_Go/internal/server"
 	"github.com/osse101/BrandishBot_Go/internal/stats"
@@ -137,6 +138,14 @@ func main() {
 	// Register Event Handlers
 	progressionHandler := progression.NewEventHandler(progressionService)
 	progressionHandler.Register(eventBus)
+
+	// Register Metrics Collector
+	metricsCollector := metrics.NewEventMetricsCollector()
+	if err := metricsCollector.Register(eventBus); err != nil {
+		slog.Error("Failed to register metrics collector", "error", err)
+		os.Exit(1)
+	}
+	slog.Info("Metrics collector registered")
 
 	srv := server.NewServer(cfg.Port, cfg.APIKey, dbPool, userService, economyService, craftingService, statsService, progressionService, eventBus)
 
