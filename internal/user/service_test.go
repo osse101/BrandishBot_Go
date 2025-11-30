@@ -349,10 +349,10 @@ func TestGiveItem(t *testing.T) {
 	ctx := context.Background()
 
 	// Setup: Give alice some items
-	svc.AddItem(ctx, "twitch", "", "alice", domain.ItemLootbox1, 10)
+	svc.AddItem(ctx, "twitch", "alice123", "alice", domain.ItemLootbox1, 10)
 
 	// Test giving items
-	err := svc.GiveItem(ctx, "twitch", "", "alice", "twitch", "", "bob", domain.ItemLootbox1, 3)
+	err := svc.GiveItem(ctx, "twitch", "alice123", "alice", "twitch", "bob456", "bob", domain.ItemLootbox1, 3)
 	if err != nil {
 		t.Fatalf("GiveItem failed: %v", err)
 	}
@@ -370,7 +370,7 @@ func TestGiveItem(t *testing.T) {
 	}
 
 	// Test giving more than owned (should error)
-	err = svc.GiveItem(ctx, "twitch", "", "alice", "twitch", "", "bob", domain.ItemLootbox1, 100)
+	err = svc.GiveItem(ctx, "twitch", "alice123", "alice", "twitch", "bob456", "bob", domain.ItemLootbox1, 100)
 	if err == nil {
 		t.Error("Expected error when giving more than owned")
 	}
@@ -406,7 +406,7 @@ func TestRegisterUser(t *testing.T) {
 	}
 
 	// Verify user in repo
-	found, _ := repo.GetUserByUsername(ctx, "charlie")
+	found, _ := repo.GetUserByPlatformID(ctx, "twitch", "charlie789")
 	if found == nil {
 		t.Error("User not found in repository")
 	}

@@ -42,6 +42,9 @@ func newMockSearchRepo() *mockSearchRepo {
 
 
 func (m *mockSearchRepo) UpsertUser(ctx context.Context, user *domain.User) error {
+	if m.shouldFailGet {
+		return domain.ErrUserNotFound
+	}
 	if user.ID == "" {
 		user.ID = "user-" + user.Username
 	}
@@ -87,6 +90,21 @@ func (m *mockSearchRepo) UpdateCooldown(ctx context.Context, userID, action stri
 
 // Implement remaining interface methods as no-ops
 func (m *mockSearchRepo) GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error) {
+	if m.shouldFailGet {
+		return nil, domain.ErrUserNotFound
+	}
+	for _, u := range m.users {
+		switch platform {
+		case "twitch":
+			if u.TwitchID == platformID {
+				return u, nil
+			}
+		case "discord":
+			if u.DiscordID == platformID {
+				return u, nil
+			}
+		}
+	}
 	return nil, nil
 }
 func (m *mockSearchRepo) GetItemByID(ctx context.Context, id int) (*domain.Item, error) {
@@ -149,7 +167,7 @@ func TestHandleSearch_Success(t *testing.T) {
 	repo.users[TestUsername] = user
 
 	// ACT
-	message, err := svc.HandleSearch(context.Background(), "twitch", "", TestUsername)
+	message, err := svc.HandleSearch(context.Background(), "twitch", "testuser123", TestUsername)
 
 	// ASSERT
 	require.NoError(t, err)
@@ -201,7 +219,7 @@ func TestHandleSearch_CooldownBoundaries(t *testing.T) {
 			}
 
 			// ACT
-			message, err := svc.HandleSearch(context.Background(), "twitch", "", TestUsername)
+			message, err := svc.HandleSearch(context.Background(), "twitch", "testuser123", TestUsername)
 
 			// ASSERT
 			require.NoError(t, err)
@@ -320,11 +338,14 @@ func TestHandleSearch_DatabaseErrors(t *testing.T) {
 		repo.shouldFailGet = true
 
 		// ACT
-		_, err := svc.HandleSearch(context.Background(), "twitch", "", TestUsername)
+		_, err := svc.HandleSearch(context.Background(), "twitch", "testuser123", TestUsername)
 
 		// ASSERT
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to get user")
+		if err != nil {
+			assert.Contains(t, err.Error(), "failed to register user")
+		} else {
+			t.Error("Expected error for database failure, but got nil")
+		}
 	})
 }
 
@@ -346,7 +367,7 @@ func TestHandleSearch_CooldownUpdate(t *testing.T) {
 		}
 
 		// ACT
-		_, err := svc.HandleSearch(context.Background(), "twitch", "", TestUsername)
+		_, err := svc.HandleSearch(context.Background(), "twitch", "testuser123", TestUsername)
 
 		// ASSERT
 		require.NoError(t, err)
@@ -371,7 +392,7 @@ func TestHandleSearch_CooldownUpdate(t *testing.T) {
 		}
 
 		// ACT
-		message, err := svc.HandleSearch(context.Background(), "twitch", "", TestUsername)
+		message, err := svc.HandleSearch(context.Background(), "twitch", "testuser123", TestUsername)
 
 		// ASSERT
 		require.NoError(t, err)
@@ -393,7 +414,7 @@ func TestHandleSearch_MultipleSearches(t *testing.T) {
 		repo.users[TestUsername] = user
 
 		// ACT - First search
-		_, err1 := svc.HandleSearch(context.Background(), "twitch", "", TestUsername)
+		_, err1 := svc.HandleSearch(context.Background(), "twitch", "testuser123", TestUsername)
 		require.NoError(t, err1)
 
 		// Manually expire cooldown
@@ -401,7 +422,7 @@ func TestHandleSearch_MultipleSearches(t *testing.T) {
 		repo.cooldowns[user.ID][domain.ActionSearch] = &expiredTime
 
 		// Second search after expiry
-		_, err2 := svc.HandleSearch(context.Background(), "twitch", "", TestUsername)
+		_, err2 := svc.HandleSearch(context.Background(), "twitch", "testuser123", TestUsername)
 
 		// ASSERT
 		require.NoError(t, err2, "Should be able to search again after cooldown expires")

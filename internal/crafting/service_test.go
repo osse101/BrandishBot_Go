@@ -169,8 +169,8 @@ func (t *MockTx) Rollback(ctx context.Context) error {
 // Test helper to setup test data
 func setupTestData(repo *MockRepository) {
 	// Setup users
-	repo.users["alice"] = &domain.User{ID: "user-alice", Username: "alice"}
-	repo.users["bob"] = &domain.User{ID: "user-bob", Username: "bob"}
+	repo.users["alice"] = &domain.User{ID: "user-alice", Username: "alice", TwitchID: "twitch-alice"}
+	repo.users["bob"] = &domain.User{ID: "user-bob", Username: "bob", TwitchID: "twitch-bob"}
 
 	// Setup items
 	repo.items["lootbox0"] = &domain.Item{ID: 1, Name: "lootbox0", Description: "Basic lootbox"}
@@ -226,7 +226,7 @@ func TestDisassembleItem_Success(t *testing.T) {
 	repo.UnlockRecipe(ctx, "user-alice", 1)
 
 	// Disassemble 2 lootbox1
-	outputs, processed, err := svc.DisassembleItem(ctx, "twitch", "", "alice", domain.ItemLootbox1, 2)
+	outputs, processed, err := svc.DisassembleItem(ctx, "twitch", "twitch-alice", "alice", domain.ItemLootbox1, 2)
 	if err != nil {
 		t.Fatalf("DisassembleItem failed: %v", err)
 	}
@@ -276,7 +276,7 @@ func TestDisassembleItem_InsufficientItems(t *testing.T) {
 	repo.UnlockRecipe(ctx, "user-alice", 1)
 
 	// Try to disassemble 2 (should only process 1)
-	outputs, processed, err := svc.DisassembleItem(ctx, "twitch", "", "alice", domain.ItemLootbox1, 2)
+	outputs, processed, err := svc.DisassembleItem(ctx, "twitch", "twitch-alice", "alice", domain.ItemLootbox1, 2)
 	if err != nil {
 		t.Fatalf("DisassembleItem failed: %v", err)
 	}
@@ -353,7 +353,7 @@ func TestDisassembleItem_RemovesSlotWhenEmpty(t *testing.T) {
 	repo.UnlockRecipe(ctx, "user-alice", 1)
 
 	// Disassemble all lootbox1
-	_, _, err := svc.DisassembleItem(ctx, "twitch", "", "alice", domain.ItemLootbox1, 1)
+	_, _, err := svc.DisassembleItem(ctx, "twitch", "twitch-alice", "alice", domain.ItemLootbox1, 1)
 	if err != nil {
 		t.Fatalf("DisassembleItem failed: %v", err)
 	}
@@ -384,7 +384,7 @@ func TestUpgradeItem_Success(t *testing.T) {
 	repo.UnlockRecipe(ctx, "user-alice", 1)
 
 	// Upgrade 2 lootbox0 to 2 lootbox1
-	itemName, quantity, err := svc.UpgradeItem(ctx, "twitch", "", "alice", domain.ItemLootbox1, 2)
+	itemName, quantity, err := svc.UpgradeItem(ctx, "twitch", "twitch-alice", "alice", domain.ItemLootbox1, 2)
 	if err != nil {
 		t.Fatalf("UpgradeItem failed: %v", err)
 	}
@@ -432,7 +432,7 @@ func TestUpgradeItem_InsufficientMaterials(t *testing.T) {
 	repo.UnlockRecipe(ctx, "user-alice", 1)
 
 	// Try to upgrade 2 (should only process 1)
-	_, quantity, err := svc.UpgradeItem(ctx, "twitch", "", "alice", domain.ItemLootbox1, 2)
+	_, quantity, err := svc.UpgradeItem(ctx, "twitch", "twitch-alice", "alice", domain.ItemLootbox1, 2)
 	if err != nil {
 		t.Fatalf("UpgradeItem failed: %v", err)
 	}
@@ -453,7 +453,7 @@ func TestUpgradeItem_NoMaterials(t *testing.T) {
 	repo.UnlockRecipe(ctx, "user-alice", 1)
 
 	// Try to upgrade
-	_, _, err := svc.UpgradeItem(ctx, "twitch", "", "alice", domain.ItemLootbox1, 1)
+	_, _, err := svc.UpgradeItem(ctx, "twitch", "twitch-alice", "alice", domain.ItemLootbox1, 1)
 	if err == nil {
 		t.Error("Expected error when upgrading with no materials")
 	}
@@ -471,7 +471,7 @@ func TestUpgradeItem_RecipeNotUnlocked(t *testing.T) {
 		domain.InventorySlot{ItemID: 1, Quantity: 1})
 
 	// Try to upgrade without unlocked recipe
-	_, _, err := svc.UpgradeItem(ctx, "twitch", "", "alice", domain.ItemLootbox1, 1)
+	_, _, err := svc.UpgradeItem(ctx, "twitch", "twitch-alice", "alice", domain.ItemLootbox1, 1)
 	if err == nil {
 		t.Error("Expected error when recipe is not unlocked")
 	}
@@ -485,7 +485,7 @@ func TestUpgradeItem_NoRecipe(t *testing.T) {
 	ctx := context.Background()
 
 	// Try to upgrade lootbox0 which has no recipe
-	_, _, err := svc.UpgradeItem(ctx, "twitch", "", "alice", "lootbox0", 1)
+	_, _, err := svc.UpgradeItem(ctx, "twitch", "twitch-alice", "alice", "lootbox0", 1)
 	if err == nil {
 		t.Error("Expected error when item has no recipe")
 	}
@@ -499,7 +499,7 @@ func TestUpgradeItem_UserNotFound(t *testing.T) {
 	ctx := context.Background()
 
 	// Try with non-existent user
-	_, _, err := svc.UpgradeItem(ctx, "twitch", "", "nonexistent", domain.ItemLootbox1, 1)
+	_, _, err := svc.UpgradeItem(ctx, "twitch", "twitch-nonexistent", "nonexistent", domain.ItemLootbox1, 1)
 	if err == nil {
 		t.Error("Expected error for non-existent user")
 	}
@@ -515,7 +515,7 @@ func TestGetRecipe_WithoutUsername(t *testing.T) {
 	ctx := context.Background()
 
 	// Get recipe without username (no lock status)
-	recipe, err := svc.GetRecipe(ctx, "lootbox1", "")
+	recipe, err := svc.GetRecipe(ctx, "lootbox1", "", "", "")
 	if err != nil {
 		t.Fatalf("GetRecipe failed: %v", err)
 	}
@@ -544,7 +544,7 @@ func TestGetRecipe_Unlocked(t *testing.T) {
 	repo.UnlockRecipe(ctx, "user-alice", 1)
 
 	// Get recipe with username
-	recipe, err := svc.GetRecipe(ctx, "lootbox1", "alice")
+	recipe, err := svc.GetRecipe(ctx, "lootbox1", "twitch", "twitch-alice", "alice")
 	if err != nil {
 		t.Fatalf("GetRecipe failed: %v", err)
 	}
@@ -562,7 +562,7 @@ func TestGetRecipe_Locked(t *testing.T) {
 	ctx := context.Background()
 
 	// Don't unlock the recipe
-	recipe, err := svc.GetRecipe(ctx, "lootbox1", "alice")
+	recipe, err := svc.GetRecipe(ctx, "lootbox1", "twitch", "twitch-alice", "alice")
 	if err != nil {
 		t.Fatalf("GetRecipe failed: %v", err)
 	}
@@ -580,7 +580,7 @@ func TestGetRecipe_ItemNotFound(t *testing.T) {
 	ctx := context.Background()
 
 	// Try to get recipe for non-existent item
-	_, err := svc.GetRecipe(ctx, "nonexistent", "")
+	_, err := svc.GetRecipe(ctx, "nonexistent", "", "", "")
 	if err == nil {
 		t.Error("Expected error for non-existent item")
 	}
@@ -599,7 +599,7 @@ func TestGetUnlockedRecipes_Success(t *testing.T) {
 	repo.UnlockRecipe(ctx, "user-alice", 1)
 
 	// Get unlocked recipes
-	recipes, err := svc.GetUnlockedRecipes(ctx, "alice")
+	recipes, err := svc.GetUnlockedRecipes(ctx, "twitch", "twitch-alice", "alice")
 	if err != nil {
 		t.Fatalf("GetUnlockedRecipes failed: %v", err)
 	}
@@ -621,7 +621,7 @@ func TestGetUnlockedRecipes_NoUnlockedRecipes(t *testing.T) {
 	ctx := context.Background()
 
 	// Don't unlock any recipes
-	recipes, err := svc.GetUnlockedRecipes(ctx, "alice")
+	recipes, err := svc.GetUnlockedRecipes(ctx, "twitch", "twitch-alice", "alice")
 	if err != nil {
 		t.Fatalf("GetUnlockedRecipes failed: %v", err)
 	}
@@ -639,7 +639,7 @@ func TestGetUnlockedRecipes_UserNotFound(t *testing.T) {
 	ctx := context.Background()
 
 	// Try with non-existent user
-	_, err := svc.GetUnlockedRecipes(ctx, "nonexistent")
+	_, err := svc.GetUnlockedRecipes(ctx, "twitch", "twitch-nonexistent", "nonexistent")
 	if err == nil {
 		t.Error("Expected error for non-existent user")
 	}
