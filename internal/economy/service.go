@@ -46,69 +46,52 @@ func (s *service) GetSellablePrices(ctx context.Context) ([]domain.Item, error) 
 	return s.repo.GetSellablePrices(ctx)
 }
 
-func (s *service) SellItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (int, int, error) {
+// getSellEntities retrieves and validates all required entities for a sell transaction
+func (s *service) getSellEntities(ctx context.Context, platform, platformID, itemName string) (*domain.User, *domain.Item, *domain.Item, error) {
 	log := logger.FromContext(ctx)
-	log.Info("SellItem called", "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity)
-
-	if quantity <= 0 {
-		return 0, 0, fmt.Errorf("invalid quantity: %d", quantity)
-	}
-	if quantity > domain.MaxTransactionQuantity {
-		return 0, 0, fmt.Errorf("quantity %d exceeds maximum %d", quantity, domain.MaxTransactionQuantity)
-	}
 
 	user, err := s.repo.GetUserByPlatformID(ctx, platform, platformID)
 	if err != nil {
-		log.Error("Failed to get user", "error", err, "platform", platform, "platformID", platformID)
-		return 0, 0, fmt.Errorf("failed to get user: %w", err)
+		log.Error("Failed to get user", "error", err)
+		return nil, nil, nil, fmt.Errorf("failed to get user: %w", err)
 	}
 	if user == nil {
-		log.Warn("User not found", "platform", platform, "platformID", platformID)
-		return 0, 0, fmt.Errorf("user not found")
+		return nil, nil, nil, fmt.Errorf("user not found")
 	}
-
-	lock := s.lockManager.GetLock(user.ID)
-	lock.Lock()
-	defer lock.Unlock()
 
 	item, err := s.repo.GetItemByName(ctx, itemName)
 	if err != nil {
-		log.Error("Failed to get item", "error", err, "itemName", itemName)
-		return 0, 0, fmt.Errorf("failed to get item: %w", err)
+		log.Error("Failed to get item", "error", err)
+		return nil, nil, nil, fmt.Errorf("failed to get item: %w", err)
 	}
 	if item == nil {
-		log.Warn("Item not found", "itemName", itemName)
-		return 0, 0, fmt.Errorf("item not found: %s", itemName)
+		return nil, nil, nil, fmt.Errorf("item not found: %s", itemName)
 	}
+
 	moneyItem, err := s.repo.GetItemByName(ctx, domain.ItemMoney)
 	if err != nil {
 		log.Error("Failed to get money item", "error", err)
-		return 0, 0, fmt.Errorf("failed to get money item: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to get money item: %w", err)
 	}
 	if moneyItem == nil {
-		log.Error("Money item not found")
-		return 0, 0, fmt.Errorf("money item not found")
+		return nil, nil, nil, fmt.Errorf("money item not found")
 	}
-	inventory, err := s.repo.GetInventory(ctx, user.ID)
-	if err != nil {
-		log.Error("Failed to get inventory", "error", err, "userID", user.ID)
-		return 0, 0, fmt.Errorf("failed to get inventory: %w", err)
-	}
-	itemSlotIndex, slotQuantity := utils.FindSlot(inventory, item.ID)
-	if itemSlotIndex == -1 {
-		log.Warn("Item not in inventory", "itemName", itemName)
-		return 0, 0, fmt.Errorf("item %s not in inventory", itemName)
-	}
-	actualSellQuantity := quantity
-	if slotQuantity < quantity {
-		actualSellQuantity = slotQuantity
-	}
+
+	return user, item, moneyItem, nil
+}
+
+// processSellTransaction handles the inventory updates for selling an item
+func processSellTransaction(inventory *domain.Inventory, item, moneyItem *domain.Item, itemSlotIndex, actualSellQuantity int) int {
 	moneyGained := actualSellQuantity * item.BaseValue
+
+	// Remove sold items
 	if inventory.Slots[itemSlotIndex].Quantity <= actualSellQuantity {
 		inventory.Slots = append(inventory.Slots[:itemSlotIndex], inventory.Slots[itemSlotIndex+1:]...)
 	} else {
 		inventory.Slots[itemSlotIndex].Quantity -= actualSellQuantity
 	}
+
+	// Add money
 	moneyFound := false
 	for i, slot := range inventory.Slots {
 		if slot.ItemID == moneyItem.ID {
@@ -120,97 +103,107 @@ func (s *service) SellItem(ctx context.Context, platform, platformID, username, 
 	if !moneyFound {
 		inventory.Slots = append(inventory.Slots, domain.InventorySlot{ItemID: moneyItem.ID, Quantity: moneyGained})
 	}
-	if err := s.repo.UpdateInventory(ctx, user.ID, *inventory); err != nil {
-		log.Error("Failed to update inventory", "error", err, "userID", user.ID)
-		return 0, 0, fmt.Errorf("failed to update inventory: %w", err)
-	}
-	log.Info("Item sold", "username", username, "item", itemName, "quantity", actualSellQuantity, "moneyGained", moneyGained)
-	return moneyGained, actualSellQuantity, nil
+
+	return moneyGained
 }
 
-func (s *service) BuyItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (int, error) {
+func (s *service) SellItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (int, int, error) {
 	log := logger.FromContext(ctx)
-	log.Info("BuyItem called", "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity)
+	log.Info("SellItem called", "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity)
 
-	if quantity <= 0 {
-		return 0, fmt.Errorf("invalid quantity: %d", quantity)
-	}
-	if quantity > domain.MaxTransactionQuantity {
-		return 0, fmt.Errorf("quantity %d exceeds maximum %d", quantity, domain.MaxTransactionQuantity)
+	// Validate request
+	if err := validateBuyRequest(quantity); err != nil { // Reuse same validation
+		return 0, 0, err
 	}
 
-	user, err := s.repo.GetUserByPlatformID(ctx, platform, platformID)
+	// Get all required entities
+	user, item, moneyItem, err := s.getSellEntities(ctx, platform, platformID, itemName)
 	if err != nil {
-		log.Error("Failed to get user", "error", err, "platform", platform, "platformID", platformID)
-		return 0, fmt.Errorf("failed to get user: %w", err)
-	}
-	if user == nil {
-		log.Warn("User not found", "platform", platform, "platformID", platformID)
-		return 0, fmt.Errorf("user not found")
+		return 0, 0, err
 	}
 
-	item, err := s.repo.GetItemByName(ctx, itemName)
-	if err != nil {
-		log.Error("Failed to get item", "error", err, "itemName", itemName)
-		return 0, fmt.Errorf("failed to get item: %w", err)
-	}
-	if item == nil {
-		log.Warn("Item not found", "itemName", itemName)
-		return 0, fmt.Errorf("item not found: %s", itemName)
-	}
-
+	// Lock user inventory for transaction
 	lock := s.lockManager.GetLock(user.ID)
 	lock.Lock()
 	defer lock.Unlock()
 
-	isBuyable, err := s.repo.IsItemBuyable(ctx, itemName)
-	if err != nil {
-		log.Error("Failed to check buyable", "error", err, "itemName", itemName)
-		return 0, fmt.Errorf("failed to check if item is buyable: %w", err)
-	}
-	if !isBuyable {
-		log.Warn("Item not buyable", "itemName", itemName)
-		return 0, fmt.Errorf("item %s is not buyable", itemName)
-	}
-
-	moneyItem, err := s.repo.GetItemByName(ctx, domain.ItemMoney)
-	if err != nil {
-		log.Error("Failed to get money item", "error", err)
-		return 0, fmt.Errorf("failed to get money item: %w", err)
-	}
-	if moneyItem == nil {
-		log.Error("Money item not found")
-		return 0, fmt.Errorf("money item not found")
-	}
-
+	// Get inventory and check if item exists
 	inventory, err := s.repo.GetInventory(ctx, user.ID)
 	if err != nil {
-		log.Error("Failed to get inventory", "error", err, "userID", user.ID)
-		return 0, fmt.Errorf("failed to get inventory: %w", err)
+		log.Error("Failed to get inventory", "error", err)
+		return 0, 0, fmt.Errorf("failed to get inventory: %w", err)
 	}
 
-	moneySlotIndex, moneyBalance := utils.FindSlot(inventory, moneyItem.ID)
-	if moneyBalance <= 0 {
-		log.Warn("Insufficient funds", "username", username)
-		return 0, fmt.Errorf("insufficient funds")
+	itemSlotIndex, slotQuantity := utils.FindSlot(inventory, item.ID)
+	if itemSlotIndex == -1 {
+		return 0, 0, fmt.Errorf("item %s not in inventory", itemName)
 	}
 
-	actualQuantity, cost := calculateAffordableQuantity(quantity, item.BaseValue, moneyBalance)
-	if actualQuantity == 0 {
-		log.Warn("Insufficient funds for any quantity", "username", username, "item", itemName)
-		return 0, fmt.Errorf("insufficient funds to buy even one %s (cost: %d, balance: %d)", itemName, item.BaseValue, moneyBalance)
+	// Determine actual sell quantity
+	actualSellQuantity := quantity
+	if slotQuantity < quantity {
+		actualSellQuantity = slotQuantity
 	}
 
-	if quantity > actualQuantity {
-		log.Info("Adjusted purchase quantity due to funds", "requested", quantity, "actual", actualQuantity)
+	// Process the sell transaction
+	moneyGained := processSellTransaction(inventory, item, moneyItem, itemSlotIndex, actualSellQuantity)
+
+	// Save updated inventory
+	if err := s.repo.UpdateInventory(ctx, user.ID, *inventory); err != nil {
+		log.Error("Failed to update inventory", "error", err)
+		return 0, 0, fmt.Errorf("failed to update inventory: %w", err)
 	}
 
+	log.Info("Item sold", "username", username, "item", itemName, "quantity", actualSellQuantity, "moneyGained", moneyGained)
+	return moneyGained, actualSellQuantity, nil
+}
+
+// validateBuyRequest validates the buy request parameters
+func validateBuyRequest(quantity int) error {
+	if quantity <= 0 {
+		return fmt.Errorf("invalid quantity: %d", quantity)
+	}
+	if quantity > domain.MaxTransactionQuantity {
+		return fmt.Errorf("quantity %d exceeds maximum %d", quantity, domain.MaxTransactionQuantity)
+	}
+	return nil
+}
+
+// getBuyEntities retrieves and validates user and item for a buy transaction
+func (s *service) getBuyEntities(ctx context.Context, platform, platformID, itemName string) (*domain.User, *domain.Item, error) {
+	log := logger.FromContext(ctx)
+
+	user, err := s.repo.GetUserByPlatformID(ctx, platform, platformID)
+	if err != nil {
+		log.Error("Failed to get user", "error", err)
+		return nil, nil, fmt.Errorf("failed to get user: %w", err)
+	}
+	if user == nil {
+		return nil, nil, fmt.Errorf("user not found")
+	}
+
+	item, err := s.repo.GetItemByName(ctx, itemName)
+	if err != nil {
+		log.Error("Failed to get item", "error", err)
+		return nil, nil, fmt.Errorf("failed to get item: %w", err)
+	}
+	if item == nil {
+		return nil, nil, fmt.Errorf("item not found: %s", itemName)
+	}
+
+	return user, item, nil
+}
+
+// processBuyTransaction handles the inventory updates for buying an item
+func processBuyTransaction(inventory *domain.Inventory, item *domain.Item, moneySlotIndex, actualQuantity, cost int) {
+	// Deduct money
 	if inventory.Slots[moneySlotIndex].Quantity == cost {
 		inventory.Slots = append(inventory.Slots[:moneySlotIndex], inventory.Slots[moneySlotIndex+1:]...)
 	} else {
 		inventory.Slots[moneySlotIndex].Quantity -= cost
 	}
 
+	// Add purchased item
 	itemFound := false
 	for i, slot := range inventory.Slots {
 		if slot.ItemID == item.ID {
@@ -222,12 +215,92 @@ func (s *service) BuyItem(ctx context.Context, platform, platformID, username, i
 	if !itemFound {
 		inventory.Slots = append(inventory.Slots, domain.InventorySlot{ItemID: item.ID, Quantity: actualQuantity})
 	}
+}
 
+func (s *service) BuyItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (int, error) {
+	log := logger.FromContext(ctx)
+	log.Info("BuyItem called", "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity)
+
+	// Validate request
+	if err := validateBuyRequest(quantity); err != nil {
+		return 0, err
+	}
+
+	// Get user and item
+	user, item, err := s.getBuyEntities(ctx, platform, platformID, itemName)
+	if err != nil {
+		return 0, err
+	}
+
+	// Lock user inventory for transaction
+	lock := s.lockManager.GetLock(user.ID)
+	lock.Lock()
+	defer lock.Unlock()
+
+	// Check if item is buyable
+	isBuyable, err := s.repo.IsItemBuyable(ctx, itemName)
+	if err != nil {
+		log.Error("Failed to check buyable", "error", err)
+		return 0, fmt.Errorf("failed to check if item is buyable: %w", err)
+	}
+	if !isBuyable {
+		return 0, fmt.Errorf("item %s is not buyable", itemName)
+	}
+
+	// Get money item after buyable check
+	moneyItem, err := s.repo.GetItemByName(ctx, domain.ItemMoney)
+	if err != nil {
+		log.Error("Failed to get money item", "error", err)
+		return 0, fmt.Errorf("Failed to get money item: %w", err)
+	}
+	if moneyItem == nil {
+		log.Error("Money item not found")
+		return 0, fmt.Errorf("money item not found")
+	}
+
+	// Get inventory and check funds
+	inventory, err := s.repo.GetInventory(ctx, user.ID)
+	if err != nil {
+		log.Error("Failed to get inventory", "error", err)
+		return 0, fmt.Errorf("failed to get inventory: %w", err)
+	}
+
+	moneySlotIndex, moneyBalance := utils.FindSlot(inventory, moneyItem.ID)
+	if moneyBalance <= 0 {
+		return 0, fmt.Errorf("insufficient funds")
+	}
+
+	// Calculate affordable quantity
+	actualQuantity, cost := calculateAffordableQuantity(quantity, item.BaseValue, moneyBalance)
+	if actualQuantity == 0 {
+		return 0, fmt.Errorf("insufficient funds to buy even one %s (cost: %d, balance: %d)", itemName, item.BaseValue, moneyBalance)
+	}
+
+	if quantity > actualQuantity {
+		log.Info("Adjusted purchase quantity due to funds", "requested", quantity, "actual", actualQuantity)
+	}
+
+	// Process the transaction
+	processBuyTransaction(inventory, item, moneySlotIndex, actualQuantity, cost)
+
+	// Save updated inventory
 	if err := s.repo.UpdateInventory(ctx, user.ID, *inventory); err != nil {
-		log.Error("Failed to update inventory", "error", err, "userID", user.ID)
+		log.Error("Failed to update inventory", "error", err)
 		return 0, fmt.Errorf("failed to update inventory: %w", err)
 	}
 
 	log.Info("Item purchased", "username", username, "item", itemName, "quantity", actualQuantity)
 	return actualQuantity, nil
+}
+
+// calculateAffordableQuantity determines how many items can be purchased with available money
+func calculateAffordableQuantity(desired, unitPrice, balance int) (quantity, cost int) {
+	if balance < unitPrice {
+		return 0, 0
+	}
+	maxAffordable := balance / unitPrice
+	if desired <= maxAffordable {
+		return desired, desired * unitPrice
+	}
+	return maxAffordable, maxAffordable * unitPrice
 }
