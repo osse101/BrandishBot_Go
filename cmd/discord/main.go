@@ -51,6 +51,12 @@ func main() {
 	cmd, handler = discord.ProfileCommand()
 	bot.Registry.Register(cmd, handler)
 
+	cmd, handler = discord.SearchCommand()
+	bot.Registry.Register(cmd, handler)
+
+	cmd, handler = discord.InventoryCommand()
+	bot.Registry.Register(cmd, handler)
+
 	// Register with Discord API on startup
 	// Note: In production, you might want to do this separately or check if needed to avoid rate limits
 	if err := bot.RegisterCommands(bot.Registry); err != nil {

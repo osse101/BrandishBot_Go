@@ -3,6 +3,7 @@ package discord
 import (
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/bwmarrin/discordgo"
 )
@@ -77,17 +78,15 @@ func ProfileCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	}
 
 	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		// Acknowledge interaction (loading state)
 		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
 		})
 
 		user := i.Member.User
 		if user == nil {
-			user = i.User // Fallback for DM
+			user = i.User
 		}
 
-		// 1. Register/Get User
 		domainUser, err := client.RegisterUser(user.Username, user.ID)
 		if err != nil {
 			slog.Error("Failed to register user", "error", err)
@@ -97,7 +96,6 @@ func ProfileCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			return
 		}
 
-		// 2. Get Stats
 		stats, err := client.GetUserStats(domainUser.ID)
 		if err != nil {
 			slog.Error("Failed to get stats", "error", err)
@@ -107,11 +105,10 @@ func ProfileCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			return
 		}
 
-		// 3. Send Embed
 		embed := &discordgo.MessageEmbed{
 			Title:       fmt.Sprintf("%s's Profile", user.Username),
 			Description: "Here are your stats:",
-			Color:       0x00ff00, // Green
+			Color:       0x00ff00,
 			Thumbnail: &discordgo.MessageEmbedThumbnail{
 				URL: user.AvatarURL(""),
 			},
@@ -127,6 +124,124 @@ func ProfileCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 					Inline: true,
 				},
 			},
+			Footer: &discordgo.MessageEmbedFooter{
+				Text: "BrandishBot",
+			},
+		}
+
+		s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			Embeds: &[]*discordgo.MessageEmbed{embed},
+		})
+	}
+
+	return cmd, handler
+}
+
+// SearchCommand returns the search command definition and handler
+func SearchCommand() (*discordgo.ApplicationCommand, CommandHandler) {
+	cmd := &discordgo.ApplicationCommand{
+		Name:        "search",
+		Description: "Search for items",
+	}
+
+	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
+		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
+		})
+
+		user := i.Member.User
+		if user == nil {
+			user = i.User
+		}
+
+		// Ensure user exists
+		_, err := client.RegisterUser(user.Username, user.ID)
+		if err != nil {
+			slog.Error("Failed to register user", "error", err)
+			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+				Content: &[]string{"Error connecting to game server."}[0],
+			})
+			return
+		}
+
+		msg, err := client.Search(user.Username)
+		if err != nil {
+			slog.Error("Failed to search", "error", err)
+			errorMsg := fmt.Sprintf("Search failed: %v", err)
+			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+				Content: &errorMsg,
+			})
+			return
+		}
+
+		embed := &discordgo.MessageEmbed{
+			Title:       "Search Result",
+			Description: msg,
+			Color:       0x3498db, // Blue
+			Footer: &discordgo.MessageEmbedFooter{
+				Text: "BrandishBot",
+			},
+		}
+
+		s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			Embeds: &[]*discordgo.MessageEmbed{embed},
+		})
+	}
+
+	return cmd, handler
+}
+
+// InventoryCommand returns the inventory command definition and handler
+func InventoryCommand() (*discordgo.ApplicationCommand, CommandHandler) {
+	cmd := &discordgo.ApplicationCommand{
+		Name:        "inventory",
+		Description: "View your inventory",
+	}
+
+	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
+		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
+		})
+
+		user := i.Member.User
+		if user == nil {
+			user = i.User
+		}
+
+		// Ensure user exists
+		_, err := client.RegisterUser(user.Username, user.ID)
+		if err != nil {
+			slog.Error("Failed to register user", "error", err)
+			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+				Content: &[]string{"Error connecting to game server."}[0],
+			})
+			return
+		}
+
+		items, err := client.GetInventory(user.Username)
+		if err != nil {
+			slog.Error("Failed to get inventory", "error", err)
+			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+				Content: &[]string{"Failed to retrieve inventory."}[0],
+			})
+			return
+		}
+
+		var description string
+		if len(items) == 0 {
+			description = "Your inventory is empty."
+		} else {
+			var lines []string
+			for _, item := range items {
+				lines = append(lines, fmt.Sprintf("**%s** x%d", item.ItemName, item.Quantity))
+			}
+			description = strings.Join(lines, "\n")
+		}
+
+		embed := &discordgo.MessageEmbed{
+			Title:       fmt.Sprintf("%s's Inventory", user.Username),
+			Description: description,
+			Color:       0x9b59b6, // Purple
 			Footer: &discordgo.MessageEmbedFooter{
 				Text: "BrandishBot",
 			},

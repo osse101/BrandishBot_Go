@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/user"
 )
 
 // APIClient handles communication with the BrandishBot Core API
@@ -106,4 +107,64 @@ func (c *APIClient) GetUserStats(userID string) (*domain.StatsSummary, error) {
 	}
 
 	return &stats, nil
+}
+
+// Search performs a search action
+func (c *APIClient) Search(username string) (string, error) {
+	req := map[string]string{
+		"username": username,
+		"platform": "discord",
+	}
+
+	resp, err := c.doRequest(http.MethodPost, "/user/search", req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		// Try to read error message
+		var errResp struct {
+			Error string `json:"error"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
+			return "", fmt.Errorf(errResp.Error)
+		}
+		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	var searchResp struct {
+		Message string `json:"message"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&searchResp); err != nil {
+		return "", fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return searchResp.Message, nil
+}
+
+// GetInventory retrieves user inventory
+func (c *APIClient) GetInventory(username string) ([]user.UserInventoryItem, error) {
+	params := url.Values{}
+	params.Set("username", username)
+
+	path := fmt.Sprintf("/user/inventory?%s", params.Encode())
+	resp, err := c.doRequest(http.MethodGet, path, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	var invResp struct {
+		Items []user.UserInventoryItem `json:"items"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&invResp); err != nil {
+		return nil, fmt.Errorf("failed to decode inventory: %w", err)
+	}
+
+	return invResp.Items, nil
 }
