@@ -39,16 +39,7 @@ func newMockSearchRepo() *mockSearchRepo {
 	}
 }
 
-func (m *mockSearchRepo) GetUserByUsername(ctx context.Context, username string) (*domain.User, error) {
-	if m.shouldFailGet {
-		return nil, domain.ErrUserNotFound
-	}
-	user, ok := m.users[username]
-	if !ok {
-		return nil, nil // User not found
-	}
-	return user, nil
-}
+
 
 func (m *mockSearchRepo) UpsertUser(ctx context.Context, user *domain.User) error {
 	if user.ID == "" {

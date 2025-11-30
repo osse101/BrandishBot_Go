@@ -30,7 +30,7 @@ type Repository interface {
 	UpdateInventory(ctx context.Context, userID string, inventory domain.Inventory) error
 	GetItemByName(ctx context.Context, itemName string) (*domain.Item, error)
 	GetItemByID(ctx context.Context, id int) (*domain.Item, error)
-	GetUserByUsername(ctx context.Context, username string) (*domain.User, error)
+
 	GetSellablePrices(ctx context.Context) ([]domain.Item, error)
 	IsItemBuyable(ctx context.Context, itemName string) (bool, error)
 	BeginTx(ctx context.Context) (repository.Tx, error)
@@ -517,16 +517,7 @@ func (s *service) TimeoutUser(ctx context.Context, username string, duration tim
 
 // Helper methods
 
-func (s *service) validateUser(ctx context.Context, username string) (*domain.User, error) {
-	user, err := s.repo.GetUserByUsername(ctx, username)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get user: %w", err)
-	}
-	if user == nil {
-		return nil, fmt.Errorf("%w: %s", domain.ErrUserNotFound, username)
-	}
-	return user, nil
-}
+
 
 func (s *service) validateItem(ctx context.Context, itemName string) (*domain.Item, error) {
 	item, err := s.repo.GetItemByName(ctx, itemName)
@@ -545,6 +536,10 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 	log.Info("HandleSearch called", "platform", platform, "platformID", platformID, "username", username)
 
 	// Validate platform
+	if username == "" {
+		return "", fmt.Errorf("username cannot be empty")
+	}
+
 	if platform == "" {
 		// Default to twitch for backwards compatibility
 		platform = "twitch"

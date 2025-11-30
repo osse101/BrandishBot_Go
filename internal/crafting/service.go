@@ -45,8 +45,8 @@ type UnlockedRecipeInfo struct {
 // Service defines the interface for crafting operations
 type Service interface {
 	UpgradeItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (string, int, error)
-	GetRecipe(ctx context.Context, itemName, username string) (*RecipeInfo, error)
-	GetUnlockedRecipes(ctx context.Context, username string) ([]UnlockedRecipeInfo, error)
+	GetRecipe(ctx context.Context, itemName, platform, platformID, username string) (*RecipeInfo, error)
+	GetUnlockedRecipes(ctx context.Context, platform, platformID, username string) ([]UnlockedRecipeInfo, error)
 	DisassembleItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (map[string]int, int, error)
 }
 
@@ -218,9 +218,9 @@ func (s *service) UpgradeItem(ctx context.Context, platform, platformID, usernam
 
 // GetRecipe returns recipe information for an item
 // If username is provided, includes lock status; otherwise returns base recipe
-func (s *service) GetRecipe(ctx context.Context, itemName, username string) (*RecipeInfo, error) {
+func (s *service) GetRecipe(ctx context.Context, itemName, platform, platformID, username string) (*RecipeInfo, error) {
 	log := logger.FromContext(ctx)
-	log.Info("GetRecipe called", "itemName", itemName, "username", username)
+	log.Info("GetRecipe called", "itemName", itemName, "platform", platform, "platformID", platformID, "username", username)
 
 	// Validate and get item
 	item, err := s.validateItem(ctx, itemName)
@@ -244,12 +244,9 @@ func (s *service) GetRecipe(ctx context.Context, itemName, username string) (*Re
 		BaseCost: recipe.BaseCost,
 	}
 
-	// If username provided, check lock status
-	if username != "" {
-		user, err := s.repo.GetUserByPlatformID(ctx, "" ,username) // For backward compat, might need refactor
-		if user == nil {
-			return nil, fmt.Errorf("user not found")
-		}
+	// If user info provided, check lock status
+	if platform != "" && platformID != "" {
+		user, err := s.validateUser(ctx, platform, platformID)
 		if err != nil {
 			return nil, err
 		}
@@ -268,14 +265,11 @@ func (s *service) GetRecipe(ctx context.Context, itemName, username string) (*Re
 }
 
 // GetUnlockedRecipes returns all recipes that a user has unlocked
-func (s *service) GetUnlockedRecipes(ctx context.Context, username string) ([]UnlockedRecipeInfo, error) {
+func (s *service) GetUnlockedRecipes(ctx context.Context, platform, platformID, username string) ([]UnlockedRecipeInfo, error) {
 	log := logger.FromContext(ctx)
-	log.Info("GetUnlockedRecipes called", "username", username)
+	log.Info("GetUnlockedRecipes called", "platform", platform, "platformID", platformID, "username", username)
 
-	user, err := s.repo.GetUserByPlatformID(ctx, "", username) // For backward compat
-	if user == nil {
-		return nil, fmt.Errorf("user not found")
-	}
+	user, err := s.validateUser(ctx, platform, platformID)
 	if err != nil {
 		return nil, err
 	}

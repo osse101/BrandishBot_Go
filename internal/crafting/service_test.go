@@ -34,14 +34,7 @@ func NewMockRepository() *MockRepository {
 	}
 }
 
-func (m *MockRepository) GetUserByUsername(ctx context.Context, username string) (*domain.User, error) {
-	for _, user := range m.users {
-		if user.Username == username {
-			return user, nil
-		}
-	}
-	return nil, nil
-}
+
 
 func (m *MockRepository) GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error) {
 	for _, user := range m.users {

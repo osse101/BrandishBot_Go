@@ -126,7 +126,7 @@ func TestSellItem_Success(t *testing.T) {
 		},
 	}
 
-	mockRepo.On("GetUserByUsername", ctx, "testuser").Return(user, nil)
+	mockRepo.On("GetUserByPlatformID", ctx, "twitch", "").Return(user, nil)
 	mockRepo.On("GetItemByName", ctx, "Sword").Return(item, nil)
 	mockRepo.On("GetItemByName", ctx, domain.ItemMoney).Return(moneyItem, nil)
 	mockRepo.On("GetInventory", ctx, user.ID).Return(inventory, nil)
@@ -158,7 +158,7 @@ func TestSellItem_SellAllItems(t *testing.T) {
 		},
 	}
 
-	mockRepo.On("GetUserByUsername", ctx, "testuser").Return(user, nil)
+	mockRepo.On("GetUserByPlatformID", ctx, "twitch", "").Return(user, nil)
 	mockRepo.On("GetItemByName", ctx, "Material").Return(item, nil)
 	mockRepo.On("GetItemByName", ctx, domain.ItemMoney).Return(moneyItem, nil)
 	mockRepo.On("GetInventory", ctx, user.ID).Return(inventory, nil)
@@ -190,7 +190,7 @@ func TestSellItem_PartialQuantity(t *testing.T) {
 		},
 	}
 
-	mockRepo.On("GetUserByUsername", ctx, "testuser").Return(user, nil)
+	mockRepo.On("GetUserByPlatformID", ctx, "twitch", "").Return(user, nil)
 	mockRepo.On("GetItemByName", ctx, "Potion").Return(item, nil)
 	mockRepo.On("GetItemByName", ctx, domain.ItemMoney).Return(moneyItem, nil)
 	mockRepo.On("GetInventory", ctx, user.ID).Return(inventory, nil)
@@ -219,7 +219,7 @@ func TestSellItem_InvalidInputs(t *testing.T) {
 		{
 			name: "user not found",
 			setup: func(m *MockRepository) {
-				m.On("GetUserByUsername", mock.Anything, "nonexistent").
+				m.On("GetUserByPlatformID", mock.Anything, "twitch", "").
 					Return(nil, nil)
 			},
 			username:    "nonexistent",
@@ -232,7 +232,7 @@ func TestSellItem_InvalidInputs(t *testing.T) {
 			name: "item not found",
 			setup: func(m *MockRepository) {
 				user := createTestUser()
-				m.On("GetUserByUsername", mock.Anything, "testuser").Return(user, nil)
+				m.On("GetUserByPlatformID", mock.Anything, "twitch", "").Return(user, nil)
 				m.On("GetItemByName", mock.Anything, "InvalidItem").Return(nil, nil)
 			},
 			username:    "testuser",
@@ -249,7 +249,7 @@ func TestSellItem_InvalidInputs(t *testing.T) {
 				moneyItem := createMoneyItem()
 				emptyInventory := &domain.Inventory{Slots: []domain.InventorySlot{}}
 
-				m.On("GetUserByUsername", mock.Anything, "testuser").Return(user, nil)
+				m.On("GetUserByPlatformID", mock.Anything, "twitch", "").Return(user, nil)
 				m.On("GetItemByName", mock.Anything, "Sword").Return(item, nil)
 				m.On("GetItemByName", mock.Anything, domain.ItemMoney).Return(moneyItem, nil)
 				m.On("GetInventory", mock.Anything, user.ID).Return(emptyInventory, nil)
@@ -317,7 +317,7 @@ func TestSellItem_QuantityBoundaries(t *testing.T) {
 			moneyItem := createMoneyItem()
 			inventory := createInventoryWithItem(10, 100)
 
-			mockRepo.On("GetUserByUsername", ctx, "testuser").Return(user, nil)
+			mockRepo.On("GetUserByPlatformID", ctx, "twitch", "").Return(user, nil)
 			mockRepo.On("GetItemByName", ctx, "Sword").Return(item, nil)
 			mockRepo.On("GetItemByName", ctx, domain.ItemMoney).Return(moneyItem, nil)
 			mockRepo.On("GetInventory", ctx, user.ID).Return(inventory, nil)
@@ -350,7 +350,7 @@ func TestSellItem_DatabaseErrors(t *testing.T) {
 			name: "database error on GetUser",
 			setup: func(m *MockRepository, ctx context.Context) {
 				dbError := errors.New("database connection lost")
-				m.On("GetUserByUsername", ctx, "testuser").Return(nil, dbError)
+				m.On("GetUserByPlatformID", ctx, "twitch", "").Return(nil, dbError)
 			},
 			expectErr:   true,
 			errorMsg:    "failed to get user",
@@ -364,7 +364,7 @@ func TestSellItem_DatabaseErrors(t *testing.T) {
 				moneyItem := createMoneyItem()
 				inventory := createInventoryWithItem(10, 5)
 
-				m.On("GetUserByUsername", ctx, "testuser").Return(user, nil)
+				m.On("GetUserByPlatformID", ctx, "twitch", "").Return(user, nil)
 				m.On("GetItemByName", ctx, "Sword").Return(item, nil)
 				m.On("GetItemByName", ctx, domain.ItemMoney).Return(moneyItem, nil)
 				m.On("GetInventory", ctx, user.ID).Return(inventory, nil)
@@ -465,7 +465,7 @@ func TestBuyItem_Success(t *testing.T) {
 		},
 	}
 
-	mockRepo.On("GetUserByUsername", ctx, "testuser").Return(user, nil)
+	mockRepo.On("GetUserByPlatformID", ctx, "twitch", "").Return(user, nil)
 	mockRepo.On("GetItemByName", ctx, "Sword").Return(item, nil)
 	mockRepo.On("IsItemBuyable", ctx, "Sword").Return(true, nil)
 	mockRepo.On("GetItemByName", ctx, domain.ItemMoney).Return(moneyItem, nil)
@@ -574,7 +574,7 @@ func TestBuyItem_MoneyBoundaries(t *testing.T) {
 			moneyItem := createMoneyItem()
 			inventory := createInventoryWithMoney(tt.moneyBalance)
 
-			mockRepo.On("GetUserByUsername", ctx, "testuser").Return(user, nil)
+			mockRepo.On("GetUserByPlatformID", ctx, "twitch", "").Return(user, nil)
 			mockRepo.On("GetItemByName", ctx, "Sword").Return(item, nil)
 			mockRepo.On("IsItemBuyable", ctx, "Sword").Return(true, nil)
 			mockRepo.On("GetItemByName", ctx, domain.ItemMoney).Return(moneyItem, nil)
@@ -627,7 +627,7 @@ func TestBuyItem_QuantityBoundaries(t *testing.T) {
 			moneyItem := createMoneyItem()
 			inventory := createInventoryWithMoney(10000000)
 
-			mockRepo.On("GetUserByUsername", ctx, "testuser").Return(user, nil)
+			mockRepo.On("GetUserByPlatformID", ctx, "twitch", "").Return(user, nil)
 			mockRepo.On("GetItemByName", ctx, "Sword").Return(item, nil)
 			mockRepo.On("IsItemBuyable", ctx, "Sword").Return(true, nil)
 			mockRepo.On("GetItemByName", ctx, domain.ItemMoney).Return(moneyItem, nil)
@@ -661,7 +661,7 @@ func TestBuyItem_InvalidInputs(t *testing.T) {
 		{
 			name: "user not found",
 			setup: func(m *MockRepository, ctx context.Context) {
-				m.On("GetUserByUsername", ctx, "testuser").Return(nil, nil)
+				m.On("GetUserByPlatformID", ctx, "twitch", "").Return(nil, nil)
 			},
 			expectErr:   true,
 			errorMsg:    "user not found",
@@ -670,7 +670,7 @@ func TestBuyItem_InvalidInputs(t *testing.T) {
 		{
 			name: "item not found",
 			setup: func(m *MockRepository, ctx context.Context) {
-				m.On("GetUserByUsername", ctx, "testuser").Return(createTestUser(), nil)
+				m.On("GetUserByPlatformID", ctx, "twitch", "").Return(createTestUser(), nil)
 				m.On("GetItemByName", ctx, "Sword").Return(nil, nil)
 			},
 			expectErr:   true,
@@ -682,7 +682,7 @@ func TestBuyItem_InvalidInputs(t *testing.T) {
 			setup: func(m *MockRepository, ctx context.Context) {
 				user := createTestUser()
 				item := createTestItem(10, "Sword", 100)
-				m.On("GetUserByUsername", ctx, "testuser").Return(user, nil)
+				m.On("GetUserByPlatformID", ctx, "twitch", "").Return(user, nil)
 				m.On("GetItemByName", ctx, "Sword").Return(item, nil)
 				m.On("IsItemBuyable", ctx, "Sword").Return(false, nil)
 			},
@@ -731,7 +731,7 @@ func TestBuyItem_DatabaseErrors(t *testing.T) {
 				moneyItem := createMoneyItem()
 				inventory := createInventoryWithMoney(500)
 
-				m.On("GetUserByUsername", ctx, "testuser").Return(user, nil)
+				m.On("GetUserByPlatformID", ctx, "twitch", "").Return(user, nil)
 				m.On("GetItemByName", ctx, "Sword").Return(item, nil)
 				m.On("IsItemBuyable", ctx, "Sword").Return(true, nil)
 				m.On("GetItemByName", ctx, domain.ItemMoney).Return(moneyItem, nil)

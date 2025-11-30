@@ -125,6 +125,8 @@ func HandleUpgradeItem(svc crafting.Service, progressionSvc progression.Service,
 // @Produce json
 // @Param item query string false "Item name to get recipe for"
 // @Param user query string false "Username to get unlocked recipes for"
+// @Param platform query string false "Platform (required if user provided)"
+// @Param platform_id query string false "Platform ID (required if user provided)"
 // @Success 200 {object} map[string]interface{} "Recipes or single recipe"
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
@@ -140,7 +142,15 @@ func HandleGetRecipes(svc crafting.Service) http.HandlerFunc {
 
 		// Case 1: Only user provided - return unlocked recipes
 		if username != "" && itemName == "" {
-			recipes, err := svc.GetUnlockedRecipes(r.Context(), username)
+			platform := r.URL.Query().Get("platform")
+			platformID := r.URL.Query().Get("platform_id")
+
+			if platform == "" || platformID == "" {
+				http.Error(w, "Missing platform or platform_id", http.StatusBadRequest)
+				return
+			}
+
+			recipes, err := svc.GetUnlockedRecipes(r.Context(), platform, platformID, username)
 			if err != nil {
 				log.Error("Failed to get unlocked recipes", "error", err, "username", username)
 				http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -159,7 +169,10 @@ func HandleGetRecipes(svc crafting.Service) http.HandlerFunc {
 
 		// Case 2 & 3: Item provided (with or without user) - return recipe info
 		if itemName != "" {
-			recipe, err := svc.GetRecipe(r.Context(), itemName, username)
+			platform := r.URL.Query().Get("platform")
+			platformID := r.URL.Query().Get("platform_id")
+			
+			recipe, err := svc.GetRecipe(r.Context(), itemName, platform, platformID, username)
 			if err != nil {
 				log.Error("Failed to get recipe", "error", err, "item", itemName)
 				http.Error(w, err.Error(), http.StatusInternalServerError)

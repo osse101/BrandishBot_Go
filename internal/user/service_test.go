@@ -90,12 +90,7 @@ func (m *MockRepository) GetItemByID(ctx context.Context, id int) (*domain.Item,
 	return nil, nil
 }
 
-func (m *MockRepository) GetUserByUsername(ctx context.Context, username string) (*domain.User, error) {
-	if user, ok := m.users[username]; ok {
-		return user, nil
-	}
-	return nil, nil
-}
+
 
 func (m *MockRepository) GetSellablePrices(ctx context.Context) ([]domain.Item, error) {
 	var items []domain.Item
