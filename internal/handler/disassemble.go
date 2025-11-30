@@ -12,8 +12,9 @@ import (
 )
 
 type DisassembleItemRequest struct {
+	Platform string `json:"platform" validate:"required,platform"`
+	PlatformID string `json:"platform_id" validate:"required"`
 	Username string `json:"username" validate:"required,max=100,excludesall=\x00\n\r\t"`
-	Platform string `json:"platform" validate:"omitempty,platform"`
 	Item     string `json:"item" validate:"required,max=100"`
 	Quantity int    `json:"quantity" validate:"min=1,max=10000"`
 }
@@ -83,7 +84,7 @@ func HandleDisassembleItem(svc crafting.Service, progressionSvc progression.Serv
 			return
 		}
 
-		outputs, quantityProcessed, err := svc.DisassembleItem(r.Context(), req.Username, req.Platform, req.Item, req.Quantity)
+		outputs, quantityProcessed, err := svc.DisassembleItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.Item, req.Quantity)
 		if err != nil {
 			log.Error("Failed to disassemble item", "error", err, "username", req.Username, "item", req.Item)
 			http.Error(w, err.Error(), http.StatusInternalServerError)

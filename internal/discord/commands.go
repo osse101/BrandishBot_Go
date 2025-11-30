@@ -164,7 +164,7 @@ func SearchCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			return
 		}
 
-		msg, err := client.Search(user.Username)
+		msg, err := client.Search("discord", user.ID, user.Username)
 		if err != nil {
 			slog.Error("Failed to search", "error", err)
 			errorMsg := fmt.Sprintf("Search failed: %v", err)
@@ -218,7 +218,7 @@ func InventoryCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			return
 		}
 
-		items, err := client.GetInventory(user.Username)
+		items, err := client.GetInventory("discord", user.ID, user.Username)
 		if err != nil {
 			slog.Error("Failed to get inventory", "error", err)
 			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
@@ -233,7 +233,7 @@ func InventoryCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		} else {
 			var lines []string
 			for _, item := range items {
-				lines = append(lines, fmt.Sprintf("**%s** x%d", item.ItemName, item.Quantity))
+				lines = append(lines, fmt.Sprintf("**%s** x%d", item.Name, item.Quantity))
 			}
 			description = strings.Join(lines, "\n")
 		}

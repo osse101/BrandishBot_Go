@@ -13,7 +13,7 @@ import (
 
 // Repository defines the interface for data access required by the crafting service
 type Repository interface {
-	GetUserByUsername(ctx context.Context, username string) (*domain.User, error)
+	GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error)
 	GetItemByName(ctx context.Context, itemName string) (*domain.Item, error)
 	GetItemByID(ctx context.Context, id int) (*domain.Item, error)
 	GetInventory(ctx context.Context, userID string) (*domain.Inventory, error)
@@ -44,10 +44,10 @@ type UnlockedRecipeInfo struct {
 
 // Service defines the interface for crafting operations
 type Service interface {
-	UpgradeItem(ctx context.Context, username, platform, itemName string, quantity int) (string, int, error)
+	UpgradeItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (string, int, error)
 	GetRecipe(ctx context.Context, itemName, username string) (*RecipeInfo, error)
 	GetUnlockedRecipes(ctx context.Context, username string) ([]UnlockedRecipeInfo, error)
-	DisassembleItem(ctx context.Context, username, platform, itemName string, quantity int) (map[string]int, int, error)
+	DisassembleItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (map[string]int, int, error)
 }
 
 type service struct {
@@ -63,13 +63,13 @@ func NewService(repo Repository, lockManager *concurrency.LockManager) Service {
 	}
 }
 
-func (s *service) validateUser(ctx context.Context, username string) (*domain.User, error) {
-	user, err := s.repo.GetUserByUsername(ctx, username)
+func (s *service) validateUser(ctx context.Context, platform, platformID string) (*domain.User, error) {
+	user, err := s.repo.GetUserByPlatformID(ctx, platform, platformID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 	if user == nil {
-		return nil, fmt.Errorf("user not found: %s", username)
+		return nil, fmt.Errorf("user not found")
 	}
 	return user, nil
 }
@@ -86,12 +86,12 @@ func (s *service) validateItem(ctx context.Context, itemName string) (*domain.It
 }
 
 // UpgradeItem upgrades as many items as possible based on available materials
-func (s *service) UpgradeItem(ctx context.Context, username, platform, itemName string, quantity int) (string, int, error) {
+func (s *service) UpgradeItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (string, int, error) {
 	log := logger.FromContext(ctx)
-	log.Info("UpgradeItem called", "username", username, "item", itemName, "quantity", quantity)
+	log.Info("UpgradeItem called", "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity)
 
 	// Validate user
-	user, err := s.validateUser(ctx, username)
+	user, err := s.validateUser(ctx, platform, platformID)
 	if err != nil {
 		return "", 0, err
 	}
@@ -246,7 +246,10 @@ func (s *service) GetRecipe(ctx context.Context, itemName, username string) (*Re
 
 	// If username provided, check lock status
 	if username != "" {
-		user, err := s.validateUser(ctx, username)
+		user, err := s.repo.GetUserByPlatformID(ctx, "" ,username) // For backward compat, might need refactor
+		if user == nil {
+			return nil, fmt.Errorf("user not found")
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -269,7 +272,10 @@ func (s *service) GetUnlockedRecipes(ctx context.Context, username string) ([]Un
 	log := logger.FromContext(ctx)
 	log.Info("GetUnlockedRecipes called", "username", username)
 
-	user, err := s.validateUser(ctx, username)
+	user, err := s.repo.GetUserByPlatformID(ctx, "", username) // For backward compat
+	if user == nil {
+		return nil, fmt.Errorf("user not found")
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -286,12 +292,12 @@ func (s *service) GetUnlockedRecipes(ctx context.Context, username string) ([]Un
 
 // DisassembleItem disassembles items into their component materials
 // Returns a map of item names to quantities and the number of items disassembled
-func (s *service) DisassembleItem(ctx context.Context, username, platform, itemName string, quantity int) (map[string]int, int, error) {
+func (s *service) DisassembleItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (map[string]int, int, error) {
 	log := logger.FromContext(ctx)
-	log.Info("DisassembleItem called", "username", username, "item", itemName, "quantity", quantity)
+	log.Info("DisassembleItem called", "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity)
 
 	// Validate user
-	user, err := s.validateUser(ctx, username)
+	user, err := s.validateUser(ctx, platform, platformID)
 	if err != nil {
 		return nil, 0, err
 	}

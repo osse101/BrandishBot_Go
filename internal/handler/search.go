@@ -13,8 +13,9 @@ import (
 )
 
 type SearchRequest struct {
-	Username string `json:"username" validate:"required,max=100,excludesall=\x00\n\r\t"`
-	Platform string `json:"platform" validate:"omitempty,platform"`
+	Platform   string `json:"platform" validate:"required,platform"`
+	PlatformID string `json:"platform_id" validate:"required"`
+	Username   string `json:"username" validate:"required,max=100,excludesall=\x00\n\r\t"`
 }
 
 type SearchResponse struct {
@@ -80,7 +81,7 @@ func HandleSearch(svc user.Service, progressionSvc progression.Service, eventBus
 			return
 		}
 
-		message, err := svc.HandleSearch(r.Context(), req.Username, req.Platform)
+		message, err := svc.HandleSearch(r.Context(), req.Platform, req.PlatformID, req.Username)
 		if err != nil {
 			log.Error("Failed to handle search", "error", err, "username", req.Username)
 			http.Error(w, "Failed to perform search", http.StatusInternalServerError)

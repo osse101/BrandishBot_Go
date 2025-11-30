@@ -12,7 +12,7 @@ import (
 
 // Repository defines the interface for data access required by the economy service
 type Repository interface {
-	GetUserByUsername(ctx context.Context, username string) (*domain.User, error)
+	GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error)
 	GetItemByName(ctx context.Context, itemName string) (*domain.Item, error)
 	GetInventory(ctx context.Context, userID string) (*domain.Inventory, error)
 	UpdateInventory(ctx context.Context, userID string, inventory domain.Inventory) error
@@ -23,8 +23,8 @@ type Repository interface {
 // Service defines the interface for economy operations
 type Service interface {
 	GetSellablePrices(ctx context.Context) ([]domain.Item, error)
-	SellItem(ctx context.Context, username, platform, itemName string, quantity int) (int, int, error)
-	BuyItem(ctx context.Context, username, platform, itemName string, quantity int) (int, error)
+	SellItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (int, int, error)
+	BuyItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (int, error)
 }
 
 type service struct {
@@ -46,9 +46,9 @@ func (s *service) GetSellablePrices(ctx context.Context) ([]domain.Item, error) 
 	return s.repo.GetSellablePrices(ctx)
 }
 
-func (s *service) SellItem(ctx context.Context, username, platform, itemName string, quantity int) (int, int, error) {
+func (s *service) SellItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (int, int, error) {
 	log := logger.FromContext(ctx)
-	log.Info("SellItem called", "username", username, "item", itemName, "quantity", quantity)
+	log.Info("SellItem called", "platform", platform, "platformID", platformID, "username",username, "item", itemName, "quantity", quantity)
 
 	if quantity <= 0 {
 		return 0, 0, fmt.Errorf("invalid quantity: %d", quantity)
@@ -57,14 +57,14 @@ func (s *service) SellItem(ctx context.Context, username, platform, itemName str
 		return 0, 0, fmt.Errorf("quantity %d exceeds maximum %d", quantity, domain.MaxTransactionQuantity)
 	}
 
-	user, err := s.repo.GetUserByUsername(ctx, username)
+	user, err := s.repo.GetUserByPlatformID(ctx, platform, platformID)
 	if err != nil {
-		log.Error("Failed to get user", "error", err, "username", username)
+		log.Error("Failed to get user", "error", err, "platform", platform, "platformID", platformID)
 		return 0, 0, fmt.Errorf("failed to get user: %w", err)
 	}
 	if user == nil {
-		log.Warn("User not found", "username", username)
-		return 0, 0, fmt.Errorf("user not found: %s", username)
+		log.Warn("User not found", "platform", platform, "platformID", platformID)
+		return 0, 0, fmt.Errorf("user not found")
 	}
 
 	lock := s.lockManager.GetLock(user.ID)
@@ -128,9 +128,9 @@ func (s *service) SellItem(ctx context.Context, username, platform, itemName str
 	return moneyGained, actualSellQuantity, nil
 }
 
-func (s *service) BuyItem(ctx context.Context, username, platform, itemName string, quantity int) (int, error) {
+func (s *service) BuyItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (int, error) {
 	log := logger.FromContext(ctx)
-	log.Info("BuyItem called", "username", username, "item", itemName, "quantity", quantity)
+	log.Info("BuyItem called", "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity)
 
 	if quantity <= 0 {
 		return 0, fmt.Errorf("invalid quantity: %d", quantity)
@@ -140,14 +140,14 @@ func (s *service) BuyItem(ctx context.Context, username, platform, itemName stri
 	}
 
 
-	user, err := s.repo.GetUserByUsername(ctx, username)
+	user, err := s.repo.GetUserByPlatformID(ctx, platform, platformID)
 	if err != nil {
-		log.Error("Failed to get user", "error", err, "username", username)
+		log.Error("Failed to get user", "error", err, "platform", platform, "platformID", platformID)
 		return 0, fmt.Errorf("failed to get user: %w", err)
 	}
 	if user == nil {
-		log.Warn("User not found", "username", username)
-		return 0, fmt.Errorf("user not found: %s", username)
+		log.Warn("User not found", "platform", platform, "platformID", platformID)
+		return 0, fmt.Errorf("user not found")
 	}
 
 	item, err := s.repo.GetItemByName(ctx, itemName)

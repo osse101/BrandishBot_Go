@@ -1,4 +1,4 @@
-.PHONY: help migrate-up migrate-down migrate-status migrate-create test build run docker-build docker-up docker-down
+.PHONY: help migrate-up migrate-down migrate-status migrate-create test build run clean docker-build docker-up docker-down
 
 # Tool paths
 GOOSE := $(shell command -v goose 2> /dev/null || echo $(HOME)/go/bin/goose)
@@ -21,8 +21,9 @@ help:
 	@echo "  make test-coverage-check  - Verify 80%+ coverage threshold"
 	@echo "  make lint                 - Run code linters"
 	@echo "  make lint-fix             - Run linters with auto-fix"
-	@echo "  make build                - Build all binaries"
-	@echo "  make run                  - Run the application"
+	@echo "  make build                - Build all binaries to bin/"
+	@echo "  make clean                - Remove build artifacts (bin/)"
+	@echo "  make run                  - Run the application from bin/app"
 	@echo "  make swagger              - Generate Swagger docs"
 	@echo ""
 	@echo "Docker Commands:"
@@ -100,15 +101,23 @@ lint-fix:
 	@echo "Running linters with auto-fix..."
 	@$(LINT) run --fix ./...
 
+# Build targets
 build:
-	@echo "Building binaries..."
-	@go build -o bin/brandishbot cmd/app/main.go
-	@go build -o bin/setup cmd/setup/main.go
-	@echo "Build complete: bin/"
+	@echo "Building all binaries to bin/..."
+	@mkdir -p bin
+	@go build -o bin/app ./cmd/app
+	@go build -o bin/discord_bot ./cmd/discord
+	@echo "✓ Built: bin/app"
+	@echo "✓ Built: bin/discord_bot"
 
 run:
-	@echo "Starting BrandishBot..."
-	@go run cmd/app/main.go
+	@echo "Starting BrandishBot from bin/app..."
+	@./bin/app
+
+clean:
+	@echo "Cleaning build artifacts..."
+	@rm -rf bin/
+	@echo "✓ Removed bin/ directory"
 
 swagger:
 	@echo "Generating Swagger documentation..."

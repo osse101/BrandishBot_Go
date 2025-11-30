@@ -110,10 +110,11 @@ func (c *APIClient) GetUserStats(userID string) (*domain.StatsSummary, error) {
 }
 
 // Search performs a search action
-func (c *APIClient) Search(username string) (string, error) {
+func (c *APIClient) Search(platform, platformID, username string) (string, error) {
 	req := map[string]string{
-		"username": username,
-		"platform": "discord",
+		"platform":    platform,
+		"platform_id": platformID,
+		"username":    username,
 	}
 
 	resp, err := c.doRequest(http.MethodPost, "/user/search", req)
@@ -144,9 +145,11 @@ func (c *APIClient) Search(username string) (string, error) {
 }
 
 // GetInventory retrieves user inventory
-func (c *APIClient) GetInventory(username string) ([]user.UserInventoryItem, error) {
+func (c *APIClient) GetInventory(platform, platformID, username string) ([]user.UserInventoryItem, error) {
 	params := url.Values{}
+	params.Set("platform", platform)
 	params.Set("username", username)
+	params.Set("platform_id", platformID)
 
 	path := fmt.Sprintf("/user/inventory?%s", params.Encode())
 	resp, err := c.doRequest(http.MethodGet, path, nil)

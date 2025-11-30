@@ -47,14 +47,14 @@ type Service interface {
 	RegisterUser(ctx context.Context, user domain.User) (domain.User, error)
 	FindUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error)
 	HandleIncomingMessage(ctx context.Context, platform, platformID, username string) (domain.User, error)
-	AddItem(ctx context.Context, username, platform, itemName string, quantity int) error
-	RemoveItem(ctx context.Context, username, platform, itemName string, quantity int) (int, error)
-	GiveItem(ctx context.Context, ownerUsername, receiverUsername, platform, itemName string, quantity int) error
-	UseItem(ctx context.Context, username, platform, itemName string, quantity int, targetUsername string) (string, error)
-	GetInventory(ctx context.Context, username string) ([]UserInventoryItem, error)
+	AddItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) error
+	RemoveItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (int, error)
+	GiveItem(ctx context.Context, ownerPlatform, ownerPlatformID, ownerUsername, receiverPlatform, receiverPlatformID, receiverUsername, itemName string, quantity int) error
+	UseItem(ctx context.Context, platform, platformID, username, itemName string, quantity int, targetUsername string) (string, error)
+	GetInventory(ctx context.Context, platform, platformID, username string) ([]UserInventoryItem, error)
 	TimeoutUser(ctx context.Context, username string, duration time.Duration, reason string) error
 	LoadLootTables(path string) error
-	HandleSearch(ctx context.Context, username, platform string) (string, error)
+	HandleSearch(ctx context.Context, platform, platformID, username string) (string, error)
 }
 
 type UserInventoryItem struct {
@@ -187,17 +187,13 @@ func (s *service) HandleIncomingMessage(ctx context.Context, platform, platformI
 	return newUser, nil
 }
 
-func (s *service) AddItem(ctx context.Context, username, platform, itemName string, quantity int) error {
+func (s *service) AddItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) error {
 	log := logger.FromContext(ctx)
-	log.Info("AddItem called", "username", username, "item", itemName, "quantity", quantity)
-	user, err := s.repo.GetUserByUsername(ctx, username)
+	log.Info("AddItem called", "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity)
+	
+	user, err := s.getUserOrRegister(ctx, platform, platformID, username)
 	if err != nil {
-		log.Error("Failed to get user", "error", err, "username", username)
-		return fmt.Errorf("failed to get user: %w", err)
-	}
-	if user == nil {
-		log.Warn("User not found", "username", username)
-		return fmt.Errorf("user not found: %s", username)
+		return err
 	}
 
 	lock := s.getUserLock(user.ID)
@@ -237,17 +233,13 @@ func (s *service) AddItem(ctx context.Context, username, platform, itemName stri
 	return nil
 }
 
-func (s *service) RemoveItem(ctx context.Context, username, platform, itemName string, quantity int) (int, error) {
+func (s *service) RemoveItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (int, error) {
 	log := logger.FromContext(ctx)
-	log.Info("RemoveItem called", "username", username, "item", itemName, "quantity", quantity)
-	user, err := s.repo.GetUserByUsername(ctx, username)
+	log.Info("RemoveItem called", "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity)
+	
+	user, err := s.getUserOrRegister(ctx, platform, platformID, username)
 	if err != nil {
-		log.Error("Failed to get user", "error", err, "username", username)
-		return 0, fmt.Errorf("failed to get user: %w", err)
-	}
-	if user == nil {
-		log.Warn("User not found", "username", username)
-		return 0, fmt.Errorf("%w: %s", domain.ErrUserNotFound, username)
+		return 0, err
 	}
 
 	lock := s.getUserLock(user.ID)
@@ -296,16 +288,19 @@ func (s *service) RemoveItem(ctx context.Context, username, platform, itemName s
 	return removed, nil
 }
 
-func (s *service) GiveItem(ctx context.Context, ownerUsername, receiverUsername, platform, itemName string, quantity int) error {
+func (s *service) GiveItem(ctx context.Context, ownerPlatform, ownerPlatformID, ownerUsername, receiverPlatform, receiverPlatformID, receiverUsername, itemName string, quantity int) error {
 	log := logger.FromContext(ctx)
-	log.Info("GiveItem called", "owner", ownerUsername, "receiver", receiverUsername, "item", itemName, "quantity", quantity)
+	log.Info("GiveItem called", 
+		"ownerPlatform", ownerPlatform, "ownerPlatformID", ownerPlatformID, "ownerUsername", ownerUsername,
+		"receiverPlatform", receiverPlatform, "receiverPlatformID", receiverPlatformID, "receiverUsername", receiverUsername,
+		"item", itemName, "quantity", quantity)
 
-	owner, err := s.validateUser(ctx, ownerUsername)
+	owner, err := s.getUserOrRegister(ctx, ownerPlatform, ownerPlatformID, ownerUsername)
 	if err != nil {
 		return err
 	}
 
-	receiver, err := s.validateUser(ctx, receiverUsername)
+	receiver, err := s.getUserOrRegister(ctx, receiverPlatform, receiverPlatformID, receiverUsername)
 	if err != nil {
 		return err
 	}
@@ -405,17 +400,13 @@ func (s *service) executeGiveItemTx(ctx context.Context, owner, receiver *domain
 	return nil
 }
 
-func (s *service) UseItem(ctx context.Context, username, platform, itemName string, quantity int, targetUsername string) (string, error) {
+func (s *service) UseItem(ctx context.Context, platform, platformID, username, itemName string, quantity int, targetUsername string) (string, error) {
 	log := logger.FromContext(ctx)
-	log.Info("UseItem called", "username", username, "item", itemName, "quantity", quantity, "target", targetUsername)
-	user, err := s.repo.GetUserByUsername(ctx, username)
+	log.Info("UseItem called", "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity, "target", targetUsername)
+	
+	user, err := s.getUserOrRegister(ctx, platform, platformID, username)
 	if err != nil {
-		log.Error("Failed to get user", "error", err, "username", username)
-		return "", fmt.Errorf("failed to get user: %w", err)
-	}
-	if user == nil {
-		log.Warn("User not found", "username", username)
-		return "", fmt.Errorf("%w: %s", domain.ErrUserNotFound, username)
+		return "", err
 	}
 
 	lock := s.getUserLock(user.ID)
@@ -465,16 +456,13 @@ func (s *service) UseItem(ctx context.Context, username, platform, itemName stri
 	return message, nil
 }
 
-func (s *service) GetInventory(ctx context.Context, username string) ([]UserInventoryItem, error) {
+func (s *service) GetInventory(ctx context.Context, platform, platformID, username string) ([]UserInventoryItem, error) {
 	log := logger.FromContext(ctx)
-	log.Info("GetInventory called", "username", username)
-	user, err := s.repo.GetUserByUsername(ctx, username)
+	log.Info("GetInventory called", "platform", platform, "platformID", platformID, "username", username)
+	
+	user, err := s.getUserOrRegister(ctx, platform, platformID, username)
 	if err != nil {
-		log.Error("Failed to get user", "error", err, "username", username)
-		return nil, fmt.Errorf("failed to get user: %w", err)
-	}
-	if user == nil {
-		return nil, fmt.Errorf("%w: %s", domain.ErrUserNotFound, username)
+		return nil, err
 	}
 	inventory, err := s.repo.GetInventory(ctx, user.ID)
 	if err != nil {
@@ -552,16 +540,11 @@ func (s *service) validateItem(ctx context.Context, itemName string) (*domain.It
 }
 
 // HandleSearch performs a search action for a user with cooldown tracking
-func (s *service) HandleSearch(ctx context.Context, username, platform string) (string, error) {
+func (s *service) HandleSearch(ctx context.Context, platform, platformID, username string) (string, error) {
 	log := logger.FromContext(ctx)
-	log.Info("HandleSearch called", "username", username, "platform", platform)
+	log.Info("HandleSearch called", "platform", platform, "platformID", platformID, "username", username)
 
-	// Validate username
-	if username == "" {
-		return "", fmt.Errorf("username cannot be empty")
-	}
-
-	// Validate and normalize platform
+	// Validate platform
 	if platform == "" {
 		// Default to twitch for backwards compatibility
 		platform = "twitch"
@@ -571,27 +554,9 @@ func (s *service) HandleSearch(ctx context.Context, username, platform string) (
 	}
 
 	// Get or create user
-	user, err := s.repo.GetUserByUsername(ctx, username)
+	user, err := s.getUserOrRegister(ctx, platform, platformID, username)
 	if err != nil {
-		log.Error("Failed to get user", "error", err, "username", username)
-		return "", fmt.Errorf("failed to get user: %w", err)
-	}
-
-	// If user doesn't exist, register them first
-	if user == nil {
-		log.Info("User not found, registering new user", "username", username)
-		newUser := domain.User{Username: username}
-
-		// Set platform-specific ID based on validated platform
-		setPlatformID(&newUser, platform, username)
-
-		registeredUser, err := s.RegisterUser(ctx, newUser)
-		if err != nil {
-			log.Error("Failed to register new user", "error", err, "username", username)
-			return "", fmt.Errorf("failed to register user: %w", err)
-		}
-		user = &registeredUser
-		log.Info("New user registered for search", "userID", user.ID, "username", username)
+		return "", err
 	}
 
 	// Lock the user for the duration of this operation
@@ -667,4 +632,35 @@ func (s *service) HandleSearch(ctx context.Context, username, platform string) (
 
 	log.Info("Search completed", "username", username, "result", resultMessage)
 	return resultMessage, nil
+}
+
+// getUserOrRegister gets a user by platform ID, or auto-registers them if not found
+func (s *service) getUserOrRegister(ctx context.Context, platform, platformID, username string) (*domain.User, error) {
+	log := logger.FromContext(ctx)
+	
+	// Try to find existing user by platform ID
+	user, err := s.repo.GetUserByPlatformID(ctx, platform, platformID)
+	if err != nil && !errors.Is(err, domain.ErrUserNotFound) {
+		log.Error("Failed to get user by platform ID", "error", err, "platform", platform, "platformID", platformID)
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+	
+	if user != nil {
+		log.Debug("Found existing user", "userID", user.ID, "platform", platform)
+		return user, nil
+	}
+	
+	// User not found, auto-register
+	log.Info("Auto-registering new user", "platform", platform, "platformID", platformID, "username", username)
+	newUser := domain.User{Username: username}
+	setPlatformID(&newUser, platform, platformID)
+	
+	registered, err := s.RegisterUser(ctx, newUser)
+	if err != nil {
+		log.Error("Failed to auto-register user", "error", err)
+		return nil, fmt.Errorf("failed to register user: %w", err)
+	}
+	
+	log.Info("User auto-registered", "userID", registered.ID)
+	return &registered, nil
 }

@@ -14,10 +14,11 @@ import (
 )
 
 type AddItemRequest struct {
-	Username string `json:"username" validate:"required,max=100,excludesall=\x00\n\r\t"`
-	Platform string `json:"platform" validate:"omitempty,platform"`
-	ItemName string `json:"item_name" validate:"required,max=100"`
-	Quantity int    `json:"quantity" validate:"min=1,max=10000"`
+	Platform   string `json:"platform" validate:"required,platform"`
+	PlatformID string `json:"platform_id" validate:"required"`
+	Username   string `json:"username" validate:"required,max=100,excludesall=\x00\n\r\t"`
+	ItemName   string `json:"item_name" validate:"required,max=100"`
+	Quantity   int    `json:"quantity" validate:"min=1,max=10000"`
 }
 
 // HandleAddItem handles adding items to a user's inventory
@@ -54,7 +55,7 @@ func HandleAddItem(svc user.Service) http.HandlerFunc {
 			return
 		}
 
-		if err := svc.AddItem(r.Context(), req.Username, req.Platform, req.ItemName, req.Quantity); err != nil {
+		if err := svc.AddItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.ItemName, req.Quantity); err != nil {
 			log.Error("Failed to add item", "error", err, "username", req.Username, "item", req.ItemName)
 			http.Error(w, "Failed to add item", http.StatusInternalServerError) // Generic error
 			return
@@ -67,10 +68,11 @@ func HandleAddItem(svc user.Service) http.HandlerFunc {
 }
 
 type RemoveItemRequest struct {
-	Username string `json:"username" validate:"required,max=100,excludesall=\x00\n\r\t"`
-	Platform string `json:"platform" validate:"omitempty,platform"`
-	ItemName string `json:"item_name" validate:"required,max=100"`
-	Quantity int    `json:"quantity" validate:"min=1,max=10000"`
+	Platform   string `json:"platform" validate:"required,platform"`
+	PlatformID string `json:"platform_id" validate:"required"`
+	Username   string `json:"username" validate:"required,max=100,excludesall=\x00\n\r\t"`
+	ItemName   string `json:"item_name" validate:"required,max=100"`
+	Quantity   int    `json:"quantity" validate:"min=1,max=10000"`
 }
 
 type RemoveItemResponse struct {
@@ -108,7 +110,7 @@ func HandleRemoveItem(svc user.Service) http.HandlerFunc {
 			return
 		}
 
-		removed, err := svc.RemoveItem(r.Context(), req.Username, req.Platform, req.ItemName, req.Quantity)
+		removed, err := svc.RemoveItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.ItemName, req.Quantity)
 		if err != nil {
 			log.Error("Failed to remove item", "error", err, "username", req.Username, "item", req.ItemName)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -124,11 +126,14 @@ func HandleRemoveItem(svc user.Service) http.HandlerFunc {
 }
 
 type GiveItemRequest struct {
-	Owner    string `json:"owner" validate:"required,max=100,excludesall=\x00\n\r\t"`
-	Receiver string `json:"receiver" validate:"required,max=100,excludesall=\x00\n\r\t"`
-	Platform string `json:"platform" validate:"omitempty,platform"`
-	ItemName string `json:"item_name" validate:"required,max=100"`
-	Quantity int    `json:"quantity" validate:"min=1,max=10000"`
+	OwnerPlatform     string `json:"owner_platform" validate:"required,platform"`
+	OwnerPlatformID   string `json:"owner_platform_id" validate:"required"`
+	Owner             string `json:"owner" validate:"required,max=100,excludesall=\x00\n\r\t"`
+	ReceiverPlatform  string `json:"receiver_platform" validate:"required,platform"`
+	ReceiverPlatformID string `json:"receiver_platform_id" validate:"required"`
+	Receiver          string `json:"receiver" validate:"required,max=100,excludesall=\x00\n\r\t"`
+	ItemName          string `json:"item_name" validate:"required,max=100"`
+	Quantity          int    `json:"quantity" validate:"min=1,max=10000"`
 }
 
 // HandleGiveItem handles transferring items between users
@@ -166,7 +171,7 @@ func HandleGiveItem(svc user.Service) http.HandlerFunc {
 			return
 		}
 
-		if err := svc.GiveItem(r.Context(), req.Owner, req.Receiver, req.Platform, req.ItemName, req.Quantity); err != nil {
+		if err := svc.GiveItem(r.Context(), req.OwnerPlatform, req.OwnerPlatformID, req.Owner, req.ReceiverPlatform, req.ReceiverPlatformID, req.Receiver, req.ItemName, req.Quantity); err != nil {
 			log.Error("Failed to give item", "error", err, "owner", req.Owner, "receiver", req.Receiver, "item", req.ItemName)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -179,10 +184,11 @@ func HandleGiveItem(svc user.Service) http.HandlerFunc {
 }
 
 type SellItemRequest struct {
-	Username string `json:"username" validate:"required,max=100,excludesall=\x00\n\r\t"`
-	Platform string `json:"platform" validate:"omitempty,platform"`
-	ItemName string `json:"item_name" validate:"required,max=100"`
-	Quantity int    `json:"quantity" validate:"min=1,max=10000"`
+	Platform   string `json:"platform" validate:"required,platform"`
+	PlatformID string `json:"platform_id" validate:"required"`
+	Username   string `json:"username" validate:"required,max=100,excludesall=\x00\n\r\t"`
+	ItemName   string `json:"item_name" validate:"required,max=100"`
+	Quantity   int    `json:"quantity" validate:"min=1,max=10000"`
 }
 
 type SellItemResponse struct {
@@ -235,7 +241,7 @@ func HandleSellItem(svc economy.Service, progressionSvc progression.Service, eve
 			return
 		}
 
-		moneyGained, itemsSold, err := svc.SellItem(r.Context(), req.Username, req.Platform, req.ItemName, req.Quantity)
+		moneyGained, itemsSold, err := svc.SellItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.ItemName, req.Quantity)
 		if err != nil {
 			log.Error("Failed to sell item", "error", err, "username", req.Username, "item", req.ItemName)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -269,10 +275,11 @@ func HandleSellItem(svc economy.Service, progressionSvc progression.Service, eve
 }
 
 type BuyItemRequest struct {
-	Username string `json:"username" validate:"required,max=100,excludesall=\x00\n\r\t"`
-	Platform string `json:"platform" validate:"omitempty,platform"`
-	ItemName string `json:"item_name" validate:"required,max=100"`
-	Quantity int    `json:"quantity" validate:"min=1,max=10000"`
+	Platform   string `json:"platform" validate:"required,platform"`
+	PlatformID string `json:"platform_id" validate:"required"`
+	Username   string `json:"username" validate:"required,max=100,excludesall=\x00\n\r\t"`
+	ItemName   string `json:"item_name" validate:"required,max=100"`
+	Quantity   int    `json:"quantity" validate:"min=1,max=10000"`
 }
 
 type BuyItemResponse struct {
@@ -324,7 +331,7 @@ func HandleBuyItem(svc economy.Service, progressionSvc progression.Service, even
 			return
 		}
 
-		bought, err := svc.BuyItem(r.Context(), req.Username, req.Platform, req.ItemName, req.Quantity)
+		bought, err := svc.BuyItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.ItemName, req.Quantity)
 		if err != nil {
 			log.Error("Failed to buy item", "error", err, "username", req.Username, "item", req.ItemName)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -356,11 +363,12 @@ func HandleBuyItem(svc economy.Service, progressionSvc progression.Service, even
 }
 
 type UseItemRequest struct {
-	Username       string `json:"username" validate:"required,max=100,excludesall=\x00\n\r\t"`
-	Platform       string `json:"platform" validate:"omitempty,platform"`
-	ItemName       string `json:"item_name" validate:"required,max=100"`
-	Quantity       int    `json:"quantity" validate:"min=1,max=10000"`
-	TargetUsername string `json:"target_username" validate:"omitempty,max=100,excludesall=\x00\n\r\t"`
+	Platform     string `json:"platform" validate:"required,platform"`
+	PlatformID   string `json:"platform_id" validate:"required"`
+	Username     string `json:"username" validate:"required,max=100,excludesall=\x00\n\r\t"`
+	ItemName     string `json:"item_name" validate:"required,max=100"`
+	Quantity     int    `json:"quantity" validate:"min=1,max=10000"`
+	TargetUser   string `json:"target_user,omitempty" validate:"omitempty,max=100,excludesall=\x00\n\r\t"`
 }
 
 type UseItemResponse struct {
@@ -398,7 +406,7 @@ func HandleUseItem(svc user.Service, eventBus event.Bus) http.HandlerFunc {
 			"username", req.Username,
 			"item", req.ItemName,
 			"quantity", req.Quantity,
-			"target", req.TargetUsername)
+			"target", req.TargetUser)
 
 		// Validate request
 		if err := GetValidator().ValidateStruct(req); err != nil {
@@ -407,7 +415,7 @@ func HandleUseItem(svc user.Service, eventBus event.Bus) http.HandlerFunc {
 			return
 		}
 
-		message, err := svc.UseItem(r.Context(), req.Username, req.Platform, req.ItemName, req.Quantity, req.TargetUsername)
+		message, err := svc.UseItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.ItemName, req.Quantity, req.TargetUser)
 		if err != nil {
 			log.Error("Failed to use item", "error", err, "username", req.Username, "item", req.ItemName)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -435,7 +443,7 @@ func HandleUseItem(svc user.Service, eventBus event.Bus) http.HandlerFunc {
 				"user_id":  req.Username,
 				"item":     req.ItemName,
 				"quantity": req.Quantity,
-				"target":   req.TargetUsername,
+				"target":   req.TargetUser,
 				"result":   message,
 			},
 		}); err != nil {
@@ -466,6 +474,16 @@ func HandleGetInventory(svc user.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
 
+		platform := r.URL.Query().Get("platform")
+		if platform == "" {
+			platform = "discord" // Default
+		}
+		platformID := r.URL.Query().Get("platform_id")
+		if platformID == "" {
+			log.Warn("Missing platform_id query parameter")
+			http.Error(w, "Missing platform_id query parameter", http.StatusBadRequest)
+			return
+		}
 		username := r.URL.Query().Get("username")
 		if username == "" {
 			log.Warn("Missing username query parameter")
@@ -475,7 +493,7 @@ func HandleGetInventory(svc user.Service) http.HandlerFunc {
 
 		log.Debug("Get inventory request", "username", username)
 
-		items, err := svc.GetInventory(r.Context(), username)
+		items, err := svc.GetInventory(r.Context(), platform, platformID, username)
 		if err != nil {
 			log.Error("Failed to get inventory", "error", err, "username", username)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
