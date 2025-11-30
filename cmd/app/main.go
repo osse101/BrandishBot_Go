@@ -21,6 +21,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/database/postgres"
 	"github.com/osse101/BrandishBot_Go/internal/economy"
 	"github.com/osse101/BrandishBot_Go/internal/event"
+	"github.com/osse101/BrandishBot_Go/internal/eventlog"
 	"github.com/osse101/BrandishBot_Go/internal/metrics"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 	"github.com/osse101/BrandishBot_Go/internal/server"
@@ -146,6 +147,15 @@ func main() {
 		os.Exit(1)
 	}
 	slog.Info("Metrics collector registered")
+
+	// Initialize Event Logger
+	eventLogRepo := postgres.NewEventLogRepository(dbPool)
+	eventLogService := eventlog.NewService(eventLogRepo)
+	if err := eventLogService.Subscribe(eventBus); err != nil {
+		slog.Error("Failed to subscribe event logger", "error", err)
+		os.Exit(1)
+	}
+	slog.Info("Event logger initialized")
 
 	srv := server.NewServer(cfg.Port, cfg.APIKey, dbPool, userService, economyService, craftingService, statsService, progressionService, eventBus)
 
