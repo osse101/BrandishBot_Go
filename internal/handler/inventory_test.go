@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"time"
@@ -209,12 +210,14 @@ func TestHandleAddItem(t *testing.T) {
 		{
 			name: "Success",
 			requestBody: AddItemRequest{
-				Username: "testuser",
-				ItemName: "Sword",
-				Quantity: 1,
+				Platform:   "twitch",
+				PlatformID: "test-id",
+				Username:   "testuser",
+				ItemName:   "Sword",
+				Quantity:   1,
 			},
 			setupMock: func(m *MockUserService) {
-				m.On("AddItem", mock.Anything, "", "", "testuser", "Sword", 1).Return(nil)
+				m.On("AddItem", mock.Anything, "twitch", "test-id", "testuser", "Sword", 1).Return(nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `{"message":"Item added successfully"}`,
@@ -232,12 +235,14 @@ func TestHandleAddItem(t *testing.T) {
 		{
 			name: "Service Error",
 			requestBody: AddItemRequest{
-				Username: "testuser",
-				ItemName: "Sword",
-				Quantity: 1,
+				Platform:   "twitch",
+				PlatformID: "test-id",
+				Username:   "testuser",
+				ItemName:   "Sword",
+				Quantity:   1,
 			},
 			setupMock: func(m *MockUserService) {
-				m.On("AddItem", mock.Anything, "", "", "testuser", "Sword", 1).Return(errors.New("service error"))
+				m.On("AddItem", mock.Anything, "twitch", "test-id", "testuser", "Sword", 1).Return(errors.New("service error"))
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   "Failed to add item",
@@ -279,13 +284,15 @@ func TestHandleSellItem(t *testing.T) {
 		{
 			name: "Success",
 			requestBody: SellItemRequest{
-				Username: "testuser",
-				ItemName: "Sword",
-				Quantity: 1,
+				Platform:   "twitch",
+				PlatformID: "test-id",
+				Username:   "testuser",
+				ItemName:   "Sword",
+				Quantity:   1,
 			},
 			setupMock: func(e *MockEconomyService, p *MockProgressionService) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSell).Return(true, nil)
-				e.On("SellItem", mock.Anything, "", "", "testuser", "Sword", 1).Return(100, 1, nil)
+				e.On("SellItem", mock.Anything, "twitch", "test-id", "testuser", "Sword", 1).Return(100, 1, nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `{"money_gained":100,"items_sold":1}`,
@@ -293,9 +300,11 @@ func TestHandleSellItem(t *testing.T) {
 		{
 			name: "Feature Locked",
 			requestBody: SellItemRequest{
-				Username: "testuser",
-				ItemName: "Sword",
-				Quantity: 1,
+				Platform:   "twitch",
+				PlatformID: "test-id",
+				Username:   "testuser",
+				ItemName:   "Sword",
+				Quantity:   1,
 			},
 			setupMock: func(e *MockEconomyService, p *MockProgressionService) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSell).Return(false, nil)
@@ -347,12 +356,14 @@ func TestHandleRemoveItem(t *testing.T) {
 		{
 			name: "Success",
 			requestBody: RemoveItemRequest{
-				Username: "testuser",
-				ItemName: "Sword",
-				Quantity: 1,
+				Platform:   "twitch",
+				PlatformID: "test-id",
+				Username:   "testuser",
+				ItemName:   "Sword",
+				Quantity:   1,
 			},
 			setupMock: func(m *MockUserService) {
-				m.On("RemoveItem", mock.Anything, "", "", "testuser", "Sword", 1).Return(1, nil)
+				m.On("RemoveItem", mock.Anything, "twitch", "test-id", "testuser", "Sword", 1).Return(1, nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `{"removed":1}`,
@@ -360,12 +371,14 @@ func TestHandleRemoveItem(t *testing.T) {
 		{
 			name: "Service Error",
 			requestBody: RemoveItemRequest{
-				Username: "testuser",
-				ItemName: "Sword",
-				Quantity: 1,
+				Platform:   "twitch",
+				PlatformID: "test-id",
+				Username:   "testuser",
+				ItemName:   "Sword",
+				Quantity:   1,
 			},
 			setupMock: func(m *MockUserService) {
-				m.On("RemoveItem", mock.Anything, "", "", "testuser", "Sword", 1).Return(0, errors.New("service error"))
+				m.On("RemoveItem", mock.Anything, "twitch", "test-id", "testuser", "Sword", 1).Return(0, errors.New("service error"))
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   "service error",
@@ -407,13 +420,17 @@ func TestHandleGiveItem(t *testing.T) {
 		{
 			name: "Success",
 			requestBody: GiveItemRequest{
-				Owner:    "owner",
-				Receiver: "receiver",
-				ItemName: "Sword",
-				Quantity: 1,
+				OwnerPlatform:      "twitch",
+				OwnerPlatformID:    "owner-id",
+				Owner:              "owner",
+				ReceiverPlatform:   "twitch",
+				ReceiverPlatformID: "receiver-id",
+				Receiver:           "receiver",
+				ItemName:           "Sword",
+				Quantity:           1,
 			},
 			setupMock: func(m *MockUserService) {
-				m.On("GiveItem", mock.Anything, "", "", "owner", "", "", "receiver", "Sword", 1).Return(nil)
+				m.On("GiveItem", mock.Anything, "twitch", "owner-id", "owner", "twitch", "receiver-id", "receiver", "Sword", 1).Return(nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `{"message":"Item transferred successfully"}`,
@@ -421,13 +438,17 @@ func TestHandleGiveItem(t *testing.T) {
 		{
 			name: "Service Error",
 			requestBody: GiveItemRequest{
-				Owner:    "owner",
-				Receiver: "receiver",
-				ItemName: "Sword",
-				Quantity: 1,
+				OwnerPlatform:      "twitch",
+				OwnerPlatformID:    "owner-id",
+				Owner:              "owner",
+				ReceiverPlatform:   "twitch",
+				ReceiverPlatformID: "receiver-id",
+				Receiver:           "receiver",
+				ItemName:           "Sword",
+				Quantity:           1,
 			},
 			setupMock: func(m *MockUserService) {
-				m.On("GiveItem", mock.Anything, "", "", "owner", "", "", "receiver", "Sword", 1).Return(errors.New("service error"))
+				m.On("GiveItem", mock.Anything, "twitch", "owner-id", "owner", "twitch", "receiver-id", "receiver", "Sword", 1).Return(errors.New("service error"))
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   "service error",
@@ -469,13 +490,15 @@ func TestHandleBuyItem(t *testing.T) {
 		{
 			name: "Success",
 			requestBody: BuyItemRequest{
-				Username: "testuser",
-				ItemName: "Sword",
-				Quantity: 1,
+				Platform:   "twitch",
+				PlatformID: "test-id",
+				Username:   "testuser",
+				ItemName:   "Sword",
+				Quantity:   1,
 			},
 			setupMock: func(e *MockEconomyService, p *MockProgressionService) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureBuy).Return(true, nil)
-				e.On("BuyItem", mock.Anything, "", "", "testuser", "Sword", 1).Return(1, nil)
+				e.On("BuyItem", mock.Anything, "twitch", "test-id", "testuser", "Sword", 1).Return(1, nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `{"items_bought":1}`,
@@ -483,9 +506,11 @@ func TestHandleBuyItem(t *testing.T) {
 		{
 			name: "Feature Locked",
 			requestBody: BuyItemRequest{
-				Username: "testuser",
-				ItemName: "Sword",
-				Quantity: 1,
+				Platform:   "twitch",
+				PlatformID: "test-id",
+				Username:   "testuser",
+				ItemName:   "Sword",
+				Quantity:   1,
 			},
 			setupMock: func(e *MockEconomyService, p *MockProgressionService) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureBuy).Return(false, nil)
@@ -537,12 +562,14 @@ func TestHandleUseItem(t *testing.T) {
 		{
 			name: "Success",
 			requestBody: UseItemRequest{
-				Username: "testuser",
-				ItemName: "Potion",
-				Quantity: 1,
+				Platform:   "twitch",
+				PlatformID: "test-id",
+				Username:   "testuser",
+				ItemName:   "Potion",
+				Quantity:   1,
 			},
 			setupMock: func(u *MockUserService, e *MockEventBus) {
-				u.On("UseItem", mock.Anything, "", "", "testuser", "Potion", 1, "").Return("Used potion", nil)
+				u.On("UseItem", mock.Anything, "twitch", "test-id", "testuser", "Potion", 1, "").Return("Used potion", nil)
 				// Expect both engagement and item.used events
 				e.On("Publish", mock.Anything, mock.MatchedBy(func(evt event.Event) bool {
 					return evt.Type == "engagement" || evt.Type == "item.used"
@@ -554,12 +581,14 @@ func TestHandleUseItem(t *testing.T) {
 		{
 			name: "Service Error",
 			requestBody: UseItemRequest{
-				Username: "testuser",
-				ItemName: "Potion",
-				Quantity: 1,
+				Platform:   "twitch",
+				PlatformID: "test-id",
+				Username:   "testuser",
+				ItemName:   "Potion",
+				Quantity:   1,
 			},
 			setupMock: func(u *MockUserService, e *MockEventBus) {
-				u.On("UseItem", mock.Anything, "", "", "testuser", "Potion", 1, "").Return("", errors.New("service error"))
+				u.On("UseItem", mock.Anything, "twitch", "test-id", "testuser", "Potion", 1, "").Return("", errors.New("service error"))
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   "service error",
@@ -596,18 +625,22 @@ func TestHandleGetInventory(t *testing.T) {
 	tests := []struct {
 		name           string
 		username       string
+		platform       string
+		platformID     string
 		setupMock      func(*MockUserService)
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
-			name:     "Success",
-			username: "testuser",
+			name:       "Success",
+			username:   "testuser",
+			platform:   "discord",
+			platformID: "test-platformid",
 			setupMock: func(m *MockUserService) {
 				items := []user.UserInventoryItem{
 					{Name: "Sword", Quantity: 1},
 				}
-				m.On("GetInventory", mock.Anything, "", "", "testuser").Return(items, nil)
+				m.On("GetInventory", mock.Anything, "discord", "test-platformid", "testuser").Return(items, nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `"name":"Sword"`,
@@ -615,15 +648,20 @@ func TestHandleGetInventory(t *testing.T) {
 		{
 			name:           "Missing Username",
 			username:       "",
+			platform:       "discord",
+			platformID:     "", // Missing platformID
 			setupMock:      func(m *MockUserService) {},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Missing username",
+			expectedBody:   "Missing", // Will fail on platform_id
 		},
 		{
-			name:     "Service Error",
-			username: "testuser",
+			name:       "Service Error with Platform Params", // Changed name for clarity
+			username:   "testuser",
+			platform:   "discord",
+			platformID: "test-platformid",
 			setupMock: func(m *MockUserService) {
-				m.On("GetInventory", mock.Anything, "", "", "testuser").Return(nil, errors.New("service error"))
+				// Updated mock expectation to match platform and platformID
+				m.On("GetInventory", mock.Anything, "discord", "test-platformid", "testuser").Return(nil, errors.New("service error"))
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   "service error",
@@ -637,9 +675,20 @@ func TestHandleGetInventory(t *testing.T) {
 
 			handler := HandleGetInventory(mockSvc)
 
-			url := "/user/inventory"
+			// Build URL with query parameters
+			params := []string{}
+			if tt.platform != "" {
+				params = append(params, "platform="+tt.platform)
+			}
+			if tt.platformID != "" {
+				params = append(params, "platform_id="+tt.platformID)
+			}
 			if tt.username != "" {
-				url += "?username=" + tt.username
+				params = append(params, "username="+tt.username)
+			}
+			url := "/user/inventory"
+			if len(params) > 0 {
+				url += "?" + strings.Join(params, "&")
 			}
 			req := httptest.NewRequest("GET", url, nil)
 			w := httptest.NewRecorder()

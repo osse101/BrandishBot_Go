@@ -27,12 +27,13 @@ func TestHandleSearch(t *testing.T) {
 		{
 			name: "Success",
 			requestBody: SearchRequest{
-				Username: "testuser",
-				Platform: "twitch",
+				Platform:   "twitch",
+				PlatformID: "test-id",
+				Username:   "testuser",
 			},
 			setupMock: func(u *MockUserService, p *MockProgressionService, e *MockEventBus) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSearch).Return(true, nil)
-				u.On("HandleSearch", mock.Anything, "twitch", "", "testuser").Return("Found a sword!", nil)
+				u.On("HandleSearch", mock.Anything, "twitch", "test-id", "testuser").Return("Found a sword!", nil)
 				// Expect both engagement and search.performed events
 				e.On("Publish", mock.Anything, mock.MatchedBy(func(evt event.Event) bool {
 					return evt.Type == "engagement" || evt.Type == "search.performed"
@@ -44,8 +45,9 @@ func TestHandleSearch(t *testing.T) {
 		{
 			name: "Feature Locked",
 			requestBody: SearchRequest{
-				Username: "testuser",
-				Platform: "twitch",
+				Platform:   "twitch",
+				PlatformID: "test-id",
+				Username:   "testuser",
 			},
 			setupMock: func(u *MockUserService, p *MockProgressionService, e *MockEventBus) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSearch).Return(false, nil)
@@ -56,12 +58,13 @@ func TestHandleSearch(t *testing.T) {
 		{
 			name: "Service Error",
 			requestBody: SearchRequest{
-				Username: "testuser",
-				Platform: "twitch",
+				Platform:   "twitch",
+				PlatformID: "test-id",
+				Username:   "testuser",
 			},
 			setupMock: func(u *MockUserService, p *MockProgressionService, e *MockEventBus) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSearch).Return(true, nil)
-				u.On("HandleSearch", mock.Anything, "twitch", "", "testuser").Return("", errors.New("service error"))
+				u.On("HandleSearch", mock.Anything, "twitch", "test-id", "testuser").Return("", errors.New("service error"))
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   "Failed to perform search",
