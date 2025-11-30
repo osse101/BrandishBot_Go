@@ -32,7 +32,7 @@ func TestHandleSearch(t *testing.T) {
 			},
 			setupMock: func(u *MockUserService, p *MockProgressionService, e *MockEventBus) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSearch).Return(true, nil)
-				u.On("HandleSearch", mock.Anything, "testuser", "twitch").Return("Found a sword!", nil)
+				u.On("HandleSearch", mock.Anything, "twitch", "", "testuser").Return("Found a sword!", nil)
 				// Expect both engagement and search.performed events
 				e.On("Publish", mock.Anything, mock.MatchedBy(func(evt event.Event) bool {
 					return evt.Type == "engagement" || evt.Type == "search.performed"
@@ -61,7 +61,7 @@ func TestHandleSearch(t *testing.T) {
 			},
 			setupMock: func(u *MockUserService, p *MockProgressionService, e *MockEventBus) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSearch).Return(true, nil)
-				u.On("HandleSearch", mock.Anything, "testuser", "twitch").Return("", errors.New("service error"))
+				u.On("HandleSearch", mock.Anything, "twitch", "", "testuser").Return("", errors.New("service error"))
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   "Failed to perform search",

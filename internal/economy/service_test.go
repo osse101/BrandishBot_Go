@@ -25,6 +25,14 @@ func (m *MockRepository) GetUserByUsername(ctx context.Context, username string)
 	return args.Get(0).(*domain.User), args.Error(1)
 }
 
+func (m *MockRepository) GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error) {
+	args := m.Called(ctx, platform, platformID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.User), args.Error(1)
+}
+
 func (m *MockRepository) GetItemByName(ctx context.Context, itemName string) (*domain.Item, error) {
 	args := m.Called(ctx, itemName)
 	if args.Get(0) == nil {
@@ -125,7 +133,7 @@ func TestSellItem_Success(t *testing.T) {
 	mockRepo.On("UpdateInventory", ctx, user.ID, mock.Anything).Return(nil)
 
 	// ACT
-	moneyGained, quantitySold, err := service.SellItem(ctx, "testuser", "twitch", "Sword", 3)
+	moneyGained, quantitySold, err := service.SellItem(ctx, "twitch", "", "testuser", "Sword", 3)
 
 	// ASSERT
 	require.NoError(t, err)
@@ -157,7 +165,7 @@ func TestSellItem_SellAllItems(t *testing.T) {
 	mockRepo.On("UpdateInventory", ctx, user.ID, mock.Anything).Return(nil)
 
 	// ACT
-	moneyGained, quantitySold, err := service.SellItem(ctx, "testuser", "twitch", "Material", 100)
+	moneyGained, quantitySold, err := service.SellItem(ctx, "twitch", "", "testuser", "Material", 100)
 
 	// ASSERT
 	require.NoError(t, err)
@@ -189,7 +197,7 @@ func TestSellItem_PartialQuantity(t *testing.T) {
 	mockRepo.On("UpdateInventory", ctx, user.ID, mock.Anything).Return(nil)
 
 	// ACT - Request 100 but only have 30
-	moneyGained, quantitySold, err := service.SellItem(ctx, "testuser", "twitch", "Potion", 100)
+	moneyGained, quantitySold, err := service.SellItem(ctx, "twitch", "", "testuser", "Potion", 100)
 
 	// ASSERT
 	require.NoError(t, err)
@@ -263,7 +271,7 @@ func TestSellItem_InvalidInputs(t *testing.T) {
 			tt.setup(mockRepo)
 
 			// ACT
-			_, _, err := service.SellItem(ctx, tt.username, "twitch", tt.itemName, 1)
+			_, _, err := service.SellItem(ctx, "twitch", "", tt.username, tt.itemName, 1)
 
 			// ASSERT
 			if tt.expectErr {
@@ -316,7 +324,7 @@ func TestSellItem_QuantityBoundaries(t *testing.T) {
 			mockRepo.On("UpdateInventory", ctx, user.ID, mock.Anything).Return(nil)
 
 			// ACT
-			_, _, err := service.SellItem(ctx, "testuser", "twitch", "Sword", tt.quantity)
+			_, _, err := service.SellItem(ctx, "twitch", "", "testuser", "Sword", tt.quantity)
 
 			// ASSERT
 			if tt.expectErr {
@@ -378,7 +386,7 @@ func TestSellItem_DatabaseErrors(t *testing.T) {
 			tt.setup(mockRepo, ctx)
 
 			// ACT
-			_, _, err := service.SellItem(ctx, "testuser", "twitch", "Sword", 1)
+			_, _, err := service.SellItem(ctx, "twitch", "", "testuser", "Sword", 1)
 
 			// ASSERT
 			if tt.expectErr {
@@ -465,7 +473,7 @@ func TestBuyItem_Success(t *testing.T) {
 	mockRepo.On("UpdateInventory", ctx, user.ID, mock.Anything).Return(nil)
 
 	// ACT
-	purchased, err := service.BuyItem(ctx, "testuser", "twitch", "Sword", 3)
+	purchased, err := service.BuyItem(ctx, "twitch", "", "testuser", "Sword", 3)
 
 	// ASSERT
 	require.NoError(t, err)
@@ -574,7 +582,7 @@ func TestBuyItem_MoneyBoundaries(t *testing.T) {
 			mockRepo.On("UpdateInventory", ctx, user.ID, mock.Anything).Return(nil).Maybe()
 
 			// ACT
-			purchased, err := service.BuyItem(ctx, "testuser", "twitch", "Sword", tt.quantityWanted)
+			purchased, err := service.BuyItem(ctx, "twitch", "", "testuser", "Sword", tt.quantityWanted)
 
 			// ASSERT
 			if tt.expectErr {
@@ -627,7 +635,7 @@ func TestBuyItem_QuantityBoundaries(t *testing.T) {
 			mockRepo.On("UpdateInventory", ctx, user.ID, mock.Anything).Return(nil)
 
 			// ACT
-			purchased, err := service.BuyItem(ctx, "testuser", "twitch", "Sword", tt.quantity)
+			purchased, err := service.BuyItem(ctx, "twitch", "", "testuser", "Sword", tt.quantity)
 
 			// ASSERT
 			if tt.expectErr {
@@ -693,7 +701,7 @@ func TestBuyItem_InvalidInputs(t *testing.T) {
 			tt.setup(mockRepo, ctx)
 
 			// ACT
-			_, err := service.BuyItem(ctx, "testuser", "twitch", "Sword", 1)
+			_, err := service.BuyItem(ctx, "twitch", "", "testuser", "Sword", 1)
 
 			// ASSERT
 			if tt.expectErr {
@@ -746,7 +754,7 @@ func TestBuyItem_DatabaseErrors(t *testing.T) {
 			tt.setup(mockRepo, ctx)
 
 			// ACT
-			_, err := service.BuyItem(ctx, "testuser", "twitch", "Sword", 1)
+			_, err := service.BuyItem(ctx, "twitch", "", "testuser", "Sword", 1)
 
 			// ASSERT
 			if tt.expectErr {

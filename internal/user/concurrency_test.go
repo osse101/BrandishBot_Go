@@ -58,7 +58,7 @@ func TestConcurrency_AddItem(t *testing.T) {
 	for i := 0; i < concurrency; i++ {
 		go func() {
 			defer wg.Done()
-			err := svc.AddItem(ctx, username, "twitch", itemName, 1)
+			err := svc.AddItem(ctx, "twitch", "test-platform-id", username, itemName, 1)
 			if err != nil {
 				t.Errorf("AddItem failed: %v", err)
 			}

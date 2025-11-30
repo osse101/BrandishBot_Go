@@ -42,10 +42,10 @@ func TestHandleBlaster_Timeout(t *testing.T) {
 	ctx := context.Background()
 
 	// Setup: Give alice a blaster
-	svc.AddItem(ctx, "alice", "twitch", "blaster", 1)
+	svc.AddItem(ctx, "twitch", "", "alice", "blaster", 1)
 
 	// Use blaster on bob
-	msg, err := svc.UseItem(ctx, "alice", "twitch", "blaster", 1, "bob")
+	msg, err := svc.UseItem(ctx, "twitch", "", "alice", "blaster", 1, "bob")
 	if err != nil {
 		t.Fatalf("UseItem failed: %v", err)
 	}

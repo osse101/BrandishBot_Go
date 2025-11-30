@@ -158,7 +158,7 @@ func TestHandleSearch_Success(t *testing.T) {
 	repo.users[TestUsername] = user
 
 	// ACT
-	message, err := svc.HandleSearch(context.Background(), TestUsername, "twitch")
+	message, err := svc.HandleSearch(context.Background(), "twitch", "", TestUsername)
 
 	// ASSERT
 	require.NoError(t, err)
@@ -210,7 +210,7 @@ func TestHandleSearch_CooldownBoundaries(t *testing.T) {
 			}
 
 			// ACT
-			message, err := svc.HandleSearch(context.Background(), TestUsername, "twitch")
+			message, err := svc.HandleSearch(context.Background(), "twitch", "", TestUsername)
 
 			// ASSERT
 			require.NoError(t, err)
@@ -232,7 +232,7 @@ func TestHandleSearch_NewUserCreation(t *testing.T) {
 	svc, repo := createSearchTestService()
 	
 	// ACT - Search with non-existent user
-	message, err := svc.HandleSearch(context.Background(), "newuser", "twitch")
+	message, err := svc.HandleSearch(context.Background(), "twitch", "", "newuser")
 
 	// ASSERT
 	require.NoError(t, err)
@@ -308,7 +308,7 @@ func TestHandleSearch_InvalidInputs(t *testing.T) {
 			tt.setup(repo)
 
 			// ACT
-			_, err := svc.HandleSearch(context.Background(), tt.username, tt.platform)
+			_, err := svc.HandleSearch(context.Background(), tt.platform, "", tt.username)
 
 			// ASSERT
 			if tt.wantErr {
@@ -329,7 +329,7 @@ func TestHandleSearch_DatabaseErrors(t *testing.T) {
 		repo.shouldFailGet = true
 
 		// ACT
-		_, err := svc.HandleSearch(context.Background(), TestUsername, "twitch")
+		_, err := svc.HandleSearch(context.Background(), "twitch", "", TestUsername)
 
 		// ASSERT
 		assert.Error(t, err)
@@ -355,7 +355,7 @@ func TestHandleSearch_CooldownUpdate(t *testing.T) {
 		}
 
 		// ACT
-		_, err := svc.HandleSearch(context.Background(), TestUsername, "twitch")
+		_, err := svc.HandleSearch(context.Background(), "twitch", "", TestUsername)
 
 		// ASSERT
 		require.NoError(t, err)
@@ -380,7 +380,7 @@ func TestHandleSearch_CooldownUpdate(t *testing.T) {
 		}
 
 		// ACT
-		message, err := svc.HandleSearch(context.Background(), TestUsername, "twitch")
+		message, err := svc.HandleSearch(context.Background(), "twitch", "", TestUsername)
 
 		// ASSERT
 		require.NoError(t, err)
@@ -402,7 +402,7 @@ func TestHandleSearch_MultipleSearches(t *testing.T) {
 		repo.users[TestUsername] = user
 
 		// ACT - First search
-		_, err1 := svc.HandleSearch(context.Background(), TestUsername, "twitch")
+		_, err1 := svc.HandleSearch(context.Background(), "twitch", "", TestUsername)
 		require.NoError(t, err1)
 
 		// Manually expire cooldown
@@ -410,7 +410,7 @@ func TestHandleSearch_MultipleSearches(t *testing.T) {
 		repo.cooldowns[user.ID][domain.ActionSearch] = &expiredTime
 
 		// Second search after expiry
-		_, err2 := svc.HandleSearch(context.Background(), TestUsername, "twitch")
+		_, err2 := svc.HandleSearch(context.Background(), "twitch", "", TestUsername)
 
 		// ASSERT
 		require.NoError(t, err2, "Should be able to search again after cooldown expires")
