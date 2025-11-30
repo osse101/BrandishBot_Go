@@ -40,42 +40,31 @@ func TestWithUserID_GetUserID(t *testing.T) {
 	})
 
 	t.Run("preserves other context values", func(t *testing.T) {
-		ctx := context.WithValue(context.Background(), "other-key", "other-value")
+		type testKey string
+		otherKey := testKey("other-key")
+		ctx := context.WithValue(context.Background(), otherKey, "other-value")
 
 		newCtx := WithUserID(ctx, "user-123")
 
 		// Both values should exist
 		assert.Equal(t, "user-123", GetUserID(newCtx))
-		assert.Equal(t, "other-value", newCtx.Value("other-key"))
+		assert.Equal(t, "other-value", newCtx.Value(otherKey))
 	})
 }
 
 // TestExtractUserID tests user ID extraction from requests
 func TestExtractUserID(t *testing.T) {
-	t.Run("extracts from context using string key", func(t *testing.T) {
-		// Note: extractUserID uses string literal "user_id" not UserIDKey
+	t.Run("extracts from context using typed key", func(t *testing.T) {
+		// This test ensures extractUserID can correctly retrieve a user ID
+		// when it's stored in the context using the UserIDKey constant.
 		req := httptest.NewRequest("GET", "/test", nil)
-		ctx := context.WithValue(req.Context(), "user_id", "context-user")
+		ctx := WithUserID(req.Context(), "context-user") // Use WithUserID to set with typed key
 		req = req.WithContext(ctx)
 
 		userID := extractUserID(req)
 
 		assert.Equal(t, "context-user", userID,
-			"extractUserID should work with raw string key for backward compatibility")
-	})
-
-	t.Run("does not extract from UserIDKey constant", func(t *testing.T) {
-		// This documents current behavior - extractUserID uses string, not constant
-		req := httptest.NewRequest("GET", "/test", nil)
-		ctx := WithUserID(req.Context(), "context-user")
-		req = req.WithContext(ctx)
-
-		userID := extractUserID(req)
-
-		// Current implementation won't find it because it uses string literal
-		// This test documents the inconsistency
-		assert.Equal(t, "", userID,
-			"extractUserID doesn't use UserIDKey constant - potential bug")
+			"extractUserID should correctly retrieve user ID set with UserIDKey")
 	})
 
 	t.Run("extracts from query parameter", func(t *testing.T) {
@@ -108,11 +97,11 @@ func TestExtractUserID(t *testing.T) {
 func TestUserIDKey(t *testing.T) {
 	t.Run("context keys are distinct", func(t *testing.T) {
 		ctx := context.Background()
-		
+
 		// Set both keys
 		ctx = WithUserID(ctx, "test-user")
 		ctx = context.WithValue(ctx, EngagementMetricKey, "test-metric")
-		
+
 		// Verify both exist and are independent
 		assert.Equal(t, "test-user", GetUserID(ctx))
 		assert.Equal(t, "test-metric", ctx.Value(EngagementMetricKey))
@@ -121,7 +110,7 @@ func TestUserIDKey(t *testing.T) {
 	t.Run("setting same key overwrites previous value", func(t *testing.T) {
 		ctx := WithUserID(context.Background(), "first-user")
 		ctx = WithUserID(ctx, "second-user")
-		
+
 		assert.Equal(t, "second-user", GetUserID(ctx))
 	})
 }

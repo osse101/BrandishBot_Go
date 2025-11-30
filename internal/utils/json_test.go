@@ -15,7 +15,7 @@ func TestLoadJSON(t *testing.T) {
 		// Create a temp file with valid JSON
 		tmpDir := t.TempDir()
 		jsonFile := filepath.Join(tmpDir, "test.json")
-		
+
 		content := `{"name": "test", "value": 42}`
 		err := os.WriteFile(jsonFile, []byte(content), 0600)
 		require.NoError(t, err)
@@ -25,9 +25,9 @@ func TestLoadJSON(t *testing.T) {
 			Name  string `json:"name"`
 			Value int    `json:"value"`
 		}
-		
+
 		err = LoadJSON(jsonFile, &result)
-		
+
 		// Verify
 		assert.NoError(t, err)
 		assert.Equal(t, "test", result.Name)
@@ -37,7 +37,7 @@ func TestLoadJSON(t *testing.T) {
 	t.Run("returns error for non-existent file", func(t *testing.T) {
 		var result map[string]interface{}
 		err := LoadJSON("/nonexistent/path/file.json", &result)
-		
+
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to read file")
 	})
@@ -45,14 +45,14 @@ func TestLoadJSON(t *testing.T) {
 	t.Run("returns error for invalid JSON", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		jsonFile := filepath.Join(tmpDir, "invalid.json")
-		
+
 		// Write invalid JSON
 		err := os.WriteFile(jsonFile, []byte("{invalid json}"), 0600)
 		require.NoError(t, err)
 
 		var result map[string]interface{}
 		err = LoadJSON(jsonFile, &result)
-		
+
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to unmarshal JSON")
 	})
@@ -60,13 +60,13 @@ func TestLoadJSON(t *testing.T) {
 	t.Run("handles empty JSON object", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		jsonFile := filepath.Join(tmpDir, "empty.json")
-		
+
 		err := os.WriteFile(jsonFile, []byte("{}"), 0600)
 		require.NoError(t, err)
 
 		var result map[string]interface{}
 		err = LoadJSON(jsonFile, &result)
-		
+
 		assert.NoError(t, err)
 		assert.Empty(t, result)
 	})
@@ -90,12 +90,12 @@ func TestSaveJSON(t *testing.T) {
 		// Verify file exists and has content
 		content, err := os.ReadFile(jsonFile)
 		require.NoError(t, err)
-		
+
 		// Should be indented (has newlines)
 		assert.Contains(t, string(content), "\n")
 		assert.Contains(t, string(content), "\"name\"")
 		assert.Contains(t, string(content), "\"test\"")
-		
+
 		// Verify file permissions
 		info, err := os.Stat(jsonFile)
 		require.NoError(t, err)
@@ -105,7 +105,7 @@ func TestSaveJSON(t *testing.T) {
 	t.Run("returns error for invalid path", func(t *testing.T) {
 		data := map[string]string{"key": "value"}
 		err := SaveJSON("/invalid/path/to/file.json", data)
-		
+
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to write file")
 	})
@@ -120,7 +120,7 @@ func TestSaveJSON(t *testing.T) {
 		}
 
 		err := SaveJSON(jsonFile, data)
-		
+
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to marshal data")
 	})

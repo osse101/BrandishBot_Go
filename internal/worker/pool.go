@@ -14,7 +14,7 @@ type Job interface {
 
 // Pool represents a worker pool
 type Pool struct {
-	workers int
+	workers  int
 	jobQueue chan Job
 	wg       sync.WaitGroup
 	quit     chan struct{}

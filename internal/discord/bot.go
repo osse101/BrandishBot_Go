@@ -12,7 +12,7 @@ import (
 
 // Bot represents the Discord bot
 type Bot struct {
-	Session *discordgo.Session
+	Session  *discordgo.Session
 	Client   *APIClient
 	AppID    string
 	Registry *CommandRegistry

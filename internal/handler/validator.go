@@ -17,10 +17,10 @@ var validate *Validator
 // InitValidator initializes the global validator
 func InitValidator() {
 	v := validator.New()
-	
+
 	// Register custom validation for platform
 	_ = v.RegisterValidation("platform", validatePlatform)
-	
+
 	validate = &Validator{validate: v}
 }
 

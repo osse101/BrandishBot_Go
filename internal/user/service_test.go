@@ -90,8 +90,6 @@ func (m *MockRepository) GetItemByID(ctx context.Context, id int) (*domain.Item,
 	return nil, nil
 }
 
-
-
 func (m *MockRepository) GetSellablePrices(ctx context.Context) ([]domain.Item, error) {
 	var items []domain.Item
 	for _, item := range m.items {

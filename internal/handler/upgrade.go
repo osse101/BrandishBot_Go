@@ -12,11 +12,11 @@ import (
 )
 
 type UpgradeItemRequest struct {
-	Platform string `json:"platform" validate:"required,platform"`
+	Platform   string `json:"platform" validate:"required,platform"`
 	PlatformID string `json:"platform_id" validate:"required"`
-	Username string `json:"username" validate:"required,max=100,excludesall=\x00\n\r\t"`
-	Item     string `json:"item" validate:"required,max=100"`
-	Quantity int    `json:"quantity" validate:"min=1,max=10000"`
+	Username   string `json:"username" validate:"required,max=100,excludesall=\x00\n\r\t"`
+	Item       string `json:"item" validate:"required,max=100"`
+	Quantity   int    `json:"quantity" validate:"min=1,max=10000"`
 }
 
 type UpgradeItemResponse struct {
@@ -100,10 +100,10 @@ func HandleUpgradeItem(svc crafting.Service, progressionSvc progression.Service,
 		if err := eventBus.Publish(r.Context(), event.Event{
 			Type: "item.upgraded",
 			Payload: map[string]interface{}{
-				"user_id":            req.Username,
-				"source_item":        req.Item,
-				"result_item":        newItem,
-				"quantity_upgraded":  quantityUpgraded,
+				"user_id":           req.Username,
+				"source_item":       req.Item,
+				"result_item":       newItem,
+				"quantity_upgraded": quantityUpgraded,
 			},
 		}); err != nil {
 			log.Error("Failed to publish item.upgraded event", "error", err)
@@ -171,7 +171,7 @@ func HandleGetRecipes(svc crafting.Service) http.HandlerFunc {
 		if itemName != "" {
 			platform := r.URL.Query().Get("platform")
 			platformID := r.URL.Query().Get("platform_id")
-			
+
 			recipe, err := svc.GetRecipe(r.Context(), itemName, platform, platformID, username)
 			if err != nil {
 				log.Error("Failed to get recipe", "error", err, "item", itemName)

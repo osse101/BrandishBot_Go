@@ -35,7 +35,7 @@ func TestHandleRegisterUser(t *testing.T) {
 			setupMock: func(m *MockUserService) {
 				// FindUserByPlatformID returns error -> user not found
 				m.On("FindUserByPlatformID", mock.Anything, "twitch", "12345").Return(nil, errors.New("not found"))
-				
+
 				// Expect RegisterUser with new user data
 				m.On("RegisterUser", mock.Anything, mock.MatchedBy(func(u domain.User) bool {
 					return u.Username == "newuser" && u.TwitchID == "12345" && u.DiscordID == "67890"
@@ -57,7 +57,7 @@ func TestHandleRegisterUser(t *testing.T) {
 				// FindUserByPlatformID returns existing user
 				existingUser := &domain.User{ID: "existing-id", Username: "existinguser", TwitchID: "12345"}
 				m.On("FindUserByPlatformID", mock.Anything, "twitch", "12345").Return(existingUser, nil)
-				
+
 				// Expect RegisterUser with updated user data
 				m.On("RegisterUser", mock.Anything, mock.MatchedBy(func(u domain.User) bool {
 					return u.ID == "existing-id" && u.TwitchID == "12345" && u.DiscordID == "67890"

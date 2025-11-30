@@ -30,7 +30,7 @@ func TestLoad(t *testing.T) {
 
 	t.Run("loads config from environment variables", func(t *testing.T) {
 		clearEnvVars(t)
-		
+
 		// Set custom values
 		t.Setenv("PORT", "3000")
 		t.Setenv("API_KEY", "custom-api-key")
@@ -196,7 +196,7 @@ func TestConfig_RealWorldScenarios(t *testing.T) {
 		t.Setenv("API_KEY", "dev-api-key-12345")
 		t.Setenv("ENVIRONMENT", "dev")
 		t.Setenv("LOG_LEVEL", "debug")
-		
+
 		cfg, err := Load()
 
 		require.NoError(t, err)
@@ -226,7 +226,7 @@ func TestConfig_RealWorldScenarios(t *testing.T) {
 	t.Run("docker compose environment", func(t *testing.T) {
 		clearEnvVars(t)
 		t.Setenv("API_KEY", "docker-key")
-		t.Setenv("DB_HOST", "db")  // Docker service name
+		t.Setenv("DB_HOST", "db") // Docker service name
 		t.Setenv("DB_USER", "postgres")
 		t.Setenv("DB_PASSWORD", "postgres")
 
@@ -241,14 +241,14 @@ func TestConfig_RealWorldScenarios(t *testing.T) {
 // Helper function to clear environment variables
 func clearEnvVars(t *testing.T) {
 	t.Helper()
-	
+
 	// Clear all config-related env vars to ensure clean test state
 	envVars := []string{
 		"PORT", "API_KEY", "LOG_LEVEL", "LOG_FORMAT", "LOG_DIR",
 		"SERVICE_NAME", "VERSION", "ENVIRONMENT",
 		"DB_USER", "DB_PASSWORD", "DB_HOST", "DB_PORT", "DB_NAME",
 	}
-	
+
 	for _, key := range envVars {
 		os.Unsetenv(key)
 	}

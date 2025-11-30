@@ -284,8 +284,6 @@ func TestSellItem_InvalidInputs(t *testing.T) {
 	}
 }
 
-
-
 // Quantity Boundary Tests - Critical for validating input constraints
 func TestSellItem_QuantityBoundaries(t *testing.T) {
 	tests := []struct {
@@ -529,7 +527,7 @@ func TestBuyItem_MoneyBoundaries(t *testing.T) {
 			expectErr:      false,
 			description:    "Should buy only what can be afforded",
 		},
-		
+
 		// Upper boundaries
 		{
 			name:           "exact money for all",
@@ -549,7 +547,7 @@ func TestBuyItem_MoneyBoundaries(t *testing.T) {
 			expectErr:      false,
 			description:    "Buying all requested with extra funds should succeed",
 		},
-		
+
 		// Partial purchase
 		{
 			name:           "can afford half",

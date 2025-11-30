@@ -34,8 +34,6 @@ func NewMockRepository() *MockRepository {
 	}
 }
 
-
-
 func (m *MockRepository) GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error) {
 	for _, user := range m.users {
 		switch platform {

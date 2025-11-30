@@ -48,7 +48,7 @@ func (s *service) GetSellablePrices(ctx context.Context) ([]domain.Item, error) 
 
 func (s *service) SellItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (int, int, error) {
 	log := logger.FromContext(ctx)
-	log.Info("SellItem called", "platform", platform, "platformID", platformID, "username",username, "item", itemName, "quantity", quantity)
+	log.Info("SellItem called", "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity)
 
 	if quantity <= 0 {
 		return 0, 0, fmt.Errorf("invalid quantity: %d", quantity)
@@ -139,7 +139,6 @@ func (s *service) BuyItem(ctx context.Context, platform, platformID, username, i
 		return 0, fmt.Errorf("quantity %d exceeds maximum %d", quantity, domain.MaxTransactionQuantity)
 	}
 
-
 	user, err := s.repo.GetUserByPlatformID(ctx, platform, platformID)
 	if err != nil {
 		log.Error("Failed to get user", "error", err, "platform", platform, "platformID", platformID)
@@ -201,7 +200,7 @@ func (s *service) BuyItem(ctx context.Context, platform, platformID, username, i
 		log.Warn("Insufficient funds for any quantity", "username", username, "item", itemName)
 		return 0, fmt.Errorf("insufficient funds to buy even one %s (cost: %d, balance: %d)", itemName, item.BaseValue, moneyBalance)
 	}
-	
+
 	if quantity > actualQuantity {
 		log.Info("Adjusted purchase quantity due to funds", "requested", quantity, "actual", actualQuantity)
 	}

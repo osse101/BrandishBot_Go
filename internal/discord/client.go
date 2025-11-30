@@ -60,9 +60,9 @@ func (c *APIClient) doRequest(method, path string, body interface{}) (*http.Resp
 func (c *APIClient) RegisterUser(username, discordID string) (*domain.User, error) {
 	req := map[string]string{
 		"username":          username,
-		"known_platform":    "discord",
+		"known_platform":    domain.PlatformDiscord,
 		"known_platform_id": discordID,
-		"new_platform":      "discord",
+		"new_platform":      domain.PlatformDiscord,
 		"new_platform_id":   discordID,
 	}
 
@@ -129,7 +129,7 @@ func (c *APIClient) Search(platform, platformID, username string) (string, error
 			Error string `json:"error"`
 		}
 		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
-			return "", fmt.Errorf(errResp.Error)
+			return "", fmt.Errorf("API error: %s", errResp.Error)
 		}
 		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
 	}

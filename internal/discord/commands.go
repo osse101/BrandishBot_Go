@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
 // CommandHandler handles a slash command
@@ -59,12 +60,14 @@ func PingCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	}
 
 	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
 				Content: "Pong! 🏓",
 			},
-		})
+		}); err != nil {
+			slog.Error("Failed to respond to ping", "error", err)
+		}
 	}
 
 	return cmd, handler
@@ -78,9 +81,12 @@ func ProfileCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	}
 
 	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-		})
+		}); err != nil {
+			slog.Error("Failed to send deferred response", "error", err)
+			return
+		}
 
 		user := i.Member.User
 		if user == nil {
@@ -90,18 +96,22 @@ func ProfileCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		domainUser, err := client.RegisterUser(user.Username, user.ID)
 		if err != nil {
 			slog.Error("Failed to register user", "error", err)
-			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 				Content: &[]string{"Failed to retrieve profile. Please try again later."}[0],
-			})
+			}); err != nil {
+				slog.Error("Failed to edit interaction response", "error", err)
+			}
 			return
 		}
 
 		stats, err := client.GetUserStats(domainUser.ID)
 		if err != nil {
 			slog.Error("Failed to get stats", "error", err)
-			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 				Content: &[]string{"Failed to retrieve stats."}[0],
-			})
+			}); err != nil {
+				slog.Error("Failed to edit interaction response", "error", err)
+			}
 			return
 		}
 
@@ -129,9 +139,11 @@ func ProfileCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			},
 		}
 
-		s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 			Embeds: &[]*discordgo.MessageEmbed{embed},
-		})
+		}); err != nil {
+			slog.Error("Failed to send profile embed", "error", err)
+		}
 	}
 
 	return cmd, handler
@@ -145,9 +157,12 @@ func SearchCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	}
 
 	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-		})
+		}); err != nil {
+			slog.Error("Failed to send deferred response", "error", err)
+			return
+		}
 
 		user := i.Member.User
 		if user == nil {
@@ -158,19 +173,23 @@ func SearchCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		_, err := client.RegisterUser(user.Username, user.ID)
 		if err != nil {
 			slog.Error("Failed to register user", "error", err)
-			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 				Content: &[]string{"Error connecting to game server."}[0],
-			})
+			}); err != nil {
+				slog.Error("Failed to edit interaction response", "error", err)
+			}
 			return
 		}
 
-		msg, err := client.Search("discord", user.ID, user.Username)
+		msg, err := client.Search(domain.PlatformDiscord, user.ID, user.Username)
 		if err != nil {
 			slog.Error("Failed to search", "error", err)
 			errorMsg := fmt.Sprintf("Search failed: %v", err)
-			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 				Content: &errorMsg,
-			})
+			}); err != nil {
+				slog.Error("Failed to edit interaction response", "error", err)
+			}
 			return
 		}
 
@@ -183,9 +202,11 @@ func SearchCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			},
 		}
 
-		s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 			Embeds: &[]*discordgo.MessageEmbed{embed},
-		})
+		}); err != nil {
+			slog.Error("Failed to send search results", "error", err)
+		}
 	}
 
 	return cmd, handler
@@ -199,9 +220,12 @@ func InventoryCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	}
 
 	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-		})
+		}); err != nil {
+			slog.Error("Failed to send deferred response", "error", err)
+			return
+		}
 
 		user := i.Member.User
 		if user == nil {
@@ -212,18 +236,22 @@ func InventoryCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		_, err := client.RegisterUser(user.Username, user.ID)
 		if err != nil {
 			slog.Error("Failed to register user", "error", err)
-			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 				Content: &[]string{"Error connecting to game server."}[0],
-			})
+			}); err != nil {
+				slog.Error("Failed to edit interaction response", "error", err)
+			}
 			return
 		}
 
-		items, err := client.GetInventory("discord", user.ID, user.Username)
+		items, err := client.GetInventory(domain.PlatformDiscord, user.ID, user.Username)
 		if err != nil {
 			slog.Error("Failed to get inventory", "error", err)
-			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 				Content: &[]string{"Failed to retrieve inventory."}[0],
-			})
+			}); err != nil {
+				slog.Error("Failed to edit interaction response", "error", err)
+			}
 			return
 		}
 
@@ -247,9 +275,11 @@ func InventoryCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			},
 		}
 
-		s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 			Embeds: &[]*discordgo.MessageEmbed{embed},
-		})
+		}); err != nil {
+			slog.Error("Failed to send inventory embed", "error", err)
+		}
 	}
 
 	return cmd, handler

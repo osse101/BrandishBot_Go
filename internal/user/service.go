@@ -17,9 +17,9 @@ import (
 
 // validPlatforms defines the supported platform values
 var validPlatforms = map[string]bool{
-	"twitch":  true,
-	"youtube": true,
-	"discord": true,
+	domain.PlatformTwitch:  true,
+	domain.PlatformYoutube: true,
+	domain.PlatformDiscord: true,
 }
 
 // Repository defines the interface for user persistence
@@ -80,11 +80,11 @@ type service struct {
 // setPlatformID sets the appropriate platform-specific ID field on a user
 func setPlatformID(user *domain.User, platform, platformID string) {
 	switch platform {
-	case "twitch":
+	case domain.PlatformTwitch:
 		user.TwitchID = platformID
-	case "youtube":
+	case domain.PlatformYoutube:
 		user.YoutubeID = platformID
-	case "discord":
+	case domain.PlatformDiscord:
 		user.DiscordID = platformID
 	}
 }
@@ -190,7 +190,7 @@ func (s *service) HandleIncomingMessage(ctx context.Context, platform, platformI
 func (s *service) AddItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) error {
 	log := logger.FromContext(ctx)
 	log.Info("AddItem called", "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity)
-	
+
 	user, err := s.getUserOrRegister(ctx, platform, platformID, username)
 	if err != nil {
 		return err
@@ -236,7 +236,7 @@ func (s *service) AddItem(ctx context.Context, platform, platformID, username, i
 func (s *service) RemoveItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (int, error) {
 	log := logger.FromContext(ctx)
 	log.Info("RemoveItem called", "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity)
-	
+
 	user, err := s.getUserOrRegister(ctx, platform, platformID, username)
 	if err != nil {
 		return 0, err
@@ -290,7 +290,7 @@ func (s *service) RemoveItem(ctx context.Context, platform, platformID, username
 
 func (s *service) GiveItem(ctx context.Context, ownerPlatform, ownerPlatformID, ownerUsername, receiverPlatform, receiverPlatformID, receiverUsername, itemName string, quantity int) error {
 	log := logger.FromContext(ctx)
-	log.Info("GiveItem called", 
+	log.Info("GiveItem called",
 		"ownerPlatform", ownerPlatform, "ownerPlatformID", ownerPlatformID, "ownerUsername", ownerUsername,
 		"receiverPlatform", receiverPlatform, "receiverPlatformID", receiverPlatformID, "receiverUsername", receiverUsername,
 		"item", itemName, "quantity", quantity)
@@ -403,7 +403,7 @@ func (s *service) executeGiveItemTx(ctx context.Context, owner, receiver *domain
 func (s *service) UseItem(ctx context.Context, platform, platformID, username, itemName string, quantity int, targetUsername string) (string, error) {
 	log := logger.FromContext(ctx)
 	log.Info("UseItem called", "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity, "target", targetUsername)
-	
+
 	user, err := s.getUserOrRegister(ctx, platform, platformID, username)
 	if err != nil {
 		return "", err
@@ -459,7 +459,7 @@ func (s *service) UseItem(ctx context.Context, platform, platformID, username, i
 func (s *service) GetInventory(ctx context.Context, platform, platformID, username string) ([]UserInventoryItem, error) {
 	log := logger.FromContext(ctx)
 	log.Info("GetInventory called", "platform", platform, "platformID", platformID, "username", username)
-	
+
 	user, err := s.getUserOrRegister(ctx, platform, platformID, username)
 	if err != nil {
 		return nil, err
@@ -517,8 +517,6 @@ func (s *service) TimeoutUser(ctx context.Context, username string, duration tim
 
 // Helper methods
 
-
-
 func (s *service) validateItem(ctx context.Context, itemName string) (*domain.Item, error) {
 	item, err := s.repo.GetItemByName(ctx, itemName)
 	if err != nil {
@@ -542,10 +540,10 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 
 	if platform == "" {
 		// Default to twitch for backwards compatibility
-		platform = "twitch"
+		platform = domain.PlatformTwitch
 		log.Info("Platform not specified, defaulting to twitch", "username", username)
 	} else if !validPlatforms[platform] {
-		return "", fmt.Errorf("invalid platform '%s': must be one of: twitch, youtube, discord", platform)
+		return "", fmt.Errorf("invalid platform '%s': must be one of: %s, %s, %s", platform, domain.PlatformTwitch, domain.PlatformYoutube, domain.PlatformDiscord)
 	}
 
 	// Get or create user
@@ -632,30 +630,30 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 // getUserOrRegister gets a user by platform ID, or auto-registers them if not found
 func (s *service) getUserOrRegister(ctx context.Context, platform, platformID, username string) (*domain.User, error) {
 	log := logger.FromContext(ctx)
-	
+
 	// Try to find existing user by platform ID
 	user, err := s.repo.GetUserByPlatformID(ctx, platform, platformID)
 	if err != nil && !errors.Is(err, domain.ErrUserNotFound) {
 		log.Error("Failed to get user by platform ID", "error", err, "platform", platform, "platformID", platformID)
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
-	
+
 	if user != nil {
 		log.Debug("Found existing user", "userID", user.ID, "platform", platform)
 		return user, nil
 	}
-	
+
 	// User not found, auto-register
 	log.Info("Auto-registering new user", "platform", platform, "platformID", platformID, "username", username)
 	newUser := domain.User{Username: username}
 	setPlatformID(&newUser, platform, platformID)
-	
+
 	registered, err := s.RegisterUser(ctx, newUser)
 	if err != nil {
 		log.Error("Failed to auto-register user", "error", err)
 		return nil, fmt.Errorf("failed to register user: %w", err)
 	}
-	
+
 	log.Info("User auto-registered", "userID", registered.ID)
 	return &registered, nil
 }

@@ -12,11 +12,11 @@ import (
 )
 
 type DisassembleItemRequest struct {
-	Platform string `json:"platform" validate:"required,platform"`
+	Platform   string `json:"platform" validate:"required,platform"`
 	PlatformID string `json:"platform_id" validate:"required"`
-	Username string `json:"username" validate:"required,max=100,excludesall=\x00\n\r\t"`
-	Item     string `json:"item" validate:"required,max=100"`
-	Quantity int    `json:"quantity" validate:"min=1,max=10000"`
+	Username   string `json:"username" validate:"required,max=100,excludesall=\x00\n\r\t"`
+	Item       string `json:"item" validate:"required,max=100"`
+	Quantity   int    `json:"quantity" validate:"min=1,max=10000"`
 }
 
 type DisassembleItemResponse struct {
@@ -101,10 +101,10 @@ func HandleDisassembleItem(svc crafting.Service, progressionSvc progression.Serv
 		if err := eventBus.Publish(r.Context(), event.Event{
 			Type: "item.disassembled",
 			Payload: map[string]interface{}{
-				"user_id":             req.Username,
-				"item":                req.Item,
-				"quantity_processed":  quantityProcessed,
-				"materials_gained":    outputs,
+				"user_id":            req.Username,
+				"item":               req.Item,
+				"quantity_processed": quantityProcessed,
+				"materials_gained":   outputs,
 			},
 		}); err != nil {
 			log.Error("Failed to publish item.disassembled event", "error", err)

@@ -63,7 +63,7 @@ func TestDiminishingReturns(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := DiminishingReturns(tt.value, tt.scale)
 			assert.InDelta(t, tt.expected, result, 0.0001, tt.desc)
-			
+
 			// All results should be between 0 and 1
 			assert.GreaterOrEqual(t, result, 0.0, "Result should never be negative")
 			assert.LessOrEqual(t, result, 1.0, "Result should never exceed 1")
@@ -77,7 +77,7 @@ func TestDiminishingReturns_Properties(t *testing.T) {
 		// Increasing input should always increase output
 		scale := 100.0
 		prev := DiminishingReturns(0, scale)
-		
+
 		for value := 10.0; value <= 1000; value += 10 {
 			current := DiminishingReturns(value, scale)
 			assert.Greater(t, current, prev,
@@ -110,15 +110,15 @@ func TestDiminishingReturns_Properties(t *testing.T) {
 
 	t.Run("asymptotic behavior toward 1", func(t *testing.T) {
 		scale := 10.0
-		
+
 		// As value increases, should get closer to 1
 		result100 := DiminishingReturns(100, scale)
 		result1000 := DiminishingReturns(1000, scale)
 		result10000 := DiminishingReturns(10000, scale)
-		
+
 		assert.Greater(t, result1000, result100)
 		assert.Greater(t, result10000, result1000)
-		
+
 		// Very large values should be very close to 1
 		assert.Greater(t, result10000, 0.99)
 	})
@@ -128,7 +128,7 @@ func TestDiminishingReturns_Properties(t *testing.T) {
 func TestRandomInt(t *testing.T) {
 	t.Run("returns value within range", func(t *testing.T) {
 		min, max := 1, 10
-		
+
 		// Test multiple times to catch probabilistic issues
 		for i := 0; i < 100; i++ {
 			result := RandomInt(min, max)
@@ -155,7 +155,7 @@ func TestRandomInt(t *testing.T) {
 
 	t.Run("handles negative ranges", func(t *testing.T) {
 		min, max := -10, -1
-		
+
 		for i := 0; i < 50; i++ {
 			result := RandomInt(min, max)
 			assert.GreaterOrEqual(t, result, min)
@@ -167,12 +167,12 @@ func TestRandomInt(t *testing.T) {
 		// With a range of 1-100, we should see variety
 		// (this could theoretically fail, but probability is extremely low)
 		results := make(map[int]bool)
-		
+
 		for i := 0; i < 100; i++ {
 			result := RandomInt(1, 100)
 			results[result] = true
 		}
-		
+
 		// We should have gotten at least 10 different values
 		assert.GreaterOrEqual(t, len(results), 10,
 			"Should produce varied results, not same value repeatedly")
@@ -194,14 +194,14 @@ func TestRandomFloat(t *testing.T) {
 	t.Run("produces varied results", func(t *testing.T) {
 		results := make([]float64, 100)
 		allSame := true
-		
+
 		for i := 0; i < 100; i++ {
 			results[i] = RandomFloat()
 			if i > 0 && results[i] != results[0] {
 				allSame = false
 			}
 		}
-		
+
 		assert.False(t, allSame,
 			"Should produce different values, not all identical")
 	})

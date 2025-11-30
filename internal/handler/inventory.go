@@ -126,14 +126,14 @@ func HandleRemoveItem(svc user.Service) http.HandlerFunc {
 }
 
 type GiveItemRequest struct {
-	OwnerPlatform     string `json:"owner_platform" validate:"required,platform"`
-	OwnerPlatformID   string `json:"owner_platform_id" validate:"required"`
-	Owner             string `json:"owner" validate:"required,max=100,excludesall=\x00\n\r\t"`
-	ReceiverPlatform  string `json:"receiver_platform" validate:"required,platform"`
+	OwnerPlatform      string `json:"owner_platform" validate:"required,platform"`
+	OwnerPlatformID    string `json:"owner_platform_id" validate:"required"`
+	Owner              string `json:"owner" validate:"required,max=100,excludesall=\x00\n\r\t"`
+	ReceiverPlatform   string `json:"receiver_platform" validate:"required,platform"`
 	ReceiverPlatformID string `json:"receiver_platform_id" validate:"required"`
-	Receiver          string `json:"receiver" validate:"required,max=100,excludesall=\x00\n\r\t"`
-	ItemName          string `json:"item_name" validate:"required,max=100"`
-	Quantity          int    `json:"quantity" validate:"min=1,max=10000"`
+	Receiver           string `json:"receiver" validate:"required,max=100,excludesall=\x00\n\r\t"`
+	ItemName           string `json:"item_name" validate:"required,max=100"`
+	Quantity           int    `json:"quantity" validate:"min=1,max=10000"`
 }
 
 // HandleGiveItem handles transferring items between users
@@ -261,7 +261,7 @@ func HandleSellItem(svc economy.Service, progressionSvc progression.Service, eve
 				"user_id":      req.Username,
 				"item_name":    req.ItemName,
 				"quantity":     itemsSold,
-				"money_gained":  moneyGained,
+				"money_gained": moneyGained,
 			},
 		}); err != nil {
 			log.Error("Failed to publish item.sold event", "error", err)
@@ -363,12 +363,12 @@ func HandleBuyItem(svc economy.Service, progressionSvc progression.Service, even
 }
 
 type UseItemRequest struct {
-	Platform     string `json:"platform" validate:"required,platform"`
-	PlatformID   string `json:"platform_id" validate:"required"`
-	Username     string `json:"username" validate:"required,max=100,excludesall=\x00\n\r\t"`
-	ItemName     string `json:"item_name" validate:"required,max=100"`
-	Quantity     int    `json:"quantity" validate:"min=1,max=10000"`
-	TargetUser   string `json:"target_user,omitempty" validate:"omitempty,max=100,excludesall=\x00\n\r\t"`
+	Platform   string `json:"platform" validate:"required,platform"`
+	PlatformID string `json:"platform_id" validate:"required"`
+	Username   string `json:"username" validate:"required,max=100,excludesall=\x00\n\r\t"`
+	ItemName   string `json:"item_name" validate:"required,max=100"`
+	Quantity   int    `json:"quantity" validate:"min=1,max=10000"`
+	TargetUser string `json:"target_user,omitempty" validate:"omitempty,max=100,excludesall=\x00\n\r\t"`
 }
 
 type UseItemResponse struct {

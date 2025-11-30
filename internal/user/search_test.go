@@ -39,8 +39,6 @@ func newMockSearchRepo() *mockSearchRepo {
 	}
 }
 
-
-
 func (m *mockSearchRepo) UpsertUser(ctx context.Context, user *domain.User) error {
 	if m.shouldFailGet {
 		return domain.ErrUserNotFound
@@ -135,7 +133,7 @@ func createSearchTestService() (*service, *mockSearchRepo) {
 	repo := newMockSearchRepo()
 	lockManager := concurrency.NewLockManager()
 	svc := NewService(repo, lockManager).(*service)
-	
+
 	// Add standard test items
 	repo.items[domain.ItemLootbox0] = &domain.Item{
 		ID:          1,
@@ -143,7 +141,7 @@ func createSearchTestService() (*service, *mockSearchRepo) {
 		Description: "Basic Lootbox",
 		BaseValue:   10,
 	}
-	
+
 	return svc, repo
 }
 
@@ -172,11 +170,11 @@ func TestHandleSearch_Success(t *testing.T) {
 	// ASSERT
 	require.NoError(t, err)
 	// Should get either lootbox or nothing found
-	assert.True(t, 
-		message == "You have found 1x "+domain.ItemLootbox0 || 
-		message == domain.MsgSearchNothingFound,
+	assert.True(t,
+		message == "You have found 1x "+domain.ItemLootbox0 ||
+			message == domain.MsgSearchNothingFound,
 		"Expected valid search result, got: %s", message)
-	
+
 	// Verify cooldown was set
 	cooldown, err := repo.GetLastCooldown(context.Background(), user.ID, domain.ActionSearch)
 	require.NoError(t, err)
@@ -193,14 +191,14 @@ func TestHandleSearch_CooldownBoundaries(t *testing.T) {
 		// On boundary
 		{"exactly 30 minutes ago (on boundary)", SearchCooldownMinutes, false},
 		{"exactly 29 minutes ago (just inside)", SearchCooldownMinutes - 1, true},
-		
+
 		// Just outside
 		{"31 minutes ago (just expired)", SearchCooldownMinutes + 1, false},
-		
+
 		// Well beyond boundaries
 		{"5 minutes ago (well within)", 5, true},
 		{"60 minutes ago (well expired)", 60, false},
-		
+
 		// Edge: just happened
 		{"0 minutes ago (immediate)", 0, true},
 	}
@@ -223,7 +221,7 @@ func TestHandleSearch_CooldownBoundaries(t *testing.T) {
 
 			// ASSERT
 			require.NoError(t, err)
-			
+
 			if tt.expectCooldown {
 				assert.True(t, strings.HasPrefix(message, "You can search again in"),
 					"Expected cooldown message, got: %s", message)
@@ -239,26 +237,26 @@ func TestHandleSearch_CooldownBoundaries(t *testing.T) {
 func TestHandleSearch_NewUserCreation(t *testing.T) {
 	// ARRANGE
 	svc, repo := createSearchTestService()
-	
+
 	// ACT - Search with non-existent user
 	message, err := svc.HandleSearch(context.Background(), "twitch", "", "newuser")
 
 	// ASSERT
 	require.NoError(t, err)
-	
+
 	// Verify user was created
 	user, exists := repo.users["newuser"]
 	require.True(t, exists, "New user should be created")
 	assert.NotNil(t, user)
 	assert.Equal(t, "newuser", user.Username)
 	assert.NotEmpty(t, user.ID, "User should have ID assigned")
-	
+
 	// Verify search executed
-	assert.True(t, 
-		message == "You have found 1x "+domain.ItemLootbox0 || 
-		message == domain.MsgSearchNothingFound,
+	assert.True(t,
+		message == "You have found 1x "+domain.ItemLootbox0 ||
+			message == domain.MsgSearchNothingFound,
 		"Search should execute for new user")
-	
+
 	// Verify cooldown set for new user
 	cooldown, err := repo.GetLastCooldown(context.Background(), user.ID, domain.ActionSearch)
 	require.NoError(t, err)
@@ -359,7 +357,7 @@ func TestHandleSearch_CooldownUpdate(t *testing.T) {
 		svc, repo := createSearchTestService()
 		user := createTestUser(TestUsername, TestUserID)
 		repo.users[TestUsername] = user
-		
+
 		// Set old cooldown
 		oldTime := time.Now().Add(-2 * time.Hour)
 		repo.cooldowns[user.ID] = map[string]*time.Time{
@@ -371,11 +369,11 @@ func TestHandleSearch_CooldownUpdate(t *testing.T) {
 
 		// ASSERT
 		require.NoError(t, err)
-		
+
 		// Verify cooldown was updated
 		newCooldown, err := repo.GetLastCooldown(context.Background(), user.ID, domain.ActionSearch)
 		require.NoError(t, err)
-		assert.True(t, newCooldown.After(oldTime), 
+		assert.True(t, newCooldown.After(oldTime),
 			"Cooldown should be updated to more recent time")
 	})
 
@@ -384,7 +382,7 @@ func TestHandleSearch_CooldownUpdate(t *testing.T) {
 		svc, repo := createSearchTestService()
 		user := createTestUser(TestUsername, TestUserID)
 		repo.users[TestUsername] = user
-		
+
 		// Set recent cooldown
 		recentTime := time.Now().Add(-5 * time.Minute)
 		repo.cooldowns[user.ID] = map[string]*time.Time{
@@ -397,11 +395,11 @@ func TestHandleSearch_CooldownUpdate(t *testing.T) {
 		// ASSERT
 		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(message, "You can search again in"))
-		
+
 		// Verify cooldown was NOT updated
 		cooldown, err := repo.GetLastCooldown(context.Background(), user.ID, domain.ActionSearch)
 		require.NoError(t, err)
-		assert.Equal(t, recentTime.Unix(), cooldown.Unix(), 
+		assert.Equal(t, recentTime.Unix(), cooldown.Unix(),
 			"Cooldown should not change when user is still on cooldown")
 	})
 }

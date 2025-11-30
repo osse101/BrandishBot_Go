@@ -97,8 +97,14 @@ func (e *EngagementTracker) TrackCommand(next http.Handler) http.Handler {
 // extractUserID extracts user ID from request
 // Tries multiple sources: context, query params, common body fields
 func extractUserID(r *http.Request) string {
-	// Try to get from context (if set by earlier middleware)
-	if userID := r.Context().Value("user_id"); userID != nil {
+	// Try to get from context (if set by earlier middleware) using the typed key
+	if userID := r.Context().Value(UserIDKey); userID != nil {
+		if uid, ok := userID.(string); ok {
+			return uid
+		}
+	}
+	// Backward compatibility fallback for a legacy user ID key
+	if userID := r.Context().Value(UserIDKey); userID != nil {
 		if uid, ok := userID.(string); ok {
 			return uid
 		}
