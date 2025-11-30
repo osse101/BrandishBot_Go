@@ -23,6 +23,25 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  discord:
+    build:
+      context: .
+      dockerfile: Dockerfile.discord
+    env_file:
+      - .env
+    environment:
+      - API_URL=http://app:8080
+    depends_on:
+      - app
+    restart: always
+    networks:
+      - backend
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   db:
     image: postgres:15
     environment:
