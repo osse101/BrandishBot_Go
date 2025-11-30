@@ -24,6 +24,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/eventlog"
 	"github.com/osse101/BrandishBot_Go/internal/metrics"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
+	"github.com/osse101/BrandishBot_Go/internal/scheduler"
 	"github.com/osse101/BrandishBot_Go/internal/server"
 	"github.com/osse101/BrandishBot_Go/internal/stats"
 	"github.com/osse101/BrandishBot_Go/internal/user"
@@ -156,6 +157,15 @@ func main() {
 		os.Exit(1)
 	}
 	slog.Info("Event logger initialized")
+
+	// Initialize Job Scheduler
+	jobScheduler := scheduler.New(workerPool)
+	// Schedule event log cleanup every 24 hours
+	cleanupJob := eventlog.NewCleanupJob(eventLogService, 10)
+	jobScheduler.Schedule(24*time.Hour, cleanupJob)
+	jobScheduler.Start()
+	defer jobScheduler.Stop()
+	slog.Info("Job scheduler initialized")
 
 	srv := server.NewServer(cfg.Port, cfg.APIKey, dbPool, userService, economyService, craftingService, statsService, progressionService, eventBus)
 
