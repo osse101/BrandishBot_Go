@@ -53,7 +53,11 @@ type JoinGambleRequest struct {
 }
 
 func (h *GambleHandler) HandleJoinGamble(w http.ResponseWriter, r *http.Request) {
-	gambleIDStr := chi.URLParam(r, "id")
+	gambleIDStr := r.URL.Query().Get("id")
+	if gambleIDStr == "" {
+		http.Error(w, "Missing gamble ID", http.StatusBadRequest)
+		return
+	}
 	gambleID, err := uuid.Parse(gambleIDStr)
 	if err != nil {
 		http.Error(w, "Invalid gamble ID", http.StatusBadRequest)
@@ -77,7 +81,11 @@ func (h *GambleHandler) HandleJoinGamble(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *GambleHandler) HandleGetGamble(w http.ResponseWriter, r *http.Request) {
-	gambleIDStr := chi.URLParam(r, "id")
+	gambleIDStr := r.URL.Query().Get("id")
+	if gambleIDStr == "" {
+		http.Error(w, "Missing gamble ID", http.StatusBadRequest)
+		return
+	}
 	gambleID, err := uuid.Parse(gambleIDStr)
 	if err != nil {
 		http.Error(w, "Invalid gamble ID", http.StatusBadRequest)

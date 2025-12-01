@@ -20,6 +20,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/database"
 	"github.com/osse101/BrandishBot_Go/internal/database/postgres"
 	"github.com/osse101/BrandishBot_Go/internal/economy"
+	"github.com/osse101/BrandishBot_Go/internal/gamble"
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/eventlog"
 	"github.com/osse101/BrandishBot_Go/internal/metrics"
@@ -158,6 +159,8 @@ func main() {
 	}
 	slog.Info("Event logger initialized")
 
+
+
 	// Initialize Job Scheduler
 	jobScheduler := scheduler.New(workerPool)
 	// Schedule event log cleanup every 24 hours
@@ -167,7 +170,16 @@ func main() {
 	defer jobScheduler.Stop()
 	slog.Info("Job scheduler initialized")
 
-	srv := server.NewServer(cfg.Port, cfg.APIKey, dbPool, userService, economyService, craftingService, statsService, progressionService, eventBus)
+	// Initialize Gamble components
+	gambleRepo := postgres.NewGambleRepository(dbPool)
+	gambleService := gamble.NewService(gambleRepo, lockManager, eventBus)
+
+	// Initialize Gamble Worker
+	gambleWorker := worker.NewGambleWorker(gambleService)
+	gambleWorker.Subscribe(eventBus)
+	gambleWorker.Start() // Checks for existing active gamble on startup
+
+	srv := server.NewServer(cfg.Port, cfg.APIKey, dbPool, userService, economyService, craftingService, statsService, progressionService, gambleService, eventBus)
 
 	// Run server in a goroutine
 	go func() {

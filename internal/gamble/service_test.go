@@ -119,7 +119,7 @@ func (m *MockTx) Rollback(ctx context.Context) error {
 func TestStartGamble_Success(t *testing.T) {
 	repo := new(MockRepository)
 	lockManager := concurrency.NewLockManager()
-	s := NewService(repo, lockManager)
+	s := NewService(repo, lockManager, nil)
 
 	ctx := context.Background()
 	user := &domain.User{ID: "user1"}
@@ -149,7 +149,7 @@ func TestStartGamble_Success(t *testing.T) {
 func TestJoinGamble_Success(t *testing.T) {
 	repo := new(MockRepository)
 	lockManager := concurrency.NewLockManager()
-	s := NewService(repo, lockManager)
+	s := NewService(repo, lockManager, nil)
 
 	ctx := context.Background()
 	gambleID := uuid.New()
@@ -178,7 +178,7 @@ func TestJoinGamble_Success(t *testing.T) {
 func TestExecuteGamble_Success(t *testing.T) {
 	repo := new(MockRepository)
 	lockManager := concurrency.NewLockManager()
-	s := NewService(repo, lockManager)
+	s := NewService(repo, lockManager, nil)
 
 	ctx := context.Background()
 	gambleID := uuid.New()

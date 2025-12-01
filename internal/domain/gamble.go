@@ -17,6 +17,11 @@ const (
 	GambleStateRefunded  GambleState = "Refunded"
 )
 
+// Event types
+const (
+	EventGambleStarted = "GambleStarted"
+)
+
 // Gamble represents a multiplayer lootbox gamble session
 type Gamble struct {
 	ID           uuid.UUID     `json:"id"`

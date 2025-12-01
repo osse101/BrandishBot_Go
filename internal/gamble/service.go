@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/osse101/BrandishBot_Go/internal/concurrency"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
@@ -38,18 +39,21 @@ type Service interface {
 	JoinGamble(ctx context.Context, gambleID uuid.UUID, platform, platformID, username string, bets []domain.LootboxBet) error
 	GetGamble(ctx context.Context, id uuid.UUID) (*domain.Gamble, error)
 	ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.GambleResult, error)
+	GetActiveGamble(ctx context.Context) (*domain.Gamble, error)
 }
 
 type service struct {
 	repo        Repository
 	lockManager *concurrency.LockManager
+	eventBus    event.Bus
 }
 
 // NewService creates a new gamble service
-func NewService(repo Repository, lockManager *concurrency.LockManager) Service {
+func NewService(repo Repository, lockManager *concurrency.LockManager, eventBus event.Bus) Service {
 	return &service{
 		repo:        repo,
 		lockManager: lockManager,
+		eventBus:    eventBus,
 	}
 }
 
@@ -155,6 +159,18 @@ func (s *service) StartGamble(ctx context.Context, platform, platformID, usernam
 		return nil, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
+	// Publish GambleStarted event
+	if s.eventBus != nil {
+		err := s.eventBus.Publish(ctx, event.Event{
+			Type:    event.Type(domain.EventGambleStarted),
+			Payload: gamble,
+		})
+		if err != nil {
+			log.Error("Failed to publish GambleStarted event", "error", err)
+			// Don't fail the request, just log
+		}
+	}
+
 	return gamble, nil
 }
 
@@ -248,6 +264,17 @@ func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.Gamb
 	}
 	if gamble == nil {
 		return nil, fmt.Errorf("gamble not found")
+	}
+	
+	// Check if already completed (graceful handling of duplicate execution)
+	if gamble.State == domain.GambleStateCompleted {
+		log.Info("Gamble already completed, skipping execution", "gambleID", id)
+		return nil, nil
+	}
+	
+	// Only execute if in Joining state
+	if gamble.State != domain.GambleStateJoining {
+		return nil, fmt.Errorf("gamble is not in joining state (current: %s)", gamble.State)
 	}
 
 	// Update State to Opening
@@ -379,6 +406,11 @@ func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.Gamb
 // GetGamble retrieves a gamble by ID
 func (s *service) GetGamble(ctx context.Context, id uuid.UUID) (*domain.Gamble, error) {
 	return s.repo.GetGamble(ctx, id)
+}
+
+// GetActiveGamble retrieves the current active gamble
+func (s *service) GetActiveGamble(ctx context.Context) (*domain.Gamble, error) {
+	return s.repo.GetActiveGamble(ctx)
 }
 
 // Helper to consume item from inventory
