@@ -9,14 +9,19 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/gamble"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
+	"github.com/osse101/BrandishBot_Go/internal/progression"
 )
 
 type GambleHandler struct {
-	service gamble.Service
+	service        gamble.Service
+	progressionSvc progression.Service
 }
 
-func NewGambleHandler(service gamble.Service) *GambleHandler {
-	return &GambleHandler{service: service}
+func NewGambleHandler(service gamble.Service, progressionSvc progression.Service) *GambleHandler {
+	return &GambleHandler{
+		service:        service,
+		progressionSvc: progressionSvc,
+	}
 }
 
 type StartGambleRequest struct {
@@ -27,6 +32,21 @@ type StartGambleRequest struct {
 }
 
 func (h *GambleHandler) HandleStartGamble(w http.ResponseWriter, r *http.Request) {
+	log := logger.FromContext(r.Context())
+
+	// Check if gamble feature is unlocked
+	unlocked, err := h.progressionSvc.IsFeatureUnlocked(r.Context(), progression.FeatureGamble)
+	if err != nil {
+		log.Error("Failed to check feature unlock status", "error", err)
+		http.Error(w, "Failed to check feature availability", http.StatusInternalServerError)
+		return
+	}
+	if !unlocked {
+		log.Warn("Gamble feature is locked")
+		http.Error(w, "Gamble feature is not yet unlocked", http.StatusForbidden)
+		return
+	}
+
 	var req StartGambleRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
