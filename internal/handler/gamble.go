@@ -1,0 +1,100 @@
+package handler
+
+import (
+	"encoding/json"
+	"net/http"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
+	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/gamble"
+	"github.com/osse101/BrandishBot_Go/internal/logger"
+)
+
+type GambleHandler struct {
+	service gamble.Service
+}
+
+func NewGambleHandler(service gamble.Service) *GambleHandler {
+	return &GambleHandler{service: service}
+}
+
+type StartGambleRequest struct {
+	Platform   string              `json:"platform"`
+	PlatformID string              `json:"platform_id"`
+	Username   string              `json:"username"`
+	Bets       []domain.LootboxBet `json:"bets"`
+}
+
+func (h *GambleHandler) HandleStartGamble(w http.ResponseWriter, r *http.Request) {
+	var req StartGambleRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	gamble, err := h.service.StartGamble(r.Context(), req.Platform, req.PlatformID, req.Username, req.Bets)
+	if err != nil {
+		logger.FromContext(r.Context()).Error("Failed to start gamble", "error", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(gamble)
+}
+
+type JoinGambleRequest struct {
+	Platform   string              `json:"platform"`
+	PlatformID string              `json:"platform_id"`
+	Username   string              `json:"username"`
+	Bets       []domain.LootboxBet `json:"bets"`
+}
+
+func (h *GambleHandler) HandleJoinGamble(w http.ResponseWriter, r *http.Request) {
+	gambleIDStr := chi.URLParam(r, "id")
+	gambleID, err := uuid.Parse(gambleIDStr)
+	if err != nil {
+		http.Error(w, "Invalid gamble ID", http.StatusBadRequest)
+		return
+	}
+
+	var req JoinGambleRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.service.JoinGamble(r.Context(), gambleID, req.Platform, req.PlatformID, req.Username, req.Bets); err != nil {
+		logger.FromContext(r.Context()).Error("Failed to join gamble", "error", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Successfully joined gamble"})
+}
+
+func (h *GambleHandler) HandleGetGamble(w http.ResponseWriter, r *http.Request) {
+	gambleIDStr := chi.URLParam(r, "id")
+	gambleID, err := uuid.Parse(gambleIDStr)
+	if err != nil {
+		http.Error(w, "Invalid gamble ID", http.StatusBadRequest)
+		return
+	}
+
+	gamble, err := h.service.GetGamble(r.Context(), gambleID)
+	if err != nil {
+		logger.FromContext(r.Context()).Error("Failed to get gamble", "error", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if gamble == nil {
+		http.Error(w, "Gamble not found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(gamble)
+}
