@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -38,16 +39,63 @@ func TestHandleHealthz(t *testing.T) {
 }
 
 func TestHandleReadyz(t *testing.T) {
-	mockDB := &MockDBPool{}
-	mockDB.On("Ping", mock.Anything).Return(nil)
+	t.Run("Database Connected - Success", func(t *testing.T) {
+		mockDB := &MockDBPool{}
+		mockDB.On("Ping", mock.Anything).Return(nil)
 
-	req := httptest.NewRequest("GET", "/readyz", nil)
-	w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/readyz", nil)
+		w := httptest.NewRecorder()
 
-	handler := HandleReadyz(mockDB)
-	handler.ServeHTTP(w, req)
+		handler := HandleReadyz(mockDB)
+		handler.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, `{"status":"ok"}`+"\n", w.Body.String())
-	mockDB.AssertExpectations(t)
+		assert.Equal(t, http.StatusOK, w.Code)
+		assert.Contains(t, w.Body.String(), `"status":"ok"`)
+		mockDB.AssertExpectations(t)
+	})
+
+	t.Run("Database Connection Failed", func(t *testing.T) {
+		mockDB := &MockDBPool{}
+		mockDB.On("Ping", mock.Anything).Return(assert.AnError)
+
+		req := httptest.NewRequest("GET", "/readyz", nil)
+		w := httptest.NewRecorder()
+
+		handler := HandleReadyz(mockDB)
+		handler.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusServiceUnavailable, w.Code)
+		assert.Contains(t, w.Body.String(), `"status":"unavailable"`)
+		assert.Contains(t, w.Body.String(), `"message":"database connection failed"`)
+		mockDB.AssertExpectations(t)
+	})
+
+	t.Run("Database Timeout", func(t *testing.T) {
+		mockDB := &MockDBPool{}
+		mockDB.On("Ping", mock.Anything).Return(context.DeadlineExceeded)
+
+		req := httptest.NewRequest("GET", "/readyz", nil)
+		w := httptest.NewRecorder()
+
+		handler := HandleReadyz(mockDB)
+		handler.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusServiceUnavailable, w.Code)
+		assert.Contains(t, w.Body.String(), `"status":"unavailable"`)
+		mockDB.AssertExpectations(t)
+	})
+
+	t.Run("Database Connection Refused", func(t *testing.T) {
+		mockDB := &MockDBPool{}
+		mockDB.On("Ping", mock.Anything).Return(errors.New("connection refused"))
+
+		req := httptest.NewRequest("GET", "/readyz", nil)
+		w := httptest.NewRecorder()
+
+		handler := HandleReadyz(mockDB)
+		handler.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusServiceUnavailable, w.Code)
+		mockDB.AssertExpectations(t)
+	})
 }

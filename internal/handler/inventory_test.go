@@ -312,6 +312,93 @@ func TestHandleSellItem(t *testing.T) {
 			expectedStatus: http.StatusForbidden,
 			expectedBody:   "Sell feature is not yet unlocked",
 		},
+		{
+			name: "Feature Check Error",
+			requestBody: SellItemRequest{
+				Platform:   "twitch",
+				PlatformID: "test-id",
+				Username:   "testuser",
+				ItemName:   "Sword",
+				Quantity:   1,
+			},
+			setupMock: func(e *MockEconomyService, p *MockProgressionService) {
+				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSell).Return(false, errors.New("database error"))
+			},
+			expectedStatus: http.StatusInternalServerError,
+			expectedBody:   "Failed to check feature availability",
+		},
+		{
+			name:        "Invalid Request Body",
+			requestBody: "invalid json",
+			setupMock: func(e *MockEconomyService, p *MockProgressionService) {
+				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSell).Return(true, nil)
+			},
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "Invalid request body",
+		},
+		{
+			name: "Missing Platform",
+			requestBody: SellItemRequest{
+				PlatformID: "test-id",
+				Username:   "testuser",
+				ItemName:   "Sword",
+				Quantity:   1,
+			},
+			setupMock: func(e *MockEconomyService, p *MockProgressionService) {
+				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSell).Return(true, nil)
+			},
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "Invalid request",
+		},
+		{
+			name: "Zero Quantity",
+			requestBody: SellItemRequest{
+				Platform:   "twitch",
+				PlatformID: "test-id",
+				Username:   "testuser",
+				ItemName:   "Sword",
+				Quantity:   0,
+			},
+			setupMock: func(e *MockEconomyService, p *MockProgressionService) {
+				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSell).Return(true, nil)
+			},
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "Invalid request",
+		},
+		{
+			name: "Service Error - Item Not Found",
+			requestBody: SellItemRequest{
+				Platform:   "twitch",
+				PlatformID: "test-id",
+				Username:   "testuser",
+				ItemName:   "UnknownItem",
+				Quantity:   1,
+			},
+			setupMock: func(e *MockEconomyService, p *MockProgressionService) {
+				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSell).Return(true, nil)
+				e.On("SellItem", mock.Anything, "twitch", "test-id", "testuser", "UnknownItem", 1).
+					Return(0, 0, errors.New("item not found"))
+			},
+			expectedStatus: http.StatusInternalServerError,
+			expectedBody:   "item not found",
+		},
+		{
+			name: "Service Error - Insufficient Items",
+			requestBody: SellItemRequest{
+				Platform:   "twitch",
+				PlatformID: "test-id",
+				Username:   "testuser",
+				ItemName:   "Sword",
+				Quantity:   100,
+			},
+			setupMock: func(e *MockEconomyService, p *MockProgressionService) {
+				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSell).Return(true, nil)
+				e.On("SellItem", mock.Anything, "twitch", "test-id", "testuser", "Sword", 100).
+					Return(0, 0, errors.New("insufficient items"))
+			},
+			expectedStatus: http.StatusInternalServerError,
+			expectedBody:   "insufficient items",
+		},
 	}
 
 	for _, tt := range tests {
@@ -517,6 +604,93 @@ func TestHandleBuyItem(t *testing.T) {
 			},
 			expectedStatus: http.StatusForbidden,
 			expectedBody:   "Buy feature is not yet unlocked",
+		},
+		{
+			name: "Feature Check Error",
+			requestBody: BuyItemRequest{
+				Platform:   "twitch",
+				PlatformID: "test-id",
+				Username:   "testuser",
+				ItemName:   "Sword",
+				Quantity:   1,
+			},
+			setupMock: func(e *MockEconomyService, p *MockProgressionService) {
+				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureBuy).Return(false, errors.New("database error"))
+			},
+			expectedStatus: http.StatusInternalServerError,
+			expectedBody:   "Failed to check feature availability",
+		},
+		{
+			name:        "Invalid Request Body",
+			requestBody: "invalid json",
+			setupMock: func(e *MockEconomyService, p *MockProgressionService) {
+				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureBuy).Return(true, nil)
+			},
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "Invalid request body",
+		},
+		{
+			name: "Missing PlatformID",
+			requestBody: BuyItemRequest{
+				Platform: "twitch",
+				Username: "testuser",
+				ItemName: "Sword",
+				Quantity: 1,
+			},
+			setupMock: func(e *MockEconomyService, p *MockProgressionService) {
+				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureBuy).Return(true, nil)
+			},
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "Invalid request",
+		},
+		{
+			name: "Zero Quantity",
+			requestBody: BuyItemRequest{
+				Platform:   "twitch",
+				PlatformID: "test-id",
+				Username:   "testuser",
+				ItemName:   "Sword",
+				Quantity:   0,
+			},
+			setupMock: func(e *MockEconomyService, p *MockProgressionService) {
+				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureBuy).Return(true, nil)
+			},
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "Invalid request",
+		},
+		{
+			name: "Service Error - Insufficient Money",
+			requestBody: BuyItemRequest{
+				Platform:   "twitch",
+				PlatformID: "test-id",
+				Username:   "pooruser",
+				ItemName:   "Sword",
+				Quantity:   1,
+			},
+			setupMock: func(e *MockEconomyService, p *MockProgressionService) {
+				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureBuy).Return(true, nil)
+				e.On("BuyItem", mock.Anything, "twitch", "test-id", "pooruser", "Sword", 1).
+					Return(0, errors.New("insufficient money"))
+			},
+			expectedStatus: http.StatusInternalServerError,
+			expectedBody:   "insufficient money",
+		},
+		{
+			name: "Service Error - Item Not Available",
+			requestBody: BuyItemRequest{
+				Platform:   "twitch",
+				PlatformID: "test-id",
+				Username:   "testuser",
+				ItemName:   "RareItem",
+				Quantity:   1,
+			},
+			setupMock: func(e *MockEconomyService, p *MockProgressionService) {
+				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureBuy).Return(true, nil)
+				e.On("BuyItem", mock.Anything, "twitch", "test-id", "testuser", "RareItem", 1).
+					Return(0, errors.New("item not available for purchase"))
+			},
+			expectedStatus: http.StatusInternalServerError,
+			expectedBody:   "item not available",
 		},
 	}
 
