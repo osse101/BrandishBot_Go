@@ -11,6 +11,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
+	"github.com/osse101/BrandishBot_Go/internal/lootbox"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
 
@@ -31,6 +32,7 @@ type Repository interface {
 	GetInventory(ctx context.Context, userID string) (*domain.Inventory, error)
 	UpdateInventory(ctx context.Context, userID string, inventory domain.Inventory) error
 	GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error)
+	GetItemByID(ctx context.Context, id int) (*domain.Item, error)
 }
 
 // Service defines the interface for gamble operations
@@ -43,17 +45,21 @@ type Service interface {
 }
 
 type service struct {
-	repo        Repository
-	lockManager *concurrency.LockManager
-	eventBus    event.Bus
+	repo         Repository
+	lockManager  *concurrency.LockManager
+	eventBus     event.Bus
+	lootboxSvc   lootbox.Service
+	joinDuration time.Duration
 }
 
 // NewService creates a new gamble service
-func NewService(repo Repository, lockManager *concurrency.LockManager, eventBus event.Bus) Service {
+func NewService(repo Repository, lockManager *concurrency.LockManager, eventBus event.Bus, lootboxSvc lootbox.Service, joinDuration time.Duration) Service {
 	return &service{
-		repo:        repo,
-		lockManager: lockManager,
-		eventBus:    eventBus,
+		repo:         repo,
+		lockManager:  lockManager,
+		eventBus:     eventBus,
+		lootboxSvc:   lootboxSvc,
+		joinDuration: joinDuration,
 	}
 }
 
@@ -96,7 +102,7 @@ func (s *service) StartGamble(ctx context.Context, platform, platformID, usernam
 		InitiatorID:  user.ID,
 		State:        domain.GambleStateJoining,
 		CreatedAt:    time.Now(),
-		JoinDeadline: time.Now().Add(2 * time.Minute), // Configurable?
+		JoinDeadline: time.Now().Add(s.joinDuration),
 	}
 
 	// Lock user inventory briefly to consume bets
@@ -291,22 +297,49 @@ func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.Gamb
 	// For each participant, open their lootboxes
 	for _, p := range gamble.Participants {
 		for _, bet := range p.LootboxBets {
-			for i := 0; i < bet.Quantity; i++ {
-				// Simulate item drop
-				// In reality: item := lootboxService.Open(bet.ItemID)
-				// For now, we'll just generate a dummy item with value
-				val := int64(rand.Intn(100) + 10) // Random value 10-110
-				itemID := 1 // Dummy item ID
+			// Get lootbox item to find its name
+			lootboxItem, err := s.repo.GetItemByID(ctx, bet.ItemID)
+			if err != nil {
+				log.Error("Failed to get lootbox item", "itemID", bet.ItemID, "error", err)
+				continue
+			}
+			if lootboxItem == nil {
+				log.Warn("Lootbox item not found", "itemID", bet.ItemID)
+				continue
+			}
+
+			// Open lootbox using shared service
+			drops, err := s.lootboxSvc.OpenLootbox(ctx, lootboxItem.Name, bet.Quantity)
+			if err != nil {
+				log.Error("Failed to open lootbox", "lootbox", lootboxItem.Name, "error", err)
+				continue
+			}
+
+			// Process drops
+			for _, drop := range drops {
+				// Create individual records for each item quantity
+				// (GambleOpenedItem represents a single item instance or stack? 
+				// The struct has Value int64. If quantity > 1, is Value per item or total?
+				// Usually in gambles we want to show each "pull". 
+				// But OpenLootbox aggregates by item type.
+				// Let's record them as a stack for now, but Value should be total for the stack?
+				// Wait, domain.GambleOpenedItem has ItemID and Value. 
+				// If I get 5 coins worth 1 each, is it 1 record of 5 coins worth 5?
+				// The previous dummy logic did: for i < quantity... simulate item drop.
+				// OpenLootbox returns aggregated drops.
+				// Let's create one record per dropped item type per bet.
+				
+				totalValue := int64(drop.Value * drop.Quantity)
 				
 				openedItem := domain.GambleOpenedItem{
 					GambleID: id,
 					UserID:   p.UserID,
-					ItemID:   itemID,
-					Value:    val,
+					ItemID:   drop.ItemID,
+					Value:    totalValue,
 				}
 				allOpenedItems = append(allOpenedItems, openedItem)
-				userValues[p.UserID] += val
-				totalGambleValue += val
+				userValues[p.UserID] += totalValue
+				totalGambleValue += totalValue
 			}
 		}
 	}

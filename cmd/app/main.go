@@ -23,6 +23,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/gamble"
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/eventlog"
+	"github.com/osse101/BrandishBot_Go/internal/lootbox"
 	"github.com/osse101/BrandishBot_Go/internal/metrics"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 	"github.com/osse101/BrandishBot_Go/internal/scheduler"
@@ -172,7 +173,15 @@ func main() {
 
 	// Initialize Gamble components
 	gambleRepo := postgres.NewGambleRepository(dbPool)
-	gambleService := gamble.NewService(gambleRepo, lockManager, eventBus)
+	
+	// Initialize Lootbox Service (reusing userRepo for item data)
+	lootboxSvc, err := lootbox.NewService(userRepo, "configs/loot_tables.json")
+	if err != nil {
+		slog.Error("Failed to initialize lootbox service", "error", err)
+		os.Exit(1)
+	}
+
+	gambleService := gamble.NewService(gambleRepo, lockManager, eventBus, lootboxSvc, cfg.GambleJoinDuration)
 
 	// Initialize Gamble Worker
 	gambleWorker := worker.NewGambleWorker(gambleService)

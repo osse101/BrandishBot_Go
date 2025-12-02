@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -28,6 +29,9 @@ type Config struct {
 	DBHost     string
 	DBPort     string
 	DBName     string
+
+	// Gamble configuration
+	GambleJoinDuration time.Duration // Duration for users to join a gamble
 }
 
 // Load loads the configuration from environment variables
@@ -61,6 +65,14 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("invalid PORT value: %w", err)
 	}
 	cfg.Port = port
+
+	// Gamble config
+	gambleJoinStr := getEnv("GAMBLE_JOIN_DURATION_MINUTES", "2")
+	gambleJoinMins, err := strconv.Atoi(gambleJoinStr)
+	if err != nil {
+		return nil, fmt.Errorf("invalid GAMBLE_JOIN_DURATION_MINUTES value: %w", err)
+	}
+	cfg.GambleJoinDuration = time.Duration(gambleJoinMins) * time.Minute
 
 	// Validate API key is set
 	if cfg.APIKey == "" {
