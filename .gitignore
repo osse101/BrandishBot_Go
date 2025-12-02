@@ -22,6 +22,7 @@ bin/
 /coverage.html
 /*.out
 backup.sql
+backup_*.sql
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
