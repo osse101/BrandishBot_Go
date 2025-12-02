@@ -1,6 +1,9 @@
 # Build stage
 FROM golang:1.24-alpine AS builder
 
+# Build arguments
+ARG VERSION=dev
+
 WORKDIR /app
 
 # Install build dependencies (git needed for some Go modules)
@@ -22,14 +25,24 @@ COPY . .
 
 # Build the application with optimizations
 # -ldflags="-w -s" strips debug info and symbol table
+# Embed version information in the binary
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-    -ldflags="-w -s -X main.version=$(git describe --tags --always --dirty 2>/dev/null || echo 'dev')" \
+    -ldflags="-w -s -X main.version=${VERSION}" \
     -o brandishbot ./cmd/app
 
 # Runtime stage - minimal image
 FROM alpine:3.19
+
+# Build arguments (passed from build stage)
+ARG VERSION=dev
+
+# Add image metadata
+LABEL org.opencontainers.image.title="BrandishBot"
+LABEL org.opencontainers.image.description="Discord bot for Brandish game progression and economy"
+LABEL org.opencontainers.image.version="${VERSION}"
+LABEL org.opencontainers.image.vendor="BrandishBot Project"
 
 WORKDIR /app
 

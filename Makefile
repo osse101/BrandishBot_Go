@@ -1,4 +1,4 @@
-.PHONY: help migrate-up migrate-down migrate-status migrate-create test build run clean docker-build docker-up docker-down
+.PHONY: help migrate-up migrate-down migrate-status migrate-create test build run clean docker-build docker-up docker-down deploy-staging deploy-production rollback-staging rollback-production health-check-staging health-check-prod
 
 # Tool paths
 GOOSE := $(shell command -v goose 2> /dev/null || echo $(HOME)/go/bin/goose)
@@ -41,6 +41,14 @@ help:
 	@echo "  make db-export            - Export production DB to backup.sql"
 	@echo "  make db-import            - Import backup.sql to test DB"
 	@echo "  make db-clean-test        - Clean test database"
+	@echo ""
+	@echo "Deployment Commands:"
+	@echo "  make deploy-staging       - Deploy to staging environment"
+	@echo "  make deploy-production    - Deploy to production environment (requires confirmation)"
+	@echo "  make rollback-staging     - Rollback staging to previous version"
+	@echo "  make rollback-production  - Rollback production to previous version"
+	@echo "  make health-check-staging - Check staging environment health"
+	@echo "  make health-check-prod    - Check production environment health"
 
 # Database connection string from environment
 DB_URL ?= postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=disable
@@ -194,4 +202,27 @@ db-clean-test:
 	@docker exec brandishbot_test_db psql -U testuser -d testdb -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
 	@echo "Test database cleaned"
 	@echo "Run 'make migrate-up-test' to reinitialize schema"
+
+# Deployment commands
+deploy-staging:
+	@echo "Deploying to staging..."
+	@./scripts/deploy.sh staging $$(git describe --tags --always)
+
+deploy-production:
+	@echo "Deploying to production..."
+	@./scripts/deploy.sh production $$(git describe --tags --always)
+
+rollback-staging:
+	@echo "Rolling back staging..."
+	@./scripts/rollback.sh staging
+
+rollback-production:
+	@echo "Rolling back production..."
+	@./scripts/rollback.sh production
+
+health-check-staging:
+	@./scripts/health-check.sh staging
+
+health-check-prod:
+	@./scripts/health-check.sh production
 
