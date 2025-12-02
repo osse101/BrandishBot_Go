@@ -129,7 +129,7 @@ log_info "Step 4/4: Database rollback"
 echo ""
 log_warn "Do you need to restore the database from a backup?"
 log_info "Available backups:"
-ls -lth backup_${ENVIRONMENT}_*.sql 2>/dev/null | head -n 5 || log_info "No backups found"
+ls -lth backups/backup_${ENVIRONMENT}_*.sql 2>/dev/null | head -n 5 || log_info "No backups found"
 echo ""
 echo -n "Enter backup filename to restore (or press Enter to skip): "
 read -r BACKUP_FILE

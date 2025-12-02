@@ -83,7 +83,8 @@ fi
 
 # Step 2: Database backup
 log_info "Step 2/7: Creating database backup"
-BACKUP_FILE="backup_${ENVIRONMENT}_$(date +%Y%m%d_%H%M%S).sql"
+mkdir -p "$PROJECT_DIR/backups"
+BACKUP_FILE="backups/backup_${ENVIRONMENT}_$(date +%Y%m%d_%H%M%S).sql"
 if docker-compose -f "$COMPOSE_FILE" ps db | grep -q "Up"; then
     DB_CONTAINER=$(docker-compose -f "$COMPOSE_FILE" ps -q db)
     if [[ -n "$DB_CONTAINER" ]]; then
