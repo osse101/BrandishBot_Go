@@ -12,6 +12,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/gamble"
 	"github.com/osse101/BrandishBot_Go/internal/handler"
+	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/metrics"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
@@ -30,10 +31,11 @@ type Server struct {
 	statsService       stats.Service
 	progressionService progression.Service
 	gambleService      gamble.Service
+	jobService         job.Service
 }
 
 // NewServer creates a new Server instance
-func NewServer(port int, apiKey string, dbPool database.Pool, userService user.Service, economyService economy.Service, craftingService crafting.Service, statsService stats.Service, progressionService progression.Service, gambleService gamble.Service, eventBus event.Bus) *Server {
+func NewServer(port int, apiKey string, dbPool database.Pool, userService user.Service, economyService economy.Service, craftingService crafting.Service, statsService stats.Service, progressionService progression.Service, gambleService gamble.Service, jobService job.Service, eventBus event.Bus) *Server {
 	mux := http.NewServeMux()
 
 	// Health check routes
@@ -65,6 +67,12 @@ func NewServer(port int, apiKey string, dbPool database.Pool, userService user.S
 	mux.HandleFunc("/gamble/start", gambleHandler.HandleStartGamble)
 	mux.HandleFunc("/gamble/join", gambleHandler.HandleJoinGamble)
 	mux.HandleFunc("/gamble/get", gambleHandler.HandleGetGamble)
+
+	// Job routes
+	jobHandler := handler.NewJobHandler(jobService)
+	mux.HandleFunc("/jobs", jobHandler.HandleGetAllJobs)
+	mux.HandleFunc("/jobs/user", jobHandler.HandleGetUserJobs)
+	mux.HandleFunc("/jobs/award-xp", jobHandler.HandleAwardXP)
 
 	// Stats routes
 	mux.HandleFunc("/stats/event", handler.HandleRecordEvent(statsService))
@@ -116,6 +124,8 @@ func NewServer(port int, apiKey string, dbPool database.Pool, userService user.S
 		craftingService:    craftingService,
 		statsService:       statsService,
 		progressionService: progressionService,
+		gambleService:      gambleService,
+		jobService:         jobService,
 	}
 }
 

@@ -23,6 +23,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/gamble"
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/eventlog"
+	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/lootbox"
 	"github.com/osse101/BrandishBot_Go/internal/metrics"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
@@ -188,7 +189,11 @@ func main() {
 	gambleWorker.Subscribe(eventBus)
 	gambleWorker.Start() // Checks for existing active gamble on startup
 
-	srv := server.NewServer(cfg.Port, cfg.APIKey, dbPool, userService, economyService, craftingService, statsService, progressionService, gambleService, eventBus)
+	// Initialize Job service
+	jobRepo := postgres.NewJobRepository(dbPool)
+	jobService := job.NewService(jobRepo, progressionService)
+
+	srv := server.NewServer(cfg.Port, cfg.APIKey, dbPool, userService, economyService, craftingService, statsService, progressionService, gambleService, jobService, eventBus)
 
 	// Run server in a goroutine
 	go func() {

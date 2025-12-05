@@ -26,6 +26,16 @@ const (
 	FeatureDuel       = "feature_duel"
 	FeatureExpedition = "feature_expedition"
 
+	// Job System
+	FeatureJobsXP      = "feature_jobs_xp"
+	JobBlacksmith      = "job_blacksmith"
+	JobExplorer        = "job_explorer"
+	JobMerchant        = "job_merchant"
+	JobGambler         = "job_gambler"
+	JobFarmer          = "job_farmer"
+	JobScholar         = "job_scholar"
+
 	// Upgrades
 	UpgradeCooldownReduction = "upgrade_cooldown_reduction"
+	UpgradeJobsXPBoost       = "upgrade_jobs_xp_boost"
 )
