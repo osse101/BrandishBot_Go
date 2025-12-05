@@ -44,21 +44,28 @@ type Service interface {
 	GetActiveGamble(ctx context.Context) (*domain.Gamble, error)
 }
 
+// JobService defines the interface for job operations
+type JobService interface {
+	AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error)
+}
+
 type service struct {
 	repo         Repository
 	lockManager  *concurrency.LockManager
 	eventBus     event.Bus
 	lootboxSvc   lootbox.Service
+	jobService   JobService
 	joinDuration time.Duration
 }
 
 // NewService creates a new gamble service
-func NewService(repo Repository, lockManager *concurrency.LockManager, eventBus event.Bus, lootboxSvc lootbox.Service, joinDuration time.Duration) Service {
+func NewService(repo Repository, lockManager *concurrency.LockManager, eventBus event.Bus, lootboxSvc lootbox.Service, joinDuration time.Duration, jobService JobService) Service {
 	return &service{
 		repo:         repo,
 		lockManager:  lockManager,
 		eventBus:     eventBus,
 		lootboxSvc:   lootboxSvc,
+		jobService:   jobService,
 		joinDuration: joinDuration,
 	}
 }
@@ -177,6 +184,9 @@ func (s *service) StartGamble(ctx context.Context, platform, platformID, usernam
 		}
 	}
 
+	// Award Gambler XP for joining (async, don't block)
+	go s.awardGamblerXP(context.Background(), user.ID, calculateTotalLootboxes(bets), "start", false)
+
 	return gamble, nil
 }
 
@@ -255,7 +265,14 @@ func (s *service) JoinGamble(ctx context.Context, gambleID uuid.UUID, platform, 
 		return fmt.Errorf("failed to join gamble: %w", err)
 	}
 
-	return tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+
+	// Award Gambler XP for joining (async, don't block)
+	go s.awardGamblerXP(context.Background(), user.ID, calculateTotalLootboxes(bets), "join", false)
+
+	return nil
 }
 
 // ExecuteGamble runs the gamble logic
@@ -433,6 +450,11 @@ func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.Gamb
 		return nil, fmt.Errorf("failed to complete gamble: %w", err)
 	}
 
+	// Award bonus XP to winner (async)
+	if winnerID != "" {
+		go s.awardGamblerXP(context.Background(), winnerID, 0, "win", true)
+	}
+
 	return result, nil
 }
 
@@ -464,4 +486,41 @@ func consumeItem(inventory *domain.Inventory, itemID, quantity int) error {
 	return fmt.Errorf("item not found")
 }
 
-// ... other methods ...
+// calculateTotalLootboxes sums up lootbox quantities from bets
+func calculateTotalLootboxes(bets []domain.LootboxBet) int {
+	total := 0
+	for _, bet := range bets {
+		total += bet.Quantity
+	}
+	return total
+}
+
+// awardGamblerXP awards  Gambler job XP for gambling operations
+func (s *service) awardGamblerXP(ctx context.Context, userID string, lootboxCount int, source string, isWin bool) {
+	if s.jobService == nil {
+		return // Job system not enabled
+	}
+
+	// Base XP: 20 per lootbox, +50 bonus for winning
+	xp := lootboxCount * 20
+	if isWin {
+		xp += 50
+	}
+
+	if xp <= 0 {
+		return
+	}
+
+	metadata := map[string]interface{}{
+		"source":        source,
+		"lootbox_count": lootboxCount,
+		"is_win":        isWin,
+	}
+
+	result, err := s.jobService.AwardXP(ctx, userID, "gambler", xp, source, metadata)
+	if err != nil {
+		logger.FromContext(ctx).Warn("Failed to award Gambler XP", "error", err, "user_id", userID)
+	} else if result != nil && result.LeveledUp {
+		logger.FromContext(ctx).Info("Gambler leveled up!", "user_id", userID, "new_level", result.NewLevel)
+	}
+}
