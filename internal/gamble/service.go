@@ -10,6 +10,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/concurrency"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/event"
+	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/lootbox"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
@@ -501,10 +502,10 @@ func (s *service) awardGamblerXP(ctx context.Context, userID string, lootboxCoun
 		return // Job system not enabled
 	}
 
-	// Base XP: 20 per lootbox, +50 bonus for winning
-	xp := lootboxCount * 20
+	// Use exported constants for XP amounts
+	xp := lootboxCount * job.GamblerXPPerLootbox
 	if isWin {
-		xp += 50
+		xp += job.GamblerWinBonus
 	}
 
 	if xp <= 0 {
@@ -517,7 +518,7 @@ func (s *service) awardGamblerXP(ctx context.Context, userID string, lootboxCoun
 		"is_win":        isWin,
 	}
 
-	result, err := s.jobService.AwardXP(ctx, userID, "gambler", xp, source, metadata)
+	result, err := s.jobService.AwardXP(ctx, userID, job.JobKeyGambler, xp, source, metadata)
 	if err != nil {
 		logger.FromContext(ctx).Warn("Failed to award Gambler XP", "error", err, "user_id", userID)
 	} else if result != nil && result.LeveledUp {

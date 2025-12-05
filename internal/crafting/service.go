@@ -6,6 +6,7 @@ import (
 
 	"github.com/osse101/BrandishBot_Go/internal/concurrency"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
@@ -418,10 +419,8 @@ func (s *service) awardBlacksmithXP(ctx context.Context, userID string, quantity
 		return // Job system not enabled
 	}
 
-	// Base XP per item (can be adjusted based on recipe quality in future)
-	// For now, use a simple base of 10 XP per item
-	baseXPPerItem := 10
-	totalXP := baseXPPerItem * quantity
+	// Use exported constant for XP per item
+	totalXP := job.BlacksmithXPPerItem * quantity
 
 	metadata := map[string]interface{}{
 		"source":    source,
@@ -429,7 +428,7 @@ func (s *service) awardBlacksmithXP(ctx context.Context, userID string, quantity
 		"quantity":  quantity,
 	}
 
-	result, err := s.jobService.AwardXP(ctx, userID, "blacksmith", totalXP, source, metadata)
+	result, err := s.jobService.AwardXP(ctx, userID, job.JobKeyBlacksmith, totalXP, source, metadata)
 	if err != nil {
 		// Log but don't fail the operation
 		logger.FromContext(ctx).Warn("Failed to award Blacksmith XP", "error", err, "user_id", userID)

@@ -2,6 +2,7 @@ package job
 
 import (
 	"context"
+	"math"
 	"testing"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
@@ -89,16 +90,25 @@ func TestCalculateLevel(t *testing.T) {
 	prog := new(MockProgressionService)
 	svc := NewService(repo, prog)
 
+	// Helper to calculate XP for a specific level to ensure we test accurate boundaries
+	xpForLevel := func(lvl int) int64 {
+		cumulative := int64(0)
+		for i := 1; i <= lvl; i++ {
+			cumulative += int64(BaseXP * math.Pow(float64(i), LevelExponent))
+		}
+		return cumulative
+	}
+
 	tests := []struct {
 		xp       int64
 		expected int
 	}{
 		{0, 0},
-		{50, 0},
-		{100, 1},
-		{200, 1},
-		{383, 2}, // 100 + 283
-		{1000, 4},
+		{xpForLevel(1) / 2, 0},            // Halfway to level 1
+		{xpForLevel(1), 1},                // Exact level 1
+		{xpForLevel(1) + 100, 1},          // Level 1 + some over
+		{xpForLevel(2), 2},                // Exact level 2
+		{xpForLevel(4), 4},                // Exact level 4
 	}
 
 	for _, tt := range tests {
@@ -111,13 +121,16 @@ func TestGetXPForLevel(t *testing.T) {
 	prog := new(MockProgressionService)
 	svc := NewService(repo, prog)
 
+	// Same formula logic as service to verify consistency
+	expectedLevel2XP := int64(BaseXP*math.Pow(1, LevelExponent)) + int64(BaseXP*math.Pow(2, LevelExponent))
+
 	tests := []struct {
 		level    int
 		expected int64
 	}{
 		{0, 0},
-		{1, 100},
-		{2, 383}, // 100 + 283
+		{1, int64(BaseXP)},
+		{2, expectedLevel2XP},
 	}
 
 	for _, tt := range tests {
@@ -132,9 +145,9 @@ func TestAwardXP_Success(t *testing.T) {
 	ctx := context.Background()
 
 	userID := "user1"
-	jobKey := "blacksmith"
+	jobKey := JobKeyBlacksmith
 	jobID := 1
-	baseXP := 50
+	baseXP := BlacksmithXPPerItem
 
 	job := &domain.Job{ID: jobID, JobKey: jobKey}
 	
@@ -142,15 +155,17 @@ func TestAwardXP_Success(t *testing.T) {
 	repo.On("GetJobByKey", ctx, jobKey).Return(job, nil)
 	repo.On("GetUserJob", ctx, userID, jobID).Return(nil, nil) // New user job
 	repo.On("UpsertUserJob", ctx, mock.MatchedBy(func(uj *domain.UserJob) bool {
-		return uj.UserID == userID && uj.CurrentXP == 50 && uj.CurrentLevel == 0
+		return uj.UserID == userID && uj.CurrentXP == int64(BlacksmithXPPerItem) && uj.CurrentLevel == 0
 	})).Return(nil)
-	repo.On("RecordJobXPEvent", ctx, mock.Anything).Return(nil)
+	repo.On("RecordJobXPEvent", ctx, mock.MatchedBy(func(e *domain.JobXPEvent) bool {
+		return e.XPAmount == BlacksmithXPPerItem
+	})).Return(nil)
 
 	result, err := svc.AwardXP(ctx, userID, jobKey, baseXP, "test", nil)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
-	assert.Equal(t, int64(50), result.NewXP)
+	assert.Equal(t, int64(BlacksmithXPPerItem), result.NewXP)
 	assert.Equal(t, 0, result.NewLevel)
 	
 	repo.AssertExpectations(t)
@@ -164,7 +179,7 @@ func TestAwardXP_LevelUp(t *testing.T) {
 	ctx := context.Background()
 
 	userID := "user1"
-	jobKey := "blacksmith"
+	jobKey := JobKeyBlacksmith
 	jobID := 1
 	baseXP := 150 
 
@@ -203,6 +218,106 @@ func TestAwardXP_Locked(t *testing.T) {
 	assert.Contains(t, err.Error(), "not unlocked")
 }
 
+func TestAwardXP_DailyCap(t *testing.T) {
+	repo := new(MockRepository)
+	prog := new(MockProgressionService)
+	svc := NewService(repo, prog)
+	ctx := context.Background()
+
+	userID := "u1"
+	jobKey := JobKeyBlacksmith
+	jobID := 1
+	// Attempt to award more than the default daily cap
+	amount := DefaultDailyCap + 100
+
+	job := &domain.Job{ID: jobID, JobKey: jobKey}
+
+	prog.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
+	repo.On("GetJobByKey", ctx, jobKey).Return(job, nil)
+	// User has 0 XP gained today
+	repo.On("GetUserJob", ctx, userID, jobID).Return(&domain.UserJob{
+		UserID: userID, JobID: jobID, XPGainedToday: 0,
+	}, nil)
+
+	// Should clamp to DefaultDailyCap
+	repo.On("UpsertUserJob", ctx, mock.MatchedBy(func(uj *domain.UserJob) bool {
+		return uj.XPGainedToday == int64(DefaultDailyCap) && uj.CurrentXP == int64(DefaultDailyCap)
+	})).Return(nil)
+	repo.On("RecordJobXPEvent", ctx, mock.MatchedBy(func(e *domain.JobXPEvent) bool {
+		return e.XPAmount == DefaultDailyCap
+	})).Return(nil)
+
+	result, err := svc.AwardXP(ctx, userID, jobKey, amount, "test", nil)
+
+	assert.NoError(t, err)
+	// mock matcher verifies XPGainedToday
+	assert.Equal(t, int(DefaultDailyCap), result.XPGained)
+}
+
+func TestAwardXP_DailyCap_Reached(t *testing.T) {
+	repo := new(MockRepository)
+	prog := new(MockProgressionService)
+	svc := NewService(repo, prog)
+	ctx := context.Background()
+
+	userID := "u1"
+	jobKey := JobKeyBlacksmith
+	jobID := 1
+
+	job := &domain.Job{ID: jobID, JobKey: jobKey}
+
+	prog.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
+	repo.On("GetJobByKey", ctx, jobKey).Return(job, nil)
+	// User has already reached the cap
+	repo.On("GetUserJob", ctx, userID, jobID).Return(&domain.UserJob{
+		UserID: userID, JobID: jobID, XPGainedToday: int64(DefaultDailyCap),
+	}, nil)
+
+	result, err := svc.AwardXP(ctx, userID, jobKey, 10, "test", nil)
+
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.Contains(t, err.Error(), "daily XP cap reached")
+}
+
+func TestAwardXP_MaxLevel(t *testing.T) {
+	repo := new(MockRepository)
+	prog := new(MockProgressionService)
+	svc := NewService(repo, prog)
+	ctx := context.Background()
+
+	userID := "u1"
+	jobKey := JobKeyBlacksmith
+	jobID := 1
+	
+	// DefaultMaxLevel is 10.
+	// XP for Level 11 is roughly: 100 * sum(i^1.5 for i=1..11).
+	// Let's just set CurrentXP to a very high number that definitely exceeds Level 10 requirement.
+	// We verify that despite having enough XP for level >10, the Level field is clamped.
+	startXP := int64(50000) 
+	awardAmount := 10 // Small amount to avoid daily cap
+
+	job := &domain.Job{ID: jobID, JobKey: jobKey}
+
+	prog.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
+	repo.On("GetJobByKey", ctx, jobKey).Return(job, nil)
+	repo.On("GetUserJob", ctx, userID, jobID).Return(&domain.UserJob{
+		UserID: userID, JobID: jobID, CurrentXP: startXP, CurrentLevel: 10, XPGainedToday: 0,
+	}, nil)
+
+	// Resulting level should be clamped to DefaultMaxLevel (10)
+	// Even though 50010 XP is way higher than needed for Level 10
+	repo.On("UpsertUserJob", ctx, mock.MatchedBy(func(uj *domain.UserJob) bool {
+		return uj.CurrentLevel == DefaultMaxLevel
+	})).Return(nil)
+	repo.On("RecordJobXPEvent", ctx, mock.Anything).Return(nil)
+
+	result, err := svc.AwardXP(ctx, userID, jobKey, awardAmount, "test", nil)
+
+	assert.NoError(t, err)
+	assert.Equal(t, DefaultMaxLevel, result.NewLevel)
+}
+
 func TestGetJobBonus(t *testing.T) {
 	repo := new(MockRepository)
 	prog := new(MockProgressionService)
@@ -210,7 +325,7 @@ func TestGetJobBonus(t *testing.T) {
 	ctx := context.Background()
 
 	jobID := 1
-	jobKey := "explorer"
+	jobKey := JobKeyExplorer
 	userID := "u1"
 
 	job := &domain.Job{ID: jobID, JobKey: jobKey}

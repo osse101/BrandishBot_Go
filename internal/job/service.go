@@ -89,8 +89,8 @@ func (s *service) GetUserJobs(ctx context.Context, userID string) ([]domain.User
 	// Get max level from progression system
 	maxLevel, err := s.getMaxJobLevel(ctx)
 	if err != nil {
-		log.Warn("Failed to get max job level, defaulting to 10", "error", err)
-		maxLevel = 10
+		log.Warn("Failed to get max job level, defaulting to default", "error", err)
+		maxLevel = DefaultMaxLevel
 	}
 
 	// Combine job info with progress
@@ -210,7 +210,7 @@ func (s *service) AwardXP(ctx context.Context, userID, jobKey string, baseAmount
 	maxLevel, err := s.getMaxJobLevel(ctx)
 	if err != nil {
 		log.Warn("Failed to get max level, using default", "error", err)
-		maxLevel = 10
+		maxLevel = DefaultMaxLevel
 	}
 	if newLevel > maxLevel {
 		newLevel = maxLevel
@@ -308,25 +308,21 @@ func (s *service) GetJobBonus(ctx context.Context, userID, jobKey, bonusType str
 }
 
 // CalculateLevel determines the level from total XP using the formula:
-// XP for level N = 100 * (N ^ 1.5)
+// XP for level N = BaseXP * (N ^ LevelExponent)
 func (s *service) CalculateLevel(totalXP int64) int {
 	if totalXP <= 0 {
 		return 0
 	}
 
-	const baseXP = 100.0
-	const exponent = 1.5
-
-	// Solve for N: totalXP = sum(100 * i^1.5) for i=1 to N
-	// Approximation: N ≈ (totalXP / 100)^(1/1.5)
-	// More accurate: iterate to find exact level
+	// Solve for N: totalXP = sum(BaseXP * i^LevelExponent) for i=1 to N
+	// Iterate to find exact level
 
 	level := 0
 	cumulative := int64(0)
 
-	for level < 100 { // Reasonable cap for iteration
+	for level < MaxIterationLevel {
 		nextLevel := level + 1
-		xpForNext := int64(baseXP * math.Pow(float64(nextLevel), exponent))
+		xpForNext := int64(BaseXP * math.Pow(float64(nextLevel), LevelExponent))
 		if cumulative+xpForNext > totalXP {
 			break
 		}
@@ -343,12 +339,9 @@ func (s *service) GetXPForLevel(level int) int64 {
 		return 0
 	}
 
-	const baseXP = 100.0
-	const exponent = 1.5
-
 	cumulative := int64(0)
 	for i := 1; i <= level; i++ {
-		cumulative += int64(baseXP * math.Pow(float64(i), exponent))
+		cumulative += int64(BaseXP * math.Pow(float64(i), LevelExponent))
 	}
 
 	return cumulative
@@ -366,18 +359,17 @@ func (s *service) GetXPProgress(currentXP int64) (currentLevel int, xpToNext int
 
 func (s *service) getXPMultiplier(ctx context.Context) float64 {
 	// TODO: Query jobs_xp_boost node level from progression system
-	// For now, return 1.0 (no boost)
-	return 1.0
+	// For now, return default (no boost)
+	return DefaultXPMultiplier
 }
 
 func (s *service) getDailyCap(ctx context.Context) int {
 	// TODO: Scale with jobs_xp_boost node level
-	// Base cap: 500 XP
-	return 500
+	return DefaultDailyCap
 }
 
 func (s *service) getMaxJobLevel(ctx context.Context) (int, error) {
 	// TODO: Get from jobs_xp node unlock level
 	// Level 1 = max 10, Level 2 = max 20, etc.
-	return 10, nil
+	return DefaultMaxLevel, nil
 }
