@@ -50,16 +50,23 @@ type Service interface {
 	DisassembleItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (map[string]int, int, error)
 }
 
+// JobService defines the interface for job operations
+type JobService interface {
+	AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error)
+}
+
 type service struct {
 	repo        Repository
 	lockManager *concurrency.LockManager
+	jobService  JobService
 }
 
 // NewService creates a new crafting service
-func NewService(repo Repository, lockManager *concurrency.LockManager) Service {
+func NewService(repo Repository, lockManager *concurrency.LockManager, jobService JobService) Service {
 	return &service{
 		repo:        repo,
 		lockManager: lockManager,
+		jobService:  jobService,
 	}
 }
 
@@ -209,6 +216,9 @@ func (s *service) UpgradeItem(ctx context.Context, platform, platformID, usernam
 	if err := tx.Commit(ctx); err != nil {
 		return "", 0, fmt.Errorf("failed to commit transaction: %w", err)
 	}
+
+	// Award Blacksmith XP (don't fail upgrade if XP award fails)
+	go s.awardBlacksmithXP(context.Background(), user.ID, actualQuantity, "upgrade", itemName)
 
 	log.Info("Items upgraded", "username", username, "item", itemName, "quantity", actualQuantity)
 	return itemName, actualQuantity, nil
@@ -395,6 +405,35 @@ func (s *service) DisassembleItem(ctx context.Context, platform, platformID, use
 		return nil, 0, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
+	// Award Blacksmith XP (don't fail disassemble if XP award fails)
+	go s.awardBlacksmithXP(context.Background(), user.ID, actualQuantity, "disassemble", itemName)
+
 	log.Info("Items disassembled", "username", username, "item", itemName, "quantity", actualQuantity, "outputs", outputMap)
 	return outputMap, actualQuantity, nil
+}
+
+// awardBlacksmithXP awards Blacksmith job XP for crafting operations
+func (s *service) awardBlacksmithXP(ctx context.Context, userID string, quantity int, source, itemName string) {
+	if s.jobService == nil {
+		return // Job system not enabled
+	}
+
+	// Base XP per item (can be adjusted based on recipe quality in future)
+	// For now, use a simple base of 10 XP per item
+	baseXPPerItem := 10
+	totalXP := baseXPPerItem * quantity
+
+	metadata := map[string]interface{}{
+		"source":    source,
+		"item_name": itemName,
+		"quantity":  quantity,
+	}
+
+	result, err := s.jobService.AwardXP(ctx, userID, "blacksmith", totalXP, source, metadata)
+	if err != nil {
+		// Log but don't fail the operation
+		logger.FromContext(ctx).Warn("Failed to award Blacksmith XP", "error", err, "user_id", userID)
+	} else if result != nil && result.LeveledUp {
+		logger.FromContext(ctx).Info("Blacksmith leveled up!", "user_id", userID, "new_level", result.NewLevel)
+	}
 }

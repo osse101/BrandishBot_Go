@@ -123,13 +123,19 @@ func main() {
 	userRepo := postgres.NewUserRepository(dbPool)
 	userService := user.NewService(userRepo, lockManager)
 	economyService := economy.NewService(userRepo, lockManager)
-	craftingService := crafting.NewService(userRepo, lockManager)
 
 	statsRepo := postgres.NewStatsRepository(dbPool)
 	statsService := stats.NewService(statsRepo)
 
 	progressionRepo := postgres.NewProgressionRepository(dbPool)
 	progressionService := progression.NewService(progressionRepo)
+
+	// Initialize Job service (needed by crafting)
+	jobRepo := postgres.NewJobRepository(dbPool)
+	jobService := job.NewService(jobRepo, progressionService)
+
+	// Initialize crafting service with job service
+	craftingService := crafting.NewService(userRepo, lockManager, jobService)
 
 	// Initialize Event Bus
 	eventBus := event.NewMemoryBus()
@@ -188,10 +194,6 @@ func main() {
 	gambleWorker := worker.NewGambleWorker(gambleService)
 	gambleWorker.Subscribe(eventBus)
 	gambleWorker.Start() // Checks for existing active gamble on startup
-
-	// Initialize Job service
-	jobRepo := postgres.NewJobRepository(dbPool)
-	jobService := job.NewService(jobRepo, progressionService)
 
 	srv := server.NewServer(cfg.Port, cfg.APIKey, dbPool, userService, economyService, craftingService, statsService, progressionService, gambleService, jobService, eventBus)
 
