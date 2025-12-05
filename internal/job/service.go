@@ -131,9 +131,27 @@ func (s *service) GetPrimaryJob(ctx context.Context, userID string) (*domain.Use
 		return nil, nil
 	}
 
-	// Find job with highest level (already sorted by level DESC in query)
-	primary := userJobs[0]
-	return &primary, nil
+	// Find job with highest level
+	var primary *domain.UserJobInfo
+	for i := range userJobs {
+		job := &userJobs[i]
+		if primary == nil {
+			primary = job
+			continue
+		}
+
+		if job.Level > primary.Level {
+			primary = job
+		} else if job.Level == primary.Level {
+			// Tie identifier: most XP
+			if job.CurrentXP > primary.CurrentXP {
+				primary = job
+			}
+			// Further tie-breaking (e.g. alphabetical) could go here
+		}
+	}
+
+	return primary, nil
 }
 
 // AwardXP awards XP to a user for a specific job
