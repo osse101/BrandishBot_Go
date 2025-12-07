@@ -167,5 +167,5 @@ Based on the current `go.mod` and project structure (REST API with Postgres), he
 
 ### Immediate Next Steps for Infrastructure
 1.  **Dockerize**: Ensure `Dockerfile` is optimized (multistage build).
-2.  **Compose**: Update `docker-compose.yml` to include Prometheus/Grafana for local observability.
+2.  **Compose**: Update `docker compose.yml` to include Prometheus/Grafana for local observability.
 3.  **CI**: Create `.github/workflows/ci.yml`.

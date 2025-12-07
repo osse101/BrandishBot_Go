@@ -45,7 +45,7 @@ A persistent test database using Docker Compose.
 **Setup**:
 ```bash
 # Start test database
-docker-compose -f docker-compose.test.yml up -d
+docker compose -f docker compose.test.yml up -d
 
 # Run migrations
 make migrate-up-test
@@ -81,8 +81,8 @@ docker exec -i brandishbot_go-test-db-1 psql -U testuser -d testdb < backup.sql
 
 ```bash
 # 1. Stop databases
-docker-compose down
-docker-compose -f docker-compose.test.yml down
+docker compose down
+docker compose -f docker compose.test.yml down
 
 # 2. Copy volume data
 docker run --rm \
@@ -91,7 +91,7 @@ docker run --rm \
   alpine sh -c "cd /from && cp -av . /to"
 
 # 3. Restart
-docker-compose -f docker-compose.test.yml up -d
+docker compose -f docker compose.test.yml up -d
 ```
 
 ### Method 3: Using Makefile Commands (Easiest)
@@ -150,7 +150,7 @@ To add more seed data, create SQL files in `scripts/` and update `db-seed-test` 
 
 **Test database won't start?**
 - Check if port 5433 is available
-- Run `docker-compose -f docker-compose.test.yml logs`
+- Run `docker compose -f docker compose.test.yml logs`
 
 **Data not persisting in test database?**
 - Check volume is created: `docker volume ls | grep test`

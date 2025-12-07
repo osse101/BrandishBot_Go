@@ -5,23 +5,23 @@
 ### 1. View Real-time Logs (Follow)
 To stream logs from all services:
 ```bash
-docker-compose logs -f
+docker compose logs -f
 ```
 
 To stream logs from a specific service (e.g., `app` or `db`):
 ```bash
-docker-compose logs -f app
-docker-compose logs -f db
+docker compose logs -f app
+docker compose logs -f db
 ```
 
 ### 2. View Past Logs
 To see the last 100 lines:
 ```bash
-docker-compose logs --tail=100 app
+docker compose logs --tail=100 app
 ```
 
 ### 3. Log Rotation (Optimized)
-We have configured log rotation in `docker-compose.yml` to prevent logs from consuming all disk space.
+We have configured log rotation in `docker compose.yml` to prevent logs from consuming all disk space.
 - **Driver**: `json-file`
 - **Max Size**: `10m` (10 Megabytes per file)
 - **Max Files**: `3` (Keep last 3 files)
@@ -39,5 +39,5 @@ The application uses structured JSON logging in production (configured via `LOG_
 ### Parsing Logs
 You can pipe logs to `jq` for better readability:
 ```bash
-docker-compose logs -f app | grep "{" | jq .
+docker compose logs -f app | grep "{" | jq .
 ```

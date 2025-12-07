@@ -258,7 +258,7 @@ DROP TABLE IF EXISTS gambles;
 
 ## 17. Deployment
 1. **Apply DB migrations**: `goose -dir migrations postgres "postgres://..." up`
-2. **Deploy service image**: `docker-compose up -d app` or K8s deployment
+2. **Deploy service image**: `docker compose up -d app` or K8s deployment
 3. **Monitor metrics**: Watch `gambles_started_total`, `gamble_join_duration_seconds`
 4. **Verify health**: `curl http://localhost:8080/health`
 

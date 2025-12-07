@@ -6,7 +6,7 @@ The database is configured for **easy local development** with **security**:
 
 ```bash
 # Start database
-docker-compose up -d db
+docker compose up -d db
 
 # Or use the helper script
 ./scripts/check_db.sh
@@ -28,14 +28,14 @@ DB_PASSWORD=your_secure_password_here
 DB_NAME=app
 ```
 
-> **Security Note**: The `127.0.0.1:5432:5432` binding in docker-compose.yml means the database is only accessible from your computer (localhost), NOT from other devices on your network. This is secure AND convenient for development.
+> **Security Note**: The `127.0.0.1:5432:5432` binding in docker compose.yml means the database is only accessible from your computer (localhost), NOT from other devices on your network. This is secure AND convenient for development.
 
 ## Production/Docker Deployment
 
 When running the entire application in Docker:
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 In this mode:
@@ -59,7 +59,7 @@ DB_HOST=db  # Use Docker service name instead of localhost
 ## Troubleshooting
 
 If you see "failed to connect to database":
-1. Check if database is running: `docker-compose ps db`
-2. View database logs: `docker-compose logs db`
-3. Restart database: `docker-compose restart db`
+1. Check if database is running: `docker compose ps db`
+2. View database logs: `docker compose logs db`
+3. Restart database: `docker compose restart db`
 4. Or use the helper script: `./scripts/check_db.sh`

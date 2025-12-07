@@ -46,10 +46,10 @@ fi
 
 # Determine Configuration
 if [[ "$ENVIRONMENT" == "staging" ]]; then
-    COMPOSE_FILE="docker-compose.staging.yml"
+    COMPOSE_FILE="docker compose.staging.yml"
     DEFAULT_TAG="latest-staging"
 elif [[ "$ENVIRONMENT" == "production" ]]; then
-    COMPOSE_FILE="docker-compose.production.yml"
+    COMPOSE_FILE="docker compose.production.yml"
     DEFAULT_TAG="latest-production"
 else
     log_error "Environment must be 'staging' or 'production'"
@@ -67,18 +67,18 @@ log_info "User: ${DOCKER_USER:-brandishbot}"
 startup() {
     log_info "Starting services..."
     # Ensure database is up first
-    docker-compose -f "$COMPOSE_FILE" up -d db
+    docker compose -f "$COMPOSE_FILE" up -d db
     # Wait for DB (optional, but good practice if not using healthchecks strict dependency)
     sleep 2
     # Start app and discord
-    docker-compose -f "$COMPOSE_FILE" up -d app discord
+    docker compose -f "$COMPOSE_FILE" up -d app discord
     log_info "Services started."
 }
 
 # Helper: teardown command
 teardown() {
     log_info "Stopping services..."
-    docker-compose -f "$COMPOSE_FILE" down
+    docker compose -f "$COMPOSE_FILE" down
     log_info "Services stopped."
 }
 
@@ -92,7 +92,7 @@ deploy() {
 
     # 2. Pull images
     log_info "Pulling images..."
-    docker-compose -f "$COMPOSE_FILE" pull app discord
+    docker compose -f "$COMPOSE_FILE" pull app discord
     
     # 3. Restart services (rolling update style)
     startup
@@ -126,7 +126,7 @@ case "$ACTION" in
              log_warn "Not logged in. Attempting docker login..."
              docker login
         fi
-        docker-compose -f "$COMPOSE_FILE" pull app discord
+        docker compose -f "$COMPOSE_FILE" pull app discord
         ;;
     *)
         log_error "Unknown action: $ACTION"

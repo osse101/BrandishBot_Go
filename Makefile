@@ -135,19 +135,19 @@ swagger:
 # Docker commands
 docker-up:
 	@echo "Starting Docker services..."
-	@docker-compose up -d
+	@docker compose up -d
 
 docker-down:
 	@echo "Stopping Docker services..."
-	@docker-compose down
+	@docker compose down
 
 docker-build:
 	@echo "Rebuilding Docker images..."
-	@docker-compose build --no-cache
+	@docker compose build --no-cache
 	@echo "Docker images rebuilt successfully"
 
 docker-logs:
-	@docker-compose logs -f
+	@docker compose logs -f
 
 push-staging:
 	@echo "Pushing staging image..."
@@ -169,13 +169,13 @@ test-staging:
 
 db-test-up:
 	@echo "Starting test database..."
-	@docker-compose -f docker-compose.test.yml up -d
+	@docker compose -f docker compose.test.yml up -d
 	@sleep 2
 	@echo "Test database ready on port 5433"
 
 db-test-down:
 	@echo "Stopping test database..."
-	@docker-compose -f docker-compose.test.yml down
+	@docker compose -f docker compose.test.yml down
 
 migrate-up-test:
 	@echo "Running migrations on test database..."

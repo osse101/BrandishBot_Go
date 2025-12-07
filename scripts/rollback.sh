@@ -43,9 +43,9 @@ fi
 
 # Set compose file based on environment
 if [[ "$ENVIRONMENT" == "staging" ]]; then
-    COMPOSE_FILE="docker-compose.staging.yml"
+    COMPOSE_FILE="docker compose.staging.yml"
 elif [[ "$ENVIRONMENT" == "production" ]]; then
-    COMPOSE_FILE="docker-compose.production.yml"
+    COMPOSE_FILE="docker compose.production.yml"
 fi
 
 cd "$PROJECT_DIR"
@@ -89,12 +89,12 @@ fi
 
 # Step 1: Stop current containers
 log_info "Step 1/4: Stopping current containers"
-docker-compose -f "$COMPOSE_FILE" stop app discord
+docker compose -f "$COMPOSE_FILE" stop app discord
 
 # Step 2: Rollback to target version
 log_info "Step 2/4: Rolling back to version $TARGET_VERSION"
 export DOCKER_IMAGE_TAG="$TARGET_VERSION"
-docker-compose -f "$COMPOSE_FILE" up -d --no-deps app discord
+docker compose -f "$COMPOSE_FILE" up -d --no-deps app discord
 
 # Step 3: Wait for health checks
 log_info "Step 3/4: Waiting for health checks (max 60 seconds)"
@@ -118,7 +118,7 @@ echo ""
 if [[ "$HEALTHY" == "false" ]]; then
     log_error "Health check failed after rollback"
     log_error "Manual intervention required"
-    log_info "Check logs: docker-compose -f $COMPOSE_FILE logs app"
+    log_info "Check logs: docker compose -f $COMPOSE_FILE logs app"
     exit 1
 fi
 
@@ -141,7 +141,7 @@ if [[ -n "$BACKUP_FILE" ]] && [[ -f "$BACKUP_FILE" ]]; then
     
     if [[ "$CONFIRM_DB" == "yes" ]]; then
         log_info "Restoring database from $BACKUP_FILE"
-        DB_CONTAINER=$(docker-compose -f "$COMPOSE_FILE" ps -q db)
+        DB_CONTAINER=$(docker compose -f "$COMPOSE_FILE" ps -q db)
         docker exec -i "$DB_CONTAINER" psql -U ${DB_USER:-brandishbot} -d ${DB_NAME:-brandishbot} < "$BACKUP_FILE"
         log_info "Database restored"
     else

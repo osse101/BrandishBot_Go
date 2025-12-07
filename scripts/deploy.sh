@@ -45,9 +45,9 @@ fi
 
 # Set compose file based on environment
 if [[ "$ENVIRONMENT" == "staging" ]]; then
-    COMPOSE_FILE="docker-compose.staging.yml"
+    COMPOSE_FILE="docker compose.staging.yml"
 elif [[ "$ENVIRONMENT" == "production" ]]; then
-    COMPOSE_FILE="docker-compose.production.yml"
+    COMPOSE_FILE="docker compose.production.yml"
 fi
 
 log_info "=== BrandishBot Deployment ==="
@@ -85,8 +85,8 @@ fi
 log_info "Step 2/7: Creating database backup"
 mkdir -p "$PROJECT_DIR/backups"
 BACKUP_FILE="backups/backup_${ENVIRONMENT}_$(date +%Y%m%d_%H%M%S).sql"
-if docker-compose -f "$COMPOSE_FILE" ps db | grep -q "Up"; then
-    DB_CONTAINER=$(docker-compose -f "$COMPOSE_FILE" ps -q db)
+if docker compose -f "$COMPOSE_FILE" ps db | grep -q "Up"; then
+    DB_CONTAINER=$(docker compose -f "$COMPOSE_FILE" ps -q db)
     if [[ -n "$DB_CONTAINER" ]]; then
         docker exec "$DB_CONTAINER" pg_dump -U ${DB_USER:-brandishbot} -d ${DB_NAME:-brandishbot} > "$BACKUP_FILE" 2>/dev/null || true
         if [[ -f "$BACKUP_FILE" ]]; then
@@ -115,10 +115,10 @@ log_info "Docker image built: brandishbot:$VERSION"
 # Step 4: Deploy new containers
 log_info "Step 4/7: Deploying new containers"
 export DOCKER_IMAGE_TAG="$VERSION"
-docker-compose -f "$COMPOSE_FILE" up -d app discord || {
+docker compose -f "$COMPOSE_FILE" up -d app discord || {
     log_error "Deployment failed"
     log_info "Attempting rollback..."
-    docker-compose -f "$COMPOSE_FILE" up -d --no-deps app discord
+    docker compose -f "$COMPOSE_FILE" up -d --no-deps app discord
     exit 1
 }
 log_info "Containers deployed"
@@ -145,7 +145,7 @@ echo ""
 if [[ "$HEALTHY" == "false" ]]; then
     log_error "Health check failed after 60 seconds"
     log_error "Deployment failed - manual intervention required"
-    log_info "Check logs: docker-compose -f $COMPOSE_FILE logs app"
+    log_info "Check logs: docker compose -f $COMPOSE_FILE logs app"
     exit 1
 fi
 
@@ -184,7 +184,7 @@ log_info "Version: $VERSION"
 log_info "Status: SUCCESS"
 log_info ""
 log_info "Next steps:"
-log_info "  - Check logs: docker-compose -f $COMPOSE_FILE logs -f app"
+log_info "  - Check logs: docker compose -f $COMPOSE_FILE logs -f app"
 log_info "  - Run staging tests: STAGING_URL=http://localhost:$PORT make test-staging"
 if [[ "$ENVIRONMENT" == "production" ]]; then
     log_info "  - Monitor for errors"

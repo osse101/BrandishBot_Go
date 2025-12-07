@@ -93,8 +93,8 @@ The server only needs **Docker** and these specific files:
 | `.env` | Environment secrets and config |
 | `scripts/deploy_remote.sh` | Main control script |
 | `scripts/health-check.sh` | Used for validation (optional) |
-| `docker-compose.staging.yml` | Config for staging |
-| `docker-compose.production.yml` | Config for production |
+| `docker compose.staging.yml` | Config for staging |
+| `docker compose.production.yml` | Config for production |
 
 **You do NOT need:** Source code, Go compiler, `Makefile`, or migrating tools (built into the image).
 
@@ -209,7 +209,7 @@ make health-check-staging
 STAGING_URL=http://localhost:8081 make test-staging
 
 # Check logs for errors
-docker-compose -f docker-compose.staging.yml logs -f app
+docker compose -f docker compose.staging.yml logs -f app
 ```
 
 #### Step 4: Manual QA Testing
@@ -279,7 +279,7 @@ curl http://localhost:8080/healthz
 curl http://localhost:8080/progression/tree
 
 # Monitor logs for errors
-docker-compose -f docker-compose.production.yml logs -f --tail=100 app
+docker compose -f docker compose.production.yml logs -f --tail=100 app
 
 # Verify Discord bot is online and responsive
 ```
@@ -358,7 +358,7 @@ docker images brandishbot
 export DOCKER_IMAGE_TAG=v1.1.0
 
 # 3. Restart with previous image
-docker-compose -f docker-compose.production.yml up -d --no-deps app discord
+docker compose -f docker compose.production.yml up -d --no-deps app discord
 
 # 4. Verify health
 curl http://localhost:8080/healthz
@@ -494,8 +494,8 @@ make health-check-prod
 make health-check-staging
 
 # View logs
-docker-compose -f docker-compose.production.yml logs -f app
-docker-compose -f docker-compose.staging.yml logs -f app
+docker compose -f docker compose.production.yml logs -f app
+docker compose -f docker compose.staging.yml logs -f app
 
 # Run tests against staging
 STAGING_URL=http://localhost:8081 make test-staging
@@ -506,8 +506,8 @@ STAGING_URL=http://localhost:8081 make test-staging
 - Deployment script: [scripts/deploy.sh](file:///home/osse1/projects/BrandishBot_Go/scripts/deploy.sh)
 - Rollback script: [scripts/rollback.sh](file:///home/osse1/projects/BrandishBot_Go/scripts/rollback.sh)
 - Health check: [scripts/health-check.sh](file:///home/osse1/projects/BrandishBot_Go/scripts/health-check.sh)
-- Staging config: [docker-compose.staging.yml](file:///home/osse1/projects/BrandishBot_Go/docker-compose.staging.yml)
-- Production config: [docker-compose.production.yml](file:///home/osse1/projects/BrandishBot_Go/docker-compose.production.yml)
+- Staging config: [docker compose.staging.yml](file:///home/osse1/projects/BrandishBot_Go/docker compose.staging.yml)
+- Production config: [docker compose.production.yml](file:///home/osse1/projects/BrandishBot_Go/docker compose.production.yml)
 - Database backups: `backup_<env>_<timestamp>.sql` (project root)
 
 ---
@@ -523,7 +523,7 @@ STAGING_URL=http://localhost:8081 make test-staging
 
 **Symptom**: Deployment waits 60 seconds then fails  
 **Solution**: 
-- Check app logs: `docker-compose -f docker-compose.production.yml logs app`
+- Check app logs: `docker compose -f docker compose.production.yml logs app`
 - Verify database migrations completed
 - Check for errors in entrypoint script
 

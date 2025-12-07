@@ -30,8 +30,8 @@ else
 fi
 
 # Check Docker Compose
-if command -v docker-compose &> /dev/null; then
-    COMPOSE_VERSION=$(docker-compose --version | awk '{print $3}' | tr -d ',')
+if command -v docker compose &> /dev/null; then
+    COMPOSE_VERSION=$(docker compose --version | awk '{print $3}' | tr -d ',')
     echo -e "${GREEN}✅ Docker Compose installed: $COMPOSE_VERSION${NC}"
 else
     echo -e "${YELLOW}⚠️  Docker Compose not found (optional if using 'docker compose')${NC}"

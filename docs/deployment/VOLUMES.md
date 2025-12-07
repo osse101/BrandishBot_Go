@@ -26,7 +26,7 @@ The application loads loot tables from `configs/loot_tables.json` on startup.
 To modify these tables without rebuilding the Docker image, you can mount the `configs` directory.
 
 **How to Enable:**
-Update `docker-compose.yml`:
+Update `docker compose.yml`:
 ```yaml
 services:
   app:
@@ -38,7 +38,7 @@ services:
 1. Edit `configs/loot_tables.json` on your host.
 2. Restart the app to apply changes:
    ```bash
-   docker-compose restart app
+   docker compose restart app
    ```
 
 ---
@@ -49,7 +49,7 @@ If you prefer to have log files written to your host machine (e.g., for external
 
 **How to Enable:**
 1. Update `.env` to set `LOG_DIR=/app/logs`.
-2. Update `docker-compose.yml`:
+2. Update `docker compose.yml`:
    ```yaml
    services:
      app:
@@ -57,7 +57,7 @@ If you prefer to have log files written to your host machine (e.g., for external
          - ./logs:/app/logs
    ```
 
-**Recommendation:** Stick to `docker-compose logs` (default) unless you have a specific need for file-based logging.
+**Recommendation:** Stick to `docker compose logs` (default) unless you have a specific need for file-based logging.
 
 ---
 

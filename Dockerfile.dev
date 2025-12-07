@@ -1,0 +1,58 @@
+# Development Dockerfile - optimized for fast rebuilds
+# Skips goose installation since migrations run locally
+FROM golang:1.24-alpine AS builder
+
+ARG VERSION=dev
+
+WORKDIR /app
+
+# Install minimal build dependencies
+RUN apk add --no-cache git
+
+# Copy go mod files for caching
+COPY go.mod go.sum ./
+
+# Download dependencies with cache mount
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go mod download
+
+# Copy source code
+COPY . .
+
+# Build with cache mounts
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -ldflags="-w -s -X main.version=${VERSION}" \
+    -o brandishbot ./cmd/app
+
+# Runtime stage
+FROM alpine:3.19
+
+ARG VERSION=dev
+
+LABEL org.opencontainers.image.title="BrandishBot-Dev"
+LABEL org.opencontainers.image.version="${VERSION}"
+
+WORKDIR /app
+
+# Minimal runtime dependencies (no postgresql-client needed for dev)
+RUN apk add --no-cache ca-certificates tzdata && \
+    addgroup -g 1000 appuser && \
+    adduser -D -u 1000 -G appuser appuser && \
+    chown -R appuser:appuser /app
+
+# Copy only the binary (no migrations, no goose)
+COPY --from=builder --chown=appuser:appuser /app/brandishbot .
+COPY --chown=appuser:appuser configs ./configs
+
+USER appuser
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/healthz || exit 1
+
+# Direct start - no entrypoint script needed for dev
+CMD ["./brandishbot"]

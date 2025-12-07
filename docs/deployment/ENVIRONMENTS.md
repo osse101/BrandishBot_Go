@@ -54,7 +54,7 @@ Run `./scripts/check_deps.sh` to verify:
 ### Workflow
 1. **Deploy & Start**:
    ```bash
-   docker-compose up -d --build
+   docker compose up -d --build
    ```
    *That's it!*
 
@@ -62,7 +62,7 @@ Run `./scripts/check_deps.sh` to verify:
 - **Containerized App**: The app runs inside a lightweight Alpine Linux container.
 - **Auto-Migrations**: The container entrypoint (`scripts/docker-entrypoint.sh`) automatically runs migrations before starting the app.
 - **Internal Networking**: App talks to DB via internal Docker network (`db:5432`).
-- **Security**: Database port `5432` can be closed to the outside world (remove `ports` mapping in `docker-compose.yml` for production).
+- **Security**: Database port `5432` can be closed to the outside world (remove `ports` mapping in `docker compose.yml` for production).
 
 ### Key Differences
 
@@ -77,13 +77,13 @@ Run `./scripts/check_deps.sh` to verify:
 ### Troubleshooting Docker
 ```bash
 # View logs
-docker-compose logs -f app
+docker compose logs -f app
 
 # Check health
 curl http://localhost:8080/healthz
 
 # Shell into container
-docker-compose exec app /bin/sh
+docker compose exec app /bin/sh
 ```
 
 ---
@@ -109,7 +109,7 @@ make deploy-staging
 ### Configuration
 - **Port**: 8081 (to avoid conflicts with local dev)
 - **Database**: Separate volume (`pgdata-staging`)
-- **Compose File**: `docker-compose.staging.yml`
+- **Compose File**: `docker compose.staging.yml`
 - **Resource Limits**: Production-like (CPU: 1 core, RAM: 512M)
 - **Restart Policy**: `unless-stopped`
 
@@ -122,7 +122,7 @@ STAGING_URL=http://localhost:8081 make test-staging
 make health-check-staging
 
 # View logs
-docker-compose -f docker-compose.staging.yml logs -f app
+docker compose -f docker compose.staging.yml logs -f app
 ```
 
 ### Key Features
@@ -154,7 +154,7 @@ make deploy-production
 ### Configuration
 - **Port**: 8080
 - **Database**: Production volume (`pgdata-production`)
-- **Compose File**: `docker-compose.production.yml`
+- **Compose File**: `docker compose.production.yml`
 - **Resource Limits**: Higher (CPU: 2 cores, RAM: 1GB)
 - **Restart Policy**: `always` for database, `unless-stopped` for app
 - **Security**: Database port NOT exposed externally
@@ -165,7 +165,7 @@ make deploy-production
 make health-check-prod
 
 # View logs
-docker-compose -f docker-compose.production.yml logs -f --tail=100 app
+docker compose -f docker compose.production.yml logs -f --tail=100 app
 
 # Check resource usage
 docker stats

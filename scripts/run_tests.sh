@@ -13,23 +13,23 @@ echo -e "${GREEN}Starting test session...${NC}"
 cleanup() {
     echo -e "\n${GREEN}Tearing down test environment...${NC}"
     # Stop and remove the specific test container if we created one, 
-    # or use docker-compose down if we used that.
-    # For this script, let's assume we want to run tests against the docker-compose environment
+    # or use docker compose down if we used that.
+    # For this script, let's assume we want to run tests against the docker compose environment
     # but we want to make sure we leave it clean.
     
     # If we want to be strict about "teardown AFTER a test session", we should probably
     # spin up a dedicated test environment.
     
     # However, the user request was "teardown the docker build after a test session".
-    # This might mean "docker-compose down" after running tests.
+    # This might mean "docker compose down" after running tests.
     
-    docker-compose down
+    docker compose down
 }
 trap cleanup EXIT
 
 # Start environment
 echo "Starting environment..."
-docker-compose up -d db
+docker compose up -d db
 
 # Wait for DB
 echo "Waiting for database..."
