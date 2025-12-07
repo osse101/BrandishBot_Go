@@ -46,10 +46,10 @@ fi
 
 # Determine Configuration
 if [[ "$ENVIRONMENT" == "staging" ]]; then
-    COMPOSE_FILE="docker compose.staging.yml"
+    COMPOSE_FILE="docker-compose.staging.yml"
     DEFAULT_TAG="latest-staging"
 elif [[ "$ENVIRONMENT" == "production" ]]; then
-    COMPOSE_FILE="docker compose.production.yml"
+    COMPOSE_FILE="docker-compose.production.yml"
     DEFAULT_TAG="latest-production"
 else
     log_error "Environment must be 'staging' or 'production'"
