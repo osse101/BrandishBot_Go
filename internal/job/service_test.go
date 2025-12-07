@@ -368,3 +368,378 @@ func TestGetPrimaryJob(t *testing.T) {
 	assert.Equal(t, "j2", primary.JobKey)
 	assert.Equal(t, 10, primary.Level)
 }
+
+// GetAllJobs Tests
+
+func TestGetAllJobs_Success(t *testing.T) {
+	repo := new(MockRepository)
+	prog := new(MockProgressionService)
+	svc := NewService(repo, prog)
+	ctx := context.Background()
+
+	jobs := []domain.Job{
+		{ID: 1, JobKey: JobKeyBlacksmith, DisplayName: "Blacksmith"},
+		{ID: 2, JobKey: JobKeyExplorer, DisplayName: "Explorer"},
+	}
+
+	repo.On("GetAllJobs", ctx).Return(jobs, nil)
+
+	result, err := svc.GetAllJobs(ctx)
+	assert.NoError(t, err)
+	assert.Len(t, result, 2)
+	assert.Equal(t, JobKeyBlacksmith, result[0].JobKey)
+}
+
+func TestGetAllJobs_Empty(t *testing.T) {
+	repo := new(MockRepository)
+	prog := new(MockProgressionService)
+	svc := NewService(repo, prog)
+	ctx := context.Background()
+
+	repo.On("GetAllJobs", ctx).Return([]domain.Job{}, nil)
+
+	result, err := svc.GetAllJobs(ctx)
+	assert.NoError(t, err)
+	assert.Len(t, result, 0)
+}
+
+func TestGetAllJobs_RepositoryError(t *testing.T) {
+	repo := new(MockRepository)
+	prog := new(MockProgressionService)
+	svc := NewService(repo, prog)
+	ctx := context.Background()
+
+	repo.On("GetAllJobs", ctx).Return(nil, assert.AnError)
+
+	result, err := svc.GetAllJobs(ctx)
+	assert.Error(t, err)
+	assert.Nil(t, result)
+}
+
+// GetUserJobs Edge Cases
+
+func TestGetUserJobs_NoProgress(t *testing.T) {
+	repo := new(MockRepository)
+	prog := new(MockProgressionService)
+	svc := NewService(repo, prog)
+	ctx := context.Background()
+
+	jobs := []domain.Job{
+		{ID: 1, JobKey: JobKeyBlacksmith, DisplayName: "Blacksmith"},
+	}
+
+	repo.On("GetAllJobs", ctx).Return(jobs, nil)
+	repo.On("GetUserJobs", ctx, "u1").Return([]domain.UserJob{}, nil) // No progress
+
+	result, err := svc.GetUserJobs(ctx, "u1")
+	assert.NoError(t, err)
+	assert.Len(t, result, 1)
+	assert.Equal(t, 0, result[0].Level)
+	assert.Equal(t, int64(0), result[0].CurrentXP)
+	assert.Equal(t, int64(BaseXP), result[0].XPToNextLevel) // XP to level 1
+}
+
+func TestGetUserJobs_RepositoryError(t *testing.T) {
+	repo := new(MockRepository)
+	prog := new(MockProgressionService)
+	svc := NewService(repo, prog)
+	ctx := context.Background()
+
+	repo.On("GetAllJobs", ctx).Return(nil, assert.AnError)
+
+	result, err := svc.GetUserJobs(ctx, "u1")
+	assert.Error(t, err)
+	assert.Nil(t, result)
+}
+
+func TestGetUserJobs_UserJobsError(t *testing.T) {
+	repo := new(MockRepository)
+	prog := new(MockProgressionService)
+	svc := NewService(repo, prog)
+	ctx := context.Background()
+
+	jobs := []domain.Job{
+		{ID: 1, JobKey: JobKeyBlacksmith, DisplayName: "Blacksmith"},
+	}
+
+	repo.On("GetAllJobs", ctx).Return(jobs, nil)
+	repo.On("GetUserJobs", ctx, "u1").Return(nil, assert.AnError)
+
+	result, err := svc.GetUserJobs(ctx, "u1")
+	assert.Error(t, err)
+	assert.Nil(t, result)
+}
+
+// GetPrimaryJob Edge Cases
+
+func TestGetPrimaryJob_NoJobs(t *testing.T) {
+	repo := new(MockRepository)
+	prog := new(MockProgressionService)
+	svc := NewService(repo, prog)
+	ctx := context.Background()
+
+	repo.On("GetAllJobs", ctx).Return([]domain.Job{}, nil)
+	repo.On("GetUserJobs", ctx, "u1").Return([]domain.UserJob{}, nil)
+
+	result, err := svc.GetPrimaryJob(ctx, "u1")
+	assert.NoError(t, err)
+	assert.Nil(t, result) // No jobs means no primary
+}
+
+func TestGetPrimaryJob_TieOnLevel_HigherXP(t *testing.T) {
+	repo := new(MockRepository)
+	prog := new(MockProgressionService)
+	svc := NewService(repo, prog)
+	ctx := context.Background()
+
+	jobs := []domain.Job{
+		{ID: 1, JobKey: JobKeyBlacksmith, DisplayName: "Blacksmith"},
+		{ID: 2, JobKey: JobKeyExplorer, DisplayName: "Explorer"},
+	}
+	// Same level, different XP - should pick higher XP
+	userJobs := []domain.UserJob{
+		{JobID: 1, CurrentLevel: 5, CurrentXP: 1000},
+		{JobID: 2, CurrentLevel: 5, CurrentXP: 1500}, // Higher XP
+	}
+
+	repo.On("GetAllJobs", ctx).Return(jobs, nil)
+	repo.On("GetUserJobs", ctx, "u1").Return(userJobs, nil)
+
+	result, err := svc.GetPrimaryJob(ctx, "u1")
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Equal(t, JobKeyExplorer, result.JobKey)
+	assert.Equal(t, int64(1500), result.CurrentXP)
+}
+
+func TestGetPrimaryJob_ErrorPropagation(t *testing.T) {
+	repo := new(MockRepository)
+	prog := new(MockProgressionService)
+	svc := NewService(repo, prog)
+	ctx := context.Background()
+
+	repo.On("GetAllJobs", ctx).Return(nil, assert.AnError)
+
+	result, err := svc.GetPrimaryJob(ctx, "u1")
+	assert.Error(t, err)
+	assert.Nil(t, result)
+}
+
+// GetJobLevel Error Paths
+
+func TestGetJobLevel_JobNotFound(t *testing.T) {
+	repo := new(MockRepository)
+	prog := new(MockProgressionService)
+	svc := NewService(repo, prog)
+	ctx := context.Background()
+
+	repo.On("GetJobByKey", ctx, "invalid_job").Return(nil, assert.AnError)
+
+	level, err := svc.GetJobLevel(ctx, "u1", "invalid_job")
+	assert.Error(t, err)
+	assert.Equal(t, 0, level)
+}
+
+func TestGetJobLevel_RepositoryError(t *testing.T) {
+	repo := new(MockRepository)
+	prog := new(MockProgressionService)
+	svc := NewService(repo, prog)
+	ctx := context.Background()
+
+	job := &domain.Job{ID: 1, JobKey: JobKeyBlacksmith}
+	repo.On("GetJobByKey", ctx, JobKeyBlacksmith).Return(job, nil)
+	repo.On("GetUserJob", ctx, "u1", 1).Return(nil, assert.AnError)
+
+	level, err := svc.GetJobLevel(ctx, "u1", JobKeyBlacksmith)
+	assert.Error(t, err)
+	assert.Equal(t, 0, level)
+}
+
+func TestGetJobLevel_NoProgress(t *testing.T) {
+	repo := new(MockRepository)
+	prog := new(MockProgressionService)
+	svc := NewService(repo, prog)
+	ctx := context.Background()
+
+	job := &domain.Job{ID: 1, JobKey: JobKeyBlacksmith}
+	repo.On("GetJobByKey", ctx, JobKeyBlacksmith).Return(job, nil)
+	repo.On("GetUserJob", ctx, "u1", 1).Return(nil, nil) // No progress yet
+
+	level, err := svc.GetJobLevel(ctx, "u1", JobKeyBlacksmith)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, level)
+}
+
+// GetJobBonus Edge Cases
+
+func TestGetJobBonus_ZeroLevel(t *testing.T) {
+	repo := new(MockRepository)
+	prog := new(MockProgressionService)
+	svc := NewService(repo, prog)
+	ctx := context.Background()
+
+	job := &domain.Job{ID: 1, JobKey: JobKeyExplorer}
+	userJob := &domain.UserJob{UserID: "u1", JobID: 1, CurrentLevel: 0}
+
+	repo.On("GetJobByKey", ctx, JobKeyExplorer).Return(job, nil)
+	repo.On("GetUserJob", ctx, "u1", 1).Return(userJob, nil)
+	// GetJobBonus returns early if level is 0
+
+	val, err := svc.GetJobBonus(ctx, "u1", JobKeyExplorer, "chance")
+	assert.NoError(t, err)
+	assert.Equal(t, 0.0, val)
+}
+
+func TestGetJobBonus_NoBonusesConfigured(t *testing.T) {
+	repo := new(MockRepository)
+	prog := new(MockProgressionService)
+	svc := NewService(repo, prog)
+	ctx := context.Background()
+
+	job := &domain.Job{ID: 1, JobKey: JobKeyExplorer}
+	userJob := &domain.UserJob{UserID: "u1", JobID: 1, CurrentLevel: 5}
+
+	repo.On("GetJobByKey", ctx, JobKeyExplorer).Return(job, nil).Twice()
+	repo.On("GetUserJob", ctx, "u1", 1).Return(userJob, nil)
+	repo.On("GetJobLevelBonuses", ctx, 1, 5).Return([]domain.JobLevelBonus{}, nil)
+
+	val, err := svc.GetJobBonus(ctx, "u1", JobKeyExplorer, "chance")
+	assert.NoError(t, err)
+	assert.Equal(t, 0.0, val) // No bonuses configured
+}
+
+func TestGetJobBonus_MultipleBonusTypes(t *testing.T) {
+	repo := new(MockRepository)
+	prog := new(MockProgressionService)
+	svc := NewService(repo, prog)
+	ctx := context.Background()
+
+	job := &domain.Job{ID: 1, JobKey: JobKeyExplorer}
+	userJob := &domain.UserJob{UserID: "u1", JobID: 1, CurrentLevel: 10}
+	bonuses := []domain.JobLevelBonus{
+		{BonusType: "chance", BonusValue: 0.3},
+		{BonusType: "multiplier", BonusValue: 1.5}, // Different type
+		{BonusType: "chance", BonusValue: 0.2},     // Lower value of same type
+	}
+
+	repo.On("GetJobByKey", ctx, JobKeyExplorer).Return(job, nil).Twice()
+	repo.On("GetUserJob", ctx, "u1", 1).Return(userJob, nil)
+	repo.On("GetJobLevelBonuses", ctx, 1, 10).Return(bonuses, nil)
+
+	val, err := svc.GetJobBonus(ctx, "u1", JobKeyExplorer, "chance")
+	assert.NoError(t, err)
+	assert.Equal(t, 0.3, val) // Should pick highest of "chance" type
+}
+
+func TestGetJobBonus_RepositoryError(t *testing.T) {
+	repo := new(MockRepository)
+	prog := new(MockProgressionService)
+	svc := NewService(repo, prog)
+	ctx := context.Background()
+
+	repo.On("GetJobByKey", ctx, JobKeyExplorer).Return(nil, assert.AnError)
+
+	val, err := svc.GetJobBonus(ctx, "u1", JobKeyExplorer, "chance")
+	assert.Error(t, err)
+	assert.Equal(t, 0.0, val)
+}
+
+// AwardXP Advanced Scenarios
+
+func TestAwardXP_RepositoryFailure_GetJob(t *testing.T) {
+	repo := new(MockRepository)
+	prog := new(MockProgressionService)
+	svc := NewService(repo, prog)
+	ctx := context.Background()
+
+	prog.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
+	repo.On("GetJobByKey", ctx, JobKeyBlacksmith).Return(nil, assert.AnError)
+
+	result, err := svc.AwardXP(ctx, "u1", JobKeyBlacksmith, 10, "test", nil)
+	assert.Error(t, err)
+	assert.Nil(t, result)
+}
+
+func TestAwardXP_RepositoryFailure_Upsert(t *testing.T) {
+	repo := new(MockRepository)
+	prog := new(MockProgressionService)
+	svc := NewService(repo, prog)
+	ctx := context.Background()
+
+	job := &domain.Job{ID: 1, JobKey: JobKeyBlacksmith}
+
+	prog.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
+	repo.On("GetJobByKey", ctx, JobKeyBlacksmith).Return(job, nil)
+	repo.On("GetUserJob", ctx, "u1", 1).Return(nil, nil)
+	repo.On("UpsertUserJob", ctx, mock.Anything).Return(assert.AnError)
+
+	result, err := svc.AwardXP(ctx, "u1", JobKeyBlacksmith, 10, "test", nil)
+	assert.Error(t, err)
+	assert.Nil(t, result)
+}
+
+func TestAwardXP_PartialDailyCapRemaining(t *testing.T) {
+	repo := new(MockRepository)
+	prog := new(MockProgressionService)
+	svc := NewService(repo, prog)
+	ctx := context.Background()
+
+	job := &domain.Job{ID: 1, JobKey: JobKeyBlacksmith}
+	// User has 400 XP gained today, cap is 500, so only 100 remaining
+	userJob := &domain.UserJob{
+		UserID:        "u1",
+		JobID:         1,
+		CurrentXP:     2000,
+		CurrentLevel:  5,
+		XPGainedToday: 400,
+	}
+
+	prog.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
+	repo.On("GetJobByKey", ctx, JobKeyBlacksmith).Return(job, nil)
+	repo.On("GetUserJob", ctx, "u1", 1).Return(userJob, nil)
+
+	// Try to award 200, but should only get 100
+	repo.On("UpsertUserJob", ctx, mock.MatchedBy(func(uj *domain.UserJob) bool {
+		return uj.XPGainedToday == 500 && uj.CurrentXP == 2100 // 2000 + 100
+	})).Return(nil)
+	repo.On("RecordJobXPEvent", ctx, mock.MatchedBy(func(e *domain.JobXPEvent) bool {
+		return e.XPAmount == 100
+	})).Return(nil)
+
+	result, err := svc.AwardXP(ctx, "u1", JobKeyBlacksmith, 200, "test", nil)
+	assert.NoError(t, err)
+	assert.Equal(t, 100, result.XPGained) // Only 100 awarded
+}
+
+// XP Calculation Edge Cases
+
+func TestGetXPForLevel_NegativeLevel(t *testing.T) {
+	repo := new(MockRepository)
+	prog := new(MockProgressionService)
+	svc := NewService(repo, prog)
+
+	result := svc.GetXPForLevel(-5)
+	assert.Equal(t, int64(0), result)
+}
+
+func TestGetXPForLevel_VeryHighLevel(t *testing.T) {
+	repo := new(MockRepository)
+	prog := new(MockProgressionService)
+	svc := NewService(repo, prog)
+
+	// Should not panic or overflow
+	result := svc.GetXPForLevel(50)
+	assert.Greater(t, result, int64(0))
+	// Just verify it calculates something reasonable
+}
+
+func TestCalculateLevel_VeryHighXP(t *testing.T) {
+	repo := new(MockRepository)
+	prog := new(MockProgressionService)
+	svc := NewService(repo, prog)
+
+	// Very high XP should still work and cap at iteration limit
+	result := svc.CalculateLevel(10000000)
+	assert.Greater(t, result, 0)
+	assert.LessOrEqual(t, result, MaxIterationLevel)
+}
