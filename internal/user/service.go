@@ -10,6 +10,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/concurrency"
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
@@ -67,6 +68,11 @@ type UserInventoryItem struct {
 // ItemEffectHandler defines the function signature for item effects
 type ItemEffectHandler func(ctx context.Context, s *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args map[string]interface{}) (string, error)
 
+// JobService defines the interface for job operations
+type JobService interface {
+	AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error)
+}
+
 // service implements the Service interface
 type service struct {
 	repo         Repository
@@ -75,6 +81,7 @@ type service struct {
 	timeouts     map[string]*time.Timer
 	lockManager  *concurrency.LockManager
 	lootTables   map[string][]LootItem
+	jobService   JobService
 }
 
 // setPlatformID sets the appropriate platform-specific ID field on a user
@@ -90,13 +97,14 @@ func setPlatformID(user *domain.User, platform, platformID string) {
 }
 
 // NewService creates a new user service
-func NewService(repo Repository, lockManager *concurrency.LockManager) Service {
-	s := &service{
+func NewService(repo Repository, lockManager *concurrency.LockManager, jobService JobService) Service {
+	s :=  &service{
 		repo:         repo,
 		itemHandlers: make(map[string]ItemEffectHandler),
 		timeouts:     make(map[string]*time.Timer),
 		lockManager:  lockManager,
 		lootTables:   make(map[string][]LootItem),
+		jobService:   jobService,
 	}
 	s.registerHandlers()
 	// Attempt to load default loot tables, ignore error if file doesn't exist (will be empty)
@@ -610,6 +618,9 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 			return "", fmt.Errorf("failed to update inventory: %w", err)
 		}
 
+		// Award Explorer XP for finding item (async, don't block)
+		go s.awardExplorerXP(context.Background(), user.ID, item.Name)
+
 		resultMessage = fmt.Sprintf("You have found 1x %s", item.Name)
 		log.Info("Search successful - lootbox found", "username", username, "item", item.Name)
 	} else {
@@ -656,4 +667,24 @@ func (s *service) getUserOrRegister(ctx context.Context, platform, platformID, u
 
 	log.Info("User auto-registered", "userID", registered.ID)
 	return &registered, nil
+}
+
+// awardExplorerXP awards Explorer job XP for finding items during search
+func (s *service) awardExplorerXP(ctx context.Context, userID, itemName string) {
+	if s.jobService == nil {
+		return // Job system not enabled
+	}
+
+	xp := job.ExplorerXPPerItem
+
+	metadata := map[string]interface{}{
+		"item_name": itemName,
+	}
+
+	result, err := s.jobService.AwardXP(ctx, userID, job.JobKeyExplorer, xp, "search", metadata)
+	if err != nil {
+		logger.FromContext(ctx).Warn("Failed to award Explorer XP", "error", err, "user_id", userID)
+	} else if result != nil && result.LeveledUp {
+		logger.FromContext(ctx).Info("Explorer leveled up!", "user_id", userID, "new_level", result.NewLevel)
+	}
 }

@@ -121,20 +121,20 @@ func main() {
 
 	lockManager := concurrency.NewLockManager()
 	userRepo := postgres.NewUserRepository(dbPool)
-	userService := user.NewService(userRepo, lockManager)
-	economyService := economy.NewService(userRepo, lockManager)
-
+	
 	statsRepo := postgres.NewStatsRepository(dbPool)
 	statsService := stats.NewService(statsRepo)
 
 	progressionRepo := postgres.NewProgressionRepository(dbPool)
 	progressionService := progression.NewService(progressionRepo)
 
-	// Initialize Job service (needed by crafting)
+	// Initialize Job service (needed by user, economy, crafting, gamble)
 	jobRepo := postgres.NewJobRepository(dbPool)
 	jobService := job.NewService(jobRepo, progressionService)
-
-	// Initialize crafting service with job service
+	
+	// Initialize services that depend on job service
+	userService := user.NewService(userRepo, lockManager, jobService)
+	economyService := economy.NewService(userRepo, lockManager, jobService)
 	craftingService := crafting.NewService(userRepo, lockManager, jobService)
 
 	// Initialize Event Bus

@@ -3,9 +3,11 @@ package economy
 import (
 	"context"
 	"fmt"
+	"math"
 
 	"github.com/osse101/BrandishBot_Go/internal/concurrency"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
@@ -27,16 +29,23 @@ type Service interface {
 	BuyItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (int, error)
 }
 
+// JobService defines the interface for job operations
+type JobService interface {
+	AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error)
+}
+
 type service struct {
 	repo        Repository
 	lockManager *concurrency.LockManager
+	jobService  JobService
 }
 
 // NewService creates a new economy service
-func NewService(repo Repository, lockManager *concurrency.LockManager) Service {
+func NewService(repo Repository, lockManager *concurrency.LockManager, jobService JobService) Service {
 	return &service{
 		repo:        repo,
 		lockManager: lockManager,
+		jobService:  jobService,
 	}
 }
 
@@ -153,6 +162,10 @@ func (s *service) SellItem(ctx context.Context, platform, platformID, username, 
 		log.Error("Failed to update inventory", "error", err)
 		return 0, 0, fmt.Errorf("failed to update inventory: %w", err)
 	}
+
+	// Award Merchant XP based on transaction value (async)
+	xp := calculateMerchantXP(moneyGained)
+	go s.awardMerchantXP(context.Background(), user.ID, xp, "sell", itemName, moneyGained)
 
 	log.Info("Item sold", "username", username, "item", itemName, "quantity", actualSellQuantity, "moneyGained", moneyGained)
 	return moneyGained, actualSellQuantity, nil
@@ -289,6 +302,10 @@ func (s *service) BuyItem(ctx context.Context, platform, platformID, username, i
 		return 0, fmt.Errorf("failed to update inventory: %w", err)
 	}
 
+	// Award Merchant XP based on transaction value (async)
+	xp := calculateMerchantXP(cost)
+	go s.awardMerchantXP(context.Background(), user.ID, xp, "buy", itemName, cost)
+
 	log.Info("Item purchased", "username", username, "item", itemName, "quantity", actualQuantity)
 	return actualQuantity, nil
 }
@@ -303,4 +320,30 @@ func calculateAffordableQuantity(desired, unitPrice, balance int) (quantity, cos
 		return desired, desired * unitPrice
 	}
 	return maxAffordable, maxAffordable * unitPrice
+}
+
+// calculateMerchantXP calculates XP based on transaction value
+// Formula: XP = ceil(transactionValue / 10)
+func calculateMerchantXP(transactionValue int) int {
+	return int(math.Ceil(float64(transactionValue) / job.MerchantXPValueDivisor))
+}
+
+// awardMerchantXP awards Merchant job XP for buy/sell transactions
+func (s *service) awardMerchantXP(ctx context.Context, userID string, xp int, action, itemName string, value int) {
+	if s.jobService == nil || xp <= 0 {
+		return
+	}
+
+	metadata := map[string]interface{}{
+		"action":    action,
+		"item_name": itemName,
+		"value":     value,
+	}
+
+	result, err := s.jobService.AwardXP(ctx, userID, job.JobKeyMerchant, xp, action, metadata)
+	if err != nil {
+		logger.FromContext(ctx).Warn("Failed to award Merchant XP", "error", err, "user_id", userID)
+	} else if result != nil && result.LeveledUp {
+		logger.FromContext(ctx).Info("Merchant leveled up!", "user_id", userID, "new_level", result.NewLevel)
+	}
 }
