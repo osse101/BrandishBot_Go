@@ -6,9 +6,45 @@ This document describes the complete deployment workflow for BrandishBot from de
 - [Git Branch Strategy](#git-branch-strategy)
 - [Build Lifecycle](#build-lifecycle)
 - [Deployment Procedures](#deployment-procedures)
+
 - [Rollback Procedures](#rollback-procedures)
+- [Docker Image Management](#docker-image-management)
 - [Downtime Windows](#downtime-windows)
 - [Hotfix Process](#hotfix-process)
+
+---
+
+## Docker Image Management
+
+You can push your Docker images to a registry (like Docker Hub) to persist staging and production builds for future reference or rollbacks.
+
+### Configuration
+
+1. Log in to your registry:
+   ```bash
+   docker login
+   ```
+2. Set your username/registry in `.env`:
+   ```bash
+   DOCKER_USER=yourusername
+   # Optional: DOCKER_IMAGE_NAME=brandishbot (default)
+   ```
+
+### Pushing Images
+
+After a successful deployment (or build), you can push the image:
+
+```bash
+# Push staging image
+make push-staging
+
+# Push production image
+make push-production
+```
+
+This will tag and push:
+- `yourusername/brandishbot:v1.2.3` (Version tag)
+- `yourusername/brandishbot:latest-staging` (Environment tag)
 
 ---
 

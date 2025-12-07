@@ -149,6 +149,14 @@ docker-build:
 docker-logs:
 	@docker-compose logs -f
 
+push-staging:
+	@echo "Pushing staging image..."
+	@./scripts/push_image.sh staging $$(git describe --tags --always --dirty)
+
+push-production:
+	@echo "Pushing production image..."
+	@./scripts/push_image.sh production $$(git describe --tags --always --dirty)
+
 # Test database commands
 test-integration:
 	@echo "Running integration tests..."
