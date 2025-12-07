@@ -115,7 +115,7 @@ log_info "Docker image built: brandishbot:$VERSION"
 # Step 4: Deploy new containers
 log_info "Step 4/7: Deploying new containers"
 export DOCKER_IMAGE_TAG="$VERSION"
-docker-compose -f "$COMPOSE_FILE" up -d --no-deps app discord || {
+docker-compose -f "$COMPOSE_FILE" up -d app discord || {
     log_error "Deployment failed"
     log_info "Attempting rollback..."
     docker-compose -f "$COMPOSE_FILE" up -d --no-deps app discord

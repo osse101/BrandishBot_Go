@@ -111,5 +111,3 @@ DROP TABLE IF EXISTS user_votes;
 DROP TABLE IF EXISTS progression_voting;
 DROP TABLE IF EXISTS progression_unlocks;
 DROP TABLE IF EXISTS progression_nodes;
-
--- +goose Down

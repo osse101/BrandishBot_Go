@@ -46,5 +46,3 @@ DELETE FROM progression_nodes WHERE node_key IN (
     'feature_sell', 'item_lootbox1', 'feature_gamble', 'feature_duel',
     'feature_expedition', 'upgrade_cooldown_reduction'
 );
-
--- +goose Down

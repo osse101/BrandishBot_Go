@@ -5,7 +5,7 @@ services:
       dockerfile: Dockerfile
       args:
         VERSION: ${DOCKER_IMAGE_TAG:-latest-staging}
-    image: brandishbot:${DOCKER_IMAGE_TAG:-latest-staging}
+    image: ${DOCKER_USER:-brandishbot}/${DOCKER_IMAGE_NAME:-brandishbot}:${DOCKER_IMAGE_TAG:-latest-staging}
     ports:
       - "8081:8080"
     env_file:
@@ -42,7 +42,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.discord
-    image: brandishbot-discord:${DOCKER_IMAGE_TAG:-latest-staging}
+    image: ${DOCKER_USER:-brandishbot}/${DOCKER_IMAGE_NAME:-brandishbot}-discord:${DOCKER_IMAGE_TAG:-latest-staging}
     env_file:
       - .env
     environment:

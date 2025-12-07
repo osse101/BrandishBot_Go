@@ -64,6 +64,7 @@ COPY --from=builder --chown=appuser:appuser /go/bin/goose /usr/local/bin/goose
 
 # Copy migrations and entrypoint
 COPY --chown=appuser:appuser migrations ./migrations
+COPY --chown=appuser:appuser configs ./configs
 COPY --chown=appuser:appuser scripts/docker-entrypoint.sh .
 RUN chmod +x docker-entrypoint.sh
 

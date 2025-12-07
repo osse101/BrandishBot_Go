@@ -79,6 +79,44 @@ gitGraph
 | `production` | Production-ready code | Yes | Production server |
 | `master` | Legacy/historical (keep for compatibility) | Yes | Not deployed |
 
+
+## Server-Side Deployment (Remote)
+
+This method is for servers that **do not build code** but instead pull pre-built images from the registry.
+
+### 1. Server Requirements
+
+The server only needs **Docker** and these specific files:
+
+| File | Purpose |
+|------|---------|
+| `.env` | Environment secrets and config |
+| `scripts/deploy_remote.sh` | Main control script |
+| `scripts/health-check.sh` | Used for validation (optional) |
+| `docker-compose.staging.yml` | Config for staging |
+| `docker-compose.production.yml` | Config for production |
+
+**You do NOT need:** Source code, Go compiler, `Makefile`, or migrating tools (built into the image).
+
+### 2. Usage
+
+Use `deploy_remote.sh` to manage the lifecycle:
+
+```bash
+# 1. FULL DEPLOY (Pull -> Restart -> Prune -> Health Check)
+./scripts/deploy_remote.sh staging
+./scripts/deploy_remote.sh production v1.2.0
+
+# 2. STARTUP (Just start containers)
+./scripts/deploy_remote.sh staging latest start
+
+# 3. TEARDOWN (Stop containers)
+./scripts/deploy_remote.sh staging latest stop
+
+# 4. PULL ONLY (Pre-fetch images)
+./scripts/deploy_remote.sh production v1.3.0 pull
+```
+
 ### Branch Protection Rules
 
 > [!IMPORTANT]
