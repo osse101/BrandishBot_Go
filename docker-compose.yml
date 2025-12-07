@@ -5,6 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.dev
+    image: brandishbot:dev
     ports:
       - "8080:8080"
     env_file:
@@ -29,6 +30,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.discord
+    image: brandishbot-discord:dev
     env_file:
       - .env
     environment:
