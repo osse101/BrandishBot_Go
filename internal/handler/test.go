@@ -53,7 +53,7 @@ func HandleTest(userService user.Service) http.HandlerFunc {
 
 		// Check if user exists, create if not
 		log.Info("HandleIncomingMessage called", "platform", req.Platform, "platformID", req.PlatformID, "username", req.Username)
-		_, err := userService.HandleIncomingMessage(r.Context(), req.Platform, req.PlatformID, req.Username)
+		_, err := userService.HandleIncomingMessage(r.Context(), req.Platform, req.PlatformID, req.Username, "")
 		if err != nil {
 			log.Error("Failed to process user", "error", err, "username", req.Username)
 			http.Error(w, "Failed to process user: "+err.Error(), http.StatusInternalServerError)

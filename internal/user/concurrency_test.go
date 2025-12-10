@@ -37,7 +37,7 @@ func TestConcurrency_AddItem(t *testing.T) {
 		delay:          10 * time.Millisecond,
 	}
 	lockManager := concurrency.NewLockManager()
-	svc := NewService(repo, lockManager)
+	svc := NewService(repo, lockManager, nil)
 	ctx := context.Background()
 
 	// Initial setup

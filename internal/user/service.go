@@ -47,7 +47,7 @@ type Repository interface {
 type Service interface {
 	RegisterUser(ctx context.Context, user domain.User) (domain.User, error)
 	FindUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error)
-	HandleIncomingMessage(ctx context.Context, platform, platformID, username string) (domain.User, error)
+	HandleIncomingMessage(ctx context.Context, platform, platformID, username, message string) (*domain.MessageResult, error)
 	AddItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) error
 	RemoveItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (int, error)
 	GiveItem(ctx context.Context, ownerPlatform, ownerPlatformID, ownerUsername, receiverPlatform, receiverPlatformID, receiverUsername, itemName string, quantity int) error
@@ -82,6 +82,7 @@ type service struct {
 	lockManager  *concurrency.LockManager
 	lootTables   map[string][]LootItem
 	jobService   JobService
+	stringFinder *StringFinder
 }
 
 // setPlatformID sets the appropriate platform-specific ID field on a user
@@ -105,6 +106,7 @@ func NewService(repo Repository, lockManager *concurrency.LockManager, jobServic
 		lockManager:  lockManager,
 		lootTables:   make(map[string][]LootItem),
 		jobService:   jobService,
+		stringFinder: NewStringFinder(),
 	}
 	s.registerHandlers()
 	// Attempt to load default loot tables, ignore error if file doesn't exist (will be empty)
@@ -160,39 +162,52 @@ func (s *service) FindUserByPlatformID(ctx context.Context, platform, platformID
 	return user, nil
 }
 
-// HandleIncomingMessage checks if a user exists for an incoming message and creates one if not.
-func (s *service) HandleIncomingMessage(ctx context.Context, platform, platformID, username string) (domain.User, error) {
+// HandleIncomingMessage checks if a user exists for an incoming message, creates one if not, and finds string matches.
+func (s *service) HandleIncomingMessage(ctx context.Context, platform, platformID, username, message string) (*domain.MessageResult, error) {
 	log := logger.FromContext(ctx)
 	log.Info("HandleIncomingMessage called", "platform", platform, "platformID", platformID, "username", username)
 	user, err := s.repo.GetUserByPlatformID(ctx, platform, platformID)
 	// If user not found, create new user
 	if err != nil && !errors.Is(err, domain.ErrUserNotFound) {
 		log.Error("Failed to get user", "error", err, "platform", platform, "platformID", platformID)
-		return domain.User{}, fmt.Errorf("failed to get user: %w", err)
+		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
+	var targetUser *domain.User
 	if user != nil {
 		log.Info("Existing user found", "userID", user.ID)
-		return *user, nil
+		targetUser = user
+	} else {
+		// User not found, register new user
+		newUser := domain.User{Username: username}
+		switch platform {
+		case domain.PlatformTwitch:
+			newUser.TwitchID = platformID
+		case domain.PlatformYoutube:
+			newUser.YoutubeID = platformID
+		case domain.PlatformDiscord:
+			newUser.DiscordID = platformID
+		default:
+			log.Error("Unsupported platform", "platform", platform)
+			return nil, fmt.Errorf("unsupported platform: %s", platform)
+		}
+		registered, err := s.RegisterUser(ctx, newUser)
+		if err != nil {
+			log.Error("Failed to register new user", "error", err, "username", username)
+			return nil, err
+		}
+		log.Info("New user registered", "username", username)
+		targetUser = &registered
 	}
-	// User not found, register new user
-	newUser := domain.User{Username: username}
-	switch platform {
-	case domain.PlatformTwitch:
-		newUser.TwitchID = platformID
-	case domain.PlatformYoutube:
-		newUser.YoutubeID = platformID
-	case domain.PlatformDiscord:
-		newUser.DiscordID = platformID
-	default:
-		log.Error("Unsupported platform", "platform", platform)
-		return domain.User{}, fmt.Errorf("unsupported platform: %s", platform)
+
+	// Find matches in message
+	matches := s.stringFinder.FindMatches(message)
+	
+	result := &domain.MessageResult{
+		User:    *targetUser,
+		Matches: matches,
 	}
-	if _, err := s.RegisterUser(ctx, newUser); err != nil {
-		log.Error("Failed to register new user", "error", err, "username", username)
-		return domain.User{}, err
-	}
-	log.Info("New user registered", "username", username)
-	return newUser, nil
+	
+	return result, nil
 }
 
 func (s *service) AddItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) error {

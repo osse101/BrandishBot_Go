@@ -17,6 +17,7 @@ type HandleMessageRequest struct {
 	Platform   string `json:"platform" validate:"required,platform"`
 	PlatformID string `json:"platform_id" validate:"required"`
 	Username   string `json:"username" validate:"required,max=100,excludesall=\x00\n\r\t"`
+	Message    string `json:"message"`
 }
 
 // HandleMessageHandler handles the incoming message flow.
@@ -37,7 +38,7 @@ type HandleMessageRequest struct {
 // @Accept json
 // @Produce json
 // @Param request body HandleMessageRequest true "Message details"
-// @Success 200 {object} domain.User
+// @Success 200 {object} domain.MessageResult
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /message/handle [post]
@@ -70,7 +71,8 @@ func HandleMessageHandler(userService user.Service, progressionSvc progression.S
 			return
 		}
 
-		user, err := userService.HandleIncomingMessage(r.Context(), req.Platform, req.PlatformID, req.Username)
+		log.Info("HandleIncomingMessage called", "platform", req.Platform, "platformID", req.PlatformID, "username", req.Username)
+		result, err := userService.HandleIncomingMessage(r.Context(), req.Platform, req.PlatformID, req.Username, req.Message)
 		if err != nil {
 			log.Error("Failed to handle message",
 				"error", err,
@@ -85,18 +87,18 @@ func HandleMessageHandler(userService user.Service, progressionSvc progression.S
 
 		// Track engagement for message
 		middleware.TrackEngagementFromContext(
-			middleware.WithUserID(r.Context(), user.ID),
+			middleware.WithUserID(r.Context(), result.User.ID),
 			eventBus,
 			"message",
 			1,
 		)
 
 		log.Info("Message handled successfully",
-			"user_id", user.ID,
-			"username", user.Username)
+			"user_id", result.User.ID,
+			"username", result.User.Username)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		respondJSON(w, http.StatusOK, user)
+		respondJSON(w, http.StatusOK, result)
 	}
 }
