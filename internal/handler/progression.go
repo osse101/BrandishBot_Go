@@ -66,16 +66,14 @@ func (h *ProgressionHandlers) HandleGetAvailable() http.HandlerFunc {
 			return
 		}
 
-		currentVoting, _ := h.service.GetVotingStatus(r.Context())
-
 		response := AvailableUnlocksResponse{
 			Available: available,
-			Current:   currentVoting,
 		}
 
 		respondJSON(w, http.StatusOK, response)
 	}
 }
+
 
 // HandleVote allows a user to vote for the next unlock
 // @Summary Vote for unlock
@@ -329,7 +327,6 @@ type ProgressionTreeResponse struct {
 
 type AvailableUnlocksResponse struct {
 	Available []*domain.ProgressionNode `json:"available"`
-	Current   *domain.ProgressionVoting `json:"current,omitempty"`
 }
 
 type VoteRequest struct {

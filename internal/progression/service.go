@@ -21,16 +21,15 @@ type Service interface {
 
 	// Voting
 	VoteForUnlock(ctx context.Context, userID string, nodeKey string) error
-	GetVotingStatus(ctx context.Context) (*domain.ProgressionVoting, error)
 
 	// Unlocking
 	CheckAndUnlockCriteria(ctx context.Context) (*domain.ProgressionUnlock, error) // Auto-check if criteria met
 	ForceInstantUnlock(ctx context.Context) (*domain.ProgressionUnlock, error)     // Admin instant unlock
 
-	// Engagement
+	// Contribution tracking
 	RecordEngagement(ctx context.Context, userID string, metricType string, value int) error
 	GetEngagementScore(ctx context.Context) (int, error)
-	GetUserEngagement(ctx context.Context, userID string) (*domain.EngagementBreakdown, error)
+	GetUserEngagement(ctx context.Context, userID string) (*domain.ContributionBreakdown, error)
 
 	// Status
 	GetProgressionStatus(ctx context.Context) (*domain.ProgressionStatus, error)
@@ -160,55 +159,55 @@ func (s *service) IsItemUnlocked(ctx context.Context, itemName string) (bool, er
 	return s.repo.IsNodeUnlocked(ctx, nodeKey, 1)
 }
 
-// VoteForUnlock allows a user to vote for next unlock
+// VoteForUnlock allows a user to vote for next unlock (updated for voting sessions)
 func (s *service) VoteForUnlock(ctx context.Context, userID string, nodeKey string) error {
 	log := logger.FromContext(ctx)
 
-	// Get node
-	node, err := s.repo.GetNodeByKey(ctx, nodeKey)
+	// Get active voting session
+	session, err := s.repo.GetActiveSession(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to get node: %w", err)
-	}
-	if node == nil {
-		return fmt.Errorf("node not found: %s", nodeKey)
+		return fmt.Errorf("failed to get active session: %w", err)
 	}
 
-	// Determine target level (next unlockable level)
-	targetLevel := 1
-	for level := 1; level <= node.MaxLevel; level++ {
-		unlocked, _ := s.repo.IsNodeUnlocked(ctx, nodeKey, level)
-		if !unlocked {
-			targetLevel = level
+	if session == nil || session.Status != "voting" {
+		return fmt.Errorf("no active voting session")
+	}
+
+	// Find option matching nodeKey
+	var selectedOption *domain.ProgressionVotingOption
+	for i := range session.Options {
+		if session.Options[i].NodeDetails != nil && session.Options[i].NodeDetails.NodeKey == nodeKey {
+			selectedOption = &session.Options[i]
 			break
 		}
 	}
 
-	// Check if user already voted
-	hasVoted, err := s.repo.HasUserVoted(ctx, userID, node.ID, targetLevel)
+	if selectedOption == nil {
+		return fmt.Errorf("node not in current voting options")
+	}
+
+	// Check if user already voted in this session
+	hasVoted, err := s.repo.HasUserVotedInSession(ctx, userID, session.ID)
 	if err != nil {
 		return fmt.Errorf("failed to check vote status: %w", err)
 	}
 	if hasVoted {
-		return fmt.Errorf("user has already voted for this unlock")
+		return fmt.Errorf("user already voted in this session")
 	}
 
-	// Record vote
-	if err := s.repo.RecordUserVote(ctx, userID, node.ID, targetLevel); err != nil {
-		return fmt.Errorf("failed to record vote: %w", err)
-	}
-
-	// Increment vote count
-	if err := s.repo.IncrementVote(ctx, node.ID, targetLevel); err != nil {
+	// Increment vote and record user vote
+	err = s.repo.IncrementOptionVote(ctx, selectedOption.ID)
+	if err != nil {
 		return fmt.Errorf("failed to increment vote: %w", err)
 	}
 
-	log.Info("Vote recorded", "userID", userID, "nodeKey", nodeKey, "level", targetLevel)
-	return nil
-}
+	err = s.repo.RecordUserSessionVote(ctx, userID, session.ID, selectedOption.ID, selectedOption.NodeID)
+	if err != nil {
+		return fmt.Errorf("failed to record user vote: %w", err)
+	}
 
-// GetVotingStatus returns current voting status
-func (s *service) GetVotingStatus(ctx context.Context) (*domain.ProgressionVoting, error) {
-	return s.repo.GetActiveVoting(ctx)
+	log.Info("Vote recorded", "userID", userID, "nodeKey", nodeKey, "sessionID", session.ID)
+	return nil
 }
 
 // RecordEngagement records user engagement event
@@ -230,7 +229,7 @@ func (s *service) GetEngagementScore(ctx context.Context) (int, error) {
 }
 
 // GetUserEngagement returns user's contribution breakdown
-func (s *service) GetUserEngagement(ctx context.Context, userID string) (*domain.EngagementBreakdown, error) {
+func (s *service) GetUserEngagement(ctx context.Context, userID string) (*domain.ContributionBreakdown, error) {
 	return s.repo.GetUserEngagement(ctx, userID)
 }
 
@@ -241,17 +240,19 @@ func (s *service) GetProgressionStatus(ctx context.Context) (*domain.Progression
 		return nil, fmt.Errorf("failed to get unlocks: %w", err)
 	}
 
-	engagementScore, err := s.GetEngagementScore(ctx)
+	contributionScore, err := s.GetEngagementScore(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get engagement score: %w", err)
+		return nil, fmt.Errorf("failed to get contribution score: %w", err)
 	}
 
-	activeVoting, _ := s.repo.GetActiveVoting(ctx)
+	activeSession, _ := s.repo.GetActiveSession(ctx)
+	unlockProgress, _ := s.repo.GetActiveUnlockProgress(ctx)
 
 	return &domain.ProgressionStatus{
-		TotalUnlocked:   len(unlocks),
-		EngagementScore: engagementScore,
-		ActiveVoting:    activeVoting,
+		TotalUnlocked:        len(unlocks),
+		ContributionScore:    contributionScore,
+		ActiveSession:        activeSession,
+		ActiveUnlockProgress: unlockProgress,
 	}, nil
 }
 
@@ -302,32 +303,67 @@ func (s *service) ResetProgressionTree(ctx context.Context, resetBy string, reas
 	return s.repo.ResetTree(ctx, resetBy, reason, preserveUserData)
 }
 
-// CheckAndUnlockCriteria checks if engagement criteria met and unlocks if so
+// CheckAndUnlockCriteria checks if unlock criteria met
 func (s *service) CheckAndUnlockCriteria(ctx context.Context) (*domain.ProgressionUnlock, error) {
-	// This would be called periodically (e.g., every 5 minutes)
-	// For now, just return nil - will implement in next iteration
+	// Check if there's a node waiting to unlock
+	unlock, err := s.CheckAndUnlockNode(ctx)
+	if err != nil || unlock != nil {
+		return unlock, err
+	}
+
+	// If no session exists, start one
+	session, _ := s.repo.GetActiveSession(ctx)
+	if session == nil {
+		go s.StartVotingSession(context.Background())
+	}
+
 	return nil, nil
 }
 
+
 // ForceInstantUnlock selects highest voted option and unlocks immediately
 func (s *service) ForceInstantUnlock(ctx context.Context) (*domain.ProgressionUnlock, error) {
-	// Get active voting
-	voting, err := s.repo.GetActiveVoting(ctx)
-	if err != nil || voting == nil {
-		return nil, fmt.Errorf("no active voting found")
+	// Get active session
+	session, err := s.repo.GetActiveSession(ctx)
+	if err != nil || session == nil {
+		return nil, fmt.Errorf("no active voting session found")
 	}
 
-	// Close voting
-	if err := s.repo.EndVoting(ctx, voting.NodeID, voting.TargetLevel); err != nil {
+	if session.Status != "voting" {
+		return nil, fmt.Errorf("voting session already ended")
+	}
+
+	// Find winning option
+	winner := findWinningOption(session.Options)
+	if winner == nil {
+		return nil, fmt.Errorf("no voting options found")
+	}
+
+	// End voting session
+	if err := s.repo.EndVotingSession(ctx, session.ID, winner.ID); err != nil {
 		return nil, fmt.Errorf("failed to end voting: %w", err)
 	}
 
-	// Unlock the node
+	// Set unlock target
+	progress, _ := s.repo.GetActiveUnlockProgress(ctx)
+	if progress != nil {
+		s.repo.SetUnlockTarget(ctx, progress.ID, winner.NodeID, winner.TargetLevel, session.ID)
+	}
+
+	// Unlock the node immediately
 	engagementScore, _ := s.GetEngagementScore(ctx)
-	if err := s.repo.UnlockNode(ctx, voting.NodeID, voting.TargetLevel, "instant_override", engagementScore); err != nil {
+	if err := s.repo.UnlockNode(ctx, winner.NodeID, winner.TargetLevel, "instant_override", engagementScore); err != nil {
 		return nil, fmt.Errorf("failed to unlock node: %w", err)
 	}
 
+	// Mark progress complete and start new
+	if progress != nil {
+		s.repo.CompleteUnlock(ctx, progress.ID, 0)
+	}
+
+	// Start new voting session
+	go s.StartVotingSession(context.Background())
+
 	// Return the unlock
-	return s.repo.GetUnlock(ctx, voting.NodeID, voting.TargetLevel)
+	return s.repo.GetUnlock(ctx, winner.NodeID, winner.TargetLevel)
 }

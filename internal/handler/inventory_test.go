@@ -168,16 +168,13 @@ func (m *MockProgressionService) GetAvailableUnlocks(ctx context.Context) ([]*do
 func (m *MockProgressionService) VoteForUnlock(ctx context.Context, userID, nodeKey string) error {
 	return nil
 }
-func (m *MockProgressionService) GetVotingStatus(ctx context.Context) (*domain.ProgressionVoting, error) {
-	return nil, nil
-}
 func (m *MockProgressionService) GetProgressionStatus(ctx context.Context) (*domain.ProgressionStatus, error) {
 	return nil, nil
 }
 func (m *MockProgressionService) GetEngagementScore(ctx context.Context) (int, error) {
 	return 0, nil
 }
-func (m *MockProgressionService) GetUserEngagement(ctx context.Context, userID string) (*domain.EngagementBreakdown, error) {
+func (m *MockProgressionService) GetUserEngagement(ctx context.Context, userID string) (*domain.ContributionBreakdown, error) {
 	return nil, nil
 }
 func (m *MockProgressionService) CheckAndUnlockCriteria(ctx context.Context) (*domain.ProgressionUnlock, error) {

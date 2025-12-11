@@ -23,26 +23,33 @@ type Repository interface {
 	UnlockNode(ctx context.Context, nodeID int, level int, unlockedBy string, engagementScore int) error
 	RelockNode(ctx context.Context, nodeID int, level int) error
 
-	// Voting operations
-	GetActiveVoting(ctx context.Context) (*domain.ProgressionVoting, error)
-	StartVoting(ctx context.Context, nodeID int, level int, endsAt *time.Time) error
-	GetVoting(ctx context.Context, nodeID int, level int) (*domain.ProgressionVoting, error)
-	IncrementVote(ctx context.Context, nodeID int, level int) error
-	EndVoting(ctx context.Context, nodeID int, level int) error
+	// Voting session operations
+	CreateVotingSession(ctx context.Context) (int, error)
+	AddVotingOption(ctx context.Context, sessionID, nodeID, targetLevel int) error
+	GetActiveSession(ctx context.Context) (*domain.ProgressionVotingSession, error)
+	GetSessionByID(ctx context.Context, sessionID int) (*domain.ProgressionVotingSession, error)
+	IncrementOptionVote(ctx context.Context, optionID int) error
+	EndVotingSession(ctx context.Context, sessionID int, winningOptionID int) error
+	GetSessionVoters(ctx context.Context, sessionID int) ([]string, error)
+	HasUserVotedInSession(ctx context.Context, userID string, sessionID int) (bool, error)
+	RecordUserSessionVote(ctx context.Context, userID string, sessionID, optionID, nodeID int) error
 
-	// User vote tracking
-	HasUserVoted(ctx context.Context, userID string, nodeID int, level int) (bool, error)
-	RecordUserVote(ctx context.Context, userID string, nodeID int, level int) error
+	// Unlock progress tracking
+	CreateUnlockProgress(ctx context.Context) (int, error)
+	GetActiveUnlockProgress(ctx context.Context) (*domain.UnlockProgress, error)
+	AddContribution(ctx context.Context, progressID int, amount int) error
+	SetUnlockTarget(ctx context.Context, progressID int, nodeID int, targetLevel int, sessionID int) error
+	CompleteUnlock(ctx context.Context, progressID int, rolloverPoints int) (int, error)
 
 	// User progression
 	UnlockUserProgression(ctx context.Context, userID string, progressionType string, key string, metadata map[string]interface{}) error
 	IsUserProgressionUnlocked(ctx context.Context, userID string, progressionType string, key string) (bool, error)
 	GetUserProgressions(ctx context.Context, userID string, progressionType string) ([]*domain.UserProgression, error)
 
-	// Engagement tracking
+	// Contribution tracking
 	RecordEngagement(ctx context.Context, metric *domain.EngagementMetric) error
 	GetEngagementScore(ctx context.Context, since *time.Time) (int, error)
-	GetUserEngagement(ctx context.Context, userID string) (*domain.EngagementBreakdown, error)
+	GetUserEngagement(ctx context.Context, userID string) (*domain.ContributionBreakdown, error)
 	GetEngagementWeights(ctx context.Context) (map[string]float64, error)
 
 	// Reset operations

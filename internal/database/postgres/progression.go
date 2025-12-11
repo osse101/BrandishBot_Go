@@ -523,7 +523,7 @@ func (r *progressionRepository) GetEngagementScore(ctx context.Context, since *t
 	return totalScore, rows.Err()
 }
 
-func (r *progressionRepository) GetUserEngagement(ctx context.Context, userID string) (*domain.EngagementBreakdown, error) {
+func (r *progressionRepository) GetUserEngagement(ctx context.Context, userID string) (*domain.ContributionBreakdown, error) {
 	query := `
 		SELECT metric_type, SUM(metric_value) as total
 		FROM engagement_metrics
@@ -536,7 +536,7 @@ func (r *progressionRepository) GetUserEngagement(ctx context.Context, userID st
 	}
 	defer rows.Close()
 
-	breakdown := &domain.EngagementBreakdown{}
+	breakdown := &domain.ContributionBreakdown{}
 	weights, _ := r.GetEngagementWeights(ctx)
 
 	for rows.Next() {

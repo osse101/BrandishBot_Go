@@ -92,16 +92,51 @@ type ProgressionTreeNode struct {
 
 // ProgressionStatus represents current community status
 type ProgressionStatus struct {
-	TotalUnlocked   int                `json:"total_unlocked"`
-	EngagementScore int                `json:"engagement_score"`
-	ActiveVoting    *ProgressionVoting `json:"active_voting,omitempty"`
+	TotalUnlocked        int                       `json:"total_unlocked"`
+	ContributionScore    int                       `json:"contribution_score"`
+	ActiveSession        *ProgressionVotingSession `json:"active_session,omitempty"`
+	ActiveUnlockProgress *UnlockProgress           `json:"active_unlock_progress,omitempty"`
 }
 
-// EngagementBreakdown shows user's contribution by type
-type EngagementBreakdown struct {
-	MessagesSent int `json:"messages_sent"`
-	CommandsUsed int `json:"commands_used"`
-	ItemsCrafted int `json:"items_crafted"`
-	ItemsUsed    int `json:"items_used"`
-	TotalScore   int `json:"total_score"`
+// ContributionBreakdown shows user's contribution by type
+type ContributionBreakdown struct {
+	MessagesSent int            `json:"messages_sent"`
+	CommandsUsed int            `json:"commands_used"`
+	ItemsCrafted int            `json:"items_crafted"`
+	ItemsUsed    int            `json:"items_used"`
+	TotalScore   int            `json:"total_score"`
+	ByType       map[string]int `json:"by_type,omitempty"`
 }
+
+// ProgressionVotingSession represents a voting session for selecting next unlock
+type ProgressionVotingSession struct {
+	ID              int                       `json:"id"`
+	StartedAt       time.Time                 `json:"started_at"`
+	EndedAt         *time.Time                `json:"ended_at"`
+	WinningOptionID *int                      `json:"winning_option_id"`
+	Status          string                    `json:"status"` // 'voting', 'completed'
+	Options         []ProgressionVotingOption `json:"options"`
+}
+
+// ProgressionVotingOption represents one voting choice in a session
+type ProgressionVotingOption struct {
+	ID                int              `json:"id"`
+	SessionID         int              `json:"session_id"`
+	NodeID            int              `json:"node_id"`
+	TargetLevel       int              `json:"target_level"`
+	VoteCount         int              `json:"vote_count"`
+	LastHighestVoteAt *time.Time       `json:"last_highest_vote_at"` // When first reached current highest
+	NodeDetails       *ProgressionNode `json:"node_details,omitempty"`
+}
+
+// UnlockProgress tracks contribution points accumulated toward next unlock
+type UnlockProgress struct {
+	ID                       int        `json:"id"`
+	NodeID                   *int       `json:"node_id"`       // NULL until vote ends
+	TargetLevel              *int       `json:"target_level"`  // NULL until vote ends
+	ContributionsAccumulated int        `json:"contributions_accumulated"`
+	StartedAt                time.Time  `json:"started_at"`
+	UnlockedAt               *time.Time `json:"unlocked_at"`
+	VotingSessionID          *int       `json:"voting_session_id"`
+}
+
