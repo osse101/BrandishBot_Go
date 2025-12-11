@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS progression_voting_sessions (
     id SERIAL PRIMARY KEY,
     started_at TIMESTAMP NOT NULL DEFAULT NOW(),
     ended_at TIMESTAMP,                           -- When voting closed
+    voting_deadline TIMESTAMP NOT NULL DEFAULT NOW() + INTERVAL '24 hours', -- Auto-close after 24h
     winning_option_id INTEGER,                    -- Set when voting ends
     status VARCHAR(20) NOT NULL DEFAULT 'voting', -- 'voting', 'completed'
     created_at TIMESTAMP NOT NULL DEFAULT NOW()

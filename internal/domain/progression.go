@@ -110,12 +110,13 @@ type ContributionBreakdown struct {
 
 // ProgressionVotingSession represents a voting session for selecting next unlock
 type ProgressionVotingSession struct {
-	ID              int                       `json:"id"`
-	StartedAt       time.Time                 `json:"started_at"`
-	EndedAt         *time.Time                `json:"ended_at"`
-	WinningOptionID *int                      `json:"winning_option_id"`
-	Status          string                    `json:"status"` // 'voting', 'completed'
-	Options         []ProgressionVotingOption `json:"options"`
+	ID              int                          `json:"id"`
+	StartedAt       time.Time                    `json:"started_at"`
+	EndedAt         *time.Time                   `json:"ended_at,omitempty"`
+	VotingDeadline  time.Time                    `json:"voting_deadline"`
+	WinningOptionID *int                         `json:"winning_option_id,omitempty"`
+	Status          string                       `json:"status"` // 'voting', 'completed'
+	Options         []ProgressionVotingOption    `json:"options,omitempty"`
 }
 
 // ProgressionVotingOption represents one voting choice in a session
@@ -140,3 +141,9 @@ type UnlockProgress struct {
 	VotingSessionID          *int       `json:"voting_session_id"`
 }
 
+// ContributionLeaderboardEntry represents a user's rank and contribution total
+type ContributionLeaderboardEntry struct {
+	UserID       string `json:"user_id"`
+	Contribution int    `json:"contribution"`
+	Rank         int    `json:"rank"`
+}

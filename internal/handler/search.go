@@ -93,7 +93,7 @@ func HandleSearch(svc user.Service, progressionSvc progression.Service, eventBus
 			"message", message)
 
 		// Add contribution points for searching
-		if err := progressionSvc.AddContribution(r.Context(), 1); err != nil {
+		if err := progressionSvc.AddContribution(r.Context(), 5); err != nil {
 			log.Warn("Failed to add contribution points", "error", err)
 		}
 

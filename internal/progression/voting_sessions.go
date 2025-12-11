@@ -302,6 +302,23 @@ func findWinningOption(options []domain.ProgressionVotingOption) *domain.Progres
 		return nil
 	}
 
+	// Check if all options have 0 votes
+	allZeroVotes := true
+	for _, opt := range options {
+		if opt.VoteCount > 0 {
+			allZeroVotes = false
+			break
+		}
+	}
+
+	// If 0 votes total, pick random option
+	if allZeroVotes {
+		rand.Seed(time.Now().UnixNano())
+		randomIndex := rand.Intn(len(options))
+		return &options[randomIndex]
+	}
+
+	// Normal tie-breaking with votes
 	winner := &options[0]
 	for i := 1; i < len(options); i++ {
 		opt := &options[i]

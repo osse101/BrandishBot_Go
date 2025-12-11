@@ -41,7 +41,7 @@ func (r *progressionRepository) AddVotingOption(ctx context.Context, sessionID, 
 func (r *progressionRepository) GetActiveSession(ctx context.Context) (*domain.ProgressionVotingSession, error) {
 	// Get session with status 'voting'
 	sessionQuery := `
-		SELECT id, started_at, ended_at, winning_option_id, status
+		SELECT id, started_at, ended_at, voting_deadline, winning_option_id, status
 		FROM progression_voting_sessions
 		WHERE status = 'voting'
 		ORDER BY started_at DESC
@@ -49,7 +49,7 @@ func (r *progressionRepository) GetActiveSession(ctx context.Context) (*domain.P
 
 	var session domain.ProgressionVotingSession
 	err := r.pool.QueryRow(ctx, sessionQuery).Scan(
-		&session.ID, &session.StartedAt, &session.EndedAt,
+		&session.ID, &session.StartedAt, &session.EndedAt, &session.VotingDeadline,
 		&session.WinningOptionID, &session.Status,
 	)
 
@@ -71,13 +71,13 @@ func (r *progressionRepository) GetActiveSession(ctx context.Context) (*domain.P
 
 func (r *progressionRepository) GetSessionByID(ctx context.Context, sessionID int) (*domain.ProgressionVotingSession, error) {
 	sessionQuery := `
-		SELECT id, started_at, ended_at, winning_option_id, status
+		SELECT id, started_at, ended_at, voting_deadline, winning_option_id, status
 		FROM progression_voting_sessions
 		WHERE id = $1`
 
 	var session domain.ProgressionVotingSession
 	err := r.pool.QueryRow(ctx, sessionQuery, sessionID).Scan(
-		&session.ID, &session.StartedAt, &session.EndedAt,
+		&session.ID, &session.StartedAt, &session.EndedAt, &session.VotingDeadline,
 		&session.WinningOptionID, &session.Status,
 	)
 

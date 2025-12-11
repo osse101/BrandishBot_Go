@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
@@ -166,6 +167,37 @@ func (h *ProgressionHandlers) HandleGetEngagement() http.HandlerFunc {
 		}
 
 		respondJSON(w, http.StatusOK, breakdown)
+	}
+}
+
+// HandleGetContributionLeaderboard returns top contributors
+// @Summary Get contribution leaderboard
+// @Description Returns top contributors by total contributions
+// @Tags progression
+// @Produce json
+// @Param limit query int false "Number of entries (default 10, max 100)"
+// @Success 200 {array} domain.ContributionLeaderboardEntry
+// @Failure 500 {object} ErrorResponse
+// @Router /progression/leaderboard [get]
+func (h *ProgressionHandlers) HandleGetContributionLeaderboard() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromContext(r.Context())
+
+		limit := 10 // default
+		if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+			if parsedLimit, err := strconv.Atoi(limitStr); err == nil && parsedLimit > 0 {
+				limit = parsedLimit
+			}
+		}
+
+		leaderboard, err := h.service.GetContributionLeaderboard(r.Context(), limit)
+		if err != nil {
+			log.Error("Failed to get contribution leaderboard", "error", err)
+			respondError(w, http.StatusInternalServerError, "Failed to retrieve leaderboard")
+			return
+		}
+
+		respondJSON(w, http.StatusOK, leaderboard)
 	}
 }
 
@@ -405,6 +437,30 @@ func (h *ProgressionHandlers) HandleAdminEndVoting() http.HandlerFunc {
 			Winner:  winner,
 			Message: "Voting ended successfully",
 		})
+	}
+}
+
+// HandleAdminStartVoting admin starts a new voting session
+// @Summary Admin start voting
+// @Description Start a new voting session with 4 random options (admin only)
+// @Tags progression,admin
+// @Produce json
+// @Success 200 {object} SuccessResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /progression/admin/start-voting [post]
+func (h *ProgressionHandlers) HandleAdminStartVoting() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromContext(r.Context())
+
+		err := h.service.StartVotingSession(r.Context())
+		if err != nil {
+			log.Error("Failed to start voting session", "error", err)
+			respondError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		log.Info("Admin started voting session")
+		respondJSON(w, http.StatusOK, SuccessResponse{Message: "Voting session started successfully"})
 	}
 }
 

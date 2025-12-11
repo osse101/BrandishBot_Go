@@ -87,11 +87,13 @@ func NewServer(port int, apiKey string, dbPool database.Pool, userService user.S
 	mux.HandleFunc("/progression/vote", progressionHandlers.HandleVote())
 	mux.HandleFunc("/progression/status", progressionHandlers.HandleGetStatus())
 	mux.HandleFunc("/progression/engagement", progressionHandlers.HandleGetEngagement())
+	mux.HandleFunc("/progression/leaderboard", progressionHandlers.HandleGetContributionLeaderboard())
 	mux.HandleFunc("/progression/session", progressionHandlers.HandleGetVotingSession())
 	mux.HandleFunc("/progression/unlock-progress", progressionHandlers.HandleGetUnlockProgress())
 	mux.HandleFunc("/progression/admin/unlock", progressionHandlers.HandleAdminUnlock())
 	mux.HandleFunc("/progression/admin/relock", progressionHandlers.HandleAdminRelock())
 	mux.HandleFunc("/progression/admin/instant-unlock", progressionHandlers.HandleAdminInstantUnlock())
+	mux.HandleFunc("/progression/admin/start-voting", progressionHandlers.HandleAdminStartVoting())
 	mux.HandleFunc("/progression/admin/end-voting", progressionHandlers.HandleAdminEndVoting())
 	mux.HandleFunc("/progression/admin/reset", progressionHandlers.HandleAdminReset())
 

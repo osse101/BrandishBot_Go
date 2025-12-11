@@ -51,6 +51,7 @@ type Repository interface {
 	GetEngagementScore(ctx context.Context, since *time.Time) (int, error)
 	GetUserEngagement(ctx context.Context, userID string) (*domain.ContributionBreakdown, error)
 	GetEngagementWeights(ctx context.Context) (map[string]float64, error)
+	GetContributionLeaderboard(ctx context.Context, limit int) ([]domain.ContributionLeaderboardEntry, error)
 
 	// Reset operations
 	ResetTree(ctx context.Context, resetBy string, reason string, preserveUserData bool) error

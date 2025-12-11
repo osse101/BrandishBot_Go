@@ -36,6 +36,7 @@ type Service interface {
 	RecordEngagement(ctx context.Context, userID string, metricType string, value int) error
 	GetEngagementScore(ctx context.Context) (int, error)
 	GetUserEngagement(ctx context.Context, userID string) (*domain.ContributionBreakdown, error)
+	GetContributionLeaderboard(ctx context.Context, limit int) ([]domain.ContributionLeaderboardEntry, error)
 
 	// Status
 	GetProgressionStatus(ctx context.Context) (*domain.ProgressionStatus, error)
@@ -247,6 +248,14 @@ func (s *service) GetEngagementScore(ctx context.Context) (int, error) {
 // GetUserEngagement returns user's contribution breakdown
 func (s *service) GetUserEngagement(ctx context.Context, userID string) (*domain.ContributionBreakdown, error) {
 	return s.repo.GetUserEngagement(ctx, userID)
+}
+
+// GetContributionLeaderboard retrieves top contributors
+func (s *service) GetContributionLeaderboard(ctx context.Context, limit int) ([]domain.ContributionLeaderboardEntry, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 10 // Default to top 10
+	}
+	return s.repo.GetContributionLeaderboard(ctx, limit)
 }
 
 // GetProgressionStatus returns current community progression status
