@@ -319,6 +319,95 @@ func (h *ProgressionHandlers) HandleAdminReset() http.HandlerFunc {
 	}
 }
 
+// HandleGetVotingSession returns current voting session with options
+// @Summary Get voting session
+// @Description Returns the current voting session with all available options
+// @Tags progression
+// @Produce json
+// @Success 200 {object} domain.ProgressionVotingSession
+// @Failure 500 {object} ErrorResponse
+// @Router /progression/session [get]
+func (h *ProgressionHandlers) HandleGetVotingSession() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromContext(r.Context())
+
+		session, err := h.service.GetActiveVotingSession(r.Context())
+		if err != nil {
+			log.Error("Failed to get voting session", "error", err)
+			respondError(w, http.StatusInternalServerError, "Failed to retrieve voting session")
+			return
+		}
+
+		if session == nil {
+			respondJSON(w, http.StatusOK, map[string]interface{}{
+				"session": nil,
+				"message": "No active voting session",
+			})
+			return
+		}
+
+		respondJSON(w, http.StatusOK, session)
+	}
+}
+
+// HandleGetUnlockProgress returns current unlock progress
+// @Summary Get unlock progress
+// @Description Returns the current unlock progress including accumulated contributions
+// @Tags progression
+// @Produce json
+// @Success 200 {object} domain.UnlockProgress
+// @Failure 500 {object} ErrorResponse
+// @Router /progression/unlock-progress [get]
+func (h *ProgressionHandlers) HandleGetUnlockProgress() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromContext(r.Context())
+
+		progress, err := h.service.GetUnlockProgress(r.Context())
+		if err != nil {
+			log.Error("Failed to get unlock progress", "error", err)
+			respondError(w, http.StatusInternalServerError, "Failed to retrieve unlock progress")
+			return
+		}
+
+		if progress == nil {
+			respondJSON(w, http.StatusOK, map[string]interface{}{
+				"progress": nil,
+				"message":  "No active unlock progress",
+			})
+			return
+		}
+
+		respondJSON(w, http.StatusOK, progress)
+	}
+}
+
+// HandleAdminEndVoting admin force-ends current voting
+// @Summary Admin end voting
+// @Description Force end the current voting session and determine winner (admin only)
+// @Tags progression,admin
+// @Produce json
+// @Success 200 {object} AdminEndVotingResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /progression/admin/end-voting [post]
+func (h *ProgressionHandlers) HandleAdminEndVoting() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromContext(r.Context())
+
+		winner, err := h.service.EndVoting(r.Context())
+		if err != nil {
+			log.Error("Failed to end voting", "error", err)
+			respondError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		log.Info("Admin ended voting", "winningNodeID", winner.NodeID, "votes", winner.VoteCount)
+		respondJSON(w, http.StatusOK, AdminEndVotingResponse{
+			Winner:  winner,
+			Message: "Voting ended successfully",
+		})
+	}
+}
+
 // Request/Response types
 
 type ProgressionTreeResponse struct {
@@ -347,6 +436,11 @@ type AdminRelockRequest struct {
 type AdminInstantUnlockResponse struct {
 	Unlock  *domain.ProgressionUnlock `json:"unlock"`
 	Message string                    `json:"message"`
+}
+
+type AdminEndVotingResponse struct {
+	Winner  *domain.ProgressionVotingOption `json:"winner"`
+	Message string                          `json:"message"`
 }
 
 type AdminResetRequest struct {

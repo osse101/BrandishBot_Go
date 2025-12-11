@@ -21,10 +21,15 @@ type Service interface {
 
 	// Voting
 	VoteForUnlock(ctx context.Context, userID string, nodeKey string) error
+	GetActiveVotingSession(ctx context.Context) (*domain.ProgressionVotingSession, error)
+	StartVotingSession(ctx context.Context) error
+	EndVoting(ctx context.Context) (*domain.ProgressionVotingOption, error)
 
 	// Unlocking
 	CheckAndUnlockCriteria(ctx context.Context) (*domain.ProgressionUnlock, error) // Auto-check if criteria met
 	ForceInstantUnlock(ctx context.Context) (*domain.ProgressionUnlock, error)     // Admin instant unlock
+	GetUnlockProgress(ctx context.Context) (*domain.UnlockProgress, error)
+	AddContribution(ctx context.Context, amount int) error
 
 	// Contribution tracking
 	RecordEngagement(ctx context.Context, userID string, metricType string, value int) error
@@ -208,6 +213,11 @@ func (s *service) VoteForUnlock(ctx context.Context, userID string, nodeKey stri
 
 	log.Info("Vote recorded", "userID", userID, "nodeKey", nodeKey, "sessionID", session.ID)
 	return nil
+}
+
+// GetActiveVotingSession returns the current voting session
+func (s *service) GetActiveVotingSession(ctx context.Context) (*domain.ProgressionVotingSession, error) {
+	return s.repo.GetActiveSession(ctx)
 }
 
 // RecordEngagement records user engagement event

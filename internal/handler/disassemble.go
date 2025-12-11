@@ -97,6 +97,11 @@ func HandleDisassembleItem(svc crafting.Service, progressionSvc progression.Serv
 			"quantity_processed", quantityProcessed,
 			"outputs", outputs)
 
+		// Add contribution points for disassembling
+		if err := progressionSvc.AddContribution(r.Context(), quantityProcessed); err != nil {
+			log.Warn("Failed to add contribution points", "error", err)
+		}
+
 		// Publish item.disassembled event
 		if err := eventBus.Publish(r.Context(), event.Event{
 			Type: "item.disassembled",

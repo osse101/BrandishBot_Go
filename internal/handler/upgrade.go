@@ -96,6 +96,11 @@ func HandleUpgradeItem(svc crafting.Service, progressionSvc progression.Service,
 			"item", req.Item,
 			"quantity_upgraded", quantityUpgraded)
 
+		// Add contribution points for crafting
+		if err := progressionSvc.AddContribution(r.Context(), quantityUpgraded); err != nil {
+			log.Warn("Failed to add contribution points", "error", err)
+		}
+
 		// Publish item.upgraded event
 		if err := eventBus.Publish(r.Context(), event.Event{
 			Type: "item.upgraded",
