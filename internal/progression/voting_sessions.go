@@ -14,6 +14,16 @@ import (
 func (s *service) StartVotingSession(ctx context.Context) error {
 	log := logger.FromContext(ctx)
 
+	// Ensure unlock progress exists (bootstrap case or after manual reset)
+	progress, _ := s.repo.GetActiveUnlockProgress(ctx)
+	if progress == nil {
+		_, err := s.repo.CreateUnlockProgress(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to create initial unlock progress: %w", err)
+		}
+		log.Debug("Created initial unlock progress for new voting session")
+	}
+
 	// Get available nodes with met prerequisites  
 	available, err := s.GetAvailableUnlocks(ctx)
 	if err != nil {
@@ -86,7 +96,24 @@ func (s *service) EndVoting(ctx context.Context) (*domain.ProgressionVotingOptio
 
 	// Set unlock target on current progress
 	progress, err := s.repo.GetActiveUnlockProgress(ctx)
-	if err == nil && progress != nil {
+	if err != nil {
+		log.Warn("Failed to get active unlock progress", "error", err)
+	}
+	
+	if progress == nil {
+		// Defensive: Create progress if missing (shouldn't happen - StartVotingSession should create it)
+		log.Warn("No active unlock progress found during EndVoting - creating as fallback (investigate if this occurs frequently)")
+		var id int
+		id, err = s.repo.CreateUnlockProgress(ctx)
+		if err != nil {
+			log.Warn("Failed to create unlock progress", "error", err)
+		} else {
+			// Get the newly created progress
+			progress = &domain.UnlockProgress{ID: id} // Minimal object for ID
+		}
+	}
+	
+	if progress != nil {
 		err = s.repo.SetUnlockTarget(ctx, progress.ID, winner.NodeID, winner.TargetLevel, session.ID)
 		if err != nil {
 			log.Warn("Failed to set unlock target", "error", err)

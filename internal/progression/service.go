@@ -28,6 +28,7 @@ type Service interface {
 
 	// Unlocking
 	CheckAndUnlockCriteria(ctx context.Context) (*domain.ProgressionUnlock, error) // Auto-check if criteria met
+	CheckAndUnlockNode(ctx context.Context) (*domain.ProgressionUnlock, error)     // Check specific node threshold
 	ForceInstantUnlock(ctx context.Context) (*domain.ProgressionUnlock, error)     // Admin instant unlock
 	GetUnlockProgress(ctx context.Context) (*domain.UnlockProgress, error)
 	AddContribution(ctx context.Context, amount int) error

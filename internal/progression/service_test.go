@@ -20,6 +20,17 @@ type MockRepository struct {
 	userProgressions  map[string]map[string]map[string]*domain.UserProgression
 	engagementWeights map[string]float64
 	engagementMetrics []*domain.EngagementMetric
+	
+	// Voting session state
+	sessions          map[int]*domain.ProgressionVotingSession
+	sessionCounter    int
+	sessionOptions    map[int][]domain.ProgressionVotingOption // sessionID -> options
+	sessionVotes      map[int]map[string]bool // sessionID -> userID -> voted
+	
+	// Unlock progress state
+	unlockProgress    map[int]*domain.UnlockProgress
+	progressCounter   int
+	activeProgressID  int
 }
 
 func NewMockRepository() *MockRepository {
@@ -34,8 +45,13 @@ func NewMockRepository() *MockRepository {
 			"command":      2.0,
 			"item_crafted": 3.0,
 			"item_used":    1.5,
+			"vote_cast":    5.0,
 		},
 		engagementMetrics: make([]*domain.EngagementMetric, 0),
+		sessions:          make(map[int]*domain.ProgressionVotingSession),
+		sessionOptions:    make(map[int][]domain.ProgressionVotingOption),
+		sessionVotes:      make(map[int]map[string]bool),
+		unlockProgress:    make(map[int]*domain.UnlockProgress),
 	}
 }
 
@@ -245,8 +261,8 @@ func (m *MockRepository) GetEngagementScore(ctx context.Context, since *time.Tim
 	return totalScore, nil
 }
 
-func (m *MockRepository) GetUserEngagement(ctx context.Context, userID string) (*domain.EngagementBreakdown, error) {
-	breakdown := &domain.EngagementBreakdown{}
+func (m *MockRepository) GetUserEngagement(ctx context.Context, userID string) (*domain.ContributionBreakdown, error) {
+	breakdown := &domain.ContributionBreakdown{}
 
 	for _, metric := range m.engagementMetrics {
 		if metric.UserID != userID {
@@ -297,6 +313,191 @@ func (m *MockRepository) ResetTree(ctx context.Context, resetBy string, reason s
 
 func (m *MockRepository) RecordReset(ctx context.Context, reset *domain.ProgressionReset) error {
 	return nil
+}
+
+// Session-based voting mock methods
+func (m *MockRepository) CreateVotingSession(ctx context.Context) (int, error) {
+	m.sessionCounter++
+	sessionID := m.sessionCounter
+	
+	m.sessions[sessionID] = &domain.ProgressionVotingSession{
+		ID:        sessionID,
+		Status:    "voting",
+		StartedAt: time.Now(),
+		Options:   []domain.ProgressionVotingOption{},
+	}
+	m.sessionOptions[sessionID] = []domain.ProgressionVotingOption{}
+	m.sessionVotes[sessionID] = make(map[string]bool)
+	
+	return sessionID, nil
+}
+
+func (m *MockRepository) AddVotingOption(ctx context.Context, sessionID, nodeID, targetLevel int) error {
+	node := m.nodes[nodeID]
+	if node == nil {
+		return fmt.Errorf("node not found")
+	}
+	
+	optionID := len(m.sessionOptions[sessionID]) + 1
+	option := domain.ProgressionVotingOption{
+		ID:          optionID,
+		SessionID:   sessionID,
+		NodeID:      nodeID,
+		TargetLevel: targetLevel,
+		VoteCount:   0,
+		NodeDetails: node,
+	}
+	
+	m.sessionOptions[sessionID] = append(m.sessionOptions[sessionID], option)
+	
+	// Update session with options
+	if session, ok := m.sessions[sessionID]; ok {
+		session.Options = m.sessionOptions[sessionID]
+	}
+	
+	return nil
+}
+
+func (m *MockRepository) GetActiveSession(ctx context.Context) (*domain.ProgressionVotingSession, error) {
+	for _, session := range m.sessions {
+		if session.Status == "voting" {
+			return session, nil
+		}
+	}
+	return nil, nil
+}
+
+func (m *MockRepository) GetSessionByID(ctx context.Context, sessionID int) (*domain.ProgressionVotingSession, error) {
+	if session, ok := m.sessions[sessionID]; ok {
+		return session, nil
+	}
+	return nil, nil
+}
+
+func (m *MockRepository) IncrementOptionVote(ctx context.Context, optionID int) error {
+	for sessionID, options := range m.sessionOptions {
+		for i := range options {
+			if options[i].ID == optionID {
+				options[i].VoteCount++
+				now := time.Now()
+				options[i].LastHighestVoteAt = &now
+				m.sessionOptions[sessionID] = options
+				
+				// Update session
+				if session, ok := m.sessions[sessionID]; ok {
+					session.Options = options
+				}
+				return nil
+			}
+		}
+	}
+	return fmt.Errorf("option not found")
+}
+
+func (m *MockRepository) EndVotingSession(ctx context.Context, sessionID int, winningOptionID int) error {
+	if session, ok := m.sessions[sessionID]; ok {
+		session.Status = "ended"
+		session.EndedAt = timePtr(time.Now())
+		session.WinningOptionID = &winningOptionID
+		return nil
+	}
+	return fmt.Errorf("session not found")
+}
+
+func (m *MockRepository) GetSessionVoters(ctx context.Context, sessionID int) ([]string, error) {
+	voters := make([]string, 0)
+	if userMap, ok := m.sessionVotes[sessionID]; ok {
+		for userID := range userMap {
+			voters = append(voters, userID)
+		}
+	}
+	return voters, nil
+}
+
+func (m *MockRepository) HasUserVotedInSession(ctx context.Context, userID string, sessionID int) (bool, error) {
+	if userMap, ok := m.sessionVotes[sessionID]; ok {
+		return userMap[userID], nil
+	}
+	return false, nil
+}
+
+func (m *MockRepository) RecordUserSessionVote(ctx context.Context, userID string, sessionID, optionID, nodeID int) error {
+	if m.sessionVotes[sessionID] == nil {
+		m.sessionVotes[sessionID] = make(map[string]bool)
+	}
+	m.sessionVotes[sessionID][userID] = true
+	return nil
+}
+
+// Unlock progress mock methods
+func (m *MockRepository) CreateUnlockProgress(ctx context.Context) (int, error) {
+	m.progressCounter++
+	progressID := m.progressCounter
+	
+	m.unlockProgress[progressID] = &domain.UnlockProgress{
+		ID:                       progressID,
+		ContributionsAccumulated: 0,
+		StartedAt:                time.Now(),
+	}
+	m.activeProgressID = progressID
+	return progressID, nil
+}
+
+func (m *MockRepository) GetActiveUnlockProgress(ctx context.Context) (*domain.UnlockProgress, error) {
+	if m.activeProgressID == 0 {
+		return nil, nil // No active progress found (not an error)
+	}
+	
+	if progress, ok := m.unlockProgress[m.activeProgressID]; ok {
+		if progress.UnlockedAt == nil {
+			// Return a copy to avoid pointer reference issues in tests
+			p := *progress
+			return &p, nil
+		}
+	}
+	return nil, nil
+}
+
+func (m *MockRepository) AddContribution(ctx context.Context, progressID int, amount int) error {
+	if progress, ok := m.unlockProgress[progressID]; ok {
+		progress.ContributionsAccumulated += amount
+		return nil
+	}
+	return fmt.Errorf("unlock progress not found")
+}
+
+func (m *MockRepository) SetUnlockTarget(ctx context.Context, progressID int, nodeID int, targetLevel int, sessionID int) error {
+	if progress, ok := m.unlockProgress[progressID]; ok {
+		progress.NodeID = &nodeID
+		progress.TargetLevel = &targetLevel
+		progress.VotingSessionID = &sessionID
+		return nil
+	}
+	return fmt.Errorf("unlock progress not found")
+}
+
+func (m *MockRepository) CompleteUnlock(ctx context.Context, progressID int, rolloverPoints int) (int, error) {
+	if progress, ok := m.unlockProgress[progressID]; ok {
+		progress.UnlockedAt = timePtr(time.Now())
+		
+		// Create new progress with rollover
+		m.progressCounter++
+		newProgressID := m.progressCounter
+		
+		m.unlockProgress[newProgressID] = &domain.UnlockProgress{
+			ID:                       newProgressID,
+			ContributionsAccumulated: rolloverPoints,
+			StartedAt:                time.Now(),
+		}
+		m.activeProgressID = newProgressID
+		
+		return newProgressID, nil
+	}
+	return 0, fmt.Errorf("unlock progress not found")
+}
+
+func (m *MockRepository) GetContributionLeaderboard(ctx context.Context, limit int) ([]domain.ContributionLeaderboardEntry, error) {
+	return []domain.ContributionLeaderboardEntry{}, nil
 }
 
 func (m *MockRepository) BeginTx(ctx context.Context) (repository.Tx, error) {
@@ -554,29 +755,10 @@ func TestGetAvailableUnlocks(t *testing.T) {
 	}
 }
 
+// TestVoteForUnlock is obsolete - voting now uses session-based system
+// See voting_sessions_test.go for new voting tests
 func TestVoteForUnlock(t *testing.T) {
-	repo := NewMockRepository()
-	setupTestTree(repo)
-	service := NewService(repo)
-	ctx := context.Background()
-
-	// Vote for money
-	err := service.VoteForUnlock(ctx, "user1", "item_money")
-	if err != nil {
-		t.Fatalf("VoteForUnlock failed: %v", err)
-	}
-
-	// Verify vote was recorded
-	hasVoted, _ := repo.HasUserVoted(ctx, "user1", 2, 1) // money node ID is 2
-	if !hasVoted {
-		t.Error("User vote should be recorded")
-	}
-
-	// Try to vote again - should fail
-	err = service.VoteForUnlock(ctx, "user1", "item_money")
-	if err == nil {
-		t.Error("Expected error for double voting")
-	}
+	t.Skip("Obsolete test - voting now uses session-based system")
 }
 
 func TestIsFeatureUnlocked(t *testing.T) {
@@ -754,6 +936,11 @@ func TestResetProgressionTree(t *testing.T) {
 	if len(progressions) != 0 {
 		t.Error("User progressions should be cleared")
 	}
+}
+
+// Helper function
+func timePtr(t time.Time) *time.Time {
+	return &t
 }
 
 func TestMultiLevelUnlock(t *testing.T) {
