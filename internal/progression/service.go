@@ -3,6 +3,7 @@ package progression
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
@@ -47,6 +48,11 @@ type Service interface {
 
 type service struct {
 	repo Repository
+	
+	// In-memory cache for unlock threshold checking
+	mu               sync.RWMutex
+	cachedTargetCost int  // unlock_cost of target node
+	cachedProgressID int  // current unlock progress ID
 }
 
 // NewService creates a new progression service

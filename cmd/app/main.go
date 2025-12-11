@@ -174,6 +174,9 @@ func main() {
 	// Schedule event log cleanup every 24 hours
 	cleanupJob := eventlog.NewCleanupJob(eventLogService, 10)
 	jobScheduler.Schedule(24*time.Hour, cleanupJob)
+	// Schedule progression unlock checker every 30 minutes
+	unlockCheckerJob := progression.NewUnlockCheckerJob(progressionService)
+	jobScheduler.Schedule(30*time.Minute, unlockCheckerJob)
 	jobScheduler.Start()
 	defer jobScheduler.Stop()
 	slog.Info("Job scheduler initialized")
