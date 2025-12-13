@@ -101,11 +101,64 @@ deploy() {
     log_info "Cleaning up old images..."
     docker image prune -f
     
-    # 5. Check health
-    if [[ -f "./scripts/health-check.sh" ]]; then
-        log_info "Running health checks..."
-        ./scripts/health-check.sh "$ENVIRONMENT"
-    fi
+    	# 5. Check health
+	if [[ -f "./scripts/health-check.sh" ]]; then
+		log_info "Running health checks..."
+		./scripts/health-check.sh "$ENVIRONMENT"
+	fi
+
+	# 6. Announce Deployment (Release Notes)
+	if ! command -v jq &> /dev/null; then
+		log_warn "jq not found. Skipping release notes announcement."
+		return
+	fi
+
+	log_info "Generating release notes..."
+
+	# Determine range (e.g., from last tag to current HEAD)
+	# Assuming tags are v*
+	LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+	
+	if [[ -z "$LAST_TAG" ]]; then
+		RANGE="HEAD~5..HEAD" # Fallback if no tags
+		TITLE="Deployment Update"
+	else
+		RANGE="$LAST_TAG..HEAD"
+		TITLE="Deployment Update ($LAST_TAG -> HEAD)"
+	fi
+
+	# Generate simpler log
+	NOTES=$(git log --pretty=format:"• %s (%an)" "$RANGE" | head -n 20)
+	
+	if [[ -z "$NOTES" ]]; then
+		NOTES="No new commits in this deployment."
+	fi
+	
+	JSON_PAYLOAD=$(jq -n \
+		--arg title "$TITLE" \
+		--arg description "$NOTES" \
+		--argjson color 65280 \
+		'{title: $title, description: $description, color: $color}')
+
+	# Determine Discord Bot Host
+	# Inside docker network it might be 'discord', but this script runs on the host/runner.
+	# If running on the same machine as docker, we need to know the port mapping.
+	# Standard dev setup maps 8082:8082
+	DISCORD_URL="http://localhost:8082/admin/announce"
+
+	# If we are in a container/remote, we might need a different address, 
+	# but assuming this script runs where docker CLI is available and ports are mapped.
+	
+	log_info "Sending release notes to Discord..."
+	response=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$DISCORD_URL" \
+		-H "Content-Type: application/json" \
+		-d "$JSON_PAYLOAD")
+
+	if [[ "$response" == "200" ]]; then
+		log_info "Release notes sent successfully."
+	else
+		log_warn "Failed to send release notes (Status: $response). Is the bot running and port 8082 exposed?"
+	fi
 }
 
 # Main Execution Switch

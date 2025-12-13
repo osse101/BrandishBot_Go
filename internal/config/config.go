@@ -23,6 +23,16 @@ type Config struct {
 	Version     string
 	Environment string // "dev", "staging", "prod"
 
+	// Discord Configuration
+	DiscordToken        string `mapstructure:"DISCORD_TOKEN"`
+	DiscordAppID        string `mapstructure:"DISCORD_APP_ID"`
+	DiscordDevChannelID string `mapstructure:"DISCORD_DEV_CHANNEL_ID"`
+	DiscordWebhookPort  string `mapstructure:"DISCORD_WEBHOOK_PORT"`
+
+	// GitHub Configuration
+	GithubToken     string `mapstructure:"GITHUB_TOKEN"`
+	GithubOwnerRepo string `mapstructure:"GITHUB_OWNER_REPO"`
+
 	// Database
 	DBUser     string
 	DBPassword string
@@ -57,6 +67,16 @@ func Load() (*Config, error) {
 
 		// Server config
 		APIKey: getEnv("API_KEY", ""),
+
+		// Discord config
+		DiscordToken:        getEnv("DISCORD_TOKEN", ""),
+		DiscordAppID:        getEnv("DISCORD_APP_ID", ""),
+		DiscordDevChannelID: getEnv("DISCORD_DEV_CHANNEL_ID", ""),
+		DiscordWebhookPort:  getEnv("DISCORD_WEBHOOK_PORT", "8082"),
+
+		// GitHub config
+		GithubToken:     getEnv("GITHUB_TOKEN", ""),
+		GithubOwnerRepo: getEnv("GITHUB_OWNER_REPO", "osse101/BrandishBot_Go"),
 	}
 
 	portStr := getEnv("PORT", "8080")

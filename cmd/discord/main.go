@@ -19,6 +19,13 @@ func main() {
 	token := os.Getenv("DISCORD_TOKEN")
 	appID := os.Getenv("DISCORD_APP_ID")
 	apiURL := os.Getenv("API_URL")
+	devChannelID := os.Getenv("DISCORD_DEV_CHANNEL_ID")
+	webhookPort := os.Getenv("DISCORD_WEBHOOK_PORT")
+	if webhookPort == "" {
+		webhookPort = "8082"
+	}
+	githubToken := os.Getenv("GITHUB_TOKEN")
+	githubRepo := os.Getenv("GITHUB_OWNER_REPO")
 
 	if token == "" {
 		slog.Error("DISCORD_TOKEN is required")
@@ -33,9 +40,12 @@ func main() {
 	}
 
 	cfg := discord.Config{
-		Token:  token,
-		AppID:  appID,
-		APIURL: apiURL,
+		Token:           token,
+		AppID:           appID,
+		APIURL:          apiURL,
+		DevChannelID:    devChannelID,
+		GithubToken:     githubToken,
+		GithubOwnerRepo: githubRepo,
 	}
 
 	bot, err := discord.New(cfg)
@@ -43,6 +53,14 @@ func main() {
 		slog.Error("Failed to create bot", "error", err)
 		os.Exit(1)
 	}
+
+	// Start Internal HTTP Server
+	httpServer := discord.NewHTTPServer(webhookPort, bot)
+	httpServer.Start()
+	defer httpServer.Stop()
+
+	// Start Scheduled Jobs
+	bot.StartDailyCommitChecker()
 
 	// Register commands
 	cmd, handler := discord.PingCommand()
