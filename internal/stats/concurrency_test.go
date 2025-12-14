@@ -2,6 +2,7 @@ package stats
 
 import (
 	"context"
+	"sort"
 	"sync"
 	"testing"
 	"time"
@@ -50,6 +51,27 @@ func (m *ThreadSafeMockRepository) GetEventsByType(ctx context.Context, eventTyp
 		if event.EventType == eventType && event.CreatedAt.After(startTime) && event.CreatedAt.Before(endTime) {
 			filtered = append(filtered, event)
 		}
+	}
+	return filtered, nil
+}
+
+func (m *ThreadSafeMockRepository) GetUserEventsByType(ctx context.Context, userID string, eventType domain.EventType, limit int) ([]domain.StatsEvent, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	var filtered []domain.StatsEvent
+	for _, event := range m.events {
+		if event.UserID == userID && event.EventType == eventType {
+			filtered = append(filtered, event)
+		}
+	}
+	// Sort DESC
+	sort.Slice(filtered, func(i, j int) bool {
+		return filtered[i].CreatedAt.After(filtered[j].CreatedAt)
+	})
+
+	if limit > 0 && len(filtered) > limit {
+		filtered = filtered[:limit]
 	}
 	return filtered, nil
 }
@@ -140,12 +162,22 @@ func TestConcurrency_RecordUserEvent(t *testing.T) {
 	wg.Wait()
 
 	// Verify total events
-	count, err := repo.GetTotalEventCount(ctx, time.Now().Add(-1*time.Hour), time.Now().Add(1*time.Hour))
+	counts, err := repo.GetEventCounts(ctx, time.Now().Add(-1*time.Hour), time.Now().Add(1*time.Hour))
 	if err != nil {
-		t.Fatalf("Failed to get count: %v", err)
+		t.Fatalf("Failed to get counts: %v", err)
 	}
 
-	if count != concurrency {
-		t.Errorf("Expected %d events, got %d", concurrency, count)
+	if counts[domain.EventItemAdded] != concurrency {
+		t.Errorf("Expected %d item_added events, got %d", concurrency, counts[domain.EventItemAdded])
+	}
+
+	// We expect at least 'concurrency' events (activity events)
+	// There might be additional 'daily_streak' events due to the side effect
+	totalCount, err := repo.GetTotalEventCount(ctx, time.Now().Add(-1*time.Hour), time.Now().Add(1*time.Hour))
+	if err != nil {
+		t.Fatalf("Failed to get total count: %v", err)
+	}
+	if totalCount < concurrency {
+		t.Errorf("Expected at least %d events, got %d", concurrency, totalCount)
 	}
 }
