@@ -14,6 +14,7 @@ const (
 	EventItemBought      EventType = "item_bought"
 	EventItemTransferred EventType = "item_transferred"
 	EventMessageReceived EventType = "message_received"
+	EventDailyStreak     EventType = "daily_streak"
 )
 
 // StatsEvent represents a single tracked event

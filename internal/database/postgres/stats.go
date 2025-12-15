@@ -94,6 +94,54 @@ func (r *StatsRepository) GetEventsByUser(ctx context.Context, userID string, st
 	return events, nil
 }
 
+// GetUserEventsByType retrieves events of a specific type for a specific user with a limit
+func (r *StatsRepository) GetUserEventsByType(ctx context.Context, userID string, eventType domain.EventType, limit int) ([]domain.StatsEvent, error) {
+	query := `
+		SELECT event_id, user_id, event_type, event_data, created_at
+		FROM stats_events
+		WHERE user_id = $1 AND event_type = $2
+		ORDER BY created_at DESC
+		LIMIT $3
+	`
+
+	rows, err := r.db.Query(ctx, query, userID, eventType, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query user events: %w", err)
+	}
+	defer rows.Close()
+
+	var events []domain.StatsEvent
+	for rows.Next() {
+		var event domain.StatsEvent
+		var eventDataJSON []byte
+
+		err := rows.Scan(
+			&event.EventID,
+			&event.UserID,
+			&event.EventType,
+			&eventDataJSON,
+			&event.CreatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan event: %w", err)
+		}
+
+		if len(eventDataJSON) > 0 {
+			if err := json.Unmarshal(eventDataJSON, &event.EventData); err != nil {
+				return nil, fmt.Errorf("failed to unmarshal event data: %w", err)
+			}
+		}
+
+		events = append(events, event)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating events: %w", err)
+	}
+
+	return events, nil
+}
+
 // GetEventsByType retrieves all events of a specific type within a time range
 func (r *StatsRepository) GetEventsByType(ctx context.Context, eventType domain.EventType, startTime, endTime time.Time) ([]domain.StatsEvent, error) {
 	query := `
