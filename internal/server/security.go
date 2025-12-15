@@ -1,6 +1,7 @@
 package server
 
 import (
+	"crypto/subtle"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -26,7 +27,8 @@ func AuthMiddleware(apiKey string) func(http.Handler) http.Handler {
 			// Validate API key for all other endpoints
 			providedKey := r.Header.Get("X-API-Key")
 
-			if providedKey != apiKey {
+			// Use constant time comparison to prevent timing attacks
+			if subtle.ConstantTimeCompare([]byte(providedKey), []byte(apiKey)) != 1 {
 				log := logger.FromContext(r.Context())
 				log.Warn("Authentication failed",
 					"remote_addr", r.RemoteAddr,
