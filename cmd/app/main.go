@@ -191,7 +191,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	gambleService := gamble.NewService(gambleRepo, lockManager, eventBus, lootboxSvc, cfg.GambleJoinDuration, jobService)
+	gambleService := gamble.NewService(gambleRepo, lockManager, eventBus, lootboxSvc, statsService, cfg.GambleJoinDuration, jobService)
 
 	// Initialize Gamble Worker
 	gambleWorker := worker.NewGambleWorker(gambleService)

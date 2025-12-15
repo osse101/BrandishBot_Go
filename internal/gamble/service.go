@@ -14,6 +14,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/lootbox"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
+	"github.com/osse101/BrandishBot_Go/internal/stats"
 )
 
 // Repository defines the interface for data access required by the gamble service
@@ -50,23 +51,28 @@ type JobService interface {
 	AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error)
 }
 
+// NearMissThreshold defines the percentage of the winner's score required to trigger a "Near Miss" event
+const NearMissThreshold = 0.95
+
 type service struct {
 	repo         Repository
 	lockManager  *concurrency.LockManager
 	eventBus     event.Bus
 	lootboxSvc   lootbox.Service
 	jobService   JobService
+	statsSvc     stats.Service
 	joinDuration time.Duration
 }
 
 // NewService creates a new gamble service
-func NewService(repo Repository, lockManager *concurrency.LockManager, eventBus event.Bus, lootboxSvc lootbox.Service, joinDuration time.Duration, jobService JobService) Service {
+func NewService(repo Repository, lockManager *concurrency.LockManager, eventBus event.Bus, lootboxSvc lootbox.Service, statsSvc stats.Service, joinDuration time.Duration, jobService JobService) Service {
 	return &service{
 		repo:         repo,
 		lockManager:  lockManager,
 		eventBus:     eventBus,
 		lootboxSvc:   lootboxSvc,
 		jobService:   jobService,
+		statsSvc:     statsSvc,
 		joinDuration: joinDuration,
 	}
 }
@@ -388,11 +394,46 @@ func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.Gamb
 			r := rand.New(rand.NewSource(time.Now().UnixNano()))
 			idx := r.Intn(len(winners))
 			winnerID = winners[idx]
-			
-			// Silently add 1 to their value (logically, not persisted unless needed)
+
 			log.Info("Tie-break resolved", "winnerID", winnerID, "originalValue", highestValue)
+
+			// Track tie-break losers
+			if s.statsSvc != nil {
+				for _, uid := range winners {
+					if uid != winnerID {
+						_ = s.statsSvc.RecordUserEvent(ctx, uid, domain.EventGambleTieBreakLost, map[string]interface{}{
+							"gamble_id": id,
+							"score":     highestValue,
+						})
+					}
+				}
+			}
 		} else {
 			winnerID = winners[0]
+		}
+	}
+
+	// Near Miss Tracking (Close scores)
+	if winnerID != "" && highestValue > 0 && s.statsSvc != nil {
+		threshold := int64(float64(highestValue) * NearMissThreshold)
+		for userID, val := range userValues {
+			if userID == winnerID {
+				continue
+			}
+
+			// Skip if this user was already tracked as a tie-break loser (value == highestValue)
+			if val == highestValue {
+				continue
+			}
+
+			if val >= threshold {
+				_ = s.statsSvc.RecordUserEvent(ctx, userID, domain.EventGambleNearMiss, map[string]interface{}{
+					"gamble_id":    id,
+					"score":        val,
+					"winner_score": highestValue,
+					"diff":         highestValue - val,
+				})
+			}
 		}
 	}
 
