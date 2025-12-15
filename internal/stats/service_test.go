@@ -2,6 +2,7 @@ package stats
 
 import (
 	"context"
+	"sort"
 	"testing"
 	"time"
 
@@ -39,6 +40,24 @@ func (m *mockStatsRepository) GetEventsByType(ctx context.Context, eventType dom
 		if event.EventType == eventType && event.CreatedAt.After(startTime) && event.CreatedAt.Before(endTime) {
 			filtered = append(filtered, event)
 		}
+	}
+	return filtered, nil
+}
+
+func (m *mockStatsRepository) GetUserEventsByType(ctx context.Context, userID string, eventType domain.EventType, limit int) ([]domain.StatsEvent, error) {
+	var filtered []domain.StatsEvent
+	for _, event := range m.events {
+		if event.UserID == userID && event.EventType == eventType {
+			filtered = append(filtered, event)
+		}
+	}
+	// Sort DESC
+	sort.Slice(filtered, func(i, j int) bool {
+		return filtered[i].CreatedAt.After(filtered[j].CreatedAt)
+	})
+
+	if limit > 0 && len(filtered) > limit {
+		filtered = filtered[:limit]
 	}
 	return filtered, nil
 }
@@ -110,8 +129,9 @@ func TestRecordUserEvent(t *testing.T) {
 		t.Fatalf("Expected no error, got %v", err)
 	}
 
-	if len(repo.events) != 1 {
-		t.Fatalf("Expected 1 event, got %d", len(repo.events))
+	// Should be 2 events now: item_added and daily_streak
+	if len(repo.events) != 2 {
+		t.Fatalf("Expected 2 events (item + streak), got %d", len(repo.events))
 	}
 
 	event := repo.events[0]
@@ -120,6 +140,82 @@ func TestRecordUserEvent(t *testing.T) {
 	}
 	if event.EventType != eventType {
 		t.Errorf("Expected event type %s, got %s", eventType, event.EventType)
+	}
+}
+
+func TestRecordUserEvent_DailyStreak(t *testing.T) {
+	repo := &mockStatsRepository{}
+	svc := NewService(repo)
+	ctx := context.Background()
+	userID := "user-streak"
+
+	// 1. First event - should trigger streak 1
+	svc.RecordUserEvent(ctx, userID, domain.EventItemAdded, nil)
+
+	// Check if streak event was recorded
+	if len(repo.events) != 2 { // 1 item_added, 1 daily_streak
+		t.Errorf("Expected 2 events, got %d", len(repo.events))
+	}
+	streakEvent := repo.events[1]
+	if streakEvent.EventType != domain.EventDailyStreak {
+		t.Errorf("Expected daily_streak event, got %s", streakEvent.EventType)
+	}
+	if s, ok := streakEvent.EventData["streak"].(int); !ok || s != 1 {
+		t.Errorf("Expected streak 1, got %v", streakEvent.EventData["streak"])
+	}
+
+	// 2. Second event same day - should NOT trigger new streak event
+	svc.RecordUserEvent(ctx, userID, domain.EventItemAdded, nil)
+	if len(repo.events) != 3 { // previous 2 + 1 new item_added. No new streak.
+		t.Errorf("Expected 3 events (no new streak), got %d", len(repo.events))
+	}
+
+	// 3. Simulate yesterday event
+	// Manually insert a streak event for yesterday
+	yesterday := time.Now().AddDate(0, 0, -1)
+	repo.events = []domain.StatsEvent{
+		{
+			EventID:   10,
+			UserID:    userID,
+			EventType: domain.EventDailyStreak,
+			EventData: map[string]interface{}{"streak": 5},
+			CreatedAt: yesterday,
+		},
+	}
+
+	// Record event today - should increment streak to 6
+	svc.RecordUserEvent(ctx, userID, domain.EventItemAdded, nil)
+
+	// repo.events should have: yesterday streak (preserved), today item_added, today streak
+	// Note: `RecordUserEvent` appends.
+
+	// Check the last event
+	lastEvent := repo.events[len(repo.events)-1]
+	if lastEvent.EventType != domain.EventDailyStreak {
+		t.Errorf("Expected streak event")
+	}
+	if s, ok := lastEvent.EventData["streak"].(int); !ok || s != 6 {
+		t.Errorf("Expected streak 6, got %v", lastEvent.EventData["streak"])
+	}
+
+	// 4. Simulate break in streak (2 days ago)
+	twoDaysAgo := time.Now().AddDate(0, 0, -2)
+	repo.events = []domain.StatsEvent{
+		{
+			EventID:   20,
+			UserID:    userID,
+			EventType: domain.EventDailyStreak,
+			EventData: map[string]interface{}{"streak": 10},
+			CreatedAt: twoDaysAgo,
+		},
+	}
+
+	// Record event today - should reset streak to 1
+	svc.RecordUserEvent(ctx, userID, domain.EventItemAdded, nil)
+
+	lastEvent = repo.events[len(repo.events)-1]
+	if s, ok := lastEvent.EventData["streak"].(int); !ok || s != 1 {
+		t.Errorf("Expected streak 1 (reset), got %v", lastEvent.EventData["streak"])
 	}
 }
 

@@ -14,6 +14,7 @@ type Repository interface {
 	RecordEvent(ctx context.Context, event *domain.StatsEvent) error
 	GetEventsByUser(ctx context.Context, userID string, startTime, endTime time.Time) ([]domain.StatsEvent, error)
 	GetEventsByType(ctx context.Context, eventType domain.EventType, startTime, endTime time.Time) ([]domain.StatsEvent, error)
+	GetUserEventsByType(ctx context.Context, userID string, eventType domain.EventType, limit int) ([]domain.StatsEvent, error)
 	GetTopUsers(ctx context.Context, eventType domain.EventType, startTime, endTime time.Time, limit int) ([]domain.LeaderboardEntry, error)
 	GetEventCounts(ctx context.Context, startTime, endTime time.Time) (map[domain.EventType]int, error)
 	GetUserEventCounts(ctx context.Context, userID string, startTime, endTime time.Time) (map[domain.EventType]int, error)
@@ -61,6 +62,75 @@ func (s *service) RecordUserEvent(ctx context.Context, userID string, eventType 
 	}
 
 	log.Debug("Event recorded", "event_id", event.EventID, "user_id", userID, "event_type", eventType)
+
+	// Check for daily streak
+	if eventType != domain.EventDailyStreak {
+		if err := s.checkDailyStreak(ctx, userID); err != nil {
+			log.Warn("Failed to check daily streak", "error", err, "user_id", userID)
+		}
+	}
+
+	return nil
+}
+
+// checkDailyStreak calculates and records daily login streak
+func (s *service) checkDailyStreak(ctx context.Context, userID string) error {
+	// Get the last streak event
+	events, err := s.repo.GetUserEventsByType(ctx, userID, domain.EventDailyStreak, 1)
+	if err != nil {
+		return fmt.Errorf("failed to get streak events: %w", err)
+	}
+
+	var lastStreak int
+	var lastStreakTime time.Time
+
+	if len(events) > 0 {
+		lastStreakTime = events[0].CreatedAt
+		// Extract streak from metadata
+		if streakVal, ok := events[0].EventData["streak"]; ok {
+			// Handle float64 (JSON default) or int
+			switch v := streakVal.(type) {
+			case float64:
+				lastStreak = int(v)
+			case int:
+				lastStreak = v
+			case int64:
+				lastStreak = int(v)
+			}
+		}
+	}
+
+	now := time.Now()
+	// Compare dates (UTC)
+	y1, m1, d1 := lastStreakTime.UTC().Date()
+	y2, m2, d2 := now.UTC().Date()
+
+	// If already recorded today, do nothing
+	if y1 == y2 && m1 == m2 && d1 == d2 {
+		return nil
+	}
+
+	// Check if it was yesterday
+	yesterday := now.UTC().AddDate(0, 0, -1)
+	y3, m3, d3 := yesterday.Date()
+
+	newStreak := 1
+	// If last streak was yesterday, increment
+	if y1 == y3 && m1 == m3 && d1 == d3 {
+		newStreak = lastStreak + 1
+	}
+
+	// Record new streak
+	meta := map[string]interface{}{
+		"streak": newStreak,
+	}
+
+	// Use RecordUserEvent but with EventDailyStreak type (which will be skipped by the check above)
+	// Triggers "STREAK_INCREASED" if streak > 1? The client can handle that based on event.
+	if err := s.RecordUserEvent(ctx, userID, domain.EventDailyStreak, meta); err != nil {
+		return fmt.Errorf("failed to record streak event: %w", err)
+	}
+
 	return nil
 }
 
