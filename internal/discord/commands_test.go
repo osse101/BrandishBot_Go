@@ -16,7 +16,8 @@ type MockAPIClient struct {
 	UseItemFunc         func(string, string, string, string, int) (string, error)
 	BuyItemFunc         func(string, string, string, string, int) (string, error)
 	SellItemFunc        func(string, string, string, string, int) (string, error)
-	GetPricesFunc       func() (string, error)
+	GetSellPricesFunc   func() (string, error)
+	GetBuyPricesFunc    func() (string, error)
 	GiveItemFunc        func(string, string, string, string, string, string, int) (string, error)
 	UpgradeItemFunc     func(string, string, string, int) (string, error)
 	DisassembleItemFunc func(string, string, string, string, int) (string, error)
@@ -72,11 +73,18 @@ func (m *MockAPIClient) SellItem(platform, platformID, username, itemName string
 	return "Sold 1x " + itemName, nil
 }
 
-func (m *MockAPIClient) GetPrices() (string, error) {
-	if m.GetPricesFunc != nil {
-		return m.GetPricesFunc()
+func (m *MockAPIClient) GetSellPrices() (string, error) {
+	if m.GetSellPricesFunc != nil {
+		return m.GetSellPricesFunc()
 	}
 	return "lootbox0: 10 coins", nil
+}
+
+func (m *MockAPIClient) GetBuyPrices() (string, error) {
+	if m.GetBuyPricesFunc != nil {
+		return m.GetBuyPricesFunc()
+	}
+	return "lootbox0: 15 coins", nil
 }
 
 func (m *MockAPIClient) GiveItem(fromPlatform, fromPlatformID, toPlatform, toPlatformID, toUsername, itemName string, quantity int) (string, error) {

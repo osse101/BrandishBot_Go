@@ -158,11 +158,11 @@ func SellCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	return cmd, handler
 }
 
-// PricesCommand returns the prices command definition and handler
+// PricesCommand returns the prices command definition and handler (buy prices)
 func PricesCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	cmd := &discordgo.ApplicationCommand{
 		Name:        "prices",
-		Description: "View current market prices for buyable items",
+		Description: "View buy prices (cost to purchase items)",
 	}
 
 	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
@@ -173,19 +173,60 @@ func PricesCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			return
 		}
 
-		msg, err := client.GetPrices()
+		msg, err := client.GetBuyPrices()
 		if err != nil {
-			slog.Error("Failed to get prices", "error", err)
+			slog.Error("Failed to get buy prices", "error", err)
 			respondError(s, i, fmt.Sprintf("Failed to get prices: %v", err))
 			return
 		}
 
 		embed := &discordgo.MessageEmbed{
-			Title:       "🏪 Market Prices",
+			Title:       "🏪 Buy Prices",
+			Description: msg,
+			Color:       0x3498db, // Blue
+			Footer: &discordgo.MessageEmbedFooter{
+				Text: "Cost to purchase items",
+			},
+		}
+
+		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			Embeds: &[]*discordgo.MessageEmbed{embed},
+		}); err != nil {
+			slog.Error("Failed to send response", "error", err)
+		}
+	}
+
+	return cmd, handler
+}
+
+// SellPricesCommand returns the sell prices command definition and handler
+func SellPricesCommand() (*discordgo.ApplicationCommand, CommandHandler) {
+	cmd := &discordgo.ApplicationCommand{
+		Name:        "prices-sell",
+		Description: "View sell prices (what you get when selling)",
+	}
+
+	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
+		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
+		}); err != nil {
+			slog.Error("Failed to send deferred response", "error", err)
+			return
+		}
+
+		msg, err := client.GetSellPrices()
+		if err != nil {
+			slog.Error("Failed to get sell prices", "error", err)
+			respondError(s, i, fmt.Sprintf("Failed to get prices: %v", err))
+			return
+		}
+
+		embed := &discordgo.MessageEmbed{
+			Title:       "💰 Sell Prices",
 			Description: msg,
 			Color:       0xf1c40f, // Yellow
 			Footer: &discordgo.MessageEmbedFooter{
-				Text: "BrandishBot",
+				Text: "Value when selling items",
 			},
 		}
 

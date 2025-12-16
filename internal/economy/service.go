@@ -20,11 +20,13 @@ type Repository interface {
 	UpdateInventory(ctx context.Context, userID string, inventory domain.Inventory) error
 	GetSellablePrices(ctx context.Context) ([]domain.Item, error)
 	IsItemBuyable(ctx context.Context, itemName string) (bool, error)
+	GetBuyablePrices(ctx context.Context) ([]domain.Item, error)
 }
 
 // Service defines the interface for economy operations
 type Service interface {
 	GetSellablePrices(ctx context.Context) ([]domain.Item, error)
+	GetBuyablePrices(ctx context.Context) ([]domain.Item, error)
 	SellItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (int, int, error)
 	BuyItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (int, error)
 }

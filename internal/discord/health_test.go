@@ -95,11 +95,18 @@ func TestEconomyCommands(t *testing.T) {
 			want: "Sold 1x lootbox0",
 		},
 		{
-			name: "Get Prices",
+			name: "Get Sell Prices",
 			testFunc: func() (string, error) {
-				return mock.GetPrices()
+				return mock.GetSellPrices()
 			},
 			want: "lootbox0: 10 coins",
+		},
+		{
+			name: "Get Buy Prices",
+			testFunc: func() (string, error) {
+				return mock.GetBuyPrices()
+			},
+			want: "lootbox0: 15 coins",
 		},
 	}
 

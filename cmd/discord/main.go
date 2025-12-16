@@ -112,6 +112,9 @@ func main() {
 	cmd, handler = discord.PricesCommand()
 	bot.Registry.Register(cmd, handler)
 
+	cmd, handler = discord.SellPricesCommand()
+	bot.Registry.Register(cmd, handler)
+
 	cmd, handler = discord.GiveCommand()
 	bot.Registry.Register(cmd, handler)
 

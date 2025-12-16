@@ -429,8 +429,8 @@ func (c *APIClient) SellItem(platform, platformID, username, itemName string, qu
 	return sellResp.Message, nil
 }
 
-// GetPrices retrieves current market prices
-func (c *APIClient) GetPrices() (string, error) {
+// GetSellPrices retrieves current sell prices
+func (c *APIClient) GetSellPrices() (string, error) {
 	resp, err := c.doRequest(http.MethodGet, "/prices", nil)
 	if err != nil {
 		return "", err
@@ -442,20 +442,56 @@ func (c *APIClient) GetPrices() (string, error) {
 	}
 
 	var pricesResp struct {
-		Message string `json:"message"`
-		Prices  string `json:"prices"`
+		Message string        `json:"message"`
+		Items   []domain.Item `json:"items"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&pricesResp); err != nil {
 		return "", fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	if pricesResp.Prices != "" {
-		return pricesResp.Prices, nil
+	if len(pricesResp.Items) == 0 {
+		return "No sellable items available.", nil
 	}
-	return pricesResp.Message, nil
+
+	var result string
+	for _, item := range pricesResp.Items {
+		result += fmt.Sprintf("**%s**: %d coins\n", item.Name, item.BaseValue)
+	}
+	return result, nil
 }
 
-// GiveItem transfers an item to another user
+// GetBuyPrices retrieves current buy prices
+func (c *APIClient) GetBuyPrices() (string, error) {
+	resp, err := c.doRequest(http.MethodGet, "/prices/buy", nil)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	var pricesResp struct {
+		Message string        `json:"message"`
+		Items   []domain.Item `json:"items"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&pricesResp); err != nil {
+		return "", fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	if len(pricesResp.Items) == 0 {
+		return "No buyable items available.", nil
+	}
+
+	var result string
+	for _, item := range pricesResp.Items {
+		result += fmt.Sprintf("**%s**: %d coins\n", item.Name, item.BaseValue)
+	}
+	return result, nil
+}
+
+// GiveItem transfers an item between users user
 func (c *APIClient) GiveItem(fromPlatform, fromPlatformID, toPlatform, toPlatformID, toUsername, itemName string, quantity int) (string, error) {
 	req := map[string]interface{}{
 		"from_platform":    fromPlatform,

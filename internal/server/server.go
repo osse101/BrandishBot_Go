@@ -61,6 +61,7 @@ func NewServer(port int, apiKey string, dbPool database.Pool, userService user.S
 	mux.HandleFunc("/user/inventory", handler.HandleGetInventory(userService))
 	mux.HandleFunc("/user/search", handler.HandleSearch(userService, progressionService, eventBus))
 	mux.HandleFunc("/prices", handler.HandleGetPrices(economyService))
+	mux.HandleFunc("/prices/buy", handler.HandleGetBuyPrices(economyService))
 
 	// Gamble routes
 	gambleHandler := handler.NewGambleHandler(gambleService, progressionService)
