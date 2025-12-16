@@ -20,6 +20,7 @@ func main() {
 	appID := os.Getenv("DISCORD_APP_ID")
 	apiURL := os.Getenv("API_URL")
 	devChannelID := os.Getenv("DISCORD_DEV_CHANNEL_ID")
+	gameChannelID := os.Getenv("DISCORD_DIGGING_GAME_CHANNEL_ID")
 	webhookPort := os.Getenv("DISCORD_WEBHOOK_PORT")
 	if webhookPort == "" {
 		webhookPort = "8082"
@@ -44,6 +45,7 @@ func main() {
 		AppID:           appID,
 		APIURL:          apiURL,
 		DevChannelID:    devChannelID,
+		DiggingGameChannelID: gameChannelID,
 		GithubToken:     githubToken,
 		GithubOwnerRepo: githubRepo,
 	}

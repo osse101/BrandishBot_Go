@@ -27,6 +27,7 @@ type Config struct {
 	DiscordToken        string `mapstructure:"DISCORD_TOKEN"`
 	DiscordAppID        string `mapstructure:"DISCORD_APP_ID"`
 	DiscordDevChannelID string `mapstructure:"DISCORD_DEV_CHANNEL_ID"`
+	DiscordDiggingGameChannelID string `mapstructure:"DISCORD_DIGGING_GAME_CHANNEL_ID"`
 	DiscordWebhookPort  string `mapstructure:"DISCORD_WEBHOOK_PORT"`
 
 	// GitHub Configuration
@@ -72,6 +73,7 @@ func Load() (*Config, error) {
 		DiscordToken:        getEnv("DISCORD_TOKEN", ""),
 		DiscordAppID:        getEnv("DISCORD_APP_ID", ""),
 		DiscordDevChannelID: getEnv("DISCORD_DEV_CHANNEL_ID", ""),
+		DiscordDiggingGameChannelID: getEnv("DISCORD_DIGGING_GAME_CHANNEL_ID", ""),
 		DiscordWebhookPort:  getEnv("DISCORD_WEBHOOK_PORT", "8082"),
 
 		// GitHub config

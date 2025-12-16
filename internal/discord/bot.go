@@ -19,19 +19,21 @@ type Bot struct {
 	Client          *APIClient
 	AppID           string
 	Registry        *CommandRegistry
-	DevChannelID    string
-	GithubToken     string
-	GithubOwnerRepo string
+	DevChannelID         string
+	DiggingGameChannelID string
+	GithubToken          string
+	GithubOwnerRepo      string
 }
 
 // Config holds the bot configuration
 type Config struct {
-	Token           string
-	AppID           string
-	APIURL          string
-	DevChannelID    string
-	GithubToken     string
-	GithubOwnerRepo string
+	Token                string
+	AppID                string
+	APIURL               string
+	DevChannelID         string
+	DiggingGameChannelID string
+	GithubToken          string
+	GithubOwnerRepo      string
 }
 
 // New creates a new Discord bot
@@ -45,10 +47,11 @@ func New(cfg Config) (*Bot, error) {
 		Session:         s,
 		Client:          NewAPIClient(cfg.APIURL, ""), // API Key support can be added to Config
 		AppID:           cfg.AppID,
-		Registry:        NewCommandRegistry(),
-		DevChannelID:    cfg.DevChannelID,
-		GithubToken:     cfg.GithubToken,
-		GithubOwnerRepo: cfg.GithubOwnerRepo,
+		Registry:             NewCommandRegistry(),
+		DevChannelID:         cfg.DevChannelID,
+		DiggingGameChannelID: cfg.DiggingGameChannelID,
+		GithubToken:          cfg.GithubToken,
+		GithubOwnerRepo:      cfg.GithubOwnerRepo,
 	}, nil
 }
 
