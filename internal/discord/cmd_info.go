@@ -76,14 +76,15 @@ func InfoCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	return cmd, handler
 }
 
+// InfoDir is the directory containing info text files (can be changed for testing)
+var InfoDir = "configs/discord/info"
+
 // loadInfoText loads the info text from a file
 func loadInfoText(featureName string) (string, error) {
 	// Sanitize feature name to prevent directory traversal
 	featureName = strings.ToLower(strings.TrimSpace(featureName))
 	
-	// Path to info files
-	infoDir := "configs/discord/info"
-	filename := filepath.Join(infoDir, featureName+".txt")
+	filename := filepath.Join(InfoDir, featureName+".txt")
 	
 	// Read file
 	data, err := os.ReadFile(filename)
