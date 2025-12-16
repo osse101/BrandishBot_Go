@@ -39,15 +39,22 @@ func main() {
 	if apiURL == "" {
 		apiURL = "http://localhost:8080"
 	}
+	slog.Info("Configured API URL", "url", apiURL)
+
+	apiKey := os.Getenv("API_KEY")
+	if apiKey == "" {
+		slog.Warn("API_KEY not set, discord bot requests may fail")
+	}
 
 	cfg := discord.Config{
-		Token:           token,
-		AppID:           appID,
-		APIURL:          apiURL,
-		DevChannelID:    devChannelID,
+		Token:                token,
+		AppID:                appID,
+		APIURL:               apiURL,
+		APIKey:               apiKey,
+		DevChannelID:         devChannelID,
 		DiggingGameChannelID: gameChannelID,
-		GithubToken:     githubToken,
-		GithubOwnerRepo: githubRepo,
+		GithubToken:          githubToken,
+		GithubOwnerRepo:      githubRepo,
 	}
 
 	bot, err := discord.New(cfg)

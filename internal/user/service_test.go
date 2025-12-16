@@ -243,7 +243,7 @@ func TestAddItem(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
 	lockManager := concurrency.NewLockManager()
-	svc := NewService(repo, lockManager, nil)
+	svc := NewService(repo, lockManager, nil, false)
 	ctx := context.Background()
 
 	// Test adding item to empty inventory
@@ -298,7 +298,7 @@ func TestRemoveItem(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
 	lockManager := concurrency.NewLockManager()
-	svc := NewService(repo, lockManager, nil)
+	svc := NewService(repo, lockManager, nil, false)
 	ctx := context.Background()
 
 	// Add 10 lootbox1 items
@@ -343,7 +343,7 @@ func TestGiveItem(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
 	lockManager := concurrency.NewLockManager()
-	svc := NewService(repo, lockManager, nil)
+	svc := NewService(repo, lockManager, nil, false)
 	ctx := context.Background()
 
 	// Setup: Give alice some items
@@ -383,7 +383,7 @@ func TestGiveItem(t *testing.T) {
 func TestRegisterUser(t *testing.T) {
 	repo := NewMockRepository()
 	lockManager := concurrency.NewLockManager()
-	svc := NewService(repo, lockManager, nil)
+	svc := NewService(repo, lockManager, nil, false)
 	ctx := context.Background()
 
 	user := domain.User{
@@ -413,7 +413,7 @@ func TestRegisterUser(t *testing.T) {
 func TestHandleIncomingMessage_NewUser(t *testing.T) {
 	repo := NewMockRepository()
 	lockManager := concurrency.NewLockManager()
-	svc := NewService(repo, lockManager, nil)
+	svc := NewService(repo, lockManager, nil, false)
 	ctx := context.Background()
 
 	result, err := svc.HandleIncomingMessage(ctx, "twitch", "newuser123", "newuser", "hello")
@@ -436,7 +436,7 @@ func TestHandleIncomingMessage_ExistingUser(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
 	lockManager := concurrency.NewLockManager()
-	svc := NewService(repo, lockManager, nil)
+	svc := NewService(repo, lockManager, nil, false)
 	ctx := context.Background()
 
 	result, err := svc.HandleIncomingMessage(ctx, "twitch", "alice123", "alice", "hello")
@@ -453,7 +453,7 @@ func TestUseItem(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
 	lockManager := concurrency.NewLockManager()
-	svc := NewService(repo, lockManager, nil).(*service)
+	svc := NewService(repo, lockManager, nil, false).(*service)
 
 	// Setup loot tables
 	svc.lootTables[domain.ItemLootbox1] = []LootItem{
@@ -522,7 +522,7 @@ func TestUseItem_Blaster(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
 	lockManager := concurrency.NewLockManager()
-	svc := NewService(repo, lockManager, nil)
+	svc := NewService(repo, lockManager, nil, false)
 	ctx := context.Background()
 
 	// Setup: Give alice some blasters
@@ -556,7 +556,7 @@ func TestGetInventory(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
 	lockManager := concurrency.NewLockManager()
-	svc := NewService(repo, lockManager, nil)
+	svc := NewService(repo, lockManager, nil, false)
 	ctx := context.Background()
 
 	// Setup: Give alice some items
@@ -606,7 +606,7 @@ func TestUseItem_Lootbox0(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
 	lockManager := concurrency.NewLockManager()
-	svc := NewService(repo, lockManager, nil).(*service)
+	svc := NewService(repo, lockManager, nil, false).(*service)
 
 	// Setup loot tables
 	svc.lootTables[domain.ItemLootbox0] = []LootItem{
@@ -648,7 +648,7 @@ func TestUseItem_Lootbox2(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
 	lockManager := concurrency.NewLockManager()
-	svc := NewService(repo, lockManager, nil).(*service)
+	svc := NewService(repo, lockManager, nil, false).(*service)
 
 	// Setup loot tables
 	svc.lootTables[domain.ItemLootbox2] = []LootItem{

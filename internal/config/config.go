@@ -43,6 +43,9 @@ type Config struct {
 
 	// Gamble configuration
 	GambleJoinDuration time.Duration // Duration for users to join a gamble
+
+	// Development Settings
+	DevMode bool // When true, bypasses cooldowns and enables test features
 }
 
 // Load loads the configuration from environment variables
@@ -95,6 +98,10 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("invalid GAMBLE_JOIN_DURATION_MINUTES value: %w", err)
 	}
 	cfg.GambleJoinDuration = time.Duration(gambleJoinMins) * time.Minute
+
+	// Dev mode (bypasses cooldowns and enables test features)
+	devModeStr := getEnv("DEV_MODE", "false")
+	cfg.DevMode = devModeStr == "true" || devModeStr == "1"
 
 	// Validate API key is set
 	if cfg.APIKey == "" {

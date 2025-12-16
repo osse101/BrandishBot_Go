@@ -30,6 +30,7 @@ type Config struct {
 	Token                string
 	AppID                string
 	APIURL               string
+	APIKey               string
 	DevChannelID         string
 	DiggingGameChannelID string
 	GithubToken          string
@@ -44,9 +45,9 @@ func New(cfg Config) (*Bot, error) {
 	}
 
 	return &Bot{
-		Session:         s,
-		Client:          NewAPIClient(cfg.APIURL, ""), // API Key support can be added to Config
-		AppID:           cfg.AppID,
+		Session:              s,
+		Client:               NewAPIClient(cfg.APIURL, cfg.APIKey), // Pass API Key
+		AppID:                cfg.AppID,
 		Registry:             NewCommandRegistry(),
 		DevChannelID:         cfg.DevChannelID,
 		DiggingGameChannelID: cfg.DiggingGameChannelID,

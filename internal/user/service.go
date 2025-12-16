@@ -83,6 +83,7 @@ type service struct {
 	lootTables   map[string][]LootItem
 	jobService   JobService
 	stringFinder *StringFinder
+	devMode      bool // When true, bypasses cooldowns
 }
 
 // setPlatformID sets the appropriate platform-specific ID field on a user
@@ -98,7 +99,7 @@ func setPlatformID(user *domain.User, platform, platformID string) {
 }
 
 // NewService creates a new user service
-func NewService(repo Repository, lockManager *concurrency.LockManager, jobService JobService) Service {
+func NewService(repo Repository, lockManager *concurrency.LockManager, jobService JobService, devMode bool) Service {
 	s :=  &service{
 		repo:         repo,
 		itemHandlers: make(map[string]ItemEffectHandler),
@@ -107,6 +108,7 @@ func NewService(repo Repository, lockManager *concurrency.LockManager, jobServic
 		lootTables:   make(map[string][]LootItem),
 		jobService:   jobService,
 		stringFinder: NewStringFinder(),
+		devMode:      devMode,
 	}
 	s.registerHandlers()
 	// Attempt to load default loot tables, ignore error if file doesn't exist (will be empty)
@@ -589,14 +591,19 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 
 	now := time.Now()
 	if lastUsed != nil {
-		elapsed := now.Sub(*lastUsed)
-		if elapsed < domain.SearchCooldownDuration {
-			remaining := domain.SearchCooldownDuration - elapsed
-			minutes := int(remaining.Minutes())
-			seconds := int(remaining.Seconds()) % 60
+		// Check if dev mode bypasses cooldowns
+		if !s.devMode {
+			elapsed := now.Sub(*lastUsed)
+			if elapsed < domain.SearchCooldownDuration {
+				remaining := domain.SearchCooldownDuration - elapsed
+				minutes := int(remaining.Minutes())
+				seconds := int(remaining.Seconds()) % 60
 
-			log.Info("Search on cooldown", "username", username, "remaining", remaining)
-			return fmt.Sprintf("You can search again in %dm %ds", minutes, seconds), nil
+				log.Info("Search on cooldown", "username", username, "remaining", remaining)
+				return fmt.Sprintf("You can search again in %dm %ds", minutes, seconds), nil
+			}
+		} else {
+			log.Info("DEV_MODE: Bypassing cooldown check", "username", username)
 		}
 	}
 
