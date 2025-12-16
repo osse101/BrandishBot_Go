@@ -110,13 +110,13 @@ type ContributionBreakdown struct {
 
 // ProgressionVotingSession represents a voting session for selecting next unlock
 type ProgressionVotingSession struct {
-	ID              int                          `json:"id"`
-	StartedAt       time.Time                    `json:"started_at"`
-	EndedAt         *time.Time                   `json:"ended_at,omitempty"`
-	VotingDeadline  time.Time                    `json:"voting_deadline"`
-	WinningOptionID *int                         `json:"winning_option_id,omitempty"`
-	Status          string                       `json:"status"` // 'voting', 'completed'
-	Options         []ProgressionVotingOption    `json:"options,omitempty"`
+	ID              int                       `json:"id"`
+	StartedAt       time.Time                 `json:"started_at"`
+	EndedAt         *time.Time                `json:"ended_at,omitempty"`
+	VotingDeadline  time.Time                 `json:"voting_deadline"`
+	WinningOptionID *int                      `json:"winning_option_id,omitempty"`
+	Status          string                    `json:"status"` // 'voting', 'completed'
+	Options         []ProgressionVotingOption `json:"options,omitempty"`
 }
 
 // ProgressionVotingOption represents one voting choice in a session
@@ -133,8 +133,8 @@ type ProgressionVotingOption struct {
 // UnlockProgress tracks contribution points accumulated toward next unlock
 type UnlockProgress struct {
 	ID                       int        `json:"id"`
-	NodeID                   *int       `json:"node_id"`       // NULL until vote ends
-	TargetLevel              *int       `json:"target_level"`  // NULL until vote ends
+	NodeID                   *int       `json:"node_id"`      // NULL until vote ends
+	TargetLevel              *int       `json:"target_level"` // NULL until vote ends
 	ContributionsAccumulated int        `json:"contributions_accumulated"`
 	StartedAt                time.Time  `json:"started_at"`
 	UnlockedAt               *time.Time `json:"unlocked_at"`

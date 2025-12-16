@@ -50,10 +50,11 @@ type Participant struct {
 
 // GambleOpenedItem represents an item opened during the gamble
 type GambleOpenedItem struct {
-	GambleID uuid.UUID `json:"gamble_id"`
-	UserID   string    `json:"user_id"`
-	ItemID   int       `json:"item_id"`
-	Value    int64     `json:"value"`
+	GambleID   uuid.UUID `json:"gamble_id"`
+	UserID     string    `json:"user_id"`
+	ItemID     int       `json:"item_id"`
+	Value      int64     `json:"value"`
+	ShineLevel string    `json:"shine_level,omitempty"`
 }
 
 // GambleResult contains the outcome of a completed gamble
