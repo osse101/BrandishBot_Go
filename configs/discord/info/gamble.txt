@@ -1,0 +1,9 @@
+[TODO: Fill in gambling system information]
+
+This is a placeholder for gamble system details. Include:
+- How gambling works
+- Starting a gamble session
+- Joining gambles
+- Lootbox betting
+- Win conditions
+- Risks and rewards

@@ -1,0 +1,8 @@
+[TODO: Fill in stats and leaderboards information]
+
+This is a placeholder for stats system details. Include:
+- Tracking your stats
+- Engagement score
+- Leaderboards
+- Rankings
+- Achievements

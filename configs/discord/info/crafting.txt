@@ -1,0 +1,8 @@
+[TODO: Fill in crafting system information]
+
+This is a placeholder for crafting details. Include:
+- How crafting works
+- Available recipes
+- Upgrading items
+- Disassembling items
+- Material requirements

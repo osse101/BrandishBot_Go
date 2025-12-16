@@ -1,0 +1,7 @@
+[TODO: Fill in inventory management information]
+
+This is a placeholder for inventory details. Include:
+- How to view your inventory
+- Item types and categories
+- Inventory commands
+- Managing your items

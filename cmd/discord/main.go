@@ -84,6 +84,24 @@ func main() {
 	cmd, handler = discord.InventoryCommand()
 	bot.Registry.Register(cmd, handler)
 
+	cmd, handler = discord.UseItemCommand()
+	bot.Registry.Register(cmd, handler)
+
+	cmd, handler = discord.GambleStartCommand()
+	bot.Registry.Register(cmd, handler)
+
+	cmd, handler = discord.GambleJoinCommand()
+	bot.Registry.Register(cmd, handler)
+
+	cmd, handler = discord.VoteCommand()
+	bot.Registry.Register(cmd, handler)
+
+	cmd, handler = discord.AdminUnlockCommand()
+	bot.Registry.Register(cmd, handler)
+
+	cmd, handler = discord.InfoCommand()
+	bot.Registry.Register(cmd, handler)
+
 	// Register with Discord API on startup
 	// Note: In production, you might want to do this separately or check if needed to avoid rate limits
 	if err := bot.RegisterCommands(bot.Registry); err != nil {

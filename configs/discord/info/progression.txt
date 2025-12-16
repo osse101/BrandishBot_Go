@@ -1,0 +1,8 @@
+[TODO: Fill in progression system information]
+
+This is a placeholder for progression tree details. Include:
+- What is the progression tree?
+- How to vote for features
+- Unlocking new features
+- Community engagement
+- Feature dependencies

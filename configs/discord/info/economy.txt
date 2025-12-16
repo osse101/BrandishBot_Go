@@ -1,0 +1,7 @@
+[TODO: Fill in economy system information]
+
+This is a placeholder for economy system details. Include:
+- How to earn money
+- Buying and selling items
+- Item prices
+- Economic mechanics

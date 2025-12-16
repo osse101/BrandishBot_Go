@@ -1,0 +1,7 @@
+[TODO: Fill in BrandishBot overview information]
+
+This is a placeholder for the general BrandishBot overview. Include:
+- What is BrandishBot?
+- Core features summary
+- How to get started
+- Link to full documentation

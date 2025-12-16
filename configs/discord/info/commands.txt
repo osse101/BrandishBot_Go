@@ -1,0 +1,13 @@
+[TODO: Fill in available commands information]
+
+This is a placeholder for commands list. Include:
+- /ping - Check bot status
+- /profile - View your profile
+- /inventory - View your items
+- /search - Search for loot
+- /use - Use an item
+- /gamble - Start or join a gamble
+- /vote - Vote for progression features
+- /info - Show this help
+
+For detailed help on each command, use that command with no parameters.
