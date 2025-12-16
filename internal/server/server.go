@@ -115,7 +115,7 @@ func NewServer(port int, apiKey string, dbPool database.Pool, userService user.S
 	handler = SecurityLoggingMiddleware(detector)(handler)
 
 	// 5. Authentication (outermost - validates first)
-	handler = AuthMiddleware(apiKey)(handler)
+	handler = AuthMiddleware(apiKey, detector)(handler)
 
 	return &Server{
 		httpServer: &http.Server{

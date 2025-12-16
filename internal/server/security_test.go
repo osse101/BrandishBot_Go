@@ -8,7 +8,8 @@ import (
 
 func TestAuthMiddleware(t *testing.T) {
 	apiKey := "secret-key"
-	middleware := AuthMiddleware(apiKey)
+	detector := NewSuspiciousActivityDetector()
+	middleware := AuthMiddleware(apiKey, detector)
 
 	tests := []struct {
 		name           string
@@ -66,5 +67,43 @@ func TestAuthMiddleware(t *testing.T) {
 				t.Errorf("expected status %d, got %d", tt.expectedStatus, rec.Code)
 			}
 		})
+	}
+}
+
+func TestAuthMiddleware_RecordsFailures(t *testing.T) {
+	apiKey := "secret-key"
+	detector := NewSuspiciousActivityDetector()
+	middleware := AuthMiddleware(apiKey, detector)
+
+	// Create request with specific IP
+	req := httptest.NewRequest("GET", "/api/test", nil)
+	req.RemoteAddr = "192.168.1.5:12345"
+
+	rec := httptest.NewRecorder()
+	handler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	// Execute failed request
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("expected status 401, got %d", rec.Code)
+	}
+
+	// Check detector state
+	ip := "192.168.1.5"
+	count, exists := detector.failedAuthByIP[ip]
+	if !exists {
+		t.Errorf("expected IP %s to be in failedAuthByIP map", ip)
+	}
+	if count != 1 {
+		t.Errorf("expected failure count 1, got %d", count)
+	}
+
+	// Trigger another failure
+	handler.ServeHTTP(rec, req)
+	if detector.failedAuthByIP[ip] != 2 {
+		t.Errorf("expected failure count 2, got %d", detector.failedAuthByIP[ip])
 	}
 }
