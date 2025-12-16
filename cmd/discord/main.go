@@ -145,6 +145,12 @@ func main() {
 	cmd, handler = discord.ReloadCommand(bot)
 	bot.Registry.Register(cmd, handler)
 
+	cmd, handler = discord.LinkCommand()
+	bot.Registry.Register(cmd, handler)
+
+	cmd, handler = discord.UnlinkCommand()
+	bot.Registry.Register(cmd, handler)
+
 	// Register with Discord API
 	// By default, only updates if commands have changed
 	// Set DISCORD_FORCE_COMMAND_UPDATE=true to force full registration

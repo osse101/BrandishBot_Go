@@ -13,6 +13,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/gamble"
 	"github.com/osse101/BrandishBot_Go/internal/handler"
 	"github.com/osse101/BrandishBot_Go/internal/job"
+	"github.com/osse101/BrandishBot_Go/internal/linking"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/metrics"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
@@ -32,10 +33,11 @@ type Server struct {
 	progressionService progression.Service
 	gambleService      gamble.Service
 	jobService         job.Service
+	linkingService     linking.Service
 }
 
 // NewServer creates a new Server instance
-func NewServer(port int, apiKey string, dbPool database.Pool, userService user.Service, economyService economy.Service, craftingService crafting.Service, statsService stats.Service, progressionService progression.Service, gambleService gamble.Service, jobService job.Service, eventBus event.Bus) *Server {
+func NewServer(port int, apiKey string, dbPool database.Pool, userService user.Service, economyService economy.Service, craftingService crafting.Service, statsService stats.Service, progressionService progression.Service, gambleService gamble.Service, jobService job.Service, linkingService linking.Service, eventBus event.Bus) *Server {
 	mux := http.NewServeMux()
 
 	// Health check routes
@@ -97,6 +99,14 @@ func NewServer(port int, apiKey string, dbPool database.Pool, userService user.S
 	mux.HandleFunc("/progression/admin/start-voting", progressionHandlers.HandleAdminStartVoting())
 	mux.HandleFunc("/progression/admin/end-voting", progressionHandlers.HandleAdminEndVoting())
 	mux.HandleFunc("/progression/admin/reset", progressionHandlers.HandleAdminReset())
+
+	// Linking routes
+	linkingHandlers := handler.NewLinkingHandlers(linkingService)
+	mux.HandleFunc("/link/initiate", linkingHandlers.HandleInitiate())
+	mux.HandleFunc("/link/claim", linkingHandlers.HandleClaim())
+	mux.HandleFunc("/link/confirm", linkingHandlers.HandleConfirm())
+	mux.HandleFunc("/link/unlink", linkingHandlers.HandleUnlink())
+	mux.HandleFunc("/link/status", linkingHandlers.HandleStatus())
 
 	// Swagger documentation
 	mux.HandleFunc("/swagger/", httpSwagger.WrapHandler)

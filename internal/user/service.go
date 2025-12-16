@@ -27,8 +27,12 @@ var validPlatforms = map[string]bool{
 type Repository interface {
 	UpsertUser(ctx context.Context, user *domain.User) error
 	GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error)
+	GetUserByID(ctx context.Context, userID string) (*domain.User, error)
+	UpdateUser(ctx context.Context, user domain.User) error
+	DeleteUser(ctx context.Context, userID string) error
 	GetInventory(ctx context.Context, userID string) (*domain.Inventory, error)
 	UpdateInventory(ctx context.Context, userID string, inventory domain.Inventory) error
+	DeleteInventory(ctx context.Context, userID string) error
 	GetItemByName(ctx context.Context, itemName string) (*domain.Item, error)
 	GetItemByID(ctx context.Context, id int) (*domain.Item, error)
 
@@ -56,6 +60,10 @@ type Service interface {
 	TimeoutUser(ctx context.Context, username string, duration time.Duration, reason string) error
 	LoadLootTables(path string) error
 	HandleSearch(ctx context.Context, platform, platformID, username string) (string, error)
+	// Account linking methods
+	MergeUsers(ctx context.Context, primaryUserID, secondaryUserID string) error
+	UnlinkPlatform(ctx context.Context, userID, platform string) error
+	GetLinkedPlatforms(ctx context.Context, platform, platformID string) ([]string, error)
 }
 
 type UserInventoryItem struct {

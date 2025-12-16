@@ -1,3 +1,12 @@
+package postgres
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/osse101/BrandishBot_Go/internal/domain"
+)
+
 // GetBuyablePrices retrieves all buyable items with their prices
 func (r *UserRepository) GetBuyablePrices(ctx context.Context) ([]domain.Item, error) {
 	query := `
