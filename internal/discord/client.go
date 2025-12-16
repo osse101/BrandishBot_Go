@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"time"
@@ -30,7 +31,7 @@ func NewAPIClient(baseURL, apiKey string) *APIClient {
 	}
 }
 
-// doRequest performs an HTTP request
+// doRequest performs an HTTP request with retry logic
 func (c *APIClient) doRequest(method, path string, body interface{}) (*http.Response, error) {
 	var reqBody []byte
 	var err error
@@ -43,17 +44,50 @@ func (c *APIClient) doRequest(method, path string, body interface{}) (*http.Resp
 	}
 
 	url := fmt.Sprintf("%s%s", c.BaseURL, path)
-	req, err := http.NewRequest(method, url, bytes.NewBuffer(reqBody))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+	
+	// Retry configuration
+	maxRetries := 3
+	retryDelay := 500 * time.Millisecond
+	
+	var lastErr error
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		if attempt > 0 {
+			// Exponential backoff with jitter
+			jitter := time.Duration(time.Now().UnixNano() % 100) * time.Millisecond
+			delay := retryDelay * time.Duration(1<<uint(attempt-1)) + jitter
+			time.Sleep(delay)
+			slog.Info("Retrying API request", "attempt", attempt, "path", path, "delay", delay)
+		}
+		
+		req, err := http.NewRequest(method, url, bytes.NewBuffer(reqBody))
+		if err != nil {
+			return nil, fmt.Errorf("failed to create request: %w", err)
+		}
+
+		req.Header.Set("Content-Type", "application/json")
+		if c.APIKey != "" {
+			req.Header.Set("X-API-Key", c.APIKey)
+		}
+
+		resp, err := c.Client.Do(req)
+		if err != nil {
+			lastErr = err
+			slog.Warn("API request failed", "error", err, "attempt", attempt)
+			continue
+		}
+		
+		// Success or non-retryable error
+		if resp.StatusCode < 500 {
+			return resp, nil
+		}
+		
+		// Server error - retry
+		resp.Body.Close()
+		lastErr = fmt.Errorf("server error: %d", resp.StatusCode)
+		slog.Warn("Server error, will retry", "status", resp.StatusCode, "attempt", attempt)
 	}
 
-	req.Header.Set("Content-Type", "application/json")
-	if c.APIKey != "" {
-		req.Header.Set("X-API-Key", c.APIKey)
-	}
-
-	return c.Client.Do(req)
+	return nil, fmt.Errorf("max retries exceeded: %w", lastErr)
 }
 
 // RegisterUser registers or retrieves a user

@@ -118,6 +118,39 @@ build:
 	@echo "✓ Built: bin/app"
 	@echo "✓ Built: bin/discord_bot"
 
+# Discord bot - Run locally
+.PHONY: discord-run
+discord-run:
+	@echo "Starting Discord bot..."
+	@./bin/discord_bot
+
+# Discord bot - View logs (Docker)
+.PHONY: discord-logs
+discord-logs:
+	@docker-compose logs -f discord
+
+# Discord - Build Docker image
+.PHONY: docker-discord-build
+docker-discord-build:
+	@echo "Building Discord bot Docker image..."
+	@docker build -f Dockerfile.discord -t brandishbot-discord:dev .
+	@echo "✓ Built: brandishbot-discord:dev"
+
+# Discord - Start Discord service only
+.PHONY: docker-discord-up
+docker-discord-up:
+	@echo "Starting Discord bot service..."
+	@docker-compose up -d discord
+	@echo "✓ Discord bot started"
+
+# Discord - Restart Discord service
+.PHONY: docker-discord-restart
+docker-discord-restart:
+	@echo "Restarting Discord bot..."
+	@docker-compose restart discord
+	@echo "✓ Discord bot restarted"
+
+# Development shortcuts
 run:
 	@echo "Starting BrandishBot from bin/app..."
 	@./bin/app

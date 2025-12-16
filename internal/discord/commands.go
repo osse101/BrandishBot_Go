@@ -33,6 +33,7 @@ func (r *CommandRegistry) Register(cmd *discordgo.ApplicationCommand, handler Co
 // Handle processes an interaction
 func (r *CommandRegistry) Handle(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
 	if h, ok := r.Handlers[i.ApplicationCommandData().Name]; ok {
+		RecordCommand() // Track command usage
 		h(s, i, client)
 	}
 }
