@@ -102,11 +102,54 @@ func main() {
 	cmd, handler = discord.InfoCommand()
 	bot.Registry.Register(cmd, handler)
 
-	// Register with Discord API on startup
-	// Note: In production, you might want to do this separately or check if needed to avoid rate limits
-	if err := bot.RegisterCommands(bot.Registry); err != nil {
+	// Economy commands
+	cmd, handler = discord.BuyCommand()
+	bot.Registry.Register(cmd, handler)
+
+	cmd, handler = discord.SellCommand()
+	bot.Registry.Register(cmd, handler)
+
+	cmd, handler = discord.PricesCommand()
+	bot.Registry.Register(cmd, handler)
+
+	cmd, handler = discord.GiveCommand()
+	bot.Registry.Register(cmd, handler)
+
+	// Crafting commands
+	cmd, handler = discord.UpgradeCommand()
+	bot.Registry.Register(cmd, handler)
+
+	cmd, handler = discord.DisassembleCommand()
+	bot.Registry.Register(cmd, handler)
+
+	cmd, handler = discord.RecipesCommand()
+	bot.Registry.Register(cmd, handler)
+
+	// Stats commands
+	cmd, handler = discord.LeaderboardCommand()
+	bot.Registry.Register(cmd, handler)
+
+	cmd, handler = discord.StatsCommand()
+	bot.Registry.Register(cmd, handler)
+
+	// Admin commands
+	cmd, handler = discord.AddItemCommand()
+	bot.Registry.Register(cmd, handler)
+
+	cmd, handler = discord.RemoveItemCommand()
+	bot.Registry.Register(cmd, handler)
+
+	// Register with Discord API
+	// By default, only updates if commands have changed
+	// Set DISCORD_FORCE_COMMAND_UPDATE=true to force full registration
+	forceUpdate := os.Getenv("DISCORD_FORCE_COMMAND_UPDATE") == "true"
+	if forceUpdate {
+		slog.Info("Force command update enabled via environment variable")
+	}
+	
+	if err := bot.RegisterCommands(bot.Registry, forceUpdate); err != nil {
 		slog.Error("Failed to register commands", "error", err)
-		// Don't exit, bot can still run if commands are already registered
+		// Don't exit - bot can still run if commands are already registered
 	}
 
 	if err := bot.Run(); err != nil {

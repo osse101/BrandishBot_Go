@@ -38,38 +38,34 @@ func ProfileCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			return
 		}
 
-		stats, err := client.GetUserStats(domainUser.ID)
-		if err != nil {
-			slog.Error("Failed to get stats", "error", err)
-			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-				Content: &[]string{"Failed to retrieve stats."}[0],
-			}); err != nil {
-				slog.Error("Failed to edit interaction response", "error", err)
-			}
-			return
+		// Get inventory to show item count
+		inventory, err := client.GetInventory("discord", user.ID, user.Username)
+		var itemCount int
+		if err == nil {
+			itemCount = len(inventory)
 		}
 
 		embed := &discordgo.MessageEmbed{
 			Title:       fmt.Sprintf("%s's Profile", user.Username),
-			Description: "Here are your stats:",
+			Description: "Your BrandishBot profile",
 			Color:       0x00ff00,
 			Thumbnail: &discordgo.MessageEmbedThumbnail{
 				URL: user.AvatarURL(""),
 			},
 			Fields: []*discordgo.MessageEmbedField{
 				{
-					Name:   "Total Events",
-					Value:  fmt.Sprintf("%d", stats.TotalEvents),
+					Name:   "User ID",
+					Value:  domainUser.ID,
 					Inline: true,
 				},
 				{
-					Name:   "Internal ID",
-					Value:  domainUser.ID,
+					Name:   "Items",
+					Value:  fmt.Sprintf("%d", itemCount),
 					Inline: true,
 				},
 			},
 			Footer: &discordgo.MessageEmbedFooter{
-				Text: "BrandishBot",
+				Text: "Use /stats for detailed statistics",
 			},
 		}
 
