@@ -1,8 +1,81 @@
-[TODO: Fill in stats and leaderboards information]
+**📊 Stats & Leaderboards**
 
-This is a placeholder for stats system details. Include:
-- Tracking your stats
-- Engagement score
-- Leaderboards
-- Rankings
-- Achievements
+Track your progress and compete with others!
+
+## 🏆 Leaderboard
+
+```
+/leaderboard [metric] [limit]
+```
+
+**Metrics:**
+- **engagement_score** - Overall activity (default)
+- **money** - Richest players
+- **items** - Most items collected
+- **messages** - Most active chatters
+
+**Limit:** 
+Number of top players to show (default: 10)
+
+**Example:**
+`/leaderboard money 20` - Top 20 richest players
+
+## 📈 View Stats
+
+```
+/stats [@user]
+```
+
+See detailed statistics for yourself or another player:
+
+**Tracked Metrics:**
+- Total engagement score
+- Money earned/spent
+- Items collected
+- Lootboxes opened
+- Crafting attempts
+- Gambling wins/losses
+- Messages sent
+- Commands used
+
+**Example:**
+- `/stats` - Your stats
+- `/stats @friend` - Friend's stats
+
+## 🎯 Engagement Score
+
+Your overall activity score based on:
+- ✅ Messages sent
+- ✅ Commands used
+- ✅ Features unlocked
+- ✅ Community participation
+- ✅ Gambling (win or lose!)
+- ✅ Trading with others
+
+Higher engagement = More voting power!
+
+## 📊 Rankings
+
+Leaderboards update in real-time.
+Compete across multiple categories:
+- Richest player
+- Most items
+- Best trader
+- Top collector
+
+## 💡 Tips
+
+- Check `/leaderboard` to see competition
+- Track your progress with `/stats`
+- Diversify to rank in multiple categories
+- Engagement matters for progression voting
+- Stats are server-wide (all Discord users)
+
+## Privacy
+
+- Stats are public within the game
+- Only tracked: game activity, not messages
+- No personal information stored
+- Discord username only
+
+Climb the leaderboards! 🚀

@@ -1,7 +1,54 @@
-[TODO: Fill in economy system information]
+**💰 Economy System**
 
-This is a placeholder for economy system details. Include:
-- How to earn money
-- Buying and selling items
-- Item prices
-- Economic mechanics
+Manage your wealth, trade items, and participate in the marketplace!
+
+## 💵 Money
+
+Earn money by:
+- Using `/search` to find loot
+- Selling items with `/sell`
+- Trading with other players
+- Participating in gambles
+
+## 🏪 Marketplace
+
+**Buy Items**
+```
+/buy [item] [quantity]
+```
+Purchase items from the shop. Prices vary based on item rarity.
+
+**Sell Items**  
+```
+/sell [item] [quantity]
+```
+Sell items from your inventory for money.
+
+**View Prices**
+```
+/prices
+```
+See current market prices for all buyable items.
+
+## 🎁 Trading
+
+**Give Items**
+```
+/give @user [item] [quantity]
+```
+Transfer items to another player. Great for helping friends or making deals!
+
+## 💡 Tips
+
+- Check `/prices` before buying or selling
+- Some items are worth more than you paid!
+- Give items to friends to help them progress
+- Money can be used to buy lootboxes
+- Search regularly to farm items to sell
+
+## Common Items
+
+- **money** - Currency for buying items
+- **lootbox0** - Basic lootbox (cheapest)
+- **lootbox1** - Better loot chances
+- **lootbox2** - Best loot, higher cost

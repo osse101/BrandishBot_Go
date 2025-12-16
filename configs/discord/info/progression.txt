@@ -1,8 +1,78 @@
-[TODO: Fill in progression system information]
+**🌳 Community Progression**
 
-This is a placeholder for progression tree details. Include:
-- What is the progression tree?
-- How to vote for features
-- Unlocking new features
-- Community engagement
-- Feature dependencies
+Unlock new features together through voting!
+
+## 🗳️ How Voting Works
+
+The community decides which features to unlock next!
+
+**Vote for Features**
+```
+/vote [feature-key]
+```
+
+Example: `/vote feature_gamble`
+
+**Each vote:**
+- Costs engagement points
+- Contributes to unlock progress
+- Brings features closer to release
+- Shows community priorities
+
+## 📊 Progression Tree
+
+Features are organized in a tree structure:
+- **Locked** - Not available yet
+- **Available** - Ready to vote on
+- **In Progress** - Being unlocked  
+- **Unlocked** - Active and usable!
+
+## 🎯 Engagement Score
+
+Earn engagement by:
+- Sending messages
+- Using commands
+- Participating in events
+- Playing regularly
+- Helping others
+
+Use engagement to vote for features you want!
+
+## 🏗️ Feature Types
+
+**Gameplay Features**
+- New game modes
+- Additional items
+- Special events
+- Bonus content
+
+**System Features**
+- Quality of life improvements
+- New commands
+- Enhanced mechanics
+- Community tools
+
+## 📈 Track Progress
+
+**View Status**
+Check current progression state and vote counts
+
+**See Available** 
+View features ready for voting
+
+**Engagement Score**
+Check your voting power
+
+## 💡 Tips
+
+- Vote for features you want most
+- Coordinate with your server
+- Engagement recharges over time
+- Some features unlock others
+- Popular features unlock faster!
+
+## Community Impact
+
+Your votes matter! Together the community shapes the game's future.
+
+Participate and make your voice heard! 🎤

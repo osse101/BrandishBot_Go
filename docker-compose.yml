@@ -38,6 +38,11 @@ services:
     depends_on:
       - app
     restart: always
+    volumes:
+      # Mount configs so /info command can read documentation
+      - ./configs:/app/configs:ro
+      # Optional: Mount logs for persistence
+      # - ./logs/discord:/app/logs
     networks:
       - backend
     logging:
