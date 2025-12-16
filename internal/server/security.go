@@ -12,7 +12,7 @@ import (
 )
 
 // AuthMiddleware validates API key
-func AuthMiddleware(apiKey string) func(http.Handler) http.Handler {
+func AuthMiddleware(apiKey string, detector *SuspiciousActivityDetector) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Allow public access to documentation and health check endpoints
@@ -29,11 +29,15 @@ func AuthMiddleware(apiKey string) func(http.Handler) http.Handler {
 
 			// Use constant time comparison to prevent timing attacks
 			if subtle.ConstantTimeCompare([]byte(providedKey), []byte(apiKey)) != 1 {
+				ip := extractIP(r)
+				detector.RecordFailedAuth(ip)
+
 				log := logger.FromContext(r.Context())
 				log.Warn("Authentication failed",
 					"remote_addr", r.RemoteAddr,
 					"path", r.URL.Path,
-					"has_key", providedKey != "")
+					"has_key", providedKey != "",
+					"ip", ip)
 
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 				return
@@ -75,6 +79,7 @@ func (s *SuspiciousActivityDetector) RecordFailedAuth(ip string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	s.resetCountsIfNeeded()
 	s.failedAuthByIP[ip]++
 
 	// Alert if threshold exceeded
@@ -90,12 +95,7 @@ func (s *SuspiciousActivityDetector) RecordRequest(ip string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// Reset counters every 5 minutes
-	if time.Since(s.lastResetTime) > 5*time.Minute {
-		s.requestCountByIP = make(map[string]int)
-		s.lastResetTime = time.Now()
-	}
-
+	s.resetCountsIfNeeded()
 	s.requestCountByIP[ip]++
 
 	// Alert on high request rate
@@ -103,6 +103,16 @@ func (s *SuspiciousActivityDetector) RecordRequest(ip string) {
 		slog.Warn("⚠️ SECURITY ALERT: High request rate detected",
 			"ip", ip,
 			"count_in_5min", s.requestCountByIP[ip])
+	}
+}
+
+// resetCountsIfNeeded resets counters if the time window has passed
+// Caller must hold the mutex
+func (s *SuspiciousActivityDetector) resetCountsIfNeeded() {
+	if time.Since(s.lastResetTime) > 5*time.Minute {
+		s.requestCountByIP = make(map[string]int)
+		s.failedAuthByIP = make(map[string]int)
+		s.lastResetTime = time.Now()
 	}
 }
 
