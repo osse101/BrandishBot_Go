@@ -9,18 +9,21 @@ import (
 
 // ReloadCommand returns the reload command definition and handler (admin only)
 func ReloadCommand(bot *Bot) (*discordgo.ApplicationCommand, CommandHandler) {
+	// Create admin permission value
+	adminPerm := int64(discordgo.PermissionAdministrator)
+	
 	cmd := &discordgo.ApplicationCommand{
 		Name:        "reload",
-		Description: "[ADMIN] Reload Discord commands (register missing or remove specific)",
+		Description: "[ADMIN] Reload Discord commands (sync or remove)",
 		Options: []*discordgo.ApplicationCommandOption{
 			{
 				Type:        discordgo.ApplicationCommandOptionString,
 				Name:        "command-name",
-				Description: "Command to remove (optional). Leave empty to register missing commands.",
+				Description: "Specific command to remove. Omit to sync all commands.",
 				Required:    false,
 			},
 		},
-		DefaultMemberPermissions: &[]int64{discordgo.PermissionAdministrator}[0],
+		DefaultMemberPermissions: &adminPerm,
 	}
 
 	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
