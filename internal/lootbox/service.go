@@ -28,6 +28,15 @@ const (
 	ShineLegendary = "LEGENDARY"
 )
 
+// Shine multipliers (Boosts Gamble Score)
+const (
+	MultCommon    = 1.0
+	MultUncommon  = 1.1
+	MultRare      = 1.25
+	MultEpic      = 1.5
+	MultLegendary = 2.0
+)
+
 // DroppedItem represents an item generated from opening a lootbox
 type DroppedItem struct {
 	ItemID     int
@@ -137,20 +146,23 @@ func (s *service) OpenLootbox(ctx context.Context, lootboxName string, quantity 
 			continue
 		}
 
+		shine, mult := calculateShine(info.Chance)
+		boostedValue := int(float64(item.BaseValue) * mult)
+
 		drops = append(drops, DroppedItem{
 			ItemID:     item.ID,
 			ItemName:   item.Name,
 			Quantity:   info.Qty,
-			Value:      item.BaseValue,
-			ShineLevel: calculateShine(info.Chance),
+			Value:      boostedValue,
+			ShineLevel: shine,
 		})
 	}
 
 	return drops, nil
 }
 
-// calculateShine determines the visual rarity "shine" of a drop based on its chance
-func calculateShine(chance float64) string {
+// calculateShine determines the visual rarity "shine" and value multiplier of a drop based on its chance
+func calculateShine(chance float64) (string, float64) {
 	shine := ShineCommon
 	if chance <= 0.01 {
 		shine = ShineLegendary
@@ -177,5 +189,19 @@ func calculateShine(chance float64) string {
 		}
 	}
 
-	return shine
+	var mult float64
+	switch shine {
+	case ShineLegendary:
+		mult = MultLegendary
+	case ShineEpic:
+		mult = MultEpic
+	case ShineRare:
+		mult = MultRare
+	case ShineUncommon:
+		mult = MultUncommon
+	default:
+		mult = MultCommon
+	}
+
+	return shine, mult
 }

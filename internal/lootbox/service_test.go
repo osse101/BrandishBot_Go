@@ -82,6 +82,32 @@ func TestOpenLootbox(t *testing.T) {
 		if d.ShineLevel == "" {
 			t.Errorf("ShineLevel not populated")
 		}
+
+		// Verify Value Multiplier
+		var expectedMult float64
+		switch d.ShineLevel {
+		case ShineLegendary:
+			expectedMult = MultLegendary
+		case ShineEpic:
+			expectedMult = MultEpic
+		case ShineRare:
+			expectedMult = MultRare
+		case ShineUncommon:
+			expectedMult = MultUncommon
+		default:
+			expectedMult = MultCommon
+		}
+
+		// Use tolerance for float math, though values are int
+		baseValue := 10 // from mock repo
+		if d.ItemName == "rare_sword" {
+			baseValue = 100
+		}
+
+		expectedValue := int(float64(baseValue) * expectedMult)
+		if d.Value != expectedValue {
+			t.Errorf("Value mismatch for %s (%s). Expected %d, got %d", d.ItemName, d.ShineLevel, expectedValue, d.Value)
+		}
 	}
 	if !foundCommon {
 		t.Errorf("Expected common_sword")
