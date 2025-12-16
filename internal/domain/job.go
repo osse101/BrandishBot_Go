@@ -9,8 +9,8 @@ import (
 // Job represents a profession that users can level up
 type Job struct {
 	ID                 int       `json:"id"`
-	JobKey             string    `json:"job_key"`             // "blacksmith", "explorer", etc.
-	DisplayName        string    `json:"display_name"`        // "Blacksmith"
+	JobKey             string    `json:"job_key"`      // "blacksmith", "explorer", etc.
+	DisplayName        string    `json:"display_name"` // "Blacksmith"
 	Description        string    `json:"description"`
 	AssociatedFeatures []string  `json:"associated_features"` // ["upgrade", "craft"]
 	CreatedAt          time.Time `json:"created_at"`
@@ -42,8 +42,8 @@ type JobLevelBonus struct {
 	ID          int     `json:"id"`
 	JobID       int     `json:"job_id"`
 	MinLevel    int     `json:"min_level"`
-	BonusType   string  `json:"bonus_type"`   // "bonus_money_chance", "prize_increase"
-	BonusValue  float64 `json:"bonus_value"`  // 0.25 = 25%
+	BonusType   string  `json:"bonus_type"`  // "bonus_money_chance", "prize_increase"
+	BonusValue  float64 `json:"bonus_value"` // 0.25 = 25%
 	Description string  `json:"description"`
 }
 

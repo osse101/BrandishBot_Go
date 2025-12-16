@@ -15,9 +15,9 @@ const (
 	EventItemTransferred EventType = "item_transferred"
 	EventMessageReceived EventType = "message_received"
 	// Gamble events
-	EventGambleNearMiss      EventType = "gamble_near_miss"
-	EventGambleTieBreakLost  EventType = "gamble_tie_break_lost"
-	EventDailyStreak     EventType = "daily_streak"
+	EventGambleNearMiss     EventType = "gamble_near_miss"
+	EventGambleTieBreakLost EventType = "gamble_tie_break_lost"
+	EventDailyStreak        EventType = "daily_streak"
 )
 
 // StatsEvent represents a single tracked event

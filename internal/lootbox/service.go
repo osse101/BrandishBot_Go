@@ -19,12 +19,22 @@ type LootItem struct {
 	Chance   float64 `json:"chance"`
 }
 
+// Shine levels
+const (
+	ShineCommon    = "COMMON"
+	ShineUncommon  = "UNCOMMON"
+	ShineRare      = "RARE"
+	ShineEpic      = "EPIC"
+	ShineLegendary = "LEGENDARY"
+)
+
 // DroppedItem represents an item generated from opening a lootbox
 type DroppedItem struct {
-	ItemID   int
-	ItemName string
-	Quantity int
-	Value    int
+	ItemID     int
+	ItemName   string
+	Quantity   int
+	Value      int
+	ShineLevel string
 }
 
 // ItemRepository defines the interface for fetching item data
@@ -83,7 +93,11 @@ func (s *service) OpenLootbox(ctx context.Context, lootboxName string, quantity 
 	}
 
 	// Generate drops based on probability
-	dropCounts := make(map[string]int)
+	type dropInfo struct {
+		Qty    int
+		Chance float64
+	}
+	dropCounts := make(map[string]dropInfo)
 
 	for i := 0; i < quantity; i++ {
 		for _, loot := range table {
@@ -92,7 +106,16 @@ func (s *service) OpenLootbox(ctx context.Context, lootboxName string, quantity 
 				if loot.Max > loot.Min {
 					qty = utils.RandomInt(loot.Min, loot.Max)
 				}
-				dropCounts[loot.ItemName] += qty
+
+				info, exists := dropCounts[loot.ItemName]
+				if !exists {
+					info = dropInfo{Qty: 0, Chance: loot.Chance}
+				} else if loot.Chance < info.Chance {
+					// Keep the rarest chance if item appears in multiple entries
+					info.Chance = loot.Chance
+				}
+				info.Qty += qty
+				dropCounts[loot.ItemName] = info
 			}
 		}
 	}
@@ -103,7 +126,7 @@ func (s *service) OpenLootbox(ctx context.Context, lootboxName string, quantity 
 
 	// Convert to DroppedItem with item IDs
 	var drops []DroppedItem
-	for itemName, qty := range dropCounts {
+	for itemName, info := range dropCounts {
 		item, err := s.repo.GetItemByName(ctx, itemName)
 		if err != nil {
 			log.Error("Failed to get dropped item", "item", itemName, "error", err)
@@ -115,12 +138,44 @@ func (s *service) OpenLootbox(ctx context.Context, lootboxName string, quantity 
 		}
 
 		drops = append(drops, DroppedItem{
-			ItemID:   item.ID,
-			ItemName: item.Name,
-			Quantity: qty,
-			Value:    item.BaseValue,
+			ItemID:     item.ID,
+			ItemName:   item.Name,
+			Quantity:   info.Qty,
+			Value:      item.BaseValue,
+			ShineLevel: calculateShine(info.Chance),
 		})
 	}
 
 	return drops, nil
+}
+
+// calculateShine determines the visual rarity "shine" of a drop based on its chance
+func calculateShine(chance float64) string {
+	shine := ShineCommon
+	if chance <= 0.01 {
+		shine = ShineLegendary
+	} else if chance <= 0.05 {
+		shine = ShineEpic
+	} else if chance <= 0.15 {
+		shine = ShineRare
+	} else if chance <= 0.30 {
+		shine = ShineUncommon
+	}
+
+	// Critical Shine Upgrade: 1% chance to upgrade the shine level
+	// This adds a fun "Lucky!" moment for players
+	if utils.RandomFloat() < 0.01 {
+		switch shine {
+		case ShineCommon:
+			shine = ShineUncommon
+		case ShineUncommon:
+			shine = ShineRare
+		case ShineRare:
+			shine = ShineEpic
+		case ShineEpic:
+			shine = ShineLegendary
+		}
+	}
+
+	return shine
 }

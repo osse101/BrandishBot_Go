@@ -26,10 +26,10 @@ type Repository interface {
 	SaveOpenedItems(ctx context.Context, items []domain.GambleOpenedItem) error
 	CompleteGamble(ctx context.Context, result *domain.GambleResult) error
 	GetActiveGamble(ctx context.Context) (*domain.Gamble, error)
-	
+
 	// Transaction support
 	BeginTx(ctx context.Context) (repository.Tx, error)
-	
+
 	// Inventory operations (reused from other services)
 	GetInventory(ctx context.Context, userID string) (*domain.Inventory, error)
 	UpdateInventory(ctx context.Context, userID string, inventory domain.Inventory) error
@@ -145,7 +145,7 @@ func (s *service) StartGamble(ctx context.Context, platform, platformID, usernam
 		// But wait, utils.FindSlot returns index and quantity.
 		// I'll implement a helper here or assume utils is available.
 		// Checking imports... yes, utils is imported.
-		
+
 		// Note: We need to handle the case where the user doesn't have the item.
 		// Since I can't see utils.FindSlot signature right now, I'll assume standard behavior.
 		// Actually, I'll implement a local helper `consumeItem` to be safe and clean.
@@ -295,13 +295,13 @@ func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.Gamb
 	if gamble == nil {
 		return nil, fmt.Errorf("gamble not found")
 	}
-	
+
 	// Check if already completed (graceful handling of duplicate execution)
 	if gamble.State == domain.GambleStateCompleted {
 		log.Info("Gamble already completed, skipping execution", "gambleID", id)
 		return nil, nil
 	}
-	
+
 	// Only execute if in Joining state
 	if gamble.State != domain.GambleStateJoining {
 		return nil, fmt.Errorf("gamble is not in joining state (current: %s)", gamble.State)
@@ -342,24 +342,25 @@ func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.Gamb
 			// Process drops
 			for _, drop := range drops {
 				// Create individual records for each item quantity
-				// (GambleOpenedItem represents a single item instance or stack? 
+				// (GambleOpenedItem represents a single item instance or stack?
 				// The struct has Value int64. If quantity > 1, is Value per item or total?
-				// Usually in gambles we want to show each "pull". 
+				// Usually in gambles we want to show each "pull".
 				// But OpenLootbox aggregates by item type.
 				// Let's record them as a stack for now, but Value should be total for the stack?
-				// Wait, domain.GambleOpenedItem has ItemID and Value. 
+				// Wait, domain.GambleOpenedItem has ItemID and Value.
 				// If I get 5 coins worth 1 each, is it 1 record of 5 coins worth 5?
 				// The previous dummy logic did: for i < quantity... simulate item drop.
 				// OpenLootbox returns aggregated drops.
 				// Let's create one record per dropped item type per bet.
-				
+
 				totalValue := int64(drop.Value * drop.Quantity)
-				
+
 				openedItem := domain.GambleOpenedItem{
-					GambleID: id,
-					UserID:   p.UserID,
-					ItemID:   drop.ItemID,
-					Value:    totalValue,
+					GambleID:   id,
+					UserID:     p.UserID,
+					ItemID:     drop.ItemID,
+					Value:      totalValue,
+					ShineLevel: drop.ShineLevel,
 				}
 				allOpenedItems = append(allOpenedItems, openedItem)
 				userValues[p.UserID] += totalValue
@@ -487,7 +488,7 @@ func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.Gamb
 		TotalValue: totalGambleValue,
 		Items:      allOpenedItems,
 	}
-	
+
 	if err := s.repo.CompleteGamble(ctx, result); err != nil {
 		return nil, fmt.Errorf("failed to complete gamble: %w", err)
 	}
