@@ -6,6 +6,7 @@ import (
 	"encoding/base32"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
@@ -94,6 +95,7 @@ type service struct {
 	repo        Repository
 	userService UserService
 	unlinkCache map[string]time.Time // platform:platformID:targetPlatform -> expiry
+	mu          sync.RWMutex
 }
 
 // NewService creates a new linking service
@@ -196,14 +198,25 @@ func (s *service) ConfirmLink(ctx context.Context, platform, platformID string) 
 	sourceUser, err := s.userService.FindUserByPlatformID(ctx, token.SourcePlatform, token.SourcePlatformID)
 	if err != nil {
 		// Create new user for source
-		sourceUser = &domain.User{}
-		setPlatformID(sourceUser, token.SourcePlatform, token.SourcePlatformID)
+		newUser := &domain.User{}
+		setPlatformID(newUser, token.SourcePlatform, token.SourcePlatformID)
+		
+		// MUST register to get an ID before merging
+		registered, err := s.userService.RegisterUser(ctx, *newUser)
+		if err != nil {
+			return nil, fmt.Errorf("failed to register source user: %w", err)
+		}
+		sourceUser = &registered
 	}
 
 	targetUser, err := s.userService.FindUserByPlatformID(ctx, token.TargetPlatform, token.TargetPlatformID)
 	if err != nil {
-		// Target doesn't exist - just add platform ID to source user
+		// Target doesn't exist - this logic path seems duplicated/confusing given source registration above.
+		// If source was just created, it has one platform. Testing target existence is correct.
+		// If target missing, just add platform to source.
+		
 		setPlatformID(sourceUser, token.TargetPlatform, token.TargetPlatformID)
+		// Update the existing/new source user with the second platform
 		updatedUser, err := s.userService.RegisterUser(ctx, *sourceUser)
 		if err != nil {
 			return nil, fmt.Errorf("failed to link accounts: %w", err)
@@ -269,6 +282,8 @@ func getLinkedPlatforms(user *domain.User) []string {
 // InitiateUnlink starts the unlink confirmation process
 func (s *service) InitiateUnlink(ctx context.Context, platform, platformID, targetPlatform string) error {
 	key := fmt.Sprintf("%s:%s:%s", platform, platformID, targetPlatform)
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.unlinkCache[key] = time.Now().Add(UnlinkTimeout)
 	return nil
 }
@@ -278,12 +293,18 @@ func (s *service) ConfirmUnlink(ctx context.Context, platform, platformID, targe
 	log := logger.FromContext(ctx)
 
 	key := fmt.Sprintf("%s:%s:%s", platform, platformID, targetPlatform)
+	
+	s.mu.RLock()
 	expiry, exists := s.unlinkCache[key]
+	s.mu.RUnlock()
+
 	if !exists || time.Now().After(expiry) {
 		return fmt.Errorf("no pending unlink confirmation")
 	}
 
+	s.mu.Lock()
 	delete(s.unlinkCache, key)
+	s.mu.Unlock()
 
 	// Find user and unlink
 	user, err := s.userService.FindUserByPlatformID(ctx, platform, platformID)
