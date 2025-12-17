@@ -35,6 +35,7 @@ type Repository interface {
 	DeleteInventory(ctx context.Context, userID string) error
 	GetItemByName(ctx context.Context, itemName string) (*domain.Item, error)
 	GetItemByID(ctx context.Context, id int) (*domain.Item, error)
+	GetItemsByIDs(ctx context.Context, itemIDs []int) ([]domain.Item, error)
 
 	GetSellablePrices(ctx context.Context) ([]domain.Item, error)
 	IsItemBuyable(ctx context.Context, itemName string) (bool, error)
@@ -108,7 +109,7 @@ func setPlatformID(user *domain.User, platform, platformID string) {
 
 // NewService creates a new user service
 func NewService(repo Repository, lockManager *concurrency.LockManager, jobService JobService, devMode bool) Service {
-	s :=  &service{
+	s := &service{
 		repo:         repo,
 		itemHandlers: make(map[string]ItemEffectHandler),
 		timeouts:     make(map[string]*time.Timer),
@@ -211,12 +212,12 @@ func (s *service) HandleIncomingMessage(ctx context.Context, platform, platformI
 
 	// Find matches in message
 	matches := s.stringFinder.FindMatches(message)
-	
+
 	result := &domain.MessageResult{
 		User:    *targetUser,
 		Matches: matches,
 	}
-	
+
 	return result, nil
 }
 
@@ -502,14 +503,27 @@ func (s *service) GetInventory(ctx context.Context, platform, platformID, userna
 		log.Error("Failed to get inventory", "error", err, "userID", user.ID)
 		return nil, fmt.Errorf("failed to get inventory: %w", err)
 	}
+	// Optimization: Batch fetch all item details
+	itemIDs := make([]int, 0, len(inventory.Slots))
+	for _, slot := range inventory.Slots {
+		itemIDs = append(itemIDs, slot.ItemID)
+	}
+
+	itemList, err := s.repo.GetItemsByIDs(ctx, itemIDs)
+	if err != nil {
+		log.Error("Failed to get item details", "error", err)
+		return nil, fmt.Errorf("failed to get item details: %w", err)
+	}
+
+	itemMap := make(map[int]domain.Item)
+	for _, item := range itemList {
+		itemMap[item.ID] = item
+	}
+
 	var items []UserInventoryItem
 	for _, slot := range inventory.Slots {
-		item, err := s.repo.GetItemByID(ctx, slot.ItemID)
-		if err != nil {
-			log.Error("Failed to get item details", "error", err, "itemID", slot.ItemID)
-			return nil, fmt.Errorf("failed to get item details for id %d: %w", slot.ItemID, err)
-		}
-		if item == nil {
+		item, ok := itemMap[slot.ItemID]
+		if !ok {
 			log.Warn("Item missing for slot", "itemID", slot.ItemID)
 			continue
 		}

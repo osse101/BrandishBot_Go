@@ -50,6 +50,20 @@ func (m *mockSearchRepo) UpsertUser(ctx context.Context, user *domain.User) erro
 	return nil
 }
 
+func (m *mockSearchRepo) UpdateUser(ctx context.Context, user domain.User) error {
+	m.users[user.Username] = &user
+	return nil
+}
+
+func (m *mockSearchRepo) DeleteUser(ctx context.Context, userID string) error {
+	for k, v := range m.users {
+		if v.ID == userID {
+			delete(m.users, k)
+		}
+	}
+	return nil
+}
+
 func (m *mockSearchRepo) GetItemByName(ctx context.Context, itemName string) (*domain.Item, error) {
 	item, ok := m.items[itemName]
 	if !ok {
@@ -69,6 +83,15 @@ func (m *mockSearchRepo) GetInventory(ctx context.Context, userID string) (*doma
 func (m *mockSearchRepo) UpdateInventory(ctx context.Context, userID string, inventory domain.Inventory) error {
 	m.inventories[userID] = &inventory
 	return nil
+}
+
+func (m *mockSearchRepo) DeleteInventory(ctx context.Context, userID string) error {
+	delete(m.inventories, userID)
+	return nil
+}
+
+func (m *mockSearchRepo) GetItemsByIDs(ctx context.Context, itemIDs []int) ([]domain.Item, error) {
+	return nil, nil
 }
 
 func (m *mockSearchRepo) GetLastCooldown(ctx context.Context, userID, action string) (*time.Time, error) {
@@ -101,6 +124,18 @@ func (m *mockSearchRepo) GetUserByPlatformID(ctx context.Context, platform, plat
 			if u.DiscordID == platformID {
 				return u, nil
 			}
+		}
+	}
+	return nil, nil
+}
+func (m *mockSearchRepo) GetUserByID(ctx context.Context, userID string) (*domain.User, error) {
+	if user, ok := m.users[userID]; ok {
+		return user, nil
+	}
+	// Also search by value ID if key is username
+	for _, u := range m.users {
+		if u.ID == userID {
+			return u, nil
 		}
 	}
 	return nil, nil

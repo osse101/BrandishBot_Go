@@ -26,10 +26,10 @@ func TestGetContributionLeaderboard(t *testing.T) {
 		value  int
 	}{
 		{"user1", 100},
-		{"user1", 50},  // total: 150
+		{"user1", 50}, // total: 150
 		{"user2", 200},
 		{"user3", 75},
-		{"user3", 25},  // total: 100
+		{"user3", 25}, // total: 100
 		{"user4", 300},
 	}
 

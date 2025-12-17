@@ -241,6 +241,39 @@ func (r *UserRepository) GetItemByName(ctx context.Context, itemName string) (*d
 	return &item, nil
 }
 
+// GetItemsByIDs retrieves multiple items by their IDs
+func (r *UserRepository) GetItemsByIDs(ctx context.Context, itemIDs []int) ([]domain.Item, error) {
+	if len(itemIDs) == 0 {
+		return []domain.Item{}, nil
+	}
+
+	query := `
+		SELECT item_id, item_name, item_description, base_value
+		FROM items
+		WHERE item_id = ANY($1)
+	`
+	rows, err := r.db.Query(ctx, query, itemIDs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get items by ids: %w", err)
+	}
+	defer rows.Close()
+
+	var items []domain.Item
+	for rows.Next() {
+		var item domain.Item
+		if err := rows.Scan(&item.ID, &item.Name, &item.Description, &item.BaseValue); err != nil {
+			return nil, fmt.Errorf("failed to scan item: %w", err)
+		}
+		items = append(items, item)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating rows: %w", err)
+	}
+
+	return items, nil
+}
+
 // GetItemByID retrieves an item by its ID
 func (r *UserRepository) GetItemByID(ctx context.Context, id int) (*domain.Item, error) {
 	query := `SELECT item_id, item_name, item_description, base_value FROM items WHERE item_id = $1`

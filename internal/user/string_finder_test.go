@@ -2,15 +2,15 @@ package user
 
 import (
 	"reflect"
-	"testing"
 	"sort"
+	"testing"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
 func TestStringFinder_FindMatches(t *testing.T) {
 	sf := NewStringFinder()
-	
+
 	// Override rules for testing predictability
 	sf.rules = nil
 	sf.addRule("Bapanada", "OBS", 10)
@@ -73,8 +73,8 @@ func TestStringFinder_FindMatches(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := sf.FindMatches(tt.message)
-			
-			// Sort results for consistent comparison if order doesn't strictly matter for equality check 
+
+			// Sort results for consistent comparison if order doesn't strictly matter for equality check
 			// (though implementation currently returns in rule order, let's just use ElementsMatch equivalent logic or sort)
 			sort.Slice(got, func(i, j int) bool {
 				return got[i].Code < got[j].Code
