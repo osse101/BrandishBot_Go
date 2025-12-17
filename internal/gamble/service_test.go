@@ -835,3 +835,80 @@ func TestExecuteGamble_NearMiss(t *testing.T) {
 	lootboxSvc.AssertExpectations(t)
 	statsSvc.AssertExpectations(t)
 }
+
+func TestExecuteGamble_CriticalFailure(t *testing.T) {
+	repo := new(MockRepository)
+	lockManager := concurrency.NewLockManager()
+	lootboxSvc := new(MockLootboxService)
+	statsSvc := new(MockStatsService)
+	s := NewService(repo, lockManager, nil, lootboxSvc, statsSvc, time.Minute, nil)
+
+	ctx := context.Background()
+	gambleID := uuid.New()
+
+	// Setup 3 participants
+	// User1: 100
+	// User2: 100
+	// User3: 10 (Avg = 70. Threshold = 14. 10 <= 14 => Critical Fail)
+
+	gamble := &domain.Gamble{
+		ID:    gambleID,
+		State: domain.GambleStateJoining,
+		Participants: []domain.Participant{
+			{UserID: "user1", LootboxBets: []domain.LootboxBet{{ItemID: 1, Quantity: 1}}},
+			{UserID: "user2", LootboxBets: []domain.LootboxBet{{ItemID: 2, Quantity: 1}}},
+			{UserID: "user3", LootboxBets: []domain.LootboxBet{{ItemID: 3, Quantity: 1}}},
+		},
+	}
+
+	lootboxItem1 := &domain.Item{ID: 1, Name: "box1"}
+	lootboxItem2 := &domain.Item{ID: 2, Name: "box2"}
+	lootboxItem3 := &domain.Item{ID: 3, Name: "box3"}
+
+	drops1 := []lootbox.DroppedItem{{ItemID: 10, ItemName: "coin", Quantity: 1, Value: 100}}
+	drops2 := []lootbox.DroppedItem{{ItemID: 11, ItemName: "coin", Quantity: 1, Value: 100}}
+	drops3 := []lootbox.DroppedItem{{ItemID: 12, ItemName: "coin", Quantity: 1, Value: 10}}
+
+	repo.On("GetGamble", ctx, gambleID).Return(gamble, nil)
+	repo.On("UpdateGambleState", ctx, gambleID, domain.GambleStateOpening).Return(nil)
+
+	repo.On("GetItemByID", ctx, 1).Return(lootboxItem1, nil)
+	repo.On("GetItemByID", ctx, 2).Return(lootboxItem2, nil)
+	repo.On("GetItemByID", ctx, 3).Return(lootboxItem3, nil)
+
+	lootboxSvc.On("OpenLootbox", ctx, "box1", 1).Return(drops1, nil)
+	lootboxSvc.On("OpenLootbox", ctx, "box2", 1).Return(drops2, nil)
+	lootboxSvc.On("OpenLootbox", ctx, "box3", 1).Return(drops3, nil)
+
+	repo.On("SaveOpenedItems", ctx, mock.Anything).Return(nil)
+
+	tx := new(MockTx)
+	repo.On("BeginTx", ctx).Return(tx, nil)
+	tx.On("GetInventory", ctx, mock.Anything).Return(&domain.Inventory{}, nil)
+	tx.On("UpdateInventory", ctx, mock.Anything, mock.Anything).Return(nil)
+	tx.On("Commit", ctx).Return(nil)
+	tx.On("Rollback", ctx).Return(nil).Maybe()
+
+	repo.On("CompleteGamble", ctx, mock.Anything).Return(nil)
+
+	// Expect Critical Fail for User3
+	statsSvc.On("RecordUserEvent", ctx, "user3", domain.EventGambleCriticalFail, mock.MatchedBy(func(m map[string]interface{}) bool {
+		avg := m["average_score"].(float64)
+		threshold := m["threshold"].(int64)
+		score := m["score"].(int64)
+		return score == 10 && threshold == 14 && avg == 70.0
+	})).Return(nil)
+
+	// We might also get TieBreakLost event for the loser of the tie break (User1 or User2).
+	// We should allow it.
+	statsSvc.On("RecordUserEvent", ctx, mock.Anything, domain.EventGambleTieBreakLost, mock.Anything).Return(nil).Maybe()
+
+	result, err := s.ExecuteGamble(ctx, gambleID)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+
+	repo.AssertExpectations(t)
+	lootboxSvc.AssertExpectations(t)
+	statsSvc.AssertExpectations(t)
+}

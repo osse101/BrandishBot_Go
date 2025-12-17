@@ -369,6 +369,23 @@ func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.Gamb
 		}
 	}
 
+	// Critical Failure Tracking (Low scores relative to average)
+	if len(userValues) > 1 && totalGambleValue > 0 && s.statsSvc != nil {
+		averageScore := float64(totalGambleValue) / float64(len(userValues))
+		criticalFailThreshold := int64(averageScore * 0.2) // 20% of average
+
+		for userID, val := range userValues {
+			if val <= criticalFailThreshold {
+				_ = s.statsSvc.RecordUserEvent(ctx, userID, domain.EventGambleCriticalFail, map[string]interface{}{
+					"gamble_id":     id,
+					"score":         val,
+					"average_score": averageScore,
+					"threshold":     criticalFailThreshold,
+				})
+			}
+		}
+	}
+
 	// Save opened items
 	if err := s.repo.SaveOpenedItems(ctx, allOpenedItems); err != nil {
 		return nil, fmt.Errorf("failed to save opened items: %w", err)
