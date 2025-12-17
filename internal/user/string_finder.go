@@ -43,7 +43,7 @@ func (sf *StringFinder) addRule(patternStr, code string, priority int) {
 	// \b matches word boundaries
 	// (?i) makes it case insensitive
 	regex := regexp.MustCompile(`(?i)\b` + escaped + `\b`)
-	
+
 	sf.rules = append(sf.rules, FinderRule{
 		Pattern:  regex,
 		Code:     code,
@@ -80,14 +80,14 @@ func (sf *StringFinder) FindMatches(message string) []domain.FoundString {
 		// "Multiple strings can be found per message" likely refers to DIFFERENT strings.
 		// But let's find all occurrences just in case, or at least one per rule.
 		// "Strings need to be exact matches"
-		
+
 		found := rule.Pattern.FindString(trimmedMsg)
 		if found != "" {
 			m := domain.FoundString{
 				Code:  rule.Code,
 				Value: found, // Return the actual matched string from regex (preserves case if we want, or from input)
 			}
-			
+
 			matches = append(matches, struct {
 				match    domain.FoundString
 				priority int

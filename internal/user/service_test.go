@@ -41,6 +41,29 @@ func (m *MockRepository) UpsertUser(ctx context.Context, user *domain.User) erro
 	return nil
 }
 
+func (m *MockRepository) UpdateUser(ctx context.Context, user domain.User) error {
+	m.users[user.Username] = &user
+	return nil
+}
+
+func (m *MockRepository) DeleteUser(ctx context.Context, userID string) error {
+	for k, v := range m.users {
+		if v.ID == userID {
+			delete(m.users, k)
+		}
+	}
+	return nil
+}
+
+func (m *MockRepository) GetUserByID(ctx context.Context, userID string) (*domain.User, error) {
+	for _, u := range m.users {
+		if u.ID == userID {
+			return u, nil
+		}
+	}
+	return nil, nil
+}
+
 func (m *MockRepository) GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error) {
 	for _, u := range m.users {
 		switch platform {
@@ -74,11 +97,29 @@ func (m *MockRepository) UpdateInventory(ctx context.Context, userID string, inv
 	return nil
 }
 
+func (m *MockRepository) DeleteInventory(ctx context.Context, userID string) error {
+	delete(m.inventories, userID)
+	return nil
+}
+
 func (m *MockRepository) GetItemByName(ctx context.Context, itemName string) (*domain.Item, error) {
 	if item, ok := m.items[itemName]; ok {
 		return item, nil
 	}
 	return nil, nil
+}
+
+func (m *MockRepository) GetItemsByIDs(ctx context.Context, itemIDs []int) ([]domain.Item, error) {
+	var items []domain.Item
+	for _, id := range itemIDs {
+		for _, item := range m.items {
+			if item.ID == id {
+				items = append(items, *item)
+				break
+			}
+		}
+	}
+	return items, nil
 }
 
 func (m *MockRepository) GetItemByID(ctx context.Context, id int) (*domain.Item, error) {

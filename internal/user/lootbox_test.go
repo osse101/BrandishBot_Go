@@ -24,8 +24,26 @@ func (m *MockRepo) UpsertUser(ctx context.Context, user *domain.User) error {
 	return args.Error(0)
 }
 
+func (m *MockRepo) UpdateUser(ctx context.Context, user domain.User) error {
+	args := m.Called(ctx, user)
+	return args.Error(0)
+}
+
+func (m *MockRepo) DeleteUser(ctx context.Context, userID string) error {
+	args := m.Called(ctx, userID)
+	return args.Error(0)
+}
+
 func (m *MockRepo) GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error) {
 	args := m.Called(ctx, platform, platformID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.User), args.Error(1)
+}
+
+func (m *MockRepo) GetUserByID(ctx context.Context, userID string) (*domain.User, error) {
+	args := m.Called(ctx, userID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -45,12 +63,25 @@ func (m *MockRepo) UpdateInventory(ctx context.Context, userID string, inventory
 	return args.Error(0)
 }
 
+func (m *MockRepo) DeleteInventory(ctx context.Context, userID string) error {
+	args := m.Called(ctx, userID)
+	return args.Error(0)
+}
+
 func (m *MockRepo) GetItemByName(ctx context.Context, name string) (*domain.Item, error) {
 	args := m.Called(ctx, name)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*domain.Item), args.Error(1)
+}
+
+func (m *MockRepo) GetItemsByIDs(ctx context.Context, itemIDs []int) ([]domain.Item, error) {
+	args := m.Called(ctx, itemIDs)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]domain.Item), args.Error(1)
 }
 
 func (m *MockRepo) GetItemByID(ctx context.Context, id int) (*domain.Item, error) {
