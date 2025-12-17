@@ -1,6 +1,9 @@
 package utils
 
 import (
+	crand "crypto/rand"
+	"fmt"
+	"math/big"
 	"math/rand"
 )
 
@@ -15,6 +18,19 @@ func RandomInt(min, max int) int {
 		return min
 	}
 	return rand.Intn(max-min+1) + min //nolint:gosec // Game logic randomness, not security critical
+}
+
+// SecureRandomInt returns a random integer between min and max (inclusive) using crypto/rand
+func SecureRandomInt(min, max int) (int, error) {
+	if min > max {
+		return 0, fmt.Errorf("min cannot be greater than max")
+	}
+	diff := big.NewInt(int64(max - min + 1))
+	n, err := crand.Int(crand.Reader, diff)
+	if err != nil {
+		return 0, err
+	}
+	return int(n.Int64()) + min, nil
 }
 
 // DiminishingReturns calculates a value with diminishing returns.

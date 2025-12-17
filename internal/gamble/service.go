@@ -3,7 +3,6 @@ package gamble
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"time"
 
 	"github.com/google/uuid"
@@ -15,6 +14,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/lootbox"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/osse101/BrandishBot_Go/internal/stats"
+	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
 // Repository defines the interface for data access required by the gamble service
@@ -391,9 +391,11 @@ func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.Gamb
 	winnerID := ""
 	if len(winners) > 0 {
 		if len(winners) > 1 {
-			// Randomly select one
-			r := rand.New(rand.NewSource(time.Now().UnixNano()))
-			idx := r.Intn(len(winners))
+			// Securely select one
+			idx, err := utils.SecureRandomInt(0, len(winners)-1)
+			if err != nil {
+				return nil, fmt.Errorf("failed to resolve tie-break: %w", err)
+			}
 			winnerID = winners[idx]
 
 			log.Info("Tie-break resolved", "winnerID", winnerID, "originalValue", highestValue)

@@ -179,6 +179,46 @@ func TestRandomInt(t *testing.T) {
 	})
 }
 
+// TestSecureRandomInt tests the secure random integer generator
+func TestSecureRandomInt(t *testing.T) {
+	t.Run("returns value within range", func(t *testing.T) {
+		min, max := 1, 10
+
+		// Test multiple times to catch probabilistic issues
+		for i := 0; i < 100; i++ {
+			result, err := SecureRandomInt(min, max)
+			assert.NoError(t, err)
+			assert.GreaterOrEqual(t, result, min, "Result should be >= min")
+			assert.LessOrEqual(t, result, max, "Result should be <= max")
+		}
+	})
+
+	t.Run("handles min equals max", func(t *testing.T) {
+		value := 42
+		result, err := SecureRandomInt(value, value)
+		assert.NoError(t, err)
+		assert.Equal(t, value, result, "Should return the value when min==max")
+	})
+
+	t.Run("returns error when min > max", func(t *testing.T) {
+		result, err := SecureRandomInt(10, 5)
+		assert.Error(t, err)
+		assert.Equal(t, 0, result)
+		assert.Contains(t, err.Error(), "min cannot be greater than max")
+	})
+
+	t.Run("handles negative ranges", func(t *testing.T) {
+		min, max := -10, -1
+
+		for i := 0; i < 50; i++ {
+			result, err := SecureRandomInt(min, max)
+			assert.NoError(t, err)
+			assert.GreaterOrEqual(t, result, min)
+			assert.LessOrEqual(t, result, max)
+		}
+	})
+}
+
 // TestRandomFloat tests the random float generator
 func TestRandomFloat(t *testing.T) {
 	t.Run("returns value between 0 and 1", func(t *testing.T) {
