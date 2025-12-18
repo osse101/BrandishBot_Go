@@ -204,11 +204,21 @@ func TestHandleSearch_Success(t *testing.T) {
 
 	// ASSERT
 	require.NoError(t, err)
-	// Should get either lootbox or nothing found
-	assert.True(t,
-		message == "You have found 1x "+domain.ItemLootbox0 ||
-			message == domain.MsgSearchNothingFound,
-		"Expected valid search result, got: %s", message)
+	// Should get either lootbox or nothing found (or funny failure)
+	isValid := false
+	if strings.HasPrefix(message, "You have found") {
+		isValid = true
+	} else if strings.HasPrefix(message, domain.MsgSearchCriticalSuccess) {
+		isValid = true
+	} else {
+		for _, msg := range domain.SearchFailureMessages {
+			if message == msg {
+				isValid = true
+				break
+			}
+		}
+	}
+	assert.True(t, isValid, "Expected valid search result, got: %s", message)
 
 	// Verify cooldown was set
 	cooldown, err := repo.GetLastCooldown(context.Background(), user.ID, domain.ActionSearch)
@@ -287,10 +297,20 @@ func TestHandleSearch_NewUserCreation(t *testing.T) {
 	assert.NotEmpty(t, user.ID, "User should have ID assigned")
 
 	// Verify search executed
-	assert.True(t,
-		message == "You have found 1x "+domain.ItemLootbox0 ||
-			message == domain.MsgSearchNothingFound,
-		"Search should execute for new user")
+	isValid := false
+	if strings.HasPrefix(message, "You have found") {
+		isValid = true
+	} else if strings.HasPrefix(message, domain.MsgSearchCriticalSuccess) {
+		isValid = true
+	} else {
+		for _, msg := range domain.SearchFailureMessages {
+			if message == msg {
+				isValid = true
+				break
+			}
+		}
+	}
+	assert.True(t, isValid, "Search should execute for new user, got: %s", message)
 
 	// Verify cooldown set for new user
 	cooldown, err := repo.GetLastCooldown(context.Background(), user.ID, domain.ActionSearch)
