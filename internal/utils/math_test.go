@@ -206,3 +206,20 @@ func TestRandomFloat(t *testing.T) {
 			"Should produce different values, not all identical")
 	})
 }
+
+// TestSecureRandomInt tests the secure random integer generator
+func TestSecureRandomInt(t *testing.T) {
+	t.Run("returns value within range", func(t *testing.T) {
+		max := 10
+		for i := 0; i < 100; i++ {
+			result := SecureRandomInt(max)
+			assert.GreaterOrEqual(t, result, 0)
+			assert.Less(t, result, max)
+		}
+	})
+
+	t.Run("panics on invalid input", func(t *testing.T) {
+		assert.Panics(t, func() { SecureRandomInt(0) })
+		assert.Panics(t, func() { SecureRandomInt(-1) })
+	})
+}
