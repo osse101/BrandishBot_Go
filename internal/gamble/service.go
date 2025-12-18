@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"sort"
 	"time"
 
 	"github.com/google/uuid"
@@ -474,19 +475,30 @@ func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.Gamb
 		}
 
 		// Add all items
+		// Optimization: Aggregate items first to avoid O(N*M) loop
+		itemsToAdd := make(map[int]int)
 		for _, item := range allOpenedItems {
-			// Helper to add item (simplified)
-			found := false
-			for i, slot := range inv.Slots {
-				if slot.ItemID == item.ItemID {
-					inv.Slots[i].Quantity++
-					found = true
-					break
-				}
+			itemsToAdd[item.ItemID]++
+		}
+
+		// Update existing slots
+		for i, slot := range inv.Slots {
+			if qty, ok := itemsToAdd[slot.ItemID]; ok {
+				inv.Slots[i].Quantity += qty
+				delete(itemsToAdd, slot.ItemID)
 			}
-			if !found {
-				inv.Slots = append(inv.Slots, domain.InventorySlot{ItemID: item.ItemID, Quantity: 1})
-			}
+		}
+
+		// Append new slots
+		// Sort keys for deterministic output
+		var newItemIDs []int
+		for itemID := range itemsToAdd {
+			newItemIDs = append(newItemIDs, itemID)
+		}
+		sort.Ints(newItemIDs)
+
+		for _, itemID := range newItemIDs {
+			inv.Slots = append(inv.Slots, domain.InventorySlot{ItemID: itemID, Quantity: itemsToAdd[itemID]})
 		}
 
 		if err := tx.UpdateInventory(ctx, winnerID, *inv); err != nil {
