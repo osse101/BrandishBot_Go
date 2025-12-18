@@ -689,8 +689,11 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 		}
 	} else {
 		// Failure case - Pick a random funny message
-		idx := utils.RandomInt(0, len(domain.SearchFailureMessages)-1)
-		resultMessage = domain.SearchFailureMessages[idx]
+		resultMessage = domain.MsgSearchNothingFound
+		if len(domain.SearchFailureMessages) > 0 {
+			idx := utils.RandomInt(0, len(domain.SearchFailureMessages)-1)
+			resultMessage = domain.SearchFailureMessages[idx]
+		}
 		log.Info("Search successful - nothing found", "username", username, "message", resultMessage)
 	}
 
