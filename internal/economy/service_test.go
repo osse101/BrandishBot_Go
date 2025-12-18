@@ -82,9 +82,6 @@ func (m *MockRepository) GetBuyablePrices(ctx context.Context) ([]domain.Item, e
 	}
 	return args.Get(0).([]domain.Item), args.Error(1)
 }
-	args := m.Called(ctx, itemName)
-	return args.Bool(0), args.Error(1)
-}
 
 // Test fixtures
 func createTestUser() *domain.User {
