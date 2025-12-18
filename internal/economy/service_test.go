@@ -63,6 +63,9 @@ func (m *MockRepository) GetSellablePrices(ctx context.Context) ([]domain.Item, 
 }
 
 func (m *MockRepository) IsItemBuyable(ctx context.Context, itemName string) (bool, error) {
+	args := m.Called(ctx, itemName)
+	return args.Bool(0), args.Error(1)
+}
 
 func (m *MockRepository) BeginTx(ctx context.Context) (repository.Tx, error) {
 	args := m.Called(ctx)
