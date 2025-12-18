@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/osse101/BrandishBot_Go/internal/concurrency"
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
@@ -166,8 +165,7 @@ func (m *mockSearchRepo) GetUnlockedRecipesForUser(ctx context.Context, userID s
 // Test fixtures
 func createSearchTestService() (*service, *mockSearchRepo) {
 	repo := newMockSearchRepo()
-	lockManager := concurrency.NewLockManager()
-	svc := NewService(repo, lockManager, nil, false).(*service)
+	svc := NewService(repo, nil, false).(*service)
 
 	// Add standard test items
 	repo.items[domain.ItemLootbox0] = &domain.Item{

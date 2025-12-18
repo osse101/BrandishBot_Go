@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/osse101/BrandishBot_Go/internal/concurrency"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
@@ -36,8 +35,7 @@ func TestConcurrency_AddItem(t *testing.T) {
 		MockRepository: baseRepo,
 		delay:          10 * time.Millisecond,
 	}
-	lockManager := concurrency.NewLockManager()
-	svc := NewService(repo, lockManager, nil, false)
+	svc := NewService(repo, nil, false)
 	ctx := context.Background()
 
 	// Initial setup

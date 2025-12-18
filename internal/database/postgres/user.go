@@ -36,9 +36,9 @@ func (r *UserRepository) BeginTx(ctx context.Context) (repository.Tx, error) {
 	return &UserTx{tx: tx}, nil
 }
 
-// GetInventory retrieves inventory within a transaction
+// GetInventory retrieves inventory within a transaction with an exclusive lock
 func (t *UserTx) GetInventory(ctx context.Context, userID string) (*domain.Inventory, error) {
-	query := `SELECT inventory_data FROM user_inventory WHERE user_id = $1`
+	query := `SELECT inventory_data FROM user_inventory WHERE user_id = $1 FOR UPDATE`
 	var inventory domain.Inventory
 	err := t.tx.QueryRow(ctx, query, userID).Scan(&inventory)
 	if err != nil {

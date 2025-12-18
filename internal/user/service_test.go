@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/osse101/BrandishBot_Go/internal/concurrency"
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
@@ -283,8 +282,7 @@ func setupTestData(repo *MockRepository) {
 func TestAddItem(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	lockManager := concurrency.NewLockManager()
-	svc := NewService(repo, lockManager, nil, false)
+	svc := NewService(repo, nil, false)
 	ctx := context.Background()
 
 	// Test adding item to empty inventory
@@ -338,8 +336,7 @@ func TestAddItem(t *testing.T) {
 func TestRemoveItem(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	lockManager := concurrency.NewLockManager()
-	svc := NewService(repo, lockManager, nil, false)
+	svc := NewService(repo, nil, false)
 	ctx := context.Background()
 
 	// Add 10 lootbox1 items
@@ -383,8 +380,7 @@ func TestRemoveItem(t *testing.T) {
 func TestGiveItem(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	lockManager := concurrency.NewLockManager()
-	svc := NewService(repo, lockManager, nil, false)
+	svc := NewService(repo, nil, false)
 	ctx := context.Background()
 
 	// Setup: Give alice some items
@@ -423,8 +419,7 @@ func TestGiveItem(t *testing.T) {
 
 func TestRegisterUser(t *testing.T) {
 	repo := NewMockRepository()
-	lockManager := concurrency.NewLockManager()
-	svc := NewService(repo, lockManager, nil, false)
+	svc := NewService(repo, nil, false)
 	ctx := context.Background()
 
 	user := domain.User{
@@ -453,8 +448,7 @@ func TestRegisterUser(t *testing.T) {
 
 func TestHandleIncomingMessage_NewUser(t *testing.T) {
 	repo := NewMockRepository()
-	lockManager := concurrency.NewLockManager()
-	svc := NewService(repo, lockManager, nil, false)
+	svc := NewService(repo, nil, false)
 	ctx := context.Background()
 
 	result, err := svc.HandleIncomingMessage(ctx, "twitch", "newuser123", "newuser", "hello")
@@ -476,8 +470,7 @@ func TestHandleIncomingMessage_NewUser(t *testing.T) {
 func TestHandleIncomingMessage_ExistingUser(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	lockManager := concurrency.NewLockManager()
-	svc := NewService(repo, lockManager, nil, false)
+	svc := NewService(repo, nil, false)
 	ctx := context.Background()
 
 	result, err := svc.HandleIncomingMessage(ctx, "twitch", "alice123", "alice", "hello")
@@ -493,8 +486,7 @@ func TestHandleIncomingMessage_ExistingUser(t *testing.T) {
 func TestUseItem(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	lockManager := concurrency.NewLockManager()
-	svc := NewService(repo, lockManager, nil, false).(*service)
+	svc := NewService(repo, nil, false).(*service)
 
 	// Setup loot tables
 	svc.lootTables[domain.ItemLootbox1] = []LootItem{
@@ -562,8 +554,7 @@ func TestUseItem(t *testing.T) {
 func TestUseItem_Blaster(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	lockManager := concurrency.NewLockManager()
-	svc := NewService(repo, lockManager, nil, false)
+	svc := NewService(repo, nil, false)
 	ctx := context.Background()
 
 	// Setup: Give alice some blasters
@@ -596,8 +587,7 @@ func TestUseItem_Blaster(t *testing.T) {
 func TestGetInventory(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	lockManager := concurrency.NewLockManager()
-	svc := NewService(repo, lockManager, nil, false)
+	svc := NewService(repo, nil, false)
 	ctx := context.Background()
 
 	// Setup: Give alice some items
@@ -646,8 +636,7 @@ func TestGetInventory(t *testing.T) {
 func TestUseItem_Lootbox0(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	lockManager := concurrency.NewLockManager()
-	svc := NewService(repo, lockManager, nil, false).(*service)
+	svc := NewService(repo, nil, false).(*service)
 
 	// Setup loot tables
 	svc.lootTables[domain.ItemLootbox0] = []LootItem{
@@ -688,8 +677,7 @@ func TestUseItem_Lootbox0(t *testing.T) {
 func TestUseItem_Lootbox2(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	lockManager := concurrency.NewLockManager()
-	svc := NewService(repo, lockManager, nil, false).(*service)
+	svc := NewService(repo, nil, false).(*service)
 
 	// Setup loot tables
 	svc.lootTables[domain.ItemLootbox2] = []LootItem{

@@ -4,11 +4,12 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"sync"
 
-	"github.com/osse101/BrandishBot_Go/internal/concurrency"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
+	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
@@ -21,6 +22,7 @@ type Repository interface {
 	GetSellablePrices(ctx context.Context) ([]domain.Item, error)
 	IsItemBuyable(ctx context.Context, itemName string) (bool, error)
 	GetBuyablePrices(ctx context.Context) ([]domain.Item, error)
+	BeginTx(ctx context.Context) (repository.Tx, error)
 }
 
 // Service defines the interface for economy operations
@@ -29,6 +31,7 @@ type Service interface {
 	GetBuyablePrices(ctx context.Context) ([]domain.Item, error)
 	SellItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (int, int, error)
 	BuyItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (int, error)
+	Shutdown(ctx context.Context) error
 }
 
 // JobService defines the interface for job operations
@@ -37,17 +40,16 @@ type JobService interface {
 }
 
 type service struct {
-	repo        Repository
-	lockManager *concurrency.LockManager
-	jobService  JobService
+	repo       Repository
+	jobService JobService
+	wg         sync.WaitGroup
 }
 
 // NewService creates a new economy service
-func NewService(repo Repository, lockManager *concurrency.LockManager, jobService JobService) Service {
+func NewService(repo Repository, jobService JobService) Service {
 	return &service{
-		repo:        repo,
-		lockManager: lockManager,
-		jobService:  jobService,
+		repo:       repo,
+		jobService: jobService,
 	}
 }
 
@@ -133,13 +135,15 @@ func (s *service) SellItem(ctx context.Context, platform, platformID, username, 
 		return 0, 0, err
 	}
 
-	// Lock user inventory for transaction
-	lock := s.lockManager.GetLock(user.ID)
-	lock.Lock()
-	defer lock.Unlock()
+	tx, err := s.repo.BeginTx(ctx)
+	if err != nil {
+		log.Error("Failed to begin transaction", "error", err)
+		return 0, 0, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer repository.SafeRollback(ctx, tx)
 
 	// Get inventory and check if item exists
-	inventory, err := s.repo.GetInventory(ctx, user.ID)
+	inventory, err := tx.GetInventory(ctx, user.ID)
 	if err != nil {
 		log.Error("Failed to get inventory", "error", err)
 		return 0, 0, fmt.Errorf("failed to get inventory: %w", err)
@@ -160,9 +164,14 @@ func (s *service) SellItem(ctx context.Context, platform, platformID, username, 
 	moneyGained := processSellTransaction(inventory, item, moneyItem, itemSlotIndex, actualSellQuantity)
 
 	// Save updated inventory
-	if err := s.repo.UpdateInventory(ctx, user.ID, *inventory); err != nil {
+	if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
 		log.Error("Failed to update inventory", "error", err)
 		return 0, 0, fmt.Errorf("failed to update inventory: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		log.Error("Failed to commit transaction", "error", err)
+		return 0, 0, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	// Award Merchant XP based on transaction value (async)
@@ -247,10 +256,12 @@ func (s *service) BuyItem(ctx context.Context, platform, platformID, username, i
 		return 0, err
 	}
 
-	// Lock user inventory for transaction
-	lock := s.lockManager.GetLock(user.ID)
-	lock.Lock()
-	defer lock.Unlock()
+	tx, err := s.repo.BeginTx(ctx)
+	if err != nil {
+		log.Error("Failed to begin transaction", "error", err)
+		return 0, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer repository.SafeRollback(ctx, tx)
 
 	// Check if item is buyable
 	isBuyable, err := s.repo.IsItemBuyable(ctx, itemName)
@@ -274,7 +285,7 @@ func (s *service) BuyItem(ctx context.Context, platform, platformID, username, i
 	}
 
 	// Get inventory and check funds
-	inventory, err := s.repo.GetInventory(ctx, user.ID)
+	inventory, err := tx.GetInventory(ctx, user.ID)
 	if err != nil {
 		log.Error("Failed to get inventory", "error", err)
 		return 0, fmt.Errorf("failed to get inventory: %w", err)
@@ -299,9 +310,14 @@ func (s *service) BuyItem(ctx context.Context, platform, platformID, username, i
 	processBuyTransaction(inventory, item, moneySlotIndex, actualQuantity, cost)
 
 	// Save updated inventory
-	if err := s.repo.UpdateInventory(ctx, user.ID, *inventory); err != nil {
+	if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
 		log.Error("Failed to update inventory", "error", err)
 		return 0, fmt.Errorf("failed to update inventory: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		log.Error("Failed to commit transaction", "error", err)
+		return 0, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	// Award Merchant XP based on transaction value (async)
@@ -332,6 +348,9 @@ func calculateMerchantXP(transactionValue int) int {
 
 // awardMerchantXP awards Merchant job XP for buy/sell transactions
 func (s *service) awardMerchantXP(ctx context.Context, userID string, xp int, action, itemName string, value int) {
+	s.wg.Add(1)
+	defer s.wg.Done()
+
 	if s.jobService == nil || xp <= 0 {
 		return
 	}
@@ -347,5 +366,21 @@ func (s *service) awardMerchantXP(ctx context.Context, userID string, xp int, ac
 		logger.FromContext(ctx).Warn("Failed to award Merchant XP", "error", err, "user_id", userID)
 	} else if result != nil && result.LeveledUp {
 		logger.FromContext(ctx).Info("Merchant leveled up!", "user_id", userID, "new_level", result.NewLevel)
+	}
+}
+
+func (s *service) Shutdown(ctx context.Context) error {
+	logger.FromContext(ctx).Info("Economy service shutting down, waiting for background tasks...")
+	done := make(chan struct{})
+	go func() {
+		s.wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		return nil
+	case <-ctx.Done():
+		return fmt.Errorf("shutdown timed out: %w", ctx.Err())
 	}
 }

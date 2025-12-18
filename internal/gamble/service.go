@@ -3,13 +3,10 @@ package gamble
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"sort"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/osse101/BrandishBot_Go/internal/utils"
-	"github.com/osse101/BrandishBot_Go/internal/concurrency"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/job"
@@ -17,6 +14,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/lootbox"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/osse101/BrandishBot_Go/internal/stats"
+	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
 // Repository defines the interface for data access required by the gamble service
@@ -58,7 +56,6 @@ const NearMissThreshold = 0.95
 
 type service struct {
 	repo         Repository
-	lockManager  *concurrency.LockManager
 	eventBus     event.Bus
 	lootboxSvc   lootbox.Service
 	jobService   JobService
@@ -67,10 +64,9 @@ type service struct {
 }
 
 // NewService creates a new gamble service
-func NewService(repo Repository, lockManager *concurrency.LockManager, eventBus event.Bus, lootboxSvc lootbox.Service, statsSvc stats.Service, joinDuration time.Duration, jobService JobService) Service {
+func NewService(repo Repository, eventBus event.Bus, lootboxSvc lootbox.Service, statsSvc stats.Service, joinDuration time.Duration, jobService JobService) Service {
 	return &service{
 		repo:         repo,
-		lockManager:  lockManager,
 		eventBus:     eventBus,
 		lootboxSvc:   lootboxSvc,
 		jobService:   jobService,
@@ -120,11 +116,6 @@ func (s *service) StartGamble(ctx context.Context, platform, platformID, usernam
 		CreatedAt:    time.Now(),
 		JoinDeadline: time.Now().Add(s.joinDuration),
 	}
-
-	// Lock user inventory briefly to consume bets
-	lock := s.lockManager.GetLock(user.ID)
-	lock.Lock()
-	defer lock.Unlock()
 
 	// Begin transaction
 	tx, err := s.repo.BeginTx(ctx)
@@ -232,11 +223,6 @@ func (s *service) JoinGamble(ctx context.Context, gambleID uuid.UUID, platform, 
 	if time.Now().After(gamble.JoinDeadline) {
 		return fmt.Errorf("gamble join deadline has passed")
 	}
-
-	// Lock Inventory
-	lock := s.lockManager.GetLock(user.ID)
-	lock.Lock()
-	defer lock.Unlock()
 
 	// Begin Transaction
 	tx, err := s.repo.BeginTx(ctx)
@@ -458,11 +444,6 @@ func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.Gamb
 
 	// Award items to winner
 	if winnerID != "" {
-		// Lock winner inventory
-		lock := s.lockManager.GetLock(winnerID)
-		lock.Lock()
-		defer lock.Unlock()
-
 		tx, err := s.repo.BeginTx(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("failed to begin tx for awarding: %w", err)

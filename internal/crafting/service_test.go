@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/osse101/BrandishBot_Go/internal/concurrency"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
@@ -212,7 +211,6 @@ func setupTestData(repo *MockRepository) {
 func TestDisassembleItem_Success(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	lockManager := concurrency.NewLockManager()
 	svc := NewService(repo, lockManager)
 	ctx := context.Background()
 
@@ -262,7 +260,6 @@ func TestDisassembleItem_Success(t *testing.T) {
 func TestDisassembleItem_InsufficientItems(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	lockManager := concurrency.NewLockManager()
 	svc := NewService(repo, lockManager)
 	ctx := context.Background()
 
@@ -291,7 +288,6 @@ func TestDisassembleItem_InsufficientItems(t *testing.T) {
 func TestDisassembleItem_NoItems(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	lockManager := concurrency.NewLockManager()
 	svc := NewService(repo, lockManager)
 	ctx := context.Background()
 
@@ -308,7 +304,6 @@ func TestDisassembleItem_NoItems(t *testing.T) {
 func TestDisassembleItem_RecipeNotUnlocked(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	lockManager := concurrency.NewLockManager()
 	svc := NewService(repo, lockManager)
 	ctx := context.Background()
 
@@ -326,7 +321,6 @@ func TestDisassembleItem_RecipeNotUnlocked(t *testing.T) {
 func TestDisassembleItem_NoRecipe(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	lockManager := concurrency.NewLockManager()
 	svc := NewService(repo, lockManager)
 	ctx := context.Background()
 
@@ -340,7 +334,6 @@ func TestDisassembleItem_NoRecipe(t *testing.T) {
 func TestDisassembleItem_RemovesSlotWhenEmpty(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	lockManager := concurrency.NewLockManager()
 	svc := NewService(repo, lockManager)
 	ctx := context.Background()
 
@@ -370,7 +363,6 @@ func TestDisassembleItem_RemovesSlotWhenEmpty(t *testing.T) {
 func TestUpgradeItem_Success(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	lockManager := concurrency.NewLockManager()
 	svc := NewService(repo, lockManager)
 	ctx := context.Background()
 
@@ -418,7 +410,6 @@ func TestUpgradeItem_Success(t *testing.T) {
 func TestUpgradeItem_InsufficientMaterials(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	lockManager := concurrency.NewLockManager()
 	svc := NewService(repo, lockManager)
 	ctx := context.Background()
 
@@ -443,7 +434,6 @@ func TestUpgradeItem_InsufficientMaterials(t *testing.T) {
 func TestUpgradeItem_NoMaterials(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	lockManager := concurrency.NewLockManager()
 	svc := NewService(repo, lockManager)
 	ctx := context.Background()
 
@@ -460,7 +450,6 @@ func TestUpgradeItem_NoMaterials(t *testing.T) {
 func TestUpgradeItem_RecipeNotUnlocked(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	lockManager := concurrency.NewLockManager()
 	svc := NewService(repo, lockManager)
 	ctx := context.Background()
 
@@ -478,7 +467,6 @@ func TestUpgradeItem_RecipeNotUnlocked(t *testing.T) {
 func TestUpgradeItem_NoRecipe(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	lockManager := concurrency.NewLockManager()
 	svc := NewService(repo, lockManager)
 	ctx := context.Background()
 
@@ -492,7 +480,6 @@ func TestUpgradeItem_NoRecipe(t *testing.T) {
 func TestUpgradeItem_UserNotFound(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	lockManager := concurrency.NewLockManager()
 	svc := NewService(repo, lockManager)
 	ctx := context.Background()
 
@@ -508,7 +495,6 @@ func TestUpgradeItem_UserNotFound(t *testing.T) {
 func TestGetRecipe_WithoutUsername(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	lockManager := concurrency.NewLockManager()
 	svc := NewService(repo, lockManager)
 	ctx := context.Background()
 
@@ -534,7 +520,6 @@ func TestGetRecipe_WithoutUsername(t *testing.T) {
 func TestGetRecipe_Unlocked(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	lockManager := concurrency.NewLockManager()
 	svc := NewService(repo, lockManager)
 	ctx := context.Background()
 
@@ -555,7 +540,6 @@ func TestGetRecipe_Unlocked(t *testing.T) {
 func TestGetRecipe_Locked(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	lockManager := concurrency.NewLockManager()
 	svc := NewService(repo, lockManager)
 	ctx := context.Background()
 
@@ -573,7 +557,6 @@ func TestGetRecipe_Locked(t *testing.T) {
 func TestGetRecipe_ItemNotFound(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	lockManager := concurrency.NewLockManager()
 	svc := NewService(repo, lockManager)
 	ctx := context.Background()
 
@@ -589,7 +572,6 @@ func TestGetRecipe_ItemNotFound(t *testing.T) {
 func TestGetUnlockedRecipes_Success(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	lockManager := concurrency.NewLockManager()
 	svc := NewService(repo, lockManager)
 	ctx := context.Background()
 
@@ -614,7 +596,6 @@ func TestGetUnlockedRecipes_Success(t *testing.T) {
 func TestGetUnlockedRecipes_NoUnlockedRecipes(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	lockManager := concurrency.NewLockManager()
 	svc := NewService(repo, lockManager)
 	ctx := context.Background()
 
@@ -632,7 +613,6 @@ func TestGetUnlockedRecipes_NoUnlockedRecipes(t *testing.T) {
 func TestGetUnlockedRecipes_UserNotFound(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	lockManager := concurrency.NewLockManager()
 	svc := NewService(repo, lockManager)
 	ctx := context.Background()
 

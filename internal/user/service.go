@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/osse101/BrandishBot_Go/internal/concurrency"
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/job"
@@ -65,6 +64,7 @@ type Service interface {
 	MergeUsers(ctx context.Context, primaryUserID, secondaryUserID string) error
 	UnlinkPlatform(ctx context.Context, userID, platform string) error
 	GetLinkedPlatforms(ctx context.Context, platform, platformID string) ([]string, error)
+	Shutdown(ctx context.Context) error
 }
 
 type UserInventoryItem struct {
@@ -88,11 +88,11 @@ type service struct {
 	itemHandlers map[string]ItemEffectHandler
 	timeoutMu    sync.Mutex
 	timeouts     map[string]*time.Timer
-	lockManager  *concurrency.LockManager
 	lootTables   map[string][]LootItem
 	jobService   JobService
 	stringFinder *StringFinder
 	devMode      bool // When true, bypasses cooldowns
+	wg           sync.WaitGroup
 }
 
 // setPlatformID sets the appropriate platform-specific ID field on a user
@@ -108,12 +108,11 @@ func setPlatformID(user *domain.User, platform, platformID string) {
 }
 
 // NewService creates a new user service
-func NewService(repo Repository, lockManager *concurrency.LockManager, jobService JobService, devMode bool) Service {
+func NewService(repo Repository, jobService JobService, devMode bool) Service {
 	s := &service{
 		repo:         repo,
 		itemHandlers: make(map[string]ItemEffectHandler),
 		timeouts:     make(map[string]*time.Timer),
-		lockManager:  lockManager,
 		lootTables:   make(map[string][]LootItem),
 		jobService:   jobService,
 		stringFinder: NewStringFinder(),
@@ -142,9 +141,6 @@ func (s *service) registerHandlers() {
 	s.itemHandlers[domain.ItemLootbox2] = s.handleLootbox2
 }
 
-func (s *service) getUserLock(userID string) *sync.Mutex {
-	return s.lockManager.GetLock(userID)
-}
 
 // RegisterUser registers a new user
 func (s *service) RegisterUser(ctx context.Context, user domain.User) (domain.User, error) {
@@ -230,9 +226,12 @@ func (s *service) AddItem(ctx context.Context, platform, platformID, username, i
 		return err
 	}
 
-	lock := s.getUserLock(user.ID)
-	lock.Lock()
-	defer lock.Unlock()
+	tx, err := s.repo.BeginTx(ctx)
+	if err != nil {
+		log.Error("Failed to begin transaction", "error", err)
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer repository.SafeRollback(ctx, tx)
 
 	item, err := s.repo.GetItemByName(ctx, itemName)
 	if err != nil {
@@ -243,7 +242,7 @@ func (s *service) AddItem(ctx context.Context, platform, platformID, username, i
 		log.Warn("Item not found", "itemName", itemName)
 		return fmt.Errorf("item not found: %s", itemName)
 	}
-	inventory, err := s.repo.GetInventory(ctx, user.ID)
+	inventory, err := tx.GetInventory(ctx, user.ID)
 	if err != nil {
 		log.Error("Failed to get inventory", "error", err, "userID", user.ID)
 		return fmt.Errorf("failed to get inventory: %w", err)
@@ -259,10 +258,16 @@ func (s *service) AddItem(ctx context.Context, platform, platformID, username, i
 	if !found {
 		inventory.Slots = append(inventory.Slots, domain.InventorySlot{ItemID: item.ID, Quantity: quantity})
 	}
-	if err := s.repo.UpdateInventory(ctx, user.ID, *inventory); err != nil {
+	if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
 		log.Error("Failed to update inventory", "error", err, "userID", user.ID)
 		return fmt.Errorf("failed to update inventory: %w", err)
 	}
+
+	if err := tx.Commit(ctx); err != nil {
+		log.Error("Failed to commit transaction", "error", err)
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
 	log.Info("Item added successfully", "username", username, "item", itemName, "quantity", quantity)
 	return nil
 }
@@ -276,9 +281,12 @@ func (s *service) RemoveItem(ctx context.Context, platform, platformID, username
 		return 0, err
 	}
 
-	lock := s.getUserLock(user.ID)
-	lock.Lock()
-	defer lock.Unlock()
+	tx, err := s.repo.BeginTx(ctx)
+	if err != nil {
+		log.Error("Failed to begin transaction", "error", err)
+		return 0, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer repository.SafeRollback(ctx, tx)
 
 	item, err := s.repo.GetItemByName(ctx, itemName)
 	if err != nil {
@@ -288,7 +296,7 @@ func (s *service) RemoveItem(ctx context.Context, platform, platformID, username
 	if item == nil {
 		return 0, fmt.Errorf("%w: %s", domain.ErrItemNotFound, itemName)
 	}
-	inventory, err := s.repo.GetInventory(ctx, user.ID)
+	inventory, err := tx.GetInventory(ctx, user.ID)
 	if err != nil {
 		log.Error("Failed to get inventory", "error", err, "userID", user.ID)
 		return 0, fmt.Errorf("failed to get inventory: %w", err)
@@ -314,10 +322,16 @@ func (s *service) RemoveItem(ctx context.Context, platform, platformID, username
 		log.Warn("Item not in inventory", "itemName", itemName)
 		return 0, fmt.Errorf("item %s not in inventory", itemName)
 	}
-	if err := s.repo.UpdateInventory(ctx, user.ID, *inventory); err != nil {
+	if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
 		log.Error("Failed to update inventory", "error", err, "userID", user.ID)
 		return 0, fmt.Errorf("failed to update inventory: %w", err)
 	}
+
+	if err := tx.Commit(ctx); err != nil {
+		log.Error("Failed to commit transaction", "error", err)
+		return 0, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
 	log.Info("Item removed", "username", username, "item", itemName, "removed", removed)
 	return removed, nil
 }
@@ -342,23 +356,6 @@ func (s *service) GiveItem(ctx context.Context, ownerPlatform, ownerPlatformID, 
 	item, err := s.validateItem(ctx, itemName)
 	if err != nil {
 		return err
-	}
-
-	// Acquire locks in consistent order to prevent deadlocks
-	firstLock := s.getUserLock(owner.ID)
-	secondLock := s.getUserLock(receiver.ID)
-
-	if owner.ID > receiver.ID {
-		firstLock, secondLock = secondLock, firstLock
-	}
-
-	firstLock.Lock()
-	defer firstLock.Unlock()
-
-	// If IDs are same (giving to self), we already have the lock
-	if owner.ID != receiver.ID {
-		secondLock.Lock()
-		defer secondLock.Unlock()
 	}
 
 	return s.executeGiveItemTx(ctx, owner, receiver, item, quantity)
@@ -443,11 +440,14 @@ func (s *service) UseItem(ctx context.Context, platform, platformID, username, i
 		return "", err
 	}
 
-	lock := s.getUserLock(user.ID)
-	lock.Lock()
-	defer lock.Unlock()
+	tx, err := s.repo.BeginTx(ctx)
+	if err != nil {
+		log.Error("Failed to begin transaction", "error", err)
+		return "", fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer repository.SafeRollback(ctx, tx)
 
-	inventory, err := s.repo.GetInventory(ctx, user.ID)
+	inventory, err := tx.GetInventory(ctx, user.ID)
 	if err != nil {
 		log.Error("Failed to get inventory", "error", err, "userID", user.ID)
 		return "", fmt.Errorf("failed to get inventory: %w", err)
@@ -482,10 +482,16 @@ func (s *service) UseItem(ctx context.Context, platform, platformID, username, i
 		log.Error("Handler error", "error", err, "itemName", itemName)
 		return "", err
 	}
-	if err := s.repo.UpdateInventory(ctx, user.ID, *inventory); err != nil {
+	if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
 		log.Error("Failed to update inventory after use", "error", err, "userID", user.ID)
 		return "", fmt.Errorf("failed to update inventory: %w", err)
 	}
+
+	if err := tx.Commit(ctx); err != nil {
+		log.Error("Failed to commit transaction", "error", err)
+		return "", fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
 	log.Info("Item used", "username", username, "item", itemName, "quantity", quantity, "message", message)
 	return message, nil
 }
@@ -605,11 +611,6 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 		return "", err
 	}
 
-	// Lock the user for the duration of this operation
-	lock := s.getUserLock(user.ID)
-	lock.Lock()
-	defer lock.Unlock()
-
 	// Check cooldown
 	lastUsed, err := s.repo.GetLastCooldown(ctx, user.ID, domain.ActionSearch)
 	if err != nil {
@@ -658,8 +659,16 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 			return "", fmt.Errorf("reward item not configured")
 		}
 
+		// Begin transaction for inventory update
+		tx, err := s.repo.BeginTx(ctx)
+		if err != nil {
+			log.Error("Failed to begin transaction", "error", err)
+			return "", fmt.Errorf("failed to begin transaction: %w", err)
+		}
+		defer repository.SafeRollback(ctx, tx)
+
 		// Add to inventory
-		inventory, err := s.repo.GetInventory(ctx, user.ID)
+		inventory, err := tx.GetInventory(ctx, user.ID)
 		if err != nil {
 			log.Error("Failed to get inventory", "error", err, "userID", user.ID)
 			return "", fmt.Errorf("failed to get inventory: %w", err)
@@ -672,12 +681,18 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 			inventory.Slots = append(inventory.Slots, domain.InventorySlot{ItemID: item.ID, Quantity: quantity})
 		}
 
-		if err := s.repo.UpdateInventory(ctx, user.ID, *inventory); err != nil {
+		if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
 			log.Error("Failed to update inventory", "error", err, "userID", user.ID)
 			return "", fmt.Errorf("failed to update inventory: %w", err)
 		}
 
+		if err := tx.Commit(ctx); err != nil {
+			log.Error("Failed to commit transaction", "error", err)
+			return "", fmt.Errorf("failed to commit transaction: %w", err)
+		}
+
 		// Award Explorer XP for finding item (async, don't block)
+		s.wg.Add(1)
 		go s.awardExplorerXP(context.Background(), user.ID, item.Name)
 
 		if isCritical {
@@ -740,6 +755,8 @@ func (s *service) getUserOrRegister(ctx context.Context, platform, platformID, u
 
 // awardExplorerXP awards Explorer job XP for finding items during search
 func (s *service) awardExplorerXP(ctx context.Context, userID, itemName string) {
+	defer s.wg.Done()
+
 	if s.jobService == nil {
 		return // Job system not enabled
 	}
@@ -755,5 +772,21 @@ func (s *service) awardExplorerXP(ctx context.Context, userID, itemName string) 
 		logger.FromContext(ctx).Warn("Failed to award Explorer XP", "error", err, "user_id", userID)
 	} else if result != nil && result.LeveledUp {
 		logger.FromContext(ctx).Info("Explorer leveled up!", "user_id", userID, "new_level", result.NewLevel)
+	}
+}
+
+func (s *service) Shutdown(ctx context.Context) error {
+	logger.FromContext(ctx).Info("User service shutting down, waiting for background tasks...")
+	done := make(chan struct{})
+	go func() {
+		s.wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		return nil
+	case <-ctx.Done():
+		return fmt.Errorf("shutdown timed out: %w", ctx.Err())
 	}
 }

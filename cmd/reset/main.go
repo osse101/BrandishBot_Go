@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/osse101/BrandishBot_Go/internal/database"
@@ -26,7 +27,7 @@ func main() {
 		os.Getenv("DB_PORT"),
 	)
 
-	serverPool, err := database.NewPool(serverConnString)
+	serverPool, err := database.NewPool(serverConnString, 10, 30*time.Minute, time.Hour)
 	if err != nil {
 		log.Fatalf("Failed to connect to PostgreSQL server: %v", err)
 	}
