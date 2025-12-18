@@ -575,6 +575,12 @@ func (s *service) validateItem(ctx context.Context, itemName string) (*domain.It
 	return item, nil
 }
 
+// Constants for search mechanic
+const (
+	SearchSuccessRate  = 0.8
+	SearchCriticalRate = 0.05
+)
+
 // HandleSearch performs a search action for a user with cooldown tracking
 func (s *service) HandleSearch(ctx context.Context, platform, platformID, username string) (string, error) {
 	log := logger.FromContext(ctx)
@@ -629,9 +635,18 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 		}
 	}
 
-	// Perform search - 80% chance of lootbox0
+	// Perform search
 	var resultMessage string
-	if utils.RandomFloat() <= 0.8 {
+	roll := utils.RandomFloat()
+
+	if roll <= SearchSuccessRate {
+		// Success case
+		isCritical := roll <= SearchCriticalRate
+		quantity := 1
+		if isCritical {
+			quantity = 2
+		}
+
 		// Give lootbox0
 		item, err := s.repo.GetItemByName(ctx, domain.ItemLootbox0)
 		if err != nil {
@@ -652,9 +667,9 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 
 		i, _ := utils.FindSlot(inventory, item.ID)
 		if i != -1 {
-			inventory.Slots[i].Quantity++
+			inventory.Slots[i].Quantity += quantity
 		} else {
-			inventory.Slots = append(inventory.Slots, domain.InventorySlot{ItemID: item.ID, Quantity: 1})
+			inventory.Slots = append(inventory.Slots, domain.InventorySlot{ItemID: item.ID, Quantity: quantity})
 		}
 
 		if err := s.repo.UpdateInventory(ctx, user.ID, *inventory); err != nil {
@@ -665,11 +680,18 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 		// Award Explorer XP for finding item (async, don't block)
 		go s.awardExplorerXP(context.Background(), user.ID, item.Name)
 
-		resultMessage = fmt.Sprintf("You have found 1x %s", item.Name)
-		log.Info("Search successful - lootbox found", "username", username, "item", item.Name)
+		if isCritical {
+			resultMessage = fmt.Sprintf("%s You found %dx %s", domain.MsgSearchCriticalSuccess, quantity, item.Name)
+			log.Info("Search CRITICAL success", "username", username, "item", item.Name, "quantity", quantity)
+		} else {
+			resultMessage = fmt.Sprintf("You have found %dx %s", quantity, item.Name)
+			log.Info("Search successful - lootbox found", "username", username, "item", item.Name)
+		}
 	} else {
-		resultMessage = domain.MsgSearchNothingFound
-		log.Info("Search successful - nothing found", "username", username)
+		// Failure case - Pick a random funny message
+		idx := utils.RandomInt(0, len(domain.SearchFailureMessages)-1)
+		resultMessage = domain.SearchFailureMessages[idx]
+		log.Info("Search successful - nothing found", "username", username, "message", resultMessage)
 	}
 
 	// Update cooldown

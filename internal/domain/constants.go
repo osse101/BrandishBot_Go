@@ -35,8 +35,21 @@ const (
 
 // Message constants
 const (
-	MsgSearchNothingFound = "You have found nothing"
+	MsgSearchNothingFound    = "You have found nothing"
+	MsgSearchCriticalSuccess = "You found a hidden stash! (CRITICAL SUCCESS!)"
 )
+
+// SearchFailureMessages is a list of funny messages for failed searches
+var SearchFailureMessages = []string{
+	MsgSearchNothingFound,
+	"You found a rock. It's just a rock.",
+	"You tripped over a root and found nothing.",
+	"You searched high and low, but mostly low, and found dust.",
+	"A goblin stole the loot before you got there.",
+	"You found a shiny coin! ...Wait, it's a chocolate wrapper.",
+	"Nothing here but cobwebs.",
+	"You found a 'IOU' note from a previous adventurer.",
+}
 
 // Period constants
 const (
