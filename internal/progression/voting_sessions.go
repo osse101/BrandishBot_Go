@@ -3,11 +3,10 @@ package progression
 import (
 	"context"
 	"fmt"
-	"math/rand"
-	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
+	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
 // StartVotingSession creates a new voting session with 4 random options from available nodes
@@ -315,9 +314,8 @@ func selectRandomNodes(nodes []*domain.ProgressionNode, count int) []*domain.Pro
 	shuffled := make([]*domain.ProgressionNode, len(nodes))
 	copy(shuffled, nodes)
 
-	rand.Seed(time.Now().UnixNano())
 	for i := len(shuffled) - 1; i > 0; i-- {
-		j := rand.Intn(i + 1)
+		j := utils.SecureRandomInt(i + 1)
 		shuffled[i], shuffled[j] = shuffled[j], shuffled[i]
 	}
 
@@ -340,8 +338,7 @@ func findWinningOption(options []domain.ProgressionVotingOption) *domain.Progres
 
 	// If 0 votes total, pick random option
 	if allZeroVotes {
-		rand.Seed(time.Now().UnixNano())
-		randomIndex := rand.Intn(len(options))
+		randomIndex := utils.SecureRandomInt(len(options))
 		return &options[randomIndex]
 	}
 
