@@ -301,7 +301,7 @@ func (s *service) processDisassembleOutputs(ctx context.Context, inventory *doma
 		if err != nil {
 			return nil, fmt.Errorf("failed to get output item: %w", err)
 		}
-		outputMap[outputItem.Name] = totalOutput
+		outputMap[outputItem.InternalName] = totalOutput
 
 		// Add to inventory
 		addItemToInventory(inventory, output.ItemID, totalOutput)

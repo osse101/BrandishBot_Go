@@ -151,7 +151,7 @@ func (s *service) OpenLootbox(ctx context.Context, lootboxName string, quantity 
 
 		drops = append(drops, DroppedItem{
 			ItemID:     item.ID,
-			ItemName:   item.Name,
+			ItemName:   item.InternalName,
 			Quantity:   info.Qty,
 			Value:      boostedValue,
 			ShineLevel: shine,

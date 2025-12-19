@@ -227,16 +227,44 @@ func (r *UserRepository) UpdateInventory(ctx context.Context, userID string, inv
 	return nil
 }
 
-// GetItemByName retrieves an item by its name
+// GetItemByName retrieves an item by its internal name
 func (r *UserRepository) GetItemByName(ctx context.Context, itemName string) (*domain.Item, error) {
-	query := `SELECT item_id, item_name, item_description, base_value FROM items WHERE item_name = $1`
+	query := `
+		SELECT item_id, internal_name, public_name, default_display, description, base_value, handler
+		FROM items 
+		WHERE internal_name = $1
+	`
 	var item domain.Item
-	err := r.db.QueryRow(ctx, query, itemName).Scan(&item.ID, &item.Name, &item.Description, &item.BaseValue)
+	err := r.db.QueryRow(ctx, query, itemName).Scan(
+		&item.ID, &item.InternalName, &item.PublicName, &item.DefaultDisplay,
+		&item.Description, &item.BaseValue, &item.Handler,
+	)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to get item by name: %w", err)
+	}
+	return &item, nil
+}
+
+// GetItemByPublicName retrieves an item by its public name
+func (r *UserRepository) GetItemByPublicName(ctx context.Context, publicName string) (*domain.Item, error) {
+	query := `
+		SELECT item_id, internal_name, public_name, default_display, description, base_value, handler
+		FROM items 
+		WHERE public_name = $1
+	`
+	var item domain.Item
+	err := r.db.QueryRow(ctx, query, publicName).Scan(
+		&item.ID, &item.InternalName, &item.PublicName, &item.DefaultDisplay,
+		&item.Description, &item.BaseValue, &item.Handler,
+	)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get item by public name: %w", err)
 	}
 	return &item, nil
 }
@@ -248,7 +276,7 @@ func (r *UserRepository) GetItemsByIDs(ctx context.Context, itemIDs []int) ([]do
 	}
 
 	query := `
-		SELECT item_id, item_name, item_description, base_value
+		SELECT item_id, internal_name, public_name, default_display, description, base_value, handler
 		FROM items
 		WHERE item_id = ANY($1)
 	`
@@ -261,7 +289,10 @@ func (r *UserRepository) GetItemsByIDs(ctx context.Context, itemIDs []int) ([]do
 	var items []domain.Item
 	for rows.Next() {
 		var item domain.Item
-		if err := rows.Scan(&item.ID, &item.Name, &item.Description, &item.BaseValue); err != nil {
+		if err := rows.Scan(
+			&item.ID, &item.InternalName, &item.PublicName, &item.DefaultDisplay,
+			&item.Description, &item.BaseValue, &item.Handler,
+		); err != nil {
 			return nil, fmt.Errorf("failed to scan item: %w", err)
 		}
 		items = append(items, item)
@@ -276,9 +307,16 @@ func (r *UserRepository) GetItemsByIDs(ctx context.Context, itemIDs []int) ([]do
 
 // GetItemByID retrieves an item by its ID
 func (r *UserRepository) GetItemByID(ctx context.Context, id int) (*domain.Item, error) {
-	query := `SELECT item_id, item_name, item_description, base_value FROM items WHERE item_id = $1`
+	query := `
+		SELECT item_id, internal_name, public_name, default_display, description, base_value, handler
+		FROM items 
+		WHERE item_id = $1
+	`
 	var item domain.Item
-	err := r.db.QueryRow(ctx, query, id).Scan(&item.ID, &item.Name, &item.Description, &item.BaseValue)
+	err := r.db.QueryRow(ctx, query, id).Scan(
+		&item.ID, &item.InternalName, &item.PublicName, &item.DefaultDisplay,
+		&item.Description, &item.BaseValue, &item.Handler,
+	)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, nil
@@ -321,7 +359,7 @@ func (r *UserRepository) GetSellablePrices(ctx context.Context) ([]domain.Item, 
 	var items []domain.Item
 	for rows.Next() {
 		var item domain.Item
-		if err := rows.Scan(&item.ID, &item.Name, &item.Description, &item.BaseValue); err != nil {
+		if err := rows.Scan(&item.ID, &item.InternalName, &item.Description, &item.BaseValue); err != nil {
 			return nil, fmt.Errorf("failed to scan item: %w", err)
 		}
 		items = append(items, item)

@@ -16,6 +16,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/linking"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/metrics"
+	"github.com/osse101/BrandishBot_Go/internal/naming"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 	"github.com/osse101/BrandishBot_Go/internal/stats"
 	"github.com/osse101/BrandishBot_Go/internal/user"
@@ -34,10 +35,11 @@ type Server struct {
 	gambleService      gamble.Service
 	jobService         job.Service
 	linkingService     linking.Service
+	namingResolver     naming.Resolver
 }
 
 // NewServer creates a new Server instance
-func NewServer(port int, apiKey string, dbPool database.Pool, userService user.Service, economyService economy.Service, craftingService crafting.Service, statsService stats.Service, progressionService progression.Service, gambleService gamble.Service, jobService job.Service, linkingService linking.Service, eventBus event.Bus) *Server {
+func NewServer(port int, apiKey string, dbPool database.Pool, userService user.Service, economyService economy.Service, craftingService crafting.Service, statsService stats.Service, progressionService progression.Service, gambleService gamble.Service, jobService job.Service, linkingService linking.Service, namingResolver naming.Resolver, eventBus event.Bus) *Server {
 	mux := http.NewServeMux()
 
 	// Health check routes
@@ -108,6 +110,9 @@ func NewServer(port int, apiKey string, dbPool database.Pool, userService user.S
 	mux.HandleFunc("/link/unlink", linkingHandlers.HandleUnlink())
 	mux.HandleFunc("/link/status", linkingHandlers.HandleStatus())
 
+	// Admin routes
+	mux.HandleFunc("/admin/reload-aliases", handler.HandleReloadAliases(namingResolver))
+
 	// Swagger documentation
 	mux.HandleFunc("/swagger/", httpSwagger.WrapHandler)
 
@@ -142,6 +147,8 @@ func NewServer(port int, apiKey string, dbPool database.Pool, userService user.S
 		progressionService: progressionService,
 		gambleService:      gambleService,
 		jobService:         jobService,
+		linkingService:     linkingService,
+		namingResolver:     namingResolver,
 	}
 }
 

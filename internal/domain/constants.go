@@ -2,14 +2,15 @@ package domain
 
 import "time"
 
-// Item name constants - centralized item identifiers
+// Item internal name constants - stable code identifiers
 const (
-	ItemMoney    = "money"
-	ItemLootbox0 = "lootbox0"
-	ItemLootbox1 = "lootbox1"
-	ItemLootbox2 = "lootbox2"
-	ItemBlaster  = "blaster"
+	ItemMoney    = "money"           // currency_money in future
+	ItemLootbox0 = "lootbox_tier0"   // was lootbox0
+	ItemLootbox1 = "lootbox_tier1"   // was lootbox1
+	ItemLootbox2 = "lootbox_tier2"   // was lootbox2
+	ItemBlaster  = "weapon_blaster"  // was blaster
 )
+
 
 // Action name constants for cooldown tracking
 const (

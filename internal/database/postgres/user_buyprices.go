@@ -26,7 +26,7 @@ func (r *UserRepository) GetBuyablePrices(ctx context.Context) ([]domain.Item, e
 	var items []domain.Item
 	for rows.Next() {
 		var item domain.Item
-		if err := rows.Scan(&item.ID, &item.Name, &item.Description, &item.BaseValue); err != nil {
+		if err := rows.Scan(&item.ID, &item.InternalName, &item.Description, &item.BaseValue); err != nil {
 			return nil, fmt.Errorf("failed to scan item: %w", err)
 		}
 		items = append(items, item)

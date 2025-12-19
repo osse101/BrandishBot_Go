@@ -167,7 +167,7 @@ func (m *mockSearchRepo) GetUnlockedRecipesForUser(ctx context.Context, userID s
 // Test fixtures
 func createSearchTestService() (*service, *mockSearchRepo) {
 	repo := newMockSearchRepo()
-	svc := NewService(repo, nil, nil, false).(*service)
+	svc := NewService(repo, nil, nil, nil, false).(*service)
 
 	// Add standard test items
 	repo.items[domain.ItemLootbox0] = &domain.Item{

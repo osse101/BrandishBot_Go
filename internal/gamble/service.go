@@ -321,9 +321,9 @@ func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.Gamb
 			}
 
 			// Open lootbox using shared service
-			drops, err := s.lootboxSvc.OpenLootbox(ctx, lootboxItem.Name, bet.Quantity)
+			drops, err := s.lootboxSvc.OpenLootbox(ctx, lootboxItem.InternalName, bet.Quantity)
 			if err != nil {
-				log.Error("Failed to open lootbox", "lootbox", lootboxItem.Name, "error", err)
+				log.Error("Failed to open lootbox", "lootbox", lootboxItem.InternalName, "error", err)
 				continue
 			}
 

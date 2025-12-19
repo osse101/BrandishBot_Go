@@ -26,6 +26,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/linking"
 	"github.com/osse101/BrandishBot_Go/internal/lootbox"
 	"github.com/osse101/BrandishBot_Go/internal/metrics"
+	"github.com/osse101/BrandishBot_Go/internal/naming"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 	"github.com/osse101/BrandishBot_Go/internal/scheduler"
 	"github.com/osse101/BrandishBot_Go/internal/server"
@@ -132,9 +133,9 @@ func main() {
 	jobService := job.NewService(jobRepo, progressionService)
 	
 	// Initialize services that depend on job service
-	userService := user.NewService(userRepo, statsService, jobService, cfg.DevMode)
 	economyService := economy.NewService(userRepo, jobService)
 	craftingService := crafting.NewService(userRepo, jobService)
+
 
 	// Initialize Event Bus
 	eventBus := event.NewMemoryBus()
@@ -190,7 +191,18 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Initialize Naming Resolver for item display names
+	namingResolver, err := naming.NewResolver("configs/items/aliases.json", "configs/items/themes.json")
+	if err != nil {
+		slog.Error("Failed to initialize naming resolver", "error", err)
+		os.Exit(1)
+	}
+	slog.Info("Naming resolver initialized")
+
 	gambleService := gamble.NewService(gambleRepo, eventBus, lootboxSvc, statsService, cfg.GambleJoinDuration, jobService)
+
+	// Initialize services that depend on job service
+	userService := user.NewService(userRepo, statsService, jobService, namingResolver, cfg.DevMode)
 
 	// Initialize Gamble Worker
 	gambleWorker := worker.NewGambleWorker(gambleService)
@@ -201,7 +213,7 @@ func main() {
 	linkingRepo := postgres.NewLinkingRepository(dbPool)
 	linkingService := linking.NewService(linkingRepo, userService)
 
-	srv := server.NewServer(cfg.Port, cfg.APIKey, dbPool, userService, economyService, craftingService, statsService, progressionService, gambleService, jobService, linkingService, eventBus)
+	srv := server.NewServer(cfg.Port, cfg.APIKey, dbPool, userService, economyService, craftingService, statsService, progressionService, gambleService, jobService, linkingService, namingResolver, eventBus)
 
 	// Run server in a goroutine
 	go func() {

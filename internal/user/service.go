@@ -11,6 +11,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
+	"github.com/osse101/BrandishBot_Go/internal/naming"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/osse101/BrandishBot_Go/internal/stats"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
@@ -85,16 +86,17 @@ type JobService interface {
 
 // service implements the Service interface
 type service struct {
-	repo         Repository
-	itemHandlers map[string]ItemEffectHandler
-	timeoutMu    sync.Mutex
-	timeouts     map[string]*time.Timer
-	lootTables   map[string][]LootItem
-	jobService   JobService
-	statsService stats.Service
-	stringFinder *StringFinder
-	devMode      bool // When true, bypasses cooldowns
-	wg           sync.WaitGroup
+	repo           Repository
+	itemHandlers   map[string]ItemEffectHandler
+	timeoutMu      sync.Mutex
+	timeouts       map[string]*time.Timer
+	lootTables     map[string][]LootItem
+	jobService     JobService
+	statsService   stats.Service
+	stringFinder   *StringFinder
+	namingResolver naming.Resolver
+	devMode        bool // When true, bypasses cooldowns
+	wg             sync.WaitGroup
 }
 
 // setPlatformID sets the appropriate platform-specific ID field on a user
@@ -110,16 +112,17 @@ func setPlatformID(user *domain.User, platform, platformID string) {
 }
 
 // NewService creates a new user service
-func NewService(repo Repository, statsService stats.Service, jobService JobService, devMode bool) Service {
+func NewService(repo Repository, statsService stats.Service, jobService JobService, namingResolver naming.Resolver, devMode bool) Service {
 	s := &service{
-		repo:         repo,
-		itemHandlers: make(map[string]ItemEffectHandler),
-		timeouts:     make(map[string]*time.Timer),
-		lootTables:   make(map[string][]LootItem),
-		jobService:   jobService,
-		statsService: statsService,
-		stringFinder: NewStringFinder(),
-		devMode:      devMode,
+		repo:           repo,
+		itemHandlers:   make(map[string]ItemEffectHandler),
+		timeouts:       make(map[string]*time.Timer),
+		lootTables:     make(map[string][]LootItem),
+		jobService:     jobService,
+		statsService:   statsService,
+		stringFinder:   NewStringFinder(),
+		namingResolver: namingResolver,
+		devMode:        devMode,
 	}
 	s.registerHandlers()
 	// Attempt to load default loot tables, ignore error if file doesn't exist (will be empty)
@@ -387,7 +390,7 @@ func (s *service) executeGiveItemTx(ctx context.Context, owner, receiver *domain
 	}
 
 	if ownerSlotIndex == -1 {
-		return fmt.Errorf("owner does not have item %s in inventory", item.Name)
+		return fmt.Errorf("owner does not have item %s in inventory", item.InternalName)
 	}
 
 	if ownerInventory.Slots[ownerSlotIndex].Quantity < quantity {
@@ -430,7 +433,7 @@ func (s *service) executeGiveItemTx(ctx context.Context, owner, receiver *domain
 		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	log.Info("Item transferred", "owner", owner.Username, "receiver", receiver.Username, "item", item.Name, "quantity", quantity)
+	log.Info("Item transferred", "owner", owner.Username, "receiver", receiver.Username, "item", item.InternalName, "quantity", quantity)
 	return nil
 }
 
@@ -536,7 +539,7 @@ func (s *service) GetInventory(ctx context.Context, platform, platformID, userna
 			log.Warn("Item missing for slot", "itemID", slot.ItemID)
 			continue
 		}
-		items = append(items, UserInventoryItem{Name: item.Name, Description: item.Description, Quantity: slot.Quantity, Value: item.BaseValue})
+		items = append(items, UserInventoryItem{Name: item.InternalName, Description: item.Description, Quantity: slot.Quantity, Value: item.BaseValue})
 	}
 	log.Info("Inventory retrieved", "username", username, "itemCount", len(items))
 	return items, nil
@@ -697,14 +700,17 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 
 		// Award Explorer XP for finding item (async, don't block)
 		s.wg.Add(1)
-		go s.awardExplorerXP(context.Background(), user.ID, item.Name)
+		go s.awardExplorerXP(context.Background(), user.ID, item.InternalName)
+
+		// Get display name with shine (empty shine for search results)
+		displayName := s.namingResolver.GetDisplayName(item.InternalName, "")
 
 		if isCritical {
-			resultMessage = fmt.Sprintf("%s You found %dx %s", domain.MsgSearchCriticalSuccess, quantity, item.Name)
-			log.Info("Search CRITICAL success", "username", username, "item", item.Name, "quantity", quantity)
+			resultMessage = fmt.Sprintf("%s You found %dx %s", domain.MsgSearchCriticalSuccess, quantity, displayName)
+			log.Info("Search CRITICAL success", "username", username, "item", item.InternalName, "quantity", quantity)
 		} else {
-			resultMessage = fmt.Sprintf("You have found %dx %s", quantity, item.Name)
-			log.Info("Search successful - lootbox found", "username", username, "item", item.Name)
+			resultMessage = fmt.Sprintf("You have found %dx %s", quantity, displayName)
+			log.Info("Search successful - lootbox found", "username", username, "item", item.InternalName)
 		}
 	} else if roll <= SearchSuccessRate+SearchNearMissRate {
 		// Near Miss case

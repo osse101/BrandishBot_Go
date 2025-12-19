@@ -455,7 +455,7 @@ func (c *APIClient) GetSellPrices() (string, error) {
 
 	var result string
 	for _, item := range pricesResp.Items {
-		result += fmt.Sprintf("**%s**: %d coins\n", item.Name, item.BaseValue)
+		result += fmt.Sprintf("**%s**: %d coins\n", item.InternalName, item.BaseValue)
 	}
 	return result, nil
 }
@@ -486,7 +486,7 @@ func (c *APIClient) GetBuyPrices() (string, error) {
 
 	var result string
 	for _, item := range pricesResp.Items {
-		result += fmt.Sprintf("**%s**: %d coins\n", item.Name, item.BaseValue)
+		result += fmt.Sprintf("**%s**: %d coins\n", item.InternalName, item.BaseValue)
 	}
 	return result, nil
 }
