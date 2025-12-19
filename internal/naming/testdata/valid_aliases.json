@@ -1,0 +1,13 @@
+{
+  "lootbox_tier0": {
+    "default": [
+      "A test box",
+      "Another test box"
+    ],
+    "themes": {
+      "test_theme": [
+        "A themed test box"
+      ]
+    }
+  }
+}

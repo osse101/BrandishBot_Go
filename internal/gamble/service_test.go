@@ -489,7 +489,7 @@ func TestExecuteGamble_Success(t *testing.T) {
 	}
 	tx := new(MockTx)
 	winnerInventory := &domain.Inventory{Slots: []domain.InventorySlot{}}
-	lootboxItem := &domain.Item{ID: 1, Name: "lootbox1"}
+	lootboxItem := &domain.Item{ID: 1, InternalName: "lootbox1"}
 	droppedItems := []lootbox.DroppedItem{{ItemID: 10, ItemName: "coin", Quantity: 5, Value: 10}}
 
 	repo.On("GetGamble", ctx, gambleID).Return(gamble, nil)
@@ -532,7 +532,7 @@ func TestExecuteGamble_MultipleParticipants(t *testing.T) {
 	}
 	tx := new(MockTx)
 	inventory := &domain.Inventory{Slots: []domain.InventorySlot{}}
-	lootboxItem := &domain.Item{ID: 1, Name: "lootbox1"}
+	lootboxItem := &domain.Item{ID: 1, InternalName: "lootbox1"}
 	droppedItems := []lootbox.DroppedItem{{ItemID: 10, ItemName: "coin", Quantity: 5, Value: 10}}
 
 	repo.On("GetGamble", ctx, gambleID).Return(gamble, nil)
@@ -655,7 +655,7 @@ func TestExecuteGamble_SaveOpenedItemsFails(t *testing.T) {
 			{UserID: "user1", LootboxBets: []domain.LootboxBet{{ItemID: 1, Quantity: 1}}},
 		},
 	}
-	lootboxItem := &domain.Item{ID: 1, Name: "lootbox1"}
+	lootboxItem := &domain.Item{ID: 1, InternalName: "lootbox1"}
 	droppedItems := []lootbox.DroppedItem{{ItemID: 10, ItemName: "coin", Quantity: 5, Value: 10}}
 
 	repo.On("GetGamble", ctx, gambleID).Return(gamble, nil)
@@ -760,9 +760,9 @@ func TestExecuteGamble_NearMiss(t *testing.T) {
 		},
 	}
 
-	lootboxItem1 := &domain.Item{ID: 1, Name: "box1"}
-	lootboxItem2 := &domain.Item{ID: 2, Name: "box2"}
-	lootboxItem3 := &domain.Item{ID: 3, Name: "box3"}
+	lootboxItem1 := &domain.Item{ID: 1, InternalName: "box1"}
+	lootboxItem2 := &domain.Item{ID: 2, InternalName: "box2"}
+	lootboxItem3 := &domain.Item{ID: 3, InternalName: "box3"}
 
 	// Mocks for lootbox drops
 	drops1 := []lootbox.DroppedItem{{ItemID: 10, ItemName: "coin", Quantity: 1, Value: 100}}
@@ -835,9 +835,9 @@ func TestExecuteGamble_CriticalFailure(t *testing.T) {
 		},
 	}
 
-	lootboxItem1 := &domain.Item{ID: 1, Name: "box1"}
-	lootboxItem2 := &domain.Item{ID: 2, Name: "box2"}
-	lootboxItem3 := &domain.Item{ID: 3, Name: "box3"}
+	lootboxItem1 := &domain.Item{ID: 1, InternalName: "box1"}
+	lootboxItem2 := &domain.Item{ID: 2, InternalName: "box2"}
+	lootboxItem3 := &domain.Item{ID: 3, InternalName: "box3"}
 
 	drops1 := []lootbox.DroppedItem{{ItemID: 10, ItemName: "coin", Quantity: 1, Value: 100}}
 	drops2 := []lootbox.DroppedItem{{ItemID: 11, ItemName: "coin", Quantity: 1, Value: 100}}
