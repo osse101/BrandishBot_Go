@@ -310,26 +310,7 @@ func (s *service) GetJobBonus(ctx context.Context, userID, jobKey, bonusType str
 // CalculateLevel determines the level from total XP using the formula:
 // XP for level N = BaseXP * (N ^ LevelExponent)
 func (s *service) CalculateLevel(totalXP int64) int {
-	if totalXP <= 0 {
-		return 0
-	}
-
-	// Solve for N: totalXP = sum(BaseXP * i^LevelExponent) for i=1 to N
-	// Iterate to find exact level
-
-	level := 0
-	cumulative := int64(0)
-
-	for level < MaxIterationLevel {
-		nextLevel := level + 1
-		xpForNext := int64(BaseXP * math.Pow(float64(nextLevel), LevelExponent))
-		if cumulative+xpForNext > totalXP {
-			break
-		}
-		cumulative += xpForNext
-		level = nextLevel
-	}
-
+	level, _ := s.calculateLevelAndNextXP(totalXP)
 	return level
 }
 
@@ -349,10 +330,37 @@ func (s *service) GetXPForLevel(level int) int64 {
 
 // GetXPProgress returns current level and XP needed for next level
 func (s *service) GetXPProgress(currentXP int64) (currentLevel int, xpToNext int64) {
-	currentLevel = s.CalculateLevel(currentXP)
-	xpForNext := s.GetXPForLevel(currentLevel + 1)
+	var xpForNext int64
+	currentLevel, xpForNext = s.calculateLevelAndNextXP(currentXP)
 	xpToNext = xpForNext - currentXP
 	return
+}
+
+// calculateLevelAndNextXP computes the level and the cumulative XP required for the NEXT level
+// This optimized helper avoids double iteration in GetXPProgress
+func (s *service) calculateLevelAndNextXP(totalXP int64) (int, int64) {
+	if totalXP <= 0 {
+		return 0, int64(BaseXP)
+	}
+
+	level := 0
+	cumulative := int64(0)
+
+	for level < MaxIterationLevel {
+		nextLevel := level + 1
+		xpForNextLevel := int64(BaseXP * math.Pow(float64(nextLevel), LevelExponent))
+
+		if cumulative+xpForNextLevel > totalXP {
+			return level, cumulative + xpForNextLevel
+		}
+		cumulative += xpForNextLevel
+		level = nextLevel
+	}
+
+	// Max level reached, calculate theoretical next level requirement
+	nextLevel := level + 1
+	xpForNextLevel := int64(BaseXP * math.Pow(float64(nextLevel), LevelExponent))
+	return level, cumulative + xpForNextLevel
 }
 
 // Helper functions (TODO: integrate with progression system)
