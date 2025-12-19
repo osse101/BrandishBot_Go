@@ -36,6 +36,7 @@ const (
 // Message constants
 const (
 	MsgSearchNothingFound    = "You have found nothing"
+	MsgSearchNearMiss        = "You found nothing... but you saw something glint in the distance!"
 	MsgSearchCriticalSuccess = "You found a hidden stash! (CRITICAL SUCCESS!)"
 )
 

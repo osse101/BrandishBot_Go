@@ -148,7 +148,9 @@ func (m *mockSearchRepo) GetSellablePrices(ctx context.Context) ([]domain.Item, 
 func (m *mockSearchRepo) IsItemBuyable(ctx context.Context, itemName string) (bool, error) {
 	return false, nil
 }
-func (m *mockSearchRepo) BeginTx(ctx context.Context) (repository.Tx, error) { return nil, nil }
+func (m *mockSearchRepo) Commit(ctx context.Context) error { return nil }
+func (m *mockSearchRepo) Rollback(ctx context.Context) error { return nil }
+func (m *mockSearchRepo) BeginTx(ctx context.Context) (repository.Tx, error) { return m, nil }
 func (m *mockSearchRepo) GetRecipeByTargetItemID(ctx context.Context, itemID int) (*domain.Recipe, error) {
 	return nil, nil
 }
@@ -165,7 +167,7 @@ func (m *mockSearchRepo) GetUnlockedRecipesForUser(ctx context.Context, userID s
 // Test fixtures
 func createSearchTestService() (*service, *mockSearchRepo) {
 	repo := newMockSearchRepo()
-	svc := NewService(repo, nil, false).(*service)
+	svc := NewService(repo, nil, nil, false).(*service)
 
 	// Add standard test items
 	repo.items[domain.ItemLootbox0] = &domain.Item{
@@ -478,4 +480,71 @@ func TestHandleSearch_MultipleSearches(t *testing.T) {
 		// ASSERT
 		require.NoError(t, err2, "Should be able to search again after cooldown expires")
 	})
+}
+
+// MockStatsService for testing
+type mockStatsService struct {
+	recordedEvents []domain.StatsEvent
+}
+
+func (m *mockStatsService) RecordUserEvent(ctx context.Context, userID string, eventType domain.EventType, metadata map[string]interface{}) error {
+	m.recordedEvents = append(m.recordedEvents, domain.StatsEvent{
+		UserID:    userID,
+		EventType: eventType,
+		EventData: metadata,
+	})
+	return nil
+}
+
+func (m *mockStatsService) GetUserStats(ctx context.Context, userID string, period string) (*domain.StatsSummary, error) {
+	return nil, nil
+}
+func (m *mockStatsService) GetSystemStats(ctx context.Context, period string) (*domain.StatsSummary, error) {
+	return nil, nil
+}
+func (m *mockStatsService) GetLeaderboard(ctx context.Context, eventType domain.EventType, period string, limit int) ([]domain.LeaderboardEntry, error) {
+	return nil, nil
+}
+
+func TestHandleSearch_NearMiss_Statistical(t *testing.T) {
+	// ARRANGE
+	repo := newMockSearchRepo()
+	// Add required lootbox item
+	repo.items[domain.ItemLootbox0] = &domain.Item{
+		ID:        1,
+		Name:      domain.ItemLootbox0,
+		BaseValue: 10,
+	}
+
+	statsSvc := &mockStatsService{}
+	// Enable devMode to bypass cooldowns for loop
+	svc := NewService(repo, statsSvc, nil, true).(*service)
+
+	// Create user
+	user := createTestUser(TestUsername, TestUserID)
+	repo.users[TestUsername] = user
+
+	nearMissCount := 0
+	iterations := 1000
+
+	for i := 0; i < iterations; i++ {
+		msg, err := svc.HandleSearch(context.Background(), "twitch", "testuser123", TestUsername)
+		require.NoError(t, err)
+
+		if msg == domain.MsgSearchNearMiss {
+			nearMissCount++
+		}
+	}
+
+	t.Logf("Near misses in %d iterations: %d", iterations, nearMissCount)
+
+	// We expect roughly 5% = 50. Let's assert > 0 to ensure the path is reachable.
+	// Probability of 0 near misses in 1000 trials with p=0.05 is 0.95^1000 ~= 5e-23 (impossible)
+	assert.Greater(t, nearMissCount, 0, "Should have encountered at least one near miss")
+
+	// Verify events were recorded
+	assert.Equal(t, nearMissCount, len(statsSvc.recordedEvents), "Should record event for each near miss")
+	if len(statsSvc.recordedEvents) > 0 {
+		assert.Equal(t, domain.EventSearchNearMiss, statsSvc.recordedEvents[0].EventType)
+	}
 }

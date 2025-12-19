@@ -35,7 +35,7 @@ func TestConcurrency_AddItem(t *testing.T) {
 		MockRepository: baseRepo,
 		delay:          10 * time.Millisecond,
 	}
-	svc := NewService(repo, nil, false)
+	svc := NewService(repo, nil, nil, false)
 	ctx := context.Background()
 
 	// Initial setup
