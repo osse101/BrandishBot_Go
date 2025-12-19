@@ -167,12 +167,13 @@ func (m *mockSearchRepo) GetUnlockedRecipesForUser(ctx context.Context, userID s
 // Test fixtures
 func createSearchTestService() (*service, *mockSearchRepo) {
 	repo := newMockSearchRepo()
-	svc := NewService(repo, nil, nil, nil, false).(*service)
+	svc := NewService(repo, nil, nil, NewMockNamingResolver(), false).(*service)
 
 	// Add standard test items
 	repo.items[domain.ItemLootbox0] = &domain.Item{
 		ID:          1,
-		Name:        domain.ItemLootbox0,
+		InternalName:        domain.ItemLootbox0,
+
 		Description: "Basic Lootbox",
 		BaseValue:   10,
 	}
@@ -402,6 +403,42 @@ func TestHandleSearch_DatabaseErrors(t *testing.T) {
 	})
 }
 
+// CASE 6: NAMING RESOLUTION
+func TestHandleSearch_NamingResolution(t *testing.T) {
+	// ARRANGE
+	svc, repo := createSearchTestService()
+	user := createTestUser(TestUsername, TestUserID)
+	repo.users[TestUsername] = user
+
+	// Configure mock resolver
+	mockResolver := svc.namingResolver.(*MockNamingResolver)
+	mockResolver.DisplayNames[domain.ItemLootbox0] = "Mysterious Chest"
+
+	// Mock RNG is not available, so we loop until success
+	found := false
+	maxAttempts := 100 // Should be plenty given 80% success rate
+
+	for i := 0; i < maxAttempts; i++ {
+		// Reset cooldown manually
+		if repo.cooldowns[user.ID] == nil {
+			repo.cooldowns[user.ID] = make(map[string]*time.Time)
+		}
+		// Clear cooldown
+		delete(repo.cooldowns[user.ID], domain.ActionSearch)
+
+		// Call with devMode false (default in createSearchTestService)
+		msg, err := svc.HandleSearch(context.Background(), "twitch", "testuser123", TestUsername)
+		require.NoError(t, err)
+
+		if strings.Contains(msg, "Mysterious Chest") {
+			found = true
+			break
+		}
+	}
+
+	assert.True(t, found, "Should use display name 'Mysterious Chest' in search result at least once")
+}
+
 // =============================================================================
 // Additional Tests - Real-world scenarios
 // =============================================================================
@@ -512,13 +549,14 @@ func TestHandleSearch_NearMiss_Statistical(t *testing.T) {
 	// Add required lootbox item
 	repo.items[domain.ItemLootbox0] = &domain.Item{
 		ID:        1,
-		Name:      domain.ItemLootbox0,
+		InternalName:      domain.ItemLootbox0,
+
 		BaseValue: 10,
 	}
 
 	statsSvc := &mockStatsService{}
 	// Enable devMode to bypass cooldowns for loop
-	svc := NewService(repo, statsSvc, nil, true).(*service)
+	svc := NewService(repo, statsSvc, nil, NewMockNamingResolver(), true).(*service)
 
 	// Create user
 	user := createTestUser(TestUsername, TestUserID)

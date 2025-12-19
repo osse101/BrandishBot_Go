@@ -21,6 +21,38 @@ type MockRepository struct {
 	cooldowns       map[string]map[string]*time.Time // userID -> action -> timestamp
 }
 
+// MockNamingResolver implements naming.Resolver interface for testing
+type MockNamingResolver struct {
+	DisplayNames map[string]string
+}
+
+func (m *MockNamingResolver) ResolvePublicName(publicName string) (string, bool) {
+	return publicName, true
+}
+
+func (m *MockNamingResolver) GetDisplayName(internalName, shineLevel string) string {
+	if name, ok := m.DisplayNames[internalName]; ok {
+		return name
+	}
+	return internalName
+}
+
+func (m *MockNamingResolver) GetActiveTheme() string {
+	return ""
+}
+
+func (m *MockNamingResolver) Reload() error {
+	return nil
+}
+
+func (m *MockNamingResolver) RegisterItem(internalName, publicName string) {}
+
+func NewMockNamingResolver() *MockNamingResolver {
+	return &MockNamingResolver{
+		DisplayNames: make(map[string]string),
+	}
+}
+
 func NewMockRepository() *MockRepository {
 	return &MockRepository{
 		users:           make(map[string]*domain.User),
@@ -204,7 +236,8 @@ func (r *MockRepository) GetUnlockedRecipesForUser(ctx context.Context, userID s
 				for _, item := range r.items {
 					if item.ID == recipe.TargetItemID {
 						recipes = append(recipes, crafting.UnlockedRecipeInfo{
-							ItemName: item.Name,
+							ItemName: item.InternalName,
+
 							ItemID:   item.ID,
 						})
 						break
@@ -249,31 +282,36 @@ func setupTestData(repo *MockRepository) {
 	// Add test items
 	repo.items[domain.ItemLootbox1] = &domain.Item{
 		ID:          1,
-		Name:        domain.ItemLootbox1,
+		InternalName:        domain.ItemLootbox1,
+
 		Description: "Basic Lootbox",
 		BaseValue:   50,
 	}
 	repo.items[domain.ItemLootbox2] = &domain.Item{
 		ID:          2,
-		Name:        domain.ItemLootbox2,
+		InternalName:        domain.ItemLootbox2,
+
 		Description: "Good Lootbox",
 		BaseValue:   100,
 	}
 	repo.items[domain.ItemMoney] = &domain.Item{
 		ID:          3,
-		Name:        domain.ItemMoney,
+		InternalName:        domain.ItemMoney,
+
 		Description: "Currency",
 		BaseValue:   1,
 	}
 	repo.items[domain.ItemLootbox0] = &domain.Item{
 		ID:          4,
-		Name:        domain.ItemLootbox0,
+		InternalName:        domain.ItemLootbox0,
+
 		Description: "Empty Lootbox",
 		BaseValue:   10,
 	}
 	repo.items[domain.ItemBlaster] = &domain.Item{
 		ID:          5,
-		Name:        domain.ItemBlaster,
+		InternalName:        domain.ItemBlaster,
+
 		Description: "So anyway, I started blasting",
 		BaseValue:   10,
 	}
@@ -282,7 +320,7 @@ func setupTestData(repo *MockRepository) {
 func TestAddItem(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, nil, nil, nil, false)
+	svc := NewService(repo, nil, nil, NewMockNamingResolver(), false)
 	ctx := context.Background()
 
 	// Test adding item to empty inventory
@@ -336,7 +374,7 @@ func TestAddItem(t *testing.T) {
 func TestRemoveItem(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, nil, nil, nil, false)
+	svc := NewService(repo, nil, nil, NewMockNamingResolver(), false)
 	ctx := context.Background()
 
 	// Add 10 lootbox1 items
@@ -380,7 +418,7 @@ func TestRemoveItem(t *testing.T) {
 func TestGiveItem(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, nil, nil, nil, false)
+	svc := NewService(repo, nil, nil, NewMockNamingResolver(), false)
 	ctx := context.Background()
 
 	// Setup: Give alice some items
@@ -419,7 +457,7 @@ func TestGiveItem(t *testing.T) {
 
 func TestRegisterUser(t *testing.T) {
 	repo := NewMockRepository()
-	svc := NewService(repo, nil, nil, nil, false)
+	svc := NewService(repo, nil, nil, NewMockNamingResolver(), false)
 	ctx := context.Background()
 
 	user := domain.User{
@@ -448,7 +486,7 @@ func TestRegisterUser(t *testing.T) {
 
 func TestHandleIncomingMessage_NewUser(t *testing.T) {
 	repo := NewMockRepository()
-	svc := NewService(repo, nil, nil, nil, false)
+	svc := NewService(repo, nil, nil, NewMockNamingResolver(), false)
 	ctx := context.Background()
 
 	result, err := svc.HandleIncomingMessage(ctx, "twitch", "newuser123", "newuser", "hello")
@@ -470,7 +508,7 @@ func TestHandleIncomingMessage_NewUser(t *testing.T) {
 func TestHandleIncomingMessage_ExistingUser(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, nil, nil, nil, false)
+	svc := NewService(repo, nil, nil, NewMockNamingResolver(), false)
 	ctx := context.Background()
 
 	result, err := svc.HandleIncomingMessage(ctx, "twitch", "alice123", "alice", "hello")
@@ -486,7 +524,7 @@ func TestHandleIncomingMessage_ExistingUser(t *testing.T) {
 func TestUseItem(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, nil, nil, nil, false).(*service)
+	svc := NewService(repo, nil, nil, NewMockNamingResolver(), false).(*service)
 
 	// Setup loot tables
 	svc.lootTables[domain.ItemLootbox1] = []LootItem{
@@ -505,7 +543,8 @@ func TestUseItem(t *testing.T) {
 	}
 
 	// The message format changed in the new implementation
-	expectedMsg := "Opened 1 lootbox1 and received: 1x lootbox0"
+	expectedMsg := "Opened 1 lootbox_tier1 and received: 1x lootbox_tier0"
+
 	if message != expectedMsg {
 		t.Errorf("Expected message '%s', got '%s'", expectedMsg, message)
 	}
@@ -554,7 +593,7 @@ func TestUseItem(t *testing.T) {
 func TestUseItem_Blaster(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, nil, nil, nil, false)
+	svc := NewService(repo, nil, nil, NewMockNamingResolver(), false)
 	ctx := context.Background()
 
 	// Setup: Give alice some blasters
@@ -587,7 +626,7 @@ func TestUseItem_Blaster(t *testing.T) {
 func TestGetInventory(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, nil, nil, nil, false)
+	svc := NewService(repo, nil, nil, NewMockNamingResolver(), false)
 	ctx := context.Background()
 
 	// Setup: Give alice some items
@@ -636,7 +675,7 @@ func TestGetInventory(t *testing.T) {
 func TestUseItem_Lootbox0(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, nil, nil, nil, false).(*service)
+	svc := NewService(repo, nil, nil, NewMockNamingResolver(), false).(*service)
 
 	// Setup loot tables
 	svc.lootTables[domain.ItemLootbox0] = []LootItem{
@@ -657,9 +696,10 @@ func TestUseItem_Lootbox0(t *testing.T) {
 	// Message format changed
 	// "Opened 1 lootbox0 and received: 5x money" (random amount)
 	// We check if it contains expected parts
-	if !strings.Contains(msg, "Opened 1 lootbox0") {
-		t.Errorf("Expected message to contain 'Opened 1 lootbox0', got '%s'", msg)
+	if !strings.Contains(msg, "Opened 1 lootbox_tier0") {
+		t.Errorf("Expected message to contain 'Opened 1 lootbox_tier0', got '%s'", msg)
 	}
+
 	if !strings.Contains(msg, "money") {
 		t.Errorf("Expected message to contain 'money', got '%s'", msg)
 	}
@@ -677,7 +717,7 @@ func TestUseItem_Lootbox0(t *testing.T) {
 func TestUseItem_Lootbox2(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, nil, nil, nil, false).(*service)
+	svc := NewService(repo, nil, nil, NewMockNamingResolver(), false).(*service)
 
 	// Setup loot tables
 	svc.lootTables[domain.ItemLootbox2] = []LootItem{
@@ -696,7 +736,8 @@ func TestUseItem_Lootbox2(t *testing.T) {
 	}
 
 	// Message format changed
-	expectedMsg := "Opened 1 lootbox2 and received: 1x lootbox1"
+	expectedMsg := "Opened 1 lootbox_tier2 and received: 1x lootbox_tier1"
+
 	if msg != expectedMsg {
 		t.Errorf("Expected '%s', got '%s'", expectedMsg, msg)
 	}

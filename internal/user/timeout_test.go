@@ -4,13 +4,12 @@ import (
 	"context"
 	"testing"
 	"time"
-
 )
 
 func TestTimeoutUser(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, nil, nil, nil, false)
+	svc := NewService(repo, nil, nil, NewMockNamingResolver(), false)
 	ctx := context.Background()
 
 	// Test setting a timeout
@@ -35,7 +34,7 @@ func TestTimeoutUser(t *testing.T) {
 func TestHandleBlaster_Timeout(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, nil, nil, nil, false)
+	svc := NewService(repo, nil, nil, NewMockNamingResolver(), false)
 	ctx := context.Background()
 
 	// Setup: Give alice a blaster
