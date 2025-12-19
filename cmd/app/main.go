@@ -132,7 +132,7 @@ func main() {
 	jobService := job.NewService(jobRepo, progressionService)
 	
 	// Initialize services that depend on job service
-	userService := user.NewService(userRepo, jobService, cfg.DevMode)
+	userService := user.NewService(userRepo, statsService, jobService, cfg.DevMode)
 	economyService := economy.NewService(userRepo, jobService)
 	craftingService := crafting.NewService(userRepo, jobService)
 

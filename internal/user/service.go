@@ -12,6 +12,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
+	"github.com/osse101/BrandishBot_Go/internal/stats"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
@@ -90,6 +91,7 @@ type service struct {
 	timeouts     map[string]*time.Timer
 	lootTables   map[string][]LootItem
 	jobService   JobService
+	statsService stats.Service
 	stringFinder *StringFinder
 	devMode      bool // When true, bypasses cooldowns
 	wg           sync.WaitGroup
@@ -108,13 +110,14 @@ func setPlatformID(user *domain.User, platform, platformID string) {
 }
 
 // NewService creates a new user service
-func NewService(repo Repository, jobService JobService, devMode bool) Service {
+func NewService(repo Repository, statsService stats.Service, jobService JobService, devMode bool) Service {
 	s := &service{
 		repo:         repo,
 		itemHandlers: make(map[string]ItemEffectHandler),
 		timeouts:     make(map[string]*time.Timer),
 		lootTables:   make(map[string][]LootItem),
 		jobService:   jobService,
+		statsService: statsService,
 		stringFinder: NewStringFinder(),
 		devMode:      devMode,
 	}
@@ -585,6 +588,7 @@ func (s *service) validateItem(ctx context.Context, itemName string) (*domain.It
 const (
 	SearchSuccessRate  = 0.8
 	SearchCriticalRate = 0.05
+	SearchNearMissRate = 0.05
 )
 
 // HandleSearch performs a search action for a user with cooldown tracking
@@ -702,6 +706,16 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 			resultMessage = fmt.Sprintf("You have found %dx %s", quantity, item.Name)
 			log.Info("Search successful - lootbox found", "username", username, "item", item.Name)
 		}
+	} else if roll <= SearchSuccessRate+SearchNearMissRate {
+		// Near Miss case
+		if s.statsService != nil {
+			_ = s.statsService.RecordUserEvent(ctx, user.ID, domain.EventSearchNearMiss, map[string]interface{}{
+				"roll":      roll,
+				"threshold": SearchSuccessRate,
+			})
+		}
+		resultMessage = domain.MsgSearchNearMiss
+		log.Info("Search NEAR MISS", "username", username, "roll", roll)
 	} else {
 		// Failure case - Pick a random funny message
 		resultMessage = domain.MsgSearchNothingFound
