@@ -112,7 +112,7 @@ func (m *MockRepository) GetUnlockedRecipesForUser(ctx context.Context, userID s
 		if recipe, ok := m.recipes[recipeID]; ok {
 			if item, ok := m.itemsByID[recipe.TargetItemID]; ok {
 				result = append(result, UnlockedRecipeInfo{
-					ItemName: item.Name,
+					ItemName: item.InternalName,
 					ItemID:   item.ID,
 				})
 			}
@@ -170,9 +170,9 @@ func setupTestData(repo *MockRepository) {
 	repo.users["bob"] = &domain.User{ID: "user-bob", Username: "bob", TwitchID: "twitch-bob"}
 
 	// Setup items
-	repo.items["lootbox0"] = &domain.Item{ID: 1, Name: "lootbox0", Description: "Basic lootbox"}
-	repo.items[domain.ItemLootbox1] = &domain.Item{ID: 2, Name: domain.ItemLootbox1, Description: "Advanced lootbox"}
-	repo.items["lootbox2"] = &domain.Item{ID: 3, Name: "lootbox2", Description: "Premium lootbox"}
+	repo.items["lootbox0"] = &domain.Item{ID: 1, InternalName: "lootbox0", Description: "Basic lootbox"}
+	repo.items[domain.ItemLootbox1] = &domain.Item{ID: 2, InternalName: domain.ItemLootbox1, Description: "Advanced lootbox"}
+	repo.items["lootbox2"] = &domain.Item{ID: 3, InternalName: "lootbox2", Description: "Premium lootbox"}
 
 	repo.itemsByID[1] = repo.items["lootbox0"]
 	repo.itemsByID[2] = repo.items[domain.ItemLootbox1]
@@ -211,7 +211,7 @@ func setupTestData(repo *MockRepository) {
 func TestDisassembleItem_Success(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, lockManager)
+	svc := NewService(repo, nil)
 	ctx := context.Background()
 
 	// Give alice some lootbox1
@@ -260,7 +260,7 @@ func TestDisassembleItem_Success(t *testing.T) {
 func TestDisassembleItem_InsufficientItems(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, lockManager)
+	svc := NewService(repo, nil)
 	ctx := context.Background()
 
 	// Give alice only 1 loot box1
@@ -288,7 +288,7 @@ func TestDisassembleItem_InsufficientItems(t *testing.T) {
 func TestDisassembleItem_NoItems(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, lockManager)
+	svc := NewService(repo, nil)
 	ctx := context.Background()
 
 	// Alice has no lootbox1
@@ -304,7 +304,7 @@ func TestDisassembleItem_NoItems(t *testing.T) {
 func TestDisassembleItem_RecipeNotUnlocked(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, lockManager)
+	svc := NewService(repo, nil)
 	ctx := context.Background()
 
 	// Give alice lootbox1 but don't unlock the recipe
@@ -321,7 +321,7 @@ func TestDisassembleItem_RecipeNotUnlocked(t *testing.T) {
 func TestDisassembleItem_NoRecipe(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, lockManager)
+	svc := NewService(repo, nil)
 	ctx := context.Background()
 
 	// Try to disassemble lootbox0 which has no disassemble recipe
@@ -334,7 +334,7 @@ func TestDisassembleItem_NoRecipe(t *testing.T) {
 func TestDisassembleItem_RemovesSlotWhenEmpty(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, lockManager)
+	svc := NewService(repo, nil)
 	ctx := context.Background()
 
 	// Give alice exactly 1 lootbox1
@@ -363,7 +363,7 @@ func TestDisassembleItem_RemovesSlotWhenEmpty(t *testing.T) {
 func TestUpgradeItem_Success(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, lockManager)
+	svc := NewService(repo, nil)
 	ctx := context.Background()
 
 	// Give alice 2 lootbox0
@@ -410,7 +410,7 @@ func TestUpgradeItem_Success(t *testing.T) {
 func TestUpgradeItem_InsufficientMaterials(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, lockManager)
+	svc := NewService(repo, nil)
 	ctx := context.Background()
 
 	// Give alice only 1 lootbox0
@@ -434,7 +434,7 @@ func TestUpgradeItem_InsufficientMaterials(t *testing.T) {
 func TestUpgradeItem_NoMaterials(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, lockManager)
+	svc := NewService(repo, nil)
 	ctx := context.Background()
 
 	// Unlock recipe but alice has no materials
@@ -450,7 +450,7 @@ func TestUpgradeItem_NoMaterials(t *testing.T) {
 func TestUpgradeItem_RecipeNotUnlocked(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, lockManager)
+	svc := NewService(repo, nil)
 	ctx := context.Background()
 
 	// Give alice materials but don't unlock recipe
@@ -467,7 +467,7 @@ func TestUpgradeItem_RecipeNotUnlocked(t *testing.T) {
 func TestUpgradeItem_NoRecipe(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, lockManager)
+	svc := NewService(repo, nil)
 	ctx := context.Background()
 
 	// Try to upgrade lootbox0 which has no recipe
@@ -480,7 +480,7 @@ func TestUpgradeItem_NoRecipe(t *testing.T) {
 func TestUpgradeItem_UserNotFound(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, lockManager)
+	svc := NewService(repo, nil)
 	ctx := context.Background()
 
 	// Try with non-existent user
@@ -495,7 +495,7 @@ func TestUpgradeItem_UserNotFound(t *testing.T) {
 func TestGetRecipe_WithoutUsername(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, lockManager)
+	svc := NewService(repo, nil)
 	ctx := context.Background()
 
 	// Get recipe without username (no lock status)
@@ -520,7 +520,7 @@ func TestGetRecipe_WithoutUsername(t *testing.T) {
 func TestGetRecipe_Unlocked(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, lockManager)
+	svc := NewService(repo, nil)
 	ctx := context.Background()
 
 	// Unlock the recipe
@@ -540,7 +540,7 @@ func TestGetRecipe_Unlocked(t *testing.T) {
 func TestGetRecipe_Locked(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, lockManager)
+	svc := NewService(repo, nil)
 	ctx := context.Background()
 
 	// Don't unlock the recipe
@@ -557,7 +557,7 @@ func TestGetRecipe_Locked(t *testing.T) {
 func TestGetRecipe_ItemNotFound(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, lockManager)
+	svc := NewService(repo, nil)
 	ctx := context.Background()
 
 	// Try to get recipe for non-existent item
@@ -572,7 +572,7 @@ func TestGetRecipe_ItemNotFound(t *testing.T) {
 func TestGetUnlockedRecipes_Success(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, lockManager)
+	svc := NewService(repo, nil)
 	ctx := context.Background()
 
 	// Unlock recipe for alice
@@ -596,7 +596,7 @@ func TestGetUnlockedRecipes_Success(t *testing.T) {
 func TestGetUnlockedRecipes_NoUnlockedRecipes(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, lockManager)
+	svc := NewService(repo, nil)
 	ctx := context.Background()
 
 	// Don't unlock any recipes
@@ -613,7 +613,7 @@ func TestGetUnlockedRecipes_NoUnlockedRecipes(t *testing.T) {
 func TestGetUnlockedRecipes_UserNotFound(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, lockManager)
+	svc := NewService(repo, nil)
 	ctx := context.Background()
 
 	// Try with non-existent user

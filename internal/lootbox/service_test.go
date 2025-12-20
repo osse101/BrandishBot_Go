@@ -37,8 +37,8 @@ func TestOpenLootbox(t *testing.T) {
 	// Setup mock repo
 	repo := &mockItemRepo{
 		items: map[string]*domain.Item{
-			"common_sword": {ID: 1, Name: "common_sword", BaseValue: 10},
-			"rare_sword":   {ID: 2, Name: "rare_sword", BaseValue: 100},
+			"common_sword": {ID: 1, InternalName: "common_sword", BaseValue: 10},
+			"rare_sword":   {ID: 2, InternalName: "rare_sword", BaseValue: 100},
 		},
 	}
 

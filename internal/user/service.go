@@ -645,7 +645,7 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 
 	// Perform search
 	var resultMessage string
-	roll := utils.RandomFloat()
+	roll := utils.SecureRandomFloat()
 
 	if roll <= SearchSuccessRate {
 		// Success case
@@ -726,7 +726,7 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 		// Failure case - Pick a random funny message
 		resultMessage = domain.MsgSearchNothingFound
 		if len(domain.SearchFailureMessages) > 0 {
-			idx := utils.RandomInt(0, len(domain.SearchFailureMessages)-1)
+			idx := utils.SecureRandomIntRange(0, len(domain.SearchFailureMessages)-1)
 			resultMessage = domain.SearchFailureMessages[idx]
 		}
 		log.Info("Search successful - nothing found", "username", username, "message", resultMessage)

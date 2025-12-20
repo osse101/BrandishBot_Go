@@ -93,9 +93,9 @@ func createTestUser() *domain.User {
 
 func createTestItem(id int, name string, value int) *domain.Item {
 	return &domain.Item{
-		ID:        id,
-		Name:      name,
-		BaseValue: value,
+		ID:           id,
+		InternalName: name,
+		BaseValue:    value,
 	}
 }
 
@@ -424,8 +424,8 @@ func TestGetSellablePrices_Success(t *testing.T) {
 	ctx := context.Background()
 
 	expectedItems := []domain.Item{
-		{ID: 10, Name: "Sword", BaseValue: 100},
-		{ID: 20, Name: "Potion", BaseValue: 50},
+		{ID: 10, InternalName: "Sword", BaseValue: 100},
+		{ID: 20, InternalName: "Potion", BaseValue: 50},
 	}
 
 	mockRepo.On("GetSellablePrices", ctx).Return(expectedItems, nil)
@@ -436,7 +436,7 @@ func TestGetSellablePrices_Success(t *testing.T) {
 	// ASSERT
 	require.NoError(t, err)
 	assert.Len(t, items, 2)
-	assert.Equal(t, "Sword", items[0].Name)
+	assert.Equal(t, "Sword", items[0].InternalName)
 	assert.Equal(t, 100, items[0].BaseValue)
 	mockRepo.AssertExpectations(t)
 }
