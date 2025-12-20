@@ -238,7 +238,7 @@ func (r *MockRepository) GetUnlockedRecipesForUser(ctx context.Context, userID s
 						recipes = append(recipes, crafting.UnlockedRecipeInfo{
 							ItemName: item.InternalName,
 
-							ItemID:   item.ID,
+							ItemID: item.ID,
 						})
 						break
 					}
@@ -281,36 +281,36 @@ func setupTestData(repo *MockRepository) {
 
 	// Add test items
 	repo.items[domain.ItemLootbox1] = &domain.Item{
-		ID:          1,
-		InternalName:        domain.ItemLootbox1,
+		ID:           1,
+		InternalName: domain.ItemLootbox1,
 
 		Description: "Basic Lootbox",
 		BaseValue:   50,
 	}
 	repo.items[domain.ItemLootbox2] = &domain.Item{
-		ID:          2,
-		InternalName:        domain.ItemLootbox2,
+		ID:           2,
+		InternalName: domain.ItemLootbox2,
 
 		Description: "Good Lootbox",
 		BaseValue:   100,
 	}
 	repo.items[domain.ItemMoney] = &domain.Item{
-		ID:          3,
-		InternalName:        domain.ItemMoney,
+		ID:           3,
+		InternalName: domain.ItemMoney,
 
 		Description: "Currency",
 		BaseValue:   1,
 	}
 	repo.items[domain.ItemLootbox0] = &domain.Item{
-		ID:          4,
-		InternalName:        domain.ItemLootbox0,
+		ID:           4,
+		InternalName: domain.ItemLootbox0,
 
 		Description: "Empty Lootbox",
 		BaseValue:   10,
 	}
 	repo.items[domain.ItemBlaster] = &domain.Item{
-		ID:          5,
-		InternalName:        domain.ItemBlaster,
+		ID:           5,
+		InternalName: domain.ItemBlaster,
 
 		Description: "So anyway, I started blasting",
 		BaseValue:   10,

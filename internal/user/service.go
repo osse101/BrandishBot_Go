@@ -147,7 +147,6 @@ func (s *service) registerHandlers() {
 	s.itemHandlers[domain.ItemLootbox2] = s.handleLootbox2
 }
 
-
 // RegisterUser registers a new user
 func (s *service) RegisterUser(ctx context.Context, user domain.User) (domain.User, error) {
 	log := logger.FromContext(ctx)
@@ -647,6 +646,24 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 	var resultMessage string
 	roll := utils.RandomFloat()
 
+	// Check for First Search of the Day
+	isFirstSearchDaily := false
+	if lastUsed == nil {
+		isFirstSearchDaily = true
+	} else {
+		y1, m1, d1 := lastUsed.Date()
+		y2, m2, d2 := now.Date()
+		if y1 != y2 || m1 != m2 || d1 != d2 {
+			isFirstSearchDaily = true
+		}
+	}
+
+	// Apply First Search Bonus
+	if isFirstSearchDaily {
+		roll = 0.0 // Guaranteed Success (and Critical Success since 0.0 <= 0.05)
+		log.Info("First search of the day - applying bonus", "username", username)
+	}
+
 	if roll <= SearchSuccessRate {
 		// Success case
 		isCritical := roll <= SearchCriticalRate
@@ -711,6 +728,10 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 		} else {
 			resultMessage = fmt.Sprintf("You have found %dx %s", quantity, displayName)
 			log.Info("Search successful - lootbox found", "username", username, "item", item.InternalName)
+		}
+
+		if isFirstSearchDaily {
+			resultMessage += domain.MsgFirstSearchBonus
 		}
 	} else if roll <= SearchSuccessRate+SearchNearMissRate {
 		// Near Miss case

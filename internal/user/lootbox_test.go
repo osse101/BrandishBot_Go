@@ -174,7 +174,6 @@ func TestProcessLootbox(t *testing.T) {
 
 	money := &domain.Item{ID: 1, InternalName: domain.ItemMoney}
 
-
 	t.Run("Lootbox0 drops money", func(t *testing.T) {
 		repo := new(MockRepo)
 		svc := createTestService(repo)
