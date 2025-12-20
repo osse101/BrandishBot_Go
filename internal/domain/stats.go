@@ -20,6 +20,7 @@ const (
 	EventGambleCriticalFail EventType = "gamble_critical_fail"
 	EventDailyStreak        EventType = "daily_streak"
 	// Search events
+	EventSearch         EventType = "search"
 	EventSearchNearMiss EventType = "search_near_miss"
 )
 
