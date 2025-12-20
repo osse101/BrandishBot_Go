@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 	"os"
 	"os/signal"
 	"syscall"
@@ -167,18 +168,19 @@ func (b *Bot) SendDailyCommitReport() error {
 		return nil // No commits to report
 	}
 
-	description := ""
+	var sb strings.Builder
+	// Optimization: Use strings.Builder for efficient string concatenation (O(n) vs O(n^2))
 	for _, c := range commits {
 		msg := c.Commit.Message
 		if len(msg) > 50 {
 			msg = msg[:47] + "..."
 		}
-		description += fmt.Sprintf("• [`%s`](%s) %s - *%s*\n", c.Sha[:7], c.HtmlUrl, msg, c.Commit.Author.Name)
+		fmt.Fprintf(&sb, "• [`%s`](%s) %s - *%s*\n", c.Sha[:7], c.HtmlUrl, msg, c.Commit.Author.Name)
 	}
 
 	embed := &discordgo.MessageEmbed{
 		Title:       "Daily Commit Summary",
-		Description: description,
+		Description: sb.String(),
 		Color:       0x0099FF, // Blue
 		Timestamp:   time.Now().Format(time.RFC3339),
 		Footer: &discordgo.MessageEmbedFooter{

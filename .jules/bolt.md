@@ -5,3 +5,7 @@
 ## 2025-12-18 - [Map Iteration Non-Determinism]
 **Learning:** Iterating over maps in Go is non-deterministic. When using a map to aggregate data that will be appended to a list, you MUST sort the keys first if order stability matters (e.g., for test reproducibility or consistent UI presentation).
 **Action:** Always extract map keys to a slice and sort them before iterating to generate ordered lists from map data.
+
+## 2025-12-20 - [Outdated Test Structs]
+**Learning:** Changes to core domain structs (like `domain.Item`) often don't propagate to test files immediately if they use struct literals, leading to compilation errors in unrelated packages during full test runs.
+**Action:** When running tests for a specific package, be prepared to fix unrelated test compilation errors if shared domain structs have changed.

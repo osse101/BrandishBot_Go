@@ -21,8 +21,8 @@ func TestPricesCommand_Buy(t *testing.T) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		WriteJSON(w, map[string]interface{}{
 			"items": []domain.Item{
-				{Name: "health_potion", BaseValue: 50},
-				{Name: "iron_sword", BaseValue: 200},
+				{InternalName: "health_potion", BaseValue: 50},
+				{InternalName: "iron_sword", BaseValue: 200},
 			},
 		})
 	})
@@ -80,7 +80,7 @@ func TestPricesCommand_Sell(t *testing.T) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		WriteJSON(w, map[string]interface{}{
 			"items": []domain.Item{
-				{Name: "gold_nugget", BaseValue: 100},
+				{InternalName: "gold_nugget", BaseValue: 100},
 			},
 		})
 	})
