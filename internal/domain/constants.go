@@ -39,6 +39,7 @@ const (
 	MsgSearchNothingFound    = "You have found nothing"
 	MsgSearchNearMiss        = "You found nothing... but you saw something glint in the distance!"
 	MsgSearchCriticalSuccess = "You found a hidden stash! (CRITICAL SUCCESS!)"
+	MsgFirstSearchBonus      = " (First Search of the Day!)"
 )
 
 // SearchFailureMessages is a list of funny messages for failed searches

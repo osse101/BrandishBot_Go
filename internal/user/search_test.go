@@ -148,8 +148,8 @@ func (m *mockSearchRepo) GetSellablePrices(ctx context.Context) ([]domain.Item, 
 func (m *mockSearchRepo) IsItemBuyable(ctx context.Context, itemName string) (bool, error) {
 	return false, nil
 }
-func (m *mockSearchRepo) Commit(ctx context.Context) error { return nil }
-func (m *mockSearchRepo) Rollback(ctx context.Context) error { return nil }
+func (m *mockSearchRepo) Commit(ctx context.Context) error                   { return nil }
+func (m *mockSearchRepo) Rollback(ctx context.Context) error                 { return nil }
 func (m *mockSearchRepo) BeginTx(ctx context.Context) (repository.Tx, error) { return m, nil }
 func (m *mockSearchRepo) GetRecipeByTargetItemID(ctx context.Context, itemID int) (*domain.Recipe, error) {
 	return nil, nil
@@ -171,8 +171,8 @@ func createSearchTestService() (*service, *mockSearchRepo) {
 
 	// Add standard test items
 	repo.items[domain.ItemLootbox0] = &domain.Item{
-		ID:          1,
-		InternalName:        domain.ItemLootbox0,
+		ID:           1,
+		InternalName: domain.ItemLootbox0,
 
 		Description: "Basic Lootbox",
 		BaseValue:   10,
@@ -522,6 +522,7 @@ func TestHandleSearch_MultipleSearches(t *testing.T) {
 // MockStatsService for testing
 type mockStatsService struct {
 	recordedEvents []domain.StatsEvent
+	mockCounts     map[domain.EventType]int
 }
 
 func (m *mockStatsService) RecordUserEvent(ctx context.Context, userID string, eventType domain.EventType, metadata map[string]interface{}) error {
@@ -534,7 +535,14 @@ func (m *mockStatsService) RecordUserEvent(ctx context.Context, userID string, e
 }
 
 func (m *mockStatsService) GetUserStats(ctx context.Context, userID string, period string) (*domain.StatsSummary, error) {
-	return nil, nil
+	summary := &domain.StatsSummary{
+		Period:      period,
+		EventCounts: make(map[domain.EventType]int),
+	}
+	if m.mockCounts != nil {
+		summary.EventCounts = m.mockCounts
+	}
+	return summary, nil
 }
 func (m *mockStatsService) GetSystemStats(ctx context.Context, period string) (*domain.StatsSummary, error) {
 	return nil, nil
@@ -548,13 +556,15 @@ func TestHandleSearch_NearMiss_Statistical(t *testing.T) {
 	repo := newMockSearchRepo()
 	// Add required lootbox item
 	repo.items[domain.ItemLootbox0] = &domain.Item{
-		ID:        1,
-		InternalName:      domain.ItemLootbox0,
+		ID:           1,
+		InternalName: domain.ItemLootbox0,
 
 		BaseValue: 10,
 	}
 
-	statsSvc := &mockStatsService{}
+	statsSvc := &mockStatsService{
+		mockCounts: map[domain.EventType]int{domain.EventSearch: 1},
+	}
 	// Enable devMode to bypass cooldowns for loop
 	svc := NewService(repo, statsSvc, nil, NewMockNamingResolver(), true).(*service)
 
@@ -581,8 +591,98 @@ func TestHandleSearch_NearMiss_Statistical(t *testing.T) {
 	assert.Greater(t, nearMissCount, 0, "Should have encountered at least one near miss")
 
 	// Verify events were recorded
-	assert.Equal(t, nearMissCount, len(statsSvc.recordedEvents), "Should record event for each near miss")
-	if len(statsSvc.recordedEvents) > 0 {
-		assert.Equal(t, domain.EventSearchNearMiss, statsSvc.recordedEvents[0].EventType)
+	recordedNearMisses := 0
+	for _, evt := range statsSvc.recordedEvents {
+		if evt.EventType == domain.EventSearchNearMiss {
+			recordedNearMisses++
+		}
 	}
+	assert.Equal(t, nearMissCount, recordedNearMisses, "Should record event for each near miss")
+}
+
+func TestHandleSearch_FirstDaily(t *testing.T) {
+	// ARRANGE
+	svc, repo := createSearchTestService()
+	user := createTestUser(TestUsername, TestUserID)
+	repo.users[TestUsername] = user
+	ctx := context.Background()
+
+	// 1. First search ever (lastUsed is nil)
+	msg, err := svc.HandleSearch(ctx, "twitch", "testuser123", TestUsername)
+	require.NoError(t, err)
+
+	assert.Contains(t, msg, domain.MsgFirstSearchBonus, "Expected bonus message for first ever search")
+	assert.Contains(t, msg, domain.MsgSearchCriticalSuccess, "Expected critical success for first search")
+
+	// 2. Second search same day (lastUsed is now)
+	// Modify cooldown to be 31 mins ago (expired) but SAME DAY.
+	now := time.Now()
+	past31m := now.Add(-31 * time.Minute)
+
+	if past31m.Day() == now.Day() {
+		repo.cooldowns[TestUserID] = map[string]*time.Time{
+			domain.ActionSearch: &past31m,
+		}
+
+		msg, err = svc.HandleSearch(ctx, "twitch", "testuser123", TestUsername)
+		require.NoError(t, err)
+
+		assert.NotContains(t, msg, domain.MsgFirstSearchBonus, "Did not expect bonus message for second search same day")
+	}
+
+	// 3. Search next day
+	yesterday := now.Add(-25 * time.Hour)
+	repo.cooldowns[TestUserID] = map[string]*time.Time{
+		domain.ActionSearch: &yesterday,
+	}
+
+	msg, err = svc.HandleSearch(ctx, "twitch", "testuser123", TestUsername)
+	require.NoError(t, err)
+
+	assert.Contains(t, msg, domain.MsgFirstSearchBonus, "Expected bonus message for next day search")
+}
+
+func TestHandleSearch_DiminishingReturns(t *testing.T) {
+	// ARRANGE
+	repo := newMockSearchRepo()
+	// Add required items
+	repo.items[domain.ItemLootbox0] = &domain.Item{
+		ID:           1,
+		InternalName: domain.ItemLootbox0,
+		BaseValue:    10,
+	}
+
+	statsSvc := &mockStatsService{
+		mockCounts: make(map[domain.EventType]int),
+	}
+	svc := NewService(repo, statsSvc, nil, NewMockNamingResolver(), true).(*service) // devMode=true to bypass cooldown
+
+	user := createTestUser(TestUsername, TestUserID)
+	repo.users[TestUsername] = user
+	ctx := context.Background()
+
+	// 1. Normal Search (Count 1)
+	statsSvc.mockCounts[domain.EventSearch] = 1
+
+	msg, err := svc.HandleSearch(ctx, "twitch", "testuser123", TestUsername)
+	require.NoError(t, err)
+
+	assert.NotContains(t, msg, domain.MsgFirstSearchBonus)
+	assert.NotContains(t, msg, "(Exhausted)")
+
+	// 2. Diminished Search (Count 6)
+	statsSvc.mockCounts[domain.EventSearch] = 6
+
+	msg, err = svc.HandleSearch(ctx, "twitch", "testuser123", TestUsername)
+	require.NoError(t, err)
+
+	// We can't guarantee "Exhausted" message because of RNG failure,
+	// but we can verify event tracking which confirms logic execution.
+
+	// Verify RecordUserEvent called with correct daily_count
+	require.Greater(t, len(statsSvc.recordedEvents), 0)
+	lastEvent := statsSvc.recordedEvents[len(statsSvc.recordedEvents)-1]
+	assert.Equal(t, domain.EventSearch, lastEvent.EventType)
+	// 6 existing + 1 new = 7
+	assert.Equal(t, 7, lastEvent.EventData["daily_count"])
 }

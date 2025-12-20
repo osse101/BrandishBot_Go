@@ -147,7 +147,6 @@ func (s *service) registerHandlers() {
 	s.itemHandlers[domain.ItemLootbox2] = s.handleLootbox2
 }
 
-
 // RegisterUser registers a new user
 func (s *service) RegisterUser(ctx context.Context, user domain.User) (domain.User, error) {
 	log := logger.FromContext(ctx)
@@ -647,7 +646,60 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 	var resultMessage string
 	roll := utils.SecureRandomFloat()
 
-	if roll <= SearchSuccessRate {
+	// Calculate daily search stats
+	dailyCount := 0
+	if s.statsService != nil {
+		stats, err := s.statsService.GetUserStats(ctx, user.ID, domain.PeriodDaily)
+		if err != nil {
+			log.Warn("Failed to get search counts", "error", err)
+			// Fallback to cooldown logic for "First Search" check
+			if lastUsed == nil {
+				dailyCount = 0
+			} else {
+				y1, m1, d1 := lastUsed.Date()
+				y2, m2, d2 := now.Date()
+				if y1 != y2 || m1 != m2 || d1 != d2 {
+					dailyCount = 0
+				} else {
+					dailyCount = 1 // Assume > 0
+				}
+			}
+		} else {
+			if stats != nil && stats.EventCounts != nil {
+				dailyCount = stats.EventCounts[domain.EventSearch]
+			}
+		}
+	} else {
+		// No stats service (e.g. tests)
+		if lastUsed == nil {
+			dailyCount = 0
+		} else {
+			y1, m1, d1 := lastUsed.Date()
+			y2, m2, d2 := now.Date()
+			if y1 != y2 || m1 != m2 || d1 != d2 {
+				dailyCount = 0
+			} else {
+				dailyCount = 1
+			}
+		}
+	}
+
+	// Determine multipliers and status
+	isFirstSearchDaily := (dailyCount == 0)
+	isDiminished := (dailyCount >= 6)
+	xpMultiplier := 1.0
+	successThreshold := SearchSuccessRate
+
+	if isFirstSearchDaily {
+		roll = 0.0 // Guaranteed Success
+		log.Info("First search of the day - applying bonus", "username", username)
+	} else if isDiminished {
+		successThreshold = 0.1 // Reduced success rate
+		xpMultiplier = 0.1     // Reduced XP
+		log.Info("Diminished search returns applied", "username", username, "dailyCount", dailyCount)
+	}
+
+	if roll <= successThreshold {
 		// Success case
 		isCritical := roll <= SearchCriticalRate
 		quantity := 1
@@ -700,7 +752,7 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 
 		// Award Explorer XP for finding item (async, don't block)
 		s.wg.Add(1)
-		go s.awardExplorerXP(context.Background(), user.ID, item.InternalName)
+		go s.awardExplorerXP(context.Background(), user.ID, item.InternalName, xpMultiplier)
 
 		// Get display name with shine (empty shine for search results)
 		displayName := s.namingResolver.GetDisplayName(item.InternalName, "")
@@ -712,12 +764,18 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 			resultMessage = fmt.Sprintf("You have found %dx %s", quantity, displayName)
 			log.Info("Search successful - lootbox found", "username", username, "item", item.InternalName)
 		}
-	} else if roll <= SearchSuccessRate+SearchNearMissRate {
+
+		if isFirstSearchDaily {
+			resultMessage += domain.MsgFirstSearchBonus
+		} else if isDiminished {
+			resultMessage += " (Exhausted)"
+		}
+	} else if roll <= successThreshold+SearchNearMissRate {
 		// Near Miss case
 		if s.statsService != nil {
 			_ = s.statsService.RecordUserEvent(ctx, user.ID, domain.EventSearchNearMiss, map[string]interface{}{
 				"roll":      roll,
-				"threshold": SearchSuccessRate,
+				"threshold": successThreshold,
 			})
 		}
 		resultMessage = domain.MsgSearchNearMiss
@@ -736,6 +794,14 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 	if err := s.repo.UpdateCooldown(ctx, user.ID, domain.ActionSearch, now); err != nil {
 		log.Error("Failed to update cooldown", "error", err, "userID", user.ID)
 		// Don't fail the search, just log the error
+	}
+
+	// Record search attempt (to track daily count)
+	if s.statsService != nil {
+		_ = s.statsService.RecordUserEvent(ctx, user.ID, domain.EventSearch, map[string]interface{}{
+			"success":     roll <= successThreshold,
+			"daily_count": dailyCount + 1, // +1 because we just did one
+		})
 	}
 
 	log.Info("Search completed", "username", username, "result", resultMessage)
@@ -774,17 +840,21 @@ func (s *service) getUserOrRegister(ctx context.Context, platform, platformID, u
 }
 
 // awardExplorerXP awards Explorer job XP for finding items during search
-func (s *service) awardExplorerXP(ctx context.Context, userID, itemName string) {
+func (s *service) awardExplorerXP(ctx context.Context, userID, itemName string, xpMultiplier float64) {
 	defer s.wg.Done()
 
 	if s.jobService == nil {
 		return // Job system not enabled
 	}
 
-	xp := job.ExplorerXPPerItem
+	xp := int(float64(job.ExplorerXPPerItem) * xpMultiplier)
+	if xp < 1 {
+		xp = 1
+	}
 
 	metadata := map[string]interface{}{
-		"item_name": itemName,
+		"item_name":  itemName,
+		"multiplier": xpMultiplier,
 	}
 
 	result, err := s.jobService.AwardXP(ctx, userID, job.JobKeyExplorer, xp, "search", metadata)
