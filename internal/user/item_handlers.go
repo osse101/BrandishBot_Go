@@ -56,10 +56,10 @@ func (s *service) processLootbox(ctx context.Context, inventory *domain.Inventor
 
 	for i := 0; i < quantity; i++ {
 		for _, loot := range table {
-			if utils.RandomFloat() <= loot.Chance {
+			if utils.SecureRandomFloat() <= loot.Chance {
 				qty := loot.Min
 				if loot.Max > loot.Min {
-					qty = utils.RandomInt(loot.Min, loot.Max)
+					qty = utils.SecureRandomIntRange(loot.Min, loot.Max)
 				}
 				drops[loot.ItemName] += qty
 			}

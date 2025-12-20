@@ -35,6 +35,25 @@ func SecureRandomInt(max int) int {
 	return int(n.Int64())
 }
 
+// SecureRandomIntRange returns a cryptographically secure random integer between min and max (inclusive).
+func SecureRandomIntRange(min, max int) int {
+	if min > max {
+		return min
+	}
+	return SecureRandomInt(max-min+1) + min
+}
+
+// SecureRandomFloat returns a cryptographically secure random float64 in [0.0, 1.0).
+func SecureRandomFloat() float64 {
+	// 1<<53 is the maximum integer representable exactly in float64 without loss of precision (for the significand)
+	max := big.NewInt(1 << 53)
+	n, err := rand.Int(rand.Reader, max)
+	if err != nil {
+		panic(err)
+	}
+	return float64(n.Int64()) / float64(1<<53)
+}
+
 // DiminishingReturns calculates a value with diminishing returns.
 // value: The input value.
 // scale: The value at which the output is 50% of the maximum possible output (asymptote).
