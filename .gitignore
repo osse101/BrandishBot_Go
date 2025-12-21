@@ -10,8 +10,12 @@
 bin/
 
 # Built binaries
-/cmd/app/app
 /main
+/app
+/discord
+/debug
+/reset
+/setup
 
 # Test binary, built with `go test -c`
 *.test
