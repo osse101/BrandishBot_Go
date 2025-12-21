@@ -149,45 +149,56 @@ func TestProgressionRepository_Integration(t *testing.T) {
 			t.Skip("Money node not found")
 		}
 
-		// Start voting
-		endsAt := time.Now().Add(24 * time.Hour)
-		err = repo.StartVoting(ctx, money.ID, 1, &endsAt)
+		// Create voting session
+		sessionID, err := repo.CreateVotingSession(ctx)
 		if err != nil {
-			t.Fatalf("StartVoting failed: %v", err)
+			t.Fatalf("CreateVotingSession failed: %v", err)
 		}
 
-		// Get active voting
-		voting, err := repo.GetActiveVoting(ctx)
+		// Add voting option
+		err = repo.AddVotingOption(ctx, sessionID, money.ID, 1)
 		if err != nil {
-			t.Fatalf("GetActiveVoting failed: %v", err)
+			t.Fatalf("AddVotingOption failed: %v", err)
 		}
-		if voting == nil || voting.NodeID != money.ID {
-			t.Error("Expected active voting for money node")
+
+		// Get active session
+		session, err := repo.GetActiveSession(ctx)
+		if err != nil {
+			t.Fatalf("GetActiveSession failed: %v", err)
+		}
+		if session == nil || session.ID != sessionID {
+			t.Error("Expected active session to match created session")
 		}
 
 		// Record user vote
 		userID := "integration_user"
-		err = repo.RecordUserVote(ctx, userID, money.ID, 1)
-		if err != nil {
-			t.Fatalf("RecordUserVote failed: %v", err)
+		if len(session.Options) > 0 {
+			optionID := session.Options[0].ID
+			err = repo.RecordUserSessionVote(ctx, userID, sessionID, optionID, money.ID)
+			if err != nil {
+				t.Fatalf("RecordUserSessionVote failed: %v", err)
+			}
+
+			// Verify vote recorded
+			hasVoted, err := repo.HasUserVotedInSession(ctx, userID, sessionID)
+			if err != nil || !hasVoted {
+				t.Error("User vote should be recorded in session")
+			}
+
+			// Increment vote
+			err = repo.IncrementOptionVote(ctx, optionID)
+			if err != nil {
+				t.Fatalf("IncrementOptionVote failed: %v", err)
+			}
 		}
 
-		// Verify vote recorded
-		hasVoted, err := repo.HasUserVoted(ctx, userID, money.ID, 1)
-		if err != nil || !hasVoted {
-			t.Error("User vote should be recorded")
-		}
-
-		// Increment vote
-		err = repo.IncrementVote(ctx, money.ID, 1)
-		if err != nil {
-			t.Fatalf("IncrementVote failed: %v", err)
-		}
-
-		// End voting
-		err = repo.EndVoting(ctx, money.ID, 1)
-		if err != nil {
-			t.Fatalf("EndVoting failed: %v", err)
+		// End voting session
+		if len(session.Options) > 0 {
+			winningOptionID := session.Options[0].ID
+			err = repo.EndVotingSession(ctx, sessionID, winningOptionID)
+			if err != nil {
+				t.Fatalf("EndVotingSession failed: %v", err)
+			}
 		}
 	})
 
