@@ -115,11 +115,11 @@ func (m *mockSearchRepo) GetUserByPlatformID(ctx context.Context, platform, plat
 	}
 	for _, u := range m.users {
 		switch platform {
-		case "twitch":
+		case domain.PlatformTwitch:
 			if u.TwitchID == platformID {
 				return u, nil
 			}
-		case "discord":
+		case domain.PlatformDiscord:
 			if u.DiscordID == platformID {
 				return u, nil
 			}
@@ -201,7 +201,7 @@ func TestHandleSearch_Success(t *testing.T) {
 	repo.users[TestUsername] = user
 
 	// ACT
-	message, err := svc.HandleSearch(context.Background(), "twitch", "testuser123", TestUsername)
+	message, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
 
 	// ASSERT
 	require.NoError(t, err)
@@ -263,7 +263,7 @@ func TestHandleSearch_CooldownBoundaries(t *testing.T) {
 			}
 
 			// ACT
-			message, err := svc.HandleSearch(context.Background(), "twitch", "testuser123", TestUsername)
+			message, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
 
 			// ASSERT
 			require.NoError(t, err)
@@ -285,7 +285,7 @@ func TestHandleSearch_NewUserCreation(t *testing.T) {
 	svc, repo := createSearchTestService()
 
 	// ACT - Search with non-existent user
-	message, err := svc.HandleSearch(context.Background(), "twitch", "", "newuser")
+	message, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "", "newuser")
 
 	// ASSERT
 	require.NoError(t, err)
@@ -332,7 +332,7 @@ func TestHandleSearch_InvalidInputs(t *testing.T) {
 		{
 			name:     "empty username",
 			username: "",
-			platform: "twitch",
+			platform: domain.PlatformTwitch,
 			setup:    func(r *mockSearchRepo) {},
 			wantErr:  true,
 			errMsg:   "username cannot be empty",
@@ -355,7 +355,7 @@ func TestHandleSearch_InvalidInputs(t *testing.T) {
 		{
 			name:     "missing lootbox item",
 			username: TestUsername,
-			platform: "twitch",
+			platform: domain.PlatformTwitch,
 			setup: func(r *mockSearchRepo) {
 				delete(r.items, domain.ItemLootbox0)
 			},
@@ -392,7 +392,7 @@ func TestHandleSearch_DatabaseErrors(t *testing.T) {
 		repo.shouldFailGet = true
 
 		// ACT
-		_, err := svc.HandleSearch(context.Background(), "twitch", "testuser123", TestUsername)
+		_, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
 
 		// ASSERT
 		if err != nil {
@@ -427,7 +427,7 @@ func TestHandleSearch_NamingResolution(t *testing.T) {
 		delete(repo.cooldowns[user.ID], domain.ActionSearch)
 
 		// Call with devMode false (default in createSearchTestService)
-		msg, err := svc.HandleSearch(context.Background(), "twitch", "testuser123", TestUsername)
+		msg, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
 		require.NoError(t, err)
 
 		if strings.Contains(msg, "Mysterious Chest") {
@@ -457,7 +457,7 @@ func TestHandleSearch_CooldownUpdate(t *testing.T) {
 		}
 
 		// ACT
-		_, err := svc.HandleSearch(context.Background(), "twitch", "testuser123", TestUsername)
+		_, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
 
 		// ASSERT
 		require.NoError(t, err)
@@ -482,7 +482,7 @@ func TestHandleSearch_CooldownUpdate(t *testing.T) {
 		}
 
 		// ACT
-		message, err := svc.HandleSearch(context.Background(), "twitch", "testuser123", TestUsername)
+		message, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
 
 		// ASSERT
 		require.NoError(t, err)
@@ -504,7 +504,7 @@ func TestHandleSearch_MultipleSearches(t *testing.T) {
 		repo.users[TestUsername] = user
 
 		// ACT - First search
-		_, err1 := svc.HandleSearch(context.Background(), "twitch", "testuser123", TestUsername)
+		_, err1 := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
 		require.NoError(t, err1)
 
 		// Manually expire cooldown
@@ -512,7 +512,7 @@ func TestHandleSearch_MultipleSearches(t *testing.T) {
 		repo.cooldowns[user.ID][domain.ActionSearch] = &expiredTime
 
 		// Second search after expiry
-		_, err2 := svc.HandleSearch(context.Background(), "twitch", "testuser123", TestUsername)
+		_, err2 := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
 
 		// ASSERT
 		require.NoError(t, err2, "Should be able to search again after cooldown expires")
@@ -576,7 +576,7 @@ func TestHandleSearch_NearMiss_Statistical(t *testing.T) {
 	iterations := 1000
 
 	for i := 0; i < iterations; i++ {
-		msg, err := svc.HandleSearch(context.Background(), "twitch", "testuser123", TestUsername)
+		msg, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
 		require.NoError(t, err)
 
 		if msg == domain.MsgSearchNearMiss {
@@ -608,7 +608,7 @@ func TestHandleSearch_FirstDaily(t *testing.T) {
 	ctx := context.Background()
 
 	// 1. First search ever (lastUsed is nil)
-	msg, err := svc.HandleSearch(ctx, "twitch", "testuser123", TestUsername)
+	msg, err := svc.HandleSearch(ctx, domain.PlatformTwitch, "testuser123", TestUsername)
 	require.NoError(t, err)
 
 	assert.Contains(t, msg, domain.MsgFirstSearchBonus, "Expected bonus message for first ever search")
@@ -624,7 +624,7 @@ func TestHandleSearch_FirstDaily(t *testing.T) {
 			domain.ActionSearch: &past31m,
 		}
 
-		msg, err = svc.HandleSearch(ctx, "twitch", "testuser123", TestUsername)
+		msg, err = svc.HandleSearch(ctx, domain.PlatformTwitch, "testuser123", TestUsername)
 		require.NoError(t, err)
 
 		assert.NotContains(t, msg, domain.MsgFirstSearchBonus, "Did not expect bonus message for second search same day")
@@ -636,7 +636,7 @@ func TestHandleSearch_FirstDaily(t *testing.T) {
 		domain.ActionSearch: &yesterday,
 	}
 
-	msg, err = svc.HandleSearch(ctx, "twitch", "testuser123", TestUsername)
+	msg, err = svc.HandleSearch(ctx, domain.PlatformTwitch, "testuser123", TestUsername)
 	require.NoError(t, err)
 
 	assert.Contains(t, msg, domain.MsgFirstSearchBonus, "Expected bonus message for next day search")
@@ -664,7 +664,7 @@ func TestHandleSearch_DiminishingReturns(t *testing.T) {
 	// 1. Normal Search (Count 1)
 	statsSvc.mockCounts[domain.EventSearch] = 1
 
-	msg, err := svc.HandleSearch(ctx, "twitch", "testuser123", TestUsername)
+	msg, err := svc.HandleSearch(ctx, domain.PlatformTwitch, "testuser123", TestUsername)
 	require.NoError(t, err)
 
 	assert.NotContains(t, msg, domain.MsgFirstSearchBonus)
@@ -673,7 +673,7 @@ func TestHandleSearch_DiminishingReturns(t *testing.T) {
 	// 2. Diminished Search (Count 6)
 	statsSvc.mockCounts[domain.EventSearch] = 6
 
-	msg, err = svc.HandleSearch(ctx, "twitch", "testuser123", TestUsername)
+	msg, err = svc.HandleSearch(ctx, domain.PlatformTwitch, "testuser123", TestUsername)
 	require.NoError(t, err)
 
 	// We can't guarantee "Exhausted" message because of RNG failure,
@@ -711,7 +711,7 @@ func TestHandleSearch_CriticalFail_Statistical(t *testing.T) {
 	iterations := 1000
 
 	for i := 0; i < iterations; i++ {
-		msg, err := svc.HandleSearch(context.Background(), "twitch", "testuser123", TestUsername)
+		msg, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
 		require.NoError(t, err)
 
 		if strings.HasPrefix(msg, domain.MsgSearchCriticalFail) {

@@ -98,15 +98,15 @@ func (m *MockRepository) GetUserByID(ctx context.Context, userID string) (*domai
 func (m *MockRepository) GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error) {
 	for _, u := range m.users {
 		switch platform {
-		case "twitch":
+		case domain.PlatformTwitch:
 			if u.TwitchID == platformID {
 				return u, nil
 			}
-		case "youtube":
+		case domain.PlatformYoutube:
 			if u.YoutubeID == platformID {
 				return u, nil
 			}
-		case "discord":
+		case domain.PlatformDiscord:
 			if u.DiscordID == platformID {
 				return u, nil
 			}
@@ -324,7 +324,7 @@ func TestAddItem(t *testing.T) {
 	ctx := context.Background()
 
 	// Test adding item to empty inventory
-	err := svc.AddItem(ctx, "twitch", "", "alice", domain.ItemLootbox1, 5)
+	err := svc.AddItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemLootbox1, 5)
 	if err != nil {
 		t.Fatalf("Failed to setup test: %v", err)
 	}
@@ -345,7 +345,7 @@ func TestAddItem(t *testing.T) {
 	}
 
 	// Adding more should increment
-	err = svc.AddItem(ctx, "twitch", "", "alice", domain.ItemLootbox1, 3)
+	err = svc.AddItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemLootbox1, 3)
 	if err != nil {
 		t.Fatalf("AddItem failed: %v", err)
 	}
@@ -360,7 +360,7 @@ func TestAddItem(t *testing.T) {
 	}
 
 	// Adding a different item should create a new slot
-	err = svc.AddItem(ctx, "twitch", "", "alice", domain.ItemLootbox2, 2)
+	err = svc.AddItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemLootbox2, 2)
 	if err != nil {
 		t.Fatalf("AddItem failed: %v", err)
 	}
@@ -378,10 +378,10 @@ func TestRemoveItem(t *testing.T) {
 	ctx := context.Background()
 
 	// Add 10 lootbox1 items
-	svc.AddItem(ctx, "twitch", "", "alice", domain.ItemLootbox1, 10)
+	svc.AddItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemLootbox1, 10)
 
 	// Remove 3
-	removed, err := svc.RemoveItem(ctx, "twitch", "", "alice", domain.ItemLootbox1, 3)
+	removed, err := svc.RemoveItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemLootbox1, 3)
 	if err != nil {
 		t.Fatalf("RemoveItem failed: %v", err)
 	}
@@ -395,7 +395,7 @@ func TestRemoveItem(t *testing.T) {
 	}
 
 	// Test removing more than available (should remove all)
-	removed, err = svc.RemoveItem(ctx, "twitch", "", "alice", domain.ItemLootbox1, 100)
+	removed, err = svc.RemoveItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemLootbox1, 100)
 	if err != nil {
 		t.Fatalf("RemoveItem failed: %v", err)
 	}
@@ -409,7 +409,7 @@ func TestRemoveItem(t *testing.T) {
 	}
 
 	// Test removing from empty inventory
-	_, err = svc.RemoveItem(ctx, "twitch", "", "alice", domain.ItemLootbox1, 1)
+	_, err = svc.RemoveItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemLootbox1, 1)
 	if err == nil {
 		t.Error("Expected error when removing from empty inventory")
 	}
@@ -422,10 +422,10 @@ func TestGiveItem(t *testing.T) {
 	ctx := context.Background()
 
 	// Setup: Give alice some items
-	svc.AddItem(ctx, "twitch", "alice123", "alice", domain.ItemLootbox1, 10)
+	svc.AddItem(ctx, domain.PlatformTwitch, "alice123", "alice", domain.ItemLootbox1, 10)
 
 	// Test giving items
-	err := svc.GiveItem(ctx, "twitch", "alice123", "alice", "twitch", "bob456", "bob", domain.ItemLootbox1, 3)
+	err := svc.GiveItem(ctx, domain.PlatformTwitch, "alice123", "alice", domain.PlatformTwitch, "bob456", "bob", domain.ItemLootbox1, 3)
 	if err != nil {
 		t.Fatalf("GiveItem failed: %v", err)
 	}
@@ -443,7 +443,7 @@ func TestGiveItem(t *testing.T) {
 	}
 
 	// Test giving more than owned (should error)
-	err = svc.GiveItem(ctx, "twitch", "alice123", "alice", "twitch", "bob456", "bob", domain.ItemLootbox1, 100)
+	err = svc.GiveItem(ctx, domain.PlatformTwitch, "alice123", "alice", domain.PlatformTwitch, "bob456", "bob", domain.ItemLootbox1, 100)
 	if err == nil {
 		t.Error("Expected error when giving more than owned")
 	}
@@ -478,7 +478,7 @@ func TestRegisterUser(t *testing.T) {
 	}
 
 	// Verify user in repo
-	found, _ := repo.GetUserByPlatformID(ctx, "twitch", "charlie789")
+	found, _ := repo.GetUserByPlatformID(ctx, domain.PlatformTwitch, "charlie789")
 	if found == nil {
 		t.Error("User not found in repository")
 	}
@@ -489,7 +489,7 @@ func TestHandleIncomingMessage_NewUser(t *testing.T) {
 	svc := NewService(repo, nil, nil, NewMockNamingResolver(), false)
 	ctx := context.Background()
 
-	result, err := svc.HandleIncomingMessage(ctx, "twitch", "newuser123", "newuser", "hello")
+	result, err := svc.HandleIncomingMessage(ctx, domain.PlatformTwitch, "newuser123", "newuser", "hello")
 	if err != nil {
 		t.Fatalf("HandleIncomingMessage failed: %v", err)
 	}
@@ -499,7 +499,7 @@ func TestHandleIncomingMessage_NewUser(t *testing.T) {
 	}
 
 	// Verify user was created
-	found, _ := repo.GetUserByPlatformID(ctx, "twitch", "newuser123")
+	found, _ := repo.GetUserByPlatformID(ctx, domain.PlatformTwitch, "newuser123")
 	if found == nil {
 		t.Error("User should have been created")
 	}
@@ -511,7 +511,7 @@ func TestHandleIncomingMessage_ExistingUser(t *testing.T) {
 	svc := NewService(repo, nil, nil, NewMockNamingResolver(), false)
 	ctx := context.Background()
 
-	result, err := svc.HandleIncomingMessage(ctx, "twitch", "alice123", "alice", "hello")
+	result, err := svc.HandleIncomingMessage(ctx, domain.PlatformTwitch, "alice123", "alice", "hello")
 	if err != nil {
 		t.Fatalf("HandleIncomingMessage failed: %v", err)
 	}
@@ -534,10 +534,10 @@ func TestUseItem(t *testing.T) {
 	ctx := context.Background()
 
 	// Setup: Give alice some lootbox1
-	svc.AddItem(ctx, "twitch", "", "alice", domain.ItemLootbox1, 5)
+	svc.AddItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemLootbox1, 5)
 
 	// Test using lootbox1 (consumes 1 lootbox1, gives 1 lootbox0)
-	message, err := svc.UseItem(ctx, "twitch", "", "alice", domain.ItemLootbox1, 1, "")
+	message, err := svc.UseItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemLootbox1, 1, "")
 	if err != nil {
 		t.Fatalf("UseItem failed: %v", err)
 	}
@@ -571,20 +571,20 @@ func TestUseItem(t *testing.T) {
 	}
 
 	// Test using more than available
-	_, err = svc.UseItem(ctx, "twitch", "", "alice", domain.ItemLootbox1, 10, "")
+	_, err = svc.UseItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemLootbox1, 10, "")
 	if err == nil {
 		t.Error("Expected error when using more than available")
 	}
 
 	// Test using unknown item
-	_, err = svc.UseItem(ctx, "twitch", "", "alice", "unknown_item", 1, "")
+	_, err = svc.UseItem(ctx, domain.PlatformTwitch, "", "alice", "unknown_item", 1, "")
 	if err == nil {
 		t.Error("Expected error when using unknown item")
 	}
 
 	// Test using item with no effect (money)
-	svc.AddItem(ctx, "twitch", "", "alice", domain.ItemMoney, 1)
-	_, err = svc.UseItem(ctx, "twitch", "", "alice", domain.ItemMoney, 1, "")
+	svc.AddItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemMoney, 1)
+	_, err = svc.UseItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemMoney, 1, "")
 	if err == nil {
 		t.Error("Expected error when using item with no effect")
 	}
@@ -597,10 +597,10 @@ func TestUseItem_Blaster(t *testing.T) {
 	ctx := context.Background()
 
 	// Setup: Give alice some blasters
-	svc.AddItem(ctx, "twitch", "", "alice", domain.ItemBlaster, 5)
+	svc.AddItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemBlaster, 5)
 
 	// Test using blaster on bob
-	message, err := svc.UseItem(ctx, "twitch", "", "alice", domain.ItemBlaster, 2, "bob")
+	message, err := svc.UseItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemBlaster, 2, "bob")
 	if err != nil {
 		t.Fatalf("UseItem failed: %v", err)
 	}
@@ -617,7 +617,7 @@ func TestUseItem_Blaster(t *testing.T) {
 	}
 
 	// Test using blaster without target
-	_, err = svc.UseItem(ctx, "twitch", "", "alice", domain.ItemBlaster, 1, "")
+	_, err = svc.UseItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemBlaster, 1, "")
 	if err == nil {
 		t.Error("Expected error when using blaster without target")
 	}
@@ -630,11 +630,11 @@ func TestGetInventory(t *testing.T) {
 	ctx := context.Background()
 
 	// Setup: Give alice some items
-	svc.AddItem(ctx, "twitch", "", "alice", domain.ItemLootbox1, 2)
-	svc.AddItem(ctx, "twitch", "", "alice", domain.ItemMoney, 100)
+	svc.AddItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemLootbox1, 2)
+	svc.AddItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemMoney, 100)
 
 	// Test GetInventory
-	items, err := svc.GetInventory(ctx, "twitch", "", "alice")
+	items, err := svc.GetInventory(ctx, domain.PlatformTwitch, "", "alice")
 	if err != nil {
 		t.Fatalf("GetInventory failed: %v", err)
 	}
@@ -685,10 +685,10 @@ func TestUseItem_Lootbox0(t *testing.T) {
 	ctx := context.Background()
 
 	// Setup: Give alice lootbox0
-	svc.AddItem(ctx, "twitch", "", "alice", domain.ItemLootbox0, 1)
+	svc.AddItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemLootbox0, 1)
 
 	// Test using lootbox0
-	msg, err := svc.UseItem(ctx, "twitch", "", "alice", domain.ItemLootbox0, 1, "")
+	msg, err := svc.UseItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemLootbox0, 1, "")
 	if err != nil {
 		t.Fatalf("UseItem failed: %v", err)
 	}
@@ -727,10 +727,10 @@ func TestUseItem_Lootbox2(t *testing.T) {
 	ctx := context.Background()
 
 	// Setup: Give alice lootbox2
-	svc.AddItem(ctx, "twitch", "", "alice", domain.ItemLootbox2, 1)
+	svc.AddItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemLootbox2, 1)
 
 	// Test using lootbox2
-	msg, err := svc.UseItem(ctx, "twitch", "", "alice", domain.ItemLootbox2, 1, "")
+	msg, err := svc.UseItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemLootbox2, 1, "")
 	if err != nil {
 		t.Fatalf("UseItem failed: %v", err)
 	}
