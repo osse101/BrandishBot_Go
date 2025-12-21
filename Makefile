@@ -29,7 +29,8 @@ help:
 	@echo "Docker Commands:"
 	@echo "  make docker-up            - Start services with Docker Compose"
 	@echo "  make docker-down          - Stop services"
-	@echo "  make docker-build         - Rebuild Docker images (use after code changes)"
+	@echo "  make docker-build         - Rebuild Docker images (no cache, slower but clean)"
+	@echo "  make docker-build-fast    - Build Docker images (with cache, faster for dev)"
 	@echo ""
 	@echo "Test Database Commands:"
 	@echo "  make test-integration     - Run integration tests (uses testcontainers)"
@@ -175,9 +176,14 @@ docker-down:
 	@docker compose down
 
 docker-build:
-	@echo "Rebuilding Docker images..."
+	@echo "Rebuilding Docker images (no cache)..."
 	@docker compose build --no-cache
 	@echo "Docker images rebuilt successfully"
+
+docker-build-fast:
+	@echo "Building Docker images (with cache, faster)..."
+	@DOCKER_BUILDKIT=1 docker compose build
+	@echo "Docker images built successfully"
 
 docker-logs:
 	@docker compose logs -f
