@@ -49,20 +49,22 @@ CREATE INDEX IF NOT EXISTS idx_voting_options_session ON progression_voting_opti
 CREATE INDEX IF NOT EXISTS idx_unlock_progress_active ON progression_unlock_progress(unlocked_at) WHERE unlocked_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_user_votes_session ON user_votes(session_id) WHERE session_id IS NOT NULL;
 
--- Add foreign key constraint for winning_option_id
-DO $$ 
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.table_constraints 
-        WHERE constraint_name = 'fk_winning_option'
-    ) THEN
-        ALTER TABLE progression_voting_sessions
-            ADD CONSTRAINT fk_winning_option 
-            FOREIGN KEY (winning_option_id) 
-            REFERENCES progression_voting_options(id);
-    END IF;
-END $$;
+--Add foreign key constraint for winning_option_id
+-- Note: This may fail if constraint already exists (safe to ignore)
+ALTER TABLE progression_voting_sessions
+    ADD CONSTRAINT fk_winning_option 
+    FOREIGN KEY (winning_option_id) 
+    REFERENCES progression_voting_options(id);
 
 -- +goose Down
--- Note: Down migration not implemented as this would require data migration
--- To rollback, manually drop tables in reverse order
+DROP INDEX IF EXISTS idx_user_votes_session;
+DROP INDEX IF EXISTS idx_unlock_progress_active;
+DROP INDEX IF EXISTS idx_voting_options_session;
+DROP INDEX IF EXISTS idx_voting_sessions_active;
+DROP INDEX IF EXISTS idx_voting_sessions_status;
+ALTER TABLE progression_voting_sessions DROP CONSTRAINT IF EXISTS fk_winning_option;
+ALTER TABLE user_votes DROP COLUMN IF EXISTS option_id;
+ALTER TABLE user_votes DROP COLUMN IF EXISTS session_id;
+DROP TABLE IF EXISTS progression_unlock_progress;
+DROP TABLE IF EXISTS progression_voting_options;
+DROP TABLE IF EXISTS progression_voting_sessions;
