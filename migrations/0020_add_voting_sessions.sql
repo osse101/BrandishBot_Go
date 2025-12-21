@@ -62,3 +62,7 @@ BEGIN
             REFERENCES progression_voting_options(id);
     END IF;
 END $$;
+
+-- +goose Down
+-- Note: Down migration not implemented as this would require data migration
+-- To rollback, manually drop tables in reverse order
