@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/osse101/BrandishBot_Go/internal/concurrency"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
@@ -57,17 +56,15 @@ type JobService interface {
 }
 
 type service struct {
-	repo        Repository
-	lockManager *concurrency.LockManager
-	jobService  JobService
+	repo       Repository
+	jobService JobService
 }
 
 // NewService creates a new crafting service
-func NewService(repo Repository, lockManager *concurrency.LockManager, jobService JobService) Service {
+func NewService(repo Repository, jobService JobService) Service {
 	return &service{
-		repo:        repo,
-		lockManager: lockManager,
-		jobService:  jobService,
+		repo:       repo,
+		jobService: jobService,
 	}
 }
 
@@ -304,7 +301,7 @@ func (s *service) processDisassembleOutputs(ctx context.Context, inventory *doma
 		if err != nil {
 			return nil, fmt.Errorf("failed to get output item: %w", err)
 		}
-		outputMap[outputItem.Name] = totalOutput
+		outputMap[outputItem.InternalName] = totalOutput
 
 		// Add to inventory
 		addItemToInventory(inventory, output.ItemID, totalOutput)

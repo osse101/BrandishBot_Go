@@ -7,12 +7,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/osse101/BrandishBot_Go/internal/concurrency"
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
+	"github.com/osse101/BrandishBot_Go/internal/naming"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
+	"github.com/osse101/BrandishBot_Go/internal/stats"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
@@ -27,10 +28,15 @@ var validPlatforms = map[string]bool{
 type Repository interface {
 	UpsertUser(ctx context.Context, user *domain.User) error
 	GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error)
+	GetUserByID(ctx context.Context, userID string) (*domain.User, error)
+	UpdateUser(ctx context.Context, user domain.User) error
+	DeleteUser(ctx context.Context, userID string) error
 	GetInventory(ctx context.Context, userID string) (*domain.Inventory, error)
 	UpdateInventory(ctx context.Context, userID string, inventory domain.Inventory) error
+	DeleteInventory(ctx context.Context, userID string) error
 	GetItemByName(ctx context.Context, itemName string) (*domain.Item, error)
 	GetItemByID(ctx context.Context, id int) (*domain.Item, error)
+	GetItemsByIDs(ctx context.Context, itemIDs []int) ([]domain.Item, error)
 
 	GetSellablePrices(ctx context.Context) ([]domain.Item, error)
 	IsItemBuyable(ctx context.Context, itemName string) (bool, error)
@@ -56,6 +62,11 @@ type Service interface {
 	TimeoutUser(ctx context.Context, username string, duration time.Duration, reason string) error
 	LoadLootTables(path string) error
 	HandleSearch(ctx context.Context, platform, platformID, username string) (string, error)
+	// Account linking methods
+	MergeUsers(ctx context.Context, primaryUserID, secondaryUserID string) error
+	UnlinkPlatform(ctx context.Context, userID, platform string) error
+	GetLinkedPlatforms(ctx context.Context, platform, platformID string) ([]string, error)
+	Shutdown(ctx context.Context) error
 }
 
 type UserInventoryItem struct {
@@ -75,14 +86,17 @@ type JobService interface {
 
 // service implements the Service interface
 type service struct {
-	repo         Repository
-	itemHandlers map[string]ItemEffectHandler
-	timeoutMu    sync.Mutex
-	timeouts     map[string]*time.Timer
-	lockManager  *concurrency.LockManager
-	lootTables   map[string][]LootItem
-	jobService   JobService
-	stringFinder *StringFinder
+	repo           Repository
+	itemHandlers   map[string]ItemEffectHandler
+	timeoutMu      sync.Mutex
+	timeouts       map[string]*time.Timer
+	lootTables     map[string][]LootItem
+	jobService     JobService
+	statsService   stats.Service
+	stringFinder   *StringFinder
+	namingResolver naming.Resolver
+	devMode        bool // When true, bypasses cooldowns
+	wg             sync.WaitGroup
 }
 
 // setPlatformID sets the appropriate platform-specific ID field on a user
@@ -98,15 +112,17 @@ func setPlatformID(user *domain.User, platform, platformID string) {
 }
 
 // NewService creates a new user service
-func NewService(repo Repository, lockManager *concurrency.LockManager, jobService JobService) Service {
-	s :=  &service{
-		repo:         repo,
-		itemHandlers: make(map[string]ItemEffectHandler),
-		timeouts:     make(map[string]*time.Timer),
-		lockManager:  lockManager,
-		lootTables:   make(map[string][]LootItem),
-		jobService:   jobService,
-		stringFinder: NewStringFinder(),
+func NewService(repo Repository, statsService stats.Service, jobService JobService, namingResolver naming.Resolver, devMode bool) Service {
+	s := &service{
+		repo:           repo,
+		itemHandlers:   make(map[string]ItemEffectHandler),
+		timeouts:       make(map[string]*time.Timer),
+		lootTables:     make(map[string][]LootItem),
+		jobService:     jobService,
+		statsService:   statsService,
+		stringFinder:   NewStringFinder(),
+		namingResolver: namingResolver,
+		devMode:        devMode,
 	}
 	s.registerHandlers()
 	// Attempt to load default loot tables, ignore error if file doesn't exist (will be empty)
@@ -129,10 +145,6 @@ func (s *service) registerHandlers() {
 	s.itemHandlers[domain.ItemBlaster] = s.handleBlaster
 	s.itemHandlers[domain.ItemLootbox0] = s.handleLootbox0
 	s.itemHandlers[domain.ItemLootbox2] = s.handleLootbox2
-}
-
-func (s *service) getUserLock(userID string) *sync.Mutex {
-	return s.lockManager.GetLock(userID)
 }
 
 // RegisterUser registers a new user
@@ -201,12 +213,12 @@ func (s *service) HandleIncomingMessage(ctx context.Context, platform, platformI
 
 	// Find matches in message
 	matches := s.stringFinder.FindMatches(message)
-	
+
 	result := &domain.MessageResult{
 		User:    *targetUser,
 		Matches: matches,
 	}
-	
+
 	return result, nil
 }
 
@@ -219,9 +231,12 @@ func (s *service) AddItem(ctx context.Context, platform, platformID, username, i
 		return err
 	}
 
-	lock := s.getUserLock(user.ID)
-	lock.Lock()
-	defer lock.Unlock()
+	tx, err := s.repo.BeginTx(ctx)
+	if err != nil {
+		log.Error("Failed to begin transaction", "error", err)
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer repository.SafeRollback(ctx, tx)
 
 	item, err := s.repo.GetItemByName(ctx, itemName)
 	if err != nil {
@@ -232,7 +247,7 @@ func (s *service) AddItem(ctx context.Context, platform, platformID, username, i
 		log.Warn("Item not found", "itemName", itemName)
 		return fmt.Errorf("item not found: %s", itemName)
 	}
-	inventory, err := s.repo.GetInventory(ctx, user.ID)
+	inventory, err := tx.GetInventory(ctx, user.ID)
 	if err != nil {
 		log.Error("Failed to get inventory", "error", err, "userID", user.ID)
 		return fmt.Errorf("failed to get inventory: %w", err)
@@ -248,10 +263,16 @@ func (s *service) AddItem(ctx context.Context, platform, platformID, username, i
 	if !found {
 		inventory.Slots = append(inventory.Slots, domain.InventorySlot{ItemID: item.ID, Quantity: quantity})
 	}
-	if err := s.repo.UpdateInventory(ctx, user.ID, *inventory); err != nil {
+	if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
 		log.Error("Failed to update inventory", "error", err, "userID", user.ID)
 		return fmt.Errorf("failed to update inventory: %w", err)
 	}
+
+	if err := tx.Commit(ctx); err != nil {
+		log.Error("Failed to commit transaction", "error", err)
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
 	log.Info("Item added successfully", "username", username, "item", itemName, "quantity", quantity)
 	return nil
 }
@@ -265,9 +286,12 @@ func (s *service) RemoveItem(ctx context.Context, platform, platformID, username
 		return 0, err
 	}
 
-	lock := s.getUserLock(user.ID)
-	lock.Lock()
-	defer lock.Unlock()
+	tx, err := s.repo.BeginTx(ctx)
+	if err != nil {
+		log.Error("Failed to begin transaction", "error", err)
+		return 0, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer repository.SafeRollback(ctx, tx)
 
 	item, err := s.repo.GetItemByName(ctx, itemName)
 	if err != nil {
@@ -277,7 +301,7 @@ func (s *service) RemoveItem(ctx context.Context, platform, platformID, username
 	if item == nil {
 		return 0, fmt.Errorf("%w: %s", domain.ErrItemNotFound, itemName)
 	}
-	inventory, err := s.repo.GetInventory(ctx, user.ID)
+	inventory, err := tx.GetInventory(ctx, user.ID)
 	if err != nil {
 		log.Error("Failed to get inventory", "error", err, "userID", user.ID)
 		return 0, fmt.Errorf("failed to get inventory: %w", err)
@@ -303,10 +327,16 @@ func (s *service) RemoveItem(ctx context.Context, platform, platformID, username
 		log.Warn("Item not in inventory", "itemName", itemName)
 		return 0, fmt.Errorf("item %s not in inventory", itemName)
 	}
-	if err := s.repo.UpdateInventory(ctx, user.ID, *inventory); err != nil {
+	if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
 		log.Error("Failed to update inventory", "error", err, "userID", user.ID)
 		return 0, fmt.Errorf("failed to update inventory: %w", err)
 	}
+
+	if err := tx.Commit(ctx); err != nil {
+		log.Error("Failed to commit transaction", "error", err)
+		return 0, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
 	log.Info("Item removed", "username", username, "item", itemName, "removed", removed)
 	return removed, nil
 }
@@ -331,23 +361,6 @@ func (s *service) GiveItem(ctx context.Context, ownerPlatform, ownerPlatformID, 
 	item, err := s.validateItem(ctx, itemName)
 	if err != nil {
 		return err
-	}
-
-	// Acquire locks in consistent order to prevent deadlocks
-	firstLock := s.getUserLock(owner.ID)
-	secondLock := s.getUserLock(receiver.ID)
-
-	if owner.ID > receiver.ID {
-		firstLock, secondLock = secondLock, firstLock
-	}
-
-	firstLock.Lock()
-	defer firstLock.Unlock()
-
-	// If IDs are same (giving to self), we already have the lock
-	if owner.ID != receiver.ID {
-		secondLock.Lock()
-		defer secondLock.Unlock()
 	}
 
 	return s.executeGiveItemTx(ctx, owner, receiver, item, quantity)
@@ -376,7 +389,7 @@ func (s *service) executeGiveItemTx(ctx context.Context, owner, receiver *domain
 	}
 
 	if ownerSlotIndex == -1 {
-		return fmt.Errorf("owner does not have item %s in inventory", item.Name)
+		return fmt.Errorf("owner does not have item %s in inventory", item.InternalName)
 	}
 
 	if ownerInventory.Slots[ownerSlotIndex].Quantity < quantity {
@@ -419,7 +432,7 @@ func (s *service) executeGiveItemTx(ctx context.Context, owner, receiver *domain
 		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	log.Info("Item transferred", "owner", owner.Username, "receiver", receiver.Username, "item", item.Name, "quantity", quantity)
+	log.Info("Item transferred", "owner", owner.Username, "receiver", receiver.Username, "item", item.InternalName, "quantity", quantity)
 	return nil
 }
 
@@ -432,11 +445,14 @@ func (s *service) UseItem(ctx context.Context, platform, platformID, username, i
 		return "", err
 	}
 
-	lock := s.getUserLock(user.ID)
-	lock.Lock()
-	defer lock.Unlock()
+	tx, err := s.repo.BeginTx(ctx)
+	if err != nil {
+		log.Error("Failed to begin transaction", "error", err)
+		return "", fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer repository.SafeRollback(ctx, tx)
 
-	inventory, err := s.repo.GetInventory(ctx, user.ID)
+	inventory, err := tx.GetInventory(ctx, user.ID)
 	if err != nil {
 		log.Error("Failed to get inventory", "error", err, "userID", user.ID)
 		return "", fmt.Errorf("failed to get inventory: %w", err)
@@ -471,10 +487,16 @@ func (s *service) UseItem(ctx context.Context, platform, platformID, username, i
 		log.Error("Handler error", "error", err, "itemName", itemName)
 		return "", err
 	}
-	if err := s.repo.UpdateInventory(ctx, user.ID, *inventory); err != nil {
+	if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
 		log.Error("Failed to update inventory after use", "error", err, "userID", user.ID)
 		return "", fmt.Errorf("failed to update inventory: %w", err)
 	}
+
+	if err := tx.Commit(ctx); err != nil {
+		log.Error("Failed to commit transaction", "error", err)
+		return "", fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
 	log.Info("Item used", "username", username, "item", itemName, "quantity", quantity, "message", message)
 	return message, nil
 }
@@ -492,18 +514,31 @@ func (s *service) GetInventory(ctx context.Context, platform, platformID, userna
 		log.Error("Failed to get inventory", "error", err, "userID", user.ID)
 		return nil, fmt.Errorf("failed to get inventory: %w", err)
 	}
+	// Optimization: Batch fetch all item details
+	itemIDs := make([]int, 0, len(inventory.Slots))
+	for _, slot := range inventory.Slots {
+		itemIDs = append(itemIDs, slot.ItemID)
+	}
+
+	itemList, err := s.repo.GetItemsByIDs(ctx, itemIDs)
+	if err != nil {
+		log.Error("Failed to get item details", "error", err)
+		return nil, fmt.Errorf("failed to get item details: %w", err)
+	}
+
+	itemMap := make(map[int]domain.Item)
+	for _, item := range itemList {
+		itemMap[item.ID] = item
+	}
+
 	var items []UserInventoryItem
 	for _, slot := range inventory.Slots {
-		item, err := s.repo.GetItemByID(ctx, slot.ItemID)
-		if err != nil {
-			log.Error("Failed to get item details", "error", err, "itemID", slot.ItemID)
-			return nil, fmt.Errorf("failed to get item details for id %d: %w", slot.ItemID, err)
-		}
-		if item == nil {
+		item, ok := itemMap[slot.ItemID]
+		if !ok {
 			log.Warn("Item missing for slot", "itemID", slot.ItemID)
 			continue
 		}
-		items = append(items, UserInventoryItem{Name: item.Name, Description: item.Description, Quantity: slot.Quantity, Value: item.BaseValue})
+		items = append(items, UserInventoryItem{Name: item.InternalName, Description: item.Description, Quantity: slot.Quantity, Value: item.BaseValue})
 	}
 	log.Info("Inventory retrieved", "username", username, "itemCount", len(items))
 	return items, nil
@@ -551,6 +586,14 @@ func (s *service) validateItem(ctx context.Context, itemName string) (*domain.It
 	return item, nil
 }
 
+// Constants for search mechanic
+const (
+	SearchSuccessRate      = 0.8
+	SearchCriticalRate     = 0.05
+	SearchNearMissRate     = 0.05
+	SearchCriticalFailRate = 0.05
+)
+
 // HandleSearch performs a search action for a user with cooldown tracking
 func (s *service) HandleSearch(ctx context.Context, platform, platformID, username string) (string, error) {
 	log := logger.FromContext(ctx)
@@ -575,11 +618,6 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 		return "", err
 	}
 
-	// Lock the user for the duration of this operation
-	lock := s.getUserLock(user.ID)
-	lock.Lock()
-	defer lock.Unlock()
-
 	// Check cooldown
 	lastUsed, err := s.repo.GetLastCooldown(ctx, user.ID, domain.ActionSearch)
 	if err != nil {
@@ -589,20 +627,87 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 
 	now := time.Now()
 	if lastUsed != nil {
-		elapsed := now.Sub(*lastUsed)
-		if elapsed < domain.SearchCooldownDuration {
-			remaining := domain.SearchCooldownDuration - elapsed
-			minutes := int(remaining.Minutes())
-			seconds := int(remaining.Seconds()) % 60
+		// Check if dev mode bypasses cooldowns
+		if !s.devMode {
+			elapsed := now.Sub(*lastUsed)
+			if elapsed < domain.SearchCooldownDuration {
+				remaining := domain.SearchCooldownDuration - elapsed
+				minutes := int(remaining.Minutes())
+				seconds := int(remaining.Seconds()) % 60
 
-			log.Info("Search on cooldown", "username", username, "remaining", remaining)
-			return fmt.Sprintf("You can search again in %dm %ds", minutes, seconds), nil
+				log.Info("Search on cooldown", "username", username, "remaining", remaining)
+				return fmt.Sprintf("You can search again in %dm %ds", minutes, seconds), nil
+			}
+		} else {
+			log.Info("DEV_MODE: Bypassing cooldown check", "username", username)
 		}
 	}
 
-	// Perform search - 80% chance of lootbox0
+	// Perform search
 	var resultMessage string
-	if utils.RandomFloat() <= 0.8 {
+	roll := utils.SecureRandomFloat()
+
+	// Calculate daily search stats
+	dailyCount := 0
+	if s.statsService != nil {
+		stats, err := s.statsService.GetUserStats(ctx, user.ID, domain.PeriodDaily)
+		if err != nil {
+			log.Warn("Failed to get search counts", "error", err)
+			// Fallback to cooldown logic for "First Search" check
+			if lastUsed == nil {
+				dailyCount = 0
+			} else {
+				y1, m1, d1 := lastUsed.Date()
+				y2, m2, d2 := now.Date()
+				if y1 != y2 || m1 != m2 || d1 != d2 {
+					dailyCount = 0
+				} else {
+					dailyCount = 1 // Assume > 0
+				}
+			}
+		} else {
+			if stats != nil && stats.EventCounts != nil {
+				dailyCount = stats.EventCounts[domain.EventSearch]
+			}
+		}
+	} else {
+		// No stats service (e.g. tests)
+		if lastUsed == nil {
+			dailyCount = 0
+		} else {
+			y1, m1, d1 := lastUsed.Date()
+			y2, m2, d2 := now.Date()
+			if y1 != y2 || m1 != m2 || d1 != d2 {
+				dailyCount = 0
+			} else {
+				dailyCount = 1
+			}
+		}
+	}
+
+	// Determine multipliers and status
+	isFirstSearchDaily := (dailyCount == 0)
+	isDiminished := (dailyCount >= 6)
+	xpMultiplier := 1.0
+	successThreshold := SearchSuccessRate
+
+	if isFirstSearchDaily {
+		roll = 0.0 // Guaranteed Success
+		log.Info("First search of the day - applying bonus", "username", username)
+	} else if isDiminished {
+		successThreshold = 0.1 // Reduced success rate
+		xpMultiplier = 0.1     // Reduced XP
+		log.Info("Diminished search returns applied", "username", username, "dailyCount", dailyCount)
+	}
+
+	if roll <= successThreshold {
+		// Success case
+		isCritical := roll <= SearchCriticalRate
+		quantity := 1
+		if isCritical {
+			quantity = 2
+		}
+
 		// Give lootbox0
 		item, err := s.repo.GetItemByName(ctx, domain.ItemLootbox0)
 		if err != nil {
@@ -614,8 +719,16 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 			return "", fmt.Errorf("reward item not configured")
 		}
 
+		// Begin transaction for inventory update
+		tx, err := s.repo.BeginTx(ctx)
+		if err != nil {
+			log.Error("Failed to begin transaction", "error", err)
+			return "", fmt.Errorf("failed to begin transaction: %w", err)
+		}
+		defer repository.SafeRollback(ctx, tx)
+
 		// Add to inventory
-		inventory, err := s.repo.GetInventory(ctx, user.ID)
+		inventory, err := tx.GetInventory(ctx, user.ID)
 		if err != nil {
 			log.Error("Failed to get inventory", "error", err, "userID", user.ID)
 			return "", fmt.Errorf("failed to get inventory: %w", err)
@@ -623,30 +736,89 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 
 		i, _ := utils.FindSlot(inventory, item.ID)
 		if i != -1 {
-			inventory.Slots[i].Quantity++
+			inventory.Slots[i].Quantity += quantity
 		} else {
-			inventory.Slots = append(inventory.Slots, domain.InventorySlot{ItemID: item.ID, Quantity: 1})
+			inventory.Slots = append(inventory.Slots, domain.InventorySlot{ItemID: item.ID, Quantity: quantity})
 		}
 
-		if err := s.repo.UpdateInventory(ctx, user.ID, *inventory); err != nil {
+		if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
 			log.Error("Failed to update inventory", "error", err, "userID", user.ID)
 			return "", fmt.Errorf("failed to update inventory: %w", err)
 		}
 
-		// Award Explorer XP for finding item (async, don't block)
-		go s.awardExplorerXP(context.Background(), user.ID, item.Name)
+		if err := tx.Commit(ctx); err != nil {
+			log.Error("Failed to commit transaction", "error", err)
+			return "", fmt.Errorf("failed to commit transaction: %w", err)
+		}
 
-		resultMessage = fmt.Sprintf("You have found 1x %s", item.Name)
-		log.Info("Search successful - lootbox found", "username", username, "item", item.Name)
+		// Award Explorer XP for finding item (async, don't block)
+		s.wg.Add(1)
+		go s.awardExplorerXP(context.Background(), user.ID, item.InternalName, xpMultiplier)
+
+		// Get display name with shine (empty shine for search results)
+		displayName := s.namingResolver.GetDisplayName(item.InternalName, "")
+
+		if isCritical {
+			resultMessage = fmt.Sprintf("%s You found %dx %s", domain.MsgSearchCriticalSuccess, quantity, displayName)
+			log.Info("Search CRITICAL success", "username", username, "item", item.InternalName, "quantity", quantity)
+		} else {
+			resultMessage = fmt.Sprintf("You have found %dx %s", quantity, displayName)
+			log.Info("Search successful - lootbox found", "username", username, "item", item.InternalName)
+		}
+
+		if isFirstSearchDaily {
+			resultMessage += domain.MsgFirstSearchBonus
+		} else if isDiminished {
+			resultMessage += " (Exhausted)"
+		}
+	} else if roll <= successThreshold+SearchNearMissRate {
+		// Near Miss case
+		if s.statsService != nil {
+			_ = s.statsService.RecordUserEvent(ctx, user.ID, domain.EventSearchNearMiss, map[string]interface{}{
+				"roll":      roll,
+				"threshold": successThreshold,
+			})
+		}
+		resultMessage = domain.MsgSearchNearMiss
+		log.Info("Search NEAR MISS", "username", username, "roll", roll)
 	} else {
-		resultMessage = domain.MsgSearchNothingFound
-		log.Info("Search successful - nothing found", "username", username)
+		// Check for Critical Failure (roll > 0.95)
+		if roll > 1.0-SearchCriticalFailRate {
+			// Critical Fail case
+			if s.statsService != nil {
+				_ = s.statsService.RecordUserEvent(ctx, user.ID, domain.EventSearchCriticalFail, map[string]interface{}{
+					"roll": roll,
+				})
+			}
+			resultMessage = domain.MsgSearchCriticalFail
+			if len(domain.SearchCriticalFailMessages) > 0 {
+				idx := utils.SecureRandomIntRange(0, len(domain.SearchCriticalFailMessages)-1)
+				resultMessage = fmt.Sprintf("%s %s", domain.MsgSearchCriticalFail, domain.SearchCriticalFailMessages[idx])
+			}
+			log.Info("Search CRITICAL FAIL", "username", username, "roll", roll)
+		} else {
+			// Failure case - Pick a random funny message
+			resultMessage = domain.MsgSearchNothingFound
+			if len(domain.SearchFailureMessages) > 0 {
+				idx := utils.SecureRandomIntRange(0, len(domain.SearchFailureMessages)-1)
+				resultMessage = domain.SearchFailureMessages[idx]
+			}
+			log.Info("Search successful - nothing found", "username", username, "message", resultMessage)
+		}
 	}
 
 	// Update cooldown
 	if err := s.repo.UpdateCooldown(ctx, user.ID, domain.ActionSearch, now); err != nil {
 		log.Error("Failed to update cooldown", "error", err, "userID", user.ID)
 		// Don't fail the search, just log the error
+	}
+
+	// Record search attempt (to track daily count)
+	if s.statsService != nil {
+		_ = s.statsService.RecordUserEvent(ctx, user.ID, domain.EventSearch, map[string]interface{}{
+			"success":     roll <= successThreshold,
+			"daily_count": dailyCount + 1, // +1 because we just did one
+		})
 	}
 
 	log.Info("Search completed", "username", username, "result", resultMessage)
@@ -685,15 +857,21 @@ func (s *service) getUserOrRegister(ctx context.Context, platform, platformID, u
 }
 
 // awardExplorerXP awards Explorer job XP for finding items during search
-func (s *service) awardExplorerXP(ctx context.Context, userID, itemName string) {
+func (s *service) awardExplorerXP(ctx context.Context, userID, itemName string, xpMultiplier float64) {
+	defer s.wg.Done()
+
 	if s.jobService == nil {
 		return // Job system not enabled
 	}
 
-	xp := job.ExplorerXPPerItem
+	xp := int(float64(job.ExplorerXPPerItem) * xpMultiplier)
+	if xp < 1 {
+		xp = 1
+	}
 
 	metadata := map[string]interface{}{
-		"item_name": itemName,
+		"item_name":  itemName,
+		"multiplier": xpMultiplier,
 	}
 
 	result, err := s.jobService.AwardXP(ctx, userID, job.JobKeyExplorer, xp, "search", metadata)
@@ -701,5 +879,21 @@ func (s *service) awardExplorerXP(ctx context.Context, userID, itemName string) 
 		logger.FromContext(ctx).Warn("Failed to award Explorer XP", "error", err, "user_id", userID)
 	} else if result != nil && result.LeveledUp {
 		logger.FromContext(ctx).Info("Explorer leveled up!", "user_id", userID, "new_level", result.NewLevel)
+	}
+}
+
+func (s *service) Shutdown(ctx context.Context) error {
+	logger.FromContext(ctx).Info("User service shutting down, waiting for background tasks...")
+	done := make(chan struct{})
+	go func() {
+		s.wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		return nil
+	case <-ctx.Done():
+		return fmt.Errorf("shutdown timed out: %w", ctx.Err())
 	}
 }

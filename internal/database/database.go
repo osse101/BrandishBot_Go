@@ -16,16 +16,16 @@ type Pool interface {
 }
 
 // NewPool creates a new PostgreSQL connection pool
-func NewPool(connString string) (*pgxpool.Pool, error) {
+func NewPool(connString string, maxConns int, maxIdle, maxLife time.Duration) (*pgxpool.Pool, error) {
 	config, err := pgxpool.ParseConfig(connString)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse connection string: %w", err)
 	}
 
-	config.MaxConns = 10
-	config.MinConns = 2
-	config.MaxConnLifetime = time.Hour
-	config.MaxConnIdleTime = 30 * time.Minute
+	config.MaxConns = int32(maxConns)
+	config.MinConns = 2 // Keeping min conns at 2
+	config.MaxConnLifetime = maxLife
+	config.MaxConnIdleTime = maxIdle
 
 	pool, err := pgxpool.NewWithConfig(context.Background(), config)
 	if err != nil {

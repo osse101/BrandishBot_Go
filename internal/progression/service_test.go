@@ -11,6 +11,18 @@ import (
 )
 
 // MockRepository implements Repository for testing
+//
+// IMPORTANT: This mock is NOT thread-safe by design. Per docs/architecture/journal.md,
+// application-level locks (mutexes) are an anti-pattern that don't work in multi-instance
+// deployments. Real thread-safety is provided by database transactions with row-level locking.
+//
+// Use this mock for:
+// - Unit tests that don't require concurrency
+// - Single-goroutine test scenarios
+//
+// For concurrency testing:
+// - Use integration tests with real PostgreSQL (see internal/database/postgres/*_integration_test.go)
+// - Real database provides proper transaction isolation via SELECT ... FOR UPDATE
 type MockRepository struct {
 	nodes             map[int]*domain.ProgressionNode
 	nodesByKey        map[string]*domain.ProgressionNode

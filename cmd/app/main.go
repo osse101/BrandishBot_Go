@@ -14,18 +14,19 @@ import (
 	"time"
 
 	_ "github.com/osse101/BrandishBot_Go/docs/swagger"
-	"github.com/osse101/BrandishBot_Go/internal/concurrency"
 	"github.com/osse101/BrandishBot_Go/internal/config"
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
 	"github.com/osse101/BrandishBot_Go/internal/database"
 	"github.com/osse101/BrandishBot_Go/internal/database/postgres"
 	"github.com/osse101/BrandishBot_Go/internal/economy"
-	"github.com/osse101/BrandishBot_Go/internal/gamble"
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/eventlog"
+	"github.com/osse101/BrandishBot_Go/internal/gamble"
 	"github.com/osse101/BrandishBot_Go/internal/job"
+	"github.com/osse101/BrandishBot_Go/internal/linking"
 	"github.com/osse101/BrandishBot_Go/internal/lootbox"
 	"github.com/osse101/BrandishBot_Go/internal/metrics"
+	"github.com/osse101/BrandishBot_Go/internal/naming"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 	"github.com/osse101/BrandishBot_Go/internal/scheduler"
 	"github.com/osse101/BrandishBot_Go/internal/server"
@@ -104,7 +105,7 @@ func main() {
 		"db_name", cfg.DBName,
 		"port", cfg.Port)
 	// Connect to database with retry logic
-	dbPool, err := database.NewPool(cfg.GetDBConnString())
+	dbPool, err := database.NewPool(cfg.GetDBConnString(), cfg.DBMaxConns, cfg.DBMaxConnIdleTime, cfg.DBMaxConnLifetime)
 	if err != nil {
 		slog.Error("Failed to connect to database", "error", err)
 		slog.Error("Database connection failed",
@@ -119,7 +120,6 @@ func main() {
 	}
 	defer dbPool.Close()
 
-	lockManager := concurrency.NewLockManager()
 	userRepo := postgres.NewUserRepository(dbPool)
 	
 	statsRepo := postgres.NewStatsRepository(dbPool)
@@ -133,9 +133,9 @@ func main() {
 	jobService := job.NewService(jobRepo, progressionService)
 	
 	// Initialize services that depend on job service
-	userService := user.NewService(userRepo, lockManager, jobService)
-	economyService := economy.NewService(userRepo, lockManager, jobService)
-	craftingService := crafting.NewService(userRepo, lockManager, jobService)
+	economyService := economy.NewService(userRepo, jobService)
+	craftingService := crafting.NewService(userRepo, jobService)
+
 
 	// Initialize Event Bus
 	eventBus := event.NewMemoryBus()
@@ -191,14 +191,29 @@ func main() {
 		os.Exit(1)
 	}
 
-	gambleService := gamble.NewService(gambleRepo, lockManager, eventBus, lootboxSvc, statsService, cfg.GambleJoinDuration, jobService)
+	// Initialize Naming Resolver for item display names
+	namingResolver, err := naming.NewResolver("configs/items/aliases.json", "configs/items/themes.json")
+	if err != nil {
+		slog.Error("Failed to initialize naming resolver", "error", err)
+		os.Exit(1)
+	}
+	slog.Info("Naming resolver initialized")
+
+	gambleService := gamble.NewService(gambleRepo, eventBus, lootboxSvc, statsService, cfg.GambleJoinDuration, jobService)
+
+	// Initialize services that depend on job service
+	userService := user.NewService(userRepo, statsService, jobService, namingResolver, cfg.DevMode)
 
 	// Initialize Gamble Worker
 	gambleWorker := worker.NewGambleWorker(gambleService)
 	gambleWorker.Subscribe(eventBus)
 	gambleWorker.Start() // Checks for existing active gamble on startup
 
-	srv := server.NewServer(cfg.Port, cfg.APIKey, dbPool, userService, economyService, craftingService, statsService, progressionService, gambleService, jobService, eventBus)
+	// Initialize Linking service
+	linkingRepo := postgres.NewLinkingRepository(dbPool)
+	linkingService := linking.NewService(linkingRepo, userService)
+
+	srv := server.NewServer(cfg.Port, cfg.APIKey, cfg.TrustedProxies, dbPool, userService, economyService, craftingService, statsService, progressionService, gambleService, jobService, linkingService, namingResolver, eventBus)
 
 	// Run server in a goroutine
 	go func() {
@@ -223,6 +238,14 @@ func main() {
 	// Gracefully shutdown the server
 	if err := srv.Stop(shutdownCtx); err != nil {
 		slog.Error("Server forced to shutdown", "error", err)
+	}
+
+	// Gracefully shutdown services
+	if err := userService.Shutdown(shutdownCtx); err != nil {
+		slog.Error("User service shutdown failed", "error", err)
+	}
+	if err := economyService.Shutdown(shutdownCtx); err != nil {
+		slog.Error("Economy service shutdown failed", "error", err)
 	}
 
 	slog.Info("Server stopped")

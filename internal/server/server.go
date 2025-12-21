@@ -13,8 +13,10 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/gamble"
 	"github.com/osse101/BrandishBot_Go/internal/handler"
 	"github.com/osse101/BrandishBot_Go/internal/job"
+	"github.com/osse101/BrandishBot_Go/internal/linking"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/metrics"
+	"github.com/osse101/BrandishBot_Go/internal/naming"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 	"github.com/osse101/BrandishBot_Go/internal/stats"
 	"github.com/osse101/BrandishBot_Go/internal/user"
@@ -32,10 +34,12 @@ type Server struct {
 	progressionService progression.Service
 	gambleService      gamble.Service
 	jobService         job.Service
+	linkingService     linking.Service
+	namingResolver     naming.Resolver
 }
 
 // NewServer creates a new Server instance
-func NewServer(port int, apiKey string, dbPool database.Pool, userService user.Service, economyService economy.Service, craftingService crafting.Service, statsService stats.Service, progressionService progression.Service, gambleService gamble.Service, jobService job.Service, eventBus event.Bus) *Server {
+func NewServer(port int, apiKey string, trustedProxies []string, dbPool database.Pool, userService user.Service, economyService economy.Service, craftingService crafting.Service, statsService stats.Service, progressionService progression.Service, gambleService gamble.Service, jobService job.Service, linkingService linking.Service, namingResolver naming.Resolver, eventBus event.Bus) *Server {
 	mux := http.NewServeMux()
 
 	// Health check routes
@@ -61,6 +65,7 @@ func NewServer(port int, apiKey string, dbPool database.Pool, userService user.S
 	mux.HandleFunc("/user/inventory", handler.HandleGetInventory(userService))
 	mux.HandleFunc("/user/search", handler.HandleSearch(userService, progressionService, eventBus))
 	mux.HandleFunc("/prices", handler.HandleGetPrices(economyService))
+	mux.HandleFunc("/prices/buy", handler.HandleGetBuyPrices(economyService))
 
 	// Gamble routes
 	gambleHandler := handler.NewGambleHandler(gambleService, progressionService)
@@ -97,6 +102,17 @@ func NewServer(port int, apiKey string, dbPool database.Pool, userService user.S
 	mux.HandleFunc("/progression/admin/end-voting", progressionHandlers.HandleAdminEndVoting())
 	mux.HandleFunc("/progression/admin/reset", progressionHandlers.HandleAdminReset())
 
+	// Linking routes
+	linkingHandlers := handler.NewLinkingHandlers(linkingService)
+	mux.HandleFunc("/link/initiate", linkingHandlers.HandleInitiate())
+	mux.HandleFunc("/link/claim", linkingHandlers.HandleClaim())
+	mux.HandleFunc("/link/confirm", linkingHandlers.HandleConfirm())
+	mux.HandleFunc("/link/unlink", linkingHandlers.HandleUnlink())
+	mux.HandleFunc("/link/status", linkingHandlers.HandleStatus())
+
+	// Admin routes
+	mux.HandleFunc("/admin/reload-aliases", handler.HandleReloadAliases(namingResolver))
+
 	// Swagger documentation
 	mux.HandleFunc("/swagger/", httpSwagger.WrapHandler)
 
@@ -112,10 +128,10 @@ func NewServer(port int, apiKey string, dbPool database.Pool, userService user.S
 
 	// 4. Security logging with suspicious activity detection
 	detector := NewSuspiciousActivityDetector()
-	handler = SecurityLoggingMiddleware(detector)(handler)
+	handler = SecurityLoggingMiddleware(trustedProxies, detector)(handler)
 
 	// 5. Authentication (outermost - validates first)
-	handler = AuthMiddleware(apiKey, detector)(handler)
+	handler = AuthMiddleware(apiKey, trustedProxies, detector)(handler)
 
 	return &Server{
 		httpServer: &http.Server{
@@ -131,6 +147,8 @@ func NewServer(port int, apiKey string, dbPool database.Pool, userService user.S
 		progressionService: progressionService,
 		gambleService:      gambleService,
 		jobService:         jobService,
+		linkingService:     linkingService,
+		namingResolver:     namingResolver,
 	}
 }
 

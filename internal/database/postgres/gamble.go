@@ -112,7 +112,7 @@ func (r *GambleRepository) SaveOpenedItems(ctx context.Context, items []domain.G
 	// Bulk insert
 	// Note: pgx CopyFrom is better for bulk, but for simplicity/consistency we'll use a loop or batched insert.
 	// Given the expected scale (10 participants * 5 boxes = 50 items), a transaction with individual inserts is fine for v1.
-	
+
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to begin tx for saving items: %w", err)
@@ -135,8 +135,8 @@ func (r *GambleRepository) SaveOpenedItems(ctx context.Context, items []domain.G
 }
 
 // CompleteGamble marks the gamble as completed (state update is handled by UpdateGambleState, this might be redundant or for result storage?)
-// The service calls UpdateGambleState separately. 
-// The interface has CompleteGamble(ctx, result). 
+// The service calls UpdateGambleState separately.
+// The interface has CompleteGamble(ctx, result).
 // We should probably update state AND maybe store the result if we had a results table.
 // For now, just update state to Completed.
 func (r *GambleRepository) CompleteGamble(ctx context.Context, result *domain.GambleResult) error {

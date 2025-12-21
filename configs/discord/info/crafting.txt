@@ -1,0 +1,68 @@
+**🔨 Crafting & Upgrading**
+
+Create powerful items through recipes!
+
+## 🛠️ Upgrade Items
+
+```
+/upgrade [recipe-id]
+```
+
+Craft upgraded items using materials from your inventory.
+Each recipe requires specific materials and consumes them on success.
+
+## 📜 View Recipes
+
+```
+/recipes
+```
+
+See all available crafting recipes with:
+- Recipe ID (use with `/upgrade`)
+- Required materials
+- Output item
+- Success chance (if applicable)
+
+## ♻️ Disassemble Items
+
+```
+/disassemble [item] [quantity]
+```
+
+Break down items to get materials back!
+
+**Good for:**
+- Getting rid of unwanted items
+- Obtaining crafting materials
+- Recycling duplicate items
+
+**Returns:**
+- Basic materials
+- Component parts
+- Crafting resources
+
+## 💡 Crafting Tips
+
+1. Check `/recipes` to see what you can make
+2. Use `/inventory` to verify you have materials
+3. Disassemble extras to get materials
+4. Higher tier items give better materials
+5. Some recipes have rare outputs!
+
+## Recipe Example
+
+```
+Recipe #1: Basic Sword
+Materials: 5x iron, 2x wood
+Result: iron_sword
+```
+
+To craft: `/upgrade 1`
+
+## Material Sources
+
+- Disassemble items with `/disassemble`
+- Find materials in lootboxes
+- Buy from other players
+
+Start crafting and build your arsenal! 🗡️

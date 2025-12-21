@@ -110,10 +110,10 @@ func (s *service) OpenLootbox(ctx context.Context, lootboxName string, quantity 
 
 	for i := 0; i < quantity; i++ {
 		for _, loot := range table {
-			if utils.RandomFloat() <= loot.Chance {
+			if utils.SecureRandomFloat() <= loot.Chance {
 				qty := loot.Min
 				if loot.Max > loot.Min {
-					qty = utils.RandomInt(loot.Min, loot.Max)
+					qty = utils.SecureRandomIntRange(loot.Min, loot.Max)
 				}
 
 				info, exists := dropCounts[loot.ItemName]
@@ -151,7 +151,7 @@ func (s *service) OpenLootbox(ctx context.Context, lootboxName string, quantity 
 
 		drops = append(drops, DroppedItem{
 			ItemID:     item.ID,
-			ItemName:   item.Name,
+			ItemName:   item.InternalName,
 			Quantity:   info.Qty,
 			Value:      boostedValue,
 			ShineLevel: shine,
@@ -176,7 +176,7 @@ func calculateShine(chance float64) (string, float64) {
 
 	// Critical Shine Upgrade: 1% chance to upgrade the shine level
 	// This adds a fun "Lucky!" moment for players
-	if utils.RandomFloat() < 0.01 {
+	if utils.SecureRandomFloat() < 0.01 {
 		switch shine {
 		case ShineCommon:
 			shine = ShineUncommon

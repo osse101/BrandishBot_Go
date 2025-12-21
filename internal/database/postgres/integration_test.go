@@ -70,7 +70,7 @@ func TestUserRepository_Integration(t *testing.T) {
 	}
 
 	// Connect to database
-	pool, err := database.NewPool(connStr)
+	pool, err := database.NewPool(connStr, 10, 30*time.Minute, time.Hour)
 	if err != nil {
 		t.Fatalf("failed to connect to database: %v", err)
 	}
@@ -289,7 +289,7 @@ func TestUserRepository_Integration(t *testing.T) {
 
 		// Verify items have required fields
 		for _, item := range items {
-			if item.Name == "" {
+			if item.InternalName == "" {
 				t.Error("sellable item has empty name")
 			}
 			if item.BaseValue < 0 {

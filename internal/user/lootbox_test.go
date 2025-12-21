@@ -24,8 +24,26 @@ func (m *MockRepo) UpsertUser(ctx context.Context, user *domain.User) error {
 	return args.Error(0)
 }
 
+func (m *MockRepo) UpdateUser(ctx context.Context, user domain.User) error {
+	args := m.Called(ctx, user)
+	return args.Error(0)
+}
+
+func (m *MockRepo) DeleteUser(ctx context.Context, userID string) error {
+	args := m.Called(ctx, userID)
+	return args.Error(0)
+}
+
 func (m *MockRepo) GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error) {
 	args := m.Called(ctx, platform, platformID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.User), args.Error(1)
+}
+
+func (m *MockRepo) GetUserByID(ctx context.Context, userID string) (*domain.User, error) {
+	args := m.Called(ctx, userID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -45,12 +63,25 @@ func (m *MockRepo) UpdateInventory(ctx context.Context, userID string, inventory
 	return args.Error(0)
 }
 
+func (m *MockRepo) DeleteInventory(ctx context.Context, userID string) error {
+	args := m.Called(ctx, userID)
+	return args.Error(0)
+}
+
 func (m *MockRepo) GetItemByName(ctx context.Context, name string) (*domain.Item, error) {
 	args := m.Called(ctx, name)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*domain.Item), args.Error(1)
+}
+
+func (m *MockRepo) GetItemsByIDs(ctx context.Context, itemIDs []int) ([]domain.Item, error) {
+	args := m.Called(ctx, itemIDs)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]domain.Item), args.Error(1)
 }
 
 func (m *MockRepo) GetItemByID(ctx context.Context, id int) (*domain.Item, error) {
@@ -139,8 +170,9 @@ func createTestService(repo *MockRepo) *service {
 
 func TestProcessLootbox(t *testing.T) {
 	// Setup items
-	lootbox0 := &domain.Item{ID: 100, Name: domain.ItemLootbox0}
-	money := &domain.Item{ID: 1, Name: domain.ItemMoney}
+	lootbox0 := &domain.Item{ID: 100, InternalName: domain.ItemLootbox0}
+
+	money := &domain.Item{ID: 1, InternalName: domain.ItemMoney}
 
 	t.Run("Lootbox0 drops money", func(t *testing.T) {
 		repo := new(MockRepo)
@@ -168,7 +200,7 @@ func TestProcessLootbox(t *testing.T) {
 
 		// Verify
 		assert.NoError(t, err)
-		assert.Contains(t, msg, "Opened 1 lootbox0")
+		assert.Contains(t, msg, "Opened 1 lootbox_tier0")
 		assert.Contains(t, msg, "money")
 
 		// Verify inventory changes

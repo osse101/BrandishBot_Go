@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/osse101/BrandishBot_Go/internal/concurrency"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -67,6 +67,22 @@ func (m *MockRepository) IsItemBuyable(ctx context.Context, itemName string) (bo
 	return args.Bool(0), args.Error(1)
 }
 
+func (m *MockRepository) BeginTx(ctx context.Context) (repository.Tx, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(repository.Tx), args.Error(1)
+}
+
+func (m *MockRepository) GetBuyablePrices(ctx context.Context) ([]domain.Item, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]domain.Item), args.Error(1)
+}
+
 // Test fixtures
 func createTestUser() *domain.User {
 	return &domain.User{
@@ -77,9 +93,9 @@ func createTestUser() *domain.User {
 
 func createTestItem(id int, name string, value int) *domain.Item {
 	return &domain.Item{
-		ID:        id,
-		Name:      name,
-		BaseValue: value,
+		ID:           id,
+		InternalName: name,
+		BaseValue:    value,
 	}
 }
 
@@ -113,7 +129,7 @@ const (
 func TestSellItem_Success(t *testing.T) {
 	// ARRANGE
 	mockRepo := &MockRepository{}
-	service := NewService(mockRepo, concurrency.NewLockManager())
+	service := NewService(mockRepo, nil)
 	ctx := context.Background()
 
 	user := createTestUser()
@@ -146,7 +162,7 @@ func TestSellItem_Success(t *testing.T) {
 func TestSellItem_SellAllItems(t *testing.T) {
 	// ARRANGE - User sells every last item they have
 	mockRepo := &MockRepository{}
-	service := NewService(mockRepo, concurrency.NewLockManager())
+	service := NewService(mockRepo, nil)
 	ctx := context.Background()
 
 	user := createTestUser()
@@ -178,7 +194,7 @@ func TestSellItem_SellAllItems(t *testing.T) {
 func TestSellItem_PartialQuantity(t *testing.T) {
 	// ARRANGE - User requests 100 but only has 30
 	mockRepo := &MockRepository{}
-	service := NewService(mockRepo, concurrency.NewLockManager())
+	service := NewService(mockRepo, nil)
 	ctx := context.Background()
 
 	user := createTestUser()
@@ -266,7 +282,7 @@ func TestSellItem_InvalidInputs(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// ARRANGE
 			mockRepo := &MockRepository{}
-			service := NewService(mockRepo, concurrency.NewLockManager())
+			service := NewService(mockRepo, nil)
 			ctx := context.Background()
 			tt.setup(mockRepo)
 
@@ -307,7 +323,7 @@ func TestSellItem_QuantityBoundaries(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// ARRANGE
 			mockRepo := &MockRepository{}
-			service := NewService(mockRepo, concurrency.NewLockManager())
+			service := NewService(mockRepo, nil)
 			ctx := context.Background()
 
 			user := createTestUser()
@@ -379,7 +395,7 @@ func TestSellItem_DatabaseErrors(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// ARRANGE
 			mockRepo := &MockRepository{}
-			service := NewService(mockRepo, concurrency.NewLockManager())
+			service := NewService(mockRepo, nil)
 			ctx := context.Background()
 			tt.setup(mockRepo, ctx)
 
@@ -404,12 +420,12 @@ func TestSellItem_DatabaseErrors(t *testing.T) {
 func TestGetSellablePrices_Success(t *testing.T) {
 	// ARRANGE
 	mockRepo := &MockRepository{}
-	service := NewService(mockRepo, concurrency.NewLockManager())
+	service := NewService(mockRepo, nil)
 	ctx := context.Background()
 
 	expectedItems := []domain.Item{
-		{ID: 10, Name: "Sword", BaseValue: 100},
-		{ID: 20, Name: "Potion", BaseValue: 50},
+		{ID: 10, InternalName: "Sword", BaseValue: 100},
+		{ID: 20, InternalName: "Potion", BaseValue: 50},
 	}
 
 	mockRepo.On("GetSellablePrices", ctx).Return(expectedItems, nil)
@@ -420,7 +436,7 @@ func TestGetSellablePrices_Success(t *testing.T) {
 	// ASSERT
 	require.NoError(t, err)
 	assert.Len(t, items, 2)
-	assert.Equal(t, "Sword", items[0].Name)
+	assert.Equal(t, "Sword", items[0].InternalName)
 	assert.Equal(t, 100, items[0].BaseValue)
 	mockRepo.AssertExpectations(t)
 }
@@ -428,7 +444,7 @@ func TestGetSellablePrices_Success(t *testing.T) {
 func TestGetSellablePrices_DatabaseError(t *testing.T) {
 	// ARRANGE
 	mockRepo := &MockRepository{}
-	service := NewService(mockRepo, concurrency.NewLockManager())
+	service := NewService(mockRepo, nil)
 	ctx := context.Background()
 
 	mockRepo.On("GetSellablePrices", ctx).
@@ -451,7 +467,7 @@ func TestGetSellablePrices_DatabaseError(t *testing.T) {
 func TestBuyItem_Success(t *testing.T) {
 	// ARRANGE
 	mockRepo := &MockRepository{}
-	service := NewService(mockRepo, concurrency.NewLockManager())
+	service := NewService(mockRepo, nil)
 	ctx := context.Background()
 
 	user := createTestUser()
@@ -564,7 +580,7 @@ func TestBuyItem_MoneyBoundaries(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// ARRANGE
 			mockRepo := &MockRepository{}
-			service := NewService(mockRepo, concurrency.NewLockManager())
+			service := NewService(mockRepo, nil)
 			ctx := context.Background()
 
 			user := createTestUser()
@@ -617,7 +633,7 @@ func TestBuyItem_QuantityBoundaries(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// ARRANGE
 			mockRepo := &MockRepository{}
-			service := NewService(mockRepo, concurrency.NewLockManager())
+			service := NewService(mockRepo, nil)
 			ctx := context.Background()
 
 			user := createTestUser()
@@ -694,7 +710,7 @@ func TestBuyItem_InvalidInputs(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// ARRANGE
 			mockRepo := &MockRepository{}
-			service := NewService(mockRepo, concurrency.NewLockManager())
+			service := NewService(mockRepo, nil)
 			ctx := context.Background()
 			tt.setup(mockRepo, ctx)
 
@@ -747,7 +763,7 @@ func TestBuyItem_DatabaseErrors(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// ARRANGE
 			mockRepo := &MockRepository{}
-			service := NewService(mockRepo, concurrency.NewLockManager())
+			service := NewService(mockRepo, nil)
 			ctx := context.Background()
 			tt.setup(mockRepo, ctx)
 

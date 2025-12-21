@@ -206,3 +206,68 @@ func TestRandomFloat(t *testing.T) {
 			"Should produce different values, not all identical")
 	})
 }
+
+// TestSecureRandomInt tests the secure random integer generator
+func TestSecureRandomInt(t *testing.T) {
+	t.Run("returns value within range", func(t *testing.T) {
+		max := 10
+		for i := 0; i < 100; i++ {
+			result := SecureRandomInt(max)
+			assert.GreaterOrEqual(t, result, 0)
+			assert.Less(t, result, max)
+		}
+	})
+
+	t.Run("panics on invalid input", func(t *testing.T) {
+		assert.Panics(t, func() { SecureRandomInt(0) })
+		assert.Panics(t, func() { SecureRandomInt(-1) })
+	})
+}
+
+// TestSecureRandomIntRange tests the secure random integer range generator
+func TestSecureRandomIntRange(t *testing.T) {
+	t.Run("returns value within range", func(t *testing.T) {
+		min, max := 1, 10
+		for i := 0; i < 100; i++ {
+			result := SecureRandomIntRange(min, max)
+			assert.GreaterOrEqual(t, result, min)
+			assert.LessOrEqual(t, result, max)
+		}
+	})
+
+	t.Run("handles min equals max", func(t *testing.T) {
+		value := 42
+		result := SecureRandomIntRange(value, value)
+		assert.Equal(t, value, result)
+	})
+
+	t.Run("handles inverted range", func(t *testing.T) {
+		result := SecureRandomIntRange(10, 5)
+		assert.Equal(t, 10, result)
+	})
+}
+
+// TestSecureRandomFloat tests the secure random float generator
+func TestSecureRandomFloat(t *testing.T) {
+	t.Run("returns value within range", func(t *testing.T) {
+		for i := 0; i < 100; i++ {
+			result := SecureRandomFloat()
+			assert.GreaterOrEqual(t, result, 0.0)
+			assert.Less(t, result, 1.0)
+		}
+	})
+
+	t.Run("produces varied results", func(t *testing.T) {
+		results := make([]float64, 100)
+		allSame := true
+
+		for i := 0; i < 100; i++ {
+			results[i] = SecureRandomFloat()
+			if i > 0 && results[i] != results[0] {
+				allSame = false
+			}
+		}
+
+		assert.False(t, allSame)
+	})
+}

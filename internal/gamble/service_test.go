@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/osse101/BrandishBot_Go/internal/concurrency"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/lootbox"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
@@ -179,8 +178,7 @@ func (m *MockStatsService) GetLeaderboard(ctx context.Context, eventType domain.
 
 func TestStartGamble_Success(t *testing.T) {
 	repo := new(MockRepository)
-	lockManager := concurrency.NewLockManager()
-	s := NewService(repo, lockManager, nil, new(MockLootboxService), nil, time.Minute, nil)
+	s := NewService(repo,  nil, new(MockLootboxService), nil, time.Minute, nil)
 
 	ctx := context.Background()
 	user := &domain.User{ID: "user1"}
@@ -211,8 +209,7 @@ func TestStartGamble_Success(t *testing.T) {
 
 func TestStartGamble_NoBets(t *testing.T) {
 	repo := new(MockRepository)
-	lockManager := concurrency.NewLockManager()
-	s := NewService(repo, lockManager, nil, new(MockLootboxService), nil, time.Minute, nil)
+	s := NewService(repo,  nil, new(MockLootboxService), nil, time.Minute, nil)
 
 	ctx := context.Background()
 	bets := []domain.LootboxBet{}
@@ -226,8 +223,7 @@ func TestStartGamble_NoBets(t *testing.T) {
 
 func TestStartGamble_InvalidBetQuantity(t *testing.T) {
 	repo := new(MockRepository)
-	lockManager := concurrency.NewLockManager()
-	s := NewService(repo, lockManager, nil, new(MockLootboxService), nil, time.Minute, nil)
+	s := NewService(repo,  nil, new(MockLootboxService), nil, time.Minute, nil)
 
 	ctx := context.Background()
 	bets := []domain.LootboxBet{{ItemID: 1, Quantity: 0}}
@@ -241,8 +237,7 @@ func TestStartGamble_InvalidBetQuantity(t *testing.T) {
 
 func TestStartGamble_UserNotFound(t *testing.T) {
 	repo := new(MockRepository)
-	lockManager := concurrency.NewLockManager()
-	s := NewService(repo, lockManager, nil, new(MockLootboxService), nil, time.Minute, nil)
+	s := NewService(repo,  nil, new(MockLootboxService), nil, time.Minute, nil)
 
 	ctx := context.Background()
 	bets := []domain.LootboxBet{{ItemID: 1, Quantity: 1}}
@@ -259,8 +254,7 @@ func TestStartGamble_UserNotFound(t *testing.T) {
 
 func TestStartGamble_ActiveGambleExists(t *testing.T) {
 	repo := new(MockRepository)
-	lockManager := concurrency.NewLockManager()
-	s := NewService(repo, lockManager, nil, new(MockLootboxService), nil, time.Minute, nil)
+	s := NewService(repo,  nil, new(MockLootboxService), nil, time.Minute, nil)
 
 	ctx := context.Background()
 	user := &domain.User{ID: "user1"}
@@ -280,8 +274,7 @@ func TestStartGamble_ActiveGambleExists(t *testing.T) {
 
 func TestStartGamble_InsufficientLootboxes(t *testing.T) {
 	repo := new(MockRepository)
-	lockManager := concurrency.NewLockManager()
-	s := NewService(repo, lockManager, nil, new(MockLootboxService), nil, time.Minute, nil)
+	s := NewService(repo,  nil, new(MockLootboxService), nil, time.Minute, nil)
 
 	ctx := context.Background()
 	user := &domain.User{ID: "user1"}
@@ -306,8 +299,7 @@ func TestStartGamble_InsufficientLootboxes(t *testing.T) {
 
 func TestStartGamble_LootboxNotInInventory(t *testing.T) {
 	repo := new(MockRepository)
-	lockManager := concurrency.NewLockManager()
-	s := NewService(repo, lockManager, nil, new(MockLootboxService), nil, time.Minute, nil)
+	s := NewService(repo,  nil, new(MockLootboxService), nil, time.Minute, nil)
 
 	ctx := context.Background()
 	user := &domain.User{ID: "user1"}
@@ -336,8 +328,7 @@ func TestStartGamble_LootboxNotInInventory(t *testing.T) {
 
 func TestJoinGamble_Success(t *testing.T) {
 	repo := new(MockRepository)
-	lockManager := concurrency.NewLockManager()
-	s := NewService(repo, lockManager, nil, new(MockLootboxService), nil, time.Minute, nil)
+	s := NewService(repo,  nil, new(MockLootboxService), nil, time.Minute, nil)
 
 	ctx := context.Background()
 	gambleID := uuid.New()
@@ -369,8 +360,7 @@ func TestJoinGamble_Success(t *testing.T) {
 
 func TestJoinGamble_NoBets(t *testing.T) {
 	repo := new(MockRepository)
-	lockManager := concurrency.NewLockManager()
-	s := NewService(repo, lockManager, nil, new(MockLootboxService), nil, time.Minute, nil)
+	s := NewService(repo,  nil, new(MockLootboxService), nil, time.Minute, nil)
 
 	ctx := context.Background()
 	gambleID := uuid.New()
@@ -384,8 +374,7 @@ func TestJoinGamble_NoBets(t *testing.T) {
 
 func TestJoinGamble_GambleNotFound(t *testing.T) {
 	repo := new(MockRepository)
-	lockManager := concurrency.NewLockManager()
-	s := NewService(repo, lockManager, nil, new(MockLootboxService), nil, time.Minute, nil)
+	s := NewService(repo,  nil, new(MockLootboxService), nil, time.Minute, nil)
 
 	ctx := context.Background()
 	gambleID := uuid.New()
@@ -404,8 +393,7 @@ func TestJoinGamble_GambleNotFound(t *testing.T) {
 
 func TestJoinGamble_WrongState(t *testing.T) {
 	repo := new(MockRepository)
-	lockManager := concurrency.NewLockManager()
-	s := NewService(repo, lockManager, nil, new(MockLootboxService), nil, time.Minute, nil)
+	s := NewService(repo,  nil, new(MockLootboxService), nil, time.Minute, nil)
 
 	ctx := context.Background()
 	gambleID := uuid.New()
@@ -429,8 +417,7 @@ func TestJoinGamble_WrongState(t *testing.T) {
 
 func TestJoinGamble_DeadlinePassed(t *testing.T) {
 	repo := new(MockRepository)
-	lockManager := concurrency.NewLockManager()
-	s := NewService(repo, lockManager, nil, new(MockLootboxService), nil, time.Minute, nil)
+	s := NewService(repo,  nil, new(MockLootboxService), nil, time.Minute, nil)
 
 	ctx := context.Background()
 	gambleID := uuid.New()
@@ -454,8 +441,7 @@ func TestJoinGamble_DeadlinePassed(t *testing.T) {
 
 func TestJoinGamble_InsufficientLootboxes(t *testing.T) {
 	repo := new(MockRepository)
-	lockManager := concurrency.NewLockManager()
-	s := NewService(repo, lockManager, nil, new(MockLootboxService), nil, time.Minute, nil)
+	s := NewService(repo,  nil, new(MockLootboxService), nil, time.Minute, nil)
 
 	ctx := context.Background()
 	gambleID := uuid.New()
@@ -489,9 +475,8 @@ func TestJoinGamble_InsufficientLootboxes(t *testing.T) {
 
 func TestExecuteGamble_Success(t *testing.T) {
 	repo := new(MockRepository)
-	lockManager := concurrency.NewLockManager()
 	lootboxSvc := new(MockLootboxService)
-	s := NewService(repo, lockManager, nil, lootboxSvc, nil, time.Minute, nil)
+	s := NewService(repo,  nil, lootboxSvc, nil, time.Minute, nil)
 
 	ctx := context.Background()
 	gambleID := uuid.New()
@@ -504,7 +489,7 @@ func TestExecuteGamble_Success(t *testing.T) {
 	}
 	tx := new(MockTx)
 	winnerInventory := &domain.Inventory{Slots: []domain.InventorySlot{}}
-	lootboxItem := &domain.Item{ID: 1, Name: "lootbox1"}
+	lootboxItem := &domain.Item{ID: 1, InternalName: "lootbox1"}
 	droppedItems := []lootbox.DroppedItem{{ItemID: 10, ItemName: "coin", Quantity: 5, Value: 10}}
 
 	repo.On("GetGamble", ctx, gambleID).Return(gamble, nil)
@@ -532,9 +517,8 @@ func TestExecuteGamble_Success(t *testing.T) {
 
 func TestExecuteGamble_MultipleParticipants(t *testing.T) {
 	repo := new(MockRepository)
-	lockManager := concurrency.NewLockManager()
 	lootboxSvc := new(MockLootboxService)
-	s := NewService(repo, lockManager, nil, lootboxSvc, nil, time.Minute, nil)
+	s := NewService(repo,  nil, lootboxSvc, nil, time.Minute, nil)
 
 	ctx := context.Background()
 	gambleID := uuid.New()
@@ -548,7 +532,7 @@ func TestExecuteGamble_MultipleParticipants(t *testing.T) {
 	}
 	tx := new(MockTx)
 	inventory := &domain.Inventory{Slots: []domain.InventorySlot{}}
-	lootboxItem := &domain.Item{ID: 1, Name: "lootbox1"}
+	lootboxItem := &domain.Item{ID: 1, InternalName: "lootbox1"}
 	droppedItems := []lootbox.DroppedItem{{ItemID: 10, ItemName: "coin", Quantity: 5, Value: 10}}
 
 	repo.On("GetGamble", ctx, gambleID).Return(gamble, nil)
@@ -576,8 +560,7 @@ func TestExecuteGamble_MultipleParticipants(t *testing.T) {
 
 func TestExecuteGamble_GambleNotFound(t *testing.T) {
 	repo := new(MockRepository)
-	lockManager := concurrency.NewLockManager()
-	s := NewService(repo, lockManager, nil, new(MockLootboxService), nil, time.Minute, nil)
+	s := NewService(repo,  nil, new(MockLootboxService), nil, time.Minute, nil)
 
 	ctx := context.Background()
 	gambleID := uuid.New()
@@ -594,8 +577,7 @@ func TestExecuteGamble_GambleNotFound(t *testing.T) {
 
 func TestExecuteGamble_AlreadyCompleted(t *testing.T) {
 	repo := new(MockRepository)
-	lockManager := concurrency.NewLockManager()
-	s := NewService(repo, lockManager, nil, new(MockLootboxService), nil, time.Minute, nil)
+	s := NewService(repo,  nil, new(MockLootboxService), nil, time.Minute, nil)
 
 	ctx := context.Background()
 	gambleID := uuid.New()
@@ -615,8 +597,7 @@ func TestExecuteGamble_AlreadyCompleted(t *testing.T) {
 
 func TestExecuteGamble_WrongState(t *testing.T) {
 	repo := new(MockRepository)
-	lockManager := concurrency.NewLockManager()
-	s := NewService(repo, lockManager, nil, new(MockLootboxService), nil, time.Minute, nil)
+	s := NewService(repo,  nil, new(MockLootboxService), nil, time.Minute, nil)
 
 	ctx := context.Background()
 	gambleID := uuid.New()
@@ -637,8 +618,7 @@ func TestExecuteGamble_WrongState(t *testing.T) {
 
 func TestExecuteGamble_StateUpdateFails(t *testing.T) {
 	repo := new(MockRepository)
-	lockManager := concurrency.NewLockManager()
-	s := NewService(repo, lockManager, nil, new(MockLootboxService), nil, time.Minute, nil)
+	s := NewService(repo,  nil, new(MockLootboxService), nil, time.Minute, nil)
 
 	ctx := context.Background()
 	gambleID := uuid.New()
@@ -663,9 +643,8 @@ func TestExecuteGamble_StateUpdateFails(t *testing.T) {
 
 func TestExecuteGamble_SaveOpenedItemsFails(t *testing.T) {
 	repo := new(MockRepository)
-	lockManager := concurrency.NewLockManager()
 	lootboxSvc := new(MockLootboxService)
-	s := NewService(repo, lockManager, nil, lootboxSvc, nil, time.Minute, nil)
+	s := NewService(repo,  nil, lootboxSvc, nil, time.Minute, nil)
 
 	ctx := context.Background()
 	gambleID := uuid.New()
@@ -676,7 +655,7 @@ func TestExecuteGamble_SaveOpenedItemsFails(t *testing.T) {
 			{UserID: "user1", LootboxBets: []domain.LootboxBet{{ItemID: 1, Quantity: 1}}},
 		},
 	}
-	lootboxItem := &domain.Item{ID: 1, Name: "lootbox1"}
+	lootboxItem := &domain.Item{ID: 1, InternalName: "lootbox1"}
 	droppedItems := []lootbox.DroppedItem{{ItemID: 10, ItemName: "coin", Quantity: 5, Value: 10}}
 
 	repo.On("GetGamble", ctx, gambleID).Return(gamble, nil)
@@ -700,8 +679,7 @@ func TestExecuteGamble_SaveOpenedItemsFails(t *testing.T) {
 
 func TestGetGamble_Success(t *testing.T) {
 	repo := new(MockRepository)
-	lockManager := concurrency.NewLockManager()
-	s := NewService(repo, lockManager, nil, new(MockLootboxService), nil, time.Minute, nil)
+	s := NewService(repo,  nil, new(MockLootboxService), nil, time.Minute, nil)
 
 	ctx := context.Background()
 	gambleID := uuid.New()
@@ -725,8 +703,7 @@ func TestGetGamble_Success(t *testing.T) {
 
 func TestGetActiveGamble_Success(t *testing.T) {
 	repo := new(MockRepository)
-	lockManager := concurrency.NewLockManager()
-	s := NewService(repo, lockManager, nil, new(MockLootboxService), nil, time.Minute, nil)
+	s := NewService(repo,  nil, new(MockLootboxService), nil, time.Minute, nil)
 
 	ctx := context.Background()
 	expectedGamble := &domain.Gamble{
@@ -745,8 +722,7 @@ func TestGetActiveGamble_Success(t *testing.T) {
 
 func TestGetActiveGamble_NoActiveGamble(t *testing.T) {
 	repo := new(MockRepository)
-	lockManager := concurrency.NewLockManager()
-	s := NewService(repo, lockManager, nil, new(MockLootboxService), nil, time.Minute, nil)
+	s := NewService(repo,  nil, new(MockLootboxService), nil, time.Minute, nil)
 
 	ctx := context.Background()
 
@@ -761,11 +737,10 @@ func TestGetActiveGamble_NoActiveGamble(t *testing.T) {
 
 func TestExecuteGamble_NearMiss(t *testing.T) {
 	repo := new(MockRepository)
-	lockManager := concurrency.NewLockManager()
 	lootboxSvc := new(MockLootboxService)
 	statsSvc := new(MockStatsService)
 	// Passing nil for JobService
-	s := NewService(repo, lockManager, nil, lootboxSvc, statsSvc, time.Minute, nil)
+	s := NewService(repo,  nil, lootboxSvc, statsSvc, time.Minute, nil)
 
 	ctx := context.Background()
 	gambleID := uuid.New()
@@ -785,9 +760,9 @@ func TestExecuteGamble_NearMiss(t *testing.T) {
 		},
 	}
 
-	lootboxItem1 := &domain.Item{ID: 1, Name: "box1"}
-	lootboxItem2 := &domain.Item{ID: 2, Name: "box2"}
-	lootboxItem3 := &domain.Item{ID: 3, Name: "box3"}
+	lootboxItem1 := &domain.Item{ID: 1, InternalName: "box1"}
+	lootboxItem2 := &domain.Item{ID: 2, InternalName: "box2"}
+	lootboxItem3 := &domain.Item{ID: 3, InternalName: "box3"}
 
 	// Mocks for lootbox drops
 	drops1 := []lootbox.DroppedItem{{ItemID: 10, ItemName: "coin", Quantity: 1, Value: 100}}
@@ -830,6 +805,82 @@ func TestExecuteGamble_NearMiss(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
 	assert.Equal(t, "user1", result.WinnerID)
+
+	repo.AssertExpectations(t)
+	lootboxSvc.AssertExpectations(t)
+	statsSvc.AssertExpectations(t)
+}
+
+func TestExecuteGamble_CriticalFailure(t *testing.T) {
+	repo := new(MockRepository)
+	lootboxSvc := new(MockLootboxService)
+	statsSvc := new(MockStatsService)
+	s := NewService(repo,  nil, lootboxSvc, statsSvc, time.Minute, nil)
+
+	ctx := context.Background()
+	gambleID := uuid.New()
+
+	// Setup 3 participants
+	// User1: 100
+	// User2: 100
+	// User3: 10 (Avg = 70. Threshold = 14. 10 <= 14 => Critical Fail)
+
+	gamble := &domain.Gamble{
+		ID:    gambleID,
+		State: domain.GambleStateJoining,
+		Participants: []domain.Participant{
+			{UserID: "user1", LootboxBets: []domain.LootboxBet{{ItemID: 1, Quantity: 1}}},
+			{UserID: "user2", LootboxBets: []domain.LootboxBet{{ItemID: 2, Quantity: 1}}},
+			{UserID: "user3", LootboxBets: []domain.LootboxBet{{ItemID: 3, Quantity: 1}}},
+		},
+	}
+
+	lootboxItem1 := &domain.Item{ID: 1, InternalName: "box1"}
+	lootboxItem2 := &domain.Item{ID: 2, InternalName: "box2"}
+	lootboxItem3 := &domain.Item{ID: 3, InternalName: "box3"}
+
+	drops1 := []lootbox.DroppedItem{{ItemID: 10, ItemName: "coin", Quantity: 1, Value: 100}}
+	drops2 := []lootbox.DroppedItem{{ItemID: 11, ItemName: "coin", Quantity: 1, Value: 100}}
+	drops3 := []lootbox.DroppedItem{{ItemID: 12, ItemName: "coin", Quantity: 1, Value: 10}}
+
+	repo.On("GetGamble", ctx, gambleID).Return(gamble, nil)
+	repo.On("UpdateGambleState", ctx, gambleID, domain.GambleStateOpening).Return(nil)
+
+	repo.On("GetItemByID", ctx, 1).Return(lootboxItem1, nil)
+	repo.On("GetItemByID", ctx, 2).Return(lootboxItem2, nil)
+	repo.On("GetItemByID", ctx, 3).Return(lootboxItem3, nil)
+
+	lootboxSvc.On("OpenLootbox", ctx, "box1", 1).Return(drops1, nil)
+	lootboxSvc.On("OpenLootbox", ctx, "box2", 1).Return(drops2, nil)
+	lootboxSvc.On("OpenLootbox", ctx, "box3", 1).Return(drops3, nil)
+
+	repo.On("SaveOpenedItems", ctx, mock.Anything).Return(nil)
+
+	tx := new(MockTx)
+	repo.On("BeginTx", ctx).Return(tx, nil)
+	tx.On("GetInventory", ctx, mock.Anything).Return(&domain.Inventory{}, nil)
+	tx.On("UpdateInventory", ctx, mock.Anything, mock.Anything).Return(nil)
+	tx.On("Commit", ctx).Return(nil)
+	tx.On("Rollback", ctx).Return(nil).Maybe()
+
+	repo.On("CompleteGamble", ctx, mock.Anything).Return(nil)
+
+	// Expect Critical Fail for User3
+	statsSvc.On("RecordUserEvent", ctx, "user3", domain.EventGambleCriticalFail, mock.MatchedBy(func(m map[string]interface{}) bool {
+		avg := m["average_score"].(float64)
+		threshold := m["threshold"].(int64)
+		score := m["score"].(int64)
+		return score == 10 && threshold == 14 && avg == 70.0
+	})).Return(nil)
+
+	// We might also get TieBreakLost event for the loser of the tie break (User1 or User2).
+	// We should allow it.
+	statsSvc.On("RecordUserEvent", ctx, mock.Anything, domain.EventGambleTieBreakLost, mock.Anything).Return(nil).Maybe()
+
+	result, err := s.ExecuteGamble(ctx, gambleID)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
 
 	repo.AssertExpectations(t)
 	lootboxSvc.AssertExpectations(t)

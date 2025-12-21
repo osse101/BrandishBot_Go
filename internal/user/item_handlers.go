@@ -42,9 +42,9 @@ func (s *service) processLootbox(ctx context.Context, inventory *domain.Inventor
 	}
 
 	// 2. Process drops
-	table, ok := s.lootTables[lootboxItem.Name]
+	table, ok := s.lootTables[lootboxItem.InternalName]
 	if !ok {
-		log.Warn("No loot table found for item", "item", lootboxItem.Name)
+		log.Warn("No loot table found for item", "item", lootboxItem.InternalName)
 		return "Lootbox opened but it was empty (no loot table)!", nil
 	}
 
@@ -56,10 +56,10 @@ func (s *service) processLootbox(ctx context.Context, inventory *domain.Inventor
 
 	for i := 0; i < quantity; i++ {
 		for _, loot := range table {
-			if utils.RandomFloat() <= loot.Chance {
+			if utils.SecureRandomFloat() <= loot.Chance {
 				qty := loot.Min
 				if loot.Max > loot.Min {
-					qty = utils.RandomInt(loot.Min, loot.Max)
+					qty = utils.SecureRandomIntRange(loot.Min, loot.Max)
 				}
 				drops[loot.ItemName] += qty
 			}
@@ -72,7 +72,7 @@ func (s *service) processLootbox(ctx context.Context, inventory *domain.Inventor
 
 	// 3. Add drops to inventory and build message
 	var msgBuilder strings.Builder
-	msgBuilder.WriteString(fmt.Sprintf("Opened %d %s and received: ", quantity, lootboxItem.Name))
+	msgBuilder.WriteString(fmt.Sprintf("Opened %d %s and received: ", quantity, lootboxItem.InternalName))
 
 	first := true
 	for itemName, qty := range drops {
@@ -97,7 +97,7 @@ func (s *service) processLootbox(ctx context.Context, inventory *domain.Inventor
 		if !first {
 			msgBuilder.WriteString(", ")
 		}
-		msgBuilder.WriteString(fmt.Sprintf("%dx %s", qty, item.Name))
+		msgBuilder.WriteString(fmt.Sprintf("%dx %s", qty, item.InternalName))
 		first = false
 	}
 

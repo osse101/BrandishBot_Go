@@ -29,6 +29,7 @@ func NewHTTPServer(port string, bot *Bot) *HTTPServer {
 	}
 
 	mux.HandleFunc("/admin/announce", srv.handleAnnounce)
+	mux.HandleFunc("/health", srv.HandleHealth)
 	return srv
 }
 

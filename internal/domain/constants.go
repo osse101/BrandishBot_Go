@@ -2,14 +2,15 @@ package domain
 
 import "time"
 
-// Item name constants - centralized item identifiers
+// Item internal name constants - stable code identifiers
 const (
-	ItemMoney    = "money"
-	ItemLootbox0 = "lootbox0"
-	ItemLootbox1 = "lootbox1"
-	ItemLootbox2 = "lootbox2"
-	ItemBlaster  = "blaster"
+	ItemMoney    = "money"           // currency_money in future
+	ItemLootbox0 = "lootbox_tier0"   // was lootbox0
+	ItemLootbox1 = "lootbox_tier1"   // was lootbox1
+	ItemLootbox2 = "lootbox_tier2"   // was lootbox2
+	ItemBlaster  = "weapon_blaster"  // was blaster
 )
+
 
 // Action name constants for cooldown tracking
 const (
@@ -35,8 +36,38 @@ const (
 
 // Message constants
 const (
-	MsgSearchNothingFound = "You have found nothing"
+	MsgSearchNothingFound    = "You have found nothing"
+	MsgSearchNearMiss        = "You found nothing... but you saw something glint in the distance!"
+	MsgSearchCriticalSuccess = "You found a hidden stash! (CRITICAL SUCCESS!)"
+	MsgSearchCriticalFail    = "You tried to search, but disaster struck! (CRITICAL FAIL!)"
+	MsgFirstSearchBonus      = " (First Search of the Day!)"
 )
+
+// SearchCriticalFailMessages is a list of funny messages for critical failures
+var SearchCriticalFailMessages = []string{
+	"You found a bee hive. They found you.",
+	"You fell into a hole. It's dark down here.",
+	"A mimic bit your hand! Ouch!",
+	"You dropped your wallet while searching. Now you have less than nothing.",
+	"You found a cursed amulet that smells like wet dog.",
+	"You searched so hard you pulled a muscle.",
+	"A bird pooped on your head. Unlucky.",
+	"You tripped and fell face-first into the mud.",
+	"You disturbed a sleeping bear. Run!",
+	"You found a trap! ...With your foot.",
+}
+
+// SearchFailureMessages is a list of funny messages for failed searches
+var SearchFailureMessages = []string{
+	MsgSearchNothingFound,
+	"You found a rock. It's just a rock.",
+	"You tripped over a root and found nothing.",
+	"You searched high and low, but mostly low, and found dust.",
+	"A goblin stole the loot before you got there.",
+	"You found a shiny coin! ...Wait, it's a chocolate wrapper.",
+	"Nothing here but cobwebs.",
+	"You found a 'IOU' note from a previous adventurer.",
+}
 
 // Period constants
 const (

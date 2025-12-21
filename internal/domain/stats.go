@@ -17,7 +17,12 @@ const (
 	// Gamble events
 	EventGambleNearMiss     EventType = "gamble_near_miss"
 	EventGambleTieBreakLost EventType = "gamble_tie_break_lost"
+	EventGambleCriticalFail EventType = "gamble_critical_fail"
 	EventDailyStreak        EventType = "daily_streak"
+	// Search events
+	EventSearch             EventType = "search"
+	EventSearchNearMiss     EventType = "search_near_miss"
+	EventSearchCriticalFail EventType = "search_critical_fail"
 )
 
 // StatsEvent represents a single tracked event

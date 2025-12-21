@@ -5,14 +5,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/osse101/BrandishBot_Go/internal/concurrency"
+	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
 func TestTimeoutUser(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	lockManager := concurrency.NewLockManager()
-	svc := NewService(repo, lockManager, nil)
+	svc := NewService(repo, nil, nil, NewMockNamingResolver(), false)
 	ctx := context.Background()
 
 	// Test setting a timeout
@@ -37,15 +36,15 @@ func TestTimeoutUser(t *testing.T) {
 func TestHandleBlaster_Timeout(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	lockManager := concurrency.NewLockManager()
-	svc := NewService(repo, lockManager, nil)
+	svc := NewService(repo, nil, nil, NewMockNamingResolver(), false)
 	ctx := context.Background()
+	item := domain.ItemBlaster
 
 	// Setup: Give alice a blaster
-	svc.AddItem(ctx, "twitch", "", "alice", "blaster", 1)
+	svc.AddItem(ctx, domain.PlatformTwitch, "", "alice", item, 1)
 
 	// Use blaster on bob
-	msg, err := svc.UseItem(ctx, "twitch", "", "alice", "blaster", 1, "bob")
+	msg, err := svc.UseItem(ctx, domain.PlatformTwitch, "", "alice", item, 1, "bob")
 	if err != nil {
 		t.Fatalf("UseItem failed: %v", err)
 	}

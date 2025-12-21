@@ -8,8 +8,51 @@ A high-performance game engine API for BrandishBot, built with Go. Provides inve
 - **Crafting System**: Recipe-based item crafting and upgrading
 - **Economy**: Buy/sell items with dynamic pricing
 - **Statistics**: User and system stats with leaderboards
+- **Discord Bot**: Full-featured Discord integration with slash commands
 - **Health Checks**: Production-ready liveness and readiness endpoints
 - **API Documentation**: Interactive Swagger UI at `/swagger/`
+
+## Discord Bot 🤖
+
+BrandishBot includes a native Discord bot with 21 slash commands providing complete feature access directly in Discord!
+
+### Quick Start (Discord)
+
+1. **Configure** (add to `.env`):
+```bash
+DISCORD_TOKEN=your_bot_token
+DISCORD_APP_ID=your_app_id
+API_URL=http://localhost:8080
+```
+
+2. **Start Discord Bot**:
+```bash
+# Local development
+make build
+make discord-run
+
+# Docker (with core API)
+make docker-up
+```
+
+3. **Use Commands**:
+- `/info` - Get started
+- `/profile` - View your profile
+- `/search` - Find items
+- `/inventory` - See your items
+- `/help` for more!
+
+### Discord Commands
+
+**Economy**: `/buy`, `/sell`, `/prices`, `/give`  
+**Inventory**: `/inventory`, `/search`, `/use`  
+**Crafting**: `/upgrade`, `/disassemble`, `/recipes`  
+**Gambling**: `/gamble`, `/join-gamble`  
+**Stats**: `/stats`, `/leaderboard`  
+**Progression**: `/vote`  
+**Admin**: `/add-item`, `/remove-item`
+
+See `/info commands` in Discord for full details.
 
 ## Quick Start
 
@@ -60,6 +103,13 @@ Visit http://localhost:8080/swagger/index.html
 - `make test-coverage` - Generate HTML coverage report
 - `make build` - Build all binaries
 - `make swagger` - Regenerate Swagger docs
+
+**Discord Bot**:
+- `make discord-run` - Run Discord bot locally
+- `make discord-logs` - View Discord logs (Docker)
+- `make docker-discord-build` - Build Discord image
+- `make docker-discord-up` - Start Discord service
+- `make docker-discord-restart` - Restart Discord bot
 
 **Docker**:
 - `make docker-up` - Start services

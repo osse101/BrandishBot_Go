@@ -1,0 +1,10 @@
+{
+  "halloween": {
+    "start": "10-15",
+    "end": "11-02"
+  },
+  "christmas": {
+    "start": "12-15",
+    "end": "01-05"
+  }
+}

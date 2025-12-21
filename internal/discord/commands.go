@@ -3,10 +3,8 @@ package discord
 import (
 	"fmt"
 	"log/slog"
-	"strings"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
 // CommandHandler handles a slash command
@@ -35,252 +33,123 @@ func (r *CommandRegistry) Register(cmd *discordgo.ApplicationCommand, handler Co
 // Handle processes an interaction
 func (r *CommandRegistry) Handle(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
 	if h, ok := r.Handlers[i.ApplicationCommandData().Name]; ok {
+		RecordCommand() // Track command usage
 		h(s, i, client)
 	}
 }
 
-// RegisterCommands registers commands with Discord
-func (b *Bot) RegisterCommands(registry *CommandRegistry) error {
-	slog.Info("Registering commands...")
-	for _, v := range registry.Commands {
-		_, err := b.Session.ApplicationCommandCreate(b.AppID, "", v)
-		if err != nil {
-			return fmt.Errorf("cannot create command %v: %w", v.Name, err)
-		}
-		slog.Info("Registered command", "name", v.Name)
+// RegisterCommands intelligently registers/updates commands with Discord
+// Only performs updates if commands have changed to avoid rate limits
+func (b *Bot) RegisterCommands(registry *CommandRegistry, forceUpdate bool) error {
+	slog.Info("Checking Discord commands...")
+	
+	// Get currently registered commands from Discord
+	existingCmds, err := b.Session.ApplicationCommands(b.AppID, "")
+	if err != nil {
+		return fmt.Errorf("failed to fetch existing commands: %w", err)
 	}
+
+	// Build desired commands list
+	var desiredCmds []*discordgo.ApplicationCommand
+	for _, cmd := range registry.Commands {
+		desiredCmds = append(desiredCmds, cmd)
+	}
+
+	// If force update, use bulk overwrite
+	if forceUpdate {
+		slog.Info("Force update enabled - replacing all commands", "count", len(desiredCmds))
+		_, err := b.Session.ApplicationCommandBulkOverwrite(b.AppID, "", desiredCmds)
+		if err != nil {
+			return fmt.Errorf("failed to bulk overwrite commands: %w", err)
+		}
+		slog.Info("Commands force updated successfully")
+		return nil
+	}
+
+	// Check if commands have changed
+	if commandsEqual(existingCmds, desiredCmds) {
+		slog.Info("Commands unchanged, skipping registration", "count", len(existingCmds))
+		return nil
+	}
+
+	// Commands have changed - update them
+	slog.Info("Commands changed, updating...", 
+		"existing", len(existingCmds), 
+		"desired", len(desiredCmds))
+	
+	_, err = b.Session.ApplicationCommandBulkOverwrite(b.AppID, "", desiredCmds)
+	if err != nil {
+		return fmt.Errorf("failed to update commands: %w", err)
+	}
+	
+	slog.Info("Commands updated successfully", "count", len(desiredCmds))
 	return nil
 }
 
-// PingCommand returns the ping command definition and handler
-func PingCommand() (*discordgo.ApplicationCommand, CommandHandler) {
-	cmd := &discordgo.ApplicationCommand{
-		Name:        "ping",
-		Description: "Check if the bot is alive",
+// commandsEqual checks if two command sets are equivalent
+func commandsEqual(existing, desired []*discordgo.ApplicationCommand) bool {
+	if len(existing) != len(desired) {
+		return false
 	}
 
-	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseChannelMessageWithSource,
-			Data: &discordgo.InteractionResponseData{
-				Content: "Pong! 🏓",
-			},
-		}); err != nil {
-			slog.Error("Failed to respond to ping", "error", err)
+	// Build map of existing commands by name
+	existingMap := make(map[string]*discordgo.ApplicationCommand)
+	for _, cmd := range existing {
+		existingMap[cmd.Name] = cmd
+	}
+
+	// Check each desired command exists and matches
+	for _, desired := range desired {
+		existing, ok := existingMap[desired.Name]
+		if !ok {
+			return false
+		}
+		if !commandEqual(existing, desired) {
+			return false
 		}
 	}
 
-	return cmd, handler
+	return true
 }
 
-// ProfileCommand returns the profile command definition and handler
-func ProfileCommand() (*discordgo.ApplicationCommand, CommandHandler) {
-	cmd := &discordgo.ApplicationCommand{
-		Name:        "profile",
-		Description: "View your profile stats",
+// commandEqual checks if two commands are equivalent
+func commandEqual(a, b *discordgo.ApplicationCommand) bool {
+	// Compare basic fields
+	if a.Name != b.Name || a.Description != b.Description {
+		return false
 	}
 
-	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-		}); err != nil {
-			slog.Error("Failed to send deferred response", "error", err)
-			return
-		}
+	// Compare options length
+	if len(a.Options) != len(b.Options) {
+		return false
+	}
 
-		user := i.Member.User
-		if user == nil {
-			user = i.User
-		}
-
-		domainUser, err := client.RegisterUser(user.Username, user.ID)
-		if err != nil {
-			slog.Error("Failed to register user", "error", err)
-			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-				Content: &[]string{"Failed to retrieve profile. Please try again later."}[0],
-			}); err != nil {
-				slog.Error("Failed to edit interaction response", "error", err)
-			}
-			return
-		}
-
-		stats, err := client.GetUserStats(domainUser.ID)
-		if err != nil {
-			slog.Error("Failed to get stats", "error", err)
-			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-				Content: &[]string{"Failed to retrieve stats."}[0],
-			}); err != nil {
-				slog.Error("Failed to edit interaction response", "error", err)
-			}
-			return
-		}
-
-		embed := &discordgo.MessageEmbed{
-			Title:       fmt.Sprintf("%s's Profile", user.Username),
-			Description: "Here are your stats:",
-			Color:       0x00ff00,
-			Thumbnail: &discordgo.MessageEmbedThumbnail{
-				URL: user.AvatarURL(""),
-			},
-			Fields: []*discordgo.MessageEmbedField{
-				{
-					Name:   "Total Events",
-					Value:  fmt.Sprintf("%d", stats.TotalEvents),
-					Inline: true,
-				},
-				{
-					Name:   "Internal ID",
-					Value:  domainUser.ID,
-					Inline: true,
-				},
-			},
-			Footer: &discordgo.MessageEmbedFooter{
-				Text: "BrandishBot",
-			},
-		}
-
-		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Embeds: &[]*discordgo.MessageEmbed{embed},
-		}); err != nil {
-			slog.Error("Failed to send profile embed", "error", err)
+	// Compare each option
+	for i := range a.Options {
+		if !optionEqual(a.Options[i], b.Options[i]) {
+			return false
 		}
 	}
 
-	return cmd, handler
+	return true
 }
 
-// SearchCommand returns the search command definition and handler
-func SearchCommand() (*discordgo.ApplicationCommand, CommandHandler) {
-	cmd := &discordgo.ApplicationCommand{
-		Name:        "search",
-		Description: "Search for items",
+// optionEqual checks if two command options are equivalent
+func optionEqual(a, b *discordgo.ApplicationCommandOption) bool {
+	if a.Type != b.Type || a.Name != b.Name || a.Description != b.Description || a.Required != b.Required {
+		return false
 	}
 
-	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-		}); err != nil {
-			slog.Error("Failed to send deferred response", "error", err)
-			return
-		}
+	// Compare choices if present
+	if len(a.Choices) != len(b.Choices) {
+		return false
+	}
 
-		user := i.Member.User
-		if user == nil {
-			user = i.User
-		}
-
-		// Ensure user exists
-		_, err := client.RegisterUser(user.Username, user.ID)
-		if err != nil {
-			slog.Error("Failed to register user", "error", err)
-			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-				Content: &[]string{"Error connecting to game server."}[0],
-			}); err != nil {
-				slog.Error("Failed to edit interaction response", "error", err)
-			}
-			return
-		}
-
-		msg, err := client.Search(domain.PlatformDiscord, user.ID, user.Username)
-		if err != nil {
-			slog.Error("Failed to search", "error", err)
-			errorMsg := fmt.Sprintf("Search failed: %v", err)
-			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-				Content: &errorMsg,
-			}); err != nil {
-				slog.Error("Failed to edit interaction response", "error", err)
-			}
-			return
-		}
-
-		embed := &discordgo.MessageEmbed{
-			Title:       "Search Result",
-			Description: msg,
-			Color:       0x3498db, // Blue
-			Footer: &discordgo.MessageEmbedFooter{
-				Text: "BrandishBot",
-			},
-		}
-
-		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Embeds: &[]*discordgo.MessageEmbed{embed},
-		}); err != nil {
-			slog.Error("Failed to send search results", "error", err)
+	for i := range a.Choices {
+		if a.Choices[i].Name != b.Choices[i].Name || a.Choices[i].Value != b.Choices[i].Value {
+			return false
 		}
 	}
 
-	return cmd, handler
-}
-
-// InventoryCommand returns the inventory command definition and handler
-func InventoryCommand() (*discordgo.ApplicationCommand, CommandHandler) {
-	cmd := &discordgo.ApplicationCommand{
-		Name:        "inventory",
-		Description: "View your inventory",
-	}
-
-	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-		}); err != nil {
-			slog.Error("Failed to send deferred response", "error", err)
-			return
-		}
-
-		user := i.Member.User
-		if user == nil {
-			user = i.User
-		}
-
-		// Ensure user exists
-		_, err := client.RegisterUser(user.Username, user.ID)
-		if err != nil {
-			slog.Error("Failed to register user", "error", err)
-			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-				Content: &[]string{"Error connecting to game server."}[0],
-			}); err != nil {
-				slog.Error("Failed to edit interaction response", "error", err)
-			}
-			return
-		}
-
-		items, err := client.GetInventory(domain.PlatformDiscord, user.ID, user.Username)
-		if err != nil {
-			slog.Error("Failed to get inventory", "error", err)
-			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-				Content: &[]string{"Failed to retrieve inventory."}[0],
-			}); err != nil {
-				slog.Error("Failed to edit interaction response", "error", err)
-			}
-			return
-		}
-
-		var description string
-		if len(items) == 0 {
-			description = "Your inventory is empty."
-		} else {
-			var lines []string
-			for _, item := range items {
-				lines = append(lines, fmt.Sprintf("**%s** x%d", item.Name, item.Quantity))
-			}
-			description = strings.Join(lines, "\n")
-		}
-
-		embed := &discordgo.MessageEmbed{
-			Title:       fmt.Sprintf("%s's Inventory", user.Username),
-			Description: description,
-			Color:       0x9b59b6, // Purple
-			Footer: &discordgo.MessageEmbedFooter{
-				Text: "BrandishBot",
-			},
-		}
-
-		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Embeds: &[]*discordgo.MessageEmbed{embed},
-		}); err != nil {
-			slog.Error("Failed to send inventory embed", "error", err)
-		}
-	}
-
-	return cmd, handler
+	return true
 }

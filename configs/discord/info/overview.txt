@@ -1,0 +1,40 @@
+**Welcome to BrandishBot!** 🎮
+
+A live chatroom game engine that turns your Discord server into an interactive gaming experience with inventory, economy, crafting, and community progression.
+
+## 🎯 Core Features
+
+**💰 Economy System**
+Buy, sell, and trade items. Earn money through gameplay and manage your wealth.
+
+**🎒 Inventory Management**
+Collect items, use lootboxes, and build your collection. Transfer items to other players.
+
+**🔨 Crafting & Upgrades**
+Craft powerful items using recipes. Disassemble unwanted items for materials.
+
+**🎲 Gambling**
+Bet loot boxes against other players. Winner takes all!
+
+**🌳 Community Progression**
+Vote to unlock new features. Everyone contributes to grow the game together.
+
+**📊 Stats & Leaderboards**
+Track your progress. Compete with friends on leaderboards.
+
+## 🚀 Getting Started
+
+1. Use `/profile` to see your profile
+2. Use `/inventory` to check your items
+3. Use `/search` to find loot
+4. Use `/info [feature]` to learn more
+
+## 💬 Get Help
+
+- `/info commands` - View all available commands
+- `/info [feature]` - Learn about specific features
+- Ask in the channel for community support!
+
+## 🎮 Let's Play!
+
+Start exploring with `/search` or check the `/leaderboard` to see top players!

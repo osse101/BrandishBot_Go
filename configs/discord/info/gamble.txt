@@ -1,0 +1,80 @@
+**🎲 Gambling System**
+
+Bet lootboxes against other players - winner takes all!
+
+## 🎰 How It Works
+
+1. Someone starts a gamble with `/gamble`
+2. Others join with `/join-gamble`
+3. After the timer, all lootboxes are opened
+4. Highest total value wins ALL the loot!
+
+## 🚀 Start a Gamble
+
+```
+/gamble [lootbox-type] [quantity]
+```
+
+**Example:** `/gamble lootbox1 2`
+Starts a gamble betting 2x lootbox1
+
+**What happens:**
+- Creates a new gamble session
+- Other players have ~2 minutes to join
+- Your lootboxes are reserved (can't use them)
+- Timer starts automatically
+
+## 🤝 Join a Gamble
+
+```
+/join-gamble [gamble-id] [lootbox-type] [quantity]
+```
+
+Join an active gamble! You can bet:
+- Same lootbox type
+- Different lootbox types
+- Different quantities
+
+## 🏆 Winning
+
+When time runs out:
+- All lootboxes are opened
+- Items are valued
+- Player with highest total value wins
+- Winner gets ALL items from ALL lootboxes
+- Losers get nothing!
+
+## ⚠️ Rules
+
+- ✅ You can bet any lootbox (lootbox0, lootbox1, lootbox2)
+- ✅ Multiple players can join
+- ✅ Different quantities allowed
+- ❌ Can't cancel once started
+- ❌ Can't join after timer expires
+- ❌ Only one active gamble at a time
+
+## 💡 Strategy Tips
+
+- Higher tier lootboxes = better average value
+- Betting more boxes = higher variance
+- Check who's joining before you do!
+- Sometimes it's worth risking it all
+- Tie-breaker: Random selection among tied players
+
+## Example Flow
+
+```
+1. Alice: /gamble lootbox1 3
+   → Gamble created! ID: abc123
+
+2. Bob: /join-gamble abc123 lootbox1 2
+   → Bob joined!
+
+3. [Timer expires]
+   → Opening lootboxes...
+   → Alice: 450 total value
+   → Bob: 380 total value
+   → Alice wins! Gets all items
+```
+
+Good luck! 🍀

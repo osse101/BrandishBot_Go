@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/osse101/BrandishBot_Go/internal/database"
@@ -25,7 +26,7 @@ func main() {
 		os.Getenv("DB_NAME"),
 	)
 
-	dbPool, err := database.NewPool(connString)
+	dbPool, err := database.NewPool(connString, 10, 30*time.Minute, time.Hour)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}

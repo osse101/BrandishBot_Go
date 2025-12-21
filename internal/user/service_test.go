@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/osse101/BrandishBot_Go/internal/concurrency"
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
@@ -20,6 +19,38 @@ type MockRepository struct {
 	recipes         map[int]*domain.Recipe // keyed by recipe ID
 	unlockedRecipes map[string]map[int]bool
 	cooldowns       map[string]map[string]*time.Time // userID -> action -> timestamp
+}
+
+// MockNamingResolver implements naming.Resolver interface for testing
+type MockNamingResolver struct {
+	DisplayNames map[string]string
+}
+
+func (m *MockNamingResolver) ResolvePublicName(publicName string) (string, bool) {
+	return publicName, true
+}
+
+func (m *MockNamingResolver) GetDisplayName(internalName, shineLevel string) string {
+	if name, ok := m.DisplayNames[internalName]; ok {
+		return name
+	}
+	return internalName
+}
+
+func (m *MockNamingResolver) GetActiveTheme() string {
+	return ""
+}
+
+func (m *MockNamingResolver) Reload() error {
+	return nil
+}
+
+func (m *MockNamingResolver) RegisterItem(internalName, publicName string) {}
+
+func NewMockNamingResolver() *MockNamingResolver {
+	return &MockNamingResolver{
+		DisplayNames: make(map[string]string),
+	}
 }
 
 func NewMockRepository() *MockRepository {
@@ -41,18 +72,41 @@ func (m *MockRepository) UpsertUser(ctx context.Context, user *domain.User) erro
 	return nil
 }
 
+func (m *MockRepository) UpdateUser(ctx context.Context, user domain.User) error {
+	m.users[user.Username] = &user
+	return nil
+}
+
+func (m *MockRepository) DeleteUser(ctx context.Context, userID string) error {
+	for k, v := range m.users {
+		if v.ID == userID {
+			delete(m.users, k)
+		}
+	}
+	return nil
+}
+
+func (m *MockRepository) GetUserByID(ctx context.Context, userID string) (*domain.User, error) {
+	for _, u := range m.users {
+		if u.ID == userID {
+			return u, nil
+		}
+	}
+	return nil, nil
+}
+
 func (m *MockRepository) GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error) {
 	for _, u := range m.users {
 		switch platform {
-		case "twitch":
+		case domain.PlatformTwitch:
 			if u.TwitchID == platformID {
 				return u, nil
 			}
-		case "youtube":
+		case domain.PlatformYoutube:
 			if u.YoutubeID == platformID {
 				return u, nil
 			}
-		case "discord":
+		case domain.PlatformDiscord:
 			if u.DiscordID == platformID {
 				return u, nil
 			}
@@ -74,11 +128,29 @@ func (m *MockRepository) UpdateInventory(ctx context.Context, userID string, inv
 	return nil
 }
 
+func (m *MockRepository) DeleteInventory(ctx context.Context, userID string) error {
+	delete(m.inventories, userID)
+	return nil
+}
+
 func (m *MockRepository) GetItemByName(ctx context.Context, itemName string) (*domain.Item, error) {
 	if item, ok := m.items[itemName]; ok {
 		return item, nil
 	}
 	return nil, nil
+}
+
+func (m *MockRepository) GetItemsByIDs(ctx context.Context, itemIDs []int) ([]domain.Item, error) {
+	var items []domain.Item
+	for _, id := range itemIDs {
+		for _, item := range m.items {
+			if item.ID == id {
+				items = append(items, *item)
+				break
+			}
+		}
+	}
+	return items, nil
 }
 
 func (m *MockRepository) GetItemByID(ctx context.Context, id int) (*domain.Item, error) {
@@ -164,8 +236,9 @@ func (r *MockRepository) GetUnlockedRecipesForUser(ctx context.Context, userID s
 				for _, item := range r.items {
 					if item.ID == recipe.TargetItemID {
 						recipes = append(recipes, crafting.UnlockedRecipeInfo{
-							ItemName: item.Name,
-							ItemID:   item.ID,
+							ItemName: item.InternalName,
+
+							ItemID: item.ID,
 						})
 						break
 					}
@@ -208,32 +281,37 @@ func setupTestData(repo *MockRepository) {
 
 	// Add test items
 	repo.items[domain.ItemLootbox1] = &domain.Item{
-		ID:          1,
-		Name:        domain.ItemLootbox1,
+		ID:           1,
+		InternalName: domain.ItemLootbox1,
+
 		Description: "Basic Lootbox",
 		BaseValue:   50,
 	}
 	repo.items[domain.ItemLootbox2] = &domain.Item{
-		ID:          2,
-		Name:        domain.ItemLootbox2,
+		ID:           2,
+		InternalName: domain.ItemLootbox2,
+
 		Description: "Good Lootbox",
 		BaseValue:   100,
 	}
 	repo.items[domain.ItemMoney] = &domain.Item{
-		ID:          3,
-		Name:        domain.ItemMoney,
+		ID:           3,
+		InternalName: domain.ItemMoney,
+
 		Description: "Currency",
 		BaseValue:   1,
 	}
 	repo.items[domain.ItemLootbox0] = &domain.Item{
-		ID:          4,
-		Name:        domain.ItemLootbox0,
+		ID:           4,
+		InternalName: domain.ItemLootbox0,
+
 		Description: "Empty Lootbox",
 		BaseValue:   10,
 	}
 	repo.items[domain.ItemBlaster] = &domain.Item{
-		ID:          5,
-		Name:        domain.ItemBlaster,
+		ID:           5,
+		InternalName: domain.ItemBlaster,
+
 		Description: "So anyway, I started blasting",
 		BaseValue:   10,
 	}
@@ -242,12 +320,11 @@ func setupTestData(repo *MockRepository) {
 func TestAddItem(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	lockManager := concurrency.NewLockManager()
-	svc := NewService(repo, lockManager, nil)
+	svc := NewService(repo, nil, nil, NewMockNamingResolver(), false)
 	ctx := context.Background()
 
 	// Test adding item to empty inventory
-	err := svc.AddItem(ctx, "twitch", "", "alice", domain.ItemLootbox1, 5)
+	err := svc.AddItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemLootbox1, 5)
 	if err != nil {
 		t.Fatalf("Failed to setup test: %v", err)
 	}
@@ -268,7 +345,7 @@ func TestAddItem(t *testing.T) {
 	}
 
 	// Adding more should increment
-	err = svc.AddItem(ctx, "twitch", "", "alice", domain.ItemLootbox1, 3)
+	err = svc.AddItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemLootbox1, 3)
 	if err != nil {
 		t.Fatalf("AddItem failed: %v", err)
 	}
@@ -283,7 +360,7 @@ func TestAddItem(t *testing.T) {
 	}
 
 	// Adding a different item should create a new slot
-	err = svc.AddItem(ctx, "twitch", "", "alice", domain.ItemLootbox2, 2)
+	err = svc.AddItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemLootbox2, 2)
 	if err != nil {
 		t.Fatalf("AddItem failed: %v", err)
 	}
@@ -297,15 +374,14 @@ func TestAddItem(t *testing.T) {
 func TestRemoveItem(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	lockManager := concurrency.NewLockManager()
-	svc := NewService(repo, lockManager, nil)
+	svc := NewService(repo, nil, nil, NewMockNamingResolver(), false)
 	ctx := context.Background()
 
 	// Add 10 lootbox1 items
-	svc.AddItem(ctx, "twitch", "", "alice", domain.ItemLootbox1, 10)
+	svc.AddItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemLootbox1, 10)
 
 	// Remove 3
-	removed, err := svc.RemoveItem(ctx, "twitch", "", "alice", domain.ItemLootbox1, 3)
+	removed, err := svc.RemoveItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemLootbox1, 3)
 	if err != nil {
 		t.Fatalf("RemoveItem failed: %v", err)
 	}
@@ -319,7 +395,7 @@ func TestRemoveItem(t *testing.T) {
 	}
 
 	// Test removing more than available (should remove all)
-	removed, err = svc.RemoveItem(ctx, "twitch", "", "alice", domain.ItemLootbox1, 100)
+	removed, err = svc.RemoveItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemLootbox1, 100)
 	if err != nil {
 		t.Fatalf("RemoveItem failed: %v", err)
 	}
@@ -333,7 +409,7 @@ func TestRemoveItem(t *testing.T) {
 	}
 
 	// Test removing from empty inventory
-	_, err = svc.RemoveItem(ctx, "twitch", "", "alice", domain.ItemLootbox1, 1)
+	_, err = svc.RemoveItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemLootbox1, 1)
 	if err == nil {
 		t.Error("Expected error when removing from empty inventory")
 	}
@@ -342,15 +418,14 @@ func TestRemoveItem(t *testing.T) {
 func TestGiveItem(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	lockManager := concurrency.NewLockManager()
-	svc := NewService(repo, lockManager, nil)
+	svc := NewService(repo, nil, nil, NewMockNamingResolver(), false)
 	ctx := context.Background()
 
 	// Setup: Give alice some items
-	svc.AddItem(ctx, "twitch", "alice123", "alice", domain.ItemLootbox1, 10)
+	svc.AddItem(ctx, domain.PlatformTwitch, "alice123", "alice", domain.ItemLootbox1, 10)
 
 	// Test giving items
-	err := svc.GiveItem(ctx, "twitch", "alice123", "alice", "twitch", "bob456", "bob", domain.ItemLootbox1, 3)
+	err := svc.GiveItem(ctx, domain.PlatformTwitch, "alice123", "alice", domain.PlatformTwitch, "bob456", "bob", domain.ItemLootbox1, 3)
 	if err != nil {
 		t.Fatalf("GiveItem failed: %v", err)
 	}
@@ -368,7 +443,7 @@ func TestGiveItem(t *testing.T) {
 	}
 
 	// Test giving more than owned (should error)
-	err = svc.GiveItem(ctx, "twitch", "alice123", "alice", "twitch", "bob456", "bob", domain.ItemLootbox1, 100)
+	err = svc.GiveItem(ctx, domain.PlatformTwitch, "alice123", "alice", domain.PlatformTwitch, "bob456", "bob", domain.ItemLootbox1, 100)
 	if err == nil {
 		t.Error("Expected error when giving more than owned")
 	}
@@ -382,8 +457,7 @@ func TestGiveItem(t *testing.T) {
 
 func TestRegisterUser(t *testing.T) {
 	repo := NewMockRepository()
-	lockManager := concurrency.NewLockManager()
-	svc := NewService(repo, lockManager, nil)
+	svc := NewService(repo, nil, nil, NewMockNamingResolver(), false)
 	ctx := context.Background()
 
 	user := domain.User{
@@ -404,7 +478,7 @@ func TestRegisterUser(t *testing.T) {
 	}
 
 	// Verify user in repo
-	found, _ := repo.GetUserByPlatformID(ctx, "twitch", "charlie789")
+	found, _ := repo.GetUserByPlatformID(ctx, domain.PlatformTwitch, "charlie789")
 	if found == nil {
 		t.Error("User not found in repository")
 	}
@@ -412,11 +486,10 @@ func TestRegisterUser(t *testing.T) {
 
 func TestHandleIncomingMessage_NewUser(t *testing.T) {
 	repo := NewMockRepository()
-	lockManager := concurrency.NewLockManager()
-	svc := NewService(repo, lockManager, nil)
+	svc := NewService(repo, nil, nil, NewMockNamingResolver(), false)
 	ctx := context.Background()
 
-	result, err := svc.HandleIncomingMessage(ctx, "twitch", "newuser123", "newuser", "hello")
+	result, err := svc.HandleIncomingMessage(ctx, domain.PlatformTwitch, "newuser123", "newuser", "hello")
 	if err != nil {
 		t.Fatalf("HandleIncomingMessage failed: %v", err)
 	}
@@ -426,7 +499,7 @@ func TestHandleIncomingMessage_NewUser(t *testing.T) {
 	}
 
 	// Verify user was created
-	found, _ := repo.GetUserByPlatformID(ctx, "twitch", "newuser123")
+	found, _ := repo.GetUserByPlatformID(ctx, domain.PlatformTwitch, "newuser123")
 	if found == nil {
 		t.Error("User should have been created")
 	}
@@ -435,11 +508,10 @@ func TestHandleIncomingMessage_NewUser(t *testing.T) {
 func TestHandleIncomingMessage_ExistingUser(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	lockManager := concurrency.NewLockManager()
-	svc := NewService(repo, lockManager, nil)
+	svc := NewService(repo, nil, nil, NewMockNamingResolver(), false)
 	ctx := context.Background()
 
-	result, err := svc.HandleIncomingMessage(ctx, "twitch", "alice123", "alice", "hello")
+	result, err := svc.HandleIncomingMessage(ctx, domain.PlatformTwitch, "alice123", "alice", "hello")
 	if err != nil {
 		t.Fatalf("HandleIncomingMessage failed: %v", err)
 	}
@@ -452,8 +524,7 @@ func TestHandleIncomingMessage_ExistingUser(t *testing.T) {
 func TestUseItem(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	lockManager := concurrency.NewLockManager()
-	svc := NewService(repo, lockManager, nil).(*service)
+	svc := NewService(repo, nil, nil, NewMockNamingResolver(), false).(*service)
 
 	// Setup loot tables
 	svc.lootTables[domain.ItemLootbox1] = []LootItem{
@@ -463,16 +534,17 @@ func TestUseItem(t *testing.T) {
 	ctx := context.Background()
 
 	// Setup: Give alice some lootbox1
-	svc.AddItem(ctx, "twitch", "", "alice", domain.ItemLootbox1, 5)
+	svc.AddItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemLootbox1, 5)
 
 	// Test using lootbox1 (consumes 1 lootbox1, gives 1 lootbox0)
-	message, err := svc.UseItem(ctx, "twitch", "", "alice", domain.ItemLootbox1, 1, "")
+	message, err := svc.UseItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemLootbox1, 1, "")
 	if err != nil {
 		t.Fatalf("UseItem failed: %v", err)
 	}
 
 	// The message format changed in the new implementation
-	expectedMsg := "Opened 1 lootbox1 and received: 1x lootbox0"
+	expectedMsg := "Opened 1 lootbox_tier1 and received: 1x lootbox_tier0"
+
 	if message != expectedMsg {
 		t.Errorf("Expected message '%s', got '%s'", expectedMsg, message)
 	}
@@ -499,20 +571,20 @@ func TestUseItem(t *testing.T) {
 	}
 
 	// Test using more than available
-	_, err = svc.UseItem(ctx, "twitch", "", "alice", domain.ItemLootbox1, 10, "")
+	_, err = svc.UseItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemLootbox1, 10, "")
 	if err == nil {
 		t.Error("Expected error when using more than available")
 	}
 
 	// Test using unknown item
-	_, err = svc.UseItem(ctx, "twitch", "", "alice", "unknown_item", 1, "")
+	_, err = svc.UseItem(ctx, domain.PlatformTwitch, "", "alice", "unknown_item", 1, "")
 	if err == nil {
 		t.Error("Expected error when using unknown item")
 	}
 
 	// Test using item with no effect (money)
-	svc.AddItem(ctx, "twitch", "", "alice", domain.ItemMoney, 1)
-	_, err = svc.UseItem(ctx, "twitch", "", "alice", domain.ItemMoney, 1, "")
+	svc.AddItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemMoney, 1)
+	_, err = svc.UseItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemMoney, 1, "")
 	if err == nil {
 		t.Error("Expected error when using item with no effect")
 	}
@@ -521,15 +593,14 @@ func TestUseItem(t *testing.T) {
 func TestUseItem_Blaster(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	lockManager := concurrency.NewLockManager()
-	svc := NewService(repo, lockManager, nil)
+	svc := NewService(repo, nil, nil, NewMockNamingResolver(), false)
 	ctx := context.Background()
 
 	// Setup: Give alice some blasters
-	svc.AddItem(ctx, "twitch", "", "alice", domain.ItemBlaster, 5)
+	svc.AddItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemBlaster, 5)
 
 	// Test using blaster on bob
-	message, err := svc.UseItem(ctx, "twitch", "", "alice", domain.ItemBlaster, 2, "bob")
+	message, err := svc.UseItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemBlaster, 2, "bob")
 	if err != nil {
 		t.Fatalf("UseItem failed: %v", err)
 	}
@@ -546,7 +617,7 @@ func TestUseItem_Blaster(t *testing.T) {
 	}
 
 	// Test using blaster without target
-	_, err = svc.UseItem(ctx, "twitch", "", "alice", domain.ItemBlaster, 1, "")
+	_, err = svc.UseItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemBlaster, 1, "")
 	if err == nil {
 		t.Error("Expected error when using blaster without target")
 	}
@@ -555,16 +626,15 @@ func TestUseItem_Blaster(t *testing.T) {
 func TestGetInventory(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	lockManager := concurrency.NewLockManager()
-	svc := NewService(repo, lockManager, nil)
+	svc := NewService(repo, nil, nil, NewMockNamingResolver(), false)
 	ctx := context.Background()
 
 	// Setup: Give alice some items
-	svc.AddItem(ctx, "twitch", "", "alice", domain.ItemLootbox1, 2)
-	svc.AddItem(ctx, "twitch", "", "alice", domain.ItemMoney, 100)
+	svc.AddItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemLootbox1, 2)
+	svc.AddItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemMoney, 100)
 
 	// Test GetInventory
-	items, err := svc.GetInventory(ctx, "twitch", "", "alice")
+	items, err := svc.GetInventory(ctx, domain.PlatformTwitch, "", "alice")
 	if err != nil {
 		t.Fatalf("GetInventory failed: %v", err)
 	}
@@ -605,8 +675,7 @@ func TestGetInventory(t *testing.T) {
 func TestUseItem_Lootbox0(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	lockManager := concurrency.NewLockManager()
-	svc := NewService(repo, lockManager, nil).(*service)
+	svc := NewService(repo, nil, nil, NewMockNamingResolver(), false).(*service)
 
 	// Setup loot tables
 	svc.lootTables[domain.ItemLootbox0] = []LootItem{
@@ -616,10 +685,10 @@ func TestUseItem_Lootbox0(t *testing.T) {
 	ctx := context.Background()
 
 	// Setup: Give alice lootbox0
-	svc.AddItem(ctx, "twitch", "", "alice", domain.ItemLootbox0, 1)
+	svc.AddItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemLootbox0, 1)
 
 	// Test using lootbox0
-	msg, err := svc.UseItem(ctx, "twitch", "", "alice", domain.ItemLootbox0, 1, "")
+	msg, err := svc.UseItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemLootbox0, 1, "")
 	if err != nil {
 		t.Fatalf("UseItem failed: %v", err)
 	}
@@ -627,9 +696,10 @@ func TestUseItem_Lootbox0(t *testing.T) {
 	// Message format changed
 	// "Opened 1 lootbox0 and received: 5x money" (random amount)
 	// We check if it contains expected parts
-	if !strings.Contains(msg, "Opened 1 lootbox0") {
-		t.Errorf("Expected message to contain 'Opened 1 lootbox0', got '%s'", msg)
+	if !strings.Contains(msg, "Opened 1 lootbox_tier0") {
+		t.Errorf("Expected message to contain 'Opened 1 lootbox_tier0', got '%s'", msg)
 	}
+
 	if !strings.Contains(msg, "money") {
 		t.Errorf("Expected message to contain 'money', got '%s'", msg)
 	}
@@ -647,8 +717,7 @@ func TestUseItem_Lootbox0(t *testing.T) {
 func TestUseItem_Lootbox2(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	lockManager := concurrency.NewLockManager()
-	svc := NewService(repo, lockManager, nil).(*service)
+	svc := NewService(repo, nil, nil, NewMockNamingResolver(), false).(*service)
 
 	// Setup loot tables
 	svc.lootTables[domain.ItemLootbox2] = []LootItem{
@@ -658,16 +727,17 @@ func TestUseItem_Lootbox2(t *testing.T) {
 	ctx := context.Background()
 
 	// Setup: Give alice lootbox2
-	svc.AddItem(ctx, "twitch", "", "alice", domain.ItemLootbox2, 1)
+	svc.AddItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemLootbox2, 1)
 
 	// Test using lootbox2
-	msg, err := svc.UseItem(ctx, "twitch", "", "alice", domain.ItemLootbox2, 1, "")
+	msg, err := svc.UseItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemLootbox2, 1, "")
 	if err != nil {
 		t.Fatalf("UseItem failed: %v", err)
 	}
 
 	// Message format changed
-	expectedMsg := "Opened 1 lootbox2 and received: 1x lootbox1"
+	expectedMsg := "Opened 1 lootbox_tier2 and received: 1x lootbox_tier1"
+
 	if msg != expectedMsg {
 		t.Errorf("Expected '%s', got '%s'", expectedMsg, msg)
 	}

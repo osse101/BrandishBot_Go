@@ -3,11 +3,10 @@ package gamble
 import (
 	"context"
 	"fmt"
-	"math/rand"
+	"sort"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/osse101/BrandishBot_Go/internal/concurrency"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/job"
@@ -15,6 +14,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/lootbox"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/osse101/BrandishBot_Go/internal/stats"
+	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
 // Repository defines the interface for data access required by the gamble service
@@ -56,7 +56,6 @@ const NearMissThreshold = 0.95
 
 type service struct {
 	repo         Repository
-	lockManager  *concurrency.LockManager
 	eventBus     event.Bus
 	lootboxSvc   lootbox.Service
 	jobService   JobService
@@ -65,10 +64,9 @@ type service struct {
 }
 
 // NewService creates a new gamble service
-func NewService(repo Repository, lockManager *concurrency.LockManager, eventBus event.Bus, lootboxSvc lootbox.Service, statsSvc stats.Service, joinDuration time.Duration, jobService JobService) Service {
+func NewService(repo Repository, eventBus event.Bus, lootboxSvc lootbox.Service, statsSvc stats.Service, joinDuration time.Duration, jobService JobService) Service {
 	return &service{
 		repo:         repo,
-		lockManager:  lockManager,
 		eventBus:     eventBus,
 		lootboxSvc:   lootboxSvc,
 		jobService:   jobService,
@@ -118,11 +116,6 @@ func (s *service) StartGamble(ctx context.Context, platform, platformID, usernam
 		CreatedAt:    time.Now(),
 		JoinDeadline: time.Now().Add(s.joinDuration),
 	}
-
-	// Lock user inventory briefly to consume bets
-	lock := s.lockManager.GetLock(user.ID)
-	lock.Lock()
-	defer lock.Unlock()
 
 	// Begin transaction
 	tx, err := s.repo.BeginTx(ctx)
@@ -231,11 +224,6 @@ func (s *service) JoinGamble(ctx context.Context, gambleID uuid.UUID, platform, 
 		return fmt.Errorf("gamble join deadline has passed")
 	}
 
-	// Lock Inventory
-	lock := s.lockManager.GetLock(user.ID)
-	lock.Lock()
-	defer lock.Unlock()
-
 	// Begin Transaction
 	tx, err := s.repo.BeginTx(ctx)
 	if err != nil {
@@ -333,9 +321,9 @@ func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.Gamb
 			}
 
 			// Open lootbox using shared service
-			drops, err := s.lootboxSvc.OpenLootbox(ctx, lootboxItem.Name, bet.Quantity)
+			drops, err := s.lootboxSvc.OpenLootbox(ctx, lootboxItem.InternalName, bet.Quantity)
 			if err != nil {
-				log.Error("Failed to open lootbox", "lootbox", lootboxItem.Name, "error", err)
+				log.Error("Failed to open lootbox", "lootbox", lootboxItem.InternalName, "error", err)
 				continue
 			}
 
@@ -369,6 +357,23 @@ func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.Gamb
 		}
 	}
 
+	// Critical Failure Tracking (Low scores relative to average)
+	if len(userValues) > 1 && totalGambleValue > 0 && s.statsSvc != nil {
+		averageScore := float64(totalGambleValue) / float64(len(userValues))
+		criticalFailThreshold := int64(averageScore * 0.2) // 20% of average
+
+		for userID, val := range userValues {
+			if val <= criticalFailThreshold {
+				_ = s.statsSvc.RecordUserEvent(ctx, userID, domain.EventGambleCriticalFail, map[string]interface{}{
+					"gamble_id":     id,
+					"score":         val,
+					"average_score": averageScore,
+					"threshold":     criticalFailThreshold,
+				})
+			}
+		}
+	}
+
 	// Save opened items
 	if err := s.repo.SaveOpenedItems(ctx, allOpenedItems); err != nil {
 		return nil, fmt.Errorf("failed to save opened items: %w", err)
@@ -392,8 +397,7 @@ func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.Gamb
 	if len(winners) > 0 {
 		if len(winners) > 1 {
 			// Randomly select one
-			r := rand.New(rand.NewSource(time.Now().UnixNano()))
-			idx := r.Intn(len(winners))
+			idx := utils.SecureRandomInt(len(winners))
 			winnerID = winners[idx]
 
 			log.Info("Tie-break resolved", "winnerID", winnerID, "originalValue", highestValue)
@@ -440,11 +444,6 @@ func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.Gamb
 
 	// Award items to winner
 	if winnerID != "" {
-		// Lock winner inventory
-		lock := s.lockManager.GetLock(winnerID)
-		lock.Lock()
-		defer lock.Unlock()
-
 		tx, err := s.repo.BeginTx(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("failed to begin tx for awarding: %w", err)
@@ -457,19 +456,30 @@ func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.Gamb
 		}
 
 		// Add all items
+		// Optimization: Aggregate items first to avoid O(N*M) loop
+		itemsToAdd := make(map[int]int)
 		for _, item := range allOpenedItems {
-			// Helper to add item (simplified)
-			found := false
-			for i, slot := range inv.Slots {
-				if slot.ItemID == item.ItemID {
-					inv.Slots[i].Quantity++
-					found = true
-					break
-				}
+			itemsToAdd[item.ItemID]++
+		}
+
+		// Update existing slots
+		for i, slot := range inv.Slots {
+			if qty, ok := itemsToAdd[slot.ItemID]; ok {
+				inv.Slots[i].Quantity += qty
+				delete(itemsToAdd, slot.ItemID)
 			}
-			if !found {
-				inv.Slots = append(inv.Slots, domain.InventorySlot{ItemID: item.ItemID, Quantity: 1})
-			}
+		}
+
+		// Append new slots
+		// Sort keys for deterministic output
+		var newItemIDs []int
+		for itemID := range itemsToAdd {
+			newItemIDs = append(newItemIDs, itemID)
+		}
+		sort.Ints(newItemIDs)
+
+		for _, itemID := range newItemIDs {
+			inv.Slots = append(inv.Slots, domain.InventorySlot{ItemID: itemID, Quantity: itemsToAdd[itemID]})
 		}
 
 		if err := tx.UpdateInventory(ctx, winnerID, *inv); err != nil {

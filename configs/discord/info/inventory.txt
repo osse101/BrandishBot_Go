@@ -1,0 +1,59 @@
+**🎒 Inventory Management**
+
+Your personal storage for items, lootboxes, and resources!
+
+## 📦 View Inventory
+
+```
+/inventory
+```
+See all items you own with quantities.
+
+## 🔍 Search for Loot
+
+```
+/search
+```
+Search for random items! You might find money, lootboxes, or rare items.
+Cooldown applies between searches.
+
+## 🎁 Use Items
+
+```
+/use [item] [quantity]
+```
+
+**Lootboxes:** Open to get random items based on the loot table
+**Consumables:** Use special items for effects
+**Blaster:** Attack other players (PvP items)
+
+## 📊 Item Types
+
+**Lootboxes**
+- `lootbox0` - Common drops
+- `lootbox1` - Better drops  
+- `lootbox2` - Best drops
+
+**Currency**
+- `money` - Used for buying items
+
+**Materials**
+- Used for crafting and upgrades
+- Obtain from disassembling items
+
+**Crafted Items**
+- Higher tier items made from recipes
+- Better stats, more valuable
+
+## 💡 Tips
+
+- Use `/inventory` to see what you have
+- Open lootboxes with `/use lootbox1 1`
+- Some items can only be obtained from loot
+- Give items to friends with `/give`
+- Sell unwanted items with `/sell` for money
+
+## Inventory Limits
+
+Currently no limit on inventory size!
+Collect as many items as you can find.

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -12,8 +13,9 @@ import (
 // Config holds the application configuration
 type Config struct {
 	// Server
-	Port   int
-	APIKey string // API key for authentication
+	Port           int
+	APIKey         string   // API key for authentication
+	TrustedProxies []string // List of trusted proxy IPs
 
 	// Logging
 	LogLevel    string
@@ -41,8 +43,16 @@ type Config struct {
 	DBPort     string
 	DBName     string
 
+	// Database Pool
+	DBMaxConns           int
+	DBMaxConnIdleTime    time.Duration
+	DBMaxConnLifetime    time.Duration
+
 	// Gamble configuration
 	GambleJoinDuration time.Duration // Duration for users to join a gamble
+
+	// Development Settings
+	DevMode bool // When true, bypasses cooldowns and enables test features
 }
 
 // Load loads the configuration from environment variables
@@ -65,6 +75,11 @@ func Load() (*Config, error) {
 		DBHost:     getEnv("DB_HOST", "localhost"),
 		DBPort:     getEnv("DB_PORT", "5432"),
 		DBName:     getEnv("DB_NAME", "brandishbot"),
+
+		// Database pool defaults
+		DBMaxConns:        getEnvAsInt("DB_MAX_CONNS", 20),
+		DBMaxConnIdleTime: getEnvAsDuration("DB_MAX_CONN_IDLE_TIME", 5*time.Minute),
+		DBMaxConnLifetime: getEnvAsDuration("DB_MAX_CONN_LIFETIME", 30*time.Minute),
 
 		// Server config
 		APIKey: getEnv("API_KEY", ""),
@@ -96,6 +111,22 @@ func Load() (*Config, error) {
 	}
 	cfg.GambleJoinDuration = time.Duration(gambleJoinMins) * time.Minute
 
+	// Dev mode (bypasses cooldowns and enables test features)
+	devModeStr := getEnv("DEV_MODE", "false")
+	cfg.DevMode = devModeStr == "true" || devModeStr == "1"
+
+	// Parse trusted proxies
+	trustedProxiesStr := getEnv("TRUSTED_PROXIES", "")
+	if trustedProxiesStr != "" {
+		proxies := strings.Split(trustedProxiesStr, ",")
+		for _, proxy := range proxies {
+			trimmed := strings.TrimSpace(proxy)
+			if trimmed != "" {
+				cfg.TrustedProxies = append(cfg.TrustedProxies, trimmed)
+			}
+		}
+	}
+
 	// Validate API key is set
 	if cfg.APIKey == "" {
 		return nil, fmt.Errorf("API_KEY environment variable must be set for security")
@@ -121,4 +152,21 @@ func (c *Config) GetDBConnString() string {
 		c.DBPort,
 		c.DBName,
 	)
+}
+// getEnvAsInt retrieves an environment variable as an integer or returns a default value
+func getEnvAsInt(key string, defaultValue int) int {
+	valueStr := getEnv(key, "")
+	if value, err := strconv.Atoi(valueStr); err == nil {
+		return value
+	}
+	return defaultValue
+}
+
+// getEnvAsDuration retrieves an environment variable as a duration or returns a default value
+func getEnvAsDuration(key string, defaultValue time.Duration) time.Duration {
+	valueStr := getEnv(key, "")
+	if value, err := time.ParseDuration(valueStr); err == nil {
+		return value
+	}
+	return defaultValue
 }
