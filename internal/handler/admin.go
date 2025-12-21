@@ -27,7 +27,7 @@ func HandleReloadAliases(resolver naming.Resolver) http.HandlerFunc {
 
 		if err := resolver.Reload(); err != nil {
 			log.Error("Failed to reload naming resolver", "error", err)
-			respondWithError(w, http.StatusInternalServerError, "Failed to reload configuration", err)
+			respondError(w, http.StatusInternalServerError, "Failed to reload configuration")
 			return
 		}
 

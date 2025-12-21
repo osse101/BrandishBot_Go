@@ -12,3 +12,8 @@
 **Vulnerability:** The gambling service (`internal/gamble/service.go`) used `math/rand` seeded with `time.Now()` to determine tie-break winners, making outcomes predictable.
 **Learning:** `math/rand` is not cryptographically secure and its seed can often be guessed or manipulated, especially when based on system time.
 **Prevention:** Use `crypto/rand` for all security-sensitive random number generation. Added `SecureRandomInt` helper to `internal/utils/math.go`.
+
+## 2025-12-21 - IP Spoofing via Unvalidated X-Forwarded-For
+**Vulnerability:** The application blindly trusted the `X-Forwarded-For` header in `extractIP` (`internal/server/security.go`), allowing attackers to spoof their IP address to bypass rate limiting and hide their identity.
+**Learning:** `X-Forwarded-For` is user-controlled unless verified. Trusting it by default exposes the system to IP spoofing. Additionally, when behind a trusted proxy, the correct client IP is typically the *last* IP in the list (since proxies append), not the first.
+**Prevention:** Only trust `X-Forwarded-For` if the request comes from a configured Trusted Proxy. When parsing, ensure robust address handling (e.g., `net.SplitHostPort` for IPv6) and understand the proxy's appending behavior (taking the last IP added by the trusted peer).

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -12,8 +13,9 @@ import (
 // Config holds the application configuration
 type Config struct {
 	// Server
-	Port   int
-	APIKey string // API key for authentication
+	Port           int
+	APIKey         string   // API key for authentication
+	TrustedProxies []string // List of trusted proxy IPs
 
 	// Logging
 	LogLevel    string
@@ -112,6 +114,18 @@ func Load() (*Config, error) {
 	// Dev mode (bypasses cooldowns and enables test features)
 	devModeStr := getEnv("DEV_MODE", "false")
 	cfg.DevMode = devModeStr == "true" || devModeStr == "1"
+
+	// Parse trusted proxies
+	trustedProxiesStr := getEnv("TRUSTED_PROXIES", "")
+	if trustedProxiesStr != "" {
+		proxies := strings.Split(trustedProxiesStr, ",")
+		for _, proxy := range proxies {
+			trimmed := strings.TrimSpace(proxy)
+			if trimmed != "" {
+				cfg.TrustedProxies = append(cfg.TrustedProxies, trimmed)
+			}
+		}
+	}
 
 	// Validate API key is set
 	if cfg.APIKey == "" {

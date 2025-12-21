@@ -213,7 +213,7 @@ func main() {
 	linkingRepo := postgres.NewLinkingRepository(dbPool)
 	linkingService := linking.NewService(linkingRepo, userService)
 
-	srv := server.NewServer(cfg.Port, cfg.APIKey, dbPool, userService, economyService, craftingService, statsService, progressionService, gambleService, jobService, linkingService, namingResolver, eventBus)
+	srv := server.NewServer(cfg.Port, cfg.APIKey, cfg.TrustedProxies, dbPool, userService, economyService, craftingService, statsService, progressionService, gambleService, jobService, linkingService, namingResolver, eventBus)
 
 	// Run server in a goroutine
 	go func() {

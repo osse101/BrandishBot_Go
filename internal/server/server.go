@@ -39,7 +39,7 @@ type Server struct {
 }
 
 // NewServer creates a new Server instance
-func NewServer(port int, apiKey string, dbPool database.Pool, userService user.Service, economyService economy.Service, craftingService crafting.Service, statsService stats.Service, progressionService progression.Service, gambleService gamble.Service, jobService job.Service, linkingService linking.Service, namingResolver naming.Resolver, eventBus event.Bus) *Server {
+func NewServer(port int, apiKey string, trustedProxies []string, dbPool database.Pool, userService user.Service, economyService economy.Service, craftingService crafting.Service, statsService stats.Service, progressionService progression.Service, gambleService gamble.Service, jobService job.Service, linkingService linking.Service, namingResolver naming.Resolver, eventBus event.Bus) *Server {
 	mux := http.NewServeMux()
 
 	// Health check routes
@@ -128,10 +128,10 @@ func NewServer(port int, apiKey string, dbPool database.Pool, userService user.S
 
 	// 4. Security logging with suspicious activity detection
 	detector := NewSuspiciousActivityDetector()
-	handler = SecurityLoggingMiddleware(detector)(handler)
+	handler = SecurityLoggingMiddleware(trustedProxies, detector)(handler)
 
 	// 5. Authentication (outermost - validates first)
-	handler = AuthMiddleware(apiKey, detector)(handler)
+	handler = AuthMiddleware(apiKey, trustedProxies, detector)(handler)
 
 	return &Server{
 		httpServer: &http.Server{

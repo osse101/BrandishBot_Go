@@ -3,6 +3,7 @@ package server
 import (
 	"crypto/subtle"
 	"log/slog"
+	"net"
 	"net/http"
 	"strings"
 	"sync"
@@ -12,7 +13,7 @@ import (
 )
 
 // AuthMiddleware validates API key
-func AuthMiddleware(apiKey string, detector *SuspiciousActivityDetector) func(http.Handler) http.Handler {
+func AuthMiddleware(apiKey string, trustedProxies []string, detector *SuspiciousActivityDetector) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Allow public access to documentation and health check endpoints
@@ -29,7 +30,7 @@ func AuthMiddleware(apiKey string, detector *SuspiciousActivityDetector) func(ht
 
 			// Use constant time comparison to prevent timing attacks
 			if subtle.ConstantTimeCompare([]byte(providedKey), []byte(apiKey)) != 1 {
-				ip := extractIP(r)
+				ip := extractIP(r, trustedProxies)
 				detector.RecordFailedAuth(ip)
 
 				log := logger.FromContext(r.Context())
@@ -117,11 +118,11 @@ func (s *SuspiciousActivityDetector) resetCountsIfNeeded() {
 }
 
 // SecurityLoggingMiddleware enhances logging with security information
-func SecurityLoggingMiddleware(detector *SuspiciousActivityDetector) func(http.Handler) http.Handler {
+func SecurityLoggingMiddleware(trustedProxies []string, detector *SuspiciousActivityDetector) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Extract IP address
-			ip := extractIP(r)
+			ip := extractIP(r, trustedProxies)
 
 			// Record request
 			detector.RecordRequest(ip)
@@ -136,22 +137,36 @@ func SecurityLoggingMiddleware(detector *SuspiciousActivityDetector) func(http.H
 	}
 }
 
-// extractIP gets the client IP address from request
-func extractIP(r *http.Request) string {
-	// Check X-Forwarded-For header first
-	forwarded := r.Header.Get("X-Forwarded-For")
-	if forwarded != "" {
-		// Take first IP if comma-separated
-		ips := strings.Split(forwarded, ",")
-		return strings.TrimSpace(ips[0])
+// extractIP gets the client IP address from request.
+// It only trusts X-Forwarded-For if the request comes from a trusted proxy.
+func extractIP(r *http.Request, trustedProxies []string) string {
+	// Get remote IP (direct connection)
+	remoteIP, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		// Fallback if parsing fails (shouldn't happen for valid RemoteAddr)
+		remoteIP = r.RemoteAddr
 	}
 
-	// Fall back to RemoteAddr
-	ip := r.RemoteAddr
-	// Remove port if present
-	if idx := strings.LastIndex(ip, ":"); idx != -1 {
-		ip = ip[:idx]
+	// Check if remote IP is a trusted proxy
+	isTrusted := false
+	for _, proxy := range trustedProxies {
+		if proxy == remoteIP {
+			isTrusted = true
+			break
+		}
 	}
 
-	return ip
+	// Only check X-Forwarded-For if trusted
+	if isTrusted {
+		forwarded := r.Header.Get("X-Forwarded-For")
+		if forwarded != "" {
+			// Standard behavior for proxies is to append the client IP to the list.
+			// Therefore, if we trust the proxy, the *last* IP in the list is the one
+			// that connected to the proxy.
+			ips := strings.Split(forwarded, ",")
+			return strings.TrimSpace(ips[len(ips)-1])
+		}
+	}
+
+	return remoteIP
 }

@@ -9,7 +9,7 @@ import (
 func TestAuthMiddleware(t *testing.T) {
 	apiKey := "secret-key"
 	detector := NewSuspiciousActivityDetector()
-	middleware := AuthMiddleware(apiKey, detector)
+	middleware := AuthMiddleware(apiKey, nil, detector)
 
 	tests := []struct {
 		name           string
@@ -73,7 +73,7 @@ func TestAuthMiddleware(t *testing.T) {
 func TestAuthMiddleware_RecordsFailures(t *testing.T) {
 	apiKey := "secret-key"
 	detector := NewSuspiciousActivityDetector()
-	middleware := AuthMiddleware(apiKey, detector)
+	middleware := AuthMiddleware(apiKey, nil, detector)
 
 	// Create request with specific IP
 	req := httptest.NewRequest("GET", "/api/test", nil)
@@ -105,5 +105,66 @@ func TestAuthMiddleware_RecordsFailures(t *testing.T) {
 	handler.ServeHTTP(rec, req)
 	if detector.failedAuthByIP[ip] != 2 {
 		t.Errorf("expected failure count 2, got %d", detector.failedAuthByIP[ip])
+	}
+}
+
+func TestExtractIP(t *testing.T) {
+	tests := []struct {
+		name           string
+		remoteAddr     string
+		xForwardedFor  string
+		trustedProxies []string
+		expectedIP     string
+	}{
+		{
+			name:           "Direct connection, no trusted proxies",
+			remoteAddr:     "1.2.3.4:1234",
+			xForwardedFor:  "5.6.7.8",
+			trustedProxies: nil,
+			expectedIP:     "1.2.3.4",
+		},
+		{
+			name:           "Trusted proxy",
+			remoteAddr:     "10.0.0.1:1234",
+			xForwardedFor:  "5.6.7.8",
+			trustedProxies: []string{"10.0.0.1"},
+			expectedIP:     "5.6.7.8",
+		},
+		{
+			name:           "Untrusted proxy",
+			remoteAddr:     "10.0.0.2:1234",
+			xForwardedFor:  "5.6.7.8",
+			trustedProxies: []string{"10.0.0.1"},
+			expectedIP:     "10.0.0.2",
+		},
+		{
+			name:           "Multiple X-Forwarded-For",
+			remoteAddr:     "10.0.0.1:1234",
+			xForwardedFor:  "5.6.7.8, 9.9.9.9",
+			trustedProxies: []string{"10.0.0.1"},
+			expectedIP:     "9.9.9.9",
+		},
+		{
+			name:           "IPv6 Trusted Proxy",
+			remoteAddr:     "[::1]:1234",
+			xForwardedFor:  "2001:db8::1",
+			trustedProxies: []string{"::1"},
+			expectedIP:     "2001:db8::1",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest("GET", "/", nil)
+			req.RemoteAddr = tt.remoteAddr
+			if tt.xForwardedFor != "" {
+				req.Header.Set("X-Forwarded-For", tt.xForwardedFor)
+			}
+
+			ip := extractIP(req, tt.trustedProxies)
+			if ip != tt.expectedIP {
+				t.Errorf("expected IP %s, got %s", tt.expectedIP, ip)
+			}
+		})
 	}
 }
