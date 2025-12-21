@@ -1,3 +1,4 @@
+-- +goose Up
 -- Migration: Progression unlock system with voting sessions and contribution tracking
 -- Focused on NODE UNLOCKING through community contributions
 
