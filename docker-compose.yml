@@ -5,6 +5,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.dev
+      cache_from:
+        - brandishbot:dev
     image: brandishbot:dev
     ports:
       - "8080:8080"
@@ -30,6 +32,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.discord
+      cache_from:
+        - brandishbot-discord:dev
     image: brandishbot-discord:dev
     env_file:
       - .env
