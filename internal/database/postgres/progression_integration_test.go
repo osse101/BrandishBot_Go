@@ -289,4 +289,119 @@ func TestProgressionRepository_Integration(t *testing.T) {
 			}
 		}
 	})
+
+	t.Run("ContributionLeaderboard", func(t *testing.T) {
+		// Clear any existing metrics for clean test
+		_, err := pool.Exec(ctx, "DELETE FROM engagement_metrics")
+		if err != nil {
+			t.Logf("Warning: Could not clear engagement metrics: %v", err)
+		}
+
+		// Test empty leaderboard
+		leaderboard, err := repo.GetContributionLeaderboard(ctx, 10)
+		if err != nil {
+			t.Fatalf("GetContributionLeaderboard failed: %v", err)
+		}
+		if len(leaderboard) != 0 {
+			t.Errorf("Expected empty leaderboard, got %d entries", len(leaderboard))
+		}
+
+		// Insert test engagement metrics for multiple users
+		testData := []struct {
+			userID      string
+			metricType  string
+			metricValue int
+		}{
+			{"user1", "message", 100},      // Total: 100
+			{"user1", "command", 50},       // Total: 150
+			{"user2", "message", 200},      // Total: 200
+			{"user2", "item_used", 25},     // Total: 225
+			{"user3", "message", 150},      // Total: 150 (tie with user1)
+			{"user4", "command", 10},       // Total: 10
+			{"user5", "item_crafted", 300}, // Total: 300 (highest)
+		}
+
+		for _, td := range testData {
+			metric := &domain.EngagementMetric{
+				UserID:      td.userID,
+				MetricType:  td.metricType,
+				MetricValue: td.metricValue,
+				RecordedAt:  time.Now(),
+			}
+			if err := repo.RecordEngagement(ctx, metric); err != nil {
+				t.Fatalf("RecordEngagement failed: %v", err)
+			}
+		}
+
+		// Test leaderboard with various limits
+		t.Run("Top3", func(t *testing.T) {
+			leaderboard, err := repo.GetContributionLeaderboard(ctx, 3)
+			if err != nil {
+				t.Fatalf("GetContributionLeaderboard failed: %v", err)
+			}
+
+			if len(leaderboard) != 3 {
+				t.Errorf("Expected 3 entries, got %d", len(leaderboard))
+			}
+
+			// Verify order (highest to lowest)
+			if len(leaderboard) >= 3 {
+				if leaderboard[0].UserID != "user5" || leaderboard[0].Contribution != 300 {
+					t.Errorf("Expected user5 with 300 at rank 1, got %s with %d", 
+						leaderboard[0].UserID, leaderboard[0].Contribution)
+				}
+				if leaderboard[0].Rank != 1 {
+					t.Errorf("Expected rank 1 for top user, got %d", leaderboard[0].Rank)
+				}
+
+				if leaderboard[1].UserID != "user2" || leaderboard[1].Contribution != 225 {
+					t.Errorf("Expected user2 with 225 at rank 2, got %s with %d",
+						leaderboard[1].UserID, leaderboard[1].Contribution)
+				}
+
+				// Rank 3 could be either user1 or user3 (both have 150)
+				if leaderboard[2].Contribution != 150 {
+					t.Errorf("Expected 150 at rank 3, got %d", leaderboard[2].Contribution)
+				}
+			}
+		})
+
+		t.Run("AllUsers", func(t *testing.T) {
+			leaderboard, err := repo.GetContributionLeaderboard(ctx, 10)
+			if err != nil {
+				t.Fatalf("GetContributionLeaderboard failed: %v", err)
+			}
+
+			// Should have all 5 users
+			if len(leaderboard) != 5 {
+				t.Errorf("Expected 5 entries, got %d", len(leaderboard))
+			}
+
+			// Verify descending order
+			for i := 1; i < len(leaderboard); i++ {
+				if leaderboard[i].Contribution > leaderboard[i-1].Contribution {
+					t.Errorf("Leaderboard not in descending order at index %d", i)
+				}
+			}
+
+			// Verify ranks are sequential
+			for i, entry := range leaderboard {
+				expectedRank := i + 1
+				if entry.Rank != expectedRank {
+					t.Errorf("Expected rank %d at index %d, got %d", expectedRank, i, entry.Rank)
+				}
+			}
+		})
+
+		t.Run("LimitEnforcement", func(t *testing.T) {
+			leaderboard, err := repo.GetContributionLeaderboard(ctx, 2)
+			if err != nil {
+				t.Fatalf("GetContributionLeaderboard failed: %v", err)
+			}
+
+			if len(leaderboard) != 2 {
+				t.Errorf("Expected exactly 2 entries with limit=2, got %d", len(leaderboard))
+			}
+		})
+	})
 }
