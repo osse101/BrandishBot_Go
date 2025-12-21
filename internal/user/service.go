@@ -588,9 +588,10 @@ func (s *service) validateItem(ctx context.Context, itemName string) (*domain.It
 
 // Constants for search mechanic
 const (
-	SearchSuccessRate  = 0.8
-	SearchCriticalRate = 0.05
-	SearchNearMissRate = 0.05
+	SearchSuccessRate      = 0.8
+	SearchCriticalRate     = 0.05
+	SearchNearMissRate     = 0.05
+	SearchCriticalFailRate = 0.05
 )
 
 // HandleSearch performs a search action for a user with cooldown tracking
@@ -781,13 +782,29 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 		resultMessage = domain.MsgSearchNearMiss
 		log.Info("Search NEAR MISS", "username", username, "roll", roll)
 	} else {
-		// Failure case - Pick a random funny message
-		resultMessage = domain.MsgSearchNothingFound
-		if len(domain.SearchFailureMessages) > 0 {
-			idx := utils.SecureRandomIntRange(0, len(domain.SearchFailureMessages)-1)
-			resultMessage = domain.SearchFailureMessages[idx]
+		// Check for Critical Failure (roll > 0.95)
+		if roll > 1.0-SearchCriticalFailRate {
+			// Critical Fail case
+			if s.statsService != nil {
+				_ = s.statsService.RecordUserEvent(ctx, user.ID, domain.EventSearchCriticalFail, map[string]interface{}{
+					"roll": roll,
+				})
+			}
+			resultMessage = domain.MsgSearchCriticalFail
+			if len(domain.SearchCriticalFailMessages) > 0 {
+				idx := utils.SecureRandomIntRange(0, len(domain.SearchCriticalFailMessages)-1)
+				resultMessage = fmt.Sprintf("%s %s", domain.MsgSearchCriticalFail, domain.SearchCriticalFailMessages[idx])
+			}
+			log.Info("Search CRITICAL FAIL", "username", username, "roll", roll)
+		} else {
+			// Failure case - Pick a random funny message
+			resultMessage = domain.MsgSearchNothingFound
+			if len(domain.SearchFailureMessages) > 0 {
+				idx := utils.SecureRandomIntRange(0, len(domain.SearchFailureMessages)-1)
+				resultMessage = domain.SearchFailureMessages[idx]
+			}
+			log.Info("Search successful - nothing found", "username", username, "message", resultMessage)
 		}
-		log.Info("Search successful - nothing found", "username", username, "message", resultMessage)
 	}
 
 	// Update cooldown
