@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
@@ -453,11 +454,11 @@ func (c *APIClient) GetSellPrices() (string, error) {
 		return "No sellable items available.", nil
 	}
 
-	var result string
+	var sb strings.Builder
 	for _, item := range pricesResp.Items {
-		result += fmt.Sprintf("**%s**: %d coins\n", item.InternalName, item.BaseValue)
+		fmt.Fprintf(&sb, "**%s**: %d coins\n", item.InternalName, item.BaseValue)
 	}
-	return result, nil
+	return sb.String(), nil
 }
 
 // GetBuyPrices retrieves current buy prices
@@ -484,11 +485,11 @@ func (c *APIClient) GetBuyPrices() (string, error) {
 		return "No buyable items available.", nil
 	}
 
-	var result string
+	var sb strings.Builder
 	for _, item := range pricesResp.Items {
-		result += fmt.Sprintf("**%s**: %d coins\n", item.InternalName, item.BaseValue)
+		fmt.Fprintf(&sb, "**%s**: %d coins\n", item.InternalName, item.BaseValue)
 	}
-	return result, nil
+	return sb.String(), nil
 }
 
 // GiveItem transfers an item between users user

@@ -9,3 +9,7 @@
 ## 2025-12-20 - [Outdated Test Structs]
 **Learning:** Changes to core domain structs (like `domain.Item`) often don't propagate to test files immediately if they use struct literals, leading to compilation errors in unrelated packages during full test runs.
 **Action:** When running tests for a specific package, be prepared to fix unrelated test compilation errors if shared domain structs have changed.
+
+## 2025-12-21 - [String Concatenation Efficiency]
+**Learning:** Inefficient string concatenation (`+=`) in loops was found in `internal/discord/client.go`, leading to O(N^2) complexity.
+**Action:** Use `strings.Builder` with `fmt.Fprintf` for constructing strings in loops to ensure O(N) performance and reduce memory allocations.
