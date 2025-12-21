@@ -686,3 +686,59 @@ func TestHandleSearch_DiminishingReturns(t *testing.T) {
 	// 6 existing + 1 new = 7
 	assert.Equal(t, 7, lastEvent.EventData["daily_count"])
 }
+
+func TestHandleSearch_CriticalFail_Statistical(t *testing.T) {
+	// ARRANGE
+	repo := newMockSearchRepo()
+	// Add required lootbox item
+	repo.items[domain.ItemLootbox0] = &domain.Item{
+		ID:           1,
+		InternalName: domain.ItemLootbox0,
+		BaseValue:    10,
+	}
+
+	statsSvc := &mockStatsService{
+		mockCounts: map[domain.EventType]int{domain.EventSearch: 1},
+	}
+	// Enable devMode to bypass cooldowns for loop
+	svc := NewService(repo, statsSvc, nil, NewMockNamingResolver(), true).(*service)
+
+	// Create user
+	user := createTestUser(TestUsername, TestUserID)
+	repo.users[TestUsername] = user
+
+	critFailCount := 0
+	iterations := 1000
+
+	for i := 0; i < iterations; i++ {
+		msg, err := svc.HandleSearch(context.Background(), "twitch", "testuser123", TestUsername)
+		require.NoError(t, err)
+
+		if strings.HasPrefix(msg, domain.MsgSearchCriticalFail) {
+			critFailCount++
+		}
+	}
+
+	t.Logf("Critical failures in %d iterations: %d", iterations, critFailCount)
+
+	// We expect roughly 5% of FAILUREs (which are 15% of total).
+	// Actually, wait.
+	// Critical Fail is > 0.95.
+	// With 80% success, failure is 20%.
+	// Near Miss is 0.8 - 0.85 (5%).
+	// Failure is 0.85 - 1.0 (15%).
+	// Critical Fail is 0.95 - 1.0 (5%).
+	// So 5% of TOTAL searches should be critical fails.
+	// 5% of 1000 = 50.
+
+	assert.Greater(t, critFailCount, 0, "Should have encountered at least one critical fail")
+
+	// Verify events were recorded
+	recordedCritFails := 0
+	for _, evt := range statsSvc.recordedEvents {
+		if evt.EventType == domain.EventSearchCriticalFail {
+			recordedCritFails++
+		}
+	}
+	assert.Equal(t, critFailCount, recordedCritFails, "Should record event for each critical fail")
+}

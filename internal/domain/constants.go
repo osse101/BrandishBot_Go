@@ -39,8 +39,23 @@ const (
 	MsgSearchNothingFound    = "You have found nothing"
 	MsgSearchNearMiss        = "You found nothing... but you saw something glint in the distance!"
 	MsgSearchCriticalSuccess = "You found a hidden stash! (CRITICAL SUCCESS!)"
+	MsgSearchCriticalFail    = "You tried to search, but disaster struck! (CRITICAL FAIL!)"
 	MsgFirstSearchBonus      = " (First Search of the Day!)"
 )
+
+// SearchCriticalFailMessages is a list of funny messages for critical failures
+var SearchCriticalFailMessages = []string{
+	"You found a bee hive. They found you.",
+	"You fell into a hole. It's dark down here.",
+	"A mimic bit your hand! Ouch!",
+	"You dropped your wallet while searching. Now you have less than nothing.",
+	"You found a cursed amulet that smells like wet dog.",
+	"You searched so hard you pulled a muscle.",
+	"A bird pooped on your head. Unlucky.",
+	"You tripped and fell face-first into the mud.",
+	"You disturbed a sleeping bear. Run!",
+	"You found a trap! ...With your foot.",
+}
 
 // SearchFailureMessages is a list of funny messages for failed searches
 var SearchFailureMessages = []string{
