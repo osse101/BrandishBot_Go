@@ -69,6 +69,14 @@ fi
 
 cd "$PROJECT_DIR"
 
+# Load environment variables from .env if it exists
+if [[ -f ".env" ]]; then
+    log_info "Loading environment variables from .env"
+    set -a  # Export all variables
+    source .env
+    set +a  # Stop auto-export
+fi
+
 # Step 1: Pre-deployment health check
 log_info "Step 1/7: Pre-deployment health check"
 if [[ -f "$SCRIPT_DIR/health-check.sh" ]]; then
