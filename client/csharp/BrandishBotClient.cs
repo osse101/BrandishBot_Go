@@ -323,6 +323,213 @@ namespace BrandishBot.Client
             return await GetAsync("/progression/engagement");
         }
 
+        /// <summary>
+        /// Get contribution leaderboard
+        /// </summary>
+        public async Task<string> GetContributionLeaderboard()
+        {
+            return await GetAsync("/progression/leaderboard");
+        }
+
+        /// <summary>
+        /// Get current voting session details
+        /// </summary>
+        public async Task<string> GetVotingSession()
+        {
+            return await GetAsync("/progression/session");
+        }
+
+        /// <summary>
+        /// Get unlock progress for the current voting session
+        /// </summary>
+        public async Task<string> GetUnlockProgress()
+        {
+            return await GetAsync("/progression/unlock-progress");
+        }
+
+        #endregion
+
+        #region Progression Admin
+
+        /// <summary>
+        /// Admin: Unlock a specific node
+        /// </summary>
+        public async Task<string> AdminUnlockNode(string nodeKey)
+        {
+            var json = string.Format(@"{{""node_key"":""{0}""}}", nodeKey);
+            return await PostJsonAsync("/progression/admin/unlock", json);
+        }
+
+        /// <summary>
+        /// Admin: Re-lock a specific node
+        /// </summary>
+        public async Task<string> AdminRelockNode(string nodeKey)
+        {
+            var json = string.Format(@"{{""node_key"":""{0}""}}", nodeKey);
+            return await PostJsonAsync("/progression/admin/relock", json);
+        }
+
+        /// <summary>
+        /// Admin: Instantly unlock a node without voting
+        /// </summary>
+        public async Task<string> AdminInstantUnlock(string nodeKey)
+        {
+            var json = string.Format(@"{{""node_key"":""{0}""}}", nodeKey);
+            return await PostJsonAsync("/progression/admin/instant-unlock", json);
+        }
+
+        /// <summary>
+        /// Admin: Start a voting session for a specific node
+        /// </summary>
+        public async Task<string> AdminStartVoting(string nodeKey)
+        {
+            var json = string.Format(@"{{""node_key"":""{0}""}}", nodeKey);
+            return await PostJsonAsync("/progression/admin/start-voting", json);
+        }
+
+        /// <summary>
+        /// Admin: End the current voting session
+        /// </summary>
+        public async Task<string> AdminEndVoting()
+        {
+            var json = "{}";
+            return await PostJsonAsync("/progression/admin/end-voting", json);
+        }
+
+        /// <summary>
+        /// Admin: Reset the entire progression system
+        /// </summary>
+        public async Task<string> AdminResetProgression()
+        {
+            var json = "{}";
+            return await PostJsonAsync("/progression/admin/reset", json);
+        }
+
+        #endregion
+
+        #region Jobs System
+
+        /// <summary>
+        /// Get all available jobs
+        /// </summary>
+        public async Task<string> GetAllJobs()
+        {
+            return await GetAsync("/jobs");
+        }
+
+        /// <summary>
+        /// Get user's job progress
+        /// </summary>
+        public async Task<string> GetUserJobs(string platform, string platformId)
+        {
+            var query = BuildQuery(
+                "platform=" + platform,
+                "platform_id=" + platformId
+            );
+            return await GetAsync("/jobs/user" + query);
+        }
+
+        /// <summary>
+        /// Award XP to a user for a specific job (Streamer/Admin only)
+        /// </summary>
+        public async Task<string> AwardJobXP(string platform, string platformId, string username, string jobName, int xpAmount)
+        {
+            var json = string.Format(@"{{""platform"":""{0}"",""platform_id"":""{1}"",""username"":""{2}"",""job_name"":""{3}"",""xp_amount"":{4}}}",
+                platform, platformId, username, jobName, xpAmount);
+            return await PostJsonAsync("/jobs/award-xp", json);
+        }
+
+        #endregion
+
+        #region Account Linking
+
+        /// <summary>
+        /// Initiate account linking process
+        /// </summary>
+        public async Task<string> InitiateLinking(string platform, string platformId, string username)
+        {
+            var json = string.Format(@"{{""platform"":""{0}"",""platform_id"":""{1}"",""username"":""{2}""}}",
+                platform, platformId, username);
+            return await PostJsonAsync("/link/initiate", json);
+        }
+
+        /// <summary>
+        /// Claim a linking code from another platform
+        /// </summary>
+        public async Task<string> ClaimLinkingCode(string platform, string platformId, string username, string code)
+        {
+            var json = string.Format(@"{{""platform"":""{0}"",""platform_id"":""{1}"",""username"":""{2}"",""code"":""{3}""}}",
+                platform, platformId, username, code);
+            return await PostJsonAsync("/link/claim", json);
+        }
+
+        /// <summary>
+        /// Confirm account linking
+        /// </summary>
+        public async Task<string> ConfirmLinking(string platform, string platformId)
+        {
+            var json = string.Format(@"{{""platform"":""{0}"",""platform_id"":""{1}""}}",
+                platform, platformId);
+            return await PostJsonAsync("/link/confirm", json);
+        }
+
+        /// <summary>
+        /// Unlink accounts
+        /// </summary>
+        public async Task<string> UnlinkAccounts(string platform, string platformId)
+        {
+            var json = string.Format(@"{{""platform"":""{0}"",""platform_id"":""{1}""}}",
+                platform, platformId);
+            return await PostJsonAsync("/link/unlink", json);
+        }
+
+        /// <summary>
+        /// Get linking status for a user
+        /// </summary>
+        public async Task<string> GetLinkingStatus(string platform, string platformId)
+        {
+            var query = BuildQuery(
+                "platform=" + platform,
+                "platform_id=" + platformId
+            );
+            return await GetAsync("/link/status" + query);
+        }
+
+        #endregion
+
+        #region Economy (Extended)
+
+        /// <summary>
+        /// Get current buy prices for items
+        /// </summary>
+        public async Task<string> GetBuyPrices()
+        {
+            return await GetAsync("/prices/buy");
+        }
+
+        #endregion
+
+        #region Admin Utilities
+
+        /// <summary>
+        /// Reload item name aliases from configuration (Admin only)
+        /// </summary>
+        public async Task<string> ReloadAliases()
+        {
+            var json = "{}";
+            return await PostJsonAsync("/admin/reload-aliases", json);
+        }
+
+        /// <summary>
+        /// Test endpoint for debugging
+        /// </summary>
+        public async Task<string> Test(string platform, string platformId, string username)
+        {
+            var json = string.Format(@"{{""platform"":""{0}"",""platform_id"":""{1}"",""username"":""{2}""}}",
+                platform, platformId, username);
+            return await PostJsonAsync("/test", json);
+        }
+
         #endregion
 
         #region Message Handler (All-in-One)
