@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
@@ -203,7 +204,16 @@ func loggingMiddleware(next http.Handler) http.Handler {
 			"content_length", r.ContentLength,
 			"user_agent", r.UserAgent())
 
-		log.Debug("Request headers", "headers", r.Header)
+		// Sanitize headers for logging
+		sanitizedHeaders := make(http.Header)
+		for k, v := range r.Header {
+			if strings.EqualFold(k, "X-API-Key") || strings.EqualFold(k, "Authorization") {
+				sanitizedHeaders[k] = []string{"[REDACTED]"}
+			} else {
+				sanitizedHeaders[k] = v
+			}
+		}
+		log.Debug("Request headers", "headers", sanitizedHeaders)
 
 		// Wrap response writer to capture status code
 		rw := newResponseWriter(w)
