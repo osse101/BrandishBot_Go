@@ -13,15 +13,6 @@ import (
 
 // Item effect handlers
 
-// LootItem defines an item that can be dropped from a lootbox
-// LootItem defines an item that can be dropped from a lootbox
-type LootItem struct {
-	ItemName string  `json:"item_name"`
-	Min      int     `json:"min"`
-	Max      int     `json:"max"`
-	Chance   float64 `json:"chance"`
-}
-
 func (s *service) processLootbox(ctx context.Context, inventory *domain.Inventory, lootboxItem *domain.Item, quantity int) (string, error) {
 	log := logger.FromContext(ctx)
 
@@ -41,68 +32,52 @@ func (s *service) processLootbox(ctx context.Context, inventory *domain.Inventor
 		inventory.Slots[itemSlotIndex].Quantity -= quantity
 	}
 
-	// 2. Process drops
-	table, ok := s.lootTables[lootboxItem.InternalName]
-	if !ok {
-		log.Warn("No loot table found for item", "item", lootboxItem.InternalName)
-		return "Lootbox opened but it was empty (no loot table)!", nil
-	}
-
-	drops := make(map[string]int)
-
-	// Seed random source if not already done globally (Go 1.20+ seeds automatically, but good to be safe if older)
-	// assuming global rand is seeded or we use a local source.
-	// For simplicity using global math/rand here, assuming it's seeded in main.
-
-	for i := 0; i < quantity; i++ {
-		for _, loot := range table {
-			if utils.SecureRandomFloat() <= loot.Chance {
-				qty := loot.Min
-				if loot.Max > loot.Min {
-					qty = utils.SecureRandomIntRange(loot.Min, loot.Max)
-				}
-				drops[loot.ItemName] += qty
-			}
-		}
+	// 2. Use lootbox service to open lootboxes
+	drops, err := s.lootboxService.OpenLootbox(ctx, lootboxItem.InternalName, quantity)
+	if err != nil {
+		log.Error("Failed to open lootbox", "error", err, "lootbox", lootboxItem.InternalName)
+		return "", fmt.Errorf("failed to open lootbox: %w", err)
 	}
 
 	if len(drops) == 0 {
 		return "The lootbox was empty!", nil
 	}
 
-	// 3. Add drops to inventory and build message
+	// 3. Add drops to inventory and build message with shine feedback
 	var msgBuilder strings.Builder
-	msgBuilder.WriteString(fmt.Sprintf("Opened %d %s and received: ", quantity, lootboxItem.InternalName))
+	displayName := s.namingResolver.GetDisplayName(lootboxItem.InternalName, "")
+	msgBuilder.WriteString(fmt.Sprintf("Opened %d %s and received: ", quantity, displayName))
 
 	first := true
-	for itemName, qty := range drops {
-		item, err := s.repo.GetItemByName(ctx, itemName)
-		if err != nil {
-			log.Error("Failed to get dropped item", "item", itemName, "error", err)
-			continue
-		}
-		if item == nil {
-			log.Warn("Dropped item not found in DB", "item", itemName)
-			continue
-		}
-
+	for _, drop := range drops {
 		// Add to inventory
-		i, _ := utils.FindSlot(inventory, item.ID)
+		i, _ := utils.FindSlot(inventory, drop.ItemID)
 		if i != -1 {
-			inventory.Slots[i].Quantity += qty
+			inventory.Slots[i].Quantity += drop.Quantity
 		} else {
-			inventory.Slots = append(inventory.Slots, domain.InventorySlot{ItemID: item.ID, Quantity: qty})
+			inventory.Slots = append(inventory.Slots, domain.InventorySlot{ItemID: drop.ItemID, Quantity: drop.Quantity})
 		}
 
 		if !first {
 			msgBuilder.WriteString(", ")
 		}
-		msgBuilder.WriteString(fmt.Sprintf("%dx %s", qty, item.InternalName))
+
+		// Get display name with shine level
+		itemDisplayName := s.namingResolver.GetDisplayName(drop.ItemName, drop.ShineLevel)
+
+		// Add shine annotation for visual impact
+		shineAnnotation := ""
+		if drop.ShineLevel != "" && drop.ShineLevel != "COMMON" {
+			shineAnnotation = fmt.Sprintf(" [%s!]", drop.ShineLevel)
+		}
+
+		msgBuilder.WriteString(fmt.Sprintf("%dx %s%s", drop.Quantity, itemDisplayName, shineAnnotation))
 		first = false
 	}
 
 	return msgBuilder.String(), nil
 }
+
 
 func (s *service) handleLootbox1(ctx context.Context, _ *service, _ *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, _ map[string]interface{}) (string, error) {
 	return s.processLootbox(ctx, inventory, item, quantity)

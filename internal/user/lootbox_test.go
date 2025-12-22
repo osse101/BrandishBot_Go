@@ -2,12 +2,12 @@ package user
 
 import (
 	"context"
-	"os"
 	"testing"
 	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/lootbox"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -160,11 +160,27 @@ func (m *MockRepo) UpdateCooldown(ctx context.Context, userID, action string, ti
 	return args.Error(0)
 }
 
-// Helper to create a service with a mock repo
-func createTestService(repo *MockRepo) *service {
+// MockLootboxService is a mock for lootbox.Service
+type MockLootboxService struct {
+	mock.Mock
+}
+
+func (m *MockLootboxService) OpenLootbox(ctx context.Context, lootboxName string, quantity int) ([]lootbox.DroppedItem, error) {
+	args := m.Called(ctx, lootboxName, quantity)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]lootbox.DroppedItem), args.Error(1)
+}
+
+// Helper to create a service with a mock repo and lootbox service
+func createTestService(repo *MockRepo, lootboxSvc *MockLootboxService) *service {
+	namingResolver := NewMockNamingResolver()
+	
 	return &service{
-		repo:       repo,
-		lootTables: make(map[string][]LootItem),
+		repo:           repo,
+		lootboxService: lootboxSvc,
+		namingResolver: namingResolver,
 	}
 }
 
@@ -176,17 +192,16 @@ func TestProcessLootbox(t *testing.T) {
 
 	t.Run("Lootbox0 drops money", func(t *testing.T) {
 		repo := new(MockRepo)
-		svc := createTestService(repo)
-
-		// Setup loot table manually for test
-		svc.lootTables[domain.ItemLootbox0] = []LootItem{
-			{ItemName: domain.ItemMoney, Min: 1, Max: 10, Chance: 1.0},
-		}
+		lootboxSvc := new(MockLootboxService)
+		svc := createTestService(repo, lootboxSvc)
 
 		ctx := context.Background()
 
-		// Mock repo responses
-		repo.On("GetItemByName", ctx, domain.ItemMoney).Return(money, nil)
+		// Mock lootbox service response
+		drops := []lootbox.DroppedItem{
+			{ItemID: money.ID, ItemName: domain.ItemMoney, Quantity: 5, Value: 50, ShineLevel: "COMMON"},
+		}
+		lootboxSvc.On("OpenLootbox", ctx, domain.ItemLootbox0, 1).Return(drops, nil)
 
 		// Setup inventory with lootbox0
 		inventory := &domain.Inventory{
@@ -200,7 +215,7 @@ func TestProcessLootbox(t *testing.T) {
 
 		// Verify
 		assert.NoError(t, err)
-		assert.Contains(t, msg, "Opened 1 lootbox_tier0")
+		assert.Contains(t, msg, "Opened")
 		assert.Contains(t, msg, "money")
 
 		// Verify inventory changes
@@ -213,17 +228,19 @@ func TestProcessLootbox(t *testing.T) {
 			}
 			if slot.ItemID == money.ID {
 				foundMoney = true
-				assert.GreaterOrEqual(t, slot.Quantity, 1)
-				assert.LessOrEqual(t, slot.Quantity, 10)
+				assert.Equal(t, 5, slot.Quantity)
 			}
 		}
 		assert.False(t, foundLootbox, "Lootbox should be consumed")
 		assert.True(t, foundMoney, "Money should be added")
+
+		lootboxSvc.AssertExpectations(t)
 	})
 
 	t.Run("Lootbox0 insufficient quantity", func(t *testing.T) {
 		repo := new(MockRepo)
-		svc := createTestService(repo)
+		lootboxSvc := new(MockLootboxService)
+		svc := createTestService(repo, lootboxSvc)
 		ctx := context.Background()
 
 		inventory := &domain.Inventory{
@@ -238,33 +255,3 @@ func TestProcessLootbox(t *testing.T) {
 	})
 }
 
-func TestLoadLootTables(t *testing.T) {
-	// Create a temporary file
-	content := []byte(`{
-		"test_box": [
-			{"item_name": "money", "min": 1, "max": 10, "chance": 1.0}
-		]
-	}`)
-	tmpfile, err := os.CreateTemp("", "loot_tables.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.Remove(tmpfile.Name()) // clean up
-
-	if _, err := tmpfile.Write(content); err != nil {
-		t.Fatal(err)
-	}
-	if err := tmpfile.Close(); err != nil {
-		t.Fatal(err)
-	}
-
-	repo := new(MockRepo)
-	svc := createTestService(repo)
-
-	err = svc.LoadLootTables(tmpfile.Name())
-	assert.NoError(t, err)
-
-	assert.Contains(t, svc.lootTables, "test_box")
-	assert.Equal(t, 1, len(svc.lootTables["test_box"]))
-	assert.Equal(t, "money", svc.lootTables["test_box"][0].ItemName)
-}

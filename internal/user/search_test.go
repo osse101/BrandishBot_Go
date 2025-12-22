@@ -167,7 +167,7 @@ func (m *mockSearchRepo) GetUnlockedRecipesForUser(ctx context.Context, userID s
 // Test fixtures
 func createSearchTestService() (*service, *mockSearchRepo) {
 	repo := newMockSearchRepo()
-	svc := NewService(repo, nil, nil, NewMockNamingResolver(), false).(*service)
+	svc := NewService(repo, nil, nil, nil, NewMockNamingResolver(), false).(*service)
 
 	// Add standard test items
 	repo.items[domain.ItemLootbox0] = &domain.Item{
@@ -566,7 +566,7 @@ func TestHandleSearch_NearMiss_Statistical(t *testing.T) {
 		mockCounts: map[domain.EventType]int{domain.EventSearch: 1},
 	}
 	// Enable devMode to bypass cooldowns for loop
-	svc := NewService(repo, statsSvc, nil, NewMockNamingResolver(), true).(*service)
+	svc := NewService(repo, statsSvc, nil, nil, NewMockNamingResolver(), true).(*service)
 
 	// Create user
 	user := createTestUser(TestUsername, TestUserID)
@@ -655,7 +655,7 @@ func TestHandleSearch_DiminishingReturns(t *testing.T) {
 	statsSvc := &mockStatsService{
 		mockCounts: make(map[domain.EventType]int),
 	}
-	svc := NewService(repo, statsSvc, nil, NewMockNamingResolver(), true).(*service) // devMode=true to bypass cooldown
+	svc := NewService(repo, statsSvc, nil, nil, NewMockNamingResolver(), true).(*service) // devMode=true to bypass cooldown
 
 	user := createTestUser(TestUsername, TestUserID)
 	repo.users[TestUsername] = user
@@ -701,7 +701,7 @@ func TestHandleSearch_CriticalFail_Statistical(t *testing.T) {
 		mockCounts: map[domain.EventType]int{domain.EventSearch: 1},
 	}
 	// Enable devMode to bypass cooldowns for loop
-	svc := NewService(repo, statsSvc, nil, NewMockNamingResolver(), true).(*service)
+	svc := NewService(repo, statsSvc, nil, nil, NewMockNamingResolver(), true).(*service)
 
 	// Create user
 	user := createTestUser(TestUsername, TestUserID)

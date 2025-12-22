@@ -11,6 +11,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
+	"github.com/osse101/BrandishBot_Go/internal/lootbox"
 	"github.com/osse101/BrandishBot_Go/internal/naming"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/osse101/BrandishBot_Go/internal/stats"
@@ -60,7 +61,6 @@ type Service interface {
 	UseItem(ctx context.Context, platform, platformID, username, itemName string, quantity int, targetUsername string) (string, error)
 	GetInventory(ctx context.Context, platform, platformID, username string) ([]UserInventoryItem, error)
 	TimeoutUser(ctx context.Context, username string, duration time.Duration, reason string) error
-	LoadLootTables(path string) error
 	HandleSearch(ctx context.Context, platform, platformID, username string) (string, error)
 	// Account linking methods
 	MergeUsers(ctx context.Context, primaryUserID, secondaryUserID string) error
@@ -90,7 +90,7 @@ type service struct {
 	itemHandlers   map[string]ItemEffectHandler
 	timeoutMu      sync.Mutex
 	timeouts       map[string]*time.Timer
-	lootTables     map[string][]LootItem
+	lootboxService lootbox.Service
 	jobService     JobService
 	statsService   stats.Service
 	stringFinder   *StringFinder
@@ -112,12 +112,12 @@ func setPlatformID(user *domain.User, platform, platformID string) {
 }
 
 // NewService creates a new user service
-func NewService(repo Repository, statsService stats.Service, jobService JobService, namingResolver naming.Resolver, devMode bool) Service {
+func NewService(repo Repository, statsService stats.Service, jobService JobService, lootboxService lootbox.Service, namingResolver naming.Resolver, devMode bool) Service {
 	s := &service{
 		repo:           repo,
 		itemHandlers:   make(map[string]ItemEffectHandler),
 		timeouts:       make(map[string]*time.Timer),
-		lootTables:     make(map[string][]LootItem),
+		lootboxService: lootboxService,
 		jobService:     jobService,
 		statsService:   statsService,
 		stringFinder:   NewStringFinder(),
@@ -125,20 +125,10 @@ func NewService(repo Repository, statsService stats.Service, jobService JobServi
 		devMode:        devMode,
 	}
 	s.registerHandlers()
-	// Attempt to load default loot tables, ignore error if file doesn't exist (will be empty)
-	// In a real app we might want to pass config path in NewService
-	_ = s.LoadLootTables("configs/loot_tables.json")
 	return s
 }
 
-func (s *service) LoadLootTables(path string) error {
-	var tables map[string][]LootItem
-	if err := utils.LoadJSON(path, &tables); err != nil {
-		return err
-	}
-	s.lootTables = tables
-	return nil
-}
+
 
 func (s *service) registerHandlers() {
 	s.itemHandlers[domain.ItemLootbox1] = s.handleLootbox1

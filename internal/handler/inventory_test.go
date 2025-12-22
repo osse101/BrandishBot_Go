@@ -92,15 +92,11 @@ func (m *MockUserService) TimeoutUser(ctx context.Context, username string, dura
 	return args.Error(0)
 }
 
-func (m *MockUserService) LoadLootTables(path string) error {
-	args := m.Called(path)
-	return args.Error(0)
-}
-
 func (m *MockUserService) HandleSearch(ctx context.Context, platform, platformID, username string) (string, error) {
 	args := m.Called(ctx, platform, platformID, username)
 	return args.String(0), args.Error(1)
 }
+
 
 // MockEconomyService mocks the economy.Service interface
 type MockEconomyService struct {

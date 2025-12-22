@@ -202,7 +202,8 @@ func main() {
 	gambleService := gamble.NewService(gambleRepo, eventBus, lootboxSvc, statsService, cfg.GambleJoinDuration, jobService)
 
 	// Initialize services that depend on job service
-	userService := user.NewService(userRepo, statsService, jobService, namingResolver, cfg.DevMode)
+	userService := user.NewService(userRepo, statsService, jobService, lootboxSvc, namingResolver, cfg.DevMode)
+
 
 	// Initialize Gamble Worker
 	gambleWorker := worker.NewGambleWorker(gambleService)
