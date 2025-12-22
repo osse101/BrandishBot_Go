@@ -67,27 +67,40 @@ func (s *service) MergeUsers(ctx context.Context, primaryUserID, secondaryUserID
 		log.Warn("Failed to delete secondary inventory", "error", err)
 	}
 
-	// Copy platform IDs from secondary to primary
+	// Transfer platform links from secondary to primary
+	// We need to update the user_platform_links table directly to avoid unique constraint violations
 	secondary, err := s.repo.GetUserByID(ctx, secondaryUserID)
-	if err == nil && secondary != nil {
-		primary, err := s.repo.GetUserByID(ctx, primaryUserID)
-		if err == nil && primary != nil {
-			if secondary.DiscordID != "" && primary.DiscordID == "" {
-				primary.DiscordID = secondary.DiscordID
-			}
-			if secondary.TwitchID != "" && primary.TwitchID == "" {
-				primary.TwitchID = secondary.TwitchID
-			}
-			if secondary.YoutubeID != "" && primary.YoutubeID == "" {
-				primary.YoutubeID = secondary.YoutubeID
-			}
-			s.repo.UpdateUser(ctx, *primary)
-		}
+	if err != nil {
+		return fmt.Errorf("failed to get secondary user: %w", err)
+	}
+	if secondary == nil {
+		return fmt.Errorf("secondary user not found")
 	}
 
-	// Delete secondary user
-	if err := s.repo.DeleteUser(ctx, secondaryUserID); err != nil {
-		log.Warn("Failed to delete secondary user", "error", err)
+	primary, err := s.repo.GetUserByID(ctx, primaryUserID)
+	if err != nil {
+		return fmt.Errorf("failed to get primary user: %w", err)
+	}
+	if primary == nil {
+		return fmt.Errorf("primary user not found")
+	}
+
+	// Build combined user with all platform IDs
+	merged := *primary
+	if secondary.DiscordID != "" && merged.DiscordID == "" {
+		merged.DiscordID = secondary.DiscordID
+	}
+	if secondary.TwitchID != "" && merged.TwitchID == "" {
+		merged.TwitchID = secondary.TwitchID
+	}
+	if secondary.YoutubeID != "" && merged.YoutubeID == "" {
+		merged.YoutubeID = secondary.YoutubeID
+	}
+
+	// ATOMIC MERGE: All operations in single transaction (all succeed or all rollback)
+	// This prevents data loss if any step fails
+	if err := s.repo.MergeUsersInTransaction(ctx, primaryUserID, secondaryUserID, merged, *primaryInv); err != nil {
+		return fmt.Errorf("failed to merge users in transaction: %w", err)
 	}
 
 	log.Info("Users merged successfully", "primary", primaryUserID)

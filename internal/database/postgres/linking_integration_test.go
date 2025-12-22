@@ -2,20 +2,131 @@ package postgres
 
 import (
 	"context"
+	"fmt"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
 	"testing"
 	"time"
 
-	"github.com/osse101/BrandishBot_Go/internal/database/postgres"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/osse101/BrandishBot_Go/internal/database"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/linking"
 	"github.com/osse101/BrandishBot_Go/internal/user"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
+	testPG "github.com/testcontainers/testcontainers-go/modules/postgres"
+	"github.com/testcontainers/testcontainers-go/wait"
 )
+
+// setupTestDB creates a PostgreSQL container and returns the pool and cleanup function
+func setupLinkingTestDB(t *testing.T) (*pgxpool.Pool, func()) {
+	ctx := context.Background()
+
+	var pgContainer *testPG.PostgresContainer
+	var err error
+
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				t.Skipf("Skipping integration test due to panic (likely Docker issue): %v", r)
+			}
+		}()
+		pgContainer, err = testPG.Run(ctx,
+			"postgres:15-alpine",
+			testPG.WithDatabase("testdb"),
+			testPG.WithUsername("testuser"),
+			testPG.WithPassword("testpass"),
+			testcontainers.WithWaitStrategy(
+				wait.ForLog("database system is ready to accept connections").
+					WithOccurrence(2).
+					WithStartupTimeout(15*time.Second)),
+		)
+	}()
+
+	if pgContainer == nil {
+		if err != nil {
+			t.Fatalf("failed to start postgres container: %v", err)
+		}
+		return nil, func() {}
+	}
+	if err != nil {
+		t.Fatalf("failed to start postgres container: %v", err)
+	}
+
+	connStr, err := pgContainer.ConnectionString(ctx, "sslmode=disable")
+	if err != nil {
+		t.Fatalf("failed to get connection string: %v", err)
+	}
+
+	pool, err := database.NewPool(connStr, 10, 30*time.Minute, time.Hour)
+	if err != nil {
+		t.Fatalf("failed to connect to database: %v", err)
+	}
+
+	// Apply migrations
+	if err := applyLinkingMigrations(ctx, pool, "../../../migrations"); err != nil {
+		t.Fatalf("failed to apply migrations: %v", err)
+	}
+
+	cleanup := func() {
+		pool.Close()
+		if err := pgContainer.Terminate(ctx); err != nil {
+			t.Logf("failed to terminate container: %v", err)
+		}
+	}
+
+	return pool, cleanup
+}
+
+// applyMigrations applies all migration files in order
+func applyLinkingMigrations(ctx context.Context, pool *pgxpool.Pool, migrationsDir string) error {
+	entries, err := os.ReadDir(migrationsDir)
+	if err != nil {
+		return fmt.Errorf("failed to read migrations dir: %w", err)
+	}
+
+	var migrationFiles []string
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			name := entry.Name()
+			if (strings.HasSuffix(name, ".up.sql") || strings.HasSuffix(name, ".sql")) && !strings.HasSuffix(name, ".down.sql") {
+				migrationFiles = append(migrationFiles, filepath.Join(migrationsDir, name))
+			}
+		}
+	}
+	sort.Strings(migrationFiles)
+
+	for _, file := range migrationFiles {
+		content, err := os.ReadFile(file)
+		if err != nil {
+			return fmt.Errorf("failed to read migration file %s: %w", file, err)
+		}
+
+		contentStr := string(content)
+		contentStr = strings.Replace(contentStr, "-- +goose Up\n", "", 1)
+		contentStr = strings.Replace(contentStr, "-- +goose Up", "", 1)
+
+		if downIdx := strings.Index(contentStr, "-- +goose Down"); downIdx != -1 {
+			contentStr = contentStr[:downIdx]
+		}
+
+		contentStr = strings.TrimSpace(contentStr)
+		_, err = pool.Exec(ctx, contentStr)
+		if err != nil {
+			return fmt.Errorf("failed to execute migration %s: %w", file, err)
+		}
+	}
+	return nil
+}
 
 // ============================================================================
 // INTEGRATION TESTS - Account Linking with Real Database
 // ============================================================================
+
 
 
 func TestLinking_EndToEndFlow_Integration(t *testing.T) {
@@ -24,7 +135,7 @@ func TestLinking_EndToEndFlow_Integration(t *testing.T) {
 	}
 
 	// Setup test database
-	pool, cleanup := setupTestDB(t)
+	pool, cleanup := setupLinkingTestDB(t)
 	defer func() {
 		if r := recover(); r != nil {
 			t.Skipf("Skipping integration test due to panic (likely Docker issue): %v", r)
@@ -86,7 +197,7 @@ func TestLinking_TokenExpiration_Integration(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	pool, cleanup := setupTestDB(t)
+	pool, cleanup := setupLinkingTestDB(t)
 	defer func() {
 		if r := recover(); r != nil {
 			t.Skipf("Skipping integration test due to panic (likely Docker issue): %v", r)
@@ -125,7 +236,7 @@ func TestLinking_MergeTwoExistingUsers_Integration(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	pool, cleanup := setupTestDB(t)
+	pool, cleanup := setupLinkingTestDB(t)
 	defer func() {
 		if r := recover(); r != nil {
 			t.Skipf("Skipping integration test due to panic (likely Docker issue): %v", r)
@@ -182,7 +293,7 @@ func TestLinking_UnlinkFlow_Integration(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	pool, cleanup := setupTestDB(t)
+	pool, cleanup := setupLinkingTestDB(t)
 	defer func() {
 		if r := recover(); r != nil {
 			t.Skipf("Skipping integration test due to panic (likely Docker issue): %v", r)
@@ -233,7 +344,7 @@ func TestLinking_MultipleTokenInvalidation_Integration(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	pool, cleanup := setupTestDB(t)
+	pool, cleanup := setupLinkingTestDB(t)
 	defer func() {
 		if r := recover(); r != nil {
 			t.Skipf("Skipping integration test due to panic (likely Docker issue): %v", r)
@@ -272,7 +383,7 @@ func TestLinking_TokenCleanup_Integration(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	pool, cleanup := setupTestDB(t)
+	pool, cleanup := setupLinkingTestDB(t)
 	defer func() {
 		if r := recover(); r != nil {
 			t.Skipf("Skipping integration test due to panic (likely Docker issue): %v", r)
@@ -282,7 +393,7 @@ func TestLinking_TokenCleanup_Integration(t *testing.T) {
 
 	ctx := context.Background()
 
-	linkingRepo := postgres.NewLinkingRepository(pool)
+	linkingRepo := NewLinkingRepository(pool)
 
 	// Create old expired token
 	oldToken := &linking.LinkToken{
@@ -316,7 +427,7 @@ func TestLinking_SelfLinkingPrevention_Integration(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	pool, cleanup := setupTestDB(t)
+	pool, cleanup := setupLinkingTestDB(t)
 	defer func() {
 		if r := recover(); r != nil {
 			t.Skipf("Skipping integration test due to panic (likely Docker issue): %v", r)

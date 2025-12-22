@@ -48,6 +48,9 @@ type Repository interface {
 	GetUnlockedRecipesForUser(ctx context.Context, userID string) ([]crafting.UnlockedRecipeInfo, error)
 	GetLastCooldown(ctx context.Context, userID, action string) (*time.Time, error)
 	UpdateCooldown(ctx context.Context, userID, action string, timestamp time.Time) error
+
+	// Account linking - atomic transaction for merge
+	MergeUsersInTransaction(ctx context.Context, primaryUserID, secondaryUserID string, mergedUser domain.User, mergedInventory domain.Inventory) error
 }
 
 // Service defines the interface for user operations
