@@ -1,415 +1,269 @@
-# 🛠️ AGENTS & SERVICES Overview
+# 🤖 AI Agent Guidance for BrandishBot_Go
 
-This document describes the core agents, services, and communication patterns within the system. The architecture relies heavily on an **Event-Driven Architecture (EDA)** where services communicate asynchronously via an Event Broker.
-
-## Core Communication Pattern: Event-Driven Architecture (EDA)
-
-The system utilizes an **Event Broker** as the central message bus. Services publish **Events** (simple struct messages) to the broker, and other services act as **Event Handlers** by subscribing to relevant events and executing their business logic.
-
-This pattern ensures **decoupling** between services, allowing them to operate independently and scale separately.
-
-| Component | Type | Primary Function | Communication |
-| :--- | :--- | :--- | :--- |
-| **Main Application** | REST API | Handles user requests, authentication, and core transactional logic (e.g., Inventory updates). | **Inbound:** REST/HTTP |
-| **Event Broker** | Message Bus | Receives, queues, and broadcasts Events to all registered Handlers. | Internal (Go interfaces/package) |
-| **Inventory Service** | Event Publisher/Handler | Manages item ownership, validates transactions, and publishes inventory-related events. | REST (via Main App), Events (Outbound) |
-| **Stats Service** | Event Handler | Listens for key events to update user statistics (e.g., counts of actions taken). | Events (Inbound) |
-| **Class Service** | Service/Logic | Allocates experience points (XP) and computes the effects and power levels of in-game classes/abilities. | REST (via Main App/Other Services), Events (Inbound/Outbound) |
+This document provides AI agents with structured guidance on navigating, understanding, and contributing to the BrandishBot_Go project. Use this as your primary reference when working on tasks.
 
 ---
 
-## 🔄 Detailed Agent Flows
+## 📚 Quick Navigation by Task Type
 
-### 1. The Transactional Flow (REST + Event Publishing)
-
-The main application handles synchronous, critical updates using traditional **REST** calls, followed immediately by an event publication.
-
-| Step | Agent | Action | Communication |
-| :--- | :--- | :--- | :--- |
-| 1. | **User/Client** | Initiates item transfer. | REST (Main Application) |
-| 2. | **Main Application** | Calls `Inventory Service` to execute transfer logic. | REST |
-| 3. | **Inventory Service** | **Updates Database** & publishes event. | **Publishes `ItemGivenEvent`** |
-
-### 2. The Asynchronous Reaction Flow (Event Handling)
-
-This flow illustrates how decoupled agents react to events without direct knowledge of the publisher.
-
-| Step | Event | Publisher | Handlers | Handler Action |
-| :--- | :--- | :--- | :--- | :--- |
-| 1. | `ItemGivenEvent` | **Inventory Service** | **Stats Service** | Increments `items_given` and `items_received` counts in the database. |
-| 2. | `UserJoinedEvent` | *Example Publisher* | **Class Service** | Allocates initial XP/starting class to the new user. |
-| 3. | `ItemUsedEvent` | **Inventory Service** | **Class Service** | Computes if item use grants bonus XP or affects class abilities. |
+| If You're Working On... | Start Here | Journal to Update |
+|------------------------|-----------|------------------|
+| **New Feature Development** | [FEATURE_DEVELOPMENT_GUIDE.md](docs/development/FEATURE_DEVELOPMENT_GUIDE.md) | [docs/development/journal.md](docs/development/journal.md) |
+| **Architecture/Design Decisions** | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | [docs/architecture/journal.md](docs/architecture/journal.md) |
+| **Writing Tests** | [TEST_GUIDANCE.md](docs/testing/TEST_GUIDANCE.md) | [docs/testing/journal.md](docs/testing/journal.md) |
+| **Database Operations** | [DATABASE.md](docs/DATABASE.md), [MIGRATIONS.md](docs/MIGRATIONS.md) | [docs/development/journal.md](docs/development/journal.md) |
+| **Deployment** | [DEPLOYMENT_WORKFLOW.md](docs/deployment/DEPLOYMENT_WORKFLOW.md) | N/A |
+| **Feature Planning/Proposals** | [gamble_feature.md](docs/planning/gamble_feature.md) (template example) | [docs/development/journal.md](docs/development/journal.md) |
 
 ---
 
-## 🏗️ Go Implementation Notes
+## 📓 Journal Files
 
-### Event Broker
+**Journals are living documents** where lessons learned, patterns discovered, and best practices are recorded. You should:
 
-The `Event Broker` should be implemented as a lightweight Go package or interface within the project, likely utilizing **concurrent maps** or **channels** to manage handler subscriptions and safely dispatch events to all subscribers.
+1. **Read the relevant journal** before starting work to understand past decisions
+2. **Update the journal** after completing work to document any new insights
 
-```go
-// EventBroker Interface Sketch
-type EventBroker interface {
-    // Publish sends an event to all subscribed handlers
-    Publish(event Event)
-    // Subscribe registers a handler function for a specific event type
-    Subscribe(eventType string, handler func(event Event))
-}
+### Journal Locations
+
+| Journal | Purpose | When to Read | When to Update |
+|---------|---------|--------------|----------------|
+| [docs/development/journal.md](docs/development/journal.md) | Development patterns, concurrency, transactions, refactoring | Building features, fixing bugs | After discovering patterns, solving tricky bugs |
+| [docs/architecture/journal.md](docs/architecture/journal.md) | System design, scaling, service architecture | Design decisions, multi-instance work | After architectural changes or ADR decisions |
+| [docs/testing/journal.md](docs/testing/journal.md) | Testing patterns, mocks, coverage strategies | Writing tests, debugging test failures | After learning testing lessons |
+
+### Journal Entry Format
+
+When adding to a journal, use this structure:
+
+```markdown
+## YYYY-MM-DD: Title - Brief Description
+
+### Context
+What problem were you solving?
+
+### Solution/Pattern
+What did you learn or implement?
+
+### Key Learnings
+- Bullet points of insights
+- Include code examples if helpful
+
+### Impact
+What effect does this have on the codebase?
+
+---
 ```
-
-## Future Considerations
-
-As this system grows, we will incrementally add bounded contexts:
-
-- **Stats Service** – Listens to inventory events and recomputes user statistics asynchronously.
-- **Class Service** – Listens to XP-gain events and triggers ability unlocks or level-ups.
-
-Each service will consume an event stream published by the core inventory system, keeping them loosely coupled yet consistent.
-
-## Feature Development Guide
-
-When developing a new feature, or modifying an existing one, always refer to the [Feature Development Guide](docs/development/FEATURE_DEVELOPMENT_GUIDE.md).
 
 ---
 
-## 🤖 AI Agent Best Practices
+## 🎭 AI Personalities
 
-### Process Management & Cleanup
+For specialized AI behaviors, personality configurations, and role-specific prompts, refer to:
 
-When testing the application, AI agents should follow these cleanup practices:
+📄 **[ai_personalities.md](ai_personalities.md)** *(coming soon)*
 
-**Starting Background Processes:**
-
-```powershell
-# Background commands return a command ID
-go run cmd/app/main.go
-# Returns: Background command ID: abc123-def456-...
-```
-
-**Tracking Command IDs:**
-
-- **ALWAYS** store the command ID returned from `run_command` when starting background processes
-- Use this ID for targeted cleanup instead of searching by port/name
-- Track IDs in a list throughout the session
-
-**Cleanup Process:**
-
-```powershell
-# ✅ CORRECT: Use the tracked command ID
-send_command_input(CommandId: "abc123-def456-...", Terminate: true)
-
-# ❌ AVOID: Searching for processes by port (unreliable, can kill wrong processes)
-# Get-NetTCPConnection -LocalPort 8080 | ... | Stop-Process
-```
-
-**End-of-Session Cleanup:**
-
-- **MANDATORY**: Terminate ALL background processes at the end of testing
-- Track all started command IDs during the session
-- Clean up in reverse order (newest to oldest)
-- Verify cleanup success with `command_status` tool
-
-**Example Workflow:**
-
-```powershell
-1. Start server → Track: cmd_id_server
-2. Run tests
-3. Start debug script → Track: cmd_id_debug
-4. Verify results
-5. Cleanup: send_command_input(cmd_id_debug, Terminate=true)
-6. Cleanup: send_command_input(cmd_id_server, Terminate=true)
-7. Verify: command_status for both IDs shows "DONE"
-```
-
-**Why This Matters:**
-
-- Prevents resource leaks
-- Avoids port conflicts in future sessions
-- Ensures clean state for next agent interaction
-- More reliable than port-based process killing
-
-**Key principle**: Log errors at the boundary where they occur, with full context.
-
-### 6. Verify Fixes
-
-After implementing a fix:
-
-1. **Rebuild** the application
-2. **Re-run** the reproduction script
-3. **Check logs** for successful execution
-4. **Verify** expected behavior matches actual outcome
-
-### 7. Document Findings
-
-Update relevant documentation:
-
-- Fix schema mismatches in migration files or code
-- Add comments explaining non-obvious error handling
-- Update ARCHITECTURE.md if design assumptions were wrong
+This file contains persona definitions for different task types (debugging, feature development, code review, etc.).
 
 ---
 
-**Real Example Summary (lootbox1):**
+## 📁 Project Structure Overview
 
-| Attempt | Error Discovered | Fix Applied |
-|---------|------------------|-------------|
-| 1 | SQL column `p.platform_name` doesn't exist | Changed to `p.name` in queries |
-| 2 | Logic error: "user not found" treated as fatal | Changed to check error message and continue |
-| 3 | Missing platform data: "no rows in result set" | Identified need to seed platforms table |
+```
+BrandishBot_Go/
+├── cmd/                    # Entry points (app, discord, setup, debug)
+├── internal/               # Core application code
+│   ├── database/postgres/  # Repository implementations
+│   ├── domain/             # Domain models and constants
+│   ├── handler/            # HTTP handlers
+│   ├── server/             # Server configuration and routing
+│   └── [feature]/          # Feature-specific packages (user, economy, etc.)
+├── configs/                # JSON configuration files
+├── migrations/             # Database migration files
+├── scripts/                # Deployment and utility scripts
+├── tests/                  # Integration and staging tests
+└── docs/                   # Documentation (see below)
+```
 
-**Result**: DEBUG logs provided complete visibility into the data flow, enabling rapid root cause identification.
+### Documentation Structure
+
+```
+docs/
+├── ARCHITECTURE.md         # System architecture overview
+├── DATABASE.md             # Database design and schema
+├── MIGRATIONS.md           # Migration guide
+├── PLAYER_COMMANDS.md      # User-facing commands
+├── USAGE.md                # API usage examples
+├── architecture/           # Architecture lessons and designs
+│   ├── journal.md          # 📓 Architecture journal
+│   └── cooldown-service.md # Service design doc
+├── development/            # Development guides
+│   ├── journal.md          # 📓 Development journal
+│   ├── FEATURE_DEVELOPMENT_GUIDE.md  # ** START HERE for features **
+│   └── CODE_QUALITY_RECOMMENDATIONS.md
+├── testing/                # Testing documentation
+│   ├── journal.md          # 📓 Testing journal
+│   ├── TEST_GUIDANCE.md    # How to write tests
+│   └── DATABASE_TESTING.md # Database test patterns
+├── planning/               # Feature proposals and roadmaps
+│   ├── gamble_feature.md   # Feature proposal template
+│   └── PROGRESSION_*.md    # Progression system docs
+└── deployment/             # Deployment guides
+    ├── DEPLOYMENT_WORKFLOW.md
+    └── ENVIRONMENTS.md
+```
 
 ---
 
-## 🔒 Concurrency Best Practices
+## 🔧 Common Commands (Makefile)
 
-When working with this Go application, follow these guidelines to ensure thread-safety and prevent race conditions.
+**Always check `make help` for the full list.** Key commands:
 
-### Database Transactions for Atomic Operations
+```bash
+# Development
+make build              # Build all binaries to bin/
+make run                # Run application from bin/app
+make test               # Run tests with coverage and race detection
+make lint               # Run code linters
 
-**Always use transactions when updating multiple related resources:**
+# Database
+make migrate-up         # Run pending migrations
+make migrate-down       # Rollback last migration
+make migrate-status     # Show migration status
+make migrate-create NAME=xyz  # Create new migration
+
+# Docker
+make docker-up          # Start services with Docker Compose
+make docker-down        # Stop services
+make docker-build       # Rebuild images (no cache)
+
+# Testing
+make test-integration   # Run integration tests
+make test-staging       # Run staging integration tests
+make test-coverage      # Generate HTML coverage report
+```
+
+---
+
+## ⚡ AI Agent Best Practices
+
+### Process Management
+
+When running background commands:
+
+1. **Track command IDs** returned by `run_command`
+2. **Terminate with IDs** using `send_command_input(..., Terminate: true)`
+3. **Clean up at session end** - terminate ALL background processes
+
+```
+❌ AVOID: Searching for processes by port (unreliable)
+✅ CORRECT: Use tracked command ID for cleanup
+```
+
+### Debugging Workflow
+
+1. Read relevant journal before investigating
+2. Use DEBUG level logging to trace issues
+3. Log errors at the boundary with full context
+4. Verify fixes with `make test` and `make build`
+5. **Document findings** in the appropriate journal
+
+### Security
+
+- **Never expose sensitive information** in code, terminal output, or responses
+- Use `.env` files for secrets (never commit `.env`)
+- Generic error messages to clients; detailed errors to logs only
+
+---
+
+## 🔒 Concurrency Guidelines
+
+**Key principle**: Use database transactions with `SELECT ... FOR UPDATE`, not application-level locks.
+
+### The Check-Then-Lock Pattern
 
 ```go
-// ✅ CORRECT: Use transactions for atomic multi-resource updates
-func (s *service) GiveItem(ctx context.Context, ownerUsername, receiverUsername, itemName string, quantity int) error {
-    // Begin transaction
-    tx, err := s.repo.BeginTx(ctx)
-    if err != nil {
-        return fmt.Errorf("failed to begin transaction: %w", err)
-    }
-    defer tx.Rollback(ctx) // Always defer rollback
-    
-    // Get both inventories within transaction
-    ownerInv, _ := tx.GetInventory(ctx, ownerID)
-    receiverInv, _ := tx.GetInventory(ctx, receiverID)
-    
-    // Modify both inventories
-    // ... update logic ...
-    
-    // Update both within transaction
-    tx.UpdateInventory(ctx, ownerID, *ownerInv)
-    tx.UpdateInventory(ctx, receiverID, *receiverInv)
-    
-    // Commit - both succeed or both fail
-    return tx.Commit(ctx)
+// Phase 1: Fast rejection (unlocked check)
+if onCooldown {
+    return ErrOnCooldown{}
 }
 
-// ❌ WRONG: Separate updates can leave inconsistent state
-func (s *service) GiveItem(ctx context.Context, ownerUsername, receiverUsername, itemName string, quantity int) error {
-    // Update owner
-    s.repo.UpdateInventory(ctx, ownerID, *ownerInv)
-    
-    // ⚠️ If this fails, owner already lost items!
-    s.repo.UpdateInventory(ctx, receiverID, *receiverInv)
-}
+// Phase 2: Atomic operation
+tx.Begin()
+lastUsed := SELECT ... FOR UPDATE  // Row lock
+if stillOnCooldown { return error }
+fn()  // Execute action
+UPDATE timestamp
+tx.Commit()
 ```
 
-When to use transactions:
-
-- Transferring items between users (GiveItem)
-- Any operation modifying multiple database rows
-- Operations where partial completion would be invalid
-
-**Repository Interface Pattern**
-The repository.Tx interface lives in its own package to avoid circular dependencies:
-
-internal/
-  ├── repository/      # Transaction interface
-  │   └── tx.go
-  ├── user/           # Service layer (uses repository.Tx)
-  │   └── service.go
-  └── database/       # Implementation (implements repository.Tx)
-      └── postgres/
-          └── user.go
-
-**Concurrency-Safe Patterns Already in Use**
-These patterns are already thread-safe and don't need additional synchronization:
-
-- HTTP Handlers - Each request runs in its own goroutine (built into net/http)
-- Database Connection Pool - pgxpool.Pool is thread-safe
-- Context Propagation - context.Context is immutable and safe for concurrent use
-- Logger - log/slog is goroutine-safe
-- Stateless Services - Services don't hold mutable state between requests
-
-**When to Add Synchronization**
-Protect shared mutable state with sync.RWMutex:
+### Transaction Pattern
 
 ```go
-type service struct {
-    repo         Repository
-    itemHandlers map[string]ItemEffectHandler
-    mu           sync.RWMutex  // Protects itemHandlers
-}
+tx, err := repo.BeginTx(ctx)
+if err != nil { return err }
+defer repository.SafeRollback(ctx, tx)
 
-// Read operations use RLock (multiple readers allowed)
-func (s *service) getHandler(name string) (ItemEffectHandler, bool) {
-    s.mu.RLock()
-    defer s.mu.RUnlock()
-    handler, ok := s.itemHandlers[name]
-    return handler, ok
-}
+// Operations with tx...
 
-// Write operations use Lock (exclusive access)
-func (s *service) registerHandler(name string, handler ItemEffectHandler) {
-    s.mu.Lock()
-    defer s.mu.Unlock()
-    s.itemHandlers[name] = handler
-}
+return tx.Commit(ctx)
 ```
 
-Current state: The itemHandlers map is write-once during
-NewService()
-, so no mutex is needed yet. Add one if dynamic registration is implemented.
+**Full details**: See [docs/development/journal.md](docs/development/journal.md) for concurrency lessons.
 
-**Testing for Race Conditions**
-Before deploying changes that affect concurrency:
+---
 
-```powershell
-# Run tests with race detector (Linux/Mac/Windows amd64)
-go test -race ./...
+## 🧪 Testing Checklist
 
-# Build with race detector for debugging
-go build -race cmd/app/main.go
+Before submitting changes:
 
-# Run specific concurrent tests
-go test -race -run TestGiveItem ./internal/user/...
-```
+- [ ] `go build ./...` passes
+- [ ] `make test` passes (includes `-race` flag)
+- [ ] Coverage meets 80% threshold for new code
+- [ ] Edge cases tested (empty inputs, boundaries, errors)
+- [ ] Mocks reused from existing test files
 
-Note: Race detector is not available on Windows/386. Test on Linux or Windows/amd64 for full verification.
+**Full details**: See [docs/testing/TEST_GUIDANCE.md](docs/testing/TEST_GUIDANCE.md).
 
-### Common Pitfalls to Avoid
+---
 
-1. Loop Variable Capture in Goroutines
+## 📋 Feature Development Workflow
 
-```go
-// ❌ WRONG: All goroutines reference the same loop variable
-for _, item := range items {
-    go func() {
-        process(item) // All goroutines see the last item!
-    }()
-}
+1. **Plan**: Read requirements, identify integration points
+2. **Database**: Create migration if needed
+3. **Domain**: Add constants and models
+4. **Repository**: Add interface methods and implementations
+5. **Service**: Implement business logic
+6. **Handler**: Create HTTP endpoint
+7. **Routing**: Register in server
+8. **Test**: Unit tests (80%+), integration tests
+9. **Document**: Update journals with lessons learned
 
-// ✅ CORRECT: Pass as parameter or shadow
-for _, item := range items {
-    item := item // Shadow the loop variable
-    go func() {
-        process(item)
-    }()
-}
-```
+**Full guide**: [docs/development/FEATURE_DEVELOPMENT_GUIDE.md](docs/development/FEATURE_DEVELOPMENT_GUIDE.md)
 
-1. Closing Channels
+---
 
-```go
-// ✅ CORRECT: Only sender closes channels
-ch := make(chan int)
-go func() {
-    defer close(ch) // Sender closes
-    for i := 0; i < 10; i++ {
-        ch <- i
-    }
-}()
+## 🆘 Troubleshooting Quick Reference
 
-for val := range ch { // Receiver reads
-    process(val)
-}
-```
+| Issue | Solution |
+|-------|----------|
+| "database does not exist" | Check `.env.example` DB_NAME, ensure migrations ran |
+| Mock type mismatch | Check interface for exact return types |
+| Race condition | Use `SELECT ... FOR UPDATE` in transaction |
+| Test goroutine leak | Add `time.Sleep` before check, use tolerance |
+| Build fails after refactor | Search for old field/type names with grep |
 
-1. Context Cancellation
+---
 
-```go
-// ✅ CORRECT: Always check context cancellation in long operations
-func (s *service) processLongOperation(ctx context.Context) error {
-    for i := 0; i < 1000; i++ {
-        select {
-        case <-ctx.Done():
-            return ctx.Err() // Respect cancellation
-        default:
-            // Continue processing
-        }
-        
-        // ... do work ...
-    }
-    return nil
-}
-```
+## 📞 Escalation
 
-### Graceful Shutdown
+When stuck or unsure:
 
-The application includes graceful shutdown to handle concurrent requests cleanly:
+1. **Search journals** for similar past issues
+2. **Check existing tests** for usage patterns
+3. **Document the problem** in the relevant journal, to be updated upon resolution
+4. **Ask the user** for clarification or guidance
 
-```go
-// Server runs in goroutine
-func() {
-    srv.Start()
-}()
+---
 
-// Wait for signal
-quit := make(chan os.Signal, 1)
-signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-<-quit
-
-// Shutdown with timeout for in-flight requests
-shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-defer cancel()
-srv.Stop(shutdownCtx)
-```
-
-### Benefits
-
-- In-flight HTTP requests complete (up to 30 seconds)
-- Database connections close cleanly
-- No orphaned goroutines or resource leaks
-
-### Performance Considerations
-
-Database Connection Pool Settings ([database/database.go](internal/database/database.go)):
-
-```go
-config.MaxConns = 10        // Maximum concurrent connections
-config.MinConns = 2         // Minimum pooled connections
-config.MaxConnLifetime = time.Hour
-config.MaxConnIdleTime = 30 * time.Minute
-```
-
-Adjust based on your deployment:
-
-- Low traffic: MaxConns: 5-10
-- High traffic: MaxConns: 20-50 (don't exceed PostgreSQL max_connections)
-- CPU-bound: MaxConns ≈ NumCPU
-- I/O-bound: MaxConns ≈ NumCPU * 2
-
-### Summary Checklist
-
-When adding new concurrent features:
-
-- Use transactions for multi-resource updates
-- Avoid shared mutable state (prefer stateless design)
-- If shared state is needed, protect with sync.RWMutex
-- Always defer Unlock() or Rollback() calls
-- Pass contexts through the call chain
-- Test with -race flag on supported platforms
-- Handle graceful shutdown for new goroutines
-- Document concurrency assumptions in code comments
-
-### Testing and Debugging
-
-Refer to [Test Guidance.md](docs/testing/TEST_GUIDANCE.md) for test writing guidelines.
-
-**Test Output Management**
-To keep the workspace clean and prevent console buffer issues on Windows, verbose test outputs should be redirected to files within the Output/ directory.
-
-- Naming Convention: test_output_\<description\>.txt
-- Location: Output/ (e.g., Output/test_output_final.txt)
-- Usage: Redirect stdout/stderr to these files when running verbose tests (e.g., go test -v ./... > Output/test_output.txt 2>&1), then inspect the file content to diagnose failures.
-
-**Debugging**
-
-- Your job is to debug the application and fix any issues that arise.
-- Modiying the tests purely for tests to pass, or suppressing errors is not allowed.
-- If a fix would increase the complexity of the current task, you may create an issue describing the problem and suggest a fix and leave it unresolved.
-
-### Development Security
-
-- It is forbidden to expose sensitive information in the codebase, terminal history, or when describing thoughts to the user
+*This guidance was last updated: December 2025*
