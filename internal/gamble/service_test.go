@@ -42,6 +42,11 @@ func (m *MockRepository) UpdateGambleState(ctx context.Context, id uuid.UUID, st
 	return args.Error(0)
 }
 
+func (m *MockRepository) UpdateGambleStateIfMatches(ctx context.Context, id uuid.UUID, expectedState, newState domain.GambleState) (int64, error) {
+	args := m.Called(ctx, id, expectedState, newState)
+	return int64(args.Int(0)), args.Error(1)
+}
+
 func (m *MockRepository) SaveOpenedItems(ctx context.Context, items []domain.GambleOpenedItem) error {
 	args := m.Called(ctx, items)
 	return args.Error(0)

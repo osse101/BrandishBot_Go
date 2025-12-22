@@ -33,6 +33,9 @@ func TestStartGamble_NoGoroutineLeak(t *testing.T) {
 
 	repo.On("GetUserByPlatformID", mock.Anything, "discord", "user123").Return(user, nil)
 	repo.On("GetActiveGamble", mock.Anything).Return(nil, nil)
+	// Bug #8 Fix requires item validation - mock lootbox item
+	lootboxItem := &domain.Item{ID: 1, InternalName: "lootbox_tier1"}
+	repo.On("GetItemByID", mock.Anything, 1).Return(lootboxItem, nil)
 	repo.On("BeginTx", mock.Anything).Return(tx, nil)
 	tx.On("GetInventory", mock.Anything, user.ID).Return(inventory, nil)
 	tx.On("UpdateInventory", mock.Anything, user.ID, mock.Anything).Return(nil)

@@ -103,6 +103,26 @@ func (r *GambleRepository) UpdateGambleState(ctx context.Context, id uuid.UUID, 
 	return nil
 }
 
+// UpdateGambleStateIfMatches performs a compare-and-swap operation on gamble state
+// Returns the number of rows affected (0 if state didn't match, 1 if updated)
+// This prevents Bug #4: duplicate execution of gambles
+func (r *GambleRepository) UpdateGambleStateIfMatches(
+	ctx context.Context,
+	id uuid.UUID,
+	expectedState, newState domain.GambleState,
+) (int64, error) {
+	query := `
+		UPDATE gambles 
+		SET state = $1 
+		WHERE id = $2 AND state = $3
+	`
+	result, err := r.db.Exec(ctx, query, newState, id, expectedState)
+	if err != nil {
+		return 0, fmt.Errorf("failed to update gamble state: %w", err)
+	}
+	return result.RowsAffected(), nil
+}
+
 // SaveOpenedItems saves the items opened during the gamble
 func (r *GambleRepository) SaveOpenedItems(ctx context.Context, items []domain.GambleOpenedItem) error {
 	if len(items) == 0 {

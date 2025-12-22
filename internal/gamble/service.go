@@ -23,6 +23,7 @@ type Repository interface {
 	GetGamble(ctx context.Context, id uuid.UUID) (*domain.Gamble, error)
 	JoinGamble(ctx context.Context, participant *domain.Participant) error
 	UpdateGambleState(ctx context.Context, id uuid.UUID, state domain.GambleState) error
+	UpdateGambleStateIfMatches(ctx context.Context, id uuid.UUID, expectedState, newState domain.GambleState) (int64, error)
 	SaveOpenedItems(ctx context.Context, items []domain.GambleOpenedItem) error
 	CompleteGamble(ctx context.Context, result *domain.GambleResult) error
 	GetActiveGamble(ctx context.Context) (*domain.Gamble, error)
@@ -115,6 +116,21 @@ func (s *service) StartGamble(ctx context.Context, platform, platformID, usernam
 		State:        domain.GambleStateJoining,
 		CreatedAt:    time.Now(),
 		JoinDeadline: time.Now().Add(s.joinDuration),
+	}
+
+	// Bug #8 Fix: Validate that all bet items are lootboxes (same as JoinGamble)
+	for _, bet := range bets {
+		item, err := s.repo.GetItemByID(ctx, bet.ItemID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to validate bet item %d: %w", bet.ItemID, err)
+		}
+		if item == nil {
+			return nil, fmt.Errorf("bet item %d does not exist", bet.ItemID)
+		}
+		// Check if item is a lootbox (identified by internal name prefix)
+		if len(item.InternalName) < 7 || item.InternalName[:7] != "lootbox" {
+			return nil, fmt.Errorf("item %s (id:%d) is not a lootbox", item.InternalName, item.ID)
+		}
 	}
 
 	// Begin transaction
@@ -224,6 +240,29 @@ func (s *service) JoinGamble(ctx context.Context, gambleID uuid.UUID, platform, 
 		return fmt.Errorf("gamble join deadline has passed")
 	}
 
+	// Bug #2 Fix: Check if user has already joined
+	// Note: database constraint on PRIMARY KEY (gamble_id, user_id)  provides final guard
+	for _, p := range gamble.Participants {
+		if p.UserID == user.ID {
+			return fmt.Errorf("user has already joined this gamble")
+		}
+	}
+
+	// Bug #8 Fix: Validate that all bet items are lootboxes
+	for _, bet := range bets {
+		item, err := s.repo.GetItemByID(ctx, bet.ItemID)
+		if err != nil {
+			return fmt.Errorf("failed to validate bet item %d: %w", bet.ItemID, err)
+		}
+		if item == nil {
+			return fmt.Errorf("bet item %d does not exist", bet.ItemID)
+		}
+		// Check if item is a lootbox (identified by internal name prefix)
+		if len(item.InternalName) < 7 || item.InternalName[:7] != "lootbox" {
+			return fmt.Errorf("item %s (id:%d) is not a lootbox", item.InternalName, item.ID)
+		}
+	}
+
 	// Begin Transaction
 	tx, err := s.repo.BeginTx(ctx)
 	if err != nil {
@@ -295,10 +334,27 @@ func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.Gamb
 		return nil, fmt.Errorf("gamble is not in joining state (current: %s)", gamble.State)
 	}
 
-	// Update State to Opening
-	if err := s.repo.UpdateGambleState(ctx, id, domain.GambleStateOpening); err != nil {
-		return nil, fmt.Errorf("failed to update state to opening: %w", err)
+	// Bug #6 Fix: Enforce deadline - cannot execute before deadline has passed
+	if time.Now().Before(gamble.JoinDeadline) {
+		return nil, fmt.Errorf("cannot execute gamble before join deadline (deadline: %v)", gamble.JoinDeadline)
 	}
+
+	// Bug #4 Fix: Use compare-and-swap for idempotent state transition
+	// This prevents duplicate execution even if called concurrently
+	rowsAffected, err := s.repo.UpdateGambleStateIfMatches(
+		ctx, id,
+		domain.GambleStateJoining,  // expected state
+		domain.GambleStateOpening,  // new state
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to transition gamble state: %w", err)
+	}
+	if rowsAffected == 0 {
+		// State didn't match - either already executed or in wrong state
+		log.Warn("Gamble state transition failed - already being executed", "gambleID", id)
+		return nil, fmt.Errorf("gamble is already being executed or has been executed")
+	}
+	log.Info("Gamble state transitioned to Opening", "gambleID", id)
 
 	// Simulate opening lootboxes (Placeholder: In real impl, use LootboxService)
 	// We need to track total value per user
@@ -522,15 +578,18 @@ func (s *service) GetActiveGamble(ctx context.Context) (*domain.Gamble, error) {
 }
 
 // Helper to consume item from inventory
+// Fixed Bug #7: Safe slice manipulation to avoid index issues during iteration
 func consumeItem(inventory *domain.Inventory, itemID, quantity int) error {
-	for i, slot := range inventory.Slots {
-		if slot.ItemID == itemID {
-			if slot.Quantity < quantity {
+	for i := range inventory.Slots {
+		if inventory.Slots[i].ItemID == itemID {
+			if inventory.Slots [i].Quantity < quantity {
 				return fmt.Errorf("insufficient quantity")
 			}
-			if slot.Quantity == quantity {
+			if inventory.Slots[i].Quantity == quantity {
+				// Remove slot - reconstruct slice without iteration mutation
 				inventory.Slots = append(inventory.Slots[:i], inventory.Slots[i+1:]...)
 			} else {
+				// Keep slot with reduced quantity
 				inventory.Slots[i].Quantity -= quantity
 			}
 			return nil

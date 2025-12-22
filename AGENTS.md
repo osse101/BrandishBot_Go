@@ -61,7 +61,7 @@ What effect does this have on the codebase?
 
 For specialized AI behaviors, personality configurations, and role-specific prompts, refer to:
 
-📄 **[ai_personalities.md](ai_personalities.md)** *(coming soon)*
+📄 **[ai_personalities.md](ai_personalities.md)**
 
 This file contains persona definitions for different task types (debugging, feature development, code review, etc.).
 
