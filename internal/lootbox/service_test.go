@@ -17,6 +17,16 @@ func (m *mockItemRepo) GetItemByName(ctx context.Context, name string) (*domain.
 	return m.items[name], nil
 }
 
+func (m *mockItemRepo) GetItemsByNames(ctx context.Context, names []string) ([]domain.Item, error) {
+	var items []domain.Item
+	for _, name := range names {
+		if item, ok := m.items[name]; ok {
+			items = append(items, *item)
+		}
+	}
+	return items, nil
+}
+
 func TestOpenLootbox(t *testing.T) {
 	// Setup loot table file
 	lootTable := map[string][]LootItem{

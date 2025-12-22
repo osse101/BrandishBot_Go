@@ -305,6 +305,42 @@ func (r *UserRepository) GetItemsByIDs(ctx context.Context, itemIDs []int) ([]do
 	return items, nil
 }
 
+// GetItemsByNames retrieves multiple items by their internal names
+func (r *UserRepository) GetItemsByNames(ctx context.Context, names []string) ([]domain.Item, error) {
+	if len(names) == 0 {
+		return []domain.Item{}, nil
+	}
+
+	query := `
+		SELECT item_id, internal_name, public_name, default_display, description, base_value, handler
+		FROM items
+		WHERE internal_name = ANY($1)
+	`
+	rows, err := r.db.Query(ctx, query, names)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get items by names: %w", err)
+	}
+	defer rows.Close()
+
+	var items []domain.Item
+	for rows.Next() {
+		var item domain.Item
+		if err := rows.Scan(
+			&item.ID, &item.InternalName, &item.PublicName, &item.DefaultDisplay,
+			&item.Description, &item.BaseValue, &item.Handler,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan item: %w", err)
+		}
+		items = append(items, item)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating rows: %w", err)
+	}
+
+	return items, nil
+}
+
 // GetItemByID retrieves an item by its ID
 func (r *UserRepository) GetItemByID(ctx context.Context, id int) (*domain.Item, error) {
 	query := `

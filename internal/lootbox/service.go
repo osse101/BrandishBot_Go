@@ -49,6 +49,7 @@ type DroppedItem struct {
 // ItemRepository defines the interface for fetching item data
 type ItemRepository interface {
 	GetItemByName(ctx context.Context, name string) (*domain.Item, error)
+	GetItemsByNames(ctx context.Context, names []string) ([]domain.Item, error)
 }
 
 // Service defines the lootbox opening interface
@@ -135,13 +136,28 @@ func (s *service) OpenLootbox(ctx context.Context, lootboxName string, quantity 
 
 	// Convert to DroppedItem with item IDs
 	var drops []DroppedItem
+
+	// Batch fetch items to avoid N+1 queries
+	var itemNames []string
+	for itemName := range dropCounts {
+		itemNames = append(itemNames, itemName)
+	}
+
+	items, err := s.repo.GetItemsByNames(ctx, itemNames)
+	if err != nil {
+		log.Error("Failed to get dropped items", "error", err)
+		return nil, err
+	}
+
+	// Create a map for quick lookup
+	itemMap := make(map[string]*domain.Item)
+	for i := range items {
+		itemMap[items[i].InternalName] = &items[i]
+	}
+
 	for itemName, info := range dropCounts {
-		item, err := s.repo.GetItemByName(ctx, itemName)
-		if err != nil {
-			log.Error("Failed to get dropped item", "item", itemName, "error", err)
-			continue
-		}
-		if item == nil {
+		item, found := itemMap[itemName]
+		if !found {
 			log.Warn("Dropped item not found in DB", "item", itemName)
 			continue
 		}
