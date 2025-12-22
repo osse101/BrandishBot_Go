@@ -588,6 +588,27 @@ func (r *UserRepository) GetLastCooldown(ctx context.Context, userID, action str
 	return &lastUsed, nil
 }
 
+// GetLastCooldownForUpdate retrieves the last time a user performed an action with row-level lock
+// This is used for the second phase of check-then-lock pattern to prevent race conditions
+func (r *UserRepository) GetLastCooldownForUpdate(ctx context.Context, tx pgx.Tx, userID, action string) (*time.Time, error) {
+	var lastUsed time.Time
+	query := `
+		SELECT last_used_at
+		FROM user_cooldowns
+		WHERE user_id = $1 AND action_name = $2
+		FOR UPDATE
+	`
+
+	err := tx.QueryRow(ctx, query, userID, action).Scan(&lastUsed)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, nil // No cooldown record
+		}
+		return nil, fmt.Errorf("failed to get cooldown with lock: %w", err)
+	}
+	return &lastUsed, nil
+}
+
 // UpdateCooldown updates or creates a cooldown record for a user action
 func (r *UserRepository) UpdateCooldown(ctx context.Context, userID, action string, timestamp time.Time) error {
 	query := `
@@ -598,6 +619,22 @@ func (r *UserRepository) UpdateCooldown(ctx context.Context, userID, action stri
 	`
 
 	_, err := r.db.Exec(ctx, query, userID, action, timestamp)
+	if err != nil {
+		return fmt.Errorf("failed to update cooldown: %w", err)
+	}
+	return nil
+}
+
+// UpdateCooldownTx updates or creates a cooldown record within a transaction
+func (r *UserRepository) UpdateCooldownTx(ctx context.Context, tx pgx.Tx, userID, action string, timestamp time.Time) error {
+	query := `
+		INSERT INTO user_cooldowns (user_id, action_name, last_used_at)
+		VALUES ($1, $2, $3)
+		ON CONFLICT (user_id, action_name) DO UPDATE
+		SET last_used_at = EXCLUDED.last_used_at
+	`
+
+	_, err := tx.Exec(ctx, query, userID, action, timestamp)
 	if err != nil {
 		return fmt.Errorf("failed to update cooldown: %w", err)
 	}

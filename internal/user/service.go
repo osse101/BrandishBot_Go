@@ -636,7 +636,11 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 		}
 	}
 
+	// TODO: Race condition exists between cooldown check and update
+	// See docs/issues/RACE-001-handlesearch-cooldown.md for details
+
 	// Perform search
+
 	var resultMessage string
 	roll := utils.SecureRandomFloat()
 
