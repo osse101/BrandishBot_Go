@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/osse101/BrandishBot_Go/internal/cooldown"
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/job"
@@ -89,18 +90,20 @@ type JobService interface {
 
 // service implements the Service interface
 type service struct {
-	repo           Repository
-	itemHandlers   map[string]ItemEffectHandler
-	timeoutMu      sync.Mutex
-	timeouts       map[string]*time.Timer
-	lootboxService lootbox.Service
-	jobService     JobService
-	statsService   stats.Service
-	stringFinder   *StringFinder
-	namingResolver naming.Resolver
-	devMode        bool // When true, bypasses cooldowns
-	wg             sync.WaitGroup
+	repo            Repository
+	itemHandlers    map[string]ItemEffectHandler
+	timeoutMu       sync.Mutex
+	timeouts        map[string]*time.Timer
+	lootboxService  lootbox.Service
+	jobService      JobService
+	statsService    stats.Service
+	stringFinder    *StringFinder
+	namingResolver  naming.Resolver
+	cooldownService cooldown.Service
+	devMode         bool // When true, bypasses cooldowns
+	wg              sync.WaitGroup
 }
+
 
 // setPlatformID sets the appropriate platform-specific ID field on a user
 func setPlatformID(user *domain.User, platform, platformID string) {
@@ -115,17 +118,18 @@ func setPlatformID(user *domain.User, platform, platformID string) {
 }
 
 // NewService creates a new user service
-func NewService(repo Repository, statsService stats.Service, jobService JobService, lootboxService lootbox.Service, namingResolver naming.Resolver, devMode bool) Service {
+func NewService(repo Repository, statsService stats.Service, jobService JobService, lootboxService lootbox.Service, namingResolver naming.Resolver, cooldownService cooldown.Service, devMode bool) Service {
 	s := &service{
-		repo:           repo,
-		itemHandlers:   make(map[string]ItemEffectHandler),
-		timeouts:       make(map[string]*time.Timer),
-		lootboxService: lootboxService,
-		jobService:     jobService,
-		statsService:   statsService,
-		stringFinder:   NewStringFinder(),
-		namingResolver: namingResolver,
-		devMode:        devMode,
+		repo:            repo,
+		itemHandlers:    make(map[string]ItemEffectHandler),
+		timeouts:        make(map[string]*time.Timer),
+		lootboxService:  lootboxService,
+		jobService:      jobService,
+		statsService:    statsService,
+		stringFinder:    NewStringFinder(),
+		namingResolver:  namingResolver,
+		cooldownService: cooldownService,
+		devMode:         devMode,
 	}
 	s.registerHandlers()
 	return s
@@ -611,74 +615,42 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 		return "", err
 	}
 
-	// Check cooldown
-	lastUsed, err := s.repo.GetLastCooldown(ctx, user.ID, domain.ActionSearch)
-	if err != nil {
-		log.Error("Failed to get cooldown", "error", err, "userID", user.ID)
-		return "", fmt.Errorf("failed to check cooldown: %w", err)
-	}
-
-	now := time.Now()
-	if lastUsed != nil {
-		// Check if dev mode bypasses cooldowns
-		if !s.devMode {
-			elapsed := now.Sub(*lastUsed)
-			if elapsed < domain.SearchCooldownDuration {
-				remaining := domain.SearchCooldownDuration - elapsed
-				minutes := int(remaining.Minutes())
-				seconds := int(remaining.Seconds()) % 60
-
-				log.Info("Search on cooldown", "username", username, "remaining", remaining)
-				return fmt.Sprintf("You can search again in %dm %ds", minutes, seconds), nil
-			}
-		} else {
-			log.Info("DEV_MODE: Bypassing cooldown check", "username", username)
-		}
-	}
-
-	// TODO: Race condition exists between cooldown check and update
-	// See docs/issues/RACE-001-handlesearch-cooldown.md for details
-
-	// Perform search
-
+	// Execute search with atomic cooldown enforcement
 	var resultMessage string
-	roll := utils.SecureRandomFloat()
+	err = s.cooldownService.EnforceCooldown(ctx, user.ID, domain.ActionSearch, func() error {
+		var err error
+		resultMessage, err = s.executeSearch(ctx, user)
+		return err
+	})
 
+	if err != nil {
+		// Check if it's a cooldown error
+		var cooldownErr cooldown.ErrOnCooldown
+		if errors.As(err, &cooldownErr) {
+			// Return user-friendly cooldown message
+			return cooldownErr.Error(), nil
+		}
+		// Other error
+		return "", err
+	}
+
+	log.Info("Search completed", "username", username, "result", resultMessage)
+	return resultMessage, nil
+}
+
+// executeSearch performs the actual search logic (called within cooldown enforcement)
+func (s *service) executeSearch(ctx context.Context, user *domain.User) (string, error) {
+	log := logger.FromContext(ctx)
+	
 	// Calculate daily search stats
 	dailyCount := 0
+	
 	if s.statsService != nil {
 		stats, err := s.statsService.GetUserStats(ctx, user.ID, domain.PeriodDaily)
 		if err != nil {
 			log.Warn("Failed to get search counts", "error", err)
-			// Fallback to cooldown logic for "First Search" check
-			if lastUsed == nil {
-				dailyCount = 0
-			} else {
-				y1, m1, d1 := lastUsed.Date()
-				y2, m2, d2 := now.Date()
-				if y1 != y2 || m1 != m2 || d1 != d2 {
-					dailyCount = 0
-				} else {
-					dailyCount = 1 // Assume > 0
-				}
-			}
-		} else {
-			if stats != nil && stats.EventCounts != nil {
-				dailyCount = stats.EventCounts[domain.EventSearch]
-			}
-		}
-	} else {
-		// No stats service (e.g. tests)
-		if lastUsed == nil {
-			dailyCount = 0
-		} else {
-			y1, m1, d1 := lastUsed.Date()
-			y2, m2, d2 := now.Date()
-			if y1 != y2 || m1 != m2 || d1 != d2 {
-				dailyCount = 0
-			} else {
-				dailyCount = 1
-			}
+		} else if stats != nil && stats.EventCounts != nil {
+			dailyCount = stats.EventCounts[domain.EventSearch]
 		}
 	}
 
@@ -688,14 +660,19 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 	xpMultiplier := 1.0
 	successThreshold := SearchSuccessRate
 
+	// Perform search roll
+	roll := utils.SecureRandomFloat()
+
 	if isFirstSearchDaily {
 		roll = 0.0 // Guaranteed Success
-		log.Info("First search of the day - applying bonus", "username", username)
+		log.Info("First search of the day - applying bonus", "username", user.Username)
 	} else if isDiminished {
 		successThreshold = 0.1 // Reduced success rate
 		xpMultiplier = 0.1     // Reduced XP
-		log.Info("Diminished search returns applied", "username", username, "dailyCount", dailyCount)
+		log.Info("Diminished search returns applied", "username", user.Username, "dailyCount", dailyCount)
 	}
+
+	var resultMessage string
 
 	if roll <= successThreshold {
 		// Success case
@@ -757,10 +734,10 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 
 		if isCritical {
 			resultMessage = fmt.Sprintf("%s You found %dx %s", domain.MsgSearchCriticalSuccess, quantity, displayName)
-			log.Info("Search CRITICAL success", "username", username, "item", item.InternalName, "quantity", quantity)
+			log.Info("Search CRITICAL success", "username", user.Username, "item", item.InternalName, "quantity", quantity)
 		} else {
 			resultMessage = fmt.Sprintf("You have found %dx %s", quantity, displayName)
-			log.Info("Search successful - lootbox found", "username", username, "item", item.InternalName)
+			log.Info("Search successful - lootbox found", "username", user.Username, "item", item.InternalName)
 		}
 
 		if isFirstSearchDaily {
@@ -777,7 +754,7 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 			})
 		}
 		resultMessage = domain.MsgSearchNearMiss
-		log.Info("Search NEAR MISS", "username", username, "roll", roll)
+		log.Info("Search NEAR MISS", "username", user.Username, "roll", roll)
 	} else {
 		// Check for Critical Failure (roll > 0.95)
 		if roll > 1.0-SearchCriticalFailRate {
@@ -792,7 +769,7 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 				idx := utils.SecureRandomIntRange(0, len(domain.SearchCriticalFailMessages)-1)
 				resultMessage = fmt.Sprintf("%s %s", domain.MsgSearchCriticalFail, domain.SearchCriticalFailMessages[idx])
 			}
-			log.Info("Search CRITICAL FAIL", "username", username, "roll", roll)
+			log.Info("Search CRITICAL FAIL", "username", user.Username, "roll", roll)
 		} else {
 			// Failure case - Pick a random funny message
 			resultMessage = domain.MsgSearchNothingFound
@@ -800,14 +777,8 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 				idx := utils.SecureRandomIntRange(0, len(domain.SearchFailureMessages)-1)
 				resultMessage = domain.SearchFailureMessages[idx]
 			}
-			log.Info("Search successful - nothing found", "username", username, "message", resultMessage)
+			log.Info("Search successful - nothing found", "username", user.Username, "message", resultMessage)
 		}
-	}
-
-	// Update cooldown
-	if err := s.repo.UpdateCooldown(ctx, user.ID, domain.ActionSearch, now); err != nil {
-		log.Error("Failed to update cooldown", "error", err, "userID", user.ID)
-		// Don't fail the search, just log the error
 	}
 
 	// Record search attempt (to track daily count)
@@ -818,7 +789,6 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 		})
 	}
 
-	log.Info("Search completed", "username", username, "result", resultMessage)
 	return resultMessage, nil
 }
 

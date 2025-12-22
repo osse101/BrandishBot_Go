@@ -15,6 +15,7 @@ import (
 
 	_ "github.com/osse101/BrandishBot_Go/docs/swagger"
 	"github.com/osse101/BrandishBot_Go/internal/config"
+	"github.com/osse101/BrandishBot_Go/internal/cooldown"
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
 	"github.com/osse101/BrandishBot_Go/internal/database"
 	"github.com/osse101/BrandishBot_Go/internal/database/postgres"
@@ -199,10 +200,16 @@ func main() {
 	}
 	slog.Info("Naming resolver initialized")
 
+	// Initialize Cooldown Service
+	cooldownSvc := cooldown.NewPostgresService(dbPool, cooldown.Config{
+		DevMode: cfg.DevMode,
+	})
+	slog.Info("Cooldown service initialized", "dev_mode", cfg.DevMode)
+
 	gambleService := gamble.NewService(gambleRepo, eventBus, lootboxSvc, statsService, cfg.GambleJoinDuration, jobService)
 
 	// Initialize services that depend on job service
-	userService := user.NewService(userRepo, statsService, jobService, lootboxSvc, namingResolver, cfg.DevMode)
+	userService := user.NewService(userRepo, statsService, jobService, lootboxSvc, namingResolver, cooldownSvc, cfg.DevMode)
 
 
 	// Initialize Gamble Worker

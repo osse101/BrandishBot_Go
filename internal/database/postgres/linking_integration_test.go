@@ -148,7 +148,7 @@ func TestLinking_EndToEndFlow_Integration(t *testing.T) {
 	// Initialize repositories and services
 	linkingRepo := NewLinkingRepository(pool)
 	userRepo := NewUserRepository(pool)
-	userService := user.NewService(userRepo, nil, nil, nil, nil, false)
+	userService := user.NewService(userRepo, nil, nil, nil, nil, nil, false)
 	linkingService := linking.NewService(linkingRepo, userService)
 
 	// ========== Test Complete Linking Flow ==========
@@ -209,7 +209,7 @@ func TestLinking_TokenExpiration_Integration(t *testing.T) {
 
 	linkingRepo := NewLinkingRepository(pool)
 	userRepo := NewUserRepository(pool)
-	userService := user.NewService(userRepo, nil, nil, nil, nil, false)
+	userService := user.NewService(userRepo, nil, nil, nil, nil, nil, false)
 	linkingService := linking.NewService(linkingRepo, userService)
 
 	// Create an expired token directly in database
@@ -248,7 +248,7 @@ func TestLinking_MergeTwoExistingUsers_Integration(t *testing.T) {
 
 	linkingRepo := NewLinkingRepository(pool)
 	userRepo := NewUserRepository(pool)
-	userService := user.NewService(userRepo, nil, nil, nil, nil, false)
+	userService := user.NewService(userRepo, nil, nil, nil, nil, nil, false)
 	linkingService := linking.NewService(linkingRepo, userService)
 
 	// Create two separate users
@@ -305,7 +305,7 @@ func TestLinking_UnlinkFlow_Integration(t *testing.T) {
 
 	linkingRepo := NewLinkingRepository(pool)
 	userRepo := NewUserRepository(pool)
-	userService := user.NewService(userRepo, nil, nil, nil, nil, false)
+	userService := user.NewService(userRepo, nil, nil, nil, nil, nil, false)
 	linkingService := linking.NewService(linkingRepo, userService)
 
 	// Create a user with two platforms
@@ -356,7 +356,7 @@ func TestLinking_MultipleTokenInvalidation_Integration(t *testing.T) {
 
 	linkingRepo := NewLinkingRepository(pool)
 	userRepo := NewUserRepository(pool)
-	userService := user.NewService(userRepo, nil, nil, nil, nil, false)
+	userService := user.NewService(userRepo, nil, nil, nil, nil, nil, false)
 	linkingService := linking.NewService(linkingRepo, userService)
 
 	// Create first token
@@ -439,7 +439,7 @@ func TestLinking_SelfLinkingPrevention_Integration(t *testing.T) {
 
 	linkingRepo := NewLinkingRepository(pool)
 	userRepo := NewUserRepository(pool)
-	userService := user.NewService(userRepo, nil, nil, nil, nil, false)
+	userService := user.NewService(userRepo, nil, nil, nil, nil, nil, false)
 	linkingService := linking.NewService(linkingRepo, userService)
 
 	// Initiate link
