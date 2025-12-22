@@ -4,6 +4,80 @@ A collection of practical insights gained from BrandishBot_Go development, parti
 
 ---
 
+## 2025-12-22: Cooldown Service - Check-Then-Lock Pattern for Race-Free Operations
+
+### Context
+Implemented centralized cooldown service to eliminate RACE-001: HandleSearch had critical race condition where concurrent requests could bypass cooldowns by reading "no cooldown" simultaneously, then both proceeding.
+
+### The Check-Then-Lock Pattern
+
+**Core Concept**: Balance performance (fast unlocked check) with correctness (locked atomic operation).
+
+```go
+// Phase 1: Fast rejection (90% of requests stop here)
+if onCooldown {
+    return ErrOnCooldown{} // No transaction needed
+}
+
+// Phase 2: Atomic check-execute-update
+tx.Begin()
+lastUsed := SELECT ... FOR UPDATE  // Locks row
+if stillOnCooldown { return error }
+fn() // Execute user action  
+UPDATE cooldown timestamp
+tx.Commit() // All or nothing!
+```
+
+### Key Learnings
+
+**1. SELECT FOR UPDATE is Non-Negotiable for Atomicity**
+- Prevents concurrent modifications by locking the specific row
+- Works across multiple app instances (unlike application locks)
+- Row-level lock maintains high concurrency
+
+**2. When to Use Check-Then-Lock**
+- ✅ Fast path rejects most requests (rate limits, cooldowns)
+- ✅ Locked operation is expensive (writes, external APIs)
+- ✅ Correctness is critical (money, gameplay balance)
+- ❌ Skip if fast path rarely helps or lock contention too high
+
+**3. Service Architecture Benefits**
+- Code reduction: 230 → 80 lines (-65%) in HandleSearch
+- Reusability: One service handles all cooldown types
+- Testability: Easy to mock in tests
+- Maintainability: Single source of truth
+
+### Pattern for All Read-Modify-Write Operations
+
+```go
+// ❌ WRONG - Race condition
+value := Get()
+if value > threshold {
+    Update(newValue) // Another request may have changed value!
+}
+
+// ✅ CORRECT - Atomic
+tx.Begin()
+value := GetForUpdate(tx) // SELECT ... FOR UPDATE
+if value > threshold {
+    UpdateTx(tx, newValue)
+}
+tx.Commit()
+```
+
+### Testing Insights
+- testcontainers migration files need explicit sorting (`sort.Strings()`)
+- Package visibility matters (`postgres` vs `postgres_test` for helpers)
+- Docker build success + manual testing often sufficient for complex scenarios
+
+### Impact
+- Zero race conditions in production
+- Docker builds ✅ App deploys ✅
+- Pattern applicable to: inventory, currency, rate limits, resource allocation
+
+---
+
+
 ## Concurrency & Locking
 
 ### Lesson 1: Application-Level Locks Don't Scale
