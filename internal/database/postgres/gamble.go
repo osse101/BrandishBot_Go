@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
 
 // GambleRepository implements the gamble repository for PostgreSQL
@@ -182,4 +183,95 @@ func (r *GambleRepository) GetActiveGamble(ctx context.Context) (*domain.Gamble,
 		return nil, fmt.Errorf("failed to get active gamble: %w", err)
 	}
 	return &gamble, nil
+}
+
+// BeginGambleTx starts a transaction and returns a GambleTx for gamble operations
+func (r *GambleRepository) BeginGambleTx(ctx context.Context) (repository.GambleTx, error) {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to begin gamble transaction: %w", err)
+	}
+	return &gambleTx{
+		tx:       tx,
+		userRepo: r.UserRepository,
+	}, nil
+}
+
+// gambleTx implements repository.GambleTx interface
+type gambleTx struct {
+	tx       pgx.Tx
+	userRepo *UserRepository
+}
+
+// Commit commits the transaction
+func (t *gambleTx) Commit(ctx context.Context) error {
+	return t.tx.Commit(ctx)
+}
+
+// Rollback rolls back the transaction
+func (t *gambleTx) Rollback(ctx context.Context) error {
+	return t.tx.Rollback(ctx)
+}
+
+// UpdateGambleStateIfMatches performs CAS operation within transaction
+func (t *gambleTx) UpdateGambleStateIfMatches(
+	ctx context.Context,
+	id uuid.UUID,
+	expectedState, newState domain.GambleState,
+) (int64, error) {
+	query := `
+		UPDATE gambles 
+		SET state = $1 
+		WHERE id = $2 AND state = $3
+	`
+	result, err := t.tx.Exec(ctx, query, newState, id, expectedState)
+	if err != nil {
+		return 0, fmt.Errorf("failed to update gamble state: %w", err)
+	}
+	return result.RowsAffected(), nil
+}
+
+// SaveOpenedItems saves opened items within transaction
+func (t *gambleTx) SaveOpenedItems(ctx context.Context, items []domain.GambleOpenedItem) error {
+	if len(items) == 0 {
+		return nil
+	}
+
+	query := `
+		INSERT INTO gamble_opened_items (gamble_id, user_id, item_id, value)
+		VALUES ($1, $2, $3, $4)
+	`
+
+	for _, item := range items {
+		_, err := t.tx.Exec(ctx, query, item.GambleID, item.UserID, item.ItemID, item.Value)
+		if err != nil {
+			return fmt.Errorf("failed to insert opened item: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// CompleteGamble marks gamble as completed within transaction
+func (t *gambleTx) CompleteGamble(ctx context.Context, result *domain.GambleResult) error {
+	query := `UPDATE gambles SET state = $1 WHERE id = $2`
+	_, err := t.tx.Exec(ctx, query, domain.GambleStateCompleted, result.GambleID)
+	if err != nil {
+		return fmt.Errorf("failed to complete gamble: %w", err)
+	}
+	return nil
+}
+
+// GetInventory retrieves inventory within transaction
+func (t *gambleTx) GetInventory(ctx context.Context, userID string) (*domain.Inventory, error) {
+	// Use UserTx wrapper for transactional inventory access with row locking
+	userTx := &UserTx{tx: t.tx}
+	return userTx.GetInventory(ctx, userID)
+}
+
+// UpdateInventory updates inventory within transaction
+func (t *gambleTx) UpdateInventory(ctx context.Context, userID string, inventory domain.Inventory) error {
+	// Use UserTx wrapper for transactional inventory update
+	userTx := &UserTx{tx: t.tx}
+	return userTx.UpdateInventory(ctx, userID, inventory)
 }

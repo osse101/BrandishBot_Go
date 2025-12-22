@@ -73,6 +73,14 @@ func (m *MockRepository) BeginTx(ctx context.Context) (repository.Tx, error) {
 	return args.Get(0).(repository.Tx), args.Error(1)
 }
 
+func (m *MockRepository) BeginGambleTx(ctx context.Context) (repository.GambleTx, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(repository.GambleTx), args.Error(1)
+}
+
 func (m *MockRepository) GetInventory(ctx context.Context, userID string) (*domain.Inventory, error) {
 	args := m.Called(ctx, userID)
 	if args.Get(0) == nil {

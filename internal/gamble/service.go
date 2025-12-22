@@ -30,6 +30,7 @@ type Repository interface {
 
 	// Transaction support
 	BeginTx(ctx context.Context) (repository.Tx, error)
+	BeginGambleTx(ctx context.Context) (repository.GambleTx, error)
 
 	// Inventory operations (reused from other services)
 	GetInventory(ctx context.Context, userID string) (*domain.Inventory, error)
@@ -118,7 +119,7 @@ func (s *service) StartGamble(ctx context.Context, platform, platformID, usernam
 		JoinDeadline: time.Now().Add(s.joinDuration),
 	}
 
-	// Bug #8 Fix: Validate that all bet items are lootboxes (same as JoinGamble)
+	// Validate that all bet items are lootboxes
 	for _, bet := range bets {
 		item, err := s.repo.GetItemByID(ctx, bet.ItemID)
 		if err != nil {
@@ -127,7 +128,6 @@ func (s *service) StartGamble(ctx context.Context, platform, platformID, usernam
 		if item == nil {
 			return nil, fmt.Errorf("bet item %d does not exist", bet.ItemID)
 		}
-		// Check if item is a lootbox (identified by internal name prefix)
 		if len(item.InternalName) < 7 || item.InternalName[:7] != "lootbox" {
 			return nil, fmt.Errorf("item %s (id:%d) is not a lootbox", item.InternalName, item.ID)
 		}
@@ -240,15 +240,14 @@ func (s *service) JoinGamble(ctx context.Context, gambleID uuid.UUID, platform, 
 		return fmt.Errorf("gamble join deadline has passed")
 	}
 
-	// Bug #2 Fix: Check if user has already joined
-	// Note: database constraint on PRIMARY KEY (gamble_id, user_id)  provides final guard
+	// Check if user has already joined
 	for _, p := range gamble.Participants {
 		if p.UserID == user.ID {
 			return fmt.Errorf("user has already joined this gamble")
 		}
 	}
 
-	// Bug #8 Fix: Validate that all bet items are lootboxes
+	// Validate that all bet items are lootboxes
 	for _, bet := range bets {
 		item, err := s.repo.GetItemByID(ctx, bet.ItemID)
 		if err != nil {
@@ -257,7 +256,6 @@ func (s *service) JoinGamble(ctx context.Context, gambleID uuid.UUID, platform, 
 		if item == nil {
 			return fmt.Errorf("bet item %d does not exist", bet.ItemID)
 		}
-		// Check if item is a lootbox (identified by internal name prefix)
 		if len(item.InternalName) < 7 || item.InternalName[:7] != "lootbox" {
 			return fmt.Errorf("item %s (id:%d) is not a lootbox", item.InternalName, item.ID)
 		}
@@ -334,30 +332,34 @@ func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.Gamb
 		return nil, fmt.Errorf("gamble is not in joining state (current: %s)", gamble.State)
 	}
 
-	// Bug #6 Fix: Enforce deadline - cannot execute before deadline has passed
+	// Enforce deadline
 	if time.Now().Before(gamble.JoinDeadline) {
 		return nil, fmt.Errorf("cannot execute gamble before join deadline (deadline: %v)", gamble.JoinDeadline)
 	}
 
-	// Bug #4 Fix: Use compare-and-swap for idempotent state transition
-	// This prevents duplicate execution even if called concurrently
-	rowsAffected, err := s.repo.UpdateGambleStateIfMatches(
+	// Begin transaction for all database operations
+	tx, err := s.repo.BeginGambleTx(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer repository.SafeRollback(ctx, tx)
+
+	// Use compare-and-swap for idempotent state transition
+	rowsAffected, err := tx.UpdateGambleStateIfMatches(
 		ctx, id,
-		domain.GambleStateJoining,  // expected state
-		domain.GambleStateOpening,  // new state
+		domain.GambleStateJoining,
+		domain.GambleStateOpening,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to transition gamble state: %w", err)
 	}
 	if rowsAffected == 0 {
-		// State didn't match - either already executed or in wrong state
 		log.Warn("Gamble state transition failed - already being executed", "gambleID", id)
 		return nil, fmt.Errorf("gamble is already being executed or has been executed")
 	}
 	log.Info("Gamble state transitioned to Opening", "gambleID", id)
 
-	// Simulate opening lootboxes (Placeholder: In real impl, use LootboxService)
-	// We need to track total value per user
+	// Open lootboxes and track results (in-memory, no DB operations)
 	userValues := make(map[string]int64)
 	var allOpenedItems []domain.GambleOpenedItem
 	var totalGambleValue int64
@@ -385,18 +387,6 @@ func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.Gamb
 
 			// Process drops
 			for _, drop := range drops {
-				// Create individual records for each item quantity
-				// (GambleOpenedItem represents a single item instance or stack?
-				// The struct has Value int64. If quantity > 1, is Value per item or total?
-				// Usually in gambles we want to show each "pull".
-				// But OpenLootbox aggregates by item type.
-				// Let's record them as a stack for now, but Value should be total for the stack?
-				// Wait, domain.GambleOpenedItem has ItemID and Value.
-				// If I get 5 coins worth 1 each, is it 1 record of 5 coins worth 5?
-				// The previous dummy logic did: for i < quantity... simulate item drop.
-				// OpenLootbox returns aggregated drops.
-				// Let's create one record per dropped item type per bet.
-
 				totalValue := int64(drop.Value * drop.Quantity)
 
 				openedItem := domain.GambleOpenedItem{
@@ -431,7 +421,7 @@ func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.Gamb
 	}
 
 	// Save opened items
-	if err := s.repo.SaveOpenedItems(ctx, allOpenedItems); err != nil {
+	if err := tx.SaveOpenedItems(ctx, allOpenedItems); err != nil {
 		return nil, fmt.Errorf("failed to save opened items: %w", err)
 	}
 
@@ -500,12 +490,6 @@ func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.Gamb
 
 	// Award items to winner
 	if winnerID != "" {
-		tx, err := s.repo.BeginTx(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to begin tx for awarding: %w", err)
-		}
-		defer repository.SafeRollback(ctx, tx)
-
 		inv, err := tx.GetInventory(ctx, winnerID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get winner inventory: %w", err)
@@ -541,10 +525,6 @@ func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.Gamb
 		if err := tx.UpdateInventory(ctx, winnerID, *inv); err != nil {
 			return nil, fmt.Errorf("failed to update winner inventory: %w", err)
 		}
-
-		if err := tx.Commit(ctx); err != nil {
-			return nil, fmt.Errorf("failed to commit award tx: %w", err)
-		}
 	}
 
 	// Complete Gamble
@@ -555,8 +535,13 @@ func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.Gamb
 		Items:      allOpenedItems,
 	}
 
-	if err := s.repo.CompleteGamble(ctx, result); err != nil {
+	if err := tx.CompleteGamble(ctx, result); err != nil {
 		return nil, fmt.Errorf("failed to complete gamble: %w", err)
+	}
+
+	// Commit transaction
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("failed to commit gamble transaction: %w", err)
 	}
 
 	// Award bonus XP to winner (async)
@@ -578,7 +563,6 @@ func (s *service) GetActiveGamble(ctx context.Context) (*domain.Gamble, error) {
 }
 
 // Helper to consume item from inventory
-// Fixed Bug #7: Safe slice manipulation to avoid index issues during iteration
 func consumeItem(inventory *domain.Inventory, itemID, quantity int) error {
 	for i := range inventory.Slots {
 		if inventory.Slots[i].ItemID == itemID {
@@ -586,10 +570,10 @@ func consumeItem(inventory *domain.Inventory, itemID, quantity int) error {
 				return fmt.Errorf("insufficient quantity")
 			}
 			if inventory.Slots[i].Quantity == quantity {
-				// Remove slot - reconstruct slice without iteration mutation
+				// Remove slot
 				inventory.Slots = append(inventory.Slots[:i], inventory.Slots[i+1:]...)
 			} else {
-				// Keep slot with reduced quantity
+				// Reduce quantity
 				inventory.Slots[i].Quantity -= quantity
 			}
 			return nil
