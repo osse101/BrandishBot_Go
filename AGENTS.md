@@ -31,6 +31,7 @@ This document provides AI agents with structured guidance on navigating, underst
 | [docs/development/journal.md](docs/development/journal.md) | Development patterns, concurrency, transactions, refactoring | Building features, fixing bugs | After discovering patterns, solving tricky bugs |
 | [docs/architecture/journal.md](docs/architecture/journal.md) | System design, scaling, service architecture | Design decisions, multi-instance work | After architectural changes or ADR decisions |
 | [docs/testing/journal.md](docs/testing/journal.md) | Testing patterns, mocks, coverage strategies | Writing tests, debugging test failures | After learning testing lessons |
+| [docs/tools/journal.md](docs/tools/journal.md) | Documenting learnings, patterns, and best practices for tools | Using tools | After learning tools lessons |
 
 ### Journal Entry Format
 
@@ -240,6 +241,14 @@ Before submitting changes:
 9. **Document**: Update journals with lessons learned
 
 **Full guide**: [docs/development/FEATURE_DEVELOPMENT_GUIDE.md](docs/development/FEATURE_DEVELOPMENT_GUIDE.md)
+
+---
+
+## The Right Tool for Go Code
+
+1. **sed** → Simple text files, one-liners
+2. **replace_file_content** → Single contiguous block edits  
+3. **multi_replace_file_content** → Multiple block edits
 
 ---
 

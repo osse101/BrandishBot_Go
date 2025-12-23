@@ -129,6 +129,7 @@ const (
 func TestSellItem_Success(t *testing.T) {
 	// ARRANGE
 	mockRepo := &MockRepository{}
+	mockTx := &MockTx{}
 	service := NewService(mockRepo, nil)
 	ctx := context.Background()
 
@@ -145,8 +146,11 @@ func TestSellItem_Success(t *testing.T) {
 	mockRepo.On("GetUserByPlatformID", ctx, "twitch", "").Return(user, nil)
 	mockRepo.On("GetItemByName", ctx, "Sword").Return(item, nil)
 	mockRepo.On("GetItemByName", ctx, domain.ItemMoney).Return(moneyItem, nil)
-	mockRepo.On("GetInventory", ctx, user.ID).Return(inventory, nil)
-	mockRepo.On("UpdateInventory", ctx, user.ID, mock.Anything).Return(nil)
+	mockRepo.On("BeginTx", ctx).Return(mockTx, nil)
+	mockTx.On("GetInventory", ctx, user.ID).Return(inventory, nil)
+	mockTx.On("UpdateInventory", ctx, user.ID, mock.Anything).Return(nil)
+	mockTx.On("Commit", ctx).Return(nil)
+mockTx.On("Rollback", ctx).Return(nil)
 
 	// ACT
 	moneyGained, quantitySold, err := service.SellItem(ctx, "twitch", "", "testuser", "Sword", 3)
@@ -156,6 +160,7 @@ func TestSellItem_Success(t *testing.T) {
 	assert.Equal(t, 300, moneyGained, "Should receive correct money (3 * 100)")
 	assert.Equal(t, 3, quantitySold, "Should sell requested quantity")
 	mockRepo.AssertExpectations(t)
+	mockTx.AssertExpectations(t)
 }
 
 // CASE 2: WORST CASE - Boundary conditions

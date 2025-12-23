@@ -907,18 +907,26 @@ func TestHandleGetInventory(t *testing.T) {
 
 // Shutdown implements economy.Service
 func (m *MockEconomyService) Shutdown(ctx context.Context) error {
-args := m.Called(ctx)
-return args.Error(0)
+	args := m.Called(ctx)
+	return args.Error(0)
 }
 
 // AddContribution implements progression.Service  
 func (m *MockProgressionService) AddContribution(ctx context.Context, userID string, value int, source string) error {
-args := m.Called(ctx, userID, value, source)
-return args.Error(0)
+	args := m.Called(ctx, userID, value, source)
+	return args.Error(0)
 }
 
 // Shutdown implements progression.Service
 func (m *MockProgressionService) Shutdown(ctx context.Context) error {
-args := m.Called(ctx)
-return args.Error(0)
+	args := m.Called(ctx)
+	return args.Error(0)
+}
+// CheckAndUnlockNode implements progression.Service
+func (m *MockProgressionService) CheckAndUnlockNode(ctx context.Context) (*domain.ProgressionUnlock, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.ProgressionUnlock), args.Error(1)
 }

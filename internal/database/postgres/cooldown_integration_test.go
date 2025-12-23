@@ -54,7 +54,7 @@ func TestCooldownService_ConcurrentRequests_Integration(t *testing.T) {
 		t.Fatalf("failed to get connection string: %v", err)
 	}
 
-	pool, err := database.NewPool(connStr, 10, 30*time.Minute, time.Hour)
+	pool, err := database.NewPool(connStr, 100, 30*time.Minute, time.Hour)
 	if err != nil {
 		t.Fatalf("failed to connect to database: %v", err)
 	}
