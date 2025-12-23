@@ -134,6 +134,9 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 	// 5. Authentication (outermost - validates first)
 	handler = AuthMiddleware(apiKey, trustedProxies, detector)(handler)
 
+	// 6. Security Headers (even more outermost - adds headers to all responses)
+	handler = SecurityHeadersMiddleware()(handler)
+
 	return &Server{
 		httpServer: &http.Server{
 			Addr:              fmt.Sprintf(":%d", port),
