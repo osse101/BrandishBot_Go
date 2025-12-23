@@ -278,11 +278,11 @@ health-check-prod:
 # Mock generation
 .PHONY: mocks clean-mocks
 mocks:
-@echo "Generating mocks..."
-@$(MOCKERY)
-@echo "Mocks generated in mocks/ directory"
+	@echo "Generating mocks..."
+	@$(MOCKERY)
+	@echo "Mocks generated in mocks/ directory"
 
 clean-mocks:
-@echo "Removing generated mocks..."
-@rm -rf mocks/
-@echo "✓ Removed mocks/ directory"
+	@echo "Removing generated mocks..."
+	@rm -rf mocks/
+	@echo "✓ Removed mocks/ directory"
