@@ -23,6 +23,7 @@ const (
 	EventSearch             EventType = "search"
 	EventSearchNearMiss     EventType = "search_near_miss"
 	EventSearchCriticalFail EventType = "search_critical_fail"
+	EventSearchCriticalSuccess EventType = "search_critical_success"
 )
 
 // StatsEvent represents a single tracked event

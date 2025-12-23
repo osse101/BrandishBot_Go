@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/osse101/BrandishBot_Go/internal/cooldown"
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
@@ -164,10 +165,55 @@ func (m *mockSearchRepo) GetUnlockedRecipesForUser(ctx context.Context, userID s
 	return nil, nil
 }
 
+func (m *mockSearchRepo) MergeUsersInTransaction(ctx context.Context, primaryUserID, secondaryUserID string, mergedUser domain.User, mergedInventory domain.Inventory) error {
+	return nil // No-op
+}
+
+// Mock cooldown service
+type mockCooldownService struct {
+	repo *mockSearchRepo
+}
+
+func (m *mockCooldownService) CheckCooldown(ctx context.Context, userID, action string) (bool, time.Duration, error) {
+	last, _ := m.repo.GetLastCooldown(ctx, userID, action)
+	if last == nil {
+		return false, 0, nil
+	}
+	elapsed := time.Since(*last)
+	if elapsed < 30*time.Minute {
+		return true, 30*time.Minute - elapsed, nil
+	}
+	return false, 0, nil
+}
+
+func (m *mockCooldownService) EnforceCooldown(ctx context.Context, userID, action string, fn func() error) error {
+	onCooldown, remaining, _ := m.CheckCooldown(ctx, userID, action)
+	if onCooldown {
+		return cooldown.ErrOnCooldown{Action: action, Remaining: remaining}
+	}
+	err := fn()
+	if err == nil {
+		now := time.Now()
+		m.repo.UpdateCooldown(ctx, userID, action, now)
+	}
+	return err
+}
+
+func (m *mockCooldownService) ResetCooldown(ctx context.Context, userID, action string) error {
+	if _, ok := m.repo.cooldowns[userID]; ok {
+		delete(m.repo.cooldowns[userID], action)
+	}
+	return nil
+}
+
+func (m *mockCooldownService) GetLastUsed(ctx context.Context, userID, action string) (*time.Time, error) {
+	return m.repo.GetLastCooldown(ctx, userID, action)
+}
+
 // Test fixtures
 func createSearchTestService() (*service, *mockSearchRepo) {
 	repo := newMockSearchRepo()
-	svc := NewService(repo, nil, nil, nil, NewMockNamingResolver(), false).(*service)
+	svc := NewService(repo, nil, nil, nil, NewMockNamingResolver(), &mockCooldownService{repo: repo}, false).(*service)
 
 	// Add standard test items
 	repo.items[domain.ItemLootbox0] = &domain.Item{
@@ -566,7 +612,7 @@ func TestHandleSearch_NearMiss_Statistical(t *testing.T) {
 		mockCounts: map[domain.EventType]int{domain.EventSearch: 1},
 	}
 	// Enable devMode to bypass cooldowns for loop
-	svc := NewService(repo, statsSvc, nil, nil, NewMockNamingResolver(), true).(*service)
+	svc := NewService(repo, statsSvc, nil, nil, NewMockNamingResolver(), &mockCooldownService{repo: repo}, true).(*service)
 
 	// Create user
 	user := createTestUser(TestUsername, TestUserID)
@@ -576,6 +622,9 @@ func TestHandleSearch_NearMiss_Statistical(t *testing.T) {
 	iterations := 1000
 
 	for i := 0; i < iterations; i++ {
+		// Reset cooldown for test loop
+		delete(repo.cooldowns[user.ID], domain.ActionSearch)
+
 		msg, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
 		require.NoError(t, err)
 
@@ -655,7 +704,7 @@ func TestHandleSearch_DiminishingReturns(t *testing.T) {
 	statsSvc := &mockStatsService{
 		mockCounts: make(map[domain.EventType]int),
 	}
-	svc := NewService(repo, statsSvc, nil, nil, NewMockNamingResolver(), true).(*service) // devMode=true to bypass cooldown
+	svc := NewService(repo, statsSvc, nil, nil, NewMockNamingResolver(), &mockCooldownService{repo: repo}, true).(*service) // devMode=true to bypass cooldown
 
 	user := createTestUser(TestUsername, TestUserID)
 	repo.users[TestUsername] = user
@@ -701,7 +750,7 @@ func TestHandleSearch_CriticalFail_Statistical(t *testing.T) {
 		mockCounts: map[domain.EventType]int{domain.EventSearch: 1},
 	}
 	// Enable devMode to bypass cooldowns for loop
-	svc := NewService(repo, statsSvc, nil, nil, NewMockNamingResolver(), true).(*service)
+	svc := NewService(repo, statsSvc, nil, nil, NewMockNamingResolver(), &mockCooldownService{repo: repo}, true).(*service)
 
 	// Create user
 	user := createTestUser(TestUsername, TestUserID)
@@ -711,6 +760,9 @@ func TestHandleSearch_CriticalFail_Statistical(t *testing.T) {
 	iterations := 1000
 
 	for i := 0; i < iterations; i++ {
+		// Reset cooldown for test loop
+		delete(repo.cooldowns[user.ID], domain.ActionSearch)
+
 		msg, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
 		require.NoError(t, err)
 
@@ -741,4 +793,46 @@ func TestHandleSearch_CriticalFail_Statistical(t *testing.T) {
 		}
 	}
 	assert.Equal(t, critFailCount, recordedCritFails, "Should record event for each critical fail")
+}
+
+func TestHandleSearch_CriticalSuccess_Event(t *testing.T) {
+	// ARRANGE
+	repo := newMockSearchRepo()
+	// Add required lootbox item
+	repo.items[domain.ItemLootbox0] = &domain.Item{
+		ID:           1,
+		InternalName: domain.ItemLootbox0,
+		BaseValue:    10,
+	}
+
+	statsSvc := &mockStatsService{
+		mockCounts: make(map[domain.EventType]int),
+	}
+	// Enable devMode to bypass cooldowns
+	svc := NewService(repo, statsSvc, nil, nil, NewMockNamingResolver(), &mockCooldownService{repo: repo}, true).(*service)
+
+	user := createTestUser(TestUsername, TestUserID)
+	repo.users[TestUsername] = user
+	ctx := context.Background()
+
+	// Ensure it is the first search (mockCounts empty implies daily count 0)
+
+	// ACT
+	msg, err := svc.HandleSearch(ctx, domain.PlatformTwitch, "testuser123", TestUsername)
+	require.NoError(t, err)
+
+	// ASSERT
+	assert.Contains(t, msg, domain.MsgSearchCriticalSuccess, "Should be a critical success (first search bonus)")
+
+	// Verify event recorded
+	found := false
+	for _, evt := range statsSvc.recordedEvents {
+		if evt.EventType == domain.EventSearchCriticalSuccess {
+			found = true
+			assert.Equal(t, domain.ItemLootbox0, evt.EventData["item"])
+			assert.Equal(t, 2, evt.EventData["quantity"]) // Critical gives double
+			break
+		}
+	}
+	assert.True(t, found, "Should record EventSearchCriticalSuccess")
 }

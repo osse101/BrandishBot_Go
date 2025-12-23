@@ -160,6 +160,11 @@ func (m *MockRepo) UpdateCooldown(ctx context.Context, userID, action string, ti
 	return args.Error(0)
 }
 
+func (m *MockRepo) MergeUsersInTransaction(ctx context.Context, primaryUserID, secondaryUserID string, mergedUser domain.User, mergedInventory domain.Inventory) error {
+	args := m.Called(ctx, primaryUserID, secondaryUserID, mergedUser, mergedInventory)
+	return args.Error(0)
+}
+
 // MockLootboxService is a mock for lootbox.Service
 type MockLootboxService struct {
 	mock.Mock
