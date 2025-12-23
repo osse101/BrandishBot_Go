@@ -267,6 +267,10 @@ func (m *MockRepository) UpdateCooldown(ctx context.Context, userID, action stri
 	return nil
 }
 
+func (m *MockRepository) MergeUsersInTransaction(ctx context.Context, primaryUserID, secondaryUserID string, mergedUser domain.User, mergedInventory domain.Inventory) error {
+	return nil // No-op for mock
+}
+
 // Helper to setup test data
 func setupTestData(repo *MockRepository) {
 	// Add test users
@@ -322,7 +326,7 @@ func setupTestData(repo *MockRepository) {
 func TestAddItem(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, nil, nil, nil, NewMockNamingResolver(), false)
+	svc := NewService(repo, nil, nil, nil, NewMockNamingResolver(), nil, false)
 	ctx := context.Background()
 
 	// Test adding item to empty inventory
@@ -376,7 +380,7 @@ func TestAddItem(t *testing.T) {
 func TestRemoveItem(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, nil, nil, nil, NewMockNamingResolver(), false)
+	svc := NewService(repo, nil, nil, nil, NewMockNamingResolver(), nil, false)
 	ctx := context.Background()
 
 	// Add 10 lootbox1 items
@@ -420,7 +424,7 @@ func TestRemoveItem(t *testing.T) {
 func TestGiveItem(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, nil, nil, nil, NewMockNamingResolver(), false)
+	svc := NewService(repo, nil, nil, nil, NewMockNamingResolver(), nil, false)
 	ctx := context.Background()
 
 	// Setup: Give alice some items
@@ -459,7 +463,7 @@ func TestGiveItem(t *testing.T) {
 
 func TestRegisterUser(t *testing.T) {
 	repo := NewMockRepository()
-	svc := NewService(repo, nil, nil, nil, NewMockNamingResolver(), false)
+	svc := NewService(repo, nil, nil, nil, NewMockNamingResolver(), nil, false)
 	ctx := context.Background()
 
 	user := domain.User{
@@ -488,7 +492,7 @@ func TestRegisterUser(t *testing.T) {
 
 func TestHandleIncomingMessage_NewUser(t *testing.T) {
 	repo := NewMockRepository()
-	svc := NewService(repo, nil, nil, nil, NewMockNamingResolver(), false)
+	svc := NewService(repo, nil, nil, nil, NewMockNamingResolver(), nil, false)
 	ctx := context.Background()
 
 	result, err := svc.HandleIncomingMessage(ctx, domain.PlatformTwitch, "newuser123", "newuser", "hello")
@@ -510,7 +514,7 @@ func TestHandleIncomingMessage_NewUser(t *testing.T) {
 func TestHandleIncomingMessage_ExistingUser(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, nil, nil, nil, NewMockNamingResolver(), false)
+	svc := NewService(repo, nil, nil, nil, NewMockNamingResolver(), nil, false)
 	ctx := context.Background()
 
 	result, err := svc.HandleIncomingMessage(ctx, domain.PlatformTwitch, "alice123", "alice", "hello")
@@ -534,7 +538,7 @@ func TestUseItem(t *testing.T) {
 	}
 	lootboxSvc.On("OpenLootbox", mock.Anything, domain.ItemLootbox1, 1).Return(drops, nil)
 	
-	svc := NewService(repo, nil, nil, lootboxSvc, NewMockNamingResolver(), false).(*service)
+	svc := NewService(repo, nil, nil, lootboxSvc, NewMockNamingResolver(), nil, false).(*service)
 
 	ctx := context.Background()
 
@@ -596,7 +600,7 @@ func TestUseItem(t *testing.T) {
 func TestUseItem_Blaster(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, nil, nil, nil, NewMockNamingResolver(), false)
+	svc := NewService(repo, nil, nil, nil, NewMockNamingResolver(), nil, false)
 	ctx := context.Background()
 
 	// Setup: Give alice some blasters
@@ -629,7 +633,7 @@ func TestUseItem_Blaster(t *testing.T) {
 func TestGetInventory(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, nil, nil, nil, NewMockNamingResolver(), false)
+	svc := NewService(repo, nil, nil, nil, NewMockNamingResolver(), nil, false)
 	ctx := context.Background()
 
 	// Setup: Give alice some items
@@ -686,7 +690,7 @@ func TestUseItem_Lootbox0(t *testing.T) {
 	}
 	lootboxSvc.On("OpenLootbox", mock.Anything, domain.ItemLootbox0, 1).Return(drops, nil)
 	
-	svc := NewService(repo, nil, nil, lootboxSvc, NewMockNamingResolver(), false).(*service)
+	svc := NewService(repo, nil, nil, lootboxSvc, NewMockNamingResolver(), nil, false).(*service)
 
 	ctx := context.Background()
 
@@ -731,7 +735,7 @@ func TestUseItem_Lootbox2(t *testing.T) {
 	}
 	lootboxSvc.On("OpenLootbox", mock.Anything, domain.ItemLootbox2, 1).Return(drops, nil)
 	
-	svc := NewService(repo, nil, nil, lootboxSvc, NewMockNamingResolver(), false).(*service)
+	svc := NewService(repo, nil, nil, lootboxSvc, NewMockNamingResolver(), nil, false).(*service)
 
 	ctx := context.Background()
 

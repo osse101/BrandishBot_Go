@@ -733,6 +733,14 @@ func (s *service) executeSearch(ctx context.Context, user *domain.User) (string,
 		displayName := s.namingResolver.GetDisplayName(item.InternalName, "")
 
 		if isCritical {
+			// Record critical success event
+			if s.statsService != nil {
+				_ = s.statsService.RecordUserEvent(ctx, user.ID, domain.EventSearchCriticalSuccess, map[string]interface{}{
+					"item":     item.InternalName,
+					"quantity": quantity,
+					"roll":     roll,
+				})
+			}
 			resultMessage = fmt.Sprintf("%s You found %dx %s", domain.MsgSearchCriticalSuccess, quantity, displayName)
 			log.Info("Search CRITICAL success", "username", user.Username, "item", item.InternalName, "quantity", quantity)
 		} else {
