@@ -97,6 +97,29 @@ func (m *MockUserService) HandleSearch(ctx context.Context, platform, platformID
 	return args.String(0), args.Error(1)
 }
 
+func (m *MockUserService) MergeUsers(ctx context.Context, primaryUserID, secondaryUserID string) error {
+	args := m.Called(ctx, primaryUserID, secondaryUserID)
+	return args.Error(0)
+}
+
+func (m *MockUserService) UnlinkPlatform(ctx context.Context, userID, platform string) error {
+	args := m.Called(ctx, userID, platform)
+	return args.Error(0)
+}
+
+func (m *MockUserService) GetLinkedPlatforms(ctx context.Context, platform, platformID string) ([]string, error) {
+	args := m.Called(ctx, platform, platformID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]string), args.Error(1)
+}
+
+func (m *MockUserService) Shutdown(ctx context.Context) error {
+	args := m.Called(ctx)
+	return args.Error(0)
+}
+
 
 // MockEconomyService mocks the economy.Service interface
 type MockEconomyService struct {
@@ -114,6 +137,14 @@ func (m *MockEconomyService) BuyItem(ctx context.Context, platform, platformID, 
 }
 
 func (m *MockEconomyService) GetSellablePrices(ctx context.Context) ([]domain.Item, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]domain.Item), args.Error(1)
+}
+
+func (m *MockEconomyService) GetBuyablePrices(ctx context.Context) ([]domain.Item, error) {
 	args := m.Called(ctx)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -872,4 +903,22 @@ func TestHandleGetInventory(t *testing.T) {
 			mockSvc.AssertExpectations(t)
 		})
 	}
+}
+
+// Shutdown implements economy.Service
+func (m *MockEconomyService) Shutdown(ctx context.Context) error {
+args := m.Called(ctx)
+return args.Error(0)
+}
+
+// AddContribution implements progression.Service  
+func (m *MockProgressionService) AddContribution(ctx context.Context, userID string, value int, source string) error {
+args := m.Called(ctx, userID, value, source)
+return args.Error(0)
+}
+
+// Shutdown implements progression.Service
+func (m *MockProgressionService) Shutdown(ctx context.Context) error {
+args := m.Called(ctx)
+return args.Error(0)
 }
