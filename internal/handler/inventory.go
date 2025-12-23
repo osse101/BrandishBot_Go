@@ -57,7 +57,7 @@ func HandleAddItem(svc user.Service) http.HandlerFunc {
 
 		if err := svc.AddItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.ItemName, req.Quantity); err != nil {
 			log.Error("Failed to add item", "error", err, "username", req.Username, "item", req.ItemName)
-			http.Error(w, "Failed to add item", http.StatusInternalServerError) // Generic error
+			http.Error(w, ErrMsgAddItemFailed, http.StatusInternalServerError)
 			return
 		}
 
@@ -113,7 +113,7 @@ func HandleRemoveItem(svc user.Service) http.HandlerFunc {
 		removed, err := svc.RemoveItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.ItemName, req.Quantity)
 		if err != nil {
 			log.Error("Failed to remove item", "error", err, "username", req.Username, "item", req.ItemName)
-			http.Error(w, "Failed to remove item", http.StatusInternalServerError)
+			http.Error(w, ErrMsgRemoveItemFailed, http.StatusInternalServerError)
 			return
 		}
 
@@ -173,7 +173,7 @@ func HandleGiveItem(svc user.Service) http.HandlerFunc {
 
 		if err := svc.GiveItem(r.Context(), req.OwnerPlatform, req.OwnerPlatformID, req.Owner, req.ReceiverPlatform, req.ReceiverPlatformID, req.Receiver, req.ItemName, req.Quantity); err != nil {
 			log.Error("Failed to give item", "error", err, "owner", req.Owner, "receiver", req.Receiver, "item", req.ItemName)
-			http.Error(w, "Failed to give item", http.StatusInternalServerError)
+			http.Error(w, ErrMsgGiveItemFailed, http.StatusInternalServerError)
 			return
 		}
 
@@ -216,7 +216,7 @@ func HandleSellItem(svc economy.Service, progressionSvc progression.Service, eve
 		unlocked, err := progressionSvc.IsFeatureUnlocked(r.Context(), progression.FeatureSell)
 		if err != nil {
 			log.Error("Failed to check feature unlock status", "error", err)
-			http.Error(w, "Failed to check feature availability", http.StatusInternalServerError)
+			http.Error(w, ErrMsgFeatureCheckFailed, http.StatusInternalServerError)
 			return
 		}
 		if !unlocked {
@@ -244,7 +244,7 @@ func HandleSellItem(svc economy.Service, progressionSvc progression.Service, eve
 		moneyGained, itemsSold, err := svc.SellItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.ItemName, req.Quantity)
 		if err != nil {
 			log.Error("Failed to sell item", "error", err, "username", req.Username, "item", req.ItemName)
-			http.Error(w, "Failed to sell item", http.StatusInternalServerError)
+			http.Error(w, ErrMsgSellItemFailed, http.StatusInternalServerError)
 			return
 		}
 
@@ -306,7 +306,7 @@ func HandleBuyItem(svc economy.Service, progressionSvc progression.Service, even
 		unlocked, err := progressionSvc.IsFeatureUnlocked(r.Context(), progression.FeatureBuy)
 		if err != nil {
 			log.Error("Failed to check feature unlock status", "error", err)
-			http.Error(w, "Failed to check feature availability", http.StatusInternalServerError)
+			http.Error(w, ErrMsgFeatureCheckFailed, http.StatusInternalServerError)
 			return
 		}
 		if !unlocked {
@@ -334,7 +334,7 @@ func HandleBuyItem(svc economy.Service, progressionSvc progression.Service, even
 		bought, err := svc.BuyItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.ItemName, req.Quantity)
 		if err != nil {
 			log.Error("Failed to buy item", "error", err, "username", req.Username, "item", req.ItemName)
-			http.Error(w, "Failed to buy item", http.StatusInternalServerError)
+			http.Error(w, ErrMsgBuyItemFailed, http.StatusInternalServerError)
 			return
 		}
 
@@ -418,7 +418,7 @@ func HandleUseItem(svc user.Service, eventBus event.Bus) http.HandlerFunc {
 		message, err := svc.UseItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.ItemName, req.Quantity, req.TargetUser)
 		if err != nil {
 			log.Error("Failed to use item", "error", err, "username", req.Username, "item", req.ItemName)
-			http.Error(w, "Failed to use item", http.StatusInternalServerError)
+			http.Error(w, ErrMsgUseItemFailed, http.StatusInternalServerError)
 			return
 		}
 
@@ -496,7 +496,7 @@ func HandleGetInventory(svc user.Service) http.HandlerFunc {
 		items, err := svc.GetInventory(r.Context(), platform, platformID, username)
 		if err != nil {
 			log.Error("Failed to get inventory", "error", err, "username", username)
-			http.Error(w, "Failed to get inventory", http.StatusInternalServerError)
+			http.Error(w, ErrMsgGetInventoryFailed, http.StatusInternalServerError)
 			return
 		}
 
