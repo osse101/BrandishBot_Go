@@ -208,13 +208,13 @@ test-staging:
 
 db-test-up:
 	@echo "Starting test database..."
-	@docker compose -f docker compose.test.yml up -d
+	@docker-compose -f docker-compose.test.yml up -d
 	@sleep 2
 	@echo "Test database ready on port 5433"
 
 db-test-down:
 	@echo "Stopping test database..."
-	@docker compose -f docker compose.test.yml down
+	@docker-compose -f docker-compose.test.yml down
 
 migrate-up-test:
 	@echo "Running migrations on test database..."

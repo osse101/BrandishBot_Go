@@ -622,8 +622,10 @@ func TestHandleSearch_NearMiss_Statistical(t *testing.T) {
 	iterations := 1000
 
 	for i := 0; i < iterations; i++ {
-		// Reset cooldown for test loop
-		delete(repo.cooldowns[user.ID], domain.ActionSearch)
+		// Reset cooldown for test loop (ensure map exists)
+		if repo.cooldowns[user.ID] != nil {
+			delete(repo.cooldowns[user.ID], domain.ActionSearch)
+		}
 
 		msg, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
 		require.NoError(t, err)
@@ -760,8 +762,10 @@ func TestHandleSearch_CriticalFail_Statistical(t *testing.T) {
 	iterations := 1000
 
 	for i := 0; i < iterations; i++ {
-		// Reset cooldown for test loop
-		delete(repo.cooldowns[user.ID], domain.ActionSearch)
+		// Reset cooldown for test loop (ensure map exists)
+		if repo.cooldowns[user.ID] != nil {
+			delete(repo.cooldowns[user.ID], domain.ActionSearch)
+		}
 
 		msg, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
 		require.NoError(t, err)

@@ -160,9 +160,9 @@ func extractIP(r *http.Request, trustedProxies []string) string {
 	if isTrusted {
 		forwarded := r.Header.Get("X-Forwarded-For")
 		if forwarded != "" {
-			// Standard behavior for proxies is to append the client IP to the list.
-			// Therefore, if we trust the proxy, the *last* IP in the list is the one
-			// that connected to the proxy.
+			// For X-Forwarded-For: client, proxy1, proxy2
+			// We want the rightmost IP (the one that connected to our trusted proxy)
+			// since we trust the proxy to accurately report the previous hop.
 			ips := strings.Split(forwarded, ",")
 			return strings.TrimSpace(ips[len(ips)-1])
 		}
