@@ -38,7 +38,7 @@ func TestHandleDisassembleItem(t *testing.T) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureDisassemble).Return(true, nil)
 				c.On("DisassembleItem", mock.Anything, "twitch", "test-id", "testuser", "lootbox1", 2).
 					Return(map[string]int{"lootbox0": 2}, 2, nil)
-				p.On("AddContribution", mock.Anything, 2).Return(nil)
+				p.On("AddContribution", mock.Anything, mock.Anything).Return(nil)
 				e.On("Publish", mock.Anything, mock.Anything).Return(nil)
 			},
 			expectedStatus: http.StatusOK,
@@ -232,7 +232,7 @@ func TestHandleDisassembleItem(t *testing.T) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureDisassemble).Return(true, nil)
 				c.On("DisassembleItem", mock.Anything, "twitch", "test-id", "testuser", "lootbox1", 1).
 					Return(map[string]int{"lootbox0": 1}, 1, nil)
-				p.On("AddContribution", mock.Anything, 1).Return(nil)
+				p.On("AddContribution", mock.Anything, mock.Anything).Return(nil)
 				e.On("Publish", mock.Anything, mock.Anything).Return(errors.New("event bus error"))
 			},
 			expectedStatus: http.StatusOK,

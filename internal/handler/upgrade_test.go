@@ -12,9 +12,9 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
+	"github.com/osse101/BrandishBot_Go/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"github.com/osse101/BrandishBot_Go/mocks"
 )
 
 func TestHandleUpgradeItem(t *testing.T) {
@@ -38,6 +38,7 @@ func TestHandleUpgradeItem(t *testing.T) {
 			},
 			setupMock: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureUpgrade).Return(true, nil)
+				p.On("AddContribution", mock.Anything, mock.Anything).Return(nil)
 				c.On("UpgradeItem", mock.Anything, "twitch", "test-id", "testuser", "lootbox0", 2).
 					Return("lootbox1", 2, nil)
 				e.On("Publish", mock.Anything, mock.MatchedBy(func(evt event.Event) bool {
@@ -144,6 +145,7 @@ func TestHandleUpgradeItem(t *testing.T) {
 			},
 			setupMock: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureUpgrade).Return(true, nil)
+				p.On("AddContribution", mock.Anything, mock.Anything).Return(nil)
 				c.On("UpgradeItem", mock.Anything, "twitch", "test-id", "testuser", "lootbox0", 1).
 					Return("lootbox1", 1, nil)
 				e.On("Publish", mock.Anything, mock.Anything).Return(errors.New("event bus error"))

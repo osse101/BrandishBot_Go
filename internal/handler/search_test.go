@@ -10,9 +10,9 @@ import (
 
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
+	"github.com/osse101/BrandishBot_Go/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"github.com/osse101/BrandishBot_Go/mocks"
 )
 
 func TestHandleSearch(t *testing.T) {
@@ -34,6 +34,7 @@ func TestHandleSearch(t *testing.T) {
 			},
 			setupMock: func(u *mocks.MockUserService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSearch).Return(true, nil)
+				p.On("AddContribution", mock.Anything, mock.Anything).Return(nil)
 				u.On("HandleSearch", mock.Anything, "twitch", "test-id", "testuser").Return("Found a sword!", nil)
 				// Expect both engagement and search.performed events
 				e.On("Publish", mock.Anything, mock.MatchedBy(func(evt event.Event) bool {
