@@ -1,74 +1,123 @@
 with-expecter: true
 dir: "mocks"
-mockname: "Mock{{.InterfaceName}}"
-filename: "mock_{{.PackageName}}_{{.InterfaceName | snakecase}}.go"
 outpkg: "mocks"
 packages:
   github.com/osse101/BrandishBot_Go/internal/user:
+    config:
+      filename: "mock_user_{{.InterfaceName | snakecase}}.go"
+      mockname: "MockUser{{.InterfaceName}}"
     interfaces:
       Service:
       Repository:
       JobService:
   github.com/osse101/BrandishBot_Go/internal/economy:
+    config:
+      filename: "mock_economy_{{.InterfaceName | snakecase}}.go"
+      mockname: "MockEconomy{{.InterfaceName}}"
     interfaces:
       Service:
       Repository:
       JobService:
   github.com/osse101/BrandishBot_Go/internal/progression:
+    config:
+      filename: "mock_progression_{{.InterfaceName | snakecase}}.go"
+      mockname: "MockProgression{{.InterfaceName}}"
     interfaces:
       Service:
       Repository:
   github.com/osse101/BrandishBot_Go/internal/eventlog:
+    config:
+      filename: "mock_eventlog_{{.InterfaceName | snakecase}}.go"
+      mockname: "MockEventlog{{.InterfaceName}}"
     interfaces:
       Service:
       Repository:
   github.com/osse101/BrandishBot_Go/internal/linking:
+    config:
+      filename: "mock_linking_{{.InterfaceName | snakecase}}.go"
+      mockname: "MockLinking{{.InterfaceName}}"
     interfaces:
       Service:
       Repository:
       UserService:
   github.com/osse101/BrandishBot_Go/internal/stats:
+    config:
+      filename: "mock_stats_{{.InterfaceName | snakecase}}.go"
+      mockname: "MockStats{{.InterfaceName}}"
     interfaces:
       Service:
       Repository:
   github.com/osse101/BrandishBot_Go/internal/gamble:
+    config:
+      filename: "mock_gamble_{{.InterfaceName | snakecase}}.go"
+      mockname: "MockGamble{{.InterfaceName}}"
     interfaces:
       Service:
       Repository:
       JobService:
   github.com/osse101/BrandishBot_Go/internal/lootbox:
+    config:
+      filename: "mock_lootbox_{{.InterfaceName | snakecase}}.go"
+      mockname: "MockLootbox{{.InterfaceName}}"
     interfaces:
       Service:
       ItemRepository:
   github.com/osse101/BrandishBot_Go/internal/job:
+    config:
+      filename: "mock_job_{{.InterfaceName | snakecase}}.go"
+      mockname: "MockJob{{.InterfaceName}}"
     interfaces:
       Service:
       Repository:
       ProgressionService:
   github.com/osse101/BrandishBot_Go/internal/crafting:
+    config:
+      filename: "mock_crafting_{{.InterfaceName | snakecase}}.go"
+      mockname: "MockCrafting{{.InterfaceName}}"
     interfaces:
       Service:
       Repository:
       JobService:
   github.com/osse101/BrandishBot_Go/internal/cooldown:
+    config:
+      filename: "mock_cooldown_service.go"
+      mockname: "MockCooldownService"
     interfaces:
       Service:
   github.com/osse101/BrandishBot_Go/internal/event:
+    config:
+      filename: "mock_event_bus.go"
+      mockname: "MockEventBus"
     interfaces:
       Bus:
   github.com/osse101/BrandishBot_Go/internal/database:
+    config:
+      filename: "mock_database_pool.go"
+      mockname: "MockDBPool"
     interfaces:
       Pool:
   github.com/osse101/BrandishBot_Go/internal/repository:
+    config:
+      filename: "mock_repository_{{.InterfaceName | snakecase}}.go"
+      mockname: "MockRepository{{.InterfaceName}}"
     interfaces:
       Tx:
       GambleTx:
   github.com/osse101/BrandishBot_Go/internal/naming:
+    config:
+      filename: "mock_naming_resolver.go"
+      mockname: "MockNamingResolver"
     interfaces:
       Resolver:
   github.com/osse101/BrandishBot_Go/internal/handler:
+    config:
+      filename: "mock_handler_health_checker.go"
+      mockname: "MockHealthChecker"
     interfaces:
       HealthChecker:
   github.com/osse101/BrandishBot_Go/internal/worker:
+    config:
+      filename: "mock_worker_job.go"
+      mockname: "MockWorkerJob"
     interfaces:
       Job:

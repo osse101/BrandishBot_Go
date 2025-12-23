@@ -14,6 +14,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/osse101/BrandishBot_Go/mocks"
 )
 
 func TestHandleUpgradeItem(t *testing.T) {
@@ -22,7 +23,7 @@ func TestHandleUpgradeItem(t *testing.T) {
 	tests := []struct {
 		name           string
 		requestBody    interface{}
-		setupMock      func(*MockCraftingService, *MockProgressionService, *MockEventBus)
+		setupMock      func(*mocks.MockCraftingService, *mocks.MockProgressionService, *mocks.MockEventBus)
 		expectedStatus int
 		expectedBody   string
 	}{
@@ -35,7 +36,7 @@ func TestHandleUpgradeItem(t *testing.T) {
 				Item:       "lootbox0",
 				Quantity:   2,
 			},
-			setupMock: func(c *MockCraftingService, p *MockProgressionService, e *MockEventBus) {
+			setupMock: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureUpgrade).Return(true, nil)
 				c.On("UpgradeItem", mock.Anything, "twitch", "test-id", "testuser", "lootbox0", 2).
 					Return("lootbox1", 2, nil)
@@ -55,7 +56,7 @@ func TestHandleUpgradeItem(t *testing.T) {
 				Item:       "lootbox0",
 				Quantity:   1,
 			},
-			setupMock: func(c *MockCraftingService, p *MockProgressionService, e *MockEventBus) {
+			setupMock: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureUpgrade).Return(false, nil)
 			},
 			expectedStatus: http.StatusForbidden,
@@ -70,7 +71,7 @@ func TestHandleUpgradeItem(t *testing.T) {
 				Item:       "lootbox0",
 				Quantity:   1,
 			},
-			setupMock: func(c *MockCraftingService, p *MockProgressionService, e *MockEventBus) {
+			setupMock: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureUpgrade).
 					Return(false, errors.New("database error"))
 			},
@@ -80,7 +81,7 @@ func TestHandleUpgradeItem(t *testing.T) {
 		{
 			name:        "Invalid Request Body",
 			requestBody: "invalid json",
-			setupMock: func(c *MockCraftingService, p *MockProgressionService, e *MockEventBus) {
+			setupMock: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureUpgrade).Return(true, nil)
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -94,7 +95,7 @@ func TestHandleUpgradeItem(t *testing.T) {
 				Item:       "lootbox0",
 				Quantity:   1,
 			},
-			setupMock: func(c *MockCraftingService, p *MockProgressionService, e *MockEventBus) {
+			setupMock: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureUpgrade).Return(true, nil)
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -109,7 +110,7 @@ func TestHandleUpgradeItem(t *testing.T) {
 				Item:       "lootbox0",
 				Quantity:   0,
 			},
-			setupMock: func(c *MockCraftingService, p *MockProgressionService, e *MockEventBus) {
+			setupMock: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureUpgrade).Return(true, nil)
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -124,7 +125,7 @@ func TestHandleUpgradeItem(t *testing.T) {
 				Item:       "lootbox0",
 				Quantity:   100,
 			},
-			setupMock: func(c *MockCraftingService, p *MockProgressionService, e *MockEventBus) {
+			setupMock: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureUpgrade).Return(true, nil)
 				c.On("UpgradeItem", mock.Anything, "twitch", "test-id", "testuser", "lootbox0", 100).
 					Return("", 0, errors.New("insufficient materials"))
@@ -141,7 +142,7 @@ func TestHandleUpgradeItem(t *testing.T) {
 				Item:       "lootbox0",
 				Quantity:   1,
 			},
-			setupMock: func(c *MockCraftingService, p *MockProgressionService, e *MockEventBus) {
+			setupMock: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureUpgrade).Return(true, nil)
 				c.On("UpgradeItem", mock.Anything, "twitch", "test-id", "testuser", "lootbox0", 1).
 					Return("lootbox1", 1, nil)
@@ -154,9 +155,9 @@ func TestHandleUpgradeItem(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockCrafting := &MockCraftingService{}
-			mockProgression := &MockProgressionService{}
-			mockBus := &MockEventBus{}
+			mockCrafting := mocks.NewMockCraftingService(t)
+			mockProgression := mocks.NewMockProgressionService(t)
+			mockBus := mocks.NewMockEventBus(t)
 			tt.setupMock(mockCrafting, mockProgression, mockBus)
 
 			handler := HandleUpgradeItem(mockCrafting, mockProgression, mockBus)
@@ -191,14 +192,14 @@ func TestHandleGetRecipes(t *testing.T) {
 	tests := []struct {
 		name           string
 		queryParams    string
-		setupMock      func(*MockCraftingService)
+		setupMock      func(*mocks.MockCraftingService)
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name:        "Get Recipe - Without User",
 			queryParams: "?item=lootbox1",
-			setupMock: func(c *MockCraftingService) {
+			setupMock: func(c *mocks.MockCraftingService) {
 				c.On("GetRecipe", mock.Anything, "lootbox1", "", "", "").
 					Return(&crafting.RecipeInfo{
 						ItemName: "lootbox1",
@@ -212,7 +213,7 @@ func TestHandleGetRecipes(t *testing.T) {
 		{
 			name:        "Get Recipe - With User",
 			queryParams: "?item=lootbox1&user=testuser&platform=twitch&platform_id=test-id",
-			setupMock: func(c *MockCraftingService) {
+			setupMock: func(c *mocks.MockCraftingService) {
 				c.On("GetRecipe", mock.Anything, "lootbox1", "twitch", "test-id", "testuser").
 					Return(&crafting.RecipeInfo{
 						ItemName: "lootbox1",
@@ -226,7 +227,7 @@ func TestHandleGetRecipes(t *testing.T) {
 		{
 			name:        "Get Unlocked Recipes - Success",
 			queryParams: "?user=testuser&platform=twitch&platform_id=test-id",
-			setupMock: func(c *MockCraftingService) {
+			setupMock: func(c *mocks.MockCraftingService) {
 				c.On("GetUnlockedRecipes", mock.Anything, "twitch", "test-id", "testuser").
 					Return([]crafting.UnlockedRecipeInfo{
 						{ItemName: "lootbox1", ItemID: 1},
@@ -239,28 +240,28 @@ func TestHandleGetRecipes(t *testing.T) {
 		{
 			name:           "Get Unlocked Recipes - Missing Platform",
 			queryParams:    "?user=testuser&platform_id=test-id",
-			setupMock:      func(c *MockCraftingService) {},
+			setupMock:      func(c *mocks.MockCraftingService) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   "Missing platform",
 		},
 		{
 			name:           "Get Unlocked Recipes - Missing PlatformID",
 			queryParams:    "?user=testuser&platform=twitch",
-			setupMock:      func(c *MockCraftingService) {},
+			setupMock:      func(c *mocks.MockCraftingService) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   "Missing platform",
 		},
 		{
 			name:           "No Parameters Provided",
 			queryParams:    "",
-			setupMock:      func(c *MockCraftingService) {},
+			setupMock:      func(c *mocks.MockCraftingService) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   "Must provide either",
 		},
 		{
 			name:        "Service Error - Get Recipe",
 			queryParams: "?item=unknown",
-			setupMock: func(c *MockCraftingService) {
+			setupMock: func(c *mocks.MockCraftingService) {
 				c.On("GetRecipe", mock.Anything, "unknown", "", "", "").
 					Return(nil, errors.New("recipe not found"))
 			},
@@ -270,7 +271,7 @@ func TestHandleGetRecipes(t *testing.T) {
 		{
 			name:        "Service Error - Get Unlocked Recipes",
 			queryParams: "?user=testuser&platform=twitch&platform_id=test-id",
-			setupMock: func(c *MockCraftingService) {
+			setupMock: func(c *mocks.MockCraftingService) {
 				c.On("GetUnlockedRecipes", mock.Anything, "twitch", "test-id", "testuser").
 					Return(nil, errors.New("user not found"))
 			},
@@ -281,7 +282,7 @@ func TestHandleGetRecipes(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockCrafting := &MockCraftingService{}
+			mockCrafting := mocks.NewMockCraftingService(t)
 			tt.setupMock(mockCrafting)
 
 			handler := HandleGetRecipes(mockCrafting)

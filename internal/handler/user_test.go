@@ -11,6 +11,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/osse101/BrandishBot_Go/mocks"
 )
 
 func TestHandleRegisterUser(t *testing.T) {
@@ -19,7 +20,7 @@ func TestHandleRegisterUser(t *testing.T) {
 	tests := []struct {
 		name           string
 		requestBody    interface{}
-		setupMock      func(*MockUserService)
+		setupMock      func(*mocks.MockUserService)
 		expectedStatus int
 		expectedBody   string
 	}{
@@ -32,7 +33,7 @@ func TestHandleRegisterUser(t *testing.T) {
 				NewPlatform:     "discord",
 				NewPlatformID:   "67890",
 			},
-			setupMock: func(m *MockUserService) {
+			setupMock: func(m *mocks.MockUserService) {
 				// FindUserByPlatformID returns error -> user not found
 				m.On("FindUserByPlatformID", mock.Anything, "twitch", "12345").Return(nil, errors.New("not found"))
 
@@ -53,7 +54,7 @@ func TestHandleRegisterUser(t *testing.T) {
 				NewPlatform:     "discord",
 				NewPlatformID:   "67890",
 			},
-			setupMock: func(m *MockUserService) {
+			setupMock: func(m *mocks.MockUserService) {
 				// FindUserByPlatformID returns existing user
 				existingUser := &domain.User{ID: "existing-id", Username: "existinguser", TwitchID: "12345"}
 				m.On("FindUserByPlatformID", mock.Anything, "twitch", "12345").Return(existingUser, nil)
@@ -71,7 +72,7 @@ func TestHandleRegisterUser(t *testing.T) {
 			requestBody: RegisterUserRequest{
 				Username: "badrequest",
 			},
-			setupMock:      func(m *MockUserService) {},
+			setupMock:      func(m *mocks.MockUserService) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   "Invalid request",
 		},
@@ -84,7 +85,7 @@ func TestHandleRegisterUser(t *testing.T) {
 				NewPlatform:     "discord",
 				NewPlatformID:   "67890",
 			},
-			setupMock: func(m *MockUserService) {
+			setupMock: func(m *mocks.MockUserService) {
 				m.On("FindUserByPlatformID", mock.Anything, "twitch", "12345").Return(nil, errors.New("not found"))
 				m.On("RegisterUser", mock.Anything, mock.Anything).Return(domain.User{}, errors.New("db error"))
 			},
@@ -95,7 +96,7 @@ func TestHandleRegisterUser(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockSvc := &MockUserService{}
+			mockSvc := mocks.NewMockUserService(t)
 			tt.setupMock(mockSvc)
 
 			handler := HandleRegisterUser(mockSvc)
