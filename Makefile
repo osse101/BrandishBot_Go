@@ -4,6 +4,7 @@
 GOOSE := $(shell command -v goose 2> /dev/null || echo $(HOME)/go/bin/goose)
 SWAG := $(shell command -v swag 2> /dev/null || echo $(HOME)/go/bin/swag)
 LINT := $(shell command -v golangci-lint 2> /dev/null || echo $(HOME)/go/bin/golangci-lint)
+MOCKERY := $(shell command -v mockery 2> /dev/null || echo $(HOME)/go/bin/mockery)
 
 # Default target
 help:
@@ -273,3 +274,15 @@ health-check-staging:
 health-check-prod:
 	@./scripts/health-check.sh production
 
+
+# Mock generation
+.PHONY: mocks clean-mocks
+mocks:
+@echo "Generating mocks..."
+@$(MOCKERY)
+@echo "Mocks generated in mocks/ directory"
+
+clean-mocks:
+@echo "Removing generated mocks..."
+@rm -rf mocks/
+@echo "✓ Removed mocks/ directory"
