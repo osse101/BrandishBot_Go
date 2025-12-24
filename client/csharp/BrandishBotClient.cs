@@ -21,36 +21,33 @@ namespace BrandishBot.Client
 
         /// <summary>
         /// Gets the singleton instance of BrandishBotClient
-        /// Must call Initialize() first before accessing
+        /// Returns null if not initialized - check before use or call Initialize() first
         /// </summary>
         public static BrandishBotClient Instance
         {
-            get
-            {
-                if (_instance == null)
-                {
-                    throw new InvalidOperationException("BrandishBotClient not initialized. Call Initialize() first.");
-                }
-                return _instance;
-            }
+            get { return _instance; }
+        }
+
+        /// <summary>
+        /// Check if the client has been initialized
+        /// </summary>
+        public static bool IsInitialized
+        {
+            get { return _instance != null; }
         }
 
         /// <summary>
         /// Initialize the BrandishBot client singleton
-        /// Call this once at application startup
+        /// Safe to call multiple times - will reuse existing instance if config matches
         /// </summary>
         /// <param name="baseUrl">Base URL of the BrandishBot API</param>
         /// <param name="apiKey">API key for authentication</param>
-        public static void Initialize(string baseUrl, string apiKey)
+        /// <param name="forceReinitialize">Force recreation even if already initialized</param>
+        public static void Initialize(string baseUrl, string apiKey, bool forceReinitialize = false)
         {
-            if (_instance != null)
-            {
-                throw new InvalidOperationException("BrandishBotClient already initialized.");
-            }
-
             lock (_lock)
             {
-                if (_instance == null)
+                if (forceReinitialize || _instance == null)
                 {
                     _instance = new BrandishBotClient(baseUrl, apiKey);
                 }
@@ -580,14 +577,11 @@ namespace BrandishBot.Client
         /// Handle a chat message (processes commands, tracks engagement, gives rewards)
         /// Use this for Twitch/YouTube chat integration
         /// </summary>
-        public async Task<string> HandleMessage(string platform, string platformId, string username, 
-            string message, bool isModerator = false, bool isSubscriber = false)
+        public async Task<string> HandleMessage(string platform, string platformId, string username, string message)
         {
-            var json = string.Format(@"{{""platform"":""{0}"",""platform_id"":""{1}"",""username"":""{2}"",""message"":""{3}"",""is_moderator"":{4},""is_subscriber"":{5}}}",
+            var json = string.Format(@"{{""platform"":""{0}"",""platform_id"":""{1}"",""username"":""{2}"",""message"":""{3}""}}",
                 platform, platformId, username, 
-                message.Replace("\"", "\\\"").Replace("\n", "\\n"),
-                isModerator.ToString().ToLower(),
-                isSubscriber.ToString().ToLower());
+                message.Replace("\"", "\\\"").Replace("\n", "\\n"));
             return await PostJsonAsync("/message/handle", json);
         }
 
