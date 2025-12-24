@@ -135,7 +135,7 @@ func main() {
 	
 	// Initialize services that depend on job service
 	economyService := economy.NewService(userRepo, jobService)
-	craftingService := crafting.NewService(userRepo, jobService)
+	craftingService := crafting.NewService(userRepo, jobService, statsService)
 
 
 	// Initialize Event Bus
