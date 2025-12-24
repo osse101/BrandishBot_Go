@@ -3,6 +3,7 @@ package discord
 import (
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/bwmarrin/discordgo"
 )
@@ -146,16 +147,17 @@ func registerMissingCommands(s *discordgo.Session, bot *Bot) (string, error) {
 
 	totalAfter := len(existingCmds) + registered
 	
-	result := fmt.Sprintf("✅ Commands synchronized!\n\n")
+	var sb strings.Builder
+	sb.WriteString("✅ Commands synchronized!\n\n")
 	if registered > 0 {
-		result += fmt.Sprintf("➕ Registered: %d new command(s)\n", registered)
+		fmt.Fprintf(&sb, "➕ Registered: %d new command(s)\n", registered)
 	}
 	if updated > 0 {
-		result += fmt.Sprintf("🔄 Updated: %d command(s)\n", updated)
+		fmt.Fprintf(&sb, "🔄 Updated: %d command(s)\n", updated)
 	}
-	result += fmt.Sprintf("\n📊 Total: %d commands active", totalAfter)
+	fmt.Fprintf(&sb, "\n📊 Total: %d commands active", totalAfter)
 
-	return result, nil
+	return sb.String(), nil
 }
 
 // removeCommand removes a specific command by name
