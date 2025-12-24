@@ -255,6 +255,12 @@ func main() {
 	if err := economyService.Shutdown(shutdownCtx); err != nil {
 		slog.Error("Economy service shutdown failed", "error", err)
 	}
+	if err := craftingService.Shutdown(shutdownCtx); err != nil {
+		slog.Error("Crafting service shutdown failed", "error", err)
+	}
+	if err := gambleService.Shutdown(shutdownCtx); err != nil {
+		slog.Error("Gamble service shutdown failed", "error", err)
+	}
 
 	slog.Info("Server stopped")
 }

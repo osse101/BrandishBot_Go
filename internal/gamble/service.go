@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -46,6 +47,7 @@ type Service interface {
 	GetGamble(ctx context.Context, id uuid.UUID) (*domain.Gamble, error)
 	ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.GambleResult, error)
 	GetActiveGamble(ctx context.Context) (*domain.Gamble, error)
+	Shutdown(ctx context.Context) error
 }
 
 // JobService defines the interface for job operations
@@ -63,6 +65,7 @@ type service struct {
 	jobService   JobService
 	statsSvc     stats.Service
 	joinDuration time.Duration
+	wg           sync.WaitGroup // Tracks async goroutines for graceful shutdown
 }
 
 // NewService creates a new gamble service
@@ -201,6 +204,8 @@ func (s *service) StartGamble(ctx context.Context, platform, platformID, usernam
 	}
 
 	// Award Gambler XP for joining (async, don't block)
+	// Run async with detached context to prevent cancellation affecting XP award
+	s.wg.Add(1)
 	go s.awardGamblerXP(context.Background(), user.ID, calculateTotalLootboxes(bets), "start", false)
 
 	return gamble, nil
@@ -302,6 +307,8 @@ func (s *service) JoinGamble(ctx context.Context, gambleID uuid.UUID, platform, 
 	}
 
 	// Award Gambler XP for joining (async, don't block)
+	// Run async with detached context to prevent cancellation affecting XP award
+	s.wg.Add(1)
 	go s.awardGamblerXP(context.Background(), user.ID, calculateTotalLootboxes(bets), "join", false)
 
 	return nil
@@ -545,7 +552,9 @@ func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.Gamb
 	}
 
 	// Award bonus XP to winner (async)
+	// Run async with detached context to prevent cancellation affecting XP award
 	if winnerID != "" {
+		s.wg.Add(1)
 		go s.awardGamblerXP(context.Background(), winnerID, 0, "win", true)
 	}
 
@@ -593,6 +602,8 @@ func calculateTotalLootboxes(bets []domain.LootboxBet) int {
 
 // awardGamblerXP awards  Gambler job XP for gambling operations
 func (s *service) awardGamblerXP(ctx context.Context, userID string, lootboxCount int, source string, isWin bool) {
+	defer s.wg.Done() // Signal completion when goroutine ends
+	
 	if s.jobService == nil {
 		return // Job system not enabled
 	}
@@ -618,5 +629,27 @@ func (s *service) awardGamblerXP(ctx context.Context, userID string, lootboxCoun
 		logger.FromContext(ctx).Warn("Failed to award Gambler XP", "error", err, "user_id", userID)
 	} else if result != nil && result.LeveledUp {
 		logger.FromContext(ctx).Info("Gambler leveled up!", "user_id", userID, "new_level", result.NewLevel)
+	}
+}
+
+// Shutdown gracefully shuts down the gamble service by waiting for all async operations to complete
+func (s *service) Shutdown(ctx context.Context) error {
+	log := logger.FromContext(ctx)
+	log.Info("Shutting down gamble service, waiting for async operations...")
+
+	// Wait for all async XP awards to complete
+	done := make(chan struct{})
+	go func() {
+		s.wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		log.Info("Gamble service shutdown complete")
+		return nil
+	case <-ctx.Done():
+		log.Warn("Gamble service shutdown forced by context cancellation")
+		return ctx.Err()
 	}
 }

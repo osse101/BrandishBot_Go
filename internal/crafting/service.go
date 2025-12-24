@@ -3,6 +3,7 @@ package crafting
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/job"
@@ -49,6 +50,7 @@ type Service interface {
 	GetRecipe(ctx context.Context, itemName, platform, platformID, username string) (*RecipeInfo, error)
 	GetUnlockedRecipes(ctx context.Context, platform, platformID, username string) ([]UnlockedRecipeInfo, error)
 	DisassembleItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (map[string]int, int, error)
+	Shutdown(ctx context.Context) error
 }
 
 // JobService defines the interface for job operations
@@ -57,16 +59,21 @@ type JobService interface {
 }
 
 // Crafting balance constants
+// MasterworkChance determines the probability of a masterwork craft occurring (10% = 1 in 10 crafts)
+// MasterworkMultiplier is applied to output quantity when masterwork procs (2x output)
+// Note: Masterwork is rolled ONCE per batch, not per item, creating incentive for larger crafts
+// and providing clearer player feedback with dramatic results on successful procs.
 const (
-	MasterworkChance     = 0.10
-	MasterworkMultiplier = 2
+	MasterworkChance     = 0.10 // 10% chance per craft batch
+	MasterworkMultiplier = 2    // 2x output on masterwork success
 )
 
 type service struct {
 	repo       Repository
 	jobService JobService
 	statsSvc   stats.Service
-	rnd        func() float64 // For testing RNG
+	rnd        func() float64 // For rolling RNG (does not need to be cryptographically secure)
+	wg         sync.WaitGroup  // Tracks async goroutines for graceful shutdown
 }
 
 // NewService creates a new crafting service
@@ -248,6 +255,8 @@ func (s *service) UpgradeItem(ctx context.Context, platform, platformID, usernam
 	}
 
 	// Award Blacksmith XP (don't fail upgrade if XP award fails)
+	// Run async with detached context to prevent cancellation affecting XP award
+	s.wg.Add(1)
 	go s.awardBlacksmithXP(context.Background(), user.ID, actualQuantity, "upgrade", itemName)
 
 	log.Info("Items upgraded", "username", username, "item", itemName, "quantity", outputQuantity, "masterwork", masterworkTriggered)
@@ -436,6 +445,8 @@ func (s *service) DisassembleItem(ctx context.Context, platform, platformID, use
 	}
 
 	// Award Blacksmith XP (don't fail disassemble if XP award fails)
+	// Run async with detached context to prevent cancellation affecting XP award
+	s.wg.Add(1)
 	go s.awardBlacksmithXP(context.Background(), user.ID, actualQuantity, "disassemble", itemName)
 
 	log.Info("Items disassembled", "username", username, "item", itemName, "quantity", actualQuantity, "outputs", outputMap)
@@ -463,5 +474,30 @@ func (s *service) awardBlacksmithXP(ctx context.Context, userID string, quantity
 		logger.FromContext(ctx).Warn("Failed to award Blacksmith XP", "error", err, "user_id", userID)
 	} else if result != nil && result.LeveledUp {
 		logger.FromContext(ctx).Info("Blacksmith leveled up!", "user_id", userID, "new_level", result.NewLevel)
+	}
+
+	// Signal completion of this goroutine
+	s.wg.Done()
+}
+
+// Shutdown gracefully shuts down the crafting service by waiting for all async operations to complete
+func (s *service) Shutdown(ctx context.Context) error {
+	log := logger.FromContext(ctx)
+	log.Info("Shutting down crafting service, waiting for async operations...")
+
+	// Wait for all async XP awards to complete
+	done := make(chan struct{})
+	go func() {
+		s.wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		log.Info("Crafting service shutdown complete")
+		return nil
+	case <-ctx.Done():
+		log.Warn("Crafting service shutdown forced by context cancellation")
+		return ctx.Err()
 	}
 }

@@ -215,6 +215,52 @@ func (_c *MockCraftingService_GetUnlockedRecipes_Call) RunAndReturn(run func(con
 	return _c
 }
 
+// Shutdown provides a mock function with given fields: ctx
+func (_m *MockCraftingService) Shutdown(ctx context.Context) error {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Shutdown")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockCraftingService_Shutdown_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Shutdown'
+type MockCraftingService_Shutdown_Call struct {
+	*mock.Call
+}
+
+// Shutdown is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockCraftingService_Expecter) Shutdown(ctx interface{}) *MockCraftingService_Shutdown_Call {
+	return &MockCraftingService_Shutdown_Call{Call: _e.mock.On("Shutdown", ctx)}
+}
+
+func (_c *MockCraftingService_Shutdown_Call) Run(run func(ctx context.Context)) *MockCraftingService_Shutdown_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockCraftingService_Shutdown_Call) Return(_a0 error) *MockCraftingService_Shutdown_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockCraftingService_Shutdown_Call) RunAndReturn(run func(context.Context) error) *MockCraftingService_Shutdown_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // UpgradeItem provides a mock function with given fields: ctx, platform, platformID, username, itemName, quantity
 func (_m *MockCraftingService) UpgradeItem(ctx context.Context, platform string, platformID string, username string, itemName string, quantity int) (string, int, error) {
 	ret := _m.Called(ctx, platform, platformID, username, itemName, quantity)

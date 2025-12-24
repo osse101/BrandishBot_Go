@@ -252,6 +252,52 @@ func (_c *MockGambleService_JoinGamble_Call) RunAndReturn(run func(context.Conte
 	return _c
 }
 
+// Shutdown provides a mock function with given fields: ctx
+func (_m *MockGambleService) Shutdown(ctx context.Context) error {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Shutdown")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockGambleService_Shutdown_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Shutdown'
+type MockGambleService_Shutdown_Call struct {
+	*mock.Call
+}
+
+// Shutdown is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockGambleService_Expecter) Shutdown(ctx interface{}) *MockGambleService_Shutdown_Call {
+	return &MockGambleService_Shutdown_Call{Call: _e.mock.On("Shutdown", ctx)}
+}
+
+func (_c *MockGambleService_Shutdown_Call) Run(run func(ctx context.Context)) *MockGambleService_Shutdown_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockGambleService_Shutdown_Call) Return(_a0 error) *MockGambleService_Shutdown_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockGambleService_Shutdown_Call) RunAndReturn(run func(context.Context) error) *MockGambleService_Shutdown_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // StartGamble provides a mock function with given fields: ctx, platform, platformID, username, bets
 func (_m *MockGambleService) StartGamble(ctx context.Context, platform string, platformID string, username string, bets []domain.LootboxBet) (*domain.Gamble, error) {
 	ret := _m.Called(ctx, platform, platformID, username, bets)
