@@ -8,6 +8,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
+	"github.com/osse101/BrandishBot_Go/internal/stats"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
@@ -55,16 +56,26 @@ type JobService interface {
 	AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error)
 }
 
+// Crafting balance constants
+const (
+	MasterworkChance     = 0.10
+	MasterworkMultiplier = 2
+)
+
 type service struct {
 	repo       Repository
 	jobService JobService
+	statsSvc   stats.Service
+	rnd        func() float64 // For testing RNG
 }
 
 // NewService creates a new crafting service
-func NewService(repo Repository, jobService JobService) Service {
+func NewService(repo Repository, jobService JobService, statsSvc stats.Service) Service {
 	return &service{
 		repo:       repo,
 		jobService: jobService,
+		statsSvc:   statsSvc,
+		rnd:        utils.RandomFloat,
 	}
 }
 
@@ -200,11 +211,32 @@ func (s *service) UpgradeItem(ctx context.Context, platform, platformID, usernam
 		actualQuantity = quantity
 	}
 
-	// Consume materials and add crafted items
+	// Consume materials for the actual quantity
 	if err := consumeRecipeMaterials(inventory, recipe, actualQuantity); err != nil {
 		return "", 0, err
 	}
-	addItemToInventory(inventory, item.ID, actualQuantity)
+
+	// Calculate output quantity (check for Masterwork)
+	outputQuantity := actualQuantity
+	masterworkTriggered := false
+
+	// Masterwork Logic: Chance to multiply output
+	// Roll once per batch for simplicity and clearer feedback
+	if s.rnd() < MasterworkChance {
+		masterworkTriggered = true
+		outputQuantity = actualQuantity * MasterworkMultiplier
+		log.Info("Masterwork craft triggered!", "user_id", user.ID, "item", itemName, "original", actualQuantity, "bonus", outputQuantity-actualQuantity)
+
+		if s.statsSvc != nil {
+			_ = s.statsSvc.RecordUserEvent(ctx, user.ID, domain.EventCraftingCriticalSuccess, map[string]interface{}{
+				"item_name": itemName,
+				"original_quantity": actualQuantity,
+				"bonus_quantity": actualQuantity,
+			})
+		}
+	}
+
+	addItemToInventory(inventory, item.ID, outputQuantity)
 
 	// Update inventory and commit
 	if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
@@ -218,8 +250,8 @@ func (s *service) UpgradeItem(ctx context.Context, platform, platformID, usernam
 	// Award Blacksmith XP (don't fail upgrade if XP award fails)
 	go s.awardBlacksmithXP(context.Background(), user.ID, actualQuantity, "upgrade", itemName)
 
-	log.Info("Items upgraded", "username", username, "item", itemName, "quantity", actualQuantity)
-	return itemName, actualQuantity, nil
+	log.Info("Items upgraded", "username", username, "item", itemName, "quantity", outputQuantity, "masterwork", masterworkTriggered)
+	return itemName, outputQuantity, nil
 }
 
 // GetRecipe returns recipe information for an item

@@ -8,6 +8,20 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
 
+// MockStatsService for crafting tests
+type MockStatsService struct {
+	events []domain.EventType
+}
+
+func (m *MockStatsService) RecordUserEvent(ctx context.Context, userID string, eventType domain.EventType, eventData map[string]interface{}) error {
+	m.events = append(m.events, eventType)
+	return nil
+}
+// Stubs for other interface methods not used in these tests
+func (m *MockStatsService) GetUserStats(ctx context.Context, userID string, period string) (*domain.StatsSummary, error) { return nil, nil }
+func (m *MockStatsService) GetSystemStats(ctx context.Context, period string) (*domain.StatsSummary, error) { return nil, nil }
+func (m *MockStatsService) GetLeaderboard(ctx context.Context, eventType domain.EventType, period string, limit int) ([]domain.LeaderboardEntry, error) { return nil, nil }
+
 // MockRepository for crafting tests
 type MockRepository struct {
 	users              map[string]*domain.User
@@ -211,7 +225,7 @@ func setupTestData(repo *MockRepository) {
 func TestDisassembleItem_Success(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, nil)
+	svc := NewService(repo, nil, nil)
 	ctx := context.Background()
 
 	// Give alice some lootbox1
@@ -260,7 +274,7 @@ func TestDisassembleItem_Success(t *testing.T) {
 func TestDisassembleItem_InsufficientItems(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, nil)
+	svc := NewService(repo, nil, nil)
 	ctx := context.Background()
 
 	// Give alice only 1 loot box1
@@ -288,7 +302,7 @@ func TestDisassembleItem_InsufficientItems(t *testing.T) {
 func TestDisassembleItem_NoItems(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, nil)
+	svc := NewService(repo, nil, nil)
 	ctx := context.Background()
 
 	// Alice has no lootbox1
@@ -304,7 +318,7 @@ func TestDisassembleItem_NoItems(t *testing.T) {
 func TestDisassembleItem_RecipeNotUnlocked(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, nil)
+	svc := NewService(repo, nil, nil)
 	ctx := context.Background()
 
 	// Give alice lootbox1 but don't unlock the recipe
@@ -321,7 +335,7 @@ func TestDisassembleItem_RecipeNotUnlocked(t *testing.T) {
 func TestDisassembleItem_NoRecipe(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, nil)
+	svc := NewService(repo, nil, nil)
 	ctx := context.Background()
 
 	// Try to disassemble lootbox0 which has no disassemble recipe
@@ -334,7 +348,7 @@ func TestDisassembleItem_NoRecipe(t *testing.T) {
 func TestDisassembleItem_RemovesSlotWhenEmpty(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, nil)
+	svc := NewService(repo, nil, nil)
 	ctx := context.Background()
 
 	// Give alice exactly 1 lootbox1
@@ -363,7 +377,10 @@ func TestDisassembleItem_RemovesSlotWhenEmpty(t *testing.T) {
 func TestUpgradeItem_Success(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, nil)
+	// Force RNG to fail masterwork
+	svc := NewService(repo, nil, nil).(*service)
+	svc.rnd = func() float64 { return 1.0 }
+
 	ctx := context.Background()
 
 	// Give alice 2 lootbox0
@@ -410,7 +427,8 @@ func TestUpgradeItem_Success(t *testing.T) {
 func TestUpgradeItem_InsufficientMaterials(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, nil)
+	svc := NewService(repo, nil, nil).(*service)
+	svc.rnd = func() float64 { return 1.0 }
 	ctx := context.Background()
 
 	// Give alice only 1 lootbox0
@@ -434,7 +452,7 @@ func TestUpgradeItem_InsufficientMaterials(t *testing.T) {
 func TestUpgradeItem_NoMaterials(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, nil)
+	svc := NewService(repo, nil, nil)
 	ctx := context.Background()
 
 	// Unlock recipe but alice has no materials
@@ -450,7 +468,7 @@ func TestUpgradeItem_NoMaterials(t *testing.T) {
 func TestUpgradeItem_RecipeNotUnlocked(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, nil)
+	svc := NewService(repo, nil, nil)
 	ctx := context.Background()
 
 	// Give alice materials but don't unlock recipe
@@ -467,7 +485,7 @@ func TestUpgradeItem_RecipeNotUnlocked(t *testing.T) {
 func TestUpgradeItem_NoRecipe(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, nil)
+	svc := NewService(repo, nil, nil)
 	ctx := context.Background()
 
 	// Try to upgrade lootbox0 which has no recipe
@@ -480,7 +498,7 @@ func TestUpgradeItem_NoRecipe(t *testing.T) {
 func TestUpgradeItem_UserNotFound(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, nil)
+	svc := NewService(repo, nil, nil)
 	ctx := context.Background()
 
 	// Try with non-existent user
@@ -495,7 +513,7 @@ func TestUpgradeItem_UserNotFound(t *testing.T) {
 func TestGetRecipe_WithoutUsername(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, nil)
+	svc := NewService(repo, nil, nil)
 	ctx := context.Background()
 
 	// Get recipe without username (no lock status)
@@ -520,7 +538,7 @@ func TestGetRecipe_WithoutUsername(t *testing.T) {
 func TestGetRecipe_Unlocked(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, nil)
+	svc := NewService(repo, nil, nil)
 	ctx := context.Background()
 
 	// Unlock the recipe
@@ -540,7 +558,7 @@ func TestGetRecipe_Unlocked(t *testing.T) {
 func TestGetRecipe_Locked(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, nil)
+	svc := NewService(repo, nil, nil)
 	ctx := context.Background()
 
 	// Don't unlock the recipe
@@ -557,7 +575,7 @@ func TestGetRecipe_Locked(t *testing.T) {
 func TestGetRecipe_ItemNotFound(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, nil)
+	svc := NewService(repo, nil, nil)
 	ctx := context.Background()
 
 	// Try to get recipe for non-existent item
@@ -572,7 +590,7 @@ func TestGetRecipe_ItemNotFound(t *testing.T) {
 func TestGetUnlockedRecipes_Success(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, nil)
+	svc := NewService(repo, nil, nil)
 	ctx := context.Background()
 
 	// Unlock recipe for alice
@@ -596,7 +614,7 @@ func TestGetUnlockedRecipes_Success(t *testing.T) {
 func TestGetUnlockedRecipes_NoUnlockedRecipes(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, nil)
+	svc := NewService(repo, nil, nil)
 	ctx := context.Background()
 
 	// Don't unlock any recipes
@@ -613,12 +631,71 @@ func TestGetUnlockedRecipes_NoUnlockedRecipes(t *testing.T) {
 func TestGetUnlockedRecipes_UserNotFound(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, nil)
+	svc := NewService(repo, nil, nil)
 	ctx := context.Background()
 
 	// Try with non-existent user
 	_, err := svc.GetUnlockedRecipes(ctx, domain.PlatformTwitch, "twitch-nonexistent", "nonexistent")
 	if err == nil {
 		t.Error("Expected error for non-existent user")
+	}
+}
+
+func TestUpgradeItem_Masterwork(t *testing.T) {
+	repo := NewMockRepository()
+	setupTestData(repo)
+	mockStats := &MockStatsService{}
+
+	// Create service and inject mock RNG that always returns 0 (triggers masterwork)
+	svc := NewService(repo, nil, mockStats).(*service)
+	svc.rnd = func() float64 { return 0.0 }
+
+	ctx := context.Background()
+
+	// Give alice 2 lootbox0
+	repo.inventories["user-alice"].Slots = append(repo.inventories["user-alice"].Slots,
+		domain.InventorySlot{ItemID: 1, Quantity: 2})
+
+	// Unlock the upgrade recipe
+	repo.UnlockRecipe(ctx, "user-alice", 1)
+
+	// Upgrade 2 lootbox0
+	itemName, quantity, err := svc.UpgradeItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox1, 2)
+	if err != nil {
+		t.Fatalf("UpgradeItem failed: %v", err)
+	}
+
+	if itemName != domain.ItemLootbox1 {
+		t.Errorf("Expected itemName lootbox1, got %s", itemName)
+	}
+
+	// Should be doubled (Masterwork)
+	if quantity != 4 {
+		t.Errorf("Expected 4 upgraded (2 * 2), got %d", quantity)
+	}
+
+	// Verify inventory
+	inv, _ := repo.GetInventory(ctx, "user-alice")
+	var lootbox1Count int
+	for _, slot := range inv.Slots {
+		if slot.ItemID == 2 {
+			lootbox1Count = slot.Quantity
+		}
+	}
+
+	if lootbox1Count != 4 {
+		t.Errorf("Expected 4 lootbox1 in inventory, got %d", lootbox1Count)
+	}
+
+	// Verify event was logged
+	foundEvent := false
+	for _, e := range mockStats.events {
+		if e == domain.EventCraftingCriticalSuccess {
+			foundEvent = true
+			break
+		}
+	}
+	if !foundEvent {
+		t.Error("Expected EventCraftingCriticalSuccess to be recorded")
 	}
 }
