@@ -8,14 +8,56 @@ namespace BrandishBot.Client
     /// <summary>
     /// BrandishBot API Client for streamer.bot
     /// C# 4.8 compatible HTTP client for Twitch and YouTube integrations
+    /// Singleton pattern: Initialize once with Initialize(), then use Instance everywhere
     /// </summary>
     public class BrandishBotClient
     {
+        private static BrandishBotClient _instance;
+        private static readonly object _lock = new object();
+
         private readonly string _baseUrl;
         private readonly string _apiKey;
         private readonly HttpClient _httpClient;
 
-        public BrandishBotClient(string baseUrl, string apiKey)
+        /// <summary>
+        /// Gets the singleton instance of BrandishBotClient
+        /// Must call Initialize() first before accessing
+        /// </summary>
+        public static BrandishBotClient Instance
+        {
+            get
+            {
+                if (_instance == null)
+                {
+                    throw new InvalidOperationException("BrandishBotClient not initialized. Call Initialize() first.");
+                }
+                return _instance;
+            }
+        }
+
+        /// <summary>
+        /// Initialize the BrandishBot client singleton
+        /// Call this once at application startup
+        /// </summary>
+        /// <param name="baseUrl">Base URL of the BrandishBot API</param>
+        /// <param name="apiKey">API key for authentication</param>
+        public static void Initialize(string baseUrl, string apiKey)
+        {
+            if (_instance != null)
+            {
+                throw new InvalidOperationException("BrandishBotClient already initialized.");
+            }
+
+            lock (_lock)
+            {
+                if (_instance == null)
+                {
+                    _instance = new BrandishBotClient(baseUrl, apiKey);
+                }
+            }
+        }
+
+        private BrandishBotClient(string baseUrl, string apiKey)
         {
             _baseUrl = baseUrl.TrimEnd('/');
             _apiKey = apiKey;
@@ -608,6 +650,19 @@ namespace BrandishBot.Client
         public const int Lootbox2 = 4;
         public const int Blaster = 5;
         // Add more as needed
+    }
+
+    /// <summary>
+    /// Item public names (command names used in chat)
+    /// These are the user-facing names for items
+    /// </summary>
+    public static class ItemName
+    {
+        public const string Money = "money";
+        public const string Junkbox = "junkbox";   // Tier 0 - Rusty Lootbox
+        public const string Lootbox = "lootbox";   // Tier 1 - Basic Lootbox
+        public const string Goldbox = "goldbox";   // Tier 2 - Golden Lootbox
+        public const string Missile = "missile";   // Ray Gun / Blaster
     }
 
     #endregion
