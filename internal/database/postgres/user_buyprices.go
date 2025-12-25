@@ -10,12 +10,12 @@ import (
 // GetBuyablePrices retrieves all buyable items with their prices
 func (r *UserRepository) GetBuyablePrices(ctx context.Context) ([]domain.Item, error) {
 	query := `
-		SELECT DISTINCT i.item_id, i.item_name, i.item_description, i.base_value
+		SELECT DISTINCT i.item_id, i.internal_name, i.item_description, i.base_value
 		FROM items i
 		INNER JOIN item_type_assignments ita ON i.item_id = ita.item_id
 		INNER JOIN item_types it ON ita.item_type_id = it.item_type_id
 		WHERE it.type_name = 'buyable'
-		ORDER BY i.item_name
+		ORDER BY i.internal_name
 	`
 	rows, err := r.db.Query(ctx, query)
 	if err != nil {

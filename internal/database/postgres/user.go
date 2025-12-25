@@ -379,12 +379,12 @@ func (r *UserRepository) GetUserByUsername(ctx context.Context, username string)
 // GetSellablePrices retrieves all sellable items with their prices
 func (r *UserRepository) GetSellablePrices(ctx context.Context) ([]domain.Item, error) {
 	query := `
-		SELECT DISTINCT i.item_id, i.item_name, i.item_description, i.base_value
+		SELECT DISTINCT i.item_id, i.internal_name, i.item_description, i.base_value
 		FROM items i
 		INNER JOIN item_type_assignments ita ON i.item_id = ita.item_id
 		INNER JOIN item_types it ON ita.item_type_id = it.item_type_id
 		WHERE it.type_name = 'sellable'
-		ORDER BY i.item_name
+		ORDER BY i.internal_name
 	`
 	rows, err := r.db.Query(ctx, query)
 	if err != nil {
@@ -469,12 +469,12 @@ func (r *UserRepository) UnlockRecipe(ctx context.Context, userID string, recipe
 // GetUnlockedRecipesForUser retrieves all recipes unlocked by a specific user
 func (r *UserRepository) GetUnlockedRecipesForUser(ctx context.Context, userID string) ([]crafting.UnlockedRecipeInfo, error) {
 	query := `
-		SELECT i.item_name, r.target_item_id
+		SELECT i.internal_name, r.target_item_id
 		FROM crafting_recipes r
 		JOIN recipe_unlocks ru ON r.recipe_id = ru.recipe_id
 		JOIN items i ON r.target_item_id = i.item_id
 		WHERE ru.user_id = $1
-		ORDER BY i.item_name
+		ORDER BY i.internal_name
 	`
 
 	rows, err := r.db.Query(ctx, query, userID)
