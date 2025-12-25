@@ -84,8 +84,29 @@ func loadInfoText(featureName string) (string, error) {
 	// Sanitize feature name to prevent directory traversal
 	featureName = strings.ToLower(strings.TrimSpace(featureName))
 	
-	filename := filepath.Join(InfoDir, featureName+".txt")
+	// Prevent directory traversal
+	if strings.Contains(featureName, "..") || strings.Contains(featureName, "/") || strings.Contains(featureName, "\\") {
+		return "", fmt.Errorf("invalid feature name: %s", featureName)
+	}
+
+	// Use Clean to ensure path is normalized
+	filename := filepath.Clean(filepath.Join(InfoDir, featureName+".txt"))
+
+	// Verify the resolved path is still within InfoDir
+	absInfoDir, err := filepath.Abs(InfoDir)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve absolute info directory: %w", err)
+	}
 	
+	absFilename, err := filepath.Abs(filename)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve absolute filename: %w", err)
+	}
+
+	if !strings.HasPrefix(absFilename, absInfoDir) {
+		return "", fmt.Errorf("access denied: path traversal attempt detected")
+	}
+
 	// Read file
 	data, err := os.ReadFile(filename)
 	if err != nil {
