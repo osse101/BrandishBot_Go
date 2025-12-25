@@ -298,7 +298,12 @@ func (s *service) AdminUnlock(ctx context.Context, nodeKey string, level int) er
 		return fmt.Errorf("level %d exceeds max level %d", level, node.MaxLevel)
 	}
 
-	engagementScore, _ := s.GetEngagementScore(ctx)
+	engagementScore, err := s.GetEngagementScore(ctx)
+	if err != nil {
+		log.Warn("Failed to get engagement score for unlock", "error", err)
+		engagementScore = 0
+	}
+
 	if err := s.repo.UnlockNode(ctx, node.ID, level, "admin", engagementScore); err != nil {
 		return fmt.Errorf("failed to unlock node: %w", err)
 	}
@@ -334,6 +339,9 @@ func (s *service) ResetProgressionTree(ctx context.Context, resetBy string, reas
 
 // CheckAndUnlockCriteria checks if unlock criteria met
 func (s *service) CheckAndUnlockCriteria(ctx context.Context) (*domain.ProgressionUnlock, error) {
+	log := logger.FromContext(ctx)
+	reqID := logger.GetRequestID(ctx)
+
 	// Check if there's a node waiting to unlock
 	unlock, err := s.CheckAndUnlockNode(ctx)
 	if err != nil || unlock != nil {
@@ -343,7 +351,20 @@ func (s *service) CheckAndUnlockCriteria(ctx context.Context) (*domain.Progressi
 	// If no session exists, start one
 	session, _ := s.repo.GetActiveSession(ctx)
 	if session == nil {
-		go s.StartVotingSession(context.Background(), nil)
+		// Use detached context for async operation
+		go func() {
+			detachedCtx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+			defer cancel()
+			
+			// Inject request ID into detached context for tracing
+			if reqID != "" {
+				detachedCtx = logger.WithRequestID(detachedCtx, reqID)
+			}
+
+			if err := s.StartVotingSession(detachedCtx, nil); err != nil {
+				log.Error("Failed to auto-start voting session", "error", err)
+			}
+		}()
 	}
 
 	return nil, nil
@@ -352,6 +373,8 @@ func (s *service) CheckAndUnlockCriteria(ctx context.Context) (*domain.Progressi
 
 // ForceInstantUnlock selects highest voted option and unlocks immediately
 func (s *service) ForceInstantUnlock(ctx context.Context) (*domain.ProgressionUnlock, error) {
+	log := logger.FromContext(ctx)
+
 	// Get active session
 	session, err := s.repo.GetActiveSession(ctx)
 	if err != nil || session == nil {
@@ -380,18 +403,39 @@ func (s *service) ForceInstantUnlock(ctx context.Context) (*domain.ProgressionUn
 	}
 
 	// Unlock the node immediately
-	engagementScore, _ := s.GetEngagementScore(ctx)
+	engagementScore, err := s.GetEngagementScore(ctx)
+	if err != nil {
+		log.Warn("Failed to get engagement score for instant unlock", "error", err)
+		engagementScore = 0
+	}
+
 	if err := s.repo.UnlockNode(ctx, winner.NodeID, winner.TargetLevel, "instant_override", engagementScore); err != nil {
 		return nil, fmt.Errorf("failed to unlock node: %w", err)
 	}
 
 	// Mark progress complete and start new
 	if progress != nil {
-		s.repo.CompleteUnlock(ctx, progress.ID, 0)
+		if _, err := s.repo.CompleteUnlock(ctx, progress.ID, 0); err != nil {
+			log.Error("Failed to complete unlock progress", "progressID", progress.ID, "error", err)
+			// We don't return error here because the node IS unlocked, but we log the inconsistency
+		}
 	}
 
 	// Start new voting session with the unlocked node context
-	go s.StartVotingSession(context.Background(), &winner.NodeID)
+	reqID := logger.GetRequestID(ctx)
+	go func() {
+		detachedCtx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+		defer cancel()
+		
+		// Inject request ID into detached context for tracing
+		if reqID != "" {
+			detachedCtx = logger.WithRequestID(detachedCtx, reqID)
+		}
+
+		if err := s.StartVotingSession(detachedCtx, &winner.NodeID); err != nil {
+			log.Error("Failed to auto-start voting session after instant unlock", "error", err)
+		}
+	}()
 
 	// Return the unlock
 	return s.repo.GetUnlock(ctx, winner.NodeID, winner.TargetLevel)
