@@ -89,11 +89,14 @@ func loadInfoText(featureName string) (string, error) {
 		return "", fmt.Errorf("invalid feature name: %s", featureName)
 	}
 
-	// Use Clean to ensure path is normalized
-	filename := filepath.Clean(filepath.Join(InfoDir, featureName+".txt"))
+	// Resolve the base info directory
+	baseDir := resolveInfoDir()
 
-	// Verify the resolved path is still within InfoDir
-	absInfoDir, err := filepath.Abs(InfoDir)
+	// Use Clean to ensure path is normalized
+	filename := filepath.Clean(filepath.Join(baseDir, featureName+".txt"))
+
+	// Verify the resolved path is still within baseDir
+	absInfoDir, err := filepath.Abs(baseDir)
 	if err != nil {
 		return "", fmt.Errorf("failed to resolve absolute info directory: %w", err)
 	}
@@ -114,6 +117,23 @@ func loadInfoText(featureName string) (string, error) {
 	}
 	
 	return string(data), nil
+}
+
+// resolveInfoDir attempts to find the info directory by checking relative paths
+func resolveInfoDir() string {
+	// Check if configured directory exists
+	if _, err := os.Stat(InfoDir); err == nil {
+		return InfoDir
+	}
+
+	// Try checking one level up (useful if running from bin/)
+	parentDir := filepath.Join("..", InfoDir)
+	if _, err := os.Stat(parentDir); err == nil {
+		return parentDir
+	}
+
+	// Default to configured directory if nothing else found
+	return InfoDir
 }
 
 // createInfoEmbed creates an embed based on the feature name

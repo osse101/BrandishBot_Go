@@ -230,7 +230,7 @@ func (r *UserRepository) UpdateInventory(ctx context.Context, userID string, inv
 // GetItemByName retrieves an item by its internal name
 func (r *UserRepository) GetItemByName(ctx context.Context, itemName string) (*domain.Item, error) {
 	query := `
-		SELECT item_id, internal_name, public_name, default_display, description, base_value, handler
+		SELECT item_id, internal_name, public_name, default_display, item_description, base_value, handler
 		FROM items 
 		WHERE internal_name = $1
 	`
@@ -251,7 +251,7 @@ func (r *UserRepository) GetItemByName(ctx context.Context, itemName string) (*d
 // GetItemByPublicName retrieves an item by its public name
 func (r *UserRepository) GetItemByPublicName(ctx context.Context, publicName string) (*domain.Item, error) {
 	query := `
-		SELECT item_id, internal_name, public_name, default_display, description, base_value, handler
+		SELECT item_id, internal_name, public_name, default_display, item_description, base_value, handler
 		FROM items 
 		WHERE public_name = $1
 	`
@@ -276,7 +276,7 @@ func (r *UserRepository) GetItemsByIDs(ctx context.Context, itemIDs []int) ([]do
 	}
 
 	query := `
-		SELECT item_id, internal_name, public_name, default_display, description, base_value, handler
+		SELECT item_id, internal_name, public_name, default_display, item_description, base_value, handler
 		FROM items
 		WHERE item_id = ANY($1)
 	`
@@ -312,7 +312,7 @@ func (r *UserRepository) GetItemsByNames(ctx context.Context, names []string) ([
 	}
 
 	query := `
-		SELECT item_id, internal_name, public_name, default_display, description, base_value, handler
+		SELECT item_id, internal_name, public_name, default_display, item_description, base_value, handler
 		FROM items
 		WHERE internal_name = ANY($1)
 	`
@@ -344,7 +344,7 @@ func (r *UserRepository) GetItemsByNames(ctx context.Context, names []string) ([
 // GetItemByID retrieves an item by its ID
 func (r *UserRepository) GetItemByID(ctx context.Context, id int) (*domain.Item, error) {
 	query := `
-		SELECT item_id, internal_name, public_name, default_display, description, base_value, handler
+		SELECT item_id, internal_name, public_name, default_display, item_description, base_value, handler
 		FROM items 
 		WHERE item_id = $1
 	`
