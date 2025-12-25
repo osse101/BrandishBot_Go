@@ -126,8 +126,11 @@ func main() {
 	statsRepo := postgres.NewStatsRepository(dbPool)
 	statsService := stats.NewService(statsRepo)
 
+	// Initialize Event Bus
+	eventBus := event.NewMemoryBus()
+
 	progressionRepo := postgres.NewProgressionRepository(dbPool)
-	progressionService := progression.NewService(progressionRepo)
+	progressionService := progression.NewService(progressionRepo, eventBus)
 
 	// Initialize Job service (needed by user, economy, crafting, gamble)
 	jobRepo := postgres.NewJobRepository(dbPool)
@@ -138,9 +141,6 @@ func main() {
 	craftingService := crafting.NewService(userRepo, jobService, statsService)
 
 
-	// Initialize Event Bus
-	eventBus := event.NewMemoryBus()
-
 	// Initialize Worker Pool
 	// Start with 5 workers as per plan
 	workerPool := worker.NewPool(5, 100)
@@ -150,6 +150,14 @@ func main() {
 	// Register Event Handlers
 	progressionHandler := progression.NewEventHandler(progressionService)
 	progressionHandler.Register(eventBus)
+
+	// Initialize and register Progression Notifier
+	discordWebhookURL := fmt.Sprintf("http://discord:%s/admin/announce", cfg.DiscordWebhookPort)
+	progressionNotifier := progression.NewNotifier(discordWebhookURL, cfg.StreamerbotWebhookURL)
+	progressionNotifier.Subscribe(eventBus)
+	slog.Info("Progression notifier initialized",
+		"discord_webhook", discordWebhookURL,
+		"streamerbot_webhook", cfg.StreamerbotWebhookURL)
 
 	// Register Metrics Collector
 	metricsCollector := metrics.NewEventMetricsCollector()

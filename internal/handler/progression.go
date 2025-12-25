@@ -452,7 +452,7 @@ func (h *ProgressionHandlers) HandleAdminStartVoting() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
 
-		err := h.service.StartVotingSession(r.Context())
+		err := h.service.StartVotingSession(r.Context(), nil)
 		if err != nil {
 			log.Error("Failed to start voting session", "error", err)
 			respondError(w, http.StatusInternalServerError, err.Error())

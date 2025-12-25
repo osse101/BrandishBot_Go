@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 )
 
@@ -23,7 +24,7 @@ type Service interface {
 	// Voting
 	VoteForUnlock(ctx context.Context, userID string, nodeKey string) error
 	GetActiveVotingSession(ctx context.Context) (*domain.ProgressionVotingSession, error)
-	StartVotingSession(ctx context.Context) error
+	StartVotingSession(ctx context.Context, unlockedNodeID *int) error
 	EndVoting(ctx context.Context) (*domain.ProgressionVotingOption, error)
 
 	// Unlocking
@@ -50,6 +51,7 @@ type Service interface {
 
 type service struct {
 	repo Repository
+	bus  event.Bus
 	
 	// In-memory cache for unlock threshold checking
 	mu               sync.RWMutex
@@ -58,9 +60,10 @@ type service struct {
 }
 
 // NewService creates a new progression service
-func NewService(repo Repository) Service {
+func NewService(repo Repository, bus event.Bus) Service {
 	return &service{
 		repo: repo,
+		bus:  bus,
 	}
 }
 
@@ -340,7 +343,7 @@ func (s *service) CheckAndUnlockCriteria(ctx context.Context) (*domain.Progressi
 	// If no session exists, start one
 	session, _ := s.repo.GetActiveSession(ctx)
 	if session == nil {
-		go s.StartVotingSession(context.Background())
+		go s.StartVotingSession(context.Background(), nil)
 	}
 
 	return nil, nil
@@ -388,7 +391,7 @@ func (s *service) ForceInstantUnlock(ctx context.Context) (*domain.ProgressionUn
 	}
 
 	// Start new voting session
-	go s.StartVotingSession(context.Background())
+	go s.StartVotingSession(context.Background(), nil)
 
 	// Return the unlock
 	return s.repo.GetUnlock(ctx, winner.NodeID, winner.TargetLevel)

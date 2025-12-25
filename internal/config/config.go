@@ -51,6 +51,9 @@ type Config struct {
 	// Gamble configuration
 	GambleJoinDuration time.Duration // Duration for users to join a gamble
 
+	// Streamer.bot configuration
+	StreamerbotWebhookURL string // Webhook URL for Streamer.bot notifications
+
 	// Development Settings
 	DevMode bool // When true, bypasses cooldowns and enables test features
 }
@@ -94,6 +97,9 @@ func Load() (*Config, error) {
 		// GitHub config
 		GithubToken:     getEnv("GITHUB_TOKEN", ""),
 		GithubOwnerRepo: getEnv("GITHUB_OWNER_REPO", "osse101/BrandishBot_Go"),
+
+		// Streamer.bot config
+		StreamerbotWebhookURL: getEnv("STREAMERBOT_WEBHOOK_URL", ""),
 	}
 
 	portStr := getEnv("PORT", "8080")

@@ -5,12 +5,14 @@ import (
 	"fmt"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
 // StartVotingSession creates a new voting session with 4 random options from available nodes
-func (s *service) StartVotingSession(ctx context.Context) error {
+// unlockedNodeID should be provided if this session is being started after a node unlock
+func (s *service) StartVotingSession(ctx context.Context, unlockedNodeID *int) error {
 	log := logger.FromContext(ctx)
 
 	// Ensure unlock progress exists (bootstrap case or after manual reset)
@@ -65,6 +67,37 @@ func (s *service) StartVotingSession(ctx context.Context) error {
 	}
 
 	log.Info("Started new voting session", "sessionID", sessionID, "options", len(selected))
+
+	// Publish progression cycle event if triggered by an unlock
+	if unlockedNodeID != nil && s.bus != nil {
+		// Fetch the unlocked node details
+		unlockedNode, err := s.repo.GetNodeByID(ctx, *unlockedNodeID)
+		if err != nil {
+			log.Warn("Failed to get unlocked node for event", "nodeID", *unlockedNodeID, "error", err)
+		} else {
+			// Fetch the session with options for the event
+			session, err := s.repo.GetActiveSession(ctx)
+			if err != nil {
+				log.Warn("Failed to get session for event", "error", err)
+			} else {
+				// Publish the combined event
+				if err := s.bus.Publish(ctx, event.Event{
+					Type: event.ProgressionCycleCompleted,
+					Payload: map[string]interface{}{
+						"unlocked_node":  unlockedNode,
+						"voting_session": session,
+					},
+				}); err != nil {
+					log.Error("Failed to publish progression cycle completed event", "error", err)
+				} else {
+					log.Info("Published progression cycle completed event", 
+						"unlockedNode", unlockedNode.NodeKey,
+						"sessionID", sessionID)
+				}
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -274,8 +307,8 @@ func (s *service) CheckAndUnlockNode(ctx context.Context) (*domain.ProgressionUn
 			"contributions", progress.ContributionsAccumulated,
 			"rollover", rollover)
 
-		// Start next voting session
-		go s.StartVotingSession(context.Background())
+		// Start next voting session with context about the unlocked node
+		go s.StartVotingSession(context.Background(), &node.ID)
 
 		return &domain.ProgressionUnlock{
 			NodeID:          *progress.NodeID,

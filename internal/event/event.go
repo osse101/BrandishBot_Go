@@ -16,6 +16,12 @@ type Event struct {
 	Metadata map[string]interface{}
 }
 
+// Common event types
+const (
+	ProgressionCycleCompleted Type = "progression.cycle.completed"
+)
+
+
 // Handler is a function that handles an event
 type Handler func(ctx context.Context, event Event) error
 
