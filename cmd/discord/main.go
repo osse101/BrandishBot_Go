@@ -99,6 +99,18 @@ func main() {
 	cmd, handler = discord.AdminUnlockCommand()
 	bot.Registry.Register(cmd, handler)
 
+	cmd, handler = discord.AdminRelockCommand()
+	bot.Registry.Register(cmd, handler)
+
+	cmd, handler = discord.AdminInstantResolveCommand()
+	bot.Registry.Register(cmd, handler)
+
+	cmd, handler = discord.AdminResetTreeCommand()
+	bot.Registry.Register(cmd, handler)
+
+	cmd, handler = discord.AdminTreeStatusCommand()
+	bot.Registry.Register(cmd, handler)
+
 	cmd, handler = discord.InfoCommand()
 	bot.Registry.Register(cmd, handler)
 

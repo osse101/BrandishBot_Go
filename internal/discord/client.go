@@ -358,6 +358,179 @@ func (c *APIClient) AdminUnlockNode(nodeKey string, level int) (string, error) {
 	return unlockResp.Message, nil
 }
 
+// AdminRelockNode relocks a progression node (admin only)
+func (c *APIClient) AdminRelockNode(nodeKey string, level int) (string, error) {
+	req := map[string]interface{}{
+		"node_key": nodeKey,
+		"level":    level,
+	}
+
+	resp, err := c.doRequest(http.MethodPost, "/progression/admin/relock", req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		var errResp struct {
+			Error string `json:"error"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
+			return "", fmt.Errorf("API error: %s", errResp.Error)
+		}
+		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	var relockResp struct {
+		Message string `json:"message"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&relockResp); err != nil {
+		return "", fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return relockResp.Message, nil
+}
+
+// AdminInstantUnlock force-unlocks the current vote leader (admin only)
+func (c *APIClient) AdminInstantUnlock() (string, error) {
+	resp, err := c.doRequest(http.MethodPost, "/progression/admin/instant-unlock", nil)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		var errResp struct {
+			Error string `json:"error"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
+			return "", fmt.Errorf("API error: %s", errResp.Error)
+		}
+		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	var instantResp struct {
+		Message string `json:"message"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&instantResp); err != nil {
+		return "", fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return instantResp.Message, nil
+}
+
+// AdminResetProgression resets the entire progression tree (admin only)
+func (c *APIClient) AdminResetProgression(resetBy, reason string, preserveUser bool) (string, error) {
+	req := map[string]interface{}{
+		"reset_by":                  resetBy,
+		"reason":                    reason,
+		"preserve_user_progression": preserveUser,
+	}
+
+	resp, err := c.doRequest(http.MethodPost, "/progression/admin/reset", req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		var errResp struct {
+			Error string `json:"error"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
+			return "", fmt.Errorf("API error: %s", errResp.Error)
+		}
+		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	var resetResp struct {
+		Message string `json:"message"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&resetResp); err != nil {
+		return "", fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return resetResp.Message, nil
+}
+
+// AdminStartVoting starts a new voting session (admin only)
+func (c *APIClient) AdminStartVoting() (string, error) {
+	resp, err := c.doRequest(http.MethodPost, "/progression/admin/start-voting", nil)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		var errResp struct {
+			Error string `json:"error"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
+			return "", fmt.Errorf("API error: %s", errResp.Error)
+		}
+		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	var startResp struct {
+		Message string `json:"message"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&startResp); err != nil {
+		return "", fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return startResp.Message, nil
+}
+
+// AdminEndVoting forces the current voting session to end (admin only)
+func (c *APIClient) AdminEndVoting() (string, error) {
+	resp, err := c.doRequest(http.MethodPost, "/progression/admin/end-voting", nil)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		var errResp struct {
+			Error string `json:"error"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
+			return "", fmt.Errorf("API error: %s", errResp.Error)
+		}
+		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	var endResp struct {
+		Message string `json:"message"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&endResp); err != nil {
+		return "", fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return endResp.Message, nil
+}
+
+// GetProgressionTree retrieves the full progression tree
+func (c *APIClient) GetProgressionTree() ([]*domain.ProgressionTreeNode, error) {
+	resp, err := c.doRequest(http.MethodGet, "/progression/tree", nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	var treeResp struct {
+		Nodes []*domain.ProgressionTreeNode `json:"nodes"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&treeResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return treeResp.Nodes, nil
+}
+
 // BuyItem purchases an item from the shop
 func (c *APIClient) BuyItem(platform, platformID, username, itemName string, quantity int) (string, error) {
 	req := map[string]interface{}{
