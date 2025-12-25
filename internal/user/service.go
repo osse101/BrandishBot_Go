@@ -242,7 +242,7 @@ func (s *service) AddItem(ctx context.Context, platform, platformID, username, i
 	}
 	if item == nil {
 		log.Warn("Item not found", "itemName", itemName)
-		return fmt.Errorf("item not found: %s", itemName)
+		return fmt.Errorf("%w: %s", domain.ErrItemNotFound, itemName)
 	}
 	inventory, err := tx.GetInventory(ctx, user.ID)
 	if err != nil {
@@ -386,7 +386,7 @@ func (s *service) executeGiveItemTx(ctx context.Context, owner, receiver *domain
 	}
 
 	if ownerSlotIndex == -1 {
-		return fmt.Errorf("owner does not have item %s in inventory", item.InternalName)
+		return fmt.Errorf("%w: %s", domain.ErrNotInInventory, item.InternalName)
 	}
 
 	if ownerInventory.Slots[ownerSlotIndex].Quantity < quantity {
@@ -695,7 +695,7 @@ func (s *service) executeSearch(ctx context.Context, user *domain.User) (string,
 		}
 		if item == nil {
 			log.Error("Lootbox0 item not found in database")
-			return "", fmt.Errorf("reward item not configured")
+			return "", fmt.Errorf("%w: %s", domain.ErrItemNotFound, domain.ItemLootbox0)
 		}
 
 		// Begin transaction for inventory update

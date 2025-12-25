@@ -422,7 +422,7 @@ func TestHandleSearch_InvalidInputs(t *testing.T) {
 			// ASSERT
 			if tt.wantErr {
 				require.Error(t, err, "Expected error for: %s", tt.name)
-				assert.Contains(t, err.Error(), tt.errMsg)
+					assert.Contains(t, err.Error(), tt.errMsg)
 			} else {
 				assert.NoError(t, err)
 			}
