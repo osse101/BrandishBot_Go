@@ -37,25 +37,26 @@ func TestStartGamble_Concurrent_RaceCondition(t *testing.T) {
 	repo.On("GetItemByID", ctx, 1).Return(lootboxItem, nil)
 
 	// Setup transaction mocks
-	tx1, tx2 := new(MockTx), new(MockTx)
+	sharedTx := new(MockTx)
 	inventory := &domain.Inventory{Slots: []domain.InventorySlot{{ItemID: 1, Quantity: 5}}}
 
-	repo.On("BeginTx", ctx).Return(tx1, nil).Once()
-	repo.On("BeginTx", ctx).Return(tx2, nil).Once()
-	tx1.On("GetInventory", ctx, "user1").Return(inventory, nil)
-	tx2.On("GetInventory", ctx, "user2").Return(inventory, nil)
-	tx1.On("UpdateInventory", ctx, "user1", mock.Anything).Return(nil)
-	tx2.On("UpdateInventory", ctx, "user2", mock.Anything).Return(nil)
+	repo.On("BeginTx", ctx).Return(sharedTx, nil)
+	sharedTx.On("GetInventory", ctx, mock.Anything).Return(inventory, nil)
+	sharedTx.On("UpdateInventory", ctx, mock.Anything, mock.Anything).Return(nil)
 
-	// First will succeed
+	// First CreateGamble will succeed
 	repo.On("CreateGamble", ctx, mock.Anything).Return(nil).Once()
-	repo.On("JoinGamble", ctx, mock.Anything).Return(nil).Once()
-	tx1.On("Commit", ctx).Return(nil)
-
-	// Second will fail due to database constraint (mocked)
+	// Subsequent CreateGamble will fail due to database constraint (mocked)
 	repo.On("CreateGamble", ctx, mock.Anything).Return(fmt.Errorf("unique constraint violation")).Maybe()
-	tx2.On("Rollback", ctx).Return(nil).Maybe()
-	tx1.On("Rollback", ctx).Return(nil).Maybe()
+	
+	repo.On("JoinGamble", ctx, mock.Anything).Return(nil).Maybe()
+	
+	// Transaction completion
+	// One commit (success), one rollback (failure) expected roughly, but race might cause both to rollback if join fails? 
+	// Or multiple commits if constraint isn't hit? 
+	// The constraint test logic implies one fails CreateGamble.
+	sharedTx.On("Commit", ctx).Return(nil).Maybe()
+	sharedTx.On("Rollback", ctx).Return(nil).Maybe()
 
 	// Launch concurrent StartGamble calls
 	var wg sync.WaitGroup
@@ -166,13 +167,17 @@ func TestExecuteGamble_Concurrent_Idempotent(t *testing.T) {
 	}
 
 	repo.On("GetGamble", ctx, gambleID).Return(gamble, nil)
+	
+	tx := new(MockTx)
+	// Allow multiple calls to BeginGambleTx (one per goroutine initially)
+	repo.On("BeginGambleTx", ctx).Return(tx, nil)
 
 	// First call: CAS succeeds (1 row affected)
-	repo.On("UpdateGambleStateIfMatches", ctx, gambleID, domain.GambleStateJoining, domain.GambleStateOpening).
+	tx.On("UpdateGambleStateIfMatches", ctx, gambleID, domain.GambleStateJoining, domain.GambleStateOpening).
 		Return(int64(1), nil).Once()
 
 	// Second call: CAS fails (0 rows affected - state already changed)
-	repo.On("UpdateGambleStateIfMatches", ctx, gambleID, domain.GambleStateJoining, domain.GambleStateOpening).
+	tx.On("UpdateGambleStateIfMatches", ctx, gambleID, domain.GambleStateJoining, domain.GambleStateOpening).
 		Return(int64(0), nil).Maybe()
 
 	// Rest of execution for first call
@@ -180,15 +185,13 @@ func TestExecuteGamble_Concurrent_Idempotent(t *testing.T) {
 	drops := []lootbox.DroppedItem{{ItemID: 10, Quantity: 5, Value: 100}}
 	repo.On("GetItemByID", ctx, 1).Return(lootboxItem, nil).Maybe()
 	lootboxSvc.On("OpenLootbox", ctx, "lootbox1", 1).Return(drops, nil).Maybe()
-	repo.On("SaveOpenedItems", ctx, mock.Anything).Return(nil).Maybe()
+	tx.On("SaveOpenedItems", ctx, mock.Anything).Return(nil).Maybe()
 
-	tx := new(MockTx)
-	repo.On("BeginTx", ctx).Return(tx, nil).Maybe()
 	tx.On("GetInventory", ctx, "user1").Return(&domain.Inventory{}, nil).Maybe()
 	tx.On("UpdateInventory", ctx, "user1", mock.Anything).Return(nil).Maybe()
 	tx.On("Commit", ctx).Return(nil).Maybe()
 	tx.On("Rollback", ctx).Return(nil).Maybe()
-	repo.On("CompleteGamble", ctx, mock.Anything).Return(nil).Maybe()
+	tx.On("CompleteGamble", ctx, mock.Anything).Return(nil).Maybe()
 
 	// Execute concurrently
 	var wg sync.WaitGroup

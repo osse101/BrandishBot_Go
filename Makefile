@@ -81,6 +81,19 @@ test:
 	@echo "Running tests..."
 	@go test ./... -cover -race
 
+unit:
+	@echo "Running unit tests (fast)..."
+	@./scripts/unit_tests.sh
+
+watch:
+	@echo "Watching for changes to run unit tests..."
+	@if command -v entr > /dev/null; then \
+		find . -name "*.go" | entr -c ./scripts/unit_tests.sh; \
+	else \
+		echo "Error: 'entr' is not installed. Please install it to use this feature."; \
+		exit 1; \
+	fi
+
 test-coverage:
 	@echo "Running tests with coverage..."
 	@mkdir -p logs

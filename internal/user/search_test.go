@@ -653,7 +653,17 @@ func TestHandleSearch_NearMiss_Statistical(t *testing.T) {
 
 func TestHandleSearch_FirstDaily(t *testing.T) {
 	// ARRANGE
-	svc, repo := createSearchTestService()
+	repo := newMockSearchRepo()
+	repo.items[domain.ItemLootbox0] = &domain.Item{
+		ID:           1,
+		InternalName: domain.ItemLootbox0,
+		BaseValue:    10,
+	}
+	statsSvc := &mockStatsService{
+		mockCounts: make(map[domain.EventType]int),
+	}
+	svc := NewService(repo, statsSvc, nil, nil, NewMockNamingResolver(), &mockCooldownService{repo: repo}, false).(*service)
+
 	user := createTestUser(TestUsername, TestUserID)
 	repo.users[TestUsername] = user
 	ctx := context.Background()
@@ -675,6 +685,9 @@ func TestHandleSearch_FirstDaily(t *testing.T) {
 			domain.ActionSearch: &past31m,
 		}
 
+		// Manually update mock stats to reflect first search occurred
+		statsSvc.mockCounts[domain.EventSearch] = 1
+
 		msg, err = svc.HandleSearch(ctx, domain.PlatformTwitch, "testuser123", TestUsername)
 		require.NoError(t, err)
 
@@ -686,6 +699,9 @@ func TestHandleSearch_FirstDaily(t *testing.T) {
 	repo.cooldowns[TestUserID] = map[string]*time.Time{
 		domain.ActionSearch: &yesterday,
 	}
+
+	// Reset stats for new day
+	statsSvc.mockCounts[domain.EventSearch] = 0
 
 	msg, err = svc.HandleSearch(ctx, domain.PlatformTwitch, "testuser123", TestUsername)
 	require.NoError(t, err)
@@ -723,6 +739,8 @@ func TestHandleSearch_DiminishingReturns(t *testing.T) {
 
 	// 2. Diminished Search (Count 6)
 	statsSvc.mockCounts[domain.EventSearch] = 6
+	// Reset cooldown manually for second search
+	delete(repo.cooldowns[user.ID], domain.ActionSearch)
 
 	msg, err = svc.HandleSearch(ctx, domain.PlatformTwitch, "testuser123", TestUsername)
 	require.NoError(t, err)

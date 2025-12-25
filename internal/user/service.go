@@ -628,7 +628,12 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 		var cooldownErr cooldown.ErrOnCooldown
 		if errors.As(err, &cooldownErr) {
 			// Return user-friendly cooldown message
-			return cooldownErr.Error(), nil
+			minutes := int(cooldownErr.Remaining.Minutes())
+			seconds := int(cooldownErr.Remaining.Seconds()) % 60
+			if minutes > 0 {
+				return fmt.Sprintf("You can search again in %dm %ds.", minutes, seconds), nil
+			}
+			return fmt.Sprintf("You can search again in %ds.", seconds), nil
 		}
 		// Other error
 		return "", err
