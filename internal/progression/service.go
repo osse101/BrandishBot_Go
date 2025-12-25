@@ -390,8 +390,8 @@ func (s *service) ForceInstantUnlock(ctx context.Context) (*domain.ProgressionUn
 		s.repo.CompleteUnlock(ctx, progress.ID, 0)
 	}
 
-	// Start new voting session
-	go s.StartVotingSession(context.Background(), nil)
+	// Start new voting session with the unlocked node context
+	go s.StartVotingSession(context.Background(), &winner.NodeID)
 
 	// Return the unlock
 	return s.repo.GetUnlock(ctx, winner.NodeID, winner.TargetLevel)
