@@ -60,7 +60,7 @@ func BuyCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		msg, err := client.BuyItem(domain.PlatformDiscord, user.ID, user.Username, itemName, quantity)
 		if err != nil {
 			slog.Error("Failed to buy item", "error", err)
-			respondError(s, i, fmt.Sprintf("Failed to buy item: %v", err))
+			respondFriendlyError(s, i, err.Error())
 			return
 		}
 
@@ -135,7 +135,7 @@ func SellCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		msg, err := client.SellItem(domain.PlatformDiscord, user.ID, user.Username, itemName, quantity)
 		if err != nil {
 			slog.Error("Failed to sell item", "error", err)
-			respondError(s, i, fmt.Sprintf("Failed to sell item: %v", err))
+			respondFriendlyError(s, i, err.Error())
 			return
 		}
 
@@ -310,7 +310,7 @@ func GiveCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		)
 		if err != nil {
 			slog.Error("Failed to give item", "error", err)
-			respondError(s, i, fmt.Sprintf("Failed to give item: %v", err))
+			respondFriendlyError(s, i, err.Error())
 			return
 		}
 

@@ -33,22 +33,14 @@ func InventoryCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		_, err := client.RegisterUser(user.Username, user.ID)
 		if err != nil {
 			slog.Error("Failed to register user", "error", err)
-			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-				Content: &[]string{"Error connecting to game server."}[0],
-			}); err != nil {
-				slog.Error("Failed to edit interaction response", "error", err)
-			}
+			respondFriendlyError(s, i, err.Error())
 			return
 		}
 
 		items, err := client.GetInventory(domain.PlatformDiscord, user.ID, user.Username)
 		if err != nil {
 			slog.Error("Failed to get inventory", "error", err)
-			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-				Content: &[]string{"Failed to retrieve inventory."}[0],
-			}); err != nil {
-				slog.Error("Failed to edit interaction response", "error", err)
-			}
+			respondFriendlyError(s, i, err.Error())
 			return
 		}
 

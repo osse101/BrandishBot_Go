@@ -119,5 +119,5 @@ func TestProfileCommand_RegisterError(t *testing.T) {
 
 	handler(ctx.Session, interaction, ctx.APIClient)
 
-	assert.Contains(t, sentContent, "Failed to retrieve profile")
+	assert.Contains(t, sentContent, "❌") // Checks for friendly error wrapper
 }

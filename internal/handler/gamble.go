@@ -31,18 +31,10 @@ type StartGambleRequest struct {
 }
 
 func (h *GambleHandler) HandleStartGamble(w http.ResponseWriter, r *http.Request) {
-	log := logger.FromContext(r.Context())
 
 	// Check if gamble feature is unlocked
-	unlocked, err := h.progressionSvc.IsFeatureUnlocked(r.Context(), progression.FeatureGamble)
-	if err != nil {
-		log.Error("Failed to check feature unlock status", "error", err)
-		http.Error(w, "Failed to check feature availability", http.StatusInternalServerError)
-		return
-	}
-	if !unlocked {
-		log.Warn("Gamble feature is locked")
-		http.Error(w, "Gamble feature is not yet unlocked", http.StatusForbidden)
+	// Check if gamble feature is unlocked
+	if CheckFeatureLocked(w, r, h.progressionSvc, progression.FeatureGamble) {
 		return
 	}
 

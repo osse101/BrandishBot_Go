@@ -132,9 +132,12 @@ func TestHandleSellItem(t *testing.T) {
 			},
 			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSell).Return(false, nil)
+				p.On("GetRequiredNodes", mock.Anything, progression.FeatureSell).Return([]*domain.ProgressionNode{
+					{DisplayName: "Sell System"},
+				}, nil)
 			},
 			expectedStatus: http.StatusForbidden,
-			expectedBody:   "Sell feature is not yet unlocked",
+			expectedBody:   "LOCKED_NODES: Sell System",
 		},
 		{
 			name: "Feature Check Error",
@@ -425,9 +428,12 @@ func TestHandleBuyItem(t *testing.T) {
 			},
 			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureBuy).Return(false, nil)
+				p.On("GetRequiredNodes", mock.Anything, progression.FeatureBuy).Return([]*domain.ProgressionNode{
+					{DisplayName: "Buy System"},
+				}, nil)
 			},
 			expectedStatus: http.StatusForbidden,
-			expectedBody:   "Buy feature is not yet unlocked",
+			expectedBody:   "LOCKED_NODES: Buy System",
 		},
 		{
 			name: "Feature Check Error",

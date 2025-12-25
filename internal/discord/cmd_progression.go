@@ -50,7 +50,7 @@ func VoteCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		msg, err := client.VoteForNode(domain.PlatformDiscord, user.ID, user.Username, nodeKey)
 		if err != nil {
 			slog.Error("Failed to vote", "error", err)
-			respondError(s, i, fmt.Sprintf("Failed to vote: %v", err))
+			respondFriendlyError(s, i, err.Error())
 			return
 		}
 

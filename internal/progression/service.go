@@ -42,6 +42,7 @@ type Service interface {
 
 	// Status
 	GetProgressionStatus(ctx context.Context) (*domain.ProgressionStatus, error)
+	GetRequiredNodes(ctx context.Context, nodeKey string) ([]*domain.ProgressionNode, error)
 
 	// Admin functions
 	AdminUnlock(ctx context.Context, nodeKey string, level int) error
@@ -439,4 +440,54 @@ func (s *service) ForceInstantUnlock(ctx context.Context) (*domain.ProgressionUn
 
 	// Return the unlock
 	return s.repo.GetUnlock(ctx, winner.NodeID, winner.TargetLevel)
+}
+
+// GetRequiredNodes returns a list of locked ancestor nodes that are preventing the target node from being unlocked
+func (s *service) GetRequiredNodes(ctx context.Context, nodeKey string) ([]*domain.ProgressionNode, error) {
+	log := logger.FromContext(ctx)
+
+	targetNode, err := s.repo.GetNodeByKey(ctx, nodeKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get node: %w", err)
+	}
+	if targetNode == nil {
+		return nil, fmt.Errorf("node not found: %s", nodeKey)
+	}
+
+	var lockedAncestors []*domain.ProgressionNode
+	currentNode := targetNode
+
+	// Traverse up the tree
+	for currentNode.ParentNodeID != nil {
+		parentNode, err := s.repo.GetNodeByID(ctx, *currentNode.ParentNodeID)
+		if err != nil {
+			log.Error("Failed to get parent node during traversal", "error", err, "nodeID", currentNode.ID)
+			break
+		}
+		if parentNode == nil {
+			log.Warn("Parent node ID found but node does not exist", "parentID", *currentNode.ParentNodeID)
+			break
+		}
+
+		// Check if parent is fully locked (level 0)
+		isUnlocked, err := s.repo.IsNodeUnlocked(ctx, parentNode.NodeKey, 1)
+		if err != nil {
+			return nil, fmt.Errorf("failed to check unlock status for %s: %w", parentNode.NodeKey, err)
+		}
+
+		if !isUnlocked {
+			// Prepend to list (so root is first) - actually, standard append is fine, user probably wants closest blocker first?
+			// "Requires: [Parent], [Grandparent]" reads better as "requires Parent (which requires Grandparent)"
+			// Let's keep it strictly ordered by traversal (closest ancestor first)
+			lockedAncestors = append(lockedAncestors, parentNode)
+		} else {
+			// optimization: if parent is unlocked, then all its ancestors MUST be unlocked (in a strict tree)
+			// so we can stop checking
+			break
+		}
+
+		currentNode = parentNode
+	}
+
+	return lockedAncestors, nil
 }

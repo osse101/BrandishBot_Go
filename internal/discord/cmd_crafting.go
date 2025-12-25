@@ -1,7 +1,6 @@
 package discord
 
 import (
-	"fmt"
 	"log/slog"
 
 	"github.com/bwmarrin/discordgo"
@@ -50,7 +49,7 @@ func UpgradeCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		msg, err := client.UpgradeItem(domain.PlatformDiscord, user.ID, user.Username, recipeID)
 		if err != nil {
 			slog.Error("Failed to upgrade item", "error", err)
-			respondError(s, i, fmt.Sprintf("Failed to upgrade item: %v", err))
+			respondFriendlyError(s, i, err.Error())
 			return
 		}
 
@@ -125,7 +124,7 @@ func DisassembleCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		msg, err := client.DisassembleItem(domain.PlatformDiscord, user.ID, user.Username, itemName, quantity)
 		if err != nil {
 			slog.Error("Failed to disassemble item", "error", err)
-			respondError(s, i, fmt.Sprintf("Failed to disassemble item: %v", err))
+			respondFriendlyError(s, i, err.Error())
 			return
 		}
 
@@ -166,7 +165,7 @@ func RecipesCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		msg, err := client.GetRecipes()
 		if err != nil {
 			slog.Error("Failed to get recipes", "error", err)
-			respondError(s, i, fmt.Sprintf("Failed to get recipes: %v", err))
+			respondFriendlyError(s, i, err.Error())
 			return
 		}
 

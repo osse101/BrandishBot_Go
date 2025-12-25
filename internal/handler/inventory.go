@@ -213,15 +213,8 @@ func HandleSellItem(svc economy.Service, progressionSvc progression.Service, eve
 		log := logger.FromContext(r.Context())
 
 		// Check if sell feature is unlocked
-		unlocked, err := progressionSvc.IsFeatureUnlocked(r.Context(), progression.FeatureSell)
-		if err != nil {
-			log.Error("Failed to check feature unlock status", "error", err)
-			http.Error(w, ErrMsgFeatureCheckFailed, http.StatusInternalServerError)
-			return
-		}
-		if !unlocked {
-			log.Warn("Sell feature is locked")
-			http.Error(w, "Sell feature is not yet unlocked", http.StatusForbidden)
+		// Check if sell feature is unlocked
+		if CheckFeatureLocked(w, r, progressionSvc, progression.FeatureSell) {
 			return
 		}
 
@@ -303,15 +296,8 @@ func HandleBuyItem(svc economy.Service, progressionSvc progression.Service, even
 		log := logger.FromContext(r.Context())
 
 		// Check if buy feature is unlocked
-		unlocked, err := progressionSvc.IsFeatureUnlocked(r.Context(), progression.FeatureBuy)
-		if err != nil {
-			log.Error("Failed to check feature unlock status", "error", err)
-			http.Error(w, ErrMsgFeatureCheckFailed, http.StatusInternalServerError)
-			return
-		}
-		if !unlocked {
-			log.Warn("Buy feature is locked")
-			http.Error(w, "Buy feature is not yet unlocked", http.StatusForbidden)
+		// Check if buy feature is unlocked
+		if CheckFeatureLocked(w, r, progressionSvc, progression.FeatureBuy) {
 			return
 		}
 

@@ -59,7 +59,7 @@ func LeaderboardCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		msg, err := client.GetLeaderboard(metric, limit)
 		if err != nil {
 			slog.Error("Failed to get leaderboard", "error", err)
-			respondError(s, i, fmt.Sprintf("Failed to get leaderboard: %v", err))
+			respondFriendlyError(s, i, err.Error())
 			return
 		}
 
@@ -128,7 +128,7 @@ func StatsCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		msg, err := client.GetUserStats(domain.PlatformDiscord, user.ID)
 		if err != nil {
 			slog.Error("Failed to get stats", "error", err)
-			respondError(s, i, fmt.Sprintf("Failed to get stats: %v", err))
+			respondFriendlyError(s, i, err.Error())
 			return
 		}
 

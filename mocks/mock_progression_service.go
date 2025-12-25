@@ -744,6 +744,65 @@ func (_c *MockProgressionService_GetProgressionTree_Call) RunAndReturn(run func(
 	return _c
 }
 
+// GetRequiredNodes provides a mock function with given fields: ctx, nodeKey
+func (_m *MockProgressionService) GetRequiredNodes(ctx context.Context, nodeKey string) ([]*domain.ProgressionNode, error) {
+	ret := _m.Called(ctx, nodeKey)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetRequiredNodes")
+	}
+
+	var r0 []*domain.ProgressionNode
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) ([]*domain.ProgressionNode, error)); ok {
+		return rf(ctx, nodeKey)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) []*domain.ProgressionNode); ok {
+		r0 = rf(ctx, nodeKey)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*domain.ProgressionNode)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, nodeKey)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockProgressionService_GetRequiredNodes_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetRequiredNodes'
+type MockProgressionService_GetRequiredNodes_Call struct {
+	*mock.Call
+}
+
+// GetRequiredNodes is a helper method to define mock.On call
+//   - ctx context.Context
+//   - nodeKey string
+func (_e *MockProgressionService_Expecter) GetRequiredNodes(ctx interface{}, nodeKey interface{}) *MockProgressionService_GetRequiredNodes_Call {
+	return &MockProgressionService_GetRequiredNodes_Call{Call: _e.mock.On("GetRequiredNodes", ctx, nodeKey)}
+}
+
+func (_c *MockProgressionService_GetRequiredNodes_Call) Run(run func(ctx context.Context, nodeKey string)) *MockProgressionService_GetRequiredNodes_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockProgressionService_GetRequiredNodes_Call) Return(_a0 []*domain.ProgressionNode, _a1 error) *MockProgressionService_GetRequiredNodes_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockProgressionService_GetRequiredNodes_Call) RunAndReturn(run func(context.Context, string) ([]*domain.ProgressionNode, error)) *MockProgressionService_GetRequiredNodes_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetUnlockProgress provides a mock function with given fields: ctx
 func (_m *MockProgressionService) GetUnlockProgress(ctx context.Context) (*domain.UnlockProgress, error) {
 	ret := _m.Called(ctx)

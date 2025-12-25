@@ -1,7 +1,6 @@
 package discord
 
 import (
-	"fmt"
 	"log/slog"
 
 	"github.com/bwmarrin/discordgo"
@@ -43,12 +42,7 @@ func SearchCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		msg, err := client.Search(domain.PlatformDiscord, user.ID, user.Username)
 		if err != nil {
 			slog.Error("Failed to search", "error", err)
-			errorMsg := fmt.Sprintf("Search failed: %v", err)
-			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-				Content: &errorMsg,
-			}); err != nil {
-				slog.Error("Failed to edit interaction response", "error", err)
-			}
+			respondFriendlyError(s, i, err.Error())
 			return
 		}
 

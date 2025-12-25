@@ -59,9 +59,12 @@ func TestHandleUpgradeItem(t *testing.T) {
 			},
 			setupMock: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureUpgrade).Return(false, nil)
+				p.On("GetRequiredNodes", mock.Anything, progression.FeatureUpgrade).Return([]*domain.ProgressionNode{
+					{DisplayName: "Upgrade System"},
+				}, nil)
 			},
 			expectedStatus: http.StatusForbidden,
-			expectedBody:   "not yet unlocked",
+			expectedBody:   "LOCKED_NODES: Upgrade System",
 		},
 		{
 			name: "Feature Check Error",

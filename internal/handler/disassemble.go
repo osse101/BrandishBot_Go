@@ -53,15 +53,8 @@ func HandleDisassembleItem(svc crafting.Service, progressionSvc progression.Serv
 		log := logger.FromContext(r.Context())
 
 		// Check if disassemble feature is unlocked
-		unlocked, err := progressionSvc.IsFeatureUnlocked(r.Context(), progression.FeatureDisassemble)
-		if err != nil {
-			log.Error("Failed to check feature unlock status", "error", err)
-			http.Error(w, "Failed to check feature availability", http.StatusInternalServerError)
-			return
-		}
-		if !unlocked {
-			log.Warn("Disassemble feature is locked")
-			http.Error(w, "Disassemble feature is not yet unlocked", http.StatusForbidden)
+		// Check if disassemble feature is unlocked
+		if CheckFeatureLocked(w, r, progressionSvc, progression.FeatureDisassemble) {
 			return
 		}
 

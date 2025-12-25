@@ -1,7 +1,6 @@
 package discord
 
 import (
-	"fmt"
 	"log/slog"
 
 	"github.com/bwmarrin/discordgo"
@@ -50,7 +49,7 @@ func GambleStartCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		msg, err := client.StartGamble(domain.PlatformDiscord, user.ID, user.Username, wager)
 		if err != nil {
 			slog.Error("Failed to start gamble", "error", err)
-			respondError(s, i, fmt.Sprintf("Failed to start gamble: %v", err))
+			respondFriendlyError(s, i, err.Error())
 			return
 		}
 
@@ -115,7 +114,7 @@ func GambleJoinCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		msg, err := client.JoinGamble(domain.PlatformDiscord, user.ID, user.Username, gambleID)
 		if err != nil {
 			slog.Error("Failed to join gamble", "error", err)
-			respondError(s, i, fmt.Sprintf("Failed to join gamble: %v", err))
+			respondFriendlyError(s, i, err.Error())
 			return
 		}
 

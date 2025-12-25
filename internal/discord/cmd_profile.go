@@ -30,11 +30,7 @@ func ProfileCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		domainUser, err := client.RegisterUser(user.Username, user.ID)
 		if err != nil {
 			slog.Error("Failed to register user", "error", err)
-			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-				Content: &[]string{"Failed to retrieve profile. Please try again later."}[0],
-			}); err != nil {
-				slog.Error("Failed to edit interaction response", "error", err)
-			}
+			respondFriendlyError(s, i, err.Error())
 			return
 		}
 

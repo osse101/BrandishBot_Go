@@ -55,9 +55,12 @@ func TestHandleSearch(t *testing.T) {
 			},
 			setupMock: func(u *mocks.MockUserService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSearch).Return(false, nil)
+				p.On("GetRequiredNodes", mock.Anything, progression.FeatureSearch).Return([]*domain.ProgressionNode{
+					{DisplayName: "Progression System"},
+				}, nil)
 			},
 			expectedStatus: http.StatusForbidden,
-			expectedBody:   "Search feature is not yet unlocked",
+			expectedBody:   "LOCKED_NODES: Progression System",
 		},
 		{
 			name: "Service Error",

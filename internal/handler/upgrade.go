@@ -53,15 +53,8 @@ func HandleUpgradeItem(svc crafting.Service, progressionSvc progression.Service,
 		log := logger.FromContext(r.Context())
 
 		// Check if upgrade feature is unlocked
-		unlocked, err := progressionSvc.IsFeatureUnlocked(r.Context(), progression.FeatureUpgrade)
-		if err != nil {
-			log.Error("Failed to check feature unlock status", "error", err)
-			http.Error(w, "Failed to check feature availability", http.StatusInternalServerError)
-			return
-		}
-		if !unlocked {
-			log.Warn("Upgrade feature is locked")
-			http.Error(w, "Upgrade feature is not yet unlocked", http.StatusForbidden)
+		// Check if upgrade feature is unlocked
+		if CheckFeatureLocked(w, r, progressionSvc, progression.FeatureUpgrade) {
 			return
 		}
 

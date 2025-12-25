@@ -152,5 +152,5 @@ func TestInventoryCommand_RegisterError(t *testing.T) {
 
 	handler(ctx.Session, interaction, ctx.APIClient)
 
-	assert.Contains(t, sentContent, "Error connecting to game server")
+	assert.Contains(t, sentContent, "❌") // Check for friendly wrapper
 }

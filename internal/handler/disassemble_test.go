@@ -56,9 +56,12 @@ func TestHandleDisassembleItem(t *testing.T) {
 			},
 			setupMock: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureDisassemble).Return(false, nil)
+				p.On("GetRequiredNodes", mock.Anything, progression.FeatureDisassemble).Return([]*domain.ProgressionNode{
+					{DisplayName: "Disassemble System"},
+				}, nil)
 			},
 			expectedStatus: http.StatusForbidden,
-			expectedBody:   "not yet unlocked",
+			expectedBody:   "LOCKED_NODES: Disassemble System",
 		},
 		{
 			name: "Feature Check Error",
