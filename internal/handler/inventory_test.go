@@ -563,18 +563,20 @@ func TestHandleUseItem(t *testing.T) {
 				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
-				ItemName:   "Potion",
+				ItemName:   domain.PublicNameMissile,
 				Quantity:   1,
 			},
 			setupMock: func(u *mocks.MockUserService, e *mocks.MockEventBus) {
-				u.On("UseItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", "Potion", 1, "").Return("Used potion", nil)
+				// Mock should return what the real blaster handler would return
+				u.On("UseItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.PublicNameMissile, 1, "").
+					Return("testuser has BLASTED target 1 times! They are timed out for 1m0s.", nil)
 				// Expect both engagement and item.used events
 				e.On("Publish", mock.Anything, mock.MatchedBy(func(evt event.Event) bool {
 					return evt.Type == "engagement" || evt.Type == "item.used"
 				})).Return(nil).Maybe()
 			},
 			expectedStatus: http.StatusOK,
-			expectedBody:   `{"message":"Used potion"}`,
+			expectedBody:   `"message":"testuser has BLASTED target 1 times`,
 		},
 		{
 			name: "Service Error",
@@ -582,11 +584,11 @@ func TestHandleUseItem(t *testing.T) {
 				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
-				ItemName:   "Potion",
+				ItemName:   domain.PublicNameMissile,
 				Quantity:   1,
 			},
 			setupMock: func(u *mocks.MockUserService, e *mocks.MockEventBus) {
-				u.On("UseItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", "Potion", 1, "").Return("", errors.New("service error"))
+				u.On("UseItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.PublicNameMissile, 1, "").Return("", errors.New("service error"))
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   ErrMsgUseItemFailed,

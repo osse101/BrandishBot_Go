@@ -11,6 +11,15 @@ const (
 	ItemBlaster  = "weapon_blaster"  // was blaster
 )
 
+// Public item name constants - what clients use in commands (PublicName field)
+const (
+	PublicNameMoney   = "money"   // Currency
+	PublicNameJunkbox = "junkbox" // Tier 0 lootbox (rusty)
+	PublicNameLootbox = "lootbox" // Tier 1 lootbox (basic)
+	PublicNameGoldbox = "goldbox" // Tier 2 lootbox (golden)
+	PublicNameMissile = "missile" // Blaster weapon
+)
+
 
 // Action name constants for cooldown tracking
 const (

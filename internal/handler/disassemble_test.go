@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 	"github.com/osse101/BrandishBot_Go/mocks"
 	"github.com/stretchr/testify/assert"
@@ -28,16 +29,16 @@ func TestHandleDisassembleItem(t *testing.T) {
 		{
 			name: "Success",
 			requestBody: DisassembleItemRequest{
-				Platform:   "twitch",
+				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
-				Item:       "lootbox1",
+				Item:       domain.PublicNameLootbox,
 				Quantity:   2,
 			},
 			setupMock: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureDisassemble).Return(true, nil)
-				c.On("DisassembleItem", mock.Anything, "twitch", "test-id", "testuser", "lootbox1", 2).
-					Return(map[string]int{"lootbox0": 2}, 2, nil)
+				c.On("DisassembleItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.PublicNameLootbox, 2).
+					Return(map[string]int{domain.PublicNameJunkbox: 2}, 2, nil)
 				p.On("AddContribution", mock.Anything, mock.Anything).Return(nil)
 				e.On("Publish", mock.Anything, mock.Anything).Return(nil)
 			},
@@ -47,10 +48,10 @@ func TestHandleDisassembleItem(t *testing.T) {
 		{
 			name: "Feature Locked",
 			requestBody: DisassembleItemRequest{
-				Platform:   "twitch",
+				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
-				Item:       "lootbox1",
+				Item:       domain.PublicNameLootbox,
 				Quantity:   1,
 			},
 			setupMock: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
@@ -62,10 +63,10 @@ func TestHandleDisassembleItem(t *testing.T) {
 		{
 			name: "Feature Check Error",
 			requestBody: DisassembleItemRequest{
-				Platform:   "twitch",
+				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
-				Item:       "lootbox1",
+				Item:       domain.PublicNameLootbox,
 				Quantity:   1,
 			},
 			setupMock: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
@@ -89,7 +90,7 @@ func TestHandleDisassembleItem(t *testing.T) {
 			requestBody: DisassembleItemRequest{
 				PlatformID: "test-id",
 				Username:   "testuser",
-				Item:       "lootbox1",
+				Item:       domain.PublicNameLootbox,
 				Quantity:   1,
 			},
 			setupMock: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
@@ -101,9 +102,9 @@ func TestHandleDisassembleItem(t *testing.T) {
 		{
 			name: "Missing PlatformID",
 			requestBody: DisassembleItemRequest{
-				Platform: "twitch",
+				Platform: domain.PlatformTwitch,
 				Username: "testuser",
-				Item:     "lootbox1",
+				Item:     domain.PublicNameLootbox,
 				Quantity: 1,
 			},
 			setupMock: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
@@ -115,9 +116,9 @@ func TestHandleDisassembleItem(t *testing.T) {
 		{
 			name: "Missing Username",
 			requestBody: DisassembleItemRequest{
-				Platform:   "twitch",
+				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
-				Item:       "lootbox1",
+				Item:       domain.PublicNameLootbox,
 				Quantity:   1,
 			},
 			setupMock: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
@@ -129,7 +130,7 @@ func TestHandleDisassembleItem(t *testing.T) {
 		{
 			name: "Missing Item",
 			requestBody: DisassembleItemRequest{
-				Platform:   "twitch",
+				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
 				Quantity:   1,
@@ -143,10 +144,10 @@ func TestHandleDisassembleItem(t *testing.T) {
 		{
 			name: "Zero Quantity",
 			requestBody: DisassembleItemRequest{
-				Platform:   "twitch",
+				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
-				Item:       "lootbox1",
+				Item:       domain.PublicNameLootbox,
 				Quantity:   0,
 			},
 			setupMock: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
@@ -158,10 +159,10 @@ func TestHandleDisassembleItem(t *testing.T) {
 		{
 			name: "Negative Quantity",
 			requestBody: DisassembleItemRequest{
-				Platform:   "twitch",
+				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
-				Item:       "lootbox1",
+				Item:       domain.PublicNameLootbox,
 				Quantity:   -1,
 			},
 			setupMock: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
@@ -176,7 +177,7 @@ func TestHandleDisassembleItem(t *testing.T) {
 				Platform:   "invalid-platform",
 				PlatformID: "test-id",
 				Username:   "testuser",
-				Item:       "lootbox1",
+				Item:       domain.PublicNameLootbox,
 				Quantity:   1,
 			},
 			setupMock: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
@@ -188,7 +189,7 @@ func TestHandleDisassembleItem(t *testing.T) {
 		{
 			name: "Service Error - Item Not Found",
 			requestBody: DisassembleItemRequest{
-				Platform:   "twitch",
+				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
 				Item:       "unknown-item",
@@ -196,7 +197,7 @@ func TestHandleDisassembleItem(t *testing.T) {
 			},
 			setupMock: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureDisassemble).Return(true, nil)
-				c.On("DisassembleItem", mock.Anything, "twitch", "test-id", "testuser", "unknown-item", 1).
+				c.On("DisassembleItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", "unknown-item", 1).
 					Return(nil, 0, errors.New("item not found"))
 			},
 			expectedStatus: http.StatusInternalServerError,
@@ -205,15 +206,15 @@ func TestHandleDisassembleItem(t *testing.T) {
 		{
 			name: "Service Error - Insufficient Items",
 			requestBody: DisassembleItemRequest{
-				Platform:   "twitch",
+				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
-				Item:       "lootbox1",
+				Item:       domain.PublicNameLootbox,
 				Quantity:   100,
 			},
 			setupMock: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureDisassemble).Return(true, nil)
-				c.On("DisassembleItem", mock.Anything, "twitch", "test-id", "testuser", "lootbox1", 100).
+				c.On("DisassembleItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.PublicNameLootbox, 100).
 					Return(nil, 0, errors.New("insufficient items"))
 			},
 			expectedStatus: http.StatusInternalServerError,
@@ -222,16 +223,16 @@ func TestHandleDisassembleItem(t *testing.T) {
 		{
 			name: "Event Publish Failure - Still Returns Success",
 			requestBody: DisassembleItemRequest{
-				Platform:   "twitch",
+				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
-				Item:       "lootbox1",
+				Item:       domain.PublicNameLootbox,
 				Quantity:   1,
 			},
 			setupMock: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureDisassemble).Return(true, nil)
-				c.On("DisassembleItem", mock.Anything, "twitch", "test-id", "testuser", "lootbox1", 1).
-					Return(map[string]int{"lootbox0": 1}, 1, nil)
+				c.On("DisassembleItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.PublicNameLootbox, 1).
+					Return(map[string]int{domain.PublicNameJunkbox: 1}, 1, nil)
 				p.On("AddContribution", mock.Anything, mock.Anything).Return(nil)
 				e.On("Publish", mock.Anything, mock.Anything).Return(errors.New("event bus error"))
 			},

@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/osse101/BrandishBot_Go/internal/domain"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -35,9 +37,9 @@ func TestValidator_PlatformValidation(t *testing.T) {
 		wantErr  bool
 	}{
 		// CASE 1: Best Case
-		{"valid twitch", "twitch", false},
+		{"valid twitch", domain.PlatformTwitch, false},
 		{"valid youtube", "youtube", false},
-		{"valid discord", "discord", false},
+		{"valid discord", domain.PlatformDiscord, false},
 
 		// CASE 2: Boundary - empty allowed (not required)
 		{"empty platform allowed", "", false},
@@ -99,7 +101,7 @@ func TestValidator_UsernameValidation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			input := TestStruct{
-				Platform: "twitch",
+				Platform: domain.PlatformTwitch,
 				Username: tt.username,
 				Quantity: 10,
 			}
@@ -143,7 +145,7 @@ func TestValidator_QuantityValidation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			input := TestStruct{
-				Platform: "twitch",
+				Platform: domain.PlatformTwitch,
 				Username: "validuser",
 				Quantity: tt.quantity,
 			}

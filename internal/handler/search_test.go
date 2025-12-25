@@ -8,6 +8,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/osse101/BrandishBot_Go/internal/domain"
+
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 	"github.com/osse101/BrandishBot_Go/mocks"
@@ -28,14 +30,14 @@ func TestHandleSearch(t *testing.T) {
 		{
 			name: "Success",
 			requestBody: SearchRequest{
-				Platform:   "twitch",
+				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
 			},
 			setupMock: func(u *mocks.MockUserService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSearch).Return(true, nil)
 				p.On("AddContribution", mock.Anything, mock.Anything).Return(nil)
-				u.On("HandleSearch", mock.Anything, "twitch", "test-id", "testuser").Return("Found a sword!", nil)
+				u.On("HandleSearch", mock.Anything, domain.PlatformTwitch, "test-id", "testuser").Return("Found a sword!", nil)
 				// Expect both engagement and search.performed events
 				e.On("Publish", mock.Anything, mock.MatchedBy(func(evt event.Event) bool {
 					return evt.Type == "engagement" || evt.Type == "search.performed"
@@ -47,7 +49,7 @@ func TestHandleSearch(t *testing.T) {
 		{
 			name: "Feature Locked",
 			requestBody: SearchRequest{
-				Platform:   "twitch",
+				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
 			},
@@ -60,13 +62,13 @@ func TestHandleSearch(t *testing.T) {
 		{
 			name: "Service Error",
 			requestBody: SearchRequest{
-				Platform:   "twitch",
+				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
 			},
 			setupMock: func(u *mocks.MockUserService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSearch).Return(true, nil)
-				u.On("HandleSearch", mock.Anything, "twitch", "test-id", "testuser").Return("", errors.New("service error"))
+				u.On("HandleSearch", mock.Anything, domain.PlatformTwitch, "test-id", "testuser").Return("", errors.New("service error"))
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   "Failed to perform search",

@@ -28,14 +28,14 @@ func TestHandleRegisterUser(t *testing.T) {
 			name: "Success - New User",
 			requestBody: RegisterUserRequest{
 				Username:        "newuser",
-				KnownPlatform:   "twitch",
+				KnownPlatform:   domain.PlatformTwitch,
 				KnownPlatformID: "12345",
-				NewPlatform:     "discord",
+				NewPlatform:     domain.PlatformDiscord,
 				NewPlatformID:   "67890",
 			},
 			setupMock: func(m *mocks.MockUserService) {
 				// FindUserByPlatformID returns error -> user not found
-				m.On("FindUserByPlatformID", mock.Anything, "twitch", "12345").Return(nil, errors.New("not found"))
+				m.On("FindUserByPlatformID", mock.Anything, domain.PlatformTwitch, "12345").Return(nil, errors.New("not found"))
 
 				// Expect RegisterUser with new user data
 				m.On("RegisterUser", mock.Anything, mock.MatchedBy(func(u domain.User) bool {
@@ -49,15 +49,15 @@ func TestHandleRegisterUser(t *testing.T) {
 			name: "Success - Existing User",
 			requestBody: RegisterUserRequest{
 				Username:        "existinguser",
-				KnownPlatform:   "twitch",
+				KnownPlatform:   domain.PlatformTwitch,
 				KnownPlatformID: "12345",
-				NewPlatform:     "discord",
+				NewPlatform:     domain.PlatformDiscord,
 				NewPlatformID:   "67890",
 			},
 			setupMock: func(m *mocks.MockUserService) {
 				// FindUserByPlatformID returns existing user
 				existingUser := &domain.User{ID: "existing-id", Username: "existinguser", TwitchID: "12345"}
-				m.On("FindUserByPlatformID", mock.Anything, "twitch", "12345").Return(existingUser, nil)
+				m.On("FindUserByPlatformID", mock.Anything, domain.PlatformTwitch, "12345").Return(existingUser, nil)
 
 				// Expect RegisterUser with updated user data
 				m.On("RegisterUser", mock.Anything, mock.MatchedBy(func(u domain.User) bool {
@@ -80,13 +80,13 @@ func TestHandleRegisterUser(t *testing.T) {
 			name: "Service Error - Register Failed",
 			requestBody: RegisterUserRequest{
 				Username:        "erroruser",
-				KnownPlatform:   "twitch",
+				KnownPlatform:   domain.PlatformTwitch,
 				KnownPlatformID: "12345",
-				NewPlatform:     "discord",
+				NewPlatform:     domain.PlatformDiscord,
 				NewPlatformID:   "67890",
 			},
 			setupMock: func(m *mocks.MockUserService) {
-				m.On("FindUserByPlatformID", mock.Anything, "twitch", "12345").Return(nil, errors.New("not found"))
+				m.On("FindUserByPlatformID", mock.Anything, domain.PlatformTwitch, "12345").Return(nil, errors.New("not found"))
 				m.On("RegisterUser", mock.Anything, mock.Anything).Return(domain.User{}, errors.New("db error"))
 			},
 			expectedStatus: http.StatusInternalServerError,
