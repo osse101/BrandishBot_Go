@@ -256,7 +256,6 @@ func TestProcessLootbox(t *testing.T) {
 
 		_, err := svc.processLootbox(ctx, inventory, lootbox0, 2)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "not enough items")
+		assert.Contains(t, err.Error(), domain.ErrMsgNotEnoughItems)
 	})
 }
-

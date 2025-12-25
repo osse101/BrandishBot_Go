@@ -136,16 +136,16 @@ func TestJoinGamble_NonLootboxItem_ShouldReject(t *testing.T) {
 	}
 
 	// Mock a non-lootbox item (e.g., a sword)
-	nonLootboxItem := &domain.Item{ID: 99, InternalName: "weapon_sword"}
+	nonLootboxItem := &domain.Item{ID: 99, InternalName: domain.ItemBlaster}
 
-	repo.On("GetUserByPlatformID", ctx, "twitch", "123").Return(user, nil)
+	repo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "123").Return(user, nil)
 	repo.On("GetGamble", ctx, gambleID).Return(gamble, nil)
 	repo.On("GetItemByID", ctx, 99).Return(nonLootboxItem, nil)
 
-	err := s.JoinGamble(ctx, gambleID, "twitch", "123", "user1", bets)
+	err := s.JoinGamble(ctx, gambleID, domain.PlatformTwitch, "123", "user1", bets)
 
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "not a lootbox")
+	assert.Contains(t, err.Error(), domain.ErrMsgNotALootbox)
 }
 
 // TestExecuteGamble_Concurrent_Idempotent tests Bug #4 fix
@@ -181,10 +181,10 @@ func TestExecuteGamble_Concurrent_Idempotent(t *testing.T) {
 		Return(int64(0), nil).Maybe()
 
 	// Rest of execution for first call
-	lootboxItem := &domain.Item{ID: 1, InternalName: "lootbox1"}
+	lootboxItem := &domain.Item{ID: 1, InternalName: domain.PublicNameLootbox}
 	drops := []lootbox.DroppedItem{{ItemID: 10, Quantity: 5, Value: 100}}
 	repo.On("GetItemByID", ctx, 1).Return(lootboxItem, nil).Maybe()
-	lootboxSvc.On("OpenLootbox", ctx, "lootbox1", 1).Return(drops, nil).Maybe()
+	lootboxSvc.On("OpenLootbox", ctx, domain.PublicNameLootbox, 1).Return(drops, nil).Maybe()
 	tx.On("SaveOpenedItems", ctx, mock.Anything).Return(nil).Maybe()
 
 	tx.On("GetInventory", ctx, "user1").Return(&domain.Inventory{}, nil).Maybe()

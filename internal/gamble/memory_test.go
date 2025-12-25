@@ -31,10 +31,10 @@ func TestStartGamble_NoGoroutineLeak(t *testing.T) {
 		},
 	}
 
-	repo.On("GetUserByPlatformID", mock.Anything, "discord", "user123").Return(user, nil)
+	repo.On("GetUserByPlatformID", mock.Anything, domain.PlatformDiscord, "user123").Return(user, nil)
 	repo.On("GetActiveGamble", mock.Anything).Return(nil, nil)
 	// Bug #8 Fix requires item validation - mock lootbox item
-	lootboxItem := &domain.Item{ID: 1, InternalName: "lootbox_tier1"}
+	lootboxItem := &domain.Item{ID: 1, InternalName: domain.ItemLootbox1}
 	repo.On("GetItemByID", mock.Anything, 1).Return(lootboxItem, nil)
 	repo.On("BeginTx", mock.Anything).Return(tx, nil)
 	tx.On("GetInventory", mock.Anything, user.ID).Return(inventory, nil)
@@ -50,7 +50,7 @@ func TestStartGamble_NoGoroutineLeak(t *testing.T) {
 	// Execute 
 	ctx := context.Background()
 	bets := []domain.LootboxBet{{ItemID: 1, Quantity: 1}}
-	_, err := svc.StartGamble(ctx, "discord", "user123", "tester", bets)
+	_, err := svc.StartGamble(ctx, domain.PlatformDiscord, "user123", "tester", bets)
 
 	if err != nil {
 		t.Logf("StartGamble error (may be expected): %v", err)

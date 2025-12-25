@@ -24,7 +24,19 @@ const (
 	ErrMsgInvalidQuantity = "quantity" // Used in contains checks for various quantity errors
 
 	// Gamble errors
-	ErrMsgGambleAlreadyActive = "a gamble is already active"
+	ErrMsgGambleAlreadyActive        = "a gamble is already active"
+	ErrMsgGambleNotFound             = "gamble not found"
+	ErrMsgNotInJoiningState          = "not in joining state"
+	ErrMsgJoinDeadlinePassed         = "join deadline has passed"
+	ErrMsgAtLeastOneLootboxRequired  = "at least one lootbox bet is required"
+	ErrMsgBetQuantityMustBePositive  = "bet quantity must be positive"
+	ErrMsgFailedToTransitionState    = "failed to transition gamble state"
+	ErrMsgFailedToSaveOpenedItems    = "failed to save opened items"
+	ErrMsgNotALootbox                = "not a lootbox"
+
+	// User service errors
+	ErrMsgNotEnoughItems       = "not enough items"
+	ErrMsgFailedToRegisterUser = "failed to register user"
 
 	// Database/System errors
 	ErrMsgConnectionTimeout = "connection timeout"
@@ -67,6 +79,14 @@ var (
 	ErrInsufficientFunds = errors.New(ErrMsgInsufficientFunds)
 	ErrNotSellable       = errors.New(ErrMsgNotSellable)
 	ErrNotBuyable        = errors.New(ErrMsgNotBuyable)
+
+	// Gamble errors
+	ErrGambleAlreadyActive = errors.New(ErrMsgGambleAlreadyActive)
+
+	// Database/System errors
+	ErrConnectionTimeout = errors.New(ErrMsgConnectionTimeout)
+	ErrDatabaseError     = errors.New(ErrMsgDatabaseError)
+	ErrDeadlockDetected  = errors.New(ErrMsgDeadlockDetected)
 
 	// Cooldown errors
 	ErrOnCooldown = errors.New(ErrMsgOnCooldown)

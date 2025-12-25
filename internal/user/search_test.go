@@ -442,7 +442,7 @@ func TestHandleSearch_DatabaseErrors(t *testing.T) {
 
 		// ASSERT
 		if err != nil {
-			assert.Contains(t, err.Error(), "failed to register user")
+			assert.Contains(t, err.Error(), domain.ErrMsgFailedToRegisterUser)
 		} else {
 			t.Error("Expected error for database failure, but got nil")
 		}
