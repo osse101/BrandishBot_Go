@@ -422,7 +422,11 @@ func TestHandleSearch_InvalidInputs(t *testing.T) {
 			// ASSERT
 			if tt.wantErr {
 				require.Error(t, err, "Expected error for: %s", tt.name)
+				if tt.name == "missing lootbox item" {
+					assert.ErrorIs(t, err, domain.ErrItemNotFound)
+				} else {
 					assert.Contains(t, err.Error(), tt.errMsg)
+				}
 			} else {
 				assert.NoError(t, err)
 			}
