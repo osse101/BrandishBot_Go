@@ -111,6 +111,12 @@ func main() {
 	cmd, handler = discord.AdminTreeStatusCommand()
 	bot.Registry.Register(cmd, handler)
 
+	cmd, handler = discord.AdminStartVotingCommand()
+	bot.Registry.Register(cmd, handler)
+
+	cmd, handler = discord.AdminEndVotingCommand()
+	bot.Registry.Register(cmd, handler)
+
 	cmd, handler = discord.InfoCommand()
 	bot.Registry.Register(cmd, handler)
 

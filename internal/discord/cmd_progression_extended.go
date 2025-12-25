@@ -237,3 +237,91 @@ func AdminTreeStatusCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 
 	return cmd, handler
 }
+
+// AdminStartVotingCommand returns the start voting command
+func AdminStartVotingCommand() (*discordgo.ApplicationCommand, CommandHandler) {
+	cmd := &discordgo.ApplicationCommand{
+		Name:        "admin-start-voting",
+		Description: "[Admin] Start a new voting session",
+		DefaultMemberPermissions: &[]int64{discordgo.PermissionAdministrator}[0],
+	}
+
+	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
+		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
+		}); err != nil {
+			slog.Error("Failed to send deferred response", "error", err)
+			return
+		}
+
+		msg, err := client.AdminStartVoting()
+		if err != nil {
+			errorMsg := fmt.Sprintf("❌ Failed to start voting: %v", err)
+			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+				Content: &errorMsg,
+			})
+			return
+		}
+
+		embed := &discordgo.MessageEmbed{
+			Title:       "🗳️ Admin Start Voting",
+			Description: msg,
+			Color:       0x9B59B6, // Purple
+			Footer: &discordgo.MessageEmbedFooter{
+				Text: "BrandishBot Admin",
+			},
+		}
+
+		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			Embeds: &[]*discordgo.MessageEmbed{embed},
+		}); err != nil {
+			slog.Error("Failed to edit interaction response", "error", err)
+		}
+	}
+
+	return cmd, handler
+}
+
+// AdminEndVotingCommand returns the end voting command
+func AdminEndVotingCommand() (*discordgo.ApplicationCommand, CommandHandler) {
+	cmd := &discordgo.ApplicationCommand{
+		Name:        "admin-end-voting",
+		Description: "[Admin] End current voting session",
+		DefaultMemberPermissions: &[]int64{discordgo.PermissionAdministrator}[0],
+	}
+
+	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
+		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
+		}); err != nil {
+			slog.Error("Failed to send deferred response", "error", err)
+			return
+		}
+
+		msg, err := client.AdminEndVoting()
+		if err != nil {
+			errorMsg := fmt.Sprintf("❌ Failed to end voting: %v", err)
+			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+				Content: &errorMsg,
+			})
+			return
+		}
+
+		embed := &discordgo.MessageEmbed{
+			Title:       "🛑 Admin End Voting",
+			Description: msg,
+			Color:       0x9B59B6, // Purple
+			Footer: &discordgo.MessageEmbedFooter{
+				Text: "BrandishBot Admin",
+			},
+		}
+
+		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			Embeds: &[]*discordgo.MessageEmbed{embed},
+		}); err != nil {
+			slog.Error("Failed to edit interaction response", "error", err)
+		}
+	}
+
+	return cmd, handler
+}
