@@ -134,7 +134,7 @@ func main() {
 
 	// Initialize Job service (needed by user, economy, crafting, gamble)
 	jobRepo := postgres.NewJobRepository(dbPool)
-	jobService := job.NewService(jobRepo, progressionService)
+	jobService := job.NewService(jobRepo, progressionService, statsService)
 	
 	// Initialize services that depend on job service
 	economyService := economy.NewService(userRepo, jobService)

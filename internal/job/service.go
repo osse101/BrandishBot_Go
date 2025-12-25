@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
+	"github.com/osse101/BrandishBot_Go/internal/stats"
 )
 
 // Repository defines the data access interface for job operations
@@ -49,13 +50,15 @@ type Service interface {
 type service struct {
 	repo           Repository
 	progressionSvc ProgressionService
+	statsSvc       stats.Service
 }
 
 // NewService creates a new job service
-func NewService(repo Repository, progressionSvc ProgressionService) Service {
+func NewService(repo Repository, progressionSvc ProgressionService, statsSvc stats.Service) Service {
 	return &service{
 		repo:           repo,
 		progressionSvc: progressionSvc,
+		statsSvc:       statsSvc,
 	}
 }
 
@@ -251,6 +254,16 @@ func (s *service) AwardXP(ctx context.Context, userID, jobKey string, baseAmount
 		"new_level", newLevel,
 		"leveled_up", newLevel > oldLevel,
 	)
+
+	if newLevel > oldLevel {
+		if s.statsSvc != nil {
+			_ = s.statsSvc.RecordUserEvent(ctx, userID, domain.EventJobLevelUp, map[string]interface{}{
+				"job":       jobKey,
+				"level":     newLevel,
+				"old_level": oldLevel,
+			})
+		}
+	}
 
 	return &domain.XPAwardResult{
 		JobKey:    jobKey,
