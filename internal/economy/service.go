@@ -69,7 +69,7 @@ func (s *service) getSellEntities(ctx context.Context, platform, platformID, ite
 		return nil, nil, nil, fmt.Errorf("failed to get user: %w", err)
 	}
 	if user == nil {
-		return nil, nil, nil, fmt.Errorf("user not found")
+		return nil, nil, nil, domain.ErrUserNotFound
 	}
 
 	item, err := s.repo.GetItemByName(ctx, itemName)
@@ -78,7 +78,7 @@ func (s *service) getSellEntities(ctx context.Context, platform, platformID, ite
 		return nil, nil, nil, fmt.Errorf("failed to get item: %w", err)
 	}
 	if item == nil {
-		return nil, nil, nil, fmt.Errorf("item not found: %s", itemName)
+		return nil, nil, nil, fmt.Errorf("%w: %s", domain.ErrItemNotFound, itemName)
 	}
 
 	moneyItem, err := s.repo.GetItemByName(ctx, domain.ItemMoney)
@@ -87,7 +87,7 @@ func (s *service) getSellEntities(ctx context.Context, platform, platformID, ite
 		return nil, nil, nil, fmt.Errorf("failed to get money item: %w", err)
 	}
 	if moneyItem == nil {
-		return nil, nil, nil, fmt.Errorf("money item not found")
+		return nil, nil, nil, fmt.Errorf("%w: %s", domain.ErrItemNotFound, domain.ItemMoney)
 	}
 
 	return user, item, moneyItem, nil
@@ -185,10 +185,10 @@ func (s *service) SellItem(ctx context.Context, platform, platformID, username, 
 // validateBuyRequest validates the buy request parameters
 func validateBuyRequest(quantity int) error {
 	if quantity <= 0 {
-		return fmt.Errorf("invalid quantity: %d", quantity)
+		return fmt.Errorf("invalid %w: %d", domain.ErrInvalidInput, quantity)
 	}
 	if quantity > domain.MaxTransactionQuantity {
-		return fmt.Errorf("quantity %d exceeds maximum %d", quantity, domain.MaxTransactionQuantity)
+		return fmt.Errorf("quantity %d exceeds maximum allowed (%d)", quantity, domain.MaxTransactionQuantity)
 	}
 	return nil
 }

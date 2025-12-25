@@ -14,6 +14,7 @@ const (
 	// Inventory errors
 	ErrMsgInsufficientQuantity = "insufficient quantity"
 	ErrMsgInventoryFull        = "inventory is full"
+	ErrMsgNotInInventory       = "not in inventory"
 
 	// Economy errors
 	ErrMsgInsufficientFunds = "insufficient funds"
@@ -42,6 +43,13 @@ const (
 	ErrMsgConnectionTimeout = "connection timeout"
 	ErrMsgDatabaseError     = "database error"
 	ErrMsgDeadlockDetected  = "deadlock detected"
+	ErrMsgFailedToGetUser   = "failed to get user"
+	ErrMsgFailedToGetItem   = "failed to get item"
+	ErrMsgFailedToGetInventory   = "failed to get inventory"
+	ErrMsgFailedToUpdateInventory   = "failed to update inventory"
+	ErrMsgFailedToBeginTx   = "failed to begin transaction"
+	ErrMsgFailedToCommitTx   = "failed to commit transaction"
+	ErrMsgFailedToRollbackTx   = "failed to rollback transaction"
 
 	// Cooldown errors
 	ErrMsgOnCooldown = "action on cooldown"
@@ -74,6 +82,7 @@ var (
 	// Inventory errors
 	ErrInsufficientQuantity = errors.New(ErrMsgInsufficientQuantity)
 	ErrInventoryFull        = errors.New(ErrMsgInventoryFull)
+	ErrNotInInventory       = errors.New(ErrMsgNotInInventory)
 
 	// Economy errors
 	ErrInsufficientFunds = errors.New(ErrMsgInsufficientFunds)
@@ -81,12 +90,29 @@ var (
 	ErrNotBuyable        = errors.New(ErrMsgNotBuyable)
 
 	// Gamble errors
-	ErrGambleAlreadyActive = errors.New(ErrMsgGambleAlreadyActive)
+	ErrGambleAlreadyActive       = errors.New(ErrMsgGambleAlreadyActive)
+	ErrGambleNotFound            = errors.New(ErrMsgGambleNotFound)
+	ErrNotInJoiningState         = errors.New(ErrMsgNotInJoiningState)
+	ErrJoinDeadlinePassed        = errors.New(ErrMsgJoinDeadlinePassed)
+	ErrAtLeastOneLootboxRequired = errors.New(ErrMsgAtLeastOneLootboxRequired)
+	ErrBetQuantityMustBePositive = errors.New(ErrMsgBetQuantityMustBePositive)
+	ErrNotALootbox               = errors.New(ErrMsgNotALootbox)
+
+	// User service errors
+	ErrNotEnoughItems       = errors.New(ErrMsgNotEnoughItems)
+	ErrFailedToRegisterUser = errors.New(ErrMsgFailedToRegisterUser)
 
 	// Database/System errors
 	ErrConnectionTimeout = errors.New(ErrMsgConnectionTimeout)
 	ErrDatabaseError     = errors.New(ErrMsgDatabaseError)
 	ErrDeadlockDetected  = errors.New(ErrMsgDeadlockDetected)
+	ErrFailedToGetUser   = errors.New(ErrMsgFailedToGetUser)
+	ErrFailedToGetItem   = errors.New(ErrMsgFailedToGetItem)
+	ErrFailedToGetInventory   = errors.New(ErrMsgFailedToGetInventory)
+	ErrFailedToUpdateInventory   = errors.New(ErrMsgFailedToUpdateInventory)
+	ErrFailedToBeginTx   = errors.New(ErrMsgFailedToBeginTx)
+	ErrFailedToCommitTx   = errors.New(ErrMsgFailedToCommitTx)
+	ErrFailedToRollbackTx   = errors.New(ErrMsgFailedToRollbackTx)
 
 	// Cooldown errors
 	ErrOnCooldown = errors.New(ErrMsgOnCooldown)

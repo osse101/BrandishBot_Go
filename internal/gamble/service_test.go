@@ -251,7 +251,7 @@ func TestStartGamble_NoBets(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Nil(t, gamble)
-	assert.Contains(t, err.Error(), domain.ErrMsgAtLeastOneLootboxRequired)
+	assert.ErrorIs(t, err, domain.ErrAtLeastOneLootboxRequired)
 }
 
 func TestStartGamble_InvalidBetQuantity(t *testing.T) {
@@ -265,7 +265,7 @@ func TestStartGamble_InvalidBetQuantity(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Nil(t, gamble)
-	assert.Contains(t, err.Error(), domain.ErrMsgBetQuantityMustBePositive)
+	assert.ErrorIs(t, err, domain.ErrBetQuantityMustBePositive)
 }
 
 func TestStartGamble_UserNotFound(t *testing.T) {
@@ -281,7 +281,7 @@ func TestStartGamble_UserNotFound(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Nil(t, gamble)
-	assert.Contains(t, err.Error(), domain.ErrMsgUserNotFound)
+	assert.ErrorIs(t, err, domain.ErrUserNotFound)
 	repo.AssertExpectations(t)
 }
 
@@ -301,7 +301,7 @@ func TestStartGamble_ActiveGambleExists(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Nil(t, gamble)
-	assert.Contains(t, err.Error(), domain.ErrMsgGambleAlreadyActive)
+	assert.ErrorIs(t, err, domain.ErrGambleAlreadyActive)
 	repo.AssertExpectations(t)
 }
 
@@ -330,7 +330,7 @@ func TestStartGamble_InsufficientLootboxes(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Nil(t, gamble)
-	assert.Contains(t, err.Error(), domain.ErrMsgInsufficientQuantity)
+	assert.ErrorIs(t, err, domain.ErrInsufficientQuantity)
 	repo.AssertExpectations(t)
 	tx.AssertExpectations(t)
 }
@@ -360,7 +360,7 @@ func TestStartGamble_LootboxNotInInventory(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Nil(t, gamble)
-	assert.Contains(t, err.Error(), domain.ErrMsgItemNotFound)
+	assert.ErrorIs(t, err, domain.ErrItemNotFound)
 	repo.AssertExpectations(t)
 	tx.AssertExpectations(t)
 }
@@ -417,7 +417,7 @@ func TestJoinGamble_NoBets(t *testing.T) {
 	err := s.JoinGamble(ctx, gambleID, domain.PlatformTwitch, "456", "joiner", bets)
 
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), domain.ErrMsgAtLeastOneLootboxRequired)
+	assert.ErrorIs(t, err, domain.ErrAtLeastOneLootboxRequired)
 }
 
 func TestJoinGamble_GambleNotFound(t *testing.T) {
@@ -435,7 +435,7 @@ func TestJoinGamble_GambleNotFound(t *testing.T) {
 	err := s.JoinGamble(ctx, gambleID, domain.PlatformTwitch, "456", "joiner", bets)
 
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), domain.ErrMsgGambleNotFound)
+	assert.ErrorIs(t, err, domain.ErrGambleNotFound)
 	repo.AssertExpectations(t)
 }
 
@@ -459,7 +459,7 @@ func TestJoinGamble_WrongState(t *testing.T) {
 	err := s.JoinGamble(ctx, gambleID, domain.PlatformTwitch, "456", "joiner", bets)
 
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), domain.ErrMsgNotInJoiningState)
+	assert.ErrorIs(t, err, domain.ErrNotInJoiningState)
 	repo.AssertExpectations(t)
 }
 
@@ -483,7 +483,7 @@ func TestJoinGamble_DeadlinePassed(t *testing.T) {
 	err := s.JoinGamble(ctx, gambleID, domain.PlatformTwitch, "456", "joiner", bets)
 
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), domain.ErrMsgJoinDeadlinePassed)
+	assert.ErrorIs(t, err, domain.ErrJoinDeadlinePassed)
 	repo.AssertExpectations(t)
 }
 
@@ -517,7 +517,7 @@ func TestJoinGamble_InsufficientLootboxes(t *testing.T) {
 	err := s.JoinGamble(ctx, gambleID, domain.PlatformTwitch, "456", "joiner", bets)
 
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), domain.ErrMsgInsufficientQuantity)
+	assert.ErrorIs(t, err, domain.ErrInsufficientQuantity)
 	repo.AssertExpectations(t)
 	tx.AssertExpectations(t)
 }
@@ -624,7 +624,7 @@ func TestExecuteGamble_GambleNotFound(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
-	assert.Contains(t, err.Error(), domain.ErrMsgGambleNotFound)
+	assert.ErrorIs(t, err, domain.ErrGambleNotFound)
 	repo.AssertExpectations(t)
 }
 
@@ -665,7 +665,7 @@ func TestExecuteGamble_WrongState(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
-	assert.Contains(t, err.Error(), domain.ErrMsgNotInJoiningState)
+	assert.ErrorIs(t, err, domain.ErrNotInJoiningState)
 	repo.AssertExpectations(t)
 }
 

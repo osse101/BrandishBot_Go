@@ -87,11 +87,11 @@ func (s *service) StartGamble(ctx context.Context, platform, platformID, usernam
 
 	// Validate input
 	if len(bets) == 0 {
-		return nil, fmt.Errorf("at least one lootbox bet is required")
+		return nil, domain.ErrAtLeastOneLootboxRequired
 	}
 	for _, bet := range bets {
 		if bet.Quantity <= 0 {
-			return nil, fmt.Errorf("bet quantity must be positive")
+			return nil, domain.ErrBetQuantityMustBePositive
 		}
 	}
 
@@ -101,7 +101,7 @@ func (s *service) StartGamble(ctx context.Context, platform, platformID, usernam
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 	if user == nil {
-		return nil, fmt.Errorf("user not found")
+		return nil, domain.ErrUserNotFound
 	}
 
 	// Check for active gamble
@@ -110,7 +110,7 @@ func (s *service) StartGamble(ctx context.Context, platform, platformID, usernam
 		return nil, fmt.Errorf("failed to check active gamble: %w", err)
 	}
 	if active != nil {
-		return nil, fmt.Errorf("a gamble is already active")
+		return nil, domain.ErrGambleAlreadyActive
 	}
 
 	// Create gamble record
@@ -129,10 +129,10 @@ func (s *service) StartGamble(ctx context.Context, platform, platformID, usernam
 			return nil, fmt.Errorf("failed to validate bet item %d: %w", bet.ItemID, err)
 		}
 		if item == nil {
-			return nil, fmt.Errorf("bet item %d does not exist", bet.ItemID)
+			return nil, fmt.Errorf("%w: bet item %d", domain.ErrItemNotFound, bet.ItemID)
 		}
 		if len(item.InternalName) < 7 || item.InternalName[:7] != "lootbox" {
-			return nil, fmt.Errorf("item %s (id:%d) is not a lootbox", item.InternalName, item.ID)
+			return nil, fmt.Errorf("%w: %s (id:%d)", domain.ErrNotALootbox, item.InternalName, item.ID)
 		}
 	}
 
@@ -218,7 +218,7 @@ func (s *service) JoinGamble(ctx context.Context, gambleID uuid.UUID, platform, 
 
 	// Validate bets
 	if len(bets) == 0 {
-		return fmt.Errorf("at least one lootbox bet is required")
+		return domain.ErrAtLeastOneLootboxRequired
 	}
 
 	// Get User
@@ -227,7 +227,7 @@ func (s *service) JoinGamble(ctx context.Context, gambleID uuid.UUID, platform, 
 		return fmt.Errorf("failed to get user: %w", err)
 	}
 	if user == nil {
-		return fmt.Errorf("user not found")
+		return domain.ErrUserNotFound
 	}
 
 	// Get Gamble
@@ -236,13 +236,13 @@ func (s *service) JoinGamble(ctx context.Context, gambleID uuid.UUID, platform, 
 		return fmt.Errorf("failed to get gamble: %w", err)
 	}
 	if gamble == nil {
-		return fmt.Errorf("gamble not found")
+		return domain.ErrGambleNotFound
 	}
 	if gamble.State != domain.GambleStateJoining {
-		return fmt.Errorf("gamble is not in joining state")
+		return domain.ErrNotInJoiningState
 	}
 	if time.Now().After(gamble.JoinDeadline) {
-		return fmt.Errorf("gamble join deadline has passed")
+		return domain.ErrJoinDeadlinePassed
 	}
 
 	// Check if user has already joined
@@ -259,10 +259,10 @@ func (s *service) JoinGamble(ctx context.Context, gambleID uuid.UUID, platform, 
 			return fmt.Errorf("failed to validate bet item %d: %w", bet.ItemID, err)
 		}
 		if item == nil {
-			return fmt.Errorf("bet item %d does not exist", bet.ItemID)
+			return fmt.Errorf("%w: bet item %d", domain.ErrItemNotFound, bet.ItemID)
 		}
 		if len(item.InternalName) < 7 || item.InternalName[:7] != "lootbox" {
-			return fmt.Errorf("item %s (id:%d) is not a lootbox", item.InternalName, item.ID)
+			return fmt.Errorf("%w: %s (id:%d)", domain.ErrNotALootbox, item.InternalName, item.ID)
 		}
 	}
 
@@ -325,7 +325,7 @@ func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.Gamb
 		return nil, fmt.Errorf("failed to get gamble: %w", err)
 	}
 	if gamble == nil {
-		return nil, fmt.Errorf("gamble not found")
+		return nil, domain.ErrGambleNotFound
 	}
 
 	// Check if already completed (graceful handling of duplicate execution)
@@ -336,7 +336,7 @@ func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.Gamb
 
 	// Only execute if in Joining state
 	if gamble.State != domain.GambleStateJoining {
-		return nil, fmt.Errorf("gamble is not in joining state (current: %s)", gamble.State)
+		return nil, fmt.Errorf("%w (current: %s)", domain.ErrNotInJoiningState, gamble.State)
 	}
 
 	// Enforce deadline
@@ -576,7 +576,7 @@ func consumeItem(inventory *domain.Inventory, itemID, quantity int) error {
 	for i := range inventory.Slots {
 		if inventory.Slots[i].ItemID == itemID {
 			if inventory.Slots [i].Quantity < quantity {
-				return fmt.Errorf("insufficient quantity")
+				return domain.ErrInsufficientQuantity
 			}
 			if inventory.Slots[i].Quantity == quantity {
 				// Remove slot
@@ -588,7 +588,7 @@ func consumeItem(inventory *domain.Inventory, itemID, quantity int) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("item not found")
+	return domain.ErrItemNotFound
 }
 
 // calculateTotalLootboxes sums up lootbox quantities from bets

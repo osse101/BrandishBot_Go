@@ -145,7 +145,7 @@ func TestJoinGamble_NonLootboxItem_ShouldReject(t *testing.T) {
 	err := s.JoinGamble(ctx, gambleID, domain.PlatformTwitch, "123", "user1", bets)
 
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), domain.ErrMsgNotALootbox)
+	assert.ErrorIs(t, err, domain.ErrNotALootbox)
 }
 
 // TestExecuteGamble_Concurrent_Idempotent tests Bug #4 fix
