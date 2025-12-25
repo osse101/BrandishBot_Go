@@ -16,14 +16,14 @@ import (
 func TestStartVotingSession_NoGoroutineLeak(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestNodes(repo)
-	svc := NewService(repo)
+	svc := NewService(repo, nil)
 
 	checker := leaktest.NewGoroutineChecker(t)
 
 	// Execute multiple voting session starts
 	ctx := context.Background()
 	for i := 0; i < 3; i++ {
-		_ = svc.StartVotingSession(ctx)
+		_ = svc.StartVotingSession(ctx, nil)
 		// Some sessions may fail - that's expected
 	}
 
@@ -34,11 +34,11 @@ func TestStartVotingSession_NoGoroutineLeak(t *testing.T) {
 func TestVoteForUnlock_NoGoroutineLeak(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestNodes(repo)
-	svc := NewService(repo)
+	svc := NewService(repo, nil)
 
 	// Start a voting session first
 	ctx := context.Background()
-	_ = svc.StartVotingSession(ctx)
+	_ = svc.StartVotingSession(ctx, nil)
 
 	checker := leaktest.NewGoroutineChecker(t)
 
@@ -59,7 +59,7 @@ func TestVoteForUnlock_NoGoroutineLeak(t *testing.T) {
 func TestEndVoting_NoGoroutineLeak(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestNodes(repo)
-	svc := NewService(repo)
+	svc := NewService(repo, nil)
 
 	ctx := context.Background()
 	
@@ -67,7 +67,7 @@ func TestEndVoting_NoGoroutineLeak(t *testing.T) {
 
 	// Start and end multiple voting cycles
 	for i := 0; i < 3; i++ {
-		_ = svc.StartVotingSession(ctx)
+		_ = svc.StartVotingSession(ctx, nil)
 		
 		// Cast some votes
 		session, _ := svc.GetActiveVotingSession(ctx)
@@ -86,11 +86,11 @@ func TestEndVoting_NoGoroutineLeak(t *testing.T) {
 func TestAddContribution_NoGoroutineLeak(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestNodes(repo)
-	svc := NewService(repo)
+	svc := NewService(repo, nil)
 
 	// Start progress tracking
 	ctx := context.Background()
-	_ = svc.StartVotingSession(ctx)
+	_ = svc.StartVotingSession(ctx, nil)
 
 	checker := leaktest.NewGoroutineChecker(t)
 
@@ -106,12 +106,12 @@ func TestAddContribution_NoGoroutineLeak(t *testing.T) {
 func TestCheckAndUnlockNode_NoGoroutineLeak(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestNodes(repo)
-	svc := NewService(repo)
+	svc := NewService(repo, nil)
 
 	ctx := context.Background()
 
 	// Setup: Create progress with enough points
-	_ = svc.StartVotingSession(ctx)
+	_ = svc.StartVotingSession(ctx, nil)
 	session, _ := svc.GetActiveVotingSession(ctx)
 	if session != nil && len(session.Options) > 0 && session.Options[0].NodeDetails != nil {
 		_ = svc.VoteForUnlock(ctx, "voter1", session.Options[0].NodeDetails.NodeKey)
@@ -132,7 +132,7 @@ func TestCheckAndUnlockNode_NoGoroutineLeak(t *testing.T) {
 
 func TestRecordEngagement_NoGoroutineLeak(t *testing.T) {
 	repo := NewMockRepository()
-	svc := NewService(repo)
+	svc := NewService(repo, nil)
 
 	checker := leaktest.NewGoroutineChecker(t)
 
@@ -162,10 +162,10 @@ func TestRecordEngagement_NoGoroutineLeak(t *testing.T) {
 func TestGetProgressionStatus_NoGoroutineLeak(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestNodes(repo)
-	svc := NewService(repo)
+	svc := NewService(repo, nil)
 
 	ctx := context.Background()
-	_ = svc.StartVotingSession(ctx)
+	_ = svc.StartVotingSession(ctx, nil)
 
 	checker := leaktest.NewGoroutineChecker(t)
 
