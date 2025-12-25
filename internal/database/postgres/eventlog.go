@@ -3,6 +3,8 @@ package postgres
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -44,46 +46,47 @@ func (r *eventLogRepository) LogEvent(ctx context.Context, eventType string, use
 
 // GetEvents retrieves events based on filter criteria
 func (r *eventLogRepository) GetEvents(ctx context.Context, filter eventlog.EventFilter) ([]eventlog.Event, error) {
-	query := `
+	var queryBuilder strings.Builder
+	queryBuilder.WriteString(`
 		SELECT id, event_type, user_id, payload, metadata, created_at
 		FROM events
-		WHERE 1=1
-	`
+		WHERE 1=1`)
+
 	args := []interface{}{}
 	argNum := 1
 
 	if filter.UserID != nil {
-		query += ` AND user_id = $` + string(rune('0'+argNum))
+		fmt.Fprintf(&queryBuilder, " AND user_id = $%d", argNum)
 		args = append(args, *filter.UserID)
 		argNum++
 	}
 
 	if filter.EventType != nil {
-		query += ` AND event_type = $` + string(rune('0'+argNum))
+		fmt.Fprintf(&queryBuilder, " AND event_type = $%d", argNum)
 		args = append(args, *filter.EventType)
 		argNum++
 	}
 
 	if filter.Since != nil {
-		query += ` AND created_at >= $` + string(rune('0'+argNum))
+		fmt.Fprintf(&queryBuilder, " AND created_at >= $%d", argNum)
 		args = append(args, *filter.Since)
 		argNum++
 	}
 
 	if filter.Until != nil {
-		query += ` AND created_at <= $` + string(rune('0'+argNum))
+		fmt.Fprintf(&queryBuilder, " AND created_at <= $%d", argNum)
 		args = append(args, *filter.Until)
 		argNum++
 	}
 
-	query += ` ORDER BY created_at DESC`
+	queryBuilder.WriteString(" ORDER BY created_at DESC")
 
 	if filter.Limit > 0 {
-		query += ` LIMIT $` + string(rune('0'+argNum))
+		fmt.Fprintf(&queryBuilder, " LIMIT $%d", argNum)
 		args = append(args, filter.Limit)
 	}
 
-	rows, err := r.db.Query(ctx, query, args...)
+	rows, err := r.db.Query(ctx, queryBuilder.String(), args...)
 	if err != nil {
 		return nil, err
 	}
