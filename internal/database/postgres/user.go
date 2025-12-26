@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
@@ -201,6 +202,8 @@ func (r *UserRepository) GetUserByPlatformID(ctx context.Context, platform, plat
 func (r *UserRepository) GetInventory(ctx context.Context, userID string) (*domain.Inventory, error) {
 	query := `SELECT inventory_data FROM user_inventory WHERE user_id = $1`
 	var inventory domain.Inventory
+	// Reverted to manual Scan because we are scanning a single JSONB column into a struct
+	// that implements Scanner/Unmarshaler, not mapping columns to fields.
 	err := r.db.QueryRow(ctx, query, userID).Scan(&inventory)
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -235,12 +238,9 @@ func (r *UserRepository) GetItemByName(ctx context.Context, itemName string) (*d
 		WHERE internal_name = $1
 	`
 	var item domain.Item
-	err := r.db.QueryRow(ctx, query, itemName).Scan(
-		&item.ID, &item.InternalName, &item.PublicName, &item.DefaultDisplay,
-		&item.Description, &item.BaseValue, &item.Handler,
-	)
+	err := pgxscan.Get(ctx, r.db, &item, query, itemName)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if pgxscan.NotFound(err) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to get item by name: %w", err)
@@ -280,26 +280,9 @@ func (r *UserRepository) GetItemsByIDs(ctx context.Context, itemIDs []int) ([]do
 		FROM items
 		WHERE item_id = ANY($1)
 	`
-	rows, err := r.db.Query(ctx, query, itemIDs)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get items by ids: %w", err)
-	}
-	defer rows.Close()
-
 	var items []domain.Item
-	for rows.Next() {
-		var item domain.Item
-		if err := rows.Scan(
-			&item.ID, &item.InternalName, &item.PublicName, &item.DefaultDisplay,
-			&item.Description, &item.BaseValue, &item.Handler,
-		); err != nil {
-			return nil, fmt.Errorf("failed to scan item: %w", err)
-		}
-		items = append(items, item)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating rows: %w", err)
+	if err := pgxscan.Select(ctx, r.db, &items, query, itemIDs); err != nil {
+		return nil, fmt.Errorf("failed to get items by ids: %w", err)
 	}
 
 	return items, nil
@@ -316,26 +299,9 @@ func (r *UserRepository) GetItemsByNames(ctx context.Context, names []string) ([
 		FROM items
 		WHERE internal_name = ANY($1)
 	`
-	rows, err := r.db.Query(ctx, query, names)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get items by names: %w", err)
-	}
-	defer rows.Close()
-
 	var items []domain.Item
-	for rows.Next() {
-		var item domain.Item
-		if err := rows.Scan(
-			&item.ID, &item.InternalName, &item.PublicName, &item.DefaultDisplay,
-			&item.Description, &item.BaseValue, &item.Handler,
-		); err != nil {
-			return nil, fmt.Errorf("failed to scan item: %w", err)
-		}
-		items = append(items, item)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating rows: %w", err)
+	if err := pgxscan.Select(ctx, r.db, &items, query, names); err != nil {
+		return nil, fmt.Errorf("failed to get items by names: %w", err)
 	}
 
 	return items, nil
@@ -366,9 +332,9 @@ func (r *UserRepository) GetItemByID(ctx context.Context, id int) (*domain.Item,
 func (r *UserRepository) GetUserByUsername(ctx context.Context, username string) (*domain.User, error) {
 	query := `SELECT user_id, username, created_at, updated_at FROM users WHERE username = $1`
 	var user domain.User
-	err := r.db.QueryRow(ctx, query, username).Scan(&user.ID, &user.Username, &user.CreatedAt, &user.UpdatedAt)
+	err := pgxscan.Get(ctx, r.db, &user, query, username)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if pgxscan.NotFound(err) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to get user by username: %w", err)
@@ -386,23 +352,9 @@ func (r *UserRepository) GetSellablePrices(ctx context.Context) ([]domain.Item, 
 		WHERE it.type_name = 'sellable'
 		ORDER BY i.internal_name
 	`
-	rows, err := r.db.Query(ctx, query)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query sellable items: %w", err)
-	}
-	defer rows.Close()
-
 	var items []domain.Item
-	for rows.Next() {
-		var item domain.Item
-		if err := rows.Scan(&item.ID, &item.InternalName, &item.Description, &item.BaseValue); err != nil {
-			return nil, fmt.Errorf("failed to scan item: %w", err)
-		}
-		items = append(items, item)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating rows: %w", err)
+	if err := pgxscan.Select(ctx, r.db, &items, query); err != nil {
+		return nil, fmt.Errorf("failed to query sellable items: %w", err)
 	}
 
 	return items, nil
@@ -469,7 +421,7 @@ func (r *UserRepository) UnlockRecipe(ctx context.Context, userID string, recipe
 // GetUnlockedRecipesForUser retrieves all recipes unlocked by a specific user
 func (r *UserRepository) GetUnlockedRecipesForUser(ctx context.Context, userID string) ([]crafting.UnlockedRecipeInfo, error) {
 	query := `
-		SELECT i.internal_name, r.target_item_id
+		SELECT i.internal_name AS item_name, r.target_item_id AS item_id
 		FROM crafting_recipes r
 		JOIN recipe_unlocks ru ON r.recipe_id = ru.recipe_id
 		JOIN items i ON r.target_item_id = i.item_id
@@ -477,23 +429,9 @@ func (r *UserRepository) GetUnlockedRecipesForUser(ctx context.Context, userID s
 		ORDER BY i.internal_name
 	`
 
-	rows, err := r.db.Query(ctx, query, userID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query unlocked recipes: %w", err)
-	}
-	defer rows.Close()
-
 	var recipes []crafting.UnlockedRecipeInfo
-	for rows.Next() {
-		var recipe crafting.UnlockedRecipeInfo
-		if err := rows.Scan(&recipe.ItemName, &recipe.ItemID); err != nil {
-			return nil, fmt.Errorf("failed to scan recipe: %w", err)
-		}
-		recipes = append(recipes, recipe)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating rows: %w", err)
+	if err := pgxscan.Select(ctx, r.db, &recipes, query, userID); err != nil {
+		return nil, fmt.Errorf("failed to query unlocked recipes: %w", err)
 	}
 
 	return recipes, nil
