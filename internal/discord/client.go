@@ -800,6 +800,105 @@ func (c *APIClient) GetRecipes() (string, error) {
 	return recipesResp.Message, nil
 }
 
+// GetJobBonus retrieves the active bonus for a job
+func (c *APIClient) GetJobBonus(userID, jobKey, bonusType string) (int, error) {
+	params := url.Values{}
+	params.Set("user_id", userID)
+	params.Set("job_key", jobKey)
+	params.Set("bonus_type", bonusType)
+
+	path := fmt.Sprintf("/jobs/bonus?%s", params.Encode())
+	resp, err := c.doRequest(http.MethodGet, path, nil)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		var errResp struct {
+			Error string `json:"error"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
+			return 0, fmt.Errorf("API error: %s", errResp.Error)
+		}
+		return 0, fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	var bonusResp struct {
+		BonusVal int `json:"bonus_val"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&bonusResp); err != nil {
+		return 0, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return bonusResp.BonusVal, nil
+}
+
+// AdminAddContribution adds contribution points (admin only)
+func (c *APIClient) AdminAddContribution(amount int) (string, error) {
+	req := map[string]interface{}{
+		"amount": amount,
+	}
+
+	resp, err := c.doRequest(http.MethodPost, "/progression/admin/contribution", req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		var errResp struct {
+			Error string `json:"error"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
+			return "", fmt.Errorf("API error: %s", errResp.Error)
+		}
+		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	var contribResp struct {
+		Message string `json:"message"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&contribResp); err != nil {
+		return "", fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return contribResp.Message, nil
+}
+
+// GetUserTimeout retrieves timeout status for a user
+func (c *APIClient) GetUserTimeout(username string) (bool, float64, error) {
+	params := url.Values{}
+	params.Set("username", username)
+
+	path := fmt.Sprintf("/user/timeout?%s", params.Encode())
+	resp, err := c.doRequest(http.MethodGet, path, nil)
+	if err != nil {
+		return false, 0, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		var errResp struct {
+			Error string `json:"error"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
+			return false, 0, fmt.Errorf("API error: %s", errResp.Error)
+		}
+		return false, 0, fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	var timeoutResp struct {
+		IsTimedOut       bool    `json:"is_timed_out"`
+		RemainingSeconds float64 `json:"remaining_seconds"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&timeoutResp); err != nil {
+		return false, 0, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return timeoutResp.IsTimedOut, timeoutResp.RemainingSeconds, nil
+}
+
 // GetLeaderboard retrieves leaderboard rankings
 func (c *APIClient) GetLeaderboard(metric string, limit int) (string, error) {
 	params := url.Values{}

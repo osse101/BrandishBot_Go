@@ -325,3 +325,58 @@ func AdminEndVotingCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 
 	return cmd, handler
 }
+
+// AdminAddContributionCommand returns the admin add contribution command
+func AdminAddContributionCommand() (*discordgo.ApplicationCommand, CommandHandler) {
+	cmd := &discordgo.ApplicationCommand{
+		Name:        "admin-contribution",
+		Description: "[Admin] Add progression contribution points",
+		Options: []*discordgo.ApplicationCommandOption{
+			{
+				Type:        discordgo.ApplicationCommandOptionInteger,
+				Name:        "amount",
+				Description: "Amount of contribution points to add",
+				Required:    true,
+			},
+		},
+		DefaultMemberPermissions: &[]int64{discordgo.PermissionAdministrator}[0],
+	}
+
+	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
+		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
+		}); err != nil {
+			slog.Error("Failed to send deferred response", "error", err)
+			return
+		}
+
+		options := i.ApplicationCommandData().Options
+		amount := int(options[0].IntValue())
+
+		msg, err := client.AdminAddContribution(amount)
+		if err != nil {
+			errorMsg := fmt.Sprintf("❌ Failed to add contribution: %v", err)
+			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+				Content: &errorMsg,
+			})
+			return
+		}
+
+		embed := &discordgo.MessageEmbed{
+			Title:       "📈 Admin Contribution Added",
+			Description: fmt.Sprintf("Successfully added **%d** contribution points.\n\n%s", amount, msg),
+			Color:       0x2ecc71, // Green
+			Footer: &discordgo.MessageEmbedFooter{
+				Text: "BrandishBot Admin",
+			},
+		}
+
+		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			Embeds: &[]*discordgo.MessageEmbed{embed},
+		}); err != nil {
+			slog.Error("Failed to edit interaction response", "error", err)
+		}
+	}
+
+	return cmd, handler
+}

@@ -157,3 +157,4 @@ func RemoveItemCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 
 	return cmd, handler
 }
+

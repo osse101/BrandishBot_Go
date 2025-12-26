@@ -117,7 +117,13 @@ func main() {
 	cmd, handler = discord.AdminEndVotingCommand()
 	bot.Registry.Register(cmd, handler)
 
+	cmd, handler = discord.AdminAddContributionCommand()
+	bot.Registry.Register(cmd, handler)
+
 	cmd, handler = discord.InfoCommand()
+	bot.Registry.Register(cmd, handler)
+
+	cmd, handler = discord.JobBonusCommand()
 	bot.Registry.Register(cmd, handler)
 
 	// Economy commands
@@ -158,6 +164,9 @@ func main() {
 	bot.Registry.Register(cmd, handler)
 
 	cmd, handler = discord.RemoveItemCommand()
+	bot.Registry.Register(cmd, handler)
+
+	cmd, handler = discord.CheckTimeoutCommand()
 	bot.Registry.Register(cmd, handler)
 
 	cmd, handler = discord.ReloadCommand(bot)
