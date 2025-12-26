@@ -409,7 +409,40 @@ func (h *ProgressionHandlers) HandleGetUnlockProgress() http.HandlerFunc {
 			return
 		}
 
-		respondJSON(w, http.StatusOK, progress)
+		// Enrich with percentage if target node exists
+		response := map[string]interface{}{
+			"id":                        progress.ID,
+			"node_id":                   progress.NodeID,
+			"target_level":              progress.TargetLevel,
+			"contributions_accumulated": progress.ContributionsAccumulated,
+			"started_at":                progress.StartedAt,
+			"unlocked_at":               progress.UnlockedAt,
+			"voting_session_id":         progress.VotingSessionID,
+			"completion_percentage":     0.0,
+			"target_unlock_cost":        0,
+			"target_node_name":          "",
+		}
+
+		if progress.NodeID != nil {
+			node, err := h.service.GetNode(r.Context(), *progress.NodeID)
+			if err != nil {
+				log.Warn("Failed to get target node for progress", "error", err, "nodeID", *progress.NodeID)
+			} else if node != nil {
+				response["target_unlock_cost"] = node.UnlockCost
+				response["target_node_name"] = node.DisplayName
+				if node.UnlockCost > 0 {
+					percent := (float64(progress.ContributionsAccumulated) / float64(node.UnlockCost)) * 100
+					if percent > 100 {
+						percent = 100
+					}
+					response["completion_percentage"] = percent
+				} else {
+					response["completion_percentage"] = 100.0 // Free unlock?
+				}
+			}
+		}
+
+		respondJSON(w, http.StatusOK, response)
 	}
 }
 

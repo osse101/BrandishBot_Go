@@ -16,6 +16,7 @@ type Service interface {
 	// Tree operations
 	GetProgressionTree(ctx context.Context) ([]*domain.ProgressionTreeNode, error)
 	GetAvailableUnlocks(ctx context.Context) ([]*domain.ProgressionNode, error)
+	GetNode(ctx context.Context, id int) (*domain.ProgressionNode, error)
 
 	// Feature checks
 	IsFeatureUnlocked(ctx context.Context, featureKey string) (bool, error)
@@ -162,6 +163,11 @@ func (s *service) GetAvailableUnlocks(ctx context.Context) ([]*domain.Progressio
 	}
 
 	return available, nil
+}
+
+// GetNode returns a single node by ID
+func (s *service) GetNode(ctx context.Context, id int) (*domain.ProgressionNode, error) {
+	return s.repo.GetNodeByID(ctx, id)
 }
 
 // IsFeatureUnlocked checks if a feature is available

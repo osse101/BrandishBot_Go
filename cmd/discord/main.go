@@ -111,6 +111,16 @@ func main() {
 	cmd, handler = discord.AdminTreeStatusCommand()
 	bot.Registry.Register(cmd, handler)
 
+	// New progression commands
+	cmd, handler = discord.UnlockProgressCommand()
+	bot.Registry.Register(cmd, handler)
+
+	cmd, handler = discord.EngagementCommand()
+	bot.Registry.Register(cmd, handler)
+
+	cmd, handler = discord.VotingSessionCommand()
+	bot.Registry.Register(cmd, handler)
+
 	cmd, handler = discord.AdminStartVotingCommand()
 	bot.Registry.Register(cmd, handler)
 

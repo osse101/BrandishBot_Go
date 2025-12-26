@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -1029,4 +1030,137 @@ func (c *APIClient) RemoveItem(platform, platformID, itemName string, quantity i
 	}
 
 	return removeResp.Message, nil
+}
+
+// GetUnlockProgress returns current unlock progress
+func (c *APIClient) GetUnlockProgress() (*map[string]interface{}, error) {
+	resp, err := c.doRequest(http.MethodGet, "/progression/unlock-progress", nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		var errResp struct {
+			Error string `json:"error"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
+			return nil, fmt.Errorf("API error: %s", errResp.Error)
+		}
+		return nil, fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	var progress map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&progress); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return &progress, nil
+}
+
+// GetUserEngagement returns user's engagement breakdown
+func (c *APIClient) GetUserEngagement(userID string) (*domain.ContributionBreakdown, error) {
+	params := url.Values{}
+	params.Set("user_id", userID)
+
+	path := fmt.Sprintf("/progression/engagement?%s", params.Encode())
+	resp, err := c.doRequest(http.MethodGet, path, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		var errResp struct {
+			Error string `json:"error"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
+			return nil, fmt.Errorf("API error: %s", errResp.Error)
+		}
+		return nil, fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	var breakdown domain.ContributionBreakdown
+	if err := json.NewDecoder(resp.Body).Decode(&breakdown); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return &breakdown, nil
+}
+
+// GetContributionLeaderboard returns top contributors
+func (c *APIClient) GetContributionLeaderboard(limit int) (string, error) {
+	params := url.Values{}
+	params.Set("limit", fmt.Sprintf("%d", limit))
+
+	path := fmt.Sprintf("/progression/leaderboard?%s", params.Encode())
+	resp, err := c.doRequest(http.MethodGet, path, nil)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		var errResp struct {
+			Error string `json:"error"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
+			return "", fmt.Errorf("API error: %s", errResp.Error)
+		}
+		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	var entries []domain.ContributionLeaderboardEntry
+	if err := json.NewDecoder(resp.Body).Decode(&entries); err != nil {
+		return "", fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	if len(entries) == 0 {
+		return "No contributions yet.", nil
+	}
+
+	var sb strings.Builder
+	for _, entry := range entries {
+		fmt.Fprintf(&sb, "**%d.** <@%s>: %d points\n", entry.Rank, entry.UserID, entry.Contribution)
+	}
+	return sb.String(), nil
+}
+
+// GetVotingSession returns current voting session
+func (c *APIClient) GetVotingSession() (*domain.ProgressionVotingSession, error) {
+	resp, err := c.doRequest(http.MethodGet, "/progression/session", nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		var errResp struct {
+			Error string `json:"error"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
+			return nil, fmt.Errorf("API error: %s", errResp.Error)
+		}
+		return nil, fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	// Handles "no active session" message wrapper if needed, but endpoint returns direct object or "session": null
+	// Checking for the map wrapper first just in case
+	var raw map[string]interface{}
+	bodyBytes, _ := io.ReadAll(resp.Body)
+	resp.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+
+	if err := json.NewDecoder(io.NopCloser(bytes.NewBuffer(bodyBytes))).Decode(&raw); err == nil {
+		if _, ok := raw["message"]; ok {
+			// e.g. "No active voting session"
+			return nil, nil
+		}
+	}
+
+	var session domain.ProgressionVotingSession
+	if err := json.NewDecoder(io.NopCloser(bytes.NewBuffer(bodyBytes))).Decode(&session); err != nil {
+		return nil, fmt.Errorf("failed to decode session: %w", err)
+	}
+
+	return &session, nil
 }

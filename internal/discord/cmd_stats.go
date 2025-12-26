@@ -24,6 +24,7 @@ func LeaderboardCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 					{Name: "Total Money", Value: "money"},
 					{Name: "Items Found", Value: "items"},
 					{Name: "Messages Sent", Value: "messages"},
+					{Name: "Contribution Points", Value: "contribution"},
 				},
 			},
 			{
@@ -56,7 +57,15 @@ func LeaderboardCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			}
 		}
 
-		msg, err := client.GetLeaderboard(metric, limit)
+		var msg string
+		var err error
+
+		if metric == "contribution" {
+			msg, err = client.GetContributionLeaderboard(limit)
+		} else {
+			msg, err = client.GetLeaderboard(metric, limit)
+		}
+		
 		if err != nil {
 			slog.Error("Failed to get leaderboard", "error", err)
 			respondFriendlyError(s, i, err.Error())
