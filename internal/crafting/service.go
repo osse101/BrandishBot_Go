@@ -3,6 +3,7 @@ package crafting
 import (
 	"context"
 	"fmt"
+	"math"
 	"sync"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
@@ -66,6 +67,11 @@ type JobService interface {
 const (
 	MasterworkChance     = 0.10 // 10% chance per craft batch
 	MasterworkMultiplier = 2    // 2x output on masterwork success
+
+	// PerfectSalvageChance is the probability of a "Perfect Salvage" occurring during disassembly
+	PerfectSalvageChance = 0.10
+	// PerfectSalvageMultiplier is the bonus multiplier for materials when Perfect Salvage triggers
+	PerfectSalvageMultiplier = 1.5
 )
 
 type service struct {
@@ -331,11 +337,18 @@ func (s *service) GetUnlockedRecipes(ctx context.Context, platform, platformID, 
 }
 
 // processDisassembleOutputs adds disassemble outputs to inventory and builds result map
-func (s *service) processDisassembleOutputs(ctx context.Context, inventory *domain.Inventory, outputs []domain.RecipeOutput, actualQuantity int) (map[string]int, error) {
+func (s *service) processDisassembleOutputs(ctx context.Context, inventory *domain.Inventory, outputs []domain.RecipeOutput, actualQuantity int, multiplier float64) (map[string]int, error) {
 	outputMap := make(map[string]int)
 	
 	for _, output := range outputs {
-		totalOutput := output.Quantity * actualQuantity
+		// Calculate base total
+		baseTotal := output.Quantity * actualQuantity
+
+		// Apply multiplier (rounding up to be generous)
+		totalOutput := int(math.Ceil(float64(baseTotal) * multiplier))
+		if totalOutput < baseTotal {
+			totalOutput = baseTotal
+		}
 
 		// Get item name for the output
 		outputItem, err := s.repo.GetItemByID(ctx, output.ItemID)
@@ -429,8 +442,25 @@ func (s *service) DisassembleItem(ctx context.Context, platform, platformID, use
 		inventory.Slots[sourceSlotIndex].Quantity -= totalConsumed
 	}
 
+	// Perfect Salvage Logic
+	multiplier := 1.0
+	perfectSalvageTriggered := false
+	if s.rnd() < PerfectSalvageChance {
+		perfectSalvageTriggered = true
+		multiplier = PerfectSalvageMultiplier
+		log.Info("Perfect Salvage triggered!", "user_id", user.ID, "item", itemName, "quantity", actualQuantity)
+
+		if s.statsSvc != nil {
+			_ = s.statsSvc.RecordUserEvent(ctx, user.ID, domain.EventCraftingPerfectSalvage, map[string]interface{}{
+				"item_name": itemName,
+				"quantity": actualQuantity,
+				"multiplier": multiplier,
+			})
+		}
+	}
+
 	// Process outputs
-	outputMap, err := s.processDisassembleOutputs(ctx, inventory, recipe.Outputs, actualQuantity)
+	outputMap, err := s.processDisassembleOutputs(ctx, inventory, recipe.Outputs, actualQuantity, multiplier)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -449,7 +479,7 @@ func (s *service) DisassembleItem(ctx context.Context, platform, platformID, use
 	s.wg.Add(1)
 	go s.awardBlacksmithXP(context.Background(), user.ID, actualQuantity, "disassemble", itemName)
 
-	log.Info("Items disassembled", "username", username, "item", itemName, "quantity", actualQuantity, "outputs", outputMap)
+	log.Info("Items disassembled", "username", username, "item", itemName, "quantity", actualQuantity, "outputs", outputMap, "perfect_salvage", perfectSalvageTriggered)
 	return outputMap, actualQuantity, nil
 }
 

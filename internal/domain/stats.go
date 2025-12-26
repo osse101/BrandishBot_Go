@@ -25,6 +25,7 @@ const (
 	EventSearchCriticalFail EventType = "search_critical_fail"
 	EventSearchCriticalSuccess EventType = "search_critical_success"
 	EventCraftingCriticalSuccess EventType = "crafting_critical_success"
+	EventCraftingPerfectSalvage EventType = "crafting_perfect_salvage"
 	EventJobLevelUp         EventType = "job_level_up"
 )
 
