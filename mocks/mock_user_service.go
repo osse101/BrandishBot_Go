@@ -258,6 +258,63 @@ func (_c *MockUserService_GetLinkedPlatforms_Call) RunAndReturn(run func(context
 	return _c
 }
 
+// GetTimeout provides a mock function with given fields: ctx, username
+func (_m *MockUserService) GetTimeout(ctx context.Context, username string) (time.Duration, error) {
+	ret := _m.Called(ctx, username)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetTimeout")
+	}
+
+	var r0 time.Duration
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (time.Duration, error)); ok {
+		return rf(ctx, username)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) time.Duration); ok {
+		r0 = rf(ctx, username)
+	} else {
+		r0 = ret.Get(0).(time.Duration)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, username)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockUserService_GetTimeout_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetTimeout'
+type MockUserService_GetTimeout_Call struct {
+	*mock.Call
+}
+
+// GetTimeout is a helper method to define mock.On call
+//   - ctx context.Context
+//   - username string
+func (_e *MockUserService_Expecter) GetTimeout(ctx interface{}, username interface{}) *MockUserService_GetTimeout_Call {
+	return &MockUserService_GetTimeout_Call{Call: _e.mock.On("GetTimeout", ctx, username)}
+}
+
+func (_c *MockUserService_GetTimeout_Call) Run(run func(ctx context.Context, username string)) *MockUserService_GetTimeout_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockUserService_GetTimeout_Call) Return(_a0 time.Duration, _a1 error) *MockUserService_GetTimeout_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockUserService_GetTimeout_Call) RunAndReturn(run func(context.Context, string) (time.Duration, error)) *MockUserService_GetTimeout_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GiveItem provides a mock function with given fields: ctx, ownerPlatform, ownerPlatformID, ownerUsername, receiverPlatform, receiverPlatformID, receiverUsername, itemName, quantity
 func (_m *MockUserService) GiveItem(ctx context.Context, ownerPlatform string, ownerPlatformID string, ownerUsername string, receiverPlatform string, receiverPlatformID string, receiverUsername string, itemName string, quantity int) error {
 	ret := _m.Called(ctx, ownerPlatform, ownerPlatformID, ownerUsername, receiverPlatform, receiverPlatformID, receiverUsername, itemName, quantity)

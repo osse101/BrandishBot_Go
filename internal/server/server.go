@@ -52,6 +52,7 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 
 	// User routes
 	mux.HandleFunc("/user/register", handler.HandleRegisterUser(userService))
+	mux.HandleFunc("/user/timeout", handler.HandleGetTimeout(userService))
 	mux.HandleFunc("/message/handle", handler.HandleMessageHandler(userService, progressionService, eventBus))
 	mux.HandleFunc("/test", handler.HandleTest(userService))
 	mux.HandleFunc("/user/item/add", handler.HandleAddItem(userService))
@@ -79,6 +80,7 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 	mux.HandleFunc("/jobs", jobHandler.HandleGetAllJobs)
 	mux.HandleFunc("/jobs/user", jobHandler.HandleGetUserJobs)
 	mux.HandleFunc("/jobs/award-xp", jobHandler.HandleAwardXP)
+	mux.HandleFunc("/jobs/bonus", jobHandler.HandleGetJobBonus)
 
 	// Stats routes
 	mux.HandleFunc("/stats/event", handler.HandleRecordEvent(statsService))
@@ -102,6 +104,7 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 	mux.HandleFunc("/progression/admin/start-voting", progressionHandlers.HandleAdminStartVoting())
 	mux.HandleFunc("/progression/admin/end-voting", progressionHandlers.HandleAdminEndVoting())
 	mux.HandleFunc("/progression/admin/reset", progressionHandlers.HandleAdminReset())
+	mux.HandleFunc("/progression/admin/contribution", progressionHandlers.HandleAdminAddContribution())
 
 	// Linking routes
 	linkingHandlers := handler.NewLinkingHandlers(linkingService)

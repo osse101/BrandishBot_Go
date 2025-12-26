@@ -464,6 +464,43 @@ func (h *ProgressionHandlers) HandleAdminStartVoting() http.HandlerFunc {
 	}
 }
 
+// HandleAdminAddContribution admin adds contribution points
+// @Summary Admin add contribution
+// @Description Manually add contribution points to the current unlock progress (admin only)
+// @Tags progression,admin
+// @Accept json
+// @Produce json
+// @Param request body AdminAddContributionRequest true "Contribution request"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /progression/admin/contribution [post]
+func (h *ProgressionHandlers) HandleAdminAddContribution() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromContext(r.Context())
+
+		var req AdminAddContributionRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			respondError(w, http.StatusBadRequest, "Invalid request body")
+			return
+		}
+
+		if req.Amount <= 0 {
+			respondError(w, http.StatusBadRequest, "Amount must be positive")
+			return
+		}
+
+		if err := h.service.AddContribution(r.Context(), req.Amount); err != nil {
+			log.Error("Failed to add contribution", "error", err, "amount", req.Amount)
+			respondError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		log.Info("Admin added contribution", "amount", req.Amount)
+		respondJSON(w, http.StatusOK, SuccessResponse{Message: "Contribution added successfully"})
+	}
+}
+
 // Request/Response types
 
 type ProgressionTreeResponse struct {
@@ -503,4 +540,8 @@ type AdminResetRequest struct {
 	ResetBy                 string `json:"reset_by" validate:"required,max=100"`
 	Reason                  string `json:"reason" validate:"omitempty,max=255"`
 	PreserveUserProgression bool   `json:"preserve_user_progression"`
+}
+
+type AdminAddContributionRequest struct {
+	Amount int `json:"amount"`
 }

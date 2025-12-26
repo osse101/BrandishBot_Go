@@ -117,3 +117,41 @@ func updatePlatformID(user *domain.User, platform, platformID string) {
 		user.DiscordID = platformID
 	}
 }
+
+// HandleGetTimeout returns the remaining timeout duration for a user
+// @Summary Get user timeout
+// @Description Get the remaining timeout duration for a user
+// @Tags user
+// @Produce json
+// @Param username query string true "Username to check"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /user/timeout [get]
+func HandleGetTimeout(svc user.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromContext(r.Context())
+
+		username := r.URL.Query().Get("username")
+		if username == "" {
+			http.Error(w, "Missing username parameter", http.StatusBadRequest)
+			return
+		}
+
+		duration, err := svc.GetTimeout(r.Context(), username)
+		if err != nil {
+			log.Error("Failed to get timeout", "error", err, "username", username)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		response := map[string]interface{}{
+			"username":          username,
+			"is_timed_out":      duration > 0,
+			"remaining_seconds": duration.Seconds(),
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+	}
+}

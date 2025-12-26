@@ -70,6 +70,7 @@ type Service interface {
 	MergeUsers(ctx context.Context, primaryUserID, secondaryUserID string) error
 	UnlinkPlatform(ctx context.Context, userID, platform string) error
 	GetLinkedPlatforms(ctx context.Context, platform, platformID string) ([]string, error)
+	GetTimeout(ctx context.Context, username string) (time.Duration, error)
 	Shutdown(ctx context.Context) error
 }
 
@@ -88,12 +89,18 @@ type JobService interface {
 	AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error)
 }
 
+// timeoutInfo tracks active timeouts
+type timeoutInfo struct {
+	timer     *time.Timer
+	expiresAt time.Time
+}
+
 // service implements the Service interface
 type service struct {
 	repo            Repository
 	itemHandlers    map[string]ItemEffectHandler
 	timeoutMu       sync.Mutex
-	timeouts        map[string]*time.Timer
+	timeouts        map[string]*timeoutInfo
 	lootboxService  lootbox.Service
 	jobService      JobService
 	statsService    stats.Service
@@ -122,7 +129,7 @@ func NewService(repo Repository, statsService stats.Service, jobService JobServi
 	s := &service{
 		repo:            repo,
 		itemHandlers:    make(map[string]ItemEffectHandler),
-		timeouts:        make(map[string]*time.Timer),
+		timeouts:        make(map[string]*timeoutInfo),
 		lootboxService:  lootboxService,
 		jobService:      jobService,
 		statsService:    statsService,
@@ -551,8 +558,8 @@ func (s *service) TimeoutUser(ctx context.Context, username string, duration tim
 	defer s.timeoutMu.Unlock()
 
 	// If user is already timed out, stop the existing timer
-	if timer, exists := s.timeouts[username]; exists {
-		timer.Stop()
+	if info, exists := s.timeouts[username]; exists {
+		info.timer.Stop()
 		log.Info("Existing timeout cancelled", "username", username)
 	}
 
@@ -565,9 +572,29 @@ func (s *service) TimeoutUser(ctx context.Context, username string, duration tim
 		fmt.Printf("User %s timeout expired\n", username)
 	})
 
-	s.timeouts[username] = timer
+	s.timeouts[username] = &timeoutInfo{
+		timer:     timer,
+		expiresAt: time.Now().Add(duration),
+	}
 	log.Info("User timed out", "username", username, "duration", duration)
 	return nil
+}
+
+// GetTimeout returns the remaining duration of a user's timeout
+func (s *service) GetTimeout(ctx context.Context, username string) (time.Duration, error) {
+	s.timeoutMu.Lock()
+	defer s.timeoutMu.Unlock()
+
+	info, exists := s.timeouts[username]
+	if !exists {
+		return 0, nil
+	}
+
+	remaining := time.Until(info.expiresAt)
+	if remaining < 0 {
+		return 0, nil
+	}
+	return remaining, nil
 }
 
 // Helper methods
