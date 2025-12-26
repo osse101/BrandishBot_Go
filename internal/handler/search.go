@@ -2,7 +2,6 @@ package handler
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/osse101/BrandishBot_Go/internal/event"
@@ -70,7 +69,13 @@ func HandleSearch(svc user.Service, progressionSvc progression.Service, eventBus
 		// Validate request
 		if err := GetValidator().ValidateStruct(req); err != nil {
 			log.Warn("Invalid request", "error", err)
-			http.Error(w, fmt.Sprintf("Invalid request: %v", err), http.StatusBadRequest)
+			validationErrors := FormatValidationError(err)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error":   "Validation failed",
+				"details": validationErrors,
+			})
 			return
 		}
 
