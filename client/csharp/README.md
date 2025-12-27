@@ -60,7 +60,7 @@ var result = await BrandishBotClient.Instance.UseItem(
     platform: Platform.Twitch,
     platformId: "%user.id%",
     username: "%user.name%",
-    itemId: ItemId.Lootbox1,  // Use constants
+    itemName: ItemName.Lootbox,  // Use string constants
     quantity: 1
 );
 ```
@@ -72,7 +72,7 @@ var result = await BrandishBotClient.Instance.BuyItem(
     platform: Platform.Twitch,
     platformId: "%user.id%",
     username: "%user.name%",
-    itemId: ItemId.Lootbox0,
+    itemName: ItemName.Junkbox,
     quantity: 3
 );
 ```
@@ -84,8 +84,8 @@ var gamble = await BrandishBotClient.Instance.StartGamble(
     platform: Platform.Twitch,
     platformId: "%user.id%",
     username: "%user.name%",
-    lootboxItemId: ItemId.Lootbox1,
-    quantity: 2  // Betting 2 lootbox1s
+    itemName: ItemName.Lootbox,
+    quantity: 2
 );
 ```
 
@@ -93,11 +93,11 @@ var gamble = await BrandishBotClient.Instance.StartGamble(
 
 ```csharp
 var result = await BrandishBotClient.Instance.JoinGamble(
-    gambleId: "gamble-uuid-here",  // From active gamble
     platform: Platform.Twitch,
     platformId: "%user.id%",
     username: "%user.name%",
-    lootboxItemId: ItemId.Lootbox1,
+    gambleId: "gamble-uuid-here",
+    itemName: ItemName.Lootbox,
     quantity: 2
 );
 ```
@@ -231,14 +231,17 @@ EventType.Raid       = "raid"
 EventType.Bits       = "bits"
 ```
 
-### Item ID Constants
+### Item Name Constants (REQUIRED)
+
+**All item operations now use string names, not numeric IDs:**
 
 ```csharp
-ItemId.Money      = 1
-ItemId.Lootbox0   = 2  // Junkbox (Tier 0)
-ItemId.Lootbox1   = 3  // Lootbox (Tier 1)
-ItemId.Lootbox2   = 4  // Goldbox (Tier 2)
-ItemId.Blaster    = 5  // Missile/Ray Gun
+// These are the command names users type in chat
+ItemName.Money    = "money"    // Coins
+ItemName.Junkbox  = "junkbox"  // Tier 0 - Rusty Lootbox
+ItemName.Lootbox  = "lootbox"  // Tier 1 - Basic Lootbox
+ItemName.Goldbox  = "goldbox"  // Tier 2 - Golden Lootbox
+ItemName.Missile  = "missile"  // Ray Gun / Blaster
 ```
 
 ### Item Public Name Constants

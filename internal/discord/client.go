@@ -221,12 +221,12 @@ func (c *APIClient) UseItem(platform, platformID, username, itemName string, qua
 }
 
 // StartGamble starts a new gamble
-func (c *APIClient) StartGamble(platform, platformID, username string, wager int) (string, error) {
+func (c *APIClient) StartGamble(platform, platformID, username, itemName string, quantity int) (string, error) {
 	req := map[string]interface{}{
 		"platform":    platform,
 		"platform_id": platformID,
 		"username":    username,
-		"wager":       wager,
+		"bets":        []map[string]interface{}{{"item_name": itemName, "quantity": quantity}},
 	}
 
 	resp, err := c.doRequest(http.MethodPost, "/gamble/start", req)
@@ -257,15 +257,17 @@ func (c *APIClient) StartGamble(platform, platformID, username string, wager int
 }
 
 // JoinGamble joins an active gamble
-func (c *APIClient) JoinGamble(platform, platformID, username, gambleID string) (string, error) {
+func (c *APIClient) JoinGamble(platform, platformID, username, gambleID, itemName string, quantity int) (string, error) {
 	req := map[string]interface{}{
 		"platform":    platform,
 		"platform_id": platformID,
 		"username":    username,
-		"gamble_id":   gambleID,
+		"bets":        []map[string]interface{}{{"item_name": itemName, "quantity": quantity}},
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "/gamble/join", req)
+	// Note: gambleID goes in the URL query parameter
+	path := fmt.Sprintf("/gamble/join?id=%s", gambleID)
+	resp, err := c.doRequest(http.MethodPost, path, req)
 	if err != nil {
 		return "", err
 	}

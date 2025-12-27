@@ -123,13 +123,13 @@ namespace BrandishBot.Client
         /// <summary>
         /// Add item to user's inventory (Admin/Streamer only)
         /// </summary>
-        public async Task<string> AddItem(string platform, string platformId, int itemId, int quantity)
+        public async Task<string> AddItem(string platform, string platformId, string itemName, int quantity)
         {
             return await PostJsonAsync("/user/item/add", new
             {
                 platform = platform,
                 platform_id = platformId,
-                item_id = itemId,
+                item_name = itemName,
                 quantity = quantity
             });
         }
@@ -137,13 +137,13 @@ namespace BrandishBot.Client
         /// <summary>
         /// Remove item from user's inventory (Admin/Streamer only)
         /// </summary>
-        public async Task<string> RemoveItem(string platform, string platformId, int itemId, int quantity)
+        public async Task<string> RemoveItem(string platform, string platformId, string itemName, int quantity)
         {
             return await PostJsonAsync("/user/item/remove", new
             {
                 platform = platform,
                 platform_id = platformId,
-                item_id = itemId,
+                item_name = itemName,
                 quantity = quantity
             });
         }
@@ -152,7 +152,7 @@ namespace BrandishBot.Client
         /// Give item from one user to another
         /// </summary>
         public async Task<string> GiveItem(string fromPlatform, string fromPlatformId, 
-            string toPlatform, string toPlatformId, string toUsername, int itemId, int quantity)
+            string toPlatform, string toPlatformId, string toUsername, string itemName, int quantity)
         {
             return await PostJsonAsync("/user/item/give", new
             {
@@ -161,7 +161,7 @@ namespace BrandishBot.Client
                 to_platform = toPlatform,
                 to_platform_id = toPlatformId,
                 to_username = toUsername,
-                item_id = itemId,
+                item_name = itemName,
                 quantity = quantity
             });
         }
@@ -173,14 +173,14 @@ namespace BrandishBot.Client
         /// <summary>
         /// Buy an item from the shop
         /// </summary>
-        public async Task<string> BuyItem(string platform, string platformId, string username, int itemId, int quantity)
+        public async Task<string> BuyItem(string platform, string platformId, string username, string itemName, int quantity)
         {
             return await PostJsonAsync("/user/item/buy", new
             {
                 platform = platform,
                 platform_id = platformId,
                 username = username,
-                item_id = itemId,
+                item_name = itemName,
                 quantity = quantity
             });
         }
@@ -188,14 +188,14 @@ namespace BrandishBot.Client
         /// <summary>
         /// Sell an item from inventory
         /// </summary>
-        public async Task<string> SellItem(string platform, string platformId, string username, int itemId, int quantity)
+        public async Task<string> SellItem(string platform, string platformId, string username, string itemName, int quantity)
         {
             return await PostJsonAsync("/user/item/sell", new
             {
                 platform = platform,
                 platform_id = platformId,
                 username = username,
-                item_id = itemId,
+                item_name = itemName,
                 quantity = quantity
             });
         }
@@ -216,20 +216,20 @@ namespace BrandishBot.Client
         /// Use an item (opens lootboxes, activates items, etc.)
         /// </summary>
         public async Task<string> UseItem(string platform, string platformId, string username, 
-            int itemId, int quantity, string targetUsername = null)
+            string itemName, int quantity, string targetUsername = null)
         {
             var data = new Dictionary<string, object>
             {
                 { "platform", platform },
                 { "platform_id", platformId },
                 { "username", username },
-                { "item_id", itemId },
+                { "item_name", itemName },
                 { "quantity", quantity }
             };
 
             if (!string.IsNullOrEmpty(targetUsername))
             {
-                data["target_username"] = targetUsername;
+                data["target_user"] = targetUsername;
             }
 
             return await PostJsonAsync("/user/item/use", data);
@@ -269,14 +269,14 @@ namespace BrandishBot.Client
         /// <summary>
         /// Disassemble an item to get materials
         /// </summary>
-        public async Task<string> DisassembleItem(string platform, string platformId, string username, int itemId, int quantity)
+        public async Task<string> DisassembleItem(string platform, string platformId, string username, string itemName, int quantity)
         {
             return await PostJsonAsync("/user/item/disassemble", new
             {
                 platform = platform,
                 platform_id = platformId,
                 username = username,
-                item_id = itemId,
+                item_name = itemName,
                 quantity = quantity
             });
         }
@@ -297,31 +297,41 @@ namespace BrandishBot.Client
         /// Start a new gamble session
         /// </summary>
         public async Task<string> StartGamble(string platform, string platformId, string username, 
-            int lootboxItemId, int quantity)
+            string itemName, int quantity)
         {
             return await PostJsonAsync("/gamble/start", new
             {
                 platform = platform,
                 platform_id = platformId,
                 username = username,
-                bets = new[] { new { item_id = lootboxItemId, quantity = quantity } }
+                bets = new[] { new { item_name = itemName, quantity = quantity } }
             });
         }
 
         /// <summary>
         /// Join an existing gamble session
         /// </summary>
-        public async Task<string> JoinGamble(string gambleId, string platform, string platformId, 
-            string username, int lootboxItemId, int quantity)
+        public async Task<string> JoinGamble(string platform, string platformId, string username, 
+            string gambleId, string itemName, int quantity)
         {
-            return await PostJsonAsync("/gamble/join", new
-            {
-                gamble_id = gambleId,
-                platform = platform,
-                platform_id = platformId,
-                username = username,
-                bets = new[] { new { item_id = lootboxItemId, quantity = quantity } }
-            });
+            var content = new StringContent(
+                JsonConvert.SerializeObject(new
+                {
+                    platform = platform,
+                    platform_id = platformId,
+                    username = username,
+                    bets = new[] { new { item_name = itemName, quantity = quantity } }
+                }),
+                Encoding.UTF8,
+                "application/json"
+            );
+            
+            var response = await _httpClient.PostAsync(
+                _baseUrl + "/gamble/join?id=" + gambleId,
+                content
+            );
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadAsStringAsync();
         }
 
         /// <summary>
@@ -382,6 +392,16 @@ namespace BrandishBot.Client
             return await GetAsync("/stats/leaderboard" + query);
         }
 
+        /// <summary>
+        /// Get user timeout status (check if user is timed out)
+        /// Returns JSON with is_timed_out (bool) and remaining_seconds (double)
+        /// </summary>
+        public async Task<string> GetUserTimeout(string username)
+        {
+            var query = BuildQuery("username=" + username);
+            return await GetAsync("/user/timeout" + query);
+        }
+
         #endregion
 
         #region Progression System
@@ -424,11 +444,12 @@ namespace BrandishBot.Client
         }
 
         /// <summary>
-        /// Get community engagement score
+        /// Get user engagement breakdown (contribution points)
         /// </summary>
-        public async Task<string> GetEngagementScore()
+        public async Task<string> GetUserEngagement(string userId)
         {
-            return await GetAsync("/progression/engagement");
+            var query = BuildQuery("user_id=" + userId);
+            return await GetAsync("/progression/engagement" + query);
         }
 
         /// <summary>
@@ -460,35 +481,36 @@ namespace BrandishBot.Client
         #region Progression Admin
 
         /// <summary>
-        /// Admin: Unlock a specific node
+        /// Admin: Unlock a specific node at a specific level
         /// </summary>
-        public async Task<string> AdminUnlockNode(string nodeKey)
+        /// <param name="level">Target level to unlock (default: 1)</param>
+        public async Task<string> AdminUnlockNode(string nodeKey, int level = 1)
         {
-            return await PostJsonAsync("/progression/admin/unlock", new { node_key = nodeKey });
+            return await PostJsonAsync("/progression/admin/unlock", new { node_key = nodeKey, level = level });
         }
 
         /// <summary>
-        /// Admin: Re-lock a specific node
+        /// Admin: Re-lock a specific node at a specific level
         /// </summary>
-        public async Task<string> AdminRelockNode(string nodeKey)
+        public async Task<string> AdminRelockNode(string nodeKey, int level)
         {
-            return await PostJsonAsync("/progression/admin/relock", new { node_key = nodeKey });
+            return await PostJsonAsync("/progression/admin/relock", new { node_key = nodeKey, level = level });
         }
 
         /// <summary>
-        /// Admin: Instantly unlock a node without voting
+        /// Admin: Instantly unlock the current vote leader without waiting
         /// </summary>
-        public async Task<string> AdminInstantUnlock(string nodeKey)
+        public async Task<string> AdminInstantUnlock()
         {
-            return await PostJsonAsync("/progression/admin/instant-unlock", new { node_key = nodeKey });
+            return await PostJsonAsync("/progression/admin/instant-unlock", new { });
         }
 
         /// <summary>
-        /// Admin: Start a voting session for a specific node
+        /// Admin: Start a new voting session
         /// </summary>
-        public async Task<string> AdminStartVoting(string nodeKey)
+        public async Task<string> AdminStartVoting()
         {
-            return await PostJsonAsync("/progression/admin/start-voting", new { node_key = nodeKey });
+            return await PostJsonAsync("/progression/admin/start-voting", new { });
         }
 
         /// <summary>
@@ -502,9 +524,22 @@ namespace BrandishBot.Client
         /// <summary>
         /// Admin: Reset the entire progression system
         /// </summary>
-        public async Task<string> AdminResetProgression()
+        public async Task<string> AdminResetProgression(string resetBy, string reason, bool preserveUserProgression)
         {
-            return await PostJsonAsync("/progression/admin/reset", new { });
+            return await PostJsonAsync("/progression/admin/reset", new 
+            { 
+                reset_by = resetBy,
+                reason = reason,
+                preserve_user_progression = preserveUserProgression
+            });
+        }
+
+        /// <summary>
+        /// Admin: Add contribution points to the progression system
+        /// </summary>
+        public async Task<string> AdminAddContribution(int amount)
+        {
+            return await PostJsonAsync("/progression/admin/contribution", new { amount = amount });
         }
 
         #endregion
@@ -544,6 +579,19 @@ namespace BrandishBot.Client
                 job_name = jobName,
                 xp_amount = xpAmount
             });
+        }
+
+        /// <summary>
+        /// Get the active bonus for a job (e.g., search_bonus for Scavenger job)
+        /// </summary>
+        public async Task<string> GetJobBonus(string userId, string jobKey, string bonusType)
+        {
+            var query = BuildQuery(
+                "user_id=" + userId,
+                "job_key=" + jobKey,
+                "bonus_type=" + bonusType
+            );
+            return await GetAsync("/jobs/bonus" + query);
         }
 
         #endregion
@@ -719,7 +767,9 @@ namespace BrandishBot.Client
 
     /// <summary>
     /// Common item IDs (reference your database)
+    /// DEPRECATED: Use ItemName constants instead. Item operations now use string names.
     /// </summary>
+    [Obsolete("Use ItemName constants instead. Item operations now use string item_name parameters.")]
     public static class ItemId
     {
         public const int Money = 1;
