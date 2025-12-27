@@ -381,7 +381,7 @@ func (r *UserRepository) IsItemBuyable(ctx context.Context, itemName string) (bo
 			FROM items i
 			JOIN item_type_assignments ita ON i.item_id = ita.item_id
 			JOIN item_types it ON ita.item_type_id = it.item_type_id
-			WHERE i.item_name = $1 AND it.type_name = 'buyable'
+			WHERE i.internal_name = $1 AND it.type_name = 'buyable'
 		)
 	`
 	var isBuyable bool
