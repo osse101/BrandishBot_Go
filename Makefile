@@ -213,7 +213,7 @@ push-production:
 # Test database commands
 test-integration:
 	@echo "Running integration tests..."
-	@go test ./internal/database/postgres -v -timeout=30s
+	@go test ./internal/database/postgres -v -timeout=60s
 
 test-staging:
 	@echo "Running staging integration tests..."

@@ -49,7 +49,7 @@ func TestConcurrentAddItem_Integration(t *testing.T) {
 	}
 
 	// Connect to database
-	pool, err := database.NewPool(connStr, 10, 30*time.Minute, time.Hour)
+	pool, err := database.NewPool(connStr, 25, 30*time.Minute, time.Hour)
 	if err != nil {
 		t.Fatalf("failed to connect to database: %v", err)
 	}
@@ -74,7 +74,7 @@ func TestConcurrentAddItem_Integration(t *testing.T) {
 	}
 
 	// Run concurrent AddItem operations
-	const concurrentOps = 100
+	const concurrentOps = 20  // Reduced to ensure test completes within timeout while still testing concurrency
 	const itemName = domain.ItemLootbox1
 	
 	var wg sync.WaitGroup

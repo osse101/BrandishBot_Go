@@ -65,6 +65,17 @@ func TestCooldownService_ConcurrentRequests_Integration(t *testing.T) {
 		t.Fatalf("failed to apply migrations: %v", err)
 	}
 
+
+	// Create a test user first (cooldowns table has FK to users)
+	userID := "550e8400-e29b-41d4-a716-446655440000" // Valid UUID format
+	_, err = pool.Exec(ctx, `
+		INSERT INTO users (user_id, username, created_at, updated_at)
+		VALUES ($1, $2, NOW(), NOW())
+	`, userID, "test-cooldown-user")
+	if err != nil {
+		t.Fatalf("failed to create test user: %v", err)
+	}
+
 	// Initialize cooldown service
 	cooldownSvc := cooldown.NewPostgresService(pool, cooldown.Config{
 		DevMode: false,
@@ -73,7 +84,6 @@ func TestCooldownService_ConcurrentRequests_Integration(t *testing.T) {
 		},
 	})
 
-	userID := "test-concurrent-user"
 	action := domain.ActionSearch
 
 	// Track how many requests successfully execute
@@ -111,34 +121,51 @@ func TestCooldownService_ConcurrentRequests_Integration(t *testing.T) {
 		"Expected exactly 1 successful request, got %d. Race condition not fixed!", successCount.Load())
 }
 
-// applyMigrations runs all .sql migration files in the given directory
+//applyMigrations runs all .sql migration files in the given directory
 func applyMigrations(ctx context.Context, pool *pgxpool.Pool, migrationsDir string) error {
-	files, err := os.ReadDir(migrationsDir)
+	entries, err := os.ReadDir(migrationsDir)
 	if err != nil {
-		return fmt.Errorf("failed to read migrations directory: %w", err)
+		return fmt.Errorf("failed to read migrations dir: %w", err)
 	}
 
 	var migrationFiles []string
-	for _, file := range files {
-		if file.IsDir() || !strings.HasSuffix(file.Name(), ".sql") {
-			continue
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			name := entry.Name()
+			// Accept both .up.sql and .sql files (exclude .down.sql)
+			if (strings.HasSuffix(name, ".up.sql") || strings.HasSuffix(name, ".sql")) && !strings.HasSuffix(name, ".down.sql") {
+				migrationFiles = append(migrationFiles, filepath.Join(migrationsDir, name))
+			}
 		}
-		migrationFiles = append(migrationFiles, file.Name())
 	}
-
-	// CRITICAL: Sort migration files to ensure correct order
 	sort.Strings(migrationFiles)
 
-	for _, filename := range migrationFiles {
-		content, err := os.ReadFile(filepath.Join(migrationsDir, filename))
+	for _, file := range migrationFiles {
+		content, err := os.ReadFile(file)
 		if err != nil {
-			return fmt.Errorf("failed to read migration %s: %w", filename, err)
+			return fmt.Errorf("failed to read migration file %s: %w", file, err)
 		}
 
-		if _, err := pool.Exec(ctx, string(content)); err != nil {
-			return fmt.Errorf("failed to execute migration %s: %w", filename, err)
+		contentStr := string(content)
+
+		// Strip out goose markers (for goose v3 compatibility)
+		// Remove "-- +goose Up" from the beginning
+		contentStr = strings.Replace(contentStr, "-- +goose Up\n", "", 1)
+		// Remove "-- +goose Up" without newline
+		contentStr = strings.Replace(contentStr, "-- +goose Up", "", 1)
+
+		// Strip out the "Down" section if it exists (goose-style migrations)
+		if downIdx := strings.Index(contentStr, "-- +goose Down"); downIdx != -1 {
+			contentStr = contentStr[:downIdx]
+		}
+
+		// Trim any leading/trailing whitespace
+		contentStr = strings.TrimSpace(contentStr)
+
+		_, err = pool.Exec(ctx, contentStr)
+		if err != nil {
+			return fmt.Errorf("failed to execute migration %s: %w", file, err)
 		}
 	}
-
 	return nil
 }

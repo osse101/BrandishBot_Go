@@ -39,13 +39,26 @@ func (r *UserRepository) BeginTx(ctx context.Context) (repository.Tx, error) {
 
 // GetInventory retrieves inventory within a transaction with an exclusive lock
 func (t *UserTx) GetInventory(ctx context.Context, userID string) (*domain.Inventory, error) {
+	// CRITICAL: Ensure the inventory row exists before locking
+	// If multiple transactions try to INSERT simultaneously, only one succeeds
+	// but all will wait until that INSERT commits
+	emptyInventory := domain.Inventory{Slots: []domain.InventorySlot{}}
+	insertQuery := `
+		INSERT INTO user_inventory (user_id, inventory_data)
+		VALUES ($1, $2)
+		ON CONFLICT (user_id) DO NOTHING
+	`
+	_, err := t.tx.Exec(ctx, insertQuery, userID, emptyInventory)
+	if err != nil {
+		return nil, fmt.Errorf("failed to ensure inventory row exists: %w", err)
+	}
+
+	// Now SELECT FOR UPDATE will always have a row to lock
 	query := `SELECT inventory_data FROM user_inventory WHERE user_id = $1 FOR UPDATE`
 	var inventory domain.Inventory
-	err := t.tx.QueryRow(ctx, query, userID).Scan(&inventory)
+	err = t.tx.QueryRow(ctx, query, userID).Scan(&inventory)
 	if err != nil {
-		if err == pgx.ErrNoRows {
-			return &domain.Inventory{Slots: []domain.InventorySlot{}}, nil
-		}
+		// This should never happen now since we just ensured the row exists
 		return nil, fmt.Errorf("failed to get inventory: %w", err)
 	}
 	return &inventory, nil

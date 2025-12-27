@@ -2,6 +2,8 @@ package cooldown
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/binary"
 	"fmt"
 	"time"
 
@@ -76,20 +78,29 @@ func (b *postgresBackend) EnforceCooldown(ctx context.Context, userID, action st
 		return b.updateCooldown(ctx, userID, action, time.Now())
 	}
 
-	// PHASE 2: Transaction with locked check - catches race conditions
+	// PHASE 2: Transaction with advisory lock
+	// Advisory locks work even when no row exists (unlike SELECT FOR UPDATE)
 	tx, err := b.db.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer tx.Rollback(ctx)
 
-	// Locked cooldown check (SELECT FOR UPDATE)
-	lastUsed, err := b.getLastUsedLocked(ctx, tx, userID, action)
+	// Acquire advisory lock based on userID + action
+	// This ensures mutual exclusion even when no cooldown row exists yet
+	lockKey := hashUserAction(userID, action)
+	_, err = tx.Exec(ctx, "SELECT pg_advisory_xact_lock($1)", lockKey)
 	if err != nil {
-		return fmt.Errorf("failed to get cooldown with lock: %w", err)
+		return fmt.Errorf("failed to acquire advisory lock: %w", err)
 	}
 
-	// Recheck cooldown with locked data (catches concurrent requests)
+	// Recheck cooldown with exclusive lock acquired
+	lastUsed, err := b.getLastUsedTx(ctx, tx, userID, action)
+	if err != nil {
+		return fmt.Errorf("failed to get cooldown within transaction: %w", err)
+	}
+
+	// Recheck cooldown (catches concurrent requests that passed Phase 1)
 	if lastUsed != nil {
 		cooldownDuration := b.config.GetCooldownDuration(action)
 		elapsed := time.Since(*lastUsed)
@@ -113,7 +124,7 @@ func (b *postgresBackend) EnforceCooldown(ctx context.Context, userID, action st
 		return fmt.Errorf("failed to update cooldown: %w", err)
 	}
 
-	// Commit transaction
+	// Commit transaction (releases advisory lock automatically)
 	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("failed to commit cooldown transaction: %w", err)
 	}
@@ -200,4 +211,30 @@ func (b *postgresBackend) updateCooldownTx(ctx context.Context, tx pgx.Tx, userI
 
 	_, err := tx.Exec(ctx, query, userID, action, timestamp)
 	return err
+}
+
+// getLastUsedTx retrieves last used time within a transaction (unlocked read)
+func (b *postgresBackend) getLastUsedTx(ctx context.Context, tx pgx.Tx, userID, action string) (*time.Time, error) {
+	var lastUsed time.Time
+	query := `
+		SELECT last_used_at
+		FROM user_cooldowns
+		WHERE user_id = $1 AND action_name = $2
+	`
+
+	err := tx.QueryRow(ctx, query, userID, action).Scan(&lastUsed)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, nil // No cooldown record
+		}
+		return nil, fmt.Errorf("failed to get last used: %w", err)
+	}
+	return &lastUsed, nil
+}
+
+// hashUserAction creates a consistent int64 hash from userID + action for advisory locking
+func hashUserAction(userID, action string) int64 {
+	h := sha256.Sum256([]byte(userID + ":" + action))
+	// Use first 8 bytes as int64
+	return int64(binary.BigEndian.Uint64(h[:8]))
 }
