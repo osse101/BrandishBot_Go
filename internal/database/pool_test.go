@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -199,6 +200,8 @@ func getTestDBConnString(t *testing.T) string {
 
 func getEnvOrSkip(t *testing.T, key, defaultValue string) string {
 	t.Helper()
-	// For tests, we'll use defaults - in CI these would be set
+	if val := os.Getenv(key); val != "" {
+		return val
+	}
 	return defaultValue
 }

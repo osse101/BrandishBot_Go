@@ -3,6 +3,7 @@ package progression
 import (
 	"context"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -24,6 +25,7 @@ import (
 // - Use integration tests with real PostgreSQL (see internal/database/postgres/*_integration_test.go)
 // - Real database provides proper transaction isolation via SELECT ... FOR UPDATE
 type MockRepository struct {
+	mu                sync.RWMutex
 	nodes             map[int]*domain.ProgressionNode
 	nodesByKey        map[string]*domain.ProgressionNode
 	unlocks           map[int]map[int]*domain.ProgressionUnlock // nodeID -> level -> unlock
@@ -68,6 +70,8 @@ func NewMockRepository() *MockRepository {
 }
 
 func (m *MockRepository) GetNodeByKey(ctx context.Context, nodeKey string) (*domain.ProgressionNode, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	if node, ok := m.nodesByKey[nodeKey]; ok {
 		return node, nil
 	}
@@ -75,6 +79,8 @@ func (m *MockRepository) GetNodeByKey(ctx context.Context, nodeKey string) (*dom
 }
 
 func (m *MockRepository) GetNodeByID(ctx context.Context, id int) (*domain.ProgressionNode, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	if node, ok := m.nodes[id]; ok {
 		return node, nil
 	}
@@ -82,6 +88,8 @@ func (m *MockRepository) GetNodeByID(ctx context.Context, id int) (*domain.Progr
 }
 
 func (m *MockRepository) GetAllNodes(ctx context.Context) ([]*domain.ProgressionNode, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	nodes := make([]*domain.ProgressionNode, 0, len(m.nodes))
 	for _, node := range m.nodes {
 		nodes = append(nodes, node)
@@ -90,6 +98,8 @@ func (m *MockRepository) GetAllNodes(ctx context.Context) ([]*domain.Progression
 }
 
 func (m *MockRepository) GetChildNodes(ctx context.Context, parentID int) ([]*domain.ProgressionNode, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	children := make([]*domain.ProgressionNode, 0)
 	for _, node := range m.nodes {
 		if node.ParentNodeID != nil && *node.ParentNodeID == parentID {
@@ -100,6 +110,8 @@ func (m *MockRepository) GetChildNodes(ctx context.Context, parentID int) ([]*do
 }
 
 func (m *MockRepository) GetUnlock(ctx context.Context, nodeID int, level int) (*domain.ProgressionUnlock, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	if levels, ok := m.unlocks[nodeID]; ok {
 		if unlock, ok := levels[level]; ok {
 			return unlock, nil
@@ -109,6 +121,8 @@ func (m *MockRepository) GetUnlock(ctx context.Context, nodeID int, level int) (
 }
 
 func (m *MockRepository) GetAllUnlocks(ctx context.Context) ([]*domain.ProgressionUnlock, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	unlocks := make([]*domain.ProgressionUnlock, 0)
 	for _, levels := range m.unlocks {
 		for _, unlock := range levels {
@@ -133,6 +147,8 @@ func (m *MockRepository) IsNodeUnlocked(ctx context.Context, nodeKey string, lev
 }
 
 func (m *MockRepository) UnlockNode(ctx context.Context, nodeID int, level int, unlockedBy string, engagementScore int) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.unlocks[nodeID] == nil {
 		m.unlocks[nodeID] = make(map[int]*domain.ProgressionUnlock)
 	}
@@ -149,6 +165,8 @@ func (m *MockRepository) UnlockNode(ctx context.Context, nodeID int, level int, 
 }
 
 func (m *MockRepository) RelockNode(ctx context.Context, nodeID int, level int) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if levels, ok := m.unlocks[nodeID]; ok {
 		delete(levels, level)
 	}
@@ -156,6 +174,8 @@ func (m *MockRepository) RelockNode(ctx context.Context, nodeID int, level int) 
 }
 
 func (m *MockRepository) GetActiveVoting(ctx context.Context) (*domain.ProgressionVoting, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	if m.voting != nil && m.voting.IsActive {
 		return m.voting, nil
 	}
@@ -163,6 +183,8 @@ func (m *MockRepository) GetActiveVoting(ctx context.Context) (*domain.Progressi
 }
 
 func (m *MockRepository) StartVoting(ctx context.Context, nodeID int, level int, endsAt *time.Time) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.voting = &domain.ProgressionVoting{
 		ID:              1,
 		NodeID:          nodeID,
@@ -176,6 +198,8 @@ func (m *MockRepository) StartVoting(ctx context.Context, nodeID int, level int,
 }
 
 func (m *MockRepository) GetVoting(ctx context.Context, nodeID int, level int) (*domain.ProgressionVoting, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	if m.voting != nil && m.voting.NodeID == nodeID && m.voting.TargetLevel == level {
 		return m.voting, nil
 	}
@@ -183,6 +207,8 @@ func (m *MockRepository) GetVoting(ctx context.Context, nodeID int, level int) (
 }
 
 func (m *MockRepository) IncrementVote(ctx context.Context, nodeID int, level int) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.voting != nil && m.voting.NodeID == nodeID && m.voting.TargetLevel == level {
 		m.voting.VoteCount++
 	}
@@ -190,6 +216,8 @@ func (m *MockRepository) IncrementVote(ctx context.Context, nodeID int, level in
 }
 
 func (m *MockRepository) EndVoting(ctx context.Context, nodeID int, level int) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.voting != nil && m.voting.NodeID == nodeID && m.voting.TargetLevel == level {
 		m.voting.IsActive = false
 	}
@@ -197,6 +225,8 @@ func (m *MockRepository) EndVoting(ctx context.Context, nodeID int, level int) e
 }
 
 func (m *MockRepository) HasUserVoted(ctx context.Context, userID string, nodeID int, level int) (bool, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	if nodes, ok := m.userVotes[userID]; ok {
 		if levels, ok := nodes[nodeID]; ok {
 			return levels[level], nil
@@ -206,6 +236,8 @@ func (m *MockRepository) HasUserVoted(ctx context.Context, userID string, nodeID
 }
 
 func (m *MockRepository) RecordUserVote(ctx context.Context, userID string, nodeID int, level int) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.userVotes[userID] == nil {
 		m.userVotes[userID] = make(map[int]map[int]bool)
 	}
@@ -217,6 +249,8 @@ func (m *MockRepository) RecordUserVote(ctx context.Context, userID string, node
 }
 
 func (m *MockRepository) UnlockUserProgression(ctx context.Context, userID string, progressionType string, key string, metadata map[string]interface{}) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.userProgressions[userID] == nil {
 		m.userProgressions[userID] = make(map[string]map[string]*domain.UserProgression)
 	}
@@ -235,6 +269,8 @@ func (m *MockRepository) UnlockUserProgression(ctx context.Context, userID strin
 }
 
 func (m *MockRepository) IsUserProgressionUnlocked(ctx context.Context, userID string, progressionType string, key string) (bool, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	if types, ok := m.userProgressions[userID]; ok {
 		if keys, ok := types[progressionType]; ok {
 			_, exists := keys[key]
@@ -245,6 +281,8 @@ func (m *MockRepository) IsUserProgressionUnlocked(ctx context.Context, userID s
 }
 
 func (m *MockRepository) GetUserProgressions(ctx context.Context, userID string, progressionType string) ([]*domain.UserProgression, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	progressions := make([]*domain.UserProgression, 0)
 	if types, ok := m.userProgressions[userID]; ok {
 		if keys, ok := types[progressionType]; ok {
@@ -257,11 +295,15 @@ func (m *MockRepository) GetUserProgressions(ctx context.Context, userID string,
 }
 
 func (m *MockRepository) RecordEngagement(ctx context.Context, metric *domain.EngagementMetric) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.engagementMetrics = append(m.engagementMetrics, metric)
 	return nil
 }
 
 func (m *MockRepository) GetEngagementScore(ctx context.Context, since *time.Time) (int, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	totalScore := 0
 	for _, metric := range m.engagementMetrics {
 		if since != nil && metric.RecordedAt.Before(*since) {
@@ -274,6 +316,8 @@ func (m *MockRepository) GetEngagementScore(ctx context.Context, since *time.Tim
 }
 
 func (m *MockRepository) GetUserEngagement(ctx context.Context, userID string) (*domain.ContributionBreakdown, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	breakdown := &domain.ContributionBreakdown{}
 
 	for _, metric := range m.engagementMetrics {
@@ -300,10 +344,14 @@ func (m *MockRepository) GetUserEngagement(ctx context.Context, userID string) (
 }
 
 func (m *MockRepository) GetEngagementWeights(ctx context.Context) (map[string]float64, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	return m.engagementWeights, nil
 }
 
 func (m *MockRepository) ResetTree(ctx context.Context, resetBy string, reason string, preserveUserData bool) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	// Keep only root unlock
 	newUnlocks := make(map[int]map[int]*domain.ProgressionUnlock)
 	for nodeID, levels := range m.unlocks {
@@ -329,6 +377,8 @@ func (m *MockRepository) RecordReset(ctx context.Context, reset *domain.Progress
 
 // Session-based voting mock methods
 func (m *MockRepository) CreateVotingSession(ctx context.Context) (int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.sessionCounter++
 	sessionID := m.sessionCounter
 	
@@ -345,6 +395,8 @@ func (m *MockRepository) CreateVotingSession(ctx context.Context) (int, error) {
 }
 
 func (m *MockRepository) AddVotingOption(ctx context.Context, sessionID, nodeID, targetLevel int) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	node := m.nodes[nodeID]
 	if node == nil {
 		return fmt.Errorf("node not found")
@@ -371,6 +423,8 @@ func (m *MockRepository) AddVotingOption(ctx context.Context, sessionID, nodeID,
 }
 
 func (m *MockRepository) GetActiveSession(ctx context.Context) (*domain.ProgressionVotingSession, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	for _, session := range m.sessions {
 		if session.Status == "voting" {
 			return session, nil
@@ -380,6 +434,8 @@ func (m *MockRepository) GetActiveSession(ctx context.Context) (*domain.Progress
 }
 
 func (m *MockRepository) GetSessionByID(ctx context.Context, sessionID int) (*domain.ProgressionVotingSession, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	if session, ok := m.sessions[sessionID]; ok {
 		return session, nil
 	}
@@ -387,6 +443,8 @@ func (m *MockRepository) GetSessionByID(ctx context.Context, sessionID int) (*do
 }
 
 func (m *MockRepository) IncrementOptionVote(ctx context.Context, optionID int) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	for sessionID, options := range m.sessionOptions {
 		for i := range options {
 			if options[i].ID == optionID {
@@ -407,6 +465,8 @@ func (m *MockRepository) IncrementOptionVote(ctx context.Context, optionID int) 
 }
 
 func (m *MockRepository) EndVotingSession(ctx context.Context, sessionID int, winningOptionID int) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if session, ok := m.sessions[sessionID]; ok {
 		session.Status = "ended"
 		session.EndedAt = timePtr(time.Now())
@@ -417,6 +477,8 @@ func (m *MockRepository) EndVotingSession(ctx context.Context, sessionID int, wi
 }
 
 func (m *MockRepository) GetSessionVoters(ctx context.Context, sessionID int) ([]string, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	voters := make([]string, 0)
 	if userMap, ok := m.sessionVotes[sessionID]; ok {
 		for userID := range userMap {
@@ -427,6 +489,8 @@ func (m *MockRepository) GetSessionVoters(ctx context.Context, sessionID int) ([
 }
 
 func (m *MockRepository) HasUserVotedInSession(ctx context.Context, userID string, sessionID int) (bool, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	if userMap, ok := m.sessionVotes[sessionID]; ok {
 		return userMap[userID], nil
 	}
@@ -434,6 +498,8 @@ func (m *MockRepository) HasUserVotedInSession(ctx context.Context, userID strin
 }
 
 func (m *MockRepository) RecordUserSessionVote(ctx context.Context, userID string, sessionID, optionID, nodeID int) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.sessionVotes[sessionID] == nil {
 		m.sessionVotes[sessionID] = make(map[string]bool)
 	}
@@ -443,6 +509,8 @@ func (m *MockRepository) RecordUserSessionVote(ctx context.Context, userID strin
 
 // Unlock progress mock methods
 func (m *MockRepository) CreateUnlockProgress(ctx context.Context) (int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.progressCounter++
 	progressID := m.progressCounter
 	
@@ -456,6 +524,8 @@ func (m *MockRepository) CreateUnlockProgress(ctx context.Context) (int, error) 
 }
 
 func (m *MockRepository) GetActiveUnlockProgress(ctx context.Context) (*domain.UnlockProgress, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	if m.activeProgressID == 0 {
 		return nil, nil // No active progress found (not an error)
 	}
@@ -471,6 +541,8 @@ func (m *MockRepository) GetActiveUnlockProgress(ctx context.Context) (*domain.U
 }
 
 func (m *MockRepository) AddContribution(ctx context.Context, progressID int, amount int) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if progress, ok := m.unlockProgress[progressID]; ok {
 		progress.ContributionsAccumulated += amount
 		return nil
@@ -479,6 +551,8 @@ func (m *MockRepository) AddContribution(ctx context.Context, progressID int, am
 }
 
 func (m *MockRepository) SetUnlockTarget(ctx context.Context, progressID int, nodeID int, targetLevel int, sessionID int) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if progress, ok := m.unlockProgress[progressID]; ok {
 		progress.NodeID = &nodeID
 		progress.TargetLevel = &targetLevel
@@ -489,6 +563,8 @@ func (m *MockRepository) SetUnlockTarget(ctx context.Context, progressID int, no
 }
 
 func (m *MockRepository) CompleteUnlock(ctx context.Context, progressID int, rolloverPoints int) (int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if progress, ok := m.unlockProgress[progressID]; ok {
 		progress.UnlockedAt = timePtr(time.Now())
 		

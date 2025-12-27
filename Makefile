@@ -79,7 +79,7 @@ migrate-create:
 # Development commands
 test:
 	@echo "Running tests..."
-	@go test ./... -cover -race
+	@DB_PORT=5433 DB_USER=testuser DB_PASSWORD=testpass DB_NAME=testdb go test ./... -cover -race
 
 unit:
 	@echo "Running unit tests (fast)..."
