@@ -48,14 +48,21 @@ func (s *service) processLootbox(ctx context.Context, inventory *domain.Inventor
 	displayName := s.namingResolver.GetDisplayName(lootboxItem.InternalName, "")
 	msgBuilder.WriteString(fmt.Sprintf("Opened %d %s and received: ", quantity, displayName))
 
+	// Optimization: Build a map for O(1) inventory lookups instead of O(N) scan per drop
+	// This reduces complexity from O(N*M) to O(N+M) where N=inventory size, M=drops
+	slotMap := make(map[int]int, len(inventory.Slots))
+	for i, slot := range inventory.Slots {
+		slotMap[slot.ItemID] = i
+	}
+
 	first := true
 	for _, drop := range drops {
 		// Add to inventory
-		i, _ := utils.FindSlot(inventory, drop.ItemID)
-		if i != -1 {
-			inventory.Slots[i].Quantity += drop.Quantity
+		if idx, exists := slotMap[drop.ItemID]; exists {
+			inventory.Slots[idx].Quantity += drop.Quantity
 		} else {
 			inventory.Slots = append(inventory.Slots, domain.InventorySlot{ItemID: drop.ItemID, Quantity: drop.Quantity})
+			slotMap[drop.ItemID] = len(inventory.Slots) - 1
 		}
 
 		if !first {
