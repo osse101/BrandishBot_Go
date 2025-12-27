@@ -55,6 +55,12 @@ func (s *service) processLootbox(ctx context.Context, inventory *domain.Inventor
 	totalValue := 0
 	hasLegendary := false
 	hasEpic := false
+	// Optimization: Build a map for O(1) inventory lookups instead of O(N) scan per drop
+	// This reduces complexity from O(N*M) to O(N+M) where N=inventory size, M=drops
+	slotMap := make(map[int]int, len(inventory.Slots))
+	for i, slot := range inventory.Slots {
+		slotMap[slot.ItemID] = i
+	}
 
 	first := true
 	for _, drop := range drops {
@@ -67,11 +73,11 @@ func (s *service) processLootbox(ctx context.Context, inventory *domain.Inventor
 		}
 
 		// Add to inventory
-		i, _ := utils.FindSlot(inventory, drop.ItemID)
-		if i != -1 {
-			inventory.Slots[i].Quantity += drop.Quantity
+		if idx, exists := slotMap[drop.ItemID]; exists {
+			inventory.Slots[idx].Quantity += drop.Quantity
 		} else {
 			inventory.Slots = append(inventory.Slots, domain.InventorySlot{ItemID: drop.ItemID, Quantity: drop.Quantity})
+			slotMap[drop.ItemID] = len(inventory.Slots) - 1
 		}
 
 		if !first {
