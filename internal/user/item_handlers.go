@@ -8,8 +8,12 @@ import (
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
+	"github.com/osse101/BrandishBot_Go/internal/lootbox"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
+
+// BulkFeedbackThreshold defines the number of lootboxes required to trigger "Nice haul" message
+const BulkFeedbackThreshold = 5
 
 // Item effect handlers
 
@@ -48,8 +52,20 @@ func (s *service) processLootbox(ctx context.Context, inventory *domain.Inventor
 	displayName := s.namingResolver.GetDisplayName(lootboxItem.InternalName, "")
 	msgBuilder.WriteString(fmt.Sprintf("Opened %d %s and received: ", quantity, displayName))
 
+	totalValue := 0
+	hasLegendary := false
+	hasEpic := false
+
 	first := true
 	for _, drop := range drops {
+		// Track stats for feedback
+		totalValue += drop.Value
+		if drop.ShineLevel == lootbox.ShineLegendary {
+			hasLegendary = true
+		} else if drop.ShineLevel == lootbox.ShineEpic {
+			hasEpic = true
+		}
+
 		// Add to inventory
 		i, _ := utils.FindSlot(inventory, drop.ItemID)
 		if i != -1 {
@@ -67,12 +83,25 @@ func (s *service) processLootbox(ctx context.Context, inventory *domain.Inventor
 
 		// Add shine annotation for visual impact
 		shineAnnotation := ""
-		if drop.ShineLevel != "" && drop.ShineLevel != "COMMON" {
+		if drop.ShineLevel != "" && drop.ShineLevel != lootbox.ShineCommon {
 			shineAnnotation = fmt.Sprintf(" [%s!]", drop.ShineLevel)
 		}
 
 		msgBuilder.WriteString(fmt.Sprintf("%dx %s%s", drop.Quantity, itemDisplayName, shineAnnotation))
 		first = false
+	}
+
+	// 4. Append "Juice" - Feedback based on results
+	// LevelUp Philosophy: "If a number goes up, the player should feel it."
+	msgBuilder.WriteString(fmt.Sprintf(" (Value: %d)", totalValue))
+
+	if hasLegendary {
+		msgBuilder.WriteString(" JACKPOT! 🎰✨")
+	} else if hasEpic {
+		msgBuilder.WriteString(" BIG WIN! 💰")
+	} else if totalValue > 0 && quantity >= BulkFeedbackThreshold {
+		// If opening many boxes and getting nothing special, at least acknowledge the haul
+		msgBuilder.WriteString(" Nice haul! 📦")
 	}
 
 	return msgBuilder.String(), nil
