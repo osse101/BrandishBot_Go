@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"strings"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -61,6 +61,13 @@ func New(cfg Config) (*Bot, error) {
 func (b *Bot) Start() error {
 	b.Session.AddHandler(b.ready)
 	b.Session.AddHandler(b.interactionCreate)
+	
+	// Add autocomplete handler
+	b.Session.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+		if i.Type == discordgo.InteractionApplicationCommandAutocomplete {
+			HandleAutocomplete(s, i, b.Client)
+		}
+	})
 
 	if err := b.Session.Open(); err != nil {
 		return fmt.Errorf("error opening connection: %w", err)

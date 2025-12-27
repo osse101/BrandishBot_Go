@@ -79,10 +79,11 @@ func DisassembleCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		Description: "Break down an item to get materials",
 		Options: []*discordgo.ApplicationCommandOption{
 			{
-				Type:        discordgo.ApplicationCommandOptionString,
-				Name:        "item",
-				Description: "Item name to disassemble",
-				Required:    true,
+				Type:         discordgo.ApplicationCommandOptionString,
+				Name:         "item",
+				Description:  "Item name to disassemble",
+				Required:     true,
+				Autocomplete: true,
 			},
 			{
 				Type:        discordgo.ApplicationCommandOptionInteger,

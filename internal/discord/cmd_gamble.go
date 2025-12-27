@@ -14,10 +14,11 @@ func GambleStartCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		Description: "Start a new gamble with lootbox items",
 		Options: []*discordgo.ApplicationCommandOption{
 			{
-				Type:        discordgo.ApplicationCommandOptionString,
-				Name:        "item",
-				Description: "Lootbox item to wager (e.g., lootbox, goldbox)",
-				Required:    true,
+				Type:         discordgo.ApplicationCommandOptionString,
+				Name:         "item",
+				Description:  "Lootbox item to wager (e.g., lootbox, goldbox)",
+				Required:     true,
+				Autocomplete: true,
 			},
 			{
 				Type:        discordgo.ApplicationCommandOptionInteger,
@@ -93,10 +94,11 @@ func GambleJoinCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 				Required:    true,
 			},
 			{
-				Type:        discordgo.ApplicationCommandOptionString,
-				Name:        "item",
-				Description: "Lootbox item to wager (e.g., lootbox, goldbox)",
-				Required:    true,
+				Type:         discordgo.ApplicationCommandOptionString,
+				Name:         "item",
+				Description:  "Lootbox item to wager (e.g., lootbox, goldbox)",
+				Required:     true,
+				Autocomplete: true,
 			},
 			{
 				Type:        discordgo.ApplicationCommandOptionInteger,

@@ -15,10 +15,11 @@ func UseItemCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		Description: "Use an item from your inventory",
 		Options: []*discordgo.ApplicationCommandOption{
 			{
-				Type:        discordgo.ApplicationCommandOptionString,
-				Name:        "item",
-				Description: "Item name to use",
-				Required:    true,
+				Type:         discordgo.ApplicationCommandOptionString,
+				Name:         "item",
+				Description:  "Item name to use",
+				Required:     true,
+				Autocomplete: true,
 			},
 			{
 				Type:        discordgo.ApplicationCommandOptionInteger,

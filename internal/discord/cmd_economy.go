@@ -15,10 +15,11 @@ func BuyCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		Description: "Purchase an item from the shop",
 		Options: []*discordgo.ApplicationCommandOption{
 			{
-				Type:        discordgo.ApplicationCommandOptionString,
-				Name:        "item",
-				Description: "Item name to buy",
-				Required:    true,
+				Type:         discordgo.ApplicationCommandOptionString,
+				Name:         "item",
+				Description:  "Item name to buy",
+				Required:     true,
+				Autocomplete: true,
 			},
 			{
 				Type:        discordgo.ApplicationCommandOptionInteger,
@@ -90,10 +91,11 @@ func SellCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		Description: "Sell an item from your inventory",
 		Options: []*discordgo.ApplicationCommandOption{
 			{
-				Type:        discordgo.ApplicationCommandOptionString,
-				Name:        "item",
-				Description: "Item name to sell",
-				Required:    true,
+				Type:         discordgo.ApplicationCommandOptionString,
+				Name:         "item",
+				Description:  "Item name to sell",
+				Required:     true,
+				Autocomplete: true,
 			},
 			{
 				Type:        discordgo.ApplicationCommandOptionInteger,
@@ -253,10 +255,11 @@ func GiveCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 				Required:    true,
 			},
 			{
-				Type:        discordgo.ApplicationCommandOptionString,
-				Name:        "item",
-				Description: "Item name to give",
-				Required:    true,
+				Type:         discordgo.ApplicationCommandOptionString,
+				Name:         "item",
+				Description:  "Item name to give",
+				Required:     true,
+				Autocomplete: true,
 			},
 			{
 				Type:        discordgo.ApplicationCommandOptionInteger,
