@@ -157,6 +157,19 @@ func (m *MockRepository) GetAssociatedUpgradeRecipeID(ctx context.Context, disas
 	return upgradeRecipeID, nil
 }
 
+func (m *MockRepository) GetAllRecipes(ctx context.Context) ([]RecipeListItem, error) {
+	var result []RecipeListItem
+	for _, recipe := range m.recipes {
+		if item, ok := m.itemsByID[recipe.TargetItemID]; ok {
+			result = append(result, RecipeListItem{
+				ItemName: item.InternalName,
+				ItemID:   item.ID,
+			})
+		}
+	}
+	return result, nil
+}
+
 // MockTx for transaction support
 type MockTx struct {
 	repo *MockRepository

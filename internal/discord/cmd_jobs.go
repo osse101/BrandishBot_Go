@@ -15,10 +15,11 @@ func JobBonusCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		Description: "Checkactive bonus for a specific job",
 		Options: []*discordgo.ApplicationCommandOption{
 			{
-				Type:        discordgo.ApplicationCommandOptionString,
-				Name:        "job",
-				Description: "Job key (e.g., miner, warrior)",
-				Required:    true,
+				Type:         discordgo.ApplicationCommandOptionString,
+				Name:         "job",
+				Description:  "Job key (e.g., miner, warrior)",
+				Required:     true,
+				Autocomplete: true,
 			},
 			{
 				Type:        discordgo.ApplicationCommandOptionString,

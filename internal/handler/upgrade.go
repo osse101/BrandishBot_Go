@@ -166,7 +166,7 @@ func HandleGetRecipes(svc crafting.Service) http.HandlerFunc {
 			return
 		}
 
-		// Case 2 & 3: Item provided (with or without user) - return recipe info
+		// Case 2: Item provided (with or without user) - return recipe info
 		if itemName != "" {
 			platform := r.URL.Query().Get("platform")
 			platformID := r.URL.Query().Get("platform_id")
@@ -186,8 +186,17 @@ func HandleGetRecipes(svc crafting.Service) http.HandlerFunc {
 			return
 		}
 
-		// No valid parameters provided
-		log.Warn("Invalid recipe query", "item", itemName, "user", username)
-		http.Error(w, "Must provide either 'item' or 'user' query parameter", http.StatusBadRequest)
+		recipes, err := svc.GetAllRecipes(r.Context())
+		if err != nil {
+			log.Error("Failed to get all recipes", "error", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		respondJSON(w, http.StatusOK, map[string]interface{}{
+			"recipes": recipes,
+		})
 	}
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/job"
 )
 
 // HandleAutocomplete routes autocomplete interactions to the appropriate handler
@@ -14,6 +15,10 @@ func HandleAutocomplete(s *discordgo.Session, i *discordgo.InteractionCreate, cl
 	data := i.ApplicationCommandData()
 
 	switch data.Name {
+	case "upgrade":
+		handleRecipeAutocomplete(s, i, client)
+	case "job-bonus":
+		handleJobAutocomplete(s, i)
 	case "use":
 		handleItemAutocomplete(s, i, client, true, nil)
 	case "buy":
@@ -27,6 +32,86 @@ func HandleAutocomplete(s *discordgo.Session, i *discordgo.InteractionCreate, cl
 	default:
 		slog.Warn("Unhandled autocomplete command", "command", data.Name)
 	}
+}
+
+// handleRecipeAutocomplete provides autocomplete for crafting recipes
+func handleRecipeAutocomplete(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
+	user := i.Member.User
+	if user == nil {
+		user = i.User
+	}
+
+	// Defensive check
+	if user == nil {
+		return
+	}
+
+	data := i.ApplicationCommandData()
+	var focusedValue string
+	for _, opt := range data.Options {
+		if opt.Focused {
+			focusedValue = strings.ToLower(opt.StringValue())
+			break
+		}
+	}
+
+	// Get unlocked recipes for this user
+	recipes, err := client.GetUnlockedRecipes(domain.PlatformDiscord, user.ID, user.Username)
+	if err != nil {
+		slog.Error("Failed to get recipes for autocomplete", "error", err)
+		// Fallback to all recipes if getting unlocked fails? Or just return error choice
+		// Let's try to get all recipes as fallback if unlocked fails?
+		// No, usually if backend fails we probably can't get all either.
+	}
+
+	var choices []*discordgo.ApplicationCommandOptionChoice
+	for _, r := range recipes {
+		if focusedValue == "" || strings.Contains(strings.ToLower(r.ItemName), focusedValue) {
+			choices = append(choices, &discordgo.ApplicationCommandOptionChoice{
+				Name:  r.ItemName,
+				Value: r.ItemName, // Pass name as value, matching new UpgradeCommand logic
+			})
+		}
+		if len(choices) >= 25 {
+			break
+		}
+	}
+
+	_ = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionApplicationCommandAutocompleteResult,
+		Data: &discordgo.InteractionResponseData{
+			Choices: choices,
+		},
+	})
+}
+
+// handleJobAutocomplete provides autocomplete for job keys
+func handleJobAutocomplete(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	data := i.ApplicationCommandData()
+	var focusedValue string
+	for _, opt := range data.Options {
+		if opt.Focused {
+			focusedValue = strings.ToLower(opt.StringValue())
+			break
+		}
+	}
+
+	var choices []*discordgo.ApplicationCommandOptionChoice
+	for _, jobInfo := range job.AllJobs {
+		if focusedValue == "" || strings.Contains(strings.ToLower(jobInfo.DisplayName), focusedValue) || strings.Contains(strings.ToLower(jobInfo.Key), focusedValue) {
+			choices = append(choices, &discordgo.ApplicationCommandOptionChoice{
+				Name:  jobInfo.DisplayName,
+				Value: jobInfo.Key,
+			})
+		}
+	}
+
+	_ = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionApplicationCommandAutocompleteResult,
+		Data: &discordgo.InteractionResponseData{
+			Choices: choices,
+		},
+	})
 }
 
 // handleItemAutocomplete provides autocomplete suggestions for item names

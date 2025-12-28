@@ -450,6 +450,23 @@ func (r *UserRepository) GetUnlockedRecipesForUser(ctx context.Context, userID s
 	return recipes, nil
 }
 
+// GetAllRecipes retrieves all crafting recipes
+func (r *UserRepository) GetAllRecipes(ctx context.Context) ([]crafting.RecipeListItem, error) {
+	query := `
+		SELECT i.internal_name AS item_name, r.target_item_id AS item_id
+		FROM crafting_recipes r
+		JOIN items i ON r.target_item_id = i.item_id
+		ORDER BY i.internal_name
+	`
+
+	var recipes []crafting.RecipeListItem
+	if err := pgxscan.Select(ctx, r.db, &recipes, query); err != nil {
+		return nil, fmt.Errorf("failed to query all recipes: %w", err)
+	}
+
+	return recipes, nil
+}
+
 // GetDisassembleRecipeBySourceItemID retrieves a disassemble recipe for a given source item
 func (r *UserRepository) GetDisassembleRecipeBySourceItemID(ctx context.Context, itemID int) (*domain.DisassembleRecipe, error) {
 	// Get the recipe details

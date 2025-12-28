@@ -54,3 +54,19 @@ const (
 	ScholarXPPerEngagement = 5
 	ScholarBonusPerLevel   = 10.0 // 10% engagement value increase per level
 )
+
+// JobInfo represents basic information about a job for display/autocomplete purposes
+type JobInfo struct {
+	Key         string
+	DisplayName string
+}
+
+// AllJobs is a list of all available jobs in the system
+var AllJobs = []JobInfo{
+	{Key: JobKeyBlacksmith, DisplayName: "Blacksmith (Crafting)"},
+	{Key: JobKeyExplorer, DisplayName: "Explorer (Digging)"},
+	{Key: JobKeyMerchant, DisplayName: "Merchant (Economy)"},
+	{Key: JobKeyGambler, DisplayName: "Gambler (Gambling)"},
+	{Key: JobKeyFarmer, DisplayName: "Farmer (TBD)"},
+	{Key: JobKeyScholar, DisplayName: "Scholar (Community)"},
+}

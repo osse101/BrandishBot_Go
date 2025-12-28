@@ -707,12 +707,13 @@ func (c *APIClient) GiveItem(fromPlatform, fromPlatformID, toPlatform, toPlatfor
 }
 
 // UpgradeItem crafts an item upgrade
-func (c *APIClient) UpgradeItem(platform, platformID, username string, recipeID int) (string, error) {
+func (c *APIClient) UpgradeItem(platform, platformID, username, itemName string, quantity int) (string, error) {
 	req := map[string]interface{}{
 		"platform":    platform,
 		"platform_id": platformID,
 		"username":    username,
-		"recipe_id":   recipeID,
+		"item":        itemName,
+		"quantity":    quantity,
 	}
 
 	resp, err := c.doRequest(http.MethodPost, "/user/item/upgrade", req)
@@ -777,30 +778,60 @@ func (c *APIClient) DisassembleItem(platform, platformID, username, itemName str
 	return disassembleResp.Message, nil
 }
 
+// Recipe represents a recipe returned by the API
+type Recipe struct {
+	ItemName string `json:"item_name"`
+	ItemID   int    `json:"item_id"`
+}
+
 // GetRecipes retrieves all crafting recipes
-func (c *APIClient) GetRecipes() (string, error) {
+func (c *APIClient) GetRecipes() ([]Recipe, error) {
 	resp, err := c.doRequest(http.MethodGet, "/recipes", nil)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
+		return nil, fmt.Errorf("API returned status: %d", resp.StatusCode)
 	}
 
 	var recipesResp struct {
-		Message string `json:"message"`
-		Recipes string `json:"recipes"`
+		Recipes []Recipe `json:"recipes"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&recipesResp); err != nil {
-		return "", fmt.Errorf("failed to decode response: %w", err)
+		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	if recipesResp.Recipes != "" {
-		return recipesResp.Recipes, nil
+	return recipesResp.Recipes, nil
+}
+
+// GetUnlockedRecipes retrieves unlocked recipes for a user
+func (c *APIClient) GetUnlockedRecipes(platform, platformID, username string) ([]Recipe, error) {
+	params := url.Values{}
+	params.Set("platform", platform)
+	params.Set("platform_id", platformID)
+	params.Set("user", username)
+
+	path := fmt.Sprintf("/recipes?%s", params.Encode())
+	resp, err := c.doRequest(http.MethodGet, path, nil)
+	if err != nil {
+		return nil, err
 	}
-	return recipesResp.Message, nil
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	var recipesResp struct {
+		Recipes []Recipe `json:"recipes"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&recipesResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return recipesResp.Recipes, nil
 }
 
 // GetJobBonus retrieves the active bonus for a job

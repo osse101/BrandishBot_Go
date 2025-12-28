@@ -85,6 +85,64 @@ func (_c *MockCraftingService_DisassembleItem_Call) RunAndReturn(run func(contex
 	return _c
 }
 
+// GetAllRecipes provides a mock function with given fields: ctx
+func (_m *MockCraftingService) GetAllRecipes(ctx context.Context) ([]crafting.RecipeListItem, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetAllRecipes")
+	}
+
+	var r0 []crafting.RecipeListItem
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) ([]crafting.RecipeListItem, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) []crafting.RecipeListItem); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]crafting.RecipeListItem)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockCraftingService_GetAllRecipes_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAllRecipes'
+type MockCraftingService_GetAllRecipes_Call struct {
+	*mock.Call
+}
+
+// GetAllRecipes is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockCraftingService_Expecter) GetAllRecipes(ctx interface{}) *MockCraftingService_GetAllRecipes_Call {
+	return &MockCraftingService_GetAllRecipes_Call{Call: _e.mock.On("GetAllRecipes", ctx)}
+}
+
+func (_c *MockCraftingService_GetAllRecipes_Call) Run(run func(ctx context.Context)) *MockCraftingService_GetAllRecipes_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockCraftingService_GetAllRecipes_Call) Return(_a0 []crafting.RecipeListItem, _a1 error) *MockCraftingService_GetAllRecipes_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockCraftingService_GetAllRecipes_Call) RunAndReturn(run func(context.Context) ([]crafting.RecipeListItem, error)) *MockCraftingService_GetAllRecipes_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetRecipe provides a mock function with given fields: ctx, itemName, platform, platformID, username
 func (_m *MockCraftingService) GetRecipe(ctx context.Context, itemName string, platform string, platformID string, username string) (*crafting.RecipeInfo, error) {
 	ret := _m.Called(ctx, itemName, platform, platformID, username)

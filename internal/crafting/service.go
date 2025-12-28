@@ -27,9 +27,15 @@ type Repository interface {
 	GetUnlockedRecipesForUser(ctx context.Context, userID string) ([]UnlockedRecipeInfo, error)
 	BeginTx(ctx context.Context) (repository.Tx, error)
 
-	// Disassemble methods
 	GetDisassembleRecipeBySourceItemID(ctx context.Context, itemID int) (*domain.DisassembleRecipe, error)
 	GetAssociatedUpgradeRecipeID(ctx context.Context, disassembleRecipeID int) (int, error)
+	GetAllRecipes(ctx context.Context) ([]RecipeListItem, error)
+}
+
+// RecipeListItem represents a recipe in a list
+type RecipeListItem struct {
+	ItemName string `json:"item_name"`
+	ItemID   int    `json:"item_id"`
 }
 
 // RecipeInfo represents recipe information with lock status
@@ -66,6 +72,7 @@ type Service interface {
 	UpgradeItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (*CraftingResult, error)
 	GetRecipe(ctx context.Context, itemName, platform, platformID, username string) (*RecipeInfo, error)
 	GetUnlockedRecipes(ctx context.Context, platform, platformID, username string) ([]UnlockedRecipeInfo, error)
+	GetAllRecipes(ctx context.Context) ([]RecipeListItem, error)
 	DisassembleItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (*DisassembleResult, error)
 	Shutdown(ctx context.Context) error
 }
@@ -362,6 +369,20 @@ func (s *service) GetUnlockedRecipes(ctx context.Context, platform, platformID, 
 
 	log.Info("Unlocked recipes retrieved", "username", username, "count", len(unlockedRecipes))
 	return unlockedRecipes, nil
+}
+
+// GetAllRecipes returns all valid crafting recipes
+func (s *service) GetAllRecipes(ctx context.Context) ([]RecipeListItem, error) {
+	log := logger.FromContext(ctx)
+	log.Debug("GetAllRecipes called")
+
+	recipes, err := s.repo.GetAllRecipes(ctx)
+	if err != nil {
+		log.Error("Failed to get all recipes", "error", err)
+		return nil, fmt.Errorf("failed to get all recipes: %w", err)
+	}
+
+	return recipes, nil
 }
 
 // processDisassembleOutputs adds disassemble outputs to inventory and builds result map

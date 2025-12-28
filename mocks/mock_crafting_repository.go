@@ -84,6 +84,64 @@ func (_c *MockCraftingRepository_BeginTx_Call) RunAndReturn(run func(context.Con
 	return _c
 }
 
+// GetAllRecipes provides a mock function with given fields: ctx
+func (_m *MockCraftingRepository) GetAllRecipes(ctx context.Context) ([]crafting.RecipeListItem, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetAllRecipes")
+	}
+
+	var r0 []crafting.RecipeListItem
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) ([]crafting.RecipeListItem, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) []crafting.RecipeListItem); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]crafting.RecipeListItem)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockCraftingRepository_GetAllRecipes_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAllRecipes'
+type MockCraftingRepository_GetAllRecipes_Call struct {
+	*mock.Call
+}
+
+// GetAllRecipes is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockCraftingRepository_Expecter) GetAllRecipes(ctx interface{}) *MockCraftingRepository_GetAllRecipes_Call {
+	return &MockCraftingRepository_GetAllRecipes_Call{Call: _e.mock.On("GetAllRecipes", ctx)}
+}
+
+func (_c *MockCraftingRepository_GetAllRecipes_Call) Run(run func(ctx context.Context)) *MockCraftingRepository_GetAllRecipes_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockCraftingRepository_GetAllRecipes_Call) Return(_a0 []crafting.RecipeListItem, _a1 error) *MockCraftingRepository_GetAllRecipes_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockCraftingRepository_GetAllRecipes_Call) RunAndReturn(run func(context.Context) ([]crafting.RecipeListItem, error)) *MockCraftingRepository_GetAllRecipes_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetAssociatedUpgradeRecipeID provides a mock function with given fields: ctx, disassembleRecipeID
 func (_m *MockCraftingRepository) GetAssociatedUpgradeRecipeID(ctx context.Context, disassembleRecipeID int) (int, error) {
 	ret := _m.Called(ctx, disassembleRecipeID)
