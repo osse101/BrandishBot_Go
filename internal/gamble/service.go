@@ -2,6 +2,7 @@ package gamble
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"sync"
@@ -173,6 +174,9 @@ func (s *service) StartGamble(ctx context.Context, platform, platformID, usernam
 
 	// Save gamble
 	if err := s.repo.CreateGamble(ctx, gamble); err != nil {
+		if errors.Is(err, domain.ErrGambleAlreadyActive) {
+			return nil, domain.ErrGambleAlreadyActive
+		}
 		return nil, fmt.Errorf("failed to create gamble: %w", err)
 	}
 
@@ -248,7 +252,7 @@ func (s *service) JoinGamble(ctx context.Context, gambleID uuid.UUID, platform, 
 	// Check if user has already joined
 	for _, p := range gamble.Participants {
 		if p.UserID == user.ID {
-			return fmt.Errorf("user has already joined this gamble")
+			return domain.ErrUserAlreadyJoined
 		}
 	}
 
@@ -299,6 +303,9 @@ func (s *service) JoinGamble(ctx context.Context, gambleID uuid.UUID, platform, 
 		Username:    username,
 	}
 	if err := s.repo.JoinGamble(ctx, participant); err != nil {
+		if errors.Is(err, domain.ErrUserAlreadyJoined) {
+			return domain.ErrUserAlreadyJoined
+		}
 		return fmt.Errorf("failed to join gamble: %w", err)
 	}
 

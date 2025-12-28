@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
@@ -33,6 +34,9 @@ func (r *GambleRepository) CreateGamble(ctx context.Context, gamble *domain.Gamb
 	`
 	_, err := r.db.Exec(ctx, query, gamble.ID, gamble.InitiatorID, gamble.State, gamble.CreatedAt, gamble.JoinDeadline)
 	if err != nil {
+		if pgErr, ok := err.(*pgconn.PgError); ok && pgErr.Code == "23505" {
+			return domain.ErrGambleAlreadyActive
+		}
 		return fmt.Errorf("failed to create gamble: %w", err)
 	}
 	return nil
@@ -89,6 +93,9 @@ func (r *GambleRepository) JoinGamble(ctx context.Context, participant *domain.P
 	`
 	_, err := r.db.Exec(ctx, query, participant.GambleID, participant.UserID, participant.LootboxBets)
 	if err != nil {
+		if pgErr, ok := err.(*pgconn.PgError); ok && pgErr.Code == "23505" {
+			return domain.ErrUserAlreadyJoined
+		}
 		return fmt.Errorf("failed to join gamble: %w", err)
 	}
 	return nil
