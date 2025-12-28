@@ -249,12 +249,8 @@ func (s *service) JoinGamble(ctx context.Context, gambleID uuid.UUID, platform, 
 		return domain.ErrJoinDeadlinePassed
 	}
 
-	// Check if user has already joined
-	for _, p := range gamble.Participants {
-		if p.UserID == user.ID {
-			return domain.ErrUserAlreadyJoined
-		}
-	}
+	// Note: Duplicate join prevention is enforced by database constraint
+	// (idx_gamble_participants_unique_user on gamble_participants table)
 
 	// Validate that all bet items are lootboxes
 	for _, bet := range bets {

@@ -109,9 +109,16 @@ type service struct {
 	cooldownService cooldown.Service
 	devMode         bool // When true, bypasses cooldowns
 	wg              sync.WaitGroup
-	itemCache       map[int]domain.Item
-	itemCacheByName map[string]domain.Item
-	itemCacheMu     sync.RWMutex
+	
+	// Item cache: in-memory cache for item metadata (name, description, value, etc.)
+	// Purpose: Reduce database queries for frequently accessed item data
+	// Thread-safety: Protected by itemCacheMu (RWMutex)
+	// Invalidation: Cache is populated on-demand and persists for server lifetime
+	//               Item metadata is assumed immutable - if items are modified in DB,
+	//               server restart is required to refresh cache
+	itemCache       map[int]domain.Item        // Cache by item ID
+	itemCacheByName map[string]domain.Item     // Cache by internal name
+	itemCacheMu     sync.RWMutex               // Protects both cache maps
 }
 
 

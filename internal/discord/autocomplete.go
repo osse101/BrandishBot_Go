@@ -37,6 +37,20 @@ func handleItemAutocomplete(s *discordgo.Session, i *discordgo.InteractionCreate
 	if user == nil {
 		user = i.User
 	}
+	
+	// Defensive check: ensure we have a valid user (should always be present in Discord commands)
+	if user == nil {
+		slog.Error("Failed to get user from autocomplete interaction")
+		_ = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionApplicationCommandAutocompleteResult,
+			Data: &discordgo.InteractionResponseData{
+				Choices: []*discordgo.ApplicationCommandOptionChoice{
+					{Name: "Error: Unable to identify user", Value: "error"},
+				},
+			},
+		})
+		return
+	}
 
 	// Get the value the user is currently typing
 	data := i.ApplicationCommandData()
@@ -118,8 +132,8 @@ func handleItemAutocomplete(s *discordgo.Session, i *discordgo.InteractionCreate
 func handleGambleItemAutocomplete(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
 	// Filter to only show lootbox items
 	lootboxFilter := func(itemName string) bool {
-		return strings.Contains(itemName, "lootbox") || 
-		       strings.Contains(itemName, "box") ||
+		// Use prefix check for precision - avoids matching non-lootbox items like "toolbox"
+		return strings.HasPrefix(itemName, "lootbox") || 
 		       itemName == "junkbox" || 
 		       itemName == "goldbox"
 	}
