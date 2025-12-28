@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
 	"github.com/osse101/BrandishBot_Go/internal/event"
@@ -20,22 +21,13 @@ type DisassembleItemRequest struct {
 }
 
 type DisassembleItemResponse struct {
+	Message           string         `json:"message"`
 	Outputs           map[string]int `json:"outputs"`
 	QuantityProcessed int            `json:"quantity_processed"`
+	IsPerfectSalvage  bool           `json:"is_perfect_salvage"`
+	Multiplier        float64        `json:"multiplier"`
 }
 
-// HandleDisassembleItem handles disassembling items
-// @Summary Disassemble item
-// @Description Disassemble an item into materials
-// @Tags crafting
-// @Accept json
-// @Produce json
-// @Param request body DisassembleItemRequest true "Disassemble details"
-// @Success 200 {object} DisassembleItemResponse
-// @Failure 400 {object} ErrorResponse
-// @Failure 403 {object} ErrorResponse "Feature locked"
-// @Failure 500 {object} ErrorResponse
-// @Router /user/item/disassemble [post]
 // HandleDisassembleItem handles disassembling items
 // @Summary Disassemble item
 // @Description Disassemble an item into materials
@@ -52,7 +44,6 @@ func HandleDisassembleItem(svc crafting.Service, progressionSvc progression.Serv
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
 
-		// Check if disassemble feature is unlocked
 		// Check if disassemble feature is unlocked
 		if CheckFeatureLocked(w, r, progressionSvc, progression.FeatureDisassemble) {
 			return
@@ -77,7 +68,7 @@ func HandleDisassembleItem(svc crafting.Service, progressionSvc progression.Serv
 			return
 		}
 
-		outputs, quantityProcessed, err := svc.DisassembleItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.Item, req.Quantity)
+		result, err := svc.DisassembleItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.Item, req.Quantity)
 		if err != nil {
 			log.Error("Failed to disassemble item", "error", err, "username", req.Username, "item", req.Item)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -87,11 +78,11 @@ func HandleDisassembleItem(svc crafting.Service, progressionSvc progression.Serv
 		log.Info("Item disassembled successfully",
 			"username", req.Username,
 			"item", req.Item,
-			"quantity_processed", quantityProcessed,
-			"outputs", outputs)
+			"quantity_processed", result.QuantityProcessed,
+			"outputs", result.Outputs)
 
 		// Add contribution points for disassembling
-		if err := progressionSvc.AddContribution(r.Context(), quantityProcessed); err != nil {
+		if err := progressionSvc.AddContribution(r.Context(), result.QuantityProcessed); err != nil {
 			log.Warn("Failed to add contribution points", "error", err)
 		}
 
@@ -101,18 +92,34 @@ func HandleDisassembleItem(svc crafting.Service, progressionSvc progression.Serv
 			Payload: map[string]interface{}{
 				"user_id":            req.Username,
 				"item":               req.Item,
-				"quantity_processed": quantityProcessed,
-				"materials_gained":   outputs,
+				"quantity_processed": result.QuantityProcessed,
+				"materials_gained":   result.Outputs,
+				"is_perfect_salvage": result.IsPerfectSalvage,
 			},
 		}); err != nil {
 			log.Error("Failed to publish item.disassembled event", "error", err)
 		}
 
+		// Construct user message
+		var outputParts []string
+		for k, v := range result.Outputs {
+			outputParts = append(outputParts, fmt.Sprintf("%dx %s", v, k))
+		}
+		outputStr := strings.Join(outputParts, ", ")
+
+		message := fmt.Sprintf("Disassembled %d items into: %s", result.QuantityProcessed, outputStr)
+		if result.IsPerfectSalvage {
+			message = fmt.Sprintf("PERFECT SALVAGE! You efficiently recovered more materials! (+50%% Bonus): %s", outputStr)
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		respondJSON(w, http.StatusOK, DisassembleItemResponse{
-			Outputs:           outputs,
-			QuantityProcessed: quantityProcessed,
+			Message:           message,
+			Outputs:           result.Outputs,
+			QuantityProcessed: result.QuantityProcessed,
+			IsPerfectSalvage:  result.IsPerfectSalvage,
+			Multiplier:        result.Multiplier,
 		})
 	}
 }

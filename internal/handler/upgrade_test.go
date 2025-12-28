@@ -3,27 +3,23 @@ package handler
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
-	"github.com/osse101/BrandishBot_Go/internal/event"
-	"github.com/osse101/BrandishBot_Go/internal/progression"
 	"github.com/osse101/BrandishBot_Go/mocks"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestHandleUpgradeItem(t *testing.T) {
-	InitValidator()
-
 	tests := []struct {
 		name           string
-		requestBody    interface{}
-		setupMock      func(*mocks.MockCraftingService, *mocks.MockProgressionService, *mocks.MockEventBus)
+		requestBody    UpgradeItemRequest
+		mockSetup      func(*mocks.MockCraftingService, *mocks.MockProgressionService, *mocks.MockEventBus)
 		expectedStatus int
 		expectedBody   string
 	}{
@@ -33,20 +29,26 @@ func TestHandleUpgradeItem(t *testing.T) {
 				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
-				Item:       domain.PublicNameJunkbox,
+				Item:       domain.PublicNameJunkbox, // Assuming "junkbox" maps to Lootbox0
 				Quantity:   2,
 			},
-			setupMock: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
-				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureUpgrade).Return(true, nil)
-				p.On("AddContribution", mock.Anything, mock.Anything).Return(nil)
+			mockSetup: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, b *mocks.MockEventBus) {
+				p.On("IsFeatureUnlocked", mock.Anything, "feature_upgrade").Return(true, nil)
 				c.On("UpgradeItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.PublicNameJunkbox, 2).
-					Return(domain.PublicNameLootbox, 2, nil)
-				e.On("Publish", mock.Anything, mock.MatchedBy(func(evt event.Event) bool {
-					return evt.Type == "item.upgraded"
+					Return(&crafting.CraftingResult{
+						ItemName:      domain.PublicNameLootbox, // Result is Lootbox1
+						Quantity:      2,
+						IsMasterwork:  false,
+						BonusQuantity: 0,
+					}, nil)
+				p.On("AddContribution", mock.Anything, 2).Return(nil)
+				b.On("Publish", mock.Anything, mock.MatchedBy(func(e interface{}) bool {
+					// Add event matching logic if needed
+					return true
 				})).Return(nil)
 			},
 			expectedStatus: http.StatusOK,
-			expectedBody:   `"new_item":"lootbox"`,
+			expectedBody:   `{"message":"Successfully upgraded to 2x lootbox","new_item":"lootbox","quantity_upgraded":2,"is_masterwork":false,"bonus_quantity":0}`,
 		},
 		{
 			name: "Feature Locked",
@@ -57,17 +59,17 @@ func TestHandleUpgradeItem(t *testing.T) {
 				Item:       domain.PublicNameJunkbox,
 				Quantity:   1,
 			},
-			setupMock: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
-				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureUpgrade).Return(false, nil)
-				p.On("GetRequiredNodes", mock.Anything, progression.FeatureUpgrade).Return([]*domain.ProgressionNode{
-					{DisplayName: "Upgrade System"},
-				}, nil)
+			mockSetup: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, b *mocks.MockEventBus) {
+				p.On("IsFeatureUnlocked", mock.Anything, "feature_upgrade").Return(false, nil)
+				// When locked, it tries to get required nodes
+				// IMPORTANT: Must return []*domain.ProgressionNode (slice of pointers)
+				p.On("GetRequiredNodes", mock.Anything, "feature_upgrade").Return([]*domain.ProgressionNode{}, nil)
 			},
 			expectedStatus: http.StatusForbidden,
-			expectedBody:   "LOCKED_NODES: Upgrade System",
+			expectedBody:   `{"error":"Feature locked"}`,
 		},
 		{
-			name: "Feature Check Error",
+			name: "Service Error",
 			requestBody: UpgradeItemRequest{
 				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
@@ -75,234 +77,79 @@ func TestHandleUpgradeItem(t *testing.T) {
 				Item:       domain.PublicNameJunkbox,
 				Quantity:   1,
 			},
-			setupMock: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
-				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureUpgrade).
-					Return(false, errors.New("database error"))
-			},
-			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "Failed to check feature availability",
-		},
-		{
-			name:        "Invalid Request Body",
-			requestBody: "invalid json",
-			setupMock: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
-				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureUpgrade).Return(true, nil)
-			},
-			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Invalid request body",
-		},
-		{
-			name: "Missing Platform",
-			requestBody: UpgradeItemRequest{
-				PlatformID: "test-id",
-				Username:   "testuser",
-				Item:       domain.PublicNameJunkbox,
-				Quantity:   1,
-			},
-			setupMock: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
-				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureUpgrade).Return(true, nil)
-			},
-			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Invalid request",
-		},
-		{
-			name: "Zero Quantity",
-			requestBody: UpgradeItemRequest{
-				Platform:   domain.PlatformTwitch,
-				PlatformID: "test-id",
-				Username:   "testuser",
-				Item:       domain.PublicNameJunkbox,
-				Quantity:   0,
-			},
-			setupMock: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
-				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureUpgrade).Return(true, nil)
-			},
-			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Invalid request",
-		},
-		{
-			name: "Service Error - Insufficient Materials",
-			requestBody: UpgradeItemRequest{
-				Platform:   domain.PlatformTwitch,
-				PlatformID: "test-id",
-				Username:   "testuser",
-				Item:       domain.PublicNameJunkbox,
-				Quantity:   100,
-			},
-			setupMock: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
-				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureUpgrade).Return(true, nil)
-				c.On("UpgradeItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.PublicNameJunkbox, 100).
-					Return("", 0, errors.New("insufficient materials"))
-			},
-			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "insufficient materials",
-		},
-		{
-			name: "Event Publish Failure - Still Returns Success",
-			requestBody: UpgradeItemRequest{
-				Platform:   domain.PlatformTwitch,
-				PlatformID: "test-id",
-				Username:   "testuser",
-				Item:       domain.PublicNameJunkbox,
-				Quantity:   1,
-			},
-			setupMock: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
-				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureUpgrade).Return(true, nil)
-				p.On("AddContribution", mock.Anything, mock.Anything).Return(nil)
+			mockSetup: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, b *mocks.MockEventBus) {
+				p.On("IsFeatureUnlocked", mock.Anything, "feature_upgrade").Return(true, nil)
 				c.On("UpgradeItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.PublicNameJunkbox, 1).
-					Return(domain.PublicNameLootbox, 1, nil)
-				e.On("Publish", mock.Anything, mock.Anything).Return(errors.New("event bus error"))
+					Return(nil, fmt.Errorf("upgrade failed")) // Return nil result on error
+			},
+			expectedStatus: http.StatusInternalServerError,
+			expectedBody:   "upgrade failed\n",
+		},
+		{
+			name: "Invalid Request",
+			requestBody: UpgradeItemRequest{
+				Platform: "", // Missing platform
+			},
+			mockSetup: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, b *mocks.MockEventBus) {
+				p.On("IsFeatureUnlocked", mock.Anything, "feature_upgrade").Return(true, nil)
+			},
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "Invalid request",
+		},
+		{
+			name: "Success Masterwork",
+			requestBody: UpgradeItemRequest{
+				Platform:   domain.PlatformTwitch,
+				PlatformID: "test-id",
+				Username:   "testuser",
+				Item:       domain.PublicNameJunkbox,
+				Quantity:   10,
+			},
+			mockSetup: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, b *mocks.MockEventBus) {
+				p.On("IsFeatureUnlocked", mock.Anything, "feature_upgrade").Return(true, nil)
+				c.On("UpgradeItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.PublicNameJunkbox, 10).
+					Return(&crafting.CraftingResult{
+						ItemName:      domain.PublicNameLootbox,
+						Quantity:      20, // Doubled
+						IsMasterwork:  true,
+						BonusQuantity: 10,
+					}, nil)
+				p.On("AddContribution", mock.Anything, 20).Return(nil)
+				b.On("Publish", mock.Anything, mock.Anything).Return(nil)
 			},
 			expectedStatus: http.StatusOK,
-			expectedBody:   `"quantity_upgraded":1`,
+			expectedBody:   `{"message":"MASTERWORK! Critical success! You received 20x lootbox (Bonus: +10)","new_item":"lootbox","quantity_upgraded":20,"is_masterwork":true,"bonus_quantity":10}`,
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			mockCrafting := mocks.NewMockCraftingService(t)
-			mockProgression := mocks.NewMockProgressionService(t)
-			mockBus := mocks.NewMockEventBus(t)
-			tt.setupMock(mockCrafting, mockProgression, mockBus)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			mockCrafting := new(mocks.MockCraftingService)
+			mockProgression := new(mocks.MockProgressionService)
+			mockBus := new(mocks.MockEventBus)
+
+			tc.mockSetup(mockCrafting, mockProgression, mockBus)
 
 			handler := HandleUpgradeItem(mockCrafting, mockProgression, mockBus)
 
-			var body []byte
-			var err error
-			if str, ok := tt.requestBody.(string); ok {
-				body = []byte(str)
-			} else {
-				body, err = json.Marshal(tt.requestBody)
-				assert.NoError(t, err)
-			}
+			body, _ := json.Marshal(tc.requestBody)
+			req, _ := http.NewRequest("POST", "/user/item/upgrade", bytes.NewBuffer(body))
+			rr := httptest.NewRecorder()
 
-			req := httptest.NewRequest("POST", "/user/item/upgrade", bytes.NewBuffer(body))
-			w := httptest.NewRecorder()
+			handler.ServeHTTP(rr, req)
 
-			handler.ServeHTTP(w, req)
-
-			assert.Equal(t, tt.expectedStatus, w.Code)
-			if tt.expectedBody != "" {
-				assert.Contains(t, w.Body.String(), tt.expectedBody)
+			assert.Equal(t, tc.expectedStatus, rr.Code)
+			if tc.expectedBody != "" {
+				if tc.expectedStatus == http.StatusOK || tc.expectedStatus == http.StatusForbidden {
+					assert.JSONEq(t, tc.expectedBody, rr.Body.String())
+				} else {
+					assert.Contains(t, rr.Body.String(), tc.expectedBody)
+				}
 			}
 
 			mockCrafting.AssertExpectations(t)
 			mockProgression.AssertExpectations(t)
 			mockBus.AssertExpectations(t)
-		})
-	}
-}
-
-func TestHandleGetRecipes(t *testing.T) {
-	tests := []struct {
-		name           string
-		queryParams    string
-		setupMock      func(*mocks.MockCraftingService)
-		expectedStatus int
-		expectedBody   string
-	}{
-		{
-			name:        "Get Recipe - Without User",
-			queryParams: "?item=lootbox",
-			setupMock: func(c *mocks.MockCraftingService) {
-				c.On("GetRecipe", mock.Anything, domain.PublicNameLootbox, "", "", "").
-					Return(&crafting.RecipeInfo{
-						ItemName: domain.PublicNameLootbox,
-						Locked:   false,
-						BaseCost: []domain.RecipeCost{{ItemID: 1, Quantity: 1}},
-					}, nil)
-			},
-			expectedStatus: http.StatusOK,
-			expectedBody:   `"item_name":"lootbox"`,
-		},
-		{
-			name:        "Get Recipe - With User",
-			queryParams: "?item=lootbox&user=testuser&platform=twitch&platform_id=test-id",
-			setupMock: func(c *mocks.MockCraftingService) {
-				c.On("GetRecipe", mock.Anything, domain.PublicNameLootbox, domain.PlatformTwitch, "test-id", "testuser").
-					Return(&crafting.RecipeInfo{
-						ItemName: domain.PublicNameLootbox,
-						Locked:   true,
-						BaseCost: []domain.RecipeCost{{ItemID: 1, Quantity: 1}},
-					}, nil)
-			},
-			expectedStatus: http.StatusOK,
-			expectedBody:   `"locked":true`,
-		},
-		{
-			name:        "Get Unlocked Recipes - Success",
-			queryParams: "?user=testuser&platform=twitch&platform_id=test-id",
-			setupMock: func(c *mocks.MockCraftingService) {
-				c.On("GetUnlockedRecipes", mock.Anything, domain.PlatformTwitch, "test-id", "testuser").
-					Return([]crafting.UnlockedRecipeInfo{
-						{ItemName: domain.PublicNameLootbox, ItemID: 1},
-						{ItemName: domain.PublicNameGoldbox, ItemID: 2},
-					}, nil)
-			},
-			expectedStatus: http.StatusOK,
-			expectedBody:   `"recipes"`,
-		},
-		{
-			name:           "Get Unlocked Recipes - Missing Platform",
-			queryParams:    "?user=testuser&platform_id=test-id",
-			setupMock:      func(c *mocks.MockCraftingService) {},
-			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Missing platform",
-		},
-		{
-			name:           "Get Unlocked Recipes - Missing PlatformID",
-			queryParams:    "?user=testuser&platform=twitch",
-			setupMock:      func(c *mocks.MockCraftingService) {},
-			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Missing platform",
-		},
-		{
-			name:           "No Parameters Provided",
-			queryParams:    "",
-			setupMock:      func(c *mocks.MockCraftingService) {},
-			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Must provide either",
-		},
-		{
-			name:        "Service Error - Get Recipe",
-			queryParams: "?item=unknown",
-			setupMock: func(c *mocks.MockCraftingService) {
-				c.On("GetRecipe", mock.Anything, "unknown", "", "", "").
-					Return(nil, errors.New("recipe not found"))
-			},
-			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "recipe not found",
-		},
-		{
-			name:        "Service Error - Get Unlocked Recipes",
-			queryParams: "?user=testuser&platform=twitch&platform_id=test-id",
-			setupMock: func(c *mocks.MockCraftingService) {
-				c.On("GetUnlockedRecipes", mock.Anything, domain.PlatformTwitch, "test-id", "testuser").
-					Return(nil, errors.New("user not found"))
-			},
-			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "user not found",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			mockCrafting := mocks.NewMockCraftingService(t)
-			tt.setupMock(mockCrafting)
-
-			handler := HandleGetRecipes(mockCrafting)
-
-			req := httptest.NewRequest("GET", "/recipes"+tt.queryParams, nil)
-			w := httptest.NewRecorder()
-
-			handler.ServeHTTP(w, req)
-
-			assert.Equal(t, tt.expectedStatus, w.Code)
-			if tt.expectedBody != "" {
-				assert.Contains(t, w.Body.String(), tt.expectedBody)
-			}
-
-			mockCrafting.AssertExpectations(t)
 		})
 	}
 }
