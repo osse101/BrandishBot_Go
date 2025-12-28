@@ -45,12 +45,28 @@ type UnlockedRecipeInfo struct {
 	ItemID   int    `json:"item_id"`
 }
 
+// CraftingResult contains the result of an upgrade operation
+type CraftingResult struct {
+	ItemName      string `json:"item_name"`
+	Quantity      int    `json:"quantity"`
+	IsMasterwork  bool   `json:"is_masterwork"`
+	BonusQuantity int    `json:"bonus_quantity"`
+}
+
+// DisassembleResult contains the result of a disassemble operation
+type DisassembleResult struct {
+	Outputs           map[string]int `json:"outputs"`
+	QuantityProcessed int            `json:"quantity_processed"`
+	IsPerfectSalvage  bool           `json:"is_perfect_salvage"`
+	Multiplier        float64        `json:"multiplier"`
+}
+
 // Service defines the interface for crafting operations
 type Service interface {
-	UpgradeItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (string, int, error)
+	UpgradeItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (*CraftingResult, error)
 	GetRecipe(ctx context.Context, itemName, platform, platformID, username string) (*RecipeInfo, error)
 	GetUnlockedRecipes(ctx context.Context, platform, platformID, username string) ([]UnlockedRecipeInfo, error)
-	DisassembleItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (map[string]int, int, error)
+	DisassembleItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (*DisassembleResult, error)
 	Shutdown(ctx context.Context) error
 }
 
@@ -62,11 +78,9 @@ type JobService interface {
 // Crafting balance constants
 // MasterworkChance determines the probability of a masterwork craft occurring (10% = 1 in 10 crafts)
 // MasterworkMultiplier is applied to output quantity when masterwork procs (2x output)
-// Note: Masterwork is rolled ONCE per batch, not per item, creating incentive for larger crafts
-// and providing clearer player feedback with dramatic results on successful procs.
 const (
-	MasterworkChance     = 0.10 // 10% chance per craft batch
-	MasterworkMultiplier = 2    // 2x output on masterwork success
+	MasterworkChance     = 0.10
+	MasterworkMultiplier = 2
 
 	// PerfectSalvageChance is the probability of a "Perfect Salvage" occurring during disassembly
 	PerfectSalvageChance = 0.10
@@ -79,7 +93,7 @@ type service struct {
 	jobService JobService
 	statsSvc   stats.Service
 	rnd        func() float64 // For rolling RNG (does not need to be cryptographically secure)
-	wg         sync.WaitGroup  // Tracks async goroutines for graceful shutdown
+	wg         sync.WaitGroup // Tracks async goroutines for graceful shutdown
 }
 
 // NewService creates a new crafting service
@@ -164,59 +178,59 @@ func addItemToInventory(inventory *domain.Inventory, itemID, quantity int) {
 }
 
 // UpgradeItem upgrades as many items as possible based on available materials
-func (s *service) UpgradeItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (string, int, error) {
+func (s *service) UpgradeItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (*CraftingResult, error) {
 	log := logger.FromContext(ctx)
 	log.Info("UpgradeItem called", "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity)
 
 	// Validate user and item
 	user, err := s.validateUser(ctx, platform, platformID)
 	if err != nil {
-		return "", 0, err
+		return nil, err
 	}
 
 	item, err := s.validateItem(ctx, itemName)
 	if err != nil {
-		return "", 0, err
+		return nil, err
 	}
 
 	// Get and validate recipe
 	recipe, err := s.repo.GetRecipeByTargetItemID(ctx, item.ID)
 	if err != nil {
 		log.Error("Failed to get recipe", "error", err)
-		return "", 0, fmt.Errorf("failed to get recipe: %w", err)
+		return nil, fmt.Errorf("failed to get recipe: %w", err)
 	}
 	if recipe == nil {
-		return "", 0, fmt.Errorf("no recipe found for item: %s", itemName)
+		return nil, fmt.Errorf("no recipe found for item: %s", itemName)
 	}
 
 	// Check if user has unlocked this recipe
 	unlocked, err := s.repo.IsRecipeUnlocked(ctx, user.ID, recipe.ID)
 	if err != nil {
 		log.Error("Failed to check recipe unlock", "error", err)
-		return "", 0, fmt.Errorf("failed to check recipe unlock: %w", err)
+		return nil, fmt.Errorf("failed to check recipe unlock: %w", err)
 	}
 	if !unlocked {
-		return "", 0, fmt.Errorf("recipe for %s is not unlocked", itemName)
+		return nil, fmt.Errorf("recipe for %s is not unlocked", itemName)
 	}
 
 	// Begin transaction
 	tx, err := s.repo.BeginTx(ctx)
 	if err != nil {
 		log.Error("Failed to begin transaction", "error", err)
-		return "", 0, fmt.Errorf("failed to begin transaction: %w", err)
+		return nil, fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer repository.SafeRollback(ctx, tx)
 
 	// Get inventory
 	inventory, err := tx.GetInventory(ctx, user.ID)
 	if err != nil {
-		return "", 0, fmt.Errorf("failed to get inventory: %w", err)
+		return nil, fmt.Errorf("failed to get inventory: %w", err)
 	}
 
 	// Calculate maximum possible upgrades
 	maxPossible := calculateMaxPossibleCrafts(inventory, recipe, quantity)
 	if maxPossible == 0 {
-		return "", 0, fmt.Errorf("insufficient materials to craft %s", itemName)
+		return nil, fmt.Errorf("insufficient materials to craft %s", itemName)
 	}
 
 	actualQuantity := maxPossible
@@ -226,25 +240,33 @@ func (s *service) UpgradeItem(ctx context.Context, platform, platformID, usernam
 
 	// Consume materials for the actual quantity
 	if err := consumeRecipeMaterials(inventory, recipe, actualQuantity); err != nil {
-		return "", 0, err
+		return nil, err
 	}
 
-	// Calculate output quantity (check for Masterwork)
-	outputQuantity := actualQuantity
-	masterworkTriggered := false
+	// Calculate output quantity with randomized Masterwork chance per item
+	// to avoid economy exploits with large batches.
+	outputQuantity := 0
+	masterworkCount := 0
 
-	// Masterwork Logic: Chance to multiply output
-	// Roll once per batch for simplicity and clearer feedback
-	if s.rnd() < MasterworkChance {
-		masterworkTriggered = true
-		outputQuantity = actualQuantity * MasterworkMultiplier
-		log.Info("Masterwork craft triggered!", "user_id", user.ID, "item", itemName, "original", actualQuantity, "bonus", outputQuantity-actualQuantity)
+	for i := 0; i < actualQuantity; i++ {
+		if s.rnd() < MasterworkChance {
+			masterworkCount++
+			outputQuantity += MasterworkMultiplier
+		} else {
+			outputQuantity += 1
+		}
+	}
+
+	masterworkTriggered := masterworkCount > 0
+	if masterworkTriggered {
+		log.Info("Masterwork craft triggered!", "user_id", user.ID, "item", itemName, "count", masterworkCount, "bonus", outputQuantity-actualQuantity)
 
 		if s.statsSvc != nil {
 			_ = s.statsSvc.RecordUserEvent(ctx, user.ID, domain.EventCraftingCriticalSuccess, map[string]interface{}{
-				"item_name": itemName,
+				"item_name":         itemName,
 				"original_quantity": actualQuantity,
-				"bonus_quantity": actualQuantity,
+				"masterwork_count":  masterworkCount,
+				"bonus_quantity":    outputQuantity - actualQuantity,
 			})
 		}
 	}
@@ -253,11 +275,11 @@ func (s *service) UpgradeItem(ctx context.Context, platform, platformID, usernam
 
 	// Update inventory and commit
 	if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
-		return "", 0, fmt.Errorf("failed to update inventory: %w", err)
+		return nil, fmt.Errorf("failed to update inventory: %w", err)
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return "", 0, fmt.Errorf("failed to commit transaction: %w", err)
+		return nil, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	// Award Blacksmith XP (don't fail upgrade if XP award fails)
@@ -266,7 +288,13 @@ func (s *service) UpgradeItem(ctx context.Context, platform, platformID, usernam
 	go s.awardBlacksmithXP(context.Background(), user.ID, actualQuantity, "upgrade", itemName)
 
 	log.Info("Items upgraded", "username", username, "item", itemName, "quantity", outputQuantity, "masterwork", masterworkTriggered)
-	return itemName, outputQuantity, nil
+
+	return &CraftingResult{
+		ItemName:      itemName,
+		Quantity:      outputQuantity,
+		IsMasterwork:  masterworkTriggered,
+		BonusQuantity: outputQuantity - actualQuantity,
+	}, nil
 }
 
 // GetRecipe returns recipe information for an item
@@ -337,18 +365,23 @@ func (s *service) GetUnlockedRecipes(ctx context.Context, platform, platformID, 
 }
 
 // processDisassembleOutputs adds disassemble outputs to inventory and builds result map
-func (s *service) processDisassembleOutputs(ctx context.Context, inventory *domain.Inventory, outputs []domain.RecipeOutput, actualQuantity int, multiplier float64) (map[string]int, error) {
+func (s *service) processDisassembleOutputs(ctx context.Context, inventory *domain.Inventory, outputs []domain.RecipeOutput, actualQuantity int, perfectSalvageCount int) (map[string]int, error) {
 	outputMap := make(map[string]int)
-	
-	for _, output := range outputs {
-		// Calculate base total
-		baseTotal := output.Quantity * actualQuantity
 
-		// Apply multiplier (rounding up to be generous)
-		totalOutput := int(math.Ceil(float64(baseTotal) * multiplier))
-		if totalOutput < baseTotal {
-			totalOutput = baseTotal
+	for _, output := range outputs {
+		// Calculate output for regular items
+		regularQuantity := (actualQuantity - perfectSalvageCount) * output.Quantity
+
+		// Calculate output for perfect salvage items (apply multiplier)
+		// Multiplier is applied per item, rounded up
+		perfectQuantity := 0
+		if perfectSalvageCount > 0 {
+			basePerItem := output.Quantity
+			perfectPerItem := int(math.Ceil(float64(basePerItem) * PerfectSalvageMultiplier))
+			perfectQuantity = perfectSalvageCount * perfectPerItem
 		}
+
+		totalOutput := regularQuantity + perfectQuantity
 
 		// Get item name for the output
 		outputItem, err := s.repo.GetItemByID(ctx, output.ItemID)
@@ -360,73 +393,73 @@ func (s *service) processDisassembleOutputs(ctx context.Context, inventory *doma
 		// Add to inventory
 		addItemToInventory(inventory, output.ItemID, totalOutput)
 	}
-	
+
 	return outputMap, nil
 }
 
 // DisassembleItem disassembles items into their component materials
 // Returns a map of item names to quantities and the number of items disassembled
-func (s *service) DisassembleItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (map[string]int, int, error) {
+func (s *service) DisassembleItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (*DisassembleResult, error) {
 	log := logger.FromContext(ctx)
 	log.Info("DisassembleItem called", "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity)
 
 	// Validate user and item
 	user, err := s.validateUser(ctx, platform, platformID)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
 	item, err := s.validateItem(ctx, itemName)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
 	// Get disassemble recipe
 	recipe, err := s.repo.GetDisassembleRecipeBySourceItemID(ctx, item.ID)
 	if err != nil {
 		log.Error("Failed to get disassemble recipe", "error", err)
-		return nil, 0, fmt.Errorf("failed to get disassemble recipe: %w", err)
+		return nil, fmt.Errorf("failed to get disassemble recipe: %w", err)
 	}
 	if recipe == nil {
-		return nil, 0, fmt.Errorf("no disassemble recipe found for item: %s", itemName)
+		return nil, fmt.Errorf("no disassemble recipe found for item: %s", itemName)
 	}
 
 	// Get associated upgrade recipe ID to check if unlocked
 	upgradeRecipeID, err := s.repo.GetAssociatedUpgradeRecipeID(ctx, recipe.ID)
 	if err != nil {
 		log.Error("Failed to get associated upgrade recipe", "error", err)
-		return nil, 0, fmt.Errorf("failed to get associated upgrade recipe: %w", err)
+		return nil, fmt.Errorf("failed to get associated upgrade recipe: %w", err)
 	}
 
 	// Check if user has unlocked the associated upgrade recipe
 	unlocked, err := s.repo.IsRecipeUnlocked(ctx, user.ID, upgradeRecipeID)
 	if err != nil {
 		log.Error("Failed to check recipe unlock", "error", err)
-		return nil, 0, fmt.Errorf("failed to check recipe unlock: %w", err)
+		return nil, fmt.Errorf("failed to check recipe unlock: %w", err)
 	}
 	if !unlocked {
-		return nil, 0, fmt.Errorf("disassemble recipe for %s is not unlocked", itemName)
+		return nil, fmt.Errorf("disassemble recipe for %s is not unlocked", itemName)
 	}
 
 	// Begin transaction
 	tx, err := s.repo.BeginTx(ctx)
 	if err != nil {
 		log.Error("Failed to begin transaction", "error", err)
-		return nil, 0, fmt.Errorf("failed to begin transaction: %w", err)
+		return nil, fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer repository.SafeRollback(ctx, tx)
 
 	// Get inventory
 	inventory, err := tx.GetInventory(ctx, user.ID)
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to get inventory: %w", err)
+		return nil, fmt.Errorf("failed to get inventory: %w", err)
 	}
 
 	// Find source items and calculate max possible
 	sourceSlotIndex, userQuantity := utils.FindSlot(inventory, item.ID)
 	maxPossible := userQuantity / recipe.QuantityConsumed
 	if maxPossible == 0 {
-		return nil, 0, fmt.Errorf("insufficient items to disassemble %s (need %d, have %d)", itemName, recipe.QuantityConsumed, userQuantity)
+		return nil, fmt.Errorf("insufficient items to disassemble %s (need %d, have %d)", itemName, recipe.QuantityConsumed, userQuantity)
 	}
 
 	actualQuantity := maxPossible
@@ -442,36 +475,41 @@ func (s *service) DisassembleItem(ctx context.Context, platform, platformID, use
 		inventory.Slots[sourceSlotIndex].Quantity -= totalConsumed
 	}
 
-	// Perfect Salvage Logic
-	multiplier := 1.0
-	perfectSalvageTriggered := false
-	if s.rnd() < PerfectSalvageChance {
-		perfectSalvageTriggered = true
-		multiplier = PerfectSalvageMultiplier
-		log.Info("Perfect Salvage triggered!", "user_id", user.ID, "item", itemName, "quantity", actualQuantity)
+	// Perfect Salvage Logic - Calculate per item to avoid economy exploits
+	perfectSalvageCount := 0
+	for i := 0; i < actualQuantity; i++ {
+		if s.rnd() < PerfectSalvageChance {
+			perfectSalvageCount++
+		}
+	}
+
+	perfectSalvageTriggered := perfectSalvageCount > 0
+	if perfectSalvageTriggered {
+		log.Info("Perfect Salvage triggered!", "user_id", user.ID, "item", itemName, "quantity", actualQuantity, "perfect_count", perfectSalvageCount)
 
 		if s.statsSvc != nil {
 			_ = s.statsSvc.RecordUserEvent(ctx, user.ID, domain.EventCraftingPerfectSalvage, map[string]interface{}{
-				"item_name": itemName,
-				"quantity": actualQuantity,
-				"multiplier": multiplier,
+				"item_name":     itemName,
+				"quantity":      actualQuantity,
+				"perfect_count": perfectSalvageCount,
+				"multiplier":    PerfectSalvageMultiplier,
 			})
 		}
 	}
 
 	// Process outputs
-	outputMap, err := s.processDisassembleOutputs(ctx, inventory, recipe.Outputs, actualQuantity, multiplier)
+	outputMap, err := s.processDisassembleOutputs(ctx, inventory, recipe.Outputs, actualQuantity, perfectSalvageCount)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
 	// Update inventory and commit
 	if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
-		return nil, 0, fmt.Errorf("failed to update inventory: %w", err)
+		return nil, fmt.Errorf("failed to update inventory: %w", err)
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return nil, 0, fmt.Errorf("failed to commit transaction: %w", err)
+		return nil, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	// Award Blacksmith XP (don't fail disassemble if XP award fails)
@@ -480,7 +518,12 @@ func (s *service) DisassembleItem(ctx context.Context, platform, platformID, use
 	go s.awardBlacksmithXP(context.Background(), user.ID, actualQuantity, "disassemble", itemName)
 
 	log.Info("Items disassembled", "username", username, "item", itemName, "quantity", actualQuantity, "outputs", outputMap, "perfect_salvage", perfectSalvageTriggered)
-	return outputMap, actualQuantity, nil
+	return &DisassembleResult{
+		Outputs:           outputMap,
+		QuantityProcessed: actualQuantity,
+		IsPerfectSalvage:  perfectSalvageTriggered,
+		Multiplier:        PerfectSalvageMultiplier,
+	}, nil
 }
 
 // awardBlacksmithXP awards Blacksmith job XP for crafting operations

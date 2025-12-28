@@ -20,22 +20,13 @@ type UpgradeItemRequest struct {
 }
 
 type UpgradeItemResponse struct {
+	Message          string `json:"message"`
 	NewItem          string `json:"new_item"`
 	QuantityUpgraded int    `json:"quantity_upgraded"`
+	IsMasterwork     bool   `json:"is_masterwork"`
+	BonusQuantity    int    `json:"bonus_quantity"`
 }
 
-// HandleUpgradeItem handles upgrading an item
-// @Summary Upgrade item
-// @Description Upgrade an item to a higher tier
-// @Tags crafting
-// @Accept json
-// @Produce json
-// @Param request body UpgradeItemRequest true "Upgrade details"
-// @Success 200 {object} UpgradeItemResponse
-// @Failure 400 {object} ErrorResponse
-// @Failure 403 {object} ErrorResponse "Feature locked"
-// @Failure 500 {object} ErrorResponse
-// @Router /user/item/upgrade [post]
 // HandleUpgradeItem handles upgrading an item
 // @Summary Upgrade item
 // @Description Upgrade an item to a higher tier
@@ -52,7 +43,6 @@ func HandleUpgradeItem(svc crafting.Service, progressionSvc progression.Service,
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
 
-		// Check if upgrade feature is unlocked
 		// Check if upgrade feature is unlocked
 		if CheckFeatureLocked(w, r, progressionSvc, progression.FeatureUpgrade) {
 			return
@@ -77,7 +67,7 @@ func HandleUpgradeItem(svc crafting.Service, progressionSvc progression.Service,
 			return
 		}
 
-		newItem, quantityUpgraded, err := svc.UpgradeItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.Item, req.Quantity)
+		result, err := svc.UpgradeItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.Item, req.Quantity)
 		if err != nil {
 			log.Error("Failed to upgrade item", "error", err, "username", req.Username, "item", req.Item)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -87,10 +77,11 @@ func HandleUpgradeItem(svc crafting.Service, progressionSvc progression.Service,
 		log.Info("Item upgraded successfully",
 			"username", req.Username,
 			"item", req.Item,
-			"quantity_upgraded", quantityUpgraded)
+			"quantity_upgraded", result.Quantity,
+			"masterwork", result.IsMasterwork)
 
 		// Add contribution points for crafting
-		if err := progressionSvc.AddContribution(r.Context(), quantityUpgraded); err != nil {
+		if err := progressionSvc.AddContribution(r.Context(), result.Quantity); err != nil {
 			log.Warn("Failed to add contribution points", "error", err)
 		}
 
@@ -100,18 +91,28 @@ func HandleUpgradeItem(svc crafting.Service, progressionSvc progression.Service,
 			Payload: map[string]interface{}{
 				"user_id":           req.Username,
 				"source_item":       req.Item,
-				"result_item":       newItem,
-				"quantity_upgraded": quantityUpgraded,
+				"result_item":       result.ItemName,
+				"quantity_upgraded": result.Quantity,
+				"is_masterwork":     result.IsMasterwork,
 			},
 		}); err != nil {
 			log.Error("Failed to publish item.upgraded event", "error", err)
 		}
 
+		// Construct user message
+		message := fmt.Sprintf("Successfully upgraded to %dx %s", result.Quantity, result.ItemName)
+		if result.IsMasterwork {
+			message = fmt.Sprintf("MASTERWORK! Critical success! You received %dx %s (Bonus: +%d)", result.Quantity, result.ItemName, result.BonusQuantity)
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		respondJSON(w, http.StatusOK, UpgradeItemResponse{
-			NewItem:          newItem,
-			QuantityUpgraded: quantityUpgraded,
+			Message:          message,
+			NewItem:          result.ItemName,
+			QuantityUpgraded: result.Quantity,
+			IsMasterwork:     result.IsMasterwork,
+			BonusQuantity:    result.BonusQuantity,
 		})
 	}
 }

@@ -3,6 +3,7 @@ package crafting
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
@@ -176,6 +177,34 @@ func (t *MockTx) Commit(ctx context.Context) error {
 func (t *MockTx) Rollback(ctx context.Context) error {
 	return nil
 }
+func (tx *MockTx) UpsertUser(ctx context.Context, user *domain.User) error { return nil }
+func (tx *MockTx) GetUserByID(ctx context.Context, userID string) (*domain.User, error) {
+	return nil, nil
+}
+func (tx *MockTx) UpdateUser(ctx context.Context, user domain.User) error { return nil }
+func (tx *MockTx) DeleteUser(ctx context.Context, userID string) error    { return nil }
+func (tx *MockTx) DeleteInventory(ctx context.Context, userID string) error { return nil }
+func (tx *MockTx) GetItemsByIDs(ctx context.Context, itemIDs []int) ([]domain.Item, error) {
+	return nil, nil
+}
+func (tx *MockTx) GetSellablePrices(ctx context.Context) ([]domain.Item, error) {
+	return nil, nil
+}
+func (tx *MockTx) IsItemBuyable(ctx context.Context, itemName string) (bool, error) {
+	return false, nil
+}
+func (tx *MockTx) GetLastCooldown(ctx context.Context, userID, action string) (*time.Time, error) {
+	return nil, nil
+}
+func (tx *MockTx) UpdateCooldown(ctx context.Context, userID, action string, timestamp time.Time) error {
+	return nil
+}
+func (tx *MockTx) MergeUsersInTransaction(ctx context.Context, primaryUserID, secondaryUserID string, mergedUser domain.User, mergedInventory domain.Inventory) error {
+	return nil
+}
+func (tx *MockTx) GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error) {
+	return tx.repo.GetUserByPlatformID(ctx, platform, platformID)
+}
 
 // Test helper to setup test data
 func setupTestData(repo *MockRepository) {
@@ -236,17 +265,17 @@ func TestDisassembleItem_Success(t *testing.T) {
 	repo.UnlockRecipe(ctx, "user-alice", 1)
 
 	// Disassemble 2 lootbox1
-	outputs, processed, err := svc.DisassembleItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox1, 2)
+	result, err := svc.DisassembleItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox1, 2)
 	if err != nil {
 		t.Fatalf("DisassembleItem failed: %v", err)
 	}
 
-	if processed != 2 {
-		t.Errorf("Expected 2 processed, got %d", processed)
+	if result.QuantityProcessed != 2 {
+		t.Errorf("Expected 2 processed, got %d", result.QuantityProcessed)
 	}
 
-	if outputs[domain.ItemLootbox0] != 2 {
-		t.Errorf("Expected 2 lootbox0 output, got %d", outputs[domain.ItemLootbox0])
+	if result.Outputs[domain.ItemLootbox0] != 2 {
+		t.Errorf("Expected 2 lootbox0 output, got %d", result.Outputs[domain.ItemLootbox0])
 	}
 
 	// Verify inventory
@@ -285,17 +314,17 @@ func TestDisassembleItem_InsufficientItems(t *testing.T) {
 	repo.UnlockRecipe(ctx, "user-alice", 1)
 
 	// Try to disassemble 2 (should only process 1)
-	outputs, processed, err := svc.DisassembleItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox1, 2)
+	result, err := svc.DisassembleItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox1, 2)
 	if err != nil {
 		t.Fatalf("DisassembleItem failed: %v", err)
 	}
 
-	if processed != 1 {
-		t.Errorf("Expected 1 processed (max available), got %d", processed)
+	if result.QuantityProcessed != 1 {
+		t.Errorf("Expected 1 processed (max available), got %d", result.QuantityProcessed)
 	}
 
-	if outputs[domain.ItemLootbox0] != 1 {
-		t.Errorf("Expected 1 lootbox0 output, got %d", outputs[domain.ItemLootbox0])
+	if result.Outputs[domain.ItemLootbox0] != 1 {
+		t.Errorf("Expected 1 lootbox0 output, got %d", result.Outputs[domain.ItemLootbox0])
 	}
 }
 
@@ -309,7 +338,7 @@ func TestDisassembleItem_NoItems(t *testing.T) {
 	repo.UnlockRecipe(ctx, "user-alice", 1)
 
 	// Try to disassemble
-	_, _, err := svc.DisassembleItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemLootbox1, 1)
+	_, err := svc.DisassembleItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemLootbox1, 1)
 	if err == nil {
 		t.Error("Expected error when disassembling with no items")
 	}
@@ -326,7 +355,7 @@ func TestDisassembleItem_RecipeNotUnlocked(t *testing.T) {
 		domain.InventorySlot{ItemID: 2, Quantity: 1})
 
 	// Try to disassemble without unlocked recipe
-	_, _, err := svc.DisassembleItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemLootbox1, 1)
+	_, err := svc.DisassembleItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemLootbox1, 1)
 	if err == nil {
 		t.Error("Expected error when recipe is not unlocked")
 	}
@@ -339,7 +368,7 @@ func TestDisassembleItem_NoRecipe(t *testing.T) {
 	ctx := context.Background()
 
 	// Try to disassemble lootbox0 which has no disassemble recipe
-	_, _, err := svc.DisassembleItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemLootbox0, 1)
+	_, err := svc.DisassembleItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemLootbox0, 1)
 	if err == nil {
 		t.Error("Expected error when item has no disassemble recipe")
 	}
@@ -358,7 +387,7 @@ func TestDisassembleItem_RemovesSlotWhenEmpty(t *testing.T) {
 	repo.UnlockRecipe(ctx, "user-alice", 1)
 
 	// Disassemble all lootbox1
-	_, _, err := svc.DisassembleItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox1, 1)
+	_, err := svc.DisassembleItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox1, 1)
 	if err != nil {
 		t.Fatalf("DisassembleItem failed: %v", err)
 	}
@@ -391,17 +420,17 @@ func TestUpgradeItem_Success(t *testing.T) {
 	repo.UnlockRecipe(ctx, "user-alice", 1)
 
 	// Upgrade 2 lootbox0 to 2 lootbox1
-	itemName, quantity, err := svc.UpgradeItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox1, 2)
+	result, err := svc.UpgradeItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox1, 2)
 	if err != nil {
 		t.Fatalf("UpgradeItem failed: %v", err)
 	}
 
-	if itemName != domain.ItemLootbox1 {
-		t.Errorf("Expected itemName lootbox1, got %s", itemName)
+	if result.ItemName != domain.ItemLootbox1 {
+		t.Errorf("Expected itemName lootbox1, got %s", result.ItemName)
 	}
 
-	if quantity != 2 {
-		t.Errorf("Expected 2 upgraded, got %d", quantity)
+	if result.Quantity != 2 {
+		t.Errorf("Expected 2 upgraded, got %d", result.Quantity)
 	}
 
 	// Verify inventory
@@ -439,13 +468,13 @@ func TestUpgradeItem_InsufficientMaterials(t *testing.T) {
 	repo.UnlockRecipe(ctx, "user-alice", 1)
 
 	// Try to upgrade 2 (should only process 1)
-	_, quantity, err := svc.UpgradeItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox1, 2)
+	result, err := svc.UpgradeItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox1, 2)
 	if err != nil {
 		t.Fatalf("UpgradeItem failed: %v", err)
 	}
 
-	if quantity != 1 {
-		t.Errorf("Expected 1 upgraded (max available), got %d", quantity)
+	if result.Quantity != 1 {
+		t.Errorf("Expected 1 upgraded (max available), got %d", result.Quantity)
 	}
 }
 
@@ -459,7 +488,7 @@ func TestUpgradeItem_NoMaterials(t *testing.T) {
 	repo.UnlockRecipe(ctx, "user-alice", 1)
 
 	// Try to upgrade
-	_, _, err := svc.UpgradeItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox1, 1)
+	_, err := svc.UpgradeItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox1, 1)
 	if err == nil {
 		t.Error("Expected error when upgrading with no materials")
 	}
@@ -476,7 +505,7 @@ func TestUpgradeItem_RecipeNotUnlocked(t *testing.T) {
 		domain.InventorySlot{ItemID: 1, Quantity: 1})
 
 	// Try to upgrade without unlocked recipe
-	_, _, err := svc.UpgradeItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox1, 1)
+	_, err := svc.UpgradeItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox1, 1)
 	if err == nil {
 		t.Error("Expected error when recipe is not unlocked")
 	}
@@ -489,7 +518,7 @@ func TestUpgradeItem_NoRecipe(t *testing.T) {
 	ctx := context.Background()
 
 	// Try to upgrade lootbox0 which has no recipe
-	_, _, err := svc.UpgradeItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox0, 1)
+	_, err := svc.UpgradeItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox0, 1)
 	if err == nil {
 		t.Error("Expected error when item has no recipe")
 	}
@@ -502,7 +531,7 @@ func TestUpgradeItem_UserNotFound(t *testing.T) {
 	ctx := context.Background()
 
 	// Try with non-existent user
-	_, _, err := svc.UpgradeItem(ctx, domain.PlatformTwitch, "twitch-nonexistent", "nonexistent", domain.ItemLootbox1, 1)
+	_, err := svc.UpgradeItem(ctx, domain.PlatformTwitch, "twitch-nonexistent", "nonexistent", domain.ItemLootbox1, 1)
 	if err == nil {
 		t.Error("Expected error for non-existent user")
 	}
@@ -660,18 +689,18 @@ func TestUpgradeItem_Masterwork(t *testing.T) {
 	repo.UnlockRecipe(ctx, "user-alice", 1)
 
 	// Upgrade 2 lootbox0
-	itemName, quantity, err := svc.UpgradeItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox1, 2)
+	result, err := svc.UpgradeItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox1, 2)
 	if err != nil {
 		t.Fatalf("UpgradeItem failed: %v", err)
 	}
 
-	if itemName != domain.ItemLootbox1 {
-		t.Errorf("Expected itemName lootbox1, got %s", itemName)
+	if result.ItemName != domain.ItemLootbox1 {
+		t.Errorf("Expected itemName lootbox1, got %s", result.ItemName)
 	}
 
 	// Should be doubled (Masterwork)
-	if quantity != 4 {
-		t.Errorf("Expected 4 upgraded (2 * 2), got %d", quantity)
+	if result.Quantity != 4 {
+		t.Errorf("Expected 4 upgraded (2 * 2), got %d", result.Quantity)
 	}
 
 	// Verify inventory
