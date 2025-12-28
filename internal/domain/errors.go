@@ -34,6 +34,7 @@ const (
 	ErrMsgFailedToTransitionState    = "failed to transition gamble state"
 	ErrMsgFailedToSaveOpenedItems    = "failed to save opened items"
 	ErrMsgNotALootbox                = "not a lootbox"
+	ErrMsgUserAlreadyJoined          = "user has already joined this gamble"
 
 	// User service errors
 	ErrMsgNotEnoughItems       = "not enough items"
@@ -97,6 +98,7 @@ var (
 	ErrAtLeastOneLootboxRequired = errors.New(ErrMsgAtLeastOneLootboxRequired)
 	ErrBetQuantityMustBePositive = errors.New(ErrMsgBetQuantityMustBePositive)
 	ErrNotALootbox               = errors.New(ErrMsgNotALootbox)
+	ErrUserAlreadyJoined         = errors.New(ErrMsgUserAlreadyJoined)
 
 	// User service errors
 	ErrNotEnoughItems       = errors.New(ErrMsgNotEnoughItems)
