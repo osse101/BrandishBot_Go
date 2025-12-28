@@ -109,6 +109,9 @@ type service struct {
 	cooldownService cooldown.Service
 	devMode         bool // When true, bypasses cooldowns
 	wg              sync.WaitGroup
+	itemCache       map[int]domain.Item
+	itemCacheByName map[string]domain.Item
+	itemCacheMu     sync.RWMutex
 }
 
 
@@ -137,6 +140,8 @@ func NewService(repo Repository, statsService stats.Service, jobService JobServi
 		namingResolver:  namingResolver,
 		cooldownService: cooldownService,
 		devMode:         devMode,
+		itemCache:       make(map[int]domain.Item),
+		itemCacheByName: make(map[string]domain.Item),
 	}
 	s.registerHandlers()
 	return s
@@ -242,7 +247,7 @@ func (s *service) AddItem(ctx context.Context, platform, platformID, username, i
 	}
 	defer repository.SafeRollback(ctx, tx)
 
-	item, err := s.repo.GetItemByName(ctx, itemName)
+	item, err := s.getItemByNameCached(ctx, itemName)
 	if err != nil {
 		log.Error("Failed to get item", "error", err, "itemName", itemName)
 		return fmt.Errorf("failed to get item: %w", err)
@@ -297,7 +302,7 @@ func (s *service) RemoveItem(ctx context.Context, platform, platformID, username
 	}
 	defer repository.SafeRollback(ctx, tx)
 
-	item, err := s.repo.GetItemByName(ctx, itemName)
+	item, err := s.getItemByNameCached(ctx, itemName)
 	if err != nil {
 		log.Error("Failed to get item", "error", err, "itemName", itemName)
 		return 0, fmt.Errorf("failed to get item: %w", err)
@@ -461,7 +466,7 @@ func (s *service) UseItem(ctx context.Context, platform, platformID, username, i
 		log.Error("Failed to get inventory", "error", err, "userID", user.ID)
 		return "", fmt.Errorf("failed to get inventory: %w", err)
 	}
-	itemToUse, err := s.repo.GetItemByName(ctx, itemName)
+	itemToUse, err := s.getItemByNameCached(ctx, itemName)
 	if err != nil {
 		log.Error("Failed to get item", "error", err, "itemName", itemName)
 		return "", fmt.Errorf("failed to get item: %w", err)
@@ -518,21 +523,34 @@ func (s *service) GetInventory(ctx context.Context, platform, platformID, userna
 		log.Error("Failed to get inventory", "error", err, "userID", user.ID)
 		return nil, fmt.Errorf("failed to get inventory: %w", err)
 	}
-	// Optimization: Batch fetch all item details
-	itemIDs := make([]int, 0, len(inventory.Slots))
-	for _, slot := range inventory.Slots {
-		itemIDs = append(itemIDs, slot.ItemID)
-	}
-
-	itemList, err := s.repo.GetItemsByIDs(ctx, itemIDs)
-	if err != nil {
-		log.Error("Failed to get item details", "error", err)
-		return nil, fmt.Errorf("failed to get item details: %w", err)
-	}
-
+	// Optimization: Batch fetch all item details using cache
 	itemMap := make(map[int]domain.Item)
-	for _, item := range itemList {
-		itemMap[item.ID] = item
+	var missingIDs []int
+
+	s.itemCacheMu.RLock()
+	for _, slot := range inventory.Slots {
+		if item, ok := s.itemCache[slot.ItemID]; ok {
+			itemMap[slot.ItemID] = item
+		} else {
+			missingIDs = append(missingIDs, slot.ItemID)
+		}
+	}
+	s.itemCacheMu.RUnlock()
+
+	if len(missingIDs) > 0 {
+		itemList, err := s.repo.GetItemsByIDs(ctx, missingIDs)
+		if err != nil {
+			log.Error("Failed to get item details", "error", err)
+			return nil, fmt.Errorf("failed to get item details: %w", err)
+		}
+
+		s.itemCacheMu.Lock()
+		for _, item := range itemList {
+			s.itemCache[item.ID] = item
+			s.itemCacheByName[item.InternalName] = item
+			itemMap[item.ID] = item
+		}
+		s.itemCacheMu.Unlock()
 	}
 
 	var items []UserInventoryItem
@@ -600,7 +618,7 @@ func (s *service) GetTimeout(ctx context.Context, username string) (time.Duratio
 // Helper methods
 
 func (s *service) validateItem(ctx context.Context, itemName string) (*domain.Item, error) {
-	item, err := s.repo.GetItemByName(ctx, itemName)
+	item, err := s.getItemByNameCached(ctx, itemName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get item: %w", err)
 	}
@@ -715,7 +733,7 @@ func (s *service) executeSearch(ctx context.Context, user *domain.User) (string,
 		}
 
 		// Give lootbox0
-		item, err := s.repo.GetItemByName(ctx, domain.ItemLootbox0)
+		item, err := s.getItemByNameCached(ctx, domain.ItemLootbox0)
 		if err != nil {
 			log.Error("Failed to get lootbox0 item", "error", err)
 			return "", fmt.Errorf("failed to get reward item: %w", err)
