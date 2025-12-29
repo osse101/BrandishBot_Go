@@ -506,7 +506,7 @@ func HandleGetInventory(svc user.Service, progSvc progression.Service) http.Hand
 				unlocked, err := progSvc.IsFeatureUnlocked(r.Context(), featureKey)
 				if err != nil {
 					log.Error("Failed to check filter unlock", "error", err)
-					http.Error(w, "Failed to check feature unlock", http.StatusInternalServerError)
+					http.Error(w, ErrMsgFeatureCheckFailed, http.StatusInternalServerError)
 					return
 				}
 				if !unlocked {

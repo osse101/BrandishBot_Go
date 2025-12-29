@@ -657,13 +657,13 @@ func TestHandleGetInventory(t *testing.T) {
 			username:   "testuser",
 			platform:   domain.PlatformDiscord,
 			platformID: "test-platformid",
-			filter:     "upgrade",
+			filter:     domain.FilterTypeUpgrade,
 			setupMock: func(m *mocks.MockUserService, p *mocks.MockProgressionService) {
 				items := []user.UserInventoryItem{
 					{Name: domain.ItemLootbox0, Quantity: 1},
 				}
 				p.On("IsFeatureUnlocked", mock.Anything, "feature_filter_upgrade").Return(true, nil)
-				m.On("GetInventory", mock.Anything, domain.PlatformDiscord, "test-platformid", "testuser", "upgrade").Return(items, nil)
+				m.On("GetInventory", mock.Anything, domain.PlatformDiscord, "test-platformid", "testuser", domain.FilterTypeUpgrade).Return(items, nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `"items":[{"name":"lootbox_tier0","description":"","quantity":1,"value":0}]`,
@@ -673,7 +673,7 @@ func TestHandleGetInventory(t *testing.T) {
 			username:   "testuser",
 			platform:   domain.PlatformDiscord,
 			platformID: "test-platformid",
-			filter:     "upgrade",
+			filter:     domain.FilterTypeUpgrade,
 			setupMock: func(m *mocks.MockUserService, p *mocks.MockProgressionService) {
 				p.On("IsFeatureUnlocked", mock.Anything, "feature_filter_upgrade").Return(false, nil)
 			},
@@ -701,6 +701,87 @@ func TestHandleGetInventory(t *testing.T) {
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   ErrMsgGetInventoryFailed,
+		},
+		{
+			name:       "Sellable Filter - Unlocked",
+			username:   "testuser",
+			platform:   domain.PlatformDiscord,
+			platformID: "test-platformid",
+			filter:     domain.FilterTypeSellable,
+			setupMock: func(m *mocks.MockUserService, p *mocks.MockProgressionService) {
+				items := []user.UserInventoryItem{
+					{Name: domain.ItemLootbox1, Quantity: 5},
+				}
+				p.On("IsFeatureUnlocked", mock.Anything, "feature_filter_sellable").Return(true, nil)
+				m.On("GetInventory", mock.Anything, domain.PlatformDiscord, "test-platformid", "testuser", domain.FilterTypeSellable).Return(items, nil)
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody:   `"items":[{"name":"lootbox_tier1","description":"","quantity":5,"value":0}]`,
+		},
+		{
+			name:       "Sellable Filter - Locked",
+			username:   "testuser",
+			platform:   domain.PlatformDiscord,
+			platformID: "test-platformid",
+			filter:     domain.FilterTypeSellable,
+			setupMock: func(m *mocks.MockUserService, p *mocks.MockProgressionService) {
+				p.On("IsFeatureUnlocked", mock.Anything, "feature_filter_sellable").Return(false, nil)
+			},
+			expectedStatus: http.StatusForbidden,
+			expectedBody:   "Filter 'sellable' is locked",
+		},
+		{
+			name:       "Consumable Filter - Unlocked",
+			username:   "testuser",
+			platform:   domain.PlatformDiscord,
+			platformID: "test-platformid",
+			filter:     domain.FilterTypeConsumable,
+			setupMock: func(m *mocks.MockUserService, p *mocks.MockProgressionService) {
+				items := []user.UserInventoryItem{
+					{Name: domain.ItemLootbox0, Quantity: 3},
+				}
+				p.On("IsFeatureUnlocked", mock.Anything, "feature_filter_consumable").Return(true, nil)
+				m.On("GetInventory", mock.Anything, domain.PlatformDiscord, "test-platformid", "testuser", domain.FilterTypeConsumable).Return(items, nil)
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody:   `"items":[{"name":"lootbox_tier0","description":"","quantity":3,"value":0}]`,
+		},
+		{
+			name:       "Consumable Filter - Locked",
+			username:   "testuser",
+			platform:   domain.PlatformDiscord,
+			platformID: "test-platformid",
+			filter:     domain.FilterTypeConsumable,
+			setupMock: func(m *mocks.MockUserService, p *mocks.MockProgressionService) {
+				p.On("IsFeatureUnlocked", mock.Anything, "feature_filter_consumable").Return(false, nil)
+			},
+			expectedStatus: http.StatusForbidden,
+			expectedBody:   "Filter 'consumable' is locked",
+		},
+		{
+			name:       "Unknown Filter - Should Not Check Lock",
+			username:   "testuser",
+			platform:   domain.PlatformDiscord,
+			platformID: "test-platformid",
+			filter:     "unknown",
+			setupMock: func(m *mocks.MockUserService, p *mocks.MockProgressionService) {
+				items := []user.UserInventoryItem{}
+				m.On("GetInventory", mock.Anything, domain.PlatformDiscord, "test-platformid", "testuser", "unknown").Return(items, nil)
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody:   `"items":[]`,
+		},
+		{
+			name:       "Filter Check Error",
+			username:   "testuser",
+			platform:   domain.PlatformDiscord,
+			platformID: "test-platformid",
+			filter:     domain.FilterTypeUpgrade,
+			setupMock: func(m *mocks.MockUserService, p *mocks.MockProgressionService) {
+				p.On("IsFeatureUnlocked", mock.Anything, "feature_filter_upgrade").Return(false, domain.ErrDatabaseError)
+			},
+			expectedStatus: http.StatusInternalServerError,
+			expectedBody:   ErrMsgFeatureCheckFailed,
 		},
 	}
 
