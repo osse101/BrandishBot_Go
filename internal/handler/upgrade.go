@@ -1,24 +1,14 @@
 package handler
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
-	"github.com/osse101/BrandishBot_Go/internal/middleware"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 )
-
-type UpgradeItemRequest struct {
-	Platform   string `json:"platform" validate:"required,platform"`
-	PlatformID string `json:"platform_id" validate:"required"`
-	Username   string `json:"username" validate:"required,max=100,excludesall=\x00\n\r\t"`
-	Item       string `json:"item" validate:"required,max=100"`
-	Quantity   int    `json:"quantity" validate:"min=1,max=10000"`
-}
 
 type UpgradeItemResponse struct {
 	Message          string `json:"message"`
@@ -34,7 +24,7 @@ type UpgradeItemResponse struct {
 // @Tags crafting
 // @Accept json
 // @Produce json
-// @Param request body UpgradeItemRequest true "Upgrade details"
+// @Param request body CraftingActionRequest true "Upgrade details"
 // @Success 200 {object} UpgradeItemResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 403 {object} ErrorResponse "Feature locked"
@@ -49,22 +39,9 @@ func HandleUpgradeItem(svc crafting.Service, progressionSvc progression.Service,
 			return
 		}
 
-		var req UpgradeItemRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			log.Error("Failed to decode upgrade item request", "error", err)
-			http.Error(w, "Invalid request body", http.StatusBadRequest)
-			return
-		}
-
-		log.Debug("Upgrade item request",
-			"username", req.Username,
-			"item", req.Item,
-			"quantity", req.Quantity)
-
-		// Validate request
-		if err := GetValidator().ValidateStruct(req); err != nil {
-			log.Warn("Invalid request", "error", err)
-			http.Error(w, fmt.Sprintf("Invalid request: %v", err), http.StatusBadRequest)
+		req, err := decodeCraftingRequest(r, "Upgrade item")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
@@ -82,25 +59,17 @@ func HandleUpgradeItem(svc crafting.Service, progressionSvc progression.Service,
 			"masterwork", result.IsMasterwork)
 
 		// Track engagement for crafting
-		middleware.TrackEngagementFromContext(
-			middleware.WithUserID(r.Context(), req.Username),
-			eventBus,
-			"item_crafted",
-			result.Quantity,
-		)
+		trackCraftingEngagement(r.Context(), eventBus, req.Username, "item_crafted", result.Quantity)
 
 		// Publish item.upgraded event
-		if err := eventBus.Publish(r.Context(), event.Event{
-			Type: "item.upgraded",
-			Payload: map[string]interface{}{
-				"user_id":           req.Username,
-				"source_item":       req.Item,
-				"result_item":       result.ItemName,
-				"quantity_upgraded": result.Quantity,
-				"is_masterwork":     result.IsMasterwork,
-			},
+		if err := publishCraftingEvent(r.Context(), eventBus, "item.upgraded", map[string]interface{}{
+			"user_id":           req.Username,
+			"source_item":       req.Item,
+			"result_item":       result.ItemName,
+			"quantity_upgraded": result.Quantity,
+			"is_masterwork":     result.IsMasterwork,
 		}); err != nil {
-			log.Error("Failed to publish item.upgraded event", "error", err)
+			// Error already logged in publishCraftingEvent
 		}
 
 		// Construct user message

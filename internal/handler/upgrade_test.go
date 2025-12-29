@@ -18,14 +18,14 @@ import (
 func TestHandleUpgradeItem(t *testing.T) {
 	tests := []struct {
 		name           string
-		requestBody    UpgradeItemRequest
+		requestBody    CraftingActionRequest
 		mockSetup      func(*mocks.MockCraftingService, *mocks.MockProgressionService, *mocks.MockEventBus)
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name: "Success",
-			requestBody: UpgradeItemRequest{
+			requestBody: CraftingActionRequest{
 				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
@@ -52,7 +52,7 @@ func TestHandleUpgradeItem(t *testing.T) {
 		},
 		{
 			name: "Feature Locked",
-			requestBody: UpgradeItemRequest{
+			requestBody: CraftingActionRequest{
 				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
@@ -70,7 +70,7 @@ func TestHandleUpgradeItem(t *testing.T) {
 		},
 		{
 			name: "Service Error",
-			requestBody: UpgradeItemRequest{
+			requestBody: CraftingActionRequest{
 				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
@@ -87,7 +87,7 @@ func TestHandleUpgradeItem(t *testing.T) {
 		},
 		{
 			name: "Invalid Request",
-			requestBody: UpgradeItemRequest{
+			requestBody: CraftingActionRequest{
 				Platform: "", // Missing platform
 			},
 			mockSetup: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, b *mocks.MockEventBus) {
@@ -98,7 +98,7 @@ func TestHandleUpgradeItem(t *testing.T) {
 		},
 		{
 			name: "Success Masterwork",
-			requestBody: UpgradeItemRequest{
+			requestBody: CraftingActionRequest{
 				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",

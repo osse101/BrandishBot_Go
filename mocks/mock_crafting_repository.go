@@ -435,6 +435,65 @@ func (_c *MockCraftingRepository_GetItemByName_Call) RunAndReturn(run func(conte
 	return _c
 }
 
+// GetItemsByIDs provides a mock function with given fields: ctx, itemIDs
+func (_m *MockCraftingRepository) GetItemsByIDs(ctx context.Context, itemIDs []int) ([]domain.Item, error) {
+	ret := _m.Called(ctx, itemIDs)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetItemsByIDs")
+	}
+
+	var r0 []domain.Item
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, []int) ([]domain.Item, error)); ok {
+		return rf(ctx, itemIDs)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, []int) []domain.Item); ok {
+		r0 = rf(ctx, itemIDs)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]domain.Item)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, []int) error); ok {
+		r1 = rf(ctx, itemIDs)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockCraftingRepository_GetItemsByIDs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetItemsByIDs'
+type MockCraftingRepository_GetItemsByIDs_Call struct {
+	*mock.Call
+}
+
+// GetItemsByIDs is a helper method to define mock.On call
+//   - ctx context.Context
+//   - itemIDs []int
+func (_e *MockCraftingRepository_Expecter) GetItemsByIDs(ctx interface{}, itemIDs interface{}) *MockCraftingRepository_GetItemsByIDs_Call {
+	return &MockCraftingRepository_GetItemsByIDs_Call{Call: _e.mock.On("GetItemsByIDs", ctx, itemIDs)}
+}
+
+func (_c *MockCraftingRepository_GetItemsByIDs_Call) Run(run func(ctx context.Context, itemIDs []int)) *MockCraftingRepository_GetItemsByIDs_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]int))
+	})
+	return _c
+}
+
+func (_c *MockCraftingRepository_GetItemsByIDs_Call) Return(_a0 []domain.Item, _a1 error) *MockCraftingRepository_GetItemsByIDs_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockCraftingRepository_GetItemsByIDs_Call) RunAndReturn(run func(context.Context, []int) ([]domain.Item, error)) *MockCraftingRepository_GetItemsByIDs_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetRecipeByTargetItemID provides a mock function with given fields: ctx, itemID
 func (_m *MockCraftingRepository) GetRecipeByTargetItemID(ctx context.Context, itemID int) (*domain.Recipe, error) {
 	ret := _m.Called(ctx, itemID)

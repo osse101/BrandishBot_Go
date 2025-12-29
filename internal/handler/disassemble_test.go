@@ -18,14 +18,14 @@ import (
 func TestHandleDisassembleItem(t *testing.T) {
 	tests := []struct {
 		name           string
-		requestBody    DisassembleItemRequest
+		requestBody    CraftingActionRequest
 		mockSetup      func(*mocks.MockCraftingService, *mocks.MockProgressionService, *mocks.MockEventBus)
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name: "Success",
-			requestBody: DisassembleItemRequest{
+			requestBody: CraftingActionRequest{
 				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
@@ -51,7 +51,7 @@ func TestHandleDisassembleItem(t *testing.T) {
 		},
 		{
 			name: "Feature Locked",
-			requestBody: DisassembleItemRequest{
+			requestBody: CraftingActionRequest{
 				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
@@ -69,7 +69,7 @@ func TestHandleDisassembleItem(t *testing.T) {
 		},
 		{
 			name: "Service Error",
-			requestBody: DisassembleItemRequest{
+			requestBody: CraftingActionRequest{
 				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
@@ -86,7 +86,7 @@ func TestHandleDisassembleItem(t *testing.T) {
 		},
 		{
 			name: "Success Perfect Salvage",
-			requestBody: DisassembleItemRequest{
+			requestBody: CraftingActionRequest{
 				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
