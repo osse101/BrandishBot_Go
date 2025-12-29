@@ -84,6 +84,13 @@ const (
 	PeriodDaily = "daily"
 )
 
+// Inventory filter type constants
+const (
+	FilterTypeUpgrade    = "upgrade"
+	FilterTypeSellable   = "sellable"
+	FilterTypeConsumable = "consumable"
+)
+
 // Error messages
 const (
 	ErrMsgTxClosed = "tx is closed"

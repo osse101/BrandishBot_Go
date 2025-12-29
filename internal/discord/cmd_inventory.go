@@ -23,15 +23,15 @@ func InventoryCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 				Choices: []*discordgo.ApplicationCommandOptionChoice{
 					{
 						Name:  "Upgradable",
-						Value: "upgrade",
+						Value: domain.FilterTypeUpgrade,
 					},
 					{
 						Name:  "Sellable",
-						Value: "sellable",
+						Value: domain.FilterTypeSellable,
 					},
 					{
 						Name:  "Consumable",
-						Value: "consumable",
+						Value: domain.FilterTypeConsumable,
 					},
 				},
 			},

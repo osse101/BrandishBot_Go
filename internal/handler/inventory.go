@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/economy"
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
@@ -501,7 +502,7 @@ func HandleGetInventory(svc user.Service, progSvc progression.Service) http.Hand
 		if filter != "" {
 			featureKey := fmt.Sprintf("feature_filter_%s", filter)
 			// We only check locks for the specific ones we added.
-			if filter == "upgrade" || filter == "sellable" || filter == "consumable" {
+			if filter == domain.FilterTypeUpgrade || filter == domain.FilterTypeSellable || filter == domain.FilterTypeConsumable {
 				unlocked, err := progSvc.IsFeatureUnlocked(r.Context(), featureKey)
 				if err != nil {
 					log.Error("Failed to check filter unlock", "error", err)
