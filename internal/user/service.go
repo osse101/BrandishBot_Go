@@ -744,6 +744,7 @@ func (s *service) executeSearch(ctx context.Context, user *domain.User) (string,
 	}
 
 	var resultMessage string
+	var milestoneMsg string
 
 	if roll <= successThreshold {
 		// Success case
@@ -800,6 +801,38 @@ func (s *service) executeSearch(ctx context.Context, user *domain.User) (string,
 		s.wg.Add(1)
 		go s.awardExplorerXP(context.Background(), user.ID, item.InternalName, xpMultiplier)
 
+		// Record distance traveled (Search implies movement)
+		// We calculate distance even if no item found, but here we record it with success metadata
+		distance := utils.SecureRandomIntRange(domain.MinSearchDistance, domain.MaxSearchDistance)
+		if s.statsService != nil {
+			// Record event
+			_ = s.statsService.RecordUserEvent(ctx, user.ID, domain.EventDistanceTraveled, map[string]interface{}{
+				"distance": distance,
+				"source":   "search",
+			})
+
+			// Check milestones
+			totalDist, err := s.statsService.GetTotalMetric(ctx, user.ID, domain.EventDistanceTraveled, "distance")
+			if err == nil {
+				// Only trigger if we JUST crossed a milestone
+				// Current total is totalDist (which includes current trip)
+				// Previous total was totalDist - distance
+				previousDist := totalDist - float64(distance)
+
+				milestones := []float64{100, 500, 1000, 5000, 10000, 50000, 100000}
+				for _, m := range milestones {
+					if previousDist < m && totalDist >= m {
+						// Milestone reached!
+						log.Info("Distance milestone reached", "username", user.Username, "milestone", m)
+						milestoneMsg = fmt.Sprintf("\n"+domain.MsgDistanceMilestone, int(m))
+
+						// Add milestone bonus (optional, maybe XP later)
+						break // Only report the highest milestone crossed
+					}
+				}
+			}
+		}
+
 		// Get display name with shine (empty shine for search results)
 		displayName := s.namingResolver.GetDisplayName(item.InternalName, "")
 
@@ -824,6 +857,9 @@ func (s *service) executeSearch(ctx context.Context, user *domain.User) (string,
 		} else if isDiminished {
 			resultMessage += " (Exhausted)"
 		}
+
+		// Append milestone message if any
+		resultMessage += milestoneMsg
 	} else if roll <= successThreshold+SearchNearMissRate {
 		// Near Miss case
 		if s.statsService != nil {

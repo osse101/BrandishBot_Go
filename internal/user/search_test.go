@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -599,6 +600,82 @@ func (m *mockStatsService) GetSystemStats(ctx context.Context, period string) (*
 }
 func (m *mockStatsService) GetLeaderboard(ctx context.Context, eventType domain.EventType, period string, limit int) ([]domain.LeaderboardEntry, error) {
 	return nil, nil
+}
+func (m *mockStatsService) GetTotalMetric(ctx context.Context, userID string, eventType domain.EventType, metricKey string) (float64, error) {
+	total := 0.0
+	for _, evt := range m.recordedEvents {
+		if evt.UserID == userID && evt.EventType == eventType {
+			if val, ok := evt.EventData[metricKey]; ok {
+				switch v := val.(type) {
+				case int:
+					total += float64(v)
+				case float64:
+					total += v
+				}
+			}
+		}
+	}
+	return total, nil
+}
+
+func TestHandleSearch_DistanceTracking_And_Milestones(t *testing.T) {
+	// ARRANGE
+	repo := newMockSearchRepo()
+	repo.items[domain.ItemLootbox0] = &domain.Item{
+		ID:           1,
+		InternalName: domain.ItemLootbox0,
+		BaseValue:    10,
+	}
+
+	statsSvc := &mockStatsService{
+		mockCounts: make(map[domain.EventType]int),
+	}
+	// Enable devMode to bypass cooldowns
+	svc := NewService(repo, statsSvc, nil, nil, NewMockNamingResolver(), &mockCooldownService{repo: repo}, true).(*service)
+
+	user := createTestUser(TestUsername, TestUserID)
+	repo.users[TestUsername] = user
+	ctx := context.Background()
+
+	// 1. Manually inject initial distance to test milestone trigger
+	// We start with 95m, so next search (min 10m) will cross 100m
+	statsSvc.recordedEvents = []domain.StatsEvent{
+		{
+			UserID:    TestUserID,
+			EventType: domain.EventDistanceTraveled,
+			EventData: map[string]interface{}{"distance": 95},
+		},
+	}
+
+	// Reset stats to ensure daily count is 0 (guaranteed success)
+	statsSvc.mockCounts[domain.EventSearch] = 0
+
+	// Ensure no cooldown prevents the search
+	delete(repo.cooldowns[user.ID], domain.ActionSearch)
+
+	// 2. Perform search (Guaranteed success due to daily bonus)
+	msg, err := svc.HandleSearch(ctx, domain.PlatformTwitch, "testuser123", TestUsername)
+	require.NoError(t, err)
+
+	// 3. Verify Milestone Message
+	expectedMilestoneMsg := fmt.Sprintf(domain.MsgDistanceMilestone, 100)
+	assert.Contains(t, msg, expectedMilestoneMsg, "Should contain milestone message for 100m")
+
+	// 4. Verify distance event recorded
+	foundDistance := false
+	var recordedDistance int
+	for _, evt := range statsSvc.recordedEvents {
+		// Look for the NEW event, not the injected one
+		if evt.EventType == domain.EventDistanceTraveled && evt.EventData["source"] == "search" {
+			foundDistance = true
+			if d, ok := evt.EventData["distance"].(int); ok {
+				recordedDistance = d
+			}
+			break
+		}
+	}
+	assert.True(t, foundDistance, "Should record new EventDistanceTraveled")
+	assert.Greater(t, recordedDistance, 0, "Distance should be greater than 0")
 }
 
 func TestHandleSearch_NearMiss_Statistical(t *testing.T) {

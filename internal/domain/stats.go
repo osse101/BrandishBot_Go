@@ -27,6 +27,7 @@ const (
 	EventCraftingCriticalSuccess EventType = "crafting_critical_success"
 	EventCraftingPerfectSalvage EventType = "crafting_perfect_salvage"
 	EventJobLevelUp         EventType = "job_level_up"
+	EventDistanceTraveled   EventType = "distance_traveled"
 )
 
 // StatsEvent represents a single tracked event

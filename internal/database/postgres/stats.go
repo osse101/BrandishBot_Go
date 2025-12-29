@@ -291,6 +291,25 @@ func (r *StatsRepository) GetUserEventCounts(ctx context.Context, userID string,
 	return counts, nil
 }
 
+// GetTotalMetric retrieves the sum of a specific metric from event data for a user
+func (r *StatsRepository) GetTotalMetric(ctx context.Context, userID string, eventType domain.EventType, metricKey string) (float64, error) {
+	// This uses the JSONB operator ->> to get the value as text, casts to numeric, and sums it
+	// COALESCE handles nulls (no events)
+	query := `
+		SELECT COALESCE(SUM((event_data->>$3)::numeric), 0)
+		FROM stats_events
+		WHERE user_id = $1 AND event_type = $2
+	`
+
+	var total float64
+	err := r.db.QueryRow(ctx, query, userID, eventType, metricKey).Scan(&total)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get total metric: %w", err)
+	}
+
+	return total, nil
+}
+
 // GetTotalEventCount retrieves the total number of events within a time range
 func (r *StatsRepository) GetTotalEventCount(ctx context.Context, startTime, endTime time.Time) (int, error) {
 	query := `

@@ -19,6 +19,7 @@ type Repository interface {
 	GetEventCounts(ctx context.Context, startTime, endTime time.Time) (map[domain.EventType]int, error)
 	GetUserEventCounts(ctx context.Context, userID string, startTime, endTime time.Time) (map[domain.EventType]int, error)
 	GetTotalEventCount(ctx context.Context, startTime, endTime time.Time) (int, error)
+	GetTotalMetric(ctx context.Context, userID string, eventType domain.EventType, metricKey string) (float64, error)
 }
 
 // Service defines the interface for stats operations
@@ -27,6 +28,7 @@ type Service interface {
 	GetUserStats(ctx context.Context, userID string, period string) (*domain.StatsSummary, error)
 	GetSystemStats(ctx context.Context, period string) (*domain.StatsSummary, error)
 	GetLeaderboard(ctx context.Context, eventType domain.EventType, period string, limit int) ([]domain.LeaderboardEntry, error)
+	GetTotalMetric(ctx context.Context, userID string, eventType domain.EventType, metricKey string) (float64, error)
 }
 
 // service implements the Service interface
@@ -215,6 +217,23 @@ func (s *service) GetLeaderboard(ctx context.Context, eventType domain.EventType
 
 	log.Debug("Retrieved leaderboard", "event_type", eventType, "period", period, "entries", len(entries))
 	return entries, nil
+}
+
+// GetTotalMetric retrieves the sum of a specific metric from event data for a user
+func (s *service) GetTotalMetric(ctx context.Context, userID string, eventType domain.EventType, metricKey string) (float64, error) {
+	log := logger.FromContext(ctx)
+
+	if userID == "" {
+		return 0, fmt.Errorf("user ID is required")
+	}
+
+	total, err := s.repo.GetTotalMetric(ctx, userID, eventType, metricKey)
+	if err != nil {
+		log.Error("Failed to get total metric", "error", err, "user_id", userID, "event_type", eventType)
+		return 0, fmt.Errorf("failed to get total metric: %w", err)
+	}
+
+	return total, nil
 }
 
 // getPeriodRange calculates the start and end time for a given period

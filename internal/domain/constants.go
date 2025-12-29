@@ -51,6 +51,13 @@ const (
 	MsgSearchCriticalSuccess = "You found a hidden stash! (CRITICAL SUCCESS!)"
 	MsgSearchCriticalFail    = "You tried to search, but disaster struck! (CRITICAL FAIL!)"
 	MsgFirstSearchBonus      = " (First Search of the Day!)"
+	MsgDistanceMilestone     = "You've traveled a long way! Milestone reached: %d meters!"
+)
+
+// Distance constants
+const (
+	MinSearchDistance = 10  // meters
+	MaxSearchDistance = 100 // meters
 )
 
 // SearchCriticalFailMessages is a list of funny messages for critical failures
