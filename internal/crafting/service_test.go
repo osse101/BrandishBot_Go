@@ -157,6 +157,16 @@ func (m *MockRepository) GetAssociatedUpgradeRecipeID(ctx context.Context, disas
 	return upgradeRecipeID, nil
 }
 
+func (m *MockRepository) GetItemsByIDs(ctx context.Context, itemIDs []int) ([]domain.Item, error) {
+	var result []domain.Item
+	for _, id := range itemIDs {
+		if item, ok := m.itemsByID[id]; ok {
+			result = append(result, *item)
+		}
+	}
+	return result, nil
+}
+
 func (m *MockRepository) GetAllRecipes(ctx context.Context) ([]RecipeListItem, error) {
 	var result []RecipeListItem
 	for _, recipe := range m.recipes {
@@ -198,7 +208,7 @@ func (tx *MockTx) UpdateUser(ctx context.Context, user domain.User) error { retu
 func (tx *MockTx) DeleteUser(ctx context.Context, userID string) error    { return nil }
 func (tx *MockTx) DeleteInventory(ctx context.Context, userID string) error { return nil }
 func (tx *MockTx) GetItemsByIDs(ctx context.Context, itemIDs []int) ([]domain.Item, error) {
-	return nil, nil
+	return tx.repo.GetItemsByIDs(ctx, itemIDs)
 }
 func (tx *MockTx) GetSellablePrices(ctx context.Context) ([]domain.Item, error) {
 	return nil, nil
@@ -267,7 +277,8 @@ func setupTestData(repo *MockRepository) {
 func TestDisassembleItem_Success(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, nil, nil)
+	svc := NewService(repo, nil, nil).(*service)
+	svc.rnd = func() float64 { return 1.0 } // Force no perfect salvage
 	ctx := context.Background()
 
 	// Give alice some lootbox1

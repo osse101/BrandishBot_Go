@@ -19,6 +19,7 @@ type Repository interface {
 	GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error)
 	GetItemByName(ctx context.Context, itemName string) (*domain.Item, error)
 	GetItemByID(ctx context.Context, id int) (*domain.Item, error)
+	GetItemsByIDs(ctx context.Context, itemIDs []int) ([]domain.Item, error)
 	GetInventory(ctx context.Context, userID string) (*domain.Inventory, error)
 	UpdateInventory(ctx context.Context, userID string, inventory domain.Inventory) error
 	GetRecipeByTargetItemID(ctx context.Context, itemID int) (*domain.Recipe, error)
@@ -389,6 +390,30 @@ func (s *service) GetAllRecipes(ctx context.Context) ([]RecipeListItem, error) {
 func (s *service) processDisassembleOutputs(ctx context.Context, inventory *domain.Inventory, outputs []domain.RecipeOutput, actualQuantity int, perfectSalvageCount int) (map[string]int, error) {
 	outputMap := make(map[string]int)
 
+	// Collect IDs
+	itemIDs := make([]int, 0, len(outputs))
+	for _, output := range outputs {
+		itemIDs = append(itemIDs, output.ItemID)
+	}
+
+	// Batch fetch items
+	items, err := s.repo.GetItemsByIDs(ctx, itemIDs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get output items: %w", err)
+	}
+
+	// Map items by ID for easy lookup
+	itemsByID := make(map[int]*domain.Item, len(items))
+	for i := range items {
+		itemsByID[items[i].ID] = &items[i]
+	}
+
+	// Optimization: Build a map for O(1) inventory lookups
+	slotMap := make(map[int]int, len(inventory.Slots))
+	for i, slot := range inventory.Slots {
+		slotMap[slot.ItemID] = i
+	}
+
 	for _, output := range outputs {
 		// Calculate output for regular items
 		regularQuantity := (actualQuantity - perfectSalvageCount) * output.Quantity
@@ -405,14 +430,19 @@ func (s *service) processDisassembleOutputs(ctx context.Context, inventory *doma
 		totalOutput := regularQuantity + perfectQuantity
 
 		// Get item name for the output
-		outputItem, err := s.repo.GetItemByID(ctx, output.ItemID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get output item: %w", err)
+		outputItem, ok := itemsByID[output.ItemID]
+		if !ok {
+			return nil, fmt.Errorf("output item not found: %d", output.ItemID)
 		}
 		outputMap[outputItem.InternalName] = totalOutput
 
 		// Add to inventory
-		addItemToInventory(inventory, output.ItemID, totalOutput)
+		if idx, exists := slotMap[output.ItemID]; exists {
+			inventory.Slots[idx].Quantity += totalOutput
+		} else {
+			inventory.Slots = append(inventory.Slots, domain.InventorySlot{ItemID: output.ItemID, Quantity: totalOutput})
+			slotMap[output.ItemID] = len(inventory.Slots) - 1
+		}
 	}
 
 	return outputMap, nil
