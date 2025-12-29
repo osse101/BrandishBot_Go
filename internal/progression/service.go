@@ -59,13 +59,22 @@ type service struct {
 	mu               sync.RWMutex
 	cachedTargetCost int  // unlock_cost of target node
 	cachedProgressID int  // current unlock progress ID
+	
+	// Cache for engagement weights (reduces DB load)
+	weightsMu     sync.RWMutex
+	cachedWeights map[string]float64
+	weightsExpiry time.Time
+	
+	// Semaphore to prevent concurrent unlock attempts
+	unlockSem chan struct{}
 }
 
 // NewService creates a new progression service
 func NewService(repo Repository, bus event.Bus) Service {
 	return &service{
-		repo: repo,
-		bus:  bus,
+		repo:      repo,
+		bus:       bus,
+		unlockSem: make(chan struct{}, 1), // Buffer of 1 = only one unlock check at a time
 	}
 }
 
@@ -251,19 +260,27 @@ func (s *service) RecordEngagement(ctx context.Context, userID string, metricTyp
 		return err
 	}
 
-	// Calculate and add contribution points based on weight
-	weights, err := s.repo.GetEngagementWeights(ctx)
-	if err != nil {
-		// Log warning but don't fail, use default weight of 1.0 if not found
-		logger.FromContext(ctx).Warn("Failed to get engagement weights, using default", "error", err)
-		// We could fallback to hardcoded defaults here if critical
+	// Try to get weights from cache first
+	weight := s.getCachedWeight(metricType)
+	
+	// If not in cache or expired, fetch from DB
+	if weight == 0.0 {
+		weights, err := s.repo.GetEngagementWeights(ctx)
+		if err != nil {
+			// Log warning but don't fail, use default weight of 1.0 if not found
+			logger.FromContext(ctx).Warn("Failed to get engagement weights, using default", "error", err)
+			// We could fallback to hardcoded defaults here if critical
+		} else {
+			// Cache weights for future use (60 second TTL)
+			s.cacheWeights(weights)
+			if w, ok := weights[metricType]; ok {
+				weight = w
+			}
+		}
 	}
-
-	weight := 0.0
-	if weights != nil {
-		weight = weights[metricType]
-	} else {
-		// Fallback defaults matching DB defaults
+	
+	// Fallback defaults if still no weight found
+	if weight == 0.0 {
 		switch metricType {
 		case "message":
 			weight = 1.0
@@ -272,9 +289,7 @@ func (s *service) RecordEngagement(ctx context.Context, userID string, metricTyp
 		case "item_crafted":
 			weight = 3.0 // Note: Migration sets this to 200, this is just code fallback
 		default:
-			if val, ok := weights[metricType]; ok {
-				weight = val
-			}
+			weight = 1.0 // Safe default
 		}
 	}
 
@@ -537,4 +552,30 @@ func (s *service) GetRequiredNodes(ctx context.Context, nodeKey string) ([]*doma
 	}
 
 	return lockedAncestors, nil
+}
+
+// getCachedWeight retrieves weight from cache if not expired
+func (s *service) getCachedWeight(metricType string) float64 {
+s.weightsMu.RLock()
+defer s.weightsMu.RUnlock()
+
+// Check if cache is expired
+if time.Now().After(s.weightsExpiry) {
+ return 0.0
+}
+
+if s.cachedWeights == nil {
+ return 0.0
+}
+
+return s.cachedWeights[metricType]
+}
+
+// cacheWeights stores engagement weights with TTL
+func (s *service) cacheWeights(weights map[string]float64) {
+s.weightsMu.Lock()
+defer s.weightsMu.Unlock()
+
+s.cachedWeights = weights
+s.weightsExpiry = time.Now().Add(60 * time.Second)
 }

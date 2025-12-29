@@ -250,7 +250,19 @@ func (s *service) AddContribution(ctx context.Context, amount int) error {
 				log.Info("Unlock threshold met, triggering unlock",
 					"accumulated", updatedProgress.ContributionsAccumulated,
 					"required", cachedCost)
-				go s.CheckAndUnlockNode(context.Background())
+				
+				// Non-blocking send to semaphore - if unlock already in progress, skip
+				select {
+				case s.unlockSem <- struct{}{}:
+					// Got the semaphore, proceed with unlock
+					go func() {
+						defer func() { <-s.unlockSem }() // Release semaphore when done
+						s.CheckAndUnlockNode(context.Background())
+					}()
+				default:
+					// Unlock already in progress, skip this trigger
+					log.Debug("Unlock already in progress, skipping duplicate trigger")
+				}
 			}
 		}
 	}
