@@ -498,22 +498,27 @@ func HandleGetInventory(svc user.Service, progSvc progression.Service) http.Hand
 		}
 		filter := r.URL.Query().Get("filter")
 
+		// Validate filter parameter
+		if filter != "" && !domain.IsValidFilterType(filter) {
+			log.Warn("Invalid filter parameter", "filter", filter)
+			http.Error(w, fmt.Sprintf("Invalid filter type '%s'. Valid options: upgrade, sellable, consumable", filter), http.StatusBadRequest)
+			return
+		}
+
 		// Check filter unlock status
 		if filter != "" {
 			featureKey := fmt.Sprintf("feature_filter_%s", filter)
 			// We only check locks for the specific ones we added.
-			if filter == domain.FilterTypeUpgrade || filter == domain.FilterTypeSellable || filter == domain.FilterTypeConsumable {
-				unlocked, err := progSvc.IsFeatureUnlocked(r.Context(), featureKey)
-				if err != nil {
-					log.Error("Failed to check filter unlock", "error", err)
-					http.Error(w, ErrMsgFeatureCheckFailed, http.StatusInternalServerError)
-					return
-				}
-				if !unlocked {
-					log.Warn("Filter locked", "filter", filter, "username", username)
-					http.Error(w, fmt.Sprintf("Filter '%s' is locked. Unlock it in the progression tree.", filter), http.StatusForbidden)
-					return
-				}
+			unlocked, err := progSvc.IsFeatureUnlocked(r.Context(), featureKey)
+			if err != nil {
+				log.Error("Failed to check filter unlock", "error", err)
+				http.Error(w, ErrMsgFeatureCheckFailed, http.StatusInternalServerError)
+				return
+			}
+			if !unlocked {
+				log.Warn("Filter locked", "filter", filter, "username", username)
+				http.Error(w, fmt.Sprintf("Filter '%s' is locked. Unlock it in the progression tree.", filter), http.StatusForbidden)
+				return
 			}
 		}
 

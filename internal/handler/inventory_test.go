@@ -759,17 +759,16 @@ func TestHandleGetInventory(t *testing.T) {
 			expectedBody:   "Filter 'consumable' is locked",
 		},
 		{
-			name:       "Unknown Filter - Should Not Check Lock",
+			name:       "Unknown Filter - Invalid",
 			username:   "testuser",
 			platform:   domain.PlatformDiscord,
 			platformID: "test-platformid",
 			filter:     "unknown",
 			setupMock: func(m *mocks.MockUserService, p *mocks.MockProgressionService) {
-				items := []user.UserInventoryItem{}
-				m.On("GetInventory", mock.Anything, domain.PlatformDiscord, "test-platformid", "testuser", "unknown").Return(items, nil)
+				// No expectations - validation happens before service call
 			},
-			expectedStatus: http.StatusOK,
-			expectedBody:   `"items":[]`,
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "Invalid filter type 'unknown'",
 		},
 		{
 			name:       "Filter Check Error",

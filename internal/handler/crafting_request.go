@@ -27,7 +27,7 @@ func decodeCraftingRequest(r *http.Request, actionName string) (*CraftingActionR
 	var req CraftingActionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		log.Error(fmt.Sprintf("Failed to decode %s request", actionName), "error", err)
-		return nil, fmt.Errorf("Invalid request body")
+		return nil, fmt.Errorf("invalid request body: %w", err)
 	}
 
 	log.Debug(fmt.Sprintf("%s request", actionName),

@@ -60,6 +60,15 @@ AND NOT EXISTS (SELECT 1 FROM progression_nodes WHERE node_key = 'feature_filter
 
 
 -- +goose Down
+-- WARNING: This rollback will DELETE progression nodes that users may have unlocked
+-- If any users have unlocked these filter features, their unlock records will become orphaned
+-- Consider archiving to a backup table instead in production environments
+
+-- Remove user unlocks for filter features (prevents orphaned records)
+DELETE FROM user_progression_unlocks WHERE node_id IN (
+    SELECT id FROM progression_nodes WHERE node_key IN ('feature_filter_upgrade', 'feature_filter_sellable', 'feature_filter_consumable')
+);
+
 -- Remove nodes
 DELETE FROM progression_nodes WHERE node_key IN ('feature_filter_upgrade', 'feature_filter_sellable', 'feature_filter_consumable');
 

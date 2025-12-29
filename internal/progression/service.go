@@ -49,6 +49,7 @@ type Service interface {
 	AdminUnlock(ctx context.Context, nodeKey string, level int) error
 	AdminRelock(ctx context.Context, nodeKey string, level int) error
 	ResetProgressionTree(ctx context.Context, resetBy string, reason string, preserveUserData bool) error
+	InvalidateWeightCache() // Clears engagement weight cache (forces reload on next engagement)
 }
 
 type service struct {
@@ -271,7 +272,7 @@ func (s *service) RecordEngagement(ctx context.Context, userID string, metricTyp
 			logger.FromContext(ctx).Warn("Failed to get engagement weights, using default", "error", err)
 			// We could fallback to hardcoded defaults here if critical
 		} else {
-			// Cache weights for future use (60 second TTL)
+			// Cache weights for future use (5 minute TTL)
 			s.cacheWeights(weights)
 			if w, ok := weights[metricType]; ok {
 				weight = w
@@ -556,26 +557,36 @@ func (s *service) GetRequiredNodes(ctx context.Context, nodeKey string) ([]*doma
 
 // getCachedWeight retrieves weight from cache if not expired
 func (s *service) getCachedWeight(metricType string) float64 {
-s.weightsMu.RLock()
-defer s.weightsMu.RUnlock()
+	s.weightsMu.RLock()
+	defer s.weightsMu.RUnlock()
 
-// Check if cache is expired
-if time.Now().After(s.weightsExpiry) {
- return 0.0
+	// Check if cache is expired
+	if time.Now().After(s.weightsExpiry) {
+		return 0.0
+	}
+
+	if s.cachedWeights == nil {
+		return 0.0
+	}
+
+	return s.cachedWeights[metricType]
 }
 
-if s.cachedWeights == nil {
- return 0.0
-}
-
-return s.cachedWeights[metricType]
-}
-
-// cacheWeights stores engagement weights with TTL
+// cacheWeights stores engagement weights with 5-minute TTL
 func (s *service) cacheWeights(weights map[string]float64) {
-s.weightsMu.Lock()
-defer s.weightsMu.Unlock()
+	s.weightsMu.Lock()
+	defer s.weightsMu.Unlock()
 
-s.cachedWeights = weights
-s.weightsExpiry = time.Now().Add(60 * time.Second)
+	s.cachedWeights = weights
+	s.weightsExpiry = time.Now().Add(5 * time.Minute) // 5 min TTL - weights rarely change
 }
+
+// InvalidateWeightCache clears the engagement weight cache
+func (s *service) InvalidateWeightCache() {
+	s.weightsMu.Lock()
+	defer s.weightsMu.Unlock()
+
+	s.cachedWeights = nil
+	s.weightsExpiry = time.Time{} // Zero time = always expired
+}
+

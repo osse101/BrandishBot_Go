@@ -979,6 +979,38 @@ func (_c *MockProgressionService_GetUserEngagement_Call) RunAndReturn(run func(c
 	return _c
 }
 
+// InvalidateWeightCache provides a mock function with no fields
+func (_m *MockProgressionService) InvalidateWeightCache() {
+	_m.Called()
+}
+
+// MockProgressionService_InvalidateWeightCache_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'InvalidateWeightCache'
+type MockProgressionService_InvalidateWeightCache_Call struct {
+	*mock.Call
+}
+
+// InvalidateWeightCache is a helper method to define mock.On call
+func (_e *MockProgressionService_Expecter) InvalidateWeightCache() *MockProgressionService_InvalidateWeightCache_Call {
+	return &MockProgressionService_InvalidateWeightCache_Call{Call: _e.mock.On("InvalidateWeightCache")}
+}
+
+func (_c *MockProgressionService_InvalidateWeightCache_Call) Run(run func()) *MockProgressionService_InvalidateWeightCache_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockProgressionService_InvalidateWeightCache_Call) Return() *MockProgressionService_InvalidateWeightCache_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockProgressionService_InvalidateWeightCache_Call) RunAndReturn(run func()) *MockProgressionService_InvalidateWeightCache_Call {
+	_c.Run(run)
+	return _c
+}
+
 // IsFeatureUnlocked provides a mock function with given fields: ctx, featureKey
 func (_m *MockProgressionService) IsFeatureUnlocked(ctx context.Context, featureKey string) (bool, error) {
 	ret := _m.Called(ctx, featureKey)
