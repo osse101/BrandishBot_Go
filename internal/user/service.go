@@ -63,7 +63,7 @@ type Service interface {
 	RemoveItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (int, error)
 	GiveItem(ctx context.Context, ownerPlatform, ownerPlatformID, ownerUsername, receiverPlatform, receiverPlatformID, receiverUsername, itemName string, quantity int) error
 	UseItem(ctx context.Context, platform, platformID, username, itemName string, quantity int, targetUsername string) (string, error)
-	GetInventory(ctx context.Context, platform, platformID, username string) ([]UserInventoryItem, error)
+	GetInventory(ctx context.Context, platform, platformID, username, filter string) ([]UserInventoryItem, error)
 	TimeoutUser(ctx context.Context, username string, duration time.Duration, reason string) error
 	HandleSearch(ctx context.Context, platform, platformID, username string) (string, error)
 	// Account linking methods
@@ -517,7 +517,7 @@ func (s *service) UseItem(ctx context.Context, platform, platformID, username, i
 	return message, nil
 }
 
-func (s *service) GetInventory(ctx context.Context, platform, platformID, username string) ([]UserInventoryItem, error) {
+func (s *service) GetInventory(ctx context.Context, platform, platformID, username, filter string) ([]UserInventoryItem, error) {
 	log := logger.FromContext(ctx)
 	log.Info("GetInventory called", "platform", platform, "platformID", platformID, "username", username)
 
@@ -567,6 +567,20 @@ func (s *service) GetInventory(ctx context.Context, platform, platformID, userna
 			log.Warn("Item missing for slot", "itemID", slot.ItemID)
 			continue
 		}
+		// Filter logic
+		if filter != "" {
+			hasType := false
+			for _, t := range item.Types {
+				if t == filter {
+					hasType = true
+					break
+				}
+			}
+			if !hasType {
+				continue
+			}
+		}
+
 		items = append(items, UserInventoryItem{Name: item.InternalName, Description: item.Description, Quantity: slot.Quantity, Value: item.BaseValue})
 	}
 	log.Info("Inventory retrieved", "username", username, "itemCount", len(items))

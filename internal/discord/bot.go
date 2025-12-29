@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
 // Bot represents the Discord bot
@@ -61,6 +62,7 @@ func New(cfg Config) (*Bot, error) {
 func (b *Bot) Start() error {
 	b.Session.AddHandler(b.ready)
 	b.Session.AddHandler(b.interactionCreate)
+	b.Session.AddHandler(b.messageCreate)
 	
 	// Add autocomplete handler
 	b.Session.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
@@ -196,4 +198,29 @@ func (b *Bot) SendDailyCommitReport() error {
 	}
 
 	return b.SendDevMessage(embed)
+}
+
+func (b *Bot) messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
+	// Ignore own messages
+	if m.Author.ID == s.State.User.ID {
+		return
+	}
+
+	// Ignore bot messages
+	if m.Author.Bot {
+		return
+	}
+
+	// Send to server for processing
+	// We don't reply here, just track engagement/process commands
+	_, err := b.Client.HandleMessage(
+		domain.PlatformDiscord,
+		domain.DiscordBotId, // Use constant Platform ID for the bot interaction context
+		m.Author.Username,
+		m.Content,
+	)
+
+	if err != nil {
+		slog.Error("Failed to handle message", "error", err, "user", m.Author.Username)
+	}
 }

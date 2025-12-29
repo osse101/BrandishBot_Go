@@ -151,7 +151,7 @@ func handleItemAutocomplete(s *discordgo.Session, i *discordgo.InteractionCreate
 
 	if onlyOwned {
 		// Get user's inventory
-		inventory, err := client.GetInventory(domain.PlatformDiscord, user.ID, user.Username)
+		inventory, err := client.GetInventory(domain.PlatformDiscord, i.Member.User.ID, i.Member.User.Username, "")
 		if err != nil {
 			slog.Error("Failed to get inventory for autocomplete", "error", err, "user", user.Username)
 			// Fallback to showing common items

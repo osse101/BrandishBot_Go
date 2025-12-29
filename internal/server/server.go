@@ -66,7 +66,7 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 	r.Route("/user", func(r chi.Router) {
 		r.Post("/register", handler.HandleRegisterUser(userService))
 		r.Get("/timeout", handler.HandleGetTimeout(userService))
-		r.Get("/inventory", handler.HandleGetInventory(userService))
+		r.Get("/inventory", handler.HandleGetInventory(userService, progressionService))
 		r.Post("/search", handler.HandleSearch(userService, progressionService, eventBus))
 
 		r.Route("/item", func(r chi.Router) {

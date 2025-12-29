@@ -247,6 +247,14 @@ func HandleSellItem(svc economy.Service, progressionSvc progression.Service, eve
 			"items_sold", itemsSold,
 			"money_gained", moneyGained)
 
+		// Track engagement for selling
+		middleware.TrackEngagementFromContext(
+			middleware.WithUserID(r.Context(), req.Username),
+			eventBus,
+			"item_sold",
+			itemsSold,
+		)
+
 		// Publish item.sold event
 		if err := eventBus.Publish(r.Context(), event.Event{
 			Type: "item.sold",
@@ -328,6 +336,14 @@ func HandleBuyItem(svc economy.Service, progressionSvc progression.Service, even
 			"username", req.Username,
 			"item", req.ItemName,
 			"items_bought", bought)
+
+		// Track engagement for buying
+		middleware.TrackEngagementFromContext(
+			middleware.WithUserID(r.Context(), req.Username),
+			eventBus,
+			"item_bought",
+			bought,
+		)
 
 		// Publish item.bought event
 		// Note: We don't have the exact cost here, would need to modify economy.Service to return it
@@ -446,21 +462,24 @@ type GetInventoryResponse struct {
 	Items []user.UserInventoryItem `json:"items"`
 }
 
-// HandleGetInventory handles retrieving a user's inventory
-// @Summary Get user inventory
-// @Description Get all items in a user's inventory
+// HandleGetInventory gets the user's inventory
+// @Summary Get inventory
+// @Description Get the user's inventory
 // @Tags inventory
+// @Accept json
 // @Produce json
+// @Param platform_id query string true "Platform ID"
 // @Param username query string true "Username"
+// @Param filter query string false "Filter by item type (upgrade, sellable, consumable)"
 // @Success 200 {object} GetInventoryResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /user/inventory [get]
-func HandleGetInventory(svc user.Service) http.HandlerFunc {
+func HandleGetInventory(svc user.Service, progSvc progression.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
 
-		platform := r.URL.Query().Get("platform")
+		platform := r.URL.Query().Get("platform") // optional
 		if platform == "" {
 			platform = "discord" // Default
 		}
@@ -476,10 +495,30 @@ func HandleGetInventory(svc user.Service) http.HandlerFunc {
 			http.Error(w, "Missing username query parameter", http.StatusBadRequest)
 			return
 		}
+		filter := r.URL.Query().Get("filter")
 
-		log.Debug("Get inventory request", "username", username)
+		// Check filter unlock status
+		if filter != "" {
+			featureKey := fmt.Sprintf("feature_filter_%s", filter)
+			// We only check locks for the specific ones we added.
+			if filter == "upgrade" || filter == "sellable" || filter == "consumable" {
+				unlocked, err := progSvc.IsFeatureUnlocked(r.Context(), featureKey)
+				if err != nil {
+					log.Error("Failed to check filter unlock", "error", err)
+					http.Error(w, "Failed to check feature unlock", http.StatusInternalServerError)
+					return
+				}
+				if !unlocked {
+					log.Warn("Filter locked", "filter", filter, "username", username)
+					http.Error(w, fmt.Sprintf("Filter '%s' is locked. Unlock it in the progression tree.", filter), http.StatusForbidden)
+					return
+				}
+			}
+		}
 
-		items, err := svc.GetInventory(r.Context(), platform, platformID, username)
+		log.Debug("Get inventory request", "username", username, "filter", filter)
+
+		items, err := svc.GetInventory(r.Context(), platform, platformID, username, filter)
 		if err != nil {
 			log.Error("Failed to get inventory", "error", err, "username", username)
 			http.Error(w, ErrMsgGetInventoryFailed, http.StatusInternalServerError)

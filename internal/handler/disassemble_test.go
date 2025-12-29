@@ -41,7 +41,7 @@ func TestHandleDisassembleItem(t *testing.T) {
 						IsPerfectSalvage:  false,
 						Multiplier:        1.0,
 					}, nil)
-				p.On("AddContribution", mock.Anything, 2).Return(nil)
+
 				b.On("Publish", mock.Anything, mock.MatchedBy(func(e interface{}) bool {
 					return true
 				})).Return(nil)
@@ -102,7 +102,7 @@ func TestHandleDisassembleItem(t *testing.T) {
 						IsPerfectSalvage:  true,
 						Multiplier:        1.5,
 					}, nil)
-				p.On("AddContribution", mock.Anything, 10).Return(nil)
+
 				b.On("Publish", mock.Anything, mock.Anything).Return(nil)
 			},
 			expectedStatus: http.StatusOK,

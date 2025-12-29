@@ -11,8 +11,8 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/mocks"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestHandleUpgradeItem(t *testing.T) {
@@ -41,7 +41,7 @@ func TestHandleUpgradeItem(t *testing.T) {
 						IsMasterwork:  false,
 						BonusQuantity: 0,
 					}, nil)
-				p.On("AddContribution", mock.Anything, 2).Return(nil)
+
 				b.On("Publish", mock.Anything, mock.MatchedBy(func(e interface{}) bool {
 					// Add event matching logic if needed
 					return true
@@ -114,7 +114,7 @@ func TestHandleUpgradeItem(t *testing.T) {
 						IsMasterwork:  true,
 						BonusQuantity: 10,
 					}, nil)
-				p.On("AddContribution", mock.Anything, 20).Return(nil)
+
 				b.On("Publish", mock.Anything, mock.Anything).Return(nil)
 			},
 			expectedStatus: http.StatusOK,

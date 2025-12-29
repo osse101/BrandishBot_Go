@@ -246,9 +246,14 @@ func (r *UserRepository) UpdateInventory(ctx context.Context, userID string, inv
 // GetItemByName retrieves an item by its internal name
 func (r *UserRepository) GetItemByName(ctx context.Context, itemName string) (*domain.Item, error) {
 	query := `
-		SELECT item_id, internal_name, public_name, default_display, item_description, base_value, handler
-		FROM items 
-		WHERE internal_name = $1
+		SELECT 
+			i.item_id, i.internal_name, i.public_name, i.default_display, i.item_description, i.base_value, i.handler,
+			COALESCE(array_agg(t.type_name) FILTER (WHERE t.type_name IS NOT NULL), '{}') as types
+		FROM items i
+		LEFT JOIN item_type_assignments ita ON i.item_id = ita.item_id
+		LEFT JOIN item_types t ON ita.item_type_id = t.item_type_id
+		WHERE i.internal_name = $1
+		GROUP BY i.item_id
 	`
 	var item domain.Item
 	err := pgxscan.Get(ctx, r.db, &item, query, itemName)
@@ -264,14 +269,19 @@ func (r *UserRepository) GetItemByName(ctx context.Context, itemName string) (*d
 // GetItemByPublicName retrieves an item by its public name
 func (r *UserRepository) GetItemByPublicName(ctx context.Context, publicName string) (*domain.Item, error) {
 	query := `
-		SELECT item_id, internal_name, public_name, default_display, item_description, base_value, handler
-		FROM items 
-		WHERE public_name = $1
+		SELECT 
+			i.item_id, i.internal_name, i.public_name, i.default_display, i.item_description, i.base_value, i.handler,
+			COALESCE(array_agg(t.type_name) FILTER (WHERE t.type_name IS NOT NULL), '{}') as types
+		FROM items i
+		LEFT JOIN item_type_assignments ita ON i.item_id = ita.item_id
+		LEFT JOIN item_types t ON ita.item_type_id = t.item_type_id
+		WHERE i.public_name = $1
+		GROUP BY i.item_id
 	`
 	var item domain.Item
 	err := r.db.QueryRow(ctx, query, publicName).Scan(
 		&item.ID, &item.InternalName, &item.PublicName, &item.DefaultDisplay,
-		&item.Description, &item.BaseValue, &item.Handler,
+		&item.Description, &item.BaseValue, &item.Handler, &item.Types,
 	)
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -289,9 +299,14 @@ func (r *UserRepository) GetItemsByIDs(ctx context.Context, itemIDs []int) ([]do
 	}
 
 	query := `
-		SELECT item_id, internal_name, public_name, default_display, item_description, base_value, handler
-		FROM items
-		WHERE item_id = ANY($1)
+		SELECT 
+			i.item_id, i.internal_name, i.public_name, i.default_display, i.item_description, i.base_value, i.handler,
+			COALESCE(array_agg(t.type_name) FILTER (WHERE t.type_name IS NOT NULL), '{}') as types
+		FROM items i
+		LEFT JOIN item_type_assignments ita ON i.item_id = ita.item_id
+		LEFT JOIN item_types t ON ita.item_type_id = t.item_type_id
+		WHERE i.item_id = ANY($1)
+		GROUP BY i.item_id
 	`
 	var items []domain.Item
 	if err := pgxscan.Select(ctx, r.db, &items, query, itemIDs); err != nil {
@@ -308,9 +323,14 @@ func (r *UserRepository) GetItemsByNames(ctx context.Context, names []string) ([
 	}
 
 	query := `
-		SELECT item_id, internal_name, public_name, default_display, item_description, base_value, handler
-		FROM items
-		WHERE internal_name = ANY($1)
+		SELECT 
+			i.item_id, i.internal_name, i.public_name, i.default_display, i.item_description, i.base_value, i.handler,
+			COALESCE(array_agg(t.type_name) FILTER (WHERE t.type_name IS NOT NULL), '{}') as types
+		FROM items i
+		LEFT JOIN item_type_assignments ita ON i.item_id = ita.item_id
+		LEFT JOIN item_types t ON ita.item_type_id = t.item_type_id
+		WHERE i.internal_name = ANY($1)
+		GROUP BY i.item_id
 	`
 	var items []domain.Item
 	if err := pgxscan.Select(ctx, r.db, &items, query, names); err != nil {
@@ -323,14 +343,19 @@ func (r *UserRepository) GetItemsByNames(ctx context.Context, names []string) ([
 // GetItemByID retrieves an item by its ID
 func (r *UserRepository) GetItemByID(ctx context.Context, id int) (*domain.Item, error) {
 	query := `
-		SELECT item_id, internal_name, public_name, default_display, item_description, base_value, handler
-		FROM items 
-		WHERE item_id = $1
+		SELECT 
+			i.item_id, i.internal_name, i.public_name, i.default_display, i.item_description, i.base_value, i.handler,
+			COALESCE(array_agg(t.type_name) FILTER (WHERE t.type_name IS NOT NULL), '{}') as types
+		FROM items i
+		LEFT JOIN item_type_assignments ita ON i.item_id = ita.item_id
+		LEFT JOIN item_types t ON ita.item_type_id = t.item_type_id
+		WHERE i.item_id = $1
+		GROUP BY i.item_id
 	`
 	var item domain.Item
 	err := r.db.QueryRow(ctx, query, id).Scan(
 		&item.ID, &item.InternalName, &item.PublicName, &item.DefaultDisplay,
-		&item.Description, &item.BaseValue, &item.Handler,
+		&item.Description, &item.BaseValue, &item.Handler, &item.Types,
 	)
 	if err != nil {
 		if err == pgx.ErrNoRows {

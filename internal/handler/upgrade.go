@@ -8,6 +8,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
+	"github.com/osse101/BrandishBot_Go/internal/middleware"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 )
 
@@ -80,10 +81,13 @@ func HandleUpgradeItem(svc crafting.Service, progressionSvc progression.Service,
 			"quantity_upgraded", result.Quantity,
 			"masterwork", result.IsMasterwork)
 
-		// Add contribution points for crafting
-		if err := progressionSvc.AddContribution(r.Context(), result.Quantity); err != nil {
-			log.Warn("Failed to add contribution points", "error", err)
-		}
+		// Track engagement for crafting
+		middleware.TrackEngagementFromContext(
+			middleware.WithUserID(r.Context(), req.Username),
+			eventBus,
+			"item_crafted",
+			result.Quantity,
+		)
 
 		// Publish item.upgraded event
 		if err := eventBus.Publish(r.Context(), event.Event{

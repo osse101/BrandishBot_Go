@@ -641,7 +641,7 @@ func TestGetInventory(t *testing.T) {
 	svc.AddItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemMoney, 100)
 
 	// Test GetInventory
-	items, err := svc.GetInventory(ctx, domain.PlatformTwitch, "", "alice")
+	items, err := svc.GetInventory(ctx, domain.PlatformTwitch, "", "alice", "")
 	if err != nil {
 		t.Fatalf("GetInventory failed: %v", err)
 	}

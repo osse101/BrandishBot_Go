@@ -90,10 +90,7 @@ func HandleSearch(svc user.Service, progressionSvc progression.Service, eventBus
 			"username", req.Username,
 			"message", message)
 
-		// Add contribution points for searching
-		if err := progressionSvc.AddContribution(r.Context(), 5); err != nil {
-			log.Warn("Failed to add contribution points", "error", err)
-		}
+
 
 		// Track engagement for search
 		middleware.TrackEngagementFromContext(

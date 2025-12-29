@@ -156,11 +156,14 @@ func (c *APIClient) Search(platform, platformID, username string) (string, error
 }
 
 // GetInventory retrieves user inventory
-func (c *APIClient) GetInventory(platform, platformID, username string) ([]user.UserInventoryItem, error) {
+func (c *APIClient) GetInventory(platform, platformID, username, filter string) ([]user.UserInventoryItem, error) {
 	params := url.Values{}
 	params.Set("platform", platform)
 	params.Set("username", username)
 	params.Set("platform_id", platformID)
+	if filter != "" {
+		params.Set("filter", filter)
+	}
 
 	path := fmt.Sprintf("/user/inventory?%s", params.Encode())
 	resp, err := c.doRequest(http.MethodGet, path, nil)
@@ -1196,4 +1199,37 @@ func (c *APIClient) GetVotingSession() (*domain.ProgressionVotingSession, error)
 	}
 
 	return &session, nil
+}
+
+// HandleMessage sends a chat message to the server for processing
+func (c *APIClient) HandleMessage(platform, platformID, username, message string) (*domain.MessageResult, error) {
+	req := map[string]string{
+		"platform":    platform,
+		"platform_id": platformID,
+		"username":    username,
+		"message":     message,
+	}
+
+	resp, err := c.doRequest(http.MethodPost, "/message/handle", req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		var errResp struct {
+			Error string `json:"error"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
+			return nil, fmt.Errorf("API error: %s", errResp.Error)
+		}
+		return nil, fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	var result domain.MessageResult
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return &result, nil
 }

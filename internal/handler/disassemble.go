@@ -9,6 +9,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
+	"github.com/osse101/BrandishBot_Go/internal/middleware"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 )
 
@@ -81,10 +82,14 @@ func HandleDisassembleItem(svc crafting.Service, progressionSvc progression.Serv
 			"quantity_processed", result.QuantityProcessed,
 			"outputs", result.Outputs)
 
-		// Add contribution points for disassembling
-		if err := progressionSvc.AddContribution(r.Context(), result.QuantityProcessed); err != nil {
-			log.Warn("Failed to add contribution points", "error", err)
-		}
+
+		// Track engagement for disassembling
+		middleware.TrackEngagementFromContext(
+			middleware.WithUserID(r.Context(), req.Username),
+			eventBus,
+			"item_disassembled",
+			result.QuantityProcessed,
+		)
 
 		// Publish item.disassembled event
 		if err := eventBus.Publish(r.Context(), event.Event{

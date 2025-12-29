@@ -137,9 +137,9 @@ func (_c *MockUserService_FindUserByPlatformID_Call) RunAndReturn(run func(conte
 	return _c
 }
 
-// GetInventory provides a mock function with given fields: ctx, platform, platformID, username
-func (_m *MockUserService) GetInventory(ctx context.Context, platform string, platformID string, username string) ([]user.UserInventoryItem, error) {
-	ret := _m.Called(ctx, platform, platformID, username)
+// GetInventory provides a mock function with given fields: ctx, platform, platformID, username, filter
+func (_m *MockUserService) GetInventory(ctx context.Context, platform string, platformID string, username string, filter string) ([]user.UserInventoryItem, error) {
+	ret := _m.Called(ctx, platform, platformID, username, filter)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetInventory")
@@ -147,19 +147,19 @@ func (_m *MockUserService) GetInventory(ctx context.Context, platform string, pl
 
 	var r0 []user.UserInventoryItem
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, string) ([]user.UserInventoryItem, error)); ok {
-		return rf(ctx, platform, platformID, username)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, string) ([]user.UserInventoryItem, error)); ok {
+		return rf(ctx, platform, platformID, username, filter)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, string) []user.UserInventoryItem); ok {
-		r0 = rf(ctx, platform, platformID, username)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, string) []user.UserInventoryItem); ok {
+		r0 = rf(ctx, platform, platformID, username, filter)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]user.UserInventoryItem)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, string, string) error); ok {
-		r1 = rf(ctx, platform, platformID, username)
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, string, string) error); ok {
+		r1 = rf(ctx, platform, platformID, username, filter)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -177,13 +177,14 @@ type MockUserService_GetInventory_Call struct {
 //   - platform string
 //   - platformID string
 //   - username string
-func (_e *MockUserService_Expecter) GetInventory(ctx interface{}, platform interface{}, platformID interface{}, username interface{}) *MockUserService_GetInventory_Call {
-	return &MockUserService_GetInventory_Call{Call: _e.mock.On("GetInventory", ctx, platform, platformID, username)}
+//   - filter string
+func (_e *MockUserService_Expecter) GetInventory(ctx interface{}, platform interface{}, platformID interface{}, username interface{}, filter interface{}) *MockUserService_GetInventory_Call {
+	return &MockUserService_GetInventory_Call{Call: _e.mock.On("GetInventory", ctx, platform, platformID, username, filter)}
 }
 
-func (_c *MockUserService_GetInventory_Call) Run(run func(ctx context.Context, platform string, platformID string, username string)) *MockUserService_GetInventory_Call {
+func (_c *MockUserService_GetInventory_Call) Run(run func(ctx context.Context, platform string, platformID string, username string, filter string)) *MockUserService_GetInventory_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(string))
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(string), args[4].(string))
 	})
 	return _c
 }
@@ -193,7 +194,7 @@ func (_c *MockUserService_GetInventory_Call) Return(_a0 []user.UserInventoryItem
 	return _c
 }
 
-func (_c *MockUserService_GetInventory_Call) RunAndReturn(run func(context.Context, string, string, string) ([]user.UserInventoryItem, error)) *MockUserService_GetInventory_Call {
+func (_c *MockUserService_GetInventory_Call) RunAndReturn(run func(context.Context, string, string, string, string) ([]user.UserInventoryItem, error)) *MockUserService_GetInventory_Call {
 	_c.Call.Return(run)
 	return _c
 }

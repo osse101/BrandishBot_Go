@@ -34,8 +34,8 @@ func ProfileCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			return
 		}
 
-		// Get inventory to show item count
-		inventory, err := client.GetInventory("discord", user.ID, user.Username)
+		// Get inventory to calculate net worth
+		inventory, err := client.GetInventory("discord", user.ID, user.Username, "")
 		var itemCount int
 		if err == nil {
 			itemCount = len(inventory)

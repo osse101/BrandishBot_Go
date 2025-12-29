@@ -41,6 +41,7 @@ const (
 	PlatformTwitch  = "twitch"
 	PlatformYoutube = "youtube"
 	PlatformDiscord = "discord"
+	DiscordBotId    = "BrandishBot#6125"
 )
 
 // Message constants

@@ -221,6 +221,13 @@ func (s *service) AddContribution(ctx context.Context, amount int) error {
 		progressID = progress.ID
 	}
 
+	// Check for contribution boost upgrade
+	isBoosted, _ := s.IsFeatureUnlocked(ctx, "upgrade_contribution_boost")
+	if isBoosted {
+		// Apply 1.5x multiplier (integer math: * 3 / 2)
+		amount = (amount * 3) / 2
+	}
+
 	// Write contribution to DB
 	err = s.repo.AddContribution(ctx, progressID, amount)
 	if err != nil {

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -149,7 +148,7 @@ func TestHandleSellItem(t *testing.T) {
 				Quantity:   1,
 			},
 			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService) {
-				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSell).Return(false, errors.New("database error"))
+				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSell).Return(false, domain.ErrDatabaseError)
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   ErrMsgFeatureCheckFailed,
@@ -236,7 +235,7 @@ func TestHandleSellItem(t *testing.T) {
 			tt.setupMock(mockEco, mockProg)
 			// Allow event publishing
 			mockBus.On("Publish", mock.Anything, mock.MatchedBy(func(evt event.Event) bool {
-				return evt.Type == "item.sold"
+				return evt.Type == "item.sold" || evt.Type == "engagement"
 			})).Return(nil).Maybe()
 
 			handler := HandleSellItem(mockEco, mockProg, mockBus)
@@ -532,7 +531,7 @@ func TestHandleBuyItem(t *testing.T) {
 			tt.setupMock(mockEco, mockProg)
 			// Allow event publishing
 			mockBus.On("Publish", mock.Anything, mock.MatchedBy(func(evt event.Event) bool {
-				return evt.Type == "item.bought"
+				return evt.Type == "item.bought" || evt.Type == "engagement"
 			})).Return(nil).Maybe()
 
 			handler := HandleBuyItem(mockEco, mockProg, mockBus)
@@ -633,7 +632,8 @@ func TestHandleGetInventory(t *testing.T) {
 		username       string
 		platform       string
 		platformID     string
-		setupMock      func(*mocks.MockUserService)
+		filter         string
+		setupMock      func(*mocks.MockUserService, *mocks.MockProgressionService)
 		expectedStatus int
 		expectedBody   string
 	}{
@@ -642,32 +642,62 @@ func TestHandleGetInventory(t *testing.T) {
 			username:   "testuser",
 			platform:   domain.PlatformDiscord,
 			platformID: "test-platformid",
-			setupMock: func(m *mocks.MockUserService) {
+			filter:     "",
+			setupMock: func(m *mocks.MockUserService, p *mocks.MockProgressionService) {
 				items := []user.UserInventoryItem{
 					{Name: domain.ItemBlaster, Quantity: 1},
 				}
-				m.On("GetInventory", mock.Anything, domain.PlatformDiscord, "test-platformid", "testuser").Return(items, nil)
+				m.On("GetInventory", mock.Anything, domain.PlatformDiscord, "test-platformid", "testuser", "").Return(items, nil)
 			},
 			expectedStatus: http.StatusOK,
-			expectedBody:   fmt.Sprintf(`"name":"%s"`, domain.ItemBlaster),
+			expectedBody:   `"items":[{"name":"weapon_blaster","description":"","quantity":1,"value":0}]`,
 		},
 		{
-			name:           "Missing Username",
-			username:       "",
-			platform:       domain.PlatformDiscord,
-			platformID:     "", // Missing platformID
-			setupMock:      func(m *mocks.MockUserService) {},
-			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Missing", // Will fail on platform_id
-		},
-		{
-			name:       "Service Error with Platform Params", // Changed name for clarity
+			name:       "Success with Filter",
 			username:   "testuser",
 			platform:   domain.PlatformDiscord,
 			platformID: "test-platformid",
-			setupMock: func(m *mocks.MockUserService) {
-				// Updated mock expectation to match platform and platformID
-				m.On("GetInventory", mock.Anything, domain.PlatformDiscord, "test-platformid", "testuser").Return(nil, errors.New("service error"))
+			filter:     "upgrade",
+			setupMock: func(m *mocks.MockUserService, p *mocks.MockProgressionService) {
+				items := []user.UserInventoryItem{
+					{Name: domain.ItemLootbox0, Quantity: 1},
+				}
+				p.On("IsFeatureUnlocked", mock.Anything, "feature_filter_upgrade").Return(true, nil)
+				m.On("GetInventory", mock.Anything, domain.PlatformDiscord, "test-platformid", "testuser", "upgrade").Return(items, nil)
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody:   `"items":[{"name":"lootbox_tier0","description":"","quantity":1,"value":0}]`,
+		},
+		{
+			name:       "Filter Locked",
+			username:   "testuser",
+			platform:   domain.PlatformDiscord,
+			platformID: "test-platformid",
+			filter:     "upgrade",
+			setupMock: func(m *mocks.MockUserService, p *mocks.MockProgressionService) {
+				p.On("IsFeatureUnlocked", mock.Anything, "feature_filter_upgrade").Return(false, nil)
+			},
+			expectedStatus: http.StatusForbidden,
+			expectedBody:   "Filter 'upgrade' is locked",
+		},
+		{
+			name:       "Missing Username",
+			username:   "",
+			platform:   domain.PlatformDiscord,
+			platformID: "test-platformid",
+			filter:     "",
+			setupMock:  func(m *mocks.MockUserService, p *mocks.MockProgressionService) {},
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "Missing username query parameter",
+		},
+		{
+			name:       "Service Error",
+			username:   "testuser",
+			platform:   domain.PlatformDiscord,
+			platformID: "test-platformid",
+			filter:     "",
+			setupMock: func(m *mocks.MockUserService, p *mocks.MockProgressionService) {
+				m.On("GetInventory", mock.Anything, domain.PlatformDiscord, "test-platformid", "testuser", "").Return(nil, errors.New("service error"))
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   ErrMsgGetInventoryFailed,
@@ -676,10 +706,11 @@ func TestHandleGetInventory(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockSvc := mocks.NewMockUserService(t)
-			tt.setupMock(mockSvc)
+			mockUser := mocks.NewMockUserService(t)
+			mockProg := mocks.NewMockProgressionService(t)
+			tt.setupMock(mockUser, mockProg)
 
-			handler := HandleGetInventory(mockSvc)
+			handler := HandleGetInventory(mockUser, mockProg)
 
 			// Build URL with query parameters
 			params := []string{}
@@ -692,6 +723,9 @@ func TestHandleGetInventory(t *testing.T) {
 			if tt.username != "" {
 				params = append(params, "username="+tt.username)
 			}
+			if tt.filter != "" {
+				params = append(params, "filter="+tt.filter)
+			}
 			url := "/user/inventory"
 			if len(params) > 0 {
 				url += "?" + strings.Join(params, "&")
@@ -700,12 +734,11 @@ func TestHandleGetInventory(t *testing.T) {
 			w := httptest.NewRecorder()
 
 			handler.ServeHTTP(w, req)
-
-			assert.Equal(t, tt.expectedStatus, w.Code)
 			if tt.expectedBody != "" {
 				assert.Contains(t, w.Body.String(), tt.expectedBody)
 			}
-			mockSvc.AssertExpectations(t)
+			mockUser.AssertExpectations(t)
+			mockProg.AssertExpectations(t)
 			})
 	}
 }

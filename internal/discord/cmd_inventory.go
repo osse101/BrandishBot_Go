@@ -14,6 +14,28 @@ func InventoryCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	cmd := &discordgo.ApplicationCommand{
 		Name:        "inventory",
 		Description: "View your inventory",
+		Options: []*discordgo.ApplicationCommandOption{
+			{
+				Type:        discordgo.ApplicationCommandOptionString,
+				Name:        "filter",
+				Description: "Filter items (upgrade, sellable, consumable)",
+				Required:    false,
+				Choices: []*discordgo.ApplicationCommandOptionChoice{
+					{
+						Name:  "Upgradable",
+						Value: "upgrade",
+					},
+					{
+						Name:  "Sellable",
+						Value: "sellable",
+					},
+					{
+						Name:  "Consumable",
+						Value: "consumable",
+					},
+				},
+			},
+		},
 	}
 
 	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
@@ -37,7 +59,12 @@ func InventoryCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			return
 		}
 
-		items, err := client.GetInventory(domain.PlatformDiscord, user.ID, user.Username)
+		var filter string
+		if len(i.ApplicationCommandData().Options) > 0 {
+			filter = i.ApplicationCommandData().Options[0].StringValue()
+		}
+
+		items, err := client.GetInventory(domain.PlatformDiscord, user.ID, user.Username, filter)
 		if err != nil {
 			slog.Error("Failed to get inventory", "error", err)
 			respondFriendlyError(s, i, err.Error())

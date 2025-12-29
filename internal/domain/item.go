@@ -10,6 +10,7 @@ type Item struct {
 	PublicName     string  `json:"public_name" db:"public_name"`
 	DefaultDisplay string  `json:"default_display" db:"default_display"`
 	Description    string  `json:"description" db:"item_description"`
-	BaseValue      int     `json:"base_value" db:"base_value"`
-	Handler        *string `json:"handler,omitempty" db:"handler"` // Nullable: some items have no handler
+	BaseValue      int      `json:"base_value" db:"base_value"`
+	Types          []string `json:"types" db:"types"` // Populated from join/separate query
+	Handler        *string  `json:"handler,omitempty" db:"handler"` // Nullable: some items have no handler
 }

@@ -247,7 +247,48 @@ func (s *service) RecordEngagement(ctx context.Context, userID string, metricTyp
 		RecordedAt:  time.Now(),
 	}
 
-	return s.repo.RecordEngagement(ctx, metric)
+	if err := s.repo.RecordEngagement(ctx, metric); err != nil {
+		return err
+	}
+
+	// Calculate and add contribution points based on weight
+	weights, err := s.repo.GetEngagementWeights(ctx)
+	if err != nil {
+		// Log warning but don't fail, use default weight of 1.0 if not found
+		logger.FromContext(ctx).Warn("Failed to get engagement weights, using default", "error", err)
+		// We could fallback to hardcoded defaults here if critical
+	}
+
+	weight := 0.0
+	if weights != nil {
+		weight = weights[metricType]
+	} else {
+		// Fallback defaults matching DB defaults
+		switch metricType {
+		case "message":
+			weight = 1.0
+		case "command":
+			weight = 2.0
+		case "item_crafted":
+			weight = 3.0 // Note: Migration sets this to 200, this is just code fallback
+		default:
+			if val, ok := weights[metricType]; ok {
+				weight = val
+			}
+		}
+	}
+
+	// If we have a weight, calculate score
+	if weight > 0 {
+		score := int(float64(value) * weight)
+		if score > 0 {
+			if err := s.AddContribution(ctx, score); err != nil {
+				logger.FromContext(ctx).Warn("Failed to add contribution from engagement", "error", err)
+			}
+		}
+	}
+
+	return nil
 }
 
 // GetEngagementScore returns total community engagement score
