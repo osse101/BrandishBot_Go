@@ -1,3 +1,5 @@
+RESOLVED
+
 # Add Integration Tests for UserService and Async Operations
 
 ## Priority: Medium
