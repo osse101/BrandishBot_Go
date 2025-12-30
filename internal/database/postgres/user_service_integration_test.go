@@ -45,6 +45,10 @@ func (m *MockStatsService) GetUserStats(ctx context.Context, userID string, peri
 	return &domain.StatsSummary{EventCounts: make(map[domain.EventType]int)}, nil
 }
 
+func (m *MockStatsService) GetUserCurrentStreak(ctx context.Context, userID string) (int, error) {
+	return 0, nil
+}
+
 func (m *MockStatsService) GetSystemStats(ctx context.Context, period string) (*domain.StatsSummary, error) {
 	return &domain.StatsSummary{EventCounts: make(map[domain.EventType]int)}, nil
 }

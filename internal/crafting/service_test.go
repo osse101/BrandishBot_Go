@@ -20,6 +20,7 @@ func (m *MockStatsService) RecordUserEvent(ctx context.Context, userID string, e
 }
 // Stubs for other interface methods not used in these tests
 func (m *MockStatsService) GetUserStats(ctx context.Context, userID string, period string) (*domain.StatsSummary, error) { return nil, nil }
+func (m *MockStatsService) GetUserCurrentStreak(ctx context.Context, userID string) (int, error) { return 0, nil }
 func (m *MockStatsService) GetSystemStats(ctx context.Context, period string) (*domain.StatsSummary, error) { return nil, nil }
 func (m *MockStatsService) GetLeaderboard(ctx context.Context, eventType domain.EventType, period string, limit int) ([]domain.LeaderboardEntry, error) { return nil, nil }
 

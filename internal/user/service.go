@@ -866,6 +866,16 @@ func (s *service) executeSearch(ctx context.Context, user *domain.User) (string,
 			"success":     roll <= successThreshold,
 			"daily_count": dailyCount + 1, // +1 because we just did one
 		})
+
+		// If this was the first search of the day, show the current streak
+		if isFirstSearchDaily {
+			streak, err := s.statsService.GetUserCurrentStreak(ctx, user.ID)
+			if err != nil {
+				log.Warn("Failed to get user streak", "error", err)
+			} else if streak > 1 {
+				resultMessage += fmt.Sprintf(domain.MsgStreakBonus, streak)
+			}
+		}
 	}
 
 	return resultMessage, nil
