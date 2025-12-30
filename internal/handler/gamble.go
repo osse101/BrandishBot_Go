@@ -53,7 +53,9 @@ func (h *GambleHandler) HandleStartGamble(w http.ResponseWriter, r *http.Request
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(gamble)
+	if err := json.NewEncoder(w).Encode(gamble); err != nil {
+		logger.FromContext(r.Context()).Error("Failed to encode response", "error", err)
+	}
 }
 
 type JoinGambleRequest struct {
@@ -88,7 +90,9 @@ func (h *GambleHandler) HandleJoinGamble(w http.ResponseWriter, r *http.Request)
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "Successfully joined gamble"})
+	if err := json.NewEncoder(w).Encode(map[string]string{"message": "Successfully joined gamble"}); err != nil {
+		logger.FromContext(r.Context()).Error("Failed to encode response", "error", err)
+	}
 }
 
 func (h *GambleHandler) HandleGetGamble(w http.ResponseWriter, r *http.Request) {
@@ -115,5 +119,7 @@ func (h *GambleHandler) HandleGetGamble(w http.ResponseWriter, r *http.Request) 
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(gamble)
+	if err := json.NewEncoder(w).Encode(gamble); err != nil {
+		logger.FromContext(r.Context()).Error("Failed to encode response", "error", err)
+	}
 }

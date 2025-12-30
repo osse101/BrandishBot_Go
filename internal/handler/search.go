@@ -72,10 +72,12 @@ func HandleSearch(svc user.Service, progressionSvc progression.Service, eventBus
 			validationErrors := FormatValidationError(err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			if err := json.NewEncoder(w).Encode(map[string]interface{}{
 				"error":   "Validation failed",
 				"details": validationErrors,
-			})
+			}); err != nil {
+				log.Error("Failed to encode response", "error", err)
+			}
 			return
 		}
 

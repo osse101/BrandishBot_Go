@@ -69,10 +69,12 @@ func HandleMessageHandler(userService user.Service, progressionSvc progression.S
 			validationErrors := FormatValidationError(err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			if err := json.NewEncoder(w).Encode(map[string]interface{}{
 				"error":   "Validation failed",
 				"details": validationErrors,
-			})
+			}); err != nil {
+				log.Error("Failed to encode response", "error", err)
+			}
 			return
 		}
 
