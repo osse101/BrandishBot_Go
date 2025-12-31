@@ -709,13 +709,53 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 	return resultMessage, nil
 }
 
+type searchParams struct {
+	isFirstSearchDaily bool
+	isDiminished       bool
+	xpMultiplier       float64
+	successThreshold   float64
+	dailyCount         int
+}
+
 // executeSearch performs the actual search logic (called within cooldown enforcement)
 func (s *service) executeSearch(ctx context.Context, user *domain.User) (string, error) {
 	log := logger.FromContext(ctx)
 	
-	// Calculate daily search stats
-	dailyCount := 0
+	params := s.calculateSearchParameters(ctx, user)
 	
+	// Perform search roll
+	roll := utils.SecureRandomFloat()
+	if params.isFirstSearchDaily {
+		roll = 0.0 // Guaranteed Success
+		log.Info("First search of the day - applying bonus", "username", user.Username)
+	}
+
+	var resultMessage string
+
+	if roll <= params.successThreshold {
+		var err error
+		resultMessage, err = s.processSearchSuccess(ctx, user, roll, params)
+		if err != nil {
+			return "", err
+		}
+	} else {
+		resultMessage = s.processSearchFailure(ctx, user, roll, params.successThreshold)
+	}
+
+	// Record search attempt (to track daily count)
+	if s.statsService != nil {
+		_ = s.statsService.RecordUserEvent(ctx, user.ID, domain.EventSearch, map[string]interface{}{
+			"success":     roll <= params.successThreshold,
+			"daily_count": params.dailyCount + 1,
+		})
+	}
+
+	return resultMessage, nil
+}
+
+func (s *service) calculateSearchParameters(ctx context.Context, user *domain.User) searchParams {
+	log := logger.FromContext(ctx)
+	dailyCount := 0
 	if s.statsService != nil {
 		stats, err := s.statsService.GetUserStats(ctx, user.ID, domain.PeriodDaily)
 		if err != nil {
@@ -725,106 +765,120 @@ func (s *service) executeSearch(ctx context.Context, user *domain.User) (string,
 		}
 	}
 
-	// Determine multipliers and status
-	isFirstSearchDaily := (dailyCount == 0)
-	isDiminished := (dailyCount >= 6)
-	xpMultiplier := 1.0
-	successThreshold := SearchSuccessRate
+	params := searchParams{
+		isFirstSearchDaily: (dailyCount == 0),
+		isDiminished:       (dailyCount >= 6),
+		xpMultiplier:       1.0,
+		successThreshold:   SearchSuccessRate,
+		dailyCount:         dailyCount,
+	}
 
-	// Perform search roll
-	roll := utils.SecureRandomFloat()
-
-	if isFirstSearchDaily {
-		roll = 0.0 // Guaranteed Success
-		log.Info("First search of the day - applying bonus", "username", user.Username)
-	} else if isDiminished {
-		successThreshold = 0.1 // Reduced success rate
-		xpMultiplier = 0.1     // Reduced XP
+	if params.isDiminished {
+		params.successThreshold = 0.1 // Reduced success rate
+		params.xpMultiplier = 0.1     // Reduced XP
 		log.Info("Diminished search returns applied", "username", user.Username, "dailyCount", dailyCount)
 	}
 
+	return params
+}
+
+func (s *service) processSearchSuccess(ctx context.Context, user *domain.User, roll float64, params searchParams) (string, error) {
+	log := logger.FromContext(ctx)
+	isCritical := roll <= SearchCriticalRate
+	quantity := 1
+	if isCritical {
+		quantity = 2
+	}
+
+	// Give lootbox0
+	item, err := s.getItemByNameCached(ctx, domain.ItemLootbox0)
+	if err != nil {
+		log.Error("Failed to get lootbox0 item", "error", err)
+		return "", fmt.Errorf("failed to get reward item: %w", err)
+	}
+	if item == nil {
+		log.Error("Lootbox0 item not found in database")
+		return "", fmt.Errorf("%w: %s", domain.ErrItemNotFound, domain.ItemLootbox0)
+	}
+
+	// Begin transaction for inventory update
+	tx, err := s.repo.BeginTx(ctx)
+	if err != nil {
+		log.Error("Failed to begin transaction", "error", err)
+		return "", fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer repository.SafeRollback(ctx, tx)
+
+	// Add to inventory
+	if err := s.addItemToTx(ctx, tx, user.ID, item.ID, quantity); err != nil {
+		return "", err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		log.Error("Failed to commit transaction", "error", err)
+		return "", fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	// Award Explorer XP for finding item (async, don't block)
+	s.wg.Add(1)
+	go s.awardExplorerXP(context.Background(), user.ID, item.InternalName, params.xpMultiplier)
+
+	// Get display name with shine (empty shine for search results)
+	displayName := s.namingResolver.GetDisplayName(item.InternalName, "")
 	var resultMessage string
 
-	if roll <= successThreshold {
-		// Success case
-		isCritical := roll <= SearchCriticalRate
-		quantity := 1
-		if isCritical {
-			quantity = 2
+	if isCritical {
+		// Record critical success event
+		if s.statsService != nil {
+			_ = s.statsService.RecordUserEvent(ctx, user.ID, domain.EventSearchCriticalSuccess, map[string]interface{}{
+				"item":     item.InternalName,
+				"quantity": quantity,
+				"roll":     roll,
+			})
 		}
+		resultMessage = fmt.Sprintf("%s You found %dx %s", domain.MsgSearchCriticalSuccess, quantity, displayName)
+		log.Info("Search CRITICAL success", "username", user.Username, "item", item.InternalName, "quantity", quantity)
+	} else {
+		resultMessage = fmt.Sprintf("You have found %dx %s", quantity, displayName)
+		log.Info("Search successful - lootbox found", "username", user.Username, "item", item.InternalName)
+	}
 
-		// Give lootbox0
-		item, err := s.getItemByNameCached(ctx, domain.ItemLootbox0)
-		if err != nil {
-			log.Error("Failed to get lootbox0 item", "error", err)
-			return "", fmt.Errorf("failed to get reward item: %w", err)
-		}
-		if item == nil {
-			log.Error("Lootbox0 item not found in database")
-			return "", fmt.Errorf("%w: %s", domain.ErrItemNotFound, domain.ItemLootbox0)
-		}
+	if params.isFirstSearchDaily {
+		resultMessage += domain.MsgFirstSearchBonus
+	} else if params.isDiminished {
+		resultMessage += " (Exhausted)"
+	}
 
-		// Begin transaction for inventory update
-		tx, err := s.repo.BeginTx(ctx)
-		if err != nil {
-			log.Error("Failed to begin transaction", "error", err)
-			return "", fmt.Errorf("failed to begin transaction: %w", err)
-		}
-		defer repository.SafeRollback(ctx, tx)
+	return resultMessage, nil
+}
 
-		// Add to inventory
-		inventory, err := tx.GetInventory(ctx, user.ID)
-		if err != nil {
-			log.Error("Failed to get inventory", "error", err, "userID", user.ID)
-			return "", fmt.Errorf("failed to get inventory: %w", err)
-		}
+func (s *service) addItemToTx(ctx context.Context, tx repository.Tx, userID string, itemID int, quantity int) error {
+	log := logger.FromContext(ctx)
+	inventory, err := tx.GetInventory(ctx, userID)
+	if err != nil {
+		log.Error("Failed to get inventory", "error", err, "userID", userID)
+		return fmt.Errorf("failed to get inventory: %w", err)
+	}
 
-		i, _ := utils.FindSlot(inventory, item.ID)
-		if i != -1 {
-			inventory.Slots[i].Quantity += quantity
-		} else {
-			inventory.Slots = append(inventory.Slots, domain.InventorySlot{ItemID: item.ID, Quantity: quantity})
-		}
+	i, _ := utils.FindSlot(inventory, itemID)
+	if i != -1 {
+		inventory.Slots[i].Quantity += quantity
+	} else {
+		inventory.Slots = append(inventory.Slots, domain.InventorySlot{ItemID: itemID, Quantity: quantity})
+	}
 
-		if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
-			log.Error("Failed to update inventory", "error", err, "userID", user.ID)
-			return "", fmt.Errorf("failed to update inventory: %w", err)
-		}
+	if err := tx.UpdateInventory(ctx, userID, *inventory); err != nil {
+		log.Error("Failed to update inventory", "error", err, "userID", userID)
+		return fmt.Errorf("failed to update inventory: %w", err)
+	}
+	return nil
+}
 
-		if err := tx.Commit(ctx); err != nil {
-			log.Error("Failed to commit transaction", "error", err)
-			return "", fmt.Errorf("failed to commit transaction: %w", err)
-		}
+func (s *service) processSearchFailure(ctx context.Context, user *domain.User, roll float64, successThreshold float64) string {
+	log := logger.FromContext(ctx)
+	var resultMessage string
 
-		// Award Explorer XP for finding item (async, don't block)
-		s.wg.Add(1)
-		go s.awardExplorerXP(context.Background(), user.ID, item.InternalName, xpMultiplier)
-
-		// Get display name with shine (empty shine for search results)
-		displayName := s.namingResolver.GetDisplayName(item.InternalName, "")
-
-		if isCritical {
-			// Record critical success event
-			if s.statsService != nil {
-				_ = s.statsService.RecordUserEvent(ctx, user.ID, domain.EventSearchCriticalSuccess, map[string]interface{}{
-					"item":     item.InternalName,
-					"quantity": quantity,
-					"roll":     roll,
-				})
-			}
-			resultMessage = fmt.Sprintf("%s You found %dx %s", domain.MsgSearchCriticalSuccess, quantity, displayName)
-			log.Info("Search CRITICAL success", "username", user.Username, "item", item.InternalName, "quantity", quantity)
-		} else {
-			resultMessage = fmt.Sprintf("You have found %dx %s", quantity, displayName)
-			log.Info("Search successful - lootbox found", "username", user.Username, "item", item.InternalName)
-		}
-
-		if isFirstSearchDaily {
-			resultMessage += domain.MsgFirstSearchBonus
-		} else if isDiminished {
-			resultMessage += " (Exhausted)"
-		}
-	} else if roll <= successThreshold+SearchNearMissRate {
+	if roll <= successThreshold+SearchNearMissRate {
 		// Near Miss case
 		if s.statsService != nil {
 			_ = s.statsService.RecordUserEvent(ctx, user.ID, domain.EventSearchNearMiss, map[string]interface{}{

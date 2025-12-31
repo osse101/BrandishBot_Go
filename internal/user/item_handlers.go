@@ -21,19 +21,8 @@ func (s *service) processLootbox(ctx context.Context, inventory *domain.Inventor
 	log := logger.FromContext(ctx)
 
 	// 1. Validate and consume lootboxes
-	itemSlotIndex, slotQuantity := utils.FindSlot(inventory, lootboxItem.ID)
-	if itemSlotIndex == -1 {
-		return "", fmt.Errorf("item not found in inventory")
-	}
-
-	if slotQuantity < quantity {
-		return "", fmt.Errorf("not enough items in inventory")
-	}
-
-	if inventory.Slots[itemSlotIndex].Quantity == quantity {
-		inventory.Slots = append(inventory.Slots[:itemSlotIndex], inventory.Slots[itemSlotIndex+1:]...)
-	} else {
-		inventory.Slots[itemSlotIndex].Quantity -= quantity
+	if err := s.consumeLootboxFromInventory(inventory, lootboxItem, quantity); err != nil {
+		return "", err
 	}
 
 	// 2. Use lootbox service to open lootboxes
@@ -47,14 +36,60 @@ func (s *service) processLootbox(ctx context.Context, inventory *domain.Inventor
 		return "The lootbox was empty!", nil
 	}
 
-	// 3. Add drops to inventory and build message with shine feedback
+	// 3. Process drops and generate feedback
+	return s.processLootboxDrops(inventory, lootboxItem, quantity, drops)
+}
+
+func (s *service) consumeLootboxFromInventory(inventory *domain.Inventory, item *domain.Item, quantity int) error {
+	itemSlotIndex, slotQuantity := utils.FindSlot(inventory, item.ID)
+	if itemSlotIndex == -1 {
+		return fmt.Errorf("item not found in inventory")
+	}
+
+	if slotQuantity < quantity {
+		return fmt.Errorf("not enough items in inventory")
+	}
+
+	if inventory.Slots[itemSlotIndex].Quantity == quantity {
+		inventory.Slots = append(inventory.Slots[:itemSlotIndex], inventory.Slots[itemSlotIndex+1:]...)
+	} else {
+		inventory.Slots[itemSlotIndex].Quantity -= quantity
+	}
+	return nil
+}
+
+func (s *service) processLootboxDrops(inventory *domain.Inventory, lootboxItem *domain.Item, quantity int, drops []lootbox.DroppedItem) (string, error) {
 	var msgBuilder strings.Builder
 	displayName := s.namingResolver.GetDisplayName(lootboxItem.InternalName, "")
 	msgBuilder.WriteString(fmt.Sprintf("Opened %d %s and received: ", quantity, displayName))
 
-	totalValue := 0
-	hasLegendary := false
-	hasEpic := false
+	stats := s.aggregateDropsAndUpdateInventory(inventory, drops, &msgBuilder)
+
+	// 4. Append "Juice" - Feedback based on results
+	// LevelUp Philosophy: "If a number goes up, the player should feel it."
+	msgBuilder.WriteString(fmt.Sprintf(" (Value: %d)", stats.totalValue))
+
+	if stats.hasLegendary {
+		msgBuilder.WriteString(" JACKPOT! 🎰✨")
+	} else if stats.hasEpic {
+		msgBuilder.WriteString(" BIG WIN! 💰")
+	} else if stats.totalValue > 0 && quantity >= BulkFeedbackThreshold {
+		// If opening many boxes and getting nothing special, at least acknowledge the haul
+		msgBuilder.WriteString(" Nice haul! 📦")
+	}
+
+	return msgBuilder.String(), nil
+}
+
+type dropStats struct {
+	totalValue   int
+	hasLegendary bool
+	hasEpic      bool
+}
+
+func (s *service) aggregateDropsAndUpdateInventory(inventory *domain.Inventory, drops []lootbox.DroppedItem, msgBuilder *strings.Builder) dropStats {
+	var stats dropStats
+
 	// Optimization: Build a map for O(1) inventory lookups instead of O(N) scan per drop
 	// This reduces complexity from O(N*M) to O(N+M) where N=inventory size, M=drops
 	slotMap := make(map[int]int, len(inventory.Slots))
@@ -65,11 +100,11 @@ func (s *service) processLootbox(ctx context.Context, inventory *domain.Inventor
 	first := true
 	for _, drop := range drops {
 		// Track stats for feedback
-		totalValue += drop.Value
+		stats.totalValue += drop.Value
 		if drop.ShineLevel == lootbox.ShineLegendary {
-			hasLegendary = true
+			stats.hasLegendary = true
 		} else if drop.ShineLevel == lootbox.ShineEpic {
-			hasEpic = true
+			stats.hasEpic = true
 		}
 
 		// Add to inventory
@@ -97,22 +132,8 @@ func (s *service) processLootbox(ctx context.Context, inventory *domain.Inventor
 		first = false
 	}
 
-	// 4. Append "Juice" - Feedback based on results
-	// LevelUp Philosophy: "If a number goes up, the player should feel it."
-	msgBuilder.WriteString(fmt.Sprintf(" (Value: %d)", totalValue))
-
-	if hasLegendary {
-		msgBuilder.WriteString(" JACKPOT! 🎰✨")
-	} else if hasEpic {
-		msgBuilder.WriteString(" BIG WIN! 💰")
-	} else if totalValue > 0 && quantity >= BulkFeedbackThreshold {
-		// If opening many boxes and getting nothing special, at least acknowledge the haul
-		msgBuilder.WriteString(" Nice haul! 📦")
-	}
-
-	return msgBuilder.String(), nil
+	return stats
 }
-
 
 func (s *service) handleLootbox1(ctx context.Context, _ *service, _ *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, _ map[string]interface{}) (string, error) {
 	return s.processLootbox(ctx, inventory, item, quantity)

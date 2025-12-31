@@ -202,23 +202,9 @@ func (s *service) UpgradeItem(ctx context.Context, platform, platformID, usernam
 	}
 
 	// Get and validate recipe
-	recipe, err := s.repo.GetRecipeByTargetItemID(ctx, item.ID)
+	recipe, err := s.getAndValidateRecipe(ctx, item.ID, user.ID, itemName)
 	if err != nil {
-		log.Error("Failed to get recipe", "error", err)
-		return nil, fmt.Errorf("failed to get recipe: %w", err)
-	}
-	if recipe == nil {
-		return nil, fmt.Errorf("no recipe found for item: %s", itemName)
-	}
-
-	// Check if user has unlocked this recipe
-	unlocked, err := s.repo.IsRecipeUnlocked(ctx, user.ID, recipe.ID)
-	if err != nil {
-		log.Error("Failed to check recipe unlock", "error", err)
-		return nil, fmt.Errorf("failed to check recipe unlock: %w", err)
-	}
-	if !unlocked {
-		return nil, fmt.Errorf("recipe for %s is not unlocked", itemName)
+		return nil, err
 	}
 
 	// Begin transaction
@@ -229,13 +215,12 @@ func (s *service) UpgradeItem(ctx context.Context, platform, platformID, usernam
 	}
 	defer repository.SafeRollback(ctx, tx)
 
-	// Get inventory
+	// Get inventory and calculate actual quantity
 	inventory, err := tx.GetInventory(ctx, user.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get inventory: %w", err)
 	}
 
-	// Calculate maximum possible upgrades
 	maxPossible := calculateMaxPossibleCrafts(inventory, recipe, quantity)
 	if maxPossible == 0 {
 		return nil, fmt.Errorf("insufficient materials to craft %s", itemName)
@@ -246,40 +231,18 @@ func (s *service) UpgradeItem(ctx context.Context, platform, platformID, usernam
 		actualQuantity = quantity
 	}
 
-	// Consume materials for the actual quantity
+	// Consume materials
 	if err := consumeRecipeMaterials(inventory, recipe, actualQuantity); err != nil {
 		return nil, err
 	}
 
-	// Calculate output quantity with randomized Masterwork chance per item
-	// to avoid economy exploits with large batches.
-	outputQuantity := 0
-	masterworkCount := 0
-
-	for i := 0; i < actualQuantity; i++ {
-		if s.rnd() < MasterworkChance {
-			masterworkCount++
-			outputQuantity += MasterworkMultiplier
-		} else {
-			outputQuantity += 1
-		}
+	// Calculate output
+	result, err := s.calculateUpgradeOutput(ctx, user.ID, itemName, actualQuantity)
+	if err != nil {
+		return nil, err
 	}
 
-	masterworkTriggered := masterworkCount > 0
-	if masterworkTriggered {
-		log.Info("Masterwork craft triggered!", "user_id", user.ID, "item", itemName, "count", masterworkCount, "bonus", outputQuantity-actualQuantity)
-
-		if s.statsSvc != nil {
-			_ = s.statsSvc.RecordUserEvent(ctx, user.ID, domain.EventCraftingCriticalSuccess, map[string]interface{}{
-				"item_name":         itemName,
-				"original_quantity": actualQuantity,
-				"masterwork_count":  masterworkCount,
-				"bonus_quantity":    outputQuantity - actualQuantity,
-			})
-		}
-	}
-
-	addItemToInventory(inventory, item.ID, outputQuantity)
+	addItemToInventory(inventory, item.ID, result.Quantity)
 
 	// Update inventory and commit
 	if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
@@ -295,7 +258,62 @@ func (s *service) UpgradeItem(ctx context.Context, platform, platformID, usernam
 	s.wg.Add(1)
 	go s.awardBlacksmithXP(context.Background(), user.ID, actualQuantity, "upgrade", itemName)
 
-	log.Info("Items upgraded", "username", username, "item", itemName, "quantity", outputQuantity, "masterwork", masterworkTriggered)
+	log.Info("Items upgraded", "username", username, "item", itemName, "quantity", result.Quantity, "masterwork", result.IsMasterwork)
+
+	return result, nil
+}
+
+func (s *service) getAndValidateRecipe(ctx context.Context, itemID int, userID string, itemName string) (*domain.Recipe, error) {
+	log := logger.FromContext(ctx)
+	recipe, err := s.repo.GetRecipeByTargetItemID(ctx, itemID)
+	if err != nil {
+		log.Error("Failed to get recipe", "error", err)
+		return nil, fmt.Errorf("failed to get recipe: %w", err)
+	}
+	if recipe == nil {
+		return nil, fmt.Errorf("no recipe found for item: %s", itemName)
+	}
+
+	// Check if user has unlocked this recipe
+	unlocked, err := s.repo.IsRecipeUnlocked(ctx, userID, recipe.ID)
+	if err != nil {
+		log.Error("Failed to check recipe unlock", "error", err)
+		return nil, fmt.Errorf("failed to check recipe unlock: %w", err)
+	}
+	if !unlocked {
+		return nil, fmt.Errorf("recipe for %s is not unlocked", itemName)
+	}
+	return recipe, nil
+}
+
+func (s *service) calculateUpgradeOutput(ctx context.Context, userID string, itemName string, actualQuantity int) (*CraftingResult, error) {
+	log := logger.FromContext(ctx)
+
+	outputQuantity := 0
+	masterworkCount := 0
+
+	for i := 0; i < actualQuantity; i++ {
+		if s.rnd() < MasterworkChance {
+			masterworkCount++
+			outputQuantity += MasterworkMultiplier
+		} else {
+			outputQuantity += 1
+		}
+	}
+
+	masterworkTriggered := masterworkCount > 0
+	if masterworkTriggered {
+		log.Info("Masterwork craft triggered!", "user_id", userID, "item", itemName, "count", masterworkCount, "bonus", outputQuantity-actualQuantity)
+
+		if s.statsSvc != nil {
+			_ = s.statsSvc.RecordUserEvent(ctx, userID, domain.EventCraftingCriticalSuccess, map[string]interface{}{
+				"item_name":         itemName,
+				"original_quantity": actualQuantity,
+				"masterwork_count":  masterworkCount,
+				"bonus_quantity":    outputQuantity - actualQuantity,
+			})
+		}
+	}
 
 	return &CraftingResult{
 		ItemName:      itemName,
@@ -465,31 +483,10 @@ func (s *service) DisassembleItem(ctx context.Context, platform, platformID, use
 		return nil, err
 	}
 
-	// Get disassemble recipe
-	recipe, err := s.repo.GetDisassembleRecipeBySourceItemID(ctx, item.ID)
+	// Get and validate disassemble recipe
+	recipe, err := s.getAndValidateDisassembleRecipe(ctx, item.ID, user.ID, itemName)
 	if err != nil {
-		log.Error("Failed to get disassemble recipe", "error", err)
-		return nil, fmt.Errorf("failed to get disassemble recipe: %w", err)
-	}
-	if recipe == nil {
-		return nil, fmt.Errorf("no disassemble recipe found for item: %s", itemName)
-	}
-
-	// Get associated upgrade recipe ID to check if unlocked
-	upgradeRecipeID, err := s.repo.GetAssociatedUpgradeRecipeID(ctx, recipe.ID)
-	if err != nil {
-		log.Error("Failed to get associated upgrade recipe", "error", err)
-		return nil, fmt.Errorf("failed to get associated upgrade recipe: %w", err)
-	}
-
-	// Check if user has unlocked the associated upgrade recipe
-	unlocked, err := s.repo.IsRecipeUnlocked(ctx, user.ID, upgradeRecipeID)
-	if err != nil {
-		log.Error("Failed to check recipe unlock", "error", err)
-		return nil, fmt.Errorf("failed to check recipe unlock: %w", err)
-	}
-	if !unlocked {
-		return nil, fmt.Errorf("disassemble recipe for %s is not unlocked", itemName)
+		return nil, err
 	}
 
 	// Begin transaction
@@ -500,22 +497,15 @@ func (s *service) DisassembleItem(ctx context.Context, platform, platformID, use
 	}
 	defer repository.SafeRollback(ctx, tx)
 
-	// Get inventory
+	// Get inventory and calculate actual quantity
 	inventory, err := tx.GetInventory(ctx, user.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get inventory: %w", err)
 	}
 
-	// Find source items and calculate max possible
-	sourceSlotIndex, userQuantity := utils.FindSlot(inventory, item.ID)
-	maxPossible := userQuantity / recipe.QuantityConsumed
-	if maxPossible == 0 {
-		return nil, fmt.Errorf("insufficient items to disassemble %s (need %d, have %d)", itemName, recipe.QuantityConsumed, userQuantity)
-	}
-
-	actualQuantity := maxPossible
-	if actualQuantity > quantity {
-		actualQuantity = quantity
+	actualQuantity, sourceSlotIndex, err := s.calculateDisassembleQuantity(inventory, item.ID, recipe.QuantityConsumed, quantity, itemName)
+	if err != nil {
+		return nil, err
 	}
 
 	// Remove source items
@@ -526,14 +516,13 @@ func (s *service) DisassembleItem(ctx context.Context, platform, platformID, use
 		inventory.Slots[sourceSlotIndex].Quantity -= totalConsumed
 	}
 
-	// Perfect Salvage Logic - Calculate per item to avoid economy exploits
+	// Calculate perfect salvage
 	perfectSalvageCount := 0
 	for i := 0; i < actualQuantity; i++ {
 		if s.rnd() < PerfectSalvageChance {
 			perfectSalvageCount++
 		}
 	}
-
 	perfectSalvageTriggered := perfectSalvageCount > 0
 	if perfectSalvageTriggered {
 		log.Info("Perfect Salvage triggered!", "user_id", user.ID, "item", itemName, "quantity", actualQuantity, "perfect_count", perfectSalvageCount)
@@ -575,6 +564,51 @@ func (s *service) DisassembleItem(ctx context.Context, platform, platformID, use
 		IsPerfectSalvage:  perfectSalvageTriggered,
 		Multiplier:        PerfectSalvageMultiplier,
 	}, nil
+}
+
+func (s *service) getAndValidateDisassembleRecipe(ctx context.Context, itemID int, userID string, itemName string) (*domain.DisassembleRecipe, error) {
+	log := logger.FromContext(ctx)
+	// Get disassemble recipe
+	recipe, err := s.repo.GetDisassembleRecipeBySourceItemID(ctx, itemID)
+	if err != nil {
+		log.Error("Failed to get disassemble recipe", "error", err)
+		return nil, fmt.Errorf("failed to get disassemble recipe: %w", err)
+	}
+	if recipe == nil {
+		return nil, fmt.Errorf("no disassemble recipe found for item: %s", itemName)
+	}
+
+	// Get associated upgrade recipe ID to check if unlocked
+	upgradeRecipeID, err := s.repo.GetAssociatedUpgradeRecipeID(ctx, recipe.ID)
+	if err != nil {
+		log.Error("Failed to get associated upgrade recipe", "error", err)
+		return nil, fmt.Errorf("failed to get associated upgrade recipe: %w", err)
+	}
+
+	// Check if user has unlocked the associated upgrade recipe
+	unlocked, err := s.repo.IsRecipeUnlocked(ctx, userID, upgradeRecipeID)
+	if err != nil {
+		log.Error("Failed to check recipe unlock", "error", err)
+		return nil, fmt.Errorf("failed to check recipe unlock: %w", err)
+	}
+	if !unlocked {
+		return nil, fmt.Errorf("disassemble recipe for %s is not unlocked", itemName)
+	}
+	return recipe, nil
+}
+
+func (s *service) calculateDisassembleQuantity(inventory *domain.Inventory, itemID int, quantityConsumed int, quantity int, itemName string) (int, int, error) {
+	sourceSlotIndex, userQuantity := utils.FindSlot(inventory, itemID)
+	maxPossible := userQuantity / quantityConsumed
+	if maxPossible == 0 {
+		return 0, -1, fmt.Errorf("insufficient items to disassemble %s (need %d, have %d)", itemName, quantityConsumed, userQuantity)
+	}
+
+	actualQuantity := maxPossible
+	if actualQuantity > quantity {
+		actualQuantity = quantity
+	}
+	return actualQuantity, sourceSlotIndex, nil
 }
 
 // awardBlacksmithXP awards Blacksmith job XP for crafting operations
