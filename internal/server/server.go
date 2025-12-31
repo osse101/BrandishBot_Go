@@ -214,8 +214,11 @@ func loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
-		// Skip logging for health check endpoints
-		if skipPaths[r.URL.Path] {
+		// Skip logging for health check endpoints and metrics
+		// Use HasPrefix to catch potential variations (e.g. /healthz/)
+		if strings.HasPrefix(r.URL.Path, "/healthz") || 
+		   strings.HasPrefix(r.URL.Path, "/readyz") || 
+		   strings.HasPrefix(r.URL.Path, "/metrics") {
 			next.ServeHTTP(w, r)
 			return
 		}
