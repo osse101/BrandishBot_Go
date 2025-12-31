@@ -612,7 +612,10 @@ func (s *service) calculateDisassembleQuantity(inventory *domain.Inventory, item
 }
 
 // awardBlacksmithXP awards Blacksmith job XP for crafting operations
+// NOTE: Caller must call s.wg.Add(1) before launching this in a goroutine
 func (s *service) awardBlacksmithXP(ctx context.Context, userID string, quantity int, source, itemName string) {
+	defer s.wg.Done()
+	
 	if s.jobService == nil {
 		return // Job system not enabled
 	}
@@ -633,9 +636,6 @@ func (s *service) awardBlacksmithXP(ctx context.Context, userID string, quantity
 	} else if result != nil && result.LeveledUp {
 		logger.FromContext(ctx).Info("Blacksmith leveled up!", "user_id", userID, "new_level", result.NewLevel)
 	}
-
-	// Signal completion of this goroutine
-	s.wg.Done()
 }
 
 // Shutdown gracefully shuts down the crafting service by waiting for all async operations to complete

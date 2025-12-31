@@ -176,6 +176,7 @@ func (s *service) SellItem(ctx context.Context, platform, platformID, username, 
 
 	// Award Merchant XP based on transaction value (async)
 	xp := calculateMerchantXP(moneyGained)
+	s.wg.Add(1)
 	go s.awardMerchantXP(context.Background(), user.ID, xp, "sell", itemName, moneyGained)
 
 	log.Info("Item sold", "username", username, "item", itemName, "quantity", actualSellQuantity, "moneyGained", moneyGained)
@@ -322,6 +323,7 @@ func (s *service) BuyItem(ctx context.Context, platform, platformID, username, i
 
 	// Award Merchant XP based on transaction value (async)
 	xp := calculateMerchantXP(cost)
+	s.wg.Add(1)
 	go s.awardMerchantXP(context.Background(), user.ID, xp, "buy", itemName, cost)
 
 	log.Info("Item purchased", "username", username, "item", itemName, "quantity", actualQuantity)
@@ -347,8 +349,8 @@ func calculateMerchantXP(transactionValue int) int {
 }
 
 // awardMerchantXP awards Merchant job XP for buy/sell transactions
+// NOTE: Caller must call s.wg.Add(1) before launching this in a goroutine
 func (s *service) awardMerchantXP(ctx context.Context, userID string, xp int, action, itemName string, value int) {
-	s.wg.Add(1)
 	defer s.wg.Done()
 
 	if s.jobService == nil || xp <= 0 {
