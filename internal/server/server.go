@@ -58,6 +58,9 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 	// Health check routes
 	r.Get("/healthz", handler.HandleHealthz())
 	r.Get("/readyz", handler.HandleReadyz(dbPool))
+	
+	// Version endpoint (public, for deployment verification)
+	r.Get("/version", handler.HandleVersion())
 
 	// Metrics endpoint (public, for Prometheus scraping)
 	r.Handle("/metrics", promhttp.Handler())
