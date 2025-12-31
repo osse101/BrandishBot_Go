@@ -17,7 +17,7 @@ const BulkFeedbackThreshold = 5
 
 // Item effect handlers
 
-func (s *service) processLootbox(ctx context.Context, inventory *domain.Inventory, lootboxItem *domain.Item, quantity int) (string, error) {
+func (s *service) processLootbox(ctx context.Context, user *domain.User, inventory *domain.Inventory, lootboxItem *domain.Item, quantity int) (string, error) {
 	log := logger.FromContext(ctx)
 
 	// 1. Validate and consume lootboxes
@@ -37,7 +37,7 @@ func (s *service) processLootbox(ctx context.Context, inventory *domain.Inventor
 	}
 
 	// 3. Process drops and generate feedback
-	return s.processLootboxDrops(inventory, lootboxItem, quantity, drops)
+	return s.processLootboxDrops(ctx, user, inventory, lootboxItem, quantity, drops)
 }
 
 func (s *service) consumeLootboxFromInventory(inventory *domain.Inventory, item *domain.Item, quantity int) error {
@@ -58,7 +58,7 @@ func (s *service) consumeLootboxFromInventory(inventory *domain.Inventory, item 
 	return nil
 }
 
-func (s *service) processLootboxDrops(inventory *domain.Inventory, lootboxItem *domain.Item, quantity int, drops []lootbox.DroppedItem) (string, error) {
+func (s *service) processLootboxDrops(ctx context.Context, user *domain.User, inventory *domain.Inventory, lootboxItem *domain.Item, quantity int, drops []lootbox.DroppedItem) (string, error) {
 	var msgBuilder strings.Builder
 	displayName := s.namingResolver.GetDisplayName(lootboxItem.InternalName, "")
 	msgBuilder.WriteString(fmt.Sprintf("Opened %d %s and received: ", quantity, displayName))
@@ -70,8 +70,24 @@ func (s *service) processLootboxDrops(inventory *domain.Inventory, lootboxItem *
 	msgBuilder.WriteString(fmt.Sprintf(" (Value: %d)", stats.totalValue))
 
 	if stats.hasLegendary {
+		if s.statsService != nil && user != nil {
+			_ = s.statsService.RecordUserEvent(ctx, user.ID, domain.EventLootboxJackpot, map[string]interface{}{
+				"item":   lootboxItem.InternalName,
+				"drops":  drops,
+				"value":  stats.totalValue,
+				"source": "lootbox",
+			})
+		}
 		msgBuilder.WriteString(" JACKPOT! 🎰✨")
 	} else if stats.hasEpic {
+		if s.statsService != nil && user != nil {
+			_ = s.statsService.RecordUserEvent(ctx, user.ID, domain.EventLootboxBigWin, map[string]interface{}{
+				"item":   lootboxItem.InternalName,
+				"drops":  drops,
+				"value":  stats.totalValue,
+				"source": "lootbox",
+			})
+		}
 		msgBuilder.WriteString(" BIG WIN! 💰")
 	} else if stats.totalValue > 0 && quantity >= BulkFeedbackThreshold {
 		// If opening many boxes and getting nothing special, at least acknowledge the haul
@@ -135,8 +151,8 @@ func (s *service) aggregateDropsAndUpdateInventory(inventory *domain.Inventory, 
 	return stats
 }
 
-func (s *service) handleLootbox1(ctx context.Context, _ *service, _ *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, _ map[string]interface{}) (string, error) {
-	return s.processLootbox(ctx, inventory, item, quantity)
+func (s *service) handleLootbox1(ctx context.Context, _ *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, _ map[string]interface{}) (string, error) {
+	return s.processLootbox(ctx, user, inventory, item, quantity)
 }
 
 func (s *service) handleBlaster(ctx context.Context, _ *service, _ *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args map[string]interface{}) (string, error) {
@@ -175,10 +191,10 @@ func (s *service) handleBlaster(ctx context.Context, _ *service, _ *domain.User,
 	return fmt.Sprintf("%s has BLASTED %s %d times! They are timed out for %v.", username, targetUsername, quantity, timeoutDuration), nil
 }
 
-func (s *service) handleLootbox0(ctx context.Context, _ *service, _ *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, _ map[string]interface{}) (string, error) {
-	return s.processLootbox(ctx, inventory, item, quantity)
+func (s *service) handleLootbox0(ctx context.Context, _ *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, _ map[string]interface{}) (string, error) {
+	return s.processLootbox(ctx, user, inventory, item, quantity)
 }
 
-func (s *service) handleLootbox2(ctx context.Context, _ *service, _ *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, _ map[string]interface{}) (string, error) {
-	return s.processLootbox(ctx, inventory, item, quantity)
+func (s *service) handleLootbox2(ctx context.Context, _ *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, _ map[string]interface{}) (string, error) {
+	return s.processLootbox(ctx, user, inventory, item, quantity)
 }

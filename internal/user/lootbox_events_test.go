@@ -1,0 +1,239 @@
+package user
+
+import (
+	"context"
+	"testing"
+
+	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/lootbox"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+)
+
+// MockStatsServiceForLootboxTests - distinct name to avoid conflicts if any
+type MockStatsServiceForLootboxTests struct {
+	mock.Mock
+}
+
+func (m *MockStatsServiceForLootboxTests) RecordUserEvent(ctx context.Context, userID string, eventType domain.EventType, data map[string]interface{}) error {
+	args := m.Called(ctx, userID, eventType, data)
+	return args.Error(0)
+}
+
+func (m *MockStatsServiceForLootboxTests) GetUserStats(ctx context.Context, userID string, period string) (*domain.StatsSummary, error) {
+	args := m.Called(ctx, userID, period)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.StatsSummary), args.Error(1)
+}
+
+func (m *MockStatsServiceForLootboxTests) GetUserCurrentStreak(ctx context.Context, userID string) (int, error) {
+	args := m.Called(ctx, userID)
+	return args.Int(0), args.Error(1)
+}
+
+func (m *MockStatsServiceForLootboxTests) GetLeaderboard(ctx context.Context, eventType domain.EventType, period string, limit int) ([]domain.LeaderboardEntry, error) {
+	args := m.Called(ctx, eventType, period, limit)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]domain.LeaderboardEntry), args.Error(1)
+}
+
+func (m *MockStatsServiceForLootboxTests) GetTotalMetric(ctx context.Context, userID string, metric string) (float64, error) {
+	args := m.Called(ctx, userID, metric)
+	return args.Get(0).(float64), args.Error(1)
+}
+
+func (m *MockStatsServiceForLootboxTests) GetSystemStats(ctx context.Context, period string) (*domain.StatsSummary, error) {
+	args := m.Called(ctx, period)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.StatsSummary), args.Error(1)
+}
+
+// MockLootboxServiceForLootboxTests
+type MockLootboxServiceForLootboxTests struct {
+	mock.Mock
+}
+
+func (m *MockLootboxServiceForLootboxTests) OpenLootbox(ctx context.Context, lootboxName string, quantity int) ([]lootbox.DroppedItem, error) {
+	args := m.Called(ctx, lootboxName, quantity)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]lootbox.DroppedItem), args.Error(1)
+}
+
+// MockNamingResolverForLootboxTests - using testify/mock
+type MockNamingResolverForLootboxTests struct {
+	mock.Mock
+}
+
+func (m *MockNamingResolverForLootboxTests) ResolvePublicName(publicName string) (string, bool) {
+	args := m.Called(publicName)
+	return args.String(0), args.Bool(1)
+}
+
+func (m *MockNamingResolverForLootboxTests) GetDisplayName(internalName string, shineLevel string) string {
+	args := m.Called(internalName, shineLevel)
+	return args.String(0)
+}
+
+func (m *MockNamingResolverForLootboxTests) GetActiveTheme() string {
+	args := m.Called()
+	return args.String(0)
+}
+
+func (m *MockNamingResolverForLootboxTests) Reload() error {
+	args := m.Called()
+	return args.Error(0)
+}
+
+func (m *MockNamingResolverForLootboxTests) RegisterItem(internalName, publicName string) {
+	m.Called(internalName, publicName)
+}
+
+func TestProcessLootboxDrops_JackpotEvents(t *testing.T) {
+	// Test data
+	user := &domain.User{
+		ID: "user-123",
+		Username: "testuser",
+	}
+	lootboxItem := &domain.Item{
+		ID:           1,
+		InternalName: "lootbox_tier1",
+		BaseValue:    10,
+	}
+
+	ctx := context.Background()
+
+	// Test Case 1: Legendary Drop (Jackpot)
+	t.Run("Records Jackpot Event on Legendary Drop", func(t *testing.T) {
+		// Create fresh mocks for each test to ensure isolation
+		mockStats := new(MockStatsServiceForLootboxTests)
+		mockLootbox := new(MockLootboxServiceForLootboxTests)
+		mockNaming := new(MockNamingResolverForLootboxTests)
+		mockRepo := NewMockRepository()
+		svc := NewService(mockRepo, mockStats, nil, mockLootbox, mockNaming, nil, false).(*service)
+		inventory := &domain.Inventory{Slots: []domain.InventorySlot{}}
+
+		// Prepare drops
+		drops := []lootbox.DroppedItem{
+			{
+				ItemID:     101,
+				ItemName:   "legendary_sword",
+				Quantity:   1,
+				Value:      1000,
+				ShineLevel: lootbox.ShineLegendary,
+			},
+		}
+
+		// Expectations
+		mockNaming.On("GetDisplayName", "legendary_sword", lootbox.ShineLegendary).Return("Legendary Sword")
+		mockNaming.On("GetDisplayName", "lootbox_tier1", "").Return("Lootbox Tier 1")
+
+		// Expect stats service to be called with EventLootboxJackpot
+		mockStats.On("RecordUserEvent",
+			mock.Anything,
+			user.ID,
+			domain.EventLootboxJackpot,
+			mock.MatchedBy(func(data map[string]interface{}) bool {
+				return data["source"] == "lootbox" && data["item"] == "lootbox_tier1"
+			}),
+		).Return(nil).Once()
+
+		// Execute
+		msg, err := svc.processLootboxDrops(ctx, user, inventory, lootboxItem, 1, drops)
+
+		// Verify
+		assert.NoError(t, err)
+		assert.Contains(t, msg, "JACKPOT!")
+		mockStats.AssertExpectations(t)
+	})
+
+	// Test Case 2: Epic Drop (Big Win)
+	t.Run("Records Big Win Event on Epic Drop", func(t *testing.T) {
+		// Create fresh mocks
+		mockStats := new(MockStatsServiceForLootboxTests)
+		mockLootbox := new(MockLootboxServiceForLootboxTests)
+		mockNaming := new(MockNamingResolverForLootboxTests)
+		mockRepo := NewMockRepository()
+		svc := NewService(mockRepo, mockStats, nil, mockLootbox, mockNaming, nil, false).(*service)
+		inventory := &domain.Inventory{Slots: []domain.InventorySlot{}}
+
+		// Prepare drops
+		drops := []lootbox.DroppedItem{
+			{
+				ItemID:     102,
+				ItemName:   "epic_shield",
+				Quantity:   1,
+				Value:      500,
+				ShineLevel: lootbox.ShineEpic,
+			},
+		}
+
+		// Expectations
+		mockNaming.On("GetDisplayName", "epic_shield", lootbox.ShineEpic).Return("Epic Shield")
+		mockNaming.On("GetDisplayName", "lootbox_tier1", "").Return("Lootbox Tier 1")
+
+		// Expect stats service to be called with EventLootboxBigWin
+		mockStats.On("RecordUserEvent",
+			mock.Anything,
+			user.ID,
+			domain.EventLootboxBigWin,
+			mock.MatchedBy(func(data map[string]interface{}) bool {
+				return data["source"] == "lootbox" && data["item"] == "lootbox_tier1"
+			}),
+		).Return(nil).Once()
+
+		// Execute
+		msg, err := svc.processLootboxDrops(ctx, user, inventory, lootboxItem, 1, drops)
+
+		// Verify
+		assert.NoError(t, err)
+		assert.Contains(t, msg, "BIG WIN!")
+		mockStats.AssertExpectations(t)
+	})
+
+	// Test Case 3: Common Drop (No Special Event)
+	t.Run("Does Not Record Event for Common Drops", func(t *testing.T) {
+		// Create fresh mocks
+		mockStats := new(MockStatsServiceForLootboxTests)
+		mockLootbox := new(MockLootboxServiceForLootboxTests)
+		mockNaming := new(MockNamingResolverForLootboxTests)
+		mockRepo := NewMockRepository()
+		svc := NewService(mockRepo, mockStats, nil, mockLootbox, mockNaming, nil, false).(*service)
+		inventory := &domain.Inventory{Slots: []domain.InventorySlot{}}
+
+		// Prepare drops
+		drops := []lootbox.DroppedItem{
+			{
+				ItemID:     103,
+				ItemName:   "common_rock",
+				Quantity:   1,
+				Value:      5,
+				ShineLevel: lootbox.ShineCommon,
+			},
+		}
+
+		// Expectations
+		mockNaming.On("GetDisplayName", "common_rock", lootbox.ShineCommon).Return("Rock")
+		mockNaming.On("GetDisplayName", "lootbox_tier1", "").Return("Lootbox Tier 1")
+
+		// No call to RecordUserEvent expected for common drops
+		// This is implicit since we don't set up any expectations on mockStats
+		// But explicit AssertNotCalled is safer
+
+		// Execute
+		msg, err := svc.processLootboxDrops(ctx, user, inventory, lootboxItem, 1, drops)
+
+		// Verify
+		assert.NoError(t, err)
+		assert.NotContains(t, msg, "JACKPOT!")
+		assert.NotContains(t, msg, "BIG WIN!")
+		mockStats.AssertNotCalled(t, "RecordUserEvent", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	})
+}
