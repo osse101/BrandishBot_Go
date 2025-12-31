@@ -50,6 +50,9 @@ type Service interface {
 	AdminRelock(ctx context.Context, nodeKey string, level int) error
 	ResetProgressionTree(ctx context.Context, resetBy string, reason string, preserveUserData bool) error
 	InvalidateWeightCache() // Clears engagement weight cache (forces reload on next engagement)
+	
+	// Shutdown gracefully shuts down the service
+	Shutdown(ctx context.Context) error
 }
 
 type service struct {
@@ -68,14 +71,22 @@ type service struct {
 	
 	// Semaphore to prevent concurrent unlock attempts
 	unlockSem chan struct{}
+	
+	// Graceful shutdown support
+	wg             sync.WaitGroup
+	shutdownCtx    context.Context
+	shutdownCancel context.CancelFunc
 }
 
 // NewService creates a new progression service
 func NewService(repo Repository, bus event.Bus) Service {
+	shutdownCtx, shutdownCancel := context.WithCancel(context.Background())
 	return &service{
-		repo:      repo,
-		bus:       bus,
-		unlockSem: make(chan struct{}, 1), // Buffer of 1 = only one unlock check at a time
+		repo:           repo,
+		bus:            bus,
+		unlockSem:      make(chan struct{}, 1), // Buffer of 1 = only one unlock check at a time
+		shutdownCtx:    shutdownCtx,
+		shutdownCancel: shutdownCancel,
 	}
 }
 
@@ -415,17 +426,20 @@ func (s *service) CheckAndUnlockCriteria(ctx context.Context) (*domain.Progressi
 	// If no session exists, start one
 	session, _ := s.repo.GetActiveSession(ctx)
 	if session == nil {
-		// Use detached context for async operation
+		// Use shutdown context for async operation with timeout
+		s.wg.Add(1)
 		go func() {
-			detachedCtx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+			defer s.wg.Done()
+			
+			ctx, cancel := context.WithTimeout(s.shutdownCtx, 1*time.Minute)
 			defer cancel()
 			
-			// Inject request ID into detached context for tracing
+			// Inject request ID into context for tracing
 			if reqID != "" {
-				detachedCtx = logger.WithRequestID(detachedCtx, reqID)
+				ctx = logger.WithRequestID(ctx, reqID)
 			}
 
-			if err := s.StartVotingSession(detachedCtx, nil); err != nil {
+			if err := s.StartVotingSession(ctx, nil); err != nil {
 				log.Error("Failed to auto-start voting session", "error", err)
 			}
 		}()
@@ -487,16 +501,19 @@ func (s *service) ForceInstantUnlock(ctx context.Context) (*domain.ProgressionUn
 
 	// Start new voting session with the unlocked node context
 	reqID := logger.GetRequestID(ctx)
+	s.wg.Add(1)
 	go func() {
-		detachedCtx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+		defer s.wg.Done()
+		
+		ctx, cancel := context.WithTimeout(s.shutdownCtx, 1*time.Minute)
 		defer cancel()
 		
-		// Inject request ID into detached context for tracing
+		// Inject request ID into context for tracing
 		if reqID != "" {
-			detachedCtx = logger.WithRequestID(detachedCtx, reqID)
+			ctx = logger.WithRequestID(ctx, reqID)
 		}
 
-		if err := s.StartVotingSession(detachedCtx, &winner.NodeID); err != nil {
+		if err := s.StartVotingSession(ctx, &winner.NodeID); err != nil {
 			log.Error("Failed to auto-start voting session after instant unlock", "error", err)
 		}
 	}()
@@ -589,4 +606,30 @@ func (s *service) InvalidateWeightCache() {
 	s.cachedWeights = nil
 	s.weightsExpiry = time.Time{} // Zero time = always expired
 }
+
+// Shutdown gracefully shuts down the progression service
+func (s *service) Shutdown(ctx context.Context) error {
+	log := logger.FromContext(ctx)
+	log.Info("Shutting down progression service")
+	
+	// Cancel shutdown context to signal goroutines to stop
+	s.shutdownCancel()
+	
+	// Wait for goroutines with timeout
+	done := make(chan struct{})
+	go func() {
+		s.wg.Wait()
+		close(done)
+	}()
+	
+	select {
+	case <-done:
+		log.Info("Progression service shutdown complete")
+		return nil
+	case <-ctx.Done():
+		log.Warn("Progression service shutdown timed out")
+		return ctx.Err()
+	}
+}
+
 

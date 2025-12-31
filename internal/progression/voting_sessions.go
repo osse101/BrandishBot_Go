@@ -306,9 +306,11 @@ func (s *service) AddContribution(ctx context.Context, amount int) error {
 				select {
 				case s.unlockSem <- struct{}{}:
 					// Got the semaphore, proceed with unlock
+					s.wg.Add(1)
 					go func() {
+						defer s.wg.Done()
 						defer func() { <-s.unlockSem }() // Release semaphore when done
-						s.CheckAndUnlockNode(context.Background())
+						s.CheckAndUnlockNode(s.shutdownCtx)
 					}()
 				default:
 					// Unlock already in progress, skip this trigger
@@ -378,7 +380,11 @@ func (s *service) CheckAndUnlockNode(ctx context.Context) (*domain.ProgressionUn
 			"rollover", rollover)
 
 		// Start next voting session with context about the unlocked node
-		go s.StartVotingSession(context.Background(), &node.ID)
+		s.wg.Add(1)
+		go func() {
+			defer s.wg.Done()
+			s.StartVotingSession(s.shutdownCtx, &node.ID)
+		}()
 
 		return &domain.ProgressionUnlock{
 			NodeID:          *progress.NodeID,

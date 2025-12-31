@@ -257,6 +257,9 @@ func main() {
 	}
 
 	// Gracefully shutdown services
+	if err := progressionService.Shutdown(shutdownCtx); err != nil {
+		slog.Error("Progression service shutdown failed", "error", err)
+	}
 	if err := userService.Shutdown(shutdownCtx); err != nil {
 		slog.Error("User service shutdown failed", "error", err)
 	}
