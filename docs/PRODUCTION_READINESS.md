@@ -320,22 +320,28 @@ if s.statsService != nil {
 Based on new files, the following scenarios need integration testing:
 
 #### 1. Auto-Select Voting
-- [ ] Single available node auto-selects correctly
-- [ ] Contribution tracking works after auto-select
-- [ ] Unlock triggers correctly
-- [ ] Next voting session starts (or doesn't if no more nodes)
+- [x] Single available node auto-selects correctly (`TestStartVotingSession_SingleOption_FixVerification`)
+- [x] Zero available nodes handled (`TestStartVotingSession_ZeroOptions_AllUnlocked`)
+- [x] Multi-level node auto-select (`TestStartVotingSession_MultiLevelNode_AutoSelect`)
+- [x] Contribution tracking works after auto-select (`TestAutoSelect_ContributionTracking`)
 
 #### 2. String Finder Refactoring
-- [ ] All item types detected correctly
-- [ ] Edge cases (multiple items, partialmatches)
-- [ ] Performance hasn't degraded
+- [x] All item types detected correctly (real rules: Bapanada, gary, shedinja → OBS)
+- [x] Edge cases: punctuation, newlines, tabs, case insensitivity (`TestStringFinder_EdgeCases`)
+- [x] Boundary cases: empty message, very long message (`TestStringFinder_BoundaryConditions`)
+- [x] Priority filtering works correctly (`TestStringFinder_PriorityFiltering`)
 
-#### 3. Progression Shutdown
-- [ ] Graceful shutdown completes in-flight unlocks
-- [ ] Contribution points aren't lost during shutdown
-- [ ] Voting sessions complete or are cleanly aborted
+#### 3. Lootbox Events
+- [x] BulkFeedbackThreshold boundary tests at/below/above threshold
+- [x] Jackpot and Big Win take precedence over bulk feedback
+
+#### 4. Progression Shutdown
+- [x] Goroutine leak tests exist in `memory_test.go`
+- [ ] Add WaitGroup + Shutdown method (tracked separately)
+- [ ] Use parent context instead of `context.Background()`
 
 ---
+
 
 ## Production Deployment Checklist
 

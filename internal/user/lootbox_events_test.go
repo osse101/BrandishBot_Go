@@ -237,3 +237,145 @@ func TestProcessLootboxDrops_JackpotEvents(t *testing.T) {
 		mockStats.AssertNotCalled(t, "RecordUserEvent", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	})
 }
+
+// TestProcessLootboxDrops_BulkFeedbackThreshold tests the boundary conditions
+// for the "Nice haul!" bulk feedback message per TEST_GUIDANCE.md 5-case model
+func TestProcessLootboxDrops_BulkFeedbackThreshold(t *testing.T) {
+	// BulkFeedbackThreshold = 5 (defined in item_handlers.go)
+	// "Nice haul!" appears when: quantity >= BulkFeedbackThreshold AND no legendary/epic drops
+
+	user := &domain.User{
+		ID:       "user-123",
+		Username: "testuser",
+	}
+	lootboxItem := &domain.Item{
+		ID:           1,
+		InternalName: "lootbox_tier1",
+		BaseValue:    10,
+	}
+
+	ctx := context.Background()
+
+	// Common drops (no epic/legendary) for bulk feedback testing
+	createCommonDrops := func() []lootbox.DroppedItem {
+		return []lootbox.DroppedItem{
+			{
+				ItemID:     103,
+				ItemName:   "common_rock",
+				Quantity:   1,
+				Value:      5,
+				ShineLevel: lootbox.ShineCommon,
+			},
+		}
+	}
+
+	// Test Case 1: Just Below Threshold (4)
+	t.Run("No Bulk Feedback Below Threshold (quantity=4)", func(t *testing.T) {
+		mockStats := new(MockStatsServiceForLootboxTests)
+		mockNaming := new(MockNamingResolverForLootboxTests)
+		mockRepo := NewMockRepository()
+		svc := NewService(mockRepo, mockStats, nil, nil, mockNaming, nil, false).(*service)
+		inventory := &domain.Inventory{Slots: []domain.InventorySlot{}}
+
+		mockNaming.On("GetDisplayName", "common_rock", lootbox.ShineCommon).Return("Rock")
+		mockNaming.On("GetDisplayName", "lootbox_tier1", "").Return("Lootbox Tier 1")
+
+		msg, err := svc.processLootboxDrops(ctx, user, inventory, lootboxItem, 4, createCommonDrops())
+
+		assert.NoError(t, err)
+		assert.NotContains(t, msg, "Nice haul!", "Should NOT show bulk feedback below threshold")
+	})
+
+	// Test Case 2: Exactly At Threshold (5)
+	t.Run("Bulk Feedback At Threshold (quantity=5)", func(t *testing.T) {
+		mockStats := new(MockStatsServiceForLootboxTests)
+		mockNaming := new(MockNamingResolverForLootboxTests)
+		mockRepo := NewMockRepository()
+		svc := NewService(mockRepo, mockStats, nil, nil, mockNaming, nil, false).(*service)
+		inventory := &domain.Inventory{Slots: []domain.InventorySlot{}}
+
+		mockNaming.On("GetDisplayName", "common_rock", lootbox.ShineCommon).Return("Rock")
+		mockNaming.On("GetDisplayName", "lootbox_tier1", "").Return("Lootbox Tier 1")
+
+		msg, err := svc.processLootboxDrops(ctx, user, inventory, lootboxItem, 5, createCommonDrops())
+
+		assert.NoError(t, err)
+		assert.Contains(t, msg, "Nice haul!", "Should show bulk feedback at threshold")
+	})
+
+	// Test Case 3: Just Above Threshold (6)
+	t.Run("Bulk Feedback Above Threshold (quantity=6)", func(t *testing.T) {
+		mockStats := new(MockStatsServiceForLootboxTests)
+		mockNaming := new(MockNamingResolverForLootboxTests)
+		mockRepo := NewMockRepository()
+		svc := NewService(mockRepo, mockStats, nil, nil, mockNaming, nil, false).(*service)
+		inventory := &domain.Inventory{Slots: []domain.InventorySlot{}}
+
+		mockNaming.On("GetDisplayName", "common_rock", lootbox.ShineCommon).Return("Rock")
+		mockNaming.On("GetDisplayName", "lootbox_tier1", "").Return("Lootbox Tier 1")
+
+		msg, err := svc.processLootboxDrops(ctx, user, inventory, lootboxItem, 6, createCommonDrops())
+
+		assert.NoError(t, err)
+		assert.Contains(t, msg, "Nice haul!", "Should show bulk feedback above threshold")
+	})
+
+	// Test Case 4: No Bulk Feedback When Jackpot (Legendary takes precedence)
+	t.Run("Jackpot Takes Precedence Over Bulk Feedback", func(t *testing.T) {
+		mockStats := new(MockStatsServiceForLootboxTests)
+		mockNaming := new(MockNamingResolverForLootboxTests)
+		mockRepo := NewMockRepository()
+		svc := NewService(mockRepo, mockStats, nil, nil, mockNaming, nil, false).(*service)
+		inventory := &domain.Inventory{Slots: []domain.InventorySlot{}}
+
+		legendaryDrops := []lootbox.DroppedItem{
+			{
+				ItemID:     101,
+				ItemName:   "legendary_sword",
+				Quantity:   1,
+				Value:      1000,
+				ShineLevel: lootbox.ShineLegendary,
+			},
+		}
+
+		mockNaming.On("GetDisplayName", "legendary_sword", lootbox.ShineLegendary).Return("Legendary Sword")
+		mockNaming.On("GetDisplayName", "lootbox_tier1", "").Return("Lootbox Tier 1")
+		mockStats.On("RecordUserEvent", mock.Anything, user.ID, domain.EventLootboxJackpot, mock.Anything).Return(nil)
+
+		msg, err := svc.processLootboxDrops(ctx, user, inventory, lootboxItem, 10, legendaryDrops)
+
+		assert.NoError(t, err)
+		assert.Contains(t, msg, "JACKPOT!", "Jackpot should appear")
+		assert.NotContains(t, msg, "Nice haul!", "Bulk feedback should NOT appear when jackpot")
+	})
+
+	// Test Case 5: No Bulk Feedback When Big Win (Epic takes precedence)
+	t.Run("Big Win Takes Precedence Over Bulk Feedback", func(t *testing.T) {
+		mockStats := new(MockStatsServiceForLootboxTests)
+		mockNaming := new(MockNamingResolverForLootboxTests)
+		mockRepo := NewMockRepository()
+		svc := NewService(mockRepo, mockStats, nil, nil, mockNaming, nil, false).(*service)
+		inventory := &domain.Inventory{Slots: []domain.InventorySlot{}}
+
+		epicDrops := []lootbox.DroppedItem{
+			{
+				ItemID:     102,
+				ItemName:   "epic_shield",
+				Quantity:   1,
+				Value:      500,
+				ShineLevel: lootbox.ShineEpic,
+			},
+		}
+
+		mockNaming.On("GetDisplayName", "epic_shield", lootbox.ShineEpic).Return("Epic Shield")
+		mockNaming.On("GetDisplayName", "lootbox_tier1", "").Return("Lootbox Tier 1")
+		mockStats.On("RecordUserEvent", mock.Anything, user.ID, domain.EventLootboxBigWin, mock.Anything).Return(nil)
+
+		msg, err := svc.processLootboxDrops(ctx, user, inventory, lootboxItem, 10, epicDrops)
+
+		assert.NoError(t, err)
+		assert.Contains(t, msg, "BIG WIN!", "Big win should appear")
+		assert.NotContains(t, msg, "Nice haul!", "Bulk feedback should NOT appear when big win")
+	})
+}
+
