@@ -32,6 +32,7 @@ help:
 	@echo "  make docker-down          - Stop services"
 	@echo "  make docker-build         - Rebuild Docker images (no cache, slower but clean)"
 	@echo "  make docker-build-fast    - Build Docker images (with cache, faster for dev)"
+	@echo "  make docker-version       - Show version of local Docker image"
 	@echo ""
 	@echo "Test Database Commands:"
 	@echo "  make test-integration     - Run integration tests (uses testcontainers)"
@@ -211,6 +212,14 @@ docker-build-fast:
 	GIT_COMMIT=$$(git rev-parse --short HEAD 2>/dev/null || echo "unknown"); \
 	VERSION=$$VERSION BUILD_TIME=$$BUILD_TIME GIT_COMMIT=$$GIT_COMMIT DOCKER_BUILDKIT=1 docker compose build
 	@echo "Docker images built successfully"
+
+docker-version:
+	@echo "Local Docker image version info:"
+	@echo "================================"
+	@docker inspect brandishbot:dev --format='Version:    {{index .Config.Labels "org.opencontainers.image.version"}}' 2>/dev/null || echo "Image not found. Run 'make docker-build' first."
+	@docker inspect brandishbot:dev --format='Git Commit: {{index .Config.Labels "org.opencontainers.image.revision"}}' 2>/dev/null
+	@docker inspect brandishbot:dev --format='Built:      {{index .Config.Labels "org.opencontainers.image.created"}}' 2>/dev/null
+	@echo "================================"
 
 docker-logs:
 	@docker compose logs -f
