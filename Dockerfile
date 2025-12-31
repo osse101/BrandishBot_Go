@@ -42,11 +42,15 @@ FROM alpine:3.19
 
 # Build arguments (passed from build stage)
 ARG VERSION=dev
+ARG BUILD_TIME=unknown
+ARG GIT_COMMIT=unknown
 
-# Add image metadata
+# Add image metadata (OCI standard labels)
 LABEL org.opencontainers.image.title="BrandishBot"
 LABEL org.opencontainers.image.description="Discord bot for Brandish game progression and economy"
 LABEL org.opencontainers.image.version="${VERSION}"
+LABEL org.opencontainers.image.revision="${GIT_COMMIT}"
+LABEL org.opencontainers.image.created="${BUILD_TIME}"
 LABEL org.opencontainers.image.vendor="BrandishBot Project"
 
 WORKDIR /app
