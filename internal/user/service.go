@@ -739,7 +739,7 @@ func (s *service) executeSearch(ctx context.Context, user *domain.User) (string,
 			return "", err
 		}
 	} else {
-		resultMessage = s.processSearchFailure(ctx, user, roll, params.successThreshold)
+		resultMessage = s.processSearchFailure(ctx, user, roll, params.successThreshold, params)
 	}
 
 	// Record search attempt (to track daily count)
@@ -874,7 +874,7 @@ func (s *service) addItemToTx(ctx context.Context, tx repository.Tx, userID stri
 	return nil
 }
 
-func (s *service) processSearchFailure(ctx context.Context, user *domain.User, roll float64, successThreshold float64) string {
+func (s *service) processSearchFailure(ctx context.Context, user *domain.User, roll float64, successThreshold float64, params searchParams) string {
 	log := logger.FromContext(ctx)
 	var resultMessage string
 
@@ -918,11 +918,11 @@ func (s *service) processSearchFailure(ctx context.Context, user *domain.User, r
 	if s.statsService != nil {
 		_ = s.statsService.RecordUserEvent(ctx, user.ID, domain.EventSearch, map[string]interface{}{
 			"success":     roll <= successThreshold,
-			"daily_count": dailyCount + 1, // +1 because we just did one
+			"daily_count": params.dailyCount + 1, // +1 because we just did one
 		})
 
 		// If this was the first search of the day, show the current streak
-		if isFirstSearchDaily {
+		if params.isFirstSearchDaily {
 			streak, err := s.statsService.GetUserCurrentStreak(ctx, user.ID)
 			if err != nil {
 				log.Warn("Failed to get user streak", "error", err)
@@ -932,7 +932,7 @@ func (s *service) processSearchFailure(ctx context.Context, user *domain.User, r
 		}
 	}
 
-	return resultMessage, nil
+	return resultMessage
 }
 
 // getUserOrRegister gets a user by platform ID, or auto-registers them if not found
