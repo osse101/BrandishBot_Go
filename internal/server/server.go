@@ -204,8 +204,21 @@ func (rw *responseWriter) Write(b []byte) (int, error) {
 }
 
 func loggingMiddleware(next http.Handler) http.Handler {
+	// Paths to skip logging (health checks, metrics - too noisy)
+	skipPaths := map[string]bool{
+		"/healthz": true,
+		"/readyz":  true,
+		"/metrics": true,
+	}
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
+
+		// Skip logging for health check endpoints
+		if skipPaths[r.URL.Path] {
+			next.ServeHTTP(w, r)
+			return
+		}
 
 		// Generate unique request ID
 		requestID := logger.GenerateRequestID()

@@ -1,0 +1,160 @@
+{
+  "version": "1.0",
+  "description": "BrandishBot Progression Tree - Community-unlockable features and items",
+  "nodes": [
+    {
+      "key": "progression_system",
+      "name": "Progression System",
+      "type": "feature",
+      "description": "Unlock the community progression system",
+      "unlock_cost": 0,
+      "max_level": 1,
+      "parent": null,
+      "sort_order": 0,
+      "auto_unlock": true
+    },
+    {
+      "key": "item_money",
+      "name": "Money",
+      "type": "item",
+      "description": "Unlock the money item for trading",
+      "unlock_cost": 500,
+      "max_level": 1,
+      "parent": "progression_system",
+      "sort_order": 1,
+      "auto_unlock": false
+    },
+    {
+      "key": "item_lootbox0",
+      "name": "Basic Lootbox",
+      "type": "item",
+      "description": "Unlock lootbox0 (basic lootbox)",
+      "unlock_cost": 500,
+      "max_level": 1,
+      "parent": "progression_system",
+      "sort_order": 2,
+      "auto_unlock": false
+    },
+    {
+      "key": "feature_economy",
+      "name": "Economy System",
+      "type": "feature",
+      "description": "Unlock buy/sell marketplace features",
+      "unlock_cost": 1500,
+      "max_level": 1,
+      "parent": "item_money",
+      "sort_order": 10,
+      "auto_unlock": false
+    },
+    {
+      "key": "feature_upgrade",
+      "name": "Upgrade Items",
+      "type": "feature",
+      "description": "Unlock item upgrading/crafting system",
+      "unlock_cost": 1500,
+      "max_level": 1,
+      "parent": "item_lootbox0",
+      "sort_order": 20,
+      "auto_unlock": false
+    },
+    {
+      "key": "feature_disassemble",
+      "name": "Disassemble Items",
+      "type": "feature",
+      "description": "Unlock item disassembly for materials",
+      "unlock_cost": 1000,
+      "max_level": 1,
+      "parent": "item_lootbox0",
+      "sort_order": 21,
+      "auto_unlock": false
+    },
+    {
+      "key": "feature_search",
+      "name": "Search System",
+      "type": "feature",
+      "description": "Unlock item search and filtering",
+      "unlock_cost": 1000,
+      "max_level": 1,
+      "parent": "item_lootbox0",
+      "sort_order": 23,
+      "auto_unlock": false
+    },
+    {
+      "key": "feature_buy",
+      "name": "Buy Items",
+      "type": "feature",
+      "description": "Unlock item purchasing from market",
+      "unlock_cost": 800,
+      "max_level": 1,
+      "parent": "feature_economy",
+      "sort_order": 11,
+      "auto_unlock": false
+    },
+    {
+      "key": "feature_sell",
+      "name": "Sell Items",
+      "type": "feature",
+      "description": "Unlock item selling to market",
+      "unlock_cost": 800,
+      "max_level": 1,
+      "parent": "feature_economy",
+      "sort_order": 12,
+      "auto_unlock": false
+    },
+    {
+      "key": "item_lootbox1",
+      "name": "Advanced Lootbox",
+      "type": "item",
+      "description": "Unlock lootbox1 with better rewards",
+      "unlock_cost": 1200,
+      "max_level": 1,
+      "parent": "feature_upgrade",
+      "sort_order": 22,
+      "auto_unlock": false
+    },
+    {
+      "key": "feature_gamble",
+      "name": "Gambling",
+      "type": "feature",
+      "description": "Unlock gambling mechanics (high risk/reward)",
+      "unlock_cost": 2500,
+      "max_level": 1,
+      "parent": "feature_economy",
+      "sort_order": 30,
+      "auto_unlock": false
+    },
+    {
+      "key": "feature_duel",
+      "name": "Dueling",
+      "type": "feature",
+      "description": "Unlock player vs player combat duels",
+      "unlock_cost": 3000,
+      "max_level": 1,
+      "parent": "item_lootbox1",
+      "sort_order": 31,
+      "auto_unlock": false
+    },
+    {
+      "key": "feature_expedition",
+      "name": "Expeditions",
+      "type": "feature",
+      "description": "Unlock expedition/adventure system",
+      "unlock_cost": 3000,
+      "max_level": 1,
+      "parent": "feature_search",
+      "sort_order": 32,
+      "auto_unlock": false
+    },
+    {
+      "key": "upgrade_cooldown_reduction",
+      "name": "Cooldown Reduction",
+      "type": "upgrade",
+      "description": "Reduce command cooldowns (unlockable 5 times)",
+      "unlock_cost": 1500,
+      "max_level": 5,
+      "parent": "feature_economy",
+      "sort_order": 40,
+      "auto_unlock": false
+    }
+  ]
+}

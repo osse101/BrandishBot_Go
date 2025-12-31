@@ -132,6 +132,36 @@ func main() {
 	progressionRepo := postgres.NewProgressionRepository(dbPool)
 	progressionService := progression.NewService(progressionRepo, eventBus)
 
+	// Optional: Sync progression tree from JSON configuration
+	if cfg.SyncProgressionTree {
+		slog.Info("Syncing progression tree from JSON config...")
+		treeLoader := progression.NewTreeLoader()
+		
+		treeConfig, err := treeLoader.Load("configs/progression_tree.json")
+		if err != nil {
+			slog.Error("Failed to load progression tree config", "error", err)
+			os.Exit(1)
+		}
+		
+		if err := treeLoader.Validate(treeConfig); err != nil {
+			slog.Error("Invalid progression tree config", "error", err)
+			os.Exit(1)
+		}
+		
+		// Sync to database (progressionRepo implements NodeInserter/NodeUpdater)
+		syncResult, err := treeLoader.SyncToDatabase(context.Background(), treeConfig, progressionRepo)
+		if err != nil {
+			slog.Error("Failed to sync progression tree to database", "error", err)
+			os.Exit(1)
+		}
+		
+		slog.Info("Progression tree synced successfully",
+			"inserted", syncResult.NodesInserted,
+			"updated", syncResult.NodesUpdated,
+			"skipped", syncResult.NodesSkipped,
+			"auto_unlocked", syncResult.AutoUnlocked)
+	}
+
 	// Initialize Job service (needed by user, economy, crafting, gamble)
 	jobRepo := postgres.NewJobRepository(dbPool)
 	jobService := job.NewService(jobRepo, progressionService, statsService)

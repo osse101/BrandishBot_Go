@@ -56,6 +56,9 @@ type Config struct {
 
 	// Development Settings
 	DevMode bool // When true, bypasses cooldowns and enables test features
+
+	// Progression Tree
+	SyncProgressionTree bool // When true, syncs progression_tree.json to database on startup
 }
 
 // Load loads the configuration from environment variables
@@ -120,6 +123,10 @@ func Load() (*Config, error) {
 	// Dev mode (bypasses cooldowns and enables test features)
 	devModeStr := getEnv("DEV_MODE", "false")
 	cfg.DevMode = devModeStr == "true" || devModeStr == "1"
+
+	// Progression tree sync (syncs JSON config to database on startup)
+	syncTreeStr := getEnv("SYNC_PROGRESSION_TREE", "false")
+	cfg.SyncProgressionTree = syncTreeStr == "true" || syncTreeStr == "1"
 
 	// Parse trusted proxies
 	trustedProxiesStr := getEnv("TRUSTED_PROXIES", "")

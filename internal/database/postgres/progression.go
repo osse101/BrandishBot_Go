@@ -148,6 +148,60 @@ func (r *progressionRepository) GetChildNodes(ctx context.Context, parentID int)
 	return nodes, rows.Err()
 }
 
+// InsertNode inserts a new progression node and returns its ID
+// Implements progression.NodeInserter interface
+func (r *progressionRepository) InsertNode(ctx context.Context, node *domain.ProgressionNode) (int, error) {
+	query := `
+		INSERT INTO progression_nodes (node_key, node_type, display_name, description, parent_node_id, max_level, unlock_cost, sort_order)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		RETURNING id`
+
+	var id int
+	err := r.pool.QueryRow(ctx, query,
+		node.NodeKey,
+		node.NodeType,
+		node.DisplayName,
+		node.Description,
+		node.ParentNodeID,
+		node.MaxLevel,
+		node.UnlockCost,
+		node.SortOrder,
+	).Scan(&id)
+
+	if err != nil {
+		return 0, fmt.Errorf("failed to insert node: %w", err)
+	}
+
+	return id, nil
+}
+
+// UpdateNode updates an existing progression node
+// Implements progression.NodeUpdater interface
+func (r *progressionRepository) UpdateNode(ctx context.Context, nodeID int, node *domain.ProgressionNode) error {
+	query := `
+		UPDATE progression_nodes 
+		SET node_type = $2, display_name = $3, description = $4, parent_node_id = $5, 
+		    max_level = $6, unlock_cost = $7, sort_order = $8
+		WHERE id = $1`
+
+	_, err := r.pool.Exec(ctx, query,
+		nodeID,
+		node.NodeType,
+		node.DisplayName,
+		node.Description,
+		node.ParentNodeID,
+		node.MaxLevel,
+		node.UnlockCost,
+		node.SortOrder,
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed to update node: %w", err)
+	}
+
+	return nil
+}
+
 // Unlock operations
 
 func (r *progressionRepository) GetUnlock(ctx context.Context, nodeID int, level int) (*domain.ProgressionUnlock, error) {
