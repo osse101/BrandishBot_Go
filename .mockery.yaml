@@ -1,6 +1,12 @@
 with-expecter: true
 dir: "mocks"
 outpkg: "mocks"
+# Performance optimizations
+log-level: ""  # Suppress output for faster execution (replaces deprecated 'quiet')
+# Fix deprecation warnings
+resolve-type-alias: false  # v3 default
+disable-version-string: true  # v3 default
+issue-845-fix: true  # Required for proper interface detection
 packages:
   github.com/osse101/BrandishBot_Go/internal/user:
     config:
