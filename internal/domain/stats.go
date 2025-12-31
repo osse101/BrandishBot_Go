@@ -27,6 +27,9 @@ const (
 	EventCraftingCriticalSuccess EventType = "crafting_critical_success"
 	EventCraftingPerfectSalvage EventType = "crafting_perfect_salvage"
 	EventJobLevelUp         EventType = "job_level_up"
+	// Lootbox events
+	EventLootboxJackpot EventType = "lootbox_jackpot"
+	EventLootboxBigWin  EventType = "lootbox_big_win"
 )
 
 // StatsEvent represents a single tracked event

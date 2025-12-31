@@ -876,6 +876,18 @@ func (s *service) addItemToTx(ctx context.Context, tx repository.Tx, userID stri
 
 func (s *service) processSearchFailure(ctx context.Context, user *domain.User, roll float64, successThreshold float64) string {
 	log := logger.FromContext(ctx)
+
+	dailyCount := 0
+	if s.statsService != nil {
+		stats, err := s.statsService.GetUserStats(ctx, user.ID, domain.PeriodDaily)
+		if err != nil {
+			log.Warn("Failed to get search counts", "error", err)
+		} else if stats != nil && stats.EventCounts != nil {
+			dailyCount = stats.EventCounts[domain.EventSearch]
+		}
+	}
+	isFirstSearchDaily := (dailyCount == 0)
+
 	var resultMessage string
 
 	if roll <= successThreshold+SearchNearMissRate {
@@ -932,7 +944,7 @@ func (s *service) processSearchFailure(ctx context.Context, user *domain.User, r
 		}
 	}
 
-	return resultMessage, nil
+	return resultMessage
 }
 
 // getUserOrRegister gets a user by platform ID, or auto-registers them if not found

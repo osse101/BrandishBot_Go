@@ -216,7 +216,8 @@ func TestProcessLootbox(t *testing.T) {
 		}
 
 		// Execute
-		msg, err := svc.processLootbox(ctx, inventory, lootbox0, 1)
+		// Pass nil user as it's not used in this test path (except for stats which is nil here)
+		msg, err := svc.processLootbox(ctx, nil, inventory, lootbox0, 1)
 
 		// Verify
 		assert.NoError(t, err)
@@ -254,7 +255,7 @@ func TestProcessLootbox(t *testing.T) {
 			},
 		}
 
-		_, err := svc.processLootbox(ctx, inventory, lootbox0, 2)
+		_, err := svc.processLootbox(ctx, nil, inventory, lootbox0, 2)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), domain.ErrMsgNotEnoughItems)
 	})
