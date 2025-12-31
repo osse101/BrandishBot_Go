@@ -913,7 +913,26 @@ func (s *service) processSearchFailure(ctx context.Context, user *domain.User, r
 			log.Info("Search successful - nothing found", "username", user.Username, "message", resultMessage)
 		}
 	}
-	return resultMessage
+
+	// Record search attempt (to track daily count)
+	if s.statsService != nil {
+		_ = s.statsService.RecordUserEvent(ctx, user.ID, domain.EventSearch, map[string]interface{}{
+			"success":     roll <= successThreshold,
+			"daily_count": dailyCount + 1, // +1 because we just did one
+		})
+
+		// If this was the first search of the day, show the current streak
+		if isFirstSearchDaily {
+			streak, err := s.statsService.GetUserCurrentStreak(ctx, user.ID)
+			if err != nil {
+				log.Warn("Failed to get user streak", "error", err)
+			} else if streak > 1 {
+				resultMessage += fmt.Sprintf(domain.MsgStreakBonus, streak)
+			}
+		}
+	}
+
+	return resultMessage, nil
 }
 
 // getUserOrRegister gets a user by platform ID, or auto-registers them if not found

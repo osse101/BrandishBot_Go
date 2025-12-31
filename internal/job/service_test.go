@@ -101,6 +101,11 @@ func (m *MockStatsService) GetUserStats(ctx context.Context, userID string, peri
 	return args.Get(0).(*domain.StatsSummary), args.Error(1)
 }
 
+func (m *MockStatsService) GetUserCurrentStreak(ctx context.Context, userID string) (int, error) {
+	args := m.Called(ctx, userID)
+	return args.Int(0), args.Error(1)
+}
+
 func (m *MockStatsService) GetSystemStats(ctx context.Context, period string) (*domain.StatsSummary, error) {
 	args := m.Called(ctx, period)
 	if args.Get(0) == nil {

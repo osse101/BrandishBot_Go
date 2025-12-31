@@ -25,6 +25,7 @@ type Repository interface {
 type Service interface {
 	RecordUserEvent(ctx context.Context, userID string, eventType domain.EventType, metadata map[string]interface{}) error
 	GetUserStats(ctx context.Context, userID string, period string) (*domain.StatsSummary, error)
+	GetUserCurrentStreak(ctx context.Context, userID string) (int, error)
 	GetSystemStats(ctx context.Context, period string) (*domain.StatsSummary, error)
 	GetLeaderboard(ctx context.Context, eventType domain.EventType, period string, limit int) ([]domain.LeaderboardEntry, error)
 }
@@ -132,6 +133,55 @@ func (s *service) checkDailyStreak(ctx context.Context, userID string) error {
 	}
 
 	return nil
+}
+
+// GetUserCurrentStreak retrieves the current daily login streak for a user
+func (s *service) GetUserCurrentStreak(ctx context.Context, userID string) (int, error) {
+	// Get the last streak event
+	events, err := s.repo.GetUserEventsByType(ctx, userID, domain.EventDailyStreak, 1)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get streak events: %w", err)
+	}
+
+	if len(events) == 0 {
+		return 0, nil
+	}
+
+	lastEvent := events[0]
+	lastStreakTime := lastEvent.CreatedAt
+	var streak int
+
+	// Extract streak from metadata
+	if streakVal, ok := lastEvent.EventData["streak"]; ok {
+		switch v := streakVal.(type) {
+		case float64:
+			streak = int(v)
+		case int:
+			streak = v
+		case int64:
+			streak = int(v)
+		}
+	}
+
+	now := time.Now()
+	// Compare dates (UTC)
+	y1, m1, d1 := lastStreakTime.UTC().Date()
+	y2, m2, d2 := now.UTC().Date()
+
+	// If today, valid
+	if y1 == y2 && m1 == m2 && d1 == d2 {
+		return streak, nil
+	}
+
+	// If yesterday, valid
+	yesterday := now.UTC().AddDate(0, 0, -1)
+	y3, m3, d3 := yesterday.Date()
+	if y1 == y3 && m1 == m3 && d1 == d3 {
+		return streak, nil
+	}
+
+	// Otherwise, streak is broken (return 0)
+	return 0, nil
 }
 
 // GetUserStats retrieves statistics for a specific user within a time period

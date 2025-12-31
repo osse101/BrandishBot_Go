@@ -594,6 +594,11 @@ func (m *mockStatsService) GetUserStats(ctx context.Context, userID string, peri
 	}
 	return summary, nil
 }
+func (m *mockStatsService) GetUserCurrentStreak(ctx context.Context, userID string) (int, error) {
+	// For testing purposes, we can return a mock streak if needed.
+	// For now, return 5 to verify the message format in specific tests.
+	return 5, nil
+}
 func (m *mockStatsService) GetSystemStats(ctx context.Context, period string) (*domain.StatsSummary, error) {
 	return nil, nil
 }
