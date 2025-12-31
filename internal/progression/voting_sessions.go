@@ -22,6 +22,13 @@ func (s *service) StartVotingSession(ctx context.Context, unlockedNodeID *int) e
 		if err != nil {
 			return fmt.Errorf("failed to create initial unlock progress: %w", err)
 		}
+
+		// Fetch it now so we have the ID for later
+		progress, err = s.repo.GetActiveUnlockProgress(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to get active unlock progress after creation: %w", err)
+		}
+
 		log.Debug("Created initial unlock progress for new voting session")
 	}
 
@@ -33,6 +40,45 @@ func (s *service) StartVotingSession(ctx context.Context, unlockedNodeID *int) e
 
 	if len(available) == 0 {
 		return fmt.Errorf("no nodes available for voting")
+	}
+
+	// SPECIAL CASE: Auto-select if only one option available
+	if len(available) == 1 {
+		node := available[0]
+		log.Info("Only one option available, auto-selecting without voting", "nodeKey", node.NodeKey)
+
+		// Determine target level
+		targetLevel := 1
+		isUnlocked, _ := s.repo.IsNodeUnlocked(ctx, node.NodeKey, 1)
+		if isUnlocked {
+			// Find next level to unlock
+			for level := 2; level <= node.MaxLevel; level++ {
+				unlocked, _ := s.repo.IsNodeUnlocked(ctx, node.NodeKey, level)
+				if !unlocked {
+					targetLevel = level
+					break
+				}
+			}
+		}
+
+		// Set as unlock target immediately
+		err = s.repo.SetUnlockTarget(ctx, progress.ID, node.ID, targetLevel, 0)
+		if err != nil {
+			return fmt.Errorf("failed to set unlock target: %w", err)
+		}
+
+		// Cache the unlock cost
+		s.mu.Lock()
+		s.cachedTargetCost = node.UnlockCost
+		s.cachedProgressID = progress.ID
+		s.mu.Unlock()
+
+		// Publish event if needed (target set)
+		// Note: We currently only log this as there isn't a dedicated "TargetSet" event type yet
+		// and ProgressionCycleCompleted implies a session.
+		log.Info("Auto-selected target set", "nodeKey", node.NodeKey, "targetLevel", targetLevel)
+
+		return nil
 	}
 
 	// Select up to 4 random options
