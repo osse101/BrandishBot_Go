@@ -51,6 +51,7 @@ const (
 	MsgSearchCriticalSuccess = "You found a hidden stash! (CRITICAL SUCCESS!)"
 	MsgSearchCriticalFail    = "You tried to search, but disaster struck! (CRITICAL FAIL!)"
 	MsgFirstSearchBonus      = " (First Search of the Day!)"
+	MsgStreakBonus           = " (🔥 %d Day Streak!)"
 )
 
 // SearchCriticalFailMessages is a list of funny messages for critical failures
