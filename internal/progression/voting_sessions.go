@@ -10,6 +10,11 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
+const (
+	// MaxVotingOptions is the maximum number of options shown in a voting session
+	MaxVotingOptions = 4
+)
+
 // StartVotingSession creates a new voting session with 4 random options from available nodes
 // unlockedNodeID should be provided if this session is being started after a node unlock
 func (s *service) StartVotingSession(ctx context.Context, unlockedNodeID *int) error {
@@ -81,8 +86,8 @@ func (s *service) StartVotingSession(ctx context.Context, unlockedNodeID *int) e
 		return nil
 	}
 
-	// Select up to 4 random options
-	selected := selectRandomNodes(available, 4)
+	// Select up to MaxVotingOptions random options
+	selected := selectRandomNodes(available, MaxVotingOptions)
 
 	// Create voting session
 	sessionID, err := s.repo.CreateVotingSession(ctx)

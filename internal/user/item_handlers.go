@@ -71,22 +71,30 @@ func (s *service) processLootboxDrops(ctx context.Context, user *domain.User, in
 
 	if stats.hasLegendary {
 		if s.statsService != nil && user != nil {
-			_ = s.statsService.RecordUserEvent(ctx, user.ID, domain.EventLootboxJackpot, map[string]interface{}{
-				"item":   lootboxItem.InternalName,
-				"drops":  drops,
-				"value":  stats.totalValue,
-				"source": "lootbox",
-			})
+			eventData := &domain.LootboxEventData{
+				Item:   lootboxItem.InternalName,
+				Drops:  drops,
+				Value:  stats.totalValue,
+				Source: "lootbox",
+			}
+			if err := s.statsService.RecordUserEvent(ctx, user.ID, domain.EventLootboxJackpot, eventData.ToMap()); err != nil {
+				log := logger.FromContext(ctx)
+				log.Warn("Failed to record lootbox jackpot event", "error", err, "user_id", user.ID)
+			}
 		}
 		msgBuilder.WriteString(" JACKPOT! 🎰✨")
 	} else if stats.hasEpic {
 		if s.statsService != nil && user != nil {
-			_ = s.statsService.RecordUserEvent(ctx, user.ID, domain.EventLootboxBigWin, map[string]interface{}{
-				"item":   lootboxItem.InternalName,
-				"drops":  drops,
-				"value":  stats.totalValue,
-				"source": "lootbox",
-			})
+			eventData := &domain.LootboxEventData{
+				Item:   lootboxItem.InternalName,
+				Drops:  drops,
+				Value:  stats.totalValue,
+				Source: "lootbox",
+			}
+			if err := s.statsService.RecordUserEvent(ctx, user.ID, domain.EventLootboxBigWin, eventData.ToMap()); err != nil {
+				log := logger.FromContext(ctx)
+				log.Warn("Failed to record lootbox big-win event", "error", err, "user_id", user.ID)
+			}
 		}
 		msgBuilder.WriteString(" BIG WIN! 💰")
 	} else if stats.totalValue > 0 && quantity >= BulkFeedbackThreshold {

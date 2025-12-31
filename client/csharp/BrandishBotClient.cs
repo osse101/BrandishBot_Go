@@ -255,14 +255,15 @@ namespace BrandishBot.Client
         /// <summary>
         /// Upgrade an item using a recipe
         /// </summary>
-        public async Task<string> UpgradeItem(string platform, string platformId, string username, int recipeId)
+        public async Task<string> UpgradeItem(string platform, string platformId, string username, string itemName, int quantity)
         {
             return await PostJsonAsync("/user/item/upgrade", new
             {
                 platform = platform,
                 platform_id = platformId,
                 username = username,
-                recipe_id = recipeId
+                item = itemName,
+                quantity = quantity
             });
         }
 
