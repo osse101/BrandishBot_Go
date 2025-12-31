@@ -9,13 +9,23 @@ import (
 )
 
 func TestStringFinder_FindMatches(t *testing.T) {
-	sf := NewStringFinder()
+	// Create a fresh StringFinder for testing
+	// Instead of relying on NewStringFinder and modifying private fields,
+	// we reconstruct it or use a helper if possible.
+	// Since we changed internal structure, we need to adapt the test setup.
 
-	// Override rules for testing predictability
-	sf.rules = nil
+	// Create blank finder
+	sf := &StringFinder{
+		ruleMap: make(map[string][]FinderRule),
+	}
+
+	// Add test rules
 	sf.addRule("Bapanada", "OBS", 10)
 	sf.addRule("going", "TRAP", 5)
 	sf.addRule("hello", "GREET", 10)
+
+	// Compile regex
+	sf.compile()
 
 	tests := []struct {
 		name    string
@@ -74,8 +84,7 @@ func TestStringFinder_FindMatches(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := sf.FindMatches(tt.message)
 
-			// Sort results for consistent comparison if order doesn't strictly matter for equality check
-			// (though implementation currently returns in rule order, let's just use ElementsMatch equivalent logic or sort)
+			// Sort results for consistent comparison
 			sort.Slice(got, func(i, j int) bool {
 				return got[i].Code < got[j].Code
 			})

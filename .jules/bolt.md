@@ -13,3 +13,27 @@
 ## 2025-12-21 - [String Concatenation Efficiency]
 **Learning:** Inefficient string concatenation (`+=`) in loops was found in `internal/discord/client.go`, leading to O(N^2) complexity.
 **Action:** Use `strings.Builder` with `fmt.Fprintf` for constructing strings in loops to ensure O(N) performance and reduce memory allocations.
+
+## 2025-12-22 - [Map Allocation Overhead vs Linear Scan]
+**Learning:** Benchmarking revealed that replacing a linear scan O(N) with a map lookup O(1) for finding items in an inventory is SLOWER for N=1000 due to map allocation overhead (~43µs vs ~17µs).
+**Action:** Do not blindly replace O(N) loops with maps for "small" datasets (N < 5000) without benchmarking, especially if the map must be built from scratch for every operation.
+
+## 2025-12-22 - [Regex Optimization]
+**Learning:** Iteratively running multiple  calls (one per rule) is significantly slower than compiling a single regex with alternation `(p1|p2|...)` and using a hash map for rule lookup.
+**Action:** When matching against many static keywords/patterns, compile them into a single optimized regex to achieve O(1) complexity relative to the number of rules.
+
+## 2025-12-22 - [Map Allocation Overhead vs Linear Scan]
+**Learning:** Benchmarking revealed that replacing a linear scan O(N) with a map lookup O(1) for finding items in an inventory is SLOWER for N=1000 due to map allocation overhead (~43µs vs ~17µs).
+**Action:** Do not blindly replace O(N) loops with maps for "small" datasets (N < 5000) without benchmarking, especially if the map must be built from scratch for every operation.
+
+## 2025-12-22 - [Regex Optimization]
+**Learning:** Iteratively running multiple  calls (one per rule) is significantly slower than compiling a single regex with alternation `(p1|p2|...)` and using a hash map for rule lookup.
+**Action:** When matching against many static keywords/patterns, compile them into a single optimized regex to achieve O(1) complexity relative to the number of rules.
+
+## 2025-12-22 - [Map Allocation Overhead vs Linear Scan]
+**Learning:** Benchmarking revealed that replacing a linear scan O(N) with a map lookup O(1) for finding items in an inventory is SLOWER for N=1000 due to map allocation overhead (~43µs vs ~17µs).
+**Action:** Do not blindly replace O(N) loops with maps for "small" datasets (N < 5000) without benchmarking, especially if the map must be built from scratch for every operation.
+
+## 2025-12-22 - [Regex Optimization]
+**Learning:** Iteratively running multiple `regexp.MatchString` calls (one per rule) is significantly slower than compiling a single regex with alternation `(p1|p2|...)` and using a hash map for rule lookup.
+**Action:** When matching against many static keywords/patterns, compile them into a single optimized regex to achieve O(1) complexity relative to the number of rules.

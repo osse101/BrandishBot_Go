@@ -2,6 +2,7 @@ package user
 
 import (
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 
@@ -10,23 +11,27 @@ import (
 
 // StringFinder is responsible for finding specific strings in messages
 type StringFinder struct {
-	rules []FinderRule
-	mu    sync.RWMutex
+	// optimizedRegex matches any of the rules' patterns
+	optimizedRegex *regexp.Regexp
+	// ruleMap maps lowercased matched strings to their corresponding rules
+	ruleMap map[string][]FinderRule
+	mu      sync.RWMutex
 }
 
 // FinderRule defines a pattern to look for and the code to return if found
 type FinderRule struct {
-	Pattern  *regexp.Regexp
-	Code     string
-	Priority int
+	PatternStr string
+	Code       string
+	Priority   int
 }
 
 // NewStringFinder creates a new StringFinder with default rules
 func NewStringFinder() *StringFinder {
 	sf := &StringFinder{
-		rules: make([]FinderRule, 0),
+		ruleMap: make(map[string][]FinderRule),
 	}
 	sf.loadDefaultRules()
+	sf.compile()
 	return sf
 }
 
@@ -37,18 +42,42 @@ func (sf *StringFinder) loadDefaultRules() {
 }
 
 func (sf *StringFinder) addRule(patternStr, code string, priority int) {
-	// Case insensitive, word boundaries
-	// escape pattern string just in case, though for simple words it's fine
-	escaped := regexp.QuoteMeta(patternStr)
-	// \b matches word boundaries
-	// (?i) makes it case insensitive
-	regex := regexp.MustCompile(`(?i)\b` + escaped + `\b`)
+	lowerPattern := strings.ToLower(patternStr)
+	rule := FinderRule{
+		PatternStr: patternStr,
+		Code:       code,
+		Priority:   priority,
+	}
 
-	sf.rules = append(sf.rules, FinderRule{
-		Pattern:  regex,
-		Code:     code,
-		Priority: priority,
+	sf.ruleMap[lowerPattern] = append(sf.ruleMap[lowerPattern], rule)
+}
+
+// compile builds the optimized regex from the added rules
+func (sf *StringFinder) compile() {
+	if len(sf.ruleMap) == 0 {
+		return
+	}
+
+	// efficient matching: sort patterns by length descending to handle overlapping prefixes correctly
+	// e.g. "superman" before "super"
+	var patterns []string
+	for p := range sf.ruleMap {
+		patterns = append(patterns, p)
+	}
+	sort.Slice(patterns, func(i, j int) bool {
+		return len(patterns[i]) > len(patterns[j])
 	})
+
+	var escapedPatterns []string
+	for _, p := range patterns {
+		escapedPatterns = append(escapedPatterns, regexp.QuoteMeta(p))
+	}
+
+	// (?i) case insensitive
+	// \b word boundaries
+	// (p1|p2|...) alternation
+	regexStr := `(?i)\b(` + strings.Join(escapedPatterns, "|") + `)\b`
+	sf.optimizedRegex = regexp.MustCompile(regexStr)
 }
 
 // FindMatches searches the message for known strings and returns the matches
@@ -57,35 +86,32 @@ func (sf *StringFinder) FindMatches(message string) []domain.FoundString {
 	sf.mu.RLock()
 	defer sf.mu.RUnlock()
 
+	trimmedMsg := strings.TrimSpace(message)
+	if trimmedMsg == "" || sf.optimizedRegex == nil {
+		return nil
+	}
+
 	var matches []struct {
 		match    domain.FoundString
 		priority int
 	}
-
-	trimmedMsg := strings.TrimSpace(message)
-	if trimmedMsg == "" {
-		return nil
-	}
-
 	highestPriority := -1
 
-	for _, rule := range sf.rules {
-		// FindString returns "holding the text of the leftmost match in b"
-		// We want to see if it matches.
-		// If we want multiple matches of the same rule? "Multiple strings can be found per message"
-		// The example "Bapanada" -> "Bapanada" (one match).
-		// If message is "Bapanada Bapanada", do we return it twice?
-		// Requirement says "return to the client which string was found".
-		// Usually unique matches per rule per message is enough, or just list distinct found strings.
-		// "Multiple strings can be found per message" likely refers to DIFFERENT strings.
-		// But let's find all occurrences just in case, or at least one per rule.
-		// "Strings need to be exact matches"
+	// Find all non-overlapping matches
+	foundStrings := sf.optimizedRegex.FindAllString(trimmedMsg, -1)
 
-		found := rule.Pattern.FindString(trimmedMsg)
-		if found != "" {
+	for _, found := range foundStrings {
+		// Look up rules for this string (case insensitive)
+		lowerFound := strings.ToLower(found)
+		rules, exists := sf.ruleMap[lowerFound]
+		if !exists {
+			continue
+		}
+
+		for _, rule := range rules {
 			m := domain.FoundString{
 				Code:  rule.Code,
-				Value: found, // Return the actual matched string from regex (preserves case if we want, or from input)
+				Value: found, // Return the actual matched string from text
 			}
 
 			matches = append(matches, struct {
