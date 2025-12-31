@@ -128,8 +128,14 @@ lint-fix:
 build:
 	@echo "Building all binaries to bin/..."
 	@mkdir -p bin
-	@go build -o bin/app ./cmd/app
-	@go build -o bin/discord_bot ./cmd/discord
+	@VERSION=$$(git describe --tags --always --dirty 2>/dev/null || echo "dev"); \
+	BUILD_TIME=$$(date -u '+%Y-%m-%d_%H:%M:%S'); \
+	GIT_COMMIT=$$(git rev-parse --short HEAD 2>/dev/null || echo "unknown"); \
+	LDFLAGS="-X github.com/osse101/BrandishBot_Go/internal/handler.Version=$$VERSION \
+	         -X github.com/osse101/BrandishBot_Go/internal/handler.BuildTime=$$BUILD_TIME \
+	         -X github.com/osse101/BrandishBot_Go/internal/handler.GitCommit=$$GIT_COMMIT"; \
+	go build -ldflags "$$LDFLAGS" -o bin/app ./cmd/app; \
+	go build -ldflags "$$LDFLAGS" -o bin/discord_bot ./cmd/discord
 	@echo "✓ Built: bin/app"
 	@echo "✓ Built: bin/discord_bot"
 
@@ -191,12 +197,19 @@ docker-down:
 
 docker-build:
 	@echo "Rebuilding Docker images (no cache)..."
-	@docker compose build --no-cache
+	@VERSION=$$(git describe --tags --always --dirty 2>/dev/null || echo "dev"); \
+	BUILD_TIME=$$(date -u '+%Y-%m-%d_%H:%M:%S'); \
+	GIT_COMMIT=$$(git rev-parse --short HEAD 2>/dev/null || echo "unknown"); \
+	echo "Building with VERSION=$$VERSION BUILD_TIME=$$BUILD_TIME GIT_COMMIT=$$GIT_COMMIT"; \
+	VERSION=$$VERSION BUILD_TIME=$$BUILD_TIME GIT_COMMIT=$$GIT_COMMIT docker compose build --no-cache
 	@echo "Docker images rebuilt successfully"
 
 docker-build-fast:
 	@echo "Building Docker images (with cache, faster)..."
-	@DOCKER_BUILDKIT=1 docker compose build
+	@VERSION=$$(git describe --tags --always --dirty 2>/dev/null || echo "dev"); \
+	BUILD_TIME=$$(date -u '+%Y-%m-%d_%H:%M:%S'); \
+	GIT_COMMIT=$$(git rev-parse --short HEAD 2>/dev/null || echo "unknown"); \
+	VERSION=$$VERSION BUILD_TIME=$$BUILD_TIME GIT_COMMIT=$$GIT_COMMIT DOCKER_BUILDKIT=1 docker compose build
 	@echo "Docker images built successfully"
 
 docker-logs:

@@ -3,6 +3,8 @@ FROM golang:1.24-alpine AS builder
 
 # Build arguments
 ARG VERSION=dev
+ARG BUILD_TIME=unknown
+ARG GIT_COMMIT=unknown
 
 WORKDIR /app
 
@@ -23,13 +25,16 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 # Copy source code
 COPY . .
 
-# Build the application with optimizations
+# Build the application with optimizations and version information
 # -ldflags="-w -s" strips debug info and symbol table
-# Embed version information in the binary
+# Embed version, build time, and git commit in the binary
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-    -ldflags="-w -s -X main.version=${VERSION}" \
+    -ldflags="-w -s \
+      -X github.com/osse101/BrandishBot_Go/internal/handler.Version=${VERSION} \
+      -X github.com/osse101/BrandishBot_Go/internal/handler.BuildTime=${BUILD_TIME} \
+      -X github.com/osse101/BrandishBot_Go/internal/handler.GitCommit=${GIT_COMMIT}" \
     -o brandishbot ./cmd/app
 
 # Runtime stage - minimal image
