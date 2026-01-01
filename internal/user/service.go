@@ -851,7 +851,7 @@ func (s *service) processSearchSuccess(ctx context.Context, user *domain.User, r
 	}
 
 	if xpResult != nil && xpResult.LeveledUp {
-		resultMessage += fmt.Sprintf("\n🆙 EXPLORER LEVEL UP! (%d)", xpResult.NewLevel)
+		resultMessage += fmt.Sprintf(domain.MsgLevelUp, "EXPLORER", xpResult.NewLevel)
 	}
 
 	return resultMessage, nil

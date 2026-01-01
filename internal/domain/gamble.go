@@ -32,6 +32,7 @@ type Gamble struct {
 	Participants []Participant `json:"participants,omitempty"`
 	WinnerID     *string       `json:"winner_id,omitempty"`
 	TotalValue   int64         `json:"total_value,omitempty"`
+	Message      string        `json:"message,omitempty" db:"-"` // For immediate user feedback
 }
 
 // LootboxBet represents a wager of a specific lootbox item
@@ -63,4 +64,5 @@ type GambleResult struct {
 	WinnerID   string             `json:"winner_id"`
 	TotalValue int64              `json:"total_value"`
 	Items      []GambleOpenedItem `json:"items"`
+	Message    string             `json:"message,omitempty" db:"-"` // For immediate user feedback
 }
