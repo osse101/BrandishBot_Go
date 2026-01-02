@@ -45,6 +45,9 @@ func (m *mockUserService) FindUserByPlatformID(ctx context.Context, platform, pl
 func (m *mockUserService) AddItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) error {
 	return nil
 }
+func (m *mockUserService) AddItems(ctx context.Context, platform, platformID, username string, items map[string]int) error {
+	return nil
+}
 func (m *mockUserService) RemoveItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (int, error) {
 	return 0, nil
 }

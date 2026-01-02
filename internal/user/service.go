@@ -60,6 +60,7 @@ type Service interface {
 	FindUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error)
 	HandleIncomingMessage(ctx context.Context, platform, platformID, username, message string) (*domain.MessageResult, error)
 	AddItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) error
+	AddItems(ctx context.Context, platform, platformID, username string, items map[string]int) error
 	RemoveItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (int, error)
 	GiveItem(ctx context.Context, ownerPlatform, ownerPlatformID, ownerUsername, receiverPlatform, receiverPlatformID, receiverUsername, itemName string, quantity int) error
 	UseItem(ctx context.Context, platform, platformID, username, itemName string, quantity int, targetUsername string) (string, error)
@@ -290,6 +291,90 @@ func (s *service) AddItem(ctx context.Context, platform, platformID, username, i
 	}
 
 	log.Info("Item added successfully", "username", username, "item", itemName, "quantity", quantity)
+	return nil
+}
+
+// AddItems adds multiple items to a user's inventory in a single transaction.
+// This is more efficient than calling AddItem multiple times as it reduces transaction overhead.
+// Useful for bulk operations like lootbox opening.
+func (s *service) AddItems(ctx context.Context, platform, platformID, username string, items map[string]int) error {
+	log := logger.FromContext(ctx)
+	log.Info("AddItems called", "platform", platform, "platformID", platformID, "username", username, "itemCount", len(items))
+
+	if len(items) == 0 {
+		return nil // Nothing to do
+	}
+
+	user, err := s.getUserOrRegister(ctx, platform, platformID, username)
+	if err != nil {
+		return err
+	}
+
+	// Start single transaction for all items
+	tx, err := s.repo.BeginTx(ctx)
+	if err != nil {
+		log.Error("Failed to begin transaction", "error", err)
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer repository.SafeRollback(ctx, tx)
+
+	// Get inventory once
+	inventory, err := tx.GetInventory(ctx, user.ID)
+	if err != nil {
+		log.Error("Failed to get inventory", "error", err, "userID", user.ID)
+		return fmt.Errorf("failed to get inventory: %w", err)
+	}
+
+	// Fetch all item metadata (batch lookup)
+	itemNames := make([]string, 0, len(items))
+	for name := range items {
+		itemNames = append(itemNames, name)
+	}
+
+	// Build map of item names -> item IDs
+	itemIDMap := make(map[string]int)
+	for _, itemName := range itemNames {
+		item, err := s.getItemByNameCached(ctx, itemName)
+		if err != nil {
+			log.Error("Failed to get item", "error", err, "itemName", itemName)
+			return fmt.Errorf("failed to get item %s: %w", itemName, err)
+		}
+		if item == nil {
+			log.Warn("Item not found", "itemName", itemName)
+			return fmt.Errorf("%w: %s", domain.ErrItemNotFound, itemName)
+		}
+		itemIDMap[itemName] = item.ID
+	}
+
+	// Add all items to inventory using optimized helper
+	for itemName, quantity := range items {
+		itemID := itemIDMap[itemName]
+		found := false
+		for i, slot := range inventory.Slots {
+			if slot.ItemID == itemID {
+				inventory.Slots[i].Quantity += quantity
+				found = true
+				break
+			}
+		}
+		if !found {
+			inventory.Slots = append(inventory.Slots, domain.InventorySlot{ItemID: itemID, Quantity: quantity})
+		}
+	}
+
+	// Single inventory update
+	if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
+		log.Error("Failed to update inventory", "error", err, "userID", user.ID)
+		return fmt.Errorf("failed to update inventory: %w", err)
+	}
+
+	// Single commit
+	if err := tx.Commit(ctx); err != nil {
+		log.Error("Failed to commit transaction", "error", err)
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	log.Info("Items added successfully", "username", username, "itemCount", len(items))
 	return nil
 }
 

@@ -335,3 +335,106 @@ func BenchmarkService_AddItem_NewItem(b *testing.B) {
 		}
 	}
 }
+// Benchmark batch operations
+
+func BenchmarkService_AddItems_Batch10(b *testing.B) {
+	repo := &mockBenchRepository{}
+	statsService := &mockBenchStatsService{}
+	jobService := &mockBenchJobService{}
+	lootboxService := &mockBenchLootboxService{}
+	namingResolver := &mockBenchNamingResolver{}
+	cooldownService := &mockBenchCooldownService{}
+
+	service := NewService(repo, statsService, jobService, lootboxService, namingResolver, cooldownService, false)
+
+	ctx := context.Background()
+	
+	// Simulate 10 items from lootbox opening
+	items := map[string]int{
+		"money":          5,
+		"sword":          2,
+		"lootbox_tier0":  1,
+		"shield":         1,
+		"potion":         1,
+	}
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		err := service.AddItems(ctx, "twitch", "bench-batch", "batchuser", items)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkService_AddItems_Batch25(b *testing.B) {
+	repo := &mockBenchRepository{}
+	statsService := &mockBenchStatsService{}
+	jobService := &mockBenchJobService{}
+	lootboxService := &mockBenchLootboxService{}
+	namingResolver := &mockBenchNamingResolver{}
+	cooldownService := &mockBenchCooldownService{}
+
+	service := NewService(repo, statsService, jobService, lootboxService, namingResolver, cooldownService, false)
+
+	ctx := context.Background()
+	
+	// Simulate 25 items from gamble (5 users × 5 lootboxes)
+	items := map[string]int{
+		"money":          15,
+		"sword":          5,
+		"lootbox_tier0":  3,
+		"shield":         1,
+		"potion":         1,
+	}
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		err := service.AddItems(ctx, "twitch", "bench-batch25", "gambleuser", items)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+// Benchmark comparison: Individual vs Batch
+func BenchmarkService_AddItem_Individual10(b *testing.B) {
+	repo := &mockBenchRepository{}
+	statsService := &mockBenchStatsService{}
+	jobService := &mockBenchJobService{}
+	lootboxService := &mockBenchLootboxService{}
+	namingResolver := &mockBenchNamingResolver{}
+	cooldownService := &mockBenchCooldownService{}
+
+	service := NewService(repo, statsService, jobService, lootboxService, namingResolver, cooldownService, false)
+
+	ctx := context.Background()
+	
+	// Same 10 items as batch test, but added individually
+	itemsList := []struct{
+		name string
+		qty int
+	}{
+		{"money", 5},
+		{"sword", 2},
+		{"lootbox_tier0", 1},
+		{"shield", 1},
+		{"potion", 1},
+	}
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		for _, item := range itemsList {
+			err := service.AddItem(ctx, "twitch", "bench-indiv", "indivuser", item.name, item.qty)
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
+	}
+}

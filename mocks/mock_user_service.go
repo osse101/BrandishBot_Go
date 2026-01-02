@@ -77,6 +77,56 @@ func (_c *MockUserService_AddItem_Call) RunAndReturn(run func(context.Context, s
 	return _c
 }
 
+// AddItems provides a mock function with given fields: ctx, platform, platformID, username, items
+func (_m *MockUserService) AddItems(ctx context.Context, platform string, platformID string, username string, items map[string]int) error {
+	ret := _m.Called(ctx, platform, platformID, username, items)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AddItems")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, map[string]int) error); ok {
+		r0 = rf(ctx, platform, platformID, username, items)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockUserService_AddItems_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddItems'
+type MockUserService_AddItems_Call struct {
+	*mock.Call
+}
+
+// AddItems is a helper method to define mock.On call
+//   - ctx context.Context
+//   - platform string
+//   - platformID string
+//   - username string
+//   - items map[string]int
+func (_e *MockUserService_Expecter) AddItems(ctx interface{}, platform interface{}, platformID interface{}, username interface{}, items interface{}) *MockUserService_AddItems_Call {
+	return &MockUserService_AddItems_Call{Call: _e.mock.On("AddItems", ctx, platform, platformID, username, items)}
+}
+
+func (_c *MockUserService_AddItems_Call) Run(run func(ctx context.Context, platform string, platformID string, username string, items map[string]int)) *MockUserService_AddItems_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(string), args[4].(map[string]int))
+	})
+	return _c
+}
+
+func (_c *MockUserService_AddItems_Call) Return(_a0 error) *MockUserService_AddItems_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockUserService_AddItems_Call) RunAndReturn(run func(context.Context, string, string, string, map[string]int) error) *MockUserService_AddItems_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // FindUserByPlatformID provides a mock function with given fields: ctx, platform, platformID
 func (_m *MockUserService) FindUserByPlatformID(ctx context.Context, platform string, platformID string) (*domain.User, error) {
 	ret := _m.Called(ctx, platform, platformID)
