@@ -114,19 +114,8 @@ type dropStats struct {
 func (s *service) aggregateDropsAndUpdateInventory(inventory *domain.Inventory, drops []lootbox.DroppedItem, msgBuilder *strings.Builder) dropStats {
 	var stats dropStats
 
-	// Optimization: Use linear scan for small number of drops to avoid map allocation overhead
-	// Benchmarks show linear scan is faster for small M (drops) even with large N (inventory)
-	// Map overhead ~30µs vs Linear ~2µs for M=5, N=1000
-	const linearScanThreshold = 10
-	useMap := len(drops) >= linearScanThreshold
-
-	var slotMap map[int]int
-	if useMap {
-		slotMap = make(map[int]int, len(inventory.Slots))
-		for i, slot := range inventory.Slots {
-			slotMap[slot.ItemID] = i
-		}
-	}
+	// Convert drops to inventory slots for batch adding
+	itemsToAdd := make([]domain.InventorySlot, 0, len(drops))
 
 	first := true
 	for _, drop := range drops {
@@ -138,28 +127,11 @@ func (s *service) aggregateDropsAndUpdateInventory(inventory *domain.Inventory, 
 			stats.hasEpic = true
 		}
 
-		// Add to inventory
-		if useMap {
-			if idx, exists := slotMap[drop.ItemID]; exists {
-				inventory.Slots[idx].Quantity += drop.Quantity
-			} else {
-				inventory.Slots = append(inventory.Slots, domain.InventorySlot{ItemID: drop.ItemID, Quantity: drop.Quantity})
-				slotMap[drop.ItemID] = len(inventory.Slots) - 1
-			}
-		} else {
-			// Linear scan
-			found := false
-			for i := range inventory.Slots {
-				if inventory.Slots[i].ItemID == drop.ItemID {
-					inventory.Slots[i].Quantity += drop.Quantity
-					found = true
-					break
-				}
-			}
-			if !found {
-				inventory.Slots = append(inventory.Slots, domain.InventorySlot{ItemID: drop.ItemID, Quantity: drop.Quantity})
-			}
-		}
+		// Prepare item for batch add
+		itemsToAdd = append(itemsToAdd, domain.InventorySlot{
+			ItemID:   drop.ItemID,
+			Quantity: drop.Quantity,
+		})
 
 		if !first {
 			msgBuilder.WriteString(", ")
@@ -177,6 +149,9 @@ func (s *service) aggregateDropsAndUpdateInventory(inventory *domain.Inventory, 
 		msgBuilder.WriteString(fmt.Sprintf("%dx %s%s", drop.Quantity, itemDisplayName, shineAnnotation))
 		first = false
 	}
+
+	// Add all items to inventory using optimized helper
+	utils.AddItemsToInventory(inventory, itemsToAdd, nil)
 
 	return stats
 }

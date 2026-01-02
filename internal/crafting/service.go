@@ -426,19 +426,8 @@ func (s *service) processDisassembleOutputs(ctx context.Context, inventory *doma
 		itemsByID[items[i].ID] = &items[i]
 	}
 
-	// Optimization: Use linear scan for small number of outputs to avoid map allocation overhead
-	// Benchmarks show linear scan is faster for small M (outputs) even with large N (inventory)
-	// Map overhead ~30µs vs Linear ~2µs for M=5, N=1000
-	const linearScanThreshold = 10
-	useMap := len(outputs) >= linearScanThreshold
-
-	var slotMap map[int]int
-	if useMap {
-		slotMap = make(map[int]int, len(inventory.Slots))
-		for i, slot := range inventory.Slots {
-			slotMap[slot.ItemID] = i
-		}
-	}
+	// Prepare items to add to inventory
+	itemsToAdd := make([]domain.InventorySlot, 0, len(outputs))
 
 	for _, output := range outputs {
 		// Calculate output for regular items
@@ -462,29 +451,15 @@ func (s *service) processDisassembleOutputs(ctx context.Context, inventory *doma
 		}
 		outputMap[outputItem.InternalName] = totalOutput
 
-		// Add to inventory
-		if useMap {
-			if idx, exists := slotMap[output.ItemID]; exists {
-				inventory.Slots[idx].Quantity += totalOutput
-			} else {
-				inventory.Slots = append(inventory.Slots, domain.InventorySlot{ItemID: output.ItemID, Quantity: totalOutput})
-				slotMap[output.ItemID] = len(inventory.Slots) - 1
-			}
-		} else {
-			// Linear scan
-			found := false
-			for i := range inventory.Slots {
-				if inventory.Slots[i].ItemID == output.ItemID {
-					inventory.Slots[i].Quantity += totalOutput
-					found = true
-					break
-				}
-			}
-			if !found {
-				inventory.Slots = append(inventory.Slots, domain.InventorySlot{ItemID: output.ItemID, Quantity: totalOutput})
-			}
-		}
+		// Prepare for batch add
+		itemsToAdd = append(itemsToAdd, domain.InventorySlot{
+			ItemID:   output.ItemID,
+			Quantity: totalOutput,
+		})
 	}
+
+	// Add all outputs to inventory using optimized helper
+	utils.AddItemsToInventory(inventory, itemsToAdd, nil)
 
 	return outputMap, nil
 }
