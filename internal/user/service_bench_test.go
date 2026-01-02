@@ -348,7 +348,7 @@ func BenchmarkService_AddItems_Batch10(b *testing.B) {
 	service := NewService(repo, statsService, jobService, lootboxService, namingResolver, cooldownService, false)
 
 	ctx := context.Background()
-	
+
 	// Simulate 10 items from lootbox opening
 	items := map[string]int{
 		"money":          5,
@@ -380,7 +380,7 @@ func BenchmarkService_AddItems_Batch25(b *testing.B) {
 	service := NewService(repo, statsService, jobService, lootboxService, namingResolver, cooldownService, false)
 
 	ctx := context.Background()
-	
+
 	// Simulate 25 items from gamble (5 users × 5 lootboxes)
 	items := map[string]int{
 		"money":          15,
@@ -413,7 +413,7 @@ func BenchmarkService_AddItem_Individual10(b *testing.B) {
 	service := NewService(repo, statsService, jobService, lootboxService, namingResolver, cooldownService, false)
 
 	ctx := context.Background()
-	
+
 	// Same 10 items as batch test, but added individually
 	itemsList := []struct{
 		name string

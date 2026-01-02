@@ -127,7 +127,7 @@ func (m *MockStatsService) GetLeaderboard(ctx context.Context, eventType domain.
 func TestCalculateLevel(t *testing.T) {
 	repo := new(MockRepository)
 	prog := new(MockProgressionService)
-	svc := NewService(repo, prog, nil)
+	svc := NewService(repo, prog, nil, nil)
 
 	// Helper to calculate XP for a specific level to ensure we test accurate boundaries
 	xpForLevel := func(lvl int) int64 {
@@ -158,7 +158,7 @@ func TestCalculateLevel(t *testing.T) {
 func TestGetXPForLevel(t *testing.T) {
 	repo := new(MockRepository)
 	prog := new(MockProgressionService)
-	svc := NewService(repo, prog, nil)
+	svc := NewService(repo, prog, nil, nil)
 
 	// Same formula logic as service to verify consistency
 	expectedLevel2XP := int64(BaseXP*math.Pow(1, LevelExponent)) + int64(BaseXP*math.Pow(2, LevelExponent))
@@ -180,7 +180,7 @@ func TestGetXPForLevel(t *testing.T) {
 func TestAwardXP_Success(t *testing.T) {
 	repo := new(MockRepository)
 	prog := new(MockProgressionService)
-	svc := NewService(repo, prog, nil)
+	svc := NewService(repo, prog, nil, nil)
 	ctx := context.Background()
 
 	userID := "user1"
@@ -215,7 +215,7 @@ func TestAwardXP_LevelUp(t *testing.T) {
 	repo := new(MockRepository)
 	prog := new(MockProgressionService)
 	statsSvc := new(MockStatsService)
-	svc := NewService(repo, prog, statsSvc)
+	svc := NewService(repo, prog, statsSvc, nil)
 	ctx := context.Background()
 
 	userID := "user1"
@@ -254,7 +254,7 @@ func TestAwardXP_LevelUp(t *testing.T) {
 func TestAwardXP_Locked(t *testing.T) {
 	repo := new(MockRepository)
 	prog := new(MockProgressionService)
-	svc := NewService(repo, prog, nil)
+	svc := NewService(repo, prog, nil, nil)
 	ctx := context.Background()
 
 	prog.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(false, nil)
@@ -267,7 +267,7 @@ func TestAwardXP_Locked(t *testing.T) {
 func TestAwardXP_DailyCap(t *testing.T) {
 	repo := new(MockRepository)
 	prog := new(MockProgressionService)
-	svc := NewService(repo, prog, nil)
+	svc := NewService(repo, prog, nil, nil)
 	ctx := context.Background()
 
 	userID := "u1"
@@ -303,7 +303,7 @@ func TestAwardXP_DailyCap(t *testing.T) {
 func TestAwardXP_DailyCap_Reached(t *testing.T) {
 	repo := new(MockRepository)
 	prog := new(MockProgressionService)
-	svc := NewService(repo, prog, nil)
+	svc := NewService(repo, prog, nil, nil)
 	ctx := context.Background()
 
 	userID := "u1"
@@ -329,7 +329,7 @@ func TestAwardXP_DailyCap_Reached(t *testing.T) {
 func TestAwardXP_MaxLevel(t *testing.T) {
 	repo := new(MockRepository)
 	prog := new(MockProgressionService)
-	svc := NewService(repo, prog, nil)
+	svc := NewService(repo, prog, nil, nil)
 	ctx := context.Background()
 
 	userID := "u1"
@@ -367,7 +367,7 @@ func TestAwardXP_MaxLevel(t *testing.T) {
 func TestGetJobBonus(t *testing.T) {
 	repo := new(MockRepository)
 	prog := new(MockProgressionService)
-	svc := NewService(repo, prog, nil)
+	svc := NewService(repo, prog, nil, nil)
 	ctx := context.Background()
 
 	jobID := 1
@@ -393,7 +393,7 @@ func TestGetJobBonus(t *testing.T) {
 func TestGetPrimaryJob(t *testing.T) {
 	repo := new(MockRepository)
 	prog := new(MockProgressionService)
-	svc := NewService(repo, prog, nil)
+	svc := NewService(repo, prog, nil, nil)
 	ctx := context.Background()
 
 	jobs := []domain.Job{
@@ -420,7 +420,7 @@ func TestGetPrimaryJob(t *testing.T) {
 func TestGetAllJobs_Success(t *testing.T) {
 	repo := new(MockRepository)
 	prog := new(MockProgressionService)
-	svc := NewService(repo, prog, nil)
+	svc := NewService(repo, prog, nil, nil)
 	ctx := context.Background()
 
 	jobs := []domain.Job{
@@ -439,7 +439,7 @@ func TestGetAllJobs_Success(t *testing.T) {
 func TestGetAllJobs_Empty(t *testing.T) {
 	repo := new(MockRepository)
 	prog := new(MockProgressionService)
-	svc := NewService(repo, prog, nil)
+	svc := NewService(repo, prog, nil, nil)
 	ctx := context.Background()
 
 	repo.On("GetAllJobs", ctx).Return([]domain.Job{}, nil)
@@ -452,7 +452,7 @@ func TestGetAllJobs_Empty(t *testing.T) {
 func TestGetAllJobs_RepositoryError(t *testing.T) {
 	repo := new(MockRepository)
 	prog := new(MockProgressionService)
-	svc := NewService(repo, prog, nil)
+	svc := NewService(repo, prog, nil, nil)
 	ctx := context.Background()
 
 	repo.On("GetAllJobs", ctx).Return(nil, assert.AnError)
@@ -467,7 +467,7 @@ func TestGetAllJobs_RepositoryError(t *testing.T) {
 func TestGetUserJobs_NoProgress(t *testing.T) {
 	repo := new(MockRepository)
 	prog := new(MockProgressionService)
-	svc := NewService(repo, prog, nil)
+	svc := NewService(repo, prog, nil, nil)
 	ctx := context.Background()
 
 	jobs := []domain.Job{
@@ -488,7 +488,7 @@ func TestGetUserJobs_NoProgress(t *testing.T) {
 func TestGetUserJobs_RepositoryError(t *testing.T) {
 	repo := new(MockRepository)
 	prog := new(MockProgressionService)
-	svc := NewService(repo, prog, nil)
+	svc := NewService(repo, prog, nil, nil)
 	ctx := context.Background()
 
 	repo.On("GetAllJobs", ctx).Return(nil, assert.AnError)
@@ -501,7 +501,7 @@ func TestGetUserJobs_RepositoryError(t *testing.T) {
 func TestGetUserJobs_UserJobsError(t *testing.T) {
 	repo := new(MockRepository)
 	prog := new(MockProgressionService)
-	svc := NewService(repo, prog, nil)
+	svc := NewService(repo, prog, nil, nil)
 	ctx := context.Background()
 
 	jobs := []domain.Job{
@@ -521,7 +521,7 @@ func TestGetUserJobs_UserJobsError(t *testing.T) {
 func TestGetPrimaryJob_NoJobs(t *testing.T) {
 	repo := new(MockRepository)
 	prog := new(MockProgressionService)
-	svc := NewService(repo, prog, nil)
+	svc := NewService(repo, prog, nil, nil)
 	ctx := context.Background()
 
 	repo.On("GetAllJobs", ctx).Return([]domain.Job{}, nil)
@@ -535,7 +535,7 @@ func TestGetPrimaryJob_NoJobs(t *testing.T) {
 func TestGetPrimaryJob_TieOnLevel_HigherXP(t *testing.T) {
 	repo := new(MockRepository)
 	prog := new(MockProgressionService)
-	svc := NewService(repo, prog, nil)
+	svc := NewService(repo, prog, nil, nil)
 	ctx := context.Background()
 
 	jobs := []domain.Job{
@@ -561,7 +561,7 @@ func TestGetPrimaryJob_TieOnLevel_HigherXP(t *testing.T) {
 func TestGetPrimaryJob_ErrorPropagation(t *testing.T) {
 	repo := new(MockRepository)
 	prog := new(MockProgressionService)
-	svc := NewService(repo, prog, nil)
+	svc := NewService(repo, prog, nil, nil)
 	ctx := context.Background()
 
 	repo.On("GetAllJobs", ctx).Return(nil, assert.AnError)
@@ -576,7 +576,7 @@ func TestGetPrimaryJob_ErrorPropagation(t *testing.T) {
 func TestGetJobLevel_JobNotFound(t *testing.T) {
 	repo := new(MockRepository)
 	prog := new(MockProgressionService)
-	svc := NewService(repo, prog, nil)
+	svc := NewService(repo, prog, nil, nil)
 	ctx := context.Background()
 
 	repo.On("GetJobByKey", ctx, "invalid_job").Return(nil, assert.AnError)
@@ -589,7 +589,7 @@ func TestGetJobLevel_JobNotFound(t *testing.T) {
 func TestGetJobLevel_RepositoryError(t *testing.T) {
 	repo := new(MockRepository)
 	prog := new(MockProgressionService)
-	svc := NewService(repo, prog, nil)
+	svc := NewService(repo, prog, nil, nil)
 	ctx := context.Background()
 
 	job := &domain.Job{ID: 1, JobKey: JobKeyBlacksmith}
@@ -604,7 +604,7 @@ func TestGetJobLevel_RepositoryError(t *testing.T) {
 func TestGetJobLevel_NoProgress(t *testing.T) {
 	repo := new(MockRepository)
 	prog := new(MockProgressionService)
-	svc := NewService(repo, prog, nil)
+	svc := NewService(repo, prog, nil, nil)
 	ctx := context.Background()
 
 	job := &domain.Job{ID: 1, JobKey: JobKeyBlacksmith}
@@ -621,7 +621,7 @@ func TestGetJobLevel_NoProgress(t *testing.T) {
 func TestGetJobBonus_ZeroLevel(t *testing.T) {
 	repo := new(MockRepository)
 	prog := new(MockProgressionService)
-	svc := NewService(repo, prog, nil)
+	svc := NewService(repo, prog, nil, nil)
 	ctx := context.Background()
 
 	job := &domain.Job{ID: 1, JobKey: JobKeyExplorer}
@@ -639,7 +639,7 @@ func TestGetJobBonus_ZeroLevel(t *testing.T) {
 func TestGetJobBonus_NoBonusesConfigured(t *testing.T) {
 	repo := new(MockRepository)
 	prog := new(MockProgressionService)
-	svc := NewService(repo, prog, nil)
+	svc := NewService(repo, prog, nil, nil)
 	ctx := context.Background()
 
 	job := &domain.Job{ID: 1, JobKey: JobKeyExplorer}
@@ -657,7 +657,7 @@ func TestGetJobBonus_NoBonusesConfigured(t *testing.T) {
 func TestGetJobBonus_MultipleBonusTypes(t *testing.T) {
 	repo := new(MockRepository)
 	prog := new(MockProgressionService)
-	svc := NewService(repo, prog, nil)
+	svc := NewService(repo, prog, nil, nil)
 	ctx := context.Background()
 
 	job := &domain.Job{ID: 1, JobKey: JobKeyExplorer}
@@ -680,7 +680,7 @@ func TestGetJobBonus_MultipleBonusTypes(t *testing.T) {
 func TestGetJobBonus_RepositoryError(t *testing.T) {
 	repo := new(MockRepository)
 	prog := new(MockProgressionService)
-	svc := NewService(repo, prog, nil)
+	svc := NewService(repo, prog, nil, nil)
 	ctx := context.Background()
 
 	repo.On("GetJobByKey", ctx, JobKeyExplorer).Return(nil, assert.AnError)
@@ -695,7 +695,7 @@ func TestGetJobBonus_RepositoryError(t *testing.T) {
 func TestAwardXP_RepositoryFailure_GetJob(t *testing.T) {
 	repo := new(MockRepository)
 	prog := new(MockProgressionService)
-	svc := NewService(repo, prog, nil)
+	svc := NewService(repo, prog, nil, nil)
 	ctx := context.Background()
 
 	prog.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
@@ -709,7 +709,7 @@ func TestAwardXP_RepositoryFailure_GetJob(t *testing.T) {
 func TestAwardXP_RepositoryFailure_Upsert(t *testing.T) {
 	repo := new(MockRepository)
 	prog := new(MockProgressionService)
-	svc := NewService(repo, prog, nil)
+	svc := NewService(repo, prog, nil, nil)
 	ctx := context.Background()
 
 	job := &domain.Job{ID: 1, JobKey: JobKeyBlacksmith}
@@ -727,7 +727,7 @@ func TestAwardXP_RepositoryFailure_Upsert(t *testing.T) {
 func TestAwardXP_PartialDailyCapRemaining(t *testing.T) {
 	repo := new(MockRepository)
 	prog := new(MockProgressionService)
-	svc := NewService(repo, prog, nil)
+	svc := NewService(repo, prog, nil, nil)
 	ctx := context.Background()
 
 	job := &domain.Job{ID: 1, JobKey: JobKeyBlacksmith}
@@ -762,7 +762,7 @@ func TestAwardXP_PartialDailyCapRemaining(t *testing.T) {
 func TestGetXPForLevel_NegativeLevel(t *testing.T) {
 	repo := new(MockRepository)
 	prog := new(MockProgressionService)
-	svc := NewService(repo, prog, nil)
+	svc := NewService(repo, prog, nil, nil)
 
 	result := svc.GetXPForLevel(-5)
 	assert.Equal(t, int64(0), result)
@@ -771,7 +771,7 @@ func TestGetXPForLevel_NegativeLevel(t *testing.T) {
 func TestGetXPForLevel_VeryHighLevel(t *testing.T) {
 	repo := new(MockRepository)
 	prog := new(MockProgressionService)
-	svc := NewService(repo, prog, nil)
+	svc := NewService(repo, prog, nil, nil)
 
 	// Should not panic or overflow
 	result := svc.GetXPForLevel(50)
@@ -782,7 +782,7 @@ func TestGetXPForLevel_VeryHighLevel(t *testing.T) {
 func TestCalculateLevel_VeryHighXP(t *testing.T) {
 	repo := new(MockRepository)
 	prog := new(MockProgressionService)
-	svc := NewService(repo, prog, nil)
+	svc := NewService(repo, prog, nil, nil)
 
 	// Very high XP should still work and cap at iteration limit
 	result := svc.CalculateLevel(10000000)

@@ -304,14 +304,14 @@ func TestHandleIncomingMessage_ExistingUser(t *testing.T) {
 func TestUseItem(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	
+
 	// Create a mock lootbox service
 	lootboxSvc := new(MockLootboxService)
 	drops := []lootbox.DroppedItem{
 		{ItemID: 4, ItemName: domain.ItemLootbox0, Quantity: 1, Value: 10, ShineLevel: "COMMON"},
 	}
 	lootboxSvc.On("OpenLootbox", mock.Anything, domain.ItemLootbox1, 1).Return(drops, nil)
-	
+
 	svc := NewService(repo, nil, nil, lootboxSvc, NewMockNamingResolver(), nil, false).(*service)
 
 	ctx := context.Background()
@@ -516,14 +516,14 @@ func TestGetInventory(t *testing.T) {
 func TestUseItem_Lootbox0(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	
+
 	// Create a mock lootbox service
 	lootboxSvc := new(MockLootboxService)
 	drops := []lootbox.DroppedItem{
 		{ItemID: 3, ItemName: domain.ItemMoney, Quantity: 5, Value: 5, ShineLevel: "COMMON"},
 	}
 	lootboxSvc.On("OpenLootbox", mock.Anything, domain.ItemLootbox0, 1).Return(drops, nil)
-	
+
 	svc := NewService(repo, nil, nil, lootboxSvc, NewMockNamingResolver(), nil, false).(*service)
 
 	ctx := context.Background()
@@ -561,14 +561,14 @@ func TestUseItem_Lootbox0(t *testing.T) {
 func TestUseItem_Lootbox2(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	
+
 	// Create a mock lootbox service
 	lootboxSvc := new(MockLootboxService)
 	drops := []lootbox.DroppedItem{
 		{ItemID: 1, ItemName: domain.ItemLootbox1, Quantity: 1, Value: 50, ShineLevel: "COMMON"},
 	}
 	lootboxSvc.On("OpenLootbox", mock.Anything, domain.ItemLootbox2, 1).Return(drops, nil)
-	
+
 	svc := NewService(repo, nil, nil, lootboxSvc, NewMockNamingResolver(), nil, false).(*service)
 
 	ctx := context.Background()

@@ -613,7 +613,7 @@ func (s *service) calculateDisassembleQuantity(inventory *domain.Inventory, item
 // NOTE: Caller must call s.wg.Add(1) before launching this in a goroutine
 func (s *service) awardBlacksmithXP(ctx context.Context, userID string, quantity int, source, itemName string) {
 	defer s.wg.Done()
-	
+
 	if s.jobService == nil {
 		return // Job system not enabled
 	}

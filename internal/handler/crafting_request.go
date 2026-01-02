@@ -68,4 +68,3 @@ func publishCraftingEvent(ctx context.Context, eventBus event.Bus, eventType eve
 
 	return nil
 }
-

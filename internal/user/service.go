@@ -112,7 +112,7 @@ type service struct {
 	devMode         bool // When true, bypasses cooldowns
 	wg              sync.WaitGroup
 	userCache       *userCache // In-memory cache for user lookups
-	
+
 	// Item cache: in-memory cache for item metadata (name, description, value, etc.)
 	// Purpose: Reduce database queries for frequently accessed item data
 	// Thread-safety: Protected by itemCacheMu (RWMutex)
@@ -805,9 +805,9 @@ type searchParams struct {
 // executeSearch performs the actual search logic (called within cooldown enforcement)
 func (s *service) executeSearch(ctx context.Context, user *domain.User) (string, error) {
 	log := logger.FromContext(ctx)
-	
+
 	params := s.calculateSearchParameters(ctx, user)
-	
+
 	// Perform search roll
 	roll := utils.SecureRandomFloat()
 	if params.isFirstSearchDaily {
