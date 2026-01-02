@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
 
@@ -13,6 +15,13 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/user"
 )
+
+func init() {
+	// Set log level to WARN for benchmarks (reduces noise)
+	opts := &slog.HandlerOptions{Level: slog.LevelWarn}
+	handler := slog.NewTextHandler(os.Stdout, opts)
+	slog.SetDefault(slog.New(handler))
+}
 
 // Mock services for benchmarking
 type mockUserService struct{}

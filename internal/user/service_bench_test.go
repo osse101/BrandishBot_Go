@@ -2,6 +2,8 @@ package user
 
 import (
 	"context"
+	"log/slog"
+	"os"
 	"testing"
 	"time"
 
@@ -10,6 +12,13 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/lootbox"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
+
+func init() {
+	// Set log level to WARN for benchmarks (reduces noise)
+	opts := &slog.HandlerOptions{Level: slog.LevelWarn}
+	handler := slog.NewTextHandler(os.Stdout, opts)
+	slog.SetDefault(slog.New(handler))
+}
 
 // Mock repository for benchmarking
 type mockBenchRepository struct{}
