@@ -131,12 +131,16 @@ namespace BrandishBot.Client
         /// <summary>
         /// Add item to user's inventory (Admin/Streamer only)
         /// </summary>
-        public async Task<string> AddItem(string platform, string platformId, string itemName, int quantity)
+        /// <summary>
+        /// Add item to user's inventory (Admin/Streamer only)
+        /// </summary>
+        public async Task<string> AddItem(string platform, string platformId, string username, string itemName, int quantity)
         {
             return await PostJsonAsync("/user/item/add", new
             {
                 platform = platform,
                 platform_id = platformId,
+                username = username,
                 item_name = itemName,
                 quantity = quantity
             });
@@ -145,12 +149,16 @@ namespace BrandishBot.Client
         /// <summary>
         /// Remove item from user's inventory (Admin/Streamer only)
         /// </summary>
-        public async Task<string> RemoveItem(string platform, string platformId, string itemName, int quantity)
+        /// <summary>
+        /// Remove item from user's inventory (Admin/Streamer only)
+        /// </summary>
+        public async Task<string> RemoveItem(string platform, string platformId, string username, string itemName, int quantity)
         {
             return await PostJsonAsync("/user/item/remove", new
             {
                 platform = platform,
                 platform_id = platformId,
+                username = username,
                 item_name = itemName,
                 quantity = quantity
             });
