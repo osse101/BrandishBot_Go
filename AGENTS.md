@@ -14,6 +14,7 @@ This document provides AI agents with structured guidance on navigating, underst
 | **Database Operations** | [DATABASE.md](docs/DATABASE.md), [MIGRATIONS.md](docs/MIGRATIONS.md) | [docs/development/journal.md](docs/development/journal.md) |
 | **Deployment** | [DEPLOYMENT_WORKFLOW.md](docs/deployment/DEPLOYMENT_WORKFLOW.md) | N/A |
 | **Feature Planning/Proposals** | [gamble_feature.md](docs/planning/gamble_feature.md) (template example) | [docs/development/journal.md](docs/development/journal.md) |
+| **Benchmarking** | [BENCHMARKING.md](docs/benchmarking/BENCHMARKING.md) | [docs/benchmarking/journal.md](docs/benchmarking/journal.md) |
 
 ---
 
@@ -32,6 +33,7 @@ This document provides AI agents with structured guidance on navigating, underst
 | [docs/architecture/journal.md](docs/architecture/journal.md) | System design, scaling, service architecture | Design decisions, multi-instance work | After architectural changes or ADR decisions |
 | [docs/testing/journal.md](docs/testing/journal.md) | Testing patterns, mocks, coverage strategies | Writing tests, debugging test failures | After learning testing lessons |
 | [docs/tools/journal.md](docs/tools/journal.md) | Documenting learnings, patterns, and best practices for tools | Using tools | After learning tools lessons |
+| [docs/benchmarking/journal.md](docs/benchmarking/journal.md) | Documenting learnings, patterns, and best practices for benchmarking | When optimizing | After an optimization leads to no improvement or after a new category of optimization is discovered |
 
 ### Journal Entry Format
 
