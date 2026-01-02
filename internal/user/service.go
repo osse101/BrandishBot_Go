@@ -349,21 +349,18 @@ func (s *service) AddItems(ctx context.Context, platform, platformID, username s
 		itemIDMap[itemName] = item.ID
 	}
 
-	// Add all items to inventory using optimized helper
+	// Convert items to InventorySlots for the helper
+	slotsToAdd := make([]domain.InventorySlot, 0, len(items))
 	for itemName, quantity := range items {
 		itemID := itemIDMap[itemName]
-		found := false
-		for i, slot := range inventory.Slots {
-			if slot.ItemID == itemID {
-				inventory.Slots[i].Quantity += quantity
-				found = true
-				break
-			}
-		}
-		if !found {
-			inventory.Slots = append(inventory.Slots, domain.InventorySlot{ItemID: itemID, Quantity: quantity})
-		}
+		slotsToAdd = append(slotsToAdd, domain.InventorySlot{
+			ItemID:   itemID,
+			Quantity: quantity,
+		})
 	}
+
+	// Add all items to inventory using optimized helper
+	utils.AddItemsToInventory(inventory, slotsToAdd, nil)
 
 	// Single inventory update
 	if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
