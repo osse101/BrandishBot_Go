@@ -98,7 +98,7 @@ func TestHandleGetAllJobs(t *testing.T) {
 
 	var result map[string][]domain.Job
 	json.NewDecoder(resp.Body).Decode(&result)
-	
+
 	assert.Len(t, result["jobs"], 1)
 	assert.Equal(t, "j1", result["jobs"][0].JobKey)
 }
@@ -164,15 +164,15 @@ func TestHandleAwardXP(t *testing.T) {
 	h := NewJobHandler(svc)
 
 	reqBody := AwardXPRequest{
-		UserID: "u1",
-		JobKey: "j1",
+		UserID:   "u1",
+		JobKey:   "j1",
 		XPAmount: 100,
-		Source: "test",
+		Source:   "test",
 	}
 	body, _ := json.Marshal(reqBody)
 
 	awardResult := &domain.XPAwardResult{
-		JobKey: "j1",
+		JobKey:   "j1",
 		XPGained: 100,
 		NewLevel: 1,
 	}

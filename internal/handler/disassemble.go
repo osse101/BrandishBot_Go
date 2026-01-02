@@ -85,6 +85,10 @@ func HandleDisassembleItem(svc crafting.Service, progressionSvc progression.Serv
 			message = fmt.Sprintf("PERFECT SALVAGE! You efficiently recovered more materials! (+50%% Bonus): %s", outputStr)
 		}
 
+		if result.JobFeedback != nil && result.JobFeedback.LeveledUp {
+			message += fmt.Sprintf("\n\n🆙 **BLACKSMITH LEVEL UP!** You are now Level %d!", result.JobFeedback.NewLevel)
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		respondJSON(w, http.StatusOK, DisassembleItemResponse{

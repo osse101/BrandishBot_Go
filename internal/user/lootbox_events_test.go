@@ -99,7 +99,7 @@ func (m *MockNamingResolverForLootboxTests) RegisterItem(internalName, publicNam
 func TestProcessLootboxDrops_JackpotEvents(t *testing.T) {
 	// Test data
 	user := &domain.User{
-		ID: "user-123",
+		ID:       "user-123",
 		Username: "testuser",
 	}
 	lootboxItem := &domain.Item{
@@ -378,4 +378,3 @@ func TestProcessLootboxDrops_BulkFeedbackThreshold(t *testing.T) {
 		assert.NotContains(t, msg, "Nice haul!", "Bulk feedback should NOT appear when big win")
 	})
 }
-

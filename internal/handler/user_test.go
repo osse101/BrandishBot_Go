@@ -9,9 +9,9 @@ import (
 	"testing"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"github.com/osse101/BrandishBot_Go/mocks"
 )
 
 func TestHandleRegisterUser(t *testing.T) {

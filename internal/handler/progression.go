@@ -75,7 +75,6 @@ func (h *ProgressionHandlers) HandleGetAvailable() http.HandlerFunc {
 	}
 }
 
-
 // HandleVote allows a user to vote for the next unlock
 // @Summary Vote for unlock
 // @Description Cast a vote for the next unlock (one vote per user per node/level)

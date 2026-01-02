@@ -92,8 +92,6 @@ func HandleSearch(svc user.Service, progressionSvc progression.Service, eventBus
 			"username", req.Username,
 			"message", message)
 
-
-
 		// Track engagement for search
 		middleware.TrackEngagementFromContext(
 			middleware.WithUserID(r.Context(), req.Username),

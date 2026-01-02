@@ -54,18 +54,20 @@ type UnlockedRecipeInfo struct {
 
 // CraftingResult contains the result of an upgrade operation
 type CraftingResult struct {
-	ItemName      string `json:"item_name"`
-	Quantity      int    `json:"quantity"`
-	IsMasterwork  bool   `json:"is_masterwork"`
-	BonusQuantity int    `json:"bonus_quantity"`
+	ItemName      string                `json:"item_name"`
+	Quantity      int                   `json:"quantity"`
+	IsMasterwork  bool                  `json:"is_masterwork"`
+	BonusQuantity int                   `json:"bonus_quantity"`
+	JobFeedback   *domain.XPAwardResult `json:"job_feedback,omitempty"`
 }
 
 // DisassembleResult contains the result of a disassemble operation
 type DisassembleResult struct {
-	Outputs           map[string]int `json:"outputs"`
-	QuantityProcessed int            `json:"quantity_processed"`
-	IsPerfectSalvage  bool           `json:"is_perfect_salvage"`
-	Multiplier        float64        `json:"multiplier"`
+	Outputs           map[string]int        `json:"outputs"`
+	QuantityProcessed int                   `json:"quantity_processed"`
+	IsPerfectSalvage  bool                  `json:"is_perfect_salvage"`
+	Multiplier        float64               `json:"multiplier"`
+	JobFeedback       *domain.XPAwardResult `json:"job_feedback,omitempty"`
 }
 
 // Service defines the interface for crafting operations
@@ -254,9 +256,8 @@ func (s *service) UpgradeItem(ctx context.Context, platform, platformID, usernam
 	}
 
 	// Award Blacksmith XP (don't fail upgrade if XP award fails)
-	// Run async with detached context to prevent cancellation affecting XP award
-	s.wg.Add(1)
-	go s.awardBlacksmithXP(context.Background(), user.ID, actualQuantity, "upgrade", itemName)
+	xpResult, _ := s.awardBlacksmithXP(ctx, user.ID, actualQuantity, "upgrade", itemName)
+	result.JobFeedback = xpResult
 
 	log.Info("Items upgraded", "username", username, "item", itemName, "quantity", result.Quantity, "masterwork", result.IsMasterwork)
 
@@ -551,9 +552,7 @@ func (s *service) DisassembleItem(ctx context.Context, platform, platformID, use
 	}
 
 	// Award Blacksmith XP (don't fail disassemble if XP award fails)
-	// Run async with detached context to prevent cancellation affecting XP award
-	s.wg.Add(1)
-	go s.awardBlacksmithXP(context.Background(), user.ID, actualQuantity, "disassemble", itemName)
+	xpResult, _ := s.awardBlacksmithXP(ctx, user.ID, actualQuantity, "disassemble", itemName)
 
 	log.Info("Items disassembled", "username", username, "item", itemName, "quantity", actualQuantity, "outputs", outputMap, "perfect_salvage", perfectSalvageTriggered)
 	return &DisassembleResult{
@@ -561,6 +560,7 @@ func (s *service) DisassembleItem(ctx context.Context, platform, platformID, use
 		QuantityProcessed: actualQuantity,
 		IsPerfectSalvage:  perfectSalvageTriggered,
 		Multiplier:        PerfectSalvageMultiplier,
+		JobFeedback:       xpResult,
 	}, nil
 }
 
@@ -610,12 +610,9 @@ func (s *service) calculateDisassembleQuantity(inventory *domain.Inventory, item
 }
 
 // awardBlacksmithXP awards Blacksmith job XP for crafting operations
-// NOTE: Caller must call s.wg.Add(1) before launching this in a goroutine
-func (s *service) awardBlacksmithXP(ctx context.Context, userID string, quantity int, source, itemName string) {
-	defer s.wg.Done()
-	
+func (s *service) awardBlacksmithXP(ctx context.Context, userID string, quantity int, source, itemName string) (*domain.XPAwardResult, error) {
 	if s.jobService == nil {
-		return // Job system not enabled
+		return nil, nil // Job system not enabled
 	}
 
 	// Use exported constant for XP per item
@@ -631,9 +628,11 @@ func (s *service) awardBlacksmithXP(ctx context.Context, userID string, quantity
 	if err != nil {
 		// Log but don't fail the operation
 		logger.FromContext(ctx).Warn("Failed to award Blacksmith XP", "error", err, "user_id", userID)
+		return nil, err
 	} else if result != nil && result.LeveledUp {
 		logger.FromContext(ctx).Info("Blacksmith leveled up!", "user_id", userID, "new_level", result.NewLevel)
 	}
+	return result, nil
 }
 
 // Shutdown gracefully shuts down the crafting service by waiting for all async operations to complete

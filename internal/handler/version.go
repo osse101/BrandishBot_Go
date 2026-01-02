@@ -17,9 +17,9 @@ type VersionInfo struct {
 
 // Build-time variables (injected via ldflags)
 var (
-	Version   = "dev"          // Set via -X flag at build time
-	BuildTime = "unknown"      // Set via -X flag at build time
-	GitCommit = "unset"        // Set via -X flag at build time
+	Version   = "dev"     // Set via -X flag at build time
+	BuildTime = "unknown" // Set via -X flag at build time
+	GitCommit = "unset"   // Set via -X flag at build time
 )
 
 // HandleVersion returns version information about the application

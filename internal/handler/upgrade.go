@@ -78,6 +78,10 @@ func HandleUpgradeItem(svc crafting.Service, progressionSvc progression.Service,
 			message = fmt.Sprintf("MASTERWORK! Critical success! You received %dx %s (Bonus: +%d)", result.Quantity, result.ItemName, result.BonusQuantity)
 		}
 
+		if result.JobFeedback != nil && result.JobFeedback.LeveledUp {
+			message += fmt.Sprintf("\n\n🆙 **BLACKSMITH LEVEL UP!** You are now Level %d!", result.JobFeedback.NewLevel)
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		respondJSON(w, http.StatusOK, UpgradeItemResponse{

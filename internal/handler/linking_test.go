@@ -83,7 +83,6 @@ func TestHandleInitiate_InvalidJSON(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "Invalid request")
 }
 
-
 // ============================================================================
 // HTTP METHOD TESTS
 // ============================================================================
