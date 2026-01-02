@@ -26,7 +26,7 @@ else
     ATTEMPT=0
     
     while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
-        if docker compose exec -T db pg_isready -U ${DB_USER:-dev} > /dev/null 2>&1; then
+        if docker compose exec -T db pg_isready -U ${DB_USER:-dev} -d ${DB_NAME:-app} > /dev/null 2>&1; then
             echo "✓ Database is ready"
             break
         fi

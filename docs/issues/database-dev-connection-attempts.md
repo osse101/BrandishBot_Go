@@ -1,7 +1,7 @@
 # Issue: Recurring "database dev does not exist" Error
 
-**Status**: Open  
-**Severity**: Low (does not affect functionality)  
+**Status**: RESOLVED
+**Severity**: Low (does not affect functionality)
 **Date**: 2025-12-21  
 **Environment**: Development/Staging
 
@@ -71,31 +71,11 @@ make docker-up
 
 **Effect**: Error persists after restart, confirming it's from external source.
 
-## Next Steps
+## Resolution
 
-1. **Enable PostgreSQL connection logging** to capture client info:
-   ```sql
-   ALTER SYSTEM SET log_connections = 'on';
-   ALTER SYSTEM SET log_disconnections = 'on';
-   SELECT pg_reload_conf();
-   ```
+Identified `scripts/check_db.sh` using `pg_isready -U ${DB_USER:-dev}` without specifying the database name. `pg_isready` defaults to the username if `-d` is not specified. Since `DB_USER` defaults to `dev`, it was checking `dev` database.
 
-2. **Monitor system processes** during error:
-   ```bash
-   # Watch for connections as they happen
-   docker-compose logs -f db | grep "FATAL.*dev"
-   
-   # Check what's listening on 5432
-   sudo lsof -i :5432
-   ```
-
-3. **Check IDE/tool settings** for database connections configured to "dev"
-
-4. **Review systemd timers and cron jobs**:
-   ```bash
-   systemctl list-timers
-   crontab -l
-   ```
+**Fix**: Updated `scripts/check_db.sh` to include `-d ${DB_NAME:-app}`. Also updated `docs/deployment/PRODUCTION_STRATEGY.md` which had a similar incorrect example.
 
 ## References
 
