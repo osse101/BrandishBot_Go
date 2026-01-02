@@ -575,7 +575,7 @@ docker compose -f docker-compose.production.yml ps db
 docker compose -f docker-compose.staging.yml ps db
 
 # Check database health
-docker compose -f docker-compose.production.yml exec db pg_isready -U $DB_USER
+docker compose -f docker-compose.production.yml exec db pg_isready -U $DB_USER -d $DB_NAME
 
 # Check database logs
 docker compose -f docker-compose.production.yml logs db
