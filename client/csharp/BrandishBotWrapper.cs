@@ -21,6 +21,7 @@ public class CPHInline
     {
         if (client == null)
         {
+            //string baseUrl = "http://127.0.0.1:8080";
             string baseUrl = CPH.GetGlobalVar<string>("ServerBaseURL", persisted:true);
             string apiKey = CPH.GetGlobalVar<string>("ServerApiKey", persisted:true);
             
@@ -40,6 +41,100 @@ public class CPHInline
             
             BrandishBotClient.Initialize(baseUrl, apiKey);
             client = BrandishBotClient.Instance;
+        }
+    }
+
+    /// <summary>
+    /// Helper: Validate context arguments (userType, userId, userName)
+    /// </summary>
+    private bool ValidateContext(out string platform, out string platformId, out string username, ref string error)
+    {
+        platform = null;
+        platformId = null;
+        username = null;
+
+        if (!CPH.TryGetArg("userType", out platform))
+        {
+            error = "Context Error: Missing 'userType'.";
+            return false;
+        }
+        if (!CPH.TryGetArg("userId", out platformId))
+        {
+            error = "Context Error: Missing 'userId'.";
+            return false;
+        }
+        // userName is often useful for logging or display even if not strictly required by some ID-based endpoints
+        CPH.TryGetArg("userName", out username);
+        
+        return true;
+    }
+
+    /// <summary>
+    /// Helper: Get a string argument from inputX
+    /// </summary>
+    private bool GetInputString(int index, string paramName, bool required, out string value, ref string error)
+    {
+        value = null;
+        string key = $"input{index}";
+        bool exists = CPH.TryGetArg(key, out string inputVal);
+        
+        if (exists && !string.IsNullOrWhiteSpace(inputVal))
+        {
+            value = inputVal;
+            return true;
+        }
+
+        if (required)
+        {
+            error = $"Missing required argument: <{paramName}>.";
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Helper: Get an integer argument from inputX with default value
+    /// </summary>
+    private bool GetInputInt(int index, string paramName, int defaultValue, out int value, ref string error)
+    {
+        value = defaultValue;
+        string key = $"input{index}";
+        bool exists = CPH.TryGetArg(key, out string inputVal);
+
+        if (exists && !string.IsNullOrWhiteSpace(inputVal))
+        {
+            if (int.TryParse(inputVal, out int parsed))
+            {
+                value = parsed;
+                return true;
+            }
+            error = $"Invalid argument <{paramName}>: '{inputVal}' is not a number.";
+            return false;
+        }
+
+        // Return true (success) using default value if not provided
+        return true;
+    }
+
+    /// <summary>
+    /// Get the backend version
+    /// Args: (none)
+    /// </summary>
+    public bool GetVersion()
+    {
+        EnsureInitialized();
+
+        try
+        {
+            var result = client.GetVersion().Result;
+            CPH.SetArgument("response", result);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            CPH.LogError($"GetVersion failed: {ex.Message}");
+            return false;
         }
     }
 
@@ -100,84 +195,115 @@ public class CPHInline
 
     /// <summary>
     /// Add item to user's inventory (Admin/Streamer only)
-    /// Uses: userType, userId (from streamer.bot)
-    /// Args: item_id, quantity
+    /// Command: !addItem <item_name> [quantity]
     /// </summary>
     public bool AddItem()
     {
         EnsureInitialized();
+        string error = null;
         
-        if (!CPH.TryGetArg("userType", out string platform)) return false;
-        if (!CPH.TryGetArg("userId", out string platformId)) return false;
-        if (!CPH.TryGetArg("item_id", out int itemId)) return false;
-        if (!CPH.TryGetArg("quantity", out int quantity)) return false;
+        if (!ValidateContext(out string platform, out string platformId, out string username, ref error))
+        {
+            CPH.LogWarn($"AddItem Failed: {error}");
+            return false;
+        }
+
+        if (!GetInputString(0, "item_name", true, out string itemName, ref error) ||
+            !GetInputInt(1, "quantity", 1, out int quantity, ref error))
+        {
+            CPH.SetArgument("response", $"{error} Usage: !addItem <item_name> [quantity]");
+            return true;
+        }
 
         try
         {
-            var result = client.AddItem(platform, platformId, itemId, quantity).Result;
+            var result = client.AddItem(platform, platformId, itemName, quantity).Result;
             CPH.SetArgument("response", result);
             return true;
         }
         catch (Exception ex)
         {
-            CPH.LogError($"AddItem failed: {ex.Message}");
-            return false;
+            CPH.LogWarn($"AddItem API Error: {ex.Message}");
+            CPH.SetArgument("response", $"Error: {ex.Message}");
+            return true;
         }
     }
 
     /// <summary>
     /// Remove item from user's inventory (Admin/Streamer only)
-    /// Uses: userType, userId (from streamer.bot)
-    /// Args: item_id, quantity
+    /// Command: !removeItem <item_name> [quantity]
     /// </summary>
     public bool RemoveItem()
     {
         EnsureInitialized();
+        string error = null;
         
-        if (!CPH.TryGetArg("userType", out string platform)) return false;
-        if (!CPH.TryGetArg("userId", out string platformId)) return false;
-        if (!CPH.TryGetArg("item_id", out int itemId)) return false;
-        if (!CPH.TryGetArg("quantity", out int quantity)) return false;
+        if (!ValidateContext(out string platform, out string platformId, out string username, ref error))
+        {
+            CPH.LogWarn($"RemoveItem Failed: {error}");
+            return false;
+        }
+
+        if (!GetInputString(0, "item_name", true, out string itemName, ref error) ||
+            !GetInputInt(1, "quantity", 1, out int quantity, ref error))
+        {
+            CPH.SetArgument("response", $"{error} Usage: !removeItem <item_name> [quantity]");
+            return true;
+        }
 
         try
         {
-            var result = client.RemoveItem(platform, platformId, itemId, quantity).Result;
+            var result = client.RemoveItem(platform, platformId, itemName, quantity).Result;
             CPH.SetArgument("response", result);
             return true;
         }
         catch (Exception ex)
         {
-            CPH.LogError($"RemoveItem failed: {ex.Message}");
-            return false;
+            CPH.LogWarn($"RemoveItem API Error: {ex.Message}");
+            CPH.SetArgument("response", $"Error: {ex.Message}");
+            return true;
         }
     }
 
     /// <summary>
     /// Give item from one user to another
-    /// Args: from_platform, from_platform_id, to_platform, to_platform_id, to_username, item_id, quantity
+    /// Command: !giveItem <target_user> <item_name> [quantity]
     /// </summary>
     public bool GiveItem()
     {
         EnsureInitialized();
         
-        if (!CPH.TryGetArg("from_platform", out string fromPlatform)) return false;
-        if (!CPH.TryGetArg("from_platform_id", out string fromPlatformId)) return false;
-        if (!CPH.TryGetArg("to_platform", out string toPlatform)) return false;
-        if (!CPH.TryGetArg("to_platform_id", out string toPlatformId)) return false;
-        if (!CPH.TryGetArg("to_username", out string toUsername)) return false;
-        if (!CPH.TryGetArg("item_id", out int itemId)) return false;
-        if (!CPH.TryGetArg("quantity", out int quantity)) return false;
+        // This command is triggered by the Sender. 
+        // We need: Sender (context), Receiver (target_username arg), Item, Quantity
+        string error = null;
+        if (!ValidateContext(out string fromPlatform, out string fromPlatformId, out string fromUsername, ref error))
+        {
+             CPH.LogWarn($"GiveItem Context Error: {error}");
+             return false;
+        }
+
+        if (!GetInputString(0, "target_user", true, out string toUsername, ref error) ||
+            !GetInputString(1, "item_name", true, out string itemName, ref error) ||
+            !GetInputInt(2, "quantity", 1, out int quantity, ref error))
+        {
+            CPH.SetArgument("response", $"{error} Usage: !giveItem <target_user> <item_name> [quantity]");
+            return true;
+        }
+
+        string toPlatform = fromPlatform; 
+        string toPlatformId = ""; // Unknown ID from just a username input
 
         try
         {
-            var result = client.GiveItem(fromPlatform, fromPlatformId, toPlatform, toPlatformId, toUsername, itemId, quantity).Result;
+            var result = client.GiveItem(fromPlatform, fromPlatformId, toPlatform, toPlatformId, toUsername, itemName, quantity).Result;
             CPH.SetArgument("response", result);
             return true;
         }
         catch (Exception ex)
         {
-            CPH.LogError($"GiveItem failed: {ex.Message}");
-            return false;
+            CPH.LogWarn($"GiveItem API Error: {ex.Message}");
+            CPH.SetArgument("response", $"Error: {ex.Message}");
+            return true;
         }
     }
 
@@ -187,77 +313,114 @@ public class CPHInline
 
     /// <summary>
     /// Buy an item from the shop
-    /// Uses: userType, userId, userName (from streamer.bot)
-    /// Args: item_id, quantity
+    /// Command: !buyItem <item_name> [quantity]
     /// </summary>
     public bool BuyItem()
     {
         EnsureInitialized();
+        string error = null;
         
-        if (!CPH.TryGetArg("userType", out string platform)) return false;
-        if (!CPH.TryGetArg("userId", out string platformId)) return false;
-        if (!CPH.TryGetArg("userName", out string username)) return false;
-        if (!CPH.TryGetArg("item_id", out int itemId)) return false;
-        if (!CPH.TryGetArg("quantity", out int quantity)) return false;
+        if (!ValidateContext(out string platform, out string platformId, out string username, ref error))
+        {
+            CPH.LogWarn($"BuyItem Failed: {error}");
+            return false;
+        }
+
+        if (!GetInputString(0, "item_name", true, out string itemName, ref error) ||
+            !GetInputInt(1, "quantity", 1, out int quantity, ref error))
+        {
+            CPH.SetArgument("response", $"{error} Usage: !buyItem <item_name> [quantity]");
+            return true;
+        }
 
         try
         {
-            var result = client.BuyItem(platform, platformId, username, itemId, quantity).Result;
+            var result = client.BuyItem(platform, platformId, username, itemName, quantity).Result;
             CPH.SetArgument("response", result);
             return true;
         }
         catch (Exception ex)
         {
-            CPH.LogError($"BuyItem failed: {ex.Message}");
-            return false;
+            CPH.LogWarn($"BuyItem API Error: {ex.Message}");
+            CPH.SetArgument("response", $"Error: {ex.Message}");
+            return true;
         }
     }
 
     /// <summary>
     /// Sell an item from inventory
-    /// Uses: userType, userId, userName (from streamer.bot)
-    /// Args: item_id, quantity
+    /// Command: !sellItem <item_name> [quantity]
     /// </summary>
     public bool SellItem()
     {
         EnsureInitialized();
+        string error = null;
         
-        if (!CPH.TryGetArg("userType", out string platform)) return false;
-        if (!CPH.TryGetArg("userId", out string platformId)) return false;
-        if (!CPH.TryGetArg("userName", out string username)) return false;
-        if (!CPH.TryGetArg("item_id", out int itemId)) return false;
-        if (!CPH.TryGetArg("quantity", out int quantity)) return false;
+        if (!ValidateContext(out string platform, out string platformId, out string username, ref error))
+        {
+            CPH.LogWarn($"SellItem Failed: {error}");
+            return false;
+        }
+
+        if (!GetInputString(0, "item_name", true, out string itemName, ref error) ||
+            !GetInputInt(1, "quantity", 1, out int quantity, ref error))
+        {
+            CPH.SetArgument("response", $"{error} Usage: !sellItem <item_name> [quantity]");
+            return true;
+        }
 
         try
         {
-            var result = client.SellItem(platform, platformId, username, itemId, quantity).Result;
+            var result = client.SellItem(platform, platformId, username, itemName, quantity).Result;
             CPH.SetArgument("response", result);
             return true;
         }
         catch (Exception ex)
         {
-            CPH.LogError($"SellItem failed: {ex.Message}");
+            CPH.LogWarn($"SellItem API Error: {ex.Message}");
+            CPH.SetArgument("response", $"Error: {ex.Message}");
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Get current item sell prices (Alias for GetPrices)
+    /// Args: (none)
+    /// </summary>
+    public bool GetSellPrices()
+    {
+        EnsureInitialized();
+
+        try
+        {
+            var result = client.GetSellPrices().Result;
+            CPH.SetArgument("response", result);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            CPH.LogError($"GetSellPrices failed: {ex.Message}");
             return false;
         }
     }
 
     /// <summary>
-    /// Get current item prices
+    /// Get current item buy prices
     /// Args: (none)
     /// </summary>
-    public bool GetPrices()
+    public bool GetBuyPrices()
     {
         EnsureInitialized();
 
         try
         {
-            var result = client.GetPrices().Result;
+            var result = client.GetBuyPrices().Result;
             CPH.SetArgument("response", result);
             return true;
         }
         catch (Exception ex)
         {
-            CPH.LogError($"GetPrices failed: {ex.Message}");
+            CPH.LogError($"GetBuyPrices failed: {ex.Message}");
             return false;
         }
     }
@@ -268,31 +431,60 @@ public class CPHInline
 
     /// <summary>
     /// Use an item (opens lootboxes, activates items, etc.)
-    /// Uses: userType, userId, userName (from streamer.bot)
-    /// Args: item_id, quantity, target_username (optional)
+    /// Command: !useItem <item_name> [quantity] [target_user]
     /// </summary>
     public bool UseItem()
     {
         EnsureInitialized();
+        string error = null;
         
-        if (!CPH.TryGetArg("userType", out string platform)) return false;
-        if (!CPH.TryGetArg("userId", out string platformId)) return false;
-        if (!CPH.TryGetArg("userName", out string username)) return false;
-        if (!CPH.TryGetArg("item_id", out int itemId)) return false;
-        if (!CPH.TryGetArg("quantity", out int quantity)) return false;
+        if (!ValidateContext(out string platform, out string platformId, out string username, ref error))
+        {
+            CPH.LogWarn($"UseItem Failed: {error}");
+            return false;
+        }
+
+        // !useItem <item> [quantity] [target]
+        // Strategy:
+        // input1 could be quantity (int) OR target (string) if quantity is omitted (default 1)
+        // Check input1 type.
+
+        if (!GetInputString(0, "item_name", true, out string itemName, ref error))
+        {
+            CPH.SetArgument("response", $"{error} Usage: !useItem <item_name> [quantity] [target_user]");
+            return true;
+        }
+
+        int quantity = 1;
+        string targetUsername = "";
         
-        CPH.TryGetArg("target_username", out string targetUsername);
+        // Check input1
+        if (CPH.TryGetArg("input1", out string input1) && !string.IsNullOrWhiteSpace(input1))
+        {
+            if (int.TryParse(input1, out int q))
+            {
+                quantity = q;
+                // If input1 is quantity, input2 might be target
+                GetInputString(2, "target_user", false, out targetUsername, ref error);
+            }
+            else
+            {
+                // input1 is NOT a number, so it must be target. Quantity is default 1.
+                targetUsername = input1;
+            }
+        }
 
         try
         {
-            var result = client.UseItem(platform, platformId, username, itemId, quantity, targetUsername).Result;
+            var result = client.UseItem(platform, platformId, username, itemName, quantity, targetUsername).Result;
             CPH.SetArgument("response", result);
             return true;
         }
         catch (Exception ex)
         {
-            CPH.LogError($"UseItem failed: {ex.Message}");
-            return false;
+            CPH.LogWarn($"UseItem API Error: {ex.Message}");
+            CPH.SetArgument("response", $"Error: {ex.Message}");
+            return true;
         }
     }
 
@@ -327,56 +519,73 @@ public class CPHInline
 
     /// <summary>
     /// Upgrade an item using a recipe
-    /// Uses: userType, userId, userName (from streamer.bot)
-    /// Args: recipe_id
+    /// Command: !upgradeItem <item_name> [quantity]
     /// </summary>
     public bool UpgradeItem()
     {
         EnsureInitialized();
+        string error = null;
         
-        if (!CPH.TryGetArg("userType", out string platform)) return false;
-        if (!CPH.TryGetArg("userId", out string platformId)) return false;
-        if (!CPH.TryGetArg("userName", out string username)) return false;
-        if (!CPH.TryGetArg("recipe_id", out int recipeId)) return false;
+        if (!ValidateContext(out string platform, out string platformId, out string username, ref error))
+        {
+            CPH.LogWarn($"UpgradeItem Failed: {error}");
+            return false;
+        }
+
+        if (!GetInputString(0, "item_name", true, out string itemName, ref error) ||
+            !GetInputInt(1, "quantity", 1, out int quantity, ref error))
+        {
+             CPH.SetArgument("response", $"{error} Usage: !upgradeItem <item_name> [quantity]");
+             return true;
+        }
 
         try
         {
-            var result = client.UpgradeItem(platform, platformId, username, recipeId).Result;
+            var result = client.UpgradeItem(platform, platformId, username, itemName, quantity).Result;
             CPH.SetArgument("response", result);
             return true;
         }
         catch (Exception ex)
         {
-            CPH.LogError($"UpgradeItem failed: {ex.Message}");
-            return false;
+            CPH.LogWarn($"UpgradeItem API Error: {ex.Message}");
+            CPH.SetArgument("response", $"Error: {ex.Message}");
+            return true;
         }
     }
 
     /// <summary>
     /// Disassemble an item to get materials
-    /// Uses: userType, userId, userName (from streamer.bot)
-    /// Args: item_id, quantity
+    /// Command: !disassembleItem <item_name> [quantity]
     /// </summary>
     public bool DisassembleItem()
     {
         EnsureInitialized();
+        string error = null;
         
-        if (!CPH.TryGetArg("userType", out string platform)) return false;
-        if (!CPH.TryGetArg("userId", out string platformId)) return false;
-        if (!CPH.TryGetArg("userName", out string username)) return false;
-        if (!CPH.TryGetArg("item_id", out int itemId)) return false;
-        if (!CPH.TryGetArg("quantity", out int quantity)) return false;
+        if (!ValidateContext(out string platform, out string platformId, out string username, ref error))
+        {
+             CPH.LogWarn($"DisassembleItem Failed: {error}");
+             return false;
+        }
+
+        if (!GetInputString(0, "item_name", true, out string itemName, ref error) ||
+            !GetInputInt(1, "quantity", 1, out int quantity, ref error))
+        {
+             CPH.SetArgument("response", $"{error} Usage: !disassembleItem <item_name> [quantity]");
+             return true;
+        }
 
         try
         {
-            var result = client.DisassembleItem(platform, platformId, username, itemId, quantity).Result;
+            var result = client.DisassembleItem(platform, platformId, username, itemName, quantity).Result;
             CPH.SetArgument("response", result);
             return true;
         }
         catch (Exception ex)
         {
-            CPH.LogError($"DisassembleItem failed: {ex.Message}");
-            return false;
+            CPH.LogWarn($"DisassembleItem API Error: {ex.Message}");
+            CPH.SetArgument("response", $"Error: {ex.Message}");
+            return true;
         }
     }
 
@@ -407,57 +616,76 @@ public class CPHInline
 
     /// <summary>
     /// Start a new gamble session
-    /// Uses: userType, userId, userName (from streamer.bot)
-    /// Args: lootbox_item_id, quantity
+    /// Command: !startGamble <lootbox_name> [quantity]
     /// </summary>
     public bool StartGamble()
     {
         EnsureInitialized();
+        string error = null;
         
-        if (!CPH.TryGetArg("userType", out string platform)) return false;
-        if (!CPH.TryGetArg("userId", out string platformId)) return false;
-        if (!CPH.TryGetArg("userName", out string username)) return false;
-        if (!CPH.TryGetArg("lootbox_item_id", out int lootboxItemId)) return false;
-        if (!CPH.TryGetArg("quantity", out int quantity)) return false;
+        if (!ValidateContext(out string platform, out string platformId, out string username, ref error))
+        {
+             CPH.LogWarn($"StartGamble Failed: {error}");
+             return false;
+        }
+
+        if (!GetInputString(0, "lootbox_name", true, out string lootboxItemName, ref error) ||
+            !GetInputInt(1, "quantity", 1, out int quantity, ref error))
+        {
+             CPH.SetArgument("response", $"{error} Usage: !startGamble <lootbox_name> [quantity]");
+             return true;
+        }
 
         try
         {
-            var result = client.StartGamble(platform, platformId, username, lootboxItemId, quantity).Result;
+            var result = client.StartGamble(platform, platformId, username, lootboxItemName, quantity).Result;
             CPH.SetArgument("response", result);
             return true;
         }
         catch (Exception ex)
         {
-            CPH.LogError($"StartGamble failed: {ex.Message}");
-            return false;
+            CPH.LogWarn($"StartGamble API Error: {ex.Message}");
+            CPH.SetArgument("response", $"Error: {ex.Message}");
+            return true;
         }
     }
 
     /// <summary>
     /// Join an existing gamble session
-    /// Args: gamble_id, platform, platform_id, username, lootbox_item_id, quantity
+    /// Command: !joinGamble <gamble_id> <lootbox_name> [quantity]
     /// </summary>
     public bool JoinGamble()
     {
         EnsureInitialized();
+        string error = null;
         
-        if (!CPH.TryGetArg("gamble_id", out string gambleId)) return false;
-        if (!CPH.TryGetArg("platform", out string platform)) return false;
-        if (!CPH.TryGetArg("platform_id", out string platformId)) return false;
-        if (!CPH.TryGetArg("username", out string username)) return false;
-        if (!CPH.TryGetArg("lootbox_item_id", out int lootboxItemId)) return false;
-        if (!CPH.TryGetArg("quantity", out int quantity)) return false;
+        // Use ValidateContext for platform details
+        if (!ValidateContext(out string platform, out string platformId, out string username, ref error))
+        {
+             CPH.LogWarn($"JoinGamble Failed: {error}");
+             return false;
+        }
+        
+        // Note: gamble_id comes from input0
+        if (!GetInputString(0, "gamble_id", true, out string gambleId, ref error) ||
+            !GetInputString(1, "lootbox_name", true, out string lootboxItemName, ref error) ||
+            !GetInputInt(2, "quantity", 1, out int quantity, ref error))
+        {
+             CPH.SetArgument("response", $"{error} Usage: !joinGamble <gamble_id> <lootbox_name> [quantity]");
+             return true;
+        }
 
         try
         {
-            var result = client.JoinGamble(gambleId, platform, platformId, username, lootboxItemId, quantity).Result;
+            var result = client.JoinGamble(gambleId, platform, platformId, username, lootboxItemName, quantity).Result;
             CPH.SetArgument("response", result);
             return true;
         }
         catch (Exception ex)
         {
-            CPH.LogError($"JoinGamble failed: {ex.Message}");
-            return false;
+            CPH.LogWarn($"JoinGamble API Error: {ex.Message}");
+            CPH.SetArgument("response", $"Error: {ex.Message}");
+            return true;
         }
     }
 

@@ -82,6 +82,14 @@ namespace BrandishBot.Client
             return await response.Content.ReadAsStringAsync();
         }
 
+        /// <summary>
+        /// Get the backend version
+        /// </summary>
+        public async Task<string> GetVersion()
+        {
+            return await GetAsync("/version");
+        }
+
         private string BuildQuery(params string[] parameters)
         {
             return "?" + string.Join("&", parameters);
@@ -201,9 +209,9 @@ namespace BrandishBot.Client
         }
 
         /// <summary>
-        /// Get current item prices
+        /// Get current item prices (Sell Prices)
         /// </summary>
-        public async Task<string> GetPrices()
+        public async Task<string> GetSellPrices()
         {
             return await GetAsync("/prices");
         }
