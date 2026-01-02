@@ -45,3 +45,8 @@ Output/
 # Log files
 logs/
 *.log
+
+# Benchmark results (keep baseline.txt, ignore temporary files)
+benchmarks/results/*.txt
+!benchmarks/results/baseline.txt
+benchmarks/profiles/*.prof

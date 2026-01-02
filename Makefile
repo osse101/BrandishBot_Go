@@ -170,7 +170,7 @@ bench-compare:
 	fi
 	@echo "Running benchmarks and comparing to baseline..."
 	@mkdir -p benchmarks/results
-	@go test -bench=. -benchmem -benchtime=2s ./... > benchmarks/results/current.txt 2>&1
+	@go test -bench=. -benchmem -benchtime=2s ./... > benchmarks/results/current.txt 2>&1 || true
 	@if command -v benchstat > /dev/null 2>&1; then \
 		benchstat benchmarks/results/baseline.txt benchmarks/results/current.txt; \
 	else \
