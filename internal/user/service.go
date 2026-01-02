@@ -110,6 +110,7 @@ type service struct {
 	cooldownService cooldown.Service
 	devMode         bool // When true, bypasses cooldowns
 	wg              sync.WaitGroup
+	userCache       *userCache // In-memory cache for user lookups
 	
 	// Item cache: in-memory cache for item metadata (name, description, value, etc.)
 	// Purpose: Reduce database queries for frequently accessed item data
@@ -150,6 +151,7 @@ func NewService(repo Repository, statsService stats.Service, jobService JobServi
 		devMode:         devMode,
 		itemCache:       make(map[int]domain.Item),
 		itemCacheByName: make(map[string]domain.Item),
+		userCache:       newUserCache(1000, 5*time.Minute),
 	}
 	s.registerHandlers()
 	return s
@@ -1026,7 +1028,13 @@ func (s *service) processSearchFailure(ctx context.Context, user *domain.User, r
 func (s *service) getUserOrRegister(ctx context.Context, platform, platformID, username string) (*domain.User, error) {
 	log := logger.FromContext(ctx)
 
-	// Try to find existing user by platform ID
+	// Try cache first
+	if user, ok := s.userCache.Get(platform, platformID); ok {
+		log.Debug("User cache hit", "userID", user.ID, "platform", platform)
+		return user, nil
+	}
+
+	// Cache miss - fetch from database
 	user, err := s.repo.GetUserByPlatformID(ctx, platform, platformID)
 	if err != nil && !errors.Is(err, domain.ErrUserNotFound) {
 		log.Error("Failed to get user by platform ID", "error", err, "platform", platform, "platformID", platformID)
@@ -1035,6 +1043,8 @@ func (s *service) getUserOrRegister(ctx context.Context, platform, platformID, u
 
 	if user != nil {
 		log.Debug("Found existing user", "userID", user.ID, "platform", platform)
+		// Cache the user for future lookups
+		s.userCache.Set(platform, platformID, user)
 		return user, nil
 	}
 

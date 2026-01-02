@@ -5,43 +5,43 @@
 ?   	github.com/osse101/BrandishBot_Go/cmd/setup	[no test files]
 ?   	github.com/osse101/BrandishBot_Go/docs/swagger	[no test files]
 PASS
-ok  	github.com/osse101/BrandishBot_Go/internal/config	0.004s
+ok  	github.com/osse101/BrandishBot_Go/internal/config	0.005s
 PASS
-ok  	github.com/osse101/BrandishBot_Go/internal/cooldown	0.003s
-time=2026-01-01T23:33:38.175-03:30 level=INFO msg="DisassembleItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch-alice username=alice item=lootbox_tier1 quantity=2
-time=2026-01-01T23:33:38.176-03:30 level=INFO msg="Items disassembled" service=brandish-bot version=dev environment=dev username=alice item=lootbox_tier1 quantity=2 outputs=map[lootbox_tier0:2] perfect_salvage=false
-time=2026-01-01T23:33:38.176-03:30 level=INFO msg="DisassembleItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch-alice username=alice item=lootbox_tier1 quantity=2
-time=2026-01-01T23:33:38.176-03:30 level=INFO msg="Items disassembled" service=brandish-bot version=dev environment=dev username=alice item=lootbox_tier1 quantity=1 outputs=map[lootbox_tier0:1] perfect_salvage=false
-time=2026-01-01T23:33:38.176-03:30 level=INFO msg="DisassembleItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=alice item=lootbox_tier1 quantity=1
-time=2026-01-01T23:33:38.176-03:30 level=INFO msg="DisassembleItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=alice item=lootbox_tier1 quantity=1
-time=2026-01-01T23:33:38.176-03:30 level=INFO msg="DisassembleItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=alice item=lootbox_tier0 quantity=1
-time=2026-01-01T23:33:38.176-03:30 level=INFO msg="DisassembleItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch-alice username=alice item=lootbox_tier1 quantity=1
-time=2026-01-01T23:33:38.176-03:30 level=INFO msg="Items disassembled" service=brandish-bot version=dev environment=dev username=alice item=lootbox_tier1 quantity=1 outputs=map[lootbox_tier0:1] perfect_salvage=false
-time=2026-01-01T23:33:38.176-03:30 level=INFO msg="UpgradeItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch-alice username=alice item=lootbox_tier1 quantity=2
-time=2026-01-01T23:33:38.176-03:30 level=INFO msg="Items upgraded" service=brandish-bot version=dev environment=dev username=alice item=lootbox_tier1 quantity=2 masterwork=false
-time=2026-01-01T23:33:38.176-03:30 level=INFO msg="UpgradeItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch-alice username=alice item=lootbox_tier1 quantity=2
-time=2026-01-01T23:33:38.176-03:30 level=INFO msg="Items upgraded" service=brandish-bot version=dev environment=dev username=alice item=lootbox_tier1 quantity=1 masterwork=false
-time=2026-01-01T23:33:38.176-03:30 level=INFO msg="UpgradeItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch-alice username=alice item=lootbox_tier1 quantity=1
-time=2026-01-01T23:33:38.176-03:30 level=INFO msg="UpgradeItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch-alice username=alice item=lootbox_tier1 quantity=1
-time=2026-01-01T23:33:38.176-03:30 level=INFO msg="UpgradeItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch-alice username=alice item=lootbox_tier0 quantity=1
-time=2026-01-01T23:33:38.176-03:30 level=INFO msg="UpgradeItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch-nonexistent username=nonexistent item=lootbox_tier1 quantity=1
-time=2026-01-01T23:33:38.176-03:30 level=INFO msg="GetRecipe called" service=brandish-bot version=dev environment=dev itemName=lootbox_tier1 platform="" platformID="" username=""
-time=2026-01-01T23:33:38.176-03:30 level=INFO msg="Recipe retrieved" service=brandish-bot version=dev environment=dev itemName=lootbox_tier1 locked=false
-time=2026-01-01T23:33:38.176-03:30 level=INFO msg="GetRecipe called" service=brandish-bot version=dev environment=dev itemName=lootbox_tier1 platform=twitch platformID=twitch-alice username=alice
-time=2026-01-01T23:33:38.176-03:30 level=INFO msg="Recipe retrieved" service=brandish-bot version=dev environment=dev itemName=lootbox_tier1 locked=false
-time=2026-01-01T23:33:38.176-03:30 level=INFO msg="GetRecipe called" service=brandish-bot version=dev environment=dev itemName=lootbox_tier1 platform=twitch platformID=twitch-alice username=alice
-time=2026-01-01T23:33:38.176-03:30 level=INFO msg="Recipe retrieved" service=brandish-bot version=dev environment=dev itemName=lootbox_tier1 locked=true
-time=2026-01-01T23:33:38.176-03:30 level=INFO msg="GetRecipe called" service=brandish-bot version=dev environment=dev itemName=nonexistent platform="" platformID="" username=""
-time=2026-01-01T23:33:38.176-03:30 level=INFO msg="GetUnlockedRecipes called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch-alice username=alice
-time=2026-01-01T23:33:38.176-03:30 level=INFO msg="Unlocked recipes retrieved" service=brandish-bot version=dev environment=dev username=alice count=1
-time=2026-01-01T23:33:38.176-03:30 level=INFO msg="GetUnlockedRecipes called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch-alice username=alice
-time=2026-01-01T23:33:38.176-03:30 level=INFO msg="Unlocked recipes retrieved" service=brandish-bot version=dev environment=dev username=alice count=0
-time=2026-01-01T23:33:38.176-03:30 level=INFO msg="GetUnlockedRecipes called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch-nonexistent username=nonexistent
-time=2026-01-01T23:33:38.176-03:30 level=INFO msg="UpgradeItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch-alice username=alice item=lootbox_tier1 quantity=2
-time=2026-01-01T23:33:38.176-03:30 level=INFO msg="Masterwork craft triggered!" service=brandish-bot version=dev environment=dev user_id=user-alice item=lootbox_tier1 count=2 bonus=2
-time=2026-01-01T23:33:38.176-03:30 level=INFO msg="Items upgraded" service=brandish-bot version=dev environment=dev username=alice item=lootbox_tier1 quantity=4 masterwork=true
+ok  	github.com/osse101/BrandishBot_Go/internal/cooldown	0.004s
+time=2026-01-02T01:39:27.796-03:30 level=INFO msg="DisassembleItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch-alice username=alice item=lootbox_tier1 quantity=2
+time=2026-01-02T01:39:27.796-03:30 level=INFO msg="Items disassembled" service=brandish-bot version=dev environment=dev username=alice item=lootbox_tier1 quantity=2 outputs=map[lootbox_tier0:2] perfect_salvage=false
+time=2026-01-02T01:39:27.796-03:30 level=INFO msg="DisassembleItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch-alice username=alice item=lootbox_tier1 quantity=2
+time=2026-01-02T01:39:27.796-03:30 level=INFO msg="Items disassembled" service=brandish-bot version=dev environment=dev username=alice item=lootbox_tier1 quantity=1 outputs=map[lootbox_tier0:1] perfect_salvage=false
+time=2026-01-02T01:39:27.796-03:30 level=INFO msg="DisassembleItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=alice item=lootbox_tier1 quantity=1
+time=2026-01-02T01:39:27.796-03:30 level=INFO msg="DisassembleItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=alice item=lootbox_tier1 quantity=1
+time=2026-01-02T01:39:27.796-03:30 level=INFO msg="DisassembleItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=alice item=lootbox_tier0 quantity=1
+time=2026-01-02T01:39:27.796-03:30 level=INFO msg="DisassembleItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch-alice username=alice item=lootbox_tier1 quantity=1
+time=2026-01-02T01:39:27.796-03:30 level=INFO msg="Items disassembled" service=brandish-bot version=dev environment=dev username=alice item=lootbox_tier1 quantity=1 outputs=map[lootbox_tier0:1] perfect_salvage=false
+time=2026-01-02T01:39:27.796-03:30 level=INFO msg="UpgradeItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch-alice username=alice item=lootbox_tier1 quantity=2
+time=2026-01-02T01:39:27.796-03:30 level=INFO msg="Items upgraded" service=brandish-bot version=dev environment=dev username=alice item=lootbox_tier1 quantity=2 masterwork=false
+time=2026-01-02T01:39:27.796-03:30 level=INFO msg="UpgradeItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch-alice username=alice item=lootbox_tier1 quantity=2
+time=2026-01-02T01:39:27.796-03:30 level=INFO msg="Items upgraded" service=brandish-bot version=dev environment=dev username=alice item=lootbox_tier1 quantity=1 masterwork=false
+time=2026-01-02T01:39:27.796-03:30 level=INFO msg="UpgradeItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch-alice username=alice item=lootbox_tier1 quantity=1
+time=2026-01-02T01:39:27.796-03:30 level=INFO msg="UpgradeItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch-alice username=alice item=lootbox_tier1 quantity=1
+time=2026-01-02T01:39:27.796-03:30 level=INFO msg="UpgradeItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch-alice username=alice item=lootbox_tier0 quantity=1
+time=2026-01-02T01:39:27.796-03:30 level=INFO msg="UpgradeItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch-nonexistent username=nonexistent item=lootbox_tier1 quantity=1
+time=2026-01-02T01:39:27.796-03:30 level=INFO msg="GetRecipe called" service=brandish-bot version=dev environment=dev itemName=lootbox_tier1 platform="" platformID="" username=""
+time=2026-01-02T01:39:27.796-03:30 level=INFO msg="Recipe retrieved" service=brandish-bot version=dev environment=dev itemName=lootbox_tier1 locked=false
+time=2026-01-02T01:39:27.796-03:30 level=INFO msg="GetRecipe called" service=brandish-bot version=dev environment=dev itemName=lootbox_tier1 platform=twitch platformID=twitch-alice username=alice
+time=2026-01-02T01:39:27.796-03:30 level=INFO msg="Recipe retrieved" service=brandish-bot version=dev environment=dev itemName=lootbox_tier1 locked=false
+time=2026-01-02T01:39:27.796-03:30 level=INFO msg="GetRecipe called" service=brandish-bot version=dev environment=dev itemName=lootbox_tier1 platform=twitch platformID=twitch-alice username=alice
+time=2026-01-02T01:39:27.796-03:30 level=INFO msg="Recipe retrieved" service=brandish-bot version=dev environment=dev itemName=lootbox_tier1 locked=true
+time=2026-01-02T01:39:27.796-03:30 level=INFO msg="GetRecipe called" service=brandish-bot version=dev environment=dev itemName=nonexistent platform="" platformID="" username=""
+time=2026-01-02T01:39:27.796-03:30 level=INFO msg="GetUnlockedRecipes called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch-alice username=alice
+time=2026-01-02T01:39:27.796-03:30 level=INFO msg="Unlocked recipes retrieved" service=brandish-bot version=dev environment=dev username=alice count=1
+time=2026-01-02T01:39:27.796-03:30 level=INFO msg="GetUnlockedRecipes called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch-alice username=alice
+time=2026-01-02T01:39:27.796-03:30 level=INFO msg="Unlocked recipes retrieved" service=brandish-bot version=dev environment=dev username=alice count=0
+time=2026-01-02T01:39:27.796-03:30 level=INFO msg="GetUnlockedRecipes called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch-nonexistent username=nonexistent
+time=2026-01-02T01:39:27.796-03:30 level=INFO msg="UpgradeItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch-alice username=alice item=lootbox_tier1 quantity=2
+time=2026-01-02T01:39:27.796-03:30 level=INFO msg="Masterwork craft triggered!" service=brandish-bot version=dev environment=dev user_id=user-alice item=lootbox_tier1 count=2 bonus=2
+time=2026-01-02T01:39:27.796-03:30 level=INFO msg="Items upgraded" service=brandish-bot version=dev environment=dev username=alice item=lootbox_tier1 quantity=4 masterwork=true
 PASS
-ok  	github.com/osse101/BrandishBot_Go/internal/crafting	0.003s
+ok  	github.com/osse101/BrandishBot_Go/internal/crafting	0.004s
 --- FAIL: TestPool_ConnectionsReleased (0.00s)
     pool_test.go:24: 
         	Error Trace:	/home/osse1/projects/BrandishBot_Go/internal/database/pool_test.go:24
@@ -68,8 +68,8 @@ ok  	github.com/osse101/BrandishBot_Go/internal/crafting	0.003s
         	Test:       	TestPool_ConcurrentAccess
 FAIL
 exit status 1
-FAIL	github.com/osse101/BrandishBot_Go/internal/database	0.004s
-time=2026-01-01T23:33:40.393-03:30 level=INFO msg="Successfully connected to the database" service=brandish-bot version=dev environment=dev
+FAIL	github.com/osse101/BrandishBot_Go/internal/database	0.005s
+time=2026-01-02T01:39:29.814-03:30 level=INFO msg="Successfully connected to the database" service=brandish-bot version=dev environment=dev
 Applying 27 migrations in order:
   1. 0001_initial_schema.sql
   2. 0002_create_items.sql
@@ -125,47 +125,47 @@ Executing: 0024_fix_item_references.sql
 Executing: 0025_fix_gamble_concurrency.sql
 Executing: 0026_tune_progression_system.sql
 Executing: 0027_inventory_filters.sql
-time=2026-01-01T23:33:40.528-03:30 level=INFO msg="AddItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch_concurrent_123 username=concurrency_test_user item=lootbox_tier1 quantity=1
-time=2026-01-01T23:33:40.528-03:30 level=INFO msg="AddItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch_concurrent_123 username=concurrency_test_user item=lootbox_tier1 quantity=1
-time=2026-01-01T23:33:40.528-03:30 level=INFO msg="AddItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch_concurrent_123 username=concurrency_test_user item=lootbox_tier1 quantity=1
-time=2026-01-01T23:33:40.528-03:30 level=INFO msg="AddItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch_concurrent_123 username=concurrency_test_user item=lootbox_tier1 quantity=1
-time=2026-01-01T23:33:40.528-03:30 level=INFO msg="AddItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch_concurrent_123 username=concurrency_test_user item=lootbox_tier1 quantity=1
-time=2026-01-01T23:33:40.528-03:30 level=INFO msg="AddItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch_concurrent_123 username=concurrency_test_user item=lootbox_tier1 quantity=1
-time=2026-01-01T23:33:40.528-03:30 level=INFO msg="AddItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch_concurrent_123 username=concurrency_test_user item=lootbox_tier1 quantity=1
-time=2026-01-01T23:33:40.528-03:30 level=INFO msg="AddItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch_concurrent_123 username=concurrency_test_user item=lootbox_tier1 quantity=1
-time=2026-01-01T23:33:40.528-03:30 level=INFO msg="AddItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch_concurrent_123 username=concurrency_test_user item=lootbox_tier1 quantity=1
-time=2026-01-01T23:33:40.528-03:30 level=INFO msg="AddItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch_concurrent_123 username=concurrency_test_user item=lootbox_tier1 quantity=1
-time=2026-01-01T23:33:40.528-03:30 level=INFO msg="AddItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch_concurrent_123 username=concurrency_test_user item=lootbox_tier1 quantity=1
-time=2026-01-01T23:33:40.528-03:30 level=INFO msg="AddItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch_concurrent_123 username=concurrency_test_user item=lootbox_tier1 quantity=1
-time=2026-01-01T23:33:40.528-03:30 level=INFO msg="AddItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch_concurrent_123 username=concurrency_test_user item=lootbox_tier1 quantity=1
-time=2026-01-01T23:33:40.528-03:30 level=INFO msg="AddItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch_concurrent_123 username=concurrency_test_user item=lootbox_tier1 quantity=1
-time=2026-01-01T23:33:40.528-03:30 level=INFO msg="AddItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch_concurrent_123 username=concurrency_test_user item=lootbox_tier1 quantity=1
-time=2026-01-01T23:33:40.528-03:30 level=INFO msg="AddItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch_concurrent_123 username=concurrency_test_user item=lootbox_tier1 quantity=1
-time=2026-01-01T23:33:40.528-03:30 level=INFO msg="AddItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch_concurrent_123 username=concurrency_test_user item=lootbox_tier1 quantity=1
-time=2026-01-01T23:33:40.528-03:30 level=INFO msg="AddItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch_concurrent_123 username=concurrency_test_user item=lootbox_tier1 quantity=1
-time=2026-01-01T23:33:40.528-03:30 level=INFO msg="AddItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch_concurrent_123 username=concurrency_test_user item=lootbox_tier1 quantity=1
-time=2026-01-01T23:33:40.528-03:30 level=INFO msg="AddItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch_concurrent_123 username=concurrency_test_user item=lootbox_tier1 quantity=1
-time=2026-01-01T23:33:40.551-03:30 level=INFO msg="Item added successfully" service=brandish-bot version=dev environment=dev username=concurrency_test_user item=lootbox_tier1 quantity=1
-time=2026-01-01T23:33:40.553-03:30 level=INFO msg="Item added successfully" service=brandish-bot version=dev environment=dev username=concurrency_test_user item=lootbox_tier1 quantity=1
-time=2026-01-01T23:33:40.554-03:30 level=INFO msg="Item added successfully" service=brandish-bot version=dev environment=dev username=concurrency_test_user item=lootbox_tier1 quantity=1
-time=2026-01-01T23:33:40.555-03:30 level=INFO msg="Item added successfully" service=brandish-bot version=dev environment=dev username=concurrency_test_user item=lootbox_tier1 quantity=1
-time=2026-01-01T23:33:40.556-03:30 level=INFO msg="Item added successfully" service=brandish-bot version=dev environment=dev username=concurrency_test_user item=lootbox_tier1 quantity=1
-time=2026-01-01T23:33:40.557-03:30 level=INFO msg="Item added successfully" service=brandish-bot version=dev environment=dev username=concurrency_test_user item=lootbox_tier1 quantity=1
-time=2026-01-01T23:33:40.558-03:30 level=INFO msg="Item added successfully" service=brandish-bot version=dev environment=dev username=concurrency_test_user item=lootbox_tier1 quantity=1
-time=2026-01-01T23:33:40.559-03:30 level=INFO msg="Item added successfully" service=brandish-bot version=dev environment=dev username=concurrency_test_user item=lootbox_tier1 quantity=1
-time=2026-01-01T23:33:40.560-03:30 level=INFO msg="Item added successfully" service=brandish-bot version=dev environment=dev username=concurrency_test_user item=lootbox_tier1 quantity=1
-time=2026-01-01T23:33:40.560-03:30 level=INFO msg="Item added successfully" service=brandish-bot version=dev environment=dev username=concurrency_test_user item=lootbox_tier1 quantity=1
-time=2026-01-01T23:33:40.561-03:30 level=INFO msg="Item added successfully" service=brandish-bot version=dev environment=dev username=concurrency_test_user item=lootbox_tier1 quantity=1
-time=2026-01-01T23:33:40.562-03:30 level=INFO msg="Item added successfully" service=brandish-bot version=dev environment=dev username=concurrency_test_user item=lootbox_tier1 quantity=1
-time=2026-01-01T23:33:40.563-03:30 level=INFO msg="Item added successfully" service=brandish-bot version=dev environment=dev username=concurrency_test_user item=lootbox_tier1 quantity=1
-time=2026-01-01T23:33:40.563-03:30 level=INFO msg="Item added successfully" service=brandish-bot version=dev environment=dev username=concurrency_test_user item=lootbox_tier1 quantity=1
-time=2026-01-01T23:33:40.564-03:30 level=INFO msg="Item added successfully" service=brandish-bot version=dev environment=dev username=concurrency_test_user item=lootbox_tier1 quantity=1
-time=2026-01-01T23:33:40.565-03:30 level=INFO msg="Item added successfully" service=brandish-bot version=dev environment=dev username=concurrency_test_user item=lootbox_tier1 quantity=1
-time=2026-01-01T23:33:40.566-03:30 level=INFO msg="Item added successfully" service=brandish-bot version=dev environment=dev username=concurrency_test_user item=lootbox_tier1 quantity=1
-time=2026-01-01T23:33:40.567-03:30 level=INFO msg="Item added successfully" service=brandish-bot version=dev environment=dev username=concurrency_test_user item=lootbox_tier1 quantity=1
-time=2026-01-01T23:33:40.568-03:30 level=INFO msg="Item added successfully" service=brandish-bot version=dev environment=dev username=concurrency_test_user item=lootbox_tier1 quantity=1
-time=2026-01-01T23:33:40.568-03:30 level=INFO msg="Item added successfully" service=brandish-bot version=dev environment=dev username=concurrency_test_user item=lootbox_tier1 quantity=1
-time=2026-01-01T23:33:42.438-03:30 level=INFO msg="Successfully connected to the database" service=brandish-bot version=dev environment=dev
+time=2026-01-02T01:39:29.939-03:30 level=INFO msg="AddItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch_concurrent_123 username=concurrency_test_user item=lootbox_tier1 quantity=1
+time=2026-01-02T01:39:29.939-03:30 level=INFO msg="AddItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch_concurrent_123 username=concurrency_test_user item=lootbox_tier1 quantity=1
+time=2026-01-02T01:39:29.939-03:30 level=INFO msg="AddItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch_concurrent_123 username=concurrency_test_user item=lootbox_tier1 quantity=1
+time=2026-01-02T01:39:29.939-03:30 level=INFO msg="AddItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch_concurrent_123 username=concurrency_test_user item=lootbox_tier1 quantity=1
+time=2026-01-02T01:39:29.939-03:30 level=INFO msg="AddItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch_concurrent_123 username=concurrency_test_user item=lootbox_tier1 quantity=1
+time=2026-01-02T01:39:29.939-03:30 level=INFO msg="AddItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch_concurrent_123 username=concurrency_test_user item=lootbox_tier1 quantity=1
+time=2026-01-02T01:39:29.939-03:30 level=INFO msg="AddItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch_concurrent_123 username=concurrency_test_user item=lootbox_tier1 quantity=1
+time=2026-01-02T01:39:29.939-03:30 level=INFO msg="AddItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch_concurrent_123 username=concurrency_test_user item=lootbox_tier1 quantity=1
+time=2026-01-02T01:39:29.939-03:30 level=INFO msg="AddItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch_concurrent_123 username=concurrency_test_user item=lootbox_tier1 quantity=1
+time=2026-01-02T01:39:29.939-03:30 level=INFO msg="AddItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch_concurrent_123 username=concurrency_test_user item=lootbox_tier1 quantity=1
+time=2026-01-02T01:39:29.939-03:30 level=INFO msg="AddItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch_concurrent_123 username=concurrency_test_user item=lootbox_tier1 quantity=1
+time=2026-01-02T01:39:29.939-03:30 level=INFO msg="AddItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch_concurrent_123 username=concurrency_test_user item=lootbox_tier1 quantity=1
+time=2026-01-02T01:39:29.939-03:30 level=INFO msg="AddItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch_concurrent_123 username=concurrency_test_user item=lootbox_tier1 quantity=1
+time=2026-01-02T01:39:29.939-03:30 level=INFO msg="AddItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch_concurrent_123 username=concurrency_test_user item=lootbox_tier1 quantity=1
+time=2026-01-02T01:39:29.939-03:30 level=INFO msg="AddItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch_concurrent_123 username=concurrency_test_user item=lootbox_tier1 quantity=1
+time=2026-01-02T01:39:29.940-03:30 level=INFO msg="AddItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch_concurrent_123 username=concurrency_test_user item=lootbox_tier1 quantity=1
+time=2026-01-02T01:39:29.940-03:30 level=INFO msg="AddItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch_concurrent_123 username=concurrency_test_user item=lootbox_tier1 quantity=1
+time=2026-01-02T01:39:29.940-03:30 level=INFO msg="AddItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch_concurrent_123 username=concurrency_test_user item=lootbox_tier1 quantity=1
+time=2026-01-02T01:39:29.940-03:30 level=INFO msg="AddItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch_concurrent_123 username=concurrency_test_user item=lootbox_tier1 quantity=1
+time=2026-01-02T01:39:29.940-03:30 level=INFO msg="AddItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch_concurrent_123 username=concurrency_test_user item=lootbox_tier1 quantity=1
+time=2026-01-02T01:39:29.962-03:30 level=INFO msg="Item added successfully" service=brandish-bot version=dev environment=dev username=concurrency_test_user item=lootbox_tier1 quantity=1
+time=2026-01-02T01:39:29.964-03:30 level=INFO msg="Item added successfully" service=brandish-bot version=dev environment=dev username=concurrency_test_user item=lootbox_tier1 quantity=1
+time=2026-01-02T01:39:29.966-03:30 level=INFO msg="Item added successfully" service=brandish-bot version=dev environment=dev username=concurrency_test_user item=lootbox_tier1 quantity=1
+time=2026-01-02T01:39:29.967-03:30 level=INFO msg="Item added successfully" service=brandish-bot version=dev environment=dev username=concurrency_test_user item=lootbox_tier1 quantity=1
+time=2026-01-02T01:39:29.968-03:30 level=INFO msg="Item added successfully" service=brandish-bot version=dev environment=dev username=concurrency_test_user item=lootbox_tier1 quantity=1
+time=2026-01-02T01:39:29.968-03:30 level=INFO msg="Item added successfully" service=brandish-bot version=dev environment=dev username=concurrency_test_user item=lootbox_tier1 quantity=1
+time=2026-01-02T01:39:29.970-03:30 level=INFO msg="Item added successfully" service=brandish-bot version=dev environment=dev username=concurrency_test_user item=lootbox_tier1 quantity=1
+time=2026-01-02T01:39:29.971-03:30 level=INFO msg="Item added successfully" service=brandish-bot version=dev environment=dev username=concurrency_test_user item=lootbox_tier1 quantity=1
+time=2026-01-02T01:39:29.972-03:30 level=INFO msg="Item added successfully" service=brandish-bot version=dev environment=dev username=concurrency_test_user item=lootbox_tier1 quantity=1
+time=2026-01-02T01:39:29.972-03:30 level=INFO msg="Item added successfully" service=brandish-bot version=dev environment=dev username=concurrency_test_user item=lootbox_tier1 quantity=1
+time=2026-01-02T01:39:29.973-03:30 level=INFO msg="Item added successfully" service=brandish-bot version=dev environment=dev username=concurrency_test_user item=lootbox_tier1 quantity=1
+time=2026-01-02T01:39:29.974-03:30 level=INFO msg="Item added successfully" service=brandish-bot version=dev environment=dev username=concurrency_test_user item=lootbox_tier1 quantity=1
+time=2026-01-02T01:39:29.975-03:30 level=INFO msg="Item added successfully" service=brandish-bot version=dev environment=dev username=concurrency_test_user item=lootbox_tier1 quantity=1
+time=2026-01-02T01:39:29.976-03:30 level=INFO msg="Item added successfully" service=brandish-bot version=dev environment=dev username=concurrency_test_user item=lootbox_tier1 quantity=1
+time=2026-01-02T01:39:29.977-03:30 level=INFO msg="Item added successfully" service=brandish-bot version=dev environment=dev username=concurrency_test_user item=lootbox_tier1 quantity=1
+time=2026-01-02T01:39:29.978-03:30 level=INFO msg="Item added successfully" service=brandish-bot version=dev environment=dev username=concurrency_test_user item=lootbox_tier1 quantity=1
+time=2026-01-02T01:39:29.979-03:30 level=INFO msg="Item added successfully" service=brandish-bot version=dev environment=dev username=concurrency_test_user item=lootbox_tier1 quantity=1
+time=2026-01-02T01:39:29.980-03:30 level=INFO msg="Item added successfully" service=brandish-bot version=dev environment=dev username=concurrency_test_user item=lootbox_tier1 quantity=1
+time=2026-01-02T01:39:29.981-03:30 level=INFO msg="Item added successfully" service=brandish-bot version=dev environment=dev username=concurrency_test_user item=lootbox_tier1 quantity=1
+time=2026-01-02T01:39:29.982-03:30 level=INFO msg="Item added successfully" service=brandish-bot version=dev environment=dev username=concurrency_test_user item=lootbox_tier1 quantity=1
+time=2026-01-02T01:39:31.828-03:30 level=INFO msg="Successfully connected to the database" service=brandish-bot version=dev environment=dev
 Applying 27 migrations in order:
   1. 0001_initial_schema.sql
   2. 0002_create_items.sql
@@ -221,62 +221,62 @@ Executing: 0024_fix_item_references.sql
 Executing: 0025_fix_gamble_concurrency.sql
 Executing: 0026_tune_progression_system.sql
 Executing: 0027_inventory_filters.sql
-time=2026-01-01T23:33:44.421-03:30 level=INFO msg="Successfully connected to the database" service=brandish-bot version=dev environment=dev
-time=2026-01-01T23:33:44.544-03:30 level=INFO msg="Link token created" service=brandish-bot version=dev environment=dev platform=discord token=ESLLY6
-time=2026-01-01T23:33:44.545-03:30 level=INFO msg="Link token claimed" service=brandish-bot version=dev environment=dev token=ESLLY6 target_platform=twitch
-time=2026-01-01T23:33:44.546-03:30 level=INFO msg="FindUserByPlatformID called" service=brandish-bot version=dev environment=dev platform=discord platformID=discord-integration-123
-time=2026-01-01T23:33:44.547-03:30 level=ERROR msg="Failed to find user by platform ID" service=brandish-bot version=dev environment=dev error="user not found" platform=discord platformID=discord-integration-123
-time=2026-01-01T23:33:44.547-03:30 level=INFO msg="RegisterUser called" service=brandish-bot version=dev environment=dev username=""
-time=2026-01-01T23:33:44.549-03:30 level=INFO msg="User registered" service=brandish-bot version=dev environment=dev user_id=96487cc0-3073-465d-aa28-2ff6f5911151 username=""
-time=2026-01-01T23:33:44.549-03:30 level=INFO msg="FindUserByPlatformID called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch-integration-456
-time=2026-01-01T23:33:44.549-03:30 level=ERROR msg="Failed to find user by platform ID" service=brandish-bot version=dev environment=dev error="user not found" platform=twitch platformID=twitch-integration-456
-time=2026-01-01T23:33:44.549-03:30 level=INFO msg="RegisterUser called" service=brandish-bot version=dev environment=dev username=""
-time=2026-01-01T23:33:44.552-03:30 level=INFO msg="User registered" service=brandish-bot version=dev environment=dev user_id=96487cc0-3073-465d-aa28-2ff6f5911151 username=""
-time=2026-01-01T23:33:44.552-03:30 level=INFO msg="Accounts linked" service=brandish-bot version=dev environment=dev user_id=96487cc0-3073-465d-aa28-2ff6f5911151 platforms="[discord twitch]"
-time=2026-01-01T23:33:46.351-03:30 level=INFO msg="Successfully connected to the database" service=brandish-bot version=dev environment=dev
-time=2026-01-01T23:33:45.924-03:30 level=INFO msg="Successfully connected to the database" service=brandish-bot version=dev environment=dev
-time=2026-01-01T23:33:46.043-03:30 level=INFO msg="RegisterUser called" service=brandish-bot version=dev environment=dev username=discord_user
-time=2026-01-01T23:33:46.046-03:30 level=INFO msg="User registered" service=brandish-bot version=dev environment=dev user_id=e21580ff-0a82-4798-98ef-e96544abbde7 username=discord_user
-time=2026-01-01T23:33:46.046-03:30 level=INFO msg="RegisterUser called" service=brandish-bot version=dev environment=dev username=twitch_user
-time=2026-01-01T23:33:46.047-03:30 level=INFO msg="User registered" service=brandish-bot version=dev environment=dev user_id=8528c50f-66e2-434e-a5e1-3609d978d773 username=twitch_user
-time=2026-01-01T23:33:46.048-03:30 level=INFO msg="Link token created" service=brandish-bot version=dev environment=dev platform=discord token=6T2QGG
-time=2026-01-01T23:33:46.049-03:30 level=INFO msg="Link token claimed" service=brandish-bot version=dev environment=dev token=6T2QGG target_platform=twitch
-time=2026-01-01T23:33:46.050-03:30 level=INFO msg="FindUserByPlatformID called" service=brandish-bot version=dev environment=dev platform=discord platformID=discord-merge-123
-time=2026-01-01T23:33:46.051-03:30 level=INFO msg="User found" service=brandish-bot version=dev environment=dev userID=e21580ff-0a82-4798-98ef-e96544abbde7 username=discord_user
-time=2026-01-01T23:33:46.051-03:30 level=INFO msg="FindUserByPlatformID called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch-merge-456
-time=2026-01-01T23:33:46.052-03:30 level=INFO msg="User found" service=brandish-bot version=dev environment=dev userID=8528c50f-66e2-434e-a5e1-3609d978d773 username=twitch_user
-time=2026-01-01T23:33:46.052-03:30 level=INFO msg="Merging users" service=brandish-bot version=dev environment=dev primary=e21580ff-0a82-4798-98ef-e96544abbde7 secondary=8528c50f-66e2-434e-a5e1-3609d978d773
-time=2026-01-01T23:33:46.061-03:30 level=INFO msg="Users merged successfully" service=brandish-bot version=dev environment=dev primary=e21580ff-0a82-4798-98ef-e96544abbde7
-time=2026-01-01T23:33:46.062-03:30 level=INFO msg="Accounts merged" service=brandish-bot version=dev environment=dev primary_id=e21580ff-0a82-4798-98ef-e96544abbde7 secondary_id=8528c50f-66e2-434e-a5e1-3609d978d773
-time=2026-01-01T23:33:46.062-03:30 level=INFO msg="FindUserByPlatformID called" service=brandish-bot version=dev environment=dev platform=discord platformID=discord-merge-123
-time=2026-01-01T23:33:46.063-03:30 level=INFO msg="User found" service=brandish-bot version=dev environment=dev userID=e21580ff-0a82-4798-98ef-e96544abbde7 username=discord_user
-time=2026-01-01T23:33:46.063-03:30 level=INFO msg="FindUserByPlatformID called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch-merge-456
-time=2026-01-01T23:33:46.064-03:30 level=INFO msg="User found" service=brandish-bot version=dev environment=dev userID=e21580ff-0a82-4798-98ef-e96544abbde7 username=discord_user
-time=2026-01-01T23:33:47.951-03:30 level=INFO msg="Successfully connected to the database" service=brandish-bot version=dev environment=dev
-time=2026-01-01T23:33:48.070-03:30 level=INFO msg="Link token created" service=brandish-bot version=dev environment=dev platform=discord token=27Z2DI
-time=2026-01-01T23:33:48.071-03:30 level=INFO msg="Link token claimed" service=brandish-bot version=dev environment=dev token=27Z2DI target_platform=twitch
-time=2026-01-01T23:33:48.072-03:30 level=INFO msg="FindUserByPlatformID called" service=brandish-bot version=dev environment=dev platform=discord platformID=discord-unlink-789
-time=2026-01-01T23:33:48.073-03:30 level=ERROR msg="Failed to find user by platform ID" service=brandish-bot version=dev environment=dev error="user not found" platform=discord platformID=discord-unlink-789
-time=2026-01-01T23:33:48.073-03:30 level=INFO msg="RegisterUser called" service=brandish-bot version=dev environment=dev username=""
-time=2026-01-01T23:33:48.075-03:30 level=INFO msg="User registered" service=brandish-bot version=dev environment=dev user_id=a7116eb8-7b56-48f7-b8ff-9dc8e3adde6d username=""
-time=2026-01-01T23:33:48.075-03:30 level=INFO msg="FindUserByPlatformID called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch-unlink-012
-time=2026-01-01T23:33:48.075-03:30 level=ERROR msg="Failed to find user by platform ID" service=brandish-bot version=dev environment=dev error="user not found" platform=twitch platformID=twitch-unlink-012
-time=2026-01-01T23:33:48.075-03:30 level=INFO msg="RegisterUser called" service=brandish-bot version=dev environment=dev username=""
-time=2026-01-01T23:33:48.077-03:30 level=INFO msg="User registered" service=brandish-bot version=dev environment=dev user_id=a7116eb8-7b56-48f7-b8ff-9dc8e3adde6d username=""
-time=2026-01-01T23:33:48.077-03:30 level=INFO msg="Accounts linked" service=brandish-bot version=dev environment=dev user_id=a7116eb8-7b56-48f7-b8ff-9dc8e3adde6d platforms="[discord twitch]"
-time=2026-01-01T23:33:48.079-03:30 level=INFO msg="FindUserByPlatformID called" service=brandish-bot version=dev environment=dev platform=discord platformID=discord-unlink-789
-time=2026-01-01T23:33:48.080-03:30 level=INFO msg="User found" service=brandish-bot version=dev environment=dev userID=a7116eb8-7b56-48f7-b8ff-9dc8e3adde6d username=""
-time=2026-01-01T23:33:48.080-03:30 level=INFO msg="Unlinking platform" service=brandish-bot version=dev environment=dev user_id=a7116eb8-7b56-48f7-b8ff-9dc8e3adde6d platform=twitch
-time=2026-01-01T23:33:48.084-03:30 level=INFO msg="Platform unlinked" service=brandish-bot version=dev environment=dev user_id=a7116eb8-7b56-48f7-b8ff-9dc8e3adde6d platform=twitch
-time=2026-01-01T23:33:48.084-03:30 level=INFO msg="Platform unlinked" service=brandish-bot version=dev environment=dev user_id=a7116eb8-7b56-48f7-b8ff-9dc8e3adde6d platform=twitch
-time=2026-01-01T23:33:49.964-03:30 level=INFO msg="Successfully connected to the database" service=brandish-bot version=dev environment=dev
-time=2026-01-01T23:33:50.084-03:30 level=INFO msg="Link token created" service=brandish-bot version=dev environment=dev platform=discord token=FDH7IK
-time=2026-01-01T23:33:50.085-03:30 level=INFO msg="Link token created" service=brandish-bot version=dev environment=dev platform=discord token=MOUIHS
-time=2026-01-01T23:33:50.086-03:30 level=INFO msg="Link token claimed" service=brandish-bot version=dev environment=dev token=MOUIHS target_platform=twitch
-time=2026-01-01T23:33:51.904-03:30 level=INFO msg="Successfully connected to the database" service=brandish-bot version=dev environment=dev
-time=2026-01-01T23:33:53.928-03:30 level=INFO msg="Successfully connected to the database" service=brandish-bot version=dev environment=dev
-time=2026-01-01T23:33:54.047-03:30 level=INFO msg="Link token created" service=brandish-bot version=dev environment=dev platform=discord token=6MMMYM
-time=2026-01-01T23:33:55.994-03:30 level=INFO msg="Successfully connected to the database" service=brandish-bot version=dev environment=dev
+time=2026-01-02T01:39:33.892-03:30 level=INFO msg="Successfully connected to the database" service=brandish-bot version=dev environment=dev
+time=2026-01-02T01:39:34.014-03:30 level=INFO msg="Link token created" service=brandish-bot version=dev environment=dev platform=discord token=YPSLM2
+time=2026-01-02T01:39:34.015-03:30 level=INFO msg="Link token claimed" service=brandish-bot version=dev environment=dev token=YPSLM2 target_platform=twitch
+time=2026-01-02T01:39:34.016-03:30 level=INFO msg="FindUserByPlatformID called" service=brandish-bot version=dev environment=dev platform=discord platformID=discord-integration-123
+time=2026-01-02T01:39:34.017-03:30 level=ERROR msg="Failed to find user by platform ID" service=brandish-bot version=dev environment=dev error="user not found" platform=discord platformID=discord-integration-123
+time=2026-01-02T01:39:34.017-03:30 level=INFO msg="RegisterUser called" service=brandish-bot version=dev environment=dev username=""
+time=2026-01-02T01:39:34.020-03:30 level=INFO msg="User registered" service=brandish-bot version=dev environment=dev user_id=afae0cde-8a0e-40b4-9ac0-79438d4009c1 username=""
+time=2026-01-02T01:39:34.020-03:30 level=INFO msg="FindUserByPlatformID called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch-integration-456
+time=2026-01-02T01:39:34.020-03:30 level=ERROR msg="Failed to find user by platform ID" service=brandish-bot version=dev environment=dev error="user not found" platform=twitch platformID=twitch-integration-456
+time=2026-01-02T01:39:34.020-03:30 level=INFO msg="RegisterUser called" service=brandish-bot version=dev environment=dev username=""
+time=2026-01-02T01:39:34.022-03:30 level=INFO msg="User registered" service=brandish-bot version=dev environment=dev user_id=afae0cde-8a0e-40b4-9ac0-79438d4009c1 username=""
+time=2026-01-02T01:39:34.022-03:30 level=INFO msg="Accounts linked" service=brandish-bot version=dev environment=dev user_id=afae0cde-8a0e-40b4-9ac0-79438d4009c1 platforms="[discord twitch]"
+time=2026-01-02T01:39:35.804-03:30 level=INFO msg="Successfully connected to the database" service=brandish-bot version=dev environment=dev
+time=2026-01-02T01:39:37.912-03:30 level=INFO msg="Successfully connected to the database" service=brandish-bot version=dev environment=dev
+time=2026-01-02T01:39:38.039-03:30 level=INFO msg="RegisterUser called" service=brandish-bot version=dev environment=dev username=discord_user
+time=2026-01-02T01:39:38.042-03:30 level=INFO msg="User registered" service=brandish-bot version=dev environment=dev user_id=7e652368-cdbf-4abf-a475-8b3e0c606137 username=discord_user
+time=2026-01-02T01:39:38.042-03:30 level=INFO msg="RegisterUser called" service=brandish-bot version=dev environment=dev username=twitch_user
+time=2026-01-02T01:39:38.043-03:30 level=INFO msg="User registered" service=brandish-bot version=dev environment=dev user_id=dc137599-04a3-474b-a0df-fecda8c2d690 username=twitch_user
+time=2026-01-02T01:39:38.044-03:30 level=INFO msg="Link token created" service=brandish-bot version=dev environment=dev platform=discord token=JF53PL
+time=2026-01-02T01:39:38.045-03:30 level=INFO msg="Link token claimed" service=brandish-bot version=dev environment=dev token=JF53PL target_platform=twitch
+time=2026-01-02T01:39:38.046-03:30 level=INFO msg="FindUserByPlatformID called" service=brandish-bot version=dev environment=dev platform=discord platformID=discord-merge-123
+time=2026-01-02T01:39:38.048-03:30 level=INFO msg="User found" service=brandish-bot version=dev environment=dev userID=7e652368-cdbf-4abf-a475-8b3e0c606137 username=discord_user
+time=2026-01-02T01:39:38.048-03:30 level=INFO msg="FindUserByPlatformID called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch-merge-456
+time=2026-01-02T01:39:38.048-03:30 level=INFO msg="User found" service=brandish-bot version=dev environment=dev userID=dc137599-04a3-474b-a0df-fecda8c2d690 username=twitch_user
+time=2026-01-02T01:39:38.048-03:30 level=INFO msg="Merging users" service=brandish-bot version=dev environment=dev primary=7e652368-cdbf-4abf-a475-8b3e0c606137 secondary=dc137599-04a3-474b-a0df-fecda8c2d690
+time=2026-01-02T01:39:38.068-03:30 level=INFO msg="Users merged successfully" service=brandish-bot version=dev environment=dev primary=7e652368-cdbf-4abf-a475-8b3e0c606137
+time=2026-01-02T01:39:38.069-03:30 level=INFO msg="Accounts merged" service=brandish-bot version=dev environment=dev primary_id=7e652368-cdbf-4abf-a475-8b3e0c606137 secondary_id=dc137599-04a3-474b-a0df-fecda8c2d690
+time=2026-01-02T01:39:38.072-03:30 level=INFO msg="FindUserByPlatformID called" service=brandish-bot version=dev environment=dev platform=discord platformID=discord-merge-123
+time=2026-01-02T01:39:38.076-03:30 level=INFO msg="User found" service=brandish-bot version=dev environment=dev userID=7e652368-cdbf-4abf-a475-8b3e0c606137 username=discord_user
+time=2026-01-02T01:39:38.076-03:30 level=INFO msg="FindUserByPlatformID called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch-merge-456
+time=2026-01-02T01:39:38.078-03:30 level=INFO msg="User found" service=brandish-bot version=dev environment=dev userID=7e652368-cdbf-4abf-a475-8b3e0c606137 username=discord_user
+time=2026-01-02T01:39:39.939-03:30 level=INFO msg="Successfully connected to the database" service=brandish-bot version=dev environment=dev
+time=2026-01-02T01:39:40.055-03:30 level=INFO msg="Link token created" service=brandish-bot version=dev environment=dev platform=discord token=SJLSOP
+time=2026-01-02T01:39:40.057-03:30 level=INFO msg="Link token claimed" service=brandish-bot version=dev environment=dev token=SJLSOP target_platform=twitch
+time=2026-01-02T01:39:40.057-03:30 level=INFO msg="FindUserByPlatformID called" service=brandish-bot version=dev environment=dev platform=discord platformID=discord-unlink-789
+time=2026-01-02T01:39:40.059-03:30 level=ERROR msg="Failed to find user by platform ID" service=brandish-bot version=dev environment=dev error="user not found" platform=discord platformID=discord-unlink-789
+time=2026-01-02T01:39:40.059-03:30 level=INFO msg="RegisterUser called" service=brandish-bot version=dev environment=dev username=""
+time=2026-01-02T01:39:40.061-03:30 level=INFO msg="User registered" service=brandish-bot version=dev environment=dev user_id=0aca4bb0-27ff-490b-a562-de46b69744cd username=""
+time=2026-01-02T01:39:40.061-03:30 level=INFO msg="FindUserByPlatformID called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitch-unlink-012
+time=2026-01-02T01:39:40.061-03:30 level=ERROR msg="Failed to find user by platform ID" service=brandish-bot version=dev environment=dev error="user not found" platform=twitch platformID=twitch-unlink-012
+time=2026-01-02T01:39:40.061-03:30 level=INFO msg="RegisterUser called" service=brandish-bot version=dev environment=dev username=""
+time=2026-01-02T01:39:40.063-03:30 level=INFO msg="User registered" service=brandish-bot version=dev environment=dev user_id=0aca4bb0-27ff-490b-a562-de46b69744cd username=""
+time=2026-01-02T01:39:40.064-03:30 level=INFO msg="Accounts linked" service=brandish-bot version=dev environment=dev user_id=0aca4bb0-27ff-490b-a562-de46b69744cd platforms="[discord twitch]"
+time=2026-01-02T01:39:40.065-03:30 level=INFO msg="FindUserByPlatformID called" service=brandish-bot version=dev environment=dev platform=discord platformID=discord-unlink-789
+time=2026-01-02T01:39:40.065-03:30 level=INFO msg="User found" service=brandish-bot version=dev environment=dev userID=0aca4bb0-27ff-490b-a562-de46b69744cd username=""
+time=2026-01-02T01:39:40.065-03:30 level=INFO msg="Unlinking platform" service=brandish-bot version=dev environment=dev user_id=0aca4bb0-27ff-490b-a562-de46b69744cd platform=twitch
+time=2026-01-02T01:39:40.070-03:30 level=INFO msg="Platform unlinked" service=brandish-bot version=dev environment=dev user_id=0aca4bb0-27ff-490b-a562-de46b69744cd platform=twitch
+time=2026-01-02T01:39:40.070-03:30 level=INFO msg="Platform unlinked" service=brandish-bot version=dev environment=dev user_id=0aca4bb0-27ff-490b-a562-de46b69744cd platform=twitch
+time=2026-01-02T01:39:41.887-03:30 level=INFO msg="Successfully connected to the database" service=brandish-bot version=dev environment=dev
+time=2026-01-02T01:39:42.011-03:30 level=INFO msg="Link token created" service=brandish-bot version=dev environment=dev platform=discord token=7KLIBY
+time=2026-01-02T01:39:42.012-03:30 level=INFO msg="Link token created" service=brandish-bot version=dev environment=dev platform=discord token=IKP4NR
+time=2026-01-02T01:39:42.013-03:30 level=INFO msg="Link token claimed" service=brandish-bot version=dev environment=dev token=IKP4NR target_platform=twitch
+time=2026-01-02T01:39:43.852-03:30 level=INFO msg="Successfully connected to the database" service=brandish-bot version=dev environment=dev
+time=2026-01-02T01:39:45.846-03:30 level=INFO msg="Successfully connected to the database" service=brandish-bot version=dev environment=dev
+time=2026-01-02T01:39:45.967-03:30 level=INFO msg="Link token created" service=brandish-bot version=dev environment=dev platform=discord token=BH2OSX
+time=2026-01-02T01:39:47.914-03:30 level=INFO msg="Successfully connected to the database" service=brandish-bot version=dev environment=dev
 Applying 27 migrations in order:
   1. 0001_initial_schema.sql
   2. 0002_create_items.sql
@@ -332,7 +332,7 @@ Executing: 0024_fix_item_references.sql
 Executing: 0025_fix_gamble_concurrency.sql
 Executing: 0026_tune_progression_system.sql
 Executing: 0027_inventory_filters.sql
-time=2026-01-01T23:33:58.148-03:30 level=INFO msg="Successfully connected to the database" service=brandish-bot version=dev environment=dev
+time=2026-01-02T01:39:49.908-03:30 level=INFO msg="Successfully connected to the database" service=brandish-bot version=dev environment=dev
 Applying 27 migrations in order:
   1. 0001_initial_schema.sql
   2. 0002_create_items.sql
@@ -388,429 +388,432 @@ Executing: 0024_fix_item_references.sql
 Executing: 0025_fix_gamble_concurrency.sql
 Executing: 0026_tune_progression_system.sql
 Executing: 0027_inventory_filters.sql
-time=2026-01-01T23:34:00.155-03:30 level=INFO msg="Successfully connected to the database" service=brandish-bot version=dev environment=dev
-time=2026-01-01T23:34:00.276-03:30 level=INFO msg="GiveItem called" service=brandish-bot version=dev environment=dev ownerPlatform=twitch ownerPlatformID=twitchA ownerUsername=userA receiverPlatform=twitch receiverPlatformID=twitchB receiverUsername=userB item=money quantity=10
-time=2026-01-01T23:34:00.276-03:30 level=INFO msg="GiveItem called" service=brandish-bot version=dev environment=dev ownerPlatform=twitch ownerPlatformID=twitchA ownerUsername=userA receiverPlatform=twitch receiverPlatformID=twitchB receiverUsername=userB item=money quantity=10
-time=2026-01-01T23:34:00.276-03:30 level=INFO msg="GiveItem called" service=brandish-bot version=dev environment=dev ownerPlatform=twitch ownerPlatformID=twitchA ownerUsername=userA receiverPlatform=twitch receiverPlatformID=twitchB receiverUsername=userB item=money quantity=10
-time=2026-01-01T23:34:00.276-03:30 level=INFO msg="GiveItem called" service=brandish-bot version=dev environment=dev ownerPlatform=twitch ownerPlatformID=twitchA ownerUsername=userA receiverPlatform=twitch receiverPlatformID=twitchB receiverUsername=userB item=money quantity=10
-time=2026-01-01T23:34:00.276-03:30 level=INFO msg="GiveItem called" service=brandish-bot version=dev environment=dev ownerPlatform=twitch ownerPlatformID=twitchA ownerUsername=userA receiverPlatform=twitch receiverPlatformID=twitchB receiverUsername=userB item=money quantity=10
-time=2026-01-01T23:34:00.276-03:30 level=INFO msg="GiveItem called" service=brandish-bot version=dev environment=dev ownerPlatform=twitch ownerPlatformID=twitchA ownerUsername=userA receiverPlatform=twitch receiverPlatformID=twitchB receiverUsername=userB item=money quantity=10
-time=2026-01-01T23:34:00.276-03:30 level=INFO msg="GiveItem called" service=brandish-bot version=dev environment=dev ownerPlatform=twitch ownerPlatformID=twitchA ownerUsername=userA receiverPlatform=twitch receiverPlatformID=twitchB receiverUsername=userB item=money quantity=10
-time=2026-01-01T23:34:00.276-03:30 level=INFO msg="GiveItem called" service=brandish-bot version=dev environment=dev ownerPlatform=twitch ownerPlatformID=twitchA ownerUsername=userA receiverPlatform=twitch receiverPlatformID=twitchB receiverUsername=userB item=money quantity=10
-time=2026-01-01T23:34:00.276-03:30 level=INFO msg="GiveItem called" service=brandish-bot version=dev environment=dev ownerPlatform=twitch ownerPlatformID=twitchA ownerUsername=userA receiverPlatform=twitch receiverPlatformID=twitchB receiverUsername=userB item=money quantity=10
-time=2026-01-01T23:34:00.276-03:30 level=INFO msg="GiveItem called" service=brandish-bot version=dev environment=dev ownerPlatform=twitch ownerPlatformID=twitchA ownerUsername=userA receiverPlatform=twitch receiverPlatformID=twitchB receiverUsername=userB item=money quantity=10
-time=2026-01-01T23:34:00.289-03:30 level=INFO msg="Item transferred" service=brandish-bot version=dev environment=dev owner=userA receiver=userB item=money quantity=10
-time=2026-01-01T23:34:00.292-03:30 level=INFO msg="Item transferred" service=brandish-bot version=dev environment=dev owner=userA receiver=userB item=money quantity=10
-time=2026-01-01T23:34:00.295-03:30 level=INFO msg="Item transferred" service=brandish-bot version=dev environment=dev owner=userA receiver=userB item=money quantity=10
-time=2026-01-01T23:34:00.296-03:30 level=INFO msg="Item transferred" service=brandish-bot version=dev environment=dev owner=userA receiver=userB item=money quantity=10
-time=2026-01-01T23:34:00.298-03:30 level=INFO msg="Item transferred" service=brandish-bot version=dev environment=dev owner=userA receiver=userB item=money quantity=10
-time=2026-01-01T23:34:00.299-03:30 level=INFO msg="Item transferred" service=brandish-bot version=dev environment=dev owner=userA receiver=userB item=money quantity=10
-time=2026-01-01T23:34:00.301-03:30 level=INFO msg="Item transferred" service=brandish-bot version=dev environment=dev owner=userA receiver=userB item=money quantity=10
-time=2026-01-01T23:34:00.302-03:30 level=INFO msg="Item transferred" service=brandish-bot version=dev environment=dev owner=userA receiver=userB item=money quantity=10
-time=2026-01-01T23:34:00.304-03:30 level=INFO msg="Item transferred" service=brandish-bot version=dev environment=dev owner=userA receiver=userB item=money quantity=10
-time=2026-01-01T23:34:00.305-03:30 level=INFO msg="Item transferred" service=brandish-bot version=dev environment=dev owner=userA receiver=userB item=money quantity=10
-time=2026-01-01T23:34:00.308-03:30 level=INFO msg="AddItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitchC username=userC item=money quantity=50
-time=2026-01-01T23:34:00.310-03:30 level=INFO msg="Item added successfully" service=brandish-bot version=dev environment=dev username=userC item=money quantity=50
-time=2026-01-01T23:34:02.187-03:30 level=INFO msg="Successfully connected to the database" service=brandish-bot version=dev environment=dev
-time=2026-01-01T23:34:02.310-03:30 level=INFO msg="HandleSearch called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitchD username=userD
-time=2026-01-01T23:34:02.312-03:30 level=INFO msg="First search of the day - applying bonus" service=brandish-bot version=dev environment=dev username=userD
-time=2026-01-01T23:34:02.315-03:30 level=INFO msg="Search CRITICAL success" service=brandish-bot version=dev environment=dev username=userD item=lootbox_tier0 quantity=2
-time=2026-01-01T23:34:02.317-03:30 level=INFO msg="Search completed" service=brandish-bot version=dev environment=dev username=userD result="You found a hidden stash! (CRITICAL SUCCESS!) You found 2x lootbox_tier0 (First Search of the Day!)"
-time=2026-01-01T23:34:02.317-03:30 level=INFO msg="HandleSearch called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitchD username=userD
-time=2026-01-01T23:34:02.318-03:30 level=INFO msg="First search of the day - applying bonus" service=brandish-bot version=dev environment=dev username=userD
-time=2026-01-01T23:34:02.320-03:30 level=INFO msg="Search CRITICAL success" service=brandish-bot version=dev environment=dev username=userD item=lootbox_tier0 quantity=2
-time=2026-01-01T23:34:02.320-03:30 level=INFO msg="Search completed" service=brandish-bot version=dev environment=dev username=userD result="You found a hidden stash! (CRITICAL SUCCESS!) You found 2x lootbox_tier0 (First Search of the Day!)"
-time=2026-01-01T23:34:02.320-03:30 level=INFO msg="HandleSearch called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitchD username=userD
-time=2026-01-01T23:34:02.321-03:30 level=INFO msg="First search of the day - applying bonus" service=brandish-bot version=dev environment=dev username=userD
-time=2026-01-01T23:34:02.324-03:30 level=INFO msg="Search CRITICAL success" service=brandish-bot version=dev environment=dev username=userD item=lootbox_tier0 quantity=2
-time=2026-01-01T23:34:02.324-03:30 level=INFO msg="Search completed" service=brandish-bot version=dev environment=dev username=userD result="You found a hidden stash! (CRITICAL SUCCESS!) You found 2x lootbox_tier0 (First Search of the Day!)"
-time=2026-01-01T23:34:02.324-03:30 level=INFO msg="HandleSearch called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitchD username=userD
-time=2026-01-01T23:34:02.325-03:30 level=INFO msg="First search of the day - applying bonus" service=brandish-bot version=dev environment=dev username=userD
-time=2026-01-01T23:34:02.326-03:30 level=INFO msg="Search CRITICAL success" service=brandish-bot version=dev environment=dev username=userD item=lootbox_tier0 quantity=2
-time=2026-01-01T23:34:02.327-03:30 level=INFO msg="Search completed" service=brandish-bot version=dev environment=dev username=userD result="You found a hidden stash! (CRITICAL SUCCESS!) You found 2x lootbox_tier0 (First Search of the Day!)"
-time=2026-01-01T23:34:02.327-03:30 level=INFO msg="HandleSearch called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitchD username=userD
-time=2026-01-01T23:34:02.328-03:30 level=INFO msg="First search of the day - applying bonus" service=brandish-bot version=dev environment=dev username=userD
-time=2026-01-01T23:34:02.329-03:30 level=INFO msg="Search CRITICAL success" service=brandish-bot version=dev environment=dev username=userD item=lootbox_tier0 quantity=2
-time=2026-01-01T23:34:02.329-03:30 level=INFO msg="Search completed" service=brandish-bot version=dev environment=dev username=userD result="You found a hidden stash! (CRITICAL SUCCESS!) You found 2x lootbox_tier0 (First Search of the Day!)"
-time=2026-01-01T23:34:02.330-03:30 level=INFO msg="User service shutting down, waiting for background tasks..." service=brandish-bot version=dev environment=dev
-time=2026-01-01T23:34:04.439-03:30 level=INFO msg="Successfully connected to the database" service=brandish-bot version=dev environment=dev
+time=2026-01-02T01:39:49.632-03:30 level=INFO msg="Successfully connected to the database" service=brandish-bot version=dev environment=dev
+time=2026-01-02T01:39:49.752-03:30 level=INFO msg="GiveItem called" service=brandish-bot version=dev environment=dev ownerPlatform=twitch ownerPlatformID=twitchA ownerUsername=userA receiverPlatform=twitch receiverPlatformID=twitchB receiverUsername=userB item=money quantity=10
+time=2026-01-02T01:39:49.752-03:30 level=INFO msg="GiveItem called" service=brandish-bot version=dev environment=dev ownerPlatform=twitch ownerPlatformID=twitchA ownerUsername=userA receiverPlatform=twitch receiverPlatformID=twitchB receiverUsername=userB item=money quantity=10
+time=2026-01-02T01:39:49.752-03:30 level=INFO msg="GiveItem called" service=brandish-bot version=dev environment=dev ownerPlatform=twitch ownerPlatformID=twitchA ownerUsername=userA receiverPlatform=twitch receiverPlatformID=twitchB receiverUsername=userB item=money quantity=10
+time=2026-01-02T01:39:49.752-03:30 level=INFO msg="GiveItem called" service=brandish-bot version=dev environment=dev ownerPlatform=twitch ownerPlatformID=twitchA ownerUsername=userA receiverPlatform=twitch receiverPlatformID=twitchB receiverUsername=userB item=money quantity=10
+time=2026-01-02T01:39:49.752-03:30 level=INFO msg="GiveItem called" service=brandish-bot version=dev environment=dev ownerPlatform=twitch ownerPlatformID=twitchA ownerUsername=userA receiverPlatform=twitch receiverPlatformID=twitchB receiverUsername=userB item=money quantity=10
+time=2026-01-02T01:39:49.752-03:30 level=INFO msg="GiveItem called" service=brandish-bot version=dev environment=dev ownerPlatform=twitch ownerPlatformID=twitchA ownerUsername=userA receiverPlatform=twitch receiverPlatformID=twitchB receiverUsername=userB item=money quantity=10
+time=2026-01-02T01:39:49.752-03:30 level=INFO msg="GiveItem called" service=brandish-bot version=dev environment=dev ownerPlatform=twitch ownerPlatformID=twitchA ownerUsername=userA receiverPlatform=twitch receiverPlatformID=twitchB receiverUsername=userB item=money quantity=10
+time=2026-01-02T01:39:49.752-03:30 level=INFO msg="GiveItem called" service=brandish-bot version=dev environment=dev ownerPlatform=twitch ownerPlatformID=twitchA ownerUsername=userA receiverPlatform=twitch receiverPlatformID=twitchB receiverUsername=userB item=money quantity=10
+time=2026-01-02T01:39:49.752-03:30 level=INFO msg="GiveItem called" service=brandish-bot version=dev environment=dev ownerPlatform=twitch ownerPlatformID=twitchA ownerUsername=userA receiverPlatform=twitch receiverPlatformID=twitchB receiverUsername=userB item=money quantity=10
+time=2026-01-02T01:39:49.752-03:30 level=INFO msg="GiveItem called" service=brandish-bot version=dev environment=dev ownerPlatform=twitch ownerPlatformID=twitchA ownerUsername=userA receiverPlatform=twitch receiverPlatformID=twitchB receiverUsername=userB item=money quantity=10
+time=2026-01-02T01:39:49.762-03:30 level=INFO msg="Item transferred" service=brandish-bot version=dev environment=dev owner=userA receiver=userB item=money quantity=10
+time=2026-01-02T01:39:49.767-03:30 level=INFO msg="Item transferred" service=brandish-bot version=dev environment=dev owner=userA receiver=userB item=money quantity=10
+time=2026-01-02T01:39:49.770-03:30 level=INFO msg="Item transferred" service=brandish-bot version=dev environment=dev owner=userA receiver=userB item=money quantity=10
+time=2026-01-02T01:39:49.772-03:30 level=INFO msg="Item transferred" service=brandish-bot version=dev environment=dev owner=userA receiver=userB item=money quantity=10
+time=2026-01-02T01:39:49.774-03:30 level=INFO msg="Item transferred" service=brandish-bot version=dev environment=dev owner=userA receiver=userB item=money quantity=10
+time=2026-01-02T01:39:49.775-03:30 level=INFO msg="Item transferred" service=brandish-bot version=dev environment=dev owner=userA receiver=userB item=money quantity=10
+time=2026-01-02T01:39:49.777-03:30 level=INFO msg="Item transferred" service=brandish-bot version=dev environment=dev owner=userA receiver=userB item=money quantity=10
+time=2026-01-02T01:39:49.779-03:30 level=INFO msg="Item transferred" service=brandish-bot version=dev environment=dev owner=userA receiver=userB item=money quantity=10
+time=2026-01-02T01:39:49.780-03:30 level=INFO msg="Item transferred" service=brandish-bot version=dev environment=dev owner=userA receiver=userB item=money quantity=10
+time=2026-01-02T01:39:49.782-03:30 level=INFO msg="Item transferred" service=brandish-bot version=dev environment=dev owner=userA receiver=userB item=money quantity=10
+time=2026-01-02T01:39:49.785-03:30 level=INFO msg="AddItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitchC username=userC item=money quantity=50
+time=2026-01-02T01:39:49.788-03:30 level=INFO msg="Item added successfully" service=brandish-bot version=dev environment=dev username=userC item=money quantity=50
+time=2026-01-02T01:39:51.632-03:30 level=INFO msg="Successfully connected to the database" service=brandish-bot version=dev environment=dev
+time=2026-01-02T01:39:51.754-03:30 level=INFO msg="HandleSearch called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitchD username=userD
+time=2026-01-02T01:39:51.756-03:30 level=INFO msg="First search of the day - applying bonus" service=brandish-bot version=dev environment=dev username=userD
+time=2026-01-02T01:39:51.759-03:30 level=INFO msg="Search CRITICAL success" service=brandish-bot version=dev environment=dev username=userD item=lootbox_tier0 quantity=2
+time=2026-01-02T01:39:51.760-03:30 level=INFO msg="Search completed" service=brandish-bot version=dev environment=dev username=userD result="You found a hidden stash! (CRITICAL SUCCESS!) You found 2x lootbox_tier0 (First Search of the Day!)"
+time=2026-01-02T01:39:51.760-03:30 level=INFO msg="HandleSearch called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitchD username=userD
+time=2026-01-02T01:39:51.760-03:30 level=INFO msg="First search of the day - applying bonus" service=brandish-bot version=dev environment=dev username=userD
+time=2026-01-02T01:39:51.761-03:30 level=INFO msg="Search CRITICAL success" service=brandish-bot version=dev environment=dev username=userD item=lootbox_tier0 quantity=2
+time=2026-01-02T01:39:51.761-03:30 level=INFO msg="Search completed" service=brandish-bot version=dev environment=dev username=userD result="You found a hidden stash! (CRITICAL SUCCESS!) You found 2x lootbox_tier0 (First Search of the Day!)"
+time=2026-01-02T01:39:51.761-03:30 level=INFO msg="HandleSearch called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitchD username=userD
+time=2026-01-02T01:39:51.761-03:30 level=INFO msg="First search of the day - applying bonus" service=brandish-bot version=dev environment=dev username=userD
+time=2026-01-02T01:39:51.762-03:30 level=INFO msg="Search CRITICAL success" service=brandish-bot version=dev environment=dev username=userD item=lootbox_tier0 quantity=2
+time=2026-01-02T01:39:51.763-03:30 level=INFO msg="Search completed" service=brandish-bot version=dev environment=dev username=userD result="You found a hidden stash! (CRITICAL SUCCESS!) You found 2x lootbox_tier0 (First Search of the Day!)"
+time=2026-01-02T01:39:51.763-03:30 level=INFO msg="HandleSearch called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitchD username=userD
+time=2026-01-02T01:39:51.763-03:30 level=INFO msg="First search of the day - applying bonus" service=brandish-bot version=dev environment=dev username=userD
+time=2026-01-02T01:39:51.764-03:30 level=INFO msg="Search CRITICAL success" service=brandish-bot version=dev environment=dev username=userD item=lootbox_tier0 quantity=2
+time=2026-01-02T01:39:51.764-03:30 level=INFO msg="Search completed" service=brandish-bot version=dev environment=dev username=userD result="You found a hidden stash! (CRITICAL SUCCESS!) You found 2x lootbox_tier0 (First Search of the Day!)"
+time=2026-01-02T01:39:51.764-03:30 level=INFO msg="HandleSearch called" service=brandish-bot version=dev environment=dev platform=twitch platformID=twitchD username=userD
+time=2026-01-02T01:39:51.764-03:30 level=INFO msg="First search of the day - applying bonus" service=brandish-bot version=dev environment=dev username=userD
+time=2026-01-02T01:39:51.765-03:30 level=INFO msg="Search CRITICAL success" service=brandish-bot version=dev environment=dev username=userD item=lootbox_tier0 quantity=2
+time=2026-01-02T01:39:51.765-03:30 level=INFO msg="Search completed" service=brandish-bot version=dev environment=dev username=userD result="You found a hidden stash! (CRITICAL SUCCESS!) You found 2x lootbox_tier0 (First Search of the Day!)"
+time=2026-01-02T01:39:51.765-03:30 level=INFO msg="User service shutting down, waiting for background tasks..." service=brandish-bot version=dev environment=dev
+time=2026-01-02T01:39:53.932-03:30 level=INFO msg="Successfully connected to the database" service=brandish-bot version=dev environment=dev
 PASS
-ok  	github.com/osse101/BrandishBot_Go/internal/database/postgres	29.032s
-time=2026-01-01T23:34:04.916-03:30 level=ERROR msg="Failed to load info text" service=brandish-bot version=dev environment=dev feature=missing error="failed to read info file: open /tmp/info_test3307519681/missing.txt: no such file or directory"
-time=2026-01-01T23:34:04.918-03:30 level=WARN msg="Server error, will retry" service=brandish-bot version=dev environment=dev status=500 attempt=0
-time=2026-01-01T23:34:05.453-03:30 level=INFO msg="Retrying API request" service=brandish-bot version=dev environment=dev attempt=1 path=/user/register delay=535ms
-time=2026-01-01T23:34:05.454-03:30 level=WARN msg="Server error, will retry" service=brandish-bot version=dev environment=dev status=500 attempt=1
-time=2026-01-01T23:34:06.492-03:30 level=INFO msg="Retrying API request" service=brandish-bot version=dev environment=dev attempt=2 path=/user/register delay=1.038s
-time=2026-01-01T23:34:06.493-03:30 level=WARN msg="Server error, will retry" service=brandish-bot version=dev environment=dev status=500 attempt=2
-time=2026-01-01T23:34:08.618-03:30 level=INFO msg="Retrying API request" service=brandish-bot version=dev environment=dev attempt=3 path=/user/register delay=2.083s
-time=2026-01-01T23:34:08.619-03:30 level=WARN msg="Server error, will retry" service=brandish-bot version=dev environment=dev status=500 attempt=3
-time=2026-01-01T23:34:08.619-03:30 level=ERROR msg="Failed to register user" service=brandish-bot version=dev environment=dev error="max retries exceeded: server error: 500"
-time=2026-01-01T23:34:08.621-03:30 level=WARN msg="Server error, will retry" service=brandish-bot version=dev environment=dev status=500 attempt=0
-time=2026-01-01T23:34:09.185-03:30 level=INFO msg="Retrying API request" service=brandish-bot version=dev environment=dev attempt=1 path=/user/register delay=563ms
-time=2026-01-01T23:34:09.185-03:30 level=WARN msg="Server error, will retry" service=brandish-bot version=dev environment=dev status=500 attempt=1
-time=2026-01-01T23:34:10.255-03:30 level=INFO msg="Retrying API request" service=brandish-bot version=dev environment=dev attempt=2 path=/user/register delay=1.069s
-time=2026-01-01T23:34:10.256-03:30 level=WARN msg="Server error, will retry" service=brandish-bot version=dev environment=dev status=500 attempt=2
-time=2026-01-01T23:34:12.300-03:30 level=INFO msg="Retrying API request" service=brandish-bot version=dev environment=dev attempt=3 path=/user/register delay=2.043s
-time=2026-01-01T23:34:12.300-03:30 level=WARN msg="Server error, will retry" service=brandish-bot version=dev environment=dev status=500 attempt=3
-time=2026-01-01T23:34:12.300-03:30 level=ERROR msg="Failed to register user" service=brandish-bot version=dev environment=dev error="max retries exceeded: server error: 500"
+ok  	github.com/osse101/BrandishBot_Go/internal/database/postgres	28.916s
+time=2026-01-02T01:39:54.423-03:30 level=ERROR msg="Failed to load info text" service=brandish-bot version=dev environment=dev feature=missing error="failed to read info file: open /tmp/info_test3361057765/missing.txt: no such file or directory"
+time=2026-01-02T01:39:54.425-03:30 level=WARN msg="Server error, will retry" service=brandish-bot version=dev environment=dev status=500 attempt=0
+time=2026-01-02T01:39:55.008-03:30 level=INFO msg="Retrying API request" service=brandish-bot version=dev environment=dev attempt=1 path=/user/register delay=583ms
+time=2026-01-02T01:39:55.009-03:30 level=WARN msg="Server error, will retry" service=brandish-bot version=dev environment=dev status=500 attempt=1
+time=2026-01-02T01:39:56.068-03:30 level=INFO msg="Retrying API request" service=brandish-bot version=dev environment=dev attempt=2 path=/user/register delay=1.03s
+time=2026-01-02T01:39:56.069-03:30 level=WARN msg="Server error, will retry" service=brandish-bot version=dev environment=dev status=500 attempt=2
+time=2026-01-02T01:39:58.165-03:30 level=INFO msg="Retrying API request" service=brandish-bot version=dev environment=dev attempt=3 path=/user/register delay=2.086s
+time=2026-01-02T01:39:58.166-03:30 level=WARN msg="Server error, will retry" service=brandish-bot version=dev environment=dev status=500 attempt=3
+time=2026-01-02T01:39:58.166-03:30 level=ERROR msg="Failed to register user" service=brandish-bot version=dev environment=dev error="max retries exceeded: server error: 500"
+time=2026-01-02T01:39:58.168-03:30 level=WARN msg="Server error, will retry" service=brandish-bot version=dev environment=dev status=500 attempt=0
+time=2026-01-02T01:39:58.675-03:30 level=INFO msg="Retrying API request" service=brandish-bot version=dev environment=dev attempt=1 path=/user/register delay=506ms
+time=2026-01-02T01:39:58.676-03:30 level=WARN msg="Server error, will retry" service=brandish-bot version=dev environment=dev status=500 attempt=1
+time=2026-01-02T01:39:59.743-03:30 level=INFO msg="Retrying API request" service=brandish-bot version=dev environment=dev attempt=2 path=/user/register delay=1.066s
+time=2026-01-02T01:39:59.743-03:30 level=WARN msg="Server error, will retry" service=brandish-bot version=dev environment=dev status=500 attempt=2
+time=2026-01-02T01:40:01.817-03:30 level=INFO msg="Retrying API request" service=brandish-bot version=dev environment=dev attempt=3 path=/user/register delay=2.035s
+time=2026-01-02T01:40:01.818-03:30 level=WARN msg="Server error, will retry" service=brandish-bot version=dev environment=dev status=500 attempt=3
+time=2026-01-02T01:40:01.818-03:30 level=ERROR msg="Failed to register user" service=brandish-bot version=dev environment=dev error="max retries exceeded: server error: 500"
 PASS
-ok  	github.com/osse101/BrandishBot_Go/internal/discord	7.394s
+ok  	github.com/osse101/BrandishBot_Go/internal/discord	7.406s
 PASS
-ok  	github.com/osse101/BrandishBot_Go/internal/domain	0.003s
-time=2026-01-01T23:34:12.320-03:30 level=INFO msg="BuyItem called" service=brandish-bot version=dev environment=dev platform=discord platformID=discord-id username=tester item=Lootbox1 quantity=1
-time=2026-01-01T23:34:12.320-03:30 level=INFO msg="Item purchased" service=brandish-bot version=dev environment=dev username=tester item=Lootbox1 quantity=1
-time=2026-01-01T23:34:12.320-03:30 level=INFO msg="Economy service shutting down, waiting for background tasks..." service=brandish-bot version=dev environment=dev
-time=2026-01-01T23:34:12.434-03:30 level=INFO msg="Economy service shutting down, waiting for background tasks..." service=brandish-bot version=dev environment=dev
-time=2026-01-01T23:34:12.536-03:30 level=INFO msg="SellItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=3
-time=2026-01-01T23:34:12.536-03:30 level=INFO msg="Item sold" service=brandish-bot version=dev environment=dev username=testuser item=lootbox quantity=3 moneyGained=300
-time=2026-01-01T23:34:12.536-03:30 level=INFO msg="SellItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=junkbox quantity=100
-time=2026-01-01T23:34:12.536-03:30 level=INFO msg="Item sold" service=brandish-bot version=dev environment=dev username=testuser item=junkbox quantity=100 moneyGained=500
-time=2026-01-01T23:34:12.536-03:30 level=INFO msg="SellItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=missile quantity=100
-time=2026-01-01T23:34:12.537-03:30 level=INFO msg="Item sold" service=brandish-bot version=dev environment=dev username=testuser item=missile quantity=30 moneyGained=600
-time=2026-01-01T23:34:12.537-03:30 level=INFO msg="SellItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=nonexistent item=lootbox quantity=1
-time=2026-01-01T23:34:12.537-03:30 level=INFO msg="SellItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=InvalidItem quantity=1
-time=2026-01-01T23:34:12.537-03:30 level=INFO msg="SellItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=1
-time=2026-01-01T23:34:12.537-03:30 level=INFO msg="SellItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=-1
-time=2026-01-01T23:34:12.537-03:30 level=INFO msg="SellItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=0
-time=2026-01-01T23:34:12.537-03:30 level=INFO msg="SellItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=1
-time=2026-01-01T23:34:12.537-03:30 level=INFO msg="Item sold" service=brandish-bot version=dev environment=dev username=testuser item=lootbox quantity=1 moneyGained=100
-time=2026-01-01T23:34:12.537-03:30 level=INFO msg="SellItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=5
-time=2026-01-01T23:34:12.537-03:30 level=INFO msg="Item sold" service=brandish-bot version=dev environment=dev username=testuser item=lootbox quantity=5 moneyGained=500
-time=2026-01-01T23:34:12.537-03:30 level=INFO msg="SellItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=500
-time=2026-01-01T23:34:12.537-03:30 level=INFO msg="Item sold" service=brandish-bot version=dev environment=dev username=testuser item=lootbox quantity=100 moneyGained=10000
-time=2026-01-01T23:34:12.537-03:30 level=INFO msg="SellItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=5000
-time=2026-01-01T23:34:12.537-03:30 level=INFO msg="Item sold" service=brandish-bot version=dev environment=dev username=testuser item=lootbox quantity=100 moneyGained=10000
-time=2026-01-01T23:34:12.537-03:30 level=INFO msg="SellItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=9900
-time=2026-01-01T23:34:12.538-03:30 level=INFO msg="Item sold" service=brandish-bot version=dev environment=dev username=testuser item=lootbox quantity=100 moneyGained=10000
-time=2026-01-01T23:34:12.538-03:30 level=INFO msg="SellItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=10000
-time=2026-01-01T23:34:12.538-03:30 level=INFO msg="Item sold" service=brandish-bot version=dev environment=dev username=testuser item=lootbox quantity=100 moneyGained=10000
-time=2026-01-01T23:34:12.538-03:30 level=INFO msg="SellItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=10001
-time=2026-01-01T23:34:12.538-03:30 level=INFO msg="SellItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=1
-time=2026-01-01T23:34:12.538-03:30 level=ERROR msg="Failed to get user" service=brandish-bot version=dev environment=dev error="database connection lost"
-time=2026-01-01T23:34:12.538-03:30 level=INFO msg="SellItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=1
-time=2026-01-01T23:34:12.538-03:30 level=ERROR msg="Failed to update inventory" service=brandish-bot version=dev environment=dev error="deadlock detected"
-time=2026-01-01T23:34:12.538-03:30 level=INFO msg="GetSellablePrices called" service=brandish-bot version=dev environment=dev
-time=2026-01-01T23:34:12.538-03:30 level=INFO msg="GetSellablePrices called" service=brandish-bot version=dev environment=dev
-time=2026-01-01T23:34:12.538-03:30 level=INFO msg="BuyItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=3
-time=2026-01-01T23:34:12.538-03:30 level=INFO msg="Item purchased" service=brandish-bot version=dev environment=dev username=testuser item=lootbox quantity=3
-time=2026-01-01T23:34:12.538-03:30 level=INFO msg="BuyItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=1
-time=2026-01-01T23:34:12.538-03:30 level=INFO msg="BuyItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=1
-time=2026-01-01T23:34:12.538-03:30 level=INFO msg="BuyItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=1
-time=2026-01-01T23:34:12.539-03:30 level=INFO msg="Item purchased" service=brandish-bot version=dev environment=dev username=testuser item=lootbox quantity=1
-time=2026-01-01T23:34:12.539-03:30 level=INFO msg="BuyItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=5
-time=2026-01-01T23:34:12.539-03:30 level=INFO msg="Adjusted purchase quantity due to funds" service=brandish-bot version=dev environment=dev requested=5 actual=1
-time=2026-01-01T23:34:12.539-03:30 level=INFO msg="Item purchased" service=brandish-bot version=dev environment=dev username=testuser item=lootbox quantity=1
-time=2026-01-01T23:34:12.539-03:30 level=INFO msg="BuyItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=5
-time=2026-01-01T23:34:12.539-03:30 level=INFO msg="Item purchased" service=brandish-bot version=dev environment=dev username=testuser item=lootbox quantity=5
-time=2026-01-01T23:34:12.539-03:30 level=INFO msg="BuyItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=5
-time=2026-01-01T23:34:12.539-03:30 level=INFO msg="Item purchased" service=brandish-bot version=dev environment=dev username=testuser item=lootbox quantity=5
-time=2026-01-01T23:34:12.539-03:30 level=INFO msg="BuyItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=5
-time=2026-01-01T23:34:12.539-03:30 level=INFO msg="Adjusted purchase quantity due to funds" service=brandish-bot version=dev environment=dev requested=5 actual=2
-time=2026-01-01T23:34:12.539-03:30 level=INFO msg="Item purchased" service=brandish-bot version=dev environment=dev username=testuser item=lootbox quantity=2
-time=2026-01-01T23:34:12.539-03:30 level=INFO msg="BuyItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=-1
-time=2026-01-01T23:34:12.539-03:30 level=INFO msg="BuyItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=0
-time=2026-01-01T23:34:12.539-03:30 level=INFO msg="BuyItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=1
-time=2026-01-01T23:34:12.540-03:30 level=INFO msg="Item purchased" service=brandish-bot version=dev environment=dev username=testuser item=lootbox quantity=1
-time=2026-01-01T23:34:12.540-03:30 level=INFO msg="BuyItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=3
-time=2026-01-01T23:34:12.540-03:30 level=INFO msg="Item purchased" service=brandish-bot version=dev environment=dev username=testuser item=lootbox quantity=3
-time=2026-01-01T23:34:12.540-03:30 level=INFO msg="BuyItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=250
-time=2026-01-01T23:34:12.540-03:30 level=INFO msg="Item purchased" service=brandish-bot version=dev environment=dev username=testuser item=lootbox quantity=250
-time=2026-01-01T23:34:12.540-03:30 level=INFO msg="BuyItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=7500
-time=2026-01-01T23:34:12.540-03:30 level=INFO msg="Item purchased" service=brandish-bot version=dev environment=dev username=testuser item=lootbox quantity=7500
-time=2026-01-01T23:34:12.540-03:30 level=INFO msg="BuyItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=9950
-time=2026-01-01T23:34:12.540-03:30 level=INFO msg="Item purchased" service=brandish-bot version=dev environment=dev username=testuser item=lootbox quantity=9950
-time=2026-01-01T23:34:12.540-03:30 level=INFO msg="BuyItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=10000
-time=2026-01-01T23:34:12.540-03:30 level=INFO msg="Item purchased" service=brandish-bot version=dev environment=dev username=testuser item=lootbox quantity=10000
-time=2026-01-01T23:34:12.540-03:30 level=INFO msg="BuyItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=10001
-time=2026-01-01T23:34:12.540-03:30 level=INFO msg="BuyItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=InvalidItem quantity=1
-time=2026-01-01T23:34:12.541-03:30 level=INFO msg="BuyItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=InvalidItem quantity=1
-time=2026-01-01T23:34:12.541-03:30 level=INFO msg="BuyItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=InvalidItem quantity=1
-time=2026-01-01T23:34:12.541-03:30 level=INFO msg="BuyItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=1
-time=2026-01-01T23:34:12.541-03:30 level=ERROR msg="Failed to update inventory" service=brandish-bot version=dev environment=dev error="deadlock detected"
+ok  	github.com/osse101/BrandishBot_Go/internal/domain	0.005s
+time=2026-01-02T01:40:01.839-03:30 level=INFO msg="BuyItem called" service=brandish-bot version=dev environment=dev platform=discord platformID=discord-id username=tester item=Lootbox1 quantity=1
+time=2026-01-02T01:40:01.840-03:30 level=INFO msg="Item purchased" service=brandish-bot version=dev environment=dev username=tester item=Lootbox1 quantity=1
+time=2026-01-02T01:40:01.840-03:30 level=INFO msg="Economy service shutting down, waiting for background tasks..." service=brandish-bot version=dev environment=dev
+time=2026-01-02T01:40:01.952-03:30 level=INFO msg="Economy service shutting down, waiting for background tasks..." service=brandish-bot version=dev environment=dev
+time=2026-01-02T01:40:02.059-03:30 level=INFO msg="SellItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=3
+time=2026-01-02T01:40:02.059-03:30 level=INFO msg="Item sold" service=brandish-bot version=dev environment=dev username=testuser item=lootbox quantity=3 moneyGained=300
+time=2026-01-02T01:40:02.059-03:30 level=INFO msg="SellItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=junkbox quantity=100
+time=2026-01-02T01:40:02.059-03:30 level=INFO msg="Item sold" service=brandish-bot version=dev environment=dev username=testuser item=junkbox quantity=100 moneyGained=500
+time=2026-01-02T01:40:02.059-03:30 level=INFO msg="SellItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=missile quantity=100
+time=2026-01-02T01:40:02.059-03:30 level=INFO msg="Item sold" service=brandish-bot version=dev environment=dev username=testuser item=missile quantity=30 moneyGained=600
+time=2026-01-02T01:40:02.059-03:30 level=INFO msg="SellItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=nonexistent item=lootbox quantity=1
+time=2026-01-02T01:40:02.059-03:30 level=INFO msg="SellItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=InvalidItem quantity=1
+time=2026-01-02T01:40:02.060-03:30 level=INFO msg="SellItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=1
+time=2026-01-02T01:40:02.060-03:30 level=INFO msg="SellItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=-1
+time=2026-01-02T01:40:02.060-03:30 level=INFO msg="SellItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=0
+time=2026-01-02T01:40:02.060-03:30 level=INFO msg="SellItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=1
+time=2026-01-02T01:40:02.060-03:30 level=INFO msg="Item sold" service=brandish-bot version=dev environment=dev username=testuser item=lootbox quantity=1 moneyGained=100
+time=2026-01-02T01:40:02.060-03:30 level=INFO msg="SellItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=5
+time=2026-01-02T01:40:02.060-03:30 level=INFO msg="Item sold" service=brandish-bot version=dev environment=dev username=testuser item=lootbox quantity=5 moneyGained=500
+time=2026-01-02T01:40:02.060-03:30 level=INFO msg="SellItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=500
+time=2026-01-02T01:40:02.060-03:30 level=INFO msg="Item sold" service=brandish-bot version=dev environment=dev username=testuser item=lootbox quantity=100 moneyGained=10000
+time=2026-01-02T01:40:02.060-03:30 level=INFO msg="SellItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=5000
+time=2026-01-02T01:40:02.060-03:30 level=INFO msg="Item sold" service=brandish-bot version=dev environment=dev username=testuser item=lootbox quantity=100 moneyGained=10000
+time=2026-01-02T01:40:02.060-03:30 level=INFO msg="SellItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=9900
+time=2026-01-02T01:40:02.060-03:30 level=INFO msg="Item sold" service=brandish-bot version=dev environment=dev username=testuser item=lootbox quantity=100 moneyGained=10000
+time=2026-01-02T01:40:02.060-03:30 level=INFO msg="SellItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=10000
+time=2026-01-02T01:40:02.061-03:30 level=INFO msg="Item sold" service=brandish-bot version=dev environment=dev username=testuser item=lootbox quantity=100 moneyGained=10000
+time=2026-01-02T01:40:02.061-03:30 level=INFO msg="SellItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=10001
+time=2026-01-02T01:40:02.061-03:30 level=INFO msg="SellItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=1
+time=2026-01-02T01:40:02.061-03:30 level=ERROR msg="Failed to get user" service=brandish-bot version=dev environment=dev error="database connection lost"
+time=2026-01-02T01:40:02.061-03:30 level=INFO msg="SellItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=1
+time=2026-01-02T01:40:02.061-03:30 level=ERROR msg="Failed to update inventory" service=brandish-bot version=dev environment=dev error="deadlock detected"
+time=2026-01-02T01:40:02.061-03:30 level=INFO msg="GetSellablePrices called" service=brandish-bot version=dev environment=dev
+time=2026-01-02T01:40:02.061-03:30 level=INFO msg="GetSellablePrices called" service=brandish-bot version=dev environment=dev
+time=2026-01-02T01:40:02.061-03:30 level=INFO msg="BuyItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=3
+time=2026-01-02T01:40:02.061-03:30 level=INFO msg="Item purchased" service=brandish-bot version=dev environment=dev username=testuser item=lootbox quantity=3
+time=2026-01-02T01:40:02.061-03:30 level=INFO msg="BuyItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=1
+time=2026-01-02T01:40:02.061-03:30 level=INFO msg="BuyItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=1
+time=2026-01-02T01:40:02.062-03:30 level=INFO msg="BuyItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=1
+time=2026-01-02T01:40:02.062-03:30 level=INFO msg="Item purchased" service=brandish-bot version=dev environment=dev username=testuser item=lootbox quantity=1
+time=2026-01-02T01:40:02.062-03:30 level=INFO msg="BuyItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=5
+time=2026-01-02T01:40:02.062-03:30 level=INFO msg="Adjusted purchase quantity due to funds" service=brandish-bot version=dev environment=dev requested=5 actual=1
+time=2026-01-02T01:40:02.062-03:30 level=INFO msg="Item purchased" service=brandish-bot version=dev environment=dev username=testuser item=lootbox quantity=1
+time=2026-01-02T01:40:02.062-03:30 level=INFO msg="BuyItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=5
+time=2026-01-02T01:40:02.062-03:30 level=INFO msg="Item purchased" service=brandish-bot version=dev environment=dev username=testuser item=lootbox quantity=5
+time=2026-01-02T01:40:02.062-03:30 level=INFO msg="BuyItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=5
+time=2026-01-02T01:40:02.062-03:30 level=INFO msg="Item purchased" service=brandish-bot version=dev environment=dev username=testuser item=lootbox quantity=5
+time=2026-01-02T01:40:02.062-03:30 level=INFO msg="BuyItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=5
+time=2026-01-02T01:40:02.062-03:30 level=INFO msg="Adjusted purchase quantity due to funds" service=brandish-bot version=dev environment=dev requested=5 actual=2
+time=2026-01-02T01:40:02.062-03:30 level=INFO msg="Item purchased" service=brandish-bot version=dev environment=dev username=testuser item=lootbox quantity=2
+time=2026-01-02T01:40:02.062-03:30 level=INFO msg="BuyItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=-1
+time=2026-01-02T01:40:02.062-03:30 level=INFO msg="BuyItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=0
+time=2026-01-02T01:40:02.062-03:30 level=INFO msg="BuyItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=1
+time=2026-01-02T01:40:02.063-03:30 level=INFO msg="Item purchased" service=brandish-bot version=dev environment=dev username=testuser item=lootbox quantity=1
+time=2026-01-02T01:40:02.063-03:30 level=INFO msg="BuyItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=3
+time=2026-01-02T01:40:02.063-03:30 level=INFO msg="Item purchased" service=brandish-bot version=dev environment=dev username=testuser item=lootbox quantity=3
+time=2026-01-02T01:40:02.063-03:30 level=INFO msg="BuyItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=250
+time=2026-01-02T01:40:02.063-03:30 level=INFO msg="Item purchased" service=brandish-bot version=dev environment=dev username=testuser item=lootbox quantity=250
+time=2026-01-02T01:40:02.063-03:30 level=INFO msg="BuyItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=7500
+time=2026-01-02T01:40:02.063-03:30 level=INFO msg="Item purchased" service=brandish-bot version=dev environment=dev username=testuser item=lootbox quantity=7500
+time=2026-01-02T01:40:02.063-03:30 level=INFO msg="BuyItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=9950
+time=2026-01-02T01:40:02.063-03:30 level=INFO msg="Item purchased" service=brandish-bot version=dev environment=dev username=testuser item=lootbox quantity=9950
+time=2026-01-02T01:40:02.063-03:30 level=INFO msg="BuyItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=10000
+time=2026-01-02T01:40:02.064-03:30 level=INFO msg="Item purchased" service=brandish-bot version=dev environment=dev username=testuser item=lootbox quantity=10000
+time=2026-01-02T01:40:02.064-03:30 level=INFO msg="BuyItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=10001
+time=2026-01-02T01:40:02.064-03:30 level=INFO msg="BuyItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=InvalidItem quantity=1
+time=2026-01-02T01:40:02.064-03:30 level=INFO msg="BuyItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=InvalidItem quantity=1
+time=2026-01-02T01:40:02.064-03:30 level=INFO msg="BuyItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=InvalidItem quantity=1
+time=2026-01-02T01:40:02.064-03:30 level=INFO msg="BuyItem called" service=brandish-bot version=dev environment=dev platform=twitch platformID="" username=testuser item=lootbox quantity=1
+time=2026-01-02T01:40:02.064-03:30 level=ERROR msg="Failed to update inventory" service=brandish-bot version=dev environment=dev error="deadlock detected"
 PASS
-ok  	github.com/osse101/BrandishBot_Go/internal/economy	0.234s
+ok  	github.com/osse101/BrandishBot_Go/internal/economy	0.238s
 PASS
 ok  	github.com/osse101/BrandishBot_Go/internal/event	0.002s
-time=2026-01-01T23:34:12.547-03:30 level=INFO msg="Starting event log cleanup job" service=brandish-bot version=dev environment=dev retentionDays=10
-time=2026-01-01T23:34:12.547-03:30 level=INFO msg="Event log cleanup completed" service=brandish-bot version=dev environment=dev deletedCount=100 duration=30.597µs
+time=2026-01-02T01:40:02.071-03:30 level=INFO msg="Starting event log cleanup job" service=brandish-bot version=dev environment=dev retentionDays=10
+time=2026-01-02T01:40:02.071-03:30 level=INFO msg="Event log cleanup completed" service=brandish-bot version=dev environment=dev deletedCount=100 duration=32.342µs
 PASS
-ok  	github.com/osse101/BrandishBot_Go/internal/eventlog	0.003s
-time=2026-01-01T23:34:12.551-03:30 level=INFO msg="StartGamble called" service=brandish-bot version=dev environment=dev platform=twitch platformID=456 username=user2 bets="[{ItemID:1 Quantity:1}]"
-time=2026-01-01T23:34:12.551-03:30 level=INFO msg="StartGamble called" service=brandish-bot version=dev environment=dev platform=twitch platformID=123 username=user1 bets="[{ItemID:1 Quantity:1}]"
-time=2026-01-01T23:34:12.551-03:30 level=INFO msg="JoinGamble called" service=brandish-bot version=dev environment=dev gambleID=46d7b592-bd68-451c-a509-18452e2d7628 username=user1
-time=2026-01-01T23:34:12.552-03:30 level=INFO msg="ExecuteGamble called" service=brandish-bot version=dev environment=dev gambleID=aaf7cbd8-8d32-4232-8af1-a285d1b342b0
-time=2026-01-01T23:34:12.552-03:30 level=INFO msg="ExecuteGamble called" service=brandish-bot version=dev environment=dev gambleID=aaf7cbd8-8d32-4232-8af1-a285d1b342b0
-time=2026-01-01T23:34:12.552-03:30 level=INFO msg="Gamble state transitioned to Opening" service=brandish-bot version=dev environment=dev gambleID=aaf7cbd8-8d32-4232-8af1-a285d1b342b0
-time=2026-01-01T23:34:12.552-03:30 level=WARN msg="Gamble state transition failed - already being executed" service=brandish-bot version=dev environment=dev gambleID=aaf7cbd8-8d32-4232-8af1-a285d1b342b0
-time=2026-01-01T23:34:12.563-03:30 level=INFO msg="StartGamble called" service=brandish-bot version=dev environment=dev platform=discord platformID=user123 username=tester bets="[{ItemID:1 Quantity:1}]"
-time=2026-01-01T23:34:12.677-03:30 level=INFO msg="ExecuteGamble called" service=brandish-bot version=dev environment=dev gambleID=88c1281e-b756-4e2a-b844-5b683ce0d172
-time=2026-01-01T23:34:12.832-03:30 level=INFO msg="StartGamble called" service=brandish-bot version=dev environment=dev platform=twitch platformID=123 username=testuser bets="[{ItemID:1 Quantity:2}]"
-time=2026-01-01T23:34:12.832-03:30 level=INFO msg="StartGamble called" service=brandish-bot version=dev environment=dev platform=twitch platformID=123 username=testuser bets=[]
-time=2026-01-01T23:34:12.832-03:30 level=INFO msg="StartGamble called" service=brandish-bot version=dev environment=dev platform=twitch platformID=123 username=testuser bets="[{ItemID:1 Quantity:0}]"
-time=2026-01-01T23:34:12.832-03:30 level=INFO msg="StartGamble called" service=brandish-bot version=dev environment=dev platform=twitch platformID=123 username=testuser bets="[{ItemID:1 Quantity:1}]"
-time=2026-01-01T23:34:12.833-03:30 level=INFO msg="StartGamble called" service=brandish-bot version=dev environment=dev platform=twitch platformID=123 username=testuser bets="[{ItemID:1 Quantity:1}]"
-time=2026-01-01T23:34:12.833-03:30 level=INFO msg="StartGamble called" service=brandish-bot version=dev environment=dev platform=twitch platformID=123 username=testuser bets="[{ItemID:1 Quantity:5}]"
-time=2026-01-01T23:34:12.833-03:30 level=INFO msg="StartGamble called" service=brandish-bot version=dev environment=dev platform=twitch platformID=123 username=testuser bets="[{ItemID:99 Quantity:1}]"
-time=2026-01-01T23:34:12.833-03:30 level=INFO msg="JoinGamble called" service=brandish-bot version=dev environment=dev gambleID=5e6b4429-6d22-4009-9873-5796768fb162 username=joiner
-time=2026-01-01T23:34:12.833-03:30 level=INFO msg="JoinGamble called" service=brandish-bot version=dev environment=dev gambleID=c9bfb885-ca05-4940-90af-5637515a4df0 username=joiner
-time=2026-01-01T23:34:12.833-03:30 level=INFO msg="JoinGamble called" service=brandish-bot version=dev environment=dev gambleID=de4b25a7-91fd-4094-89e2-ff3d57157cf1 username=joiner
-time=2026-01-01T23:34:12.833-03:30 level=INFO msg="JoinGamble called" service=brandish-bot version=dev environment=dev gambleID=d3428f15-d13b-4b15-bb02-79fa4fb2899d username=joiner
-time=2026-01-01T23:34:12.833-03:30 level=INFO msg="JoinGamble called" service=brandish-bot version=dev environment=dev gambleID=07fff11c-7d6f-45fc-8c5e-832342e5fa8d username=joiner
-time=2026-01-01T23:34:12.833-03:30 level=INFO msg="JoinGamble called" service=brandish-bot version=dev environment=dev gambleID=dad13b6f-e668-4ddc-987a-2e06aa8afeaa username=joiner
-time=2026-01-01T23:34:12.833-03:30 level=INFO msg="ExecuteGamble called" service=brandish-bot version=dev environment=dev gambleID=e90ccad0-13d1-4651-971d-fd19d163992d
-time=2026-01-01T23:34:12.833-03:30 level=INFO msg="Gamble state transitioned to Opening" service=brandish-bot version=dev environment=dev gambleID=e90ccad0-13d1-4651-971d-fd19d163992d
-time=2026-01-01T23:34:12.834-03:30 level=INFO msg="ExecuteGamble called" service=brandish-bot version=dev environment=dev gambleID=9f47842e-f6f6-47e6-b5a7-713e0a3cbcc1
-time=2026-01-01T23:34:12.834-03:30 level=INFO msg="Gamble state transitioned to Opening" service=brandish-bot version=dev environment=dev gambleID=9f47842e-f6f6-47e6-b5a7-713e0a3cbcc1
-time=2026-01-01T23:34:12.834-03:30 level=INFO msg="Tie-break resolved" service=brandish-bot version=dev environment=dev winnerID=user2 originalValue=50
-time=2026-01-01T23:34:12.834-03:30 level=INFO msg="ExecuteGamble called" service=brandish-bot version=dev environment=dev gambleID=af89ec2d-a01c-4512-887c-a927ab523f64
-time=2026-01-01T23:34:12.834-03:30 level=INFO msg="ExecuteGamble called" service=brandish-bot version=dev environment=dev gambleID=9ec8a9eb-92b6-49ef-afee-69fb5b7cb461
-time=2026-01-01T23:34:12.834-03:30 level=INFO msg="Gamble already completed, skipping execution" service=brandish-bot version=dev environment=dev gambleID=9ec8a9eb-92b6-49ef-afee-69fb5b7cb461
-time=2026-01-01T23:34:12.834-03:30 level=INFO msg="ExecuteGamble called" service=brandish-bot version=dev environment=dev gambleID=32c3f7ad-311d-4124-ad8b-fa17a98049eb
-time=2026-01-01T23:34:12.834-03:30 level=INFO msg="ExecuteGamble called" service=brandish-bot version=dev environment=dev gambleID=94023132-233f-48fe-8ff6-85c911b73022
-time=2026-01-01T23:34:12.834-03:30 level=INFO msg="ExecuteGamble called" service=brandish-bot version=dev environment=dev gambleID=3e4ea13b-9bc9-4aa2-863c-e02add65ce00
-time=2026-01-01T23:34:12.834-03:30 level=INFO msg="Gamble state transitioned to Opening" service=brandish-bot version=dev environment=dev gambleID=3e4ea13b-9bc9-4aa2-863c-e02add65ce00
-time=2026-01-01T23:34:12.834-03:30 level=INFO msg="ExecuteGamble called" service=brandish-bot version=dev environment=dev gambleID=f7da7beb-d518-4e18-93e2-77abf760ec57
-time=2026-01-01T23:34:12.834-03:30 level=INFO msg="Gamble state transitioned to Opening" service=brandish-bot version=dev environment=dev gambleID=f7da7beb-d518-4e18-93e2-77abf760ec57
-time=2026-01-01T23:34:12.835-03:30 level=INFO msg="ExecuteGamble called" service=brandish-bot version=dev environment=dev gambleID=92fc0579-6d97-408c-bc87-3706875e1a8a
-time=2026-01-01T23:34:12.835-03:30 level=INFO msg="Gamble state transitioned to Opening" service=brandish-bot version=dev environment=dev gambleID=92fc0579-6d97-408c-bc87-3706875e1a8a
-time=2026-01-01T23:34:12.835-03:30 level=INFO msg="Tie-break resolved" service=brandish-bot version=dev environment=dev winnerID=user2 originalValue=100
+ok  	github.com/osse101/BrandishBot_Go/internal/eventlog	0.004s
+time=2026-01-02T01:40:02.075-03:30 level=INFO msg="StartGamble called" service=brandish-bot version=dev environment=dev platform=twitch platformID=456 username=user2 bets="[{ItemID:1 Quantity:1}]"
+time=2026-01-02T01:40:02.075-03:30 level=INFO msg="StartGamble called" service=brandish-bot version=dev environment=dev platform=twitch platformID=123 username=user1 bets="[{ItemID:1 Quantity:1}]"
+time=2026-01-02T01:40:02.076-03:30 level=INFO msg="JoinGamble called" service=brandish-bot version=dev environment=dev gambleID=7db6e8bb-4b95-46d5-83fd-f9e1f13c1ab1 username=user1
+time=2026-01-02T01:40:02.076-03:30 level=INFO msg="ExecuteGamble called" service=brandish-bot version=dev environment=dev gambleID=4e7f5b10-cd7d-491e-a0dc-2c48149399c7
+time=2026-01-02T01:40:02.076-03:30 level=INFO msg="ExecuteGamble called" service=brandish-bot version=dev environment=dev gambleID=4e7f5b10-cd7d-491e-a0dc-2c48149399c7
+time=2026-01-02T01:40:02.076-03:30 level=INFO msg="Gamble state transitioned to Opening" service=brandish-bot version=dev environment=dev gambleID=4e7f5b10-cd7d-491e-a0dc-2c48149399c7
+time=2026-01-02T01:40:02.076-03:30 level=WARN msg="Gamble state transition failed - already being executed" service=brandish-bot version=dev environment=dev gambleID=4e7f5b10-cd7d-491e-a0dc-2c48149399c7
+time=2026-01-02T01:40:02.087-03:30 level=INFO msg="StartGamble called" service=brandish-bot version=dev environment=dev platform=discord platformID=user123 username=tester bets="[{ItemID:1 Quantity:1}]"
+time=2026-01-02T01:40:02.200-03:30 level=INFO msg="ExecuteGamble called" service=brandish-bot version=dev environment=dev gambleID=f992f36f-8849-41e7-a8d0-1bfa1a8899e7
+time=2026-01-02T01:40:02.358-03:30 level=INFO msg="StartGamble called" service=brandish-bot version=dev environment=dev platform=twitch platformID=123 username=testuser bets="[{ItemID:1 Quantity:2}]"
+time=2026-01-02T01:40:02.358-03:30 level=INFO msg="StartGamble called" service=brandish-bot version=dev environment=dev platform=twitch platformID=123 username=testuser bets=[]
+time=2026-01-02T01:40:02.358-03:30 level=INFO msg="StartGamble called" service=brandish-bot version=dev environment=dev platform=twitch platformID=123 username=testuser bets="[{ItemID:1 Quantity:0}]"
+time=2026-01-02T01:40:02.358-03:30 level=INFO msg="StartGamble called" service=brandish-bot version=dev environment=dev platform=twitch platformID=123 username=testuser bets="[{ItemID:1 Quantity:1}]"
+time=2026-01-02T01:40:02.358-03:30 level=INFO msg="StartGamble called" service=brandish-bot version=dev environment=dev platform=twitch platformID=123 username=testuser bets="[{ItemID:1 Quantity:1}]"
+time=2026-01-02T01:40:02.358-03:30 level=INFO msg="StartGamble called" service=brandish-bot version=dev environment=dev platform=twitch platformID=123 username=testuser bets="[{ItemID:1 Quantity:5}]"
+time=2026-01-02T01:40:02.358-03:30 level=INFO msg="StartGamble called" service=brandish-bot version=dev environment=dev platform=twitch platformID=123 username=testuser bets="[{ItemID:99 Quantity:1}]"
+time=2026-01-02T01:40:02.358-03:30 level=INFO msg="JoinGamble called" service=brandish-bot version=dev environment=dev gambleID=d776a774-e5b6-4dbe-a496-7b524a7fdf10 username=joiner
+time=2026-01-02T01:40:02.358-03:30 level=INFO msg="JoinGamble called" service=brandish-bot version=dev environment=dev gambleID=fc70c7b1-0ac8-4b11-aea0-27b78caa82ff username=joiner
+time=2026-01-02T01:40:02.359-03:30 level=INFO msg="JoinGamble called" service=brandish-bot version=dev environment=dev gambleID=fb5be050-4bf3-4c58-b460-512226cc17c8 username=joiner
+time=2026-01-02T01:40:02.359-03:30 level=INFO msg="JoinGamble called" service=brandish-bot version=dev environment=dev gambleID=b466411f-75c1-4dd9-88e2-b1bbe18f82d2 username=joiner
+time=2026-01-02T01:40:02.359-03:30 level=INFO msg="JoinGamble called" service=brandish-bot version=dev environment=dev gambleID=8940c750-1793-4f0b-a66c-3e86c24190ee username=joiner
+time=2026-01-02T01:40:02.359-03:30 level=INFO msg="JoinGamble called" service=brandish-bot version=dev environment=dev gambleID=104e9f0b-8b81-4f2c-9c79-fd9a42a81f63 username=joiner
+time=2026-01-02T01:40:02.359-03:30 level=INFO msg="ExecuteGamble called" service=brandish-bot version=dev environment=dev gambleID=506fecbf-1d6b-481e-a2d7-b4c6f1e0e1b9
+time=2026-01-02T01:40:02.359-03:30 level=INFO msg="Gamble state transitioned to Opening" service=brandish-bot version=dev environment=dev gambleID=506fecbf-1d6b-481e-a2d7-b4c6f1e0e1b9
+time=2026-01-02T01:40:02.359-03:30 level=INFO msg="ExecuteGamble called" service=brandish-bot version=dev environment=dev gambleID=36224ebb-f087-40da-a730-9a972d12000f
+time=2026-01-02T01:40:02.359-03:30 level=INFO msg="Gamble state transitioned to Opening" service=brandish-bot version=dev environment=dev gambleID=36224ebb-f087-40da-a730-9a972d12000f
+time=2026-01-02T01:40:02.359-03:30 level=INFO msg="Tie-break resolved" service=brandish-bot version=dev environment=dev winnerID=user2 originalValue=50
+time=2026-01-02T01:40:02.359-03:30 level=INFO msg="ExecuteGamble called" service=brandish-bot version=dev environment=dev gambleID=7ede89c7-4ffc-4e6b-8f73-da2dd48f56c8
+time=2026-01-02T01:40:02.359-03:30 level=INFO msg="ExecuteGamble called" service=brandish-bot version=dev environment=dev gambleID=0d23b798-e93c-407e-bcbd-b501d6c3b216
+time=2026-01-02T01:40:02.359-03:30 level=INFO msg="Gamble already completed, skipping execution" service=brandish-bot version=dev environment=dev gambleID=0d23b798-e93c-407e-bcbd-b501d6c3b216
+time=2026-01-02T01:40:02.359-03:30 level=INFO msg="ExecuteGamble called" service=brandish-bot version=dev environment=dev gambleID=285e96c6-2802-49c5-9080-78dc72e2b98f
+time=2026-01-02T01:40:02.359-03:30 level=INFO msg="ExecuteGamble called" service=brandish-bot version=dev environment=dev gambleID=1e8ea0fa-67d6-4a86-a073-ed1d9e14f918
+time=2026-01-02T01:40:02.359-03:30 level=INFO msg="ExecuteGamble called" service=brandish-bot version=dev environment=dev gambleID=138dda82-87de-4da0-a006-397b5443a10f
+time=2026-01-02T01:40:02.359-03:30 level=INFO msg="Gamble state transitioned to Opening" service=brandish-bot version=dev environment=dev gambleID=138dda82-87de-4da0-a006-397b5443a10f
+time=2026-01-02T01:40:02.360-03:30 level=INFO msg="ExecuteGamble called" service=brandish-bot version=dev environment=dev gambleID=665504dc-70d2-4b20-9a91-b1de8b5122ab
+time=2026-01-02T01:40:02.360-03:30 level=INFO msg="Gamble state transitioned to Opening" service=brandish-bot version=dev environment=dev gambleID=665504dc-70d2-4b20-9a91-b1de8b5122ab
+time=2026-01-02T01:40:02.360-03:30 level=INFO msg="ExecuteGamble called" service=brandish-bot version=dev environment=dev gambleID=d478a804-62fc-479d-b65b-99a4b40419ed
+time=2026-01-02T01:40:02.360-03:30 level=INFO msg="Gamble state transitioned to Opening" service=brandish-bot version=dev environment=dev gambleID=d478a804-62fc-479d-b65b-99a4b40419ed
+time=2026-01-02T01:40:02.360-03:30 level=INFO msg="Tie-break resolved" service=brandish-bot version=dev environment=dev winnerID=user1 originalValue=100
 PASS
-ok  	github.com/osse101/BrandishBot_Go/internal/gamble	0.287s
-time=2026-01-01T23:34:12.840-03:30 level=WARN msg="Feature is locked" feature=feature_disassemble
-time=2026-01-01T23:34:12.840-03:30 level=ERROR msg="Failed to disassemble item" error="disassemble failed" username=testuser item=lootbox_tier1
-time=2026-01-01T23:34:12.841-03:30 level=ERROR msg="Readiness check failed" error="assert.AnError general error for testing"
-time=2026-01-01T23:34:12.841-03:30 level=ERROR msg="Readiness check failed" error="context deadline exceeded"
-time=2026-01-01T23:34:12.841-03:30 level=ERROR msg="Readiness check failed" error="connection refused"
-time=2026-01-01T23:34:12.841-03:30 level=WARN msg="Invalid request" error="Key: 'AddItemRequest.Platform' Error:Field validation for 'Platform' failed on the 'required' tag\nKey: 'AddItemRequest.PlatformID' Error:Field validation for 'PlatformID' failed on the 'required' tag\nKey: 'AddItemRequest.Username' Error:Field validation for 'Username' failed on the 'required' tag"
-time=2026-01-01T23:34:12.841-03:30 level=ERROR msg="Failed to add item" error="service error" username=testuser item=weapon_blaster
-time=2026-01-01T23:34:12.841-03:30 level=WARN msg="Feature is locked" feature=feature_sell
-time=2026-01-01T23:34:12.841-03:30 level=ERROR msg="Failed to check feature unlock status" error="database error" feature=feature_sell
-time=2026-01-01T23:34:12.842-03:30 level=ERROR msg="Failed to decode sell item request" error="json: cannot unmarshal string into Go value of type handler.SellItemRequest"
-time=2026-01-01T23:34:12.842-03:30 level=WARN msg="Invalid request" error="Key: 'SellItemRequest.Platform' Error:Field validation for 'Platform' failed on the 'required' tag"
-time=2026-01-01T23:34:12.842-03:30 level=WARN msg="Invalid request" error="Key: 'SellItemRequest.Quantity' Error:Field validation for 'Quantity' failed on the 'min' tag"
-time=2026-01-01T23:34:12.842-03:30 level=ERROR msg="Failed to sell item" error="item not found" username=testuser item=UnknownItem
-time=2026-01-01T23:34:12.842-03:30 level=ERROR msg="Failed to sell item" error="insufficient items" username=testuser item=weapon_blaster
-time=2026-01-01T23:34:12.842-03:30 level=ERROR msg="Failed to remove item" error="service error" username=testuser item=weapon_blaster
-time=2026-01-01T23:34:12.842-03:30 level=ERROR msg="Failed to give item" error="service error" owner=owner receiver=receiver item=weapon_blaster
-time=2026-01-01T23:34:12.843-03:30 level=WARN msg="Feature is locked" feature=feature_buy
-time=2026-01-01T23:34:12.843-03:30 level=ERROR msg="Failed to check feature unlock status" error="database error" feature=feature_buy
-time=2026-01-01T23:34:12.843-03:30 level=ERROR msg="Failed to decode buy item request" error="json: cannot unmarshal string into Go value of type handler.BuyItemRequest"
-time=2026-01-01T23:34:12.843-03:30 level=WARN msg="Invalid request" error="Key: 'BuyItemRequest.PlatformID' Error:Field validation for 'PlatformID' failed on the 'required' tag"
-time=2026-01-01T23:34:12.843-03:30 level=WARN msg="Invalid request" error="Key: 'BuyItemRequest.Quantity' Error:Field validation for 'Quantity' failed on the 'min' tag"
-time=2026-01-01T23:34:12.843-03:30 level=ERROR msg="Failed to buy item" error="insufficient money" username=pooruser item=weapon_blaster
-time=2026-01-01T23:34:12.843-03:30 level=ERROR msg="Failed to buy item" error="item not available for purchase" username=testuser item=RareItem
-time=2026-01-01T23:34:12.844-03:30 level=ERROR msg="Failed to use item" error="service error" username=testuser item=missile
-time=2026-01-01T23:34:12.844-03:30 level=WARN msg="Filter locked" filter=upgrade username=testuser
-time=2026-01-01T23:34:12.844-03:30 level=WARN msg="Missing username query parameter"
-time=2026-01-01T23:34:12.844-03:30 level=ERROR msg="Failed to get inventory" error="service error" username=testuser
-time=2026-01-01T23:34:12.844-03:30 level=WARN msg="Filter locked" filter=sellable username=testuser
-time=2026-01-01T23:34:12.844-03:30 level=WARN msg="Filter locked" filter=consumable username=testuser
-time=2026-01-01T23:34:12.844-03:30 level=WARN msg="Invalid filter parameter" filter=unknown
-time=2026-01-01T23:34:12.844-03:30 level=ERROR msg="Failed to check filter unlock" error="database error"
-time=2026-01-01T23:34:12.844-03:30 level=ERROR msg="Failed to get jobs" error="db error"
-time=2026-01-01T23:34:12.845-03:30 level=ERROR msg="Failed to get user jobs" error="database error" user_id=u1
-time=2026-01-01T23:34:12.845-03:30 level=ERROR msg="Failed to award XP" error="daily XP cap reached for blacksmith" user_id=u1 job_key=blacksmith
-time=2026-01-01T23:34:12.845-03:30 level=ERROR msg="Failed to award XP" error="job not found: invalid_job" user_id=u1 job_key=invalid_job
-time=2026-01-01T23:34:12.845-03:30 level=ERROR msg="Failed to award XP" error="jobs XP system not unlocked" user_id=u1 job_key=blacksmith
-time=2026-01-01T23:34:12.846-03:30 level=WARN msg="Failed to claim link" error="token expired"
-time=2026-01-01T23:34:12.846-03:30 level=WARN msg="Failed to confirm link" error="no pending link to confirm"
-time=2026-01-01T23:34:12.846-03:30 level=ERROR msg="Failed to initiate link" error="internal error"
-time=2026-01-01T23:34:12.846-03:30 level=WARN msg="Feature is locked" feature=feature_search
-time=2026-01-01T23:34:12.846-03:30 level=ERROR msg="Failed to handle search" error="service error" username=testuser
-time=2026-01-01T23:34:12.846-03:30 level=WARN msg="Invalid request" error="Key: 'RecordEventRequest.UserID' Error:Field validation for 'UserID' failed on the 'required' tag"
-time=2026-01-01T23:34:12.846-03:30 level=ERROR msg="Failed to record event" error="service error" user_id=testuser event_type=item_used
-time=2026-01-01T23:34:12.846-03:30 level=WARN msg="Missing user_id query parameter"
-time=2026-01-01T23:34:12.847-03:30 level=ERROR msg="Failed to get user stats" error="service error" user_id=testuser
-time=2026-01-01T23:34:12.847-03:30 level=ERROR msg="Failed to get system stats" error="service error"
-time=2026-01-01T23:34:12.847-03:30 level=WARN msg="Missing event_type query parameter"
-time=2026-01-01T23:34:12.847-03:30 level=WARN msg="Invalid limit parameter" limit=invalid
-time=2026-01-01T23:34:12.847-03:30 level=ERROR msg="Failed to get leaderboard" error="service error" event_type=item_used
-time=2026-01-01T23:34:12.847-03:30 level=WARN msg="Feature is locked" feature=feature_upgrade
-time=2026-01-01T23:34:12.847-03:30 level=ERROR msg="Failed to upgrade item" error="upgrade failed" username=testuser item=junkbox
-time=2026-01-01T23:34:12.847-03:30 level=WARN msg="Invalid request" error="Key: 'CraftingActionRequest.Platform' Error:Field validation for 'Platform' failed on the 'required' tag\nKey: 'CraftingActionRequest.PlatformID' Error:Field validation for 'PlatformID' failed on the 'required' tag\nKey: 'CraftingActionRequest.Username' Error:Field validation for 'Username' failed on the 'required' tag\nKey: 'CraftingActionRequest.Item' Error:Field validation for 'Item' failed on the 'required' tag\nKey: 'CraftingActionRequest.Quantity' Error:Field validation for 'Quantity' failed on the 'min' tag"
-time=2026-01-01T23:34:12.848-03:30 level=WARN msg="Invalid request" error="Key: 'RegisterUserRequest.KnownPlatform' Error:Field validation for 'KnownPlatform' failed on the 'required' tag\nKey: 'RegisterUserRequest.KnownPlatformID' Error:Field validation for 'KnownPlatformID' failed on the 'required' tag\nKey: 'RegisterUserRequest.NewPlatform' Error:Field validation for 'NewPlatform' failed on the 'required' tag\nKey: 'RegisterUserRequest.NewPlatformID' Error:Field validation for 'NewPlatformID' failed on the 'required' tag"
-time=2026-01-01T23:34:12.848-03:30 level=ERROR msg="Failed to register user" error="db error" username=erroruser
+ok  	github.com/osse101/BrandishBot_Go/internal/gamble	0.289s
+time=2026-01-02T01:40:02.367-03:30 level=WARN msg="Feature is locked" feature=feature_disassemble
+time=2026-01-02T01:40:02.367-03:30 level=ERROR msg="Failed to disassemble item" error="disassemble failed" username=testuser item=lootbox_tier1
+time=2026-01-02T01:40:02.367-03:30 level=ERROR msg="Readiness check failed" error="assert.AnError general error for testing"
+time=2026-01-02T01:40:02.367-03:30 level=ERROR msg="Readiness check failed" error="context deadline exceeded"
+time=2026-01-02T01:40:02.368-03:30 level=ERROR msg="Readiness check failed" error="connection refused"
+time=2026-01-02T01:40:02.368-03:30 level=WARN msg="Invalid request" error="Key: 'AddItemRequest.Platform' Error:Field validation for 'Platform' failed on the 'required' tag\nKey: 'AddItemRequest.PlatformID' Error:Field validation for 'PlatformID' failed on the 'required' tag\nKey: 'AddItemRequest.Username' Error:Field validation for 'Username' failed on the 'required' tag"
+time=2026-01-02T01:40:02.368-03:30 level=ERROR msg="Failed to add item" error="service error" username=testuser item=weapon_blaster
+time=2026-01-02T01:40:02.368-03:30 level=WARN msg="Feature is locked" feature=feature_sell
+time=2026-01-02T01:40:02.368-03:30 level=ERROR msg="Failed to check feature unlock status" error="database error" feature=feature_sell
+time=2026-01-02T01:40:02.368-03:30 level=ERROR msg="Failed to decode sell item request" error="json: cannot unmarshal string into Go value of type handler.SellItemRequest"
+time=2026-01-02T01:40:02.368-03:30 level=WARN msg="Invalid request" error="Key: 'SellItemRequest.Platform' Error:Field validation for 'Platform' failed on the 'required' tag"
+time=2026-01-02T01:40:02.369-03:30 level=WARN msg="Invalid request" error="Key: 'SellItemRequest.Quantity' Error:Field validation for 'Quantity' failed on the 'min' tag"
+time=2026-01-02T01:40:02.369-03:30 level=ERROR msg="Failed to sell item" error="item not found" username=testuser item=UnknownItem
+time=2026-01-02T01:40:02.369-03:30 level=ERROR msg="Failed to sell item" error="insufficient items" username=testuser item=weapon_blaster
+time=2026-01-02T01:40:02.369-03:30 level=ERROR msg="Failed to remove item" error="service error" username=testuser item=weapon_blaster
+time=2026-01-02T01:40:02.369-03:30 level=ERROR msg="Failed to give item" error="service error" owner=owner receiver=receiver item=weapon_blaster
+time=2026-01-02T01:40:02.370-03:30 level=WARN msg="Feature is locked" feature=feature_buy
+time=2026-01-02T01:40:02.370-03:30 level=ERROR msg="Failed to check feature unlock status" error="database error" feature=feature_buy
+time=2026-01-02T01:40:02.370-03:30 level=ERROR msg="Failed to decode buy item request" error="json: cannot unmarshal string into Go value of type handler.BuyItemRequest"
+time=2026-01-02T01:40:02.370-03:30 level=WARN msg="Invalid request" error="Key: 'BuyItemRequest.PlatformID' Error:Field validation for 'PlatformID' failed on the 'required' tag"
+time=2026-01-02T01:40:02.370-03:30 level=WARN msg="Invalid request" error="Key: 'BuyItemRequest.Quantity' Error:Field validation for 'Quantity' failed on the 'min' tag"
+time=2026-01-02T01:40:02.370-03:30 level=ERROR msg="Failed to buy item" error="insufficient money" username=pooruser item=weapon_blaster
+time=2026-01-02T01:40:02.370-03:30 level=ERROR msg="Failed to buy item" error="item not available for purchase" username=testuser item=RareItem
+time=2026-01-02T01:40:02.370-03:30 level=ERROR msg="Failed to use item" error="service error" username=testuser item=missile
+time=2026-01-02T01:40:02.371-03:30 level=WARN msg="Filter locked" filter=upgrade username=testuser
+time=2026-01-02T01:40:02.371-03:30 level=WARN msg="Missing username query parameter"
+time=2026-01-02T01:40:02.371-03:30 level=ERROR msg="Failed to get inventory" error="service error" username=testuser
+time=2026-01-02T01:40:02.371-03:30 level=WARN msg="Filter locked" filter=sellable username=testuser
+time=2026-01-02T01:40:02.371-03:30 level=WARN msg="Filter locked" filter=consumable username=testuser
+time=2026-01-02T01:40:02.371-03:30 level=WARN msg="Invalid filter parameter" filter=unknown
+time=2026-01-02T01:40:02.371-03:30 level=ERROR msg="Failed to check filter unlock" error="database error"
+time=2026-01-02T01:40:02.371-03:30 level=ERROR msg="Failed to get jobs" error="db error"
+time=2026-01-02T01:40:02.371-03:30 level=ERROR msg="Failed to get user jobs" error="database error" user_id=u1
+time=2026-01-02T01:40:02.372-03:30 level=ERROR msg="Failed to award XP" error="daily XP cap reached for blacksmith" user_id=u1 job_key=blacksmith
+time=2026-01-02T01:40:02.372-03:30 level=ERROR msg="Failed to award XP" error="job not found: invalid_job" user_id=u1 job_key=invalid_job
+time=2026-01-02T01:40:02.372-03:30 level=ERROR msg="Failed to award XP" error="jobs XP system not unlocked" user_id=u1 job_key=blacksmith
+time=2026-01-02T01:40:02.372-03:30 level=WARN msg="Failed to claim link" error="token expired"
+time=2026-01-02T01:40:02.372-03:30 level=WARN msg="Failed to confirm link" error="no pending link to confirm"
+time=2026-01-02T01:40:02.372-03:30 level=ERROR msg="Failed to initiate link" error="internal error"
+time=2026-01-02T01:40:02.373-03:30 level=WARN msg="Feature is locked" feature=feature_search
+time=2026-01-02T01:40:02.373-03:30 level=ERROR msg="Failed to handle search" error="service error" username=testuser
+time=2026-01-02T01:40:02.373-03:30 level=WARN msg="Invalid request" error="Key: 'RecordEventRequest.UserID' Error:Field validation for 'UserID' failed on the 'required' tag"
+time=2026-01-02T01:40:02.373-03:30 level=ERROR msg="Failed to record event" error="service error" user_id=testuser event_type=item_used
+time=2026-01-02T01:40:02.373-03:30 level=WARN msg="Missing user_id query parameter"
+time=2026-01-02T01:40:02.373-03:30 level=ERROR msg="Failed to get user stats" error="service error" user_id=testuser
+time=2026-01-02T01:40:02.373-03:30 level=ERROR msg="Failed to get system stats" error="service error"
+time=2026-01-02T01:40:02.373-03:30 level=WARN msg="Missing event_type query parameter"
+time=2026-01-02T01:40:02.374-03:30 level=WARN msg="Invalid limit parameter" limit=invalid
+time=2026-01-02T01:40:02.374-03:30 level=ERROR msg="Failed to get leaderboard" error="service error" event_type=item_used
+time=2026-01-02T01:40:02.374-03:30 level=WARN msg="Feature is locked" feature=feature_upgrade
+time=2026-01-02T01:40:02.374-03:30 level=ERROR msg="Failed to upgrade item" error="upgrade failed" username=testuser item=junkbox
+time=2026-01-02T01:40:02.374-03:30 level=WARN msg="Invalid request" error="Key: 'CraftingActionRequest.Platform' Error:Field validation for 'Platform' failed on the 'required' tag\nKey: 'CraftingActionRequest.PlatformID' Error:Field validation for 'PlatformID' failed on the 'required' tag\nKey: 'CraftingActionRequest.Username' Error:Field validation for 'Username' failed on the 'required' tag\nKey: 'CraftingActionRequest.Item' Error:Field validation for 'Item' failed on the 'required' tag\nKey: 'CraftingActionRequest.Quantity' Error:Field validation for 'Quantity' failed on the 'min' tag"
+time=2026-01-02T01:40:02.375-03:30 level=WARN msg="Invalid request" error="Key: 'RegisterUserRequest.KnownPlatform' Error:Field validation for 'KnownPlatform' failed on the 'required' tag\nKey: 'RegisterUserRequest.KnownPlatformID' Error:Field validation for 'KnownPlatformID' failed on the 'required' tag\nKey: 'RegisterUserRequest.NewPlatform' Error:Field validation for 'NewPlatform' failed on the 'required' tag\nKey: 'RegisterUserRequest.NewPlatformID' Error:Field validation for 'NewPlatformID' failed on the 'required' tag"
+time=2026-01-02T01:40:02.375-03:30 level=ERROR msg="Failed to register user" error="db error" username=erroruser
 goos: linux
 goarch: amd64
 pkg: github.com/osse101/BrandishBot_Go/internal/handler
 cpu: 12th Gen Intel(R) Core(TM) i7-12700K
-BenchmarkHandler_HandleMessage-20                 	  474081	      4854 ns/op	    8355 B/op	      50 allocs/op
-BenchmarkHandler_HandleMessage_ExistingUser-20    	  469041	      4911 ns/op	    8371 B/op	      50 allocs/op
-BenchmarkHandler_HandleMessage_WithMatches-20     	  468162	      4780 ns/op	    8403 B/op	      50 allocs/op
+BenchmarkHandler_HandleMessage-20                 	  494707	      4743 ns/op	    8355 B/op	      50 allocs/op
+BenchmarkHandler_HandleMessage_ExistingUser-20    	  509570	      4681 ns/op	    8372 B/op	      50 allocs/op
+BenchmarkHandler_HandleMessage_WithMatches-20     	  489015	      4782 ns/op	    8404 B/op	      50 allocs/op
 PASS
-ok  	github.com/osse101/BrandishBot_Go/internal/handler	7.018s
-time=2026-01-01T23:34:17.555-03:30 level=INFO msg="Awarded job XP" service=brandish-bot version=dev environment=dev user_id=user1 job=blacksmith xp=10 new_level=0 leveled_up=false
-time=2026-01-01T23:34:17.555-03:30 level=INFO msg="Awarded job XP" service=brandish-bot version=dev environment=dev user_id=user1 job=blacksmith xp=150 new_level=1 leveled_up=true
-time=2026-01-01T23:34:17.555-03:30 level=INFO msg="Awarded job XP" service=brandish-bot version=dev environment=dev user_id=u1 job=blacksmith xp=500 new_level=2 leveled_up=true
-time=2026-01-01T23:34:17.555-03:30 level=INFO msg="Daily XP cap reached" service=brandish-bot version=dev environment=dev user_id=u1 job=blacksmith
-time=2026-01-01T23:34:17.556-03:30 level=INFO msg="Awarded job XP" service=brandish-bot version=dev environment=dev user_id=u1 job=blacksmith xp=10 new_level=10 leveled_up=false
-time=2026-01-01T23:34:17.557-03:30 level=INFO msg="Awarded job XP" service=brandish-bot version=dev environment=dev user_id=u1 job=blacksmith xp=100 new_level=4 leveled_up=false
+ok  	github.com/osse101/BrandishBot_Go/internal/handler	9.249s
+time=2026-01-02T01:40:11.616-03:30 level=INFO msg="Awarded job XP" service=brandish-bot version=dev environment=dev user_id=user1 job=blacksmith xp=10 new_level=0 leveled_up=false
+time=2026-01-02T01:40:11.616-03:30 level=INFO msg="Awarded job XP" service=brandish-bot version=dev environment=dev user_id=user1 job=blacksmith xp=150 new_level=1 leveled_up=true
+time=2026-01-02T01:40:11.616-03:30 level=INFO msg="Awarded job XP" service=brandish-bot version=dev environment=dev user_id=u1 job=blacksmith xp=500 new_level=2 leveled_up=true
+time=2026-01-02T01:40:11.616-03:30 level=INFO msg="Daily XP cap reached" service=brandish-bot version=dev environment=dev user_id=u1 job=blacksmith
+time=2026-01-02T01:40:11.616-03:30 level=INFO msg="Awarded job XP" service=brandish-bot version=dev environment=dev user_id=u1 job=blacksmith xp=10 new_level=10 leveled_up=false
+time=2026-01-02T01:40:11.617-03:30 level=INFO msg="Awarded job XP" service=brandish-bot version=dev environment=dev user_id=u1 job=blacksmith xp=100 new_level=4 leveled_up=false
 PASS
 ok  	github.com/osse101/BrandishBot_Go/internal/job	0.005s
-time=2026-01-01T23:34:17.561-03:30 level=INFO msg="Accounts merged" service=brandish-bot version=dev environment=dev primary_id=new-source-id secondary_id=existing-user-id
-time=2026-01-01T23:34:17.561-03:30 level=INFO msg="Link token created" service=brandish-bot version=dev environment=dev platform=discord token=AF6TTC
-time=2026-01-01T23:34:17.562-03:30 level=INFO msg="Link token claimed" service=brandish-bot version=dev environment=dev token=ABC123 target_platform=twitch
-time=2026-01-01T23:34:17.562-03:30 level=INFO msg="Accounts merged" service=brandish-bot version=dev environment=dev primary_id=user-1 secondary_id=user-2
-time=2026-01-01T23:34:17.562-03:30 level=INFO msg="Accounts linked" service=brandish-bot version=dev environment=dev user_id=user-1 platforms="[discord twitch]"
-time=2026-01-01T23:34:17.562-03:30 level=INFO msg="Link token created" service=brandish-bot version=dev environment=dev platform=discord token=S6HVUE
-time=2026-01-01T23:34:17.562-03:30 level=INFO msg="Platform unlinked" service=brandish-bot version=dev environment=dev user_id=user-1 platform=twitch
+time=2026-01-02T01:40:11.623-03:30 level=INFO msg="Accounts merged" service=brandish-bot version=dev environment=dev primary_id=new-source-id secondary_id=existing-user-id
+time=2026-01-02T01:40:11.623-03:30 level=INFO msg="Link token created" service=brandish-bot version=dev environment=dev platform=discord token=ZCVAM6
+time=2026-01-02T01:40:11.623-03:30 level=INFO msg="Link token claimed" service=brandish-bot version=dev environment=dev token=ABC123 target_platform=twitch
+time=2026-01-02T01:40:11.623-03:30 level=INFO msg="Accounts merged" service=brandish-bot version=dev environment=dev primary_id=user-1 secondary_id=user-2
+time=2026-01-02T01:40:11.623-03:30 level=INFO msg="Accounts linked" service=brandish-bot version=dev environment=dev user_id=user-1 platforms="[discord twitch]"
+time=2026-01-02T01:40:11.623-03:30 level=INFO msg="Link token created" service=brandish-bot version=dev environment=dev platform=discord token=TIMNUF
+time=2026-01-02T01:40:11.623-03:30 level=INFO msg="Platform unlinked" service=brandish-bot version=dev environment=dev user_id=user-1 platform=twitch
 PASS
-ok  	github.com/osse101/BrandishBot_Go/internal/linking	0.005s
+ok  	github.com/osse101/BrandishBot_Go/internal/linking	0.006s
 PASS
 ok  	github.com/osse101/BrandishBot_Go/internal/logger	0.002s
 PASS
-ok  	github.com/osse101/BrandishBot_Go/internal/lootbox	0.003s
+ok  	github.com/osse101/BrandishBot_Go/internal/lootbox	0.004s
 ?   	github.com/osse101/BrandishBot_Go/internal/metrics	[no test files]
-time=2026-01-01T23:34:17.572-03:30 level=ERROR msg="Failed to publish engagement event" service=brandish-bot version=dev environment=dev error="assert.AnError general error for testing" user_id=testuser metric=test_metric
-time=2026-01-01T23:34:17.573-03:30 level=ERROR msg="Failed to publish engagement event from context" service=brandish-bot version=dev environment=dev error="assert.AnError general error for testing" user_id=ctx-user metric=manual_metric
+time=2026-01-02T01:40:11.636-03:30 level=ERROR msg="Failed to publish engagement event" service=brandish-bot version=dev environment=dev error="assert.AnError general error for testing" user_id=testuser metric=test_metric
+time=2026-01-02T01:40:11.636-03:30 level=ERROR msg="Failed to publish engagement event from context" service=brandish-bot version=dev environment=dev error="assert.AnError general error for testing" user_id=ctx-user metric=manual_metric
 PASS
-ok  	github.com/osse101/BrandishBot_Go/internal/middleware	0.005s
+ok  	github.com/osse101/BrandishBot_Go/internal/middleware	0.004s
 PASS
-ok  	github.com/osse101/BrandishBot_Go/internal/naming	0.005s
-time=2026-01-01T23:34:17.583-03:30 level=INFO msg="Only one option available, auto-selecting without voting" service=brandish-bot version=dev environment=dev nodeKey=single_option
-time=2026-01-01T23:34:17.583-03:30 level=INFO msg="Auto-selected target set" service=brandish-bot version=dev environment=dev nodeKey=single_option targetLevel=1
-time=2026-01-01T23:34:17.584-03:30 level=INFO msg="Only one option available, auto-selecting without voting" service=brandish-bot version=dev environment=dev nodeKey=upgrade_multi
-time=2026-01-01T23:34:17.584-03:30 level=INFO msg="Auto-selected target set" service=brandish-bot version=dev environment=dev nodeKey=upgrade_multi targetLevel=1
-time=2026-01-01T23:34:17.584-03:30 level=INFO msg="Only one option available, auto-selecting without voting" service=brandish-bot version=dev environment=dev nodeKey=upgrade_multi
-time=2026-01-01T23:34:17.584-03:30 level=INFO msg="Auto-selected target set" service=brandish-bot version=dev environment=dev nodeKey=upgrade_multi targetLevel=2
-time=2026-01-01T23:34:17.584-03:30 level=INFO msg="Only one option available, auto-selecting without voting" service=brandish-bot version=dev environment=dev nodeKey=single_target
-time=2026-01-01T23:34:17.584-03:30 level=INFO msg="Auto-selected target set" service=brandish-bot version=dev environment=dev nodeKey=single_target targetLevel=1
-time=2026-01-01T23:34:17.584-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
-time=2026-01-01T23:34:17.584-03:30 level=INFO msg="Node unlocked" service=brandish-bot version=dev environment=dev nodeKey=item_money level=1 contributions=500 rollover=0
-time=2026-01-01T23:34:17.584-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
-time=2026-01-01T23:34:17.584-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
-time=2026-01-01T23:34:17.584-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
-time=2026-01-01T23:34:17.584-03:30 level=INFO msg="Vote recorded" service=brandish-bot version=dev environment=dev userID=user1 nodeKey=item_money sessionID=1
-time=2026-01-01T23:34:17.584-03:30 level=INFO msg="Vote recorded" service=brandish-bot version=dev environment=dev userID=user2 nodeKey=item_money sessionID=1
-time=2026-01-01T23:34:17.584-03:30 level=INFO msg="Vote recorded" service=brandish-bot version=dev environment=dev userID=user3 nodeKey=item_money sessionID=1
-time=2026-01-01T23:34:17.584-03:30 level=INFO msg="Voting ended" service=brandish-bot version=dev environment=dev sessionID=1 winningNode=2 votes=3 voterCount=3
-time=2026-01-01T23:34:17.584-03:30 level=INFO msg="Unlock threshold met, triggering unlock" service=brandish-bot version=dev environment=dev accumulated=500 required=500
-time=2026-01-01T23:34:17.584-03:30 level=INFO msg="Node unlocked" service=brandish-bot version=dev environment=dev nodeKey=item_money level=1 contributions=500 rollover=0
-time=2026-01-01T23:34:17.584-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
-time=2026-01-01T23:34:17.584-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=2 options=2
-time=2026-01-01T23:34:17.604-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
-time=2026-01-01T23:34:17.604-03:30 level=INFO msg="Vote recorded" service=brandish-bot version=dev environment=dev userID=user1 nodeKey=item_lootbox0 sessionID=1
-time=2026-01-01T23:34:17.604-03:30 level=INFO msg="Vote recorded" service=brandish-bot version=dev environment=dev userID=user2 nodeKey=item_lootbox0 sessionID=1
-time=2026-01-01T23:34:17.604-03:30 level=INFO msg="Vote recorded" service=brandish-bot version=dev environment=dev userID=user3 nodeKey=item_money sessionID=1
-time=2026-01-01T23:34:17.604-03:30 level=INFO msg="Voting ended" service=brandish-bot version=dev environment=dev sessionID=1 winningNode=4 votes=2 voterCount=3
-time=2026-01-01T23:34:17.604-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
-time=2026-01-01T23:34:17.605-03:30 level=INFO msg="Vote recorded" service=brandish-bot version=dev environment=dev userID=user1 nodeKey=item_money sessionID=1
-time=2026-01-01T23:34:17.605-03:30 level=INFO msg="Voting ended" service=brandish-bot version=dev environment=dev sessionID=1 winningNode=2 votes=1 voterCount=1
-time=2026-01-01T23:34:17.605-03:30 level=INFO msg="Unlock threshold met, triggering unlock" service=brandish-bot version=dev environment=dev accumulated=500 required=500
-time=2026-01-01T23:34:17.605-03:30 level=INFO msg="Node unlocked" service=brandish-bot version=dev environment=dev nodeKey=item_money level=1 contributions=500 rollover=0
-time=2026-01-01T23:34:17.605-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=2 options=2
-time=2026-01-01T23:34:17.625-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=4
-time=2026-01-01T23:34:17.625-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=4
-time=2026-01-01T23:34:17.625-03:30 level=INFO msg="Vote recorded" service=brandish-bot version=dev environment=dev userID=user1 nodeKey=upgrade_cooldown_reduction sessionID=1
-time=2026-01-01T23:34:17.625-03:30 level=INFO msg="Voting ended" service=brandish-bot version=dev environment=dev sessionID=1 winningNode=5 votes=1 voterCount=1
-time=2026-01-01T23:34:17.625-03:30 level=INFO msg="Unlock threshold met, triggering unlock" service=brandish-bot version=dev environment=dev accumulated=1500 required=1500
-time=2026-01-01T23:34:17.625-03:30 level=INFO msg="Node unlocked" service=brandish-bot version=dev environment=dev nodeKey=upgrade_cooldown_reduction level=1 contributions=1500 rollover=0
-time=2026-01-01T23:34:17.625-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=2 options=4
-time=2026-01-01T23:34:17.646-03:30 level=INFO msg="Node unlocked" service=brandish-bot version=dev environment=dev nodeKey=item_money level=1 contributions=650 rollover=150
-time=2026-01-01T23:34:17.646-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
-time=2026-01-01T23:34:17.646-03:30 level=INFO msg="Vote recorded" service=brandish-bot version=dev environment=dev userID=user1 nodeKey=item_money sessionID=1
-time=2026-01-01T23:34:17.646-03:30 level=INFO msg="Voting ended" service=brandish-bot version=dev environment=dev sessionID=1 winningNode=2 votes=1 voterCount=1
-time=2026-01-01T23:34:17.646-03:30 level=INFO msg="Unlock threshold met, triggering unlock" service=brandish-bot version=dev environment=dev accumulated=510 required=500
-time=2026-01-01T23:34:17.646-03:30 level=INFO msg="Node unlocked" service=brandish-bot version=dev environment=dev nodeKey=item_money level=1 contributions=510 rollover=10
-time=2026-01-01T23:34:17.646-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=2 options=2
-time=2026-01-01T23:34:17.646-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
-time=2026-01-01T23:34:18.548-03:30 level=WARN msg="Failed to get engagement score for instant unlock" service=brandish-bot version=dev environment=dev error="db error"
-time=2026-01-01T23:34:18.548-03:30 level=ERROR msg="Failed to complete unlock progress" service=brandish-bot version=dev environment=dev progressID=5 error="critical db fail"
-time=2026-01-01T23:34:18.549-03:30 level=ERROR msg="Failed to auto-start voting session after instant unlock" service=brandish-bot version=dev environment=dev error="no nodes available for voting"
-time=2026-01-01T23:34:18.653-03:30 level=INFO msg="Admin unlocked node" service=brandish-bot version=dev environment=dev nodeKey=item_money level=1
-time=2026-01-01T23:34:18.653-03:30 level=INFO msg="Admin unlocked node" service=brandish-bot version=dev environment=dev nodeKey=item_money level=1
-time=2026-01-01T23:34:18.653-03:30 level=INFO msg="Admin relocked node" service=brandish-bot version=dev environment=dev nodeKey=item_money level=1
-time=2026-01-01T23:34:18.653-03:30 level=INFO msg="Admin unlocked node" service=brandish-bot version=dev environment=dev nodeKey=item_money level=1
-time=2026-01-01T23:34:18.653-03:30 level=INFO msg="Admin unlocked node" service=brandish-bot version=dev environment=dev nodeKey=feature_economy level=1
-time=2026-01-01T23:34:18.653-03:30 level=INFO msg="Resetting progression tree" service=brandish-bot version=dev environment=dev resetBy=admin reason="test reset"
-time=2026-01-01T23:34:18.653-03:30 level=INFO msg="Admin unlocked node" service=brandish-bot version=dev environment=dev nodeKey=upgrade_cooldown_reduction level=1
-time=2026-01-01T23:34:18.653-03:30 level=INFO msg="Admin unlocked node" service=brandish-bot version=dev environment=dev nodeKey=upgrade_cooldown_reduction level=2
-time=2026-01-01T23:34:18.653-03:30 level=INFO msg="Admin unlocked node" service=brandish-bot version=dev environment=dev nodeKey=feature_buy level=1
-time=2026-01-01T23:34:18.653-03:30 level=INFO msg="Admin unlocked node" service=brandish-bot version=dev environment=dev nodeKey=feature_sell level=1
-time=2026-01-01T23:34:18.653-03:30 level=INFO msg="Admin unlocked node" service=brandish-bot version=dev environment=dev nodeKey=feature_upgrade level=1
-time=2026-01-01T23:34:18.653-03:30 level=INFO msg="Admin unlocked node" service=brandish-bot version=dev environment=dev nodeKey=feature_disassemble level=1
-time=2026-01-01T23:34:18.653-03:30 level=INFO msg="Admin unlocked node" service=brandish-bot version=dev environment=dev nodeKey=feature_economy level=1
-time=2026-01-01T23:34:18.653-03:30 level=INFO msg="Admin unlocked node" service=brandish-bot version=dev environment=dev nodeKey=feature_search level=1
-time=2026-01-01T23:34:18.653-03:30 level=INFO msg="Admin unlocked node" service=brandish-bot version=dev environment=dev nodeKey=feature_buy level=1
-time=2026-01-01T23:34:18.654-03:30 level=INFO msg="Node unlocked" service=brandish-bot version=dev environment=dev nodeKey=item_money level=1 contributions=500 rollover=0
-time=2026-01-01T23:34:18.654-03:30 level=INFO msg="Node unlocked" service=brandish-bot version=dev environment=dev nodeKey=item_money level=1 contributions=600 rollover=100
-time=2026-01-01T23:34:18.654-03:30 level=INFO msg="Node unlocked" service=brandish-bot version=dev environment=dev nodeKey=item_money level=1 contributions=500 rollover=0
-time=2026-01-01T23:34:18.654-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
-time=2026-01-01T23:34:18.654-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
-time=2026-01-01T23:34:18.654-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
-time=2026-01-01T23:34:18.665-03:30 level=INFO msg="Node unlocked" service=brandish-bot version=dev environment=dev nodeKey=item_money level=1 contributions=500 rollover=0
-time=2026-01-01T23:34:18.665-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
-time=2026-01-01T23:34:18.665-03:30 level=INFO msg="Vote recorded" service=brandish-bot version=dev environment=dev userID=u1 nodeKey=item_money sessionID=1
-time=2026-01-01T23:34:18.665-03:30 level=INFO msg="Voting ended" service=brandish-bot version=dev environment=dev sessionID=1 winningNode=2 votes=1 voterCount=1
-time=2026-01-01T23:34:18.665-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
-time=2026-01-01T23:34:18.665-03:30 level=INFO msg="Unlock threshold met, triggering unlock" service=brandish-bot version=dev environment=dev accumulated=500 required=500
-time=2026-01-01T23:34:18.665-03:30 level=INFO msg="Node unlocked" service=brandish-bot version=dev environment=dev nodeKey=item_money level=1 contributions=500 rollover=0
-time=2026-01-01T23:34:18.665-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=2 options=2
-time=2026-01-01T23:34:18.773-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
-time=2026-01-01T23:34:18.773-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=4
-time=2026-01-01T23:34:18.773-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=4
-time=2026-01-01T23:34:18.773-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
-time=2026-01-01T23:34:18.773-03:30 level=INFO msg="Vote recorded" service=brandish-bot version=dev environment=dev userID=user1 nodeKey=item_lootbox0 sessionID=1
-time=2026-01-01T23:34:18.773-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
-time=2026-01-01T23:34:18.773-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
-time=2026-01-01T23:34:18.773-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
-time=2026-01-01T23:34:18.773-03:30 level=INFO msg="Vote recorded" service=brandish-bot version=dev environment=dev userID=user1 nodeKey=item_money sessionID=1
-time=2026-01-01T23:34:18.773-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
-time=2026-01-01T23:34:18.773-03:30 level=INFO msg="Vote recorded" service=brandish-bot version=dev environment=dev userID=user1 nodeKey=item_money sessionID=1
-time=2026-01-01T23:34:18.773-03:30 level=INFO msg="Vote recorded" service=brandish-bot version=dev environment=dev userID=user2 nodeKey=item_money sessionID=1
-time=2026-01-01T23:34:18.773-03:30 level=INFO msg="Voting ended" service=brandish-bot version=dev environment=dev sessionID=1 winningNode=2 votes=2 voterCount=2
-time=2026-01-01T23:34:18.773-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
-time=2026-01-01T23:34:18.773-03:30 level=INFO msg="Vote recorded" service=brandish-bot version=dev environment=dev userID=user1 nodeKey=item_money sessionID=1
-time=2026-01-01T23:34:18.773-03:30 level=INFO msg="Vote recorded" service=brandish-bot version=dev environment=dev userID=user2 nodeKey=item_lootbox0 sessionID=1
-time=2026-01-01T23:34:18.773-03:30 level=INFO msg="Voting ended" service=brandish-bot version=dev environment=dev sessionID=1 winningNode=2 votes=1 voterCount=2
-time=2026-01-01T23:34:18.773-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
-time=2026-01-01T23:34:18.773-03:30 level=INFO msg="Voting ended" service=brandish-bot version=dev environment=dev sessionID=1 winningNode=2 votes=0 voterCount=0
-time=2026-01-01T23:34:18.773-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
-time=2026-01-01T23:34:18.773-03:30 level=INFO msg="Vote recorded" service=brandish-bot version=dev environment=dev userID=user1 nodeKey=item_lootbox0 sessionID=1
-time=2026-01-01T23:34:18.773-03:30 level=INFO msg="Vote recorded" service=brandish-bot version=dev environment=dev userID=user2 nodeKey=item_lootbox0 sessionID=1
-time=2026-01-01T23:34:18.773-03:30 level=INFO msg="Voting ended" service=brandish-bot version=dev environment=dev sessionID=1 winningNode=4 votes=2 voterCount=2
-time=2026-01-01T23:34:18.773-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
-time=2026-01-01T23:34:18.773-03:30 level=INFO msg="Voting ended" service=brandish-bot version=dev environment=dev sessionID=1 winningNode=2 votes=0 voterCount=0
+ok  	github.com/osse101/BrandishBot_Go/internal/naming	0.006s
+time=2026-01-02T01:40:11.646-03:30 level=INFO msg="Only one option available, auto-selecting without voting" service=brandish-bot version=dev environment=dev nodeKey=single_option
+time=2026-01-02T01:40:11.646-03:30 level=INFO msg="Auto-selected target set" service=brandish-bot version=dev environment=dev nodeKey=single_option targetLevel=1
+time=2026-01-02T01:40:11.646-03:30 level=INFO msg="Only one option available, auto-selecting without voting" service=brandish-bot version=dev environment=dev nodeKey=upgrade_multi
+time=2026-01-02T01:40:11.646-03:30 level=INFO msg="Auto-selected target set" service=brandish-bot version=dev environment=dev nodeKey=upgrade_multi targetLevel=1
+time=2026-01-02T01:40:11.646-03:30 level=INFO msg="Only one option available, auto-selecting without voting" service=brandish-bot version=dev environment=dev nodeKey=upgrade_multi
+time=2026-01-02T01:40:11.646-03:30 level=INFO msg="Auto-selected target set" service=brandish-bot version=dev environment=dev nodeKey=upgrade_multi targetLevel=2
+time=2026-01-02T01:40:11.646-03:30 level=INFO msg="Only one option available, auto-selecting without voting" service=brandish-bot version=dev environment=dev nodeKey=single_target
+time=2026-01-02T01:40:11.646-03:30 level=INFO msg="Auto-selected target set" service=brandish-bot version=dev environment=dev nodeKey=single_target targetLevel=1
+time=2026-01-02T01:40:11.646-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
+time=2026-01-02T01:40:11.646-03:30 level=INFO msg="Node unlocked" service=brandish-bot version=dev environment=dev nodeKey=item_money level=1 contributions=500 rollover=0
+time=2026-01-02T01:40:11.646-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
+time=2026-01-02T01:40:11.646-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
+time=2026-01-02T01:40:11.646-03:30 level=INFO msg="Vote recorded" service=brandish-bot version=dev environment=dev userID=user1 nodeKey=item_money sessionID=1
+time=2026-01-02T01:40:11.646-03:30 level=INFO msg="Vote recorded" service=brandish-bot version=dev environment=dev userID=user2 nodeKey=item_money sessionID=1
+time=2026-01-02T01:40:11.646-03:30 level=INFO msg="Vote recorded" service=brandish-bot version=dev environment=dev userID=user3 nodeKey=item_money sessionID=1
+time=2026-01-02T01:40:11.646-03:30 level=INFO msg="Voting ended" service=brandish-bot version=dev environment=dev sessionID=1 winningNode=2 votes=3 voterCount=3
+time=2026-01-02T01:40:11.646-03:30 level=INFO msg="Unlock threshold met, triggering unlock" service=brandish-bot version=dev environment=dev accumulated=500 required=500
+time=2026-01-02T01:40:11.646-03:30 level=INFO msg="Node unlocked" service=brandish-bot version=dev environment=dev nodeKey=item_money level=1 contributions=500 rollover=0
+time=2026-01-02T01:40:11.646-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=2 options=2
+time=2026-01-02T01:40:11.647-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
+time=2026-01-02T01:40:11.647-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
+time=2026-01-02T01:40:11.667-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
+time=2026-01-02T01:40:11.667-03:30 level=INFO msg="Vote recorded" service=brandish-bot version=dev environment=dev userID=user1 nodeKey=item_money sessionID=1
+time=2026-01-02T01:40:11.667-03:30 level=INFO msg="Vote recorded" service=brandish-bot version=dev environment=dev userID=user2 nodeKey=item_money sessionID=1
+time=2026-01-02T01:40:11.667-03:30 level=INFO msg="Vote recorded" service=brandish-bot version=dev environment=dev userID=user3 nodeKey=item_lootbox0 sessionID=1
+time=2026-01-02T01:40:11.667-03:30 level=INFO msg="Voting ended" service=brandish-bot version=dev environment=dev sessionID=1 winningNode=2 votes=2 voterCount=3
+time=2026-01-02T01:40:11.667-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
+time=2026-01-02T01:40:11.667-03:30 level=INFO msg="Vote recorded" service=brandish-bot version=dev environment=dev userID=user1 nodeKey=item_lootbox0 sessionID=1
+time=2026-01-02T01:40:11.667-03:30 level=INFO msg="Voting ended" service=brandish-bot version=dev environment=dev sessionID=1 winningNode=4 votes=1 voterCount=1
+time=2026-01-02T01:40:11.667-03:30 level=INFO msg="Unlock threshold met, triggering unlock" service=brandish-bot version=dev environment=dev accumulated=500 required=500
+time=2026-01-02T01:40:11.667-03:30 level=INFO msg="Node unlocked" service=brandish-bot version=dev environment=dev nodeKey=item_lootbox0 level=1 contributions=500 rollover=0
+time=2026-01-02T01:40:11.667-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=2 options=4
+time=2026-01-02T01:40:11.688-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=4
+time=2026-01-02T01:40:11.688-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=4
+time=2026-01-02T01:40:11.688-03:30 level=INFO msg="Vote recorded" service=brandish-bot version=dev environment=dev userID=user1 nodeKey=upgrade_cooldown_reduction sessionID=1
+time=2026-01-02T01:40:11.688-03:30 level=INFO msg="Voting ended" service=brandish-bot version=dev environment=dev sessionID=1 winningNode=5 votes=1 voterCount=1
+time=2026-01-02T01:40:11.688-03:30 level=INFO msg="Unlock threshold met, triggering unlock" service=brandish-bot version=dev environment=dev accumulated=1500 required=1500
+time=2026-01-02T01:40:11.688-03:30 level=INFO msg="Node unlocked" service=brandish-bot version=dev environment=dev nodeKey=upgrade_cooldown_reduction level=1 contributions=1500 rollover=0
+time=2026-01-02T01:40:11.688-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=2 options=4
+time=2026-01-02T01:40:11.709-03:30 level=INFO msg="Node unlocked" service=brandish-bot version=dev environment=dev nodeKey=item_money level=1 contributions=650 rollover=150
+time=2026-01-02T01:40:11.709-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
+time=2026-01-02T01:40:11.709-03:30 level=INFO msg="Vote recorded" service=brandish-bot version=dev environment=dev userID=user1 nodeKey=item_money sessionID=1
+time=2026-01-02T01:40:11.709-03:30 level=INFO msg="Voting ended" service=brandish-bot version=dev environment=dev sessionID=1 winningNode=2 votes=1 voterCount=1
+time=2026-01-02T01:40:11.709-03:30 level=INFO msg="Unlock threshold met, triggering unlock" service=brandish-bot version=dev environment=dev accumulated=510 required=500
+time=2026-01-02T01:40:11.709-03:30 level=INFO msg="Node unlocked" service=brandish-bot version=dev environment=dev nodeKey=item_money level=1 contributions=510 rollover=10
+time=2026-01-02T01:40:11.709-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=2 options=2
+time=2026-01-02T01:40:11.709-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
+time=2026-01-02T01:40:12.615-03:30 level=WARN msg="Failed to get engagement score for instant unlock" service=brandish-bot version=dev environment=dev error="db error"
+time=2026-01-02T01:40:12.615-03:30 level=ERROR msg="Failed to complete unlock progress" service=brandish-bot version=dev environment=dev progressID=5 error="critical db fail"
+time=2026-01-02T01:40:12.615-03:30 level=ERROR msg="Failed to auto-start voting session after instant unlock" service=brandish-bot version=dev environment=dev error="no nodes available for voting"
+time=2026-01-02T01:40:12.723-03:30 level=INFO msg="Admin unlocked node" service=brandish-bot version=dev environment=dev nodeKey=item_money level=1
+time=2026-01-02T01:40:12.723-03:30 level=INFO msg="Admin unlocked node" service=brandish-bot version=dev environment=dev nodeKey=item_money level=1
+time=2026-01-02T01:40:12.723-03:30 level=INFO msg="Admin relocked node" service=brandish-bot version=dev environment=dev nodeKey=item_money level=1
+time=2026-01-02T01:40:12.723-03:30 level=INFO msg="Admin unlocked node" service=brandish-bot version=dev environment=dev nodeKey=item_money level=1
+time=2026-01-02T01:40:12.723-03:30 level=INFO msg="Admin unlocked node" service=brandish-bot version=dev environment=dev nodeKey=feature_economy level=1
+time=2026-01-02T01:40:12.723-03:30 level=INFO msg="Resetting progression tree" service=brandish-bot version=dev environment=dev resetBy=admin reason="test reset"
+time=2026-01-02T01:40:12.723-03:30 level=INFO msg="Admin unlocked node" service=brandish-bot version=dev environment=dev nodeKey=upgrade_cooldown_reduction level=1
+time=2026-01-02T01:40:12.723-03:30 level=INFO msg="Admin unlocked node" service=brandish-bot version=dev environment=dev nodeKey=upgrade_cooldown_reduction level=2
+time=2026-01-02T01:40:12.723-03:30 level=INFO msg="Admin unlocked node" service=brandish-bot version=dev environment=dev nodeKey=feature_buy level=1
+time=2026-01-02T01:40:12.723-03:30 level=INFO msg="Admin unlocked node" service=brandish-bot version=dev environment=dev nodeKey=feature_sell level=1
+time=2026-01-02T01:40:12.723-03:30 level=INFO msg="Admin unlocked node" service=brandish-bot version=dev environment=dev nodeKey=feature_upgrade level=1
+time=2026-01-02T01:40:12.723-03:30 level=INFO msg="Admin unlocked node" service=brandish-bot version=dev environment=dev nodeKey=feature_disassemble level=1
+time=2026-01-02T01:40:12.723-03:30 level=INFO msg="Admin unlocked node" service=brandish-bot version=dev environment=dev nodeKey=feature_economy level=1
+time=2026-01-02T01:40:12.723-03:30 level=INFO msg="Admin unlocked node" service=brandish-bot version=dev environment=dev nodeKey=feature_search level=1
+time=2026-01-02T01:40:12.723-03:30 level=INFO msg="Admin unlocked node" service=brandish-bot version=dev environment=dev nodeKey=feature_buy level=1
+time=2026-01-02T01:40:12.724-03:30 level=INFO msg="Node unlocked" service=brandish-bot version=dev environment=dev nodeKey=item_money level=1 contributions=500 rollover=0
+time=2026-01-02T01:40:12.724-03:30 level=INFO msg="Node unlocked" service=brandish-bot version=dev environment=dev nodeKey=item_money level=1 contributions=600 rollover=100
+time=2026-01-02T01:40:12.724-03:30 level=INFO msg="Node unlocked" service=brandish-bot version=dev environment=dev nodeKey=item_money level=1 contributions=500 rollover=0
+time=2026-01-02T01:40:12.724-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
+time=2026-01-02T01:40:12.724-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
+time=2026-01-02T01:40:12.724-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
+time=2026-01-02T01:40:12.735-03:30 level=INFO msg="Node unlocked" service=brandish-bot version=dev environment=dev nodeKey=item_money level=1 contributions=500 rollover=0
+time=2026-01-02T01:40:12.735-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
+time=2026-01-02T01:40:12.735-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
+time=2026-01-02T01:40:12.735-03:30 level=INFO msg="Vote recorded" service=brandish-bot version=dev environment=dev userID=u1 nodeKey=item_money sessionID=1
+time=2026-01-02T01:40:12.735-03:30 level=INFO msg="Voting ended" service=brandish-bot version=dev environment=dev sessionID=1 winningNode=2 votes=1 voterCount=1
+time=2026-01-02T01:40:12.735-03:30 level=INFO msg="Unlock threshold met, triggering unlock" service=brandish-bot version=dev environment=dev accumulated=500 required=500
+time=2026-01-02T01:40:12.735-03:30 level=INFO msg="Node unlocked" service=brandish-bot version=dev environment=dev nodeKey=item_money level=1 contributions=500 rollover=0
+time=2026-01-02T01:40:12.735-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=2 options=2
+time=2026-01-02T01:40:12.836-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
+time=2026-01-02T01:40:12.836-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=4
+time=2026-01-02T01:40:12.836-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=4
+time=2026-01-02T01:40:12.836-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
+time=2026-01-02T01:40:12.836-03:30 level=INFO msg="Vote recorded" service=brandish-bot version=dev environment=dev userID=user1 nodeKey=item_lootbox0 sessionID=1
+time=2026-01-02T01:40:12.836-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
+time=2026-01-02T01:40:12.836-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
+time=2026-01-02T01:40:12.836-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
+time=2026-01-02T01:40:12.836-03:30 level=INFO msg="Vote recorded" service=brandish-bot version=dev environment=dev userID=user1 nodeKey=item_money sessionID=1
+time=2026-01-02T01:40:12.836-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
+time=2026-01-02T01:40:12.836-03:30 level=INFO msg="Vote recorded" service=brandish-bot version=dev environment=dev userID=user1 nodeKey=item_money sessionID=1
+time=2026-01-02T01:40:12.836-03:30 level=INFO msg="Vote recorded" service=brandish-bot version=dev environment=dev userID=user2 nodeKey=item_money sessionID=1
+time=2026-01-02T01:40:12.836-03:30 level=INFO msg="Voting ended" service=brandish-bot version=dev environment=dev sessionID=1 winningNode=2 votes=2 voterCount=2
+time=2026-01-02T01:40:12.836-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
+time=2026-01-02T01:40:12.836-03:30 level=INFO msg="Vote recorded" service=brandish-bot version=dev environment=dev userID=user1 nodeKey=item_money sessionID=1
+time=2026-01-02T01:40:12.836-03:30 level=INFO msg="Vote recorded" service=brandish-bot version=dev environment=dev userID=user2 nodeKey=item_lootbox0 sessionID=1
+time=2026-01-02T01:40:12.836-03:30 level=INFO msg="Voting ended" service=brandish-bot version=dev environment=dev sessionID=1 winningNode=2 votes=1 voterCount=2
+time=2026-01-02T01:40:12.836-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
+time=2026-01-02T01:40:12.836-03:30 level=INFO msg="Voting ended" service=brandish-bot version=dev environment=dev sessionID=1 winningNode=2 votes=0 voterCount=0
+time=2026-01-02T01:40:12.836-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
+time=2026-01-02T01:40:12.836-03:30 level=INFO msg="Vote recorded" service=brandish-bot version=dev environment=dev userID=user1 nodeKey=item_money sessionID=1
+time=2026-01-02T01:40:12.836-03:30 level=INFO msg="Vote recorded" service=brandish-bot version=dev environment=dev userID=user2 nodeKey=item_money sessionID=1
+time=2026-01-02T01:40:12.836-03:30 level=INFO msg="Voting ended" service=brandish-bot version=dev environment=dev sessionID=1 winningNode=2 votes=2 voterCount=2
+time=2026-01-02T01:40:12.836-03:30 level=INFO msg="Started new voting session" service=brandish-bot version=dev environment=dev sessionID=1 options=2
+time=2026-01-02T01:40:12.836-03:30 level=INFO msg="Voting ended" service=brandish-bot version=dev environment=dev sessionID=1 winningNode=4 votes=0 voterCount=0
 PASS
 ok  	github.com/osse101/BrandishBot_Go/internal/progression	1.193s
 ?   	github.com/osse101/BrandishBot_Go/internal/repository	[no test files]
 PASS
-ok  	github.com/osse101/BrandishBot_Go/internal/scheduler	0.024s
+ok  	github.com/osse101/BrandishBot_Go/internal/scheduler	0.025s
 PASS
 ok  	github.com/osse101/BrandishBot_Go/internal/server	0.013s
 PASS
-ok  	github.com/osse101/BrandishBot_Go/internal/stats	0.004s
+ok  	github.com/osse101/BrandishBot_Go/internal/stats	0.003s
 PASS
-ok  	github.com/osse101/BrandishBot_Go/internal/testing/leaktest	0.625s
-time=2026-01-01T23:34:19.448-03:30 level=ERROR msg="Lootbox0 item not found in database"
-time=2026-01-01T23:34:19.448-03:30 level=ERROR msg="Failed to upsert user" error="user not found" username=testuser
-time=2026-01-01T23:34:19.448-03:30 level=ERROR msg="Failed to auto-register user" error="user not found"
-time=2026-01-01T23:34:19.454-03:30 level=WARN msg="Item not in inventory" itemName=lootbox_tier1
-time=2026-01-01T23:34:19.454-03:30 level=WARN msg="Item not found" itemName=unknown_item
-time=2026-01-01T23:34:19.454-03:30 level=WARN msg="No handler for item" itemName=money
-time=2026-01-01T23:34:19.454-03:30 level=WARN msg="target username missing for blaster"
-time=2026-01-01T23:34:19.454-03:30 level=ERROR msg="Handler error" error="target username is required for blaster" itemName=weapon_blaster
+ok  	github.com/osse101/BrandishBot_Go/internal/testing/leaktest	0.620s
+time=2026-01-02T01:40:13.507-03:30 level=ERROR msg="Lootbox0 item not found in database"
+time=2026-01-02T01:40:13.507-03:30 level=ERROR msg="Failed to upsert user" error="user not found" username=testuser
+time=2026-01-02T01:40:13.508-03:30 level=ERROR msg="Failed to auto-register user" error="user not found"
+time=2026-01-02T01:40:13.513-03:30 level=WARN msg="Item not in inventory" itemName=lootbox_tier1
+time=2026-01-02T01:40:13.513-03:30 level=WARN msg="Item not found" itemName=unknown_item
+time=2026-01-02T01:40:13.513-03:30 level=WARN msg="No handler for item" itemName=money
+time=2026-01-02T01:40:13.513-03:30 level=WARN msg="target username missing for blaster"
+time=2026-01-02T01:40:13.513-03:30 level=ERROR msg="Handler error" error="target username is required for blaster" itemName=weapon_blaster
 goos: linux
 goarch: amd64
 pkg: github.com/osse101/BrandishBot_Go/internal/user
 cpu: 12th Gen Intel(R) Core(TM) i7-12700K
 BenchmarkService_HandleIncomingMessage-20                	User alice timeout expired
- 5956329	       393.1 ns/op	     387 B/op	       8 allocs/op
-BenchmarkService_HandleIncomingMessage_WithMatches-20    	 1230540	      1948 ns/op	     385 B/op	       8 allocs/op
-BenchmarkService_AddItem-20                              	 5593395	       430.0 ns/op	     680 B/op	      18 allocs/op
-BenchmarkService_AddItem_NewItem-20                      	 5661417	       426.9 ns/op	     680 B/op	      18 allocs/op
+ 6000399	       400.7 ns/op	     388 B/op	       8 allocs/op
+BenchmarkService_HandleIncomingMessage_WithMatches-20    	 1207428	      1983 ns/op	     386 B/op	       8 allocs/op
+BenchmarkService_AddItem-20                              	 5031936	       472.8 ns/op	     680 B/op	      18 allocs/op
+BenchmarkService_AddItem_NewItem-20                      	 5037345	       478.5 ns/op	     680 B/op	      18 allocs/op
+BenchmarkService_AddItems_Batch10-20                     	 2579455	       938.2 ns/op	    1176 B/op	      21 allocs/op
+BenchmarkService_AddItems_Batch25-20                     	 2531407	       939.4 ns/op	    1176 B/op	      21 allocs/op
+BenchmarkService_AddItem_Individual10-20                 	  896655	      2506 ns/op	    3400 B/op	      90 allocs/op
 PASS
-ok  	github.com/osse101/BrandishBot_Go/internal/user	12.829s
+ok  	github.com/osse101/BrandishBot_Go/internal/user	21.974s
 goos: linux
 goarch: amd64
 pkg: github.com/osse101/BrandishBot_Go/internal/utils
 cpu: 12th Gen Intel(R) Core(TM) i7-12700K
-BenchmarkAddItemsLinearScan-20         	  492792	      4350 ns/op	   32768 B/op	       1 allocs/op
-BenchmarkAddItemsMapLookup-20          	  155408	     15903 ns/op	   69713 B/op	       6 allocs/op
-BenchmarkAddItemsWithPrebuiltMap-20    	  156661	     15473 ns/op	   69713 B/op	       6 allocs/op
+BenchmarkAddItemsLinearScan-20         	  522267	      4462 ns/op	   32768 B/op	       1 allocs/op
+BenchmarkAddItemsMapLookup-20          	  152311	     15791 ns/op	   69713 B/op	       6 allocs/op
+BenchmarkAddItemsWithPrebuiltMap-20    	  146871	     16188 ns/op	   69713 B/op	       6 allocs/op
 PASS
-ok  	github.com/osse101/BrandishBot_Go/internal/utils	7.415s
+ok  	github.com/osse101/BrandishBot_Go/internal/utils	7.500s
 PASS
-ok  	github.com/osse101/BrandishBot_Go/internal/worker	0.110s
+ok  	github.com/osse101/BrandishBot_Go/internal/worker	0.106s
 ?   	github.com/osse101/BrandishBot_Go/mocks	[no test files]
 FAIL
