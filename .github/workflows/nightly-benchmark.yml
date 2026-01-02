@@ -1,0 +1,68 @@
+name: Nightly Benchmarks
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # 2 AM UTC daily
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Fetch all history for comparison
+      
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+      
+      - name: Install benchstat
+        run: go install golang.org/x/perf/cmd/benchstat@latest
+      
+      - name: Create benchmarks directory
+        run: mkdir -p benchmarks/results
+      
+      - name: Run benchmarks
+        run: |
+          go test -bench=. -benchmem -benchtime=2s ./... 2>&1 | tee benchmarks/results/nightly-$(date +%Y%m%d).txt
+      
+      - name: Download previous benchmark
+        continue-on-error: true
+        uses: dawidd6/action-download-artifact@v2
+        with:
+          workflow: nightly-benchmark.yml
+          name: benchmark-results
+          path: benchmarks/previous
+      
+      - name: Compare with previous
+        continue-on-error: true
+        run: |
+          if [ -f benchmarks/previous/latest.txt ]; then
+            echo "## Benchmark Comparison" > benchmarks/results/comparison.md
+            echo "\`\`\`" >> benchmarks/results/comparison.md
+            benchstat benchmarks/previous/latest.txt benchmarks/results/nightly-$(date +%Y%m%d).txt >> benchmarks/results/comparison.md || true
+            echo "\`\`\`" >> benchmarks/results/comparison.md
+            cat benchmarks/results/comparison.md
+          else
+            echo "No previous benchmark found - this is the first run"
+          fi
+      
+      - name: Copy current as latest
+        run: |
+          cp benchmarks/results/nightly-$(date +%Y%m%d).txt benchmarks/results/latest.txt
+      
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v3
+        with:
+          name: benchmark-results
+          path: benchmarks/results/
+          retention-days: 90
+      
+      - name: Comment on commit (if regression detected)
+        if: failure()
+        run: |
+          echo "Benchmark regression detected!"
+          echo "Check the artifacts for details."

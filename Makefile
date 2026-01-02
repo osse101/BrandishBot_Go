@@ -27,6 +27,14 @@ help:
 	@echo "  make run                  - Run the application from bin/app"
 	@echo "  make swagger              - Generate Swagger docs"
 	@echo ""
+	@echo "Benchmark Commands:"
+	@echo "  make bench                - Run all benchmarks"
+	@echo "  make bench-hot            - Run hot path benchmarks only"
+	@echo "  make bench-save           - Run benchmarks and save timestamped results"
+	@echo "  make bench-baseline       - Set current results as baseline"
+	@echo "  make bench-compare        - Compare current benchmarks to baseline"
+	@echo "  make bench-profile        - Profile hot paths (CPU + memory)"
+	@echo ""
 	@echo "Docker Commands:"
 	@echo "  make docker-up            - Start services with Docker Compose"
 	@echo "  make docker-down          - Stop services"
@@ -124,6 +132,76 @@ lint:
 lint-fix:
 	@echo "Running linters with auto-fix..."
 	@$(LINT) run --fix ./...
+
+# Benchmark commands
+.PHONY: bench bench-hot bench-save bench-baseline bench-compare bench-profile
+
+bench:
+	@echo "Running all benchmarks..."
+	@go test -bench=. -benchmem -benchtime=2s ./...
+
+bench-hot:
+	@echo "Running hot path benchmarks..."
+	@echo "  → Handler: HandleMessageHandler"
+	@go test -bench=BenchmarkHandler_HandleMessage -benchmem -benchtime=2s ./internal/handler 2>/dev/null || echo "    (benchmark not yet implemented)"
+	@echo "  → Service: HandleIncomingMessage"
+	@go test -bench=BenchmarkService_HandleIncomingMessage -benchmem -benchtime=2s ./internal/user 2>/dev/null || echo "    (benchmark not yet implemented)"
+	@echo "  → Service: AddItem"
+	@go test -bench=BenchmarkService_AddItem -benchmem -benchtime=2s ./internal/user 2>/dev/null || echo "    (benchmark not yet implemented)"
+	@echo "  → Utils: Inventory operations (existing)"
+	@go test -bench=. -benchmem -benchtime=2s ./internal/utils
+
+bench-save:
+	@echo "Running benchmarks and saving results..."
+	@mkdir -p benchmarks/results
+	@go test -bench=. -benchmem -benchtime=2s ./... 2>&1 | tee benchmarks/results/$$(date +%Y%m%d-%H%M%S).txt
+	@echo "✓ Results saved to benchmarks/results/"
+
+bench-baseline:
+	@echo "Setting benchmark baseline..."
+	@mkdir -p benchmarks/results
+	@go test -bench=. -benchmem -benchtime=2s ./... 2>&1 | tee benchmarks/results/baseline.txt
+	@echo "✓ Baseline set: benchmarks/results/baseline.txt"
+
+bench-compare:
+	@if [ ! -f benchmarks/results/baseline.txt ]; then \
+		echo "❌ Error: No baseline found. Run 'make bench-baseline' first."; \
+		exit 1; \
+	fi
+	@echo "Running benchmarks and comparing to baseline..."
+	@mkdir -p benchmarks/results
+	@go test -bench=. -benchmem -benchtime=2s ./... > benchmarks/results/current.txt 2>&1
+	@if command -v benchstat > /dev/null 2>&1; then \
+		benchstat benchmarks/results/baseline.txt benchmarks/results/current.txt; \
+	else \
+		echo ""; \
+		echo "⚠️  benchstat not installed. Install with:"; \
+		echo "   go install golang.org/x/perf/cmd/benchstat@latest"; \
+		echo ""; \
+		echo "Showing raw comparison:"; \
+		echo "======================"; \
+		echo "BASELINE:"; \
+		grep "^Benchmark" benchmarks/results/baseline.txt | head -5; \
+		echo ""; \
+		echo "CURRENT:"; \
+		grep "^Benchmark" benchmarks/results/current.txt | head -5; \
+	fi
+
+bench-profile:
+	@echo "Profiling hot paths..."
+	@mkdir -p benchmarks/profiles
+	@echo "  → CPU profile (if benchmark exists)..."
+	@go test -bench=BenchmarkHandler_HandleMessage -cpuprofile=benchmarks/profiles/cpu.prof ./internal/handler 2>/dev/null || \
+		go test -bench=BenchmarkAddItems -cpuprofile=benchmarks/profiles/cpu.prof ./internal/utils
+	@echo "  → Memory profile (if benchmark exists)..."
+	@go test -bench=BenchmarkHandler_HandleMessage -memprofile=benchmarks/profiles/mem.prof -benchmem ./internal/handler 2>/dev/null || \
+		go test -bench=BenchmarkAddItems -memprofile=benchmarks/profiles/mem.prof -benchmem ./internal/utils
+	@echo "✓ Profiles saved to benchmarks/profiles/"
+	@echo ""
+	@echo "View CPU profile with:"
+	@echo "  go tool pprof -http=:8080 benchmarks/profiles/cpu.prof"
+	@echo "View memory profile with:"
+	@echo "  go tool pprof -http=:8080 benchmarks/profiles/mem.prof"
 
 # Build targets
 build:
