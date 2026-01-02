@@ -118,10 +118,11 @@ type service struct {
 	// Invalidation: Cache is populated on-demand and persists for server lifetime
 	//               Item metadata is assumed immutable - if items are modified in DB,
 	//               server restart is required to refresh cache
-	itemCache       map[int]domain.Item    // Cache by item ID
-	itemCacheByName map[string]domain.Item // Cache by internal name
-	itemCacheMu     sync.RWMutex           // Protects both cache maps
+	itemCache       map[int]domain.Item        // Cache by item ID
+	itemCacheByName map[string]domain.Item     // Cache by internal name
+	itemCacheMu     sync.RWMutex               // Protects both cache maps
 }
+
 
 // setPlatformID sets the appropriate platform-specific ID field on a user
 func setPlatformID(user *domain.User, platform, platformID string) {
@@ -155,6 +156,8 @@ func NewService(repo Repository, statsService stats.Service, jobService JobServi
 	s.registerHandlers()
 	return s
 }
+
+
 
 func (s *service) registerHandlers() {
 	s.itemHandlers[domain.ItemLootbox1] = s.handleLootbox1
@@ -903,8 +906,9 @@ func (s *service) processSearchSuccess(ctx context.Context, user *domain.User, r
 		return "", fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	// Award Explorer XP for finding item
-	awardResult, _ := s.awardExplorerXP(ctx, user.ID, item.InternalName, params.xpMultiplier)
+	// Award Explorer XP for finding item (async, don't block)
+	s.wg.Add(1)
+	go s.awardExplorerXP(context.Background(), user.ID, item.InternalName, params.xpMultiplier)
 
 	// Get display name with shine (empty shine for search results)
 	displayName := s.namingResolver.GetDisplayName(item.InternalName, "")
@@ -930,10 +934,6 @@ func (s *service) processSearchSuccess(ctx context.Context, user *domain.User, r
 		resultMessage += domain.MsgFirstSearchBonus
 	} else if params.isDiminished {
 		resultMessage += " (Exhausted)"
-	}
-
-	if awardResult != nil && awardResult.LeveledUp {
-		resultMessage += fmt.Sprintf("\n\n🆙 **EXPLORER LEVEL UP!** You are now Level %d!", awardResult.NewLevel)
 	}
 
 	return resultMessage, nil
@@ -965,6 +965,7 @@ func (s *service) processSearchFailure(ctx context.Context, user *domain.User, r
 	log := logger.FromContext(ctx)
 
 	var resultMessage string
+
 
 	if roll <= successThreshold+SearchNearMissRate {
 		// Near Miss case
@@ -1063,9 +1064,11 @@ func (s *service) getUserOrRegister(ctx context.Context, platform, platformID, u
 }
 
 // awardExplorerXP awards Explorer job XP for finding items during search
-func (s *service) awardExplorerXP(ctx context.Context, userID, itemName string, xpMultiplier float64) (*domain.XPAwardResult, error) {
+func (s *service) awardExplorerXP(ctx context.Context, userID, itemName string, xpMultiplier float64) {
+	defer s.wg.Done()
+
 	if s.jobService == nil {
-		return nil, nil // Job system not enabled
+		return // Job system not enabled
 	}
 
 	xp := int(float64(job.ExplorerXPPerItem) * xpMultiplier)
@@ -1081,11 +1084,9 @@ func (s *service) awardExplorerXP(ctx context.Context, userID, itemName string, 
 	result, err := s.jobService.AwardXP(ctx, userID, job.JobKeyExplorer, xp, "search", metadata)
 	if err != nil {
 		logger.FromContext(ctx).Warn("Failed to award Explorer XP", "error", err, "user_id", userID)
-		return nil, err
 	} else if result != nil && result.LeveledUp {
 		logger.FromContext(ctx).Info("Explorer leveled up!", "user_id", userID, "new_level", result.NewLevel)
 	}
-	return result, nil
 }
 
 func (s *service) Shutdown(ctx context.Context) error {

@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/stats"
 )
@@ -51,14 +52,16 @@ type service struct {
 	repo           Repository
 	progressionSvc ProgressionService
 	statsSvc       stats.Service
+	eventBus       event.Bus
 }
 
 // NewService creates a new job service
-func NewService(repo Repository, progressionSvc ProgressionService, statsSvc stats.Service) Service {
+func NewService(repo Repository, progressionSvc ProgressionService, statsSvc stats.Service, eventBus event.Bus) Service {
 	return &service{
 		repo:           repo,
 		progressionSvc: progressionSvc,
 		statsSvc:       statsSvc,
+		eventBus:       eventBus,
 	}
 }
 
@@ -232,7 +235,7 @@ func (s *service) AwardXP(ctx context.Context, userID, jobKey string, baseAmount
 	}
 
 	// Record event
-	event := &domain.JobXPEvent{
+	xpEvent := &domain.JobXPEvent{
 		ID:             uuid.New(),
 		UserID:         userID,
 		JobID:          job.ID,
@@ -241,7 +244,7 @@ func (s *service) AwardXP(ctx context.Context, userID, jobKey string, baseAmount
 		SourceMetadata: metadata,
 		RecordedAt:     now,
 	}
-	err = s.repo.RecordJobXPEvent(ctx, event)
+	err = s.repo.RecordJobXPEvent(ctx, xpEvent)
 	if err != nil {
 		log.Error("Failed to record XP event", "error", err)
 		// Don't fail the operation if logging fails
@@ -262,6 +265,28 @@ func (s *service) AwardXP(ctx context.Context, userID, jobKey string, baseAmount
 				"level":     newLevel,
 				"old_level": oldLevel,
 			})
+		}
+
+		// Publish Level Up Event
+		if s.eventBus != nil {
+			// Cast domain.EventType (string) to event.Type (string)
+			eventType := event.Type(domain.EventJobLevelUp)
+			if err := s.eventBus.Publish(ctx, event.Event{
+				Type: eventType,
+				Payload: map[string]interface{}{
+					"user_id":   userID,
+					"job_key":   jobKey,
+					"new_level": newLevel,
+					"old_level": oldLevel,
+				},
+				Metadata: map[string]interface{}{
+					"source": source,
+				},
+			}); err != nil {
+				// Log the error but don't fail the operation
+				// Level up succeeded, we just failed to notify
+				logger.FromContext(ctx).Error("Failed to publish Level Up event", "error", err, "user_id", userID, "job", jobKey)
+			}
 		}
 	}
 

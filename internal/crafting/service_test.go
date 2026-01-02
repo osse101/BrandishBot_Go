@@ -18,20 +18,11 @@ func (m *MockStatsService) RecordUserEvent(ctx context.Context, userID string, e
 	m.events = append(m.events, eventType)
 	return nil
 }
-
 // Stubs for other interface methods not used in these tests
-func (m *MockStatsService) GetUserStats(ctx context.Context, userID string, period string) (*domain.StatsSummary, error) {
-	return nil, nil
-}
-func (m *MockStatsService) GetUserCurrentStreak(ctx context.Context, userID string) (int, error) {
-	return 0, nil
-}
-func (m *MockStatsService) GetSystemStats(ctx context.Context, period string) (*domain.StatsSummary, error) {
-	return nil, nil
-}
-func (m *MockStatsService) GetLeaderboard(ctx context.Context, eventType domain.EventType, period string, limit int) ([]domain.LeaderboardEntry, error) {
-	return nil, nil
-}
+func (m *MockStatsService) GetUserStats(ctx context.Context, userID string, period string) (*domain.StatsSummary, error) { return nil, nil }
+func (m *MockStatsService) GetUserCurrentStreak(ctx context.Context, userID string) (int, error) { return 0, nil }
+func (m *MockStatsService) GetSystemStats(ctx context.Context, period string) (*domain.StatsSummary, error) { return nil, nil }
+func (m *MockStatsService) GetLeaderboard(ctx context.Context, eventType domain.EventType, period string, limit int) ([]domain.LeaderboardEntry, error) { return nil, nil }
 
 // MockRepository for crafting tests
 type MockRepository struct {
@@ -214,8 +205,8 @@ func (tx *MockTx) UpsertUser(ctx context.Context, user *domain.User) error { ret
 func (tx *MockTx) GetUserByID(ctx context.Context, userID string) (*domain.User, error) {
 	return nil, nil
 }
-func (tx *MockTx) UpdateUser(ctx context.Context, user domain.User) error   { return nil }
-func (tx *MockTx) DeleteUser(ctx context.Context, userID string) error      { return nil }
+func (tx *MockTx) UpdateUser(ctx context.Context, user domain.User) error { return nil }
+func (tx *MockTx) DeleteUser(ctx context.Context, userID string) error    { return nil }
 func (tx *MockTx) DeleteInventory(ctx context.Context, userID string) error { return nil }
 func (tx *MockTx) GetItemsByIDs(ctx context.Context, itemIDs []int) ([]domain.Item, error) {
 	return tx.repo.GetItemsByIDs(ctx, itemIDs)

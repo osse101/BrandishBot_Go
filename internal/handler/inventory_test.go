@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+
 func TestHandleAddItem(t *testing.T) {
 	// Initialize validator
 	InitValidator()
@@ -680,12 +681,12 @@ func TestHandleGetInventory(t *testing.T) {
 			expectedBody:   "Filter 'upgrade' is locked",
 		},
 		{
-			name:           "Missing Username",
-			username:       "",
-			platform:       domain.PlatformDiscord,
-			platformID:     "test-platformid",
-			filter:         "",
-			setupMock:      func(m *mocks.MockUserService, p *mocks.MockProgressionService) {},
+			name:       "Missing Username",
+			username:   "",
+			platform:   domain.PlatformDiscord,
+			platformID: "test-platformid",
+			filter:     "",
+			setupMock:  func(m *mocks.MockUserService, p *mocks.MockProgressionService) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   "Missing username query parameter",
 		},
@@ -818,6 +819,6 @@ func TestHandleGetInventory(t *testing.T) {
 			}
 			mockUser.AssertExpectations(t)
 			mockProg.AssertExpectations(t)
-		})
+			})
 	}
 }

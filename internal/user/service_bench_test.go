@@ -335,7 +335,6 @@ func BenchmarkService_AddItem_NewItem(b *testing.B) {
 		}
 	}
 }
-
 // Benchmark batch operations
 
 func BenchmarkService_AddItems_Batch10(b *testing.B) {
@@ -352,11 +351,11 @@ func BenchmarkService_AddItems_Batch10(b *testing.B) {
 
 	// Simulate 10 items from lootbox opening
 	items := map[string]int{
-		"money":         5,
-		"sword":         2,
-		"lootbox_tier0": 1,
-		"shield":        1,
-		"potion":        1,
+		"money":          5,
+		"sword":          2,
+		"lootbox_tier0":  1,
+		"shield":         1,
+		"potion":         1,
 	}
 
 	b.ResetTimer()
@@ -384,11 +383,11 @@ func BenchmarkService_AddItems_Batch25(b *testing.B) {
 
 	// Simulate 25 items from gamble (5 users × 5 lootboxes)
 	items := map[string]int{
-		"money":         15,
-		"sword":         5,
-		"lootbox_tier0": 3,
-		"shield":        1,
-		"potion":        1,
+		"money":          15,
+		"sword":          5,
+		"lootbox_tier0":  3,
+		"shield":         1,
+		"potion":         1,
 	}
 
 	b.ResetTimer()
@@ -416,9 +415,9 @@ func BenchmarkService_AddItem_Individual10(b *testing.B) {
 	ctx := context.Background()
 
 	// Same 10 items as batch test, but added individually
-	itemsList := []struct {
+	itemsList := []struct{
 		name string
-		qty  int
+		qty int
 	}{
 		{"money", 5},
 		{"sword", 2},
