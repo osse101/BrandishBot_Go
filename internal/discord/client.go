@@ -1068,6 +1068,57 @@ func (c *APIClient) RemoveItem(platform, platformID, itemName string, quantity i
 	return removeResp.Message, nil
 }
 
+// XPAwardResult represents the result of awarding XP
+type XPAwardResult struct {
+	LeveledUp bool `json:"leveled_up"`
+	NewLevel  int  `json:"new_level"`
+	NewXP     int  `json:"new_xp"`
+}
+
+// AdminAwardXP awards job XP to a user via platform and username (admin only)
+func (c *APIClient) AdminAwardXP(platform, username, jobKey string, amount int) (*XPAwardResult, error) {
+	req := map[string]interface{}{
+		"platform": platform,
+		"username": username,
+		"job_key":  jobKey,
+		"amount":   amount,
+	}
+
+	resp, err := c.doRequest(http.MethodPost, "/admin/job/award-xp", req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		var errResp struct {
+			Error string `json:"error"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
+			return nil, fmt.Errorf("API error: %s", errResp.Error)
+		}
+		return nil, fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	var awardResp struct {
+		Success bool `json:"success"`
+		Result  struct {
+			LeveledUp bool `json:"leveled_up"`
+			NewLevel  int  `json:"new_level"`
+			NewXP     int  `json:"new_xp"`
+		} `json:"result"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&awardResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return &XPAwardResult{
+		LeveledUp: awardResp.Result.LeveledUp,
+		NewLevel:  awardResp.Result.NewLevel,
+		NewXP:     awardResp.Result.NewXP,
+	}, nil
+}
+
 // GetUnlockProgress returns current unlock progress
 func (c *APIClient) GetUnlockProgress() (*map[string]interface{}, error) {
 	resp, err := c.doRequest(http.MethodGet, "/progression/unlock-progress", nil)

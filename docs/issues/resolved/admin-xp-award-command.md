@@ -1,3 +1,5 @@
+RESOLVED
+
 # Admin XP Award Command
 
 **Priority:** HIGH  

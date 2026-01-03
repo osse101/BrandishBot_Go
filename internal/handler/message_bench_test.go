@@ -42,6 +42,9 @@ func (m *mockUserService) RegisterUser(ctx context.Context, user domain.User) (d
 func (m *mockUserService) FindUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error) {
 	return nil, domain.ErrUserNotFound
 }
+func (m *mockUserService) GetUserByPlatformUsername(ctx context.Context, platform, username string) (*domain.User, error) {
+	return nil, domain.ErrUserNotFound
+}
 func (m *mockUserService) AddItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) error {
 	return nil
 }

@@ -176,6 +176,9 @@ func main() {
 	cmd, handler = discord.RemoveItemCommand()
 	bot.Registry.Register(cmd, handler)
 
+	cmd, handler = discord.AdminAwardXPCommand()
+	bot.Registry.Register(cmd, handler)
+
 	cmd, handler = discord.CheckTimeoutCommand()
 	bot.Registry.Register(cmd, handler)
 
