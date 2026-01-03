@@ -104,7 +104,7 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<string> RegisterUser(string platform, string platformId, string username)
         {
-            return await PostJsonAsync("/user/register", new
+            return await PostJsonAsync("/api/v1/user/register", new
             {
                 platform = platform,
                 platform_id = platformId,
@@ -125,7 +125,7 @@ namespace BrandishBot.Client
                 "platform=" + platform,
                 "platform_id=" + platformId
             );
-            return await GetAsync("/user/inventory" + query);
+            return await GetAsync("/api/v1/user/inventory" + query);
         }
 
         /// <summary>
@@ -136,7 +136,7 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<string> AddItem(string platform, string platformId, string username, string itemName, int quantity)
         {
-            return await PostJsonAsync("/user/item/add", new
+            return await PostJsonAsync("/api/v1/user/item/add", new
             {
                 platform = platform,
                 platform_id = platformId,
@@ -154,7 +154,7 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<string> RemoveItem(string platform, string platformId, string username, string itemName, int quantity)
         {
-            return await PostJsonAsync("/user/item/remove", new
+            return await PostJsonAsync("/api/v1/user/item/remove", new
             {
                 platform = platform,
                 platform_id = platformId,
@@ -170,7 +170,7 @@ namespace BrandishBot.Client
         public async Task<string> GiveItem(string fromPlatform, string fromPlatformId, 
             string toPlatform, string toPlatformId, string toUsername, string itemName, int quantity)
         {
-            return await PostJsonAsync("/user/item/give", new
+            return await PostJsonAsync("/api/v1/user/item/give", new
             {
                 from_platform = fromPlatform,
                 from_platform_id = fromPlatformId,
@@ -191,7 +191,7 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<string> BuyItem(string platform, string platformId, string username, string itemName, int quantity)
         {
-            return await PostJsonAsync("/user/item/buy", new
+            return await PostJsonAsync("/api/v1/user/item/buy", new
             {
                 platform = platform,
                 platform_id = platformId,
@@ -206,7 +206,7 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<string> SellItem(string platform, string platformId, string username, string itemName, int quantity)
         {
-            return await PostJsonAsync("/user/item/sell", new
+            return await PostJsonAsync("/api/v1/user/item/sell", new
             {
                 platform = platform,
                 platform_id = platformId,
@@ -221,7 +221,7 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<string> GetSellPrices()
         {
-            return await GetAsync("/prices");
+            return await GetAsync("/api/v1/prices");
         }
 
         #endregion
@@ -248,7 +248,7 @@ namespace BrandishBot.Client
                 data["target_user"] = targetUsername;
             }
 
-            return await PostJsonAsync("/user/item/use", data);
+            return await PostJsonAsync("/api/v1/user/item/use", data);
         }
 
         /// <summary>
@@ -256,7 +256,7 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<string> Search(string platform, string platformId, string username)
         {
-            return await PostJsonAsync("/user/search", new
+            return await PostJsonAsync("/api/v1/user/search", new
             {
                 platform = platform,
                 platform_id = platformId,
@@ -273,7 +273,7 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<string> UpgradeItem(string platform, string platformId, string username, string itemName, int quantity)
         {
-            return await PostJsonAsync("/user/item/upgrade", new
+            return await PostJsonAsync("/api/v1/user/item/upgrade", new
             {
                 platform = platform,
                 platform_id = platformId,
@@ -288,7 +288,7 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<string> DisassembleItem(string platform, string platformId, string username, string itemName, int quantity)
         {
-            return await PostJsonAsync("/user/item/disassemble", new
+            return await PostJsonAsync("/api/v1/user/item/disassemble", new
             {
                 platform = platform,
                 platform_id = platformId,
@@ -303,7 +303,7 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<string> GetRecipes()
         {
-            return await GetAsync("/recipes");
+            return await GetAsync("/api/v1/recipes");
         }
 
         #endregion
@@ -316,7 +316,7 @@ namespace BrandishBot.Client
         public async Task<string> StartGamble(string platform, string platformId, string username, 
             string itemName, int quantity)
         {
-            return await PostJsonAsync("/gamble/start", new
+            return await PostJsonAsync("/api/v1/gamble/start", new
             {
                 platform = platform,
                 platform_id = platformId,
@@ -344,7 +344,7 @@ namespace BrandishBot.Client
             );
             
             var response = await _httpClient.PostAsync(
-                _baseUrl + "/gamble/join?id=" + gambleId,
+                _baseUrl + "/api/v1/gamble/join?id=" + gambleId,
                 content
             );
             response.EnsureSuccessStatusCode();
@@ -356,7 +356,7 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<string> GetActiveGamble()
         {
-            return await GetAsync("/gamble/get");
+            return await GetAsync("/api/v1/gamble/get");
         }
 
         #endregion
@@ -368,7 +368,7 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<string> RecordEvent(string platform, string platformId, string eventType, object metadata = null)
         {
-            return await PostJsonAsync("/stats/event", new
+            return await PostJsonAsync("/api/v1/stats/event", new
             {
                 platform = platform,
                 platform_id = platformId,
@@ -386,7 +386,7 @@ namespace BrandishBot.Client
                 "platform=" + platform,
                 "platform_id=" + platformId
             );
-            return await GetAsync("/stats/user" + query);
+            return await GetAsync("/api/v1/stats/user" + query);
         }
 
         /// <summary>
@@ -394,7 +394,7 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<string> GetSystemStats()
         {
-            return await GetAsync("/stats/system");
+            return await GetAsync("/api/v1/stats/system");
         }
 
         /// <summary>
@@ -406,7 +406,7 @@ namespace BrandishBot.Client
                 "metric=" + metric,
                 "limit=" + limit.ToString()
             );
-            return await GetAsync("/stats/leaderboard" + query);
+            return await GetAsync("/api/v1/stats/leaderboard" + query);
         }
 
         /// <summary>
@@ -416,7 +416,7 @@ namespace BrandishBot.Client
         public async Task<string> GetUserTimeout(string username)
         {
             var query = BuildQuery("username=" + username);
-            return await GetAsync("/user/timeout" + query);
+            return await GetAsync("/api/v1/user/timeout" + query);
         }
 
         #endregion
@@ -428,7 +428,7 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<string> GetProgressionTree()
         {
-            return await GetAsync("/progression/tree");
+            return await GetAsync("/api/v1/progression/tree");
         }
 
         /// <summary>
@@ -436,7 +436,7 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<string> GetAvailableNodes()
         {
-            return await GetAsync("/progression/available");
+            return await GetAsync("/api/v1/progression/available");
         }
 
         /// <summary>
@@ -444,7 +444,7 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<string> VoteForNode(string platform, string platformId, string nodeKey)
         {
-            return await PostJsonAsync("/progression/vote", new
+            return await PostJsonAsync("/api/v1/progression/vote", new
             {
                 platform = platform,
                 platform_id = platformId,
@@ -457,7 +457,7 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<string> GetProgressionStatus()
         {
-            return await GetAsync("/progression/status");
+            return await GetAsync("/api/v1/progression/status");
         }
 
         /// <summary>
@@ -466,7 +466,7 @@ namespace BrandishBot.Client
         public async Task<string> GetUserEngagement(string userId)
         {
             var query = BuildQuery("user_id=" + userId);
-            return await GetAsync("/progression/engagement" + query);
+            return await GetAsync("/api/v1/progression/engagement" + query);
         }
 
         /// <summary>
@@ -474,7 +474,7 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<string> GetContributionLeaderboard()
         {
-            return await GetAsync("/progression/leaderboard");
+            return await GetAsync("/api/v1/progression/leaderboard");
         }
 
         /// <summary>
@@ -482,7 +482,7 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<string> GetVotingSession()
         {
-            return await GetAsync("/progression/session");
+            return await GetAsync("/api/v1/progression/session");
         }
 
         /// <summary>
@@ -490,7 +490,7 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<string> GetUnlockProgress()
         {
-            return await GetAsync("/progression/unlock-progress");
+            return await GetAsync("/api/v1/progression/unlock-progress");
         }
 
         #endregion
@@ -503,7 +503,7 @@ namespace BrandishBot.Client
         /// <param name="level">Target level to unlock (default: 1)</param>
         public async Task<string> AdminUnlockNode(string nodeKey, int level = 1)
         {
-            return await PostJsonAsync("/progression/admin/unlock", new { node_key = nodeKey, level = level });
+            return await PostJsonAsync("/api/v1/progression/admin/unlock", new { node_key = nodeKey, level = level });
         }
 
         /// <summary>
@@ -511,7 +511,7 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<string> AdminRelockNode(string nodeKey, int level)
         {
-            return await PostJsonAsync("/progression/admin/relock", new { node_key = nodeKey, level = level });
+            return await PostJsonAsync("/api/v1/progression/admin/relock", new { node_key = nodeKey, level = level });
         }
 
         /// <summary>
@@ -519,7 +519,7 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<string> AdminInstantUnlock()
         {
-            return await PostJsonAsync("/progression/admin/instant-unlock", new { });
+            return await PostJsonAsync("/api/v1/progression/admin/instant-unlock", new { });
         }
 
         /// <summary>
@@ -527,7 +527,7 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<string> AdminStartVoting()
         {
-            return await PostJsonAsync("/progression/admin/start-voting", new { });
+            return await PostJsonAsync("/api/v1/progression/admin/start-voting", new { });
         }
 
         /// <summary>
@@ -535,7 +535,7 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<string> AdminEndVoting()
         {
-            return await PostJsonAsync("/progression/admin/end-voting", new { });
+            return await PostJsonAsync("/api/v1/progression/admin/end-voting", new { });
         }
 
         /// <summary>
@@ -543,7 +543,7 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<string> AdminResetProgression(string resetBy, string reason, bool preserveUserProgression)
         {
-            return await PostJsonAsync("/progression/admin/reset", new 
+            return await PostJsonAsync("/api/v1/progression/admin/reset", new 
             { 
                 reset_by = resetBy,
                 reason = reason,
@@ -556,7 +556,7 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<string> AdminAddContribution(int amount)
         {
-            return await PostJsonAsync("/progression/admin/contribution", new { amount = amount });
+            return await PostJsonAsync("/api/v1/progression/admin/contribution", new { amount = amount });
         }
 
         #endregion
@@ -568,7 +568,7 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<string> GetAllJobs()
         {
-            return await GetAsync("/jobs");
+            return await GetAsync("/api/v1/jobs");
         }
 
         /// <summary>
@@ -580,7 +580,7 @@ namespace BrandishBot.Client
                 "platform=" + platform,
                 "platform_id=" + platformId
             );
-            return await GetAsync("/jobs/user" + query);
+            return await GetAsync("/api/v1/jobs/user" + query);
         }
 
         /// <summary>
@@ -588,7 +588,7 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<string> AwardJobXP(string platform, string platformId, string username, string jobName, int xpAmount)
         {
-            return await PostJsonAsync("/jobs/award-xp", new
+            return await PostJsonAsync("/api/v1/jobs/award-xp", new
             {
                 platform = platform,
                 platform_id = platformId,
@@ -608,7 +608,7 @@ namespace BrandishBot.Client
                 "job_key=" + jobKey,
                 "bonus_type=" + bonusType
             );
-            return await GetAsync("/jobs/bonus" + query);
+            return await GetAsync("/api/v1/jobs/bonus" + query);
         }
 
         #endregion
@@ -620,7 +620,7 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<string> InitiateLinking(string platform, string platformId, string username)
         {
-            return await PostJsonAsync("/link/initiate", new
+            return await PostJsonAsync("/api/v1/link/initiate", new
             {
                 platform = platform,
                 platform_id = platformId,
@@ -633,7 +633,7 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<string> ClaimLinkingCode(string platform, string platformId, string username, string code)
         {
-            return await PostJsonAsync("/link/claim", new
+            return await PostJsonAsync("/api/v1/link/claim", new
             {
                 platform = platform,
                 platform_id = platformId,
@@ -647,7 +647,7 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<string> ConfirmLinking(string platform, string platformId)
         {
-            return await PostJsonAsync("/link/confirm", new
+            return await PostJsonAsync("/api/v1/link/confirm", new
             {
                 platform = platform,
                 platform_id = platformId
@@ -659,7 +659,7 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<string> UnlinkAccounts(string platform, string platformId)
         {
-            return await PostJsonAsync("/link/unlink", new
+            return await PostJsonAsync("/api/v1/link/unlink", new
             {
                 platform = platform,
                 platform_id = platformId
@@ -675,7 +675,7 @@ namespace BrandishBot.Client
                 "platform=" + platform,
                 "platform_id=" + platformId
             );
-            return await GetAsync("/link/status" + query);
+            return await GetAsync("/api/v1/link/status" + query);
         }
 
         #endregion
@@ -687,7 +687,7 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<string> GetBuyPrices()
         {
-            return await GetAsync("/prices/buy");
+            return await GetAsync("/api/v1/prices/buy");
         }
 
         #endregion
@@ -699,7 +699,7 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<string> ReloadAliases()
         {
-            return await PostJsonAsync("/admin/reload-aliases", new { });
+            return await PostJsonAsync("/api/v1/admin/reload-aliases", new { });
         }
 
         /// <summary>
@@ -707,7 +707,7 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<string> Test(string platform, string platformId, string username)
         {
-            return await PostJsonAsync("/test", new
+            return await PostJsonAsync("/api/v1/test", new
             {
                 platform = platform,
                 platform_id = platformId,
@@ -725,7 +725,7 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<string> HandleMessage(string platform, string platformId, string username, string message)
         {
-            return await PostJsonAsync("/message/handle", new
+            return await PostJsonAsync("/api/v1/message/handle", new
             {
                 platform = platform,
                 platform_id = platformId,
