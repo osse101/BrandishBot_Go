@@ -30,6 +30,7 @@ var validPlatforms = map[string]bool{
 type Repository interface {
 	UpsertUser(ctx context.Context, user *domain.User) error
 	GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error)
+	GetUserByPlatformUsername(ctx context.Context, platform, username string) (*domain.User, error)
 	GetUserByID(ctx context.Context, userID string) (*domain.User, error)
 	UpdateUser(ctx context.Context, user domain.User) error
 	DeleteUser(ctx context.Context, userID string) error

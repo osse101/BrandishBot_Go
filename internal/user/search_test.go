@@ -128,6 +128,29 @@ func (m *mockSearchRepo) GetUserByPlatformID(ctx context.Context, platform, plat
 	}
 	return nil, nil
 }
+
+func (m *mockSearchRepo) GetUserByPlatformUsername(ctx context.Context, platform, username string) (*domain.User, error) {
+	if m.shouldFailGet {
+		return nil, domain.ErrUserNotFound
+	}
+	// Case-insensitive username lookup
+	for _, u := range m.users {
+		// Check if user has the platform
+		var hasPlatform bool
+		switch platform {
+		case domain.PlatformTwitch:
+			hasPlatform = u.TwitchID != ""
+		case domain.PlatformDiscord:
+			hasPlatform = u.DiscordID != ""
+		}
+		// Case-insensitive match
+		if hasPlatform && strings.EqualFold(u.Username, username) {
+			return u, nil
+		}
+	}
+	return nil, domain.ErrUserNotFound
+}
+
 func (m *mockSearchRepo) GetUserByID(ctx context.Context, userID string) (*domain.User, error) {
 	if user, ok := m.users[userID]; ok {
 		return user, nil

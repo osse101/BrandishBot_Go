@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
@@ -80,6 +81,29 @@ func (m *MockRepository) GetUserByPlatformID(ctx context.Context, platform, plat
 	}
 	return nil, nil
 }
+
+func (m *MockRepository) GetUserByPlatformUsername(ctx context.Context, platform, username string) (*domain.User, error) {
+	// Case-insensitive username lookup
+	for _, u := range m.users {
+		// Check if user has the platform
+		var hasPlatform bool
+		switch platform {
+		case domain.PlatformTwitch:
+			hasPlatform = u.TwitchID != ""
+		case domain.PlatformYoutube:
+			hasPlatform = u.YoutubeID != ""
+		case domain.PlatformDiscord:
+			hasPlatform = u.DiscordID != ""
+		}
+		
+		// Case-insensitive username match
+		if hasPlatform && strings.EqualFold(u.Username, username) {
+			return u, nil
+		}
+	}
+	return nil, domain.ErrUserNotFound
+}
+
 
 func (m *MockRepository) GetInventory(ctx context.Context, userID string) (*domain.Inventory, error) {
 	if inv, ok := m.inventories[userID]; ok {

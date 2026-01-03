@@ -32,6 +32,11 @@ func (m *mockBenchRepository) GetUserByPlatformID(ctx context.Context, platform,
 	return nil, domain.ErrUserNotFound
 }
 
+func (m *mockBenchRepository) GetUserByPlatformUsername(ctx context.Context, platform, username string) (*domain.User, error) {
+	return nil, domain.ErrUserNotFound
+}
+
+
 func (m *mockBenchRepository) GetUserByID(ctx context.Context, userID string) (*domain.User, error) {
 	return &domain.User{ID: userID, Username: "benchuser"}, nil
 }

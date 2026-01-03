@@ -211,6 +211,58 @@ func (r *UserRepository) GetUserByPlatformID(ctx context.Context, platform, plat
 	return &user, nil
 }
 
+// GetUserByPlatformUsername finds a user by platform and username (case-insensitive)
+func (r *UserRepository) GetUserByPlatformUsername(ctx context.Context, platform, username string) (*domain.User, error) {
+	// Query to find user by username (case-insensitive) who has the specified platform linked
+	query := `
+		SELECT u.user_id, u.username
+		FROM users u
+		JOIN user_platform_links upl ON u.user_id = upl.user_id
+		JOIN platforms p ON upl.platform_id = p.platform_id
+		WHERE LOWER(u.username) = LOWER($1)
+		AND p.name = $2
+	`
+	
+	var user domain.User
+	err := r.db.QueryRow(ctx, query, username, platform).Scan(&user.ID, &user.Username)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, domain.ErrUserNotFound
+		}
+		return nil, fmt.Errorf("failed to get user by username: %w", err)
+	}
+
+	// Fetch all platform links for this user (same as GetUserByPlatformID)
+	linksQuery := `
+		SELECT p.name, upl.platform_user_id
+		FROM user_platform_links upl
+		JOIN platforms p ON upl.platform_id = p.platform_id
+		WHERE upl.user_id = $1
+	`
+	rows, err := r.db.Query(ctx, linksQuery, user.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user links: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var pName, extID string
+		if err := rows.Scan(&pName, &extID); err != nil {
+			return nil, fmt.Errorf("failed to scan link: %w", err)
+		}
+		switch pName {
+		case "twitch":
+			user.TwitchID = extID
+		case "youtube":
+			user.YoutubeID = extID
+		case "discord":
+			user.DiscordID = extID
+		}
+	}
+
+	return &user, nil
+}
+
 // GetInventory retrieves the user's inventory
 func (r *UserRepository) GetInventory(ctx context.Context, userID string) (*domain.Inventory, error) {
 	query := `SELECT inventory_data FROM user_inventory WHERE user_id = $1`
