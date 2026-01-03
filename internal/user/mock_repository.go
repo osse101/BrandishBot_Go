@@ -130,6 +130,16 @@ func (m *MockRepository) GetItemByName(ctx context.Context, itemName string) (*d
 	return nil, nil
 }
 
+func (m *MockRepository) GetItemsByNames(ctx context.Context, names []string) ([]domain.Item, error) {
+	var items []domain.Item
+	for _, name := range names {
+		if item, ok := m.items[name]; ok {
+			items = append(items, *item)
+		}
+	}
+	return items, nil
+}
+
 func (m *MockRepository) GetItemsByIDs(ctx context.Context, itemIDs []int) ([]domain.Item, error) {
 	var items []domain.Item
 	for _, id := range itemIDs {
