@@ -59,6 +59,11 @@ type Config struct {
 
 	// Progression Tree
 	SyncProgressionTree bool // When true, syncs progression_tree.json to database on startup
+	
+	// Event Publishing
+	EventMaxRetries      int           // Max retries for event publishing (default: 5)
+	EventRetryDelay      time.Duration // Base delay for exponential backoff (default: 2s)
+	EventDeadLetterPath  string        // Path to dead-letter log file (default: logs/event_deadletter.jsonl)
 }
 
 // Load loads the configuration from environment variables
@@ -103,6 +108,11 @@ func Load() (*Config, error) {
 
 		// Streamer.bot config
 		StreamerbotWebhookURL: getEnv("STREAMERBOT_WEBHOOK_URL", ""),
+		
+		// Event publishing config
+		EventMaxRetries:      getEnvAsInt("EVENT_MAX_RETRIES", 5),
+		EventRetryDelay:      getEnvAsDuration("EVENT_RETRY_DELAY", 2*time.Second),
+		EventDeadLetterPath:  getEnv("EVENT_DEADLETTER_PATH", "logs/event_deadletter.jsonl"),
 	}
 
 	portStr := getEnv("PORT", "8080")

@@ -313,3 +313,4 @@ If events are accumulating, investigate:
 
 - Code review: [code_review.md](file:///home/osse1/.gemini/antigravity/brain/db319d15-571c-413e-a190-ece6fbdbc1e5/code_review.md)
 - Implementation plan: [implementation_plan.md](file:///home/osse1/.gemini/antigravity/brain/db319d15-571c-413e-a190-ece6fbdbc1e5/implementation_plan.md)
+- test-resilient-publisher.md [test-resilient-publisher.md](file:///home/osse1/projects/BrandishBot_Go/docs/issues/test-resilient-publisher.md)

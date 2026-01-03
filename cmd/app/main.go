@@ -129,6 +129,36 @@ func main() {
 	// Initialize Event Bus
 	eventBus := event.NewMemoryBus()
 
+	// Initialize Resilient Publisher for event retry logic
+	maxRetries := cfg.EventMaxRetries
+	if maxRetries == 0 {
+		maxRetries = 5 // Default to 5 retries
+	}
+	retryDelay := cfg.EventRetryDelay
+	if retryDelay == 0 {
+		retryDelay = 2 * time.Second // Default to 2s base delay
+	}
+	deadLetterPath := cfg.EventDeadLetterPath
+	if deadLetterPath == "" {
+		deadLetterPath = "logs/event_deadletter.jsonl" // Default path
+	}
+	
+	// Ensure dead-letter directory exists
+	if err := os.MkdirAll(filepath.Dir(deadLetterPath), 0755); err != nil {
+		slog.Error("Failed to create dead-letter directory", "error", err)
+		os.Exit(1)
+	}
+	
+	resilientPublisher, err := event.NewResilientPublisher(eventBus, maxRetries, retryDelay, deadLetterPath)
+	if err != nil {
+		slog.Error("Failed to create resilient publisher", "error", err)
+		os.Exit(1)
+	}
+	slog.Info("Resilient event publisher initialized",
+		"max_retries", maxRetries,
+		"retry_delay", retryDelay,
+		"deadletter_path", deadLetterPath)
+	
 	progressionRepo := postgres.NewProgressionRepository(dbPool)
 	progressionService := progression.NewService(progressionRepo, eventBus)
 
@@ -164,7 +194,7 @@ func main() {
 
 	// Initialize Job service (needed by user, economy, crafting, gamble)
 	jobRepo := postgres.NewJobRepository(dbPool)
-	jobService := job.NewService(jobRepo, progressionService, statsService, eventBus)
+	jobService := job.NewService(jobRepo, progressionService, statsService, eventBus, resilientPublisher)
 	
 	// Initialize services that depend on job service
 	economyService := economy.NewService(userRepo, jobService)
@@ -301,6 +331,12 @@ func main() {
 	}
 	if err := gambleService.Shutdown(shutdownCtx); err != nil {
 		slog.Error("Gamble service shutdown failed", "error", err)
+	}
+	
+	// Shutdown resilient publisher last to flush pending events
+	slog.Info("Shutting down event publisher...")
+	if err := resilientPublisher.Shutdown(shutdownCtx); err != nil {
+		slog.Error("Resilient publisher shutdown failed", "error", err)
 	}
 
 	slog.Info("Server stopped")

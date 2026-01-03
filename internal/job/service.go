@@ -53,15 +53,17 @@ type service struct {
 	progressionSvc ProgressionService
 	statsSvc       stats.Service
 	eventBus       event.Bus
+	publisher      *event.ResilientPublisher
 }
 
 // NewService creates a new job service
-func NewService(repo Repository, progressionSvc ProgressionService, statsSvc stats.Service, eventBus event.Bus) Service {
+func NewService(repo Repository, progressionSvc ProgressionService, statsSvc stats.Service, eventBus event.Bus, publisher *event.ResilientPublisher) Service {
 	return &service{
 		repo:           repo,
 		progressionSvc: progressionSvc,
 		statsSvc:       statsSvc,
 		eventBus:       eventBus,
+		publisher:      publisher,
 	}
 }
 
@@ -267,11 +269,11 @@ func (s *service) AwardXP(ctx context.Context, userID, jobKey string, baseAmount
 			})
 		}
 
-		// Publish Level Up Event
-		if s.eventBus != nil {
-			// Cast domain.EventType (string) to event.Type (string)
+		// Publish Level Up Event using ResilientPublisher
+		// This ensures XP awards never fail even if event system is down
+		if s.publisher != nil {
 			eventType := event.Type(domain.EventJobLevelUp)
-			if err := s.eventBus.Publish(ctx, event.Event{
+			s.publisher.PublishWithRetry(ctx, event.Event{
 				Type: eventType,
 				Payload: map[string]interface{}{
 					"user_id":   userID,
@@ -282,11 +284,7 @@ func (s *service) AwardXP(ctx context.Context, userID, jobKey string, baseAmount
 				Metadata: map[string]interface{}{
 					"source": source,
 				},
-			}); err != nil {
-				// Log the error but don't fail the operation
-				// Level up succeeded, we just failed to notify
-				logger.FromContext(ctx).Error("Failed to publish Level Up event", "error", err, "user_id", userID, "job", jobKey)
-			}
+			})
 		}
 	}
 

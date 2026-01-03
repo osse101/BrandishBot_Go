@@ -3,6 +3,7 @@ package job
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/event"
@@ -102,58 +103,70 @@ func (m *MockStats) GetLeaderboard(ctx context.Context, eventType domain.EventTy
 
 
 func TestAwardXP_PublishesEventOnLevelUp(t *testing.T) {
+	// Setup
 	mockRepo := new(MockRepo)
 	mockProg := new(MockProgression)
 	mockStats := new(MockStats)
 	mockBus := new(MockBus)
 
-	svc := NewService(mockRepo, mockProg, mockStats, mockBus)
+	// Create a ResilientPublisher with the mocked bus
+	// Use a temp file for dead-letter in tests
+	tmpFile := t.TempDir() + "/deadletter.jsonl"
+	resilientPub, err := event.NewResilientPublisher(mockBus, 3, 100*time.Millisecond, tmpFile)
+	if err != nil {
+		t.Fatalf("Failed to create resilient publisher: %v", err)
+	}
+	defer resilientPub.Shutdown(context.Background())
+
+	svc := NewService(mockRepo, mockProg, mockStats, mockBus, resilientPub)
 	ctx := context.Background()
 
 	// Setup data
-	jobKey := "explorer"
-	userID := "user123"
-	jobID := 1
-
-	testJob := &domain.Job{ID: jobID, JobKey: jobKey}
-
-	// Initial state: Level 0, 0 XP
-	initialProgress := &domain.UserJob{
-		UserID: userID,
-		JobID: jobID,
-		CurrentXP: 0,
-		CurrentLevel: 0,
-		XPGainedToday: 0,
+	job := &domain.Job{ID: 1, JobKey: "explorer"}
+	userJob := &domain.UserJob{
+		UserID:       "user123",
+		JobID:        1,
+		CurrentXP:    0,
+		CurrentLevel: 1,
 	}
 
-	// Expectations
 	mockProg.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
-	mockRepo.On("GetJobByKey", ctx, jobKey).Return(testJob, nil)
-	mockRepo.On("GetUserJob", ctx, userID, jobID).Return(initialProgress, nil)
-
-	// Expect upsert with new XP (1000 XP should be enough for level 1)
-	mockRepo.On("UpsertUserJob", ctx, mock.MatchedBy(func(uj *domain.UserJob) bool {
-		return uj.CurrentLevel > 0 // Verify level increased
-	})).Return(nil)
-
+	mockRepo.On("GetJobByKey", ctx, "explorer").Return(job, nil)
+	mockRepo.On("GetUserJob", ctx, "user123", 1).Return(userJob, nil)
+	mockRepo.On("UpsertUserJob", ctx, mock.Anything).Return(nil)
 	mockRepo.On("RecordJobXPEvent", ctx, mock.Anything).Return(nil)
+	mockStats.On("RecordUserEvent", ctx, "user123", domain.EventJobLevelUp, mock.Anything).Return(nil)
 
-	mockStats.On("RecordUserEvent", ctx, userID, domain.EventJobLevelUp, mock.Anything).Return(nil)
-
-	// CRITICAL: Expect Publish to be called
+	// Mock expects event to be published to the bus
+	// The ResilientPublisher will call bus.Publish on the first attempt
 	mockBus.On("Publish", ctx, mock.MatchedBy(func(e event.Event) bool {
-		// Cast domain.EventType to event.Type
-		return e.Type == event.Type(domain.EventJobLevelUp) &&
-			e.Payload.(map[string]interface{})["new_level"].(int) > 0
-	})).Return(nil)
+		if e.Type != event.Type(domain.EventJobLevelUp) {
+			return false
+		}
+		payload, ok := e.Payload.(map[string]interface{})
+		if !ok {
+			return false
+		}
+		return payload["user_id"] == "user123" &&
+			payload["job_key"] == "explorer" &&
+			payload["new_level"] == 2 &&
+			payload["old_level"] == 1
+	})).Return(nil).Once()
 
-	// Execute
-	// Award 1000 XP
-	result, err := svc.AwardXP(ctx, userID, jobKey, 1000, "test", nil)
+	// Execute - Award enough XP to level up from 1 -> 2
+	result, err := svc.AwardXP(ctx, "user123", "explorer", 500, "test", nil)
 
+	// Assert
 	assert.NoError(t, err)
+	assert.NotNil(t, result)
 	assert.True(t, result.LeveledUp)
+	assert.Equal(t, 2, result.NewLevel)
 
+	// Give the async publisher a moment to process
+	time.Sleep(50 * time.Millisecond)
+	
 	mockBus.AssertExpectations(t)
+	mockRepo.AssertExpectations(t)
+	mockProg.AssertExpectations(t)
 	mockStats.AssertExpectations(t)
 }
