@@ -30,6 +30,8 @@ const (
 	// Lootbox events
 	EventLootboxJackpot EventType = "lootbox_jackpot"
 	EventLootboxBigWin  EventType = "lootbox_big_win"
+	EventLootboxUnlucky EventType = "lootbox_unlucky" // Opened many boxes, got nothing good (>= 5 common only)
+	EventLootboxGodRoll EventType = "lootbox_god_roll" // >= 2 Legendaries in one batch
 )
 
 // StatsEvent represents a single tracked event

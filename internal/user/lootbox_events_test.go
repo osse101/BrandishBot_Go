@@ -297,10 +297,14 @@ func TestProcessLootboxDrops_BulkFeedbackThreshold(t *testing.T) {
 		mockNaming.On("GetDisplayName", "common_rock", lootbox.ShineCommon).Return("Rock")
 		mockNaming.On("GetDisplayName", "lootbox_tier1", "").Return("Lootbox Tier 1")
 
+		// Expect Unlucky event as they are all common and quantity >= 5
+		mockStats.On("RecordUserEvent", mock.Anything, user.ID, domain.EventLootboxUnlucky, mock.Anything).Return(nil)
+
 		msg, err := svc.processLootboxDrops(ctx, user, inventory, lootboxItem, 5, createCommonDrops())
 
 		assert.NoError(t, err)
-		assert.Contains(t, msg, "Nice haul!", "Should show bulk feedback at threshold")
+		assert.Contains(t, msg, "Oof. Better luck next time?", "Should show unlucky feedback")
+		// NOTE: "Nice haul" is mutually exclusive with Unlucky now
 	})
 
 	// Test Case 3: Just Above Threshold (6)
@@ -314,10 +318,13 @@ func TestProcessLootboxDrops_BulkFeedbackThreshold(t *testing.T) {
 		mockNaming.On("GetDisplayName", "common_rock", lootbox.ShineCommon).Return("Rock")
 		mockNaming.On("GetDisplayName", "lootbox_tier1", "").Return("Lootbox Tier 1")
 
+		// Expect Unlucky event as they are all common and quantity >= 5
+		mockStats.On("RecordUserEvent", mock.Anything, user.ID, domain.EventLootboxUnlucky, mock.Anything).Return(nil)
+
 		msg, err := svc.processLootboxDrops(ctx, user, inventory, lootboxItem, 6, createCommonDrops())
 
 		assert.NoError(t, err)
-		assert.Contains(t, msg, "Nice haul!", "Should show bulk feedback above threshold")
+		assert.Contains(t, msg, "Oof. Better luck next time?", "Should show unlucky feedback")
 	})
 
 	// Test Case 4: No Bulk Feedback When Jackpot (Legendary takes precedence)
