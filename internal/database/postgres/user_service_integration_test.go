@@ -394,3 +394,191 @@ func (m *SlowJobService) AwardXP(ctx context.Context, userID, jobKey string, bas
 	time.Sleep(m.delay)
 	return &domain.XPAwardResult{LeveledUp: false, NewLevel: 1, NewXP: 100}, nil
 }
+
+// Integration tests for username lookup functionality
+func TestGetUserByPlatformUsername_Integration(t *testing.T) {
+	_, repo, _ := setupIntegrationTest(t)
+	if repo == nil {
+		return // Skipped
+	}
+	ctx := context.Background()
+
+	// Setup users
+	alice := &domain.User{
+		Username:  "Alice",
+		TwitchID:  "twitch_alice",
+		DiscordID: "discord_alice",
+	}
+	bob := &domain.User{
+		Username: "Bob",
+		TwitchID: "twitch_bob",
+	}
+
+	if err := repo.UpsertUser(ctx, alice); err != nil {
+		t.Fatalf("failed to create alice: %v", err)
+	}
+	if err := repo.UpsertUser(ctx, bob); err != nil {
+		t.Fatalf("failed to create bob: %v", err)
+	}
+
+	t.Run("successful lookup by username", func(t *testing.T) {
+		user, err := repo.GetUserByPlatformUsername(ctx, domain.PlatformTwitch, "alice")
+		if err != nil {
+			t.Fatalf("Expected no error, got %v", err)
+		}
+		if user.Username != "Alice" {
+			t.Errorf("Expected username Alice, got %s", user.Username)
+		}
+		if user.TwitchID != "twitch_alice" {
+			t.Errorf("Expected twitch ID, got %s", user.TwitchID)
+		}
+	})
+
+	t.Run("case insensitive lookup", func(t *testing.T) {
+		user, err := repo.GetUserByPlatformUsername(ctx, domain.PlatformTwitch, "ALICE")
+		if err != nil {
+			t.Fatalf("Expected no error with uppercase, got %v", err)
+		}
+		if user.Username != "Alice" {
+			t.Errorf("Expected username Alice, got %s", user.Username)
+		}
+	})
+
+	t.Run("user not found", func(t *testing.T) {
+		_, err := repo.GetUserByPlatformUsername(ctx, domain.PlatformTwitch, "nonexistent")
+		if err != domain.ErrUserNotFound {
+			t.Errorf("Expected ErrUserNotFound, got %v", err)
+		}
+	})
+
+	t.Run("user without platform link", func(t *testing.T) {
+		// Bob doesn't have Discord
+		_, err := repo.GetUserByPlatformUsername(ctx, domain.PlatformDiscord, "Bob")
+		if err != domain.ErrUserNotFound {
+			t.Errorf("Expected ErrUserNotFound for missing platform, got %v", err)
+		}
+	})
+}
+
+func TestUsernameBasedMethods_Integration(t *testing.T) {
+	_, repo, svc := setupIntegrationTest(t)
+	if svc == nil {
+		return // Skipped
+	}
+	ctx := context.Background()
+
+	// Setup test users
+	charlie := &domain.User{Username: "Charlie", TwitchID: "twitch_charlie"}
+	diana := &domain.User{Username: "Diana", DiscordID: "discord_diana"}
+
+	if err := repo.UpsertUser(ctx, charlie); err != nil {
+		t.Fatalf("failed to setup charlie: %v", err)
+	}
+	if err := repo.UpsertUser(ctx, diana); err != nil {
+		t.Fatalf("failed to setup diana: %v", err)
+	}
+
+	// Refresh IDs
+	charlie, _ = repo.GetUserByUsername(ctx, "Charlie")
+	diana, _ = repo.GetUserByUsername(ctx, "Diana")
+
+	t.Run("AddItemByUsername", func(t *testing.T) {
+		err := svc.AddItemByUsername(ctx, domain.PlatformTwitch, "charlie", "money", 100)
+		if err != nil {
+			t.Fatalf("AddItemByUsername failed: %v", err)
+		}
+
+		// Verify in database
+		inv, _ := repo.GetInventory(ctx, charlie.ID)
+		moneyItem, _ := repo.GetItemByName(ctx, "money")
+		found := false
+		for _, slot := range inv.Slots {
+			if slot.ItemID == moneyItem.ID && slot.Quantity == 100 {
+				found = true
+			}
+		}
+		if !found {
+			t.Error("Money not added via AddItemByUsername")
+		}
+	})
+
+	t.Run("GetInventoryByUsername", func(t *testing.T) {
+		items, err := svc.GetInventoryByUsername(ctx, domain.PlatformTwitch, "charlie", "")
+		if err != nil {
+			t.Fatalf("GetInventoryByUsername failed: %v", err)
+		}
+		if len(items) != 1 {
+			t.Errorf("Expected 1 item in inventory, got %d", len(items))
+		}
+	})
+
+	t.Run("RemoveItemByUsername", func(t *testing.T) {
+		removed, err := svc.RemoveItemByUsername(ctx, domain.PlatformTwitch, "charlie", "money", 30)
+		if err != nil {
+			t.Fatalf("RemoveItemByUsername failed: %v", err)
+		}
+		if removed != 30 {
+			t.Errorf("Expected 30 removed, got %d", removed)
+		}
+
+		// Verify
+		inv, _ := repo.GetInventory(ctx, charlie.ID)
+		moneyItem, _ := repo.GetItemByName(ctx, "money")
+		for _, slot := range inv.Slots {
+			if slot.ItemID == moneyItem.ID && slot.Quantity != 70 {
+				t.Errorf("Expected 70 remaining, got %d", slot.Quantity)
+			}
+		}
+	})
+
+	t.Run("GiveItemByUsername cross-platform", func(t *testing.T) {
+		// Give from Charlie (twitch) to Diana (discord) using usernames
+		msg, err := svc.GiveItemByUsername(ctx, domain.PlatformTwitch, "charlie", domain.PlatformDiscord, "diana", "money", 20)
+		if err != nil {
+			t.Fatalf("GiveItemByUsername failed: %v", err)
+		}
+		if msg == "" {
+			t.Error("Expected success message")
+		}
+
+		// Verify Charlie has 50 left (70 - 20)
+		invCharlie, _ := repo.GetInventory(ctx, charlie.ID)
+		moneyItem, _ := repo.GetItemByName(ctx, "money")
+		for _, slot := range invCharlie.Slots {
+			if slot.ItemID == moneyItem.ID && slot.Quantity != 50 {
+				t.Errorf("Charlie should have 50, got %d", slot.Quantity)
+			}
+		}
+
+		// Verify Diana has 20
+		invDiana, _ := repo.GetInventory(ctx, diana.ID)
+		found := false
+		for _, slot := range invDiana.Slots {
+			if slot.ItemID == moneyItem.ID {
+				found = true
+				if slot.Quantity != 20 {
+					t.Errorf("Diana should have 20, got %d", slot.Quantity)
+				}
+			}
+		}
+		if !found {
+			t.Error("Diana should have received money")
+		}
+	})
+
+	t.Run("Case insensitive service operations", func(t *testing.T) {
+		// All caps username should still work
+		err := svc.AddItemByUsername(ctx, domain.PlatformTwitch, "CHARLIE", "money", 10)
+		if err != nil {
+			t.Fatalf("Case insensitive AddItemByUsername failed: %v", err)
+		}
+
+		inv, _ := repo.GetInventory(ctx, charlie.ID)
+		moneyItem, _ := repo.GetItemByName(ctx, "money")
+		for _, slot := range inv.Slots {
+			if slot.ItemID == moneyItem.ID && slot.Quantity != 60 {
+				t.Errorf("Expected 60 (50 + 10), got %d", slot.Quantity)
+			}
+		}
+	})
+}
