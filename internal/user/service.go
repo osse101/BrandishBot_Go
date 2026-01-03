@@ -30,7 +30,6 @@ var validPlatforms = map[string]bool{
 type Repository interface {
 	UpsertUser(ctx context.Context, user *domain.User) error
 	GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error)
-	GetUserByPlatformUsername(ctx context.Context, platform, username string) (*domain.User, error)
 	GetUserByID(ctx context.Context, userID string) (*domain.User, error)
 	UpdateUser(ctx context.Context, user domain.User) error
 	DeleteUser(ctx context.Context, userID string) error
@@ -1025,98 +1024,43 @@ func (s *service) processSearchFailure(ctx context.Context, user *domain.User, r
 	return resultMessage
 }
 
-// getUserOrRegister gets a user by platform ID or username, or auto-registers them if not found
-// Auto-registration only happens when platformID looks like a real ID (not username)
+// getUserOrRegister gets a user by platform ID, or auto-registers them if not found
 func (s *service) getUserOrRegister(ctx context.Context, platform, platformID, username string) (*domain.User, error) {
 	log := logger.FromContext(ctx)
-	
-	// First, try to resolve the user (tries platformID, then username)
-	user, err := s.resolveUser(ctx, platform, platformID)
-	if err == nil && user != nil {
+
+	// Try cache first
+	if user, ok := s.userCache.Get(platform, platformID); ok {
+		log.Debug("User cache hit", "userID", user.ID, "platform", platform)
 		return user, nil
 	}
-	
-	// If error is not "user not found", propagate it
+
+	// Cache miss - fetch from database
+	user, err := s.repo.GetUserByPlatformID(ctx, platform, platformID)
 	if err != nil && !errors.Is(err, domain.ErrUserNotFound) {
-		return nil, err
+		log.Error("Failed to get user by platform ID", "error", err, "platform", platform, "platformID", platformID)
+		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
-	
-	// User not found - we can only auto-register if platformID looks like an actual ID, not a username
-	// Simple heuristic: if platformID contains digits or is very long, treat as real ID
-	// Otherwise, it's likely a username that doesn't exist - return not found
-	isLikelyPlatformID := len(platformID) > 15 // Discord IDs are 17-19 chars
-	for _, ch := range platformID {
-		if ch >= '0' && ch <= '9' {
-			isLikelyPlatformID = true
-			break
-		}
+
+	if user != nil {
+		log.Debug("Found existing user", "userID", user.ID, "platform", platform)
+		// Cache the user for future lookups
+		s.userCache.Set(platform, platformID, user)
+		return user, nil
 	}
-	
-	if !isLikelyPlatformID {
-		// Looks like a username that doesn't exist - don't auto-register
-		log.Warn("User not found and input appears to be username, not platformID", "platform", platform, "input", platformID)
-		return nil, domain.ErrUserNotFound
-	}
-	
-	// Looks like a real platformID - auto-register
+
+	// User not found, auto-register
 	log.Info("Auto-registering new user", "platform", platform, "platformID", platformID, "username", username)
 	newUser := domain.User{Username: username}
 	setPlatformID(&newUser, platform, platformID)
-	
+
 	registered, err := s.RegisterUser(ctx, newUser)
 	if err != nil {
 		log.Error("Failed to auto-register user", "error", err)
 		return nil, fmt.Errorf("failed to register user: %w", err)
 	}
-	
+
 	log.Info("User auto-registered", "userID", registered.ID)
 	return &registered, nil
-}
-
-// resolveUser attempts to resolve a user by platformIDOrUsername
-// First tries to match as platformID, then falls back to username lookup
-// This allows API endpoints to accept either platform_id or username in the same field
-// Does NOT auto-register - returns ErrUserNotFound if user doesn't exist
-func (s *service) resolveUser(ctx context.Context, platform, platformIDOrUsername string) (*domain.User, error) {
-	log := logger.FromContext(ctx)
-	
-	// Try cache first with platformIDOrUsername as key
-	if user, ok := s.userCache.Get(platform, platformIDOrUsername); ok {
-		log.Debug("User cache hit", "userID", user.ID, "platform", platform)
-		return user, nil
-	}
-	
-	// Try platformID lookup first (fast path)
-	user, err := s.repo.GetUserByPlatformID(ctx, platform, platformIDOrUsername)
-	if err == nil && user != nil {
-		log.Debug("Resolved user by platformID", "userID", user.ID, "platform", platform)
-		// Cache the result
-		s.userCache.Set(platform, platformIDOrUsername, user)
-		return user, nil
-	}
-	
-	// If not ErrUserNotFound, propagate the error
-	if err != nil && !errors.Is(err, domain.ErrUserNotFound) {
-		log.Error("Failed to get user by platform ID", "error", err, "platform", platform, "platformIDOrUsername", platformIDOrUsername)
-		return nil, fmt.Errorf("failed to get user: %w", err)
-	}
-	
-	// Fallback to username lookup
-	log.Debug("Platform ID not found, trying username lookup", "username", platformIDOrUsername, "platform", platform)
-	user, err = s.repo.GetUserByPlatformUsername(ctx, platform, platformIDOrUsername)
-	if err == nil && user != nil {
-		log.Debug("Resolved user by username", "userID", user.ID, "platform", platform)
-		// Cache using the original platformIDOrUsername key for consistency
-		s.userCache.Set(platform, platformIDOrUsername, user)
-		return user, nil
-	}
-	
-	// User not found by either method - return error
-	if err != nil {
-		return nil, err
-	}
-	
-	return nil, domain.ErrUserNotFound
 }
 
 // awardExplorerXP awards Explorer job XP for finding items during search
