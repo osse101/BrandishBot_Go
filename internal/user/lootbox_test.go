@@ -190,7 +190,7 @@ func (m *MockLootboxService) OpenLootbox(ctx context.Context, lootboxName string
 // Helper to create a service with a mock repo and lootbox service
 func createTestService(repo *MockRepo, lootboxSvc *MockLootboxService) *service {
 	namingResolver := NewMockNamingResolver()
-	
+
 	return &service{
 		repo:           repo,
 		lootboxService: lootboxSvc,

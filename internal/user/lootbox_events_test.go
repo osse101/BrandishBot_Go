@@ -378,4 +378,3 @@ func TestProcessLootboxDrops_BulkFeedbackThreshold(t *testing.T) {
 		assert.NotContains(t, msg, "Nice haul!", "Bulk feedback should NOT appear when big win")
 	})
 }
-

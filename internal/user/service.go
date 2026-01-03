@@ -123,7 +123,7 @@ type service struct {
 	devMode         bool // When true, bypasses cooldowns
 	wg              sync.WaitGroup
 	userCache       *userCache // In-memory cache for user lookups
-	
+
 	// Item cache: in-memory cache for item metadata (name, description, value, etc.)
 	// Purpose: Reduce database queries for frequently accessed item data
 	// Thread-safety: Protected by itemCacheMu (RWMutex)
@@ -420,21 +420,18 @@ func (s *service) AddItems(ctx context.Context, platform, platformID, username s
 		itemIDMap[itemName] = item.ID
 	}
 
-	// Add all items to inventory using optimized helper
+	// Convert items to InventorySlots for the helper
+	slotsToAdd := make([]domain.InventorySlot, 0, len(items))
 	for itemName, quantity := range items {
 		itemID := itemIDMap[itemName]
-		found := false
-		for i, slot := range inventory.Slots {
-			if slot.ItemID == itemID {
-				inventory.Slots[i].Quantity += quantity
-				found = true
-				break
-			}
-		}
-		if !found {
-			inventory.Slots = append(inventory.Slots, domain.InventorySlot{ItemID: itemID, Quantity: quantity})
-		}
+		slotsToAdd = append(slotsToAdd, domain.InventorySlot{
+			ItemID:   itemID,
+			Quantity: quantity,
+		})
 	}
+
+	// Add all items to inventory using optimized helper
+	utils.AddItemsToInventory(inventory, slotsToAdd, nil)
 
 	// Single inventory update
 	if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
@@ -1124,9 +1121,9 @@ type searchParams struct {
 // executeSearch performs the actual search logic (called within cooldown enforcement)
 func (s *service) executeSearch(ctx context.Context, user *domain.User) (string, error) {
 	log := logger.FromContext(ctx)
-	
+
 	params := s.calculateSearchParameters(ctx, user)
-	
+
 	// Perform search roll
 	roll := utils.SecureRandomFloat()
 	if params.isFirstSearchDaily {

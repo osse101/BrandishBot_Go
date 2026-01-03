@@ -98,7 +98,7 @@ func TestHandleGetAllJobs(t *testing.T) {
 
 	var result map[string][]domain.Job
 	json.NewDecoder(resp.Body).Decode(&result)
-	
+
 	assert.Len(t, result["jobs"], 1)
 	assert.Equal(t, "j1", result["jobs"][0].JobKey)
 }
