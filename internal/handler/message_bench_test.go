@@ -48,16 +48,31 @@ func (m *mockUserService) AddItem(ctx context.Context, platform, platformID, use
 func (m *mockUserService) AddItems(ctx context.Context, platform, platformID, username string, items map[string]int) error {
 	return nil
 }
+func (m *mockUserService) AddItemByUsername(ctx context.Context, platform, username, itemName string, quantity int) error {
+	return nil
+}
 func (m *mockUserService) RemoveItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (int, error) {
+	return 0, nil
+}
+func (m *mockUserService) RemoveItemByUsername(ctx context.Context, platform, username, itemName string, quantity int) (int, error) {
 	return 0, nil
 }
 func (m *mockUserService) GiveItem(ctx context.Context, ownerPlatform, ownerPlatformID, ownerUsername, receiverPlatform, receiverPlatformID, receiverUsername, itemName string, quantity int) error {
 	return nil
 }
+func (m *mockUserService) GiveItemByUsername(ctx context.Context, ownerPlatform, ownerUsername, receiverPlatform, receiverUsername, itemName string, quantity int) (string, error) {
+	return "", nil
+}
 func (m *mockUserService) UseItem(ctx context.Context, platform, platformID, username, itemName string, quantity int, targetUsername string) (string, error) {
 	return "", nil
 }
+func (m *mockUserService) UseItemByUsername(ctx context.Context, platform, username, itemName string, quantity int, targetUsername string) (string, error) {
+	return "", nil
+}
 func (m *mockUserService) GetInventory(ctx context.Context, platform, platformID, username, filter string) ([]user.UserInventoryItem, error) {
+	return nil, nil
+}
+func (m *mockUserService) GetInventoryByUsername(ctx context.Context, platform, username, filter string) ([]user.UserInventoryItem, error) {
 	return nil, nil
 }
 func (m *mockUserService) TimeoutUser(ctx context.Context, username string, duration time.Duration, reason string) error {
