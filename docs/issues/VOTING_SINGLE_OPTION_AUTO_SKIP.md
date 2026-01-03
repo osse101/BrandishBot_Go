@@ -1,3 +1,5 @@
+RESOLVED
+
 # Auto-Skip Single Option Votes
 
 ## Issue
