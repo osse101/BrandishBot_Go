@@ -19,6 +19,7 @@ type Event struct {
 // Common event types
 const (
 	ProgressionCycleCompleted Type = "progression.cycle.completed"
+	ProgressionTargetSet      Type = "progression.target.set"
 )
 
 

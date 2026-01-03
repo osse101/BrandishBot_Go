@@ -388,4 +388,43 @@ Before making concurrency changes:
 
 ---
 
-*Last updated: December 2024*
+## 2026-01-03: Event Publishing for Auto-Selected Progression Targets
+
+### Context
+Implemented `EventProgressionTargetSet` to support the "Auto-Skip Single Option Votes" feature. When only one progression node is available, the system automatically selects it and sets it as the target, bypassing the voting session.
+
+### Implementation Pattern
+
+**Event Definition**: Added `ProgressionTargetSet` to `internal/event/event.go`.
+
+```go
+const (
+    ProgressionCycleCompleted Type = "progression.cycle.completed"
+    ProgressionTargetSet      Type = "progression.target.set"
+)
+```
+
+**Publishing Logic**: Added to `StartVotingSession` in `internal/progression/voting_sessions.go`.
+
+```go
+if s.bus != nil {
+    if err := s.bus.Publish(ctx, event.Event{
+        Type: event.ProgressionTargetSet,
+        Payload: map[string]interface{}{
+            "node_key":     node.NodeKey,
+            "target_level": targetLevel,
+            "auto_selected": true,
+        },
+    }); err != nil {
+        log.Error("Failed to publish progression target set event", "error", err)
+    }
+}
+```
+
+### Key Learnings
+- **Event-Driven UX**: Even when user interaction is skipped (auto-select), publishing an event allows other systems (UI, Notifications) to inform the user about what happened.
+- **Mocking Strategy**: Tests using `MockRepository` need to be resilient to changes in service dependencies (like `event.Bus`). In this case, `bus` is nil in most tests, which simplifies testing core logic without mocking the bus everywhere.
+
+---
+
+*Last updated: January 2026*

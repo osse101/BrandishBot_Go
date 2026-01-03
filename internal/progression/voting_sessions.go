@@ -79,8 +79,19 @@ func (s *service) StartVotingSession(ctx context.Context, unlockedNodeID *int) e
 		s.mu.Unlock()
 
 		// Publish event if needed (target set)
-		// Note: We currently only log this as there isn't a dedicated "TargetSet" event type yet
-		// and ProgressionCycleCompleted implies a session.
+		if s.bus != nil {
+			if err := s.bus.Publish(ctx, event.Event{
+				Type: event.ProgressionTargetSet,
+				Payload: map[string]interface{}{
+					"node_key":     node.NodeKey,
+					"target_level": targetLevel,
+					"auto_selected": true,
+				},
+			}); err != nil {
+				log.Error("Failed to publish progression target set event", "error", err)
+			}
+		}
+
 		log.Info("Auto-selected target set", "nodeKey", node.NodeKey, "targetLevel", targetLevel)
 
 		return nil
