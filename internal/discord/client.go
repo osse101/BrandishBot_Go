@@ -102,7 +102,7 @@ func (c *APIClient) RegisterUser(username, discordID string) (*domain.User, erro
 		"new_platform_id":   discordID,
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "/user/register", req)
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/user/register", req)
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +128,7 @@ func (c *APIClient) Search(platform, platformID, username string) (string, error
 		"username":    username,
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "/user/search", req)
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/user/search", req)
 	if err != nil {
 		return "", err
 	}
@@ -165,7 +165,7 @@ func (c *APIClient) GetInventory(platform, platformID, username, filter string) 
 		params.Set("filter", filter)
 	}
 
-	path := fmt.Sprintf("/user/inventory?%s", params.Encode())
+	path := fmt.Sprintf("/api/v1/user/inventory?%s", params.Encode())
 	resp, err := c.doRequest(http.MethodGet, path, nil)
 	if err != nil {
 		return nil, err
@@ -197,7 +197,7 @@ func (c *APIClient) UseItem(platform, platformID, username, itemName string, qua
 		"target_user":   "", // Optional, empty for non-targeted items
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "/user/item/use", req)
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/user/item/use", req)
 	if err != nil {
 		return "", err
 	}
@@ -232,7 +232,7 @@ func (c *APIClient) StartGamble(platform, platformID, username, itemName string,
 		"bets":        []map[string]interface{}{{"item_name": itemName, "quantity": quantity}},
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "/gamble/start", req)
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/gamble/start", req)
 	if err != nil {
 		return "", err
 	}
@@ -269,7 +269,7 @@ func (c *APIClient) JoinGamble(platform, platformID, username, gambleID, itemNam
 	}
 
 	// Note: gambleID goes in the URL query parameter
-	path := fmt.Sprintf("/gamble/join?id=%s", gambleID)
+	path := fmt.Sprintf("/api/v1/gamble/join?id=%s", gambleID)
 	resp, err := c.doRequest(http.MethodPost, path, req)
 	if err != nil {
 		return "", err
@@ -305,7 +305,7 @@ func (c *APIClient) VoteForNode(platform, platformID, username, nodeKey string) 
 		"node_key":    nodeKey,
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "/progression/vote", req)
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/progression/vote", req)
 	if err != nil {
 		return "", err
 	}
@@ -338,7 +338,7 @@ func (c *APIClient) AdminUnlockNode(nodeKey string, level int) (string, error) {
 		"level":    level,
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "/progression/admin/unlock", req)
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/progression/admin/unlock", req)
 	if err != nil {
 		return "", err
 	}
@@ -371,7 +371,7 @@ func (c *APIClient) AdminRelockNode(nodeKey string, level int) (string, error) {
 		"level":    level,
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "/progression/admin/relock", req)
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/progression/admin/relock", req)
 	if err != nil {
 		return "", err
 	}
@@ -399,7 +399,7 @@ func (c *APIClient) AdminRelockNode(nodeKey string, level int) (string, error) {
 
 // AdminInstantUnlock force-unlocks the current vote leader (admin only)
 func (c *APIClient) AdminInstantUnlock() (string, error) {
-	resp, err := c.doRequest(http.MethodPost, "/progression/admin/instant-unlock", nil)
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/progression/admin/instant-unlock", nil)
 	if err != nil {
 		return "", err
 	}
@@ -433,7 +433,7 @@ func (c *APIClient) AdminResetProgression(resetBy, reason string, preserveUser b
 		"preserve_user_progression": preserveUser,
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "/progression/admin/reset", req)
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/progression/admin/reset", req)
 	if err != nil {
 		return "", err
 	}
@@ -461,7 +461,7 @@ func (c *APIClient) AdminResetProgression(resetBy, reason string, preserveUser b
 
 // AdminStartVoting starts a new voting session (admin only)
 func (c *APIClient) AdminStartVoting() (string, error) {
-	resp, err := c.doRequest(http.MethodPost, "/progression/admin/start-voting", nil)
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/progression/admin/start-voting", nil)
 	if err != nil {
 		return "", err
 	}
@@ -489,7 +489,7 @@ func (c *APIClient) AdminStartVoting() (string, error) {
 
 // AdminEndVoting forces the current voting session to end (admin only)
 func (c *APIClient) AdminEndVoting() (string, error) {
-	resp, err := c.doRequest(http.MethodPost, "/progression/admin/end-voting", nil)
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/progression/admin/end-voting", nil)
 	if err != nil {
 		return "", err
 	}
@@ -517,7 +517,7 @@ func (c *APIClient) AdminEndVoting() (string, error) {
 
 // GetProgressionTree retrieves the full progression tree
 func (c *APIClient) GetProgressionTree() ([]*domain.ProgressionTreeNode, error) {
-	resp, err := c.doRequest(http.MethodGet, "/progression/tree", nil)
+	resp, err := c.doRequest(http.MethodGet, "/api/v1/progression/tree", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -547,7 +547,7 @@ func (c *APIClient) BuyItem(platform, platformID, username, itemName string, qua
 		"quantity":    quantity,
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "/user/item/buy", req)
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/user/item/buy", req)
 	if err != nil {
 		return "", err
 	}
@@ -583,7 +583,7 @@ func (c *APIClient) SellItem(platform, platformID, username, itemName string, qu
 		"quantity":    quantity,
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "/user/item/sell", req)
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/user/item/sell", req)
 	if err != nil {
 		return "", err
 	}
@@ -611,7 +611,7 @@ func (c *APIClient) SellItem(platform, platformID, username, itemName string, qu
 
 // GetSellPrices retrieves current sell prices
 func (c *APIClient) GetSellPrices() (string, error) {
-	resp, err := c.doRequest(http.MethodGet, "/prices", nil)
+	resp, err := c.doRequest(http.MethodGet, "/api/v1/prices", nil)
 	if err != nil {
 		return "", err
 	}
@@ -642,7 +642,7 @@ func (c *APIClient) GetSellPrices() (string, error) {
 
 // GetBuyPrices retrieves current buy prices
 func (c *APIClient) GetBuyPrices() (string, error) {
-	resp, err := c.doRequest(http.MethodGet, "/prices/buy", nil)
+	resp, err := c.doRequest(http.MethodGet, "/api/v1/prices/buy", nil)
 	if err != nil {
 		return "", err
 	}
@@ -683,7 +683,7 @@ func (c *APIClient) GiveItem(fromPlatform, fromPlatformID, toPlatform, toPlatfor
 		"quantity":         quantity,
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "/user/item/give", req)
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/user/item/give", req)
 	if err != nil {
 		return "", err
 	}
@@ -719,7 +719,7 @@ func (c *APIClient) UpgradeItem(platform, platformID, username, itemName string,
 		"quantity":    quantity,
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "/user/item/upgrade", req)
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/user/item/upgrade", req)
 	if err != nil {
 		return "", err
 	}
@@ -755,7 +755,7 @@ func (c *APIClient) DisassembleItem(platform, platformID, username, itemName str
 		"quantity":    quantity,
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "/user/item/disassemble", req)
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/user/item/disassemble", req)
 	if err != nil {
 		return "", err
 	}
@@ -789,7 +789,7 @@ type Recipe struct {
 
 // GetRecipes retrieves all crafting recipes
 func (c *APIClient) GetRecipes() ([]Recipe, error) {
-	resp, err := c.doRequest(http.MethodGet, "/recipes", nil)
+	resp, err := c.doRequest(http.MethodGet, "/api/v1/recipes", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -816,7 +816,7 @@ func (c *APIClient) GetUnlockedRecipes(platform, platformID, username string) ([
 	params.Set("platform_id", platformID)
 	params.Set("user", username)
 
-	path := fmt.Sprintf("/recipes?%s", params.Encode())
+	path := fmt.Sprintf("/api/v1/recipes?%s", params.Encode())
 	resp, err := c.doRequest(http.MethodGet, path, nil)
 	if err != nil {
 		return nil, err
@@ -844,7 +844,7 @@ func (c *APIClient) GetJobBonus(userID, jobKey, bonusType string) (int, error) {
 	params.Set("job_key", jobKey)
 	params.Set("bonus_type", bonusType)
 
-	path := fmt.Sprintf("/jobs/bonus?%s", params.Encode())
+	path := fmt.Sprintf("/api/v1/jobs/bonus?%s", params.Encode())
 	resp, err := c.doRequest(http.MethodGet, path, nil)
 	if err != nil {
 		return 0, err
@@ -877,7 +877,7 @@ func (c *APIClient) AdminAddContribution(amount int) (string, error) {
 		"amount": amount,
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "/progression/admin/contribution", req)
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/progression/admin/contribution", req)
 	if err != nil {
 		return "", err
 	}
@@ -908,7 +908,7 @@ func (c *APIClient) GetUserTimeout(username string) (bool, float64, error) {
 	params := url.Values{}
 	params.Set("username", username)
 
-	path := fmt.Sprintf("/user/timeout?%s", params.Encode())
+	path := fmt.Sprintf("/api/v1/user/timeout?%s", params.Encode())
 	resp, err := c.doRequest(http.MethodGet, path, nil)
 	if err != nil {
 		return false, 0, err
@@ -942,7 +942,7 @@ func (c *APIClient) GetLeaderboard(metric string, limit int) (string, error) {
 	params.Set("metric", metric)
 	params.Set("limit", fmt.Sprintf("%d", limit))
 
-	path := fmt.Sprintf("/stats/leaderboard?%s", params.Encode())
+	path := fmt.Sprintf("/api/v1/stats/leaderboard?%s", params.Encode())
 	resp, err := c.doRequest(http.MethodGet, path, nil)
 	if err != nil {
 		return "", err
@@ -973,7 +973,7 @@ func (c *APIClient) GetUserStats(platform, platformID string) (string, error) {
 	params.Set("platform", platform)
 	params.Set("platform_id", platformID)
 
-	path := fmt.Sprintf("/stats/user?%s", params.Encode())
+	path := fmt.Sprintf("/api/v1/stats/user?%s", params.Encode())
 	resp, err := c.doRequest(http.MethodGet, path, nil)
 	if err != nil {
 		return "", err
@@ -1007,7 +1007,7 @@ func (c *APIClient) AddItem(platform, platformID, itemName string, quantity int)
 		"quantity":    quantity,
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "/user/item/add", req)
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/user/item/add", req)
 	if err != nil {
 		return "", err
 	}
@@ -1042,7 +1042,7 @@ func (c *APIClient) RemoveItem(platform, platformID, itemName string, quantity i
 		"quantity":    quantity,
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "/user/item/remove", req)
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/user/item/remove", req)
 	if err != nil {
 		return "", err
 	}
@@ -1084,7 +1084,7 @@ func (c *APIClient) AdminAwardXP(platform, username, jobKey string, amount int) 
 		"amount":   amount,
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "/admin/job/award-xp", req)
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/admin/job/award-xp", req)
 	if err != nil {
 		return nil, err
 	}
@@ -1121,7 +1121,7 @@ func (c *APIClient) AdminAwardXP(platform, username, jobKey string, amount int) 
 
 // GetUnlockProgress returns current unlock progress
 func (c *APIClient) GetUnlockProgress() (*map[string]interface{}, error) {
-	resp, err := c.doRequest(http.MethodGet, "/progression/unlock-progress", nil)
+	resp, err := c.doRequest(http.MethodGet, "/api/v1/progression/unlock-progress", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1150,7 +1150,7 @@ func (c *APIClient) GetUserEngagement(userID string) (*domain.ContributionBreakd
 	params := url.Values{}
 	params.Set("user_id", userID)
 
-	path := fmt.Sprintf("/progression/engagement?%s", params.Encode())
+	path := fmt.Sprintf("/api/v1/progression/engagement?%s", params.Encode())
 	resp, err := c.doRequest(http.MethodGet, path, nil)
 	if err != nil {
 		return nil, err
@@ -1180,7 +1180,7 @@ func (c *APIClient) GetContributionLeaderboard(limit int) (string, error) {
 	params := url.Values{}
 	params.Set("limit", fmt.Sprintf("%d", limit))
 
-	path := fmt.Sprintf("/progression/leaderboard?%s", params.Encode())
+	path := fmt.Sprintf("/api/v1/progression/leaderboard?%s", params.Encode())
 	resp, err := c.doRequest(http.MethodGet, path, nil)
 	if err != nil {
 		return "", err
@@ -1215,7 +1215,7 @@ func (c *APIClient) GetContributionLeaderboard(limit int) (string, error) {
 
 // GetVotingSession returns current voting session
 func (c *APIClient) GetVotingSession() (*domain.ProgressionVotingSession, error) {
-	resp, err := c.doRequest(http.MethodGet, "/progression/session", nil)
+	resp, err := c.doRequest(http.MethodGet, "/api/v1/progression/session", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1261,7 +1261,7 @@ func (c *APIClient) HandleMessage(platform, platformID, username, message string
 		"message":     message,
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "/message/handle", req)
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/message/handle", req)
 	if err != nil {
 		return nil, err
 	}

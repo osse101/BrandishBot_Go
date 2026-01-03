@@ -17,12 +17,12 @@ func TestProfileCommand_Success(t *testing.T) {
 	cmd, handler := ProfileCommand()
 
 	// Mock Register
-	ctx.Mux.HandleFunc("/user/register", func(w http.ResponseWriter, r *http.Request) {
+	ctx.Mux.HandleFunc("/api/v1/user/register", func(w http.ResponseWriter, r *http.Request) {
 		WriteJSON(w, map[string]interface{}{"internal_id": "u-123", "username": "Tester"})
 	})
 
 	// Mock Inventory (for item count)
-	ctx.Mux.HandleFunc("/user/inventory", func(w http.ResponseWriter, r *http.Request) {
+	ctx.Mux.HandleFunc("/api/v1/user/inventory", func(w http.ResponseWriter, r *http.Request) {
 		WriteJSON(w, map[string]interface{}{
 			"items": []user.UserInventoryItem{
 				{Name: "item1", Quantity: 1},
@@ -89,7 +89,7 @@ func TestProfileCommand_RegisterError(t *testing.T) {
 	_, handler := ProfileCommand()
 
 	// Mock Error
-	ctx.Mux.HandleFunc("/user/register", func(w http.ResponseWriter, r *http.Request) {
+	ctx.Mux.HandleFunc("/api/v1/user/register", func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "error", http.StatusInternalServerError)
 	})
 
