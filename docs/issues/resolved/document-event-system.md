@@ -1,3 +1,5 @@
+RESOLVED
+
 # Document Event System Architecture
 
 **Priority:** HIGH  

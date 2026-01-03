@@ -175,6 +175,21 @@ make test-coverage
 # Open coverage.html in browser
 ```
 
+## Event System
+
+BrandishBot uses an asynchronous event-driven architecture for decoupled, reliable service communication:
+
+📚 **Documentation:**
+- **[Event Catalog](docs/events/EVENT_CATALOG.md)** - All 22+ event types with schemas and examples
+- **[Architecture](docs/architecture/EVENT_SYSTEM.md)** - Event bus, ResilientPublisher, retry logic
+- **[Developer Guide](docs/architecture/DEVELOPER_GUIDE.md)** - How to publish and subscribe to events
+
+**Key Features:**
+- 🔄 Automatic retry with exponential backoff (2s → 4s → 8s → 16s → 32s)
+- 📝 Dead-letter logging for permanently failed events
+- 🚫 Fire-and-forget: Domain operations never fail due to event errors
+- 📊 Used for stats, notifications, audit logging, and cross-service communication
+
 ## Contributing
 
 See [AGENTS.md](./AGENTS.md) for development guidelines and architecture details.
