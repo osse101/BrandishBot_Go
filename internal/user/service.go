@@ -60,12 +60,23 @@ type Service interface {
 	RegisterUser(ctx context.Context, user domain.User) (domain.User, error)
 	FindUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error)
 	HandleIncomingMessage(ctx context.Context, platform, platformID, username, message string) (*domain.MessageResult, error)
+	
+	// Inventory management - by platform ID
 	AddItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) error
 	AddItems(ctx context.Context, platform, platformID, username string, items map[string]int) error
 	RemoveItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (int, error)
 	GiveItem(ctx context.Context, ownerPlatform, ownerPlatformID, ownerUsername, receiverPlatform, receiverPlatformID, receiverUsername, itemName string, quantity int) error
 	UseItem(ctx context.Context, platform, platformID, username, itemName string, quantity int, targetUsername string) (string, error)
 	GetInventory(ctx context.Context, platform, platformID, username, filter string) ([]UserInventoryItem, error)
+	
+	// Inventory management - by username
+	AddItemByUsername(ctx context.Context, platform, username, itemName string, quantity int) error
+	RemoveItemByUsername(ctx context.Context, platform, username, itemName string, quantity int) (int, error)
+	UseItemByUsername(ctx context.Context, platform, username, itemName string, quantity int, targetUsername string) (string, error)
+	GetInventoryByUsername(ctx context.Context, platform, username, filter string) ([]UserInventoryItem, error)
+	GiveItemByUsername(ctx context.Context, fromPlatform, fromUsername, toPlatform, toUsername, itemName string, quantity int) (string, error)
+	
+	// Other methods
 	TimeoutUser(ctx context.Context, username string, duration time.Duration, reason string) error
 	HandleSearch(ctx context.Context, platform, platformID, username string) (string, error)
 	// Account linking methods
@@ -297,6 +308,66 @@ func (s *service) AddItem(ctx context.Context, platform, platformID, username, i
 	return nil
 }
 
+// AddItemByUsername adds an item by platform username
+func (s *service) AddItemByUsername(ctx context.Context, platform, username, itemName string, quantity int) error {
+	log := logger.FromContext(ctx)
+	log.Info("AddItemByUsername called", "platform", platform, "username", username, "item", itemName, "quantity", quantity)
+
+	user, err := s.repo.GetUserByPlatformUsername(ctx, platform, username)
+	if err != nil {
+		return err
+	}
+
+	tx, err := s.repo.BeginTx(ctx)
+	if err != nil {
+		log.Error("Failed to begin transaction", "error", err)
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer repository.SafeRollback(ctx, tx)
+
+	item, err := s.getItemByNameCached(ctx, itemName)
+	if err != nil {
+		log.Error("Failed to get item", "error", err, "itemName", itemName)
+		return fmt.Errorf("failed to get item: %w", err)
+	}
+	if item == nil {
+		log.Warn("Item not found", "itemName", itemName)
+		return fmt.Errorf("%w: %s", domain.ErrItemNotFound, itemName)
+	}
+	
+	inventory, err := tx.GetInventory(ctx, user.ID)
+	if err != nil {
+		log.Error("Failed to get inventory", "error", err, "userID", user.ID)
+		return fmt.Errorf("failed to get inventory: %w", err)
+	}
+	
+	found := false
+	for i, slot := range inventory.Slots {
+		if slot.ItemID == item.ID {
+			inventory.Slots[i].Quantity += quantity
+			found = true
+			break
+		}
+	}
+	if !found {
+		inventory.Slots = append(inventory.Slots, domain.InventorySlot{ItemID: item.ID, Quantity: quantity})
+	}
+	
+	if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
+		log.Error("Failed to update inventory", "error", err, "userID", user.ID)
+		return fmt.Errorf("failed to update inventory: %w", err)
+	}
+	
+	if err := tx.Commit(ctx); err != nil {
+		log.Error("Failed to commit transaction", "error", err)
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+	
+	log.Info("Item added successfully by username", "username", username, "item", itemName, "quantity", quantity)
+	return nil
+}
+
+
 // AddItems adds multiple items to a user's inventory in a single transaction.
 // This is more efficient than calling AddItem multiple times as it reduces transaction overhead.
 // Useful for bulk operations like lootbox opening.
@@ -445,6 +516,72 @@ func (s *service) RemoveItem(ctx context.Context, platform, platformID, username
 	return removed, nil
 }
 
+// RemoveItemByUsername removes an item by platform username
+func (s *service) RemoveItemByUsername(ctx context.Context, platform, username, itemName string, quantity int) (int, error) {
+	log := logger.FromContext(ctx)
+	log.Info("RemoveItemByUsername called", "platform", platform, "username", username, "item", itemName, "quantity", quantity)
+
+	user, err := s.repo.GetUserByPlatformUsername(ctx, platform, username)
+	if err != nil {
+		return 0, err
+	}
+
+	tx, err := s.repo.BeginTx(ctx)
+	if err != nil {
+		log.Error("Failed to begin transaction", "error", err)
+		return 0, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer repository.SafeRollback(ctx, tx)
+
+	item, err := s.getItemByNameCached(ctx, itemName)
+	if err != nil {
+		log.Error("Failed to get item", "error", err, "itemName", itemName)
+		return 0, fmt.Errorf("failed to get item: %w", err)
+	}
+	if item == nil {
+		return 0, fmt.Errorf("%w: %s", domain.ErrItemNotFound, itemName)
+	}
+	inventory, err := tx.GetInventory(ctx, user.ID)
+	if err != nil {
+		log.Error("Failed to get inventory", "error", err, "userID", user.ID)
+		return 0, fmt.Errorf("failed to get inventory: %w", err)
+	}
+	found := false
+	var removed int
+	for i, slot := range inventory.Slots {
+		if slot.ItemID == item.ID {
+			if slot.Quantity >= quantity {
+				inventory.Slots[i].Quantity -= quantity
+				removed = quantity
+			} else {
+				removed = slot.Quantity
+				inventory.Slots[i].Quantity = 0
+			}
+			if inventory.Slots[i].Quantity == 0 {
+				inventory.Slots = append(inventory.Slots[:i], inventory.Slots[i+1:]...)
+			}
+			found = true
+			break
+		}
+	}
+	if !found {
+		log.Warn("Item not in inventory", "itemName", itemName)
+		return 0, fmt.Errorf("item %s not in inventory", itemName)
+	}
+	if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
+		log.Error("Failed to update inventory", "error", err, "userID", user.ID)
+		return 0, fmt.Errorf("failed to update inventory: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		log.Error("Failed to commit transaction", "error", err)
+		return 0, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	log.Info("Item removed by username", "username", username, "item", itemName, "removed", removed)
+	return removed, nil
+}
+
 func (s *service) GiveItem(ctx context.Context, ownerPlatform, ownerPlatformID, ownerUsername, receiverPlatform, receiverPlatformID, receiverUsername, itemName string, quantity int) error {
 	log := logger.FromContext(ctx)
 	log.Info("GiveItem called",
@@ -468,6 +605,37 @@ func (s *service) GiveItem(ctx context.Context, ownerPlatform, ownerPlatformID, 
 	}
 
 	return s.executeGiveItemTx(ctx, owner, receiver, item, quantity)
+}
+
+// GiveItemByUsername transfers an item between users using usernames
+func (s *service) GiveItemByUsername(ctx context.Context, fromPlatform, fromUsername, toPlatform, toUsername, itemName string, quantity int) (string, error) {
+	log := logger.FromContext(ctx)
+	log.Info("GiveItemByUsername called",
+		"fromPlatform", fromPlatform, "fromUsername", fromUsername,
+		"toPlatform", toPlatform, "toUsername", toUsername,
+		"item", itemName, "quantity", quantity)
+
+	owner, err := s.repo.GetUserByPlatformUsername(ctx, fromPlatform, fromUsername)
+	if err != nil {
+		return "", err
+	}
+
+	receiver, err := s.repo.GetUserByPlatformUsername(ctx, toPlatform, toUsername)
+	if err != nil {
+		return "", err
+	}
+
+	item, err := s.validateItem(ctx, itemName)
+	if err != nil {
+		return "", err
+	}
+
+	if err := s.executeGiveItemTx(ctx, owner, receiver, item, quantity); err != nil {
+		return "", err
+	}
+
+	log.Info("Item given by username", "from", fromUsername, "to", toUsername, "item", itemName, "quantity", quantity)
+	return fmt.Sprintf("Successfully gave %d %s to %s", quantity, itemName, toUsername), nil
 }
 
 func (s *service) executeGiveItemTx(ctx context.Context, owner, receiver *domain.User, item *domain.Item, quantity int) error {
@@ -605,6 +773,77 @@ func (s *service) UseItem(ctx context.Context, platform, platformID, username, i
 	return message, nil
 }
 
+// UseItemByUsername uses an item by platform username
+func (s *service) UseItemByUsername(ctx context.Context, platform, username, itemName string, quantity int, targetUsername string) (string, error) {
+	log := logger.FromContext(ctx)
+	log.Info("UseItemByUsername called", "platform", platform, "username", username, "item", itemName, "quantity", quantity, "target", targetUsername)
+
+	user, err := s.repo.GetUserByPlatformUsername(ctx, platform, username)
+	if err != nil {
+		return "", err
+	}
+
+	tx, err := s.repo.BeginTx(ctx)
+	if err != nil {
+		log.Error("Failed to begin transaction", "error", err)
+		return "", fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer repository.SafeRollback(ctx, tx)
+
+	item, err := s.getItemByNameCached(ctx, itemName)
+	if err != nil {
+		log.Error("Failed to get item", "error", err, "itemName", itemName)
+		return "", fmt.Errorf("failed to get item: %w", err)
+	}
+	if item == nil {
+		log.Warn("Item not found", "itemName", itemName)
+		return "", fmt.Errorf("%w: %s", domain.ErrItemNotFound, itemName)
+	}
+
+	inventory, err := tx.GetInventory(ctx, user.ID)
+	if err != nil {
+		log.Error("Failed to get inventory", "error", err, "userID", user.ID)
+		return "", fmt.Errorf("failed to get inventory: %w", err)
+	}
+	
+	itemSlotIndex := -1
+	for i, slot := range inventory.Slots {
+		if slot.ItemID == item.ID {
+			itemSlotIndex = i
+			break
+		}
+	}
+	if itemSlotIndex == -1 || inventory.Slots[itemSlotIndex].Quantity < quantity {
+		return "", fmt.Errorf("%w: %s", domain.ErrInsufficientQuantity, itemName)
+	}
+	
+	handler, exists := s.itemHandlers[itemName]
+	if !exists {
+		log.Warn("No handler for item", "itemName", itemName)
+		return "", fmt.Errorf("item %s has no effect", itemName)
+	}
+	
+	args := map[string]interface{}{"targetUsername": targetUsername, "username": username}
+	message, err := handler(ctx, s, user, inventory, item, quantity, args)
+	if err != nil {
+		log.Error("Handler error", "error", err, "itemName", itemName)
+		return "", err
+	}
+	
+	if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
+		log.Error("Failed to update inventory after use", "error", err, "userID", user.ID)
+		return "", fmt.Errorf("failed to update inventory: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		log.Error("Failed to commit transaction", "error", err)
+		return "", fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	log.Info("Item used by username", "username", username, "item", itemName, "quantity", quantity, "message", message)
+	return message, nil
+}
+
 func (s *service) GetInventory(ctx context.Context, platform, platformID, username, filter string) ([]UserInventoryItem, error) {
 	log := logger.FromContext(ctx)
 	log.Info("GetInventory called", "platform", platform, "platformID", platformID, "username", username)
@@ -674,6 +913,83 @@ func (s *service) GetInventory(ctx context.Context, platform, platformID, userna
 	log.Info("Inventory retrieved", "username", username, "itemCount", len(items))
 	return items, nil
 }
+
+// GetInventoryByUsername gets inventory by platform username
+func (s *service) GetInventoryByUsername(ctx context.Context, platform, username, filter string) ([]UserInventoryItem, error) {
+	log := logger.FromContext(ctx)
+	log.Info("GetInventoryByUsername called", "platform", platform, "username", username)
+
+	// Look up user by username
+	user, err := s.repo.GetUserByPlatformUsername(ctx, platform, username)
+	if err != nil {
+		return nil, err // Propagate ErrUserNotFound
+	}
+	
+	inventory, err := s.repo.GetInventory(ctx, user.ID)
+	if err != nil {
+		log.Error("Failed to get inventory", "error", err, "userID", user.ID)
+		return nil, fmt.Errorf("failed to get inventory: %w", err)
+	}
+	
+	// Optimization: Batch fetch all item details using cache
+	itemMap := make(map[int]domain.Item)
+	var missingIDs []int
+
+	s.itemCacheMu.RLock()
+	for _, slot := range inventory.Slots {
+		if item, ok := s.itemCache[slot.ItemID]; ok {
+			itemMap[slot.ItemID] = item
+		} else {
+			missingIDs = append(missingIDs, slot.ItemID)
+		}
+	}
+	s.itemCacheMu.RUnlock()
+
+	if len(missingIDs) > 0 {
+		itemList, err := s.repo.GetItemsByIDs(ctx, missingIDs)
+		if err != nil {
+			log.Error("Failed to get item details", "error", err)
+			return nil, fmt.Errorf("failed to get item details: %w", err)
+		}
+
+		s.itemCacheMu.Lock()
+		for _, item := range itemList {
+			s.itemCache[item.ID] = item
+			s.itemCacheByName[item.InternalName] = item
+			itemMap[item.ID] = item
+		}
+		s.itemCacheMu.Unlock()
+	}
+
+	var items []UserInventoryItem
+	for _, slot := range inventory.Slots {
+		item, ok := itemMap[slot.ItemID]
+		if !ok {
+			log.Warn("Item missing for slot", "itemID", slot.ItemID)
+			continue
+		}
+		// Filter logic
+		if filter != "" {
+			hasType := false
+			for _, t := range item.Types {
+				if t == filter {
+					hasType = true
+					break
+				}
+			}
+			if !hasType {
+				continue
+			}
+		}
+		displayName := s.namingResolver.GetDisplayName(item.InternalName, "")
+		items = append(items, UserInventoryItem{
+			Name:     displayName,
+			Quantity: slot.Quantity,
+		})
+	}
+	return items, nil
+}
+
 
 // TimeoutUser times out a user for a specified duration.
 // Note: Timeouts are currently in-memory and will be lost on server restart. This is a known design choice.

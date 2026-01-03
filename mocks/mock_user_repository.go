@@ -771,6 +771,66 @@ func (_c *MockUserRepository_GetUserByPlatformID_Call) RunAndReturn(run func(con
 	return _c
 }
 
+// GetUserByPlatformUsername provides a mock function with given fields: ctx, platform, username
+func (_m *MockUserRepository) GetUserByPlatformUsername(ctx context.Context, platform string, username string) (*domain.User, error) {
+	ret := _m.Called(ctx, platform, username)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetUserByPlatformUsername")
+	}
+
+	var r0 *domain.User
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) (*domain.User, error)); ok {
+		return rf(ctx, platform, username)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) *domain.User); ok {
+		r0 = rf(ctx, platform, username)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*domain.User)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = rf(ctx, platform, username)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockUserRepository_GetUserByPlatformUsername_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetUserByPlatformUsername'
+type MockUserRepository_GetUserByPlatformUsername_Call struct {
+	*mock.Call
+}
+
+// GetUserByPlatformUsername is a helper method to define mock.On call
+//   - ctx context.Context
+//   - platform string
+//   - username string
+func (_e *MockUserRepository_Expecter) GetUserByPlatformUsername(ctx interface{}, platform interface{}, username interface{}) *MockUserRepository_GetUserByPlatformUsername_Call {
+	return &MockUserRepository_GetUserByPlatformUsername_Call{Call: _e.mock.On("GetUserByPlatformUsername", ctx, platform, username)}
+}
+
+func (_c *MockUserRepository_GetUserByPlatformUsername_Call) Run(run func(ctx context.Context, platform string, username string)) *MockUserRepository_GetUserByPlatformUsername_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockUserRepository_GetUserByPlatformUsername_Call) Return(_a0 *domain.User, _a1 error) *MockUserRepository_GetUserByPlatformUsername_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockUserRepository_GetUserByPlatformUsername_Call) RunAndReturn(run func(context.Context, string, string) (*domain.User, error)) *MockUserRepository_GetUserByPlatformUsername_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // IsItemBuyable provides a mock function with given fields: ctx, itemName
 func (_m *MockUserRepository) IsItemBuyable(ctx context.Context, itemName string) (bool, error) {
 	ret := _m.Called(ctx, itemName)
