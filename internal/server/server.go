@@ -153,7 +153,15 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 	})
 
 	// Admin routes
-	r.Post("/admin/reload-aliases", handler.HandleReloadAliases(namingResolver))
+	adminJobHandler := handler.NewAdminJobHandler(jobService, userService)
+	r.Route("/admin", func(r chi.Router) {
+		r.Post("/reload-aliases", handler.HandleReloadAliases(namingResolver))
+		
+		// Admin job routes
+		r.Route("/job", func(r chi.Router) {
+			r.Post("/award-xp", adminJobHandler.HandleAdminAwardXP)
+		})
+	})
 
 	// Swagger documentation
 	r.Get("/swagger/*", httpSwagger.WrapHandler)

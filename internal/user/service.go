@@ -76,6 +76,9 @@ type Service interface {
 	GetInventoryByUsername(ctx context.Context, platform, username, filter string) ([]UserInventoryItem, error)
 	GiveItemByUsername(ctx context.Context, fromPlatform, fromUsername, toPlatform, toUsername, itemName string, quantity int) (string, error)
 	
+	// User lookup by platform and username
+	GetUserByPlatformUsername(ctx context.Context, platform, username string) (*domain.User, error)
+	
 	// Other methods
 	TimeoutUser(ctx context.Context, username string, duration time.Duration, reason string) error
 	HandleSearch(ctx context.Context, platform, platformID, username string) (string, error)
@@ -922,6 +925,10 @@ func (s *service) GetInventoryByUsername(ctx context.Context, platform, username
 	return items, nil
 }
 
+// GetUserByPlatformUsername retrieves a user by platform and username
+func (s *service) GetUserByPlatformUsername(ctx context.Context, platform, username string) (*domain.User, error) {
+	return s.repo.GetUserByPlatformUsername(ctx, platform, username)
+}
 
 // TimeoutUser times out a user for a specified duration.
 // Note: Timeouts are currently in-memory and will be lost on server restart. This is a known design choice.
