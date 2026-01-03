@@ -94,6 +94,16 @@ func (m *mockSearchRepo) GetItemsByIDs(ctx context.Context, itemIDs []int) ([]do
 	return nil, nil
 }
 
+func (m *mockSearchRepo) GetItemsByNames(ctx context.Context, names []string) ([]domain.Item, error) {
+	var items []domain.Item
+	for _, name := range names {
+		if item, ok := m.items[name]; ok {
+			items = append(items, *item)
+		}
+	}
+	return items, nil
+}
+
 func (m *mockSearchRepo) GetLastCooldown(ctx context.Context, userID, action string) (*time.Time, error) {
 	if userCooldowns, ok := m.cooldowns[userID]; ok {
 		return userCooldowns[action], nil

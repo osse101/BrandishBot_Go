@@ -38,6 +38,7 @@ type Repository interface {
 	UpdateInventory(ctx context.Context, userID string, inventory domain.Inventory) error
 	DeleteInventory(ctx context.Context, userID string) error
 	GetItemByName(ctx context.Context, itemName string) (*domain.Item, error)
+	GetItemsByNames(ctx context.Context, names []string) ([]domain.Item, error)
 	GetItemByID(ctx context.Context, id int) (*domain.Item, error)
 	GetItemsByIDs(ctx context.Context, itemIDs []int) ([]domain.Item, error)
 
@@ -595,17 +596,44 @@ func (s *service) AddItems(ctx context.Context, platform, platformID, username s
 
 	// Build map of item names -> item IDs
 	itemIDMap := make(map[string]int)
+
+	// Optimization: Identify missing items in cache first
+	var missingNames []string
+
+	s.itemCacheMu.RLock()
 	for _, itemName := range itemNames {
-		item, err := s.getItemByNameCached(ctx, itemName)
-		if err != nil {
-			log.Error("Failed to get item", "error", err, "itemName", itemName)
-			return fmt.Errorf("failed to get item %s: %w", itemName, err)
+		if item, ok := s.itemCacheByName[itemName]; ok {
+			itemIDMap[itemName] = item.ID
+		} else {
+			missingNames = append(missingNames, itemName)
 		}
-		if item == nil {
+	}
+	s.itemCacheMu.RUnlock()
+
+	// Batch fetch missing items from DB
+	if len(missingNames) > 0 {
+		missingItems, err := s.repo.GetItemsByNames(ctx, missingNames)
+		if err != nil {
+			log.Error("Failed to get missing items", "error", err)
+			return fmt.Errorf("failed to get missing items: %w", err)
+		}
+
+		// Update cache and map
+		s.itemCacheMu.Lock()
+		for _, item := range missingItems {
+			s.itemCache[item.ID] = item
+			s.itemCacheByName[item.InternalName] = item
+			itemIDMap[item.InternalName] = item.ID
+		}
+		s.itemCacheMu.Unlock()
+	}
+
+	// Verify all items were found
+	for _, itemName := range itemNames {
+		if _, ok := itemIDMap[itemName]; !ok {
 			log.Warn("Item not found", "itemName", itemName)
 			return fmt.Errorf("%w: %s", domain.ErrItemNotFound, itemName)
 		}
-		itemIDMap[itemName] = item.ID
 	}
 
 	// Convert items to InventorySlots for the helper

@@ -93,6 +93,14 @@ func (m *MockRepo) GetItemsByIDs(ctx context.Context, itemIDs []int) ([]domain.I
 	return args.Get(0).([]domain.Item), args.Error(1)
 }
 
+func (m *MockRepo) GetItemsByNames(ctx context.Context, names []string) ([]domain.Item, error) {
+	args := m.Called(ctx, names)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]domain.Item), args.Error(1)
+}
+
 func (m *MockRepo) GetItemByID(ctx context.Context, id int) (*domain.Item, error) {
 	args := m.Called(ctx, id)
 	if args.Get(0) == nil {

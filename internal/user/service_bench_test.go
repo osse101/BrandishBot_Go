@@ -74,6 +74,19 @@ func (m *mockBenchRepository) GetItemByName(ctx context.Context, itemName string
 	}, nil
 }
 
+func (m *mockBenchRepository) GetItemsByNames(ctx context.Context, names []string) ([]domain.Item, error) {
+	items := make([]domain.Item, len(names))
+	for i, name := range names {
+		items[i] = domain.Item{
+			ID:           42 + i,
+			InternalName: name,
+			Description:  "Benchmark item",
+			BaseValue:    10,
+		}
+	}
+	return items, nil
+}
+
 func (m *mockBenchRepository) GetItemByID(ctx context.Context, id int) (*domain.Item, error) {
 	return &domain.Item{
 		ID:           id,
