@@ -2,6 +2,7 @@ package utils
 
 import (
 	"crypto/rand"
+	"math"
 	"math/big"
 	mrand "math/rand"
 )
@@ -52,6 +53,32 @@ func SecureRandomFloat() float64 {
 		panic(err)
 	}
 	return float64(n.Int64()) / float64(1<<53)
+}
+
+// Geometric returns a number sampled from a geometric distribution with probability p.
+// It returns the number of failures before the first success.
+// Supported range for p is (0, 1]. If p <= 0, it returns MaxInt (infinite wait).
+// If p >= 1, it returns 0 (immediate success).
+func Geometric(p float64) int {
+	if p >= 1 {
+		return 0
+	}
+	if p <= 0 {
+		return math.MaxInt
+	}
+
+	// Geometric distribution sampling using inverse transform method:
+	// k = floor(ln(U) / ln(1-p))
+	// where U is uniform in (0, 1]
+
+	u := 1.0 - SecureRandomFloat() // SecureRandomFloat returns [0, 1), so u is (0, 1]
+
+	// Avoid log(0) just in case (though u should never be 0 with 1.0 - [0, 1))
+	if u <= 0 {
+		u = 1.0e-10
+	}
+
+	return int(math.Floor(math.Log(u) / math.Log(1.0-p)))
 }
 
 // DiminishingReturns calculates a value with diminishing returns.

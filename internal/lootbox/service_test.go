@@ -33,6 +33,7 @@ func TestOpenLootbox(t *testing.T) {
 		"box1": {
 			{ItemName: "common_sword", Min: 1, Max: 1, Chance: 1.0},
 			{ItemName: "rare_sword", Min: 1, Max: 1, Chance: 0.1},
+			{ItemName: "impossible_sword", Min: 1, Max: 1, Chance: 0.0},
 		},
 	}
 	file, _ := os.CreateTemp("", "loot.json")
@@ -91,6 +92,10 @@ func TestOpenLootbox(t *testing.T) {
 		}
 		if d.ShineLevel == "" {
 			t.Errorf("ShineLevel not populated")
+		}
+
+		if d.ItemName == "impossible_sword" {
+			t.Errorf("Impossible sword should not have dropped")
 		}
 
 		// Verify Value Multiplier

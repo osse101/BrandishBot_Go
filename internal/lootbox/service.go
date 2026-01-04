@@ -109,24 +109,73 @@ func (s *service) OpenLootbox(ctx context.Context, lootboxName string, quantity 
 	}
 	dropCounts := make(map[string]dropInfo)
 
-	for i := 0; i < quantity; i++ {
-		for _, loot := range table {
-			if utils.SecureRandomFloat() <= loot.Chance {
-				qty := loot.Min
-				if loot.Max > loot.Min {
-					qty = utils.SecureRandomIntRange(loot.Min, loot.Max)
-				}
+	// Optimization: Instead of looping quantity * tableSize times (O(N*T)),
+	// we loop over the table and use Geometric distribution to find how many boxes contain the item (O(T)).
+	// This reduces RNG calls significantly for large quantities.
+	for _, loot := range table {
+		if loot.Chance <= 0 {
+			continue
+		}
 
-				info, exists := dropCounts[loot.ItemName]
-				if !exists {
-					info = dropInfo{Qty: 0, Chance: loot.Chance}
-				} else if loot.Chance < info.Chance {
-					// Keep the rarest chance if item appears in multiple entries
-					info.Chance = loot.Chance
+		remaining := quantity
+
+		// If chance is >= 1.0, every box drops it (guaranteed)
+		if loot.Chance >= 1.0 {
+			// All remaining boxes drop this
+			count := remaining
+			totalQty := 0
+			// Calculate quantity
+			if loot.Max > loot.Min {
+				// Sum of 'count' random integers
+				// Optimization: Approximate for large counts if needed, but for now exact loop
+				// Since count can be large, we loop here.
+				// Wait, if count is large, looping here is O(N) still for the quantity generation.
+				// But we saved the "misses".
+				for k := 0; k < count; k++ {
+					totalQty += utils.SecureRandomIntRange(loot.Min, loot.Max)
 				}
-				info.Qty += qty
-				dropCounts[loot.ItemName] = info
+			} else {
+				totalQty = count * loot.Min
 			}
+
+			info, exists := dropCounts[loot.ItemName]
+			if !exists {
+				info = dropInfo{Qty: 0, Chance: loot.Chance}
+			} else if loot.Chance < info.Chance {
+				info.Chance = loot.Chance
+			}
+			info.Qty += totalQty
+			dropCounts[loot.ItemName] = info
+			continue
+		}
+
+		// Standard case: Chance < 1.0
+		// Use Geometric distribution to skip failures
+		for remaining > 0 {
+			// Geometric returns "failures before next success"
+			// If skip >= remaining, we failed for all remaining boxes.
+			skip := utils.Geometric(loot.Chance)
+			if skip >= remaining {
+				break
+			}
+
+			// Success found at index (current + skip)
+			remaining -= (skip + 1) // Consume failures + the success
+
+			// Generate quantity for this single drop
+			qty := loot.Min
+			if loot.Max > loot.Min {
+				qty = utils.SecureRandomIntRange(loot.Min, loot.Max)
+			}
+
+			info, exists := dropCounts[loot.ItemName]
+			if !exists {
+				info = dropInfo{Qty: 0, Chance: loot.Chance}
+			} else if loot.Chance < info.Chance {
+				info.Chance = loot.Chance
+			}
+			info.Qty += qty
+			dropCounts[loot.ItemName] = info
 		}
 	}
 
