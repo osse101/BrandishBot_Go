@@ -12,20 +12,6 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-// MockBus for testing event publication
-type MockBus struct {
-	mock.Mock
-}
-
-func (m *MockBus) Publish(ctx context.Context, e event.Event) error {
-	args := m.Called(ctx, e)
-	return args.Error(0)
-}
-
-func (m *MockBus) Subscribe(eventType event.Type, handler event.Handler) {
-	m.Called(eventType, handler)
-}
-
 func TestResilientEvents_Integration(t *testing.T) {
 	// Setup mocks
 	repo := new(MockRepository)

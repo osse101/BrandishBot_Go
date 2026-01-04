@@ -416,6 +416,65 @@ func (_c *MockUserRepository_GetItemsByIDs_Call) RunAndReturn(run func(context.C
 	return _c
 }
 
+// GetItemsByNames provides a mock function with given fields: ctx, names
+func (_m *MockUserRepository) GetItemsByNames(ctx context.Context, names []string) ([]domain.Item, error) {
+	ret := _m.Called(ctx, names)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetItemsByNames")
+	}
+
+	var r0 []domain.Item
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, []string) ([]domain.Item, error)); ok {
+		return rf(ctx, names)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, []string) []domain.Item); ok {
+		r0 = rf(ctx, names)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]domain.Item)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, []string) error); ok {
+		r1 = rf(ctx, names)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockUserRepository_GetItemsByNames_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetItemsByNames'
+type MockUserRepository_GetItemsByNames_Call struct {
+	*mock.Call
+}
+
+// GetItemsByNames is a helper method to define mock.On call
+//   - ctx context.Context
+//   - names []string
+func (_e *MockUserRepository_Expecter) GetItemsByNames(ctx interface{}, names interface{}) *MockUserRepository_GetItemsByNames_Call {
+	return &MockUserRepository_GetItemsByNames_Call{Call: _e.mock.On("GetItemsByNames", ctx, names)}
+}
+
+func (_c *MockUserRepository_GetItemsByNames_Call) Run(run func(ctx context.Context, names []string)) *MockUserRepository_GetItemsByNames_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]string))
+	})
+	return _c
+}
+
+func (_c *MockUserRepository_GetItemsByNames_Call) Return(_a0 []domain.Item, _a1 error) *MockUserRepository_GetItemsByNames_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockUserRepository_GetItemsByNames_Call) RunAndReturn(run func(context.Context, []string) ([]domain.Item, error)) *MockUserRepository_GetItemsByNames_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetLastCooldown provides a mock function with given fields: ctx, userID, action
 func (_m *MockUserRepository) GetLastCooldown(ctx context.Context, userID string, action string) (*time.Time, error) {
 	ret := _m.Called(ctx, userID, action)

@@ -184,18 +184,50 @@ func TestPool_ConcurrentAccess(t *testing.T) {
 }
 
 // getTestDBConnString returns test database connection string
-// Skips test if required env vars not set
+// Skips test if required env vars not set or database is not available
 func getTestDBConnString(t *testing.T) string {
 	t.Helper()
 
-	// Use environment variables or skip
-	dbUser := getEnvOrSkip(t, "DB_USER", "postgres")
-	dbPassword := getEnvOrSkip(t, "DB_PASSWORD", "postgres")
-	dbHost := getEnvOrSkip(t, "DB_HOST", "localhost")
-	dbPort := getEnvOrSkip(t, "DB_PORT", "5432")
-	dbName := getEnvOrSkip(t, "DB_NAME", "brandishbot")
+	// Use environment variables or defaults
+	dbUser := os.Getenv("DB_USER")
+	if dbUser == "" {
+		dbUser = "postgres"
+	}
+	dbPassword := os.Getenv("DB_PASSWORD")
+	if dbPassword == "" {
+		dbPassword = "postgres"
+	}
+	dbHost := os.Getenv("DB_HOST")
+	if dbHost == "" {
+		dbHost = "localhost"
+	}
+	dbPort := os.Getenv("DB_PORT")
+	if dbPort == "" {
+		dbPort = "5432"
+	}
+	dbName := os.Getenv("DB_NAME")
+	if dbName == "" {
+		dbName = "brandishbot"
+	}
 
-	return "postgres://" + dbUser + ":" + dbPassword + "@" + dbHost + ":" + dbPort + "/" + dbName + "?sslmode=disable"
+	connString := "postgres://" + dbUser + ":" + dbPassword + "@" + dbHost + ":" + dbPort + "/" + dbName + "?sslmode=disable"
+	
+	// Try to connect to verify database is available
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	
+	pool, err := pgxpool.New(ctx, connString)
+	if err != nil {
+		t.Skipf("Skipping test: cannot connect to test database: %v", err)
+	}
+	defer pool.Close()
+	
+	// Verify we can actually ping the database
+	if err := pool.Ping(ctx); err != nil {
+		t.Skipf("Skipping test: cannot ping test database: %v", err)
+	}
+	
+	return connString
 }
 
 func getEnvOrSkip(t *testing.T, key, defaultValue string) string {

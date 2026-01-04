@@ -132,7 +132,7 @@ func RemoveItemCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			return
 		}
 
-		msg, err := client.RemoveItemByUsername(domain.PlatformDiscord, targetUser.Username, itemName, quantity)
+		removed, err := client.RemoveItemByUsername(domain.PlatformDiscord, targetUser.Username, itemName, quantity)
 		if err != nil {
 			slog.Error("Failed to remove item", "error", err)
 			respondError(s, i, fmt.Sprintf("Failed to remove item: %v", err))
@@ -141,7 +141,7 @@ func RemoveItemCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 
 		embed := &discordgo.MessageEmbed{
 			Title:       "🗑️ Items Removed",
-			Description: fmt.Sprintf("Removed %d x %s from %s\n\n%s", quantity, itemName, targetUser.Username, msg),
+			Description: fmt.Sprintf("Removed %d x %s from %s\n\n**Items removed:** %d", quantity, itemName, targetUser.Username, removed),
 			Color:       0xe74c3c, // Red
 			Footer: &discordgo.MessageEmbedFooter{
 				Text: "Admin Action",

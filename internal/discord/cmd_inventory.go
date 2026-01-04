@@ -90,29 +90,40 @@ func InventoryCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		}
 
 		// Get inventory based on whether targeting self or others
-		var itemsRaw interface{}
-		itemsRaw, err = func() (interface{}, error) {
-			if targetUser.ID == user.ID {
-				//If querying self, use the standard method with platformId
-				return client.GetInventory(domain.PlatformDiscord, targetUser.ID, targetUser.Username, filter)
-			}
-			// If querying another user, use username-based method
-			return client.GetInventoryByUsername(domain.PlatformDiscord, targetUser.Username, filter)
-		}()
-		if err != nil {
-			slog.Error("Failed to get inventory", "error", err)
-			respondFriendlyError(s, i, err.Error())
-			return
-		}
-
-		items, ok := itemsRaw.([]struct {
+		var items []struct {
 			Name     string
 			Quantity int
-		})
-		if !ok {
-			slog.Error("Failed to assert inventory items to expected type", "itemsRaw", itemsRaw)
-			respondFriendlyError(s, i, "Failed to retrieve inventory due to an internal error.")
-			return
+		}
+		if targetUser.ID == user.ID {
+			//If querying self, use the standard method with platformId
+			inventoryItems, err := client.GetInventory(domain.PlatformDiscord, targetUser.ID, targetUser.Username, filter)
+			if err != nil {
+				slog.Error("Failed to get inventory", "error", err)
+				respondFriendlyError(s, i, err.Error())
+				return
+			}
+			// Convert to simple struct
+			for _, item := range inventoryItems {
+				items = append(items, struct {
+					Name     string
+					Quantity int
+				}{Name: item.Name, Quantity: item.Quantity})
+			}
+		} else {
+			// If querying another user, use username-based method
+			inventoryItems, err := client.GetInventoryByUsername(domain.PlatformDiscord, targetUser.Username, filter)
+			if err != nil {
+				slog.Error("Failed to get inventory", "error", err)
+				respondFriendlyError(s, i, err.Error())
+				return
+			}
+			// Convert to simple struct
+			for _, item := range inventoryItems {
+				items = append(items, struct {
+					Name     string
+					Quantity int
+				}{Name: item.Name, Quantity: item.Quantity})
+			}
 		}
 
 		var description string
