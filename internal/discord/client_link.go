@@ -33,7 +33,7 @@ func (c *APIClient) InitiateLink(discordID string) (*LinkInitiateResult, error) 
 		"platform_id": discordID,
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "/link/initiate", req)
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/link/initiate", req)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +59,7 @@ func (c *APIClient) ClaimLink(token, discordID string) (*LinkClaimResult, error)
 		"platform_id": discordID,
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "/link/claim", req)
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/link/claim", req)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +84,7 @@ func (c *APIClient) ConfirmLink(discordID string) (*LinkConfirmResult, error) {
 		"platform_id": discordID,
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "/link/confirm", req)
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/link/confirm", req)
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +111,7 @@ func (c *APIClient) InitiateUnlink(discordID, targetPlatform string) error {
 		"confirm":         false,
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "/link/unlink", req)
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/link/unlink", req)
 	if err != nil {
 		return err
 	}
@@ -133,7 +133,7 @@ func (c *APIClient) ConfirmUnlink(discordID, targetPlatform string) error {
 		"confirm":         true,
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "/link/unlink", req)
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/link/unlink", req)
 	if err != nil {
 		return err
 	}
@@ -148,7 +148,7 @@ func (c *APIClient) ConfirmUnlink(discordID, targetPlatform string) error {
 
 // GetLinkStatus gets current link status
 func (c *APIClient) GetLinkStatus(discordID string) ([]string, error) {
-	resp, err := c.doRequest(http.MethodGet, fmt.Sprintf("/link/status?platform=%s&platform_id=%s", domain.PlatformDiscord, discordID), nil)
+	resp, err := c.doRequest(http.MethodGet, fmt.Sprintf("/api/v1/link/status?platform=%s&platform_id=%s", domain.PlatformDiscord, discordID), nil)
 	if err != nil {
 		return nil, err
 	}

@@ -116,17 +116,20 @@ namespace BrandishBot.Client
 
         #region Inventory Operations
 
+
         /// <summary>
         /// Get user's inventory
         /// </summary>
-        public async Task<string> GetInventory(string platform, string platformId)
+        public async Task<string> GetInventory(string platform, string platformId, string username)
         {
             var query = BuildQuery(
                 "platform=" + platform,
-                "platform_id=" + platformId
+                "platform_id=" + platformId,
+                "username=" + username
             );
             return await GetAsync("/api/v1/user/inventory" + query);
         }
+
 
         /// <summary>
         /// Add item to user's inventory (Admin/Streamer only)
@@ -304,6 +307,19 @@ namespace BrandishBot.Client
         public async Task<string> GetRecipes()
         {
             return await GetAsync("/api/v1/recipes");
+        }
+
+        /// <summary>
+        /// Get unlocked crafting recipes for a user
+        /// </summary>
+        public async Task<string> GetUnlockedRecipes(string platform, string platformId, string username)
+        {
+            var query = BuildQuery(
+                "platform=" + platform,
+                "platform_id=" + platformId,
+                "user=" + username
+            );
+            return await GetAsync("/api/v1/recipes" + query);
         }
 
         #endregion
@@ -609,6 +625,20 @@ namespace BrandishBot.Client
                 "bonus_type=" + bonusType
             );
             return await GetAsync("/api/v1/jobs/bonus" + query);
+        }
+
+        /// <summary>
+        /// Admin: Award XP to a user for a specific job
+        /// </summary>
+        public async Task<string> AdminAwardXP(string platform, string username, string jobKey, int amount)
+        {
+            return await PostJsonAsync("/api/v1/admin/job/award-xp", new
+            {
+                platform = platform,
+                username = username,
+                job_key = jobKey,
+                amount = amount
+            });
         }
 
         #endregion

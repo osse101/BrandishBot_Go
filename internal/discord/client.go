@@ -1284,3 +1284,180 @@ func (c *APIClient) HandleMessage(platform, platformID, username, message string
 
 	return &result, nil
 }
+
+// GetAllJobs retrieves all available jobs
+func (c *APIClient) GetAllJobs() ([]domain.Job, error) {
+	resp, err := c.doRequest(http.MethodGet, "/api/v1/jobs", nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	var jobsResp struct {
+		Jobs []domain.Job `json:"jobs"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&jobsResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return jobsResp.Jobs, nil
+}
+
+// GetUserJobs retrieves job progress for a user
+func (c *APIClient) GetUserJobs(platform, platformID string) (map[string]interface{}, error) {
+	params := url.Values{}
+	params.Set("platform", platform)
+	params.Set("platform_id", platformID)
+	
+	userID := fmt.Sprintf("%s:%s", platform, platformID)
+	params.Set("user_id", userID)
+
+	path := fmt.Sprintf("/api/v1/jobs/user?%s", params.Encode())
+	resp, err := c.doRequest(http.MethodGet, path, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return result, nil
+}
+
+// AwardJobXP awards XP (Standard/Bot method)
+func (c *APIClient) AwardJobXP(userID, jobKey string, amount int, source string) (*domain.XPAwardResult, error) {
+	req := map[string]interface{}{
+		"user_id":   userID,
+		"job_key":   jobKey,
+		"xp_amount": amount,
+		"source":    source,
+	}
+
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/jobs/award-xp", req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	var result domain.XPAwardResult
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return &result, nil
+}
+
+// GetSystemStats retrieves system-wide statistics
+func (c *APIClient) GetSystemStats() (string, error) {
+	resp, err := c.doRequest(http.MethodGet, "/api/v1/stats/system", nil)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	var statsResp struct {
+		Message string `json:"message"`
+		Stats   string `json:"stats"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&statsResp); err != nil {
+		return "", fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	if statsResp.Stats != "" {
+		return statsResp.Stats, nil
+	}
+	return statsResp.Message, nil
+}
+
+// RecordEvent records a generic user event
+func (c *APIClient) RecordEvent(platform, platformID, eventType string, metadata map[string]interface{}) (string, error) {
+	req := map[string]interface{}{
+		"platform":    platform,
+		"platform_id": platformID,
+		"event_type":  eventType,
+		"metadata":    metadata,
+	}
+
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/stats/event", req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	var result struct {
+		Message string `json:"message"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return result.Message, nil
+}
+
+
+
+
+// ReloadAliases reloads item aliases (admin only)
+func (c *APIClient) ReloadAliases() error {
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/admin/reload-aliases", nil)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+	return nil
+}
+
+// Test endpoint
+func (c *APIClient) Test(platform, platformID, username string) (string, error) {
+	req := map[string]string{
+		"platform":    platform,
+		"platform_id": platformID,
+		"username":    username,
+	}
+
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/test", req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	var result struct {
+		Message string `json:"message"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return result.Message, nil
+}
