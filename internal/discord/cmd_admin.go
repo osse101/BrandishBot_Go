@@ -139,9 +139,18 @@ func RemoveItemCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			return
 		}
 
+		// Build description with partial removal warning if applicable
+		description := fmt.Sprintf("Removed %d x %s from %s\n\n**Items removed:** %d", 
+			quantity, itemName, targetUser.Username, removed)
+		
+		if removed < quantity {
+			description += fmt.Sprintf("\n\n⚠️ **Partial Removal**: Only %d items were available (requested %d)", 
+				removed, quantity)
+		}
+
 		embed := &discordgo.MessageEmbed{
 			Title:       "🗑️ Items Removed",
-			Description: fmt.Sprintf("Removed %d x %s from %s\n\n**Items removed:** %d", quantity, itemName, targetUser.Username, removed),
+			Description: description,
 			Color:       0xe74c3c, // Red
 			Footer: &discordgo.MessageEmbedFooter{
 				Text: "Admin Action",

@@ -188,27 +188,12 @@ func TestPool_ConcurrentAccess(t *testing.T) {
 func getTestDBConnString(t *testing.T) string {
 	t.Helper()
 
-	// Use environment variables or defaults
-	dbUser := os.Getenv("DB_USER")
-	if dbUser == "" {
-		dbUser = "postgres"
-	}
-	dbPassword := os.Getenv("DB_PASSWORD")
-	if dbPassword == "" {
-		dbPassword = "postgres"
-	}
-	dbHost := os.Getenv("DB_HOST")
-	if dbHost == "" {
-		dbHost = "localhost"
-	}
-	dbPort := os.Getenv("DB_PORT")
-	if dbPort == "" {
-		dbPort = "5432"
-	}
-	dbName := os.Getenv("DB_NAME")
-	if dbName == "" {
-		dbName = "brandishbot"
-	}
+	// Build connection string from environment variables with defaults
+	dbUser := getEnvOrSkip(t, "DB_USER", "postgres")
+	dbPassword := getEnvOrSkip(t, "DB_PASSWORD", "postgres")
+	dbHost := getEnvOrSkip(t, "DB_HOST", "localhost")
+	dbPort := getEnvOrSkip(t, "DB_PORT", "5432")
+	dbName := getEnvOrSkip(t, "DB_NAME", "brandishbot")
 
 	connString := "postgres://" + dbUser + ":" + dbPassword + "@" + dbHost + ":" + dbPort + "/" + dbName + "?sslmode=disable"
 	
@@ -230,6 +215,8 @@ func getTestDBConnString(t *testing.T) string {
 	return connString
 }
 
+// getEnvOrSkip returns the value of an environment variable, or defaultValue if not set.
+// This helper is used for test database configuration.
 func getEnvOrSkip(t *testing.T, key, defaultValue string) string {
 	t.Helper()
 	if val := os.Getenv(key); val != "" {

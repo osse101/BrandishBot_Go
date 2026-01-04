@@ -90,10 +90,7 @@ func InventoryCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		}
 
 		// Get inventory based on whether targeting self or others
-		var items []struct {
-			Name     string
-			Quantity int
-		}
+		var items []SimpleInventoryItem
 		if targetUser.ID == user.ID {
 			//If querying self, use the standard method with platformId
 			inventoryItems, err := client.GetInventory(domain.PlatformDiscord, targetUser.ID, targetUser.Username, filter)
@@ -102,13 +99,7 @@ func InventoryCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 				respondFriendlyError(s, i, err.Error())
 				return
 			}
-			// Convert to simple struct
-			for _, item := range inventoryItems {
-				items = append(items, struct {
-					Name     string
-					Quantity int
-				}{Name: item.Name, Quantity: item.Quantity})
-			}
+			items = ConvertToSimpleInventory(inventoryItems)
 		} else {
 			// If querying another user, use username-based method
 			inventoryItems, err := client.GetInventoryByUsername(domain.PlatformDiscord, targetUser.Username, filter)
@@ -117,13 +108,7 @@ func InventoryCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 				respondFriendlyError(s, i, err.Error())
 				return
 			}
-			// Convert to simple struct
-			for _, item := range inventoryItems {
-				items = append(items, struct {
-					Name     string
-					Quantity int
-				}{Name: item.Name, Quantity: item.Quantity})
-			}
+			items = ConvertToSimpleInventory(inventoryItems)
 		}
 
 		var description string
