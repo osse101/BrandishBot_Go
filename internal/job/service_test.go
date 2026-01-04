@@ -180,7 +180,10 @@ func TestGetXPForLevel(t *testing.T) {
 func TestAwardXP_Success(t *testing.T) {
 	repo := new(MockRepository)
 	prog := new(MockProgressionService)
-	svc := NewService(repo, prog, nil, nil, nil)
+	svc := NewService(repo, prog, nil, nil, nil).(*service)
+	// Force RNG to fail Epiphany
+	svc.rnd = func() float64 { return 1.0 }
+
 	ctx := context.Background()
 
 	userID := "user1"
@@ -211,11 +214,64 @@ func TestAwardXP_Success(t *testing.T) {
 	prog.AssertExpectations(t)
 }
 
+func TestAwardXP_Epiphany(t *testing.T) {
+	repo := new(MockRepository)
+	prog := new(MockProgressionService)
+	statsSvc := new(MockStatsService)
+	svc := NewService(repo, prog, statsSvc, nil, nil).(*service)
+
+	// Force RNG to trigger Epiphany (value < 0.05)
+	svc.rnd = func() float64 { return 0.01 }
+
+	ctx := context.Background()
+
+	userID := "user1"
+	jobKey := JobKeyBlacksmith
+	jobID := 1
+	baseXP := 100
+	expectedXP := 200 // 100 * 2.0
+
+	job := &domain.Job{ID: jobID, JobKey: jobKey}
+
+	prog.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
+	repo.On("GetJobByKey", ctx, jobKey).Return(job, nil)
+	repo.On("GetUserJob", ctx, userID, jobID).Return(nil, nil)
+
+	// Expect doubled XP
+	repo.On("UpsertUserJob", ctx, mock.MatchedBy(func(uj *domain.UserJob) bool {
+		return uj.CurrentXP == int64(expectedXP)
+	})).Return(nil)
+	repo.On("RecordJobXPEvent", ctx, mock.MatchedBy(func(e *domain.JobXPEvent) bool {
+		return e.XPAmount == expectedXP
+	})).Return(nil)
+
+	// Expect stats event for Epiphany
+	statsSvc.On("RecordUserEvent", ctx, userID, domain.EventJobXPCritical, mock.MatchedBy(func(m map[string]interface{}) bool {
+		return m["job"] == jobKey && m["bonus_xp"] == (expectedXP - baseXP)
+	})).Return(nil)
+
+	// Since 200 XP causes a level up (default curve), expect level up event too
+	statsSvc.On("RecordUserEvent", ctx, userID, domain.EventJobLevelUp, mock.MatchedBy(func(m map[string]interface{}) bool {
+		return m["job"] == jobKey && m["level"] == 1
+	})).Return(nil)
+
+	result, err := svc.AwardXP(ctx, userID, jobKey, baseXP, "test", nil)
+
+	assert.NoError(t, err)
+	assert.Equal(t, expectedXP, result.XPGained)
+
+	repo.AssertExpectations(t)
+	prog.AssertExpectations(t)
+	statsSvc.AssertExpectations(t)
+}
+
 func TestAwardXP_LevelUp(t *testing.T) {
 	repo := new(MockRepository)
 	prog := new(MockProgressionService)
 	statsSvc := new(MockStatsService)
-	svc := NewService(repo, prog, statsSvc, nil, nil)
+	svc := NewService(repo, prog, statsSvc, nil, nil).(*service)
+	svc.rnd = func() float64 { return 1.0 }
+
 	ctx := context.Background()
 
 	userID := "user1"
@@ -267,7 +323,9 @@ func TestAwardXP_Locked(t *testing.T) {
 func TestAwardXP_DailyCap(t *testing.T) {
 	repo := new(MockRepository)
 	prog := new(MockProgressionService)
-	svc := NewService(repo, prog, nil, nil, nil)
+	svc := NewService(repo, prog, nil, nil, nil).(*service)
+	svc.rnd = func() float64 { return 1.0 }
+
 	ctx := context.Background()
 
 	userID := "u1"
@@ -303,7 +361,9 @@ func TestAwardXP_DailyCap(t *testing.T) {
 func TestAwardXP_DailyCap_Reached(t *testing.T) {
 	repo := new(MockRepository)
 	prog := new(MockProgressionService)
-	svc := NewService(repo, prog, nil, nil, nil)
+	svc := NewService(repo, prog, nil, nil, nil).(*service)
+	svc.rnd = func() float64 { return 1.0 }
+
 	ctx := context.Background()
 
 	userID := "u1"
@@ -329,7 +389,9 @@ func TestAwardXP_DailyCap_Reached(t *testing.T) {
 func TestAwardXP_MaxLevel(t *testing.T) {
 	repo := new(MockRepository)
 	prog := new(MockProgressionService)
-	svc := NewService(repo, prog, nil, nil, nil)
+	svc := NewService(repo, prog, nil, nil, nil).(*service)
+	svc.rnd = func() float64 { return 1.0 }
+
 	ctx := context.Background()
 
 	userID := "u1"
@@ -727,7 +789,9 @@ func TestAwardXP_RepositoryFailure_Upsert(t *testing.T) {
 func TestAwardXP_PartialDailyCapRemaining(t *testing.T) {
 	repo := new(MockRepository)
 	prog := new(MockProgressionService)
-	svc := NewService(repo, prog, nil, nil, nil)
+	svc := NewService(repo, prog, nil, nil, nil).(*service)
+	svc.rnd = func() float64 { return 1.0 }
+
 	ctx := context.Background()
 
 	job := &domain.Job{ID: 1, JobKey: JobKeyBlacksmith}
