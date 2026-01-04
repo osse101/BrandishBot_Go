@@ -1,5 +1,6 @@
 # Resilient Event Publishing with Retry Logic
 
+**Status**: RESOLVED
 **Priority:** HIGH  
 **Complexity:** 8/10  
 **Estimated Effort:** 4-6 hours  
@@ -257,26 +258,26 @@ EVENT_DEADLETTER_PATH=./data/deadletter.jsonl
 
 ## Implementation Checklist
 
-- [ ] Create `internal/event/resilient_publisher.go`
-- [ ] Create `internal/event/deadletter.go`
-- [ ] Update `internal/job/service.go` to use ResilientPublisher
-- [ ] Update `cmd/app/main.go` to wire up ResilientPublisher
-- [ ] Add configuration env vars to `.env.example`
-- [ ] Create unit tests: `internal/event/resilient_publisher_test.go`
-  - [ ] Test successful publish (no retry)
-  - [ ] Test failed publish → retry → success
-  - [ ] Test retry exhaustion → dead letter
-  - [ ] Test retry queue overflow
-- [ ] Create integration test: `internal/job/resilient_events_test.go`
-  - [ ] Mock event bus that fails N times then succeeds
-  - [ ] Award XP, verify level up committed to DB
-  - [ ] Verify event eventually published after retries
-- [ ] Manual testing on staging:
-  - [ ] Break event bus temporarily
-  - [ ] Award XP (should succeed)
-  - [ ] Check logs for retry attempts
-  - [ ] Restart event bus
-  - [ ] Verify event delivered
+- [x] Create `internal/event/resilient_publisher.go`
+- [x] Create `internal/event/deadletter.go`
+- [x] Update `internal/job/service.go` to use ResilientPublisher
+- [x] Update `cmd/app/main.go` to wire up ResilientPublisher
+- [x] Add configuration env vars to `.env.example`
+- [x] Create unit tests: `internal/event/resilient_publisher_test.go`
+  - [x] Test successful publish (no retry)
+  - [x] Test failed publish → retry → success
+  - [x] Test retry exhaustion → dead letter
+  - [x] Test retry queue overflow
+- [x] Create integration test: `internal/job/resilient_events_test.go`
+  - [x] Mock event bus that fails N times then succeeds
+  - [x] Award XP, verify level up committed to DB
+  - [x] Verify event eventually published after retries
+- [x] Manual testing on staging:
+  - [x] Break event bus temporarily
+  - [x] Award XP (should succeed)
+  - [x] Check logs for retry attempts
+  - [x] Restart event bus
+  - [x] Verify event delivered
 
 ## Affected Files
 
