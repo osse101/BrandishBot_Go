@@ -53,11 +53,11 @@ func AddItemCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		_, err := client.RegisterUser(targetUser.Username, targetUser.ID)
 		if err != nil {
 			slog.Error("Failed to register user", "error", err)
-			respondError(s, i, "Error connecting to game server.")
+			respondFriendlyError(s, i, err.Error())
 			return
 		}
 
-		msg, err := client.AddItem(domain.PlatformDiscord, targetUser.ID, itemName, quantity)
+		msg, err := client.AddItemByUsername(domain.PlatformDiscord, targetUser.Username, itemName, quantity)
 		if err != nil {
 			slog.Error("Failed to add item", "error", err)
 			respondError(s, i, fmt.Sprintf("Failed to add item: %v", err))
@@ -128,11 +128,11 @@ func RemoveItemCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		_, err := client.RegisterUser(targetUser.Username, targetUser.ID)
 		if err != nil {
 			slog.Error("Failed to register user", "error", err)
-			respondError(s, i, "Error connecting to game server.")
+			respondFriendlyError(s, i, err.Error())
 			return
 		}
 
-		msg, err := client.RemoveItem(domain.PlatformDiscord, targetUser.ID, itemName, quantity)
+		msg, err := client.RemoveItemByUsername(domain.PlatformDiscord, targetUser.Username, itemName, quantity)
 		if err != nil {
 			slog.Error("Failed to remove item", "error", err)
 			respondError(s, i, fmt.Sprintf("Failed to remove item: %v", err))

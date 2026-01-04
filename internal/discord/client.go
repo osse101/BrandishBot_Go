@@ -671,6 +671,113 @@ func (c *APIClient) GetBuyPrices() (string, error) {
 	return sb.String(), nil
 }
 
+// AddItemByUsername adds an item by username (no platformID required)
+func (c *APIClient) AddItemByUsername(platform, username, itemName string, quantity int) (string, error) {
+	req := map[string]interface{}{
+		"platform":  platform,
+		"username":  username,
+		"item_name": itemName,
+		"quantity":  quantity,
+	}
+
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/user/item/add-by-username", req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		var errResp struct {
+			Error string `json:"error"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
+			return "", fmt.Errorf("API error: %s", errResp.Error)
+		}
+		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	var result struct {
+		Message string `json:"message"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return result.Message, nil
+}
+
+// RemoveItemByUsername removes an item by username (no platformID required)
+func (c *APIClient) RemoveItemByUsername(platform, username, itemName string, quantity int) (int, error) {
+	req := map[string]interface{}{
+		"platform":  platform,
+		"username":  username,
+		"item_name": itemName,
+		"quantity":  quantity,
+	}
+
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/user/item/remove-by-username", req)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		var errResp struct {
+			Error string `json:"error"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
+			return 0, fmt.Errorf("API error: %s", errResp.Error)
+		}
+		return 0, fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	var result struct {
+		Removed int `json:"removed"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return 0, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return result.Removed, nil
+}
+
+// GiveItemByUsername transfers an item by usernames (no platformIDs required)
+func (c *APIClient) GiveItemByUsername(fromPlatform, fromUsername, toPlatform, toUsername, itemName string, quantity int) (string, error) {
+	req := map[string]interface{}{
+		"from_platform": fromPlatform,
+		"from_username": fromUsername,
+		"to_platform":   toPlatform,
+		"to_username":   toUsername,
+		"item_name":     itemName,
+		"quantity":      quantity,
+	}
+
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/user/item/give-by-username", req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		var errResp struct {
+			Error string `json:"error"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
+			return "", fmt.Errorf("API error: %s", errResp.Error)
+		}
+		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	var result struct {
+		Message string `json:"message"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return result.Message, nil
+}
+
 // GiveItem transfers an item between users user
 func (c *APIClient) GiveItem(fromPlatform, fromPlatformID, toPlatform, toPlatformID, toUsername, itemName string, quantity int) (string, error) {
 	req := map[string]interface{}{
@@ -998,18 +1105,19 @@ func (c *APIClient) GetUserStats(platform, platformID string) (string, error) {
 	return statsResp.Message, nil
 }
 
-// AddItem adds items to a user's inventory (admin only)
-func (c *APIClient) AddItem(platform, platformID, itemName string, quantity int) (string, error) {
-	req := map[string]interface{}{
-		"platform":    platform,
-		"platform_id": platformID,
-		"item_name":   itemName,
-		"quantity":    quantity,
+// GetInventoryByUsername retrieves user inventory by username
+func (c *APIClient) GetInventoryByUsername(platform, username, filter string) ([]user.UserInventoryItem, error) {
+	params := url.Values{}
+	params.Set("platform", platform)
+	params.Set("username", username)
+	if filter != "" {
+		params.Set("filter", filter)
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "/api/v1/user/item/add", req)
+	path := fmt.Sprintf("/api/v1/user/inventory-by-username?%s", params.Encode())
+	resp, err := c.doRequest(http.MethodGet, path, nil)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
@@ -1018,54 +1126,19 @@ func (c *APIClient) AddItem(platform, platformID, itemName string, quantity int)
 			Error string `json:"error"`
 		}
 		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
-			return "", fmt.Errorf("API error: %s", errResp.Error)
+			return nil, fmt.Errorf("API error: %s", errResp.Error)
 		}
-		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
+		return nil, fmt.Errorf("API returned status: %d", resp.StatusCode)
 	}
 
-	var addResp struct {
-		Message string `json:"message"`
+	var inventoryResp struct {
+		Items []user.UserInventoryItem `json:"items"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&addResp); err != nil {
-		return "", fmt.Errorf("failed to decode response: %w", err)
-	}
-
-	return addResp.Message, nil
-}
-
-// RemoveItem removes items from a user's inventory (admin only)
-func (c *APIClient) RemoveItem(platform, platformID, itemName string, quantity int) (string, error) {
-	req := map[string]interface{}{
-		"platform":    platform,
-		"platform_id": platformID,
-		"item_name":   itemName,
-		"quantity":    quantity,
+	if err := json.NewDecoder(resp.Body).Decode(&inventoryResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "/api/v1/user/item/remove", req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		var errResp struct {
-			Error string `json:"error"`
-		}
-		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
-			return "", fmt.Errorf("API error: %s", errResp.Error)
-		}
-		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
-	}
-
-	var removeResp struct {
-		Message string `json:"message"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&removeResp); err != nil {
-		return "", fmt.Errorf("failed to decode response: %w", err)
-	}
-
-	return removeResp.Message, nil
+	return inventoryResp.Items, nil
 }
 
 // XPAwardResult represents the result of awarding XP

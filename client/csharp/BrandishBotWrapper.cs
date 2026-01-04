@@ -171,19 +171,29 @@ public class CPHInline
 
     /// <summary>
     /// Get user's inventory
-    /// Uses: userType, userId (from streamer.bot context)
+    /// Uses: userType, userId, userName (from streamer.bot context)
+    /// Note: Will use username-based lookup if userId is not available
     /// </summary>
     public bool GetInventory()
     {
         EnsureInitialized();
         
         if (!CPH.TryGetArg("userType", out string platform)) return false;
-        if (!CPH.TryGetArg("userId", out string platformId)) return false;
+        if (!CPH.TryGetArg("userName", out string username)) return false;
 
         try
         {
-            var result = client.GetInventory(platform, platformId).Result;
-            CPH.SetArgument("response", result);
+            // Try to use platform_id if available, otherwise fall back to username-only
+            if (CPH.TryGetArg("userId", out string platformId) && !string.IsNullOrEmpty(platformId))
+            {
+                var result = client.GetInventory(platform, platformId, username).Result;
+                CPH.SetArgument("response", result);
+            }
+            else
+            {
+                var result = client.GetInventoryByUsername(platform, username).Result;
+                CPH.SetArgument("response", result);
+            }
             return true;
         }
         catch (Exception ex)
@@ -202,10 +212,10 @@ public class CPHInline
         EnsureInitialized();
         string error = null;
         
-        // Context not strictly needed for the target except platform derivation
-        if (!ValidateContext(out string fromPlatform, out string fromPlatformId, out string fromUsername, ref error))
+        // Get platform from context (for the platform name)
+        if (!CPH.TryGetArg("userType", out string platform))
         {
-            CPH.LogWarn($"AddItem Failed: {error}");
+            CPH.LogWarn("AddItem Failed: Missing userType");
             return false;
         }
 
@@ -217,17 +227,9 @@ public class CPHInline
             return true;
         }
 
-        // We assume target is on valid platform (defaulting to context platform)
-        // PlatformID is unknown for target if not context user.
-        string targetPlatformId = ""; 
-        if (targetUser.Equals(fromUsername, StringComparison.OrdinalIgnoreCase))
-        {
-            targetPlatformId = fromPlatformId;
-        }
-
         try
         {
-            var result = client.AddItem(fromPlatform, targetPlatformId, targetUser, itemName, quantity).Result;
+            var result = client.AddItemByUsername(platform, targetUser, itemName, quantity).Result;
             CPH.SetArgument("response", result);
             return true;
         }
@@ -255,9 +257,10 @@ public class CPHInline
         EnsureInitialized();
         string error = null;
         
-        if (!ValidateContext(out string fromPlatform, out string fromPlatformId, out string fromUsername, ref error))
+        // Get platform from context
+        if (!CPH.TryGetArg("userType", out string platform))
         {
-            CPH.LogWarn($"RemoveItem Failed: {error}");
+            CPH.LogWarn("RemoveItem Failed: Missing userType");
             return false;
         }
 
@@ -269,15 +272,9 @@ public class CPHInline
             return true;
         }
 
-        string targetPlatformId = ""; 
-        if (targetUser.Equals(fromUsername, StringComparison.OrdinalIgnoreCase))
-        {
-            targetPlatformId = fromPlatformId;
-        }
-
         try
         {
-            var result = client.RemoveItem(fromPlatform, targetPlatformId, targetUser, itemName, quantity).Result;
+            var result = client.RemoveItemByUsername(platform, targetUser, itemName, quantity).Result;
             CPH.SetArgument("response", result);
             return true;
         }
@@ -1417,6 +1414,72 @@ public class CPHInline
         catch (Exception ex)
         {
             CPH.LogWarn($"GetJobBonus API Error: {ex.Message}");
+            CPH.SetArgument("response", $"Error: {ex.Message}");
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Award XP to a user for a specific job (Admin only)
+    /// Command: !awardXP <target_user> <job_key> <amount>
+    /// </summary>
+    public bool AdminAwardXP()
+    {
+        EnsureInitialized();
+        string error = null;
+
+        if (!ValidateContext(out string platform, out string platformId, out string username, ref error))
+        {
+            CPH.LogWarn($"AdminAwardXP Failed: {error}");
+            return false;
+        }
+
+        if (!GetInputString(0, "target_user", true, out string targetUser, ref error) ||
+            !GetInputString(1, "job_key", true, out string jobKey, ref error) ||
+            !GetInputInt(2, "amount", 1, out int amount, ref error))
+        {
+            CPH.SetArgument("response", $"{error} Usage: !awardXP <target_user> <job_key> <amount>");
+            return true;
+        }
+
+        try
+        {
+            var result = client.AdminAwardXP(platform, targetUser, jobKey, amount).Result;
+            CPH.SetArgument("response", result);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            CPH.LogWarn($"AdminAwardXP API Error: {ex.Message}");
+            CPH.SetArgument("response", $"Error: {ex.Message}");
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Get unlocked crafting recipes for the calling user
+    /// Uses: userType, userId, userName (from streamer.bot context)
+    /// </summary>
+    public bool GetUnlockedRecipes()
+    {
+        EnsureInitialized();
+        string error = null;
+
+        if (!ValidateContext(out string platform, out string platformId, out string username, ref error))
+        {
+            CPH.LogWarn($"GetUnlockedRecipes Failed: {error}");
+            return false;
+        }
+
+        try
+        {
+            var result = client.GetUnlockedRecipes(platform, platformId, username).Result;
+            CPH.SetArgument("response", result);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            CPH.LogWarn($"GetUnlockedRecipes API Error: {ex.Message}");
             CPH.SetArgument("response", $"Error: {ex.Message}");
             return true;
         }

@@ -130,6 +130,18 @@ namespace BrandishBot.Client
             return await GetAsync("/api/v1/user/inventory" + query);
         }
 
+        /// <summary>
+        /// Get user's inventory by username (no platformId required)
+        /// </summary>
+        public async Task<string> GetInventoryByUsername(string platform, string username)
+        {
+            var query = BuildQuery(
+                "platform=" + platform,
+                "username=" + username
+            );
+            return await GetAsync("/api/v1/user/inventory-by-username" + query);
+        }
+
 
         /// <summary>
         /// Add item to user's inventory (Admin/Streamer only)
@@ -150,7 +162,53 @@ namespace BrandishBot.Client
         }
 
         /// <summary>
+        /// Add item by username (no platformId required)
+        /// </summary>
+        public async Task<string> AddItemByUsername(string platform, string username, string itemName, int quantity)
+        {
+            return await PostJsonAsync("/api/v1/user/item/add-by-username", new
+            {
+                platform = platform,
+                username = username,
+                item_name = itemName,
+                quantity = quantity
+            });
+        }
+
+        /// <summary>
         /// Remove item from user's inventory (Admin/Streamer only)
+        /// </summary>
+        /// <summary>
+        /// Remove item from user's inventory (Admin/Streamer only)
+        /// </summary>
+        public async Task<string> RemoveItem(string platform, string platformId, string username, string itemName, int quantity)
+        {
+            return await PostJsonAsync("/api/v1/user/item/remove", new
+            {
+                platform = platform,
+                platform_id = platformId,
+                username = username,
+                item_name = itemName,
+                quantity = quantity
+            });
+        }
+
+        /// <summary>
+        /// Remove item by username (no platformId required)
+        /// </summary>
+        public async Task<string> RemoveItemByUsername(string platform, string username, string itemName, int quantity)
+        {
+            return await PostJsonAsync("/api/v1/user/item/remove-by-username", new
+            {
+                platform = platform,
+                username = username,
+                item_name = itemName,
+                quantity = quantity
+            });
+        }
+
+        /// <summary>
+        /// Use an item from inventory (with optional target user)
         /// </summary>
         /// <summary>
         /// Remove item from user's inventory (Admin/Streamer only)
