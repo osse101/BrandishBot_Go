@@ -11,6 +11,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/stats"
+	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
 // Repository defines the data access interface for job operations
@@ -54,6 +55,7 @@ type service struct {
 	statsSvc       stats.Service
 	eventBus       event.Bus
 	publisher      *event.ResilientPublisher
+	rnd            func() float64 // For RNG
 }
 
 // NewService creates a new job service
@@ -64,6 +66,7 @@ func NewService(repo Repository, progressionSvc ProgressionService, statsSvc sta
 		statsSvc:       statsSvc,
 		eventBus:       eventBus,
 		publisher:      publisher,
+		rnd:            utils.RandomFloat,
 	}
 }
 
@@ -198,6 +201,21 @@ func (s *service) AwardXP(ctx context.Context, userID, jobKey string, baseAmount
 	// Apply XP boost multiplier (TODO: get from progression system)
 	xpMultiplier := s.getXPMultiplier(ctx)
 	actualAmount := int(float64(baseAmount) * xpMultiplier)
+
+	// Check for Epiphany (Critical XP Success)
+	if s.rnd() < EpiphanyChance {
+		actualAmount = int(float64(actualAmount) * EpiphanyMultiplier)
+		log.Info("Job Epiphany triggered!", "user_id", userID, "job", jobKey, "base_amount", baseAmount, "bonus_amount", actualAmount-baseAmount)
+		if s.statsSvc != nil {
+			_ = s.statsSvc.RecordUserEvent(ctx, userID, domain.EventJobXPCritical, map[string]interface{}{
+				"job":        jobKey,
+				"base_xp":    baseAmount,
+				"bonus_xp":   actualAmount - baseAmount,
+				"multiplier": EpiphanyMultiplier,
+				"source":     source,
+			})
+		}
+	}
 
 	// Check daily cap (TODO: get from progression system)
 	dailyCap := s.getDailyCap(ctx)

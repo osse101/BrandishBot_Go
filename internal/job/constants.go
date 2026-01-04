@@ -55,6 +55,12 @@ const (
 	ScholarBonusPerLevel   = 10.0 // 10% engagement value increase per level
 )
 
+// Job Epiphany constants
+const (
+	EpiphanyChance     = 0.05 // 5% chance
+	EpiphanyMultiplier = 2.0  // Double XP
+)
+
 // JobInfo represents basic information about a job for display/autocomplete purposes
 type JobInfo struct {
 	Key         string
