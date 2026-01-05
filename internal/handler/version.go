@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"net/http"
 	"os"
 	"runtime"
@@ -33,8 +32,7 @@ func HandleVersion() http.HandlerFunc {
 			GitCommit: GitCommit,
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(info)
+		respondJSON(w, http.StatusOK, info)
 	}
 }
 

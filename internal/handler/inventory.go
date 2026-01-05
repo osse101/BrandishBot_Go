@@ -120,8 +120,6 @@ func HandleRemoveItem(svc user.Service) http.HandlerFunc {
 
 		log.Info("Item removed successfully", "username", req.Username, "item", req.ItemName, "removed", removed)
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
 		respondJSON(w, http.StatusOK, RemoveItemResponse{Removed: removed})
 	}
 }

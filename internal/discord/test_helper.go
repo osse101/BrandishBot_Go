@@ -118,5 +118,8 @@ func SetupTestContext(t *testing.T) *TestContext {
 // Helper to return JSON success
 func WriteJSON(w http.ResponseWriter, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(data)
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		// Log error if encoding fails in test helper
+		_ = err
+	}
 }

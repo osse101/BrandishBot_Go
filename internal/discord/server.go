@@ -93,5 +93,7 @@ func (s *HTTPServer) handleAnnounce(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	if err := json.NewEncoder(w).Encode(map[string]string{"status": "ok"}); err != nil {
+		slog.Error("Failed to encode JSON response", "error", err)
+	}
 }
