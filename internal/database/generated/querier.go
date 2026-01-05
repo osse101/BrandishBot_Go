@@ -9,17 +9,62 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Querier interface {
 	CreateGamble(ctx context.Context, arg CreateGambleParams) error
+	CreateUser(ctx context.Context, username string) (uuid.UUID, error)
+	DeleteInventory(ctx context.Context, userID uuid.UUID) error
+	DeleteUser(ctx context.Context, userID uuid.UUID) error
+	DeleteUserPlatformLink(ctx context.Context, arg DeleteUserPlatformLinkParams) error
+	EnsureInventoryRow(ctx context.Context, arg EnsureInventoryRowParams) error
 	GetActiveGamble(ctx context.Context) (Gamble, error)
+	GetAllJobs(ctx context.Context) ([]Job, error)
+	GetAllRecipes(ctx context.Context) ([]GetAllRecipesRow, error)
+	GetAssociatedUpgradeRecipeID(ctx context.Context, disassembleRecipeID int32) (int32, error)
+	GetBuyablePrices(ctx context.Context) ([]GetBuyablePricesRow, error)
+	GetDisassembleOutputs(ctx context.Context, recipeID int32) ([]GetDisassembleOutputsRow, error)
+	GetDisassembleRecipeBySourceItemID(ctx context.Context, sourceItemID int32) (DisassembleRecipe, error)
 	GetGamble(ctx context.Context, id uuid.UUID) (Gamble, error)
 	GetGambleParticipants(ctx context.Context, gambleID uuid.UUID) ([]GetGambleParticipantsRow, error)
+	GetInventory(ctx context.Context, userID uuid.UUID) ([]byte, error)
+	GetInventoryForUpdate(ctx context.Context, userID uuid.UUID) ([]byte, error)
+	GetItemByID(ctx context.Context, itemID int32) (GetItemByIDRow, error)
+	GetItemByName(ctx context.Context, internalName string) (GetItemByNameRow, error)
+	GetItemByPublicName(ctx context.Context, publicName pgtype.Text) (GetItemByPublicNameRow, error)
+	GetItemsByIDs(ctx context.Context, dollar_1 []int32) ([]GetItemsByIDsRow, error)
+	GetItemsByNames(ctx context.Context, dollar_1 []string) ([]GetItemsByNamesRow, error)
+	GetJobByKey(ctx context.Context, jobKey string) (Job, error)
+	GetJobLevelBonuses(ctx context.Context, arg GetJobLevelBonusesParams) ([]JobLevelBonuse, error)
+	GetLastCooldown(ctx context.Context, arg GetLastCooldownParams) (pgtype.Timestamptz, error)
+	GetLastCooldownForUpdate(ctx context.Context, arg GetLastCooldownForUpdateParams) (pgtype.Timestamptz, error)
+	GetPlatformID(ctx context.Context, name string) (int32, error)
+	GetRecipeByTargetItemID(ctx context.Context, targetItemID int32) (CraftingRecipe, error)
+	GetSellablePrices(ctx context.Context) ([]GetSellablePricesRow, error)
+	GetUnlockedRecipesForUser(ctx context.Context, userID uuid.UUID) ([]GetUnlockedRecipesForUserRow, error)
+	GetUserByID(ctx context.Context, userID uuid.UUID) (User, error)
+	GetUserByPlatformID(ctx context.Context, arg GetUserByPlatformIDParams) (GetUserByPlatformIDRow, error)
+	GetUserByPlatformUsername(ctx context.Context, arg GetUserByPlatformUsernameParams) (GetUserByPlatformUsernameRow, error)
+	GetUserByUsername(ctx context.Context, username string) (User, error)
+	GetUserJob(ctx context.Context, arg GetUserJobParams) (UserJob, error)
+	GetUserJobs(ctx context.Context, userID uuid.UUID) ([]UserJob, error)
+	GetUserPlatformLinks(ctx context.Context, userID uuid.UUID) ([]GetUserPlatformLinksRow, error)
+	IsItemBuyable(ctx context.Context, internalName string) (bool, error)
+	IsRecipeUnlocked(ctx context.Context, arg IsRecipeUnlockedParams) (bool, error)
 	JoinGamble(ctx context.Context, arg JoinGambleParams) error
+	RecordJobXPEvent(ctx context.Context, arg RecordJobXPEventParams) error
+	ResetDailyJobXP(ctx context.Context) (pgconn.CommandTag, error)
 	SaveOpenedItem(ctx context.Context, arg SaveOpenedItemParams) error
+	UnlockRecipe(ctx context.Context, arg UnlockRecipeParams) error
+	UpdateCooldown(ctx context.Context, arg UpdateCooldownParams) error
 	UpdateGambleState(ctx context.Context, arg UpdateGambleStateParams) error
 	UpdateGambleStateIfMatches(ctx context.Context, arg UpdateGambleStateIfMatchesParams) (pgconn.CommandTag, error)
+	UpdateInventory(ctx context.Context, arg UpdateInventoryParams) error
+	UpdateUser(ctx context.Context, arg UpdateUserParams) error
+	UpdateUserTimestamp(ctx context.Context, userID uuid.UUID) error
+	UpsertUserJob(ctx context.Context, arg UpsertUserJobParams) error
+	UpsertUserPlatformLink(ctx context.Context, arg UpsertUserPlatformLinkParams) error
 }
 
 var _ Querier = (*Queries)(nil)
