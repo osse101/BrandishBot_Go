@@ -198,6 +198,7 @@ func (s *service) StartGamble(ctx context.Context, platform, platformID, usernam
 	// Publish GambleStarted event
 	if s.eventBus != nil {
 		err := s.eventBus.Publish(ctx, event.Event{
+			Version: "1.0",
 			Type:    event.Type(domain.EventGambleStarted),
 			Payload: gamble,
 		})

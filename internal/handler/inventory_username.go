@@ -188,6 +188,7 @@ func HandleUseItemByUsername(svc user.Service, eventBus event.Bus) http.HandlerF
 
 		// Publish item.used event
 		if err := eventBus.Publish(r.Context(), event.Event{
+			Version: "1.0",
 			Type: "item.used",
 			Payload: map[string]interface{}{
 				"user_id":  req.Username,

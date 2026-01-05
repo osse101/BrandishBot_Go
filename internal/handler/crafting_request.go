@@ -59,6 +59,7 @@ func publishCraftingEvent(ctx context.Context, eventBus event.Bus, eventType eve
 	log := logger.FromContext(ctx)
 
 	if err := eventBus.Publish(ctx, event.Event{
+		Version: "1.0",
 		Type:    eventType,
 		Payload: payload,
 	}); err != nil {

@@ -256,6 +256,7 @@ func HandleSellItem(svc economy.Service, progressionSvc progression.Service, eve
 
 		// Publish item.sold event
 		if err := eventBus.Publish(r.Context(), event.Event{
+			Version: "1.0",
 			Type: "item.sold",
 			Payload: map[string]interface{}{
 				"user_id":      req.Username,
@@ -347,6 +348,7 @@ func HandleBuyItem(svc economy.Service, progressionSvc progression.Service, even
 		// Publish item.bought event
 		// Note: We don't have the exact cost here, would need to modify economy.Service to return it
 		if err := eventBus.Publish(r.Context(), event.Event{
+			Version: "1.0",
 			Type: "item.bought",
 			Payload: map[string]interface{}{
 				"user_id":   req.Username,
@@ -439,6 +441,7 @@ func HandleUseItem(svc user.Service, eventBus event.Bus) http.HandlerFunc {
 
 		// Publish item.used event
 		if err := eventBus.Publish(r.Context(), event.Event{
+			Version: "1.0",
 			Type: "item.used",
 			Payload: map[string]interface{}{
 				"user_id":  req.Username,

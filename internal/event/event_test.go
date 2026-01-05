@@ -23,6 +23,7 @@ func TestMemoryBus_PublishSubscribe(t *testing.T) {
 	})
 
 	err := bus.Publish(context.Background(), Event{
+		Version: "1.0",
 		Type:    eventType,
 		Payload: "payload",
 	})
@@ -49,7 +50,7 @@ func TestMemoryBus_PublishMultipleHandlers(t *testing.T) {
 	bus.Subscribe(eventType, handler)
 	bus.Subscribe(eventType, handler)
 
-	err := bus.Publish(context.Background(), Event{Type: eventType})
+	err := bus.Publish(context.Background(), Event{Version: "1.0", Type: eventType})
 	if err != nil {
 		t.Errorf("Publish returned error: %v", err)
 	}
@@ -67,7 +68,7 @@ func TestMemoryBus_PublishError(t *testing.T) {
 		return errors.New("handler error")
 	})
 
-	err := bus.Publish(context.Background(), Event{Type: eventType})
+	err := bus.Publish(context.Background(), Event{Version: "1.0", Type: eventType})
 	if err == nil {
 		t.Error("Expected error from Publish, got nil")
 	}

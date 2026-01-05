@@ -40,6 +40,7 @@ func (e *EngagementTracker) Track(metricType string, getValue func(*http.Request
 
 				// Publish engagement event
 				evt := event.Event{
+					Version: "1.0",
 					Type: "engagement",
 					Payload: &domain.EngagementMetric{
 						UserID:      userID,
@@ -82,6 +83,7 @@ func (e *EngagementTracker) TrackCommand(next http.Handler) http.Handler {
 
 			// Publish engagement event
 			evt := event.Event{
+				Version: "1.0",
 				Type:    "engagement",
 				Payload: metric,
 			}
@@ -162,6 +164,7 @@ func TrackEngagementFromContext(ctx context.Context, eventBus event.Bus, metricT
 	}
 
 	evt := event.Event{
+		Version: "1.0",
 		Type:    "engagement",
 		Payload: metric,
 	}

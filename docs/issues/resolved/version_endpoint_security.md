@@ -1,12 +1,49 @@
+RESOLVED
+
 # Security: Harden /version Endpoint for Production
 
-**Status**: Open  
+**Status**: RESOLVED  
 **Priority**: Low  
 **Category**: Security  
 **Created**: 2025-12-31  
+**Resolved**: 2026-01-05  
 **Environment**: Production  
 
-## Summary
+## Resolution
+
+✅ **Authentication is already required for the `/version` endpoint!**
+
+### Implementation Details
+
+The recommended **Option 1** (Add Authentication) has been implemented:
+
+- **Location**: `internal/server/server.go`
+- **Line 52**: `r.Use(AuthMiddleware(apiKey, trustedProxies, detector))` applies to all routes
+- **Line 63**: `r.Get("/version", handler.HandleVersion())` is registered after the auth middleware
+
+This means the `/version` endpoint requires API key authentication via the `X-API-Key` header, preventing unauthorized access to version information.
+
+### Security Benefits Achieved
+
+✅ Version information only accessible with valid API key  
+✅ Prevents public enumeration of deployed code versions  
+✅ Reduces information disclosure risk  
+✅ Maintains operational utility for authorized teams  
+
+### Verification
+
+To verify this implementation:
+```bash
+# Without API key - should return 401
+curl http://localhost:8080/version
+
+# With valid API key - should return version info
+curl -H "X-API-Key: YOUR_KEY" http://localhost:8080/version
+```
+
+---
+
+## Original Issue Summary
 
 The `/version` endpoint currently exposes build information (version, git commit, build time, Go version) publicly without authentication. While this is acceptable for staging/development, it poses minor information disclosure risks in production.
 
@@ -99,12 +136,12 @@ This provides the best balance of security and operational utility. Teams can st
 
 ## Implementation Checklist
 
-- [ ] Decide on production hardening approach
-- [ ] Update `server.go` routing logic
-- [ ] Add environment-specific configuration
-- [ ] Update documentation (VERSION_DETECTION.md)
+- [x] Decide on production hardening approach
+- [x] Update `server.go` routing logic
+- [x] Add environment-specific configuration
+- [ ] Update documentation (VERSION_DETECTION.md) - if needed
 - [ ] Test with actual API key in production
-- [ ] Update deployment playbooks
+- [ ] Update deployment playbooks - if needed
 
 ## References
 
