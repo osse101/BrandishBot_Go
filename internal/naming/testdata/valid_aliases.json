@@ -1,13 +1,18 @@
 {
-  "lootbox_tier0": {
-    "default": [
-      "A test box",
-      "Another test box"
-    ],
-    "themes": {
-      "test_theme": [
-        "A themed test box"
-      ]
+  "version": "1.0",
+  "schema": "item-aliases",
+  "last_updated": "2026-01-05",
+  "aliases": {
+    "lootbox_tier0": {
+      "default": [
+        "A test box",
+        "Another test box"
+      ],
+      "themes": {
+        "test_theme": [
+          "A themed test box"
+        ]
+      }
     }
   }
 }

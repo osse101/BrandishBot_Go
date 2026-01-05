@@ -248,10 +248,24 @@ func TestConcurrentAccess_ReloadDuringGetDisplayName(t *testing.T) {
 	aliasesPath := filepath.Join(tmpDir, "aliases.json")
 	themesPath := filepath.Join(tmpDir, "themes.json")
 
-	// Write initial data
-	err := os.WriteFile(aliasesPath, []byte(`{"item": {"default": ["Name 1"]}}`), 0644)
+	// Write initial data with version metadata
+	err := os.WriteFile(aliasesPath, []byte(`{
+		"version": "1.0",
+		"schema": "item-aliases",
+		"last_updated": "2026-01-05",
+		"aliases": {
+			"item": {
+				"default": ["Name 1"]
+			}
+		}
+	}`), 0644)
 	require.NoError(t, err)
-	err = os.WriteFile(themesPath, []byte(`{}`), 0644)
+	err = os.WriteFile(themesPath, []byte(`{
+		"version": "1.0",
+		"schema": "item-themes",
+		"last_updated": "2026-01-05",
+		"themes": {}
+	}`), 0644)
 	require.NoError(t, err)
 
 	resolver, err := NewResolver(aliasesPath, themesPath)

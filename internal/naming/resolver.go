@@ -229,12 +229,26 @@ func (r *resolver) loadAliases() error {
 		return err
 	}
 
-	var aliases map[string]AliasPool
-	if err := json.Unmarshal(data, &aliases); err != nil {
-		return err
+	// Parse versioned config
+	var config struct {
+		Version     string                `json:"version"`
+		Schema      string                `json:"schema"`
+		LastUpdated string                `json:"last_updated"`
+		Aliases     map[string]AliasPool  `json:"aliases"`
+	}
+	if err := json.Unmarshal(data, &config); err != nil {
+		return fmt.Errorf("failed to parse aliases config: %w", err)
 	}
 
-	r.aliases = aliases
+	// Validate version
+	if config.Version == "" {
+		return fmt.Errorf("aliases.json missing version field")
+	}
+	if config.Schema != "item-aliases" {
+		return fmt.Errorf("invalid schema in aliases.json: expected 'item-aliases', got '%s'", config.Schema)
+	}
+
+	r.aliases = config.Aliases
 	return nil
 }
 
@@ -248,11 +262,25 @@ func (r *resolver) loadThemes() error {
 		return err
 	}
 
-	var themes map[string]ThemePeriod
-	if err := json.Unmarshal(data, &themes); err != nil {
-		return err
+	// Parse versioned config
+	var config struct {
+		Version     string                   `json:"version"`
+		Schema      string                   `json:"schema"`
+		LastUpdated string                   `json:"last_updated"`
+		Themes      map[string]ThemePeriod   `json:"themes"`
+	}
+	if err := json.Unmarshal(data, &config); err != nil {
+		return fmt.Errorf("failed to parse themes config: %w", err)
 	}
 
-	r.themes = themes
+	// Validate version
+	if config.Version == "" {
+		return fmt.Errorf("themes.json missing version field")
+	}
+	if config.Schema != "item-themes" {
+		return fmt.Errorf("invalid schema in themes.json: expected 'item-themes', got '%s'", config.Schema)
+	}
+
+	r.themes = config.Themes
 	return nil
 }

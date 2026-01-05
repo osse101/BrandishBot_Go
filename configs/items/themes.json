@@ -1,10 +1,15 @@
 {
-  "halloween": {
-    "start": "10-15",
-    "end": "11-02"
-  },
-  "christmas": {
-    "start": "12-15",
-    "end": "01-05"
+  "version": "1.0",
+  "schema": "item-themes",
+  "last_updated": "2026-01-05",
+  "themes": {
+    "halloween": {
+      "start": "10-15",
+      "end": "11-02"
+    },
+    "christmas": {
+      "start": "12-15",
+      "end": "01-05"
+    }
   }
 }
