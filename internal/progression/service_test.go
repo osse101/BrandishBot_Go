@@ -35,6 +35,9 @@ type MockRepository struct {
 	engagementWeights map[string]float64
 	engagementMetrics []*domain.EngagementMetric
 	
+	// Prerequisites junction table (v2.0)
+	prerequisites     map[int][]int // nodeID -> []prerequisiteNodeIDs
+	
 	// Voting session state
 	sessions          map[int]*domain.ProgressionVotingSession
 	sessionCounter    int
@@ -62,6 +65,7 @@ func NewMockRepository() *MockRepository {
 			"vote_cast":    5.0,
 		},
 		engagementMetrics: make([]*domain.EngagementMetric, 0),
+		prerequisites:     make(map[int][]int),
 		sessions:          make(map[int]*domain.ProgressionVotingSession),
 		sessionOptions:    make(map[int][]domain.ProgressionVotingOption),
 		sessionVotes:      make(map[int]map[string]bool),
@@ -98,13 +102,39 @@ func (m *MockRepository) GetAllNodes(ctx context.Context) ([]*domain.Progression
 }
 
 func (m *MockRepository) GetPrerequisites(ctx context.Context, nodeID int) ([]*domain.ProgressionNode, error) {
-	// TODO: Implement junction table simulation for prerequisites
-	return []*domain.ProgressionNode{}, nil
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	
+	prereqIDs, ok := m.prerequisites[nodeID]
+	if !ok {
+		return []*domain.ProgressionNode{}, nil
+	}
+	
+	prereqs := make([]*domain.ProgressionNode, 0, len(prereqIDs))
+	for _, prereqID := range prereqIDs {
+		if node, ok := m.nodes[prereqID]; ok {
+			prereqs = append(prereqs, node)
+		}
+	}
+	return prereqs, nil
 }
 
 func (m *MockRepository) GetDependents(ctx context.Context, nodeID int) ([]*domain.ProgressionNode, error) {
-	// TODO: Implement junction table simulation for dependents
-	return []*domain.ProgressionNode{}, nil
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	
+	dependents := make([]*domain.ProgressionNode, 0)
+	for depNodeID, prereqIDs := range m.prerequisites {
+		for _, prereqID := range prereqIDs {
+			if prereqID == nodeID {
+				if node, ok := m.nodes[depNodeID]; ok {
+					dependents = append(dependents, node)
+				}
+				break
+			}
+		}
+	}
+	return dependents, nil
 }
 
 func (m *MockRepository) GetUnlock(ctx context.Context, nodeID int, level int) (*domain.ProgressionUnlock, error) {
@@ -755,6 +785,18 @@ func setupTestTree(repo *MockRepository) {
 	}
 	repo.nodes[cooldownID] = cooldown
 	repo.nodesByKey["upgrade_cooldown_reduction"] = cooldown
+	
+	// Setup prerequisite relationships (v2.0 junction table simulation)
+	// These mirror the old parent-child relationships
+	repo.prerequisites[moneyID] = []int{rootID}        // money requires root
+	repo.prerequisites[economyID] = []int{moneyID}     // economy requires money  
+	repo.prerequisites[buyID] = []int{economyID}       // buy requires economy
+	repo.prerequisites[sellID] = []int{economyID}      // sell requires economy
+	repo.prerequisites[lootbox0ID] = []int{rootID}     // lootbox0 requires root
+	repo.prerequisites[upgradeID] = []int{lootbox0ID}  // upgrade requires lootbox0
+	repo.prerequisites[disassembleID] = []int{lootbox0ID} // disassemble requires lootbox0
+	repo.prerequisites[searchID] = []int{lootbox0ID}   // search requires lootbox0
+	repo.prerequisites[cooldownID] = []int{economyID}  // cooldown requires economy
 }
 
 // Tests

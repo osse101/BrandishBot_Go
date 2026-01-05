@@ -141,7 +141,6 @@ func (s *service) GetProgressionTree(ctx context.Context) ([]*domain.Progression
 }
 
 // GetAvailableUnlocks returns nodes available for voting (prerequisites met)
-// TODO: Reimplement using prerequisites junction table
 func (s *service) GetAvailableUnlocks(ctx context.Context) ([]*domain.ProgressionNode, error) {
 	log := logger.FromContext(ctx)
 
@@ -164,9 +163,26 @@ func (s *service) GetAvailableUnlocks(ctx context.Context) ([]*domain.Progressio
 			continue // Already maxed out
 		}
 
-		// TODO: Check if ALL prerequisites are unlocked using junction table
-		// For now, just include all non-unlocked nodes
-		available = append(available, node)
+		// Get prerequisites for this node
+		prerequisites, err := s.repo.GetPrerequisites(ctx, node.ID)
+		if err != nil {
+			log.Warn("Failed to get prerequisites", "nodeKey", node.NodeKey, "error", err)
+			continue
+		}
+
+		// Check if all prerequisites are unlocked
+		allPrereqsMet := true
+		for _, prereq := range prerequisites {
+			prereqUnlocked, err := s.repo.IsNodeUnlocked(ctx, prereq.NodeKey, 1)
+			if err != nil ||  !prereqUnlocked {
+				allPrereqsMet = false
+				break
+			}
+		}
+
+		if allPrereqsMet {
+			available = append(available, node)
+		}
 	}
 
 	return available, nil
@@ -508,8 +524,7 @@ func (s *service) ForceInstantUnlock(ctx context.Context) (*domain.ProgressionUn
 	return s.repo.GetUnlock(ctx, winner.NodeID, winner.TargetLevel)
 }
 
-// GetRequiredNodes returns a list of locked ancestor nodes that are preventing the target node from being unlocked
-// TODO: Reimplement using prerequisites junction table
+// GetRequiredNodes returns a list of locked prerequisite nodes preventing the target node from being unlocked
 func (s *service) GetRequiredNodes(ctx context.Context, nodeKey string) ([]*domain.ProgressionNode, error) {
 	log := logger.FromContext(ctx)
 
@@ -521,9 +536,48 @@ func (s *service) GetRequiredNodes(ctx context.Context, nodeKey string) ([]*doma
 		return nil, fmt.Errorf("node not found: %s", nodeKey)
 	}
 
-	// TODO: Query prerequisites junction table and recursively check locked prerequisites
-	log.Warn("GetRequiredNodes not yet implemented with prerequisites junction table", "nodeKey", nodeKey)
-	return []*domain.ProgressionNode{}, nil
+	// Track which nodes we've already checked to avoid cycles
+	visited := make(map[int]bool)
+	var lockedPrereqs []*domain.ProgressionNode
+
+	// Recursively check prerequisites
+	var checkPrereqs func(nodeID int) error
+	checkPrereqs = func(nodeID int) error {
+		if visited[nodeID] {
+			return nil // Already checked
+		}
+		visited[nodeID] = true
+
+		prerequisites, err := s.repo.GetPrerequisites(ctx, nodeID)
+		if err != nil {
+			return fmt.Errorf("failed to get prerequisites for node %d: %w", nodeID, err)
+		}
+
+		for _, prereq := range prerequisites {
+			// Check if this prerequisite is unlocked
+			isUnlocked, err := s.repo.IsNodeUnlocked(ctx, prereq.NodeKey, 1)
+			if err != nil {
+				return fmt.Errorf("failed to check unlock status for %s: %w", prereq.NodeKey, err)
+			}
+
+			if !isUnlocked {
+				// Add to locked list
+				lockedPrereqs = append(lockedPrereqs, prereq)
+				// Recursively check its prerequisites too
+				if err := checkPrereqs(prereq.ID); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+
+	if err := checkPrereqs(targetNode.ID); err != nil {
+		log.Error("Failed to check prerequisites", "error", err, "nodeKey", nodeKey)
+		return nil, err
+	}
+
+	return lockedPrereqs, nil
 }
 
 // getCachedWeight retrieves weight from cache if not expired
