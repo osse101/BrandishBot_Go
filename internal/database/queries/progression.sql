@@ -256,3 +256,43 @@ WHERE id = $1;
 INSERT INTO progression_unlock_progress (contributions_accumulated)
 VALUES ($1)
 RETURNING id;
+
+-- name: GetNodePrerequisites :many
+SELECT n.id, n.node_key, n.node_type, n.display_name, n.description,
+       n.max_level, n.unlock_cost, n.tier, n.size, n.category, n.sort_order, n.created_at
+FROM progression_nodes n
+INNER JOIN progression_prerequisites p ON n.id = p.prerequisite_node_id
+WHERE p.node_id = $1
+ORDER BY n.sort_order, n.id;
+
+-- name: GetNodeDependents :many
+SELECT n.id, n.node_key, n.node_type, n.display_name, n.description,
+       n.max_level, n.unlock_cost, n.tier, n.size, n.category, n.sort_order, n.created_at
+FROM progression_nodes n
+INNER JOIN progression_prerequisites p ON n.id = p.node_id
+WHERE p.prerequisite_node_id = $1
+ORDER BY n.sort_order, n.id;
+
+-- name: GetContributionLeaderboard :many
+WITH user_contributions AS (
+    SELECT
+        user_id,
+        SUM(metric_value) as total_contribution
+    FROM engagement_metrics
+    GROUP BY user_id
+)
+SELECT
+    user_id,
+    total_contribution,
+    ROW_NUMBER() OVER (ORDER BY total_contribution DESC)::bigint as rank
+FROM user_contributions
+ORDER BY total_contribution DESC
+LIMIT $1;
+
+-- name: ClearNodePrerequisites :exec
+DELETE FROM progression_prerequisites WHERE node_id = $1;
+
+-- name: InsertNodePrerequisite :exec
+INSERT INTO progression_prerequisites (node_id, prerequisite_node_id)
+VALUES ($1, $2)
+ON CONFLICT (node_id, prerequisite_node_id) DO NOTHING;

@@ -70,6 +70,15 @@ func (q *Queries) ClearAllVoting(ctx context.Context) error {
 	return err
 }
 
+const clearNodePrerequisites = `-- name: ClearNodePrerequisites :exec
+DELETE FROM progression_prerequisites WHERE node_id = $1
+`
+
+func (q *Queries) ClearNodePrerequisites(ctx context.Context, nodeID int32) error {
+	_, err := q.db.Exec(ctx, clearNodePrerequisites, nodeID)
+	return err
+}
+
 const clearUnlocksExceptRoot = `-- name: ClearUnlocksExceptRoot :exec
 DELETE FROM progression_unlocks
 WHERE node_id != (SELECT id FROM progression_nodes WHERE node_key = 'progression_system')
@@ -327,6 +336,49 @@ func (q *Queries) GetAllUnlocks(ctx context.Context) ([]ProgressionUnlock, error
 	return items, nil
 }
 
+const getContributionLeaderboard = `-- name: GetContributionLeaderboard :many
+WITH user_contributions AS (
+    SELECT
+        user_id,
+        SUM(metric_value) as total_contribution
+    FROM engagement_metrics
+    GROUP BY user_id
+)
+SELECT
+    user_id,
+    total_contribution,
+    ROW_NUMBER() OVER (ORDER BY total_contribution DESC)::bigint as rank
+FROM user_contributions
+ORDER BY total_contribution DESC
+LIMIT $1
+`
+
+type GetContributionLeaderboardRow struct {
+	UserID            string `json:"user_id"`
+	TotalContribution int64  `json:"total_contribution"`
+	Rank              int64  `json:"rank"`
+}
+
+func (q *Queries) GetContributionLeaderboard(ctx context.Context, limit int32) ([]GetContributionLeaderboardRow, error) {
+	rows, err := q.db.Query(ctx, getContributionLeaderboard, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetContributionLeaderboardRow
+	for rows.Next() {
+		var i GetContributionLeaderboardRow
+		if err := rows.Scan(&i.UserID, &i.TotalContribution, &i.Rank); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getEngagementMetricsAggregated = `-- name: GetEngagementMetricsAggregated :many
 SELECT metric_type, SUM(metric_value)::bigint as total
 FROM engagement_metrics
@@ -502,6 +554,120 @@ func (q *Queries) GetNodeByKey(ctx context.Context, nodeKey string) (GetNodeByKe
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const getNodeDependents = `-- name: GetNodeDependents :many
+SELECT n.id, n.node_key, n.node_type, n.display_name, n.description,
+       n.max_level, n.unlock_cost, n.tier, n.size, n.category, n.sort_order, n.created_at
+FROM progression_nodes n
+INNER JOIN progression_prerequisites p ON n.id = p.node_id
+WHERE p.prerequisite_node_id = $1
+ORDER BY n.sort_order, n.id
+`
+
+type GetNodeDependentsRow struct {
+	ID          int32            `json:"id"`
+	NodeKey     string           `json:"node_key"`
+	NodeType    string           `json:"node_type"`
+	DisplayName string           `json:"display_name"`
+	Description pgtype.Text      `json:"description"`
+	MaxLevel    pgtype.Int4      `json:"max_level"`
+	UnlockCost  pgtype.Int4      `json:"unlock_cost"`
+	Tier        int32            `json:"tier"`
+	Size        string           `json:"size"`
+	Category    string           `json:"category"`
+	SortOrder   pgtype.Int4      `json:"sort_order"`
+	CreatedAt   pgtype.Timestamp `json:"created_at"`
+}
+
+func (q *Queries) GetNodeDependents(ctx context.Context, prerequisiteNodeID int32) ([]GetNodeDependentsRow, error) {
+	rows, err := q.db.Query(ctx, getNodeDependents, prerequisiteNodeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetNodeDependentsRow
+	for rows.Next() {
+		var i GetNodeDependentsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.NodeKey,
+			&i.NodeType,
+			&i.DisplayName,
+			&i.Description,
+			&i.MaxLevel,
+			&i.UnlockCost,
+			&i.Tier,
+			&i.Size,
+			&i.Category,
+			&i.SortOrder,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getNodePrerequisites = `-- name: GetNodePrerequisites :many
+SELECT n.id, n.node_key, n.node_type, n.display_name, n.description,
+       n.max_level, n.unlock_cost, n.tier, n.size, n.category, n.sort_order, n.created_at
+FROM progression_nodes n
+INNER JOIN progression_prerequisites p ON n.id = p.prerequisite_node_id
+WHERE p.node_id = $1
+ORDER BY n.sort_order, n.id
+`
+
+type GetNodePrerequisitesRow struct {
+	ID          int32            `json:"id"`
+	NodeKey     string           `json:"node_key"`
+	NodeType    string           `json:"node_type"`
+	DisplayName string           `json:"display_name"`
+	Description pgtype.Text      `json:"description"`
+	MaxLevel    pgtype.Int4      `json:"max_level"`
+	UnlockCost  pgtype.Int4      `json:"unlock_cost"`
+	Tier        int32            `json:"tier"`
+	Size        string           `json:"size"`
+	Category    string           `json:"category"`
+	SortOrder   pgtype.Int4      `json:"sort_order"`
+	CreatedAt   pgtype.Timestamp `json:"created_at"`
+}
+
+func (q *Queries) GetNodePrerequisites(ctx context.Context, nodeID int32) ([]GetNodePrerequisitesRow, error) {
+	rows, err := q.db.Query(ctx, getNodePrerequisites, nodeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetNodePrerequisitesRow
+	for rows.Next() {
+		var i GetNodePrerequisitesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.NodeKey,
+			&i.NodeType,
+			&i.DisplayName,
+			&i.Description,
+			&i.MaxLevel,
+			&i.UnlockCost,
+			&i.Tier,
+			&i.Size,
+			&i.Category,
+			&i.SortOrder,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getSessionByID = `-- name: GetSessionByID :one
@@ -848,6 +1014,22 @@ func (q *Queries) InsertNode(ctx context.Context, arg InsertNodeParams) (int32, 
 	var id int32
 	err := row.Scan(&id)
 	return id, err
+}
+
+const insertNodePrerequisite = `-- name: InsertNodePrerequisite :exec
+INSERT INTO progression_prerequisites (node_id, prerequisite_node_id)
+VALUES ($1, $2)
+ON CONFLICT (node_id, prerequisite_node_id) DO NOTHING
+`
+
+type InsertNodePrerequisiteParams struct {
+	NodeID             int32 `json:"node_id"`
+	PrerequisiteNodeID int32 `json:"prerequisite_node_id"`
+}
+
+func (q *Queries) InsertNodePrerequisite(ctx context.Context, arg InsertNodePrerequisiteParams) error {
+	_, err := q.db.Exec(ctx, insertNodePrerequisite, arg.NodeID, arg.PrerequisiteNodeID)
+	return err
 }
 
 const isNodeUnlocked = `-- name: IsNodeUnlocked :one

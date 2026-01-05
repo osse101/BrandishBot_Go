@@ -16,9 +16,11 @@ type Querier interface {
 	AddContribution(ctx context.Context, arg AddContributionParams) error
 	AddVotingOption(ctx context.Context, arg AddVotingOptionParams) error
 	CleanupExpiredTokens(ctx context.Context) error
+	CleanupOldEvents(ctx context.Context, days int32) (int64, error)
 	ClearAllUserProgression(ctx context.Context) error
 	ClearAllUserVotes(ctx context.Context) error
 	ClearAllVoting(ctx context.Context) error
+	ClearNodePrerequisites(ctx context.Context, nodeID int32) error
 	ClearUnlocksExceptRoot(ctx context.Context) error
 	CompleteUnlock(ctx context.Context, id int32) error
 	CountUnlocks(ctx context.Context) (int64, error)
@@ -44,12 +46,14 @@ type Querier interface {
 	GetAssociatedUpgradeRecipeID(ctx context.Context, disassembleRecipeID int32) (int32, error)
 	GetBuyablePrices(ctx context.Context) ([]GetBuyablePricesRow, error)
 	GetClaimedTokenForSource(ctx context.Context, arg GetClaimedTokenForSourceParams) (GetClaimedTokenForSourceRow, error)
+	GetContributionLeaderboard(ctx context.Context, limit int32) ([]GetContributionLeaderboardRow, error)
 	GetDisassembleOutputs(ctx context.Context, recipeID int32) ([]GetDisassembleOutputsRow, error)
 	GetDisassembleRecipeBySourceItemID(ctx context.Context, sourceItemID int32) (DisassembleRecipe, error)
 	GetEngagementMetricsAggregated(ctx context.Context) ([]GetEngagementMetricsAggregatedRow, error)
 	GetEngagementMetricsAggregatedSince(ctx context.Context, recordedAt pgtype.Timestamp) ([]GetEngagementMetricsAggregatedSinceRow, error)
 	GetEngagementWeights(ctx context.Context) ([]GetEngagementWeightsRow, error)
 	GetEventCounts(ctx context.Context, arg GetEventCountsParams) ([]GetEventCountsRow, error)
+	GetEvents(ctx context.Context, arg GetEventsParams) ([]Event, error)
 	GetEventsByType(ctx context.Context, arg GetEventsByTypeParams) ([]StatsEvent, error)
 	GetEventsByUser(ctx context.Context, arg GetEventsByUserParams) ([]StatsEvent, error)
 	GetGamble(ctx context.Context, id uuid.UUID) (Gamble, error)
@@ -65,8 +69,12 @@ type Querier interface {
 	GetJobLevelBonuses(ctx context.Context, arg GetJobLevelBonusesParams) ([]JobLevelBonuse, error)
 	GetLastCooldown(ctx context.Context, arg GetLastCooldownParams) (pgtype.Timestamptz, error)
 	GetLastCooldownForUpdate(ctx context.Context, arg GetLastCooldownForUpdateParams) (pgtype.Timestamptz, error)
+	GetLogEventsByType(ctx context.Context, arg GetLogEventsByTypeParams) ([]Event, error)
+	GetLogEventsByUser(ctx context.Context, arg GetLogEventsByUserParams) ([]Event, error)
 	GetNodeByID(ctx context.Context, id int32) (GetNodeByIDRow, error)
 	GetNodeByKey(ctx context.Context, nodeKey string) (GetNodeByKeyRow, error)
+	GetNodeDependents(ctx context.Context, prerequisiteNodeID int32) ([]GetNodeDependentsRow, error)
+	GetNodePrerequisites(ctx context.Context, nodeID int32) ([]GetNodePrerequisitesRow, error)
 	GetPlatformID(ctx context.Context, name string) (int32, error)
 	GetRecipeByTargetItemID(ctx context.Context, targetItemID int32) (CraftingRecipe, error)
 	GetSellablePrices(ctx context.Context) ([]GetSellablePricesRow, error)
@@ -97,12 +105,14 @@ type Querier interface {
 	IncrementVote(ctx context.Context, arg IncrementVoteParams) error
 	InsertNextUnlockProgress(ctx context.Context, contributionsAccumulated int32) (int32, error)
 	InsertNode(ctx context.Context, arg InsertNodeParams) (int32, error)
+	InsertNodePrerequisite(ctx context.Context, arg InsertNodePrerequisiteParams) error
 	InvalidateTokensForSource(ctx context.Context, arg InvalidateTokensForSourceParams) error
 	IsItemBuyable(ctx context.Context, internalName string) (bool, error)
 	IsNodeUnlocked(ctx context.Context, arg IsNodeUnlockedParams) (bool, error)
 	IsRecipeUnlocked(ctx context.Context, arg IsRecipeUnlockedParams) (bool, error)
 	IsUserProgressionUnlocked(ctx context.Context, arg IsUserProgressionUnlockedParams) (bool, error)
 	JoinGamble(ctx context.Context, arg JoinGambleParams) error
+	LogEvent(ctx context.Context, arg LogEventParams) error
 	RecordEngagement(ctx context.Context, arg RecordEngagementParams) error
 	RecordEvent(ctx context.Context, arg RecordEventParams) (RecordEventRow, error)
 	RecordJobXPEvent(ctx context.Context, arg RecordJobXPEventParams) error

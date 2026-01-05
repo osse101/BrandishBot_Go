@@ -3,6 +3,8 @@ package postgres
 import (
 	"context"
 	"fmt"
+
+	"github.com/osse101/BrandishBot_Go/internal/database/generated"
 )
 
 // SyncPrerequisites synchronizes a node's prerequisites in the junction table
@@ -13,20 +15,21 @@ func (r *progressionRepository) SyncPrerequisites(ctx context.Context, nodeID in
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer SafeRollback(ctx, tx)
+
+	q := r.q.WithTx(tx)
 	
 	// Clear existing prerequisites for this node
-	_, err = tx.Exec(ctx, `DELETE FROM progression_prerequisites WHERE node_id = $1`, nodeID)
+	err = q.ClearNodePrerequisites(ctx, int32(nodeID))
 	if err != nil {
 		return fmt.Errorf("failed to clear prerequisites: %w", err)
 	}
 	
 	// Insert new prerequisites
 	for _, prereqID := range prerequisiteIDs {
-		_, err = tx.Exec(ctx, `
-			INSERT INTO progression_prerequisites (node_id, prerequisite_node_id)
-			VALUES ($1, $2)
-			ON CONFLICT (node_id, prerequisite_node_id) DO NOTHING
-		`, nodeID, prereqID)
+		err = q.InsertNodePrerequisite(ctx, generated.InsertNodePrerequisiteParams{
+			NodeID:             int32(nodeID),
+			PrerequisiteNodeID: int32(prereqID),
+		})
 		if err != nil {
 			return fmt.Errorf("failed to insert prerequisite: %w", err)
 		}
