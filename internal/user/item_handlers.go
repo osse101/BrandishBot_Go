@@ -140,13 +140,14 @@ func (s *service) aggregateDropsAndUpdateInventory(inventory *domain.Inventory, 
 		// Get display name with shine level
 		itemDisplayName := s.namingResolver.GetDisplayName(drop.ItemName, drop.ShineLevel)
 
+		// Write drop info directly to builder to minimize allocations
+		fmt.Fprintf(msgBuilder, "%dx %s", drop.Quantity, itemDisplayName)
+
 		// Add shine annotation for visual impact
-		shineAnnotation := ""
 		if drop.ShineLevel != "" && drop.ShineLevel != lootbox.ShineCommon {
-			shineAnnotation = fmt.Sprintf(" [%s!]", drop.ShineLevel)
+			fmt.Fprintf(msgBuilder, " [%s!]", drop.ShineLevel)
 		}
 
-		msgBuilder.WriteString(fmt.Sprintf("%dx %s%s", drop.Quantity, itemDisplayName, shineAnnotation))
 		first = false
 	}
 
