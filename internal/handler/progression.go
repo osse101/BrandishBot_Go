@@ -534,6 +534,25 @@ func (h *ProgressionHandlers) HandleAdminAddContribution() http.HandlerFunc {
 	}
 }
 
+// HandleAdminReloadWeights invalidates the engagement weight cache
+// @Summary Admin reload weights
+// @Description Invalidate engagement weight cache to force reload from database (admin only)
+// @Tags progression,admin
+// @Produce json
+// @Success 200 {object} SuccessResponse
+// @Router /admin/progression/reload-weights [post]
+func (h *ProgressionHandlers) HandleAdminReloadWeights() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromContext(r.Context())
+
+		h.service.InvalidateWeightCache()
+
+		log.Info("Admin invalidated engagement weight cache")
+		respondJSON(w, http.StatusOK, SuccessResponse{Message: "Engagement weight cache invalidated successfully"})
+	}
+}
+
+
 // Request/Response types
 
 type ProgressionTreeResponse struct {

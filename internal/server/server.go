@@ -168,8 +168,14 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 			r.Route("/job", func(r chi.Router) {
 				r.Post("/award-xp", adminJobHandler.HandleAdminAwardXP)
 			})
+			
+			// Admin progression routes
+			r.Route("/progression", func(r chi.Router) {
+				r.Post("/reload-weights", progressionHandlers.HandleAdminReloadWeights())
+			})
 		})
 	})
+
 
 	// Swagger documentation
 	r.Get("/swagger/*", httpSwagger.WrapHandler)

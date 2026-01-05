@@ -130,6 +130,10 @@ func main() {
 	cmd, handler = discord.AdminAddContributionCommand()
 	bot.Registry.Register(cmd, handler)
 
+	cmd, handler = discord.AdminReloadWeightsCommand()
+	bot.Registry.Register(cmd, handler)
+
+
 	cmd, handler = discord.InfoCommand()
 	bot.Registry.Register(cmd, handler)
 

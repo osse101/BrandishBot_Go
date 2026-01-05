@@ -380,3 +380,47 @@ func AdminAddContributionCommand() (*discordgo.ApplicationCommand, CommandHandle
 
 	return cmd, handler
 }
+
+// AdminReloadWeightsCommand returns the reload weights command definition and handler
+func AdminReloadWeightsCommand() (*discordgo.ApplicationCommand, CommandHandler) {
+	cmd := &discordgo.ApplicationCommand{
+		Name:        "admin-reload-weights",
+		Description: "[Admin] Reload engagement weight cache",
+		DefaultMemberPermissions: &[]int64{discordgo.PermissionAdministrator}[0],
+	}
+
+	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
+		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
+		}); err != nil {
+			slog.Error("Failed to send deferred response", "error", err)
+			return
+		}
+
+		msg, err := client.AdminReloadWeights()
+		if err != nil {
+			errorMsg := fmt.Sprintf("❌ Failed to reload weights: %v", err)
+			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+				Content: &errorMsg,
+			})
+			return
+		}
+
+		embed := &discordgo.MessageEmbed{
+			Title:       "🔄 Engagement Weights Reloaded",
+			Description: msg,
+			Color:       0x3498db, // Blue
+			Footer: &discordgo.MessageEmbedFooter{
+				Text: "BrandishBot Admin",
+			},
+		}
+
+		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			Embeds: &[]*discordgo.MessageEmbed{embed},
+		}); err != nil {
+			slog.Error("Failed to edit interaction response", "error", err)
+		}
+	}
+
+	return cmd, handler
+}

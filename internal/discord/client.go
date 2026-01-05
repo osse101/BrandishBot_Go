@@ -459,6 +459,35 @@ func (c *APIClient) AdminResetProgression(resetBy, reason string, preserveUser b
 	return resetResp.Message, nil
 }
 
+// AdminReloadWeights invalidates the engagement weight cache (admin only)
+func (c *APIClient) AdminReloadWeights() (string, error) {
+	resp, err := c.doRequest(http.MethodPost, "/api/admin/progression/reload-weights", nil)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		var errResp struct {
+			Error string `json:"error"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
+			return "", fmt.Errorf("API error: %s", errResp.Error)
+		}
+		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	var reloadResp struct {
+		Message string `json:"message"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&reloadResp); err != nil {
+		return "", fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return reloadResp.Message, nil
+}
+
+
 // AdminStartVoting starts a new voting session (admin only)
 func (c *APIClient) AdminStartVoting() (string, error) {
 	resp, err := c.doRequest(http.MethodPost, "/api/v1/progression/admin/start-voting", nil)
