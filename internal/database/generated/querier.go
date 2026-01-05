@@ -13,19 +13,45 @@ import (
 )
 
 type Querier interface {
+	AddContribution(ctx context.Context, arg AddContributionParams) error
+	AddVotingOption(ctx context.Context, arg AddVotingOptionParams) error
+	CleanupExpiredTokens(ctx context.Context) error
+	ClearAllUserProgression(ctx context.Context) error
+	ClearAllUserVotes(ctx context.Context) error
+	ClearAllVoting(ctx context.Context) error
+	ClearUnlocksExceptRoot(ctx context.Context) error
+	CompleteUnlock(ctx context.Context, id int32) error
+	CountUnlocks(ctx context.Context) (int64, error)
 	CreateGamble(ctx context.Context, arg CreateGambleParams) error
+	CreateToken(ctx context.Context, arg CreateTokenParams) error
+	CreateUnlockProgress(ctx context.Context) (int32, error)
 	CreateUser(ctx context.Context, username string) (uuid.UUID, error)
+	CreateVotingSession(ctx context.Context) (int32, error)
 	DeleteInventory(ctx context.Context, userID uuid.UUID) error
 	DeleteUser(ctx context.Context, userID uuid.UUID) error
 	DeleteUserPlatformLink(ctx context.Context, arg DeleteUserPlatformLinkParams) error
+	EndVoting(ctx context.Context, arg EndVotingParams) error
+	EndVotingSession(ctx context.Context, arg EndVotingSessionParams) error
 	EnsureInventoryRow(ctx context.Context, arg EnsureInventoryRowParams) error
 	GetActiveGamble(ctx context.Context) (Gamble, error)
+	GetActiveSession(ctx context.Context) (GetActiveSessionRow, error)
+	GetActiveUnlockProgress(ctx context.Context) (ProgressionUnlockProgress, error)
+	GetActiveVoting(ctx context.Context) (ProgressionVoting, error)
 	GetAllJobs(ctx context.Context) ([]Job, error)
+	GetAllNodes(ctx context.Context) ([]GetAllNodesRow, error)
 	GetAllRecipes(ctx context.Context) ([]GetAllRecipesRow, error)
+	GetAllUnlocks(ctx context.Context) ([]ProgressionUnlock, error)
 	GetAssociatedUpgradeRecipeID(ctx context.Context, disassembleRecipeID int32) (int32, error)
 	GetBuyablePrices(ctx context.Context) ([]GetBuyablePricesRow, error)
+	GetClaimedTokenForSource(ctx context.Context, arg GetClaimedTokenForSourceParams) (GetClaimedTokenForSourceRow, error)
 	GetDisassembleOutputs(ctx context.Context, recipeID int32) ([]GetDisassembleOutputsRow, error)
 	GetDisassembleRecipeBySourceItemID(ctx context.Context, sourceItemID int32) (DisassembleRecipe, error)
+	GetEngagementMetricsAggregated(ctx context.Context) ([]GetEngagementMetricsAggregatedRow, error)
+	GetEngagementMetricsAggregatedSince(ctx context.Context, recordedAt pgtype.Timestamp) ([]GetEngagementMetricsAggregatedSinceRow, error)
+	GetEngagementWeights(ctx context.Context) ([]GetEngagementWeightsRow, error)
+	GetEventCounts(ctx context.Context, arg GetEventCountsParams) ([]GetEventCountsRow, error)
+	GetEventsByType(ctx context.Context, arg GetEventsByTypeParams) ([]StatsEvent, error)
+	GetEventsByUser(ctx context.Context, arg GetEventsByUserParams) ([]StatsEvent, error)
 	GetGamble(ctx context.Context, id uuid.UUID) (Gamble, error)
 	GetGambleParticipants(ctx context.Context, gambleID uuid.UUID) ([]GetGambleParticipantsRow, error)
 	GetInventory(ctx context.Context, userID uuid.UUID) ([]byte, error)
@@ -39,28 +65,65 @@ type Querier interface {
 	GetJobLevelBonuses(ctx context.Context, arg GetJobLevelBonusesParams) ([]JobLevelBonuse, error)
 	GetLastCooldown(ctx context.Context, arg GetLastCooldownParams) (pgtype.Timestamptz, error)
 	GetLastCooldownForUpdate(ctx context.Context, arg GetLastCooldownForUpdateParams) (pgtype.Timestamptz, error)
+	GetNodeByID(ctx context.Context, id int32) (GetNodeByIDRow, error)
+	GetNodeByKey(ctx context.Context, nodeKey string) (GetNodeByKeyRow, error)
 	GetPlatformID(ctx context.Context, name string) (int32, error)
 	GetRecipeByTargetItemID(ctx context.Context, targetItemID int32) (CraftingRecipe, error)
 	GetSellablePrices(ctx context.Context) ([]GetSellablePricesRow, error)
+	GetSessionByID(ctx context.Context, id int32) (GetSessionByIDRow, error)
+	GetSessionOptions(ctx context.Context, sessionID int32) ([]GetSessionOptionsRow, error)
+	GetSessionVoters(ctx context.Context, sessionID pgtype.Int4) ([]string, error)
+	GetToken(ctx context.Context, token string) (GetTokenRow, error)
+	GetTopUsers(ctx context.Context, arg GetTopUsersParams) ([]GetTopUsersRow, error)
+	GetTotalEngagementScore(ctx context.Context) (int64, error)
+	GetTotalEventCount(ctx context.Context, arg GetTotalEventCountParams) (int64, error)
+	GetUnlock(ctx context.Context, arg GetUnlockParams) (ProgressionUnlock, error)
 	GetUnlockedRecipesForUser(ctx context.Context, userID uuid.UUID) ([]GetUnlockedRecipesForUserRow, error)
 	GetUserByID(ctx context.Context, userID uuid.UUID) (User, error)
 	GetUserByPlatformID(ctx context.Context, arg GetUserByPlatformIDParams) (GetUserByPlatformIDRow, error)
 	GetUserByPlatformUsername(ctx context.Context, arg GetUserByPlatformUsernameParams) (GetUserByPlatformUsernameRow, error)
 	GetUserByUsername(ctx context.Context, username string) (User, error)
+	GetUserEngagementAggregated(ctx context.Context, userID string) ([]GetUserEngagementAggregatedRow, error)
+	GetUserEventCounts(ctx context.Context, arg GetUserEventCountsParams) ([]GetUserEventCountsRow, error)
+	GetUserEventsByType(ctx context.Context, arg GetUserEventsByTypeParams) ([]StatsEvent, error)
 	GetUserJob(ctx context.Context, arg GetUserJobParams) (UserJob, error)
 	GetUserJobs(ctx context.Context, userID uuid.UUID) ([]UserJob, error)
 	GetUserPlatformLinks(ctx context.Context, userID uuid.UUID) ([]GetUserPlatformLinksRow, error)
+	GetUserProgressions(ctx context.Context, arg GetUserProgressionsParams) ([]UserProgression, error)
+	GetVoting(ctx context.Context, arg GetVotingParams) (ProgressionVoting, error)
+	HasUserVoted(ctx context.Context, arg HasUserVotedParams) (bool, error)
+	HasUserVotedInSession(ctx context.Context, arg HasUserVotedInSessionParams) (bool, error)
+	IncrementOptionVote(ctx context.Context, id int32) error
+	IncrementVote(ctx context.Context, arg IncrementVoteParams) error
+	InsertNextUnlockProgress(ctx context.Context, contributionsAccumulated int32) (int32, error)
+	InsertNode(ctx context.Context, arg InsertNodeParams) (int32, error)
+	InvalidateTokensForSource(ctx context.Context, arg InvalidateTokensForSourceParams) error
 	IsItemBuyable(ctx context.Context, internalName string) (bool, error)
+	IsNodeUnlocked(ctx context.Context, arg IsNodeUnlockedParams) (bool, error)
 	IsRecipeUnlocked(ctx context.Context, arg IsRecipeUnlockedParams) (bool, error)
+	IsUserProgressionUnlocked(ctx context.Context, arg IsUserProgressionUnlockedParams) (bool, error)
 	JoinGamble(ctx context.Context, arg JoinGambleParams) error
+	RecordEngagement(ctx context.Context, arg RecordEngagementParams) error
+	RecordEvent(ctx context.Context, arg RecordEventParams) (RecordEventRow, error)
 	RecordJobXPEvent(ctx context.Context, arg RecordJobXPEventParams) error
+	RecordReset(ctx context.Context, arg RecordResetParams) error
+	RecordUserSessionVote(ctx context.Context, arg RecordUserSessionVoteParams) error
+	RecordUserVote(ctx context.Context, arg RecordUserVoteParams) error
+	RelockNode(ctx context.Context, arg RelockNodeParams) error
 	ResetDailyJobXP(ctx context.Context) (pgconn.CommandTag, error)
 	SaveOpenedItem(ctx context.Context, arg SaveOpenedItemParams) error
+	SetUnlockTarget(ctx context.Context, arg SetUnlockTargetParams) error
+	StartVoting(ctx context.Context, arg StartVotingParams) error
+	UnlockNode(ctx context.Context, arg UnlockNodeParams) error
 	UnlockRecipe(ctx context.Context, arg UnlockRecipeParams) error
+	UnlockUserProgression(ctx context.Context, arg UnlockUserProgressionParams) error
 	UpdateCooldown(ctx context.Context, arg UpdateCooldownParams) error
 	UpdateGambleState(ctx context.Context, arg UpdateGambleStateParams) error
 	UpdateGambleStateIfMatches(ctx context.Context, arg UpdateGambleStateIfMatchesParams) (pgconn.CommandTag, error)
 	UpdateInventory(ctx context.Context, arg UpdateInventoryParams) error
+	UpdateNode(ctx context.Context, arg UpdateNodeParams) error
+	UpdateOptionLastHighest(ctx context.Context, id int32) error
+	UpdateToken(ctx context.Context, arg UpdateTokenParams) error
 	UpdateUser(ctx context.Context, arg UpdateUserParams) error
 	UpdateUserTimestamp(ctx context.Context, userID uuid.UUID) error
 	UpsertUserJob(ctx context.Context, arg UpsertUserJobParams) error
