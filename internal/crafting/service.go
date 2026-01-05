@@ -58,6 +58,8 @@ type CraftingResult struct {
 	Quantity      int    `json:"quantity"`
 	IsMasterwork  bool   `json:"is_masterwork"`
 	BonusQuantity int    `json:"bonus_quantity"`
+	NewLevel      int    `json:"new_level,omitempty"`
+	LeveledUp     bool   `json:"leveled_up,omitempty"`
 }
 
 // DisassembleResult contains the result of a disassemble operation
@@ -66,6 +68,8 @@ type DisassembleResult struct {
 	QuantityProcessed int            `json:"quantity_processed"`
 	IsPerfectSalvage  bool           `json:"is_perfect_salvage"`
 	Multiplier        float64        `json:"multiplier"`
+	NewLevel          int            `json:"new_level,omitempty"`
+	LeveledUp         bool           `json:"leveled_up,omitempty"`
 }
 
 // Service defines the interface for crafting operations
@@ -253,10 +257,16 @@ func (s *service) UpgradeItem(ctx context.Context, platform, platformID, usernam
 		return nil, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	// Award Blacksmith XP (don't fail upgrade if XP award fails)
-	// Run async with detached context to prevent cancellation affecting XP award
-	s.wg.Add(1)
-	go s.awardBlacksmithXP(context.Background(), user.ID, actualQuantity, "upgrade", itemName)
+	// Award Blacksmith XP (synchronous for feedback)
+	xpResult, err := s.awardBlacksmithXP(ctx, user.ID, actualQuantity, "upgrade", itemName)
+	if err != nil {
+		log.Warn("Failed to award Blacksmith XP", "error", err)
+	}
+
+	if xpResult != nil {
+		result.NewLevel = xpResult.NewLevel
+		result.LeveledUp = xpResult.LeveledUp
+	}
 
 	log.Info("Items upgraded", "username", username, "item", itemName, "quantity", result.Quantity, "masterwork", result.IsMasterwork)
 
@@ -550,18 +560,27 @@ func (s *service) DisassembleItem(ctx context.Context, platform, platformID, use
 		return nil, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	// Award Blacksmith XP (don't fail disassemble if XP award fails)
-	// Run async with detached context to prevent cancellation affecting XP award
-	s.wg.Add(1)
-	go s.awardBlacksmithXP(context.Background(), user.ID, actualQuantity, "disassemble", itemName)
+	// Award Blacksmith XP (synchronous for feedback)
+	xpResult, err := s.awardBlacksmithXP(ctx, user.ID, actualQuantity, "disassemble", itemName)
+	if err != nil {
+		log.Warn("Failed to award Blacksmith XP", "error", err)
+	}
 
 	log.Info("Items disassembled", "username", username, "item", itemName, "quantity", actualQuantity, "outputs", outputMap, "perfect_salvage", perfectSalvageTriggered)
-	return &DisassembleResult{
+
+	result := &DisassembleResult{
 		Outputs:           outputMap,
 		QuantityProcessed: actualQuantity,
 		IsPerfectSalvage:  perfectSalvageTriggered,
 		Multiplier:        PerfectSalvageMultiplier,
-	}, nil
+	}
+
+	if xpResult != nil {
+		result.NewLevel = xpResult.NewLevel
+		result.LeveledUp = xpResult.LeveledUp
+	}
+
+	return result, nil
 }
 
 func (s *service) getAndValidateDisassembleRecipe(ctx context.Context, itemID int, userID string, itemName string) (*domain.DisassembleRecipe, error) {
@@ -610,12 +629,9 @@ func (s *service) calculateDisassembleQuantity(inventory *domain.Inventory, item
 }
 
 // awardBlacksmithXP awards Blacksmith job XP for crafting operations
-// NOTE: Caller must call s.wg.Add(1) before launching this in a goroutine
-func (s *service) awardBlacksmithXP(ctx context.Context, userID string, quantity int, source, itemName string) {
-	defer s.wg.Done()
-
+func (s *service) awardBlacksmithXP(ctx context.Context, userID string, quantity int, source, itemName string) (*domain.XPAwardResult, error) {
 	if s.jobService == nil {
-		return // Job system not enabled
+		return nil, nil // Job system not enabled
 	}
 
 	// Use exported constant for XP per item
@@ -631,9 +647,14 @@ func (s *service) awardBlacksmithXP(ctx context.Context, userID string, quantity
 	if err != nil {
 		// Log but don't fail the operation
 		logger.FromContext(ctx).Warn("Failed to award Blacksmith XP", "error", err, "user_id", userID)
-	} else if result != nil && result.LeveledUp {
+		return nil, err
+	}
+
+	if result != nil && result.LeveledUp {
 		logger.FromContext(ctx).Info("Blacksmith leveled up!", "user_id", userID, "new_level", result.NewLevel)
 	}
+
+	return result, nil
 }
 
 // Shutdown gracefully shuts down the crafting service by waiting for all async operations to complete

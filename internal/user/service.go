@@ -1190,9 +1190,11 @@ func (s *service) processSearchSuccess(ctx context.Context, user *domain.User, r
 		return "", fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	// Award Explorer XP for finding item (async, don't block)
-	s.wg.Add(1)
-	go s.awardExplorerXP(context.Background(), user.ID, item.InternalName, params.xpMultiplier)
+	// Award Explorer XP for finding item (synchronous for feedback)
+	xpResult, err := s.awardExplorerXP(ctx, user.ID, item.InternalName, params.xpMultiplier)
+	if err != nil {
+		log.Warn("Failed to award Explorer XP", "error", err)
+	}
 
 	// Get display name with shine (empty shine for search results)
 	displayName := s.namingResolver.GetDisplayName(item.InternalName, "")
@@ -1216,8 +1218,20 @@ func (s *service) processSearchSuccess(ctx context.Context, user *domain.User, r
 
 	if params.isFirstSearchDaily {
 		resultMessage += domain.MsgFirstSearchBonus
+		// Show streak on success too!
+		if s.statsService != nil {
+			streak, err := s.statsService.GetUserCurrentStreak(ctx, user.ID)
+			if err == nil && streak > 1 {
+				resultMessage += fmt.Sprintf(domain.MsgStreakBonus, streak)
+			}
+		}
 	} else if params.isDiminished {
 		resultMessage += " (Exhausted)"
+	}
+
+	// Add Level Up Feedback
+	if xpResult != nil && xpResult.LeveledUp {
+		resultMessage += fmt.Sprintf(" (Explorer Level Up! 🆙 %d)", xpResult.NewLevel)
 	}
 
 	return resultMessage, nil
@@ -1348,11 +1362,9 @@ func (s *service) getUserOrRegister(ctx context.Context, platform, platformID, u
 }
 
 // awardExplorerXP awards Explorer job XP for finding items during search
-func (s *service) awardExplorerXP(ctx context.Context, userID, itemName string, xpMultiplier float64) {
-	defer s.wg.Done()
-
+func (s *service) awardExplorerXP(ctx context.Context, userID, itemName string, xpMultiplier float64) (*domain.XPAwardResult, error) {
 	if s.jobService == nil {
-		return // Job system not enabled
+		return nil, nil // Job system not enabled
 	}
 
 	xp := int(float64(job.ExplorerXPPerItem) * xpMultiplier)
@@ -1368,9 +1380,14 @@ func (s *service) awardExplorerXP(ctx context.Context, userID, itemName string, 
 	result, err := s.jobService.AwardXP(ctx, userID, job.JobKeyExplorer, xp, "search", metadata)
 	if err != nil {
 		logger.FromContext(ctx).Warn("Failed to award Explorer XP", "error", err, "user_id", userID)
-	} else if result != nil && result.LeveledUp {
+		return nil, err
+	}
+
+	if result != nil && result.LeveledUp {
 		logger.FromContext(ctx).Info("Explorer leveled up!", "user_id", userID, "new_level", result.NewLevel)
 	}
+
+	return result, nil
 }
 
 func (s *service) Shutdown(ctx context.Context) error {
