@@ -47,7 +47,7 @@ func TestStartGamble_Concurrent_RaceCondition(t *testing.T) {
 	// Simulate one success and one failure due to constraint
 	repo.On("CreateGamble", ctx, mock.Anything).Return(nil).Once()
 	repo.On("CreateGamble", ctx, mock.Anything).Return(domain.ErrGambleAlreadyActive).Once()
-	
+
 	repo.On("JoinGamble", ctx, mock.Anything).Return(nil).Maybe()
 
 	var wg sync.WaitGroup
@@ -138,7 +138,7 @@ func TestExecuteGamble_Concurrent_Idempotent(t *testing.T) {
 	}
 
 	repo.On("GetGamble", ctx, gambleID).Return(gamble, nil)
-	
+
 	tx1, tx2 := new(MockTx), new(MockTx)
 	repo.On("BeginGambleTx", ctx).Return(tx1, nil).Once()
 	repo.On("BeginGambleTx", ctx).Return(tx2, nil).Once()

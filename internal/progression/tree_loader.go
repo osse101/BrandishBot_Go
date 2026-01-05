@@ -28,24 +28,24 @@ type TreeConfig struct {
 
 // NodeConfig represents a single node in the progression tree JSON
 type NodeConfig struct {
-	Key         string   `json:"key"`          // node_key in DB
-	Name        string   `json:"name"`         // display_name
-	Type        string   `json:"type"`         // node_type: feature, item, upgrade
-	Description string   `json:"description"`
-	
+	Key         string `json:"key"`  // node_key in DB
+	Name        string `json:"name"` // display_name
+	Type        string `json:"type"` // node_type: feature, item, upgrade
+	Description string `json:"description"`
+
 	// Dynamic cost calculation inputs
-	Tier        int      `json:"tier"`         // 0-4: Foundation → Endgame
-	Size        string   `json:"size"`         // small, medium, large (1:2:4 multiplier)
-	MaxLevel    int      `json:"max_level"`
-	
+	Tier     int    `json:"tier"` // 0-4: Foundation → Endgame
+	Size     string `json:"size"` // small, medium, large (1:2:4 multiplier)
+	MaxLevel int    `json:"max_level"`
+
 	// Categorization
-	Category    string   `json:"category"`     // Grouping: economy, combat, progression, etc.
-	
+	Category string `json:"category"` // Grouping: economy, combat, progression, etc.
+
 	// Prerequisites (breaking: was single parent, now supports multiple)
 	Prerequisites []string `json:"prerequisites"` // List of node keys that must be unlocked first (AND logic)
-	
-	SortOrder   int      `json:"sort_order"`
-	AutoUnlock  bool     `json:"auto_unlock"`  // If true, node is auto-unlocked (skips voting)
+
+	SortOrder  int  `json:"sort_order"`
+	AutoUnlock bool `json:"auto_unlock"` // If true, node is auto-unlocked (skips voting)
 }
 
 // TreeLoader handles loading and validating progression tree configuration
@@ -97,20 +97,20 @@ func (t *treeLoader) Validate(config *TreeConfig) error {
 
 	// Build lookup maps
 	nodesByKey := make(map[string]*NodeConfig, len(config.Nodes))
-	
+
 	// Check for duplicate keys and build index
 	for i := range config.Nodes {
 		node := &config.Nodes[i]
-		
+
 		if node.Key == "" {
 			return fmt.Errorf("%w: node at index %d has empty key", ErrInvalidConfig, i)
 		}
-		
+
 		if _, exists := nodesByKey[node.Key]; exists {
 			return fmt.Errorf("%w: '%s'", ErrDuplicateNodeKey, node.Key)
 		}
 		nodesByKey[node.Key] = node
-		
+
 		// Validate required fields
 		if node.Name == "" {
 			return fmt.Errorf("%w: node '%s' has empty name", ErrInvalidConfig, node.Key)
@@ -121,17 +121,17 @@ func (t *treeLoader) Validate(config *TreeConfig) error {
 		if node.MaxLevel <= 0 {
 			return fmt.Errorf("%w: node '%s' has invalid max_level %d", ErrInvalidConfig, node.Key, node.MaxLevel)
 		}
-		
+
 		// Validate tier
 		if err := ValidateTier(node.Tier); err != nil {
 			return fmt.Errorf("%w: node '%s' - %v", ErrInvalidConfig, node.Key, err)
 		}
-		
+
 		// Validate size
 		if err := ValidateSize(node.Size); err != nil {
 			return fmt.Errorf("%w: node '%s' - %v", ErrInvalidConfig, node.Key, err)
 		}
-		
+
 		// Validate category
 		if node.Category == "" {
 			return fmt.Errorf("%w: node '%s' has empty category", ErrInvalidConfig, node.Key)
@@ -159,7 +159,7 @@ func (t *treeLoader) Validate(config *TreeConfig) error {
 func detectCycles(nodes []NodeConfig, nodesByKey map[string]*NodeConfig) error {
 	// State: 0 = unvisited, 1 = visiting, 2 = visited
 	state := make(map[string]int, len(nodes))
-	
+
 	var dfs func(key string) error
 	dfs = func(key string) error {
 		if state[key] == 1 {
@@ -168,9 +168,9 @@ func detectCycles(nodes []NodeConfig, nodesByKey map[string]*NodeConfig) error {
 		if state[key] == 2 {
 			return nil
 		}
-		
+
 		state[key] = 1 // visiting
-		
+
 		node := nodesByKey[key]
 		// Check all prerequisites for cycles
 		for _, prereqKey := range node.Prerequisites {
@@ -178,11 +178,11 @@ func detectCycles(nodes []NodeConfig, nodesByKey map[string]*NodeConfig) error {
 				return err
 			}
 		}
-		
+
 		state[key] = 2 // visited
 		return nil
 	}
-	
+
 	for _, node := range nodes {
 		if state[node.Key] == 0 {
 			if err := dfs(node.Key); err != nil {
@@ -190,7 +190,7 @@ func detectCycles(nodes []NodeConfig, nodesByKey map[string]*NodeConfig) error {
 			}
 		}
 	}
-	
+
 	return nil
 }
 
@@ -234,14 +234,14 @@ func (t *treeLoader) SyncToDatabase(ctx context.Context, config *TreeConfig, rep
 			for _, prereqKey := range nodeConfig.Prerequisites {
 				// Check if prerequisite exists in DB or was just inserted
 				if _, ok := existingByKey[prereqKey]; !ok {
-					if _,ok := insertedNodeIDs[prereqKey]; !ok {
+					if _, ok := insertedNodeIDs[prereqKey]; !ok {
 						// Prerequisite not yet processed, skip for now
 						allPrereqsProcessed = false
 						break
 					}
 				}
 			}
-			
+
 			if !allPrereqsProcessed {
 				continue
 			}
@@ -249,14 +249,14 @@ func (t *treeLoader) SyncToDatabase(ctx context.Context, config *TreeConfig, rep
 			// Check if node exists in DB
 			if existing, ok := existingByKey[nodeConfig.Key]; ok {
 				// Node exists - check if update needed
-			needsUpdate := existing.DisplayName != nodeConfig.Name ||
-				existing.Description != nodeConfig.Description ||
-				existing.MaxLevel != nodeConfig.MaxLevel ||
-				existing.SortOrder != nodeConfig.SortOrder ||
-				existing.NodeType != nodeConfig.Type
-			
-			// Note: We don't compare tier, size, category yet - those are new fields
-			// Database migration will add them, repo will handle them
+				needsUpdate := existing.DisplayName != nodeConfig.Name ||
+					existing.Description != nodeConfig.Description ||
+					existing.MaxLevel != nodeConfig.MaxLevel ||
+					existing.SortOrder != nodeConfig.SortOrder ||
+					existing.NodeType != nodeConfig.Type
+
+					// Note: We don't compare tier, size, category yet - those are new fields
+					// Database migration will add them, repo will handle them
 
 				if needsUpdate {
 					// Update existing node
@@ -264,43 +264,43 @@ func (t *treeLoader) SyncToDatabase(ctx context.Context, config *TreeConfig, rep
 					if err != nil {
 						return nil, fmt.Errorf("failed to update node '%s': %w", nodeConfig.Key, err)
 					}
-					
+
 					// Update prerequisites in junction table
 					if err := syncPrerequisites(ctx, repo, existing.ID, nodeConfig.Prerequisites, existingByKey, insertedNodeIDs); err != nil {
 						return nil, fmt.Errorf("failed to sync prerequisites for '%s': %w", nodeConfig.Key, err)
 					}
-					
+
 					result.NodesUpdated++
 					log.Info("Updated progression node", "key", nodeConfig.Key)
 				} else {
 					result.NodesSkipped++
 				}
 			} else {
-			// Insert new node
-			nodeID, err := insertNode(ctx, repo, &nodeConfig)
-			if err != nil {
-				return nil, fmt.Errorf("failed to insert node '%s': %w", nodeConfig.Key, err)
-			}
-			insertedNodeIDs[nodeConfig.Key] = nodeID
-			
-			// Sync prerequisites in junction table
-			if err := syncPrerequisites(ctx, repo, nodeID, nodeConfig.Prerequisites, existingByKey, insertedNodeIDs); err != nil {
-				return nil, fmt.Errorf("failed to sync prerequisites for '%s': %w", nodeConfig.Key, err)
-			}
-			
-			result.NodesInserted++
-			log.Info("Inserted progression node", "key", nodeConfig.Key, "id", nodeID)
+				// Insert new node
+				nodeID, err := insertNode(ctx, repo, &nodeConfig)
+				if err != nil {
+					return nil, fmt.Errorf("failed to insert node '%s': %w", nodeConfig.Key, err)
+				}
+				insertedNodeIDs[nodeConfig.Key] = nodeID
 
-			// Handle auto_unlock
-			if nodeConfig.AutoUnlock {
-				if err := repo.UnlockNode(ctx, nodeID, 1, "auto", 0); err != nil {
-					log.Warn("Failed to auto-unlock node", "key", nodeConfig.Key, "error", err)
-				} else {
-					result.AutoUnlocked++
-					log.Info("Auto-unlocked node", "key", nodeConfig.Key)
+				// Sync prerequisites in junction table
+				if err := syncPrerequisites(ctx, repo, nodeID, nodeConfig.Prerequisites, existingByKey, insertedNodeIDs); err != nil {
+					return nil, fmt.Errorf("failed to sync prerequisites for '%s': %w", nodeConfig.Key, err)
+				}
+
+				result.NodesInserted++
+				log.Info("Inserted progression node", "key", nodeConfig.Key, "id", nodeID)
+
+				// Handle auto_unlock
+				if nodeConfig.AutoUnlock {
+					if err := repo.UnlockNode(ctx, nodeID, 1, "auto", 0); err != nil {
+						log.Warn("Failed to auto-unlock node", "key", nodeConfig.Key, "error", err)
+					} else {
+						result.AutoUnlocked++
+						log.Info("Auto-unlocked node", "key", nodeConfig.Key)
+					}
 				}
 			}
-		}
 			processed[nodeConfig.Key] = true
 			progressMade = true
 		}
@@ -325,13 +325,13 @@ func insertNode(ctx context.Context, repo Repository, config *NodeConfig) (int, 
 	if !ok {
 		return 0, fmt.Errorf("repository does not support node insertion")
 	}
-	
+
 	// Calculate unlock cost based on tier and size
 	unlockCost, err := CalculateUnlockCost(config.Tier, NodeSize(config.Size))
 	if err != nil {
 		return 0, fmt.Errorf("failed to calculate unlock cost: %w", err)
 	}
-	
+
 	return inserter.InsertNode(ctx, &domain.ProgressionNode{
 		NodeKey:     config.Key,
 		NodeType:    config.Type,
@@ -353,13 +353,13 @@ func updateNode(ctx context.Context, repo Repository, nodeID int, config *NodeCo
 	if !ok {
 		return fmt.Errorf("repository does not support node updates")
 	}
-	
+
 	// Calculate unlock cost based on tier and size
 	unlockCost, err := CalculateUnlockCost(config.Tier, NodeSize(config.Size))
 	if err != nil {
 		return fmt.Errorf("failed to calculate unlock cost: %w", err)
 	}
-	
+
 	return updater.UpdateNode(ctx, nodeID, &domain.ProgressionNode{
 		NodeKey:     config.Key,
 		NodeType:    config.Type,

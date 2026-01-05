@@ -16,11 +16,11 @@ import (
 
 // mockBus is a test double for event.Bus
 type mockBus struct {
-	mu            sync.Mutex
-	calls         []Event
-	failCount     int32 // Atomic counter for failures
-	shouldFail    func(attempt int) bool
-	publishDelay  time.Duration
+	mu           sync.Mutex
+	calls        []Event
+	failCount    int32 // Atomic counter for failures
+	shouldFail   func(attempt int) bool
+	publishDelay time.Duration
 }
 
 func (m *mockBus) Publish(ctx context.Context, event Event) error {

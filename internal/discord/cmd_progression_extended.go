@@ -74,8 +74,8 @@ func AdminRelockCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 // AdminInstantResolveCommand returns the admin instant resolve command
 func AdminInstantResolveCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	cmd := &discordgo.ApplicationCommand{
-		Name:        "admin-instant-resolve",
-		Description: "[Admin] Force end voting and unlock winner immediately",
+		Name:                     "admin-instant-resolve",
+		Description:              "[Admin] Force end voting and unlock winner immediately",
 		DefaultMemberPermissions: &[]int64{discordgo.PermissionAdministrator}[0],
 	}
 
@@ -179,8 +179,8 @@ func AdminResetTreeCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 // AdminTreeStatusCommand returns the tree status command
 func AdminTreeStatusCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	cmd := &discordgo.ApplicationCommand{
-		Name:        "admin-tree-status",
-		Description: "[Admin] View full progression tree status",
+		Name:                     "admin-tree-status",
+		Description:              "[Admin] View full progression tree status",
 		DefaultMemberPermissions: &[]int64{discordgo.PermissionAdministrator}[0],
 	}
 
@@ -200,7 +200,7 @@ func AdminTreeStatusCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		}
 
 		statusText := formatTreeStatus(nodes)
-		
+
 		// Check length limit
 		if len(statusText) > 4000 {
 			// Send as file if too long
@@ -241,8 +241,8 @@ func AdminTreeStatusCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 // AdminStartVotingCommand returns the start voting command
 func AdminStartVotingCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	cmd := &discordgo.ApplicationCommand{
-		Name:        "admin-start-voting",
-		Description: "[Admin] Start a new voting session",
+		Name:                     "admin-start-voting",
+		Description:              "[Admin] Start a new voting session",
 		DefaultMemberPermissions: &[]int64{discordgo.PermissionAdministrator}[0],
 	}
 
@@ -285,8 +285,8 @@ func AdminStartVotingCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 // AdminEndVotingCommand returns the end voting command
 func AdminEndVotingCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	cmd := &discordgo.ApplicationCommand{
-		Name:        "admin-end-voting",
-		Description: "[Admin] End current voting session",
+		Name:                     "admin-end-voting",
+		Description:              "[Admin] End current voting session",
 		DefaultMemberPermissions: &[]int64{discordgo.PermissionAdministrator}[0],
 	}
 
@@ -384,8 +384,8 @@ func AdminAddContributionCommand() (*discordgo.ApplicationCommand, CommandHandle
 // AdminReloadWeightsCommand returns the reload weights command definition and handler
 func AdminReloadWeightsCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	cmd := &discordgo.ApplicationCommand{
-		Name:        "admin-reload-weights",
-		Description: "[Admin] Reload engagement weight cache",
+		Name:                     "admin-reload-weights",
+		Description:              "[Admin] Reload engagement weight cache",
 		DefaultMemberPermissions: &[]int64{discordgo.PermissionAdministrator}[0],
 	}
 

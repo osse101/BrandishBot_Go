@@ -75,7 +75,6 @@ func (h *ProgressionHandlers) HandleGetAvailable() http.HandlerFunc {
 	}
 }
 
-
 // HandleVote allows a user to vote for the next unlock
 // @Summary Vote for unlock
 // @Description Cast a vote for the next unlock (one vote per user per node/level)
@@ -551,7 +550,6 @@ func (h *ProgressionHandlers) HandleAdminReloadWeights() http.HandlerFunc {
 		respondJSON(w, http.StatusOK, SuccessResponse{Message: "Engagement weight cache invalidated successfully"})
 	}
 }
-
 
 // Request/Response types
 

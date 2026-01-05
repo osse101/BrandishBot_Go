@@ -30,13 +30,13 @@ func TestPool_ConnectionsReleased(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		conn, err := pool.Acquire(ctx)
 		require.NoError(t, err, "Failed to acquire connection on iteration %d", i)
-		
+
 		// Do something with connection
 		var result int
 		err = conn.QueryRow(ctx, "SELECT 1").Scan(&result)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, result)
-		
+
 		conn.Release()
 	}
 
@@ -196,22 +196,22 @@ func getTestDBConnString(t *testing.T) string {
 	dbName := getEnvOrSkip(t, "DB_NAME", "brandishbot")
 
 	connString := "postgres://" + dbUser + ":" + dbPassword + "@" + dbHost + ":" + dbPort + "/" + dbName + "?sslmode=disable"
-	
+
 	// Try to connect to verify database is available
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	
+
 	pool, err := pgxpool.New(ctx, connString)
 	if err != nil {
 		t.Skipf("Skipping test: cannot connect to test database: %v", err)
 	}
 	defer pool.Close()
-	
+
 	// Verify we can actually ping the database
 	if err := pool.Ping(ctx); err != nil {
 		t.Skipf("Skipping test: cannot ping test database: %v", err)
 	}
-	
+
 	return connString
 }
 

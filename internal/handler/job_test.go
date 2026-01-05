@@ -164,15 +164,15 @@ func TestHandleAwardXP(t *testing.T) {
 	h := NewJobHandler(svc)
 
 	reqBody := AwardXPRequest{
-		UserID: "u1",
-		JobKey: "j1",
+		UserID:   "u1",
+		JobKey:   "j1",
 		XPAmount: 100,
-		Source: "test",
+		Source:   "test",
 	}
 	body, _ := json.Marshal(reqBody)
 
 	awardResult := &domain.XPAwardResult{
-		JobKey: "j1",
+		JobKey:   "j1",
 		XPGained: 100,
 		NewLevel: 1,
 	}

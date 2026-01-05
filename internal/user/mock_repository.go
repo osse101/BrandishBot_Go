@@ -95,7 +95,7 @@ func (m *MockRepository) GetUserByPlatformUsername(ctx context.Context, platform
 		case domain.PlatformDiscord:
 			hasPlatform = u.DiscordID != ""
 		}
-		
+
 		// Case-insensitive username match
 		if hasPlatform && strings.EqualFold(u.Username, username) {
 			return u, nil
@@ -103,7 +103,6 @@ func (m *MockRepository) GetUserByPlatformUsername(ctx context.Context, platform
 	}
 	return nil, domain.ErrUserNotFound
 }
-
 
 func (m *MockRepository) GetInventory(ctx context.Context, userID string) (*domain.Inventory, error) {
 	if inv, ok := m.inventories[userID]; ok {

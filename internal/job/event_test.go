@@ -101,7 +101,6 @@ func (m *MockStats) GetLeaderboard(ctx context.Context, eventType domain.EventTy
 	return nil, nil
 }
 
-
 func TestAwardXP_PublishesEventOnLevelUp(t *testing.T) {
 	// Setup
 	mockRepo := new(MockRepo)
@@ -164,7 +163,7 @@ func TestAwardXP_PublishesEventOnLevelUp(t *testing.T) {
 
 	// Give the async publisher a moment to process
 	time.Sleep(50 * time.Millisecond)
-	
+
 	mockBus.AssertExpectations(t)
 	mockRepo.AssertExpectations(t)
 	mockProg.AssertExpectations(t)

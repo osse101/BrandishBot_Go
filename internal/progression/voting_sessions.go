@@ -37,7 +37,7 @@ func (s *service) StartVotingSession(ctx context.Context, unlockedNodeID *int) e
 		log.Debug("Created initial unlock progress for new voting session")
 	}
 
-	// Get available nodes with met prerequisites  
+	// Get available nodes with met prerequisites
 	available, err := s.GetAvailableUnlocks(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get available nodes: %w", err)
@@ -83,8 +83,8 @@ func (s *service) StartVotingSession(ctx context.Context, unlockedNodeID *int) e
 			if err := s.bus.Publish(ctx, event.Event{
 				Type: event.ProgressionTargetSet,
 				Payload: map[string]interface{}{
-					"node_key":     node.NodeKey,
-					"target_level": targetLevel,
+					"node_key":      node.NodeKey,
+					"target_level":  targetLevel,
 					"auto_selected": true,
 				},
 			}); err != nil {
@@ -152,7 +152,7 @@ func (s *service) StartVotingSession(ctx context.Context, unlockedNodeID *int) e
 				}); err != nil {
 					log.Error("Failed to publish progression cycle completed event", "error", err)
 				} else {
-					log.Info("Published progression cycle completed event", 
+					log.Info("Published progression cycle completed event",
 						"unlockedNode", unlockedNode.NodeKey,
 						"sessionID", sessionID)
 				}
@@ -193,7 +193,7 @@ func (s *service) EndVoting(ctx context.Context) (*domain.ProgressionVotingOptio
 	if err != nil {
 		log.Warn("Failed to get active unlock progress", "error", err)
 	}
-	
+
 	if progress == nil {
 		// Defensive: Create progress if missing (shouldn't happen - StartVotingSession should create it)
 		log.Warn("No active unlock progress found during EndVoting - creating as fallback (investigate if this occurs frequently)")
@@ -206,7 +206,7 @@ func (s *service) EndVoting(ctx context.Context) (*domain.ProgressionVotingOptio
 			progress = &domain.UnlockProgress{ID: id} // Minimal object for ID
 		}
 	}
-	
+
 	if progress != nil {
 		err = s.repo.SetUnlockTarget(ctx, progress.ID, winner.NodeID, winner.TargetLevel, session.ID)
 		if err != nil {
@@ -218,7 +218,7 @@ func (s *service) EndVoting(ctx context.Context) (*domain.ProgressionVotingOptio
 				s.cachedTargetCost = winner.NodeDetails.UnlockCost
 				s.cachedProgressID = progress.ID
 				s.mu.Unlock()
-				
+
 				log.Debug("Cached unlock threshold",
 					"progressID", progress.ID,
 					"unlockCost", winner.NodeDetails.UnlockCost)
@@ -266,7 +266,7 @@ func (s *service) EndVoting(ctx context.Context) (*domain.ProgressionVotingOptio
 // AddContribution adds contribution points to current unlock progress
 func (s *service) AddContribution(ctx context.Context, amount int) error {
 	log := logger.FromContext(ctx)
-	
+
 	progress, err := s.repo.GetActiveUnlockProgress(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get unlock progress: %w", err)
@@ -312,7 +312,7 @@ func (s *service) AddContribution(ctx context.Context, amount int) error {
 				log.Info("Unlock threshold met, triggering unlock",
 					"accumulated", updatedProgress.ContributionsAccumulated,
 					"required", cachedCost)
-				
+
 				// Non-blocking send to semaphore - if unlock already in progress, skip
 				select {
 				case s.unlockSem <- struct{}{}:

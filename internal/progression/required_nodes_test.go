@@ -42,7 +42,7 @@ func TestGetRequiredNodes_MultiplePrerequisites(t *testing.T) {
 	required, err := service.GetRequiredNodes(ctx, "feature_buy")
 	assert.NoError(t, err)
 	assert.Len(t, required, 2)
-	
+
 	// Should include both economy and money
 	keys := make(map[string]bool)
 	for _, node := range required {

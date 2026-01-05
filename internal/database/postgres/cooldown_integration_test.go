@@ -65,7 +65,6 @@ func TestCooldownService_ConcurrentRequests_Integration(t *testing.T) {
 		t.Fatalf("failed to apply migrations: %v", err)
 	}
 
-
 	// Create a test user first (cooldowns table has FK to users)
 	userID := "550e8400-e29b-41d4-a716-446655440000" // Valid UUID format
 	_, err = pool.Exec(ctx, `
@@ -121,7 +120,7 @@ func TestCooldownService_ConcurrentRequests_Integration(t *testing.T) {
 		"Expected exactly 1 successful request, got %d. Race condition not fixed!", successCount.Load())
 }
 
-//applyMigrations runs all .sql migration files in the given directory
+// applyMigrations runs all .sql migration files in the given directory
 func applyMigrations(ctx context.Context, pool *pgxpool.Pool, migrationsDir string) error {
 	entries, err := os.ReadDir(migrationsDir)
 	if err != nil {

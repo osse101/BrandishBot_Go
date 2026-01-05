@@ -76,7 +76,6 @@ func (m *MockUserService) GetLinkedPlatforms(ctx context.Context, platform, plat
 	return args.Get(0).([]string), args.Error(1)
 }
 
-
 // TestUnlinkCache_RaceCondition validates that unlink cache access is thread-safe
 func TestUnlinkCache_Concurrency(t *testing.T) {
 	repo := new(MockRepository)
@@ -120,13 +119,13 @@ func TestConfirmLink_SourceUserCreationFlow(t *testing.T) {
 	ctx := context.Background()
 
 	token := &LinkToken{
-		Token: "ABCDEF",
-		SourcePlatform: domain.PlatformDiscord,
+		Token:            "ABCDEF",
+		SourcePlatform:   domain.PlatformDiscord,
 		SourcePlatformID: "discord-123",
-		TargetPlatform: domain.PlatformTwitch,
+		TargetPlatform:   domain.PlatformTwitch,
 		TargetPlatformID: "twitch-456",
-		State: StateClaimed,
-		ExpiresAt: time.Now().Add(1 * time.Hour),
+		State:            StateClaimed,
+		ExpiresAt:        time.Now().Add(1 * time.Hour),
 	}
 
 	repo.On("GetClaimedTokenForSource", ctx, domain.PlatformDiscord, "discord-123").Return(token, nil)
@@ -134,7 +133,7 @@ func TestConfirmLink_SourceUserCreationFlow(t *testing.T) {
 
 	// Step 1: Source user search -> Not Found (Triggers creation flow)
 	userService.On("FindUserByPlatformID", ctx, domain.PlatformDiscord, "discord-123").Return(nil, fmt.Errorf("not found"))
-	
+
 	// Step 2: RegisterUser MUST be called for the new source user
 	createdUser := domain.User{ID: "new-source-id", DiscordID: "discord-123"}
 	userService.On("RegisterUser", ctx, mock.MatchedBy(func(u domain.User) bool {
@@ -148,13 +147,13 @@ func TestConfirmLink_SourceUserCreationFlow(t *testing.T) {
 	// Step 4: MergeUsers called with the ID from Step 2 (new-source-id)
 	// If the fix is missing, this would receive "" (empty string)
 	userService.On("MergeUsers", ctx, "new-source-id", "existing-user-id").Return(nil)
-	
+
 	// Step 5: Get Status
 	userService.On("GetLinkedPlatforms", ctx, domain.PlatformDiscord, "discord-123").Return([]string{domain.PlatformDiscord, domain.PlatformTwitch}, nil)
 
 	_, err := svc.ConfirmLink(ctx, domain.PlatformDiscord, "discord-123")
 	assert.NoError(t, err)
-	
+
 	userService.AssertExpectations(t)
 }
 
@@ -170,10 +169,10 @@ func TestInitiateLink_Success(t *testing.T) {
 
 	repo.On("InvalidateTokensForSource", ctx, domain.PlatformDiscord, "discord-123").Return(nil)
 	repo.On("CreateToken", ctx, mock.MatchedBy(func(token *LinkToken) bool {
-		return token.SourcePlatform == domain.PlatformDiscord && 
-		       token.SourcePlatformID == "discord-123" &&
-		       token.State == StatePending &&
-		       len(token.Token) == TokenLength
+		return token.SourcePlatform == domain.PlatformDiscord &&
+			token.SourcePlatformID == "discord-123" &&
+			token.State == StatePending &&
+			len(token.Token) == TokenLength
 	})).Return(nil)
 
 	token, err := svc.InitiateLink(ctx, domain.PlatformDiscord, "discord-123")
@@ -206,8 +205,8 @@ func TestClaimLink_Success(t *testing.T) {
 	repo.On("GetToken", ctx, "ABC123").Return(pendingToken, nil)
 	repo.On("UpdateToken", ctx, mock.MatchedBy(func(token *LinkToken) bool {
 		return token.State == StateClaimed &&
-		       token.TargetPlatform == domain.PlatformTwitch &&
-		       token.TargetPlatformID == "twitch-456"
+			token.TargetPlatform == domain.PlatformTwitch &&
+			token.TargetPlatformID == "twitch-456"
 	})).Return(nil)
 
 	token, err := svc.ClaimLink(ctx, "ABC123", domain.PlatformTwitch, "twitch-456")
@@ -525,4 +524,3 @@ func TestGetStatus_UserNotFound(t *testing.T) {
 	assert.Nil(t, status)
 	userService.AssertExpectations(t)
 }
-

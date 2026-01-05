@@ -32,7 +32,7 @@ type ErrOnCooldown struct {
 func (e ErrOnCooldown) Error() string {
 	minutes := int(e.Remaining.Minutes())
 	seconds := int(e.Remaining.Seconds()) % 60
-	
+
 	if minutes > 0 {
 		return fmt.Sprintf("action '%s' on cooldown: %dm %ds remaining", e.Action, minutes, seconds)
 	}

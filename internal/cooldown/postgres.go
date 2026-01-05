@@ -45,7 +45,7 @@ func (b *postgresBackend) CheckCooldown(ctx context.Context, userID, action stri
 
 	cooldownDuration := b.config.GetCooldownDuration(action)
 	elapsed := time.Since(*lastUsed)
-	
+
 	if elapsed < cooldownDuration {
 		remaining := cooldownDuration - elapsed
 		return true, remaining, nil
@@ -106,7 +106,7 @@ func (b *postgresBackend) EnforceCooldown(ctx context.Context, userID, action st
 		elapsed := time.Since(*lastUsed)
 		if elapsed < cooldownDuration {
 			remaining := cooldownDuration - elapsed
-			log.Debug("Race condition detected - concurrent request on cooldown", 
+			log.Debug("Race condition detected - concurrent request on cooldown",
 				"action", action, "userID", userID, "remaining", remaining)
 			return ErrOnCooldown{Action: action, Remaining: remaining}
 		}

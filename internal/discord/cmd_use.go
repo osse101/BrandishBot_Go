@@ -86,4 +86,3 @@ func UseItemCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 
 	return cmd, handler
 }
-

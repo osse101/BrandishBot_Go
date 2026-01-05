@@ -122,7 +122,7 @@ func handleItemAutocomplete(s *discordgo.Session, i *discordgo.InteractionCreate
 	if user == nil {
 		user = i.User
 	}
-	
+
 	// Defensive check: ensure we have a valid user (should always be present in Discord commands)
 	if user == nil {
 		slog.Error("Failed to get user from autocomplete interaction")
@@ -160,7 +160,7 @@ func handleItemAutocomplete(s *discordgo.Session, i *discordgo.InteractionCreate
 			// Build choices from inventory
 			for _, item := range inventory {
 				itemNameLower := strings.ToLower(item.Name)
-				
+
 				// Filter by what user is typing
 				if focusedValue == "" || strings.Contains(itemNameLower, focusedValue) {
 					// Apply custom filter if provided
@@ -218,9 +218,9 @@ func handleGambleItemAutocomplete(s *discordgo.Session, i *discordgo.Interaction
 	// Filter to only show lootbox items
 	lootboxFilter := func(itemName string) bool {
 		// Use prefix check for precision - avoids matching non-lootbox items like "toolbox"
-		return strings.HasPrefix(itemName, "lootbox") || 
-		       itemName == "junkbox" || 
-		       itemName == "goldbox"
+		return strings.HasPrefix(itemName, "lootbox") ||
+			itemName == "junkbox" ||
+			itemName == "goldbox"
 	}
 
 	handleItemAutocomplete(s, i, client, true, lootboxFilter)

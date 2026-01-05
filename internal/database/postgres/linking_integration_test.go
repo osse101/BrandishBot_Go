@@ -202,7 +202,7 @@ func TestLinkingRepository_Integration(t *testing.T) {
 			SourcePlatformID: "user5",
 			State:            "pending",
 			CreatedAt:        time.Now().Add(-2 * time.Hour),
-			ExpiresAt:        time.Now().Add(-1 * time.Hour - 1*time.Minute), // Expired > 1 hour ago
+			ExpiresAt:        time.Now().Add(-1*time.Hour - 1*time.Minute), // Expired > 1 hour ago
 		}
 
 		err := repo.CreateToken(ctx, token)

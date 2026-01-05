@@ -578,7 +578,7 @@ func (s *service) GetActiveGamble(ctx context.Context) (*domain.Gamble, error) {
 func consumeItem(inventory *domain.Inventory, itemID, quantity int) error {
 	for i := range inventory.Slots {
 		if inventory.Slots[i].ItemID == itemID {
-			if inventory.Slots [i].Quantity < quantity {
+			if inventory.Slots[i].Quantity < quantity {
 				return domain.ErrInsufficientQuantity
 			}
 			if inventory.Slots[i].Quantity == quantity {
@@ -606,7 +606,7 @@ func calculateTotalLootboxes(bets []domain.LootboxBet) int {
 // awardGamblerXP awards  Gambler job XP for gambling operations
 func (s *service) awardGamblerXP(ctx context.Context, userID string, lootboxCount int, source string, isWin bool) {
 	defer s.wg.Done() // Signal completion when goroutine ends
-	
+
 	if s.jobService == nil {
 		return // Job system not enabled
 	}

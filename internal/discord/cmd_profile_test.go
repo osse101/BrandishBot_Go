@@ -66,7 +66,7 @@ func TestProfileCommand_Success(t *testing.T) {
 		for i, f := range sentEmbed.Fields {
 			t.Logf("Field %d: Name='%s' Value='%s'", i, f.Name, f.Value)
 		}
-		
+
 		assert.Contains(t, sentEmbed.Title, "Tester's Profile")
 		// Check Fields
 		foundID := false

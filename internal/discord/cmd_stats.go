@@ -65,7 +65,7 @@ func LeaderboardCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		} else {
 			msg, err = client.GetLeaderboard(metric, limit)
 		}
-		
+
 		if err != nil {
 			slog.Error("Failed to get leaderboard", "error", err)
 			respondFriendlyError(s, i, err.Error())

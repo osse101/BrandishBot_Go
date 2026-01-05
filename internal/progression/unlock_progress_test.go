@@ -18,7 +18,7 @@ func TestCheckAndUnlock_Success(t *testing.T) {
 
 	// 1. Setup active progress
 	progressID, _ := repo.CreateUnlockProgress(ctx)
-	
+
 	// 2. Set target to money (cost 500)
 	moneyID := 2
 	repo.SetUnlockTarget(ctx, progressID, moneyID, 1, 1)
@@ -70,7 +70,7 @@ func TestCheckAndUnlock_StartsNewSession(t *testing.T) {
 
 	// Ensure money is available for session (root unlocks it)
 	// Unlock money to check if session starts properly
-	
+
 	progressID, _ := repo.CreateUnlockProgress(ctx)
 	moneyID := 2
 	repo.SetUnlockTarget(ctx, progressID, moneyID, 1, 1)
@@ -105,10 +105,10 @@ func TestCheckAndUnlock_ClearsCacheOnUnlock(t *testing.T) {
 	// We can't access private fields easily in test without reflection or helpers
 	// But we can verify behavior - next AddContribution won't trigger instant unlock
 	// This is implicit in logic
-	
+
 	_, err := service.CheckAndUnlockNode(ctx)
 	assert.NoError(t, err)
-	
+
 	// If cache cleared, internal state is reset
 }
 
@@ -119,7 +119,7 @@ func TestCheckAndUnlock_NoProgress(t *testing.T) {
 	ctx := context.Background()
 
 	// No active progress exists
-	
+
 	unlock, err := service.CheckAndUnlockNode(ctx)
 	assert.NoError(t, err)
 	assert.Nil(t, unlock)
@@ -153,7 +153,7 @@ func TestCheckAndUnlock_BelowThreshold(t *testing.T) {
 	progressID, _ := repo.CreateUnlockProgress(ctx)
 	moneyID := 2 // Cost 500
 	repo.SetUnlockTarget(ctx, progressID, moneyID, 1, 1)
-	
+
 	// Add only 400
 	repo.AddContribution(ctx, progressID, 400)
 
@@ -190,7 +190,7 @@ func TestAddContribution_CreatesProgress(t *testing.T) {
 	ctx := context.Background()
 
 	// No progress exists
-	
+
 	err := service.AddContribution(ctx, 100)
 	assert.NoError(t, err)
 
@@ -211,15 +211,15 @@ func TestAddContribution_InstantUnlock(t *testing.T) {
 
 	service.StartVotingSession(ctx, nil)
 	session, _ := repo.GetActiveSession(ctx)
-	
+
 	// Option 0 is likely money (cost 500)
 	// Vote and end
 	err := service.VoteForUnlock(ctx, "u1", session.Options[0].NodeDetails.NodeKey)
 	assert.NoError(t, err)
-	
+
 	_, err = service.EndVoting(ctx)
 	assert.NoError(t, err)
-	
+
 	// Get current accumulated
 	progress, err := repo.GetActiveUnlockProgress(ctx)
 	assert.NoError(t, err)
@@ -227,7 +227,7 @@ func TestAddContribution_InstantUnlock(t *testing.T) {
 		return
 	}
 	initial := progress.ContributionsAccumulated
-	
+
 	// Add remaining points to trigger immediate unlock
 	needed := 500 - initial
 	if initial >= 500 {
@@ -235,7 +235,7 @@ func TestAddContribution_InstantUnlock(t *testing.T) {
 		t.Log("Warning: initial contributions already exceed threshold")
 		needed = 0
 	}
-	
+
 	err = service.AddContribution(ctx, needed)
 	assert.NoError(t, err)
 
@@ -248,7 +248,7 @@ func TestAddContribution_InstantUnlock(t *testing.T) {
 	// The unlocked node should be unlocked in repo
 	isUnlocked, _ := repo.IsNodeUnlocked(ctx, session.Options[0].NodeDetails.NodeKey, 1)
 	assert.True(t, isUnlocked, "Node should be unlocked")
-	
+
 	// The new progress should exist
 	if assert.NotNil(t, completedProgress, "Active progress should not be nil") {
 		assert.NotEqual(t, progress.ID, completedProgress.ID, "New progress ID should differ from old")

@@ -15,10 +15,10 @@ type DeadLetterWriter struct {
 
 // DeadLetterEntry represents an event that failed to publish after all retries
 type DeadLetterEntry struct {
-	Timestamp time.Time   `json:"timestamp"`
-	Event     Event       `json:"event"`
-	Attempts  int         `json:"attempts"`
-	LastError string      `json:"last_error,omitempty"`
+	Timestamp time.Time `json:"timestamp"`
+	Event     Event     `json:"event"`
+	Attempts  int       `json:"attempts"`
+	LastError string    `json:"last_error,omitempty"`
 }
 
 // NewDeadLetterWriter creates a new DeadLetterWriter
@@ -34,17 +34,17 @@ func NewDeadLetterWriter(path string) (*DeadLetterWriter, error) {
 func (dlw *DeadLetterWriter) Write(event Event, attempts int, lastError error) error {
 	dlw.mu.Lock()
 	defer dlw.mu.Unlock()
-	
+
 	entry := DeadLetterEntry{
 		Timestamp: time.Now(),
 		Event:     event,
 		Attempts:  attempts,
 	}
-	
+
 	if lastError != nil {
 		entry.LastError = lastError.Error()
 	}
-	
+
 	data, _ := json.Marshal(entry)
 	_, err := dlw.file.Write(append(data, '\n'))
 	return err

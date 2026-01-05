@@ -17,10 +17,10 @@ import (
 
 // Bot represents the Discord bot
 type Bot struct {
-	Session         *discordgo.Session
-	Client          *APIClient
-	AppID           string
-	Registry        *CommandRegistry
+	Session              *discordgo.Session
+	Client               *APIClient
+	AppID                string
+	Registry             *CommandRegistry
 	DevChannelID         string
 	DiggingGameChannelID string
 	GithubToken          string
@@ -63,7 +63,7 @@ func (b *Bot) Start() error {
 	b.Session.AddHandler(b.ready)
 	b.Session.AddHandler(b.interactionCreate)
 	b.Session.AddHandler(b.messageCreate)
-	
+
 	// Add autocomplete handler
 	b.Session.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		if i.Type == discordgo.InteractionApplicationCommandAutocomplete {

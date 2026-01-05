@@ -483,7 +483,7 @@ func (r *UserRepository) GetRecipeByTargetItemID(ctx context.Context, itemID int
 		ID:           int(row.RecipeID),
 		TargetItemID: int(row.TargetItemID),
 		// BaseCost is []RecipeCost here
-		CreatedAt:    row.CreatedAt.Time,
+		CreatedAt: row.CreatedAt.Time,
 	}
 
 	// Unmarshal BaseCost which is []byte (JSONB)
@@ -626,7 +626,7 @@ func (r *UserRepository) GetLastCooldown(ctx context.Context, userID, action str
 		}
 		return nil, fmt.Errorf("failed to get cooldown: %w", err)
 	}
-	
+
 	t := lastUsed.Time
 	return &t, nil
 }
@@ -649,7 +649,7 @@ func (r *UserRepository) GetLastCooldownForUpdate(ctx context.Context, tx pgx.Tx
 		}
 		return nil, fmt.Errorf("failed to get cooldown with lock: %w", err)
 	}
-	
+
 	t := lastUsed.Time
 	return &t, nil
 }

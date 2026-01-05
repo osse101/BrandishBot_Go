@@ -46,17 +46,17 @@ func (r *progressionRepository) GetActiveSession(ctx context.Context) (*domain.P
 	}
 
 	session := &domain.ProgressionVotingSession{
-		ID:              int(row.ID),
-		StartedAt:       row.StartedAt.Time,
-		Status:          row.Status,
+		ID:        int(row.ID),
+		StartedAt: row.StartedAt.Time,
+		Status:    row.Status,
 	}
 	if row.EndedAt.Valid {
 		t := row.EndedAt.Time
 		session.EndedAt = &t
 	}
-	
+
 	session.VotingDeadline = row.VotingDeadline.Time
-	
+
 	if row.WinningOptionID.Valid {
 		id := int(row.WinningOptionID.Int32)
 		session.WinningOptionID = &id
@@ -81,17 +81,17 @@ func (r *progressionRepository) GetSessionByID(ctx context.Context, sessionID in
 	}
 
 	session := &domain.ProgressionVotingSession{
-		ID:              int(row.ID),
-		StartedAt:       row.StartedAt.Time,
-		Status:          row.Status,
+		ID:        int(row.ID),
+		StartedAt: row.StartedAt.Time,
+		Status:    row.Status,
 	}
 	if row.EndedAt.Valid {
 		t := row.EndedAt.Time
 		session.EndedAt = &t
 	}
-	
+
 	session.VotingDeadline = row.VotingDeadline.Time
-	
+
 	if row.WinningOptionID.Valid {
 		id := int(row.WinningOptionID.Int32)
 		session.WinningOptionID = &id
@@ -151,7 +151,7 @@ func (r *progressionRepository) EndVotingSession(ctx context.Context, sessionID 
 		ID:              int32(sessionID),
 		WinningOptionID: pgtype.Int4{Int32: int32(winningOptionID), Valid: true},
 	})
-	
+
 	if err != nil {
 		return fmt.Errorf("failed to end voting session: %w", err)
 	}
@@ -164,7 +164,7 @@ func (r *progressionRepository) GetSessionVoters(ctx context.Context, sessionID 
 	if err != nil {
 		return nil, fmt.Errorf("failed to get session voters: %w", err)
 	}
-	
+
 	voters := make([]string, 0)
 	for _, userID := range rows {
 		voters = append(voters, userID)

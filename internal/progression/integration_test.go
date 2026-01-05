@@ -84,7 +84,7 @@ func TestVotingFlow_MultipleVoters(t *testing.T) {
 	service.VoteForUnlock(ctx, "user3", session.Options[1].NodeDetails.NodeKey)
 
 	winner, _ := service.EndVoting(ctx)
-	
+
 	// Option 0 should win with 2 votes
 	assert.Equal(t, session.Options[0].NodeID, winner.NodeID)
 	assert.Equal(t, 2, winner.VoteCount)
@@ -105,10 +105,10 @@ func TestVotingFlow_AutoNextSession(t *testing.T) {
 
 	progress, _ := repo.GetActiveUnlockProgress(ctx)
 	cost := session1.Options[0].NodeDetails.UnlockCost
-	service.AddContribution(ctx, cost - progress.ContributionsAccumulated)
-	
+	service.AddContribution(ctx, cost-progress.ContributionsAccumulated)
+
 	service.CheckAndUnlockNode(ctx)
-	
+
 	// Wait for async session start
 	time.Sleep(20 * time.Millisecond)
 
@@ -161,7 +161,7 @@ func TestMultiLevel_SessionTargeting(t *testing.T) {
 	// Unlock money and economy to access cooldown
 	repo.UnlockNode(ctx, 2, 1, "test", 0)
 	repo.UnlockNode(ctx, 3, 1, "test", 0)
-	
+
 	// Start session
 	service.StartVotingSession(ctx, nil)
 	session, _ := repo.GetActiveSession(ctx)

@@ -79,7 +79,7 @@ func TestAddItemByUsername(t *testing.T) {
 	}
 	repo.users["user1"] = user
 	repo.inventories["user1"] = &domain.Inventory{Slots: []domain.InventorySlot{}}
-	repo.items["gold"] =  &domain.Item{ID: 1, InternalName: "gold"}
+	repo.items["gold"] = &domain.Item{ID: 1, InternalName: "gold"}
 
 	t.Run("successful addition", func(t *testing.T) {
 		err := svc.AddItemByUsername(context.Background(), "twitch", "bob", "gold", 100)

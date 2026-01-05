@@ -58,7 +58,7 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 	// Health check routes (unversioned)
 	r.Get("/healthz", handler.HandleHealthz())
 	r.Get("/readyz", handler.HandleReadyz(dbPool))
-	
+
 	// Version endpoint (public, for deployment verification)
 	r.Get("/version", handler.HandleVersion())
 
@@ -163,19 +163,18 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 		adminJobHandler := handler.NewAdminJobHandler(jobService, userService)
 		r.Route("/admin", func(r chi.Router) {
 			r.Post("/reload-aliases", handler.HandleReloadAliases(namingResolver))
-			
+
 			// Admin job routes
 			r.Route("/job", func(r chi.Router) {
 				r.Post("/award-xp", adminJobHandler.HandleAdminAwardXP)
 			})
-			
+
 			// Admin progression routes
 			r.Route("/progression", func(r chi.Router) {
 				r.Post("/reload-weights", progressionHandlers.HandleAdminReloadWeights())
 			})
 		})
 	})
-
 
 	// Swagger documentation
 	r.Get("/swagger/*", httpSwagger.WrapHandler)
@@ -235,9 +234,9 @@ func loggingMiddleware(next http.Handler) http.Handler {
 
 		// Skip logging for health check endpoints and metrics
 		// Use HasPrefix to catch potential variations (e.g. /healthz/)
-		if strings.HasPrefix(r.URL.Path, "/healthz") || 
-		   strings.HasPrefix(r.URL.Path, "/readyz") || 
-		   strings.HasPrefix(r.URL.Path, "/metrics") {
+		if strings.HasPrefix(r.URL.Path, "/healthz") ||
+			strings.HasPrefix(r.URL.Path, "/readyz") ||
+			strings.HasPrefix(r.URL.Path, "/metrics") {
 			next.ServeHTTP(w, r)
 			return
 		}

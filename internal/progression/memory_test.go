@@ -62,19 +62,19 @@ func TestEndVoting_NoGoroutineLeak(t *testing.T) {
 	svc := NewService(repo, nil)
 
 	ctx := context.Background()
-	
+
 	checker := leaktest.NewGoroutineChecker(t)
 
 	// Start and end multiple voting cycles
 	for i := 0; i < 3; i++ {
 		_ = svc.StartVotingSession(ctx, nil)
-		
+
 		// Cast some votes
 		session, _ := svc.GetActiveVotingSession(ctx)
 		if session != nil && len(session.Options) > 0 && session.Options[0].NodeDetails != nil {
 			_ = svc.VoteForUnlock(ctx, "voter1", session.Options[0].NodeDetails.NodeKey)
 		}
-		
+
 		// End voting
 		_, _ = svc.EndVoting(ctx)
 	}
@@ -116,7 +116,7 @@ func TestCheckAndUnlockNode_NoGoroutineLeak(t *testing.T) {
 	if session != nil && len(session.Options) > 0 && session.Options[0].NodeDetails != nil {
 		_ = svc.VoteForUnlock(ctx, "voter1", session.Options[0].NodeDetails.NodeKey)
 		_, _ = svc.EndVoting(ctx)
-		
+
 		// Add contributions to meet threshold
 		_ = svc.AddContribution(ctx, 10000)
 	}
@@ -137,7 +137,7 @@ func TestRecordEngagement_NoGoroutineLeak(t *testing.T) {
 	checker := leaktest.NewGoroutineChecker(t)
 
 	ctx := context.Background()
-	
+
 	// Record multiple engagements
 	metrics := []struct {
 		userID string
@@ -201,11 +201,11 @@ func setupTestNodes(repo *MockRepository) {
 
 	// Child nodes
 	repo.nodes[3] = &domain.ProgressionNode{
-		ID:           3,
-		NodeKey:      "child_1",
-		DisplayName:  "Child Feature",
-		Description:  "Dependent node",
-		MaxLevel:     2,
+		ID:          3,
+		NodeKey:     "child_1",
+		DisplayName: "Child Feature",
+		Description: "Dependent node",
+		MaxLevel:    2,
 	}
 	repo.nodesByKey["child_1"] = repo.nodes[3]
 }

@@ -219,9 +219,9 @@ func TestAddItemsToInventory(t *testing.T) {
 		AddItemsToInventory(inventory, items, nil)
 
 		assert.Equal(t, 3, len(inventory.Slots))
-		assert.Equal(t, 8, inventory.Slots[0].Quantity) // 5 + 3
+		assert.Equal(t, 8, inventory.Slots[0].Quantity)  // 5 + 3
 		assert.Equal(t, 12, inventory.Slots[1].Quantity) // 10 + 2
-		assert.Equal(t, 7, inventory.Slots[2].Quantity) // new item
+		assert.Equal(t, 7, inventory.Slots[2].Quantity)  // new item
 	})
 
 	t.Run("adds to existing items (map-based path)", func(t *testing.T) {
@@ -241,7 +241,7 @@ func TestAddItemsToInventory(t *testing.T) {
 		AddItemsToInventory(inventory, items, nil)
 
 		// First two items should be updated
-		assert.Equal(t, 6, inventory.Slots[0].Quantity) // 5 + 1
+		assert.Equal(t, 6, inventory.Slots[0].Quantity)  // 5 + 1
 		assert.Equal(t, 12, inventory.Slots[1].Quantity) // 10 + 2
 		// Rest should be added
 		assert.Equal(t, 12, len(inventory.Slots))
@@ -341,7 +341,7 @@ func TestAddItemsToInventory(t *testing.T) {
 		// Rest should be added
 		assert.Equal(t, 12, len(inventory.Slots))
 		// Verify map was updated with new items
-		assert.Equal(t, 2, slotMap[30])  // Third item added at index 2
+		assert.Equal(t, 2, slotMap[30])   // Third item added at index 2
 		assert.Equal(t, 11, slotMap[120]) // Last item added at index 11
 	})
 }
@@ -432,4 +432,3 @@ func BenchmarkAddItemsWithPrebuiltMap(b *testing.B) {
 		AddItemsToInventory(testInv, items, slotMap)
 	}
 }
-

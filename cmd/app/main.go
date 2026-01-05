@@ -122,7 +122,7 @@ func main() {
 	defer dbPool.Close()
 
 	userRepo := postgres.NewUserRepository(dbPool)
-	
+
 	statsRepo := postgres.NewStatsRepository(dbPool)
 	statsService := stats.NewService(statsRepo)
 
@@ -142,13 +142,13 @@ func main() {
 	if deadLetterPath == "" {
 		deadLetterPath = "logs/event_deadletter.jsonl" // Default path
 	}
-	
+
 	// Ensure dead-letter directory exists
 	if err := os.MkdirAll(filepath.Dir(deadLetterPath), 0755); err != nil {
 		slog.Error("Failed to create dead-letter directory", "error", err)
 		os.Exit(1)
 	}
-	
+
 	resilientPublisher, err := event.NewResilientPublisher(eventBus, maxRetries, retryDelay, deadLetterPath)
 	if err != nil {
 		slog.Error("Failed to create resilient publisher", "error", err)
@@ -158,7 +158,7 @@ func main() {
 		"max_retries", maxRetries,
 		"retry_delay", retryDelay,
 		"deadletter_path", deadLetterPath)
-	
+
 	progressionRepo := postgres.NewProgressionRepository(dbPool)
 	progressionService := progression.NewService(progressionRepo, eventBus)
 
@@ -166,25 +166,25 @@ func main() {
 	if cfg.SyncProgressionTree {
 		slog.Info("Syncing progression tree from JSON config...")
 		treeLoader := progression.NewTreeLoader()
-		
+
 		treeConfig, err := treeLoader.Load("configs/progression_tree.json")
 		if err != nil {
 			slog.Error("Failed to load progression tree config", "error", err)
 			os.Exit(1)
 		}
-		
+
 		if err := treeLoader.Validate(treeConfig); err != nil {
 			slog.Error("Invalid progression tree config", "error", err)
 			os.Exit(1)
 		}
-		
+
 		// Sync to database (progressionRepo implements NodeInserter/NodeUpdater)
 		syncResult, err := treeLoader.SyncToDatabase(context.Background(), treeConfig, progressionRepo)
 		if err != nil {
 			slog.Error("Failed to sync progression tree to database", "error", err)
 			os.Exit(1)
 		}
-		
+
 		slog.Info("Progression tree synced successfully",
 			"inserted", syncResult.NodesInserted,
 			"updated", syncResult.NodesUpdated,
@@ -195,11 +195,10 @@ func main() {
 	// Initialize Job service (needed by user, economy, crafting, gamble)
 	jobRepo := postgres.NewJobRepository(dbPool)
 	jobService := job.NewService(jobRepo, progressionService, statsService, eventBus, resilientPublisher)
-	
+
 	// Initialize services that depend on job service
 	economyService := economy.NewService(userRepo, jobService)
 	craftingService := crafting.NewService(userRepo, jobService, statsService)
-
 
 	// Initialize Worker Pool
 	// Start with 5 workers as per plan
@@ -236,8 +235,6 @@ func main() {
 	}
 	slog.Info("Event logger initialized")
 
-
-
 	// Initialize Job Scheduler
 	jobScheduler := scheduler.New(workerPool)
 	// Schedule event log cleanup every 24 hours
@@ -252,7 +249,7 @@ func main() {
 
 	// Initialize Gamble components
 	gambleRepo := postgres.NewGambleRepository(dbPool)
-	
+
 	// Initialize Lootbox Service (reusing userRepo for item data)
 	lootboxSvc, err := lootbox.NewService(userRepo, "configs/loot_tables.json")
 	if err != nil {
@@ -278,7 +275,6 @@ func main() {
 
 	// Initialize services that depend on job service
 	userService := user.NewService(userRepo, statsService, jobService, lootboxSvc, namingResolver, cooldownSvc, cfg.DevMode)
-
 
 	// Initialize Gamble Worker
 	gambleWorker := worker.NewGambleWorker(gambleService)
@@ -332,7 +328,7 @@ func main() {
 	if err := gambleService.Shutdown(shutdownCtx); err != nil {
 		slog.Error("Gamble service shutdown failed", "error", err)
 	}
-	
+
 	// Shutdown resilient publisher last to flush pending events
 	slog.Info("Shutting down event publisher...")
 	if err := resilientPublisher.Shutdown(shutdownCtx); err != nil {

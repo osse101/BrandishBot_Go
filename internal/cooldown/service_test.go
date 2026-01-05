@@ -77,10 +77,10 @@ func TestErrOnCooldown_Error(t *testing.T) {
 // TestErrOnCooldown_Is tests the errors.Is() compatibility
 func TestErrOnCooldown_Is(t *testing.T) {
 	err := cooldown.ErrOnCooldown{Action: "test", Remaining: time.Minute}
-	
+
 	// Should match another ErrOnCooldown
 	assert.True(t, errors.Is(err, cooldown.ErrOnCooldown{}))
-	
+
 	// Should not match other errors
 	assert.False(t, errors.Is(err, errors.New("other error")))
 }

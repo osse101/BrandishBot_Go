@@ -15,11 +15,11 @@ const (
 
 // Base unlock costs per tier
 const (
-	TierFoundation = 0    // Tier 0: Auto-unlocked root nodes
-	TierBasic      = 500  // Tier 1: First unlocks
+	TierFoundation   = 0    // Tier 0: Auto-unlocked root nodes
+	TierBasic        = 500  // Tier 1: First unlocks
 	TierIntermediate = 1000 // Tier 2: Standard features
-	TierAdvanced   = 2000 // Tier 3: Complex features
-	TierEndgame    = 3000 // Tier 4: Late-game content
+	TierAdvanced     = 2000 // Tier 3: Complex features
+	TierEndgame      = 3000 // Tier 4: Late-game content
 )
 
 var baseCosts = map[int]int{
@@ -46,16 +46,16 @@ func CalculateUnlockCost(tier int, size NodeSize) (int, error) {
 	if !ok {
 		return 0, fmt.Errorf("invalid tier %d: must be 0-4", tier)
 	}
-	
+
 	// Validate size
 	multiplier, ok := sizeMultipliers[size]
 	if !ok {
 		return 0, fmt.Errorf("invalid size %s: must be small, medium, or large", size)
 	}
-	
+
 	// Calculate final cost
 	cost := float64(baseCost) * multiplier
-	
+
 	return int(cost), nil
 }
 

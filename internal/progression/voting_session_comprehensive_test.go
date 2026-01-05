@@ -25,7 +25,7 @@ func TestStartVotingSession_Success(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, session)
 	assert.Equal(t, "voting", session.Status)
-	
+
 	// Should have 2 options (money and lootbox0 are available)
 	assert.Len(t, session.Options, 2)
 }
@@ -78,7 +78,7 @@ func TestStartVotingSession_MultiLevelNode(t *testing.T) {
 	assert.NoError(t, err)
 
 	session, _ := repo.GetActiveSession(ctx)
-	
+
 	// Find cooldown option
 	var cooldownOption *domain.ProgressionVotingOption
 	for i := range session.Options {
@@ -282,7 +282,7 @@ func TestEndVoting_AlreadyEnded(t *testing.T) {
 	ctx := context.Background()
 
 	service.StartVotingSession(ctx, nil)
-	
+
 	// End it once
 	service.EndVoting(ctx)
 

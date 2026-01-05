@@ -17,13 +17,13 @@ func (r *progressionRepository) SyncPrerequisites(ctx context.Context, nodeID in
 	defer SafeRollback(ctx, tx)
 
 	q := r.q.WithTx(tx)
-	
+
 	// Clear existing prerequisites for this node
 	err = q.ClearNodePrerequisites(ctx, int32(nodeID))
 	if err != nil {
 		return fmt.Errorf("failed to clear prerequisites: %w", err)
 	}
-	
+
 	// Insert new prerequisites
 	for _, prereqID := range prerequisiteIDs {
 		err = q.InsertNodePrerequisite(ctx, generated.InsertNodePrerequisiteParams{
@@ -34,6 +34,6 @@ func (r *progressionRepository) SyncPrerequisites(ctx context.Context, nodeID in
 			return fmt.Errorf("failed to insert prerequisite: %w", err)
 		}
 	}
-	
+
 	return tx.Commit(ctx)
 }

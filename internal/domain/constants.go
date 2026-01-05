@@ -4,11 +4,11 @@ import "time"
 
 // Item internal name constants - stable code identifiers
 const (
-	ItemMoney    = "money"           // currency_money in future
-	ItemLootbox0 = "lootbox_tier0"   // was lootbox0
-	ItemLootbox1 = "lootbox_tier1"   // was lootbox1
-	ItemLootbox2 = "lootbox_tier2"   // was lootbox2
-	ItemBlaster  = "weapon_blaster"  // was blaster
+	ItemMoney    = "money"          // currency_money in future
+	ItemLootbox0 = "lootbox_tier0"  // was lootbox0
+	ItemLootbox1 = "lootbox_tier1"  // was lootbox1
+	ItemLootbox2 = "lootbox_tier2"  // was lootbox2
+	ItemBlaster  = "weapon_blaster" // was blaster
 )
 
 // Public item name constants - what clients use in commands (PublicName field)
@@ -19,7 +19,6 @@ const (
 	PublicNameGoldbox = "goldbox" // Tier 2 lootbox (golden)
 	PublicNameMissile = "missile" // Blaster weapon
 )
-
 
 // Action name constants for cooldown tracking
 const (

@@ -143,11 +143,11 @@ func TestCalculateLevel(t *testing.T) {
 		expected int
 	}{
 		{0, 0},
-		{xpForLevel(1) / 2, 0},            // Halfway to level 1
-		{xpForLevel(1), 1},                // Exact level 1
-		{xpForLevel(1) + 100, 1},          // Level 1 + some over
-		{xpForLevel(2), 2},                // Exact level 2
-		{xpForLevel(4), 4},                // Exact level 4
+		{xpForLevel(1) / 2, 0},   // Halfway to level 1
+		{xpForLevel(1), 1},       // Exact level 1
+		{xpForLevel(1) + 100, 1}, // Level 1 + some over
+		{xpForLevel(2), 2},       // Exact level 2
+		{xpForLevel(4), 4},       // Exact level 4
 	}
 
 	for _, tt := range tests {
@@ -192,7 +192,7 @@ func TestAwardXP_Success(t *testing.T) {
 	baseXP := BlacksmithXPPerItem
 
 	job := &domain.Job{ID: jobID, JobKey: jobKey}
-	
+
 	prog.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
 	repo.On("GetJobByKey", ctx, jobKey).Return(job, nil)
 	repo.On("GetUserJob", ctx, userID, jobID).Return(nil, nil) // New user job
@@ -209,7 +209,7 @@ func TestAwardXP_Success(t *testing.T) {
 	assert.NotNil(t, result)
 	assert.Equal(t, int64(BlacksmithXPPerItem), result.NewXP)
 	assert.Equal(t, 0, result.NewLevel)
-	
+
 	repo.AssertExpectations(t)
 	prog.AssertExpectations(t)
 }
@@ -247,7 +247,7 @@ func TestAwardXP_Epiphany(t *testing.T) {
 
 	// Expect stats event for Epiphany
 	statsSvc.On("RecordUserEvent", ctx, userID, domain.EventJobXPCritical, mock.MatchedBy(func(m map[string]interface{}) bool {
-		return m["job"] == jobKey && m["bonus_xp"] == (expectedXP - baseXP)
+		return m["job"] == jobKey && m["bonus_xp"] == (expectedXP-baseXP)
 	})).Return(nil)
 
 	// Since 200 XP causes a level up (default curve), expect level up event too
@@ -277,17 +277,17 @@ func TestAwardXP_LevelUp(t *testing.T) {
 	userID := "user1"
 	jobKey := JobKeyBlacksmith
 	jobID := 1
-	baseXP := 150 
+	baseXP := 150
 
 	job := &domain.Job{ID: jobID, JobKey: jobKey}
-	
+
 	prog.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
 	repo.On("GetJobByKey", ctx, jobKey).Return(job, nil)
 	// Current XP 0
 	repo.On("GetUserJob", ctx, userID, jobID).Return(&domain.UserJob{
 		UserID: userID, JobID: jobID, CurrentXP: 0, CurrentLevel: 0,
 	}, nil)
-	
+
 	// 150 XP should be Level 1 (requires 100)
 	repo.On("UpsertUserJob", ctx, mock.MatchedBy(func(uj *domain.UserJob) bool {
 		return uj.CurrentXP == 150 && uj.CurrentLevel == 1
@@ -397,12 +397,12 @@ func TestAwardXP_MaxLevel(t *testing.T) {
 	userID := "u1"
 	jobKey := JobKeyBlacksmith
 	jobID := 1
-	
+
 	// DefaultMaxLevel is 10.
 	// XP for Level 11 is roughly: 100 * sum(i^1.5 for i=1..11).
 	// Let's just set CurrentXP to a very high number that definitely exceeds Level 10 requirement.
 	// We verify that despite having enough XP for level >10, the Level field is clamped.
-	startXP := int64(50000) 
+	startXP := int64(50000)
 	awardAmount := 10 // Small amount to avoid daily cap
 
 	job := &domain.Job{ID: jobID, JobKey: jobKey}

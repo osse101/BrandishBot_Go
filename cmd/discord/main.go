@@ -133,7 +133,6 @@ func main() {
 	cmd, handler = discord.AdminReloadWeightsCommand()
 	bot.Registry.Register(cmd, handler)
 
-
 	cmd, handler = discord.InfoCommand()
 	bot.Registry.Register(cmd, handler)
 
@@ -202,7 +201,7 @@ func main() {
 	if forceUpdate {
 		slog.Info("Force command update enabled via environment variable")
 	}
-	
+
 	if err := bot.RegisterCommands(bot.Registry, forceUpdate); err != nil {
 		slog.Error("Failed to register commands", "error", err)
 		// Don't exit - bot can still run if commands are already registered

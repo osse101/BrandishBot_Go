@@ -22,12 +22,12 @@ func syncPrerequisites(ctx context.Context, repo Repository, nodeID int, prerequ
 		// This allows gradual migration of repository implementations
 		return nil
 	}
-	
+
 	// Resolve prerequisite keys to IDs
 	prereqIDs := make([]int, 0, len(prerequisites))
 	for _, prereqKey := range prerequisites {
 		var prereqID int
-		
+
 		// Try existing nodes first
 		if existing, ok := existingByKey[prereqKey]; ok {
 			prereqID = existing.ID
@@ -38,10 +38,10 @@ func syncPrerequisites(ctx context.Context, repo Repository, nodeID int, prerequ
 			// Prerequisites should have been validated earlier
 			return fmt.Errorf("prerequisite '%s' not found", prereqKey)
 		}
-		
+
 		prereqIDs = append(prereqIDs, prereqID)
 	}
-	
+
 	// Sync to database (clear old, insert new)
 	return prereqSyncer.SyncPrerequisites(ctx, nodeID, prereqIDs)
 }

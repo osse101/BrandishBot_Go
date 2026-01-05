@@ -11,12 +11,12 @@ type ProgressionNode struct {
 	Description string `json:"description"`
 	MaxLevel    int    `json:"max_level"`
 	UnlockCost  int    `json:"unlock_cost"` // Calculated from tier+size, stored for performance
-	
+
 	// Dynamic cost calculation fields (v2.0)
 	Tier     int    `json:"tier"`     // 0-4: Foundation → Endgame
 	Size     string `json:"size"`     // small, medium, large
 	Category string `json:"category"` // Grouping: economy, combat, etc.
-	
+
 	SortOrder int       `json:"sort_order"`
 	CreatedAt time.Time `json:"created_at"`
 }

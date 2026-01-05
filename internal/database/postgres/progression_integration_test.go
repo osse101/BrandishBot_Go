@@ -347,7 +347,7 @@ func TestProgressionRepository_Integration(t *testing.T) {
 			// Verify order (highest to lowest)
 			if len(leaderboard) >= 3 {
 				if leaderboard[0].UserID != "user5" || leaderboard[0].Contribution != 300 {
-					t.Errorf("Expected user5 with 300 at rank 1, got %s with %d", 
+					t.Errorf("Expected user5 with 300 at rank 1, got %s with %d",
 						leaderboard[0].UserID, leaderboard[0].Contribution)
 				}
 				if leaderboard[0].Rank != 1 {

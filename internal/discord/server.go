@@ -19,7 +19,7 @@ type HTTPServer struct {
 // NewHTTPServer creates a new HTTP server
 func NewHTTPServer(port string, bot *Bot) *HTTPServer {
 	mux := http.NewServeMux()
-	
+
 	srv := &HTTPServer{
 		server: &http.Server{
 			Addr:    ":" + port,

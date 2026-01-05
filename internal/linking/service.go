@@ -200,7 +200,7 @@ func (s *service) ConfirmLink(ctx context.Context, platform, platformID string) 
 		// Create new user for source
 		newUser := &domain.User{}
 		setPlatformID(newUser, token.SourcePlatform, token.SourcePlatformID)
-		
+
 		// MUST register to get an ID before merging
 		registered, err := s.userService.RegisterUser(ctx, *newUser)
 		if err != nil {
@@ -214,7 +214,7 @@ func (s *service) ConfirmLink(ctx context.Context, platform, platformID string) 
 		// Target doesn't exist - this logic path seems duplicated/confusing given source registration above.
 		// If source was just created, it has one platform. Testing target existence is correct.
 		// If target missing, just add platform to source.
-		
+
 		setPlatformID(sourceUser, token.TargetPlatform, token.TargetPlatformID)
 		// Update the existing/new source user with the second platform
 		updatedUser, err := s.userService.RegisterUser(ctx, *sourceUser)
@@ -293,7 +293,7 @@ func (s *service) ConfirmUnlink(ctx context.Context, platform, platformID, targe
 	log := logger.FromContext(ctx)
 
 	key := fmt.Sprintf("%s:%s:%s", platform, platformID, targetPlatform)
-	
+
 	s.mu.RLock()
 	expiry, exists := s.unlinkCache[key]
 	s.mu.RUnlock()

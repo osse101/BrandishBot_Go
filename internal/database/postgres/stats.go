@@ -39,14 +39,14 @@ func (r *StatsRepository) RecordEvent(ctx context.Context, event *domain.StatsEv
 	if err != nil {
 		return fmt.Errorf("invalid user id: %w", err)
 	}
-	
+
 	// Prepare params
 	params := generated.RecordEventParams{
 		UserID:    pgtype.UUID{Bytes: userUUID, Valid: true},
 		EventType: string(event.EventType),
 		EventData: eventDataJSON,
 	}
-	
+
 	if !event.CreatedAt.IsZero() {
 		params.CreatedAt = pgtype.Timestamp{Time: event.CreatedAt, Valid: true}
 	} else {
@@ -57,10 +57,10 @@ func (r *StatsRepository) RecordEvent(ctx context.Context, event *domain.StatsEv
 	if err != nil {
 		return fmt.Errorf("failed to insert event: %w", err)
 	}
-	
+
 	event.EventID = int64(result.EventID)
 	event.CreatedAt = result.CreatedAt.Time
-	
+
 	return nil
 }
 
@@ -88,7 +88,7 @@ func (r *StatsRepository) GetEventsByUser(ctx context.Context, userID string, st
 				return nil, fmt.Errorf("failed to unmarshal event data: %w", err)
 			}
 		}
-		
+
 		var uid uuid.UUID
 		if row.UserID.Valid {
 			uid = [16]byte(row.UserID.Bytes)
@@ -130,7 +130,7 @@ func (r *StatsRepository) GetUserEventsByType(ctx context.Context, userID string
 				return nil, fmt.Errorf("failed to unmarshal event data: %w", err)
 			}
 		}
-		
+
 		var uid uuid.UUID
 		if row.UserID.Valid {
 			uid = [16]byte(row.UserID.Bytes)
@@ -167,7 +167,7 @@ func (r *StatsRepository) GetEventsByType(ctx context.Context, eventType domain.
 				return nil, fmt.Errorf("failed to unmarshal event data: %w", err)
 			}
 		}
-		
+
 		var uid uuid.UUID
 		if row.UserID.Valid {
 			uid = [16]byte(row.UserID.Bytes)
@@ -203,7 +203,7 @@ func (r *StatsRepository) GetTopUsers(ctx context.Context, eventType domain.Even
 		if row.UserID.Valid {
 			uid = [16]byte(row.UserID.Bytes)
 		}
-		
+
 		entries = append(entries, domain.LeaderboardEntry{
 			UserID:    uid.String(),
 			Username:  row.Username,

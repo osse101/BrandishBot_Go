@@ -50,7 +50,7 @@ type Service interface {
 	AdminRelock(ctx context.Context, nodeKey string, level int) error
 	ResetProgressionTree(ctx context.Context, resetBy string, reason string, preserveUserData bool) error
 	InvalidateWeightCache() // Clears engagement weight cache (forces reload on next engagement)
-	
+
 	// Shutdown gracefully shuts down the service
 	Shutdown(ctx context.Context) error
 }
@@ -58,20 +58,20 @@ type Service interface {
 type service struct {
 	repo Repository
 	bus  event.Bus
-	
+
 	// In-memory cache for unlock threshold checking
 	mu               sync.RWMutex
-	cachedTargetCost int  // unlock_cost of target node
-	cachedProgressID int  // current unlock progress ID
-	
+	cachedTargetCost int // unlock_cost of target node
+	cachedProgressID int // current unlock progress ID
+
 	// Cache for engagement weights (reduces DB load)
 	weightsMu     sync.RWMutex
 	cachedWeights map[string]float64
 	weightsExpiry time.Time
-	
+
 	// Semaphore to prevent concurrent unlock attempts
 	unlockSem chan struct{}
-	
+
 	// Graceful shutdown support
 	wg             sync.WaitGroup
 	shutdownCtx    context.Context
@@ -174,7 +174,7 @@ func (s *service) GetAvailableUnlocks(ctx context.Context) ([]*domain.Progressio
 		allPrereqsMet := true
 		for _, prereq := range prerequisites {
 			prereqUnlocked, err := s.repo.IsNodeUnlocked(ctx, prereq.NodeKey, 1)
-			if err != nil ||  !prereqUnlocked {
+			if err != nil || !prereqUnlocked {
 				allPrereqsMet = false
 				break
 			}
@@ -276,7 +276,7 @@ func (s *service) RecordEngagement(ctx context.Context, userID string, metricTyp
 
 	// Try to get weights from cache first
 	weight := s.getCachedWeight(metricType)
-	
+
 	// If not in cache or expired, fetch from DB
 	if weight == 0.0 {
 		weights, err := s.repo.GetEngagementWeights(ctx)
@@ -292,7 +292,7 @@ func (s *service) RecordEngagement(ctx context.Context, userID string, metricTyp
 			}
 		}
 	}
-	
+
 	// Fallback defaults if still no weight found
 	if weight == 0.0 {
 		switch metricType {
@@ -432,10 +432,10 @@ func (s *service) CheckAndUnlockCriteria(ctx context.Context) (*domain.Progressi
 		s.wg.Add(1)
 		go func() {
 			defer s.wg.Done()
-			
+
 			ctx, cancel := context.WithTimeout(s.shutdownCtx, 1*time.Minute)
 			defer cancel()
-			
+
 			// Inject request ID into context for tracing
 			if reqID != "" {
 				ctx = logger.WithRequestID(ctx, reqID)
@@ -449,7 +449,6 @@ func (s *service) CheckAndUnlockCriteria(ctx context.Context) (*domain.Progressi
 
 	return nil, nil
 }
-
 
 // ForceInstantUnlock selects highest voted option and unlocks immediately
 func (s *service) ForceInstantUnlock(ctx context.Context) (*domain.ProgressionUnlock, error) {
@@ -506,10 +505,10 @@ func (s *service) ForceInstantUnlock(ctx context.Context) (*domain.ProgressionUn
 	s.wg.Add(1)
 	go func() {
 		defer s.wg.Done()
-		
+
 		ctx, cancel := context.WithTimeout(s.shutdownCtx, 1*time.Minute)
 		defer cancel()
-		
+
 		// Inject request ID into context for tracing
 		if reqID != "" {
 			ctx = logger.WithRequestID(ctx, reqID)
@@ -619,17 +618,17 @@ func (s *service) InvalidateWeightCache() {
 func (s *service) Shutdown(ctx context.Context) error {
 	log := logger.FromContext(ctx)
 	log.Info("Shutting down progression service")
-	
+
 	// Cancel shutdown context to signal goroutines to stop
 	s.shutdownCancel()
-	
+
 	// Wait for goroutines with timeout
 	done := make(chan struct{})
 	go func() {
 		s.wg.Wait()
 		close(done)
 	}()
-	
+
 	select {
 	case <-done:
 		log.Info("Progression service shutdown complete")
@@ -639,5 +638,3 @@ func (s *service) Shutdown(ctx context.Context) error {
 		return ctx.Err()
 	}
 }
-
-

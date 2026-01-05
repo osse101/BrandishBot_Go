@@ -33,13 +33,13 @@ func TestStartVotingSession_AutoSelect_PublishesEvent(t *testing.T) {
 	// Setup tree with single available option
 	// 1. Root - Unlocked
 	root := &domain.ProgressionNode{
-		ID:           1,
-		NodeKey:      "root_node",
-		NodeType:     "feature",
-		DisplayName:  "Root Node",
-		MaxLevel:     1,
-		UnlockCost:   0,
-		CreatedAt:    time.Now(),
+		ID:          1,
+		NodeKey:     "root_node",
+		NodeType:    "feature",
+		DisplayName: "Root Node",
+		MaxLevel:    1,
+		UnlockCost:  0,
+		CreatedAt:   time.Now(),
 	}
 	repo.nodes[1] = root
 	repo.nodesByKey["root_node"] = root
@@ -47,13 +47,13 @@ func TestStartVotingSession_AutoSelect_PublishesEvent(t *testing.T) {
 
 	// 2. Child - Locked (Single Option)
 	child := &domain.ProgressionNode{
-		ID:           2,
-		NodeKey:      "child_node",
-		NodeType:     "feature",
-		DisplayName:  "Child Node",
-		MaxLevel:     1,
-		UnlockCost:   100,
-		CreatedAt:    time.Now(),
+		ID:          2,
+		NodeKey:     "child_node",
+		NodeType:    "feature",
+		DisplayName: "Child Node",
+		MaxLevel:    1,
+		UnlockCost:  100,
+		CreatedAt:   time.Now(),
 	}
 	repo.nodes[2] = child
 	repo.nodesByKey["child_node"] = child

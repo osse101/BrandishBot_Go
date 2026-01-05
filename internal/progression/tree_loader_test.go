@@ -360,18 +360,18 @@ func TestTreeLoader_CycleDetection(t *testing.T) {
 func TestTreeLoader_LoadActualConfig(t *testing.T) {
 	// Test that we can load the actual progression_tree.json
 	loader := NewTreeLoader()
-	
+
 	// Path relative to the test file location
 	configPath := filepath.Join("..", "..", "configs", "progression_tree.json")
-	
+
 	// Skip if file doesn't exist
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		t.Skip("progression_tree.json not found, skipping")
 	}
-	
+
 	config, err := loader.Load(configPath)
 	require.NoError(t, err, "Should load actual config file")
-	
+
 	// Check if config has been migrated to new schema
 	// If any node lacks tier/size/category, skip validation (not yet migrated)
 	migrated := true
@@ -381,21 +381,21 @@ func TestTreeLoader_LoadActualConfig(t *testing.T) {
 			break
 		}
 	}
-	
+
 	if !migrated {
 		t.Skip("progression_tree.json hasn't been migrated to new schema yet, skipping validation")
 	}
-	
+
 	// Validate the loaded config
 	err = loader.Validate(config)
 	require.NoError(t, err, "Actual config should be valid")
-	
+
 	// Check expected structure
 	// Version 2.0 indicates migrated schema
 	if config.Version != "1.0" && config.Version != "2.0" {
 		t.Errorf("Unexpected version: %s", config.Version)
 	}
-	
+
 	// Verify root node exists if config has been updated
 	var rootNode *NodeConfig
 	for i := range config.Nodes {
@@ -404,7 +404,7 @@ func TestTreeLoader_LoadActualConfig(t *testing.T) {
 			break
 		}
 	}
-	
+
 	if rootNode != nil {
 		// If root node exists, it should have new schema
 		assert.Empty(t, rootNode.Prerequisites, "Root node should have no prerequisites")
@@ -418,12 +418,12 @@ func createTempFile(t *testing.T, content string) string {
 	t.Helper()
 	tmpFile, err := os.CreateTemp("", "tree_config_*.json")
 	require.NoError(t, err)
-	
+
 	_, err = tmpFile.WriteString(content)
 	require.NoError(t, err)
-	
+
 	err = tmpFile.Close()
 	require.NoError(t, err)
-	
+
 	return tmpFile.Name()
 }

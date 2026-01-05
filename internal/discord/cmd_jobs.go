@@ -61,7 +61,7 @@ func JobBonusCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		options := i.ApplicationCommandData().Options
 		jobKey := options[0].StringValue()
 		bonusType := options[1].StringValue()
-		
+
 		var targetUser *discordgo.User
 		if len(options) > 2 {
 			targetUser = options[2].UserValue(s)
@@ -86,7 +86,7 @@ func JobBonusCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 
 		// Format bonus value (percentage usually)
 		bonusDisplay := fmt.Sprintf("%d%%", bonusVal)
-		
+
 		embed := &discordgo.MessageEmbed{
 			Title:       "✨ Job Bonus",
 			Description: fmt.Sprintf("Active **%s** bonus for **%s** as **%s**:", strings.ReplaceAll(bonusType, "_", " "), targetUser.Username, jobKey),

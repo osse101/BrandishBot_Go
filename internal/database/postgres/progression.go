@@ -251,7 +251,7 @@ func (r *progressionRepository) GetActiveVoting(ctx context.Context) (*domain.Pr
 		}
 		return nil, fmt.Errorf("failed to get active voting: %w", err)
 	}
-	
+
 	voting := &domain.ProgressionVoting{
 		ID:              int(row.ID),
 		NodeID:          int(row.NodeID.Int32),
@@ -275,7 +275,7 @@ func (r *progressionRepository) StartVoting(ctx context.Context, nodeID int, lev
 	} else {
 		endsAtParams = pgtype.Timestamp{Valid: false}
 	}
-	
+
 	err := r.q.StartVoting(ctx, generated.StartVotingParams{
 		NodeID:       pgtype.Int4{Int32: int32(nodeID), Valid: true},
 		TargetLevel:  pgtype.Int4{Int32: int32(level), Valid: true},
@@ -503,7 +503,7 @@ func (r *progressionRepository) GetUserEngagement(ctx context.Context, userID st
 	if err != nil {
 		return nil, fmt.Errorf("failed to query user engagement: %w", err)
 	}
-	
+
 	breakdown := &domain.ContributionBreakdown{}
 	weights, _ := r.GetEngagementWeights(ctx)
 

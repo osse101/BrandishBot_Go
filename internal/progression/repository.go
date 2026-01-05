@@ -14,10 +14,10 @@ type Repository interface {
 	GetNodeByKey(ctx context.Context, nodeKey string) (*domain.ProgressionNode, error)
 	GetNodeByID(ctx context.Context, id int) (*domain.ProgressionNode, error)
 	GetAllNodes(ctx context.Context) ([]*domain.ProgressionNode, error)
-	
+
 	// Prerequisites operations (v2.0 - junction table)
-	GetPrerequisites(ctx context.Context, nodeID int) ([]*domain.ProgressionNode, error)  // Get prerequisites FOR this node
-	GetDependents(ctx context.Context, nodeID int) ([]*domain.ProgressionNode, error)      // Get nodes that depend ON this node
+	GetPrerequisites(ctx context.Context, nodeID int) ([]*domain.ProgressionNode, error) // Get prerequisites FOR this node
+	GetDependents(ctx context.Context, nodeID int) ([]*domain.ProgressionNode, error)    // Get nodes that depend ON this node
 
 	// Unlock operations
 	GetUnlock(ctx context.Context, nodeID int, level int) (*domain.ProgressionUnlock, error)

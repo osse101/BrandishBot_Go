@@ -44,7 +44,7 @@ func (r *CommandRegistry) Handle(s *discordgo.Session, i *discordgo.InteractionC
 // Only performs updates if commands have changed to avoid rate limits
 func (b *Bot) RegisterCommands(registry *CommandRegistry, forceUpdate bool) error {
 	slog.Info("Checking Discord commands...")
-	
+
 	// Get currently registered commands from Discord
 	existingCmds, err := b.Session.ApplicationCommands(b.AppID, "")
 	if err != nil {
@@ -75,15 +75,15 @@ func (b *Bot) RegisterCommands(registry *CommandRegistry, forceUpdate bool) erro
 	}
 
 	// Commands have changed - update them
-	slog.Info("Commands changed, updating...", 
-		"existing", len(existingCmds), 
+	slog.Info("Commands changed, updating...",
+		"existing", len(existingCmds),
 		"desired", len(desiredCmds))
-	
+
 	_, err = b.Session.ApplicationCommandBulkOverwrite(b.AppID, "", desiredCmds)
 	if err != nil {
 		return fmt.Errorf("failed to update commands: %w", err)
 	}
-	
+
 	slog.Info("Commands updated successfully", "count", len(desiredCmds))
 	return nil
 }

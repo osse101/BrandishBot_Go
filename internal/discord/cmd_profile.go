@@ -100,7 +100,7 @@ func CheckTimeoutCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 
 		options := i.ApplicationCommandData().Options
 		var targetUser *discordgo.User
-		
+
 		if len(options) > 0 {
 			targetUser = options[0].UserValue(s)
 		} else {

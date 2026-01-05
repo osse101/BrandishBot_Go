@@ -50,7 +50,6 @@ func (m *MockRepo) GetUserByPlatformUsername(ctx context.Context, platform, user
 	return args.Get(0).(*domain.User), args.Error(1)
 }
 
-
 func (m *MockRepo) GetUserByID(ctx context.Context, userID string) (*domain.User, error) {
 	args := m.Called(ctx, userID)
 	if args.Get(0) == nil {

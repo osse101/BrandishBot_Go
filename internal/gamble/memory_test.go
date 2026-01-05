@@ -47,7 +47,7 @@ func TestStartGamble_NoGoroutineLeak(t *testing.T) {
 	svc := NewService(repo, nil, lootboxSvc, statsSvc, 30*time.Second, nil)
 	checker := leaktest.NewGoroutineChecker(t)
 
-	// Execute 
+	// Execute
 	ctx := context.Background()
 	bets := []domain.LootboxBet{{ItemID: 1, Quantity: 1}}
 	_, err := svc.StartGamble(ctx, domain.PlatformDiscord, "user123", "tester", bets)

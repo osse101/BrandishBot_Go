@@ -83,7 +83,7 @@ var InfoDir = "configs/discord/info"
 func loadInfoText(featureName string) (string, error) {
 	// Sanitize feature name to prevent directory traversal
 	featureName = strings.ToLower(strings.TrimSpace(featureName))
-	
+
 	// Prevent directory traversal
 	if strings.Contains(featureName, "..") || strings.Contains(featureName, "/") || strings.Contains(featureName, "\\") {
 		return "", fmt.Errorf("invalid feature name: %s", featureName)
@@ -100,7 +100,7 @@ func loadInfoText(featureName string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to resolve absolute info directory: %w", err)
 	}
-	
+
 	absFilename, err := filepath.Abs(filename)
 	if err != nil {
 		return "", fmt.Errorf("failed to resolve absolute filename: %w", err)
@@ -115,7 +115,7 @@ func loadInfoText(featureName string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to read info file: %w", err)
 	}
-	
+
 	return string(data), nil
 }
 

@@ -74,9 +74,9 @@ func TestConcurrentAddItem_Integration(t *testing.T) {
 	}
 
 	// Run concurrent AddItem operations
-	const concurrentOps = 20  // Reduced to ensure test completes within timeout while still testing concurrency
+	const concurrentOps = 20 // Reduced to ensure test completes within timeout while still testing concurrency
 	const itemName = domain.ItemLootbox1
-	
+
 	var wg sync.WaitGroup
 	wg.Add(concurrentOps)
 	errChan := make(chan error, concurrentOps)
@@ -96,7 +96,7 @@ func TestConcurrentAddItem_Integration(t *testing.T) {
 
 	wg.Wait()
 	close(errChan)
-	
+
 	duration := time.Since(startTime)
 	t.Logf("Completed %d operations in %v", concurrentOps, duration)
 

@@ -18,9 +18,9 @@ type HealthStatus struct {
 }
 
 var (
-	startTime        = time.Now()
-	commandCounter   int64
-	lastCommandTime  time.Time
+	startTime       = time.Now()
+	commandCounter  int64
+	lastCommandTime time.Time
 )
 
 // RecordCommand increments the command counter

@@ -237,7 +237,7 @@ func EngagementCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		if targetUser == nil {
 			targetUser = i.User
 		}
-		
+
 		options := i.ApplicationCommandData().Options
 		if len(options) > 0 {
 			targetUser = options[0].UserValue(s)
@@ -347,7 +347,7 @@ func createProgressBar(percent float64) string {
 	if filledBars > totalBars {
 		filledBars = totalBars
 	}
-	
+
 	bar := "`["
 	for i := 0; i < totalBars; i++ {
 		if i < filledBars {

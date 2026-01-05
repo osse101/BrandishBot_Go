@@ -187,7 +187,7 @@ func (r *GambleRepository) SaveOpenedItems(ctx context.Context, items []domain.G
 			ItemID:   pgtype.Int4{Int32: int32(item.ItemID), Valid: true},
 			Value:    item.Value,
 		}
-		
+
 		err = q.SaveOpenedItem(ctx, params)
 		if err != nil {
 			return fmt.Errorf("failed to insert opened item: %w", err)

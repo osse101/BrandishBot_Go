@@ -17,7 +17,7 @@ type AdminAwardXPRequest struct {
 	Amount   int    `json:"amount"`   //  XP amount to award
 }
 
-//  AdminJobHandler handles admin job operations
+// AdminJobHandler handles admin job operations
 type AdminJobHandler struct {
 	jobService  job.Service
 	userService user.Service
@@ -35,10 +35,10 @@ func NewAdminJobHandler(jobService job.Service, userService user.Service) *Admin
 // POST /admin/job/award-xp
 func (h *AdminJobHandler) HandleAdminAwardXP(w http.ResponseWriter, r *http.Request) {
 	log := logger.FromContext(r.Context())
-	
+
 	var req AdminAwardXPRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body",  http.StatusBadRequest)
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 

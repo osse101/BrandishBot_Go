@@ -99,7 +99,7 @@ func TestVotingFlow(t *testing.T) {
 	}
 
 	resp, body = makeRequest(t, "POST", "/progression/vote", voteRequest)
-	
+
 	// Should succeed (200) or indicate already voted/other business logic (400)
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusBadRequest {
 		t.Errorf("Unexpected status for vote: %d. Body: %s", resp.StatusCode, string(body))
@@ -109,9 +109,9 @@ func TestVotingFlow(t *testing.T) {
 // TestEngagementTracking tests the engagement endpoint
 func TestEngagementTracking(t *testing.T) {
 	userID := "test_user_engagement"
-	
+
 	resp, body := makeRequest(t, "GET", fmt.Sprintf("/progression/engagement?user_id=%s", userID), nil)
-	
+
 	// Should return 200 even if user doesn't exist (0 engagement)
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("Expected status 200, got %d. Body: %s", resp.StatusCode, string(body))

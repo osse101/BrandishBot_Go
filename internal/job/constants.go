@@ -4,10 +4,10 @@ package job
 const (
 	// BaseXP is the base XP value used in level calculations
 	BaseXP = 100.0
-	
+
 	// LevelExponent is the exponent used in the XP formula: XP = BaseXP * (Level ^ LevelExponent)
 	LevelExponent = 1.5
-	
+
 	// MaxIterationLevel is the maximum level to iterate to when calculating levels
 	MaxIterationLevel = 100
 )
@@ -16,10 +16,10 @@ const (
 const (
 	// DefaultMaxLevel is the default maximum job level when progression system isn't available
 	DefaultMaxLevel = 10
-	
+
 	// DefaultXPMultiplier is the default XP multiplier when no boost is active
 	DefaultXPMultiplier = 1.0
-	
+
 	// DefaultDailyCap is the base daily XP cap per job
 	DefaultDailyCap = 500
 )
@@ -38,18 +38,18 @@ const (
 const (
 	// Blacksmith XP awards
 	BlacksmithXPPerItem = 10
-	
+
 	// Gambler XP awards
 	GamblerXPPerLootbox = 20
 	GamblerWinBonus     = 50
-	
+
 	// Explorer XP awards
 	ExplorerXPPerItem = 10
-	
+
 	// Merchant XP awards (value-based)
 	MerchantXPValueDivisor = 10.0 // XP = ceil(transactionValue / divisor)
 	MerchantBonusPerLevel  = 0.5  // 0.5% price adjustment per level
-	
+
 	// Scholar XP awards
 	ScholarXPPerEngagement = 5
 	ScholarBonusPerLevel   = 10.0 // 10% engagement value increase per level

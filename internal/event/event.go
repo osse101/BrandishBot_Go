@@ -22,7 +22,6 @@ const (
 	ProgressionTargetSet      Type = "progression.target.set"
 )
 
-
 // Handler is a function that handles an event
 type Handler func(ctx context.Context, event Event) error
 

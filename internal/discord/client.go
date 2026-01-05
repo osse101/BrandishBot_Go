@@ -46,21 +46,21 @@ func (c *APIClient) doRequest(method, path string, body interface{}) (*http.Resp
 	}
 
 	url := fmt.Sprintf("%s%s", c.BaseURL, path)
-	
+
 	// Retry configuration
 	maxRetries := 3
 	retryDelay := 500 * time.Millisecond
-	
+
 	var lastErr error
 	for attempt := 0; attempt <= maxRetries; attempt++ {
 		if attempt > 0 {
 			// Exponential backoff with jitter
-			jitter := time.Duration(time.Now().UnixNano() % 100) * time.Millisecond
-			delay := retryDelay * time.Duration(1<<uint(attempt-1)) + jitter
+			jitter := time.Duration(time.Now().UnixNano()%100) * time.Millisecond
+			delay := retryDelay*time.Duration(1<<uint(attempt-1)) + jitter
 			time.Sleep(delay)
 			slog.Info("Retrying API request", "attempt", attempt, "path", path, "delay", delay)
 		}
-		
+
 		req, err := http.NewRequest(method, url, bytes.NewBuffer(reqBody))
 		if err != nil {
 			return nil, fmt.Errorf("failed to create request: %w", err)
@@ -77,12 +77,12 @@ func (c *APIClient) doRequest(method, path string, body interface{}) (*http.Resp
 			slog.Warn("API request failed", "error", err, "attempt", attempt)
 			continue
 		}
-		
+
 		// Success or non-retryable error
 		if resp.StatusCode < 500 {
 			return resp, nil
 		}
-		
+
 		// Server error - retry
 		resp.Body.Close()
 		lastErr = fmt.Errorf("server error: %d", resp.StatusCode)
@@ -189,12 +189,12 @@ func (c *APIClient) GetInventory(platform, platformID, username, filter string) 
 // UseItem uses an item from inventory
 func (c *APIClient) UseItem(platform, platformID, username, itemName string, quantity int) (string, error) {
 	req := map[string]interface{}{
-		"platform":      platform,
-		"platform_id":   platformID,
-		"username":      username,
-		"item_name":     itemName,
-		"quantity":      quantity,
-		"target_user":   "", // Optional, empty for non-targeted items
+		"platform":    platform,
+		"platform_id": platformID,
+		"username":    username,
+		"item_name":   itemName,
+		"quantity":    quantity,
+		"target_user": "", // Optional, empty for non-targeted items
 	}
 
 	resp, err := c.doRequest(http.MethodPost, "/api/v1/user/item/use", req)
@@ -486,7 +486,6 @@ func (c *APIClient) AdminReloadWeights() (string, error) {
 
 	return reloadResp.Message, nil
 }
-
 
 // AdminStartVoting starts a new voting session (admin only)
 func (c *APIClient) AdminStartVoting() (string, error) {
@@ -1414,7 +1413,7 @@ func (c *APIClient) GetUserJobs(platform, platformID string) (map[string]interfa
 	params := url.Values{}
 	params.Set("platform", platform)
 	params.Set("platform_id", platformID)
-	
+
 	userID := fmt.Sprintf("%s:%s", platform, platformID)
 	params.Set("user_id", userID)
 
@@ -1518,9 +1517,6 @@ func (c *APIClient) RecordEvent(platform, platformID, eventType string, metadata
 
 	return result.Message, nil
 }
-
-
-
 
 // ReloadAliases reloads item aliases (admin only)
 func (c *APIClient) ReloadAliases() error {

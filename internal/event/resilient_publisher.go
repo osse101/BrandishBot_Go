@@ -10,20 +10,20 @@ import (
 
 // ResilientPublisher wraps an event bus with retry logic and dead-letter handling
 type ResilientPublisher struct {
-	bus          Bus
-	retryQueue   chan retryEntry
-	maxRetries   int
-	retryDelay   time.Duration
-	wg           sync.WaitGroup
-	shutdown     chan struct{}
-	deadLetter   *DeadLetterWriter
+	bus        Bus
+	retryQueue chan retryEntry
+	maxRetries int
+	retryDelay time.Duration
+	wg         sync.WaitGroup
+	shutdown   chan struct{}
+	deadLetter *DeadLetterWriter
 }
 
 // retryEntry represents an event in the retry queue
 type retryEntry struct {
-	event      Event
-	attempt    int
-	lastError  error
+	event     Event
+	attempt   int
+	lastError error
 }
 
 // NewResilientPublisher creates a new ResilientPublisher with retry logic
@@ -32,7 +32,7 @@ func NewResilientPublisher(bus Bus, maxRetries int, retryDelay time.Duration, de
 	if err != nil {
 		return nil, err
 	}
-	
+
 	rp := &ResilientPublisher{
 		bus:        bus,
 		retryQueue: make(chan retryEntry, 1000), // Buffer 1000 events
@@ -41,11 +41,11 @@ func NewResilientPublisher(bus Bus, maxRetries int, retryDelay time.Duration, de
 		shutdown:   make(chan struct{}),
 		deadLetter: dl,
 	}
-	
+
 	// Start background retry worker
 	rp.wg.Add(1)
 	go rp.retryWorker()
-	
+
 	return rp, nil
 }
 
@@ -57,7 +57,7 @@ func (rp *ResilientPublisher) PublishWithRetry(ctx context.Context, event Event)
 		log.Warn("Event publish failed, queuing for retry",
 			"event_type", event.Type,
 			"error", err)
-		
+
 		// Non-blocking send to retry queue
 		select {
 		case rp.retryQueue <- retryEntry{event: event, attempt: 1, lastError: err}:
@@ -73,7 +73,7 @@ func (rp *ResilientPublisher) PublishWithRetry(ctx context.Context, event Event)
 // retryWorker processes events from the retry queue
 func (rp *ResilientPublisher) retryWorker() {
 	defer rp.wg.Done()
-	
+
 	for {
 		select {
 		case entry := <-rp.retryQueue:
@@ -91,10 +91,10 @@ func (rp *ResilientPublisher) processRetry(entry retryEntry) {
 	// Exponential backoff: 2s, 4s, 8s, 16s, 32s
 	delay := rp.retryDelay * time.Duration(1<<(entry.attempt-1))
 	time.Sleep(delay)
-	
+
 	ctx := context.Background()
 	log := logger.FromContext(ctx)
-	
+
 	if err := rp.bus.Publish(ctx, entry.event); err != nil {
 		if entry.attempt >= rp.maxRetries {
 			// Retry exhausted, write to dead-letter
@@ -110,7 +110,7 @@ func (rp *ResilientPublisher) processRetry(entry retryEntry) {
 				"attempt", entry.attempt,
 				"next_delay", delay*2,
 				"error", err)
-			
+
 			// Use goroutine to avoid blocking the worker
 			go func(nextEntry retryEntry) {
 				select {
@@ -133,7 +133,7 @@ func (rp *ResilientPublisher) processRetry(entry retryEntry) {
 func (rp *ResilientPublisher) drainQueue() {
 	log := logger.FromContext(context.Background())
 	count := 0
-	
+
 	for {
 		select {
 		case entry := <-rp.retryQueue:
@@ -158,20 +158,20 @@ func (rp *ResilientPublisher) drainQueue() {
 // Shutdown gracefully shuts down the resilient publisher
 func (rp *ResilientPublisher) Shutdown(ctx context.Context) error {
 	close(rp.shutdown)
-	
+
 	// Wait for worker to finish with timeout
 	done := make(chan struct{})
 	go func() {
 		rp.wg.Wait()
 		close(done)
 	}()
-	
+
 	select {
 	case <-done:
 		// Completed successfully
 	case <-ctx.Done():
 		logger.FromContext(ctx).Warn("Resilient publisher shutdown timed out")
 	}
-	
+
 	return rp.deadLetter.Close()
 }

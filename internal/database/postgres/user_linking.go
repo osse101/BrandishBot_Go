@@ -77,7 +77,7 @@ func (r *UserRepository) UpdateUser(ctx context.Context, user domain.User) error
 				Name:   platformName,
 			})
 		}
-		
+
 		platformID, err := q.GetPlatformID(ctx, platformName)
 		if err != nil {
 			return fmt.Errorf("failed to get platform id: %w", err)
