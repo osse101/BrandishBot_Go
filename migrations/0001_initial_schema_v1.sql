@@ -2,18 +2,10 @@
 -- BrandishBot v1.0 - Initial Schema
 -- Squashed from 29 development migrations (2025-11 through 2026-01)
 
-SET statement_timeout = 0;
-SET lock_timeout = 0;
-SET idle_in_transaction_session_timeout = 0;
-SET client_encoding = 'UTF8';
-SET standard_conforming_strings = on;
-SELECT pg_catalog.set_config('search_path', '', false);
-SET check_function_bodies = false;
-SET xmloption = content;
-SET client_min_messages = warning;
-SET row_security = off;
-SET default_tablespace = '';
-SET default_table_access_method = heap;
+-- +goose Up
+-- BrandishBot v1.0 - Initial Schema
+-- Squashed from 29 development migrations (2025-11 through 2026-01)
+
 CREATE TABLE public.crafting_recipes (
     recipe_id integer NOT NULL,
     target_item_id integer NOT NULL,
@@ -495,7 +487,7 @@ ALTER TABLE ONLY public.item_types
 ALTER TABLE ONLY public.item_types
     ADD CONSTRAINT item_types_type_name_key UNIQUE (type_name);
 ALTER TABLE ONLY public.items
-    ADD CONSTRAINT items_item_name_key UNIQUE (internal_name);
+    ADD CONSTRAINT items_internal_name_key UNIQUE (internal_name);
 ALTER TABLE ONLY public.items
     ADD CONSTRAINT items_pkey PRIMARY KEY (item_id);
 ALTER TABLE ONLY public.job_level_bonuses
@@ -687,8 +679,50 @@ ALTER TABLE ONLY public.user_votes
 ALTER TABLE ONLY public.user_votes
     ADD CONSTRAINT user_votes_session_id_fkey FOREIGN KEY (session_id) REFERENCES public.progression_voting_sessions(id);
 
+
+-- Seed data from migrations 0005-0008, 0012
+INSERT INTO item_types (type_name) VALUES ('consumable'), ('upgradeable') ON CONFLICT DO NOTHING;
+INSERT INTO items (internal_name, public_name, item_description, base_value, default_display) VALUES 
+    ('lootbox_tier0', 'junkbox', 'A basic lootbox containing random items', 100, 'Rusty Lootbox'),
+    ('lootbox_tier1', 'lootbox', 'An upgraded lootbox with better rewards', 500, 'Basic Lootbox'),
+    ('lootbox_tier2', 'goldbox', 'A premium lootbox with rare items', 2500, 'Golden Lootbox');
+INSERT INTO item_type_assignments (item_id, item_type_id)
+SELECT i.item_id, it.item_type_id
+FROM items i
+CROSS JOIN item_types it
+WHERE i.internal_name IN ('lootbox_tier0', 'lootbox_tier1', 'lootbox_tier2')
+  AND it.type_name = 'consumable';
+
+INSERT INTO item_types (type_name) VALUES ('sellable'), ('buyable') ON CONFLICT DO NOTHING;
+INSERT INTO item_type_assignments (item_id, item_type_id)
+SELECT i.item_id, it.item_type_id
+FROM items i
+CROSS JOIN item_types it
+WHERE i.internal_name IN ('lootbox_tier0', 'lootbox_tier1', 'lootbox_tier2')
+  AND it.type_name IN ('sellable', 'buyable');
+
+INSERT INTO items (internal_name, public_name, item_description, base_value, default_display) VALUES 
+    ('money', 'money', 'Currency used for transactions', 1, 'Coins')
+ON CONFLICT DO NOTHING;
+
+INSERT INTO items (internal_name, public_name, item_description, base_value, default_display) VALUES 
+    ('weapon_blaster', 'missile', 'A powerful weapon', 1000, 'Ray Gun')
+ON CONFLICT DO NOTHING;
+INSERT INTO item_type_assignments (item_id, item_type_id)
+SELECT i.item_id, it.item_type_id
+FROM items i
+CROSS JOIN item_types it
+WHERE i.internal_name = 'weapon_blaster'
+  AND it.type_name = 'upgradeable';
+
+INSERT INTO platforms (name) VALUES ('twitch'), ('youtube'), ('discord') ON CONFLICT (name) DO NOTHING;
+
+-- Progression nodes (minimal seed for tests - full tree synced from JSON config at runtime)
+INSERT INTO progression_nodes (node_key, node_type, display_name, description, tier, size, category, unlock_cost, max_level, sort_order)
+VALUES ('progression_system', 'feature', 'Progression System', 'The starting point of progression', 1, 'medium', 'core', 0, 1, 0)
+ON CONFLICT DO NOTHING;
+
 -- +goose Down
--- Drop all tables in reverse dependency order
 DROP TABLE IF EXISTS user_votes CASCADE;
 DROP TABLE IF EXISTS progression_voting_options CASCADE;
 DROP TABLE IF EXISTS progression_voting_sessions CASCADE;
