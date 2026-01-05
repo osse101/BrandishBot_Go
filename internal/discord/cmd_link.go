@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 // LinkCommand returns the link command definition and handler
@@ -182,7 +184,7 @@ func UnlinkCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 
 			embed = &discordgo.MessageEmbed{
 				Title:       "✅ Platform Unlinked",
-				Description: fmt.Sprintf("Your **%s** account has been unlinked.\n\nYour Discord account keeps all inventory and stats.", strings.Title(platform)),
+				Description: fmt.Sprintf("Your **%s** account has been unlinked.\n\nYour Discord account keeps all inventory and stats.", cases.Title(language.English).String(platform)),
 				Color:       0x2ecc71, // Green
 			}
 		} else {
@@ -198,7 +200,7 @@ func UnlinkCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 				Description: fmt.Sprintf("Are you sure you want to unlink your **%s** account?\n\n"+
 					"**Warning:** The %s account will lose access to your shared inventory.\n\n"+
 					"To confirm, use:\n```/unlink platform:%s confirm:true```",
-					strings.Title(platform), strings.Title(platform), platform),
+					cases.Title(language.English).String(platform), cases.Title(language.English).String(platform), platform),
 				Color: 0xe74c3c, // Red
 				Footer: &discordgo.MessageEmbedFooter{
 					Text: "Confirm within 60 seconds",

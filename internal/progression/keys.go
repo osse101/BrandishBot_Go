@@ -38,4 +38,7 @@ const (
 	// Upgrades
 	UpgradeCooldownReduction = "upgrade_cooldown_reduction"
 	UpgradeJobsXPBoost       = "upgrade_jobs_xp_boost"
+
+	// Session Status
+	SessionStatusVoting = "voting"
 )

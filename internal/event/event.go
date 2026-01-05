@@ -20,6 +20,7 @@ type Event struct {
 const (
 	ProgressionCycleCompleted Type = "progression.cycle.completed"
 	ProgressionTargetSet      Type = "progression.target.set"
+	EventTypeEngagement       Type = "engagement"
 )
 
 // Handler is a function that handles an event

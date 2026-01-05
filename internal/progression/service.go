@@ -215,7 +215,7 @@ func (s *service) VoteForUnlock(ctx context.Context, userID string, nodeKey stri
 		return fmt.Errorf("failed to get active session: %w", err)
 	}
 
-	if session == nil || session.Status != "voting" {
+	if session == nil || session.Status != SessionStatusVoting {
 		return fmt.Errorf("no active voting session")
 	}
 
@@ -478,7 +478,9 @@ func (s *service) ForceInstantUnlock(ctx context.Context) (*domain.ProgressionUn
 	// Set unlock target
 	progress, _ := s.repo.GetActiveUnlockProgress(ctx)
 	if progress != nil {
-		s.repo.SetUnlockTarget(ctx, progress.ID, winner.NodeID, winner.TargetLevel, session.ID)
+		if err := s.repo.SetUnlockTarget(ctx, progress.ID, winner.NodeID, winner.TargetLevel, session.ID); err != nil {
+			log.Warn("Failed to set unlock target during instant unlock", "error", err)
+		}
 	}
 
 	// Unlock the node immediately

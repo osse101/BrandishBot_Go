@@ -383,7 +383,7 @@ func (m *MockRepository) ResetTree(ctx context.Context, resetBy string, reason s
 	// Keep only root unlock
 	newUnlocks := make(map[int]map[int]*domain.ProgressionUnlock)
 	for nodeID, levels := range m.unlocks {
-		if node, ok := m.nodes[nodeID]; ok && node.NodeKey == "progression_system" {
+		if node, ok := m.nodes[nodeID]; ok && node.NodeKey == FeatureProgressionSystem {
 			newUnlocks[nodeID] = levels
 		}
 	}
@@ -627,7 +627,7 @@ func setupTestTree(repo *MockRepository) {
 	rootID := 1
 	root := &domain.ProgressionNode{
 		ID:          rootID,
-		NodeKey:     "progression_system",
+		NodeKey:     FeatureProgressionSystem,
 		NodeType:    "feature",
 		DisplayName: "Progression System",
 		Description: "Root progression system",
@@ -637,7 +637,7 @@ func setupTestTree(repo *MockRepository) {
 		CreatedAt:   time.Now(),
 	}
 	repo.nodes[rootID] = root
-	repo.nodesByKey["progression_system"] = root
+	repo.nodesByKey[FeatureProgressionSystem] = root
 
 	// Unlock root
 	repo.UnlockNode(context.Background(), rootID, 1, "auto", 0)

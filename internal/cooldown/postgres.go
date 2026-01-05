@@ -84,7 +84,9 @@ func (b *postgresBackend) EnforceCooldown(ctx context.Context, userID, action st
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
 
 	// Acquire advisory lock based on userID + action
 	// This ensures mutual exclusion even when no cooldown row exists yet
@@ -95,6 +97,7 @@ func (b *postgresBackend) EnforceCooldown(ctx context.Context, userID, action st
 	}
 
 	// Recheck cooldown with exclusive lock acquired
+	// Use getLastUsedTx directly as we are already in a transaction
 	lastUsed, err := b.getLastUsedTx(ctx, tx, userID, action)
 	if err != nil {
 		return fmt.Errorf("failed to get cooldown within transaction: %w", err)
@@ -167,26 +170,6 @@ func (b *postgresBackend) getLastUsed(ctx context.Context, userID, action string
 	return &lastUsed, nil
 }
 
-// getLastUsedLocked retrieves last used time with row lock (SELECT FOR UPDATE)
-func (b *postgresBackend) getLastUsedLocked(ctx context.Context, tx pgx.Tx, userID, action string) (*time.Time, error) {
-	var lastUsed time.Time
-	query := `
-		SELECT last_used_at
-		FROM user_cooldowns
-		WHERE user_id = $1 AND action_name = $2
-		FOR UPDATE
-	`
-
-	err := tx.QueryRow(ctx, query, userID, action).Scan(&lastUsed)
-	if err != nil {
-		if err == pgx.ErrNoRows {
-			return nil, nil // No cooldown record
-		}
-		return nil, fmt.Errorf("failed to get last used with lock: %w", err)
-	}
-	return &lastUsed, nil
-}
-
 // updateCooldown updates cooldown outside transaction
 func (b *postgresBackend) updateCooldown(ctx context.Context, userID, action string, timestamp time.Time) error {
 	query := `
@@ -235,6 +218,6 @@ func (b *postgresBackend) getLastUsedTx(ctx context.Context, tx pgx.Tx, userID, 
 // hashUserAction creates a consistent int64 hash from userID + action for advisory locking
 func hashUserAction(userID, action string) int64 {
 	h := sha256.Sum256([]byte(userID + ":" + action))
-	// Use first 8 bytes as int64
-	return int64(binary.BigEndian.Uint64(h[:8]))
+	// Use first 8 bytes as int64, masking MSB to ensure positive value and avoid overflow warning
+	return int64(binary.BigEndian.Uint64(h[:8]) & 0x7FFFFFFFFFFFFFFF)
 }

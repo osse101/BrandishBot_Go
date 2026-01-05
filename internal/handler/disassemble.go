@@ -70,7 +70,7 @@ func HandleDisassembleItem(svc crafting.Service, progressionSvc progression.Serv
 			"materials_gained":   result.Outputs,
 			"is_perfect_salvage": result.IsPerfectSalvage,
 		}); err != nil {
-			// Error already logged in publishCraftingEvent
+			_ = err // Error already logged in publishCraftingEvent
 		}
 
 		// Construct user message

@@ -22,8 +22,9 @@ func NewHTTPServer(port string, bot *Bot) *HTTPServer {
 
 	srv := &HTTPServer{
 		server: &http.Server{
-			Addr:    ":" + port,
-			Handler: mux,
+			Addr:              ":" + port,
+			Handler:           mux,
+			ReadHeaderTimeout: 10 * time.Second,
 		},
 		bot: bot,
 	}

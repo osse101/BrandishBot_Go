@@ -172,7 +172,7 @@ func (s *service) EndVoting(ctx context.Context) (*domain.ProgressionVotingOptio
 		return nil, fmt.Errorf("failed to get active session: %w", err)
 	}
 
-	if session == nil || session.Status != "voting" {
+	if session == nil || session.Status != SessionStatusVoting {
 		return nil, fmt.Errorf("no active voting session")
 	}
 
@@ -322,6 +322,9 @@ func (s *service) AddContribution(ctx context.Context, amount int) error {
 						defer s.wg.Done()
 						defer func() { <-s.unlockSem }() // Release semaphore when done
 						s.CheckAndUnlockNode(s.shutdownCtx)
+						if _, err := s.CheckAndUnlockNode(s.shutdownCtx); err != nil {
+							log.Error("Failed to check and unlock node in background", "error", err)
+						}
 					}()
 				default:
 					// Unlock already in progress, skip this trigger
@@ -394,7 +397,9 @@ func (s *service) CheckAndUnlockNode(ctx context.Context) (*domain.ProgressionUn
 		s.wg.Add(1)
 		go func() {
 			defer s.wg.Done()
-			s.StartVotingSession(s.shutdownCtx, &node.ID)
+			if err := s.StartVotingSession(s.shutdownCtx, &node.ID); err != nil {
+				log.Error("Failed to start voting session in background", "error", err)
+			}
 		}()
 
 		return &domain.ProgressionUnlock{
@@ -463,6 +468,7 @@ func findWinningOption(options []domain.ProgressionVotingOption) *domain.Progres
 	}
 
 	// Normal tie-breaking with votes
+	//nolint:gosec // Checked for empty slice above
 	winner := &options[0]
 	for i := 1; i < len(options); i++ {
 		opt := &options[i]

@@ -480,7 +480,7 @@ func HandleGetInventory(svc user.Service, progSvc progression.Service) http.Hand
 
 		platform := r.URL.Query().Get("platform") // optional
 		if platform == "" {
-			platform = "discord" // Default
+			platform = domain.PlatformDiscord // Default
 		}
 		platformID := r.URL.Query().Get("platform_id")
 		if platformID == "" {

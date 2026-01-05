@@ -184,8 +184,12 @@ func TestStartVotingSession_MultiLevelNode_AutoSelect(t *testing.T) {
 	progress, err := repo.GetActiveUnlockProgress(ctx)
 	assert.NoError(t, err)
 	assert.NotNil(t, progress)
-	assert.NotNil(t, progress.TargetLevel)
-	assert.Equal(t, 1, *progress.TargetLevel, "First unlock should target level 1")
+	if progress != nil {
+		assert.NotNil(t, progress.TargetLevel)
+		if progress.TargetLevel != nil {
+			assert.Equal(t, 1, *progress.TargetLevel, "First unlock should target level 1")
+		}
+	}
 
 	// Now unlock level 1 and try again - should target level 2
 	repo.UnlockNode(ctx, 2, 1, "test", 0)

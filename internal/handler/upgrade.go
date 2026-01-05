@@ -69,7 +69,7 @@ func HandleUpgradeItem(svc crafting.Service, progressionSvc progression.Service,
 			"quantity_upgraded": result.Quantity,
 			"is_masterwork":     result.IsMasterwork,
 		}); err != nil {
-			// Error already logged in publishCraftingEvent
+			_ = err // Error already logged in publishCraftingEvent
 		}
 
 		// Construct user message
