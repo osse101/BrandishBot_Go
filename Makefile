@@ -26,6 +26,7 @@ help:
 	@echo "  make clean                - Remove build artifacts (bin/)"
 	@echo "  make run                  - Run the application from bin/app"
 	@echo "  make swagger              - Generate Swagger docs"
+	@echo "  make generate             - Generate sqlc code"
 	@echo ""
 	@echo "Benchmark Commands:"
 	@echo "  make bench                - Run all benchmarks"
@@ -264,6 +265,11 @@ swagger:
 	@echo "Generating Swagger documentation..."
 	@$$HOME/go/bin/swag init -g cmd/app/main.go --output ./docs/swagger
 	@echo "Swagger docs updated: docs/swagger/"
+
+generate:
+	@echo "Generating sqlc code..."
+	@go run github.com/sqlc-dev/sqlc/cmd/sqlc@latest generate
+	@echo "✓ sqlc code generated"
 
 # Docker commands
 docker-up:
