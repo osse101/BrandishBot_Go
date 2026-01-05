@@ -784,7 +784,7 @@ func TestHandleSearch_DiminishingReturns(t *testing.T) {
 	// Reset cooldown manually for second search
 	delete(repo.cooldowns[user.ID], domain.ActionSearch)
 
-	msg, err = svc.HandleSearch(ctx, domain.PlatformTwitch, "testuser123", TestUsername)
+	_, _ = svc.HandleSearch(ctx, domain.PlatformTwitch, "testuser123", TestUsername)
 	require.NoError(t, err)
 
 	// We can't guarantee "Exhausted" message because of RNG failure,

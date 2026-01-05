@@ -47,6 +47,7 @@ import (
 // @in header
 // @name X-API-Key
 
+//nolint:gocyclo // main function setup is naturally complex
 func main() {
 	// Load configuration FIRST (single source of truth)
 	cfg, err := config.Load()

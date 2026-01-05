@@ -93,6 +93,33 @@ func (c *APIClient) doRequest(method, path string, body interface{}) (*http.Resp
 	return nil, fmt.Errorf("max retries exceeded: %w", lastErr)
 }
 
+// doRequestAndParse performs a request and parses the JSON response into the target struct
+func (c *APIClient) doRequestAndParse(method, path string, body interface{}, target interface{}) error {
+	resp, err := c.doRequest(method, path, body)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		var errResp struct {
+			Error string `json:"error"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
+			return fmt.Errorf("API error: %s", errResp.Error)
+		}
+		return fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	if target != nil {
+		if err := json.NewDecoder(resp.Body).Decode(target); err != nil {
+			return fmt.Errorf("failed to decode response: %w", err)
+		}
+	}
+
+	return nil
+}
+
 // RegisterUser registers or retrieves a user
 func (c *APIClient) RegisterUser(username, discordID string) (*domain.User, error) {
 	req := map[string]string{
@@ -306,30 +333,13 @@ func (c *APIClient) VoteForNode(platform, platformID, username, nodeKey string) 
 		"node_key":    nodeKey,
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "/api/v1/progression/vote", req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		var errResp struct {
-			Error string `json:"error"`
-		}
-		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
-			return "", fmt.Errorf("API error: %s", errResp.Error)
-		}
-		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
-	}
-
-	var voteResp struct {
+	var resp struct {
 		Message string `json:"message"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&voteResp); err != nil {
-		return "", fmt.Errorf("failed to decode response: %w", err)
+	if err := c.doRequestAndParse(http.MethodPost, "/api/v1/progression/vote", req, &resp); err != nil {
+		return "", err
 	}
-
-	return voteResp.Message, nil
+	return resp.Message, nil
 }
 
 // AdminUnlockNode force-unlocks a progression node (admin only)
@@ -400,30 +410,13 @@ func (c *APIClient) AdminRelockNode(nodeKey string, level int) (string, error) {
 
 // AdminInstantUnlock force-unlocks the current vote leader (admin only)
 func (c *APIClient) AdminInstantUnlock() (string, error) {
-	resp, err := c.doRequest(http.MethodPost, "/api/v1/progression/admin/instant-unlock", nil)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		var errResp struct {
-			Error string `json:"error"`
-		}
-		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
-			return "", fmt.Errorf("API error: %s", errResp.Error)
-		}
-		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
-	}
-
-	var instantResp struct {
+	var resp struct {
 		Message string `json:"message"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&instantResp); err != nil {
-		return "", fmt.Errorf("failed to decode response: %w", err)
+	if err := c.doRequestAndParse(http.MethodPost, "/api/v1/progression/admin/instant-unlock", nil, &resp); err != nil {
+		return "", err
 	}
-
-	return instantResp.Message, nil
+	return resp.Message, nil
 }
 
 // AdminResetProgression resets the entire progression tree (admin only)
@@ -462,86 +455,35 @@ func (c *APIClient) AdminResetProgression(resetBy, reason string, preserveUser b
 
 // AdminReloadWeights invalidates the engagement weight cache (admin only)
 func (c *APIClient) AdminReloadWeights() (string, error) {
-	resp, err := c.doRequest(http.MethodPost, "/api/admin/progression/reload-weights", nil)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		var errResp struct {
-			Error string `json:"error"`
-		}
-		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
-			return "", fmt.Errorf("API error: %s", errResp.Error)
-		}
-		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
-	}
-
-	var reloadResp struct {
+	var resp struct {
 		Message string `json:"message"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&reloadResp); err != nil {
-		return "", fmt.Errorf("failed to decode response: %w", err)
+	if err := c.doRequestAndParse(http.MethodPost, "/api/admin/progression/reload-weights", nil, &resp); err != nil {
+		return "", err
 	}
-
-	return reloadResp.Message, nil
+	return resp.Message, nil
 }
 
 // AdminStartVoting starts a new voting session (admin only)
 func (c *APIClient) AdminStartVoting() (string, error) {
-	resp, err := c.doRequest(http.MethodPost, "/api/v1/progression/admin/start-voting", nil)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		var errResp struct {
-			Error string `json:"error"`
-		}
-		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
-			return "", fmt.Errorf("API error: %s", errResp.Error)
-		}
-		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
-	}
-
-	var startResp struct {
+	var resp struct {
 		Message string `json:"message"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&startResp); err != nil {
-		return "", fmt.Errorf("failed to decode response: %w", err)
+	if err := c.doRequestAndParse(http.MethodPost, "/api/v1/progression/admin/start-voting", nil, &resp); err != nil {
+		return "", err
 	}
-
-	return startResp.Message, nil
+	return resp.Message, nil
 }
 
 // AdminEndVoting forces the current voting session to end (admin only)
 func (c *APIClient) AdminEndVoting() (string, error) {
-	resp, err := c.doRequest(http.MethodPost, "/api/v1/progression/admin/end-voting", nil)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		var errResp struct {
-			Error string `json:"error"`
-		}
-		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
-			return "", fmt.Errorf("API error: %s", errResp.Error)
-		}
-		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
-	}
-
-	var endResp struct {
+	var resp struct {
 		Message string `json:"message"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&endResp); err != nil {
-		return "", fmt.Errorf("failed to decode response: %w", err)
+	if err := c.doRequestAndParse(http.MethodPost, "/api/v1/progression/admin/end-voting", nil, &resp); err != nil {
+		return "", err
 	}
-
-	return endResp.Message, nil
+	return resp.Message, nil
 }
 
 // GetProgressionTree retrieves the full progression tree
@@ -709,30 +651,13 @@ func (c *APIClient) AddItemByUsername(platform, username, itemName string, quant
 		"quantity":  quantity,
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "/api/v1/user/item/add-by-username", req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		var errResp struct {
-			Error string `json:"error"`
-		}
-		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
-			return "", fmt.Errorf("API error: %s", errResp.Error)
-		}
-		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
-	}
-
-	var result struct {
+	var resp struct {
 		Message string `json:"message"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return "", fmt.Errorf("failed to decode response: %w", err)
+	if err := c.doRequestAndParse(http.MethodPost, "/api/v1/user/item/add-by-username", req, &resp); err != nil {
+		return "", err
 	}
-
-	return result.Message, nil
+	return resp.Message, nil
 }
 
 // RemoveItemByUsername removes an item by username (no platformID required)
@@ -744,30 +669,13 @@ func (c *APIClient) RemoveItemByUsername(platform, username, itemName string, qu
 		"quantity":  quantity,
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "/api/v1/user/item/remove-by-username", req)
-	if err != nil {
-		return 0, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		var errResp struct {
-			Error string `json:"error"`
-		}
-		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
-			return 0, fmt.Errorf("API error: %s", errResp.Error)
-		}
-		return 0, fmt.Errorf("API returned status: %d", resp.StatusCode)
-	}
-
-	var result struct {
+	var resp struct {
 		Removed int `json:"removed"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return 0, fmt.Errorf("failed to decode response: %w", err)
+	if err := c.doRequestAndParse(http.MethodPost, "/api/v1/user/item/remove-by-username", req, &resp); err != nil {
+		return 0, err
 	}
-
-	return result.Removed, nil
+	return resp.Removed, nil
 }
 
 // GiveItemByUsername transfers an item by usernames (no platformIDs required)

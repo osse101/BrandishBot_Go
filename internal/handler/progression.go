@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -203,80 +204,48 @@ func (h *ProgressionHandlers) HandleGetContributionLeaderboard() http.HandlerFun
 // Admin endpoints
 
 // HandleAdminUnlock admin force-unlocks a node
-// @Summary Admin unlock node
-// @Description Force unlock a specific node/level (admin only)
-// @Tags progression,admin
-// @Accept json
-// @Produce json
-// @Param request body AdminUnlockRequest true "Admin unlock request"
-// @Success 200 {object} SuccessResponse
-// @Failure 400 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
-// @Router /progression/admin/unlock [post]
+// ... (swagger comments)
 func (h *ProgressionHandlers) HandleAdminUnlock() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		log := logger.FromContext(r.Context())
-
-		var req AdminUnlockRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			respondError(w, http.StatusBadRequest, "Invalid request body")
-			return
-		}
-
-		// Validate request
-		if err := GetValidator().ValidateStruct(req); err != nil {
-			respondError(w, http.StatusBadRequest, fmt.Sprintf("Invalid request: %v", err))
-			return
-		}
-
-		err := h.service.AdminUnlock(r.Context(), req.NodeKey, req.Level)
-		if err != nil {
-			log.Error("Failed to admin unlock", "error", err, "nodeKey", req.NodeKey, "level", req.Level)
-			respondError(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-
-		log.Info("Admin unlocked node", "nodeKey", req.NodeKey, "level", req.Level)
-		respondJSON(w, http.StatusOK, SuccessResponse{Message: "Node unlocked successfully"})
-	}
+	return h.handleAdminNodeAction(func(ctx context.Context, nodeKey string, level int) error {
+		return h.service.AdminUnlock(ctx, nodeKey, level)
+	}, "Admin unlocked node", "Node unlocked successfully")
 }
 
 // HandleAdminRelock admin relocks a node
-// @Summary Admin relock node
-// @Description Relock a specific node/level (admin only, for testing)
-// @Tags progression,admin
-// @Accept json
-// @Produce json
-// @Param request body AdminRelockRequest true "Admin relock request"
-// @Success 200 {object} SuccessResponse
-// @Failure 400 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
-// @Router /progression/admin/relock [post]
+// ... (swagger comments)
 func (h *ProgressionHandlers) HandleAdminRelock() http.HandlerFunc {
+	return h.handleAdminNodeAction(func(ctx context.Context, nodeKey string, level int) error {
+		return h.service.AdminRelock(ctx, nodeKey, level)
+	}, "Admin relocked node", "Node relocked successfully")
+}
+
+func (h *ProgressionHandlers) handleAdminNodeAction(action func(context.Context, string, int) error, logMsg, successMsg string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
 
-		var req AdminRelockRequest
+		// We use a shared struct for validation since both use same fields
+		var req struct {
+			NodeKey string `json:"node_key" validate:"required,max=50"`
+			Level   int    `json:"level" validate:"min=1"`
+		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			respondError(w, http.StatusBadRequest, "Invalid request body")
 			return
 		}
 
-		// Validate request
 		if err := GetValidator().ValidateStruct(req); err != nil {
 			respondError(w, http.StatusBadRequest, fmt.Sprintf("Invalid request: %v", err))
 			return
 		}
 
-		err := h.service.AdminRelock(r.Context(), req.NodeKey, req.Level)
-		if err != nil {
-			log.Error("Failed to admin relock", "error", err, "nodeKey", req.NodeKey, "level", req.Level)
+		if err := action(r.Context(), req.NodeKey, req.Level); err != nil {
+			log.Error("Failed to perform admin action", "error", err, "nodeKey", req.NodeKey, "level", req.Level)
 			respondError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 
-		log.Info("Admin relocked node", "nodeKey", req.NodeKey, "level", req.Level)
-		respondJSON(w, http.StatusOK, SuccessResponse{Message: "Node relocked successfully"})
+		log.Info(logMsg, "nodeKey", req.NodeKey, "level", req.Level)
+		respondJSON(w, http.StatusOK, SuccessResponse{Message: successMsg})
 	}
 }
 

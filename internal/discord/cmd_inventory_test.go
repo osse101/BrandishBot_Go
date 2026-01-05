@@ -42,7 +42,7 @@ func TestInventoryCommand_Empty(t *testing.T) {
 	// Capture Response
 	var sentEmbed *discordgo.MessageEmbed
 	ctx.DiscordMocks.RoundTripFunc = func(req *http.Request) (*http.Response, error) {
-		if req.Method == "PATCH" {
+		if req.Method == http.MethodPatch {
 			var body discordgo.WebhookEdit
 			json.NewDecoder(req.Body).Decode(&body)
 			if body.Embeds != nil && len(*body.Embeds) > 0 {
@@ -95,7 +95,7 @@ func TestInventoryCommand_WithItems(t *testing.T) {
 
 	var sentEmbed *discordgo.MessageEmbed
 	ctx.DiscordMocks.RoundTripFunc = func(req *http.Request) (*http.Response, error) {
-		if req.Method == "PATCH" {
+		if req.Method == http.MethodPatch {
 			var body discordgo.WebhookEdit
 			json.NewDecoder(req.Body).Decode(&body)
 			if body.Embeds != nil && len(*body.Embeds) > 0 {
@@ -137,7 +137,7 @@ func TestInventoryCommand_RegisterError(t *testing.T) {
 
 	var sentContent string
 	ctx.DiscordMocks.RoundTripFunc = func(req *http.Request) (*http.Response, error) {
-		if req.Method == "PATCH" {
+		if req.Method == http.MethodPatch {
 			var body discordgo.WebhookEdit
 			json.NewDecoder(req.Body).Decode(&body)
 			if body.Content != nil {

@@ -506,6 +506,7 @@ func (r *UserRepository) IsRecipeUnlocked(ctx context.Context, userID string, re
 	}
 	return r.q.IsRecipeUnlocked(ctx, generated.IsRecipeUnlockedParams{
 		UserID:   userUUID,
+		//nolint:gosec // DB IDs fit in int32
 		RecipeID: int32(recipeID),
 	})
 }
@@ -518,6 +519,7 @@ func (r *UserRepository) UnlockRecipe(ctx context.Context, userID string, recipe
 	}
 	err = r.q.UnlockRecipe(ctx, generated.UnlockRecipeParams{
 		UserID:   userUUID,
+		//nolint:gosec // DB IDs fit in int32
 		RecipeID: int32(recipeID),
 	})
 	if err != nil {
@@ -567,6 +569,7 @@ func (r *UserRepository) GetAllRecipes(ctx context.Context) ([]crafting.RecipeLi
 
 // GetDisassembleRecipeBySourceItemID retrieves a disassemble recipe for a given source item
 func (r *UserRepository) GetDisassembleRecipeBySourceItemID(ctx context.Context, itemID int) (*domain.DisassembleRecipe, error) {
+	//nolint:gosec // DB IDs fit in int32
 	row, err := r.q.GetDisassembleRecipeBySourceItemID(ctx, int32(itemID))
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -599,6 +602,7 @@ func (r *UserRepository) GetDisassembleRecipeBySourceItemID(ctx context.Context,
 
 // GetAssociatedUpgradeRecipeID retrieves the upgrade recipe ID associated with a disassemble recipe
 func (r *UserRepository) GetAssociatedUpgradeRecipeID(ctx context.Context, disassembleRecipeID int) (int, error) {
+	//nolint:gosec // DB IDs fit in int32
 	id, err := r.q.GetAssociatedUpgradeRecipeID(ctx, int32(disassembleRecipeID))
 	if err != nil {
 		if err == pgx.ErrNoRows {

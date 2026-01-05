@@ -186,7 +186,7 @@ func (s *service) AwardXP(ctx context.Context, userID, jobKey string, baseAmount
 	}
 
 	// Get current progress
-	currentProgress, err := s.repo.GetUserJob(ctx, userID, job.ID)
+	currentProgress, _ := s.repo.GetUserJob(ctx, userID, job.ID)
 	if currentProgress == nil {
 		// Initialize new user job
 		currentProgress = &domain.UserJob{

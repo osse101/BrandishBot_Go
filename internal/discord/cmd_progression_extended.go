@@ -257,9 +257,11 @@ func AdminStartVotingCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		msg, err := client.AdminStartVoting()
 		if err != nil {
 			errorMsg := fmt.Sprintf("❌ Failed to start voting: %v", err)
-			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 				Content: &errorMsg,
-			})
+			}); err != nil {
+				slog.Error("Failed to send error response", "error", err)
+			}
 			return
 		}
 
@@ -301,9 +303,11 @@ func AdminEndVotingCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		msg, err := client.AdminEndVoting()
 		if err != nil {
 			errorMsg := fmt.Sprintf("❌ Failed to end voting: %v", err)
-			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 				Content: &errorMsg,
-			})
+			}); err != nil {
+				slog.Error("Failed to send error response", "error", err)
+			}
 			return
 		}
 
@@ -356,9 +360,11 @@ func AdminAddContributionCommand() (*discordgo.ApplicationCommand, CommandHandle
 		msg, err := client.AdminAddContribution(amount)
 		if err != nil {
 			errorMsg := fmt.Sprintf("❌ Failed to add contribution: %v", err)
-			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 				Content: &errorMsg,
-			})
+			}); err != nil {
+				slog.Error("Failed to send error response", "error", err)
+			}
 			return
 		}
 
@@ -400,9 +406,11 @@ func AdminReloadWeightsCommand() (*discordgo.ApplicationCommand, CommandHandler)
 		msg, err := client.AdminReloadWeights()
 		if err != nil {
 			errorMsg := fmt.Sprintf("❌ Failed to reload weights: %v", err)
-			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 				Content: &errorMsg,
-			})
+			}); err != nil {
+				slog.Error("Failed to send error response", "error", err)
+			}
 			return
 		}
 

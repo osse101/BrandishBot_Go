@@ -166,9 +166,7 @@ func (r *progressionRepository) GetSessionVoters(ctx context.Context, sessionID 
 	}
 
 	voters := make([]string, 0)
-	for _, userID := range rows {
-		voters = append(voters, userID)
-	}
+	voters = append(voters, rows...)
 
 	return voters, nil
 }

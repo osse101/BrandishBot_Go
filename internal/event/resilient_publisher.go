@@ -65,7 +65,9 @@ func (rp *ResilientPublisher) PublishWithRetry(ctx context.Context, event Event)
 		default:
 			log.Error("Retry queue full, event dropped to dead-letter",
 				"event_type", event.Type)
-			rp.deadLetter.Write(event, 0, err)
+			if err := rp.deadLetter.Write(event, 0, err); err != nil {
+				log.Error("Failed to write to dead letter", "error", err)
+			}
 		}
 	}
 }
@@ -102,7 +104,9 @@ func (rp *ResilientPublisher) processRetry(entry retryEntry) {
 				"event_type", entry.event.Type,
 				"attempts", entry.attempt,
 				"error", err)
-			rp.deadLetter.Write(entry.event, entry.attempt, err)
+			if writeErr := rp.deadLetter.Write(entry.event, entry.attempt, err); writeErr != nil {
+				log.Error("Failed to write to dead letter", "error", writeErr)
+			}
 		} else {
 			// Schedule next retry
 			log.Warn("Event retry failed, scheduling next attempt",
@@ -118,7 +122,9 @@ func (rp *ResilientPublisher) processRetry(entry retryEntry) {
 					// Queued for next retry
 				case <-rp.shutdown:
 					// Shutting down, write to dead-letter
-					rp.deadLetter.Write(nextEntry.event, nextEntry.attempt, nextEntry.lastError)
+					if writeErr := rp.deadLetter.Write(nextEntry.event, nextEntry.attempt, nextEntry.lastError); writeErr != nil {
+						log.Error("Failed to write to dead letter shutdown", "error", writeErr)
+					}
 				}
 			}(retryEntry{event: entry.event, attempt: entry.attempt + 1, lastError: err})
 		}
@@ -143,7 +149,9 @@ func (rp *ResilientPublisher) drainQueue() {
 				log.Warn("Event dropped during shutdown",
 					"event_type", entry.event.Type,
 					"error", err)
-				rp.deadLetter.Write(entry.event, entry.attempt, err)
+				if writeErr := rp.deadLetter.Write(entry.event, entry.attempt, err); writeErr != nil {
+					log.Error("Failed to write to dead letter", "error", writeErr)
+				}
 			}
 			count++
 		default:

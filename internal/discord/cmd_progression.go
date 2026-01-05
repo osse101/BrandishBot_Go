@@ -159,9 +159,11 @@ func UnlockProgressCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 
 		if progress == nil {
 			slog.Info("No active unlock progress")
-			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 				Content: &[]string{"No active unlock progress."}[0],
-			})
+			}); err != nil {
+				slog.Error("Failed to send response", "error", err)
+			}
 			return
 		}
 
@@ -307,9 +309,11 @@ func VotingSessionCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 
 		if session == nil {
 			msg := "No active voting session currently."
-			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 				Content: &msg,
-			})
+			}); err != nil {
+				slog.Error("Failed to send response", "error", err)
+			}
 			return
 		}
 

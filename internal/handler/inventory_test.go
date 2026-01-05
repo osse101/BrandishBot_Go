@@ -530,7 +530,7 @@ func TestHandleBuyItem(t *testing.T) {
 			tt.setupMock(mockEco, mockProg)
 			// Allow event publishing
 			mockBus.On("Publish", mock.Anything, mock.MatchedBy(func(evt event.Event) bool {
-				return evt.Type == "item.bought" || evt.Type == "engagement"
+				return evt.Type == "item.bought" || evt.Type == event.EventTypeEngagement
 			})).Return(nil).Maybe()
 
 			handler := HandleBuyItem(mockEco, mockProg, mockBus)

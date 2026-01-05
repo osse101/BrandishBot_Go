@@ -321,7 +321,6 @@ func (s *service) AddContribution(ctx context.Context, amount int) error {
 					go func() {
 						defer s.wg.Done()
 						defer func() { <-s.unlockSem }() // Release semaphore when done
-						s.CheckAndUnlockNode(s.shutdownCtx)
 						if _, err := s.CheckAndUnlockNode(s.shutdownCtx); err != nil {
 							log.Error("Failed to check and unlock node in background", "error", err)
 						}
