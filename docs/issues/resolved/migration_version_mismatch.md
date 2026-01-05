@@ -1,3 +1,5 @@
+RESOLVED
+
 # Migration Version Mismatch Issue
 
 **Status**: Open  
