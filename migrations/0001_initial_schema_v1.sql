@@ -2,10 +2,6 @@
 -- BrandishBot v1.0 - Initial Schema
 -- Squashed from 29 development migrations (2025-11 through 2026-01)
 
--- +goose Up
--- BrandishBot v1.0 - Initial Schema
--- Squashed from 29 development migrations (2025-11 through 2026-01)
-
 CREATE TABLE public.crafting_recipes (
     recipe_id integer NOT NULL,
     target_item_id integer NOT NULL,
@@ -713,13 +709,20 @@ SELECT i.item_id, it.item_type_id
 FROM items i
 CROSS JOIN item_types it
 WHERE i.internal_name = 'weapon_blaster'
-  AND it.type_name = 'upgradeable';
+  AND it.type_name IN ('upgradeable', 'consumable');
 
 INSERT INTO platforms (name) VALUES ('twitch'), ('youtube'), ('discord') ON CONFLICT (name) DO NOTHING;
 
 -- Progression nodes (minimal seed for tests - full tree synced from JSON config at runtime)
 INSERT INTO progression_nodes (node_key, node_type, display_name, description, tier, size, category, unlock_cost, max_level, sort_order)
 VALUES ('progression_system', 'feature', 'Progression System', 'The starting point of progression', 1, 'medium', 'core', 0, 1, 0)
+ON CONFLICT DO NOTHING;
+
+-- Auto-unlock the root progression node
+INSERT INTO progression_unlocks (node_id, current_level, unlocked_by, engagement_score)
+SELECT id, 1, 'auto', 0
+FROM progression_nodes
+WHERE node_key = 'progression_system'
 ON CONFLICT DO NOTHING;
 
 -- +goose Down
