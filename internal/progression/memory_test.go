@@ -200,14 +200,12 @@ func setupTestNodes(repo *MockRepository) {
 	repo.nodesByKey["root_2"] = repo.nodes[2]
 
 	// Child nodes
-	parent1 := 1
 	repo.nodes[3] = &domain.ProgressionNode{
 		ID:           3,
 		NodeKey:      "child_1",
 		DisplayName:  "Child Feature",
 		Description:  "Dependent node",
 		MaxLevel:     2,
-		ParentNodeID: &parent1,
 	}
 	repo.nodesByKey["child_1"] = repo.nodes[3]
 }

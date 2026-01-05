@@ -35,13 +35,11 @@ func TestStartVotingSession_SingleOption_FixVerification(t *testing.T) {
 
 	// 2. Setup Child Node (ID: 2) - Locked, Dependent on Root
 	// This will be the ONLY available node.
-	parentID := 1
 	child := &domain.ProgressionNode{
 		ID:           2,
 		NodeKey:      "single_option",
 		NodeType:     "feature",
 		DisplayName:  "Single Option Feature",
-		ParentNodeID: &parentID,
 		MaxLevel:     1,
 		UnlockCost:   100,
 		CreatedAt:    time.Now(),
@@ -112,13 +110,11 @@ func TestStartVotingSession_ZeroOptions_AllUnlocked(t *testing.T) {
 	repo.UnlockNode(ctx, 1, 1, "system", 0)
 
 	// Child node - also unlocked at max level
-	parentID := 1
 	child := &domain.ProgressionNode{
 		ID:           2,
 		NodeKey:      "only_child",
 		NodeType:     "feature",
 		DisplayName:  "Only Child Feature",
-		ParentNodeID: &parentID,
 		MaxLevel:     1, // Max level is 1
 		UnlockCost:   100,
 		CreatedAt:    time.Now(),
@@ -161,13 +157,11 @@ func TestStartVotingSession_MultiLevelNode_AutoSelect(t *testing.T) {
 	repo.UnlockNode(ctx, 1, 1, "system", 0)
 
 	// Multi-level child node (5 levels)
-	parentID := 1
 	multiLevel := &domain.ProgressionNode{
 		ID:           2,
 		NodeKey:      "upgrade_multi",
 		NodeType:     "upgrade",
 		DisplayName:  "Multi-Level Upgrade",
-		ParentNodeID: &parentID,
 		MaxLevel:     5, // 5 levels
 		UnlockCost:   500,
 		CreatedAt:    time.Now(),
@@ -232,13 +226,11 @@ func TestAutoSelect_ContributionTracking(t *testing.T) {
 	repo.nodesByKey["progression_system"] = root
 	repo.UnlockNode(ctx, 1, 1, "system", 0)
 
-	parentID := 1
 	child := &domain.ProgressionNode{
 		ID:           2,
 		NodeKey:      "single_target",
 		NodeType:     "feature",
 		DisplayName:  "Single Target",
-		ParentNodeID: &parentID,
 		MaxLevel:     1,
 		UnlockCost:   1000, // Requires 1000 contribution points
 		CreatedAt:    time.Now(),

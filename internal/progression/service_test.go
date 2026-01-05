@@ -97,16 +97,14 @@ func (m *MockRepository) GetAllNodes(ctx context.Context) ([]*domain.Progression
 	return nodes, nil
 }
 
-func (m *MockRepository) GetChildNodes(ctx context.Context, parentID int) ([]*domain.ProgressionNode, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	children := make([]*domain.ProgressionNode, 0)
-	for _, node := range m.nodes {
-		if node.ParentNodeID != nil && *node.ParentNodeID == parentID {
-			children = append(children, node)
-		}
-	}
-	return children, nil
+func (m *MockRepository) GetPrerequisites(ctx context.Context, nodeID int) ([]*domain.ProgressionNode, error) {
+	// TODO: Implement junction table simulation for prerequisites
+	return []*domain.ProgressionNode{}, nil
+}
+
+func (m *MockRepository) GetDependents(ctx context.Context, nodeID int) ([]*domain.ProgressionNode, error) {
+	// TODO: Implement junction table simulation for dependents
+	return []*domain.ProgressionNode{}, nil
 }
 
 func (m *MockRepository) GetUnlock(ctx context.Context, nodeID int, level int) (*domain.ProgressionUnlock, error) {
@@ -603,7 +601,6 @@ func setupTestTree(repo *MockRepository) {
 		NodeType:     "feature",
 		DisplayName:  "Progression System",
 		Description:  "Root progression system",
-		ParentNodeID: nil,
 		MaxLevel:     1,
 		UnlockCost:   0,
 		SortOrder:    0,
@@ -617,14 +614,12 @@ func setupTestTree(repo *MockRepository) {
 
 	// Money node (child of root)
 	moneyID := 2
-	parentID := rootID
 	money := &domain.ProgressionNode{
 		ID:           moneyID,
 		NodeKey:      "item_money",
 		NodeType:     "item",
 		DisplayName:  "Money",
 		Description:  "Money item",
-		ParentNodeID: &parentID,
 		MaxLevel:     1,
 		UnlockCost:   500,
 		SortOrder:    1,
@@ -635,14 +630,12 @@ func setupTestTree(repo *MockRepository) {
 
 	// Economy node (child of money)
 	economyID := 3
-	ecoParent := moneyID
 	economy := &domain.ProgressionNode{
 		ID:           economyID,
 		NodeKey:      "feature_economy",
 		NodeType:     "feature",
 		DisplayName:  "Economy System",
 		Description:  "Economy features",
-		ParentNodeID: &ecoParent,
 		MaxLevel:     1,
 		UnlockCost:   1500,
 		SortOrder:    10,
@@ -653,14 +646,12 @@ func setupTestTree(repo *MockRepository) {
 
 	// Buy node (child of economy)
 	buyID := 6
-	buyParent := economyID
 	buy := &domain.ProgressionNode{
 		ID:           buyID,
 		NodeKey:      FeatureBuy,
 		NodeType:     "feature",
 		DisplayName:  "Buy Items",
 		Description:  "Buy items feature",
-		ParentNodeID: &buyParent,
 		MaxLevel:     1,
 		UnlockCost:   800,
 		SortOrder:    11,
@@ -671,14 +662,12 @@ func setupTestTree(repo *MockRepository) {
 
 	// Sell node (child of economy)
 	sellID := 7
-	sellParent := economyID
 	sell := &domain.ProgressionNode{
 		ID:           sellID,
 		NodeKey:      FeatureSell,
 		NodeType:     "feature",
 		DisplayName:  "Sell Items",
 		Description:  "Sell items feature",
-		ParentNodeID: &sellParent,
 		MaxLevel:     1,
 		UnlockCost:   800,
 		SortOrder:    12,
@@ -689,14 +678,12 @@ func setupTestTree(repo *MockRepository) {
 
 	// Lootbox0 node (child of root)
 	lootbox0ID := 4
-	lb0Parent := rootID
 	lootbox0 := &domain.ProgressionNode{
 		ID:           lootbox0ID,
 		NodeKey:      "item_lootbox0",
 		NodeType:     "item",
 		DisplayName:  "Basic Lootbox",
 		Description:  "Basic lootbox",
-		ParentNodeID: &lb0Parent,
 		MaxLevel:     1,
 		UnlockCost:   500,
 		SortOrder:    2,
@@ -707,14 +694,12 @@ func setupTestTree(repo *MockRepository) {
 
 	// Upgrade node (child of lootbox0)
 	upgradeID := 8
-	upgradeParent := lootbox0ID
 	upgrade := &domain.ProgressionNode{
 		ID:           upgradeID,
 		NodeKey:      FeatureUpgrade,
 		NodeType:     "feature",
 		DisplayName:  "Upgrade Items",
 		Description:  "Upgrade system",
-		ParentNodeID: &upgradeParent,
 		MaxLevel:     1,
 		UnlockCost:   1500,
 		SortOrder:    20,
@@ -725,14 +710,12 @@ func setupTestTree(repo *MockRepository) {
 
 	// Disassemble node (child of lootbox0)
 	disassembleID := 9
-	disassembleParent := lootbox0ID
 	disassemble := &domain.ProgressionNode{
 		ID:           disassembleID,
 		NodeKey:      FeatureDisassemble,
 		NodeType:     "feature",
 		DisplayName:  "Disassemble Items",
 		Description:  "Disassemble system",
-		ParentNodeID: &disassembleParent,
 		MaxLevel:     1,
 		UnlockCost:   1000,
 		SortOrder:    21,
@@ -743,14 +726,12 @@ func setupTestTree(repo *MockRepository) {
 
 	// Search node (child of lootbox0)
 	searchID := 10
-	searchParent := lootbox0ID
 	search := &domain.ProgressionNode{
 		ID:           searchID,
 		NodeKey:      FeatureSearch,
 		NodeType:     "feature",
 		DisplayName:  "Search System",
 		Description:  "Search system",
-		ParentNodeID: &searchParent,
 		MaxLevel:     1,
 		UnlockCost:   1000,
 		SortOrder:    23,
@@ -761,14 +742,12 @@ func setupTestTree(repo *MockRepository) {
 
 	// Cooldown reduction (multi-level node, child of economy)
 	cooldownID := 5
-	cdParent := economyID
 	cooldown := &domain.ProgressionNode{
 		ID:           cooldownID,
 		NodeKey:      "upgrade_cooldown_reduction",
 		NodeType:     "upgrade",
 		DisplayName:  "Cooldown Reduction",
 		Description:  "Reduce cooldowns",
-		ParentNodeID: &cdParent,
 		MaxLevel:     5, // 5 levels
 		UnlockCost:   1500,
 		SortOrder:    40,

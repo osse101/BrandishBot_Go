@@ -117,14 +117,14 @@ func (s *service) GetProgressionTree(ctx context.Context) ([]*domain.Progression
 	for _, node := range nodes {
 		level, isUnlocked := unlockMap[node.ID]
 
-		// Get children
-		children, err := s.repo.GetChildNodes(ctx, node.ID)
+		// Get dependents (nodes that require this node)
+		dependents, err := s.repo.GetDependents(ctx, node.ID)
 		if err != nil {
-			log.Warn("Failed to get child nodes", "nodeID", node.ID, "error", err)
+			log.Warn("Failed to get dependent nodes", "nodeID", node.ID, "error", err)
 		}
 
-		childIDs := make([]int, 0, len(children))
-		for _, child := range children {
+		childIDs := make([]int, 0, len(dependents))
+		for _, child := range dependents {
 			childIDs = append(childIDs, child.ID)
 		}
 
@@ -141,6 +141,7 @@ func (s *service) GetProgressionTree(ctx context.Context) ([]*domain.Progression
 }
 
 // GetAvailableUnlocks returns nodes available for voting (prerequisites met)
+// TODO: Reimplement using prerequisites junction table
 func (s *service) GetAvailableUnlocks(ctx context.Context) ([]*domain.ProgressionNode, error) {
 	log := logger.FromContext(ctx)
 
@@ -153,11 +154,6 @@ func (s *service) GetAvailableUnlocks(ctx context.Context) ([]*domain.Progressio
 	available := make([]*domain.ProgressionNode, 0)
 
 	for _, node := range nodes {
-		// Skip root (already unlocked)
-		if node.ParentNodeID == nil {
-			continue
-		}
-
 		// Check if already unlocked at max level
 		isUnlocked, err := s.repo.IsNodeUnlocked(ctx, node.NodeKey, node.MaxLevel)
 		if err != nil {
@@ -168,18 +164,8 @@ func (s *service) GetAvailableUnlocks(ctx context.Context) ([]*domain.Progressio
 			continue // Already maxed out
 		}
 
-		// Check if parent is unlocked
-		parentNode, err := s.repo.GetNodeByID(ctx, *node.ParentNodeID)
-		if err != nil {
-			log.Warn("Failed to get parent node", "parentID", *node.ParentNodeID, "error", err)
-			continue
-		}
-
-		parentUnlocked, err := s.repo.IsNodeUnlocked(ctx, parentNode.NodeKey, 1)
-		if err != nil || !parentUnlocked {
-			continue // Parent not unlocked
-		}
-
+		// TODO: Check if ALL prerequisites are unlocked using junction table
+		// For now, just include all non-unlocked nodes
 		available = append(available, node)
 	}
 
@@ -523,6 +509,7 @@ func (s *service) ForceInstantUnlock(ctx context.Context) (*domain.ProgressionUn
 }
 
 // GetRequiredNodes returns a list of locked ancestor nodes that are preventing the target node from being unlocked
+// TODO: Reimplement using prerequisites junction table
 func (s *service) GetRequiredNodes(ctx context.Context, nodeKey string) ([]*domain.ProgressionNode, error) {
 	log := logger.FromContext(ctx)
 
@@ -534,42 +521,9 @@ func (s *service) GetRequiredNodes(ctx context.Context, nodeKey string) ([]*doma
 		return nil, fmt.Errorf("node not found: %s", nodeKey)
 	}
 
-	var lockedAncestors []*domain.ProgressionNode
-	currentNode := targetNode
-
-	// Traverse up the tree
-	for currentNode.ParentNodeID != nil {
-		parentNode, err := s.repo.GetNodeByID(ctx, *currentNode.ParentNodeID)
-		if err != nil {
-			log.Error("Failed to get parent node during traversal", "error", err, "nodeID", currentNode.ID)
-			break
-		}
-		if parentNode == nil {
-			log.Warn("Parent node ID found but node does not exist", "parentID", *currentNode.ParentNodeID)
-			break
-		}
-
-		// Check if parent is fully locked (level 0)
-		isUnlocked, err := s.repo.IsNodeUnlocked(ctx, parentNode.NodeKey, 1)
-		if err != nil {
-			return nil, fmt.Errorf("failed to check unlock status for %s: %w", parentNode.NodeKey, err)
-		}
-
-		if !isUnlocked {
-			// Prepend to list (so root is first) - actually, standard append is fine, user probably wants closest blocker first?
-			// "Requires: [Parent], [Grandparent]" reads better as "requires Parent (which requires Grandparent)"
-			// Let's keep it strictly ordered by traversal (closest ancestor first)
-			lockedAncestors = append(lockedAncestors, parentNode)
-		} else {
-			// optimization: if parent is unlocked, then all its ancestors MUST be unlocked (in a strict tree)
-			// so we can stop checking
-			break
-		}
-
-		currentNode = parentNode
-	}
-
-	return lockedAncestors, nil
+	// TODO: Query prerequisites junction table and recursively check locked prerequisites
+	log.Warn("GetRequiredNodes not yet implemented with prerequisites junction table", "nodeKey", nodeKey)
+	return []*domain.ProgressionNode{}, nil
 }
 
 // getCachedWeight retrieves weight from cache if not expired

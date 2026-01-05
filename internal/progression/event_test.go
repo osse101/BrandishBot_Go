@@ -46,13 +46,11 @@ func TestStartVotingSession_AutoSelect_PublishesEvent(t *testing.T) {
 	repo.UnlockNode(ctx, 1, 1, "system", 0)
 
 	// 2. Child - Locked (Single Option)
-	parentID := 1
 	child := &domain.ProgressionNode{
 		ID:           2,
 		NodeKey:      "child_node",
 		NodeType:     "feature",
 		DisplayName:  "Child Node",
-		ParentNodeID: &parentID,
 		MaxLevel:     1,
 		UnlockCost:   100,
 		CreatedAt:    time.Now(),

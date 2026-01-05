@@ -26,19 +26,18 @@ func NewProgressionRepository(pool *pgxpool.Pool) progression.Repository {
 
 func (r *progressionRepository) GetNodeByKey(ctx context.Context, nodeKey string) (*domain.ProgressionNode, error) {
 	query := `
-		SELECT id, node_key, node_type, display_name, description, parent_node_id, 
-		       max_level, unlock_cost, sort_order, created_at
+		SELECT id, node_key, node_type, display_name, description,
+		       max_level, unlock_cost, tier, size, category, sort_order, created_at
 		FROM progression_nodes
 		WHERE node_key = $1
 		LIMIT 1`
 
 	var node domain.ProgressionNode
-	var parentID *int
 
 	err := r.pool.QueryRow(ctx, query, nodeKey).Scan(
 		&node.ID, &node.NodeKey, &node.NodeType, &node.DisplayName,
-		&node.Description, &parentID, &node.MaxLevel, &node.UnlockCost,
-		&node.SortOrder, &node.CreatedAt,
+		&node.Description, &node.MaxLevel, &node.UnlockCost,
+		&node.Tier, &node.Size, &node.Category, &node.SortOrder, &node.CreatedAt,
 	)
 
 	if err == pgx.ErrNoRows {
@@ -48,24 +47,22 @@ func (r *progressionRepository) GetNodeByKey(ctx context.Context, nodeKey string
 		return nil, fmt.Errorf("failed to get node by key: %w", err)
 	}
 
-	node.ParentNodeID = parentID
 	return &node, nil
 }
 
 func (r *progressionRepository) GetNodeByID(ctx context.Context, id int) (*domain.ProgressionNode, error) {
 	query := `
-		SELECT id, node_key, node_type, display_name, description, parent_node_id,
-		       max_level, unlock_cost, sort_order, created_at
+		SELECT id, node_key, node_type, display_name, description,
+		       max_level, unlock_cost, tier, size, category, sort_order, created_at
 		FROM progression_nodes
 		WHERE id = $1`
 
 	var node domain.ProgressionNode
-	var parentID *int
 
 	err := r.pool.QueryRow(ctx, query, id).Scan(
 		&node.ID, &node.NodeKey, &node.NodeType, &node.DisplayName,
-		&node.Description, &parentID, &node.MaxLevel, &node.UnlockCost,
-		&node.SortOrder, &node.CreatedAt,
+		&node.Description, &node.MaxLevel, &node.UnlockCost,
+		&node.Tier, &node.Size, &node.Category, &node.SortOrder, &node.CreatedAt,
 	)
 
 	if err == pgx.ErrNoRows {
@@ -75,14 +72,13 @@ func (r *progressionRepository) GetNodeByID(ctx context.Context, id int) (*domai
 		return nil, fmt.Errorf("failed to get node by ID: %w", err)
 	}
 
-	node.ParentNodeID = parentID
 	return &node, nil
 }
 
 func (r *progressionRepository) GetAllNodes(ctx context.Context) ([]*domain.ProgressionNode, error) {
 	query := `
-		SELECT id, node_key, node_type, display_name, description, parent_node_id,
-		       max_level, unlock_cost, sort_order, created_at
+		SELECT id, node_key, node_type, display_name, description,
+		       max_level, unlock_cost, tier, size, category, sort_order, created_at
 		FROM progression_nodes
 		ORDER BY sort_order, id`
 
@@ -95,65 +91,35 @@ func (r *progressionRepository) GetAllNodes(ctx context.Context) ([]*domain.Prog
 	var nodes []*domain.ProgressionNode
 	for rows.Next() {
 		var node domain.ProgressionNode
-		var parentID *int
 
 		err := rows.Scan(
 			&node.ID, &node.NodeKey, &node.NodeType, &node.DisplayName,
-			&node.Description, &parentID, &node.MaxLevel, &node.UnlockCost,
-			&node.SortOrder, &node.CreatedAt,
+			&node.Description, &node.MaxLevel, &node.UnlockCost,
+			&node.Tier, &node.Size, &node.Category, &node.SortOrder, &node.CreatedAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan node: %w", err)
 		}
 
-		node.ParentNodeID = parentID
 		nodes = append(nodes, &node)
 	}
 
 	return nodes, rows.Err()
 }
 
+// GetChildNodes is deprecated - use junction table queries for prerequisites instead
+// Kept for backwards compatibility but will return empty since parent_node_id is removed
 func (r *progressionRepository) GetChildNodes(ctx context.Context, parentID int) ([]*domain.ProgressionNode, error) {
-	query := `
-		SELECT id, node_key, node_type, display_name, description, parent_node_id,
-		       max_level, unlock_cost, sort_order, created_at
-		FROM progression_nodes
-		WHERE parent_node_id = $1
-		ORDER BY sort_order, id`
-
-	rows, err := r.pool.Query(ctx, query, parentID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query child nodes: %w", err)
-	}
-	defer rows.Close()
-
-	var nodes []*domain.ProgressionNode
-	for rows.Next() {
-		var node domain.ProgressionNode
-		var pID *int
-
-		err := rows.Scan(
-			&node.ID, &node.NodeKey, &node.NodeType, &node.DisplayName,
-			&node.Description, &pID, &node.MaxLevel, &node.UnlockCost,
-			&node.SortOrder, &node.CreatedAt,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan child node: %w", err)
-		}
-
-		node.ParentNodeID = pID
-		nodes = append(nodes, &node)
-	}
-
-	return nodes, rows.Err()
+	// Return empty slice - parent_node_id field removed in v2.0
+	return []*domain.ProgressionNode{}, nil
 }
 
 // InsertNode inserts a new progression node and returns its ID
 // Implements progression.NodeInserter interface
 func (r *progressionRepository) InsertNode(ctx context.Context, node *domain.ProgressionNode) (int, error) {
 	query := `
-		INSERT INTO progression_nodes (node_key, node_type, display_name, description, parent_node_id, max_level, unlock_cost, sort_order)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		INSERT INTO progression_nodes (node_key, node_type, display_name, description, max_level, unlock_cost, tier, size, category, sort_order)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		RETURNING id`
 
 	var id int
@@ -162,9 +128,11 @@ func (r *progressionRepository) InsertNode(ctx context.Context, node *domain.Pro
 		node.NodeType,
 		node.DisplayName,
 		node.Description,
-		node.ParentNodeID,
 		node.MaxLevel,
 		node.UnlockCost,
+		node.Tier,
+		node.Size,
+		node.Category,
 		node.SortOrder,
 	).Scan(&id)
 
@@ -180,8 +148,8 @@ func (r *progressionRepository) InsertNode(ctx context.Context, node *domain.Pro
 func (r *progressionRepository) UpdateNode(ctx context.Context, nodeID int, node *domain.ProgressionNode) error {
 	query := `
 		UPDATE progression_nodes 
-		SET node_type = $2, display_name = $3, description = $4, parent_node_id = $5, 
-		    max_level = $6, unlock_cost = $7, sort_order = $8
+		SET node_type = $2, display_name = $3, description = $4,
+		    max_level = $5, unlock_cost = $6, tier = $7, size = $8, category = $9, sort_order = $10
 		WHERE id = $1`
 
 	_, err := r.pool.Exec(ctx, query,
@@ -189,9 +157,11 @@ func (r *progressionRepository) UpdateNode(ctx context.Context, nodeID int, node
 		node.NodeType,
 		node.DisplayName,
 		node.Description,
-		node.ParentNodeID,
 		node.MaxLevel,
 		node.UnlockCost,
+		node.Tier,
+		node.Size,
+		node.Category,
 		node.SortOrder,
 	)
 

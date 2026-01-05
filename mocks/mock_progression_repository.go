@@ -631,65 +631,6 @@ func (_c *MockProgressionRepository_GetAllUnlocks_Call) RunAndReturn(run func(co
 	return _c
 }
 
-// GetChildNodes provides a mock function with given fields: ctx, parentID
-func (_m *MockProgressionRepository) GetChildNodes(ctx context.Context, parentID int) ([]*domain.ProgressionNode, error) {
-	ret := _m.Called(ctx, parentID)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetChildNodes")
-	}
-
-	var r0 []*domain.ProgressionNode
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, int) ([]*domain.ProgressionNode, error)); ok {
-		return rf(ctx, parentID)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, int) []*domain.ProgressionNode); ok {
-		r0 = rf(ctx, parentID)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*domain.ProgressionNode)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, int) error); ok {
-		r1 = rf(ctx, parentID)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockProgressionRepository_GetChildNodes_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetChildNodes'
-type MockProgressionRepository_GetChildNodes_Call struct {
-	*mock.Call
-}
-
-// GetChildNodes is a helper method to define mock.On call
-//   - ctx context.Context
-//   - parentID int
-func (_e *MockProgressionRepository_Expecter) GetChildNodes(ctx interface{}, parentID interface{}) *MockProgressionRepository_GetChildNodes_Call {
-	return &MockProgressionRepository_GetChildNodes_Call{Call: _e.mock.On("GetChildNodes", ctx, parentID)}
-}
-
-func (_c *MockProgressionRepository_GetChildNodes_Call) Run(run func(ctx context.Context, parentID int)) *MockProgressionRepository_GetChildNodes_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(int))
-	})
-	return _c
-}
-
-func (_c *MockProgressionRepository_GetChildNodes_Call) Return(_a0 []*domain.ProgressionNode, _a1 error) *MockProgressionRepository_GetChildNodes_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockProgressionRepository_GetChildNodes_Call) RunAndReturn(run func(context.Context, int) ([]*domain.ProgressionNode, error)) *MockProgressionRepository_GetChildNodes_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // GetContributionLeaderboard provides a mock function with given fields: ctx, limit
 func (_m *MockProgressionRepository) GetContributionLeaderboard(ctx context.Context, limit int) ([]domain.ContributionLeaderboardEntry, error) {
 	ret := _m.Called(ctx, limit)
@@ -745,6 +686,65 @@ func (_c *MockProgressionRepository_GetContributionLeaderboard_Call) Return(_a0 
 }
 
 func (_c *MockProgressionRepository_GetContributionLeaderboard_Call) RunAndReturn(run func(context.Context, int) ([]domain.ContributionLeaderboardEntry, error)) *MockProgressionRepository_GetContributionLeaderboard_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetDependents provides a mock function with given fields: ctx, nodeID
+func (_m *MockProgressionRepository) GetDependents(ctx context.Context, nodeID int) ([]*domain.ProgressionNode, error) {
+	ret := _m.Called(ctx, nodeID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetDependents")
+	}
+
+	var r0 []*domain.ProgressionNode
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, int) ([]*domain.ProgressionNode, error)); ok {
+		return rf(ctx, nodeID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, int) []*domain.ProgressionNode); ok {
+		r0 = rf(ctx, nodeID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*domain.ProgressionNode)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, int) error); ok {
+		r1 = rf(ctx, nodeID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockProgressionRepository_GetDependents_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetDependents'
+type MockProgressionRepository_GetDependents_Call struct {
+	*mock.Call
+}
+
+// GetDependents is a helper method to define mock.On call
+//   - ctx context.Context
+//   - nodeID int
+func (_e *MockProgressionRepository_Expecter) GetDependents(ctx interface{}, nodeID interface{}) *MockProgressionRepository_GetDependents_Call {
+	return &MockProgressionRepository_GetDependents_Call{Call: _e.mock.On("GetDependents", ctx, nodeID)}
+}
+
+func (_c *MockProgressionRepository_GetDependents_Call) Run(run func(ctx context.Context, nodeID int)) *MockProgressionRepository_GetDependents_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int))
+	})
+	return _c
+}
+
+func (_c *MockProgressionRepository_GetDependents_Call) Return(_a0 []*domain.ProgressionNode, _a1 error) *MockProgressionRepository_GetDependents_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockProgressionRepository_GetDependents_Call) RunAndReturn(run func(context.Context, int) ([]*domain.ProgressionNode, error)) *MockProgressionRepository_GetDependents_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -978,6 +978,65 @@ func (_c *MockProgressionRepository_GetNodeByKey_Call) Return(_a0 *domain.Progre
 }
 
 func (_c *MockProgressionRepository_GetNodeByKey_Call) RunAndReturn(run func(context.Context, string) (*domain.ProgressionNode, error)) *MockProgressionRepository_GetNodeByKey_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetPrerequisites provides a mock function with given fields: ctx, nodeID
+func (_m *MockProgressionRepository) GetPrerequisites(ctx context.Context, nodeID int) ([]*domain.ProgressionNode, error) {
+	ret := _m.Called(ctx, nodeID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetPrerequisites")
+	}
+
+	var r0 []*domain.ProgressionNode
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, int) ([]*domain.ProgressionNode, error)); ok {
+		return rf(ctx, nodeID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, int) []*domain.ProgressionNode); ok {
+		r0 = rf(ctx, nodeID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*domain.ProgressionNode)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, int) error); ok {
+		r1 = rf(ctx, nodeID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockProgressionRepository_GetPrerequisites_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetPrerequisites'
+type MockProgressionRepository_GetPrerequisites_Call struct {
+	*mock.Call
+}
+
+// GetPrerequisites is a helper method to define mock.On call
+//   - ctx context.Context
+//   - nodeID int
+func (_e *MockProgressionRepository_Expecter) GetPrerequisites(ctx interface{}, nodeID interface{}) *MockProgressionRepository_GetPrerequisites_Call {
+	return &MockProgressionRepository_GetPrerequisites_Call{Call: _e.mock.On("GetPrerequisites", ctx, nodeID)}
+}
+
+func (_c *MockProgressionRepository_GetPrerequisites_Call) Run(run func(ctx context.Context, nodeID int)) *MockProgressionRepository_GetPrerequisites_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int))
+	})
+	return _c
+}
+
+func (_c *MockProgressionRepository_GetPrerequisites_Call) Return(_a0 []*domain.ProgressionNode, _a1 error) *MockProgressionRepository_GetPrerequisites_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockProgressionRepository_GetPrerequisites_Call) RunAndReturn(run func(context.Context, int) ([]*domain.ProgressionNode, error)) *MockProgressionRepository_GetPrerequisites_Call {
 	_c.Call.Return(run)
 	return _c
 }

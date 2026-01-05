@@ -99,7 +99,8 @@ func (m *ReliabilityMockRepository) GetAllNodes(ctx context.Context) ([]*domain.
 }
 
 func (m *ReliabilityMockRepository) GetNodeByID(ctx context.Context, id int) (*domain.ProgressionNode, error) { panic("not implemented") }
-func (m *ReliabilityMockRepository) GetChildNodes(ctx context.Context, parentID int) ([]*domain.ProgressionNode, error) { panic("not implemented") }
+func (m *ReliabilityMockRepository) GetDependents(ctx context.Context, nodeID int) ([]*domain.ProgressionNode, error) { panic("not implemented") }
+func (m *ReliabilityMockRepository) GetPrerequisites(ctx context.Context, nodeID int) ([]*domain.ProgressionNode, error) { panic("not implemented") }
 func (m *ReliabilityMockRepository) GetAllUnlocks(ctx context.Context) ([]*domain.ProgressionUnlock, error) { panic("not implemented") }
 func (m *ReliabilityMockRepository) IsNodeUnlocked(ctx context.Context, nodeKey string, level int) (bool, error) { panic("not implemented") }
 func (m *ReliabilityMockRepository) RelockNode(ctx context.Context, nodeID int, level int) error { panic("not implemented") }
