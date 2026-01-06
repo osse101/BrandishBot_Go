@@ -292,7 +292,8 @@ func (s *service) AwardXP(ctx context.Context, userID, jobKey string, baseAmount
 		if s.publisher != nil {
 			eventType := event.Type(domain.EventJobLevelUp)
 			s.publisher.PublishWithRetry(ctx, event.Event{
-				Type: eventType,
+				Version: "1.0",
+				Type:    eventType,
 				Payload: map[string]interface{}{
 					"user_id":   userID,
 					"job_key":   jobKey,

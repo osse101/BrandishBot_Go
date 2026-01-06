@@ -40,6 +40,10 @@ func TestResilientEvents_Integration(t *testing.T) {
 
 		job := &domain.Job{ID: jobID, JobKey: jobKey}
 
+		// Control RNG to prevent Epiphany from triggering randomly
+		svcTyped := svc.(*service)
+		svcTyped.rnd = func() float64 { return 1.0 } // Always fail Epiphany check
+
 		// Setup repo/progression expectations for successful XP award
 		prog.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
 		repo.On("GetJobByKey", ctx, jobKey).Return(job, nil)
@@ -82,6 +86,10 @@ func TestResilientEvents_Integration(t *testing.T) {
 		baseXP := 150
 
 		job := &domain.Job{ID: jobID, JobKey: jobKey}
+
+		// Control RNG to prevent Epiphany from triggering randomly
+		svcTyped := svc.(*service)
+		svcTyped.rnd = func() float64 { return 1.0 } // Always fail Epiphany check
 
 		// Setup repo/progression expectations
 		prog.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)

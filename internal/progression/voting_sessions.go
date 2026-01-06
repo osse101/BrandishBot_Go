@@ -81,7 +81,8 @@ func (s *service) StartVotingSession(ctx context.Context, unlockedNodeID *int) e
 		// Publish event if needed (target set)
 		if s.bus != nil {
 			if err := s.bus.Publish(ctx, event.Event{
-				Type: event.ProgressionTargetSet,
+				Version: "1.0",
+				Type:    event.ProgressionTargetSet,
 				Payload: map[string]interface{}{
 					"node_key":      node.NodeKey,
 					"target_level":  targetLevel,
@@ -144,7 +145,8 @@ func (s *service) StartVotingSession(ctx context.Context, unlockedNodeID *int) e
 			} else {
 				// Publish the combined event
 				if err := s.bus.Publish(ctx, event.Event{
-					Type: event.ProgressionCycleCompleted,
+					Version: "1.0",
+					Type:    event.ProgressionCycleCompleted,
 					Payload: map[string]interface{}{
 						"unlocked_node":  unlockedNode,
 						"voting_session": session,
