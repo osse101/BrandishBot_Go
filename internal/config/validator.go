@@ -31,7 +31,7 @@ func ValidateEnv() error {
 	if schemaVersion == "" {
 		return fmt.Errorf("ENV_SCHEMA_VERSION is not set - please update your .env file to include this field (expected: %s)", ExpectedEnvSchemaVersion)
 	}
-	
+
 	if schemaVersion != ExpectedEnvSchemaVersion {
 		return fmt.Errorf("ENV_SCHEMA_VERSION mismatch: expected %s, got %s - your .env file may be outdated", ExpectedEnvSchemaVersion, schemaVersion)
 	}

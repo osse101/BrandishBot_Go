@@ -155,7 +155,9 @@ func (s *service) ClaimLink(ctx context.Context, tokenStr, platform, platformID 
 
 	if time.Now().After(token.ExpiresAt) {
 		token.State = StateExpired
-		s.repo.UpdateToken(ctx, token)
+		if err := s.repo.UpdateToken(ctx, token); err != nil {
+			log.Error("Failed to expire token", "error", err)
+		}
 		return nil, fmt.Errorf("token expired")
 	}
 
@@ -190,7 +192,9 @@ func (s *service) ConfirmLink(ctx context.Context, platform, platformID string) 
 	// Verify not expired
 	if time.Now().After(token.ExpiresAt) {
 		token.State = StateExpired
-		s.repo.UpdateToken(ctx, token)
+		if err := s.repo.UpdateToken(ctx, token); err != nil {
+			log.Error("Failed to expire token", "error", err)
+		}
 		return nil, fmt.Errorf("link token expired")
 	}
 
@@ -223,7 +227,9 @@ func (s *service) ConfirmLink(ctx context.Context, platform, platformID string) 
 		}
 
 		token.State = StateConfirmed
-		s.repo.UpdateToken(ctx, token)
+		if err := s.repo.UpdateToken(ctx, token); err != nil {
+			return nil, fmt.Errorf("failed to update token state: %w", err)
+		}
 
 		log.Info("Accounts linked", "user_id", updatedUser.ID, "platforms", []string{token.SourcePlatform, token.TargetPlatform})
 
@@ -239,7 +245,9 @@ func (s *service) ConfirmLink(ctx context.Context, platform, platformID string) 
 	}
 
 	token.State = StateConfirmed
-	s.repo.UpdateToken(ctx, token)
+	if err := s.repo.UpdateToken(ctx, token); err != nil {
+		return nil, fmt.Errorf("failed to update token state: %w", err)
+	}
 
 	log.Info("Accounts merged", "primary_id", sourceUser.ID, "secondary_id", targetUser.ID)
 

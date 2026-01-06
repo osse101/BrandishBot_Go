@@ -188,28 +188,7 @@ func (r *UserRepository) GetUserByPlatformID(ctx context.Context, platform, plat
 		return nil, fmt.Errorf("failed to get user core data: %w", err)
 	}
 
-	user := domain.User{
-		ID:       row.UserID.String(),
-		Username: row.Username,
-	}
-
-	links, err := r.q.GetUserPlatformLinks(ctx, row.UserID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get user links: %w", err)
-	}
-
-	for _, link := range links {
-		switch link.Name {
-		case "twitch":
-			user.TwitchID = link.PlatformUserID
-		case "youtube":
-			user.YoutubeID = link.PlatformUserID
-		case "discord":
-			user.DiscordID = link.PlatformUserID
-		}
-	}
-
-	return &user, nil
+	return r.mapUserAndLinks(ctx, row.UserID, row.Username)
 }
 
 // GetUserByPlatformUsername finds a user by platform and username (case-insensitive)
@@ -225,12 +204,16 @@ func (r *UserRepository) GetUserByPlatformUsername(ctx context.Context, platform
 		return nil, fmt.Errorf("failed to get user by username: %w", err)
 	}
 
+	return r.mapUserAndLinks(ctx, row.UserID, row.Username)
+}
+
+func (r *UserRepository) mapUserAndLinks(ctx context.Context, userID uuid.UUID, username string) (*domain.User, error) {
 	user := domain.User{
-		ID:       row.UserID.String(),
-		Username: row.Username,
+		ID:       userID.String(),
+		Username: username,
 	}
 
-	links, err := r.q.GetUserPlatformLinks(ctx, row.UserID)
+	links, err := r.q.GetUserPlatformLinks(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user links: %w", err)
 	}
@@ -505,7 +488,7 @@ func (r *UserRepository) IsRecipeUnlocked(ctx context.Context, userID string, re
 		return false, fmt.Errorf("invalid user id: %w", err)
 	}
 	return r.q.IsRecipeUnlocked(ctx, generated.IsRecipeUnlockedParams{
-		UserID:   userUUID,
+		UserID: userUUID,
 		//nolint:gosec // DB IDs fit in int32
 		RecipeID: int32(recipeID),
 	})
@@ -518,7 +501,7 @@ func (r *UserRepository) UnlockRecipe(ctx context.Context, userID string, recipe
 		return fmt.Errorf("invalid user id: %w", err)
 	}
 	err = r.q.UnlockRecipe(ctx, generated.UnlockRecipeParams{
-		UserID:   userUUID,
+		UserID: userUUID,
 		//nolint:gosec // DB IDs fit in int32
 		RecipeID: int32(recipeID),
 	})

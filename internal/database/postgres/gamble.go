@@ -171,7 +171,12 @@ func (r *GambleRepository) SaveOpenedItems(ctx context.Context, items []domain.G
 	if err != nil {
 		return fmt.Errorf("failed to begin tx for saving items: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+			// Just log locally since we can't easily get a logger here without dependency injection changes
+			fmt.Printf("failed to rollback tx: %v\n", err)
+		}
+	}()
 
 	q := r.q.WithTx(tx)
 

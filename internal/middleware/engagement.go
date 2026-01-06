@@ -41,7 +41,7 @@ func (e *EngagementTracker) Track(metricType string, getValue func(*http.Request
 				// Publish engagement event
 				evt := event.Event{
 					Version: "1.0",
-					Type: "engagement",
+					Type:    "engagement",
 					Payload: &domain.EngagementMetric{
 						UserID:      userID,
 						MetricType:  metricType,

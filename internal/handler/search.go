@@ -103,7 +103,7 @@ func HandleSearch(svc user.Service, progressionSvc progression.Service, eventBus
 		// Publish search.performed event
 		if err := eventBus.Publish(r.Context(), event.Event{
 			Version: "1.0",
-			Type: "search.performed",
+			Type:    "search.performed",
 			Payload: map[string]interface{}{
 				"user_id":  req.Username,
 				"platform": req.Platform,

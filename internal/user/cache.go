@@ -13,9 +13,9 @@ const CacheSchemaVersion = "1.0"
 
 // cachedUserEntry wraps a user with version metadata for cache invalidation
 type cachedUserEntry struct {
-	Version string       `json:"version"`
-	User    *domain.User `json:"user"`
-	CachedAt time.Time   `json:"cached_at"`
+	Version  string       `json:"version"`
+	User     *domain.User `json:"user"`
+	CachedAt time.Time    `json:"cached_at"`
 }
 
 // userCache provides an in-memory LRU cache for user lookups
@@ -43,13 +43,13 @@ func (c *userCache) Get(platform, platformID string) (*domain.User, bool) {
 	if !found {
 		return nil, false
 	}
-	
+
 	// Check version - auto-invalidate if mismatch
 	if entry.Version != CacheSchemaVersion {
 		c.lru.Remove(key)
 		return nil, false
 	}
-	
+
 	return entry.User, true
 }
 

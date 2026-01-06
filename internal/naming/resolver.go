@@ -3,12 +3,13 @@ package naming
 import (
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
 // AliasPool contains alias variants for an item
@@ -131,7 +132,7 @@ func (r *resolver) GetDisplayName(internalName string, shineLevel string) string
 	}
 
 	// Random selection from alias pool
-	alias := aliases[rand.Intn(len(aliases))]
+	alias := aliases[utils.RandomInt(0, len(aliases))]
 	return r.formatWithShine(alias, shineLevel)
 }
 
@@ -231,10 +232,10 @@ func (r *resolver) loadAliases() error {
 
 	// Parse versioned config
 	var config struct {
-		Version     string                `json:"version"`
-		Schema      string                `json:"schema"`
-		LastUpdated string                `json:"last_updated"`
-		Aliases     map[string]AliasPool  `json:"aliases"`
+		Version     string               `json:"version"`
+		Schema      string               `json:"schema"`
+		LastUpdated string               `json:"last_updated"`
+		Aliases     map[string]AliasPool `json:"aliases"`
 	}
 	if err := json.Unmarshal(data, &config); err != nil {
 		return fmt.Errorf("failed to parse aliases config: %w", err)
@@ -264,10 +265,10 @@ func (r *resolver) loadThemes() error {
 
 	// Parse versioned config
 	var config struct {
-		Version     string                   `json:"version"`
-		Schema      string                   `json:"schema"`
-		LastUpdated string                   `json:"last_updated"`
-		Themes      map[string]ThemePeriod   `json:"themes"`
+		Version     string                 `json:"version"`
+		Schema      string                 `json:"schema"`
+		LastUpdated string                 `json:"last_updated"`
+		Themes      map[string]ThemePeriod `json:"themes"`
 	}
 	if err := json.Unmarshal(data, &config); err != nil {
 		return fmt.Errorf("failed to parse themes config: %w", err)
