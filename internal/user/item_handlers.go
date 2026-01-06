@@ -69,7 +69,22 @@ func (s *service) processLootboxDrops(ctx context.Context, user *domain.User, in
 	// LevelUp Philosophy: "If a number goes up, the player should feel it."
 	msgBuilder.WriteString(fmt.Sprintf(" (Value: %d)", stats.totalValue))
 
-	if stats.hasLegendary {
+	// Logic for God Roll (>= 2 Legendaries)
+	if stats.legendaryCount >= 2 {
+		if s.statsService != nil && user != nil {
+			eventData := &domain.LootboxEventData{
+				Item:   lootboxItem.InternalName,
+				Drops:  drops,
+				Value:  stats.totalValue,
+				Source: "lootbox",
+			}
+			if err := s.statsService.RecordUserEvent(ctx, user.ID, domain.EventLootboxGodRoll, eventData.ToMap()); err != nil {
+				log := logger.FromContext(ctx)
+				log.Warn("Failed to record lootbox god-roll event", "error", err, "user_id", user.ID)
+			}
+		}
+		msgBuilder.WriteString(" GOD ROLL! 🌟🔥🌟")
+	} else if stats.hasLegendary {
 		if s.statsService != nil && user != nil {
 			eventData := &domain.LootboxEventData{
 				Item:   lootboxItem.InternalName,
@@ -97,18 +112,37 @@ func (s *service) processLootboxDrops(ctx context.Context, user *domain.User, in
 			}
 		}
 		msgBuilder.WriteString(" BIG WIN! 💰")
-	} else if stats.totalValue > 0 && quantity >= BulkFeedbackThreshold {
-		// If opening many boxes and getting nothing special, at least acknowledge the haul
-		msgBuilder.WriteString(" Nice haul! 📦")
+	} else if quantity >= BulkFeedbackThreshold {
+		if !stats.hasGoodLoot {
+			// Unlucky case: Bulk open with only commons
+			if s.statsService != nil && user != nil {
+				eventData := &domain.LootboxEventData{
+					Item:   lootboxItem.InternalName,
+					Drops:  drops,
+					Value:  stats.totalValue,
+					Source: "lootbox",
+				}
+				if err := s.statsService.RecordUserEvent(ctx, user.ID, domain.EventLootboxUnlucky, eventData.ToMap()); err != nil {
+					log := logger.FromContext(ctx)
+					log.Warn("Failed to record lootbox unlucky event", "error", err, "user_id", user.ID)
+				}
+			}
+			msgBuilder.WriteString(" Oof. (All Commons) 💀")
+		} else if stats.totalValue > 0 {
+			// If opening many boxes and getting nothing special, at least acknowledge the haul
+			msgBuilder.WriteString(" Nice haul! 📦")
+		}
 	}
 
 	return msgBuilder.String(), nil
 }
 
 type dropStats struct {
-	totalValue   int
-	hasLegendary bool
-	hasEpic      bool
+	totalValue     int
+	hasLegendary   bool
+	hasEpic        bool
+	legendaryCount int
+	hasGoodLoot    bool // Anything uncommon or better
 }
 
 func (s *service) aggregateDropsAndUpdateInventory(inventory *domain.Inventory, drops []lootbox.DroppedItem, msgBuilder *strings.Builder) dropStats {
@@ -123,8 +157,13 @@ func (s *service) aggregateDropsAndUpdateInventory(inventory *domain.Inventory, 
 		stats.totalValue += drop.Value
 		if drop.ShineLevel == lootbox.ShineLegendary {
 			stats.hasLegendary = true
+			stats.legendaryCount++
+			stats.hasGoodLoot = true
 		} else if drop.ShineLevel == lootbox.ShineEpic {
 			stats.hasEpic = true
+			stats.hasGoodLoot = true
+		} else if drop.ShineLevel == lootbox.ShineRare || drop.ShineLevel == lootbox.ShineUncommon {
+			stats.hasGoodLoot = true
 		}
 
 		// Prepare item for batch add
