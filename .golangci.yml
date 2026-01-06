@@ -1,65 +1,164 @@
-version: "2"
 run:
+  timeout: 5m
   tests: true
+  skip-dirs:
+    - vendor
+    - scripts
+
 linters:
+  # Enable essential and recommended linters
   enable:
-    - dupl
-    - goconst
-    - gocyclo
-    - gosec
-    - misspell
-  settings:
-    dupl:
-      threshold: 100
-    errcheck:
-      check-type-assertions: false
-      check-blank: false
-    goconst:
-      min-len: 3
-      min-occurrences: 3
-    gocyclo:
-      min-complexity: 15
-    gosec:
-      excludes:
-        - G104
-  exclusions:
-    generated: lax
-    presets:
-      - comments
-      - common-false-positives
-      - legacy
-      - std-error-handling
+    # Essential - Bug Detection & Best Practices
+    - govet           # Official Go vet tool
+    - errcheck        # Checks for unchecked errors  
+    - staticcheck     # Comprehensive static analysis
+    - unused          # Finds unused code
+    - ineffassign     # Detects ineffectual assignments
+    - gosec           # Security auditing
+    
+    # Code Quality
+    - goconst         # Repeated strings that should be constants
+    - gocyclo         # Cyclomatic complexity
+    - dupl            # Code duplication
+    - misspell        # Spelling mistakes
+    - revive          # Fast, configurable linter (golint replacement)
+    - unconvert       # Unnecessary type conversions
+    - unparam         # Unused function parameters
+    
+    # Style & Maintainability  
+    - gofmt           # Code formatting
+    - goimports       # Import organization
+    - gci             # Import ordering/grouping
+    - whitespace      # Unnecessary blank lines
+    - nakedret        # Naked returns in long functions
+    - nolintlint      # Validates //nolint directives
+    
+    # Performance & Best Practices
+    - prealloc        # Slice preallocation opportunities
+    - errorlint       # Error wrapping (Go 1.13+)
+
+linters-settings:
+  # Duplication detection
+  dupl:
+    threshold: 100
+  
+  # Error checking configuration
+  errcheck:
+    check-type-assertions: false  # Allow unchecked type assertions where appropriate
+    check-blank: false            # Allow assigning errors to blank identifier when intentional
+  
+  # Magic constants/strings
+  goconst:
+    min-len: 3
+    min-occurrences: 3
+    ignore-tests: true
+  
+  # Cyclomatic complexity
+  gocyclo:
+    min-complexity: 15
+  
+  # Security
+  gosec:
+    excludes:
+      - G104  # We handle error checking explicitly with errcheck
+  
+  # Naked returns
+  nakedret:
+    max-func-lines: 20
+  
+  # Import organization
+  gci:
+    sections:
+      - standard                    # Go standard library
+      - default                     # Third-party packages
+      - prefix(github.com/osse101/BrandishBot_Go)  # Project imports
+    skip-generated: true
+  
+  # Revive configuration (golint replacement)
+  revive:
     rules:
-      - linters:
-          - dupl
-          - errcheck
-          - gosec
-        path: _test\.go
-      - linters:
-          - all
-        path: migrations/
-      - linters:
-          - gosec
-        text: "G115"
-        path: internal/database/postgres/
-      - linters:
-          - gosec
-        text: "G115"
-        path: internal/cooldown/postgres.go
-    paths:
-      - third_party$
-      - builtin$
-      - examples$
+      - name: exported
+        disabled: false
+      - name: package-comments
+        disabled: true  # Not enforcing package comments for internal packages
+      - name: blank-imports
+      - name: context-as-argument
+      - name: dot-imports
+      - name: error-return
+      - name: error-strings
+      - name: error-naming
+      - name: if-return
+      - name: var-naming
+      - name: var-declaration
+      - name: range
+      - name: receiver-naming
+      - name: indent-error-flow
+      - name: superfluous-else
+      - name: unexported-return
+      - name: time-naming
+      - name: context-keys-type
+      - name: errorf
+
 issues:
+  # Show all issues
   max-issues-per-linter: 0
   max-same-issues: 0
-formatters:
-  enable:
-    - gofmt
-    - goimports
-  exclusions:
-    generated: lax
-    paths:
-      - third_party$
-      - builtin$
-      - examples$
+  
+  # Don't hide new issues in existing code
+  new: false
+  
+  exclude-rules:
+    # Relax linters for test files
+    - path: _test\.go
+      linters:
+        - dupl
+        - errcheck
+        - gosec
+        - gocyclo
+        - funlen
+        - goconst
+    
+    # Exclude all linters from migrations (schema-only SQL)
+    - path: migrations/
+      linters:
+        - all
+    
+    # Exclude all linters from generated code
+    - path: internal/database/generated/
+      linters:
+        - all
+    
+    # Exclude all linters from mocks
+    - path: mocks/
+      linters:
+        - all
+    
+    # G115: Integer overflow conversion - acceptable in database context where IDs fit in int32
+    - linters:
+        - gosec
+      text: "G115"
+      path: internal/database/postgres/
+    
+    - linters:
+        - gosec
+      text: "G115"
+      path: internal/cooldown/postgres.go
+    
+    # Allow long lines in generated files
+    - path: _generated\.go
+      linters:
+        - lll
+
+  # Exclude specific directories
+  exclude-dirs:
+    - third_party
+    - builtin
+    - examples
+    - vendor
+
+output:
+  formats:
+    - format: colored-line-number
+  print-issued-lines: true
+  print-linter-name: true
+  sort-results: true
