@@ -633,6 +633,14 @@ namespace BrandishBot.Client
             return await PostJsonAsync("/api/v1/progression/admin/contribution", new { amount = amount });
         }
 
+        /// <summary>
+        /// Admin: Reload engagement weight cache
+        /// </summary>
+        public async Task<string> AdminReloadWeights()
+        {
+            return await PostJsonAsync("/api/v1/admin/progression/reload-weights", new { });
+        }
+
         #endregion
 
         #region Jobs System
