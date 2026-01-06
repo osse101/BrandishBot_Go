@@ -7,6 +7,10 @@ import (
 	"time"
 )
 
+// DeadLetterSchemaVersion is the current version of the dead-letter log format
+// Increment this when changing the DeadLetterEntry structure
+const DeadLetterSchemaVersion = "1.0"
+
 // DeadLetterWriter handles writing failed events to a dead-letter file
 type DeadLetterWriter struct {
 	file *os.File
@@ -15,10 +19,11 @@ type DeadLetterWriter struct {
 
 // DeadLetterEntry represents an event that failed to publish after all retries
 type DeadLetterEntry struct {
-	Timestamp time.Time `json:"timestamp"`
-	Event     Event     `json:"event"`
-	Attempts  int       `json:"attempts"`
-	LastError string    `json:"last_error,omitempty"`
+	SchemaVersion string    `json:"schema_version"` // Format version for future migrations
+	Timestamp     time.Time `json:"timestamp"`
+	Event         Event     `json:"event"`
+	Attempts      int       `json:"attempts"`
+	LastError     string    `json:"last_error,omitempty"`
 }
 
 // NewDeadLetterWriter creates a new DeadLetterWriter
@@ -36,9 +41,10 @@ func (dlw *DeadLetterWriter) Write(event Event, attempts int, lastError error) e
 	defer dlw.mu.Unlock()
 
 	entry := DeadLetterEntry{
-		Timestamp: time.Now(),
-		Event:     event,
-		Attempts:  attempts,
+		SchemaVersion: DeadLetterSchemaVersion,
+		Timestamp:     time.Now(),
+		Event:         event,
+		Attempts:      attempts,
 	}
 
 	if lastError != nil {
