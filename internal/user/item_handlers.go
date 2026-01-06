@@ -3,6 +3,7 @@ package user
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -61,13 +62,20 @@ func (s *service) consumeLootboxFromInventory(inventory *domain.Inventory, item 
 func (s *service) processLootboxDrops(ctx context.Context, user *domain.User, inventory *domain.Inventory, lootboxItem *domain.Item, quantity int, drops []lootbox.DroppedItem) (string, error) {
 	var msgBuilder strings.Builder
 	displayName := s.namingResolver.GetDisplayName(lootboxItem.InternalName, "")
-	msgBuilder.WriteString(fmt.Sprintf("Opened %d %s and received: ", quantity, displayName))
+
+	msgBuilder.WriteString("Opened ")
+	msgBuilder.WriteString(strconv.Itoa(quantity))
+	msgBuilder.WriteString(" ")
+	msgBuilder.WriteString(displayName)
+	msgBuilder.WriteString(" and received: ")
 
 	stats := s.aggregateDropsAndUpdateInventory(inventory, drops, &msgBuilder)
 
 	// 4. Append "Juice" - Feedback based on results
 	// LevelUp Philosophy: "If a number goes up, the player should feel it."
-	msgBuilder.WriteString(fmt.Sprintf(" (Value: %d)", stats.totalValue))
+	msgBuilder.WriteString(" (Value: ")
+	msgBuilder.WriteString(strconv.Itoa(stats.totalValue))
+	msgBuilder.WriteString(")")
 
 	if stats.hasLegendary {
 		if s.statsService != nil && user != nil {
@@ -141,11 +149,15 @@ func (s *service) aggregateDropsAndUpdateInventory(inventory *domain.Inventory, 
 		itemDisplayName := s.namingResolver.GetDisplayName(drop.ItemName, drop.ShineLevel)
 
 		// Write drop info directly to builder to minimize allocations
-		fmt.Fprintf(msgBuilder, "%dx %s", drop.Quantity, itemDisplayName)
+		msgBuilder.WriteString(strconv.Itoa(drop.Quantity))
+		msgBuilder.WriteString("x ")
+		msgBuilder.WriteString(itemDisplayName)
 
 		// Add shine annotation for visual impact
 		if drop.ShineLevel != "" && drop.ShineLevel != lootbox.ShineCommon {
-			fmt.Fprintf(msgBuilder, " [%s!]", drop.ShineLevel)
+			msgBuilder.WriteString(" [")
+			msgBuilder.WriteString(drop.ShineLevel)
+			msgBuilder.WriteString("!]")
 		}
 
 		first = false
