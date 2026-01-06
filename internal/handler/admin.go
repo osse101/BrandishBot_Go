@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/osse101/BrandishBot_Go/internal/logger"
@@ -41,10 +40,6 @@ func HandleReloadAliases(resolver naming.Resolver) http.HandlerFunc {
 			"active_theme": activeTheme,
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		if err := json.NewEncoder(w).Encode(response); err != nil {
-			log.Error("Failed to encode response", "error", err)
-		}
+		respondJSON(w, http.StatusOK, response)
 	}
 }

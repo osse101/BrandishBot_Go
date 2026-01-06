@@ -56,14 +56,10 @@ func HandleRegisterUser(userService user.Service) http.HandlerFunc {
 		if err := GetValidator().ValidateStruct(req); err != nil {
 			log.Warn("Invalid request", "error", err)
 			validationErrors := FormatValidationError(err)
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			if err := json.NewEncoder(w).Encode(map[string]interface{}{
+			respondJSON(w, http.StatusBadRequest, map[string]interface{}{
 				"error":   "Validation failed",
 				"details": validationErrors,
-			}); err != nil {
-				log.Error("Failed to encode response", "error", err)
-			}
+			})
 			return
 		}
 
@@ -104,13 +100,11 @@ func HandleRegisterUser(userService user.Service) http.HandlerFunc {
 			"username", updatedUser.Username,
 			"is_new", isNewUser)
 
-		w.Header().Set("Content-Type", "application/json")
+		statusCode := http.StatusOK
 		if isNewUser {
-			w.WriteHeader(http.StatusCreated)
-		} else {
-			w.WriteHeader(http.StatusOK)
+			statusCode = http.StatusCreated
 		}
-		respondJSON(w, http.StatusOK, updatedUser)
+		respondJSON(w, statusCode, updatedUser)
 	}
 }
 
@@ -158,9 +152,6 @@ func HandleGetTimeout(svc user.Service) http.HandlerFunc {
 			"remaining_seconds": duration.Seconds(),
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(response); err != nil {
-			log.Error("Failed to encode response", "error", err)
-		}
+		respondJSON(w, http.StatusOK, response)
 	}
 }

@@ -115,8 +115,5 @@ func (h *AdminJobHandler) HandleAdminAwardXP(w http.ResponseWriter, r *http.Requ
 		"result":     result,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		log.Error("Failed to encode response", "error", err)
-	}
+	respondJSON(w, http.StatusOK, response)
 }

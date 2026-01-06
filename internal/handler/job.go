@@ -27,12 +27,9 @@ func (h *JobHandler) HandleGetAllJobs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(map[string]interface{}{
+	respondJSON(w, http.StatusOK, map[string]interface{}{
 		"jobs": jobs,
-	}); err != nil {
-		logger.FromContext(r.Context()).Error("Failed to encode response", "error", err)
-	}
+	})
 }
 
 // HandleGetUserJobs returns a user's job progress
@@ -52,14 +49,11 @@ func (h *JobHandler) HandleGetUserJobs(w http.ResponseWriter, r *http.Request) {
 
 	primaryJob, _ := h.service.GetPrimaryJob(r.Context(), userID)
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(map[string]interface{}{
+	respondJSON(w, http.StatusOK, map[string]interface{}{
 		"user_id":     userID,
 		"primary_job": primaryJob,
 		"jobs":        userJobs,
-	}); err != nil {
-		logger.FromContext(r.Context()).Error("Failed to encode response", "error", err)
-	}
+	})
 }
 
 // AwardXPRequest is the request body for awarding XP
@@ -95,10 +89,7 @@ func (h *JobHandler) HandleAwardXP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(result); err != nil {
-		logger.FromContext(r.Context()).Error("Failed to encode response", "error", err)
-	}
+	respondJSON(w, http.StatusOK, result)
 }
 
 // HandleGetJobBonus returns the active bonus for a specific job and bonus type
@@ -124,13 +115,10 @@ func (h *JobHandler) HandleGetJobBonus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(map[string]interface{}{
+	respondJSON(w, http.StatusOK, map[string]interface{}{
 		"user_id":    userID,
 		"job_key":    jobKey,
 		"bonus_type": bonusType,
 		"bonus_val":  bonus,
-	}); err != nil {
-		logger.FromContext(r.Context()).Error("Failed to encode response", "error", err)
-	}
+	})
 }

@@ -70,14 +70,10 @@ func HandleSearch(svc user.Service, progressionSvc progression.Service, eventBus
 		if err := GetValidator().ValidateStruct(req); err != nil {
 			log.Warn("Invalid request", "error", err)
 			validationErrors := FormatValidationError(err)
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			if err := json.NewEncoder(w).Encode(map[string]interface{}{
+			respondJSON(w, http.StatusBadRequest, map[string]interface{}{
 				"error":   "Validation failed",
 				"details": validationErrors,
-			}); err != nil {
-				log.Error("Failed to encode response", "error", err)
-			}
+			})
 			return
 		}
 
@@ -113,8 +109,6 @@ func HandleSearch(svc user.Service, progressionSvc progression.Service, eventBus
 			log.Error("Failed to publish search.performed event", "error", err)
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
 		respondJSON(w, http.StatusOK, SearchResponse{
 			Message: message,
 		})

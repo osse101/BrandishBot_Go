@@ -68,13 +68,10 @@ func (h *LinkingHandlers) HandleInitiate() http.HandlerFunc {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(map[string]interface{}{
+		respondJSON(w, http.StatusOK, map[string]interface{}{
 			"token":      token.Token,
 			"expires_in": int(token.ExpiresAt.Sub(token.CreatedAt).Seconds()),
-		}); err != nil {
-			log.Error("Failed to encode response", "error", err)
-		}
+		})
 	}
 }
 
@@ -101,13 +98,10 @@ func (h *LinkingHandlers) HandleClaim() http.HandlerFunc {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(map[string]interface{}{
+		respondJSON(w, http.StatusOK, map[string]interface{}{
 			"source_platform":       token.SourcePlatform,
 			"awaiting_confirmation": true,
-		}); err != nil {
-			log.Error("Failed to encode response", "error", err)
-		}
+		})
 	}
 }
 
@@ -134,10 +128,7 @@ func (h *LinkingHandlers) HandleConfirm() http.HandlerFunc {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(result); err != nil {
-			log.Error("Failed to encode response", "error", err)
-		}
+		respondJSON(w, http.StatusOK, result)
 	}
 }
 
@@ -165,13 +156,10 @@ func (h *LinkingHandlers) HandleUnlink() http.HandlerFunc {
 				return
 			}
 
-			w.Header().Set("Content-Type", "application/json")
-			if err := json.NewEncoder(w).Encode(map[string]interface{}{
+			respondJSON(w, http.StatusOK, map[string]interface{}{
 				"awaiting_confirmation": true,
 				"message":               "Confirm within 60 seconds",
-			}); err != nil {
-				log.Error("Failed to encode response", "error", err)
-			}
+			})
 			return
 		}
 
@@ -182,13 +170,10 @@ func (h *LinkingHandlers) HandleUnlink() http.HandlerFunc {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(map[string]interface{}{
+		respondJSON(w, http.StatusOK, map[string]interface{}{
 			"success": true,
 			"message": "Platform unlinked",
-		}); err != nil {
-			log.Error("Failed to encode response", "error", err)
-		}
+		})
 	}
 }
 
@@ -212,9 +197,6 @@ func (h *LinkingHandlers) HandleStatus() http.HandlerFunc {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(status); err != nil {
-			log.Error("Failed to encode response", "error", err)
-		}
+		respondJSON(w, http.StatusOK, status)
 	}
 }
