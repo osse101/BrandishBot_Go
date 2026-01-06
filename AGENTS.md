@@ -7,7 +7,7 @@ This document provides AI agents with structured guidance on navigating, underst
 ## 📚 Quick Navigation by Task Type
 
 | If You're Working On... | Start Here | Journal to Update |
-|------------------------|-----------|------------------|
+| ---------------------- | ----------- | ------------------ |
 | **New Feature Development** | [FEATURE_DEVELOPMENT_GUIDE.md](docs/development/FEATURE_DEVELOPMENT_GUIDE.md) | [docs/development/journal.md](docs/development/journal.md) |
 | **Architecture/Design Decisions** | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | [docs/architecture/journal.md](docs/architecture/journal.md) |
 | **Writing Tests** | [TEST_GUIDANCE.md](docs/testing/TEST_GUIDANCE.md) | [docs/testing/journal.md](docs/testing/journal.md) |
@@ -15,6 +15,7 @@ This document provides AI agents with structured guidance on navigating, underst
 | **Deployment** | [DEPLOYMENT_WORKFLOW.md](docs/deployment/DEPLOYMENT_WORKFLOW.md) | N/A |
 | **Feature Planning/Proposals** | [gamble_feature.md](docs/planning/gamble_feature.md) (template example) | [docs/development/journal.md](docs/development/journal.md) |
 | **Benchmarking** | [BENCHMARKING.md](docs/benchmarking/BENCHMARKING.md) | [docs/benchmarking/journal.md](docs/benchmarking/journal.md) |
+| **API Documentation** | [API_COVERAGE.md](docs/API_COVERAGE.md) | [docs/development/journal.md](docs/development/journal.md) |
 
 ---
 
@@ -28,7 +29,7 @@ This document provides AI agents with structured guidance on navigating, underst
 ### Journal Locations
 
 | Journal | Purpose | When to Read | When to Update |
-|---------|---------|--------------|----------------|
+| --------- | --------- | -------------- | ---------------- |
 | [docs/development/journal.md](docs/development/journal.md) | Development patterns, concurrency, transactions, refactoring | Building features, fixing bugs | After discovering patterns, solving tricky bugs |
 | [docs/architecture/journal.md](docs/architecture/journal.md) | System design, scaling, service architecture | Design decisions, multi-instance work | After architectural changes or ADR decisions |
 | [docs/testing/journal.md](docs/testing/journal.md) | Testing patterns, mocks, coverage strategies | Writing tests, debugging test failures | After learning testing lessons |
@@ -72,7 +73,7 @@ This file contains persona definitions for different task types (debugging, feat
 
 ## 📁 Project Structure Overview
 
-```
+```MD
 BrandishBot_Go/
 ├── cmd/                    # Entry points (app, discord, setup, debug)
 ├── internal/               # Core application code
@@ -90,7 +91,7 @@ BrandishBot_Go/
 
 ### Documentation Structure
 
-```
+```MD
 docs/
 ├── ARCHITECTURE.md         # System architecture overview
 ├── DATABASE.md             # Database design and schema
@@ -128,6 +129,8 @@ make build              # Build all binaries to bin/
 make run                # Run application from bin/app
 make test               # Run tests with coverage and race detection
 make lint               # Run code linters
+make mocks              # Generate mocks
+make generate           # Generate sql using sqlc
 
 # Database
 make migrate-up         # Run pending migrations
@@ -139,11 +142,14 @@ make migrate-create NAME=xyz  # Create new migration
 make docker-up          # Start services with Docker Compose
 make docker-down        # Stop services
 make docker-build       # Rebuild images (no cache)
+make docker-build-fast  # Rebuild images (with cache)
 
 # Testing
 make test-integration   # Run integration tests
 make test-staging       # Run staging integration tests
 make test-coverage      # Generate HTML coverage report
+make unit               # Run unit tests
+make test               # Run all tests
 ```
 
 ---
@@ -158,7 +164,7 @@ When running background commands:
 2. **Terminate with IDs** using `send_command_input(..., Terminate: true)`
 3. **Clean up at session end** - terminate ALL background processes
 
-```
+```MD
 ❌ AVOID: Searching for processes by port (unreliable)
 ✅ CORRECT: Use tracked command ID for cleanup
 ```
@@ -257,7 +263,7 @@ Before submitting changes:
 ## 🆘 Troubleshooting Quick Reference
 
 | Issue | Solution |
-|-------|----------|
+| ------- | ---------- |
 | "database does not exist" | Check `.env.example` DB_NAME, ensure migrations ran |
 | Mock type mismatch | Check interface for exact return types |
 | Race condition | Use `SELECT ... FOR UPDATE` in transaction |
@@ -277,4 +283,4 @@ When stuck or unsure:
 
 ---
 
-*This guidance was last updated: December 2025*
+~This guidance was last updated: January 2026~
