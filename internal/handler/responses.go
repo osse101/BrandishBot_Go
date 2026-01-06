@@ -30,9 +30,21 @@ type DataResponse struct {
 func respondJSON(w http.ResponseWriter, status int, payload interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	if err := json.NewEncoder(w).Encode(payload); err != nil {
+
+	// Get a buffer from the pool to reduce allocations
+	buf := getBuffer()
+	defer putBuffer(buf)
+
+	// Encode to the buffer first
+	if err := json.NewEncoder(buf).Encode(payload); err != nil {
 		// Log the error - we can't write to response at this point since headers are sent
 		slog.Error("Failed to encode JSON response", "error", err)
+		return
+	}
+
+	// Write the buffer to the response
+	if _, err := buf.WriteTo(w); err != nil {
+		slog.Error("Failed to write response buffer", "error", err)
 	}
 }
 
