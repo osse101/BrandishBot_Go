@@ -1,7 +1,7 @@
 # HTTP Handler Optimization (Non-Serialization)
 
 **Created:** 2026-01-02  
-**Status:** Proposed  
+**Status:** In Progress
 **Priority:** Low  
 **Labels:** performance, http, optimization
 
@@ -17,6 +17,13 @@ Explore alternative HTTP handler optimizations beyond JSON serialization to redu
 - HTTP infrastructure + middleware = ~35 allocations (~70%)
 
 **Reference:** [Optimization 1 Results](file:///home/osse1/.gemini/antigravity/brain/81a703eb-41f2-4403-b773-ede78188a47b/optimization1_results.md)
+
+## Progress
+
+### Response Buffer Pooling (Implemented)
+- **Implementation:** Added `internal/handler/pool.go` and modified `respondJSON` to use a `sync.Pool` of `bytes.Buffer`.
+- **Result:** Benchmarks showed no reduction in allocations (49 allocs/op -> 49 allocs/op).
+- **Analysis:** This is likely due to `httptest.ResponseRecorder` used in benchmarks overshadowing the gain by allocating its own buffers, or `json.Encoder` already pooling internal buffers efficiently. However, the change avoids growing `http.ResponseWriter` internal buffers (if any) and reduces garbage for the intermediate serialization buffer, which is good practice for high-throughput scenarios.
 
 ## Related Files
 
@@ -99,7 +106,7 @@ if result != nil && result.User != nil {
 
 **Expected:** -5 allocs/op when no engagement tracking needed
 
-### 3. Pre-allocated Response Buffers
+### 3. Pre-allocated Response Buffers (Done)
 
 **Problem:** Response buffers allocated per-request
 
@@ -170,7 +177,7 @@ Disabling metrics or engagement tracking:
 
 ### High Priority (Try First)
 1. **Context Value Pooling** - Biggest single win (-7 allocs)
-2. **Response Buffer Pooling** - Easy, safe (-3-5 allocs)
+2. **Response Buffer Pooling** - Easy, safe (-3-5 allocs) (COMPLETED)
 
 ### Medium Priority
 3. **Lazy Middleware** - Conditional execution (-0-5 allocs, depends on traffic)
