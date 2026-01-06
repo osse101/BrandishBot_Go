@@ -77,7 +77,7 @@ func TestUserRepository_Integration(t *testing.T) {
 	defer pool.Close()
 
 	// Apply migrations
-	if err := applyMigrations(ctx, pool, "../../../migrations"); err != nil {
+	if err := applyMigrations(t, ctx, pool, "../../../migrations"); err != nil {
 		t.Fatalf("failed to apply migrations: %v", err)
 	}
 
@@ -370,7 +370,7 @@ func TestUserRepository_Integration(t *testing.T) {
 	})
 }
 
-func applyMigrations(ctx context.Context, pool *pgxpool.Pool, migrationsDir string) error {
+func applyMigrations(t *testing.T, ctx context.Context, pool *pgxpool.Pool, migrationsDir string) error {
 	entries, err := os.ReadDir(migrationsDir)
 	if err != nil {
 		return fmt.Errorf("failed to read migrations dir: %w", err)
@@ -388,9 +388,9 @@ func applyMigrations(ctx context.Context, pool *pgxpool.Pool, migrationsDir stri
 	}
 	sort.Strings(migrationFiles)
 
-	fmt.Printf("Applying %d migrations in order:\n", len(migrationFiles))
+	t.Logf("Applying %d migrations in order:", len(migrationFiles))
 	for i, file := range migrationFiles {
-		fmt.Printf("  %d. %s\n", i+1, filepath.Base(file))
+		t.Logf("  %d. %s", i+1, filepath.Base(file))
 	}
 
 	for _, file := range migrationFiles {
@@ -415,7 +415,7 @@ func applyMigrations(ctx context.Context, pool *pgxpool.Pool, migrationsDir stri
 		// Trim any leading/trailing whitespace
 		contentStr = strings.TrimSpace(contentStr)
 
-		fmt.Printf("Executing: %s\n", filepath.Base(file))
+		t.Logf("Executing: %s", filepath.Base(file))
 		_, err = pool.Exec(ctx, contentStr)
 		if err != nil {
 			return fmt.Errorf("failed to execute migration %s: %w", file, err)

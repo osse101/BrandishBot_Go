@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -974,8 +975,7 @@ func (s *service) TimeoutUser(ctx context.Context, username string, duration tim
 		s.timeoutMu.Lock()
 		delete(s.timeouts, username)
 		s.timeoutMu.Unlock()
-		// In a real app, we might send a message here
-		fmt.Printf("User %s timeout expired\n", username)
+		slog.Default().Info("User timeout expired", "username", username)
 	})
 
 	s.timeouts[username] = &timeoutInfo{

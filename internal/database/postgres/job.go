@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/osse101/BrandishBot_Go/internal/database/generated"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/logger"
 )
 
 // JobRepository implements the job repository for PostgreSQL
@@ -224,7 +225,7 @@ func (r *JobRepository) ResetDailyJobXP(ctx context.Context) error {
 	}
 
 	rows := result.RowsAffected()
-	fmt.Printf("Reset daily XP for %d user-job records\n", rows)
+	logger.FromContext(ctx).Info("Reset daily XP", "records_affected", rows)
 
 	return nil
 }

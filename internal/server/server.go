@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -289,7 +290,7 @@ func loggingMiddleware(next http.Handler) http.Handler {
 
 // Start starts the server
 func (s *Server) Start() error {
-	fmt.Printf("Server starting on %s\n", s.httpServer.Addr)
+	slog.Default().Info("Server starting", "addr", s.httpServer.Addr)
 	return s.httpServer.ListenAndServe()
 }
 

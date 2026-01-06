@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/osse101/BrandishBot_Go/internal/database/generated"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
 
@@ -173,8 +174,7 @@ func (r *GambleRepository) SaveOpenedItems(ctx context.Context, items []domain.G
 	}
 	defer func() {
 		if err := tx.Rollback(ctx); err != nil && !errors.Is(err, pgx.ErrTxClosed) {
-			// Just log locally since we can't easily get a logger here without dependency injection changes
-			fmt.Printf("failed to rollback tx: %v\n", err)
+			logger.FromContext(ctx).Error("Failed to rollback transaction", "error", err)
 		}
 	}()
 

@@ -3,7 +3,7 @@ package database
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -36,6 +36,6 @@ func NewPool(connString string, maxConns int, maxIdle, maxLife time.Duration) (*
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	log.Println("Successfully connected to the database")
+	slog.Default().Info("Successfully connected to the database")
 	return pool, nil
 }
