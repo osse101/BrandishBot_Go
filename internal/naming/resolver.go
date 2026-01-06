@@ -132,7 +132,7 @@ func (r *resolver) GetDisplayName(internalName string, shineLevel string) string
 	}
 
 	// Random selection from alias pool
-	alias := aliases[utils.RandomInt(0, len(aliases))]
+	alias := aliases[utils.RandomInt(0, len(aliases)-1)]
 	return r.formatWithShine(alias, shineLevel)
 }
 
