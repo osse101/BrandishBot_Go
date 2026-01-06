@@ -120,6 +120,17 @@ func (c *APIClient) doRequestAndParse(method, path string, body interface{}, tar
 	return nil
 }
 
+// doAction performs a request and expects a standard response with a "message" field
+func (c *APIClient) doAction(method, path string, body interface{}) (string, error) {
+	var resp struct {
+		Message string `json:"message"`
+	}
+	if err := c.doRequestAndParse(method, path, body, &resp); err != nil {
+		return "", err
+	}
+	return resp.Message, nil
+}
+
 // RegisterUser registers or retrieves a user
 func (c *APIClient) RegisterUser(username, discordID string) (*domain.User, error) {
 	req := map[string]string{
@@ -348,31 +359,7 @@ func (c *APIClient) AdminUnlockNode(nodeKey string, level int) (string, error) {
 		"node_key": nodeKey,
 		"level":    level,
 	}
-
-	resp, err := c.doRequest(http.MethodPost, "/api/v1/progression/admin/unlock", req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		var errResp struct {
-			Error string `json:"error"`
-		}
-		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
-			return "", fmt.Errorf("API error: %s", errResp.Error)
-		}
-		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
-	}
-
-	var unlockResp struct {
-		Message string `json:"message"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&unlockResp); err != nil {
-		return "", fmt.Errorf("failed to decode response: %w", err)
-	}
-
-	return unlockResp.Message, nil
+	return c.doAction(http.MethodPost, "/api/v1/progression/admin/unlock", req)
 }
 
 // AdminRelockNode relocks a progression node (admin only)
@@ -381,31 +368,7 @@ func (c *APIClient) AdminRelockNode(nodeKey string, level int) (string, error) {
 		"node_key": nodeKey,
 		"level":    level,
 	}
-
-	resp, err := c.doRequest(http.MethodPost, "/api/v1/progression/admin/relock", req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		var errResp struct {
-			Error string `json:"error"`
-		}
-		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
-			return "", fmt.Errorf("API error: %s", errResp.Error)
-		}
-		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
-	}
-
-	var relockResp struct {
-		Message string `json:"message"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&relockResp); err != nil {
-		return "", fmt.Errorf("failed to decode response: %w", err)
-	}
-
-	return relockResp.Message, nil
+	return c.doAction(http.MethodPost, "/api/v1/progression/admin/relock", req)
 }
 
 // AdminInstantUnlock force-unlocks the current vote leader (admin only)
@@ -517,31 +480,7 @@ func (c *APIClient) BuyItem(platform, platformID, username, itemName string, qua
 		"item_name":   itemName,
 		"quantity":    quantity,
 	}
-
-	resp, err := c.doRequest(http.MethodPost, "/api/v1/user/item/buy", req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		var errResp struct {
-			Error string `json:"error"`
-		}
-		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
-			return "", fmt.Errorf("API error: %s", errResp.Error)
-		}
-		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
-	}
-
-	var buyResp struct {
-		Message string `json:"message"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&buyResp); err != nil {
-		return "", fmt.Errorf("failed to decode response: %w", err)
-	}
-
-	return buyResp.Message, nil
+	return c.doAction(http.MethodPost, "/api/v1/user/item/buy", req)
 }
 
 // SellItem sells an item from inventory
@@ -553,31 +492,7 @@ func (c *APIClient) SellItem(platform, platformID, username, itemName string, qu
 		"item_name":   itemName,
 		"quantity":    quantity,
 	}
-
-	resp, err := c.doRequest(http.MethodPost, "/api/v1/user/item/sell", req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		var errResp struct {
-			Error string `json:"error"`
-		}
-		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
-			return "", fmt.Errorf("API error: %s", errResp.Error)
-		}
-		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
-	}
-
-	var sellResp struct {
-		Message string `json:"message"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&sellResp); err != nil {
-		return "", fmt.Errorf("failed to decode response: %w", err)
-	}
-
-	return sellResp.Message, nil
+	return c.doAction(http.MethodPost, "/api/v1/user/item/sell", req)
 }
 
 // GetSellPrices retrieves current sell prices
@@ -762,31 +677,7 @@ func (c *APIClient) UpgradeItem(platform, platformID, username, itemName string,
 		"item":        itemName,
 		"quantity":    quantity,
 	}
-
-	resp, err := c.doRequest(http.MethodPost, "/api/v1/user/item/upgrade", req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		var errResp struct {
-			Error string `json:"error"`
-		}
-		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
-			return "", fmt.Errorf("API error: %s", errResp.Error)
-		}
-		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
-	}
-
-	var upgradeResp struct {
-		Message string `json:"message"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&upgradeResp); err != nil {
-		return "", fmt.Errorf("failed to decode response: %w", err)
-	}
-
-	return upgradeResp.Message, nil
+	return c.doAction(http.MethodPost, "/api/v1/user/item/upgrade", req)
 }
 
 // DisassembleItem breaks down an item for materials
@@ -798,31 +689,7 @@ func (c *APIClient) DisassembleItem(platform, platformID, username, itemName str
 		"item_name":   itemName,
 		"quantity":    quantity,
 	}
-
-	resp, err := c.doRequest(http.MethodPost, "/api/v1/user/item/disassemble", req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		var errResp struct {
-			Error string `json:"error"`
-		}
-		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
-			return "", fmt.Errorf("API error: %s", errResp.Error)
-		}
-		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
-	}
-
-	var disassembleResp struct {
-		Message string `json:"message"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&disassembleResp); err != nil {
-		return "", fmt.Errorf("failed to decode response: %w", err)
-	}
-
-	return disassembleResp.Message, nil
+	return c.doAction(http.MethodPost, "/api/v1/user/item/disassemble", req)
 }
 
 // Recipe represents a recipe returned by the API

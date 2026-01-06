@@ -28,6 +28,7 @@ func NewProgressionRepository(pool *pgxpool.Pool) progression.Repository {
 	}
 }
 
+//nolint:gosec // DB IDs fit in int32
 // Node operations
 
 func (r *progressionRepository) GetNodeByKey(ctx context.Context, nodeKey string) (*domain.ProgressionNode, error) {

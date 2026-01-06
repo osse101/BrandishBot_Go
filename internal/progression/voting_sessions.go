@@ -472,6 +472,7 @@ func findWinningOption(options []domain.ProgressionVotingOption) *domain.Progres
 	//nolint:gosec // Checked for empty slice above
 	winner := &options[0]
 	for i := 1; i < len(options); i++ {
+		//nolint:gosec // Validated length check above
 		opt := &options[i]
 
 		// Higher vote count wins

@@ -82,25 +82,11 @@ func (r *StatsRepository) GetEventsByUser(ctx context.Context, userID string, st
 
 	var events []domain.StatsEvent
 	for _, row := range rows {
-		var eventData map[string]interface{}
-		if len(row.EventData) > 0 {
-			if err := json.Unmarshal(row.EventData, &eventData); err != nil {
-				return nil, fmt.Errorf("failed to unmarshal event data: %w", err)
-			}
+		event, err := mapStatsEvent(row.EventID, row.UserID, row.EventType, row.EventData, row.CreatedAt)
+		if err != nil {
+			return nil, err
 		}
-
-		var uid uuid.UUID
-		if row.UserID.Valid {
-			uid = [16]byte(row.UserID.Bytes)
-		}
-
-		events = append(events, domain.StatsEvent{
-			EventID:   row.EventID,
-			UserID:    uid.String(),
-			EventType: domain.EventType(row.EventType),
-			EventData: eventData,
-			CreatedAt: row.CreatedAt.Time,
-		})
+		events = append(events, *event)
 	}
 
 	return events, nil
@@ -124,25 +110,11 @@ func (r *StatsRepository) GetUserEventsByType(ctx context.Context, userID string
 
 	var events []domain.StatsEvent
 	for _, row := range rows {
-		var eventData map[string]interface{}
-		if len(row.EventData) > 0 {
-			if err := json.Unmarshal(row.EventData, &eventData); err != nil {
-				return nil, fmt.Errorf("failed to unmarshal event data: %w", err)
-			}
+		event, err := mapStatsEvent(row.EventID, row.UserID, row.EventType, row.EventData, row.CreatedAt)
+		if err != nil {
+			return nil, err
 		}
-
-		var uid uuid.UUID
-		if row.UserID.Valid {
-			uid = [16]byte(row.UserID.Bytes)
-		}
-
-		events = append(events, domain.StatsEvent{
-			EventID:   row.EventID,
-			UserID:    uid.String(),
-			EventType: domain.EventType(row.EventType),
-			EventData: eventData,
-			CreatedAt: row.CreatedAt.Time,
-		})
+		events = append(events, *event)
 	}
 
 	return events, nil
@@ -161,28 +133,36 @@ func (r *StatsRepository) GetEventsByType(ctx context.Context, eventType domain.
 
 	var events []domain.StatsEvent
 	for _, row := range rows {
-		var eventData map[string]interface{}
-		if len(row.EventData) > 0 {
-			if err := json.Unmarshal(row.EventData, &eventData); err != nil {
-				return nil, fmt.Errorf("failed to unmarshal event data: %w", err)
-			}
+		event, err := mapStatsEvent(row.EventID, row.UserID, row.EventType, row.EventData, row.CreatedAt)
+		if err != nil {
+			return nil, err
 		}
-
-		var uid uuid.UUID
-		if row.UserID.Valid {
-			uid = [16]byte(row.UserID.Bytes)
-		}
-
-		events = append(events, domain.StatsEvent{
-			EventID:   row.EventID,
-			UserID:    uid.String(),
-			EventType: domain.EventType(row.EventType),
-			EventData: eventData,
-			CreatedAt: row.CreatedAt.Time,
-		})
+		events = append(events, *event)
 	}
 
 	return events, nil
+}
+
+func mapStatsEvent(eventID int64, userID pgtype.UUID, eventType string, eventDataJSON []byte, createdAt pgtype.Timestamp) (*domain.StatsEvent, error) {
+	var eventData map[string]interface{}
+	if len(eventDataJSON) > 0 {
+		if err := json.Unmarshal(eventDataJSON, &eventData); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal event data: %w", err)
+		}
+	}
+
+	var uid uuid.UUID
+	if userID.Valid {
+		uid = [16]byte(userID.Bytes)
+	}
+
+	return &domain.StatsEvent{
+		EventID:   eventID,
+		UserID:    uid.String(),
+		EventType: domain.EventType(eventType),
+		EventData: eventData,
+		CreatedAt: createdAt.Time,
+	}, nil
 }
 
 // GetTopUsers retrieves the most active users for a specific event type

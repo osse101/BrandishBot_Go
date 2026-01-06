@@ -12,7 +12,7 @@ type Type string
 
 // Event represents a generic event in the system
 type Event struct {
-	Version  string                 `json:"version"`  // Event schema version (e.g., "1.0")
+	Version  string                 `json:"version"` // Event schema version (e.g., "1.0")
 	Type     Type                   `json:"type"`
 	Payload  interface{}            `json:"payload"`
 	Metadata map[string]interface{} `json:"metadata"`
