@@ -20,34 +20,34 @@ func init() {
 }
 
 // Mock repository for benchmarking
-type mockBenchRepository struct{}
+type fakeBenchRepository struct{}
 
-func (m *mockBenchRepository) UpsertUser(ctx context.Context, user *domain.User) error {
+func (f *fakeBenchRepository) UpsertUser(ctx context.Context, user *domain.User) error {
 	return nil
 }
 
-func (m *mockBenchRepository) GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error) {
+func (f *fakeBenchRepository) GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error) {
 	// Simulate cache miss for new user benchmark
 	return nil, domain.ErrUserNotFound
 }
 
-func (m *mockBenchRepository) GetUserByPlatformUsername(ctx context.Context, platform, username string) (*domain.User, error) {
+func (f *fakeBenchRepository) GetUserByPlatformUsername(ctx context.Context, platform, username string) (*domain.User, error) {
 	return nil, domain.ErrUserNotFound
 }
 
-func (m *mockBenchRepository) GetUserByID(ctx context.Context, userID string) (*domain.User, error) {
+func (f *fakeBenchRepository) GetUserByID(ctx context.Context, userID string) (*domain.User, error) {
 	return &domain.User{ID: userID, Username: "benchuser"}, nil
 }
 
-func (m *mockBenchRepository) UpdateUser(ctx context.Context, user domain.User) error {
+func (f *fakeBenchRepository) UpdateUser(ctx context.Context, user domain.User) error {
 	return nil
 }
 
-func (m *mockBenchRepository) DeleteUser(ctx context.Context, userID string) error {
+func (f *fakeBenchRepository) DeleteUser(ctx context.Context, userID string) error {
 	return nil
 }
 
-func (m *mockBenchRepository) GetInventory(ctx context.Context, userID string) (*domain.Inventory, error) {
+func (f *fakeBenchRepository) GetInventory(ctx context.Context, userID string) (*domain.Inventory, error) {
 	return &domain.Inventory{
 		Slots: []domain.InventorySlot{
 			{ItemID: 1, Quantity: 100}, // money
@@ -55,15 +55,15 @@ func (m *mockBenchRepository) GetInventory(ctx context.Context, userID string) (
 	}, nil
 }
 
-func (m *mockBenchRepository) UpdateInventory(ctx context.Context, userID string, inventory domain.Inventory) error {
+func (f *fakeBenchRepository) UpdateInventory(ctx context.Context, userID string, inventory domain.Inventory) error {
 	return nil
 }
 
-func (m *mockBenchRepository) DeleteInventory(ctx context.Context, userID string) error {
+func (f *fakeBenchRepository) DeleteInventory(ctx context.Context, userID string) error {
 	return nil
 }
 
-func (m *mockBenchRepository) GetItemByName(ctx context.Context, itemName string) (*domain.Item, error) {
+func (f *fakeBenchRepository) GetItemByName(ctx context.Context, itemName string) (*domain.Item, error) {
 	return &domain.Item{
 		ID:           42,
 		InternalName: itemName,
@@ -72,7 +72,7 @@ func (m *mockBenchRepository) GetItemByName(ctx context.Context, itemName string
 	}, nil
 }
 
-func (m *mockBenchRepository) GetItemsByNames(ctx context.Context, names []string) ([]domain.Item, error) {
+func (f *fakeBenchRepository) GetItemsByNames(ctx context.Context, names []string) ([]domain.Item, error) {
 	items := make([]domain.Item, len(names))
 	for i, name := range names {
 		items[i] = domain.Item{
@@ -85,7 +85,7 @@ func (m *mockBenchRepository) GetItemsByNames(ctx context.Context, names []strin
 	return items, nil
 }
 
-func (m *mockBenchRepository) GetItemByID(ctx context.Context, id int) (*domain.Item, error) {
+func (f *fakeBenchRepository) GetItemByID(ctx context.Context, id int) (*domain.Item, error) {
 	return &domain.Item{
 		ID:           id,
 		InternalName: "bench_item",
@@ -94,7 +94,7 @@ func (m *mockBenchRepository) GetItemByID(ctx context.Context, id int) (*domain.
 	}, nil
 }
 
-func (m *mockBenchRepository) GetItemsByIDs(ctx context.Context, itemIDs []int) ([]domain.Item, error) {
+func (f *fakeBenchRepository) GetItemsByIDs(ctx context.Context, itemIDs []int) ([]domain.Item, error) {
 	items := make([]domain.Item, len(itemIDs))
 	for i, id := range itemIDs {
 		items[i] = domain.Item{
@@ -107,94 +107,94 @@ func (m *mockBenchRepository) GetItemsByIDs(ctx context.Context, itemIDs []int) 
 	return items, nil
 }
 
-func (m *mockBenchRepository) GetSellablePrices(ctx context.Context) ([]domain.Item, error) {
+func (f *fakeBenchRepository) GetSellablePrices(ctx context.Context) ([]domain.Item, error) {
 	return nil, nil
 }
 
-func (m *mockBenchRepository) IsItemBuyable(ctx context.Context, itemName string) (bool, error) {
+func (f *fakeBenchRepository) IsItemBuyable(ctx context.Context, itemName string) (bool, error) {
 	return false, nil
 }
 
-func (m *mockBenchRepository) BeginTx(ctx context.Context) (repository.UserTx, error) {
-	return &mockBenchTx{repo: m}, nil
+func (f *fakeBenchRepository) BeginTx(ctx context.Context) (repository.UserTx, error) {
+	return &fakeBenchTx{repo: f}, nil
 }
 
-func (m *mockBenchRepository) GetRecipeByTargetItemID(ctx context.Context, itemID int) (*domain.Recipe, error) {
+func (f *fakeBenchRepository) GetRecipeByTargetItemID(ctx context.Context, itemID int) (*domain.Recipe, error) {
 	return nil, nil
 }
 
-func (m *mockBenchRepository) IsRecipeUnlocked(ctx context.Context, userID string, recipeID int) (bool, error) {
+func (f *fakeBenchRepository) IsRecipeUnlocked(ctx context.Context, userID string, recipeID int) (bool, error) {
 	return false, nil
 }
 
-func (m *mockBenchRepository) UnlockRecipe(ctx context.Context, userID string, recipeID int) error {
+func (f *fakeBenchRepository) UnlockRecipe(ctx context.Context, userID string, recipeID int) error {
 	return nil
 }
 
-func (m *mockBenchRepository) GetUnlockedRecipesForUser(ctx context.Context, userID string) ([]repository.UnlockedRecipeInfo, error) {
+func (f *fakeBenchRepository) GetUnlockedRecipesForUser(ctx context.Context, userID string) ([]repository.UnlockedRecipeInfo, error) {
 	return nil, nil
 }
 
-func (m *mockBenchRepository) GetLastCooldown(ctx context.Context, userID, action string) (*time.Time, error) {
+func (f *fakeBenchRepository) GetLastCooldown(ctx context.Context, userID, action string) (*time.Time, error) {
 	return nil, nil
 }
 
-func (m *mockBenchRepository) UpdateCooldown(ctx context.Context, userID, action string, timestamp time.Time) error {
+func (f *fakeBenchRepository) UpdateCooldown(ctx context.Context, userID, action string, timestamp time.Time) error {
 	return nil
 }
 
-func (m *mockBenchRepository) MergeUsersInTransaction(ctx context.Context, primaryUserID, secondaryUserID string, mergedUser domain.User, mergedInventory domain.Inventory) error {
+func (f *fakeBenchRepository) MergeUsersInTransaction(ctx context.Context, primaryUserID, secondaryUserID string, mergedUser domain.User, mergedInventory domain.Inventory) error {
 	return nil
 }
 
 // Mock transaction
-type mockBenchTx struct {
-	repo *mockBenchRepository
+type fakeBenchTx struct {
+	repo *fakeBenchRepository
 }
 
-func (m *mockBenchTx) GetInventory(ctx context.Context, userID string) (*domain.Inventory, error) {
-	return m.repo.GetInventory(ctx, userID)
+func (f *fakeBenchTx) GetInventory(ctx context.Context, userID string) (*domain.Inventory, error) {
+	return f.repo.GetInventory(ctx, userID)
 }
 
-func (m *mockBenchTx) UpdateInventory(ctx context.Context, userID string, inventory domain.Inventory) error {
-	return m.repo.UpdateInventory(ctx, userID, inventory)
+func (f *fakeBenchTx) UpdateInventory(ctx context.Context, userID string, inventory domain.Inventory) error {
+	return f.repo.UpdateInventory(ctx, userID, inventory)
 }
 
-func (m *mockBenchTx) Commit(ctx context.Context) error {
+func (f *fakeBenchTx) Commit(ctx context.Context) error {
 	return nil
 }
 
-func (m *mockBenchTx) Rollback(ctx context.Context) error {
+func (f *fakeBenchTx) Rollback(ctx context.Context) error {
 	return nil
 }
 
 // Mock stats service
-type mockBenchStatsService struct{}
+type fakeBenchStatsService struct{}
 
-func (m *mockBenchStatsService) RecordUserEvent(ctx context.Context, userID string, eventType domain.EventType, metadata map[string]interface{}) error {
+func (f *fakeBenchStatsService) RecordUserEvent(ctx context.Context, userID string, eventType domain.EventType, metadata map[string]interface{}) error {
 	return nil
 }
 
-func (m *mockBenchStatsService) GetUserStats(ctx context.Context, userID, period string) (*domain.StatsSummary, error) {
+func (f *fakeBenchStatsService) GetUserStats(ctx context.Context, userID, period string) (*domain.StatsSummary, error) {
 	return nil, nil
 }
 
-func (m *mockBenchStatsService) GetUserCurrentStreak(ctx context.Context, userID string) (int, error) {
+func (f *fakeBenchStatsService) GetUserCurrentStreak(ctx context.Context, userID string) (int, error) {
 	return 0, nil
 }
 
-func (m *mockBenchStatsService) GetSystemStats(ctx context.Context, period string) (*domain.StatsSummary, error) {
+func (f *fakeBenchStatsService) GetSystemStats(ctx context.Context, period string) (*domain.StatsSummary, error) {
 	return nil, nil
 }
 
-func (m *mockBenchStatsService) GetLeaderboard(ctx context.Context, eventType domain.EventType, period string, limit int) ([]domain.LeaderboardEntry, error) {
+func (f *fakeBenchStatsService) GetLeaderboard(ctx context.Context, eventType domain.EventType, period string, limit int) ([]domain.LeaderboardEntry, error) {
 	return nil, nil
 }
 
 // Mock job service
-type mockBenchJobService struct{}
+type fakeBenchJobService struct{}
 
-func (m *mockBenchJobService) AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error) {
+func (f *fakeBenchJobService) AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error) {
 	return &domain.XPAwardResult{
 		JobKey:    jobKey,
 		XPGained:  baseAmount,
@@ -205,64 +205,64 @@ func (m *mockBenchJobService) AwardXP(ctx context.Context, userID, jobKey string
 }
 
 // Mock lootbox service
-type mockBenchLootboxService struct{}
+type fakeBenchLootboxService struct{}
 
-func (m *mockBenchLootboxService) OpenLootbox(ctx context.Context, lootboxName string, quantity int) ([]lootbox.DroppedItem, error) {
+func (f *fakeBenchLootboxService) OpenLootbox(ctx context.Context, lootboxName string, quantity int) ([]lootbox.DroppedItem, error) {
 	return []lootbox.DroppedItem{
 		{ItemID: 1, ItemName: "money", Quantity: 10, Value: 10, ShineLevel: "COMMON"},
 	}, nil
 }
 
 // Mock naming resolver
-type mockBenchNamingResolver struct{}
+type fakeBenchNamingResolver struct{}
 
-func (m *mockBenchNamingResolver) ResolvePublicName(publicName string) (string, bool) {
+func (f *fakeBenchNamingResolver) ResolvePublicName(publicName string) (string, bool) {
 	return publicName, true
 }
 
-func (m *mockBenchNamingResolver) GetDisplayName(internalName string, shineLevel string) string {
+func (f *fakeBenchNamingResolver) GetDisplayName(internalName string, shineLevel string) string {
 	return internalName
 }
 
-func (m *mockBenchNamingResolver) GetActiveTheme() string {
+func (f *fakeBenchNamingResolver) GetActiveTheme() string {
 	return ""
 }
 
-func (m *mockBenchNamingResolver) Reload() error {
+func (f *fakeBenchNamingResolver) Reload() error {
 	return nil
 }
 
-func (m *mockBenchNamingResolver) RegisterItem(internalName, publicName string) {
+func (f *fakeBenchNamingResolver) RegisterItem(internalName, publicName string) {
 	// no-op
 }
 
 // Mock cooldown service
-type mockBenchCooldownService struct{}
+type fakeBenchCooldownService struct{}
 
-func (m *mockBenchCooldownService) CheckCooldown(ctx context.Context, userID, action string) (bool, time.Duration, error) {
+func (f *fakeBenchCooldownService) CheckCooldown(ctx context.Context, userID, action string) (bool, time.Duration, error) {
 	return false, 0, nil
 }
 
-func (m *mockBenchCooldownService) EnforceCooldown(ctx context.Context, userID, action string, fn func() error) error {
+func (f *fakeBenchCooldownService) EnforceCooldown(ctx context.Context, userID, action string, fn func() error) error {
 	return fn()
 }
 
-func (m *mockBenchCooldownService) ResetCooldown(ctx context.Context, userID, action string) error {
+func (f *fakeBenchCooldownService) ResetCooldown(ctx context.Context, userID, action string) error {
 	return nil
 }
 
-func (m *mockBenchCooldownService) GetLastUsed(ctx context.Context, userID, action string) (*time.Time, error) {
+func (f *fakeBenchCooldownService) GetLastUsed(ctx context.Context, userID, action string) (*time.Time, error) {
 	return nil, nil
 }
 
 // BenchmarkService_HandleIncomingMessage benchmarks user lookup/creation
 func BenchmarkService_HandleIncomingMessage(b *testing.B) {
-	repo := &mockBenchRepository{}
-	statsService := &mockBenchStatsService{}
-	jobService := &mockBenchJobService{}
-	lootboxService := &mockBenchLootboxService{}
-	namingResolver := &mockBenchNamingResolver{}
-	cooldownService := &mockBenchCooldownService{}
+	repo := &fakeBenchRepository{}
+	statsService := &fakeBenchStatsService{}
+	jobService := &fakeBenchJobService{}
+	lootboxService := &fakeBenchLootboxService{}
+	namingResolver := &fakeBenchNamingResolver{}
+	cooldownService := &fakeBenchCooldownService{}
 
 	service := NewService(repo, statsService, jobService, lootboxService, namingResolver, cooldownService, false)
 
@@ -281,12 +281,12 @@ func BenchmarkService_HandleIncomingMessage(b *testing.B) {
 
 // BenchmarkService_HandleIncomingMessage_WithMatches benchmarks with message parsing
 func BenchmarkService_HandleIncomingMessage_WithMatches(b *testing.B) {
-	repo := &mockBenchRepository{}
-	statsService := &mockBenchStatsService{}
-	jobService := &mockBenchJobService{}
-	lootboxService := &mockBenchLootboxService{}
-	namingResolver := &mockBenchNamingResolver{}
-	cooldownService := &mockBenchCooldownService{}
+	repo := &fakeBenchRepository{}
+	statsService := &fakeBenchStatsService{}
+	jobService := &fakeBenchJobService{}
+	lootboxService := &fakeBenchLootboxService{}
+	namingResolver := &fakeBenchNamingResolver{}
+	cooldownService := &fakeBenchCooldownService{}
 
 	service := NewService(repo, statsService, jobService, lootboxService, namingResolver, cooldownService, false)
 
@@ -306,12 +306,12 @@ func BenchmarkService_HandleIncomingMessage_WithMatches(b *testing.B) {
 
 // BenchmarkService_AddItem benchmarks inventory transaction performance
 func BenchmarkService_AddItem(b *testing.B) {
-	repo := &mockBenchRepository{}
-	statsService := &mockBenchStatsService{}
-	jobService := &mockBenchJobService{}
-	lootboxService := &mockBenchLootboxService{}
-	namingResolver := &mockBenchNamingResolver{}
-	cooldownService := &mockBenchCooldownService{}
+	repo := &fakeBenchRepository{}
+	statsService := &fakeBenchStatsService{}
+	jobService := &fakeBenchJobService{}
+	lootboxService := &fakeBenchLootboxService{}
+	namingResolver := &fakeBenchNamingResolver{}
+	cooldownService := &fakeBenchCooldownService{}
 
 	service := NewService(repo, statsService, jobService, lootboxService, namingResolver, cooldownService, false)
 
@@ -330,12 +330,12 @@ func BenchmarkService_AddItem(b *testing.B) {
 
 // BenchmarkService_AddItem_NewItem benchmarks adding a completely new item
 func BenchmarkService_AddItem_NewItem(b *testing.B) {
-	repo := &mockBenchRepository{}
-	statsService := &mockBenchStatsService{}
-	jobService := &mockBenchJobService{}
-	lootboxService := &mockBenchLootboxService{}
-	namingResolver := &mockBenchNamingResolver{}
-	cooldownService := &mockBenchCooldownService{}
+	repo := &fakeBenchRepository{}
+	statsService := &fakeBenchStatsService{}
+	jobService := &fakeBenchJobService{}
+	lootboxService := &fakeBenchLootboxService{}
+	namingResolver := &fakeBenchNamingResolver{}
+	cooldownService := &fakeBenchCooldownService{}
 
 	service := NewService(repo, statsService, jobService, lootboxService, namingResolver, cooldownService, false)
 
@@ -355,12 +355,12 @@ func BenchmarkService_AddItem_NewItem(b *testing.B) {
 // Benchmark batch operations
 
 func BenchmarkService_AddItems_Batch10(b *testing.B) {
-	repo := &mockBenchRepository{}
-	statsService := &mockBenchStatsService{}
-	jobService := &mockBenchJobService{}
-	lootboxService := &mockBenchLootboxService{}
-	namingResolver := &mockBenchNamingResolver{}
-	cooldownService := &mockBenchCooldownService{}
+	repo := &fakeBenchRepository{}
+	statsService := &fakeBenchStatsService{}
+	jobService := &fakeBenchJobService{}
+	lootboxService := &fakeBenchLootboxService{}
+	namingResolver := &fakeBenchNamingResolver{}
+	cooldownService := &fakeBenchCooldownService{}
 
 	service := NewService(repo, statsService, jobService, lootboxService, namingResolver, cooldownService, false)
 
@@ -387,12 +387,12 @@ func BenchmarkService_AddItems_Batch10(b *testing.B) {
 }
 
 func BenchmarkService_AddItems_Batch25(b *testing.B) {
-	repo := &mockBenchRepository{}
-	statsService := &mockBenchStatsService{}
-	jobService := &mockBenchJobService{}
-	lootboxService := &mockBenchLootboxService{}
-	namingResolver := &mockBenchNamingResolver{}
-	cooldownService := &mockBenchCooldownService{}
+	repo := &fakeBenchRepository{}
+	statsService := &fakeBenchStatsService{}
+	jobService := &fakeBenchJobService{}
+	lootboxService := &fakeBenchLootboxService{}
+	namingResolver := &fakeBenchNamingResolver{}
+	cooldownService := &fakeBenchCooldownService{}
 
 	service := NewService(repo, statsService, jobService, lootboxService, namingResolver, cooldownService, false)
 
@@ -420,12 +420,12 @@ func BenchmarkService_AddItems_Batch25(b *testing.B) {
 
 // Benchmark comparison: Individual vs Batch
 func BenchmarkService_AddItem_Individual10(b *testing.B) {
-	repo := &mockBenchRepository{}
-	statsService := &mockBenchStatsService{}
-	jobService := &mockBenchJobService{}
-	lootboxService := &mockBenchLootboxService{}
-	namingResolver := &mockBenchNamingResolver{}
-	cooldownService := &mockBenchCooldownService{}
+	repo := &fakeBenchRepository{}
+	statsService := &fakeBenchStatsService{}
+	jobService := &fakeBenchJobService{}
+	lootboxService := &fakeBenchLootboxService{}
+	namingResolver := &fakeBenchNamingResolver{}
+	cooldownService := &fakeBenchCooldownService{}
 
 	service := NewService(repo, statsService, jobService, lootboxService, namingResolver, cooldownService, false)
 
