@@ -237,6 +237,51 @@ func (_c *MockUserService_FindUserByPlatformID_Call) RunAndReturn(run func(conte
 	return _c
 }
 
+// GetCacheStats provides a mock function with no fields
+func (_m *MockUserService) GetCacheStats() user.CacheStats {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetCacheStats")
+	}
+
+	var r0 user.CacheStats
+	if rf, ok := ret.Get(0).(func() user.CacheStats); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(user.CacheStats)
+	}
+
+	return r0
+}
+
+// MockUserService_GetCacheStats_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetCacheStats'
+type MockUserService_GetCacheStats_Call struct {
+	*mock.Call
+}
+
+// GetCacheStats is a helper method to define mock.On call
+func (_e *MockUserService_Expecter) GetCacheStats() *MockUserService_GetCacheStats_Call {
+	return &MockUserService_GetCacheStats_Call{Call: _e.mock.On("GetCacheStats")}
+}
+
+func (_c *MockUserService_GetCacheStats_Call) Run(run func()) *MockUserService_GetCacheStats_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockUserService_GetCacheStats_Call) Return(_a0 user.CacheStats) *MockUserService_GetCacheStats_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockUserService_GetCacheStats_Call) RunAndReturn(run func() user.CacheStats) *MockUserService_GetCacheStats_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetInventory provides a mock function with given fields: ctx, platform, platformID, username, filter
 func (_m *MockUserService) GetInventory(ctx context.Context, platform string, platformID string, username string, filter string) ([]user.UserInventoryItem, error) {
 	ret := _m.Called(ctx, platform, platformID, username, filter)
@@ -1139,6 +1184,53 @@ func (_c *MockUserService_UnlinkPlatform_Call) Return(_a0 error) *MockUserServic
 }
 
 func (_c *MockUserService_UnlinkPlatform_Call) RunAndReturn(run func(context.Context, string, string) error) *MockUserService_UnlinkPlatform_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpdateUser provides a mock function with given fields: ctx, _a1
+func (_m *MockUserService) UpdateUser(ctx context.Context, _a1 domain.User) error {
+	ret := _m.Called(ctx, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateUser")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, domain.User) error); ok {
+		r0 = rf(ctx, _a1)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockUserService_UpdateUser_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateUser'
+type MockUserService_UpdateUser_Call struct {
+	*mock.Call
+}
+
+// UpdateUser is a helper method to define mock.On call
+//   - ctx context.Context
+//   - _a1 domain.User
+func (_e *MockUserService_Expecter) UpdateUser(ctx interface{}, _a1 interface{}) *MockUserService_UpdateUser_Call {
+	return &MockUserService_UpdateUser_Call{Call: _e.mock.On("UpdateUser", ctx, _a1)}
+}
+
+func (_c *MockUserService_UpdateUser_Call) Run(run func(ctx context.Context, _a1 domain.User)) *MockUserService_UpdateUser_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(domain.User))
+	})
+	return _c
+}
+
+func (_c *MockUserService_UpdateUser_Call) Return(_a0 error) *MockUserService_UpdateUser_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockUserService_UpdateUser_Call) RunAndReturn(run func(context.Context, domain.User) error) *MockUserService_UpdateUser_Call {
 	_c.Call.Return(run)
 	return _c
 }

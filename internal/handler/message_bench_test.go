@@ -289,3 +289,11 @@ func BenchmarkHandler_HandleMessage_WithMatches(b *testing.B) {
 		handler.ServeHTTP(w, req)
 	}
 }
+
+func (m *mockUserService) GetCacheStats() user.CacheStats {
+return user.CacheStats{}
+}
+
+func (m *mockUserService) UpdateUser(ctx context.Context, user domain.User) error {
+return nil
+}
