@@ -71,6 +71,11 @@ type MockProgression struct {
 	mock.Mock
 }
 
+// GetModifiedValue implements ProgressionService - returns base value (no modifiers for tests)
+func (m *MockProgression) GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error) {
+	return baseValue, nil
+}
+
 func (m *MockProgression) IsFeatureUnlocked(ctx context.Context, featureKey string) (bool, error) {
 	args := m.Called(ctx, featureKey)
 	return args.Bool(0), args.Error(1)

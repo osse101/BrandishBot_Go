@@ -41,6 +41,10 @@ type Service interface {
 	GetUserEngagement(ctx context.Context, userID string) (*domain.ContributionBreakdown, error)
 	GetContributionLeaderboard(ctx context.Context, limit int) ([]domain.ContributionLeaderboardEntry, error)
 
+	// Value modification
+	GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error)
+	GetModifierForFeature(ctx context.Context, featureKey string) (*ValueModifier, error)
+
 	// Status
 	GetProgressionStatus(ctx context.Context) (*domain.ProgressionStatus, error)
 	GetRequiredNodes(ctx context.Context, nodeKey string) ([]*domain.ProgressionNode, error)
@@ -88,7 +92,7 @@ func NewService(repo Repository, bus event.Bus) Service {
 		repo:           repo,
 		bus:            bus,
 		modifierCache:  NewModifierCache(30 * time.Minute), // 30-min TTL
-		unlockSem:      make(chan struct{}, 1),              // Buffer of 1 = only one unlock check at a time
+		unlockSem:      make(chan struct{}, 1),             // Buffer of 1 = only one unlock check at a time
 		shutdownCtx:    shutdownCtx,
 		shutdownCancel: shutdownCancel,
 	}
@@ -711,7 +715,7 @@ func (s *service) GetModifierForFeature(ctx context.Context, featureKey string) 
 func (s *service) handleNodeUnlocked(ctx context.Context, e event.Event) error {
 	// Invalidate entire cache - simple and ensures consistency
 	s.modifierCache.InvalidateAll()
-	
+
 	log := logger.FromContext(ctx)
 	if payload, ok := e.Payload.(map[string]interface{}); ok {
 		log.Info("Invalidated modifier cache due to node unlock",
@@ -725,7 +729,7 @@ func (s *service) handleNodeUnlocked(ctx context.Context, e event.Event) error {
 func (s *service) handleNodeRelocked(ctx context.Context, e event.Event) error {
 	// Invalidate entire cache - modifier values have changed
 	s.modifierCache.InvalidateAll()
-	
+
 	log := logger.FromContext(ctx)
 	if payload, ok := e.Payload.(map[string]interface{}); ok {
 		log.Info("Invalidated modifier cache due to node relock",

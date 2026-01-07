@@ -29,6 +29,7 @@ type Repository interface {
 type ProgressionService interface {
 	IsFeatureUnlocked(ctx context.Context, featureKey string) (bool, error)
 	GetProgressionStatus(ctx context.Context) (*domain.ProgressionStatus, error)
+	GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error)
 }
 
 // Service defines the job system business logic
@@ -421,14 +422,25 @@ func (s *service) calculateLevelAndNextXP(totalXP int64) (int, int64) {
 // Helper functions (TODO: integrate with progression system)
 
 func (s *service) getXPMultiplier(ctx context.Context) float64 {
-	// TODO: Query jobs_xp_boost node level from progression system
-	// For now, return default (no boost)
-	return DefaultXPMultiplier
+	// Apply progression modifier for job XP multiplier
+	modified, err := s.progressionSvc.GetModifiedValue(ctx, "job_xp_multiplier", 1.0)
+	if err != nil {
+		log := logger.FromContext(ctx)
+		log.Warn("Failed to get job XP multiplier, using default", "error", err)
+		return 1.0 // Fallback to no multiplier
+	}
+	return modified
 }
 
 func (s *service) getDailyCap(ctx context.Context) int {
-	// TODO: Scale with jobs_xp_boost node level
-	return DefaultDailyCap
+	// Apply progression modifier for daily job cap
+	modified, err := s.progressionSvc.GetModifiedValue(ctx, "job_daily_cap", float64(DefaultDailyCap))
+	if err != nil {
+		log := logger.FromContext(ctx)
+		log.Warn("Failed to get daily cap modifier, using default", "error", err)
+		return DefaultDailyCap
+	}
+	return int(modified)
 }
 
 func (s *service) getMaxJobLevel(ctx context.Context) (int, error) {

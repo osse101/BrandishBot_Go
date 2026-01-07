@@ -83,6 +83,11 @@ func (m *MockProgressionService) GetProgressionStatus(ctx context.Context) (*dom
 	return args.Get(0).(*domain.ProgressionStatus), args.Error(1)
 }
 
+func (m *MockProgressionService) GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error) {
+	args := m.Called(ctx, featureKey, baseValue)
+	return args.Get(0).(float64), args.Error(1)
+}
+
 // MockStatsService
 type MockStatsService struct {
 	mock.Mock

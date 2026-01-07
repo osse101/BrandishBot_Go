@@ -175,14 +175,77 @@
       "key": "upgrade_search_cooldown_reduction",
       "name": "Cooldown Reduction",
       "type": "upgrade",
-      "description": "Reduce search cooldowns (unlockable 5 times)",
+      "description": "Reduce search cooldowns by 10% per level (max 5 levels = -50%)",
       "tier": 3,
       "size": "small",
       "category": "upgrades",
       "max_level": 5,
       "prerequisites": ["feature_search"],
       "sort_order": 40,
-      "auto_unlock": false
+      "auto_unlock": false,
+      "modifier_config": {
+        "feature_key": "search_cooldown_reduction",
+        "modifier_type": "multiplicative",
+        "base_value": 1.0,
+        "per_level_value": -0.10
+      }
+    },
+    {
+      "key": "upgrade_job_xp_multiplier",
+      "name": "Job XP Boost",
+      "type": "upgrade",
+      "description": "Increase job XP gains by +10% per level (max 5 levels = +50%)",
+      "tier": 2,
+      "size": "small",
+      "category": "upgrades",
+      "max_level": 5,
+      "prerequisites": ["feature_economy"],
+      "sort_order": 41,
+      "auto_unlock": false,
+      "modifier_config": {
+        "feature_key": "job_xp_multiplier",
+        "modifier_type": "multiplicative",
+        "base_value": 1.0,
+        "per_level_value": 0.10
+      }
+    },
+    {
+      "key": "upgrade_job_daily_cap",
+      "name": "Job Daily Cap Increase",
+      "type": "upgrade",
+      "description": "Increase daily job limit by +1 per level (max 5 levels = +5)",
+      "tier": 3,
+      "size": "small",
+      "category": "upgrades",
+      "max_level": 5,
+      "prerequisites": ["upgrade_job_xp_multiplier"],
+      "sort_order": 42,
+      "auto_unlock": false,
+      "modifier_config": {
+        "feature_key": "job_daily_cap",
+        "modifier_type": "linear",
+        "base_value": 3.0,
+        "per_level_value": 1.0
+      }
+    },
+    {
+      "key": "upgrade_gamble_win_bonus",
+      "name": "Gambling Win Bonus",
+      "type": "upgrade",
+      "description": "Increase gambling winnings by +5% per level (max 3 levels = +15%)",
+      "tier": 4,
+      "size": "small",
+      "category": "upgrades",
+      "max_level": 3,
+      "prerequisites": ["feature_gamble"],
+      "sort_order": 43,
+      "auto_unlock": false,
+      "modifier_config": {
+        "feature_key": "gamble_win_bonus",
+        "modifier_type": "multiplicative",
+        "base_value": 1.0,
+        "per_level_value": 0.05
+      }
     }
   ]
 }

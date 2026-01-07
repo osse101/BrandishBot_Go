@@ -13,6 +13,7 @@ import (
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/event"
+	"github.com/osse101/BrandishBot_Go/internal/progression"
 	"github.com/osse101/BrandishBot_Go/internal/user"
 )
 
@@ -172,6 +173,12 @@ func (m *mockProgressionService) ResetProgressionTree(ctx context.Context, reset
 	return nil
 }
 func (m *mockProgressionService) InvalidateWeightCache() {}
+func (m *mockProgressionService) GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error) {
+	return 0, nil
+}
+func (m *mockProgressionService) GetModifierForFeature(ctx context.Context, featureKey string) (*progression.ValueModifier, error) {
+	return nil, nil
+}
 func (m *mockProgressionService) Shutdown(ctx context.Context) error {
 	return nil
 }
