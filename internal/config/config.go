@@ -48,6 +48,11 @@ type Config struct {
 	DBMaxConnIdleTime    time.Duration
 	DBMaxConnLifetime    time.Duration
 
+	// Event System
+	EventMaxRetries     int           `mapstructure:"EVENT_MAX_RETRIES"`
+	EventRetryDelay     time.Duration `mapstructure:"EVENT_RETRY_DELAY"`
+	EventDeadLetterPath string        `mapstructure:"EVENT_DEAD_LETTER_PATH"`
+
 	// Gamble configuration
 	GambleJoinDuration time.Duration // Duration for users to join a gamble
 
@@ -80,6 +85,11 @@ func Load() (*Config, error) {
 		DBMaxConns:        getEnvAsInt("DB_MAX_CONNS", 20),
 		DBMaxConnIdleTime: getEnvAsDuration("DB_MAX_CONN_IDLE_TIME", 5*time.Minute),
 		DBMaxConnLifetime: getEnvAsDuration("DB_MAX_CONN_LIFETIME", 30*time.Minute),
+
+		// Event System
+		EventMaxRetries:     getEnvAsInt("EVENT_MAX_RETRIES", 3),
+		EventRetryDelay:     getEnvAsDuration("EVENT_RETRY_DELAY", 1*time.Second),
+		EventDeadLetterPath: getEnv("EVENT_DEAD_LETTER_PATH", "./dead_letter_events.jsonl"),
 
 		// Server config
 		APIKey: getEnv("API_KEY", ""),
