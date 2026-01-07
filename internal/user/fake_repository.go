@@ -9,8 +9,13 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
 
-// MockRepository implements Repository interface for testing
-type MockRepository struct {
+// MockRepository is a stateful "fake" implementation of Repository for testing.
+// It stores state in memory (maps) to enable integration-style unit tests.
+//
+// IMPORTANT: This mock must remain in the user package to avoid import cycles.
+// The generated mock in mocks/mock_repository.go is for cross-package testing only.
+// See docs/development/FEATURE_DEVELOPMENT_GUIDE.md for mock usage patterns.
+type FakeRepository struct {
 	users           map[string]*domain.User // keyed by user ID
 	inventories     map[string]*domain.Inventory
 	items           map[string]*domain.Item
@@ -19,8 +24,8 @@ type MockRepository struct {
 	cooldowns       map[string]map[string]*time.Time // userID -> action -> timestamp
 }
 
-func NewMockRepository() *MockRepository {
-	return &MockRepository{
+func NewFakeRepository() *FakeRepository {
+	return &FakeRepository{
 		users:           make(map[string]*domain.User),
 		items:           make(map[string]*domain.Item),
 		inventories:     make(map[string]*domain.Inventory),
@@ -30,30 +35,30 @@ func NewMockRepository() *MockRepository {
 	}
 }
 
-func (m *MockRepository) UpsertUser(ctx context.Context, user *domain.User) error {
+func (f *FakeRepository) UpsertUser(ctx context.Context, user *domain.User) error {
 	if user.ID == "" {
 		user.ID = "user-" + user.Username
 	}
-	m.users[user.Username] = user
+	f.users[user.Username] = user
 	return nil
 }
 
-func (m *MockRepository) UpdateUser(ctx context.Context, user domain.User) error {
-	m.users[user.Username] = &user
+func (f *FakeRepository) UpdateUser(ctx context.Context, user domain.User) error {
+	f.users[user.Username] = &user
 	return nil
 }
 
-func (m *MockRepository) DeleteUser(ctx context.Context, userID string) error {
-	for k, v := range m.users {
+func (f *FakeRepository) DeleteUser(ctx context.Context, userID string) error {
+	for k, v := range f.users {
 		if v.ID == userID {
-			delete(m.users, k)
+			delete(f.users, k)
 		}
 	}
 	return nil
 }
 
-func (m *MockRepository) GetUserByID(ctx context.Context, userID string) (*domain.User, error) {
-	for _, u := range m.users {
+func (f *FakeRepository) GetUserByID(ctx context.Context, userID string) (*domain.User, error) {
+	for _, u := range f.users {
 		if u.ID == userID {
 			return u, nil
 		}
@@ -61,8 +66,8 @@ func (m *MockRepository) GetUserByID(ctx context.Context, userID string) (*domai
 	return nil, nil
 }
 
-func (m *MockRepository) GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error) {
-	for _, u := range m.users {
+func (f *FakeRepository) GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error) {
+	for _, u := range f.users {
 		switch platform {
 		case domain.PlatformTwitch:
 			if u.TwitchID == platformID {
@@ -81,9 +86,9 @@ func (m *MockRepository) GetUserByPlatformID(ctx context.Context, platform, plat
 	return nil, nil
 }
 
-func (m *MockRepository) GetUserByPlatformUsername(ctx context.Context, platform, username string) (*domain.User, error) {
+func (f *FakeRepository) GetUserByPlatformUsername(ctx context.Context, platform, username string) (*domain.User, error) {
 	// Case-insensitive username lookup
-	for _, u := range m.users {
+	for _, u := range f.users {
 		// Check if user has the platform
 		var hasPlatform bool
 		switch platform {
@@ -103,45 +108,45 @@ func (m *MockRepository) GetUserByPlatformUsername(ctx context.Context, platform
 	return nil, domain.ErrUserNotFound
 }
 
-func (m *MockRepository) GetInventory(ctx context.Context, userID string) (*domain.Inventory, error) {
-	if inv, ok := m.inventories[userID]; ok {
+func (f *FakeRepository) GetInventory(ctx context.Context, userID string) (*domain.Inventory, error) {
+	if inv, ok := f.inventories[userID]; ok {
 		return inv, nil
 	}
 	// Return empty inventory if not exists
 	return &domain.Inventory{Slots: []domain.InventorySlot{}}, nil
 }
 
-func (m *MockRepository) UpdateInventory(ctx context.Context, userID string, inventory domain.Inventory) error {
-	m.inventories[userID] = &inventory
+func (f *FakeRepository) UpdateInventory(ctx context.Context, userID string, inventory domain.Inventory) error {
+	f.inventories[userID] = &inventory
 	return nil
 }
 
-func (m *MockRepository) DeleteInventory(ctx context.Context, userID string) error {
-	delete(m.inventories, userID)
+func (f *FakeRepository) DeleteInventory(ctx context.Context, userID string) error {
+	delete(f.inventories, userID)
 	return nil
 }
 
-func (m *MockRepository) GetItemByName(ctx context.Context, itemName string) (*domain.Item, error) {
-	if item, ok := m.items[itemName]; ok {
+func (f *FakeRepository) GetItemByName(ctx context.Context, itemName string) (*domain.Item, error) {
+	if item, ok := f.items[itemName]; ok {
 		return item, nil
 	}
 	return nil, nil
 }
 
-func (m *MockRepository) GetItemsByNames(ctx context.Context, names []string) ([]domain.Item, error) {
+func (f *FakeRepository) GetItemsByNames(ctx context.Context, names []string) ([]domain.Item, error) {
 	var items []domain.Item
 	for _, name := range names {
-		if item, ok := m.items[name]; ok {
+		if item, ok := f.items[name]; ok {
 			items = append(items, *item)
 		}
 	}
 	return items, nil
 }
 
-func (m *MockRepository) GetItemsByIDs(ctx context.Context, itemIDs []int) ([]domain.Item, error) {
+func (f *FakeRepository) GetItemsByIDs(ctx context.Context, itemIDs []int) ([]domain.Item, error) {
 	var items []domain.Item
 	for _, id := range itemIDs {
-		for _, item := range m.items {
+		for _, item := range f.items {
 			if item.ID == id {
 				items = append(items, *item)
 				break
@@ -151,8 +156,8 @@ func (m *MockRepository) GetItemsByIDs(ctx context.Context, itemIDs []int) ([]do
 	return items, nil
 }
 
-func (m *MockRepository) GetItemByID(ctx context.Context, id int) (*domain.Item, error) {
-	for _, item := range m.items {
+func (f *FakeRepository) GetItemByID(ctx context.Context, id int) (*domain.Item, error) {
+	for _, item := range f.items {
 		if item.ID == id {
 			return item, nil
 		}
@@ -160,15 +165,15 @@ func (m *MockRepository) GetItemByID(ctx context.Context, id int) (*domain.Item,
 	return nil, nil
 }
 
-func (m *MockRepository) GetSellablePrices(ctx context.Context) ([]domain.Item, error) {
+func (f *FakeRepository) GetSellablePrices(ctx context.Context) ([]domain.Item, error) {
 	var items []domain.Item
-	for _, item := range m.items {
+	for _, item := range f.items {
 		items = append(items, *item)
 	}
 	return items, nil
 }
 
-func (m *MockRepository) IsItemBuyable(ctx context.Context, itemName string) (bool, error) {
+func (f *FakeRepository) IsItemBuyable(ctx context.Context, itemName string) (bool, error) {
 	// For testing, assume lootbox0 and lootbox1 are buyable
 	if itemName == domain.ItemLootbox0 || itemName == domain.ItemLootbox1 {
 		return true, nil
@@ -178,11 +183,11 @@ func (m *MockRepository) IsItemBuyable(ctx context.Context, itemName string) (bo
 
 // MockTx wraps MockRepository for transaction testing
 type MockTx struct {
-	repo *MockRepository
+	repo *FakeRepository
 }
 
-func (m *MockRepository) BeginTx(ctx context.Context) (repository.UserTx, error) {
-	return &MockTx{repo: m}, nil
+func (f *FakeRepository) BeginTx(ctx context.Context) (repository.UserTx, error) {
+	return &MockTx{repo: f}, nil
 }
 
 func (mt *MockTx) GetInventory(ctx context.Context, userID string) (*domain.Inventory, error) {
@@ -201,29 +206,29 @@ func (mt *MockTx) Rollback(ctx context.Context) error {
 	return nil // No-op for mock
 }
 
-func (m *MockRepository) GetRecipeByTargetItemID(ctx context.Context, itemID int) (*domain.Recipe, error) {
-	if recipe, ok := m.recipes[itemID]; ok {
+func (f *FakeRepository) GetRecipeByTargetItemID(ctx context.Context, itemID int) (*domain.Recipe, error) {
+	if recipe, ok := f.recipes[itemID]; ok {
 		return recipe, nil
 	}
 	return nil, nil
 }
 
-func (m *MockRepository) IsRecipeUnlocked(ctx context.Context, userID string, recipeID int) (bool, error) {
-	if m.unlockedRecipes[userID] == nil {
+func (f *FakeRepository) IsRecipeUnlocked(ctx context.Context, userID string, recipeID int) (bool, error) {
+	if f.unlockedRecipes[userID] == nil {
 		return false, nil
 	}
-	return m.unlockedRecipes[userID][recipeID], nil
+	return f.unlockedRecipes[userID][recipeID], nil
 }
 
-func (m *MockRepository) UnlockRecipe(ctx context.Context, userID string, recipeID int) error {
-	if m.unlockedRecipes[userID] == nil {
-		m.unlockedRecipes[userID] = make(map[int]bool)
+func (f *FakeRepository) UnlockRecipe(ctx context.Context, userID string, recipeID int) error {
+	if f.unlockedRecipes[userID] == nil {
+		f.unlockedRecipes[userID] = make(map[int]bool)
 	}
-	m.unlockedRecipes[userID][recipeID] = true
+	f.unlockedRecipes[userID][recipeID] = true
 	return nil
 }
 
-func (r *MockRepository) GetUnlockedRecipesForUser(ctx context.Context, userID string) ([]repository.UnlockedRecipeInfo, error) {
+func (r *FakeRepository) GetUnlockedRecipesForUser(ctx context.Context, userID string) ([]repository.UnlockedRecipeInfo, error) {
 	var recipes []repository.UnlockedRecipeInfo
 
 	// For each unlocked recipe, get the recipe and item info
@@ -248,21 +253,21 @@ func (r *MockRepository) GetUnlockedRecipesForUser(ctx context.Context, userID s
 	return recipes, nil
 }
 
-func (m *MockRepository) GetLastCooldown(ctx context.Context, userID, action string) (*time.Time, error) {
-	if userCooldowns, ok := m.cooldowns[userID]; ok {
+func (f *FakeRepository) GetLastCooldown(ctx context.Context, userID, action string) (*time.Time, error) {
+	if userCooldowns, ok := f.cooldowns[userID]; ok {
 		return userCooldowns[action], nil
 	}
 	return nil, nil
 }
 
-func (m *MockRepository) UpdateCooldown(ctx context.Context, userID, action string, timestamp time.Time) error {
-	if _, ok := m.cooldowns[userID]; !ok {
-		m.cooldowns[userID] = make(map[string]*time.Time)
+func (f *FakeRepository) UpdateCooldown(ctx context.Context, userID, action string, timestamp time.Time) error {
+	if _, ok := f.cooldowns[userID]; !ok {
+		f.cooldowns[userID] = make(map[string]*time.Time)
 	}
-	m.cooldowns[userID][action] = &timestamp
+	f.cooldowns[userID][action] = &timestamp
 	return nil
 }
 
-func (m *MockRepository) MergeUsersInTransaction(ctx context.Context, primaryUserID, secondaryUserID string, mergedUser domain.User, mergedInventory domain.Inventory) error {
+func (f *FakeRepository) MergeUsersInTransaction(ctx context.Context, primaryUserID, secondaryUserID string, mergedUser domain.User, mergedInventory domain.Inventory) error {
 	return nil // No-op for mock
 }

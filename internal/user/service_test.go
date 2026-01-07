@@ -46,7 +46,7 @@ func NewMockNamingResolver() *MockNamingResolver {
 // We reuse it here to avoid redeclaration error
 
 // Helper to setup test data
-func setupTestData(repo *MockRepository) {
+func setupTestData(repo *FakeRepository) {
 	// Add test users
 	repo.users["alice"] = &domain.User{
 		ID:       "user-alice",
@@ -98,7 +98,7 @@ func setupTestData(repo *MockRepository) {
 }
 
 func TestAddItem(t *testing.T) {
-	repo := NewMockRepository()
+	repo := NewFakeRepository()
 	setupTestData(repo)
 	svc := NewService(repo, nil, nil, nil, NewMockNamingResolver(), nil, false)
 	ctx := context.Background()
@@ -152,7 +152,7 @@ func TestAddItem(t *testing.T) {
 }
 
 func TestRemoveItem(t *testing.T) {
-	repo := NewMockRepository()
+	repo := NewFakeRepository()
 	setupTestData(repo)
 	svc := NewService(repo, nil, nil, nil, NewMockNamingResolver(), nil, false)
 	ctx := context.Background()
@@ -196,7 +196,7 @@ func TestRemoveItem(t *testing.T) {
 }
 
 func TestGiveItem(t *testing.T) {
-	repo := NewMockRepository()
+	repo := NewFakeRepository()
 	setupTestData(repo)
 	svc := NewService(repo, nil, nil, nil, NewMockNamingResolver(), nil, false)
 	ctx := context.Background()
@@ -236,7 +236,7 @@ func TestGiveItem(t *testing.T) {
 }
 
 func TestRegisterUser(t *testing.T) {
-	repo := NewMockRepository()
+	repo := NewFakeRepository()
 	svc := NewService(repo, nil, nil, nil, NewMockNamingResolver(), nil, false)
 	ctx := context.Background()
 
@@ -265,7 +265,7 @@ func TestRegisterUser(t *testing.T) {
 }
 
 func TestHandleIncomingMessage_NewUser(t *testing.T) {
-	repo := NewMockRepository()
+	repo := NewFakeRepository()
 	svc := NewService(repo, nil, nil, nil, NewMockNamingResolver(), nil, false)
 	ctx := context.Background()
 
@@ -286,7 +286,7 @@ func TestHandleIncomingMessage_NewUser(t *testing.T) {
 }
 
 func TestHandleIncomingMessage_ExistingUser(t *testing.T) {
-	repo := NewMockRepository()
+	repo := NewFakeRepository()
 	setupTestData(repo)
 	svc := NewService(repo, nil, nil, nil, NewMockNamingResolver(), nil, false)
 	ctx := context.Background()
@@ -302,7 +302,7 @@ func TestHandleIncomingMessage_ExistingUser(t *testing.T) {
 }
 
 func TestUseItem(t *testing.T) {
-	repo := NewMockRepository()
+	repo := NewFakeRepository()
 	setupTestData(repo)
 
 	// Create a mock lootbox service
@@ -372,7 +372,7 @@ func TestUseItem(t *testing.T) {
 }
 
 func TestUseItem_Blaster(t *testing.T) {
-	repo := NewMockRepository()
+	repo := NewFakeRepository()
 	setupTestData(repo)
 	svc := NewService(repo, nil, nil, nil, NewMockNamingResolver(), nil, false)
 	ctx := context.Background()
@@ -405,7 +405,7 @@ func TestUseItem_Blaster(t *testing.T) {
 }
 
 func TestGetInventory(t *testing.T) {
-	repo := NewMockRepository()
+	repo := NewFakeRepository()
 	setupTestData(repo)
 	svc := NewService(repo, nil, nil, nil, NewMockNamingResolver(), nil, false)
 	ctx := context.Background()
@@ -514,7 +514,7 @@ func TestGetInventory(t *testing.T) {
 }
 
 func TestUseItem_Lootbox0(t *testing.T) {
-	repo := NewMockRepository()
+	repo := NewFakeRepository()
 	setupTestData(repo)
 
 	// Create a mock lootbox service
@@ -559,7 +559,7 @@ func TestUseItem_Lootbox0(t *testing.T) {
 }
 
 func TestUseItem_Lootbox2(t *testing.T) {
-	repo := NewMockRepository()
+	repo := NewFakeRepository()
 	setupTestData(repo)
 
 	// Create a mock lootbox service

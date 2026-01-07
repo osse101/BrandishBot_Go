@@ -9,7 +9,7 @@ import (
 )
 
 func TestTimeoutUser(t *testing.T) {
-	repo := NewMockRepository()
+	repo := NewFakeRepository()
 	setupTestData(repo)
 	svc := NewService(repo, nil, nil, nil, NewMockNamingResolver(), nil, false)
 	ctx := context.Background()
@@ -34,7 +34,7 @@ func TestTimeoutUser(t *testing.T) {
 }
 
 func TestHandleBlaster_Timeout(t *testing.T) {
-	repo := NewMockRepository()
+	repo := NewFakeRepository()
 	setupTestData(repo)
 	svc := NewService(repo, nil, nil, nil, NewMockNamingResolver(), nil, false)
 	ctx := context.Background()

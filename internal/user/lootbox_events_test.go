@@ -116,7 +116,7 @@ func TestProcessLootboxDrops_JackpotEvents(t *testing.T) {
 		mockStats := new(MockStatsServiceForLootboxTests)
 		mockLootbox := new(MockLootboxServiceForLootboxTests)
 		mockNaming := new(MockNamingResolverForLootboxTests)
-		mockRepo := NewMockRepository()
+		mockRepo := NewFakeRepository()
 		svc := NewService(mockRepo, mockStats, nil, mockLootbox, mockNaming, nil, false).(*service)
 		inventory := &domain.Inventory{Slots: []domain.InventorySlot{}}
 
@@ -160,7 +160,7 @@ func TestProcessLootboxDrops_JackpotEvents(t *testing.T) {
 		mockStats := new(MockStatsServiceForLootboxTests)
 		mockLootbox := new(MockLootboxServiceForLootboxTests)
 		mockNaming := new(MockNamingResolverForLootboxTests)
-		mockRepo := NewMockRepository()
+		mockRepo := NewFakeRepository()
 		svc := NewService(mockRepo, mockStats, nil, mockLootbox, mockNaming, nil, false).(*service)
 		inventory := &domain.Inventory{Slots: []domain.InventorySlot{}}
 
@@ -204,7 +204,7 @@ func TestProcessLootboxDrops_JackpotEvents(t *testing.T) {
 		mockStats := new(MockStatsServiceForLootboxTests)
 		mockLootbox := new(MockLootboxServiceForLootboxTests)
 		mockNaming := new(MockNamingResolverForLootboxTests)
-		mockRepo := NewMockRepository()
+		mockRepo := NewFakeRepository()
 		svc := NewService(mockRepo, mockStats, nil, mockLootbox, mockNaming, nil, false).(*service)
 		inventory := &domain.Inventory{Slots: []domain.InventorySlot{}}
 
@@ -273,7 +273,7 @@ func TestProcessLootboxDrops_BulkFeedbackThreshold(t *testing.T) {
 	t.Run("No Bulk Feedback Below Threshold (quantity=4)", func(t *testing.T) {
 		mockStats := new(MockStatsServiceForLootboxTests)
 		mockNaming := new(MockNamingResolverForLootboxTests)
-		mockRepo := NewMockRepository()
+		mockRepo := NewFakeRepository()
 		svc := NewService(mockRepo, mockStats, nil, nil, mockNaming, nil, false).(*service)
 		inventory := &domain.Inventory{Slots: []domain.InventorySlot{}}
 
@@ -290,7 +290,7 @@ func TestProcessLootboxDrops_BulkFeedbackThreshold(t *testing.T) {
 	t.Run("Bulk Feedback At Threshold (quantity=5)", func(t *testing.T) {
 		mockStats := new(MockStatsServiceForLootboxTests)
 		mockNaming := new(MockNamingResolverForLootboxTests)
-		mockRepo := NewMockRepository()
+		mockRepo := NewFakeRepository()
 		svc := NewService(mockRepo, mockStats, nil, nil, mockNaming, nil, false).(*service)
 		inventory := &domain.Inventory{Slots: []domain.InventorySlot{}}
 
@@ -307,7 +307,7 @@ func TestProcessLootboxDrops_BulkFeedbackThreshold(t *testing.T) {
 	t.Run("Bulk Feedback Above Threshold (quantity=6)", func(t *testing.T) {
 		mockStats := new(MockStatsServiceForLootboxTests)
 		mockNaming := new(MockNamingResolverForLootboxTests)
-		mockRepo := NewMockRepository()
+		mockRepo := NewFakeRepository()
 		svc := NewService(mockRepo, mockStats, nil, nil, mockNaming, nil, false).(*service)
 		inventory := &domain.Inventory{Slots: []domain.InventorySlot{}}
 
@@ -324,7 +324,7 @@ func TestProcessLootboxDrops_BulkFeedbackThreshold(t *testing.T) {
 	t.Run("Jackpot Takes Precedence Over Bulk Feedback", func(t *testing.T) {
 		mockStats := new(MockStatsServiceForLootboxTests)
 		mockNaming := new(MockNamingResolverForLootboxTests)
-		mockRepo := NewMockRepository()
+		mockRepo := NewFakeRepository()
 		svc := NewService(mockRepo, mockStats, nil, nil, mockNaming, nil, false).(*service)
 		inventory := &domain.Inventory{Slots: []domain.InventorySlot{}}
 
@@ -353,7 +353,7 @@ func TestProcessLootboxDrops_BulkFeedbackThreshold(t *testing.T) {
 	t.Run("Big Win Takes Precedence Over Bulk Feedback", func(t *testing.T) {
 		mockStats := new(MockStatsServiceForLootboxTests)
 		mockNaming := new(MockNamingResolverForLootboxTests)
-		mockRepo := NewMockRepository()
+		mockRepo := NewFakeRepository()
 		svc := NewService(mockRepo, mockStats, nil, nil, mockNaming, nil, false).(*service)
 		inventory := &domain.Inventory{Slots: []domain.InventorySlot{}}
 

@@ -33,8 +33,26 @@ This issue summarizes the findings from a codebase audit focused on test quality
 
 # Action Items
 
-## 1. Refactor Mocks
-*   [ ] Replace manual `MockRepository` structs in `internal/user` and `internal/crafting` with generated mocks (using `vektra/mockery` or `stretchr/testify/mock`).
+## ~~1. Refactor Mocks~~ [RESOLVED - 2026-01-07]
+
+**Original finding**: Manual `MockRepository` structs in `internal/user` and `internal/crafting` should be replaced with generated mocks to reduce technical debt.
+
+**Resolution**: After investigation, determined that manual in-package mocks are **architectural necessity** due to Go's import cycle restrictions. The two mock systems serve different, complementary purposes:
+
+- **Generated mocks (`mocks/` package)**: For cross-package testing (e.g., handler tests mocking services)
+- **Manual in-package mocks**: For same-package testing (e.g., service tests mocking repositories)
+
+**Root cause**: Generated mocks import the packages they mock. If those packages used the generated mocks in their own tests, it creates cycles:
+```
+internal/user -> mocks -> internal/user (IMPORT CYCLE!)
+```
+
+**Actions taken**:
+- ✅ Added comprehensive mock architecture documentation to `FEATURE_DEVELOPMENT_GUIDE.md`
+- ✅ Added clarifying comments to manual mocks explaining why they exist
+- ✅ Verified both mock systems are used correctly
+
+**Remaining recommendation**: Optionally rename `user.MockRepository` to `user.FakeRepository` to clarify it's a stateful fake (not critical).
 
 ## 2. Standardize Test Structure
 *   [ ] Refactor `internal/crafting/service_test.go` and `internal/lootbox/service_test.go` to explicitly follow the 5-Case Testing Model with comments.

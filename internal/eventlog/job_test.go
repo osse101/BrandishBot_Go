@@ -1,23 +1,26 @@
-package eventlog
+package eventlog_test
 
 import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
+	"github.com/osse101/BrandishBot_Go/internal/eventlog"
+	"github.com/osse101/BrandishBot_Go/internal/eventlog/mocks"
 )
 
 func TestCleanupJob_Process(t *testing.T) {
-	mockRepo := new(MockRepository)
-	service := NewService(mockRepo)
-	job := NewCleanupJob(service, 10)
+	mockRepo := mocks.NewMockRepository(t)
+	service := eventlog.NewService(mockRepo)
+	job := eventlog.NewCleanupJob(service, 10)
 	ctx := context.Background()
 
 	// Expect CleanupOldEvents to be called
-	mockRepo.On("CleanupOldEvents", mock.Anything, 10).Return(int64(100), nil)
+	mockRepo.On("CleanupOldEvents", ctx, 10).Return(int64(100), nil)
 
 	err := job.Process(ctx)
-	assert.NoError(t, err)
+	if err != nil {
+		t.Fatalf("expected  no error, got %v", err)
+	}
+
 	mockRepo.AssertExpectations(t)
 }

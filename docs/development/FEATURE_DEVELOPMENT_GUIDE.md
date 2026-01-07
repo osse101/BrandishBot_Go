@@ -706,9 +706,129 @@ func (m *MockRepository) GetMyData(ctx context.Context, id string) (*MyData, err
     }
     return nil, nil
 }
+}\n```
+
+### Mock Architecture: Why Two Mock Systems Exist
+
+The project has **two types of mocks** that serve **different, complementary purposes**:
+
+#### Generated Mocks (`mocks/` package)
+
+**Purpose**: Cross-package testing (mocking dependencies)  
+**Location**: `mocks/mock_*.go`  
+**Generated via**: `make mocks` (using `mockery`)  
+**Used by**: Packages that consume the interface
+
+**Example:**
+```go
+// internal/handler/user_test.go
+import \"github.com/osse101/BrandishBot_Go/mocks\"
+
+func TestHandleGetInventory(t *testing.T) {
+    mockUserService := new(mocks.MockUserService)  // Mocking dependency
+    mockUserService.On(\"GetInventory\", ...).Return(...)
+    
+    handler := HandleGetInventory(mockUserService)
+    // Test handler logic
+}
 ```
 
+**When to use**:
+- Testing code that *uses* an interface defined elsewhere
+- Example: Handler tests mocking services
+- Example: Service tests mocking external dependencies
+
+**Important**: Run `make mocks` after changing any interface to regenerate.
+
+#### In-Package Mocks
+
+**Purpose**: Same-package testing (testing the package's own implementation)  
+**Location**: `internal/[package]/mock_*.go`  
+**Maintained**: Manually (or within test files)  
+**Used by**: Tests in the same package
+
+**Example:**
+```go
+// internal/user/service_test.go
+func TestAddItem(t *testing.T) {
+    repo := NewMockRepository()  // In-package mock
+    setupTestData(repo)
+    svc := NewService(repo, nil, nil)
+    
+    // Test service logic
+}
+```
+
+**Why they must exist**:  
+These mocks **cannot be in the `mocks/` package** due to Go's import cycle restrictions:
+```
+internal/user -> mocks -> internal/user (IMPORT CYCLE!)
+```
+
+**When to use**:
+- Testing code in the *same package* as the interface  
+- Example: `user.Service` tests mocking `user.Repository`
+- Example: `eventlog.Service` tests mocking `eventlog.Repository`
+
+#### Two Styles of In-Package Mocks
+
+**1. Stateful "Fake" Implementations**  
+Store actual state in memory (maps, slices):
+```go
+// internal/user/mock_repository.go
+type MockRepository struct {
+    users map[string]*domain.User
+    inventories map[string]*domain.Inventory
+}
+
+func (m *MockRepository) GetUser(ctx context.Context, id string) (*domain.User, error) {
+    return m.users[id], nil  // Returns stored state
+}
+```
+
+**Use when**:
+- Integration-style unit tests need realistic behavior
+- Tests manipulate state directly: `repo.users["alice"] = ...`
+- Easier to read than lots of expectations
+
+**2. Expectation-Based Mocks**  
+Use `testify/mock` for verification:
+```go
+// internal/eventlog/mock_repository.go
+type MockRepository struct {
+    mock.Mock
+}
+
+func (m *MockRepository) LogEvent(ctx context.Context, ...) error {
+    args := m.Called(ctx, ...)
+    return args.Error(0)
+}
+```
+
+**Use when**:
+- Verifying specific method calls
+- Testing error paths
+- Need to assert call counts
+
+#### Summary: When to Use Which Mock
+
+| Scenario | Mock Type | Example |
+|----------|-----------|---------|
+| Testing handlers | Generated (`mocks/`) | `mocks.MockUserService` |
+| Testing services (cross-pkg) | Generated (`mocks/`) | `mocks.MockProgressionService` |
+| Testing service (same pkg) | In-package | `user.MockRepository` |
+| Integration-style unit tests | In-package stateful | `user.MockRepository` |
+| Verification/error paths | In-package mock | `eventlog.MockRepository` |
+
 **Best practices:**
+- ✅ Use generated mocks for cross-package dependencies
+- ✅ Keep in-package mocks for same-package testing  
+- ✅ Add comments explaining why in-package mocks exist (avoid confusion)
+- ✅ Run `make mocks` after interface changes
+- ❌ Don't try to move in-package mocks to `mocks/` (creates import cycles)
+- ❌ Don't delete in-package mocks thinking they're "duplicate"
+
+
 - ✅ Use table-driven tests for multiple scenarios
 - ✅ Create reusable test fixtures
 - ✅ Test with `-race` flag for concurrency

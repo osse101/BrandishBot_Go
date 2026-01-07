@@ -9,7 +9,7 @@ import (
 
 // Test GetInventoryByUsername
 func TestGetInventoryByUsername(t *testing.T) {
-	repo := NewMockRepository()
+	repo := NewFakeRepository()
 	namingResolver := NewMockNamingResolver()
 	svc := &service{
 		repo:            repo,
@@ -65,7 +65,7 @@ func TestGetInventoryByUsername(t *testing.T) {
 
 // Test AddItemByUsername
 func TestAddItemByUsername(t *testing.T) {
-	repo := NewMockRepository()
+	repo := NewFakeRepository()
 	svc := &service{
 		repo:            repo,
 		itemCache:       make(map[int]domain.Item),
@@ -103,7 +103,7 @@ func TestAddItemByUsername(t *testing.T) {
 
 // Test RemoveItemByUsername
 func TestRemoveItemByUsername(t *testing.T) {
-	repo := NewMockRepository()
+	repo := NewFakeRepository()
 	svc := &service{
 		repo:            repo,
 		itemCache:       make(map[int]domain.Item),
@@ -148,7 +148,7 @@ func TestRemoveItemByUsername(t *testing.T) {
 
 // Test GiveItemByUsername
 func TestGiveItemByUsername(t *testing.T) {
-	repo := NewMockRepository()
+	repo := NewFakeRepository()
 	svc := &service{
 		repo:            repo,
 		itemCache:       make(map[int]domain.Item),
