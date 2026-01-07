@@ -1,3 +1,5 @@
+Resolved
+
 # Repository Interface Location Refactoring
 
 ## Issue  
