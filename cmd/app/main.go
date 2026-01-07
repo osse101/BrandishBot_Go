@@ -160,7 +160,7 @@ func main() {
 		"retry_delay", retryDelay,
 		"deadletter_path", deadLetterPath)
 
-	progressionRepo := postgres.NewProgressionRepository(dbPool)
+	progressionRepo := postgres.NewProgressionRepository(dbPool, eventBus)
 	progressionService := progression.NewService(progressionRepo, eventBus)
 
 	// Optional: Sync progression tree from JSON configuration

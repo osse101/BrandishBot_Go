@@ -296,3 +296,10 @@ DELETE FROM progression_prerequisites WHERE node_id = $1;
 INSERT INTO progression_prerequisites (node_id, prerequisite_node_id)
 VALUES ($1, $2)
 ON CONFLICT (node_id, prerequisite_node_id) DO NOTHING;
+
+-- name: GetNodeByFeatureKey :one
+SELECT n.*, COALESCE(u.current_level, 0)::int as unlock_level
+FROM progression_nodes n
+LEFT JOIN progression_unlocks u ON u.node_id = n.id
+WHERE n.modifier_config->>'feature_key' = $1
+LIMIT 1;

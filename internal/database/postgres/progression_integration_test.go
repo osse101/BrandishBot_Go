@@ -74,7 +74,7 @@ func TestProgressionRepository_Integration(t *testing.T) {
 		t.Fatalf("failed to apply migrations: %v", err)
 	}
 
-	repo := NewProgressionRepository(pool)
+	repo := NewProgressionRepository(pool, nil) // nil bus for tests
 
 	// Run all the test sub-tests
 	t.Run("NodeOperations", func(t *testing.T) {

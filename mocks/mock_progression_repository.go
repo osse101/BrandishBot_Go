@@ -864,6 +864,72 @@ func (_c *MockProgressionRepository_GetEngagementWeights_Call) RunAndReturn(run 
 	return _c
 }
 
+// GetNodeByFeatureKey provides a mock function with given fields: ctx, featureKey
+func (_m *MockProgressionRepository) GetNodeByFeatureKey(ctx context.Context, featureKey string) (*domain.ProgressionNode, int, error) {
+	ret := _m.Called(ctx, featureKey)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetNodeByFeatureKey")
+	}
+
+	var r0 *domain.ProgressionNode
+	var r1 int
+	var r2 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (*domain.ProgressionNode, int, error)); ok {
+		return rf(ctx, featureKey)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) *domain.ProgressionNode); ok {
+		r0 = rf(ctx, featureKey)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*domain.ProgressionNode)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) int); ok {
+		r1 = rf(ctx, featureKey)
+	} else {
+		r1 = ret.Get(1).(int)
+	}
+
+	if rf, ok := ret.Get(2).(func(context.Context, string) error); ok {
+		r2 = rf(ctx, featureKey)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
+}
+
+// MockProgressionRepository_GetNodeByFeatureKey_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetNodeByFeatureKey'
+type MockProgressionRepository_GetNodeByFeatureKey_Call struct {
+	*mock.Call
+}
+
+// GetNodeByFeatureKey is a helper method to define mock.On call
+//   - ctx context.Context
+//   - featureKey string
+func (_e *MockProgressionRepository_Expecter) GetNodeByFeatureKey(ctx interface{}, featureKey interface{}) *MockProgressionRepository_GetNodeByFeatureKey_Call {
+	return &MockProgressionRepository_GetNodeByFeatureKey_Call{Call: _e.mock.On("GetNodeByFeatureKey", ctx, featureKey)}
+}
+
+func (_c *MockProgressionRepository_GetNodeByFeatureKey_Call) Run(run func(ctx context.Context, featureKey string)) *MockProgressionRepository_GetNodeByFeatureKey_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockProgressionRepository_GetNodeByFeatureKey_Call) Return(_a0 *domain.ProgressionNode, _a1 int, _a2 error) *MockProgressionRepository_GetNodeByFeatureKey_Call {
+	_c.Call.Return(_a0, _a1, _a2)
+	return _c
+}
+
+func (_c *MockProgressionRepository_GetNodeByFeatureKey_Call) RunAndReturn(run func(context.Context, string) (*domain.ProgressionNode, int, error)) *MockProgressionRepository_GetNodeByFeatureKey_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetNodeByID provides a mock function with given fields: ctx, id
 func (_m *MockProgressionRepository) GetNodeByID(ctx context.Context, id int) (*domain.ProgressionNode, error) {
 	ret := _m.Called(ctx, id)

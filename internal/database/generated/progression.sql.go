@@ -471,6 +471,53 @@ func (q *Queries) GetEngagementWeights(ctx context.Context) ([]GetEngagementWeig
 	return items, nil
 }
 
+const getNodeByFeatureKey = `-- name: GetNodeByFeatureKey :one
+SELECT n.id, n.node_key, n.node_type, n.display_name, n.description, n.max_level, n.unlock_cost, n.sort_order, n.created_at, n.tier, n.size, n.category, n.modifier_config, COALESCE(u.current_level, 0)::int as unlock_level
+FROM progression_nodes n
+LEFT JOIN progression_unlocks u ON u.node_id = n.id
+WHERE n.modifier_config->>'feature_key' = $1
+LIMIT 1
+`
+
+type GetNodeByFeatureKeyRow struct {
+	ID             int32            `json:"id"`
+	NodeKey        string           `json:"node_key"`
+	NodeType       string           `json:"node_type"`
+	DisplayName    string           `json:"display_name"`
+	Description    pgtype.Text      `json:"description"`
+	MaxLevel       pgtype.Int4      `json:"max_level"`
+	UnlockCost     pgtype.Int4      `json:"unlock_cost"`
+	SortOrder      pgtype.Int4      `json:"sort_order"`
+	CreatedAt      pgtype.Timestamp `json:"created_at"`
+	Tier           int32            `json:"tier"`
+	Size           string           `json:"size"`
+	Category       string           `json:"category"`
+	ModifierConfig []byte           `json:"modifier_config"`
+	UnlockLevel    int32            `json:"unlock_level"`
+}
+
+func (q *Queries) GetNodeByFeatureKey(ctx context.Context, modifierConfig []byte) (GetNodeByFeatureKeyRow, error) {
+	row := q.db.QueryRow(ctx, getNodeByFeatureKey, modifierConfig)
+	var i GetNodeByFeatureKeyRow
+	err := row.Scan(
+		&i.ID,
+		&i.NodeKey,
+		&i.NodeType,
+		&i.DisplayName,
+		&i.Description,
+		&i.MaxLevel,
+		&i.UnlockCost,
+		&i.SortOrder,
+		&i.CreatedAt,
+		&i.Tier,
+		&i.Size,
+		&i.Category,
+		&i.ModifierConfig,
+		&i.UnlockLevel,
+	)
+	return i, err
+}
+
 const getNodeByID = `-- name: GetNodeByID :one
 SELECT id, node_key, node_type, display_name, description,
        max_level, unlock_cost, tier, size, category, sort_order, created_at

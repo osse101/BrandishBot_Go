@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/osse101/BrandishBot_Go/internal/database/generated"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
@@ -18,13 +19,15 @@ import (
 type progressionRepository struct {
 	pool *pgxpool.Pool
 	q    *generated.Queries
+	bus  event.Bus
 }
 
 // NewProgressionRepository creates a new Postgres-backed progression repository
-func NewProgressionRepository(pool *pgxpool.Pool) progression.Repository {
+func NewProgressionRepository(pool *pgxpool.Pool, bus event.Bus) progression.Repository {
 	return &progressionRepository{
 		pool: pool,
 		q:    generated.New(pool),
+		bus:  bus,
 	}
 }
 
@@ -226,6 +229,27 @@ func (r *progressionRepository) UnlockNode(ctx context.Context, nodeID int, leve
 		return fmt.Errorf("failed to unlock node: %w", err)
 	}
 
+	// Publish event at data layer - ensures ALL unlock paths trigger cache invalidation
+	if r.bus != nil {
+		// Get node key for event payload
+		node, _ := r.GetNodeByID(ctx, nodeID)
+		nodeKey := ""
+		if node != nil {
+			nodeKey = node.NodeKey
+		}
+		
+		r.bus.Publish(ctx, event.Event{
+			Type:    "progression.node_unlocked",
+			Version: "1.0",
+			Payload: map[string]interface{}{
+				"node_id":  nodeID,
+				"node_key": nodeKey,
+				"level":    level,
+				"source":   unlockedBy,
+			},
+		})
+	}
+
 	return nil
 }
 
@@ -237,6 +261,26 @@ func (r *progressionRepository) RelockNode(ctx context.Context, nodeID int, leve
 
 	if err != nil {
 		return fmt.Errorf("failed to relock node: %w", err)
+	}
+
+	// Publish event at data layer
+	if r.bus != nil {
+		// Get node key for event payload
+		node, _ := r.GetNodeByID(ctx, nodeID)
+		nodeKey := ""
+		if node != nil {
+			nodeKey = node.NodeKey
+		}
+		
+		r.bus.Publish(ctx, event.Event{
+			Type:    "progression.node_relocked",
+			Version: "1.0",
+			Payload: map[string]interface{}{
+				"node_id":  nodeID,
+				"node_key": nodeKey,
+				"level":    level,
+			},
+		})
 	}
 
 	return nil
@@ -662,4 +706,40 @@ func (t *progressionTx) GetInventory(ctx context.Context, userID string) (*domai
 // UpdateInventory is required by repository.Tx but not used in progression
 func (t *progressionTx) UpdateInventory(ctx context.Context, userID string, inventory domain.Inventory) error {
 	return fmt.Errorf("inventory operations not supported in progression transactions")
+}
+
+
+// GetNodeByFeatureKey retrieves a node by its modifier feature_key and returns the current unlock level  
+func (r *progressionRepository) GetNodeByFeatureKey(ctx context.Context, featureKey string) (*domain.ProgressionNode, int, error) {
+	row, err := r.q.GetNodeByFeatureKey(ctx, []byte(featureKey))
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to get node by feature key: %w", err)
+	}
+
+	// Parse ModifierConfig
+	var modifierConfig *domain.ModifierConfig
+	if len(row.ModifierConfig) > 0 {
+		modifierConfig = &domain.ModifierConfig{}
+		if err := json.Unmarshal(row.ModifierConfig, modifierConfig); err != nil {
+			return nil, 0, fmt.Errorf("failed to unmarshal modifier config: %w", err)
+		}
+	}
+
+	node := &domain.ProgressionNode{
+		ID:           int(row.ID),
+		NodeKey:      row.NodeKey,
+		NodeType:       row.NodeType,
+		DisplayName:    row.DisplayName,
+		Description:    row.Description.String,
+		MaxLevel:  int(row.MaxLevel.Int32),
+		UnlockCost:     int(row.UnlockCost.Int32),
+		Tier:      int(row.Tier),
+		Size: row.Size,
+		Category: row.Category,
+		SortOrder: int(row.SortOrder.Int32),
+		CreatedAt: row.CreatedAt.Time,
+		ModifierConfig: modifierConfig,
+	}
+
+	return node, int(row.UnlockLevel), nil
 }

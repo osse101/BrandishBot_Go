@@ -242,3 +242,7 @@ func TestForceInstantUnlock_Reliability(t *testing.T) {
 	assert.NotNil(t, unlock)
 	// We confirm that despite "critical db fail" in CompleteUnlock, execution continued.
 }
+
+func (m *ReliabilityMockRepository) GetNodeByFeatureKey(ctx context.Context, featureKey string) (*domain.ProgressionNode, int, error) {
+return nil, 0, nil
+}

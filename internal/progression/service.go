@@ -69,6 +69,9 @@ type service struct {
 	cachedWeights map[string]float64
 	weightsExpiry time.Time
 
+	// Cache for modifier values (reduces DB load for feature values)
+	modifierCache *ModifierCache
+
 	// Semaphore to prevent concurrent unlock attempts
 	unlockSem chan struct{}
 
@@ -81,13 +84,22 @@ type service struct {
 // NewService creates a new progression service
 func NewService(repo Repository, bus event.Bus) Service {
 	shutdownCtx, shutdownCancel := context.WithCancel(context.Background())
-	return &service{
+	svc := &service{
 		repo:           repo,
 		bus:            bus,
-		unlockSem:      make(chan struct{}, 1), // Buffer of 1 = only one unlock check at a time
+		modifierCache:  NewModifierCache(30 * time.Minute), // 30-min TTL
+		unlockSem:      make(chan struct{}, 1),              // Buffer of 1 = only one unlock check at a time
 		shutdownCtx:    shutdownCtx,
 		shutdownCancel: shutdownCancel,
 	}
+
+	// Subscribe to node unlock/relock events to invalidate modifier cache
+	if bus != nil {
+		bus.Subscribe("progression.node_unlocked", svc.handleNodeUnlocked)
+		bus.Subscribe("progression.node_relocked", svc.handleNodeRelocked)
+	}
+
+	return svc
 }
 
 // GetProgressionTree returns the full tree with unlock status
@@ -639,4 +651,86 @@ func (s *service) Shutdown(ctx context.Context) error {
 		log.Warn("Progression service shutdown timed out")
 		return ctx.Err()
 	}
+}
+
+// GetModifiedValue retrieves a feature value modified by progression nodes
+// Returns the modified value or the baseValue on error (safe fallback)
+func (s *service) GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error) {
+	// 1. Check cache first
+	if cached, ok := s.modifierCache.Get(featureKey); ok {
+		return cached.Value, nil
+	}
+
+	// 2. Get modifier from repository
+	modifier, err := s.GetModifierForFeature(ctx, featureKey)
+	if err != nil {
+		// Fallback to base value on error
+		return baseValue, err
+	}
+	if modifier == nil {
+		// No modifier configured for this feature
+		return baseValue, nil
+	}
+
+	// 3. Calculate value
+	value := ApplyModifier(modifier, baseValue)
+
+	// 4. Cache the result
+	s.modifierCache.Set(featureKey, value, modifier.CurrentLevel)
+
+	return value, nil
+}
+
+// GetModifierForFeature retrieves the modifier configuration and current level for a feature
+func (s *service) GetModifierForFeature(ctx context.Context, featureKey string) (*ValueModifier, error) {
+	// Query repository for node with this feature_key
+	node, currentLevel, err := s.repo.GetNodeByFeatureKey(ctx, featureKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get node for feature %s: %w", featureKey, err)
+	}
+	if node == nil || node.ModifierConfig == nil {
+		// No modifier configured for this feature
+		return nil, nil
+	}
+
+	// Build ValueModifier from node's ModifierConfig
+	modifier := &ValueModifier{
+		NodeKey:       node.NodeKey,
+		ModifierType:  ModifierType(node.ModifierConfig.ModifierType),
+		BaseValue:     node.ModifierConfig.BaseValue,
+		PerLevelValue: node.ModifierConfig.PerLevelValue,
+		CurrentLevel:  currentLevel,
+		MaxValue:      node.ModifierConfig.MaxValue,
+		MinValue:      node.ModifierConfig.MinValue,
+	}
+
+	return modifier, nil
+}
+
+// handleNodeUnlocked invalidates modifier cache when any node is unlocked
+func (s *service) handleNodeUnlocked(ctx context.Context, e event.Event) error {
+	// Invalidate entire cache - simple and ensures consistency
+	s.modifierCache.InvalidateAll()
+	
+	log := logger.FromContext(ctx)
+	if payload, ok := e.Payload.(map[string]interface{}); ok {
+		log.Info("Invalidated modifier cache due to node unlock",
+			"node_key", payload["node_key"],
+			"level", payload["level"])
+	}
+	return nil
+}
+
+// handleNodeRelocked invalidates modifier cache when any node is relocked
+func (s *service) handleNodeRelocked(ctx context.Context, e event.Event) error {
+	// Invalidate entire cache - modifier values have changed
+	s.modifierCache.InvalidateAll()
+	
+	log := logger.FromContext(ctx)
+	if payload, ok := e.Payload.(map[string]interface{}); ok {
+		log.Info("Invalidated modifier cache due to node relock",
+			"node_key", payload["node_key"],
+			"level", payload["level"])
+	}
+	return nil
 }

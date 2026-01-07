@@ -71,6 +71,7 @@ type Querier interface {
 	GetLastCooldownForUpdate(ctx context.Context, arg GetLastCooldownForUpdateParams) (pgtype.Timestamptz, error)
 	GetLogEventsByType(ctx context.Context, arg GetLogEventsByTypeParams) ([]Event, error)
 	GetLogEventsByUser(ctx context.Context, arg GetLogEventsByUserParams) ([]Event, error)
+	GetNodeByFeatureKey(ctx context.Context, modifierConfig []byte) (GetNodeByFeatureKeyRow, error)
 	GetNodeByID(ctx context.Context, id int32) (GetNodeByIDRow, error)
 	GetNodeByKey(ctx context.Context, nodeKey string) (GetNodeByKeyRow, error)
 	GetNodeDependents(ctx context.Context, prerequisiteNodeID int32) ([]GetNodeDependentsRow, error)

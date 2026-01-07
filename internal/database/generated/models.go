@@ -166,6 +166,8 @@ type ProgressionNode struct {
 	Tier        int32            `json:"tier"`
 	Size        string           `json:"size"`
 	Category    string           `json:"category"`
+	// JSON configuration for value modification (feature_key, modifier_type, per_level_value, base_value, max_value, min_value)
+	ModifierConfig []byte `json:"modifier_config"`
 }
 
 type ProgressionPrerequisite struct {
