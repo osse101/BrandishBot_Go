@@ -21,14 +21,19 @@ func (m *MockBus) Publish(ctx context.Context, evt event.Event) error {
 	return args.Error(0)
 }
 
-func (m *MockBus) Subscribe(topic event.Type, handler event.Handler) {
-	m.Called(topic, handler)
+func (m *MockBus) Subscribe(eventType event.Type, handler event.Handler) {
+	m.Called(eventType, handler)
+	// No-op for tests - just allow the subscription
 }
 
 func TestStartVotingSession_AutoSelect_PublishesEvent(t *testing.T) {
-	repo := NewMockRepository()
+	mockRepo := NewMockRepository()
 	ctx := context.Background()
 	mockBus := new(MockBus)
+
+	// Service subscribes to events for cache invalidation
+	mockBus.On("Subscribe", event.Type("progression.node_unlocked"), mock.Anything).Return()
+	mockBus.On("Subscribe", event.Type("progression.node_relocked"), mock.Anything).Return()
 
 	// Setup tree with single available option
 	// 1. Root - Unlocked
@@ -41,9 +46,9 @@ func TestStartVotingSession_AutoSelect_PublishesEvent(t *testing.T) {
 		UnlockCost:  0,
 		CreatedAt:   time.Now(),
 	}
-	repo.nodes[1] = root
-	repo.nodesByKey["root_node"] = root
-	repo.UnlockNode(ctx, 1, 1, "system", 0)
+	mockRepo.nodes[1] = root
+	mockRepo.nodesByKey["root_node"] = root
+	mockRepo.UnlockNode(ctx, 1, 1, "system", 0)
 
 	// 2. Child - Locked (Single Option)
 	child := &domain.ProgressionNode{
@@ -55,11 +60,11 @@ func TestStartVotingSession_AutoSelect_PublishesEvent(t *testing.T) {
 		UnlockCost:  100,
 		CreatedAt:   time.Now(),
 	}
-	repo.nodes[2] = child
-	repo.nodesByKey["child_node"] = child
+	mockRepo.nodes[2] = child
+	mockRepo.nodesByKey["child_node"] = child
 
 	// Initialize service with mock bus
-	service := NewService(repo, mockBus)
+	service := NewService(mockRepo, mockBus)
 
 	// Expect Publish to be called with specific event
 	mockBus.On("Publish", ctx, mock.MatchedBy(func(evt event.Event) bool {
@@ -96,7 +101,7 @@ func TestStartVotingSession_AutoSelect_PublishesEvent(t *testing.T) {
 	mockBus.AssertExpectations(t)
 
 	// Verify no session created (core logic check)
-	session, err := repo.GetActiveSession(ctx)
+	session, err := mockRepo.GetActiveSession(ctx)
 	assert.NoError(t, err)
 	assert.Nil(t, session)
 }

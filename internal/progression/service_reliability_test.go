@@ -192,6 +192,10 @@ func (m *ReliabilityMockBus) Close() error {
 func TestForceInstantUnlock_Reliability(t *testing.T) {
 	mockRepo := new(ReliabilityMockRepository)
 	mockBus := new(ReliabilityMockBus)
+
+	// Allow service to subscribe to events
+	mockBus.On("Subscribe", mock.Anything, mock.Anything).Return()
+
 	service := NewService(mockRepo, mockBus)
 	ctx := context.Background()
 

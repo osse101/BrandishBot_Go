@@ -46,6 +46,9 @@ func TestResilientEvents_Integration(t *testing.T) {
 
 		// Setup repo/progression expectations for successful XP award
 		prog.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
+		// Mock GetModifiedValue for XP multiplier and daily cap
+		prog.On("GetModifiedValue", mock.Anything, "job_xp_multiplier", 1.0).Return(1.0, nil)
+		prog.On("GetModifiedValue", mock.Anything, "job_daily_cap", mock.Anything).Return(float64(DefaultDailyCap), nil)
 		repo.On("GetJobByKey", ctx, jobKey).Return(job, nil)
 		repo.On("GetUserJob", ctx, userID, jobID).Return(&domain.UserJob{
 			UserID: userID, JobID: jobID, CurrentXP: 0, CurrentLevel: 0,
@@ -93,6 +96,9 @@ func TestResilientEvents_Integration(t *testing.T) {
 
 		// Setup repo/progression expectations
 		prog.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
+		// Mock GetModifiedValue for XP multiplier and daily cap
+		prog.On("GetModifiedValue", mock.Anything, "job_xp_multiplier", 1.0).Return(1.0, nil)
+		prog.On("GetModifiedValue", mock.Anything, "job_daily_cap", mock.Anything).Return(float64(DefaultDailyCap), nil)
 		repo.On("GetJobByKey", ctx, jobKey).Return(job, nil)
 		repo.On("GetUserJob", ctx, userID, jobID).Return(&domain.UserJob{
 			UserID: userID, JobID: jobID, CurrentXP: 0, CurrentLevel: 0,
