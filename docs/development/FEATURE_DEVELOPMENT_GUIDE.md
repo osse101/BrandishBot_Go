@@ -8,10 +8,11 @@ This guide outlines the step-by-step process for adding new features to Brandish
 3. [Domain Layer](#domain-layer)
 4. [Repository Layer](#repository-layer)
 5. [Service Layer](#service-layer)
-6. [Handler Layer](#handler-layer)
-7. [Server/Routing Layer](#serverrouting-layer)
-8. [Testing](#testing)
-9. [Best Practices](#best-practices)
+6. [Progression Modifiers](#progression-modifiers)
+7. [Handler Layer](#handler-layer)
+8. [Server/Routing Layer](#serverrouting-layer)
+9. [Testing](#testing)
+10. [Best Practices](#best-practices)
 
 ---
 
@@ -21,6 +22,7 @@ This guide outlines the step-by-step process for adding new features to Brandish
 - [ ] Document the feature's purpose and behavior
 - [ ] Identify all inputs and outputs
 - [ ] Determine if feature requires progression system unlock
+- [ ] **Identify numeric values that could use progression modifiers** ⭐
 - [ ] Identify cooldowns or rate limits needed
 - [ ] Define success and error states
 
@@ -296,6 +298,203 @@ func (s *service) validateMyParams(params MyParams) error {
     return nil
 }
 ```
+
+---
+
+## Progression Modifiers
+
+**When to use progression modifiers:**
+Features with numeric values that should scale with player progression should use the progression modifier system instead of hardcoded values.
+
+### Identifying Modifier Candidates
+
+Ask these questions:
+- ✅ Does this feature have a numeric value that could increase with progression?
+- ✅ Would players benefit from unlocking upgrades to this value?
+- ✅ Is this a core game mechanic (XP, rewards, cooldowns, rates)?
+
+**Good candidates:**
+- XP multipliers
+- Reward bonuses
+- Cooldown reductions
+- Success rates
+- Resource caps
+
+**Not good candidates:**
+- UI display values
+- Internal IDs
+- Boolean flags
+
+### Adding ProgressionService to Your Feature
+
+**1. Add to service interface:**
+```go
+// ProgressionService defines required progression methods
+type ProgressionService interface {
+    GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error)
+}
+```
+
+**2. Add to service struct:**
+```go
+type service struct {
+    repo           Repository
+    progressionSvc ProgressionService  // Add this
+    // ... other dependencies
+}
+```
+
+**3. Update constructor:**
+```go
+func NewService(repo Repository, progressionSvc ProgressionService) Service {
+    return &service{
+        repo:           repo,
+        progressionSvc: progressionSvc,
+    }
+}
+```
+
+### Using GetModifiedValue()
+
+**Pattern with fallback (recommended):**
+```go
+func (s *service) calculateReward(ctx context.Context, baseReward int) int {
+    // Apply modifier if available
+    modified, err := s.progressionSvc.GetModifiedValue(ctx, "my_feature_reward_bonus", float64(baseReward))
+    if err != nil {
+        // Fallback to base value on error
+        log.Warn("Failed to get modifier, using base value", "error", err)
+        return baseReward
+    }
+    return int(modified)
+}
+```
+
+**For cooldowns:**
+```go
+baseDuration := 5 * time.Minute
+
+// Apply reduction modifier
+if s.progressionSvc != nil {
+    modifiedDuration, err := s.progressionSvc.GetModifiedValue(ctx, "my_cooldown_reduction", float64(baseDuration))
+    if err == nil {
+        baseDuration = time.Duration(modifiedDuration)
+    }
+}
+```
+
+### Real-World Examples
+
+**Example 1: Job System XP Multiplier**
+```go
+// internal/job/service.go
+func (s *service) getXPMultiplier(ctx context.Context) float64 {
+    modified, err := s.progressionSvc.GetModifiedValue(ctx, "job_xp_multiplier", 1.0)
+    if err != nil {
+        return 1.0  // Default multiplier
+    }
+    return modified
+}
+
+// Usage: xp = baseXP * getXPMultiplier(ctx)
+```
+
+**Example 2: Gamble Win Bonus**
+```go
+// internal/gamble/service.go - in ExecuteGamble()
+totalValue := int64(drop.Value * drop.Quantity)
+
+if s.progressionSvc != nil {
+    modifiedValue, err := s.progressionSvc.GetModifiedValue(ctx, "gamble_win_bonus", float64(totalValue))
+    if err == nil {
+        totalValue = int64(modifiedValue)
+    }
+}
+```
+
+**Example 3: Cooldown Reduction**
+```go
+// internal/cooldown/postgres.go
+cooldownDuration := b.config.GetCooldownDuration(action)
+
+if b.progressionSvc != nil && action == "search" {
+    modifiedDuration, err := b.progressionSvc.GetModifiedValue(ctx, "search_cooldown_reduction", float64(cooldownDuration))
+    if err == nil {
+        cooldownDuration = time.Duration(modifiedDuration)
+    }
+}
+```
+
+### Adding Modifier Nodes to Progression Tree
+
+**1. Add to `configs/progression_tree.json`:**
+```json
+{
+  "node_key": "upgrade_my_feature_bonus",
+  "name": "My Feature Bonus",
+  "type": "upgrade",
+  "description": "Increase my feature bonus by 10% per level",
+  "tier": 3,
+  "max_level": 5,
+  "prerequisites": ["feature_my_feature"],
+  "modifier_config": {
+    "feature_key": "my_feature_bonus",
+    "modifier_type": "multiplicative",
+    "base_value": 1.0,
+    "per_level_value": 0.10
+  }
+}
+```
+
+**2. Modifier types:**
+
+| Type | Formula | Use Case |
+|------|---------|----------|
+| `multiplicative` | `base * (1 + level * perLevel)` | XP boost, reward bonus |
+| `linear` | `base + (level * perLevel)` | Daily caps, absolute increases |
+| `fixed` | `perLevel` (ignores base) | Fixed values at each level |
+| `percentage` | `base * (perLevel / 100)` | Percentage-based changes |
+
+**Example calculations:**
+```
+Multiplicative (base=1.0, perLevel=0.10):
+  Level 0: 1.0
+  Level 3: 1.3  (30% boost)
+  Level 5: 1.5  (50% boost)
+
+Linear (base=3, perLevel=1):
+  Level 0: 3
+  Level 3: 6
+  Level 5: 8
+```
+
+### Testing with Modifiers
+
+**Mock ProgressionService in tests:**
+```go
+type MockProgressionService struct{}
+
+func (m *MockProgressionService) GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error) {
+    return baseValue, nil  // Return unmodified for testing
+}
+```
+
+**Or test with specific values:**
+```go
+mockProg.On("GetModifiedValue", mock.Anything, "my_feature_bonus", 100.0).Return(150.0, nil)
+```
+
+### Checklist for Modifier Integration
+
+- [ ] Add `ProgressionService` to your service interface
+- [ ] Inject `progressionSvc` in constructor and `main.go`
+- [ ] Identify numeric values to modify
+- [ ] Replace hardcoded values with `GetModifiedValue()` calls
+- [ ] Add fallback handling for errors
+- [ ] Create modifier node in `progression_tree.json`
+- [ ] Update test mocks to include `GetModifiedValue`
+- [ ] Document feature key in code comments
+- [ ] Test with different progression levels
 
 ---
 
