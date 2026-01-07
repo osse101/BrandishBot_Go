@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -50,6 +52,7 @@ type Service interface {
 
 	// User lookup by platform and username
 	GetUserByPlatformUsername(ctx context.Context, platform, username string) (*domain.User, error)
+	UpdateUser(ctx context.Context, user domain.User) error
 
 	// Other methods
 	TimeoutUser(ctx context.Context, username string, duration time.Duration, reason string) error
@@ -59,6 +62,7 @@ type Service interface {
 	UnlinkPlatform(ctx context.Context, userID, platform string) error
 	GetLinkedPlatforms(ctx context.Context, platform, platformID string) ([]string, error)
 	GetTimeout(ctx context.Context, username string) (time.Duration, error)
+	GetCacheStats() CacheStats
 	Shutdown(ctx context.Context) error
 }
 
@@ -122,6 +126,24 @@ func setPlatformID(user *domain.User, platform, platformID string) {
 	}
 }
 
+func loadCacheConfig() CacheConfig {
+	config := DefaultCacheConfig()
+
+	if val := os.Getenv("USER_CACHE_SIZE"); val != "" {
+		if size, err := strconv.Atoi(val); err == nil && size > 0 {
+			config.Size = size
+		}
+	}
+
+	if val := os.Getenv("USER_CACHE_TTL"); val != "" {
+		if ttl, err := time.ParseDuration(val); err == nil && ttl > 0 {
+			config.TTL = ttl
+		}
+	}
+
+	return config
+}
+
 // NewService creates a new user service
 func NewService(repo repository.User, statsService stats.Service, jobService JobService, lootboxService lootbox.Service, namingResolver naming.Resolver, cooldownService cooldown.Service, devMode bool) Service {
 	s := &service{
@@ -137,7 +159,7 @@ func NewService(repo repository.User, statsService stats.Service, jobService Job
 		devMode:         devMode,
 		itemCache:       make(map[int]domain.Item),
 		itemCacheByName: make(map[string]domain.Item),
-		userCache:       newUserCache(1000, 5*time.Minute),
+		userCache:       newUserCache(loadCacheConfig()),
 	}
 	s.registerHandlers()
 	return s
@@ -150,6 +172,20 @@ func (s *service) registerHandlers() {
 	s.itemHandlers[domain.ItemLootbox2] = s.handleLootbox2
 }
 
+func getPlatformKeysFromUser(user domain.User) map[string]string {
+	keys := make(map[string]string)
+	if user.TwitchID != "" {
+		keys[domain.PlatformTwitch] = user.TwitchID
+	}
+	if user.YoutubeID != "" {
+		keys[domain.PlatformYoutube] = user.YoutubeID
+	}
+	if user.DiscordID != "" {
+		keys[domain.PlatformDiscord] = user.DiscordID
+	}
+	return keys
+}
+
 // RegisterUser registers a new user
 func (s *service) RegisterUser(ctx context.Context, user domain.User) (domain.User, error) {
 	log := logger.FromContext(ctx)
@@ -158,8 +194,32 @@ func (s *service) RegisterUser(ctx context.Context, user domain.User) (domain.Us
 		log.Error("Failed to upsert user", "error", err, "username", user.Username)
 		return domain.User{}, err
 	}
+
+	// Cache the newly registered user for all their platforms
+	keys := getPlatformKeysFromUser(user)
+	for platform, platformID := range keys {
+		s.userCache.Set(platform, platformID, &user)
+	}
+
 	log.Info("User registered", "user_id", user.ID, "username", user.Username)
 	return user, nil
+}
+
+// UpdateUser updates an existing user
+func (s *service) UpdateUser(ctx context.Context, user domain.User) error {
+	log := logger.FromContext(ctx)
+	if err := s.repo.UpdateUser(ctx, user); err != nil {
+		log.Error("Failed to update user", "error", err, "userID", user.ID)
+		return err
+	}
+
+	// Invalidate cache for all platforms to force refresh on next lookup
+	keys := getPlatformKeysFromUser(user)
+	for platform, platformID := range keys {
+		s.userCache.Invalidate(platform, platformID)
+	}
+
+	return nil
 }
 
 // FindUserByPlatformID finds a user by their platform-specific ID
@@ -181,44 +241,18 @@ func (s *service) FindUserByPlatformID(ctx context.Context, platform, platformID
 func (s *service) HandleIncomingMessage(ctx context.Context, platform, platformID, username, message string) (*domain.MessageResult, error) {
 	log := logger.FromContext(ctx)
 	log.Info("HandleIncomingMessage called", "platform", platform, "platformID", platformID, "username", username)
-	user, err := s.repo.GetUserByPlatformID(ctx, platform, platformID)
-	// If user not found, create new user
-	if err != nil && !errors.Is(err, domain.ErrUserNotFound) {
+
+	user, err := s.getUserOrRegister(ctx, platform, platformID, username)
+	if err != nil {
 		log.Error("Failed to get user", "error", err, "platform", platform, "platformID", platformID)
 		return nil, fmt.Errorf("failed to get user: %w", err)
-	}
-	var targetUser *domain.User
-	if user != nil {
-		log.Info("Existing user found", "userID", user.ID)
-		targetUser = user
-	} else {
-		// User not found, register new user
-		newUser := domain.User{Username: username}
-		switch platform {
-		case domain.PlatformTwitch:
-			newUser.TwitchID = platformID
-		case domain.PlatformYoutube:
-			newUser.YoutubeID = platformID
-		case domain.PlatformDiscord:
-			newUser.DiscordID = platformID
-		default:
-			log.Error("Unsupported platform", "platform", platform)
-			return nil, fmt.Errorf("unsupported platform: %s", platform)
-		}
-		registered, err := s.RegisterUser(ctx, newUser)
-		if err != nil {
-			log.Error("Failed to register new user", "error", err, "username", username)
-			return nil, err
-		}
-		log.Info("New user registered", "username", username)
-		targetUser = &registered
 	}
 
 	// Find matches in message
 	matches := s.stringFinder.FindMatches(message)
 
 	result := &domain.MessageResult{
-		User:    *targetUser,
+		User:    *user,
 		Matches: matches,
 	}
 
@@ -1352,4 +1386,8 @@ func (s *service) Shutdown(ctx context.Context) error {
 	case <-ctx.Done():
 		return fmt.Errorf("shutdown timed out: %w", ctx.Err())
 	}
+}
+
+func (s *service) GetCacheStats() CacheStats {
+	return s.userCache.GetStats()
 }

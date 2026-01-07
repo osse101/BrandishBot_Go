@@ -103,6 +103,23 @@ func (s *service) MergeUsers(ctx context.Context, primaryUserID, secondaryUserID
 		return fmt.Errorf("failed to merge users in transaction: %w", err)
 	}
 
+	// Invalidate cache for both users (all platform keys)
+	primaryKeys := getPlatformKeysFromUser(*primary)
+	for platform, platformID := range primaryKeys {
+		s.userCache.Invalidate(platform, platformID)
+	}
+
+	secondaryKeys := getPlatformKeysFromUser(*secondary)
+	for platform, platformID := range secondaryKeys {
+		s.userCache.Invalidate(platform, platformID)
+	}
+
+	// Also invalidate the newly merged state keys
+	mergedKeys := getPlatformKeysFromUser(merged)
+	for platform, platformID := range mergedKeys {
+		s.userCache.Invalidate(platform, platformID)
+	}
+
 	log.Info("Users merged successfully", "primary", primaryUserID)
 	return nil
 }
@@ -117,12 +134,16 @@ func (s *service) UnlinkPlatform(ctx context.Context, userID, platform string) e
 		return fmt.Errorf("user not found: %w", err)
 	}
 
+	var platformID string
 	switch platform {
 	case domain.PlatformDiscord:
+		platformID = user.DiscordID
 		user.DiscordID = ""
 	case domain.PlatformTwitch:
+		platformID = user.TwitchID
 		user.TwitchID = ""
 	case domain.PlatformYoutube:
+		platformID = user.YoutubeID
 		user.YoutubeID = ""
 	default:
 		return fmt.Errorf("unknown platform: %s", platform)
@@ -130,6 +151,17 @@ func (s *service) UnlinkPlatform(ctx context.Context, userID, platform string) e
 
 	if err := s.repo.UpdateUser(ctx, *user); err != nil {
 		return fmt.Errorf("failed to update user: %w", err)
+	}
+
+	// Invalidate cache
+	if platformID != "" {
+		s.userCache.Invalidate(platform, platformID)
+	}
+
+	// Also invalidate other keys as user object changed
+	keys := getPlatformKeysFromUser(*user)
+	for p, id := range keys {
+		s.userCache.Invalidate(p, id)
 	}
 
 	log.Info("Platform unlinked", "user_id", userID, "platform", platform)
