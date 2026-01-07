@@ -2,7 +2,6 @@ package handler
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -10,76 +9,13 @@ import (
 	"testing"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
-// MockJobService
-type MockJobService struct {
-	mock.Mock
-}
-
-func (m *MockJobService) GetAllJobs(ctx context.Context) ([]domain.Job, error) {
-	args := m.Called(ctx)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]domain.Job), args.Error(1)
-}
-
-func (m *MockJobService) GetUserJobs(ctx context.Context, userID string) ([]domain.UserJobInfo, error) {
-	args := m.Called(ctx, userID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]domain.UserJobInfo), args.Error(1)
-}
-
-func (m *MockJobService) GetPrimaryJob(ctx context.Context, userID string) (*domain.UserJobInfo, error) {
-	args := m.Called(ctx, userID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*domain.UserJobInfo), args.Error(1)
-}
-
-func (m *MockJobService) AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error) {
-	args := m.Called(ctx, userID, jobKey, baseAmount, source, metadata)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*domain.XPAwardResult), args.Error(1)
-}
-
-func (m *MockJobService) GetJobLevel(ctx context.Context, userID, jobKey string) (int, error) {
-	args := m.Called(ctx, userID, jobKey)
-	return args.Int(0), args.Error(1)
-}
-
-func (m *MockJobService) GetJobBonus(ctx context.Context, userID, jobKey, bonusType string) (float64, error) {
-	args := m.Called(ctx, userID, jobKey, bonusType)
-	return args.Get(0).(float64), args.Error(1)
-}
-
-func (m *MockJobService) CalculateLevel(totalXP int64) int {
-	args := m.Called(totalXP)
-	return args.Int(0)
-}
-
-func (m *MockJobService) GetXPForLevel(level int) int64 {
-	args := m.Called(level)
-	return args.Get(0).(int64)
-}
-
-func (m *MockJobService) GetXPProgress(currentXP int64) (int, int64) {
-	args := m.Called(currentXP)
-	return args.Int(0), args.Get(1).(int64)
-}
-
-// Tests
-
 func TestHandleGetAllJobs(t *testing.T) {
-	svc := new(MockJobService)
+	svc := mocks.NewMockJobService(t)
 	h := NewJobHandler(svc)
 
 	jobs := []domain.Job{
@@ -104,7 +40,7 @@ func TestHandleGetAllJobs(t *testing.T) {
 }
 
 func TestHandleGetAllJobs_Error(t *testing.T) {
-	svc := new(MockJobService)
+	svc := mocks.NewMockJobService(t)
 	h := NewJobHandler(svc)
 
 	svc.On("GetAllJobs", mock.Anything).Return(nil, errors.New("db error"))
@@ -118,7 +54,7 @@ func TestHandleGetAllJobs_Error(t *testing.T) {
 }
 
 func TestHandleGetUserJobs(t *testing.T) {
-	svc := new(MockJobService)
+	svc := mocks.NewMockJobService(t)
 	h := NewJobHandler(svc)
 
 	userID := "u1"
@@ -148,7 +84,7 @@ func TestHandleGetUserJobs(t *testing.T) {
 }
 
 func TestHandleGetUserJobs_MissingUser(t *testing.T) {
-	svc := new(MockJobService)
+	svc := mocks.NewMockJobService(t)
 	h := NewJobHandler(svc)
 
 	req := httptest.NewRequest("GET", "/jobs", nil)
@@ -160,7 +96,7 @@ func TestHandleGetUserJobs_MissingUser(t *testing.T) {
 }
 
 func TestHandleAwardXP(t *testing.T) {
-	svc := new(MockJobService)
+	svc := mocks.NewMockJobService(t)
 	h := NewJobHandler(svc)
 
 	reqBody := AwardXPRequest{
@@ -194,7 +130,7 @@ func TestHandleAwardXP(t *testing.T) {
 }
 
 func TestHandleAwardXP_InvalidRequest(t *testing.T) {
-	svc := new(MockJobService)
+	svc := mocks.NewMockJobService(t)
 	h := NewJobHandler(svc)
 
 	req := httptest.NewRequest("POST", "/jobs/award-xp", bytes.NewReader([]byte(`{}`))) // Empty body maps to default values (User/Key empty)
@@ -208,7 +144,7 @@ func TestHandleAwardXP_InvalidRequest(t *testing.T) {
 // Additional Handler Tests - Error Scenarios
 
 func TestHandleGetUserJobs_ServiceError(t *testing.T) {
-	svc := new(MockJobService)
+	svc := mocks.NewMockJobService(t)
 	h := NewJobHandler(svc)
 
 	svc.On("GetUserJobs", mock.Anything, "u1").Return(nil, errors.New("database error"))
@@ -222,7 +158,7 @@ func TestHandleGetUserJobs_ServiceError(t *testing.T) {
 }
 
 func TestHandleGetUserJobs_NoPrimaryJob(t *testing.T) {
-	svc := new(MockJobService)
+	svc := mocks.NewMockJobService(t)
 	h := NewJobHandler(svc)
 
 	userJobs := []domain.UserJobInfo{
@@ -247,7 +183,7 @@ func TestHandleGetUserJobs_NoPrimaryJob(t *testing.T) {
 }
 
 func TestHandleAwardXP_ServiceError_DailyCap(t *testing.T) {
-	svc := new(MockJobService)
+	svc := mocks.NewMockJobService(t)
 	h := NewJobHandler(svc)
 
 	reqBody := AwardXPRequest{
@@ -270,7 +206,7 @@ func TestHandleAwardXP_ServiceError_DailyCap(t *testing.T) {
 }
 
 func TestHandleAwardXP_NegativeXP(t *testing.T) {
-	svc := new(MockJobService)
+	svc := mocks.NewMockJobService(t)
 	h := NewJobHandler(svc)
 
 	reqBody := AwardXPRequest{
@@ -291,7 +227,7 @@ func TestHandleAwardXP_NegativeXP(t *testing.T) {
 }
 
 func TestHandleAwardXP_ZeroXP(t *testing.T) {
-	svc := new(MockJobService)
+	svc := mocks.NewMockJobService(t)
 	h := NewJobHandler(svc)
 
 	reqBody := AwardXPRequest{
@@ -312,7 +248,7 @@ func TestHandleAwardXP_ZeroXP(t *testing.T) {
 }
 
 func TestHandleAwardXP_InvalidJSON(t *testing.T) {
-	svc := new(MockJobService)
+	svc := mocks.NewMockJobService(t)
 	h := NewJobHandler(svc)
 
 	req := httptest.NewRequest("POST", "/jobs/award-xp", bytes.NewReader([]byte(`{invalid json`)))
@@ -324,7 +260,7 @@ func TestHandleAwardXP_InvalidJSON(t *testing.T) {
 }
 
 func TestHandleAwardXP_MissingUserID(t *testing.T) {
-	svc := new(MockJobService)
+	svc := mocks.NewMockJobService(t)
 	h := NewJobHandler(svc)
 
 	reqBody := AwardXPRequest{
@@ -344,7 +280,7 @@ func TestHandleAwardXP_MissingUserID(t *testing.T) {
 }
 
 func TestHandleAwardXP_MissingJobKey(t *testing.T) {
-	svc := new(MockJobService)
+	svc := mocks.NewMockJobService(t)
 	h := NewJobHandler(svc)
 
 	reqBody := AwardXPRequest{
@@ -364,7 +300,7 @@ func TestHandleAwardXP_MissingJobKey(t *testing.T) {
 }
 
 func TestHandleAwardXP_ServiceError_JobNotFound(t *testing.T) {
-	svc := new(MockJobService)
+	svc := mocks.NewMockJobService(t)
 	h := NewJobHandler(svc)
 
 	reqBody := AwardXPRequest{
@@ -387,7 +323,7 @@ func TestHandleAwardXP_ServiceError_JobNotFound(t *testing.T) {
 }
 
 func TestHandleAwardXP_ServiceError_FeatureLocked(t *testing.T) {
-	svc := new(MockJobService)
+	svc := mocks.NewMockJobService(t)
 	h := NewJobHandler(svc)
 
 	reqBody := AwardXPRequest{
@@ -410,7 +346,7 @@ func TestHandleAwardXP_ServiceError_FeatureLocked(t *testing.T) {
 }
 
 func TestHandleAwardXP_WithMetadata(t *testing.T) {
-	svc := new(MockJobService)
+	svc := mocks.NewMockJobService(t)
 	h := NewJobHandler(svc)
 
 	reqBody := AwardXPRequest{
