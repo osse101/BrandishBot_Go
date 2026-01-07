@@ -3,6 +3,8 @@ package handler
 import (
 	"fmt"
 	"net/http"
+	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
@@ -74,11 +76,26 @@ func HandleDisassembleItem(svc crafting.Service, progressionSvc progression.Serv
 		}
 
 		// Construct user message
-		var outputParts []string
-		for k, v := range result.Outputs {
-			outputParts = append(outputParts, fmt.Sprintf("%dx %s", v, k))
+		// Optimization: Use strings.Builder and avoid fmt.Sprintf in loop
+		var sb strings.Builder
+
+		// Sort keys for deterministic output
+		keys := make([]string, 0, len(result.Outputs))
+		for k := range result.Outputs {
+			keys = append(keys, k)
 		}
-		outputStr := strings.Join(outputParts, ", ")
+		sort.Strings(keys)
+
+		for i, k := range keys {
+			if i > 0 {
+				sb.WriteString(", ")
+			}
+			v := result.Outputs[k]
+			sb.WriteString(strconv.Itoa(v))
+			sb.WriteString("x ")
+			sb.WriteString(k)
+		}
+		outputStr := sb.String()
 
 		message := fmt.Sprintf("Disassembled %d items into: %s", result.QuantityProcessed, outputStr)
 		if result.IsPerfectSalvage {

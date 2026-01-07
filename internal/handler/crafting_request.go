@@ -26,11 +26,12 @@ func decodeCraftingRequest(r *http.Request, actionName string) (*CraftingActionR
 
 	var req CraftingActionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		log.Error(fmt.Sprintf("Failed to decode %s request", actionName), "error", err)
+		log.Error("Failed to decode request", "action", actionName, "error", err)
 		return nil, fmt.Errorf("invalid request body: %w", err)
 	}
 
-	log.Debug(fmt.Sprintf("%s request", actionName),
+	log.Debug("Processing request",
+		"action", actionName,
 		"username", req.Username,
 		"item", req.Item,
 		"quantity", req.Quantity)
@@ -63,7 +64,7 @@ func publishCraftingEvent(ctx context.Context, eventBus event.Bus, eventType eve
 		Type:    eventType,
 		Payload: payload,
 	}); err != nil {
-		log.Error(fmt.Sprintf("Failed to publish %s event", eventType), "error", err)
+		log.Error("Failed to publish event", "type", eventType, "error", err)
 		return err
 	}
 
