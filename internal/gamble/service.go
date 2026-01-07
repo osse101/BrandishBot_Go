@@ -56,28 +56,35 @@ type JobService interface {
 	AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error)
 }
 
+// ProgressionService defines the interface for progression system
+type ProgressionService interface {
+	GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error)
+}
+
 // NearMissThreshold defines the percentage of the winner's score required to trigger a "Near Miss" event
 const NearMissThreshold = 0.95
 
 type service struct {
-	repo         Repository
-	eventBus     event.Bus
-	lootboxSvc   lootbox.Service
-	jobService   JobService
-	statsSvc     stats.Service
-	joinDuration time.Duration
-	wg           sync.WaitGroup // Tracks async goroutines for graceful shutdown
+	repo           Repository
+	eventBus       event.Bus
+	lootboxSvc     lootbox.Service
+	jobService     JobService
+	progressionSvc ProgressionService
+	statsSvc       stats.Service
+	joinDuration   time.Duration
+	wg             sync.WaitGroup // Tracks async goroutines for graceful shutdown
 }
 
 // NewService creates a new gamble service
-func NewService(repo Repository, eventBus event.Bus, lootboxSvc lootbox.Service, statsSvc stats.Service, joinDuration time.Duration, jobService JobService) Service {
+func NewService(repo Repository, eventBus event.Bus, lootboxSvc lootbox.Service, statsSvc stats.Service, joinDuration time.Duration, jobService JobService, progressionSvc ProgressionService) Service {
 	return &service{
-		repo:         repo,
-		eventBus:     eventBus,
-		lootboxSvc:   lootboxSvc,
-		jobService:   jobService,
-		statsSvc:     statsSvc,
-		joinDuration: joinDuration,
+		repo:           repo,
+		eventBus:       eventBus,
+		lootboxSvc:     lootboxSvc,
+		jobService:     jobService,
+		progressionSvc: progressionSvc,
+		statsSvc:       statsSvc,
+		joinDuration:   joinDuration,
 	}
 }
 
@@ -400,14 +407,24 @@ func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.Gamb
 			for _, drop := range drops {
 				totalValue := int64(drop.Value * drop.Quantity)
 
-				openedItem := domain.GambleOpenedItem{
+				// Apply progression win bonus modifier (only for this participant's drops)
+				if s.progressionSvc != nil {
+					modifiedValue, err := s.progressionSvc.GetModifiedValue(ctx, "gamble_win_bonus", float64(totalValue))
+					if err != nil {
+						log.Warn("Failed to get gamble win bonus modifier, using base value", "error", err)
+					} else {
+						totalValue = int64(modifiedValue)
+					}
+				}
+
+				allOpenedItems = append(allOpenedItems, domain.GambleOpenedItem{
 					GambleID:   id,
 					UserID:     p.UserID,
 					ItemID:     drop.ItemID,
 					Value:      totalValue,
 					ShineLevel: drop.ShineLevel,
-				}
-				allOpenedItems = append(allOpenedItems, openedItem)
+				})
+
 				userValues[p.UserID] += totalValue
 				totalGambleValue += totalValue
 			}

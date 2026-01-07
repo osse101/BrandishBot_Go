@@ -194,7 +194,7 @@ func setupIntegrationTest(t *testing.T) (*pgxpool.Pool, *UserRepository, user.Se
 
 	repo := NewUserRepository(pool)
 	cooldownConfig := cooldown.Config{DevMode: true}
-	cooldownSvc := cooldown.NewPostgresService(pool, cooldownConfig)
+	cooldownSvc := cooldown.NewPostgresService(pool, cooldownConfig, nil)
 
 	svc := user.NewService(
 		repo,
@@ -344,7 +344,7 @@ func TestUserService_AsyncXPAward_Integration(t *testing.T) {
 
 	slowJobSvc := &SlowJobService{delay: 200 * time.Millisecond}
 	cooldownConfig := cooldown.Config{DevMode: true}
-	cooldownSvc := cooldown.NewPostgresService(pool, cooldownConfig)
+	cooldownSvc := cooldown.NewPostgresService(pool, cooldownConfig, nil)
 
 	svc := user.NewService(
 		repo,

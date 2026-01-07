@@ -269,10 +269,10 @@ func main() {
 	// Initialize Cooldown Service
 	cooldownSvc := cooldown.NewPostgresService(dbPool, cooldown.Config{
 		DevMode: cfg.DevMode,
-	})
+	}, progressionService)
 	slog.Info("Cooldown service initialized", "dev_mode", cfg.DevMode)
 
-	gambleService := gamble.NewService(gambleRepo, eventBus, lootboxSvc, statsService, cfg.GambleJoinDuration, jobService)
+	gambleService := gamble.NewService(gambleRepo, eventBus, lootboxSvc, statsService, cfg.GambleJoinDuration, jobService, progressionService)
 
 	// Initialize services that depend on job service
 	userService := user.NewService(userRepo, statsService, jobService, lootboxSvc, namingResolver, cooldownSvc, cfg.DevMode)
