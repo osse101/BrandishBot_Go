@@ -36,11 +36,19 @@ func TestOpenLootbox(t *testing.T) {
 			{ItemName: "impossible_sword", Min: 1, Max: 1, Chance: 0.0},
 		},
 	}
+	
+	// Service expects {"tables": ...}
+	config := struct {
+		Tables map[string][]LootItem `json:"tables"`
+	}{
+		Tables: lootTable,
+	}
+
 	file, _ := os.CreateTemp("", "loot.json")
 	defer os.Remove(file.Name())
 
 	encoder := json.NewEncoder(file)
-	if err := encoder.Encode(lootTable); err != nil {
+	if err := encoder.Encode(config); err != nil {
 		t.Fatalf("Failed to encode loot table: %v", err)
 	}
 	file.Close()

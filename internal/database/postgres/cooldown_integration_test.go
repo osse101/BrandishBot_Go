@@ -81,7 +81,7 @@ func TestCooldownService_ConcurrentRequests_Integration(t *testing.T) {
 		Cooldowns: map[string]time.Duration{
 			domain.ActionSearch: 5 * time.Minute,
 		},
-	})
+	}, nil) // No progression service for this test
 
 	action := domain.ActionSearch
 
