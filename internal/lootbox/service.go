@@ -83,12 +83,15 @@ func (s *service) loadLootTables(path string) error {
 		return fmt.Errorf("failed to read loot tables file: %w", err)
 	}
 
-	var tables map[string][]LootItem
-	if err := json.Unmarshal(data, &tables); err != nil {
+	// Parse the nested structure with "tables" key
+	var config struct {
+		Tables map[string][]LootItem `json:"tables"`
+	}
+	if err := json.Unmarshal(data, &config); err != nil {
 		return fmt.Errorf("failed to parse loot tables: %w", err)
 	}
 
-	s.lootTables = tables
+	s.lootTables = config.Tables
 	return nil
 }
 
