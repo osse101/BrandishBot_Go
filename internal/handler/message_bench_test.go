@@ -142,6 +142,12 @@ func (m *mockProgressionService) ForceInstantUnlock(ctx context.Context) (*domai
 func (m *mockProgressionService) GetUnlockProgress(ctx context.Context) (*domain.UnlockProgress, error) {
 	return nil, nil
 }
+func (m *mockProgressionService) EstimateUnlockTime(ctx context.Context, nodeKey string) (*domain.UnlockEstimate, error) {
+	return nil, nil
+}
+func (m *mockProgressionService) GetEngagementVelocity(ctx context.Context, days int) (*domain.VelocityMetrics, error) {
+	return nil, nil
+}
 func (m *mockProgressionService) AddContribution(ctx context.Context, amount int) error {
 	return nil
 }

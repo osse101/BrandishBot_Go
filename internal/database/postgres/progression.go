@@ -494,6 +494,7 @@ func (r *progressionRepository) RecordEngagement(ctx context.Context, metric *do
 		MetricType:  metric.MetricType,
 		MetricValue: pgtype.Int4{Int32: int32(metric.MetricValue), Valid: true},
 		Metadata:    metadataJSON,
+		RecordedAt:  pgtype.Timestamp{Time: metric.RecordedAt, Valid: !metric.RecordedAt.IsZero()},
 	})
 
 	if err != nil {
@@ -742,4 +743,20 @@ func (r *progressionRepository) GetNodeByFeatureKey(ctx context.Context, feature
 	}
 
 	return node, int(row.UnlockLevel), nil
+}
+
+func (r *progressionRepository) GetDailyEngagementTotals(ctx context.Context, since time.Time) (map[time.Time]int, error) {
+	rows, err := r.q.GetDailyEngagementTotals(ctx, pgtype.Timestamp{Time: since, Valid: true})
+	if err != nil {
+		return nil, fmt.Errorf("failed to query daily totals: %w", err)
+	}
+
+	totals := make(map[time.Time]int)
+	for _, row := range rows {
+		if row.Day.Valid {
+			totals[row.Day.Time] = int(row.TotalPoints)
+		}
+	}
+
+	return totals, nil
 }

@@ -690,6 +690,65 @@ func (_c *MockProgressionRepository_GetContributionLeaderboard_Call) RunAndRetur
 	return _c
 }
 
+// GetDailyEngagementTotals provides a mock function with given fields: ctx, since
+func (_m *MockProgressionRepository) GetDailyEngagementTotals(ctx context.Context, since time.Time) (map[time.Time]int, error) {
+	ret := _m.Called(ctx, since)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetDailyEngagementTotals")
+	}
+
+	var r0 map[time.Time]int
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, time.Time) (map[time.Time]int, error)); ok {
+		return rf(ctx, since)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, time.Time) map[time.Time]int); ok {
+		r0 = rf(ctx, since)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(map[time.Time]int)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, time.Time) error); ok {
+		r1 = rf(ctx, since)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockProgressionRepository_GetDailyEngagementTotals_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetDailyEngagementTotals'
+type MockProgressionRepository_GetDailyEngagementTotals_Call struct {
+	*mock.Call
+}
+
+// GetDailyEngagementTotals is a helper method to define mock.On call
+//   - ctx context.Context
+//   - since time.Time
+func (_e *MockProgressionRepository_Expecter) GetDailyEngagementTotals(ctx interface{}, since interface{}) *MockProgressionRepository_GetDailyEngagementTotals_Call {
+	return &MockProgressionRepository_GetDailyEngagementTotals_Call{Call: _e.mock.On("GetDailyEngagementTotals", ctx, since)}
+}
+
+func (_c *MockProgressionRepository_GetDailyEngagementTotals_Call) Run(run func(ctx context.Context, since time.Time)) *MockProgressionRepository_GetDailyEngagementTotals_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(time.Time))
+	})
+	return _c
+}
+
+func (_c *MockProgressionRepository_GetDailyEngagementTotals_Call) Return(_a0 map[time.Time]int, _a1 error) *MockProgressionRepository_GetDailyEngagementTotals_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockProgressionRepository_GetDailyEngagementTotals_Call) RunAndReturn(run func(context.Context, time.Time) (map[time.Time]int, error)) *MockProgressionRepository_GetDailyEngagementTotals_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetDependents provides a mock function with given fields: ctx, nodeID
 func (_m *MockProgressionRepository) GetDependents(ctx context.Context, nodeID int) ([]*domain.ProgressionNode, error) {
 	ret := _m.Called(ctx, nodeID)

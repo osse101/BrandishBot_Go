@@ -379,6 +379,40 @@ func (q *Queries) GetContributionLeaderboard(ctx context.Context, limit int32) (
 	return items, nil
 }
 
+const getDailyEngagementTotals = `-- name: GetDailyEngagementTotals :many
+SELECT DATE(recorded_at)::timestamp as day, SUM(em.metric_value * ew.weight)::bigint as total_points
+FROM engagement_metrics em
+JOIN engagement_weights ew ON em.metric_type = ew.metric_type
+WHERE recorded_at >= $1
+GROUP BY DATE(recorded_at)
+ORDER BY day ASC
+`
+
+type GetDailyEngagementTotalsRow struct {
+	Day         pgtype.Timestamp `json:"day"`
+	TotalPoints int64            `json:"total_points"`
+}
+
+func (q *Queries) GetDailyEngagementTotals(ctx context.Context, recordedAt pgtype.Timestamp) ([]GetDailyEngagementTotalsRow, error) {
+	rows, err := q.db.Query(ctx, getDailyEngagementTotals, recordedAt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetDailyEngagementTotalsRow
+	for rows.Next() {
+		var i GetDailyEngagementTotalsRow
+		if err := rows.Scan(&i.Day, &i.TotalPoints); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getEngagementMetricsAggregated = `-- name: GetEngagementMetricsAggregated :many
 SELECT metric_type, SUM(metric_value)::bigint as total
 FROM engagement_metrics
@@ -1120,15 +1154,16 @@ func (q *Queries) IsUserProgressionUnlocked(ctx context.Context, arg IsUserProgr
 }
 
 const recordEngagement = `-- name: RecordEngagement :exec
-INSERT INTO engagement_metrics (user_id, metric_type, metric_value, metadata)
-VALUES ($1, $2, $3, $4)
+INSERT INTO engagement_metrics (user_id, metric_type, metric_value, metadata, recorded_at)
+VALUES ($1, $2, $3, $4, COALESCE($5::timestamp, CURRENT_TIMESTAMP))
 `
 
 type RecordEngagementParams struct {
-	UserID      string      `json:"user_id"`
-	MetricType  string      `json:"metric_type"`
-	MetricValue pgtype.Int4 `json:"metric_value"`
-	Metadata    []byte      `json:"metadata"`
+	UserID      string           `json:"user_id"`
+	MetricType  string           `json:"metric_type"`
+	MetricValue pgtype.Int4      `json:"metric_value"`
+	Metadata    []byte           `json:"metadata"`
+	RecordedAt  pgtype.Timestamp `json:"recorded_at"`
 }
 
 func (q *Queries) RecordEngagement(ctx context.Context, arg RecordEngagementParams) error {
@@ -1137,6 +1172,7 @@ func (q *Queries) RecordEngagement(ctx context.Context, arg RecordEngagementPara
 		arg.MetricType,
 		arg.MetricValue,
 		arg.Metadata,
+		arg.RecordedAt,
 	)
 	return err
 }

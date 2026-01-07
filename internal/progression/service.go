@@ -40,6 +40,8 @@ type Service interface {
 	GetEngagementScore(ctx context.Context) (int, error)
 	GetUserEngagement(ctx context.Context, userID string) (*domain.ContributionBreakdown, error)
 	GetContributionLeaderboard(ctx context.Context, limit int) ([]domain.ContributionLeaderboardEntry, error)
+	GetEngagementVelocity(ctx context.Context, days int) (*domain.VelocityMetrics, error)
+	EstimateUnlockTime(ctx context.Context, nodeKey string) (*domain.UnlockEstimate, error)
 
 	// Value modification
 	GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error)
@@ -274,7 +276,25 @@ func (s *service) VoteForUnlock(ctx context.Context, userID string, nodeKey stri
 
 // GetActiveVotingSession returns the current voting session
 func (s *service) GetActiveVotingSession(ctx context.Context) (*domain.ProgressionVotingSession, error) {
-	return s.repo.GetActiveSession(ctx)
+	session, err := s.repo.GetActiveSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if session == nil {
+		return nil, nil
+	}
+
+	// Enrich options with estimates
+	for i := range session.Options {
+		if session.Options[i].NodeDetails != nil {
+			estimate, err := s.EstimateUnlockTime(ctx, session.Options[i].NodeDetails.NodeKey)
+			if err == nil && estimate != nil {
+				session.Options[i].EstimatedUnlockDate = estimate.EstimatedUnlockDate
+			}
+		}
+	}
+
+	return session, nil
 }
 
 // RecordEngagement records user engagement event
@@ -367,8 +387,19 @@ func (s *service) GetProgressionStatus(ctx context.Context) (*domain.Progression
 		return nil, fmt.Errorf("failed to get contribution score: %w", err)
 	}
 
-	activeSession, _ := s.repo.GetActiveSession(ctx)
-	unlockProgress, _ := s.repo.GetActiveUnlockProgress(ctx)
+	activeSession, _ := s.GetActiveVotingSession(ctx) // Use service method to get enriched session
+	unlockProgress, _ := s.GetUnlockProgress(ctx)     // Use service method (which currently just calls repo, but consistent)
+
+	// Enrich unlock progress with estimate
+	if unlockProgress != nil && unlockProgress.NodeID != nil {
+		node, err := s.repo.GetNodeByID(ctx, *unlockProgress.NodeID)
+		if err == nil && node != nil {
+			estimate, err := s.EstimateUnlockTime(ctx, node.NodeKey)
+			if err == nil && estimate != nil {
+				unlockProgress.EstimatedUnlockDate = estimate.EstimatedUnlockDate
+			}
+		}
+	}
 
 	return &domain.ProgressionStatus{
 		TotalUnlocked:        len(unlocks),
@@ -737,4 +768,154 @@ func (s *service) handleNodeRelocked(ctx context.Context, e event.Event) error {
 			"level", payload["level"])
 	}
 	return nil
+}
+
+// GetEngagementVelocity calculates engagement velocity over a period
+func (s *service) GetEngagementVelocity(ctx context.Context, days int) (*domain.VelocityMetrics, error) {
+	if days <= 0 {
+		days = 7
+	}
+
+	since := time.Now().AddDate(0, 0, -days)
+	totals, err := s.repo.GetDailyEngagementTotals(ctx, since)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get daily totals: %w", err)
+	}
+
+	totalPoints := 0
+	sampleSize := len(totals)
+
+	if sampleSize == 0 {
+		return &domain.VelocityMetrics{
+			PointsPerDay: 0,
+			Trend:        "stable",
+			PeriodDays:   days,
+			SampleSize:   0,
+			TotalPoints:  0,
+		}, nil
+	}
+
+	orderedDays := make([]time.Time, 0, len(totals))
+	for day, points := range totals {
+		totalPoints += points
+		orderedDays = append(orderedDays, day)
+	}
+
+	// Sort days
+	for i := 0; i < len(orderedDays)-1; i++ {
+		for j := 0; j < len(orderedDays)-i-1; j++ {
+			if orderedDays[j].After(orderedDays[j+1]) {
+				orderedDays[j], orderedDays[j+1] = orderedDays[j+1], orderedDays[j]
+			}
+		}
+	}
+
+	avg := float64(totalPoints) / float64(days)
+
+	// Trend detection
+	trend := "stable"
+	if sampleSize >= 2 {
+		half := sampleSize / 2
+		firstHalfSum := 0
+		secondHalfSum := 0
+		
+		for i := 0; i < half; i++ {
+			firstHalfSum += totals[orderedDays[i]]
+		}
+		for i := half; i < sampleSize; i++ {
+			secondHalfSum += totals[orderedDays[i]]
+		}
+
+		firstHalfAvg := float64(firstHalfSum) / float64(half)
+		secondHalfAvg := float64(secondHalfSum) / float64(sampleSize-half)
+
+		if secondHalfAvg > firstHalfAvg*1.1 {
+			trend = "increasing"
+		} else if secondHalfAvg < firstHalfAvg*0.9 {
+			trend = "decreasing"
+		}
+	}
+
+	return &domain.VelocityMetrics{
+		PointsPerDay: avg,
+		Trend:        trend,
+		PeriodDays:   days,
+		SampleSize:   sampleSize,
+		TotalPoints:  totalPoints,
+	}, nil
+}
+
+// EstimateUnlockTime predicts when a node will unlock
+func (s *service) EstimateUnlockTime(ctx context.Context, nodeKey string) (*domain.UnlockEstimate, error) {
+	node, err := s.repo.GetNodeByKey(ctx, nodeKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get node: %w", err)
+	}
+	if node == nil {
+		return nil, fmt.Errorf("node not found: %s", nodeKey)
+	}
+
+	// Get current velocity (7 days default)
+	velocity, err := s.GetEngagementVelocity(ctx, 7)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get current progress
+	var currentProgress int
+	progress, _ := s.repo.GetActiveUnlockProgress(ctx)
+	if progress != nil && progress.NodeID != nil && *progress.NodeID == node.ID {
+		currentProgress = progress.ContributionsAccumulated
+	}
+	
+	// Check if already unlocked (max level)
+	isUnlocked, _ := s.repo.IsNodeUnlocked(ctx, nodeKey, node.MaxLevel)
+	if isUnlocked {
+		return &domain.UnlockEstimate{
+			NodeKey:         nodeKey,
+			EstimatedDays:   0,
+			Confidence:      "high",
+			RequiredPoints:  0,
+			CurrentProgress: node.UnlockCost,
+			CurrentVelocity: velocity.PointsPerDay,
+			EstimatedUnlockDate: func() *time.Time { t := time.Now(); return &t }(),
+		}, nil
+	}
+
+	required := node.UnlockCost - currentProgress
+	if required <= 0 {
+		required = 0
+	}
+
+	var estimatedDays float64
+	var estimatedDate *time.Time
+
+	if velocity.PointsPerDay > 0 {
+		estimatedDays = float64(required) / velocity.PointsPerDay
+		t := time.Now().Add(time.Duration(estimatedDays * 24 * float64(time.Hour)))
+		estimatedDate = &t
+	} else {
+		estimatedDays = -1 // Infinite
+	}
+
+	confidence := "low"
+	if velocity.SampleSize >= 7 {
+		if velocity.Trend == "stable" || velocity.Trend == "increasing" {
+			confidence = "high"
+		} else {
+			confidence = "medium"
+		}
+	} else if velocity.SampleSize >= 3 {
+		confidence = "medium"
+	}
+
+	return &domain.UnlockEstimate{
+		NodeKey:         nodeKey,
+		EstimatedDays:       estimatedDays,
+		Confidence:          confidence,
+		RequiredPoints:      required,
+		CurrentProgress:     currentProgress,
+		CurrentVelocity:     velocity.PointsPerDay,
+		EstimatedUnlockDate: estimatedDate,
+	}, nil
 }

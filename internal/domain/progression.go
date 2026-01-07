@@ -144,8 +144,9 @@ type ProgressionVotingOption struct {
 	NodeID            int              `json:"node_id"`
 	TargetLevel       int              `json:"target_level"`
 	VoteCount         int              `json:"vote_count"`
-	LastHighestVoteAt *time.Time       `json:"last_highest_vote_at"` // When first reached current highest
-	NodeDetails       *ProgressionNode `json:"node_details,omitempty"`
+	LastHighestVoteAt   *time.Time       `json:"last_highest_vote_at"` // When first reached current highest
+	NodeDetails         *ProgressionNode `json:"node_details,omitempty"`
+	EstimatedUnlockDate *time.Time       `json:"estimated_unlock_date,omitempty"`
 }
 
 // UnlockProgress tracks contribution points accumulated toward next unlock
@@ -157,6 +158,7 @@ type UnlockProgress struct {
 	StartedAt                time.Time  `json:"started_at"`
 	UnlockedAt               *time.Time `json:"unlocked_at"`
 	VotingSessionID          *int       `json:"voting_session_id"`
+	EstimatedUnlockDate      *time.Time `json:"estimated_unlock_date,omitempty"`
 }
 
 // ContributionLeaderboardEntry represents a user's rank and contribution total
@@ -164,4 +166,24 @@ type ContributionLeaderboardEntry struct {
 	UserID       string `json:"user_id"`
 	Contribution int    `json:"contribution"`
 	Rank         int    `json:"rank"`
+}
+
+// VelocityMetrics holds engagement velocity data
+type VelocityMetrics struct {
+	PointsPerDay float64 `json:"points_per_day"`
+	Trend        string  `json:"trend"` // "increasing", "stable", "decreasing"
+	PeriodDays   int     `json:"period_days"`
+	SampleSize   int     `json:"sample_size"`
+	TotalPoints  int     `json:"total_points"`
+}
+
+// UnlockEstimate holds prediction data for node unlock
+type UnlockEstimate struct {
+	NodeKey             string     `json:"node_key"`
+	EstimatedDays       float64    `json:"estimated_days"`
+	Confidence          string     `json:"confidence"` // "high", "medium", "low"
+	RequiredPoints      int        `json:"required_points"`
+	CurrentProgress     int        `json:"current_progress"`
+	CurrentVelocity     float64    `json:"current_velocity"`
+	EstimatedUnlockDate *time.Time `json:"estimated_unlock_date"`
 }

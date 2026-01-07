@@ -341,6 +341,65 @@ func (_c *MockProgressionService_EndVoting_Call) RunAndReturn(run func(context.C
 	return _c
 }
 
+// EstimateUnlockTime provides a mock function with given fields: ctx, nodeKey
+func (_m *MockProgressionService) EstimateUnlockTime(ctx context.Context, nodeKey string) (*domain.UnlockEstimate, error) {
+	ret := _m.Called(ctx, nodeKey)
+
+	if len(ret) == 0 {
+		panic("no return value specified for EstimateUnlockTime")
+	}
+
+	var r0 *domain.UnlockEstimate
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (*domain.UnlockEstimate, error)); ok {
+		return rf(ctx, nodeKey)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) *domain.UnlockEstimate); ok {
+		r0 = rf(ctx, nodeKey)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*domain.UnlockEstimate)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, nodeKey)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockProgressionService_EstimateUnlockTime_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'EstimateUnlockTime'
+type MockProgressionService_EstimateUnlockTime_Call struct {
+	*mock.Call
+}
+
+// EstimateUnlockTime is a helper method to define mock.On call
+//   - ctx context.Context
+//   - nodeKey string
+func (_e *MockProgressionService_Expecter) EstimateUnlockTime(ctx interface{}, nodeKey interface{}) *MockProgressionService_EstimateUnlockTime_Call {
+	return &MockProgressionService_EstimateUnlockTime_Call{Call: _e.mock.On("EstimateUnlockTime", ctx, nodeKey)}
+}
+
+func (_c *MockProgressionService_EstimateUnlockTime_Call) Run(run func(ctx context.Context, nodeKey string)) *MockProgressionService_EstimateUnlockTime_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockProgressionService_EstimateUnlockTime_Call) Return(_a0 *domain.UnlockEstimate, _a1 error) *MockProgressionService_EstimateUnlockTime_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockProgressionService_EstimateUnlockTime_Call) RunAndReturn(run func(context.Context, string) (*domain.UnlockEstimate, error)) *MockProgressionService_EstimateUnlockTime_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ForceInstantUnlock provides a mock function with given fields: ctx
 func (_m *MockProgressionService) ForceInstantUnlock(ctx context.Context) (*domain.ProgressionUnlock, error) {
 	ret := _m.Called(ctx)
@@ -626,6 +685,65 @@ func (_c *MockProgressionService_GetEngagementScore_Call) Return(_a0 int, _a1 er
 }
 
 func (_c *MockProgressionService_GetEngagementScore_Call) RunAndReturn(run func(context.Context) (int, error)) *MockProgressionService_GetEngagementScore_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetEngagementVelocity provides a mock function with given fields: ctx, days
+func (_m *MockProgressionService) GetEngagementVelocity(ctx context.Context, days int) (*domain.VelocityMetrics, error) {
+	ret := _m.Called(ctx, days)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetEngagementVelocity")
+	}
+
+	var r0 *domain.VelocityMetrics
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, int) (*domain.VelocityMetrics, error)); ok {
+		return rf(ctx, days)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, int) *domain.VelocityMetrics); ok {
+		r0 = rf(ctx, days)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*domain.VelocityMetrics)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, int) error); ok {
+		r1 = rf(ctx, days)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockProgressionService_GetEngagementVelocity_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetEngagementVelocity'
+type MockProgressionService_GetEngagementVelocity_Call struct {
+	*mock.Call
+}
+
+// GetEngagementVelocity is a helper method to define mock.On call
+//   - ctx context.Context
+//   - days int
+func (_e *MockProgressionService_Expecter) GetEngagementVelocity(ctx interface{}, days interface{}) *MockProgressionService_GetEngagementVelocity_Call {
+	return &MockProgressionService_GetEngagementVelocity_Call{Call: _e.mock.On("GetEngagementVelocity", ctx, days)}
+}
+
+func (_c *MockProgressionService_GetEngagementVelocity_Call) Run(run func(ctx context.Context, days int)) *MockProgressionService_GetEngagementVelocity_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int))
+	})
+	return _c
+}
+
+func (_c *MockProgressionService_GetEngagementVelocity_Call) Return(_a0 *domain.VelocityMetrics, _a1 error) *MockProgressionService_GetEngagementVelocity_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockProgressionService_GetEngagementVelocity_Call) RunAndReturn(run func(context.Context, int) (*domain.VelocityMetrics, error)) *MockProgressionService_GetEngagementVelocity_Call {
 	_c.Call.Return(run)
 	return _c
 }

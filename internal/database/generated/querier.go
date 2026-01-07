@@ -47,6 +47,7 @@ type Querier interface {
 	GetBuyablePrices(ctx context.Context) ([]GetBuyablePricesRow, error)
 	GetClaimedTokenForSource(ctx context.Context, arg GetClaimedTokenForSourceParams) (GetClaimedTokenForSourceRow, error)
 	GetContributionLeaderboard(ctx context.Context, limit int32) ([]GetContributionLeaderboardRow, error)
+	GetDailyEngagementTotals(ctx context.Context, recordedAt pgtype.Timestamp) ([]GetDailyEngagementTotalsRow, error)
 	GetDisassembleOutputs(ctx context.Context, recipeID int32) ([]GetDisassembleOutputsRow, error)
 	GetDisassembleRecipeBySourceItemID(ctx context.Context, sourceItemID int32) (DisassembleRecipe, error)
 	GetEngagementMetricsAggregated(ctx context.Context) ([]GetEngagementMetricsAggregatedRow, error)

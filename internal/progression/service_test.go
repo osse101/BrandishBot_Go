@@ -48,6 +48,9 @@ type MockRepository struct {
 	unlockProgress   map[int]*domain.UnlockProgress
 	progressCounter  int
 	activeProgressID int
+
+	// Velocity testing
+	dailyTotals map[time.Time]int
 }
 
 func NewMockRepository() *MockRepository {
@@ -70,6 +73,7 @@ func NewMockRepository() *MockRepository {
 		sessionOptions:    make(map[int][]domain.ProgressionVotingOption),
 		sessionVotes:      make(map[int]map[string]bool),
 		unlockProgress:    make(map[int]*domain.UnlockProgress),
+		dailyTotals:       make(map[time.Time]int),
 	}
 }
 
@@ -638,6 +642,19 @@ func (m *MockRepository) GetContributionLeaderboard(ctx context.Context, limit i
 
 func (m *MockRepository) BeginTx(ctx context.Context) (repository.Tx, error) {
 	return nil, fmt.Errorf("transactions not supported in mock")
+}
+
+func (m *MockRepository) GetDailyEngagementTotals(ctx context.Context, since time.Time) (map[time.Time]int, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	
+	result := make(map[time.Time]int)
+	for t, v := range m.dailyTotals {
+		if !t.Before(since) {
+			result[t] = v
+		}
+	}
+	return result, nil
 }
 
 // Test helper functions

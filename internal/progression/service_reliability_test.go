@@ -170,6 +170,15 @@ func (m *ReliabilityMockRepository) BeginTx(ctx context.Context) (repository.Tx,
 	panic("not implemented")
 }
 
+func (m *ReliabilityMockRepository) GetDailyEngagementTotals(ctx context.Context, since time.Time) (map[time.Time]int, error) {
+	args := m.Called(ctx, since)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(map[time.Time]int), args.Error(1)
+}
+
+
 // ReliabilityMockBus is a minimal mock for event bus
 type ReliabilityMockBus struct {
 	mock.Mock

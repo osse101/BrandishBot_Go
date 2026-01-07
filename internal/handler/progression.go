@@ -196,8 +196,38 @@ func (h *ProgressionHandlers) HandleGetContributionLeaderboard() http.HandlerFun
 			respondError(w, http.StatusInternalServerError, "Failed to retrieve leaderboard")
 			return
 		}
-
 		respondJSON(w, http.StatusOK, leaderboard)
+	}
+}
+
+// HandleGetVelocity returns engagement velocity metrics (Admin/Debug)
+// @Summary Get engagement velocity
+// @Description Returns engagement velocity metrics (points/day) and trend
+// @Tags progression,admin
+// @Produce json
+// @Param days query int false "Number of days (default 7)"
+// @Success 200 {object} domain.VelocityMetrics
+// @Failure 500 {object} ErrorResponse
+// @Router /progression/velocity [get]
+func (h *ProgressionHandlers) HandleGetVelocity() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromContext(r.Context())
+
+		days := 7
+		if daysStr := r.URL.Query().Get("days"); daysStr != "" {
+			if parsedDays, err := strconv.Atoi(daysStr); err == nil && parsedDays > 0 {
+				days = parsedDays
+			}
+		}
+
+		velocity, err := h.service.GetEngagementVelocity(r.Context(), days)
+		if err != nil {
+			log.Error("Failed to get engagement velocity", "error", err)
+			respondError(w, http.StatusInternalServerError, "Failed to retrieve velocity metrics")
+			return
+		}
+
+		respondJSON(w, http.StatusOK, velocity)
 	}
 }
 

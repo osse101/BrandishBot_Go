@@ -110,8 +110,8 @@ WHERE user_id = $1 AND progression_type = $2
 ORDER BY unlocked_at;
 
 -- name: RecordEngagement :exec
-INSERT INTO engagement_metrics (user_id, metric_type, metric_value, metadata)
-VALUES ($1, $2, $3, $4);
+INSERT INTO engagement_metrics (user_id, metric_type, metric_value, metadata, recorded_at)
+VALUES ($1, $2, $3, $4, COALESCE(sqlc.arg(recorded_at)::timestamp, CURRENT_TIMESTAMP));
 
 -- name: GetEngagementMetricsAggregated :many
 SELECT metric_type, SUM(metric_value)::bigint as total
@@ -303,3 +303,11 @@ FROM progression_nodes n
 LEFT JOIN progression_unlocks u ON u.node_id = n.id
 WHERE n.modifier_config->>'feature_key' = $1
 LIMIT 1;
+
+-- name: GetDailyEngagementTotals :many
+SELECT DATE(recorded_at)::timestamp as day, SUM(em.metric_value * ew.weight)::bigint as total_points
+FROM engagement_metrics em
+JOIN engagement_weights ew ON em.metric_type = ew.metric_type
+WHERE recorded_at >= $1
+GROUP BY DATE(recorded_at)
+ORDER BY day ASC;

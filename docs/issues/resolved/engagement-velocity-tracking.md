@@ -1,6 +1,6 @@
 # Engagement Velocity Tracking
 
-**Status:** Proposed  
+**Status:** Implemented
 **Priority:** Low  
 **Effort:** Medium (2-3 days)  
 **Type:** Enhancement
@@ -65,7 +65,7 @@ CREATE TABLE progression_velocity (
 );
 
 -- Option B: Use existing engagement_metrics with time-based queries
--- (No schema change needed)
+-- (No schema change needed) used this option
 ```
 
 **Calculation Logic**
