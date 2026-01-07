@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/osse101/BrandishBot_Go/internal/crafting"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/lootbox"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
@@ -116,7 +115,7 @@ func (m *mockBenchRepository) IsItemBuyable(ctx context.Context, itemName string
 	return false, nil
 }
 
-func (m *mockBenchRepository) BeginTx(ctx context.Context) (repository.Tx, error) {
+func (m *mockBenchRepository) BeginTx(ctx context.Context) (repository.UserTx, error) {
 	return &mockBenchTx{repo: m}, nil
 }
 
@@ -132,7 +131,7 @@ func (m *mockBenchRepository) UnlockRecipe(ctx context.Context, userID string, r
 	return nil
 }
 
-func (m *mockBenchRepository) GetUnlockedRecipesForUser(ctx context.Context, userID string) ([]crafting.UnlockedRecipeInfo, error) {
+func (m *mockBenchRepository) GetUnlockedRecipesForUser(ctx context.Context, userID string) ([]repository.UnlockedRecipeInfo, error) {
 	return nil, nil
 }
 

@@ -10,20 +10,10 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
+	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/osse101/BrandishBot_Go/internal/stats"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
-
-// Repository defines the data access interface for job operations
-type Repository interface {
-	GetAllJobs(ctx context.Context) ([]domain.Job, error)
-	GetJobByKey(ctx context.Context, jobKey string) (*domain.Job, error)
-	GetUserJobs(ctx context.Context, userID string) ([]domain.UserJob, error)
-	GetUserJob(ctx context.Context, userID string, jobID int) (*domain.UserJob, error)
-	UpsertUserJob(ctx context.Context, userJob *domain.UserJob) error
-	RecordJobXPEvent(ctx context.Context, event *domain.JobXPEvent) error
-	GetJobLevelBonuses(ctx context.Context, jobID int, level int) ([]domain.JobLevelBonus, error)
-}
 
 // ProgressionService defines the interface for progression system
 type ProgressionService interface {
@@ -51,7 +41,7 @@ type Service interface {
 }
 
 type service struct {
-	repo           Repository
+	repo           repository.Job
 	progressionSvc ProgressionService
 	statsSvc       stats.Service
 	eventBus       event.Bus
@@ -60,7 +50,7 @@ type service struct {
 }
 
 // NewService creates a new job service
-func NewService(repo Repository, progressionSvc ProgressionService, statsSvc stats.Service, eventBus event.Bus, publisher *event.ResilientPublisher) Service {
+func NewService(repo repository.Job, progressionSvc ProgressionService, statsSvc stats.Service, eventBus event.Bus, publisher *event.ResilientPublisher) Service {
 	return &service{
 		repo:           repo,
 		progressionSvc: progressionSvc,

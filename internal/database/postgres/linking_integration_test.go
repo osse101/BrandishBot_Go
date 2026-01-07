@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/database"
-	"github.com/osse101/BrandishBot_Go/internal/linking"
+	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -76,7 +76,7 @@ func TestLinkingRepository_Integration(t *testing.T) {
 	repo := NewLinkingRepository(pool)
 
 	t.Run("CreateAndGetToken", func(t *testing.T) {
-		token := &linking.LinkToken{
+		token := &repository.LinkToken{
 			Token:            "TEST1234",
 			SourcePlatform:   "twitch",
 			SourcePlatformID: "user1",
@@ -104,7 +104,7 @@ func TestLinkingRepository_Integration(t *testing.T) {
 	})
 
 	t.Run("UpdateToken", func(t *testing.T) {
-		token := &linking.LinkToken{
+		token := &repository.LinkToken{
 			Token:            "UPDATE12",
 			SourcePlatform:   "twitch",
 			SourcePlatformID: "user2",
@@ -141,7 +141,7 @@ func TestLinkingRepository_Integration(t *testing.T) {
 	})
 
 	t.Run("InvalidateTokens", func(t *testing.T) {
-		token := &linking.LinkToken{
+		token := &repository.LinkToken{
 			Token:            "INVALID1",
 			SourcePlatform:   "youtube",
 			SourcePlatformID: "user3",
@@ -171,7 +171,7 @@ func TestLinkingRepository_Integration(t *testing.T) {
 	})
 
 	t.Run("GetClaimedToken", func(t *testing.T) {
-		token := &linking.LinkToken{
+		token := &repository.LinkToken{
 			Token:            "CLAIMED1",
 			SourcePlatform:   "discord",
 			SourcePlatformID: "user4",
@@ -196,7 +196,7 @@ func TestLinkingRepository_Integration(t *testing.T) {
 	})
 
 	t.Run("CleanupExpired", func(t *testing.T) {
-		token := &linking.LinkToken{
+		token := &repository.LinkToken{
 			Token:            "EXPIRED1",
 			SourcePlatform:   "twitch",
 			SourcePlatformID: "user5",

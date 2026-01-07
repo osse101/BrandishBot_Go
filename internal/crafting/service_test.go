@@ -127,8 +127,8 @@ func (m *MockRepository) UnlockRecipe(ctx context.Context, userID string, recipe
 	return nil
 }
 
-func (m *MockRepository) GetUnlockedRecipesForUser(ctx context.Context, userID string) ([]UnlockedRecipeInfo, error) {
-	var result []UnlockedRecipeInfo
+func (m *MockRepository) GetUnlockedRecipesForUser(ctx context.Context, userID string) ([]repository.UnlockedRecipeInfo, error) {
+	var result []repository.UnlockedRecipeInfo
 	if m.unlockedRecipes[userID] == nil {
 		return result, nil
 	}
@@ -136,7 +136,7 @@ func (m *MockRepository) GetUnlockedRecipesForUser(ctx context.Context, userID s
 	for recipeID := range m.unlockedRecipes[userID] {
 		if recipe, ok := m.recipes[recipeID]; ok {
 			if item, ok := m.itemsByID[recipe.TargetItemID]; ok {
-				result = append(result, UnlockedRecipeInfo{
+				result = append(result, repository.UnlockedRecipeInfo{
 					ItemName: item.InternalName,
 					ItemID:   item.ID,
 				})
@@ -146,7 +146,7 @@ func (m *MockRepository) GetUnlockedRecipesForUser(ctx context.Context, userID s
 	return result, nil
 }
 
-func (m *MockRepository) BeginTx(ctx context.Context) (repository.Tx, error) {
+func (m *MockRepository) BeginTx(ctx context.Context) (repository.CraftingTx, error) {
 	return &MockTx{repo: m}, nil
 }
 
@@ -177,11 +177,11 @@ func (m *MockRepository) GetItemsByIDs(ctx context.Context, itemIDs []int) ([]do
 	return result, nil
 }
 
-func (m *MockRepository) GetAllRecipes(ctx context.Context) ([]RecipeListItem, error) {
-	var result []RecipeListItem
+func (m *MockRepository) GetAllRecipes(ctx context.Context) ([]repository.RecipeListItem, error) {
+	var result []repository.RecipeListItem
 	for _, recipe := range m.recipes {
 		if item, ok := m.itemsByID[recipe.TargetItemID]; ok {
-			result = append(result, RecipeListItem{
+			result = append(result, repository.RecipeListItem{
 				ItemName: item.InternalName,
 				ItemID:   item.ID,
 			})

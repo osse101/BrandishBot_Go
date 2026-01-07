@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/cooldown"
-	"github.com/osse101/BrandishBot_Go/internal/crafting"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
@@ -27,35 +26,6 @@ var validPlatforms = map[string]bool{
 	domain.PlatformDiscord: true,
 }
 
-// Repository defines the interface for user persistence
-type Repository interface {
-	UpsertUser(ctx context.Context, user *domain.User) error
-	GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error)
-	GetUserByPlatformUsername(ctx context.Context, platform, username string) (*domain.User, error)
-	GetUserByID(ctx context.Context, userID string) (*domain.User, error)
-	UpdateUser(ctx context.Context, user domain.User) error
-	DeleteUser(ctx context.Context, userID string) error
-	GetInventory(ctx context.Context, userID string) (*domain.Inventory, error)
-	UpdateInventory(ctx context.Context, userID string, inventory domain.Inventory) error
-	DeleteInventory(ctx context.Context, userID string) error
-	GetItemByName(ctx context.Context, itemName string) (*domain.Item, error)
-	GetItemsByNames(ctx context.Context, names []string) ([]domain.Item, error)
-	GetItemByID(ctx context.Context, id int) (*domain.Item, error)
-	GetItemsByIDs(ctx context.Context, itemIDs []int) ([]domain.Item, error)
-
-	GetSellablePrices(ctx context.Context) ([]domain.Item, error)
-	IsItemBuyable(ctx context.Context, itemName string) (bool, error)
-	BeginTx(ctx context.Context) (repository.Tx, error)
-	GetRecipeByTargetItemID(ctx context.Context, itemID int) (*domain.Recipe, error)
-	IsRecipeUnlocked(ctx context.Context, userID string, recipeID int) (bool, error)
-	UnlockRecipe(ctx context.Context, userID string, recipeID int) error
-	GetUnlockedRecipesForUser(ctx context.Context, userID string) ([]crafting.UnlockedRecipeInfo, error)
-	GetLastCooldown(ctx context.Context, userID, action string) (*time.Time, error)
-	UpdateCooldown(ctx context.Context, userID, action string, timestamp time.Time) error
-
-	// Account linking - atomic transaction for merge
-	MergeUsersInTransaction(ctx context.Context, primaryUserID, secondaryUserID string, mergedUser domain.User, mergedInventory domain.Inventory) error
-}
 
 // Service defines the interface for user operations
 type Service interface {
@@ -115,7 +85,7 @@ type timeoutInfo struct {
 
 // service implements the Service interface
 type service struct {
-	repo            Repository
+	repo            repository.User
 	itemHandlers    map[string]ItemEffectHandler
 	timeoutMu       sync.Mutex
 	timeouts        map[string]*timeoutInfo
@@ -153,7 +123,7 @@ func setPlatformID(user *domain.User, platform, platformID string) {
 }
 
 // NewService creates a new user service
-func NewService(repo Repository, statsService stats.Service, jobService JobService, lootboxService lootbox.Service, namingResolver naming.Resolver, cooldownService cooldown.Service, devMode bool) Service {
+func NewService(repo repository.User, statsService stats.Service, jobService JobService, lootboxService lootbox.Service, namingResolver naming.Resolver, cooldownService cooldown.Service, devMode bool) Service {
 	s := &service{
 		repo:            repo,
 		itemHandlers:    make(map[string]ItemEffectHandler),

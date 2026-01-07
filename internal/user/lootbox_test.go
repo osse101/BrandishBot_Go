@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/osse101/BrandishBot_Go/internal/crafting"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/lootbox"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
@@ -129,12 +128,12 @@ func (m *MockRepo) IsItemBuyable(ctx context.Context, itemName string) (bool, er
 	return args.Bool(0), args.Error(1)
 }
 
-func (m *MockRepo) BeginTx(ctx context.Context) (repository.Tx, error) {
+func (m *MockRepo) BeginTx(ctx context.Context) (repository.UserTx, error) {
 	args := m.Called(ctx)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(repository.Tx), args.Error(1)
+	return args.Get(0).(repository.UserTx), args.Error(1)
 }
 
 func (m *MockRepo) GetRecipeByTargetItemID(ctx context.Context, itemID int) (*domain.Recipe, error) {
@@ -155,12 +154,12 @@ func (m *MockRepo) UnlockRecipe(ctx context.Context, userID string, recipeID int
 	return args.Error(0)
 }
 
-func (m *MockRepo) GetUnlockedRecipesForUser(ctx context.Context, userID string) ([]crafting.UnlockedRecipeInfo, error) {
+func (m *MockRepo) GetUnlockedRecipesForUser(ctx context.Context, userID string) ([]repository.UnlockedRecipeInfo, error) {
 	args := m.Called(ctx, userID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]crafting.UnlockedRecipeInfo), args.Error(1)
+	return args.Get(0).([]repository.UnlockedRecipeInfo), args.Error(1)
 }
 
 func (m *MockRepo) GetLastCooldown(ctx context.Context, userID, action string) (*time.Time, error) {

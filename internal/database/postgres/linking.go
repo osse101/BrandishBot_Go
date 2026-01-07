@@ -7,10 +7,10 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/osse101/BrandishBot_Go/internal/database/generated"
-	"github.com/osse101/BrandishBot_Go/internal/linking"
+	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
 
-// LinkingRepository implements linking.Repository
+// LinkingRepository implements repository.Linking
 type LinkingRepository struct {
 	pool *pgxpool.Pool
 	q    *generated.Queries
@@ -25,7 +25,7 @@ func NewLinkingRepository(pool *pgxpool.Pool) *LinkingRepository {
 }
 
 // CreateToken creates a new link token
-func (r *LinkingRepository) CreateToken(ctx context.Context, token *linking.LinkToken) error {
+func (r *LinkingRepository) CreateToken(ctx context.Context, token *repository.LinkToken) error {
 	err := r.q.CreateToken(ctx, generated.CreateTokenParams{
 		Token:            token.Token,
 		SourcePlatform:   token.SourcePlatform,
@@ -38,13 +38,13 @@ func (r *LinkingRepository) CreateToken(ctx context.Context, token *linking.Link
 }
 
 // GetToken retrieves a link token by its string value
-func (r *LinkingRepository) GetToken(ctx context.Context, tokenStr string) (*linking.LinkToken, error) {
+func (r *LinkingRepository) GetToken(ctx context.Context, tokenStr string) (*repository.LinkToken, error) {
 	row, err := r.q.GetToken(ctx, tokenStr)
 	if err != nil {
 		return nil, fmt.Errorf("token not found: %w", err)
 	}
 
-	return &linking.LinkToken{
+	return &repository.LinkToken{
 		Token:            row.Token,
 		SourcePlatform:   row.SourcePlatform,
 		SourcePlatformID: row.SourcePlatformID,
@@ -57,7 +57,7 @@ func (r *LinkingRepository) GetToken(ctx context.Context, tokenStr string) (*lin
 }
 
 // UpdateToken updates a link token
-func (r *LinkingRepository) UpdateToken(ctx context.Context, token *linking.LinkToken) error {
+func (r *LinkingRepository) UpdateToken(ctx context.Context, token *repository.LinkToken) error {
 	err := r.q.UpdateToken(ctx, generated.UpdateTokenParams{
 		Token:            token.Token,
 		TargetPlatform:   pgtype.Text{String: token.TargetPlatform, Valid: token.TargetPlatform != ""},
@@ -81,7 +81,7 @@ func (r *LinkingRepository) CleanupExpired(ctx context.Context) error {
 }
 
 // GetClaimedTokenForSource finds a claimed token for confirmation
-func (r *LinkingRepository) GetClaimedTokenForSource(ctx context.Context, platform, platformID string) (*linking.LinkToken, error) {
+func (r *LinkingRepository) GetClaimedTokenForSource(ctx context.Context, platform, platformID string) (*repository.LinkToken, error) {
 	row, err := r.q.GetClaimedTokenForSource(ctx, generated.GetClaimedTokenForSourceParams{
 		SourcePlatform:   platform,
 		SourcePlatformID: platformID,
@@ -90,7 +90,7 @@ func (r *LinkingRepository) GetClaimedTokenForSource(ctx context.Context, platfo
 		return nil, fmt.Errorf("no claimed token found: %w", err)
 	}
 
-	return &linking.LinkToken{
+	return &repository.LinkToken{
 		Token:            row.Token,
 		SourcePlatform:   row.SourcePlatform,
 		SourcePlatformID: row.SourcePlatformID,

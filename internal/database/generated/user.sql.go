@@ -76,15 +76,16 @@ func (q *Queries) EnsureInventoryRow(ctx context.Context, arg EnsureInventoryRow
 }
 
 const getAllRecipes = `-- name: GetAllRecipes :many
-SELECT i.internal_name AS item_name, r.target_item_id AS item_id
+SELECT i.internal_name AS item_name, r.target_item_id AS item_id, i.item_description
 FROM crafting_recipes r
 JOIN items i ON r.target_item_id = i.item_id
 ORDER BY i.internal_name
 `
 
 type GetAllRecipesRow struct {
-	ItemName string `json:"item_name"`
-	ItemID   int32  `json:"item_id"`
+	ItemName        string      `json:"item_name"`
+	ItemID          int32       `json:"item_id"`
+	ItemDescription pgtype.Text `json:"item_description"`
 }
 
 func (q *Queries) GetAllRecipes(ctx context.Context) ([]GetAllRecipesRow, error) {
@@ -96,7 +97,7 @@ func (q *Queries) GetAllRecipes(ctx context.Context) ([]GetAllRecipesRow, error)
 	var items []GetAllRecipesRow
 	for rows.Next() {
 		var i GetAllRecipesRow
-		if err := rows.Scan(&i.ItemName, &i.ItemID); err != nil {
+		if err := rows.Scan(&i.ItemName, &i.ItemID, &i.ItemDescription); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

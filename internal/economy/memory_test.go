@@ -121,4 +121,4 @@ func (m *MockTx) Rollback(ctx context.Context) error {
 }
 
 // Ensure MockTx implements repository.Tx
-var _ repository.Tx = (*MockTx)(nil)
+var _ repository.EconomyTx = (*MockTx)(nil)

@@ -230,6 +230,15 @@ func (r *GambleRepository) GetActiveGamble(ctx context.Context) (*domain.Gamble,
 	}, nil
 }
 
+// BeginTx start a transaction provided by the embedded UserRepository but returning generic repository.Tx
+func (r *GambleRepository) BeginTx(ctx context.Context) (repository.Tx, error) {
+	tx, err := r.UserRepository.BeginTx(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return tx, nil
+}
+
 // BeginGambleTx starts a transaction and returns a GambleTx for gamble operations
 func (r *GambleRepository) BeginGambleTx(ctx context.Context) (repository.GambleTx, error) {
 	tx, err := r.db.Begin(ctx)

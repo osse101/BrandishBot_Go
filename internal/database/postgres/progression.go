@@ -12,7 +12,6 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/database/generated"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/event"
-	"github.com/osse101/BrandishBot_Go/internal/progression"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
 
@@ -23,7 +22,7 @@ type progressionRepository struct {
 }
 
 // NewProgressionRepository creates a new Postgres-backed progression repository
-func NewProgressionRepository(pool *pgxpool.Pool, bus event.Bus) progression.Repository {
+func NewProgressionRepository(pool *pgxpool.Pool, bus event.Bus) repository.Progression {
 	return &progressionRepository{
 		pool: pool,
 		q:    generated.New(pool),

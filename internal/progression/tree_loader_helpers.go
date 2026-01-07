@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
 
 // PrerequisiteSyncer is an optional interface for syncing prerequisites to junction table
@@ -14,7 +15,7 @@ type PrerequisiteSyncer interface {
 
 // syncPrerequisites syncs a node's prerequisites to the junction table
 // It clears any existing prerequisites and inserts the new ones
-func syncPrerequisites(ctx context.Context, repo Repository, nodeID int, prerequisites []string, existingByKey map[string]*domain.ProgressionNode, insertedNodeIDs map[string]int) error {
+func syncPrerequisites(ctx context.Context, repo repository.Progression, nodeID int, prerequisites []string, existingByKey map[string]*domain.ProgressionNode, insertedNodeIDs map[string]int) error {
 	// Type assert repository to access junction table methods
 	prereqSyncer, ok := repo.(PrerequisiteSyncer)
 	if !ok {

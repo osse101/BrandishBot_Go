@@ -145,7 +145,7 @@ WHERE ru.user_id = $1
 ORDER BY i.internal_name;
 
 -- name: GetAllRecipes :many
-SELECT i.internal_name AS item_name, r.target_item_id AS item_id
+SELECT i.internal_name AS item_name, r.target_item_id AS item_id, i.item_description
 FROM crafting_recipes r
 JOIN items i ON r.target_item_id = i.item_id
 ORDER BY i.internal_name;

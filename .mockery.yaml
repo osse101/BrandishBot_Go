@@ -14,7 +14,7 @@ packages:
       mockname: "MockUser{{.InterfaceName}}"
     interfaces:
       Service:
-      Repository:
+
       JobService:
   github.com/osse101/BrandishBot_Go/internal/economy:
     config:
@@ -22,7 +22,7 @@ packages:
       mockname: "MockEconomy{{.InterfaceName}}"
     interfaces:
       Service:
-      Repository:
+
       JobService:
   github.com/osse101/BrandishBot_Go/internal/progression:
     config:
@@ -109,6 +109,33 @@ packages:
     interfaces:
       Tx:
       GambleTx:
+      Crafting:
+        config:
+          mockname: "MockCraftingRepository"
+      Economy:
+        config:
+          mockname: "MockEconomyRepository"
+      EventLog:
+        config:
+          mockname: "MockEventLogRepository"
+      Gamble:
+        config:
+          mockname: "MockGambleRepository"
+      Job:
+        config:
+          mockname: "MockJobRepository"
+      Linking:
+        config:
+          mockname: "MockLinkingRepository"
+      Progression:
+        config:
+          mockname: "MockProgressionRepository"
+      Stats:
+        config:
+          mockname: "MockStatsRepository"
+      User:
+        config:
+          mockname: "MockUserRepository"
   github.com/osse101/BrandishBot_Go/internal/naming:
     config:
       filename: "mock_naming_resolver.go"

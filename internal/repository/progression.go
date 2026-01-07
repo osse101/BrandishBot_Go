@@ -1,15 +1,14 @@
-package progression
+package repository
 
 import (
 	"context"
 	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
-	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
 
-// Repository defines database operations for progression system
-type Repository interface {
+// Progression defines database operations for progression system
+type Progression interface {
 	// Node operations
 	GetNodeByKey(ctx context.Context, nodeKey string) (*domain.ProgressionNode, error)
 	GetNodeByID(ctx context.Context, id int) (*domain.ProgressionNode, error)
@@ -63,5 +62,5 @@ type Repository interface {
 	RecordReset(ctx context.Context, reset *domain.ProgressionReset) error
 
 	// Transaction support
-	BeginTx(ctx context.Context) (repository.Tx, error)
+	BeginTx(ctx context.Context) (Tx, error)
 }

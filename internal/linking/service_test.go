@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -17,18 +18,18 @@ type MockRepository struct {
 	mock.Mock
 }
 
-func (m *MockRepository) CreateToken(ctx context.Context, token *LinkToken) error {
+func (m *MockRepository) CreateToken(ctx context.Context, token *repository.LinkToken) error {
 	args := m.Called(ctx, token)
 	return args.Error(0)
 }
-func (m *MockRepository) GetToken(ctx context.Context, tokenStr string) (*LinkToken, error) {
+func (m *MockRepository) GetToken(ctx context.Context, tokenStr string) (*repository.LinkToken, error) {
 	args := m.Called(ctx, tokenStr)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*LinkToken), args.Error(1)
+	return args.Get(0).(*repository.LinkToken), args.Error(1)
 }
-func (m *MockRepository) UpdateToken(ctx context.Context, token *LinkToken) error {
+func (m *MockRepository) UpdateToken(ctx context.Context, token *repository.LinkToken) error {
 	args := m.Called(ctx, token)
 	return args.Error(0)
 }
@@ -36,12 +37,12 @@ func (m *MockRepository) InvalidateTokensForSource(ctx context.Context, platform
 	args := m.Called(ctx, platform, platformID)
 	return args.Error(0)
 }
-func (m *MockRepository) GetClaimedTokenForSource(ctx context.Context, platform, platformID string) (*LinkToken, error) {
+func (m *MockRepository) GetClaimedTokenForSource(ctx context.Context, platform, platformID string) (*repository.LinkToken, error) {
 	args := m.Called(ctx, platform, platformID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*LinkToken), args.Error(1)
+	return args.Get(0).(*repository.LinkToken), args.Error(1)
 }
 func (m *MockRepository) CleanupExpired(ctx context.Context) error {
 	args := m.Called(ctx)
@@ -118,7 +119,7 @@ func TestConfirmLink_SourceUserCreationFlow(t *testing.T) {
 	svc := NewService(repo, userService)
 	ctx := context.Background()
 
-	token := &LinkToken{
+	token := &repository.LinkToken{
 		Token:            "ABCDEF",
 		SourcePlatform:   domain.PlatformDiscord,
 		SourcePlatformID: "discord-123",
@@ -168,7 +169,7 @@ func TestInitiateLink_Success(t *testing.T) {
 	ctx := context.Background()
 
 	repo.On("InvalidateTokensForSource", ctx, domain.PlatformDiscord, "discord-123").Return(nil)
-	repo.On("CreateToken", ctx, mock.MatchedBy(func(token *LinkToken) bool {
+	repo.On("CreateToken", ctx, mock.MatchedBy(func(token *repository.LinkToken) bool {
 		return token.SourcePlatform == domain.PlatformDiscord &&
 			token.SourcePlatformID == "discord-123" &&
 			token.State == StatePending &&
@@ -193,7 +194,7 @@ func TestClaimLink_Success(t *testing.T) {
 	svc := NewService(repo, userService)
 	ctx := context.Background()
 
-	pendingToken := &LinkToken{
+	pendingToken := &repository.LinkToken{
 		Token:            "ABC123",
 		SourcePlatform:   domain.PlatformDiscord,
 		SourcePlatformID: "discord-123",
@@ -203,7 +204,7 @@ func TestClaimLink_Success(t *testing.T) {
 	}
 
 	repo.On("GetToken", ctx, "ABC123").Return(pendingToken, nil)
-	repo.On("UpdateToken", ctx, mock.MatchedBy(func(token *LinkToken) bool {
+	repo.On("UpdateToken", ctx, mock.MatchedBy(func(token *repository.LinkToken) bool {
 		return token.State == StateClaimed &&
 			token.TargetPlatform == domain.PlatformTwitch &&
 			token.TargetPlatformID == "twitch-456"
@@ -224,7 +225,7 @@ func TestConfirmLink_MergeTwoExistingUsers(t *testing.T) {
 	svc := NewService(repo, userService)
 	ctx := context.Background()
 
-	token := &LinkToken{
+	token := &repository.LinkToken{
 		Token:            "ABC123",
 		SourcePlatform:   domain.PlatformDiscord,
 		SourcePlatformID: "discord-123",
@@ -259,7 +260,7 @@ func TestConfirmLink_LinkToNewUser(t *testing.T) {
 	svc := NewService(repo, userService)
 	ctx := context.Background()
 
-	token := &LinkToken{
+	token := &repository.LinkToken{
 		Token:            "ABC123",
 		SourcePlatform:   domain.PlatformDiscord,
 		SourcePlatformID: "discord-123",
@@ -319,7 +320,7 @@ func TestClaimLink_ExpiredToken(t *testing.T) {
 	svc := NewService(repo, userService)
 	ctx := context.Background()
 
-	expiredToken := &LinkToken{
+	expiredToken := &repository.LinkToken{
 		Token:            "ABC123",
 		SourcePlatform:   domain.PlatformDiscord,
 		SourcePlatformID: "discord-123",
@@ -329,7 +330,7 @@ func TestClaimLink_ExpiredToken(t *testing.T) {
 	}
 
 	repo.On("GetToken", ctx, "ABC123").Return(expiredToken, nil)
-	repo.On("UpdateToken", ctx, mock.MatchedBy(func(token *LinkToken) bool {
+	repo.On("UpdateToken", ctx, mock.MatchedBy(func(token *repository.LinkToken) bool {
 		return token.State == StateExpired
 	})).Return(nil)
 
@@ -347,7 +348,7 @@ func TestClaimLink_AlreadyUsedToken(t *testing.T) {
 	svc := NewService(repo, userService)
 	ctx := context.Background()
 
-	usedToken := &LinkToken{
+	usedToken := &repository.LinkToken{
 		Token:            "ABC123",
 		SourcePlatform:   domain.PlatformDiscord,
 		SourcePlatformID: "discord-123",
@@ -371,7 +372,7 @@ func TestClaimLink_SamePlatformRejection(t *testing.T) {
 	svc := NewService(repo, userService)
 	ctx := context.Background()
 
-	token := &LinkToken{
+	token := &repository.LinkToken{
 		Token:            "ABC123",
 		SourcePlatform:   domain.PlatformDiscord,
 		SourcePlatformID: "discord-123",
@@ -396,7 +397,7 @@ func TestConfirmLink_ExpiredConfirmation(t *testing.T) {
 	svc := NewService(repo, userService)
 	ctx := context.Background()
 
-	expiredToken := &LinkToken{
+	expiredToken := &repository.LinkToken{
 		Token:            "ABC123",
 		SourcePlatform:   domain.PlatformDiscord,
 		SourcePlatformID: "discord-123",
@@ -407,7 +408,7 @@ func TestConfirmLink_ExpiredConfirmation(t *testing.T) {
 	}
 
 	repo.On("GetClaimedTokenForSource", ctx, domain.PlatformDiscord, "discord-123").Return(expiredToken, nil)
-	repo.On("UpdateToken", ctx, mock.MatchedBy(func(token *LinkToken) bool {
+	repo.On("UpdateToken", ctx, mock.MatchedBy(func(token *repository.LinkToken) bool {
 		return token.State == StateExpired
 	})).Return(nil)
 

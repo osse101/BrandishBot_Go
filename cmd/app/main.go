@@ -123,6 +123,8 @@ func main() {
 	defer dbPool.Close()
 
 	userRepo := postgres.NewUserRepository(dbPool)
+	craftingRepo := postgres.NewCraftingRepository(dbPool)
+	economyRepo := postgres.NewEconomyRepository(dbPool)
 
 	statsRepo := postgres.NewStatsRepository(dbPool)
 	statsService := stats.NewService(statsRepo)
@@ -198,8 +200,8 @@ func main() {
 	jobService := job.NewService(jobRepo, progressionService, statsService, eventBus, resilientPublisher)
 
 	// Initialize services that depend on job service
-	economyService := economy.NewService(userRepo, jobService)
-	craftingService := crafting.NewService(userRepo, jobService, statsService)
+	economyService := economy.NewService(economyRepo, jobService)
+	craftingService := crafting.NewService(craftingRepo, jobService, statsService)
 
 	// Initialize Worker Pool
 	// Start with 5 workers as per plan

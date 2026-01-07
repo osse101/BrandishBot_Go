@@ -9,6 +9,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
+	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
 
 // Service defines the progression system business logic
@@ -62,7 +63,7 @@ type Service interface {
 }
 
 type service struct {
-	repo Repository
+	repo repository.Progression
 	bus  event.Bus
 
 	// In-memory cache for unlock threshold checking
@@ -88,7 +89,7 @@ type service struct {
 }
 
 // NewService creates a new progression service
-func NewService(repo Repository, bus event.Bus) Service {
+func NewService(repo repository.Progression, bus event.Bus) Service {
 	shutdownCtx, shutdownCancel := context.WithCancel(context.Background())
 	svc := &service{
 		repo:           repo,

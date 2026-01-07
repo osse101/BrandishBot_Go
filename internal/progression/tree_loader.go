@@ -9,6 +9,7 @@ import (
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
+	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
 
 // Sentinel errors for tree loader
@@ -52,7 +53,7 @@ type NodeConfig struct {
 type TreeLoader interface {
 	Load(path string) (*TreeConfig, error)
 	Validate(config *TreeConfig) error
-	SyncToDatabase(ctx context.Context, config *TreeConfig, repo Repository) (*SyncResult, error)
+	SyncToDatabase(ctx context.Context, config *TreeConfig, repo repository.Progression) (*SyncResult, error)
 }
 
 // SyncResult contains the result of syncing the tree to the database
@@ -195,7 +196,7 @@ func detectCycles(nodes []NodeConfig, nodesByKey map[string]*NodeConfig) error {
 }
 
 // SyncToDatabase syncs the tree configuration to the database idempotently
-func (t *treeLoader) SyncToDatabase(ctx context.Context, config *TreeConfig, repo Repository) (*SyncResult, error) {
+func (t *treeLoader) SyncToDatabase(ctx context.Context, config *TreeConfig, repo repository.Progression) (*SyncResult, error) {
 	log := logger.FromContext(ctx)
 	result := &SyncResult{}
 
@@ -320,7 +321,7 @@ func (t *treeLoader) SyncToDatabase(ctx context.Context, config *TreeConfig, rep
 }
 
 // insertNode inserts a new node into the database
-func insertNode(ctx context.Context, repo Repository, config *NodeConfig) (int, error) {
+func insertNode(ctx context.Context, repo repository.Progression, config *NodeConfig) (int, error) {
 	inserter, ok := repo.(NodeInserter)
 	if !ok {
 		return 0, fmt.Errorf("repository does not support node insertion")
@@ -348,7 +349,7 @@ func insertNode(ctx context.Context, repo Repository, config *NodeConfig) (int, 
 }
 
 // updateNode updates an existing node in the database
-func updateNode(ctx context.Context, repo Repository, nodeID int, config *NodeConfig) error {
+func updateNode(ctx context.Context, repo repository.Progression, nodeID int, config *NodeConfig) error {
 	updater, ok := repo.(NodeUpdater)
 	if !ok {
 		return fmt.Errorf("repository does not support node updates")

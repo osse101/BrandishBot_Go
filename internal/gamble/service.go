@@ -19,28 +19,6 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
-// Repository defines the interface for data access required by the gamble service
-type Repository interface {
-	CreateGamble(ctx context.Context, gamble *domain.Gamble) error
-	GetGamble(ctx context.Context, id uuid.UUID) (*domain.Gamble, error)
-	JoinGamble(ctx context.Context, participant *domain.Participant) error
-	UpdateGambleState(ctx context.Context, id uuid.UUID, state domain.GambleState) error
-	UpdateGambleStateIfMatches(ctx context.Context, id uuid.UUID, expectedState, newState domain.GambleState) (int64, error)
-	SaveOpenedItems(ctx context.Context, items []domain.GambleOpenedItem) error
-	CompleteGamble(ctx context.Context, result *domain.GambleResult) error
-	GetActiveGamble(ctx context.Context) (*domain.Gamble, error)
-
-	// Transaction support
-	BeginTx(ctx context.Context) (repository.Tx, error)
-	BeginGambleTx(ctx context.Context) (repository.GambleTx, error)
-
-	// Inventory operations (reused from other services)
-	GetInventory(ctx context.Context, userID string) (*domain.Inventory, error)
-	UpdateInventory(ctx context.Context, userID string, inventory domain.Inventory) error
-	GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error)
-	GetItemByID(ctx context.Context, id int) (*domain.Item, error)
-}
-
 // Service defines the interface for gamble operations
 type Service interface {
 	StartGamble(ctx context.Context, platform, platformID, username string, bets []domain.LootboxBet) (*domain.Gamble, error)
@@ -65,7 +43,7 @@ type ProgressionService interface {
 const NearMissThreshold = 0.95
 
 type service struct {
-	repo           Repository
+	repo           repository.Gamble
 	eventBus       event.Bus
 	lootboxSvc     lootbox.Service
 	jobService     JobService
@@ -76,7 +54,7 @@ type service struct {
 }
 
 // NewService creates a new gamble service
-func NewService(repo Repository, eventBus event.Bus, lootboxSvc lootbox.Service, statsSvc stats.Service, joinDuration time.Duration, jobService JobService, progressionSvc ProgressionService) Service {
+func NewService(repo repository.Gamble, eventBus event.Bus, lootboxSvc lootbox.Service, statsSvc stats.Service, joinDuration time.Duration, jobService JobService, progressionSvc ProgressionService) Service {
 	return &service{
 		repo:           repo,
 		eventBus:       eventBus,

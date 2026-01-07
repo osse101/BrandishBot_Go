@@ -12,6 +12,7 @@ import (
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/linking"
+	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -24,20 +25,20 @@ type MockLinkingService struct {
 	mock.Mock
 }
 
-func (m *MockLinkingService) InitiateLink(ctx context.Context, platform, platformID string) (*linking.LinkToken, error) {
+func (m *MockLinkingService) InitiateLink(ctx context.Context, platform, platformID string) (*repository.LinkToken, error) {
 	args := m.Called(ctx, platform, platformID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*linking.LinkToken), args.Error(1)
+	return args.Get(0).(*repository.LinkToken), args.Error(1)
 }
 
-func (m *MockLinkingService) ClaimLink(ctx context.Context, tokenStr, platform, platformID string) (*linking.LinkToken, error) {
+func (m *MockLinkingService) ClaimLink(ctx context.Context, tokenStr, platform, platformID string) (*repository.LinkToken, error) {
 	args := m.Called(ctx, tokenStr, platform, platformID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*linking.LinkToken), args.Error(1)
+	return args.Get(0).(*repository.LinkToken), args.Error(1)
 }
 
 func (m *MockLinkingService) ConfirmLink(ctx context.Context, platform, platformID string) (*linking.LinkResult, error) {
@@ -119,7 +120,7 @@ func TestHandleInitiate_Success(t *testing.T) {
 	svc := new(MockLinkingService)
 	handler := NewLinkingHandlers(svc)
 
-	token := &linking.LinkToken{
+	token := &repository.LinkToken{
 		Token:            "ABC123",
 		SourcePlatform:   domain.PlatformDiscord,
 		SourcePlatformID: "discord-123",
@@ -155,7 +156,7 @@ func TestHandleClaim_Success(t *testing.T) {
 	svc := new(MockLinkingService)
 	handler := NewLinkingHandlers(svc)
 
-	token := &linking.LinkToken{
+	token := &repository.LinkToken{
 		Token:            "ABC123",
 		SourcePlatform:   domain.PlatformDiscord,
 		SourcePlatformID: "discord-123",

@@ -5,7 +5,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/osse101/BrandishBot_Go/internal/crafting"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
@@ -182,7 +181,7 @@ type MockTx struct {
 	repo *MockRepository
 }
 
-func (m *MockRepository) BeginTx(ctx context.Context) (repository.Tx, error) {
+func (m *MockRepository) BeginTx(ctx context.Context) (repository.UserTx, error) {
 	return &MockTx{repo: m}, nil
 }
 
@@ -224,8 +223,8 @@ func (m *MockRepository) UnlockRecipe(ctx context.Context, userID string, recipe
 	return nil
 }
 
-func (r *MockRepository) GetUnlockedRecipesForUser(ctx context.Context, userID string) ([]crafting.UnlockedRecipeInfo, error) {
-	var recipes []crafting.UnlockedRecipeInfo
+func (r *MockRepository) GetUnlockedRecipesForUser(ctx context.Context, userID string) ([]repository.UnlockedRecipeInfo, error) {
+	var recipes []repository.UnlockedRecipeInfo
 
 	// For each unlocked recipe, get the recipe and item info
 	if userUnlocks, ok := r.unlockedRecipes[userID]; ok {
@@ -234,7 +233,7 @@ func (r *MockRepository) GetUnlockedRecipesForUser(ctx context.Context, userID s
 				// Find the item name
 				for _, item := range r.items {
 					if item.ID == recipe.TargetItemID {
-						recipes = append(recipes, crafting.UnlockedRecipeInfo{
+						recipes = append(recipes, repository.UnlockedRecipeInfo{
 							ItemName: item.InternalName,
 
 							ItemID: item.ID,

@@ -11,7 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/osse101/BrandishBot_Go/internal/database/generated"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
-	"github.com/osse101/BrandishBot_Go/internal/stats"
+	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
 
 // StatsRepository implements the stats repository for PostgreSQL
@@ -21,7 +21,7 @@ type StatsRepository struct {
 }
 
 // NewStatsRepository creates a new StatsRepository
-func NewStatsRepository(pool *pgxpool.Pool) stats.Repository {
+func NewStatsRepository(pool *pgxpool.Pool) repository.Stats {
 	return &StatsRepository{
 		pool: pool,
 		q:    generated.New(pool),

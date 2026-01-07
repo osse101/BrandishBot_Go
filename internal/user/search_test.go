@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/cooldown"
-	"github.com/osse101/BrandishBot_Go/internal/crafting"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/stretchr/testify/assert"
@@ -184,7 +183,7 @@ func (m *mockSearchRepo) IsItemBuyable(ctx context.Context, itemName string) (bo
 }
 func (m *mockSearchRepo) Commit(ctx context.Context) error                   { return nil }
 func (m *mockSearchRepo) Rollback(ctx context.Context) error                 { return nil }
-func (m *mockSearchRepo) BeginTx(ctx context.Context) (repository.Tx, error) { return m, nil }
+func (m *mockSearchRepo) BeginTx(ctx context.Context) (repository.UserTx, error) { return m, nil }
 func (m *mockSearchRepo) GetRecipeByTargetItemID(ctx context.Context, itemID int) (*domain.Recipe, error) {
 	return nil, nil
 }
@@ -194,7 +193,7 @@ func (m *mockSearchRepo) IsRecipeUnlocked(ctx context.Context, userID string, re
 func (m *mockSearchRepo) UnlockRecipe(ctx context.Context, userID string, recipeID int) error {
 	return nil
 }
-func (m *mockSearchRepo) GetUnlockedRecipesForUser(ctx context.Context, userID string) ([]crafting.UnlockedRecipeInfo, error) {
+func (m *mockSearchRepo) GetUnlockedRecipesForUser(ctx context.Context, userID string) ([]repository.UnlockedRecipeInfo, error) {
 	return nil, nil
 }
 

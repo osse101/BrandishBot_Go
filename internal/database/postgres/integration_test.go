@@ -82,6 +82,8 @@ func TestUserRepository_Integration(t *testing.T) {
 	}
 
 	repo := NewUserRepository(pool)
+	craftingRepo := NewCraftingRepository(pool)
+	economyRepo := NewEconomyRepository(pool)
 
 	t.Run("UpsertUser", func(t *testing.T) {
 		user := &domain.User{
@@ -126,7 +128,7 @@ func TestUserRepository_Integration(t *testing.T) {
 
 		// Update inventory
 		// Need an item first
-		money, err := repo.GetItemByName(ctx, "money")
+		money, err := craftingRepo.GetItemByName(ctx, "money")
 		if err != nil {
 			t.Fatalf("failed to get money item: %v", err)
 		}
@@ -202,13 +204,13 @@ func TestUserRepository_Integration(t *testing.T) {
 
 	t.Run("Recipe Operations", func(t *testing.T) {
 		// Get an item to use as target
-		money, err := repo.GetItemByName(ctx, "money")
+		money, err := craftingRepo.GetItemByName(ctx, "money")
 		if err != nil || money == nil {
 			t.Skip("money item not found, skipping recipe test")
 		}
 
 		// Get recipe by target item ID
-		recipe, err := repo.GetRecipeByTargetItemID(ctx, money.ID)
+		recipe, err := craftingRepo.GetRecipeByTargetItemID(ctx, money.ID)
 		if err != nil {
 			t.Fatalf("GetRecipeByTargetItemID failed: %v", err)
 		}
@@ -221,7 +223,7 @@ func TestUserRepository_Integration(t *testing.T) {
 			}
 
 			// Check if unlocked (should be false initially)
-			unlocked, err := repo.IsRecipeUnlocked(ctx, user.ID, recipe.ID)
+			unlocked, err := craftingRepo.IsRecipeUnlocked(ctx, user.ID, recipe.ID)
 			if err != nil {
 				t.Fatalf("IsRecipeUnlocked failed: %v", err)
 			}
@@ -230,12 +232,12 @@ func TestUserRepository_Integration(t *testing.T) {
 			}
 
 			// Unlock the recipe
-			if err := repo.UnlockRecipe(ctx, user.ID, recipe.ID); err != nil {
+			if err := craftingRepo.UnlockRecipe(ctx, user.ID, recipe.ID); err != nil {
 				t.Fatalf("UnlockRecipe failed: %v", err)
 			}
 
 			// Verify it's now unlocked
-			unlocked, err = repo.IsRecipeUnlocked(ctx, user.ID, recipe.ID)
+			unlocked, err = craftingRepo.IsRecipeUnlocked(ctx, user.ID, recipe.ID)
 			if err != nil {
 				t.Fatalf("IsRecipeUnlocked failed: %v", err)
 			}
@@ -244,7 +246,7 @@ func TestUserRepository_Integration(t *testing.T) {
 			}
 
 			// Get unlocked recipes
-			unlockedRecipes, err := repo.GetUnlockedRecipesForUser(ctx, user.ID)
+			unlockedRecipes, err := craftingRepo.GetUnlockedRecipesForUser(ctx, user.ID)
 			if err != nil {
 				t.Fatalf("GetUnlockedRecipesForUser failed: %v", err)
 			}
@@ -256,7 +258,7 @@ func TestUserRepository_Integration(t *testing.T) {
 
 	t.Run("Item Buyability", func(t *testing.T) {
 		// Test checking if an item is buyable
-		isBuyable, err := repo.IsItemBuyable(ctx, "money")
+		isBuyable, err := economyRepo.IsItemBuyable(ctx, "money")
 		if err != nil {
 			t.Fatalf("IsItemBuyable failed: %v", err)
 		}
@@ -267,7 +269,7 @@ func TestUserRepository_Integration(t *testing.T) {
 		}
 
 		// Test with non-existent item
-		isBuyable, err = repo.IsItemBuyable(ctx, "nonexistent_item_xyz")
+		isBuyable, err = economyRepo.IsItemBuyable(ctx, "nonexistent_item_xyz")
 		if err != nil {
 			t.Fatalf("IsItemBuyable failed for non-existent item: %v", err)
 		}
@@ -277,7 +279,7 @@ func TestUserRepository_Integration(t *testing.T) {
 	})
 
 	t.Run("GetSellablePrices", func(t *testing.T) {
-		items, err := repo.GetSellablePrices(ctx)
+		items, err := economyRepo.GetSellablePrices(ctx)
 		if err != nil {
 			t.Fatalf("GetSellablePrices failed: %v", err)
 		}
@@ -300,13 +302,13 @@ func TestUserRepository_Integration(t *testing.T) {
 
 	t.Run("GetItemByID", func(t *testing.T) {
 		// First get an item to know its ID
-		money, err := repo.GetItemByName(ctx, "money")
+		money, err := craftingRepo.GetItemByName(ctx, "money")
 		if err != nil || money == nil {
 			t.Skip("money item not found, skipping GetItemByID test")
 		}
 
 		// Get by ID
-		item, err := repo.GetItemByID(ctx, money.ID)
+		item, err := craftingRepo.GetItemByID(ctx, money.ID)
 		if err != nil {
 			t.Fatalf("GetItemByID failed: %v", err)
 		}
@@ -318,7 +320,7 @@ func TestUserRepository_Integration(t *testing.T) {
 		}
 
 		// Test with non-existent ID
-		item, err = repo.GetItemByID(ctx, 999999)
+		item, err = craftingRepo.GetItemByID(ctx, 999999)
 		if err != nil {
 			t.Fatalf("GetItemByID failed for non-existent item: %v", err)
 		}

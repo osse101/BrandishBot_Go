@@ -2,7 +2,6 @@ package postgres
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -10,7 +9,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/osse101/BrandishBot_Go/internal/crafting"
 	"github.com/osse101/BrandishBot_Go/internal/database/generated"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
@@ -38,7 +36,7 @@ type UserTx struct {
 }
 
 // BeginTx starts a new transaction
-func (r *UserRepository) BeginTx(ctx context.Context) (repository.Tx, error) {
+func (r *UserRepository) BeginTx(ctx context.Context) (repository.UserTx, error) {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to begin transaction: %w", err)
@@ -46,63 +44,17 @@ func (r *UserRepository) BeginTx(ctx context.Context) (repository.Tx, error) {
 	return &UserTx{
 		tx: tx,
 		q:  r.q.WithTx(tx),
-		r:  r,
 	}, nil
 }
 
-// GetInventory retrieves inventory within a transaction with an exclusive lock
+// GetInventory retrieves inventory within a transaction
 func (t *UserTx) GetInventory(ctx context.Context, userID string) (*domain.Inventory, error) {
-	userUUID, err := uuid.Parse(userID)
-	if err != nil {
-		return nil, fmt.Errorf("invalid user id: %w", err)
-	}
-
-	emptyInventory := domain.Inventory{Slots: []domain.InventorySlot{}}
-	inventoryJSON, err := json.Marshal(emptyInventory)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal empty inventory: %w", err)
-	}
-
-	err = t.q.EnsureInventoryRow(ctx, generated.EnsureInventoryRowParams{
-		UserID:        userUUID,
-		InventoryData: inventoryJSON,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to ensure inventory row exists: %w", err)
-	}
-
-	inventoryData, err := t.q.GetInventoryForUpdate(ctx, userUUID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get inventory: %w", err)
-	}
-
-	var inventory domain.Inventory
-	if err := json.Unmarshal(inventoryData, &inventory); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal inventory: %w", err)
-	}
-	return &inventory, nil
+	return getInventoryForUpdate(ctx, t.q, userID)
 }
 
 // UpdateInventory updates inventory within a transaction
 func (t *UserTx) UpdateInventory(ctx context.Context, userID string, inventory domain.Inventory) error {
-	userUUID, err := uuid.Parse(userID)
-	if err != nil {
-		return fmt.Errorf("invalid user id: %w", err)
-	}
-
-	inventoryJSON, err := json.Marshal(inventory)
-	if err != nil {
-		return fmt.Errorf("failed to marshal inventory: %w", err)
-	}
-
-	err = t.q.UpdateInventory(ctx, generated.UpdateInventoryParams{
-		UserID:        userUUID,
-		InventoryData: inventoryJSON,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to update inventory: %w", err)
-	}
-	return nil
+	return updateInventory(ctx, t.q, userID, inventory)
 }
 
 // Commit commits the transaction
@@ -172,6 +124,15 @@ func (r *UserRepository) UpsertUser(ctx context.Context, user *domain.User) erro
 		}
 	}
 
+	// Ensure inventory row exists to allow row-level locking
+	err = q.EnsureInventoryRow(ctx, generated.EnsureInventoryRowParams{
+		UserID:        userUUID,
+		InventoryData: []byte(`{"slots": []}`),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to ensure inventory row: %w", err)
+	}
+
 	return tx.Commit(ctx)
 }
 
@@ -188,7 +149,7 @@ func (r *UserRepository) GetUserByPlatformID(ctx context.Context, platform, plat
 		return nil, fmt.Errorf("failed to get user core data: %w", err)
 	}
 
-	return r.mapUserAndLinks(ctx, row.UserID, row.Username)
+	return mapUserAndLinks(ctx, r.q, row.UserID, row.Username)
 }
 
 // GetUserByPlatformUsername finds a user by platform and username (case-insensitive)
@@ -204,85 +165,20 @@ func (r *UserRepository) GetUserByPlatformUsername(ctx context.Context, platform
 		return nil, fmt.Errorf("failed to get user by username: %w", err)
 	}
 
-	return r.mapUserAndLinks(ctx, row.UserID, row.Username)
-}
-
-func (r *UserRepository) mapUserAndLinks(ctx context.Context, userID uuid.UUID, username string) (*domain.User, error) {
-	user := domain.User{
-		ID:       userID.String(),
-		Username: username,
-	}
-
-	links, err := r.q.GetUserPlatformLinks(ctx, userID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get user links: %w", err)
-	}
-
-	for _, link := range links {
-		switch link.Name {
-		case "twitch":
-			user.TwitchID = link.PlatformUserID
-		case "youtube":
-			user.YoutubeID = link.PlatformUserID
-		case "discord":
-			user.DiscordID = link.PlatformUserID
-		}
-	}
-
-	return &user, nil
+	return mapUserAndLinks(ctx, r.q, row.UserID, row.Username)
 }
 
 // GetInventory retrieves the user's inventory
 func (r *UserRepository) GetInventory(ctx context.Context, userID string) (*domain.Inventory, error) {
-	userUUID, err := uuid.Parse(userID)
-	if err != nil {
-		return nil, fmt.Errorf("invalid user id: %w", err)
-	}
-
-	inventoryData, err := r.q.GetInventory(ctx, userUUID)
-	if err != nil {
-		if err == pgx.ErrNoRows {
-			return &domain.Inventory{Slots: []domain.InventorySlot{}}, nil
-		}
-		return nil, fmt.Errorf("failed to get inventory: %w", err)
-	}
-
-	var inventory domain.Inventory
-	if err := json.Unmarshal(inventoryData, &inventory); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal inventory: %w", err)
-	}
-	return &inventory, nil
+	return getInventory(ctx, r.q, userID)
 }
 
 // UpdateInventory updates the user's inventory
 func (r *UserRepository) UpdateInventory(ctx context.Context, userID string, inventory domain.Inventory) error {
-	userUUID, err := uuid.Parse(userID)
-	if err != nil {
-		return fmt.Errorf("invalid user id: %w", err)
-	}
-
-	inventoryJSON, err := json.Marshal(inventory)
-	if err != nil {
-		return fmt.Errorf("failed to marshal inventory: %w", err)
-	}
-
-	err = r.q.UpdateInventory(ctx, generated.UpdateInventoryParams{
-		UserID:        userUUID,
-		InventoryData: inventoryJSON,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to update inventory: %w", err)
-	}
-	return nil
+	return updateInventory(ctx, r.q, userID, inventory)
 }
 
-func textToPtr(t pgtype.Text) *string {
-	if !t.Valid {
-		return nil
-	}
-	s := t.String
-	return &s
-}
+
 
 // GetItemByName retrieves an item by its internal name
 func (r *UserRepository) GetItemByName(ctx context.Context, itemName string) (*domain.Item, error) {
@@ -427,174 +323,11 @@ func (r *UserRepository) GetUserByUsername(ctx context.Context, username string)
 	}, nil
 }
 
-// GetSellablePrices retrieves all sellable items with their prices
-func (r *UserRepository) GetSellablePrices(ctx context.Context) ([]domain.Item, error) {
-	rows, err := r.q.GetSellablePrices(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query sellable items: %w", err)
-	}
 
-	var items []domain.Item
-	for _, row := range rows {
-		items = append(items, domain.Item{
-			ID:           int(row.ItemID),
-			InternalName: row.InternalName,
-			Description:  row.ItemDescription.String,
-			BaseValue:    int(row.BaseValue.Int32),
-		})
-	}
 
-	return items, nil
-}
 
-// IsItemBuyable checks if an item has the 'buyable' type
-func (r *UserRepository) IsItemBuyable(ctx context.Context, itemName string) (bool, error) {
-	return r.q.IsItemBuyable(ctx, itemName)
-}
 
-// GetRecipeByTargetItemID retrieves a recipe by its target item ID
-func (r *UserRepository) GetRecipeByTargetItemID(ctx context.Context, itemID int) (*domain.Recipe, error) {
-	row, err := r.q.GetRecipeByTargetItemID(ctx, int32(itemID))
-	if err != nil {
-		if err == pgx.ErrNoRows {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("failed to get recipe by target item id: %w", err)
-	}
 
-	recipe := domain.Recipe{
-		ID:           int(row.RecipeID),
-		TargetItemID: int(row.TargetItemID),
-		// BaseCost is []RecipeCost here
-		CreatedAt: row.CreatedAt.Time,
-	}
-
-	// Unmarshal BaseCost which is []byte (JSONB)
-	if len(row.BaseCost) > 0 {
-		if err := json.Unmarshal(row.BaseCost, &recipe.BaseCost); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal base cost: %w", err)
-		}
-	} else {
-		recipe.BaseCost = []domain.RecipeCost{}
-	}
-
-	return &recipe, nil
-}
-
-// IsRecipeUnlocked checks if a user has unlocked a specific recipe
-func (r *UserRepository) IsRecipeUnlocked(ctx context.Context, userID string, recipeID int) (bool, error) {
-	userUUID, err := uuid.Parse(userID)
-	if err != nil {
-		return false, fmt.Errorf("invalid user id: %w", err)
-	}
-	return r.q.IsRecipeUnlocked(ctx, generated.IsRecipeUnlockedParams{
-		UserID: userUUID,
-		//nolint:gosec // DB IDs fit in int32
-		RecipeID: int32(recipeID),
-	})
-}
-
-// UnlockRecipe unlocks a recipe for a user
-func (r *UserRepository) UnlockRecipe(ctx context.Context, userID string, recipeID int) error {
-	userUUID, err := uuid.Parse(userID)
-	if err != nil {
-		return fmt.Errorf("invalid user id: %w", err)
-	}
-	err = r.q.UnlockRecipe(ctx, generated.UnlockRecipeParams{
-		UserID: userUUID,
-		//nolint:gosec // DB IDs fit in int32
-		RecipeID: int32(recipeID),
-	})
-	if err != nil {
-		return fmt.Errorf("failed to unlock recipe: %w", err)
-	}
-	return nil
-}
-
-// GetUnlockedRecipesForUser retrieves all recipes unlocked by a specific user
-func (r *UserRepository) GetUnlockedRecipesForUser(ctx context.Context, userID string) ([]crafting.UnlockedRecipeInfo, error) {
-	userUUID, err := uuid.Parse(userID)
-	if err != nil {
-		return nil, fmt.Errorf("invalid user id: %w", err)
-	}
-
-	rows, err := r.q.GetUnlockedRecipesForUser(ctx, userUUID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query unlocked recipes: %w", err)
-	}
-
-	var recipes []crafting.UnlockedRecipeInfo
-	for _, row := range rows {
-		recipes = append(recipes, crafting.UnlockedRecipeInfo{
-			ItemName: row.ItemName,
-			ItemID:   int(row.ItemID),
-		})
-	}
-	return recipes, nil
-}
-
-// GetAllRecipes retrieves all crafting recipes
-func (r *UserRepository) GetAllRecipes(ctx context.Context) ([]crafting.RecipeListItem, error) {
-	rows, err := r.q.GetAllRecipes(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query all recipes: %w", err)
-	}
-
-	var recipes []crafting.RecipeListItem
-	for _, row := range rows {
-		recipes = append(recipes, crafting.RecipeListItem{
-			ItemName: row.ItemName,
-			ItemID:   int(row.ItemID),
-		})
-	}
-	return recipes, nil
-}
-
-// GetDisassembleRecipeBySourceItemID retrieves a disassemble recipe for a given source item
-func (r *UserRepository) GetDisassembleRecipeBySourceItemID(ctx context.Context, itemID int) (*domain.DisassembleRecipe, error) {
-	//nolint:gosec // DB IDs fit in int32
-	row, err := r.q.GetDisassembleRecipeBySourceItemID(ctx, int32(itemID))
-	if err != nil {
-		if err == pgx.ErrNoRows {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("failed to query disassemble recipe: %w", err)
-	}
-
-	recipe := domain.DisassembleRecipe{
-		ID:               int(row.RecipeID),
-		SourceItemID:     int(row.SourceItemID),
-		QuantityConsumed: int(row.QuantityConsumed),
-		CreatedAt:        row.CreatedAt.Time,
-	}
-
-	outputs, err := r.q.GetDisassembleOutputs(ctx, row.RecipeID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query disassemble outputs: %w", err)
-	}
-
-	for _, out := range outputs {
-		recipe.Outputs = append(recipe.Outputs, domain.RecipeOutput{
-			ItemID:   int(out.ItemID),
-			Quantity: int(out.Quantity),
-		})
-	}
-
-	return &recipe, nil
-}
-
-// GetAssociatedUpgradeRecipeID retrieves the upgrade recipe ID associated with a disassemble recipe
-func (r *UserRepository) GetAssociatedUpgradeRecipeID(ctx context.Context, disassembleRecipeID int) (int, error) {
-	//nolint:gosec // DB IDs fit in int32
-	id, err := r.q.GetAssociatedUpgradeRecipeID(ctx, int32(disassembleRecipeID))
-	if err != nil {
-		if err == pgx.ErrNoRows {
-			return 0, fmt.Errorf("no associated upgrade recipe found for disassemble recipe %d", disassembleRecipeID)
-		}
-		return 0, fmt.Errorf("failed to query associated upgrade recipe: %w", err)
-	}
-	return int(id), nil
-}
 
 // GetLastCooldown retrieves the last time a user performed an action
 func (r *UserRepository) GetLastCooldown(ctx context.Context, userID, action string) (*time.Time, error) {

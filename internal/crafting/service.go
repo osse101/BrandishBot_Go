@@ -14,31 +14,6 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
-// Repository defines the interface for data access required by the crafting service
-type Repository interface {
-	GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error)
-	GetItemByName(ctx context.Context, itemName string) (*domain.Item, error)
-	GetItemByID(ctx context.Context, id int) (*domain.Item, error)
-	GetItemsByIDs(ctx context.Context, itemIDs []int) ([]domain.Item, error)
-	GetInventory(ctx context.Context, userID string) (*domain.Inventory, error)
-	UpdateInventory(ctx context.Context, userID string, inventory domain.Inventory) error
-	GetRecipeByTargetItemID(ctx context.Context, itemID int) (*domain.Recipe, error)
-	IsRecipeUnlocked(ctx context.Context, userID string, recipeID int) (bool, error)
-	UnlockRecipe(ctx context.Context, userID string, recipeID int) error
-	GetUnlockedRecipesForUser(ctx context.Context, userID string) ([]UnlockedRecipeInfo, error)
-	BeginTx(ctx context.Context) (repository.Tx, error)
-
-	GetDisassembleRecipeBySourceItemID(ctx context.Context, itemID int) (*domain.DisassembleRecipe, error)
-	GetAssociatedUpgradeRecipeID(ctx context.Context, disassembleRecipeID int) (int, error)
-	GetAllRecipes(ctx context.Context) ([]RecipeListItem, error)
-}
-
-// RecipeListItem represents a recipe in a list
-type RecipeListItem struct {
-	ItemName string `json:"item_name"`
-	ItemID   int    `json:"item_id"`
-}
-
 // RecipeInfo represents recipe information with lock status
 type RecipeInfo struct {
 	ItemName string              `json:"item_name"`
@@ -46,11 +21,7 @@ type RecipeInfo struct {
 	BaseCost []domain.RecipeCost `json:"base_cost,omitempty"`
 }
 
-// UnlockedRecipeInfo represents an unlocked recipe
-type UnlockedRecipeInfo struct {
-	ItemName string `json:"item_name"`
-	ItemID   int    `json:"item_id"`
-}
+
 
 // CraftingResult contains the result of an upgrade operation
 type CraftingResult struct {
@@ -72,8 +43,8 @@ type DisassembleResult struct {
 type Service interface {
 	UpgradeItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (*CraftingResult, error)
 	GetRecipe(ctx context.Context, itemName, platform, platformID, username string) (*RecipeInfo, error)
-	GetUnlockedRecipes(ctx context.Context, platform, platformID, username string) ([]UnlockedRecipeInfo, error)
-	GetAllRecipes(ctx context.Context) ([]RecipeListItem, error)
+	GetUnlockedRecipes(ctx context.Context, platform, platformID, username string) ([]repository.UnlockedRecipeInfo, error)
+	GetAllRecipes(ctx context.Context) ([]repository.RecipeListItem, error)
 	DisassembleItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (*DisassembleResult, error)
 	Shutdown(ctx context.Context) error
 }
@@ -97,7 +68,7 @@ const (
 )
 
 type service struct {
-	repo       Repository
+	repo       repository.Crafting
 	jobService JobService
 	statsSvc   stats.Service
 	rnd        func() float64 // For rolling RNG (does not need to be cryptographically secure)
@@ -105,7 +76,7 @@ type service struct {
 }
 
 // NewService creates a new crafting service
-func NewService(repo Repository, jobService JobService, statsSvc stats.Service) Service {
+func NewService(repo repository.Crafting, jobService JobService, statsSvc stats.Service) Service {
 	return &service{
 		repo:       repo,
 		jobService: jobService,
@@ -371,7 +342,7 @@ func (s *service) GetRecipe(ctx context.Context, itemName, platform, platformID,
 }
 
 // GetUnlockedRecipes returns all recipes that a user has unlocked
-func (s *service) GetUnlockedRecipes(ctx context.Context, platform, platformID, username string) ([]UnlockedRecipeInfo, error) {
+func (s *service) GetUnlockedRecipes(ctx context.Context, platform, platformID, username string) ([]repository.UnlockedRecipeInfo, error) {
 	log := logger.FromContext(ctx)
 	log.Info("GetUnlockedRecipes called", "platform", platform, "platformID", platformID, "username", username)
 
@@ -391,7 +362,7 @@ func (s *service) GetUnlockedRecipes(ctx context.Context, platform, platformID, 
 }
 
 // GetAllRecipes returns all valid crafting recipes
-func (s *service) GetAllRecipes(ctx context.Context) ([]RecipeListItem, error) {
+func (s *service) GetAllRecipes(ctx context.Context) ([]repository.RecipeListItem, error) {
 	log := logger.FromContext(ctx)
 	log.Debug("GetAllRecipes called")
 

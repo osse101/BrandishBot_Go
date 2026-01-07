@@ -67,12 +67,12 @@ func (m *MockRepository) IsItemBuyable(ctx context.Context, itemName string) (bo
 	return args.Bool(0), args.Error(1)
 }
 
-func (m *MockRepository) BeginTx(ctx context.Context) (repository.Tx, error) {
+func (m *MockRepository) BeginTx(ctx context.Context) (repository.EconomyTx, error) {
 	args := m.Called(ctx)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(repository.Tx), args.Error(1)
+	return args.Get(0).(repository.EconomyTx), args.Error(1)
 }
 
 func (m *MockRepository) GetBuyablePrices(ctx context.Context) ([]domain.Item, error) {
