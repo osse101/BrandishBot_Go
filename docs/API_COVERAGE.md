@@ -1,6 +1,6 @@
 # API Coverage Reference
 
-> **Last Updated:** 2026-01-06  
+> **Last Updated:** 2026-01-07  
 > **Maintainer:** Development Team  
 > **Purpose:** Master reference for maintaining API consistency across Discord, Server, and C# Client
 
@@ -148,6 +148,7 @@ This document is the **single source of truth** for keeping these three systems 
 | `POST /admin/reload-aliases` | — | ✅ | ✅ | Reload aliases |
 | `POST /admin/job/award-xp` | `/admin-award-xp` | ✅ | ✅ | Admin XP |
 | `POST /admin/progression/reload-weights` | `/admin-reload-weights` | ✅ | ✅ | Reload cache |
+| `GET /admin/cache/stats` | `/admin-cache-stats` | ✅ | ✅ | Cache stats |
 
 ### Other
 
@@ -162,10 +163,10 @@ This document is the **single source of truth** for keeping these three systems 
 
 | System | Total | Complete | Missing | % |
 | -------- | ------- | ---------- | --------- | --- |
-| **API Endpoints** | 58 | 58 | 0 | 100% |
-| **Discord Commands** | 40 | 40 | 0 | 100% |
-| **C# Client Methods** | 58 | 58 | 0 | 100% |
-| **C# Wrapper Methods** | 58 | 55 | 3 | 93% |
+| **API Endpoints** | 59 | 59 | 0 | 100% |
+| **Discord Commands** | 41 | 41 | 0 | 100% |
+| **C# Client Methods** | 59 | 59 | 0 | 100% |
+| **C# Wrapper Methods** | 59 | 56 | 3 | 95% |
 
 ### Missing Items
 
@@ -270,5 +271,5 @@ grep "public bool" client/csharp/BrandishBotWrapper.cs | wc -l
 
 ---
 
-**Document Version**: 1.0  
-**Last Review**: 2026-01-06
+**Document Version**: 1.1  
+**Last Review**: 2026-01-07

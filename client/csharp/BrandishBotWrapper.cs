@@ -2508,6 +2508,27 @@ public class CPHInline
     }
 
     /// <summary>
+    /// Admin: Get user cache statistics
+    /// Args: (none)
+    /// </summary>
+    public bool AdminGetCacheStats()
+    {
+        EnsureInitialized();
+
+        try
+        {
+            var result = client.AdminGetCacheStats().Result;
+            CPH.SetArgument("response", result);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            CPH.LogError($"AdminGetCacheStats failed: {ex.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>
     /// Get user timeout status (check if user is timed out)
     /// Command: !checkTimeout [username]
     /// </summary>

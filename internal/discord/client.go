@@ -427,6 +427,15 @@ func (c *APIClient) AdminReloadWeights() (string, error) {
 	return resp.Message, nil
 }
 
+// AdminGetCacheStats retrieves user cache statistics (admin only)
+func (c *APIClient) AdminGetCacheStats() (*user.CacheStats, error) {
+	var stats user.CacheStats
+	if err := c.doRequestAndParse(http.MethodGet, "/api/v1/admin/cache/stats", nil, &stats); err != nil {
+		return nil, err
+	}
+	return &stats, nil
+}
+
 // AdminStartVoting starts a new voting session (admin only)
 func (c *APIClient) AdminStartVoting() (string, error) {
 	var resp struct {

@@ -162,6 +162,7 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 
 		// Admin routes
 		adminJobHandler := handler.NewAdminJobHandler(jobService, userService)
+		adminCacheHandler := handler.NewAdminCacheHandler(userService)
 		r.Route("/admin", func(r chi.Router) {
 			r.Post("/reload-aliases", handler.HandleReloadAliases(namingResolver))
 
@@ -173,6 +174,11 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 			// Admin progression routes
 			r.Route("/progression", func(r chi.Router) {
 				r.Post("/reload-weights", progressionHandlers.HandleAdminReloadWeights())
+			})
+
+			// Admin cache routes
+			r.Route("/cache", func(r chi.Router) {
+				r.Get("/stats", adminCacheHandler.HandleGetCacheStats)
 			})
 		})
 	})

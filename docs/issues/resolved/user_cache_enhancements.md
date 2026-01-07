@@ -1,13 +1,33 @@
 # User Cache Enhancements
 
 **Created:** 2026-01-02  
-**Status:** Proposed  
+**Status:** RESOLVED  
+**Resolved:** 2026-01-07  
 **Priority:** Medium  
 **Labels:** performance, caching, enhancement
 
 ## Summary
 
 Enhance the recently implemented user lookup cache with instrumentation, explicit invalidation, and production monitoring to maximize effectiveness and prevent stale data issues.
+
+## Resolution
+
+**Closed on 2026-01-07** - Core enhancements completed, scope simplified.
+
+**What was completed:**
+
+- ✅ Cache instrumentation (hits, misses, evictions tracking)
+- ✅ Environment-based configuration (`USER_CACHE_SIZE`, `USER_CACHE_TTL`)
+- ✅ Explicit cache invalidation on user updates, registration, and account linking
+- ✅ HTTP endpoint for cache stats: `GET /api/v1/admin/cache/stats`
+- ✅ `GetCacheStats()` service method exposed
+
+**Deferred items:**
+
+- Prometheus/Grafana dashboard (monitoring infrastructure not critical at current scale)
+- Complex monitoring setup (can be added when needed)
+
+**Decision:** The essential enhancements are complete. Cache is fully instrumented and accessible via API. Advanced monitoring can be added later if needed based on production metrics.
 
 ## Background
 
@@ -17,8 +37,6 @@ User lookup caching was implemented in Optimization 3 ([`internal/user/cache.go`
 - Cache-first lookup in [`getUserOrRegister()`](file:///home/osse1/projects/BrandishBot_Go/internal/user/service.go#L1024-L1063)
 
 **Expected Impact:** 60-80% reduction in DB queries for user lookups
-
-**Current Limitation:** No metrics visibility or explicit invalidation on updates.
 
 ## Related Files
 
