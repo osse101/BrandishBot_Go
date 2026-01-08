@@ -19,6 +19,7 @@ const (
 	EventGambleTieBreakLost EventType = "gamble_tie_break_lost"
 	EventGambleCriticalFail EventType = "gamble_critical_fail"
 	EventDailyStreak        EventType = "daily_streak"
+	EventDistanceTraveled   EventType = "distance_traveled"
 	// Search events
 	EventSearch                  EventType = "search"
 	EventSearchNearMiss          EventType = "search_near_miss"

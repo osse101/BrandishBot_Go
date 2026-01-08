@@ -1094,6 +1094,15 @@ func (s *service) executeSearch(ctx context.Context, user *domain.User) (string,
 
 	params := s.calculateSearchParameters(ctx, user)
 
+	// Calculate distance traveled (fun stat)
+	// Base distance 100-500m, potentially boosted
+	distance := utils.SecureRandomIntRange(100, 500)
+	if s.statsService != nil {
+		_ = s.statsService.RecordUserEvent(ctx, user.ID, domain.EventDistanceTraveled, map[string]interface{}{
+			"distance": distance,
+		})
+	}
+
 	// Perform search roll
 	roll := utils.SecureRandomFloat()
 	if params.isFirstSearchDaily {
@@ -1112,6 +1121,9 @@ func (s *service) executeSearch(ctx context.Context, user *domain.User) (string,
 	} else {
 		resultMessage = s.processSearchFailure(ctx, user, roll, params.successThreshold, params)
 	}
+
+	// Append distance info
+	resultMessage += fmt.Sprintf(domain.MsgDistanceTraveled, distance)
 
 	// Record search attempt (to track daily count)
 	if s.statsService != nil {

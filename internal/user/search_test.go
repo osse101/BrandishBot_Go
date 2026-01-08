@@ -291,7 +291,7 @@ func TestHandleSearch_Success(t *testing.T) {
 		isValid = true
 	} else {
 		for _, msg := range domain.SearchFailureMessages {
-			if message == msg {
+			if strings.Contains(message, msg) {
 				isValid = true
 				break
 			}
@@ -383,7 +383,7 @@ func TestHandleSearch_NewUserCreation(t *testing.T) {
 		isValid = true
 	} else {
 		for _, msg := range domain.SearchFailureMessages {
-			if message == msg {
+			if strings.Contains(message, msg) {
 				isValid = true
 				break
 			}
@@ -671,7 +671,7 @@ func TestHandleSearch_NearMiss_Statistical(t *testing.T) {
 		msg, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
 		require.NoError(t, err)
 
-		if msg == domain.MsgSearchNearMiss {
+		if strings.Contains(msg, domain.MsgSearchNearMiss) {
 			nearMissCount++
 		}
 	}
