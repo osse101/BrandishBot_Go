@@ -947,8 +947,12 @@ func TestIsItemUnlocked(t *testing.T) {
 		t.Error("Money should not be unlocked yet")
 	}
 
-	// Unlock money
+	// Unlock money via repository (bypasses event system in test)
 	repo.UnlockNode(ctx, 2, 1, "test", 0)
+
+	// In production, the event bus would trigger cache invalidation
+	// In tests without event bus, we manually clear the cache
+	service.InvalidateUnlockCacheForTest()
 
 	unlockedNow, err := service.IsItemUnlocked(ctx, "money")
 	if err != nil {
@@ -958,6 +962,7 @@ func TestIsItemUnlocked(t *testing.T) {
 		t.Error("Money should be unlocked now")
 	}
 }
+
 
 func TestEngagementTracking(t *testing.T) {
 	repo := NewMockRepository()

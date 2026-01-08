@@ -58,6 +58,9 @@ type Service interface {
 	ResetProgressionTree(ctx context.Context, resetBy string, reason string, preserveUserData bool) error
 	InvalidateWeightCache() // Clears engagement weight cache (forces reload on next engagement)
 
+	// Test helpers (should only be used in tests)
+	InvalidateUnlockCacheForTest()
+
 	// Shutdown gracefully shuts down the service
 	Shutdown(ctx context.Context) error
 }
@@ -79,6 +82,9 @@ type service struct {
 	// Cache for modifier values (reduces DB load for feature values)
 	modifierCache *ModifierCache
 
+	// Cache for node unlock status (reduces DB load for feature checks)
+	unlockCache *UnlockCache
+
 	// Semaphore to prevent concurrent unlock attempts
 	unlockSem chan struct{}
 
@@ -95,12 +101,13 @@ func NewService(repo repository.Progression, bus event.Bus) Service {
 		repo:           repo,
 		bus:            bus,
 		modifierCache:  NewModifierCache(30 * time.Minute), // 30-min TTL
+		unlockCache:    NewUnlockCache(),                    // No TTL - invalidate on unlock/relock
 		unlockSem:      make(chan struct{}, 1),             // Buffer of 1 = only one unlock check at a time
 		shutdownCtx:    shutdownCtx,
 		shutdownCancel: shutdownCancel,
 	}
 
-	// Subscribe to node unlock/relock events to invalidate modifier cache
+	// Subscribe to node unlock/relock events to invalidate caches
 	if bus != nil {
 		bus.Subscribe("progression.node_unlocked", svc.handleNodeUnlocked)
 		bus.Subscribe("progression.node_relocked", svc.handleNodeRelocked)
@@ -108,6 +115,13 @@ func NewService(repo repository.Progression, bus event.Bus) Service {
 
 	return svc
 }
+
+// InvalidateUnlockCacheForTest clears the unlock cache for testing purposes
+// This should only be used in tests where there's no event bus to trigger automatic invalidation
+func (s *service) InvalidateUnlockCacheForTest() {
+	s.unlockCache.InvalidateAll()
+}
+
 
 // GetProgressionTree returns the full tree with unlock status
 func (s *service) GetProgressionTree(ctx context.Context) ([]*domain.ProgressionTreeNode, error) {
@@ -214,14 +228,43 @@ func (s *service) GetNode(ctx context.Context, id int) (*domain.ProgressionNode,
 
 // IsFeatureUnlocked checks if a feature is available
 func (s *service) IsFeatureUnlocked(ctx context.Context, featureKey string) (bool, error) {
-	return s.repo.IsNodeUnlocked(ctx, featureKey, 1)
+	// Check cache first (hottest query in the system)
+	if unlocked, found := s.unlockCache.Get(featureKey, 1); found {
+		return unlocked, nil
+	}
+
+	// Cache miss - query database
+	unlocked, err := s.repo.IsNodeUnlocked(ctx, featureKey, 1)
+	if err != nil {
+		return false, err
+	}
+
+	// Cache the result
+	s.unlockCache.Set(featureKey, 1, unlocked)
+
+	return unlocked, nil
 }
 
 // IsItemUnlocked checks if an item is available
 func (s *service) IsItemUnlocked(ctx context.Context, itemName string) (bool, error) {
 	// Item names are prefixed with "item_"
 	nodeKey := fmt.Sprintf("item_%s", itemName)
-	return s.repo.IsNodeUnlocked(ctx, nodeKey, 1)
+
+	// Check cache first
+	if unlocked, found := s.unlockCache.Get(nodeKey, 1); found {
+		return unlocked, nil
+	}
+
+	// Cache miss - query database
+	unlocked, err := s.repo.IsNodeUnlocked(ctx, nodeKey, 1)
+	if err != nil {
+		return false, err
+	}
+
+	// Cache the result
+	s.unlockCache.Set(nodeKey, 1, unlocked)
+
+	return unlocked, nil
 }
 
 // VoteForUnlock allows a user to vote for next unlock (updated for voting sessions)
@@ -743,28 +786,34 @@ func (s *service) GetModifierForFeature(ctx context.Context, featureKey string) 
 	return modifier, nil
 }
 
-// handleNodeUnlocked invalidates modifier cache when any node is unlocked
+// handleNodeUnlocked invalidates caches when any node is unlocked
 func (s *service) handleNodeUnlocked(ctx context.Context, e event.Event) error {
-	// Invalidate entire cache - simple and ensures consistency
+	// Invalidate modifier cache - values may have changed
 	s.modifierCache.InvalidateAll()
+
+	// Invalidate unlock cache - new features may be available
+	s.unlockCache.InvalidateAll()
 
 	log := logger.FromContext(ctx)
 	if payload, ok := e.Payload.(map[string]interface{}); ok {
-		log.Info("Invalidated modifier cache due to node unlock",
+		log.Info("Invalidated caches due to node unlock",
 			"node_key", payload["node_key"],
 			"level", payload["level"])
 	}
 	return nil
 }
 
-// handleNodeRelocked invalidates modifier cache when any node is relocked
+// handleNodeRelocked invalidates caches when any node is relocked
 func (s *service) handleNodeRelocked(ctx context.Context, e event.Event) error {
-	// Invalidate entire cache - modifier values have changed
+	// Invalidate modifier cache - values have changed
 	s.modifierCache.InvalidateAll()
+
+	// Invalidate unlock cache - features may no longer be available
+	s.unlockCache.InvalidateAll()
 
 	log := logger.FromContext(ctx)
 	if payload, ok := e.Payload.(map[string]interface{}); ok {
-		log.Info("Invalidated modifier cache due to node relock",
+		log.Info("Invalidated caches due to node relock",
 			"node_key", payload["node_key"],
 			"level", payload["level"])
 	}
