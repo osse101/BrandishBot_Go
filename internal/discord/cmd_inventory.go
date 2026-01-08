@@ -3,6 +3,7 @@ package discord
 import (
 	"fmt"
 	"log/slog"
+	"strconv"
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
@@ -115,11 +116,17 @@ func InventoryCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		if len(items) == 0 {
 			description = "Your inventory is empty."
 		} else {
-			var lines []string
-			for _, item := range items {
-				lines = append(lines, fmt.Sprintf("**%s** x%d", item.Name, item.Quantity))
+			var sb strings.Builder
+			for i, item := range items {
+				if i > 0 {
+					sb.WriteByte('\n')
+				}
+				sb.WriteString("**")
+				sb.WriteString(item.Name)
+				sb.WriteString("** x")
+				sb.WriteString(strconv.Itoa(item.Quantity))
 			}
-			description = strings.Join(lines, "\n")
+			description = sb.String()
 		}
 
 		embed := &discordgo.MessageEmbed{
