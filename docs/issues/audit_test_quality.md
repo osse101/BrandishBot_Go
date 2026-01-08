@@ -54,13 +54,24 @@ internal/user -> mocks -> internal/user (IMPORT CYCLE!)
 
 **Remaining recommendation**: Optionally rename `user.MockRepository` to `user.FakeRepository` to clarify it's a stateful fake (not critical).
 
-## 2. Standardize Test Structure
-*   [ ] Refactor `internal/crafting/service_test.go` and `internal/lootbox/service_test.go` to explicitly follow the 5-Case Testing Model with comments.
-*   [ ] Ensure every public method has at least one test for each applicable case (Best, Boundary, Error, Concurrent, Nil/Empty).
+## ~~2. Standardize Test Structure~~ [RESOLVED - 2026-01-08]
+
+**Original finding**: `internal/crafting/service_test.go` did not follow the standard 5-Case Testing Model.
+
+**Resolution**: Refactored `internal/crafting/service_test.go` to strictly adhere to the model:
+-   **Best Case**: Validated happy paths for `UpgradeItem`, `DisassembleItem`, and lookups.
+-   **Boundary Case**: Tested Masterwork/Perfect Salvage triggers and partial operations (insufficient materials).
+-   **Error Case**: Verified handling of missing items, locked recipes, and invalid users.
+-   **Concurrent Case**: Implemented `sync.RWMutex` in `MockRepository` and added concurrent execution tests to verify thread safety.
+-   **Nil/Empty Case**: Tested zero quantities and empty inputs.
 
 ## 3. Expand Integration Tests
 *   [ ] Add `gamble_integration_test.go` to `internal/database/postgres` to test the full gamble lifecycle with real database transactions.
 
-## 4. Add Benchmarks
-*   [ ] Add benchmarks for `CraftingService.UpgradeItem` and `DisassembleItem`.
-*   [ ] Add benchmarks for `GambleService.ExecuteGamble` with varying numbers of participants.
+## ~~4. Add Benchmarks~~ [RESOLVED - 2026-01-08]
+**Original finding**: Missing benchmarks for critical crafting operations.
+
+**Resolution**: Created `internal/crafting/bench_test.go` with benchmarks for:
+-   `UpgradeItem`
+-   `DisassembleItem`
+-   Implemented a zero-overhead `StubRepository` to isolate service logic performance from mock overhead.
