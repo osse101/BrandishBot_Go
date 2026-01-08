@@ -1216,6 +1216,38 @@ func (_c *MockProgressionService_GetUserEngagement_Call) RunAndReturn(run func(c
 	return _c
 }
 
+// InvalidateUnlockCacheForTest provides a mock function with no fields
+func (_m *MockProgressionService) InvalidateUnlockCacheForTest() {
+	_m.Called()
+}
+
+// MockProgressionService_InvalidateUnlockCacheForTest_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'InvalidateUnlockCacheForTest'
+type MockProgressionService_InvalidateUnlockCacheForTest_Call struct {
+	*mock.Call
+}
+
+// InvalidateUnlockCacheForTest is a helper method to define mock.On call
+func (_e *MockProgressionService_Expecter) InvalidateUnlockCacheForTest() *MockProgressionService_InvalidateUnlockCacheForTest_Call {
+	return &MockProgressionService_InvalidateUnlockCacheForTest_Call{Call: _e.mock.On("InvalidateUnlockCacheForTest")}
+}
+
+func (_c *MockProgressionService_InvalidateUnlockCacheForTest_Call) Run(run func()) *MockProgressionService_InvalidateUnlockCacheForTest_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockProgressionService_InvalidateUnlockCacheForTest_Call) Return() *MockProgressionService_InvalidateUnlockCacheForTest_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockProgressionService_InvalidateUnlockCacheForTest_Call) RunAndReturn(run func()) *MockProgressionService_InvalidateUnlockCacheForTest_Call {
+	_c.Run(run)
+	return _c
+}
+
 // InvalidateWeightCache provides a mock function with no fields
 func (_m *MockProgressionService) InvalidateWeightCache() {
 	_m.Called()
