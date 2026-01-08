@@ -67,10 +67,8 @@ type Service interface {
 }
 
 type UserInventoryItem struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Quantity    int    `json:"quantity"`
-	Value       int    `json:"value"`
+	Name     string `json:"name"`
+	Quantity int    `json:"quantity"`
 }
 
 // ItemEffectHandler defines the function signature for item effects
@@ -513,10 +511,8 @@ func (s *service) getInventoryInternal(ctx context.Context, user *domain.User, f
 		}
 
 		items = append(items, UserInventoryItem{
-			Name:        item.InternalName,
-			Description: item.Description,
-			Quantity:    slot.Quantity,
-			Value:       item.BaseValue,
+			Name:     item.PublicName,
+			Quantity: slot.Quantity,
 		})
 	}
 

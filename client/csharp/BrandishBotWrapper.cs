@@ -19,28 +19,39 @@ public class CPHInline
     // Initialize the client (called automatically on first use)
     private void EnsureInitialized()
     {
-        if (client == null)
+        try
         {
-            //string baseUrl = "http://127.0.0.1:8080";
-            string baseUrl = CPH.GetGlobalVar<string>("ServerBaseURL", persisted:true);
-            string apiKey = CPH.GetGlobalVar<string>("ServerApiKey", persisted:true);
-            
-            if (string.IsNullOrEmpty(baseUrl))
+            // Check if client is null or from unloaded AppDomain (hot reload)
+            if (client == null)
             {
-                CPH.LogError("CONFIGURATION ERROR: ServerBaseURL global variable is not set!");
-                CPH.LogError("Name: ServerBaseURL, Value: http://IP:PORT (or your server URL)");
-                throw new InvalidOperationException("ServerBaseURL not configured");
+                string baseUrl = "http://127.0.0.1:8080";
+                //string baseUrl = CPH.GetGlobalVar<string>("ServerBaseURL", persisted:true);
+                string apiKey = CPH.GetGlobalVar<string>("ServerApiKey", persisted:true);
+                
+                if (string.IsNullOrEmpty(baseUrl))
+                {
+                    CPH.LogError("CONFIGURATION ERROR: ServerBaseURL global variable is not set!");
+                    CPH.LogError("Name: ServerBaseURL, Value: http://IP:PORT (or your server URL)");
+                    throw new InvalidOperationException("ServerBaseURL not configured");
+                }
+                
+                if (string.IsNullOrEmpty(apiKey))
+                {
+                    CPH.LogError("CONFIGURATION ERROR: ServerApiKey global variable is not set!");
+                    CPH.LogError("Name: ServerApiKey, Value: your-api-key-here");
+                    throw new InvalidOperationException("ServerApiKey not configured");
+                }
+                
+                BrandishBotClient.Initialize(baseUrl, apiKey);
+                client = BrandishBotClient.Instance;
             }
-            
-            if (string.IsNullOrEmpty(apiKey))
-            {
-                CPH.LogError("CONFIGURATION ERROR: ServerApiKey global variable is not set!");
-                CPH.LogError("Name: ServerApiKey, Value: your-api-key-here");
-                throw new InvalidOperationException("ServerApiKey not configured");
-            }
-            
-            BrandishBotClient.Initialize(baseUrl, apiKey);
-            client = BrandishBotClient.Instance;
+        }
+        catch (AppDomainUnloadedException)
+        {
+            // Hot reload occurred - reset client and retry
+            CPH.LogInfo("Detected hot reload, reinitializing client...");
+            client = null;
+            EnsureInitialized(); // Retry
         }
     }
 
@@ -118,6 +129,47 @@ public class CPHInline
     }
 
     /// <summary>
+    /// Helper: Format inventory JSON response for readability
+    /// </summary>
+    private string FormatInventory(string jsonResponse)
+    {
+        try
+        {
+            var inventory = Newtonsoft.Json.Linq.JObject.Parse(jsonResponse);
+            var items = inventory["items"];
+            var formattedItems = new System.Collections.Generic.List<string>();
+
+            // Parse all items
+            foreach (var item in items)
+            {
+                string name = item["name"].ToString();
+                int qty = (int)item["quantity"];
+
+                // Money gets special treatment - always first, emoji only
+                if (name == "money")
+                {
+                    formattedItems.Insert(0, $"💰 {qty}");
+                }
+                else
+                {
+                    formattedItems.Add($"{qty}x {name}");
+                }
+            }
+
+            return formattedItems.Count > 0 
+                ? string.Join(" | ", formattedItems)
+                : "Empty inventory";
+        }
+        catch (Exception ex)
+        {
+            CPH.LogWarn($"FormatInventory failed: {ex.Message}");
+            return jsonResponse; // Return raw JSON if parsing fails
+        }
+    }
+
+
+
+    /// <summary>
     /// Get the backend version
     /// Args: (none)
     /// </summary>
@@ -143,6 +195,7 @@ public class CPHInline
     /// <summary>
     /// Register a new user
     /// Uses: userType, userId, userName (from streamer.bot context)
+    /// Note: auto-called on first interaction
     /// </summary>
     public bool RegisterUser()
     {
@@ -172,34 +225,40 @@ public class CPHInline
     /// <summary>
     /// Get user's inventory
     /// Uses: userType, userId, userName (from streamer.bot context)
-    /// Note: Will use username-based lookup if userId is not available
+    /// Note: Will use username-based lookup if provided
     /// </summary>
     public bool GetInventory()
     {
         EnsureInitialized();
-        
+        string error = null;
         if (!CPH.TryGetArg("userType", out string platform)) return false;
-        if (!CPH.TryGetArg("userName", out string username)) return false;
 
-        try
-        {
-            // Try to use platform_id if available, otherwise fall back to username-only
-            if (CPH.TryGetArg("userId", out string platformId) && !string.IsNullOrEmpty(platformId))
+        if (GetInputString(0, "target_user", true, out string targetUser, ref error) && targetUser != string.Empty)
+        {   //target other user
+            try
             {
-                var result = client.GetInventory(platform, platformId, username).Result;
-                CPH.SetArgument("response", result);
+                var result = client.GetInventoryByUsername(platform, targetUser).Result;
+                CPH.SetArgument("response", FormatInventory(result));
+                return true;
+            }catch(Exception ex){
+                CPH.LogError($"GetInventoryByUsername failed: {ex.Message}");
+                return false;
             }
-            else
+        }else
+        {   //target self
+            try
             {
-                var result = client.GetInventoryByUsername(platform, username).Result;
-                CPH.SetArgument("response", result);
+                if (!CPH.TryGetArg("userName", out string userName)) return false;
+                if (!CPH.TryGetArg("userId", out string platformId)) return false;
+                var result = client.GetInventory(platform, platformId, userName).Result;
+                CPH.SetArgument("response", FormatInventory(result));
+                return true;
             }
-            return true;
-        }
-        catch (Exception ex)
-        {
-            CPH.LogError($"GetInventory failed: {ex.Message}");
-            return false;
+            catch (Exception ex)
+            {
+                CPH.LogError($"GetInventory failed: {ex.Message}");
+                return false;
+            }
         }
     }
 

@@ -434,9 +434,6 @@ func TestGetInventory(t *testing.T) {
 				if item.Quantity != 2 {
 					t.Errorf("Expected 2 lootbox1, got %d", item.Quantity)
 				}
-				if item.Value != 50 {
-					t.Errorf("Expected value 50 for lootbox1, got %d", item.Value)
-				}
 			}
 			if item.Name == domain.ItemMoney {
 				foundMoney = true
