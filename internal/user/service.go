@@ -882,72 +882,10 @@ func (s *service) GetInventoryByUsername(ctx context.Context, platform, username
 	// Look up user by username
 	user, err := s.repo.GetUserByPlatformUsername(ctx, platform, username)
 	if err != nil {
-		return nil, err // Propagate ErrUserNotFound
+		return nil, err
 	}
 
-	inventory, err := s.repo.GetInventory(ctx, user.ID)
-	if err != nil {
-		log.Error("Failed to get inventory", "error", err, "userID", user.ID)
-		return nil, fmt.Errorf("failed to get inventory: %w", err)
-	}
-
-	// Optimization: Batch fetch all item details using cache
-	itemMap := make(map[int]domain.Item)
-	var missingIDs []int
-
-	s.itemCacheMu.RLock()
-	for _, slot := range inventory.Slots {
-		if item, ok := s.itemCache[slot.ItemID]; ok {
-			itemMap[slot.ItemID] = item
-		} else {
-			missingIDs = append(missingIDs, slot.ItemID)
-		}
-	}
-	s.itemCacheMu.RUnlock()
-
-	if len(missingIDs) > 0 {
-		itemList, err := s.repo.GetItemsByIDs(ctx, missingIDs)
-		if err != nil {
-			log.Error("Failed to get item details", "error", err)
-			return nil, fmt.Errorf("failed to get item details: %w", err)
-		}
-
-		s.itemCacheMu.Lock()
-		for _, item := range itemList {
-			s.itemCache[item.ID] = item
-			s.itemCacheByName[item.InternalName] = item
-			itemMap[item.ID] = item
-		}
-		s.itemCacheMu.Unlock()
-	}
-
-	var items []UserInventoryItem
-	for _, slot := range inventory.Slots {
-		item, ok := itemMap[slot.ItemID]
-		if !ok {
-			log.Warn("Item missing for slot", "itemID", slot.ItemID)
-			continue
-		}
-		// Filter logic
-		if filter != "" {
-			hasType := false
-			for _, t := range item.Types {
-				if t == filter {
-					hasType = true
-					break
-				}
-			}
-			if !hasType {
-				continue
-			}
-		}
-		displayName := s.namingResolver.GetDisplayName(item.InternalName, "")
-		items = append(items, UserInventoryItem{
-			Name:     displayName,
-			Quantity: slot.Quantity,
-		})
-	}
-	return items, nil
+	return s.getInventoryInternal(ctx, user, filter)
 }
 
 // GetUserByPlatformUsername retrieves a user by platform and username

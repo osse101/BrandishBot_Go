@@ -271,3 +271,10 @@ func (f *FakeRepository) UpdateCooldown(ctx context.Context, userID, action stri
 func (f *FakeRepository) MergeUsersInTransaction(ctx context.Context, primaryUserID, secondaryUserID string, mergedUser domain.User, mergedInventory domain.Inventory) error {
 	return nil // No-op for mock
 }
+func (f *FakeRepository) GetAllItems(ctx context.Context) ([]domain.Item, error) {
+	var items []domain.Item
+	for _, item := range f.items {
+		items = append(items, *item)
+	}
+	return items, nil
+}

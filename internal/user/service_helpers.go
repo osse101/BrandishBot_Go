@@ -7,7 +7,13 @@ import (
 )
 
 // getItemByNameCached retrieves an item from cache or DB
+// Supports both internal names (lootbox_tier0) and public names (junkbox)
 func (s *service) getItemByNameCached(ctx context.Context, name string) (*domain.Item, error) {
+	// Try to resolve as public name first (e.g., "junkbox" -> "lootbox_tier0")
+	if internalName, ok := s.namingResolver.ResolvePublicName(name); ok {
+		name = internalName
+	}
+	
 	s.itemCacheMu.RLock()
 	if item, ok := s.itemCacheByName[name]; ok {
 		s.itemCacheMu.RUnlock()

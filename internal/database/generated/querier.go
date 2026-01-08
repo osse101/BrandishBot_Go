@@ -39,6 +39,7 @@ type Querier interface {
 	GetActiveSession(ctx context.Context) (GetActiveSessionRow, error)
 	GetActiveUnlockProgress(ctx context.Context) (ProgressionUnlockProgress, error)
 	GetActiveVoting(ctx context.Context) (ProgressionVoting, error)
+	GetAllItems(ctx context.Context) ([]GetAllItemsRow, error)
 	GetAllJobs(ctx context.Context) ([]Job, error)
 	GetAllNodes(ctx context.Context) ([]GetAllNodesRow, error)
 	GetAllRecipes(ctx context.Context) ([]GetAllRecipesRow, error)

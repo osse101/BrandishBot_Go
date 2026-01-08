@@ -268,6 +268,17 @@ func main() {
 	}
 	slog.Info("Naming resolver initialized")
 
+	// Register all items with naming resolver for public name resolution
+	allItems, err := userRepo.GetAllItems(context.Background())
+	if err != nil {
+		slog.Error("Failed to load items for naming resolver", "error", err)
+		os.Exit(1)
+	}
+	for _, item := range allItems {
+		namingResolver.RegisterItem(item.InternalName, item.PublicName)
+	}
+	slog.Info("Items registered with naming resolver", "count", len(allItems))
+
 	// Initialize Cooldown Service
 	cooldownSvc := cooldown.NewPostgresService(dbPool, cooldown.Config{
 		DevMode: cfg.DevMode,

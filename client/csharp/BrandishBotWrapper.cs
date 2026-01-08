@@ -15,6 +15,10 @@ public class CPHInline
 {
     // Singleton client - shared across all method calls in this action
     private static BrandishBotClient client;
+    
+    // Compiled regex for username validation (performance optimization)
+    private static readonly System.Text.RegularExpressions.Regex UsernameRegex = 
+        new System.Text.RegularExpressions.Regex(@"^[a-zA-Z0-9_]+$", System.Text.RegularExpressions.RegexOptions.Compiled);
 
     // Initialize the client (called automatically on first use)
     private void EnsureInitialized()
@@ -91,8 +95,13 @@ public class CPHInline
         
         if (exists && !string.IsNullOrWhiteSpace(inputVal))
         {
-            value = inputVal;
-            return true;
+            // For usernames, validate alphanumeric + underscore (filters invisible chars like U+034F)
+            string trimmed = inputVal.Trim();
+            if (!string.IsNullOrEmpty(trimmed) && UsernameRegex.IsMatch(trimmed))
+            {
+                value = trimmed;
+                return true;
+            }
         }
 
         if (required)
@@ -233,7 +242,7 @@ public class CPHInline
         string error = null;
         if (!CPH.TryGetArg("userType", out string platform)) return false;
 
-        if (GetInputString(0, "target_user", true, out string targetUser, ref error) && targetUser != string.Empty)
+        if (GetInputString(0, "target_user", true, out string targetUser, ref error) && !string.IsNullOrWhiteSpace(targetUser))
         {   //target other user
             try
             {

@@ -75,6 +75,57 @@ func (q *Queries) EnsureInventoryRow(ctx context.Context, arg EnsureInventoryRow
 	return err
 }
 
+const getAllItems = `-- name: GetAllItems :many
+SELECT 
+    i.item_id, i.internal_name, i.public_name, i.default_display, i.item_description, i.base_value, i.handler,
+    COALESCE(array_agg(t.type_name) FILTER (WHERE t.type_name IS NOT NULL), '{}')::text[] as types
+FROM items i
+LEFT JOIN item_type_assignments ita ON i.item_id = ita.item_id
+LEFT JOIN item_types t ON ita.item_type_id = t.item_type_id
+GROUP BY i.item_id
+ORDER BY i.item_id
+`
+
+type GetAllItemsRow struct {
+	ItemID          int32       `json:"item_id"`
+	InternalName    string      `json:"internal_name"`
+	PublicName      pgtype.Text `json:"public_name"`
+	DefaultDisplay  pgtype.Text `json:"default_display"`
+	ItemDescription pgtype.Text `json:"item_description"`
+	BaseValue       pgtype.Int4 `json:"base_value"`
+	Handler         pgtype.Text `json:"handler"`
+	Types           []string    `json:"types"`
+}
+
+func (q *Queries) GetAllItems(ctx context.Context) ([]GetAllItemsRow, error) {
+	rows, err := q.db.Query(ctx, getAllItems)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAllItemsRow
+	for rows.Next() {
+		var i GetAllItemsRow
+		if err := rows.Scan(
+			&i.ItemID,
+			&i.InternalName,
+			&i.PublicName,
+			&i.DefaultDisplay,
+			&i.ItemDescription,
+			&i.BaseValue,
+			&i.Handler,
+			&i.Types,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getAllRecipes = `-- name: GetAllRecipes :many
 SELECT i.internal_name AS item_name, r.target_item_id AS item_id, i.item_description
 FROM crafting_recipes r

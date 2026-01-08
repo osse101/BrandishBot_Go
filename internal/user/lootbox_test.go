@@ -13,7 +13,6 @@ import (
 )
 
 // MockRepo is a minimal mock for the repository needed for lootbox tests
-// MockRepo is a minimal mock for the repository needed for lootbox tests
 type MockRepo struct {
 	mock.Mock
 }
@@ -178,6 +177,14 @@ func (m *MockRepo) UpdateCooldown(ctx context.Context, userID, action string, ti
 func (m *MockRepo) MergeUsersInTransaction(ctx context.Context, primaryUserID, secondaryUserID string, mergedUser domain.User, mergedInventory domain.Inventory) error {
 	args := m.Called(ctx, primaryUserID, secondaryUserID, mergedUser, mergedInventory)
 	return args.Error(0)
+}
+
+func (m *MockRepo) GetAllItems(ctx context.Context) ([]domain.Item, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]domain.Item), args.Error(1)
 }
 
 // MockLootboxService is a mock for lootbox.Service

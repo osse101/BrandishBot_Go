@@ -108,6 +108,16 @@ LEFT JOIN item_types t ON ita.item_type_id = t.item_type_id
 WHERE i.item_id = $1
 GROUP BY i.item_id;
 
+-- name: GetAllItems :many
+SELECT 
+    i.item_id, i.internal_name, i.public_name, i.default_display, i.item_description, i.base_value, i.handler,
+    COALESCE(array_agg(t.type_name) FILTER (WHERE t.type_name IS NOT NULL), '{}')::text[] as types
+FROM items i
+LEFT JOIN item_type_assignments ita ON i.item_id = ita.item_id
+LEFT JOIN item_types t ON ita.item_type_id = t.item_type_id
+GROUP BY i.item_id
+ORDER BY i.item_id;
+
 -- name: GetSellablePrices :many
 SELECT DISTINCT i.item_id, i.internal_name, i.item_description, i.base_value
 FROM items i

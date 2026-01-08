@@ -201,6 +201,14 @@ func (m *mockSearchRepo) MergeUsersInTransaction(ctx context.Context, primaryUse
 	return nil // No-op
 }
 
+func (m *mockSearchRepo) GetAllItems(ctx context.Context) ([]domain.Item, error) {
+	var items []domain.Item
+	for _, item := range m.items {
+		items = append(items, *item)
+	}
+	return items, nil
+}
+
 // Mock cooldown service
 type mockCooldownService struct {
 	repo *mockSearchRepo

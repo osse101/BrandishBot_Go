@@ -283,6 +283,29 @@ func (r *UserRepository) GetItemsByNames(ctx context.Context, names []string) ([
 	return items, nil
 }
 
+// GetAllItems retrieves all items from the database
+func (r *UserRepository) GetAllItems(ctx context.Context) ([]domain.Item, error) {
+	rows, err := r.q.GetAllItems(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all items: %w", err)
+	}
+
+	var items []domain.Item
+	for _, row := range rows {
+		items = append(items, domain.Item{
+			ID:             int(row.ItemID),
+			InternalName:   row.InternalName,
+			PublicName:     row.PublicName.String,
+			DefaultDisplay: row.DefaultDisplay.String,
+			Description:    row.ItemDescription.String,
+			BaseValue:      int(row.BaseValue.Int32),
+			Handler:        textToPtr(row.Handler),
+			Types:          row.Types,
+		})
+	}
+	return items, nil
+}
+
 // GetItemByID retrieves an item by its ID
 func (r *UserRepository) GetItemByID(ctx context.Context, id int) (*domain.Item, error) {
 	row, err := r.q.GetItemByID(ctx, int32(id))

@@ -22,6 +22,7 @@ type User interface {
 	GetItemsByNames(ctx context.Context, names []string) ([]domain.Item, error)
 	GetItemByID(ctx context.Context, id int) (*domain.Item, error)
 	GetItemsByIDs(ctx context.Context, itemIDs []int) ([]domain.Item, error)
+	GetAllItems(ctx context.Context) ([]domain.Item, error)
 
 	BeginTx(ctx context.Context) (UserTx, error)
 

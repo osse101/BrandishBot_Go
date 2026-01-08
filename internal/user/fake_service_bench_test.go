@@ -144,7 +144,11 @@ func (f *fakeBenchRepository) UpdateCooldown(ctx context.Context, userID, action
 }
 
 func (f *fakeBenchRepository) MergeUsersInTransaction(ctx context.Context, primaryUserID, secondaryUserID string, mergedUser domain.User, mergedInventory domain.Inventory) error {
-	return nil
+	return nil // No-op
+}
+
+func (f *fakeBenchRepository) GetAllItems(ctx context.Context) ([]domain.Item, error) {
+	return []domain.Item{}, nil // Bench mock doesn't store items
 }
 
 // Mock transaction
