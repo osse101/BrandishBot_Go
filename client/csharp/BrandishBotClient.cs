@@ -178,9 +178,6 @@ namespace BrandishBot.Client
         /// <summary>
         /// Remove item from user's inventory (Admin/Streamer only)
         /// </summary>
-        /// <summary>
-        /// Remove item from user's inventory (Admin/Streamer only)
-        /// </summary>
         public async Task<string> RemoveItem(string platform, string platformId, string username, string itemName, int quantity)
         {
             return await PostJsonAsync("/api/v1/user/item/remove", new
@@ -201,24 +198,6 @@ namespace BrandishBot.Client
             return await PostJsonAsync("/api/v1/user/item/remove-by-username", new
             {
                 platform = platform,
-                username = username,
-                item_name = itemName,
-                quantity = quantity
-            });
-        }
-
-        /// <summary>
-        /// Use an item from inventory (with optional target user)
-        /// </summary>
-        /// <summary>
-        /// Remove item from user's inventory (Admin/Streamer only)
-        /// </summary>
-        public async Task<string> RemoveItem(string platform, string platformId, string username, string itemName, int quantity)
-        {
-            return await PostJsonAsync("/api/v1/user/item/remove", new
-            {
-                platform = platform,
-                platform_id = platformId,
                 username = username,
                 item_name = itemName,
                 quantity = quantity
@@ -884,21 +863,6 @@ namespace BrandishBot.Client
         public const string Raid = "raid";
         public const string Bits = "bits";
         public const string Gift = "gift";
-    }
-
-    /// <summary>
-    /// Common item IDs (reference your database)
-    /// DEPRECATED: Use ItemName constants instead. Item operations now use string names.
-    /// </summary>
-    [Obsolete("Use ItemName constants instead. Item operations now use string item_name parameters.")]
-    public static class ItemId
-    {
-        public const int Money = 1;
-        public const int Lootbox0 = 2;
-        public const int Lootbox1 = 3;
-        public const int Lootbox2 = 4;
-        public const int Blaster = 5;
-        // Add more as needed
     }
 
     /// <summary>
