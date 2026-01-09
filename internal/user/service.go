@@ -585,12 +585,6 @@ func (s *service) AddItems(ctx context.Context, platform, platformID, username s
 		return fmt.Errorf("failed to get inventory: %w", err)
 	}
 
-	// Fetch all item metadata (batch lookup)
-	itemNames := make([]string, 0, len(items))
-	for name := range items {
-		itemNames = append(itemNames, name)
-	}
-
 	// Build map of item names -> item IDs
 	itemIDMap := make(map[string]int)
 
@@ -598,7 +592,7 @@ func (s *service) AddItems(ctx context.Context, platform, platformID, username s
 	var missingNames []string
 
 	s.itemCacheMu.RLock()
-	for _, itemName := range itemNames {
+	for itemName := range items {
 		if item, ok := s.itemCacheByName[itemName]; ok {
 			itemIDMap[itemName] = item.ID
 		} else {
@@ -625,18 +619,15 @@ func (s *service) AddItems(ctx context.Context, platform, platformID, username s
 		s.itemCacheMu.Unlock()
 	}
 
-	// Verify all items were found
-	for _, itemName := range itemNames {
-		if _, ok := itemIDMap[itemName]; !ok {
+	// Convert items to InventorySlots for the helper
+	// Also verifies that all items were found
+	slotsToAdd := make([]domain.InventorySlot, 0, len(items))
+	for itemName, quantity := range items {
+		itemID, ok := itemIDMap[itemName]
+		if !ok {
 			log.Warn("Item not found", "itemName", itemName)
 			return fmt.Errorf("%w: %s", domain.ErrItemNotFound, itemName)
 		}
-	}
-
-	// Convert items to InventorySlots for the helper
-	slotsToAdd := make([]domain.InventorySlot, 0, len(items))
-	for itemName, quantity := range items {
-		itemID := itemIDMap[itemName]
 		slotsToAdd = append(slotsToAdd, domain.InventorySlot{
 			ItemID:   itemID,
 			Quantity: quantity,
