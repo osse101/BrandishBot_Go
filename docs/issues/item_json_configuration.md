@@ -9,7 +9,7 @@
 
 Currently, items are defined solely in database migrations (SQL). This makes it difficult to:
 - Add new items without writing SQL migrations
-- modify item properties (tags, display names, rarity)
+- modify item properties (tags, display names)
 - Visualize all available items in one place
 - Maintain consistency between environments
 
@@ -37,8 +37,7 @@ Create a `configs/items.json` file to serve as the source of truth for all items
       "internal_name": "money",
       "public_name": "money",
       "description": "Standard currency",
-      "rarity": "common",
-      "tier": 1,
+      "tier": 0,
       "max_stack": 1000000,
       "tags": ["currency", "tradeable"],
       "default_display": "💰"
@@ -47,21 +46,19 @@ Create a `configs/items.json` file to serve as the source of truth for all items
       "internal_name": "lootbox_tier0",
       "public_name": "junkbox",
       "description": "A dusty old box containing basic items",
-      "rarity": "common",
       "tier": 0,
       "max_stack": 100,
-      "tags": ["consumable", "tradeable", "can_open"],
-      "default_display": "📦"
+      "tags": ["consumable", "tradeable", "can_open", "upgradeable"],
+      "default_display": "A dingy box"
     },
     {
       "internal_name": "lootbox_tier1",
       "public_name": "lootbox",
       "description": "Standard lootbox with decent rewards",
-      "rarity": "uncommon",
       "tier": 1,
       "max_stack": 100,
       "tags": ["consumable", "tradeable", "can_open", "upgradeable", "disassembleable"],
-      "default_display": "🎁"
+      "default_display": "A sturdy chest"
     }
   ]
 }
@@ -94,7 +91,6 @@ type ItemDef struct {
     InternalName   string   `json:"internal_name"`
     PublicName     string   `json:"public_name"`
     Description    string   `json:"description"`
-    Rarity         string   `json:"rarity"` // common, uncommon, rare, epic, legendary
     Tier           int      `json:"tier"`
     MaxStack       int      `json:"max_stack"`
     Tags           []string `json:"tags"` // Maps to item_types/tags in DB
