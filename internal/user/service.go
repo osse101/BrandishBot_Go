@@ -834,12 +834,18 @@ func (s *service) UseItem(ctx context.Context, platform, platformID, username, i
 		return "", err
 	}
 
-	message, err := s.useItemInternal(ctx, user, itemName, quantity, targetUsername, username)
+	// Resolve public name to internal name
+	resolvedName, err := s.resolveItemName(ctx, itemName)
 	if err != nil {
 		return "", err
 	}
 
-	log.Info("Item used", "username", username, "item", itemName, "quantity", quantity, "message", message)
+	message, err := s.useItemInternal(ctx, user, resolvedName, quantity, targetUsername, username)
+	if err != nil {
+		return "", err
+	}
+
+	log.Info("Item used", "username", username, "item", itemName, "resolved", resolvedName, "quantity", quantity, "message", message)
 	return message, nil
 }
 
@@ -853,13 +859,43 @@ func (s *service) UseItemByUsername(ctx context.Context, platform, username, ite
 		return "", err
 	}
 
-	message, err := s.useItemInternal(ctx, user, itemName, quantity, targetUsername, username)
+	// Resolve public name to internal name
+	resolvedName, err := s.resolveItemName(ctx, itemName)
 	if err != nil {
 		return "", err
 	}
 
-	log.Info("Item used by username", "username", username, "item", itemName, "quantity", quantity, "message", message)
+	message, err := s.useItemInternal(ctx, user, resolvedName, quantity, targetUsername, username)
+	if err != nil {
+		return "", err
+	}
+
+	log.Info("Item used by username", "username", username, "item", itemName, "resolved", resolvedName, "quantity", quantity, "message", message)
 	return message, nil
+}
+
+// resolveItemName attempts to resolve a user-provided item name to its internal name.
+// It first tries the naming resolver, then falls back to using the input as-is.
+// This allows users to use either public names ("junkbox") or internal names ("lootbox_tier0").
+func (s *service) resolveItemName(ctx context.Context, itemName string) (string, error) {
+	// Try naming resolver first (handles public names)
+	if s.namingResolver != nil {
+		if internalName, ok := s.namingResolver.ResolvePublicName(itemName); ok {
+			return internalName, nil
+		}
+	}
+
+	// Fall back - assume it's already an internal name
+	// Validate by checking if item exists
+	item, err := s.getItemByNameCached(ctx, itemName)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve item name '%s': %w", itemName, err)
+	}
+	if item == nil {
+		return "", fmt.Errorf("%w: %s (not found as public or internal name)", domain.ErrItemNotFound, itemName)
+	}
+
+	return itemName, nil
 }
 
 func (s *service) GetInventory(ctx context.Context, platform, platformID, username, filter string) ([]UserInventoryItem, error) {

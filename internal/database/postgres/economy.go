@@ -120,10 +120,8 @@ func (r *EconomyRepository) GetSellablePrices(ctx context.Context) ([]domain.Ite
 	var items []domain.Item
 	for _, row := range rows {
 		items = append(items, domain.Item{
-			ID:           int(row.ItemID),
-			InternalName: row.InternalName,
-			Description:  row.ItemDescription.String,
-			BaseValue:    int(row.BaseValue.Int32),
+			PublicName: row.PublicName.String,
+			BaseValue:  int(row.BaseValue.Int32),
 		})
 	}
 
@@ -145,10 +143,8 @@ func (r *EconomyRepository) GetBuyablePrices(ctx context.Context) ([]domain.Item
 	var items []domain.Item
 	for _, row := range rows {
 		items = append(items, domain.Item{
-			ID:           int(row.ItemID),
-			InternalName: row.InternalName,
-			Description:  row.ItemDescription.String,
-			BaseValue:    int(row.BaseValue.Int32),
+			PublicName: row.PublicName.String,
+			BaseValue:  int(row.BaseValue.Int32),
 		})
 	}
 

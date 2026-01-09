@@ -119,12 +119,12 @@ GROUP BY i.item_id
 ORDER BY i.item_id;
 
 -- name: GetSellablePrices :many
-SELECT DISTINCT i.item_id, i.internal_name, i.item_description, i.base_value
+SELECT DISTINCT i.public_name, i.base_value
 FROM items i
 INNER JOIN item_type_assignments ita ON i.item_id = ita.item_id
 INNER JOIN item_types it ON ita.item_type_id = it.item_type_id
-WHERE it.type_name = 'sellable'
-ORDER BY i.internal_name;
+WHERE it.type_name = 'sellable' AND i.public_name IS NOT NULL
+ORDER BY i.public_name;
 
 -- name: IsItemBuyable :one
 SELECT EXISTS (
@@ -194,12 +194,12 @@ ON CONFLICT (user_id, action_name) DO UPDATE
 SET last_used_at = EXCLUDED.last_used_at;
 
 -- name: GetBuyablePrices :many
-SELECT DISTINCT i.item_id, i.internal_name, i.item_description, i.base_value
+SELECT DISTINCT i.public_name, i.base_value
 FROM items i
 INNER JOIN item_type_assignments ita ON i.item_id = ita.item_id
 INNER JOIN item_types it ON ita.item_type_id = it.item_type_id
-WHERE it.type_name = 'buyable'
-ORDER BY i.internal_name;
+WHERE it.type_name = 'buyable' AND i.public_name IS NOT NULL
+ORDER BY i.public_name;
 
 -- name: GetUserByID :one
 SELECT user_id, username, created_at, updated_at FROM users WHERE user_id = $1;

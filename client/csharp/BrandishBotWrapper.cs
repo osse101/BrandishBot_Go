@@ -137,48 +137,7 @@ public class CPHInline
         return true;
     }
 
-    /// <summary>
-    /// Helper: Format inventory JSON response for readability
-    /// </summary>
-    private string FormatInventory(string jsonResponse)
-    {
-        try
-        {
-            var inventory = Newtonsoft.Json.Linq.JObject.Parse(jsonResponse);
-            var items = inventory["items"];
-            var formattedItems = new System.Collections.Generic.List<string>();
-
-            // Parse all items
-            foreach (var item in items)
-            {
-                string name = item["name"].ToString();
-                int qty = (int)item["quantity"];
-
-                // Money gets special treatment - always first, emoji only
-                if (name == "money")
-                {
-                    formattedItems.Insert(0, $"💰 {qty}");
-                }
-                else
-                {
-                    formattedItems.Add($"{qty}x {name}");
-                }
-            }
-
-            return formattedItems.Count > 0 
-                ? string.Join(" | ", formattedItems)
-                : "Empty inventory";
-        }
-        catch (Exception ex)
-        {
-            CPH.LogWarn($"FormatInventory failed: {ex.Message}");
-            return jsonResponse; // Return raw JSON if parsing fails
-        }
-    }
-
-
-
-    /// <summary>
+    #region Version    /// <summary>
     /// Get the backend version
     /// Args: (none)
     /// </summary>
@@ -189,7 +148,8 @@ public class CPHInline
         try
         {
             var result = client.GetVersion().Result;
-            CPH.SetArgument("response", result);
+            var formatted = ResponseFormatter.FormatVersion(result);
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)
@@ -247,7 +207,7 @@ public class CPHInline
             try
             {
                 var result = client.GetInventoryByUsername(platform, targetUser).Result;
-                CPH.SetArgument("response", FormatInventory(result));
+                CPH.SetArgument("response", ResponseFormatter.FormatInventory(result));
                 return true;
             }catch(Exception ex){
                 CPH.LogError($"GetInventoryByUsername failed: {ex.Message}");
@@ -260,7 +220,7 @@ public class CPHInline
                 if (!CPH.TryGetArg("userName", out string userName)) return false;
                 if (!CPH.TryGetArg("userId", out string platformId)) return false;
                 var result = client.GetInventory(platform, platformId, userName).Result;
-                CPH.SetArgument("response", FormatInventory(result));
+                CPH.SetArgument("response", ResponseFormatter.FormatInventory(result));
                 return true;
             }
             catch (Exception ex)
@@ -479,7 +439,7 @@ public class CPHInline
     }
 
     /// <summary>
-    /// Get current item sell prices (Alias for GetPrices)
+    /// Get current item sell prices
     /// Args: (none)
     /// </summary>
     public bool GetSellPrices()
@@ -489,7 +449,8 @@ public class CPHInline
         try
         {
             var result = client.GetSellPrices().Result;
-            CPH.SetArgument("response", result);
+            var formatted = ResponseFormatter.FormatPrices(result, "Sell");
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)
@@ -510,7 +471,8 @@ public class CPHInline
         try
         {
             var result = client.GetBuyPrices().Result;
-            CPH.SetArgument("response", result);
+            var formatted = ResponseFormatter.FormatPrices(result, "Buy");
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)
