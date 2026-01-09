@@ -107,7 +107,25 @@ func (s *service) processLootboxDrops(ctx context.Context, user *domain.User, in
 		msgBuilder.WriteString(" BIG WIN! 💰")
 	} else if stats.totalValue > 0 && quantity >= BulkFeedbackThreshold {
 		// If opening many boxes and getting nothing special, at least acknowledge the haul
-		msgBuilder.WriteString(" Nice haul! 📦")
+		// UNLUCKY CHECK: If no Uncommon or better items were found
+		if !stats.hasLegendary && !stats.hasEpic && !stats.hasRare && !stats.hasUncommon {
+			if s.statsService != nil && user != nil {
+				// Record Unlucky event
+				eventData := &domain.LootboxEventData{
+					Item:   lootboxItem.InternalName,
+					Drops:  drops,
+					Value:  stats.totalValue,
+					Source: "lootbox",
+				}
+				if err := s.statsService.RecordUserEvent(ctx, user.ID, domain.EventLootboxUnlucky, eventData.ToMap()); err != nil {
+					log := logger.FromContext(ctx)
+					log.Warn("Failed to record lootbox unlucky event", "error", err, "user_id", user.ID)
+				}
+			}
+			msgBuilder.WriteString(domain.MsgLootboxUnlucky)
+		} else {
+			msgBuilder.WriteString(" Nice haul! 📦")
+		}
 	}
 
 	return msgBuilder.String(), nil
@@ -117,6 +135,8 @@ type dropStats struct {
 	totalValue   int
 	hasLegendary bool
 	hasEpic      bool
+	hasRare      bool
+	hasUncommon  bool
 }
 
 func (s *service) aggregateDropsAndUpdateInventory(inventory *domain.Inventory, drops []lootbox.DroppedItem, msgBuilder *strings.Builder) dropStats {
@@ -133,6 +153,10 @@ func (s *service) aggregateDropsAndUpdateInventory(inventory *domain.Inventory, 
 			stats.hasLegendary = true
 		} else if drop.ShineLevel == lootbox.ShineEpic {
 			stats.hasEpic = true
+		} else if drop.ShineLevel == lootbox.ShineRare {
+			stats.hasRare = true
+		} else if drop.ShineLevel == lootbox.ShineUncommon {
+			stats.hasUncommon = true
 		}
 
 		// Prepare item for batch add

@@ -31,6 +31,7 @@ const (
 	// Lootbox events
 	EventLootboxJackpot EventType = "lootbox_jackpot"
 	EventLootboxBigWin  EventType = "lootbox_big_win"
+	EventLootboxUnlucky EventType = "lootbox_unlucky"
 )
 
 // StatsEvent represents a single tracked event
