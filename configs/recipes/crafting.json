@@ -1,0 +1,34 @@
+{
+  "version": "1.0",
+  "description": "Crafting recipes for BrandishBot",
+  "recipes": [
+    {
+      "recipe_key": "lootbox_tier0",
+      "target_item": "lootbox_tier1",
+      "costs": [
+        {
+          "item": "lootbox_tier0",
+          "quantity": 5
+        },
+        {
+          "item": "money",
+          "quantity": 100
+        }
+      ]
+    },
+    {
+      "recipe_key": "lootbox_tier1",
+      "target_item": "lootbox_tier2",
+      "costs": [
+        {
+          "item": "lootbox_tier1",
+          "quantity": 3
+        },
+        {
+          "item": "money",
+          "quantity": 500
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "version": "1.0",
+  "description": "Disassemble recipes for BrandishBot",
+  "recipes": [
+    {
+      "recipe_key": "lootbox_tier1",
+      "quantity_consumed": 1,
+      "outputs": [
+        {
+          "item": "lootbox_tier0",
+          "quantity": 1
+        },
+        {
+          "item": "money",
+          "quantity": 25
+        }
+      ],
+      "associated_upgrade": "lootbox_tier0"
+    },
+    {
+      "recipe_key": "lootbox_tier2",
+      "quantity_consumed": 1,
+      "outputs": [
+        {
+          "item": "lootbox_tier1",
+          "quantity": 1
+        },
+        {
+          "item": "money",
+          "quantity": 125
+        }
+      ],
+      "associated_upgrade": "lootbox_tier1"
+    }
+  ]
+}

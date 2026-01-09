@@ -226,6 +226,37 @@ func main() {
 			"skipped", itemSyncResult.ItemsSkipped)
 	}
 
+	// Sync recipes from JSON configuration
+	slog.Info("Syncing recipes from JSON config...")
+	recipeLoader := crafting.NewRecipeLoader()
+
+	recipeConfig, err := recipeLoader.Load("configs/recipes/crafting.json", "configs/recipes/disassemble.json")
+	if err != nil {
+		slog.Error("Failed to load recipe config", "error", err)
+		os.Exit(1)
+	}
+
+	if err := recipeLoader.Validate(recipeConfig, itemRepo); err != nil {
+		slog.Error("Invalid recipe configuration", "error", err)
+		os.Exit(1)
+	}
+
+	// Sync to database (will skip if files unchanged)
+	recipeSyncResult, err := recipeLoader.SyncToDatabase(context.Background(), recipeConfig, craftingRepo, itemRepo, "configs/recipes/")
+	if err != nil {
+		slog.Error("Failed to sync recipes to database", "error", err)
+		os.Exit(1)
+	}
+
+	if recipeSyncResult.CraftingInserted > 0 || recipeSyncResult.DisassembleInserted > 0 ||
+		recipeSyncResult.CraftingUpdated > 0 || recipeSyncResult.DisassembleUpdated > 0 {
+		slog.Info("Recipes synced successfully",
+			"crafting_inserted", recipeSyncResult.CraftingInserted,
+			"crafting_updated", recipeSyncResult.CraftingUpdated,
+			"disassemble_inserted", recipeSyncResult.DisassembleInserted,
+			"disassemble_updated", recipeSyncResult.DisassembleUpdated)
+	}
+
 	// Initialize Job service (needed by user, economy, crafting, gamble)
 	jobRepo := postgres.NewJobRepository(dbPool)
 	jobService := job.NewService(jobRepo, progressionService, statsService, eventBus, resilientPublisher)

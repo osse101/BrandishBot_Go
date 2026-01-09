@@ -83,6 +83,169 @@ func (_c *MockRepository_BeginTx_Call) RunAndReturn(run func(context.Context) (r
 	return _c
 }
 
+// ClearDisassembleOutputs provides a mock function with given fields: ctx, recipeID
+func (_m *MockRepository) ClearDisassembleOutputs(ctx context.Context, recipeID int) error {
+	ret := _m.Called(ctx, recipeID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ClearDisassembleOutputs")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, int) error); ok {
+		r0 = rf(ctx, recipeID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockRepository_ClearDisassembleOutputs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ClearDisassembleOutputs'
+type MockRepository_ClearDisassembleOutputs_Call struct {
+	*mock.Call
+}
+
+// ClearDisassembleOutputs is a helper method to define mock.On call
+//   - ctx context.Context
+//   - recipeID int
+func (_e *MockRepository_Expecter) ClearDisassembleOutputs(ctx interface{}, recipeID interface{}) *MockRepository_ClearDisassembleOutputs_Call {
+	return &MockRepository_ClearDisassembleOutputs_Call{Call: _e.mock.On("ClearDisassembleOutputs", ctx, recipeID)}
+}
+
+func (_c *MockRepository_ClearDisassembleOutputs_Call) Run(run func(ctx context.Context, recipeID int)) *MockRepository_ClearDisassembleOutputs_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int))
+	})
+	return _c
+}
+
+func (_c *MockRepository_ClearDisassembleOutputs_Call) Return(_a0 error) *MockRepository_ClearDisassembleOutputs_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockRepository_ClearDisassembleOutputs_Call) RunAndReturn(run func(context.Context, int) error) *MockRepository_ClearDisassembleOutputs_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetAllCraftingRecipes provides a mock function with given fields: ctx
+func (_m *MockRepository) GetAllCraftingRecipes(ctx context.Context) ([]domain.Recipe, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetAllCraftingRecipes")
+	}
+
+	var r0 []domain.Recipe
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) ([]domain.Recipe, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) []domain.Recipe); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]domain.Recipe)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockRepository_GetAllCraftingRecipes_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAllCraftingRecipes'
+type MockRepository_GetAllCraftingRecipes_Call struct {
+	*mock.Call
+}
+
+// GetAllCraftingRecipes is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockRepository_Expecter) GetAllCraftingRecipes(ctx interface{}) *MockRepository_GetAllCraftingRecipes_Call {
+	return &MockRepository_GetAllCraftingRecipes_Call{Call: _e.mock.On("GetAllCraftingRecipes", ctx)}
+}
+
+func (_c *MockRepository_GetAllCraftingRecipes_Call) Run(run func(ctx context.Context)) *MockRepository_GetAllCraftingRecipes_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockRepository_GetAllCraftingRecipes_Call) Return(_a0 []domain.Recipe, _a1 error) *MockRepository_GetAllCraftingRecipes_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockRepository_GetAllCraftingRecipes_Call) RunAndReturn(run func(context.Context) ([]domain.Recipe, error)) *MockRepository_GetAllCraftingRecipes_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetAllDisassembleRecipes provides a mock function with given fields: ctx
+func (_m *MockRepository) GetAllDisassembleRecipes(ctx context.Context) ([]domain.DisassembleRecipe, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetAllDisassembleRecipes")
+	}
+
+	var r0 []domain.DisassembleRecipe
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) ([]domain.DisassembleRecipe, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) []domain.DisassembleRecipe); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]domain.DisassembleRecipe)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockRepository_GetAllDisassembleRecipes_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAllDisassembleRecipes'
+type MockRepository_GetAllDisassembleRecipes_Call struct {
+	*mock.Call
+}
+
+// GetAllDisassembleRecipes is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockRepository_Expecter) GetAllDisassembleRecipes(ctx interface{}) *MockRepository_GetAllDisassembleRecipes_Call {
+	return &MockRepository_GetAllDisassembleRecipes_Call{Call: _e.mock.On("GetAllDisassembleRecipes", ctx)}
+}
+
+func (_c *MockRepository_GetAllDisassembleRecipes_Call) Run(run func(ctx context.Context)) *MockRepository_GetAllDisassembleRecipes_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockRepository_GetAllDisassembleRecipes_Call) Return(_a0 []domain.DisassembleRecipe, _a1 error) *MockRepository_GetAllDisassembleRecipes_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockRepository_GetAllDisassembleRecipes_Call) RunAndReturn(run func(context.Context) ([]domain.DisassembleRecipe, error)) *MockRepository_GetAllDisassembleRecipes_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetAllRecipes provides a mock function with given fields: ctx
 func (_m *MockRepository) GetAllRecipes(ctx context.Context) ([]repository.RecipeListItem, error) {
 	ret := _m.Called(ctx)
@@ -194,6 +357,124 @@ func (_c *MockRepository_GetAssociatedUpgradeRecipeID_Call) Return(_a0 int, _a1 
 }
 
 func (_c *MockRepository_GetAssociatedUpgradeRecipeID_Call) RunAndReturn(run func(context.Context, int) (int, error)) *MockRepository_GetAssociatedUpgradeRecipeID_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetCraftingRecipeByKey provides a mock function with given fields: ctx, recipeKey
+func (_m *MockRepository) GetCraftingRecipeByKey(ctx context.Context, recipeKey string) (*domain.Recipe, error) {
+	ret := _m.Called(ctx, recipeKey)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetCraftingRecipeByKey")
+	}
+
+	var r0 *domain.Recipe
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (*domain.Recipe, error)); ok {
+		return rf(ctx, recipeKey)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) *domain.Recipe); ok {
+		r0 = rf(ctx, recipeKey)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*domain.Recipe)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, recipeKey)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockRepository_GetCraftingRecipeByKey_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetCraftingRecipeByKey'
+type MockRepository_GetCraftingRecipeByKey_Call struct {
+	*mock.Call
+}
+
+// GetCraftingRecipeByKey is a helper method to define mock.On call
+//   - ctx context.Context
+//   - recipeKey string
+func (_e *MockRepository_Expecter) GetCraftingRecipeByKey(ctx interface{}, recipeKey interface{}) *MockRepository_GetCraftingRecipeByKey_Call {
+	return &MockRepository_GetCraftingRecipeByKey_Call{Call: _e.mock.On("GetCraftingRecipeByKey", ctx, recipeKey)}
+}
+
+func (_c *MockRepository_GetCraftingRecipeByKey_Call) Run(run func(ctx context.Context, recipeKey string)) *MockRepository_GetCraftingRecipeByKey_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockRepository_GetCraftingRecipeByKey_Call) Return(_a0 *domain.Recipe, _a1 error) *MockRepository_GetCraftingRecipeByKey_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockRepository_GetCraftingRecipeByKey_Call) RunAndReturn(run func(context.Context, string) (*domain.Recipe, error)) *MockRepository_GetCraftingRecipeByKey_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetDisassembleRecipeByKey provides a mock function with given fields: ctx, recipeKey
+func (_m *MockRepository) GetDisassembleRecipeByKey(ctx context.Context, recipeKey string) (*domain.DisassembleRecipe, error) {
+	ret := _m.Called(ctx, recipeKey)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetDisassembleRecipeByKey")
+	}
+
+	var r0 *domain.DisassembleRecipe
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (*domain.DisassembleRecipe, error)); ok {
+		return rf(ctx, recipeKey)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) *domain.DisassembleRecipe); ok {
+		r0 = rf(ctx, recipeKey)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*domain.DisassembleRecipe)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, recipeKey)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockRepository_GetDisassembleRecipeByKey_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetDisassembleRecipeByKey'
+type MockRepository_GetDisassembleRecipeByKey_Call struct {
+	*mock.Call
+}
+
+// GetDisassembleRecipeByKey is a helper method to define mock.On call
+//   - ctx context.Context
+//   - recipeKey string
+func (_e *MockRepository_Expecter) GetDisassembleRecipeByKey(ctx interface{}, recipeKey interface{}) *MockRepository_GetDisassembleRecipeByKey_Call {
+	return &MockRepository_GetDisassembleRecipeByKey_Call{Call: _e.mock.On("GetDisassembleRecipeByKey", ctx, recipeKey)}
+}
+
+func (_c *MockRepository_GetDisassembleRecipeByKey_Call) Run(run func(ctx context.Context, recipeKey string)) *MockRepository_GetDisassembleRecipeByKey_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockRepository_GetDisassembleRecipeByKey_Call) Return(_a0 *domain.DisassembleRecipe, _a1 error) *MockRepository_GetDisassembleRecipeByKey_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockRepository_GetDisassembleRecipeByKey_Call) RunAndReturn(run func(context.Context, string) (*domain.DisassembleRecipe, error)) *MockRepository_GetDisassembleRecipeByKey_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -671,6 +952,168 @@ func (_c *MockRepository_GetUserByPlatformID_Call) RunAndReturn(run func(context
 	return _c
 }
 
+// InsertCraftingRecipe provides a mock function with given fields: ctx, recipe
+func (_m *MockRepository) InsertCraftingRecipe(ctx context.Context, recipe *domain.Recipe) (int, error) {
+	ret := _m.Called(ctx, recipe)
+
+	if len(ret) == 0 {
+		panic("no return value specified for InsertCraftingRecipe")
+	}
+
+	var r0 int
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *domain.Recipe) (int, error)); ok {
+		return rf(ctx, recipe)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *domain.Recipe) int); ok {
+		r0 = rf(ctx, recipe)
+	} else {
+		r0 = ret.Get(0).(int)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *domain.Recipe) error); ok {
+		r1 = rf(ctx, recipe)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockRepository_InsertCraftingRecipe_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'InsertCraftingRecipe'
+type MockRepository_InsertCraftingRecipe_Call struct {
+	*mock.Call
+}
+
+// InsertCraftingRecipe is a helper method to define mock.On call
+//   - ctx context.Context
+//   - recipe *domain.Recipe
+func (_e *MockRepository_Expecter) InsertCraftingRecipe(ctx interface{}, recipe interface{}) *MockRepository_InsertCraftingRecipe_Call {
+	return &MockRepository_InsertCraftingRecipe_Call{Call: _e.mock.On("InsertCraftingRecipe", ctx, recipe)}
+}
+
+func (_c *MockRepository_InsertCraftingRecipe_Call) Run(run func(ctx context.Context, recipe *domain.Recipe)) *MockRepository_InsertCraftingRecipe_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*domain.Recipe))
+	})
+	return _c
+}
+
+func (_c *MockRepository_InsertCraftingRecipe_Call) Return(_a0 int, _a1 error) *MockRepository_InsertCraftingRecipe_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockRepository_InsertCraftingRecipe_Call) RunAndReturn(run func(context.Context, *domain.Recipe) (int, error)) *MockRepository_InsertCraftingRecipe_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// InsertDisassembleOutput provides a mock function with given fields: ctx, recipeID, output
+func (_m *MockRepository) InsertDisassembleOutput(ctx context.Context, recipeID int, output domain.RecipeOutput) error {
+	ret := _m.Called(ctx, recipeID, output)
+
+	if len(ret) == 0 {
+		panic("no return value specified for InsertDisassembleOutput")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, int, domain.RecipeOutput) error); ok {
+		r0 = rf(ctx, recipeID, output)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockRepository_InsertDisassembleOutput_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'InsertDisassembleOutput'
+type MockRepository_InsertDisassembleOutput_Call struct {
+	*mock.Call
+}
+
+// InsertDisassembleOutput is a helper method to define mock.On call
+//   - ctx context.Context
+//   - recipeID int
+//   - output domain.RecipeOutput
+func (_e *MockRepository_Expecter) InsertDisassembleOutput(ctx interface{}, recipeID interface{}, output interface{}) *MockRepository_InsertDisassembleOutput_Call {
+	return &MockRepository_InsertDisassembleOutput_Call{Call: _e.mock.On("InsertDisassembleOutput", ctx, recipeID, output)}
+}
+
+func (_c *MockRepository_InsertDisassembleOutput_Call) Run(run func(ctx context.Context, recipeID int, output domain.RecipeOutput)) *MockRepository_InsertDisassembleOutput_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int), args[2].(domain.RecipeOutput))
+	})
+	return _c
+}
+
+func (_c *MockRepository_InsertDisassembleOutput_Call) Return(_a0 error) *MockRepository_InsertDisassembleOutput_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockRepository_InsertDisassembleOutput_Call) RunAndReturn(run func(context.Context, int, domain.RecipeOutput) error) *MockRepository_InsertDisassembleOutput_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// InsertDisassembleRecipe provides a mock function with given fields: ctx, recipe
+func (_m *MockRepository) InsertDisassembleRecipe(ctx context.Context, recipe *domain.DisassembleRecipe) (int, error) {
+	ret := _m.Called(ctx, recipe)
+
+	if len(ret) == 0 {
+		panic("no return value specified for InsertDisassembleRecipe")
+	}
+
+	var r0 int
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *domain.DisassembleRecipe) (int, error)); ok {
+		return rf(ctx, recipe)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *domain.DisassembleRecipe) int); ok {
+		r0 = rf(ctx, recipe)
+	} else {
+		r0 = ret.Get(0).(int)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *domain.DisassembleRecipe) error); ok {
+		r1 = rf(ctx, recipe)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockRepository_InsertDisassembleRecipe_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'InsertDisassembleRecipe'
+type MockRepository_InsertDisassembleRecipe_Call struct {
+	*mock.Call
+}
+
+// InsertDisassembleRecipe is a helper method to define mock.On call
+//   - ctx context.Context
+//   - recipe *domain.DisassembleRecipe
+func (_e *MockRepository_Expecter) InsertDisassembleRecipe(ctx interface{}, recipe interface{}) *MockRepository_InsertDisassembleRecipe_Call {
+	return &MockRepository_InsertDisassembleRecipe_Call{Call: _e.mock.On("InsertDisassembleRecipe", ctx, recipe)}
+}
+
+func (_c *MockRepository_InsertDisassembleRecipe_Call) Run(run func(ctx context.Context, recipe *domain.DisassembleRecipe)) *MockRepository_InsertDisassembleRecipe_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*domain.DisassembleRecipe))
+	})
+	return _c
+}
+
+func (_c *MockRepository_InsertDisassembleRecipe_Call) Return(_a0 int, _a1 error) *MockRepository_InsertDisassembleRecipe_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockRepository_InsertDisassembleRecipe_Call) RunAndReturn(run func(context.Context, *domain.DisassembleRecipe) (int, error)) *MockRepository_InsertDisassembleRecipe_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // IsRecipeUnlocked provides a mock function with given fields: ctx, userID, recipeID
 func (_m *MockRepository) IsRecipeUnlocked(ctx context.Context, userID string, recipeID int) (bool, error) {
 	ret := _m.Called(ctx, userID, recipeID)
@@ -777,6 +1220,102 @@ func (_c *MockRepository_UnlockRecipe_Call) RunAndReturn(run func(context.Contex
 	return _c
 }
 
+// UpdateCraftingRecipe provides a mock function with given fields: ctx, recipeID, recipe
+func (_m *MockRepository) UpdateCraftingRecipe(ctx context.Context, recipeID int, recipe *domain.Recipe) error {
+	ret := _m.Called(ctx, recipeID, recipe)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateCraftingRecipe")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, int, *domain.Recipe) error); ok {
+		r0 = rf(ctx, recipeID, recipe)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockRepository_UpdateCraftingRecipe_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateCraftingRecipe'
+type MockRepository_UpdateCraftingRecipe_Call struct {
+	*mock.Call
+}
+
+// UpdateCraftingRecipe is a helper method to define mock.On call
+//   - ctx context.Context
+//   - recipeID int
+//   - recipe *domain.Recipe
+func (_e *MockRepository_Expecter) UpdateCraftingRecipe(ctx interface{}, recipeID interface{}, recipe interface{}) *MockRepository_UpdateCraftingRecipe_Call {
+	return &MockRepository_UpdateCraftingRecipe_Call{Call: _e.mock.On("UpdateCraftingRecipe", ctx, recipeID, recipe)}
+}
+
+func (_c *MockRepository_UpdateCraftingRecipe_Call) Run(run func(ctx context.Context, recipeID int, recipe *domain.Recipe)) *MockRepository_UpdateCraftingRecipe_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int), args[2].(*domain.Recipe))
+	})
+	return _c
+}
+
+func (_c *MockRepository_UpdateCraftingRecipe_Call) Return(_a0 error) *MockRepository_UpdateCraftingRecipe_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockRepository_UpdateCraftingRecipe_Call) RunAndReturn(run func(context.Context, int, *domain.Recipe) error) *MockRepository_UpdateCraftingRecipe_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpdateDisassembleRecipe provides a mock function with given fields: ctx, recipeID, recipe
+func (_m *MockRepository) UpdateDisassembleRecipe(ctx context.Context, recipeID int, recipe *domain.DisassembleRecipe) error {
+	ret := _m.Called(ctx, recipeID, recipe)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateDisassembleRecipe")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, int, *domain.DisassembleRecipe) error); ok {
+		r0 = rf(ctx, recipeID, recipe)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockRepository_UpdateDisassembleRecipe_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateDisassembleRecipe'
+type MockRepository_UpdateDisassembleRecipe_Call struct {
+	*mock.Call
+}
+
+// UpdateDisassembleRecipe is a helper method to define mock.On call
+//   - ctx context.Context
+//   - recipeID int
+//   - recipe *domain.DisassembleRecipe
+func (_e *MockRepository_Expecter) UpdateDisassembleRecipe(ctx interface{}, recipeID interface{}, recipe interface{}) *MockRepository_UpdateDisassembleRecipe_Call {
+	return &MockRepository_UpdateDisassembleRecipe_Call{Call: _e.mock.On("UpdateDisassembleRecipe", ctx, recipeID, recipe)}
+}
+
+func (_c *MockRepository_UpdateDisassembleRecipe_Call) Run(run func(ctx context.Context, recipeID int, recipe *domain.DisassembleRecipe)) *MockRepository_UpdateDisassembleRecipe_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int), args[2].(*domain.DisassembleRecipe))
+	})
+	return _c
+}
+
+func (_c *MockRepository_UpdateDisassembleRecipe_Call) Return(_a0 error) *MockRepository_UpdateDisassembleRecipe_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockRepository_UpdateDisassembleRecipe_Call) RunAndReturn(run func(context.Context, int, *domain.DisassembleRecipe) error) *MockRepository_UpdateDisassembleRecipe_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // UpdateInventory provides a mock function with given fields: ctx, userID, inventory
 func (_m *MockRepository) UpdateInventory(ctx context.Context, userID string, inventory domain.Inventory) error {
 	ret := _m.Called(ctx, userID, inventory)
@@ -821,6 +1360,54 @@ func (_c *MockRepository_UpdateInventory_Call) Return(_a0 error) *MockRepository
 }
 
 func (_c *MockRepository_UpdateInventory_Call) RunAndReturn(run func(context.Context, string, domain.Inventory) error) *MockRepository_UpdateInventory_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpsertRecipeAssociation provides a mock function with given fields: ctx, upgradeRecipeID, disassembleRecipeID
+func (_m *MockRepository) UpsertRecipeAssociation(ctx context.Context, upgradeRecipeID int, disassembleRecipeID int) error {
+	ret := _m.Called(ctx, upgradeRecipeID, disassembleRecipeID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpsertRecipeAssociation")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, int, int) error); ok {
+		r0 = rf(ctx, upgradeRecipeID, disassembleRecipeID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockRepository_UpsertRecipeAssociation_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpsertRecipeAssociation'
+type MockRepository_UpsertRecipeAssociation_Call struct {
+	*mock.Call
+}
+
+// UpsertRecipeAssociation is a helper method to define mock.On call
+//   - ctx context.Context
+//   - upgradeRecipeID int
+//   - disassembleRecipeID int
+func (_e *MockRepository_Expecter) UpsertRecipeAssociation(ctx interface{}, upgradeRecipeID interface{}, disassembleRecipeID interface{}) *MockRepository_UpsertRecipeAssociation_Call {
+	return &MockRepository_UpsertRecipeAssociation_Call{Call: _e.mock.On("UpsertRecipeAssociation", ctx, upgradeRecipeID, disassembleRecipeID)}
+}
+
+func (_c *MockRepository_UpsertRecipeAssociation_Call) Run(run func(ctx context.Context, upgradeRecipeID int, disassembleRecipeID int)) *MockRepository_UpsertRecipeAssociation_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int), args[2].(int))
+	})
+	return _c
+}
+
+func (_c *MockRepository_UpsertRecipeAssociation_Call) Return(_a0 error) *MockRepository_UpsertRecipeAssociation_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockRepository_UpsertRecipeAssociation_Call) RunAndReturn(run func(context.Context, int, int) error) *MockRepository_UpsertRecipeAssociation_Call {
 	_c.Call.Return(run)
 	return _c
 }

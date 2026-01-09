@@ -24,6 +24,19 @@ type Crafting interface {
 	GetDisassembleRecipeBySourceItemID(ctx context.Context, itemID int) (*domain.DisassembleRecipe, error)
 	GetAssociatedUpgradeRecipeID(ctx context.Context, disassembleRecipeID int) (int, error)
 	GetAllRecipes(ctx context.Context) ([]RecipeListItem, error)
+
+	// Recipe loader operations
+	GetAllCraftingRecipes(ctx context.Context) ([]domain.Recipe, error)
+	GetAllDisassembleRecipes(ctx context.Context) ([]domain.DisassembleRecipe, error)
+	GetCraftingRecipeByKey(ctx context.Context, recipeKey string) (*domain.Recipe, error)
+	GetDisassembleRecipeByKey(ctx context.Context, recipeKey string) (*domain.DisassembleRecipe, error)
+	InsertCraftingRecipe(ctx context.Context, recipe *domain.Recipe) (int, error)
+	InsertDisassembleRecipe(ctx context.Context, recipe *domain.DisassembleRecipe) (int, error)
+	UpdateCraftingRecipe(ctx context.Context, recipeID int, recipe *domain.Recipe) error
+	UpdateDisassembleRecipe(ctx context.Context, recipeID int, recipe *domain.DisassembleRecipe) error
+	ClearDisassembleOutputs(ctx context.Context, recipeID int) error
+	InsertDisassembleOutput(ctx context.Context, recipeID int, output domain.RecipeOutput) error
+	UpsertRecipeAssociation(ctx context.Context, upgradeRecipeID, disassembleRecipeID int) error
 }
 
 // CraftingTx defines the interface for crafting transactions

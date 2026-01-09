@@ -190,6 +190,104 @@ func (m *MockRepository) GetAllRecipes(ctx context.Context) ([]repository.Recipe
 	return result, nil
 }
 
+// Recipe loader methods
+func (m *MockRepository) GetAllCraftingRecipes(ctx context.Context) ([]domain.Recipe, error) {
+	var result []domain.Recipe
+	for _, recipe := range m.recipes {
+		result = append(result, *recipe)
+	}
+	return result, nil
+}
+
+func (m *MockRepository) GetAllDisassembleRecipes(ctx context.Context) ([]domain.DisassembleRecipe, error) {
+	var result []domain.DisassembleRecipe
+	for _, recipe := range m.disassembleRecipes {
+		result = append(result, *recipe)
+	}
+	return result, nil
+}
+
+func (m *MockRepository) GetCraftingRecipeByKey(ctx context.Context, recipeKey string) (*domain.Recipe, error) {
+	for _, recipe := range m.recipes {
+		if recipe.RecipeKey == recipeKey {
+			return recipe, nil
+		}
+	}
+	return nil, nil
+}
+
+func (m *MockRepository) GetDisassembleRecipeByKey(ctx context.Context, recipeKey string) (*domain.DisassembleRecipe, error) {
+	for _, recipe := range m.disassembleRecipes {
+		if recipe.RecipeKey == recipeKey {
+			return recipe, nil
+		}
+	}
+	return nil, nil
+}
+
+func (m *MockRepository) InsertCraftingRecipe(ctx context.Context, recipe *domain.Recipe) (int, error) {
+	maxID := 0
+	for id := range m.recipes {
+		if id > maxID {
+			maxID = id
+		}
+	}
+	newID := maxID + 1
+	recipe.ID = newID
+	m.recipes[newID] = recipe
+	return newID, nil
+}
+
+func (m *MockRepository) InsertDisassembleRecipe(ctx context.Context, recipe *domain.DisassembleRecipe) (int, error) {
+	maxID := 0
+	for id := range m.disassembleRecipes {
+		if id > maxID {
+			maxID = id
+		}
+	}
+	newID := maxID + 1
+	recipe.ID = newID
+	m.disassembleRecipes[newID] = recipe
+	return newID, nil
+}
+
+func (m *MockRepository) UpdateCraftingRecipe(ctx context.Context, recipeID int, recipe *domain.Recipe) error {
+	if _, ok := m.recipes[recipeID]; !ok {
+		return nil // Recipe not found, silently ignore for mock
+	}
+	recipe.ID = recipeID
+	m.recipes[recipeID] = recipe
+	return nil
+}
+
+func (m *MockRepository) UpdateDisassembleRecipe(ctx context.Context, recipeID int, recipe *domain.DisassembleRecipe) error {
+	if _, ok := m.disassembleRecipes[recipeID]; !ok {
+		return nil // Recipe not found, silently ignore for mock
+	}
+	recipe.ID = recipeID
+	m.disassembleRecipes[recipeID] = recipe
+	return nil
+}
+
+func (m *MockRepository) ClearDisassembleOutputs(ctx context.Context, recipeID int) error {
+	if recipe, ok := m.disassembleRecipes[recipeID]; ok {
+		recipe.Outputs = []domain.RecipeOutput{}
+	}
+	return nil
+}
+
+func (m *MockRepository) InsertDisassembleOutput(ctx context.Context, recipeID int, output domain.RecipeOutput) error {
+	if recipe, ok := m.disassembleRecipes[recipeID]; ok {
+		recipe.Outputs = append(recipe.Outputs, output)
+	}
+	return nil
+}
+
+func (m *MockRepository) UpsertRecipeAssociation(ctx context.Context, upgradeRecipeID, disassembleRecipeID int) error {
+	m.recipeAssociations[disassembleRecipeID] = upgradeRecipeID
+	return nil
+}
+
 // MockTx for transaction support
 type MockTx struct {
 	repo *MockRepository

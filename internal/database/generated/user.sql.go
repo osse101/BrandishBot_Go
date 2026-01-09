@@ -244,9 +244,16 @@ FROM disassemble_recipes
 WHERE source_item_id = $1
 `
 
-func (q *Queries) GetDisassembleRecipeBySourceItemID(ctx context.Context, sourceItemID int32) (DisassembleRecipe, error) {
+type GetDisassembleRecipeBySourceItemIDRow struct {
+	RecipeID         int32            `json:"recipe_id"`
+	SourceItemID     int32            `json:"source_item_id"`
+	QuantityConsumed int32            `json:"quantity_consumed"`
+	CreatedAt        pgtype.Timestamp `json:"created_at"`
+}
+
+func (q *Queries) GetDisassembleRecipeBySourceItemID(ctx context.Context, sourceItemID int32) (GetDisassembleRecipeBySourceItemIDRow, error) {
 	row := q.db.QueryRow(ctx, getDisassembleRecipeBySourceItemID, sourceItemID)
-	var i DisassembleRecipe
+	var i GetDisassembleRecipeBySourceItemIDRow
 	err := row.Scan(
 		&i.RecipeID,
 		&i.SourceItemID,
@@ -546,9 +553,16 @@ const getRecipeByTargetItemID = `-- name: GetRecipeByTargetItemID :one
 SELECT recipe_id, target_item_id, base_cost, created_at FROM crafting_recipes WHERE target_item_id = $1
 `
 
-func (q *Queries) GetRecipeByTargetItemID(ctx context.Context, targetItemID int32) (CraftingRecipe, error) {
+type GetRecipeByTargetItemIDRow struct {
+	RecipeID     int32            `json:"recipe_id"`
+	TargetItemID int32            `json:"target_item_id"`
+	BaseCost     []byte           `json:"base_cost"`
+	CreatedAt    pgtype.Timestamp `json:"created_at"`
+}
+
+func (q *Queries) GetRecipeByTargetItemID(ctx context.Context, targetItemID int32) (GetRecipeByTargetItemIDRow, error) {
 	row := q.db.QueryRow(ctx, getRecipeByTargetItemID, targetItemID)
-	var i CraftingRecipe
+	var i GetRecipeByTargetItemIDRow
 	err := row.Scan(
 		&i.RecipeID,
 		&i.TargetItemID,

@@ -21,6 +21,7 @@ type Querier interface {
 	ClearAllUserProgression(ctx context.Context) error
 	ClearAllUserVotes(ctx context.Context) error
 	ClearAllVoting(ctx context.Context) error
+	ClearDisassembleOutputs(ctx context.Context, recipeID int32) error
 	ClearItemTags(ctx context.Context, itemID int32) error
 	ClearNodePrerequisites(ctx context.Context, nodeID int32) error
 	ClearUnlocksExceptRoot(ctx context.Context) error
@@ -41,6 +42,9 @@ type Querier interface {
 	GetActiveSession(ctx context.Context) (GetActiveSessionRow, error)
 	GetActiveUnlockProgress(ctx context.Context) (ProgressionUnlockProgress, error)
 	GetActiveVoting(ctx context.Context) (ProgressionVoting, error)
+	// Crafting Recipe Repository Queries
+	GetAllCraftingRecipes(ctx context.Context) ([]GetAllCraftingRecipesRow, error)
+	GetAllDisassembleRecipes(ctx context.Context) ([]GetAllDisassembleRecipesRow, error)
 	GetAllItemTypes(ctx context.Context) ([]ItemType, error)
 	GetAllItems(ctx context.Context) ([]GetAllItemsRow, error)
 	GetAllJobs(ctx context.Context) ([]Job, error)
@@ -51,9 +55,11 @@ type Querier interface {
 	GetBuyablePrices(ctx context.Context) ([]GetBuyablePricesRow, error)
 	GetClaimedTokenForSource(ctx context.Context, arg GetClaimedTokenForSourceParams) (GetClaimedTokenForSourceRow, error)
 	GetContributionLeaderboard(ctx context.Context, limit int32) ([]GetContributionLeaderboardRow, error)
+	GetCraftingRecipeByKey(ctx context.Context, recipeKey string) (GetCraftingRecipeByKeyRow, error)
 	GetDailyEngagementTotals(ctx context.Context, recordedAt pgtype.Timestamp) ([]GetDailyEngagementTotalsRow, error)
 	GetDisassembleOutputs(ctx context.Context, recipeID int32) ([]GetDisassembleOutputsRow, error)
-	GetDisassembleRecipeBySourceItemID(ctx context.Context, sourceItemID int32) (DisassembleRecipe, error)
+	GetDisassembleRecipeByKey(ctx context.Context, recipeKey string) (GetDisassembleRecipeByKeyRow, error)
+	GetDisassembleRecipeBySourceItemID(ctx context.Context, sourceItemID int32) (GetDisassembleRecipeBySourceItemIDRow, error)
 	GetEngagementMetricsAggregated(ctx context.Context) ([]GetEngagementMetricsAggregatedRow, error)
 	GetEngagementMetricsAggregatedSince(ctx context.Context, recordedAt pgtype.Timestamp) ([]GetEngagementMetricsAggregatedSinceRow, error)
 	GetEngagementWeights(ctx context.Context) ([]GetEngagementWeightsRow, error)
@@ -84,7 +90,7 @@ type Querier interface {
 	GetNodeDependents(ctx context.Context, prerequisiteNodeID int32) ([]GetNodeDependentsRow, error)
 	GetNodePrerequisites(ctx context.Context, nodeID int32) ([]GetNodePrerequisitesRow, error)
 	GetPlatformID(ctx context.Context, name string) (int32, error)
-	GetRecipeByTargetItemID(ctx context.Context, targetItemID int32) (CraftingRecipe, error)
+	GetRecipeByTargetItemID(ctx context.Context, targetItemID int32) (GetRecipeByTargetItemIDRow, error)
 	GetSellablePrices(ctx context.Context) ([]GetSellablePricesRow, error)
 	GetSessionByID(ctx context.Context, id int32) (GetSessionByIDRow, error)
 	GetSessionOptions(ctx context.Context, sessionID int32) ([]GetSessionOptionsRow, error)
@@ -112,6 +118,9 @@ type Querier interface {
 	HasUserVotedInSession(ctx context.Context, arg HasUserVotedInSessionParams) (bool, error)
 	IncrementOptionVote(ctx context.Context, id int32) error
 	IncrementVote(ctx context.Context, arg IncrementVoteParams) error
+	InsertCraftingRecipe(ctx context.Context, arg InsertCraftingRecipeParams) (int32, error)
+	InsertDisassembleOutput(ctx context.Context, arg InsertDisassembleOutputParams) error
+	InsertDisassembleRecipe(ctx context.Context, arg InsertDisassembleRecipeParams) (int32, error)
 	InsertItem(ctx context.Context, arg InsertItemParams) (int32, error)
 	InsertItemType(ctx context.Context, typeName string) (int32, error)
 	InsertNextUnlockProgress(ctx context.Context, contributionsAccumulated int32) (int32, error)
@@ -139,6 +148,8 @@ type Querier interface {
 	UnlockRecipe(ctx context.Context, arg UnlockRecipeParams) error
 	UnlockUserProgression(ctx context.Context, arg UnlockUserProgressionParams) error
 	UpdateCooldown(ctx context.Context, arg UpdateCooldownParams) error
+	UpdateCraftingRecipe(ctx context.Context, arg UpdateCraftingRecipeParams) error
+	UpdateDisassembleRecipe(ctx context.Context, arg UpdateDisassembleRecipeParams) error
 	UpdateGambleState(ctx context.Context, arg UpdateGambleStateParams) error
 	UpdateGambleStateIfMatches(ctx context.Context, arg UpdateGambleStateIfMatchesParams) (pgconn.CommandTag, error)
 	UpdateInventory(ctx context.Context, arg UpdateInventoryParams) error
@@ -148,6 +159,7 @@ type Querier interface {
 	UpdateToken(ctx context.Context, arg UpdateTokenParams) error
 	UpdateUser(ctx context.Context, arg UpdateUserParams) error
 	UpdateUserTimestamp(ctx context.Context, userID uuid.UUID) error
+	UpsertRecipeAssociation(ctx context.Context, arg UpsertRecipeAssociationParams) error
 	UpsertSyncMetadata(ctx context.Context, arg UpsertSyncMetadataParams) error
 	UpsertUserJob(ctx context.Context, arg UpsertUserJobParams) error
 	UpsertUserPlatformLink(ctx context.Context, arg UpsertUserPlatformLinkParams) error

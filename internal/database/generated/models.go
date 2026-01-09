@@ -22,6 +22,7 @@ type CraftingRecipe struct {
 	TargetItemID int32            `json:"target_item_id"`
 	BaseCost     []byte           `json:"base_cost"`
 	CreatedAt    pgtype.Timestamp `json:"created_at"`
+	RecipeKey    string           `json:"recipe_key"`
 }
 
 type DisassembleOutput struct {
@@ -36,6 +37,7 @@ type DisassembleRecipe struct {
 	SourceItemID     int32            `json:"source_item_id"`
 	QuantityConsumed int32            `json:"quantity_consumed"`
 	CreatedAt        pgtype.Timestamp `json:"created_at"`
+	RecipeKey        string           `json:"recipe_key"`
 }
 
 type EngagementMetric struct {

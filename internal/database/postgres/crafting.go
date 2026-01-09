@@ -305,3 +305,238 @@ func (r *CraftingRepository) GetAssociatedUpgradeRecipeID(ctx context.Context, d
 	}
 	return int(id), nil
 }
+
+// Recipe loader operations
+
+// GetAllCraftingRecipes retrieves all crafting recipes
+func (r *CraftingRepository) GetAllCraftingRecipes(ctx context.Context) ([]domain.Recipe, error) {
+	rows, err := r.q.GetAllCraftingRecipes(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query crafting recipes: %w", err)
+	}
+
+	var recipes []domain.Recipe
+	for _, row := range rows {
+		recipe := domain.Recipe{
+			ID:           int(row.RecipeID),
+			RecipeKey:    row.RecipeKey,
+			TargetItemID: int(row.TargetItemID),
+			CreatedAt:    row.CreatedAt.Time,
+		}
+
+		if len(row.BaseCost) > 0 {
+			if err := json.Unmarshal(row.BaseCost, &recipe.BaseCost); err != nil {
+				return nil, fmt.Errorf("failed to unmarshal base cost: %w", err)
+			}
+		} else {
+			recipe.BaseCost = []domain.RecipeCost{}
+		}
+
+		recipes = append(recipes, recipe)
+	}
+
+	return recipes, nil
+}
+
+// GetAllDisassembleRecipes retrieves all disassemble recipes
+func (r *CraftingRepository) GetAllDisassembleRecipes(ctx context.Context) ([]domain.DisassembleRecipe, error) {
+	rows, err := r.q.GetAllDisassembleRecipes(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query disassemble recipes: %w", err)
+	}
+
+	var recipes []domain.DisassembleRecipe
+	for _, row := range rows {
+		recipe := domain.DisassembleRecipe{
+			ID:               int(row.RecipeID),
+			RecipeKey:        row.RecipeKey,
+			SourceItemID:     int(row.SourceItemID),
+			QuantityConsumed: int(row.QuantityConsumed),
+			CreatedAt:        row.CreatedAt.Time,
+		}
+
+		// Load outputs
+		outputs, err := r.q.GetDisassembleOutputs(ctx, row.RecipeID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get outputs for recipe %d: %w", recipe.ID, err)
+		}
+
+		for _, out := range outputs {
+			recipe.Outputs = append(recipe.Outputs, domain.RecipeOutput{
+				ItemID:   int(out.ItemID),
+				Quantity: int(out.Quantity),
+			})
+		}
+
+		recipes = append(recipes, recipe)
+	}
+
+	return recipes, nil
+}
+
+// GetCraftingRecipeByKey retrieves a crafting recipe by its recipe key
+func (r *CraftingRepository) GetCraftingRecipeByKey(ctx context.Context, recipeKey string) (*domain.Recipe, error) {
+	row, err := r.q.GetCraftingRecipeByKey(ctx, recipeKey)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to query crafting recipe by key: %w", err)
+	}
+
+	recipe := domain.Recipe{
+		ID:           int(row.RecipeID),
+		RecipeKey:    row.RecipeKey,
+		TargetItemID: int(row.TargetItemID),
+		CreatedAt:    row.CreatedAt.Time,
+	}
+
+	if len(row.BaseCost) > 0 {
+		if err := json.Unmarshal(row.BaseCost, &recipe.BaseCost); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal base cost: %w", err)
+		}
+	} else {
+		recipe.BaseCost = []domain.RecipeCost{}
+	}
+
+	return &recipe, nil
+}
+
+// GetDisassembleRecipeByKey retrieves a disassemble recipe by its recipe key
+func (r *CraftingRepository) GetDisassembleRecipeByKey(ctx context.Context, recipeKey string) (*domain.DisassembleRecipe, error) {
+	row, err := r.q.GetDisassembleRecipeByKey(ctx, recipeKey)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to query disassemble recipe by key: %w", err)
+	}
+
+	recipe := domain.DisassembleRecipe{
+		ID:               int(row.RecipeID),
+		RecipeKey:        row.RecipeKey,
+		SourceItemID:     int(row.SourceItemID),
+		QuantityConsumed: int(row.QuantityConsumed),
+		CreatedAt:        row.CreatedAt.Time,
+	}
+
+	// Load outputs
+	outputs, err := r.q.GetDisassembleOutputs(ctx, row.RecipeID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get outputs for recipe %d: %w", recipe.ID, err)
+	}
+
+	for _, out := range outputs {
+		recipe.Outputs = append(recipe.Outputs, domain.RecipeOutput{
+			ItemID:   int(out.ItemID),
+			Quantity: int(out.Quantity),
+		})
+	}
+
+	return &recipe, nil
+}
+
+// InsertCraftingRecipe inserts a new crafting recipe
+func (r *CraftingRepository) InsertCraftingRecipe(ctx context.Context, recipe *domain.Recipe) (int, error) {
+	baseCostJSON, err := json.Marshal(recipe.BaseCost)
+	if err != nil {
+		return 0, fmt.Errorf("failed to marshal base cost: %w", err)
+	}
+
+	recipeID, err := r.q.InsertCraftingRecipe(ctx, generated.InsertCraftingRecipeParams{
+		RecipeKey:    recipe.RecipeKey,
+		TargetItemID: int32(recipe.TargetItemID),
+		BaseCost:     baseCostJSON,
+	})
+	if err != nil {
+		return 0, fmt.Errorf("failed to insert crafting recipe: %w", err)
+	}
+
+	return int(recipeID), nil
+}
+
+// InsertDisassembleRecipe inserts a new disassemble recipe
+func (r *CraftingRepository) InsertDisassembleRecipe(ctx context.Context, recipe *domain.DisassembleRecipe) (int, error) {
+	recipeID, err := r.q.InsertDisassembleRecipe(ctx, generated.InsertDisassembleRecipeParams{
+		RecipeKey:        recipe.RecipeKey,
+		SourceItemID:     int32(recipe.SourceItemID),
+		QuantityConsumed: int32(recipe.QuantityConsumed),
+	})
+	if err != nil {
+		return 0, fmt.Errorf("failed to insert disassemble recipe: %w", err)
+	}
+
+	return int(recipeID), nil
+}
+
+// UpdateCraftingRecipe updates an existing crafting recipe
+func (r *CraftingRepository) UpdateCraftingRecipe(ctx context.Context, recipeID int, recipe *domain.Recipe) error {
+	baseCostJSON, err := json.Marshal(recipe.BaseCost)
+	if err != nil {
+		return fmt.Errorf("failed to marshal base cost: %w", err)
+	}
+
+	err = r.q.UpdateCraftingRecipe(ctx, generated.UpdateCraftingRecipeParams{
+		RecipeKey:    recipe.RecipeKey,
+		TargetItemID: int32(recipe.TargetItemID),
+		BaseCost:     baseCostJSON,
+		RecipeID:     int32(recipeID),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update crafting recipe: %w", err)
+	}
+
+	return nil
+}
+
+// UpdateDisassembleRecipe updates an existing disassemble recipe
+func (r *CraftingRepository) UpdateDisassembleRecipe(ctx context.Context, recipeID int, recipe *domain.DisassembleRecipe) error {
+	err := r.q.UpdateDisassembleRecipe(ctx, generated.UpdateDisassembleRecipeParams{
+		RecipeKey:        recipe.RecipeKey,
+		SourceItemID:     int32(recipe.SourceItemID),
+		QuantityConsumed: int32(recipe.QuantityConsumed),
+		RecipeID:         int32(recipeID),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update disassemble recipe: %w", err)
+	}
+
+	return nil
+}
+
+// ClearDisassembleOutputs removes all outputs for a disassemble recipe
+func (r *CraftingRepository) ClearDisassembleOutputs(ctx context.Context, recipeID int) error {
+	err := r.q.ClearDisassembleOutputs(ctx, int32(recipeID))
+	if err != nil {
+		return fmt.Errorf("failed to clear disassemble outputs: %w", err)
+	}
+
+	return nil
+}
+
+// InsertDisassembleOutput inserts a single output for a disassemble recipe
+func (r *CraftingRepository) InsertDisassembleOutput(ctx context.Context, recipeID int, output domain.RecipeOutput) error {
+	err := r.q.InsertDisassembleOutput(ctx, generated.InsertDisassembleOutputParams{
+		RecipeID: int32(recipeID),
+		ItemID:   int32(output.ItemID),
+		Quantity: int32(output.Quantity),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to insert disassemble output: %w", err)
+	}
+
+	return nil
+}
+
+// UpsertRecipeAssociation creates or updates a recipe association
+func (r *CraftingRepository) UpsertRecipeAssociation(ctx context.Context, upgradeRecipeID, disassembleRecipeID int) error {
+	err := r.q.UpsertRecipeAssociation(ctx, generated.UpsertRecipeAssociationParams{
+		UpgradeRecipeID:     int32(upgradeRecipeID),
+		DisassembleRecipeID: int32(disassembleRecipeID),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to upsert recipe association: %w", err)
+	}
+
+	return nil
+}
