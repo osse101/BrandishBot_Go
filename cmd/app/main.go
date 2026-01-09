@@ -201,7 +201,6 @@ func main() {
 
 	// Initialize services that depend on job service
 	economyService := economy.NewService(economyRepo, jobService)
-	craftingService := crafting.NewService(craftingRepo, jobService, statsService)
 
 	// Initialize Worker Pool
 	// Start with 5 workers as per plan
@@ -286,6 +285,7 @@ func main() {
 	slog.Info("Cooldown service initialized", "dev_mode", cfg.DevMode)
 
 	gambleService := gamble.NewService(gambleRepo, eventBus, lootboxSvc, statsService, cfg.GambleJoinDuration, jobService, progressionService)
+	craftingService := crafting.NewService(craftingRepo, jobService, statsService, namingResolver)
 
 	// Initialize services that depend on job service
 	userService := user.NewService(userRepo, statsService, jobService, lootboxSvc, namingResolver, cooldownSvc, cfg.DevMode)

@@ -9,6 +9,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
+	"github.com/osse101/BrandishBot_Go/internal/naming"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/osse101/BrandishBot_Go/internal/stats"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
@@ -68,20 +69,22 @@ const (
 )
 
 type service struct {
-	repo       repository.Crafting
-	jobService JobService
-	statsSvc   stats.Service
-	rnd        func() float64 // For rolling RNG (does not need to be cryptographically secure)
-	wg         sync.WaitGroup // Tracks async goroutines for graceful shutdown
+	repo           repository.Crafting
+	jobService     JobService
+	statsSvc       stats.Service
+	namingResolver naming.Resolver // For resolving public names to internal names
+	rnd            func() float64   // For rolling RNG (does not need to be cryptographically secure)
+	wg             sync.WaitGroup   // Tracks async goroutines for graceful shutdown
 }
 
 // NewService creates a new crafting service
-func NewService(repo repository.Crafting, jobService JobService, statsSvc stats.Service) Service {
+func NewService(repo repository.Crafting, jobService JobService, statsSvc stats.Service, namingResolver naming.Resolver) Service {
 	return &service{
-		repo:       repo,
-		jobService: jobService,
-		statsSvc:   statsSvc,
-		rnd:        utils.RandomFloat,
+		repo:           repo,
+		jobService:     jobService,
+		statsSvc:       statsSvc,
+		namingResolver: namingResolver,
+		rnd:            utils.RandomFloat,
 	}
 }
 
@@ -105,6 +108,30 @@ func (s *service) validateItem(ctx context.Context, itemName string) (*domain.It
 		return nil, fmt.Errorf("item not found: %s", itemName)
 	}
 	return item, nil
+}
+
+// resolveItemName attempts to resolve a user-provided item name to its internal name.
+// It first tries the naming resolver, then falls back to using the input as-is.
+// This allows users to use either public names ("junkbox") or internal names ("lootbox_tier0").
+func (s *service) resolveItemName(ctx context.Context, itemName string) (string, error) {
+	// Try naming resolver first (handles public names)
+	if s.namingResolver != nil {
+		if internalName, ok := s.namingResolver.ResolvePublicName(itemName); ok {
+			return internalName, nil
+		}
+	}
+
+	// Fall back - assume it's already an internal name
+	// Validate by checking if item exists
+	item, err := s.validateItem(ctx, itemName)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve item name '%s': %w", itemName, err)
+	}
+	if item == nil {
+		return "", fmt.Errorf("item not found: %s (not found as public or internal name)", itemName)
+	}
+
+	return itemName, nil
 }
 
 // calculateMaxPossibleCrafts calculates the maximum number of crafts possible given available materials
@@ -161,19 +188,25 @@ func (s *service) UpgradeItem(ctx context.Context, platform, platformID, usernam
 	log := logger.FromContext(ctx)
 	log.Info("UpgradeItem called", "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity)
 
+	// Resolve public name to internal name
+	resolvedName, err := s.resolveItemName(ctx, itemName)
+	if err != nil {
+		return nil, err
+	}
+
 	// Validate user and item
 	user, err := s.validateUser(ctx, platform, platformID)
 	if err != nil {
 		return nil, err
 	}
 
-	item, err := s.validateItem(ctx, itemName)
+	item, err := s.validateItem(ctx, resolvedName)
 	if err != nil {
 		return nil, err
 	}
 
 	// Get and validate recipe
-	recipe, err := s.getAndValidateRecipe(ctx, item.ID, user.ID, itemName)
+	recipe, err := s.getAndValidateRecipe(ctx, item.ID, user.ID, resolvedName)
 	if err != nil {
 		return nil, err
 	}
@@ -441,19 +474,25 @@ func (s *service) DisassembleItem(ctx context.Context, platform, platformID, use
 	log := logger.FromContext(ctx)
 	log.Info("DisassembleItem called", "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity)
 
+	// Resolve public name to internal name
+	resolvedName, err := s.resolveItemName(ctx, itemName)
+	if err != nil {
+		return nil, err
+	}
+
 	// Validate user and item
 	user, err := s.validateUser(ctx, platform, platformID)
 	if err != nil {
 		return nil, err
 	}
 
-	item, err := s.validateItem(ctx, itemName)
+	item, err := s.validateItem(ctx, resolvedName)
 	if err != nil {
 		return nil, err
 	}
 
 	// Get and validate disassemble recipe
-	recipe, err := s.getAndValidateDisassembleRecipe(ctx, item.ID, user.ID, itemName)
+	recipe, err := s.getAndValidateDisassembleRecipe(ctx, item.ID, user.ID, resolvedName)
 	if err != nil {
 		return nil, err
 	}
