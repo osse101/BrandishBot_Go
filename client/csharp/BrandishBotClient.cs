@@ -256,6 +256,14 @@ namespace BrandishBot.Client
         }
 
         /// <summary>
+        /// Get current buy prices for items
+        /// </summary>
+        public async Task<string> GetBuyPrices()
+        {
+            return await GetAsync("/api/v1/prices/buy");
+        }
+
+        /// <summary>
         /// Get current item prices (Sell Prices)
         /// </summary>
         public async Task<string> GetSellPrices()
@@ -766,18 +774,6 @@ namespace BrandishBot.Client
                 "platform_id=" + platformId
             );
             return await GetAsync("/api/v1/link/status" + query);
-        }
-
-        #endregion
-
-        #region Economy (Extended)
-
-        /// <summary>
-        /// Get current buy prices for items
-        /// </summary>
-        public async Task<string> GetBuyPrices()
-        {
-            return await GetAsync("/api/v1/prices/buy");
         }
 
         #endregion

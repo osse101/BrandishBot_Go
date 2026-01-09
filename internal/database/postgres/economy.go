@@ -135,17 +135,22 @@ func (r *EconomyRepository) IsItemBuyable(ctx context.Context, itemName string) 
 	return r.q.IsItemBuyable(ctx, itemName)
 }
 
-// GetBuyablePrices retrieves all buyable items with their prices (placeholder, reusing GetSellablePrices structure for now if not distinct in DB queries)
-// Note: original user.go didn't have GetBuyablePrices in the snippet I saw, but interface requires it.
-// Assuming similar to GetSellablePrices but filtered? Or maybe I need to implement it.
-// Checking interface view log (Step 152 doesn't show it), but Step 130 defines GetBuyablePrices in interface.
-// If it's not in user.go, I need to implement it.
+// GetBuyablePrices retrieves all buyable items with their prices
 func (r *EconomyRepository) GetBuyablePrices(ctx context.Context) ([]domain.Item, error) {
-	// TODO: Checks for 'buyable' type. Assuming existing query or I need to add one.
-	// For now, let's implement using GetAllItems and filtering or check if there is a query.
-	// generated.Queries likely has generic item fetch.
-	// BUT wait, I can't check generated queries source easily.
-	// I'll leave a TODO or try to implement if I know the schema.
-	// For now returns empty list to satisfy interface.
-	return []domain.Item{}, nil
+	rows, err := r.q.GetBuyablePrices(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query buyable items: %w", err)
+	}
+
+	var items []domain.Item
+	for _, row := range rows {
+		items = append(items, domain.Item{
+			ID:           int(row.ItemID),
+			InternalName: row.InternalName,
+			Description:  row.ItemDescription.String,
+			BaseValue:    int(row.BaseValue.Int32),
+		})
+	}
+
+	return items, nil
 }
