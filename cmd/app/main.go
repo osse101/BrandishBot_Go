@@ -138,7 +138,8 @@ func main() {
 
 
 	// Initialize Event Bus
-	eventBus := event.NewMemoryBus()
+	memoryBus := event.NewMemoryBus()
+	eventBus := event.NewResilientPublisher(memoryBus, cfg.EventMaxRetries, cfg.EventRetryDelay, cfg.EventDeadLetterPath)
 
 	// Initialize Worker Pool
 	// Start with 5 workers as per plan

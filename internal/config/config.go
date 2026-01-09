@@ -53,6 +53,11 @@ type Config struct {
 
 	// Development Settings
 	DevMode bool // When true, bypasses cooldowns and enables test features
+
+	// Event Configuration
+	EventMaxRetries     int           // Maximum number of retries for event publishing
+	EventRetryDelay     time.Duration // Delay between retries
+	EventDeadLetterPath string        // Path to the dead-letter queue file
 }
 
 // Load loads the configuration from environment variables
@@ -114,6 +119,11 @@ func Load() (*Config, error) {
 	// Dev mode (bypasses cooldowns and enables test features)
 	devModeStr := getEnv("DEV_MODE", "false")
 	cfg.DevMode = devModeStr == "true" || devModeStr == "1"
+
+	// Event config
+	cfg.EventMaxRetries = getEnvAsInt("EVENT_MAX_RETRIES", 3)
+	cfg.EventRetryDelay = getEnvAsDuration("EVENT_RETRY_DELAY", 100*time.Millisecond)
+	cfg.EventDeadLetterPath = getEnv("EVENT_DEAD_LETTER_PATH", "./dead_letter.jsonl")
 
 	// Parse trusted proxies
 	trustedProxiesStr := getEnv("TRUSTED_PROXIES", "")
