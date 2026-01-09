@@ -701,7 +701,7 @@ func (c *APIClient) DisassembleItem(platform, platformID, username, itemName str
 		"platform":    platform,
 		"platform_id": platformID,
 		"username":    username,
-		"item_name":   itemName,
+		"item":        itemName,
 		"quantity":    quantity,
 	}
 	return c.doAction(http.MethodPost, "/api/v1/user/item/disassemble", req)

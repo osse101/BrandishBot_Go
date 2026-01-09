@@ -340,7 +340,7 @@ namespace BrandishBot.Client
                 platform = platform,
                 platform_id = platformId,
                 username = username,
-                item_name = itemName,
+                item = itemName,
                 quantity = quantity
             });
         }
