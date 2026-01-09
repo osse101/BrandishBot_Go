@@ -1184,6 +1184,28 @@ public class CPHInline
     }
 
     /// <summary>
+    /// Admin: Unlock ALL progression nodes at max level (DEBUG ONLY)
+    /// Command: !adminUnlockAll
+    /// </summary>
+    public bool AdminUnlockAllNodes()
+    {
+        EnsureInitialized();
+
+        try
+        {
+            var result = client.AdminUnlockAllNodes().Result;
+            CPH.SetArgument("response", result);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            CPH.LogWarn($"AdminUnlockAllNodes API Error: {ex.Message}");
+            CPH.SetArgument("response", $"Error: {ex.Message}");
+            return true;
+        }
+    }
+
+    /// <summary>
     /// Admin: Re-lock a specific node
     /// Command: !adminRelock <node_key> [level]
     /// </summary>

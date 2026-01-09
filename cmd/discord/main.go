@@ -99,6 +99,9 @@ func main() {
 	cmd, handler = discord.AdminUnlockCommand()
 	bot.Registry.Register(cmd, handler)
 
+	cmd, handler = discord.AdminUnlockAllCommand()
+	bot.Registry.Register(cmd, handler)
+
 	cmd, handler = discord.AdminRelockCommand()
 	bot.Registry.Register(cmd, handler)
 

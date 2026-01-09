@@ -141,6 +141,7 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 
 			r.Route("/admin", func(r chi.Router) {
 				r.Post("/unlock", progressionHandlers.HandleAdminUnlock())
+				r.Post("/unlock-all", progressionHandlers.HandleAdminUnlockAll())
 				r.Post("/relock", progressionHandlers.HandleAdminRelock())
 				r.Post("/instant-unlock", progressionHandlers.HandleAdminInstantUnlock())
 				r.Post("/start-voting", progressionHandlers.HandleAdminStartVoting())

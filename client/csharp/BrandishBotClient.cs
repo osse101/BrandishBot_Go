@@ -559,6 +559,14 @@ namespace BrandishBot.Client
         }
 
         /// <summary>
+        /// Admin: Unlock ALL progression nodes at max level (DEBUG ONLY)
+        /// </summary>
+        public async Task<string> AdminUnlockAllNodes()
+        {
+            return await PostJsonAsync("/api/v1/progression/admin/unlock-all", new { });
+        }
+
+        /// <summary>
         /// Admin: Re-lock a specific node at a specific level
         /// </summary>
         public async Task<string> AdminRelockNode(string nodeKey, int level)

@@ -167,6 +167,52 @@ func (_c *MockProgressionService_AdminUnlock_Call) RunAndReturn(run func(context
 	return _c
 }
 
+// AdminUnlockAll provides a mock function with given fields: ctx
+func (_m *MockProgressionService) AdminUnlockAll(ctx context.Context) error {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AdminUnlockAll")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockProgressionService_AdminUnlockAll_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AdminUnlockAll'
+type MockProgressionService_AdminUnlockAll_Call struct {
+	*mock.Call
+}
+
+// AdminUnlockAll is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockProgressionService_Expecter) AdminUnlockAll(ctx interface{}) *MockProgressionService_AdminUnlockAll_Call {
+	return &MockProgressionService_AdminUnlockAll_Call{Call: _e.mock.On("AdminUnlockAll", ctx)}
+}
+
+func (_c *MockProgressionService_AdminUnlockAll_Call) Run(run func(ctx context.Context)) *MockProgressionService_AdminUnlockAll_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockProgressionService_AdminUnlockAll_Call) Return(_a0 error) *MockProgressionService_AdminUnlockAll_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockProgressionService_AdminUnlockAll_Call) RunAndReturn(run func(context.Context) error) *MockProgressionService_AdminUnlockAll_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CheckAndUnlockCriteria provides a mock function with given fields: ctx
 func (_m *MockProgressionService) CheckAndUnlockCriteria(ctx context.Context) (*domain.ProgressionUnlock, error) {
 	ret := _m.Called(ctx)

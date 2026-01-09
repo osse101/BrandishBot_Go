@@ -135,6 +135,47 @@ func AdminUnlockCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	return cmd, handler
 }
 
+// AdminUnlockAllCommand returns the admin unlock all command definition and handler
+func AdminUnlockAllCommand() (*discordgo.ApplicationCommand, CommandHandler) {
+	cmd := &discordgo.ApplicationCommand{
+		Name:        "admin-unlock-all",
+		Description: "[Admin] Force unlock ALL progression nodes (DEBUG ONLY)",
+	}
+
+	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
+		if err :=s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
+		}); err != nil {
+			slog.Error("Failed to send deferred response", "error", err)
+			return
+		}
+
+		msg, err := client.AdminUnlockAllNodes()
+		if err != nil {
+			slog.Error("Failed to unlock all nodes", "error", err)
+			respondError(s, i, fmt.Sprintf("Failed to unlock all nodes: %v", err))
+			return
+		}
+
+		embed := &discordgo.MessageEmbed{
+			Title:       "🔓 Admin Unlock All",
+			Description: msg,
+			Color:       0xe74c3c, // Red (warning color for debug command)
+			Footer: &discordgo.MessageEmbedFooter{
+				Text: "BrandishBot Admin - DEBUG",
+			},
+		}
+
+		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			Embeds: &[]*discordgo.MessageEmbed{embed},
+		}); err != nil {
+			slog.Error("Failed to send response", "error", err)
+		}
+	}
+
+	return cmd, handler
+}
+
 // UnlockProgressCommand returns the unlock progress command handler
 func UnlockProgressCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	cmd := &discordgo.ApplicationCommand{

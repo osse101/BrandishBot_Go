@@ -54,6 +54,7 @@ type Service interface {
 
 	// Admin functions
 	AdminUnlock(ctx context.Context, nodeKey string, level int) error
+	AdminUnlockAll(ctx context.Context) error
 	AdminRelock(ctx context.Context, nodeKey string, level int) error
 	ResetProgressionTree(ctx context.Context, resetBy string, reason string, preserveUserData bool) error
 	InvalidateWeightCache() // Clears engagement weight cache (forces reload on next engagement)
@@ -477,6 +478,34 @@ func (s *service) AdminUnlock(ctx context.Context, nodeKey string, level int) er
 	}
 
 	log.Info("Admin unlocked node", "nodeKey", nodeKey, "level", level)
+	return nil
+}
+
+// AdminUnlockAll unlocks all progression nodes at their max level (for debugging)
+func (s *service) AdminUnlockAll(ctx context.Context) error {
+	log := logger.FromContext(ctx)
+
+	// Get all nodes
+	nodes, err := s.repo.GetAllNodes(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get all nodes: %w", err)
+	}
+
+	if len(nodes) == 0 {
+		return fmt.Errorf("no nodes found")
+	}
+
+	// Unlock each node at its max level
+	unlockedCount := 0
+	for _, node := range nodes {
+		if err := s.AdminUnlock(ctx, node.NodeKey, node.MaxLevel); err != nil {
+			log.Warn("Failed to unlock node", "nodeKey", node.NodeKey, "error", err)
+			continue
+		}
+		unlockedCount++
+	}
+
+	log.Info("Admin unlocked all nodes", "total", len(nodes), "unlocked", unlockedCount)
 	return nil
 }
 

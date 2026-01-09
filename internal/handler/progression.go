@@ -249,6 +249,30 @@ func (h *ProgressionHandlers) HandleAdminRelock() http.HandlerFunc {
 	}, "Admin relocked node", "Node relocked successfully")
 }
 
+// HandleAdminUnlockAll admin unlocks all nodes at max level (DEBUG)
+// @Summary Admin unlock all nodes
+// @Description Unlocks all progression nodes at their maximum level (for debugging)
+// @Tags progression,admin
+// @Produce json
+// @Success 200 {object} SuccessResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /progression/admin/unlock-all [post]
+func (h *ProgressionHandlers) HandleAdminUnlockAll() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromContext(r.Context())
+
+		if err := h.service.AdminUnlockAll(r.Context()); err != nil {
+			log.Error("Failed to unlock all nodes", "error", err)
+			respondError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		log.Info("Admin unlocked all nodes")
+		respondJSON(w, http.StatusOK, SuccessResponse{Message: "All nodes unlocked successfully"})
+	}
+}
+
+
 func (h *ProgressionHandlers) handleAdminNodeAction(action func(context.Context, string, int) error, logMsg, successMsg string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
