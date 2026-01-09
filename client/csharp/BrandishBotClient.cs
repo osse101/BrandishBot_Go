@@ -207,15 +207,14 @@ namespace BrandishBot.Client
         /// <summary>
         /// Give item from one user to another
         /// </summary>
-        public async Task<string> GiveItem(string fromPlatform, string fromPlatformId, 
-            string toPlatform, string toPlatformId, string toUsername, string itemName, int quantity)
+        public async Task<string> GiveItem(string fromPlatform, string fromUsername, 
+            string toPlatform, string toUsername, string itemName, int quantity)
         {
-            return await PostJsonAsync("/api/v1/user/item/give", new
+            return await PostJsonAsync("/api/v1/user/item/give-by-username", new
             {
                 from_platform = fromPlatform,
-                from_platform_id = fromPlatformId,
+                from_username = fromUsername,
                 to_platform = toPlatform,
-                to_platform_id = toPlatformId,
                 to_username = toUsername,
                 item_name = itemName,
                 quantity = quantity

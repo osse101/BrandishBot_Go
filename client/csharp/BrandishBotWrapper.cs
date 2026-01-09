@@ -387,11 +387,10 @@ public class CPHInline
         }
 
         string toPlatform = fromPlatform; 
-        string toPlatformId = ""; // Unknown ID from just a username input
 
         try
         {
-            var result = client.GiveItem(fromPlatform, fromPlatformId, toPlatform, toPlatformId, toUsername, itemName, quantity).Result;
+            var result = client.GiveItem(fromPlatform, fromUsername, toPlatform, toUsername, itemName, quantity).Result;
             CPH.SetArgument("response", result);
             return true;
         }
