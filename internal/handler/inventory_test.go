@@ -649,7 +649,7 @@ func TestHandleGetInventory(t *testing.T) {
 				m.On("GetInventory", mock.Anything, domain.PlatformDiscord, "test-platformid", "testuser", "").Return(items, nil)
 			},
 			expectedStatus: http.StatusOK,
-			expectedBody:   `"items":[{"name":"weapon_blaster","description":"","quantity":1,"value":0}]`,
+			expectedBody:   `"items":[{"name":"weapon_blaster","quantity":1}]`,
 		},
 		{
 			name:       "Success with Filter",
@@ -665,7 +665,7 @@ func TestHandleGetInventory(t *testing.T) {
 				m.On("GetInventory", mock.Anything, domain.PlatformDiscord, "test-platformid", "testuser", domain.FilterTypeUpgrade).Return(items, nil)
 			},
 			expectedStatus: http.StatusOK,
-			expectedBody:   `"items":[{"name":"lootbox_tier0","description":"","quantity":1,"value":0}]`,
+			expectedBody:   `"items":[{"name":"lootbox_tier0","quantity":1}]`,
 		},
 		{
 			name:       "Filter Locked",
@@ -715,7 +715,7 @@ func TestHandleGetInventory(t *testing.T) {
 				m.On("GetInventory", mock.Anything, domain.PlatformDiscord, "test-platformid", "testuser", domain.FilterTypeSellable).Return(items, nil)
 			},
 			expectedStatus: http.StatusOK,
-			expectedBody:   `"items":[{"name":"lootbox_tier1","description":"","quantity":5,"value":0}]`,
+			expectedBody:   `"items":[{"name":"lootbox_tier1","quantity":5}]`,
 		},
 		{
 			name:       "Sellable Filter - Locked",
@@ -743,7 +743,7 @@ func TestHandleGetInventory(t *testing.T) {
 				m.On("GetInventory", mock.Anything, domain.PlatformDiscord, "test-platformid", "testuser", domain.FilterTypeConsumable).Return(items, nil)
 			},
 			expectedStatus: http.StatusOK,
-			expectedBody:   `"items":[{"name":"lootbox_tier0","description":"","quantity":3,"value":0}]`,
+			expectedBody:   `"items":[{"name":"lootbox_tier0","quantity":3}]`,
 		},
 		{
 			name:       "Consumable Filter - Locked",

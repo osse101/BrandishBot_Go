@@ -68,6 +68,7 @@ func TestAddItemByUsername(t *testing.T) {
 	repo := NewFakeRepository()
 	svc := &service{
 		repo:            repo,
+		namingResolver:  NewMockNamingResolver(),
 		itemCache:       make(map[int]domain.Item),
 		itemCacheByName: make(map[string]domain.Item),
 	}
@@ -106,6 +107,7 @@ func TestRemoveItemByUsername(t *testing.T) {
 	repo := NewFakeRepository()
 	svc := &service{
 		repo:            repo,
+		namingResolver:  NewMockNamingResolver(),
 		itemCache:       make(map[int]domain.Item),
 		itemCacheByName: make(map[string]domain.Item),
 	}
@@ -151,6 +153,7 @@ func TestGiveItemByUsername(t *testing.T) {
 	repo := NewFakeRepository()
 	svc := &service{
 		repo:            repo,
+		namingResolver:  NewMockNamingResolver(),
 		itemCache:       make(map[int]domain.Item),
 		itemCacheByName: make(map[string]domain.Item),
 	}

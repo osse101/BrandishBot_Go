@@ -291,8 +291,8 @@ func TestUserRepository_Integration(t *testing.T) {
 
 		// Verify items have required fields
 		for _, item := range items {
-			if item.InternalName == "" {
-				t.Error("sellable item has empty name")
+			if item.PublicName == "" {
+				t.Error("sellable item has empty public name")
 			}
 			if item.BaseValue < 0 {
 				t.Error("sellable item has negative base value")
