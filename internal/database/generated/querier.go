@@ -15,11 +15,13 @@ import (
 type Querier interface {
 	AddContribution(ctx context.Context, arg AddContributionParams) error
 	AddVotingOption(ctx context.Context, arg AddVotingOptionParams) error
+	AssignItemTag(ctx context.Context, arg AssignItemTagParams) error
 	CleanupExpiredTokens(ctx context.Context) error
 	CleanupOldEvents(ctx context.Context, days int32) (int64, error)
 	ClearAllUserProgression(ctx context.Context) error
 	ClearAllUserVotes(ctx context.Context) error
 	ClearAllVoting(ctx context.Context) error
+	ClearItemTags(ctx context.Context, itemID int32) error
 	ClearNodePrerequisites(ctx context.Context, nodeID int32) error
 	ClearUnlocksExceptRoot(ctx context.Context) error
 	CompleteUnlock(ctx context.Context, id int32) error
@@ -39,6 +41,7 @@ type Querier interface {
 	GetActiveSession(ctx context.Context) (GetActiveSessionRow, error)
 	GetActiveUnlockProgress(ctx context.Context) (ProgressionUnlockProgress, error)
 	GetActiveVoting(ctx context.Context) (ProgressionVoting, error)
+	GetAllItemTypes(ctx context.Context) ([]ItemType, error)
 	GetAllItems(ctx context.Context) ([]GetAllItemsRow, error)
 	GetAllJobs(ctx context.Context) ([]Job, error)
 	GetAllNodes(ctx context.Context) ([]GetAllNodesRow, error)
@@ -63,6 +66,8 @@ type Querier interface {
 	GetInventory(ctx context.Context, userID uuid.UUID) ([]byte, error)
 	GetInventoryForUpdate(ctx context.Context, userID uuid.UUID) ([]byte, error)
 	GetItemByID(ctx context.Context, itemID int32) (GetItemByIDRow, error)
+	// Item Repository Queries
+	GetItemByInternalName(ctx context.Context, internalName string) (GetItemByInternalNameRow, error)
 	GetItemByName(ctx context.Context, internalName string) (GetItemByNameRow, error)
 	GetItemByPublicName(ctx context.Context, publicName pgtype.Text) (GetItemByPublicNameRow, error)
 	GetItemsByIDs(ctx context.Context, dollar_1 []int32) ([]GetItemsByIDsRow, error)
@@ -84,6 +89,7 @@ type Querier interface {
 	GetSessionByID(ctx context.Context, id int32) (GetSessionByIDRow, error)
 	GetSessionOptions(ctx context.Context, sessionID int32) ([]GetSessionOptionsRow, error)
 	GetSessionVoters(ctx context.Context, sessionID pgtype.Int4) ([]string, error)
+	GetSyncMetadata(ctx context.Context, configName string) (GetSyncMetadataRow, error)
 	GetToken(ctx context.Context, token string) (GetTokenRow, error)
 	GetTopUsers(ctx context.Context, arg GetTopUsersParams) ([]GetTopUsersRow, error)
 	GetTotalEngagementScore(ctx context.Context) (int64, error)
@@ -106,6 +112,8 @@ type Querier interface {
 	HasUserVotedInSession(ctx context.Context, arg HasUserVotedInSessionParams) (bool, error)
 	IncrementOptionVote(ctx context.Context, id int32) error
 	IncrementVote(ctx context.Context, arg IncrementVoteParams) error
+	InsertItem(ctx context.Context, arg InsertItemParams) (int32, error)
+	InsertItemType(ctx context.Context, typeName string) (int32, error)
 	InsertNextUnlockProgress(ctx context.Context, contributionsAccumulated int32) (int32, error)
 	InsertNode(ctx context.Context, arg InsertNodeParams) (int32, error)
 	InsertNodePrerequisite(ctx context.Context, arg InsertNodePrerequisiteParams) error
@@ -134,11 +142,13 @@ type Querier interface {
 	UpdateGambleState(ctx context.Context, arg UpdateGambleStateParams) error
 	UpdateGambleStateIfMatches(ctx context.Context, arg UpdateGambleStateIfMatchesParams) (pgconn.CommandTag, error)
 	UpdateInventory(ctx context.Context, arg UpdateInventoryParams) error
+	UpdateItem(ctx context.Context, arg UpdateItemParams) error
 	UpdateNode(ctx context.Context, arg UpdateNodeParams) error
 	UpdateOptionLastHighest(ctx context.Context, id int32) error
 	UpdateToken(ctx context.Context, arg UpdateTokenParams) error
 	UpdateUser(ctx context.Context, arg UpdateUserParams) error
 	UpdateUserTimestamp(ctx context.Context, userID uuid.UUID) error
+	UpsertSyncMetadata(ctx context.Context, arg UpsertSyncMetadataParams) error
 	UpsertUserJob(ctx context.Context, arg UpsertUserJobParams) error
 	UpsertUserPlatformLink(ctx context.Context, arg UpsertUserPlatformLinkParams) error
 }

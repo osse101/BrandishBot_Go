@@ -130,3 +130,25 @@ func updateInventory(ctx context.Context, q *generated.Queries, userID string, i
 	}
 	return nil
 }
+
+// strToText converts a string to pgtype.Text
+func strToText(s string) pgtype.Text {
+	if s == "" {
+		return pgtype.Text{Valid: false}
+	}
+	return pgtype.Text{String: s, Valid: true}
+}
+
+// ptrToText converts a string pointer to pgtype.Text
+func ptrToText(s *string) pgtype.Text {
+	if s == nil || *s == "" {
+		return pgtype.Text{Valid: false}
+	}
+	return pgtype.Text{String: *s, Valid: true}
+}
+
+// intToInt4 converts an int to pgtype.Int4
+func intToInt4(i int) pgtype.Int4 {
+	return pgtype.Int4{Int32: int32(i), Valid: true}
+}
+

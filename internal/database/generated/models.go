@@ -9,6 +9,14 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type ConfigSyncMetadatum struct {
+	ConfigName   string             `json:"config_name"`
+	LastSyncTime pgtype.Timestamptz `json:"last_sync_time"`
+	FileHash     string             `json:"file_hash"`
+	FileModTime  pgtype.Timestamptz `json:"file_mod_time"`
+	SyncDetails  []byte             `json:"sync_details"`
+}
+
 type CraftingRecipe struct {
 	RecipeID     int32            `json:"recipe_id"`
 	TargetItemID int32            `json:"target_item_id"`
@@ -74,13 +82,6 @@ type GambleParticipant struct {
 	GambleID    uuid.UUID `json:"gamble_id"`
 	UserID      uuid.UUID `json:"user_id"`
 	LootboxBets []byte    `json:"lootbox_bets"`
-}
-
-type GooseDbVersion struct {
-	ID        int32            `json:"id"`
-	VersionID int64            `json:"version_id"`
-	IsApplied bool             `json:"is_applied"`
-	Tstamp    pgtype.Timestamp `json:"tstamp"`
 }
 
 type Item struct {

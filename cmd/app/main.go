@@ -23,6 +23,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/eventlog"
 	"github.com/osse101/BrandishBot_Go/internal/gamble"
+	"github.com/osse101/BrandishBot_Go/internal/item"
 	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/linking"
 	"github.com/osse101/BrandishBot_Go/internal/lootbox"
@@ -193,6 +194,36 @@ func main() {
 			"updated", syncResult.NodesUpdated,
 			"skipped", syncResult.NodesSkipped,
 			"auto_unlocked", syncResult.AutoUnlocked)
+	}
+
+	// Sync items from JSON configuration
+	slog.Info("Syncing items from JSON config...")
+	itemLoader := item.NewLoader()
+	itemRepo := postgres.NewItemRepository(dbPool)
+
+	itemConfig, err := itemLoader.Load("configs/items/items.json")
+	if err != nil {
+		slog.Error("Failed to load items config", "error", err)
+		os.Exit(1)
+	}
+
+	if err := itemLoader.Validate(itemConfig); err != nil {
+		slog.Error("Invalid items config", "error", err)
+		os.Exit(1)
+	}
+
+	// Sync to database (will skip if file unchanged)
+	itemSyncResult, err := itemLoader.SyncToDatabase(context.Background(), itemConfig, itemRepo, "configs/items/items.json")
+	if err != nil {
+		slog.Error("Failed to sync items to database", "error", err)
+		os.Exit(1)
+	}
+
+	if itemSyncResult.ItemsInserted > 0 || itemSyncResult.ItemsUpdated > 0 {
+		slog.Info("Items synced successfully",
+			"inserted", itemSyncResult.ItemsInserted,
+			"updated", itemSyncResult.ItemsUpdated,
+			"skipped", itemSyncResult.ItemsSkipped)
 	}
 
 	// Initialize Job service (needed by user, economy, crafting, gamble)
