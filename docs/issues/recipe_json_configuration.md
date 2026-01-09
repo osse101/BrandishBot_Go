@@ -166,6 +166,9 @@ type RecipeCost struct {
 - Insert new recipes
 - Update existing recipes if changed
 - Mark orphaned recipes (in DB but not in config)
+- **Sync Associations**: Link disassemble recipes to upgrade recipes using `associated_upgrade` field. This writes to the `recipe_associations` table.
+   > [!IMPORTANT]
+   > Ensure that upgrade recipes are synced BEFORE disassemble recipes to ensure the `associated_upgrade` key works.
 - Return sync statistics
 
 ### 4. Add to Main Initialization
