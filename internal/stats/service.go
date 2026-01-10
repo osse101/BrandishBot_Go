@@ -3,6 +3,7 @@ package stats
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
@@ -31,13 +32,16 @@ type Service interface {
 
 // service implements the Service interface
 type service struct {
-	repo Repository
+	repo            Repository
+	lastStreakCheck map[string]time.Time // cache for last streak check time
+	mu              sync.RWMutex         // protects lastStreakCheck
 }
 
 // NewService creates a new stats service
 func NewService(repo Repository) Service {
 	return &service{
-		repo: repo,
+		repo:            repo,
+		lastStreakCheck: make(map[string]time.Time),
 	}
 }
 
@@ -75,6 +79,21 @@ func (s *service) RecordUserEvent(ctx context.Context, userID string, eventType 
 
 // checkDailyStreak calculates and records daily login streak
 func (s *service) checkDailyStreak(ctx context.Context, userID string) error {
+	now := time.Now()
+	// Check in-memory cache first
+	s.mu.RLock()
+	lastCheck, exists := s.lastStreakCheck[userID]
+	s.mu.RUnlock()
+
+	if exists {
+		y1, m1, d1 := lastCheck.UTC().Date()
+		y2, m2, d2 := now.UTC().Date()
+		// If checked today, skip DB operations
+		if y1 == y2 && m1 == m2 && d1 == d2 {
+			return nil
+		}
+	}
+
 	// Get the last streak event
 	events, err := s.repo.GetUserEventsByType(ctx, userID, domain.EventDailyStreak, 1)
 	if err != nil {
@@ -100,7 +119,6 @@ func (s *service) checkDailyStreak(ctx context.Context, userID string) error {
 		}
 	}
 
-	now := time.Now()
 	// Compare dates (UTC)
 	y1, m1, d1 := lastStreakTime.UTC().Date()
 	y2, m2, d2 := now.UTC().Date()
@@ -130,6 +148,15 @@ func (s *service) checkDailyStreak(ctx context.Context, userID string) error {
 	if err := s.RecordUserEvent(ctx, userID, domain.EventDailyStreak, meta); err != nil {
 		return fmt.Errorf("failed to record streak event: %w", err)
 	}
+
+	// Update cache on success
+	s.mu.Lock()
+	if len(s.lastStreakCheck) > 5000 {
+		// Simple cleanup: clear map if it gets too big
+		s.lastStreakCheck = make(map[string]time.Time)
+	}
+	s.lastStreakCheck[userID] = now
+	s.mu.Unlock()
 
 	return nil
 }

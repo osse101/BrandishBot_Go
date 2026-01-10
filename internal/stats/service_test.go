@@ -11,8 +11,9 @@ import (
 
 // mockStatsRepository implements Repository interface for testing
 type mockStatsRepository struct {
-	events           []domain.StatsEvent
-	recordEventError error
+	events                  []domain.StatsEvent
+	recordEventError        error
+	getUserEventsByTypeCalls int
 }
 
 func (m *mockStatsRepository) RecordEvent(ctx context.Context, event *domain.StatsEvent) error {
@@ -45,6 +46,7 @@ func (m *mockStatsRepository) GetEventsByType(ctx context.Context, eventType dom
 }
 
 func (m *mockStatsRepository) GetUserEventsByType(ctx context.Context, userID string, eventType domain.EventType, limit int) ([]domain.StatsEvent, error) {
+	m.getUserEventsByTypeCalls++
 	var filtered []domain.StatsEvent
 	for _, event := range m.events {
 		if event.UserID == userID && event.EventType == eventType {
@@ -183,8 +185,14 @@ func TestRecordUserEvent_DailyStreak(t *testing.T) {
 		},
 	}
 
+	// Clear cache for this test scenario because we manually inserted an event
+	// but the service cache thinks we already checked today (from step 2)
+	// We need a fresh service to simulate a new day or clear the cache
+	// Since cache is internal, we'll create a new service instance
+	svc2 := NewService(repo)
+
 	// Record event today - should increment streak to 6
-	svc.RecordUserEvent(ctx, userID, domain.EventItemAdded, nil)
+	svc2.RecordUserEvent(ctx, userID, domain.EventItemAdded, nil)
 
 	// repo.events should have: yesterday streak (preserved), today item_added, today streak
 	// Note: `RecordUserEvent` appends.
@@ -209,13 +217,51 @@ func TestRecordUserEvent_DailyStreak(t *testing.T) {
 			CreatedAt: twoDaysAgo,
 		},
 	}
+	svc3 := NewService(repo)
 
 	// Record event today - should reset streak to 1
-	svc.RecordUserEvent(ctx, userID, domain.EventItemAdded, nil)
+	svc3.RecordUserEvent(ctx, userID, domain.EventItemAdded, nil)
 
 	lastEvent = repo.events[len(repo.events)-1]
 	if s, ok := lastEvent.EventData["streak"].(int); !ok || s != 1 {
 		t.Errorf("Expected streak 1 (reset), got %v", lastEvent.EventData["streak"])
+	}
+}
+
+func TestDailyStreakCache(t *testing.T) {
+	repo := &mockStatsRepository{}
+	svc := NewService(repo)
+	ctx := context.Background()
+	userID := "user-cache"
+
+	// 1. First event - call DB
+	if err := svc.RecordUserEvent(ctx, userID, domain.EventItemAdded, nil); err != nil {
+		t.Fatalf("Failed: %v", err)
+	}
+
+	// Check that GetUserEventsByType was called
+	// We expect 1 call: to check the last streak
+	if repo.getUserEventsByTypeCalls != 1 {
+		t.Errorf("Expected 1 DB call, got %d", repo.getUserEventsByTypeCalls)
+	}
+
+	// 2. Second event - should hit cache
+	if err := svc.RecordUserEvent(ctx, userID, domain.EventItemSold, nil); err != nil {
+		t.Fatalf("Failed: %v", err)
+	}
+
+	// Should still be 1 call
+	if repo.getUserEventsByTypeCalls != 1 {
+		t.Errorf("Expected 1 DB call (cached), got %d", repo.getUserEventsByTypeCalls)
+	}
+
+	// 3. Different user - should call DB
+	if err := svc.RecordUserEvent(ctx, "other-user", domain.EventItemAdded, nil); err != nil {
+		t.Fatalf("Failed: %v", err)
+	}
+
+	if repo.getUserEventsByTypeCalls != 2 {
+		t.Errorf("Expected 2 DB calls (new user), got %d", repo.getUserEventsByTypeCalls)
 	}
 }
 
