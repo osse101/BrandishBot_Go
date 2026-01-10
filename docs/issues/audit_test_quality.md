@@ -54,9 +54,10 @@ internal/user -> mocks -> internal/user (IMPORT CYCLE!)
 
 **Remaining recommendation**: Optionally rename `user.MockRepository` to `user.FakeRepository` to clarify it's a stateful fake (not critical).
 
-## 2. Standardize Test Structure
-*   [ ] Refactor `internal/crafting/service_test.go` and `internal/lootbox/service_test.go` to explicitly follow the 5-Case Testing Model with comments.
-*   [ ] Ensure every public method has at least one test for each applicable case (Best, Boundary, Error, Concurrent, Nil/Empty).
+## ~~2. Standardize Test Structure~~ [RESOLVED - 2026-01-10]
+*   ✅ Refactored `internal/crafting/service_test.go` to use 5-Case Model and thread-safe mocks.
+*   ✅ Refactored `internal/lootbox/service_test.go` to use 5-Case Model and cleaned up config file handling.
+*   ✅ Verified concurrent safety in both packages.
 
 ## 3. Expand Integration Tests
 *   [ ] Add `gamble_integration_test.go` to `internal/database/postgres` to test the full gamble lifecycle with real database transactions.

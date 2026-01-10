@@ -97,6 +97,10 @@ func (s *service) loadLootTables(path string) error {
 
 // OpenLootbox simulates opening lootboxes and returns the dropped items
 func (s *service) OpenLootbox(ctx context.Context, lootboxName string, quantity int) ([]DroppedItem, error) {
+	if quantity <= 0 {
+		return nil, nil
+	}
+
 	log := logger.FromContext(ctx)
 
 	table, ok := s.lootTables[lootboxName]
