@@ -510,6 +510,47 @@ func TestDisassembleItem(t *testing.T) {
 		assert.Equal(t, 1, inv.Slots[0].Quantity, "Should have 1 lootbox1 remaining")
 	})
 
+	t.Run("Best Case: Perfect Salvage", func(t *testing.T) {
+		repo := NewMockRepository()
+		setupTestData(repo)
+		mockStats := &MockStatsService{}
+		svc := NewService(repo, nil, mockStats, nil).(*service)
+		svc.rnd = func() float64 { return 0.0 } // Trigger perfect salvage
+		ctx := context.Background()
+
+		// Arrange: Give alice 1 lootbox1
+		repo.UpdateInventory(ctx, "user-alice", domain.Inventory{Slots: []domain.InventorySlot{
+			{ItemID: 2, Quantity: 1},
+		}})
+		repo.UnlockRecipe(ctx, "user-alice", 1)
+
+		// Act
+		result, err := svc.DisassembleItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox1, 1)
+
+		// Assert
+		assert.NoError(t, err)
+		assert.True(t, result.IsPerfectSalvage)
+
+		// Logic: 1 item disassembled -> 1 source consumed.
+		// Recipe Output: 1 Lootbox0.
+		// Perfect Salvage: ceil(1 * 1.5) = 2.
+		// Total Output: 1 * 2 = 2.
+		assert.Equal(t, 2, result.Outputs[domain.ItemLootbox0])
+
+		inv, _ := repo.GetInventory(ctx, "user-alice")
+		assert.Equal(t, 2, inv.Slots[0].Quantity, "Should have 2 lootbox0")
+
+		// Verify event
+		foundEvent := false
+		for _, e := range mockStats.events {
+			if e == domain.EventCraftingPerfectSalvage {
+				foundEvent = true
+				break
+			}
+		}
+		assert.True(t, foundEvent, "Should log perfect salvage event")
+	})
+
 	t.Run("Boundary Case: Exact Items", func(t *testing.T) {
 		repo := NewMockRepository()
 		setupTestData(repo)
