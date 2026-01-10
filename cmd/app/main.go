@@ -262,7 +262,7 @@ func main() {
 	jobService := job.NewService(jobRepo, progressionService, statsService, eventBus, resilientPublisher)
 
 	// Initialize services that depend on job service
-	economyService := economy.NewService(economyRepo, jobService)
+	economyService := economy.NewService(economyRepo, jobService, statsService)
 
 	// Initialize Worker Pool
 	// Start with 5 workers as per plan

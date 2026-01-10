@@ -14,6 +14,8 @@ const (
 	EventItemBought      EventType = "item_bought"
 	EventItemTransferred EventType = "item_transferred"
 	EventMessageReceived EventType = "message_received"
+	// Economy events
+	EventEconomyMarketSpike EventType = "economy_market_spike"
 	// Gamble events
 	EventGambleNearMiss     EventType = "gamble_near_miss"
 	EventGambleTieBreakLost EventType = "gamble_tie_break_lost"

@@ -191,8 +191,10 @@ type SellItemRequest struct {
 }
 
 type SellItemResponse struct {
-	MoneyGained int `json:"money_gained"`
-	ItemsSold   int `json:"items_sold"`
+	MoneyGained   int  `json:"money_gained"`
+	ItemsSold     int  `json:"items_sold"`
+	IsMarketSpike bool `json:"is_market_spike,omitempty"`
+	BonusMoney    int  `json:"bonus_money,omitempty"`
 }
 
 // HandleSellItem handles selling items for currency
@@ -233,7 +235,7 @@ func HandleSellItem(svc economy.Service, progressionSvc progression.Service, eve
 			return
 		}
 
-		moneyGained, itemsSold, err := svc.SellItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.ItemName, req.Quantity)
+		result, err := svc.SellItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.ItemName, req.Quantity)
 		if err != nil {
 			log.Error("Failed to sell item", "error", err, "username", req.Username, "item", req.ItemName)
 			http.Error(w, ErrMsgSellItemFailed, http.StatusInternalServerError)
@@ -243,15 +245,16 @@ func HandleSellItem(svc economy.Service, progressionSvc progression.Service, eve
 		log.Info("Item sold successfully",
 			"username", req.Username,
 			"item", req.ItemName,
-			"items_sold", itemsSold,
-			"money_gained", moneyGained)
+			"items_sold", result.ItemsSold,
+			"money_gained", result.MoneyGained,
+			"market_spike", result.IsMarketSpike)
 
 		// Track engagement for selling
 		middleware.TrackEngagementFromContext(
 			middleware.WithUserID(r.Context(), req.Username),
 			eventBus,
 			"item_sold",
-			itemsSold,
+			result.ItemsSold,
 		)
 
 		// Publish item.sold event
@@ -259,18 +262,22 @@ func HandleSellItem(svc economy.Service, progressionSvc progression.Service, eve
 			Version: "1.0",
 			Type:    "item.sold",
 			Payload: map[string]interface{}{
-				"user_id":      req.Username,
-				"item_name":    req.ItemName,
-				"quantity":     itemsSold,
-				"money_gained": moneyGained,
+				"user_id":       req.Username,
+				"item_name":     req.ItemName,
+				"quantity":      result.ItemsSold,
+				"money_gained":  result.MoneyGained,
+				"market_spike":  result.IsMarketSpike,
+				"bonus_money":   result.BonusMoney,
 			},
 		}); err != nil {
 			log.Error("Failed to publish item.sold event", "error", err)
 		}
 
 		respondJSON(w, http.StatusOK, SellItemResponse{
-			MoneyGained: moneyGained,
-			ItemsSold:   itemsSold,
+			MoneyGained:   result.MoneyGained,
+			ItemsSold:     result.ItemsSold,
+			IsMarketSpike: result.IsMarketSpike,
+			BonusMoney:    result.BonusMoney,
 		})
 	}
 }

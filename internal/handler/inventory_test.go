@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/economy"
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 	"github.com/osse101/BrandishBot_Go/internal/user"
@@ -114,7 +115,12 @@ func TestHandleSellItem(t *testing.T) {
 			},
 			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSell).Return(true, nil)
-				e.On("SellItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.ItemBlaster, 1).Return(100, 1, nil)
+				e.On("SellItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.ItemBlaster, 1).Return(&economy.SellResult{
+					MoneyGained:   100,
+					ItemsSold:     1,
+					IsMarketSpike: false,
+					BonusMoney:    0,
+				}, nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `{"money_gained":100,"items_sold":1}`,
@@ -202,7 +208,7 @@ func TestHandleSellItem(t *testing.T) {
 			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSell).Return(true, nil)
 				e.On("SellItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", "UnknownItem", 1).
-					Return(0, 0, errors.New("item not found"))
+					Return(nil, errors.New("item not found"))
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   ErrMsgSellItemFailed,
@@ -219,7 +225,7 @@ func TestHandleSellItem(t *testing.T) {
 			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSell).Return(true, nil)
 				e.On("SellItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.ItemBlaster, 100).
-					Return(0, 0, errors.New("insufficient items"))
+					Return(nil, errors.New("insufficient items"))
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   ErrMsgSellItemFailed,
