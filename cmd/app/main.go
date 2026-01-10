@@ -166,34 +166,37 @@ func main() {
 	progressionRepo := postgres.NewProgressionRepository(dbPool, eventBus)
 	progressionService := progression.NewService(progressionRepo, eventBus)
 
-	// Optional: Sync progression tree from JSON configuration
-	if cfg.SyncProgressionTree {
-		slog.Info("Syncing progression tree from JSON config...")
-		treeLoader := progression.NewTreeLoader()
+	// Sync progression tree from JSON configuration
+	slog.Info("Syncing progression tree from JSON config...")
+	treeLoader := progression.NewTreeLoader()
 
-		treeConfig, err := treeLoader.Load("configs/progression_tree.json")
-		if err != nil {
-			slog.Error("Failed to load progression tree config", "error", err)
-			os.Exit(1)
-		}
+	treeConfig, err := treeLoader.Load(config.ConfigPathProgressionTree)
+	if err != nil {
+		slog.Error("Failed to load progression tree config", "error", err)
+		os.Exit(1)
+	}
 
-		if err := treeLoader.Validate(treeConfig); err != nil {
-			slog.Error("Invalid progression tree config", "error", err)
-			os.Exit(1)
-		}
+	if err := treeLoader.Validate(treeConfig); err != nil {
+		slog.Error("Invalid progression tree config", "error", err)
+		os.Exit(1)
+	}
 
-		// Sync to database (progressionRepo implements NodeInserter/NodeUpdater)
-		syncResult, err := treeLoader.SyncToDatabase(context.Background(), treeConfig, progressionRepo)
-		if err != nil {
-			slog.Error("Failed to sync progression tree to database", "error", err)
-			os.Exit(1)
-		}
+	// Sync to database (progressionRepo implements NodeInserter/NodeUpdater)
+	// This will now use intelligent syncing (skipping if file unchanged)
+	syncResult, err := treeLoader.SyncToDatabase(context.Background(), treeConfig, progressionRepo, config.ConfigPathProgressionTree)
+	if err != nil {
+		slog.Error("Failed to sync progression tree to database", "error", err)
+		os.Exit(1)
+	}
 
+	if syncResult.NodesInserted > 0 || syncResult.NodesUpdated > 0 || syncResult.AutoUnlocked > 0 {
 		slog.Info("Progression tree synced successfully",
 			"inserted", syncResult.NodesInserted,
 			"updated", syncResult.NodesUpdated,
 			"skipped", syncResult.NodesSkipped,
 			"auto_unlocked", syncResult.AutoUnlocked)
+	} else {
+		slog.Info("Progression tree config unchanged, sync skipped")
 	}
 
 	// Sync items from JSON configuration
@@ -201,7 +204,7 @@ func main() {
 	itemLoader := item.NewLoader()
 	itemRepo := postgres.NewItemRepository(dbPool)
 
-	itemConfig, err := itemLoader.Load("configs/items/items.json")
+	itemConfig, err := itemLoader.Load(config.ConfigPathItems)
 	if err != nil {
 		slog.Error("Failed to load items config", "error", err)
 		os.Exit(1)
@@ -213,7 +216,7 @@ func main() {
 	}
 
 	// Sync to database (will skip if file unchanged)
-	itemSyncResult, err := itemLoader.SyncToDatabase(context.Background(), itemConfig, itemRepo, "configs/items/items.json")
+	itemSyncResult, err := itemLoader.SyncToDatabase(context.Background(), itemConfig, itemRepo, config.ConfigPathItems)
 	if err != nil {
 		slog.Error("Failed to sync items to database", "error", err)
 		os.Exit(1)
@@ -230,7 +233,7 @@ func main() {
 	slog.Info("Syncing recipes from JSON config...")
 	recipeLoader := crafting.NewRecipeLoader()
 
-	recipeConfig, err := recipeLoader.Load("configs/recipes/crafting.json", "configs/recipes/disassemble.json")
+	recipeConfig, err := recipeLoader.Load(config.ConfigPathRecipesCrafting, config.ConfigPathRecipesDisassemble)
 	if err != nil {
 		slog.Error("Failed to load recipe config", "error", err)
 		os.Exit(1)
@@ -242,7 +245,7 @@ func main() {
 	}
 
 	// Sync to database (will skip if files unchanged)
-	recipeSyncResult, err := recipeLoader.SyncToDatabase(context.Background(), recipeConfig, craftingRepo, itemRepo, "configs/recipes/")
+	recipeSyncResult, err := recipeLoader.SyncToDatabase(context.Background(), recipeConfig, craftingRepo, itemRepo, config.ConfigPathRecipesDir)
 	if err != nil {
 		slog.Error("Failed to sync recipes to database", "error", err)
 		os.Exit(1)
@@ -315,14 +318,15 @@ func main() {
 	gambleRepo := postgres.NewGambleRepository(dbPool)
 
 	// Initialize Lootbox Service (reusing userRepo for item data)
-	lootboxSvc, err := lootbox.NewService(userRepo, "configs/loot_tables.json")
+	lootboxSvc, err := lootbox.NewService(userRepo, config.ConfigPathLootTables)
 	if err != nil {
 		slog.Error("Failed to initialize lootbox service", "error", err)
 		os.Exit(1)
 	}
 
 	// Initialize Naming Resolver for item display names
-	namingResolver, err := naming.NewResolver("configs/items/aliases.json", "configs/items/themes.json")
+	namingResolver, err := naming.NewResolver(config.ConfigPathItemAliases, config.ConfigPathItemThemes)
+
 	if err != nil {
 		slog.Error("Failed to initialize naming resolver", "error", err)
 		os.Exit(1)

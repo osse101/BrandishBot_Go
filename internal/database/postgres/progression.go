@@ -759,3 +759,35 @@ func (r *progressionRepository) GetDailyEngagementTotals(ctx context.Context, si
 
 	return totals, nil
 }
+
+func (r *progressionRepository) GetSyncMetadata(ctx context.Context, configName string) (*domain.SyncMetadata, error) {
+	row, err := r.q.GetSyncMetadata(ctx, configName)
+	if err == pgx.ErrNoRows {
+		return nil, fmt.Errorf("sync metadata not found")
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get sync metadata: %w", err)
+	}
+
+	return &domain.SyncMetadata{
+		ConfigName:   row.ConfigName,
+		LastSyncTime: row.LastSyncTime.Time,
+		FileHash:     row.FileHash,
+		FileModTime:  row.FileModTime.Time,
+	}, nil
+}
+
+func (r *progressionRepository) UpsertSyncMetadata(ctx context.Context, metadata *domain.SyncMetadata) error {
+	params := generated.UpsertSyncMetadataParams{
+		ConfigName:   metadata.ConfigName,
+		LastSyncTime: pgtype.Timestamptz{Time: metadata.LastSyncTime, Valid: true},
+		FileHash:     metadata.FileHash,
+		FileModTime:  pgtype.Timestamptz{Time: metadata.FileModTime, Valid: true},
+	}
+
+	if err := r.q.UpsertSyncMetadata(ctx, params); err != nil {
+		return fmt.Errorf("failed to upsert sync metadata: %w", err)
+	}
+
+	return nil
+}

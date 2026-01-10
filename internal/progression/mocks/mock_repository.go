@@ -1284,6 +1284,65 @@ func (_c *MockRepository_GetSessionVoters_Call) RunAndReturn(run func(context.Co
 	return _c
 }
 
+// GetSyncMetadata provides a mock function with given fields: ctx, configName
+func (_m *MockRepository) GetSyncMetadata(ctx context.Context, configName string) (*domain.SyncMetadata, error) {
+	ret := _m.Called(ctx, configName)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetSyncMetadata")
+	}
+
+	var r0 *domain.SyncMetadata
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (*domain.SyncMetadata, error)); ok {
+		return rf(ctx, configName)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) *domain.SyncMetadata); ok {
+		r0 = rf(ctx, configName)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*domain.SyncMetadata)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, configName)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockRepository_GetSyncMetadata_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetSyncMetadata'
+type MockRepository_GetSyncMetadata_Call struct {
+	*mock.Call
+}
+
+// GetSyncMetadata is a helper method to define mock.On call
+//   - ctx context.Context
+//   - configName string
+func (_e *MockRepository_Expecter) GetSyncMetadata(ctx interface{}, configName interface{}) *MockRepository_GetSyncMetadata_Call {
+	return &MockRepository_GetSyncMetadata_Call{Call: _e.mock.On("GetSyncMetadata", ctx, configName)}
+}
+
+func (_c *MockRepository_GetSyncMetadata_Call) Run(run func(ctx context.Context, configName string)) *MockRepository_GetSyncMetadata_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockRepository_GetSyncMetadata_Call) Return(_a0 *domain.SyncMetadata, _a1 error) *MockRepository_GetSyncMetadata_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockRepository_GetSyncMetadata_Call) RunAndReturn(run func(context.Context, string) (*domain.SyncMetadata, error)) *MockRepository_GetSyncMetadata_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetUnlock provides a mock function with given fields: ctx, nodeID, level
 func (_m *MockRepository) GetUnlock(ctx context.Context, nodeID int, level int) (*domain.ProgressionUnlock, error) {
 	ret := _m.Called(ctx, nodeID, level)
@@ -2072,6 +2131,53 @@ func (_c *MockRepository_UnlockUserProgression_Call) Return(_a0 error) *MockRepo
 }
 
 func (_c *MockRepository_UnlockUserProgression_Call) RunAndReturn(run func(context.Context, string, string, string, map[string]interface{}) error) *MockRepository_UnlockUserProgression_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpsertSyncMetadata provides a mock function with given fields: ctx, metadata
+func (_m *MockRepository) UpsertSyncMetadata(ctx context.Context, metadata *domain.SyncMetadata) error {
+	ret := _m.Called(ctx, metadata)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpsertSyncMetadata")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *domain.SyncMetadata) error); ok {
+		r0 = rf(ctx, metadata)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockRepository_UpsertSyncMetadata_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpsertSyncMetadata'
+type MockRepository_UpsertSyncMetadata_Call struct {
+	*mock.Call
+}
+
+// UpsertSyncMetadata is a helper method to define mock.On call
+//   - ctx context.Context
+//   - metadata *domain.SyncMetadata
+func (_e *MockRepository_Expecter) UpsertSyncMetadata(ctx interface{}, metadata interface{}) *MockRepository_UpsertSyncMetadata_Call {
+	return &MockRepository_UpsertSyncMetadata_Call{Call: _e.mock.On("UpsertSyncMetadata", ctx, metadata)}
+}
+
+func (_c *MockRepository_UpsertSyncMetadata_Call) Run(run func(ctx context.Context, metadata *domain.SyncMetadata)) *MockRepository_UpsertSyncMetadata_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*domain.SyncMetadata))
+	})
+	return _c
+}
+
+func (_c *MockRepository_UpsertSyncMetadata_Call) Return(_a0 error) *MockRepository_UpsertSyncMetadata_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockRepository_UpsertSyncMetadata_Call) RunAndReturn(run func(context.Context, *domain.SyncMetadata) error) *MockRepository_UpsertSyncMetadata_Call {
 	_c.Call.Return(run)
 	return _c
 }

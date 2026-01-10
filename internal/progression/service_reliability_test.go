@@ -257,5 +257,18 @@ func TestForceInstantUnlock_Reliability(t *testing.T) {
 }
 
 func (m *ReliabilityMockRepository) GetNodeByFeatureKey(ctx context.Context, featureKey string) (*domain.ProgressionNode, int, error) {
-return nil, 0, nil
+	return nil, 0, nil
+}
+
+func (m *ReliabilityMockRepository) GetSyncMetadata(ctx context.Context, configName string) (*domain.SyncMetadata, error) {
+	args := m.Called(ctx, configName)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.SyncMetadata), args.Error(1)
+}
+
+func (m *ReliabilityMockRepository) UpsertSyncMetadata(ctx context.Context, metadata *domain.SyncMetadata) error {
+	args := m.Called(ctx, metadata)
+	return args.Error(0)
 }

@@ -51,6 +51,9 @@ type MockRepository struct {
 
 	// Velocity testing
 	dailyTotals map[time.Time]int
+
+	// Sync metadata
+	syncMetadata map[string]*domain.SyncMetadata
 }
 
 func NewMockRepository() *MockRepository {
@@ -74,6 +77,7 @@ func NewMockRepository() *MockRepository {
 		sessionVotes:      make(map[int]map[string]bool),
 		unlockProgress:    make(map[int]*domain.UnlockProgress),
 		dailyTotals:       make(map[time.Time]int),
+		syncMetadata:      make(map[string]*domain.SyncMetadata),
 	}
 }
 
@@ -424,6 +428,53 @@ func (m *MockRepository) ResetTree(ctx context.Context, resetBy string, reason s
 }
 
 func (m *MockRepository) RecordReset(ctx context.Context, reset *domain.ProgressionReset) error {
+	return nil
+}
+
+// Sync metadata operations
+func (m *MockRepository) GetSyncMetadata(ctx context.Context, configName string) (*domain.SyncMetadata, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	if meta, ok := m.syncMetadata[configName]; ok {
+		return meta, nil
+	}
+	return nil, fmt.Errorf("sync metadata not found")
+}
+
+func (m *MockRepository) UpsertSyncMetadata(ctx context.Context, metadata *domain.SyncMetadata) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.syncMetadata[metadata.ConfigName] = metadata
+	return nil
+}
+
+// NodeInserter implementation
+func (m *MockRepository) InsertNode(ctx context.Context, node *domain.ProgressionNode) (int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	
+	// Create ID if not present
+	if node.ID == 0 {
+		node.ID = len(m.nodes) + 1
+	}
+	
+	m.nodes[node.ID] = node
+	m.nodesByKey[node.NodeKey] = node
+	return node.ID, nil
+}
+
+// NodeUpdater implementation
+func (m *MockRepository) UpdateNode(ctx context.Context, nodeID int, node *domain.ProgressionNode) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	
+	if _, exists := m.nodes[nodeID]; !exists {
+		return fmt.Errorf("node not found")
+	}
+	
+	node.ID = nodeID
+	m.nodes[nodeID] = node
+	m.nodesByKey[node.NodeKey] = node
 	return nil
 }
 

@@ -61,6 +61,10 @@ type Progression interface {
 	ResetTree(ctx context.Context, resetBy string, reason string, preserveUserData bool) error
 	RecordReset(ctx context.Context, reset *domain.ProgressionReset) error
 
+	// Sync metadata operations
+	GetSyncMetadata(ctx context.Context, configName string) (*domain.SyncMetadata, error)
+	UpsertSyncMetadata(ctx context.Context, metadata *domain.SyncMetadata) error
+
 	// Transaction support
 	BeginTx(ctx context.Context) (Tx, error)
 }
