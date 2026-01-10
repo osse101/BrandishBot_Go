@@ -209,7 +209,7 @@ build:
 	@echo "Building all binaries to bin/..."
 	@mkdir -p bin
 	@VERSION=$$(git describe --tags --always --dirty 2>/dev/null || echo "dev"); \
-	BUILD_TIME=$$(date -u '+%Y-%m-%d_%H:%M:%S'); \
+	BUILD_TIME=$$(date -u '+%Y-%m-%d_%H:%M'); \
 	GIT_COMMIT=$$(git rev-parse --short HEAD 2>/dev/null || echo "unknown"); \
 	LDFLAGS="-X github.com/osse101/BrandishBot_Go/internal/handler.Version=$$VERSION \
 	         -X github.com/osse101/BrandishBot_Go/internal/handler.BuildTime=$$BUILD_TIME \
@@ -283,7 +283,7 @@ docker-down:
 docker-build:
 	@echo "Rebuilding Docker images (no cache)..."
 	@VERSION=$$(git describe --tags --always --dirty 2>/dev/null || echo "dev"); \
-	BUILD_TIME=$$(date -u '+%Y-%m-%d_%H:%M:%S'); \
+	BUILD_TIME=$$(date -u '+%Y-%m-%d_%H:%M'); \
 	GIT_COMMIT=$$(git rev-parse --short HEAD 2>/dev/null || echo "unknown"); \
 	echo "Building with VERSION=$$VERSION BUILD_TIME=$$BUILD_TIME GIT_COMMIT=$$GIT_COMMIT"; \
 	VERSION=$$VERSION BUILD_TIME=$$BUILD_TIME GIT_COMMIT=$$GIT_COMMIT docker compose build --no-cache
@@ -292,7 +292,7 @@ docker-build:
 docker-build-fast:
 	@echo "Building Docker images (with cache, faster)..."
 	@VERSION=$$(git describe --tags --always --dirty 2>/dev/null || echo "dev"); \
-	BUILD_TIME=$$(date -u '+%Y-%m-%d_%H:%M:%S'); \
+	BUILD_TIME=$$(date -u '+%Y-%m-%d_%H:%M'); \
 	GIT_COMMIT=$$(git rev-parse --short HEAD 2>/dev/null || echo "unknown"); \
 	VERSION=$$VERSION BUILD_TIME=$$BUILD_TIME GIT_COMMIT=$$GIT_COMMIT DOCKER_BUILDKIT=1 docker compose build
 	@echo "Docker images built successfully"
