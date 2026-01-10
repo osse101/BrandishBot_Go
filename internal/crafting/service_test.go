@@ -802,6 +802,49 @@ func TestGetUnlockedRecipes_UserNotFound(t *testing.T) {
 	}
 }
 
+// ==================== GetAllRecipes Tests ====================
+
+func TestGetAllRecipes_Success(t *testing.T) {
+	repo := NewMockRepository()
+	setupTestData(repo)
+	svc := NewService(repo, nil, nil, nil)
+	ctx := context.Background()
+
+	recipes, err := svc.GetAllRecipes(ctx)
+	if err != nil {
+		t.Fatalf("GetAllRecipes failed: %v", err)
+	}
+
+	// Should have at least the one we setup
+	if len(recipes) < 1 {
+		t.Errorf("Expected at least 1 recipe, got %d", len(recipes))
+	}
+
+	found := false
+	for _, r := range recipes {
+		if r.ItemName == domain.ItemLootbox1 {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("Expected to find lootbox1 recipe")
+	}
+}
+
+// ==================== Shutdown Tests ====================
+
+func TestShutdown(t *testing.T) {
+	repo := NewMockRepository()
+	svc := NewService(repo, nil, nil, nil)
+	ctx := context.Background()
+
+	// Shutdown should return nil
+	if err := svc.Shutdown(ctx); err != nil {
+		t.Errorf("Shutdown failed: %v", err)
+	}
+}
+
 func TestUpgradeItem_Masterwork(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
