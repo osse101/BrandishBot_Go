@@ -123,6 +123,10 @@ func TestAwardXP_PublishesEventOnLevelUp(t *testing.T) {
 	defer resilientPub.Shutdown(context.Background())
 
 	svc := NewService(mockRepo, mockProg, mockStats, mockBus, resilientPub)
+	// Force deterministic RNG (No Crit)
+	if s, ok := svc.(*service); ok {
+		s.rnd = func() float64 { return 1.0 }
+	}
 	ctx := context.Background()
 
 	// Setup data
@@ -172,5 +176,110 @@ func TestAwardXP_PublishesEventOnLevelUp(t *testing.T) {
 	mockBus.AssertExpectations(t)
 	mockRepo.AssertExpectations(t)
 	mockProg.AssertExpectations(t)
+	mockStats.AssertExpectations(t)
+}
+
+func TestAwardXP_GuaranteedCriticalSuccess(t *testing.T) {
+	// Setup
+	mockRepo := new(MockRepo)
+	mockProg := new(MockProgression)
+	mockStats := new(MockStats)
+	mockBus := new(MockBus)
+
+	// Use nil publisher as we aren't testing that part here, or mock if needed.
+	// The service helper allows nil publisher for basic ops, but let's be safe and provide one.
+	tmpFile := t.TempDir() + "/deadletter_crit.jsonl"
+	resilientPub, _ := event.NewResilientPublisher(mockBus, 3, 100*time.Millisecond, tmpFile)
+	defer resilientPub.Shutdown(context.Background())
+
+	svc := NewService(mockRepo, mockProg, mockStats, mockBus, resilientPub)
+	// Force Critical Success
+	if s, ok := svc.(*service); ok {
+		s.rnd = func() float64 { return 0.0 }
+	}
+	ctx := context.Background()
+
+	// Data
+	job := &domain.Job{ID: 1, JobKey: "warrior"}
+	userJob := &domain.UserJob{
+		UserID:       "user_crit",
+		JobID:        1,
+		CurrentXP:    100,
+		CurrentLevel: 1,
+	}
+
+	mockProg.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
+	mockRepo.On("GetJobByKey", ctx, "warrior").Return(job, nil)
+	mockRepo.On("GetUserJob", ctx, "user_crit", 1).Return(userJob, nil)
+	mockRepo.On("UpsertUserJob", ctx, mock.Anything).Return(nil)
+	mockRepo.On("RecordJobXPEvent", ctx, mock.Anything).Return(nil)
+
+	// Expect Critical Event
+	mockStats.On("RecordUserEvent", ctx, "user_crit", domain.EventJobXPCritical, mock.MatchedBy(func(data map[string]interface{}) bool {
+		return data["job"] == "warrior" &&
+			data["multiplier"] == EpiphanyMultiplier
+	})).Return(nil)
+
+	// Act
+	// baseAmount = 100
+	// EpiphanyMultiplier is likely 2.0 or defined in service.
+	// We should check the result has the bonus.
+	result, err := svc.AwardXP(ctx, "user_crit", "warrior", 100, "test", nil)
+
+	// Assert
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	// If EpiphanyMultiplier is 5.0 (from seeing previous log in failure: base 500, bonus 500, mult 2. Wait.
+	// Failure log said: map[base_xp:500 bonus_xp:500 job:explorer multiplier:2 source:test]
+	// So multiplier is 2.
+	expectedXP := 100 * 2
+	assert.Equal(t, expectedXP, result.XPGained)
+
+	mockStats.AssertExpectations(t)
+}
+
+func TestAwardXP_GuaranteedNoCriticalSuccess(t *testing.T) {
+	// Setup
+	mockRepo := new(MockRepo)
+	mockProg := new(MockProgression)
+	mockStats := new(MockStats)
+	mockBus := new(MockBus) // Not used for crit event, but passed to constructor
+
+	tmpFile := t.TempDir() + "/deadletter_nocrit.jsonl"
+	resilientPub, _ := event.NewResilientPublisher(mockBus, 3, 100*time.Millisecond, tmpFile)
+	defer resilientPub.Shutdown(context.Background())
+
+	svc := NewService(mockRepo, mockProg, mockStats, mockBus, resilientPub)
+	// Force No Critical Success
+	if s, ok := svc.(*service); ok {
+		s.rnd = func() float64 { return 1.0 }
+	}
+	ctx := context.Background()
+
+	// Data
+	job := &domain.Job{ID: 1, JobKey: "mage"}
+	userJob := &domain.UserJob{
+		UserID:       "user_nocrit",
+		JobID:        1,
+		CurrentXP:    100,
+		CurrentLevel: 1,
+	}
+
+	mockProg.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
+	mockRepo.On("GetJobByKey", ctx, "mage").Return(job, nil)
+	mockRepo.On("GetUserJob", ctx, "user_nocrit", 1).Return(userJob, nil)
+	mockRepo.On("UpsertUserJob", ctx, mock.Anything).Return(nil)
+	mockRepo.On("RecordJobXPEvent", ctx, mock.Anything).Return(nil)
+
+	// We do NOT expect RecordUserEvent for critical
+
+	// Act
+	result, err := svc.AwardXP(ctx, "user_nocrit", "mage", 100, "test", nil)
+
+	// Assert
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Equal(t, 100, result.XPGained)
+
 	mockStats.AssertExpectations(t)
 }
