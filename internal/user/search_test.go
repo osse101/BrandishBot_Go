@@ -163,6 +163,9 @@ func (m *mockSearchRepo) UnlockRecipe(ctx context.Context, userID string, recipe
 func (m *mockSearchRepo) GetUnlockedRecipesForUser(ctx context.Context, userID string) ([]crafting.UnlockedRecipeInfo, error) {
 	return nil, nil
 }
+func (m *mockSearchRepo) GetLastCooldownForUpdate(ctx context.Context, userID, action string) (*time.Time, error) {
+	return m.GetLastCooldown(ctx, userID, action)
+}
 
 // Test fixtures
 func createSearchTestService() (*service, *mockSearchRepo) {

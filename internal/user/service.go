@@ -618,8 +618,16 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 		return "", err
 	}
 
-	// Check cooldown
-	lastUsed, err := s.repo.GetLastCooldown(ctx, user.ID, domain.ActionSearch)
+	// START TRANSACTION
+	tx, err := s.repo.BeginTx(ctx)
+	if err != nil {
+		log.Error("Failed to begin transaction", "error", err)
+		return "", fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer repository.SafeRollback(ctx, tx)
+
+	// Check cooldown with lock
+	lastUsed, err := tx.GetLastCooldownForUpdate(ctx, user.ID, domain.ActionSearch)
 	if err != nil {
 		log.Error("Failed to get cooldown", "error", err, "userID", user.ID)
 		return "", fmt.Errorf("failed to check cooldown: %w", err)
@@ -636,6 +644,7 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 				seconds := int(remaining.Seconds()) % 60
 
 				log.Info("Search on cooldown", "username", username, "remaining", remaining)
+				// We can return here safely, transaction will rollback (release lock)
 				return fmt.Sprintf("You can search again in %dm %ds", minutes, seconds), nil
 			}
 		} else {
@@ -719,15 +728,7 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 			return "", fmt.Errorf("reward item not configured")
 		}
 
-		// Begin transaction for inventory update
-		tx, err := s.repo.BeginTx(ctx)
-		if err != nil {
-			log.Error("Failed to begin transaction", "error", err)
-			return "", fmt.Errorf("failed to begin transaction: %w", err)
-		}
-		defer repository.SafeRollback(ctx, tx)
-
-		// Add to inventory
+		// Add to inventory (using existing tx)
 		inventory, err := tx.GetInventory(ctx, user.ID)
 		if err != nil {
 			log.Error("Failed to get inventory", "error", err, "userID", user.ID)
@@ -744,11 +745,6 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 		if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
 			log.Error("Failed to update inventory", "error", err, "userID", user.ID)
 			return "", fmt.Errorf("failed to update inventory: %w", err)
-		}
-
-		if err := tx.Commit(ctx); err != nil {
-			log.Error("Failed to commit transaction", "error", err)
-			return "", fmt.Errorf("failed to commit transaction: %w", err)
 		}
 
 		// Award Explorer XP for finding item (async, don't block)
@@ -807,10 +803,17 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 		}
 	}
 
-	// Update cooldown
-	if err := s.repo.UpdateCooldown(ctx, user.ID, domain.ActionSearch, now); err != nil {
+	// Update cooldown (using existing tx)
+	if err := tx.UpdateCooldown(ctx, user.ID, domain.ActionSearch, now); err != nil {
 		log.Error("Failed to update cooldown", "error", err, "userID", user.ID)
-		// Don't fail the search, just log the error
+		// We SHOULD fail here to ensure rollback
+		return "", fmt.Errorf("failed to update cooldown: %w", err)
+	}
+
+	// COMMIT TRANSACTION
+	if err := tx.Commit(ctx); err != nil {
+		log.Error("Failed to commit transaction", "error", err)
+		return "", fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	// Record search attempt (to track daily count)

@@ -75,6 +75,47 @@ func (t *UserTx) Rollback(ctx context.Context) error {
 	return t.tx.Rollback(ctx)
 }
 
+// GetLastCooldownForUpdate retrieves the last time a user performed an action, locking the row for update.
+// If the row does not exist, it inserts a dummy record (with zero time) to establish a lock.
+func (t *UserTx) GetLastCooldownForUpdate(ctx context.Context, userID, action string) (*time.Time, error) {
+	// We use an atomic "Insert if not exists, otherwise return existing" pattern with locking.
+	// The dummy time for new rows is time.Time{} (zero value).
+	// We use ON CONFLICT DO UPDATE to ensure we lock the row even if we don't change it.
+	query := `
+		INSERT INTO user_cooldowns (user_id, action_name, last_used_at)
+		VALUES ($1, $2, '0001-01-01 00:00:00')
+		ON CONFLICT (user_id, action_name) DO UPDATE
+		SET last_used_at = user_cooldowns.last_used_at
+		RETURNING last_used_at
+	`
+	var lastUsed time.Time
+	err := t.tx.QueryRow(ctx, query, userID, action).Scan(&lastUsed)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get and lock cooldown: %w", err)
+	}
+
+	// If the time is zero (or very close to it), treat it as nil (never used)
+	if lastUsed.IsZero() || lastUsed.Year() < 2000 {
+		return nil, nil
+	}
+
+	return &lastUsed, nil
+}
+
+// UpdateCooldown updates the cooldown timestamp within the transaction
+func (t *UserTx) UpdateCooldown(ctx context.Context, userID, action string, timestamp time.Time) error {
+	query := `
+		UPDATE user_cooldowns
+		SET last_used_at = $3
+		WHERE user_id = $1 AND action_name = $2
+	`
+	_, err := t.tx.Exec(ctx, query, userID, action, timestamp)
+	if err != nil {
+		return fmt.Errorf("failed to update cooldown: %w", err)
+	}
+	return nil
+}
+
 // UpsertUser inserts a new user or updates existing user and their platform links
 func (r *UserRepository) UpsertUser(ctx context.Context, user *domain.User) error {
 	tx, err := r.db.Begin(ctx)

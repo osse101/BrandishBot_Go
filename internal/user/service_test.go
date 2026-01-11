@@ -195,6 +195,14 @@ func (mt *MockTx) UpdateInventory(ctx context.Context, userID string, inventory 
 	return mt.repo.UpdateInventory(ctx, userID, inventory)
 }
 
+func (mt *MockTx) GetLastCooldownForUpdate(ctx context.Context, userID, action string) (*time.Time, error) {
+	return mt.repo.GetLastCooldown(ctx, userID, action)
+}
+
+func (mt *MockTx) UpdateCooldown(ctx context.Context, userID, action string, timestamp time.Time) error {
+	return mt.repo.UpdateCooldown(ctx, userID, action, timestamp)
+}
+
 func (mt *MockTx) Commit(ctx context.Context) error {
 	return nil // No-op for mock
 }
