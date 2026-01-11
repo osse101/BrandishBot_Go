@@ -311,6 +311,9 @@ func TestHandleSearch_Success(t *testing.T) {
 	cooldown, err := repo.GetLastCooldown(context.Background(), user.ID, domain.ActionSearch)
 	require.NoError(t, err)
 	assert.NotNil(t, cooldown, "Cooldown should be set after search")
+
+	// Verify distance message
+	assert.Contains(t, message, "(Traveled", "Message should contain distance traveled")
 }
 
 // CASE 2: BOUNDARY CASE - Cooldown timing boundaries
@@ -398,6 +401,7 @@ func TestHandleSearch_NewUserCreation(t *testing.T) {
 		}
 	}
 	assert.True(t, isValid, "Search should execute for new user, got: %s", message)
+	assert.Contains(t, message, "(Traveled", "Message should contain distance traveled")
 
 	// Verify cooldown set for new user
 	cooldown, err := repo.GetLastCooldown(context.Background(), user.ID, domain.ActionSearch)
@@ -679,7 +683,7 @@ func TestHandleSearch_NearMiss_Statistical(t *testing.T) {
 		msg, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
 		require.NoError(t, err)
 
-		if msg == domain.MsgSearchNearMiss {
+		if strings.HasPrefix(msg, domain.MsgSearchNearMiss) {
 			nearMissCount++
 		}
 	}

@@ -21,6 +21,7 @@ const (
 	EventDailyStreak        EventType = "daily_streak"
 	// Search events
 	EventSearch                  EventType = "search"
+	EventDistanceTraveled        EventType = "distance_traveled"
 	EventSearchNearMiss          EventType = "search_near_miss"
 	EventSearchCriticalFail      EventType = "search_critical_fail"
 	EventSearchCriticalSuccess   EventType = "search_critical_success"
