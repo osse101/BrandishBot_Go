@@ -458,20 +458,18 @@ func (s *service) getInventoryInternal(ctx context.Context, user *domain.User, f
 		return nil, fmt.Errorf("failed to get inventory: %w", err)
 	}
 
-	// Optimization: Batch fetch all item details using cache
-	itemMap := make(map[int]domain.Item)
+	// Optimization: Identify missing items in cache first
 	var missingIDs []int
 
 	s.itemCacheMu.RLock()
 	for _, slot := range inventory.Slots {
-		if item, ok := s.itemCache[slot.ItemID]; ok {
-			itemMap[slot.ItemID] = item
-		} else {
+		if _, ok := s.itemCache[slot.ItemID]; !ok {
 			missingIDs = append(missingIDs, slot.ItemID)
 		}
 	}
 	s.itemCacheMu.RUnlock()
 
+	// Batch fetch missing items if any
 	if len(missingIDs) > 0 {
 		itemList, err := s.repo.GetItemsByIDs(ctx, missingIDs)
 		if err != nil {
@@ -483,15 +481,20 @@ func (s *service) getInventoryInternal(ctx context.Context, user *domain.User, f
 		for _, item := range itemList {
 			s.itemCache[item.ID] = item
 			s.itemCacheByName[item.InternalName] = item
-			itemMap[item.ID] = item
 		}
 		s.itemCacheMu.Unlock()
 	}
 
 	var items []UserInventoryItem
+	// Hold read lock while building result to read directly from cache
+	// This avoids allocating and populating a temporary map
+	s.itemCacheMu.RLock()
+	defer s.itemCacheMu.RUnlock()
+
 	for _, slot := range inventory.Slots {
-		item, ok := itemMap[slot.ItemID]
+		item, ok := s.itemCache[slot.ItemID]
 		if !ok {
+			// This should rarely happen as we just populated it
 			log.Warn("Item missing for slot", "itemID", slot.ItemID)
 			continue
 		}
