@@ -69,7 +69,7 @@ func TestStatsRepository_Integration(t *testing.T) {
 	defer pool.Close()
 
 	// Apply migrations
-	if err := applyMigrations(ctx, pool, "../../../migrations"); err != nil {
+	if err := applyMigrations(t, ctx, pool, "../../../migrations"); err != nil {
 		t.Fatalf("failed to apply migrations: %v", err)
 	}
 

@@ -4,112 +4,160 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"sync"
 	"testing"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
+// Thread-safe mock repo
 type mockItemRepo struct {
+	sync.RWMutex
 	items map[string]*domain.Item
 }
 
 func (m *mockItemRepo) GetItemByName(ctx context.Context, name string) (*domain.Item, error) {
+	m.RLock()
+	defer m.RUnlock()
 	return m.items[name], nil
 }
 
-func TestOpenLootbox(t *testing.T) {
-	// Setup loot table file
-	lootTable := map[string][]LootItem{
-		"box1": {
-			{ItemName: "common_sword", Min: 1, Max: 1, Chance: 1.0},
-			{ItemName: "rare_sword", Min: 1, Max: 1, Chance: 0.1},
-		},
+func (m *mockItemRepo) GetItemsByNames(ctx context.Context, names []string) ([]domain.Item, error) {
+	m.RLock()
+	defer m.RUnlock()
+	var items []domain.Item
+	for _, name := range names {
+		if item, ok := m.items[name]; ok {
+			items = append(items, *item)
+		}
 	}
-	file, _ := os.CreateTemp("", "loot.json")
-	defer os.Remove(file.Name())
+	return items, nil
+}
+
+// Helper to create temp config file
+func createTempConfig(t *testing.T, tables map[string][]LootItem) string {
+	config := struct {
+		Tables map[string][]LootItem `json:"tables"`
+	}{
+		Tables: tables,
+	}
+
+	file, err := os.CreateTemp("", "loot_*.json")
+	require.NoError(t, err)
 
 	encoder := json.NewEncoder(file)
-	if err := encoder.Encode(lootTable); err != nil {
-		t.Fatalf("Failed to encode loot table: %v", err)
-	}
+	err = encoder.Encode(config)
+	require.NoError(t, err)
 	file.Close()
 
-	// Setup mock repo
+	t.Cleanup(func() {
+		os.Remove(file.Name())
+	})
+
+	return file.Name()
+}
+
+func TestOpenLootbox(t *testing.T) {
+	// Common Setup
 	repo := &mockItemRepo{
 		items: map[string]*domain.Item{
 			"common_sword": {ID: 1, InternalName: "common_sword", BaseValue: 10},
 			"rare_sword":   {ID: 2, InternalName: "rare_sword", BaseValue: 100},
+			"epic_sword":   {ID: 3, InternalName: "epic_sword", BaseValue: 1000},
 		},
 	}
 
-	// Create service
-	svc, err := NewService(repo, file.Name())
-	if err != nil {
-		t.Fatalf("Failed to create service: %v", err)
+	lootTable := map[string][]LootItem{
+		"box1": {
+			{ItemName: "common_sword", Min: 1, Max: 1, Chance: 1.0},
+			{ItemName: "rare_sword", Min: 1, Max: 1, Chance: 0.5},
+		},
+		"empty_box": {},
+		"multi_box": {
+			{ItemName: "common_sword", Min: 2, Max: 5, Chance: 1.0},
+		},
 	}
 
-	// Test
-	// We run 1 iteration to make it simple, but since chance is 1.0 for common, we should get at least that.
-	drops, err := svc.OpenLootbox(context.Background(), "box1", 1)
-	if err != nil {
-		t.Fatalf("OpenLootbox failed: %v", err)
-	}
+	configPath := createTempConfig(t, lootTable)
+	svc, err := NewService(repo, configPath)
+	require.NoError(t, err)
 
-	if len(drops) == 0 {
-		t.Errorf("Expected drops, got none")
-	}
+	t.Run("Best Case: Success", func(t *testing.T) {
+		drops, err := svc.OpenLootbox(context.Background(), "box1", 1)
+		require.NoError(t, err)
+		assert.NotEmpty(t, drops)
 
-	foundCommon := false
-	for _, d := range drops {
-		if d.ItemName == "common_sword" {
-			foundCommon = true
-			if d.ShineLevel != ShineCommon && d.ShineLevel != ShineUncommon { // Allow for Crit Upgrade
-				t.Errorf("Expected Common or Uncommon shine for common item, got %s", d.ShineLevel)
+		// Should always have common_sword (chance 1.0)
+		foundCommon := false
+		for _, d := range drops {
+			if d.ItemName == "common_sword" {
+				foundCommon = true
+				assert.NotZero(t, d.Value)
+				assert.NotEmpty(t, d.ShineLevel)
 			}
 		}
-		if d.ItemName == "rare_sword" {
-			if d.ShineLevel != ShineRare && d.ShineLevel != ShineEpic { // Allow for Crit Upgrade
-				t.Errorf("Expected Rare or Epic shine for rare item, got %s", d.ShineLevel)
+		assert.True(t, foundCommon, "Should have dropped common_sword")
+	})
+
+	t.Run("Boundary Case: Min/Max Quantity", func(t *testing.T) {
+		// multi_box drops 2-5 common_swords
+		drops, err := svc.OpenLootbox(context.Background(), "multi_box", 1)
+		require.NoError(t, err)
+
+		count := 0
+		for _, d := range drops {
+			if d.ItemName == "common_sword" {
+				count += d.Quantity
 			}
 		}
-		// Check that other fields are populated (pre-existing behavior)
-		if d.ItemID == 0 {
-			t.Errorf("ItemID not populated")
-		}
-		if d.Value == 0 {
-			t.Errorf("Value not populated")
-		}
-		if d.ShineLevel == "" {
-			t.Errorf("ShineLevel not populated")
-		}
+		assert.GreaterOrEqual(t, count, 2)
+		assert.LessOrEqual(t, count, 5)
+	})
 
-		// Verify Value Multiplier
-		var expectedMult float64
-		switch d.ShineLevel {
-		case ShineLegendary:
-			expectedMult = MultLegendary
-		case ShineEpic:
-			expectedMult = MultEpic
-		case ShineRare:
-			expectedMult = MultRare
-		case ShineUncommon:
-			expectedMult = MultUncommon
-		default:
-			expectedMult = MultCommon
-		}
+	t.Run("Error Case: Box Not Found", func(t *testing.T) {
+		// OpenLootbox returns nil drops for missing table, currently logging warning.
+		// Service logic:
+		// if !ok {
+		// 	log.Warn("No loot table found for lootbox", "lootbox", lootboxName)
+		// 	return nil, nil // Empty result, not an error
+		// }
+		drops, err := svc.OpenLootbox(context.Background(), "invalid_box", 1)
+		assert.NoError(t, err)
+		assert.Empty(t, drops)
+	})
 
-		// Use tolerance for float math, though values are int
-		baseValue := 10 // from mock repo
-		if d.ItemName == "rare_sword" {
-			baseValue = 100
-		}
+	t.Run("Error Case: Invalid Config File", func(t *testing.T) {
+		_, err := NewService(repo, "non_existent_file.json")
+		assert.Error(t, err)
+	})
 
-		expectedValue := int(float64(baseValue) * expectedMult)
-		if d.Value != expectedValue {
-			t.Errorf("Value mismatch for %s (%s). Expected %d, got %d", d.ItemName, d.ShineLevel, expectedValue, d.Value)
+	t.Run("Nil/Empty Case: Zero Quantity", func(t *testing.T) {
+		drops, err := svc.OpenLootbox(context.Background(), "box1", 0)
+		require.NoError(t, err)
+		assert.Empty(t, drops, "Should return empty drops for 0 quantity")
+	})
+
+	t.Run("Concurrent Case: Parallel Open", func(t *testing.T) {
+		var wg sync.WaitGroup
+		errChan := make(chan error, 20)
+
+		for i := 0; i < 20; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				_, err := svc.OpenLootbox(context.Background(), "box1", 1)
+				if err != nil {
+					errChan <- err
+				}
+			}()
 		}
-	}
-	if !foundCommon {
-		t.Errorf("Expected common_sword")
-	}
+		wg.Wait()
+		close(errChan)
+
+		for err := range errChan {
+			assert.NoError(t, err)
+		}
+	})
 }

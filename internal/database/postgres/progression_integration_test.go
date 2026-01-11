@@ -70,11 +70,11 @@ func TestProgressionRepository_Integration(t *testing.T) {
 	defer pool.Close()
 
 	// Apply migrations
-	if err := applyMigrations(ctx, pool, "../../../migrations"); err != nil {
+	if err := applyMigrations(t, ctx, pool, "../../../migrations"); err != nil {
 		t.Fatalf("failed to apply migrations: %v", err)
 	}
 
-	repo := NewProgressionRepository(pool)
+	repo := NewProgressionRepository(pool, nil) // nil bus for tests
 
 	// Run all the test sub-tests
 	t.Run("NodeOperations", func(t *testing.T) {
@@ -347,7 +347,7 @@ func TestProgressionRepository_Integration(t *testing.T) {
 			// Verify order (highest to lowest)
 			if len(leaderboard) >= 3 {
 				if leaderboard[0].UserID != "user5" || leaderboard[0].Contribution != 300 {
-					t.Errorf("Expected user5 with 300 at rank 1, got %s with %d", 
+					t.Errorf("Expected user5 with 300 at rank 1, got %s with %d",
 						leaderboard[0].UserID, leaderboard[0].Contribution)
 				}
 				if leaderboard[0].Rank != 1 {
@@ -403,5 +403,81 @@ func TestProgressionRepository_Integration(t *testing.T) {
 				t.Errorf("Expected exactly 2 entries with limit=2, got %d", len(leaderboard))
 			}
 		})
+	})
+
+	t.Run("DailyEngagementTotals", func(t *testing.T) {
+		// Clear metrics and weights to be sure (optional, but good for isolation)
+		_, err := pool.Exec(ctx, "DELETE FROM engagement_metrics")
+		if err != nil {
+			t.Logf("Warning: Could not clear engagement metrics: %v", err)
+		}
+		
+		// Ensure weights exist
+		_, err = pool.Exec(ctx, `
+			INSERT INTO engagement_weights (metric_type, weight, description)
+			VALUES 
+				('vote_cast', 5.0, 'Test Vote'),
+				('message', 1.0, 'Test Message')
+			ON CONFLICT (metric_type) DO UPDATE SET weight = EXCLUDED.weight
+		`)
+		if err != nil {
+			t.Fatalf("Failed to insert weights: %v", err)
+		}
+
+
+		userID := "user_velocity_test"
+
+		// Use fixed dates to avoid timezone/boundary issues
+		// Day 1
+		day1 := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
+		// Day 2 (Skip a day to ensure separation even with extreme timezones)
+		day2 := time.Date(2025, 1, 3, 12, 0, 0, 0, time.UTC)
+		
+		// Insert metrics
+		// vote_cast (5.0) * 20 = 100
+		metric1 := &domain.EngagementMetric{
+			UserID:      userID,
+			MetricType:  "vote_cast",
+			MetricValue: 20,
+			RecordedAt:  day2, // Newer
+		}
+		err = repo.RecordEngagement(ctx, metric1)
+		if err != nil {
+			t.Fatalf("RecordEngagement failed: %v", err)
+		}
+
+		// message (1.0) * 50 = 50
+		metric2 := &domain.EngagementMetric{
+			UserID:      userID,
+			MetricType:  "message",
+			MetricValue: 50,
+			RecordedAt:  day1, // Older
+		}
+		err = repo.RecordEngagement(ctx, metric2)
+		if err != nil {
+			t.Fatalf("RecordEngagement failed: %v", err)
+		}
+
+		// Act
+		// Since day1 (inclusive)
+		totals, err := repo.GetDailyEngagementTotals(ctx, day1)
+		if err != nil {
+			t.Fatalf("GetDailyEngagementTotals failed: %v", err)
+		}
+
+
+		// Assert
+		// We can't predict exact keys due to TZ, but sum should be 150
+		totalPoints := 0
+		for _, v := range totals {
+			totalPoints += v
+		}
+
+		if totalPoints != 150 {
+			t.Errorf("Expected 150 total points, got %d", totalPoints)
+		}
+		if len(totals) != 2 {
+			t.Errorf("Expected 2 days of data, got %d", len(totals))
+		}
 	})
 }

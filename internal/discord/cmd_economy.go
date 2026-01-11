@@ -15,10 +15,11 @@ func BuyCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		Description: "Purchase an item from the shop",
 		Options: []*discordgo.ApplicationCommandOption{
 			{
-				Type:        discordgo.ApplicationCommandOptionString,
-				Name:        "item",
-				Description: "Item name to buy",
-				Required:    true,
+				Type:         discordgo.ApplicationCommandOptionString,
+				Name:         "item",
+				Description:  "Item name to buy",
+				Required:     true,
+				Autocomplete: true,
 			},
 			{
 				Type:        discordgo.ApplicationCommandOptionInteger,
@@ -60,7 +61,7 @@ func BuyCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		msg, err := client.BuyItem(domain.PlatformDiscord, user.ID, user.Username, itemName, quantity)
 		if err != nil {
 			slog.Error("Failed to buy item", "error", err)
-			respondError(s, i, fmt.Sprintf("Failed to buy item: %v", err))
+			respondFriendlyError(s, i, err.Error())
 			return
 		}
 
@@ -90,10 +91,11 @@ func SellCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		Description: "Sell an item from your inventory",
 		Options: []*discordgo.ApplicationCommandOption{
 			{
-				Type:        discordgo.ApplicationCommandOptionString,
-				Name:        "item",
-				Description: "Item name to sell",
-				Required:    true,
+				Type:         discordgo.ApplicationCommandOptionString,
+				Name:         "item",
+				Description:  "Item name to sell",
+				Required:     true,
+				Autocomplete: true,
 			},
 			{
 				Type:        discordgo.ApplicationCommandOptionInteger,
@@ -135,7 +137,7 @@ func SellCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		msg, err := client.SellItem(domain.PlatformDiscord, user.ID, user.Username, itemName, quantity)
 		if err != nil {
 			slog.Error("Failed to sell item", "error", err)
-			respondError(s, i, fmt.Sprintf("Failed to sell item: %v", err))
+			respondFriendlyError(s, i, err.Error())
 			return
 		}
 
@@ -253,10 +255,11 @@ func GiveCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 				Required:    true,
 			},
 			{
-				Type:        discordgo.ApplicationCommandOptionString,
-				Name:        "item",
-				Description: "Item name to give",
-				Required:    true,
+				Type:         discordgo.ApplicationCommandOptionString,
+				Name:         "item",
+				Description:  "Item name to give",
+				Required:     true,
+				Autocomplete: true,
 			},
 			{
 				Type:        discordgo.ApplicationCommandOptionInteger,
@@ -310,7 +313,7 @@ func GiveCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		)
 		if err != nil {
 			slog.Error("Failed to give item", "error", err)
-			respondError(s, i, fmt.Sprintf("Failed to give item: %v", err))
+			respondFriendlyError(s, i, err.Error())
 			return
 		}
 

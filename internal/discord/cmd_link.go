@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 // LinkCommand returns the link command definition and handler
@@ -68,7 +70,7 @@ func LinkCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 
 			embed = &discordgo.MessageEmbed{
 				Title:       "✅ Accounts Linked!",
-				Description: fmt.Sprintf("Your accounts are now connected.\n\n**Linked Platforms:** %s", strings.Join(result.LinkedPlatforms, ", ")),
+				Description: fmt.Sprintf("Your accounts are now connected.\n\n**Linked Platforms:** %s\n\n_Success! Accounts linked._", strings.Join(result.LinkedPlatforms, ", ")),
 				Color:       0x2ecc71, // Green
 				Footer: &discordgo.MessageEmbedFooter{
 					Text: "Use /profile to see linked accounts",
@@ -84,7 +86,7 @@ func LinkCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 
 			embed = &discordgo.MessageEmbed{
 				Title:       "📋 Token Claimed!",
-				Description: fmt.Sprintf("Token received from **%s** account.\n\nReturn to **%s** and use `/link confirm` (or equivalent) to complete the link.", result.SourcePlatform, result.SourcePlatform),
+				Description: fmt.Sprintf("Received token from **%s**.\n\nReturn to **%s** and use `/link confirm` (or equivalent) to complete the link.", result.SourcePlatform, result.SourcePlatform),
 				Color:       0x3498db, // Blue
 				Footer: &discordgo.MessageEmbedFooter{
 					Text: "Waiting for confirmation from source platform",
@@ -101,12 +103,13 @@ func LinkCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			embed = &discordgo.MessageEmbed{
 				Title: "🔗 Link Started",
 				Description: fmt.Sprintf("**Your link code:** `%s`\n\n"+
-					"**Step 1:** Use this code on Twitch/YouTube:\n"+
-					"```!link %s```\n\n"+
-					"**Step 2:** Return here and use:\n"+
-					"```/link confirm```\n\n"+
+					"**1. Copy Code:** `%s`\n"+
+					"**2. Go to External Chat:** Twitch or YouTube chat\n"+
+					"**3. Type Command:** `!link %s`\n"+
+					"**4. Return Here:** Come back to this channel\n"+
+					"**5. Confirm:** Type `/link confirm:true`\n\n"+
 					"⏰ This code expires in **%d minutes**.",
-					result.Token, result.Token, result.ExpiresIn/60),
+					result.Token, result.Token, result.Token, result.ExpiresIn/60),
 				Color: 0xf1c40f, // Yellow
 				Footer: &discordgo.MessageEmbedFooter{
 					Text: "Code is case-insensitive",
@@ -181,7 +184,7 @@ func UnlinkCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 
 			embed = &discordgo.MessageEmbed{
 				Title:       "✅ Platform Unlinked",
-				Description: fmt.Sprintf("Your **%s** account has been unlinked.\n\nYour Discord account keeps all inventory and stats.", strings.Title(platform)),
+				Description: fmt.Sprintf("Your **%s** account has been unlinked.\n\nYour Discord account keeps all inventory and stats.", cases.Title(language.English).String(platform)),
 				Color:       0x2ecc71, // Green
 			}
 		} else {
@@ -197,7 +200,7 @@ func UnlinkCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 				Description: fmt.Sprintf("Are you sure you want to unlink your **%s** account?\n\n"+
 					"**Warning:** The %s account will lose access to your shared inventory.\n\n"+
 					"To confirm, use:\n```/unlink platform:%s confirm:true```",
-					strings.Title(platform), strings.Title(platform), platform),
+					cases.Title(language.English).String(platform), cases.Title(language.English).String(platform), platform),
 				Color: 0xe74c3c, // Red
 				Footer: &discordgo.MessageEmbedFooter{
 					Text: "Confirm within 60 seconds",

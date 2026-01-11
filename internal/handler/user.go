@@ -2,7 +2,6 @@ package handler
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
@@ -56,7 +55,11 @@ func HandleRegisterUser(userService user.Service) http.HandlerFunc {
 		// Validate request
 		if err := GetValidator().ValidateStruct(req); err != nil {
 			log.Warn("Invalid request", "error", err)
-			http.Error(w, fmt.Sprintf("Invalid request: %v", err), http.StatusBadRequest)
+			validationErrors := FormatValidationError(err)
+			respondJSON(w, http.StatusBadRequest, map[string]interface{}{
+				"error":   "Validation failed",
+				"details": validationErrors,
+			})
 			return
 		}
 
@@ -97,13 +100,11 @@ func HandleRegisterUser(userService user.Service) http.HandlerFunc {
 			"username", updatedUser.Username,
 			"is_new", isNewUser)
 
-		w.Header().Set("Content-Type", "application/json")
+		statusCode := http.StatusOK
 		if isNewUser {
-			w.WriteHeader(http.StatusCreated)
-		} else {
-			w.WriteHeader(http.StatusOK)
+			statusCode = http.StatusCreated
 		}
-		respondJSON(w, http.StatusOK, updatedUser)
+		respondJSON(w, statusCode, updatedUser)
 	}
 }
 
@@ -115,5 +116,42 @@ func updatePlatformID(user *domain.User, platform, platformID string) {
 		user.YoutubeID = platformID
 	case "discord":
 		user.DiscordID = platformID
+	}
+}
+
+// HandleGetTimeout returns the remaining timeout duration for a user
+// @Summary Get user timeout
+// @Description Get the remaining timeout duration for a user
+// @Tags user
+// @Produce json
+// @Param username query string true "Username to check"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /user/timeout [get]
+func HandleGetTimeout(svc user.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromContext(r.Context())
+
+		username := r.URL.Query().Get("username")
+		if username == "" {
+			http.Error(w, "Missing username parameter", http.StatusBadRequest)
+			return
+		}
+
+		duration, err := svc.GetTimeout(r.Context(), username)
+		if err != nil {
+			log.Error("Failed to get timeout", "error", err, "username", username)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		response := map[string]interface{}{
+			"username":          username,
+			"is_timed_out":      duration > 0,
+			"remaining_seconds": duration.Seconds(),
+		}
+
+		respondJSON(w, http.StatusOK, response)
 	}
 }

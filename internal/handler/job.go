@@ -27,8 +27,7 @@ func (h *JobHandler) HandleGetAllJobs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	respondJSON(w, http.StatusOK, map[string]interface{}{
 		"jobs": jobs,
 	})
 }
@@ -50,8 +49,7 @@ func (h *JobHandler) HandleGetUserJobs(w http.ResponseWriter, r *http.Request) {
 
 	primaryJob, _ := h.service.GetPrimaryJob(r.Context(), userID)
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	respondJSON(w, http.StatusOK, map[string]interface{}{
 		"user_id":     userID,
 		"primary_job": primaryJob,
 		"jobs":        userJobs,
@@ -91,6 +89,36 @@ func (h *JobHandler) HandleAwardXP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(result)
+	respondJSON(w, http.StatusOK, result)
+}
+
+// HandleGetJobBonus returns the active bonus for a specific job and bonus type
+func (h *JobHandler) HandleGetJobBonus(w http.ResponseWriter, r *http.Request) {
+	userID := r.URL.Query().Get("user_id")
+	jobKey := r.URL.Query().Get("job_key")
+	bonusType := r.URL.Query().Get("bonus_type")
+
+	if userID == "" || jobKey == "" || bonusType == "" {
+		http.Error(w, "Missing required parameters (user_id, job_key, bonus_type)", http.StatusBadRequest)
+		return
+	}
+
+	bonus, err := h.service.GetJobBonus(r.Context(), userID, jobKey, bonusType)
+	if err != nil {
+		logger.FromContext(r.Context()).Error("Failed to get job bonus",
+			"error", err,
+			"user_id", userID,
+			"job_key", jobKey,
+			"bonus_type", bonusType,
+		)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"user_id":    userID,
+		"job_key":    jobKey,
+		"bonus_type": bonusType,
+		"bonus_val":  bonus,
+	})
 }

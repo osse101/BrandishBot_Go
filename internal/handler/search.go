@@ -2,7 +2,6 @@ package handler
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/osse101/BrandishBot_Go/internal/event"
@@ -53,15 +52,8 @@ func HandleSearch(svc user.Service, progressionSvc progression.Service, eventBus
 		log := logger.FromContext(r.Context())
 
 		// Check if search feature is unlocked
-		unlocked, err := progressionSvc.IsFeatureUnlocked(r.Context(), progression.FeatureSearch)
-		if err != nil {
-			log.Error("Failed to check feature unlock status", "error", err)
-			http.Error(w, "Failed to check feature availability", http.StatusInternalServerError)
-			return
-		}
-		if !unlocked {
-			log.Warn("Search feature is locked")
-			http.Error(w, "Search feature is not yet unlocked", http.StatusForbidden)
+		// Check if search feature is unlocked
+		if CheckFeatureLocked(w, r, progressionSvc, progression.FeatureSearch) {
 			return
 		}
 
@@ -77,7 +69,11 @@ func HandleSearch(svc user.Service, progressionSvc progression.Service, eventBus
 		// Validate request
 		if err := GetValidator().ValidateStruct(req); err != nil {
 			log.Warn("Invalid request", "error", err)
-			http.Error(w, fmt.Sprintf("Invalid request: %v", err), http.StatusBadRequest)
+			validationErrors := FormatValidationError(err)
+			respondJSON(w, http.StatusBadRequest, map[string]interface{}{
+				"error":   "Validation failed",
+				"details": validationErrors,
+			})
 			return
 		}
 
@@ -92,11 +88,6 @@ func HandleSearch(svc user.Service, progressionSvc progression.Service, eventBus
 			"username", req.Username,
 			"message", message)
 
-		// Add contribution points for searching
-		if err := progressionSvc.AddContribution(r.Context(), 5); err != nil {
-			log.Warn("Failed to add contribution points", "error", err)
-		}
-
 		// Track engagement for search
 		middleware.TrackEngagementFromContext(
 			middleware.WithUserID(r.Context(), req.Username),
@@ -107,7 +98,8 @@ func HandleSearch(svc user.Service, progressionSvc progression.Service, eventBus
 
 		// Publish search.performed event
 		if err := eventBus.Publish(r.Context(), event.Event{
-			Type: "search.performed",
+			Version: "1.0",
+			Type:    "search.performed",
 			Payload: map[string]interface{}{
 				"user_id":  req.Username,
 				"platform": req.Platform,
@@ -117,8 +109,6 @@ func HandleSearch(svc user.Service, progressionSvc progression.Service, eventBus
 			log.Error("Failed to publish search.performed event", "error", err)
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
 		respondJSON(w, http.StatusOK, SearchResponse{
 			Message: message,
 		})

@@ -91,20 +91,24 @@ func (s *SuspiciousActivityDetector) RecordFailedAuth(ip string) {
 	}
 }
 
-// RecordRequest records a request for rate monitoring
-func (s *SuspiciousActivityDetector) RecordRequest(ip string) {
+// RecordRequest records a request for rate monitoring and returns false if rate limit exceeded
+func (s *SuspiciousActivityDetector) RecordRequest(ip string) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	s.resetCountsIfNeeded()
 	s.requestCountByIP[ip]++
 
-	// Alert on high request rate
+	// Block if request rate exceeds limit (1000 req / 5 min)
 	if s.requestCountByIP[ip] > 1000 {
-		slog.Warn("⚠️ SECURITY ALERT: High request rate detected",
-			"ip", ip,
-			"count_in_5min", s.requestCountByIP[ip])
+		if s.requestCountByIP[ip]%100 == 0 { // Log every 100 requests to avoid log spam
+			slog.Warn("⚠️ SECURITY ALERT: Blocking high request rate",
+				"ip", ip,
+				"count_in_5min", s.requestCountByIP[ip])
+		}
+		return false
 	}
+	return true
 }
 
 // resetCountsIfNeeded resets counters if the time window has passed
@@ -117,15 +121,18 @@ func (s *SuspiciousActivityDetector) resetCountsIfNeeded() {
 	}
 }
 
-// SecurityLoggingMiddleware enhances logging with security information
+// SecurityLoggingMiddleware enhances logging with security information and enforces rate limits
 func SecurityLoggingMiddleware(trustedProxies []string, detector *SuspiciousActivityDetector) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Extract IP address
 			ip := extractIP(r, trustedProxies)
 
-			// Record request
-			detector.RecordRequest(ip)
+			// Record request and check rate limit
+			if !detector.RecordRequest(ip) {
+				http.Error(w, "Too Many Requests", http.StatusTooManyRequests)
+				return
+			}
 
 			// Add IP to context for other handlers
 			// log := logger.FromContext(r.Context())
@@ -160,13 +167,31 @@ func extractIP(r *http.Request, trustedProxies []string) string {
 	if isTrusted {
 		forwarded := r.Header.Get("X-Forwarded-For")
 		if forwarded != "" {
-			// Standard behavior for proxies is to append the client IP to the list.
-			// Therefore, if we trust the proxy, the *last* IP in the list is the one
-			// that connected to the proxy.
+			// For X-Forwarded-For: client, proxy1, proxy2
+			// We want the rightmost IP (the one that connected to our trusted proxy)
+			// since we trust the proxy to accurately report the previous hop.
 			ips := strings.Split(forwarded, ",")
 			return strings.TrimSpace(ips[len(ips)-1])
 		}
 	}
 
 	return remoteIP
+}
+
+// SecurityHeadersMiddleware adds security headers to responses
+func SecurityHeadersMiddleware() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Prevent MIME sniffing
+			w.Header().Set("X-Content-Type-Options", "nosniff")
+			// Prevent clickjacking
+			w.Header().Set("X-Frame-Options", "SAMEORIGIN")
+			// Enable XSS protection (for older browsers)
+			w.Header().Set("X-XSS-Protection", "1; mode=block")
+			// Control referrer information
+			w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+
+			next.ServeHTTP(w, r)
+		})
+	}
 }

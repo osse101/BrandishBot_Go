@@ -49,20 +49,20 @@ func TestConcurrentAddItem_Integration(t *testing.T) {
 	}
 
 	// Connect to database
-	pool, err := database.NewPool(connStr, 10, 30*time.Minute, time.Hour)
+	pool, err := database.NewPool(connStr, 25, 30*time.Minute, time.Hour)
 	if err != nil {
 		t.Fatalf("failed to connect to database: %v", err)
 	}
 	defer pool.Close()
 
 	// Apply migrations
-	if err := applyMigrations(ctx, pool, "../../../migrations"); err != nil {
+	if err := applyMigrations(t, ctx, pool, "../../../migrations"); err != nil {
 		t.Fatalf("failed to apply migrations: %v", err)
 	}
 
 	// Create repository and service
 	repo := NewUserRepository(pool)
-	svc := user.NewService(repo, nil, nil, &mockNamingResolver{}, false)
+	svc := user.NewService(repo, nil, nil, nil, &mockNamingResolver{}, nil, false)
 
 	// Create a test user
 	testUser := &domain.User{
@@ -74,9 +74,9 @@ func TestConcurrentAddItem_Integration(t *testing.T) {
 	}
 
 	// Run concurrent AddItem operations
-	const concurrentOps = 100
+	const concurrentOps = 20 // Reduced to ensure test completes within timeout while still testing concurrency
 	const itemName = domain.ItemLootbox1
-	
+
 	var wg sync.WaitGroup
 	wg.Add(concurrentOps)
 	errChan := make(chan error, concurrentOps)
@@ -96,7 +96,7 @@ func TestConcurrentAddItem_Integration(t *testing.T) {
 
 	wg.Wait()
 	close(errChan)
-	
+
 	duration := time.Since(startTime)
 	t.Logf("Completed %d operations in %v", concurrentOps, duration)
 

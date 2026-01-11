@@ -64,8 +64,8 @@ func NewTestContext(t *testing.T) (*httptest.Server, *APIClient, *discordgo.Sess
 func RegisterBackendHandler(server *httptest.Server, method, path string, handler http.HandlerFunc) {
 	// Note: httptest.Server uses a mux that doesn't support method matching easily without wrapper
 	// We'll rely on the caller to configure the mux passed to NewTestContext if they need complex routing
-	// Or we can just modify the mux? 
-	// The problem is httptest.NewServer takes a handler. 
+	// Or we can just modify the mux?
+	// The problem is httptest.NewServer takes a handler.
 	// Let's modify NewTestContext to return the mux.
 }
 
@@ -82,11 +82,11 @@ type TestContext struct {
 func SetupTestContext(t *testing.T) *TestContext {
 	mux := http.NewServeMux()
 	server := httptest.NewServer(mux)
-	
+
 	client := NewAPIClient(server.URL, "test-api-key")
-	
+
 	session, _ := discordgo.New("Bot test-token")
-	
+
 	ctx := &TestContext{
 		Server:    server,
 		Mux:       mux,
@@ -118,5 +118,8 @@ func SetupTestContext(t *testing.T) *TestContext {
 // Helper to return JSON success
 func WriteJSON(w http.ResponseWriter, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(data)
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		// Log error if encoding fails in test helper
+		_ = err
+	}
 }

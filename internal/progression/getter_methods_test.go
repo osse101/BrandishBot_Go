@@ -13,11 +13,11 @@ import (
 func TestGetActiveVotingSession_Success(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo)
+	service := NewService(repo, nil)
 	ctx := context.Background()
 
 	// Start session
-	service.StartVotingSession(ctx)
+	service.StartVotingSession(ctx, nil)
 
 	// Get active session
 	session, err := service.GetActiveVotingSession(ctx)
@@ -28,7 +28,7 @@ func TestGetActiveVotingSession_Success(t *testing.T) {
 
 func TestGetActiveVotingSession_NoSession(t *testing.T) {
 	repo := NewMockRepository()
-	service := NewService(repo)
+	service := NewService(repo, nil)
 	ctx := context.Background()
 
 	// No session exists
@@ -41,7 +41,7 @@ func TestGetActiveVotingSession_NoSession(t *testing.T) {
 func TestCheckAndUnlockCriteria_TriggersUnlock(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo)
+	service := NewService(repo, nil)
 	ctx := context.Background()
 
 	// Setup progress with met threshold
@@ -60,7 +60,7 @@ func TestCheckAndUnlockCriteria_TriggersUnlock(t *testing.T) {
 func TestCheckAndUnlockCriteria_NoUnlock_StartsSession(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo)
+	service := NewService(repo, nil)
 	ctx := context.Background()
 
 	// No unlock ready
@@ -75,7 +75,7 @@ func TestCheckAndUnlockCriteria_NoUnlock_StartsSession(t *testing.T) {
 // GetContributionLeaderboard Tests
 func TestGetContributionLeaderboard_Success(t *testing.T) {
 	repo := NewMockRepository()
-	service := NewService(repo)
+	service := NewService(repo, nil)
 	ctx := context.Background()
 
 	leaderboard, err := service.GetContributionLeaderboard(ctx, 10)
@@ -85,7 +85,7 @@ func TestGetContributionLeaderboard_Success(t *testing.T) {
 
 func TestGetContributionLeaderboard_ClampLimit(t *testing.T) {
 	repo := NewMockRepository()
-	service := NewService(repo)
+	service := NewService(repo, nil)
 	ctx := context.Background()
 
 	// Request too many
@@ -103,7 +103,7 @@ func TestGetContributionLeaderboard_ClampLimit(t *testing.T) {
 func TestGetProgressionStatus_Complete(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo)
+	service := NewService(repo, nil)
 	ctx := context.Background()
 
 	// Unlock a node
@@ -119,11 +119,11 @@ func TestGetProgressionStatus_Complete(t *testing.T) {
 func TestGetProgressionStatus_WithActiveSession(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo)
+	service := NewService(repo, nil)
 	ctx := context.Background()
 
 	// Start session
-	service.StartVotingSession(ctx)
+	service.StartVotingSession(ctx, nil)
 
 	// Get status
 	status, err := service.GetProgressionStatus(ctx)

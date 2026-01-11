@@ -68,8 +68,7 @@ func (h *LinkingHandlers) HandleInitiate() http.HandlerFunc {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		respondJSON(w, http.StatusOK, map[string]interface{}{
 			"token":      token.Token,
 			"expires_in": int(token.ExpiresAt.Sub(token.CreatedAt).Seconds()),
 		})
@@ -99,8 +98,7 @@ func (h *LinkingHandlers) HandleClaim() http.HandlerFunc {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		respondJSON(w, http.StatusOK, map[string]interface{}{
 			"source_platform":       token.SourcePlatform,
 			"awaiting_confirmation": true,
 		})
@@ -130,8 +128,7 @@ func (h *LinkingHandlers) HandleConfirm() http.HandlerFunc {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(result)
+		respondJSON(w, http.StatusOK, result)
 	}
 }
 
@@ -159,8 +156,7 @@ func (h *LinkingHandlers) HandleUnlink() http.HandlerFunc {
 				return
 			}
 
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			respondJSON(w, http.StatusOK, map[string]interface{}{
 				"awaiting_confirmation": true,
 				"message":               "Confirm within 60 seconds",
 			})
@@ -174,8 +170,7 @@ func (h *LinkingHandlers) HandleUnlink() http.HandlerFunc {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		respondJSON(w, http.StatusOK, map[string]interface{}{
 			"success": true,
 			"message": "Platform unlinked",
 		})
@@ -202,7 +197,6 @@ func (h *LinkingHandlers) HandleStatus() http.HandlerFunc {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(status)
+		respondJSON(w, http.StatusOK, status)
 	}
 }

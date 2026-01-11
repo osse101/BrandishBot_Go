@@ -14,11 +14,11 @@ import (
 func TestVotingFlow_Complete(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo)
+	service := NewService(repo, nil)
 	ctx := context.Background()
 
 	// Step 1: Start voting session
-	err := service.StartVotingSession(ctx)
+	err := service.StartVotingSession(ctx, nil)
 	assert.NoError(t, err)
 
 	session, _ := repo.GetActiveSession(ctx)
@@ -72,10 +72,10 @@ func TestVotingFlow_Complete(t *testing.T) {
 func TestVotingFlow_MultipleVoters(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo)
+	service := NewService(repo, nil)
 	ctx := context.Background()
 
-	service.StartVotingSession(ctx)
+	service.StartVotingSession(ctx, nil)
 	session, _ := repo.GetActiveSession(ctx)
 
 	// Multiple users vote for different options
@@ -84,7 +84,7 @@ func TestVotingFlow_MultipleVoters(t *testing.T) {
 	service.VoteForUnlock(ctx, "user3", session.Options[1].NodeDetails.NodeKey)
 
 	winner, _ := service.EndVoting(ctx)
-	
+
 	// Option 0 should win with 2 votes
 	assert.Equal(t, session.Options[0].NodeID, winner.NodeID)
 	assert.Equal(t, 2, winner.VoteCount)
@@ -94,21 +94,21 @@ func TestVotingFlow_MultipleVoters(t *testing.T) {
 func TestVotingFlow_AutoNextSession(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo)
+	service := NewService(repo, nil)
 	ctx := context.Background()
 
 	// Complete first unlock cycle
-	service.StartVotingSession(ctx)
+	service.StartVotingSession(ctx, nil)
 	session1, _ := repo.GetActiveSession(ctx)
 	service.VoteForUnlock(ctx, "user1", session1.Options[0].NodeDetails.NodeKey)
 	service.EndVoting(ctx)
 
 	progress, _ := repo.GetActiveUnlockProgress(ctx)
 	cost := session1.Options[0].NodeDetails.UnlockCost
-	service.AddContribution(ctx, cost - progress.ContributionsAccumulated)
-	
+	service.AddContribution(ctx, cost-progress.ContributionsAccumulated)
+
 	service.CheckAndUnlockNode(ctx)
-	
+
 	// Wait for async session start
 	time.Sleep(20 * time.Millisecond)
 
@@ -123,7 +123,7 @@ func TestVotingFlow_AutoNextSession(t *testing.T) {
 func TestMultiLevel_Progressive(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo)
+	service := NewService(repo, nil)
 	ctx := context.Background()
 
 	// Unlock prerequisites first
@@ -134,7 +134,7 @@ func TestMultiLevel_Progressive(t *testing.T) {
 	repo.UnlockNode(ctx, 5, 1, "test", 0)
 
 	// Start session - should include cooldown level 2
-	service.StartVotingSession(ctx)
+	service.StartVotingSession(ctx, nil)
 	session, _ := repo.GetActiveSession(ctx)
 
 	// Find cooldown option
@@ -155,15 +155,15 @@ func TestMultiLevel_Progressive(t *testing.T) {
 func TestMultiLevel_SessionTargeting(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo)
+	service := NewService(repo, nil)
 	ctx := context.Background()
 
 	// Unlock money and economy to access cooldown
 	repo.UnlockNode(ctx, 2, 1, "test", 0)
 	repo.UnlockNode(ctx, 3, 1, "test", 0)
-	
+
 	// Start session
-	service.StartVotingSession(ctx)
+	service.StartVotingSession(ctx, nil)
 	session, _ := repo.GetActiveSession(ctx)
 
 	// Vote for cooldown level 1
@@ -205,7 +205,7 @@ func TestMultiLevel_SessionTargeting(t *testing.T) {
 func TestRollover_ExcessPoints(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo)
+	service := NewService(repo, nil)
 	ctx := context.Background()
 
 	// Setup progress with target
@@ -234,11 +234,11 @@ func TestRollover_ExcessPoints(t *testing.T) {
 func TestCache_ThresholdDetection(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo)
+	service := NewService(repo, nil)
 	ctx := context.Background()
 
 	// Complete voting to set cache
-	service.StartVotingSession(ctx)
+	service.StartVotingSession(ctx, nil)
 	session, _ := repo.GetActiveSession(ctx)
 	service.VoteForUnlock(ctx, "user1", session.Options[0].NodeDetails.NodeKey)
 	service.EndVoting(ctx)

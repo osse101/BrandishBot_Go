@@ -20,9 +20,17 @@ const (
 	EventGambleCriticalFail EventType = "gamble_critical_fail"
 	EventDailyStreak        EventType = "daily_streak"
 	// Search events
-	EventSearch             EventType = "search"
-	EventSearchNearMiss     EventType = "search_near_miss"
-	EventSearchCriticalFail EventType = "search_critical_fail"
+	EventSearch                  EventType = "search"
+	EventSearchNearMiss          EventType = "search_near_miss"
+	EventSearchCriticalFail      EventType = "search_critical_fail"
+	EventSearchCriticalSuccess   EventType = "search_critical_success"
+	EventCraftingCriticalSuccess EventType = "crafting_critical_success"
+	EventCraftingPerfectSalvage  EventType = "crafting_perfect_salvage"
+	EventJobLevelUp              EventType = "job_level_up"
+	EventJobXPCritical           EventType = "job_xp_critical"
+	// Lootbox events
+	EventLootboxJackpot EventType = "lootbox_jackpot"
+	EventLootboxBigWin  EventType = "lootbox_big_win"
 )
 
 // StatsEvent represents a single tracked event
@@ -32,6 +40,24 @@ type StatsEvent struct {
 	EventType EventType              `json:"event_type"`
 	EventData map[string]interface{} `json:"event_data,omitempty"`
 	CreatedAt time.Time              `json:"created_at"`
+}
+
+// LootboxEventData represents data for lootbox jackpot/big-win events
+type LootboxEventData struct {
+	Item   string      `json:"item"`
+	Drops  interface{} `json:"drops"` // []lootbox.DroppedItem, but using interface{} to avoid circular deps
+	Value  int         `json:"value"`
+	Source string      `json:"source"`
+}
+
+// ToMap converts LootboxEventData to map for compatibility with existing event recording
+func (d *LootboxEventData) ToMap() map[string]interface{} {
+	return map[string]interface{}{
+		"item":   d.Item,
+		"drops":  d.Drops,
+		"value":  d.Value,
+		"source": d.Source,
+	}
 }
 
 // StatsAggregate represents pre-calculated statistics for a time period

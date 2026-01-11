@@ -3,13 +3,17 @@ package server
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
 	"github.com/osse101/BrandishBot_Go/internal/database"
 	"github.com/osse101/BrandishBot_Go/internal/economy"
 	"github.com/osse101/BrandishBot_Go/internal/event"
+	"github.com/osse101/BrandishBot_Go/internal/features"
 	"github.com/osse101/BrandishBot_Go/internal/gamble"
 	"github.com/osse101/BrandishBot_Go/internal/handler"
 	"github.com/osse101/BrandishBot_Go/internal/job"
@@ -40,103 +44,158 @@ type Server struct {
 
 // NewServer creates a new Server instance
 func NewServer(port int, apiKey string, trustedProxies []string, dbPool database.Pool, userService user.Service, economyService economy.Service, craftingService crafting.Service, statsService stats.Service, progressionService progression.Service, gambleService gamble.Service, jobService job.Service, linkingService linking.Service, namingResolver naming.Resolver, eventBus event.Bus) *Server {
-	mux := http.NewServeMux()
+	r := chi.NewRouter()
 
-	// Health check routes
-	mux.HandleFunc("/healthz", handler.HandleHealthz())
-	mux.HandleFunc("/readyz", handler.HandleReadyz(dbPool))
+	// Middleware stack
+	// Chi middleware executes in order defined (outermost to innermost)
+	detector := NewSuspiciousActivityDetector()
+
+	r.Use(SecurityHeadersMiddleware())
+	r.Use(AuthMiddleware(apiKey, trustedProxies, detector))
+	r.Use(SecurityLoggingMiddleware(trustedProxies, detector))
+	r.Use(RequestSizeLimitMiddleware(1 << 20)) // 1MB limit
+	r.Use(metrics.MetricsMiddleware)
+	r.Use(loggingMiddleware)
+
+	// Health check routes (unversioned)
+	r.Get("/healthz", handler.HandleHealthz())
+	r.Get("/readyz", handler.HandleReadyz(dbPool))
+
+	// Version endpoint (public, for deployment verification)
+	r.Get("/version", handler.HandleVersion())
 
 	// Metrics endpoint (public, for Prometheus scraping)
-	mux.Handle("/metrics", promhttp.Handler())
+	r.Handle("/metrics", promhttp.Handler())
 
-	// User routes
-	mux.HandleFunc("/user/register", handler.HandleRegisterUser(userService))
-	mux.HandleFunc("/message/handle", handler.HandleMessageHandler(userService, progressionService, eventBus))
-	mux.HandleFunc("/test", handler.HandleTest(userService))
-	mux.HandleFunc("/user/item/add", handler.HandleAddItem(userService))
-	mux.HandleFunc("/user/item/remove", handler.HandleRemoveItem(userService))
-	mux.HandleFunc("/user/item/give", handler.HandleGiveItem(userService))
-	mux.HandleFunc("/user/item/sell", handler.HandleSellItem(economyService, progressionService, eventBus))
-	mux.HandleFunc("/user/item/buy", handler.HandleBuyItem(economyService, progressionService, eventBus))
-	mux.HandleFunc("/user/item/use", handler.HandleUseItem(userService, eventBus))
-	mux.HandleFunc("/user/item/upgrade", handler.HandleUpgradeItem(craftingService, progressionService, eventBus))
-	mux.HandleFunc("/user/item/disassemble", handler.HandleDisassembleItem(craftingService, progressionService, eventBus))
-	mux.HandleFunc("/recipes", handler.HandleGetRecipes(craftingService))
-	mux.HandleFunc("/user/inventory", handler.HandleGetInventory(userService))
-	mux.HandleFunc("/user/search", handler.HandleSearch(userService, progressionService, eventBus))
-	mux.HandleFunc("/prices", handler.HandleGetPrices(economyService))
-	mux.HandleFunc("/prices/buy", handler.HandleGetBuyPrices(economyService))
+	// API v1 routes
+	r.Route("/api/v1", func(r chi.Router) {
+		// Info endpoint
+		featureLoader := features.NewLoader("configs/info")
+		r.Get("/info", handler.HandleGetInfo(featureLoader))
 
-	// Gamble routes
-	gambleHandler := handler.NewGambleHandler(gambleService, progressionService)
-	mux.HandleFunc("/gamble/start", gambleHandler.HandleStartGamble)
-	mux.HandleFunc("/gamble/join", gambleHandler.HandleJoinGamble)
-	mux.HandleFunc("/gamble/get", gambleHandler.HandleGetGamble)
+		// User routes
+		r.Route("/user", func(r chi.Router) {
+			r.Post("/register", handler.HandleRegisterUser(userService))
+			r.Get("/timeout", handler.HandleGetTimeout(userService))
+			r.Get("/inventory", handler.HandleGetInventory(userService, progressionService))
+			r.Get("/inventory-by-username", handler.HandleGetInventoryByUsername(userService))
+			r.Post("/search", handler.HandleSearch(userService, progressionService, eventBus))
 
-	// Job routes
-	jobHandler := handler.NewJobHandler(jobService)
-	mux.HandleFunc("/jobs", jobHandler.HandleGetAllJobs)
-	mux.HandleFunc("/jobs/user", jobHandler.HandleGetUserJobs)
-	mux.HandleFunc("/jobs/award-xp", jobHandler.HandleAwardXP)
+			r.Route("/item", func(r chi.Router) {
+				r.Post("/add", handler.HandleAddItem(userService))
+				r.Post("/add-by-username", handler.HandleAddItemByUsername(userService))
+				r.Post("/remove", handler.HandleRemoveItem(userService))
+				r.Post("/remove-by-username", handler.HandleRemoveItemByUsername(userService))
+				r.Post("/give", handler.HandleGiveItem(userService))
+				r.Post("/give-by-username", handler.HandleGiveItemByUsername(userService))
+				r.Post("/sell", handler.HandleSellItem(economyService, progressionService, eventBus))
+				r.Post("/buy", handler.HandleBuyItem(economyService, progressionService, eventBus))
+				r.Post("/use", handler.HandleUseItem(userService, eventBus))
+				r.Post("/use-by-username", handler.HandleUseItemByUsername(userService, eventBus))
+				r.Post("/upgrade", handler.HandleUpgradeItem(craftingService, progressionService, eventBus))
+				r.Post("/disassemble", handler.HandleDisassembleItem(craftingService, progressionService, eventBus))
+			})
+		})
 
-	// Stats routes
-	mux.HandleFunc("/stats/event", handler.HandleRecordEvent(statsService))
-	mux.HandleFunc("/stats/user", handler.HandleGetUserStats(statsService))
-	mux.HandleFunc("/stats/system", handler.HandleGetSystemStats(statsService))
-	mux.HandleFunc("/stats/leaderboard", handler.HandleGetLeaderboard(statsService))
+		r.Post("/message/handle", handler.HandleMessageHandler(userService, progressionService, eventBus))
+		r.Post("/test", handler.HandleTest(userService))
+		r.Get("/recipes", handler.HandleGetRecipes(craftingService))
 
-	// Progression routes
-	progressionHandlers := handler.NewProgressionHandlers(progressionService)
-	mux.HandleFunc("/progression/tree", progressionHandlers.HandleGetTree())
-	mux.HandleFunc("/progression/available", progressionHandlers.HandleGetAvailable())
-	mux.HandleFunc("/progression/vote", progressionHandlers.HandleVote())
-	mux.HandleFunc("/progression/status", progressionHandlers.HandleGetStatus())
-	mux.HandleFunc("/progression/engagement", progressionHandlers.HandleGetEngagement())
-	mux.HandleFunc("/progression/leaderboard", progressionHandlers.HandleGetContributionLeaderboard())
-	mux.HandleFunc("/progression/session", progressionHandlers.HandleGetVotingSession())
-	mux.HandleFunc("/progression/unlock-progress", progressionHandlers.HandleGetUnlockProgress())
-	mux.HandleFunc("/progression/admin/unlock", progressionHandlers.HandleAdminUnlock())
-	mux.HandleFunc("/progression/admin/relock", progressionHandlers.HandleAdminRelock())
-	mux.HandleFunc("/progression/admin/instant-unlock", progressionHandlers.HandleAdminInstantUnlock())
-	mux.HandleFunc("/progression/admin/start-voting", progressionHandlers.HandleAdminStartVoting())
-	mux.HandleFunc("/progression/admin/end-voting", progressionHandlers.HandleAdminEndVoting())
-	mux.HandleFunc("/progression/admin/reset", progressionHandlers.HandleAdminReset())
+		r.Route("/prices", func(r chi.Router) {
+			r.Get("/", handler.HandleGetPrices(economyService))
+			r.Get("/buy", handler.HandleGetBuyPrices(economyService))
+		})
 
-	// Linking routes
-	linkingHandlers := handler.NewLinkingHandlers(linkingService)
-	mux.HandleFunc("/link/initiate", linkingHandlers.HandleInitiate())
-	mux.HandleFunc("/link/claim", linkingHandlers.HandleClaim())
-	mux.HandleFunc("/link/confirm", linkingHandlers.HandleConfirm())
-	mux.HandleFunc("/link/unlink", linkingHandlers.HandleUnlink())
-	mux.HandleFunc("/link/status", linkingHandlers.HandleStatus())
+		// Gamble routes
+		gambleHandler := handler.NewGambleHandler(gambleService, progressionService)
+		r.Route("/gamble", func(r chi.Router) {
+			r.Post("/start", gambleHandler.HandleStartGamble)
+			r.Post("/join", gambleHandler.HandleJoinGamble)
+			r.Get("/get", gambleHandler.HandleGetGamble)
+		})
 
-	// Admin routes
-	mux.HandleFunc("/admin/reload-aliases", handler.HandleReloadAliases(namingResolver))
+		// Job routes
+		jobHandler := handler.NewJobHandler(jobService)
+		r.Get("/jobs", jobHandler.HandleGetAllJobs) // Handle /jobs exactly
+		r.Route("/jobs", func(r chi.Router) {
+			r.Get("/", jobHandler.HandleGetAllJobs) // Handle /jobs/ if needed
+			r.Get("/user", jobHandler.HandleGetUserJobs)
+			r.Post("/award-xp", jobHandler.HandleAwardXP)
+			r.Get("/bonus", jobHandler.HandleGetJobBonus)
+		})
+
+		// Stats routes
+		r.Route("/stats", func(r chi.Router) {
+			r.Post("/event", handler.HandleRecordEvent(statsService))
+			r.Get("/user", handler.HandleGetUserStats(statsService))
+			r.Get("/system", handler.HandleGetSystemStats(statsService))
+			r.Get("/leaderboard", handler.HandleGetLeaderboard(statsService))
+		})
+
+		// Progression routes
+		progressionHandlers := handler.NewProgressionHandlers(progressionService)
+		r.Route("/progression", func(r chi.Router) {
+			r.Get("/tree", progressionHandlers.HandleGetTree())
+			r.Get("/available", progressionHandlers.HandleGetAvailable())
+			r.Post("/vote", progressionHandlers.HandleVote())
+			r.Get("/status", progressionHandlers.HandleGetStatus())
+			r.Get("/engagement", progressionHandlers.HandleGetEngagement())
+			r.Get("/leaderboard", progressionHandlers.HandleGetContributionLeaderboard())
+			r.Get("/session", progressionHandlers.HandleGetVotingSession())
+			r.Get("/unlock-progress", progressionHandlers.HandleGetUnlockProgress())
+
+			r.Route("/admin", func(r chi.Router) {
+				r.Post("/unlock", progressionHandlers.HandleAdminUnlock())
+				r.Post("/unlock-all", progressionHandlers.HandleAdminUnlockAll())
+				r.Post("/relock", progressionHandlers.HandleAdminRelock())
+				r.Post("/instant-unlock", progressionHandlers.HandleAdminInstantUnlock())
+				r.Post("/start-voting", progressionHandlers.HandleAdminStartVoting())
+				r.Post("/end-voting", progressionHandlers.HandleAdminEndVoting())
+				r.Post("/reset", progressionHandlers.HandleAdminReset())
+				r.Post("/contribution", progressionHandlers.HandleAdminAddContribution())
+			})
+		})
+
+		// Linking routes
+		linkingHandlers := handler.NewLinkingHandlers(linkingService)
+		r.Route("/link", func(r chi.Router) {
+			r.Post("/initiate", linkingHandlers.HandleInitiate())
+			r.Post("/claim", linkingHandlers.HandleClaim())
+			r.Post("/confirm", linkingHandlers.HandleConfirm())
+			r.Post("/unlink", linkingHandlers.HandleUnlink())
+			r.Get("/status", linkingHandlers.HandleStatus())
+		})
+
+		// Admin routes
+		adminJobHandler := handler.NewAdminJobHandler(jobService, userService)
+		adminCacheHandler := handler.NewAdminCacheHandler(userService)
+		r.Route("/admin", func(r chi.Router) {
+			r.Post("/reload-aliases", handler.HandleReloadAliases(namingResolver))
+
+			// Admin job routes
+			r.Route("/job", func(r chi.Router) {
+				r.Post("/award-xp", adminJobHandler.HandleAdminAwardXP)
+			})
+
+			// Admin progression routes
+			r.Route("/progression", func(r chi.Router) {
+				r.Post("/reload-weights", progressionHandlers.HandleAdminReloadWeights())
+			})
+
+			// Admin cache routes
+			r.Route("/cache", func(r chi.Router) {
+				r.Get("/stats", adminCacheHandler.HandleGetCacheStats)
+			})
+		})
+	})
 
 	// Swagger documentation
-	mux.HandleFunc("/swagger/", httpSwagger.WrapHandler)
-
-	// Build middleware stack (applied in reverse order)
-	// 1. Request logging (innermost - logs final status)
-	handler := loggingMiddleware(mux)
-
-	// 2. Metrics collection
-	handler = metrics.MetricsMiddleware(handler)
-
-	// 3. Request size limit
-	handler = RequestSizeLimitMiddleware(1 << 20)(handler) // 1MB limit
-
-	// 4. Security logging with suspicious activity detection
-	detector := NewSuspiciousActivityDetector()
-	handler = SecurityLoggingMiddleware(trustedProxies, detector)(handler)
-
-	// 5. Authentication (outermost - validates first)
-	handler = AuthMiddleware(apiKey, trustedProxies, detector)(handler)
+	r.Get("/swagger/*", httpSwagger.WrapHandler)
 
 	return &Server{
 		httpServer: &http.Server{
 			Addr:              fmt.Sprintf(":%d", port),
-			Handler:           handler,
+			Handler:           r,
 			ReadHeaderTimeout: 5 * time.Second,
 		},
 		dbPool:             dbPool,
@@ -182,8 +241,18 @@ func (rw *responseWriter) Write(b []byte) (int, error) {
 }
 
 func loggingMiddleware(next http.Handler) http.Handler {
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
+
+		// Skip logging for health check endpoints and metrics
+		// Use HasPrefix to catch potential variations (e.g. /healthz/)
+		if strings.HasPrefix(r.URL.Path, "/healthz") ||
+			strings.HasPrefix(r.URL.Path, "/readyz") ||
+			strings.HasPrefix(r.URL.Path, "/metrics") {
+			next.ServeHTTP(w, r)
+			return
+		}
 
 		// Generate unique request ID
 		requestID := logger.GenerateRequestID()
@@ -203,7 +272,16 @@ func loggingMiddleware(next http.Handler) http.Handler {
 			"content_length", r.ContentLength,
 			"user_agent", r.UserAgent())
 
-		log.Debug("Request headers", "headers", r.Header)
+		// Sanitize headers for logging
+		sanitizedHeaders := make(http.Header)
+		for k, v := range r.Header {
+			if strings.EqualFold(k, "X-API-Key") || strings.EqualFold(k, "Authorization") {
+				sanitizedHeaders[k] = []string{"[REDACTED]"}
+			} else {
+				sanitizedHeaders[k] = v
+			}
+		}
+		log.Debug("Request headers", "headers", sanitizedHeaders)
 
 		// Wrap response writer to capture status code
 		rw := newResponseWriter(w)
@@ -224,7 +302,7 @@ func loggingMiddleware(next http.Handler) http.Handler {
 
 // Start starts the server
 func (s *Server) Start() error {
-	fmt.Printf("Server starting on %s\n", s.httpServer.Addr)
+	slog.Default().Info("Server starting", "addr", s.httpServer.Addr)
 	return s.httpServer.ListenAndServe()
 }
 

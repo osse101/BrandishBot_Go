@@ -31,18 +31,10 @@ type StartGambleRequest struct {
 }
 
 func (h *GambleHandler) HandleStartGamble(w http.ResponseWriter, r *http.Request) {
-	log := logger.FromContext(r.Context())
 
 	// Check if gamble feature is unlocked
-	unlocked, err := h.progressionSvc.IsFeatureUnlocked(r.Context(), progression.FeatureGamble)
-	if err != nil {
-		log.Error("Failed to check feature unlock status", "error", err)
-		http.Error(w, "Failed to check feature availability", http.StatusInternalServerError)
-		return
-	}
-	if !unlocked {
-		log.Warn("Gamble feature is locked")
-		http.Error(w, "Gamble feature is not yet unlocked", http.StatusForbidden)
+	// Check if gamble feature is unlocked
+	if CheckFeatureLocked(w, r, h.progressionSvc, progression.FeatureGamble) {
 		return
 	}
 
@@ -59,9 +51,7 @@ func (h *GambleHandler) HandleStartGamble(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(gamble)
+	respondJSON(w, http.StatusCreated, gamble)
 }
 
 type JoinGambleRequest struct {
@@ -95,8 +85,7 @@ func (h *GambleHandler) HandleJoinGamble(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "Successfully joined gamble"})
+	respondJSON(w, http.StatusOK, map[string]string{"message": "Successfully joined gamble"})
 }
 
 func (h *GambleHandler) HandleGetGamble(w http.ResponseWriter, r *http.Request) {
@@ -122,6 +111,5 @@ func (h *GambleHandler) HandleGetGamble(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(gamble)
+	respondJSON(w, http.StatusOK, gamble)
 }

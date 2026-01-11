@@ -6,18 +6,26 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/osse101/BrandishBot_Go/internal/database/generated"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
 
 // StatsRepository implements the stats repository for PostgreSQL
 type StatsRepository struct {
-	db *pgxpool.Pool
+	pool *pgxpool.Pool
+	q    *generated.Queries
 }
 
 // NewStatsRepository creates a new StatsRepository
-func NewStatsRepository(db *pgxpool.Pool) *StatsRepository {
-	return &StatsRepository{db: db}
+func NewStatsRepository(pool *pgxpool.Pool) repository.Stats {
+	return &StatsRepository{
+		pool: pool,
+		q:    generated.New(pool),
+	}
 }
 
 // RecordEvent inserts a new event into the stats_events table
@@ -27,68 +35,58 @@ func (r *StatsRepository) RecordEvent(ctx context.Context, event *domain.StatsEv
 		return fmt.Errorf("failed to marshal event data: %w", err)
 	}
 
-	query := `
-		INSERT INTO stats_events (user_id, event_type, event_data, created_at)
-		VALUES ($1, $2, $3, $4)
-		RETURNING event_id, created_at
-	`
+	userUUID, err := uuid.Parse(event.UserID)
+	if err != nil {
+		return fmt.Errorf("invalid user id: %w", err)
+	}
 
-	err = r.db.QueryRow(ctx, query,
-		event.UserID,
-		event.EventType,
-		eventDataJSON,
-		event.CreatedAt,
-	).Scan(&event.EventID, &event.CreatedAt)
+	// Prepare params
+	params := generated.RecordEventParams{
+		UserID:    pgtype.UUID{Bytes: userUUID, Valid: true},
+		EventType: string(event.EventType),
+		EventData: eventDataJSON,
+	}
 
+	if !event.CreatedAt.IsZero() {
+		params.CreatedAt = pgtype.Timestamp{Time: event.CreatedAt, Valid: true}
+	} else {
+		params.CreatedAt = pgtype.Timestamp{Time: time.Now(), Valid: true}
+	}
+
+	result, err := r.q.RecordEvent(ctx, params)
 	if err != nil {
 		return fmt.Errorf("failed to insert event: %w", err)
 	}
+
+	event.EventID = int64(result.EventID)
+	event.CreatedAt = result.CreatedAt.Time
 
 	return nil
 }
 
 // GetEventsByUser retrieves all events for a specific user within a time range
 func (r *StatsRepository) GetEventsByUser(ctx context.Context, userID string, startTime, endTime time.Time) ([]domain.StatsEvent, error) {
-	query := `
-		SELECT event_id, user_id, event_type, event_data, created_at
-		FROM stats_events
-		WHERE user_id = $1 AND created_at >= $2 AND created_at <= $3
-		ORDER BY created_at DESC
-	`
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid user id: %w", err)
+	}
 
-	rows, err := r.db.Query(ctx, query, userID, startTime, endTime)
+	rows, err := r.q.GetEventsByUser(ctx, generated.GetEventsByUserParams{
+		UserID:      pgtype.UUID{Bytes: userUUID, Valid: true},
+		CreatedAt:   pgtype.Timestamp{Time: startTime, Valid: true},
+		CreatedAt_2: pgtype.Timestamp{Time: endTime, Valid: true},
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to query events: %w", err)
 	}
-	defer rows.Close()
 
 	var events []domain.StatsEvent
-	for rows.Next() {
-		var event domain.StatsEvent
-		var eventDataJSON []byte
-
-		err := rows.Scan(
-			&event.EventID,
-			&event.UserID,
-			&event.EventType,
-			&eventDataJSON,
-			&event.CreatedAt,
-		)
+	for _, row := range rows {
+		event, err := mapStatsEvent(row.EventID, row.UserID, row.EventType, row.EventData, row.CreatedAt)
 		if err != nil {
-			return nil, fmt.Errorf("failed to scan event: %w", err)
+			return nil, err
 		}
-
-		if len(eventDataJSON) > 0 {
-			if err := json.Unmarshal(eventDataJSON, &event.EventData); err != nil {
-				return nil, fmt.Errorf("failed to unmarshal event data: %w", err)
-			}
-		}
-
-		events = append(events, event)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating events: %w", err)
+		events = append(events, *event)
 	}
 
 	return events, nil
@@ -96,47 +94,27 @@ func (r *StatsRepository) GetEventsByUser(ctx context.Context, userID string, st
 
 // GetUserEventsByType retrieves events of a specific type for a specific user with a limit
 func (r *StatsRepository) GetUserEventsByType(ctx context.Context, userID string, eventType domain.EventType, limit int) ([]domain.StatsEvent, error) {
-	query := `
-		SELECT event_id, user_id, event_type, event_data, created_at
-		FROM stats_events
-		WHERE user_id = $1 AND event_type = $2
-		ORDER BY created_at DESC
-		LIMIT $3
-	`
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid user id: %w", err)
+	}
 
-	rows, err := r.db.Query(ctx, query, userID, eventType, limit)
+	rows, err := r.q.GetUserEventsByType(ctx, generated.GetUserEventsByTypeParams{
+		UserID:    pgtype.UUID{Bytes: userUUID, Valid: true},
+		EventType: string(eventType),
+		Limit:     int32(limit),
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to query user events: %w", err)
 	}
-	defer rows.Close()
 
 	var events []domain.StatsEvent
-	for rows.Next() {
-		var event domain.StatsEvent
-		var eventDataJSON []byte
-
-		err := rows.Scan(
-			&event.EventID,
-			&event.UserID,
-			&event.EventType,
-			&eventDataJSON,
-			&event.CreatedAt,
-		)
+	for _, row := range rows {
+		event, err := mapStatsEvent(row.EventID, row.UserID, row.EventType, row.EventData, row.CreatedAt)
 		if err != nil {
-			return nil, fmt.Errorf("failed to scan event: %w", err)
+			return nil, err
 		}
-
-		if len(eventDataJSON) > 0 {
-			if err := json.Unmarshal(eventDataJSON, &event.EventData); err != nil {
-				return nil, fmt.Errorf("failed to unmarshal event data: %w", err)
-			}
-		}
-
-		events = append(events, event)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating events: %w", err)
+		events = append(events, *event)
 	}
 
 	return events, nil
@@ -144,82 +122,74 @@ func (r *StatsRepository) GetUserEventsByType(ctx context.Context, userID string
 
 // GetEventsByType retrieves all events of a specific type within a time range
 func (r *StatsRepository) GetEventsByType(ctx context.Context, eventType domain.EventType, startTime, endTime time.Time) ([]domain.StatsEvent, error) {
-	query := `
-		SELECT event_id, user_id, event_type, event_data, created_at
-		FROM stats_events
-		WHERE event_type = $1 AND created_at >= $2 AND created_at <= $3
-		ORDER BY created_at DESC
-	`
-
-	rows, err := r.db.Query(ctx, query, eventType, startTime, endTime)
+	rows, err := r.q.GetEventsByType(ctx, generated.GetEventsByTypeParams{
+		EventType:   string(eventType),
+		CreatedAt:   pgtype.Timestamp{Time: startTime, Valid: true},
+		CreatedAt_2: pgtype.Timestamp{Time: endTime, Valid: true},
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to query events: %w", err)
 	}
-	defer rows.Close()
 
 	var events []domain.StatsEvent
-	for rows.Next() {
-		var event domain.StatsEvent
-		var eventDataJSON []byte
-
-		err := rows.Scan(
-			&event.EventID,
-			&event.UserID,
-			&event.EventType,
-			&eventDataJSON,
-			&event.CreatedAt,
-		)
+	for _, row := range rows {
+		event, err := mapStatsEvent(row.EventID, row.UserID, row.EventType, row.EventData, row.CreatedAt)
 		if err != nil {
-			return nil, fmt.Errorf("failed to scan event: %w", err)
+			return nil, err
 		}
-
-		if len(eventDataJSON) > 0 {
-			if err := json.Unmarshal(eventDataJSON, &event.EventData); err != nil {
-				return nil, fmt.Errorf("failed to unmarshal event data: %w", err)
-			}
-		}
-
-		events = append(events, event)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating events: %w", err)
+		events = append(events, *event)
 	}
 
 	return events, nil
 }
 
+func mapStatsEvent(eventID int64, userID pgtype.UUID, eventType string, eventDataJSON []byte, createdAt pgtype.Timestamp) (*domain.StatsEvent, error) {
+	var eventData map[string]interface{}
+	if len(eventDataJSON) > 0 {
+		if err := json.Unmarshal(eventDataJSON, &eventData); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal event data: %w", err)
+		}
+	}
+
+	var uid uuid.UUID
+	if userID.Valid {
+		uid = [16]byte(userID.Bytes)
+	}
+
+	return &domain.StatsEvent{
+		EventID:   eventID,
+		UserID:    uid.String(),
+		EventType: domain.EventType(eventType),
+		EventData: eventData,
+		CreatedAt: createdAt.Time,
+	}, nil
+}
+
 // GetTopUsers retrieves the most active users for a specific event type
 func (r *StatsRepository) GetTopUsers(ctx context.Context, eventType domain.EventType, startTime, endTime time.Time, limit int) ([]domain.LeaderboardEntry, error) {
-	query := `
-		SELECT se.user_id, u.username, COUNT(*) as event_count
-		FROM stats_events se
-		JOIN users u ON se.user_id = u.user_id
-		WHERE se.event_type = $1 AND se.created_at >= $2 AND se.created_at <= $3
-		GROUP BY se.user_id, u.username
-		ORDER BY event_count DESC
-		LIMIT $4
-	`
-
-	rows, err := r.db.Query(ctx, query, eventType, startTime, endTime, limit)
+	rows, err := r.q.GetTopUsers(ctx, generated.GetTopUsersParams{
+		EventType:   string(eventType),
+		CreatedAt:   pgtype.Timestamp{Time: startTime, Valid: true},
+		CreatedAt_2: pgtype.Timestamp{Time: endTime, Valid: true},
+		Limit:       int32(limit),
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to query top users: %w", err)
 	}
-	defer rows.Close()
 
 	var entries []domain.LeaderboardEntry
-	for rows.Next() {
-		var entry domain.LeaderboardEntry
-		err := rows.Scan(&entry.UserID, &entry.Username, &entry.Count)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan leaderboard entry: %w", err)
+	for _, row := range rows {
+		var uid uuid.UUID
+		if row.UserID.Valid {
+			uid = [16]byte(row.UserID.Bytes)
 		}
-		entry.EventType = string(eventType)
-		entries = append(entries, entry)
-	}
 
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating leaderboard: %w", err)
+		entries = append(entries, domain.LeaderboardEntry{
+			UserID:    uid.String(),
+			Username:  row.Username,
+			Count:     int(row.EventCount),
+			EventType: string(eventType),
+		})
 	}
 
 	return entries, nil
@@ -227,32 +197,17 @@ func (r *StatsRepository) GetTopUsers(ctx context.Context, eventType domain.Even
 
 // GetEventCounts retrieves event counts grouped by event type within a time range
 func (r *StatsRepository) GetEventCounts(ctx context.Context, startTime, endTime time.Time) (map[domain.EventType]int, error) {
-	query := `
-		SELECT event_type, COUNT(*) as count
-		FROM stats_events
-		WHERE created_at >= $1 AND created_at <= $2
-		GROUP BY event_type
-	`
-
-	rows, err := r.db.Query(ctx, query, startTime, endTime)
+	rows, err := r.q.GetEventCounts(ctx, generated.GetEventCountsParams{
+		CreatedAt:   pgtype.Timestamp{Time: startTime, Valid: true},
+		CreatedAt_2: pgtype.Timestamp{Time: endTime, Valid: true},
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to query event counts: %w", err)
 	}
-	defer rows.Close()
 
 	counts := make(map[domain.EventType]int)
-	for rows.Next() {
-		var eventType domain.EventType
-		var count int
-		err := rows.Scan(&eventType, &count)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan event count: %w", err)
-		}
-		counts[eventType] = count
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating event counts: %w", err)
+	for _, row := range rows {
+		counts[domain.EventType(row.EventType)] = int(row.Count)
 	}
 
 	return counts, nil
@@ -260,32 +215,23 @@ func (r *StatsRepository) GetEventCounts(ctx context.Context, startTime, endTime
 
 // GetUserEventCounts retrieves event counts for a specific user grouped by event type
 func (r *StatsRepository) GetUserEventCounts(ctx context.Context, userID string, startTime, endTime time.Time) (map[domain.EventType]int, error) {
-	query := `
-		SELECT event_type, COUNT(*) as count
-		FROM stats_events
-		WHERE user_id = $1 AND created_at >= $2 AND created_at <= $3
-		GROUP BY event_type
-	`
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid user id: %w", err)
+	}
 
-	rows, err := r.db.Query(ctx, query, userID, startTime, endTime)
+	rows, err := r.q.GetUserEventCounts(ctx, generated.GetUserEventCountsParams{
+		UserID:      pgtype.UUID{Bytes: userUUID, Valid: true},
+		CreatedAt:   pgtype.Timestamp{Time: startTime, Valid: true},
+		CreatedAt_2: pgtype.Timestamp{Time: endTime, Valid: true},
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to query user event counts: %w", err)
 	}
-	defer rows.Close()
 
 	counts := make(map[domain.EventType]int)
-	for rows.Next() {
-		var eventType domain.EventType
-		var count int
-		err := rows.Scan(&eventType, &count)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan event count: %w", err)
-		}
-		counts[eventType] = count
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating event counts: %w", err)
+	for _, row := range rows {
+		counts[domain.EventType(row.EventType)] = int(row.Count)
 	}
 
 	return counts, nil
@@ -293,17 +239,13 @@ func (r *StatsRepository) GetUserEventCounts(ctx context.Context, userID string,
 
 // GetTotalEventCount retrieves the total number of events within a time range
 func (r *StatsRepository) GetTotalEventCount(ctx context.Context, startTime, endTime time.Time) (int, error) {
-	query := `
-		SELECT COUNT(*)
-		FROM stats_events
-		WHERE created_at >= $1 AND created_at <= $2
-	`
-
-	var count int
-	err := r.db.QueryRow(ctx, query, startTime, endTime).Scan(&count)
+	count, err := r.q.GetTotalEventCount(ctx, generated.GetTotalEventCountParams{
+		CreatedAt:   pgtype.Timestamp{Time: startTime, Valid: true},
+		CreatedAt_2: pgtype.Timestamp{Time: endTime, Valid: true},
+	})
 	if err != nil {
 		return 0, fmt.Errorf("failed to get total event count: %w", err)
 	}
 
-	return count, nil
+	return int(count), nil
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/economy"
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
@@ -57,7 +58,7 @@ func HandleAddItem(svc user.Service) http.HandlerFunc {
 
 		if err := svc.AddItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.ItemName, req.Quantity); err != nil {
 			log.Error("Failed to add item", "error", err, "username", req.Username, "item", req.ItemName)
-			http.Error(w, "Failed to add item", http.StatusInternalServerError) // Generic error
+			http.Error(w, ErrMsgAddItemFailed, http.StatusInternalServerError)
 			return
 		}
 
@@ -113,14 +114,12 @@ func HandleRemoveItem(svc user.Service) http.HandlerFunc {
 		removed, err := svc.RemoveItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.ItemName, req.Quantity)
 		if err != nil {
 			log.Error("Failed to remove item", "error", err, "username", req.Username, "item", req.ItemName)
-			http.Error(w, "Failed to remove item", http.StatusInternalServerError)
+			http.Error(w, ErrMsgRemoveItemFailed, http.StatusInternalServerError)
 			return
 		}
 
 		log.Info("Item removed successfully", "username", req.Username, "item", req.ItemName, "removed", removed)
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
 		respondJSON(w, http.StatusOK, RemoveItemResponse{Removed: removed})
 	}
 }
@@ -173,7 +172,7 @@ func HandleGiveItem(svc user.Service) http.HandlerFunc {
 
 		if err := svc.GiveItem(r.Context(), req.OwnerPlatform, req.OwnerPlatformID, req.Owner, req.ReceiverPlatform, req.ReceiverPlatformID, req.Receiver, req.ItemName, req.Quantity); err != nil {
 			log.Error("Failed to give item", "error", err, "owner", req.Owner, "receiver", req.Receiver, "item", req.ItemName)
-			http.Error(w, "Failed to give item", http.StatusInternalServerError)
+			http.Error(w, ErrMsgGiveItemFailed, http.StatusInternalServerError)
 			return
 		}
 
@@ -213,15 +212,8 @@ func HandleSellItem(svc economy.Service, progressionSvc progression.Service, eve
 		log := logger.FromContext(r.Context())
 
 		// Check if sell feature is unlocked
-		unlocked, err := progressionSvc.IsFeatureUnlocked(r.Context(), progression.FeatureSell)
-		if err != nil {
-			log.Error("Failed to check feature unlock status", "error", err)
-			http.Error(w, "Failed to check feature availability", http.StatusInternalServerError)
-			return
-		}
-		if !unlocked {
-			log.Warn("Sell feature is locked")
-			http.Error(w, "Sell feature is not yet unlocked", http.StatusForbidden)
+		// Check if sell feature is unlocked
+		if CheckFeatureLocked(w, r, progressionSvc, progression.FeatureSell) {
 			return
 		}
 
@@ -244,7 +236,7 @@ func HandleSellItem(svc economy.Service, progressionSvc progression.Service, eve
 		moneyGained, itemsSold, err := svc.SellItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.ItemName, req.Quantity)
 		if err != nil {
 			log.Error("Failed to sell item", "error", err, "username", req.Username, "item", req.ItemName)
-			http.Error(w, "Failed to sell item", http.StatusInternalServerError)
+			http.Error(w, ErrMsgSellItemFailed, http.StatusInternalServerError)
 			return
 		}
 
@@ -254,9 +246,18 @@ func HandleSellItem(svc economy.Service, progressionSvc progression.Service, eve
 			"items_sold", itemsSold,
 			"money_gained", moneyGained)
 
+		// Track engagement for selling
+		middleware.TrackEngagementFromContext(
+			middleware.WithUserID(r.Context(), req.Username),
+			eventBus,
+			"item_sold",
+			itemsSold,
+		)
+
 		// Publish item.sold event
 		if err := eventBus.Publish(r.Context(), event.Event{
-			Type: "item.sold",
+			Version: "1.0",
+			Type:    "item.sold",
 			Payload: map[string]interface{}{
 				"user_id":      req.Username,
 				"item_name":    req.ItemName,
@@ -303,15 +304,8 @@ func HandleBuyItem(svc economy.Service, progressionSvc progression.Service, even
 		log := logger.FromContext(r.Context())
 
 		// Check if buy feature is unlocked
-		unlocked, err := progressionSvc.IsFeatureUnlocked(r.Context(), progression.FeatureBuy)
-		if err != nil {
-			log.Error("Failed to check feature unlock status", "error", err)
-			http.Error(w, "Failed to check feature availability", http.StatusInternalServerError)
-			return
-		}
-		if !unlocked {
-			log.Warn("Buy feature is locked")
-			http.Error(w, "Buy feature is not yet unlocked", http.StatusForbidden)
+		// Check if buy feature is unlocked
+		if CheckFeatureLocked(w, r, progressionSvc, progression.FeatureBuy) {
 			return
 		}
 
@@ -334,7 +328,7 @@ func HandleBuyItem(svc economy.Service, progressionSvc progression.Service, even
 		bought, err := svc.BuyItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.ItemName, req.Quantity)
 		if err != nil {
 			log.Error("Failed to buy item", "error", err, "username", req.Username, "item", req.ItemName)
-			http.Error(w, "Failed to buy item", http.StatusInternalServerError)
+			http.Error(w, ErrMsgBuyItemFailed, http.StatusInternalServerError)
 			return
 		}
 
@@ -343,10 +337,19 @@ func HandleBuyItem(svc economy.Service, progressionSvc progression.Service, even
 			"item", req.ItemName,
 			"items_bought", bought)
 
+		// Track engagement for buying
+		middleware.TrackEngagementFromContext(
+			middleware.WithUserID(r.Context(), req.Username),
+			eventBus,
+			"item_bought",
+			bought,
+		)
+
 		// Publish item.bought event
 		// Note: We don't have the exact cost here, would need to modify economy.Service to return it
 		if err := eventBus.Publish(r.Context(), event.Event{
-			Type: "item.bought",
+			Version: "1.0",
+			Type:    "item.bought",
 			Payload: map[string]interface{}{
 				"user_id":   req.Username,
 				"item_name": req.ItemName,
@@ -418,7 +421,7 @@ func HandleUseItem(svc user.Service, eventBus event.Bus) http.HandlerFunc {
 		message, err := svc.UseItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.ItemName, req.Quantity, req.TargetUser)
 		if err != nil {
 			log.Error("Failed to use item", "error", err, "username", req.Username, "item", req.ItemName)
-			http.Error(w, "Failed to use item", http.StatusInternalServerError)
+			http.Error(w, ErrMsgUseItemFailed, http.StatusInternalServerError)
 			return
 		}
 
@@ -438,7 +441,8 @@ func HandleUseItem(svc user.Service, eventBus event.Bus) http.HandlerFunc {
 
 		// Publish item.used event
 		if err := eventBus.Publish(r.Context(), event.Event{
-			Type: "item.used",
+			Version: "1.0",
+			Type:    "item.used",
 			Payload: map[string]interface{}{
 				"user_id":  req.Username,
 				"item":     req.ItemName,
@@ -460,23 +464,26 @@ type GetInventoryResponse struct {
 	Items []user.UserInventoryItem `json:"items"`
 }
 
-// HandleGetInventory handles retrieving a user's inventory
-// @Summary Get user inventory
-// @Description Get all items in a user's inventory
+// HandleGetInventory gets the user's inventory
+// @Summary Get inventory
+// @Description Get the user's inventory
 // @Tags inventory
+// @Accept json
 // @Produce json
+// @Param platform_id query string true "Platform ID"
 // @Param username query string true "Username"
+// @Param filter query string false "Filter by item type (upgrade, sellable, consumable)"
 // @Success 200 {object} GetInventoryResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /user/inventory [get]
-func HandleGetInventory(svc user.Service) http.HandlerFunc {
+func HandleGetInventory(svc user.Service, progSvc progression.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
 
-		platform := r.URL.Query().Get("platform")
+		platform := r.URL.Query().Get("platform") // optional
 		if platform == "" {
-			platform = "discord" // Default
+			platform = domain.PlatformDiscord // Default
 		}
 		platformID := r.URL.Query().Get("platform_id")
 		if platformID == "" {
@@ -490,13 +497,38 @@ func HandleGetInventory(svc user.Service) http.HandlerFunc {
 			http.Error(w, "Missing username query parameter", http.StatusBadRequest)
 			return
 		}
+		filter := r.URL.Query().Get("filter")
 
-		log.Debug("Get inventory request", "username", username)
+		// Validate filter parameter
+		if filter != "" && !domain.IsValidFilterType(filter) {
+			log.Warn("Invalid filter parameter", "filter", filter)
+			http.Error(w, fmt.Sprintf("Invalid filter type '%s'. Valid options: upgrade, sellable, consumable", filter), http.StatusBadRequest)
+			return
+		}
 
-		items, err := svc.GetInventory(r.Context(), platform, platformID, username)
+		// Check filter unlock status
+		if filter != "" {
+			featureKey := fmt.Sprintf("feature_filter_%s", filter)
+			// We only check locks for the specific ones we added.
+			unlocked, err := progSvc.IsFeatureUnlocked(r.Context(), featureKey)
+			if err != nil {
+				log.Error("Failed to check filter unlock", "error", err)
+				http.Error(w, ErrMsgFeatureCheckFailed, http.StatusInternalServerError)
+				return
+			}
+			if !unlocked {
+				log.Warn("Filter locked", "filter", filter, "username", username)
+				http.Error(w, fmt.Sprintf("Filter '%s' is locked. Unlock it in the progression tree.", filter), http.StatusForbidden)
+				return
+			}
+		}
+
+		log.Debug("Get inventory request", "username", username, "filter", filter)
+
+		items, err := svc.GetInventory(r.Context(), platform, platformID, username, filter)
 		if err != nil {
 			log.Error("Failed to get inventory", "error", err, "username", username)
-			http.Error(w, "Failed to get inventory", http.StatusInternalServerError)
+			http.Error(w, ErrMsgGetInventoryFailed, http.StatusInternalServerError)
 			return
 		}
 

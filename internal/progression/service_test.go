@@ -3,6 +3,7 @@ package progression
 import (
 	"context"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -24,6 +25,7 @@ import (
 // - Use integration tests with real PostgreSQL (see internal/database/postgres/*_integration_test.go)
 // - Real database provides proper transaction isolation via SELECT ... FOR UPDATE
 type MockRepository struct {
+	mu                sync.RWMutex
 	nodes             map[int]*domain.ProgressionNode
 	nodesByKey        map[string]*domain.ProgressionNode
 	unlocks           map[int]map[int]*domain.ProgressionUnlock // nodeID -> level -> unlock
@@ -32,17 +34,26 @@ type MockRepository struct {
 	userProgressions  map[string]map[string]map[string]*domain.UserProgression
 	engagementWeights map[string]float64
 	engagementMetrics []*domain.EngagementMetric
-	
+
+	// Prerequisites junction table (v2.0)
+	prerequisites map[int][]int // nodeID -> []prerequisiteNodeIDs
+
 	// Voting session state
-	sessions          map[int]*domain.ProgressionVotingSession
-	sessionCounter    int
-	sessionOptions    map[int][]domain.ProgressionVotingOption // sessionID -> options
-	sessionVotes      map[int]map[string]bool // sessionID -> userID -> voted
-	
+	sessions       map[int]*domain.ProgressionVotingSession
+	sessionCounter int
+	sessionOptions map[int][]domain.ProgressionVotingOption // sessionID -> options
+	sessionVotes   map[int]map[string]bool                  // sessionID -> userID -> voted
+
 	// Unlock progress state
-	unlockProgress    map[int]*domain.UnlockProgress
-	progressCounter   int
-	activeProgressID  int
+	unlockProgress   map[int]*domain.UnlockProgress
+	progressCounter  int
+	activeProgressID int
+
+	// Velocity testing
+	dailyTotals map[time.Time]int
+
+	// Sync metadata
+	syncMetadata map[string]*domain.SyncMetadata
 }
 
 func NewMockRepository() *MockRepository {
@@ -60,21 +71,48 @@ func NewMockRepository() *MockRepository {
 			"vote_cast":    5.0,
 		},
 		engagementMetrics: make([]*domain.EngagementMetric, 0),
+		prerequisites:     make(map[int][]int),
 		sessions:          make(map[int]*domain.ProgressionVotingSession),
 		sessionOptions:    make(map[int][]domain.ProgressionVotingOption),
 		sessionVotes:      make(map[int]map[string]bool),
 		unlockProgress:    make(map[int]*domain.UnlockProgress),
+		dailyTotals:       make(map[time.Time]int),
+		syncMetadata:      make(map[string]*domain.SyncMetadata),
 	}
 }
 
 func (m *MockRepository) GetNodeByKey(ctx context.Context, nodeKey string) (*domain.ProgressionNode, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	if node, ok := m.nodesByKey[nodeKey]; ok {
 		return node, nil
 	}
 	return nil, nil
 }
+func (m *MockRepository) GetNodeByFeatureKey(ctx context.Context, featureKey string) (*domain.ProgressionNode, int, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	// Find node with matching feature_key in ModifierConfig
+	for _, node := range m.nodes {
+		if node.ModifierConfig != nil && node.ModifierConfig.FeatureKey == featureKey {
+			// lock level for this node
+			levels, ok := m.unlocks[node.ID]
+			if !ok {
+				return nil, 0, nil
+			}
+			// highest level
+			for level := range levels {
+				return node, level, nil
+			}
+		}
+	}
+	return nil, 0, nil
+}
 
 func (m *MockRepository) GetNodeByID(ctx context.Context, id int) (*domain.ProgressionNode, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	if node, ok := m.nodes[id]; ok {
 		return node, nil
 	}
@@ -82,6 +120,8 @@ func (m *MockRepository) GetNodeByID(ctx context.Context, id int) (*domain.Progr
 }
 
 func (m *MockRepository) GetAllNodes(ctx context.Context) ([]*domain.ProgressionNode, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	nodes := make([]*domain.ProgressionNode, 0, len(m.nodes))
 	for _, node := range m.nodes {
 		nodes = append(nodes, node)
@@ -89,17 +129,45 @@ func (m *MockRepository) GetAllNodes(ctx context.Context) ([]*domain.Progression
 	return nodes, nil
 }
 
-func (m *MockRepository) GetChildNodes(ctx context.Context, parentID int) ([]*domain.ProgressionNode, error) {
-	children := make([]*domain.ProgressionNode, 0)
-	for _, node := range m.nodes {
-		if node.ParentNodeID != nil && *node.ParentNodeID == parentID {
-			children = append(children, node)
+func (m *MockRepository) GetPrerequisites(ctx context.Context, nodeID int) ([]*domain.ProgressionNode, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	prereqIDs, ok := m.prerequisites[nodeID]
+	if !ok {
+		return []*domain.ProgressionNode{}, nil
+	}
+
+	prereqs := make([]*domain.ProgressionNode, 0, len(prereqIDs))
+	for _, prereqID := range prereqIDs {
+		if node, ok := m.nodes[prereqID]; ok {
+			prereqs = append(prereqs, node)
 		}
 	}
-	return children, nil
+	return prereqs, nil
+}
+
+func (m *MockRepository) GetDependents(ctx context.Context, nodeID int) ([]*domain.ProgressionNode, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	dependents := make([]*domain.ProgressionNode, 0)
+	for depNodeID, prereqIDs := range m.prerequisites {
+		for _, prereqID := range prereqIDs {
+			if prereqID == nodeID {
+				if node, ok := m.nodes[depNodeID]; ok {
+					dependents = append(dependents, node)
+				}
+				break
+			}
+		}
+	}
+	return dependents, nil
 }
 
 func (m *MockRepository) GetUnlock(ctx context.Context, nodeID int, level int) (*domain.ProgressionUnlock, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	if levels, ok := m.unlocks[nodeID]; ok {
 		if unlock, ok := levels[level]; ok {
 			return unlock, nil
@@ -109,6 +177,8 @@ func (m *MockRepository) GetUnlock(ctx context.Context, nodeID int, level int) (
 }
 
 func (m *MockRepository) GetAllUnlocks(ctx context.Context) ([]*domain.ProgressionUnlock, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	unlocks := make([]*domain.ProgressionUnlock, 0)
 	for _, levels := range m.unlocks {
 		for _, unlock := range levels {
@@ -133,6 +203,8 @@ func (m *MockRepository) IsNodeUnlocked(ctx context.Context, nodeKey string, lev
 }
 
 func (m *MockRepository) UnlockNode(ctx context.Context, nodeID int, level int, unlockedBy string, engagementScore int) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.unlocks[nodeID] == nil {
 		m.unlocks[nodeID] = make(map[int]*domain.ProgressionUnlock)
 	}
@@ -149,6 +221,8 @@ func (m *MockRepository) UnlockNode(ctx context.Context, nodeID int, level int, 
 }
 
 func (m *MockRepository) RelockNode(ctx context.Context, nodeID int, level int) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if levels, ok := m.unlocks[nodeID]; ok {
 		delete(levels, level)
 	}
@@ -156,6 +230,8 @@ func (m *MockRepository) RelockNode(ctx context.Context, nodeID int, level int) 
 }
 
 func (m *MockRepository) GetActiveVoting(ctx context.Context) (*domain.ProgressionVoting, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	if m.voting != nil && m.voting.IsActive {
 		return m.voting, nil
 	}
@@ -163,6 +239,8 @@ func (m *MockRepository) GetActiveVoting(ctx context.Context) (*domain.Progressi
 }
 
 func (m *MockRepository) StartVoting(ctx context.Context, nodeID int, level int, endsAt *time.Time) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.voting = &domain.ProgressionVoting{
 		ID:              1,
 		NodeID:          nodeID,
@@ -176,6 +254,8 @@ func (m *MockRepository) StartVoting(ctx context.Context, nodeID int, level int,
 }
 
 func (m *MockRepository) GetVoting(ctx context.Context, nodeID int, level int) (*domain.ProgressionVoting, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	if m.voting != nil && m.voting.NodeID == nodeID && m.voting.TargetLevel == level {
 		return m.voting, nil
 	}
@@ -183,6 +263,8 @@ func (m *MockRepository) GetVoting(ctx context.Context, nodeID int, level int) (
 }
 
 func (m *MockRepository) IncrementVote(ctx context.Context, nodeID int, level int) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.voting != nil && m.voting.NodeID == nodeID && m.voting.TargetLevel == level {
 		m.voting.VoteCount++
 	}
@@ -190,6 +272,8 @@ func (m *MockRepository) IncrementVote(ctx context.Context, nodeID int, level in
 }
 
 func (m *MockRepository) EndVoting(ctx context.Context, nodeID int, level int) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.voting != nil && m.voting.NodeID == nodeID && m.voting.TargetLevel == level {
 		m.voting.IsActive = false
 	}
@@ -197,6 +281,8 @@ func (m *MockRepository) EndVoting(ctx context.Context, nodeID int, level int) e
 }
 
 func (m *MockRepository) HasUserVoted(ctx context.Context, userID string, nodeID int, level int) (bool, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	if nodes, ok := m.userVotes[userID]; ok {
 		if levels, ok := nodes[nodeID]; ok {
 			return levels[level], nil
@@ -206,6 +292,8 @@ func (m *MockRepository) HasUserVoted(ctx context.Context, userID string, nodeID
 }
 
 func (m *MockRepository) RecordUserVote(ctx context.Context, userID string, nodeID int, level int) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.userVotes[userID] == nil {
 		m.userVotes[userID] = make(map[int]map[int]bool)
 	}
@@ -217,6 +305,8 @@ func (m *MockRepository) RecordUserVote(ctx context.Context, userID string, node
 }
 
 func (m *MockRepository) UnlockUserProgression(ctx context.Context, userID string, progressionType string, key string, metadata map[string]interface{}) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.userProgressions[userID] == nil {
 		m.userProgressions[userID] = make(map[string]map[string]*domain.UserProgression)
 	}
@@ -235,6 +325,8 @@ func (m *MockRepository) UnlockUserProgression(ctx context.Context, userID strin
 }
 
 func (m *MockRepository) IsUserProgressionUnlocked(ctx context.Context, userID string, progressionType string, key string) (bool, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	if types, ok := m.userProgressions[userID]; ok {
 		if keys, ok := types[progressionType]; ok {
 			_, exists := keys[key]
@@ -245,6 +337,8 @@ func (m *MockRepository) IsUserProgressionUnlocked(ctx context.Context, userID s
 }
 
 func (m *MockRepository) GetUserProgressions(ctx context.Context, userID string, progressionType string) ([]*domain.UserProgression, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	progressions := make([]*domain.UserProgression, 0)
 	if types, ok := m.userProgressions[userID]; ok {
 		if keys, ok := types[progressionType]; ok {
@@ -257,11 +351,15 @@ func (m *MockRepository) GetUserProgressions(ctx context.Context, userID string,
 }
 
 func (m *MockRepository) RecordEngagement(ctx context.Context, metric *domain.EngagementMetric) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.engagementMetrics = append(m.engagementMetrics, metric)
 	return nil
 }
 
 func (m *MockRepository) GetEngagementScore(ctx context.Context, since *time.Time) (int, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	totalScore := 0
 	for _, metric := range m.engagementMetrics {
 		if since != nil && metric.RecordedAt.Before(*since) {
@@ -274,6 +372,8 @@ func (m *MockRepository) GetEngagementScore(ctx context.Context, since *time.Tim
 }
 
 func (m *MockRepository) GetUserEngagement(ctx context.Context, userID string) (*domain.ContributionBreakdown, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	breakdown := &domain.ContributionBreakdown{}
 
 	for _, metric := range m.engagementMetrics {
@@ -300,14 +400,18 @@ func (m *MockRepository) GetUserEngagement(ctx context.Context, userID string) (
 }
 
 func (m *MockRepository) GetEngagementWeights(ctx context.Context) (map[string]float64, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	return m.engagementWeights, nil
 }
 
 func (m *MockRepository) ResetTree(ctx context.Context, resetBy string, reason string, preserveUserData bool) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	// Keep only root unlock
 	newUnlocks := make(map[int]map[int]*domain.ProgressionUnlock)
 	for nodeID, levels := range m.unlocks {
-		if node, ok := m.nodes[nodeID]; ok && node.NodeKey == "progression_system" {
+		if node, ok := m.nodes[nodeID]; ok && node.NodeKey == FeatureProgressionSystem {
 			newUnlocks[nodeID] = levels
 		}
 	}
@@ -327,11 +431,60 @@ func (m *MockRepository) RecordReset(ctx context.Context, reset *domain.Progress
 	return nil
 }
 
+// Sync metadata operations
+func (m *MockRepository) GetSyncMetadata(ctx context.Context, configName string) (*domain.SyncMetadata, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	if meta, ok := m.syncMetadata[configName]; ok {
+		return meta, nil
+	}
+	return nil, fmt.Errorf("sync metadata not found")
+}
+
+func (m *MockRepository) UpsertSyncMetadata(ctx context.Context, metadata *domain.SyncMetadata) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.syncMetadata[metadata.ConfigName] = metadata
+	return nil
+}
+
+// NodeInserter implementation
+func (m *MockRepository) InsertNode(ctx context.Context, node *domain.ProgressionNode) (int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	
+	// Create ID if not present
+	if node.ID == 0 {
+		node.ID = len(m.nodes) + 1
+	}
+	
+	m.nodes[node.ID] = node
+	m.nodesByKey[node.NodeKey] = node
+	return node.ID, nil
+}
+
+// NodeUpdater implementation
+func (m *MockRepository) UpdateNode(ctx context.Context, nodeID int, node *domain.ProgressionNode) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	
+	if _, exists := m.nodes[nodeID]; !exists {
+		return fmt.Errorf("node not found")
+	}
+	
+	node.ID = nodeID
+	m.nodes[nodeID] = node
+	m.nodesByKey[node.NodeKey] = node
+	return nil
+}
+
 // Session-based voting mock methods
 func (m *MockRepository) CreateVotingSession(ctx context.Context) (int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.sessionCounter++
 	sessionID := m.sessionCounter
-	
+
 	m.sessions[sessionID] = &domain.ProgressionVotingSession{
 		ID:        sessionID,
 		Status:    "voting",
@@ -340,16 +493,18 @@ func (m *MockRepository) CreateVotingSession(ctx context.Context) (int, error) {
 	}
 	m.sessionOptions[sessionID] = []domain.ProgressionVotingOption{}
 	m.sessionVotes[sessionID] = make(map[string]bool)
-	
+
 	return sessionID, nil
 }
 
 func (m *MockRepository) AddVotingOption(ctx context.Context, sessionID, nodeID, targetLevel int) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	node := m.nodes[nodeID]
 	if node == nil {
 		return fmt.Errorf("node not found")
 	}
-	
+
 	optionID := len(m.sessionOptions[sessionID]) + 1
 	option := domain.ProgressionVotingOption{
 		ID:          optionID,
@@ -359,18 +514,20 @@ func (m *MockRepository) AddVotingOption(ctx context.Context, sessionID, nodeID,
 		VoteCount:   0,
 		NodeDetails: node,
 	}
-	
+
 	m.sessionOptions[sessionID] = append(m.sessionOptions[sessionID], option)
-	
+
 	// Update session with options
 	if session, ok := m.sessions[sessionID]; ok {
 		session.Options = m.sessionOptions[sessionID]
 	}
-	
+
 	return nil
 }
 
 func (m *MockRepository) GetActiveSession(ctx context.Context) (*domain.ProgressionVotingSession, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	for _, session := range m.sessions {
 		if session.Status == "voting" {
 			return session, nil
@@ -380,6 +537,8 @@ func (m *MockRepository) GetActiveSession(ctx context.Context) (*domain.Progress
 }
 
 func (m *MockRepository) GetSessionByID(ctx context.Context, sessionID int) (*domain.ProgressionVotingSession, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	if session, ok := m.sessions[sessionID]; ok {
 		return session, nil
 	}
@@ -387,6 +546,8 @@ func (m *MockRepository) GetSessionByID(ctx context.Context, sessionID int) (*do
 }
 
 func (m *MockRepository) IncrementOptionVote(ctx context.Context, optionID int) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	for sessionID, options := range m.sessionOptions {
 		for i := range options {
 			if options[i].ID == optionID {
@@ -394,7 +555,7 @@ func (m *MockRepository) IncrementOptionVote(ctx context.Context, optionID int) 
 				now := time.Now()
 				options[i].LastHighestVoteAt = &now
 				m.sessionOptions[sessionID] = options
-				
+
 				// Update session
 				if session, ok := m.sessions[sessionID]; ok {
 					session.Options = options
@@ -407,6 +568,8 @@ func (m *MockRepository) IncrementOptionVote(ctx context.Context, optionID int) 
 }
 
 func (m *MockRepository) EndVotingSession(ctx context.Context, sessionID int, winningOptionID int) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if session, ok := m.sessions[sessionID]; ok {
 		session.Status = "ended"
 		session.EndedAt = timePtr(time.Now())
@@ -417,6 +580,8 @@ func (m *MockRepository) EndVotingSession(ctx context.Context, sessionID int, wi
 }
 
 func (m *MockRepository) GetSessionVoters(ctx context.Context, sessionID int) ([]string, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	voters := make([]string, 0)
 	if userMap, ok := m.sessionVotes[sessionID]; ok {
 		for userID := range userMap {
@@ -427,6 +592,8 @@ func (m *MockRepository) GetSessionVoters(ctx context.Context, sessionID int) ([
 }
 
 func (m *MockRepository) HasUserVotedInSession(ctx context.Context, userID string, sessionID int) (bool, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	if userMap, ok := m.sessionVotes[sessionID]; ok {
 		return userMap[userID], nil
 	}
@@ -434,6 +601,8 @@ func (m *MockRepository) HasUserVotedInSession(ctx context.Context, userID strin
 }
 
 func (m *MockRepository) RecordUserSessionVote(ctx context.Context, userID string, sessionID, optionID, nodeID int) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.sessionVotes[sessionID] == nil {
 		m.sessionVotes[sessionID] = make(map[string]bool)
 	}
@@ -443,9 +612,11 @@ func (m *MockRepository) RecordUserSessionVote(ctx context.Context, userID strin
 
 // Unlock progress mock methods
 func (m *MockRepository) CreateUnlockProgress(ctx context.Context) (int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.progressCounter++
 	progressID := m.progressCounter
-	
+
 	m.unlockProgress[progressID] = &domain.UnlockProgress{
 		ID:                       progressID,
 		ContributionsAccumulated: 0,
@@ -456,10 +627,12 @@ func (m *MockRepository) CreateUnlockProgress(ctx context.Context) (int, error) 
 }
 
 func (m *MockRepository) GetActiveUnlockProgress(ctx context.Context) (*domain.UnlockProgress, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	if m.activeProgressID == 0 {
 		return nil, nil // No active progress found (not an error)
 	}
-	
+
 	if progress, ok := m.unlockProgress[m.activeProgressID]; ok {
 		if progress.UnlockedAt == nil {
 			// Return a copy to avoid pointer reference issues in tests
@@ -471,6 +644,8 @@ func (m *MockRepository) GetActiveUnlockProgress(ctx context.Context) (*domain.U
 }
 
 func (m *MockRepository) AddContribution(ctx context.Context, progressID int, amount int) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if progress, ok := m.unlockProgress[progressID]; ok {
 		progress.ContributionsAccumulated += amount
 		return nil
@@ -479,6 +654,8 @@ func (m *MockRepository) AddContribution(ctx context.Context, progressID int, am
 }
 
 func (m *MockRepository) SetUnlockTarget(ctx context.Context, progressID int, nodeID int, targetLevel int, sessionID int) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if progress, ok := m.unlockProgress[progressID]; ok {
 		progress.NodeID = &nodeID
 		progress.TargetLevel = &targetLevel
@@ -489,20 +666,22 @@ func (m *MockRepository) SetUnlockTarget(ctx context.Context, progressID int, no
 }
 
 func (m *MockRepository) CompleteUnlock(ctx context.Context, progressID int, rolloverPoints int) (int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if progress, ok := m.unlockProgress[progressID]; ok {
 		progress.UnlockedAt = timePtr(time.Now())
-		
+
 		// Create new progress with rollover
 		m.progressCounter++
 		newProgressID := m.progressCounter
-		
+
 		m.unlockProgress[newProgressID] = &domain.UnlockProgress{
 			ID:                       newProgressID,
 			ContributionsAccumulated: rolloverPoints,
 			StartedAt:                time.Now(),
 		}
 		m.activeProgressID = newProgressID
-		
+
 		return newProgressID, nil
 	}
 	return 0, fmt.Errorf("unlock progress not found")
@@ -516,190 +695,196 @@ func (m *MockRepository) BeginTx(ctx context.Context) (repository.Tx, error) {
 	return nil, fmt.Errorf("transactions not supported in mock")
 }
 
+func (m *MockRepository) GetDailyEngagementTotals(ctx context.Context, since time.Time) (map[time.Time]int, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	
+	result := make(map[time.Time]int)
+	for t, v := range m.dailyTotals {
+		if !t.Before(since) {
+			result[t] = v
+		}
+	}
+	return result, nil
+}
+
 // Test helper functions
 
 func setupTestTree(repo *MockRepository) {
 	// Root node
 	rootID := 1
 	root := &domain.ProgressionNode{
-		ID:           rootID,
-		NodeKey:      "progression_system",
-		NodeType:     "feature",
-		DisplayName:  "Progression System",
-		Description:  "Root progression system",
-		ParentNodeID: nil,
-		MaxLevel:     1,
-		UnlockCost:   0,
-		SortOrder:    0,
-		CreatedAt:    time.Now(),
+		ID:          rootID,
+		NodeKey:     FeatureProgressionSystem,
+		NodeType:    "feature",
+		DisplayName: "Progression System",
+		Description: "Root progression system",
+		MaxLevel:    1,
+		UnlockCost:  0,
+		SortOrder:   0,
+		CreatedAt:   time.Now(),
 	}
 	repo.nodes[rootID] = root
-	repo.nodesByKey["progression_system"] = root
+	repo.nodesByKey[FeatureProgressionSystem] = root
 
 	// Unlock root
 	repo.UnlockNode(context.Background(), rootID, 1, "auto", 0)
 
 	// Money node (child of root)
 	moneyID := 2
-	parentID := rootID
 	money := &domain.ProgressionNode{
-		ID:           moneyID,
-		NodeKey:      "item_money",
-		NodeType:     "item",
-		DisplayName:  "Money",
-		Description:  "Money item",
-		ParentNodeID: &parentID,
-		MaxLevel:     1,
-		UnlockCost:   500,
-		SortOrder:    1,
-		CreatedAt:    time.Now(),
+		ID:          moneyID,
+		NodeKey:     "item_money",
+		NodeType:    "item",
+		DisplayName: "Money",
+		Description: "Money item",
+		MaxLevel:    1,
+		UnlockCost:  500,
+		SortOrder:   1,
+		CreatedAt:   time.Now(),
 	}
 	repo.nodes[moneyID] = money
 	repo.nodesByKey["item_money"] = money
 
 	// Economy node (child of money)
 	economyID := 3
-	ecoParent := moneyID
 	economy := &domain.ProgressionNode{
-		ID:           economyID,
-		NodeKey:      "feature_economy",
-		NodeType:     "feature",
-		DisplayName:  "Economy System",
-		Description:  "Economy features",
-		ParentNodeID: &ecoParent,
-		MaxLevel:     1,
-		UnlockCost:   1500,
-		SortOrder:    10,
-		CreatedAt:    time.Now(),
+		ID:          economyID,
+		NodeKey:     "feature_economy",
+		NodeType:    "feature",
+		DisplayName: "Economy System",
+		Description: "Economy features",
+		MaxLevel:    1,
+		UnlockCost:  1500,
+		SortOrder:   10,
+		CreatedAt:   time.Now(),
 	}
 	repo.nodes[economyID] = economy
 	repo.nodesByKey["feature_economy"] = economy
 
 	// Buy node (child of economy)
 	buyID := 6
-	buyParent := economyID
 	buy := &domain.ProgressionNode{
-		ID:           buyID,
-		NodeKey:      FeatureBuy,
-		NodeType:     "feature",
-		DisplayName:  "Buy Items",
-		Description:  "Buy items feature",
-		ParentNodeID: &buyParent,
-		MaxLevel:     1,
-		UnlockCost:   800,
-		SortOrder:    11,
-		CreatedAt:    time.Now(),
+		ID:          buyID,
+		NodeKey:     FeatureBuy,
+		NodeType:    "feature",
+		DisplayName: "Buy Items",
+		Description: "Buy items feature",
+		MaxLevel:    1,
+		UnlockCost:  800,
+		SortOrder:   11,
+		CreatedAt:   time.Now(),
 	}
 	repo.nodes[buyID] = buy
 	repo.nodesByKey[FeatureBuy] = buy
 
 	// Sell node (child of economy)
 	sellID := 7
-	sellParent := economyID
 	sell := &domain.ProgressionNode{
-		ID:           sellID,
-		NodeKey:      FeatureSell,
-		NodeType:     "feature",
-		DisplayName:  "Sell Items",
-		Description:  "Sell items feature",
-		ParentNodeID: &sellParent,
-		MaxLevel:     1,
-		UnlockCost:   800,
-		SortOrder:    12,
-		CreatedAt:    time.Now(),
+		ID:          sellID,
+		NodeKey:     FeatureSell,
+		NodeType:    "feature",
+		DisplayName: "Sell Items",
+		Description: "Sell items feature",
+		MaxLevel:    1,
+		UnlockCost:  800,
+		SortOrder:   12,
+		CreatedAt:   time.Now(),
 	}
 	repo.nodes[sellID] = sell
 	repo.nodesByKey[FeatureSell] = sell
 
 	// Lootbox0 node (child of root)
 	lootbox0ID := 4
-	lb0Parent := rootID
 	lootbox0 := &domain.ProgressionNode{
-		ID:           lootbox0ID,
-		NodeKey:      "item_lootbox0",
-		NodeType:     "item",
-		DisplayName:  "Basic Lootbox",
-		Description:  "Basic lootbox",
-		ParentNodeID: &lb0Parent,
-		MaxLevel:     1,
-		UnlockCost:   500,
-		SortOrder:    2,
-		CreatedAt:    time.Now(),
+		ID:          lootbox0ID,
+		NodeKey:     "item_lootbox0",
+		NodeType:    "item",
+		DisplayName: "Basic Lootbox",
+		Description: "Basic lootbox",
+		MaxLevel:    1,
+		UnlockCost:  500,
+		SortOrder:   2,
+		CreatedAt:   time.Now(),
 	}
 	repo.nodes[lootbox0ID] = lootbox0
 	repo.nodesByKey["item_lootbox0"] = lootbox0
 
 	// Upgrade node (child of lootbox0)
 	upgradeID := 8
-	upgradeParent := lootbox0ID
 	upgrade := &domain.ProgressionNode{
-		ID:           upgradeID,
-		NodeKey:      FeatureUpgrade,
-		NodeType:     "feature",
-		DisplayName:  "Upgrade Items",
-		Description:  "Upgrade system",
-		ParentNodeID: &upgradeParent,
-		MaxLevel:     1,
-		UnlockCost:   1500,
-		SortOrder:    20,
-		CreatedAt:    time.Now(),
+		ID:          upgradeID,
+		NodeKey:     FeatureUpgrade,
+		NodeType:    "feature",
+		DisplayName: "Upgrade Items",
+		Description: "Upgrade system",
+		MaxLevel:    1,
+		UnlockCost:  1500,
+		SortOrder:   20,
+		CreatedAt:   time.Now(),
 	}
 	repo.nodes[upgradeID] = upgrade
 	repo.nodesByKey[FeatureUpgrade] = upgrade
 
 	// Disassemble node (child of lootbox0)
 	disassembleID := 9
-	disassembleParent := lootbox0ID
 	disassemble := &domain.ProgressionNode{
-		ID:           disassembleID,
-		NodeKey:      FeatureDisassemble,
-		NodeType:     "feature",
-		DisplayName:  "Disassemble Items",
-		Description:  "Disassemble system",
-		ParentNodeID: &disassembleParent,
-		MaxLevel:     1,
-		UnlockCost:   1000,
-		SortOrder:    21,
-		CreatedAt:    time.Now(),
+		ID:          disassembleID,
+		NodeKey:     FeatureDisassemble,
+		NodeType:    "feature",
+		DisplayName: "Disassemble Items",
+		Description: "Disassemble system",
+		MaxLevel:    1,
+		UnlockCost:  1000,
+		SortOrder:   21,
+		CreatedAt:   time.Now(),
 	}
 	repo.nodes[disassembleID] = disassemble
 	repo.nodesByKey[FeatureDisassemble] = disassemble
 
 	// Search node (child of lootbox0)
 	searchID := 10
-	searchParent := lootbox0ID
 	search := &domain.ProgressionNode{
-		ID:           searchID,
-		NodeKey:      FeatureSearch,
-		NodeType:     "feature",
-		DisplayName:  "Search System",
-		Description:  "Search system",
-		ParentNodeID: &searchParent,
-		MaxLevel:     1,
-		UnlockCost:   1000,
-		SortOrder:    23,
-		CreatedAt:    time.Now(),
+		ID:          searchID,
+		NodeKey:     FeatureSearch,
+		NodeType:    "feature",
+		DisplayName: "Search System",
+		Description: "Search system",
+		MaxLevel:    1,
+		UnlockCost:  1000,
+		SortOrder:   23,
+		CreatedAt:   time.Now(),
 	}
 	repo.nodes[searchID] = search
 	repo.nodesByKey[FeatureSearch] = search
 
 	// Cooldown reduction (multi-level node, child of economy)
 	cooldownID := 5
-	cdParent := economyID
 	cooldown := &domain.ProgressionNode{
-		ID:           cooldownID,
-		NodeKey:      "upgrade_cooldown_reduction",
-		NodeType:     "upgrade",
-		DisplayName:  "Cooldown Reduction",
-		Description:  "Reduce cooldowns",
-		ParentNodeID: &cdParent,
-		MaxLevel:     5, // 5 levels
-		UnlockCost:   1500,
-		SortOrder:    40,
-		CreatedAt:    time.Now(),
+		ID:          cooldownID,
+		NodeKey:     "upgrade_cooldown_reduction",
+		NodeType:    "upgrade",
+		DisplayName: "Cooldown Reduction",
+		Description: "Reduce cooldowns",
+		MaxLevel:    5, // 5 levels
+		UnlockCost:  1500,
+		SortOrder:   40,
+		CreatedAt:   time.Now(),
 	}
 	repo.nodes[cooldownID] = cooldown
 	repo.nodesByKey["upgrade_cooldown_reduction"] = cooldown
+
+	// Setup prerequisite relationships (v2.0 junction table simulation)
+	// These mirror the old parent-child relationships
+	repo.prerequisites[moneyID] = []int{rootID}           // money requires root
+	repo.prerequisites[economyID] = []int{moneyID}        // economy requires money
+	repo.prerequisites[buyID] = []int{economyID}          // buy requires economy
+	repo.prerequisites[sellID] = []int{economyID}         // sell requires economy
+	repo.prerequisites[lootbox0ID] = []int{rootID}        // lootbox0 requires root
+	repo.prerequisites[upgradeID] = []int{lootbox0ID}     // upgrade requires lootbox0
+	repo.prerequisites[disassembleID] = []int{lootbox0ID} // disassemble requires lootbox0
+	repo.prerequisites[searchID] = []int{lootbox0ID}      // search requires lootbox0
+	repo.prerequisites[cooldownID] = []int{economyID}     // cooldown requires economy
 }
 
 // Tests
@@ -707,7 +892,7 @@ func setupTestTree(repo *MockRepository) {
 func TestGetProgressionTree(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo)
+	service := NewService(repo, nil)
 	ctx := context.Background()
 
 	tree, err := service.GetProgressionTree(ctx)
@@ -742,7 +927,7 @@ func TestGetProgressionTree(t *testing.T) {
 func TestGetAvailableUnlocks(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo)
+	service := NewService(repo, nil)
 	ctx := context.Background()
 
 	// Initially, only money and lootbox0 should be available (root is unlocked)
@@ -776,7 +961,7 @@ func TestVoteForUnlock(t *testing.T) {
 func TestIsFeatureUnlocked(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo)
+	service := NewService(repo, nil)
 	ctx := context.Background()
 
 	// Progression system should be unlocked
@@ -801,7 +986,7 @@ func TestIsFeatureUnlocked(t *testing.T) {
 func TestIsItemUnlocked(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo)
+	service := NewService(repo, nil)
 	ctx := context.Background()
 
 	// Money should not be unlocked
@@ -813,8 +998,12 @@ func TestIsItemUnlocked(t *testing.T) {
 		t.Error("Money should not be unlocked yet")
 	}
 
-	// Unlock money
+	// Unlock money via repository (bypasses event system in test)
 	repo.UnlockNode(ctx, 2, 1, "test", 0)
+
+	// In production, the event bus would trigger cache invalidation
+	// In tests without event bus, we manually clear the cache
+	service.InvalidateUnlockCacheForTest()
 
 	unlockedNow, err := service.IsItemUnlocked(ctx, "money")
 	if err != nil {
@@ -825,9 +1014,10 @@ func TestIsItemUnlocked(t *testing.T) {
 	}
 }
 
+
 func TestEngagementTracking(t *testing.T) {
 	repo := NewMockRepository()
-	service := NewService(repo)
+	service := NewService(repo, nil)
 	ctx := context.Background()
 
 	// Record engagement metrics
@@ -870,7 +1060,7 @@ func TestEngagementTracking(t *testing.T) {
 func TestAdminUnlock(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo)
+	service := NewService(repo, nil)
 	ctx := context.Background()
 
 	// Admin unlock money
@@ -892,7 +1082,7 @@ func TestAdminUnlock(t *testing.T) {
 func TestAdminRelock(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo)
+	service := NewService(repo, nil)
 	ctx := context.Background()
 
 	// Unlock then relock
@@ -915,7 +1105,7 @@ func TestAdminRelock(t *testing.T) {
 func TestResetProgressionTree(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo)
+	service := NewService(repo, nil)
 	ctx := context.Background()
 
 	// Unlock some nodes
@@ -958,7 +1148,7 @@ func timePtr(t time.Time) *time.Time {
 func TestMultiLevelUnlock(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo)
+	service := NewService(repo, nil)
 	ctx := context.Background()
 
 	// Unlock economy first (prerequisite for cooldown reduction)

@@ -99,8 +99,6 @@ func HandleGetUserStats(svc stats.Service) http.HandlerFunc {
 
 		log.Info("User stats retrieved", "user_id", userID, "period", period, "total_events", summary.TotalEvents)
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
 		respondJSON(w, http.StatusOK, summary)
 	}
 }
@@ -134,8 +132,6 @@ func HandleGetSystemStats(svc stats.Service) http.HandlerFunc {
 
 		log.Info("System stats retrieved", "period", period, "total_events", summary.TotalEvents)
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
 		respondJSON(w, http.StatusOK, summary)
 	}
 }
@@ -191,8 +187,6 @@ func HandleGetLeaderboard(svc stats.Service) http.HandlerFunc {
 
 		log.Info("Leaderboard retrieved", "event_type", eventType, "period", period, "entries", len(entries))
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
 		respondJSON(w, http.StatusOK, map[string]interface{}{
 			"event_type": eventType,
 			"period":     period,

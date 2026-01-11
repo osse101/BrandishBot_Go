@@ -17,7 +17,7 @@ func TestPricesCommand_Buy(t *testing.T) {
 	cmd, handler := PricesCommand()
 
 	// Mock Backend Response
-	ctx.Mux.HandleFunc("/prices/buy", func(w http.ResponseWriter, r *http.Request) {
+	ctx.Mux.HandleFunc("/api/v1/prices/buy", func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		WriteJSON(w, map[string]interface{}{
 			"items": []domain.Item{
@@ -43,7 +43,7 @@ func TestPricesCommand_Buy(t *testing.T) {
 	// Capture Discord Interaction Edit
 	var sentEmbed *discordgo.MessageEmbed
 	ctx.DiscordMocks.RoundTripFunc = func(req *http.Request) (*http.Response, error) {
-		if req.Method == "PATCH" {
+		if req.Method == http.MethodPatch {
 			// This is likely the ResponseEdit call
 			// Parse body to verify embed
 			var body discordgo.WebhookEdit
@@ -76,7 +76,7 @@ func TestPricesCommand_Sell(t *testing.T) {
 	cmd, handler := SellPricesCommand()
 
 	// Mock Backend Response
-	ctx.Mux.HandleFunc("/prices", func(w http.ResponseWriter, r *http.Request) {
+	ctx.Mux.HandleFunc("/api/v1/prices", func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		WriteJSON(w, map[string]interface{}{
 			"items": []domain.Item{
@@ -101,7 +101,7 @@ func TestPricesCommand_Sell(t *testing.T) {
 	// Capture response
 	var sentEmbed *discordgo.MessageEmbed
 	ctx.DiscordMocks.RoundTripFunc = func(req *http.Request) (*http.Response, error) {
-		if req.Method == "PATCH" {
+		if req.Method == http.MethodPatch {
 			var body discordgo.WebhookEdit
 			json.NewDecoder(req.Body).Decode(&body)
 			if body.Embeds != nil && len(*body.Embeds) > 0 {

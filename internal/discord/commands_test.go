@@ -26,8 +26,8 @@ type MockAPIClient struct {
 	GetUserStatsFunc    func(string, string) (string, error)
 	AddItemFunc         func(string, string, string, int) (string, error)
 	RemoveItemFunc      func(string, string, string, int) (string, error)
-	StartGambleFunc     func(string, string, string, int) (string, error)
-	JoinGambleFunc      func(string, string, string, string) (string, error)
+	StartGambleFunc     func(string, string, string, string, int) (string, error)
+	JoinGambleFunc      func(string, string, string, string, string, int) (string, error)
 	VoteForNodeFunc     func(string, string, string, string) (string, error)
 }
 
@@ -143,16 +143,16 @@ func (m *MockAPIClient) RemoveItem(platform, platformID, itemName string, quanti
 	return "Removed items successfully", nil
 }
 
-func (m *MockAPIClient) StartGamble(platform, platformID, username string, wager int) (string, error) {
+func (m *MockAPIClient) StartGamble(platform, platformID, username, itemName string, quantity int) (string, error) {
 	if m.StartGambleFunc != nil {
-		return m.StartGambleFunc(platform, platformID, username, wager)
+		return m.StartGambleFunc(platform, platformID, username, itemName, quantity)
 	}
 	return "Gamble started!", nil
 }
 
-func (m *MockAPIClient) JoinGamble(platform, platformID, username, gambleID string) (string, error) {
+func (m *MockAPIClient) JoinGamble(platform, platformID, username, gambleID, itemName string, quantity int) (string, error) {
 	if m.JoinGambleFunc != nil {
-		return m.JoinGambleFunc(platform, platformID, username, gambleID)
+		return m.JoinGambleFunc(platform, platformID, username, gambleID, itemName, quantity)
 	}
 	return "Joined gamble!", nil
 }

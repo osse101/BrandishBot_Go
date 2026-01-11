@@ -266,6 +266,52 @@ assert.NotNil(t, ptr)
 - Pure functions
 - Internal utilities
 
+### Mockery (Recommended)
+
+**For handler/controller tests**, use auto-generated mocks with mockery:
+
+```go
+import "github.com/osse101/BrandishBot_Go/mocks"
+
+func TestHandler_GetUser(t *testing.T) {
+    // ✅ Use mockery for clean, type-safe tests
+    mockSvc := mocks.NewMockUserService(t)
+    mockSvc.On("GetUser", "123").Return(user, nil)
+    
+    handler := NewHandler(mockSvc)
+    result, err := handler.GetUser("123")
+    
+    assert.NoError(t, err)
+    assert.Equal(t, user, result)
+    mockSvc.AssertExpectations(t)
+}
+```
+
+**Regenerate after interface changes:**
+```bash
+make mocks
+```
+
+**See [MOCKING.md](./MOCKING.md) for complete mockery guide.**
+
+### Functional Mocks
+
+**For service/integration tests**, use functional in-memory mocks:
+
+```go
+// ✅ Good for tests needing state management
+type MockRepository struct {
+    users map[string]*domain.User
+}
+
+func (m *MockRepository) GetUser(id string) (*domain.User, error) {
+    if user, ok := m.users[id]; ok {
+        return user, nil
+    }
+    return nil, ErrNotFound
+}
+```
+
 ### Mock Complexity Levels
 
 **Level 1: No Mocks** (Ideal)
@@ -275,51 +321,33 @@ func TestAdd(t *testing.T) {
 }
 ```
 
-**Level 2: Simple Mock** (Common)
+**Level 2: Mockery Mocks** (Handler Tests)
 ```go
-func TestService_GetUser(t *testing.T) {
-    mockRepo := &MockRepository{}
+func TestHandler_GetUser(t *testing.T) {
+    mockRepo := mocks.NewMockUserRepository(t)
     mockRepo.On("FindUser", "123").Return(user, nil)
     
-    service := NewService(mockRepo)
-    result, err := service.GetUser("123")
+    handler := NewHandler(mockRepo)
+    result, err := handler.GetUser("123")
     
     assert.NoError(t, err)
-    assert.Equal(t, user, result)
     mockRepo.AssertExpectations(t)
 }
 ```
 
-**Level 3: Multiple Mocks** (Minimize)
+**Level 3: Functional Mocks** (Service Tests)
 ```go
-// <needs improvement>
+// Use when complex state management needed
+mockRepo := NewMockRepository() // In-memory implementation
+mockRepo.users["123"] = &domain.User{ID: "123"}
+```
+
+**Level 4: Multiple Mocks** (Minimize)
+```go
 // If test requires 3+ mocks, consider:
 // - Is this an integration test?
 // - Can we test smaller units?
 // - Is design too coupled?
-```
-
-**Level 4: Mock Interface Compliance**
-
-When creating mocks, ensure they implement ALL interface methods:
-
-```go
-// ❌ Bad - incomplete mock causes confusing runtime errors
-type MockJobService struct{}
-
-func (m *MockJobService) DoThing() {}
-// Missing other methods!
-
-// ✅ Good - compile-time verification
-type MockJobService struct {
-    mock.Mock
-}
-
-func (m *MockJobService) DoThing() { /* ... */ }
-func (m *MockJobService) OtherMethod() { /* ... */ }
-
-// Add compile-time interface check
-var _ JobService = (*MockJobService)(nil)
 ```
 
 ---

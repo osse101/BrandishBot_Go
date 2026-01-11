@@ -4,13 +4,21 @@ import "time"
 
 // Item internal name constants - stable code identifiers
 const (
-	ItemMoney    = "money"           // currency_money in future
-	ItemLootbox0 = "lootbox_tier0"   // was lootbox0
-	ItemLootbox1 = "lootbox_tier1"   // was lootbox1
-	ItemLootbox2 = "lootbox_tier2"   // was lootbox2
-	ItemBlaster  = "weapon_blaster"  // was blaster
+	ItemMoney    = "money"          // currency_money in future
+	ItemLootbox0 = "lootbox_tier0"  // was lootbox0
+	ItemLootbox1 = "lootbox_tier1"  // was lootbox1
+	ItemLootbox2 = "lootbox_tier2"  // was lootbox2
+	ItemBlaster  = "weapon_blaster" // was blaster
 )
 
+// Public item name constants - what clients use in commands (PublicName field)
+const (
+	PublicNameMoney   = "money"   // Currency
+	PublicNameJunkbox = "junkbox" // Tier 0 lootbox (rusty)
+	PublicNameLootbox = "lootbox" // Tier 1 lootbox (basic)
+	PublicNameGoldbox = "goldbox" // Tier 2 lootbox (golden)
+	PublicNameMissile = "missile" // Blaster weapon
+)
 
 // Action name constants for cooldown tracking
 const (
@@ -32,6 +40,7 @@ const (
 	PlatformTwitch  = "twitch"
 	PlatformYoutube = "youtube"
 	PlatformDiscord = "discord"
+	DiscordBotId    = "BrandishBot#6125"
 )
 
 // Message constants
@@ -41,6 +50,7 @@ const (
 	MsgSearchCriticalSuccess = "You found a hidden stash! (CRITICAL SUCCESS!)"
 	MsgSearchCriticalFail    = "You tried to search, but disaster struck! (CRITICAL FAIL!)"
 	MsgFirstSearchBonus      = " (First Search of the Day!)"
+	MsgStreakBonus           = " (🔥 %d Day Streak!)"
 )
 
 // SearchCriticalFailMessages is a list of funny messages for critical failures
@@ -72,6 +82,13 @@ var SearchFailureMessages = []string{
 // Period constants
 const (
 	PeriodDaily = "daily"
+)
+
+// Inventory filter type constants
+const (
+	FilterTypeUpgrade    = "upgrade"
+	FilterTypeSellable   = "sellable"
+	FilterTypeConsumable = "consumable"
 )
 
 // Error messages

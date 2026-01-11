@@ -5,21 +5,22 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"strings"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
 // Bot represents the Discord bot
 type Bot struct {
-	Session         *discordgo.Session
-	Client          *APIClient
-	AppID           string
-	Registry        *CommandRegistry
+	Session              *discordgo.Session
+	Client               *APIClient
+	AppID                string
+	Registry             *CommandRegistry
 	DevChannelID         string
 	DiggingGameChannelID string
 	GithubToken          string
@@ -61,6 +62,14 @@ func New(cfg Config) (*Bot, error) {
 func (b *Bot) Start() error {
 	b.Session.AddHandler(b.ready)
 	b.Session.AddHandler(b.interactionCreate)
+	b.Session.AddHandler(b.messageCreate)
+
+	// Add autocomplete handler
+	b.Session.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+		if i.Type == discordgo.InteractionApplicationCommandAutocomplete {
+			HandleAutocomplete(s, i, b.Client)
+		}
+	})
 
 	if err := b.Session.Open(); err != nil {
 		return fmt.Errorf("error opening connection: %w", err)
@@ -189,4 +198,29 @@ func (b *Bot) SendDailyCommitReport() error {
 	}
 
 	return b.SendDevMessage(embed)
+}
+
+func (b *Bot) messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
+	// Ignore own messages
+	if m.Author.ID == s.State.User.ID {
+		return
+	}
+
+	// Ignore bot messages
+	if m.Author.Bot {
+		return
+	}
+
+	// Send to server for processing
+	// We don't reply here, just track engagement/process commands
+	_, err := b.Client.HandleMessage(
+		domain.PlatformDiscord,
+		domain.DiscordBotId, // Use constant Platform ID for the bot interaction context
+		m.Author.Username,
+		m.Content,
+	)
+
+	if err != nil {
+		slog.Error("Failed to handle message", "error", err, "user", m.Author.Username)
+	}
 }

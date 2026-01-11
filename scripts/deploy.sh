@@ -45,9 +45,9 @@ fi
 
 # Set compose file based on environment
 if [[ "$ENVIRONMENT" == "staging" ]]; then
-    COMPOSE_FILE="docker compose.staging.yml"
+    COMPOSE_FILE="docker-compose.staging.yml"
 elif [[ "$ENVIRONMENT" == "production" ]]; then
-    COMPOSE_FILE="docker compose.production.yml"
+    COMPOSE_FILE="docker-compose.production.yml"
 fi
 
 log_info "=== BrandishBot Deployment ==="
@@ -68,6 +68,14 @@ if [[ "$ENVIRONMENT" == "production" ]]; then
 fi
 
 cd "$PROJECT_DIR"
+
+# Load environment variables from .env if it exists
+if [[ -f ".env" ]]; then
+    log_info "Loading environment variables from .env"
+    set -a  # Export all variables
+    source .env
+    set +a  # Stop auto-export
+fi
 
 # Step 1: Pre-deployment health check
 log_info "Step 1/7: Pre-deployment health check"

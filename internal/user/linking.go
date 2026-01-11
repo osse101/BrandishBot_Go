@@ -67,27 +67,57 @@ func (s *service) MergeUsers(ctx context.Context, primaryUserID, secondaryUserID
 		log.Warn("Failed to delete secondary inventory", "error", err)
 	}
 
-	// Copy platform IDs from secondary to primary
+	// Transfer platform links from secondary to primary
+	// We need to update the user_platform_links table directly to avoid unique constraint violations
 	secondary, err := s.repo.GetUserByID(ctx, secondaryUserID)
-	if err == nil && secondary != nil {
-		primary, err := s.repo.GetUserByID(ctx, primaryUserID)
-		if err == nil && primary != nil {
-			if secondary.DiscordID != "" && primary.DiscordID == "" {
-				primary.DiscordID = secondary.DiscordID
-			}
-			if secondary.TwitchID != "" && primary.TwitchID == "" {
-				primary.TwitchID = secondary.TwitchID
-			}
-			if secondary.YoutubeID != "" && primary.YoutubeID == "" {
-				primary.YoutubeID = secondary.YoutubeID
-			}
-			s.repo.UpdateUser(ctx, *primary)
-		}
+	if err != nil {
+		return fmt.Errorf("failed to get secondary user: %w", err)
+	}
+	if secondary == nil {
+		return fmt.Errorf("secondary user not found")
 	}
 
-	// Delete secondary user
-	if err := s.repo.DeleteUser(ctx, secondaryUserID); err != nil {
-		log.Warn("Failed to delete secondary user", "error", err)
+	primary, err := s.repo.GetUserByID(ctx, primaryUserID)
+	if err != nil {
+		return fmt.Errorf("failed to get primary user: %w", err)
+	}
+	if primary == nil {
+		return fmt.Errorf("primary user not found")
+	}
+
+	// Build combined user with all platform IDs
+	merged := *primary
+	if secondary.DiscordID != "" && merged.DiscordID == "" {
+		merged.DiscordID = secondary.DiscordID
+	}
+	if secondary.TwitchID != "" && merged.TwitchID == "" {
+		merged.TwitchID = secondary.TwitchID
+	}
+	if secondary.YoutubeID != "" && merged.YoutubeID == "" {
+		merged.YoutubeID = secondary.YoutubeID
+	}
+
+	// ATOMIC MERGE: All operations in single transaction (all succeed or all rollback)
+	// This prevents data loss if any step fails
+	if err := s.repo.MergeUsersInTransaction(ctx, primaryUserID, secondaryUserID, merged, *primaryInv); err != nil {
+		return fmt.Errorf("failed to merge users in transaction: %w", err)
+	}
+
+	// Invalidate cache for both users (all platform keys)
+	primaryKeys := getPlatformKeysFromUser(*primary)
+	for platform, platformID := range primaryKeys {
+		s.userCache.Invalidate(platform, platformID)
+	}
+
+	secondaryKeys := getPlatformKeysFromUser(*secondary)
+	for platform, platformID := range secondaryKeys {
+		s.userCache.Invalidate(platform, platformID)
+	}
+
+	// Also invalidate the newly merged state keys
+	mergedKeys := getPlatformKeysFromUser(merged)
+	for platform, platformID := range mergedKeys {
+		s.userCache.Invalidate(platform, platformID)
 	}
 
 	log.Info("Users merged successfully", "primary", primaryUserID)
@@ -104,12 +134,16 @@ func (s *service) UnlinkPlatform(ctx context.Context, userID, platform string) e
 		return fmt.Errorf("user not found: %w", err)
 	}
 
+	var platformID string
 	switch platform {
 	case domain.PlatformDiscord:
+		platformID = user.DiscordID
 		user.DiscordID = ""
 	case domain.PlatformTwitch:
+		platformID = user.TwitchID
 		user.TwitchID = ""
 	case domain.PlatformYoutube:
+		platformID = user.YoutubeID
 		user.YoutubeID = ""
 	default:
 		return fmt.Errorf("unknown platform: %s", platform)
@@ -117,6 +151,17 @@ func (s *service) UnlinkPlatform(ctx context.Context, userID, platform string) e
 
 	if err := s.repo.UpdateUser(ctx, *user); err != nil {
 		return fmt.Errorf("failed to update user: %w", err)
+	}
+
+	// Invalidate cache
+	if platformID != "" {
+		s.userCache.Invalidate(platform, platformID)
+	}
+
+	// Also invalidate other keys as user object changed
+	keys := getPlatformKeysFromUser(*user)
+	for p, id := range keys {
+		s.userCache.Invalidate(p, id)
 	}
 
 	log.Info("Platform unlinked", "user_id", userID, "platform", platform)

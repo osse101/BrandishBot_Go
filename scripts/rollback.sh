@@ -43,9 +43,9 @@ fi
 
 # Set compose file based on environment
 if [[ "$ENVIRONMENT" == "staging" ]]; then
-    COMPOSE_FILE="docker compose.staging.yml"
+    COMPOSE_FILE="docker-compose.staging.yml"
 elif [[ "$ENVIRONMENT" == "production" ]]; then
-    COMPOSE_FILE="docker compose.production.yml"
+    COMPOSE_FILE="docker-compose.production.yml"
 fi
 
 cd "$PROJECT_DIR"

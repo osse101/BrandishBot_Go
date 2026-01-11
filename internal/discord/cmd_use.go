@@ -15,10 +15,11 @@ func UseItemCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		Description: "Use an item from your inventory",
 		Options: []*discordgo.ApplicationCommandOption{
 			{
-				Type:        discordgo.ApplicationCommandOptionString,
-				Name:        "item",
-				Description: "Item name to use",
-				Required:    true,
+				Type:         discordgo.ApplicationCommandOptionString,
+				Name:         "item",
+				Description:  "Item name to use",
+				Required:     true,
+				Autocomplete: true,
 			},
 			{
 				Type:        discordgo.ApplicationCommandOptionInteger,
@@ -60,13 +61,16 @@ func UseItemCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		msg, err := client.UseItem(domain.PlatformDiscord, user.ID, user.Username, itemName, quantity)
 		if err != nil {
 			slog.Error("Failed to use item", "error", err)
-			respondError(s, i, fmt.Sprintf("Failed to use item: %v", err))
+			respondFriendlyError(s, i, err.Error())
 			return
 		}
 
+		// Format: <Effect>\n\n<Quantity> <Item> consumed
+		description := fmt.Sprintf("%s\n\n_%d %s consumed_", msg, quantity, itemName)
+
 		embed := &discordgo.MessageEmbed{
-			Title:       "Item Used",
-			Description: msg,
+			Title:       "🧪 Item Used",
+			Description: description,
 			Color:       0xf39c12, // Orange
 			Footer: &discordgo.MessageEmbedFooter{
 				Text: "BrandishBot",
@@ -81,13 +85,4 @@ func UseItemCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	}
 
 	return cmd, handler
-}
-
-// Helper function to respond with error
-func respondError(s *discordgo.Session, i *discordgo.InteractionCreate, message string) {
-	if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-		Content: &message,
-	}); err != nil {
-		slog.Error("Failed to edit interaction response", "error", err)
-	}
 }

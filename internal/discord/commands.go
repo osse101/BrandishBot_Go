@@ -3,8 +3,10 @@ package discord
 import (
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
 // CommandHandler handles a slash command
@@ -42,7 +44,7 @@ func (r *CommandRegistry) Handle(s *discordgo.Session, i *discordgo.InteractionC
 // Only performs updates if commands have changed to avoid rate limits
 func (b *Bot) RegisterCommands(registry *CommandRegistry, forceUpdate bool) error {
 	slog.Info("Checking Discord commands...")
-	
+
 	// Get currently registered commands from Discord
 	existingCmds, err := b.Session.ApplicationCommands(b.AppID, "")
 	if err != nil {
@@ -73,15 +75,15 @@ func (b *Bot) RegisterCommands(registry *CommandRegistry, forceUpdate bool) erro
 	}
 
 	// Commands have changed - update them
-	slog.Info("Commands changed, updating...", 
-		"existing", len(existingCmds), 
+	slog.Info("Commands changed, updating...",
+		"existing", len(existingCmds),
 		"desired", len(desiredCmds))
-	
+
 	_, err = b.Session.ApplicationCommandBulkOverwrite(b.AppID, "", desiredCmds)
 	if err != nil {
 		return fmt.Errorf("failed to update commands: %w", err)
 	}
-	
+
 	slog.Info("Commands updated successfully", "count", len(desiredCmds))
 	return nil
 }
@@ -152,4 +154,55 @@ func optionEqual(a, b *discordgo.ApplicationCommandOption) bool {
 	}
 
 	return true
+}
+
+// Helper function to respond with error
+func respondError(s *discordgo.Session, i *discordgo.InteractionCreate, message string) {
+	if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+		Content: &message,
+	}); err != nil {
+		slog.Error("Failed to edit interaction response", "error", err)
+	}
+}
+
+// respondFriendlyError formats the error message to be more user-friendly before responding
+func respondFriendlyError(s *discordgo.Session, i *discordgo.InteractionCreate, message string) {
+	friendlyMsg := formatFriendlyError(message)
+	respondError(s, i, friendlyMsg)
+}
+
+// formatFriendlyError cleans up technical error messages
+func formatFriendlyError(msg string) string {
+	// Remove "API error: " prefix if present (from client.go)
+	if len(msg) > 11 && msg[:11] == "API error: " {
+		msg = msg[11:]
+	}
+
+	// Map common technical errors to friendly messages
+	// We check for containment because error messages might be wrapped or contain details
+	switch {
+	case strings.HasPrefix(msg, "LOCKED_NODES:"):
+		nodes := strings.TrimPrefix(msg, "LOCKED_NODES:")
+		return fmt.Sprintf("%s\nTo unlock this, you need to active: **%s**", MsgFeatureLocked, nodes)
+	case strings.Contains(msg, domain.ErrMsgInsufficientFunds):
+		return MsgInsufficientFunds
+	case strings.Contains(msg, domain.ErrMsgItemNotFound):
+		return MsgItemNotFound
+	case strings.Contains(msg, domain.ErrMsgInventoryFull):
+		return MsgInventoryFull
+	case strings.Contains(msg, domain.ErrMsgUserNotFound):
+		return MsgUserNotFound
+	case strings.Contains(msg, "on cooldown"):
+		// Extract remaining time if present (format: "action 'x' on cooldown: 4m 3s remaining")
+		if parts := strings.Split(msg, "on cooldown: "); len(parts) > 1 {
+			remaining := strings.TrimSuffix(parts[1], " remaining")
+			return fmt.Sprintf("%s\nWait for: **%s**", MsgCooldownActive, remaining)
+		}
+		return MsgCooldownActive
+	case strings.Contains(msg, domain.ErrMsgNotEnoughItems):
+		return MsgNotEnoughItems
+	default:
+		// If it looks like a sentence, just return it, otherwise wrap it slightly
+		return "❌ " + msg
+	}
 }

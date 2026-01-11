@@ -1,6 +1,11 @@
 {
-  "test_theme": {
-    "start": "10-15",
-    "end": "11-02"
+  "version": "1.0",
+  "schema": "item-themes",
+  "last_updated": "2026-01-05",
+  "themes": {
+    "test_theme": {
+      "start": "10-15",
+      "end": "11-02"
+    }
   }
 }

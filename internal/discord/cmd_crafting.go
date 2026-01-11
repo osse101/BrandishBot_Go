@@ -15,10 +15,17 @@ func UpgradeCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		Description: "Craft an item upgrade using a recipe",
 		Options: []*discordgo.ApplicationCommandOption{
 			{
+				Type:         discordgo.ApplicationCommandOptionString,
+				Name:         "recipe",
+				Description:  "Recipe/Item to craft (start typing to search)",
+				Required:     true,
+				Autocomplete: true,
+			},
+			{
 				Type:        discordgo.ApplicationCommandOptionInteger,
-				Name:        "recipe-id",
-				Description: "Recipe ID to craft (use /recipes to see available recipes)",
-				Required:    true,
+				Name:        "quantity",
+				Description: "Quantity to craft (default: 1)",
+				Required:    false,
 			},
 		},
 	}
@@ -37,7 +44,11 @@ func UpgradeCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		}
 
 		options := i.ApplicationCommandData().Options
-		recipeID := int(options[0].IntValue())
+		itemName := options[0].StringValue()
+		quantity := 1
+		if len(options) > 1 {
+			quantity = int(options[1].IntValue())
+		}
 
 		// Ensure user exists
 		_, err := client.RegisterUser(user.Username, user.ID)
@@ -47,10 +58,12 @@ func UpgradeCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			return
 		}
 
-		msg, err := client.UpgradeItem(domain.PlatformDiscord, user.ID, user.Username, recipeID)
+		// Note: We now pass itemName instead of recipeID
+		// The autocomplete value is the item name
+		msg, err := client.UpgradeItem(domain.PlatformDiscord, user.ID, user.Username, itemName, quantity)
 		if err != nil {
 			slog.Error("Failed to upgrade item", "error", err)
-			respondError(s, i, fmt.Sprintf("Failed to upgrade item: %v", err))
+			respondFriendlyError(s, i, err.Error())
 			return
 		}
 
@@ -80,10 +93,11 @@ func DisassembleCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		Description: "Break down an item to get materials",
 		Options: []*discordgo.ApplicationCommandOption{
 			{
-				Type:        discordgo.ApplicationCommandOptionString,
-				Name:        "item",
-				Description: "Item name to disassemble",
-				Required:    true,
+				Type:         discordgo.ApplicationCommandOptionString,
+				Name:         "item",
+				Description:  "Item name to disassemble",
+				Required:     true,
+				Autocomplete: true,
 			},
 			{
 				Type:        discordgo.ApplicationCommandOptionInteger,
@@ -125,7 +139,7 @@ func DisassembleCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		msg, err := client.DisassembleItem(domain.PlatformDiscord, user.ID, user.Username, itemName, quantity)
 		if err != nil {
 			slog.Error("Failed to disassemble item", "error", err)
-			respondError(s, i, fmt.Sprintf("Failed to disassemble item: %v", err))
+			respondFriendlyError(s, i, err.Error())
 			return
 		}
 
@@ -163,19 +177,29 @@ func RecipesCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			return
 		}
 
-		msg, err := client.GetRecipes()
+		recipes, err := client.GetRecipes()
 		if err != nil {
 			slog.Error("Failed to get recipes", "error", err)
-			respondError(s, i, fmt.Sprintf("Failed to get recipes: %v", err))
+			respondFriendlyError(s, i, err.Error())
 			return
+		}
+
+		// Format recipes list
+		var sb string
+		if len(recipes) == 0 {
+			sb = "No recipes available."
+		} else {
+			for _, r := range recipes {
+				sb += fmt.Sprintf("• **%s**\n", r.ItemName)
+			}
 		}
 
 		embed := &discordgo.MessageEmbed{
 			Title:       "📜 Crafting Recipes",
-			Description: msg,
+			Description: sb,
 			Color:       0x9b59b6, // Purple
 			Footer: &discordgo.MessageEmbedFooter{
-				Text: "BrandishBot • Use /upgrade [recipe-id] to craft",
+				Text: "BrandishBot • Use /upgrade [recipe] to craft",
 			},
 		}
 

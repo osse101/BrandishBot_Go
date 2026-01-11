@@ -1,0 +1,177 @@
+with-expecter: true
+dir: "mocks"
+outpkg: "mocks"
+# Performance optimizations
+log-level: ""  # Suppress output for faster execution (replaces deprecated 'quiet')
+# Fix deprecation warnings
+resolve-type-alias: false  # v3 default
+disable-version-string: true  # v3 default
+issue-845-fix: true  # Required for proper interface detection
+packages:
+  github.com/osse101/BrandishBot_Go/internal/user:
+    config:
+      filename: "mock_user_{{.InterfaceName | snakecase}}.go"
+      mockname: "MockUser{{.InterfaceName}}"
+    interfaces:
+      Service:
+      JobService:
+      Repository:
+        config:
+          # Generate in mocks/ subdirectory to avoid import cycles
+          dir: "{{.InterfaceDir}}/mocks"
+          outpkg: "mocks"
+          filename: "mock_repository.go"
+          mockname: "MockRepository"
+          with-expecter: true
+  github.com/osse101/BrandishBot_Go/internal/economy:
+    config:
+      filename: "mock_economy_{{.InterfaceName | snakecase}}.go"
+      mockname: "MockEconomy{{.InterfaceName}}"
+    interfaces:
+      Service:
+      JobService:
+  github.com/osse101/BrandishBot_Go/internal/progression:
+    config:
+      filename: "mock_progression_{{.InterfaceName | snakecase}}.go"
+      mockname: "MockProgression{{.InterfaceName}}"
+    interfaces:
+      Service:
+      Repository:
+        config:
+          # Generate in mocks/ subdirectory to avoid import cycles
+          dir: "{{.InterfaceDir}}/mocks"
+          outpkg: "mocks"
+          filename: "mock_repository.go"
+          mockname: "MockRepository"
+          with-expecter: true
+  github.com/osse101/BrandishBot_Go/internal/eventlog:
+    config:
+      filename: "mock_eventlog_{{.InterfaceName | snakecase}}.go"
+      mockname: "MockEventlog{{.InterfaceName}}"
+    interfaces:
+      Service:
+      Repository:
+        config:
+          # Generate in mocks/ subdirectory to avoid import cycles
+          dir: "{{.InterfaceDir}}/mocks"
+          outpkg: "mocks"
+          filename: "mock_repository.go"
+          mockname: "MockRepository"
+          with-expecter: true
+  github.com/osse101/BrandishBot_Go/internal/linking:
+    config:
+      filename: "mock_linking_{{.InterfaceName | snakecase}}.go"
+      mockname: "MockLinking{{.InterfaceName}}"
+    interfaces:
+      Service:
+      Repository:
+        config:
+          # Generate in mocks/ subdirectory to avoid import cycles
+          dir: "{{.InterfaceDir}}/mocks"
+          outpkg: "mocks"
+          filename: "mock_repository.go"
+          mockname: "MockRepository"
+          with-expecter: true
+      UserService:
+  github.com/osse101/BrandishBot_Go/internal/stats:
+    config:
+      filename: "mock_stats_{{.InterfaceName | snakecase}}.go"
+      mockname: "MockStats{{.InterfaceName}}"
+    interfaces:
+      Service:
+      Repository:
+        config:
+          # Generate in mocks/ subdirectory to avoid import cycles
+          dir: "{{.InterfaceDir}}/mocks"
+          outpkg: "mocks"
+          filename: "mock_repository.go"
+          mockname: "MockRepository"
+          with-expecter: true
+  github.com/osse101/BrandishBot_Go/internal/gamble:
+    config:
+      filename: "mock_gamble_{{.InterfaceName | snakecase}}.go"
+      mockname: "MockGamble{{.InterfaceName}}"
+    interfaces:
+      Service:
+      Repository:
+        config:
+          # Generate in mocks/ subdirectory to avoid import cycles
+          dir: "{{.InterfaceDir}}/mocks"
+          outpkg: "mocks"
+          filename: "mock_repository.go"
+          mockname: "MockRepository"
+          with-expecter: true
+      JobService:
+  github.com/osse101/BrandishBot_Go/internal/lootbox:
+    config:
+      filename: "mock_lootbox_{{.InterfaceName | snakecase}}.go"
+      mockname: "MockLootbox{{.InterfaceName}}"
+    interfaces:
+      Service:
+      ItemRepository:
+  github.com/osse101/BrandishBot_Go/internal/job:
+    config:
+      filename: "mock_job_{{.InterfaceName | snakecase}}.go"
+      mockname: "MockJob{{.InterfaceName}}"
+    interfaces:
+      Service:
+      Repository:
+        config:
+          # Generate in mocks/ subdirectory to avoid import cycles
+          dir: "{{.InterfaceDir}}/mocks"
+          outpkg: "mocks"
+          filename: "mock_repository.go"
+          mockname: "MockRepository"
+          with-expecter: true
+      ProgressionService:
+  github.com/osse101/BrandishBot_Go/internal/crafting:
+    config:
+      filename: "mock_crafting_{{.InterfaceName | snakecase}}.go"
+      mockname: "MockCrafting{{.InterfaceName}}"
+    interfaces:
+      Service:
+      Repository:
+        config:
+          # Generate in mocks/ subdirectory to avoid import cycles
+          dir: "{{.InterfaceDir}}/mocks"
+          outpkg: "mocks"
+          filename: "mock_repository.go"
+          mockname: "MockRepository"
+          with-expecter: true
+      JobService:
+  github.com/osse101/BrandishBot_Go/internal/cooldown:
+    config:
+      filename: "mock_cooldown_service.go"
+      mockname: "MockCooldownService"
+    interfaces:
+      Service:
+  github.com/osse101/BrandishBot_Go/internal/event:
+    config:
+      filename: "mock_event_bus.go"
+      mockname: "MockEventBus"
+    interfaces:
+      Bus:
+  github.com/osse101/BrandishBot_Go/internal/database:
+    config:
+      filename: "mock_database_pool.go"
+      mockname: "MockDBPool"
+    interfaces:
+      Pool:
+  github.com/osse101/BrandishBot_Go/internal/naming:
+    config:
+      filename: "mock_naming_resolver.go"
+      mockname: "MockNamingResolver"
+    interfaces:
+      Resolver:
+  github.com/osse101/BrandishBot_Go/internal/handler:
+    config:
+      filename: "mock_handler_health_checker.go"
+      mockname: "MockHealthChecker"
+    interfaces:
+      HealthChecker:
+  github.com/osse101/BrandishBot_Go/internal/worker:
+    config:
+      filename: "mock_worker_job.go"
+      mockname: "MockWorkerJob"
+    interfaces:
+      Job:

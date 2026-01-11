@@ -4,7 +4,11 @@ services:
   app:
     build:
       context: .
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
+      args:
+        - VERSION=${VERSION:-dev}
+        - BUILD_TIME=${BUILD_TIME:-unknown}
+        - GIT_COMMIT=${GIT_COMMIT:-unknown}
     image: brandishbot:dev
     ports:
       - "8080:8080"
@@ -85,6 +89,11 @@ services:
         max-size: "10m"
         max-file: "3"
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   pgdata:

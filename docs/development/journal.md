@@ -4,6 +4,140 @@ A collection of practical insights gained from BrandishBot_Go development, parti
 
 ---
 
+## 2026-01-04: Resilient Event Publishing - Fire-and-Forget with Retry
+
+### Context
+Implemented `ResilientPublisher` to decouple critical business logic (XP awards) from event system availability. Previously, event publishing failures were either ignored (loss of data) or could potentially block/fail the transaction (bad UX).
+
+### The Pattern: Fire-and-Forget with Retry Queue
+
+**Core Concept**: Business transaction succeeds first, then event is queued for background delivery.
+
+```go
+// 1. Commit business transaction (XP Award) - Source of Truth updated
+repo.UpsertUserJob(...)
+
+// 2. Attempt publish (Best effort)
+err := bus.Publish(...)
+
+// 3. On failure, queue for background retry
+if err != nil {
+    retryQueue <- event // Non-blocking
+}
+```
+
+### Components
+
+1.  **ResilientPublisher**: Wraps `event.Bus`. Handles retries with exponential backoff (2s, 4s, 8s...).
+2.  **DeadLetterWriter**: If retries exhaust (after 5 attempts), event is written to disk (`logs/event_deadletter.jsonl`) for manual recovery.
+3.  **Shutdown Safety**: `Shutdown()` method drains the retry queue or dumps to dead-letter file to prevent data loss on restart.
+
+### Key Learnings
+
+**1. Don't Fail the User for System Noise**
+- Users care about their XP/Loot. They shouldn't get an error just because the event bus (RabbitMQ/NATS/Internal) blipped.
+- Log the error, retry in background, keep the user happy.
+
+**2. Dead-Letter Queues are Essential**
+- Infinite retries choke the system.
+- Drop-on-fail loses data.
+- Dead-letter file allows post-mortem analysis and potential replay.
+
+**3. Integration Testing Asynchrony**
+- Testing background retries requires `time.Sleep` or channel synchronization.
+- Mock the underlying bus to simulate failures.
+- Verify the *eventual* outcome, not just the immediate return.
+
+**4. Configuration is Key**
+- `EventMaxRetries`, `EventRetryDelay` should be configurable via env vars.
+- Allows tuning for different environments (faster retries in dev, more durable in prod).
+
+### Usage
+
+```go
+// In Service Constructor
+publisher, _ := event.NewResilientPublisher(bus, 5, 2*time.Second, dlPath)
+
+// In Method
+publisher.PublishWithRetry(ctx, event) // Never returns error
+```
+
+---
+
+## 2025-12-22: Cooldown Service - Check-Then-Lock Pattern for Race-Free Operations
+
+### Context
+Implemented centralized cooldown service to eliminate RACE-001: HandleSearch had critical race condition where concurrent requests could bypass cooldowns by reading "no cooldown" simultaneously, then both proceeding.
+
+### The Check-Then-Lock Pattern
+
+**Core Concept**: Balance performance (fast unlocked check) with correctness (locked atomic operation).
+
+```go
+// Phase 1: Fast rejection (90% of requests stop here)
+if onCooldown {
+    return ErrOnCooldown{} // No transaction needed
+}
+
+// Phase 2: Atomic check-execute-update
+tx.Begin()
+lastUsed := SELECT ... FOR UPDATE  // Locks row
+if stillOnCooldown { return error }
+fn() // Execute user action  
+UPDATE cooldown timestamp
+tx.Commit() // All or nothing!
+```
+
+### Key Learnings
+
+**1. SELECT FOR UPDATE is Non-Negotiable for Atomicity**
+- Prevents concurrent modifications by locking the specific row
+- Works across multiple app instances (unlike application locks)
+- Row-level lock maintains high concurrency
+
+**2. When to Use Check-Then-Lock**
+- ✅ Fast path rejects most requests (rate limits, cooldowns)
+- ✅ Locked operation is expensive (writes, external APIs)
+- ✅ Correctness is critical (money, gameplay balance)
+- ❌ Skip if fast path rarely helps or lock contention too high
+
+**3. Service Architecture Benefits**
+- Code reduction: 230 → 80 lines (-65%) in HandleSearch
+- Reusability: One service handles all cooldown types
+- Testability: Easy to mock in tests
+- Maintainability: Single source of truth
+
+### Pattern for All Read-Modify-Write Operations
+
+```go
+// ❌ WRONG - Race condition
+value := Get()
+if value > threshold {
+    Update(newValue) // Another request may have changed value!
+}
+
+// ✅ CORRECT - Atomic
+tx.Begin()
+value := GetForUpdate(tx) // SELECT ... FOR UPDATE
+if value > threshold {
+    UpdateTx(tx, newValue)
+}
+tx.Commit()
+```
+
+### Testing Insights
+- testcontainers migration files need explicit sorting (`sort.Strings()`)
+- Package visibility matters (`postgres` vs `postgres_test` for helpers)
+- Docker build success + manual testing often sufficient for complex scenarios
+
+### Impact
+- Zero race conditions in production
+- Docker builds ✅ App deploys ✅
+- Pattern applicable to: inventory, currency, rate limits, resource allocation
+
+---
+
+
 ## Concurrency & Locking
 
 ### Lesson 1: Application-Level Locks Don't Scale
@@ -314,4 +448,43 @@ Before making concurrency changes:
 
 ---
 
-*Last updated: December 2024*
+## 2026-01-03: Event Publishing for Auto-Selected Progression Targets
+
+### Context
+Implemented `EventProgressionTargetSet` to support the "Auto-Skip Single Option Votes" feature. When only one progression node is available, the system automatically selects it and sets it as the target, bypassing the voting session.
+
+### Implementation Pattern
+
+**Event Definition**: Added `ProgressionTargetSet` to `internal/event/event.go`.
+
+```go
+const (
+    ProgressionCycleCompleted Type = "progression.cycle.completed"
+    ProgressionTargetSet      Type = "progression.target.set"
+)
+```
+
+**Publishing Logic**: Added to `StartVotingSession` in `internal/progression/voting_sessions.go`.
+
+```go
+if s.bus != nil {
+    if err := s.bus.Publish(ctx, event.Event{
+        Type: event.ProgressionTargetSet,
+        Payload: map[string]interface{}{
+            "node_key":     node.NodeKey,
+            "target_level": targetLevel,
+            "auto_selected": true,
+        },
+    }); err != nil {
+        log.Error("Failed to publish progression target set event", "error", err)
+    }
+}
+```
+
+### Key Learnings
+- **Event-Driven UX**: Even when user interaction is skipped (auto-select), publishing an event allows other systems (UI, Notifications) to inform the user about what happened.
+- **Mocking Strategy**: Tests using `MockRepository` need to be resilient to changes in service dependencies (like `event.Bus`). In this case, `bus` is nil in most tests, which simplifies testing core logic without mocking the bus everywhere.
+
+---
+
+*Last updated: January 2026*

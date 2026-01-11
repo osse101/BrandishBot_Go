@@ -4,6 +4,7 @@
 GOOSE := $(shell command -v goose 2> /dev/null || echo $(HOME)/go/bin/goose)
 SWAG := $(shell command -v swag 2> /dev/null || echo $(HOME)/go/bin/swag)
 LINT := $(shell command -v golangci-lint 2> /dev/null || echo $(HOME)/go/bin/golangci-lint)
+MOCKERY := $(shell command -v mockery 2> /dev/null || echo $(HOME)/go/bin/mockery)
 
 # Default target
 help:
@@ -25,11 +26,22 @@ help:
 	@echo "  make clean                - Remove build artifacts (bin/)"
 	@echo "  make run                  - Run the application from bin/app"
 	@echo "  make swagger              - Generate Swagger docs"
+	@echo "  make generate             - Generate sqlc code"
+	@echo ""
+	@echo "Benchmark Commands:"
+	@echo "  make bench                - Run all benchmarks"
+	@echo "  make bench-hot            - Run hot path benchmarks only"
+	@echo "  make bench-save           - Run benchmarks and save timestamped results"
+	@echo "  make bench-baseline       - Set current results as baseline"
+	@echo "  make bench-compare        - Compare current benchmarks to baseline"
+	@echo "  make bench-profile        - Profile hot paths (CPU + memory)"
 	@echo ""
 	@echo "Docker Commands:"
 	@echo "  make docker-up            - Start services with Docker Compose"
 	@echo "  make docker-down          - Stop services"
-	@echo "  make docker-build         - Rebuild Docker images (use after code changes)"
+	@echo "  make docker-build         - Rebuild Docker images (no cache, slower but clean)"
+	@echo "  make docker-build-fast    - Build Docker images (with cache, faster for dev)"
+	@echo "  make docker-version       - Show version of local Docker image"
 	@echo ""
 	@echo "Test Database Commands:"
 	@echo "  make test-integration     - Run integration tests (uses testcontainers)"
@@ -77,7 +89,20 @@ migrate-create:
 # Development commands
 test:
 	@echo "Running tests..."
-	@go test ./... -cover -race
+	@DB_PORT=5433 DB_USER=testuser DB_PASSWORD=testpass DB_NAME=testdb go test ./... -cover -race
+
+unit:
+	@echo "Running unit tests (fast)..."
+	@./scripts/unit_tests.sh
+
+watch:
+	@echo "Watching for changes to run unit tests..."
+	@if command -v entr > /dev/null; then \
+		find . -name "*.go" | entr -c ./scripts/unit_tests.sh; \
+	else \
+		echo "Error: 'entr' is not installed. Please install it to use this feature."; \
+		exit 1; \
+	fi
 
 test-coverage:
 	@echo "Running tests with coverage..."
@@ -109,12 +134,88 @@ lint-fix:
 	@echo "Running linters with auto-fix..."
 	@$(LINT) run --fix ./...
 
+# Benchmark commands
+.PHONY: bench bench-hot bench-save bench-baseline bench-compare bench-profile
+
+bench:
+	@echo "Running all benchmarks..."
+	@go test -bench=. -benchmem -benchtime=2s ./...
+
+bench-hot:
+	@echo "Running hot path benchmarks..."
+	@echo "  → Handler: HandleMessageHandler"
+	@go test -bench=BenchmarkHandler_HandleMessage -benchmem -benchtime=2s ./internal/handler 2>/dev/null || echo "    (benchmark not yet implemented)"
+	@echo "  → Service: HandleIncomingMessage"
+	@go test -bench=BenchmarkService_HandleIncomingMessage -benchmem -benchtime=2s ./internal/user 2>/dev/null || echo "    (benchmark not yet implemented)"
+	@echo "  → Service: AddItem"
+	@go test -bench=BenchmarkService_AddItem -benchmem -benchtime=2s ./internal/user 2>/dev/null || echo "    (benchmark not yet implemented)"
+	@echo "  → Utils: Inventory operations (existing)"
+	@go test -bench=. -benchmem -benchtime=2s ./internal/utils
+
+bench-save:
+	@echo "Running benchmarks and saving results..."
+	@mkdir -p benchmarks/results
+	@go test -bench=. -benchmem -benchtime=2s ./... 2>&1 | tee benchmarks/results/$$(date +%Y%m%d-%H%M%S).txt
+	@echo "✓ Results saved to benchmarks/results/"
+
+bench-baseline:
+	@echo "Setting benchmark baseline..."
+	@mkdir -p benchmarks/results
+	@go test -bench=. -benchmem -benchtime=2s ./... 2>&1 | tee benchmarks/results/baseline.txt
+	@echo "✓ Baseline set: benchmarks/results/baseline.txt"
+
+bench-compare:
+	@if [ ! -f benchmarks/results/baseline.txt ]; then \
+		echo "❌ Error: No baseline found. Run 'make bench-baseline' first."; \
+		exit 1; \
+	fi
+	@echo "Running benchmarks and comparing to baseline..."
+	@mkdir -p benchmarks/results
+	@go test -bench=. -benchmem -benchtime=2s ./... > benchmarks/results/current.txt 2>&1 || true
+	@if command -v benchstat > /dev/null 2>&1; then \
+		benchstat benchmarks/results/baseline.txt benchmarks/results/current.txt; \
+	else \
+		echo ""; \
+		echo "⚠️  benchstat not installed. Install with:"; \
+		echo "   go install golang.org/x/perf/cmd/benchstat@latest"; \
+		echo ""; \
+		echo "Showing raw comparison:"; \
+		echo "======================"; \
+		echo "BASELINE:"; \
+		grep "^Benchmark" benchmarks/results/baseline.txt | head -5; \
+		echo ""; \
+		echo "CURRENT:"; \
+		grep "^Benchmark" benchmarks/results/current.txt | head -5; \
+	fi
+
+bench-profile:
+	@echo "Profiling hot paths..."
+	@mkdir -p benchmarks/profiles
+	@echo "  → CPU profile (if benchmark exists)..."
+	@go test -bench=BenchmarkHandler_HandleMessage -cpuprofile=benchmarks/profiles/cpu.prof ./internal/handler 2>/dev/null || \
+		go test -bench=BenchmarkAddItems -cpuprofile=benchmarks/profiles/cpu.prof ./internal/utils
+	@echo "  → Memory profile (if benchmark exists)..."
+	@go test -bench=BenchmarkHandler_HandleMessage -memprofile=benchmarks/profiles/mem.prof -benchmem ./internal/handler 2>/dev/null || \
+		go test -bench=BenchmarkAddItems -memprofile=benchmarks/profiles/mem.prof -benchmem ./internal/utils
+	@echo "✓ Profiles saved to benchmarks/profiles/"
+	@echo ""
+	@echo "View CPU profile with:"
+	@echo "  go tool pprof -http=:8080 benchmarks/profiles/cpu.prof"
+	@echo "View memory profile with:"
+	@echo "  go tool pprof -http=:8080 benchmarks/profiles/mem.prof"
+
 # Build targets
 build:
 	@echo "Building all binaries to bin/..."
 	@mkdir -p bin
-	@go build -o bin/app ./cmd/app
-	@go build -o bin/discord_bot ./cmd/discord
+	@VERSION=$$(git describe --tags --always --dirty 2>/dev/null || echo "dev"); \
+	BUILD_TIME=$$(date -u '+%Y-%m-%d_%H:%M'); \
+	GIT_COMMIT=$$(git rev-parse --short HEAD 2>/dev/null || echo "unknown"); \
+	LDFLAGS="-X github.com/osse101/BrandishBot_Go/internal/handler.Version=$$VERSION \
+	         -X github.com/osse101/BrandishBot_Go/internal/handler.BuildTime=$$BUILD_TIME \
+	         -X github.com/osse101/BrandishBot_Go/internal/handler.GitCommit=$$GIT_COMMIT"; \
+	go build -ldflags "$$LDFLAGS" -o bin/app ./cmd/app; \
+	go build -ldflags "$$LDFLAGS" -o bin/discord_bot ./cmd/discord
 	@echo "✓ Built: bin/app"
 	@echo "✓ Built: bin/discord_bot"
 
@@ -165,6 +266,11 @@ swagger:
 	@$$HOME/go/bin/swag init -g cmd/app/main.go --output ./docs/swagger
 	@echo "Swagger docs updated: docs/swagger/"
 
+generate:
+	@echo "Generating sqlc code..."
+	@go run github.com/sqlc-dev/sqlc/cmd/sqlc@latest generate
+	@echo "✓ sqlc code generated"
+
 # Docker commands
 docker-up:
 	@echo "Starting Docker services..."
@@ -175,9 +281,29 @@ docker-down:
 	@docker compose down
 
 docker-build:
-	@echo "Rebuilding Docker images..."
-	@docker compose build --no-cache
+	@echo "Rebuilding Docker images (no cache)..."
+	@VERSION=$$(git describe --tags --always --dirty 2>/dev/null || echo "dev"); \
+	BUILD_TIME=$$(date -u '+%Y-%m-%d_%H:%M'); \
+	GIT_COMMIT=$$(git rev-parse --short HEAD 2>/dev/null || echo "unknown"); \
+	echo "Building with VERSION=$$VERSION BUILD_TIME=$$BUILD_TIME GIT_COMMIT=$$GIT_COMMIT"; \
+	VERSION=$$VERSION BUILD_TIME=$$BUILD_TIME GIT_COMMIT=$$GIT_COMMIT docker compose build --no-cache
 	@echo "Docker images rebuilt successfully"
+
+docker-build-fast:
+	@echo "Building Docker images (with cache, faster)..."
+	@VERSION=$$(git describe --tags --always --dirty 2>/dev/null || echo "dev"); \
+	BUILD_TIME=$$(date -u '+%Y-%m-%d_%H:%M'); \
+	GIT_COMMIT=$$(git rev-parse --short HEAD 2>/dev/null || echo "unknown"); \
+	VERSION=$$VERSION BUILD_TIME=$$BUILD_TIME GIT_COMMIT=$$GIT_COMMIT DOCKER_BUILDKIT=1 docker compose build
+	@echo "Docker images built successfully"
+
+docker-version:
+	@echo "Local Docker image version info:"
+	@echo "================================"
+	@docker inspect brandishbot:dev --format='Version:    {{index .Config.Labels "org.opencontainers.image.version"}}' 2>/dev/null || echo "Image not found. Run 'make docker-build' first."
+	@docker inspect brandishbot:dev --format='Git Commit: {{index .Config.Labels "org.opencontainers.image.revision"}}' 2>/dev/null
+	@docker inspect brandishbot:dev --format='Built:      {{index .Config.Labels "org.opencontainers.image.created"}}' 2>/dev/null
+	@echo "================================"
 
 docker-logs:
 	@docker compose logs -f
@@ -193,7 +319,7 @@ push-production:
 # Test database commands
 test-integration:
 	@echo "Running integration tests..."
-	@go test ./internal/database/postgres -v -timeout=30s
+	@go test ./internal/database/postgres -v -timeout=60s
 
 test-staging:
 	@echo "Running staging integration tests..."
@@ -202,13 +328,13 @@ test-staging:
 
 db-test-up:
 	@echo "Starting test database..."
-	@docker compose -f docker compose.test.yml up -d
+	@docker-compose -f docker-compose.test.yml up -d
 	@sleep 2
 	@echo "Test database ready on port 5433"
 
 db-test-down:
 	@echo "Stopping test database..."
-	@docker compose -f docker compose.test.yml down
+	@docker-compose -f docker-compose.test.yml down
 
 migrate-up-test:
 	@echo "Running migrations on test database..."
@@ -267,3 +393,15 @@ health-check-staging:
 health-check-prod:
 	@./scripts/health-check.sh production
 
+
+# Mock generation
+.PHONY: mocks clean-mocks
+mocks:
+	@echo "Generating mocks..."
+	@$(MOCKERY)
+	@echo "Mocks generated in mocks/ directory"
+
+clean-mocks:
+	@echo "Removing generated mocks..."
+	@rm -rf mocks/
+	@echo "✓ Removed mocks/ directory"

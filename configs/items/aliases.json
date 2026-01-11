@@ -1,73 +1,78 @@
 {
-  "lootbox_tier0": {
-    "default": [
-      "A dingy box",
-      "A worn door box",
-      "A cheap looking box",
-      "A battered box"
-    ],
-    "themes": {
-      "halloween": [
-        "A battered pumpkin container",
-        "A cheap looking skull chest",
-        "A spooky rattling box"
+  "version": "1.0",
+  "schema": "item-aliases",
+  "last_updated": "2026-01-05",
+  "aliases": {
+    "lootbox_tier0": {
+      "default": [
+        "A dingy box",
+        "A worn door box",
+        "A cheap looking box",
+        "A battered box"
       ],
-      "christmas": [
-        "A frosty gift box",
-        "A tinsel-wrapped crate",
-        "A snow-dusted parcel"
-      ]
-    }
-  },
-  "lootbox_tier1": {
-    "default": [
-      "A sturdy chest",
-      "A well-crafted box",
-      "A reliable container"
-    ],
-    "themes": {
-      "halloween": [
-        "A haunted treasure chest",
-        "A glowing jack-o-lantern box"
+      "themes": {
+        "halloween": [
+          "A battered pumpkin container",
+          "A cheap looking skull chest",
+          "A spooky rattling box"
+        ],
+        "christmas": [
+          "A frosty gift box",
+          "A tinsel-wrapped crate",
+          "A snow-dusted parcel"
+        ]
+      }
+    },
+    "lootbox_tier1": {
+      "default": [
+        "A sturdy chest",
+        "A well-crafted box",
+        "A reliable container"
       ],
-      "christmas": [
-        "A red velvet gift box",
-        "An ornate holiday chest"
-      ]
-    }
-  },
-  "lootbox_tier2": {
-    "default": [
-      "A gleaming golden chest",
-      "A magnificent treasure box",
-      "An ornate gilded container"
-    ],
-    "themes": {
-      "halloween": [
-        "A legendary cursed chest",
-        "A phantom's treasure trove"
+      "themes": {
+        "halloween": [
+          "A haunted treasure chest",
+          "A glowing jack-o-lantern box"
+        ],
+        "christmas": [
+          "A red velvet gift box",
+          "An ornate holiday chest"
+        ]
+      }
+    },
+    "lootbox_tier2": {
+      "default": [
+        "A gleaming golden chest",
+        "A magnificent treasure box",
+        "An ornate gilded container"
       ],
-      "christmas": [
-        "Santa's special delivery",
-        "A magical winter chest"
-      ]
-    }
-  },
-  "weapon_blaster": {
-    "default": [
-      "A shiny ray gun",
-      "A crackling energy weapon",
-      "A humming blaster"
-    ],
-    "themes": {
-      "halloween": [
-        "A ghostly plasma gun",
-        "A spectral beam cannon"
+      "themes": {
+        "halloween": [
+          "A legendary cursed chest",
+          "A phantom's treasure trove"
+        ],
+        "christmas": [
+          "Santa's special delivery",
+          "A magical winter chest"
+        ]
+      }
+    },
+    "weapon_blaster": {
+      "default": [
+        "A shiny ray gun",
+        "A crackling energy weapon",
+        "A humming blaster"
       ],
-      "christmas": [
-        "A candy cane cannon",
-        "A snowball launcher"
-      ]
+      "themes": {
+        "halloween": [
+          "A ghostly plasma gun",
+          "A spectral beam cannon"
+        ],
+        "christmas": [
+          "A candy cane cannon",
+          "A snowball launcher"
+        ]
+      }
     }
   }
 }

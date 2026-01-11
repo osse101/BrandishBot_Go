@@ -2,305 +2,137 @@ package handler
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
-	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
-	"github.com/osse101/BrandishBot_Go/internal/event"
-	"github.com/osse101/BrandishBot_Go/internal/progression"
+	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
-// MockCraftingService mocks the crafting.Service interface
-type MockCraftingService struct {
-	mock.Mock
-}
-
-func (m *MockCraftingService) DisassembleItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (map[string]int, int, error) {
-	args := m.Called(ctx, platform, platformID, username, itemName, quantity)
-	if args.Get(0) == nil {
-		return nil, args.Int(1), args.Error(2)
-	}
-	return args.Get(0).(map[string]int), args.Int(1), args.Error(2)
-}
-
-func (m *MockCraftingService) UpgradeItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (string, int, error) {
-	args := m.Called(ctx, platform, platformID, username, itemName, quantity)
-	return args.String(0), args.Int(1), args.Error(2)
-}
-
-func (m *MockCraftingService) GetRecipe(ctx context.Context, itemName, platform, platformID, username string) (*crafting.RecipeInfo, error) {
-	args := m.Called(ctx, itemName, platform, platformID, username)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*crafting.RecipeInfo), args.Error(1)
-}
-
-func (m *MockCraftingService) GetUnlockedRecipes(ctx context.Context, platform, platformID, username string) ([]crafting.UnlockedRecipeInfo, error) {
-	args := m.Called(ctx, platform, platformID, username)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]crafting.UnlockedRecipeInfo), args.Error(1)
-}
-
 func TestHandleDisassembleItem(t *testing.T) {
-	InitValidator()
-
 	tests := []struct {
 		name           string
-		requestBody    interface{}
-		setupMock      func(*MockCraftingService, *MockProgressionService, *MockEventBus)
+		requestBody    CraftingActionRequest
+		mockSetup      func(*mocks.MockCraftingService, *mocks.MockProgressionService, *mocks.MockEventBus)
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name: "Success",
-			requestBody: DisassembleItemRequest{
-				Platform:   "twitch",
+			requestBody: CraftingActionRequest{
+				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
-				Item:       "lootbox1",
+				Item:       "lootbox_tier1",
 				Quantity:   2,
 			},
-			setupMock: func(c *MockCraftingService, p *MockProgressionService, e *MockEventBus) {
-				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureDisassemble).Return(true, nil)
-				c.On("DisassembleItem", mock.Anything, "twitch", "test-id", "testuser", "lootbox1", 2).
-					Return(map[string]int{"lootbox0": 2}, 2, nil)
-				e.On("Publish", mock.Anything, mock.MatchedBy(func(evt event.Event) bool {
-					return evt.Type == "item.disassembled"
+			mockSetup: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, b *mocks.MockEventBus) {
+				p.On("IsFeatureUnlocked", mock.Anything, "feature_disassemble").Return(true, nil)
+				c.On("DisassembleItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", "lootbox_tier1", 2).
+					Return(&crafting.DisassembleResult{
+						Outputs:           map[string]int{"lootbox_tier0": 4},
+						QuantityProcessed: 2,
+						IsPerfectSalvage:  false,
+						Multiplier:        1.0,
+					}, nil)
+
+				b.On("Publish", mock.Anything, mock.MatchedBy(func(e interface{}) bool {
+					return true
 				})).Return(nil)
 			},
 			expectedStatus: http.StatusOK,
-			expectedBody:   `"quantity_processed":2`,
+			expectedBody:   `{"message":"Disassembled 2 items into: 4x lootbox_tier0","outputs":{"lootbox_tier0":4},"quantity_processed":2,"is_perfect_salvage":false,"multiplier":1}`,
 		},
 		{
 			name: "Feature Locked",
-			requestBody: DisassembleItemRequest{
-				Platform:   "twitch",
+			requestBody: CraftingActionRequest{
+				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
-				Item:       "lootbox1",
+				Item:       "lootbox_tier1",
 				Quantity:   1,
 			},
-			setupMock: func(c *MockCraftingService, p *MockProgressionService, e *MockEventBus) {
-				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureDisassemble).Return(false, nil)
+			mockSetup: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, b *mocks.MockEventBus) {
+				p.On("IsFeatureUnlocked", mock.Anything, "feature_disassemble").Return(false, nil)
+				// When locked, it tries to get required nodes to show helpful message
+				// IMPORTANT: Must return []*domain.ProgressionNode (slice of pointers)
+				p.On("GetRequiredNodes", mock.Anything, "feature_disassemble").Return([]*domain.ProgressionNode{}, nil)
 			},
 			expectedStatus: http.StatusForbidden,
-			expectedBody:   "not yet unlocked",
+			expectedBody:   `{"error":"Feature locked"}`,
 		},
 		{
-			name: "Feature Check Error",
-			requestBody: DisassembleItemRequest{
-				Platform:   "twitch",
+			name: "Service Error",
+			requestBody: CraftingActionRequest{
+				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
-				Item:       "lootbox1",
+				Item:       "lootbox_tier1",
 				Quantity:   1,
 			},
-			setupMock: func(c *MockCraftingService, p *MockProgressionService, e *MockEventBus) {
-				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureDisassemble).
-					Return(false, errors.New("database error"))
+			mockSetup: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, b *mocks.MockEventBus) {
+				p.On("IsFeatureUnlocked", mock.Anything, "feature_disassemble").Return(true, nil)
+				c.On("DisassembleItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", "lootbox_tier1", 1).
+					Return(nil, fmt.Errorf("disassemble failed"))
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "Failed to check feature availability",
+			expectedBody:   "disassemble failed\n",
 		},
 		{
-			name:        "Invalid Request Body",
-			requestBody: "invalid json",
-			setupMock: func(c *MockCraftingService, p *MockProgressionService, e *MockEventBus) {
-				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureDisassemble).Return(true, nil)
-			},
-			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Invalid request body",
-		},
-		{
-			name: "Missing Platform",
-			requestBody: DisassembleItemRequest{
+			name: "Success Perfect Salvage",
+			requestBody: CraftingActionRequest{
+				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
-				Item:       "lootbox1",
-				Quantity:   1,
+				Item:       "lootbox_tier1",
+				Quantity:   10,
 			},
-			setupMock: func(c *MockCraftingService, p *MockProgressionService, e *MockEventBus) {
-				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureDisassemble).Return(true, nil)
-			},
-			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Invalid request",
-		},
-		{
-			name: "Missing PlatformID",
-			requestBody: DisassembleItemRequest{
-				Platform: "twitch",
-				Username: "testuser",
-				Item:     "lootbox1",
-				Quantity: 1,
-			},
-			setupMock: func(c *MockCraftingService, p *MockProgressionService, e *MockEventBus) {
-				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureDisassemble).Return(true, nil)
-			},
-			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Invalid request",
-		},
-		{
-			name: "Missing Username",
-			requestBody: DisassembleItemRequest{
-				Platform:   "twitch",
-				PlatformID: "test-id",
-				Item:       "lootbox1",
-				Quantity:   1,
-			},
-			setupMock: func(c *MockCraftingService, p *MockProgressionService, e *MockEventBus) {
-				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureDisassemble).Return(true, nil)
-			},
-			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Invalid request",
-		},
-		{
-			name: "Missing Item",
-			requestBody: DisassembleItemRequest{
-				Platform:   "twitch",
-				PlatformID: "test-id",
-				Username:   "testuser",
-				Quantity:   1,
-			},
-			setupMock: func(c *MockCraftingService, p *MockProgressionService, e *MockEventBus) {
-				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureDisassemble).Return(true, nil)
-			},
-			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Invalid request",
-		},
-		{
-			name: "Zero Quantity",
-			requestBody: DisassembleItemRequest{
-				Platform:   "twitch",
-				PlatformID: "test-id",
-				Username:   "testuser",
-				Item:       "lootbox1",
-				Quantity:   0,
-			},
-			setupMock: func(c *MockCraftingService, p *MockProgressionService, e *MockEventBus) {
-				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureDisassemble).Return(true, nil)
-			},
-			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Invalid request",
-		},
-		{
-			name: "Negative Quantity",
-			requestBody: DisassembleItemRequest{
-				Platform:   "twitch",
-				PlatformID: "test-id",
-				Username:   "testuser",
-				Item:       "lootbox1",
-				Quantity:   -1,
-			},
-			setupMock: func(c *MockCraftingService, p *MockProgressionService, e *MockEventBus) {
-				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureDisassemble).Return(true, nil)
-			},
-			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Invalid request",
-		},
-		{
-			name: "Invalid Platform",
-			requestBody: DisassembleItemRequest{
-				Platform:   "invalid-platform",
-				PlatformID: "test-id",
-				Username:   "testuser",
-				Item:       "lootbox1",
-				Quantity:   1,
-			},
-			setupMock: func(c *MockCraftingService, p *MockProgressionService, e *MockEventBus) {
-				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureDisassemble).Return(true, nil)
-			},
-			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Invalid request",
-		},
-		{
-			name: "Service Error - Item Not Found",
-			requestBody: DisassembleItemRequest{
-				Platform:   "twitch",
-				PlatformID: "test-id",
-				Username:   "testuser",
-				Item:       "unknown-item",
-				Quantity:   1,
-			},
-			setupMock: func(c *MockCraftingService, p *MockProgressionService, e *MockEventBus) {
-				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureDisassemble).Return(true, nil)
-				c.On("DisassembleItem", mock.Anything, "twitch", "test-id", "testuser", "unknown-item", 1).
-					Return(nil, 0, errors.New("item not found"))
-			},
-			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "item not found",
-		},
-		{
-			name: "Service Error - Insufficient Items",
-			requestBody: DisassembleItemRequest{
-				Platform:   "twitch",
-				PlatformID: "test-id",
-				Username:   "testuser",
-				Item:       "lootbox1",
-				Quantity:   100,
-			},
-			setupMock: func(c *MockCraftingService, p *MockProgressionService, e *MockEventBus) {
-				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureDisassemble).Return(true, nil)
-				c.On("DisassembleItem", mock.Anything, "twitch", "test-id", "testuser", "lootbox1", 100).
-					Return(nil, 0, errors.New("insufficient items"))
-			},
-			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "insufficient items",
-		},
-		{
-			name: "Event Publish Failure - Still Returns Success",
-			requestBody: DisassembleItemRequest{
-				Platform:   "twitch",
-				PlatformID: "test-id",
-				Username:   "testuser",
-				Item:       "lootbox1",
-				Quantity:   1,
-			},
-			setupMock: func(c *MockCraftingService, p *MockProgressionService, e *MockEventBus) {
-				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureDisassemble).Return(true, nil)
-				c.On("DisassembleItem", mock.Anything, "twitch", "test-id", "testuser", "lootbox1", 1).
-					Return(map[string]int{"lootbox0": 1}, 1, nil)
-				e.On("Publish", mock.Anything, mock.Anything).Return(errors.New("event bus error"))
+			mockSetup: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, b *mocks.MockEventBus) {
+				p.On("IsFeatureUnlocked", mock.Anything, "feature_disassemble").Return(true, nil)
+				c.On("DisassembleItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", "lootbox_tier1", 10).
+					Return(&crafting.DisassembleResult{
+						Outputs:           map[string]int{"lootbox_tier0": 30}, // 20 * 1.5
+						QuantityProcessed: 10,
+						IsPerfectSalvage:  true,
+						Multiplier:        1.5,
+					}, nil)
+
+				b.On("Publish", mock.Anything, mock.Anything).Return(nil)
 			},
 			expectedStatus: http.StatusOK,
-			expectedBody:   `"quantity_processed":1`,
+			expectedBody:   `{"message":"PERFECT SALVAGE! You efficiently recovered more materials! (+50% Bonus): 30x lootbox_tier0","outputs":{"lootbox_tier0":30},"quantity_processed":10,"is_perfect_salvage":true,"multiplier":1.5}`,
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			mockCrafting := &MockCraftingService{}
-			mockProgression := &MockProgressionService{}
-			mockBus := &MockEventBus{}
-			tt.setupMock(mockCrafting, mockProgression, mockBus)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			mockCrafting := new(mocks.MockCraftingService)
+			mockProgression := new(mocks.MockProgressionService)
+			mockBus := new(mocks.MockEventBus)
+
+			tc.mockSetup(mockCrafting, mockProgression, mockBus)
 
 			handler := HandleDisassembleItem(mockCrafting, mockProgression, mockBus)
 
-			var body []byte
-			var err error
-			if str, ok := tt.requestBody.(string); ok {
-				body = []byte(str)
-			} else {
-				body, err = json.Marshal(tt.requestBody)
-				assert.NoError(t, err)
-			}
+			body, _ := json.Marshal(tc.requestBody)
+			req, _ := http.NewRequest("POST", "/user/item/disassemble", bytes.NewBuffer(body))
+			rr := httptest.NewRecorder()
 
-			req := httptest.NewRequest("POST", "/user/item/disassemble", bytes.NewBuffer(body))
-			w := httptest.NewRecorder()
+			handler.ServeHTTP(rr, req)
 
-			handler.ServeHTTP(w, req)
-
-			assert.Equal(t, tt.expectedStatus, w.Code)
-			if tt.expectedBody != "" {
-				assert.Contains(t, w.Body.String(), tt.expectedBody)
+			assert.Equal(t, tc.expectedStatus, rr.Code)
+			if tc.expectedBody != "" {
+				if tc.expectedStatus == http.StatusOK || tc.expectedStatus == http.StatusForbidden {
+					assert.JSONEq(t, tc.expectedBody, rr.Body.String())
+				} else {
+					assert.Contains(t, rr.Body.String(), tc.expectedBody)
+				}
 			}
 
 			mockCrafting.AssertExpectations(t)

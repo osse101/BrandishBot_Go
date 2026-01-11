@@ -15,6 +15,7 @@ import (
 
 	_ "github.com/osse101/BrandishBot_Go/docs/swagger"
 	"github.com/osse101/BrandishBot_Go/internal/config"
+	"github.com/osse101/BrandishBot_Go/internal/cooldown"
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
 	"github.com/osse101/BrandishBot_Go/internal/database"
 	"github.com/osse101/BrandishBot_Go/internal/database/postgres"
@@ -22,6 +23,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/eventlog"
 	"github.com/osse101/BrandishBot_Go/internal/gamble"
+	"github.com/osse101/BrandishBot_Go/internal/item"
 	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/linking"
 	"github.com/osse101/BrandishBot_Go/internal/lootbox"
@@ -46,6 +48,7 @@ import (
 // @in header
 // @name X-API-Key
 
+//nolint:gocyclo // main function setup is naturally complex
 func main() {
 	// Load configuration FIRST (single source of truth)
 	cfg, err := config.Load()
@@ -121,24 +124,148 @@ func main() {
 	defer dbPool.Close()
 
 	userRepo := postgres.NewUserRepository(dbPool)
-	
+	craftingRepo := postgres.NewCraftingRepository(dbPool)
+	economyRepo := postgres.NewEconomyRepository(dbPool)
+
 	statsRepo := postgres.NewStatsRepository(dbPool)
 	statsService := stats.NewService(statsRepo)
 
-	progressionRepo := postgres.NewProgressionRepository(dbPool)
-	progressionService := progression.NewService(progressionRepo)
+	// Initialize Event Bus
+	eventBus := event.NewMemoryBus()
+
+	// Initialize Resilient Publisher for event retry logic
+	maxRetries := cfg.EventMaxRetries
+	if maxRetries == 0 {
+		maxRetries = 5 // Default to 5 retries
+	}
+	retryDelay := cfg.EventRetryDelay
+	if retryDelay == 0 {
+		retryDelay = 2 * time.Second // Default to 2s base delay
+	}
+	deadLetterPath := cfg.EventDeadLetterPath
+	if deadLetterPath == "" {
+		deadLetterPath = "logs/event_deadletter.jsonl" // Default path
+	}
+
+	// Ensure dead-letter directory exists
+	if err := os.MkdirAll(filepath.Dir(deadLetterPath), 0755); err != nil {
+		slog.Error("Failed to create dead-letter directory", "error", err)
+		os.Exit(1)
+	}
+
+	resilientPublisher, err := event.NewResilientPublisher(eventBus, maxRetries, retryDelay, deadLetterPath)
+	if err != nil {
+		slog.Error("Failed to create resilient publisher", "error", err)
+		os.Exit(1)
+	}
+	slog.Info("Resilient event publisher initialized",
+		"max_retries", maxRetries,
+		"retry_delay", retryDelay,
+		"deadletter_path", deadLetterPath)
+
+	progressionRepo := postgres.NewProgressionRepository(dbPool, eventBus)
+	progressionService := progression.NewService(progressionRepo, eventBus)
+
+	// Sync progression tree from JSON configuration
+	slog.Info("Syncing progression tree from JSON config...")
+	treeLoader := progression.NewTreeLoader()
+
+	treeConfig, err := treeLoader.Load(config.ConfigPathProgressionTree)
+	if err != nil {
+		slog.Error("Failed to load progression tree config", "error", err)
+		os.Exit(1)
+	}
+
+	if err := treeLoader.Validate(treeConfig); err != nil {
+		slog.Error("Invalid progression tree config", "error", err)
+		os.Exit(1)
+	}
+
+	// Sync to database (progressionRepo implements NodeInserter/NodeUpdater)
+	// This will now use intelligent syncing (skipping if file unchanged)
+	syncResult, err := treeLoader.SyncToDatabase(context.Background(), treeConfig, progressionRepo, config.ConfigPathProgressionTree)
+	if err != nil {
+		slog.Error("Failed to sync progression tree to database", "error", err)
+		os.Exit(1)
+	}
+
+	if syncResult.NodesInserted > 0 || syncResult.NodesUpdated > 0 || syncResult.AutoUnlocked > 0 {
+		slog.Info("Progression tree synced successfully",
+			"inserted", syncResult.NodesInserted,
+			"updated", syncResult.NodesUpdated,
+			"skipped", syncResult.NodesSkipped,
+			"auto_unlocked", syncResult.AutoUnlocked)
+	} else {
+		slog.Info("Progression tree config unchanged, sync skipped")
+	}
+
+	// Sync items from JSON configuration
+	slog.Info("Syncing items from JSON config...")
+	itemLoader := item.NewLoader()
+	itemRepo := postgres.NewItemRepository(dbPool)
+
+	itemConfig, err := itemLoader.Load(config.ConfigPathItems)
+	if err != nil {
+		slog.Error("Failed to load items config", "error", err)
+		os.Exit(1)
+	}
+
+	if err := itemLoader.Validate(itemConfig); err != nil {
+		slog.Error("Invalid items config", "error", err)
+		os.Exit(1)
+	}
+
+	// Sync to database (will skip if file unchanged)
+	itemSyncResult, err := itemLoader.SyncToDatabase(context.Background(), itemConfig, itemRepo, config.ConfigPathItems)
+	if err != nil {
+		slog.Error("Failed to sync items to database", "error", err)
+		os.Exit(1)
+	}
+
+	if itemSyncResult.ItemsInserted > 0 || itemSyncResult.ItemsUpdated > 0 {
+		slog.Info("Items synced successfully",
+			"inserted", itemSyncResult.ItemsInserted,
+			"updated", itemSyncResult.ItemsUpdated,
+			"skipped", itemSyncResult.ItemsSkipped)
+	}
+
+	// Sync recipes from JSON configuration
+	slog.Info("Syncing recipes from JSON config...")
+	recipeLoader := crafting.NewRecipeLoader()
+
+	recipeConfig, err := recipeLoader.Load(config.ConfigPathRecipesCrafting, config.ConfigPathRecipesDisassemble)
+	if err != nil {
+		slog.Error("Failed to load recipe config", "error", err)
+		os.Exit(1)
+	}
+
+	if err := recipeLoader.Validate(recipeConfig, itemRepo); err != nil {
+		slog.Error("Invalid recipe configuration", "error", err)
+		os.Exit(1)
+	}
+
+	// Sync to database (will skip if files unchanged)
+	recipeSyncResult, err := recipeLoader.SyncToDatabase(context.Background(), recipeConfig, craftingRepo, itemRepo, config.ConfigPathRecipesDir)
+	if err != nil {
+		slog.Error("Failed to sync recipes to database", "error", err)
+		os.Exit(1)
+	}
+
+	if recipeSyncResult.CraftingInserted > 0 || recipeSyncResult.DisassembleInserted > 0 ||
+		recipeSyncResult.CraftingUpdated > 0 || recipeSyncResult.DisassembleUpdated > 0 {
+		slog.Info("Recipes synced successfully",
+			"crafting_inserted", recipeSyncResult.CraftingInserted,
+			"crafting_updated", recipeSyncResult.CraftingUpdated,
+			"disassemble_inserted", recipeSyncResult.DisassembleInserted,
+			"disassemble_updated", recipeSyncResult.DisassembleUpdated)
+	}
 
 	// Initialize Job service (needed by user, economy, crafting, gamble)
 	jobRepo := postgres.NewJobRepository(dbPool)
-	jobService := job.NewService(jobRepo, progressionService)
-	
+	jobService := job.NewService(jobRepo, progressionService, statsService, eventBus, resilientPublisher)
+
 	// Initialize services that depend on job service
-	economyService := economy.NewService(userRepo, jobService)
-	craftingService := crafting.NewService(userRepo, jobService)
-
-
-	// Initialize Event Bus
-	eventBus := event.NewMemoryBus()
+	economyService := economy.NewService(economyRepo, jobService)
 
 	// Initialize Worker Pool
 	// Start with 5 workers as per plan
@@ -149,6 +276,14 @@ func main() {
 	// Register Event Handlers
 	progressionHandler := progression.NewEventHandler(progressionService)
 	progressionHandler.Register(eventBus)
+
+	// Initialize and register Progression Notifier
+	discordWebhookURL := fmt.Sprintf("http://discord:%s/admin/announce", cfg.DiscordWebhookPort)
+	progressionNotifier := progression.NewNotifier(discordWebhookURL, cfg.StreamerbotWebhookURL)
+	progressionNotifier.Subscribe(eventBus)
+	slog.Info("Progression notifier initialized",
+		"discord_webhook", discordWebhookURL,
+		"streamerbot_webhook", cfg.StreamerbotWebhookURL)
 
 	// Register Metrics Collector
 	metricsCollector := metrics.NewEventMetricsCollector()
@@ -167,8 +302,6 @@ func main() {
 	}
 	slog.Info("Event logger initialized")
 
-
-
 	// Initialize Job Scheduler
 	jobScheduler := scheduler.New(workerPool)
 	// Schedule event log cleanup every 24 hours
@@ -183,26 +316,45 @@ func main() {
 
 	// Initialize Gamble components
 	gambleRepo := postgres.NewGambleRepository(dbPool)
-	
+
 	// Initialize Lootbox Service (reusing userRepo for item data)
-	lootboxSvc, err := lootbox.NewService(userRepo, "configs/loot_tables.json")
+	lootboxSvc, err := lootbox.NewService(userRepo, config.ConfigPathLootTables)
 	if err != nil {
 		slog.Error("Failed to initialize lootbox service", "error", err)
 		os.Exit(1)
 	}
 
 	// Initialize Naming Resolver for item display names
-	namingResolver, err := naming.NewResolver("configs/items/aliases.json", "configs/items/themes.json")
+	namingResolver, err := naming.NewResolver(config.ConfigPathItemAliases, config.ConfigPathItemThemes)
+
 	if err != nil {
 		slog.Error("Failed to initialize naming resolver", "error", err)
 		os.Exit(1)
 	}
 	slog.Info("Naming resolver initialized")
 
-	gambleService := gamble.NewService(gambleRepo, eventBus, lootboxSvc, statsService, cfg.GambleJoinDuration, jobService)
+	// Register all items with naming resolver for public name resolution
+	allItems, err := userRepo.GetAllItems(context.Background())
+	if err != nil {
+		slog.Error("Failed to load items for naming resolver", "error", err)
+		os.Exit(1)
+	}
+	for _, item := range allItems {
+		namingResolver.RegisterItem(item.InternalName, item.PublicName)
+	}
+	slog.Info("Items registered with naming resolver", "count", len(allItems))
+
+	// Initialize Cooldown Service
+	cooldownSvc := cooldown.NewPostgresService(dbPool, cooldown.Config{
+		DevMode: cfg.DevMode,
+	}, progressionService)
+	slog.Info("Cooldown service initialized", "dev_mode", cfg.DevMode)
+
+	gambleService := gamble.NewService(gambleRepo, eventBus, lootboxSvc, statsService, cfg.GambleJoinDuration, jobService, progressionService)
+	craftingService := crafting.NewService(craftingRepo, jobService, statsService, namingResolver)
 
 	// Initialize services that depend on job service
-	userService := user.NewService(userRepo, statsService, jobService, namingResolver, cfg.DevMode)
+	userService := user.NewService(userRepo, statsService, jobService, lootboxSvc, namingResolver, cooldownSvc, cfg.DevMode)
 
 	// Initialize Gamble Worker
 	gambleWorker := worker.NewGambleWorker(gambleService)
@@ -241,11 +393,26 @@ func main() {
 	}
 
 	// Gracefully shutdown services
+	if err := progressionService.Shutdown(shutdownCtx); err != nil {
+		slog.Error("Progression service shutdown failed", "error", err)
+	}
 	if err := userService.Shutdown(shutdownCtx); err != nil {
 		slog.Error("User service shutdown failed", "error", err)
 	}
 	if err := economyService.Shutdown(shutdownCtx); err != nil {
 		slog.Error("Economy service shutdown failed", "error", err)
+	}
+	if err := craftingService.Shutdown(shutdownCtx); err != nil {
+		slog.Error("Crafting service shutdown failed", "error", err)
+	}
+	if err := gambleService.Shutdown(shutdownCtx); err != nil {
+		slog.Error("Gamble service shutdown failed", "error", err)
+	}
+
+	// Shutdown resilient publisher last to flush pending events
+	slog.Info("Shutting down event publisher...")
+	if err := resilientPublisher.Shutdown(shutdownCtx); err != nil {
+		slog.Error("Resilient publisher shutdown failed", "error", err)
 	}
 
 	slog.Info("Server stopped")

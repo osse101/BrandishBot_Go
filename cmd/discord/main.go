@@ -99,7 +99,47 @@ func main() {
 	cmd, handler = discord.AdminUnlockCommand()
 	bot.Registry.Register(cmd, handler)
 
+	cmd, handler = discord.AdminUnlockAllCommand()
+	bot.Registry.Register(cmd, handler)
+
+	cmd, handler = discord.AdminRelockCommand()
+	bot.Registry.Register(cmd, handler)
+
+	cmd, handler = discord.AdminInstantResolveCommand()
+	bot.Registry.Register(cmd, handler)
+
+	cmd, handler = discord.AdminResetTreeCommand()
+	bot.Registry.Register(cmd, handler)
+
+	cmd, handler = discord.AdminTreeStatusCommand()
+	bot.Registry.Register(cmd, handler)
+
+	// New progression commands
+	cmd, handler = discord.UnlockProgressCommand()
+	bot.Registry.Register(cmd, handler)
+
+	cmd, handler = discord.EngagementCommand()
+	bot.Registry.Register(cmd, handler)
+
+	cmd, handler = discord.VotingSessionCommand()
+	bot.Registry.Register(cmd, handler)
+
+	cmd, handler = discord.AdminStartVotingCommand()
+	bot.Registry.Register(cmd, handler)
+
+	cmd, handler = discord.AdminEndVotingCommand()
+	bot.Registry.Register(cmd, handler)
+
+	cmd, handler = discord.AdminAddContributionCommand()
+	bot.Registry.Register(cmd, handler)
+
+	cmd, handler = discord.AdminReloadWeightsCommand()
+	bot.Registry.Register(cmd, handler)
+
 	cmd, handler = discord.InfoCommand()
+	bot.Registry.Register(cmd, handler)
+
+	cmd, handler = discord.JobBonusCommand()
 	bot.Registry.Register(cmd, handler)
 
 	// Economy commands
@@ -142,6 +182,12 @@ func main() {
 	cmd, handler = discord.RemoveItemCommand()
 	bot.Registry.Register(cmd, handler)
 
+	cmd, handler = discord.AdminAwardXPCommand()
+	bot.Registry.Register(cmd, handler)
+
+	cmd, handler = discord.CheckTimeoutCommand()
+	bot.Registry.Register(cmd, handler)
+
 	cmd, handler = discord.ReloadCommand(bot)
 	bot.Registry.Register(cmd, handler)
 
@@ -158,7 +204,7 @@ func main() {
 	if forceUpdate {
 		slog.Info("Force command update enabled via environment variable")
 	}
-	
+
 	if err := bot.RegisterCommands(bot.Registry, forceUpdate); err != nil {
 		slog.Error("Failed to register commands", "error", err)
 		// Don't exit - bot can still run if commands are already registered

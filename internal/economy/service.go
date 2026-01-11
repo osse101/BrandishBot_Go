@@ -13,18 +13,6 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
-// Repository defines the interface for data access required by the economy service
-type Repository interface {
-	GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error)
-	GetItemByName(ctx context.Context, itemName string) (*domain.Item, error)
-	GetInventory(ctx context.Context, userID string) (*domain.Inventory, error)
-	UpdateInventory(ctx context.Context, userID string, inventory domain.Inventory) error
-	GetSellablePrices(ctx context.Context) ([]domain.Item, error)
-	IsItemBuyable(ctx context.Context, itemName string) (bool, error)
-	GetBuyablePrices(ctx context.Context) ([]domain.Item, error)
-	BeginTx(ctx context.Context) (repository.Tx, error)
-}
-
 // Service defines the interface for economy operations
 type Service interface {
 	GetSellablePrices(ctx context.Context) ([]domain.Item, error)
@@ -40,13 +28,13 @@ type JobService interface {
 }
 
 type service struct {
-	repo       Repository
+	repo       repository.Economy
 	jobService JobService
 	wg         sync.WaitGroup
 }
 
 // NewService creates a new economy service
-func NewService(repo Repository, jobService JobService) Service {
+func NewService(repo repository.Economy, jobService JobService) Service {
 	return &service{
 		repo:       repo,
 		jobService: jobService,
@@ -69,7 +57,7 @@ func (s *service) getSellEntities(ctx context.Context, platform, platformID, ite
 		return nil, nil, nil, fmt.Errorf("failed to get user: %w", err)
 	}
 	if user == nil {
-		return nil, nil, nil, fmt.Errorf("user not found")
+		return nil, nil, nil, domain.ErrUserNotFound
 	}
 
 	item, err := s.repo.GetItemByName(ctx, itemName)
@@ -78,7 +66,7 @@ func (s *service) getSellEntities(ctx context.Context, platform, platformID, ite
 		return nil, nil, nil, fmt.Errorf("failed to get item: %w", err)
 	}
 	if item == nil {
-		return nil, nil, nil, fmt.Errorf("item not found: %s", itemName)
+		return nil, nil, nil, fmt.Errorf("%w: %s", domain.ErrItemNotFound, itemName)
 	}
 
 	moneyItem, err := s.repo.GetItemByName(ctx, domain.ItemMoney)
@@ -87,7 +75,7 @@ func (s *service) getSellEntities(ctx context.Context, platform, platformID, ite
 		return nil, nil, nil, fmt.Errorf("failed to get money item: %w", err)
 	}
 	if moneyItem == nil {
-		return nil, nil, nil, fmt.Errorf("money item not found")
+		return nil, nil, nil, fmt.Errorf("%w: %s", domain.ErrItemNotFound, domain.ItemMoney)
 	}
 
 	return user, item, moneyItem, nil
@@ -176,6 +164,7 @@ func (s *service) SellItem(ctx context.Context, platform, platformID, username, 
 
 	// Award Merchant XP based on transaction value (async)
 	xp := calculateMerchantXP(moneyGained)
+	s.wg.Add(1)
 	go s.awardMerchantXP(context.Background(), user.ID, xp, "sell", itemName, moneyGained)
 
 	log.Info("Item sold", "username", username, "item", itemName, "quantity", actualSellQuantity, "moneyGained", moneyGained)
@@ -185,10 +174,10 @@ func (s *service) SellItem(ctx context.Context, platform, platformID, username, 
 // validateBuyRequest validates the buy request parameters
 func validateBuyRequest(quantity int) error {
 	if quantity <= 0 {
-		return fmt.Errorf("invalid quantity: %d", quantity)
+		return fmt.Errorf("invalid %w: %d", domain.ErrInvalidInput, quantity)
 	}
 	if quantity > domain.MaxTransactionQuantity {
-		return fmt.Errorf("quantity %d exceeds maximum %d", quantity, domain.MaxTransactionQuantity)
+		return fmt.Errorf("quantity %d exceeds maximum allowed (%d)", quantity, domain.MaxTransactionQuantity)
 	}
 	return nil
 }
@@ -322,6 +311,7 @@ func (s *service) BuyItem(ctx context.Context, platform, platformID, username, i
 
 	// Award Merchant XP based on transaction value (async)
 	xp := calculateMerchantXP(cost)
+	s.wg.Add(1)
 	go s.awardMerchantXP(context.Background(), user.ID, xp, "buy", itemName, cost)
 
 	log.Info("Item purchased", "username", username, "item", itemName, "quantity", actualQuantity)
@@ -347,8 +337,8 @@ func calculateMerchantXP(transactionValue int) int {
 }
 
 // awardMerchantXP awards Merchant job XP for buy/sell transactions
+// NOTE: Caller must call s.wg.Add(1) before launching this in a goroutine
 func (s *service) awardMerchantXP(ctx context.Context, userID string, xp int, action, itemName string, value int) {
-	s.wg.Add(1)
 	defer s.wg.Done()
 
 	if s.jobService == nil || xp <= 0 {

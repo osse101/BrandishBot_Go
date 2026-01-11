@@ -2,18 +2,16 @@ package user
 
 import (
 	"context"
-	"os"
 	"testing"
 	"time"
 
-	"github.com/osse101/BrandishBot_Go/internal/crafting"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/lootbox"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
-// MockRepo is a minimal mock for the repository needed for lootbox tests
 // MockRepo is a minimal mock for the repository needed for lootbox tests
 type MockRepo struct {
 	mock.Mock
@@ -36,6 +34,14 @@ func (m *MockRepo) DeleteUser(ctx context.Context, userID string) error {
 
 func (m *MockRepo) GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error) {
 	args := m.Called(ctx, platform, platformID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.User), args.Error(1)
+}
+
+func (m *MockRepo) GetUserByPlatformUsername(ctx context.Context, platform, username string) (*domain.User, error) {
+	args := m.Called(ctx, platform, username)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -84,6 +90,14 @@ func (m *MockRepo) GetItemsByIDs(ctx context.Context, itemIDs []int) ([]domain.I
 	return args.Get(0).([]domain.Item), args.Error(1)
 }
 
+func (m *MockRepo) GetItemsByNames(ctx context.Context, names []string) ([]domain.Item, error) {
+	args := m.Called(ctx, names)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]domain.Item), args.Error(1)
+}
+
 func (m *MockRepo) GetItemByID(ctx context.Context, id int) (*domain.Item, error) {
 	args := m.Called(ctx, id)
 	if args.Get(0) == nil {
@@ -113,12 +127,12 @@ func (m *MockRepo) IsItemBuyable(ctx context.Context, itemName string) (bool, er
 	return args.Bool(0), args.Error(1)
 }
 
-func (m *MockRepo) BeginTx(ctx context.Context) (repository.Tx, error) {
+func (m *MockRepo) BeginTx(ctx context.Context) (repository.UserTx, error) {
 	args := m.Called(ctx)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(repository.Tx), args.Error(1)
+	return args.Get(0).(repository.UserTx), args.Error(1)
 }
 
 func (m *MockRepo) GetRecipeByTargetItemID(ctx context.Context, itemID int) (*domain.Recipe, error) {
@@ -139,12 +153,12 @@ func (m *MockRepo) UnlockRecipe(ctx context.Context, userID string, recipeID int
 	return args.Error(0)
 }
 
-func (m *MockRepo) GetUnlockedRecipesForUser(ctx context.Context, userID string) ([]crafting.UnlockedRecipeInfo, error) {
+func (m *MockRepo) GetUnlockedRecipesForUser(ctx context.Context, userID string) ([]repository.UnlockedRecipeInfo, error) {
 	args := m.Called(ctx, userID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]crafting.UnlockedRecipeInfo), args.Error(1)
+	return args.Get(0).([]repository.UnlockedRecipeInfo), args.Error(1)
 }
 
 func (m *MockRepo) GetLastCooldown(ctx context.Context, userID, action string) (*time.Time, error) {
@@ -160,11 +174,40 @@ func (m *MockRepo) UpdateCooldown(ctx context.Context, userID, action string, ti
 	return args.Error(0)
 }
 
-// Helper to create a service with a mock repo
-func createTestService(repo *MockRepo) *service {
+func (m *MockRepo) MergeUsersInTransaction(ctx context.Context, primaryUserID, secondaryUserID string, mergedUser domain.User, mergedInventory domain.Inventory) error {
+	args := m.Called(ctx, primaryUserID, secondaryUserID, mergedUser, mergedInventory)
+	return args.Error(0)
+}
+
+func (m *MockRepo) GetAllItems(ctx context.Context) ([]domain.Item, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]domain.Item), args.Error(1)
+}
+
+// MockLootboxService is a mock for lootbox.Service
+type MockLootboxService struct {
+	mock.Mock
+}
+
+func (m *MockLootboxService) OpenLootbox(ctx context.Context, lootboxName string, quantity int) ([]lootbox.DroppedItem, error) {
+	args := m.Called(ctx, lootboxName, quantity)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]lootbox.DroppedItem), args.Error(1)
+}
+
+// Helper to create a service with a mock repo and lootbox service
+func createTestService(repo *MockRepo, lootboxSvc *MockLootboxService) *service {
+	namingResolver := NewMockNamingResolver()
+
 	return &service{
-		repo:       repo,
-		lootTables: make(map[string][]LootItem),
+		repo:           repo,
+		lootboxService: lootboxSvc,
+		namingResolver: namingResolver,
 	}
 }
 
@@ -176,17 +219,16 @@ func TestProcessLootbox(t *testing.T) {
 
 	t.Run("Lootbox0 drops money", func(t *testing.T) {
 		repo := new(MockRepo)
-		svc := createTestService(repo)
-
-		// Setup loot table manually for test
-		svc.lootTables[domain.ItemLootbox0] = []LootItem{
-			{ItemName: domain.ItemMoney, Min: 1, Max: 10, Chance: 1.0},
-		}
+		lootboxSvc := new(MockLootboxService)
+		svc := createTestService(repo, lootboxSvc)
 
 		ctx := context.Background()
 
-		// Mock repo responses
-		repo.On("GetItemByName", ctx, domain.ItemMoney).Return(money, nil)
+		// Mock lootbox service response
+		drops := []lootbox.DroppedItem{
+			{ItemID: money.ID, ItemName: domain.ItemMoney, Quantity: 5, Value: 50, ShineLevel: "COMMON"},
+		}
+		lootboxSvc.On("OpenLootbox", ctx, domain.ItemLootbox0, 1).Return(drops, nil)
 
 		// Setup inventory with lootbox0
 		inventory := &domain.Inventory{
@@ -196,11 +238,12 @@ func TestProcessLootbox(t *testing.T) {
 		}
 
 		// Execute
-		msg, err := svc.processLootbox(ctx, inventory, lootbox0, 1)
+		// Pass nil user as it's not used in this test path (except for stats which is nil here)
+		msg, err := svc.processLootbox(ctx, nil, inventory, lootbox0, 1)
 
 		// Verify
 		assert.NoError(t, err)
-		assert.Contains(t, msg, "Opened 1 lootbox_tier0")
+		assert.Contains(t, msg, "Opened")
 		assert.Contains(t, msg, "money")
 
 		// Verify inventory changes
@@ -213,17 +256,19 @@ func TestProcessLootbox(t *testing.T) {
 			}
 			if slot.ItemID == money.ID {
 				foundMoney = true
-				assert.GreaterOrEqual(t, slot.Quantity, 1)
-				assert.LessOrEqual(t, slot.Quantity, 10)
+				assert.Equal(t, 5, slot.Quantity)
 			}
 		}
 		assert.False(t, foundLootbox, "Lootbox should be consumed")
 		assert.True(t, foundMoney, "Money should be added")
+
+		lootboxSvc.AssertExpectations(t)
 	})
 
 	t.Run("Lootbox0 insufficient quantity", func(t *testing.T) {
 		repo := new(MockRepo)
-		svc := createTestService(repo)
+		lootboxSvc := new(MockLootboxService)
+		svc := createTestService(repo, lootboxSvc)
 		ctx := context.Background()
 
 		inventory := &domain.Inventory{
@@ -232,39 +277,8 @@ func TestProcessLootbox(t *testing.T) {
 			},
 		}
 
-		_, err := svc.processLootbox(ctx, inventory, lootbox0, 2)
+		_, err := svc.processLootbox(ctx, nil, inventory, lootbox0, 2)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "not enough items")
+		assert.Contains(t, err.Error(), domain.ErrMsgNotEnoughItems)
 	})
-}
-
-func TestLoadLootTables(t *testing.T) {
-	// Create a temporary file
-	content := []byte(`{
-		"test_box": [
-			{"item_name": "money", "min": 1, "max": 10, "chance": 1.0}
-		]
-	}`)
-	tmpfile, err := os.CreateTemp("", "loot_tables.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.Remove(tmpfile.Name()) // clean up
-
-	if _, err := tmpfile.Write(content); err != nil {
-		t.Fatal(err)
-	}
-	if err := tmpfile.Close(); err != nil {
-		t.Fatal(err)
-	}
-
-	repo := new(MockRepo)
-	svc := createTestService(repo)
-
-	err = svc.LoadLootTables(tmpfile.Name())
-	assert.NoError(t, err)
-
-	assert.Contains(t, svc.lootTables, "test_box")
-	assert.Equal(t, 1, len(svc.lootTables["test_box"]))
-	assert.Equal(t, "money", svc.lootTables["test_box"][0].ItemName)
 }

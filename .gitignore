@@ -10,8 +10,12 @@
 bin/
 
 # Built binaries
-/cmd/app/app
 /main
+/app
+/discord
+/debug
+/reset
+/setup
 
 # Test binary, built with `go test -c`
 *.test
@@ -41,3 +45,9 @@ Output/
 # Log files
 logs/
 *.log
+*.jsonl
+
+# Benchmark results (keep baseline.txt, ignore temporary files)
+benchmarks/results/*.txt
+!benchmarks/results/baseline.txt
+benchmarks/profiles/*.prof

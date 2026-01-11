@@ -5,11 +5,12 @@ package domain
 // - PublicName: user-facing command name (e.g., "missile")
 // - DefaultDisplay: fallback display name (e.g., "Ray Gun")
 type Item struct {
-	ID             int    `json:"item_id"`
-	InternalName   string `json:"internal_name"`
-	PublicName     string `json:"public_name"`
-	DefaultDisplay string `json:"default_display"`
-	Description    string `json:"description"`
-	BaseValue      int    `json:"base_value"`
-	Handler        string `json:"handler"`
+	ID             int      `json:"item_id" db:"item_id"`
+	InternalName   string   `json:"internal_name" db:"internal_name"`
+	PublicName     string   `json:"public_name" db:"public_name"`
+	DefaultDisplay string   `json:"default_display" db:"default_display"`
+	Description    string   `json:"description" db:"item_description"`
+	BaseValue      int      `json:"base_value" db:"base_value"`
+	Types          []string `json:"types" db:"types"`               // Populated from join/separate query
+	Handler        *string  `json:"handler,omitempty" db:"handler"` // Nullable: some items have no handler
 }

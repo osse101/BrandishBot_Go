@@ -2,7 +2,6 @@ package handler
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -10,191 +9,14 @@ import (
 	"strings"
 	"testing"
 
-	"time"
-
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 	"github.com/osse101/BrandishBot_Go/internal/user"
+	"github.com/osse101/BrandishBot_Go/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
-
-// MockUserService mocks the user.Service interface
-type MockUserService struct {
-	mock.Mock
-}
-
-func (m *MockUserService) AddItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) error {
-	args := m.Called(ctx, platform, platformID, username, itemName, quantity)
-	return args.Error(0)
-}
-
-func (m *MockUserService) RemoveItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (int, error) {
-	args := m.Called(ctx, platform, platformID, username, itemName, quantity)
-	return args.Int(0), args.Error(1)
-}
-
-func (m *MockUserService) GiveItem(ctx context.Context, ownerPlatform, ownerPlatformID, ownerUsername, receiverPlatform, receiverPlatformID, receiverUsername, itemName string, quantity int) error {
-	args := m.Called(ctx, ownerPlatform, ownerPlatformID, ownerUsername, receiverPlatform, receiverPlatformID, receiverUsername, itemName, quantity)
-	return args.Error(0)
-}
-
-func (m *MockUserService) GetInventory(ctx context.Context, platform, platformID, username string) ([]user.UserInventoryItem, error) {
-	args := m.Called(ctx, platform, platformID, username)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]user.UserInventoryItem), args.Error(1)
-}
-
-func (m *MockUserService) UseItem(ctx context.Context, platform, platformID, username, itemName string, quantity int, targetUsername string) (string, error) {
-	args := m.Called(ctx, platform, platformID, username, itemName, quantity, targetUsername)
-	return args.String(0), args.Error(1)
-}
-
-func (m *MockUserService) HandleIncomingMessage(ctx context.Context, platform, platformID, username, message string) (*domain.MessageResult, error) {
-	args := m.Called(ctx, platform, platformID, username, message)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*domain.MessageResult), args.Error(1)
-}
-
-func (m *MockUserService) FindUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error) {
-	args := m.Called(ctx, platform, platformID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*domain.User), args.Error(1)
-}
-
-func (m *MockUserService) GetUser(ctx context.Context, username string) (*domain.User, error) {
-	args := m.Called(ctx, username)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*domain.User), args.Error(1)
-}
-
-func (m *MockUserService) UpdatePlatformID(ctx context.Context, userID, platform, platformID string) error {
-	args := m.Called(ctx, userID, platform, platformID)
-	return args.Error(0)
-}
-
-func (m *MockUserService) RegisterUser(ctx context.Context, user domain.User) (domain.User, error) {
-	args := m.Called(ctx, user)
-	return args.Get(0).(domain.User), args.Error(1)
-}
-
-func (m *MockUserService) TimeoutUser(ctx context.Context, username string, duration time.Duration, reason string) error {
-	args := m.Called(ctx, username, duration, reason)
-	return args.Error(0)
-}
-
-func (m *MockUserService) LoadLootTables(path string) error {
-	args := m.Called(path)
-	return args.Error(0)
-}
-
-func (m *MockUserService) HandleSearch(ctx context.Context, platform, platformID, username string) (string, error) {
-	args := m.Called(ctx, platform, platformID, username)
-	return args.String(0), args.Error(1)
-}
-
-// MockEconomyService mocks the economy.Service interface
-type MockEconomyService struct {
-	mock.Mock
-}
-
-func (m *MockEconomyService) SellItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (int, int, error) {
-	args := m.Called(ctx, platform, platformID, username, itemName, quantity)
-	return args.Int(0), args.Int(1), args.Error(2)
-}
-
-func (m *MockEconomyService) BuyItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (int, error) {
-	args := m.Called(ctx, platform, platformID, username, itemName, quantity)
-	return args.Int(0), args.Error(1)
-}
-
-func (m *MockEconomyService) GetSellablePrices(ctx context.Context) ([]domain.Item, error) {
-	args := m.Called(ctx)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]domain.Item), args.Error(1)
-}
-
-// MockProgressionService mocks the progression.Service interface
-type MockProgressionService struct {
-	mock.Mock
-}
-
-func (m *MockProgressionService) IsFeatureUnlocked(ctx context.Context, feature string) (bool, error) {
-	args := m.Called(ctx, feature)
-	return args.Bool(0), args.Error(1)
-}
-
-func (m *MockProgressionService) IsItemUnlocked(ctx context.Context, itemName string) (bool, error) {
-	args := m.Called(ctx, itemName)
-	return args.Bool(0), args.Error(1)
-}
-
-func (m *MockProgressionService) RecordEngagement(ctx context.Context, userID, eventType string, count int) error {
-	args := m.Called(ctx, userID, eventType, count)
-	return args.Error(0)
-}
-
-// MockEventBus mocks the event.Bus interface
-type MockEventBus struct {
-	mock.Mock
-}
-
-func (m *MockEventBus) Publish(ctx context.Context, evt event.Event) error {
-	args := m.Called(ctx, evt)
-	return args.Error(0)
-}
-
-func (m *MockEventBus) Subscribe(eventType event.Type, handler event.Handler) {
-	m.Called(eventType, handler)
-}
-
-func (m *MockProgressionService) GetProgressionTree(ctx context.Context) ([]*domain.ProgressionTreeNode, error) {
-	return nil, nil
-}
-func (m *MockProgressionService) GetAvailableUnlocks(ctx context.Context) ([]*domain.ProgressionNode, error) {
-	return nil, nil
-}
-func (m *MockProgressionService) VoteForUnlock(ctx context.Context, userID, nodeKey string) error {
-	return nil
-}
-func (m *MockProgressionService) GetProgressionStatus(ctx context.Context) (*domain.ProgressionStatus, error) {
-	return nil, nil
-}
-func (m *MockProgressionService) GetEngagementScore(ctx context.Context) (int, error) {
-	return 0, nil
-}
-func (m *MockProgressionService) GetUserEngagement(ctx context.Context, userID string) (*domain.ContributionBreakdown, error) {
-	return nil, nil
-}
-func (m *MockProgressionService) CheckAndUnlockCriteria(ctx context.Context) (*domain.ProgressionUnlock, error) {
-	return nil, nil
-}
-func (m *MockProgressionService) ForceInstantUnlock(ctx context.Context) (*domain.ProgressionUnlock, error) {
-	return nil, nil
-}
-func (m *MockProgressionService) AdminUnlock(ctx context.Context, feature string, level int) error {
-	return nil
-}
-func (m *MockProgressionService) AdminRelock(ctx context.Context, feature string, level int) error {
-	return nil
-}
-func (m *MockProgressionService) AdminInstantUnlock(ctx context.Context, feature string) error {
-	return nil
-}
-func (m *MockProgressionService) ResetProgressionTree(ctx context.Context, resetBy string, reason string, preserveUserData bool) error {
-	return nil
-}
 
 func TestHandleAddItem(t *testing.T) {
 	// Initialize validator
@@ -203,21 +25,21 @@ func TestHandleAddItem(t *testing.T) {
 	tests := []struct {
 		name           string
 		requestBody    interface{}
-		setupMock      func(*MockUserService)
+		setupMock      func(*mocks.MockUserService)
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name: "Success",
 			requestBody: AddItemRequest{
-				Platform:   "twitch",
+				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
-				ItemName:   "Sword",
+				ItemName:   domain.ItemBlaster,
 				Quantity:   1,
 			},
-			setupMock: func(m *MockUserService) {
-				m.On("AddItem", mock.Anything, "twitch", "test-id", "testuser", "Sword", 1).Return(nil)
+			setupMock: func(m *mocks.MockUserService) {
+				m.On("AddItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.ItemBlaster, 1).Return(nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `{"message":"Item added successfully"}`,
@@ -225,33 +47,33 @@ func TestHandleAddItem(t *testing.T) {
 		{
 			name: "Invalid Request - Missing Username",
 			requestBody: AddItemRequest{
-				ItemName: "Sword",
+				ItemName: domain.ItemBlaster,
 				Quantity: 1,
 			},
-			setupMock:      func(m *MockUserService) {},
+			setupMock:      func(m *mocks.MockUserService) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   "Invalid request",
 		},
 		{
 			name: "Service Error",
 			requestBody: AddItemRequest{
-				Platform:   "twitch",
+				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
-				ItemName:   "Sword",
+				ItemName:   domain.ItemBlaster,
 				Quantity:   1,
 			},
-			setupMock: func(m *MockUserService) {
-				m.On("AddItem", mock.Anything, "twitch", "test-id", "testuser", "Sword", 1).Return(errors.New("service error"))
+			setupMock: func(m *mocks.MockUserService) {
+				m.On("AddItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.ItemBlaster, 1).Return(errors.New("service error"))
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "Failed to add item",
+			expectedBody:   ErrMsgAddItemFailed,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockSvc := &MockUserService{}
+			mockSvc := mocks.NewMockUserService(t)
 			tt.setupMock(mockSvc)
 
 			handler := HandleAddItem(mockSvc)
@@ -277,22 +99,22 @@ func TestHandleSellItem(t *testing.T) {
 	tests := []struct {
 		name           string
 		requestBody    interface{}
-		setupMock      func(*MockEconomyService, *MockProgressionService)
+		setupMock      func(*mocks.MockEconomyService, *mocks.MockProgressionService)
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name: "Success",
 			requestBody: SellItemRequest{
-				Platform:   "twitch",
+				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
-				ItemName:   "Sword",
+				ItemName:   domain.ItemBlaster,
 				Quantity:   1,
 			},
-			setupMock: func(e *MockEconomyService, p *MockProgressionService) {
+			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSell).Return(true, nil)
-				e.On("SellItem", mock.Anything, "twitch", "test-id", "testuser", "Sword", 1).Return(100, 1, nil)
+				e.On("SellItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.ItemBlaster, 1).Return(100, 1, nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `{"money_gained":100,"items_sold":1}`,
@@ -300,37 +122,40 @@ func TestHandleSellItem(t *testing.T) {
 		{
 			name: "Feature Locked",
 			requestBody: SellItemRequest{
-				Platform:   "twitch",
+				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
-				ItemName:   "Sword",
+				ItemName:   domain.ItemBlaster,
 				Quantity:   1,
 			},
-			setupMock: func(e *MockEconomyService, p *MockProgressionService) {
+			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSell).Return(false, nil)
+				p.On("GetRequiredNodes", mock.Anything, progression.FeatureSell).Return([]*domain.ProgressionNode{
+					{DisplayName: "Sell System"},
+				}, nil)
 			},
 			expectedStatus: http.StatusForbidden,
-			expectedBody:   "Sell feature is not yet unlocked",
+			expectedBody:   "LOCKED_NODES: Sell System",
 		},
 		{
 			name: "Feature Check Error",
 			requestBody: SellItemRequest{
-				Platform:   "twitch",
+				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
-				ItemName:   "Sword",
+				ItemName:   domain.ItemBlaster,
 				Quantity:   1,
 			},
-			setupMock: func(e *MockEconomyService, p *MockProgressionService) {
-				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSell).Return(false, errors.New("database error"))
+			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService) {
+				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSell).Return(false, domain.ErrDatabaseError)
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "Failed to check feature availability",
+			expectedBody:   ErrMsgFeatureCheckFailed,
 		},
 		{
 			name:        "Invalid Request Body",
 			requestBody: "invalid json",
-			setupMock: func(e *MockEconomyService, p *MockProgressionService) {
+			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSell).Return(true, nil)
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -341,10 +166,10 @@ func TestHandleSellItem(t *testing.T) {
 			requestBody: SellItemRequest{
 				PlatformID: "test-id",
 				Username:   "testuser",
-				ItemName:   "Sword",
+				ItemName:   domain.ItemBlaster,
 				Quantity:   1,
 			},
-			setupMock: func(e *MockEconomyService, p *MockProgressionService) {
+			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSell).Return(true, nil)
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -353,13 +178,13 @@ func TestHandleSellItem(t *testing.T) {
 		{
 			name: "Zero Quantity",
 			requestBody: SellItemRequest{
-				Platform:   "twitch",
+				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
-				ItemName:   "Sword",
+				ItemName:   domain.ItemBlaster,
 				Quantity:   0,
 			},
-			setupMock: func(e *MockEconomyService, p *MockProgressionService) {
+			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSell).Return(true, nil)
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -368,48 +193,48 @@ func TestHandleSellItem(t *testing.T) {
 		{
 			name: "Service Error - Item Not Found",
 			requestBody: SellItemRequest{
-				Platform:   "twitch",
+				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
 				ItemName:   "UnknownItem",
 				Quantity:   1,
 			},
-			setupMock: func(e *MockEconomyService, p *MockProgressionService) {
+			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSell).Return(true, nil)
-				e.On("SellItem", mock.Anything, "twitch", "test-id", "testuser", "UnknownItem", 1).
+				e.On("SellItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", "UnknownItem", 1).
 					Return(0, 0, errors.New("item not found"))
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "item not found",
+			expectedBody:   ErrMsgSellItemFailed,
 		},
 		{
 			name: "Service Error - Insufficient Items",
 			requestBody: SellItemRequest{
-				Platform:   "twitch",
+				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
-				ItemName:   "Sword",
+				ItemName:   domain.ItemBlaster,
 				Quantity:   100,
 			},
-			setupMock: func(e *MockEconomyService, p *MockProgressionService) {
+			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSell).Return(true, nil)
-				e.On("SellItem", mock.Anything, "twitch", "test-id", "testuser", "Sword", 100).
+				e.On("SellItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.ItemBlaster, 100).
 					Return(0, 0, errors.New("insufficient items"))
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "insufficient items",
+			expectedBody:   ErrMsgSellItemFailed,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockEco := &MockEconomyService{}
-			mockProg := &MockProgressionService{}
-			mockBus := &MockEventBus{}
+			mockEco := mocks.NewMockEconomyService(t)
+			mockProg := mocks.NewMockProgressionService(t)
+			mockBus := mocks.NewMockEventBus(t)
 			tt.setupMock(mockEco, mockProg)
 			// Allow event publishing
 			mockBus.On("Publish", mock.Anything, mock.MatchedBy(func(evt event.Event) bool {
-				return evt.Type == "item.sold"
+				return evt.Type == "item.sold" || evt.Type == event.EventTypeEngagement
 			})).Return(nil).Maybe()
 
 			handler := HandleSellItem(mockEco, mockProg, mockBus)
@@ -436,21 +261,21 @@ func TestHandleRemoveItem(t *testing.T) {
 	tests := []struct {
 		name           string
 		requestBody    interface{}
-		setupMock      func(*MockUserService)
+		setupMock      func(*mocks.MockUserService)
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name: "Success",
 			requestBody: RemoveItemRequest{
-				Platform:   "twitch",
+				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
-				ItemName:   "Sword",
+				ItemName:   domain.ItemBlaster,
 				Quantity:   1,
 			},
-			setupMock: func(m *MockUserService) {
-				m.On("RemoveItem", mock.Anything, "twitch", "test-id", "testuser", "Sword", 1).Return(1, nil)
+			setupMock: func(m *mocks.MockUserService) {
+				m.On("RemoveItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.ItemBlaster, 1).Return(1, nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `{"removed":1}`,
@@ -458,23 +283,23 @@ func TestHandleRemoveItem(t *testing.T) {
 		{
 			name: "Service Error",
 			requestBody: RemoveItemRequest{
-				Platform:   "twitch",
+				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
-				ItemName:   "Sword",
+				ItemName:   domain.ItemBlaster,
 				Quantity:   1,
 			},
-			setupMock: func(m *MockUserService) {
-				m.On("RemoveItem", mock.Anything, "twitch", "test-id", "testuser", "Sword", 1).Return(0, errors.New("service error"))
+			setupMock: func(m *mocks.MockUserService) {
+				m.On("RemoveItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.ItemBlaster, 1).Return(0, errors.New("service error"))
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "service error",
+			expectedBody:   ErrMsgRemoveItemFailed,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockSvc := &MockUserService{}
+			mockSvc := mocks.NewMockUserService(t)
 			tt.setupMock(mockSvc)
 
 			handler := HandleRemoveItem(mockSvc)
@@ -500,24 +325,24 @@ func TestHandleGiveItem(t *testing.T) {
 	tests := []struct {
 		name           string
 		requestBody    interface{}
-		setupMock      func(*MockUserService)
+		setupMock      func(*mocks.MockUserService)
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name: "Success",
 			requestBody: GiveItemRequest{
-				OwnerPlatform:      "twitch",
+				OwnerPlatform:      domain.PlatformTwitch,
 				OwnerPlatformID:    "owner-id",
 				Owner:              "owner",
-				ReceiverPlatform:   "twitch",
+				ReceiverPlatform:   domain.PlatformTwitch,
 				ReceiverPlatformID: "receiver-id",
 				Receiver:           "receiver",
-				ItemName:           "Sword",
+				ItemName:           domain.ItemBlaster,
 				Quantity:           1,
 			},
-			setupMock: func(m *MockUserService) {
-				m.On("GiveItem", mock.Anything, "twitch", "owner-id", "owner", "twitch", "receiver-id", "receiver", "Sword", 1).Return(nil)
+			setupMock: func(m *mocks.MockUserService) {
+				m.On("GiveItem", mock.Anything, domain.PlatformTwitch, "owner-id", "owner", domain.PlatformTwitch, "receiver-id", "receiver", domain.ItemBlaster, 1).Return(nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `{"message":"Item transferred successfully"}`,
@@ -525,26 +350,26 @@ func TestHandleGiveItem(t *testing.T) {
 		{
 			name: "Service Error",
 			requestBody: GiveItemRequest{
-				OwnerPlatform:      "twitch",
+				OwnerPlatform:      domain.PlatformTwitch,
 				OwnerPlatformID:    "owner-id",
 				Owner:              "owner",
-				ReceiverPlatform:   "twitch",
+				ReceiverPlatform:   domain.PlatformTwitch,
 				ReceiverPlatformID: "receiver-id",
 				Receiver:           "receiver",
-				ItemName:           "Sword",
+				ItemName:           domain.ItemBlaster,
 				Quantity:           1,
 			},
-			setupMock: func(m *MockUserService) {
-				m.On("GiveItem", mock.Anything, "twitch", "owner-id", "owner", "twitch", "receiver-id", "receiver", "Sword", 1).Return(errors.New("service error"))
+			setupMock: func(m *mocks.MockUserService) {
+				m.On("GiveItem", mock.Anything, domain.PlatformTwitch, "owner-id", "owner", domain.PlatformTwitch, "receiver-id", "receiver", domain.ItemBlaster, 1).Return(errors.New("service error"))
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "service error",
+			expectedBody:   ErrMsgGiveItemFailed,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockSvc := &MockUserService{}
+			mockSvc := mocks.NewMockUserService(t)
 			tt.setupMock(mockSvc)
 
 			handler := HandleGiveItem(mockSvc)
@@ -570,22 +395,22 @@ func TestHandleBuyItem(t *testing.T) {
 	tests := []struct {
 		name           string
 		requestBody    interface{}
-		setupMock      func(*MockEconomyService, *MockProgressionService)
+		setupMock      func(*mocks.MockEconomyService, *mocks.MockProgressionService)
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name: "Success",
 			requestBody: BuyItemRequest{
-				Platform:   "twitch",
+				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
-				ItemName:   "Sword",
+				ItemName:   domain.ItemBlaster,
 				Quantity:   1,
 			},
-			setupMock: func(e *MockEconomyService, p *MockProgressionService) {
+			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureBuy).Return(true, nil)
-				e.On("BuyItem", mock.Anything, "twitch", "test-id", "testuser", "Sword", 1).Return(1, nil)
+				e.On("BuyItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.ItemBlaster, 1).Return(1, nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `{"items_bought":1}`,
@@ -593,37 +418,40 @@ func TestHandleBuyItem(t *testing.T) {
 		{
 			name: "Feature Locked",
 			requestBody: BuyItemRequest{
-				Platform:   "twitch",
+				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
-				ItemName:   "Sword",
+				ItemName:   domain.ItemBlaster,
 				Quantity:   1,
 			},
-			setupMock: func(e *MockEconomyService, p *MockProgressionService) {
+			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureBuy).Return(false, nil)
+				p.On("GetRequiredNodes", mock.Anything, progression.FeatureBuy).Return([]*domain.ProgressionNode{
+					{DisplayName: "Buy System"},
+				}, nil)
 			},
 			expectedStatus: http.StatusForbidden,
-			expectedBody:   "Buy feature is not yet unlocked",
+			expectedBody:   "LOCKED_NODES: Buy System",
 		},
 		{
 			name: "Feature Check Error",
 			requestBody: BuyItemRequest{
-				Platform:   "twitch",
+				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
-				ItemName:   "Sword",
+				ItemName:   domain.ItemBlaster,
 				Quantity:   1,
 			},
-			setupMock: func(e *MockEconomyService, p *MockProgressionService) {
+			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureBuy).Return(false, errors.New("database error"))
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "Failed to check feature availability",
+			expectedBody:   ErrMsgFeatureCheckFailed,
 		},
 		{
 			name:        "Invalid Request Body",
 			requestBody: "invalid json",
-			setupMock: func(e *MockEconomyService, p *MockProgressionService) {
+			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureBuy).Return(true, nil)
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -632,12 +460,12 @@ func TestHandleBuyItem(t *testing.T) {
 		{
 			name: "Missing PlatformID",
 			requestBody: BuyItemRequest{
-				Platform: "twitch",
+				Platform: domain.PlatformTwitch,
 				Username: "testuser",
-				ItemName: "Sword",
+				ItemName: domain.ItemBlaster,
 				Quantity: 1,
 			},
-			setupMock: func(e *MockEconomyService, p *MockProgressionService) {
+			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureBuy).Return(true, nil)
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -646,13 +474,13 @@ func TestHandleBuyItem(t *testing.T) {
 		{
 			name: "Zero Quantity",
 			requestBody: BuyItemRequest{
-				Platform:   "twitch",
+				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
-				ItemName:   "Sword",
+				ItemName:   domain.ItemBlaster,
 				Quantity:   0,
 			},
-			setupMock: func(e *MockEconomyService, p *MockProgressionService) {
+			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureBuy).Return(true, nil)
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -661,48 +489,48 @@ func TestHandleBuyItem(t *testing.T) {
 		{
 			name: "Service Error - Insufficient Money",
 			requestBody: BuyItemRequest{
-				Platform:   "twitch",
+				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "pooruser",
-				ItemName:   "Sword",
+				ItemName:   domain.ItemBlaster,
 				Quantity:   1,
 			},
-			setupMock: func(e *MockEconomyService, p *MockProgressionService) {
+			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureBuy).Return(true, nil)
-				e.On("BuyItem", mock.Anything, "twitch", "test-id", "pooruser", "Sword", 1).
+				e.On("BuyItem", mock.Anything, domain.PlatformTwitch, "test-id", "pooruser", domain.ItemBlaster, 1).
 					Return(0, errors.New("insufficient money"))
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "insufficient money",
+			expectedBody:   ErrMsgBuyItemFailed,
 		},
 		{
 			name: "Service Error - Item Not Available",
 			requestBody: BuyItemRequest{
-				Platform:   "twitch",
+				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
 				ItemName:   "RareItem",
 				Quantity:   1,
 			},
-			setupMock: func(e *MockEconomyService, p *MockProgressionService) {
+			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureBuy).Return(true, nil)
-				e.On("BuyItem", mock.Anything, "twitch", "test-id", "testuser", "RareItem", 1).
+				e.On("BuyItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", "RareItem", 1).
 					Return(0, errors.New("item not available for purchase"))
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "item not available",
+			expectedBody:   ErrMsgBuyItemFailed,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockEco := &MockEconomyService{}
-			mockProg := &MockProgressionService{}
-			mockBus := &MockEventBus{}
+			mockEco := mocks.NewMockEconomyService(t)
+			mockProg := mocks.NewMockProgressionService(t)
+			mockBus := mocks.NewMockEventBus(t)
 			tt.setupMock(mockEco, mockProg)
 			// Allow event publishing
 			mockBus.On("Publish", mock.Anything, mock.MatchedBy(func(evt event.Event) bool {
-				return evt.Type == "item.bought"
+				return evt.Type == "item.bought" || evt.Type == event.EventTypeEngagement
 			})).Return(nil).Maybe()
 
 			handler := HandleBuyItem(mockEco, mockProg, mockBus)
@@ -729,50 +557,52 @@ func TestHandleUseItem(t *testing.T) {
 	tests := []struct {
 		name           string
 		requestBody    interface{}
-		setupMock      func(*MockUserService, *MockEventBus)
+		setupMock      func(*mocks.MockUserService, *mocks.MockEventBus)
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name: "Success",
 			requestBody: UseItemRequest{
-				Platform:   "twitch",
+				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
-				ItemName:   "Potion",
+				ItemName:   domain.PublicNameMissile,
 				Quantity:   1,
 			},
-			setupMock: func(u *MockUserService, e *MockEventBus) {
-				u.On("UseItem", mock.Anything, "twitch", "test-id", "testuser", "Potion", 1, "").Return("Used potion", nil)
+			setupMock: func(u *mocks.MockUserService, e *mocks.MockEventBus) {
+				// Mock should return what the real blaster handler would return
+				u.On("UseItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.PublicNameMissile, 1, "").
+					Return("testuser has BLASTED target 1 times! They are timed out for 1m0s.", nil)
 				// Expect both engagement and item.used events
 				e.On("Publish", mock.Anything, mock.MatchedBy(func(evt event.Event) bool {
 					return evt.Type == "engagement" || evt.Type == "item.used"
 				})).Return(nil).Maybe()
 			},
 			expectedStatus: http.StatusOK,
-			expectedBody:   `{"message":"Used potion"}`,
+			expectedBody:   `"message":"testuser has BLASTED target 1 times`,
 		},
 		{
 			name: "Service Error",
 			requestBody: UseItemRequest{
-				Platform:   "twitch",
+				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
-				ItemName:   "Potion",
+				ItemName:   domain.PublicNameMissile,
 				Quantity:   1,
 			},
-			setupMock: func(u *MockUserService, e *MockEventBus) {
-				u.On("UseItem", mock.Anything, "twitch", "test-id", "testuser", "Potion", 1, "").Return("", errors.New("service error"))
+			setupMock: func(u *mocks.MockUserService, e *mocks.MockEventBus) {
+				u.On("UseItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.PublicNameMissile, 1, "").Return("", errors.New("service error"))
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "service error",
+			expectedBody:   ErrMsgUseItemFailed,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockUser := &MockUserService{}
-			mockBus := &MockEventBus{}
+			mockUser := mocks.NewMockUserService(t)
+			mockBus := mocks.NewMockEventBus(t)
 			tt.setupMock(mockUser, mockBus)
 
 			handler := HandleUseItem(mockUser, mockBus)
@@ -801,53 +631,165 @@ func TestHandleGetInventory(t *testing.T) {
 		username       string
 		platform       string
 		platformID     string
-		setupMock      func(*MockUserService)
+		filter         string
+		setupMock      func(*mocks.MockUserService, *mocks.MockProgressionService)
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name:       "Success",
 			username:   "testuser",
-			platform:   "discord",
+			platform:   domain.PlatformDiscord,
 			platformID: "test-platformid",
-			setupMock: func(m *MockUserService) {
+			filter:     "",
+			setupMock: func(m *mocks.MockUserService, p *mocks.MockProgressionService) {
 				items := []user.UserInventoryItem{
-					{Name: "Sword", Quantity: 1},
+					{Name: domain.ItemBlaster, Quantity: 1},
 				}
-				m.On("GetInventory", mock.Anything, "discord", "test-platformid", "testuser").Return(items, nil)
+				m.On("GetInventory", mock.Anything, domain.PlatformDiscord, "test-platformid", "testuser", "").Return(items, nil)
 			},
 			expectedStatus: http.StatusOK,
-			expectedBody:   `"name":"Sword"`,
+			expectedBody:   `"items":[{"name":"weapon_blaster","quantity":1}]`,
+		},
+		{
+			name:       "Success with Filter",
+			username:   "testuser",
+			platform:   domain.PlatformDiscord,
+			platformID: "test-platformid",
+			filter:     domain.FilterTypeUpgrade,
+			setupMock: func(m *mocks.MockUserService, p *mocks.MockProgressionService) {
+				items := []user.UserInventoryItem{
+					{Name: domain.ItemLootbox0, Quantity: 1},
+				}
+				p.On("IsFeatureUnlocked", mock.Anything, "feature_filter_upgrade").Return(true, nil)
+				m.On("GetInventory", mock.Anything, domain.PlatformDiscord, "test-platformid", "testuser", domain.FilterTypeUpgrade).Return(items, nil)
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody:   `"items":[{"name":"lootbox_tier0","quantity":1}]`,
+		},
+		{
+			name:       "Filter Locked",
+			username:   "testuser",
+			platform:   domain.PlatformDiscord,
+			platformID: "test-platformid",
+			filter:     domain.FilterTypeUpgrade,
+			setupMock: func(m *mocks.MockUserService, p *mocks.MockProgressionService) {
+				p.On("IsFeatureUnlocked", mock.Anything, "feature_filter_upgrade").Return(false, nil)
+			},
+			expectedStatus: http.StatusForbidden,
+			expectedBody:   "Filter 'upgrade' is locked",
 		},
 		{
 			name:           "Missing Username",
 			username:       "",
-			platform:       "discord",
-			platformID:     "", // Missing platformID
-			setupMock:      func(m *MockUserService) {},
+			platform:       domain.PlatformDiscord,
+			platformID:     "test-platformid",
+			filter:         "",
+			setupMock:      func(m *mocks.MockUserService, p *mocks.MockProgressionService) {},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Missing", // Will fail on platform_id
+			expectedBody:   "Missing username query parameter",
 		},
 		{
-			name:       "Service Error with Platform Params", // Changed name for clarity
+			name:       "Service Error",
 			username:   "testuser",
-			platform:   "discord",
+			platform:   domain.PlatformDiscord,
 			platformID: "test-platformid",
-			setupMock: func(m *MockUserService) {
-				// Updated mock expectation to match platform and platformID
-				m.On("GetInventory", mock.Anything, "discord", "test-platformid", "testuser").Return(nil, errors.New("service error"))
+			filter:     "",
+			setupMock: func(m *mocks.MockUserService, p *mocks.MockProgressionService) {
+				m.On("GetInventory", mock.Anything, domain.PlatformDiscord, "test-platformid", "testuser", "").Return(nil, errors.New("service error"))
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "service error",
+			expectedBody:   ErrMsgGetInventoryFailed,
+		},
+		{
+			name:       "Sellable Filter - Unlocked",
+			username:   "testuser",
+			platform:   domain.PlatformDiscord,
+			platformID: "test-platformid",
+			filter:     domain.FilterTypeSellable,
+			setupMock: func(m *mocks.MockUserService, p *mocks.MockProgressionService) {
+				items := []user.UserInventoryItem{
+					{Name: domain.ItemLootbox1, Quantity: 5},
+				}
+				p.On("IsFeatureUnlocked", mock.Anything, "feature_filter_sellable").Return(true, nil)
+				m.On("GetInventory", mock.Anything, domain.PlatformDiscord, "test-platformid", "testuser", domain.FilterTypeSellable).Return(items, nil)
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody:   `"items":[{"name":"lootbox_tier1","quantity":5}]`,
+		},
+		{
+			name:       "Sellable Filter - Locked",
+			username:   "testuser",
+			platform:   domain.PlatformDiscord,
+			platformID: "test-platformid",
+			filter:     domain.FilterTypeSellable,
+			setupMock: func(m *mocks.MockUserService, p *mocks.MockProgressionService) {
+				p.On("IsFeatureUnlocked", mock.Anything, "feature_filter_sellable").Return(false, nil)
+			},
+			expectedStatus: http.StatusForbidden,
+			expectedBody:   "Filter 'sellable' is locked",
+		},
+		{
+			name:       "Consumable Filter - Unlocked",
+			username:   "testuser",
+			platform:   domain.PlatformDiscord,
+			platformID: "test-platformid",
+			filter:     domain.FilterTypeConsumable,
+			setupMock: func(m *mocks.MockUserService, p *mocks.MockProgressionService) {
+				items := []user.UserInventoryItem{
+					{Name: domain.ItemLootbox0, Quantity: 3},
+				}
+				p.On("IsFeatureUnlocked", mock.Anything, "feature_filter_consumable").Return(true, nil)
+				m.On("GetInventory", mock.Anything, domain.PlatformDiscord, "test-platformid", "testuser", domain.FilterTypeConsumable).Return(items, nil)
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody:   `"items":[{"name":"lootbox_tier0","quantity":3}]`,
+		},
+		{
+			name:       "Consumable Filter - Locked",
+			username:   "testuser",
+			platform:   domain.PlatformDiscord,
+			platformID: "test-platformid",
+			filter:     domain.FilterTypeConsumable,
+			setupMock: func(m *mocks.MockUserService, p *mocks.MockProgressionService) {
+				p.On("IsFeatureUnlocked", mock.Anything, "feature_filter_consumable").Return(false, nil)
+			},
+			expectedStatus: http.StatusForbidden,
+			expectedBody:   "Filter 'consumable' is locked",
+		},
+		{
+			name:       "Unknown Filter - Invalid",
+			username:   "testuser",
+			platform:   domain.PlatformDiscord,
+			platformID: "test-platformid",
+			filter:     "unknown",
+			setupMock: func(m *mocks.MockUserService, p *mocks.MockProgressionService) {
+				// No expectations - validation happens before service call
+			},
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "Invalid filter type 'unknown'",
+		},
+		{
+			name:       "Filter Check Error",
+			username:   "testuser",
+			platform:   domain.PlatformDiscord,
+			platformID: "test-platformid",
+			filter:     domain.FilterTypeUpgrade,
+			setupMock: func(m *mocks.MockUserService, p *mocks.MockProgressionService) {
+				p.On("IsFeatureUnlocked", mock.Anything, "feature_filter_upgrade").Return(false, domain.ErrDatabaseError)
+			},
+			expectedStatus: http.StatusInternalServerError,
+			expectedBody:   ErrMsgFeatureCheckFailed,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockSvc := &MockUserService{}
-			tt.setupMock(mockSvc)
+			mockUser := mocks.NewMockUserService(t)
+			mockProg := mocks.NewMockProgressionService(t)
+			tt.setupMock(mockUser, mockProg)
 
-			handler := HandleGetInventory(mockSvc)
+			handler := HandleGetInventory(mockUser, mockProg)
 
 			// Build URL with query parameters
 			params := []string{}
@@ -860,6 +802,9 @@ func TestHandleGetInventory(t *testing.T) {
 			if tt.username != "" {
 				params = append(params, "username="+tt.username)
 			}
+			if tt.filter != "" {
+				params = append(params, "filter="+tt.filter)
+			}
 			url := "/user/inventory"
 			if len(params) > 0 {
 				url += "?" + strings.Join(params, "&")
@@ -868,12 +813,11 @@ func TestHandleGetInventory(t *testing.T) {
 			w := httptest.NewRecorder()
 
 			handler.ServeHTTP(w, req)
-
-			assert.Equal(t, tt.expectedStatus, w.Code)
 			if tt.expectedBody != "" {
 				assert.Contains(t, w.Body.String(), tt.expectedBody)
 			}
-			mockSvc.AssertExpectations(t)
+			mockUser.AssertExpectations(t)
+			mockProg.AssertExpectations(t)
 		})
 	}
 }

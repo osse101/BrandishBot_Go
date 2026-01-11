@@ -11,6 +11,7 @@ import (
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
+	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
 
 const (
@@ -27,27 +28,7 @@ const (
 	StateExpired   = "expired"   // Timed out
 )
 
-// LinkToken represents a pending link token
-type LinkToken struct {
-	Token            string    `json:"token"`
-	SourcePlatform   string    `json:"source_platform"`
-	SourcePlatformID string    `json:"source_platform_id"`
-	TargetPlatform   string    `json:"target_platform,omitempty"`
-	TargetPlatformID string    `json:"target_platform_id,omitempty"`
-	State            string    `json:"state"`
-	CreatedAt        time.Time `json:"created_at"`
-	ExpiresAt        time.Time `json:"expires_at"`
-}
 
-// Repository defines data access for linking
-type Repository interface {
-	CreateToken(ctx context.Context, token *LinkToken) error
-	GetToken(ctx context.Context, tokenStr string) (*LinkToken, error)
-	UpdateToken(ctx context.Context, token *LinkToken) error
-	InvalidateTokensForSource(ctx context.Context, platform, platformID string) error
-	GetClaimedTokenForSource(ctx context.Context, platform, platformID string) (*LinkToken, error)
-	CleanupExpired(ctx context.Context) error
-}
 
 // UserService defines user operations needed for linking
 type UserService interface {
@@ -61,10 +42,10 @@ type UserService interface {
 // Service defines the linking service interface
 type Service interface {
 	// InitiateLink generates a token for cross-platform linking (Step 1)
-	InitiateLink(ctx context.Context, platform, platformID string) (*LinkToken, error)
+	InitiateLink(ctx context.Context, platform, platformID string) (*repository.LinkToken, error)
 
 	// ClaimLink claims a token from another platform (Step 2)
-	ClaimLink(ctx context.Context, tokenStr, platform, platformID string) (*LinkToken, error)
+	ClaimLink(ctx context.Context, tokenStr, platform, platformID string) (*repository.LinkToken, error)
 
 	// ConfirmLink confirms the link from the source platform (Step 3)
 	ConfirmLink(ctx context.Context, platform, platformID string) (*LinkResult, error)
@@ -88,18 +69,18 @@ type LinkResult struct {
 // LinkStatus represents current linking status
 type LinkStatus struct {
 	LinkedPlatforms []string   `json:"linked_platforms"`
-	PendingToken    *LinkToken `json:"pending_token,omitempty"`
+	PendingToken    *repository.LinkToken `json:"pending_token,omitempty"`
 }
 
 type service struct {
-	repo        Repository
+	repo        repository.Linking
 	userService UserService
 	unlinkCache map[string]time.Time // platform:platformID:targetPlatform -> expiry
 	mu          sync.RWMutex
 }
 
 // NewService creates a new linking service
-func NewService(repo Repository, userService UserService) Service {
+func NewService(repo repository.Linking, userService UserService) Service {
 	return &service{
 		repo:        repo,
 		userService: userService,
@@ -108,7 +89,7 @@ func NewService(repo Repository, userService UserService) Service {
 }
 
 // InitiateLink generates a token for cross-platform linking (Step 1)
-func (s *service) InitiateLink(ctx context.Context, platform, platformID string) (*LinkToken, error) {
+func (s *service) InitiateLink(ctx context.Context, platform, platformID string) (*repository.LinkToken, error) {
 	log := logger.FromContext(ctx)
 
 	// Invalidate any existing tokens for this source
@@ -122,7 +103,7 @@ func (s *service) InitiateLink(ctx context.Context, platform, platformID string)
 		return nil, fmt.Errorf("failed to generate token: %w", err)
 	}
 
-	token := &LinkToken{
+	token := &repository.LinkToken{
 		Token:            tokenStr,
 		SourcePlatform:   platform,
 		SourcePlatformID: platformID,
@@ -140,7 +121,7 @@ func (s *service) InitiateLink(ctx context.Context, platform, platformID string)
 }
 
 // ClaimLink claims a token from another platform (Step 2)
-func (s *service) ClaimLink(ctx context.Context, tokenStr, platform, platformID string) (*LinkToken, error) {
+func (s *service) ClaimLink(ctx context.Context, tokenStr, platform, platformID string) (*repository.LinkToken, error) {
 	log := logger.FromContext(ctx)
 
 	token, err := s.repo.GetToken(ctx, strings.ToUpper(tokenStr))
@@ -155,7 +136,9 @@ func (s *service) ClaimLink(ctx context.Context, tokenStr, platform, platformID 
 
 	if time.Now().After(token.ExpiresAt) {
 		token.State = StateExpired
-		s.repo.UpdateToken(ctx, token)
+		if err := s.repo.UpdateToken(ctx, token); err != nil {
+			log.Error("Failed to expire token", "error", err)
+		}
 		return nil, fmt.Errorf("token expired")
 	}
 
@@ -190,7 +173,9 @@ func (s *service) ConfirmLink(ctx context.Context, platform, platformID string) 
 	// Verify not expired
 	if time.Now().After(token.ExpiresAt) {
 		token.State = StateExpired
-		s.repo.UpdateToken(ctx, token)
+		if err := s.repo.UpdateToken(ctx, token); err != nil {
+			log.Error("Failed to expire token", "error", err)
+		}
 		return nil, fmt.Errorf("link token expired")
 	}
 
@@ -200,7 +185,7 @@ func (s *service) ConfirmLink(ctx context.Context, platform, platformID string) 
 		// Create new user for source
 		newUser := &domain.User{}
 		setPlatformID(newUser, token.SourcePlatform, token.SourcePlatformID)
-		
+
 		// MUST register to get an ID before merging
 		registered, err := s.userService.RegisterUser(ctx, *newUser)
 		if err != nil {
@@ -214,7 +199,7 @@ func (s *service) ConfirmLink(ctx context.Context, platform, platformID string) 
 		// Target doesn't exist - this logic path seems duplicated/confusing given source registration above.
 		// If source was just created, it has one platform. Testing target existence is correct.
 		// If target missing, just add platform to source.
-		
+
 		setPlatformID(sourceUser, token.TargetPlatform, token.TargetPlatformID)
 		// Update the existing/new source user with the second platform
 		updatedUser, err := s.userService.RegisterUser(ctx, *sourceUser)
@@ -223,7 +208,9 @@ func (s *service) ConfirmLink(ctx context.Context, platform, platformID string) 
 		}
 
 		token.State = StateConfirmed
-		s.repo.UpdateToken(ctx, token)
+		if err := s.repo.UpdateToken(ctx, token); err != nil {
+			return nil, fmt.Errorf("failed to update token state: %w", err)
+		}
 
 		log.Info("Accounts linked", "user_id", updatedUser.ID, "platforms", []string{token.SourcePlatform, token.TargetPlatform})
 
@@ -239,7 +226,9 @@ func (s *service) ConfirmLink(ctx context.Context, platform, platformID string) 
 	}
 
 	token.State = StateConfirmed
-	s.repo.UpdateToken(ctx, token)
+	if err := s.repo.UpdateToken(ctx, token); err != nil {
+		return nil, fmt.Errorf("failed to update token state: %w", err)
+	}
 
 	log.Info("Accounts merged", "primary_id", sourceUser.ID, "secondary_id", targetUser.ID)
 
@@ -293,7 +282,7 @@ func (s *service) ConfirmUnlink(ctx context.Context, platform, platformID, targe
 	log := logger.FromContext(ctx)
 
 	key := fmt.Sprintf("%s:%s:%s", platform, platformID, targetPlatform)
-	
+
 	s.mu.RLock()
 	expiry, exists := s.unlinkCache[key]
 	s.mu.RUnlock()

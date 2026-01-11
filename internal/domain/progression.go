@@ -4,17 +4,35 @@ import "time"
 
 // ProgressionNode represents a node in the progression tree
 type ProgressionNode struct {
-	ID           int       `json:"id"`
-	NodeKey      string    `json:"node_key"`
-	NodeType     string    `json:"node_type"` // 'feature', 'item', 'mechanic', 'upgrade'
-	DisplayName  string    `json:"display_name"`
-	Description  string    `json:"description"`
-	ParentNodeID *int      `json:"parent_node_id"` // NULL for root
-	MaxLevel     int       `json:"max_level"`
-	UnlockCost   int       `json:"unlock_cost"`
-	SortOrder    int       `json:"sort_order"`
-	CreatedAt    time.Time `json:"created_at"`
+	ID          int    `json:"id"`
+	NodeKey     string `json:"node_key"`
+	NodeType    string `json:"node_type"` // 'feature', 'item', 'mechanic', 'upgrade'
+	DisplayName string `json:"display_name"`
+	Description string `json:"description"`
+	MaxLevel    int    `json:"max_level"`
+	UnlockCost  int    `json:"unlock_cost"` // Calculated from tier+size, stored for performance
+
+	// Dynamic cost calculation fields (v2.0)
+	Tier     int    `json:"tier"`     // 0-4: Foundation → Endgame
+	Size     string `json:"size"`     // small, medium, large
+	Category string `json:"category"` // Grouping: economy, combat, etc.
+
+	SortOrder int       `json:"sort_order"`
+	CreatedAt time.Time `json:"created_at"`
+	// Value modification configuration (nullable JSON in DB)
+	ModifierConfig *ModifierConfig `json:"modifier_config,omitempty"`
 }
+
+// ModifierConfig defines how a progression node modifies feature values
+type ModifierConfig struct {
+	FeatureKey    string   `json:"feature_key"`
+	ModifierType  string   `json:"modifier_type"`
+	PerLevelValue float64  `json:"per_level_value"`
+	BaseValue     float64  `json:"base_value"`
+	MaxValue      *float64 `json:"max_value,omitempty"`
+	MinValue      *float64 `json:"min_value,omitempty"`
+}
+
 
 // ProgressionUnlock represents a globally unlocked node
 type ProgressionUnlock struct {
@@ -126,8 +144,9 @@ type ProgressionVotingOption struct {
 	NodeID            int              `json:"node_id"`
 	TargetLevel       int              `json:"target_level"`
 	VoteCount         int              `json:"vote_count"`
-	LastHighestVoteAt *time.Time       `json:"last_highest_vote_at"` // When first reached current highest
-	NodeDetails       *ProgressionNode `json:"node_details,omitempty"`
+	LastHighestVoteAt   *time.Time       `json:"last_highest_vote_at"` // When first reached current highest
+	NodeDetails         *ProgressionNode `json:"node_details,omitempty"`
+	EstimatedUnlockDate *time.Time       `json:"estimated_unlock_date,omitempty"`
 }
 
 // UnlockProgress tracks contribution points accumulated toward next unlock
@@ -139,6 +158,7 @@ type UnlockProgress struct {
 	StartedAt                time.Time  `json:"started_at"`
 	UnlockedAt               *time.Time `json:"unlocked_at"`
 	VotingSessionID          *int       `json:"voting_session_id"`
+	EstimatedUnlockDate      *time.Time `json:"estimated_unlock_date,omitempty"`
 }
 
 // ContributionLeaderboardEntry represents a user's rank and contribution total
@@ -146,4 +166,24 @@ type ContributionLeaderboardEntry struct {
 	UserID       string `json:"user_id"`
 	Contribution int    `json:"contribution"`
 	Rank         int    `json:"rank"`
+}
+
+// VelocityMetrics holds engagement velocity data
+type VelocityMetrics struct {
+	PointsPerDay float64 `json:"points_per_day"`
+	Trend        string  `json:"trend"` // "increasing", "stable", "decreasing"
+	PeriodDays   int     `json:"period_days"`
+	SampleSize   int     `json:"sample_size"`
+	TotalPoints  int     `json:"total_points"`
+}
+
+// UnlockEstimate holds prediction data for node unlock
+type UnlockEstimate struct {
+	NodeKey             string     `json:"node_key"`
+	EstimatedDays       float64    `json:"estimated_days"`
+	Confidence          string     `json:"confidence"` // "high", "medium", "low"
+	RequiredPoints      int        `json:"required_points"`
+	CurrentProgress     int        `json:"current_progress"`
+	CurrentVelocity     float64    `json:"current_velocity"`
+	EstimatedUnlockDate *time.Time `json:"estimated_unlock_date"`
 }

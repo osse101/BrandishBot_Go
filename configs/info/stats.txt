@@ -1,0 +1,5 @@
+View global and personal statistics.
+---
+!stats
+!top
+!serverstats

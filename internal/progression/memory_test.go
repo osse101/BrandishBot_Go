@@ -16,14 +16,14 @@ import (
 func TestStartVotingSession_NoGoroutineLeak(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestNodes(repo)
-	svc := NewService(repo)
+	svc := NewService(repo, nil)
 
 	checker := leaktest.NewGoroutineChecker(t)
 
 	// Execute multiple voting session starts
 	ctx := context.Background()
 	for i := 0; i < 3; i++ {
-		_ = svc.StartVotingSession(ctx)
+		_ = svc.StartVotingSession(ctx, nil)
 		// Some sessions may fail - that's expected
 	}
 
@@ -34,11 +34,11 @@ func TestStartVotingSession_NoGoroutineLeak(t *testing.T) {
 func TestVoteForUnlock_NoGoroutineLeak(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestNodes(repo)
-	svc := NewService(repo)
+	svc := NewService(repo, nil)
 
 	// Start a voting session first
 	ctx := context.Background()
-	_ = svc.StartVotingSession(ctx)
+	_ = svc.StartVotingSession(ctx, nil)
 
 	checker := leaktest.NewGoroutineChecker(t)
 
@@ -59,22 +59,22 @@ func TestVoteForUnlock_NoGoroutineLeak(t *testing.T) {
 func TestEndVoting_NoGoroutineLeak(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestNodes(repo)
-	svc := NewService(repo)
+	svc := NewService(repo, nil)
 
 	ctx := context.Background()
-	
+
 	checker := leaktest.NewGoroutineChecker(t)
 
 	// Start and end multiple voting cycles
 	for i := 0; i < 3; i++ {
-		_ = svc.StartVotingSession(ctx)
-		
+		_ = svc.StartVotingSession(ctx, nil)
+
 		// Cast some votes
 		session, _ := svc.GetActiveVotingSession(ctx)
 		if session != nil && len(session.Options) > 0 && session.Options[0].NodeDetails != nil {
 			_ = svc.VoteForUnlock(ctx, "voter1", session.Options[0].NodeDetails.NodeKey)
 		}
-		
+
 		// End voting
 		_, _ = svc.EndVoting(ctx)
 	}
@@ -86,11 +86,11 @@ func TestEndVoting_NoGoroutineLeak(t *testing.T) {
 func TestAddContribution_NoGoroutineLeak(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestNodes(repo)
-	svc := NewService(repo)
+	svc := NewService(repo, nil)
 
 	// Start progress tracking
 	ctx := context.Background()
-	_ = svc.StartVotingSession(ctx)
+	_ = svc.StartVotingSession(ctx, nil)
 
 	checker := leaktest.NewGoroutineChecker(t)
 
@@ -106,17 +106,17 @@ func TestAddContribution_NoGoroutineLeak(t *testing.T) {
 func TestCheckAndUnlockNode_NoGoroutineLeak(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestNodes(repo)
-	svc := NewService(repo)
+	svc := NewService(repo, nil)
 
 	ctx := context.Background()
 
 	// Setup: Create progress with enough points
-	_ = svc.StartVotingSession(ctx)
+	_ = svc.StartVotingSession(ctx, nil)
 	session, _ := svc.GetActiveVotingSession(ctx)
 	if session != nil && len(session.Options) > 0 && session.Options[0].NodeDetails != nil {
 		_ = svc.VoteForUnlock(ctx, "voter1", session.Options[0].NodeDetails.NodeKey)
 		_, _ = svc.EndVoting(ctx)
-		
+
 		// Add contributions to meet threshold
 		_ = svc.AddContribution(ctx, 10000)
 	}
@@ -132,12 +132,12 @@ func TestCheckAndUnlockNode_NoGoroutineLeak(t *testing.T) {
 
 func TestRecordEngagement_NoGoroutineLeak(t *testing.T) {
 	repo := NewMockRepository()
-	svc := NewService(repo)
+	svc := NewService(repo, nil)
 
 	checker := leaktest.NewGoroutineChecker(t)
 
 	ctx := context.Background()
-	
+
 	// Record multiple engagements
 	metrics := []struct {
 		userID string
@@ -162,10 +162,10 @@ func TestRecordEngagement_NoGoroutineLeak(t *testing.T) {
 func TestGetProgressionStatus_NoGoroutineLeak(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestNodes(repo)
-	svc := NewService(repo)
+	svc := NewService(repo, nil)
 
 	ctx := context.Background()
-	_ = svc.StartVotingSession(ctx)
+	_ = svc.StartVotingSession(ctx, nil)
 
 	checker := leaktest.NewGoroutineChecker(t)
 
@@ -200,14 +200,12 @@ func setupTestNodes(repo *MockRepository) {
 	repo.nodesByKey["root_2"] = repo.nodes[2]
 
 	// Child nodes
-	parent1 := 1
 	repo.nodes[3] = &domain.ProgressionNode{
-		ID:           3,
-		NodeKey:      "child_1",
-		DisplayName:  "Child Feature",
-		Description:  "Dependent node",
-		MaxLevel:     2,
-		ParentNodeID: &parent1,
+		ID:          3,
+		NodeKey:     "child_1",
+		DisplayName: "Child Feature",
+		Description: "Dependent node",
+		MaxLevel:    2,
 	}
 	repo.nodesByKey["child_1"] = repo.nodes[3]
 }

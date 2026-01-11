@@ -5,12 +5,19 @@ import (
 	"fmt"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
+const (
+	// MaxVotingOptions is the maximum number of options shown in a voting session
+	MaxVotingOptions = 4
+)
+
 // StartVotingSession creates a new voting session with 4 random options from available nodes
-func (s *service) StartVotingSession(ctx context.Context) error {
+// unlockedNodeID should be provided if this session is being started after a node unlock
+func (s *service) StartVotingSession(ctx context.Context, unlockedNodeID *int) error {
 	log := logger.FromContext(ctx)
 
 	// Ensure unlock progress exists (bootstrap case or after manual reset)
@@ -20,10 +27,17 @@ func (s *service) StartVotingSession(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("failed to create initial unlock progress: %w", err)
 		}
+
+		// Fetch it now so we have the ID for later
+		progress, err = s.repo.GetActiveUnlockProgress(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to get active unlock progress after creation: %w", err)
+		}
+
 		log.Debug("Created initial unlock progress for new voting session")
 	}
 
-	// Get available nodes with met prerequisites  
+	// Get available nodes with met prerequisites
 	available, err := s.GetAvailableUnlocks(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get available nodes: %w", err)
@@ -33,8 +47,59 @@ func (s *service) StartVotingSession(ctx context.Context) error {
 		return fmt.Errorf("no nodes available for voting")
 	}
 
-	// Select up to 4 random options
-	selected := selectRandomNodes(available, 4)
+	// SPECIAL CASE: Auto-select if only one option available
+	if len(available) == 1 {
+		node := available[0]
+		log.Info("Only one option available, auto-selecting without voting", "nodeKey", node.NodeKey)
+
+		// Determine target level
+		targetLevel := 1
+		isUnlocked, _ := s.repo.IsNodeUnlocked(ctx, node.NodeKey, 1)
+		if isUnlocked {
+			// Find next level to unlock
+			for level := 2; level <= node.MaxLevel; level++ {
+				unlocked, _ := s.repo.IsNodeUnlocked(ctx, node.NodeKey, level)
+				if !unlocked {
+					targetLevel = level
+					break
+				}
+			}
+		}
+
+		// Set as unlock target immediately
+		err = s.repo.SetUnlockTarget(ctx, progress.ID, node.ID, targetLevel, 0)
+		if err != nil {
+			return fmt.Errorf("failed to set unlock target: %w", err)
+		}
+
+		// Cache the unlock cost
+		s.mu.Lock()
+		s.cachedTargetCost = node.UnlockCost
+		s.cachedProgressID = progress.ID
+		s.mu.Unlock()
+
+		// Publish event if needed (target set)
+		if s.bus != nil {
+			if err := s.bus.Publish(ctx, event.Event{
+				Version: "1.0",
+				Type:    event.ProgressionTargetSet,
+				Payload: map[string]interface{}{
+					"node_key":      node.NodeKey,
+					"target_level":  targetLevel,
+					"auto_selected": true,
+				},
+			}); err != nil {
+				log.Error("Failed to publish progression target set event", "error", err)
+			}
+		}
+
+		log.Info("Auto-selected target set", "nodeKey", node.NodeKey, "targetLevel", targetLevel)
+
+		return nil
+	}
+
+	// Select up to MaxVotingOptions random options
+	selected := selectRandomNodes(available, MaxVotingOptions)
 
 	// Create voting session
 	sessionID, err := s.repo.CreateVotingSession(ctx)
@@ -65,6 +130,38 @@ func (s *service) StartVotingSession(ctx context.Context) error {
 	}
 
 	log.Info("Started new voting session", "sessionID", sessionID, "options", len(selected))
+
+	// Publish progression cycle event if triggered by an unlock
+	if unlockedNodeID != nil && s.bus != nil {
+		// Fetch the unlocked node details
+		unlockedNode, err := s.repo.GetNodeByID(ctx, *unlockedNodeID)
+		if err != nil {
+			log.Warn("Failed to get unlocked node for event", "nodeID", *unlockedNodeID, "error", err)
+		} else {
+			// Fetch the session with options for the event
+			session, err := s.repo.GetActiveSession(ctx)
+			if err != nil {
+				log.Warn("Failed to get session for event", "error", err)
+			} else {
+				// Publish the combined event
+				if err := s.bus.Publish(ctx, event.Event{
+					Version: "1.0",
+					Type:    event.ProgressionCycleCompleted,
+					Payload: map[string]interface{}{
+						"unlocked_node":  unlockedNode,
+						"voting_session": session,
+					},
+				}); err != nil {
+					log.Error("Failed to publish progression cycle completed event", "error", err)
+				} else {
+					log.Info("Published progression cycle completed event",
+						"unlockedNode", unlockedNode.NodeKey,
+						"sessionID", sessionID)
+				}
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -77,7 +174,7 @@ func (s *service) EndVoting(ctx context.Context) (*domain.ProgressionVotingOptio
 		return nil, fmt.Errorf("failed to get active session: %w", err)
 	}
 
-	if session == nil || session.Status != "voting" {
+	if session == nil || session.Status != SessionStatusVoting {
 		return nil, fmt.Errorf("no active voting session")
 	}
 
@@ -98,7 +195,7 @@ func (s *service) EndVoting(ctx context.Context) (*domain.ProgressionVotingOptio
 	if err != nil {
 		log.Warn("Failed to get active unlock progress", "error", err)
 	}
-	
+
 	if progress == nil {
 		// Defensive: Create progress if missing (shouldn't happen - StartVotingSession should create it)
 		log.Warn("No active unlock progress found during EndVoting - creating as fallback (investigate if this occurs frequently)")
@@ -111,7 +208,7 @@ func (s *service) EndVoting(ctx context.Context) (*domain.ProgressionVotingOptio
 			progress = &domain.UnlockProgress{ID: id} // Minimal object for ID
 		}
 	}
-	
+
 	if progress != nil {
 		err = s.repo.SetUnlockTarget(ctx, progress.ID, winner.NodeID, winner.TargetLevel, session.ID)
 		if err != nil {
@@ -123,7 +220,7 @@ func (s *service) EndVoting(ctx context.Context) (*domain.ProgressionVotingOptio
 				s.cachedTargetCost = winner.NodeDetails.UnlockCost
 				s.cachedProgressID = progress.ID
 				s.mu.Unlock()
-				
+
 				log.Debug("Cached unlock threshold",
 					"progressID", progress.ID,
 					"unlockCost", winner.NodeDetails.UnlockCost)
@@ -171,7 +268,7 @@ func (s *service) EndVoting(ctx context.Context) (*domain.ProgressionVotingOptio
 // AddContribution adds contribution points to current unlock progress
 func (s *service) AddContribution(ctx context.Context, amount int) error {
 	log := logger.FromContext(ctx)
-	
+
 	progress, err := s.repo.GetActiveUnlockProgress(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get unlock progress: %w", err)
@@ -186,6 +283,13 @@ func (s *service) AddContribution(ctx context.Context, amount int) error {
 		}
 	} else {
 		progressID = progress.ID
+	}
+
+	// Check for contribution boost upgrade
+	isBoosted, _ := s.IsFeatureUnlocked(ctx, "upgrade_contribution_boost")
+	if isBoosted {
+		// Apply 1.5x multiplier (integer math: * 3 / 2)
+		amount = (amount * 3) / 2
 	}
 
 	// Write contribution to DB
@@ -210,7 +314,23 @@ func (s *service) AddContribution(ctx context.Context, amount int) error {
 				log.Info("Unlock threshold met, triggering unlock",
 					"accumulated", updatedProgress.ContributionsAccumulated,
 					"required", cachedCost)
-				go s.CheckAndUnlockNode(context.Background())
+
+				// Non-blocking send to semaphore - if unlock already in progress, skip
+				select {
+				case s.unlockSem <- struct{}{}:
+					// Got the semaphore, proceed with unlock
+					s.wg.Add(1)
+					go func() {
+						defer s.wg.Done()
+						defer func() { <-s.unlockSem }() // Release semaphore when done
+						if _, err := s.CheckAndUnlockNode(s.shutdownCtx); err != nil {
+							log.Error("Failed to check and unlock node in background", "error", err)
+						}
+					}()
+				default:
+					// Unlock already in progress, skip this trigger
+					log.Debug("Unlock already in progress, skipping duplicate trigger")
+				}
 			}
 		}
 	}
@@ -274,8 +394,14 @@ func (s *service) CheckAndUnlockNode(ctx context.Context) (*domain.ProgressionUn
 			"contributions", progress.ContributionsAccumulated,
 			"rollover", rollover)
 
-		// Start next voting session
-		go s.StartVotingSession(context.Background())
+		// Start next voting session with context about the unlocked node
+		s.wg.Add(1)
+		go func() {
+			defer s.wg.Done()
+			if err := s.StartVotingSession(s.shutdownCtx, &node.ID); err != nil {
+				log.Error("Failed to start voting session in background", "error", err)
+			}
+		}()
 
 		return &domain.ProgressionUnlock{
 			NodeID:          *progress.NodeID,
@@ -343,8 +469,10 @@ func findWinningOption(options []domain.ProgressionVotingOption) *domain.Progres
 	}
 
 	// Normal tie-breaking with votes
+	//nolint:gosec // Checked for empty slice above
 	winner := &options[0]
 	for i := 1; i < len(options); i++ {
+		//nolint:gosec // Validated length check above
 		opt := &options[i]
 
 		// Higher vote count wins

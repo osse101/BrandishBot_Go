@@ -19,11 +19,12 @@ type HTTPServer struct {
 // NewHTTPServer creates a new HTTP server
 func NewHTTPServer(port string, bot *Bot) *HTTPServer {
 	mux := http.NewServeMux()
-	
+
 	srv := &HTTPServer{
 		server: &http.Server{
-			Addr:    ":" + port,
-			Handler: mux,
+			Addr:              ":" + port,
+			Handler:           mux,
+			ReadHeaderTimeout: 10 * time.Second,
 		},
 		bot: bot,
 	}
@@ -93,5 +94,7 @@ func (s *HTTPServer) handleAnnounce(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	if err := json.NewEncoder(w).Encode(map[string]string{"status": "ok"}); err != nil {
+		slog.Error("Failed to encode JSON response", "error", err)
+	}
 }

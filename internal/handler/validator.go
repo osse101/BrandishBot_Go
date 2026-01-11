@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/go-playground/validator/v10"
@@ -35,6 +36,45 @@ func GetValidator() *Validator {
 // ValidateStruct validates a struct using tags
 func (v *Validator) ValidateStruct(s interface{}) error {
 	return v.validate.Struct(s)
+}
+
+// FormatValidationError formats validation errors into a user-friendly map
+// This prevents leaking internal struct names and provides cleaner error messages
+func FormatValidationError(err error) map[string]string {
+	if err == nil {
+		return nil
+	}
+
+	errors := make(map[string]string)
+
+	// Check if it's a validator.ValidationErrors
+	validationErrors, ok := err.(validator.ValidationErrors)
+	if !ok {
+		errors["error"] = "Invalid request format"
+		return errors
+	}
+
+	for _, e := range validationErrors {
+		field := strings.ToLower(e.Field())
+		switch e.Tag() {
+		case "required":
+			errors[field] = "This field is required"
+		case "email":
+			errors[field] = "Invalid email format"
+		case "platform":
+			errors[field] = "Invalid platform"
+		case "max":
+			errors[field] = fmt.Sprintf("Must be at most %s characters", e.Param())
+		case "min":
+			errors[field] = fmt.Sprintf("Must be at least %s characters", e.Param())
+		case "excludesall":
+			errors[field] = "Contains invalid characters"
+		default:
+			errors[field] = "Invalid value"
+		}
+	}
+
+	return errors
 }
 
 // ValidPlatforms defines supported platforms

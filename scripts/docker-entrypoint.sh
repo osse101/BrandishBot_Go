@@ -5,7 +5,7 @@ echo "Waiting for database..."
 # Wait for postgres to be ready with timeout
 MAX_RETRIES=30
 RETRY_COUNT=0
-until pg_isready -h db -U $DB_USER; do
+until pg_isready -h db -U $DB_USER -d $DB_NAME; do
   RETRY_COUNT=$((RETRY_COUNT + 1))
   if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
     echo "ERROR: Database failed to become ready after $MAX_RETRIES attempts"

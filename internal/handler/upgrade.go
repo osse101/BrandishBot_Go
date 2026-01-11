@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -11,17 +10,12 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 )
 
-type UpgradeItemRequest struct {
-	Platform   string `json:"platform" validate:"required,platform"`
-	PlatformID string `json:"platform_id" validate:"required"`
-	Username   string `json:"username" validate:"required,max=100,excludesall=\x00\n\r\t"`
-	Item       string `json:"item" validate:"required,max=100"`
-	Quantity   int    `json:"quantity" validate:"min=1,max=10000"`
-}
-
 type UpgradeItemResponse struct {
+	Message          string `json:"message"`
 	NewItem          string `json:"new_item"`
 	QuantityUpgraded int    `json:"quantity_upgraded"`
+	IsMasterwork     bool   `json:"is_masterwork"`
+	BonusQuantity    int    `json:"bonus_quantity"`
 }
 
 // HandleUpgradeItem handles upgrading an item
@@ -30,19 +24,7 @@ type UpgradeItemResponse struct {
 // @Tags crafting
 // @Accept json
 // @Produce json
-// @Param request body UpgradeItemRequest true "Upgrade details"
-// @Success 200 {object} UpgradeItemResponse
-// @Failure 400 {object} ErrorResponse
-// @Failure 403 {object} ErrorResponse "Feature locked"
-// @Failure 500 {object} ErrorResponse
-// @Router /user/item/upgrade [post]
-// HandleUpgradeItem handles upgrading an item
-// @Summary Upgrade item
-// @Description Upgrade an item to a higher tier
-// @Tags crafting
-// @Accept json
-// @Produce json
-// @Param request body UpgradeItemRequest true "Upgrade details"
+// @Param request body CraftingActionRequest true "Upgrade details"
 // @Success 200 {object} UpgradeItemResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 403 {object} ErrorResponse "Feature locked"
@@ -53,38 +35,17 @@ func HandleUpgradeItem(svc crafting.Service, progressionSvc progression.Service,
 		log := logger.FromContext(r.Context())
 
 		// Check if upgrade feature is unlocked
-		unlocked, err := progressionSvc.IsFeatureUnlocked(r.Context(), progression.FeatureUpgrade)
+		if CheckFeatureLocked(w, r, progressionSvc, progression.FeatureUpgrade) {
+			return
+		}
+
+		req, err := decodeCraftingRequest(r, "Upgrade item")
 		if err != nil {
-			log.Error("Failed to check feature unlock status", "error", err)
-			http.Error(w, "Failed to check feature availability", http.StatusInternalServerError)
-			return
-		}
-		if !unlocked {
-			log.Warn("Upgrade feature is locked")
-			http.Error(w, "Upgrade feature is not yet unlocked", http.StatusForbidden)
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		var req UpgradeItemRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			log.Error("Failed to decode upgrade item request", "error", err)
-			http.Error(w, "Invalid request body", http.StatusBadRequest)
-			return
-		}
-
-		log.Debug("Upgrade item request",
-			"username", req.Username,
-			"item", req.Item,
-			"quantity", req.Quantity)
-
-		// Validate request
-		if err := GetValidator().ValidateStruct(req); err != nil {
-			log.Warn("Invalid request", "error", err)
-			http.Error(w, fmt.Sprintf("Invalid request: %v", err), http.StatusBadRequest)
-			return
-		}
-
-		newItem, quantityUpgraded, err := svc.UpgradeItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.Item, req.Quantity)
+		result, err := svc.UpgradeItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.Item, req.Quantity)
 		if err != nil {
 			log.Error("Failed to upgrade item", "error", err, "username", req.Username, "item", req.Item)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -94,31 +55,37 @@ func HandleUpgradeItem(svc crafting.Service, progressionSvc progression.Service,
 		log.Info("Item upgraded successfully",
 			"username", req.Username,
 			"item", req.Item,
-			"quantity_upgraded", quantityUpgraded)
+			"quantity_upgraded", result.Quantity,
+			"masterwork", result.IsMasterwork)
 
-		// Add contribution points for crafting
-		if err := progressionSvc.AddContribution(r.Context(), quantityUpgraded); err != nil {
-			log.Warn("Failed to add contribution points", "error", err)
-		}
+		// Track engagement for crafting
+		trackCraftingEngagement(r.Context(), eventBus, req.Username, "item_crafted", result.Quantity)
 
 		// Publish item.upgraded event
-		if err := eventBus.Publish(r.Context(), event.Event{
-			Type: "item.upgraded",
-			Payload: map[string]interface{}{
-				"user_id":           req.Username,
-				"source_item":       req.Item,
-				"result_item":       newItem,
-				"quantity_upgraded": quantityUpgraded,
-			},
+		if err := publishCraftingEvent(r.Context(), eventBus, "item.upgraded", map[string]interface{}{
+			"user_id":           req.Username,
+			"source_item":       req.Item,
+			"result_item":       result.ItemName,
+			"quantity_upgraded": result.Quantity,
+			"is_masterwork":     result.IsMasterwork,
 		}); err != nil {
-			log.Error("Failed to publish item.upgraded event", "error", err)
+			_ = err // Error already logged in publishCraftingEvent
+		}
+
+		// Construct user message
+		message := fmt.Sprintf("Successfully upgraded to %dx %s", result.Quantity, result.ItemName)
+		if result.IsMasterwork {
+			message = fmt.Sprintf("MASTERWORK! Critical success! You received %dx %s (Bonus: +%d)", result.Quantity, result.ItemName, result.BonusQuantity)
 		}
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		respondJSON(w, http.StatusOK, UpgradeItemResponse{
-			NewItem:          newItem,
-			QuantityUpgraded: quantityUpgraded,
+			Message:          message,
+			NewItem:          result.ItemName,
+			QuantityUpgraded: result.Quantity,
+			IsMasterwork:     result.IsMasterwork,
+			BonusQuantity:    result.BonusQuantity,
 		})
 	}
 }
@@ -172,7 +139,7 @@ func HandleGetRecipes(svc crafting.Service) http.HandlerFunc {
 			return
 		}
 
-		// Case 2 & 3: Item provided (with or without user) - return recipe info
+		// Case 2: Item provided (with or without user) - return recipe info
 		if itemName != "" {
 			platform := r.URL.Query().Get("platform")
 			platformID := r.URL.Query().Get("platform_id")
@@ -192,8 +159,17 @@ func HandleGetRecipes(svc crafting.Service) http.HandlerFunc {
 			return
 		}
 
-		// No valid parameters provided
-		log.Warn("Invalid recipe query", "item", itemName, "user", username)
-		http.Error(w, "Must provide either 'item' or 'user' query parameter", http.StatusBadRequest)
+		recipes, err := svc.GetAllRecipes(r.Context())
+		if err != nil {
+			log.Error("Failed to get all recipes", "error", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		respondJSON(w, http.StatusOK, map[string]interface{}{
+			"recipes": recipes,
+		})
 	}
 }
