@@ -1,0 +1,5 @@
+Link your accounts across platforms for unified progression.
+---
+!link
+!link confirm <code>
+!unlink

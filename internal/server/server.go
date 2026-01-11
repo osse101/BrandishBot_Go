@@ -13,6 +13,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/database"
 	"github.com/osse101/BrandishBot_Go/internal/economy"
 	"github.com/osse101/BrandishBot_Go/internal/event"
+	"github.com/osse101/BrandishBot_Go/internal/features"
 	"github.com/osse101/BrandishBot_Go/internal/gamble"
 	"github.com/osse101/BrandishBot_Go/internal/handler"
 	"github.com/osse101/BrandishBot_Go/internal/job"
@@ -68,6 +69,10 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 
 	// API v1 routes
 	r.Route("/api/v1", func(r chi.Router) {
+		// Info endpoint
+		featureLoader := features.NewLoader("configs/info")
+		r.Get("/info", handler.HandleGetInfo(featureLoader))
+
 		// User routes
 		r.Route("/user", func(r chi.Router) {
 			r.Post("/register", handler.HandleRegisterUser(userService))

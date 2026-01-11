@@ -1,0 +1,4 @@
+Risk your earnings for a chance at big rewards.
+---
+!gamble <amount>
+!gamble join
