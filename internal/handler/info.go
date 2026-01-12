@@ -55,16 +55,20 @@ func HandleGetInfo(loader *features.Loader) http.HandlerFunc {
 			switch platform {
 			case domain.PlatformDiscord:
 				var sb strings.Builder
-				
+
 				// Header and Description in blockquote
-				sb.WriteString(fmt.Sprintf("# %s\n> %s", strings.ToUpper(feature), data.Description))
+				// Optimization: Use Fprintf instead of Sprintf + WriteString to avoid allocation
+				fmt.Fprintf(&sb, "# %s\n> %s", strings.ToUpper(feature), data.Description)
 				if len(data.Commands) > 0 {
 					sb.WriteString("\n\n**Commands**")
 					for _, cmd := range data.Commands {
-						sb.WriteString(fmt.Sprintf("\n• `%s`", cmd))
+						// Optimization: Avoid fmt for simple concatenation in loop
+						sb.WriteString("\n• `")
+						sb.WriteString(cmd)
+						sb.WriteString("`")
 					}
 				}
-				
+
 				response.Description = sb.String()
 
 			case domain.PlatformTwitch, domain.PlatformYoutube:
