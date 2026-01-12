@@ -299,7 +299,7 @@ func TestHandleSearch_Success(t *testing.T) {
 		isValid = true
 	} else {
 		for _, msg := range domain.SearchFailureMessages {
-			if message == msg {
+			if strings.HasPrefix(message, msg) {
 				isValid = true
 				break
 			}
@@ -391,7 +391,7 @@ func TestHandleSearch_NewUserCreation(t *testing.T) {
 		isValid = true
 	} else {
 		for _, msg := range domain.SearchFailureMessages {
-			if message == msg {
+			if strings.HasPrefix(message, msg) {
 				isValid = true
 				break
 			}
@@ -679,7 +679,7 @@ func TestHandleSearch_NearMiss_Statistical(t *testing.T) {
 		msg, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
 		require.NoError(t, err)
 
-		if msg == domain.MsgSearchNearMiss {
+		if strings.HasPrefix(msg, domain.MsgSearchNearMiss) {
 			nearMissCount++
 		}
 	}
@@ -800,6 +800,12 @@ func TestHandleSearch_DiminishingReturns(t *testing.T) {
 	// Verify RecordUserEvent called with correct daily_count
 	require.Greater(t, len(statsSvc.recordedEvents), 0)
 	lastEvent := statsSvc.recordedEvents[len(statsSvc.recordedEvents)-1]
+
+	// Check for search event (might be distance event)
+	if lastEvent.EventType == domain.EventDistanceTraveled {
+		lastEvent = statsSvc.recordedEvents[len(statsSvc.recordedEvents)-2]
+	}
+
 	assert.Equal(t, domain.EventSearch, lastEvent.EventType)
 	// 6 existing + 1 new = 7
 	assert.Equal(t, 7, lastEvent.EventData["daily_count"])
@@ -843,16 +849,6 @@ func TestHandleSearch_CriticalFail_Statistical(t *testing.T) {
 	}
 
 	t.Logf("Critical failures in %d iterations: %d", iterations, critFailCount)
-
-	// We expect roughly 5% of FAILUREs (which are 15% of total).
-	// Actually, wait.
-	// Critical Fail is > 0.95.
-	// With 80% success, failure is 20%.
-	// Near Miss is 0.8 - 0.85 (5%).
-	// Failure is 0.85 - 1.0 (15%).
-	// Critical Fail is 0.95 - 1.0 (5%).
-	// So 5% of TOTAL searches should be critical fails.
-	// 5% of 1000 = 50.
 
 	assert.Greater(t, critFailCount, 0, "Should have encountered at least one critical fail")
 
@@ -906,4 +902,46 @@ func TestHandleSearch_CriticalSuccess_Event(t *testing.T) {
 		}
 	}
 	assert.True(t, found, "Should record EventSearchCriticalSuccess")
+}
+
+func TestHandleSearch_DistanceTraveled(t *testing.T) {
+	// ARRANGE
+	repo := newMockSearchRepo()
+	repo.items[domain.ItemLootbox0] = &domain.Item{
+		ID:           1,
+		InternalName: domain.ItemLootbox0,
+		BaseValue:    10,
+	}
+
+	statsSvc := &mockStatsService{
+		mockCounts: make(map[domain.EventType]int),
+	}
+	// Enable devMode to bypass cooldowns
+	svc := NewService(repo, statsSvc, nil, nil, NewMockNamingResolver(), &mockCooldownService{repo: repo}, true).(*service)
+
+	user := createTestUser(TestUsername, TestUserID)
+	repo.users[TestUsername] = user
+	ctx := context.Background()
+
+	// ACT
+	msg, err := svc.HandleSearch(ctx, domain.PlatformTwitch, "testuser123", TestUsername)
+	require.NoError(t, err)
+
+	// ASSERT
+	assert.Contains(t, msg, "(Traveled", "Message should contain distance traveled")
+	assert.Contains(t, msg, "m)", "Message should contain meters unit")
+
+	// Verify event recorded
+	found := false
+	for _, evt := range statsSvc.recordedEvents {
+		if evt.EventType == domain.EventDistanceTraveled {
+			found = true
+			distance, ok := evt.EventData["distance"].(int)
+			assert.True(t, ok, "Distance should be an int")
+			assert.GreaterOrEqual(t, distance, 50, "Distance should be >= 50")
+			assert.LessOrEqual(t, distance, 500, "Distance should be <= 500")
+			break
+		}
+	}
+	assert.True(t, found, "Should record EventDistanceTraveled")
 }

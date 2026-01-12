@@ -24,6 +24,7 @@ const (
 	EventSearchNearMiss          EventType = "search_near_miss"
 	EventSearchCriticalFail      EventType = "search_critical_fail"
 	EventSearchCriticalSuccess   EventType = "search_critical_success"
+	EventDistanceTraveled        EventType = "distance_traveled"
 	EventCraftingCriticalSuccess EventType = "crafting_critical_success"
 	EventCraftingPerfectSalvage  EventType = "crafting_perfect_salvage"
 	EventJobLevelUp              EventType = "job_level_up"
