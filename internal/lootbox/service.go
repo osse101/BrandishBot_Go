@@ -60,6 +60,9 @@ type Service interface {
 type service struct {
 	repo       ItemRepository
 	lootTables map[string][]LootItem
+	// itemCache stores item definitions in memory to avoid DB lookups during lootbox opening.
+	// Since item definitions (name, value, etc.) are static config, this is safe.
+	itemCache map[string]domain.Item
 }
 
 // NewService creates a new lootbox service
@@ -67,11 +70,22 @@ func NewService(repo ItemRepository, lootTablesPath string) (Service, error) {
 	svc := &service{
 		repo:       repo,
 		lootTables: make(map[string][]LootItem),
+		itemCache:  make(map[string]domain.Item),
 	}
 
 	// Load loot tables from JSON file
 	if err := svc.loadLootTables(lootTablesPath); err != nil {
 		return nil, fmt.Errorf("failed to load loot tables: %w", err)
+	}
+
+	// Optimization: Preload all items mentioned in loot tables into cache
+	// This avoids N+1 queries or batch queries during OpenLootbox, making it O(0) DB calls.
+	if err := svc.preloadItems(context.Background()); err != nil {
+		// We log but don't fail, in case DB is momentarily down or items are missing.
+		// OpenLootbox handles missing items gracefully (logs/skips).
+		// However, failing here might be better to signal config mismatch.
+		// Given robust startup is preferred, we'll return error.
+		return nil, fmt.Errorf("failed to preload lootbox items: %w", err)
 	}
 
 	return svc, nil
@@ -92,6 +106,38 @@ func (s *service) loadLootTables(path string) error {
 	}
 
 	s.lootTables = config.Tables
+	return nil
+}
+
+func (s *service) preloadItems(ctx context.Context) error {
+	// Collect all unique item names from all loot tables
+	uniqueNamesMap := make(map[string]struct{})
+	for _, items := range s.lootTables {
+		for _, item := range items {
+			uniqueNamesMap[item.ItemName] = struct{}{}
+		}
+	}
+
+	if len(uniqueNamesMap) == 0 {
+		return nil
+	}
+
+	names := make([]string, 0, len(uniqueNamesMap))
+	for name := range uniqueNamesMap {
+		names = append(names, name)
+	}
+
+	// Fetch items from repo
+	items, err := s.repo.GetItemsByNames(ctx, names)
+	if err != nil {
+		return err
+	}
+
+	// Populate cache
+	for _, item := range items {
+		s.itemCache[item.InternalName] = item
+	}
+
 	return nil
 }
 
@@ -191,30 +237,16 @@ func (s *service) OpenLootbox(ctx context.Context, lootboxName string, quantity 
 	}
 
 	// Convert to DroppedItem with item IDs
-	var drops []DroppedItem
-
-	// Batch fetch items to avoid N+1 queries
-	var itemNames []string
-	for itemName := range dropCounts {
-		itemNames = append(itemNames, itemName)
-	}
-
-	items, err := s.repo.GetItemsByNames(ctx, itemNames)
-	if err != nil {
-		log.Error("Failed to get dropped items", "error", err)
-		return nil, err
-	}
-
-	// Create a map for quick lookup
-	itemMap := make(map[string]*domain.Item)
-	for i := range items {
-		itemMap[items[i].InternalName] = &items[i]
-	}
+	// Optimization: Use cached items to avoid DB lookup
+	drops := make([]DroppedItem, 0, len(dropCounts))
 
 	for itemName, info := range dropCounts {
-		item, found := itemMap[itemName]
+		item, found := s.itemCache[itemName]
 		if !found {
-			log.Warn("Dropped item not found in DB", "item", itemName)
+			// If item not in cache, log warning.
+			// In strict mode we might error, but here we just skip.
+			// This implies the loot table references an item not in DB.
+			log.Warn("Dropped item not found in cache/DB", "item", itemName)
 			continue
 		}
 
