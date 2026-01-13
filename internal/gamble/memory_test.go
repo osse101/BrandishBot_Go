@@ -69,17 +69,28 @@ func TestExecuteGamble_NoGoroutineLeak(t *testing.T) {
 	gambleID := uuid.New()
 	gamble := &domain.Gamble{
 		ID:    gambleID,
-		State: domain.GambleStateCreated,
+		State: domain.GambleStateJoining, // CHANGED from GambleStateCreated
 		Participants: []domain.Participant{
-			{UserID: "user1", Username: "player1"},
+			{UserID: "user1", LootboxBets: []domain.LootboxBet{{ItemID: 1, Quantity: 1}}},
 		},
+		JoinDeadline: time.Now().Add(-1 * time.Minute), // Deadline passed
 	}
 
 	repo.On("GetGamble", mock.Anything, gambleID).Return(gamble, nil)
-	repo.On("UpdateGambleState", mock.Anything, gambleID, mock.Anything).Return(nil)
-	repo.On("SaveOpenedItems", mock.Anything, mock.Anything).Return(nil)
-	repo.On("CompleteGamble", mock.Anything, mock.Anything).Return(nil)
-	lootboxSvc.On("OpenLootbox", mock.Anything, mock.Anything, mock.Anything).Return([]lootbox.DroppedItem{}, nil).Maybe()
+	tx := new(MockTx)
+	repo.On("BeginGambleTx", mock.Anything).Return(tx, nil)
+	tx.On("UpdateGambleStateIfMatches", mock.Anything, gambleID, domain.GambleStateJoining, domain.GambleStateOpening).Return(int64(1), nil)
+
+	lootboxItem := &domain.Item{ID: 1, InternalName: domain.ItemLootbox1}
+	repo.On("GetItemByID", mock.Anything, 1).Return(lootboxItem, nil)
+	lootboxSvc.On("OpenLootbox", mock.Anything, domain.ItemLootbox1, mock.Anything).Return([]lootbox.DroppedItem{}, nil)
+
+	tx.On("SaveOpenedItems", mock.Anything, mock.Anything).Return(nil)
+	tx.On("GetInventory", mock.Anything, mock.Anything).Return(&domain.Inventory{}, nil)
+	tx.On("UpdateInventory", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	tx.On("CompleteGamble", mock.Anything, mock.Anything).Return(nil)
+	tx.On("Commit", mock.Anything).Return(nil)
+	tx.On("Rollback", mock.Anything).Return(nil).Maybe()
 
 	svc := NewService(repo, nil, lootboxSvc, statsSvc, 30*time.Second, nil, nil)
 	checker := leaktest.NewGoroutineChecker(t)
