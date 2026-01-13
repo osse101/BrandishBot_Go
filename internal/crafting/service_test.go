@@ -251,7 +251,7 @@ func (m *MockRepository) GetAllRecipes(ctx context.Context) ([]repository.Recipe
 func (m *MockRepository) GetAllCraftingRecipes(ctx context.Context) ([]domain.Recipe, error) {
 	m.RLock()
 	defer m.RUnlock()
-	var result []domain.Recipe
+	result := make([]domain.Recipe, 0, len(m.recipes))
 	for _, recipe := range m.recipes {
 		result = append(result, *recipe)
 	}
@@ -261,7 +261,7 @@ func (m *MockRepository) GetAllCraftingRecipes(ctx context.Context) ([]domain.Re
 func (m *MockRepository) GetAllDisassembleRecipes(ctx context.Context) ([]domain.DisassembleRecipe, error) {
 	m.RLock()
 	defer m.RUnlock()
-	var result []domain.DisassembleRecipe
+	result := make([]domain.DisassembleRecipe, 0, len(m.disassembleRecipes))
 	for _, recipe := range m.disassembleRecipes {
 		result = append(result, *recipe)
 	}
@@ -409,33 +409,33 @@ func (t *MockTx) Rollback(ctx context.Context) error {
 	t.lockedUsers = make(map[string]bool)
 	return nil
 }
-func (tx *MockTx) UpsertUser(ctx context.Context, user *domain.User) error { return nil }
-func (tx *MockTx) GetUserByID(ctx context.Context, userID string) (*domain.User, error) {
+func (t *MockTx) UpsertUser(ctx context.Context, user *domain.User) error { return nil }
+func (t *MockTx) GetUserByID(ctx context.Context, userID string) (*domain.User, error) {
 	return nil, nil
 }
-func (tx *MockTx) UpdateUser(ctx context.Context, user domain.User) error   { return nil }
-func (tx *MockTx) DeleteUser(ctx context.Context, userID string) error      { return nil }
-func (tx *MockTx) DeleteInventory(ctx context.Context, userID string) error { return nil }
-func (tx *MockTx) GetItemsByIDs(ctx context.Context, itemIDs []int) ([]domain.Item, error) {
-	return tx.repo.GetItemsByIDs(ctx, itemIDs)
+func (t *MockTx) UpdateUser(ctx context.Context, user domain.User) error   { return nil }
+func (t *MockTx) DeleteUser(ctx context.Context, userID string) error      { return nil }
+func (t *MockTx) DeleteInventory(ctx context.Context, userID string) error { return nil }
+func (t *MockTx) GetItemsByIDs(ctx context.Context, itemIDs []int) ([]domain.Item, error) {
+	return t.repo.GetItemsByIDs(ctx, itemIDs)
 }
-func (tx *MockTx) GetSellablePrices(ctx context.Context) ([]domain.Item, error) {
+func (t *MockTx) GetSellablePrices(ctx context.Context) ([]domain.Item, error) {
 	return nil, nil
 }
-func (tx *MockTx) IsItemBuyable(ctx context.Context, itemName string) (bool, error) {
+func (t *MockTx) IsItemBuyable(ctx context.Context, itemName string) (bool, error) {
 	return false, nil
 }
-func (tx *MockTx) GetLastCooldown(ctx context.Context, userID, action string) (*time.Time, error) {
+func (t *MockTx) GetLastCooldown(ctx context.Context, userID, action string) (*time.Time, error) {
 	return nil, nil
 }
-func (tx *MockTx) UpdateCooldown(ctx context.Context, userID, action string, timestamp time.Time) error {
+func (t *MockTx) UpdateCooldown(ctx context.Context, userID, action string, timestamp time.Time) error {
 	return nil
 }
-func (tx *MockTx) MergeUsersInTransaction(ctx context.Context, primaryUserID, secondaryUserID string, mergedUser domain.User, mergedInventory domain.Inventory) error {
+func (t *MockTx) MergeUsersInTransaction(ctx context.Context, primaryUserID, secondaryUserID string, mergedUser domain.User, mergedInventory domain.Inventory) error {
 	return nil
 }
-func (tx *MockTx) GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error) {
-	return tx.repo.GetUserByPlatformID(ctx, platform, platformID)
+func (t *MockTx) GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error) {
+	return t.repo.GetUserByPlatformID(ctx, platform, platformID)
 }
 
 // Test helper to setup test data

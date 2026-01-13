@@ -220,68 +220,61 @@ func (r *resolver) Reload() error {
 	return nil
 }
 
-func (r *resolver) loadAliases() error {
-	data, err := os.ReadFile(r.aliasesPath)
+func (r *resolver) loadVersionedConfig(path string, target interface{}, schema string) error {
+	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			// File doesn't exist yet, that's okay
 			return nil
 		}
 		return err
 	}
 
-	// Parse versioned config
+	// Wrapper to handle common fields
+	var wrapper struct {
+		Version string `json:"version"`
+		Schema  string `json:"schema"`
+	}
+	if err := json.Unmarshal(data, &wrapper); err != nil {
+		return fmt.Errorf("failed to parse config %s: %w", path, err)
+	}
+
+	if wrapper.Version == "" {
+		return fmt.Errorf("%s missing version field", path)
+	}
+	if wrapper.Schema != schema {
+		return fmt.Errorf("invalid schema in %s: expected '%s', got '%s'", path, schema, wrapper.Schema)
+	}
+
+	// Now unmarshal to actual target
+	if err := json.Unmarshal(data, target); err != nil {
+		return fmt.Errorf("failed to decode data for %s: %w", path, err)
+	}
+
+	return nil
+}
+
+func (r *resolver) loadAliases() error {
 	var config struct {
-		Version     string               `json:"version"`
-		Schema      string               `json:"schema"`
-		LastUpdated string               `json:"last_updated"`
-		Aliases     map[string]AliasPool `json:"aliases"`
+		Aliases map[string]AliasPool `json:"aliases"`
 	}
-	if err := json.Unmarshal(data, &config); err != nil {
-		return fmt.Errorf("failed to parse aliases config: %w", err)
+	if err := r.loadVersionedConfig(r.aliasesPath, &config, "item-aliases"); err != nil {
+		return err
 	}
-
-	// Validate version
-	if config.Version == "" {
-		return fmt.Errorf("aliases.json missing version field")
+	if config.Aliases != nil {
+		r.aliases = config.Aliases
 	}
-	if config.Schema != "item-aliases" {
-		return fmt.Errorf("invalid schema in aliases.json: expected 'item-aliases', got '%s'", config.Schema)
-	}
-
-	r.aliases = config.Aliases
 	return nil
 }
 
 func (r *resolver) loadThemes() error {
-	data, err := os.ReadFile(r.themesPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			// File doesn't exist yet, that's okay
-			return nil
-		}
+	var config struct {
+		Themes map[string]ThemePeriod `json:"themes"`
+	}
+	if err := r.loadVersionedConfig(r.themesPath, &config, "item-themes"); err != nil {
 		return err
 	}
-
-	// Parse versioned config
-	var config struct {
-		Version     string                 `json:"version"`
-		Schema      string                 `json:"schema"`
-		LastUpdated string                 `json:"last_updated"`
-		Themes      map[string]ThemePeriod `json:"themes"`
+	if config.Themes != nil {
+		r.themes = config.Themes
 	}
-	if err := json.Unmarshal(data, &config); err != nil {
-		return fmt.Errorf("failed to parse themes config: %w", err)
-	}
-
-	// Validate version
-	if config.Version == "" {
-		return fmt.Errorf("themes.json missing version field")
-	}
-	if config.Schema != "item-themes" {
-		return fmt.Errorf("invalid schema in themes.json: expected 'item-themes', got '%s'", config.Schema)
-	}
-
-	r.themes = config.Themes
 	return nil
 }

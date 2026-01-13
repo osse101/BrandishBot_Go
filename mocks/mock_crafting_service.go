@@ -5,9 +5,9 @@ package mocks
 import (
 	context "context"
 
+	crafting "github.com/osse101/BrandishBot_Go/internal/crafting"
 	mock "github.com/stretchr/testify/mock"
 
-	crafting "github.com/osse101/BrandishBot_Go/internal/crafting"
 	repository "github.com/osse101/BrandishBot_Go/internal/repository"
 )
 
@@ -315,23 +315,23 @@ func (_c *MockCraftingService_Shutdown_Call) RunAndReturn(run func(context.Conte
 }
 
 // UpgradeItem provides a mock function with given fields: ctx, platform, platformID, username, itemName, quantity
-func (_m *MockCraftingService) UpgradeItem(ctx context.Context, platform string, platformID string, username string, itemName string, quantity int) (*crafting.CraftingResult, error) {
+func (_m *MockCraftingService) UpgradeItem(ctx context.Context, platform string, platformID string, username string, itemName string, quantity int) (*crafting.Result, error) {
 	ret := _m.Called(ctx, platform, platformID, username, itemName, quantity)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpgradeItem")
 	}
 
-	var r0 *crafting.CraftingResult
+	var r0 *crafting.Result
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, string, int) (*crafting.CraftingResult, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, string, int) (*crafting.Result, error)); ok {
 		return rf(ctx, platform, platformID, username, itemName, quantity)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, string, int) *crafting.CraftingResult); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, string, int) *crafting.Result); ok {
 		r0 = rf(ctx, platform, platformID, username, itemName, quantity)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*crafting.CraftingResult)
+			r0 = ret.Get(0).(*crafting.Result)
 		}
 	}
 
@@ -367,12 +367,12 @@ func (_c *MockCraftingService_UpgradeItem_Call) Run(run func(ctx context.Context
 	return _c
 }
 
-func (_c *MockCraftingService_UpgradeItem_Call) Return(_a0 *crafting.CraftingResult, _a1 error) *MockCraftingService_UpgradeItem_Call {
+func (_c *MockCraftingService_UpgradeItem_Call) Return(_a0 *crafting.Result, _a1 error) *MockCraftingService_UpgradeItem_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockCraftingService_UpgradeItem_Call) RunAndReturn(run func(context.Context, string, string, string, string, int) (*crafting.CraftingResult, error)) *MockCraftingService_UpgradeItem_Call {
+func (_c *MockCraftingService_UpgradeItem_Call) RunAndReturn(run func(context.Context, string, string, string, string, int) (*crafting.Result, error)) *MockCraftingService_UpgradeItem_Call {
 	_c.Call.Return(run)
 	return _c
 }

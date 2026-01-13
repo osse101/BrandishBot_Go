@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestItemLoader_Load(t *testing.T) {
+func TestLoader_Load(t *testing.T) {
 	loader := NewLoader()
 
 	t.Run("valid JSON file", func(t *testing.T) {
@@ -63,15 +63,15 @@ func TestItemLoader_Load(t *testing.T) {
 	})
 }
 
-func TestItemLoader_Validate(t *testing.T) {
+func TestLoader_Validate(t *testing.T) {
 	loader := NewLoader()
 
 	t.Run("valid config", func(t *testing.T) {
-		config := &ItemConfig{
+		config := &Config{
 			Version:       "1.0",
 			ValidTags:     []string{"consumable", "tradeable"},
 			ValidHandlers: []string{"lootbox"},
-			Items: []ItemDef{
+			Items: []Def{
 				{
 					InternalName:   "item1",
 					PublicName:     "Item One",
@@ -95,18 +95,18 @@ func TestItemLoader_Validate(t *testing.T) {
 	})
 
 	t.Run("empty items", func(t *testing.T) {
-		config := &ItemConfig{Version: "1.0", Items: []ItemDef{}}
+		config := &Config{Version: "1.0", Items: []Def{}}
 		err := loader.Validate(config)
 		assert.Error(t, err)
 		assert.True(t, errors.Is(err, ErrInvalidConfig))
 	})
 
 	t.Run("duplicate internal names", func(t *testing.T) {
-		config := &ItemConfig{
+		config := &Config{
 			Version:       "1.0",
 			ValidTags:     []string{"consumable"},
 			ValidHandlers: []string{},
-			Items: []ItemDef{
+			Items: []Def{
 				{InternalName: "dupe", PublicName: "First", DefaultDisplay: "First", Tags: []string{}},
 				{InternalName: "dupe", PublicName: "Second", DefaultDisplay: "Second", Tags: []string{}},
 			},
@@ -118,11 +118,11 @@ func TestItemLoader_Validate(t *testing.T) {
 	})
 
 	t.Run("invalid tag", func(t *testing.T) {
-		config := &ItemConfig{
+		config := &Config{
 			Version:       "1.0",
 			ValidTags:     []string{"consumable"},
 			ValidHandlers: []string{},
-			Items: []ItemDef{
+			Items: []Def{
 				{
 					InternalName:   "item1",
 					PublicName:     "Item",
@@ -139,11 +139,11 @@ func TestItemLoader_Validate(t *testing.T) {
 
 	t.Run("invalid handler", func(t *testing.T) {
 		handler := "invalid_handler"
-		config := &ItemConfig{
+		config := &Config{
 			Version:       "1.0",
 			ValidTags:     []string{},
 			ValidHandlers: []string{"lootbox"},
-			Items: []ItemDef{
+			Items: []Def{
 				{
 					InternalName:   "item1",
 					PublicName:     "Item",
@@ -160,11 +160,11 @@ func TestItemLoader_Validate(t *testing.T) {
 	})
 
 	t.Run("empty internal name", func(t *testing.T) {
-		config := &ItemConfig{
+		config := &Config{
 			Version:       "1.0",
 			ValidTags:     []string{},
 			ValidHandlers: []string{},
-			Items: []ItemDef{
+			Items: []Def{
 				{InternalName: "", PublicName: "Item", DefaultDisplay: "Item", Tags: []string{}},
 			},
 		}
@@ -174,11 +174,11 @@ func TestItemLoader_Validate(t *testing.T) {
 	})
 
 	t.Run("empty public name", func(t *testing.T) {
-		config := &ItemConfig{
+		config := &Config{
 			Version:       "1.0",
 			ValidTags:     []string{},
 			ValidHandlers: []string{},
-			Items: []ItemDef{
+			Items: []Def{
 				{InternalName: "item1", PublicName: "", DefaultDisplay: "Item", Tags: []string{}},
 			},
 		}
@@ -188,11 +188,11 @@ func TestItemLoader_Validate(t *testing.T) {
 	})
 
 	t.Run("empty default display", func(t *testing.T) {
-		config := &ItemConfig{
+		config := &Config{
 			Version:       "1.0",
 			ValidTags:     []string{},
 			ValidHandlers: []string{},
-			Items: []ItemDef{
+			Items: []Def{
 				{InternalName: "item1", PublicName: "Item", DefaultDisplay: "", Tags: []string{}},
 			},
 		}
@@ -202,11 +202,11 @@ func TestItemLoader_Validate(t *testing.T) {
 	})
 
 	t.Run("negative max stack", func(t *testing.T) {
-		config := &ItemConfig{
+		config := &Config{
 			Version:       "1.0",
 			ValidTags:     []string{},
 			ValidHandlers: []string{},
-			Items: []ItemDef{
+			Items: []Def{
 				{InternalName: "item1", PublicName: "Item", DefaultDisplay: "Item", MaxStack: -1, Tags: []string{}},
 			},
 		}
@@ -216,11 +216,11 @@ func TestItemLoader_Validate(t *testing.T) {
 	})
 
 	t.Run("negative base value", func(t *testing.T) {
-		config := &ItemConfig{
+		config := &Config{
 			Version:       "1.0",
 			ValidTags:     []string{},
 			ValidHandlers: []string{},
-			Items: []ItemDef{
+			Items: []Def{
 				{InternalName: "item1", PublicName: "Item", DefaultDisplay: "Item", BaseValue: -10, Tags: []string{}},
 			},
 		}
@@ -231,11 +231,11 @@ func TestItemLoader_Validate(t *testing.T) {
 
 	t.Run("valid handler", func(t *testing.T) {
 		handler := "lootbox"
-		config := &ItemConfig{
+		config := &Config{
 			Version:       "1.0",
 			ValidTags:     []string{},
 			ValidHandlers: []string{"lootbox"},
-			Items: []ItemDef{
+			Items: []Def{
 				{
 					InternalName:   "item1",
 					PublicName:     "Item",
@@ -250,7 +250,7 @@ func TestItemLoader_Validate(t *testing.T) {
 	})
 }
 
-func TestItemLoader_LoadActualConfig(t *testing.T) {
+func TestLoader_LoadActualConfig(t *testing.T) {
 	// Test that we can load the actual items.json
 	loader := NewLoader()
 
@@ -276,7 +276,7 @@ func TestItemLoader_LoadActualConfig(t *testing.T) {
 	assert.NotEmpty(t, config.Items, "Should have items defined")
 
 	// Verify specific items exist
-	itemsByName := make(map[string]ItemDef)
+	itemsByName := make(map[string]Def)
 	for _, item := range config.Items {
 		itemsByName[item.InternalName] = item
 	}

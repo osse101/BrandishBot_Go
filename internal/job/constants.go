@@ -61,14 +61,14 @@ const (
 	EpiphanyMultiplier = 2.0  // Double XP
 )
 
-// JobInfo represents basic information about a job for display/autocomplete purposes
-type JobInfo struct {
+// Info represents basic information about a job for display/autocomplete purposes
+type Info struct {
 	Key         string
 	DisplayName string
 }
 
 // AllJobs is a list of all available jobs in the system
-var AllJobs = []JobInfo{
+var AllJobs = []Info{
 	{Key: JobKeyBlacksmith, DisplayName: "Blacksmith (Crafting)"},
 	{Key: JobKeyExplorer, DisplayName: "Explorer (Digging)"},
 	{Key: JobKeyMerchant, DisplayName: "Merchant (Economy)"},

@@ -25,15 +25,15 @@ var (
 
 // RecipeConfig represents the complete recipe configuration
 type RecipeConfig struct {
-	CraftingConfig    *CraftingRecipeConfig
+	CraftingConfig    *CraftingConfig
 	DisassembleConfig *DisassembleRecipeConfig
 }
 
-// CraftingRecipeConfig represents the JSON configuration for crafting recipes
-type CraftingRecipeConfig struct {
+// CraftingConfig represents the JSON configuration for crafting recipes
+type CraftingConfig struct {
 	Version     string              `json:"version"`
 	Description string              `json:"description"`
-	Recipes     []CraftingRecipeDef `json:"recipes"`
+	Recipes     []RecipeDef `json:"recipes"`
 }
 
 // DisassembleRecipeConfig represents the JSON configuration for disassemble recipes
@@ -43,8 +43,8 @@ type DisassembleRecipeConfig struct {
 	Recipes     []DisassembleRecipeDef `json:"recipes"`
 }
 
-// CraftingRecipeDef represents a single crafting recipe in the JSON
-type CraftingRecipeDef struct {
+// RecipeDef represents a single crafting recipe in the JSON
+type RecipeDef struct {
 	RecipeKey  string       `json:"recipe_key"`
 	TargetItem string       `json:"target_item"`
 	Costs      []RecipeCost `json:"costs"`
@@ -103,8 +103,8 @@ func (l *recipeLoader) Load(craftingPath, disassemblePath string) (*RecipeConfig
 		return nil, fmt.Errorf("failed to read crafting config file: %w", err)
 	}
 
-	var craftingConfig CraftingRecipeConfig
-	if err := json.Unmarshal(craftingData, &craftingConfig); err != nil {
+	var cConfig CraftingConfig
+	if err := json.Unmarshal(craftingData, &cConfig); err != nil {
 		return nil, fmt.Errorf("failed to parse crafting config: %w", err)
 	}
 
@@ -120,7 +120,7 @@ func (l *recipeLoader) Load(craftingPath, disassemblePath string) (*RecipeConfig
 	}
 
 	return &RecipeConfig{
-		CraftingConfig:    &craftingConfig,
+		CraftingConfig:    &cConfig,
 		DisassembleConfig: &disassembleConfig,
 	}, nil
 }
@@ -317,7 +317,7 @@ type recipeSyncResult struct {
 }
 
 // syncCraftingRecipes syncs crafting recipes to the database
-func (l *recipeLoader) syncCraftingRecipes(ctx context.Context, config *CraftingRecipeConfig, repo repository.Crafting, itemIDs map[string]int) (*recipeSyncResult, error) {
+func (l *recipeLoader) syncCraftingRecipes(ctx context.Context, config *CraftingConfig, repo repository.Crafting, itemIDs map[string]int) (*recipeSyncResult, error) {
 	log := logger.FromContext(ctx)
 	result := &recipeSyncResult{
 		Orphaned: make([]string, 0),

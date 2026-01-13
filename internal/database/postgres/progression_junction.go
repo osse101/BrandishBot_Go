@@ -14,7 +14,7 @@ func (r *progressionRepository) GetPrerequisites(ctx context.Context, nodeID int
 		return nil, fmt.Errorf("failed to query prerequisites: %w", err)
 	}
 
-	var nodes []*domain.ProgressionNode
+	nodes := make([]*domain.ProgressionNode, 0, len(rows))
 	for _, row := range rows {
 		node := &domain.ProgressionNode{
 			ID:          int(row.ID),
@@ -43,7 +43,7 @@ func (r *progressionRepository) GetDependents(ctx context.Context, nodeID int) (
 		return nil, fmt.Errorf("failed to query dependents: %w", err)
 	}
 
-	var nodes []*domain.ProgressionNode
+	nodes := make([]*domain.ProgressionNode, 0, len(rows))
 	for _, row := range rows {
 		node := &domain.ProgressionNode{
 			ID:          int(row.ID),

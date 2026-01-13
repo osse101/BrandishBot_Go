@@ -65,7 +65,7 @@ func getInventory(ctx context.Context, q *generated.Queries, userID string) (*do
 
 	inventoryData, err := q.GetInventory(ctx, userUUID)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return &domain.Inventory{Slots: []domain.InventorySlot{}}, nil
 		}
 		return nil, fmt.Errorf("failed to get inventory: %w", err)
@@ -92,7 +92,7 @@ func getInventoryForUpdate(ctx context.Context, q *generated.Queries, userID str
 
 	inventoryData, err := q.GetInventoryForUpdate(ctx, userUUID)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return &domain.Inventory{Slots: []domain.InventorySlot{}}, nil
 		}
 		return nil, fmt.Errorf("failed to get inventory for update: %w", err)

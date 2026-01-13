@@ -23,17 +23,17 @@ var (
 	ErrInvalidConfig         = errors.New("invalid configuration")
 )
 
-// ItemConfig represents the JSON configuration for items
-type ItemConfig struct {
+// Config represents the JSON configuration for items
+type Config struct {
 	Version       string    `json:"version"`
 	Description   string    `json:"description"`
 	ValidTags     []string  `json:"valid_tags"`
 	ValidHandlers []string  `json:"valid_handlers"`
-	Items         []ItemDef `json:"items"`
+	Items         []Def `json:"items"`
 }
 
-// ItemDef represents a single item definition in the JSON
-type ItemDef struct {
+// Def represents a single item definition in the JSON
+type Def struct {
 	InternalName   string   `json:"internal_name"`
 	PublicName     string   `json:"public_name"`
 	Description    string   `json:"description"`
@@ -45,11 +45,11 @@ type ItemDef struct {
 	DefaultDisplay string   `json:"default_display"`
 }
 
-// ItemLoader handles loading and validating item configuration
-type ItemLoader interface {
-	Load(path string) (*ItemConfig, error)
-	Validate(config *ItemConfig) error
-	SyncToDatabase(ctx context.Context, config *ItemConfig, repo repository.Item, configPath string) (*SyncResult, error)
+// Loader handles loading and validating item configuration
+type Loader interface {
+	Load(path string) (*Config, error)
+	Validate(config *Config) error
+	SyncToDatabase(ctx context.Context, config *Config, repo repository.Item, configPath string) (*SyncResult, error)
 }
 
 // SyncResult contains the result of syncing items to the database
@@ -61,19 +61,19 @@ type SyncResult struct {
 
 type itemLoader struct{}
 
-// NewLoader creates a new ItemLoader instance
-func NewLoader() ItemLoader {
+// NewLoader creates a new Loader instance
+func NewLoader() Loader {
 	return &itemLoader{}
 }
 
 // Load reads and parses an items JSON file
-func (l *itemLoader) Load(path string) (*ItemConfig, error) {
+func (l *itemLoader) Load(path string) (*Config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read items config file: %w", err)
 	}
 
-	var config ItemConfig
+	var config Config
 	if err := json.Unmarshal(data, &config); err != nil {
 		return nil, fmt.Errorf("failed to parse items config: %w", err)
 	}
@@ -82,7 +82,7 @@ func (l *itemLoader) Load(path string) (*ItemConfig, error) {
 }
 
 // Validate checks the item configuration for errors
-func (l *itemLoader) Validate(config *ItemConfig) error {
+func (l *itemLoader) Validate(config *Config) error {
 	if config == nil {
 		return fmt.Errorf("%w: config is nil", ErrInvalidConfig)
 	}
@@ -155,7 +155,7 @@ func (l *itemLoader) Validate(config *ItemConfig) error {
 }
 
 // SyncToDatabase syncs the item configuration to the database idempotently
-func (l *itemLoader) SyncToDatabase(ctx context.Context, config *ItemConfig, repo repository.Item, configPath string) (*SyncResult, error) {
+func (l *itemLoader) SyncToDatabase(ctx context.Context, config *Config, repo repository.Item, configPath string) (*SyncResult, error) {
 	log := logger.FromContext(ctx)
 
 	// Check if file has changed since last sync

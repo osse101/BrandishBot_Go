@@ -1722,7 +1722,7 @@ const docTemplate = `{
                 "items": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/user.UserInventoryItem"
+                        "$ref": "#/definitions/user.InventoryItem"
                     }
                 }
             }
@@ -2038,7 +2038,7 @@ const docTemplate = `{
                 }
             }
         },
-        "user.UserInventoryItem": {
+        "user.InventoryItem": {
             "type": "object",
             "properties": {
                 "description": {

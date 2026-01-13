@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -370,7 +371,7 @@ func main() {
 	// Run server in a goroutine
 	go func() {
 		slog.Info("Starting server", "port", cfg.Port)
-		if err := srv.Start(); err != nil && err != http.ErrServerClosed {
+		if err := srv.Start(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			slog.Error("Server failed", "error", err)
 			os.Exit(1)
 		}

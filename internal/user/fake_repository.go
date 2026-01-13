@@ -228,15 +228,15 @@ func (f *FakeRepository) UnlockRecipe(ctx context.Context, userID string, recipe
 	return nil
 }
 
-func (r *FakeRepository) GetUnlockedRecipesForUser(ctx context.Context, userID string) ([]repository.UnlockedRecipeInfo, error) {
+func (f *FakeRepository) GetUnlockedRecipesForUser(ctx context.Context, userID string) ([]repository.UnlockedRecipeInfo, error) {
 	var recipes []repository.UnlockedRecipeInfo
 
 	// For each unlocked recipe, get the recipe and item info
-	if userUnlocks, ok := r.unlockedRecipes[userID]; ok {
+	if userUnlocks, ok := f.unlockedRecipes[userID]; ok {
 		for recipeID := range userUnlocks {
-			if recipe, exists := r.recipes[recipeID]; exists {
+			if recipe, exists := f.recipes[recipeID]; exists {
 				// Find the item name
-				for _, item := range r.items {
+				for _, item := range f.items {
 					if item.ID == recipe.TargetItemID {
 						recipes = append(recipes, repository.UnlockedRecipeInfo{
 							ItemName: item.InternalName,
@@ -272,7 +272,7 @@ func (f *FakeRepository) MergeUsersInTransaction(ctx context.Context, primaryUse
 	return nil // No-op for mock
 }
 func (f *FakeRepository) GetAllItems(ctx context.Context) ([]domain.Item, error) {
-	var items []domain.Item
+	items := make([]domain.Item, 0, len(f.items))
 	for _, item := range f.items {
 		items = append(items, *item)
 	}

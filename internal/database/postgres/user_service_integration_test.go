@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -447,7 +448,7 @@ func TestGetUserByPlatformUsername_Integration(t *testing.T) {
 
 	t.Run("user not found", func(t *testing.T) {
 		_, err := repo.GetUserByPlatformUsername(ctx, domain.PlatformTwitch, "nonexistent")
-		if err != domain.ErrUserNotFound {
+		if !errors.Is(err, domain.ErrUserNotFound) {
 			t.Errorf("Expected ErrUserNotFound, got %v", err)
 		}
 	})
@@ -455,7 +456,7 @@ func TestGetUserByPlatformUsername_Integration(t *testing.T) {
 	t.Run("user without platform link", func(t *testing.T) {
 		// Bob doesn't have Discord
 		_, err := repo.GetUserByPlatformUsername(ctx, domain.PlatformDiscord, "Bob")
-		if err != domain.ErrUserNotFound {
+		if !errors.Is(err, domain.ErrUserNotFound) {
 			t.Errorf("Expected ErrUserNotFound for missing platform, got %v", err)
 		}
 	})

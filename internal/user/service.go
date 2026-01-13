@@ -40,13 +40,13 @@ type Service interface {
 	RemoveItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (int, error)
 	GiveItem(ctx context.Context, ownerPlatform, ownerPlatformID, ownerUsername, receiverPlatform, receiverPlatformID, receiverUsername, itemName string, quantity int) error
 	UseItem(ctx context.Context, platform, platformID, username, itemName string, quantity int, targetUsername string) (string, error)
-	GetInventory(ctx context.Context, platform, platformID, username, filter string) ([]UserInventoryItem, error)
+	GetInventory(ctx context.Context, platform, platformID, username, filter string) ([]InventoryItem, error)
 
 	// Inventory management - by username
 	AddItemByUsername(ctx context.Context, platform, username, itemName string, quantity int) error
 	RemoveItemByUsername(ctx context.Context, platform, username, itemName string, quantity int) (int, error)
 	UseItemByUsername(ctx context.Context, platform, username, itemName string, quantity int, targetUsername string) (string, error)
-	GetInventoryByUsername(ctx context.Context, platform, username, filter string) ([]UserInventoryItem, error)
+	GetInventoryByUsername(ctx context.Context, platform, username, filter string) ([]InventoryItem, error)
 	GiveItemByUsername(ctx context.Context, fromPlatform, fromUsername, toPlatform, toUsername, itemName string, quantity int) (string, error)
 
 	// User lookup by platform and username
@@ -65,7 +65,7 @@ type Service interface {
 	Shutdown(ctx context.Context) error
 }
 
-type UserInventoryItem struct {
+type InventoryItem struct {
 	Name     string `json:"name"`
 	Quantity int    `json:"quantity"`
 }
@@ -448,7 +448,7 @@ func (s *service) useItemInternal(ctx context.Context, user *domain.User, itemNa
 }
 
 // getInventoryInternal retrieves a user's inventory with optional filtering
-func (s *service) getInventoryInternal(ctx context.Context, user *domain.User, filter string) ([]UserInventoryItem, error) {
+func (s *service) getInventoryInternal(ctx context.Context, user *domain.User, filter string) ([]InventoryItem, error) {
 	log := logger.FromContext(ctx)
 
 	inventory, err := s.repo.GetInventory(ctx, user.ID)
@@ -487,7 +487,7 @@ func (s *service) getInventoryInternal(ctx context.Context, user *domain.User, f
 		s.itemCacheMu.Unlock()
 	}
 
-	var items []UserInventoryItem
+	items := make([]InventoryItem, 0, len(inventory.Slots))
 	for _, slot := range inventory.Slots {
 		item, ok := itemMap[slot.ItemID]
 		if !ok {
@@ -509,7 +509,7 @@ func (s *service) getInventoryInternal(ctx context.Context, user *domain.User, f
 			}
 		}
 
-		items = append(items, UserInventoryItem{
+		items = append(items, InventoryItem{
 			Name:     item.PublicName,
 			Quantity: slot.Quantity,
 		})
@@ -888,7 +888,7 @@ func (s *service) resolveItemName(ctx context.Context, itemName string) (string,
 	return itemName, nil
 }
 
-func (s *service) GetInventory(ctx context.Context, platform, platformID, username, filter string) ([]UserInventoryItem, error) {
+func (s *service) GetInventory(ctx context.Context, platform, platformID, username, filter string) ([]InventoryItem, error) {
 	log := logger.FromContext(ctx)
 	log.Info("GetInventory called", "platform", platform, "platformID", platformID, "username", username)
 
@@ -901,7 +901,7 @@ func (s *service) GetInventory(ctx context.Context, platform, platformID, userna
 }
 
 // GetInventoryByUsername gets inventory by platform username
-func (s *service) GetInventoryByUsername(ctx context.Context, platform, username, filter string) ([]UserInventoryItem, error) {
+func (s *service) GetInventoryByUsername(ctx context.Context, platform, username, filter string) ([]InventoryItem, error) {
 	log := logger.FromContext(ctx)
 	log.Info("GetInventoryByUsername called", "platform", platform, "username", username)
 

@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -144,7 +145,7 @@ func (r *UserRepository) GetUserByPlatformID(ctx context.Context, platform, plat
 		PlatformUserID: platformID,
 	})
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, domain.ErrUserNotFound
 		}
 		return nil, fmt.Errorf("failed to get user core data: %w", err)
@@ -160,7 +161,7 @@ func (r *UserRepository) GetUserByPlatformUsername(ctx context.Context, platform
 		Name:  platform,
 	})
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, domain.ErrUserNotFound
 		}
 		return nil, fmt.Errorf("failed to get user by username: %w", err)
@@ -183,7 +184,7 @@ func (r *UserRepository) UpdateInventory(ctx context.Context, userID string, inv
 func (r *UserRepository) GetItemByName(ctx context.Context, itemName string) (*domain.Item, error) {
 	row, err := r.q.GetItemByName(ctx, itemName)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil // Return nil if item not found, as per original contract
 		}
 		return nil, fmt.Errorf("failed to get item by name: %w", err)
@@ -205,7 +206,7 @@ func (r *UserRepository) GetItemByName(ctx context.Context, itemName string) (*d
 func (r *UserRepository) GetItemByPublicName(ctx context.Context, publicName string) (*domain.Item, error) {
 	row, err := r.q.GetItemByPublicName(ctx, pgtype.Text{String: publicName, Valid: true})
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to get item by public name: %w", err)
@@ -239,7 +240,7 @@ func (r *UserRepository) GetItemsByIDs(ctx context.Context, itemIDs []int) ([]do
 		return nil, fmt.Errorf("failed to get items by ids: %w", err)
 	}
 
-	var items []domain.Item
+	items := make([]domain.Item, 0, len(rows))
 	for _, row := range rows {
 		items = append(items, domain.Item{
 			ID:             int(row.ItemID),
@@ -266,7 +267,7 @@ func (r *UserRepository) GetItemsByNames(ctx context.Context, names []string) ([
 		return nil, fmt.Errorf("failed to get items by names: %w", err)
 	}
 
-	var items []domain.Item
+	items := make([]domain.Item, 0, len(rows))
 	for _, row := range rows {
 		items = append(items, domain.Item{
 			ID:             int(row.ItemID),
@@ -289,7 +290,7 @@ func (r *UserRepository) GetAllItems(ctx context.Context) ([]domain.Item, error)
 		return nil, fmt.Errorf("failed to get all items: %w", err)
 	}
 
-	var items []domain.Item
+	items := make([]domain.Item, 0, len(rows))
 	for _, row := range rows {
 		items = append(items, domain.Item{
 			ID:             int(row.ItemID),
@@ -309,7 +310,7 @@ func (r *UserRepository) GetAllItems(ctx context.Context) ([]domain.Item, error)
 func (r *UserRepository) GetItemByID(ctx context.Context, id int) (*domain.Item, error) {
 	row, err := r.q.GetItemByID(ctx, int32(id))
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to get item by id: %w", err)
@@ -331,7 +332,7 @@ func (r *UserRepository) GetItemByID(ctx context.Context, id int) (*domain.Item,
 func (r *UserRepository) GetUserByUsername(ctx context.Context, username string) (*domain.User, error) {
 	row, err := r.q.GetUserByUsername(ctx, username)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to get user by username: %w", err)
@@ -357,7 +358,7 @@ func (r *UserRepository) GetLastCooldown(ctx context.Context, userID, action str
 		ActionName: action,
 	})
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to get cooldown: %w", err)
@@ -380,7 +381,7 @@ func (r *UserRepository) GetLastCooldownForUpdate(ctx context.Context, tx pgx.Tx
 		ActionName: action,
 	})
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to get cooldown with lock: %w", err)

@@ -81,7 +81,7 @@ func (r *StatsRepository) GetEventsByUser(ctx context.Context, userID string, st
 		return nil, fmt.Errorf("failed to query events: %w", err)
 	}
 
-	var events []domain.StatsEvent
+	events := make([]domain.StatsEvent, 0, len(rows))
 	for _, row := range rows {
 		event, err := mapStatsEvent(row.EventID, row.UserID, row.EventType, row.EventData, row.CreatedAt)
 		if err != nil {
@@ -109,7 +109,7 @@ func (r *StatsRepository) GetUserEventsByType(ctx context.Context, userID string
 		return nil, fmt.Errorf("failed to query user events: %w", err)
 	}
 
-	var events []domain.StatsEvent
+	events := make([]domain.StatsEvent, 0, len(rows))
 	for _, row := range rows {
 		event, err := mapStatsEvent(row.EventID, row.UserID, row.EventType, row.EventData, row.CreatedAt)
 		if err != nil {
@@ -132,7 +132,7 @@ func (r *StatsRepository) GetEventsByType(ctx context.Context, eventType domain.
 		return nil, fmt.Errorf("failed to query events: %w", err)
 	}
 
-	var events []domain.StatsEvent
+	events := make([]domain.StatsEvent, 0, len(rows))
 	for _, row := range rows {
 		event, err := mapStatsEvent(row.EventID, row.UserID, row.EventType, row.EventData, row.CreatedAt)
 		if err != nil {
@@ -178,7 +178,7 @@ func (r *StatsRepository) GetTopUsers(ctx context.Context, eventType domain.Even
 		return nil, fmt.Errorf("failed to query top users: %w", err)
 	}
 
-	var entries []domain.LeaderboardEntry
+	entries := make([]domain.LeaderboardEntry, 0, len(rows))
 	for _, row := range rows {
 		var uid uuid.UUID
 		if row.UserID.Valid {

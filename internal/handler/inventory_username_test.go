@@ -29,7 +29,7 @@ func TestHandleGetInventoryByUsername(t *testing.T) {
 			name:        "Success",
 			queryParams: map[string]string{"platform": "discord", "username": "user1"},
 			setupMock: func(mUser *mocks.MockUserService) {
-				items := []user.UserInventoryItem{{Name: "Item1", Quantity: 5}}
+				items := []user.InventoryItem{{Name: "Item1", Quantity: 5}}
 				mUser.On("GetInventoryByUsername", mock.Anything, "discord", "user1", "").Return(items, nil)
 			},
 			expectedStatus: http.StatusOK,

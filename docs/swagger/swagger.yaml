@@ -289,7 +289,7 @@ definitions:
     properties:
       items:
         items:
-          $ref: '#/definitions/user.UserInventoryItem'
+          $ref: '#/definitions/user.InventoryItem'
         type: array
     type: object
   handler.GiveItemRequest:
@@ -508,7 +508,7 @@ definitions:
     - node_key
     - user_id
     type: object
-  user.UserInventoryItem:
+  user.InventoryItem:
     properties:
       description:
         type: string

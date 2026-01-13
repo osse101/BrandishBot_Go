@@ -90,7 +90,7 @@ func (r *eventLogRepository) GetEvents(ctx context.Context, filter eventlog.Even
 		return nil, err
 	}
 
-	var events []eventlog.Event
+	events := make([]eventlog.Event, 0, len(rows))
 	for _, row := range rows {
 		evt, err := mapRowToEvent(row)
 		if err != nil {
@@ -112,7 +112,7 @@ func (r *eventLogRepository) GetEventsByUser(ctx context.Context, userID string,
 		return nil, err
 	}
 
-	var events []eventlog.Event
+	events := make([]eventlog.Event, 0, len(rows))
 	for _, row := range rows {
 		evt, err := mapRowToEvent(row)
 		if err != nil {
@@ -134,7 +134,7 @@ func (r *eventLogRepository) GetEventsByType(ctx context.Context, eventType stri
 		return nil, err
 	}
 
-	var events []eventlog.Event
+	events := make([]eventlog.Event, 0, len(rows))
 	for _, row := range rows {
 		evt, err := mapRowToEvent(row)
 		if err != nil {

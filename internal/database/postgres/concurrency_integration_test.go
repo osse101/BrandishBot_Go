@@ -102,7 +102,7 @@ func TestConcurrentAddItem_Integration(t *testing.T) {
 	t.Logf("Completed %d operations in %v", concurrentOps, duration)
 
 	// Check for errors
-	var errors []error
+	errors := make([]error, 0, concurrentOps)
 	for err := range errChan {
 		errors = append(errors, err)
 	}

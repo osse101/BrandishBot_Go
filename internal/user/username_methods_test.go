@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
@@ -57,7 +58,7 @@ func TestGetInventoryByUsername(t *testing.T) {
 
 	t.Run("user not found", func(t *testing.T) {
 		_, err := svc.GetInventoryByUsername(context.Background(), "twitch", "nonexistent", "")
-		if err != domain.ErrUserNotFound {
+		if !errors.Is(err, domain.ErrUserNotFound) {
 			t.Fatalf("Expected ErrUserNotFound, got %v", err)
 		}
 	})
@@ -96,7 +97,7 @@ func TestAddItemByUsername(t *testing.T) {
 
 	t.Run("user not found", func(t *testing.T) {
 		err := svc.AddItemByUsername(context.Background(), "twitch", "nonexistent", "gold", 100)
-		if err != domain.ErrUserNotFound {
+		if !errors.Is(err, domain.ErrUserNotFound) {
 			t.Fatalf("Expected ErrUserNotFound, got %v", err)
 		}
 	})
@@ -142,7 +143,7 @@ func TestRemoveItemByUsername(t *testing.T) {
 
 	t.Run("user not found", func(t *testing.T) {
 		_, err := svc.RemoveItemByUsername(context.Background(), "twitch", "nonexistent", "arrows", 10)
-		if err != domain.ErrUserNotFound {
+		if !errors.Is(err, domain.ErrUserNotFound) {
 			t.Fatalf("Expected ErrUserNotFound, got %v", err)
 		}
 	})
@@ -200,14 +201,14 @@ func TestGiveItemByUsername(t *testing.T) {
 
 	t.Run("sender not found", func(t *testing.T) {
 		_, err := svc.GiveItemByUsername(context.Background(), "twitch", "nonexistent", "discord", "eve", "coins", 10)
-		if err != domain.ErrUserNotFound {
+		if !errors.Is(err, domain.ErrUserNotFound) {
 			t.Fatalf("Expected ErrUserNotFound, got %v", err)
 		}
 	})
 
 	t.Run("receiver not found", func(t *testing.T) {
 		_, err := svc.GiveItemByUsername(context.Background(), "twitch", "dave", "discord", "nonexistent", "coins", 10)
-		if err != domain.ErrUserNotFound {
+		if !errors.Is(err, domain.ErrUserNotFound) {
 			t.Fatalf("Expected ErrUserNotFound, got %v", err)
 		}
 	})

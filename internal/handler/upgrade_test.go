@@ -36,7 +36,7 @@ func TestHandleUpgradeItem(t *testing.T) {
 			mockSetup: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, b *mocks.MockEventBus) {
 				p.On("IsFeatureUnlocked", mock.Anything, "feature_upgrade").Return(true, nil)
 				c.On("UpgradeItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.PublicNameJunkbox, 2).
-					Return(&crafting.CraftingResult{
+					Return(&crafting.Result{
 						ItemName:      domain.PublicNameLootbox, // Result is Lootbox1
 						Quantity:      2,
 						IsMasterwork:  false,
@@ -109,7 +109,7 @@ func TestHandleUpgradeItem(t *testing.T) {
 			mockSetup: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, b *mocks.MockEventBus) {
 				p.On("IsFeatureUnlocked", mock.Anything, "feature_upgrade").Return(true, nil)
 				c.On("UpgradeItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.PublicNameJunkbox, 10).
-					Return(&crafting.CraftingResult{
+					Return(&crafting.Result{
 						ItemName:      domain.PublicNameLootbox,
 						Quantity:      20, // Doubled
 						IsMasterwork:  true,

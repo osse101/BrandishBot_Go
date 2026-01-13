@@ -195,7 +195,7 @@ func (c *APIClient) Search(platform, platformID, username string) (string, error
 }
 
 // GetInventory retrieves user inventory
-func (c *APIClient) GetInventory(platform, platformID, username, filter string) ([]user.UserInventoryItem, error) {
+func (c *APIClient) GetInventory(platform, platformID, username, filter string) ([]user.InventoryItem, error) {
 	params := url.Values{}
 	params.Set("platform", platform)
 	params.Set("username", username)
@@ -216,7 +216,7 @@ func (c *APIClient) GetInventory(platform, platformID, username, filter string) 
 	}
 
 	var invResp struct {
-		Items []user.UserInventoryItem `json:"items"`
+		Items []user.InventoryItem `json:"items"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&invResp); err != nil {
 		return nil, fmt.Errorf("failed to decode inventory: %w", err)
@@ -924,7 +924,7 @@ func (c *APIClient) GetUserStats(platform, platformID string) (string, error) {
 }
 
 // GetInventoryByUsername retrieves user inventory by username
-func (c *APIClient) GetInventoryByUsername(platform, username, filter string) ([]user.UserInventoryItem, error) {
+func (c *APIClient) GetInventoryByUsername(platform, username, filter string) ([]user.InventoryItem, error) {
 	params := url.Values{}
 	params.Set("platform", platform)
 	params.Set("username", username)
@@ -950,7 +950,7 @@ func (c *APIClient) GetInventoryByUsername(platform, username, filter string) ([
 	}
 
 	var inventoryResp struct {
-		Items []user.UserInventoryItem `json:"items"`
+		Items []user.InventoryItem `json:"items"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&inventoryResp); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)

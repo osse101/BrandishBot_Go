@@ -25,7 +25,7 @@ func TestProfileCommand_Success(t *testing.T) {
 	// Mock Inventory (for item count)
 	ctx.Mux.HandleFunc("/api/v1/user/inventory", func(w http.ResponseWriter, r *http.Request) {
 		WriteJSON(w, map[string]interface{}{
-			"items": []user.UserInventoryItem{
+			"items": []user.InventoryItem{
 				{Name: "item1", Quantity: 1},
 				{Name: "item2", Quantity: 2},
 			},

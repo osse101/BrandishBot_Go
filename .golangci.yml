@@ -1,9 +1,6 @@
 run:
   timeout: 5m
   tests: true
-  skip-dirs:
-    - vendor
-    - scripts
 
 linters:
   # Enable essential and recommended linters
@@ -155,6 +152,7 @@ issues:
     - builtin
     - examples
     - vendor
+    - scripts
 
 output:
   formats:

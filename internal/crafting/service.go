@@ -22,8 +22,8 @@ type RecipeInfo struct {
 	BaseCost []domain.RecipeCost `json:"base_cost,omitempty"`
 }
 
-// CraftingResult contains the result of an upgrade operation
-type CraftingResult struct {
+// Result contains the result of an upgrade operation
+type Result struct {
 	ItemName      string `json:"item_name"`
 	Quantity      int    `json:"quantity"`
 	IsMasterwork  bool   `json:"is_masterwork"`
@@ -40,7 +40,7 @@ type DisassembleResult struct {
 
 // Service defines the interface for crafting operations
 type Service interface {
-	UpgradeItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (*CraftingResult, error)
+	UpgradeItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (*Result, error)
 	GetRecipe(ctx context.Context, itemName, platform, platformID, username string) (*RecipeInfo, error)
 	GetUnlockedRecipes(ctx context.Context, platform, platformID, username string) ([]repository.UnlockedRecipeInfo, error)
 	GetAllRecipes(ctx context.Context) ([]repository.RecipeListItem, error)
@@ -182,7 +182,7 @@ func addItemToInventory(inventory *domain.Inventory, itemID, quantity int) {
 }
 
 // UpgradeItem upgrades as many items as possible based on available materials
-func (s *service) UpgradeItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (*CraftingResult, error) {
+func (s *service) UpgradeItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (*Result, error) {
 	log := logger.FromContext(ctx)
 	log.Info("UpgradeItem called", "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity)
 
@@ -288,7 +288,7 @@ func (s *service) getAndValidateRecipe(ctx context.Context, itemID int, userID s
 	return recipe, nil
 }
 
-func (s *service) calculateUpgradeOutput(ctx context.Context, userID string, itemName string, actualQuantity int) (*CraftingResult, error) {
+func (s *service) calculateUpgradeOutput(ctx context.Context, userID string, itemName string, actualQuantity int) (*Result, error) {
 	log := logger.FromContext(ctx)
 
 	outputQuantity := 0
@@ -317,7 +317,7 @@ func (s *service) calculateUpgradeOutput(ctx context.Context, userID string, ite
 		}
 	}
 
-	return &CraftingResult{
+	return &Result{
 		ItemName:      itemName,
 		Quantity:      outputQuantity,
 		IsMasterwork:  masterworkTriggered,

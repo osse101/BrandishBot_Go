@@ -203,7 +203,7 @@ func (m *mockSearchRepo) MergeUsersInTransaction(ctx context.Context, primaryUse
 }
 
 func (m *mockSearchRepo) GetAllItems(ctx context.Context) ([]domain.Item, error) {
-	var items []domain.Item
+	items := make([]domain.Item, 0, len(m.items))
 	for _, item := range m.items {
 		items = append(items, *item)
 	}

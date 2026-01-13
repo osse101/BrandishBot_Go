@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -36,7 +37,7 @@ func NewProgressionRepository(pool *pgxpool.Pool, bus event.Bus) repository.Prog
 func (r *progressionRepository) GetNodeByKey(ctx context.Context, nodeKey string) (*domain.ProgressionNode, error) {
 	node, err := r.q.GetNodeByKey(ctx, nodeKey)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to get node by key: %w", err)
@@ -61,7 +62,7 @@ func (r *progressionRepository) GetNodeByKey(ctx context.Context, nodeKey string
 func (r *progressionRepository) GetNodeByID(ctx context.Context, id int) (*domain.ProgressionNode, error) {
 	node, err := r.q.GetNodeByID(ctx, int32(id))
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to get node by ID: %w", err)
@@ -89,7 +90,7 @@ func (r *progressionRepository) GetAllNodes(ctx context.Context) ([]*domain.Prog
 		return nil, fmt.Errorf("failed to query nodes: %w", err)
 	}
 
-	var nodes []*domain.ProgressionNode
+	nodes := make([]*domain.ProgressionNode, 0, len(rows))
 	for _, node := range rows {
 		nodes = append(nodes, &domain.ProgressionNode{
 			ID:          int(node.ID),
@@ -172,7 +173,7 @@ func (r *progressionRepository) GetUnlock(ctx context.Context, nodeID int, level
 	})
 
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to get unlock: %w", err)
@@ -194,7 +195,7 @@ func (r *progressionRepository) GetAllUnlocks(ctx context.Context) ([]*domain.Pr
 		return nil, fmt.Errorf("failed to query unlocks: %w", err)
 	}
 
-	var unlocks []*domain.ProgressionUnlock
+	unlocks := make([]*domain.ProgressionUnlock, 0, len(rows))
 	for _, row := range rows {
 		unlocks = append(unlocks, &domain.ProgressionUnlock{
 			ID:              int(row.ID),
@@ -290,7 +291,7 @@ func (r *progressionRepository) RelockNode(ctx context.Context, nodeID int, leve
 func (r *progressionRepository) GetActiveVoting(ctx context.Context) (*domain.ProgressionVoting, error) {
 	row, err := r.q.GetActiveVoting(ctx)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to get active voting: %w", err)
@@ -340,7 +341,7 @@ func (r *progressionRepository) GetVoting(ctx context.Context, nodeID int, level
 	})
 
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to get voting: %w", err)
@@ -455,7 +456,7 @@ func (r *progressionRepository) GetUserProgressions(ctx context.Context, userID 
 		return nil, fmt.Errorf("failed to query user progressions: %w", err)
 	}
 
-	var progressions []*domain.UserProgression
+	progressions := make([]*domain.UserProgression, 0, len(rows))
 	for _, row := range rows {
 		prog := &domain.UserProgression{
 			UserID:          row.UserID,
@@ -761,7 +762,7 @@ func (r *progressionRepository) GetDailyEngagementTotals(ctx context.Context, si
 
 func (r *progressionRepository) GetSyncMetadata(ctx context.Context, configName string) (*domain.SyncMetadata, error) {
 	row, err := r.q.GetSyncMetadata(ctx, configName)
-	if err == pgx.ErrNoRows {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, fmt.Errorf("sync metadata not found")
 	}
 	if err != nil {

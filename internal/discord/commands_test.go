@@ -13,7 +13,7 @@ import (
 type MockAPIClient struct {
 	RegisterUserFunc    func(string, string) (*domain.User, error)
 	SearchFunc          func(string, string, string) (string, error)
-	GetInventoryFunc    func(string, string, string) ([]user.UserInventoryItem, error)
+	GetInventoryFunc    func(string, string, string) ([]user.InventoryItem, error)
 	UseItemFunc         func(string, string, string, string, int) (string, error)
 	BuyItemFunc         func(string, string, string, string, int) (string, error)
 	SellItemFunc        func(string, string, string, string, int) (string, error)
@@ -46,11 +46,11 @@ func (m *MockAPIClient) Search(platform, platformID, username string) (string, e
 	return "Found 10 money!", nil
 }
 
-func (m *MockAPIClient) GetInventory(platform, platformID, username string) ([]user.UserInventoryItem, error) {
+func (m *MockAPIClient) GetInventory(platform, platformID, username string) ([]user.InventoryItem, error) {
 	if m.GetInventoryFunc != nil {
 		return m.GetInventoryFunc(platform, platformID, username)
 	}
-	return []user.UserInventoryItem{}, nil
+	return []user.InventoryItem{}, nil
 }
 
 func (m *MockAPIClient) UseItem(platform, platformID, username, itemName string, quantity int) (string, error) {

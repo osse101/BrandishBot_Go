@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -45,36 +46,36 @@ func FormatValidationError(err error) map[string]string {
 		return nil
 	}
 
-	errors := make(map[string]string)
+	errs := make(map[string]string)
 
 	// Check if it's a validator.ValidationErrors
-	validationErrors, ok := err.(validator.ValidationErrors)
-	if !ok {
-		errors["error"] = "Invalid request format"
-		return errors
+	var validationErrors validator.ValidationErrors
+	if !errors.As(err, &validationErrors) {
+		errs["error"] = "Invalid request format"
+		return errs
 	}
 
 	for _, e := range validationErrors {
 		field := strings.ToLower(e.Field())
 		switch e.Tag() {
 		case "required":
-			errors[field] = "This field is required"
+			errs[field] = "This field is required"
 		case "email":
-			errors[field] = "Invalid email format"
+			errs[field] = "Invalid email format"
 		case "platform":
-			errors[field] = "Invalid platform"
+			errs[field] = "Invalid platform"
 		case "max":
-			errors[field] = fmt.Sprintf("Must be at most %s characters", e.Param())
+			errs[field] = fmt.Sprintf("Must be at most %s characters", e.Param())
 		case "min":
-			errors[field] = fmt.Sprintf("Must be at least %s characters", e.Param())
+			errs[field] = fmt.Sprintf("Must be at least %s characters", e.Param())
 		case "excludesall":
-			errors[field] = "Contains invalid characters"
+			errs[field] = "Contains invalid characters"
 		default:
-			errors[field] = "Invalid value"
+			errs[field] = "Invalid value"
 		}
 	}
 
-	return errors
+	return errs
 }
 
 // ValidPlatforms defines supported platforms

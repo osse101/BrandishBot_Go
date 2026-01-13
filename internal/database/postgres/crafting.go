@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -64,7 +65,7 @@ func (r *CraftingRepository) GetUserByPlatformID(ctx context.Context, platform, 
 		PlatformUserID: platformID,
 	})
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, domain.ErrUserNotFound
 		}
 		return nil, fmt.Errorf("failed to get user core data: %w", err)
@@ -76,7 +77,7 @@ func (r *CraftingRepository) GetUserByPlatformID(ctx context.Context, platform, 
 func (r *CraftingRepository) GetItemByName(ctx context.Context, itemName string) (*domain.Item, error) {
 	row, err := r.q.GetItemByName(ctx, itemName)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil // Return nil if item not found
 		}
 		return nil, fmt.Errorf("failed to get item by name: %w", err)
@@ -98,7 +99,7 @@ func (r *CraftingRepository) GetItemByName(ctx context.Context, itemName string)
 func (r *CraftingRepository) GetItemByID(ctx context.Context, id int) (*domain.Item, error) {
 	row, err := r.q.GetItemByID(ctx, int32(id))
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to get item by id: %w", err)
@@ -132,7 +133,7 @@ func (r *CraftingRepository) GetItemsByIDs(ctx context.Context, itemIDs []int) (
 		return nil, fmt.Errorf("failed to get items by ids: %w", err)
 	}
 
-	var items []domain.Item
+	items := make([]domain.Item, 0, len(rows))
 	for _, row := range rows {
 		items = append(items, domain.Item{
 			ID:             int(row.ItemID),
@@ -172,7 +173,7 @@ func (t *CraftingTx) UpdateInventory(ctx context.Context, userID string, invento
 func (r *CraftingRepository) GetRecipeByTargetItemID(ctx context.Context, itemID int) (*domain.Recipe, error) {
 	row, err := r.q.GetRecipeByTargetItemID(ctx, int32(itemID))
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to get recipe by target item id: %w", err)
@@ -235,7 +236,7 @@ func (r *CraftingRepository) GetUnlockedRecipesForUser(ctx context.Context, user
 		return nil, fmt.Errorf("failed to query unlocked recipes: %w", err)
 	}
 
-	var recipes []repository.UnlockedRecipeInfo
+	recipes := make([]repository.UnlockedRecipeInfo, 0, len(rows))
 	for _, row := range rows {
 		recipes = append(recipes, repository.UnlockedRecipeInfo{
 			ItemName: row.ItemName,
@@ -252,7 +253,7 @@ func (r *CraftingRepository) GetAllRecipes(ctx context.Context) ([]repository.Re
 		return nil, fmt.Errorf("failed to query all recipes: %w", err)
 	}
 
-	var recipes []repository.RecipeListItem
+	recipes := make([]repository.RecipeListItem, 0, len(rows))
 	for _, row := range rows {
 		recipes = append(recipes, repository.RecipeListItem{
 			ItemName:    row.ItemName,
@@ -267,7 +268,7 @@ func (r *CraftingRepository) GetAllRecipes(ctx context.Context) ([]repository.Re
 func (r *CraftingRepository) GetDisassembleRecipeBySourceItemID(ctx context.Context, itemID int) (*domain.DisassembleRecipe, error) {
 	row, err := r.q.GetDisassembleRecipeBySourceItemID(ctx, int32(itemID))
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to query disassemble recipe: %w", err)
@@ -299,7 +300,7 @@ func (r *CraftingRepository) GetDisassembleRecipeBySourceItemID(ctx context.Cont
 func (r *CraftingRepository) GetAssociatedUpgradeRecipeID(ctx context.Context, disassembleRecipeID int) (int, error) {
 	id, err := r.q.GetAssociatedUpgradeRecipeID(ctx, int32(disassembleRecipeID))
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return 0, fmt.Errorf("no associated upgrade recipe found for disassemble recipe %d", disassembleRecipeID)
 		}
 		return 0, fmt.Errorf("failed to query associated upgrade recipe: %w", err)
@@ -316,7 +317,7 @@ func (r *CraftingRepository) GetAllCraftingRecipes(ctx context.Context) ([]domai
 		return nil, fmt.Errorf("failed to query crafting recipes: %w", err)
 	}
 
-	var recipes []domain.Recipe
+	recipes := make([]domain.Recipe, 0, len(rows))
 	for _, row := range rows {
 		recipe := domain.Recipe{
 			ID:           int(row.RecipeID),
@@ -346,7 +347,7 @@ func (r *CraftingRepository) GetAllDisassembleRecipes(ctx context.Context) ([]do
 		return nil, fmt.Errorf("failed to query disassemble recipes: %w", err)
 	}
 
-	var recipes []domain.DisassembleRecipe
+	recipes := make([]domain.DisassembleRecipe, 0, len(rows))
 	for _, row := range rows {
 		recipe := domain.DisassembleRecipe{
 			ID:               int(row.RecipeID),
@@ -379,7 +380,7 @@ func (r *CraftingRepository) GetAllDisassembleRecipes(ctx context.Context) ([]do
 func (r *CraftingRepository) GetCraftingRecipeByKey(ctx context.Context, recipeKey string) (*domain.Recipe, error) {
 	row, err := r.q.GetCraftingRecipeByKey(ctx, recipeKey)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to query crafting recipe by key: %w", err)
@@ -407,7 +408,7 @@ func (r *CraftingRepository) GetCraftingRecipeByKey(ctx context.Context, recipeK
 func (r *CraftingRepository) GetDisassembleRecipeByKey(ctx context.Context, recipeKey string) (*domain.DisassembleRecipe, error) {
 	row, err := r.q.GetDisassembleRecipeByKey(ctx, recipeKey)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to query disassemble recipe by key: %w", err)

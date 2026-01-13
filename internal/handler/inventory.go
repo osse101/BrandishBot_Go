@@ -461,7 +461,7 @@ func HandleUseItem(svc user.Service, eventBus event.Bus) http.HandlerFunc {
 }
 
 type GetInventoryResponse struct {
-	Items []user.UserInventoryItem `json:"items"`
+	Items []user.InventoryItem `json:"items"`
 }
 
 // HandleGetInventory gets the user's inventory

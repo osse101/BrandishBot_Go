@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
@@ -61,7 +62,7 @@ func (r *EconomyRepository) GetUserByPlatformID(ctx context.Context, platform, p
 		PlatformUserID: platformID,
 	})
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, domain.ErrUserNotFound
 		}
 		return nil, fmt.Errorf("failed to get user core data: %w", err)
@@ -73,7 +74,7 @@ func (r *EconomyRepository) GetUserByPlatformID(ctx context.Context, platform, p
 func (r *EconomyRepository) GetItemByName(ctx context.Context, itemName string) (*domain.Item, error) {
 	row, err := r.q.GetItemByName(ctx, itemName)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil // Return nil if item not found
 		}
 		return nil, fmt.Errorf("failed to get item by name: %w", err)
@@ -118,7 +119,7 @@ func (r *EconomyRepository) GetSellablePrices(ctx context.Context) ([]domain.Ite
 		return nil, fmt.Errorf("failed to query sellable items: %w", err)
 	}
 
-	var items []domain.Item
+	items := make([]domain.Item, 0, len(rows))
 	for _, row := range rows {
 		items = append(items, domain.Item{
 			PublicName: row.PublicName.String,
@@ -141,7 +142,7 @@ func (r *EconomyRepository) GetBuyablePrices(ctx context.Context) ([]domain.Item
 		return nil, fmt.Errorf("failed to query buyable items: %w", err)
 	}
 
-	var items []domain.Item
+	items := make([]domain.Item, 0, len(rows))
 	for _, row := range rows {
 		items = append(items, domain.Item{
 			PublicName: row.PublicName.String,

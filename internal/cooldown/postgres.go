@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"time"
 
@@ -184,7 +185,7 @@ func (b *postgresBackend) getLastUsed(ctx context.Context, userID, action string
 
 	err := b.db.QueryRow(ctx, query, userID, action).Scan(&lastUsed)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil // No cooldown record
 		}
 		return nil, fmt.Errorf("failed to get last used: %w", err)
@@ -229,7 +230,7 @@ func (b *postgresBackend) getLastUsedTx(ctx context.Context, tx pgx.Tx, userID, 
 
 	err := tx.QueryRow(ctx, query, userID, action).Scan(&lastUsed)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil // No cooldown record
 		}
 		return nil, fmt.Errorf("failed to get last used: %w", err)

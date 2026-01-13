@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
@@ -40,7 +41,7 @@ func (r *progressionRepository) GetActiveSession(ctx context.Context) (*domain.P
 	// Status 'voting' is handled in query
 	row, err := r.q.GetActiveSession(ctx)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to get active session: %w", err)
@@ -75,7 +76,7 @@ func (r *progressionRepository) GetActiveSession(ctx context.Context) (*domain.P
 func (r *progressionRepository) GetSessionByID(ctx context.Context, sessionID int) (*domain.ProgressionVotingSession, error) {
 	row, err := r.q.GetSessionByID(ctx, int32(sessionID))
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to get session: %w", err)
@@ -208,7 +209,7 @@ func (r *progressionRepository) CreateUnlockProgress(ctx context.Context) (int, 
 func (r *progressionRepository) GetActiveUnlockProgress(ctx context.Context) (*domain.UnlockProgress, error) {
 	row, err := r.q.GetActiveUnlockProgress(ctx)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to get active unlock progress: %w", err)

@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -37,7 +38,7 @@ func (r *JobRepository) GetAllJobs(ctx context.Context) ([]domain.Job, error) {
 		return nil, fmt.Errorf("failed to query jobs: %w", err)
 	}
 
-	var jobs []domain.Job
+	jobs := make([]domain.Job, 0, len(rows))
 	for _, row := range rows {
 		jobs = append(jobs, domain.Job{
 			ID:                 int(row.ID),
@@ -56,7 +57,7 @@ func (r *JobRepository) GetAllJobs(ctx context.Context) ([]domain.Job, error) {
 func (r *JobRepository) GetJobByKey(ctx context.Context, jobKey string) (*domain.Job, error) {
 	row, err := r.q.GetJobByKey(ctx, jobKey)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("job not found: %s", jobKey)
 		}
 		return nil, fmt.Errorf("failed to get job: %w", err)
@@ -84,7 +85,7 @@ func (r *JobRepository) GetUserJobs(ctx context.Context, userID string) ([]domai
 		return nil, fmt.Errorf("failed to query user jobs: %w", err)
 	}
 
-	var userJobs []domain.UserJob
+	userJobs := make([]domain.UserJob, 0, len(rows))
 	for _, row := range rows {
 		lastXPGain := row.LastXpGain.Time
 		userJobs = append(userJobs, domain.UserJob{
@@ -112,7 +113,7 @@ func (r *JobRepository) GetUserJob(ctx context.Context, userID string, jobID int
 		JobID:  int32(jobID),
 	})
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil // Not an error, just no progress yet
 		}
 		return nil, fmt.Errorf("failed to get user job: %w", err)
@@ -198,7 +199,7 @@ func (r *JobRepository) GetJobLevelBonuses(ctx context.Context, jobID int, level
 		return nil, fmt.Errorf("failed to query job bonuses: %w", err)
 	}
 
-	var bonuses []domain.JobLevelBonus
+	bonuses := make([]domain.JobLevelBonus, 0, len(rows))
 	for _, row := range rows {
 		// Convert pgtype.Numeric to float64
 		// Best effort conversion

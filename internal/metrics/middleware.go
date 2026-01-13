@@ -17,8 +17,8 @@ func (rw *responseWriter) WriteHeader(code int) {
 	rw.ResponseWriter.WriteHeader(code)
 }
 
-// MetricsMiddleware collects HTTP request metrics
-func MetricsMiddleware(next http.Handler) http.Handler {
+// Middleware collects HTTP request metrics
+func Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 

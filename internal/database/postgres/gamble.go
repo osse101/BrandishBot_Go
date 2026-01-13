@@ -1,9 +1,9 @@
 package postgres
 
 import (
+"errors"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -51,7 +51,8 @@ func (r *GambleRepository) CreateGamble(ctx context.Context, gamble *domain.Gamb
 
 	err = r.q.CreateGamble(ctx, params)
 	if err != nil {
-		if pgErr, ok := err.(*pgconn.PgError); ok && pgErr.Code == "23505" {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 			return domain.ErrGambleAlreadyActive
 		}
 		return fmt.Errorf("failed to create gamble: %w", err)
@@ -121,7 +122,8 @@ func (r *GambleRepository) JoinGamble(ctx context.Context, participant *domain.P
 
 	err = r.q.JoinGamble(ctx, params)
 	if err != nil {
-		if pgErr, ok := err.(*pgconn.PgError); ok && pgErr.Code == "23505" {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 			return domain.ErrUserAlreadyJoined
 		}
 		return fmt.Errorf("failed to join gamble: %w", err)

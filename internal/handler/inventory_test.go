@@ -644,7 +644,7 @@ func TestHandleGetInventory(t *testing.T) {
 			platformID: "test-platformid",
 			filter:     "",
 			setupMock: func(m *mocks.MockUserService, p *mocks.MockProgressionService) {
-				items := []user.UserInventoryItem{
+				items := []user.InventoryItem{
 					{Name: domain.ItemBlaster, Quantity: 1},
 				}
 				m.On("GetInventory", mock.Anything, domain.PlatformDiscord, "test-platformid", "testuser", "").Return(items, nil)
@@ -659,7 +659,7 @@ func TestHandleGetInventory(t *testing.T) {
 			platformID: "test-platformid",
 			filter:     domain.FilterTypeUpgrade,
 			setupMock: func(m *mocks.MockUserService, p *mocks.MockProgressionService) {
-				items := []user.UserInventoryItem{
+				items := []user.InventoryItem{
 					{Name: domain.ItemLootbox0, Quantity: 1},
 				}
 				p.On("IsFeatureUnlocked", mock.Anything, "feature_filter_upgrade").Return(true, nil)
@@ -709,7 +709,7 @@ func TestHandleGetInventory(t *testing.T) {
 			platformID: "test-platformid",
 			filter:     domain.FilterTypeSellable,
 			setupMock: func(m *mocks.MockUserService, p *mocks.MockProgressionService) {
-				items := []user.UserInventoryItem{
+				items := []user.InventoryItem{
 					{Name: domain.ItemLootbox1, Quantity: 5},
 				}
 				p.On("IsFeatureUnlocked", mock.Anything, "feature_filter_sellable").Return(true, nil)
@@ -737,7 +737,7 @@ func TestHandleGetInventory(t *testing.T) {
 			platformID: "test-platformid",
 			filter:     domain.FilterTypeConsumable,
 			setupMock: func(m *mocks.MockUserService, p *mocks.MockProgressionService) {
-				items := []user.UserInventoryItem{
+				items := []user.InventoryItem{
 					{Name: domain.ItemLootbox0, Quantity: 3},
 				}
 				p.On("IsFeatureUnlocked", mock.Anything, "feature_filter_consumable").Return(true, nil)

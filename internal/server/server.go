@@ -55,7 +55,7 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 	r.Use(AuthMiddleware(apiKey, trustedProxies, detector))
 	r.Use(SecurityLoggingMiddleware(trustedProxies, detector))
 	r.Use(RequestSizeLimitMiddleware(1 << 20)) // 1MB limit
-	r.Use(metrics.MetricsMiddleware)
+	r.Use(metrics.Middleware)
 	r.Use(loggingMiddleware)
 
 	// Health check routes (unversioned)

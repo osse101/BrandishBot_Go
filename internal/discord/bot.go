@@ -167,7 +167,7 @@ func (b *Bot) SendDailyCommitReport() error {
 				Date string `json:"date"`
 			} `json:"author"`
 		} `json:"commit"`
-		HtmlUrl string `json:"html_url"`
+		HTMLURL string `json:"html_url"`
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&commits); err != nil {
@@ -185,7 +185,7 @@ func (b *Bot) SendDailyCommitReport() error {
 		if len(msg) > 50 {
 			msg = msg[:47] + "..."
 		}
-		fmt.Fprintf(&sb, "• [`%s`](%s) %s - *%s*\n", c.Sha[:7], c.HtmlUrl, msg, c.Commit.Author.Name)
+		fmt.Fprintf(&sb, "• [`%s`](%s) %s - *%s*\n", c.Sha[:7], c.HTMLURL, msg, c.Commit.Author.Name)
 	}
 
 	embed := &discordgo.MessageEmbed{

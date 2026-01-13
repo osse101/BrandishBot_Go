@@ -60,7 +60,7 @@ func (sf *StringFinder) compile() {
 
 	// efficient matching: sort patterns by length descending to handle overlapping prefixes correctly
 	// e.g. "superman" before "super"
-	var patterns []string
+	patterns := make([]string, 0, len(sf.ruleMap))
 	for p := range sf.ruleMap {
 		patterns = append(patterns, p)
 	}
@@ -68,7 +68,7 @@ func (sf *StringFinder) compile() {
 		return len(patterns[i]) > len(patterns[j])
 	})
 
-	var escapedPatterns []string
+	escapedPatterns := make([]string, 0, len(patterns))
 	for _, p := range patterns {
 		escapedPatterns = append(escapedPatterns, regexp.QuoteMeta(p))
 	}
