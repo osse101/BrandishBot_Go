@@ -1,10 +1,11 @@
 .PHONY: help migrate-up migrate-down migrate-status migrate-create test build run clean docker-build docker-up docker-down deploy-staging deploy-production rollback-staging rollback-production health-check-staging health-check-prod
 
 # Tool paths
-GOOSE := $(shell command -v goose 2> /dev/null || echo $(HOME)/go/bin/goose)
-SWAG := $(shell command -v swag 2> /dev/null || echo $(HOME)/go/bin/swag)
-LINT := $(shell command -v golangci-lint 2> /dev/null || echo $(HOME)/go/bin/golangci-lint)
-MOCKERY := $(shell command -v mockery 2> /dev/null || echo $(HOME)/go/bin/mockery)
+GOOSE   := go run github.com/pressly/goose/v3/cmd/goose
+SWAG    := go run github.com/swaggo/swag/cmd/swag
+LINT    := go run github.com/golangci/golangci-lint/cmd/golangci-lint
+MOCKERY := go run github.com/vektra/mockery/v2
+SQLC    := go run github.com/sqlc-dev/sqlc/cmd/sqlc
 
 # Default target
 help:
@@ -119,7 +120,7 @@ test-coverage-check:
 	@go test -coverprofile=logs/coverage.out -covermode=atomic ./... >/dev/null 2>&1
 	@COVERAGE=$$(go tool cover -func=logs/coverage.out | grep total | awk '{print $$3}' | sed 's/%//'); \
 	THRESHOLD=80; \
-	if [ $$(echo "$$COVERAGE < $$THRESHOLD" | bc -l) -eq 1 ]; then \
+	if [ $$(echo "$$COVERAGE $$THRESHOLD" | awk '{if ($$1 < $$2) print 1; else print 0}') -eq 1 ]; then \
 		echo "❌ Coverage $$COVERAGE% is below $$THRESHOLD% threshold"; \
 		exit 1; \
 	else \
@@ -263,12 +264,12 @@ clean:
 
 swagger:
 	@echo "Generating Swagger documentation..."
-	@$$HOME/go/bin/swag init -g cmd/app/main.go --output ./docs/swagger
+	@$(SWAG) init -g cmd/app/main.go --output ./docs/swagger
 	@echo "Swagger docs updated: docs/swagger/"
 
 generate:
 	@echo "Generating sqlc code..."
-	@go run github.com/sqlc-dev/sqlc/cmd/sqlc@latest generate
+	@$(SQLC) generate
 	@echo "✓ sqlc code generated"
 
 # Docker commands
