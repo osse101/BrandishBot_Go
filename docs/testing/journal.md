@@ -298,4 +298,23 @@ Before adding tests to a new service:
 
 ---
 
-*Last updated: December 2024*
+## 2026-01-12: Handler Test Coverage Improvement
+
+### Context
+`internal/handler` had low test coverage (65.5%), specifically missing tests for `admin.go` and `admin_cache.go`.
+
+### Solution/Pattern
+Added `admin_test.go` and `admin_cache_test.go` using existing generated mocks (`mocks.MockNamingResolver` and `mocks.MockUserService`).
+
+### Key Learnings
+-   Even simple handlers like `HandleReloadAliases` and `HandleGetCacheStats` should be tested to ensure correct status codes and response bodies.
+-   Reusing generated mocks from `mocks/` package simplifies handler testing significantly.
+-   `httptest` is essential for verifying HTTP responses without starting a full server.
+
+### Impact
+-   Improved `internal/handler` coverage from 65.5% to 66.8%.
+-   Ensured admin endpoints are covered by tests.
+
+---
+
+*Last updated: January 2026*
