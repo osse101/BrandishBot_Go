@@ -2,7 +2,7 @@ name: Nightly Benchmarks
 
 on:
   schedule:
-    - cron: '0 2 * * *'  # 2 AM UTC daily
+    - cron: '0 2 * * 0'  # 2 AM UTC daily
   workflow_dispatch:  # Allow manual trigger
 
 jobs:
@@ -10,14 +10,15 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Fetch all history for comparison
       
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
+          go-version: '1.24.0'
+          cache: true
       
       - name: Install benchstat
         run: go install golang.org/x/perf/cmd/benchstat@latest
@@ -31,7 +32,7 @@ jobs:
       
       - name: Download previous benchmark
         continue-on-error: true
-        uses: dawidd6/action-download-artifact@v2
+        uses: dawidd6/action-download-artifact@v3
         with:
           workflow: nightly-benchmark.yml
           name: benchmark-results
@@ -55,7 +56,7 @@ jobs:
           cp benchmarks/results/nightly-$(date +%Y%m%d).txt benchmarks/results/latest.txt
       
       - name: Upload benchmark results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: benchmark-results
           path: benchmarks/results/
