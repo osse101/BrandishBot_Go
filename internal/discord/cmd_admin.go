@@ -38,14 +38,11 @@ func AddItemCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	}
 
 	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-		}); err != nil {
-			slog.Error("Failed to send deferred response", "error", err)
+		if !deferResponse(s, i) {
 			return
 		}
 
-		options := i.ApplicationCommandData().Options
+		options := getOptions(i)
 		targetUser := options[0].UserValue(s)
 		itemName := options[1].StringValue()
 		quantity := int(options[2].IntValue())
@@ -113,14 +110,11 @@ func RemoveItemCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	}
 
 	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-		}); err != nil {
-			slog.Error("Failed to send deferred response", "error", err)
+		if !deferResponse(s, i) {
 			return
 		}
 
-		options := i.ApplicationCommandData().Options
+		options := getOptions(i)
 		targetUser := options[0].UserValue(s)
 		itemName := options[1].StringValue()
 		quantity := int(options[2].IntValue())

@@ -268,11 +268,11 @@ func createSearchTestService() (*service, *mockSearchRepo) {
 	return svc, repo
 }
 
-func createTestUser(username, userID string) *domain.User {
+func createTestUser() *domain.User {
 	return &domain.User{
-		ID:       userID,
-		Username: username,
-		TwitchID: username + "123",
+		ID:       TestUserID,
+		Username: TestUsername,
+		TwitchID: TestUsername + "123",
 	}
 }
 
@@ -284,7 +284,7 @@ func createTestUser(username, userID string) *domain.User {
 func TestHandleSearch_Success(t *testing.T) {
 	// ARRANGE
 	svc, repo := createSearchTestService()
-	user := createTestUser(TestUsername, TestUserID)
+	user := createTestUser()
 	repo.users[TestUsername] = user
 
 	// ACT
@@ -340,7 +340,7 @@ func TestHandleSearch_CooldownBoundaries(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// ARRANGE
 			svc, repo := createSearchTestService()
-			user := createTestUser(TestUsername, TestUserID)
+			user := createTestUser()
 			repo.users[TestUsername] = user
 
 			// Set cooldown
@@ -498,7 +498,7 @@ func TestHandleSearch_DatabaseErrors(t *testing.T) {
 func TestHandleSearch_NamingResolution(t *testing.T) {
 	// ARRANGE
 	svc, repo := createSearchTestService()
-	user := createTestUser(TestUsername, TestUserID)
+	user := createTestUser()
 	repo.users[TestUsername] = user
 
 	// Configure mock resolver
@@ -538,7 +538,7 @@ func TestHandleSearch_CooldownUpdate(t *testing.T) {
 	t.Run("cooldown updates after successful search", func(t *testing.T) {
 		// ARRANGE
 		svc, repo := createSearchTestService()
-		user := createTestUser(TestUsername, TestUserID)
+		user := createTestUser()
 		repo.users[TestUsername] = user
 
 		// Set old cooldown
@@ -563,7 +563,7 @@ func TestHandleSearch_CooldownUpdate(t *testing.T) {
 	t.Run("cooldown not updated when on cooldown", func(t *testing.T) {
 		// ARRANGE
 		svc, repo := createSearchTestService()
-		user := createTestUser(TestUsername, TestUserID)
+		user := createTestUser()
 		repo.users[TestUsername] = user
 
 		// Set recent cooldown
@@ -591,7 +591,7 @@ func TestHandleSearch_MultipleSearches(t *testing.T) {
 	t.Run("user can search multiple times after cooldown expires", func(t *testing.T) {
 		// ARRANGE
 		svc, repo := createSearchTestService()
-		user := createTestUser(TestUsername, TestUserID)
+		user := createTestUser()
 		repo.users[TestUsername] = user
 
 		// ACT - First search
@@ -665,7 +665,7 @@ func TestHandleSearch_NearMiss_Statistical(t *testing.T) {
 	svc := NewService(repo, statsSvc, nil, nil, NewMockNamingResolver(), &mockCooldownService{repo: repo}, true).(*service)
 
 	// Create user
-	user := createTestUser(TestUsername, TestUserID)
+	user := createTestUser()
 	repo.users[TestUsername] = user
 
 	nearMissCount := 0
@@ -714,7 +714,7 @@ func TestHandleSearch_FirstDaily(t *testing.T) {
 	}
 	svc := NewService(repo, statsSvc, nil, nil, NewMockNamingResolver(), &mockCooldownService{repo: repo}, false).(*service)
 
-	user := createTestUser(TestUsername, TestUserID)
+	user := createTestUser()
 	repo.users[TestUsername] = user
 	ctx := context.Background()
 
@@ -774,7 +774,7 @@ func TestHandleSearch_DiminishingReturns(t *testing.T) {
 	}
 	svc := NewService(repo, statsSvc, nil, nil, NewMockNamingResolver(), &mockCooldownService{repo: repo}, true).(*service) // devMode=true to bypass cooldown
 
-	user := createTestUser(TestUsername, TestUserID)
+	user := createTestUser()
 	repo.users[TestUsername] = user
 	ctx := context.Background()
 
@@ -823,7 +823,7 @@ func TestHandleSearch_CriticalFail_Statistical(t *testing.T) {
 	svc := NewService(repo, statsSvc, nil, nil, NewMockNamingResolver(), &mockCooldownService{repo: repo}, true).(*service)
 
 	// Create user
-	user := createTestUser(TestUsername, TestUserID)
+	user := createTestUser()
 	repo.users[TestUsername] = user
 
 	critFailCount := 0
@@ -883,7 +883,7 @@ func TestHandleSearch_CriticalSuccess_Event(t *testing.T) {
 	// Enable devMode to bypass cooldowns
 	svc := NewService(repo, statsSvc, nil, nil, NewMockNamingResolver(), &mockCooldownService{repo: repo}, true).(*service)
 
-	user := createTestUser(TestUsername, TestUserID)
+	user := createTestUser()
 	repo.users[TestUsername] = user
 	ctx := context.Background()
 

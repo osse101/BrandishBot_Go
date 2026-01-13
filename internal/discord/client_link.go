@@ -1,7 +1,6 @@
 package discord
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -33,21 +32,10 @@ func (c *APIClient) InitiateLink(discordID string) (*LinkInitiateResult, error) 
 		"platform_id": discordID,
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "/api/v1/link/initiate", req)
-	if err != nil {
+	var result LinkInitiateResult
+	if err := c.doRequestAndParse(http.MethodPost, "/api/v1/link/initiate", req, &result); err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("API returned status: %d", resp.StatusCode)
-	}
-
-	var result LinkInitiateResult
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
-	}
-
 	return &result, nil
 }
 
@@ -59,21 +47,10 @@ func (c *APIClient) ClaimLink(token, discordID string) (*LinkClaimResult, error)
 		"platform_id": discordID,
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "/api/v1/link/claim", req)
-	if err != nil {
+	var result LinkClaimResult
+	if err := c.doRequestAndParse(http.MethodPost, "/api/v1/link/claim", req, &result); err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("API returned status: %d", resp.StatusCode)
-	}
-
-	var result LinkClaimResult
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
-	}
-
 	return &result, nil
 }
 
@@ -84,21 +61,10 @@ func (c *APIClient) ConfirmLink(discordID string) (*LinkConfirmResult, error) {
 		"platform_id": discordID,
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "/api/v1/link/confirm", req)
-	if err != nil {
+	var result LinkConfirmResult
+	if err := c.doRequestAndParse(http.MethodPost, "/api/v1/link/confirm", req, &result); err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("API returned status: %d", resp.StatusCode)
-	}
-
-	var result LinkConfirmResult
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
-	}
-
 	return &result, nil
 }
 
@@ -111,17 +77,7 @@ func (c *APIClient) InitiateUnlink(discordID, targetPlatform string) error {
 		"confirm":         false,
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "/api/v1/link/unlink", req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("API returned status: %d", resp.StatusCode)
-	}
-
-	return nil
+	return c.doRequestAndParse(http.MethodPost, "/api/v1/link/unlink", req, nil)
 }
 
 // ConfirmUnlink confirms the unlink
@@ -133,37 +89,17 @@ func (c *APIClient) ConfirmUnlink(discordID, targetPlatform string) error {
 		"confirm":         true,
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "/api/v1/link/unlink", req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("API returned status: %d", resp.StatusCode)
-	}
-
-	return nil
+	return c.doRequestAndParse(http.MethodPost, "/api/v1/link/unlink", req, nil)
 }
 
 // GetLinkStatus gets current link status
 func (c *APIClient) GetLinkStatus(discordID string) ([]string, error) {
-	resp, err := c.doRequest(http.MethodGet, fmt.Sprintf("/api/v1/link/status?platform=%s&platform_id=%s", domain.PlatformDiscord, discordID), nil)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("API returned status: %d", resp.StatusCode)
-	}
-
+	path := fmt.Sprintf("/api/v1/link/status?platform=%s&platform_id=%s", domain.PlatformDiscord, discordID)
 	var result struct {
 		LinkedPlatforms []string `json:"linked_platforms"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
+	if err := c.doRequestAndParse(http.MethodGet, path, nil, &result); err != nil {
+		return nil, err
 	}
-
 	return result.LinkedPlatforms, nil
 }

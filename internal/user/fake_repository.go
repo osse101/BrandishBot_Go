@@ -134,7 +134,7 @@ func (f *FakeRepository) GetItemByName(ctx context.Context, itemName string) (*d
 }
 
 func (f *FakeRepository) GetItemsByNames(ctx context.Context, names []string) ([]domain.Item, error) {
-	var items []domain.Item
+	items := make([]domain.Item, 0, len(names))
 	for _, name := range names {
 		if item, ok := f.items[name]; ok {
 			items = append(items, *item)
@@ -144,7 +144,7 @@ func (f *FakeRepository) GetItemsByNames(ctx context.Context, names []string) ([
 }
 
 func (f *FakeRepository) GetItemsByIDs(ctx context.Context, itemIDs []int) ([]domain.Item, error) {
-	var items []domain.Item
+	items := make([]domain.Item, 0, len(itemIDs))
 	for _, id := range itemIDs {
 		for _, item := range f.items {
 			if item.ID == id {
@@ -166,7 +166,7 @@ func (f *FakeRepository) GetItemByID(ctx context.Context, id int) (*domain.Item,
 }
 
 func (f *FakeRepository) GetSellablePrices(ctx context.Context) ([]domain.Item, error) {
-	var items []domain.Item
+	items := make([]domain.Item, 0, len(f.items))
 	for _, item := range f.items {
 		items = append(items, *item)
 	}
@@ -229,22 +229,21 @@ func (f *FakeRepository) UnlockRecipe(ctx context.Context, userID string, recipe
 }
 
 func (f *FakeRepository) GetUnlockedRecipesForUser(ctx context.Context, userID string) ([]repository.UnlockedRecipeInfo, error) {
-	var recipes []repository.UnlockedRecipeInfo
+	userUnlocks, ok := f.unlockedRecipes[userID]
+	if !ok {
+		return []repository.UnlockedRecipeInfo{}, nil
+	}
 
-	// For each unlocked recipe, get the recipe and item info
-	if userUnlocks, ok := f.unlockedRecipes[userID]; ok {
-		for recipeID := range userUnlocks {
-			if recipe, exists := f.recipes[recipeID]; exists {
-				// Find the item name
-				for _, item := range f.items {
-					if item.ID == recipe.TargetItemID {
-						recipes = append(recipes, repository.UnlockedRecipeInfo{
-							ItemName: item.InternalName,
-
-							ItemID: item.ID,
-						})
-						break
-					}
+	recipes := make([]repository.UnlockedRecipeInfo, 0, len(userUnlocks))
+	for recipeID := range userUnlocks {
+		if recipe, exists := f.recipes[recipeID]; exists {
+			for _, item := range f.items {
+				if item.ID == recipe.TargetItemID {
+					recipes = append(recipes, repository.UnlockedRecipeInfo{
+						ItemName: item.InternalName,
+						ItemID:   item.ID,
+					})
+					break
 				}
 			}
 		}

@@ -196,22 +196,34 @@ func (c *APIClient) Search(platform, platformID, username string) (string, error
 
 // GetInventory retrieves user inventory
 func (c *APIClient) GetInventory(platform, platformID, username, filter string) ([]user.InventoryItem, error) {
+	return c.getInventoryInternal("/api/v1/user/inventory", platform, platformID, username, filter)
+}
+
+func (c *APIClient) getInventoryInternal(path, platform, platformID, username, filter string) ([]user.InventoryItem, error) {
 	params := url.Values{}
 	params.Set("platform", platform)
 	params.Set("username", username)
-	params.Set("platform_id", platformID)
+	if platformID != "" {
+		params.Set("platform_id", platformID)
+	}
 	if filter != "" {
 		params.Set("filter", filter)
 	}
 
-	path := fmt.Sprintf("/api/v1/user/inventory?%s", params.Encode())
-	resp, err := c.doRequest(http.MethodGet, path, nil)
+	fullPath := fmt.Sprintf("%s?%s", path, params.Encode())
+	resp, err := c.doRequest(http.MethodGet, fullPath, nil)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		var errResp struct {
+			Error string `json:"error"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
+			return nil, fmt.Errorf("API error: %s", errResp.Error)
+		}
 		return nil, fmt.Errorf("API returned status: %d", resp.StatusCode)
 	}
 
@@ -511,7 +523,11 @@ func (c *APIClient) SellItem(platform, platformID, username, itemName string, qu
 
 // GetSellPrices retrieves current sell prices
 func (c *APIClient) GetSellPrices() (string, error) {
-	resp, err := c.doRequest(http.MethodGet, "/api/v1/prices", nil)
+	return c.getPricesInternal("/api/v1/prices")
+}
+
+func (c *APIClient) getPricesInternal(endpoint string) (string, error) {
+	resp, err := c.doRequest(http.MethodGet, endpoint, nil)
 	if err != nil {
 		return "", err
 	}
@@ -530,7 +546,7 @@ func (c *APIClient) GetSellPrices() (string, error) {
 	}
 
 	if len(pricesResp.Items) == 0 {
-		return "No sellable items available.", nil
+		return "No items available.", nil
 	}
 
 	var sb strings.Builder
@@ -542,33 +558,7 @@ func (c *APIClient) GetSellPrices() (string, error) {
 
 // GetBuyPrices retrieves current buy prices
 func (c *APIClient) GetBuyPrices() (string, error) {
-	resp, err := c.doRequest(http.MethodGet, "/api/v1/prices/buy", nil)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
-	}
-
-	var pricesResp struct {
-		Message string        `json:"message"`
-		Items   []domain.Item `json:"items"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&pricesResp); err != nil {
-		return "", fmt.Errorf("failed to decode response: %w", err)
-	}
-
-	if len(pricesResp.Items) == 0 {
-		return "No buyable items available.", nil
-	}
-
-	var sb strings.Builder
-	for _, item := range pricesResp.Items {
-		fmt.Fprintf(&sb, "**%s**: %d coins\n", item.InternalName, item.BaseValue)
-	}
-	return sb.String(), nil
+	return c.getPricesInternal("/api/v1/prices/buy")
 }
 
 // AddItemByUsername adds an item by username (no platformID required)
@@ -925,38 +915,7 @@ func (c *APIClient) GetUserStats(platform, platformID string) (string, error) {
 
 // GetInventoryByUsername retrieves user inventory by username
 func (c *APIClient) GetInventoryByUsername(platform, username, filter string) ([]user.InventoryItem, error) {
-	params := url.Values{}
-	params.Set("platform", platform)
-	params.Set("username", username)
-	if filter != "" {
-		params.Set("filter", filter)
-	}
-
-	path := fmt.Sprintf("/api/v1/user/inventory-by-username?%s", params.Encode())
-	resp, err := c.doRequest(http.MethodGet, path, nil)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		var errResp struct {
-			Error string `json:"error"`
-		}
-		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
-			return nil, fmt.Errorf("API error: %s", errResp.Error)
-		}
-		return nil, fmt.Errorf("API returned status: %d", resp.StatusCode)
-	}
-
-	var inventoryResp struct {
-		Items []user.InventoryItem `json:"items"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&inventoryResp); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
-	}
-
-	return inventoryResp.Items, nil
+	return c.getInventoryInternal("/api/v1/user/inventory-by-username", platform, "", username, filter)
 }
 
 // XPAwardResult represents the result of awarding XP

@@ -25,11 +25,11 @@ var (
 
 // Config represents the JSON configuration for items
 type Config struct {
-	Version       string    `json:"version"`
-	Description   string    `json:"description"`
-	ValidTags     []string  `json:"valid_tags"`
-	ValidHandlers []string  `json:"valid_handlers"`
-	Items         []Def `json:"items"`
+	Version       string   `json:"version"`
+	Description   string   `json:"description"`
+	ValidTags     []string `json:"valid_tags"`
+	ValidHandlers []string `json:"valid_handlers"`
+	Items         []Def    `json:"items"`
 }
 
 // Def represents a single item definition in the JSON
@@ -91,16 +91,8 @@ func (l *itemLoader) Validate(config *Config) error {
 		return fmt.Errorf("%w: no items defined", ErrInvalidConfig)
 	}
 
-	// Build validation sets
-	validTags := make(map[string]bool, len(config.ValidTags))
-	for _, tag := range config.ValidTags {
-		validTags[tag] = true
-	}
-
-	validHandlers := make(map[string]bool, len(config.ValidHandlers))
-	for _, handler := range config.ValidHandlers {
-		validHandlers[handler] = true
-	}
+	validTags := l.buildValidationMap(config.ValidTags)
+	validHandlers := l.buildValidationMap(config.ValidHandlers)
 
 	// Track internal names for duplicate detection
 	internalNames := make(map[string]bool, len(config.Items))
@@ -109,46 +101,62 @@ func (l *itemLoader) Validate(config *Config) error {
 	for i := range config.Items {
 		item := &config.Items[i]
 
-		// Check for empty internal name
-		if item.InternalName == "" {
-			return fmt.Errorf("%w: item at index %d has empty internal_name", ErrInvalidConfig, i)
+		if err := l.validateItemDef(i, item, validTags, validHandlers, internalNames); err != nil {
+			return err
 		}
+	}
 
-		// Check for duplicate internal names
-		if internalNames[item.InternalName] {
-			return fmt.Errorf("%w: '%s'", ErrDuplicateInternalName, item.InternalName)
-		}
-		internalNames[item.InternalName] = true
+	return nil
+}
 
-		// Validate required fields
-		if item.PublicName == "" {
-			return fmt.Errorf("%w: item '%s' has empty public_name", ErrInvalidConfig, item.InternalName)
-		}
-		if item.DefaultDisplay == "" {
-			return fmt.Errorf("%w: item '%s' has empty default_display", ErrInvalidConfig, item.InternalName)
-		}
+func (l *itemLoader) buildValidationMap(items []string) map[string]bool {
+	m := make(map[string]bool, len(items))
+	for _, item := range items {
+		m[item] = true
+	}
+	return m
+}
 
-		// Validate tags
-		for _, tag := range item.Tags {
-			if !validTags[tag] {
-				return fmt.Errorf("%w: item '%s' has invalid tag '%s' (not in valid_tags)", ErrInvalidTag, item.InternalName, tag)
-			}
-		}
+func (l *itemLoader) validateItemDef(index int, item *Def, validTags, validHandlers map[string]bool, internalNames map[string]bool) error {
+	// Check for empty internal name
+	if item.InternalName == "" {
+		return fmt.Errorf("%w: item at index %d has empty internal_name", ErrInvalidConfig, index)
+	}
 
-		// Validate handler (if present)
-		if item.Handler != nil && *item.Handler != "" {
-			if !validHandlers[*item.Handler] {
-				return fmt.Errorf("%w: item '%s' has invalid handler '%s' (not in valid_handlers)", ErrInvalidHandler, item.InternalName, *item.Handler)
-			}
-		}
+	// Check for duplicate internal names
+	if internalNames[item.InternalName] {
+		return fmt.Errorf("%w: '%s'", ErrDuplicateInternalName, item.InternalName)
+	}
+	internalNames[item.InternalName] = true
 
-		// Validate numeric fields
-		if item.MaxStack < 0 {
-			return fmt.Errorf("%w: item '%s' has negative max_stack", ErrInvalidConfig, item.InternalName)
+	// Validate required fields
+	if item.PublicName == "" {
+		return fmt.Errorf("%w: item '%s' has empty public_name", ErrInvalidConfig, item.InternalName)
+	}
+	if item.DefaultDisplay == "" {
+		return fmt.Errorf("%w: item '%s' has empty default_display", ErrInvalidConfig, item.InternalName)
+	}
+
+	// Validate tags
+	for _, tag := range item.Tags {
+		if !validTags[tag] {
+			return fmt.Errorf("%w: item '%s' has invalid tag '%s' (not in valid_tags)", ErrInvalidTag, item.InternalName, tag)
 		}
-		if item.BaseValue < 0 {
-			return fmt.Errorf("%w: item '%s' has negative base_value", ErrInvalidConfig, item.InternalName)
+	}
+
+	// Validate handler (if present)
+	if item.Handler != nil && *item.Handler != "" {
+		if !validHandlers[*item.Handler] {
+			return fmt.Errorf("%w: item '%s' has invalid handler '%s' (not in valid_handlers)", ErrInvalidHandler, item.InternalName, *item.Handler)
 		}
+	}
+
+	// Validate numeric fields
+	if item.MaxStack < 0 {
+		return fmt.Errorf("%w: item '%s' has negative max_stack", ErrInvalidConfig, item.InternalName)
+	}
+	if item.BaseValue < 0 {
+		return fmt.Errorf("%w: item '%s' has negative base_value", ErrInvalidConfig, item.InternalName)
 	}
 
 	return nil
@@ -169,85 +177,16 @@ func (l *itemLoader) SyncToDatabase(ctx context.Context, config *Config, repo re
 		return &SyncResult{}, nil
 	}
 
+	existingByInternalName, typesByName, err := l.loadSyncData(ctx, repo)
+	if err != nil {
+		return nil, err
+	}
+
 	result := &SyncResult{}
-
-	// Get all existing items from DB
-	existingItems, err := repo.GetAllItems(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get existing items: %w", err)
-	}
-
-	existingByInternalName := make(map[string]*domain.Item, len(existingItems))
-	for i := range existingItems {
-		existingByInternalName[existingItems[i].InternalName] = &existingItems[i]
-	}
-
-	// Get all item types for tag sync
-	itemTypes, err := repo.GetAllItemTypes(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get item types: %w", err)
-	}
-
-	typesByName := make(map[string]int, len(itemTypes))
-	for _, itemType := range itemTypes {
-		typesByName[itemType.Name] = itemType.ID
-	}
-
 	// Process each item
 	for _, itemDef := range config.Items {
-		if existing, ok := existingByInternalName[itemDef.InternalName]; ok {
-			// Item exists - check if update needed
-			needsUpdate := existing.PublicName != itemDef.PublicName ||
-				existing.Description != itemDef.Description ||
-				existing.BaseValue != itemDef.BaseValue ||
-				existing.DefaultDisplay != itemDef.DefaultDisplay ||
-				(itemDef.Handler != nil && (existing.Handler == nil || *existing.Handler != *itemDef.Handler))
-
-			if needsUpdate {
-				// Update existing item
-				if err := repo.UpdateItem(ctx, existing.ID, &domain.Item{
-					InternalName:   itemDef.InternalName,
-					PublicName:     itemDef.PublicName,
-					Description:    itemDef.Description,
-					BaseValue:      itemDef.BaseValue,
-					Handler:        itemDef.Handler,
-					DefaultDisplay: itemDef.DefaultDisplay,
-				}); err != nil {
-					return nil, fmt.Errorf("failed to update item '%s': %w", itemDef.InternalName, err)
-				}
-				result.ItemsUpdated++
-				log.Info("Updated item", "internal_name", itemDef.InternalName)
-			} else {
-				result.ItemsSkipped++
-			}
-
-			// Sync tags for this item
-			if err := syncItemTags(ctx, repo, existing.ID, itemDef.Tags, typesByName); err != nil {
-				return nil, fmt.Errorf("failed to sync tags for '%s': %w", itemDef.InternalName, err)
-			}
-		} else {
-			// Insert new item
-			newItem := &domain.Item{
-				InternalName:   itemDef.InternalName,
-				PublicName:     itemDef.PublicName,
-				Description:    itemDef.Description,
-				BaseValue:      itemDef.BaseValue,
-				Handler:        itemDef.Handler,
-				DefaultDisplay: itemDef.DefaultDisplay,
-			}
-
-			itemID, err := repo.InsertItem(ctx, newItem)
-			if err != nil {
-				return nil, fmt.Errorf("failed to insert item '%s': %w", itemDef.InternalName, err)
-			}
-
-			result.ItemsInserted++
-			log.Info("Inserted item", "internal_name", itemDef.InternalName, "id", itemID)
-
-			// Sync tags for new item
-			if err := syncItemTags(ctx, repo, itemID, itemDef.Tags, typesByName); err != nil {
-				return nil, fmt.Errorf("failed to sync tags for new item '%s': %w", itemDef.InternalName, err)
-			}
+		if err := l.syncOneItem(ctx, repo, itemDef, existingByInternalName, typesByName, result); err != nil {
+			return nil, err
 		}
 	}
 
@@ -262,6 +201,92 @@ func (l *itemLoader) SyncToDatabase(ctx context.Context, config *Config, repo re
 		"skipped", result.ItemsSkipped)
 
 	return result, nil
+}
+
+func (l *itemLoader) loadSyncData(ctx context.Context, repo repository.Item) (map[string]*domain.Item, map[string]int, error) {
+	// Get all existing items from DB
+	existingItems, err := repo.GetAllItems(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get existing items: %w", err)
+	}
+
+	existingByInternalName := make(map[string]*domain.Item, len(existingItems))
+	for i := range existingItems {
+		existingByInternalName[existingItems[i].InternalName] = &existingItems[i]
+	}
+
+	// Get all item types for tag sync
+	itemTypes, err := repo.GetAllItemTypes(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get item types: %w", err)
+	}
+
+	typesByName := make(map[string]int, len(itemTypes))
+	for _, itemType := range itemTypes {
+		typesByName[itemType.Name] = itemType.ID
+	}
+
+	return existingByInternalName, typesByName, nil
+}
+
+func (l *itemLoader) syncOneItem(ctx context.Context, repo repository.Item, itemDef Def, existingByInternalName map[string]*domain.Item, typesByName map[string]int, result *SyncResult) error {
+	log := logger.FromContext(ctx)
+
+	if existing, ok := existingByInternalName[itemDef.InternalName]; ok {
+		// Item exists - check if update needed
+		needsUpdate := existing.PublicName != itemDef.PublicName ||
+			existing.Description != itemDef.Description ||
+			existing.BaseValue != itemDef.BaseValue ||
+			existing.DefaultDisplay != itemDef.DefaultDisplay ||
+			(itemDef.Handler != nil && (existing.Handler == nil || *existing.Handler != *itemDef.Handler))
+
+		if needsUpdate {
+			// Update existing item
+			if err := repo.UpdateItem(ctx, existing.ID, &domain.Item{
+				InternalName:   itemDef.InternalName,
+				PublicName:     itemDef.PublicName,
+				Description:    itemDef.Description,
+				BaseValue:      itemDef.BaseValue,
+				Handler:        itemDef.Handler,
+				DefaultDisplay: itemDef.DefaultDisplay,
+			}); err != nil {
+				return fmt.Errorf("failed to update item '%s': %w", itemDef.InternalName, err)
+			}
+			result.ItemsUpdated++
+			log.Info("Updated item", "internal_name", itemDef.InternalName)
+		} else {
+			result.ItemsSkipped++
+		}
+
+		// Sync tags for this item
+		if err := syncItemTags(ctx, repo, existing.ID, itemDef.Tags, typesByName); err != nil {
+			return fmt.Errorf("failed to sync tags for '%s': %w", itemDef.InternalName, err)
+		}
+	} else {
+		// Insert new item
+		newItem := &domain.Item{
+			InternalName:   itemDef.InternalName,
+			PublicName:     itemDef.PublicName,
+			Description:    itemDef.Description,
+			BaseValue:      itemDef.BaseValue,
+			Handler:        itemDef.Handler,
+			DefaultDisplay: itemDef.DefaultDisplay,
+		}
+
+		itemID, err := repo.InsertItem(ctx, newItem)
+		if err != nil {
+			return fmt.Errorf("failed to insert item '%s': %w", itemDef.InternalName, err)
+		}
+
+		result.ItemsInserted++
+		log.Info("Inserted item", "internal_name", itemDef.InternalName, "id", itemID)
+
+		// Sync tags for new item
+		if err := syncItemTags(ctx, repo, itemID, itemDef.Tags, typesByName); err != nil {
+			return fmt.Errorf("failed to sync tags for new item '%s': %w", itemDef.InternalName, err)
+		}
+	}
+	return nil
 }
 
 // hasFileChanged checks if the config file has changed since last sync

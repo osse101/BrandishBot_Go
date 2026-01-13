@@ -239,10 +239,7 @@ func (s *service) UpgradeItem(ctx context.Context, platform, platformID, usernam
 	}
 
 	// Calculate output
-	result, err := s.calculateUpgradeOutput(ctx, user.ID, itemName, actualQuantity)
-	if err != nil {
-		return nil, err
-	}
+	result := s.calculateUpgradeOutput(ctx, user.ID, itemName, actualQuantity)
 
 	addItemToInventory(inventory, item.ID, result.Quantity)
 
@@ -288,7 +285,7 @@ func (s *service) getAndValidateRecipe(ctx context.Context, itemID int, userID s
 	return recipe, nil
 }
 
-func (s *service) calculateUpgradeOutput(ctx context.Context, userID string, itemName string, actualQuantity int) (*Result, error) {
+func (s *service) calculateUpgradeOutput(ctx context.Context, userID string, itemName string, actualQuantity int) *Result {
 	log := logger.FromContext(ctx)
 
 	outputQuantity := 0
@@ -322,7 +319,7 @@ func (s *service) calculateUpgradeOutput(ctx context.Context, userID string, ite
 		Quantity:      outputQuantity,
 		IsMasterwork:  masterworkTriggered,
 		BonusQuantity: outputQuantity - actualQuantity,
-	}, nil
+	}
 }
 
 // GetRecipe returns recipe information for an item
@@ -472,94 +469,22 @@ func (s *service) DisassembleItem(ctx context.Context, platform, platformID, use
 	log := logger.FromContext(ctx)
 	log.Info("DisassembleItem called", "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity)
 
-	// Resolve public name to internal name
-	resolvedName, err := s.resolveItemName(ctx, itemName)
+	user, item, recipe, err := s.validateDisassembleInput(ctx, platform, platformID, itemName)
 	if err != nil {
 		return nil, err
 	}
 
-	// Validate user and item
-	user, err := s.validateUser(ctx, platform, platformID)
+	actualQuantity, perfectSalvageCount, outputMap, err := s.executeDisassembleTx(ctx, user.ID, item.ID, recipe, quantity, itemName)
 	if err != nil {
 		return nil, err
 	}
 
-	item, err := s.validateItem(ctx, resolvedName)
-	if err != nil {
-		return nil, err
-	}
-
-	// Get and validate disassemble recipe
-	recipe, err := s.getAndValidateDisassembleRecipe(ctx, item.ID, user.ID, resolvedName)
-	if err != nil {
-		return nil, err
-	}
-
-	// Begin transaction
-	tx, err := s.repo.BeginTx(ctx)
-	if err != nil {
-		log.Error("Failed to begin transaction", "error", err)
-		return nil, fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer repository.SafeRollback(ctx, tx)
-
-	// Get inventory and calculate actual quantity
-	inventory, err := tx.GetInventory(ctx, user.ID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get inventory: %w", err)
-	}
-
-	actualQuantity, sourceSlotIndex, err := s.calculateDisassembleQuantity(inventory, item.ID, recipe.QuantityConsumed, quantity, itemName)
-	if err != nil {
-		return nil, err
-	}
-
-	// Remove source items
-	totalConsumed := recipe.QuantityConsumed * actualQuantity
-	if inventory.Slots[sourceSlotIndex].Quantity == totalConsumed {
-		inventory.Slots = append(inventory.Slots[:sourceSlotIndex], inventory.Slots[sourceSlotIndex+1:]...)
-	} else {
-		inventory.Slots[sourceSlotIndex].Quantity -= totalConsumed
-	}
-
-	// Calculate perfect salvage
-	perfectSalvageCount := 0
-	for i := 0; i < actualQuantity; i++ {
-		if s.rnd() < PerfectSalvageChance {
-			perfectSalvageCount++
-		}
-	}
 	perfectSalvageTriggered := perfectSalvageCount > 0
 	if perfectSalvageTriggered {
-		log.Info("Perfect Salvage triggered!", "user_id", user.ID, "item", itemName, "quantity", actualQuantity, "perfect_count", perfectSalvageCount)
-
-		if s.statsSvc != nil {
-			_ = s.statsSvc.RecordUserEvent(ctx, user.ID, domain.EventCraftingPerfectSalvage, map[string]interface{}{
-				"item_name":     itemName,
-				"quantity":      actualQuantity,
-				"perfect_count": perfectSalvageCount,
-				"multiplier":    PerfectSalvageMultiplier,
-			})
-		}
-	}
-
-	// Process outputs
-	outputMap, err := s.processDisassembleOutputs(ctx, inventory, recipe.Outputs, actualQuantity, perfectSalvageCount)
-	if err != nil {
-		return nil, err
-	}
-
-	// Update inventory and commit
-	if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
-		return nil, fmt.Errorf("failed to update inventory: %w", err)
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+		s.recordPerfectSalvageEvent(ctx, user.ID, itemName, actualQuantity, perfectSalvageCount)
 	}
 
 	// Award Blacksmith XP (don't fail disassemble if XP award fails)
-	// Run async with detached context to prevent cancellation affecting XP award
 	s.wg.Add(1)
 	go s.awardBlacksmithXP(context.Background(), user.ID, actualQuantity, "disassemble", itemName)
 
@@ -663,5 +588,97 @@ func (s *service) Shutdown(ctx context.Context) error {
 	case <-ctx.Done():
 		log.Warn("Crafting service shutdown forced by context cancellation")
 		return ctx.Err()
+	}
+}
+
+func (s *service) validateDisassembleInput(ctx context.Context, platform, platformID, itemName string) (*domain.User, *domain.Item, *domain.DisassembleRecipe, error) {
+	resolvedName, err := s.resolveItemName(ctx, itemName)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	user, err := s.validateUser(ctx, platform, platformID)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	item, err := s.validateItem(ctx, resolvedName)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	recipe, err := s.getAndValidateDisassembleRecipe(ctx, item.ID, user.ID, resolvedName)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	return user, item, recipe, nil
+}
+
+func (s *service) executeDisassembleTx(ctx context.Context, userID string, itemID int, recipe *domain.DisassembleRecipe, requestedQuantity int, itemName string) (int, int, map[string]int, error) {
+	tx, err := s.repo.BeginTx(ctx)
+	if err != nil {
+		return 0, 0, nil, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer repository.SafeRollback(ctx, tx)
+
+	inventory, err := tx.GetInventory(ctx, userID)
+	if err != nil {
+		return 0, 0, nil, fmt.Errorf("failed to get inventory: %w", err)
+	}
+
+	actualQuantity, sourceSlotIndex, err := s.calculateDisassembleQuantity(inventory, itemID, recipe.QuantityConsumed, requestedQuantity, itemName)
+	if err != nil {
+		return 0, 0, nil, err
+	}
+
+	// Remove source items
+	totalConsumed := recipe.QuantityConsumed * actualQuantity
+	if inventory.Slots[sourceSlotIndex].Quantity == totalConsumed {
+		inventory.Slots = append(inventory.Slots[:sourceSlotIndex], inventory.Slots[sourceSlotIndex+1:]...)
+	} else {
+		inventory.Slots[sourceSlotIndex].Quantity -= totalConsumed
+	}
+
+	// Calculate perfect salvage
+	perfectSalvageCount := s.calculatePerfectSalvage(actualQuantity)
+
+	// Process outputs
+	outputMap, err := s.processDisassembleOutputs(ctx, inventory, recipe.Outputs, actualQuantity, perfectSalvageCount)
+	if err != nil {
+		return 0, 0, nil, err
+	}
+
+	if err := tx.UpdateInventory(ctx, userID, *inventory); err != nil {
+		return 0, 0, nil, fmt.Errorf("failed to update inventory: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return 0, 0, nil, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return actualQuantity, perfectSalvageCount, outputMap, nil
+}
+
+func (s *service) calculatePerfectSalvage(quantity int) int {
+	count := 0
+	for i := 0; i < quantity; i++ {
+		if s.rnd() < PerfectSalvageChance {
+			count++
+		}
+	}
+	return count
+}
+
+func (s *service) recordPerfectSalvageEvent(ctx context.Context, userID, itemName string, actualQuantity, perfectCount int) {
+	logger.FromContext(ctx).Info("Perfect Salvage triggered!", "user_id", userID, "item", itemName, "quantity", actualQuantity, "perfect_count", perfectCount)
+
+	if s.statsSvc != nil {
+		_ = s.statsSvc.RecordUserEvent(ctx, userID, domain.EventCraftingPerfectSalvage, map[string]interface{}{
+			"item_name":     itemName,
+			"quantity":      actualQuantity,
+			"perfect_count": perfectCount,
+			"multiplier":    PerfectSalvageMultiplier,
+		})
 	}
 }

@@ -53,7 +53,7 @@ func (b *Bot) RegisterCommands(registry *CommandRegistry, forceUpdate bool) erro
 	}
 
 	// Build desired commands list
-	var desiredCmds []*discordgo.ApplicationCommand
+	desiredCmds := make([]*discordgo.ApplicationCommand, 0, len(registry.Commands))
 	for _, cmd := range registry.Commands {
 		desiredCmds = append(desiredCmds, cmd)
 	}
@@ -164,6 +164,31 @@ func respondError(s *discordgo.Session, i *discordgo.InteractionCreate, message 
 	}); err != nil {
 		slog.Error("Failed to edit interaction response", "error", err)
 	}
+}
+
+// deferResponse acknowledges an interaction with a deferred message
+func deferResponse(s *discordgo.Session, i *discordgo.InteractionCreate) bool {
+	if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
+	}); err != nil {
+		slog.Error("Failed to send deferred response", "error", err)
+		return false
+	}
+	return true
+}
+
+// getInteractionUser extracts the user from an interaction
+func getInteractionUser(i *discordgo.InteractionCreate) *discordgo.User {
+	user := i.Member.User
+	if user == nil {
+		user = i.User
+	}
+	return user
+}
+
+// getOptions extracts command options from an interaction
+func getOptions(i *discordgo.InteractionCreate) []*discordgo.ApplicationCommandInteractionDataOption {
+	return i.ApplicationCommandData().Options
 }
 
 // respondFriendlyError formats the error message to be more user-friendly before responding

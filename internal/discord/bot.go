@@ -216,7 +216,7 @@ func (b *Bot) messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	// We don't reply here, just track engagement/process commands
 	_, err := b.Client.HandleMessage(
 		domain.PlatformDiscord,
-		domain.DiscordBotId, // Use constant Platform ID for the bot interaction context
+		domain.DiscordBotID, // Use constant Platform ID for the bot interaction context
 		m.Author.Username,
 		m.Content,
 	)

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
@@ -181,18 +180,10 @@ func (h *ProgressionHandlers) HandleGetEngagement() http.HandlerFunc {
 // @Router /progression/leaderboard [get]
 func (h *ProgressionHandlers) HandleGetContributionLeaderboard() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log := logger.FromContext(r.Context())
-
-		limit := 10 // default
-		if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
-			if parsedLimit, err := strconv.Atoi(limitStr); err == nil && parsedLimit > 0 {
-				limit = parsedLimit
-			}
-		}
-
+		limit := getQueryInt(r, "limit", 10)
 		leaderboard, err := h.service.GetContributionLeaderboard(r.Context(), limit)
 		if err != nil {
-			log.Error("Failed to get contribution leaderboard", "error", err)
+			logger.FromContext(r.Context()).Error("Failed to get contribution leaderboard", "error", err)
 			respondError(w, http.StatusInternalServerError, "Failed to retrieve leaderboard")
 			return
 		}
@@ -211,22 +202,13 @@ func (h *ProgressionHandlers) HandleGetContributionLeaderboard() http.HandlerFun
 // @Router /progression/velocity [get]
 func (h *ProgressionHandlers) HandleGetVelocity() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log := logger.FromContext(r.Context())
-
-		days := 7
-		if daysStr := r.URL.Query().Get("days"); daysStr != "" {
-			if parsedDays, err := strconv.Atoi(daysStr); err == nil && parsedDays > 0 {
-				days = parsedDays
-			}
-		}
-
+		days := getQueryInt(r, "days", 7)
 		velocity, err := h.service.GetEngagementVelocity(r.Context(), days)
 		if err != nil {
-			log.Error("Failed to get engagement velocity", "error", err)
+			logger.FromContext(r.Context()).Error("Failed to get engagement velocity", "error", err)
 			respondError(w, http.StatusInternalServerError, "Failed to retrieve velocity metrics")
 			return
 		}
-
 		respondJSON(w, http.StatusOK, velocity)
 	}
 }
@@ -302,6 +284,19 @@ func (h *ProgressionHandlers) handleAdminNodeAction(action func(context.Context,
 	}
 }
 
+func (h *ProgressionHandlers) handleAdminAction(w http.ResponseWriter, r *http.Request, action func(context.Context) (interface{}, error), errLogMsg, infoLogMsg string, responseFactory func(interface{}) interface{}) {
+	log := logger.FromContext(r.Context())
+	res, err := action(r.Context())
+	if err != nil {
+		log.Error(errLogMsg, "error", err)
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	log.Info(infoLogMsg)
+	respondJSON(w, http.StatusOK, responseFactory(res))
+}
+
 // HandleAdminInstantUnlock forces immediate unlock of current vote leader
 // @Summary Admin instant unlock
 // @Description Force immediate unlock of current vote leader (overrides 24hr timer)
@@ -312,20 +307,14 @@ func (h *ProgressionHandlers) handleAdminNodeAction(action func(context.Context,
 // @Router /progression/admin/instant-unlock [post]
 func (h *ProgressionHandlers) HandleAdminInstantUnlock() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log := logger.FromContext(r.Context())
-
-		unlock, err := h.service.ForceInstantUnlock(r.Context())
-		if err != nil {
-			log.Error("Failed to instant unlock", "error", err)
-			respondError(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-
-		log.Info("Admin forced instant unlock", "nodeID", unlock.NodeID, "level", unlock.CurrentLevel)
-		respondJSON(w, http.StatusOK, AdminInstantUnlockResponse{
-			Unlock:  unlock,
-			Message: "Instant unlock successful",
-		})
+		h.handleAdminAction(w, r,
+			func(ctx context.Context) (interface{}, error) { return h.service.ForceInstantUnlock(ctx) },
+			"Failed to instant unlock",
+			"Admin forced instant unlock",
+			func(res interface{}) interface{} {
+				unlock := res.(*domain.ProgressionUnlock)
+				return AdminInstantUnlockResponse{Unlock: unlock, Message: "Instant unlock successful"}
+			})
 	}
 }
 
@@ -430,41 +419,43 @@ func (h *ProgressionHandlers) HandleGetUnlockProgress() http.HandlerFunc {
 			return
 		}
 
-		// Enrich with percentage if target node exists
-		response := map[string]interface{}{
-			"id":                        progress.ID,
-			"node_id":                   progress.NodeID,
-			"target_level":              progress.TargetLevel,
-			"contributions_accumulated": progress.ContributionsAccumulated,
-			"started_at":                progress.StartedAt,
-			"unlocked_at":               progress.UnlockedAt,
-			"voting_session_id":         progress.VotingSessionID,
-			"completion_percentage":     0.0,
-			"target_unlock_cost":        0,
-			"target_node_name":          "",
-		}
-
-		if progress.NodeID != nil {
-			node, err := h.service.GetNode(r.Context(), *progress.NodeID)
-			if err != nil {
-				log.Warn("Failed to get target node for progress", "error", err, "nodeID", *progress.NodeID)
-			} else if node != nil {
-				response["target_unlock_cost"] = node.UnlockCost
-				response["target_node_name"] = node.DisplayName
-				if node.UnlockCost > 0 {
-					percent := (float64(progress.ContributionsAccumulated) / float64(node.UnlockCost)) * 100
-					if percent > 100 {
-						percent = 100
-					}
-					response["completion_percentage"] = percent
-				} else {
-					response["completion_percentage"] = 100.0 // Free unlock?
-				}
-			}
-		}
-
+		response := h.enrichUnlockProgress(r.Context(), progress)
 		respondJSON(w, http.StatusOK, response)
 	}
+}
+
+func (h *ProgressionHandlers) enrichUnlockProgress(ctx context.Context, progress *domain.UnlockProgress) map[string]interface{} {
+	response := map[string]interface{}{
+		"id":                        progress.ID,
+		"node_id":                   progress.NodeID,
+		"target_level":              progress.TargetLevel,
+		"contributions_accumulated": progress.ContributionsAccumulated,
+		"started_at":                progress.StartedAt,
+		"unlocked_at":               progress.UnlockedAt,
+		"voting_session_id":         progress.VotingSessionID,
+		"completion_percentage":     0.0,
+		"target_unlock_cost":        0,
+		"target_node_name":          "",
+	}
+
+	if progress.NodeID != nil {
+		node, err := h.service.GetNode(ctx, *progress.NodeID)
+		if err == nil && node != nil {
+			response["target_unlock_cost"] = node.UnlockCost
+			response["target_node_name"] = node.DisplayName
+			if node.UnlockCost > 0 {
+				percent := (float64(progress.ContributionsAccumulated) / float64(node.UnlockCost)) * 100
+				if percent > 100 {
+					percent = 100
+				}
+				response["completion_percentage"] = percent
+			} else {
+				response["completion_percentage"] = 100.0
+			}
+		}
+	}
+
+	return response
 }
 
 // HandleAdminEndVoting admin force-ends current voting
@@ -477,20 +468,14 @@ func (h *ProgressionHandlers) HandleGetUnlockProgress() http.HandlerFunc {
 // @Router /progression/admin/end-voting [post]
 func (h *ProgressionHandlers) HandleAdminEndVoting() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log := logger.FromContext(r.Context())
-
-		winner, err := h.service.EndVoting(r.Context())
-		if err != nil {
-			log.Error("Failed to end voting", "error", err)
-			respondError(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-
-		log.Info("Admin ended voting", "winningNodeID", winner.NodeID, "votes", winner.VoteCount)
-		respondJSON(w, http.StatusOK, AdminEndVotingResponse{
-			Winner:  winner,
-			Message: "Voting ended successfully",
-		})
+		h.handleAdminAction(w, r,
+			func(ctx context.Context) (interface{}, error) { return h.service.EndVoting(ctx) },
+			"Failed to end voting",
+			"Admin ended voting",
+			func(res interface{}) interface{} {
+				winner := res.(*domain.ProgressionVotingOption)
+				return AdminEndVotingResponse{Winner: winner, Message: "Voting ended successfully"}
+			})
 	}
 }
 

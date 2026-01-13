@@ -221,6 +221,7 @@ func TestStartGamble_Success(t *testing.T) {
 	tx := new(MockTx)
 
 	repo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "123").Return(user, nil)
+	repo.On("GetInventory", ctx, "user1").Return(inventory, nil)
 	repo.On("GetActiveGamble", ctx).Return(nil, nil)
 
 	// Item validation
@@ -228,7 +229,6 @@ func TestStartGamble_Success(t *testing.T) {
 	repo.On("GetItemByID", ctx, 1).Return(lootboxItem, nil)
 
 	repo.On("BeginTx", ctx).Return(tx, nil)
-	tx.On("GetInventory", ctx, "user1").Return(inventory, nil)
 	tx.On("UpdateInventory", ctx, "user1", mock.Anything).Return(nil)
 	tx.On("Commit", ctx).Return(nil)
 	tx.On("Rollback", ctx).Return(nil).Maybe()
@@ -319,18 +319,13 @@ func TestStartGamble_InsufficientLootboxes(t *testing.T) {
 	user := &domain.User{ID: "user1"}
 	bets := []domain.LootboxBet{{ItemID: 1, Quantity: 5}}
 	inventory := &domain.Inventory{Slots: []domain.InventorySlot{{ItemID: 1, Quantity: 2}}}
-	tx := new(MockTx)
-
 	repo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "123").Return(user, nil)
 	repo.On("GetActiveGamble", ctx).Return(nil, nil)
 
 	// Item validation
 	lootboxItem := &domain.Item{ID: 1, InternalName: domain.ItemLootbox1}
 	repo.On("GetItemByID", ctx, 1).Return(lootboxItem, nil)
-
-	repo.On("BeginTx", ctx).Return(tx, nil)
-	tx.On("GetInventory", ctx, "user1").Return(inventory, nil)
-	tx.On("Rollback", ctx).Return(nil).Maybe()
+	repo.On("GetInventory", ctx, "user1").Return(inventory, nil)
 
 	gamble, err := s.StartGamble(ctx, domain.PlatformTwitch, "123", "testuser", bets)
 
@@ -338,7 +333,6 @@ func TestStartGamble_InsufficientLootboxes(t *testing.T) {
 	assert.Nil(t, gamble)
 	assert.ErrorIs(t, err, domain.ErrInsufficientQuantity)
 	repo.AssertExpectations(t)
-	tx.AssertExpectations(t)
 }
 
 func TestStartGamble_LootboxNotInInventory(t *testing.T) {
@@ -349,18 +343,13 @@ func TestStartGamble_LootboxNotInInventory(t *testing.T) {
 	user := &domain.User{ID: "user1"}
 	bets := []domain.LootboxBet{{ItemID: 99, Quantity: 1}}
 	inventory := &domain.Inventory{Slots: []domain.InventorySlot{{ItemID: 1, Quantity: 5}}}
-	tx := new(MockTx)
-
 	repo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "123").Return(user, nil)
 	repo.On("GetActiveGamble", ctx).Return(nil, nil)
 
 	// Item validation - testing with non-existent item ID
 	nonExistentItem := &domain.Item{ID: 99, InternalName: domain.ItemLootbox2}
 	repo.On("GetItemByID", ctx, 99).Return(nonExistentItem, nil)
-
-	repo.On("BeginTx", ctx).Return(tx, nil)
-	tx.On("GetInventory", ctx, "user1").Return(inventory, nil)
-	tx.On("Rollback", ctx).Return(nil).Maybe()
+	repo.On("GetInventory", ctx, "user1").Return(inventory, nil)
 
 	gamble, err := s.StartGamble(ctx, domain.PlatformTwitch, "123", "testuser", bets)
 
@@ -368,7 +357,6 @@ func TestStartGamble_LootboxNotInInventory(t *testing.T) {
 	assert.Nil(t, gamble)
 	assert.ErrorIs(t, err, domain.ErrItemNotFound)
 	repo.AssertExpectations(t)
-	tx.AssertExpectations(t)
 }
 
 // ========================================

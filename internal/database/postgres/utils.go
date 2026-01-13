@@ -58,44 +58,37 @@ func mapUserAndLinks(ctx context.Context, q *generated.Queries, userID uuid.UUID
 
 // getInventory retrieves inventory (shared helper)
 func getInventory(ctx context.Context, q *generated.Queries, userID string) (*domain.Inventory, error) {
-	userUUID, err := uuid.Parse(userID)
-	if err != nil {
-		return nil, fmt.Errorf("invalid user id: %w", err)
-	}
-
-	inventoryData, err := q.GetInventory(ctx, userUUID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return &domain.Inventory{Slots: []domain.InventorySlot{}}, nil
-		}
-		return nil, fmt.Errorf("failed to get inventory: %w", err)
-	}
-
-	var inventory domain.Inventory
-	if err := json.Unmarshal(inventoryData, &inventory); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal inventory: %w", err)
-	}
-
-	if inventory.Slots == nil {
-		inventory.Slots = []domain.InventorySlot{}
-	}
-
-	return &inventory, nil
+	return getInventoryInternal(ctx, q, userID, false)
 }
 
 // getInventoryForUpdate retrieves inventory with row locking (shared helper)
 func getInventoryForUpdate(ctx context.Context, q *generated.Queries, userID string) (*domain.Inventory, error) {
+	return getInventoryInternal(ctx, q, userID, true)
+}
+
+func getInventoryInternal(ctx context.Context, q *generated.Queries, userID string, forUpdate bool) (*domain.Inventory, error) {
 	userUUID, err := uuid.Parse(userID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid user id: %w", err)
 	}
 
-	inventoryData, err := q.GetInventoryForUpdate(ctx, userUUID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+	var inventoryData []byte
+	var fetchErr error
+	if forUpdate {
+		inventoryData, fetchErr = q.GetInventoryForUpdate(ctx, userUUID)
+	} else {
+		inventoryData, fetchErr = q.GetInventory(ctx, userUUID)
+	}
+
+	if fetchErr != nil {
+		if errors.Is(fetchErr, pgx.ErrNoRows) {
 			return &domain.Inventory{Slots: []domain.InventorySlot{}}, nil
 		}
-		return nil, fmt.Errorf("failed to get inventory for update: %w", err)
+		op := "get inventory"
+		if forUpdate {
+			op = "get inventory for update"
+		}
+		return nil, fmt.Errorf("failed to %s: %w", op, fetchErr)
 	}
 
 	var inventory domain.Inventory
@@ -151,4 +144,80 @@ func ptrToText(s *string) pgtype.Text {
 // intToInt4 converts an int to pgtype.Int4
 func intToInt4(i int) pgtype.Int4 {
 	return pgtype.Int4{Int32: int32(i), Valid: true}
+}
+
+func getItemByName(ctx context.Context, q *generated.Queries, itemName string) (*domain.Item, error) {
+	row, err := q.GetItemByName(ctx, itemName)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil // Return nil if item not found
+		}
+		return nil, fmt.Errorf("failed to get item by name: %w", err)
+	}
+
+	return mapItemFields(row.ItemID, row.InternalName, row.PublicName, row.DefaultDisplay, row.ItemDescription, row.BaseValue, row.Handler, row.Types), nil
+}
+
+func getItemByID(ctx context.Context, q *generated.Queries, id int) (*domain.Item, error) {
+	row, err := q.GetItemByID(ctx, int32(id))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get item by id: %w", err)
+	}
+
+	return mapItemFields(row.ItemID, row.InternalName, row.PublicName, row.DefaultDisplay, row.ItemDescription, row.BaseValue, row.Handler, row.Types), nil
+}
+
+func getItemsByIDs(ctx context.Context, q *generated.Queries, itemIDs []int) ([]domain.Item, error) {
+	if len(itemIDs) == 0 {
+		return []domain.Item{}, nil
+	}
+
+	ids := make([]int32, len(itemIDs))
+	for i, id := range itemIDs {
+		ids[i] = int32(id)
+	}
+
+	rows, err := q.GetItemsByIDs(ctx, ids)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get items by ids: %w", err)
+	}
+
+	items := make([]domain.Item, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, *mapItemFields(row.ItemID, row.InternalName, row.PublicName, row.DefaultDisplay, row.ItemDescription, row.BaseValue, row.Handler, row.Types))
+	}
+	return items, nil
+}
+
+func mapItemFields(itemID int32, internalName string, publicName, defaultDisplay, itemDescription pgtype.Text, baseValue pgtype.Int4, handler pgtype.Text, types []string) *domain.Item {
+	return &domain.Item{
+		ID:             int(itemID),
+		InternalName:   internalName,
+		PublicName:     publicName.String,
+		DefaultDisplay: defaultDisplay.String,
+		Description:    itemDescription.String,
+		BaseValue:      int(baseValue.Int32),
+		Handler:        textToPtr(handler),
+		Types:          types,
+	}
+}
+
+func mapProgressionNodeFields(id int32, nodeKey, nodeType, displayName string, description pgtype.Text, maxLevel, unlockCost pgtype.Int4, tier int32, size, category string, sortOrder pgtype.Int4, createdAt pgtype.Timestamp) *domain.ProgressionNode {
+	return &domain.ProgressionNode{
+		ID:          int(id),
+		NodeKey:     nodeKey,
+		NodeType:    nodeType,
+		DisplayName: displayName,
+		Description: description.String,
+		MaxLevel:    int(maxLevel.Int32),
+		UnlockCost:  int(unlockCost.Int32),
+		Tier:        int(tier),
+		Size:        size,
+		Category:    category,
+		SortOrder:   int(sortOrder.Int32),
+		CreatedAt:   createdAt.Time,
+	}
 }

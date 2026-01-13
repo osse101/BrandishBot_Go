@@ -40,7 +40,7 @@ const (
 	PlatformTwitch  = "twitch"
 	PlatformYoutube = "youtube"
 	PlatformDiscord = "discord"
-	DiscordBotId    = "BrandishBot#6125"
+	DiscordBotID    = "BrandishBot#6125"
 )
 
 // Message constants

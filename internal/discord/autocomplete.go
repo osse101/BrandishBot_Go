@@ -122,10 +122,7 @@ func handleJobAutocomplete(s *discordgo.Session, i *discordgo.InteractionCreate)
 // onlyOwned: if true, only shows items from user's inventory
 // filterFunc: optional custom filter function
 func handleItemAutocomplete(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient, onlyOwned bool, filterFunc func(string) bool) {
-	user := i.Member.User
-	if user == nil {
-		user = i.User
-	}
+	user := getInteractionUser(i)
 
 	if user == nil {
 		slog.Error("Failed to get user from autocomplete interaction")

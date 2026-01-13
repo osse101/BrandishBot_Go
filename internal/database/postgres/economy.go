@@ -72,24 +72,7 @@ func (r *EconomyRepository) GetUserByPlatformID(ctx context.Context, platform, p
 
 // GetItemByName retrieves an item by its internal name
 func (r *EconomyRepository) GetItemByName(ctx context.Context, itemName string) (*domain.Item, error) {
-	row, err := r.q.GetItemByName(ctx, itemName)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil // Return nil if item not found
-		}
-		return nil, fmt.Errorf("failed to get item by name: %w", err)
-	}
-
-	return &domain.Item{
-		ID:             int(row.ItemID),
-		InternalName:   row.InternalName,
-		PublicName:     row.PublicName.String,
-		DefaultDisplay: row.DefaultDisplay.String,
-		Description:    row.ItemDescription.String,
-		BaseValue:      int(row.BaseValue.Int32),
-		Handler:        textToPtr(row.Handler),
-		Types:          row.Types,
-	}, nil
+	return getItemByName(ctx, r.q, itemName)
 }
 
 // GetInventory retrieves the user's inventory

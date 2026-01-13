@@ -32,19 +32,12 @@ func GambleStartCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	}
 
 	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-		}); err != nil {
-			slog.Error("Failed to send deferred response", "error", err)
+		if !deferResponse(s, i) {
 			return
 		}
 
-		user := i.Member.User
-		if user == nil {
-			user = i.User
-		}
-
-		options := i.ApplicationCommandData().Options
+		user := getInteractionUser(i)
+		options := getOptions(i)
 		itemName := options[0].StringValue()
 		quantity := int(options[1].IntValue())
 

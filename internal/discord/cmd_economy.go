@@ -32,19 +32,12 @@ func BuyCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	}
 
 	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-		}); err != nil {
-			slog.Error("Failed to send deferred response", "error", err)
+		if !deferResponse(s, i) {
 			return
 		}
 
-		user := i.Member.User
-		if user == nil {
-			user = i.User
-		}
-
-		options := i.ApplicationCommandData().Options
+		user := getInteractionUser(i)
+		options := getOptions(i)
 		itemName := options[0].StringValue()
 		quantity := 1
 		if len(options) > 1 {
@@ -169,10 +162,7 @@ func PricesCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	}
 
 	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-		}); err != nil {
-			slog.Error("Failed to send deferred response", "error", err)
+		if !deferResponse(s, i) {
 			return
 		}
 
@@ -272,19 +262,12 @@ func GiveCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	}
 
 	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-		}); err != nil {
-			slog.Error("Failed to send deferred response", "error", err)
+		if !deferResponse(s, i) {
 			return
 		}
 
-		fromUser := i.Member.User
-		if fromUser == nil {
-			fromUser = i.User
-		}
-
-		options := i.ApplicationCommandData().Options
+		fromUser := getInteractionUser(i)
+		options := getOptions(i)
 		toUser := options[0].UserValue(s)
 		itemName := options[1].StringValue()
 		quantity := 1

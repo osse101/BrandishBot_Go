@@ -43,20 +43,7 @@ func (r *progressionRepository) GetNodeByKey(ctx context.Context, nodeKey string
 		return nil, fmt.Errorf("failed to get node by key: %w", err)
 	}
 
-	return &domain.ProgressionNode{
-		ID:          int(node.ID),
-		NodeKey:     node.NodeKey,
-		NodeType:    node.NodeType,
-		DisplayName: node.DisplayName,
-		Description: node.Description.String,
-		MaxLevel:    int(node.MaxLevel.Int32),
-		UnlockCost:  int(node.UnlockCost.Int32),
-		Tier:        int(node.Tier),
-		Size:        node.Size,
-		Category:    node.Category,
-		SortOrder:   int(node.SortOrder.Int32),
-		CreatedAt:   node.CreatedAt.Time,
-	}, nil
+	return mapProgressionNodeFields(node.ID, node.NodeKey, node.NodeType, node.DisplayName, node.Description, node.MaxLevel, node.UnlockCost, node.Tier, node.Size, node.Category, node.SortOrder, node.CreatedAt), nil
 }
 
 func (r *progressionRepository) GetNodeByID(ctx context.Context, id int) (*domain.ProgressionNode, error) {
@@ -68,20 +55,7 @@ func (r *progressionRepository) GetNodeByID(ctx context.Context, id int) (*domai
 		return nil, fmt.Errorf("failed to get node by ID: %w", err)
 	}
 
-	return &domain.ProgressionNode{
-		ID:          int(node.ID),
-		NodeKey:     node.NodeKey,
-		NodeType:    node.NodeType,
-		DisplayName: node.DisplayName,
-		Description: node.Description.String,
-		MaxLevel:    int(node.MaxLevel.Int32),
-		UnlockCost:  int(node.UnlockCost.Int32),
-		Tier:        int(node.Tier),
-		Size:        node.Size,
-		Category:    node.Category,
-		SortOrder:   int(node.SortOrder.Int32),
-		CreatedAt:   node.CreatedAt.Time,
-	}, nil
+	return mapProgressionNodeFields(node.ID, node.NodeKey, node.NodeType, node.DisplayName, node.Description, node.MaxLevel, node.UnlockCost, node.Tier, node.Size, node.Category, node.SortOrder, node.CreatedAt), nil
 }
 
 func (r *progressionRepository) GetAllNodes(ctx context.Context) ([]*domain.ProgressionNode, error) {
@@ -92,20 +66,7 @@ func (r *progressionRepository) GetAllNodes(ctx context.Context) ([]*domain.Prog
 
 	nodes := make([]*domain.ProgressionNode, 0, len(rows))
 	for _, node := range rows {
-		nodes = append(nodes, &domain.ProgressionNode{
-			ID:          int(node.ID),
-			NodeKey:     node.NodeKey,
-			NodeType:    node.NodeType,
-			DisplayName: node.DisplayName,
-			Description: node.Description.String,
-			MaxLevel:    int(node.MaxLevel.Int32),
-			UnlockCost:  int(node.UnlockCost.Int32),
-			Tier:        int(node.Tier),
-			Size:        node.Size,
-			Category:    node.Category,
-			SortOrder:   int(node.SortOrder.Int32),
-			CreatedAt:   node.CreatedAt.Time,
-		})
+		nodes = append(nodes, mapProgressionNodeFields(node.ID, node.NodeKey, node.NodeType, node.DisplayName, node.Description, node.MaxLevel, node.UnlockCost, node.Tier, node.Size, node.Category, node.SortOrder, node.CreatedAt))
 	}
 
 	return nodes, nil

@@ -59,7 +59,7 @@ func (r *StatsRepository) RecordEvent(ctx context.Context, event *domain.StatsEv
 		return fmt.Errorf("failed to insert event: %w", err)
 	}
 
-	event.EventID = int64(result.EventID)
+	event.EventID = result.EventID
 	event.CreatedAt = result.CreatedAt.Time
 
 	return nil
@@ -154,7 +154,7 @@ func mapStatsEvent(eventID int64, userID pgtype.UUID, eventType string, eventDat
 
 	var uid uuid.UUID
 	if userID.Valid {
-		uid = [16]byte(userID.Bytes)
+		uid = userID.Bytes
 	}
 
 	return &domain.StatsEvent{
@@ -182,7 +182,7 @@ func (r *StatsRepository) GetTopUsers(ctx context.Context, eventType domain.Even
 	for _, row := range rows {
 		var uid uuid.UUID
 		if row.UserID.Valid {
-			uid = [16]byte(row.UserID.Bytes)
+			uid = row.UserID.Bytes
 		}
 
 		entries = append(entries, domain.LeaderboardEntry{

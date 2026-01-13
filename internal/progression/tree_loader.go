@@ -105,41 +105,10 @@ func (t *treeLoader) Validate(config *TreeConfig) error {
 	// Check for duplicate keys and build index
 	for i := range config.Nodes {
 		node := &config.Nodes[i]
-
-		if node.Key == "" {
-			return fmt.Errorf("%w: node at index %d has empty key", ErrInvalidConfig, i)
-		}
-
-		if _, exists := nodesByKey[node.Key]; exists {
-			return fmt.Errorf("%w: '%s'", ErrDuplicateNodeKey, node.Key)
+		if err := t.validateNodeConfig(i, node, nodesByKey); err != nil {
+			return err
 		}
 		nodesByKey[node.Key] = node
-
-		// Validate required fields
-		if node.Name == "" {
-			return fmt.Errorf("%w: node '%s' has empty name", ErrInvalidConfig, node.Key)
-		}
-		if node.Type == "" {
-			return fmt.Errorf("%w: node '%s' has empty type", ErrInvalidConfig, node.Key)
-		}
-		if node.MaxLevel <= 0 {
-			return fmt.Errorf("%w: node '%s' has invalid max_level %d", ErrInvalidConfig, node.Key, node.MaxLevel)
-		}
-
-		// Validate tier
-		if err := ValidateTier(node.Tier); err != nil {
-			return fmt.Errorf("%w: node '%s' - %w", ErrInvalidConfig, node.Key, err)
-		}
-
-		// Validate size
-		if err := ValidateSize(node.Size); err != nil {
-			return fmt.Errorf("%w: node '%s' - %w", ErrInvalidConfig, node.Key, err)
-		}
-
-		// Validate category
-		if node.Category == "" {
-			return fmt.Errorf("%w: node '%s' has empty category", ErrInvalidConfig, node.Key)
-		}
 	}
 
 	// Validate prerequisite references exist
@@ -152,10 +121,43 @@ func (t *treeLoader) Validate(config *TreeConfig) error {
 	}
 
 	// Check for cycles using DFS
-	if err := detectCycles(config.Nodes, nodesByKey); err != nil {
-		return err
+	return detectCycles(config.Nodes, nodesByKey)
+}
+
+func (t *treeLoader) validateNodeConfig(index int, node *NodeConfig, nodesByKey map[string]*NodeConfig) error {
+	if node.Key == "" {
+		return fmt.Errorf("%w: node at index %d has empty key", ErrInvalidConfig, index)
 	}
 
+	if _, exists := nodesByKey[node.Key]; exists {
+		return fmt.Errorf("%w: '%s'", ErrDuplicateNodeKey, node.Key)
+	}
+
+	// Validate required fields
+	if node.Name == "" {
+		return fmt.Errorf("%w: node '%s' has empty name", ErrInvalidConfig, node.Key)
+	}
+	if node.Type == "" {
+		return fmt.Errorf("%w: node '%s' has empty type", ErrInvalidConfig, node.Key)
+	}
+	if node.MaxLevel <= 0 {
+		return fmt.Errorf("%w: node '%s' has invalid max_level %d", ErrInvalidConfig, node.Key, node.MaxLevel)
+	}
+
+	// Validate tier
+	if err := ValidateTier(node.Tier); err != nil {
+		return fmt.Errorf("%w: node '%s' - %w", ErrInvalidConfig, node.Key, err)
+	}
+
+	// Validate size
+	if err := ValidateSize(node.Size); err != nil {
+		return fmt.Errorf("%w: node '%s' - %w", ErrInvalidConfig, node.Key, err)
+	}
+
+	// Validate category
+	if node.Category == "" {
+		return fmt.Errorf("%w: node '%s' has empty category", ErrInvalidConfig, node.Key)
+	}
 	return nil
 }
 
@@ -202,7 +204,6 @@ func detectCycles(nodes []NodeConfig, nodesByKey map[string]*NodeConfig) error {
 func (t *treeLoader) SyncToDatabase(ctx context.Context, config *TreeConfig, repo repository.Progression, path string) (*SyncResult, error) {
 	log := logger.FromContext(ctx)
 
-	// Check if file has changed since last sync
 	hasChanged, err := hasFileChanged(ctx, repo, path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check if file changed: %w", err)
@@ -213,110 +214,26 @@ func (t *treeLoader) SyncToDatabase(ctx context.Context, config *TreeConfig, rep
 		return &SyncResult{}, nil
 	}
 
-	result := &SyncResult{}
-
-	// Build a map of existing nodes from DB
-	existingNodes, err := repo.GetAllNodes(ctx)
+	existingByKey, err := t.loadExistingNodes(ctx, repo)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get existing nodes: %w", err)
+		return nil, err
 	}
 
-	existingByKey := make(map[string]*domain.ProgressionNode, len(existingNodes))
-	for _, node := range existingNodes {
-		existingByKey[node.NodeKey] = node
-	}
-
-	// Build map from config for prerequisite ID resolution
-	configByKey := make(map[string]*NodeConfig, len(config.Nodes))
-	for i := range config.Nodes {
-		configByKey[config.Nodes[i].Key] = &config.Nodes[i]
-	}
-
-	// Process nodes in order (parents first)
-	// Since we validated no cycles, we can do multiple passes to resolve parents
+	result := &SyncResult{}
 	processed := make(map[string]bool)
-	insertedNodeIDs := make(map[string]int) // key -> ID for newly inserted nodes
+	insertedNodeIDs := make(map[string]int)
 
 	for len(processed) < len(config.Nodes) {
 		progressMade := false
-
 		for _, nodeConfig := range config.Nodes {
-			if processed[nodeConfig.Key] {
+			if processed[nodeConfig.Key] || !t.arePrerequisitesMet(nodeConfig, existingByKey, insertedNodeIDs) {
 				continue
 			}
 
-			// Check if all prerequisites are processed
-			allPrereqsProcessed := true
-			for _, prereqKey := range nodeConfig.Prerequisites {
-				// Check if prerequisite exists in DB or was just inserted
-				if _, ok := existingByKey[prereqKey]; !ok {
-					if _, ok := insertedNodeIDs[prereqKey]; !ok {
-						// Prerequisite not yet processed, skip for now
-						allPrereqsProcessed = false
-						break
-					}
-				}
+			if err := t.syncOneNode(ctx, repo, &nodeConfig, existingByKey, insertedNodeIDs, result); err != nil {
+				return nil, err
 			}
 
-			if !allPrereqsProcessed {
-				continue
-			}
-
-			// Check if node exists in DB
-			if existing, ok := existingByKey[nodeConfig.Key]; ok {
-				// Node exists - check if update needed
-				needsUpdate := existing.DisplayName != nodeConfig.Name ||
-					existing.Description != nodeConfig.Description ||
-					existing.MaxLevel != nodeConfig.MaxLevel ||
-					existing.SortOrder != nodeConfig.SortOrder ||
-					existing.NodeType != nodeConfig.Type
-
-					// Note: We don't compare tier, size, category yet - those are new fields
-					// Database migration will add them, repo will handle them
-
-				if needsUpdate {
-					// Update existing node
-					err := updateNode(ctx, repo, existing.ID, &nodeConfig)
-					if err != nil {
-						return nil, fmt.Errorf("failed to update node '%s': %w", nodeConfig.Key, err)
-					}
-
-					// Update prerequisites in junction table
-					if err := syncPrerequisites(ctx, repo, existing.ID, nodeConfig.Prerequisites, existingByKey, insertedNodeIDs); err != nil {
-						return nil, fmt.Errorf("failed to sync prerequisites for '%s': %w", nodeConfig.Key, err)
-					}
-
-					result.NodesUpdated++
-					log.Info("Updated progression node", "key", nodeConfig.Key)
-				} else {
-					result.NodesSkipped++
-				}
-			} else {
-				// Insert new node
-				nodeID, err := insertNode(ctx, repo, &nodeConfig)
-				if err != nil {
-					return nil, fmt.Errorf("failed to insert node '%s': %w", nodeConfig.Key, err)
-				}
-				insertedNodeIDs[nodeConfig.Key] = nodeID
-
-				// Sync prerequisites in junction table
-				if err := syncPrerequisites(ctx, repo, nodeID, nodeConfig.Prerequisites, existingByKey, insertedNodeIDs); err != nil {
-					return nil, fmt.Errorf("failed to sync prerequisites for '%s': %w", nodeConfig.Key, err)
-				}
-
-				result.NodesInserted++
-				log.Info("Inserted progression node", "key", nodeConfig.Key, "id", nodeID)
-
-				// Handle auto_unlock
-				if nodeConfig.AutoUnlock {
-					if err := repo.UnlockNode(ctx, nodeID, 1, "auto", 0); err != nil {
-						log.Warn("Failed to auto-unlock node", "key", nodeConfig.Key, "error", err)
-					} else {
-						result.AutoUnlocked++
-						log.Info("Auto-unlocked node", "key", nodeConfig.Key)
-					}
-				}
-			}
 			processed[nodeConfig.Key] = true
 			progressMade = true
 		}
@@ -332,12 +249,83 @@ func (t *treeLoader) SyncToDatabase(ctx context.Context, config *TreeConfig, rep
 		"skipped", result.NodesSkipped,
 		"auto_unlocked", result.AutoUnlocked)
 
-	// Update sync metadata
 	if err := updateSyncMetadata(ctx, repo, path); err != nil {
 		log.Warn("Failed to update sync metadata", "error", err)
 	}
 
 	return result, nil
+}
+
+func (t *treeLoader) loadExistingNodes(ctx context.Context, repo repository.Progression) (map[string]*domain.ProgressionNode, error) {
+	existingNodes, err := repo.GetAllNodes(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get existing nodes: %w", err)
+	}
+
+	existingByKey := make(map[string]*domain.ProgressionNode, len(existingNodes))
+	for _, node := range existingNodes {
+		existingByKey[node.NodeKey] = node
+	}
+	return existingByKey, nil
+}
+
+func (t *treeLoader) arePrerequisitesMet(node NodeConfig, existingByKey map[string]*domain.ProgressionNode, insertedNodeIDs map[string]int) bool {
+	for _, prereqKey := range node.Prerequisites {
+		if _, ok := existingByKey[prereqKey]; !ok {
+			if _, ok := insertedNodeIDs[prereqKey]; !ok {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func (t *treeLoader) syncOneNode(ctx context.Context, repo repository.Progression, nodeConfig *NodeConfig, existingByKey map[string]*domain.ProgressionNode, insertedNodeIDs map[string]int, result *SyncResult) error {
+	log := logger.FromContext(ctx)
+
+	if existing, ok := existingByKey[nodeConfig.Key]; ok {
+		needsUpdate := existing.DisplayName != nodeConfig.Name ||
+			existing.Description != nodeConfig.Description ||
+			existing.MaxLevel != nodeConfig.MaxLevel ||
+			existing.SortOrder != nodeConfig.SortOrder ||
+			existing.NodeType != nodeConfig.Type
+
+		if needsUpdate {
+			if err := updateNode(ctx, repo, existing.ID, nodeConfig); err != nil {
+				return fmt.Errorf("failed to update node '%s': %w", nodeConfig.Key, err)
+			}
+			if err := syncPrerequisites(ctx, repo, existing.ID, nodeConfig.Prerequisites, existingByKey, insertedNodeIDs); err != nil {
+				return fmt.Errorf("failed to sync prerequisites for '%s': %w", nodeConfig.Key, err)
+			}
+			result.NodesUpdated++
+			log.Info("Updated progression node", "key", nodeConfig.Key)
+		} else {
+			result.NodesSkipped++
+		}
+	} else {
+		nodeID, err := insertNode(ctx, repo, nodeConfig)
+		if err != nil {
+			return fmt.Errorf("failed to insert node '%s': %w", nodeConfig.Key, err)
+		}
+		insertedNodeIDs[nodeConfig.Key] = nodeID
+
+		if err := syncPrerequisites(ctx, repo, nodeID, nodeConfig.Prerequisites, existingByKey, insertedNodeIDs); err != nil {
+			return fmt.Errorf("failed to sync prerequisites for '%s': %w", nodeConfig.Key, err)
+		}
+
+		result.NodesInserted++
+		log.Info("Inserted progression node", "key", nodeConfig.Key, "id", nodeID)
+
+		if nodeConfig.AutoUnlock {
+			if err := repo.UnlockNode(ctx, nodeID, 1, "auto", 0); err != nil {
+				log.Warn("Failed to auto-unlock node", "key", nodeConfig.Key, "error", err)
+			} else {
+				result.AutoUnlocked++
+				log.Info("Auto-unlocked node", "key", nodeConfig.Key)
+			}
+		}
+	}
+	return nil
 }
 
 // insertNode inserts a new node into the database

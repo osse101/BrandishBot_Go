@@ -34,7 +34,6 @@ func NewUserRepository(db *pgxpool.Pool) *UserRepository {
 type UserTx struct {
 	tx pgx.Tx
 	q  *generated.Queries
-	r  *UserRepository
 }
 
 // BeginTx starts a new transaction
@@ -182,24 +181,7 @@ func (r *UserRepository) UpdateInventory(ctx context.Context, userID string, inv
 
 // GetItemByName retrieves an item by its internal name
 func (r *UserRepository) GetItemByName(ctx context.Context, itemName string) (*domain.Item, error) {
-	row, err := r.q.GetItemByName(ctx, itemName)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil // Return nil if item not found, as per original contract
-		}
-		return nil, fmt.Errorf("failed to get item by name: %w", err)
-	}
-
-	return &domain.Item{
-		ID:             int(row.ItemID),
-		InternalName:   row.InternalName,
-		PublicName:     row.PublicName.String,
-		DefaultDisplay: row.DefaultDisplay.String,
-		Description:    row.ItemDescription.String,
-		BaseValue:      int(row.BaseValue.Int32),
-		Handler:        textToPtr(row.Handler),
-		Types:          row.Types,
-	}, nil
+	return getItemByName(ctx, r.q, itemName)
 }
 
 // GetItemByPublicName retrieves an item by its public name
@@ -212,48 +194,12 @@ func (r *UserRepository) GetItemByPublicName(ctx context.Context, publicName str
 		return nil, fmt.Errorf("failed to get item by public name: %w", err)
 	}
 
-	return &domain.Item{
-		ID:             int(row.ItemID),
-		InternalName:   row.InternalName,
-		PublicName:     row.PublicName.String,
-		DefaultDisplay: row.DefaultDisplay.String,
-		Description:    row.ItemDescription.String,
-		BaseValue:      int(row.BaseValue.Int32),
-		Handler:        textToPtr(row.Handler),
-		Types:          row.Types,
-	}, nil
+	return mapItemFields(row.ItemID, row.InternalName, row.PublicName, row.DefaultDisplay, row.ItemDescription, row.BaseValue, row.Handler, row.Types), nil
 }
 
 // GetItemsByIDs retrieves multiple items by their IDs
 func (r *UserRepository) GetItemsByIDs(ctx context.Context, itemIDs []int) ([]domain.Item, error) {
-	if len(itemIDs) == 0 {
-		return []domain.Item{}, nil
-	}
-
-	ids := make([]int32, len(itemIDs))
-	for i, id := range itemIDs {
-		ids[i] = int32(id)
-	}
-
-	rows, err := r.q.GetItemsByIDs(ctx, ids)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get items by ids: %w", err)
-	}
-
-	items := make([]domain.Item, 0, len(rows))
-	for _, row := range rows {
-		items = append(items, domain.Item{
-			ID:             int(row.ItemID),
-			InternalName:   row.InternalName,
-			PublicName:     row.PublicName.String,
-			DefaultDisplay: row.DefaultDisplay.String,
-			Description:    row.ItemDescription.String,
-			BaseValue:      int(row.BaseValue.Int32),
-			Handler:        textToPtr(row.Handler),
-			Types:          row.Types,
-		})
-	}
-	return items, nil
+	return getItemsByIDs(ctx, r.q, itemIDs)
 }
 
 // GetItemsByNames retrieves multiple items by their internal names
@@ -269,16 +215,7 @@ func (r *UserRepository) GetItemsByNames(ctx context.Context, names []string) ([
 
 	items := make([]domain.Item, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, domain.Item{
-			ID:             int(row.ItemID),
-			InternalName:   row.InternalName,
-			PublicName:     row.PublicName.String,
-			DefaultDisplay: row.DefaultDisplay.String,
-			Description:    row.ItemDescription.String,
-			BaseValue:      int(row.BaseValue.Int32),
-			Handler:        textToPtr(row.Handler),
-			Types:          row.Types,
-		})
+		items = append(items, *mapItemFields(row.ItemID, row.InternalName, row.PublicName, row.DefaultDisplay, row.ItemDescription, row.BaseValue, row.Handler, row.Types))
 	}
 	return items, nil
 }
@@ -292,40 +229,14 @@ func (r *UserRepository) GetAllItems(ctx context.Context) ([]domain.Item, error)
 
 	items := make([]domain.Item, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, domain.Item{
-			ID:             int(row.ItemID),
-			InternalName:   row.InternalName,
-			PublicName:     row.PublicName.String,
-			DefaultDisplay: row.DefaultDisplay.String,
-			Description:    row.ItemDescription.String,
-			BaseValue:      int(row.BaseValue.Int32),
-			Handler:        textToPtr(row.Handler),
-			Types:          row.Types,
-		})
+		items = append(items, *mapItemFields(row.ItemID, row.InternalName, row.PublicName, row.DefaultDisplay, row.ItemDescription, row.BaseValue, row.Handler, row.Types))
 	}
 	return items, nil
 }
 
 // GetItemByID retrieves an item by its ID
 func (r *UserRepository) GetItemByID(ctx context.Context, id int) (*domain.Item, error) {
-	row, err := r.q.GetItemByID(ctx, int32(id))
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("failed to get item by id: %w", err)
-	}
-
-	return &domain.Item{
-		ID:             int(row.ItemID),
-		InternalName:   row.InternalName,
-		PublicName:     row.PublicName.String,
-		DefaultDisplay: row.DefaultDisplay.String,
-		Description:    row.ItemDescription.String,
-		BaseValue:      int(row.BaseValue.Int32),
-		Handler:        textToPtr(row.Handler),
-		Types:          row.Types,
-	}, nil
+	return getItemByID(ctx, r.q, id)
 }
 
 // GetUserByUsername retrieves a user by their username

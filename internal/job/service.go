@@ -97,7 +97,7 @@ func (s *service) GetUserJobs(ctx context.Context, userID string) ([]domain.User
 	}
 
 	// Combine job info with progress
-	var result []domain.UserJobInfo
+	result := make([]domain.UserJobInfo, 0, len(jobs))
 	for _, job := range jobs {
 		progress := progressMap[job.ID]
 		info := domain.UserJobInfo{
@@ -159,45 +159,81 @@ func (s *service) GetPrimaryJob(ctx context.Context, userID string) (*domain.Use
 
 // AwardXP awards XP to a user for a specific job
 func (s *service) AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error) {
-	log := logger.FromContext(ctx)
-
-	// Check if jobs_xp feature is unlocked
-	unlocked, err := s.progressionSvc.IsFeatureUnlocked(ctx, "feature_jobs_xp")
-	if err != nil {
-		return nil, fmt.Errorf("failed to check jobs_xp unlock: %w", err)
-	}
-	if !unlocked {
-		log.Debug("Jobs XP system not unlocked yet")
+	if unlocked, err := s.isJobsXPUnlocked(ctx); err != nil || !unlocked {
+		if err != nil {
+			return nil, fmt.Errorf("failed to check jobs_xp unlock: %w", err)
+		}
 		return nil, fmt.Errorf("jobs XP system not unlocked")
 	}
 
-	// Get job
 	job, err := s.repo.GetJobByKey(ctx, jobKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get job: %w", err)
 	}
 
-	// Get current progress
-	currentProgress, _ := s.repo.GetUserJob(ctx, userID, job.ID)
+	currentProgress, err := s.getOrCreateUserJob(ctx, userID, job.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	actualAmount := s.calculateActualXP(ctx, userID, jobKey, baseAmount, source)
+
+	if err := s.checkDailyCap(ctx, userID, jobKey, currentProgress, &actualAmount); err != nil {
+		return nil, err
+	}
+
+	oldLevel := currentProgress.CurrentLevel
+	newXP := currentProgress.CurrentXP + int64(actualAmount)
+	newLevel := s.calculateNewLevel(ctx, newXP)
+
+	now := time.Now()
+	if err := s.updateUserJobProgress(ctx, currentProgress, newXP, newLevel, actualAmount, &now); err != nil {
+		return nil, err
+	}
+
+	s.recordXPAndLevelUpEvents(ctx, userID, jobKey, job.ID, actualAmount, oldLevel, newLevel, source, metadata, &now)
+
+	return &domain.XPAwardResult{
+		JobKey:    jobKey,
+		XPGained:  actualAmount,
+		NewXP:     newXP,
+		NewLevel:  newLevel,
+		LeveledUp: newLevel > oldLevel,
+	}, nil
+}
+
+func (s *service) isJobsXPUnlocked(ctx context.Context) (bool, error) {
+	unlocked, err := s.progressionSvc.IsFeatureUnlocked(ctx, "feature_jobs_xp")
+	if err != nil {
+		return false, err
+	}
+	return unlocked, nil
+}
+
+func (s *service) getOrCreateUserJob(ctx context.Context, userID string, jobID int) (*domain.UserJob, error) {
+	currentProgress, err := s.repo.GetUserJob(ctx, userID, jobID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user job: %w", err)
+	}
 	if currentProgress == nil {
-		// Initialize new user job
 		currentProgress = &domain.UserJob{
 			UserID:        userID,
-			JobID:         job.ID,
+			JobID:         jobID,
 			CurrentXP:     0,
 			CurrentLevel:  0,
 			XPGainedToday: 0,
 		}
 	}
+	return currentProgress, nil
+}
 
-	// Apply XP boost multiplier (TODO: get from progression system)
+func (s *service) calculateActualXP(ctx context.Context, userID, jobKey string, baseAmount int, source string) int {
 	xpMultiplier := s.getXPMultiplier(ctx)
 	actualAmount := int(float64(baseAmount) * xpMultiplier)
 
-	// Check for Epiphany (Critical XP Success)
 	if s.rnd() < EpiphanyChance {
 		actualAmount = int(float64(actualAmount) * EpiphanyMultiplier)
-		log.Info("Job Epiphany triggered!", "user_id", userID, "job", jobKey, "base_amount", baseAmount, "bonus_amount", actualAmount-baseAmount)
+		logger.FromContext(ctx).Info("Job Epiphany triggered!", "user_id", userID, "job", jobKey, "base_amount", baseAmount, "bonus_amount", actualAmount-baseAmount)
 		if s.statsSvc != nil {
 			_ = s.statsSvc.RecordUserEvent(ctx, userID, domain.EventJobXPCritical, map[string]interface{}{
 				"job":        jobKey,
@@ -208,104 +244,96 @@ func (s *service) AwardXP(ctx context.Context, userID, jobKey string, baseAmount
 			})
 		}
 	}
+	return actualAmount
+}
 
-	// Check daily cap (TODO: get from progression system)
+func (s *service) checkDailyCap(ctx context.Context, userID, jobKey string, currentProgress *domain.UserJob, actualAmount *int) error {
 	dailyCap := s.getDailyCap(ctx)
-	if currentProgress.XPGainedToday+int64(actualAmount) > int64(dailyCap) {
+	if currentProgress.XPGainedToday+int64(*actualAmount) > int64(dailyCap) {
 		remaining := int64(dailyCap) - currentProgress.XPGainedToday
 		if remaining <= 0 {
-			log.Info("Daily XP cap reached", "user_id", userID, "job", jobKey)
-			return nil, fmt.Errorf("daily XP cap reached for %s", jobKey)
+			logger.FromContext(ctx).Info("Daily XP cap reached", "user_id", userID, "job", jobKey)
+			return fmt.Errorf("daily XP cap reached for %s", jobKey)
 		}
-		actualAmount = int(remaining)
+		*actualAmount = int(remaining)
 	}
+	return nil
+}
 
-	oldLevel := currentProgress.CurrentLevel
-	newXP := currentProgress.CurrentXP + int64(actualAmount)
+func (s *service) calculateNewLevel(ctx context.Context, newXP int64) int {
 	newLevel := s.CalculateLevel(newXP)
-
-	// Get max level cap
 	maxLevel, err := s.getMaxJobLevel(ctx)
 	if err != nil {
-		log.Warn("Failed to get max level, using default", "error", err)
+		logger.FromContext(ctx).Warn("Failed to get max level, using default", "error", err)
 		maxLevel = DefaultMaxLevel
 	}
 	if newLevel > maxLevel {
 		newLevel = maxLevel
 	}
+	return newLevel
+}
 
-	// Update progress
-	now := time.Now()
-	currentProgress.CurrentXP = newXP
-	currentProgress.CurrentLevel = newLevel
-	currentProgress.XPGainedToday += int64(actualAmount)
-	currentProgress.LastXPGain = &now
+func (s *service) updateUserJobProgress(ctx context.Context, progress *domain.UserJob, newXP int64, newLevel int, actualAmount int, now *time.Time) error {
+	progress.CurrentXP = newXP
+	progress.CurrentLevel = newLevel
+	progress.XPGainedToday += int64(actualAmount)
+	progress.LastXPGain = now
 
-	err = s.repo.UpsertUserJob(ctx, currentProgress)
+	err := s.repo.UpsertUserJob(ctx, progress)
 	if err != nil {
-		return nil, fmt.Errorf("failed to update user job: %w", err)
+		return fmt.Errorf("failed to update user job: %w", err)
 	}
+	return nil
+}
 
-	// Record event
+func (s *service) recordXPAndLevelUpEvents(ctx context.Context, userID, jobKey string, jobID int, actualAmount int, oldLevel, newLevel int, source string, metadata map[string]interface{}, now *time.Time) {
+	log := logger.FromContext(ctx)
+
+	// Record XP event
 	xpEvent := &domain.JobXPEvent{
 		ID:             uuid.New(),
 		UserID:         userID,
-		JobID:          job.ID,
+		JobID:          jobID,
 		XPAmount:       actualAmount,
 		SourceType:     source,
 		SourceMetadata: metadata,
-		RecordedAt:     now,
+		RecordedAt:     *now,
 	}
-	err = s.repo.RecordJobXPEvent(ctx, xpEvent)
-	if err != nil {
+	if err := s.repo.RecordJobXPEvent(ctx, xpEvent); err != nil {
 		log.Error("Failed to record XP event", "error", err)
-		// Don't fail the operation if logging fails
 	}
 
-	log.Info("Awarded job XP",
-		"user_id", userID,
-		"job", jobKey,
-		"xp", actualAmount,
-		"new_level", newLevel,
-		"leveled_up", newLevel > oldLevel,
-	)
+	log.Info("Awarded job XP", "user_id", userID, "job", jobKey, "xp", actualAmount, "new_level", newLevel, "leveled_up", newLevel > oldLevel)
 
 	if newLevel > oldLevel {
-		if s.statsSvc != nil {
-			_ = s.statsSvc.RecordUserEvent(ctx, userID, domain.EventJobLevelUp, map[string]interface{}{
-				"job":       jobKey,
-				"level":     newLevel,
-				"old_level": oldLevel,
-			})
-		}
+		s.handleLevelUp(ctx, userID, jobKey, oldLevel, newLevel, source)
+	}
+}
 
-		// Publish Level Up Event using ResilientPublisher
-		// This ensures XP awards never fail even if event system is down
-		if s.publisher != nil {
-			eventType := event.Type(domain.EventJobLevelUp)
-			s.publisher.PublishWithRetry(ctx, event.Event{
-				Version: "1.0",
-				Type:    eventType,
-				Payload: map[string]interface{}{
-					"user_id":   userID,
-					"job_key":   jobKey,
-					"new_level": newLevel,
-					"old_level": oldLevel,
-				},
-				Metadata: map[string]interface{}{
-					"source": source,
-				},
-			})
-		}
+func (s *service) handleLevelUp(ctx context.Context, userID, jobKey string, oldLevel, newLevel int, source string) {
+	if s.statsSvc != nil {
+		_ = s.statsSvc.RecordUserEvent(ctx, userID, domain.EventJobLevelUp, map[string]interface{}{
+			"job":       jobKey,
+			"level":     newLevel,
+			"old_level": oldLevel,
+		})
 	}
 
-	return &domain.XPAwardResult{
-		JobKey:    jobKey,
-		XPGained:  actualAmount,
-		NewXP:     newXP,
-		NewLevel:  newLevel,
-		LeveledUp: newLevel > oldLevel,
-	}, nil
+	if s.publisher != nil {
+		s.publisher.PublishWithRetry(ctx, event.Event{
+			Version: "1.0",
+			Type:    event.Type(domain.EventJobLevelUp),
+			Payload: map[string]interface{}{
+				"user_id":   userID,
+				"job_key":   jobKey,
+				"new_level": newLevel,
+				"old_level": oldLevel,
+			},
+			Metadata: map[string]interface{}{
+				"source": source,
+			},
+		})
+	}
 }
 
 // GetJobLevel returns the user's level for a specific job

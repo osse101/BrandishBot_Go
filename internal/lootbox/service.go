@@ -101,100 +101,87 @@ func (s *service) OpenLootbox(ctx context.Context, lootboxName string, quantity 
 		return nil, nil
 	}
 
-	log := logger.FromContext(ctx)
-
 	table, ok := s.lootTables[lootboxName]
 	if !ok {
-		log.Warn("No loot table found for lootbox", "lootbox", lootboxName)
-		return nil, nil // Empty result, not an error
+		logger.FromContext(ctx).Warn("No loot table found for lootbox", "lootbox", lootboxName)
+		return nil, nil
 	}
 
-	// Generate drops based on probability
-	type dropInfo struct {
-		Qty    int
-		Chance float64
+	dropCounts := s.processLootTable(table, quantity)
+	if len(dropCounts) == 0 {
+		return nil, nil
 	}
+
+	return s.convertToDroppedItems(ctx, dropCounts)
+}
+
+type dropInfo struct {
+	Qty    int
+	Chance float64
+}
+
+func (s *service) processLootTable(table []LootItem, quantity int) map[string]dropInfo {
 	dropCounts := make(map[string]dropInfo)
 
-	// Optimization: Instead of looping quantity * tableSize times (O(N*T)),
-	// we loop over the table and use Geometric distribution to find how many boxes contain the item (O(T)).
-	// This reduces RNG calls significantly for large quantities.
 	for _, loot := range table {
 		if loot.Chance <= 0 {
 			continue
 		}
 
-		remaining := quantity
-
-		// If chance is >= 1.0, every box drops it (guaranteed)
 		if loot.Chance >= 1.0 {
-			// All remaining boxes drop this
-			count := remaining
-			totalQty := 0
-			// Calculate quantity
-			if loot.Max > loot.Min {
-				// Sum of 'count' random integers
-				// Optimization: Approximate for large counts if needed, but for now exact loop
-				// Since count can be large, we loop here.
-				// Wait, if count is large, looping here is O(N) still for the quantity generation.
-				// But we saved the "misses".
-				for k := 0; k < count; k++ {
-					totalQty += utils.SecureRandomIntRange(loot.Min, loot.Max)
-				}
-			} else {
-				totalQty = count * loot.Min
-			}
-
-			info, exists := dropCounts[loot.ItemName]
-			if !exists {
-				info = dropInfo{Qty: 0, Chance: loot.Chance}
-			} else if loot.Chance < info.Chance {
-				info.Chance = loot.Chance
-			}
-			info.Qty += totalQty
-			dropCounts[loot.ItemName] = info
-			continue
-		}
-
-		// Standard case: Chance < 1.0
-		// Use Geometric distribution to skip failures
-		for remaining > 0 {
-			// Geometric returns "failures before next success"
-			// If skip >= remaining, we failed for all remaining boxes.
-			skip := utils.Geometric(loot.Chance)
-			if skip >= remaining {
-				break
-			}
-
-			// Success found at index (current + skip)
-			remaining -= (skip + 1) // Consume failures + the success
-
-			// Generate quantity for this single drop
-			qty := loot.Min
-			if loot.Max > loot.Min {
-				qty = utils.SecureRandomIntRange(loot.Min, loot.Max)
-			}
-
-			info, exists := dropCounts[loot.ItemName]
-			if !exists {
-				info = dropInfo{Qty: 0, Chance: loot.Chance}
-			} else if loot.Chance < info.Chance {
-				info.Chance = loot.Chance
-			}
-			info.Qty += qty
-			dropCounts[loot.ItemName] = info
+			s.processGuaranteedDrop(loot, quantity, dropCounts)
+		} else {
+			s.processChanceDrop(loot, quantity, dropCounts)
 		}
 	}
+	return dropCounts
+}
 
-	if len(dropCounts) == 0 {
-		return nil, nil // No drops
+func (s *service) processGuaranteedDrop(loot LootItem, quantity int, dropCounts map[string]dropInfo) {
+	totalQty := 0
+	if loot.Max > loot.Min {
+		for k := 0; k < quantity; k++ {
+			totalQty += utils.SecureRandomIntRange(loot.Min, loot.Max)
+		}
+	} else {
+		totalQty = quantity * loot.Min
 	}
 
-	// Convert to DroppedItem with item IDs
-	var drops []DroppedItem
+	s.updateDropCounts(loot, totalQty, dropCounts)
+}
 
-	// Batch fetch items to avoid N+1 queries
-	var itemNames []string
+func (s *service) processChanceDrop(loot LootItem, quantity int, dropCounts map[string]dropInfo) {
+	remaining := quantity
+	for remaining > 0 {
+		skip := utils.Geometric(loot.Chance)
+		if skip >= remaining {
+			break
+		}
+
+		remaining -= (skip + 1)
+		qty := loot.Min
+		if loot.Max > loot.Min {
+			qty = utils.SecureRandomIntRange(loot.Min, loot.Max)
+		}
+		s.updateDropCounts(loot, qty, dropCounts)
+	}
+}
+
+func (s *service) updateDropCounts(loot LootItem, qty int, dropCounts map[string]dropInfo) {
+	info, exists := dropCounts[loot.ItemName]
+	if !exists {
+		info = dropInfo{Qty: 0, Chance: loot.Chance}
+	} else if loot.Chance < info.Chance {
+		info.Chance = loot.Chance
+	}
+	info.Qty += qty
+	dropCounts[loot.ItemName] = info
+}
+
+func (s *service) convertToDroppedItems(ctx context.Context, dropCounts map[string]dropInfo) ([]DroppedItem, error) {
+	log := logger.FromContext(ctx)
+
+	itemNames := make([]string, 0, len(dropCounts))
 	for itemName := range dropCounts {
 		itemNames = append(itemNames, itemName)
 	}
@@ -205,12 +192,12 @@ func (s *service) OpenLootbox(ctx context.Context, lootboxName string, quantity 
 		return nil, err
 	}
 
-	// Create a map for quick lookup
-	itemMap := make(map[string]*domain.Item)
+	itemMap := make(map[string]*domain.Item, len(items))
 	for i := range items {
 		itemMap[items[i].InternalName] = &items[i]
 	}
 
+	drops := make([]DroppedItem, 0, len(dropCounts))
 	for itemName, info := range dropCounts {
 		item, found := itemMap[itemName]
 		if !found {

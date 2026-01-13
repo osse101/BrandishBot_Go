@@ -246,40 +246,12 @@ func AdminStartVotingCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		DefaultMemberPermissions: &[]int64{discordgo.PermissionAdministrator}[0],
 	}
 
-	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-		}); err != nil {
-			slog.Error("Failed to send deferred response", "error", err)
-			return
-		}
-
-		msg, err := client.AdminStartVoting()
-		if err != nil {
-			errorMsg := fmt.Sprintf("❌ Failed to start voting: %v", err)
-			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-				Content: &errorMsg,
-			}); err != nil {
-				slog.Error("Failed to send error response", "error", err)
-			}
-			return
-		}
-
-		embed := &discordgo.MessageEmbed{
-			Title:       "🗳️ Admin Start Voting",
-			Description: msg,
-			Color:       0x9B59B6, // Purple
-			Footer: &discordgo.MessageEmbedFooter{
-				Text: "BrandishBot Admin",
-			},
-		}
-
-		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Embeds: &[]*discordgo.MessageEmbed{embed},
-		}); err != nil {
-			slog.Error("Failed to edit interaction response", "error", err)
-		}
-	}
+	handler := genericAdminCommandHandler(
+		"🗳️ Admin Start Voting",
+		0x9B59B6,
+		"Failed to start voting",
+		func(c *APIClient) (string, error) { return c.AdminStartVoting() },
+	)
 
 	return cmd, handler
 }
@@ -292,40 +264,12 @@ func AdminEndVotingCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		DefaultMemberPermissions: &[]int64{discordgo.PermissionAdministrator}[0],
 	}
 
-	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-		}); err != nil {
-			slog.Error("Failed to send deferred response", "error", err)
-			return
-		}
-
-		msg, err := client.AdminEndVoting()
-		if err != nil {
-			errorMsg := fmt.Sprintf("❌ Failed to end voting: %v", err)
-			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-				Content: &errorMsg,
-			}); err != nil {
-				slog.Error("Failed to send error response", "error", err)
-			}
-			return
-		}
-
-		embed := &discordgo.MessageEmbed{
-			Title:       "🛑 Admin End Voting",
-			Description: msg,
-			Color:       0x9B59B6, // Purple
-			Footer: &discordgo.MessageEmbedFooter{
-				Text: "BrandishBot Admin",
-			},
-		}
-
-		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Embeds: &[]*discordgo.MessageEmbed{embed},
-		}); err != nil {
-			slog.Error("Failed to edit interaction response", "error", err)
-		}
-	}
+	handler := genericAdminCommandHandler(
+		"🛑 Admin End Voting",
+		0x9B59B6,
+		"Failed to end voting",
+		func(c *APIClient) (string, error) { return c.AdminEndVoting() },
+	)
 
 	return cmd, handler
 }
@@ -395,7 +339,18 @@ func AdminReloadWeightsCommand() (*discordgo.ApplicationCommand, CommandHandler)
 		DefaultMemberPermissions: &[]int64{discordgo.PermissionAdministrator}[0],
 	}
 
-	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
+	handler := genericAdminCommandHandler(
+		"🔄 Engagement Weights Reloaded",
+		0x3498db,
+		"Failed to reload weights",
+		func(c *APIClient) (string, error) { return c.AdminReloadWeights() },
+	)
+
+	return cmd, handler
+}
+
+func genericAdminCommandHandler(title string, color int, errLogMsg string, action func(*APIClient) (string, error)) CommandHandler {
+	return func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
 		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
 		}); err != nil {
@@ -403,9 +358,9 @@ func AdminReloadWeightsCommand() (*discordgo.ApplicationCommand, CommandHandler)
 			return
 		}
 
-		msg, err := client.AdminReloadWeights()
+		msg, err := action(client)
 		if err != nil {
-			errorMsg := fmt.Sprintf("❌ Failed to reload weights: %v", err)
+			errorMsg := fmt.Sprintf("❌ %s: %v", errLogMsg, err)
 			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 				Content: &errorMsg,
 			}); err != nil {
@@ -415,9 +370,9 @@ func AdminReloadWeightsCommand() (*discordgo.ApplicationCommand, CommandHandler)
 		}
 
 		embed := &discordgo.MessageEmbed{
-			Title:       "🔄 Engagement Weights Reloaded",
+			Title:       title,
 			Description: msg,
-			Color:       0x3498db, // Blue
+			Color:       color,
 			Footer: &discordgo.MessageEmbedFooter{
 				Text: "BrandishBot Admin",
 			},
@@ -429,6 +384,4 @@ func AdminReloadWeightsCommand() (*discordgo.ApplicationCommand, CommandHandler)
 			slog.Error("Failed to edit interaction response", "error", err)
 		}
 	}
-
-	return cmd, handler
 }

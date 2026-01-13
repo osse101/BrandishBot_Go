@@ -36,16 +36,13 @@ func InfoCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	}
 
 	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-		}); err != nil {
-			slog.Error("Failed to send deferred response", "error", err)
+		if !deferResponse(s, i) {
 			return
 		}
 
 		// Get feature name from options, default to "overview"
 		featureName := "overview"
-		options := i.ApplicationCommandData().Options
+		options := getOptions(i)
 		if len(options) > 0 {
 			featureName = options[0].StringValue()
 		}

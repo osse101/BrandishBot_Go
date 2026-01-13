@@ -23,21 +23,21 @@ var (
 	ErrOrphanedRecipe     = errors.New("orphaned recipe in database")
 )
 
-// RecipeConfig represents the complete recipe configuration
-type RecipeConfig struct {
-	CraftingConfig    *CraftingConfig
-	DisassembleConfig *DisassembleRecipeConfig
+// Config represents the complete recipe configuration
+type Config struct {
+	UpgradeConfig     *UpgradeConfig
+	DisassembleConfig *DisassembleConfig
 }
 
-// CraftingConfig represents the JSON configuration for crafting recipes
-type CraftingConfig struct {
-	Version     string              `json:"version"`
-	Description string              `json:"description"`
+// UpgradeConfig represents the JSON configuration for crafting recipes
+type UpgradeConfig struct {
+	Version     string      `json:"version"`
+	Description string      `json:"description"`
 	Recipes     []RecipeDef `json:"recipes"`
 }
 
-// DisassembleRecipeConfig represents the JSON configuration for disassemble recipes
-type DisassembleRecipeConfig struct {
+// DisassembleConfig represents the JSON configuration for disassemble recipes
+type DisassembleConfig struct {
 	Version     string                 `json:"version"`
 	Description string                 `json:"description"`
 	Recipes     []DisassembleRecipeDef `json:"recipes"`
@@ -72,9 +72,9 @@ type RecipeOutput struct {
 
 // RecipeLoader handles loading and validating recipe configuration
 type RecipeLoader interface {
-	Load(craftingPath, disassemblePath string) (*RecipeConfig, error)
-	Validate(config *RecipeConfig, itemRepo repository.Item) error
-	SyncToDatabase(ctx context.Context, config *RecipeConfig, craftingRepo repository.Crafting, itemRepo repository.Item, configDir string) (*SyncResult, error)
+	Load(craftingPath, disassemblePath string) (*Config, error)
+	Validate(config *Config, itemRepo repository.Item) error
+	SyncToDatabase(ctx context.Context, config *Config, craftingRepo repository.Crafting, itemRepo repository.Item, configDir string) (*SyncResult, error)
 }
 
 // SyncResult contains the result of syncing recipes to the database
@@ -96,15 +96,15 @@ func NewRecipeLoader() RecipeLoader {
 }
 
 // Load reads and parses both recipe JSON files
-func (l *recipeLoader) Load(craftingPath, disassemblePath string) (*RecipeConfig, error) {
+func (l *recipeLoader) Load(craftingPath, disassemblePath string) (*Config, error) {
 	// Load crafting recipes
 	craftingData, err := os.ReadFile(craftingPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read crafting config file: %w", err)
 	}
 
-	var cConfig CraftingConfig
-	if err := json.Unmarshal(craftingData, &cConfig); err != nil {
+	var uConfig UpgradeConfig
+	if err := json.Unmarshal(craftingData, &uConfig); err != nil {
 		return nil, fmt.Errorf("failed to parse crafting config: %w", err)
 	}
 
@@ -114,22 +114,22 @@ func (l *recipeLoader) Load(craftingPath, disassemblePath string) (*RecipeConfig
 		return nil, fmt.Errorf("failed to read disassemble config file: %w", err)
 	}
 
-	var disassembleConfig DisassembleRecipeConfig
+	var disassembleConfig DisassembleConfig
 	if err := json.Unmarshal(disassembleData, &disassembleConfig); err != nil {
 		return nil, fmt.Errorf("failed to parse disassemble config: %w", err)
 	}
 
-	return &RecipeConfig{
-		CraftingConfig:    &cConfig,
+	return &Config{
+		UpgradeConfig:     &uConfig,
 		DisassembleConfig: &disassembleConfig,
 	}, nil
 }
 
 // Validate checks the recipe configuration for errors
-func (l *recipeLoader) Validate(config *RecipeConfig, itemRepo repository.Item) error {
+func (l *recipeLoader) Validate(config *Config, itemRepo repository.Item) error {
 	ctx := context.Background()
 
-	if config == nil || config.CraftingConfig == nil || config.DisassembleConfig == nil {
+	if config == nil || config.UpgradeConfig == nil || config.DisassembleConfig == nil {
 		return fmt.Errorf("%w: config is nil", ErrInvalidConfig)
 	}
 
@@ -144,85 +144,16 @@ func (l *recipeLoader) Validate(config *RecipeConfig, itemRepo repository.Item) 
 		itemsByInternalName[item.InternalName] = true
 	}
 
-	// Validate crafting recipes
 	craftingKeys := make(map[string]bool)
-	for i, recipe := range config.CraftingConfig.Recipes {
-		if recipe.RecipeKey == "" {
-			return fmt.Errorf("%w: crafting recipe at index %d has empty recipe_key", ErrInvalidConfig, i)
-		}
-
-		if craftingKeys[recipe.RecipeKey] {
-			return fmt.Errorf("%w: '%s' in crafting recipes", ErrDuplicateRecipeKey, recipe.RecipeKey)
-		}
-		craftingKeys[recipe.RecipeKey] = true
-
-		// Validate target item exists
-		if !itemsByInternalName[recipe.TargetItem] {
-			return fmt.Errorf("%w: crafting recipe '%s' references non-existent target_item '%s'", ErrInvalidItem, recipe.RecipeKey, recipe.TargetItem)
-		}
-
-		// Validate costs
-		if len(recipe.Costs) == 0 {
-			return fmt.Errorf("%w: crafting recipe '%s' has no costs", ErrInvalidConfig, recipe.RecipeKey)
-		}
-
-		for j, cost := range recipe.Costs {
-			if !itemsByInternalName[cost.Item] {
-				return fmt.Errorf("%w: crafting recipe '%s' cost[%d] references non-existent item '%s'", ErrInvalidItem, recipe.RecipeKey, j, cost.Item)
-			}
-			if cost.Quantity <= 0 {
-				return fmt.Errorf("%w: crafting recipe '%s' cost[%d] has non-positive quantity", ErrInvalidConfig, recipe.RecipeKey, j)
-			}
-		}
+	if err := l.validateUpgradeRecipes(config.UpgradeConfig, itemsByInternalName, craftingKeys); err != nil {
+		return err
 	}
 
-	// Validate disassemble recipes
-	disassembleKeys := make(map[string]bool)
-	for i, recipe := range config.DisassembleConfig.Recipes {
-		if recipe.RecipeKey == "" {
-			return fmt.Errorf("%w: disassemble recipe at index %d has empty recipe_key", ErrInvalidConfig, i)
-		}
-
-		if disassembleKeys[recipe.RecipeKey] {
-			return fmt.Errorf("%w: '%s' in disassemble recipes", ErrDuplicateRecipeKey, recipe.RecipeKey)
-		}
-		disassembleKeys[recipe.RecipeKey] = true
-
-		// Validate recipe_key (the item being disassembled) exists
-		if !itemsByInternalName[recipe.RecipeKey] {
-			return fmt.Errorf("%w: disassemble recipe '%s' references non-existent source item", ErrInvalidItem, recipe.RecipeKey)
-		}
-
-		// Validate quantity consumed
-		if recipe.QuantityConsumed <= 0 {
-			return fmt.Errorf("%w: disassemble recipe '%s' has non-positive quantity_consumed", ErrInvalidConfig, recipe.RecipeKey)
-		}
-
-		// Validate outputs
-		if len(recipe.Outputs) == 0 {
-			return fmt.Errorf("%w: disassemble recipe '%s' has no outputs", ErrInvalidConfig, recipe.RecipeKey)
-		}
-
-		for j, output := range recipe.Outputs {
-			if !itemsByInternalName[output.Item] {
-				return fmt.Errorf("%w: disassemble recipe '%s' output[%d] references non-existent item '%s'", ErrInvalidItem, recipe.RecipeKey, j, output.Item)
-			}
-			if output.Quantity <= 0 {
-				return fmt.Errorf("%w: disassemble recipe '%s' output[%d] has non-positive quantity", ErrInvalidConfig, recipe.RecipeKey, j)
-			}
-		}
-
-		// Validate associated_upgrade exists in crafting recipes
-		if recipe.AssociatedUpgrade != "" && !craftingKeys[recipe.AssociatedUpgrade] {
-			return fmt.Errorf("%w: disassemble recipe '%s' references non-existent associated_upgrade '%s'", ErrInvalidItem, recipe.RecipeKey, recipe.AssociatedUpgrade)
-		}
-	}
-
-	return nil
+	return l.validateDisassembleRecipes(config.DisassembleConfig, itemsByInternalName, craftingKeys)
 }
 
 // SyncToDatabase syncs the recipe configuration to the database idempotently
-func (l *recipeLoader) SyncToDatabase(ctx context.Context, config *RecipeConfig, craftingRepo repository.Crafting, itemRepo repository.Item, configDir string) (*SyncResult, error) {
+func (l *recipeLoader) SyncToDatabase(ctx context.Context, config *Config, craftingRepo repository.Crafting, itemRepo repository.Item, configDir string) (*SyncResult, error) {
 	log := logger.FromContext(ctx)
 
 	// Check if files have changed since last sync
@@ -261,7 +192,7 @@ func (l *recipeLoader) SyncToDatabase(ctx context.Context, config *RecipeConfig,
 
 	// Sync crafting recipes first
 	if craftingChanged {
-		craftingResult, err := l.syncCraftingRecipes(ctx, config.CraftingConfig, craftingRepo, itemIDsByInternalName)
+		craftingResult, err := l.syncCraftingRecipes(ctx, config.UpgradeConfig, craftingRepo, itemIDsByInternalName)
 		if err != nil {
 			return nil, fmt.Errorf("failed to sync crafting recipes: %w", err)
 		}
@@ -317,7 +248,7 @@ type recipeSyncResult struct {
 }
 
 // syncCraftingRecipes syncs crafting recipes to the database
-func (l *recipeLoader) syncCraftingRecipes(ctx context.Context, config *CraftingConfig, repo repository.Crafting, itemIDs map[string]int) (*recipeSyncResult, error) {
+func (l *recipeLoader) syncCraftingRecipes(ctx context.Context, config *UpgradeConfig, repo repository.Crafting, itemIDs map[string]int) (*recipeSyncResult, error) {
 	log := logger.FromContext(ctx)
 	result := &recipeSyncResult{
 		Orphaned: make([]string, 0),
@@ -396,7 +327,7 @@ func (l *recipeLoader) syncCraftingRecipes(ctx context.Context, config *Crafting
 }
 
 // syncDisassembleRecipes syncs disassemble recipes to the database
-func (l *recipeLoader) syncDisassembleRecipes(ctx context.Context, config *RecipeConfig, repo repository.Crafting, itemIDs map[string]int) (*recipeSyncResult, error) {
+func (l *recipeLoader) syncDisassembleRecipes(ctx context.Context, config *Config, repo repository.Crafting, itemIDs map[string]int) (*recipeSyncResult, error) {
 	log := logger.FromContext(ctx)
 	result := &recipeSyncResult{
 		Orphaned: make([]string, 0),
@@ -592,6 +523,77 @@ func costsEqual(a, b []domain.RecipeCost) bool {
 	}
 
 	return true
+}
+
+func (l *recipeLoader) validateUpgradeRecipes(config *UpgradeConfig, itemsByInternalName map[string]bool, seenKeys map[string]bool) error {
+	for i, recipe := range config.Recipes {
+		if recipe.RecipeKey == "" {
+			return fmt.Errorf("%w: crafting recipe at index %d has empty recipe_key", ErrInvalidConfig, i)
+		}
+
+		if seenKeys[recipe.RecipeKey] {
+			return fmt.Errorf("%w: '%s' in crafting recipes", ErrDuplicateRecipeKey, recipe.RecipeKey)
+		}
+		seenKeys[recipe.RecipeKey] = true
+
+		if !itemsByInternalName[recipe.TargetItem] {
+			return fmt.Errorf("%w: crafting recipe '%s' references non-existent target_item '%s'", ErrInvalidItem, recipe.RecipeKey, recipe.TargetItem)
+		}
+
+		if len(recipe.Costs) == 0 {
+			return fmt.Errorf("%w: crafting recipe '%s' has no costs", ErrInvalidConfig, recipe.RecipeKey)
+		}
+
+		for j, cost := range recipe.Costs {
+			if !itemsByInternalName[cost.Item] {
+				return fmt.Errorf("%w: crafting recipe '%s' cost[%d] references non-existent item '%s'", ErrInvalidItem, recipe.RecipeKey, j, cost.Item)
+			}
+			if cost.Quantity <= 0 {
+				return fmt.Errorf("%w: crafting recipe '%s' cost[%d] has non-positive quantity", ErrInvalidConfig, recipe.RecipeKey, j)
+			}
+		}
+	}
+	return nil
+}
+
+func (l *recipeLoader) validateDisassembleRecipes(config *DisassembleConfig, itemsByInternalName map[string]bool, craftingKeys map[string]bool) error {
+	seenKeys := make(map[string]bool)
+	for i, recipe := range config.Recipes {
+		if recipe.RecipeKey == "" {
+			return fmt.Errorf("%w: disassemble recipe at index %d has empty recipe_key", ErrInvalidConfig, i)
+		}
+
+		if seenKeys[recipe.RecipeKey] {
+			return fmt.Errorf("%w: '%s' in disassemble recipes", ErrDuplicateRecipeKey, recipe.RecipeKey)
+		}
+		seenKeys[recipe.RecipeKey] = true
+
+		if !itemsByInternalName[recipe.RecipeKey] {
+			return fmt.Errorf("%w: disassemble recipe '%s' references non-existent source item", ErrInvalidItem, recipe.RecipeKey)
+		}
+
+		if recipe.QuantityConsumed <= 0 {
+			return fmt.Errorf("%w: disassemble recipe '%s' has non-positive quantity_consumed", ErrInvalidConfig, recipe.RecipeKey)
+		}
+
+		if len(recipe.Outputs) == 0 {
+			return fmt.Errorf("%w: disassemble recipe '%s' has no outputs", ErrInvalidConfig, recipe.RecipeKey)
+		}
+
+		for j, output := range recipe.Outputs {
+			if !itemsByInternalName[output.Item] {
+				return fmt.Errorf("%w: disassemble recipe '%s' output[%d] references non-existent item '%s'", ErrInvalidItem, recipe.RecipeKey, j, output.Item)
+			}
+			if output.Quantity <= 0 {
+				return fmt.Errorf("%w: disassemble recipe '%s' output[%d] has non-positive quantity", ErrInvalidConfig, recipe.RecipeKey, j)
+			}
+		}
+
+		if recipe.AssociatedUpgrade != "" && !craftingKeys[recipe.AssociatedUpgrade] {
+			return fmt.Errorf("%w: disassemble recipe '%s' references non-existent associated_upgrade '%s'", ErrInvalidItem, recipe.RecipeKey, recipe.AssociatedUpgrade)
+		}
+	}
+	return nil
 }
 
 func outputsEqual(a, b []domain.RecipeOutput) bool {
