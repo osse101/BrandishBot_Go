@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/osse101/BrandishBot_Go/internal/database/generated"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/event"
@@ -30,7 +31,6 @@ func NewProgressionRepository(pool *pgxpool.Pool, bus event.Bus) repository.Prog
 	}
 }
 
-//nolint:gosec // DB IDs fit in int32
 // Node operations
 
 func (r *progressionRepository) GetNodeByKey(ctx context.Context, nodeKey string) (*domain.ProgressionNode, error) {
@@ -236,7 +236,7 @@ func (r *progressionRepository) UnlockNode(ctx context.Context, nodeID int, leve
 		if node != nil {
 			nodeKey = node.NodeKey
 		}
-		
+
 		r.bus.Publish(ctx, event.Event{
 			Type:    "progression.node_unlocked",
 			Version: "1.0",
@@ -270,7 +270,7 @@ func (r *progressionRepository) RelockNode(ctx context.Context, nodeID int, leve
 		if node != nil {
 			nodeKey = node.NodeKey
 		}
-		
+
 		r.bus.Publish(ctx, event.Event{
 			Type:    "progression.node_relocked",
 			Version: "1.0",
@@ -708,8 +708,7 @@ func (t *progressionTx) UpdateInventory(ctx context.Context, userID string, inve
 	return fmt.Errorf("inventory operations not supported in progression transactions")
 }
 
-
-// GetNodeByFeatureKey retrieves a node by its modifier feature_key and returns the current unlock level  
+// GetNodeByFeatureKey retrieves a node by its modifier feature_key and returns the current unlock level
 func (r *progressionRepository) GetNodeByFeatureKey(ctx context.Context, featureKey string) (*domain.ProgressionNode, int, error) {
 	row, err := r.q.GetNodeByFeatureKey(ctx, []byte(featureKey))
 	if err != nil {
@@ -726,18 +725,18 @@ func (r *progressionRepository) GetNodeByFeatureKey(ctx context.Context, feature
 	}
 
 	node := &domain.ProgressionNode{
-		ID:           int(row.ID),
-		NodeKey:      row.NodeKey,
+		ID:             int(row.ID),
+		NodeKey:        row.NodeKey,
 		NodeType:       row.NodeType,
 		DisplayName:    row.DisplayName,
 		Description:    row.Description.String,
-		MaxLevel:  int(row.MaxLevel.Int32),
+		MaxLevel:       int(row.MaxLevel.Int32),
 		UnlockCost:     int(row.UnlockCost.Int32),
-		Tier:      int(row.Tier),
-		Size: row.Size,
-		Category: row.Category,
-		SortOrder: int(row.SortOrder.Int32),
-		CreatedAt: row.CreatedAt.Time,
+		Tier:           int(row.Tier),
+		Size:           row.Size,
+		Category:       row.Category,
+		SortOrder:      int(row.SortOrder.Int32),
+		CreatedAt:      row.CreatedAt.Time,
 		ModifierConfig: modifierConfig,
 	}
 

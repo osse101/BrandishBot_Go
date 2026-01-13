@@ -22,8 +22,6 @@ type RecipeInfo struct {
 	BaseCost []domain.RecipeCost `json:"base_cost,omitempty"`
 }
 
-
-
 // CraftingResult contains the result of an upgrade operation
 type CraftingResult struct {
 	ItemName      string `json:"item_name"`
@@ -73,8 +71,8 @@ type service struct {
 	jobService     JobService
 	statsSvc       stats.Service
 	namingResolver naming.Resolver // For resolving public names to internal names
-	rnd            func() float64   // For rolling RNG (does not need to be cryptographically secure)
-	wg             sync.WaitGroup   // Tracks async goroutines for graceful shutdown
+	rnd            func() float64  // For rolling RNG (does not need to be cryptographically secure)
+	wg             sync.WaitGroup  // Tracks async goroutines for graceful shutdown
 }
 
 // NewService creates a new crafting service

@@ -25,22 +25,22 @@ var (
 
 // RecipeConfig represents the complete recipe configuration
 type RecipeConfig struct {
-	CraftingConfig   *CraftingRecipeConfig
+	CraftingConfig    *CraftingRecipeConfig
 	DisassembleConfig *DisassembleRecipeConfig
 }
 
 // CraftingRecipeConfig represents the JSON configuration for crafting recipes
 type CraftingRecipeConfig struct {
-	Version     string                `json:"version"`
-	Description string                `json:"description"`
-	Recipes     []CraftingRecipeDef   `json:"recipes"`
+	Version     string              `json:"version"`
+	Description string              `json:"description"`
+	Recipes     []CraftingRecipeDef `json:"recipes"`
 }
 
 // DisassembleRecipeConfig represents the JSON configuration for disassemble recipes
 type DisassembleRecipeConfig struct {
-	Version     string                  `json:"version"`
-	Description string                  `json:"description"`
-	Recipes     []DisassembleRecipeDef  `json:"recipes"`
+	Version     string                 `json:"version"`
+	Description string                 `json:"description"`
+	Recipes     []DisassembleRecipeDef `json:"recipes"`
 }
 
 // CraftingRecipeDef represents a single crafting recipe in the JSON
@@ -52,10 +52,10 @@ type CraftingRecipeDef struct {
 
 // DisassembleRecipeDef represents a single disassemble recipe in the JSON
 type DisassembleRecipeDef struct {
-	RecipeKey        string         `json:"recipe_key"`
-	QuantityConsumed int            `json:"quantity_consumed"`
-	Outputs          []RecipeOutput `json:"outputs"`
-	AssociatedUpgrade string        `json:"associated_upgrade"`
+	RecipeKey         string         `json:"recipe_key"`
+	QuantityConsumed  int            `json:"quantity_consumed"`
+	Outputs           []RecipeOutput `json:"outputs"`
+	AssociatedUpgrade string         `json:"associated_upgrade"`
 }
 
 // RecipeCost represents a cost item in a recipe

@@ -39,7 +39,7 @@ func decodeCraftingRequest(r *http.Request, actionName string) (*CraftingActionR
 	// Validate request
 	if err := GetValidator().ValidateStruct(req); err != nil {
 		log.Warn("Invalid request", "error", err)
-		return nil, fmt.Errorf("Invalid request: %v", err)
+		return nil, fmt.Errorf("Invalid request: %w", err)
 	}
 
 	return &req, nil

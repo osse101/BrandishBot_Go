@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/bwmarrin/discordgo"
+
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 

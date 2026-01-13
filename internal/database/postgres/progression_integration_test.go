@@ -5,12 +5,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/osse101/BrandishBot_Go/internal/database"
-	"github.com/osse101/BrandishBot_Go/internal/domain"
-	"github.com/osse101/BrandishBot_Go/internal/progression"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
+
+	"github.com/osse101/BrandishBot_Go/internal/database"
+	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/progression"
 )
 
 func TestProgressionRepository_Integration(t *testing.T) {
@@ -411,7 +412,7 @@ func TestProgressionRepository_Integration(t *testing.T) {
 		if err != nil {
 			t.Logf("Warning: Could not clear engagement metrics: %v", err)
 		}
-		
+
 		// Ensure weights exist
 		_, err = pool.Exec(ctx, `
 			INSERT INTO engagement_weights (metric_type, weight, description)
@@ -424,7 +425,6 @@ func TestProgressionRepository_Integration(t *testing.T) {
 			t.Fatalf("Failed to insert weights: %v", err)
 		}
 
-
 		userID := "user_velocity_test"
 
 		// Use fixed dates to avoid timezone/boundary issues
@@ -432,7 +432,7 @@ func TestProgressionRepository_Integration(t *testing.T) {
 		day1 := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
 		// Day 2 (Skip a day to ensure separation even with extreme timezones)
 		day2 := time.Date(2025, 1, 3, 12, 0, 0, 0, time.UTC)
-		
+
 		// Insert metrics
 		// vote_cast (5.0) * 20 = 100
 		metric1 := &domain.EngagementMetric{
@@ -464,7 +464,6 @@ func TestProgressionRepository_Integration(t *testing.T) {
 		if err != nil {
 			t.Fatalf("GetDailyEngagementTotals failed: %v", err)
 		}
-
 
 		// Assert
 		// We can't predict exact keys due to TZ, but sum should be 150

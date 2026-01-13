@@ -7,9 +7,10 @@ import (
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/features"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestHandleGetInfo(t *testing.T) {
@@ -27,10 +28,10 @@ func TestHandleGetInfo(t *testing.T) {
 		queryFeature   string
 		expectedStatus int
 		// We verify the FORMATTING added by the code, not the file content
-		expectedPrefix string
+		expectedPrefix     string
 		expectedSubstrings []string
-		expectLink     bool
-		expectError    bool
+		expectLink         bool
+		expectError        bool
 	}{
 		{
 			name:           "Missing platform",
@@ -71,7 +72,7 @@ func TestHandleGetInfo(t *testing.T) {
 				"**Commands**", // Code adds Commands header
 				"• `",          // Code adds bullet points for commands
 			},
-			expectLink:     false,
+			expectLink: false,
 		},
 		{
 			name:           "Unknown Feature",
@@ -106,15 +107,15 @@ func TestHandleGetInfo(t *testing.T) {
 				var resp InfoResponse
 				err = json.Unmarshal(rr.Body.Bytes(), &resp)
 				assert.NoError(t, err)
-				
+
 				if tt.expectedPrefix != "" {
 					assert.Contains(t, resp.Description, tt.expectedPrefix, "Description should start with/contain expected prefix/header")
 				}
-				
+
 				for _, sub := range tt.expectedSubstrings {
 					assert.Contains(t, resp.Description, sub, "Description should contain formatting element")
 				}
-				
+
 				if tt.expectLink {
 					assert.NotEmpty(t, resp.Link, "Expected link to be present")
 				} else {

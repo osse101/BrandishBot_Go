@@ -25,10 +25,10 @@ var (
 
 // ItemConfig represents the JSON configuration for items
 type ItemConfig struct {
-	Version       string   `json:"version"`
-	Description   string   `json:"description"`
-	ValidTags     []string `json:"valid_tags"`
-	ValidHandlers []string `json:"valid_handlers"`
+	Version       string    `json:"version"`
+	Description   string    `json:"description"`
+	ValidTags     []string  `json:"valid_tags"`
+	ValidHandlers []string  `json:"valid_handlers"`
 	Items         []ItemDef `json:"items"`
 }
 

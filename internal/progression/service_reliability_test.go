@@ -178,7 +178,6 @@ func (m *ReliabilityMockRepository) GetDailyEngagementTotals(ctx context.Context
 	return args.Get(0).(map[time.Time]int), args.Error(1)
 }
 
-
 // ReliabilityMockBus is a minimal mock for event bus
 type ReliabilityMockBus struct {
 	mock.Mock

@@ -65,4 +65,5 @@ func AdminCacheStatsCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		}
 	}
 
-	return cmd, handler}
+	return cmd, handler
+}

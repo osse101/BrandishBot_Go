@@ -5,9 +5,10 @@ import (
 	"math"
 	"testing"
 
-	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
 // MockRepository

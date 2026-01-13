@@ -5,11 +5,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/osse101/BrandishBot_Go/internal/database"
-	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
+
+	"github.com/osse101/BrandishBot_Go/internal/database"
+	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
 
 func TestLinkingRepository_Integration(t *testing.T) {

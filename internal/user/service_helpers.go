@@ -13,7 +13,7 @@ func (s *service) getItemByNameCached(ctx context.Context, name string) (*domain
 	if internalName, ok := s.namingResolver.ResolvePublicName(name); ok {
 		name = internalName
 	}
-	
+
 	s.itemCacheMu.RLock()
 	if item, ok := s.itemCacheByName[name]; ok {
 		s.itemCacheMu.RUnlock()

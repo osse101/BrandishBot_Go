@@ -4,11 +4,12 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/eventlog"
 	"github.com/osse101/BrandishBot_Go/internal/eventlog/mocks"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 // MockEventBus is a mock implementation of event.Bus
@@ -53,7 +54,7 @@ func TestService_Subscribe(t *testing.T) {
 func TestService_HandleEvent(t *testing.T) {
 	mockRepo := mocks.NewMockRepository(t)
 	service := eventlog.NewService(mockRepo)
-	
+
 	// Use test hooks to access private method
 	hooks := eventlog.NewTestHooks(service)
 

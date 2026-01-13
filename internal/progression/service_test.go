@@ -452,12 +452,12 @@ func (m *MockRepository) UpsertSyncMetadata(ctx context.Context, metadata *domai
 func (m *MockRepository) InsertNode(ctx context.Context, node *domain.ProgressionNode) (int, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	// Create ID if not present
 	if node.ID == 0 {
 		node.ID = len(m.nodes) + 1
 	}
-	
+
 	m.nodes[node.ID] = node
 	m.nodesByKey[node.NodeKey] = node
 	return node.ID, nil
@@ -467,11 +467,11 @@ func (m *MockRepository) InsertNode(ctx context.Context, node *domain.Progressio
 func (m *MockRepository) UpdateNode(ctx context.Context, nodeID int, node *domain.ProgressionNode) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	if _, exists := m.nodes[nodeID]; !exists {
 		return fmt.Errorf("node not found")
 	}
-	
+
 	node.ID = nodeID
 	m.nodes[nodeID] = node
 	m.nodesByKey[node.NodeKey] = node
@@ -698,7 +698,7 @@ func (m *MockRepository) BeginTx(ctx context.Context) (repository.Tx, error) {
 func (m *MockRepository) GetDailyEngagementTotals(ctx context.Context, since time.Time) (map[time.Time]int, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	result := make(map[time.Time]int)
 	for t, v := range m.dailyTotals {
 		if !t.Before(since) {
@@ -1013,7 +1013,6 @@ func TestIsItemUnlocked(t *testing.T) {
 		t.Error("Money should be unlocked now")
 	}
 }
-
 
 func TestEngagementTracking(t *testing.T) {
 	repo := NewMockRepository()

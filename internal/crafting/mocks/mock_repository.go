@@ -5,10 +5,9 @@ package mocks
 import (
 	context "context"
 
-	domain "github.com/osse101/BrandishBot_Go/internal/domain"
-
 	mock "github.com/stretchr/testify/mock"
 
+	domain "github.com/osse101/BrandishBot_Go/internal/domain"
 	repository "github.com/osse101/BrandishBot_Go/internal/repository"
 )
 

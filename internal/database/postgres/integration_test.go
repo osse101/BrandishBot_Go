@@ -11,11 +11,12 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/osse101/BrandishBot_Go/internal/database"
-	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
+
+	"github.com/osse101/BrandishBot_Go/internal/database"
+	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
 func TestUserRepository_Integration(t *testing.T) {

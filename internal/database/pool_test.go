@@ -8,9 +8,10 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/osse101/BrandishBot_Go/internal/testing/leaktest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/osse101/BrandishBot_Go/internal/testing/leaktest"
 )
 
 // TestPool_ConnectionsReleased verifies connections are returned to the pool

@@ -8,11 +8,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/osse101/BrandishBot_Go/internal/domain"
-	"github.com/osse101/BrandishBot_Go/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+
+	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/mocks"
 )
 
 func TestProgressionHandlers_HandleGetTree(t *testing.T) {
@@ -37,7 +38,7 @@ func TestProgressionHandlers_HandleGetTree(t *testing.T) {
 	handler.HandleGetTree()(rec, req)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
-	
+
 	var resp ProgressionTreeResponse
 	err := json.Unmarshal(rec.Body.Bytes(), &resp)
 	require.NoError(t, err)
@@ -116,7 +117,7 @@ func TestProgressionHandlers_HandleGetStatus(t *testing.T) {
 	handler.HandleGetStatus()(rec, req)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
-	
+
 	var resp domain.ProgressionStatus
 	err := json.Unmarshal(rec.Body.Bytes(), &resp)
 	require.NoError(t, err)

@@ -9,11 +9,12 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 	"github.com/osse101/BrandishBot_Go/mocks"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 func TestHandleStartGamble(t *testing.T) {
@@ -40,9 +41,9 @@ func TestHandleStartGamble(t *testing.T) {
 			expectedBody:   "LOCKED_NODES: Gamble Node",
 		},
 		{
-			name: "Invalid JSON",
-			reqBody:        "invalid json",
-			setupMocks:     func(mg *mocks.MockGambleService, mp *mocks.MockProgressionService) {
+			name:    "Invalid JSON",
+			reqBody: "invalid json",
+			setupMocks: func(mg *mocks.MockGambleService, mp *mocks.MockProgressionService) {
 				mp.On("IsFeatureUnlocked", mock.Anything, progression.FeatureGamble).Return(true, nil)
 			},
 			expectedStatus: http.StatusBadRequest,

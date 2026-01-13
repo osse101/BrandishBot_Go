@@ -64,15 +64,15 @@ func HandleMessageHandler(userService user.Service, progressionSvc progression.S
 			"username", req.Username)
 
 		// Validate request
-	if err := GetValidator().ValidateStruct(req); err != nil {
-		log.Warn("Invalid request", "error", err)
-		validationErrors := FormatValidationError(err)
-		respondJSON(w, http.StatusBadRequest, map[string]interface{}{
-			"error":   "Validation failed",
-			"details": validationErrors,
-		})
-		return
-	}
+		if err := GetValidator().ValidateStruct(req); err != nil {
+			log.Warn("Invalid request", "error", err)
+			validationErrors := FormatValidationError(err)
+			respondJSON(w, http.StatusBadRequest, map[string]interface{}{
+				"error":   "Validation failed",
+				"details": validationErrors,
+			})
+			return
+		}
 
 		log.Info("HandleIncomingMessage called", "platform", req.Platform, "platformID", req.PlatformID, "username", req.Username)
 		result, err := userService.HandleIncomingMessage(r.Context(), req.Platform, req.PlatformID, req.Username, req.Message)
@@ -100,6 +100,6 @@ func HandleMessageHandler(userService user.Service, progressionSvc progression.S
 			"user_id", result.User.ID,
 			"username", result.User.Username)
 
-	respondJSON(w, http.StatusOK, result)
+		respondJSON(w, http.StatusOK, result)
 	}
 }

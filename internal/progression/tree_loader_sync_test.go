@@ -64,12 +64,12 @@ func TestTreeLoader_SyncToDatabase_ChangeDetection(t *testing.T) {
 
 		result, err := loader.SyncToDatabase(ctx, config, repo, tmpFile)
 		require.NoError(t, err)
-		
+
 		// Result should indicate skipped
 		// Note: SyncToDatabase returns empty result if skipped
 		assert.Equal(t, 0, result.NodesInserted)
 		assert.Equal(t, 0, result.NodesUpdated)
-		assert.Equal(t, 0, result.NodesSkipped) 
+		assert.Equal(t, 0, result.NodesSkipped)
 
 		// Verify metadata is unchanged (optional, but good sanity check)
 		meta, err := repo.GetSyncMetadata(ctx, "progression_tree.json")
@@ -82,8 +82,8 @@ func TestTreeLoader_SyncToDatabase_ChangeDetection(t *testing.T) {
 	t.Run("third sync (changed file)", func(t *testing.T) {
 		// Modify file - wait 1s to ensure modtime changes if FS has low resolution
 		// (though hash check should catch it regardless)
-		time.Sleep(10 * time.Millisecond) 
-		
+		time.Sleep(10 * time.Millisecond)
+
 		newContent := `{
 			"version": "1.0",
 			"description": "Updated Tree",
@@ -111,15 +111,14 @@ func TestTreeLoader_SyncToDatabase_ChangeDetection(t *testing.T) {
 
 		result, err := loader.SyncToDatabase(ctx, config, repo, tmpFile)
 		require.NoError(t, err)
-		
+
 		// Should be updated now
 		assert.Equal(t, 0, result.NodesInserted) // Updates don't count as inserts
-		assert.Equal(t, 1, result.NodesUpdated) // Should be 1 update
-		
+		assert.Equal(t, 1, result.NodesUpdated)  // Should be 1 update
+
 		// Check metadata updated
 		meta, err := repo.GetSyncMetadata(ctx, "progression_tree.json")
 		require.NoError(t, err)
 		assert.NotNil(t, meta)
 	})
 }
-

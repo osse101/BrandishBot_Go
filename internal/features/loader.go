@@ -17,10 +17,10 @@ type FeatureData struct {
 
 // Loader handles loading feature data from files
 type Loader struct {
-	dir      string
-	cache    map[string]FeatureData
-	cacheMu  sync.RWMutex
-	loaded   bool
+	dir     string
+	cache   map[string]FeatureData
+	cacheMu sync.RWMutex
+	loaded  bool
 }
 
 // NewLoader creates a new feature loader
@@ -65,11 +65,11 @@ func (l *Loader) Load() error {
 func (l *Loader) GetFeature(name string) (FeatureData, bool) {
 	l.cacheMu.RLock()
 	defer l.cacheMu.RUnlock()
-	
+
 	// Lazy load if not already loaded
 	if !l.loaded {
 		// Release read lock to acquire write lock in Load
-		l.cacheMu.RUnlock() 
+		l.cacheMu.RUnlock()
 		if err := l.Load(); err != nil {
 			l.cacheMu.RLock()
 			return FeatureData{}, false
@@ -85,7 +85,7 @@ func (l *Loader) GetFeature(name string) (FeatureData, bool) {
 func (l *Loader) GetAllFeatures() map[string]FeatureData {
 	l.cacheMu.RLock()
 	defer l.cacheMu.RUnlock()
-	
+
 	if !l.loaded {
 		l.cacheMu.RUnlock()
 		_ = l.Load()
@@ -114,7 +114,7 @@ func (l *Loader) parseFile(path string) (FeatureData, error) {
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		
+
 		if line == "---" {
 			parsingCommands = true
 			continue

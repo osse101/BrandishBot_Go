@@ -8,15 +8,14 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/osse101/BrandishBot_Go/internal/event"
-
-	"github.com/osse101/BrandishBot_Go/internal/user"
-	"github.com/osse101/BrandishBot_Go/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-)
 
+	"github.com/osse101/BrandishBot_Go/internal/event"
+	"github.com/osse101/BrandishBot_Go/internal/user"
+	"github.com/osse101/BrandishBot_Go/mocks"
+)
 
 func TestHandleGetInventoryByUsername(t *testing.T) {
 	tests := []struct {
@@ -43,9 +42,9 @@ func TestHandleGetInventoryByUsername(t *testing.T) {
 			},
 		},
 		{
-			name:        "Missing Username",
-			queryParams: map[string]string{"platform": "discord"},
-			setupMock:   func(mUser *mocks.MockUserService) {},
+			name:           "Missing Username",
+			queryParams:    map[string]string{"platform": "discord"},
+			setupMock:      func(mUser *mocks.MockUserService) {},
 			expectedStatus: http.StatusBadRequest,
 			verifyBody:     func(t *testing.T, body string) {},
 		},

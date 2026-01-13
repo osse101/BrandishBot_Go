@@ -10,10 +10,10 @@ import (
 func TestUnlockCacheInvalidatesOnEvent(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	
+
 	// Create event bus
 	bus := event.NewMemoryBus()
-	
+
 	// Create service with event bus (so handlers work)
 	service := NewService(repo, bus)
 	ctx := context.Background()
@@ -54,10 +54,10 @@ func TestUnlockCacheInvalidatesOnEvent(t *testing.T) {
 func TestUnlockCacheInvalidatesOnRelockEvent(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	
+
 	// Create event bus
 	bus := event.NewMemoryBus()
-	
+
 	// Create service with event bus
 	service := NewService(repo, bus)
 	ctx := context.Background()

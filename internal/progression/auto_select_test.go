@@ -5,8 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
 // This test reproduces the issue where a voting session is created even if there is only one available option.

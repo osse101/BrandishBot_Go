@@ -5,8 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
 func TestGetEngagementVelocity(t *testing.T) {
@@ -16,7 +17,7 @@ func TestGetEngagementVelocity(t *testing.T) {
 
 	t.Run("Empty Data", func(t *testing.T) {
 		repo.dailyTotals = make(map[time.Time]int)
-		
+
 		velocity, err := service.GetEngagementVelocity(ctx, 7)
 		assert.NoError(t, err)
 		assert.NotNil(t, velocity)
@@ -32,7 +33,7 @@ func TestGetEngagementVelocity(t *testing.T) {
 		for i := 0; i < 7; i++ {
 			repo.dailyTotals[now.AddDate(0, 0, -i)] = 100
 		}
-		
+
 		velocity, err := service.GetEngagementVelocity(ctx, 7)
 		assert.NoError(t, err)
 		assert.NotNil(t, velocity)
@@ -44,7 +45,7 @@ func TestGetEngagementVelocity(t *testing.T) {
 	t.Run("Increasing Trend", func(t *testing.T) {
 		repo.dailyTotals = make(map[time.Time]int)
 		now := time.Now() // This is "today"
-		
+
 		// 6 days ago (oldest): 10
 		// ...
 		// 0 days ago (newest): 70
@@ -64,7 +65,7 @@ func TestGetEngagementVelocity(t *testing.T) {
 	t.Run("Decreasing Trend", func(t *testing.T) {
 		repo.dailyTotals = make(map[time.Time]int)
 		now := time.Now()
-		
+
 		// Opposite of above
 		for i := 0; i < 7; i++ {
 			val := (i + 1) * 10 // Today (i=0) -> 10. 6 days ago (i=6) -> 70.
@@ -82,7 +83,7 @@ func TestEstimateUnlockTime(t *testing.T) {
 	service := NewService(repo, nil)
 	ctx := context.Background()
 
-	// Setup: Node costs 1000. 
+	// Setup: Node costs 1000.
 	node := &domain.ProgressionNode{
 		ID:          1,
 		NodeKey:     "target_node",
@@ -112,8 +113,8 @@ func TestEstimateUnlockTime(t *testing.T) {
 		assert.NotNil(t, estimate)
 		assert.Equal(t, 500, estimate.RequiredPoints) // 1000 - 500
 		assert.InDelta(t, 100.0, estimate.CurrentVelocity, 0.1)
-		assert.InDelta(t, 5.0, estimate.EstimatedDays, 0.1)     // 500 / 100 = 5 days
-		assert.Equal(t, "high", estimate.Confidence)            // 7 days sample + stable
+		assert.InDelta(t, 5.0, estimate.EstimatedDays, 0.1) // 500 / 100 = 5 days
+		assert.Equal(t, "high", estimate.Confidence)        // 7 days sample + stable
 		assert.NotNil(t, estimate.EstimatedUnlockDate)
 	})
 

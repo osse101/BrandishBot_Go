@@ -4,10 +4,11 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/mock"
+
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/osse101/BrandishBot_Go/internal/testing/leaktest"
-	"github.com/stretchr/testify/mock"
 )
 
 // TestBuyItem_NoGoroutineLeak verifies no goroutines leak during buy operations

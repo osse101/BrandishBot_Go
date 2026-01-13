@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+
 	"github.com/osse101/BrandishBot_Go/internal/database/generated"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
@@ -151,4 +152,3 @@ func ptrToText(s *string) pgtype.Text {
 func intToInt4(i int) pgtype.Int4 {
 	return pgtype.Int4{Int32: int32(i), Valid: true}
 }
-

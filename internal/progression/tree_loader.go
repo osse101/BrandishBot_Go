@@ -128,12 +128,12 @@ func (t *treeLoader) Validate(config *TreeConfig) error {
 
 		// Validate tier
 		if err := ValidateTier(node.Tier); err != nil {
-			return fmt.Errorf("%w: node '%s' - %v", ErrInvalidConfig, node.Key, err)
+			return fmt.Errorf("%w: node '%s' - %w", ErrInvalidConfig, node.Key, err)
 		}
 
 		// Validate size
 		if err := ValidateSize(node.Size); err != nil {
-			return fmt.Errorf("%w: node '%s' - %v", ErrInvalidConfig, node.Key, err)
+			return fmt.Errorf("%w: node '%s' - %w", ErrInvalidConfig, node.Key, err)
 		}
 
 		// Validate category

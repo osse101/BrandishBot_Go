@@ -5,9 +5,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/mock"
+
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/lootbox"
-	"github.com/stretchr/testify/mock"
 )
 
 // MockNamingResolver implements naming.Resolver interface for testing

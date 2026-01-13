@@ -272,7 +272,6 @@ func (h *ProgressionHandlers) HandleAdminUnlockAll() http.HandlerFunc {
 	}
 }
 
-
 func (h *ProgressionHandlers) handleAdminNodeAction(action func(context.Context, string, int) error, logMsg, successMsg string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())

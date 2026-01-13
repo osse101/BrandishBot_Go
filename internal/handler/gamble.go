@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
+
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/gamble"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
@@ -31,7 +32,6 @@ type StartGambleRequest struct {
 }
 
 func (h *GambleHandler) HandleStartGamble(w http.ResponseWriter, r *http.Request) {
-
 	// Check if gamble feature is unlocked
 	// Check if gamble feature is unlocked
 	if CheckFeatureLocked(w, r, h.progressionSvc, progression.FeatureGamble) {

@@ -4,10 +4,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/osse101/BrandishBot_Go/internal/domain"
-	"github.com/osse101/BrandishBot_Go/internal/lootbox"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/lootbox"
 )
 
 // MockStatsServiceForLootboxTests - distinct name to avoid conflicts if any

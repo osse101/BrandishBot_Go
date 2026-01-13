@@ -4,8 +4,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
 func TestFindWinningOption_WithVotes(t *testing.T) {

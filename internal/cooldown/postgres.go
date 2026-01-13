@@ -9,6 +9,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 )
 
@@ -46,7 +47,7 @@ func (b *postgresBackend) CheckCooldown(ctx context.Context, userID, action stri
 	}
 
 	cooldownDuration := b.config.GetCooldownDuration(action)
-	
+
 	// Apply progression modifiers (e.g., cooldown reduction for search)
 	if b.progressionSvc != nil && action == "search" {
 		modifiedDuration, err := b.progressionSvc.GetModifiedValue(ctx, "search_cooldown_reduction", float64(cooldownDuration))
@@ -55,7 +56,7 @@ func (b *postgresBackend) CheckCooldown(ctx context.Context, userID, action stri
 		}
 		// If error, fallback to base duration (already set)
 	}
-	
+
 	elapsed := time.Since(*lastUsed)
 
 	if elapsed < cooldownDuration {
@@ -118,7 +119,7 @@ func (b *postgresBackend) EnforceCooldown(ctx context.Context, userID, action st
 	// Recheck cooldown (catches concurrent requests that passed Phase 1)
 	if lastUsed != nil {
 		cooldownDuration := b.config.GetCooldownDuration(action)
-		
+
 		// Apply progression modifiers (same as CheckCooldown)
 		if b.progressionSvc != nil && action == "search" {
 			modifiedDuration, err := b.progressionSvc.GetModifiedValue(ctx, "search_cooldown_reduction", float64(cooldownDuration))
@@ -126,7 +127,7 @@ func (b *postgresBackend) EnforceCooldown(ctx context.Context, userID, action st
 				cooldownDuration = time.Duration(modifiedDuration)
 			}
 		}
-		
+
 		elapsed := time.Since(*lastUsed)
 		if elapsed < cooldownDuration {
 			remaining := cooldownDuration - elapsed

@@ -28,8 +28,6 @@ const (
 	StateExpired   = "expired"   // Timed out
 )
 
-
-
 // UserService defines user operations needed for linking
 type UserService interface {
 	FindUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error)
@@ -68,7 +66,7 @@ type LinkResult struct {
 
 // LinkStatus represents current linking status
 type LinkStatus struct {
-	LinkedPlatforms []string   `json:"linked_platforms"`
+	LinkedPlatforms []string              `json:"linked_platforms"`
 	PendingToken    *repository.LinkToken `json:"pending_token,omitempty"`
 }
 

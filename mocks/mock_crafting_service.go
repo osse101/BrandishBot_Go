@@ -5,9 +5,9 @@ package mocks
 import (
 	context "context"
 
-	crafting "github.com/osse101/BrandishBot_Go/internal/crafting"
 	mock "github.com/stretchr/testify/mock"
 
+	crafting "github.com/osse101/BrandishBot_Go/internal/crafting"
 	repository "github.com/osse101/BrandishBot_Go/internal/repository"
 )
 

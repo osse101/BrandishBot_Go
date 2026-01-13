@@ -6,9 +6,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/osse101/BrandishBot_Go/internal/event"
 )
 
 // TestWithUserID_GetUserID tests context user ID management

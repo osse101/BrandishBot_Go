@@ -49,8 +49,8 @@ func HandleGetInfo(loader *features.Loader) http.HandlerFunc {
 			}
 			response.Feature = feature
 			// If feature is present, we generally omit the link
-			response.Link = "" 
-			
+			response.Link = ""
+
 			// Format description based on platform
 			switch platform {
 			case domain.PlatformDiscord:

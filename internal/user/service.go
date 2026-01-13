@@ -28,7 +28,6 @@ var validPlatforms = map[string]bool{
 	domain.PlatformDiscord: true,
 }
 
-
 // Service defines the interface for user operations
 type Service interface {
 	RegisterUser(ctx context.Context, user domain.User) (domain.User, error)

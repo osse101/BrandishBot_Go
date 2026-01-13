@@ -367,7 +367,6 @@ func (c *APIClient) AdminUnlockAllNodes() (string, error) {
 	return c.doAction(http.MethodPost, "/api/v1/progression/admin/unlock-all", nil)
 }
 
-
 // AdminRelockNode relocks a progression node (admin only)
 func (c *APIClient) AdminRelockNode(nodeKey string, level int) (string, error) {
 	req := map[string]interface{}{

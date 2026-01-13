@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/osse101/BrandishBot_Go/internal/database/generated"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
@@ -178,8 +179,6 @@ func (r *UserRepository) UpdateInventory(ctx context.Context, userID string, inv
 	return updateInventory(ctx, r.q, userID, inventory)
 }
 
-
-
 // GetItemByName retrieves an item by its internal name
 func (r *UserRepository) GetItemByName(ctx context.Context, itemName string) (*domain.Item, error) {
 	row, err := r.q.GetItemByName(ctx, itemName)
@@ -345,12 +344,6 @@ func (r *UserRepository) GetUserByUsername(ctx context.Context, username string)
 		UpdatedAt: row.UpdatedAt.Time,
 	}, nil
 }
-
-
-
-
-
-
 
 // GetLastCooldown retrieves the last time a user performed an action
 func (r *UserRepository) GetLastCooldown(ctx context.Context, userID, action string) (*time.Time, error) {

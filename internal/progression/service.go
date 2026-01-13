@@ -102,7 +102,7 @@ func NewService(repo repository.Progression, bus event.Bus) Service {
 		repo:           repo,
 		bus:            bus,
 		modifierCache:  NewModifierCache(30 * time.Minute), // 30-min TTL
-		unlockCache:    NewUnlockCache(),                    // No TTL - invalidate on unlock/relock
+		unlockCache:    NewUnlockCache(),                   // No TTL - invalidate on unlock/relock
 		unlockSem:      make(chan struct{}, 1),             // Buffer of 1 = only one unlock check at a time
 		shutdownCtx:    shutdownCtx,
 		shutdownCancel: shutdownCancel,
@@ -122,7 +122,6 @@ func NewService(repo repository.Progression, bus event.Bus) Service {
 func (s *service) InvalidateUnlockCacheForTest() {
 	s.unlockCache.InvalidateAll()
 }
-
 
 // GetProgressionTree returns the full tree with unlock status
 func (s *service) GetProgressionTree(ctx context.Context) ([]*domain.ProgressionTreeNode, error) {
@@ -897,7 +896,7 @@ func (s *service) GetEngagementVelocity(ctx context.Context, days int) (*domain.
 		half := sampleSize / 2
 		firstHalfSum := 0
 		secondHalfSum := 0
-		
+
 		for i := 0; i < half; i++ {
 			firstHalfSum += totals[orderedDays[i]]
 		}
@@ -946,17 +945,17 @@ func (s *service) EstimateUnlockTime(ctx context.Context, nodeKey string) (*doma
 	if progress != nil && progress.NodeID != nil && *progress.NodeID == node.ID {
 		currentProgress = progress.ContributionsAccumulated
 	}
-	
+
 	// Check if already unlocked (max level)
 	isUnlocked, _ := s.repo.IsNodeUnlocked(ctx, nodeKey, node.MaxLevel)
 	if isUnlocked {
 		return &domain.UnlockEstimate{
-			NodeKey:         nodeKey,
-			EstimatedDays:   0,
-			Confidence:      "high",
-			RequiredPoints:  0,
-			CurrentProgress: node.UnlockCost,
-			CurrentVelocity: velocity.PointsPerDay,
+			NodeKey:             nodeKey,
+			EstimatedDays:       0,
+			Confidence:          "high",
+			RequiredPoints:      0,
+			CurrentProgress:     node.UnlockCost,
+			CurrentVelocity:     velocity.PointsPerDay,
 			EstimatedUnlockDate: func() *time.Time { t := time.Now(); return &t }(),
 		}, nil
 	}
@@ -989,7 +988,7 @@ func (s *service) EstimateUnlockTime(ctx context.Context, nodeKey string) (*doma
 	}
 
 	return &domain.UnlockEstimate{
-		NodeKey:         nodeKey,
+		NodeKey:             nodeKey,
 		EstimatedDays:       estimatedDays,
 		Confidence:          confidence,
 		RequiredPoints:      required,

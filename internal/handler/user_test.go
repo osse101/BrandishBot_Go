@@ -9,11 +9,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/osse101/BrandishBot_Go/internal/domain"
-	"github.com/osse101/BrandishBot_Go/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+
+	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/mocks"
 )
 
 func TestHandleRegisterUser(t *testing.T) {
@@ -159,9 +160,9 @@ func TestHandleGetTimeout(t *testing.T) {
 			},
 		},
 		{
-			name:        "Missing Username",
-			queryParams: map[string]string{},
-			setupMock:   func(m *mocks.MockUserService) {},
+			name:           "Missing Username",
+			queryParams:    map[string]string{},
+			setupMock:      func(m *mocks.MockUserService) {},
 			expectedStatus: http.StatusBadRequest,
 			verifyBody:     func(t *testing.T, body string) {},
 		},

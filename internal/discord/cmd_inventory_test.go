@@ -8,8 +8,9 @@ import (
 	"testing"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/osse101/BrandishBot_Go/internal/user"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/osse101/BrandishBot_Go/internal/user"
 )
 
 func TestInventoryCommand_Empty(t *testing.T) {

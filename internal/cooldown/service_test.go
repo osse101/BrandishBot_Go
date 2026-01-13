@@ -6,8 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/osse101/BrandishBot_Go/internal/cooldown"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/osse101/BrandishBot_Go/internal/cooldown"
 )
 
 // MockBackend is a simple mock for testing the Service interface

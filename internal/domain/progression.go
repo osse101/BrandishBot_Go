@@ -33,7 +33,6 @@ type ModifierConfig struct {
 	MinValue      *float64 `json:"min_value,omitempty"`
 }
 
-
 // ProgressionUnlock represents a globally unlocked node
 type ProgressionUnlock struct {
 	ID              int       `json:"id"`
@@ -139,11 +138,11 @@ type ProgressionVotingSession struct {
 
 // ProgressionVotingOption represents one voting choice in a session
 type ProgressionVotingOption struct {
-	ID                int              `json:"id"`
-	SessionID         int              `json:"session_id"`
-	NodeID            int              `json:"node_id"`
-	TargetLevel       int              `json:"target_level"`
-	VoteCount         int              `json:"vote_count"`
+	ID                  int              `json:"id"`
+	SessionID           int              `json:"session_id"`
+	NodeID              int              `json:"node_id"`
+	TargetLevel         int              `json:"target_level"`
+	VoteCount           int              `json:"vote_count"`
 	LastHighestVoteAt   *time.Time       `json:"last_highest_vote_at"` // When first reached current highest
 	NodeDetails         *ProgressionNode `json:"node_details,omitempty"`
 	EstimatedUnlockDate *time.Time       `json:"estimated_unlock_date,omitempty"`
