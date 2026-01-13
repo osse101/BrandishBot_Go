@@ -59,8 +59,8 @@ internal/user -> mocks -> internal/user (IMPORT CYCLE!)
 *   ✅ Refactored `internal/lootbox/service_test.go` to use 5-Case Model and cleaned up config file handling.
 *   ✅ Verified concurrent safety in both packages.
 
-## 3. Expand Integration Tests
-*   [ ] Add `gamble_integration_test.go` to `internal/database/postgres` to test the full gamble lifecycle with real database transactions.
+## ~~3. Expand Integration Tests~~ [RESOLVED - 2026-01-27]
+*   ✅ Added `gamble_integration_test.go` to `internal/database/postgres` to test the full gamble lifecycle with real database transactions.
 
 ## 4. Add Benchmarks
 *   [ ] Add benchmarks for `CraftingService.UpgradeItem` and `DisassembleItem`.
