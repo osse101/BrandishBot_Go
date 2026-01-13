@@ -25,43 +25,22 @@ func VoteCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	}
 
 	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		if !deferResponse(s, i) {
-			return
-		}
+		handleEmbedResponse(s, i, func() (string, error) {
+			user := getInteractionUser(i)
+			options := getOptions(i)
+			nodeKey := options[0].StringValue()
 
-		user := getInteractionUser(i)
-		options := getOptions(i)
-		nodeKey := options[0].StringValue()
+			// Ensure user exists
+			_, err := client.RegisterUser(user.Username, user.ID)
+			if err != nil {
+				return "", fmt.Errorf("failed to register user: %w", err)
+			}
 
-		// Ensure user exists
-		_, err := client.RegisterUser(user.Username, user.ID)
-		if err != nil {
-			slog.Error("Failed to register user", "error", err)
-			respondError(s, i, "Error connecting to game server.")
-			return
-		}
-
-		msg, err := client.VoteForNode(domain.PlatformDiscord, user.ID, user.Username, nodeKey)
-		if err != nil {
-			slog.Error("Failed to vote", "error", err)
-			respondFriendlyError(s, i, err.Error())
-			return
-		}
-
-		embed := &discordgo.MessageEmbed{
-			Title:       "✅ Vote Recorded",
-			Description: msg,
-			Color:       0x3498db, // Blue
-			Footer: &discordgo.MessageEmbedFooter{
-				Text: "BrandishBot",
-			},
-		}
-
-		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Embeds: &[]*discordgo.MessageEmbed{embed},
-		}); err != nil {
-			slog.Error("Failed to send response", "error", err)
-		}
+			return client.VoteForNode(domain.PlatformDiscord, user.ID, user.Username, nodeKey)
+		}, ResponseConfig{
+			Title: "✅ Vote Recorded",
+			Color: 0x3498db, // Blue
+		}, true)
 	}
 
 	return cmd, handler
@@ -89,38 +68,19 @@ func AdminUnlockCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	}
 
 	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		if !deferResponse(s, i) {
-			return
-		}
+		handleEmbedResponse(s, i, func() (string, error) {
+			options := getOptions(i)
+			nodeKey := options[0].StringValue()
+			level := 1
+			if len(options) > 1 {
+				level = int(options[1].IntValue())
+			}
 
-		options := getOptions(i)
-		nodeKey := options[0].StringValue()
-		level := 1
-		if len(options) > 1 {
-			level = int(options[1].IntValue())
-		}
-
-		msg, err := client.AdminUnlockNode(nodeKey, level)
-		if err != nil {
-			slog.Error("Failed to unlock node", "error", err)
-			respondError(s, i, fmt.Sprintf("Failed to unlock: %v", err))
-			return
-		}
-
-		embed := &discordgo.MessageEmbed{
-			Title:       "🔓 Admin Unlock",
-			Description: msg,
-			Color:       0xe67e22, // Orange
-			Footer: &discordgo.MessageEmbedFooter{
-				Text: "BrandishBot Admin",
-			},
-		}
-
-		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Embeds: &[]*discordgo.MessageEmbed{embed},
-		}); err != nil {
-			slog.Error("Failed to send response", "error", err)
-		}
+			return client.AdminUnlockNode(nodeKey, level)
+		}, ResponseConfig{
+			Title: "🔓 Admin Unlock",
+			Color: 0xe67e22, // Orange
+		}, true)
 	}
 
 	return cmd, handler
@@ -134,31 +94,12 @@ func AdminUnlockAllCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	}
 
 	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		if !deferResponse(s, i) {
-			return
-		}
-
-		msg, err := client.AdminUnlockAllNodes()
-		if err != nil {
-			slog.Error("Failed to unlock all nodes", "error", err)
-			respondError(s, i, fmt.Sprintf("Failed to unlock all nodes: %v", err))
-			return
-		}
-
-		embed := &discordgo.MessageEmbed{
-			Title:       "🔓 Admin Unlock All",
-			Description: msg,
-			Color:       0xe74c3c, // Red (warning color for debug command)
-			Footer: &discordgo.MessageEmbedFooter{
-				Text: "BrandishBot Admin - DEBUG",
-			},
-		}
-
-		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Embeds: &[]*discordgo.MessageEmbed{embed},
-		}); err != nil {
-			slog.Error("Failed to send response", "error", err)
-		}
+		handleEmbedResponse(s, i, func() (string, error) {
+			return client.AdminUnlockAllNodes()
+		}, ResponseConfig{
+			Title: "🔓 Admin Unlock All",
+			Color: 0xe74c3c, // Red (warning color for debug command)
+		}, true)
 	}
 
 	return cmd, handler

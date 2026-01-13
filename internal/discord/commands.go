@@ -166,6 +166,59 @@ func respondError(s *discordgo.Session, i *discordgo.InteractionCreate, message 
 	}
 }
 
+// ResponseConfig defines the visual properties of a command response embed
+type ResponseConfig struct {
+	Title string
+	Color int
+}
+
+// handleEmbedResponse encapsulates the common logic of:
+// 1. Deferring the response (optional)
+// 2. Executing an action (API call)
+// 3. Handling errors
+// 4. Sending a success embed response
+func handleEmbedResponse(
+	s *discordgo.Session,
+	i *discordgo.InteractionCreate,
+	action func() (string, error),
+	config ResponseConfig,
+	shouldDefer bool,
+) {
+	if shouldDefer {
+		if !deferResponse(s, i) {
+			return
+		}
+	}
+
+	msg, err := action()
+	if err != nil {
+		slog.Error("Action failed", "title", config.Title, "error", err)
+		if shouldDefer {
+			respondFriendlyError(s, i, err.Error())
+		} else {
+			// If not deferred, we might need a different error response type
+			// but for now most of our commands are deferred.
+			respondFriendlyError(s, i, err.Error())
+		}
+		return
+	}
+
+	embed := &discordgo.MessageEmbed{
+		Title:       config.Title,
+		Description: msg,
+		Color:       config.Color,
+		Footer: &discordgo.MessageEmbedFooter{
+			Text: "BrandishBot",
+		},
+	}
+
+	if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+		Embeds: &[]*discordgo.MessageEmbed{embed},
+	}); err != nil {
+		slog.Error("Failed to send response", "error", err)
+	}
+}
+
 // deferResponse acknowledges an interaction with a deferred message
 func deferResponse(s *discordgo.Session, i *discordgo.InteractionCreate) bool {
 	if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
