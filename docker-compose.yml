@@ -16,9 +16,8 @@ services:
       - .env
     environment:
       - DB_HOST=db
-    # Optional: Mount configs for hot-reload
-    # volumes:
-    #   - ./configs:/app/configs:ro
+    volumes:
+      - ./logs:/app/logs
     depends_on:
       - db
     restart: unless-stopped
