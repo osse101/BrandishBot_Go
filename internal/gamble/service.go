@@ -51,6 +51,7 @@ type service struct {
 	statsSvc       stats.Service
 	joinDuration   time.Duration
 	wg             sync.WaitGroup // Tracks async goroutines for graceful shutdown
+	rng            func(int) int  // RNG function for deterministic testing
 }
 
 // NewService creates a new gamble service
@@ -63,6 +64,7 @@ func NewService(repo repository.Gamble, eventBus event.Bus, lootboxSvc lootbox.S
 		progressionSvc: progressionSvc,
 		statsSvc:       statsSvc,
 		joinDuration:   joinDuration,
+		rng:            utils.SecureRandomInt,
 	}
 }
 
@@ -137,16 +139,6 @@ func (s *service) StartGamble(ctx context.Context, platform, platformID, usernam
 
 	// Consume bets
 	for _, bet := range bets {
-		// Verify ownership and quantity
-		// Using utils.FindSlot (assuming it exists based on previous context)
-		// We need to import "github.com/osse101/BrandishBot_Go/internal/utils" if not already
-		// But wait, utils.FindSlot returns index and quantity.
-		// I'll implement a helper here or assume utils is available.
-		// Checking imports... yes, utils is imported.
-
-		// Note: We need to handle the case where the user doesn't have the item.
-		// Since I can't see utils.FindSlot signature right now, I'll assume standard behavior.
-		// Actually, I'll implement a local helper `consumeItem` to be safe and clean.
 		if err := consumeItem(inventory, bet.ItemID, bet.Quantity); err != nil {
 			return nil, fmt.Errorf("failed to consume bet (item %d): %w", bet.ItemID, err)
 		}
@@ -444,12 +436,20 @@ func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.Gamb
 		}
 	}
 
+	// Sort winners to ensure deterministic behavior for tie-breaking
+	sort.Strings(winners)
+
 	// Tie-breaking
 	winnerID := ""
 	if len(winners) > 0 {
 		if len(winners) > 1 {
-			// Randomly select one
-			idx := utils.SecureRandomInt(len(winners))
+			// Randomly select one using the service's RNG
+			idx := s.rng(len(winners))
+			// Safety check for RNG out of bounds (though SecureRandomInt handles this)
+			if idx < 0 || idx >= len(winners) {
+				idx = 0 // Fallback
+				log.Error("RNG returned invalid index", "index", idx, "winners_count", len(winners))
+			}
 			winnerID = winners[idx]
 
 			log.Info("Tie-break resolved", "winnerID", winnerID, "originalValue", highestValue)

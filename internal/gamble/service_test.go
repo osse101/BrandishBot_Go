@@ -951,3 +951,63 @@ func TestExecuteGamble_CriticalFailure(t *testing.T) {
 	lootboxSvc.AssertExpectations(t)
 	statsSvc.AssertExpectations(t)
 }
+
+func TestExecuteGamble_TieBreak_Deterministic(t *testing.T) {
+	repo := new(MockRepository)
+	lootboxSvc := new(MockLootboxService)
+	statsSvc := new(MockStatsService)
+	s := NewService(repo, nil, lootboxSvc, statsSvc, time.Minute, nil, nil)
+
+	// Override RNG to ensure deterministic outcome
+	svcImpl := s.(*service)
+	svcImpl.rng = func(n int) int {
+		return 1 // Always pick the second person in the sorted list (if len >= 2)
+	}
+
+	ctx := context.Background()
+	gambleID := uuid.New()
+
+	// User A and User B both score 100.
+	gamble := &domain.Gamble{
+		ID:    gambleID,
+		State: domain.GambleStateJoining,
+		Participants: []domain.Participant{
+			{UserID: "UserA", LootboxBets: []domain.LootboxBet{{ItemID: 1, Quantity: 1}}},
+			{UserID: "UserB", LootboxBets: []domain.LootboxBet{{ItemID: 1, Quantity: 1}}},
+		},
+	}
+
+	lootboxItem := &domain.Item{ID: 1, InternalName: domain.ItemLootbox1}
+	drops := []lootbox.DroppedItem{{ItemID: 10, ItemName: domain.ItemMoney, Quantity: 1, Value: 100}}
+
+	repo.On("GetGamble", ctx, gambleID).Return(gamble, nil)
+	tx := new(MockTx)
+	repo.On("BeginGambleTx", ctx).Return(tx, nil)
+	tx.On("UpdateGambleStateIfMatches", ctx, gambleID, domain.GambleStateJoining, domain.GambleStateOpening).Return(int64(1), nil)
+
+	repo.On("GetItemByID", ctx, 1).Return(lootboxItem, nil)
+	lootboxSvc.On("OpenLootbox", ctx, domain.ItemLootbox1, 1).Return(drops, nil)
+
+	tx.On("SaveOpenedItems", ctx, mock.Anything).Return(nil)
+	tx.On("GetInventory", ctx, mock.Anything).Return(&domain.Inventory{}, nil)
+	tx.On("UpdateInventory", ctx, mock.Anything, mock.Anything).Return(nil)
+	tx.On("CompleteGamble", ctx, mock.Anything).Return(nil)
+	tx.On("Commit", ctx).Return(nil)
+	tx.On("Rollback", ctx).Return(nil).Maybe()
+
+	// With sorted winners list ["UserA", "UserB"], index 1 is "UserB".
+	// UserB wins. UserA loses.
+
+	// Expect TieBreakLost for UserA
+	statsSvc.On("RecordUserEvent", ctx, "UserA", domain.EventGambleTieBreakLost, mock.MatchedBy(func(m map[string]interface{}) bool {
+		return m["score"] == int64(100)
+	})).Return(nil)
+
+	result, err := s.ExecuteGamble(ctx, gambleID)
+
+	assert.NoError(t, err)
+	assert.Equal(t, "UserB", result.WinnerID)
+
+	repo.AssertExpectations(t)
+	statsSvc.AssertExpectations(t)
+}
