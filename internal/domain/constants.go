@@ -51,6 +51,7 @@ const (
 	MsgSearchCriticalFail    = "You tried to search, but disaster struck! (CRITICAL FAIL!)"
 	MsgFirstSearchBonus      = " (First Search of the Day!)"
 	MsgStreakBonus           = " (🔥 %d Day Streak!)"
+	MsgMarketSpike           = "MARKET SPIKE! 📈 Prices surged! You made extra money!"
 )
 
 // SearchCriticalFailMessages is a list of funny messages for critical failures

@@ -10,14 +10,29 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
+	"github.com/osse101/BrandishBot_Go/internal/stats"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
+
+// Market Spike constants
+const (
+	MarketSpikeChance     = 0.05
+	MarketSpikeMultiplier = 1.5
+)
+
+// SellResult contains the result of a sell operation
+type SellResult struct {
+	ItemsSold     int  `json:"items_sold"`
+	MoneyGained   int  `json:"money_gained"`
+	IsMarketSpike bool `json:"is_market_spike"`
+	BonusMoney    int  `json:"bonus_money"`
+}
 
 // Service defines the interface for economy operations
 type Service interface {
 	GetSellablePrices(ctx context.Context) ([]domain.Item, error)
 	GetBuyablePrices(ctx context.Context) ([]domain.Item, error)
-	SellItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (int, int, error)
+	SellItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (*SellResult, error)
 	BuyItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (int, error)
 	Shutdown(ctx context.Context) error
 }
@@ -30,14 +45,22 @@ type JobService interface {
 type service struct {
 	repo       repository.Economy
 	jobService JobService
+	statsSvc   stats.Service
+	rnd        func() float64
 	wg         sync.WaitGroup
 }
 
 // NewService creates a new economy service
-func NewService(repo repository.Economy, jobService JobService) Service {
+// rndFunc is optional. If nil, utils.RandomFloat is used.
+func NewService(repo repository.Economy, jobService JobService, statsSvc stats.Service, rndFunc func() float64) Service {
+	if rndFunc == nil {
+		rndFunc = utils.RandomFloat
+	}
 	return &service{
 		repo:       repo,
 		jobService: jobService,
+		statsSvc:   statsSvc,
+		rnd:        rndFunc,
 	}
 }
 
@@ -82,9 +105,7 @@ func (s *service) getSellEntities(ctx context.Context, platform, platformID, ite
 }
 
 // processSellTransaction handles the inventory updates for selling an item
-func processSellTransaction(inventory *domain.Inventory, item, moneyItem *domain.Item, itemSlotIndex, actualSellQuantity int) int {
-	moneyGained := actualSellQuantity * item.BaseValue
-
+func processSellTransaction(inventory *domain.Inventory, item, moneyItem *domain.Item, itemSlotIndex, actualSellQuantity int, moneyGained int) {
 	// Remove sold items
 	if inventory.Slots[itemSlotIndex].Quantity <= actualSellQuantity {
 		inventory.Slots = append(inventory.Slots[:itemSlotIndex], inventory.Slots[itemSlotIndex+1:]...)
@@ -104,29 +125,27 @@ func processSellTransaction(inventory *domain.Inventory, item, moneyItem *domain
 	if !moneyFound {
 		inventory.Slots = append(inventory.Slots, domain.InventorySlot{ItemID: moneyItem.ID, Quantity: moneyGained})
 	}
-
-	return moneyGained
 }
 
-func (s *service) SellItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (int, int, error) {
+func (s *service) SellItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (*SellResult, error) {
 	log := logger.FromContext(ctx)
 	log.Info("SellItem called", "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity)
 
 	// Validate request
 	if err := validateBuyRequest(quantity); err != nil { // Reuse same validation
-		return 0, 0, err
+		return nil, err
 	}
 
 	// Get all required entities
 	user, item, moneyItem, err := s.getSellEntities(ctx, platform, platformID, itemName)
 	if err != nil {
-		return 0, 0, err
+		return nil, err
 	}
 
 	tx, err := s.repo.BeginTx(ctx)
 	if err != nil {
 		log.Error("Failed to begin transaction", "error", err)
-		return 0, 0, fmt.Errorf("failed to begin transaction: %w", err)
+		return nil, fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer repository.SafeRollback(ctx, tx)
 
@@ -134,12 +153,12 @@ func (s *service) SellItem(ctx context.Context, platform, platformID, username, 
 	inventory, err := tx.GetInventory(ctx, user.ID)
 	if err != nil {
 		log.Error("Failed to get inventory", "error", err)
-		return 0, 0, fmt.Errorf("failed to get inventory: %w", err)
+		return nil, fmt.Errorf("failed to get inventory: %w", err)
 	}
 
 	itemSlotIndex, slotQuantity := utils.FindSlot(inventory, item.ID)
 	if itemSlotIndex == -1 {
-		return 0, 0, fmt.Errorf("item %s not in inventory", itemName)
+		return nil, fmt.Errorf("item %s not in inventory", itemName)
 	}
 
 	// Determine actual sell quantity
@@ -148,18 +167,44 @@ func (s *service) SellItem(ctx context.Context, platform, platformID, username, 
 		actualSellQuantity = slotQuantity
 	}
 
+	// Calculate base money gained
+	baseMoneyGained := actualSellQuantity * item.BaseValue
+	moneyGained := baseMoneyGained
+	isMarketSpike := false
+	bonusMoney := 0
+
+	// Check for Market Spike
+	if s.rnd() < MarketSpikeChance {
+		isMarketSpike = true
+		newMoneyGained := int(float64(baseMoneyGained) * MarketSpikeMultiplier)
+		bonusMoney = newMoneyGained - baseMoneyGained
+		moneyGained = newMoneyGained
+
+		log.Info("Market Spike triggered!", "user_id", user.ID, "item", itemName, "base_value", baseMoneyGained, "new_value", moneyGained)
+
+		if s.statsSvc != nil {
+			_ = s.statsSvc.RecordUserEvent(ctx, user.ID, domain.EventEconomyMarketSpike, map[string]interface{}{
+				"item_name":         itemName,
+				"quantity":          actualSellQuantity,
+				"base_value":        baseMoneyGained,
+				"bonus_value":       bonusMoney,
+				"market_multiplier": MarketSpikeMultiplier,
+			})
+		}
+	}
+
 	// Process the sell transaction
-	moneyGained := processSellTransaction(inventory, item, moneyItem, itemSlotIndex, actualSellQuantity)
+	processSellTransaction(inventory, item, moneyItem, itemSlotIndex, actualSellQuantity, moneyGained)
 
 	// Save updated inventory
 	if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
 		log.Error("Failed to update inventory", "error", err)
-		return 0, 0, fmt.Errorf("failed to update inventory: %w", err)
+		return nil, fmt.Errorf("failed to update inventory: %w", err)
 	}
 
 	if err := tx.Commit(ctx); err != nil {
 		log.Error("Failed to commit transaction", "error", err)
-		return 0, 0, fmt.Errorf("failed to commit transaction: %w", err)
+		return nil, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	// Award Merchant XP based on transaction value (async)
@@ -167,8 +212,14 @@ func (s *service) SellItem(ctx context.Context, platform, platformID, username, 
 	s.wg.Add(1)
 	go s.awardMerchantXP(context.Background(), user.ID, xp, "sell", itemName, moneyGained)
 
-	log.Info("Item sold", "username", username, "item", itemName, "quantity", actualSellQuantity, "moneyGained", moneyGained)
-	return moneyGained, actualSellQuantity, nil
+	log.Info("Item sold", "username", username, "item", itemName, "quantity", actualSellQuantity, "moneyGained", moneyGained, "spike", isMarketSpike)
+
+	return &SellResult{
+		ItemsSold:     actualSellQuantity,
+		MoneyGained:   moneyGained,
+		IsMarketSpike: isMarketSpike,
+		BonusMoney:    bonusMoney,
+	}, nil
 }
 
 // validateBuyRequest validates the buy request parameters

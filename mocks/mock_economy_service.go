@@ -6,6 +6,7 @@ import (
 	context "context"
 
 	domain "github.com/osse101/BrandishBot_Go/internal/domain"
+	economy "github.com/osse101/BrandishBot_Go/internal/economy"
 
 	mock "github.com/stretchr/testify/mock"
 )
@@ -201,38 +202,33 @@ func (_c *MockEconomyService_GetSellablePrices_Call) RunAndReturn(run func(conte
 }
 
 // SellItem provides a mock function with given fields: ctx, platform, platformID, username, itemName, quantity
-func (_m *MockEconomyService) SellItem(ctx context.Context, platform string, platformID string, username string, itemName string, quantity int) (int, int, error) {
+func (_m *MockEconomyService) SellItem(ctx context.Context, platform string, platformID string, username string, itemName string, quantity int) (*economy.SellResult, error) {
 	ret := _m.Called(ctx, platform, platformID, username, itemName, quantity)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SellItem")
 	}
 
-	var r0 int
-	var r1 int
-	var r2 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, string, int) (int, int, error)); ok {
+	var r0 *economy.SellResult
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, string, int) (*economy.SellResult, error)); ok {
 		return rf(ctx, platform, platformID, username, itemName, quantity)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, string, int) int); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, string, int) *economy.SellResult); ok {
 		r0 = rf(ctx, platform, platformID, username, itemName, quantity)
 	} else {
-		r0 = ret.Get(0).(int)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*economy.SellResult)
+		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, string, string, string, int) int); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, string, string, int) error); ok {
 		r1 = rf(ctx, platform, platformID, username, itemName, quantity)
 	} else {
-		r1 = ret.Get(1).(int)
+		r1 = ret.Error(1)
 	}
 
-	if rf, ok := ret.Get(2).(func(context.Context, string, string, string, string, int) error); ok {
-		r2 = rf(ctx, platform, platformID, username, itemName, quantity)
-	} else {
-		r2 = ret.Error(2)
-	}
-
-	return r0, r1, r2
+	return r0, r1
 }
 
 // MockEconomyService_SellItem_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SellItem'
@@ -258,12 +254,12 @@ func (_c *MockEconomyService_SellItem_Call) Run(run func(ctx context.Context, pl
 	return _c
 }
 
-func (_c *MockEconomyService_SellItem_Call) Return(_a0 int, _a1 int, _a2 error) *MockEconomyService_SellItem_Call {
-	_c.Call.Return(_a0, _a1, _a2)
+func (_c *MockEconomyService_SellItem_Call) Return(_a0 *economy.SellResult, _a1 error) *MockEconomyService_SellItem_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockEconomyService_SellItem_Call) RunAndReturn(run func(context.Context, string, string, string, string, int) (int, int, error)) *MockEconomyService_SellItem_Call {
+func (_c *MockEconomyService_SellItem_Call) RunAndReturn(run func(context.Context, string, string, string, string, int) (*economy.SellResult, error)) *MockEconomyService_SellItem_Call {
 	_c.Call.Return(run)
 	return _c
 }

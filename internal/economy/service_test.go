@@ -131,7 +131,8 @@ func TestSellItem_Success(t *testing.T) {
 	// ARRANGE
 	mockRepo := &MockRepository{}
 	mockTx := &MockTx{}
-	service := NewService(mockRepo, nil)
+	// Force RNG to 1.0 (no spike)
+	service := NewService(mockRepo, nil, nil, func() float64 { return 1.0 })
 	ctx := context.Background()
 
 	user := createTestUser()
@@ -154,12 +155,12 @@ func TestSellItem_Success(t *testing.T) {
 	mockTx.On("Rollback", ctx).Return(nil)
 
 	// ACT
-	moneyGained, quantitySold, err := service.SellItem(ctx, domain.PlatformTwitch, "", "testuser", domain.PublicNameLootbox, 3)
+	result, err := service.SellItem(ctx, domain.PlatformTwitch, "", "testuser", domain.PublicNameLootbox, 3)
 
 	// ASSERT
 	require.NoError(t, err)
-	assert.Equal(t, 300, moneyGained, "Should receive correct money (3 * 100)")
-	assert.Equal(t, 3, quantitySold, "Should sell requested quantity")
+	assert.Equal(t, 300, result.MoneyGained, "Should receive correct money (3 * 100)")
+	assert.Equal(t, 3, result.ItemsSold, "Should sell requested quantity")
 	mockRepo.AssertExpectations(t)
 	mockTx.AssertExpectations(t)
 }
@@ -168,7 +169,7 @@ func TestSellItem_Success(t *testing.T) {
 func TestSellItem_SellAllItems(t *testing.T) {
 	// ARRANGE - User sells every last item they have
 	mockRepo := &MockRepository{}
-	service := NewService(mockRepo, nil)
+	service := NewService(mockRepo, nil, nil, func() float64 { return 1.0 })
 	ctx := context.Background()
 
 	user := createTestUser()
@@ -193,12 +194,12 @@ func TestSellItem_SellAllItems(t *testing.T) {
 	mockTx.On("Rollback", ctx).Return(nil)
 
 	// ACT
-	moneyGained, quantitySold, err := service.SellItem(ctx, domain.PlatformTwitch, "", "testuser", domain.PublicNameJunkbox, 100)
+	result, err := service.SellItem(ctx, domain.PlatformTwitch, "", "testuser", domain.PublicNameJunkbox, 100)
 
 	// ASSERT
 	require.NoError(t, err)
-	assert.Equal(t, 500, moneyGained, "Should receive correct money (100 * 5)")
-	assert.Equal(t, 100, quantitySold, "Should sell all items")
+	assert.Equal(t, 500, result.MoneyGained, "Should receive correct money (100 * 5)")
+	assert.Equal(t, 100, result.ItemsSold, "Should sell all items")
 	mockRepo.AssertExpectations(t)
 }
 
@@ -206,7 +207,7 @@ func TestSellItem_SellAllItems(t *testing.T) {
 func TestSellItem_PartialQuantity(t *testing.T) {
 	// ARRANGE - User requests 100 but only has 30
 	mockRepo := &MockRepository{}
-	service := NewService(mockRepo, nil)
+	service := NewService(mockRepo, nil, nil, func() float64 { return 1.0 })
 	ctx := context.Background()
 
 	user := createTestUser()
@@ -230,12 +231,12 @@ func TestSellItem_PartialQuantity(t *testing.T) {
 	mockTx.On("Rollback", ctx).Return(nil)
 
 	// ACT - Request 100 but only have 30
-	moneyGained, quantitySold, err := service.SellItem(ctx, domain.PlatformTwitch, "", "testuser", domain.PublicNameMissile, 100)
+	result, err := service.SellItem(ctx, domain.PlatformTwitch, "", "testuser", domain.PublicNameMissile, 100)
 
 	// ASSERT
 	require.NoError(t, err)
-	assert.Equal(t, 600, moneyGained, "Should sell what's available (30 * 20)")
-	assert.Equal(t, 30, quantitySold, "Should return actual quantity sold")
+	assert.Equal(t, 600, result.MoneyGained, "Should sell what's available (30 * 20)")
+	assert.Equal(t, 30, result.ItemsSold, "Should return actual quantity sold")
 }
 
 // CASE 4: INVALID CASE - Bad inputs
@@ -303,12 +304,12 @@ func TestSellItem_InvalidInputs(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// ARRANGE
 			mockRepo := &MockRepository{}
-			service := NewService(mockRepo, nil)
+			service := NewService(mockRepo, nil, nil, func() float64 { return 1.0 })
 			ctx := context.Background()
 			tt.setup(mockRepo)
 
 			// ACT
-			_, _, err := service.SellItem(ctx, domain.PlatformTwitch, "", tt.username, tt.itemName, 1)
+			_, err := service.SellItem(ctx, domain.PlatformTwitch, "", tt.username, tt.itemName, 1)
 
 			// ASSERT
 			if tt.expectErr {
@@ -344,7 +345,7 @@ func TestSellItem_QuantityBoundaries(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// ARRANGE
 			mockRepo := &MockRepository{}
-			service := NewService(mockRepo, nil)
+			service := NewService(mockRepo, nil, nil, func() float64 { return 1.0 })
 			ctx := context.Background()
 
 			user := createTestUser()
@@ -377,7 +378,7 @@ func TestSellItem_QuantityBoundaries(t *testing.T) {
 			}
 
 			// ACT
-			_, _, err := service.SellItem(ctx, domain.PlatformTwitch, "", "testuser", domain.PublicNameLootbox, tt.quantity)
+			_, err := service.SellItem(ctx, domain.PlatformTwitch, "", "testuser", domain.PublicNameLootbox, tt.quantity)
 
 			// ASSERT
 			if tt.expectErr {
@@ -441,12 +442,12 @@ func TestSellItem_DatabaseErrors(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// ARRANGE
 			mockRepo := &MockRepository{}
-			service := NewService(mockRepo, nil)
+			service := NewService(mockRepo, nil, nil, func() float64 { return 1.0 })
 			ctx := context.Background()
 			tt.setup(mockRepo, ctx)
 
 			// ACT
-			_, _, err := service.SellItem(ctx, domain.PlatformTwitch, "", "testuser", domain.PublicNameLootbox, 1)
+			_, err := service.SellItem(ctx, domain.PlatformTwitch, "", "testuser", domain.PublicNameLootbox, 1)
 
 			// ASSERT
 			if tt.expectErr {
@@ -466,7 +467,7 @@ func TestSellItem_DatabaseErrors(t *testing.T) {
 func TestGetSellablePrices_Success(t *testing.T) {
 	// ARRANGE
 	mockRepo := &MockRepository{}
-	service := NewService(mockRepo, nil)
+	service := NewService(mockRepo, nil, nil, nil)
 	ctx := context.Background()
 
 	expectedItems := []domain.Item{
@@ -490,7 +491,7 @@ func TestGetSellablePrices_Success(t *testing.T) {
 func TestGetSellablePrices_DatabaseError(t *testing.T) {
 	// ARRANGE
 	mockRepo := &MockRepository{}
-	service := NewService(mockRepo, nil)
+	service := NewService(mockRepo, nil, nil, nil)
 	ctx := context.Background()
 
 	mockRepo.On("GetSellablePrices", ctx).
@@ -513,7 +514,7 @@ func TestGetSellablePrices_DatabaseError(t *testing.T) {
 func TestBuyItem_Success(t *testing.T) {
 	// ARRANGE
 	mockRepo := &MockRepository{}
-	service := NewService(mockRepo, nil)
+	service := NewService(mockRepo, nil, nil, nil)
 	ctx := context.Background()
 
 	user := createTestUser()
@@ -633,7 +634,7 @@ func TestBuyItem_MoneyBoundaries(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// ARRANGE
 			mockRepo := &MockRepository{}
-			service := NewService(mockRepo, nil)
+			service := NewService(mockRepo, nil, nil, nil)
 			ctx := context.Background()
 
 			user := createTestUser()
@@ -700,7 +701,7 @@ func TestBuyItem_QuantityBoundaries(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// ARRANGE
 			mockRepo := &MockRepository{}
-			service := NewService(mockRepo, nil)
+			service := NewService(mockRepo, nil, nil, nil)
 			ctx := context.Background()
 
 			user := createTestUser()
@@ -794,7 +795,7 @@ func TestBuyItem_InvalidInputs(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// ARRANGE
 			mockRepo := &MockRepository{}
-			service := NewService(mockRepo, nil)
+			service := NewService(mockRepo, nil, nil, nil)
 			ctx := context.Background()
 			tt.setup(mockRepo, ctx)
 
@@ -850,7 +851,7 @@ func TestBuyItem_DatabaseErrors(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// ARRANGE
 			mockRepo := &MockRepository{}
-			service := NewService(mockRepo, nil)
+			service := NewService(mockRepo, nil, nil, nil)
 			ctx := context.Background()
 			tt.setup(mockRepo, ctx)
 

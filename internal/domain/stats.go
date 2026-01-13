@@ -31,6 +31,8 @@ const (
 	// Lootbox events
 	EventLootboxJackpot EventType = "lootbox_jackpot"
 	EventLootboxBigWin  EventType = "lootbox_big_win"
+	// Economy events
+	EventEconomyMarketSpike EventType = "economy_market_spike"
 )
 
 // StatsEvent represents a single tracked event
