@@ -19,7 +19,7 @@
       "key": "item_money",
       "name": "Money",
       "type": "item",
-      "description": "Unlock the money item for trading",
+      "description": "Unlock the money item for trading and commerce",
       "tier": 1,
       "size": "small",
       "category": "items",

@@ -13,6 +13,10 @@ services:
     environment:
       - DB_HOST=db
       - ENVIRONMENT=production
+    volumes:
+      - ./logs:/app/logs
+      - ./configs:/app/configs:ro
+      - ./backups:/tmp:rw
     depends_on:
       db:
         condition: service_healthy
@@ -49,6 +53,9 @@ services:
     environment:
       - API_URL=http://app:8080
       - ENVIRONMENT=production
+    volumes:
+      - ./configs:/app/configs:ro
+      - ./logs/discord:/app/logs
     depends_on:
       - app
     restart: always

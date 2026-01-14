@@ -288,7 +288,10 @@ func (t *treeLoader) syncOneNode(ctx context.Context, repo repository.Progressio
 			existing.Description != nodeConfig.Description ||
 			existing.MaxLevel != nodeConfig.MaxLevel ||
 			existing.SortOrder != nodeConfig.SortOrder ||
-			existing.NodeType != nodeConfig.Type
+			existing.NodeType != nodeConfig.Type ||
+			existing.Tier != nodeConfig.Tier ||
+			existing.Size != nodeConfig.Size ||
+			existing.Category != nodeConfig.Category
 
 		if needsUpdate {
 			if err := updateNode(ctx, repo, existing.ID, nodeConfig); err != nil {
@@ -349,10 +352,9 @@ func insertNode(ctx context.Context, repo repository.Progression, config *NodeCo
 		MaxLevel:    config.MaxLevel,
 		UnlockCost:  unlockCost,
 		SortOrder:   config.SortOrder,
-		// New fields - will be added by migration
-		// Tier:        config.Tier,
-		// Size:        config.Size,
-		// Category:    config.Category,
+		Tier:        config.Tier,
+		Size:        config.Size,
+		Category:    config.Category,
 	})
 }
 
@@ -377,10 +379,9 @@ func updateNode(ctx context.Context, repo repository.Progression, nodeID int, co
 		MaxLevel:    config.MaxLevel,
 		UnlockCost:  unlockCost,
 		SortOrder:   config.SortOrder,
-		// New fields - will be added by migration
-		// Tier:        config.Tier,
-		// Size:        config.Size,
-		// Category:    config.Category,
+		Tier:        config.Tier,
+		Size:        config.Size,
+		Category:    config.Category,
 	})
 }
 

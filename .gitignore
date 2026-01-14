@@ -51,6 +51,9 @@ logs/
 temp/
 tmp/
 
+# AI usage files
+.claude/*.md
+
 # Benchmark results (keep baseline.txt, ignore temporary files)
 benchmarks/results/*.txt
 !benchmarks/results/baseline.txt
