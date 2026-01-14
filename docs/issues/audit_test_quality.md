@@ -1,3 +1,4 @@
+RESOLVED
 Title: Audit: Test Quality & Code Efficiency
 
 # Overview
@@ -62,6 +63,6 @@ internal/user -> mocks -> internal/user (IMPORT CYCLE!)
 ## ~~3. Expand Integration Tests~~ [RESOLVED - 2026-01-27]
 *   ✅ Added `gamble_integration_test.go` to `internal/database/postgres` to test the full gamble lifecycle with real database transactions.
 
-## 4. Add Benchmarks
-*   [ ] Add benchmarks for `CraftingService.UpgradeItem` and `DisassembleItem`.
-*   [ ] Add benchmarks for `GambleService.ExecuteGamble` with varying numbers of participants.
+## ~~4. Add Benchmarks~~ [RESOLVED - 2026-01-14]
+*   ✅ Added benchmarks for `CraftingService.UpgradeItem` and `DisassembleItem`.
+*   ✅ Added benchmarks for `GambleService.ExecuteGamble` with varying numbers of participants.

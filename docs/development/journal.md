@@ -4,6 +4,59 @@ A collection of practical insights gained from BrandishBot_Go development, parti
 
 ---
 
+## 2026-01-14: Benchmarking with Lightweight Mocks
+
+### Context
+Implemented benchmarks for `crafting` and `gamble` services. The goal was to measure the overhead of business logic without including the latency of real database operations.
+
+### The Pattern: Manual In-Package Mocks for Benchmarks
+
+**Core Concept**: Use manual, lightweight mocks defined within `bench_test.go` (or shared `export_test.go`) instead of generated mocks (`mockery`) or reflection-based mocks (`testify/mock`) for critical hot paths in benchmarks.
+
+**Why?**
+1.  **Performance**: `testify/mock` adds overhead (reflection, argument matching) that can skew micro-benchmarks.
+2.  **Setup Speed**: Benchmarks running tight loops (N > 1,000,000) require resetting state frequently. A manual mock with a simple struct reset is much faster than `mock.On(...).Return(...)`.
+3.  **Flexibility**: You can implement "generative" mocks that return data based on input ID (e.g. `User{ID: id}`) rather than pre-programming every single expected call.
+
+### Example: Benchmark Repository
+
+```go
+// Optimized for speed
+type BenchRepository struct {
+    gamble *domain.Gamble
+}
+
+func (r *BenchRepository) GetGamble(ctx context.Context, id uuid.UUID) (*domain.Gamble, error) {
+    return r.gamble, nil // Instant return
+}
+```
+
+### Key Learnings
+
+**1. Interface Compliance**
+- When creating manual mocks, ensure they satisfy the *full* interface, or at least the subset used by the service *plus* interface verification checks.
+- Use `var _ repository.Interface = (*Mock)(nil)` to verify compliance at compile time.
+- If the interface is large (like `Tx` or `Repository`), implementing stubs for unused methods is acceptable but can be brittle if the interface changes.
+
+**2. Resetting State in Benchmarks**
+- For stateful services (like `Gamble` which changes state from `Joining` to `Completed`), you must reset the state in the benchmark loop.
+- Use `b.StopTimer()` and `b.StartTimer()` around the reset logic to avoid measuring test setup time.
+
+```go
+for i := 0; i < b.N; i++ {
+    b.StopTimer()
+    resetState()
+    b.StartTimer()
+    svc.Execute(...)
+}
+```
+
+**3. Avoid Nil Pointers in Mocks**
+- Even in mocks, never return `nil, nil` for methods that return a pointer and an error. Always return a dummy object or a specific error.
+- Service code often assumes `if err == nil { use(ptr) }`, so returning `nil, nil` causes panics.
+
+---
+
 ## 2026-01-04: Resilient Event Publishing - Fire-and-Forget with Retry
 
 ### Context
