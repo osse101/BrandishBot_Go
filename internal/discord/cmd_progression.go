@@ -205,7 +205,7 @@ func EngagementCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			return
 		}
 
-		engagement, err := client.GetUserEngagement(targetUser.ID)
+		engagement, err := client.GetUserEngagement("discord", targetUser.ID)
 		if err != nil {
 			slog.Error("Failed to get engagement", "error", err)
 			respondFriendlyError(s, i, err.Error())

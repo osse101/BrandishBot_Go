@@ -14,7 +14,7 @@ import (
 func TestStartVotingSession_Success(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil)
 	ctx := context.Background()
 
 	// Should create session with available nodes
@@ -34,7 +34,7 @@ func TestStartVotingSession_Success(t *testing.T) {
 func TestStartVotingSession_FewerThan4Available(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil)
 	ctx := context.Background()
 
 	// Unlock both money and lootbox0 to reduce available options
@@ -54,7 +54,7 @@ func TestStartVotingSession_FewerThan4Available(t *testing.T) {
 func TestStartVotingSession_NoAvailableNodes(t *testing.T) {
 	repo := NewMockRepository()
 	// Don't setup tree - no nodes available
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil)
 	ctx := context.Background()
 
 	err := service.StartVotingSession(ctx, nil)
@@ -65,7 +65,7 @@ func TestStartVotingSession_NoAvailableNodes(t *testing.T) {
 func TestStartVotingSession_MultiLevelNode(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil)
 	ctx := context.Background()
 
 	// Unlock economy to make cooldown_reduction available
@@ -100,7 +100,7 @@ func TestStartVotingSession_MultiLevelNode(t *testing.T) {
 func TestVoteForUnlock_Success(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil)
 	ctx := context.Background()
 
 	// Start session
@@ -109,11 +109,11 @@ func TestVoteForUnlock_Success(t *testing.T) {
 
 	// Vote for first option
 	nodeKey := session.Options[0].NodeDetails.NodeKey
-	err := service.VoteForUnlock(ctx, "user1", nodeKey)
+	err := service.VoteForUnlock(ctx, "discord", "user1", nodeKey)
 	assert.NoError(t, err)
 
 	// Verify vote was recorded
-	hasVoted, _ := repo.HasUserVotedInSession(ctx, "user1", session.ID)
+	hasVoted, _ := repo.HasUserVotedInSession(ctx, "test-user-1", session.ID)
 	assert.True(t, hasVoted)
 
 	// Verify vote count incremented
@@ -124,11 +124,11 @@ func TestVoteForUnlock_Success(t *testing.T) {
 func TestVoteForUnlock_NoActiveSession(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil)
 	ctx := context.Background()
 
 	// No session started
-	err := service.VoteForUnlock(ctx, "user1", "item_money")
+	err := service.VoteForUnlock(ctx, "discord", "user1", "item_money")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "no active voting session")
 }
@@ -136,7 +136,7 @@ func TestVoteForUnlock_NoActiveSession(t *testing.T) {
 func TestVoteForUnlock_SessionNotVoting(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil)
 	ctx := context.Background()
 
 	// Create and end session
@@ -144,7 +144,7 @@ func TestVoteForUnlock_SessionNotVoting(t *testing.T) {
 	session, _ := repo.GetActiveSession(ctx)
 	repo.EndVotingSession(ctx, session.ID, session.Options[0].ID)
 
-	err := service.VoteForUnlock(ctx, "user1", "item_money")
+	err := service.VoteForUnlock(ctx, "discord", "user1", "item_money")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "no active voting session")
 }
@@ -152,13 +152,13 @@ func TestVoteForUnlock_SessionNotVoting(t *testing.T) {
 func TestVoteForUnlock_NodeNotInOptions(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil)
 	ctx := context.Background()
 
 	service.StartVotingSession(ctx, nil)
 
 	// Try to vote for node not in options
-	err := service.VoteForUnlock(ctx, "user1", "feature_economy")
+	err := service.VoteForUnlock(ctx, "discord", "user1", "feature_economy")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "not in current voting options")
 }
@@ -166,7 +166,7 @@ func TestVoteForUnlock_NodeNotInOptions(t *testing.T) {
 func TestVoteForUnlock_UserAlreadyVoted(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil)
 	ctx := context.Background()
 
 	service.StartVotingSession(ctx, nil)
@@ -174,11 +174,11 @@ func TestVoteForUnlock_UserAlreadyVoted(t *testing.T) {
 	nodeKey := session.Options[0].NodeDetails.NodeKey
 
 	// First vote succeeds
-	err := service.VoteForUnlock(ctx, "user1", nodeKey)
+	err := service.VoteForUnlock(ctx, "discord", "user1", nodeKey)
 	assert.NoError(t, err)
 
 	// Second vote fails
-	err = service.VoteForUnlock(ctx, "user1", nodeKey)
+	err = service.VoteForUnlock(ctx, "discord", "user1", nodeKey)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "already voted")
 }
@@ -188,15 +188,15 @@ func TestVoteForUnlock_UserAlreadyVoted(t *testing.T) {
 func TestEndVoting_Success(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil)
 	ctx := context.Background()
 
 	service.StartVotingSession(ctx, nil)
 	session, _ := repo.GetActiveSession(ctx)
 
 	// Cast some votes
-	service.VoteForUnlock(ctx, "user1", session.Options[0].NodeDetails.NodeKey)
-	service.VoteForUnlock(ctx, "user2", session.Options[0].NodeDetails.NodeKey)
+	service.VoteForUnlock(ctx, "discord", "user1", session.Options[0].NodeDetails.NodeKey)
+	service.VoteForUnlock(ctx, "discord", "user2", session.Options[0].NodeDetails.NodeKey)
 
 	winner, err := service.EndVoting(ctx)
 	assert.NoError(t, err)
@@ -211,15 +211,15 @@ func TestEndVoting_Success(t *testing.T) {
 func TestEndVoting_TieBreaker(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil)
 	ctx := context.Background()
 
 	service.StartVotingSession(ctx, nil)
 	session, _ := repo.GetActiveSession(ctx)
 
 	// Create tie - 1 vote each
-	service.VoteForUnlock(ctx, "user1", session.Options[0].NodeDetails.NodeKey)
-	service.VoteForUnlock(ctx, "user2", session.Options[1].NodeDetails.NodeKey)
+	service.VoteForUnlock(ctx, "discord", "user1", session.Options[0].NodeDetails.NodeKey)
+	service.VoteForUnlock(ctx, "discord", "user2", session.Options[1].NodeDetails.NodeKey)
 
 	winner, err := service.EndVoting(ctx)
 	assert.NoError(t, err)
@@ -231,7 +231,7 @@ func TestEndVoting_TieBreaker(t *testing.T) {
 func TestEndVoting_ZeroVotes(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil)
 	ctx := context.Background()
 
 	service.StartVotingSession(ctx, nil)
@@ -247,28 +247,28 @@ func TestEndVoting_ZeroVotes(t *testing.T) {
 func TestEndVoting_AwardsContributions(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil)
 	ctx := context.Background()
 
 	service.StartVotingSession(ctx, nil)
 	session, _ := repo.GetActiveSession(ctx)
 
 	// Cast votes
-	service.VoteForUnlock(ctx, "user1", session.Options[0].NodeDetails.NodeKey)
-	service.VoteForUnlock(ctx, "user2", session.Options[0].NodeDetails.NodeKey)
+	service.VoteForUnlock(ctx, "discord", "user1", session.Options[0].NodeDetails.NodeKey)
+	service.VoteForUnlock(ctx, "discord", "user2", session.Options[0].NodeDetails.NodeKey)
 
 	_, err := service.EndVoting(ctx)
 	assert.NoError(t, err)
 
 	// Verify engagement metrics recorded
-	user1Engagement, _ := service.GetUserEngagement(ctx, "user1")
+	user1Engagement, _ := service.GetUserEngagement(ctx, "discord", "user1")
 	assert.Greater(t, user1Engagement.TotalScore, 0)
 }
 
 func TestEndVoting_NoActiveSession(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil)
 	ctx := context.Background()
 
 	_, err := service.EndVoting(ctx)
@@ -279,7 +279,7 @@ func TestEndVoting_NoActiveSession(t *testing.T) {
 func TestEndVoting_AlreadyEnded(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil)
 	ctx := context.Background()
 
 	service.StartVotingSession(ctx, nil)

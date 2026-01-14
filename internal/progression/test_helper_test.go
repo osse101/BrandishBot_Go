@@ -9,7 +9,7 @@ import (
 func TestUnlockAllFeatures(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil)
 	ctx := context.Background()
 
 	helper := NewTestHelper(service)
@@ -43,7 +43,7 @@ func TestUnlockAllFeatures(t *testing.T) {
 func TestUnlockFeature(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil)
 	ctx := context.Background()
 
 	helper := NewTestHelper(service)

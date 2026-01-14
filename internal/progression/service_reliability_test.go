@@ -204,7 +204,7 @@ func TestForceInstantUnlock_Reliability(t *testing.T) {
 	// Allow service to subscribe to events
 	mockBus.On("Subscribe", mock.Anything, mock.Anything).Return()
 
-	service := NewService(mockRepo, mockBus)
+	service := NewService(mockRepo, NewMockUser(), mockBus)
 	ctx := context.Background()
 
 	// Setup active session

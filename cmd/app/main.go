@@ -165,7 +165,7 @@ func main() {
 		"deadletter_path", deadLetterPath)
 
 	progressionRepo := postgres.NewProgressionRepository(dbPool, eventBus)
-	progressionService := progression.NewService(progressionRepo, eventBus)
+	progressionService := progression.NewService(progressionRepo, userRepo, eventBus)
 
 	// Sync progression tree from JSON configuration
 	slog.Info("Syncing progression tree from JSON config...")

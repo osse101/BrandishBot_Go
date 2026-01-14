@@ -1203,9 +1203,9 @@ func (_c *MockProgressionService_GetUnlockProgress_Call) RunAndReturn(run func(c
 	return _c
 }
 
-// GetUserEngagement provides a mock function with given fields: ctx, userID
-func (_m *MockProgressionService) GetUserEngagement(ctx context.Context, userID string) (*domain.ContributionBreakdown, error) {
-	ret := _m.Called(ctx, userID)
+// GetUserEngagement provides a mock function with given fields: ctx, platform, platformID
+func (_m *MockProgressionService) GetUserEngagement(ctx context.Context, platform string, platformID string) (*domain.ContributionBreakdown, error) {
+	ret := _m.Called(ctx, platform, platformID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetUserEngagement")
@@ -1213,19 +1213,19 @@ func (_m *MockProgressionService) GetUserEngagement(ctx context.Context, userID 
 
 	var r0 *domain.ContributionBreakdown
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) (*domain.ContributionBreakdown, error)); ok {
-		return rf(ctx, userID)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) (*domain.ContributionBreakdown, error)); ok {
+		return rf(ctx, platform, platformID)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) *domain.ContributionBreakdown); ok {
-		r0 = rf(ctx, userID)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) *domain.ContributionBreakdown); ok {
+		r0 = rf(ctx, platform, platformID)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*domain.ContributionBreakdown)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, userID)
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = rf(ctx, platform, platformID)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -1240,14 +1240,15 @@ type MockProgressionService_GetUserEngagement_Call struct {
 
 // GetUserEngagement is a helper method to define mock.On call
 //   - ctx context.Context
-//   - userID string
-func (_e *MockProgressionService_Expecter) GetUserEngagement(ctx interface{}, userID interface{}) *MockProgressionService_GetUserEngagement_Call {
-	return &MockProgressionService_GetUserEngagement_Call{Call: _e.mock.On("GetUserEngagement", ctx, userID)}
+//   - platform string
+//   - platformID string
+func (_e *MockProgressionService_Expecter) GetUserEngagement(ctx interface{}, platform interface{}, platformID interface{}) *MockProgressionService_GetUserEngagement_Call {
+	return &MockProgressionService_GetUserEngagement_Call{Call: _e.mock.On("GetUserEngagement", ctx, platform, platformID)}
 }
 
-func (_c *MockProgressionService_GetUserEngagement_Call) Run(run func(ctx context.Context, userID string)) *MockProgressionService_GetUserEngagement_Call {
+func (_c *MockProgressionService_GetUserEngagement_Call) Run(run func(ctx context.Context, platform string, platformID string)) *MockProgressionService_GetUserEngagement_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
 	})
 	return _c
 }
@@ -1257,7 +1258,7 @@ func (_c *MockProgressionService_GetUserEngagement_Call) Return(_a0 *domain.Cont
 	return _c
 }
 
-func (_c *MockProgressionService_GetUserEngagement_Call) RunAndReturn(run func(context.Context, string) (*domain.ContributionBreakdown, error)) *MockProgressionService_GetUserEngagement_Call {
+func (_c *MockProgressionService_GetUserEngagement_Call) RunAndReturn(run func(context.Context, string, string) (*domain.ContributionBreakdown, error)) *MockProgressionService_GetUserEngagement_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1631,17 +1632,17 @@ func (_c *MockProgressionService_StartVotingSession_Call) RunAndReturn(run func(
 	return _c
 }
 
-// VoteForUnlock provides a mock function with given fields: ctx, userID, nodeKey
-func (_m *MockProgressionService) VoteForUnlock(ctx context.Context, userID string, nodeKey string) error {
-	ret := _m.Called(ctx, userID, nodeKey)
+// VoteForUnlock provides a mock function with given fields: ctx, platform, platformID, nodeKey
+func (_m *MockProgressionService) VoteForUnlock(ctx context.Context, platform string, platformID string, nodeKey string) error {
+	ret := _m.Called(ctx, platform, platformID, nodeKey)
 
 	if len(ret) == 0 {
 		panic("no return value specified for VoteForUnlock")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string) error); ok {
-		r0 = rf(ctx, userID, nodeKey)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string) error); ok {
+		r0 = rf(ctx, platform, platformID, nodeKey)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -1656,15 +1657,16 @@ type MockProgressionService_VoteForUnlock_Call struct {
 
 // VoteForUnlock is a helper method to define mock.On call
 //   - ctx context.Context
-//   - userID string
+//   - platform string
+//   - platformID string
 //   - nodeKey string
-func (_e *MockProgressionService_Expecter) VoteForUnlock(ctx interface{}, userID interface{}, nodeKey interface{}) *MockProgressionService_VoteForUnlock_Call {
-	return &MockProgressionService_VoteForUnlock_Call{Call: _e.mock.On("VoteForUnlock", ctx, userID, nodeKey)}
+func (_e *MockProgressionService_Expecter) VoteForUnlock(ctx interface{}, platform interface{}, platformID interface{}, nodeKey interface{}) *MockProgressionService_VoteForUnlock_Call {
+	return &MockProgressionService_VoteForUnlock_Call{Call: _e.mock.On("VoteForUnlock", ctx, platform, platformID, nodeKey)}
 }
 
-func (_c *MockProgressionService_VoteForUnlock_Call) Run(run func(ctx context.Context, userID string, nodeKey string)) *MockProgressionService_VoteForUnlock_Call {
+func (_c *MockProgressionService_VoteForUnlock_Call) Run(run func(ctx context.Context, platform string, platformID string, nodeKey string)) *MockProgressionService_VoteForUnlock_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(string))
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(string))
 	})
 	return _c
 }
@@ -1674,7 +1676,7 @@ func (_c *MockProgressionService_VoteForUnlock_Call) Return(_a0 error) *MockProg
 	return _c
 }
 
-func (_c *MockProgressionService_VoteForUnlock_Call) RunAndReturn(run func(context.Context, string, string) error) *MockProgressionService_VoteForUnlock_Call {
+func (_c *MockProgressionService_VoteForUnlock_Call) RunAndReturn(run func(context.Context, string, string, string) error) *MockProgressionService_VoteForUnlock_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -14,7 +14,7 @@ import (
 func TestVotingFlow_Complete(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil)
 	ctx := context.Background()
 
 	// Step 1: Start voting session
@@ -27,9 +27,9 @@ func TestVotingFlow_Complete(t *testing.T) {
 
 	// Step 2: Multiple users vote
 	nodeKey := session.Options[0].NodeDetails.NodeKey
-	service.VoteForUnlock(ctx, "user1", nodeKey)
-	service.VoteForUnlock(ctx, "user2", nodeKey)
-	service.VoteForUnlock(ctx, "user3", nodeKey)
+	service.VoteForUnlock(ctx, "discord", "user1", nodeKey)
+	service.VoteForUnlock(ctx, "discord", "user2", nodeKey)
+	service.VoteForUnlock(ctx, "discord", "user3", nodeKey)
 
 	// Step 3: End voting
 	winner, err := service.EndVoting(ctx)
@@ -72,16 +72,16 @@ func TestVotingFlow_Complete(t *testing.T) {
 func TestVotingFlow_MultipleVoters(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil)
 	ctx := context.Background()
 
 	service.StartVotingSession(ctx, nil)
 	session, _ := repo.GetActiveSession(ctx)
 
 	// Multiple users vote for different options
-	service.VoteForUnlock(ctx, "user1", session.Options[0].NodeDetails.NodeKey)
-	service.VoteForUnlock(ctx, "user2", session.Options[0].NodeDetails.NodeKey)
-	service.VoteForUnlock(ctx, "user3", session.Options[1].NodeDetails.NodeKey)
+	service.VoteForUnlock(ctx, "discord", "user1", session.Options[0].NodeDetails.NodeKey)
+	service.VoteForUnlock(ctx, "discord", "user2", session.Options[0].NodeDetails.NodeKey)
+	service.VoteForUnlock(ctx, "discord", "user3", session.Options[1].NodeDetails.NodeKey)
 
 	winner, _ := service.EndVoting(ctx)
 
@@ -94,13 +94,13 @@ func TestVotingFlow_MultipleVoters(t *testing.T) {
 func TestVotingFlow_AutoNextSession(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil)
 	ctx := context.Background()
 
 	// Complete first unlock cycle
 	service.StartVotingSession(ctx, nil)
 	session1, _ := repo.GetActiveSession(ctx)
-	service.VoteForUnlock(ctx, "user1", session1.Options[0].NodeDetails.NodeKey)
+	service.VoteForUnlock(ctx, "discord", "user1", session1.Options[0].NodeDetails.NodeKey)
 	service.EndVoting(ctx)
 
 	progress, _ := repo.GetActiveUnlockProgress(ctx)
@@ -123,7 +123,7 @@ func TestVotingFlow_AutoNextSession(t *testing.T) {
 func TestMultiLevel_Progressive(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil)
 	ctx := context.Background()
 
 	// Unlock prerequisites first
@@ -155,7 +155,7 @@ func TestMultiLevel_Progressive(t *testing.T) {
 func TestMultiLevel_SessionTargeting(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil)
 	ctx := context.Background()
 
 	// Unlock money and economy to access cooldown
@@ -176,7 +176,7 @@ func TestMultiLevel_SessionTargeting(t *testing.T) {
 	}
 
 	if cooldownKey != "" {
-		service.VoteForUnlock(ctx, "user1", cooldownKey)
+		service.VoteForUnlock(ctx, "discord", "user1", cooldownKey)
 		service.EndVoting(ctx)
 
 		// Complete unlock
@@ -205,7 +205,7 @@ func TestMultiLevel_SessionTargeting(t *testing.T) {
 func TestRollover_ExcessPoints(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil)
 	ctx := context.Background()
 
 	// Setup progress with target
@@ -234,13 +234,13 @@ func TestRollover_ExcessPoints(t *testing.T) {
 func TestCache_ThresholdDetection(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil)
 	ctx := context.Background()
 
 	// Complete voting to set cache
 	service.StartVotingSession(ctx, nil)
 	session, _ := repo.GetActiveSession(ctx)
-	service.VoteForUnlock(ctx, "user1", session.Options[0].NodeDetails.NodeKey)
+	service.VoteForUnlock(ctx, "discord", "user1", session.Options[0].NodeDetails.NodeKey)
 	service.EndVoting(ctx)
 
 	progress, _ := repo.GetActiveUnlockProgress(ctx)

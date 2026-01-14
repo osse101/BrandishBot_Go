@@ -65,7 +65,7 @@ func TestStartVotingSession_AutoSelect_PublishesEvent(t *testing.T) {
 	mockRepo.nodesByKey["child_node"] = child
 
 	// Initialize service with mock bus
-	service := NewService(mockRepo, mockBus)
+	service := NewService(mockRepo, NewMockUser(), mockBus)
 
 	// Expect Publish to be called with specific event
 	mockBus.On("Publish", ctx, mock.MatchedBy(func(evt event.Event) bool {

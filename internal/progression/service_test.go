@@ -892,7 +892,7 @@ func setupTestTree(repo *MockRepository) {
 func TestGetProgressionTree(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil)
 	ctx := context.Background()
 
 	tree, err := service.GetProgressionTree(ctx)
@@ -927,7 +927,7 @@ func TestGetProgressionTree(t *testing.T) {
 func TestGetAvailableUnlocks(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil)
 	ctx := context.Background()
 
 	// Initially, only money and lootbox0 should be available (root is unlocked)
@@ -961,7 +961,7 @@ func TestVoteForUnlock(t *testing.T) {
 func TestIsFeatureUnlocked(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil)
 	ctx := context.Background()
 
 	// Progression system should be unlocked
@@ -986,7 +986,7 @@ func TestIsFeatureUnlocked(t *testing.T) {
 func TestIsItemUnlocked(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil)
 	ctx := context.Background()
 
 	// Money should not be unlocked
@@ -1016,16 +1016,16 @@ func TestIsItemUnlocked(t *testing.T) {
 
 func TestEngagementTracking(t *testing.T) {
 	repo := NewMockRepository()
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil)
 	ctx := context.Background()
 
 	// Record engagement metrics
-	service.RecordEngagement(ctx, "user1", "message", 10)
-	service.RecordEngagement(ctx, "user1", "command", 5)
+	service.RecordEngagement(ctx, "test-user-1", "message", 10)
+	service.RecordEngagement(ctx, "test-user-1", "command", 5)
 	service.RecordEngagement(ctx, "user2", "item_crafted", 3)
 
 	// Get user1 engagement
-	breakdown, err := service.GetUserEngagement(ctx, "user1")
+	breakdown, err := service.GetUserEngagement(ctx, "discord", "user1")
 	if err != nil {
 		t.Fatalf("GetUserEngagement failed: %v", err)
 	}
@@ -1059,7 +1059,7 @@ func TestEngagementTracking(t *testing.T) {
 func TestAdminUnlock(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil)
 	ctx := context.Background()
 
 	// Admin unlock money
@@ -1081,7 +1081,7 @@ func TestAdminUnlock(t *testing.T) {
 func TestAdminRelock(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil)
 	ctx := context.Background()
 
 	// Unlock then relock
@@ -1104,7 +1104,7 @@ func TestAdminRelock(t *testing.T) {
 func TestResetProgressionTree(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil)
 	ctx := context.Background()
 
 	// Unlock some nodes
@@ -1147,7 +1147,7 @@ func timePtr(t time.Time) *time.Time {
 func TestMultiLevelUnlock(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil)
 	ctx := context.Background()
 
 	// Unlock economy first (prerequisite for cooldown reduction)

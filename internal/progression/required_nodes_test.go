@@ -10,7 +10,7 @@ import (
 func TestGetRequiredNodes_NoPrerequisites(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil)
 	ctx := context.Background()
 
 	// Money only requires root, which is auto-unlocked
@@ -22,7 +22,7 @@ func TestGetRequiredNodes_NoPrerequisites(t *testing.T) {
 func TestGetRequiredNodes_DirectPrerequisite(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil)
 	ctx := context.Background()
 
 	// Economy requires money (which is NOT unlocked)
@@ -35,7 +35,7 @@ func TestGetRequiredNodes_DirectPrerequisite(t *testing.T) {
 func TestGetRequiredNodes_MultiplePrerequisites(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil)
 	ctx := context.Background()
 
 	// Buy requires economy, which requires money (both are NOT unlocked)
@@ -55,7 +55,7 @@ func TestGetRequiredNodes_MultiplePrerequisites(t *testing.T) {
 func TestGetRequiredNodes_PartiallyUnlocked(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil)
 	ctx := context.Background()
 
 	// Unlock money
@@ -70,7 +70,7 @@ func TestGetRequiredNodes_PartiallyUnlocked(t *testing.T) {
 func TestGetRequiredNodes_AllUnlocked(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil)
 	ctx := context.Background()
 
 	// Unlock the whole chain
@@ -86,7 +86,7 @@ func TestGetRequiredNodes_AllUnlocked(t *testing.T) {
 func TestGetRequiredNodes_NodeNotFound(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil)
 	ctx := context.Background()
 
 	_, err := service.GetRequiredNodes(ctx, "nonexistent_node")

@@ -15,7 +15,7 @@ func TestUnlockCacheInvalidatesOnEvent(t *testing.T) {
 	bus := event.NewMemoryBus()
 
 	// Create service with event bus (so handlers work)
-	service := NewService(repo, bus)
+	service := NewService(repo, NewMockUser(), bus)
 	ctx := context.Background()
 
 	// First check - populates cache with "false"
@@ -59,7 +59,7 @@ func TestUnlockCacheInvalidatesOnRelockEvent(t *testing.T) {
 	bus := event.NewMemoryBus()
 
 	// Create service with event bus
-	service := NewService(repo, bus)
+	service := NewService(repo, NewMockUser(), bus)
 	ctx := context.Background()
 
 	// Unlock money first

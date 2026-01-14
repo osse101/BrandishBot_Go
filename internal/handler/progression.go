@@ -101,20 +101,20 @@ func (h *ProgressionHandlers) HandleVote() http.HandlerFunc {
 
 		// Validate request
 		if err := GetValidator().ValidateStruct(req); err != nil {
-			log.Warn("Vote request: validation failed", "error", err, "userID", req.UserID, "nodeKey", req.NodeKey)
+			log.Warn("Vote request: validation failed", "error", err, "platform", req.Platform, "platformID", req.PlatformID, "nodeKey", req.NodeKey)
 			respondError(w, http.StatusBadRequest, fmt.Sprintf("Invalid request: %v", err))
 			return
 		}
 
 		// Cast vote
-		err := h.service.VoteForUnlock(r.Context(), req.UserID, req.NodeKey)
+		err := h.service.VoteForUnlock(r.Context(), req.Platform, req.PlatformID, req.NodeKey)
 		if err != nil {
-			log.Warn("Vote request: service error", "error", err, "userID", req.UserID, "nodeKey", req.NodeKey)
+			log.Warn("Vote request: service error", "error", err, "platform", req.Platform, "platformID", req.PlatformID, "nodeKey", req.NodeKey)
 			respondError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 
-		log.Info("Vote cast successfully", "userID", req.UserID, "nodeKey", req.NodeKey)
+		log.Info("Vote cast successfully", "platform", req.Platform, "platformID", req.PlatformID, "nodeKey", req.NodeKey)
 		respondJSON(w, http.StatusOK, SuccessResponse{Message: "Vote recorded successfully"})
 	}
 }
@@ -148,7 +148,8 @@ func (h *ProgressionHandlers) HandleGetStatus() http.HandlerFunc {
 // @Description Returns user's engagement contribution breakdown by type
 // @Tags progression
 // @Produce json
-// @Param user_id query string true "User ID"
+// @Param platform query string true "Platform (twitch, youtube, discord)"
+// @Param platform_id query string true "Platform-specific user ID"
 // @Success 200 {object} domain.EngagementBreakdown
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
@@ -157,21 +158,28 @@ func (h *ProgressionHandlers) HandleGetEngagement() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
 
-		userID := r.URL.Query().Get("user_id")
-		if userID == "" {
-			log.Warn("Get user engagement: missing user_id parameter")
-			respondError(w, http.StatusBadRequest, "user_id query parameter is required")
+		platform := r.URL.Query().Get("platform")
+		platformID := r.URL.Query().Get("platform_id")
+
+		if platform == "" {
+			log.Warn("Get user engagement: missing platform parameter")
+			respondError(w, http.StatusBadRequest, "platform query parameter is required")
+			return
+		}
+		if platformID == "" {
+			log.Warn("Get user engagement: missing platform_id parameter")
+			respondError(w, http.StatusBadRequest, "platform_id query parameter is required")
 			return
 		}
 
-		breakdown, err := h.service.GetUserEngagement(r.Context(), userID)
+		breakdown, err := h.service.GetUserEngagement(r.Context(), platform, platformID)
 		if err != nil {
-			log.Error("Get user engagement: service error", "error", err, "userID", userID)
+			log.Error("Get user engagement: service error", "error", err, "platform", platform, "platformID", platformID)
 			respondError(w, http.StatusInternalServerError, "Failed to retrieve engagement data")
 			return
 		}
 
-		log.Info("Get user engagement: success", "userID", userID)
+		log.Info("Get user engagement: success", "platform", platform, "platformID", platformID)
 		respondJSON(w, http.StatusOK, breakdown)
 	}
 }
@@ -592,8 +600,9 @@ type AvailableUnlocksResponse struct {
 }
 
 type VoteRequest struct {
-	UserID  string `json:"user_id" validate:"required,max=100,excludesall=\x00\n\r\t"`
-	NodeKey string `json:"node_key" validate:"required,max=50"`
+	Platform   string `json:"platform" validate:"required,max=20"`
+	PlatformID string `json:"platform_id" validate:"required,max=100,excludesall=\x00\n\r\t"`
+	NodeKey    string `json:"node_key" validate:"required,max=50"`
 }
 
 type AdminUnlockRequest struct {

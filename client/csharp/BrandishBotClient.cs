@@ -523,9 +523,9 @@ namespace BrandishBot.Client
         /// <summary>
         /// Get user engagement breakdown (contribution points)
         /// </summary>
-        public async Task<string> GetUserEngagement(string userId)
+        public async Task<string> GetUserEngagement(string platform, string platformId)
         {
-            var query = BuildQuery("user_id=" + userId);
+            var query = BuildQuery("platform=" + platform, "platform_id=" + platformId);
             return await GetAsync("/api/v1/progression/engagement" + query);
         }
 

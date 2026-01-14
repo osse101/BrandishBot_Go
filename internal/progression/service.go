@@ -24,7 +24,7 @@ type Service interface {
 	IsItemUnlocked(ctx context.Context, itemName string) (bool, error)
 
 	// Voting
-	VoteForUnlock(ctx context.Context, userID string, nodeKey string) error
+	VoteForUnlock(ctx context.Context, platform, platformID, nodeKey string) error
 	GetActiveVotingSession(ctx context.Context) (*domain.ProgressionVotingSession, error)
 	StartVotingSession(ctx context.Context, unlockedNodeID *int) error
 	EndVoting(ctx context.Context) (*domain.ProgressionVotingOption, error)
@@ -39,7 +39,7 @@ type Service interface {
 	// Contribution tracking
 	RecordEngagement(ctx context.Context, userID string, metricType string, value int) error
 	GetEngagementScore(ctx context.Context) (int, error)
-	GetUserEngagement(ctx context.Context, userID string) (*domain.ContributionBreakdown, error)
+	GetUserEngagement(ctx context.Context, platform, platformID string) (*domain.ContributionBreakdown, error)
 	GetContributionLeaderboard(ctx context.Context, limit int) ([]domain.ContributionLeaderboardEntry, error)
 	GetEngagementVelocity(ctx context.Context, days int) (*domain.VelocityMetrics, error)
 	EstimateUnlockTime(ctx context.Context, nodeKey string) (*domain.UnlockEstimate, error)
@@ -68,6 +68,7 @@ type Service interface {
 
 type service struct {
 	repo repository.Progression
+	user repository.User
 	bus  event.Bus
 
 	// In-memory cache for unlock threshold checking
@@ -96,10 +97,11 @@ type service struct {
 }
 
 // NewService creates a new progression service
-func NewService(repo repository.Progression, bus event.Bus) Service {
+func NewService(repo repository.Progression, userRepo repository.User, bus event.Bus) Service {
 	shutdownCtx, shutdownCancel := context.WithCancel(context.Background())
 	svc := &service{
 		repo:           repo,
+		user:           userRepo,
 		bus:            bus,
 		modifierCache:  NewModifierCache(30 * time.Minute), // 30-min TTL
 		unlockCache:    NewUnlockCache(),                   // No TTL - invalidate on unlock/relock
@@ -268,8 +270,19 @@ func (s *service) IsItemUnlocked(ctx context.Context, itemName string) (bool, er
 }
 
 // VoteForUnlock allows a user to vote for next unlock (updated for voting sessions)
-func (s *service) VoteForUnlock(ctx context.Context, userID string, nodeKey string) error {
+func (s *service) VoteForUnlock(ctx context.Context, platform, platformID, nodeKey string) error {
 	log := logger.FromContext(ctx)
+
+	// Convert platform_id to internal user ID
+	user, err := s.user.GetUserByPlatformID(ctx, platform, platformID)
+	if err != nil {
+		return fmt.Errorf("failed to resolve user: %w", err)
+	}
+	if user == nil {
+		return fmt.Errorf("user not found")
+	}
+
+	userID := user.ID
 
 	// Get active voting session
 	session, err := s.repo.GetActiveSession(ctx)
@@ -314,7 +327,7 @@ func (s *service) VoteForUnlock(ctx context.Context, userID string, nodeKey stri
 		return fmt.Errorf("failed to record user vote: %w", err)
 	}
 
-	log.Info("Vote recorded", "userID", userID, "nodeKey", nodeKey, "sessionID", session.ID)
+	log.Info("Vote recorded", "userID", userID, "platform", platform, "platformID", platformID, "nodeKey", nodeKey, "sessionID", session.ID)
 	return nil
 }
 
@@ -407,8 +420,17 @@ func (s *service) GetEngagementScore(ctx context.Context) (int, error) {
 }
 
 // GetUserEngagement returns user's contribution breakdown
-func (s *service) GetUserEngagement(ctx context.Context, userID string) (*domain.ContributionBreakdown, error) {
-	return s.repo.GetUserEngagement(ctx, userID)
+func (s *service) GetUserEngagement(ctx context.Context, platform, platformID string) (*domain.ContributionBreakdown, error) {
+	// Convert platform_id to internal user ID
+	user, err := s.user.GetUserByPlatformID(ctx, platform, platformID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve user: %w", err)
+	}
+	if user == nil {
+		return nil, fmt.Errorf("user not found")
+	}
+
+	return s.repo.GetUserEngagement(ctx, user.ID)
 }
 
 // GetContributionLeaderboard retrieves top contributors

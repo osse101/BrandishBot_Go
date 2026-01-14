@@ -995,9 +995,10 @@ func (c *APIClient) GetUnlockProgress() (*map[string]interface{}, error) {
 }
 
 // GetUserEngagement returns user's engagement breakdown
-func (c *APIClient) GetUserEngagement(userID string) (*domain.ContributionBreakdown, error) {
+func (c *APIClient) GetUserEngagement(platform, platformID string) (*domain.ContributionBreakdown, error) {
 	params := url.Values{}
-	params.Set("user_id", userID)
+	params.Set("platform", platform)
+	params.Set("platform_id", platformID)
 
 	path := fmt.Sprintf("/api/v1/progression/engagement?%s", params.Encode())
 	resp, err := c.doRequest(http.MethodGet, path, nil)
