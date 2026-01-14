@@ -40,6 +40,7 @@ type Service interface {
 	RecordEngagement(ctx context.Context, userID string, metricType string, value int) error
 	GetEngagementScore(ctx context.Context) (int, error)
 	GetUserEngagement(ctx context.Context, platform, platformID string) (*domain.ContributionBreakdown, error)
+	GetUserEngagementByUsername(ctx context.Context, platform, username string) (*domain.ContributionBreakdown, error)
 	GetContributionLeaderboard(ctx context.Context, limit int) ([]domain.ContributionLeaderboardEntry, error)
 	GetEngagementVelocity(ctx context.Context, days int) (*domain.VelocityMetrics, error)
 	EstimateUnlockTime(ctx context.Context, nodeKey string) (*domain.UnlockEstimate, error)
@@ -423,6 +424,20 @@ func (s *service) GetEngagementScore(ctx context.Context) (int, error) {
 func (s *service) GetUserEngagement(ctx context.Context, platform, platformID string) (*domain.ContributionBreakdown, error) {
 	// Convert platform_id to internal user ID
 	user, err := s.user.GetUserByPlatformID(ctx, platform, platformID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve user: %w", err)
+	}
+	if user == nil {
+		return nil, fmt.Errorf("user not found")
+	}
+
+	return s.repo.GetUserEngagement(ctx, user.ID)
+}
+
+// GetUserEngagementByUsername returns user's contribution breakdown by username
+func (s *service) GetUserEngagementByUsername(ctx context.Context, platform, username string) (*domain.ContributionBreakdown, error) {
+	// Convert username to internal user ID
+	user, err := s.user.GetUserByPlatformUsername(ctx, platform, username)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve user: %w", err)
 	}

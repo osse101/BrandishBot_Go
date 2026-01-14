@@ -1107,43 +1107,40 @@ public class CPHInline
 
     /// <summary>
     /// Get user engagement breakdown
-    /// Command: !engagement [user_id] (defaults to self)
+    /// Command: !engagement [target_user] (defaults to self)
+    /// Note: Will use username-based lookup if provided
     /// </summary>
     public bool GetUserEngagement()
     {
         EnsureInitialized();
         string error = null;
+        if (!CPH.TryGetArg("userType", out string platform)) return false;
 
-        string targetId = null;
-        // NOTE: Input might be a username if coming from chat, but API expects userId (platform_id)
-        // If we want to support !engagement @User, we technically need the ID.
-        // For now, let's assume if arg is provided, it's an ID (advanced usage) or we default to self.
-        
-        if (!GetInputString(0, "user_id", false, out targetId, ref error))
-        {
-             // no arg, use self
-        }
-
-        if (string.IsNullOrEmpty(targetId))
-        {
-             if (!CPH.TryGetArg("userId", out targetId))
-             {
-                 CPH.SetArgument("response", "Error: No user ID found in context or arguments.");
-                 return true;
-             }
-        }
-
-        try
-        {
-            var result = client.GetUserEngagement(targetId).Result;
-            CPH.SetArgument("response", result);
-            return true;
-        }
-        catch (Exception ex)
-        {
-            CPH.LogWarn($"GetUserEngagement API Error: {ex.Message}");
-            CPH.SetArgument("response", $"Error: {ex.Message}");
-            return true;
+        if (GetInputString(0, "target_user", true, out string targetUser, ref error) && !string.IsNullOrWhiteSpace(targetUser))
+        {   //target other user
+            try
+            {
+                var result = client.GetUserEngagementByUsername(platform, targetUser).Result;
+                CPH.SetArgument("response", result);
+                return true;
+            }catch(Exception ex){
+                CPH.LogError($"GetUserEngagementByUsername failed: {ex.Message}");
+                return false;
+            }
+        }else
+        {   //target self
+            try
+            {
+                if (!CPH.TryGetArg("userId", out string platformId)) return false;
+                var result = client.GetUserEngagement(platform, platformId).Result;
+                CPH.SetArgument("response", result);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                CPH.LogError($"GetUserEngagement failed: {ex.Message}");
+                return false;
+            }
         }
     }
 

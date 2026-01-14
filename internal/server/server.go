@@ -141,6 +141,7 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 			r.Post("/vote", progressionHandlers.HandleVote())
 			r.Get("/status", progressionHandlers.HandleGetStatus())
 			r.Get("/engagement", progressionHandlers.HandleGetEngagement())
+			r.Get("/engagement-by-username", progressionHandlers.HandleGetEngagementByUsername())
 			r.Get("/leaderboard", progressionHandlers.HandleGetContributionLeaderboard())
 			r.Get("/session", progressionHandlers.HandleGetVotingSession())
 			r.Get("/unlock-progress", progressionHandlers.HandleGetUnlockProgress())

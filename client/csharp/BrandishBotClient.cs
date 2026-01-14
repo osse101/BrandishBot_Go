@@ -530,6 +530,15 @@ namespace BrandishBot.Client
         }
 
         /// <summary>
+        /// Get user engagement breakdown by username (contribution points)
+        /// </summary>
+        public async Task<string> GetUserEngagementByUsername(string platform, string username)
+        {
+            var query = BuildQuery("platform=" + platform, "username=" + username);
+            return await GetAsync("/api/v1/progression/engagement-by-username" + query);
+        }
+
+        /// <summary>
         /// Get contribution leaderboard
         /// </summary>
         public async Task<string> GetContributionLeaderboard()

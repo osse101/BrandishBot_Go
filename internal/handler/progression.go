@@ -184,6 +184,47 @@ func (h *ProgressionHandlers) HandleGetEngagement() http.HandlerFunc {
 	}
 }
 
+// HandleGetEngagementByUsername returns user's engagement breakdown by username
+// @Summary Get user engagement by username
+// @Description Returns user's engagement contribution breakdown by type using username
+// @Tags progression
+// @Produce json
+// @Param platform query string true "Platform (twitch, youtube, discord)"
+// @Param username query string true "Username"
+// @Success 200 {object} domain.EngagementBreakdown
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /progression/engagement-by-username [get]
+func (h *ProgressionHandlers) HandleGetEngagementByUsername() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromContext(r.Context())
+
+		platform := r.URL.Query().Get("platform")
+		username := r.URL.Query().Get("username")
+
+		if platform == "" {
+			log.Warn("Get user engagement by username: missing platform parameter")
+			respondError(w, http.StatusBadRequest, "platform query parameter is required")
+			return
+		}
+		if username == "" {
+			log.Warn("Get user engagement by username: missing username parameter")
+			respondError(w, http.StatusBadRequest, "username query parameter is required")
+			return
+		}
+
+		breakdown, err := h.service.GetUserEngagementByUsername(r.Context(), platform, username)
+		if err != nil {
+			log.Error("Get user engagement by username: service error", "error", err, "platform", platform, "username", username)
+			respondError(w, http.StatusInternalServerError, "Failed to retrieve engagement data")
+			return
+		}
+
+		log.Info("Get user engagement by username: success", "platform", platform, "username", username)
+		respondJSON(w, http.StatusOK, breakdown)
+	}
+}
+
 // HandleGetContributionLeaderboard returns top contributors
 // @Summary Get contribution leaderboard
 // @Description Returns top contributors by total contributions

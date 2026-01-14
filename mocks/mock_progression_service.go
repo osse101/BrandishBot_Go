@@ -1263,6 +1263,66 @@ func (_c *MockProgressionService_GetUserEngagement_Call) RunAndReturn(run func(c
 	return _c
 }
 
+// GetUserEngagementByUsername provides a mock function with given fields: ctx, platform, username
+func (_m *MockProgressionService) GetUserEngagementByUsername(ctx context.Context, platform string, username string) (*domain.ContributionBreakdown, error) {
+	ret := _m.Called(ctx, platform, username)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetUserEngagementByUsername")
+	}
+
+	var r0 *domain.ContributionBreakdown
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) (*domain.ContributionBreakdown, error)); ok {
+		return rf(ctx, platform, username)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) *domain.ContributionBreakdown); ok {
+		r0 = rf(ctx, platform, username)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*domain.ContributionBreakdown)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = rf(ctx, platform, username)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockProgressionService_GetUserEngagementByUsername_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetUserEngagementByUsername'
+type MockProgressionService_GetUserEngagementByUsername_Call struct {
+	*mock.Call
+}
+
+// GetUserEngagementByUsername is a helper method to define mock.On call
+//   - ctx context.Context
+//   - platform string
+//   - username string
+func (_e *MockProgressionService_Expecter) GetUserEngagementByUsername(ctx interface{}, platform interface{}, username interface{}) *MockProgressionService_GetUserEngagementByUsername_Call {
+	return &MockProgressionService_GetUserEngagementByUsername_Call{Call: _e.mock.On("GetUserEngagementByUsername", ctx, platform, username)}
+}
+
+func (_c *MockProgressionService_GetUserEngagementByUsername_Call) Run(run func(ctx context.Context, platform string, username string)) *MockProgressionService_GetUserEngagementByUsername_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockProgressionService_GetUserEngagementByUsername_Call) Return(_a0 *domain.ContributionBreakdown, _a1 error) *MockProgressionService_GetUserEngagementByUsername_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockProgressionService_GetUserEngagementByUsername_Call) RunAndReturn(run func(context.Context, string, string) (*domain.ContributionBreakdown, error)) *MockProgressionService_GetUserEngagementByUsername_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // InvalidateUnlockCacheForTest provides a mock function with no fields
 func (_m *MockProgressionService) InvalidateUnlockCacheForTest() {
 	_m.Called()
