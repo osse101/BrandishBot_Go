@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -109,6 +110,10 @@ func (h *ProgressionHandlers) HandleVote() http.HandlerFunc {
 		// Cast vote
 		err := h.service.VoteForUnlock(r.Context(), req.Platform, req.PlatformID, req.NodeKey)
 		if err != nil {
+			if errors.Is(err, domain.ErrUserAlreadyVoted) {
+				respondJSON(w, http.StatusOK, SuccessResponse{Message: "You have already voted"})
+				return
+			}
 			log.Warn("Vote request: service error", "error", err, "platform", req.Platform, "platformID", req.PlatformID, "nodeKey", req.NodeKey)
 			respondError(w, http.StatusBadRequest, err.Error())
 			return

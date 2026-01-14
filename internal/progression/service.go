@@ -314,7 +314,7 @@ func (s *service) VoteForUnlock(ctx context.Context, platform, platformID, nodeK
 		return fmt.Errorf("failed to check vote status: %w", err)
 	}
 	if hasVoted {
-		return fmt.Errorf("user already voted in this session")
+		return domain.ErrUserAlreadyVoted
 	}
 
 	// Increment vote and record user vote

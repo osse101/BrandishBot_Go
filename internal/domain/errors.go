@@ -58,6 +58,9 @@ const (
 	// Feature errors
 	ErrMsgFeatureLocked = "feature is locked"
 
+	// Progression errors
+	ErrMsgUserAlreadyVoted = "user has already voted"
+
 	// Recipe/Crafting errors
 	ErrMsgRecipeNotFound = "recipe not found"
 	ErrMsgRecipeLocked   = "recipe is locked"
@@ -129,6 +132,9 @@ var (
 
 	// Validation errors
 	ErrInvalidInput = errors.New(ErrMsgInvalidInput)
+
+	// Progression errors
+	ErrUserAlreadyVoted = errors.New(ErrMsgUserAlreadyVoted)
 
 	// Platform errors
 	ErrInvalidPlatform = errors.New(ErrMsgInvalidPlatform)

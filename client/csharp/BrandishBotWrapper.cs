@@ -1073,7 +1073,7 @@ public class CPHInline
         {
             var result = client.VoteForNode(platform, platformId, nodeKeyString).Result;
             var formatted = ResponseFormatter.FormatMessage(result);
-            CPH.SetArgument("response", result);
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)
