@@ -139,9 +139,9 @@ func TestGambleLifecycle_Integration(t *testing.T) {
 	assert.Equal(t, domain.GambleStateJoining, gamble.State)
 
 	// Verify inventory deduction A
-	invA_AfterStart, err := repo.GetInventory(ctx, userA.ID)
+	invAAfterStart, err := repo.GetInventory(ctx, userA.ID)
 	require.NoError(t, err)
-	require.Equal(t, 3, getQty(invA_AfterStart, lbItem.ID))
+	require.Equal(t, 3, getQty(invAAfterStart, lbItem.ID))
 
 	// --- Step 3: Join Gamble ---
 	// User B joins betting 1 lootbox
@@ -151,9 +151,9 @@ func TestGambleLifecycle_Integration(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify inventory deduction B
-	invB_AfterJoin, err := repo.GetInventory(ctx, userB.ID)
+	invBAfterJoin, err := repo.GetInventory(ctx, userB.ID)
 	require.NoError(t, err)
-	require.Equal(t, 4, getQty(invB_AfterJoin, lbItem.ID))
+	require.Equal(t, 4, getQty(invBAfterJoin, lbItem.ID))
 
 	// --- Step 4: Execute Gamble ---
 	// Expected Outcome:
@@ -177,17 +177,17 @@ func TestGambleLifecycle_Integration(t *testing.T) {
 
 	// Verify Winner Inventory (User A)
 	// Should have 3 lootboxes left + 300 money
-	invA_Final, err := repo.GetInventory(ctx, userA.ID)
+	invAFinal, err := repo.GetInventory(ctx, userA.ID)
 	require.NoError(t, err)
-	require.Equal(t, 3, getQty(invA_Final, lbItem.ID))
-	require.Equal(t, 300, getQty(invA_Final, moneyItem.ID))
+	require.Equal(t, 3, getQty(invAFinal, lbItem.ID))
+	require.Equal(t, 300, getQty(invAFinal, moneyItem.ID))
 
 	// Verify Loser Inventory (User B)
 	// Should have 4 lootboxes left + 0 money
-	invB_Final, err := repo.GetInventory(ctx, userB.ID)
+	invBFinal, err := repo.GetInventory(ctx, userB.ID)
 	require.NoError(t, err)
-	require.Equal(t, 4, getQty(invB_Final, lbItem.ID))
-	require.Equal(t, 0, getQty(invB_Final, moneyItem.ID))
+	require.Equal(t, 4, getQty(invBFinal, lbItem.ID))
+	require.Equal(t, 0, getQty(invBFinal, moneyItem.ID))
 
 	// Wait for async stats/xp if needed (shutdown handles this usually, but we check values directly)
 	// We mocked job/stats so no side effects to check there.

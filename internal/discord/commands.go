@@ -161,7 +161,8 @@ func optionEqual(a, b *discordgo.ApplicationCommandOption) bool {
 // Use for system-level errors or when detailed error message would confuse users.
 //
 // Usage:
-//   respondError(s, i, "Error connecting to game server.")
+//
+//	respondError(s, i, "Error connecting to game server.")
 func respondError(s *discordgo.Session, i *discordgo.InteractionCreate, message string) {
 	if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 		Content: &message,
@@ -228,12 +229,13 @@ func handleEmbedResponse(
 // Returns false if deferral failed (should return early from handler).
 //
 // Usage:
-//   handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-//       if !deferResponse(s, i) {
-//           return
-//       }
-//       // Perform slow operations...
-//   }
+//
+//	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
+//	    if !deferResponse(s, i) {
+//	        return
+//	    }
+//	    // Perform slow operations...
+//	}
 func deferResponse(s *discordgo.Session, i *discordgo.InteractionCreate) bool {
 	if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
@@ -249,10 +251,11 @@ func deferResponse(s *discordgo.Session, i *discordgo.InteractionCreate) bool {
 // Always returns a non-nil *discordgo.User.
 //
 // Usage:
-//   user := getInteractionUser(i)
-//   if !ensureUserRegistered(s, i, client, user, true) {
-//       return
-//   }
+//
+//	user := getInteractionUser(i)
+//	if !ensureUserRegistered(s, i, client, user, true) {
+//	    return
+//	}
 func getInteractionUser(i *discordgo.InteractionCreate) *discordgo.User {
 	user := i.Member.User
 	if user == nil {
@@ -266,12 +269,13 @@ func getInteractionUser(i *discordgo.InteractionCreate) *discordgo.User {
 // Returns slice of ApplicationCommandInteractionDataOption for parsing command arguments.
 //
 // Usage:
-//   options := getOptions(i)
-//   itemName := options[0].StringValue()
-//   quantity := 1
-//   if len(options) > 1 {
-//       quantity = int(options[1].IntValue())
-//   }
+//
+//	options := getOptions(i)
+//	itemName := options[0].StringValue()
+//	quantity := 1
+//	if len(options) > 1 {
+//	    quantity = int(options[1].IntValue())
+//	}
 func getOptions(i *discordgo.InteractionCreate) []*discordgo.ApplicationCommandInteractionDataOption {
 	return i.ApplicationCommandData().Options
 }
@@ -281,12 +285,13 @@ func getOptions(i *discordgo.InteractionCreate) []*discordgo.ApplicationCommandI
 // readable messages. Use for API/business logic errors users can understand and act on.
 //
 // Usage:
-//   msg, err := client.BuyItem(...)
-//   if err != nil {
-//       slog.Error("Failed to buy item", "error", err)
-//       respondFriendlyError(s, i, err.Error())
-//       return
-//   }
+//
+//	msg, err := client.BuyItem(...)
+//	if err != nil {
+//	    slog.Error("Failed to buy item", "error", err)
+//	    respondFriendlyError(s, i, err.Error())
+//	    return
+//	}
 func respondFriendlyError(s *discordgo.Session, i *discordgo.InteractionCreate, message string) {
 	friendlyMsg := formatFriendlyError(message)
 	respondError(s, i, friendlyMsg)
@@ -333,8 +338,9 @@ func formatFriendlyError(msg string) string {
 // Logs errors internally - no need for callers to handle send errors.
 //
 // Usage:
-//   embed := createEmbed("Title", "Description", 0x3498db, "")
-//   sendEmbed(s, i, embed)
+//
+//	embed := createEmbed("Title", "Description", 0x3498db, "")
+//	sendEmbed(s, i, embed)
 func sendEmbed(s *discordgo.Session, i *discordgo.InteractionCreate, embed *discordgo.MessageEmbed) {
 	if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 		Embeds: &[]*discordgo.MessageEmbed{embed},
@@ -347,24 +353,26 @@ func sendEmbed(s *discordgo.Session, i *discordgo.InteractionCreate, embed *disc
 // Use these instead of magic strings to maintain consistency across all embeds.
 // This allows updating footer text globally by changing one constant.
 const (
-	FooterBrandishBot      = "BrandishBot"      // Standard footer for user-facing commands
+	FooterBrandishBot      = "BrandishBot"       // Standard footer for user-facing commands
 	FooterBrandishBotAdmin = "BrandishBot Admin" // Footer for admin commands
-	FooterAdminAction      = "Admin Action"     // Footer for inventory management commands
+	FooterAdminAction      = "Admin Action"      // Footer for inventory management commands
 )
 
 // createEmbed creates a standard embed with optional footer customization.
 // Handles default footer assignment and enforces consistent embed structure.
 //
 // Parameters:
-//   title: Embed title (e.g., "💰 Purchase Complete")
-//   description: Main embed content/description
-//   color: Hex color code (e.g., 0x2ecc71 for green)
-//   footerText: Custom footer text; empty string defaults to FooterBrandishBot
+//
+//	title: Embed title (e.g., "💰 Purchase Complete")
+//	description: Main embed content/description
+//	color: Hex color code (e.g., 0x2ecc71 for green)
+//	footerText: Custom footer text; empty string defaults to FooterBrandishBot
 //
 // Usage:
-//   embed := createEmbed("Sale Complete", msg, 0xf39c12, "")
-//   embed := createEmbed("Admin Action", msg, 0x95a5a6, FooterBrandishBotAdmin)
-//   sendEmbed(s, i, embed)
+//
+//	embed := createEmbed("Sale Complete", msg, 0xf39c12, "")
+//	embed := createEmbed("Admin Action", msg, 0x95a5a6, FooterBrandishBotAdmin)
+//	sendEmbed(s, i, embed)
 func createEmbed(title, description string, color int, footerText string) *discordgo.MessageEmbed {
 	if footerText == "" {
 		footerText = FooterBrandishBot
@@ -384,19 +392,22 @@ func createEmbed(title, description string, color int, footerText string) *disco
 // Returns true if successful, false if registration failed (error already handled).
 //
 // Parameters:
-//   friendlyError: true = show formatted error message from API, false = generic error message
-//   Use true for operations like inventory/stats where users can understand the error
-//   Use false for system operations where generic "Error connecting..." is better
+//
+//	friendlyError: true = show formatted error message from API, false = generic error message
+//	Use true for operations like inventory/stats where users can understand the error
+//	Use false for system operations where generic "Error connecting..." is better
 //
 // Usage (friendly error - show API details):
-//   if !ensureUserRegistered(s, i, client, user, true) {
-//       return
-//   }
+//
+//	if !ensureUserRegistered(s, i, client, user, true) {
+//	    return
+//	}
 //
 // Usage (generic error - system operation):
-//   if !ensureUserRegistered(s, i, client, user, false) {
-//       return
-//   }
+//
+//	if !ensureUserRegistered(s, i, client, user, false) {
+//	    return
+//	}
 func ensureUserRegistered(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient, user *discordgo.User, friendlyError bool) bool {
 	_, err := client.RegisterUser(user.Username, user.ID)
 	if err != nil {

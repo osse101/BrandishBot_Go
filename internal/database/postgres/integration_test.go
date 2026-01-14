@@ -78,7 +78,7 @@ func TestUserRepository_Integration(t *testing.T) {
 	defer pool.Close()
 
 	// Apply migrations
-	if err := applyMigrations(t, ctx, pool, "../../../migrations"); err != nil {
+	if err := applyMigrations(ctx, t, pool, "../../../migrations"); err != nil {
 		t.Fatalf("failed to apply migrations: %v", err)
 	}
 
@@ -373,7 +373,7 @@ func TestUserRepository_Integration(t *testing.T) {
 	})
 }
 
-func applyMigrations(t *testing.T, ctx context.Context, pool *pgxpool.Pool, migrationsDir string) error {
+func applyMigrations(ctx context.Context, t *testing.T, pool *pgxpool.Pool, migrationsDir string) error {
 	entries, err := os.ReadDir(migrationsDir)
 	if err != nil {
 		return fmt.Errorf("failed to read migrations dir: %w", err)

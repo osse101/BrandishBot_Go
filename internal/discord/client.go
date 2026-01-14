@@ -56,7 +56,6 @@ func (c *APIClient) doRequest(method, path string, body interface{}) (*http.Resp
 		if attempt > 0 {
 			// Exponential backoff with jitter
 			jitter := time.Duration(time.Now().UnixNano()%100) * time.Millisecond
-			//nolint:gosec // attempt is small enough
 			delay := retryDelay*time.Duration(1<<uint(attempt-1)) + jitter
 			time.Sleep(delay)
 			slog.Info("Retrying API request", "attempt", attempt, "path", path, "delay", delay)

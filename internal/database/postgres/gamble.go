@@ -1,9 +1,9 @@
 package postgres
 
 import (
-"errors"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"

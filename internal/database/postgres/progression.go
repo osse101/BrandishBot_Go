@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -199,7 +200,7 @@ func (r *progressionRepository) UnlockNode(ctx context.Context, nodeID int, leve
 			nodeKey = node.NodeKey
 		}
 
-		r.bus.Publish(ctx, event.Event{
+		if err := r.bus.Publish(ctx, event.Event{
 			Type:    "progression.node_unlocked",
 			Version: "1.0",
 			Payload: map[string]interface{}{
@@ -208,7 +209,10 @@ func (r *progressionRepository) UnlockNode(ctx context.Context, nodeID int, leve
 				"level":    level,
 				"source":   unlockedBy,
 			},
-		})
+		}); err != nil {
+			// Log but don't fail - event publishing errors shouldn't block node unlocks
+			log.Printf("failed to publish node unlocked event: %v", err)
+		}
 	}
 
 	return nil
@@ -233,7 +237,7 @@ func (r *progressionRepository) RelockNode(ctx context.Context, nodeID int, leve
 			nodeKey = node.NodeKey
 		}
 
-		r.bus.Publish(ctx, event.Event{
+		if err := r.bus.Publish(ctx, event.Event{
 			Type:    "progression.node_relocked",
 			Version: "1.0",
 			Payload: map[string]interface{}{
@@ -241,7 +245,10 @@ func (r *progressionRepository) RelockNode(ctx context.Context, nodeID int, leve
 				"node_key": nodeKey,
 				"level":    level,
 			},
-		})
+		}); err != nil {
+			// Log but don't fail - event publishing errors shouldn't block node relocks
+			log.Printf("failed to publish node relocked event: %v", err)
+		}
 	}
 
 	return nil

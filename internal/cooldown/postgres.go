@@ -47,10 +47,7 @@ func (b *postgresBackend) CheckCooldown(ctx context.Context, userID, action stri
 		return false, 0, nil
 	}
 
-	cooldownDuration, err := b.getEffectiveCooldown(ctx, action)
-	if err != nil {
-		return false, 0, fmt.Errorf("failed to get effective cooldown: %w", err)
-	}
+	cooldownDuration := b.getEffectiveCooldown(ctx, action)
 
 	onCooldown, remaining := b.checkCooldownInternal(lastUsed, cooldownDuration)
 	return onCooldown, remaining, nil
@@ -106,11 +103,7 @@ func (b *postgresBackend) EnforceCooldown(ctx context.Context, userID, action st
 	}
 
 	if lastUsed != nil {
-		cooldownDuration, err := b.getEffectiveCooldown(ctx, action)
-		if err != nil {
-			return fmt.Errorf("failed to get effective cooldown: %w", err)
-		}
-
+		cooldownDuration := b.getEffectiveCooldown(ctx, action)
 		onCooldown, remaining := b.checkCooldownInternal(lastUsed, cooldownDuration)
 		if onCooldown {
 			log.Debug("Race condition detected - concurrent request on cooldown",
@@ -226,18 +219,18 @@ func hashUserAction(userID, action string) int64 {
 	return int64(binary.BigEndian.Uint64(h[:8]) & 0x7FFFFFFFFFFFFFFF)
 }
 
-func (b *postgresBackend) getEffectiveCooldown(ctx context.Context, action string) (time.Duration, error) {
+func (b *postgresBackend) getEffectiveCooldown(ctx context.Context, action string) time.Duration {
 	duration := b.config.GetCooldownDuration(action)
 
 	// Apply progression modifiers (e.g., cooldown reduction for search)
 	if b.progressionSvc != nil && action == "search" {
 		modifiedDuration, err := b.progressionSvc.GetModifiedValue(ctx, "search_cooldown_reduction", float64(duration))
 		if err == nil {
-			return time.Duration(modifiedDuration), nil
+			return time.Duration(modifiedDuration)
 		}
 	}
 
-	return duration, nil
+	return duration
 }
 
 func (b *postgresBackend) checkCooldownInternal(lastUsed *time.Time, duration time.Duration) (bool, time.Duration) {

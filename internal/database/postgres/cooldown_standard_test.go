@@ -120,7 +120,7 @@ func TestCooldownService_StandardLifecycle_Integration(t *testing.T) {
 		require.NoError(t, err)
 
 		// 7. Check after reset - should be clear
-		onCooldown, remaining, err = svc.CheckCooldown(ctx, userID, action)
+		onCooldown, _, err = svc.CheckCooldown(ctx, userID, action)
 		require.NoError(t, err)
 		assert.False(t, onCooldown)
 	})

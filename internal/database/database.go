@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"math"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -22,6 +23,9 @@ func NewPool(connString string, maxConns int, maxIdle, maxLife time.Duration) (*
 		return nil, fmt.Errorf("failed to parse connection string: %w", err)
 	}
 
+	if maxConns > math.MaxInt32 {
+		maxConns = math.MaxInt32
+	}
 	config.MaxConns = int32(maxConns)
 	config.MinConns = 2 // Keeping min conns at 2
 	config.MaxConnLifetime = maxLife
