@@ -77,7 +77,21 @@ func (s *service) processLootboxDrops(ctx context.Context, user *domain.User, in
 	msgBuilder.WriteString(strconv.Itoa(stats.totalValue))
 	msgBuilder.WriteString(")")
 
-	if stats.hasLegendary {
+	if stats.legendaryCount >= 2 {
+		if s.statsService != nil && user != nil {
+			eventData := &domain.LootboxEventData{
+				Item:   lootboxItem.InternalName,
+				Drops:  drops,
+				Value:  stats.totalValue,
+				Source: "lootbox",
+			}
+			if err := s.statsService.RecordUserEvent(ctx, user.ID, domain.EventLootboxGodRoll, eventData.ToMap()); err != nil {
+				log := logger.FromContext(ctx)
+				log.Warn("Failed to record lootbox god roll event", "error", err, "user_id", user.ID)
+			}
+		}
+		msgBuilder.WriteString(" GOD ROLL! ⚡🦁⚡")
+	} else if stats.legendaryCount >= 1 {
 		if s.statsService != nil && user != nil {
 			eventData := &domain.LootboxEventData{
 				Item:   lootboxItem.InternalName,
@@ -114,9 +128,9 @@ func (s *service) processLootboxDrops(ctx context.Context, user *domain.User, in
 }
 
 type dropStats struct {
-	totalValue   int
-	hasLegendary bool
-	hasEpic      bool
+	totalValue     int
+	legendaryCount int
+	hasEpic        bool
 }
 
 func (s *service) aggregateDropsAndUpdateInventory(inventory *domain.Inventory, drops []lootbox.DroppedItem, msgBuilder *strings.Builder) dropStats {
@@ -130,7 +144,7 @@ func (s *service) aggregateDropsAndUpdateInventory(inventory *domain.Inventory, 
 		// Track stats for feedback
 		stats.totalValue += drop.Value
 		if drop.ShineLevel == lootbox.ShineLegendary {
-			stats.hasLegendary = true
+			stats.legendaryCount++
 		} else if drop.ShineLevel == lootbox.ShineEpic {
 			stats.hasEpic = true
 		}
