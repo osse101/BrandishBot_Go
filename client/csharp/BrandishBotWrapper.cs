@@ -137,6 +137,29 @@ public class CPHInline
         return true;
     }
 
+    /// <summary>
+    /// Helper: Check if exception is a 403 Forbidden error
+    /// </summary>
+    private bool IsForbiddenError(Exception ex)
+    {
+        if (ex == null) return false;
+
+        // Check if it's an AggregateException and look at inner exceptions
+        if (ex is AggregateException aex)
+        {
+            foreach (var inner in aex.InnerExceptions)
+            {
+                if (inner.Message.Contains("403") || inner.Message.Contains("Forbidden"))
+                {
+                    return true;
+                }
+            }
+        }
+
+        // Check the exception message directly
+        return ex.Message.Contains("403") || ex.Message.Contains("Forbidden");
+    }
+
     #region Version    /// <summary>
     /// Get the backend version
     /// Args: (none)
@@ -401,8 +424,15 @@ public class CPHInline
         }
         catch (Exception ex)
         {
-            CPH.LogWarn($"BuyItem API Error: {ex.Message}");
-            CPH.SetArgument("response", $"Error: {ex.Message}");
+            if (IsForbiddenError(ex))
+            {
+                CPH.SetArgument("response", "That feature is locked.");
+            }
+            else
+            {
+                CPH.LogWarn($"BuyItem API Error: {ex.Message}");
+                CPH.SetArgument("response", $"Error: {ex.Message}");
+            }
             return true;
         }
     }
@@ -438,8 +468,15 @@ public class CPHInline
         }
         catch (Exception ex)
         {
-            CPH.LogWarn($"SellItem API Error: {ex.Message}");
-            CPH.SetArgument("response", $"Error: {ex.Message}");
+            if (IsForbiddenError(ex))
+            {
+                CPH.SetArgument("response", "That feature is locked.");
+            }
+            else
+            {
+                CPH.LogWarn($"SellItem API Error: {ex.Message}");
+                CPH.SetArgument("response", $"Error: {ex.Message}");
+            }
             return true;
         }
     }
@@ -546,8 +583,15 @@ public class CPHInline
         }
         catch (Exception ex)
         {
-            CPH.LogWarn($"UseItem API Error: {ex.Message}");
-            CPH.SetArgument("response", $"Error: {ex.Message}");
+            if (IsForbiddenError(ex))
+            {
+                CPH.SetArgument("response", "That feature is locked.");
+            }
+            else
+            {
+                CPH.LogWarn($"UseItem API Error: {ex.Message}");
+                CPH.SetArgument("response", $"Error: {ex.Message}");
+            }
             return true;
         }
     }
@@ -573,6 +617,11 @@ public class CPHInline
         }
         catch (Exception ex)
         {
+            if (IsForbiddenError(ex))
+            {
+                CPH.SetArgument("response", "That feature is locked.");
+                return true;
+            }
             CPH.LogError($"Search failed: {ex.Message}");
             return false;
         }
@@ -613,8 +662,15 @@ public class CPHInline
         }
         catch (Exception ex)
         {
-            CPH.LogWarn($"UpgradeItem API Error: {ex.Message}");
-            CPH.SetArgument("response", $"Error: {ex.Message}");
+            if (IsForbiddenError(ex))
+            {
+                CPH.SetArgument("response", "That feature is locked.");
+            }
+            else
+            {
+                CPH.LogWarn($"UpgradeItem API Error: {ex.Message}");
+                CPH.SetArgument("response", $"Error: {ex.Message}");
+            }
             return true;
         }
     }
@@ -650,8 +706,15 @@ public class CPHInline
         }
         catch (Exception ex)
         {
-            CPH.LogWarn($"DisassembleItem API Error: {ex.Message}");
-            CPH.SetArgument("response", $"Error: {ex.Message}");
+            if (IsForbiddenError(ex))
+            {
+                CPH.SetArgument("response", "That feature is locked.");
+            }
+            else
+            {
+                CPH.LogWarn($"DisassembleItem API Error: {ex.Message}");
+                CPH.SetArgument("response", $"Error: {ex.Message}");
+            }
             return true;
         }
     }
@@ -712,8 +775,15 @@ public class CPHInline
         }
         catch (Exception ex)
         {
-            CPH.LogWarn($"StartGamble API Error: {ex.Message}");
-            CPH.SetArgument("response", $"Error: {ex.Message}");
+            if (IsForbiddenError(ex))
+            {
+                CPH.SetArgument("response", "That feature is locked.");
+            }
+            else
+            {
+                CPH.LogWarn($"StartGamble API Error: {ex.Message}");
+                CPH.SetArgument("response", $"Error: {ex.Message}");
+            }
             return true;
         }
     }
@@ -752,8 +822,15 @@ public class CPHInline
         }
         catch (Exception ex)
         {
-            CPH.LogWarn($"JoinGamble API Error: {ex.Message}");
-            CPH.SetArgument("response", $"Error: {ex.Message}");
+            if (IsForbiddenError(ex))
+            {
+                CPH.SetArgument("response", "That feature is locked.");
+            }
+            else
+            {
+                CPH.LogWarn($"JoinGamble API Error: {ex.Message}");
+                CPH.SetArgument("response", $"Error: {ex.Message}");
+            }
             return true;
         }
     }
@@ -1450,8 +1527,15 @@ public class CPHInline
         }
         catch (Exception ex)
         {
-            CPH.LogWarn($"AwardJobXP API Error: {ex.Message}");
-            CPH.SetArgument("response", $"Error: {ex.Message}");
+            if (IsForbiddenError(ex))
+            {
+                CPH.SetArgument("response", "That feature is locked.");
+            }
+            else
+            {
+                CPH.LogWarn($"AwardJobXP API Error: {ex.Message}");
+                CPH.SetArgument("response", $"Error: {ex.Message}");
+            }
             return true;
         }
     }
@@ -1524,8 +1608,15 @@ public class CPHInline
         }
         catch (Exception ex)
         {
-            CPH.LogWarn($"AdminAwardXP API Error: {ex.Message}");
-            CPH.SetArgument("response", $"Error: {ex.Message}");
+            if (IsForbiddenError(ex))
+            {
+                CPH.SetArgument("response", "That feature is locked.");
+            }
+            else
+            {
+                CPH.LogWarn($"AdminAwardXP API Error: {ex.Message}");
+                CPH.SetArgument("response", $"Error: {ex.Message}");
+            }
             return true;
         }
     }
