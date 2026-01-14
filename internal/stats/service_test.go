@@ -183,6 +183,9 @@ func TestRecordUserEvent_DailyStreak(t *testing.T) {
 		},
 	}
 
+	// Recreate service to reset cache for test simulation
+	svc = NewService(repo)
+
 	// Record event today - should increment streak to 6
 	svc.RecordUserEvent(ctx, userID, domain.EventItemAdded, nil)
 
@@ -209,6 +212,9 @@ func TestRecordUserEvent_DailyStreak(t *testing.T) {
 			CreatedAt: twoDaysAgo,
 		},
 	}
+
+	// Recreate service to reset cache for test simulation
+	svc = NewService(repo)
 
 	// Record event today - should reset streak to 1
 	svc.RecordUserEvent(ctx, userID, domain.EventItemAdded, nil)

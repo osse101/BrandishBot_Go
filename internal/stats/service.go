@@ -3,6 +3,7 @@ package stats
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
@@ -22,12 +23,18 @@ type Service interface {
 // service implements the Service interface
 type service struct {
 	repo repository.Stats
+
+	// streakCheckCache tracks when a user's streak was last checked/updated.
+	// Key: userID, Value: Time of last successful check
+	streakCheckCache map[string]time.Time
+	cacheMu          sync.RWMutex
 }
 
 // NewService creates a new stats service
 func NewService(repo repository.Stats) Service {
 	return &service{
-		repo: repo,
+		repo:             repo,
+		streakCheckCache: make(map[string]time.Time),
 	}
 }
 
@@ -65,7 +72,23 @@ func (s *service) RecordUserEvent(ctx context.Context, userID string, eventType 
 
 // checkDailyStreak calculates and records daily login streak
 func (s *service) checkDailyStreak(ctx context.Context, userID string) error {
-	// Get the last streak event
+	now := time.Now()
+	y2, m2, d2 := now.UTC().Date()
+
+	// Optimization: Check in-memory cache first
+	s.cacheMu.RLock()
+	lastChecked, found := s.streakCheckCache[userID]
+	s.cacheMu.RUnlock()
+
+	if found {
+		y1, m1, d1 := lastChecked.UTC().Date()
+		// If already checked today, we can skip the database query
+		if y1 == y2 && m1 == m2 && d1 == d2 {
+			return nil
+		}
+	}
+
+	// Get the last streak event from DB
 	events, err := s.repo.GetUserEventsByType(ctx, userID, domain.EventDailyStreak, 1)
 	if err != nil {
 		return fmt.Errorf("failed to get streak events: %w", err)
@@ -90,13 +113,12 @@ func (s *service) checkDailyStreak(ctx context.Context, userID string) error {
 		}
 	}
 
-	now := time.Now()
 	// Compare dates (UTC)
-	y1, m1, d1 := lastStreakTime.UTC().Date()
-	y2, m2, d2 := now.UTC().Date()
+	yLast, mLast, dLast := lastStreakTime.UTC().Date()
 
-	// If already recorded today, do nothing
-	if y1 == y2 && m1 == m2 && d1 == d2 {
+	// Update cache immediately if we confirm it's already done today
+	if yLast == y2 && mLast == m2 && dLast == d2 {
+		s.updateCache(userID, now)
 		return nil
 	}
 
@@ -106,7 +128,7 @@ func (s *service) checkDailyStreak(ctx context.Context, userID string) error {
 
 	newStreak := 1
 	// If last streak was yesterday, increment
-	if y1 == y3 && m1 == m3 && d1 == d3 {
+	if yLast == y3 && mLast == m3 && dLast == d3 {
 		newStreak = lastStreak + 1
 	}
 
@@ -121,7 +143,21 @@ func (s *service) checkDailyStreak(ctx context.Context, userID string) error {
 		return fmt.Errorf("failed to record streak event: %w", err)
 	}
 
+	// Update cache after successful record
+	s.updateCache(userID, now)
+
 	return nil
+}
+
+func (s *service) updateCache(userID string, timestamp time.Time) {
+	s.cacheMu.Lock()
+	defer s.cacheMu.Unlock()
+
+	// Prevent memory leak: Reset cache if it gets too large
+	if len(s.streakCheckCache) > 5000 {
+		s.streakCheckCache = make(map[string]time.Time)
+	}
+	s.streakCheckCache[userID] = timestamp
 }
 
 // GetUserCurrentStreak retrieves the current daily login streak for a user
