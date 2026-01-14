@@ -271,6 +271,13 @@ generate:
 	@echo "Generating sqlc code..."
 	@$(SQLC) generate
 	@echo "✓ sqlc code generated"
+	@echo "Generating progression keys from config..."
+	@go run ./cmd/gen-progression-keys -config configs/progression_tree.json -output internal/progression/keys.go
+	@echo "✓ progression keys generated"
+	@echo "Generating mocks..."
+	@$(MOCKERY)
+	@echo "✓ mocks generated"
+	@go mod tidy
 
 # Docker commands
 docker-up:
