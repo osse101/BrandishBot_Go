@@ -137,6 +137,12 @@ func (s *service) resolveItemName(ctx context.Context, itemName string) (string,
 // calculateMaxPossibleCrafts calculates the maximum number of crafts possible given available materials
 func calculateMaxPossibleCrafts(inventory *domain.Inventory, recipe *domain.Recipe, requestedQuantity int) int {
 	maxPossible := requestedQuantity
+
+	// Clamp to global max transaction quantity if it's larger
+	if maxPossible > domain.MaxTransactionQuantity {
+		maxPossible = domain.MaxTransactionQuantity
+	}
+
 	for _, cost := range recipe.BaseCost {
 		_, userQuantity := utils.FindSlot(inventory, cost.ItemID)
 		if cost.Quantity > 0 {
@@ -187,6 +193,10 @@ func addItemToInventory(inventory *domain.Inventory, itemID, quantity int) {
 func (s *service) UpgradeItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (*CraftingResult, error) {
 	log := logger.FromContext(ctx)
 	log.Info("UpgradeItem called", "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity)
+
+	if quantity <= 0 {
+		return nil, fmt.Errorf("quantity must be positive")
+	}
 
 	// Resolve public name to internal name
 	resolvedName, err := s.resolveItemName(ctx, itemName)
@@ -473,6 +483,10 @@ func (s *service) processDisassembleOutputs(ctx context.Context, inventory *doma
 func (s *service) DisassembleItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (*DisassembleResult, error) {
 	log := logger.FromContext(ctx)
 	log.Info("DisassembleItem called", "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity)
+
+	if quantity <= 0 {
+		return nil, fmt.Errorf("quantity must be positive")
+	}
 
 	// Resolve public name to internal name
 	resolvedName, err := s.resolveItemName(ctx, itemName)
