@@ -1,5 +1,7 @@
 {
   "instructions": [
+    "Clean up all dangling processes after completion of tasks",
+    "Present all information as concisely as possible even at the cost of grammar",
     "Run `make mocks` after modifying repository interface files",
     "Run `make generate` after modifying .sql query files in internal/database/queries/",
     "Run `make lint` after editing Go files (encouraged, not enforced)",
