@@ -141,5 +141,23 @@ namespace BrandishBot.Client
                 return $"Error parsing version: {ex.Message}";
             }
         }
+
+        /// <summary>
+        /// Default formatter that extracts and returns just the message field from any JSON response
+        /// </summary>
+        /// <param name="jsonResponse">JSON object containing a message field</param>
+        /// <returns>The message field value, or error message if parsing fails</returns>
+        public static string FormatMessage(string jsonResponse)
+        {
+            try
+            {
+                var response = Newtonsoft.Json.Linq.JObject.Parse(jsonResponse);
+                return response["message"]?.ToString() ?? "(no message)";
+            }
+            catch (Exception ex)
+            {
+                return $"Error parsing response: {ex.Message}";
+            }
+        }
     }
 }

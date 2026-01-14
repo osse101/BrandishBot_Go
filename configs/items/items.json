@@ -23,17 +23,41 @@
       "tier": 0,
       "max_stack": 1000000,
       "base_value": 1,
-      "tags": ["currency"],
+      "tags": [
+        "currency"
+      ],
       "default_display": "💰"
+    },
+    {
+      "internal_name": "item_shovel",
+      "public_name": "shovel",
+      "description": "A basic shovel",
+      "tier": 1,
+      "max_stack": 1000,
+      "base_value": 100,
+      "tags": [
+        "consumable",
+        "tradeable",
+        "sellable",
+        "buyable"
+      ],
+      "default_display": "A basic shovel"
     },
     {
       "internal_name": "lootbox_tier0",
       "public_name": "junkbox",
       "description": "A basic lootbox containing random items",
       "tier": 0,
-      "max_stack": 100,
+      "max_stack": 1000,
       "base_value": 100,
-      "tags": ["consumable", "tradeable", "can_open", "upgradeable", "sellable", "buyable"],
+      "tags": [
+        "consumable",
+        "tradeable",
+        "can_open",
+        "upgradeable",
+        "sellable",
+        "buyable"
+      ],
       "handler": "lootbox",
       "default_display": "A dingy box"
     },
@@ -42,9 +66,17 @@
       "public_name": "lootbox",
       "description": "An upgraded lootbox with better rewards",
       "tier": 1,
-      "max_stack": 100,
+      "max_stack": 1000,
       "base_value": 500,
-      "tags": ["consumable", "tradeable", "can_open", "upgradeable", "disassembleable", "sellable", "buyable"],
+      "tags": [
+        "consumable",
+        "tradeable",
+        "can_open",
+        "upgradeable",
+        "disassembleable",
+        "sellable",
+        "buyable"
+      ],
       "handler": "lootbox",
       "default_display": "A sturdy chest"
     },
@@ -53,9 +85,17 @@
       "public_name": "goldbox",
       "description": "A premium lootbox with rare items",
       "tier": 2,
-      "max_stack": 100,
+      "max_stack": 1000,
       "base_value": 2500,
-      "tags": ["consumable", "tradeable", "can_open", "upgradeable", "disassembleable", "sellable", "buyable"],
+      "tags": [
+        "consumable",
+        "tradeable",
+        "can_open",
+        "upgradeable",
+        "disassembleable",
+        "sellable",
+        "buyable"
+      ],
       "handler": "lootbox",
       "default_display": "A gleaming golden chest"
     },
@@ -64,9 +104,12 @@
       "public_name": "missile",
       "description": "A powerful weapon",
       "tier": 1,
-      "max_stack": 1,
+      "max_stack": 1000,
       "base_value": 1000,
-      "tags": ["upgradeable", "consumable"],
+      "tags": [
+        "upgradeable",
+        "consumable"
+      ],
       "handler": "weapon",
       "default_display": "A shiny ray gun"
     }

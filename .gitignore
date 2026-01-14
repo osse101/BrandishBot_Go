@@ -47,6 +47,10 @@ logs/
 *.log
 *.jsonl
 
+# Temp files
+temp/
+tmp/
+
 # Benchmark results (keep baseline.txt, ignore temporary files)
 benchmarks/results/*.txt
 !benchmarks/results/baseline.txt

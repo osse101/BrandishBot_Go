@@ -177,7 +177,8 @@ public class CPHInline
         try
         {
             var result = client.RegisterUser(platform, platformId, username).Result;
-            CPH.SetArgument("response", result);
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)
@@ -258,7 +259,8 @@ public class CPHInline
         try
         {
             var result = client.AddItemByUsername(platform, targetUser, itemName, quantity).Result;
-            CPH.SetArgument("response", result);
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (AggregateException aex)
@@ -303,7 +305,8 @@ public class CPHInline
         try
         {
             var result = client.RemoveItemByUsername(platform, targetUser, itemName, quantity).Result;
-            CPH.SetArgument("response", result);
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (AggregateException aex)
@@ -351,7 +354,8 @@ public class CPHInline
         try
         {
             var result = client.GiveItem(fromPlatform, fromUsername, toPlatform, toUsername, itemName, quantity).Result;
-            CPH.SetArgument("response", result);
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)
@@ -391,7 +395,8 @@ public class CPHInline
         try
         {
             var result = client.BuyItem(platform, platformId, username, itemName, quantity).Result;
-            CPH.SetArgument("response", result);
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)
@@ -427,7 +432,8 @@ public class CPHInline
         try
         {
             var result = client.SellItem(platform, platformId, username, itemName, quantity).Result;
-            CPH.SetArgument("response", result);
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)
@@ -534,7 +540,8 @@ public class CPHInline
         try
         {
             var result = client.UseItem(platform, platformId, username, itemName, quantity, targetUsername).Result;
-            CPH.SetArgument("response", result);
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)
@@ -560,7 +567,8 @@ public class CPHInline
         try
         {
             var result = client.Search(platform, platformId, username).Result;
-            CPH.SetArgument("response", result);
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)
@@ -599,7 +607,8 @@ public class CPHInline
         try
         {
             var result = client.UpgradeItem(platform, platformId, username, itemName, quantity).Result;
-            CPH.SetArgument("response", result);
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)
@@ -635,7 +644,8 @@ public class CPHInline
         try
         {
             var result = client.DisassembleItem(platform, platformId, username, itemName, quantity).Result;
-            CPH.SetArgument("response", result);
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)
@@ -696,7 +706,8 @@ public class CPHInline
         try
         {
             var result = client.StartGamble(platform, platformId, username, lootboxItemName, quantity).Result;
-            CPH.SetArgument("response", result);
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)
@@ -735,7 +746,8 @@ public class CPHInline
         try
         {
             var result = client.JoinGamble(gambleId, platform, platformId, username, lootboxItemName, quantity).Result;
-            CPH.SetArgument("response", result);
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)
@@ -974,7 +986,8 @@ public class CPHInline
         try
         {
             var result = client.VoteForNode(platform, platformId, nodeKey).Result;
-            CPH.SetArgument("response", result);
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)
@@ -1134,7 +1147,8 @@ public class CPHInline
         try
         {
             var result = client.AdminUnlockNode(nodeKey, level).Result;
-            CPH.SetArgument("response", result);
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)
@@ -1156,7 +1170,8 @@ public class CPHInline
         try
         {
             var result = client.AdminUnlockAllNodes().Result;
-            CPH.SetArgument("response", result);
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)
@@ -1186,7 +1201,8 @@ public class CPHInline
         try
         {
             var result = client.AdminRelockNode(nodeKey, level).Result;
-            CPH.SetArgument("response", result);
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)
@@ -1207,7 +1223,8 @@ public class CPHInline
         try
         {
             var result = client.AdminInstantUnlock().Result;
-            CPH.SetArgument("response", result);
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)
@@ -1228,7 +1245,8 @@ public class CPHInline
         try
         {
             var result = client.AdminStartVoting().Result;
-            CPH.SetArgument("response", result);
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)
@@ -1249,7 +1267,8 @@ public class CPHInline
         try
         {
             var result = client.AdminEndVoting().Result;
-            CPH.SetArgument("response", result);
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)
@@ -1288,7 +1307,8 @@ public class CPHInline
         try
         {
             var result = client.AdminResetProgression(resetBy, reason, preserve).Result;
-            CPH.SetArgument("response", result);
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)
@@ -1331,7 +1351,8 @@ public class CPHInline
         try
         {
             var result = client.AdminAddContribution(amount).Result;
-            CPH.SetArgument("response", result);
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)
@@ -1423,7 +1444,8 @@ public class CPHInline
         try
         {
             var result = client.AwardJobXP(platform, platformId, targetUser, jobName, amount).Result;
-            CPH.SetArgument("response", result);
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)
@@ -1496,7 +1518,8 @@ public class CPHInline
         try
         {
             var result = client.AdminAwardXP(platform, targetUser, jobKey, amount).Result;
-            CPH.SetArgument("response", result);
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)
@@ -1558,7 +1581,8 @@ public class CPHInline
         try
         {
             var result = client.InitiateLinking(platform, platformId, username).Result;
-            CPH.SetArgument("response", result);
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)
@@ -1593,7 +1617,8 @@ public class CPHInline
         try
         {
             var result = client.ClaimLinkingCode(platform, platformId, username, code).Result;
-            CPH.SetArgument("response", result);
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)
@@ -1622,7 +1647,8 @@ public class CPHInline
         try
         {
             var result = client.ConfirmLinking(platform, platformId).Result;
-            CPH.SetArgument("response", result);
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)
@@ -1651,7 +1677,8 @@ public class CPHInline
         try
         {
             var result = client.UnlinkAccounts(platform, platformId).Result;
-            CPH.SetArgument("response", result);
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)
@@ -1705,7 +1732,8 @@ public class CPHInline
         try
         {
             var result = client.ReloadAliases().Result;
-            CPH.SetArgument("response", result);
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)
@@ -1734,7 +1762,8 @@ public class CPHInline
         try
         {
             var result = client.Test(platform, platformId, username).Result;
-            CPH.SetArgument("response", result);
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)
@@ -1765,7 +1794,8 @@ public class CPHInline
         try
         {
             var result = client.HandleMessage(platform, platformId, username, message).Result;
-            CPH.SetArgument("response", result);
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (AggregateException aex)

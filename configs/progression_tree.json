@@ -24,7 +24,9 @@
       "size": "small",
       "category": "items",
       "max_level": 1,
-      "prerequisites": ["progression_system"],
+      "prerequisites": [
+        "progression_system"
+      ],
       "sort_order": 1,
       "auto_unlock": false
     },
@@ -37,7 +39,9 @@
       "size": "small",
       "category": "items",
       "max_level": 1,
-      "prerequisites": ["item_money"],
+      "prerequisites": [
+        "item_money"
+      ],
       "sort_order": 2,
       "auto_unlock": false
     },
@@ -50,7 +54,9 @@
       "size": "large",
       "category": "economy",
       "max_level": 1,
-      "prerequisites": ["item_money"],
+      "prerequisites": [
+        "item_money"
+      ],
       "sort_order": 10,
       "auto_unlock": false
     },
@@ -63,7 +69,9 @@
       "size": "medium",
       "category": "crafting",
       "max_level": 1,
-      "prerequisites": ["item_lootbox0"],
+      "prerequisites": [
+        "item_lootbox0"
+      ],
       "sort_order": 20,
       "auto_unlock": false
     },
@@ -76,7 +84,9 @@
       "size": "medium",
       "category": "crafting",
       "max_level": 1,
-      "prerequisites": ["item_lootbox1"],
+      "prerequisites": [
+        "item_lootbox1"
+      ],
       "sort_order": 21,
       "auto_unlock": false
     },
@@ -89,7 +99,9 @@
       "size": "medium",
       "category": "utility",
       "max_level": 1,
-      "prerequisites": ["item_lootbox0"],
+      "prerequisites": [
+        "item_lootbox0"
+      ],
       "sort_order": 23,
       "auto_unlock": false
     },
@@ -102,7 +114,9 @@
       "size": "small",
       "category": "economy",
       "max_level": 1,
-      "prerequisites": ["feature_economy"],
+      "prerequisites": [
+        "feature_economy"
+      ],
       "sort_order": 11,
       "auto_unlock": false
     },
@@ -115,8 +129,25 @@
       "size": "small",
       "category": "economy",
       "max_level": 1,
-      "prerequisites": ["feature_economy"],
+      "prerequisites": [
+        "feature_economy"
+      ],
       "sort_order": 12,
+      "auto_unlock": false
+    },
+    {
+      "key": "item_shovel",
+      "name": "Shovel",
+      "type": "item",
+      "description": "Unlock shovel",
+      "tier": 1,
+      "size": "small",
+      "category": "items",
+      "max_level": 1,
+      "prerequisites": [
+        "feature_search"
+      ],
+      "sort_order": 21,
       "auto_unlock": false
     },
     {
@@ -128,7 +159,9 @@
       "size": "medium",
       "category": "items",
       "max_level": 1,
-      "prerequisites": ["item_lootbox0"],
+      "prerequisites": [
+        "item_lootbox0"
+      ],
       "sort_order": 22,
       "auto_unlock": false
     },
@@ -141,7 +174,9 @@
       "size": "medium",
       "category": "gambling",
       "max_level": 1,
-      "prerequisites": ["feature_economy"],
+      "prerequisites": [
+        "feature_economy"
+      ],
       "sort_order": 30,
       "auto_unlock": false
     },
@@ -154,7 +189,9 @@
       "size": "medium",
       "category": "combat",
       "max_level": 1,
-      "prerequisites": ["item_lootbox1"],
+      "prerequisites": [
+        "item_lootbox1"
+      ],
       "sort_order": 31,
       "auto_unlock": false
     },
@@ -167,7 +204,9 @@
       "size": "large",
       "category": "exploration",
       "max_level": 1,
-      "prerequisites": ["feature_search"],
+      "prerequisites": [
+        "feature_search"
+      ],
       "sort_order": 32,
       "auto_unlock": false
     },
@@ -180,7 +219,9 @@
       "size": "small",
       "category": "upgrades",
       "max_level": 5,
-      "prerequisites": ["feature_search"],
+      "prerequisites": [
+        "feature_search"
+      ],
       "sort_order": 40,
       "auto_unlock": false,
       "modifier_config": {
@@ -199,7 +240,9 @@
       "size": "small",
       "category": "upgrades",
       "max_level": 5,
-      "prerequisites": ["feature_economy"],
+      "prerequisites": [
+        "feature_economy"
+      ],
       "sort_order": 41,
       "auto_unlock": false,
       "modifier_config": {
@@ -218,7 +261,9 @@
       "size": "small",
       "category": "upgrades",
       "max_level": 5,
-      "prerequisites": ["upgrade_job_xp_multiplier"],
+      "prerequisites": [
+        "upgrade_job_xp_multiplier"
+      ],
       "sort_order": 42,
       "auto_unlock": false,
       "modifier_config": {
@@ -237,7 +282,9 @@
       "size": "small",
       "category": "upgrades",
       "max_level": 3,
-      "prerequisites": ["feature_gamble"],
+      "prerequisites": [
+        "feature_gamble"
+      ],
       "sort_order": 43,
       "auto_unlock": false,
       "modifier_config": {
