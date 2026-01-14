@@ -44,3 +44,28 @@ func formatTreeStatus(nodes []*domain.ProgressionTreeNode) string {
 
 	return sb.String()
 }
+
+// formatVotingOptions formats voting session options into a readable string
+// Format: "display_name(target_level) - Unlock Cost: unlock_cost Votes: vote_count |"
+// Target level is omitted if it is 1
+func formatVotingOptions(options []domain.ProgressionVotingOption) string {
+	var formatted []string
+
+	for _, opt := range options {
+		if opt.NodeDetails == nil {
+			continue
+		}
+
+		// Build level suffix - omit if target_level is 1
+		levelStr := ""
+		if opt.TargetLevel != 1 {
+			levelStr = fmt.Sprintf("(%d)", opt.TargetLevel)
+		}
+
+		line := fmt.Sprintf("%s%s - Unlock Cost: %d Votes: %d |",
+			opt.NodeDetails.DisplayName, levelStr, opt.NodeDetails.UnlockCost, opt.VoteCount)
+		formatted = append(formatted, line)
+	}
+
+	return strings.Join(formatted, " ")
+}

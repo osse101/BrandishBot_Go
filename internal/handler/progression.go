@@ -35,7 +35,7 @@ func (h *ProgressionHandlers) HandleGetTree() http.HandlerFunc {
 
 		tree, err := h.service.GetProgressionTree(r.Context())
 		if err != nil {
-			log.Error("Failed to get progression tree", "error", err)
+			log.Error("Get progression tree: service error", "error", err)
 			respondError(w, http.StatusInternalServerError, "Failed to retrieve progression tree")
 			return
 		}
@@ -44,6 +44,7 @@ func (h *ProgressionHandlers) HandleGetTree() http.HandlerFunc {
 			Nodes: tree,
 		}
 
+		log.Info("Get progression tree: success")
 		respondJSON(w, http.StatusOK, response)
 	}
 }
@@ -62,7 +63,7 @@ func (h *ProgressionHandlers) HandleGetAvailable() http.HandlerFunc {
 
 		available, err := h.service.GetAvailableUnlocks(r.Context())
 		if err != nil {
-			log.Error("Failed to get available unlocks", "error", err)
+			log.Error("Get available unlocks: service error", "error", err)
 			respondError(w, http.StatusInternalServerError, "Failed to retrieve available unlocks")
 			return
 		}
@@ -71,6 +72,7 @@ func (h *ProgressionHandlers) HandleGetAvailable() http.HandlerFunc {
 			Available: available,
 		}
 
+		log.Info("Get available unlocks: success")
 		respondJSON(w, http.StatusOK, response)
 	}
 }
@@ -92,12 +94,14 @@ func (h *ProgressionHandlers) HandleVote() http.HandlerFunc {
 
 		var req VoteRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			log.Warn("Vote request: invalid JSON body", "error", err)
 			respondError(w, http.StatusBadRequest, "Invalid request body")
 			return
 		}
 
 		// Validate request
 		if err := GetValidator().ValidateStruct(req); err != nil {
+			log.Warn("Vote request: validation failed", "error", err, "userID", req.UserID, "nodeKey", req.NodeKey)
 			respondError(w, http.StatusBadRequest, fmt.Sprintf("Invalid request: %v", err))
 			return
 		}
@@ -105,7 +109,7 @@ func (h *ProgressionHandlers) HandleVote() http.HandlerFunc {
 		// Cast vote
 		err := h.service.VoteForUnlock(r.Context(), req.UserID, req.NodeKey)
 		if err != nil {
-			log.Error("Failed to cast vote", "error", err, "userID", req.UserID, "nodeKey", req.NodeKey)
+			log.Warn("Vote request: service error", "error", err, "userID", req.UserID, "nodeKey", req.NodeKey)
 			respondError(w, http.StatusBadRequest, err.Error())
 			return
 		}
@@ -129,11 +133,12 @@ func (h *ProgressionHandlers) HandleGetStatus() http.HandlerFunc {
 
 		status, err := h.service.GetProgressionStatus(r.Context())
 		if err != nil {
-			log.Error("Failed to get progression status", "error", err)
+			log.Error("Get progression status: service error", "error", err)
 			respondError(w, http.StatusInternalServerError, "Failed to retrieve progression status")
 			return
 		}
 
+		log.Info("Get progression status: success")
 		respondJSON(w, http.StatusOK, status)
 	}
 }
@@ -154,17 +159,19 @@ func (h *ProgressionHandlers) HandleGetEngagement() http.HandlerFunc {
 
 		userID := r.URL.Query().Get("user_id")
 		if userID == "" {
+			log.Warn("Get user engagement: missing user_id parameter")
 			respondError(w, http.StatusBadRequest, "user_id query parameter is required")
 			return
 		}
 
 		breakdown, err := h.service.GetUserEngagement(r.Context(), userID)
 		if err != nil {
-			log.Error("Failed to get user engagement", "error", err, "userID", userID)
+			log.Error("Get user engagement: service error", "error", err, "userID", userID)
 			respondError(w, http.StatusInternalServerError, "Failed to retrieve engagement data")
 			return
 		}
 
+		log.Info("Get user engagement: success", "userID", userID)
 		respondJSON(w, http.StatusOK, breakdown)
 	}
 }
@@ -180,13 +187,16 @@ func (h *ProgressionHandlers) HandleGetEngagement() http.HandlerFunc {
 // @Router /progression/leaderboard [get]
 func (h *ProgressionHandlers) HandleGetContributionLeaderboard() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromContext(r.Context())
+
 		limit := getQueryInt(r, "limit", 10)
 		leaderboard, err := h.service.GetContributionLeaderboard(r.Context(), limit)
 		if err != nil {
-			logger.FromContext(r.Context()).Error("Failed to get contribution leaderboard", "error", err)
+			log.Error("Get contribution leaderboard: service error", "error", err, "limit", limit)
 			respondError(w, http.StatusInternalServerError, "Failed to retrieve leaderboard")
 			return
 		}
+		log.Info("Get contribution leaderboard: success", "limit", limit)
 		respondJSON(w, http.StatusOK, leaderboard)
 	}
 }
@@ -202,13 +212,16 @@ func (h *ProgressionHandlers) HandleGetContributionLeaderboard() http.HandlerFun
 // @Router /progression/velocity [get]
 func (h *ProgressionHandlers) HandleGetVelocity() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromContext(r.Context())
+
 		days := getQueryInt(r, "days", 7)
 		velocity, err := h.service.GetEngagementVelocity(r.Context(), days)
 		if err != nil {
-			logger.FromContext(r.Context()).Error("Failed to get engagement velocity", "error", err)
+			log.Error("Get engagement velocity: service error", "error", err, "days", days)
 			respondError(w, http.StatusInternalServerError, "Failed to retrieve velocity metrics")
 			return
 		}
+		log.Info("Get engagement velocity: success", "days", days)
 		respondJSON(w, http.StatusOK, velocity)
 	}
 }
@@ -264,17 +277,19 @@ func (h *ProgressionHandlers) handleAdminNodeAction(action func(context.Context,
 			Level   int    `json:"level" validate:"min=1"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			log.Warn("Admin node action: invalid JSON body", "error", err)
 			respondError(w, http.StatusBadRequest, "Invalid request body")
 			return
 		}
 
 		if err := GetValidator().ValidateStruct(req); err != nil {
+			log.Warn("Admin node action: validation failed", "error", err, "nodeKey", req.NodeKey, "level", req.Level)
 			respondError(w, http.StatusBadRequest, fmt.Sprintf("Invalid request: %v", err))
 			return
 		}
 
 		if err := action(r.Context(), req.NodeKey, req.Level); err != nil {
-			log.Error("Failed to perform admin action", "error", err, "nodeKey", req.NodeKey, "level", req.Level)
+			log.Error("Admin node action: service error", "error", err, "nodeKey", req.NodeKey, "level", req.Level)
 			respondError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
@@ -335,12 +350,14 @@ func (h *ProgressionHandlers) HandleAdminReset() http.HandlerFunc {
 
 		var req AdminResetRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			log.Warn("Admin reset: invalid JSON body", "error", err)
 			respondError(w, http.StatusBadRequest, "Invalid request body")
 			return
 		}
 
 		// Validate request
 		if err := GetValidator().ValidateStruct(req); err != nil {
+			log.Warn("Admin reset: validation failed", "error", err, "resetBy", req.ResetBy)
 			respondError(w, http.StatusBadRequest, fmt.Sprintf("Invalid request: %v", err))
 			return
 		}
@@ -351,7 +368,7 @@ func (h *ProgressionHandlers) HandleAdminReset() http.HandlerFunc {
 
 		err := h.service.ResetProgressionTree(r.Context(), req.ResetBy, req.Reason, req.PreserveUserProgression)
 		if err != nil {
-			log.Error("Failed to reset tree", "error", err)
+			log.Error("Admin reset: service error", "error", err, "resetBy", req.ResetBy)
 			respondError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
@@ -375,12 +392,13 @@ func (h *ProgressionHandlers) HandleGetVotingSession() http.HandlerFunc {
 
 		session, err := h.service.GetActiveVotingSession(r.Context())
 		if err != nil {
-			log.Error("Failed to get voting session", "error", err)
+			log.Error("Get voting session: service error", "error", err)
 			respondError(w, http.StatusInternalServerError, "Failed to retrieve voting session")
 			return
 		}
 
 		if session == nil {
+			log.Info("Get voting session: no active session")
 			respondJSON(w, http.StatusOK, map[string]interface{}{
 				"session": nil,
 				"message": "No active voting session",
@@ -388,6 +406,7 @@ func (h *ProgressionHandlers) HandleGetVotingSession() http.HandlerFunc {
 			return
 		}
 
+		log.Info("Get voting session: success")
 		respondJSON(w, http.StatusOK, session)
 	}
 }
@@ -406,12 +425,13 @@ func (h *ProgressionHandlers) HandleGetUnlockProgress() http.HandlerFunc {
 
 		progress, err := h.service.GetUnlockProgress(r.Context())
 		if err != nil {
-			log.Error("Failed to get unlock progress", "error", err)
+			log.Error("Get unlock progress: service error", "error", err)
 			respondError(w, http.StatusInternalServerError, "Failed to retrieve unlock progress")
 			return
 		}
 
 		if progress == nil {
+			log.Info("Get unlock progress: no active progress")
 			respondJSON(w, http.StatusOK, map[string]interface{}{
 				"progress": nil,
 				"message":  "No active unlock progress",
@@ -419,6 +439,7 @@ func (h *ProgressionHandlers) HandleGetUnlockProgress() http.HandlerFunc {
 			return
 		}
 
+		log.Info("Get unlock progress: success")
 		response := h.enrichUnlockProgress(r.Context(), progress)
 		respondJSON(w, http.StatusOK, response)
 	}
@@ -520,17 +541,19 @@ func (h *ProgressionHandlers) HandleAdminAddContribution() http.HandlerFunc {
 
 		var req AdminAddContributionRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			log.Warn("Admin add contribution: invalid JSON body", "error", err)
 			respondError(w, http.StatusBadRequest, "Invalid request body")
 			return
 		}
 
 		if req.Amount <= 0 {
+			log.Warn("Admin add contribution: invalid amount", "amount", req.Amount)
 			respondError(w, http.StatusBadRequest, "Amount must be positive")
 			return
 		}
 
 		if err := h.service.AddContribution(r.Context(), req.Amount); err != nil {
-			log.Error("Failed to add contribution", "error", err, "amount", req.Amount)
+			log.Error("Admin add contribution: service error", "error", err, "amount", req.Amount)
 			respondError(w, http.StatusInternalServerError, err.Error())
 			return
 		}

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using BrandishBot.Client;
 
@@ -1054,17 +1055,25 @@ public class CPHInline
             return false;
         }
 
-        if (!GetInputString(0, "node_key", true, out string nodeKey, ref error))
+        if (!GetInputInt(0, "node_key", 0, out int nodeKey, ref error))
         {
             CPH.SetArgument("response", $"{error} Usage: !vote <node_key>");
             return true;
         }
 
+        List<string> activeNodes = CPH.GetGlobalVar<List<string>>("ActiveNodes");
+        if(nodeKey <= 0 || nodeKey > activeNodes.Count)
+        {
+            CPH.SetArgument("response", "Invalid node key. Must be between 1 and " + activeNodes.Count);
+            return true;
+        }
+        string nodeKeyString = activeNodes[nodeKey-1];
+
         try
         {
-            var result = client.VoteForNode(platform, platformId, nodeKey).Result;
+            var result = client.VoteForNode(platform, platformId, nodeKeyString).Result;
             var formatted = ResponseFormatter.FormatMessage(result);
-            CPH.SetArgument("response", formatted);
+            CPH.SetArgument("response", result);
             return true;
         }
         catch (Exception ex)
@@ -1169,7 +1178,8 @@ public class CPHInline
         try
         {
             var result = client.GetVotingSession().Result;
-            CPH.SetArgument("response", result);
+            var formatted = ResponseFormatter.FormatVotingOptions(result);
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)

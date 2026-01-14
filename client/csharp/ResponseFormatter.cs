@@ -159,5 +159,51 @@ namespace BrandishBot.Client
                 return $"Error parsing response: {ex.Message}";
             }
         }
+
+        /// <summary>
+        /// Format voting session options into a readable string
+        /// Format: "display_name(target_level) - Unlock Cost: unlock_cost Votes: vote_count |"
+        /// Target level is omitted if it is 1
+        /// </summary>
+        /// <param name="jsonResponse">JSON object with options array</param>
+        /// <returns>Formatted voting options string</returns>
+        public static string FormatVotingOptions(string jsonResponse)
+        {
+            try
+            {
+                var count = 0;
+                var session = Newtonsoft.Json.Linq.JObject.Parse(jsonResponse);
+                var options = session["options"];
+                var formattedOptions = new List<string>();
+
+                foreach (var option in options)
+                {
+                    count++;
+                    var nodeDetails = option["node_details"];
+                    if (nodeDetails == null)
+                    {
+                        continue;
+                    }
+
+                    string displayName = nodeDetails["display_name"]?.ToString() ?? "Unknown";
+                    int targetLevel = (int?)option["target_level"] ?? 1;
+                    int unlockTime = (int?)nodeDetails["unlock_cost"] ?? 0;
+                    int voteCount = (int?)option["vote_count"] ?? 0;
+
+                    // Build level suffix - omit if target_level is 1
+                    string levelStr = targetLevel != 1 ? $"({targetLevel})" : "";
+
+                    formattedOptions.Add($"{count}) {displayName}{levelStr} - Unlock Time: {unlockTime} Votes: {voteCount} |");
+                }
+
+                return formattedOptions.Count > 0
+                    ? string.Join(" ", formattedOptions)
+                    : "(no options available)";
+            }
+            catch (Exception ex)
+            {
+                return $"Error formatting voting options: {ex.Message}. Raw: {jsonResponse}";
+            }
+        }
     }
 }
