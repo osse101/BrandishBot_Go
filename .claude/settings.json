@@ -7,6 +7,7 @@
     "Follow existing error handling patterns - wrap with fmt.Errorf",
     "Use structured logging via internal/logger",
     "Read docs/journal.md files for design context before major changes",
+    "Write to the appropriate journal.md file in docs following major changes",
     "Check docs/CLIENT_WRAPPER_CHECKLIST.md for API endpoint coverage",
     "When adding API endpoints, ask user to confirm full pattern (domain, service, repo, handler, Discord client, C# client)",
     "When adding Discord commands, ask user to confirm options, autocomplete, and API endpoint mapping",

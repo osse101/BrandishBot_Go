@@ -66,10 +66,7 @@ func JobBonusCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		}
 
 		// Ensure user is registered/known
-		_, err := client.RegisterUser(targetUser.Username, targetUser.ID)
-		if err != nil {
-			slog.Error("Failed to register/get user", "error", err)
-			respondFriendlyError(s, i, err.Error())
+		if !ensureUserRegistered(s, i, client, targetUser, true) {
 			return
 		}
 
@@ -99,11 +96,7 @@ func JobBonusCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			},
 		}
 
-		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Embeds: &[]*discordgo.MessageEmbed{embed},
-		}); err != nil {
-			slog.Error("Failed to send response", "error", err)
-		}
+		sendEmbed(s, i, embed)
 	}
 
 	return cmd, handler

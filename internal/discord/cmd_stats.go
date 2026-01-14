@@ -116,10 +116,7 @@ func StatsCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		}
 
 		// Ensure user exists
-		_, err := client.RegisterUser(user.Username, user.ID)
-		if err != nil {
-			slog.Error("Failed to register user", "error", err)
-			respondError(s, i, "Error connecting to game server.")
+		if !ensureUserRegistered(s, i, client, user, false) {
 			return
 		}
 
@@ -130,20 +127,8 @@ func StatsCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			return
 		}
 
-		embed := &discordgo.MessageEmbed{
-			Title:       fmt.Sprintf("📊 Stats for %s", user.Username),
-			Description: msg,
-			Color:       0x3498db, // Blue
-			Footer: &discordgo.MessageEmbedFooter{
-				Text: "BrandishBot",
-			},
-		}
-
-		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Embeds: &[]*discordgo.MessageEmbed{embed},
-		}); err != nil {
-			slog.Error("Failed to send response", "error", err)
-		}
+		embed := createEmbed(fmt.Sprintf("📊 Stats for %s", user.Username), msg, 0x3498db, "")
+		sendEmbed(s, i, embed)
 	}
 
 	return cmd, handler

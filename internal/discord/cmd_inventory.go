@@ -53,10 +53,7 @@ func InventoryCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 
 		user := getInteractionUser(i)
 		// Ensure user exists
-		_, err := client.RegisterUser(user.Username, user.ID)
-		if err != nil {
-			slog.Error("Failed to register user", "error", err)
-			respondFriendlyError(s, i, err.Error())
+		if !ensureUserRegistered(s, i, client, user, true) {
 			return
 		}
 
@@ -77,10 +74,7 @@ func InventoryCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		}
 
 		// Ensure target user is registered
-		_, err = client.RegisterUser(targetUser.Username, targetUser.ID)
-		if err != nil {
-			slog.Error("Failed to register target user", "error", err)
-			respondFriendlyError(s, i, err.Error())
+		if !ensureUserRegistered(s, i, client, targetUser, true) {
 			return
 		}
 
@@ -123,20 +117,8 @@ func InventoryCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			description = sb.String()
 		}
 
-		embed := &discordgo.MessageEmbed{
-			Title:       fmt.Sprintf("%s's Inventory", targetUser.Username),
-			Description: description,
-			Color:       0x9b59b6, // Purple
-			Footer: &discordgo.MessageEmbedFooter{
-				Text: "BrandishBot",
-			},
-		}
-
-		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Embeds: &[]*discordgo.MessageEmbed{embed},
-		}); err != nil {
-			slog.Error("Failed to send inventory embed", "error", err)
-		}
+		embed := createEmbed(fmt.Sprintf("%s's Inventory", targetUser.Username), description, 0x9b59b6, "")
+		sendEmbed(s, i, embed)
 	}
 
 	return cmd, handler

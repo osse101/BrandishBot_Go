@@ -56,20 +56,8 @@ func GambleStartCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			return
 		}
 
-		embed := &discordgo.MessageEmbed{
-			Title:       "🎲 Gamble Started!",
-			Description: msg,
-			Color:       0xe74c3c, // Red
-			Footer: &discordgo.MessageEmbedFooter{
-				Text: "BrandishBot",
-			},
-		}
-
-		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Embeds: &[]*discordgo.MessageEmbed{embed},
-		}); err != nil {
-			slog.Error("Failed to send response", "error", err)
-		}
+		embed := createEmbed("🎲 Gamble Started!", msg, 0xe74c3c, "")
+		sendEmbed(s, i, embed)
 	}
 
 	return cmd, handler
@@ -105,19 +93,12 @@ func GambleJoinCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	}
 
 	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-		}); err != nil {
-			slog.Error("Failed to send deferred response", "error", err)
+		if !deferResponse(s, i) {
 			return
 		}
 
-		user := i.Member.User
-		if user == nil {
-			user = i.User
-		}
-
-		options := i.ApplicationCommandData().Options
+		user := getInteractionUser(i)
+		options := getOptions(i)
 		gambleID := options[0].StringValue()
 		itemName := options[1].StringValue()
 		quantity := int(options[2].IntValue())
@@ -137,20 +118,8 @@ func GambleJoinCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			return
 		}
 
-		embed := &discordgo.MessageEmbed{
-			Title:       "🎲 Joined Gamble!",
-			Description: msg,
-			Color:       0x2ecc71, // Green
-			Footer: &discordgo.MessageEmbedFooter{
-				Text: "BrandishBot",
-			},
-		}
-
-		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Embeds: &[]*discordgo.MessageEmbed{embed},
-		}); err != nil {
-			slog.Error("Failed to send response", "error", err)
-		}
+		embed := createEmbed("🎲 Joined Gamble!", msg, 0x2ecc71, "")
+		sendEmbed(s, i, embed)
 	}
 
 	return cmd, handler

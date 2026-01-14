@@ -62,20 +62,8 @@ func AddItemCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			return
 		}
 
-		embed := &discordgo.MessageEmbed{
-			Title:       "✅ Items Added",
-			Description: fmt.Sprintf("Added %d x %s to %s\n\n%s", quantity, itemName, targetUser.Username, msg),
-			Color:       0x2ecc71, // Green
-			Footer: &discordgo.MessageEmbedFooter{
-				Text: "Admin Action",
-			},
-		}
-
-		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Embeds: &[]*discordgo.MessageEmbed{embed},
-		}); err != nil {
-			slog.Error("Failed to send response", "error", err)
-		}
+		embed := createEmbed("✅ Items Added", fmt.Sprintf("Added %d x %s to %s\n\n%s", quantity, itemName, targetUser.Username, msg), 0x2ecc71, FooterAdminAction)
+		sendEmbed(s, i, embed)
 	}
 
 	return cmd, handler
@@ -143,20 +131,8 @@ func RemoveItemCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 				removed, quantity)
 		}
 
-		embed := &discordgo.MessageEmbed{
-			Title:       "🗑️ Items Removed",
-			Description: description,
-			Color:       0xe74c3c, // Red
-			Footer: &discordgo.MessageEmbedFooter{
-				Text: "Admin Action",
-			},
-		}
-
-		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Embeds: &[]*discordgo.MessageEmbed{embed},
-		}); err != nil {
-			slog.Error("Failed to send response", "error", err)
-		}
+		embed := createEmbed("🗑️ Items Removed", description, 0xe74c3c, FooterAdminAction)
+		sendEmbed(s, i, embed)
 	}
 
 	return cmd, handler
@@ -205,14 +181,11 @@ func AdminAwardXPCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	}
 
 	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-		}); err != nil {
-			slog.Error("Failed to send deferred response", "error", err)
+		if !deferResponse(s, i) {
 			return
 		}
 
-		options := i.ApplicationCommandData().Options
+		options := getOptions(i)
 		platform := options[0].StringValue()
 		username := options[1].StringValue()
 		jobKey := options[2].StringValue()

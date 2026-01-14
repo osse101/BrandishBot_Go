@@ -63,11 +63,7 @@ func InfoCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		// Create appropriate embed based on feature
 		embed := createInfoEmbed(featureName, infoText)
 
-		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Embeds: &[]*discordgo.MessageEmbed{embed},
-		}); err != nil {
-			slog.Error("Failed to send info", "error", err)
-		}
+		sendEmbed(s, i, embed)
 	}
 
 	return cmd, handler

@@ -168,12 +168,7 @@ func UnlockProgressCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 				Text: "BrandishBot Progression",
 			},
 		}
-
-		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Embeds: &[]*discordgo.MessageEmbed{embed},
-		}); err != nil {
-			slog.Error("Failed to send response", "error", err)
-		}
+		sendEmbed(s, i, embed)
 	}
 
 	return cmd, handler
@@ -206,10 +201,7 @@ func EngagementCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		}
 
 		// Ensure user registered
-		_, err := client.RegisterUser(targetUser.Username, targetUser.ID)
-		if err != nil {
-			slog.Error("Failed to register/get user", "error", err)
-			respondFriendlyError(s, i, err.Error())
+		if !ensureUserRegistered(s, i, client, targetUser, true) {
 			return
 		}
 
@@ -231,15 +223,10 @@ func EngagementCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 				{Name: "Items Used", Value: fmt.Sprintf("%d", engagement.ItemsUsed), Inline: true},
 			},
 			Footer: &discordgo.MessageEmbedFooter{
-				Text: "BrandishBot",
+				Text: FooterBrandishBot,
 			},
 		}
-
-		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Embeds: &[]*discordgo.MessageEmbed{embed},
-		}); err != nil {
-			slog.Error("Failed to send response", "error", err)
-		}
+		sendEmbed(s, i, embed)
 	}
 
 	return cmd, handler
@@ -291,12 +278,7 @@ func VotingSessionCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 				Text: "Use /vote <node_key> to vote!",
 			},
 		}
-
-		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Embeds: &[]*discordgo.MessageEmbed{embed},
-		}); err != nil {
-			slog.Error("Failed to send response", "error", err)
-		}
+		sendEmbed(s, i, embed)
 	}
 
 	return cmd, handler

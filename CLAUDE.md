@@ -413,6 +413,50 @@ tx.Commit(ctx)
 
 ---
 
+## Refactoring & Code Quality
+
+### Duplication Identification & Refactoring
+
+When performing code refactoring to reduce duplication:
+
+1. **Identify high-impact patterns** - Use grep to find patterns appearing 3+ times
+2. **Calculate savings** - `pattern_lines × occurrences = total_lines_saved`
+3. **Create helpers** - Extract to utility functions in appropriate module
+4. **Document patterns** - Add helper comments with usage examples
+5. **Measure impact** - Grep before/after to verify replacements
+
+**Example Refactoring Metrics** (Discord module, Jan 2026):
+- Pattern: Embed creation + sending (30 occurrences, 8 lines each)
+- Solution: `sendEmbed()` + `createEmbed()` helpers
+- Impact: 240 lines removed, 62% duplication reduction
+- Effort: 2 hours for design, implementation, testing
+
+**For comprehensive refactoring guidance**, see:
+→ **`docs/DISCORD_REFACTORING_PATTERNS.md`** (Essential Reference)
+
+This document covers:
+- Pattern identification checklist
+- 4-level refactoring difficulty guide (trivial to complex)
+- Implementation workflow (analysis → design → implementation → validation)
+- Common patterns in Discord commands (deferred response, embed send, user extraction)
+- Decision matrix for when to refactor
+- Metrics & measurement
+- Lessons learned & best practices
+
+**Key Refactoring Principles:**
+- Replace N-line duplicate patterns with 1-line helper calls
+- Use boolean/enum parameters for variations instead of multiple helpers
+- Create helpers with clear names and comprehensive documentation
+- Test build after each implementation phase
+- Verify with grep before/after to measure impact
+
+### Related Journal References
+- `docs/development/journal.md` - Development patterns
+- `docs/testing/journal.md` - Test strategies
+- `docs/architecture/journal.md` - Architectural decisions
+
+---
+
 ## Quick Grep Commands
 
 ```bash

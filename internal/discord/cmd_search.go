@@ -23,14 +23,7 @@ func SearchCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		user := getInteractionUser(i)
 
 		// Ensure user exists
-		_, err := client.RegisterUser(user.Username, user.ID)
-		if err != nil {
-			slog.Error("Failed to register user", "error", err)
-			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-				Content: &[]string{"Error connecting to game server."}[0],
-			}); err != nil {
-				slog.Error("Failed to edit interaction response", "error", err)
-			}
+		if !ensureUserRegistered(s, i, client, user, false) {
 			return
 		}
 
@@ -41,20 +34,8 @@ func SearchCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			return
 		}
 
-		embed := &discordgo.MessageEmbed{
-			Title:       "Search Result",
-			Description: msg,
-			Color:       0x3498db, // Blue
-			Footer: &discordgo.MessageEmbedFooter{
-				Text: "BrandishBot",
-			},
-		}
-
-		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Embeds: &[]*discordgo.MessageEmbed{embed},
-		}); err != nil {
-			slog.Error("Failed to send search results", "error", err)
-		}
+		embed := createEmbed("Search Result", msg, 0x3498db, "")
+		sendEmbed(s, i, embed)
 	}
 
 	return cmd, handler

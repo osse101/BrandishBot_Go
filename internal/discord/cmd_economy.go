@@ -80,19 +80,12 @@ func SellCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	}
 
 	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-		}); err != nil {
-			slog.Error("Failed to send deferred response", "error", err)
+		if !deferResponse(s, i) {
 			return
 		}
 
-		user := i.Member.User
-		if user == nil {
-			user = i.User
-		}
-
-		options := i.ApplicationCommandData().Options
+		user := getInteractionUser(i)
+		options := getOptions(i)
 		itemName := options[0].StringValue()
 		quantity := 1
 		if len(options) > 1 {
@@ -114,20 +107,8 @@ func SellCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			return
 		}
 
-		embed := &discordgo.MessageEmbed{
-			Title:       "💵 Sale Complete",
-			Description: msg,
-			Color:       0xf39c12, // Orange
-			Footer: &discordgo.MessageEmbedFooter{
-				Text: "BrandishBot",
-			},
-		}
-
-		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Embeds: &[]*discordgo.MessageEmbed{embed},
-		}); err != nil {
-			slog.Error("Failed to send response", "error", err)
-		}
+		embed := createEmbed("💵 Sale Complete", msg, 0xf39c12, "")
+		sendEmbed(s, i, embed)
 	}
 
 	return cmd, handler
@@ -239,20 +220,8 @@ func GiveCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			return
 		}
 
-		embed := &discordgo.MessageEmbed{
-			Title:       "🎁 Gift Sent",
-			Description: msg,
-			Color:       0xe91e63, // Pink
-			Footer: &discordgo.MessageEmbedFooter{
-				Text: "BrandishBot",
-			},
-		}
-
-		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Embeds: &[]*discordgo.MessageEmbed{embed},
-		}); err != nil {
-			slog.Error("Failed to send response", "error", err)
-		}
+		embed := createEmbed("🎁 Gift Sent", msg, 0xe91e63, "")
+		sendEmbed(s, i, embed)
 	}
 
 	return cmd, handler
