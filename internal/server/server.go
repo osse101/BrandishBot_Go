@@ -248,11 +248,11 @@ func loggingMiddleware(next http.Handler) http.Handler {
 
 		// Skip logging for health check endpoints and metrics
 		// Use HasPrefix to catch potential variations (e.g. /healthz/)
-		if strings.HasPrefix(r.URL.Path, "/healthz") ||
-			strings.HasPrefix(r.URL.Path, "/readyz") ||
-			strings.HasPrefix(r.URL.Path, "/metrics") {
-			next.ServeHTTP(w, r)
-			return
+		for _, path := range PublicPaths {
+			if strings.HasPrefix(r.URL.Path, path) {
+				next.ServeHTTP(w, r)
+				return
+			}
 		}
 
 		// Generate unique request ID
@@ -266,7 +266,7 @@ func loggingMiddleware(next http.Handler) http.Handler {
 		log := logger.FromContext(ctx)
 
 		// Log request start with details
-		log.Info("Request started",
+		log.Info(LogMsgRequestStarted,
 			"method", r.Method,
 			"path", r.URL.Path,
 			"remote_addr", r.RemoteAddr,
@@ -276,13 +276,13 @@ func loggingMiddleware(next http.Handler) http.Handler {
 		// Sanitize headers for logging
 		sanitizedHeaders := make(http.Header)
 		for k, v := range r.Header {
-			if strings.EqualFold(k, "X-API-Key") || strings.EqualFold(k, "Authorization") {
-				sanitizedHeaders[k] = []string{"[REDACTED]"}
+			if strings.EqualFold(k, HeaderAPIKey) || strings.EqualFold(k, HeaderAuthorization) {
+				sanitizedHeaders[k] = []string{RedactedValue}
 			} else {
 				sanitizedHeaders[k] = v
 			}
 		}
-		log.Debug("Request headers", "headers", sanitizedHeaders)
+		log.Debug(LogMsgRequestHeaders, "headers", sanitizedHeaders)
 
 		// Wrap response writer to capture status code
 		rw := newResponseWriter(w)
@@ -292,7 +292,7 @@ func loggingMiddleware(next http.Handler) http.Handler {
 
 		// Log request completion with metrics
 		duration := time.Since(start)
-		log.Info("Request completed",
+		log.Info(LogMsgRequestCompleted,
 			"method", r.Method,
 			"path", r.URL.Path,
 			"status", rw.statusCode,
@@ -303,7 +303,7 @@ func loggingMiddleware(next http.Handler) http.Handler {
 
 // Start starts the server
 func (s *Server) Start() error {
-	slog.Default().Info("Server starting", "addr", s.httpServer.Addr)
+	slog.Default().Info(LogMsgServerStarting, "addr", s.httpServer.Addr)
 	return s.httpServer.ListenAndServe()
 }
 
