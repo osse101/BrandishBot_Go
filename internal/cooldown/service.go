@@ -36,12 +36,12 @@ type ErrOnCooldown struct {
 
 func (e ErrOnCooldown) Error() string {
 	minutes := int(e.Remaining.Minutes())
-	seconds := int(e.Remaining.Seconds()) % 60
+	seconds := int(e.Remaining.Seconds()) % SecondsPerMinute
 
 	if minutes > 0 {
-		return fmt.Sprintf("action '%s' on cooldown: %dm %ds remaining", e.Action, minutes, seconds)
+		return fmt.Sprintf(ErrFmtCooldownWithMinutes, e.Action, minutes, seconds)
 	}
-	return fmt.Sprintf("action '%s' on cooldown: %ds remaining", e.Action, seconds)
+	return fmt.Sprintf(ErrFmtCooldownSecondsOnly, e.Action, seconds)
 }
 
 // Is allows errors.Is() to work with ErrOnCooldown

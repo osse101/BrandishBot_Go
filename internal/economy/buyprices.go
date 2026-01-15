@@ -10,6 +10,6 @@ import (
 // GetBuyablePrices retrieves all buyable items with prices
 func (s *service) GetBuyablePrices(ctx context.Context) ([]domain.Item, error) {
 	log := logger.FromContext(ctx)
-	log.Info("GetBuyablePrices called")
+	log.Info(LogMsgGetBuyablePricesCalled)
 	return s.repo.GetBuyablePrices(ctx)
 }

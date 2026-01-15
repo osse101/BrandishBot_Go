@@ -32,27 +32,27 @@ type ShutdownComponents struct {
 //
 // Errors during shutdown are logged but do not stop the shutdown sequence.
 func GracefulShutdown(ctx context.Context, components ShutdownComponents) {
-	slog.Info("Shutting down server...")
+	slog.Info(LogMsgShuttingDownServer)
 
 	// Shutdown server first (stop accepting new requests)
 	if err := components.Server.Stop(ctx); err != nil {
-		slog.Error("Server forced to shutdown", "error", err)
+		slog.Error(LogMsgServerForcedShutdown, "error", err)
 	}
 
 	// Shutdown services (order doesn't matter, all run independently)
-	shutdownService(ctx, "progression", components.ProgressionService)
-	shutdownService(ctx, "user", components.UserService)
-	shutdownService(ctx, "economy", components.EconomyService)
-	shutdownService(ctx, "crafting", components.CraftingService)
-	shutdownService(ctx, "gamble", components.GambleService)
+	shutdownService(ctx, ServiceNameProgression, components.ProgressionService)
+	shutdownService(ctx, ServiceNameUser, components.UserService)
+	shutdownService(ctx, ServiceNameEconomy, components.EconomyService)
+	shutdownService(ctx, ServiceNameCrafting, components.CraftingService)
+	shutdownService(ctx, ServiceNameGamble, components.GambleService)
 
 	// Shutdown resilient publisher last to flush pending events
-	slog.Info("Shutting down event publisher...")
+	slog.Info(LogMsgShuttingDownEventPublisher)
 	if err := components.ResilientPublisher.Shutdown(ctx); err != nil {
-		slog.Error("Resilient publisher shutdown failed", "error", err)
+		slog.Error(LogMsgResilientPublisherFailed, "error", err)
 	}
 
-	slog.Info("Server stopped")
+	slog.Info(LogMsgServerStopped)
 }
 
 // shutdownService is a helper that shuts down a service and logs any errors.
@@ -63,6 +63,6 @@ type shutdownableService interface {
 
 func shutdownService(ctx context.Context, name string, service shutdownableService) {
 	if err := service.Shutdown(ctx); err != nil {
-		slog.Error(name+" service shutdown failed", "error", err)
+		slog.Error(name+LogMsgServiceShutdownFailed, "error", err)
 	}
 }

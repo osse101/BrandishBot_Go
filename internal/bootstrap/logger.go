@@ -18,20 +18,20 @@ import (
 // Returns the log file handle (caller must close) and any error encountered.
 func SetupLogger(cfg *config.Config) (*os.File, error) {
 	// Create logs directory
-	if err := os.MkdirAll(cfg.LogDir, 0755); err != nil {
-		return nil, fmt.Errorf("failed to create logs directory: %w", err)
+	if err := os.MkdirAll(cfg.LogDir, DirPermission); err != nil {
+		return nil, fmt.Errorf("%s: %w", LogMsgFailedCreateLogsDir, err)
 	}
 
 	// Cleanup old logs (keep 9 most recent)
 	cleanupLogs(cfg.LogDir)
 
 	// Create timestamped log file
-	timestamp := time.Now().Format("2006-01-02_15-04-05")
-	logFileName := filepath.Join(cfg.LogDir, fmt.Sprintf("session_%s.log", timestamp))
+	timestamp := time.Now().Format(LogFileTimestampFormat)
+	logFileName := filepath.Join(cfg.LogDir, fmt.Sprintf(LogFileNamePattern, timestamp))
 
-	logFile, err := os.OpenFile(logFileName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	logFile, err := os.OpenFile(logFileName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, LogFilePermission)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open log file: %w", err)
+		return nil, fmt.Errorf("%s: %w", LogMsgFailedOpenLogFile, err)
 	}
 
 	// Initialize logger with MultiWriter (stdout + file)
@@ -40,11 +40,11 @@ func SetupLogger(cfg *config.Config) (*os.File, error) {
 	// Parse log level from config
 	var level slog.Level
 	switch strings.ToUpper(cfg.LogLevel) {
-	case "DEBUG":
+	case LogLevelDebug:
 		level = slog.LevelDebug
-	case "WARN":
+	case LogLevelWarn:
 		level = slog.LevelWarn
-	case "ERROR":
+	case LogLevelError:
 		level = slog.LevelError
 	default:
 		level = slog.LevelInfo
@@ -57,14 +57,14 @@ func SetupLogger(cfg *config.Config) (*os.File, error) {
 	slog.SetDefault(logger)
 
 	// Log initialization messages
-	slog.Info("Logging initialized", "level", level)
-	slog.Info("Starting BrandishBot",
+	slog.Info(LogMsgLoggingInitialized, "level", level)
+	slog.Info(LogMsgStartingBrandishBot,
 		"environment", cfg.Environment,
 		"log_level", cfg.LogLevel,
 		"log_format", cfg.LogFormat,
 		"version", cfg.Version)
 
-	slog.Debug("Configuration loaded",
+	slog.Debug(LogMsgConfigurationLoaded,
 		"db_host", cfg.DBHost,
 		"db_port", cfg.DBPort,
 		"db_name", cfg.DBName,
@@ -83,18 +83,18 @@ func cleanupLogs(logDir string) {
 
 	var logFiles []os.DirEntry
 	for _, entry := range entries {
-		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".log") {
+		if !entry.IsDir() && strings.HasSuffix(entry.Name(), LogFileExtension) {
 			logFiles = append(logFiles, entry)
 		}
 	}
 
-	if len(logFiles) >= 10 {
+	if len(logFiles) >= LogFileRetentionLimit {
 		// Delete oldest files until we have 9 left
-		toDelete := len(logFiles) - 9
+		toDelete := len(logFiles) - LogFileRetentionCount
 		for i := 0; i < toDelete; i++ {
 			err := os.Remove(filepath.Join(logDir, logFiles[i].Name()))
 			if err != nil {
-				fmt.Printf("Failed to delete old log file %s: %v\n", logFiles[i].Name(), err)
+				fmt.Printf(LogMsgFailedDeleteOldLog, logFiles[i].Name(), err)
 			}
 		}
 	}

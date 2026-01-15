@@ -53,18 +53,7 @@ type JobService interface {
 	AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error)
 }
 
-// Crafting balance constants
-// MasterworkChance determines the probability of a masterwork craft occurring (10% = 1 in 10 crafts)
-// MasterworkMultiplier is applied to output quantity when masterwork procs (2x output)
-const (
-	MasterworkChance     = 0.10
-	MasterworkMultiplier = 2
-
-	// PerfectSalvageChance is the probability of a "Perfect Salvage" occurring during disassembly
-	PerfectSalvageChance = 0.10
-	// PerfectSalvageMultiplier is the bonus multiplier for materials when Perfect Salvage triggers
-	PerfectSalvageMultiplier = 1.5
-)
+// Crafting balance constants are defined in constants.go
 
 type service struct {
 	repo           repository.Crafting

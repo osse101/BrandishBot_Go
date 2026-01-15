@@ -31,25 +31,25 @@ func RegisterEventHandlers(deps EventHandlerDependencies) error {
 	progressionHandler.Register(deps.EventBus)
 
 	// Initialize and register Progression Notifier
-	discordWebhookURL := fmt.Sprintf("http://discord:%s/admin/announce", deps.Config.DiscordWebhookPort)
+	discordWebhookURL := fmt.Sprintf(DiscordWebhookURLFormat, deps.Config.DiscordWebhookPort)
 	progressionNotifier := progression.NewNotifier(discordWebhookURL, deps.Config.StreamerbotWebhookURL)
 	progressionNotifier.Subscribe(deps.EventBus)
-	slog.Info("Progression notifier initialized",
+	slog.Info(LogMsgProgressionNotifierInit,
 		"discord_webhook", discordWebhookURL,
 		"streamerbot_webhook", deps.Config.StreamerbotWebhookURL)
 
 	// Register Metrics Collector
 	metricsCollector := metrics.NewEventMetricsCollector()
 	if err := metricsCollector.Register(deps.EventBus); err != nil {
-		return fmt.Errorf("failed to register metrics collector: %w", err)
+		return fmt.Errorf("%s: %w", ErrMsgFailedRegisterMetrics, err)
 	}
-	slog.Info("Metrics collector registered")
+	slog.Info(LogMsgMetricsCollectorRegistered)
 
 	// Subscribe Event Logger
 	if err := deps.EventLogService.Subscribe(deps.EventBus); err != nil {
-		return fmt.Errorf("failed to subscribe event logger: %w", err)
+		return fmt.Errorf("%s: %w", ErrMsgFailedSubscribeEventLogger, err)
 	}
-	slog.Info("Event logger initialized")
+	slog.Info(LogMsgEventLoggerInitialized)
 
 	return nil
 }

@@ -46,7 +46,7 @@ func NewService(repo repository.Economy, jobService JobService, namingResolver n
 
 func (s *service) GetSellablePrices(ctx context.Context) ([]domain.Item, error) {
 	log := logger.FromContext(ctx)
-	log.Info("GetSellablePrices called")
+	log.Info(LogMsgGetSellablePricesCalled)
 	return s.repo.GetSellablePrices(ctx)
 }
 
@@ -65,10 +65,10 @@ func (s *service) resolveItemName(ctx context.Context, itemName string) (string,
 	// Validate by checking if item exists
 	item, err := s.repo.GetItemByName(ctx, itemName)
 	if err != nil {
-		return "", fmt.Errorf("failed to resolve item name '%s': %w", itemName, err)
+		return "", fmt.Errorf(ErrMsgResolveItemFailedFmt, itemName, err)
 	}
 	if item == nil {
-		return "", fmt.Errorf("%w: %s (not found as public or internal name)", domain.ErrItemNotFound, itemName)
+		return "", fmt.Errorf(ErrMsgItemNotFoundPublicFmt, domain.ErrItemNotFound, itemName)
 	}
 
 	return itemName, nil
@@ -81,7 +81,7 @@ func (s *service) getSellEntities(ctx context.Context, platform, platformID, ite
 	user, err := s.repo.GetUserByPlatformID(ctx, platform, platformID)
 	if err != nil {
 		log.Error("Failed to get user", "error", err)
-		return nil, nil, nil, fmt.Errorf("failed to get user: %w", err)
+		return nil, nil, nil, fmt.Errorf(ErrMsgGetUserFailed, err)
 	}
 	if user == nil {
 		return nil, nil, nil, domain.ErrUserNotFound
@@ -97,19 +97,19 @@ func (s *service) getSellEntities(ctx context.Context, platform, platformID, ite
 	item, err := s.repo.GetItemByName(ctx, resolvedName)
 	if err != nil {
 		log.Error("Failed to get item", "error", err)
-		return nil, nil, nil, fmt.Errorf("failed to get item: %w", err)
+		return nil, nil, nil, fmt.Errorf(ErrMsgGetItemFailed, err)
 	}
 	if item == nil {
-		return nil, nil, nil, fmt.Errorf("%w: %s", domain.ErrItemNotFound, resolvedName)
+		return nil, nil, nil, fmt.Errorf(ErrMsgItemNotFoundFmt, resolvedName)
 	}
 
 	moneyItem, err := s.repo.GetItemByName(ctx, domain.ItemMoney)
 	if err != nil {
 		log.Error("Failed to get money item", "error", err)
-		return nil, nil, nil, fmt.Errorf("failed to get money item: %w", err)
+		return nil, nil, nil, fmt.Errorf(ErrMsgGetMoneyItemFailed, err)
 	}
 	if moneyItem == nil {
-		return nil, nil, nil, fmt.Errorf("%w: %s", domain.ErrItemNotFound, domain.ItemMoney)
+		return nil, nil, nil, fmt.Errorf(ErrMsgItemNotFoundFmt, domain.ItemMoney)
 	}
 
 	return user, item, moneyItem, nil
@@ -144,7 +144,7 @@ func processSellTransaction(inventory *domain.Inventory, item, moneyItem *domain
 
 func (s *service) SellItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (int, int, error) {
 	log := logger.FromContext(ctx)
-	log.Info("SellItem called", "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity)
+	log.Info(LogMsgSellItemCalled, "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity)
 
 	// Validate request
 	if err := validateBuyRequest(quantity); err != nil { // Reuse same validation
@@ -160,7 +160,7 @@ func (s *service) SellItem(ctx context.Context, platform, platformID, username, 
 	tx, err := s.repo.BeginTx(ctx)
 	if err != nil {
 		log.Error("Failed to begin transaction", "error", err)
-		return 0, 0, fmt.Errorf("failed to begin transaction: %w", err)
+		return 0, 0, fmt.Errorf(ErrMsgBeginTransactionFailed, err)
 	}
 	defer repository.SafeRollback(ctx, tx)
 
@@ -168,12 +168,12 @@ func (s *service) SellItem(ctx context.Context, platform, platformID, username, 
 	inventory, err := tx.GetInventory(ctx, user.ID)
 	if err != nil {
 		log.Error("Failed to get inventory", "error", err)
-		return 0, 0, fmt.Errorf("failed to get inventory: %w", err)
+		return 0, 0, fmt.Errorf(ErrMsgGetInventoryFailed, err)
 	}
 
 	itemSlotIndex, slotQuantity := utils.FindSlot(inventory, item.ID)
 	if itemSlotIndex == -1 {
-		return 0, 0, fmt.Errorf("item %s not in inventory", itemName)
+		return 0, 0, fmt.Errorf(ErrMsgItemNotInInventoryFmt, itemName)
 	}
 
 	// Determine actual sell quantity
@@ -188,30 +188,30 @@ func (s *service) SellItem(ctx context.Context, platform, platformID, username, 
 	// Save updated inventory
 	if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
 		log.Error("Failed to update inventory", "error", err)
-		return 0, 0, fmt.Errorf("failed to update inventory: %w", err)
+		return 0, 0, fmt.Errorf(ErrMsgUpdateInventoryFailed, err)
 	}
 
 	if err := tx.Commit(ctx); err != nil {
 		log.Error("Failed to commit transaction", "error", err)
-		return 0, 0, fmt.Errorf("failed to commit transaction: %w", err)
+		return 0, 0, fmt.Errorf(ErrMsgCommitTransactionFailed, err)
 	}
 
 	// Award Merchant XP based on transaction value (async)
 	xp := calculateMerchantXP(moneyGained)
 	s.wg.Add(1)
-	go s.awardMerchantXP(context.Background(), user.ID, xp, "sell", itemName, moneyGained)
+	go s.awardMerchantXP(context.Background(), user.ID, xp, ActionTypeSell, itemName, moneyGained)
 
-	log.Info("Item sold", "username", username, "item", itemName, "quantity", actualSellQuantity, "moneyGained", moneyGained)
+	log.Info(LogMsgItemSold, "username", username, "item", itemName, "quantity", actualSellQuantity, "moneyGained", moneyGained)
 	return moneyGained, actualSellQuantity, nil
 }
 
 // validateBuyRequest validates the buy request parameters
 func validateBuyRequest(quantity int) error {
 	if quantity <= 0 {
-		return fmt.Errorf("invalid %w: %d", domain.ErrInvalidInput, quantity)
+		return fmt.Errorf(ErrMsgInvalidQuantityFmt, domain.ErrInvalidInput, quantity)
 	}
 	if quantity > domain.MaxTransactionQuantity {
-		return fmt.Errorf("quantity %d exceeds maximum allowed (%d)", quantity, domain.MaxTransactionQuantity)
+		return fmt.Errorf(ErrMsgQuantityExceedsMaxFmt, quantity, domain.MaxTransactionQuantity)
 	}
 	return nil
 }
@@ -223,10 +223,10 @@ func (s *service) getBuyEntities(ctx context.Context, platform, platformID, item
 	user, err := s.repo.GetUserByPlatformID(ctx, platform, platformID)
 	if err != nil {
 		log.Error("Failed to get user", "error", err)
-		return nil, nil, fmt.Errorf("failed to get user: %w", err)
+		return nil, nil, fmt.Errorf(ErrMsgGetUserFailed, err)
 	}
 	if user == nil {
-		return nil, nil, fmt.Errorf("user not found")
+		return nil, nil, fmt.Errorf(ErrMsgUserNotFound)
 	}
 
 	// Resolve public name to internal name
@@ -239,10 +239,10 @@ func (s *service) getBuyEntities(ctx context.Context, platform, platformID, item
 	item, err := s.repo.GetItemByName(ctx, resolvedName)
 	if err != nil {
 		log.Error("Failed to get item", "error", err)
-		return nil, nil, fmt.Errorf("failed to get item: %w", err)
+		return nil, nil, fmt.Errorf(ErrMsgGetItemFailed, err)
 	}
 	if item == nil {
-		return nil, nil, fmt.Errorf("item not found: %s", resolvedName)
+		return nil, nil, fmt.Errorf(ErrMsgItemNotFoundFmt, resolvedName)
 	}
 
 	return user, item, nil
@@ -273,7 +273,7 @@ func processBuyTransaction(inventory *domain.Inventory, item *domain.Item, money
 
 func (s *service) BuyItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (int, error) {
 	log := logger.FromContext(ctx)
-	log.Info("BuyItem called", "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity)
+	log.Info(LogMsgBuyItemCalled, "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity)
 
 	// Validate request
 	if err := validateBuyRequest(quantity); err != nil {
@@ -289,7 +289,7 @@ func (s *service) BuyItem(ctx context.Context, platform, platformID, username, i
 	tx, err := s.repo.BeginTx(ctx)
 	if err != nil {
 		log.Error("Failed to begin transaction", "error", err)
-		return 0, fmt.Errorf("failed to begin transaction: %w", err)
+		return 0, fmt.Errorf(ErrMsgBeginTransactionFailed, err)
 	}
 	defer repository.SafeRollback(ctx, tx)
 
@@ -297,43 +297,43 @@ func (s *service) BuyItem(ctx context.Context, platform, platformID, username, i
 	isBuyable, err := s.repo.IsItemBuyable(ctx, item.InternalName)
 	if err != nil {
 		log.Error("Failed to check buyable", "error", err)
-		return 0, fmt.Errorf("failed to check if item is buyable: %w", err)
+		return 0, fmt.Errorf(ErrMsgCheckBuyableFailed, err)
 	}
 	if !isBuyable {
-		return 0, fmt.Errorf("item %s is not buyable", item.InternalName)
+		return 0, fmt.Errorf(ErrMsgItemNotBuyableFmt, item.InternalName)
 	}
 
 	// Get money item after buyable check
 	moneyItem, err := s.repo.GetItemByName(ctx, domain.ItemMoney)
 	if err != nil {
 		log.Error("Failed to get money item", "error", err)
-		return 0, fmt.Errorf("Failed to get money item: %w", err)
+		return 0, fmt.Errorf(ErrMsgGetMoneyItemFailed, err)
 	}
 	if moneyItem == nil {
 		log.Error("Money item not found")
-		return 0, fmt.Errorf("money item not found")
+		return 0, fmt.Errorf(ErrMsgMoneyItemNotFound)
 	}
 
 	// Get inventory and check funds
 	inventory, err := tx.GetInventory(ctx, user.ID)
 	if err != nil {
 		log.Error("Failed to get inventory", "error", err)
-		return 0, fmt.Errorf("failed to get inventory: %w", err)
+		return 0, fmt.Errorf(ErrMsgGetInventoryFailed, err)
 	}
 
 	moneySlotIndex, moneyBalance := utils.FindSlot(inventory, moneyItem.ID)
 	if moneyBalance <= 0 {
-		return 0, fmt.Errorf("insufficient funds")
+		return 0, fmt.Errorf(ErrMsgInsufficientFunds)
 	}
 
 	// Calculate affordable quantity
 	actualQuantity, cost := calculateAffordableQuantity(quantity, item.BaseValue, moneyBalance)
 	if actualQuantity == 0 {
-		return 0, fmt.Errorf("insufficient funds to buy even one %s (cost: %d, balance: %d)", itemName, item.BaseValue, moneyBalance)
+		return 0, fmt.Errorf(ErrMsgInsufficientFundsToBuyOneFmt, itemName, item.BaseValue, moneyBalance)
 	}
 
 	if quantity > actualQuantity {
-		log.Info("Adjusted purchase quantity due to funds", "requested", quantity, "actual", actualQuantity)
+		log.Info(LogMsgAdjustedPurchaseQty, "requested", quantity, "actual", actualQuantity)
 	}
 
 	// Process the transaction
@@ -342,20 +342,20 @@ func (s *service) BuyItem(ctx context.Context, platform, platformID, username, i
 	// Save updated inventory
 	if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
 		log.Error("Failed to update inventory", "error", err)
-		return 0, fmt.Errorf("failed to update inventory: %w", err)
+		return 0, fmt.Errorf(ErrMsgUpdateInventoryFailed, err)
 	}
 
 	if err := tx.Commit(ctx); err != nil {
 		log.Error("Failed to commit transaction", "error", err)
-		return 0, fmt.Errorf("failed to commit transaction: %w", err)
+		return 0, fmt.Errorf(ErrMsgCommitTransactionFailed, err)
 	}
 
 	// Award Merchant XP based on transaction value (async)
 	xp := calculateMerchantXP(cost)
 	s.wg.Add(1)
-	go s.awardMerchantXP(context.Background(), user.ID, xp, "buy", itemName, cost)
+	go s.awardMerchantXP(context.Background(), user.ID, xp, ActionTypeBuy, itemName, cost)
 
-	log.Info("Item purchased", "username", username, "item", itemName, "quantity", actualQuantity)
+	log.Info(LogMsgItemPurchased, "username", username, "item", itemName, "quantity", actualQuantity)
 	return actualQuantity, nil
 }
 
@@ -387,21 +387,21 @@ func (s *service) awardMerchantXP(ctx context.Context, userID string, xp int, ac
 	}
 
 	metadata := map[string]interface{}{
-		"action":    action,
-		"item_name": itemName,
-		"value":     value,
+		MetadataKeyAction:   action,
+		MetadataKeyItemName: itemName,
+		MetadataKeyValue:    value,
 	}
 
 	result, err := s.jobService.AwardXP(ctx, userID, job.JobKeyMerchant, xp, action, metadata)
 	if err != nil {
-		logger.FromContext(ctx).Warn("Failed to award Merchant XP", "error", err, "user_id", userID)
+		logger.FromContext(ctx).Warn(LogMsgAwardMerchantXPFailed, "error", err, "user_id", userID)
 	} else if result != nil && result.LeveledUp {
-		logger.FromContext(ctx).Info("Merchant leveled up!", "user_id", userID, "new_level", result.NewLevel)
+		logger.FromContext(ctx).Info(LogMsgMerchantLeveledUp, "user_id", userID, "new_level", result.NewLevel)
 	}
 }
 
 func (s *service) Shutdown(ctx context.Context) error {
-	logger.FromContext(ctx).Info("Economy service shutting down, waiting for background tasks...")
+	logger.FromContext(ctx).Info(LogMsgEconomyShuttingDown)
 	done := make(chan struct{})
 	go func() {
 		s.wg.Wait()
@@ -412,6 +412,6 @@ func (s *service) Shutdown(ctx context.Context) error {
 	case <-done:
 		return nil
 	case <-ctx.Done():
-		return fmt.Errorf("shutdown timed out: %w", ctx.Err())
+		return fmt.Errorf(ErrMsgShutdownTimedOut, ctx.Err())
 	}
 }

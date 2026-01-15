@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/config"
 	"github.com/osse101/BrandishBot_Go/internal/event"
@@ -23,31 +22,31 @@ func InitializeEventSystem(cfg *config.Config) (event.Bus, *event.ResilientPubli
 	// Apply config defaults for resilient publisher
 	maxRetries := cfg.EventMaxRetries
 	if maxRetries == 0 {
-		maxRetries = 5 // Default to 5 retries
+		maxRetries = EventDefaultMaxRetries
 	}
 
 	retryDelay := cfg.EventRetryDelay
 	if retryDelay == 0 {
-		retryDelay = 2 * time.Second // Default to 2s base delay
+		retryDelay = EventDefaultRetryDelay
 	}
 
 	deadLetterPath := cfg.EventDeadLetterPath
 	if deadLetterPath == "" {
-		deadLetterPath = "logs/event_deadletter.jsonl" // Default path
+		deadLetterPath = EventDefaultDeadLetterPath
 	}
 
 	// Ensure dead-letter directory exists
-	if err := os.MkdirAll(filepath.Dir(deadLetterPath), 0755); err != nil {
-		return nil, nil, fmt.Errorf("failed to create dead-letter directory: %w", err)
+	if err := os.MkdirAll(filepath.Dir(deadLetterPath), DirPermission); err != nil {
+		return nil, nil, fmt.Errorf("%s: %w", LogMsgFailedCreateDeadLetterDir, err)
 	}
 
 	// Initialize Resilient Publisher with retry logic
 	resilientPublisher, err := event.NewResilientPublisher(eventBus, maxRetries, retryDelay, deadLetterPath)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create resilient publisher: %w", err)
+		return nil, nil, fmt.Errorf("%s: %w", LogMsgFailedCreateResilientPublisher, err)
 	}
 
-	slog.Info("Event system initialized",
+	slog.Info(LogMsgEventSystemInitialized,
 		"max_retries", maxRetries,
 		"retry_delay", retryDelay,
 		"deadletter_path", deadLetterPath)
