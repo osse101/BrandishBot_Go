@@ -49,7 +49,7 @@ func HandleAddItem(svc user.Service) http.HandlerFunc {
 
 		log.Info("Item added successfully", "username", req.Username, "item", req.ItemName, "quantity", req.Quantity)
 
-		respondJSON(w, http.StatusOK, SuccessResponse{Message: "Item added successfully"})
+		respondJSON(w, http.StatusOK, SuccessResponse{Message: MsgItemAddedSuccess})
 	}
 }
 
@@ -137,7 +137,7 @@ func HandleGiveItem(svc user.Service) http.HandlerFunc {
 
 		log.Info("Item transferred successfully", "owner", req.Owner, "receiver", req.Receiver, "item", req.ItemName, "quantity", req.Quantity)
 
-		respondJSON(w, http.StatusOK, SuccessResponse{Message: "Item transferred successfully"})
+		respondJSON(w, http.StatusOK, SuccessResponse{Message: MsgItemTransferredSuccess})
 	}
 }
 
@@ -404,7 +404,7 @@ func HandleGetInventory(svc user.Service, progSvc progression.Service) http.Hand
 		// Validate filter parameter
 		if filter != "" && !domain.IsValidFilterType(filter) {
 			log.Warn("Invalid filter parameter", "filter", filter)
-			http.Error(w, fmt.Sprintf("Invalid filter type '%s'. Valid options: upgrade, sellable, consumable", filter), http.StatusBadRequest)
+			http.Error(w, fmt.Sprintf(ErrMsgInvalidFilterType, filter), http.StatusBadRequest)
 			return
 		}
 
@@ -420,7 +420,7 @@ func HandleGetInventory(svc user.Service, progSvc progression.Service) http.Hand
 			}
 			if !unlocked {
 				log.Warn("Filter locked", "filter", filter, "username", username)
-				http.Error(w, fmt.Sprintf("Filter '%s' is locked. Unlock it in the progression tree.", filter), http.StatusForbidden)
+				http.Error(w, fmt.Sprintf(ErrMsgFilterLocked, filter), http.StatusForbidden)
 				return
 			}
 		}

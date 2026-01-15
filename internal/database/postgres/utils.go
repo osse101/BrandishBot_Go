@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/osse101/BrandishBot_Go/internal/database/generated"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
@@ -21,6 +23,93 @@ func SafeRollback(ctx context.Context, tx pgx.Tx) {
 		logger.FromContext(ctx).Error("Failed to rollback transaction", "error", err)
 	}
 }
+
+// ---- Common Helper Functions ----
+
+// parseUserUUID parses a user ID string to uuid.UUID with consistent error message.
+// Use this instead of repeating uuid.Parse + error wrapping throughout the codebase.
+func parseUserUUID(userID string) (uuid.UUID, error) {
+	u, err := uuid.Parse(userID)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("invalid user id: %w", err)
+	}
+	return u, nil
+}
+
+// ptrTime converts a pgtype.Timestamp to *time.Time.
+// Returns nil if the timestamp is not valid.
+func ptrTime(t pgtype.Timestamp) *time.Time {
+	if !t.Valid {
+		return nil
+	}
+	return &t.Time
+}
+
+// ptrTimeTz converts a pgtype.Timestamptz to *time.Time.
+// Returns nil if the timestamp is not valid.
+func ptrTimeTz(t pgtype.Timestamptz) *time.Time {
+	if !t.Valid {
+		return nil
+	}
+	return &t.Time
+}
+
+// ptrInt converts a pgtype.Int4 to *int.
+// Returns nil if the int is not valid.
+func ptrInt(i pgtype.Int4) *int {
+	if !i.Valid {
+		return nil
+	}
+	v := int(i.Int32)
+	return &v
+}
+
+// numericToFloat64 safely converts pgtype.Numeric to float64.
+// Returns (0, error) if conversion fails instead of silently ignoring errors.
+func numericToFloat64(n pgtype.Numeric) (float64, error) {
+	val, err := n.Float64Value()
+	if err != nil {
+		return 0, fmt.Errorf("failed to convert numeric to float64: %w", err)
+	}
+	return val.Float64, nil
+}
+
+// txHelper wraps common transaction begin logic.
+// Returns a transaction and queries instance with the transaction applied.
+type txHelper struct {
+	tx pgx.Tx
+	q  *generated.Queries
+}
+
+// beginTx starts a new transaction and returns a txHelper for common operations.
+// Use SafeRollback in defer to ensure proper cleanup.
+func beginTx(ctx context.Context, db *pgxpool.Pool, q *generated.Queries) (*txHelper, error) {
+	tx, err := db.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	return &txHelper{
+		tx: tx,
+		q:  q.WithTx(tx),
+	}, nil
+}
+
+// Commit commits the transaction
+func (h *txHelper) Commit(ctx context.Context) error {
+	return h.tx.Commit(ctx)
+}
+
+// Tx returns the underlying transaction for SafeRollback
+func (h *txHelper) Tx() pgx.Tx {
+	return h.tx
+}
+
+// Queries returns the transaction-bound queries
+func (h *txHelper) Queries() *generated.Queries {
+	return h.q
+}
+
+// ---- End Common Helper Functions ----
 
 func textToPtr(t pgtype.Text) *string {
 	if !t.Valid {

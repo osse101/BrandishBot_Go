@@ -42,17 +42,17 @@ func (h *AdminJobHandler) HandleAdminAwardXP(w http.ResponseWriter, r *http.Requ
 
 	// Validate required fields
 	if req.Platform == "" || req.Username == "" || req.JobKey == "" {
-		http.Error(w, "platform, username, and job_key are required", http.StatusBadRequest)
+		http.Error(w, ErrMsgPlatformUsernameJobRequired, http.StatusBadRequest)
 		return
 	}
 
 	if req.Amount <= 0 {
-		http.Error(w, "amount must be positive", http.StatusBadRequest)
+		http.Error(w, ErrMsgAmountMustBePositive, http.StatusBadRequest)
 		return
 	}
 
 	if req.Amount > 10000 {
-		http.Error(w, "amount exceeds maximum (10000)", http.StatusBadRequest)
+		http.Error(w, ErrMsgAmountExceedsMax, http.StatusBadRequest)
 		return
 	}
 
@@ -69,7 +69,7 @@ func (h *AdminJobHandler) HandleAdminAwardXP(w http.ResponseWriter, r *http.Requ
 			"error", err,
 			"platform", req.Platform,
 			"username", req.Username)
-		http.Error(w, "user not found", http.StatusNotFound)
+		http.Error(w, ErrMsgUserNotFoundHTTP, http.StatusNotFound)
 		return
 	}
 

@@ -44,7 +44,7 @@ func HandleRecordEvent(svc stats.Service) http.HandlerFunc {
 
 		log.Info("Event recorded successfully", "user_id", req.UserID, "event_type", req.EventType)
 
-		respondJSON(w, http.StatusOK, SuccessResponse{Message: "Event recorded successfully"})
+		respondJSON(w, http.StatusOK, SuccessResponse{Message: MsgEventRecordedSuccess})
 	}
 }
 
@@ -145,7 +145,7 @@ func HandleGetLeaderboard(svc stats.Service) http.HandlerFunc {
 			limit, err = strconv.Atoi(limitStr)
 			if err != nil || limit <= 0 {
 				log.Warn("Invalid limit parameter", "limit", limitStr)
-				http.Error(w, "Invalid limit parameter", http.StatusBadRequest)
+				http.Error(w, ErrMsgInvalidLimit, http.StatusBadRequest)
 				return
 			}
 		}

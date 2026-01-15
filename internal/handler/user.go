@@ -35,7 +35,7 @@ func HandleRegisterUser(userService user.Service) http.HandlerFunc {
 
 		if r.Method != http.MethodPost {
 			log.Warn("Method not allowed", "method", r.Method)
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			http.Error(w, ErrMsgMethodNotAllowed, http.StatusMethodNotAllowed)
 			return
 		}
 
@@ -51,7 +51,7 @@ func HandleRegisterUser(userService user.Service) http.HandlerFunc {
 			log.Debug("User not found by platform ID, will create new user", "platform", req.KnownPlatform)
 			if req.Username == "" {
 				log.Warn("Username required for new user")
-				http.Error(w, "Username is required for new users", http.StatusBadRequest)
+				http.Error(w, ErrMsgUsernameRequired, http.StatusBadRequest)
 				return
 			}
 			isNewUser = true
@@ -72,7 +72,7 @@ func HandleRegisterUser(userService user.Service) http.HandlerFunc {
 		updatedUser, err := userService.RegisterUser(r.Context(), *user)
 		if err != nil {
 			log.Error("Failed to register user", "error", err, "username", req.Username)
-			http.Error(w, "Failed to register user", http.StatusInternalServerError)
+			http.Error(w, ErrMsgRegisterUserFailed, http.StatusInternalServerError)
 			return
 		}
 
@@ -91,11 +91,11 @@ func HandleRegisterUser(userService user.Service) http.HandlerFunc {
 
 func updatePlatformID(user *domain.User, platform, platformID string) {
 	switch platform {
-	case "twitch":
+	case domain.PlatformTwitch:
 		user.TwitchID = platformID
-	case "youtube":
+	case domain.PlatformYoutube:
 		user.YoutubeID = platformID
-	case "discord":
+	case domain.PlatformDiscord:
 		user.DiscordID = platformID
 	}
 }

@@ -48,20 +48,12 @@ func (r *progressionRepository) GetActiveSession(ctx context.Context) (*domain.P
 	}
 
 	session := &domain.ProgressionVotingSession{
-		ID:        int(row.ID),
-		StartedAt: row.StartedAt.Time,
-		Status:    row.Status,
-	}
-	if row.EndedAt.Valid {
-		t := row.EndedAt.Time
-		session.EndedAt = &t
-	}
-
-	session.VotingDeadline = row.VotingDeadline.Time
-
-	if row.WinningOptionID.Valid {
-		id := int(row.WinningOptionID.Int32)
-		session.WinningOptionID = &id
+		ID:              int(row.ID),
+		StartedAt:       row.StartedAt.Time,
+		Status:          row.Status,
+		EndedAt:         ptrTime(row.EndedAt),
+		VotingDeadline:  row.VotingDeadline.Time,
+		WinningOptionID: ptrInt(row.WinningOptionID),
 	}
 
 	// Get options
@@ -83,20 +75,12 @@ func (r *progressionRepository) GetSessionByID(ctx context.Context, sessionID in
 	}
 
 	session := &domain.ProgressionVotingSession{
-		ID:        int(row.ID),
-		StartedAt: row.StartedAt.Time,
-		Status:    row.Status,
-	}
-	if row.EndedAt.Valid {
-		t := row.EndedAt.Time
-		session.EndedAt = &t
-	}
-
-	session.VotingDeadline = row.VotingDeadline.Time
-
-	if row.WinningOptionID.Valid {
-		id := int(row.WinningOptionID.Int32)
-		session.WinningOptionID = &id
+		ID:              int(row.ID),
+		StartedAt:       row.StartedAt.Time,
+		Status:          row.Status,
+		EndedAt:         ptrTime(row.EndedAt),
+		VotingDeadline:  row.VotingDeadline.Time,
+		WinningOptionID: ptrInt(row.WinningOptionID),
 	}
 
 	session.Options, err = r.getSessionOptions(ctx, session.ID)
@@ -113,17 +97,15 @@ func (r *progressionRepository) getSessionOptions(ctx context.Context, sessionID
 		return nil, fmt.Errorf("failed to get session options: %w", err)
 	}
 
-	options := make([]domain.ProgressionVotingOption, 0)
+	options := make([]domain.ProgressionVotingOption, 0, len(rows))
 	for _, row := range rows {
 		opt := domain.ProgressionVotingOption{
-			ID:          int(row.ID),
-			SessionID:   int(row.SessionID),
-			NodeID:      int(row.NodeID),
-			TargetLevel: int(row.TargetLevel),
-			VoteCount:   int(row.VoteCount),
-		}
-		if row.LastHighestVoteAt.Valid {
-			opt.LastHighestVoteAt = &row.LastHighestVoteAt.Time
+			ID:                int(row.ID),
+			SessionID:         int(row.SessionID),
+			NodeID:            int(row.NodeID),
+			TargetLevel:       int(row.TargetLevel),
+			VoteCount:         int(row.VoteCount),
+			LastHighestVoteAt: ptrTime(row.LastHighestVoteAt),
 		}
 
 		// Get node details
@@ -218,25 +200,13 @@ func (r *progressionRepository) GetActiveUnlockProgress(ctx context.Context) (*d
 	progress := &domain.UnlockProgress{
 		ID:                       int(row.ID),
 		ContributionsAccumulated: int(row.ContributionsAccumulated),
-	}
-	if row.NodeID.Valid {
-		id := int(row.NodeID.Int32)
-		progress.NodeID = &id
-	}
-	if row.TargetLevel.Valid {
-		lvl := int(row.TargetLevel.Int32)
-		progress.TargetLevel = &lvl
+		NodeID:                   ptrInt(row.NodeID),
+		TargetLevel:              ptrInt(row.TargetLevel),
+		UnlockedAt:               ptrTime(row.UnlockedAt),
+		VotingSessionID:          ptrInt(row.VotingSessionID),
 	}
 	if row.StartedAt.Valid {
 		progress.StartedAt = row.StartedAt.Time
-	}
-	if row.UnlockedAt.Valid {
-		t := row.UnlockedAt.Time
-		progress.UnlockedAt = &t
-	}
-	if row.VotingSessionID.Valid {
-		id := int(row.VotingSessionID.Int32)
-		progress.VotingSessionID = &id
 	}
 
 	return progress, nil

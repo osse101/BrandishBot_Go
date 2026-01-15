@@ -27,7 +27,7 @@ func HandleTest(userService user.Service) http.HandlerFunc {
 
 		if r.Method != http.MethodPost {
 			log.Warn("Method not allowed", "method", r.Method)
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			http.Error(w, ErrMsgMethodNotAllowed, http.StatusMethodNotAllowed)
 			return
 		}
 

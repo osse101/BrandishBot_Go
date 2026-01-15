@@ -22,7 +22,7 @@ func (h *JobHandler) HandleGetAllJobs(w http.ResponseWriter, r *http.Request) {
 	jobs, err := h.service.GetAllJobs(r.Context())
 	if err != nil {
 		logger.FromContext(r.Context()).Error("Failed to get jobs", "error", err)
-		http.Error(w, "Failed to retrieve jobs", http.StatusInternalServerError)
+		http.Error(w, ErrMsgGetJobsFailed, http.StatusInternalServerError)
 		return
 	}
 
@@ -41,7 +41,7 @@ func (h *JobHandler) HandleGetUserJobs(w http.ResponseWriter, r *http.Request) {
 	userJobs, err := h.service.GetUserJobs(r.Context(), userID)
 	if err != nil {
 		logger.FromContext(r.Context()).Error("Failed to get user jobs", "error", err, "user_id", userID)
-		http.Error(w, "Failed to retrieve user jobs", http.StatusInternalServerError)
+		http.Error(w, ErrMsgGetUserJobsFailed, http.StatusInternalServerError)
 		return
 	}
 
@@ -71,7 +71,7 @@ func (h *JobHandler) HandleAwardXP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.UserID == "" || req.JobKey == "" || req.XPAmount <= 0 {
-		http.Error(w, "Missing required fields", http.StatusBadRequest)
+		http.Error(w, ErrMsgMissingRequiredFields, http.StatusBadRequest)
 		return
 	}
 

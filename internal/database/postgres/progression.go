@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -15,6 +14,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/database/generated"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/event"
+	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
 
@@ -211,7 +211,7 @@ func (r *progressionRepository) UnlockNode(ctx context.Context, nodeID int, leve
 			},
 		}); err != nil {
 			// Log but don't fail - event publishing errors shouldn't block node unlocks
-			log.Printf("failed to publish node unlocked event: %v", err)
+			logger.FromContext(ctx).Error("failed to publish node unlocked event", "error", err, "node_id", nodeID, "level", level)
 		}
 	}
 
@@ -247,7 +247,7 @@ func (r *progressionRepository) RelockNode(ctx context.Context, nodeID int, leve
 			},
 		}); err != nil {
 			// Log but don't fail - event publishing errors shouldn't block node relocks
-			log.Printf("failed to publish node relocked event: %v", err)
+			logger.FromContext(ctx).Error("failed to publish node relocked event", "error", err, "node_id", nodeID, "level", level)
 		}
 	}
 
@@ -272,10 +272,7 @@ func (r *progressionRepository) GetActiveVoting(ctx context.Context) (*domain.Pr
 		VoteCount:       int(row.VoteCount.Int32),
 		VotingStartedAt: row.VotingStartedAt.Time,
 		IsActive:        row.IsActive.Bool,
-	}
-	if row.VotingEndsAt.Valid {
-		t := row.VotingEndsAt.Time
-		voting.VotingEndsAt = &t
+		VotingEndsAt:    ptrTime(row.VotingEndsAt),
 	}
 
 	return voting, nil
@@ -322,10 +319,7 @@ func (r *progressionRepository) GetVoting(ctx context.Context, nodeID int, level
 		VoteCount:       int(row.VoteCount.Int32),
 		VotingStartedAt: row.VotingStartedAt.Time,
 		IsActive:        row.IsActive.Bool,
-	}
-	if row.VotingEndsAt.Valid {
-		t := row.VotingEndsAt.Time
-		voting.VotingEndsAt = &t
+		VotingEndsAt:    ptrTime(row.VotingEndsAt),
 	}
 
 	return voting, nil
@@ -549,8 +543,13 @@ func (r *progressionRepository) GetEngagementWeights(ctx context.Context) (map[s
 
 	weights := make(map[string]float64)
 	for _, row := range rows {
-		f, _ := row.Weight.Float64Value()
-		weights[row.MetricType] = f.Float64
+		f, err := numericToFloat64(row.Weight)
+		if err != nil {
+			// Log warning but use default weight of 1.0 for this metric
+			logger.FromContext(ctx).Warn("failed to convert weight for metric, using default", "metric", row.MetricType, "error", err)
+			f = 1.0
+		}
+		weights[row.MetricType] = f
 	}
 
 	if len(weights) == 0 {
@@ -568,13 +567,13 @@ func (r *progressionRepository) GetEngagementWeights(ctx context.Context) (map[s
 // Reset operations
 
 func (r *progressionRepository) ResetTree(ctx context.Context, resetBy string, reason string, preserveUserData bool) error {
-	tx, err := r.pool.Begin(ctx)
+	h, err := beginTx(ctx, r.pool, r.q)
 	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
+		return err
 	}
-	defer SafeRollback(ctx, tx)
+	defer SafeRollback(ctx, h.Tx())
 
-	q := r.q.WithTx(tx)
+	q := h.Queries()
 
 	// Count unlocks
 	nodeCount, err := q.CountUnlocks(ctx)
@@ -621,7 +620,7 @@ func (r *progressionRepository) ResetTree(ctx context.Context, resetBy string, r
 		}
 	}
 
-	return tx.Commit(ctx)
+	return h.Commit(ctx)
 }
 
 func (r *progressionRepository) RecordReset(ctx context.Context, reset *domain.ProgressionReset) error {

@@ -65,7 +65,7 @@ func (h *GambleHandler) HandleJoinGamble(w http.ResponseWriter, r *http.Request)
 	}
 	gambleID, err := uuid.Parse(gambleIDStr)
 	if err != nil {
-		http.Error(w, "Invalid gamble ID", http.StatusBadRequest)
+		http.Error(w, ErrMsgInvalidGambleID, http.StatusBadRequest)
 		return
 	}
 
@@ -80,7 +80,7 @@ func (h *GambleHandler) HandleJoinGamble(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	respondJSON(w, http.StatusOK, map[string]string{"message": "Successfully joined gamble"})
+	respondJSON(w, http.StatusOK, map[string]string{"message": MsgJoinedGambleSuccess})
 }
 
 func (h *GambleHandler) HandleGetGamble(w http.ResponseWriter, r *http.Request) {
@@ -90,7 +90,7 @@ func (h *GambleHandler) HandleGetGamble(w http.ResponseWriter, r *http.Request) 
 	}
 	gambleID, err := uuid.Parse(gambleIDStr)
 	if err != nil {
-		http.Error(w, "Invalid gamble ID", http.StatusBadRequest)
+		http.Error(w, ErrMsgInvalidGambleID, http.StatusBadRequest)
 		return
 	}
 
@@ -101,7 +101,7 @@ func (h *GambleHandler) HandleGetGamble(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	if gamble == nil {
-		http.Error(w, "Gamble not found", http.StatusNotFound)
+		http.Error(w, ErrMsgGambleNotFoundHTTP, http.StatusNotFound)
 		return
 	}
 

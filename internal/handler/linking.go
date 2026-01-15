@@ -50,7 +50,7 @@ func (h *LinkingHandlers) HandleInitiate() http.HandlerFunc {
 		log := logger.FromContext(r.Context())
 
 		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			http.Error(w, ErrMsgMethodNotAllowed, http.StatusMethodNotAllowed)
 			return
 		}
 
@@ -79,7 +79,7 @@ func (h *LinkingHandlers) HandleClaim() http.HandlerFunc {
 		log := logger.FromContext(r.Context())
 
 		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			http.Error(w, ErrMsgMethodNotAllowed, http.StatusMethodNotAllowed)
 			return
 		}
 
@@ -108,7 +108,7 @@ func (h *LinkingHandlers) HandleConfirm() http.HandlerFunc {
 		log := logger.FromContext(r.Context())
 
 		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			http.Error(w, ErrMsgMethodNotAllowed, http.StatusMethodNotAllowed)
 			return
 		}
 
@@ -134,7 +134,7 @@ func (h *LinkingHandlers) HandleUnlink() http.HandlerFunc {
 		log := logger.FromContext(r.Context())
 
 		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			http.Error(w, ErrMsgMethodNotAllowed, http.StatusMethodNotAllowed)
 			return
 		}
 
@@ -153,7 +153,7 @@ func (h *LinkingHandlers) HandleUnlink() http.HandlerFunc {
 
 			respondJSON(w, http.StatusOK, map[string]interface{}{
 				"awaiting_confirmation": true,
-				"message":               "Confirm within 60 seconds",
+				"message":               MsgConfirmWithinSeconds,
 			})
 			return
 		}
@@ -167,7 +167,7 @@ func (h *LinkingHandlers) HandleUnlink() http.HandlerFunc {
 
 		respondJSON(w, http.StatusOK, map[string]interface{}{
 			"success": true,
-			"message": "Platform unlinked",
+			"message": MsgPlatformUnlinked,
 		})
 	}
 }

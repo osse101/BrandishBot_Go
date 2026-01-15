@@ -46,7 +46,7 @@ func HandleAddItemByUsername(svc user.Service) http.HandlerFunc {
 
 		log.Info("Item added successfully by username", "username", req.Username, "item", req.ItemName, "quantity", req.Quantity)
 
-		respondJSON(w, http.StatusOK, SuccessResponse{Message: "Item added successfully"})
+		respondJSON(w, http.StatusOK, SuccessResponse{Message: MsgItemAddedSuccess})
 	}
 }
 

@@ -46,7 +46,7 @@ func HandleMessageHandler(userService user.Service, progressionSvc progression.S
 
 		if r.Method != http.MethodPost {
 			log.Warn("Method not allowed", "method", r.Method)
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			http.Error(w, ErrMsgMethodNotAllowed, http.StatusMethodNotAllowed)
 			return
 		}
 
@@ -63,7 +63,7 @@ func HandleMessageHandler(userService user.Service, progressionSvc progression.S
 				"platform", req.Platform,
 				"platform_id", req.PlatformID,
 				"username", req.Username)
-			http.Error(w, "Failed to handle message", http.StatusInternalServerError)
+			http.Error(w, ErrMsgHandleMessageFailed, http.StatusInternalServerError)
 			return
 		}
 

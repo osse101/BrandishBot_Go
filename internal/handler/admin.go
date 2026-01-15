@@ -26,7 +26,7 @@ func HandleReloadAliases(resolver naming.Resolver) http.HandlerFunc {
 
 		if err := resolver.Reload(); err != nil {
 			log.Error("Failed to reload naming resolver", "error", err)
-			respondError(w, http.StatusInternalServerError, "Failed to reload configuration")
+			respondError(w, http.StatusInternalServerError, ErrMsgReloadConfigFailed)
 			return
 		}
 
@@ -36,7 +36,7 @@ func HandleReloadAliases(resolver naming.Resolver) http.HandlerFunc {
 		log.Info("Naming resolver configuration reloaded successfully", "active_theme", activeTheme)
 
 		response := map[string]interface{}{
-			"message":      "Alias configuration reloaded successfully",
+			"message":      MsgConfigReloadedSuccess,
 			"active_theme": activeTheme,
 		}
 

@@ -36,9 +36,9 @@ func (r *StatsRepository) RecordEvent(ctx context.Context, event *domain.StatsEv
 		return fmt.Errorf("failed to marshal event data: %w", err)
 	}
 
-	userUUID, err := uuid.Parse(event.UserID)
+	userUUID, err := parseUserUUID(event.UserID)
 	if err != nil {
-		return fmt.Errorf("invalid user id: %w", err)
+		return err
 	}
 
 	// Prepare params
@@ -67,9 +67,9 @@ func (r *StatsRepository) RecordEvent(ctx context.Context, event *domain.StatsEv
 
 // GetEventsByUser retrieves all events for a specific user within a time range
 func (r *StatsRepository) GetEventsByUser(ctx context.Context, userID string, startTime, endTime time.Time) ([]domain.StatsEvent, error) {
-	userUUID, err := uuid.Parse(userID)
+	userUUID, err := parseUserUUID(userID)
 	if err != nil {
-		return nil, fmt.Errorf("invalid user id: %w", err)
+		return nil, err
 	}
 
 	rows, err := r.q.GetEventsByUser(ctx, generated.GetEventsByUserParams{
@@ -95,9 +95,9 @@ func (r *StatsRepository) GetEventsByUser(ctx context.Context, userID string, st
 
 // GetUserEventsByType retrieves events of a specific type for a specific user with a limit
 func (r *StatsRepository) GetUserEventsByType(ctx context.Context, userID string, eventType domain.EventType, limit int) ([]domain.StatsEvent, error) {
-	userUUID, err := uuid.Parse(userID)
+	userUUID, err := parseUserUUID(userID)
 	if err != nil {
-		return nil, fmt.Errorf("invalid user id: %w", err)
+		return nil, err
 	}
 
 	rows, err := r.q.GetUserEventsByType(ctx, generated.GetUserEventsByTypeParams{
@@ -216,9 +216,9 @@ func (r *StatsRepository) GetEventCounts(ctx context.Context, startTime, endTime
 
 // GetUserEventCounts retrieves event counts for a specific user grouped by event type
 func (r *StatsRepository) GetUserEventCounts(ctx context.Context, userID string, startTime, endTime time.Time) (map[domain.EventType]int, error) {
-	userUUID, err := uuid.Parse(userID)
+	userUUID, err := parseUserUUID(userID)
 	if err != nil {
-		return nil, fmt.Errorf("invalid user id: %w", err)
+		return nil, err
 	}
 
 	rows, err := r.q.GetUserEventCounts(ctx, generated.GetUserEventCountsParams{

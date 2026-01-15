@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -75,9 +74,9 @@ func (r *JobRepository) GetJobByKey(ctx context.Context, jobKey string) (*domain
 
 // GetUserJobs retrieves all job progress for a user
 func (r *JobRepository) GetUserJobs(ctx context.Context, userID string) ([]domain.UserJob, error) {
-	userUUID, err := uuid.Parse(userID)
+	userUUID, err := parseUserUUID(userID)
 	if err != nil {
-		return nil, fmt.Errorf("invalid user id: %w", err)
+		return nil, err
 	}
 
 	rows, err := r.q.GetUserJobs(ctx, userUUID)
@@ -103,9 +102,9 @@ func (r *JobRepository) GetUserJobs(ctx context.Context, userID string) ([]domai
 
 // GetUserJob retrieves a single user's progress for a specific job
 func (r *JobRepository) GetUserJob(ctx context.Context, userID string, jobID int) (*domain.UserJob, error) {
-	userUUID, err := uuid.Parse(userID)
+	userUUID, err := parseUserUUID(userID)
 	if err != nil {
-		return nil, fmt.Errorf("invalid user id: %w", err)
+		return nil, err
 	}
 
 	row, err := r.q.GetUserJob(ctx, generated.GetUserJobParams{
@@ -132,9 +131,9 @@ func (r *JobRepository) GetUserJob(ctx context.Context, userID string, jobID int
 
 // UpsertUserJob creates or updates a user's job progress
 func (r *JobRepository) UpsertUserJob(ctx context.Context, userJob *domain.UserJob) error {
-	userUUID, err := uuid.Parse(userJob.UserID)
+	userUUID, err := parseUserUUID(userJob.UserID)
 	if err != nil {
-		return fmt.Errorf("invalid user id: %w", err)
+		return err
 	}
 
 	var lastXPGain time.Time
@@ -166,9 +165,9 @@ func (r *JobRepository) RecordJobXPEvent(ctx context.Context, event *domain.JobX
 		return fmt.Errorf("failed to marshal metadata: %w", err)
 	}
 
-	userUUID, err := uuid.Parse(event.UserID)
+	userUUID, err := parseUserUUID(event.UserID)
 	if err != nil {
-		return fmt.Errorf("invalid user id: %w", err)
+		return err
 	}
 
 	params := generated.RecordJobXPEventParams{
@@ -201,16 +200,18 @@ func (r *JobRepository) GetJobLevelBonuses(ctx context.Context, jobID int, level
 
 	bonuses := make([]domain.JobLevelBonus, 0, len(rows))
 	for _, row := range rows {
-		// Convert pgtype.Numeric to float64
-		// Best effort conversion
-		val, _ := row.BonusValue.Float64Value()
+		// Convert pgtype.Numeric to float64 with proper error handling
+		bonusValue, err := numericToFloat64(row.BonusValue)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert bonus value for job %d: %w", row.JobID, err)
+		}
 
 		bonuses = append(bonuses, domain.JobLevelBonus{
 			ID:          int(row.ID),
 			JobID:       int(row.JobID),
 			MinLevel:    int(row.MinLevel),
 			BonusType:   row.BonusType,
-			BonusValue:  val.Float64,
+			BonusValue:  bonusValue,
 			Description: row.Description.String,
 		})
 	}

@@ -63,7 +63,7 @@ func HandleSearch(svc user.Service, progressionSvc progression.Service, eventBus
 		message, err := svc.HandleSearch(r.Context(), req.Platform, req.PlatformID, req.Username)
 		if err != nil {
 			log.Error("Failed to handle search", "error", err, "username", req.Username)
-			http.Error(w, "Failed to perform search", http.StatusInternalServerError)
+			http.Error(w, ErrMsgSearchFailed, http.StatusInternalServerError)
 			return
 		}
 
