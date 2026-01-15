@@ -35,7 +35,7 @@ func NewResilientPublisher(bus Bus, maxRetries int, retryDelay time.Duration, de
 
 	rp := &ResilientPublisher{
 		bus:        bus,
-		retryQueue: make(chan retryEntry, 1000), // Buffer 1000 events
+		retryQueue: make(chan retryEntry, RetryQueueBufferSize),
 		maxRetries: maxRetries,
 		retryDelay: retryDelay,
 		shutdown:   make(chan struct{}),
@@ -54,7 +54,7 @@ func NewResilientPublisher(bus Bus, maxRetries int, retryDelay time.Duration, de
 func (rp *ResilientPublisher) PublishWithRetry(ctx context.Context, event Event) {
 	if err := rp.bus.Publish(ctx, event); err != nil {
 		log := logger.FromContext(ctx)
-		log.Warn("Event publish failed, queuing for retry",
+		log.Warn(LogMsgEventPublishFailed,
 			"event_type", event.Type,
 			"error", err)
 
@@ -63,10 +63,10 @@ func (rp *ResilientPublisher) PublishWithRetry(ctx context.Context, event Event)
 		case rp.retryQueue <- retryEntry{event: event, attempt: 1, lastError: err}:
 			// Queued successfully
 		default:
-			log.Error("Retry queue full, event dropped to dead-letter",
+			log.Error(LogMsgRetryQueueFull,
 				"event_type", event.Type)
 			if err := rp.deadLetter.Write(event, 0, err); err != nil {
-				log.Error("Failed to write to dead letter", "error", err)
+				log.Error(LogMsgDeadLetterWriteFailed, "error", err)
 			}
 		}
 	}
@@ -91,7 +91,7 @@ func (rp *ResilientPublisher) retryWorker() {
 // processRetry handles retry logic for a single event
 func (rp *ResilientPublisher) processRetry(entry retryEntry) {
 	// Exponential backoff: 2s, 4s, 8s, 16s, 32s
-	delay := rp.retryDelay * time.Duration(1<<(entry.attempt-1))
+	delay := CalculateRetryDelay(rp.retryDelay, entry.attempt)
 	time.Sleep(delay)
 
 	ctx := context.Background()
@@ -100,16 +100,16 @@ func (rp *ResilientPublisher) processRetry(entry retryEntry) {
 	if err := rp.bus.Publish(ctx, entry.event); err != nil {
 		if entry.attempt >= rp.maxRetries {
 			// Retry exhausted, write to dead-letter
-			log.Error("Event retry exhausted, writing to dead-letter",
+			log.Error(LogMsgEventRetryExhausted,
 				"event_type", entry.event.Type,
 				"attempts", entry.attempt,
 				"error", err)
 			if writeErr := rp.deadLetter.Write(entry.event, entry.attempt, err); writeErr != nil {
-				log.Error("Failed to write to dead letter", "error", writeErr)
+				log.Error(LogMsgDeadLetterWriteFailed, "error", writeErr)
 			}
 		} else {
 			// Schedule next retry
-			log.Warn("Event retry failed, scheduling next attempt",
+			log.Warn(LogMsgEventRetryFailed,
 				"event_type", entry.event.Type,
 				"attempt", entry.attempt,
 				"next_delay", delay*2,
@@ -123,13 +123,13 @@ func (rp *ResilientPublisher) processRetry(entry retryEntry) {
 				case <-rp.shutdown:
 					// Shutting down, write to dead-letter
 					if writeErr := rp.deadLetter.Write(nextEntry.event, nextEntry.attempt, nextEntry.lastError); writeErr != nil {
-						log.Error("Failed to write to dead letter shutdown", "error", writeErr)
+						log.Error(LogMsgDeadLetterWriteFailedS, "error", writeErr)
 					}
 				}
 			}(retryEntry{event: entry.event, attempt: entry.attempt + 1, lastError: err})
 		}
 	} else {
-		log.Info("Event retry succeeded",
+		log.Info(LogMsgEventRetrySucceeded,
 			"event_type", entry.event.Type,
 			"attempt", entry.attempt)
 	}
@@ -146,17 +146,17 @@ func (rp *ResilientPublisher) drainQueue() {
 			// Try one final publish attempt
 			ctx := context.Background()
 			if err := rp.bus.Publish(ctx, entry.event); err != nil {
-				log.Warn("Event dropped during shutdown",
+				log.Warn(LogMsgEventDroppedShutdown,
 					"event_type", entry.event.Type,
 					"error", err)
 				if writeErr := rp.deadLetter.Write(entry.event, entry.attempt, err); writeErr != nil {
-					log.Error("Failed to write to dead letter", "error", writeErr)
+					log.Error(LogMsgDeadLetterWriteFailed, "error", writeErr)
 				}
 			}
 			count++
 		default:
 			if count > 0 {
-				log.Info("Drained retry queue during shutdown", "events_processed", count)
+				log.Info(LogMsgQueueDrainedShutdown, "events_processed", count)
 			}
 			return
 		}
@@ -178,7 +178,7 @@ func (rp *ResilientPublisher) Shutdown(ctx context.Context) error {
 	case <-done:
 		// Completed successfully
 	case <-ctx.Done():
-		logger.FromContext(ctx).Warn("Resilient publisher shutdown timed out")
+		logger.FromContext(ctx).Warn(LogMsgShutdownTimeout)
 	}
 
 	return rp.deadLetter.Close()

@@ -164,13 +164,13 @@ func mapRowToEvent(row generated.Event) (eventlog.Event, error) {
 		evt.UserID = &uid
 	}
 
-	if len(row.Payload) > 0 {
+	if len(row.Payload) > eventlog.MinDataLength {
 		if err := json.Unmarshal(row.Payload, &evt.Payload); err != nil {
 			return evt, err
 		}
 	}
 
-	if len(row.Metadata) > 0 {
+	if len(row.Metadata) > eventlog.MinDataLength {
 		if err := json.Unmarshal(row.Metadata, &evt.Metadata); err != nil {
 			return evt, err
 		}

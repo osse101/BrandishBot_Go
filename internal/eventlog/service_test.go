@@ -33,13 +33,13 @@ func TestService_Subscribe(t *testing.T) {
 
 	// Expect subscription to all event types
 	eventTypes := []event.Type{
-		"item.sold",
-		"item.bought",
-		"item.upgraded",
-		"item.disassembled",
-		"item.used",
-		"search.performed",
-		"engagement",
+		eventlog.EventTypeItemSold,
+		eventlog.EventTypeItemBought,
+		eventlog.EventTypeItemUpgraded,
+		eventlog.EventTypeItemDisassembled,
+		eventlog.EventTypeItemUsed,
+		eventlog.EventTypeSearchPerformed,
+		eventlog.EventTypeEngagement,
 	}
 
 	for _, et := range eventTypes {
@@ -61,16 +61,16 @@ func TestService_HandleEvent(t *testing.T) {
 	ctx := context.Background()
 	userID := "user123"
 	payload := map[string]interface{}{
-		"user_id":   userID,
-		"item_name": "sword",
+		eventlog.PayloadKeyUserID: userID,
+		"item_name":                "sword",
 	}
 	evt := event.Event{
-		Type:    "item.sold",
+		Type:    eventlog.EventTypeItemSold,
 		Payload: payload,
 	}
 
 	// Expect LogEvent to be called
-	mockRepo.On("LogEvent", ctx, "item.sold", &userID, payload, mock.Anything).Return(nil)
+	mockRepo.On("LogEvent", ctx, eventlog.EventTypeItemSold, &userID, payload, mock.Anything).Return(nil)
 
 	err := hooks.HandleEvent(ctx, evt)
 	assert.NoError(t, err)

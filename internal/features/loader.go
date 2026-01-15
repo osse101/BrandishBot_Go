@@ -38,20 +38,20 @@ func (l *Loader) Load() error {
 
 	entries, err := os.ReadDir(l.dir)
 	if err != nil {
-		return fmt.Errorf("failed to read feature directory: %w", err)
+		return fmt.Errorf(ErrMsgReadDirectoryFailed, err)
 	}
 
 	for _, entry := range entries {
-		if entry.IsDir() || filepath.Ext(entry.Name()) != ".txt" {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != FeatureFileExtension {
 			continue
 		}
 
-		name := strings.TrimSuffix(entry.Name(), ".txt")
+		name := strings.TrimSuffix(entry.Name(), FeatureFileExtension)
 		path := filepath.Join(l.dir, entry.Name())
 
 		data, err := l.parseFile(path)
 		if err != nil {
-			return fmt.Errorf("failed to parse feature file %s: %w", name, err)
+			return fmt.Errorf(ErrMsgParseFileFailed, name, err)
 		}
 
 		l.cache[name] = data
@@ -115,7 +115,7 @@ func (l *Loader) parseFile(path string) (FeatureData, error) {
 	for scanner.Scan() {
 		line := scanner.Text()
 
-		if line == "---" {
+		if line == FeatureFileDelimiter {
 			parsingCommands = true
 			continue
 		}

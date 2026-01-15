@@ -28,7 +28,7 @@ type DeadLetterEntry struct {
 
 // NewDeadLetterWriter creates a new DeadLetterWriter
 func NewDeadLetterWriter(path string) (*DeadLetterWriter, error) {
-	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, DeadLetterFilePermissions)
 	if err != nil {
 		return nil, err
 	}

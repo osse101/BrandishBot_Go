@@ -70,12 +70,12 @@ func NewLoader() Loader {
 func (l *itemLoader) Load(path string) (*Config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read items config file: %w", err)
+		return nil, fmt.Errorf(ErrMsgReadConfigFileFailed, err)
 	}
 
 	var config Config
 	if err := json.Unmarshal(data, &config); err != nil {
-		return nil, fmt.Errorf("failed to parse items config: %w", err)
+		return nil, fmt.Errorf(ErrMsgParseConfigFailed, err)
 	}
 
 	return &config, nil
@@ -84,11 +84,11 @@ func (l *itemLoader) Load(path string) (*Config, error) {
 // Validate checks the item configuration for errors
 func (l *itemLoader) Validate(config *Config) error {
 	if config == nil {
-		return fmt.Errorf("%w: config is nil", ErrInvalidConfig)
+		return fmt.Errorf("%w: %s", ErrInvalidConfig, ErrMsgConfigNil)
 	}
 
 	if len(config.Items) == 0 {
-		return fmt.Errorf("%w: no items defined", ErrInvalidConfig)
+		return fmt.Errorf("%w: %s", ErrInvalidConfig, ErrMsgNoItemsDefined)
 	}
 
 	validTags := l.buildValidationMap(config.ValidTags)
@@ -120,7 +120,7 @@ func (l *itemLoader) buildValidationMap(items []string) map[string]bool {
 func (l *itemLoader) validateItemDef(index int, item *Def, validTags, validHandlers map[string]bool, internalNames map[string]bool) error {
 	// Check for empty internal name
 	if item.InternalName == "" {
-		return fmt.Errorf("%w: item at index %d has empty internal_name", ErrInvalidConfig, index)
+		return fmt.Errorf(ErrFmtItemAtIndexEmpty, ErrInvalidConfig, index)
 	}
 
 	// Check for duplicate internal names
@@ -131,32 +131,32 @@ func (l *itemLoader) validateItemDef(index int, item *Def, validTags, validHandl
 
 	// Validate required fields
 	if item.PublicName == "" {
-		return fmt.Errorf("%w: item '%s' has empty public_name", ErrInvalidConfig, item.InternalName)
+		return fmt.Errorf(ErrFmtItemHasEmptyPublic, ErrInvalidConfig, item.InternalName)
 	}
 	if item.DefaultDisplay == "" {
-		return fmt.Errorf("%w: item '%s' has empty default_display", ErrInvalidConfig, item.InternalName)
+		return fmt.Errorf(ErrFmtItemHasEmptyDisplay, ErrInvalidConfig, item.InternalName)
 	}
 
 	// Validate tags
 	for _, tag := range item.Tags {
 		if !validTags[tag] {
-			return fmt.Errorf("%w: item '%s' has invalid tag '%s' (not in valid_tags)", ErrInvalidTag, item.InternalName, tag)
+			return fmt.Errorf(ErrFmtItemInvalidTag, ErrInvalidTag, item.InternalName, tag)
 		}
 	}
 
 	// Validate handler (if present)
 	if item.Handler != nil && *item.Handler != "" {
 		if !validHandlers[*item.Handler] {
-			return fmt.Errorf("%w: item '%s' has invalid handler '%s' (not in valid_handlers)", ErrInvalidHandler, item.InternalName, *item.Handler)
+			return fmt.Errorf(ErrFmtItemInvalidHandler, ErrInvalidHandler, item.InternalName, *item.Handler)
 		}
 	}
 
 	// Validate numeric fields
 	if item.MaxStack < 0 {
-		return fmt.Errorf("%w: item '%s' has negative max_stack", ErrInvalidConfig, item.InternalName)
+		return fmt.Errorf(ErrFmtItemNegativeMaxStack, ErrInvalidConfig, item.InternalName)
 	}
 	if item.BaseValue < 0 {
-		return fmt.Errorf("%w: item '%s' has negative base_value", ErrInvalidConfig, item.InternalName)
+		return fmt.Errorf(ErrFmtItemNegativeValue, ErrInvalidConfig, item.InternalName)
 	}
 
 	return nil
@@ -169,11 +169,11 @@ func (l *itemLoader) SyncToDatabase(ctx context.Context, config *Config, repo re
 	// Check if file has changed since last sync
 	hasChanged, err := hasFileChanged(ctx, repo, configPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to check if file changed: %w", err)
+		return nil, fmt.Errorf(ErrMsgCheckFileChangeFailed, err)
 	}
 
 	if !hasChanged {
-		log.Info("Items config file unchanged, skipping sync", "path", configPath)
+		log.Info(LogMsgConfigUnchanged, "path", configPath)
 		return &SyncResult{}, nil
 	}
 
@@ -192,10 +192,10 @@ func (l *itemLoader) SyncToDatabase(ctx context.Context, config *Config, repo re
 
 	// Update sync metadata
 	if err := updateSyncMetadata(ctx, repo, configPath); err != nil {
-		log.Warn("Failed to update sync metadata", "error", err)
+		log.Warn(LogMsgUpdateMetadataFailed, "error", err)
 	}
 
-	log.Info("Items sync completed",
+	log.Info(LogMsgSyncCompleted,
 		"inserted", result.ItemsInserted,
 		"updated", result.ItemsUpdated,
 		"skipped", result.ItemsSkipped)
@@ -207,7 +207,7 @@ func (l *itemLoader) loadSyncData(ctx context.Context, repo repository.Item) (ma
 	// Get all existing items from DB
 	existingItems, err := repo.GetAllItems(ctx)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get existing items: %w", err)
+		return nil, nil, fmt.Errorf(ErrMsgGetExistingItemsFailed, err)
 	}
 
 	existingByInternalName := make(map[string]*domain.Item, len(existingItems))
@@ -218,7 +218,7 @@ func (l *itemLoader) loadSyncData(ctx context.Context, repo repository.Item) (ma
 	// Get all item types for tag sync
 	itemTypes, err := repo.GetAllItemTypes(ctx)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get item types: %w", err)
+		return nil, nil, fmt.Errorf(ErrMsgGetItemTypesFailed, err)
 	}
 
 	typesByName := make(map[string]int, len(itemTypes))
@@ -250,17 +250,17 @@ func (l *itemLoader) syncOneItem(ctx context.Context, repo repository.Item, item
 				Handler:        itemDef.Handler,
 				DefaultDisplay: itemDef.DefaultDisplay,
 			}); err != nil {
-				return fmt.Errorf("failed to update item '%s': %w", itemDef.InternalName, err)
+				return fmt.Errorf(ErrMsgUpdateItemFailed, itemDef.InternalName, err)
 			}
 			result.ItemsUpdated++
-			log.Info("Updated item", "internal_name", itemDef.InternalName)
+			log.Info(LogMsgUpdatedItem, "internal_name", itemDef.InternalName)
 		} else {
 			result.ItemsSkipped++
 		}
 
 		// Sync tags for this item
 		if err := syncItemTags(ctx, repo, existing.ID, itemDef.Tags, typesByName); err != nil {
-			return fmt.Errorf("failed to sync tags for '%s': %w", itemDef.InternalName, err)
+			return fmt.Errorf(ErrMsgSyncTagsFailed, itemDef.InternalName, err)
 		}
 	} else {
 		// Insert new item
@@ -275,15 +275,15 @@ func (l *itemLoader) syncOneItem(ctx context.Context, repo repository.Item, item
 
 		itemID, err := repo.InsertItem(ctx, newItem)
 		if err != nil {
-			return fmt.Errorf("failed to insert item '%s': %w", itemDef.InternalName, err)
+			return fmt.Errorf(ErrMsgInsertItemFailed, itemDef.InternalName, err)
 		}
 
 		result.ItemsInserted++
-		log.Info("Inserted item", "internal_name", itemDef.InternalName, "id", itemID)
+		log.Info(LogMsgInsertedItem, "internal_name", itemDef.InternalName, "id", itemID)
 
 		// Sync tags for new item
 		if err := syncItemTags(ctx, repo, itemID, itemDef.Tags, typesByName); err != nil {
-			return fmt.Errorf("failed to sync tags for new item '%s': %w", itemDef.InternalName, err)
+			return fmt.Errorf(ErrMsgSyncTagsNewItemFailed, itemDef.InternalName, err)
 		}
 	}
 	return nil
@@ -294,20 +294,20 @@ func hasFileChanged(ctx context.Context, repo repository.Item, configPath string
 	// Get file info
 	fileInfo, err := os.Stat(configPath)
 	if err != nil {
-		return false, fmt.Errorf("failed to stat config file: %w", err)
+		return false, fmt.Errorf(ErrMsgStatConfigFileFailed, err)
 	}
 
 	// Calculate file hash
 	data, err := os.ReadFile(configPath)
 	if err != nil {
-		return false, fmt.Errorf("failed to read config file: %w", err)
+		return false, fmt.Errorf(ErrMsgReadForHashFailed, err)
 	}
 
 	hash := sha256.Sum256(data)
 	fileHash := hex.EncodeToString(hash[:])
 
 	// Get last sync metadata
-	syncMeta, err := repo.GetSyncMetadata(ctx, "items.json")
+	syncMeta, err := repo.GetSyncMetadata(ctx, ConfigFileName)
 	if err != nil {
 		// First sync - no metadata exists
 		return true, nil
@@ -325,19 +325,19 @@ func hasFileChanged(ctx context.Context, repo repository.Item, configPath string
 func updateSyncMetadata(ctx context.Context, repo repository.Item, configPath string) error {
 	fileInfo, err := os.Stat(configPath)
 	if err != nil {
-		return fmt.Errorf("failed to stat config file: %w", err)
+		return fmt.Errorf(ErrMsgStatConfigFileFailed, err)
 	}
 
 	data, err := os.ReadFile(configPath)
 	if err != nil {
-		return fmt.Errorf("failed to read config file: %w", err)
+		return fmt.Errorf(ErrMsgReadForHashFailed, err)
 	}
 
 	hash := sha256.Sum256(data)
 	fileHash := hex.EncodeToString(hash[:])
 
 	return repo.UpsertSyncMetadata(ctx, &domain.SyncMetadata{
-		ConfigName:   "items.json",
+		ConfigName:   ConfigFileName,
 		LastSyncTime: time.Now(),
 		FileHash:     fileHash,
 		FileModTime:  fileInfo.ModTime(),
@@ -355,7 +355,7 @@ func syncItemTags(ctx context.Context, repo repository.Item, itemID int, tags []
 			// For now, create it automatically
 			newTypeID, err := repo.InsertItemType(ctx, tag)
 			if err != nil {
-				return fmt.Errorf("failed to create item type '%s': %w", tag, err)
+				return fmt.Errorf(ErrMsgCreateItemTypeFailed, tag, err)
 			}
 			typesByName[tag] = newTypeID
 			typeIDs = append(typeIDs, newTypeID)
@@ -366,12 +366,12 @@ func syncItemTags(ctx context.Context, repo repository.Item, itemID int, tags []
 
 	// Clear existing tags and insert new ones
 	if err := repo.ClearItemTags(ctx, itemID); err != nil {
-		return fmt.Errorf("failed to clear existing tags: %w", err)
+		return fmt.Errorf(ErrMsgClearTagsFailed, err)
 	}
 
 	for _, typeID := range typeIDs {
 		if err := repo.AssignItemTag(ctx, itemID, typeID); err != nil {
-			return fmt.Errorf("failed to assign tag: %w", err)
+			return fmt.Errorf(ErrMsgAssignTagFailed, err)
 		}
 	}
 

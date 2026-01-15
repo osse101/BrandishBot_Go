@@ -41,8 +41,6 @@ type ProgressionService interface {
 	GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error)
 }
 
-// NearMissThreshold defines the percentage of the winner's score required to trigger a "Near Miss" event
-const NearMissThreshold = 0.95
 
 type service struct {
 	repo           repository.Gamble
@@ -85,10 +83,10 @@ func (s *service) resolveItemName(ctx context.Context, itemName string) (string,
 	// Validate by checking if item exists
 	item, err := s.repo.GetItemByName(ctx, itemName)
 	if err != nil {
-		return "", fmt.Errorf("failed to resolve item name '%s': %w", itemName, err)
+		return "", fmt.Errorf("%s '%s': %w", ErrContextFailedToResolveItemName, itemName, err)
 	}
 	if item == nil {
-		return "", fmt.Errorf("%w: %s (not found as public or internal name)", domain.ErrItemNotFound, itemName)
+		return "", fmt.Errorf("%w: %s (%s)", domain.ErrItemNotFound, itemName, ErrMsgItemNotFoundAsPublicOrInternalName)
 	}
 
 	return itemName, nil
@@ -100,20 +98,20 @@ func (s *service) resolveLootboxBet(ctx context.Context, bet domain.LootboxBet) 
 	// Resolve name to internal name
 	internalName, err := s.resolveItemName(ctx, bet.ItemName)
 	if err != nil {
-		return 0, fmt.Errorf("failed to resolve item name '%s': %w", bet.ItemName, err)
+		return 0, fmt.Errorf("%s '%s': %w", ErrContextFailedToResolveItemName, bet.ItemName, err)
 	}
 
 	// Get item by internal name to get ID
 	item, err := s.repo.GetItemByName(ctx, internalName)
 	if err != nil {
-		return 0, fmt.Errorf("failed to get item: %w", err)
+		return 0, fmt.Errorf("%s: %w", ErrContextFailedToGetItem, err)
 	}
 	if item == nil {
 		return 0, fmt.Errorf("%w: %s", domain.ErrItemNotFound, internalName)
 	}
 
 	// Validate it's a lootbox
-	if len(item.InternalName) < 7 || item.InternalName[:7] != "lootbox" {
+	if len(item.InternalName) < LootboxPrefixLength || item.InternalName[:LootboxPrefixLength] != LootboxPrefix {
 		return 0, fmt.Errorf("%w: %s (id:%d)", domain.ErrNotALootbox, item.InternalName, item.ID)
 	}
 
@@ -123,7 +121,7 @@ func (s *service) resolveLootboxBet(ctx context.Context, bet domain.LootboxBet) 
 // StartGamble initiates a new gamble
 func (s *service) StartGamble(ctx context.Context, platform, platformID, username string, bets []domain.LootboxBet) (*domain.Gamble, error) {
 	log := logger.FromContext(ctx)
-	log.Info("StartGamble called", "platform", platform, "platformID", platformID, "username", username, "bets", bets)
+	log.Info(LogMsgStartGambleCalled, "platform", platform, "platformID", platformID, "username", username, "bets", bets)
 
 	if err := s.validateGambleStartInput(bets); err != nil {
 		return nil, err
@@ -148,14 +146,14 @@ func (s *service) StartGamble(ctx context.Context, platform, platformID, usernam
 
 	inventory, err := s.repo.GetInventory(ctx, user.ID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get inventory: %w", err)
+		return nil, fmt.Errorf("%s: %w", ErrContextFailedToGetInventory, err)
 	}
 
 	// Consume bet items from inventory using resolved IDs
 	for i, bet := range bets {
 		itemID := resolvedItemIDs[i]
 		if err := consumeItem(inventory, itemID, bet.Quantity); err != nil {
-			return nil, fmt.Errorf("failed to consume bet (item %d): %w", itemID, err)
+			return nil, fmt.Errorf("%s (item %d): %w", ErrContextFailedToConsumeBet, itemID, err)
 		}
 	}
 
@@ -181,7 +179,7 @@ func (s *service) StartGamble(ctx context.Context, platform, platformID, usernam
 // JoinGamble adds a user to an existing gamble
 func (s *service) JoinGamble(ctx context.Context, gambleID uuid.UUID, platform, platformID, username string, bets []domain.LootboxBet) error {
 	log := logger.FromContext(ctx)
-	log.Info("JoinGamble called", "gambleID", gambleID, "username", username)
+	log.Info(LogMsgJoinGambleCalled, "gambleID", gambleID, "username", username)
 
 	// Validate bets
 	if len(bets) == 0 {
@@ -226,27 +224,27 @@ func (s *service) JoinGamble(ctx context.Context, gambleID uuid.UUID, platform, 
 func (s *service) executeGambleJoinTx(ctx context.Context, userID string, gambleID uuid.UUID, username string, bets []domain.LootboxBet, resolvedItemIDs []int) error {
 	tx, err := s.repo.BeginTx(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
+		return fmt.Errorf("%s: %w", ErrContextFailedToBeginTx, err)
 	}
 	defer repository.SafeRollback(ctx, tx)
 
 	// Get Inventory
 	inventory, err := tx.GetInventory(ctx, userID)
 	if err != nil {
-		return fmt.Errorf("failed to get inventory: %w", err)
+		return fmt.Errorf("%s: %w", ErrContextFailedToGetInventory, err)
 	}
 
 	// Consume Bets using resolved item IDs
 	for i, bet := range bets {
 		itemID := resolvedItemIDs[i]
 		if err := consumeItem(inventory, itemID, bet.Quantity); err != nil {
-			return fmt.Errorf("failed to consume bet (item %d): %w", itemID, err)
+			return fmt.Errorf("%s (item %d): %w", ErrContextFailedToConsumeBet, itemID, err)
 		}
 	}
 
 	// Update Inventory
 	if err := tx.UpdateInventory(ctx, userID, *inventory); err != nil {
-		return fmt.Errorf("failed to update inventory: %w", err)
+		return fmt.Errorf("%s: %w", ErrContextFailedToUpdateInventory, err)
 	}
 
 	// Add Participant
@@ -260,7 +258,7 @@ func (s *service) executeGambleJoinTx(ctx context.Context, userID string, gamble
 		if errors.Is(err, domain.ErrUserAlreadyJoined) {
 			return domain.ErrUserAlreadyJoined
 		}
-		return fmt.Errorf("failed to join gamble: %w", err)
+		return fmt.Errorf("%s: %w", ErrContextFailedToJoinGamble, err)
 	}
 
 	return tx.Commit(ctx)
@@ -269,18 +267,18 @@ func (s *service) executeGambleJoinTx(ctx context.Context, userID string, gamble
 // ExecuteGamble runs the gamble logic
 func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.GambleResult, error) {
 	log := logger.FromContext(ctx)
-	log.Info("ExecuteGamble called", "gambleID", id)
+	log.Info(LogMsgExecuteGambleCalled, "gambleID", id)
 
 	gamble, err := s.repo.GetGamble(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get gamble: %w", err)
+		return nil, fmt.Errorf("%s: %w", ErrContextFailedToGetGamble, err)
 	}
 	if gamble == nil {
 		return nil, domain.ErrGambleNotFound
 	}
 
 	if gamble.State == domain.GambleStateCompleted {
-		log.Info("Gamble already completed, skipping execution", "gambleID", id)
+		log.Info(LogMsgGambleAlreadyCompleted, "gambleID", id)
 		return nil, nil
 	}
 
@@ -290,7 +288,7 @@ func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.Gamb
 
 	tx, err := s.repo.BeginGambleTx(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+		return nil, fmt.Errorf("%s: %w", ErrContextFailedToBeginTx, err)
 	}
 	defer repository.SafeRollback(ctx, tx)
 
@@ -326,7 +324,7 @@ func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.Gamb
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return nil, fmt.Errorf("failed to commit gamble transaction: %w", err)
+		return nil, fmt.Errorf("%s: %w", ErrContextFailedToCommitTx, err)
 	}
 
 	if winnerID != "" {
@@ -356,7 +354,7 @@ func (s *service) validateGambleExecution(gamble *domain.Gamble) error {
 		return fmt.Errorf("%w (current: %s)", domain.ErrNotInJoiningState, gamble.State)
 	}
 	if time.Now().Before(gamble.JoinDeadline) {
-		return fmt.Errorf("cannot execute gamble before join deadline (deadline: %v)", gamble.JoinDeadline)
+		return fmt.Errorf("%s (deadline: %v)", ErrMsgCannotExecuteBeforeDeadline, gamble.JoinDeadline)
 	}
 	return nil
 }
@@ -367,7 +365,7 @@ func (s *service) transitionToOpeningState(ctx context.Context, tx repository.Ga
 		return fmt.Errorf("failed to transition gamble state: %w", err)
 	}
 	if rowsAffected == 0 {
-		return fmt.Errorf("gamble is already being executed or has been executed")
+		return fmt.Errorf(ErrMsgGambleAlreadyExecuted)
 	}
 	return nil
 }
@@ -398,7 +396,7 @@ func (s *service) openParticipantsLootboxes(ctx context.Context, gamble *domain.
 			for _, drop := range drops {
 				totalValue := int64(drop.Value * drop.Quantity)
 				if s.progressionSvc != nil {
-					modifiedValue, err := s.progressionSvc.GetModifiedValue(ctx, "gamble_win_bonus", float64(totalValue))
+					modifiedValue, err := s.progressionSvc.GetModifiedValue(ctx, ProgressionFeatureGambleWinBonus, float64(totalValue))
 					if err == nil {
 						totalValue = int64(modifiedValue)
 					}
@@ -425,7 +423,7 @@ func (s *service) trackCriticalFailures(ctx context.Context, id uuid.UUID, userV
 		return
 	}
 	averageScore := float64(totalGambleValue) / float64(len(userValues))
-	criticalFailThreshold := int64(averageScore * 0.2)
+	criticalFailThreshold := int64(averageScore * CriticalFailThreshold)
 	for userID, val := range userValues {
 		if val <= criticalFailThreshold {
 			_ = s.statsSvc.RecordUserEvent(ctx, userID, domain.EventGambleCriticalFail, map[string]interface{}{
@@ -439,7 +437,7 @@ func (s *service) trackCriticalFailures(ctx context.Context, id uuid.UUID, userV
 }
 
 func (s *service) determineGambleWinners(ctx context.Context, id uuid.UUID, userValues map[string]int64) (string, int64) {
-	var highestValue int64 = -1
+	var highestValue int64 = InitialHighestValue
 	var winners []string
 
 	for userID, val := range userValues {
@@ -496,7 +494,7 @@ func (s *service) trackNearMisses(ctx context.Context, id uuid.UUID, winnerID st
 func (s *service) awardItemsToWinner(ctx context.Context, tx repository.GambleTx, winnerID string, allOpenedItems []domain.GambleOpenedItem) error {
 	inv, err := tx.GetInventory(ctx, winnerID)
 	if err != nil {
-		return fmt.Errorf("failed to get winner inventory: %w", err)
+		return fmt.Errorf("%s: %w", ErrContextFailedToGetWinnerInv, err)
 	}
 
 	itemsToAdd := make(map[int]int)
@@ -525,7 +523,7 @@ func (s *service) awardItemsToWinner(ctx context.Context, tx repository.GambleTx
 	}
 
 	if err := tx.UpdateInventory(ctx, winnerID, *inv); err != nil {
-		return fmt.Errorf("failed to update winner inventory: %w", err)
+		return fmt.Errorf("%s: %w", ErrContextFailedToUpdateWinnerInv, err)
 	}
 	return nil
 }
@@ -588,23 +586,23 @@ func (s *service) awardGamblerXP(ctx context.Context, userID string, lootboxCoun
 	}
 
 	metadata := map[string]interface{}{
-		"source":        source,
-		"lootbox_count": lootboxCount,
-		"is_win":        isWin,
+		MetadataKeySource:       source,
+		MetadataKeyLootboxCount: lootboxCount,
+		MetadataKeyIsWin:        isWin,
 	}
 
 	result, err := s.jobService.AwardXP(ctx, userID, job.JobKeyGambler, xp, source, metadata)
 	if err != nil {
-		logger.FromContext(ctx).Warn("Failed to award Gambler XP", "error", err, "user_id", userID)
+		logger.FromContext(ctx).Warn(LogMsgFailedToAwardGamblerXP, "error", err, "user_id", userID)
 	} else if result != nil && result.LeveledUp {
-		logger.FromContext(ctx).Info("Gambler leveled up!", "user_id", userID, "new_level", result.NewLevel)
+		logger.FromContext(ctx).Info(LogMsgGamblerLeveledUp, "user_id", userID, "new_level", result.NewLevel)
 	}
 }
 
 // Shutdown gracefully shuts down the gamble service by waiting for all async operations to complete
 func (s *service) Shutdown(ctx context.Context) error {
 	log := logger.FromContext(ctx)
-	log.Info("Shutting down gamble service, waiting for async operations...")
+	log.Info(LogMsgShuttingDownGambleService)
 
 	// Wait for all async XP awards to complete
 	done := make(chan struct{})
@@ -615,10 +613,10 @@ func (s *service) Shutdown(ctx context.Context) error {
 
 	select {
 	case <-done:
-		log.Info("Gamble service shutdown complete")
+		log.Info(LogMsgGambleServiceShutdownDone)
 		return nil
 	case <-ctx.Done():
-		log.Warn("Gamble service shutdown forced by context cancellation")
+		log.Warn(LogMsgGambleServiceShutdownForced)
 		return ctx.Err()
 	}
 }
@@ -626,7 +624,7 @@ func (s *service) Shutdown(ctx context.Context) error {
 func (s *service) getAndValidateGambleUser(ctx context.Context, platform, platformID string) (*domain.User, error) {
 	user, err := s.repo.GetUserByPlatformID(ctx, platform, platformID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get user: %w", err)
+		return nil, fmt.Errorf("%s: %w", ErrContextFailedToGetUser, err)
 	}
 	if user == nil {
 		return nil, domain.ErrUserNotFound
@@ -637,7 +635,7 @@ func (s *service) getAndValidateGambleUser(ctx context.Context, platform, platfo
 func (s *service) ensureNoActiveGamble(ctx context.Context) error {
 	active, err := s.repo.GetActiveGamble(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to check active gamble: %w", err)
+		return fmt.Errorf("%s: %w", ErrContextFailedToCheckActive, err)
 	}
 	if active != nil {
 		return domain.ErrGambleAlreadyActive
@@ -648,7 +646,7 @@ func (s *service) ensureNoActiveGamble(ctx context.Context) error {
 func (s *service) getAndValidateActiveGamble(ctx context.Context, gambleID uuid.UUID) (*domain.Gamble, error) {
 	gamble, err := s.repo.GetGamble(ctx, gambleID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get gamble: %w", err)
+		return nil, fmt.Errorf("%s: %w", ErrContextFailedToGetGamble, err)
 	}
 	if gamble == nil {
 		return nil, domain.ErrGambleNotFound
@@ -665,23 +663,23 @@ func (s *service) getAndValidateActiveGamble(ctx context.Context, gambleID uuid.
 func (s *service) executeGambleStartTx(ctx context.Context, userID string, inventory *domain.Inventory, gamble *domain.Gamble, participant *domain.Participant) error {
 	tx, err := s.repo.BeginTx(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
+		return fmt.Errorf("%s: %w", ErrContextFailedToBeginTx, err)
 	}
 	defer repository.SafeRollback(ctx, tx)
 
 	if err := tx.UpdateInventory(ctx, userID, *inventory); err != nil {
-		return fmt.Errorf("failed to update inventory: %w", err)
+		return fmt.Errorf("%s: %w", ErrContextFailedToUpdateInventory, err)
 	}
 
 	if err := s.repo.CreateGamble(ctx, gamble); err != nil {
 		if errors.Is(err, domain.ErrGambleAlreadyActive) {
 			return domain.ErrGambleAlreadyActive
 		}
-		return fmt.Errorf("failed to create gamble: %w", err)
+		return fmt.Errorf("%s: %w", ErrContextFailedToCreateGamble, err)
 	}
 
 	if err := s.repo.JoinGamble(ctx, participant); err != nil {
-		return fmt.Errorf("failed to add initiator as participant: %w", err)
+		return fmt.Errorf("%s: %w", ErrContextFailedToAddInitiator, err)
 	}
 
 	return tx.Commit(ctx)
@@ -711,15 +709,15 @@ func (s *service) createGambleRecord(initiatorID string) *domain.Gamble {
 
 func (s *service) publishGambleStartedEvent(ctx context.Context, gamble *domain.Gamble) {
 	if s.eventBus == nil {
-		logger.FromContext(ctx).Error("Failed to publish GambleStarted event", "reason", "eventBus is nil")
+		logger.FromContext(ctx).Error("Failed to publish "+LogContextGambleStartedEvent, "reason", LogReasonEventBusNil)
 		return
 	}
 	err := s.eventBus.Publish(ctx, event.Event{
-		Version: "1.0", //TODO: reference event schema
+		Version: EventSchemaVersion,
 		Type:    domain.EventGambleStarted,
 		Payload: gamble,
 	})
 	if err != nil {
-		logger.FromContext(ctx).Error("Failed to publish GambleStarted event", "error", err)
+		logger.FromContext(ctx).Error("Failed to publish "+LogContextGambleStartedEvent, "error", err)
 	}
 }

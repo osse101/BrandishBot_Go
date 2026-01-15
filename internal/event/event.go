@@ -53,7 +53,7 @@ type ProgressionTargetPayloadV1 struct {
 // NewEngagementEvent creates a new engagement event with type-safe payload
 func NewEngagementEvent(userID, platformID int64, activityType string) Event {
 	return Event{
-		Version: "1.0",
+		Version: EventSchemaVersion,
 		Type:    EventTypeEngagement,
 		Payload: EngagementPayloadV1{
 			UserID:       userID,
@@ -68,7 +68,7 @@ func NewEngagementEvent(userID, platformID int64, activityType string) Event {
 // NewProgressionCycleEvent creates a new progression cycle event
 func NewProgressionCycleEvent(cycleID int64, nodeKey string) Event {
 	return Event{
-		Version: "1.0",
+		Version: EventSchemaVersion,
 		Type:    ProgressionCycleCompleted,
 		Payload: ProgressionCyclePayloadV1{
 			CycleID:   cycleID,
@@ -82,7 +82,7 @@ func NewProgressionCycleEvent(cycleID int64, nodeKey string) Event {
 // NewProgressionTargetEvent creates a new progression target event
 func NewProgressionTargetEvent(nodeKey string) Event {
 	return Event{
-		Version: "1.0",
+		Version: EventSchemaVersion,
 		Type:    ProgressionTargetSet,
 		Payload: ProgressionTargetPayloadV1{
 			NodeKey:   nodeKey,
@@ -135,7 +135,7 @@ func (b *MemoryBus) Publish(ctx context.Context, event Event) error {
 	}
 
 	if len(errs) > 0 {
-		return fmt.Errorf("encountered %d errors while handling event %s: %v", len(errs), event.Type, errs)
+		return fmt.Errorf(LogMsgHandlerErrorFormat, len(errs), event.Type, errs)
 	}
 
 	return nil
