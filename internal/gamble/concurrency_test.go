@@ -31,6 +31,7 @@ func TestStartGamble_Concurrent_RaceCondition(t *testing.T) {
 	repo.On("GetUserByPlatformID", ctx, "twitch", "456").Return(user2, nil)
 
 	lootboxItem := &domain.Item{ID: 1, InternalName: domain.ItemLootbox1}
+	repo.On("GetItemByName", ctx, "lootbox_tier1").Return(lootboxItem, nil)
 	repo.On("GetItemByID", ctx, 1).Return(lootboxItem, nil)
 
 	tx := new(MockTx)
@@ -103,6 +104,7 @@ func TestJoinGamble_SameUserTwice_ShouldReject(t *testing.T) {
 	}
 
 	lootboxItem := &domain.Item{ID: 1, InternalName: domain.ItemLootbox1}
+	repo.On("GetItemByName", ctx, "lootbox_tier1").Return(lootboxItem, nil)
 	repo.On("GetItemByID", ctx, 1).Return(lootboxItem, nil)
 
 	repo.On("GetUserByPlatformID", ctx, "twitch", "123").Return(user, nil)
@@ -157,6 +159,7 @@ func TestExecuteGamble_Concurrent_Idempotent(t *testing.T) {
 
 	lootboxItem := &domain.Item{ID: 1, InternalName: "box1"}
 	drops := []lootbox.DroppedItem{{ItemID: 10, Quantity: 5, Value: 100}}
+	repo.On("GetItemByName", ctx, "lootbox_tier1").Return(lootboxItem, nil)
 	repo.On("GetItemByID", ctx, 1).Return(lootboxItem, nil)
 	lootboxSvc.On("OpenLootbox", ctx, "box1", 1).Return(drops, nil)
 	tx1.On("SaveOpenedItems", ctx, mock.Anything).Return(nil)
