@@ -333,13 +333,13 @@ func (t *gambleTx) CompleteGamble(ctx context.Context, result *domain.GambleResu
 // GetInventory retrieves inventory within transaction
 func (t *gambleTx) GetInventory(ctx context.Context, userID string) (*domain.Inventory, error) {
 	// Use UserTx wrapper for transactional inventory access with row locking
-	userTx := &UserTx{tx: t.tx}
+	userTx := &UserTx{tx: t.tx, q: t.q}
 	return userTx.GetInventory(ctx, userID)
 }
 
 // UpdateInventory updates inventory within transaction
 func (t *gambleTx) UpdateInventory(ctx context.Context, userID string, inventory domain.Inventory) error {
 	// Use UserTx wrapper for transactional inventory update
-	userTx := &UserTx{tx: t.tx}
+	userTx := &UserTx{tx: t.tx, q: t.q}
 	return userTx.UpdateInventory(ctx, userID, inventory)
 }
