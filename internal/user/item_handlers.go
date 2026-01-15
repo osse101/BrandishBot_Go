@@ -16,6 +16,9 @@ import (
 // BulkFeedbackThreshold defines the number of lootboxes required to trigger "Nice haul" message
 const BulkFeedbackThreshold = 5
 
+// BlasterTimeoutDuration is the duration a user is timed out when hit by a blaster
+const BlasterTimeoutDuration = 60 * time.Second
+
 // Item effect handlers
 
 func (s *service) processLootbox(ctx context.Context, user *domain.User, inventory *domain.Inventory, lootboxItem *domain.Item, quantity int) (string, error) {
@@ -199,14 +202,13 @@ func (s *service) handleBlaster(ctx context.Context, _ *service, _ *domain.User,
 	}
 
 	// Apply timeout
-	timeoutDuration := 60 * time.Second
-	if err := s.TimeoutUser(ctx, targetUsername, timeoutDuration, "Blasted by "+username); err != nil {
+	if err := s.TimeoutUser(ctx, targetUsername, BlasterTimeoutDuration, "Blasted by "+username); err != nil {
 		log.Error("Failed to timeout user", "error", err, "target", targetUsername)
 		// Continue anyway, as the item was used
 	}
 
 	log.Info("blaster used", "target", targetUsername, "quantity", quantity)
-	return fmt.Sprintf("%s has BLASTED %s %d times! They are timed out for %v.", username, targetUsername, quantity, timeoutDuration), nil
+	return fmt.Sprintf("%s has BLASTED %s %d times! They are timed out for %v.", username, targetUsername, quantity, BlasterTimeoutDuration), nil
 }
 
 func (s *service) handleLootbox0(ctx context.Context, _ *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, _ map[string]interface{}) (string, error) {

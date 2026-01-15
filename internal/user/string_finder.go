@@ -53,6 +53,7 @@ func (sf *StringFinder) addRule(patternStr, code string, priority int) {
 }
 
 // compile builds the optimized regex from the added rules
+// Note: This method acquires a write lock to safely update the regex
 func (sf *StringFinder) compile() {
 	if len(sf.ruleMap) == 0 {
 		return
@@ -77,7 +78,12 @@ func (sf *StringFinder) compile() {
 	// \b word boundaries
 	// (p1|p2|...) alternation
 	regexStr := `(?i)\b(` + strings.Join(escapedPatterns, "|") + `)\b`
-	sf.optimizedRegex = regexp.MustCompile(regexStr)
+	compiledRegex := regexp.MustCompile(regexStr)
+
+	// Acquire write lock to safely update the regex
+	sf.mu.Lock()
+	sf.optimizedRegex = compiledRegex
+	sf.mu.Unlock()
 }
 
 // FindMatches searches the message for known strings and returns the matches

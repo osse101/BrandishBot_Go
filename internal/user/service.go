@@ -28,6 +28,44 @@ var validPlatforms = map[string]bool{
 	domain.PlatformDiscord: true,
 }
 
+// Validation error messages
+const (
+	ErrMsgQuantityMustBePositive = "quantity must be positive"
+	ErrMsgUsernameRequired       = "username is required"
+	ErrMsgPlatformIDRequired     = "platformID is required"
+)
+
+// validateInventoryInput validates common inventory operation inputs
+func validateInventoryInput(platform, platformID, username string, quantity int) error {
+	if quantity <= 0 {
+		return fmt.Errorf("%w: %s", domain.ErrInvalidInput, ErrMsgQuantityMustBePositive)
+	}
+	if username == "" {
+		return fmt.Errorf("%w: %s", domain.ErrInvalidInput, ErrMsgUsernameRequired)
+	}
+	if platformID == "" {
+		return fmt.Errorf("%w: %s", domain.ErrInvalidInput, ErrMsgPlatformIDRequired)
+	}
+	if platform != "" && !validPlatforms[platform] {
+		return fmt.Errorf("%w: invalid platform '%s'", domain.ErrInvalidPlatform, platform)
+	}
+	return nil
+}
+
+// validateInventoryInputByUsername validates inventory operation inputs when using username lookup
+func validateInventoryInputByUsername(platform, username string, quantity int) error {
+	if quantity <= 0 {
+		return fmt.Errorf("%w: %s", domain.ErrInvalidInput, ErrMsgQuantityMustBePositive)
+	}
+	if username == "" {
+		return fmt.Errorf("%w: %s", domain.ErrInvalidInput, ErrMsgUsernameRequired)
+	}
+	if platform != "" && !validPlatforms[platform] {
+		return fmt.Errorf("%w: invalid platform '%s'", domain.ErrInvalidPlatform, platform)
+	}
+	return nil
+}
+
 // Service defines the interface for user operations
 type Service interface {
 	RegisterUser(ctx context.Context, user domain.User) (domain.User, error)
@@ -291,16 +329,11 @@ func (s *service) addItemToUserInternal(ctx context.Context, user *domain.User, 
 		return fmt.Errorf("failed to get inventory: %w", err)
 	}
 
-	// Add item to inventory
-	found := false
-	for i, slot := range inventory.Slots {
-		if slot.ItemID == item.ID {
-			inventory.Slots[i].Quantity += quantity
-			found = true
-			break
-		}
-	}
-	if !found {
+	// Add item to inventory using utility function
+	i, _ := utils.FindSlot(inventory, item.ID)
+	if i != -1 {
+		inventory.Slots[i].Quantity += quantity
+	} else {
 		inventory.Slots = append(inventory.Slots, domain.InventorySlot{ItemID: item.ID, Quantity: quantity})
 	}
 
@@ -343,29 +376,23 @@ func (s *service) removeItemFromUserInternal(ctx context.Context, user *domain.U
 		return 0, fmt.Errorf("failed to get inventory: %w", err)
 	}
 
-	// Remove item from inventory
-	found := false
-	var removed int
-	for i, slot := range inventory.Slots {
-		if slot.ItemID == item.ID {
-			if slot.Quantity >= quantity {
-				inventory.Slots[i].Quantity -= quantity
-				removed = quantity
-			} else {
-				removed = slot.Quantity
-				inventory.Slots[i].Quantity = 0
-			}
-			if inventory.Slots[i].Quantity == 0 {
-				inventory.Slots = append(inventory.Slots[:i], inventory.Slots[i+1:]...)
-			}
-			found = true
-			break
-		}
+	// Remove item from inventory using utility function
+	i, slotQty := utils.FindSlot(inventory, item.ID)
+	if i == -1 {
+		log.Warn("Item not in inventory", "itemName", itemName)
+		return 0, fmt.Errorf("%w: %s", domain.ErrNotInInventory, itemName)
 	}
 
-	if !found {
-		log.Warn("Item not in inventory", "itemName", itemName)
-		return 0, fmt.Errorf("item %s not in inventory", itemName)
+	var removed int
+	if slotQty >= quantity {
+		inventory.Slots[i].Quantity -= quantity
+		removed = quantity
+	} else {
+		removed = slotQty
+		inventory.Slots[i].Quantity = 0
+	}
+	if inventory.Slots[i].Quantity == 0 {
+		inventory.Slots = append(inventory.Slots[:i], inventory.Slots[i+1:]...)
 	}
 
 	if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
@@ -408,16 +435,13 @@ func (s *service) useItemInternal(ctx context.Context, user *domain.User, itemNa
 		return "", fmt.Errorf("%w: %s", domain.ErrItemNotFound, itemName)
 	}
 
-	// Find item in inventory
-	itemSlotIndex := -1
-	for i, slot := range inventory.Slots {
-		if slot.ItemID == itemToUse.ID {
-			itemSlotIndex = i
-			break
-		}
+	// Find item in inventory using utility function
+	itemSlotIndex, slotQty := utils.FindSlot(inventory, itemToUse.ID)
+	if itemSlotIndex == -1 {
+		return "", fmt.Errorf("%w: %s", domain.ErrNotInInventory, itemName)
 	}
-	if itemSlotIndex == -1 || inventory.Slots[itemSlotIndex].Quantity < quantity {
-		return "", fmt.Errorf("%w: %s", domain.ErrInsufficientQuantity, itemName)
+	if slotQty < quantity {
+		return "", fmt.Errorf("%w: %s (has %d, needs %d)", domain.ErrInsufficientQuantity, itemName, slotQty, quantity)
 	}
 
 	// Execute item handler
@@ -522,6 +546,10 @@ func (s *service) AddItem(ctx context.Context, platform, platformID, username, i
 	log := logger.FromContext(ctx)
 	log.Info("AddItem called", "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity)
 
+	if err := validateInventoryInput(platform, platformID, username, quantity); err != nil {
+		return err
+	}
+
 	user, err := s.getUserOrRegister(ctx, platform, platformID, username)
 	if err != nil {
 		return err
@@ -539,6 +567,10 @@ func (s *service) AddItem(ctx context.Context, platform, platformID, username, i
 func (s *service) AddItemByUsername(ctx context.Context, platform, username, itemName string, quantity int) error {
 	log := logger.FromContext(ctx)
 	log.Info("AddItemByUsername called", "platform", platform, "username", username, "item", itemName, "quantity", quantity)
+
+	if err := validateInventoryInputByUsername(platform, username, quantity); err != nil {
+		return err
+	}
 
 	user, err := s.repo.GetUserByPlatformUsername(ctx, platform, username)
 	if err != nil {
@@ -656,6 +688,10 @@ func (s *service) RemoveItem(ctx context.Context, platform, platformID, username
 	log := logger.FromContext(ctx)
 	log.Info("RemoveItem called", "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity)
 
+	if err := validateInventoryInput(platform, platformID, username, quantity); err != nil {
+		return 0, err
+	}
+
 	user, err := s.getUserOrRegister(ctx, platform, platformID, username)
 	if err != nil {
 		return 0, err
@@ -674,6 +710,10 @@ func (s *service) RemoveItem(ctx context.Context, platform, platformID, username
 func (s *service) RemoveItemByUsername(ctx context.Context, platform, username, itemName string, quantity int) (int, error) {
 	log := logger.FromContext(ctx)
 	log.Info("RemoveItemByUsername called", "platform", platform, "username", username, "item", itemName, "quantity", quantity)
+
+	if err := validateInventoryInputByUsername(platform, username, quantity); err != nil {
+		return 0, err
+	}
 
 	user, err := s.repo.GetUserByPlatformUsername(ctx, platform, username)
 	if err != nil {
@@ -696,14 +736,29 @@ func (s *service) GiveItem(ctx context.Context, ownerPlatform, ownerPlatformID, 
 		"receiverPlatform", receiverPlatform, "receiverPlatformID", receiverPlatformID, "receiverUsername", receiverUsername,
 		"item", itemName, "quantity", quantity)
 
+	// Validate owner input
+	if err := validateInventoryInput(ownerPlatform, ownerPlatformID, ownerUsername, quantity); err != nil {
+		return fmt.Errorf("owner validation failed: %w", err)
+	}
+	// Validate receiver input
+	if err := validateInventoryInput(receiverPlatform, receiverPlatformID, receiverUsername, quantity); err != nil {
+		return fmt.Errorf("receiver validation failed: %w", err)
+	}
+
 	owner, err := s.getUserOrRegister(ctx, ownerPlatform, ownerPlatformID, ownerUsername)
 	if err != nil {
 		return err
+	}
+	if owner == nil {
+		return fmt.Errorf("%w: owner", domain.ErrUserNotFound)
 	}
 
 	receiver, err := s.getUserOrRegister(ctx, receiverPlatform, receiverPlatformID, receiverUsername)
 	if err != nil {
 		return err
+	}
+	if receiver == nil {
+		return fmt.Errorf("%w: receiver", domain.ErrUserNotFound)
 	}
 
 	item, err := s.validateItem(ctx, itemName)
@@ -721,6 +776,15 @@ func (s *service) GiveItemByUsername(ctx context.Context, fromPlatform, fromUser
 		"fromPlatform", fromPlatform, "fromUsername", fromUsername,
 		"toPlatform", toPlatform, "toUsername", toUsername,
 		"item", itemName, "quantity", quantity)
+
+	// Validate sender input
+	if err := validateInventoryInputByUsername(fromPlatform, fromUsername, quantity); err != nil {
+		return "", fmt.Errorf("sender validation failed: %w", err)
+	}
+	// Validate receiver input
+	if err := validateInventoryInputByUsername(toPlatform, toUsername, quantity); err != nil {
+		return "", fmt.Errorf("receiver validation failed: %w", err)
+	}
 
 	owner, err := s.repo.GetUserByPlatformUsername(ctx, fromPlatform, fromUsername)
 	if err != nil {
@@ -759,20 +823,13 @@ func (s *service) executeGiveItemTx(ctx context.Context, owner, receiver *domain
 		return fmt.Errorf("failed to get owner inventory: %w", err)
 	}
 
-	ownerSlotIndex := -1
-	for i, slot := range ownerInventory.Slots {
-		if slot.ItemID == item.ID {
-			ownerSlotIndex = i
-			break
-		}
-	}
-
+	// Find item in owner's inventory using utility function
+	ownerSlotIndex, ownerSlotQty := utils.FindSlot(ownerInventory, item.ID)
 	if ownerSlotIndex == -1 {
 		return fmt.Errorf("%w: %s", domain.ErrNotInInventory, item.InternalName)
 	}
-
-	if ownerInventory.Slots[ownerSlotIndex].Quantity < quantity {
-		return fmt.Errorf("%w: has %d, needs %d", domain.ErrInsufficientQuantity, ownerInventory.Slots[ownerSlotIndex].Quantity, quantity)
+	if ownerSlotQty < quantity {
+		return fmt.Errorf("%w: has %d, needs %d", domain.ErrInsufficientQuantity, ownerSlotQty, quantity)
 	}
 
 	receiverInventory, err := tx.GetInventory(ctx, receiver.ID)
@@ -781,22 +838,17 @@ func (s *service) executeGiveItemTx(ctx context.Context, owner, receiver *domain
 	}
 
 	// Remove from owner
-	if ownerInventory.Slots[ownerSlotIndex].Quantity == quantity {
+	if ownerSlotQty == quantity {
 		ownerInventory.Slots = append(ownerInventory.Slots[:ownerSlotIndex], ownerInventory.Slots[ownerSlotIndex+1:]...)
 	} else {
 		ownerInventory.Slots[ownerSlotIndex].Quantity -= quantity
 	}
 
-	// Add to receiver
-	found := false
-	for i, slot := range receiverInventory.Slots {
-		if slot.ItemID == item.ID {
-			receiverInventory.Slots[i].Quantity += quantity
-			found = true
-			break
-		}
-	}
-	if !found {
+	// Add to receiver using utility function
+	receiverSlotIndex, _ := utils.FindSlot(receiverInventory, item.ID)
+	if receiverSlotIndex != -1 {
+		receiverInventory.Slots[receiverSlotIndex].Quantity += quantity
+	} else {
 		receiverInventory.Slots = append(receiverInventory.Slots, domain.InventorySlot{ItemID: item.ID, Quantity: quantity})
 	}
 
@@ -818,6 +870,10 @@ func (s *service) executeGiveItemTx(ctx context.Context, owner, receiver *domain
 func (s *service) UseItem(ctx context.Context, platform, platformID, username, itemName string, quantity int, targetUsername string) (string, error) {
 	log := logger.FromContext(ctx)
 	log.Info("UseItem called", "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity, "target", targetUsername)
+
+	if err := validateInventoryInput(platform, platformID, username, quantity); err != nil {
+		return "", err
+	}
 
 	user, err := s.getUserOrRegister(ctx, platform, platformID, username)
 	if err != nil {
@@ -843,6 +899,10 @@ func (s *service) UseItem(ctx context.Context, platform, platformID, username, i
 func (s *service) UseItemByUsername(ctx context.Context, platform, username, itemName string, quantity int, targetUsername string) (string, error) {
 	log := logger.FromContext(ctx)
 	log.Info("UseItemByUsername called", "platform", platform, "username", username, "item", itemName, "quantity", quantity, "target", targetUsername)
+
+	if err := validateInventoryInputByUsername(platform, username, quantity); err != nil {
+		return "", err
+	}
 
 	user, err := s.repo.GetUserByPlatformUsername(ctx, platform, username)
 	if err != nil {
@@ -935,11 +995,13 @@ func (s *service) TimeoutUser(ctx context.Context, username string, duration tim
 	}
 
 	// Create a new timer
+	// Note: Using slog.Default() here since the timer callback runs asynchronously
+	// and the original context may no longer be valid
 	timer := time.AfterFunc(duration, func() {
 		s.timeoutMu.Lock()
 		delete(s.timeouts, username)
 		s.timeoutMu.Unlock()
-		slog.Default().Info("User timeout expired", "username", username)
+		slog.Default().Info("User timeout expired", "username", username, "reason", reason)
 	})
 
 	s.timeouts[username] = &timeoutInfo{
@@ -986,6 +1048,13 @@ const (
 	SearchCriticalRate     = 0.05
 	SearchNearMissRate     = 0.05
 	SearchCriticalFailRate = 0.05
+
+	// SearchDailyDiminishmentThreshold is the number of searches per day after which returns are diminished
+	SearchDailyDiminishmentThreshold = 6
+	// SearchDiminishedSuccessRate is the success rate when diminished returns are active
+	SearchDiminishedSuccessRate = 0.1
+	// SearchDiminishedXPMultiplier is the XP multiplier when diminished returns are active
+	SearchDiminishedXPMultiplier = 0.1
 )
 
 // HandleSearch performs a search action for a user with cooldown tracking
@@ -1098,15 +1167,15 @@ func (s *service) calculateSearchParameters(ctx context.Context, user *domain.Us
 
 	params := searchParams{
 		isFirstSearchDaily: (dailyCount == 0),
-		isDiminished:       (dailyCount >= 6),
+		isDiminished:       (dailyCount >= SearchDailyDiminishmentThreshold),
 		xpMultiplier:       1.0,
 		successThreshold:   SearchSuccessRate,
 		dailyCount:         dailyCount,
 	}
 
 	if params.isDiminished {
-		params.successThreshold = 0.1 // Reduced success rate
-		params.xpMultiplier = 0.1     // Reduced XP
+		params.successThreshold = SearchDiminishedSuccessRate
+		params.xpMultiplier = SearchDiminishedXPMultiplier
 		log.Info("Diminished search returns applied", "username", user.Username, "dailyCount", dailyCount)
 	}
 
