@@ -146,7 +146,7 @@ func main() {
 	slog.Info("Job scheduler initialized")
 
 	// Initialize Lootbox Service
-	lootboxSvc, err := lootbox.NewService(repos.User, config.ConfigPathLootTables)
+	lootboxSvc, err := lootbox.NewService(context.Background(), repos.User, config.ConfigPathLootTables)
 	if err != nil {
 		slog.Error("Failed to initialize lootbox service", "error", err)
 		os.Exit(1)

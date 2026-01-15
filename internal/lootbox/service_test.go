@@ -82,7 +82,7 @@ func TestOpenLootbox(t *testing.T) {
 	}
 
 	configPath := createTempConfig(t, lootTable)
-	svc, err := NewService(repo, configPath)
+	svc, err := NewService(context.Background(), repo, configPath)
 	require.NoError(t, err)
 
 	t.Run("Best Case: Success", func(t *testing.T) {
@@ -130,7 +130,7 @@ func TestOpenLootbox(t *testing.T) {
 	})
 
 	t.Run("Error Case: Invalid Config File", func(t *testing.T) {
-		_, err := NewService(repo, "non_existent_file.json")
+		_, err := NewService(context.Background(), repo, "non_existent_file.json")
 		assert.Error(t, err)
 	})
 

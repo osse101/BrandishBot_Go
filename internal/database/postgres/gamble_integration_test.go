@@ -51,7 +51,7 @@ func setupGambleIntegrationTest(t *testing.T) (*pgxpool.Pool, *UserRepository, g
 	// We need to make sure the item "money" exists in the DB (seeded by migrations).
 
 	lootRepo := NewUserRepository(pool)
-	lootSvc, err := lootbox.NewService(lootRepo, lootTablePath)
+	lootSvc, err := lootbox.NewService(context.Background(), lootRepo, lootTablePath)
 	require.NoError(t, err)
 
 	// 3. Setup Gamble Service

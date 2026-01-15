@@ -60,13 +60,15 @@ type Service interface {
 type service struct {
 	repo       ItemRepository
 	lootTables map[string][]LootItem
+	itemCache  map[string]domain.Item // Read-only cache of all items in loot tables
 }
 
 // NewService creates a new lootbox service
-func NewService(repo ItemRepository, lootTablesPath string) (Service, error) {
+func NewService(ctx context.Context, repo ItemRepository, lootTablesPath string) (Service, error) {
 	svc := &service{
 		repo:       repo,
 		lootTables: make(map[string][]LootItem),
+		itemCache:  make(map[string]domain.Item),
 	}
 
 	// Load loot tables from JSON file
@@ -74,7 +76,44 @@ func NewService(repo ItemRepository, lootTablesPath string) (Service, error) {
 		return nil, fmt.Errorf("failed to load loot tables: %w", err)
 	}
 
+	// Pre-load items into cache
+	if err := svc.loadItemCache(ctx); err != nil {
+		return nil, fmt.Errorf("failed to load item cache: %w", err)
+	}
+
 	return svc, nil
+}
+
+func (s *service) loadItemCache(ctx context.Context) error {
+	// Collect all unique item names from loot tables
+	uniqueNames := make(map[string]struct{})
+	for _, table := range s.lootTables {
+		for _, item := range table {
+			uniqueNames[item.ItemName] = struct{}{}
+		}
+	}
+
+	if len(uniqueNames) == 0 {
+		return nil
+	}
+
+	names := make([]string, 0, len(uniqueNames))
+	for name := range uniqueNames {
+		names = append(names, name)
+	}
+
+	// Fetch items from repo
+	items, err := s.repo.GetItemsByNames(ctx, names)
+	if err != nil {
+		return err
+	}
+
+	// Populate cache
+	for _, item := range items {
+		s.itemCache[item.InternalName] = item
+	}
+
+	return nil
 }
 
 func (s *service) loadLootTables(path string) error {
@@ -181,28 +220,23 @@ func (s *service) updateDropCounts(loot LootItem, qty int, dropCounts map[string
 func (s *service) convertToDroppedItems(ctx context.Context, dropCounts map[string]dropInfo) ([]DroppedItem, error) {
 	log := logger.FromContext(ctx)
 
-	itemNames := make([]string, 0, len(dropCounts))
-	for itemName := range dropCounts {
-		itemNames = append(itemNames, itemName)
-	}
-
-	items, err := s.repo.GetItemsByNames(ctx, itemNames)
-	if err != nil {
-		log.Error("Failed to get dropped items", "error", err)
-		return nil, err
-	}
-
-	itemMap := make(map[string]*domain.Item, len(items))
-	for i := range items {
-		itemMap[items[i].InternalName] = &items[i]
-	}
-
 	drops := make([]DroppedItem, 0, len(dropCounts))
 	for itemName, info := range dropCounts {
-		item, found := itemMap[itemName]
+		item, found := s.itemCache[itemName]
 		if !found {
-			log.Warn("Dropped item not found in DB", "item", itemName)
-			continue
+			// Fallback: This shouldn't happen if cache is initialized correctly,
+			// but serves as safety net if loot tables are dynamic or cache is incomplete
+			log.Warn("Item not found in cache, falling back to DB", "item", itemName)
+			dbItem, err := s.repo.GetItemByName(ctx, itemName)
+			if err != nil {
+				log.Error("Failed to fetch item from DB", "item", itemName, "error", err)
+				continue
+			}
+			if dbItem == nil {
+				log.Warn("Dropped item not found in DB", "item", itemName)
+				continue
+			}
+			item = *dbItem
 		}
 
 		shine, mult := calculateShine(info.Chance)
