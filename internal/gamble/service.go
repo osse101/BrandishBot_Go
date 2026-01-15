@@ -15,6 +15,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/lootbox"
+	"github.com/osse101/BrandishBot_Go/internal/naming"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/osse101/BrandishBot_Go/internal/stats"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
@@ -50,12 +51,13 @@ type service struct {
 	jobService     JobService
 	progressionSvc ProgressionService
 	statsSvc       stats.Service
+	namingResolver naming.Resolver
 	joinDuration   time.Duration
 	wg             sync.WaitGroup // Tracks async goroutines for graceful shutdown
 }
 
 // NewService creates a new gamble service
-func NewService(repo repository.Gamble, eventBus event.Bus, lootboxSvc lootbox.Service, statsSvc stats.Service, joinDuration time.Duration, jobService JobService, progressionSvc ProgressionService) Service {
+func NewService(repo repository.Gamble, eventBus event.Bus, lootboxSvc lootbox.Service, statsSvc stats.Service, joinDuration time.Duration, jobService JobService, progressionSvc ProgressionService, namingResolver naming.Resolver) Service {
 	return &service{
 		repo:           repo,
 		eventBus:       eventBus,
@@ -63,8 +65,59 @@ func NewService(repo repository.Gamble, eventBus event.Bus, lootboxSvc lootbox.S
 		jobService:     jobService,
 		progressionSvc: progressionSvc,
 		statsSvc:       statsSvc,
+		namingResolver: namingResolver,
 		joinDuration:   joinDuration,
 	}
+}
+
+// resolveItemName attempts to resolve a user-provided item name to its internal name.
+// It first tries the naming resolver, then falls back to using the input as-is.
+// This allows users to use either public names ("junkbox") or internal names ("lootbox_tier0").
+func (s *service) resolveItemName(ctx context.Context, itemName string) (string, error) {
+	// Try naming resolver first (handles public names)
+	if s.namingResolver != nil {
+		if internalName, ok := s.namingResolver.ResolvePublicName(itemName); ok {
+			return internalName, nil
+		}
+	}
+
+	// Fall back - assume it's already an internal name
+	// Validate by checking if item exists
+	item, err := s.repo.GetItemByName(ctx, itemName)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve item name '%s': %w", itemName, err)
+	}
+	if item == nil {
+		return "", fmt.Errorf("%w: %s (not found as public or internal name)", domain.ErrItemNotFound, itemName)
+	}
+
+	return itemName, nil
+}
+
+// resolveLootboxBet resolves a bet's item name to its item ID
+// Returns the resolved item ID or an error
+func (s *service) resolveLootboxBet(ctx context.Context, bet domain.LootboxBet) (int, error) {
+	// Resolve name to internal name
+	internalName, err := s.resolveItemName(ctx, bet.ItemName)
+	if err != nil {
+		return 0, fmt.Errorf("failed to resolve item name '%s': %w", bet.ItemName, err)
+	}
+
+	// Get item by internal name to get ID
+	item, err := s.repo.GetItemByName(ctx, internalName)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get item: %w", err)
+	}
+	if item == nil {
+		return 0, fmt.Errorf("%w: %s", domain.ErrItemNotFound, internalName)
+	}
+
+	// Validate it's a lootbox
+	if len(item.InternalName) < 7 || item.InternalName[:7] != "lootbox" {
+		return 0, fmt.Errorf("%w: %s (id:%d)", domain.ErrNotALootbox, item.InternalName, item.ID)
+	}
+
+	return item.ID, nil
 }
 
 // StartGamble initiates a new gamble
@@ -87,7 +140,9 @@ func (s *service) StartGamble(ctx context.Context, platform, platformID, usernam
 
 	gamble := s.createGambleRecord(user.ID)
 
-	if err := s.validateGambleBets(ctx, bets); err != nil {
+	// Validate bets and resolve item names to IDs
+	resolvedItemIDs, err := s.validateGambleBets(ctx, bets)
+	if err != nil {
 		return nil, err
 	}
 
@@ -96,9 +151,11 @@ func (s *service) StartGamble(ctx context.Context, platform, platformID, usernam
 		return nil, fmt.Errorf("failed to get inventory: %w", err)
 	}
 
-	for _, bet := range bets {
-		if err := consumeItem(inventory, bet.ItemID, bet.Quantity); err != nil {
-			return nil, fmt.Errorf("failed to consume bet (item %d): %w", bet.ItemID, err)
+	// Consume bet items from inventory using resolved IDs
+	for i, bet := range bets {
+		itemID := resolvedItemIDs[i]
+		if err := consumeItem(inventory, itemID, bet.Quantity); err != nil {
+			return nil, fmt.Errorf("failed to consume bet (item %d): %w", itemID, err)
 		}
 	}
 
@@ -146,13 +203,14 @@ func (s *service) JoinGamble(ctx context.Context, gambleID uuid.UUID, platform, 
 	// Note: Duplicate join prevention is enforced by database constraint
 	// (idx_gamble_participants_unique_user on gamble_participants table)
 
-	// Validate that all bet items are lootboxes
-	if err := s.validateGambleBets(ctx, bets); err != nil {
+	// Validate bets and resolve item names to IDs
+	resolvedItemIDs, err := s.validateGambleBets(ctx, bets)
+	if err != nil {
 		return err
 	}
 
 	// Execute transaction
-	if err := s.executeGambleJoinTx(ctx, user.ID, gamble.ID, username, bets); err != nil {
+	if err := s.executeGambleJoinTx(ctx, user.ID, gamble.ID, username, bets, resolvedItemIDs); err != nil {
 		return err
 	}
 
@@ -165,7 +223,7 @@ func (s *service) JoinGamble(ctx context.Context, gambleID uuid.UUID, platform, 
 }
 
 // executeGambleJoinTx encapsulates the transactional logic for joining a gamble
-func (s *service) executeGambleJoinTx(ctx context.Context, userID string, gambleID uuid.UUID, username string, bets []domain.LootboxBet) error {
+func (s *service) executeGambleJoinTx(ctx context.Context, userID string, gambleID uuid.UUID, username string, bets []domain.LootboxBet, resolvedItemIDs []int) error {
 	tx, err := s.repo.BeginTx(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
@@ -178,10 +236,11 @@ func (s *service) executeGambleJoinTx(ctx context.Context, userID string, gamble
 		return fmt.Errorf("failed to get inventory: %w", err)
 	}
 
-	// Consume Bets
-	for _, bet := range bets {
-		if err := consumeItem(inventory, bet.ItemID, bet.Quantity); err != nil {
-			return fmt.Errorf("failed to consume bet (item %d): %w", bet.ItemID, err)
+	// Consume Bets using resolved item IDs
+	for i, bet := range bets {
+		itemID := resolvedItemIDs[i]
+		if err := consumeItem(inventory, itemID, bet.Quantity); err != nil {
+			return fmt.Errorf("failed to consume bet (item %d): %w", itemID, err)
 		}
 	}
 
@@ -278,20 +337,18 @@ func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.Gamb
 	return result, nil
 }
 
-func (s *service) validateGambleBets(ctx context.Context, bets []domain.LootboxBet) error {
-	for _, bet := range bets {
-		item, err := s.repo.GetItemByID(ctx, bet.ItemID)
+// validateGambleBets validates bets and resolves item names to IDs
+// Returns a slice of resolved item IDs corresponding to each bet
+func (s *service) validateGambleBets(ctx context.Context, bets []domain.LootboxBet) ([]int, error) {
+	resolvedItemIDs := make([]int, len(bets))
+	for i, bet := range bets {
+		itemID, err := s.resolveLootboxBet(ctx, bet)
 		if err != nil {
-			return fmt.Errorf("failed to validate bet item %d: %w", bet.ItemID, err)
+			return nil, err
 		}
-		if item == nil {
-			return fmt.Errorf("%w: bet item %d", domain.ErrItemNotFound, bet.ItemID)
-		}
-		if len(item.InternalName) < 7 || item.InternalName[:7] != "lootbox" {
-			return fmt.Errorf("%w: %s (id:%d)", domain.ErrNotALootbox, item.InternalName, item.ID)
-		}
+		resolvedItemIDs[i] = itemID
 	}
-	return nil
+	return resolvedItemIDs, nil
 }
 
 func (s *service) validateGambleExecution(gamble *domain.Gamble) error {
@@ -322,7 +379,13 @@ func (s *service) openParticipantsLootboxes(ctx context.Context, gamble *domain.
 
 	for _, p := range gamble.Participants {
 		for _, bet := range p.LootboxBets {
-			lootboxItem, err := s.repo.GetItemByID(ctx, bet.ItemID)
+			// Resolve bet item name to ID to get lootbox item
+			itemID, err := s.resolveLootboxBet(ctx, bet)
+			if err != nil {
+				continue
+			}
+
+			lootboxItem, err := s.repo.GetItemByID(ctx, itemID)
 			if err != nil || lootboxItem == nil {
 				continue
 			}

@@ -71,6 +71,7 @@ func setupGambleIntegrationTest(t *testing.T) (*pgxpool.Pool, *UserRepository, g
 		time.Second, // Short join duration for testing
 		jobSvc,
 		progressionSvc,
+		nil,
 	)
 
 	cleanup := func() {
@@ -132,7 +133,7 @@ func TestGambleLifecycle_Integration(t *testing.T) {
 	// --- Step 2: Start Gamble ---
 	// User A starts gamble betting 2 lootboxes
 	// Lootbox returns 100 money each. Total value = 200.
-	betsA := []domain.LootboxBet{{ItemID: lbItem.ID, Quantity: 2}}
+	betsA := []domain.LootboxBet{{ItemName: "lootbox_tier1", Quantity: 2}}
 	gamble, err := svc.StartGamble(ctx, domain.PlatformTwitch, "twitchA", "UserA", betsA)
 	require.NoError(t, err)
 	require.NotNil(t, gamble)
@@ -146,7 +147,7 @@ func TestGambleLifecycle_Integration(t *testing.T) {
 	// --- Step 3: Join Gamble ---
 	// User B joins betting 1 lootbox
 	// Lootbox returns 100 money. Total value = 100.
-	betsB := []domain.LootboxBet{{ItemID: lbItem.ID, Quantity: 1}}
+	betsB := []domain.LootboxBet{{ItemName: "lootbox_tier1", Quantity: 1}}
 	err = svc.JoinGamble(ctx, gamble.ID, domain.PlatformTwitch, "twitchB", "UserB", betsB)
 	require.NoError(t, err)
 
@@ -222,7 +223,7 @@ func TestGamble_Concurrency_Join(t *testing.T) {
 	repo.UpdateInventory(ctx, host.ID, invHost)
 
 	// Start gamble
-	bets := []domain.LootboxBet{{ItemID: lbItem.ID, Quantity: 1}}
+	bets := []domain.LootboxBet{{ItemName: "lootbox_tier1", Quantity: 1}}
 	gamble, err := svc.StartGamble(ctx, domain.PlatformTwitch, "twitchHost", "Host", bets)
 	require.NoError(t, err)
 

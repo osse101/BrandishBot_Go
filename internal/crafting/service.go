@@ -328,8 +328,14 @@ func (s *service) GetRecipe(ctx context.Context, itemName, platform, platformID,
 	log := logger.FromContext(ctx)
 	log.Info("GetRecipe called", "itemName", itemName, "platform", platform, "platformID", platformID, "username", username)
 
+	// Resolve public name to internal name
+	resolvedName, err := s.resolveItemName(ctx, itemName)
+	if err != nil {
+		return nil, err
+	}
+
 	// Validate and get item
-	item, err := s.validateItem(ctx, itemName)
+	item, err := s.validateItem(ctx, resolvedName)
 	if err != nil {
 		return nil, err
 	}

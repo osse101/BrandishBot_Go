@@ -9,6 +9,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
+	"github.com/osse101/BrandishBot_Go/internal/naming"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
@@ -28,16 +29,18 @@ type JobService interface {
 }
 
 type service struct {
-	repo       repository.Economy
-	jobService JobService
-	wg         sync.WaitGroup
+	repo           repository.Economy
+	jobService     JobService
+	namingResolver naming.Resolver
+	wg             sync.WaitGroup
 }
 
 // NewService creates a new economy service
-func NewService(repo repository.Economy, jobService JobService) Service {
+func NewService(repo repository.Economy, jobService JobService, namingResolver naming.Resolver) Service {
 	return &service{
-		repo:       repo,
-		jobService: jobService,
+		repo:           repo,
+		jobService:     jobService,
+		namingResolver: namingResolver,
 	}
 }
 
@@ -45,6 +48,30 @@ func (s *service) GetSellablePrices(ctx context.Context) ([]domain.Item, error) 
 	log := logger.FromContext(ctx)
 	log.Info("GetSellablePrices called")
 	return s.repo.GetSellablePrices(ctx)
+}
+
+// resolveItemName attempts to resolve a user-provided item name to its internal name.
+// It first tries the naming resolver, then falls back to using the input as-is.
+// This allows users to use either public names ("junkbox") or internal names ("lootbox_tier0").
+func (s *service) resolveItemName(ctx context.Context, itemName string) (string, error) {
+	// Try naming resolver first (handles public names)
+	if s.namingResolver != nil {
+		if internalName, ok := s.namingResolver.ResolvePublicName(itemName); ok {
+			return internalName, nil
+		}
+	}
+
+	// Fall back - assume it's already an internal name
+	// Validate by checking if item exists
+	item, err := s.repo.GetItemByName(ctx, itemName)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve item name '%s': %w", itemName, err)
+	}
+	if item == nil {
+		return "", fmt.Errorf("%w: %s (not found as public or internal name)", domain.ErrItemNotFound, itemName)
+	}
+
+	return itemName, nil
 }
 
 // getSellEntities retrieves and validates all required entities for a sell transaction
@@ -60,13 +87,20 @@ func (s *service) getSellEntities(ctx context.Context, platform, platformID, ite
 		return nil, nil, nil, domain.ErrUserNotFound
 	}
 
-	item, err := s.repo.GetItemByName(ctx, itemName)
+	// Resolve public name to internal name
+	resolvedName, err := s.resolveItemName(ctx, itemName)
+	if err != nil {
+		log.Error("Failed to resolve item name", "error", err, "itemName", itemName)
+		return nil, nil, nil, err
+	}
+
+	item, err := s.repo.GetItemByName(ctx, resolvedName)
 	if err != nil {
 		log.Error("Failed to get item", "error", err)
 		return nil, nil, nil, fmt.Errorf("failed to get item: %w", err)
 	}
 	if item == nil {
-		return nil, nil, nil, fmt.Errorf("%w: %s", domain.ErrItemNotFound, itemName)
+		return nil, nil, nil, fmt.Errorf("%w: %s", domain.ErrItemNotFound, resolvedName)
 	}
 
 	moneyItem, err := s.repo.GetItemByName(ctx, domain.ItemMoney)
@@ -195,13 +229,20 @@ func (s *service) getBuyEntities(ctx context.Context, platform, platformID, item
 		return nil, nil, fmt.Errorf("user not found")
 	}
 
-	item, err := s.repo.GetItemByName(ctx, itemName)
+	// Resolve public name to internal name
+	resolvedName, err := s.resolveItemName(ctx, itemName)
+	if err != nil {
+		log.Error("Failed to resolve item name", "error", err, "itemName", itemName)
+		return nil, nil, err
+	}
+
+	item, err := s.repo.GetItemByName(ctx, resolvedName)
 	if err != nil {
 		log.Error("Failed to get item", "error", err)
 		return nil, nil, fmt.Errorf("failed to get item: %w", err)
 	}
 	if item == nil {
-		return nil, nil, fmt.Errorf("item not found: %s", itemName)
+		return nil, nil, fmt.Errorf("item not found: %s", resolvedName)
 	}
 
 	return user, item, nil
@@ -252,14 +293,14 @@ func (s *service) BuyItem(ctx context.Context, platform, platformID, username, i
 	}
 	defer repository.SafeRollback(ctx, tx)
 
-	// Check if item is buyable
-	isBuyable, err := s.repo.IsItemBuyable(ctx, itemName)
+	// Check if item is buyable (use internal name from resolved item)
+	isBuyable, err := s.repo.IsItemBuyable(ctx, item.InternalName)
 	if err != nil {
 		log.Error("Failed to check buyable", "error", err)
 		return 0, fmt.Errorf("failed to check if item is buyable: %w", err)
 	}
 	if !isBuyable {
-		return 0, fmt.Errorf("item %s is not buyable", itemName)
+		return 0, fmt.Errorf("item %s is not buyable", item.InternalName)
 	}
 
 	// Get money item after buyable check

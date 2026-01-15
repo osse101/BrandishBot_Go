@@ -28,6 +28,7 @@ type Gamble interface {
 	UpdateInventory(ctx context.Context, userID string, inventory domain.Inventory) error
 	GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error)
 	GetItemByID(ctx context.Context, id int) (*domain.Item, error)
+	GetItemByName(ctx context.Context, name string) (*domain.Item, error)
 }
 
 // GambleTx extends Tx with gamble-specific transactional operations

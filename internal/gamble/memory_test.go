@@ -37,6 +37,7 @@ func TestStartGamble_NoGoroutineLeak(t *testing.T) {
 	repo.On("GetActiveGamble", mock.Anything).Return(nil, nil)
 	// Bug #8 Fix requires item validation - mock lootbox item
 	lootboxItem := &domain.Item{ID: 1, InternalName: domain.ItemLootbox1}
+	repo.On("GetItemByName", mock.Anything, domain.ItemLootbox1).Return(lootboxItem, nil)
 	repo.On("GetItemByID", mock.Anything, 1).Return(lootboxItem, nil)
 	repo.On("BeginTx", mock.Anything).Return(tx, nil)
 	tx.On("GetInventory", mock.Anything, user.ID).Return(inventory, nil)
@@ -46,12 +47,12 @@ func TestStartGamble_NoGoroutineLeak(t *testing.T) {
 	repo.On("CreateGamble", mock.Anything, mock.Anything).Return(nil)
 	repo.On("JoinGamble", mock.Anything, mock.Anything).Return(nil)
 
-	svc := NewService(repo, nil, lootboxSvc, statsSvc, 30*time.Second, nil, nil)
+	svc := NewService(repo, nil, lootboxSvc, statsSvc, 30*time.Second, nil, nil, nil)
 	checker := leaktest.NewGoroutineChecker(t)
 
 	// Execute
 	ctx := context.Background()
-	bets := []domain.LootboxBet{{ItemID: 1, Quantity: 1}}
+	bets := []domain.LootboxBet{{ItemName: "lootbox_tier1", Quantity: 1}}
 	_, err := svc.StartGamble(ctx, domain.PlatformDiscord, "user123", "tester", bets)
 
 	if err != nil {
@@ -83,7 +84,7 @@ func TestExecuteGamble_NoGoroutineLeak(t *testing.T) {
 	repo.On("CompleteGamble", mock.Anything, mock.Anything).Return(nil)
 	lootboxSvc.On("OpenLootbox", mock.Anything, mock.Anything, mock.Anything).Return([]lootbox.DroppedItem{}, nil).Maybe()
 
-	svc := NewService(repo, nil, lootboxSvc, statsSvc, 30*time.Second, nil, nil)
+	svc := NewService(repo, nil, lootboxSvc, statsSvc, 30*time.Second, nil, nil, nil)
 	checker := leaktest.NewGoroutineChecker(t)
 
 	// Execute

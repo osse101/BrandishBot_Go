@@ -472,6 +472,65 @@ func (_c *MockRepository_GetItemByID_Call) RunAndReturn(run func(context.Context
 	return _c
 }
 
+// GetItemByName provides a mock function with given fields: ctx, name
+func (_m *MockRepository) GetItemByName(ctx context.Context, name string) (*domain.Item, error) {
+	ret := _m.Called(ctx, name)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetItemByName")
+	}
+
+	var r0 *domain.Item
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (*domain.Item, error)); ok {
+		return rf(ctx, name)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) *domain.Item); ok {
+		r0 = rf(ctx, name)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*domain.Item)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, name)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockRepository_GetItemByName_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetItemByName'
+type MockRepository_GetItemByName_Call struct {
+	*mock.Call
+}
+
+// GetItemByName is a helper method to define mock.On call
+//   - ctx context.Context
+//   - name string
+func (_e *MockRepository_Expecter) GetItemByName(ctx interface{}, name interface{}) *MockRepository_GetItemByName_Call {
+	return &MockRepository_GetItemByName_Call{Call: _e.mock.On("GetItemByName", ctx, name)}
+}
+
+func (_c *MockRepository_GetItemByName_Call) Run(run func(ctx context.Context, name string)) *MockRepository_GetItemByName_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockRepository_GetItemByName_Call) Return(_a0 *domain.Item, _a1 error) *MockRepository_GetItemByName_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockRepository_GetItemByName_Call) RunAndReturn(run func(context.Context, string) (*domain.Item, error)) *MockRepository_GetItemByName_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetUserByPlatformID provides a mock function with given fields: ctx, platform, platformID
 func (_m *MockRepository) GetUserByPlatformID(ctx context.Context, platform string, platformID string) (*domain.User, error) {
 	ret := _m.Called(ctx, platform, platformID)

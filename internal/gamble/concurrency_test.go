@@ -17,12 +17,12 @@ import (
 func TestStartGamble_Concurrent_RaceCondition(t *testing.T) {
 	// Logic: We simulate the DB constraint by making the second CreateGamble call fail.
 	repo := new(MockRepository)
-	s := NewService(repo, nil, new(MockLootboxService), nil, time.Minute, nil, nil)
+	s := NewService(repo, nil, new(MockLootboxService), nil, time.Minute, nil, nil, nil)
 
 	ctx := context.Background()
 	user1 := &domain.User{ID: "user1"}
 	user2 := &domain.User{ID: "user2"}
-	bets := []domain.LootboxBet{{ItemID: 1, Quantity: 1}}
+	bets := []domain.LootboxBet{{ItemName: "lootbox_tier1", Quantity: 1}}
 
 	// Both see no active gamble
 	repo.On("GetActiveGamble", ctx).Return(nil, nil)
@@ -88,12 +88,12 @@ func TestStartGamble_Concurrent_RaceCondition(t *testing.T) {
 
 func TestJoinGamble_SameUserTwice_ShouldReject(t *testing.T) {
 	repo := new(MockRepository)
-	s := NewService(repo, nil, new(MockLootboxService), nil, time.Minute, nil, nil)
+	s := NewService(repo, nil, new(MockLootboxService), nil, time.Minute, nil, nil, nil)
 
 	ctx := context.Background()
 	gambleID := uuid.New()
 	user := &domain.User{ID: "user1"}
-	bets := []domain.LootboxBet{{ItemID: 1, Quantity: 1}}
+	bets := []domain.LootboxBet{{ItemName: "lootbox_tier1", Quantity: 1}}
 
 	gamble := &domain.Gamble{
 		ID:           gambleID,
@@ -128,7 +128,7 @@ func TestJoinGamble_SameUserTwice_ShouldReject(t *testing.T) {
 func TestExecuteGamble_Concurrent_Idempotent(t *testing.T) {
 	repo := new(MockRepository)
 	lootboxSvc := new(MockLootboxService)
-	s := NewService(repo, nil, lootboxSvc, nil, time.Minute, nil, nil)
+	s := NewService(repo, nil, lootboxSvc, nil, time.Minute, nil, nil, nil)
 
 	ctx := context.Background()
 	gambleID := uuid.New()
@@ -137,7 +137,7 @@ func TestExecuteGamble_Concurrent_Idempotent(t *testing.T) {
 		ID:    gambleID,
 		State: domain.GambleStateJoining,
 		Participants: []domain.Participant{
-			{UserID: "user1", LootboxBets: []domain.LootboxBet{{ItemID: 1, Quantity: 1}}},
+			{UserID: "user1", LootboxBets: []domain.LootboxBet{{ItemName: "lootbox_tier1", Quantity: 1}}},
 		},
 		JoinDeadline: time.Now().Add(-time.Minute), // Deadline PASSED, ready to execute
 	}
