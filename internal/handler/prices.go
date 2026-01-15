@@ -49,7 +49,5 @@ func handleGetPricesInternal(w http.ResponseWriter, r *http.Request, fetcher fun
 
 	log.Info(label+" prices retrieved", "count", len(items))
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
 	respondJSON(w, http.StatusOK, items)
 }

@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
@@ -41,25 +40,7 @@ func HandleRegisterUser(userService user.Service) http.HandlerFunc {
 		}
 
 		var req RegisterUserRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			log.Error("Failed to decode register user request", "error", err)
-			http.Error(w, "Invalid request body", http.StatusBadRequest)
-			return
-		}
-
-		log.Debug("Register user request",
-			"username", req.Username,
-			"known_platform", req.KnownPlatform,
-			"new_platform", req.NewPlatform)
-
-		// Validate request
-		if err := GetValidator().ValidateStruct(req); err != nil {
-			log.Warn("Invalid request", "error", err)
-			validationErrors := FormatValidationError(err)
-			respondJSON(w, http.StatusBadRequest, map[string]interface{}{
-				"error":   "Validation failed",
-				"details": validationErrors,
-			})
+		if err := DecodeAndValidateRequest(r, w, &req, "Register user"); err != nil {
 			return
 		}
 
@@ -133,9 +114,8 @@ func HandleGetTimeout(svc user.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
 
-		username := r.URL.Query().Get("username")
-		if username == "" {
-			http.Error(w, "Missing username parameter", http.StatusBadRequest)
+		username, ok := GetQueryParam(r, w, "username")
+		if !ok {
 			return
 		}
 

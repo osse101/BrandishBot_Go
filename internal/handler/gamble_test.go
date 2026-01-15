@@ -127,7 +127,7 @@ func TestHandleJoinGamble(t *testing.T) {
 			reqBody:        JoinGambleRequest{},
 			setupMocks:     nil,
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Missing gamble ID",
+			expectedBody:   "Missing id query parameter",
 		},
 		{
 			name:           "Invalid ID",
@@ -221,7 +221,7 @@ func TestHandleGetGamble(t *testing.T) {
 			queryID:        "",
 			setupMocks:     nil,
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Missing gamble ID",
+			expectedBody:   "Missing id query parameter",
 		},
 		{
 			name:           "Invalid ID",

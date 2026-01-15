@@ -25,13 +25,11 @@ const (
 // HandleGetInfo handles the /info endpoint
 func HandleGetInfo(loader *features.Loader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		platform := r.URL.Query().Get("platform")
-		feature := r.URL.Query().Get("feature")
-
-		if platform == "" {
-			respondError(w, http.StatusBadRequest, "platform parameter is required")
+		platform, ok := GetQueryParam(r, w, "platform")
+		if !ok {
 			return
 		}
+		feature := r.URL.Query().Get("feature")
 
 		platform = strings.ToLower(platform)
 		feature = strings.ToLower(feature)

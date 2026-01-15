@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/osse101/BrandishBot_Go/internal/event"
@@ -49,33 +48,17 @@ type SearchResponse struct {
 // @Router /user/search [post]
 func HandleSearch(svc user.Service, progressionSvc progression.Service, eventBus event.Bus) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log := logger.FromContext(r.Context())
-
-		// Check if search feature is unlocked
 		// Check if search feature is unlocked
 		if CheckFeatureLocked(w, r, progressionSvc, progression.FeatureSearch) {
 			return
 		}
 
 		var req SearchRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			log.Error("Failed to decode search request", "error", err)
-			http.Error(w, "Invalid request body", http.StatusBadRequest)
+		if err := DecodeAndValidateRequest(r, w, &req, "Search"); err != nil {
 			return
 		}
 
-		log.Debug("Search request", "username", req.Username, "platform", req.Platform)
-
-		// Validate request
-		if err := GetValidator().ValidateStruct(req); err != nil {
-			log.Warn("Invalid request", "error", err)
-			validationErrors := FormatValidationError(err)
-			respondJSON(w, http.StatusBadRequest, map[string]interface{}{
-				"error":   "Validation failed",
-				"details": validationErrors,
-			})
-			return
-		}
+		log := logger.FromContext(r.Context())
 
 		message, err := svc.HandleSearch(r.Context(), req.Platform, req.PlatformID, req.Username)
 		if err != nil {

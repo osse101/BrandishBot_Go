@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/osse101/BrandishBot_Go/internal/job"
@@ -34,9 +33,8 @@ func (h *JobHandler) HandleGetAllJobs(w http.ResponseWriter, r *http.Request) {
 
 // HandleGetUserJobs returns a user's job progress
 func (h *JobHandler) HandleGetUserJobs(w http.ResponseWriter, r *http.Request) {
-	userID := r.URL.Query().Get("user_id")
-	if userID == "" {
-		http.Error(w, "Missing user_id parameter", http.StatusBadRequest)
+	userID, ok := GetQueryParam(r, w, "user_id")
+	if !ok {
 		return
 	}
 
@@ -68,8 +66,7 @@ type AwardXPRequest struct {
 // HandleAwardXP awards XP to a user's job (internal/bot use)
 func (h *JobHandler) HandleAwardXP(w http.ResponseWriter, r *http.Request) {
 	var req AwardXPRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+	if err := DecodeAndValidateRequest(r, w, &req, "Award XP"); err != nil {
 		return
 	}
 
@@ -94,12 +91,16 @@ func (h *JobHandler) HandleAwardXP(w http.ResponseWriter, r *http.Request) {
 
 // HandleGetJobBonus returns the active bonus for a specific job and bonus type
 func (h *JobHandler) HandleGetJobBonus(w http.ResponseWriter, r *http.Request) {
-	userID := r.URL.Query().Get("user_id")
-	jobKey := r.URL.Query().Get("job_key")
-	bonusType := r.URL.Query().Get("bonus_type")
-
-	if userID == "" || jobKey == "" || bonusType == "" {
-		http.Error(w, "Missing required parameters (user_id, job_key, bonus_type)", http.StatusBadRequest)
+	userID, ok := GetQueryParam(r, w, "user_id")
+	if !ok {
+		return
+	}
+	jobKey, ok := GetQueryParam(r, w, "job_key")
+	if !ok {
+		return
+	}
+	bonusType, ok := GetQueryParam(r, w, "bonus_type")
+	if !ok {
 		return
 	}
 

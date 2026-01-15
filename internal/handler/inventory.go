@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -35,26 +34,12 @@ type AddItemRequest struct {
 // @Router /user/item/add [post]
 func HandleAddItem(svc user.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log := logger.FromContext(r.Context())
-
 		var req AddItemRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			log.Error("Failed to decode add item request", "error", err)
-			http.Error(w, "Invalid request body", http.StatusBadRequest)
+		if err := DecodeAndValidateRequest(r, w, &req, "Add item"); err != nil {
 			return
 		}
 
-		log.Debug("Add item request",
-			"username", req.Username,
-			"item", req.ItemName,
-			"quantity", req.Quantity)
-
-		// Validate request
-		if err := GetValidator().ValidateStruct(req); err != nil {
-			log.Warn("Invalid request", "error", err)
-			http.Error(w, fmt.Sprintf("Invalid request: %v", err), http.StatusBadRequest)
-			return
-		}
+		log := logger.FromContext(r.Context())
 
 		if err := svc.AddItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.ItemName, req.Quantity); err != nil {
 			log.Error("Failed to add item", "error", err, "username", req.Username, "item", req.ItemName)
@@ -93,23 +78,12 @@ type RemoveItemResponse struct {
 // @Router /user/item/remove [post]
 func HandleRemoveItem(svc user.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log := logger.FromContext(r.Context())
-
 		var req RemoveItemRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			log.Error("Failed to decode remove item request", "error", err)
-			http.Error(w, "Invalid request body", http.StatusBadRequest)
+		if err := DecodeAndValidateRequest(r, w, &req, "Remove item"); err != nil {
 			return
 		}
 
-		log.Debug("Remove item request", "username", req.Username, "item", req.ItemName, "quantity", req.Quantity)
-
-		// Validate request
-		if err := GetValidator().ValidateStruct(req); err != nil {
-			log.Warn("Invalid request", "error", err)
-			http.Error(w, fmt.Sprintf("Invalid request: %v", err), http.StatusBadRequest)
-			return
-		}
+		log := logger.FromContext(r.Context())
 
 		removed, err := svc.RemoveItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.ItemName, req.Quantity)
 		if err != nil {
@@ -148,27 +122,12 @@ type GiveItemRequest struct {
 // @Router /user/item/give [post]
 func HandleGiveItem(svc user.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log := logger.FromContext(r.Context())
-
 		var req GiveItemRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			log.Error("Failed to decode give item request", "error", err)
-			http.Error(w, "Invalid request body", http.StatusBadRequest)
+		if err := DecodeAndValidateRequest(r, w, &req, "Give item"); err != nil {
 			return
 		}
 
-		log.Debug("Give item request",
-			"owner", req.Owner,
-			"receiver", req.Receiver,
-			"item", req.ItemName,
-			"quantity", req.Quantity)
-
-		// Validate request
-		if err := GetValidator().ValidateStruct(req); err != nil {
-			log.Warn("Invalid request", "error", err)
-			http.Error(w, fmt.Sprintf("Invalid request: %v", err), http.StatusBadRequest)
-			return
-		}
+		log := logger.FromContext(r.Context())
 
 		if err := svc.GiveItem(r.Context(), req.OwnerPlatform, req.OwnerPlatformID, req.Owner, req.ReceiverPlatform, req.ReceiverPlatformID, req.Receiver, req.ItemName, req.Quantity); err != nil {
 			log.Error("Failed to give item", "error", err, "owner", req.Owner, "receiver", req.Receiver, "item", req.ItemName)
@@ -209,29 +168,17 @@ type SellItemResponse struct {
 // @Router /user/item/sell [post]
 func HandleSellItem(svc economy.Service, progressionSvc progression.Service, eventBus event.Bus) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log := logger.FromContext(r.Context())
-
-		// Check if sell feature is unlocked
 		// Check if sell feature is unlocked
 		if CheckFeatureLocked(w, r, progressionSvc, progression.FeatureSell) {
 			return
 		}
 
 		var req SellItemRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			log.Error("Failed to decode sell item request", "error", err)
-			http.Error(w, "Invalid request body", http.StatusBadRequest)
+		if err := DecodeAndValidateRequest(r, w, &req, "Sell item"); err != nil {
 			return
 		}
 
-		log.Debug("Sell item request", "username", req.Username, "item", req.ItemName, "quantity", req.Quantity)
-
-		// Validate request
-		if err := GetValidator().ValidateStruct(req); err != nil {
-			log.Warn("Invalid request", "error", err)
-			http.Error(w, fmt.Sprintf("Invalid request: %v", err), http.StatusBadRequest)
-			return
-		}
+		log := logger.FromContext(r.Context())
 
 		moneyGained, itemsSold, err := svc.SellItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.ItemName, req.Quantity)
 		if err != nil {
@@ -255,17 +202,13 @@ func HandleSellItem(svc economy.Service, progressionSvc progression.Service, eve
 		)
 
 		// Publish item.sold event
-		if err := eventBus.Publish(r.Context(), event.Event{
-			Version: "1.0",
-			Type:    "item.sold",
-			Payload: map[string]interface{}{
-				"user_id":      req.Username,
-				"item_name":    req.ItemName,
-				"quantity":     itemsSold,
-				"money_gained": moneyGained,
-			},
+		if err := PublishEvent(r.Context(), eventBus, "item.sold", map[string]interface{}{
+			"user_id":      req.Username,
+			"item_name":    req.ItemName,
+			"quantity":     itemsSold,
+			"money_gained": moneyGained,
 		}); err != nil {
-			log.Error("Failed to publish item.sold event", "error", err)
+			_ = err // Error already logged in PublishEvent
 		}
 
 		respondJSON(w, http.StatusOK, SellItemResponse{
@@ -301,29 +244,17 @@ type BuyItemResponse struct {
 // @Router /user/item/buy [post]
 func HandleBuyItem(svc economy.Service, progressionSvc progression.Service, eventBus event.Bus) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log := logger.FromContext(r.Context())
-
-		// Check if buy feature is unlocked
 		// Check if buy feature is unlocked
 		if CheckFeatureLocked(w, r, progressionSvc, progression.FeatureBuy) {
 			return
 		}
 
 		var req BuyItemRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			log.Error("Failed to decode buy item request", "error", err)
-			http.Error(w, "Invalid request body", http.StatusBadRequest)
+		if err := DecodeAndValidateRequest(r, w, &req, "Buy item"); err != nil {
 			return
 		}
 
-		log.Debug("Buy item request", "username", req.Username, "item", req.ItemName, "quantity", req.Quantity)
-
-		// Validate request
-		if err := GetValidator().ValidateStruct(req); err != nil {
-			log.Warn("Invalid request", "error", err)
-			http.Error(w, fmt.Sprintf("Invalid request: %v", err), http.StatusBadRequest)
-			return
-		}
+		log := logger.FromContext(r.Context())
 
 		bought, err := svc.BuyItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.ItemName, req.Quantity)
 		if err != nil {
@@ -347,16 +278,12 @@ func HandleBuyItem(svc economy.Service, progressionSvc progression.Service, even
 
 		// Publish item.bought event
 		// Note: We don't have the exact cost here, would need to modify economy.Service to return it
-		if err := eventBus.Publish(r.Context(), event.Event{
-			Version: "1.0",
-			Type:    "item.bought",
-			Payload: map[string]interface{}{
-				"user_id":   req.Username,
-				"item_name": req.ItemName,
-				"quantity":  bought,
-			},
+		if err := PublishEvent(r.Context(), eventBus, "item.bought", map[string]interface{}{
+			"user_id":   req.Username,
+			"item_name": req.ItemName,
+			"quantity":  bought,
 		}); err != nil {
-			log.Error("Failed to publish item.bought event", "error", err)
+			_ = err // Error already logged in PublishEvent
 		}
 
 		respondJSON(w, http.StatusOK, BuyItemResponse{
@@ -391,12 +318,8 @@ type UseItemResponse struct {
 // @Router /user/item/use [post]
 func HandleUseItem(svc user.Service, eventBus event.Bus) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log := logger.FromContext(r.Context())
-
 		var req UseItemRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			log.Error("Failed to decode use item request", "error", err)
-			http.Error(w, "Invalid request body", http.StatusBadRequest)
+		if err := DecodeAndValidateRequest(r, w, &req, "Use item"); err != nil {
 			return
 		}
 
@@ -405,18 +328,7 @@ func HandleUseItem(svc user.Service, eventBus event.Bus) http.HandlerFunc {
 			req.Quantity = 1
 		}
 
-		log.Debug("Use item request",
-			"username", req.Username,
-			"item", req.ItemName,
-			"quantity", req.Quantity,
-			"target", req.TargetUser)
-
-		// Validate request
-		if err := GetValidator().ValidateStruct(req); err != nil {
-			log.Warn("Invalid request", "error", err)
-			http.Error(w, fmt.Sprintf("Invalid request: %v", err), http.StatusBadRequest)
-			return
-		}
+		log := logger.FromContext(r.Context())
 
 		message, err := svc.UseItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.ItemName, req.Quantity, req.TargetUser)
 		if err != nil {
@@ -440,18 +352,14 @@ func HandleUseItem(svc user.Service, eventBus event.Bus) http.HandlerFunc {
 		)
 
 		// Publish item.used event
-		if err := eventBus.Publish(r.Context(), event.Event{
-			Version: "1.0",
-			Type:    "item.used",
-			Payload: map[string]interface{}{
-				"user_id":  req.Username,
-				"item":     req.ItemName,
-				"quantity": req.Quantity,
-				"target":   req.TargetUser,
-				"result":   message,
-			},
+		if err := PublishEvent(r.Context(), eventBus, "item.used", map[string]interface{}{
+			"user_id":  req.Username,
+			"item":     req.ItemName,
+			"quantity": req.Quantity,
+			"target":   req.TargetUser,
+			"result":   message,
 		}); err != nil {
-			log.Error("Failed to publish item.used event", "error", err)
+			_ = err // Error already logged in PublishEvent
 		}
 
 		respondJSON(w, http.StatusOK, UseItemResponse{
@@ -481,20 +389,14 @@ func HandleGetInventory(svc user.Service, progSvc progression.Service) http.Hand
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
 
-		platform := r.URL.Query().Get("platform") // optional
-		if platform == "" {
-			platform = domain.PlatformDiscord // Default
-		}
-		platformID := r.URL.Query().Get("platform_id")
-		if platformID == "" {
-			log.Warn("Missing platform_id query parameter")
-			http.Error(w, "Missing platform_id query parameter", http.StatusBadRequest)
+		platform := GetOptionalQueryParam(r, "platform", domain.PlatformDiscord)
+
+		platformID, ok := GetQueryParam(r, w, "platform_id")
+		if !ok {
 			return
 		}
-		username := r.URL.Query().Get("username")
-		if username == "" {
-			log.Warn("Missing username query parameter")
-			http.Error(w, "Missing username query parameter", http.StatusBadRequest)
+		username, ok := GetQueryParam(r, w, "username")
+		if !ok {
 			return
 		}
 		filter := r.URL.Query().Get("filter")

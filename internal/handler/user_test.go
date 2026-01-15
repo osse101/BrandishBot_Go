@@ -77,7 +77,7 @@ func TestHandleRegisterUser(t *testing.T) {
 			},
 			setupMock:      func(m *mocks.MockUserService) {},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Validation failed",
+			expectedBody:   "Invalid request",
 		},
 		{
 			name: "Service Error - Register Failed",

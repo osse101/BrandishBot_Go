@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -33,14 +32,12 @@ type StartGambleRequest struct {
 
 func (h *GambleHandler) HandleStartGamble(w http.ResponseWriter, r *http.Request) {
 	// Check if gamble feature is unlocked
-	// Check if gamble feature is unlocked
 	if CheckFeatureLocked(w, r, h.progressionSvc, progression.FeatureGamble) {
 		return
 	}
 
 	var req StartGambleRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+	if err := DecodeAndValidateRequest(r, w, &req, "Start gamble"); err != nil {
 		return
 	}
 
@@ -62,9 +59,8 @@ type JoinGambleRequest struct {
 }
 
 func (h *GambleHandler) HandleJoinGamble(w http.ResponseWriter, r *http.Request) {
-	gambleIDStr := r.URL.Query().Get("id")
-	if gambleIDStr == "" {
-		http.Error(w, "Missing gamble ID", http.StatusBadRequest)
+	gambleIDStr, ok := GetQueryParam(r, w, "id")
+	if !ok {
 		return
 	}
 	gambleID, err := uuid.Parse(gambleIDStr)
@@ -74,8 +70,7 @@ func (h *GambleHandler) HandleJoinGamble(w http.ResponseWriter, r *http.Request)
 	}
 
 	var req JoinGambleRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+	if err := DecodeAndValidateRequest(r, w, &req, "Join gamble"); err != nil {
 		return
 	}
 
@@ -89,9 +84,8 @@ func (h *GambleHandler) HandleJoinGamble(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *GambleHandler) HandleGetGamble(w http.ResponseWriter, r *http.Request) {
-	gambleIDStr := r.URL.Query().Get("id")
-	if gambleIDStr == "" {
-		http.Error(w, "Missing gamble ID", http.StatusBadRequest)
+	gambleIDStr, ok := GetQueryParam(r, w, "id")
+	if !ok {
 		return
 	}
 	gambleID, err := uuid.Parse(gambleIDStr)

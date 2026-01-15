@@ -33,8 +33,6 @@ func HandleHealthz() http.HandlerFunc {
 			Status: "ok",
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
 		respondJSON(w, http.StatusOK, response)
 	}
 }
@@ -61,8 +59,6 @@ func HandleReadyz(dbPool database.Pool) http.HandlerFunc {
 				Message: "database connection failed",
 			}
 
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusServiceUnavailable)
 			respondJSON(w, http.StatusServiceUnavailable, response)
 			return
 		}
@@ -71,8 +67,6 @@ func HandleReadyz(dbPool database.Pool) http.HandlerFunc {
 			Status: "ok",
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
 		respondJSON(w, http.StatusOK, response)
 	}
 }

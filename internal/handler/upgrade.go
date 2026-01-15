@@ -39,9 +39,8 @@ func HandleUpgradeItem(svc crafting.Service, progressionSvc progression.Service,
 			return
 		}
 
-		req, err := decodeCraftingRequest(r, "Upgrade item")
+		req, err := decodeCraftingRequest(r, w, "Upgrade item")
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
@@ -78,8 +77,6 @@ func HandleUpgradeItem(svc crafting.Service, progressionSvc progression.Service,
 			message = fmt.Sprintf("MASTERWORK! Critical success! You received %dx %s (Bonus: +%d)", result.Quantity, result.ItemName, result.BonusQuantity)
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
 		respondJSON(w, http.StatusOK, UpgradeItemResponse{
 			Message:          message,
 			NewItem:          result.ItemName,
@@ -114,11 +111,12 @@ func HandleGetRecipes(svc crafting.Service) http.HandlerFunc {
 
 		// Case 1: Only user provided - return unlocked recipes
 		if username != "" && itemName == "" {
-			platform := r.URL.Query().Get("platform")
-			platformID := r.URL.Query().Get("platform_id")
-
-			if platform == "" || platformID == "" {
-				http.Error(w, "Missing platform or platform_id", http.StatusBadRequest)
+			platform, ok := GetQueryParam(r, w, "platform")
+			if !ok {
+				return
+			}
+			platformID, ok := GetQueryParam(r, w, "platform_id")
+			if !ok {
 				return
 			}
 
@@ -131,8 +129,6 @@ func HandleGetRecipes(svc crafting.Service) http.HandlerFunc {
 
 			log.Info("Unlocked recipes retrieved", "username", username, "count", len(recipes))
 
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
 			respondJSON(w, http.StatusOK, map[string]interface{}{
 				"recipes": recipes,
 			})
@@ -153,8 +149,6 @@ func HandleGetRecipes(svc crafting.Service) http.HandlerFunc {
 
 			log.Info("Recipe retrieved", "item", itemName, "user", username)
 
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
 			respondJSON(w, http.StatusOK, recipe)
 			return
 		}
@@ -166,8 +160,6 @@ func HandleGetRecipes(svc crafting.Service) http.HandlerFunc {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
 		respondJSON(w, http.StatusOK, map[string]interface{}{
 			"recipes": recipes,
 		})

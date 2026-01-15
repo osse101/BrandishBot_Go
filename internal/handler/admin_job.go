@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/osse101/BrandishBot_Go/internal/job"
@@ -34,13 +33,12 @@ func NewAdminJobHandler(jobService job.Service, userService user.Service) *Admin
 // HandleAdminAwardXP awards XP to a user identified by platform and username
 // POST /admin/job/award-xp
 func (h *AdminJobHandler) HandleAdminAwardXP(w http.ResponseWriter, r *http.Request) {
-	log := logger.FromContext(r.Context())
-
 	var req AdminAwardXPRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+	if err := DecodeAndValidateRequest(r, w, &req, "Admin award XP"); err != nil {
 		return
 	}
+
+	log := logger.FromContext(r.Context())
 
 	// Validate required fields
 	if req.Platform == "" || req.Username == "" || req.JobKey == "" {

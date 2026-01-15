@@ -2,9 +2,7 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
@@ -91,21 +89,12 @@ func (h *ProgressionHandlers) HandleGetAvailable() http.HandlerFunc {
 // @Router /progression/vote [post]
 func (h *ProgressionHandlers) HandleVote() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log := logger.FromContext(r.Context())
-
 		var req VoteRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			log.Warn("Vote request: invalid JSON body", "error", err)
-			respondError(w, http.StatusBadRequest, "Invalid request body")
+		if err := DecodeAndValidateRequest(r, w, &req, "Vote for unlock"); err != nil {
 			return
 		}
 
-		// Validate request
-		if err := GetValidator().ValidateStruct(req); err != nil {
-			log.Warn("Vote request: validation failed", "error", err, "platform", req.Platform, "platformID", req.PlatformID, "nodeKey", req.NodeKey)
-			respondError(w, http.StatusBadRequest, fmt.Sprintf("Invalid request: %v", err))
-			return
-		}
+		log := logger.FromContext(r.Context())
 
 		// Cast vote
 		err := h.service.VoteForUnlock(r.Context(), req.Platform, req.PlatformID, req.NodeKey)
@@ -163,17 +152,12 @@ func (h *ProgressionHandlers) HandleGetEngagement() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
 
-		platform := r.URL.Query().Get("platform")
-		platformID := r.URL.Query().Get("platform_id")
-
-		if platform == "" {
-			log.Warn("Get user engagement: missing platform parameter")
-			respondError(w, http.StatusBadRequest, "platform query parameter is required")
+		platform, ok := GetQueryParam(r, w, "platform")
+		if !ok {
 			return
 		}
-		if platformID == "" {
-			log.Warn("Get user engagement: missing platform_id parameter")
-			respondError(w, http.StatusBadRequest, "platform_id query parameter is required")
+		platformID, ok := GetQueryParam(r, w, "platform_id")
+		if !ok {
 			return
 		}
 
@@ -204,17 +188,12 @@ func (h *ProgressionHandlers) HandleGetEngagementByUsername() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
 
-		platform := r.URL.Query().Get("platform")
-		username := r.URL.Query().Get("username")
-
-		if platform == "" {
-			log.Warn("Get user engagement by username: missing platform parameter")
-			respondError(w, http.StatusBadRequest, "platform query parameter is required")
+		platform, ok := GetQueryParam(r, w, "platform")
+		if !ok {
 			return
 		}
-		if username == "" {
-			log.Warn("Get user engagement by username: missing username parameter")
-			respondError(w, http.StatusBadRequest, "username query parameter is required")
+		username, ok := GetQueryParam(r, w, "username")
+		if !ok {
 			return
 		}
 
@@ -323,24 +302,16 @@ func (h *ProgressionHandlers) HandleAdminUnlockAll() http.HandlerFunc {
 
 func (h *ProgressionHandlers) handleAdminNodeAction(action func(context.Context, string, int) error, logMsg, successMsg string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log := logger.FromContext(r.Context())
-
 		// We use a shared struct for validation since both use same fields
 		var req struct {
 			NodeKey string `json:"node_key" validate:"required,max=50"`
 			Level   int    `json:"level" validate:"min=1"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			log.Warn("Admin node action: invalid JSON body", "error", err)
-			respondError(w, http.StatusBadRequest, "Invalid request body")
+		if err := DecodeAndValidateRequest(r, w, &req, "Admin node action"); err != nil {
 			return
 		}
 
-		if err := GetValidator().ValidateStruct(req); err != nil {
-			log.Warn("Admin node action: validation failed", "error", err, "nodeKey", req.NodeKey, "level", req.Level)
-			respondError(w, http.StatusBadRequest, fmt.Sprintf("Invalid request: %v", err))
-			return
-		}
+		log := logger.FromContext(r.Context())
 
 		if err := action(r.Context(), req.NodeKey, req.Level); err != nil {
 			log.Error("Admin node action: service error", "error", err, "nodeKey", req.NodeKey, "level", req.Level)
@@ -400,21 +371,12 @@ func (h *ProgressionHandlers) HandleAdminInstantUnlock() http.HandlerFunc {
 // @Router /progression/admin/reset [post]
 func (h *ProgressionHandlers) HandleAdminReset() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log := logger.FromContext(r.Context())
-
 		var req AdminResetRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			log.Warn("Admin reset: invalid JSON body", "error", err)
-			respondError(w, http.StatusBadRequest, "Invalid request body")
+		if err := DecodeAndValidateRequest(r, w, &req, "Admin reset"); err != nil {
 			return
 		}
 
-		// Validate request
-		if err := GetValidator().ValidateStruct(req); err != nil {
-			log.Warn("Admin reset: validation failed", "error", err, "resetBy", req.ResetBy)
-			respondError(w, http.StatusBadRequest, fmt.Sprintf("Invalid request: %v", err))
-			return
-		}
+		log := logger.FromContext(r.Context())
 
 		if req.Reason == "" {
 			req.Reason = "Annual reset"
@@ -591,14 +553,12 @@ func (h *ProgressionHandlers) HandleAdminStartVoting() http.HandlerFunc {
 // @Router /progression/admin/contribution [post]
 func (h *ProgressionHandlers) HandleAdminAddContribution() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log := logger.FromContext(r.Context())
-
 		var req AdminAddContributionRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			log.Warn("Admin add contribution: invalid JSON body", "error", err)
-			respondError(w, http.StatusBadRequest, "Invalid request body")
+		if err := DecodeAndValidateRequest(r, w, &req, "Admin add contribution"); err != nil {
 			return
 		}
+
+		log := logger.FromContext(r.Context())
 
 		if req.Amount <= 0 {
 			log.Warn("Admin add contribution: invalid amount", "amount", req.Amount)

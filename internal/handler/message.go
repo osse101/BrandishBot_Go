@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/osse101/BrandishBot_Go/internal/event"
@@ -52,25 +51,7 @@ func HandleMessageHandler(userService user.Service, progressionSvc progression.S
 		}
 
 		var req HandleMessageRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			log.Error("Failed to decode request body", "error", err)
-			http.Error(w, "Invalid request body", http.StatusBadRequest)
-			return
-		}
-
-		log.Debug("Decoded request",
-			"platform", req.Platform,
-			"platform_id", req.PlatformID,
-			"username", req.Username)
-
-		// Validate request
-		if err := GetValidator().ValidateStruct(req); err != nil {
-			log.Warn("Invalid request", "error", err)
-			validationErrors := FormatValidationError(err)
-			respondJSON(w, http.StatusBadRequest, map[string]interface{}{
-				"error":   "Validation failed",
-				"details": validationErrors,
-			})
+		if err := DecodeAndValidateRequest(r, w, &req, "Handle message"); err != nil {
 			return
 		}
 

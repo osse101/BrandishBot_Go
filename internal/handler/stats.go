@@ -1,8 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -31,23 +29,12 @@ type RecordEventRequest struct {
 // @Router /stats/event [post]
 func HandleRecordEvent(svc stats.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log := logger.FromContext(r.Context())
-
 		var req RecordEventRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			log.Error("Failed to decode record event request", "error", err)
-			http.Error(w, "Invalid request body", http.StatusBadRequest)
+		if err := DecodeAndValidateRequest(r, w, &req, "Record event"); err != nil {
 			return
 		}
 
-		log.Debug("Record event request", "user_id", req.UserID, "event_type", req.EventType)
-
-		// Validate request
-		if err := GetValidator().ValidateStruct(req); err != nil {
-			log.Warn("Invalid request", "error", err)
-			http.Error(w, fmt.Sprintf("Invalid request: %v", err), http.StatusBadRequest)
-			return
-		}
+		log := logger.FromContext(r.Context())
 
 		if err := svc.RecordUserEvent(r.Context(), req.UserID, domain.EventType(req.EventType), req.EventData); err != nil {
 			log.Error("Failed to record event", "error", err, "user_id", req.UserID, "event_type", req.EventType)
@@ -76,17 +63,12 @@ func HandleGetUserStats(svc stats.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
 
-		userID := r.URL.Query().Get("user_id")
-		if userID == "" {
-			log.Warn("Missing user_id query parameter")
-			http.Error(w, "Missing user_id query parameter", http.StatusBadRequest)
+		userID, ok := GetQueryParam(r, w, "user_id")
+		if !ok {
 			return
 		}
 
-		period := r.URL.Query().Get("period")
-		if period == "" {
-			period = domain.PeriodDaily // Default to daily
-		}
+		period := GetOptionalQueryParam(r, "period", domain.PeriodDaily)
 
 		log.Debug("Get user stats request", "user_id", userID, "period", period)
 
@@ -116,10 +98,7 @@ func HandleGetSystemStats(svc stats.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
 
-		period := r.URL.Query().Get("period")
-		if period == "" {
-			period = domain.PeriodDaily // Default to daily
-		}
+		period := GetOptionalQueryParam(r, "period", domain.PeriodDaily)
 
 		log.Debug("Get system stats request", "period", period)
 
@@ -152,17 +131,12 @@ func HandleGetLeaderboard(svc stats.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
 
-		eventType := r.URL.Query().Get("event_type")
-		if eventType == "" {
-			log.Warn("Missing event_type query parameter")
-			http.Error(w, "Missing event_type query parameter", http.StatusBadRequest)
+		eventType, ok := GetQueryParam(r, w, "event_type")
+		if !ok {
 			return
 		}
 
-		period := r.URL.Query().Get("period")
-		if period == "" {
-			period = domain.PeriodDaily // Default to daily
-		}
+		period := GetOptionalQueryParam(r, "period", domain.PeriodDaily)
 
 		limitStr := r.URL.Query().Get("limit")
 		limit := 10 // Default

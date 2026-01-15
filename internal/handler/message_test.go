@@ -80,7 +80,7 @@ func TestHandleMessageHandler(t *testing.T) {
 			},
 			setupMocks:     func(mu *mocks.MockUserService, mp *mocks.MockProgressionService, me *mocks.MockEventBus) {},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Validation failed",
+			expectedBody:   "Invalid request",
 		},
 		{
 			name:   "Service Error",

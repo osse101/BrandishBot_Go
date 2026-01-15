@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/osse101/BrandishBot_Go/internal/linking"
@@ -56,8 +55,7 @@ func (h *LinkingHandlers) HandleInitiate() http.HandlerFunc {
 		}
 
 		var req InitiateRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Invalid request", http.StatusBadRequest)
+		if err := DecodeAndValidateRequest(r, w, &req, "Initiate link"); err != nil {
 			return
 		}
 
@@ -86,8 +84,7 @@ func (h *LinkingHandlers) HandleClaim() http.HandlerFunc {
 		}
 
 		var req ClaimRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Invalid request", http.StatusBadRequest)
+		if err := DecodeAndValidateRequest(r, w, &req, "Claim link"); err != nil {
 			return
 		}
 
@@ -116,8 +113,7 @@ func (h *LinkingHandlers) HandleConfirm() http.HandlerFunc {
 		}
 
 		var req ConfirmRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Invalid request", http.StatusBadRequest)
+		if err := DecodeAndValidateRequest(r, w, &req, "Confirm link"); err != nil {
 			return
 		}
 
@@ -143,8 +139,7 @@ func (h *LinkingHandlers) HandleUnlink() http.HandlerFunc {
 		}
 
 		var req UnlinkRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Invalid request", http.StatusBadRequest)
+		if err := DecodeAndValidateRequest(r, w, &req, "Unlink"); err != nil {
 			return
 		}
 
@@ -182,11 +177,12 @@ func (h *LinkingHandlers) HandleStatus() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
 
-		platform := r.URL.Query().Get("platform")
-		platformID := r.URL.Query().Get("platform_id")
-
-		if platform == "" || platformID == "" {
-			http.Error(w, "Missing platform or platform_id", http.StatusBadRequest)
+		platform, ok := GetQueryParam(r, w, "platform")
+		if !ok {
+			return
+		}
+		platformID, ok := GetQueryParam(r, w, "platform_id")
+		if !ok {
 			return
 		}
 

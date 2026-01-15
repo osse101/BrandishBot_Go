@@ -42,9 +42,8 @@ func HandleDisassembleItem(svc crafting.Service, progressionSvc progression.Serv
 			return
 		}
 
-		req, err := decodeCraftingRequest(r, "Disassemble item")
+		req, err := decodeCraftingRequest(r, w, "Disassemble item")
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
@@ -102,8 +101,6 @@ func HandleDisassembleItem(svc crafting.Service, progressionSvc progression.Serv
 			message = fmt.Sprintf("PERFECT SALVAGE! You efficiently recovered more materials! (+50%% Bonus): %s", outputStr)
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
 		respondJSON(w, http.StatusOK, DisassembleItemResponse{
 			Message:           message,
 			Outputs:           result.Outputs,

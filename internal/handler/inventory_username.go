@@ -1,8 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/osse101/BrandishBot_Go/internal/event"
@@ -33,26 +31,12 @@ type AddItemByUsernameRequest struct {
 // @Router /user/item/add-by-username [post]
 func HandleAddItemByUsername(svc user.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log := logger.FromContext(r.Context())
-
 		var req AddItemByUsernameRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			log.Error("Failed to decode add item by username request", "error", err)
-			http.Error(w, "Invalid request body", http.StatusBadRequest)
+		if err := DecodeAndValidateRequest(r, w, &req, "Add item by username"); err != nil {
 			return
 		}
 
-		log.Debug("Add item by username request",
-			"username", req.Username,
-			"item", req.ItemName,
-			"quantity", req.Quantity)
-
-		// Validate request
-		if err := GetValidator().ValidateStruct(req); err != nil {
-			log.Warn("Invalid request", "error", err)
-			http.Error(w, fmt.Sprintf("Invalid request: %v", err), http.StatusBadRequest)
-			return
-		}
+		log := logger.FromContext(r.Context())
 
 		if err := svc.AddItemByUsername(r.Context(), req.Platform, req.Username, req.ItemName, req.Quantity); err != nil {
 			log.Error("Failed to add item by username", "error", err, "username", req.Username, "item", req.ItemName)
@@ -86,23 +70,12 @@ type RemoveItemByUsernameRequest struct {
 // @Router /user/item/remove-by-username [post]
 func HandleRemoveItemByUsername(svc user.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log := logger.FromContext(r.Context())
-
 		var req RemoveItemByUsernameRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			log.Error("Failed to decode remove item by username request", "error", err)
-			http.Error(w, "Invalid request body", http.StatusBadRequest)
+		if err := DecodeAndValidateRequest(r, w, &req, "Remove item by username"); err != nil {
 			return
 		}
 
-		log.Debug("Remove item by username request", "username", req.Username, "item", req.ItemName, "quantity", req.Quantity)
-
-		// Validate request
-		if err := GetValidator().ValidateStruct(req); err != nil {
-			log.Warn("Invalid request", "error", err)
-			http.Error(w, fmt.Sprintf("Invalid request: %v", err), http.StatusBadRequest)
-			return
-		}
+		log := logger.FromContext(r.Context())
 
 		removed, err := svc.RemoveItemByUsername(r.Context(), req.Platform, req.Username, req.ItemName, req.Quantity)
 		if err != nil {
@@ -138,12 +111,8 @@ type UseItemByUsernameRequest struct {
 // @Router /user/item/use-by-username [post]
 func HandleUseItemByUsername(svc user.Service, eventBus event.Bus) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log := logger.FromContext(r.Context())
-
 		var req UseItemByUsernameRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			log.Error("Failed to decode use item by username request", "error", err)
-			http.Error(w, "Invalid request body", http.StatusBadRequest)
+		if err := DecodeAndValidateRequest(r, w, &req, "Use item by username"); err != nil {
 			return
 		}
 
@@ -152,18 +121,7 @@ func HandleUseItemByUsername(svc user.Service, eventBus event.Bus) http.HandlerF
 			req.Quantity = 1
 		}
 
-		log.Debug("Use item by username request",
-			"username", req.Username,
-			"item", req.ItemName,
-			"quantity", req.Quantity,
-			"target", req.TargetUser)
-
-		// Validate request
-		if err := GetValidator().ValidateStruct(req); err != nil {
-			log.Warn("Invalid request", "error", err)
-			http.Error(w, fmt.Sprintf("Invalid request: %v", err), http.StatusBadRequest)
-			return
-		}
+		log := logger.FromContext(r.Context())
 
 		message, err := svc.UseItemByUsername(r.Context(), req.Platform, req.Username, req.ItemName, req.Quantity, req.TargetUser)
 		if err != nil {
@@ -187,18 +145,14 @@ func HandleUseItemByUsername(svc user.Service, eventBus event.Bus) http.HandlerF
 		)
 
 		// Publish item.used event
-		if err := eventBus.Publish(r.Context(), event.Event{
-			Version: "1.0",
-			Type:    "item.used",
-			Payload: map[string]interface{}{
-				"user_id":  req.Username,
-				"item":     req.ItemName,
-				"quantity": req.Quantity,
-				"target":   req.TargetUser,
-				"result":   message,
-			},
+		if err := PublishEvent(r.Context(), eventBus, "item.used", map[string]interface{}{
+			"user_id":  req.Username,
+			"item":     req.ItemName,
+			"quantity": req.Quantity,
+			"target":   req.TargetUser,
+			"result":   message,
 		}); err != nil {
-			log.Error("Failed to publish item.used event", "error", err)
+			_ = err // Error already logged in PublishEvent
 		}
 
 		respondJSON(w, http.StatusOK, UseItemResponse{
@@ -229,27 +183,12 @@ type GiveItemByUsernameRequest struct {
 // @Router /user/item/give-by-username [post]
 func HandleGiveItemByUsername(svc user.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log := logger.FromContext(r.Context())
-
 		var req GiveItemByUsernameRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			log.Error("Failed to decode give item by username request", "error", err)
-			http.Error(w, "Invalid request body", http.StatusBadRequest)
+		if err := DecodeAndValidateRequest(r, w, &req, "Give item by username"); err != nil {
 			return
 		}
 
-		log.Debug("Give item by username request",
-			"from", req.FromUsername,
-			"to", req.ToUsername,
-			"item", req.ItemName,
-			"quantity", req.Quantity)
-
-		// Validate request
-		if err := GetValidator().ValidateStruct(req); err != nil {
-			log.Warn("Invalid request", "error", err)
-			http.Error(w, fmt.Sprintf("Invalid request: %v", err), http.StatusBadRequest)
-			return
-		}
+		log := logger.FromContext(r.Context())
 
 		message, err := svc.GiveItemByUsername(r.Context(), req.FromPlatform, req.FromUsername, req.ToPlatform, req.ToUsername, req.ItemName, req.Quantity)
 		if err != nil {
@@ -281,14 +220,10 @@ func HandleGetInventoryByUsername(svc user.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
 
-		platform := r.URL.Query().Get("platform")
-		if platform == "" {
-			platform = "discord" // Default
-		}
-		username := r.URL.Query().Get("username")
-		if username == "" {
-			log.Warn("Missing username query parameter")
-			http.Error(w, "Missing username query parameter", http.StatusBadRequest)
+		platform := GetOptionalQueryParam(r, "platform", "discord")
+
+		username, ok := GetQueryParam(r, w, "username")
+		if !ok {
 			return
 		}
 		filter := r.URL.Query().Get("filter")

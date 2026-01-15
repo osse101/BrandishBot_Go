@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -33,21 +32,7 @@ func HandleTest(userService user.Service) http.HandlerFunc {
 		}
 
 		var req TestRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			log.Error("Failed to decode test request", "error", err)
-			http.Error(w, "Invalid request body", http.StatusBadRequest)
-			return
-		}
-
-		log.Debug("Decoded test request",
-			"username", req.Username,
-			"platform", req.Platform,
-			"platform_id", req.PlatformID)
-
-		// Validate request
-		if err := GetValidator().ValidateStruct(req); err != nil {
-			log.Warn("Invalid request", "error", err)
-			http.Error(w, fmt.Sprintf("Invalid request: %v", err), http.StatusBadRequest)
+		if err := DecodeAndValidateRequest(r, w, &req, "Test"); err != nil {
 			return
 		}
 
@@ -66,7 +51,6 @@ func HandleTest(userService user.Service) http.HandlerFunc {
 			Message: fmt.Sprintf("Greetings, %s!", req.Username),
 		}
 
-		w.Header().Set("Content-Type", "application/json")
 		respondJSON(w, http.StatusOK, resp)
 	}
 }
