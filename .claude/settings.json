@@ -1,4 +1,13 @@
 {
+  "enabledPlugins": {
+    "full-stack-orchestration@claude-code-workflows": true,
+    "gopls-lsp@claude-plugins-official": true,
+    "api-testing-observability@claude-code-workflows": true,
+    "backend-development@claude-code-workflows": true,
+    "code-documentation@claude-code-workflows": true,
+    "codebase-cleanup@claude-code-workflows": true,
+    "database-design@claude-code-workflows": true
+  },
   "instructions": [
     "Clean up all dangling processes after completion of tasks",
     "Present all information as concisely as possible even at the cost of grammar",

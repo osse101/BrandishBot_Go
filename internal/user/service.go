@@ -465,46 +465,27 @@ func (s *service) getInventoryInternal(ctx context.Context, user *domain.User, f
 }
 
 func (s *service) AddItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) error {
-	log := logger.FromContext(ctx)
-	log.Info("AddItem called", "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity)
-
-	if err := validateInventoryInput(platform, platformID, username, quantity); err != nil {
-		return err
-	}
-
-	user, err := s.getUserOrRegister(ctx, platform, platformID, username)
-	if err != nil {
-		return err
-	}
-
-	if err := s.addItemToUserInternal(ctx, user, itemName, quantity); err != nil {
-		return err
-	}
-
-	log.Info("Item added successfully", "username", username, "item", itemName, "quantity", quantity)
-	return nil
+	return s.withUserOp(ctx, lookupByPlatformID, inventoryOperationParams{
+		platform:   platform,
+		platformID: platformID,
+		username:   username,
+		itemName:   itemName,
+		quantity:   quantity,
+	}, "AddItem", func(ctx context.Context, user *domain.User) error {
+		return s.addItemToUserInternal(ctx, user, itemName, quantity)
+	})
 }
 
 // AddItemByUsername adds an item by platform username
 func (s *service) AddItemByUsername(ctx context.Context, platform, username, itemName string, quantity int) error {
-	log := logger.FromContext(ctx)
-	log.Info("AddItemByUsername called", "platform", platform, "username", username, "item", itemName, "quantity", quantity)
-
-	if err := validateInventoryInputByUsername(platform, username, quantity); err != nil {
-		return err
-	}
-
-	user, err := s.repo.GetUserByPlatformUsername(ctx, platform, username)
-	if err != nil {
-		return err
-	}
-
-	if err := s.addItemToUserInternal(ctx, user, itemName, quantity); err != nil {
-		return err
-	}
-
-	log.Info("Item added successfully by username", "username", username, "item", itemName, "quantity", quantity)
-	return nil
+	return s.withUserOp(ctx, lookupByUsername, inventoryOperationParams{
+		platform: platform,
+		username: username,
+		itemName: itemName,
+		quantity: quantity,
+	}, "AddItemByUsername", func(ctx context.Context, user *domain.User) error {
+		return s.addItemToUserInternal(ctx, user, itemName, quantity)
+	})
 }
 
 // AddItems adds multiple items to a user's inventory in a single transaction.
@@ -601,48 +582,27 @@ func (s *service) AddItems(ctx context.Context, platform, platformID, username s
 }
 
 func (s *service) RemoveItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (int, error) {
-	log := logger.FromContext(ctx)
-	log.Info("RemoveItem called", "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity)
-
-	if err := validateInventoryInput(platform, platformID, username, quantity); err != nil {
-		return 0, err
-	}
-
-	user, err := s.getUserOrRegister(ctx, platform, platformID, username)
-	if err != nil {
-		return 0, err
-	}
-
-	removed, err := s.removeItemFromUserInternal(ctx, user, itemName, quantity)
-	if err != nil {
-		return 0, err
-	}
-
-	log.Info("Item removed", "username", username, "item", itemName, "removed", removed)
-	return removed, nil
+	return s.withUserOpInt(ctx, lookupByPlatformID, inventoryOperationParams{
+		platform:   platform,
+		platformID: platformID,
+		username:   username,
+		itemName:   itemName,
+		quantity:   quantity,
+	}, "RemoveItem", func(ctx context.Context, user *domain.User) (int, error) {
+		return s.removeItemFromUserInternal(ctx, user, itemName, quantity)
+	})
 }
 
 // RemoveItemByUsername removes an item by platform username
 func (s *service) RemoveItemByUsername(ctx context.Context, platform, username, itemName string, quantity int) (int, error) {
-	log := logger.FromContext(ctx)
-	log.Info("RemoveItemByUsername called", "platform", platform, "username", username, "item", itemName, "quantity", quantity)
-
-	if err := validateInventoryInputByUsername(platform, username, quantity); err != nil {
-		return 0, err
-	}
-
-	user, err := s.repo.GetUserByPlatformUsername(ctx, platform, username)
-	if err != nil {
-		return 0, err
-	}
-
-	removed, err := s.removeItemFromUserInternal(ctx, user, itemName, quantity)
-	if err != nil {
-		return 0, err
-	}
-
-	log.Info("Item removed by username", "username", username, "item", itemName, "removed", removed)
-	return removed, nil
+	return s.withUserOpInt(ctx, lookupByUsername, inventoryOperationParams{
+		platform: platform,
+		username: username,
+		itemName: itemName,
+		quantity: quantity,
+	}, "RemoveItemByUsername", func(ctx context.Context, user *domain.User) (int, error) {
+		return s.removeItemFromUserInternal(ctx, user, itemName, quantity)
+	})
 }
 
 func (s *service) GiveItem(ctx context.Context, ownerPlatform, ownerPlatformID, ownerUsername, receiverPlatform, receiverPlatformID, receiverUsername, itemName string, quantity int) error {
@@ -776,60 +736,41 @@ func (s *service) executeGiveItemTx(ctx context.Context, owner, receiver *domain
 }
 
 func (s *service) UseItem(ctx context.Context, platform, platformID, username, itemName string, quantity int, targetUsername string) (string, error) {
-	log := logger.FromContext(ctx)
-	log.Info("UseItem called", "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity, "target", targetUsername)
-
-	if err := validateInventoryInput(platform, platformID, username, quantity); err != nil {
-		return "", err
-	}
-
-	user, err := s.getUserOrRegister(ctx, platform, platformID, username)
-	if err != nil {
-		return "", err
-	}
-
-	// Resolve public name to internal name
+	// Resolve public name to internal name before user lookup
 	resolvedName, err := s.resolveItemName(ctx, itemName)
 	if err != nil {
 		return "", err
 	}
 
-	message, err := s.useItemInternal(ctx, user, resolvedName, quantity, targetUsername, username)
-	if err != nil {
-		return "", err
-	}
-
-	log.Info("Item used", "username", username, "item", itemName, "resolved", resolvedName, "quantity", quantity, "message", message)
-	return message, nil
+	return s.withUserOpString(ctx, lookupByPlatformID, inventoryOperationParams{
+		platform:       platform,
+		platformID:     platformID,
+		username:       username,
+		itemName:       resolvedName,
+		quantity:       quantity,
+		targetUsername: targetUsername,
+	}, "UseItem", func(ctx context.Context, user *domain.User) (string, error) {
+		return s.useItemInternal(ctx, user, resolvedName, quantity, targetUsername, username)
+	})
 }
 
 // UseItemByUsername uses an item by platform username
 func (s *service) UseItemByUsername(ctx context.Context, platform, username, itemName string, quantity int, targetUsername string) (string, error) {
-	log := logger.FromContext(ctx)
-	log.Info("UseItemByUsername called", "platform", platform, "username", username, "item", itemName, "quantity", quantity, "target", targetUsername)
-
-	if err := validateInventoryInputByUsername(platform, username, quantity); err != nil {
-		return "", err
-	}
-
-	user, err := s.repo.GetUserByPlatformUsername(ctx, platform, username)
-	if err != nil {
-		return "", err
-	}
-
-	// Resolve public name to internal name
+	// Resolve public name to internal name before user lookup
 	resolvedName, err := s.resolveItemName(ctx, itemName)
 	if err != nil {
 		return "", err
 	}
 
-	message, err := s.useItemInternal(ctx, user, resolvedName, quantity, targetUsername, username)
-	if err != nil {
-		return "", err
-	}
-
-	log.Info("Item used by username", "username", username, "item", itemName, "resolved", resolvedName, "quantity", quantity, "message", message)
-	return message, nil
+	return s.withUserOpString(ctx, lookupByUsername, inventoryOperationParams{
+		platform:       platform,
+		username:       username,
+		itemName:       resolvedName,
+		quantity:       quantity,
+		targetUsername: targetUsername,
+	}, "UseItemByUsername", func(ctx context.Context, user *domain.User) (string, error) {
+		return s.useItemInternal(ctx, user, resolvedName, quantity, targetUsername, username)
+	})
 }
 
 // resolveItemName attempts to resolve a user-provided item name to its internal name.

@@ -294,6 +294,25 @@ make mocks      # If query changes affect repository interface
 - [ ] Run `make lint` (encouraged, not enforced)
 - [ ] Check client synchronization if API changed
 
+### Development Artifacts Location
+During development, create temporary artifacts in designated locations:
+- **Plan documents:** `.claude/plans/*.md` (gitignored)
+- **Temporary notes:** `.claude/notes/*.md` (gitignored)
+- **Debug outputs:** `.claude/debug/*.log` or `.claude/debug/*.json` (gitignored)
+- **Test data:** Use `/tmp/` or project-specific `testdata/` directories
+
+**Never commit:** Plan documents, debug logs, temporary notes, or ephemeral test data. These locations are gitignored for this reason.
+
+### Feature Completion Cleanup
+When completing a feature or task, clean up all temporary artifacts:
+- [ ] Delete plan documents (e.g., `.claude/plans/*.md`)
+- [ ] Remove any temporary debugging files
+- [ ] Delete test data files not needed for CI
+- [ ] Clean up commented-out code blocks
+- [ ] Remove TODO comments that were addressed
+
+**Rationale:** Keep the repository clean and focused on production code. Plan documents and artifacts are useful during development but should not be committed unless they provide long-term documentation value.
+
 ---
 
 ## Client Synchronization (CRITICAL)
