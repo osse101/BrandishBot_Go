@@ -57,51 +57,6 @@ func validateInventoryInputByUsername(platform, username string, quantity int) e
 	return validateInventoryInputCore(platform, "", username, quantity, false)
 }
 
-// Service defines the interface for user operations
-type Service interface {
-	RegisterUser(ctx context.Context, user domain.User) (domain.User, error)
-	FindUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error)
-	HandleIncomingMessage(ctx context.Context, platform, platformID, username, message string) (*domain.MessageResult, error)
-
-	// Inventory management - by platform ID
-	AddItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) error
-	AddItems(ctx context.Context, platform, platformID, username string, items map[string]int) error
-	RemoveItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (int, error)
-	GiveItem(ctx context.Context, ownerPlatform, ownerPlatformID, ownerUsername, receiverPlatform, receiverPlatformID, receiverUsername, itemName string, quantity int) error
-	UseItem(ctx context.Context, platform, platformID, username, itemName string, quantity int, targetUsername string) (string, error)
-	GetInventory(ctx context.Context, platform, platformID, username, filter string) ([]InventoryItem, error)
-
-	// Inventory management - by username
-	AddItemByUsername(ctx context.Context, platform, username, itemName string, quantity int) error
-	RemoveItemByUsername(ctx context.Context, platform, username, itemName string, quantity int) (int, error)
-	UseItemByUsername(ctx context.Context, platform, username, itemName string, quantity int, targetUsername string) (string, error)
-	GetInventoryByUsername(ctx context.Context, platform, username, filter string) ([]InventoryItem, error)
-	GiveItemByUsername(ctx context.Context, fromPlatform, fromUsername, toPlatform, toUsername, itemName string, quantity int) (string, error)
-
-	// User lookup by platform and username
-	GetUserByPlatformUsername(ctx context.Context, platform, username string) (*domain.User, error)
-	UpdateUser(ctx context.Context, user domain.User) error
-
-	// Other methods
-	TimeoutUser(ctx context.Context, username string, duration time.Duration, reason string) error
-	HandleSearch(ctx context.Context, platform, platformID, username string) (string, error)
-	// Account linking methods
-	MergeUsers(ctx context.Context, primaryUserID, secondaryUserID string) error
-	UnlinkPlatform(ctx context.Context, userID, platform string) error
-	GetLinkedPlatforms(ctx context.Context, platform, platformID string) ([]string, error)
-	GetTimeout(ctx context.Context, username string) (time.Duration, error)
-	GetCacheStats() CacheStats
-	Shutdown(ctx context.Context) error
-}
-
-type InventoryItem struct {
-	Name     string `json:"name"`
-	Quantity int    `json:"quantity"`
-}
-
-// ItemEffectHandler defines the function signature for item effects
-type ItemEffectHandler func(ctx context.Context, s *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args map[string]interface{}) (string, error)
-
 // JobService defines the interface for job operations
 type JobService interface {
 	AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error)
@@ -116,7 +71,7 @@ type timeoutInfo struct {
 // service implements the Service interface
 type service struct {
 	repo            repository.User
-	itemHandlers    map[string]ItemEffectHandler
+	handlerRegistry *HandlerRegistry
 	timeoutMu       sync.Mutex
 	timeouts        map[string]*timeoutInfo
 	lootboxService  lootbox.Service
@@ -139,6 +94,13 @@ type service struct {
 	itemIDToName    map[int]string         // Index for ID -> name lookups
 	itemCacheMu     sync.RWMutex           // Protects both maps
 }
+
+// Compile-time interface checks
+var _ Service = (*service)(nil)
+var _ InventoryService = (*service)(nil)
+var _ UserManagementService = (*service)(nil)
+var _ AccountLinkingService = (*service)(nil)
+var _ GameplayService = (*service)(nil)
 
 // setPlatformID sets the appropriate platform-specific ID field on a user
 func setPlatformID(user *domain.User, platform, platformID string) {
@@ -172,9 +134,9 @@ func loadCacheConfig() CacheConfig {
 
 // NewService creates a new user service
 func NewService(repo repository.User, statsService stats.Service, jobService JobService, lootboxService lootbox.Service, namingResolver naming.Resolver, cooldownService cooldown.Service, devMode bool) Service {
-	s := &service{
+	return &service{
 		repo:            repo,
-		itemHandlers:    make(map[string]ItemEffectHandler),
+		handlerRegistry: NewHandlerRegistry(),
 		timeouts:        make(map[string]*timeoutInfo),
 		lootboxService:  lootboxService,
 		jobService:      jobService,
@@ -187,16 +149,6 @@ func NewService(repo repository.User, statsService stats.Service, jobService Job
 		itemIDToName:    make(map[int]string),
 		userCache:       newUserCache(loadCacheConfig()),
 	}
-	s.registerHandlers()
-	return s
-}
-
-func (s *service) registerHandlers() {
-	// All lootbox tiers use the same handler
-	s.itemHandlers[domain.ItemLootbox0] = s.handleLootboxGeneric
-	s.itemHandlers[domain.ItemLootbox1] = s.handleLootboxGeneric
-	s.itemHandlers[domain.ItemLootbox2] = s.handleLootboxGeneric
-	s.itemHandlers[domain.ItemBlaster] = s.handleBlaster
 }
 
 func getPlatformKeysFromUser(user domain.User) map[string]string {
@@ -414,14 +366,14 @@ func (s *service) useItemInternal(ctx context.Context, user *domain.User, itemNa
 		}
 
 		// Execute item handler
-		handler, exists := s.itemHandlers[itemName]
-		if !exists {
+		handler := s.handlerRegistry.GetHandler(itemName)
+		if handler == nil {
 			log.Warn("No handler for item", "itemName", itemName)
 			return fmt.Errorf("item %s has no effect", itemName)
 		}
 
 		args := map[string]interface{}{"targetUsername": targetUsername, "username": username}
-		message, err = handler(ctx, s, user, inventory, itemToUse, quantity, args)
+		message, err = handler.Handle(ctx, s, user, inventory, itemToUse, quantity, args)
 		if err != nil {
 			log.Error("Handler error", "error", err, "itemName", itemName)
 			return err
@@ -1125,63 +1077,32 @@ func (s *service) calculateSearchParameters(ctx context.Context, user *domain.Us
 }
 
 func (s *service) processSearchSuccess(ctx context.Context, user *domain.User, roll float64, params searchParams) (string, error) {
-	log := logger.FromContext(ctx)
 	isCritical := roll <= SearchCriticalRate
 	quantity := 1
 	if isCritical {
 		quantity = 2
 	}
 
-	// Give lootbox0
-	item, err := s.getItemByNameCached(ctx, domain.ItemLootbox0)
-	if err != nil {
-		log.Error("Failed to get lootbox0 item", "error", err)
-		return "", fmt.Errorf("failed to get reward item: %w", err)
-	}
-	if item == nil {
-		log.Error("Lootbox0 item not found in database")
-		return "", fmt.Errorf("%w: %s", domain.ErrItemNotFound, domain.ItemLootbox0)
+	// Grant reward
+	if err := s.grantSearchReward(ctx, user, quantity); err != nil {
+		return "", err
 	}
 
-	// Add to inventory in transaction
-	err = s.withTx(ctx, func(tx repository.UserTx) error {
-		return s.addItemToTx(ctx, tx, user.ID, item.ID, quantity)
-	})
+	// Get item for message formatting and event recording
+	item, err := s.getItemByNameCached(ctx, domain.ItemLootbox0)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get reward item: %w", err)
 	}
 
 	// Award Explorer XP for finding item (async, don't block)
 	s.wg.Add(1)
 	go s.awardExplorerXP(context.Background(), user.ID, item.InternalName, params.xpMultiplier)
 
-	// Get display name with shine (empty shine for search results)
-	displayName := s.namingResolver.GetDisplayName(item.InternalName, "")
-	var resultMessage string
+	// Record success events
+	s.recordSearchSuccessEvents(ctx, user, item, quantity, roll, isCritical)
 
-	if isCritical {
-		// Record critical success event
-		if s.statsService != nil {
-			_ = s.statsService.RecordUserEvent(ctx, user.ID, domain.EventSearchCriticalSuccess, map[string]interface{}{
-				"item":     item.InternalName,
-				"quantity": quantity,
-				"roll":     roll,
-			})
-		}
-		resultMessage = fmt.Sprintf("%s You found %dx %s", domain.MsgSearchCriticalSuccess, quantity, displayName)
-		log.Info("Search CRITICAL success", "username", user.Username, "item", item.InternalName, "quantity", quantity)
-	} else {
-		resultMessage = fmt.Sprintf("You have found %dx %s", quantity, displayName)
-		log.Info("Search successful - lootbox found", "username", user.Username, "item", item.InternalName)
-	}
-
-	if params.isFirstSearchDaily {
-		resultMessage += domain.MsgFirstSearchBonus
-	} else if params.isDiminished {
-		resultMessage += " (Exhausted)"
-	}
-
-	return resultMessage, nil
+	// Format and return result message
+	return s.formatSearchSuccessMessage(ctx, item, quantity, isCritical, params), nil
 }
 
 func (s *service) addItemToTx(ctx context.Context, tx repository.Tx, userID string, itemID int, quantity int) error {
@@ -1207,45 +1128,14 @@ func (s *service) addItemToTx(ctx context.Context, tx repository.Tx, userID stri
 }
 
 func (s *service) processSearchFailure(ctx context.Context, user *domain.User, roll float64, successThreshold float64, params searchParams) string {
-	log := logger.FromContext(ctx)
+	// Determine failure type
+	failureType := determineSearchFailureType(roll, successThreshold)
 
-	var resultMessage string
+	// Record failure events
+	s.recordSearchFailureEvents(ctx, user, roll, successThreshold, failureType)
 
-	if roll <= successThreshold+SearchNearMissRate {
-		// Near Miss case
-		if s.statsService != nil {
-			_ = s.statsService.RecordUserEvent(ctx, user.ID, domain.EventSearchNearMiss, map[string]interface{}{
-				"roll":      roll,
-				"threshold": successThreshold,
-			})
-		}
-		resultMessage = domain.MsgSearchNearMiss
-		log.Info("Search NEAR MISS", "username", user.Username, "roll", roll)
-	} else {
-		// Check for Critical Failure (roll > 0.95)
-		if roll > 1.0-SearchCriticalFailRate {
-			// Critical Fail case
-			if s.statsService != nil {
-				_ = s.statsService.RecordUserEvent(ctx, user.ID, domain.EventSearchCriticalFail, map[string]interface{}{
-					"roll": roll,
-				})
-			}
-			resultMessage = domain.MsgSearchCriticalFail
-			if len(domain.SearchCriticalFailMessages) > 0 {
-				idx := utils.SecureRandomIntRange(0, len(domain.SearchCriticalFailMessages)-1)
-				resultMessage = fmt.Sprintf("%s %s", domain.MsgSearchCriticalFail, domain.SearchCriticalFailMessages[idx])
-			}
-			log.Info("Search CRITICAL FAIL", "username", user.Username, "roll", roll)
-		} else {
-			// Failure case - Pick a random funny message
-			resultMessage = domain.MsgSearchNothingFound
-			if len(domain.SearchFailureMessages) > 0 {
-				idx := utils.SecureRandomIntRange(0, len(domain.SearchFailureMessages)-1)
-				resultMessage = domain.SearchFailureMessages[idx]
-			}
-			log.Info("Search successful - nothing found", "username", user.Username, "message", resultMessage)
-		}
-	}
+	// Format failure message
+	resultMessage := formatSearchFailureMessage(failureType)
 
 	// Record search attempt (to track daily count)
 	if s.statsService != nil {
@@ -1253,19 +1143,10 @@ func (s *service) processSearchFailure(ctx context.Context, user *domain.User, r
 			"success":     roll <= successThreshold,
 			"daily_count": params.dailyCount + 1, // +1 because we just did one
 		})
-
-		// If this was the first search of the day, show the current streak
-		if params.isFirstSearchDaily {
-			streak, err := s.statsService.GetUserCurrentStreak(ctx, user.ID)
-			if err != nil {
-				log.Warn("Failed to get user streak", "error", err)
-			} else if streak > 1 {
-				resultMessage += fmt.Sprintf(domain.MsgStreakBonus, streak)
-			}
-		}
 	}
 
-	return resultMessage
+	// Append streak bonus if applicable
+	return s.appendStreakBonus(ctx, user, resultMessage, params.isFirstSearchDaily)
 }
 
 // getUserOrRegister gets a user by platform ID, or auto-registers them if not found
