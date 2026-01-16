@@ -33,7 +33,7 @@ func TestHandleRecordEvent(t *testing.T) {
 				EventData: map[string]interface{}{"item": "potion"},
 			},
 			setupMock: func(m *mocks.MockStatsService) {
-				m.On("RecordUserEvent", mock.Anything, "testuser", domain.EventTypeItemUsed, mock.Anything).Return(nil)
+				m.On("RecordUserEvent", mock.Anything, "testuser", domain.EventType(domain.EventTypeItemUsed), mock.Anything).Return(nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   "Event recorded successfully",
@@ -54,7 +54,7 @@ func TestHandleRecordEvent(t *testing.T) {
 				EventType: domain.EventTypeItemUsed,
 			},
 			setupMock: func(m *mocks.MockStatsService) {
-				m.On("RecordUserEvent", mock.Anything, "testuser", domain.EventTypeItemUsed, mock.Anything).Return(errors.New(ErrMsgGenericServerError))
+				m.On("RecordUserEvent", mock.Anything, "testuser", domain.EventType(domain.EventTypeItemUsed), mock.Anything).Return(errors.New(ErrMsgGenericServerError))
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   ErrMsgGenericServerError,
@@ -218,7 +218,7 @@ func TestHandleGetLeaderboard(t *testing.T) {
 			limit:     "5",
 			setupMock: func(m *mocks.MockStatsService) {
 				entries := []domain.LeaderboardEntry{{UserID: "user1", Count: 10}}
-				m.On("GetLeaderboard", mock.Anything, domain.EventTypeItemUsed, domain.PeriodDaily, 5).Return(entries, nil)
+				m.On("GetLeaderboard", mock.Anything, domain.EventType(domain.EventTypeItemUsed), domain.PeriodDaily, 5).Return(entries, nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `"user_id":"user1"`,
@@ -242,7 +242,7 @@ func TestHandleGetLeaderboard(t *testing.T) {
 			name:      "Service Error",
 			eventType: domain.EventTypeItemUsed,
 			setupMock: func(m *mocks.MockStatsService) {
-				m.On("GetLeaderboard", mock.Anything, domain.EventTypeItemUsed, domain.PeriodDaily, 10).Return(nil, errors.New(ErrMsgGenericServerError))
+				m.On("GetLeaderboard", mock.Anything, domain.EventType(domain.EventTypeItemUsed), domain.PeriodDaily, 10).Return(nil, errors.New(ErrMsgGenericServerError))
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   ErrMsgGenericServerError,
