@@ -138,10 +138,10 @@ func (r *resolver) GetDisplayName(internalName string, shineLevel string) string
 
 // formatWithShine adds shine level prefix if not COMMON
 func (r *resolver) formatWithShine(name string, shineLevel string) string {
-	if shineLevel == "" || shineLevel == "COMMON" {
+	if shineLevel == "" || shineLevel == ShineCommonLevel {
 		return name
 	}
-	return fmt.Sprintf("%s %s", shineLevel, name)
+	return fmt.Sprintf(ShineFormatTemplate, shineLevel, name)
 }
 
 // GetActiveTheme returns the currently active theme
@@ -175,9 +175,9 @@ func isInPeriod(now time.Time, startStr, endStr string) bool {
 	currentDay := now.Day()
 
 	// Create comparable date values (month * 100 + day)
-	current := currentMonth*100 + currentDay
-	start := startMonth*100 + startDay
-	end := endMonth*100 + endDay
+	current := currentMonth*DateComparisonMultiplier + currentDay
+	start := startMonth*DateComparisonMultiplier + startDay
+	end := endMonth*DateComparisonMultiplier + endDay
 
 	if start <= end {
 		// Normal range (e.g., 10-15 to 11-02)
@@ -189,8 +189,8 @@ func isInPeriod(now time.Time, startStr, endStr string) bool {
 
 // parseMonthDay parses "MM-DD" format
 func parseMonthDay(s string) (month, day int) {
-	parts := strings.Split(s, "-")
-	if len(parts) != 2 {
+	parts := strings.Split(s, DateSeparator)
+	if len(parts) != DatePartsCount {
 		return 0, 0
 	}
 	month, _ = strconv.Atoi(parts[0])
@@ -206,14 +206,14 @@ func (r *resolver) Reload() error {
 	// Load aliases
 	if r.aliasesPath != "" {
 		if err := r.loadAliases(); err != nil {
-			return fmt.Errorf("failed to load aliases: %w", err)
+			return fmt.Errorf("%s: %w", ErrContextFailedToLoadAliases, err)
 		}
 	}
 
 	// Load themes
 	if r.themesPath != "" {
 		if err := r.loadThemes(); err != nil {
-			return fmt.Errorf("failed to load themes: %w", err)
+			return fmt.Errorf("%s: %w", ErrContextFailedToLoadThemes, err)
 		}
 	}
 
@@ -235,19 +235,19 @@ func (r *resolver) loadVersionedConfig(path string, target interface{}, schema s
 		Schema  string `json:"schema"`
 	}
 	if err := json.Unmarshal(data, &wrapper); err != nil {
-		return fmt.Errorf("failed to parse config %s: %w", path, err)
+		return fmt.Errorf(ErrContextFailedToParseConfig+": %w", path, err)
 	}
 
 	if wrapper.Version == "" {
-		return fmt.Errorf("%s missing version field", path)
+		return fmt.Errorf(ErrMsgMissingVersionField, path)
 	}
 	if wrapper.Schema != schema {
-		return fmt.Errorf("invalid schema in %s: expected '%s', got '%s'", path, schema, wrapper.Schema)
+		return fmt.Errorf(ErrMsgInvalidSchema, path, schema, wrapper.Schema)
 	}
 
 	// Now unmarshal to actual target
 	if err := json.Unmarshal(data, target); err != nil {
-		return fmt.Errorf("failed to decode data for %s: %w", path, err)
+		return fmt.Errorf(ErrContextFailedToDecodeData+": %w", path, err)
 	}
 
 	return nil
@@ -257,7 +257,7 @@ func (r *resolver) loadAliases() error {
 	var config struct {
 		Aliases map[string]AliasPool `json:"aliases"`
 	}
-	if err := r.loadVersionedConfig(r.aliasesPath, &config, "item-aliases"); err != nil {
+	if err := r.loadVersionedConfig(r.aliasesPath, &config, SchemaItemAliases); err != nil {
 		return err
 	}
 	if config.Aliases != nil {
@@ -270,7 +270,7 @@ func (r *resolver) loadThemes() error {
 	var config struct {
 		Themes map[string]ThemePeriod `json:"themes"`
 	}
-	if err := r.loadVersionedConfig(r.themesPath, &config, "item-themes"); err != nil {
+	if err := r.loadVersionedConfig(r.themesPath, &config, SchemaItemThemes); err != nil {
 		return err
 	}
 	if config.Themes != nil {

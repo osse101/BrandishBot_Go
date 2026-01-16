@@ -29,7 +29,7 @@ func (w *GambleWorker) Start() {
 
 	active, err := w.service.GetActiveGamble(ctx)
 	if err != nil {
-		log.Error("Failed to check active gamble on startup", "error", err)
+		log.Error(LogMsgFailedToCheckActiveGambleOnStartup, "error", err)
 		return
 	}
 
@@ -59,13 +59,13 @@ func (w *GambleWorker) scheduleExecution(g *domain.Gamble) {
 	}
 
 	log := logger.FromContext(context.Background())
-	log.Info("Scheduling gamble execution", "gambleID", g.ID, "duration", duration)
+	log.Info(LogMsgSchedulingGambleExecution, "gambleID", g.ID, "duration", duration)
 
 	time.AfterFunc(duration, func() {
 		ctx := context.Background()
-		log.Info("Executing scheduled gamble", "gambleID", g.ID)
+		log.Info(LogMsgExecutingScheduledGamble, "gambleID", g.ID)
 		if _, err := w.service.ExecuteGamble(ctx, g.ID); err != nil {
-			log.Error("Failed to execute gamble", "gambleID", g.ID, "error", err)
+			log.Error(LogMsgFailedToExecuteGamble, "gambleID", g.ID, "error", err)
 		}
 	})
 }

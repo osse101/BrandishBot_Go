@@ -71,7 +71,7 @@ func NewService(repo ItemRepository, lootTablesPath string) (Service, error) {
 
 	// Load loot tables from JSON file
 	if err := svc.loadLootTables(lootTablesPath); err != nil {
-		return nil, fmt.Errorf("failed to load loot tables: %w", err)
+		return nil, fmt.Errorf("%s: %w", ErrContextFailedToLoadLootTables, err)
 	}
 
 	return svc, nil
@@ -80,7 +80,7 @@ func NewService(repo ItemRepository, lootTablesPath string) (Service, error) {
 func (s *service) loadLootTables(path string) error {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return fmt.Errorf("failed to read loot tables file: %w", err)
+		return fmt.Errorf("%s: %w", ErrContextFailedToReadLootFile, err)
 	}
 
 	// Parse the nested structure with "tables" key
@@ -88,7 +88,7 @@ func (s *service) loadLootTables(path string) error {
 		Tables map[string][]LootItem `json:"tables"`
 	}
 	if err := json.Unmarshal(data, &config); err != nil {
-		return fmt.Errorf("failed to parse loot tables: %w", err)
+		return fmt.Errorf("%s: %w", ErrContextFailedToParseLootFile, err)
 	}
 
 	s.lootTables = config.Tables
@@ -103,7 +103,7 @@ func (s *service) OpenLootbox(ctx context.Context, lootboxName string, quantity 
 
 	table, ok := s.lootTables[lootboxName]
 	if !ok {
-		logger.FromContext(ctx).Warn("No loot table found for lootbox", "lootbox", lootboxName)
+		logger.FromContext(ctx).Warn(LogMsgNoLootTableFound, LogFieldLootbox, lootboxName)
 		return nil, nil
 	}
 
@@ -124,11 +124,11 @@ func (s *service) processLootTable(table []LootItem, quantity int) map[string]dr
 	dropCounts := make(map[string]dropInfo)
 
 	for _, loot := range table {
-		if loot.Chance <= 0 {
+		if loot.Chance <= ZeroChanceThreshold {
 			continue
 		}
 
-		if loot.Chance >= 1.0 {
+		if loot.Chance >= GuaranteedDropThreshold {
 			s.processGuaranteedDrop(loot, quantity, dropCounts)
 		} else {
 			s.processChanceDrop(loot, quantity, dropCounts)
@@ -188,7 +188,7 @@ func (s *service) convertToDroppedItems(ctx context.Context, dropCounts map[stri
 
 	items, err := s.repo.GetItemsByNames(ctx, itemNames)
 	if err != nil {
-		log.Error("Failed to get dropped items", "error", err)
+		log.Error(ErrContextFailedToGetDroppedItems, LogFieldError, err)
 		return nil, err
 	}
 
@@ -201,7 +201,7 @@ func (s *service) convertToDroppedItems(ctx context.Context, dropCounts map[stri
 	for itemName, info := range dropCounts {
 		item, found := itemMap[itemName]
 		if !found {
-			log.Warn("Dropped item not found in DB", "item", itemName)
+			log.Warn(LogMsgDroppedItemNotInDB, LogFieldItem, itemName)
 			continue
 		}
 
@@ -223,19 +223,19 @@ func (s *service) convertToDroppedItems(ctx context.Context, dropCounts map[stri
 // calculateShine determines the visual rarity "shine" and value multiplier of a drop based on its chance
 func calculateShine(chance float64) (string, float64) {
 	shine := ShineCommon
-	if chance <= 0.01 {
+	if chance <= ShineLegendaryThreshold {
 		shine = ShineLegendary
-	} else if chance <= 0.05 {
+	} else if chance <= ShineEpicThreshold {
 		shine = ShineEpic
-	} else if chance <= 0.15 {
+	} else if chance <= ShineRareThreshold {
 		shine = ShineRare
-	} else if chance <= 0.30 {
+	} else if chance <= ShineUncommonThreshold {
 		shine = ShineUncommon
 	}
 
 	// Critical Shine Upgrade: 1% chance to upgrade the shine level
 	// This adds a fun "Lucky!" moment for players
-	if utils.SecureRandomFloat() < 0.01 {
+	if utils.SecureRandomFloat() < CriticalShineUpgradeChance {
 		switch shine {
 		case ShineCommon:
 			shine = ShineUncommon

@@ -28,12 +28,6 @@ var validPlatforms = map[string]bool{
 	domain.PlatformDiscord: true,
 }
 
-// Validation error messages
-const (
-	ErrMsgQuantityMustBePositive = "quantity must be positive"
-	ErrMsgUsernameRequired       = "username is required"
-	ErrMsgPlatformIDRequired     = "platformID is required"
-)
 
 // validateInventoryInput validates common inventory operation inputs
 func validateInventoryInput(platform, platformID, username string, quantity int) error {
@@ -164,13 +158,13 @@ func setPlatformID(user *domain.User, platform, platformID string) {
 func loadCacheConfig() CacheConfig {
 	config := DefaultCacheConfig()
 
-	if val := os.Getenv("USER_CACHE_SIZE"); val != "" {
+	if val := os.Getenv(EnvUserCacheSize); val != "" {
 		if size, err := strconv.Atoi(val); err == nil && size > 0 {
 			config.Size = size
 		}
 	}
 
-	if val := os.Getenv("USER_CACHE_TTL"); val != "" {
+	if val := os.Getenv(EnvUserCacheTTL); val != "" {
 		if ttl, err := time.ParseDuration(val); err == nil && ttl > 0 {
 			config.TTL = ttl
 		}
@@ -224,9 +218,9 @@ func getPlatformKeysFromUser(user domain.User) map[string]string {
 // RegisterUser registers a new user
 func (s *service) RegisterUser(ctx context.Context, user domain.User) (domain.User, error) {
 	log := logger.FromContext(ctx)
-	log.Info("RegisterUser called", "username", user.Username)
+	log.Info(LogMsgRegisterUserCalled, "username", user.Username)
 	if err := s.repo.UpsertUser(ctx, &user); err != nil {
-		log.Error("Failed to upsert user", "error", err, "username", user.Username)
+		log.Error(LogErrFailedToUpsertUser, "error", err, "username", user.Username)
 		return domain.User{}, err
 	}
 
@@ -236,7 +230,7 @@ func (s *service) RegisterUser(ctx context.Context, user domain.User) (domain.Us
 		s.userCache.Set(platform, platformID, &user)
 	}
 
-	log.Info("User registered", "user_id", user.ID, "username", user.Username)
+	log.Info(LogMsgUserRegistered, "user_id", user.ID, "username", user.Username)
 	return user, nil
 }
 
@@ -1042,20 +1036,6 @@ func (s *service) validateItem(ctx context.Context, itemName string) (*domain.It
 	return item, nil
 }
 
-// Constants for search mechanic
-const (
-	SearchSuccessRate      = 0.8
-	SearchCriticalRate     = 0.05
-	SearchNearMissRate     = 0.05
-	SearchCriticalFailRate = 0.05
-
-	// SearchDailyDiminishmentThreshold is the number of searches per day after which returns are diminished
-	SearchDailyDiminishmentThreshold = 6
-	// SearchDiminishedSuccessRate is the success rate when diminished returns are active
-	SearchDiminishedSuccessRate = 0.1
-	// SearchDiminishedXPMultiplier is the XP multiplier when diminished returns are active
-	SearchDiminishedXPMultiplier = 0.1
-)
 
 // HandleSearch performs a search action for a user with cooldown tracking
 func (s *service) HandleSearch(ctx context.Context, platform, platformID, username string) (string, error) {
@@ -1064,15 +1044,15 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 
 	// Validate platform
 	if username == "" {
-		return "", fmt.Errorf("username cannot be empty")
+		return "", fmt.Errorf(ErrMsgUsernameCannotBeEmpty)
 	}
 
 	if platform == "" {
 		// Default to twitch for backwards compatibility
 		platform = domain.PlatformTwitch
-		log.Info("Platform not specified, defaulting to twitch", "username", username)
+		log.Info(LogMsgPlatformDefaultingToTwitch, "username", username)
 	} else if !validPlatforms[platform] {
-		return "", fmt.Errorf("invalid platform '%s': must be one of: %s, %s, %s", platform, domain.PlatformTwitch, domain.PlatformYoutube, domain.PlatformDiscord)
+		return "", fmt.Errorf(ErrMsgInvalidPlatform, platform, domain.PlatformTwitch, domain.PlatformYoutube, domain.PlatformDiscord)
 	}
 
 	// Get or create user
@@ -1126,8 +1106,8 @@ func (s *service) executeSearch(ctx context.Context, user *domain.User) (string,
 	// Perform search roll
 	roll := utils.SecureRandomFloat()
 	if params.isFirstSearchDaily {
-		roll = 0.0 // Guaranteed Success
-		log.Info("First search of the day - applying bonus", "username", user.Username)
+		roll = SearchFirstDailyGuaranteedRoll // Guaranteed Success
+		log.Info(LogMsgFirstSearchBonus, "username", user.Username)
 	}
 
 	var resultMessage string
@@ -1176,7 +1156,7 @@ func (s *service) calculateSearchParameters(ctx context.Context, user *domain.Us
 	if params.isDiminished {
 		params.successThreshold = SearchDiminishedSuccessRate
 		params.xpMultiplier = SearchDiminishedXPMultiplier
-		log.Info("Diminished search returns applied", "username", user.Username, "dailyCount", dailyCount)
+		log.Info(LogMsgDiminishedReturnsApplied, "username", user.Username, "dailyCount", dailyCount)
 	}
 
 	return params

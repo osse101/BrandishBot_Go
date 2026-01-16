@@ -5,19 +5,12 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/lootbox"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
-
-// BulkFeedbackThreshold defines the number of lootboxes required to trigger "Nice haul" message
-const BulkFeedbackThreshold = 5
-
-// BlasterTimeoutDuration is the duration a user is timed out when hit by a blaster
-const BlasterTimeoutDuration = 60 * time.Second
 
 // Item effect handlers
 
@@ -37,7 +30,7 @@ func (s *service) processLootbox(ctx context.Context, user *domain.User, invento
 	}
 
 	if len(drops) == 0 {
-		return "The lootbox was empty!", nil
+		return MsgLootboxEmpty, nil
 	}
 
 	// 3. Process drops and generate feedback
@@ -47,11 +40,11 @@ func (s *service) processLootbox(ctx context.Context, user *domain.User, invento
 func (s *service) consumeLootboxFromInventory(inventory *domain.Inventory, item *domain.Item, quantity int) error {
 	itemSlotIndex, slotQuantity := utils.FindSlot(inventory, item.ID)
 	if itemSlotIndex == -1 {
-		return fmt.Errorf("item not found in inventory")
+		return fmt.Errorf(ErrMsgItemNotFoundInInventory)
 	}
 
 	if slotQuantity < quantity {
-		return fmt.Errorf("not enough items in inventory")
+		return fmt.Errorf(ErrMsgNotEnoughItemsInInventory)
 	}
 
 	if inventory.Slots[itemSlotIndex].Quantity == quantity {
@@ -66,19 +59,20 @@ func (s *service) processLootboxDrops(ctx context.Context, user *domain.User, in
 	var msgBuilder strings.Builder
 	displayName := s.namingResolver.GetDisplayName(lootboxItem.InternalName, "")
 
-	msgBuilder.WriteString("Opened ")
+	msgBuilder.WriteString(MsgLootboxOpened)
+	msgBuilder.WriteString(" ")
 	msgBuilder.WriteString(strconv.Itoa(quantity))
 	msgBuilder.WriteString(" ")
 	msgBuilder.WriteString(displayName)
-	msgBuilder.WriteString(" and received: ")
+	msgBuilder.WriteString(MsgLootboxReceived)
 
 	stats := s.aggregateDropsAndUpdateInventory(inventory, drops, &msgBuilder)
 
 	// 4. Append "Juice" - Feedback based on results
 	// LevelUp Philosophy: "If a number goes up, the player should feel it."
-	msgBuilder.WriteString(" (Value: ")
+	msgBuilder.WriteString(MsgLootboxValue)
 	msgBuilder.WriteString(strconv.Itoa(stats.totalValue))
-	msgBuilder.WriteString(")")
+	msgBuilder.WriteString(MsgLootboxValueEnd)
 
 	if stats.hasLegendary {
 		if s.statsService != nil && user != nil {
@@ -90,10 +84,10 @@ func (s *service) processLootboxDrops(ctx context.Context, user *domain.User, in
 			}
 			if err := s.statsService.RecordUserEvent(ctx, user.ID, domain.EventLootboxJackpot, eventData.ToMap()); err != nil {
 				log := logger.FromContext(ctx)
-				log.Warn("Failed to record lootbox jackpot event", "error", err, "user_id", user.ID)
+				log.Warn(LogWarnFailedToRecordLootboxJackpot, "error", err, "user_id", user.ID)
 			}
 		}
-		msgBuilder.WriteString(" JACKPOT! 🎰✨")
+		msgBuilder.WriteString(MsgLootboxJackpot)
 	} else if stats.hasEpic {
 		if s.statsService != nil && user != nil {
 			eventData := &domain.LootboxEventData{
@@ -104,13 +98,13 @@ func (s *service) processLootboxDrops(ctx context.Context, user *domain.User, in
 			}
 			if err := s.statsService.RecordUserEvent(ctx, user.ID, domain.EventLootboxBigWin, eventData.ToMap()); err != nil {
 				log := logger.FromContext(ctx)
-				log.Warn("Failed to record lootbox big-win event", "error", err, "user_id", user.ID)
+				log.Warn(LogWarnFailedToRecordLootboxBigWin, "error", err, "user_id", user.ID)
 			}
 		}
-		msgBuilder.WriteString(" BIG WIN! 💰")
+		msgBuilder.WriteString(MsgLootboxBigWin)
 	} else if stats.totalValue > 0 && quantity >= BulkFeedbackThreshold {
 		// If opening many boxes and getting nothing special, at least acknowledge the haul
-		msgBuilder.WriteString(" Nice haul! 📦")
+		msgBuilder.WriteString(MsgLootboxNiceHaul)
 	}
 
 	return msgBuilder.String(), nil
@@ -145,7 +139,7 @@ func (s *service) aggregateDropsAndUpdateInventory(inventory *domain.Inventory, 
 		})
 
 		if !first {
-			msgBuilder.WriteString(", ")
+			msgBuilder.WriteString(LootboxDropSeparator)
 		}
 
 		// Get display name with shine level
@@ -153,14 +147,14 @@ func (s *service) aggregateDropsAndUpdateInventory(inventory *domain.Inventory, 
 
 		// Write drop info directly to builder to minimize allocations
 		msgBuilder.WriteString(strconv.Itoa(drop.Quantity))
-		msgBuilder.WriteString("x ")
+		msgBuilder.WriteString(LootboxDisplayQuantityPrefix)
 		msgBuilder.WriteString(itemDisplayName)
 
 		// Add shine annotation for visual impact
 		if drop.ShineLevel != "" && drop.ShineLevel != lootbox.ShineCommon {
-			msgBuilder.WriteString(" [")
+			msgBuilder.WriteString(LootboxShineAnnotationOpen)
 			msgBuilder.WriteString(drop.ShineLevel)
-			msgBuilder.WriteString("!]")
+			msgBuilder.WriteString(LootboxShineAnnotationClose)
 		}
 
 		first = false
@@ -178,22 +172,22 @@ func (s *service) handleLootbox1(ctx context.Context, _ *service, user *domain.U
 
 func (s *service) handleBlaster(ctx context.Context, _ *service, _ *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args map[string]interface{}) (string, error) {
 	log := logger.FromContext(ctx)
-	log.Info("handleBlaster called", "quantity", quantity)
-	targetUsername, ok := args["targetUsername"].(string)
+	log.Info(LogMsgHandleBlasterCalled, "quantity", quantity)
+	targetUsername, ok := args[ArgsTargetUsername].(string)
 	if !ok || targetUsername == "" {
-		log.Warn("target username missing for blaster")
-		return "", fmt.Errorf("target username is required for blaster")
+		log.Warn(LogWarnTargetUsernameMissingBlaster)
+		return "", fmt.Errorf(ErrMsgTargetUsernameRequired)
 	}
-	username, _ := args["username"].(string)
+	username, _ := args[ArgsUsername].(string)
 	// Find blaster slot
 	itemSlotIndex, slotQuantity := utils.FindSlot(inventory, item.ID)
 	if itemSlotIndex == -1 {
-		log.Warn("blaster not in inventory")
-		return "", fmt.Errorf("item not found in inventory")
+		log.Warn(LogWarnBlasterNotInInventory)
+		return "", fmt.Errorf(ErrMsgItemNotFoundInInventory)
 	}
 	if slotQuantity < quantity {
-		log.Warn("not enough blasters in inventory")
-		return "", fmt.Errorf("not enough items in inventory")
+		log.Warn(LogWarnNotEnoughBlasters)
+		return "", fmt.Errorf(ErrMsgNotEnoughItemsInInventory)
 	}
 	if inventory.Slots[itemSlotIndex].Quantity == quantity {
 		inventory.Slots = append(inventory.Slots[:itemSlotIndex], inventory.Slots[itemSlotIndex+1:]...)
@@ -202,13 +196,13 @@ func (s *service) handleBlaster(ctx context.Context, _ *service, _ *domain.User,
 	}
 
 	// Apply timeout
-	if err := s.TimeoutUser(ctx, targetUsername, BlasterTimeoutDuration, "Blasted by "+username); err != nil {
-		log.Error("Failed to timeout user", "error", err, "target", targetUsername)
+	if err := s.TimeoutUser(ctx, targetUsername, BlasterTimeoutDuration, MsgBlasterReasonBy+username); err != nil {
+		log.Error(LogWarnFailedToTimeoutUser, "error", err, "target", targetUsername)
 		// Continue anyway, as the item was used
 	}
 
-	log.Info("blaster used", "target", targetUsername, "quantity", quantity)
-	return fmt.Sprintf("%s has BLASTED %s %d times! They are timed out for %v.", username, targetUsername, quantity, BlasterTimeoutDuration), nil
+	log.Info(LogMsgBlasterUsed, "target", targetUsername, "quantity", quantity)
+	return fmt.Sprintf("%s%s%s %d%s%v%s", username, MsgBlasterUsedPrefix, targetUsername, quantity, MsgBlasterUsedSuffix, BlasterTimeoutDuration, MsgBlasterTimeoutEnd), nil
 }
 
 func (s *service) handleLootbox0(ctx context.Context, _ *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, _ map[string]interface{}) (string, error) {

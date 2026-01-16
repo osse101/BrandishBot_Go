@@ -50,7 +50,7 @@ func (p *Pool) worker() {
 				// Log error but don't crash worker
 				// We need a way to log here. For now, we'll assume a global logger or just print
 				// Ideally, inject logger into Pool
-				logger.FromContext(ctx).Error("Worker job failed", "error", err)
+				logger.FromContext(ctx).Error(LogMsgWorkerJobFailed, "error", err)
 			}
 		case <-p.quit:
 			return

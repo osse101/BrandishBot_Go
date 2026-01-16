@@ -19,13 +19,13 @@ func NewEventMetricsCollector() *EventMetricsCollector {
 func (e *EventMetricsCollector) Register(bus event.Bus) error {
 	// Subscribe to all event types we care about
 	eventTypes := []event.Type{
-		"item.sold",
-		"item.bought",
-		"item.upgraded",
-		"item.disassembled",
-		"item.used",
-		"search.performed",
-		"engagement",
+		EventTypeItemSold,
+		EventTypeItemBought,
+		EventTypeItemUpgraded,
+		EventTypeItemDisassembled,
+		EventTypeItemUsed,
+		EventTypeSearchPerformed,
+		EventTypeEngagement,
 	}
 
 	for _, eventType := range eventTypes {
@@ -45,49 +45,49 @@ func (e *EventMetricsCollector) HandleEvent(ctx context.Context, evt event.Event
 	// Extract payload as map
 	payload, ok := evt.Payload.(map[string]interface{})
 	if !ok {
-		log.Debug("Event payload is not a map", "type", evt.Type)
+		log.Debug(LogMsgEventPayloadNotMap, "type", evt.Type)
 		return nil
 	}
 
 	// Record business metrics based on event type
 	switch evt.Type {
-	case "item.sold":
-		if itemName, ok := payload["item_name"].(string); ok {
+	case EventTypeItemSold:
+		if itemName, ok := payload[PayloadFieldItemName].(string); ok {
 			ItemsSold.WithLabelValues(itemName).Inc()
 		}
 		// Track money earned from sales
-		if moneyGained, ok := payload["money_gained"].(int); ok {
+		if moneyGained, ok := payload[PayloadFieldMoneyGained].(int); ok {
 			MoneyEarned.Add(float64(moneyGained))
 		}
 
-	case "item.bought":
-		if itemName, ok := payload["item_name"].(string); ok {
+	case EventTypeItemBought:
+		if itemName, ok := payload[PayloadFieldItemName].(string); ok {
 			ItemsBought.WithLabelValues(itemName).Inc()
 		}
 		// Note: We don't have money_spent in the payload yet
 		// This would require modifying the economy.Service.BuyItem to return cost
 
-	case "item.upgraded":
-		sourceItem, okSource := payload["source_item"].(string)
-		resultItem, okResult := payload["result_item"].(string)
+	case EventTypeItemUpgraded:
+		sourceItem, okSource := payload[PayloadFieldSourceItem].(string)
+		resultItem, okResult := payload[PayloadFieldResultItem].(string)
 		if okSource && okResult {
 			ItemsUpgraded.WithLabelValues(sourceItem, resultItem).Inc()
 		}
 
-	case "item.disassembled":
-		if itemName, ok := payload["item"].(string); ok {
+	case EventTypeItemDisassembled:
+		if itemName, ok := payload[PayloadFieldItem].(string); ok {
 			ItemsDisassembled.WithLabelValues(itemName).Inc()
 		}
 
-	case "item.used":
-		if itemName, ok := payload["item"].(string); ok {
+	case EventTypeItemUsed:
+		if itemName, ok := payload[PayloadFieldItem].(string); ok {
 			ItemsUsed.WithLabelValues(itemName).Inc()
 		}
 
-	case "search.performed":
+	case EventTypeSearchPerformed:
 		SearchesPerformed.Inc()
 	}
 
-	log.Debug("Metrics recorded for event", "type", evt.Type)
+	log.Debug(LogMsgMetricsRecorded, "type", evt.Type)
 	return nil
 }

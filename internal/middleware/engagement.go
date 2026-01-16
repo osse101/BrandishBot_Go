@@ -32,16 +32,16 @@ func (e *EngagementTracker) Track(metricType string, getValue func(*http.Request
 			// Track engagement after successful execution
 			// Extract user ID from request context or body
 			userID := extractUserID(r)
-			if userID != "" {
-				value := 1
+			if userID != EmptyUserID {
+				value := DefaultMetricValue
 				if getValue != nil {
 					value = getValue(r)
 				}
 
 				// Publish engagement event
 				evt := event.Event{
-					Version: "1.0",
-					Type:    "engagement",
+					Version: EventVersion,
+					Type:    EventTypeEngagement,
 					Payload: &domain.EngagementMetric{
 						UserID:      userID,
 						MetricType:  metricType,
@@ -52,7 +52,7 @@ func (e *EngagementTracker) Track(metricType string, getValue func(*http.Request
 
 				if err := e.eventBus.Publish(context.Background(), evt); err != nil {
 					log := logger.FromContext(r.Context())
-					log.Error("Failed to publish engagement event", "error", err, "user_id", userID, "metric", metricType)
+					log.Error(LogMsgEngagementEventPublishFailed, "error", err, "user_id", userID, "metric", metricType)
 				}
 			}
 		})
@@ -67,30 +67,30 @@ func (e *EngagementTracker) TrackCommand(next http.Handler) http.Handler {
 
 		// Track command usage
 		userID := extractUserID(r)
-		if userID != "" {
+		if userID != EmptyUserID {
 			metadata := map[string]interface{}{
-				"endpoint": r.URL.Path,
-				"method":   r.Method,
+				MetadataKeyEndpoint: r.URL.Path,
+				MetadataKeyMethod:   r.Method,
 			}
 
 			metric := &domain.EngagementMetric{
 				UserID:      userID,
-				MetricType:  "command",
-				MetricValue: 1,
+				MetricType:  MetricTypeCommand,
+				MetricValue: DefaultMetricValue,
 				RecordedAt:  time.Now(),
 				Metadata:    metadata,
 			}
 
 			// Publish engagement event
 			evt := event.Event{
-				Version: "1.0",
-				Type:    "engagement",
+				Version: EventVersion,
+				Type:    EventTypeEngagement,
 				Payload: metric,
 			}
 
 			if err := e.eventBus.Publish(context.Background(), evt); err != nil {
 				log := logger.FromContext(r.Context())
-				log.Error("Failed to publish command engagement event", "error", err, "user_id", userID)
+				log.Error(LogMsgCommandEngagementEventPublishFailed, "error", err, "user_id", userID)
 			}
 		}
 	})
@@ -113,7 +113,7 @@ func extractUserID(r *http.Request) string {
 	}
 
 	// Try query parameter
-	if userID := r.URL.Query().Get("username"); userID != "" {
+	if userID := r.URL.Query().Get(QueryParamUsername); userID != EmptyUserID {
 		return userID
 	}
 
@@ -121,7 +121,7 @@ func extractUserID(r *http.Request) string {
 	// But that would consume the body, so we rely on handlers to track engagement
 	// or use context to pass user_id
 
-	return ""
+	return EmptyUserID
 }
 
 // contextKey is a custom type for context keys to avoid collisions
@@ -146,13 +146,13 @@ func GetUserID(ctx context.Context) string {
 			return uid
 		}
 	}
-	return ""
+	return EmptyUserID
 }
 
 // TrackEngagementFromContext records engagement using info from context
 func TrackEngagementFromContext(ctx context.Context, eventBus event.Bus, metricType string, value int) {
 	userID := GetUserID(ctx)
-	if userID == "" {
+	if userID == EmptyUserID {
 		return
 	}
 
@@ -164,13 +164,13 @@ func TrackEngagementFromContext(ctx context.Context, eventBus event.Bus, metricT
 	}
 
 	evt := event.Event{
-		Version: "1.0",
-		Type:    "engagement",
+		Version: EventVersion,
+		Type:    EventTypeEngagement,
 		Payload: metric,
 	}
 
 	if err := eventBus.Publish(context.Background(), evt); err != nil {
 		log := logger.FromContext(ctx)
-		log.Error("Failed to publish engagement event from context", "error", err, "user_id", userID, "metric", metricType)
+		log.Error(LogMsgEngagementEventFromContextFailed, "error", err, "user_id", userID, "metric", metricType)
 	}
 }

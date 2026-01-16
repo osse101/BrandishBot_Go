@@ -25,13 +25,13 @@ func init() {
 
 // GenerateRequestID creates a new UUID for tracing requests
 func GenerateRequestID() string {
-	b := make([]byte, 16)
+	b := make([]byte, UUIDBytesLength)
 	if _, err := rand.Read(b); err != nil {
 		// This should never happen, but handle it safely
-		return "00000000-0000-0000-0000-000000000000"
+		return FallbackUUID
 	}
 	// Format as UUID-like string
-	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
+	return fmt.Sprintf(UUIDFormatPattern, b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
 }
 
 // InitLogger initializes the global logger with the given configuration

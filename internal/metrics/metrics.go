@@ -9,25 +9,25 @@ import (
 var (
 	HTTPRequestsTotal = promauto.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "http_requests_total",
-			Help: "Total number of HTTP requests",
+			Name: MetricNameHTTPRequestsTotal,
+			Help: HelpTextHTTPRequestsTotal,
 		},
-		[]string{"method", "path", "status"},
+		[]string{LabelMethod, LabelPath, LabelStatus},
 	)
 
 	HTTPRequestDuration = promauto.NewHistogramVec(
 		prometheus.HistogramOpts{
-			Name:    "http_request_duration_seconds",
-			Help:    "HTTP request latency in seconds",
-			Buckets: []float64{.001, .005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10},
+			Name:    MetricNameHTTPRequestDuration,
+			Help:    HelpTextHTTPRequestDuration,
+			Buckets: HTTPLatencyBuckets,
 		},
-		[]string{"method", "path"},
+		[]string{LabelMethod, LabelPath},
 	)
 
 	HTTPRequestsInFlight = promauto.NewGauge(
 		prometheus.GaugeOpts{
-			Name: "http_requests_in_flight",
-			Help: "Current number of HTTP requests being served",
+			Name: MetricNameHTTPRequestsInFlight,
+			Help: HelpTextHTTPRequestsInFlight,
 		},
 	)
 )
@@ -36,18 +36,18 @@ var (
 var (
 	EventsPublished = promauto.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "events_published_total",
-			Help: "Total number of events published",
+			Name: MetricNameEventsPublished,
+			Help: HelpTextEventsPublished,
 		},
-		[]string{"type"},
+		[]string{LabelType},
 	)
 
 	EventHandlerErrors = promauto.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "event_handler_errors_total",
-			Help: "Total number of event handler errors",
+			Name: MetricNameEventHandlerErrors,
+			Help: HelpTextEventHandlerErrors,
 		},
-		[]string{"type"},
+		[]string{LabelType},
 	)
 )
 
@@ -55,62 +55,62 @@ var (
 var (
 	ItemsSold = promauto.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "items_sold_total",
-			Help: "Total number of items sold",
+			Name: MetricNameItemsSold,
+			Help: HelpTextItemsSold,
 		},
-		[]string{"item"},
+		[]string{LabelItem},
 	)
 
 	ItemsBought = promauto.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "items_bought_total",
-			Help: "Total number of items bought",
+			Name: MetricNameItemsBought,
+			Help: HelpTextItemsBought,
 		},
-		[]string{"item"},
+		[]string{LabelItem},
 	)
 
 	ItemsUpgraded = promauto.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "items_upgraded_total",
-			Help: "Total number of items upgraded",
+			Name: MetricNameItemsUpgraded,
+			Help: HelpTextItemsUpgraded,
 		},
-		[]string{"source_item", "result_item"},
+		[]string{LabelSourceItem, LabelResultItem},
 	)
 
 	ItemsDisassembled = promauto.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "items_disassembled_total",
-			Help: "Total number of items disassembled",
+			Name: MetricNameItemsDisassembled,
+			Help: HelpTextItemsDisassembled,
 		},
-		[]string{"item"},
+		[]string{LabelItem},
 	)
 
 	ItemsUsed = promauto.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "items_used_total",
-			Help: "Total number of items used",
+			Name: MetricNameItemsUsed,
+			Help: HelpTextItemsUsed,
 		},
-		[]string{"item"},
+		[]string{LabelItem},
 	)
 
 	SearchesPerformed = promauto.NewCounter(
 		prometheus.CounterOpts{
-			Name: "searches_performed_total",
-			Help: "Total number of searches performed",
+			Name: MetricNameSearchesPerformed,
+			Help: HelpTextSearchesPerformed,
 		},
 	)
 
 	MoneyEarned = promauto.NewCounter(
 		prometheus.CounterOpts{
-			Name: "money_earned_total",
-			Help: "Total money earned from selling items",
+			Name: MetricNameMoneyEarned,
+			Help: HelpTextMoneyEarned,
 		},
 	)
 
 	MoneySpent = promauto.NewCounter(
 		prometheus.CounterOpts{
-			Name: "money_spent_total",
-			Help: "Total money spent buying items",
+			Name: MetricNameMoneySpent,
+			Help: HelpTextMoneySpent,
 		},
 	)
 )

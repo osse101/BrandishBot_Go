@@ -9,10 +9,6 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
-// CacheSchemaVersion is the current version of the cache schema
-// Increment this when the cached data structure changes to auto-invalidate old entries
-const CacheSchemaVersion = "1.0"
-
 // CacheConfig defines configuration for the user cache
 type CacheConfig struct {
 	Size int           // Maximum number of entries
@@ -22,8 +18,8 @@ type CacheConfig struct {
 // DefaultCacheConfig returns the default cache configuration
 func DefaultCacheConfig() CacheConfig {
 	return CacheConfig{
-		Size: 1000,
-		TTL:  5 * time.Minute,
+		Size: DefaultCacheSize,
+		TTL:  DefaultCacheTTL,
 	}
 }
 
