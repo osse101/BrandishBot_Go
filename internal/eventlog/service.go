@@ -3,6 +3,7 @@ package eventlog
 import (
 	"context"
 
+	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 )
@@ -29,13 +30,13 @@ func NewService(repo Repository) Service {
 func (s *service) Subscribe(bus event.Bus) error {
 	// Subscribe to all domain event types
 	eventTypes := []event.Type{
-		EventTypeItemSold,
-		EventTypeItemBought,
-		EventTypeItemUpgraded,
-		EventTypeItemDisassembled,
-		EventTypeItemUsed,
-		EventTypeSearchPerformed,
-		EventTypeEngagement,
+		domain.EventTypeItemSold,
+		domain.EventTypeItemBought,
+		domain.EventTypeItemUpgraded,
+		domain.EventTypeItemDisassembled,
+		domain.EventTypeItemUsed,
+		domain.EventTypeSearchPerformed,
+		domain.EventTypeEngagement,
 	}
 
 	for _, eventType := range eventTypes {

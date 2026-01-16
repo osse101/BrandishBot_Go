@@ -3,6 +3,7 @@ package metrics
 import (
 	"context"
 
+	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 )
@@ -19,13 +20,13 @@ func NewEventMetricsCollector() *EventMetricsCollector {
 func (e *EventMetricsCollector) Register(bus event.Bus) error {
 	// Subscribe to all event types we care about
 	eventTypes := []event.Type{
-		EventTypeItemSold,
-		EventTypeItemBought,
-		EventTypeItemUpgraded,
-		EventTypeItemDisassembled,
-		EventTypeItemUsed,
-		EventTypeSearchPerformed,
-		EventTypeEngagement,
+		domain.EventTypeItemSold,
+		domain.EventTypeItemBought,
+		domain.EventTypeItemUpgraded,
+		domain.EventTypeItemDisassembled,
+		domain.EventTypeItemUsed,
+		domain.EventTypeSearchPerformed,
+		domain.EventTypeEngagement,
 	}
 
 	for _, eventType := range eventTypes {
@@ -51,7 +52,7 @@ func (e *EventMetricsCollector) HandleEvent(ctx context.Context, evt event.Event
 
 	// Record business metrics based on event type
 	switch evt.Type {
-	case EventTypeItemSold:
+	case domain.EventTypeItemSold:
 		if itemName, ok := payload[PayloadFieldItemName].(string); ok {
 			ItemsSold.WithLabelValues(itemName).Inc()
 		}
@@ -60,31 +61,31 @@ func (e *EventMetricsCollector) HandleEvent(ctx context.Context, evt event.Event
 			MoneyEarned.Add(float64(moneyGained))
 		}
 
-	case EventTypeItemBought:
+	case domain.EventTypeItemBought:
 		if itemName, ok := payload[PayloadFieldItemName].(string); ok {
 			ItemsBought.WithLabelValues(itemName).Inc()
 		}
 		// Note: We don't have money_spent in the payload yet
 		// This would require modifying the economy.Service.BuyItem to return cost
 
-	case EventTypeItemUpgraded:
+	case domain.EventTypeItemUpgraded:
 		sourceItem, okSource := payload[PayloadFieldSourceItem].(string)
 		resultItem, okResult := payload[PayloadFieldResultItem].(string)
 		if okSource && okResult {
 			ItemsUpgraded.WithLabelValues(sourceItem, resultItem).Inc()
 		}
 
-	case EventTypeItemDisassembled:
+	case domain.EventTypeItemDisassembled:
 		if itemName, ok := payload[PayloadFieldItem].(string); ok {
 			ItemsDisassembled.WithLabelValues(itemName).Inc()
 		}
 
-	case EventTypeItemUsed:
+	case domain.EventTypeItemUsed:
 		if itemName, ok := payload[PayloadFieldItem].(string); ok {
 			ItemsUsed.WithLabelValues(itemName).Inc()
 		}
 
-	case EventTypeSearchPerformed:
+	case domain.EventTypeSearchPerformed:
 		SearchesPerformed.Inc()
 	}
 

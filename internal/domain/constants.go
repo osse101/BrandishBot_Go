@@ -100,3 +100,19 @@ const (
 const (
 	MaxTransactionQuantity = 10000
 )
+
+// Shared metadata keys used across multiple modules for event payloads
+// These keys ensure consistency when publishing and consuming events
+const (
+	// MetadataKeyItemName is used to store item names in event metadata
+	MetadataKeyItemName = "item_name"
+
+	// MetadataKeyQuantity is used to store quantities in event metadata
+	MetadataKeyQuantity = "quantity"
+
+	// MetadataKeyMultiplier is used to store multiplier values in event metadata
+	MetadataKeyMultiplier = "multiplier"
+
+	// MetadataKeySource is used to store the source/origin in event metadata
+	MetadataKeySource = "source"
+)

@@ -5,8 +5,8 @@ const (
 	// EventVersion is the engagement event schema version
 	EventVersion = "1.0"
 
-	// EventTypeEngagement is the event type for engagement tracking
-	EventTypeEngagement = "engagement"
+	// EventTypeEngagement is now defined in internal/domain/events.go
+	// Use domain.EventTypeEngagement instead
 )
 
 // Metric Constants

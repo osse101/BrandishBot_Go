@@ -77,16 +77,12 @@ const (
 // Event Types
 // ============================================================================
 
-// Event types that the metrics collector subscribes to and tracks
-const (
-	EventTypeItemSold        = "item.sold"
-	EventTypeItemBought      = "item.bought"
-	EventTypeItemUpgraded    = "item.upgraded"
-	EventTypeItemDisassembled = "item.disassembled"
-	EventTypeItemUsed        = "item.used"
-	EventTypeSearchPerformed = "search.performed"
-	EventTypeEngagement      = "engagement"
-)
+// Event types are now defined in internal/domain/events.go
+// Import github.com/osse101/BrandishBot_Go/internal/domain to use:
+//   - domain.EventTypeItemSold, domain.EventTypeItemBought
+//   - domain.EventTypeItemUpgraded, domain.EventTypeItemDisassembled
+//   - domain.EventTypeItemUsed, domain.EventTypeSearchPerformed
+//   - domain.EventTypeEngagement
 
 // ============================================================================
 // Event Payload Field Names

@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
+	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/eventlog"
 	"github.com/osse101/BrandishBot_Go/internal/eventlog/mocks"
@@ -33,13 +34,13 @@ func TestService_Subscribe(t *testing.T) {
 
 	// Expect subscription to all event types
 	eventTypes := []event.Type{
-		eventlog.EventTypeItemSold,
-		eventlog.EventTypeItemBought,
-		eventlog.EventTypeItemUpgraded,
-		eventlog.EventTypeItemDisassembled,
-		eventlog.EventTypeItemUsed,
-		eventlog.EventTypeSearchPerformed,
-		eventlog.EventTypeEngagement,
+		domain.EventTypeItemSold,
+		domain.EventTypeItemBought,
+		domain.EventTypeItemUpgraded,
+		domain.EventTypeItemDisassembled,
+		domain.EventTypeItemUsed,
+		domain.EventTypeSearchPerformed,
+		domain.EventTypeEngagement,
 	}
 
 	for _, et := range eventTypes {
@@ -65,12 +66,12 @@ func TestService_HandleEvent(t *testing.T) {
 		"item_name":                "sword",
 	}
 	evt := event.Event{
-		Type:    eventlog.EventTypeItemSold,
+		Type:    domain.EventTypeItemSold,
 		Payload: payload,
 	}
 
 	// Expect LogEvent to be called
-	mockRepo.On("LogEvent", ctx, eventlog.EventTypeItemSold, &userID, payload, mock.Anything).Return(nil)
+	mockRepo.On("LogEvent", ctx, domain.EventTypeItemSold, &userID, payload, mock.Anything).Return(nil)
 
 	err := hooks.HandleEvent(ctx, evt)
 	assert.NoError(t, err)
