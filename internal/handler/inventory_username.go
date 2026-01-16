@@ -40,7 +40,7 @@ func HandleAddItemByUsername(svc user.Service) http.HandlerFunc {
 
 		if err := svc.AddItemByUsername(r.Context(), req.Platform, req.Username, req.ItemName, req.Quantity); err != nil {
 			log.Error("Failed to add item by username", "error", err, "username", req.Username, "item", req.ItemName)
-			http.Error(w, ErrMsgAddItemFailed, http.StatusInternalServerError)
+			statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
 			return
 		}
 
@@ -80,7 +80,7 @@ func HandleRemoveItemByUsername(svc user.Service) http.HandlerFunc {
 		removed, err := svc.RemoveItemByUsername(r.Context(), req.Platform, req.Username, req.ItemName, req.Quantity)
 		if err != nil {
 			log.Error("Failed to remove item by username", "error", err, "username", req.Username, "item", req.ItemName)
-			http.Error(w, ErrMsgRemoveItemFailed, http.StatusInternalServerError)
+			statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
 			return
 		}
 
@@ -126,7 +126,7 @@ func HandleUseItemByUsername(svc user.Service, eventBus event.Bus) http.HandlerF
 		message, err := svc.UseItemByUsername(r.Context(), req.Platform, req.Username, req.ItemName, req.Quantity, req.TargetUser)
 		if err != nil {
 			log.Error("Failed to use item by username", "error", err, "username", req.Username, "item", req.ItemName)
-			http.Error(w, ErrMsgUseItemFailed, http.StatusInternalServerError)
+			statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
 			return
 		}
 
@@ -193,7 +193,7 @@ func HandleGiveItemByUsername(svc user.Service) http.HandlerFunc {
 		message, err := svc.GiveItemByUsername(r.Context(), req.FromPlatform, req.FromUsername, req.ToPlatform, req.ToUsername, req.ItemName, req.Quantity)
 		if err != nil {
 			log.Error("Failed to give item by username", "error", err, "from", req.FromUsername, "to", req.ToUsername)
-			http.Error(w, ErrMsgGiveItemFailed, http.StatusInternalServerError)
+			statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
 			return
 		}
 
@@ -233,7 +233,7 @@ func HandleGetInventoryByUsername(svc user.Service) http.HandlerFunc {
 		items, err := svc.GetInventoryByUsername(r.Context(), platform, username, filter)
 		if err != nil {
 			log.Error("Failed to get inventory by username", "error", err, "username", username)
-			http.Error(w, ErrMsgGetInventoryFailed, http.StatusInternalServerError)
+			statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
 			return
 		}
 

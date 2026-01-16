@@ -38,7 +38,7 @@ func HandleRecordEvent(svc stats.Service) http.HandlerFunc {
 
 		if err := svc.RecordUserEvent(r.Context(), req.UserID, domain.EventType(req.EventType), req.EventData); err != nil {
 			log.Error("Failed to record event", "error", err, "user_id", req.UserID, "event_type", req.EventType)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
 			return
 		}
 
@@ -75,7 +75,7 @@ func HandleGetUserStats(svc stats.Service) http.HandlerFunc {
 		summary, err := svc.GetUserStats(r.Context(), userID, period)
 		if err != nil {
 			log.Error("Failed to get user stats", "error", err, "user_id", userID)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
 			return
 		}
 
@@ -105,7 +105,7 @@ func HandleGetSystemStats(svc stats.Service) http.HandlerFunc {
 		summary, err := svc.GetSystemStats(r.Context(), period)
 		if err != nil {
 			log.Error("Failed to get system stats", "error", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
 			return
 		}
 
@@ -155,7 +155,7 @@ func HandleGetLeaderboard(svc stats.Service) http.HandlerFunc {
 		entries, err := svc.GetLeaderboard(r.Context(), domain.EventType(eventType), period, limit)
 		if err != nil {
 			log.Error("Failed to get leaderboard", "error", err, "event_type", eventType)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
 			return
 		}
 

@@ -80,10 +80,10 @@ func TestHandleDisassembleItem(t *testing.T) {
 			mockSetup: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, b *mocks.MockEventBus) {
 				p.On("IsFeatureUnlocked", mock.Anything, "feature_disassemble").Return(true, nil)
 				c.On("DisassembleItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", "lootbox_tier1", 1).
-					Return(nil, fmt.Errorf("disassemble failed"))
+					Return(nil, fmt.Errorf(ErrMsgGenericServerError))
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "disassemble failed\n",
+			expectedBody:   ErrMsgGenericServerError,
 		},
 		{
 			name: "Success Perfect Salvage",

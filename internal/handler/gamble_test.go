@@ -59,10 +59,10 @@ func TestHandleStartGamble(t *testing.T) {
 			},
 			setupMocks: func(mg *mocks.MockGambleService, mp *mocks.MockProgressionService) {
 				mp.On("IsFeatureUnlocked", mock.Anything, progression.FeatureGamble).Return(true, nil)
-				mg.On("StartGamble", mock.Anything, "discord", "123", "testuser", mock.Anything).Return(nil, errors.New("service error"))
+				mg.On("StartGamble", mock.Anything, domain.PlatformDiscord, "123", "testuser", mock.Anything).Return(nil, errors.New(ErrMsgGenericServerError))
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "service error",
+			expectedBody:   ErrMsgGenericServerError,
 		},
 		{
 			name: "Success",
@@ -155,10 +155,10 @@ func TestHandleJoinGamble(t *testing.T) {
 				Bets:       []domain.LootboxBet{},
 			},
 			setupMocks: func(mg *mocks.MockGambleService) {
-				mg.On("JoinGamble", mock.Anything, validUUID, "discord", "123", "testuser", mock.Anything).Return(errors.New("service error"))
+				mg.On("JoinGamble", mock.Anything, validUUID, domain.PlatformDiscord, "123", "testuser", mock.Anything).Return(errors.New(ErrMsgGenericServerError))
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "service error",
+			expectedBody:   ErrMsgGenericServerError,
 		},
 		{
 			name:    "Success",
@@ -170,7 +170,7 @@ func TestHandleJoinGamble(t *testing.T) {
 				Bets:       []domain.LootboxBet{},
 			},
 			setupMocks: func(mg *mocks.MockGambleService) {
-				mg.On("JoinGamble", mock.Anything, validUUID, "discord", "123", "testuser", mock.Anything).Return(nil)
+				mg.On("JoinGamble", mock.Anything, validUUID, domain.PlatformDiscord, "123", "testuser", mock.Anything).Return(nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   "Successfully joined gamble",
@@ -234,10 +234,10 @@ func TestHandleGetGamble(t *testing.T) {
 			name:    "Service Error",
 			queryID: validUUID.String(),
 			setupMocks: func(mg *mocks.MockGambleService) {
-				mg.On("GetGamble", mock.Anything, validUUID).Return(nil, errors.New("service error"))
+				mg.On("GetGamble", mock.Anything, validUUID).Return(nil, errors.New(ErrMsgGenericServerError))
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "service error",
+			expectedBody:   ErrMsgGenericServerError,
 		},
 		{
 			name:    "Not Found",

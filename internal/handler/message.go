@@ -63,7 +63,7 @@ func HandleMessageHandler(userService user.Service, progressionSvc progression.S
 				"platform", req.Platform,
 				"platform_id", req.PlatformID,
 				"username", req.Username)
-			http.Error(w, ErrMsgHandleMessageFailed, http.StatusInternalServerError)
+			statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
 			return
 		}
 

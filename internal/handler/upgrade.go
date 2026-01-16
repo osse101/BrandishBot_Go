@@ -47,7 +47,7 @@ func HandleUpgradeItem(svc crafting.Service, progressionSvc progression.Service,
 		result, err := svc.UpgradeItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.Item, req.Quantity)
 		if err != nil {
 			log.Error("Failed to upgrade item", "error", err, "username", req.Username, "item", req.Item)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
 			return
 		}
 
@@ -123,7 +123,7 @@ func HandleGetRecipes(svc crafting.Service) http.HandlerFunc {
 			recipes, err := svc.GetUnlockedRecipes(r.Context(), platform, platformID, username)
 			if err != nil {
 				log.Error("Failed to get unlocked recipes", "error", err, "username", username)
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
 				return
 			}
 
@@ -143,7 +143,7 @@ func HandleGetRecipes(svc crafting.Service) http.HandlerFunc {
 			recipe, err := svc.GetRecipe(r.Context(), itemName, platform, platformID, username)
 			if err != nil {
 				log.Error("Failed to get recipe", "error", err, "item", itemName)
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
 				return
 			}
 
@@ -156,7 +156,7 @@ func HandleGetRecipes(svc crafting.Service) http.HandlerFunc {
 		recipes, err := svc.GetAllRecipes(r.Context())
 		if err != nil {
 			log.Error("Failed to get all recipes", "error", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
 			return
 		}
 

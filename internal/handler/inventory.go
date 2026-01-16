@@ -43,7 +43,8 @@ func HandleAddItem(svc user.Service) http.HandlerFunc {
 
 		if err := svc.AddItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.ItemName, req.Quantity); err != nil {
 			log.Error("Failed to add item", "error", err, "username", req.Username, "item", req.ItemName)
-			http.Error(w, ErrMsgAddItemFailed, http.StatusInternalServerError)
+			statusCode, userMsg := mapServiceErrorToUserMessage(err)
+			respondError(w, statusCode, userMsg)
 			return
 		}
 
@@ -88,7 +89,7 @@ func HandleRemoveItem(svc user.Service) http.HandlerFunc {
 		removed, err := svc.RemoveItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.ItemName, req.Quantity)
 		if err != nil {
 			log.Error("Failed to remove item", "error", err, "username", req.Username, "item", req.ItemName)
-			http.Error(w, ErrMsgRemoveItemFailed, http.StatusInternalServerError)
+			statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
 			return
 		}
 
@@ -131,7 +132,7 @@ func HandleGiveItem(svc user.Service) http.HandlerFunc {
 
 		if err := svc.GiveItem(r.Context(), req.OwnerPlatform, req.OwnerPlatformID, req.Owner, req.ReceiverPlatform, req.ReceiverPlatformID, req.Receiver, req.ItemName, req.Quantity); err != nil {
 			log.Error("Failed to give item", "error", err, "owner", req.Owner, "receiver", req.Receiver, "item", req.ItemName)
-			http.Error(w, ErrMsgGiveItemFailed, http.StatusInternalServerError)
+			statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
 			return
 		}
 
@@ -183,7 +184,7 @@ func HandleSellItem(svc economy.Service, progressionSvc progression.Service, eve
 		moneyGained, itemsSold, err := svc.SellItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.ItemName, req.Quantity)
 		if err != nil {
 			log.Error("Failed to sell item", "error", err, "username", req.Username, "item", req.ItemName)
-			http.Error(w, ErrMsgSellItemFailed, http.StatusInternalServerError)
+			statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
 			return
 		}
 
@@ -259,7 +260,7 @@ func HandleBuyItem(svc economy.Service, progressionSvc progression.Service, even
 		bought, err := svc.BuyItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.ItemName, req.Quantity)
 		if err != nil {
 			log.Error("Failed to buy item", "error", err, "username", req.Username, "item", req.ItemName)
-			http.Error(w, ErrMsgBuyItemFailed, http.StatusInternalServerError)
+			statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
 			return
 		}
 
@@ -333,7 +334,7 @@ func HandleUseItem(svc user.Service, eventBus event.Bus) http.HandlerFunc {
 		message, err := svc.UseItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.ItemName, req.Quantity, req.TargetUser)
 		if err != nil {
 			log.Error("Failed to use item", "error", err, "username", req.Username, "item", req.ItemName)
-			http.Error(w, ErrMsgUseItemFailed, http.StatusInternalServerError)
+			statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
 			return
 		}
 
@@ -415,7 +416,7 @@ func HandleGetInventory(svc user.Service, progSvc progression.Service) http.Hand
 			unlocked, err := progSvc.IsFeatureUnlocked(r.Context(), featureKey)
 			if err != nil {
 				log.Error("Failed to check filter unlock", "error", err)
-				http.Error(w, ErrMsgFeatureCheckFailed, http.StatusInternalServerError)
+				statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
 				return
 			}
 			if !unlocked {
@@ -430,7 +431,7 @@ func HandleGetInventory(svc user.Service, progSvc progression.Service) http.Hand
 		items, err := svc.GetInventory(r.Context(), platform, platformID, username, filter)
 		if err != nil {
 			log.Error("Failed to get inventory", "error", err, "username", username)
-			http.Error(w, ErrMsgGetInventoryFailed, http.StatusInternalServerError)
+			statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
 			return
 		}
 

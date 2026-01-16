@@ -91,7 +91,7 @@ func (h *AdminJobHandler) HandleAdminAwardXP(w http.ResponseWriter, r *http.Requ
 			"error", err,
 			"user_id", user.ID,
 			"job_key", req.JobKey)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
 		return
 	}
 

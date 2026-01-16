@@ -81,10 +81,10 @@ func TestHandleUpgradeItem(t *testing.T) {
 			mockSetup: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, b *mocks.MockEventBus) {
 				p.On("IsFeatureUnlocked", mock.Anything, "feature_upgrade").Return(true, nil)
 				c.On("UpgradeItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.PublicNameJunkbox, 1).
-					Return(nil, fmt.Errorf("upgrade failed")) // Return nil result on error
+					Return(nil, fmt.Errorf(ErrMsgGenericServerError)) // Return nil result on error
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "upgrade failed\n",
+			expectedBody:   ErrMsgGenericServerError,
 		},
 		{
 			name: "Invalid Request",

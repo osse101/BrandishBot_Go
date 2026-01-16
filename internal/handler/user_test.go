@@ -90,10 +90,10 @@ func TestHandleRegisterUser(t *testing.T) {
 			},
 			setupMock: func(m *mocks.MockUserService) {
 				m.On("FindUserByPlatformID", mock.Anything, domain.PlatformTwitch, "12345").Return(nil, errors.New("not found"))
-				m.On("RegisterUser", mock.Anything, mock.Anything).Return(domain.User{}, errors.New("db error"))
+				m.On("RegisterUser", mock.Anything, mock.Anything).Return(domain.User{}, errors.New(ErrMsgGenericServerError))
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "Failed to register user",
+			expectedBody:   ErrMsgGenericServerError,
 		},
 	}
 
@@ -170,7 +170,7 @@ func TestHandleGetTimeout(t *testing.T) {
 			name:        "Service Error",
 			queryParams: map[string]string{"username": "erroruser"},
 			setupMock: func(m *mocks.MockUserService) {
-				m.On("GetTimeout", mock.Anything, "erroruser").Return(time.Duration(0), errors.New("db error"))
+				m.On("GetTimeout", mock.Anything, "erroruser").Return(time.Duration(0), errors.New(ErrMsgGenericServerError))
 			},
 			expectedStatus: http.StatusInternalServerError,
 			verifyBody:     func(t *testing.T, body string) {},

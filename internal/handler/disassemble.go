@@ -50,7 +50,7 @@ func HandleDisassembleItem(svc crafting.Service, progressionSvc progression.Serv
 		result, err := svc.DisassembleItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.Item, req.Quantity)
 		if err != nil {
 			log.Error("Failed to disassemble item", "error", err, "username", req.Username, "item", req.Item)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
 			return
 		}
 

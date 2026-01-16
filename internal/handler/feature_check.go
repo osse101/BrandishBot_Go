@@ -16,7 +16,8 @@ func CheckFeatureLocked(w http.ResponseWriter, r *http.Request, svc progression.
 	unlocked, err := svc.IsFeatureUnlocked(r.Context(), key)
 	if err != nil {
 		log.Error("Failed to check feature unlock status", "error", err, "feature", key)
-		respondError(w, http.StatusInternalServerError, ErrMsgFeatureCheckFailed)
+		statusCode, userMsg := mapServiceErrorToUserMessage(err)
+		respondError(w, statusCode, userMsg)
 		return true
 	}
 	if !unlocked {

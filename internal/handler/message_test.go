@@ -33,13 +33,13 @@ func TestHandleMessageHandler(t *testing.T) {
 			name:   "Success",
 			method: http.MethodPost,
 			body: HandleMessageRequest{
-				Platform:   "twitch",
+				Platform:   domain.PlatformTwitch,
 				PlatformID: "123",
 				Username:   "testuser",
 				Message:    "hello",
 			},
 			setupMocks: func(mu *mocks.MockUserService, mp *mocks.MockProgressionService, me *mocks.MockEventBus) {
-				mu.On("HandleIncomingMessage", mock.Anything, "twitch", "123", "testuser", "hello").
+				mu.On("HandleIncomingMessage", mock.Anything, domain.PlatformTwitch, "123", "testuser", "hello").
 					Return(&domain.MessageResult{
 						User: domain.User{ID: "user-123", Username: "testuser"},
 					}, nil)
@@ -86,17 +86,17 @@ func TestHandleMessageHandler(t *testing.T) {
 			name:   "Service Error",
 			method: http.MethodPost,
 			body: HandleMessageRequest{
-				Platform:   "twitch",
+				Platform:   domain.PlatformTwitch,
 				PlatformID: "123",
 				Username:   "testuser",
 				Message:    "error",
 			},
 			setupMocks: func(mu *mocks.MockUserService, mp *mocks.MockProgressionService, me *mocks.MockEventBus) {
-				mu.On("HandleIncomingMessage", mock.Anything, "twitch", "123", "testuser", "error").
-					Return(nil, errors.New("service error"))
+				mu.On("HandleIncomingMessage", mock.Anything, domain.PlatformTwitch, "123", "testuser", "error").
+					Return(nil, errors.New(ErrMsgGenericServerError))
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "Failed to handle message",
+			expectedBody:   ErrMsgGenericServerError,
 		},
 	}
 

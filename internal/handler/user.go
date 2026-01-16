@@ -72,7 +72,7 @@ func HandleRegisterUser(userService user.Service) http.HandlerFunc {
 		updatedUser, err := userService.RegisterUser(r.Context(), *user)
 		if err != nil {
 			log.Error("Failed to register user", "error", err, "username", req.Username)
-			http.Error(w, ErrMsgRegisterUserFailed, http.StatusInternalServerError)
+			statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
 			return
 		}
 
@@ -122,7 +122,7 @@ func HandleGetTimeout(svc user.Service) http.HandlerFunc {
 		duration, err := svc.GetTimeout(r.Context(), username)
 		if err != nil {
 			log.Error("Failed to get timeout", "error", err, "username", username)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
 			return
 		}
 

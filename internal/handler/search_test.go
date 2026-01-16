@@ -71,10 +71,10 @@ func TestHandleSearch(t *testing.T) {
 			},
 			setupMock: func(u *mocks.MockUserService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSearch).Return(true, nil)
-				u.On("HandleSearch", mock.Anything, domain.PlatformTwitch, "test-id", "testuser").Return("", errors.New("service error"))
+				u.On("HandleSearch", mock.Anything, domain.PlatformTwitch, "test-id", "testuser").Return("", errors.New(ErrMsgGenericServerError))
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "Failed to perform search",
+			expectedBody:   ErrMsgGenericServerError,
 		},
 	}
 

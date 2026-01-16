@@ -29,11 +29,11 @@ func TestHandleRecordEvent(t *testing.T) {
 			name: "Success",
 			requestBody: RecordEventRequest{
 				UserID:    "testuser",
-				EventType: "item_used",
+				EventType: domain.EventTypeItemUsed,
 				EventData: map[string]interface{}{"item": "potion"},
 			},
 			setupMock: func(m *mocks.MockStatsService) {
-				m.On("RecordUserEvent", mock.Anything, "testuser", domain.EventType("item_used"), mock.Anything).Return(nil)
+				m.On("RecordUserEvent", mock.Anything, "testuser", domain.EventTypeItemUsed, mock.Anything).Return(nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   "Event recorded successfully",
@@ -41,7 +41,7 @@ func TestHandleRecordEvent(t *testing.T) {
 		{
 			name: "Invalid Request - Missing UserID",
 			requestBody: RecordEventRequest{
-				EventType: "item_used",
+				EventType: domain.EventTypeItemUsed,
 			},
 			setupMock:      func(m *mocks.MockStatsService) {},
 			expectedStatus: http.StatusBadRequest,
@@ -51,13 +51,13 @@ func TestHandleRecordEvent(t *testing.T) {
 			name: "Service Error",
 			requestBody: RecordEventRequest{
 				UserID:    "testuser",
-				EventType: "item_used",
+				EventType: domain.EventTypeItemUsed,
 			},
 			setupMock: func(m *mocks.MockStatsService) {
-				m.On("RecordUserEvent", mock.Anything, "testuser", domain.EventType("item_used"), mock.Anything).Return(errors.New("service error"))
+				m.On("RecordUserEvent", mock.Anything, "testuser", domain.EventTypeItemUsed, mock.Anything).Return(errors.New(ErrMsgGenericServerError))
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "service error",
+			expectedBody:   ErrMsgGenericServerError,
 		},
 	}
 
@@ -95,10 +95,10 @@ func TestHandleGetUserStats(t *testing.T) {
 		{
 			name:   "Success",
 			userID: "testuser",
-			period: "daily",
+			period: domain.PeriodDaily,
 			setupMock: func(m *mocks.MockStatsService) {
 				summary := &domain.StatsSummary{TotalEvents: 10}
-				m.On("GetUserStats", mock.Anything, "testuser", "daily").Return(summary, nil)
+				m.On("GetUserStats", mock.Anything, "testuser", domain.PeriodDaily).Return(summary, nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `"total_events":10`,
@@ -114,10 +114,10 @@ func TestHandleGetUserStats(t *testing.T) {
 			name:   "Service Error",
 			userID: "testuser",
 			setupMock: func(m *mocks.MockStatsService) {
-				m.On("GetUserStats", mock.Anything, "testuser", "daily").Return(nil, errors.New("service error"))
+				m.On("GetUserStats", mock.Anything, "testuser", domain.PeriodDaily).Return(nil, errors.New(ErrMsgGenericServerError))
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "service error",
+			expectedBody:   ErrMsgGenericServerError,
 		},
 	}
 
@@ -159,22 +159,22 @@ func TestHandleGetSystemStats(t *testing.T) {
 	}{
 		{
 			name:   "Success",
-			period: "daily",
+			period: domain.PeriodDaily,
 			setupMock: func(m *mocks.MockStatsService) {
 				summary := &domain.StatsSummary{TotalEvents: 100}
-				m.On("GetSystemStats", mock.Anything, "daily").Return(summary, nil)
+				m.On("GetSystemStats", mock.Anything, domain.PeriodDaily).Return(summary, nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `"total_events":100`,
 		},
 		{
 			name:   "Service Error",
-			period: "daily",
+			period: domain.PeriodDaily,
 			setupMock: func(m *mocks.MockStatsService) {
-				m.On("GetSystemStats", mock.Anything, "daily").Return(nil, errors.New("service error"))
+				m.On("GetSystemStats", mock.Anything, domain.PeriodDaily).Return(nil, errors.New(ErrMsgGenericServerError))
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "service error",
+			expectedBody:   ErrMsgGenericServerError,
 		},
 	}
 
@@ -214,11 +214,11 @@ func TestHandleGetLeaderboard(t *testing.T) {
 	}{
 		{
 			name:      "Success",
-			eventType: "item_used",
+			eventType: domain.EventTypeItemUsed,
 			limit:     "5",
 			setupMock: func(m *mocks.MockStatsService) {
 				entries := []domain.LeaderboardEntry{{UserID: "user1", Count: 10}}
-				m.On("GetLeaderboard", mock.Anything, domain.EventType("item_used"), "daily", 5).Return(entries, nil)
+				m.On("GetLeaderboard", mock.Anything, domain.EventTypeItemUsed, domain.PeriodDaily, 5).Return(entries, nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `"user_id":"user1"`,
@@ -232,7 +232,7 @@ func TestHandleGetLeaderboard(t *testing.T) {
 		},
 		{
 			name:           "Invalid Limit",
-			eventType:      "item_used",
+			eventType:      domain.EventTypeItemUsed,
 			limit:          "invalid",
 			setupMock:      func(m *mocks.MockStatsService) {},
 			expectedStatus: http.StatusBadRequest,
@@ -240,12 +240,12 @@ func TestHandleGetLeaderboard(t *testing.T) {
 		},
 		{
 			name:      "Service Error",
-			eventType: "item_used",
+			eventType: domain.EventTypeItemUsed,
 			setupMock: func(m *mocks.MockStatsService) {
-				m.On("GetLeaderboard", mock.Anything, domain.EventType("item_used"), "daily", 10).Return(nil, errors.New("service error"))
+				m.On("GetLeaderboard", mock.Anything, domain.EventTypeItemUsed, domain.PeriodDaily, 10).Return(nil, errors.New(ErrMsgGenericServerError))
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "service error",
+			expectedBody:   ErrMsgGenericServerError,
 		},
 	}
 

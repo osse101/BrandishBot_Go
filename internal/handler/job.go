@@ -22,7 +22,7 @@ func (h *JobHandler) HandleGetAllJobs(w http.ResponseWriter, r *http.Request) {
 	jobs, err := h.service.GetAllJobs(r.Context())
 	if err != nil {
 		logger.FromContext(r.Context()).Error("Failed to get jobs", "error", err)
-		http.Error(w, ErrMsgGetJobsFailed, http.StatusInternalServerError)
+		statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
 		return
 	}
 
@@ -41,7 +41,7 @@ func (h *JobHandler) HandleGetUserJobs(w http.ResponseWriter, r *http.Request) {
 	userJobs, err := h.service.GetUserJobs(r.Context(), userID)
 	if err != nil {
 		logger.FromContext(r.Context()).Error("Failed to get user jobs", "error", err, "user_id", userID)
-		http.Error(w, ErrMsgGetUserJobsFailed, http.StatusInternalServerError)
+		statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
 		return
 	}
 
@@ -82,7 +82,7 @@ func (h *JobHandler) HandleAwardXP(w http.ResponseWriter, r *http.Request) {
 			"user_id", req.UserID,
 			"job_key", req.JobKey,
 		)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
 		return
 	}
 
@@ -112,7 +112,7 @@ func (h *JobHandler) HandleGetJobBonus(w http.ResponseWriter, r *http.Request) {
 			"job_key", jobKey,
 			"bonus_type", bonusType,
 		)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
 		return
 	}
 

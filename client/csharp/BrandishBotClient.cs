@@ -4,9 +4,22 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace BrandishBot.Client
 {
+    /// <summary>
+    /// Error response from API
+    /// </summary>
+    public class ApiErrorResponse
+    {
+        [JsonProperty("error")]
+        public string Error { get; set; }
+
+        [JsonProperty("fields")]
+        public Dictionary<string, string> Fields { get; set; }
+    }
+
     /// <summary>
     /// BrandishBot API Client for streamer.bot
     /// C# 4.8 compatible HTTP client for Twitch and YouTube integrations
@@ -71,15 +84,13 @@ namespace BrandishBot.Client
             var jsonBody = JsonConvert.SerializeObject(data);
             var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
             var response = await _httpClient.PostAsync(_baseUrl + endpoint, content);
-            response.EnsureSuccessStatusCode();
-            return await response.Content.ReadAsStringAsync();
+            return await HandleHttpResponse(response);
         }
 
         private async Task<string> GetAsync(string endpoint)
         {
             var response = await _httpClient.GetAsync(_baseUrl + endpoint);
-            response.EnsureSuccessStatusCode();
-            return await response.Content.ReadAsStringAsync();
+            return await HandleHttpResponse(response);
         }
 
         /// <summary>
@@ -93,6 +104,91 @@ namespace BrandishBot.Client
         private string BuildQuery(params string[] parameters)
         {
             return "?" + string.Join("&", parameters);
+        }
+
+        /// <summary>
+        /// Extract a meaningful error message from API response body
+        /// </summary>
+        private string ExtractErrorMessage(string responseBody, System.Net.HttpStatusCode statusCode)
+        {
+            if (string.IsNullOrWhiteSpace(responseBody))
+            {
+                return GetGenericErrorMessage(statusCode);
+            }
+
+            try
+            {
+                // Try to parse as JSON first
+                JObject json = JObject.Parse(responseBody);
+
+                // Check for "error" field (standard error response)
+                if (json["error"] != null)
+                {
+                    return json["error"].Value<string>() ?? GetGenericErrorMessage(statusCode);
+                }
+
+                // Check for "message" field (alternative format)
+                if (json["message"] != null)
+                {
+                    return json["message"].Value<string>() ?? GetGenericErrorMessage(statusCode);
+                }
+            }
+            catch
+            {
+                // Not JSON, treat as plain text error message
+            }
+
+            // Use the response body as-is if it looks like an error message
+            responseBody = responseBody.Trim();
+            if (!string.IsNullOrEmpty(responseBody) && responseBody.Length < 500)
+            {
+                return responseBody;
+            }
+
+            return GetGenericErrorMessage(statusCode);
+        }
+
+        /// <summary>
+        /// Get a generic error message based on HTTP status code
+        /// </summary>
+        private string GetGenericErrorMessage(System.Net.HttpStatusCode statusCode)
+        {
+            switch (statusCode)
+            {
+                case System.Net.HttpStatusCode.BadRequest:
+                    return "Invalid request. Please check your inputs.";
+                case System.Net.HttpStatusCode.Unauthorized:
+                    return "Authentication failed. Please check your API key.";
+                case System.Net.HttpStatusCode.Forbidden:
+                    return "That feature is locked. Unlock it in the progression tree.";
+                case System.Net.HttpStatusCode.NotFound:
+                    return "Resource not found.";
+                case System.Net.HttpStatusCode.TooManyRequests:
+                    return "Too many requests. Please try again later.";
+                case System.Net.HttpStatusCode.InternalServerError:
+                    return "Server error occurred. Please try again.";
+                case System.Net.HttpStatusCode.ServiceUnavailable:
+                    return "Server is temporarily unavailable. Please try again later.";
+                default:
+                    return "An error occurred. Please try again.";
+            }
+        }
+
+        /// <summary>
+        /// Handle HTTP response and throw with meaningful error messages on failure
+        /// </summary>
+        private async Task<string> HandleHttpResponse(HttpResponseMessage response)
+        {
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadAsStringAsync();
+            }
+
+            // Extract error message from response body
+            string errorBody = await response.Content.ReadAsStringAsync();
+            string errorMessage = ExtractErrorMessage(errorBody, response.StatusCode);
+
+            throw new HttpRequestException(errorMessage);
         }
 
         #endregion
@@ -388,8 +484,8 @@ namespace BrandishBot.Client
         /// <summary>
         /// Join an existing gamble session
         /// </summary>
-        public async Task<string> JoinGamble(string platform, string platformId, string username, 
-            string gambleId, string itemName, int quantity)
+        public async Task<string> JoinGamble(string gambleId, string platform, string platformId, string username,
+            string itemName, int quantity)
         {
             var content = new StringContent(
                 JsonConvert.SerializeObject(new
@@ -402,13 +498,12 @@ namespace BrandishBot.Client
                 Encoding.UTF8,
                 "application/json"
             );
-            
+
             var response = await _httpClient.PostAsync(
                 _baseUrl + "/api/v1/gamble/join?id=" + gambleId,
                 content
             );
-            response.EnsureSuccessStatusCode();
-            return await response.Content.ReadAsStringAsync();
+            return await HandleHttpResponse(response);
         }
 
         /// <summary>
