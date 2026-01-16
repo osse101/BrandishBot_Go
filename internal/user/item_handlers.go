@@ -47,11 +47,7 @@ func (s *service) consumeLootboxFromInventory(inventory *domain.Inventory, item 
 		return fmt.Errorf(ErrMsgNotEnoughItemsInInventory)
 	}
 
-	if inventory.Slots[itemSlotIndex].Quantity == quantity {
-		inventory.Slots = append(inventory.Slots[:itemSlotIndex], inventory.Slots[itemSlotIndex+1:]...)
-	} else {
-		inventory.Slots[itemSlotIndex].Quantity -= quantity
-	}
+	utils.RemoveFromSlot(inventory, itemSlotIndex, quantity)
 	return nil
 }
 
@@ -166,7 +162,9 @@ func (s *service) aggregateDropsAndUpdateInventory(inventory *domain.Inventory, 
 	return stats
 }
 
-func (s *service) handleLootbox1(ctx context.Context, _ *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, _ map[string]interface{}) (string, error) {
+// handleLootboxGeneric is a unified handler for all lootbox tiers.
+// The lootbox type is determined by the item parameter.
+func (s *service) handleLootboxGeneric(ctx context.Context, _ *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, _ map[string]interface{}) (string, error) {
 	return s.processLootbox(ctx, user, inventory, item, quantity)
 }
 
@@ -189,11 +187,7 @@ func (s *service) handleBlaster(ctx context.Context, _ *service, _ *domain.User,
 		log.Warn(LogWarnNotEnoughBlasters)
 		return "", fmt.Errorf(ErrMsgNotEnoughItemsInInventory)
 	}
-	if inventory.Slots[itemSlotIndex].Quantity == quantity {
-		inventory.Slots = append(inventory.Slots[:itemSlotIndex], inventory.Slots[itemSlotIndex+1:]...)
-	} else {
-		inventory.Slots[itemSlotIndex].Quantity -= quantity
-	}
+	utils.RemoveFromSlot(inventory, itemSlotIndex, quantity)
 
 	// Apply timeout
 	if err := s.TimeoutUser(ctx, targetUsername, BlasterTimeoutDuration, MsgBlasterReasonBy+username); err != nil {
@@ -203,12 +197,4 @@ func (s *service) handleBlaster(ctx context.Context, _ *service, _ *domain.User,
 
 	log.Info(LogMsgBlasterUsed, "target", targetUsername, "quantity", quantity)
 	return fmt.Sprintf("%s%s%s %d%s%v%s", username, MsgBlasterUsedPrefix, targetUsername, quantity, MsgBlasterUsedSuffix, BlasterTimeoutDuration, MsgBlasterTimeoutEnd), nil
-}
-
-func (s *service) handleLootbox0(ctx context.Context, _ *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, _ map[string]interface{}) (string, error) {
-	return s.processLootbox(ctx, user, inventory, item, quantity)
-}
-
-func (s *service) handleLootbox2(ctx context.Context, _ *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, _ map[string]interface{}) (string, error) {
-	return s.processLootbox(ctx, user, inventory, item, quantity)
 }

@@ -15,8 +15,8 @@ func TestGetInventoryByUsername(t *testing.T) {
 	svc := &service{
 		repo:            repo,
 		namingResolver:  namingResolver,
-		itemCache:       make(map[int]domain.Item),
 		itemCacheByName: make(map[string]domain.Item),
+		itemIDToName:    make(map[int]string),
 	}
 
 	// Setup test user
@@ -70,8 +70,8 @@ func TestAddItemByUsername(t *testing.T) {
 	svc := &service{
 		repo:            repo,
 		namingResolver:  NewMockNamingResolver(),
-		itemCache:       make(map[int]domain.Item),
 		itemCacheByName: make(map[string]domain.Item),
+		itemIDToName:    make(map[int]string),
 	}
 
 	user := &domain.User{
@@ -109,8 +109,8 @@ func TestRemoveItemByUsername(t *testing.T) {
 	svc := &service{
 		repo:            repo,
 		namingResolver:  NewMockNamingResolver(),
-		itemCache:       make(map[int]domain.Item),
 		itemCacheByName: make(map[string]domain.Item),
+		itemIDToName:    make(map[int]string),
 	}
 
 	user := &domain.User{
@@ -155,8 +155,8 @@ func TestGiveItemByUsername(t *testing.T) {
 	svc := &service{
 		repo:            repo,
 		namingResolver:  NewMockNamingResolver(),
-		itemCache:       make(map[int]domain.Item),
 		itemCacheByName: make(map[string]domain.Item),
+		itemIDToName:    make(map[int]string),
 	}
 
 	sender := &domain.User{

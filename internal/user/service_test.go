@@ -236,6 +236,218 @@ func TestGiveItem(t *testing.T) {
 	}
 }
 
+func TestGiveItem_Comprehensive(t *testing.T) {
+	tests := []struct {
+		name           string
+		ownerItems     int
+		giveQty        int
+		expectedOwner  int
+		expectedRecv   int
+		expectError    bool
+		errorSubstring string
+	}{
+		{
+			name:          "give partial quantity",
+			ownerItems:    10,
+			giveQty:       3,
+			expectedOwner: 7,
+			expectedRecv:  3,
+			expectError:   false,
+		},
+		{
+			name:          "give all items",
+			ownerItems:    10,
+			giveQty:       10,
+			expectedOwner: 0,
+			expectedRecv:  10,
+			expectError:   false,
+		},
+		{
+			name:           "give more than owned",
+			ownerItems:     5,
+			giveQty:        10,
+			expectedOwner:  5,
+			expectedRecv:   0,
+			expectError:    true,
+			errorSubstring: "insufficient",
+		},
+		{
+			name:           "give from empty inventory",
+			ownerItems:     0,
+			giveQty:        1,
+			expectedOwner:  0,
+			expectedRecv:   0,
+			expectError:    true,
+			errorSubstring: "not in inventory",
+		},
+		{
+			name:           "give zero quantity",
+			ownerItems:     10,
+			giveQty:        0,
+			expectedOwner:  10,
+			expectedRecv:   0,
+			expectError:    true,
+			errorSubstring: "must be positive",
+		},
+		{
+			name:           "give negative quantity",
+			ownerItems:     10,
+			giveQty:        -1,
+			expectedOwner:  10,
+			expectedRecv:   0,
+			expectError:    true,
+			errorSubstring: "must be positive",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := NewFakeRepository()
+			setupTestData(repo)
+			svc := NewService(repo, nil, nil, nil, NewMockNamingResolver(), nil, false)
+			ctx := context.Background()
+
+			// Setup owner with items
+			if tt.ownerItems > 0 {
+				svc.AddItem(ctx, domain.PlatformTwitch, "alice123", "alice", domain.ItemLootbox1, tt.ownerItems)
+			}
+
+			// Attempt to give items
+			err := svc.GiveItem(ctx, domain.PlatformTwitch, "alice123", "alice", domain.PlatformTwitch, "bob456", "bob", domain.ItemLootbox1, tt.giveQty)
+
+			if tt.expectError {
+				if err == nil {
+					t.Error("expected error, got nil")
+					return
+				}
+				if tt.errorSubstring != "" && !contains(err.Error(), tt.errorSubstring) {
+					t.Errorf("expected error to contain %q, got %q", tt.errorSubstring, err.Error())
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+			}
+
+			// Verify owner's inventory
+			aliceInv, _ := repo.GetInventory(ctx, "user-alice")
+			if tt.expectedOwner == 0 {
+				// Owner should have no slots if all given away
+				hasItem := false
+				for _, slot := range aliceInv.Slots {
+					if slot.ItemID == 1 {
+						hasItem = true
+						t.Errorf("Alice should have no %s, but has %d", domain.ItemLootbox1, slot.Quantity)
+					}
+				}
+				_ = hasItem
+			} else {
+				found := false
+				for _, slot := range aliceInv.Slots {
+					if slot.ItemID == 1 {
+						if slot.Quantity != tt.expectedOwner {
+							t.Errorf("Alice should have %d, got %d", tt.expectedOwner, slot.Quantity)
+						}
+						found = true
+						break
+					}
+				}
+				if !found && tt.expectedOwner > 0 {
+					t.Error("Alice should have items but inventory is empty")
+				}
+			}
+
+			// Verify receiver's inventory
+			bobInv, _ := repo.GetInventory(ctx, "user-bob")
+			if tt.expectedRecv == 0 {
+				for _, slot := range bobInv.Slots {
+					if slot.ItemID == 1 {
+						t.Errorf("Bob should have no items, but has %d", slot.Quantity)
+					}
+				}
+			} else {
+				found := false
+				for _, slot := range bobInv.Slots {
+					if slot.ItemID == 1 {
+						if slot.Quantity != tt.expectedRecv {
+							t.Errorf("Bob should have %d, got %d", tt.expectedRecv, slot.Quantity)
+						}
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Errorf("Bob should have %d items but has none", tt.expectedRecv)
+				}
+			}
+		})
+	}
+}
+
+func TestGiveItem_CrossPlatform(t *testing.T) {
+	repo := NewFakeRepository()
+	svc := NewService(repo, nil, nil, nil, NewMockNamingResolver(), nil, false)
+	ctx := context.Background()
+
+	// Setup users on different platforms
+	userAlice := &domain.User{
+		ID:        "user-alice",
+		Username:  "alice",
+		TwitchID:  "twitch-alice",
+		DiscordID: "discord-alice",
+	}
+	userBob := &domain.User{
+		ID:        "user-bob",
+		Username:  "bob",
+		DiscordID: "discord-bob",
+	}
+	repo.users["alice"] = userAlice
+	repo.users["bob"] = userBob
+	repo.inventories["user-alice"] = &domain.Inventory{Slots: []domain.InventorySlot{}}
+	repo.inventories["user-bob"] = &domain.Inventory{Slots: []domain.InventorySlot{}}
+
+	// Add the item to the repository
+	repo.items[domain.ItemLootbox1] = &domain.Item{
+		ID:           1,
+		InternalName: domain.ItemLootbox1,
+		PublicName:   "Lootbox Tier 1",
+		BaseValue:    50,
+	}
+
+	// Add items to alice via Twitch
+	svc.AddItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox1, 10)
+
+	// Give from alice (Twitch) to bob (Discord)
+	err := svc.GiveItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.PlatformDiscord, "discord-bob", "bob", domain.ItemLootbox1, 5)
+	if err != nil {
+		t.Fatalf("cross-platform give failed: %v", err)
+	}
+
+	// Verify both inventories
+	aliceInv, _ := repo.GetInventory(ctx, "user-alice")
+	if aliceInv.Slots[0].Quantity != 5 {
+		t.Errorf("Alice should have 5, got %d", aliceInv.Slots[0].Quantity)
+	}
+
+	bobInv, _ := repo.GetInventory(ctx, "user-bob")
+	if len(bobInv.Slots) != 1 || bobInv.Slots[0].Quantity != 5 {
+		t.Errorf("Bob should have 5, got %+v", bobInv.Slots)
+	}
+}
+
+func contains(s, substr string) bool {
+	return len(s) > 0 && len(substr) > 0 && (s == substr || len(s) >= len(substr) && (s[:len(substr)] == substr || s[len(s)-len(substr):] == substr || findSubstring(s, substr)))
+}
+
+func findSubstring(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}
+
 func TestRegisterUser(t *testing.T) {
 	repo := NewFakeRepository()
 	svc := NewService(repo, nil, nil, nil, NewMockNamingResolver(), nil, false)

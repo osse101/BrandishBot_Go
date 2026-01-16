@@ -29,6 +29,17 @@ func BuildSlotMap(inventory *domain.Inventory) map[int]int {
 	return slotMap
 }
 
+// RemoveFromSlot removes a quantity from an inventory slot at the given index.
+// If the quantity equals the slot quantity, the slot is removed entirely.
+// Assumes the caller has already validated that slotIndex is valid and quantity <= slot.Quantity.
+func RemoveFromSlot(inventory *domain.Inventory, slotIndex, quantity int) {
+	if inventory.Slots[slotIndex].Quantity == quantity {
+		inventory.Slots = append(inventory.Slots[:slotIndex], inventory.Slots[slotIndex+1:]...)
+	} else {
+		inventory.Slots[slotIndex].Quantity -= quantity
+	}
+}
+
 // AddItemsToInventory adds multiple items to inventory using a hybrid lookup strategy.
 // For small batches (< InventoryLookupLinearScanThreshold), uses linear scan to avoid map allocation overhead.
 // For larger batches, uses map-based lookup for O(N+M) complexity.

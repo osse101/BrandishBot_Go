@@ -30,14 +30,16 @@ var validPlatforms = map[string]bool{
 
 
 // validateInventoryInput validates common inventory operation inputs
-func validateInventoryInput(platform, platformID, username string, quantity int) error {
+// validateInventoryInputCore validates inventory operation inputs
+// Set requirePlatformID=true for operations using platformID, false for username-only operations
+func validateInventoryInputCore(platform, platformID, username string, quantity int, requirePlatformID bool) error {
 	if quantity <= 0 {
 		return fmt.Errorf("%w: %s", domain.ErrInvalidInput, ErrMsgQuantityMustBePositive)
 	}
 	if username == "" {
 		return fmt.Errorf("%w: %s", domain.ErrInvalidInput, ErrMsgUsernameRequired)
 	}
-	if platformID == "" {
+	if requirePlatformID && platformID == "" {
 		return fmt.Errorf("%w: %s", domain.ErrInvalidInput, ErrMsgPlatformIDRequired)
 	}
 	if platform != "" && !validPlatforms[platform] {
@@ -46,18 +48,13 @@ func validateInventoryInput(platform, platformID, username string, quantity int)
 	return nil
 }
 
+func validateInventoryInput(platform, platformID, username string, quantity int) error {
+	return validateInventoryInputCore(platform, platformID, username, quantity, true)
+}
+
 // validateInventoryInputByUsername validates inventory operation inputs when using username lookup
 func validateInventoryInputByUsername(platform, username string, quantity int) error {
-	if quantity <= 0 {
-		return fmt.Errorf("%w: %s", domain.ErrInvalidInput, ErrMsgQuantityMustBePositive)
-	}
-	if username == "" {
-		return fmt.Errorf("%w: %s", domain.ErrInvalidInput, ErrMsgUsernameRequired)
-	}
-	if platform != "" && !validPlatforms[platform] {
-		return fmt.Errorf("%w: invalid platform '%s'", domain.ErrInvalidPlatform, platform)
-	}
-	return nil
+	return validateInventoryInputCore(platform, "", username, quantity, false)
 }
 
 // Service defines the interface for user operations
@@ -138,9 +135,9 @@ type service struct {
 	// Invalidation: Cache is populated on-demand and persists for server lifetime
 	//               Item metadata is assumed immutable - if items are modified in DB,
 	//               server restart is required to refresh cache
-	itemCache       map[int]domain.Item    // Cache by item ID
-	itemCacheByName map[string]domain.Item // Cache by internal name
-	itemCacheMu     sync.RWMutex           // Protects both cache maps
+	itemCacheByName map[string]domain.Item // Primary cache by internal name
+	itemIDToName    map[int]string         // Index for ID -> name lookups
+	itemCacheMu     sync.RWMutex           // Protects both maps
 }
 
 // setPlatformID sets the appropriate platform-specific ID field on a user
@@ -186,8 +183,8 @@ func NewService(repo repository.User, statsService stats.Service, jobService Job
 		namingResolver:  namingResolver,
 		cooldownService: cooldownService,
 		devMode:         devMode,
-		itemCache:       make(map[int]domain.Item),
 		itemCacheByName: make(map[string]domain.Item),
+		itemIDToName:    make(map[int]string),
 		userCache:       newUserCache(loadCacheConfig()),
 	}
 	s.registerHandlers()
@@ -195,10 +192,11 @@ func NewService(repo repository.User, statsService stats.Service, jobService Job
 }
 
 func (s *service) registerHandlers() {
-	s.itemHandlers[domain.ItemLootbox1] = s.handleLootbox1
+	// All lootbox tiers use the same handler
+	s.itemHandlers[domain.ItemLootbox0] = s.handleLootboxGeneric
+	s.itemHandlers[domain.ItemLootbox1] = s.handleLootboxGeneric
+	s.itemHandlers[domain.ItemLootbox2] = s.handleLootboxGeneric
 	s.itemHandlers[domain.ItemBlaster] = s.handleBlaster
-	s.itemHandlers[domain.ItemLootbox0] = s.handleLootbox0
-	s.itemHandlers[domain.ItemLootbox2] = s.handleLootbox2
 }
 
 func getPlatformKeysFromUser(user domain.User) map[string]string {
@@ -300,13 +298,6 @@ func (s *service) HandleIncomingMessage(ctx context.Context, platform, platformI
 func (s *service) addItemToUserInternal(ctx context.Context, user *domain.User, itemName string, quantity int) error {
 	log := logger.FromContext(ctx)
 
-	tx, err := s.repo.BeginTx(ctx)
-	if err != nil {
-		log.Error("Failed to begin transaction", "error", err)
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer repository.SafeRollback(ctx, tx)
-
 	item, err := s.getItemByNameCached(ctx, itemName)
 	if err != nil {
 		log.Error("Failed to get item", "error", err, "itemName", itemName)
@@ -317,43 +308,33 @@ func (s *service) addItemToUserInternal(ctx context.Context, user *domain.User, 
 		return fmt.Errorf("%w: %s", domain.ErrItemNotFound, itemName)
 	}
 
-	inventory, err := tx.GetInventory(ctx, user.ID)
-	if err != nil {
-		log.Error("Failed to get inventory", "error", err, "userID", user.ID)
-		return fmt.Errorf("failed to get inventory: %w", err)
-	}
+	return s.withTx(ctx, func(tx repository.UserTx) error {
+		inventory, err := tx.GetInventory(ctx, user.ID)
+		if err != nil {
+			log.Error("Failed to get inventory", "error", err, "userID", user.ID)
+			return fmt.Errorf("failed to get inventory: %w", err)
+		}
 
-	// Add item to inventory using utility function
-	i, _ := utils.FindSlot(inventory, item.ID)
-	if i != -1 {
-		inventory.Slots[i].Quantity += quantity
-	} else {
-		inventory.Slots = append(inventory.Slots, domain.InventorySlot{ItemID: item.ID, Quantity: quantity})
-	}
+		// Add item to inventory using utility function
+		i, _ := utils.FindSlot(inventory, item.ID)
+		if i != -1 {
+			inventory.Slots[i].Quantity += quantity
+		} else {
+			inventory.Slots = append(inventory.Slots, domain.InventorySlot{ItemID: item.ID, Quantity: quantity})
+		}
 
-	if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
-		log.Error("Failed to update inventory", "error", err, "userID", user.ID)
-		return fmt.Errorf("failed to update inventory: %w", err)
-	}
+		if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
+			log.Error("Failed to update inventory", "error", err, "userID", user.ID)
+			return fmt.Errorf("failed to update inventory: %w", err)
+		}
 
-	if err := tx.Commit(ctx); err != nil {
-		log.Error("Failed to commit transaction", "error", err)
-		return fmt.Errorf("failed to commit transaction: %w", err)
-	}
-
-	return nil
+		return nil
+	})
 }
 
 // removeItemFromUserInternal removes an item from a user's inventory within a transaction
 func (s *service) removeItemFromUserInternal(ctx context.Context, user *domain.User, itemName string, quantity int) (int, error) {
 	log := logger.FromContext(ctx)
-
-	tx, err := s.repo.BeginTx(ctx)
-	if err != nil {
-		log.Error("Failed to begin transaction", "error", err)
-		return 0, fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer repository.SafeRollback(ctx, tx)
 
 	item, err := s.getItemByNameCached(ctx, itemName)
 	if err != nil {
@@ -364,60 +345,46 @@ func (s *service) removeItemFromUserInternal(ctx context.Context, user *domain.U
 		return 0, fmt.Errorf("%w: %s", domain.ErrItemNotFound, itemName)
 	}
 
-	inventory, err := tx.GetInventory(ctx, user.ID)
-	if err != nil {
-		log.Error("Failed to get inventory", "error", err, "userID", user.ID)
-		return 0, fmt.Errorf("failed to get inventory: %w", err)
-	}
-
-	// Remove item from inventory using utility function
-	i, slotQty := utils.FindSlot(inventory, item.ID)
-	if i == -1 {
-		log.Warn("Item not in inventory", "itemName", itemName)
-		return 0, fmt.Errorf("%w: %s", domain.ErrNotInInventory, itemName)
-	}
-
 	var removed int
-	if slotQty >= quantity {
-		inventory.Slots[i].Quantity -= quantity
-		removed = quantity
-	} else {
-		removed = slotQty
-		inventory.Slots[i].Quantity = 0
-	}
-	if inventory.Slots[i].Quantity == 0 {
-		inventory.Slots = append(inventory.Slots[:i], inventory.Slots[i+1:]...)
-	}
+	err = s.withTx(ctx, func(tx repository.UserTx) error {
+		inventory, err := tx.GetInventory(ctx, user.ID)
+		if err != nil {
+			log.Error("Failed to get inventory", "error", err, "userID", user.ID)
+			return fmt.Errorf("failed to get inventory: %w", err)
+		}
 
-	if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
-		log.Error("Failed to update inventory", "error", err, "userID", user.ID)
-		return 0, fmt.Errorf("failed to update inventory: %w", err)
-	}
+		// Remove item from inventory using utility function
+		i, slotQty := utils.FindSlot(inventory, item.ID)
+		if i == -1 {
+			log.Warn("Item not in inventory", "itemName", itemName)
+			return fmt.Errorf("%w: %s", domain.ErrNotInInventory, itemName)
+		}
 
-	if err := tx.Commit(ctx); err != nil {
-		log.Error("Failed to commit transaction", "error", err)
-		return 0, fmt.Errorf("failed to commit transaction: %w", err)
-	}
+		if slotQty >= quantity {
+			inventory.Slots[i].Quantity -= quantity
+			removed = quantity
+		} else {
+			removed = slotQty
+			inventory.Slots[i].Quantity = 0
+		}
+		if inventory.Slots[i].Quantity == 0 {
+			inventory.Slots = append(inventory.Slots[:i], inventory.Slots[i+1:]...)
+		}
 
-	return removed, nil
+		if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
+			log.Error("Failed to update inventory", "error", err, "userID", user.ID)
+			return fmt.Errorf("failed to update inventory: %w", err)
+		}
+
+		return nil
+	})
+
+	return removed, err
 }
 
 // useItemInternal handles item usage logic within a transaction
 func (s *service) useItemInternal(ctx context.Context, user *domain.User, itemName string, quantity int, targetUsername string, username string) (string, error) {
 	log := logger.FromContext(ctx)
-
-	tx, err := s.repo.BeginTx(ctx)
-	if err != nil {
-		log.Error("Failed to begin transaction", "error", err)
-		return "", fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer repository.SafeRollback(ctx, tx)
-
-	inventory, err := tx.GetInventory(ctx, user.ID)
-	if err != nil {
-		log.Error("Failed to get inventory", "error", err, "userID", user.ID)
-		return "", fmt.Errorf("failed to get inventory: %w", err)
-	}
 
 	itemToUse, err := s.getItemByNameCached(ctx, itemName)
 	if err != nil {
@@ -429,40 +396,46 @@ func (s *service) useItemInternal(ctx context.Context, user *domain.User, itemNa
 		return "", fmt.Errorf("%w: %s", domain.ErrItemNotFound, itemName)
 	}
 
-	// Find item in inventory using utility function
-	itemSlotIndex, slotQty := utils.FindSlot(inventory, itemToUse.ID)
-	if itemSlotIndex == -1 {
-		return "", fmt.Errorf("%w: %s", domain.ErrNotInInventory, itemName)
-	}
-	if slotQty < quantity {
-		return "", fmt.Errorf("%w: %s (has %d, needs %d)", domain.ErrInsufficientQuantity, itemName, slotQty, quantity)
-	}
+	var message string
+	err = s.withTx(ctx, func(tx repository.UserTx) error {
+		inventory, err := tx.GetInventory(ctx, user.ID)
+		if err != nil {
+			log.Error("Failed to get inventory", "error", err, "userID", user.ID)
+			return fmt.Errorf("failed to get inventory: %w", err)
+		}
 
-	// Execute item handler
-	handler, exists := s.itemHandlers[itemName]
-	if !exists {
-		log.Warn("No handler for item", "itemName", itemName)
-		return "", fmt.Errorf("item %s has no effect", itemName)
-	}
+		// Find item in inventory using utility function
+		itemSlotIndex, slotQty := utils.FindSlot(inventory, itemToUse.ID)
+		if itemSlotIndex == -1 {
+			return fmt.Errorf("%w: %s", domain.ErrNotInInventory, itemName)
+		}
+		if slotQty < quantity {
+			return fmt.Errorf("%w: %s (has %d, needs %d)", domain.ErrInsufficientQuantity, itemName, slotQty, quantity)
+		}
 
-	args := map[string]interface{}{"targetUsername": targetUsername, "username": username}
-	message, err := handler(ctx, s, user, inventory, itemToUse, quantity, args)
-	if err != nil {
-		log.Error("Handler error", "error", err, "itemName", itemName)
-		return "", err
-	}
+		// Execute item handler
+		handler, exists := s.itemHandlers[itemName]
+		if !exists {
+			log.Warn("No handler for item", "itemName", itemName)
+			return fmt.Errorf("item %s has no effect", itemName)
+		}
 
-	if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
-		log.Error("Failed to update inventory after use", "error", err, "userID", user.ID)
-		return "", fmt.Errorf("failed to update inventory: %w", err)
-	}
+		args := map[string]interface{}{"targetUsername": targetUsername, "username": username}
+		message, err = handler(ctx, s, user, inventory, itemToUse, quantity, args)
+		if err != nil {
+			log.Error("Handler error", "error", err, "itemName", itemName)
+			return err
+		}
 
-	if err := tx.Commit(ctx); err != nil {
-		log.Error("Failed to commit transaction", "error", err)
-		return "", fmt.Errorf("failed to commit transaction: %w", err)
-	}
+		if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
+			log.Error("Failed to update inventory after use", "error", err, "userID", user.ID)
+			return fmt.Errorf("failed to update inventory: %w", err)
+		}
 
-	return message, nil
+		return nil
+	})
+
+	return message, err
 }
 
 // getInventoryInternal retrieves a user's inventory with optional filtering
@@ -481,11 +454,14 @@ func (s *service) getInventoryInternal(ctx context.Context, user *domain.User, f
 
 	s.itemCacheMu.RLock()
 	for _, slot := range inventory.Slots {
-		if item, ok := s.itemCache[slot.ItemID]; ok {
-			itemMap[slot.ItemID] = item
-		} else {
-			missingIDs = append(missingIDs, slot.ItemID)
+		// Use index to find item name, then look up in primary cache
+		if itemName, ok := s.itemIDToName[slot.ItemID]; ok {
+			if item, ok := s.itemCacheByName[itemName]; ok {
+				itemMap[slot.ItemID] = item
+				continue
+			}
 		}
+		missingIDs = append(missingIDs, slot.ItemID)
 	}
 	s.itemCacheMu.RUnlock()
 
@@ -498,8 +474,8 @@ func (s *service) getInventoryInternal(ctx context.Context, user *domain.User, f
 
 		s.itemCacheMu.Lock()
 		for _, item := range itemList {
-			s.itemCache[item.ID] = item
 			s.itemCacheByName[item.InternalName] = item
+			s.itemIDToName[item.ID] = item.InternalName
 			itemMap[item.ID] = item
 		}
 		s.itemCacheMu.Unlock()
@@ -595,21 +571,6 @@ func (s *service) AddItems(ctx context.Context, platform, platformID, username s
 		return err
 	}
 
-	// Start single transaction for all items
-	tx, err := s.repo.BeginTx(ctx)
-	if err != nil {
-		log.Error("Failed to begin transaction", "error", err)
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer repository.SafeRollback(ctx, tx)
-
-	// Get inventory once
-	inventory, err := tx.GetInventory(ctx, user.ID)
-	if err != nil {
-		log.Error("Failed to get inventory", "error", err, "userID", user.ID)
-		return fmt.Errorf("failed to get inventory: %w", err)
-	}
-
 	// Build map of item names -> item IDs
 	itemIDMap := make(map[string]int)
 
@@ -637,8 +598,8 @@ func (s *service) AddItems(ctx context.Context, platform, platformID, username s
 		// Update cache and map
 		s.itemCacheMu.Lock()
 		for _, item := range missingItems {
-			s.itemCache[item.ID] = item
 			s.itemCacheByName[item.InternalName] = item
+			s.itemIDToName[item.ID] = item.InternalName
 			itemIDMap[item.InternalName] = item.ID
 		}
 		s.itemCacheMu.Unlock()
@@ -659,19 +620,28 @@ func (s *service) AddItems(ctx context.Context, platform, platformID, username s
 		})
 	}
 
-	// Add all items to inventory using optimized helper
-	utils.AddItemsToInventory(inventory, slotsToAdd, nil)
+	// Start single transaction for all items
+	err = s.withTx(ctx, func(tx repository.UserTx) error {
+		// Get inventory once
+		inventory, err := tx.GetInventory(ctx, user.ID)
+		if err != nil {
+			log.Error("Failed to get inventory", "error", err, "userID", user.ID)
+			return fmt.Errorf("failed to get inventory: %w", err)
+		}
 
-	// Single inventory update
-	if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
-		log.Error("Failed to update inventory", "error", err, "userID", user.ID)
-		return fmt.Errorf("failed to update inventory: %w", err)
-	}
+		// Add all items to inventory using optimized helper
+		utils.AddItemsToInventory(inventory, slotsToAdd, nil)
 
-	// Single commit
-	if err := tx.Commit(ctx); err != nil {
-		log.Error("Failed to commit transaction", "error", err)
-		return fmt.Errorf("failed to commit transaction: %w", err)
+		// Single inventory update
+		if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
+			log.Error("Failed to update inventory", "error", err, "userID", user.ID)
+			return fmt.Errorf("failed to update inventory: %w", err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
 	}
 
 	log.Info("Items added successfully", "username", username, "itemCount", len(items))
@@ -805,60 +775,52 @@ func (s *service) GiveItemByUsername(ctx context.Context, fromPlatform, fromUser
 
 func (s *service) executeGiveItemTx(ctx context.Context, owner, receiver *domain.User, item *domain.Item, quantity int) error {
 	log := logger.FromContext(ctx)
-	tx, err := s.repo.BeginTx(ctx)
-	if err != nil {
-		log.Error("Failed to begin transaction", "error", err)
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer repository.SafeRollback(ctx, tx)
 
-	ownerInventory, err := tx.GetInventory(ctx, owner.ID)
-	if err != nil {
-		return fmt.Errorf("failed to get owner inventory: %w", err)
-	}
+	return s.withTx(ctx, func(tx repository.UserTx) error {
+		ownerInventory, err := tx.GetInventory(ctx, owner.ID)
+		if err != nil {
+			return fmt.Errorf("failed to get owner inventory: %w", err)
+		}
 
-	// Find item in owner's inventory using utility function
-	ownerSlotIndex, ownerSlotQty := utils.FindSlot(ownerInventory, item.ID)
-	if ownerSlotIndex == -1 {
-		return fmt.Errorf("%w: %s", domain.ErrNotInInventory, item.InternalName)
-	}
-	if ownerSlotQty < quantity {
-		return fmt.Errorf("%w: has %d, needs %d", domain.ErrInsufficientQuantity, ownerSlotQty, quantity)
-	}
+		// Find item in owner's inventory using utility function
+		ownerSlotIndex, ownerSlotQty := utils.FindSlot(ownerInventory, item.ID)
+		if ownerSlotIndex == -1 {
+			return fmt.Errorf("%w: %s", domain.ErrNotInInventory, item.InternalName)
+		}
+		if ownerSlotQty < quantity {
+			return fmt.Errorf("%w: has %d, needs %d", domain.ErrInsufficientQuantity, ownerSlotQty, quantity)
+		}
 
-	receiverInventory, err := tx.GetInventory(ctx, receiver.ID)
-	if err != nil {
-		return fmt.Errorf("failed to get receiver inventory: %w", err)
-	}
+		receiverInventory, err := tx.GetInventory(ctx, receiver.ID)
+		if err != nil {
+			return fmt.Errorf("failed to get receiver inventory: %w", err)
+		}
 
-	// Remove from owner
-	if ownerSlotQty == quantity {
-		ownerInventory.Slots = append(ownerInventory.Slots[:ownerSlotIndex], ownerInventory.Slots[ownerSlotIndex+1:]...)
-	} else {
-		ownerInventory.Slots[ownerSlotIndex].Quantity -= quantity
-	}
+		// Remove from owner
+		if ownerSlotQty == quantity {
+			ownerInventory.Slots = append(ownerInventory.Slots[:ownerSlotIndex], ownerInventory.Slots[ownerSlotIndex+1:]...)
+		} else {
+			ownerInventory.Slots[ownerSlotIndex].Quantity -= quantity
+		}
 
-	// Add to receiver using utility function
-	receiverSlotIndex, _ := utils.FindSlot(receiverInventory, item.ID)
-	if receiverSlotIndex != -1 {
-		receiverInventory.Slots[receiverSlotIndex].Quantity += quantity
-	} else {
-		receiverInventory.Slots = append(receiverInventory.Slots, domain.InventorySlot{ItemID: item.ID, Quantity: quantity})
-	}
+		// Add to receiver using utility function
+		receiverSlotIndex, _ := utils.FindSlot(receiverInventory, item.ID)
+		if receiverSlotIndex != -1 {
+			receiverInventory.Slots[receiverSlotIndex].Quantity += quantity
+		} else {
+			receiverInventory.Slots = append(receiverInventory.Slots, domain.InventorySlot{ItemID: item.ID, Quantity: quantity})
+		}
 
-	if err := tx.UpdateInventory(ctx, owner.ID, *ownerInventory); err != nil {
-		return fmt.Errorf("failed to update owner inventory: %w", err)
-	}
-	if err := tx.UpdateInventory(ctx, receiver.ID, *receiverInventory); err != nil {
-		return fmt.Errorf("failed to update receiver inventory: %w", err)
-	}
+		if err := tx.UpdateInventory(ctx, owner.ID, *ownerInventory); err != nil {
+			return fmt.Errorf("failed to update owner inventory: %w", err)
+		}
+		if err := tx.UpdateInventory(ctx, receiver.ID, *receiverInventory); err != nil {
+			return fmt.Errorf("failed to update receiver inventory: %w", err)
+		}
 
-	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
-	}
-
-	log.Info("Item transferred", "owner", owner.Username, "receiver", receiver.Username, "item", item.InternalName, "quantity", quantity)
-	return nil
+		log.Info("Item transferred", "owner", owner.Username, "receiver", receiver.Username, "item", item.InternalName, "quantity", quantity)
+		return nil
+	})
 }
 
 func (s *service) UseItem(ctx context.Context, platform, platformID, username, itemName string, quantity int, targetUsername string) (string, error) {
@@ -1181,22 +1143,12 @@ func (s *service) processSearchSuccess(ctx context.Context, user *domain.User, r
 		return "", fmt.Errorf("%w: %s", domain.ErrItemNotFound, domain.ItemLootbox0)
 	}
 
-	// Begin transaction for inventory update
-	tx, err := s.repo.BeginTx(ctx)
+	// Add to inventory in transaction
+	err = s.withTx(ctx, func(tx repository.UserTx) error {
+		return s.addItemToTx(ctx, tx, user.ID, item.ID, quantity)
+	})
 	if err != nil {
-		log.Error("Failed to begin transaction", "error", err)
-		return "", fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer repository.SafeRollback(ctx, tx)
-
-	// Add to inventory
-	if err := s.addItemToTx(ctx, tx, user.ID, item.ID, quantity); err != nil {
 		return "", err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		log.Error("Failed to commit transaction", "error", err)
-		return "", fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	// Award Explorer XP for finding item (async, don't block)
