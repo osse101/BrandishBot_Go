@@ -279,6 +279,11 @@ public class CPHInline
             CPH.SetArgument("response", $"{error} Usage: !addItem <target_user> <item_name> [quantity]");
             return true;
         }
+        if( quantity < 1 )
+        {
+            CPH.SetArgument("response", "Invalid quantity. Usage: !addItem <target_user> <item_name> [quantity]");
+            return true;
+        }
 
         try
         {
@@ -323,6 +328,11 @@ public class CPHInline
             !GetInputInt(2, "quantity", 1, out int quantity, ref error))
         {
             CPH.SetArgument("response", $"{error} Usage: !removeItem <target_user> <item_name> [quantity]");
+            return true;
+        }
+        if( quantity < 1 )
+        {
+            CPH.SetArgument("response", "Invalid quantity. Usage: !removeItem <target_user> <item_name> [quantity]");
             return true;
         }
 
@@ -372,6 +382,11 @@ public class CPHInline
             CPH.SetArgument("response", $"{error} Usage: !giveItem <target_user> <item_name> [quantity]");
             return true;
         }
+        if( quantity < 1 )
+        {
+            CPH.SetArgument("response", "Invalid quantity. Usage: !giveItem <target_user> <item_name> [quantity]");
+            return true;
+        }
 
         string toPlatform = fromPlatform; 
 
@@ -415,7 +430,11 @@ public class CPHInline
             CPH.SetArgument("response", $"{error} Usage: !buyItem <item_name> [quantity]");
             return true;
         }
-
+        if( quantity < 1 )
+        {
+            CPH.SetArgument("response", "Invalid quantity. Usage: !buyItem <item_name> [quantity]");
+            return true;
+        }
         try
         {
             var result = client.BuyItem(platform, platformId, username, itemName, quantity).Result;
@@ -457,6 +476,11 @@ public class CPHInline
             !GetInputInt(1, "quantity", 1, out int quantity, ref error))
         {
             CPH.SetArgument("response", $"{error} Usage: !sellItem <item_name> [quantity]");
+            return true;
+        }
+        if( quantity < 1 )
+        {
+            CPH.SetArgument("response", "Invalid quantity. Usage: !sellItem <item_name> [quantity]");
             return true;
         }
 
@@ -574,6 +598,11 @@ public class CPHInline
                 targetUsername = input1;
             }
         }
+        if( quantity < 1 )
+        {
+            CPH.SetArgument("response", "Invalid quantity. Usage: !useItem <item_name> [quantity] [target_user]");
+            return true;
+        }
 
         try
         {
@@ -653,6 +682,11 @@ public class CPHInline
              CPH.SetArgument("response", $"{error} Usage: !upgradeItem <item_name> [quantity]");
              return true;
         }
+        if( quantity < 1 )
+        {
+            CPH.SetArgument("response", "Invalid quantity. Usage: !upgradeItem <item_name> [quantity]");
+            return true;
+        }
 
         try
         {
@@ -696,6 +730,11 @@ public class CPHInline
         {
              CPH.SetArgument("response", $"{error} Usage: !disassembleItem <item_name> [quantity]");
              return true;
+        }
+        if( quantity < 1 )
+        {
+            CPH.SetArgument("response", "Invalid quantity. Usage: !disassembleItem <item_name> [quantity]");
+            return true;
         }
 
         try
@@ -765,6 +804,11 @@ public class CPHInline
         {
              CPH.SetArgument("response", $"{error} Usage: !startGamble <lootbox_name> [quantity]");
              return true;
+        }
+        if( quantity < 1 )
+        {
+            CPH.SetArgument("response", "Invalid quantity. Usage: !startGamble <lootbox_name> [quantity]");
+            return true;
         }
 
         try

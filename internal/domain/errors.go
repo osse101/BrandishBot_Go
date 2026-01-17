@@ -10,6 +10,7 @@ const (
 
 	// Item errors
 	ErrMsgItemNotFound = "item not found"
+	ErrMsgItemNotHandled = "item not handled"
 
 	// Inventory errors
 	ErrMsgInsufficientQuantity = "insufficient quantity"
@@ -23,6 +24,8 @@ const (
 
 	// Validation errors (used for partial matches)
 	ErrMsgInvalidQuantity = "quantity" // Used in contains checks for various quantity errors
+	ErrMsgInvalidPlatform = "invalid platform"
+	ErrMsgInvalidInput = "invalid input"
 
 	// Gamble errors
 	ErrMsgGambleAlreadyActive       = "a gamble is already active"
@@ -46,6 +49,7 @@ const (
 	ErrMsgDeadlockDetected        = "deadlock detected"
 	ErrMsgFailedToGetUser         = "failed to get user"
 	ErrMsgFailedToGetItem         = "failed to get item"
+	ErrMsgFailedToGetItemDetails  = "failed to get item details"
 	ErrMsgFailedToGetInventory    = "failed to get inventory"
 	ErrMsgFailedToUpdateInventory = "failed to update inventory"
 	ErrMsgFailedToBeginTx         = "failed to begin transaction"
@@ -66,11 +70,6 @@ const (
 	ErrMsgRecipeLocked   = "recipe is locked"
 	ErrMsgInvalidRecipe  = "invalid recipe"
 
-	// Platform errors
-	ErrMsgInvalidPlatform = "invalid platform"
-
-	// Input errors
-	ErrMsgInvalidInput = "invalid input"
 )
 
 // Common domain errors
@@ -82,6 +81,7 @@ var (
 
 	// Item errors
 	ErrItemNotFound = errors.New(ErrMsgItemNotFound)
+	ErrItemNotHandled = errors.New(ErrMsgItemNotHandled)
 
 	// Inventory errors
 	ErrInsufficientQuantity = errors.New(ErrMsgInsufficientQuantity)
@@ -113,6 +113,7 @@ var (
 	ErrDeadlockDetected        = errors.New(ErrMsgDeadlockDetected)
 	ErrFailedToGetUser         = errors.New(ErrMsgFailedToGetUser)
 	ErrFailedToGetItem         = errors.New(ErrMsgFailedToGetItem)
+	ErrFailedToGetItemDetails  = errors.New(ErrMsgFailedToGetItemDetails)
 	ErrFailedToGetInventory    = errors.New(ErrMsgFailedToGetInventory)
 	ErrFailedToUpdateInventory = errors.New(ErrMsgFailedToUpdateInventory)
 	ErrFailedToBeginTx         = errors.New(ErrMsgFailedToBeginTx)
@@ -132,10 +133,9 @@ var (
 
 	// Validation errors
 	ErrInvalidInput = errors.New(ErrMsgInvalidInput)
+	ErrInvalidQuantity = errors.New(ErrMsgInvalidQuantity)
+	ErrInvalidPlatform = errors.New(ErrMsgInvalidPlatform)
 
 	// Progression errors
 	ErrUserAlreadyVoted = errors.New(ErrMsgUserAlreadyVoted)
-
-	// Platform errors
-	ErrInvalidPlatform = errors.New(ErrMsgInvalidPlatform)
 )
