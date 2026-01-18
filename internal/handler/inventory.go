@@ -13,87 +13,84 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/user"
 )
 
-type AddItemRequest struct {
-	Platform   string `json:"platform" validate:"required,platform"`
-	PlatformID string `json:"platform_id" validate:"required"`
-	Username   string `json:"username" validate:"required,max=100,excludesall=\x00\n\r\t"`
-	ItemName   string `json:"item_name" validate:"required,max=100"`
-	Quantity   int    `json:"quantity" validate:"min=1,max=10000"`
+// Username-based inventory operations (no platformID required)
+type AddItemByUsernameRequest struct {
+	Platform string `json:"platform" validate:"required,platform"`
+	Username string `json:"username" validate:"required,max=100,excludesall=\x00\n\r\t"`
+	ItemName string `json:"item_name" validate:"required,max=100"`
+	Quantity int    `json:"quantity" validate:"min=1,max=10000"`
 }
 
-// HandleAddItem handles adding items to a user's inventory
-// @Summary Add item to inventory
-// @Description Add an item to a user's inventory (admin/system action)
+// HandleAddItemByUsername handles adding items by username only
+// @Summary Add item by username
+// @Description Add an item to a user's inventory using only platform and username
 // @Tags inventory
 // @Accept json
 // @Produce json
-// @Param request body AddItemRequest true "Item details"
+// @Param request body AddItemByUsernameRequest true "Item details"
 // @Success 200 {object} SuccessResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /user/item/add [post]
-func HandleAddItem(svc user.Service) http.HandlerFunc {
+// @Router /user/item/add-by-username [post]
+func HandleAddItemByUsername(svc user.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var req AddItemRequest
-		if err := DecodeAndValidateRequest(r, w, &req, "Add item"); err != nil {
+		var req AddItemByUsernameRequest
+		if err := DecodeAndValidateRequest(r, w, &req, "Add item by username"); err != nil {
 			return
 		}
 
 		log := logger.FromContext(r.Context())
 
-		if err := svc.AddItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.ItemName, req.Quantity); err != nil {
-			log.Error("Failed to add item", "error", err, "username", req.Username, "item", req.ItemName)
-			statusCode, userMsg := mapServiceErrorToUserMessage(err)
-			respondError(w, statusCode, userMsg)
+		if err := svc.AddItemByUsername(r.Context(), req.Platform, req.Username, req.ItemName, req.Quantity); err != nil {
+			log.Error("Failed to add item by username", "error", err, "username", req.Username, "item", req.ItemName)
+			statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
 			return
 		}
 
-		log.Info("Item added successfully", "username", req.Username, "item", req.ItemName, "quantity", req.Quantity)
+		log.Info("Item added successfully by username", "username", req.Username, "item", req.ItemName, "quantity", req.Quantity)
 
 		respondJSON(w, http.StatusOK, SuccessResponse{Message: MsgItemAddedSuccess})
 	}
 }
 
-type RemoveItemRequest struct {
-	Platform   string `json:"platform" validate:"required,platform"`
-	PlatformID string `json:"platform_id" validate:"required"`
-	Username   string `json:"username" validate:"required,max=100,excludesall=\x00\n\r\t"`
-	ItemName   string `json:"item_name" validate:"required,max=100"`
-	Quantity   int    `json:"quantity" validate:"min=1,max=10000"`
+type RemoveItemByUsernameRequest struct {
+	Platform string `json:"platform" validate:"required,platform"`
+	Username string `json:"username" validate:"required,max=100,excludesall=\x00\n\r\t"`
+	ItemName string `json:"item_name" validate:"required,max=100"`
+	Quantity int    `json:"quantity" validate:"min=1,max=10000"`
 }
-
 type RemoveItemResponse struct {
 	Removed int `json:"removed"`
 }
 
-// HandleRemoveItem handles removing items from a user's inventory
-// @Summary Remove item from inventory
-// @Description Remove an item from a user's inventory
+// HandleRemoveItemByUsername handles removing items by username only
+// @Summary Remove item by username
+// @Description Remove an item from a user's inventory using only platform and username
 // @Tags inventory
 // @Accept json
 // @Produce json
-// @Param request body RemoveItemRequest true "Item details"
+// @Param request body RemoveItemByUsernameRequest true "Item details"
 // @Success 200 {object} RemoveItemResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /user/item/remove [post]
-func HandleRemoveItem(svc user.Service) http.HandlerFunc {
+// @Router /user/item/remove-by-username [post]
+func HandleRemoveItemByUsername(svc user.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var req RemoveItemRequest
-		if err := DecodeAndValidateRequest(r, w, &req, "Remove item"); err != nil {
+		var req RemoveItemByUsernameRequest
+		if err := DecodeAndValidateRequest(r, w, &req, "Remove item by username"); err != nil {
 			return
 		}
 
 		log := logger.FromContext(r.Context())
 
-		removed, err := svc.RemoveItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.ItemName, req.Quantity)
+		removed, err := svc.RemoveItemByUsername(r.Context(), req.Platform, req.Username, req.ItemName, req.Quantity)
 		if err != nil {
-			log.Error("Failed to remove item", "error", err, "username", req.Username, "item", req.ItemName)
+			log.Error("Failed to remove item by username", "error", err, "username", req.Username, "item", req.ItemName)
 			statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
 			return
 		}
 
-		log.Info("Item removed successfully", "username", req.Username, "item", req.ItemName, "removed", removed)
+		log.Info("Item removed successfully by username", "username", req.Username, "item", req.ItemName, "removed", removed)
 
 		respondJSON(w, http.StatusOK, RemoveItemResponse{Removed: removed})
 	}
@@ -104,7 +101,6 @@ type GiveItemRequest struct {
 	OwnerPlatformID    string `json:"owner_platform_id" validate:"required"`
 	Owner              string `json:"owner" validate:"required,max=100,excludesall=\x00\n\r\t"`
 	ReceiverPlatform   string `json:"receiver_platform" validate:"required,platform"`
-	ReceiverPlatformID string `json:"receiver_platform_id" validate:"required"`
 	Receiver           string `json:"receiver" validate:"required,max=100,excludesall=\x00\n\r\t"`
 	ItemName           string `json:"item_name" validate:"required,max=100"`
 	Quantity           int    `json:"quantity" validate:"min=1,max=10000"`
@@ -130,7 +126,7 @@ func HandleGiveItem(svc user.Service) http.HandlerFunc {
 
 		log := logger.FromContext(r.Context())
 
-		if err := svc.GiveItem(r.Context(), req.OwnerPlatform, req.OwnerPlatformID, req.Owner, req.ReceiverPlatform, req.ReceiverPlatformID, req.Receiver, req.ItemName, req.Quantity); err != nil {
+		if err := svc.GiveItem(r.Context(), req.OwnerPlatform, req.OwnerPlatformID, req.Owner, req.ReceiverPlatform, req.Receiver, req.ItemName, req.Quantity); err != nil {
 			log.Error("Failed to give item", "error", err, "owner", req.Owner, "receiver", req.Receiver, "item", req.ItemName)
 			statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
 			return
@@ -390,7 +386,10 @@ func HandleGetInventory(svc user.Service, progSvc progression.Service) http.Hand
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
 
-		platform := GetOptionalQueryParam(r, "platform", domain.PlatformDiscord)
+		platform, ok := GetQueryParam(r, w, "platform")
+		if !ok {
+			return
+		}
 
 		platformID, ok := GetQueryParam(r, w, "platform_id")
 		if !ok {
@@ -442,3 +441,47 @@ func HandleGetInventory(svc user.Service, progSvc progression.Service) http.Hand
 		})
 	}
 }
+
+
+// HandleGetInventoryByUsername gets inventory by username only
+// @Summary Get inventory by username
+// @Description Get a user's inventory using only platform and username
+// @Tags inventory
+// @Accept json
+// @Produce json
+// @Param platform query string true "Platform"
+// @Param username query string true "Username"
+// @Param filter query string false "Filter by item type"
+// @Success 200 {object} GetInventoryResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /user/inventory-by-username [get]
+func HandleGetInventoryByUsername(svc user.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromContext(r.Context())
+
+		platform := GetOptionalQueryParam(r, "platform", "discord")
+
+		username, ok := GetQueryParam(r, w, "username")
+		if !ok {
+			return
+		}
+		filter := r.URL.Query().Get("filter")
+
+		log.Debug("Get inventory by username request", "username", username, "filter", filter)
+
+		items, err := svc.GetInventoryByUsername(r.Context(), platform, username, filter)
+		if err != nil {
+			log.Error("Failed to get inventory by username", "error", err, "username", username)
+			statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
+			return
+		}
+
+		log.Info("Inventory retrieved by username", "username", username, "item_count", len(items))
+
+		respondJSON(w, http.StatusOK, GetInventoryResponse{
+			Items: items,
+		})
+	}
+}
+

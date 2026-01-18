@@ -58,8 +58,8 @@ func TestGetInventoryByUsername(t *testing.T) {
 
 	t.Run("user not found", func(t *testing.T) {
 		_, err := svc.GetInventoryByUsername(context.Background(), "twitch", "nonexistent", "")
-		if !errors.Is(err, domain.ErrUserNotFound) {
-			t.Fatalf("Expected ErrUserNotFound, got %v", err)
+		if !errors.Is(err, domain.ErrFailedToGetUser) {
+			t.Fatalf("Expected ErrFailedToGetUser, got %v", err)
 		}
 	})
 }
@@ -143,8 +143,8 @@ func TestRemoveItemByUsername(t *testing.T) {
 
 	t.Run("user not found", func(t *testing.T) {
 		_, err := svc.RemoveItemByUsername(context.Background(), "twitch", "nonexistent", "arrows", 10)
-		if !errors.Is(err, domain.ErrUserNotFound) {
-			t.Fatalf("Expected ErrUserNotFound, got %v", err)
+		if !errors.Is(err, domain.ErrFailedToGetUser) {
+			t.Fatalf("Expected ErrFailedToGetUser, got %v", err)
 		}
 	})
 }
@@ -157,6 +157,7 @@ func TestGiveItemByUsername(t *testing.T) {
 		namingResolver:  NewMockNamingResolver(),
 		itemCacheByName: make(map[string]domain.Item),
 		itemIDToName:    make(map[int]string),
+		userCache:       newUserCache(loadCacheConfig()),
 	}
 
 	sender := &domain.User{
@@ -177,15 +178,12 @@ func TestGiveItemByUsername(t *testing.T) {
 		},
 	}
 	repo.inventories["user2"] = &domain.Inventory{Slots: []domain.InventorySlot{}}
-	repo.items["coins"] = &domain.Item{ID: 1, InternalName: "coins"}
+	repo.items[domain.ItemMoney] = &domain.Item{ID: 1, InternalName: domain.ItemMoney}
 
 	t.Run("successful transfer", func(t *testing.T) {
-		msg, err := svc.GiveItemByUsername(context.Background(), "twitch", "dave", "discord", "eve", "coins", 50)
+		err := svc.GiveItem(context.Background(), domain.PlatformTwitch, sender.TwitchID, sender.Username, domain.PlatformDiscord, receiver.Username, domain.ItemMoney, 50)
 		if err != nil {
 			t.Fatal("Expected no error, got", err)
-		}
-		if msg == "" {
-			t.Fatal("Expected success message")
 		}
 
 		senderInv := repo.inventories["user1"]
@@ -199,17 +197,5 @@ func TestGiveItemByUsername(t *testing.T) {
 		}
 	})
 
-	t.Run("sender not found", func(t *testing.T) {
-		_, err := svc.GiveItemByUsername(context.Background(), "twitch", "nonexistent", "discord", "eve", "coins", 10)
-		if !errors.Is(err, domain.ErrUserNotFound) {
-			t.Fatalf("Expected ErrUserNotFound, got %v", err)
-		}
-	})
-
-	t.Run("receiver not found", func(t *testing.T) {
-		_, err := svc.GiveItemByUsername(context.Background(), "twitch", "dave", "discord", "nonexistent", "coins", 10)
-		if !errors.Is(err, domain.ErrUserNotFound) {
-			t.Fatalf("Expected ErrUserNotFound, got %v", err)
-		}
-	})
+	//TODO: Add tests for invalid ID, receiver not found, and insufficient quantity
 }

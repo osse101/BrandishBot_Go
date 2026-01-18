@@ -233,11 +233,11 @@ func TestUserService_InventoryOperations_Integration(t *testing.T) {
 		}
 
 		// Refresh IDs
-		userA, _ = repo.GetUserByUsername(ctx, "userA")
-		userB, _ = repo.GetUserByUsername(ctx, "userB")
+		userA, _ = repo.GetUserByUsername(ctx, userA.Username)
+		userB, _ = repo.GetUserByUsername(ctx, userB.Username)
 
 		// Give userA lots of money
-		moneyItem, err := repo.GetItemByName(ctx, "money")
+		moneyItem, err := repo.GetItemByName(ctx, domain.ItemMoney)
 		if err != nil || moneyItem == nil {
 			t.Fatalf("money item not found")
 		}
@@ -262,9 +262,9 @@ func TestUserService_InventoryOperations_Integration(t *testing.T) {
 				// Using GiveItem service method
 				err := svc.GiveItem(
 					ctx,
-					domain.PlatformTwitch, "twitchA", "userA",
-					domain.PlatformTwitch, "twitchB", "userB",
-					"money", transferAmount,
+					domain.PlatformTwitch, userA.TwitchID, userA.Username,
+					domain.PlatformTwitch, userB.Username,
+					domain.ItemMoney, transferAmount,
 				)
 				if err != nil {
 					errChan <- err
@@ -313,16 +313,16 @@ func TestUserService_InventoryOperations_Integration(t *testing.T) {
 		}
 
 		// Add item via service
-		err := svc.AddItem(ctx, domain.PlatformTwitch, "twitchC", "userC", "money", 50)
+		err := svc.AddItemByUsername(ctx, domain.PlatformTwitch, userC.Username, domain.ItemMoney, 50)
 		if err != nil {
 			t.Errorf("AddItem failed: %v", err)
 		}
 
 		// Verify
-		userC, _ = repo.GetUserByUsername(ctx, "userC")
+		userC, _ = repo.GetUserByUsername(ctx, userC.Username)
 		inv, _ := repo.GetInventory(ctx, userC.ID)
 
-		moneyItem, _ := repo.GetItemByName(ctx, "money")
+		moneyItem, _ := repo.GetItemByName(ctx, domain.ItemMoney)
 		found := false
 		for _, s := range inv.Slots {
 			if s.ItemID == moneyItem.ID {
@@ -366,7 +366,7 @@ func TestUserService_AsyncXPAward_Integration(t *testing.T) {
 
 	triggered := false
 	for i := 0; i < 5; i++ {
-		msg, err := svc.HandleSearch(ctx, domain.PlatformTwitch, "twitchD", "userD")
+		msg, err := svc.HandleSearch(ctx, domain.PlatformTwitch, userD.TwitchID, userD.Username)
 		if err == nil && (len(msg) > 0 && msg != domain.MsgSearchNearMiss && msg != domain.MsgSearchCriticalFail) {
 			triggered = true
 		}
@@ -424,7 +424,7 @@ func TestGetUserByPlatformUsername_Integration(t *testing.T) {
 	}
 
 	t.Run("successful lookup by username", func(t *testing.T) {
-		user, err := repo.GetUserByPlatformUsername(ctx, domain.PlatformTwitch, "alice")
+		user, err := repo.GetUserByPlatformUsername(ctx, domain.PlatformTwitch, alice.Username)
 		if err != nil {
 			t.Fatalf("Expected no error, got %v", err)
 		}
@@ -437,7 +437,7 @@ func TestGetUserByPlatformUsername_Integration(t *testing.T) {
 	})
 
 	t.Run("case insensitive lookup", func(t *testing.T) {
-		user, err := repo.GetUserByPlatformUsername(ctx, domain.PlatformTwitch, "ALICE")
+		user, err := repo.GetUserByPlatformUsername(ctx, domain.PlatformTwitch, strings.ToUpper(alice.Username))
 		if err != nil {
 			t.Fatalf("Expected no error with uppercase, got %v", err)
 		}
@@ -455,7 +455,7 @@ func TestGetUserByPlatformUsername_Integration(t *testing.T) {
 
 	t.Run("user without platform link", func(t *testing.T) {
 		// Bob doesn't have Discord
-		_, err := repo.GetUserByPlatformUsername(ctx, domain.PlatformDiscord, "Bob")
+		_, err := repo.GetUserByPlatformUsername(ctx, domain.PlatformDiscord, bob.Username)
 		if !errors.Is(err, domain.ErrUserNotFound) {
 			t.Errorf("Expected ErrUserNotFound for missing platform, got %v", err)
 		}
@@ -485,14 +485,14 @@ func TestUsernameBasedMethods_Integration(t *testing.T) {
 	diana, _ = repo.GetUserByUsername(ctx, "Diana")
 
 	t.Run("AddItemByUsername", func(t *testing.T) {
-		err := svc.AddItemByUsername(ctx, domain.PlatformTwitch, "charlie", "money", 100)
+		err := svc.AddItemByUsername(ctx, domain.PlatformTwitch, charlie.Username, domain.ItemMoney, 100)
 		if err != nil {
 			t.Fatalf("AddItemByUsername failed: %v", err)
 		}
 
 		// Verify in database
 		inv, _ := repo.GetInventory(ctx, charlie.ID)
-		moneyItem, _ := repo.GetItemByName(ctx, "money")
+		moneyItem, _ := repo.GetItemByName(ctx, domain.ItemMoney)
 		found := false
 		for _, slot := range inv.Slots {
 			if slot.ItemID == moneyItem.ID && slot.Quantity == 100 {
@@ -505,7 +505,7 @@ func TestUsernameBasedMethods_Integration(t *testing.T) {
 	})
 
 	t.Run("GetInventoryByUsername", func(t *testing.T) {
-		items, err := svc.GetInventoryByUsername(ctx, domain.PlatformTwitch, "charlie", "")
+		items, err := svc.GetInventoryByUsername(ctx, domain.PlatformTwitch, charlie.Username, "")
 		if err != nil {
 			t.Fatalf("GetInventoryByUsername failed: %v", err)
 		}
@@ -515,7 +515,7 @@ func TestUsernameBasedMethods_Integration(t *testing.T) {
 	})
 
 	t.Run("RemoveItemByUsername", func(t *testing.T) {
-		removed, err := svc.RemoveItemByUsername(ctx, domain.PlatformTwitch, "charlie", "money", 30)
+		removed, err := svc.RemoveItemByUsername(ctx, domain.PlatformTwitch, charlie.Username, domain.ItemMoney, 30)
 		if err != nil {
 			t.Fatalf("RemoveItemByUsername failed: %v", err)
 		}
@@ -525,7 +525,7 @@ func TestUsernameBasedMethods_Integration(t *testing.T) {
 
 		// Verify
 		inv, _ := repo.GetInventory(ctx, charlie.ID)
-		moneyItem, _ := repo.GetItemByName(ctx, "money")
+		moneyItem, _ := repo.GetItemByName(ctx, domain.ItemMoney)
 		for _, slot := range inv.Slots {
 			if slot.ItemID == moneyItem.ID && slot.Quantity != 70 {
 				t.Errorf("Expected 70 remaining, got %d", slot.Quantity)
@@ -535,17 +535,14 @@ func TestUsernameBasedMethods_Integration(t *testing.T) {
 
 	t.Run("GiveItemByUsername cross-platform", func(t *testing.T) {
 		// Give from Charlie (twitch) to Diana (discord) using usernames
-		msg, err := svc.GiveItemByUsername(ctx, domain.PlatformTwitch, "charlie", domain.PlatformDiscord, "diana", "money", 20)
+		err := svc.GiveItem(ctx, domain.PlatformTwitch, charlie.ID, charlie.Username, domain.PlatformDiscord, diana.Username, domain.ItemMoney, 20)
 		if err != nil {
 			t.Fatalf("GiveItemByUsername failed: %v", err)
-		}
-		if msg == "" {
-			t.Error("Expected success message")
 		}
 
 		// Verify Charlie has 50 left (70 - 20)
 		invCharlie, _ := repo.GetInventory(ctx, charlie.ID)
-		moneyItem, _ := repo.GetItemByName(ctx, "money")
+		moneyItem, _ := repo.GetItemByName(ctx, domain.ItemMoney)
 		for _, slot := range invCharlie.Slots {
 			if slot.ItemID == moneyItem.ID && slot.Quantity != 50 {
 				t.Errorf("Charlie should have 50, got %d", slot.Quantity)
@@ -570,13 +567,13 @@ func TestUsernameBasedMethods_Integration(t *testing.T) {
 
 	t.Run("Case insensitive service operations", func(t *testing.T) {
 		// All caps username should still work
-		err := svc.AddItemByUsername(ctx, domain.PlatformTwitch, "CHARLIE", "money", 10)
+		err := svc.AddItemByUsername(ctx, domain.PlatformTwitch, strings.ToUpper(charlie.Username), domain.ItemMoney, 10)
 		if err != nil {
 			t.Fatalf("Case insensitive AddItemByUsername failed: %v", err)
 		}
 
 		inv, _ := repo.GetInventory(ctx, charlie.ID)
-		moneyItem, _ := repo.GetItemByName(ctx, "money")
+		moneyItem, _ := repo.GetItemByName(ctx, domain.ItemMoney)
 		for _, slot := range inv.Slots {
 			if slot.ItemID == moneyItem.ID && slot.Quantity != 60 {
 				t.Errorf("Expected 60 (50 + 10), got %d", slot.Quantity)

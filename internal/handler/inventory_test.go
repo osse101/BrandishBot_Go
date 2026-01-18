@@ -32,22 +32,21 @@ func TestHandleAddItem(t *testing.T) {
 	}{
 		{
 			name: "Success",
-			requestBody: AddItemRequest{
+			requestBody: AddItemByUsernameRequest{
 				Platform:   domain.PlatformTwitch,
-				PlatformID: "test-id",
 				Username:   "testuser",
 				ItemName:   domain.ItemBlaster,
 				Quantity:   1,
 			},
 			setupMock: func(m *mocks.MockUserService) {
-				m.On("AddItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.ItemBlaster, 1).Return(nil)
+				m.On("AddItemByUsername", mock.Anything, domain.PlatformTwitch, "testuser", domain.ItemBlaster, 1).Return(nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `{"message":"Item added successfully"}`,
 		},
 		{
 			name: "Invalid Request - Missing Username",
-			requestBody: AddItemRequest{
+			requestBody: AddItemByUsernameRequest{
 				ItemName: domain.ItemBlaster,
 				Quantity: 1,
 			},
@@ -57,15 +56,14 @@ func TestHandleAddItem(t *testing.T) {
 		},
 		{
 			name: "Service Error",
-			requestBody: AddItemRequest{
+			requestBody: AddItemByUsernameRequest{
 				Platform:   domain.PlatformTwitch,
-				PlatformID: "test-id",
 				Username:   "testuser",
 				ItemName:   domain.ItemBlaster,
 				Quantity:   1,
 			},
 			setupMock: func(m *mocks.MockUserService) {
-				m.On("AddItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.ItemBlaster, 1).Return(errors.New(ErrMsgGenericServerError))
+				m.On("AddItemByUsername", mock.Anything, domain.PlatformTwitch, "testuser", domain.ItemBlaster, 1).Return(errors.New(ErrMsgGenericServerError))
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   ErrMsgGenericServerError,
@@ -77,10 +75,10 @@ func TestHandleAddItem(t *testing.T) {
 			mockSvc := mocks.NewMockUserService(t)
 			tt.setupMock(mockSvc)
 
-			handler := HandleAddItem(mockSvc)
+			handler := HandleAddItemByUsername(mockSvc)
 
 			body, _ := json.Marshal(tt.requestBody)
-			req := httptest.NewRequest("POST", "/user/item/add", bytes.NewBuffer(body))
+			req := httptest.NewRequest("POST", "/user/item/add-by-username", bytes.NewBuffer(body))
 			w := httptest.NewRecorder()
 
 			handler.ServeHTTP(w, req)
@@ -268,30 +266,28 @@ func TestHandleRemoveItem(t *testing.T) {
 	}{
 		{
 			name: "Success",
-			requestBody: RemoveItemRequest{
+			requestBody: RemoveItemByUsernameRequest{
 				Platform:   domain.PlatformTwitch,
-				PlatformID: "test-id",
 				Username:   "testuser",
 				ItemName:   domain.ItemBlaster,
 				Quantity:   1,
 			},
 			setupMock: func(m *mocks.MockUserService) {
-				m.On("RemoveItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.ItemBlaster, 1).Return(1, nil)
+				m.On("RemoveItemByUsername", mock.Anything, domain.PlatformTwitch, "testuser", domain.ItemBlaster, 1).Return(1, nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `{"removed":1}`,
 		},
 		{
 			name: "Service Error",
-			requestBody: RemoveItemRequest{
+			requestBody: RemoveItemByUsernameRequest{
 				Platform:   domain.PlatformTwitch,
-				PlatformID: "test-id",
 				Username:   "testuser",
 				ItemName:   domain.ItemBlaster,
 				Quantity:   1,
 			},
 			setupMock: func(m *mocks.MockUserService) {
-				m.On("RemoveItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.ItemBlaster, 1).Return(0, errors.New(ErrMsgGenericServerError))
+				m.On("RemoveItemByUsername", mock.Anything, domain.PlatformTwitch, "testuser", domain.ItemBlaster, 1).Return(0, errors.New(ErrMsgGenericServerError))
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   ErrMsgGenericServerError,
@@ -303,10 +299,10 @@ func TestHandleRemoveItem(t *testing.T) {
 			mockSvc := mocks.NewMockUserService(t)
 			tt.setupMock(mockSvc)
 
-			handler := HandleRemoveItem(mockSvc)
+			handler := HandleRemoveItemByUsername(mockSvc)
 
 			body, _ := json.Marshal(tt.requestBody)
-			req := httptest.NewRequest("POST", "/user/item/remove", bytes.NewBuffer(body))
+			req := httptest.NewRequest("POST", "/user/item/remove-by-username", bytes.NewBuffer(body))
 			w := httptest.NewRecorder()
 
 			handler.ServeHTTP(w, req)
@@ -337,13 +333,12 @@ func TestHandleGiveItem(t *testing.T) {
 				OwnerPlatformID:    "owner-id",
 				Owner:              "owner",
 				ReceiverPlatform:   domain.PlatformTwitch,
-				ReceiverPlatformID: "receiver-id",
 				Receiver:           "receiver",
 				ItemName:           domain.ItemBlaster,
 				Quantity:           1,
 			},
 			setupMock: func(m *mocks.MockUserService) {
-				m.On("GiveItem", mock.Anything, domain.PlatformTwitch, "owner-id", "owner", domain.PlatformTwitch, "receiver-id", "receiver", domain.ItemBlaster, 1).Return(nil)
+				m.On("GiveItem", mock.Anything, domain.PlatformTwitch, "owner-id", "owner", domain.PlatformTwitch, "receiver", domain.ItemBlaster, 1).Return(nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `{"message":"Item transferred successfully"}`,
@@ -355,13 +350,12 @@ func TestHandleGiveItem(t *testing.T) {
 				OwnerPlatformID:    "owner-id",
 				Owner:              "owner",
 				ReceiverPlatform:   domain.PlatformTwitch,
-				ReceiverPlatformID: "receiver-id",
 				Receiver:           "receiver",
 				ItemName:           domain.ItemBlaster,
 				Quantity:           1,
 			},
 			setupMock: func(m *mocks.MockUserService) {
-				m.On("GiveItem", mock.Anything, domain.PlatformTwitch, "owner-id", "owner", domain.PlatformTwitch, "receiver-id", "receiver", domain.ItemBlaster, 1).Return(errors.New(ErrMsgGenericServerError))
+				m.On("GiveItem", mock.Anything, domain.PlatformTwitch, "owner-id", "owner", domain.PlatformTwitch, "receiver", domain.ItemBlaster, 1).Return(errors.New(ErrMsgGenericServerError))
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   ErrMsgGenericServerError,

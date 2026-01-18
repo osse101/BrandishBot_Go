@@ -16,19 +16,14 @@ type InventoryItem struct {
 // InventoryService handles inventory operations
 type InventoryService interface {
 	// Inventory operations by platform ID
-	AddItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) error
-	AddItems(ctx context.Context, platform, platformID, username string, items map[string]int) error
-	RemoveItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (int, error)
 	UseItem(ctx context.Context, platform, platformID, username, itemName string, quantity int, targetUsername string) (string, error)
 	GetInventory(ctx context.Context, platform, platformID, username, filter string) ([]InventoryItem, error)
-	GiveItem(ctx context.Context, ownerPlatform, ownerPlatformID, ownerUsername, receiverPlatform, receiverPlatformID, receiverUsername, itemName string, quantity int) error
+	GiveItem(ctx context.Context, ownerPlatform, ownerPlatformID, ownerUsername, receiverPlatform, receiverUsername, itemName string, quantity int) error
 
 	// Inventory operations by username
 	AddItemByUsername(ctx context.Context, platform, username, itemName string, quantity int) error
 	RemoveItemByUsername(ctx context.Context, platform, username, itemName string, quantity int) (int, error)
-	UseItemByUsername(ctx context.Context, platform, username, itemName string, quantity int, targetUsername string) (string, error)
 	GetInventoryByUsername(ctx context.Context, platform, username, filter string) ([]InventoryItem, error)
-	GiveItemByUsername(ctx context.Context, fromPlatform, fromUsername, toPlatform, toUsername, itemName string, quantity int) (string, error)
 }
 
 // UserManagementService handles user lifecycle operations

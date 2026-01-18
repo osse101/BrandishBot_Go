@@ -88,7 +88,7 @@ func TestConcurrentAddItem_Integration(t *testing.T) {
 	for i := 0; i < concurrentOps; i++ {
 		go func() {
 			defer wg.Done()
-			err := svc.AddItem(ctx, domain.PlatformTwitch, "twitch_concurrent_123", "concurrency_test_user", itemName, 1)
+			err := svc.AddItemByUsername(ctx, domain.PlatformTwitch, testUser.Username, itemName, 1)
 			if err != nil {
 				errChan <- err
 			}

@@ -41,7 +41,7 @@ func TestHandleBlaster_Timeout(t *testing.T) {
 	item := domain.ItemBlaster
 
 	// Setup: Give alice a blaster
-	svc.AddItem(ctx, domain.PlatformTwitch, "alice123", "alice", item, 1)
+	svc.AddItemByUsername(ctx, domain.PlatformTwitch, "alice", item, 1)
 
 	// Use blaster on bob
 	msg, err := svc.UseItem(ctx, domain.PlatformTwitch, "alice123", "alice", item, 1, "bob")
