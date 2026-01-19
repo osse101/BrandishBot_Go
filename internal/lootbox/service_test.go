@@ -118,12 +118,6 @@ func TestOpenLootbox(t *testing.T) {
 	})
 
 	t.Run("Error Case: Box Not Found", func(t *testing.T) {
-		// OpenLootbox returns nil drops for missing table, currently logging warning.
-		// Service logic:
-		// if !ok {
-		// 	log.Warn("No loot table found for lootbox", "lootbox", lootboxName)
-		// 	return nil, nil // Empty result, not an error
-		// }
 		drops, err := svc.OpenLootbox(context.Background(), "invalid_box", 1)
 		assert.NoError(t, err)
 		assert.Empty(t, drops)

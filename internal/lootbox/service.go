@@ -60,6 +60,7 @@ type Service interface {
 type service struct {
 	repo       ItemRepository
 	lootTables map[string][]LootItem
+	rnd        func() float64
 }
 
 // NewService creates a new lootbox service
@@ -67,6 +68,7 @@ func NewService(repo ItemRepository, lootTablesPath string) (Service, error) {
 	svc := &service{
 		repo:       repo,
 		lootTables: make(map[string][]LootItem),
+		rnd:        utils.RandomFloat,
 	}
 
 	// Load loot tables from JSON file
@@ -205,7 +207,7 @@ func (s *service) convertToDroppedItems(ctx context.Context, dropCounts map[stri
 			continue
 		}
 
-		shine, mult := calculateShine(info.Chance)
+		shine, mult := s.calculateShine(info.Chance)
 		boostedValue := int(float64(item.BaseValue) * mult)
 
 		drops = append(drops, DroppedItem{
@@ -221,7 +223,7 @@ func (s *service) convertToDroppedItems(ctx context.Context, dropCounts map[stri
 }
 
 // calculateShine determines the visual rarity "shine" and value multiplier of a drop based on its chance
-func calculateShine(chance float64) (string, float64) {
+func (s *service) calculateShine(chance float64) (string, float64) {
 	shine := ShineCommon
 	if chance <= ShineLegendaryThreshold {
 		shine = ShineLegendary
@@ -235,7 +237,7 @@ func calculateShine(chance float64) (string, float64) {
 
 	// Critical Shine Upgrade: 1% chance to upgrade the shine level
 	// This adds a fun "Lucky!" moment for players
-	if utils.SecureRandomFloat() < CriticalShineUpgradeChance {
+	if s.rnd() < CriticalShineUpgradeChance {
 		switch shine {
 		case ShineCommon:
 			shine = ShineUncommon
