@@ -64,6 +64,8 @@ type service struct {
 	itemCacheByName map[string]domain.Item // Primary cache by internal name
 	itemIDToName    map[int]string         // Index for ID -> name lookups
 	itemCacheMu     sync.RWMutex           // Protects both maps
+
+	rnd func() float64 // For RNG - allows deterministic testing
 }
 
 // Compile-time interface checks
@@ -119,6 +121,7 @@ func NewService(repo repository.User, statsService stats.Service, jobService Job
 		itemCacheByName: make(map[string]domain.Item),
 		itemIDToName:    make(map[int]string),
 		userCache:       newUserCache(loadCacheConfig()),
+		rnd:             utils.RandomFloat,
 	}
 }
 
@@ -855,7 +858,7 @@ func (s *service) executeSearch(ctx context.Context, user *domain.User) (string,
 	params := s.calculateSearchParameters(ctx, user)
 
 	// Perform search roll
-	roll := utils.RandomFloat()
+	roll := s.rnd()
 
 	var resultMessage string
 
