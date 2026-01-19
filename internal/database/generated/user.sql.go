@@ -707,22 +707,6 @@ func (q *Queries) GetUserByPlatformUsername(ctx context.Context, arg GetUserByPl
 	return i, err
 }
 
-const getUserByUsername = `-- name: GetUserByUsername :one
-SELECT user_id, username, created_at, updated_at FROM users WHERE username = $1
-`
-
-func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User, error) {
-	row := q.db.QueryRow(ctx, getUserByUsername, username)
-	var i User
-	err := row.Scan(
-		&i.UserID,
-		&i.Username,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
 const getUserPlatformLinks = `-- name: GetUserPlatformLinks :many
 SELECT p.name, upl.platform_user_id
 FROM user_platform_links upl

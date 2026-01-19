@@ -107,14 +107,6 @@ func (m *MockRepo) GetItemByID(ctx context.Context, id int) (*domain.Item, error
 	return args.Get(0).(*domain.Item), args.Error(1)
 }
 
-func (m *MockRepo) GetUserByUsername(ctx context.Context, username string) (*domain.User, error) {
-	args := m.Called(ctx, username)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*domain.User), args.Error(1)
-}
-
 func (m *MockRepo) GetSellablePrices(ctx context.Context) ([]domain.Item, error) {
 	args := m.Called(ctx)
 	if args.Get(0) == nil {

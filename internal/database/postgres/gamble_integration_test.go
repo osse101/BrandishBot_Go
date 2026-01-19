@@ -107,8 +107,8 @@ func TestGambleLifecycle_Integration(t *testing.T) {
 	require.NoError(t, repo.UpsertUser(ctx, userB))
 
 	// Refresh to get IDs
-	userA, _ = repo.GetUserByUsername(ctx, "UserA")
-	userB, _ = repo.GetUserByUsername(ctx, "UserB")
+	userA, _ = repo.GetUserByPlatformUsername(ctx, domain.PlatformTwitch, "UserA")
+	userB, _ = repo.GetUserByPlatformUsername(ctx, domain.PlatformTwitch, "UserB")
 
 	// Verify Item "lootbox_tier1" exists
 	// GetItemByName in UserRepository looks up by internal name (despite the name)
@@ -216,7 +216,7 @@ func TestGamble_Concurrency_Join(t *testing.T) {
 	// Setup host
 	host := &domain.User{Username: "Host", TwitchID: "twitchHost"}
 	require.NoError(t, repo.UpsertUser(ctx, host))
-	host, _ = repo.GetUserByUsername(ctx, "Host")
+	host, _ = repo.GetUserByPlatformUsername(ctx, domain.PlatformTwitch, "Host")
 
 	lbItem, _ := repo.GetItemByName(ctx, "lootbox_tier1")
 	invHost := domain.Inventory{Slots: []domain.InventorySlot{{ItemID: lbItem.ID, Quantity: 10}}}
@@ -247,7 +247,7 @@ func TestGamble_Concurrency_Join(t *testing.T) {
 				errChan <- err
 				return
 			}
-			u, _ = repo.GetUserByUsername(ctx, uname)
+			u, _ = repo.GetUserByPlatformUsername(ctx, domain.PlatformTwitch, uname)
 			inv := domain.Inventory{Slots: []domain.InventorySlot{{ItemID: lbItem.ID, Quantity: 1}}}
 			repo.UpdateInventory(ctx, u.ID, inv)
 

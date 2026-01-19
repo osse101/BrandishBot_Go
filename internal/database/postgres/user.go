@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -156,7 +157,7 @@ func (r *UserRepository) GetUserByPlatformID(ctx context.Context, platform, plat
 // GetUserByPlatformUsername finds a user by platform and username (case-insensitive)
 func (r *UserRepository) GetUserByPlatformUsername(ctx context.Context, platform, username string) (*domain.User, error) {
 	row, err := r.q.GetUserByPlatformUsername(ctx, generated.GetUserByPlatformUsernameParams{
-		Lower: username,
+		Lower: strings.ToLower(username),
 		Name:  platform,
 	})
 	if err != nil {
@@ -237,24 +238,6 @@ func (r *UserRepository) GetAllItems(ctx context.Context) ([]domain.Item, error)
 // GetItemByID retrieves an item by its ID
 func (r *UserRepository) GetItemByID(ctx context.Context, id int) (*domain.Item, error) {
 	return getItemByID(ctx, r.q, id)
-}
-
-// GetUserByUsername retrieves a user by their username
-func (r *UserRepository) GetUserByUsername(ctx context.Context, username string) (*domain.User, error) {
-	row, err := r.q.GetUserByUsername(ctx, username)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("failed to get user by username: %w", err)
-	}
-
-	return &domain.User{
-		ID:        row.UserID.String(),
-		Username:  row.Username,
-		CreatedAt: row.CreatedAt.Time,
-		UpdatedAt: row.UpdatedAt.Time,
-	}, nil
 }
 
 // GetLastCooldown retrieves the last time a user performed an action

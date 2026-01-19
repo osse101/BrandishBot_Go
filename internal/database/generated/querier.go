@@ -105,7 +105,6 @@ type Querier interface {
 	GetUserByID(ctx context.Context, userID uuid.UUID) (User, error)
 	GetUserByPlatformID(ctx context.Context, arg GetUserByPlatformIDParams) (GetUserByPlatformIDRow, error)
 	GetUserByPlatformUsername(ctx context.Context, arg GetUserByPlatformUsernameParams) (GetUserByPlatformUsernameRow, error)
-	GetUserByUsername(ctx context.Context, username string) (User, error)
 	GetUserEngagementAggregated(ctx context.Context, userID string) ([]GetUserEngagementAggregatedRow, error)
 	GetUserEventCounts(ctx context.Context, arg GetUserEventCountsParams) ([]GetUserEventCountsRow, error)
 	GetUserEventsByType(ctx context.Context, arg GetUserEventsByTypeParams) ([]StatsEvent, error)

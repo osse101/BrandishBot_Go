@@ -102,9 +102,9 @@ func TestUserRepository_Integration(t *testing.T) {
 		}
 
 		// Verify retrieval
-		retrieved, err := repo.GetUserByUsername(ctx, "testuser")
+		retrieved, err := repo.GetUserByPlatformUsername(ctx, domain.PlatformTwitch, "testuser")
 		if err != nil {
-			t.Fatalf("GetUserByUsername failed: %v", err)
+			t.Fatalf("GetUserByPlatformUsername failed: %v", err)
 		}
 		if retrieved.Username != "testuser" {
 			t.Errorf("expected username testuser, got %s", retrieved.Username)
@@ -330,10 +330,10 @@ func TestUserRepository_Integration(t *testing.T) {
 		}
 	})
 
-	t.Run("GetUserByUsername - Not Found", func(t *testing.T) {
-		user, err := repo.GetUserByUsername(ctx, "nonexistent_user_xyz")
-		if err != nil {
-			t.Fatalf("GetUserByUsername failed: %v", err)
+	t.Run("GetUserByPlatformUsername - Not Found", func(t *testing.T) {
+		user, err := repo.GetUserByPlatformUsername(ctx, domain.PlatformTwitch, "nonexistent_user_xyz")
+		if err != nil && err != domain.ErrUserNotFound {
+			t.Fatalf("GetUserByPlatformUsername failed: %v", err)
 		}
 		if user != nil {
 			t.Error("expected nil for non-existent user")

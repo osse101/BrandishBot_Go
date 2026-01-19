@@ -55,9 +55,6 @@ JOIN platforms p ON upl.platform_id = p.platform_id
 WHERE LOWER(u.username) = LOWER($1)
 AND p.name = $2;
 
--- name: GetUserByUsername :one
-SELECT user_id, username, created_at, updated_at FROM users WHERE username = $1;
-
 -- name: GetItemByName :one
 SELECT 
     i.item_id, i.internal_name, i.public_name, i.default_display, i.item_description, i.base_value, i.handler,

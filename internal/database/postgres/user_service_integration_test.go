@@ -233,8 +233,8 @@ func TestUserService_InventoryOperations_Integration(t *testing.T) {
 		}
 
 		// Refresh IDs
-		userA, _ = repo.GetUserByUsername(ctx, userA.Username)
-		userB, _ = repo.GetUserByUsername(ctx, userB.Username)
+		userA, _ = repo.GetUserByPlatformUsername(ctx, domain.PlatformTwitch, userA.Username)
+		userB, _ = repo.GetUserByPlatformUsername(ctx, domain.PlatformTwitch, userB.Username)
 
 		// Give userA lots of money
 		moneyItem, err := repo.GetItemByName(ctx, domain.ItemMoney)
@@ -319,7 +319,7 @@ func TestUserService_InventoryOperations_Integration(t *testing.T) {
 		}
 
 		// Verify
-		userC, _ = repo.GetUserByUsername(ctx, userC.Username)
+		userC, _ = repo.GetUserByPlatformUsername(ctx, domain.PlatformTwitch, userC.Username)
 		inv, _ := repo.GetInventory(ctx, userC.ID)
 
 		moneyItem, _ := repo.GetItemByName(ctx, domain.ItemMoney)
@@ -481,8 +481,8 @@ func TestUsernameBasedMethods_Integration(t *testing.T) {
 	}
 
 	// Refresh IDs
-	charlie, _ = repo.GetUserByUsername(ctx, "Charlie")
-	diana, _ = repo.GetUserByUsername(ctx, "Diana")
+	charlie, _ = repo.GetUserByPlatformUsername(ctx, domain.PlatformTwitch, "Charlie")
+	diana, _ = repo.GetUserByPlatformUsername(ctx, domain.PlatformDiscord, "Diana")
 
 	t.Run("AddItemByUsername", func(t *testing.T) {
 		err := svc.AddItemByUsername(ctx, domain.PlatformTwitch, charlie.Username, domain.ItemMoney, 100)
@@ -535,7 +535,7 @@ func TestUsernameBasedMethods_Integration(t *testing.T) {
 
 	t.Run("GiveItemByUsername cross-platform", func(t *testing.T) {
 		// Give from Charlie (twitch) to Diana (discord) using usernames
-		err := svc.GiveItem(ctx, domain.PlatformTwitch, charlie.ID, charlie.Username, domain.PlatformDiscord, diana.Username, domain.ItemMoney, 20)
+		err := svc.GiveItem(ctx, domain.PlatformTwitch, charlie.TwitchID, charlie.Username, domain.PlatformDiscord, diana.Username, domain.ItemMoney, 20)
 		if err != nil {
 			t.Fatalf("GiveItemByUsername failed: %v", err)
 		}
