@@ -12,62 +12,25 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/mocks"
 )
-
-func TestHandleGetAllJobs(t *testing.T) {
-	svc := mocks.NewMockJobService(t)
-	h := NewJobHandler(svc)
-
-	jobs := []domain.Job{
-		{ID: 1, JobKey: "j1", DisplayName: "Job 1"},
-	}
-
-	svc.On("GetAllJobs", mock.Anything).Return(jobs, nil)
-
-	req := httptest.NewRequest("GET", "/jobs", nil)
-	w := httptest.NewRecorder()
-
-	h.HandleGetAllJobs(w, req)
-
-	resp := w.Result()
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-
-	var result map[string][]domain.Job
-	json.NewDecoder(resp.Body).Decode(&result)
-
-	assert.Len(t, result["jobs"], 1)
-	assert.Equal(t, "j1", result["jobs"][0].JobKey)
-}
-
-func TestHandleGetAllJobs_Error(t *testing.T) {
-	svc := mocks.NewMockJobService(t)
-	h := NewJobHandler(svc)
-
-	svc.On("GetAllJobs", mock.Anything).Return(nil, errors.New("db error"))
-
-	req := httptest.NewRequest("GET", "/jobs", nil)
-	w := httptest.NewRecorder()
-
-	h.HandleGetAllJobs(w, req)
-
-	assert.Equal(t, http.StatusInternalServerError, w.Result().StatusCode)
-}
 
 func TestHandleGetUserJobs(t *testing.T) {
 	svc := mocks.NewMockJobService(t)
 	h := NewJobHandler(svc)
 
-	userID := "u1"
+	platform := domain.PlatformTwitch
+	platformID := "u1"
 	userJobs := []domain.UserJobInfo{
-		{JobKey: "j1", Level: 5},
+		{JobKey: job.JobKeyBlacksmith, Level: 5},
 	}
-	primaryJob := &domain.UserJobInfo{JobKey: "j1", Level: 5}
+	primaryJob := &domain.UserJobInfo{JobKey: job.JobKeyBlacksmith, Level: 5}
 
-	svc.On("GetUserJobs", mock.Anything, userID).Return(userJobs, nil)
-	svc.On("GetPrimaryJob", mock.Anything, userID).Return(primaryJob, nil)
+	svc.On("GetUserJobsByPlatform", mock.Anything, platform, platformID).Return(userJobs, nil)
+	svc.On("GetPrimaryJob", mock.Anything, platform, platformID).Return(primaryJob, nil)
 
-	req := httptest.NewRequest("GET", "/jobs?user_id=u1", nil)
+	req := httptest.NewRequest("GET", "/jobs?platform=twitch&platform_id=u1", nil)
 	w := httptest.NewRecorder()
 
 	h.HandleGetUserJobs(w, req)
@@ -78,7 +41,7 @@ func TestHandleGetUserJobs(t *testing.T) {
 	var result map[string]interface{}
 	json.NewDecoder(resp.Body).Decode(&result)
 
-	assert.Equal(t, userID, result["user_id"])
+	assert.Equal(t, platformID, result["platform_id"])
 	// JSON unmarshaling numbers makes them float64
 	jobs := result["jobs"].([]interface{})
 	assert.Len(t, jobs, 1)
@@ -101,20 +64,21 @@ func TestHandleAwardXP(t *testing.T) {
 	h := NewJobHandler(svc)
 
 	reqBody := AwardXPRequest{
-		UserID:   "u1",
-		JobKey:   "j1",
-		XPAmount: 100,
-		Source:   "test",
+		Platform:       domain.PlatformTwitch,
+		PlatformID:     "u1",
+		JobKey:         job.JobKeyBlacksmith,
+		XPAmount:       100,
+		Source:         "test",
 	}
 	body, _ := json.Marshal(reqBody)
 
 	awardResult := &domain.XPAwardResult{
-		JobKey:   "j1",
+		JobKey:   job.JobKeyBlacksmith,
 		XPGained: 100,
 		NewLevel: 1,
 	}
 
-	svc.On("AwardXP", mock.Anything, "u1", "j1", 100, "test", mock.Anything).Return(awardResult, nil)
+	svc.On("AwardXPByPlatform", mock.Anything, domain.PlatformTwitch, "u1", job.JobKeyBlacksmith, 100, "test", mock.Anything).Return(awardResult, nil)
 
 	req := httptest.NewRequest("POST", "/jobs/award-xp", bytes.NewReader(body))
 	w := httptest.NewRecorder()
@@ -148,9 +112,9 @@ func TestHandleGetUserJobs_ServiceError(t *testing.T) {
 	svc := mocks.NewMockJobService(t)
 	h := NewJobHandler(svc)
 
-	svc.On("GetUserJobs", mock.Anything, "u1").Return(nil, errors.New("database error"))
+	svc.On("GetUserJobsByPlatform", mock.Anything, "twitch", "u1").Return(nil, errors.New("database error"))
 
-	req := httptest.NewRequest("GET", "/jobs?user_id=u1", nil)
+	req := httptest.NewRequest("GET", "/jobs?platform=twitch&platform_id=u1", nil)
 	w := httptest.NewRecorder()
 
 	h.HandleGetUserJobs(w, req)
@@ -163,13 +127,13 @@ func TestHandleGetUserJobs_NoPrimaryJob(t *testing.T) {
 	h := NewJobHandler(svc)
 
 	userJobs := []domain.UserJobInfo{
-		{JobKey: "j1", Level: 5},
+		{JobKey: job.JobKeyBlacksmith, Level: 5},
 	}
 
-	svc.On("GetUserJobs", mock.Anything, "u1").Return(userJobs, nil)
-	svc.On("GetPrimaryJob", mock.Anything, "u1").Return(nil, nil) // No primary (edge case)
+	svc.On("GetUserJobsByPlatform", mock.Anything, "twitch", "u1").Return(userJobs, nil)
+	svc.On("GetPrimaryJob", mock.Anything, "twitch", "u1").Return(nil, nil) // No primary (edge case)
 
-	req := httptest.NewRequest("GET", "/jobs?user_id=u1", nil)
+	req := httptest.NewRequest("GET", "/jobs?platform=twitch&platform_id=u1", nil)
 	w := httptest.NewRecorder()
 
 	h.HandleGetUserJobs(w, req)
@@ -188,14 +152,15 @@ func TestHandleAwardXP_ServiceError_DailyCap(t *testing.T) {
 	h := NewJobHandler(svc)
 
 	reqBody := AwardXPRequest{
-		UserID:   "u1",
-		JobKey:   "blacksmith",
-		XPAmount: 100,
-		Source:   "test",
+		Platform:       domain.PlatformTwitch,
+		PlatformID:     "u1",
+		JobKey:         job.JobKeyBlacksmith,
+		XPAmount:       100,
+		Source:         "test",
 	}
 	body, _ := json.Marshal(reqBody)
 
-	svc.On("AwardXP", mock.Anything, "u1", "blacksmith", 100, "test", mock.Anything).Return(nil, errors.New("daily XP cap reached for blacksmith"))
+	svc.On("AwardXPByPlatform", mock.Anything, domain.PlatformTwitch, "u1", job.JobKeyBlacksmith, 100, "test", mock.Anything).Return(nil, errors.New("daily XP cap reached for blacksmith"))
 
 	req := httptest.NewRequest("POST", "/jobs/award-xp", bytes.NewReader(body))
 	w := httptest.NewRecorder()
@@ -211,10 +176,11 @@ func TestHandleAwardXP_NegativeXP(t *testing.T) {
 	h := NewJobHandler(svc)
 
 	reqBody := AwardXPRequest{
-		UserID:   "u1",
-		JobKey:   "j1",
-		XPAmount: -50, // Negative XP
-		Source:   "test",
+		Platform:       domain.PlatformTwitch,
+		PlatformID:     "u1",
+		JobKey:         job.JobKeyBlacksmith,
+		XPAmount:       -50, // Negative XP
+		Source:         "test",
 	}
 	body, _ := json.Marshal(reqBody)
 
@@ -232,10 +198,11 @@ func TestHandleAwardXP_ZeroXP(t *testing.T) {
 	h := NewJobHandler(svc)
 
 	reqBody := AwardXPRequest{
-		UserID:   "u1",
-		JobKey:   "j1",
-		XPAmount: 0, // Zero XP
-		Source:   "test",
+		Platform:       domain.PlatformTwitch,
+		PlatformID:     "u1",
+		JobKey:         job.JobKeyBlacksmith,
+		XPAmount:       0, // Zero XP
+		Source:         "test",
 	}
 	body, _ := json.Marshal(reqBody)
 
@@ -266,7 +233,7 @@ func TestHandleAwardXP_MissingUserID(t *testing.T) {
 
 	reqBody := AwardXPRequest{
 		// UserID missing
-		JobKey:   "j1",
+		JobKey:   job.JobKeyExplorer,
 		XPAmount: 100,
 		Source:   "test",
 	}
@@ -285,10 +252,11 @@ func TestHandleAwardXP_MissingJobKey(t *testing.T) {
 	h := NewJobHandler(svc)
 
 	reqBody := AwardXPRequest{
-		UserID: "u1",
+		Platform:       domain.PlatformTwitch,
+		PlatformID:     "u1",
 		// JobKey missing
-		XPAmount: 100,
-		Source:   "test",
+		XPAmount:       100,
+		Source:         "test",
 	}
 	body, _ := json.Marshal(reqBody)
 
@@ -305,14 +273,15 @@ func TestHandleAwardXP_ServiceError_JobNotFound(t *testing.T) {
 	h := NewJobHandler(svc)
 
 	reqBody := AwardXPRequest{
-		UserID:   "u1",
-		JobKey:   "invalid_job",
-		XPAmount: 100,
-		Source:   "test",
+		Platform:       domain.PlatformTwitch,
+		PlatformID:     "u1",
+		JobKey:         "invalid_job",
+		XPAmount:       100,
+		Source:         "test",
 	}
 	body, _ := json.Marshal(reqBody)
 
-	svc.On("AwardXP", mock.Anything, "u1", "invalid_job", 100, "test", mock.Anything).Return(nil, errors.New("job not found: invalid_job"))
+	svc.On("AwardXPByPlatform", mock.Anything, domain.PlatformTwitch, "u1", "invalid_job", 100, "test", mock.Anything).Return(nil, errors.New("job not found: invalid_job"))
 
 	req := httptest.NewRequest("POST", "/jobs/award-xp", bytes.NewReader(body))
 	w := httptest.NewRecorder()
@@ -328,14 +297,15 @@ func TestHandleAwardXP_ServiceError_FeatureLocked(t *testing.T) {
 	h := NewJobHandler(svc)
 
 	reqBody := AwardXPRequest{
-		UserID:   "u1",
-		JobKey:   "blacksmith",
-		XPAmount: 100,
-		Source:   "test",
+		Platform:       domain.PlatformTwitch,
+		PlatformID:     "u1",
+		JobKey:         job.JobKeyBlacksmith,
+		XPAmount:       100,
+		Source:         "test",
 	}
 	body, _ := json.Marshal(reqBody)
 
-	svc.On("AwardXP", mock.Anything, "u1", "blacksmith", 100, "test", mock.Anything).Return(nil, errors.New("jobs XP system not unlocked"))
+	svc.On("AwardXPByPlatform", mock.Anything, domain.PlatformTwitch, "u1", job.JobKeyBlacksmith, 100, "test", mock.Anything).Return(nil, errors.New("jobs XP system not unlocked"))
 
 	req := httptest.NewRequest("POST", "/jobs/award-xp", bytes.NewReader(body))
 	w := httptest.NewRecorder()
@@ -351,10 +321,11 @@ func TestHandleAwardXP_WithMetadata(t *testing.T) {
 	h := NewJobHandler(svc)
 
 	reqBody := AwardXPRequest{
-		UserID:   "u1",
-		JobKey:   "blacksmith",
-		XPAmount: 50,
-		Source:   "upgrade",
+		Platform:       domain.PlatformTwitch,
+		PlatformID:     "u1",
+		JobKey:         job.JobKeyBlacksmith,
+		XPAmount:       50,
+		Source:         "upgrade",
 		Metadata: map[string]interface{}{
 			"item_quality": "rare",
 			"recipe_id":    123,
@@ -363,12 +334,12 @@ func TestHandleAwardXP_WithMetadata(t *testing.T) {
 	body, _ := json.Marshal(reqBody)
 
 	awardResult := &domain.XPAwardResult{
-		JobKey:   "blacksmith",
+		JobKey:   job.JobKeyBlacksmith,
 		XPGained: 50,
 		NewLevel: 2,
 	}
 
-	svc.On("AwardXP", mock.Anything, "u1", "blacksmith", 50, "upgrade", mock.MatchedBy(func(m map[string]interface{}) bool {
+	svc.On("AwardXPByPlatform", mock.Anything, domain.PlatformTwitch, "u1", job.JobKeyBlacksmith, 50, "upgrade", mock.MatchedBy(func(m map[string]interface{}) bool {
 		return m["item_quality"] == "rare"
 	})).Return(awardResult, nil)
 

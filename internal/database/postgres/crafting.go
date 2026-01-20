@@ -247,8 +247,6 @@ func (r *CraftingRepository) GetAssociatedUpgradeRecipeID(ctx context.Context, d
 	return int(id), nil
 }
 
-// Recipe loader operations
-
 // GetAllCraftingRecipes retrieves all crafting recipes
 func (r *CraftingRepository) GetAllCraftingRecipes(ctx context.Context) ([]domain.Recipe, error) {
 	rows, err := r.q.GetAllCraftingRecipes(ctx)

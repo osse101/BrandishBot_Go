@@ -86,6 +86,70 @@ func (_c *MockJobService_AwardXP_Call) RunAndReturn(run func(context.Context, st
 	return _c
 }
 
+// AwardXPByPlatform provides a mock function with given fields: ctx, platform, platformID, jobKey, baseAmount, source, metadata
+func (_m *MockJobService) AwardXPByPlatform(ctx context.Context, platform string, platformID string, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error) {
+	ret := _m.Called(ctx, platform, platformID, jobKey, baseAmount, source, metadata)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AwardXPByPlatform")
+	}
+
+	var r0 *domain.XPAwardResult
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, int, string, map[string]interface{}) (*domain.XPAwardResult, error)); ok {
+		return rf(ctx, platform, platformID, jobKey, baseAmount, source, metadata)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, int, string, map[string]interface{}) *domain.XPAwardResult); ok {
+		r0 = rf(ctx, platform, platformID, jobKey, baseAmount, source, metadata)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*domain.XPAwardResult)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, string, int, string, map[string]interface{}) error); ok {
+		r1 = rf(ctx, platform, platformID, jobKey, baseAmount, source, metadata)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockJobService_AwardXPByPlatform_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AwardXPByPlatform'
+type MockJobService_AwardXPByPlatform_Call struct {
+	*mock.Call
+}
+
+// AwardXPByPlatform is a helper method to define mock.On call
+//   - ctx context.Context
+//   - platform string
+//   - platformID string
+//   - jobKey string
+//   - baseAmount int
+//   - source string
+//   - metadata map[string]interface{}
+func (_e *MockJobService_Expecter) AwardXPByPlatform(ctx interface{}, platform interface{}, platformID interface{}, jobKey interface{}, baseAmount interface{}, source interface{}, metadata interface{}) *MockJobService_AwardXPByPlatform_Call {
+	return &MockJobService_AwardXPByPlatform_Call{Call: _e.mock.On("AwardXPByPlatform", ctx, platform, platformID, jobKey, baseAmount, source, metadata)}
+}
+
+func (_c *MockJobService_AwardXPByPlatform_Call) Run(run func(ctx context.Context, platform string, platformID string, jobKey string, baseAmount int, source string, metadata map[string]interface{})) *MockJobService_AwardXPByPlatform_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(string), args[4].(int), args[5].(string), args[6].(map[string]interface{}))
+	})
+	return _c
+}
+
+func (_c *MockJobService_AwardXPByPlatform_Call) Return(_a0 *domain.XPAwardResult, _a1 error) *MockJobService_AwardXPByPlatform_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockJobService_AwardXPByPlatform_Call) RunAndReturn(run func(context.Context, string, string, string, int, string, map[string]interface{}) (*domain.XPAwardResult, error)) *MockJobService_AwardXPByPlatform_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CalculateLevel provides a mock function with given fields: totalXP
 func (_m *MockJobService) CalculateLevel(totalXP int64) int {
 	ret := _m.Called(totalXP)
@@ -307,9 +371,9 @@ func (_c *MockJobService_GetJobLevel_Call) RunAndReturn(run func(context.Context
 	return _c
 }
 
-// GetPrimaryJob provides a mock function with given fields: ctx, userID
-func (_m *MockJobService) GetPrimaryJob(ctx context.Context, userID string) (*domain.UserJobInfo, error) {
-	ret := _m.Called(ctx, userID)
+// GetPrimaryJob provides a mock function with given fields: ctx, platform, platformID
+func (_m *MockJobService) GetPrimaryJob(ctx context.Context, platform string, platformID string) (*domain.UserJobInfo, error) {
+	ret := _m.Called(ctx, platform, platformID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetPrimaryJob")
@@ -317,19 +381,19 @@ func (_m *MockJobService) GetPrimaryJob(ctx context.Context, userID string) (*do
 
 	var r0 *domain.UserJobInfo
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) (*domain.UserJobInfo, error)); ok {
-		return rf(ctx, userID)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) (*domain.UserJobInfo, error)); ok {
+		return rf(ctx, platform, platformID)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) *domain.UserJobInfo); ok {
-		r0 = rf(ctx, userID)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) *domain.UserJobInfo); ok {
+		r0 = rf(ctx, platform, platformID)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*domain.UserJobInfo)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, userID)
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = rf(ctx, platform, platformID)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -344,14 +408,15 @@ type MockJobService_GetPrimaryJob_Call struct {
 
 // GetPrimaryJob is a helper method to define mock.On call
 //   - ctx context.Context
-//   - userID string
-func (_e *MockJobService_Expecter) GetPrimaryJob(ctx interface{}, userID interface{}) *MockJobService_GetPrimaryJob_Call {
-	return &MockJobService_GetPrimaryJob_Call{Call: _e.mock.On("GetPrimaryJob", ctx, userID)}
+//   - platform string
+//   - platformID string
+func (_e *MockJobService_Expecter) GetPrimaryJob(ctx interface{}, platform interface{}, platformID interface{}) *MockJobService_GetPrimaryJob_Call {
+	return &MockJobService_GetPrimaryJob_Call{Call: _e.mock.On("GetPrimaryJob", ctx, platform, platformID)}
 }
 
-func (_c *MockJobService_GetPrimaryJob_Call) Run(run func(ctx context.Context, userID string)) *MockJobService_GetPrimaryJob_Call {
+func (_c *MockJobService_GetPrimaryJob_Call) Run(run func(ctx context.Context, platform string, platformID string)) *MockJobService_GetPrimaryJob_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
 	})
 	return _c
 }
@@ -361,7 +426,67 @@ func (_c *MockJobService_GetPrimaryJob_Call) Return(_a0 *domain.UserJobInfo, _a1
 	return _c
 }
 
-func (_c *MockJobService_GetPrimaryJob_Call) RunAndReturn(run func(context.Context, string) (*domain.UserJobInfo, error)) *MockJobService_GetPrimaryJob_Call {
+func (_c *MockJobService_GetPrimaryJob_Call) RunAndReturn(run func(context.Context, string, string) (*domain.UserJobInfo, error)) *MockJobService_GetPrimaryJob_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetUserByPlatformID provides a mock function with given fields: ctx, platform, platformID
+func (_m *MockJobService) GetUserByPlatformID(ctx context.Context, platform string, platformID string) (*domain.User, error) {
+	ret := _m.Called(ctx, platform, platformID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetUserByPlatformID")
+	}
+
+	var r0 *domain.User
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) (*domain.User, error)); ok {
+		return rf(ctx, platform, platformID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) *domain.User); ok {
+		r0 = rf(ctx, platform, platformID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*domain.User)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = rf(ctx, platform, platformID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockJobService_GetUserByPlatformID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetUserByPlatformID'
+type MockJobService_GetUserByPlatformID_Call struct {
+	*mock.Call
+}
+
+// GetUserByPlatformID is a helper method to define mock.On call
+//   - ctx context.Context
+//   - platform string
+//   - platformID string
+func (_e *MockJobService_Expecter) GetUserByPlatformID(ctx interface{}, platform interface{}, platformID interface{}) *MockJobService_GetUserByPlatformID_Call {
+	return &MockJobService_GetUserByPlatformID_Call{Call: _e.mock.On("GetUserByPlatformID", ctx, platform, platformID)}
+}
+
+func (_c *MockJobService_GetUserByPlatformID_Call) Run(run func(ctx context.Context, platform string, platformID string)) *MockJobService_GetUserByPlatformID_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockJobService_GetUserByPlatformID_Call) Return(_a0 *domain.User, _a1 error) *MockJobService_GetUserByPlatformID_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockJobService_GetUserByPlatformID_Call) RunAndReturn(run func(context.Context, string, string) (*domain.User, error)) *MockJobService_GetUserByPlatformID_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -421,6 +546,66 @@ func (_c *MockJobService_GetUserJobs_Call) Return(_a0 []domain.UserJobInfo, _a1 
 }
 
 func (_c *MockJobService_GetUserJobs_Call) RunAndReturn(run func(context.Context, string) ([]domain.UserJobInfo, error)) *MockJobService_GetUserJobs_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetUserJobsByPlatform provides a mock function with given fields: ctx, platform, platformID
+func (_m *MockJobService) GetUserJobsByPlatform(ctx context.Context, platform string, platformID string) ([]domain.UserJobInfo, error) {
+	ret := _m.Called(ctx, platform, platformID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetUserJobsByPlatform")
+	}
+
+	var r0 []domain.UserJobInfo
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) ([]domain.UserJobInfo, error)); ok {
+		return rf(ctx, platform, platformID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) []domain.UserJobInfo); ok {
+		r0 = rf(ctx, platform, platformID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]domain.UserJobInfo)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = rf(ctx, platform, platformID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockJobService_GetUserJobsByPlatform_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetUserJobsByPlatform'
+type MockJobService_GetUserJobsByPlatform_Call struct {
+	*mock.Call
+}
+
+// GetUserJobsByPlatform is a helper method to define mock.On call
+//   - ctx context.Context
+//   - platform string
+//   - platformID string
+func (_e *MockJobService_Expecter) GetUserJobsByPlatform(ctx interface{}, platform interface{}, platformID interface{}) *MockJobService_GetUserJobsByPlatform_Call {
+	return &MockJobService_GetUserJobsByPlatform_Call{Call: _e.mock.On("GetUserJobsByPlatform", ctx, platform, platformID)}
+}
+
+func (_c *MockJobService_GetUserJobsByPlatform_Call) Run(run func(ctx context.Context, platform string, platformID string)) *MockJobService_GetUserJobsByPlatform_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockJobService_GetUserJobsByPlatform_Call) Return(_a0 []domain.UserJobInfo, _a1 error) *MockJobService_GetUserJobsByPlatform_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockJobService_GetUserJobsByPlatform_Call) RunAndReturn(run func(context.Context, string, string) ([]domain.UserJobInfo, error)) *MockJobService_GetUserJobsByPlatform_Call {
 	_c.Call.Return(run)
 	return _c
 }

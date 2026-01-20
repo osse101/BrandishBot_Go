@@ -200,6 +200,66 @@ func (_c *MockRepository_GetJobLevelBonuses_Call) RunAndReturn(run func(context.
 	return _c
 }
 
+// GetUserByPlatformID provides a mock function with given fields: ctx, platform, platformID
+func (_m *MockRepository) GetUserByPlatformID(ctx context.Context, platform string, platformID string) (*domain.User, error) {
+	ret := _m.Called(ctx, platform, platformID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetUserByPlatformID")
+	}
+
+	var r0 *domain.User
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) (*domain.User, error)); ok {
+		return rf(ctx, platform, platformID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) *domain.User); ok {
+		r0 = rf(ctx, platform, platformID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*domain.User)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = rf(ctx, platform, platformID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockRepository_GetUserByPlatformID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetUserByPlatformID'
+type MockRepository_GetUserByPlatformID_Call struct {
+	*mock.Call
+}
+
+// GetUserByPlatformID is a helper method to define mock.On call
+//   - ctx context.Context
+//   - platform string
+//   - platformID string
+func (_e *MockRepository_Expecter) GetUserByPlatformID(ctx interface{}, platform interface{}, platformID interface{}) *MockRepository_GetUserByPlatformID_Call {
+	return &MockRepository_GetUserByPlatformID_Call{Call: _e.mock.On("GetUserByPlatformID", ctx, platform, platformID)}
+}
+
+func (_c *MockRepository_GetUserByPlatformID_Call) Run(run func(ctx context.Context, platform string, platformID string)) *MockRepository_GetUserByPlatformID_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockRepository_GetUserByPlatformID_Call) Return(_a0 *domain.User, _a1 error) *MockRepository_GetUserByPlatformID_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockRepository_GetUserByPlatformID_Call) RunAndReturn(run func(context.Context, string, string) (*domain.User, error)) *MockRepository_GetUserByPlatformID_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetUserJob provides a mock function with given fields: ctx, userID, jobID
 func (_m *MockRepository) GetUserJob(ctx context.Context, userID string, jobID int) (*domain.UserJob, error) {
 	ret := _m.Called(ctx, userID, jobID)
@@ -315,6 +375,66 @@ func (_c *MockRepository_GetUserJobs_Call) Return(_a0 []domain.UserJob, _a1 erro
 }
 
 func (_c *MockRepository_GetUserJobs_Call) RunAndReturn(run func(context.Context, string) ([]domain.UserJob, error)) *MockRepository_GetUserJobs_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetUserJobsByPlatform provides a mock function with given fields: ctx, platform, platformID
+func (_m *MockRepository) GetUserJobsByPlatform(ctx context.Context, platform string, platformID string) ([]domain.UserJob, error) {
+	ret := _m.Called(ctx, platform, platformID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetUserJobsByPlatform")
+	}
+
+	var r0 []domain.UserJob
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) ([]domain.UserJob, error)); ok {
+		return rf(ctx, platform, platformID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) []domain.UserJob); ok {
+		r0 = rf(ctx, platform, platformID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]domain.UserJob)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = rf(ctx, platform, platformID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockRepository_GetUserJobsByPlatform_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetUserJobsByPlatform'
+type MockRepository_GetUserJobsByPlatform_Call struct {
+	*mock.Call
+}
+
+// GetUserJobsByPlatform is a helper method to define mock.On call
+//   - ctx context.Context
+//   - platform string
+//   - platformID string
+func (_e *MockRepository_Expecter) GetUserJobsByPlatform(ctx interface{}, platform interface{}, platformID interface{}) *MockRepository_GetUserJobsByPlatform_Call {
+	return &MockRepository_GetUserJobsByPlatform_Call{Call: _e.mock.On("GetUserJobsByPlatform", ctx, platform, platformID)}
+}
+
+func (_c *MockRepository_GetUserJobsByPlatform_Call) Run(run func(ctx context.Context, platform string, platformID string)) *MockRepository_GetUserJobsByPlatform_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockRepository_GetUserJobsByPlatform_Call) Return(_a0 []domain.UserJob, _a1 error) *MockRepository_GetUserJobsByPlatform_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockRepository_GetUserJobsByPlatform_Call) RunAndReturn(run func(context.Context, string, string) ([]domain.UserJob, error)) *MockRepository_GetUserJobsByPlatform_Call {
 	_c.Call.Return(run)
 	return _c
 }

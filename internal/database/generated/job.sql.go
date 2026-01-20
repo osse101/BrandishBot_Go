@@ -164,6 +164,47 @@ func (q *Queries) GetUserJobs(ctx context.Context, userID uuid.UUID) ([]UserJob,
 	return items, nil
 }
 
+const getUserJobsByPlatform = `-- name: GetUserJobsByPlatform :many
+SELECT uj.user_id, uj.job_id, uj.current_xp, uj.current_level, uj.xp_gained_today, uj.last_xp_gain
+FROM user_jobs uj
+JOIN user_platform_links upl ON uj.user_id = upl.user_id
+JOIN platforms p ON upl.platform_id = p.platform_id
+WHERE p.name = $1 AND upl.platform_user_id = $2
+ORDER BY uj.current_level DESC, uj.current_xp DESC
+`
+
+type GetUserJobsByPlatformParams struct {
+	Name           string `json:"name"`
+	PlatformUserID string `json:"platform_user_id"`
+}
+
+func (q *Queries) GetUserJobsByPlatform(ctx context.Context, arg GetUserJobsByPlatformParams) ([]UserJob, error) {
+	rows, err := q.db.Query(ctx, getUserJobsByPlatform, arg.Name, arg.PlatformUserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []UserJob
+	for rows.Next() {
+		var i UserJob
+		if err := rows.Scan(
+			&i.UserID,
+			&i.JobID,
+			&i.CurrentXp,
+			&i.CurrentLevel,
+			&i.XpGainedToday,
+			&i.LastXpGain,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const recordJobXPEvent = `-- name: RecordJobXPEvent :exec
 INSERT INTO job_xp_events (id, user_id, job_id, xp_amount, source_type, source_metadata, recorded_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7)

@@ -19,23 +19,25 @@ import (
 // ProgressionService defines the interface for progression system
 type ProgressionService interface {
 	IsFeatureUnlocked(ctx context.Context, featureKey string) (bool, error)
-	GetProgressionStatus(ctx context.Context) (*domain.ProgressionStatus, error)
 	GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error)
 }
 
 // Service defines the job system business logic
 type Service interface {
 	// Core operations
-	GetAllJobs(ctx context.Context) ([]domain.Job, error)
 	GetUserJobs(ctx context.Context, userID string) ([]domain.UserJobInfo, error)
-	GetPrimaryJob(ctx context.Context, userID string) (*domain.UserJobInfo, error)
+	GetUserJobsByPlatform(ctx context.Context, platform, platformID string) ([]domain.UserJobInfo, error)
+	GetPrimaryJob(ctx context.Context, platform, platformID string) (*domain.UserJobInfo, error)
+	GetJobBonus(ctx context.Context, userID, jobKey string, bonusType string) (float64, error)
 
 	// XP operations
 	AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error)
+	AwardXPByPlatform(ctx context.Context, platform, platformID, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error)
 	GetJobLevel(ctx context.Context, userID, jobKey string) (int, error)
-	GetJobBonus(ctx context.Context, userID, jobKey, bonusType string) (float64, error)
 
-	// Level calculations
+	// Utility
+	GetAllJobs(ctx context.Context) ([]domain.Job, error)
+	GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error)
 	CalculateLevel(totalXP int64) int
 	GetXPForLevel(level int) int64
 	GetXPProgress(currentXP int64) (currentLevel int, xpToNext int64)
@@ -62,12 +64,27 @@ func NewService(repo repository.Job, progressionSvc ProgressionService, statsSvc
 	}
 }
 
-// GetAllJobs returns all job definitions
+// GetAllJobs returns all available jobs
 func (s *service) GetAllJobs(ctx context.Context) ([]domain.Job, error) {
 	return s.repo.GetAllJobs(ctx)
 }
 
-// GetUserJobs returns all jobs with user progress
+// GetUserByPlatformID returns a user by their platform ID
+func (s *service) GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error) {
+	return s.repo.GetUserByPlatformID(ctx, platform, platformID)
+}
+
+// GetUserJobsByPlatform returns all jobs with user progress
+func (s *service) GetUserJobsByPlatform(ctx context.Context, platform, platformID string) ([]domain.UserJobInfo, error) {
+	user, err := s.repo.GetUserByPlatformID(ctx, platform, platformID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+
+	return s.GetUserJobs(ctx, user.ID)
+}
+
+// GetUserJobsByUserID returns all jobs with user progress
 func (s *service) GetUserJobs(ctx context.Context, userID string) ([]domain.UserJobInfo, error) {
 	log := logger.FromContext(ctx)
 
@@ -124,8 +141,8 @@ func (s *service) GetUserJobs(ctx context.Context, userID string) ([]domain.User
 }
 
 // GetPrimaryJob returns the user's highest-level job
-func (s *service) GetPrimaryJob(ctx context.Context, userID string) (*domain.UserJobInfo, error) {
-	userJobs, err := s.GetUserJobs(ctx, userID)
+func (s *service) GetPrimaryJob(ctx context.Context, platform string, platformID string) (*domain.UserJobInfo, error) {
+	userJobs, err := s.GetUserJobsByPlatform(ctx, platform, platformID)
 	if err != nil {
 		return nil, err
 	}
@@ -158,12 +175,12 @@ func (s *service) GetPrimaryJob(ctx context.Context, userID string) (*domain.Use
 }
 
 // AwardXP awards XP to a user for a specific job
-func (s *service) AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error) {
+func (s *service) AwardXP(ctx context.Context, userID string, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error) {
 	if unlocked, err := s.isJobsXPUnlocked(ctx); err != nil || !unlocked {
 		if err != nil {
 			return nil, fmt.Errorf("failed to check jobs_xp unlock: %w", err)
 		}
-		return nil, fmt.Errorf("jobs XP system not unlocked")
+		return nil, fmt.Errorf("jobs XP system not unlocked: %w", domain.ErrFeatureLocked)
 	}
 
 	job, err := s.repo.GetJobByKey(ctx, jobKey)
@@ -200,6 +217,15 @@ func (s *service) AwardXP(ctx context.Context, userID, jobKey string, baseAmount
 		NewLevel:  newLevel,
 		LeveledUp: newLevel > oldLevel,
 	}, nil
+}
+
+func (s *service) AwardXPByPlatform(ctx context.Context, platform string, platformID string, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error) {
+	user, err := s.repo.GetUserByPlatformID(ctx, platform, platformID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+
+	return s.AwardXP(ctx, user.ID, jobKey, baseAmount, source, metadata)
 }
 
 func (s *service) isJobsXPUnlocked(ctx context.Context) (bool, error) {
@@ -253,7 +279,7 @@ func (s *service) checkDailyCap(ctx context.Context, userID, jobKey string, curr
 		remaining := int64(dailyCap) - currentProgress.XPGainedToday
 		if remaining <= 0 {
 			logger.FromContext(ctx).Info("Daily XP cap reached", "user_id", userID, "job", jobKey)
-			return fmt.Errorf("daily XP cap reached for %s", jobKey)
+			return fmt.Errorf("daily XP cap reached for %s: %w", jobKey, domain.ErrDailyCapReached)
 		}
 		*actualAmount = int(remaining)
 	}
@@ -285,6 +311,36 @@ func (s *service) updateUserJobProgress(ctx context.Context, progress *domain.Us
 	}
 	return nil
 }
+
+
+// GetJobBonus returns the bonus value for a specific job and bonus type
+func (s *service) GetJobBonus(ctx context.Context, userID, jobKey, bonusType string) (float64, error) {
+	level, err := s.GetJobLevel(ctx, userID, jobKey)
+	if err != nil || level == 0 {
+		return 0, err
+	}
+
+	job, err := s.repo.GetJobByKey(ctx, jobKey)
+	if err != nil {
+		return 0, err
+	}
+
+	bonuses, err := s.repo.GetJobLevelBonuses(ctx, job.ID, level)
+	if err != nil {
+		return 0, err
+	}
+
+	// Find the highest applicable bonus of the requested type
+	var bestBonus float64
+	for _, bonus := range bonuses {
+		if bonus.BonusType == bonusType && bonus.BonusValue > bestBonus {
+			bestBonus = bonus.BonusValue
+		}
+	}
+
+	return bestBonus, nil
+}
+
 
 func (s *service) recordXPAndLevelUpEvents(ctx context.Context, userID, jobKey string, jobID int, actualAmount int, oldLevel, newLevel int, source string, metadata map[string]interface{}, now *time.Time) {
 	log := logger.FromContext(ctx)
@@ -336,6 +392,18 @@ func (s *service) handleLevelUp(ctx context.Context, userID, jobKey string, oldL
 	}
 }
 
+func (s *service) GetUserJobByPlatform(ctx context.Context, platform, platformID, jobKey string) (*domain.UserJob, error) {
+	user, err := s.repo.GetUserByPlatformID(ctx, platform, platformID)
+	if err != nil {
+		return nil, err
+	}
+	job, err := s.repo.GetJobByKey(ctx, jobKey)
+	if err != nil {
+		return nil, err
+	}
+	return s.repo.GetUserJob(ctx, user.ID, job.ID)
+}
+
 // GetJobLevel returns the user's level for a specific job
 func (s *service) GetJobLevel(ctx context.Context, userID, jobKey string) (int, error) {
 	job, err := s.repo.GetJobByKey(ctx, jobKey)
@@ -352,34 +420,6 @@ func (s *service) GetJobLevel(ctx context.Context, userID, jobKey string) (int, 
 	}
 
 	return progress.CurrentLevel, nil
-}
-
-// GetJobBonus returns the bonus value for a specific job and bonus type
-func (s *service) GetJobBonus(ctx context.Context, userID, jobKey, bonusType string) (float64, error) {
-	level, err := s.GetJobLevel(ctx, userID, jobKey)
-	if err != nil || level == 0 {
-		return 0, err
-	}
-
-	job, err := s.repo.GetJobByKey(ctx, jobKey)
-	if err != nil {
-		return 0, err
-	}
-
-	bonuses, err := s.repo.GetJobLevelBonuses(ctx, job.ID, level)
-	if err != nil {
-		return 0, err
-	}
-
-	// Find the highest applicable bonus of the requested type
-	var bestBonus float64
-	for _, bonus := range bonuses {
-		if bonus.BonusType == bonusType && bonus.BonusValue > bestBonus {
-			bestBonus = bonus.BonusValue
-		}
-	}
-
-	return bestBonus, nil
 }
 
 // CalculateLevel determines the level from total XP using the formula:

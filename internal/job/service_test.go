@@ -66,6 +66,22 @@ func (m *MockRepository) GetJobLevelBonuses(ctx context.Context, jobID int, leve
 	return args.Get(0).([]domain.JobLevelBonus), args.Error(1)
 }
 
+func (m *MockRepository) GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error) {
+	args := m.Called(ctx, platform, platformID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.User), args.Error(1)
+}
+
+func (m *MockRepository) GetUserJobsByPlatform(ctx context.Context, platform, platformID string) ([]domain.UserJob, error) {
+	args := m.Called(ctx, platform, platformID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]domain.UserJob), args.Error(1)
+}
+
 // MockProgressionService
 type MockProgressionService struct {
 	mock.Mock
@@ -491,10 +507,11 @@ func TestGetPrimaryJob(t *testing.T) {
 		{JobID: 1, CurrentLevel: 5, CurrentXP: 1000},
 	}
 
+	repo.On("GetUserByPlatformID", ctx, "twitch", "u1").Return(&domain.User{ID: "u1"}, nil)
 	repo.On("GetAllJobs", ctx).Return(jobs, nil)
 	repo.On("GetUserJobs", ctx, "u1").Return(userJobs, nil)
 
-	primary, err := svc.GetPrimaryJob(ctx, "u1")
+	primary, err := svc.GetPrimaryJob(ctx, "twitch", "u1")
 	assert.NoError(t, err)
 	assert.NotNil(t, primary)
 	assert.Equal(t, "j2", primary.JobKey)
@@ -610,10 +627,11 @@ func TestGetPrimaryJob_NoJobs(t *testing.T) {
 	svc := NewService(repo, prog, nil, nil, nil)
 	ctx := context.Background()
 
+	repo.On("GetUserByPlatformID", ctx, "twitch", "u1").Return(&domain.User{ID: "u1"}, nil)
 	repo.On("GetAllJobs", ctx).Return([]domain.Job{}, nil)
 	repo.On("GetUserJobs", ctx, "u1").Return([]domain.UserJob{}, nil)
 
-	result, err := svc.GetPrimaryJob(ctx, "u1")
+	result, err := svc.GetPrimaryJob(ctx, "twitch", "u1")
 	assert.NoError(t, err)
 	assert.Nil(t, result) // No jobs means no primary
 }
@@ -634,10 +652,11 @@ func TestGetPrimaryJob_TieOnLevel_HigherXP(t *testing.T) {
 		{JobID: 2, CurrentLevel: 5, CurrentXP: 1500}, // Higher XP
 	}
 
+	repo.On("GetUserByPlatformID", ctx, "twitch", "u1").Return(&domain.User{ID: "u1"}, nil)
 	repo.On("GetAllJobs", ctx).Return(jobs, nil)
 	repo.On("GetUserJobs", ctx, "u1").Return(userJobs, nil)
 
-	result, err := svc.GetPrimaryJob(ctx, "u1")
+	result, err := svc.GetPrimaryJob(ctx, "twitch", "u1")
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
 	assert.Equal(t, JobKeyExplorer, result.JobKey)
@@ -650,9 +669,10 @@ func TestGetPrimaryJob_ErrorPropagation(t *testing.T) {
 	svc := NewService(repo, prog, nil, nil, nil)
 	ctx := context.Background()
 
+	repo.On("GetUserByPlatformID", ctx, "twitch", "u1").Return(&domain.User{ID: "u1"}, nil)
 	repo.On("GetAllJobs", ctx).Return(nil, assert.AnError)
 
-	result, err := svc.GetPrimaryJob(ctx, "u1")
+	result, err := svc.GetPrimaryJob(ctx, "twitch", "u1")
 	assert.Error(t, err)
 	assert.Nil(t, result)
 }

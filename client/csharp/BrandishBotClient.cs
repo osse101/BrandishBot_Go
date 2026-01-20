@@ -163,8 +163,6 @@ namespace BrandishBot.Client
                     return "That feature is locked. Unlock it in the progression tree.";
                 case System.Net.HttpStatusCode.NotFound:
                     return "Resource not found.";
-                case System.Net.HttpStatusCode.TooManyRequests:
-                    return "Too many requests. Please try again later.";
                 case System.Net.HttpStatusCode.InternalServerError:
                     return "Server error occurred. Please try again.";
                 case System.Net.HttpStatusCode.ServiceUnavailable:
@@ -189,6 +187,18 @@ namespace BrandishBot.Client
             string errorMessage = ExtractErrorMessage(errorBody, response.StatusCode);
 
             throw new HttpRequestException(errorMessage);
+        }
+
+        #endregion
+
+        #region General
+        
+        /// <summary>
+        /// Get feature information
+        /// </summary>
+        public async Task<string> GetInfo()
+        {
+            return await GetAsync("/api/v1/info");
         }
 
         #endregion
@@ -238,48 +248,14 @@ namespace BrandishBot.Client
             return await GetAsync("/api/v1/user/inventory-by-username" + query);
         }
 
-
         /// <summary>
-        /// Add item to user's inventory (Admin/Streamer only)
+        /// Add item by username (no platformId required)
         /// </summary>
-        /// <summary>
-        /// Add item to user's inventory (Admin/Streamer only)
-        /// </summary>
-        public async Task<string> AddItem(string platform, string platformId, string username, string itemName, int quantity)
+        public async Task<string> AddItemByUsername(string platform, string username, string itemName, int quantity=1)
         {
             return await PostJsonAsync("/api/v1/user/item/add", new
             {
                 platform = platform,
-                platform_id = platformId,
-                username = username,
-                item_name = itemName,
-                quantity = quantity
-            });
-        }
-
-        /// <summary>
-        /// Add item by username (no platformId required)
-        /// </summary>
-        public async Task<string> AddItemByUsername(string platform, string username, string itemName, int quantity)
-        {
-            return await PostJsonAsync("/api/v1/user/item/add-by-username", new
-            {
-                platform = platform,
-                username = username,
-                item_name = itemName,
-                quantity = quantity
-            });
-        }
-
-        /// <summary>
-        /// Remove item from user's inventory (Admin/Streamer only)
-        /// </summary>
-        public async Task<string> RemoveItem(string platform, string platformId, string username, string itemName, int quantity)
-        {
-            return await PostJsonAsync("/api/v1/user/item/remove", new
-            {
-                platform = platform,
-                platform_id = platformId,
                 username = username,
                 item_name = itemName,
                 quantity = quantity
@@ -289,9 +265,9 @@ namespace BrandishBot.Client
         /// <summary>
         /// Remove item by username (no platformId required)
         /// </summary>
-        public async Task<string> RemoveItemByUsername(string platform, string username, string itemName, int quantity)
+        public async Task<string> RemoveItemByUsername(string platform, string username, string itemName, int quantity=1)
         {
-            return await PostJsonAsync("/api/v1/user/item/remove-by-username", new
+            return await PostJsonAsync("/api/v1/user/item/remove", new
             {
                 platform = platform,
                 username = username,
@@ -303,15 +279,16 @@ namespace BrandishBot.Client
         /// <summary>
         /// Give item from one user to another
         /// </summary>
-        public async Task<string> GiveItem(string fromPlatform, string fromUsername, 
-            string toPlatform, string toUsername, string itemName, int quantity)
+        public async Task<string> GiveItem(string fromPlatform, string fromPlatformId, string fromUsername, 
+            string toPlatform, string toUsername, string itemName, int quantity=1)
         {
-            return await PostJsonAsync("/api/v1/user/item/give-by-username", new
+            return await PostJsonAsync("/api/v1/user/item/give", new
             {
-                from_platform = fromPlatform,
-                from_username = fromUsername,
-                to_platform = toPlatform,
-                to_username = toUsername,
+                owner_platform = fromPlatform,
+                owner_platform_id = fromPlatformId,
+                owner = fromUsername,
+                receiver_platform = toPlatform,
+                receiver = toUsername,
                 item_name = itemName,
                 quantity = quantity
             });
@@ -375,7 +352,7 @@ namespace BrandishBot.Client
         /// Use an item (opens lootboxes, activates items, etc.)
         /// </summary>
         public async Task<string> UseItem(string platform, string platformId, string username, 
-            string itemName, int quantity, string targetUsername = null)
+            string itemName, int quantity=1, string targetUsername = null)
         {
             var data = new Dictionary<string, object>
             {
@@ -414,7 +391,7 @@ namespace BrandishBot.Client
         /// <summary>
         /// Upgrade an item using a recipe
         /// </summary>
-        public async Task<string> UpgradeItem(string platform, string platformId, string username, string itemName, int quantity)
+        public async Task<string> UpgradeItem(string platform, string platformId, string username, string itemName, int quantity=1)
         {
             return await PostJsonAsync("/api/v1/user/item/upgrade", new
             {
@@ -429,7 +406,7 @@ namespace BrandishBot.Client
         /// <summary>
         /// Disassemble an item to get materials
         /// </summary>
-        public async Task<string> DisassembleItem(string platform, string platformId, string username, string itemName, int quantity)
+        public async Task<string> DisassembleItem(string platform, string platformId, string username, string itemName, int quantity=1)
         {
             return await PostJsonAsync("/api/v1/user/item/disassemble", new
             {
@@ -470,7 +447,7 @@ namespace BrandishBot.Client
         /// Start a new gamble session
         /// </summary>
         public async Task<string> StartGamble(string platform, string platformId, string username, 
-            string itemName, int quantity)
+            string itemName, int quantity=1)
         {
             return await PostJsonAsync("/api/v1/gamble/start", new
             {
@@ -484,26 +461,14 @@ namespace BrandishBot.Client
         /// <summary>
         /// Join an existing gamble session
         /// </summary>
-        public async Task<string> JoinGamble(string gambleId, string platform, string platformId, string username,
-            string itemName, int quantity)
+        public async Task<string> JoinGamble(string gambleId, string platform, string platformId, string username)
         {
-            var content = new StringContent(
-                JsonConvert.SerializeObject(new
-                {
-                    platform = platform,
-                    platform_id = platformId,
-                    username = username,
-                    bets = new[] { new { item_name = itemName, quantity = quantity } }
-                }),
-                Encoding.UTF8,
-                "application/json"
-            );
-
-            var response = await _httpClient.PostAsync(
-                _baseUrl + "/api/v1/gamble/join?id=" + gambleId,
-                content
-            );
-            return await HandleHttpResponse(response);
+            return await PostJsonAsync("/api/v1/gamble/join?id=" + gambleId, new
+            {
+                platform = platform,
+                platform_id = platformId,
+                username = username
+            });
         }
 
         /// <summary>
@@ -517,20 +482,6 @@ namespace BrandishBot.Client
         #endregion
 
         #region Stats & Leaderboards
-
-        /// <summary>
-        /// Record a user event (message, follow, sub, etc.)
-        /// </summary>
-        public async Task<string> RecordEvent(string platform, string platformId, string eventType, object metadata = null)
-        {
-            return await PostJsonAsync("/api/v1/stats/event", new
-            {
-                platform = platform,
-                platform_id = platformId,
-                event_type = eventType,
-                metadata = metadata
-            });
-        }
 
         /// <summary>
         /// Get user statistics
@@ -634,14 +585,6 @@ namespace BrandishBot.Client
         }
 
         /// <summary>
-        /// Get contribution leaderboard
-        /// </summary>
-        public async Task<string> GetContributionLeaderboard()
-        {
-            return await GetAsync("/api/v1/progression/leaderboard");
-        }
-
-        /// <summary>
         /// Get current voting session details
         /// </summary>
         public async Task<string> GetVotingSession()
@@ -675,7 +618,7 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<string> AdminUnlockAllNodes()
         {
-            return await PostJsonAsync("/api/v1/progression/admin/unlock-all", new { });
+            return await PostJsonAsync("/api/v1/progression/admin/unlock-all");
         }
 
         /// <summary>
@@ -687,19 +630,11 @@ namespace BrandishBot.Client
         }
 
         /// <summary>
-        /// Admin: Instantly unlock the current vote leader without waiting
-        /// </summary>
-        public async Task<string> AdminInstantUnlock()
-        {
-            return await PostJsonAsync("/api/v1/progression/admin/instant-unlock", new { });
-        }
-
-        /// <summary>
         /// Admin: Start a new voting session
         /// </summary>
         public async Task<string> AdminStartVoting()
         {
-            return await PostJsonAsync("/api/v1/progression/admin/start-voting", new { });
+            return await PostJsonAsync("/api/v1/progression/admin/start-voting");
         }
 
         /// <summary>
@@ -707,7 +642,7 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<string> AdminEndVoting()
         {
-            return await PostJsonAsync("/api/v1/progression/admin/end-voting", new { });
+            return await PostJsonAsync("/api/v1/progression/admin/end-voting");
         }
 
         /// <summary>
@@ -736,7 +671,7 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<string> AdminReloadWeights()
         {
-            return await PostJsonAsync("/api/v1/admin/progression/reload-weights", new { });
+            return await PostJsonAsync("/api/v1/admin/progression/reload-weights");
         }
 
         /// <summary>
@@ -762,11 +697,11 @@ namespace BrandishBot.Client
         /// <summary>
         /// Get user's job progress
         /// </summary>
-        public async Task<string> GetUserJobs(string platform, string platformId)
+        public async Task<string> GetUserJobs(string platform, string username)
         {
             var query = BuildQuery(
                 "platform=" + platform,
-                "platform_id=" + platformId
+                "username=" + username
             );
             return await GetAsync("/api/v1/jobs/user" + query);
         }
@@ -774,42 +709,14 @@ namespace BrandishBot.Client
         /// <summary>
         /// Award XP to a user for a specific job (Streamer/Admin only)
         /// </summary>
-        public async Task<string> AwardJobXP(string platform, string platformId, string username, string jobName, int xpAmount)
+        public async Task<string> AwardJobXP(string platform, string username, string jobKey, int xpAmount)
         {
             return await PostJsonAsync("/api/v1/jobs/award-xp", new
             {
                 platform = platform,
-                platform_id = platformId,
-                username = username,
-                job_name = jobName,
-                xp_amount = xpAmount
-            });
-        }
-
-        /// <summary>
-        /// Get the active bonus for a job (e.g., search_bonus for Scavenger job)
-        /// </summary>
-        public async Task<string> GetJobBonus(string userId, string jobKey, string bonusType)
-        {
-            var query = BuildQuery(
-                "user_id=" + userId,
-                "job_key=" + jobKey,
-                "bonus_type=" + bonusType
-            );
-            return await GetAsync("/api/v1/jobs/bonus" + query);
-        }
-
-        /// <summary>
-        /// Admin: Award XP to a user for a specific job
-        /// </summary>
-        public async Task<string> AdminAwardXP(string platform, string username, string jobKey, int amount)
-        {
-            return await PostJsonAsync("/api/v1/admin/job/award-xp", new
-            {
-                platform = platform,
                 username = username,
                 job_key = jobKey,
-                amount = amount
+                xp_amount = xpAmount
             });
         }
 
@@ -859,12 +766,13 @@ namespace BrandishBot.Client
         /// <summary>
         /// Unlink accounts
         /// </summary>
-        public async Task<string> UnlinkAccounts(string platform, string platformId)
+        public async Task<string> UnlinkAccounts(string platform, string platformId, string targetPlatform)
         {
             return await PostJsonAsync("/api/v1/link/unlink", new
             {
                 platform = platform,
-                platform_id = platformId
+                platform_id = platformId,
+                target_platform = targetPlatform
             });
         }
 
@@ -878,31 +786,6 @@ namespace BrandishBot.Client
                 "platform_id=" + platformId
             );
             return await GetAsync("/api/v1/link/status" + query);
-        }
-
-        #endregion
-
-        #region Admin Utilities
-
-        /// <summary>
-        /// Reload item name aliases from configuration (Admin only)
-        /// </summary>
-        public async Task<string> ReloadAliases()
-        {
-            return await PostJsonAsync("/api/v1/admin/reload-aliases", new { });
-        }
-
-        /// <summary>
-        /// Test endpoint for debugging
-        /// </summary>
-        public async Task<string> Test(string platform, string platformId, string username)
-        {
-            return await PostJsonAsync("/api/v1/test", new
-            {
-                platform = platform,
-                platform_id = platformId,
-                username = username
-            });
         }
 
         #endregion

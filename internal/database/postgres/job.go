@@ -30,6 +30,20 @@ func NewJobRepository(db *pgxpool.Pool) *JobRepository {
 	}
 }
 
+func (r *JobRepository) GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error) {
+	row, err := r.q.GetUserByPlatformID(ctx, generated.GetUserByPlatformIDParams{
+		Name:           platform,
+		PlatformUserID: platformID,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrUserNotFound
+		}
+		return nil, fmt.Errorf("failed to get user core data: %w", err)
+	}
+	return mapUserAndLinks(ctx, r.q, row.UserID, row.Username)
+}
+
 // GetAllJobs retrieves all job definitions
 func (r *JobRepository) GetAllJobs(ctx context.Context) ([]domain.Job, error) {
 	rows, err := r.q.GetAllJobs(ctx)
@@ -82,6 +96,32 @@ func (r *JobRepository) GetUserJobs(ctx context.Context, userID string) ([]domai
 	rows, err := r.q.GetUserJobs(ctx, userUUID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query user jobs: %w", err)
+	}
+
+	userJobs := make([]domain.UserJob, 0, len(rows))
+	for _, row := range rows {
+		lastXPGain := row.LastXpGain.Time
+		userJobs = append(userJobs, domain.UserJob{
+			UserID:        row.UserID.String(),
+			JobID:         int(row.JobID),
+			CurrentXP:     row.CurrentXp,
+			CurrentLevel:  int(row.CurrentLevel),
+			XPGainedToday: row.XpGainedToday.Int64,
+			LastXPGain:    &lastXPGain,
+		})
+	}
+
+	return userJobs, nil
+}
+
+// GetUserJobsByPlatform retrieves all job progress for a user by their platform ID
+func (r *JobRepository) GetUserJobsByPlatform(ctx context.Context, platform, platformID string) ([]domain.UserJob, error) {
+	rows, err := r.q.GetUserJobsByPlatform(ctx, generated.GetUserJobsByPlatformParams{
+		Name:           platform,
+		PlatformUserID: platformID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to query user jobs by platform: %w", err)
 	}
 
 	userJobs := make([]domain.UserJob, 0, len(rows))

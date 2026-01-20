@@ -67,6 +67,14 @@ func (m *MockRepo) GetUserJobs(ctx context.Context, userID string) ([]domain.Use
 	return nil, nil
 }
 
+func (m *MockRepo) GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error) {
+	return nil, nil
+}
+
+func (m *MockRepo) GetUserJobsByPlatform(ctx context.Context, platform, platformID string) ([]domain.UserJob, error) {
+	return nil, nil
+}
+
 // Mock Progression
 type MockProgression struct {
 	mock.Mock

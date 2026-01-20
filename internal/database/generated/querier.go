@@ -110,6 +110,7 @@ type Querier interface {
 	GetUserEventsByType(ctx context.Context, arg GetUserEventsByTypeParams) ([]StatsEvent, error)
 	GetUserJob(ctx context.Context, arg GetUserJobParams) (UserJob, error)
 	GetUserJobs(ctx context.Context, userID uuid.UUID) ([]UserJob, error)
+	GetUserJobsByPlatform(ctx context.Context, arg GetUserJobsByPlatformParams) ([]UserJob, error)
 	GetUserPlatformLinks(ctx context.Context, userID uuid.UUID) ([]GetUserPlatformLinksRow, error)
 	GetUserProgressions(ctx context.Context, arg GetUserProgressionsParams) ([]UserProgression, error)
 	GetVoting(ctx context.Context, arg GetVotingParams) (ProgressionVoting, error)

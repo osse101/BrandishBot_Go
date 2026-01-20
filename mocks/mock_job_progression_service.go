@@ -5,8 +5,6 @@ package mocks
 import (
 	context "context"
 
-	domain "github.com/osse101/BrandishBot_Go/internal/domain"
-
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -77,64 +75,6 @@ func (_c *MockJobProgressionService_GetModifiedValue_Call) Return(_a0 float64, _
 }
 
 func (_c *MockJobProgressionService_GetModifiedValue_Call) RunAndReturn(run func(context.Context, string, float64) (float64, error)) *MockJobProgressionService_GetModifiedValue_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// GetProgressionStatus provides a mock function with given fields: ctx
-func (_m *MockJobProgressionService) GetProgressionStatus(ctx context.Context) (*domain.ProgressionStatus, error) {
-	ret := _m.Called(ctx)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetProgressionStatus")
-	}
-
-	var r0 *domain.ProgressionStatus
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context) (*domain.ProgressionStatus, error)); ok {
-		return rf(ctx)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context) *domain.ProgressionStatus); ok {
-		r0 = rf(ctx)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*domain.ProgressionStatus)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
-		r1 = rf(ctx)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockJobProgressionService_GetProgressionStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetProgressionStatus'
-type MockJobProgressionService_GetProgressionStatus_Call struct {
-	*mock.Call
-}
-
-// GetProgressionStatus is a helper method to define mock.On call
-//   - ctx context.Context
-func (_e *MockJobProgressionService_Expecter) GetProgressionStatus(ctx interface{}) *MockJobProgressionService_GetProgressionStatus_Call {
-	return &MockJobProgressionService_GetProgressionStatus_Call{Call: _e.mock.On("GetProgressionStatus", ctx)}
-}
-
-func (_c *MockJobProgressionService_GetProgressionStatus_Call) Run(run func(ctx context.Context)) *MockJobProgressionService_GetProgressionStatus_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context))
-	})
-	return _c
-}
-
-func (_c *MockJobProgressionService_GetProgressionStatus_Call) Return(_a0 *domain.ProgressionStatus, _a1 error) *MockJobProgressionService_GetProgressionStatus_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockJobProgressionService_GetProgressionStatus_Call) RunAndReturn(run func(context.Context) (*domain.ProgressionStatus, error)) *MockJobProgressionService_GetProgressionStatus_Call {
 	_c.Call.Return(run)
 	return _c
 }

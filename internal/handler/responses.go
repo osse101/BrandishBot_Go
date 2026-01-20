@@ -89,6 +89,9 @@ const (
 	// Feature messages
 	ErrMsgFeatureLockedProgressionError = "Feature is locked. Unlock it in the progression tree"
 
+	// Job messages
+	ErrMsgDailyCapReachedError = "Daily XP cap reached"
+
 	// Cooldown messages
 	ErrMsgOnCooldownError = "Action is on cooldown. Try again later"
 
@@ -139,6 +142,8 @@ func mapServiceErrorToUserMessage(err error) (int, string) {
 		return http.StatusForbidden, ErrMsgRecipeLockedError
 	case errors.Is(err, domain.ErrFeatureLocked):
 		return http.StatusForbidden, ErrMsgFeatureLockedProgressionError
+	case errors.Is(err, domain.ErrDailyCapReached):
+		return http.StatusBadRequest, ErrMsgDailyCapReachedError
 	case errors.Is(err, domain.ErrOnCooldown):
 		return http.StatusTooManyRequests, ErrMsgOnCooldownError
 	case errors.Is(err, domain.ErrGambleNotFound):

@@ -42,3 +42,11 @@ ORDER BY min_level DESC;
 -- name: ResetDailyJobXP :execresult
 UPDATE user_jobs
 SET xp_gained_today = 0;
+
+-- name: GetUserJobsByPlatform :many
+SELECT uj.user_id, uj.job_id, uj.current_xp, uj.current_level, uj.xp_gained_today, uj.last_xp_gain
+FROM user_jobs uj
+JOIN user_platform_links upl ON uj.user_id = upl.user_id
+JOIN platforms p ON upl.platform_id = p.platform_id
+WHERE p.name = $1 AND upl.platform_user_id = $2
+ORDER BY uj.current_level DESC, uj.current_xp DESC;

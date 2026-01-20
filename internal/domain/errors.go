@@ -43,6 +43,9 @@ const (
 	ErrMsgNotEnoughItems       = "not enough items"
 	ErrMsgFailedToRegisterUser = "failed to register user"
 
+	// Job errors
+	ErrMsgDailyCapReached = "daily XP cap reached"
+
 	// Database/System errors
 	ErrMsgConnectionTimeout       = "connection timeout"
 	ErrMsgDatabaseError           = "database error"
@@ -106,6 +109,9 @@ var (
 	// User service errors
 	ErrNotEnoughItems       = errors.New(ErrMsgNotEnoughItems)
 	ErrFailedToRegisterUser = errors.New(ErrMsgFailedToRegisterUser)
+
+	// Job errors
+	ErrDailyCapReached = errors.New(ErrMsgDailyCapReached)
 
 	// Database/System errors
 	ErrConnectionTimeout       = errors.New(ErrMsgConnectionTimeout)

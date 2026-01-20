@@ -1,0 +1,2 @@
+!inv <"non existant user"> -- should return error to user
+!removeItem <user> <item> -- returns "(no message)"

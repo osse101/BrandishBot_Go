@@ -83,8 +83,8 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 			r.Post("/search", handler.HandleSearch(userService, progressionService, eventBus))
 
 			r.Route("/item", func(r chi.Router) {
-				r.Post("/add-by-username", handler.HandleAddItemByUsername(userService))
-				r.Post("/remove-by-username", handler.HandleRemoveItemByUsername(userService))
+				r.Post("/add", handler.HandleAddItemByUsername(userService))
+				r.Post("/remove", handler.HandleRemoveItemByUsername(userService))
 				r.Post("/give", handler.HandleGiveItem(userService))
 				r.Post("/sell", handler.HandleSellItem(economyService, progressionService, eventBus))
 				r.Post("/buy", handler.HandleBuyItem(economyService, progressionService, eventBus))
@@ -113,12 +113,9 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 
 		// Job routes
 		jobHandler := handler.NewJobHandler(jobService)
-		r.Get("/jobs", jobHandler.HandleGetAllJobs) // Handle /jobs exactly
 		r.Route("/jobs", func(r chi.Router) {
-			r.Get("/", jobHandler.HandleGetAllJobs) // Handle /jobs/ if needed
 			r.Get("/user", jobHandler.HandleGetUserJobs)
 			r.Post("/award-xp", jobHandler.HandleAwardXP)
-			r.Get("/bonus", jobHandler.HandleGetJobBonus)
 		})
 
 		// Stats routes
