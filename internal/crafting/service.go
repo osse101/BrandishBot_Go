@@ -81,7 +81,7 @@ func (s *service) validateUser(ctx context.Context, platform, platformID string)
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 	if user == nil {
-		return nil, fmt.Errorf("user not found")
+		return nil, domain.ErrUserNotFound
 	}
 	return user, nil
 }
@@ -92,7 +92,7 @@ func (s *service) validateItem(ctx context.Context, itemName string) (*domain.It
 		return nil, fmt.Errorf("failed to get item: %w", err)
 	}
 	if item == nil {
-		return nil, fmt.Errorf("item not found: %s", itemName)
+		return nil, fmt.Errorf("item not found: %s | %w", itemName, domain.ErrItemNotFound)
 	}
 	return item, nil
 }
@@ -115,7 +115,7 @@ func (s *service) resolveItemName(ctx context.Context, itemName string) (string,
 		return "", fmt.Errorf("failed to resolve item name '%s': %w", itemName, err)
 	}
 	if item == nil {
-		return "", fmt.Errorf("item not found: %s (not found as public or internal name)", itemName)
+		return "", fmt.Errorf("item not found: %s (not found as public or internal name) | %w", itemName, domain.ErrItemNotFound)
 	}
 
 	return itemName, nil
@@ -142,7 +142,7 @@ func consumeRecipeMaterials(inventory *domain.Inventory, recipe *domain.Recipe, 
 		totalNeeded := cost.Quantity * actualQuantity
 		i, slotQuantity := utils.FindSlot(inventory, cost.ItemID)
 		if i == -1 || slotQuantity < totalNeeded {
-			return fmt.Errorf("insufficient material (itemID: %d)", cost.ItemID)
+			return fmt.Errorf("insufficient material (itemID: %d) | %w", cost.ItemID, domain.ErrInsufficientQuantity)
 		}
 
 		// Remove the materials
@@ -214,7 +214,7 @@ func (s *service) UpgradeItem(ctx context.Context, platform, platformID, usernam
 
 	maxPossible := calculateMaxPossibleCrafts(inventory, recipe, quantity)
 	if maxPossible == 0 {
-		return nil, fmt.Errorf("insufficient materials to craft %s", itemName)
+		return nil, fmt.Errorf("insufficient materials to craft %s | %w", itemName, domain.ErrInsufficientQuantity)
 	}
 
 	actualQuantity := maxPossible
@@ -252,24 +252,21 @@ func (s *service) UpgradeItem(ctx context.Context, platform, platformID, usernam
 }
 
 func (s *service) getAndValidateRecipe(ctx context.Context, itemID int, userID string, itemName string) (*domain.Recipe, error) {
-	log := logger.FromContext(ctx)
 	recipe, err := s.repo.GetRecipeByTargetItemID(ctx, itemID)
 	if err != nil {
-		log.Error("Failed to get recipe", "error", err)
 		return nil, fmt.Errorf("failed to get recipe: %w", err)
 	}
 	if recipe == nil {
-		return nil, fmt.Errorf("no recipe found for item: %s", itemName)
+		return nil, fmt.Errorf("no recipe found for item: %s | %w", itemName, domain.ErrRecipeNotFound)
 	}
 
 	// Check if user has unlocked this recipe
 	unlocked, err := s.repo.IsRecipeUnlocked(ctx, userID, recipe.ID)
 	if err != nil {
-		log.Error("Failed to check recipe unlock", "error", err)
 		return nil, fmt.Errorf("failed to check recipe unlock: %w", err)
 	}
 	if !unlocked {
-		return nil, fmt.Errorf("recipe for %s is not unlocked", itemName)
+		return nil, fmt.Errorf("recipe for %s is not unlocked | %w", itemName, domain.ErrRecipeLocked)
 	}
 	return recipe, nil
 }
@@ -332,11 +329,10 @@ func (s *service) GetRecipe(ctx context.Context, itemName, platform, platformID,
 	// Get recipe by target item ID
 	recipe, err := s.repo.GetRecipeByTargetItemID(ctx, item.ID)
 	if err != nil {
-		log.Error("Failed to get recipe", "error", err)
 		return nil, fmt.Errorf("failed to get recipe: %w", err)
 	}
 	if recipe == nil {
-		return nil, fmt.Errorf("no recipe found for item: %s", itemName)
+		return nil, fmt.Errorf("no recipe found for item: %s | %w", itemName, domain.ErrRecipeNotFound)
 	}
 
 	recipeInfo := &RecipeInfo{
@@ -353,7 +349,6 @@ func (s *service) GetRecipe(ctx context.Context, itemName, platform, platformID,
 
 		unlocked, err := s.repo.IsRecipeUnlocked(ctx, user.ID, recipe.ID)
 		if err != nil {
-			log.Error("Failed to check recipe unlock", "error", err)
 			return nil, fmt.Errorf("failed to check recipe unlock: %w", err)
 		}
 
@@ -376,7 +371,6 @@ func (s *service) GetUnlockedRecipes(ctx context.Context, platform, platformID, 
 
 	unlockedRecipes, err := s.repo.GetUnlockedRecipesForUser(ctx, user.ID)
 	if err != nil {
-		log.Error("Failed to get unlocked recipes", "error", err)
 		return nil, fmt.Errorf("failed to get unlocked recipes: %w", err)
 	}
 
@@ -386,12 +380,8 @@ func (s *service) GetUnlockedRecipes(ctx context.Context, platform, platformID, 
 
 // GetAllRecipes returns all valid crafting recipes
 func (s *service) GetAllRecipes(ctx context.Context) ([]repository.RecipeListItem, error) {
-	log := logger.FromContext(ctx)
-	log.Debug("GetAllRecipes called")
-
 	recipes, err := s.repo.GetAllRecipes(ctx)
 	if err != nil {
-		log.Error("Failed to get all recipes", "error", err)
 		return nil, fmt.Errorf("failed to get all recipes: %w", err)
 	}
 
@@ -441,7 +431,7 @@ func (s *service) processDisassembleOutputs(ctx context.Context, inventory *doma
 		// Get item name for the output
 		outputItem, ok := itemsByID[output.ItemID]
 		if !ok {
-			return nil, fmt.Errorf("output item not found: %d", output.ItemID)
+			return nil, fmt.Errorf("output item not found: %d | %w", output.ItemID, domain.ErrItemNotFound)
 		}
 		outputMap[outputItem.InternalName] = totalOutput
 
@@ -493,32 +483,28 @@ func (s *service) DisassembleItem(ctx context.Context, platform, platformID, use
 }
 
 func (s *service) getAndValidateDisassembleRecipe(ctx context.Context, itemID int, userID string, itemName string) (*domain.DisassembleRecipe, error) {
-	log := logger.FromContext(ctx)
 	// Get disassemble recipe
 	recipe, err := s.repo.GetDisassembleRecipeBySourceItemID(ctx, itemID)
 	if err != nil {
-		log.Error("Failed to get disassemble recipe", "error", err)
 		return nil, fmt.Errorf("failed to get disassemble recipe: %w", err)
 	}
 	if recipe == nil {
-		return nil, fmt.Errorf("no disassemble recipe found for item: %s", itemName)
+		return nil, fmt.Errorf("no disassemble recipe found for item: %s | %w", itemName, domain.ErrRecipeNotFound)
 	}
 
 	// Get associated upgrade recipe ID to check if unlocked
 	upgradeRecipeID, err := s.repo.GetAssociatedUpgradeRecipeID(ctx, recipe.ID)
 	if err != nil {
-		log.Error("Failed to get associated upgrade recipe", "error", err)
 		return nil, fmt.Errorf("failed to get associated upgrade recipe: %w", err)
 	}
 
 	// Check if user has unlocked the associated upgrade recipe
 	unlocked, err := s.repo.IsRecipeUnlocked(ctx, userID, upgradeRecipeID)
 	if err != nil {
-		log.Error("Failed to check recipe unlock", "error", err)
 		return nil, fmt.Errorf("failed to check recipe unlock: %w", err)
 	}
 	if !unlocked {
-		return nil, fmt.Errorf("disassemble recipe for %s is not unlocked", itemName)
+		return nil, fmt.Errorf("disassemble recipe for %s is not unlocked | %w", itemName, domain.ErrRecipeLocked)
 	}
 	return recipe, nil
 }
@@ -527,7 +513,7 @@ func (s *service) calculateDisassembleQuantity(inventory *domain.Inventory, item
 	sourceSlotIndex, userQuantity := utils.FindSlot(inventory, itemID)
 	maxPossible := userQuantity / quantityConsumed
 	if maxPossible == 0 {
-		return 0, -1, fmt.Errorf("insufficient items to disassemble %s (need %d, have %d)", itemName, quantityConsumed, userQuantity)
+		return 0, -1, fmt.Errorf("insufficient items to disassemble %s (need %d, have %d) | %w", itemName, quantityConsumed, userQuantity, domain.ErrInsufficientQuantity)
 	}
 
 	actualQuantity := maxPossible

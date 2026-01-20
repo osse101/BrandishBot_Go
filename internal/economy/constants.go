@@ -12,17 +12,17 @@ const (
 // Formatted error messages for items
 const (
 	ErrMsgResolveItemFailedFmt         = "failed to resolve item name '%s': %w"
-	ErrMsgItemNotFoundPublicFmt        = "%w: %s (not found as public or internal name)"
-	ErrMsgItemNotFoundFmt              = "item not found: %s"
-	ErrMsgItemNotInInventoryFmt        = "item %s not in inventory"
-	ErrMsgItemNotBuyableFmt            = "item %s is not buyable"
-	ErrMsgInsufficientFundsToBuyOneFmt = "insufficient funds to buy even one %s (cost: %d, balance: %d)"
+	ErrMsgItemNotFoundPublicFmt        = "%s (not found as public or internal name): %w"
+	ErrMsgItemNotFoundFmt              = "item not found: %s: %w"
+	ErrMsgItemNotInInventoryFmt        = "item %s not in inventory: %w"
+	ErrMsgItemNotBuyableFmt            = "item %s is not buyable: %w"
+	ErrMsgInsufficientFundsToBuyOneFmt = "insufficient funds to buy even one %s (cost: %d, balance: %d): %w"
 )
 
 // Formatted error messages for validation
 const (
-	ErrMsgInvalidQuantityFmt    = "invalid %w: %d"
-	ErrMsgQuantityExceedsMaxFmt = "quantity %d exceeds maximum allowed (%d)"
+	ErrMsgInvalidQuantityFmt    = "invalid quantity: %d: %w"
+	ErrMsgQuantityExceedsMaxFmt = "quantity %d exceeds maximum allowed (%d): %w"
 )
 
 // Database operation error messages
@@ -58,7 +58,7 @@ const (
 // Background task log messages
 const (
 	LogMsgEconomyShuttingDown = "Economy service shutting down, waiting for background tasks..."
-	LogMsgAwardMerchantXPFailed = "Failed to award Merchant XP"
+	ErrMsgAwardMerchantXPFailed = "Failed to award Merchant XP: UserID %d: %w"
 	LogMsgMerchantLeveledUp     = "Merchant leveled up!"
 )
 
