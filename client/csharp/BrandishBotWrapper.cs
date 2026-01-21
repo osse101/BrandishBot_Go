@@ -1020,7 +1020,7 @@ public class CPHInline
         string error = null;
         string targetUser = null;
         
-        GetInputString(0, "username", false, out targetUser, ref error)
+        GetInputString(0, "username", false, out targetUser, ref error);
         if (string.IsNullOrEmpty(targetUser))
         {
             // Fallback to self
@@ -1031,8 +1031,8 @@ public class CPHInline
         {
             var result = client.GetUserTimeout(targetUser).Result;
             var jsonResult = Newtonsoft.Json.Linq.JObject.Parse(result);
-            bool isTimedOut = jsonResult["is_timed_out"]?.Value<bool>() ?? false;
-            double remainingSeconds = jsonResult["remaining_seconds"]?.Value<double>() ?? 0;
+            bool isTimedOut = jsonResult.Value<bool>("is_timed_out");
+            double remainingSeconds = jsonResult.Value<double>("remaining_seconds");
 
             if (isTimedOut)
             {

@@ -9,10 +9,25 @@ const (
 	FeatureProgressionSystem = "progression_system"
 
 	// Items
+	ItemBigmissile = "item_bigmissile"
+	ItemDeez = "item_deez"
+	ItemHugemissile = "item_hugemissile"
 	ItemLootbox0 = "item_lootbox0"
 	ItemLootbox1 = "item_lootbox1"
+	ItemLootbox2 = "item_lootbox2"
+	ItemLootbox3 = "item_lootbox3"
+	ItemMine = "item_mine"
 	ItemMoney = "item_money"
+	ItemRarecandy = "item_rarecandy"
+	ItemRevivel = "item_revivel"
+	ItemRevivem = "item_revivem"
+	ItemRevives = "item_revives"
+	ItemShield = "item_shield"
 	ItemShovel = "item_shovel"
+	ItemStick = "item_stick"
+	ItemThis = "item_this"
+	ItemTnt = "item_tnt"
+	ItemTrap = "item_trap"
 
 	// Features
 	FeatureBuy = "feature_buy"

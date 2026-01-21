@@ -76,6 +76,54 @@ func (_c *MockUserService_AddItemByUsername_Call) RunAndReturn(run func(context.
 	return _c
 }
 
+// ApplyShield provides a mock function with given fields: ctx, _a1, quantity
+func (_m *MockUserService) ApplyShield(ctx context.Context, _a1 *domain.User, quantity int) error {
+	ret := _m.Called(ctx, _a1, quantity)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ApplyShield")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *domain.User, int) error); ok {
+		r0 = rf(ctx, _a1, quantity)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockUserService_ApplyShield_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ApplyShield'
+type MockUserService_ApplyShield_Call struct {
+	*mock.Call
+}
+
+// ApplyShield is a helper method to define mock.On call
+//   - ctx context.Context
+//   - _a1 *domain.User
+//   - quantity int
+func (_e *MockUserService_Expecter) ApplyShield(ctx interface{}, _a1 interface{}, quantity interface{}) *MockUserService_ApplyShield_Call {
+	return &MockUserService_ApplyShield_Call{Call: _e.mock.On("ApplyShield", ctx, _a1, quantity)}
+}
+
+func (_c *MockUserService_ApplyShield_Call) Run(run func(ctx context.Context, _a1 *domain.User, quantity int)) *MockUserService_ApplyShield_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*domain.User), args[2].(int))
+	})
+	return _c
+}
+
+func (_c *MockUserService_ApplyShield_Call) Return(_a0 error) *MockUserService_ApplyShield_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockUserService_ApplyShield_Call) RunAndReturn(run func(context.Context, *domain.User, int) error) *MockUserService_ApplyShield_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // FindUserByPlatformID provides a mock function with given fields: ctx, platform, platformID
 func (_m *MockUserService) FindUserByPlatformID(ctx context.Context, platform string, platformID string) (*domain.User, error) {
 	ret := _m.Called(ctx, platform, platformID)
@@ -699,6 +747,54 @@ func (_c *MockUserService_MergeUsers_Call) Return(_a0 error) *MockUserService_Me
 }
 
 func (_c *MockUserService_MergeUsers_Call) RunAndReturn(run func(context.Context, string, string) error) *MockUserService_MergeUsers_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ReduceTimeout provides a mock function with given fields: ctx, username, reduction
+func (_m *MockUserService) ReduceTimeout(ctx context.Context, username string, reduction time.Duration) error {
+	ret := _m.Called(ctx, username, reduction)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReduceTimeout")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, time.Duration) error); ok {
+		r0 = rf(ctx, username, reduction)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockUserService_ReduceTimeout_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReduceTimeout'
+type MockUserService_ReduceTimeout_Call struct {
+	*mock.Call
+}
+
+// ReduceTimeout is a helper method to define mock.On call
+//   - ctx context.Context
+//   - username string
+//   - reduction time.Duration
+func (_e *MockUserService_Expecter) ReduceTimeout(ctx interface{}, username interface{}, reduction interface{}) *MockUserService_ReduceTimeout_Call {
+	return &MockUserService_ReduceTimeout_Call{Call: _e.mock.On("ReduceTimeout", ctx, username, reduction)}
+}
+
+func (_c *MockUserService_ReduceTimeout_Call) Run(run func(ctx context.Context, username string, reduction time.Duration)) *MockUserService_ReduceTimeout_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(time.Duration))
+	})
+	return _c
+}
+
+func (_c *MockUserService_ReduceTimeout_Call) Return(_a0 error) *MockUserService_ReduceTimeout_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockUserService_ReduceTimeout_Call) RunAndReturn(run func(context.Context, string, time.Duration) error) *MockUserService_ReduceTimeout_Call {
 	_c.Call.Return(run)
 	return _c
 }

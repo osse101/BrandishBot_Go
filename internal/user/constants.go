@@ -75,8 +75,11 @@ const SearchFirstDailyGuaranteedRoll = 0.0
 // BulkFeedbackThreshold defines the number of lootboxes required to trigger "Nice haul" message
 const BulkFeedbackThreshold = 5
 
-// BlasterTimeoutDuration is the duration a user is timed out when hit by a blaster
+// BlasterTimeoutDuration is the default duration a user is timed out when hit by a blaster
 const BlasterTimeoutDuration = 60 * time.Second
+
+// ArgsJobName is the key for the job name argument
+const ArgsJobName = "jobName"
 
 // ============================================================================
 // Inventory Limits
@@ -112,7 +115,19 @@ const ErrMsgItemNotFoundInInventory = "item not found in inventory"
 const ErrMsgNotEnoughItemsInInventory = "not enough items in inventory"
 
 // ErrMsgTargetUsernameRequired is returned when target username is missing for targeted items
-const ErrMsgTargetUsernameRequired = "target username is required for blaster"
+const ErrMsgTargetUsernameRequired = "target username is required for weapon"
+
+// ErrMsgTargetUsernameRequiredRevive is returned when target username is missing for revive
+const ErrMsgTargetUsernameRequiredRevive = "target username is required for revive"
+
+// ErrMsgJobNameRequired is returned when job name is missing for rare candy
+const ErrMsgJobNameRequired = "job name is required for rare candy"
+
+// ErrMsgFailedToApplyShield is returned when shield application fails
+const ErrMsgFailedToApplyShield = "failed to apply shield"
+
+// ErrMsgFailedToAwardXP is returned when XP award fails
+const ErrMsgFailedToAwardXP = "failed to award XP"
 
 // ============================================================================
 // Log Messages - Operations
@@ -136,6 +151,10 @@ const (
 	LogMsgGiveItemCalled               = "GiveItem called"
 	LogMsgGiveItemByUsernameCalled     = "GiveItemByUsername called"
 	LogMsgHandleBlasterCalled          = "handleBlaster called"
+	LogMsgHandleWeaponCalled           = "handleWeapon called"
+	LogMsgHandleReviveCalled           = "handleRevive called"
+	LogMsgHandleShieldCalled           = "handleShield called"
+	LogMsgHandleRareCandyCalled        = "handleRareCandy called"
 )
 
 // ============================================================================
@@ -166,6 +185,10 @@ const (
 	LogMsgSearchNearMiss                      = "Search NEAR MISS"
 	LogMsgSearchCriticalFail                  = "Search CRITICAL FAIL"
 	LogMsgBlasterUsed                         = "blaster used"
+	LogMsgWeaponUsed                          = "weapon used"
+	LogMsgReviveUsed                          = "revive used"
+	LogMsgShieldApplied                       = "shield applied"
+	LogMsgRareCandyUsed                       = "rare candy used"
 	LogMsgUserCacheHit                        = "User cache hit"
 	LogMsgFoundExistingUser                   = "Found existing user"
 	LogMsgAutoRegisteringUser                 = "Auto-registering new user"
@@ -189,12 +212,26 @@ const (
 	LogWarnNoHandlerForItem              = "No handler for item"
 	LogWarnItemMissingForSlot            = "Item missing for slot"
 	LogWarnTargetUsernameMissingBlaster  = "target username missing for blaster"
+	LogWarnTargetUsernameMissingWeapon   = "target username missing for weapon"
+	LogWarnTargetUsernameMissingRevive   = "target username missing for revive"
 	LogWarnBlasterNotInInventory         = "blaster not in inventory"
+	LogWarnWeaponNotInInventory          = "weapon not in inventory"
+	LogWarnReviveNotInInventory          = "revive not in inventory"
+	LogWarnShieldNotInInventory          = "shield not in inventory"
+	LogWarnRareCandyNotInInventory       = "rarecandy not in inventory"
 	LogWarnNotEnoughBlasters             = "not enough blasters in inventory"
+	LogWarnNotEnoughWeapons              = "not enough weapons in inventory"
+	LogWarnNotEnoughRevives              = "not enough revives in inventory"
+	LogWarnNotEnoughShields              = "not enough shields in inventory"
+	LogWarnNotEnoughRareCandy            = "not enough rare candy in inventory"
+	LogWarnJobNameMissing                = "job name missing for rare candy"
 	LogWarnFailedToGetSearchCounts       = "Failed to get search counts"
 	LogWarnFailedToAwardExplorerXP       = "Failed to award Explorer XP"
 	LogWarnFailedToGetUserStreak         = "Failed to get user streak"
 	LogWarnFailedToTimeoutUser           = "Failed to timeout user"
+	LogWarnFailedToReduceTimeout         = "Failed to reduce timeout"
+	LogWarnFailedToApplyShield           = "Failed to apply shield"
+	LogWarnFailedToAwardJobXP            = "Failed to award job XP"
 	LogWarnFailedToRecordLootboxJackpot  = "Failed to record lootbox jackpot event"
 	LogWarnFailedToRecordLootboxBigWin   = "Failed to record lootbox big-win event"
 	LogWarnFailedToDeleteSecondaryInv    = "Failed to delete secondary inventory"

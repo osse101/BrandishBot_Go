@@ -8,16 +8,64 @@ const (
 	ItemLootbox0 = "lootbox_tier0"  // was lootbox0
 	ItemLootbox1 = "lootbox_tier1"  // was lootbox1
 	ItemLootbox2 = "lootbox_tier2"  // was lootbox2
+	ItemLootbox3 = "lootbox_tier3"  // diamondbox
 	ItemBlaster  = "weapon_blaster" // was blaster
+
+	// Weapon items
+	ItemBigBlaster  = "weapon_bigblaster"  // bigmissile - 10 min timeout
+	ItemHugeBlaster = "weapon_hugeblaster" // hugemissile - 100 min timeout
+	ItemThis        = "weapon_this"        // meme weapon - 101s timeout
+	ItemDeez        = "weapon_deez"        // meme weapon - 202s timeout
+
+	// Revive items
+	ItemReviveSmall  = "revive_small"  // revives - 60s recovery
+	ItemReviveMedium = "revive_medium" // revivem - 10 min recovery
+	ItemReviveLarge  = "revive_large"  // revivel - 100 min recovery
+
+	// Explosive items
+	ItemMine = "explosive_mine" // mine - basic trap
+	ItemTrap = "explosive_trap" // trap - upgraded trap
+	ItemTNT  = "explosive_tnt"  // tnt - ultimate trap
+
+	// Utility items
+	ItemStick  = "item_stick"  // basic crafting material
+	ItemShield = "item_shield" // blocks weapon attacks
+
+	// Progression items
+	ItemRareCandy = "xp_rarecandy" // instant job XP
 )
 
 // Public item name constants - what clients use in commands (PublicName field)
 const (
-	PublicNameMoney   = "money"   // Currency
-	PublicNameJunkbox = "junkbox" // Tier 0 lootbox (rusty)
-	PublicNameLootbox = "lootbox" // Tier 1 lootbox (basic)
-	PublicNameGoldbox = "goldbox" // Tier 2 lootbox (golden)
-	PublicNameMissile = "missile" // Blaster weapon
+	PublicNameMoney      = "money"      // Currency
+	PublicNameJunkbox    = "junkbox"    // Tier 0 lootbox (rusty)
+	PublicNameLootbox    = "lootbox"    // Tier 1 lootbox (basic)
+	PublicNameGoldbox    = "goldbox"    // Tier 2 lootbox (golden)
+	PublicNameDiamondbox = "diamondbox" // Tier 3 lootbox (diamond)
+	PublicNameMissile    = "missile"    // Blaster weapon
+
+	// Weapon public names
+	PublicNameBigMissile  = "bigmissile"  // Big blaster
+	PublicNameHugeMissile = "hugemissile" // Huge blaster
+	PublicNameThis        = "this"        // Meme weapon
+	PublicNameDeez        = "deez"        // Meme weapon upgrade
+
+	// Revive public names
+	PublicNameReviveS = "revives" // Small revive
+	PublicNameReviveM = "revivem" // Medium revive
+	PublicNameReviveL = "revivel" // Large revive
+
+	// Explosive public names
+	PublicNameMine = "mine" // Basic explosive
+	PublicNameTrap = "trap" // Upgraded explosive
+	PublicNameTNT  = "tnt"  // Ultimate explosive
+
+	// Utility public names
+	PublicNameStick  = "stick"  // Basic material
+	PublicNameShield = "shield" // Defensive item
+
+	// Progression public names
+	PublicNameRareCandy = "rarecandy" // XP item
 )
 
 // Action name constants for cooldown tracking

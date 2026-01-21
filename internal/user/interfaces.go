@@ -47,6 +47,8 @@ type GameplayService interface {
 	HandleIncomingMessage(ctx context.Context, platform, platformID, username, message string) (*domain.MessageResult, error)
 	TimeoutUser(ctx context.Context, username string, duration time.Duration, reason string) error
 	GetTimeout(ctx context.Context, username string) (time.Duration, error)
+	ReduceTimeout(ctx context.Context, username string, reduction time.Duration) error
+	ApplyShield(ctx context.Context, user *domain.User, quantity int) error
 }
 
 // Service is the full interface that composes all sub-interfaces.

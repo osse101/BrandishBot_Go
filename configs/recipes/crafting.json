@@ -29,6 +29,132 @@
           "quantity": 500
         }
       ]
+    },
+    {
+      "recipe_key": "lootbox_tier2",
+      "target_item": "lootbox_tier3",
+      "costs": [
+        {
+          "item": "lootbox_tier2",
+          "quantity": 3
+        },
+        {
+          "item": "money",
+          "quantity": 2500
+        }
+      ]
+    },
+    {
+      "recipe_key": "weapon_blaster",
+      "target_item": "weapon_bigblaster",
+      "costs": [
+        {
+          "item": "weapon_blaster",
+          "quantity": 10
+        },
+        {
+          "item": "money",
+          "quantity": 1000
+        }
+      ]
+    },
+    {
+      "recipe_key": "weapon_bigblaster",
+      "target_item": "weapon_hugeblaster",
+      "costs": [
+        {
+          "item": "weapon_bigblaster",
+          "quantity": 1
+        },
+        {
+          "item": "money",
+          "quantity": 5000
+        }
+      ]
+    },
+    {
+      "recipe_key": "weapon_this",
+      "target_item": "weapon_deez",
+      "costs": [
+        {
+          "item": "weapon_this",
+          "quantity": 10
+        },
+        {
+          "item": "money",
+          "quantity": 500
+        }
+      ]
+    },
+    {
+      "recipe_key": "revive_small",
+      "target_item": "revive_medium",
+      "costs": [
+        {
+          "item": "revive_small",
+          "quantity": 10
+        },
+        {
+          "item": "money",
+          "quantity": 500
+        }
+      ]
+    },
+    {
+      "recipe_key": "revive_medium",
+      "target_item": "revive_large",
+      "costs": [
+        {
+          "item": "revive_medium",
+          "quantity": 1
+        },
+        {
+          "item": "money",
+          "quantity": 3000
+        }
+      ]
+    },
+    {
+      "recipe_key": "explosive_mine",
+      "target_item": "explosive_trap",
+      "costs": [
+        {
+          "item": "explosive_mine",
+          "quantity": 10
+        },
+        {
+          "item": "money",
+          "quantity": 250
+        }
+      ]
+    },
+    {
+      "recipe_key": "explosive_trap",
+      "target_item": "explosive_tnt",
+      "costs": [
+        {
+          "item": "explosive_trap",
+          "quantity": 1
+        },
+        {
+          "item": "money",
+          "quantity": 2500
+        }
+      ]
+    },
+    {
+      "recipe_key": "item_stick",
+      "target_item": "item_shield",
+      "costs": [
+        {
+          "item": "item_stick",
+          "quantity": 10
+        },
+        {
+          "item": "money",
+          "quantity": 500
+        }
+      ]
     }
   ]
 }

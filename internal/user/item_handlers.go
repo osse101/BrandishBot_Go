@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
@@ -168,33 +169,179 @@ func (s *service) handleLootboxGeneric(ctx context.Context, _ *service, user *do
 	return s.processLootbox(ctx, user, inventory, item, quantity)
 }
 
-func (s *service) handleBlaster(ctx context.Context, _ *service, _ *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args map[string]interface{}) (string, error) {
+// weaponTimeouts maps weapon internal names to their timeout durations
+var weaponTimeouts = map[string]time.Duration{
+	domain.ItemBlaster:     60 * time.Second,
+	domain.ItemBigBlaster:  600 * time.Second,
+	domain.ItemHugeBlaster: 6000 * time.Second,
+	domain.ItemThis:        101 * time.Second,
+	domain.ItemDeez:        202 * time.Second,
+}
+
+// getWeaponTimeout returns the timeout duration for a weapon, with a default fallback
+func getWeaponTimeout(itemName string) time.Duration {
+	if timeout, ok := weaponTimeouts[itemName]; ok {
+		return timeout
+	}
+	return BlasterTimeoutDuration // default fallback
+}
+
+func (s *service) handleWeapon(ctx context.Context, _ *service, _ *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args map[string]interface{}) (string, error) {
 	log := logger.FromContext(ctx)
-	log.Info(LogMsgHandleBlasterCalled, "quantity", quantity)
+	log.Info(LogMsgHandleWeaponCalled, "item", item.InternalName, "quantity", quantity)
 	targetUsername, ok := args[ArgsTargetUsername].(string)
 	if !ok || targetUsername == "" {
-		log.Warn(LogWarnTargetUsernameMissingBlaster)
+		log.Warn(LogWarnTargetUsernameMissingWeapon)
 		return "", fmt.Errorf(ErrMsgTargetUsernameRequired)
 	}
 	username, _ := args[ArgsUsername].(string)
-	// Find blaster slot
+	// Find item slot
 	itemSlotIndex, slotQuantity := utils.FindSlot(inventory, item.ID)
 	if itemSlotIndex == -1 {
-		log.Warn(LogWarnBlasterNotInInventory)
+		log.Warn(LogWarnWeaponNotInInventory, "item", item.InternalName)
 		return "", fmt.Errorf(ErrMsgItemNotFoundInInventory)
 	}
 	if slotQuantity < quantity {
-		log.Warn(LogWarnNotEnoughBlasters)
+		log.Warn(LogWarnNotEnoughWeapons, "item", item.InternalName)
 		return "", fmt.Errorf(ErrMsgNotEnoughItemsInInventory)
 	}
 	utils.RemoveFromSlot(inventory, itemSlotIndex, quantity)
 
+	// Get timeout for this weapon type
+	timeout := getWeaponTimeout(item.InternalName)
+
 	// Apply timeout
-	if err := s.TimeoutUser(ctx, targetUsername, BlasterTimeoutDuration, MsgBlasterReasonBy+username); err != nil {
+	if err := s.TimeoutUser(ctx, targetUsername, timeout, MsgBlasterReasonBy+username); err != nil {
 		log.Error(LogWarnFailedToTimeoutUser, "error", err, "target", targetUsername)
 		// Continue anyway, as the item was used
 	}
 
-	log.Info(LogMsgBlasterUsed, "target", targetUsername, "quantity", quantity)
-	return fmt.Sprintf("%s%s%s %d%s%v%s", username, MsgBlasterUsedPrefix, targetUsername, quantity, MsgBlasterUsedSuffix, BlasterTimeoutDuration, MsgBlasterTimeoutEnd), nil
+	displayName := s.namingResolver.GetDisplayName(item.InternalName, "")
+	log.Info(LogMsgWeaponUsed, "target", targetUsername, "item", item.InternalName, "quantity", quantity)
+	return fmt.Sprintf("%s used %s on %s! %d %s(s) fired. Timed out for %v.", username, displayName, targetUsername, quantity, displayName, timeout), nil
+}
+
+// handleBlaster is a legacy wrapper for backward compatibility
+func (s *service) handleBlaster(ctx context.Context, svc *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args map[string]interface{}) (string, error) {
+	return s.handleWeapon(ctx, svc, user, inventory, item, quantity, args)
+}
+
+// reviveRecoveryTimes maps revive internal names to their recovery durations
+var reviveRecoveryTimes = map[string]time.Duration{
+	domain.ItemReviveSmall:  60 * time.Second,
+	domain.ItemReviveMedium: 600 * time.Second,
+	domain.ItemReviveLarge:  6000 * time.Second,
+}
+
+// getReviveRecovery returns the recovery duration for a revive item
+func getReviveRecovery(itemName string) time.Duration {
+	if recovery, ok := reviveRecoveryTimes[itemName]; ok {
+		return recovery
+	}
+	return 60 * time.Second // default fallback
+}
+
+func (s *service) handleRevive(ctx context.Context, _ *service, _ *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args map[string]interface{}) (string, error) {
+	log := logger.FromContext(ctx)
+	log.Info(LogMsgHandleReviveCalled, "item", item.InternalName, "quantity", quantity)
+	targetUsername, ok := args[ArgsTargetUsername].(string)
+	if !ok || targetUsername == "" {
+		log.Warn(LogWarnTargetUsernameMissingRevive)
+		return "", fmt.Errorf(ErrMsgTargetUsernameRequiredRevive)
+	}
+	username, _ := args[ArgsUsername].(string)
+
+	// Find item slot
+	itemSlotIndex, slotQuantity := utils.FindSlot(inventory, item.ID)
+	if itemSlotIndex == -1 {
+		log.Warn(LogWarnReviveNotInInventory, "item", item.InternalName)
+		return "", fmt.Errorf(ErrMsgItemNotFoundInInventory)
+	}
+	if slotQuantity < quantity {
+		log.Warn(LogWarnNotEnoughRevives, "item", item.InternalName)
+		return "", fmt.Errorf(ErrMsgNotEnoughItemsInInventory)
+	}
+	utils.RemoveFromSlot(inventory, itemSlotIndex, quantity)
+
+	// Get recovery time for this revive type
+	recovery := getReviveRecovery(item.InternalName)
+	totalRecovery := time.Duration(quantity) * recovery
+
+	// Reduce timeout for target user
+	if err := s.ReduceTimeout(ctx, targetUsername, totalRecovery); err != nil {
+		log.Error(LogWarnFailedToReduceTimeout, "error", err, "target", targetUsername)
+		// Continue anyway, as the item was used
+	}
+
+	displayName := s.namingResolver.GetDisplayName(item.InternalName, "")
+	log.Info(LogMsgReviveUsed, "target", targetUsername, "item", item.InternalName, "quantity", quantity)
+	return fmt.Sprintf("%s used %d %s on %s! Reduced timeout by %v.", username, quantity, displayName, targetUsername, totalRecovery), nil
+}
+
+func (s *service) handleShield(ctx context.Context, _ *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, _ map[string]interface{}) (string, error) {
+	log := logger.FromContext(ctx)
+	log.Info(LogMsgHandleShieldCalled, "quantity", quantity)
+
+	// Find item slot
+	itemSlotIndex, slotQuantity := utils.FindSlot(inventory, item.ID)
+	if itemSlotIndex == -1 {
+		log.Warn(LogWarnShieldNotInInventory)
+		return "", fmt.Errorf(ErrMsgItemNotFoundInInventory)
+	}
+	if slotQuantity < quantity {
+		log.Warn(LogWarnNotEnoughShields)
+		return "", fmt.Errorf(ErrMsgNotEnoughItemsInInventory)
+	}
+	utils.RemoveFromSlot(inventory, itemSlotIndex, quantity)
+
+	// Apply shield status to user (store in user metadata or a separate shield table)
+	if err := s.ApplyShield(ctx, user, quantity); err != nil {
+		log.Error(LogWarnFailedToApplyShield, "error", err)
+		return "", fmt.Errorf(ErrMsgFailedToApplyShield)
+	}
+
+	log.Info(LogMsgShieldApplied, "quantity", quantity)
+	return fmt.Sprintf("Activated %d shield(s)! You are protected from the next %d weapon attack(s).", quantity, quantity), nil
+}
+
+// rarecandyXPAmount defines the XP granted per rare candy
+const rarecandyXPAmount = 500
+
+func (s *service) handleRareCandy(ctx context.Context, _ *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args map[string]interface{}) (string, error) {
+	log := logger.FromContext(ctx)
+	log.Info(LogMsgHandleRareCandyCalled, "quantity", quantity)
+
+	jobName, ok := args[ArgsJobName].(string)
+	if !ok || jobName == "" {
+		log.Warn(LogWarnJobNameMissing)
+		return "", fmt.Errorf(ErrMsgJobNameRequired)
+	}
+
+	// Find item slot
+	itemSlotIndex, slotQuantity := utils.FindSlot(inventory, item.ID)
+	if itemSlotIndex == -1 {
+		log.Warn(LogWarnRareCandyNotInInventory)
+		return "", fmt.Errorf(ErrMsgItemNotFoundInInventory)
+	}
+	if slotQuantity < quantity {
+		log.Warn(LogWarnNotEnoughRareCandy)
+		return "", fmt.Errorf(ErrMsgNotEnoughItemsInInventory)
+	}
+	utils.RemoveFromSlot(inventory, itemSlotIndex, quantity)
+
+	// Award XP to the specified job
+	totalXP := quantity * rarecandyXPAmount
+	if s.jobService != nil {
+		metadata := map[string]interface{}{
+			"source":   "rarecandy",
+			"quantity": quantity,
+		}
+		if _, err := s.jobService.AwardXP(ctx, user.ID, jobName, totalXP, "rarecandy", metadata); err != nil {
+			log.Error(LogWarnFailedToAwardJobXP, "error", err, "job", jobName)
+			return "", fmt.Errorf(ErrMsgFailedToAwardXP)
+		}
+	}
+
+	log.Info(LogMsgRareCandyUsed, "job", jobName, "xp", totalXP, "quantity", quantity)
+	return fmt.Sprintf("Used %d rare candy! Granted %d XP to %s.", quantity, totalXP, jobName), nil
 }

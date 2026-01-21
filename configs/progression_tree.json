@@ -147,7 +147,7 @@
       "prerequisites": [
         "feature_search"
       ],
-      "sort_order": 21,
+      "sort_order": 24,
       "auto_unlock": false
     },
     {
@@ -163,6 +163,36 @@
         "item_lootbox0"
       ],
       "sort_order": 22,
+      "auto_unlock": false
+    },
+    {
+      "key": "item_lootbox2",
+      "name": "Premium Lootbox",
+      "type": "item",
+      "description": "Unlock lootbox2 (goldbox) with rare items",
+      "tier": 2,
+      "size": "medium",
+      "category": "items",
+      "max_level": 1,
+      "prerequisites": [
+        "item_lootbox1"
+      ],
+      "sort_order": 25,
+      "auto_unlock": false
+    },
+    {
+      "key": "item_lootbox3",
+      "name": "Diamond Lootbox",
+      "type": "item",
+      "description": "Unlock lootbox3 (diamondbox) with legendary items",
+      "tier": 3,
+      "size": "large",
+      "category": "items",
+      "max_level": 1,
+      "prerequisites": [
+        "item_lootbox2"
+      ],
+      "sort_order": 26,
       "auto_unlock": false
     },
     {
@@ -293,6 +323,201 @@
         "base_value": 1.0,
         "per_level_value": 0.05
       }
+    },
+    {
+      "key": "item_stick",
+      "name": "Stick",
+      "type": "item",
+      "description": "Unlock stick - basic crafting material",
+      "tier": 1,
+      "size": "small",
+      "category": "items",
+      "max_level": 1,
+      "prerequisites": [
+        "item_money"
+      ],
+      "sort_order": 50,
+      "auto_unlock": false
+    },
+    {
+      "key": "item_shield",
+      "name": "Shield",
+      "type": "item",
+      "description": "Unlock shield - blocks the next weapon attack",
+      "tier": 2,
+      "size": "medium",
+      "category": "items",
+      "max_level": 1,
+      "prerequisites": [
+        "item_stick"
+      ],
+      "sort_order": 51,
+      "auto_unlock": false
+    },
+    {
+      "key": "item_revives",
+      "name": "Small Revive",
+      "type": "item",
+      "description": "Unlock small revive - reduces timeout by 60s",
+      "tier": 1,
+      "size": "small",
+      "category": "items",
+      "max_level": 1,
+      "prerequisites": [
+        "item_money"
+      ],
+      "sort_order": 52,
+      "auto_unlock": false
+    },
+    {
+      "key": "item_revivem",
+      "name": "Medium Revive",
+      "type": "item",
+      "description": "Unlock medium revive - reduces timeout by 10 minutes",
+      "tier": 2,
+      "size": "medium",
+      "category": "items",
+      "max_level": 1,
+      "prerequisites": [
+        "item_revives"
+      ],
+      "sort_order": 53,
+      "auto_unlock": false
+    },
+    {
+      "key": "item_revivel",
+      "name": "Large Revive",
+      "type": "item",
+      "description": "Unlock large revive - reduces timeout by 100 minutes",
+      "tier": 3,
+      "size": "large",
+      "category": "items",
+      "max_level": 1,
+      "prerequisites": [
+        "item_revivem"
+      ],
+      "sort_order": 54,
+      "auto_unlock": false
+    },
+    {
+      "key": "item_mine",
+      "name": "Mine",
+      "type": "item",
+      "description": "Unlock mine - hidden trap that triggers on searchers",
+      "tier": 1,
+      "size": "small",
+      "category": "items",
+      "max_level": 1,
+      "prerequisites": [
+        "item_money"
+      ],
+      "sort_order": 55,
+      "auto_unlock": false
+    },
+    {
+      "key": "item_trap",
+      "name": "Trap",
+      "type": "item",
+      "description": "Unlock trap - upgraded explosive with more power",
+      "tier": 2,
+      "size": "medium",
+      "category": "items",
+      "max_level": 1,
+      "prerequisites": [
+        "item_mine"
+      ],
+      "sort_order": 56,
+      "auto_unlock": false
+    },
+    {
+      "key": "item_tnt",
+      "name": "TNT",
+      "type": "item",
+      "description": "Unlock TNT - ultimate explosive with massive effect",
+      "tier": 3,
+      "size": "large",
+      "category": "items",
+      "max_level": 1,
+      "prerequisites": [
+        "item_trap"
+      ],
+      "sort_order": 57,
+      "auto_unlock": false
+    },
+    {
+      "key": "item_this",
+      "name": "This",
+      "type": "item",
+      "description": "Unlock 'this' - meme weapon (101s timeout)",
+      "tier": 1,
+      "size": "small",
+      "category": "items",
+      "max_level": 1,
+      "prerequisites": [
+        "item_money"
+      ],
+      "sort_order": 58,
+      "auto_unlock": false
+    },
+    {
+      "key": "item_deez",
+      "name": "Deez",
+      "type": "item",
+      "description": "Unlock 'deez' - upgraded meme weapon (202s timeout)",
+      "tier": 2,
+      "size": "medium",
+      "category": "items",
+      "max_level": 1,
+      "prerequisites": [
+        "item_this"
+      ],
+      "sort_order": 59,
+      "auto_unlock": false
+    },
+    {
+      "key": "item_bigmissile",
+      "name": "Big Missile",
+      "type": "item",
+      "description": "Unlock big missile - 10 minute timeout weapon",
+      "tier": 2,
+      "size": "medium",
+      "category": "items",
+      "max_level": 1,
+      "prerequisites": [
+        "item_lootbox1"
+      ],
+      "sort_order": 60,
+      "auto_unlock": false
+    },
+    {
+      "key": "item_hugemissile",
+      "name": "Huge Missile",
+      "type": "item",
+      "description": "Unlock huge missile - 100 minute timeout weapon",
+      "tier": 3,
+      "size": "large",
+      "category": "items",
+      "max_level": 1,
+      "prerequisites": [
+        "item_bigmissile"
+      ],
+      "sort_order": 61,
+      "auto_unlock": false
+    },
+    {
+      "key": "item_rarecandy",
+      "name": "Rare Candy",
+      "type": "item",
+      "description": "Unlock rare candy - instantly grants XP to a job",
+      "tier": 3,
+      "size": "large",
+      "category": "items",
+      "max_level": 1,
+      "prerequisites": [
+        "upgrade_job_xp_multiplier"
+      ],
+      "sort_order": 62,
+      "auto_unlock": false
     }
   ]
 }

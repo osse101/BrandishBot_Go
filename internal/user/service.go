@@ -789,6 +789,62 @@ func (s *service) GetTimeout(ctx context.Context, username string) (time.Duratio
 	return remaining, nil
 }
 
+// ReduceTimeout reduces a user's timeout by the specified duration (used by revive items)
+func (s *service) ReduceTimeout(ctx context.Context, username string, reduction time.Duration) error {
+	log := logger.FromContext(ctx)
+	log.Info("ReduceTimeout called", "username", username, "reduction", reduction)
+
+	s.timeoutMu.Lock()
+	defer s.timeoutMu.Unlock()
+
+	info, exists := s.timeouts[username]
+	if !exists {
+		log.Info("User not timed out, nothing to reduce", "username", username)
+		return nil
+	}
+
+	// Calculate new expiry time
+	newExpiresAt := info.expiresAt.Add(-reduction)
+	remaining := time.Until(newExpiresAt)
+
+	if remaining <= 0 {
+		// Timeout is fully reduced, remove it
+		info.timer.Stop()
+		delete(s.timeouts, username)
+		log.Info("Timeout fully removed", "username", username)
+		return nil
+	}
+
+	// Update the timer with new duration
+	info.timer.Stop()
+	info.expiresAt = newExpiresAt
+	info.timer = time.AfterFunc(remaining, func() {
+		s.timeoutMu.Lock()
+		delete(s.timeouts, username)
+		s.timeoutMu.Unlock()
+		slog.Default().Info("User timeout expired", "username", username)
+	})
+
+	log.Info("Timeout reduced", "username", username, "newRemaining", remaining)
+	return nil
+}
+
+// ApplyShield activates shield protection for a user (blocks next weapon attacks)
+// Note: Shield count is stored in-memory and will be lost on server restart
+func (s *service) ApplyShield(ctx context.Context, user *domain.User, quantity int) error {
+	log := logger.FromContext(ctx)
+	log.Info("ApplyShield called", "userID", user.ID, "quantity", quantity)
+
+	// For now, shields are stored in user metadata or a simple map
+	// This is a placeholder implementation - full implementation would need persistent storage
+	// The shield check would be integrated into the weapon handler
+
+	// TODO: Implement persistent shield storage
+	// For now, just log and return success
+	log.Info("Shield applied (placeholder implementation)", "userID", user.ID, "quantity", quantity)
+	return nil
+}
+
 // Helper methods
 func (s *service) validateItem(ctx context.Context, itemName string) (*domain.Item, error) {
 	log := logger.FromContext(ctx)

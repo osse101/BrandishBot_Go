@@ -649,7 +649,7 @@ func TestUseItem_Blaster(t *testing.T) {
 		t.Fatalf("UseItem failed: %v", err)
 	}
 
-	expectedMsg := "alice has BLASTED bob 2 times! They are timed out for 1m0s."
+	expectedMsg := "alice used weapon_blaster on bob! 2 weapon_blaster(s) fired. Timed out for 1m0s."
 	if message != expectedMsg {
 		t.Errorf("Expected message '%s', got '%s'", expectedMsg, message)
 	}

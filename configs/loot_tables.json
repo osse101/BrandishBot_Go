@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "schema": "loot-tables",
-  "last_updated": "2026-01-05",
+  "last_updated": "2026-01-21",
   "tables": {
     "lootbox_tier0": [
       {
@@ -49,6 +49,44 @@
         "min": 1,
         "max": 1,
         "chance": 0.1
+      }
+    ],
+    "lootbox_tier3": [
+      {
+        "item_name": "money",
+        "min": 500,
+        "max": 2500,
+        "chance": 1.0
+      },
+      {
+        "item_name": "lootbox_tier2",
+        "min": 1,
+        "max": 2,
+        "chance": 0.5
+      },
+      {
+        "item_name": "weapon_bigblaster",
+        "min": 1,
+        "max": 1,
+        "chance": 0.15
+      },
+      {
+        "item_name": "revive_medium",
+        "min": 1,
+        "max": 1,
+        "chance": 0.1
+      },
+      {
+        "item_name": "item_shield",
+        "min": 1,
+        "max": 1,
+        "chance": 0.1
+      },
+      {
+        "item_name": "xp_rarecandy",
+        "min": 1,
+        "max": 1,
+        "chance": 0.05
       }
     ]
   }

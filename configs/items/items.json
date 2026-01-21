@@ -13,7 +13,11 @@
   ],
   "valid_handlers": [
     "lootbox",
-    "weapon"
+    "weapon",
+    "revive",
+    "shield",
+    "rarecandy",
+    "explosive"
   ],
   "items": [
     {
@@ -26,7 +30,7 @@
       "tags": [
         "currency"
       ],
-      "default_display": "💰"
+      "default_display": "money"
     },
     {
       "internal_name": "item_shovel",
@@ -42,6 +46,38 @@
         "buyable"
       ],
       "default_display": "A basic shovel"
+    },
+    {
+      "internal_name": "item_stick",
+      "public_name": "stick",
+      "description": "A simple wooden stick - basic crafting material",
+      "tier": 1,
+      "max_stack": 1000,
+      "base_value": 100,
+      "tags": [
+        "tradeable",
+        "upgradeable",
+        "sellable",
+        "buyable"
+      ],
+      "default_display": "A simple stick"
+    },
+    {
+      "internal_name": "item_shield",
+      "public_name": "shield",
+      "description": "A protective shield - blocks the next weapon attack",
+      "tier": 2,
+      "max_stack": 100,
+      "base_value": 1000,
+      "tags": [
+        "consumable",
+        "tradeable",
+        "disassembleable",
+        "sellable",
+        "buyable"
+      ],
+      "handler": "shield",
+      "default_display": "A sturdy shield"
     },
     {
       "internal_name": "lootbox_tier0",
@@ -100,9 +136,26 @@
       "default_display": "A gleaming golden chest"
     },
     {
+      "internal_name": "lootbox_tier3",
+      "public_name": "diamondbox",
+      "description": "The ultimate lootbox with legendary items",
+      "tier": 3,
+      "max_stack": 1000,
+      "base_value": 10000,
+      "tags": [
+        "consumable",
+        "tradeable",
+        "can_open",
+        "disassembleable",
+        "sellable"
+      ],
+      "handler": "lootbox",
+      "default_display": "A radiant diamond chest"
+    },
+    {
       "internal_name": "weapon_blaster",
       "public_name": "missile",
-      "description": "A powerful weapon",
+      "description": "A powerful weapon - times out target for 60s",
       "tier": 1,
       "max_stack": 1000,
       "base_value": 1000,
@@ -111,7 +164,223 @@
         "consumable"
       ],
       "handler": "weapon",
+      "handler_config": {
+        "timeout_seconds": 60
+      },
       "default_display": "A shiny ray gun"
+    },
+    {
+      "internal_name": "weapon_bigblaster",
+      "public_name": "bigmissile",
+      "description": "An upgraded weapon - times out target for 10 minutes",
+      "tier": 2,
+      "max_stack": 100,
+      "base_value": 5000,
+      "tags": [
+        "upgradeable",
+        "disassembleable",
+        "consumable"
+      ],
+      "handler": "weapon",
+      "handler_config": {
+        "timeout_seconds": 600
+      },
+      "default_display": "A massive ray cannon"
+    },
+    {
+      "internal_name": "weapon_hugeblaster",
+      "public_name": "hugemissile",
+      "description": "The ultimate weapon - times out target for 100 minutes",
+      "tier": 3,
+      "max_stack": 10,
+      "base_value": 15000,
+      "tags": [
+        "disassembleable",
+        "consumable"
+      ],
+      "handler": "weapon",
+      "handler_config": {
+        "timeout_seconds": 6000
+      },
+      "default_display": "A devastating orbital cannon"
+    },
+    {
+      "internal_name": "weapon_this",
+      "public_name": "this",
+      "description": "A meme weapon - times out target for 101s",
+      "tier": 1,
+      "max_stack": 1000,
+      "base_value": 101,
+      "tags": [
+        "upgradeable",
+        "consumable",
+        "tradeable",
+        "sellable",
+        "buyable"
+      ],
+      "handler": "weapon",
+      "handler_config": {
+        "timeout_seconds": 101
+      },
+      "default_display": "this"
+    },
+    {
+      "internal_name": "weapon_deez",
+      "public_name": "deez",
+      "description": "An upgraded meme weapon - times out target for 202s",
+      "tier": 2,
+      "max_stack": 100,
+      "base_value": 1010,
+      "tags": [
+        "disassembleable",
+        "consumable",
+        "tradeable",
+        "sellable"
+      ],
+      "handler": "weapon",
+      "handler_config": {
+        "timeout_seconds": 202
+      },
+      "default_display": "deez"
+    },
+    {
+      "internal_name": "revive_small",
+      "public_name": "revives",
+      "description": "A small revive - reduces timeout by 60s",
+      "tier": 1,
+      "max_stack": 1000,
+      "base_value": 1000,
+      "tags": [
+        "upgradeable",
+        "consumable",
+        "tradeable",
+        "sellable",
+        "buyable"
+      ],
+      "handler": "revive",
+      "handler_config": {
+        "recovery_seconds": 60
+      },
+      "default_display": "A small healing potion"
+    },
+    {
+      "internal_name": "revive_medium",
+      "public_name": "revivem",
+      "description": "A medium revive - reduces timeout by 10 minutes",
+      "tier": 2,
+      "max_stack": 100,
+      "base_value": 3000,
+      "tags": [
+        "upgradeable",
+        "disassembleable",
+        "consumable",
+        "tradeable",
+        "sellable"
+      ],
+      "handler": "revive",
+      "handler_config": {
+        "recovery_seconds": 600
+      },
+      "default_display": "A potent healing elixir"
+    },
+    {
+      "internal_name": "revive_large",
+      "public_name": "revivel",
+      "description": "A large revive - reduces timeout by 100 minutes",
+      "tier": 3,
+      "max_stack": 10,
+      "base_value": 9000,
+      "tags": [
+        "disassembleable",
+        "consumable",
+        "tradeable",
+        "sellable"
+      ],
+      "handler": "revive",
+      "handler_config": {
+        "recovery_seconds": 6000
+      },
+      "default_display": "A legendary phoenix tear"
+    },
+    {
+      "internal_name": "explosive_mine",
+      "public_name": "mine",
+      "description": "A hidden trap - triggers on the next user to search",
+      "tier": 1,
+      "max_stack": 100,
+      "base_value": 75,
+      "tags": [
+        "upgradeable",
+        "consumable",
+        "tradeable",
+        "sellable",
+        "buyable"
+      ],
+      "handler": "explosive",
+      "handler_config": {
+        "damage_type": "search_trap",
+        "timeout_seconds": 30
+      },
+      "default_display": "A concealed mine"
+    },
+    {
+      "internal_name": "explosive_trap",
+      "public_name": "trap",
+      "description": "An upgraded trap - more powerful effect",
+      "tier": 2,
+      "max_stack": 50,
+      "base_value": 750,
+      "tags": [
+        "upgradeable",
+        "disassembleable",
+        "consumable",
+        "tradeable",
+        "sellable"
+      ],
+      "handler": "explosive",
+      "handler_config": {
+        "damage_type": "search_trap",
+        "timeout_seconds": 300
+      },
+      "default_display": "A deadly trap"
+    },
+    {
+      "internal_name": "explosive_tnt",
+      "public_name": "tnt",
+      "description": "The ultimate explosive - massive area effect",
+      "tier": 3,
+      "max_stack": 10,
+      "base_value": 7500,
+      "tags": [
+        "disassembleable",
+        "consumable",
+        "tradeable",
+        "sellable"
+      ],
+      "handler": "explosive",
+      "handler_config": {
+        "damage_type": "search_trap",
+        "timeout_seconds": 3000
+      },
+      "default_display": "A bundle of dynamite"
+    },
+    {
+      "internal_name": "xp_rarecandy",
+      "public_name": "rarecandy",
+      "description": "Instantly grants XP to a selected job",
+      "tier": 3,
+      "max_stack": 100,
+      "base_value": 2500,
+      "tags": [
+        "consumable",
+        "tradeable",
+        "sellable"
+      ],
+      "handler": "rarecandy",
+      "handler_config": {
+        "xp_amount": 500
+      },
+      "default_display": "A glowing rare candy"
     }
   ]
 }
