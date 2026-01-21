@@ -120,9 +120,16 @@ func mapServiceErrorToUserMessage(err error) (int, string) {
 		return http.StatusInternalServerError, ErrMsgUnknownError
 	}
 
+	// For crafting errors with wrapped context, extract the detailed message
+	errMsg := err.Error()
+
 	// Check for specific domain errors
 	switch {
 	case errors.Is(err, domain.ErrUserNotFound):
+		// Extract custom message if wrapped
+		if len(errMsg) > len("user not found") {
+			return http.StatusBadRequest, errMsg
+		}
 		return http.StatusBadRequest, ErrMsgUserNotFoundError
 	case errors.Is(err, domain.ErrItemNotFound):
 		return http.StatusBadRequest, ErrMsgItemNotFoundError
@@ -139,6 +146,14 @@ func mapServiceErrorToUserMessage(err error) (int, string) {
 	case errors.Is(err, domain.ErrNotBuyable):
 		return http.StatusBadRequest, ErrMsgNotBuyableError
 	case errors.Is(err, domain.ErrRecipeLocked):
+		// Extract item-specific message from wrapped error
+		if len(errMsg) > len("recipe locked") {
+			// Remove the wrapped error suffix to get clean message
+			before, _, found := cutSuffix(errMsg, " | recipe locked")
+			if found {
+				return http.StatusForbidden, before + ". Unlock it in the progression tree"
+			}
+		}
 		return http.StatusForbidden, ErrMsgRecipeLockedError
 	case errors.Is(err, domain.ErrFeatureLocked):
 		return http.StatusForbidden, ErrMsgFeatureLockedProgressionError
@@ -165,6 +180,14 @@ func mapServiceErrorToUserMessage(err error) (int, string) {
 	case errors.Is(err, domain.ErrUserAlreadyVoted):
 		return http.StatusBadRequest, ErrMsgAlreadyVotedError
 	case errors.Is(err, domain.ErrRecipeNotFound):
+		// Extract item-specific message from wrapped error
+		if len(errMsg) > len("recipe not found") {
+			// Remove the wrapped error suffix to get clean message
+			before, _, found := cutSuffix(errMsg, " | recipe not found")
+			if found {
+				return http.StatusBadRequest, before
+			}
+		}
 		return http.StatusBadRequest, ErrMsgRecipeNotFoundError
 	case errors.Is(err, domain.ErrInvalidPlatform):
 		return http.StatusBadRequest, ErrMsgInvalidPlatformError
@@ -184,7 +207,6 @@ func mapServiceErrorToUserMessage(err error) (int, string) {
 	}
 
 	// For error messages from tests/mocks that contain certain keywords, extract the message
-	errMsg := err.Error()
 	if errMsg != "" && len(errMsg) < 200 {
 		// Return the error message as-is if it's a reasonable length and not a system error
 		// This allows tests with custom error messages to work while keeping them user-visible
@@ -193,4 +215,16 @@ func mapServiceErrorToUserMessage(err error) (int, string) {
 
 	// Default to generic message for very long or system-level errors
 	return http.StatusInternalServerError, ErrMsgGenericServerError
+}
+
+// cutSuffix removes suffix from s and returns the result and true if it was found.
+// If suffix is not in s, returns s and false.
+func cutSuffix(s, suffix string) (before string, after string, found bool) {
+	if len(s) < len(suffix) {
+		return s, "", false
+	}
+	if s[len(s)-len(suffix):] == suffix {
+		return s[:len(s)-len(suffix)], suffix, true
+	}
+	return s, "", false
 }

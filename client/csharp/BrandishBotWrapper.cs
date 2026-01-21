@@ -234,9 +234,27 @@ public class CPHInline
                 var result = client.GetInventoryByUsername(platform, targetUser).Result;
                 CPH.SetArgument("response", ResponseFormatter.FormatInventory(result));
                 return true;
-            }catch(Exception ex){
-                CPH.LogError($"GetInventoryByUsername failed: {ex.Message}");
-                return false;
+            }
+            catch (AggregateException aex)
+            {
+                var inner = aex.InnerException ?? aex;
+                CPH.LogWarn($"GetInventoryByUsername Error: {inner.Message}");
+                // Better error message for user not found
+                if (inner.Message.Contains("not found") || inner.Message.Contains("404"))
+                {
+                    CPH.SetArgument("response", $"User not found: {targetUser}");
+                }
+                else
+                {
+                    CPH.SetArgument("response", $"Error: {inner.Message}");
+                }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                CPH.LogWarn($"GetInventoryByUsername Error: {ex.Message}");
+                CPH.SetArgument("response", $"Error: {ex.Message}");
+                return true;
             }
         }else
         {   //target self
@@ -250,8 +268,9 @@ public class CPHInline
             }
             catch (Exception ex)
             {
-                CPH.LogError($"GetInventory failed: {ex.Message}");
-                return false;
+                CPH.LogWarn($"GetInventory Error: {ex.Message}");
+                CPH.SetArgument("response", $"Error: {ex.Message}");
+                return true;
             }
         }
     }
@@ -992,40 +1011,39 @@ public class CPHInline
     }
 
     /// <summary>
-    /// Check timeout status for a user
-    /// Command: !checkTimeout [username]
+    /// Check timeout status for a user (gett command)
+    /// Command: !gett [username]
     /// </summary>
     public bool GetUserTimeout()
     {
         EnsureInitialized();
         string error = null;
-        
         string targetUser = null;
-        // Try getting from input0, else fallback to context username
-        if (!GetInputString(0, "username", false, out targetUser, ref error))
-        {
-            // If internal error, though false implies 'not found' here mostly?
-            // GetInputString returns true if found OR not required. 
-            // It returns false only if required and missing.
-            // So targetUser is null here if missing.
-        }
-
+        
+        GetInputString(0, "username", false, out targetUser, ref error)
         if (string.IsNullOrEmpty(targetUser))
         {
             // Fallback to self
             CPH.TryGetArg("userName", out targetUser);
         }
 
-        if (string.IsNullOrEmpty(targetUser))
-        {
-            CPH.SetArgument("response", "Usage: !checkTimeout [username] (or use in chat for self)");
-            return true;
-        }
-
         try
         {
             var result = client.GetUserTimeout(targetUser).Result;
-            CPH.SetArgument("response", result);
+            var jsonResult = Newtonsoft.Json.Linq.JObject.Parse(result);
+            bool isTimedOut = jsonResult["is_timed_out"]?.Value<bool>() ?? false;
+            double remainingSeconds = jsonResult["remaining_seconds"]?.Value<double>() ?? 0;
+
+            if (isTimedOut)
+            {
+                int minutes = (int)(remainingSeconds / 60);
+                int seconds = (int)(remainingSeconds % 60);
+                CPH.SetArgument("response", $"{targetUser} is timed out for {minutes}m {seconds}s");
+            }
+            else
+            {
+                CPH.SetArgument("response", $"{targetUser} is not timed out");
+            }
             return true;
         }
         catch (Exception ex)
@@ -1211,7 +1229,7 @@ public class CPHInline
 
     /// <summary>
     /// Get unlock progress for the current voting session
-    /// Command: !unlockProgress
+    /// Command: !unlockProgress or !treeprogress
     /// </summary>
     public bool GetUnlockProgress()
     {
@@ -1219,7 +1237,8 @@ public class CPHInline
         try
         {
             var result = client.GetUnlockProgress().Result;
-            CPH.SetArgument("response", result);
+            var formatted = ResponseFormatter.FormatUnlockProgress(result);
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)

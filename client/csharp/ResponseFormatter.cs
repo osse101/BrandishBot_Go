@@ -205,5 +205,55 @@ namespace BrandishBot.Client
                 return $"Error formatting voting options: {ex.Message}. Raw: {jsonResponse}";
             }
         }
+
+        /// <summary>
+        /// Format unlock progress into a readable string
+        /// Format: "Unlocking [node_name]: [contributions]/[target] ([percentage]%)"
+        /// Or "No active unlock progress" if none
+        /// </summary>
+        /// <param name="jsonResponse">JSON object with unlock progress data</param>
+        /// <returns>Formatted unlock progress string</returns>
+        public static string FormatUnlockProgress(string jsonResponse)
+        {
+            try
+            {
+                var response = Newtonsoft.Json.Linq.JObject.Parse(jsonResponse);
+
+                // Check if there's a message field (no active progress)
+                if (response["message"] != null && response["progress"] == null)
+                {
+                    return response["message"].ToString();
+                }
+
+                // Check if already unlocked
+                if (response["unlocked_at"] != null)
+                {
+                    string nodeName = response["target_node_name"]?.ToString() ?? "Unknown";
+                    return $"{nodeName} has been unlocked!";
+                }
+
+                string targetNodeName = response["target_node_name"]?.ToString();
+                int contributions = (int?)response["contributions_accumulated"] ?? 0;
+                int target = (int?)response["target_unlock_cost"] ?? 0;
+                double percentage = (double?)response["completion_percentage"] ?? 0.0;
+
+                if (string.IsNullOrEmpty(targetNodeName))
+                {
+                    return "No active unlock progress";
+                }
+
+                // Format with progress bar
+                int barLength = 10;
+                int filled = (int)(percentage / 10);
+                if (filled > barLength) filled = barLength;
+                string progressBar = new string('█', filled) + new string('░', barLength - filled);
+
+                return $"Unlocking {targetNodeName}: {contributions}/{target} ({percentage:F1}%) [{progressBar}]";
+            }
+            catch (Exception ex)
+            {
+                return $"Error formatting unlock progress: {ex.Message}. Raw: {jsonResponse}";
+            }
+        }
     }
 }

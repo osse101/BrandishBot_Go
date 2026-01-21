@@ -60,7 +60,8 @@ type RemoveItemByUsernameRequest struct {
 	Quantity int    `json:"quantity" validate:"min=1,max=10000"`
 }
 type RemoveItemResponse struct {
-	Removed int `json:"removed"`
+	Message string `json:"message"`
+	Removed int    `json:"removed"`
 }
 
 // HandleRemoveItemByUsername handles removing items by username only
@@ -92,7 +93,10 @@ func HandleRemoveItemByUsername(svc user.Service) http.HandlerFunc {
 
 		log.Info("Item removed successfully by username", "username", req.Username, "item", req.ItemName, "removed", removed)
 
-		respondJSON(w, http.StatusOK, RemoveItemResponse{Removed: removed})
+		respondJSON(w, http.StatusOK, RemoveItemResponse{
+			Message: fmt.Sprintf("Removed %dx %s from %s", removed, req.ItemName, req.Username),
+			Removed: removed,
+		})
 	}
 }
 
@@ -126,6 +130,14 @@ func HandleGiveItem(svc user.Service) http.HandlerFunc {
 
 		log := logger.FromContext(r.Context())
 
+		// Check for self-gifting (same platform and same username)
+		if req.OwnerPlatform == req.ReceiverPlatform &&
+		   (req.Owner == req.Receiver || req.OwnerPlatformID == req.Receiver) {
+			log.Info("Self-gifting attempt detected", "user", req.Owner)
+			respondError(w, http.StatusBadRequest, "You can't give items to yourself! Nice try though.")
+			return
+		}
+
 		if err := svc.GiveItem(r.Context(), req.OwnerPlatform, req.OwnerPlatformID, req.Owner, req.ReceiverPlatform, req.Receiver, req.ItemName, req.Quantity); err != nil {
 			log.Error("Failed to give item", "error", err, "owner", req.Owner, "receiver", req.Receiver, "item", req.ItemName)
 			statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
@@ -147,8 +159,9 @@ type SellItemRequest struct {
 }
 
 type SellItemResponse struct {
-	MoneyGained int `json:"money_gained"`
-	ItemsSold   int `json:"items_sold"`
+	Message     string `json:"message"`
+	MoneyGained int    `json:"money_gained"`
+	ItemsSold   int    `json:"items_sold"`
 }
 
 // HandleSellItem handles selling items for currency
@@ -209,6 +222,7 @@ func HandleSellItem(svc economy.Service, progressionSvc progression.Service, eve
 		}
 
 		respondJSON(w, http.StatusOK, SellItemResponse{
+			Message:     fmt.Sprintf("Sold %dx %s for %d money", itemsSold, req.ItemName, moneyGained),
 			MoneyGained: moneyGained,
 			ItemsSold:   itemsSold,
 		})
@@ -224,7 +238,8 @@ type BuyItemRequest struct {
 }
 
 type BuyItemResponse struct {
-	ItemsBought int `json:"items_bought"`
+	Message     string `json:"message"`
+	ItemsBought int    `json:"items_bought"`
 }
 
 // HandleBuyItem handles buying items with currency
@@ -284,6 +299,7 @@ func HandleBuyItem(svc economy.Service, progressionSvc progression.Service, even
 		}
 
 		respondJSON(w, http.StatusOK, BuyItemResponse{
+			Message:     fmt.Sprintf("Purchased %dx %s", bought, req.ItemName),
 			ItemsBought: bought,
 		})
 	}
