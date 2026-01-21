@@ -53,6 +53,7 @@ type GambleOpenedItem struct {
 	GambleID   uuid.UUID `json:"gamble_id"`
 	UserID     string    `json:"user_id"`
 	ItemID     int       `json:"item_id"`
+	Quantity   int       `json:"quantity"`
 	Value      int64     `json:"value"`
 	ShineLevel string    `json:"shine_level,omitempty"`
 }

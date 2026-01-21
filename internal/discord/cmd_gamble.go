@@ -75,20 +75,6 @@ func GambleJoinCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 				Description: "ID of the gamble to join",
 				Required:    true,
 			},
-			{
-				Type:         discordgo.ApplicationCommandOptionString,
-				Name:         "item",
-				Description:  "Lootbox item to wager (e.g., lootbox, goldbox)",
-				Required:     true,
-				Autocomplete: true,
-			},
-			{
-				Type:        discordgo.ApplicationCommandOptionInteger,
-				Name:        "quantity",
-				Description: "Number of items to wager",
-				Required:    true,
-				MinValue:    &[]float64{1}[0],
-			},
 		},
 	}
 
@@ -100,8 +86,6 @@ func GambleJoinCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		user := getInteractionUser(i)
 		options := getOptions(i)
 		gambleID := options[0].StringValue()
-		itemName := options[1].StringValue()
-		quantity := int(options[2].IntValue())
 
 		// Ensure user exists
 		_, err := client.RegisterUser(user.Username, user.ID)
@@ -111,7 +95,7 @@ func GambleJoinCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			return
 		}
 
-		msg, err := client.JoinGamble(domain.PlatformDiscord, user.ID, user.Username, gambleID, itemName, quantity)
+		msg, err := client.JoinGamble(domain.PlatformDiscord, user.ID, user.Username, gambleID)
 		if err != nil {
 			slog.Error("Failed to join gamble", "error", err)
 			respondFriendlyError(s, i, err.Error())

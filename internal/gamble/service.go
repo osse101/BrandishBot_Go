@@ -24,7 +24,7 @@ import (
 // Service defines the interface for gamble operations
 type Service interface {
 	StartGamble(ctx context.Context, platform, platformID, username string, bets []domain.LootboxBet) (*domain.Gamble, error)
-	JoinGamble(ctx context.Context, gambleID uuid.UUID, platform, platformID, username string, bets []domain.LootboxBet) error
+	JoinGamble(ctx context.Context, gambleID uuid.UUID, platform, platformID, username string) error
 	GetGamble(ctx context.Context, id uuid.UUID) (*domain.Gamble, error)
 	ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.GambleResult, error)
 	GetActiveGamble(ctx context.Context) (*domain.Gamble, error)
@@ -177,14 +177,9 @@ func (s *service) StartGamble(ctx context.Context, platform, platformID, usernam
 }
 
 // JoinGamble adds a user to an existing gamble
-func (s *service) JoinGamble(ctx context.Context, gambleID uuid.UUID, platform, platformID, username string, bets []domain.LootboxBet) error {
+func (s *service) JoinGamble(ctx context.Context, gambleID uuid.UUID, platform, platformID, username string) error {
 	log := logger.FromContext(ctx)
 	log.Info(LogMsgJoinGambleCalled, "gambleID", gambleID, "username", username)
-
-	// Validate bets
-	if len(bets) == 0 {
-		return domain.ErrAtLeastOneLootboxRequired
-	}
 
 	// Get User
 	user, err := s.getAndValidateGambleUser(ctx, platform, platformID)
@@ -196,6 +191,19 @@ func (s *service) JoinGamble(ctx context.Context, gambleID uuid.UUID, platform, 
 	gamble, err := s.getAndValidateActiveGamble(ctx, gambleID)
 	if err != nil {
 		return err
+	}
+
+	// Get initiator's bets to use for this joiner
+	var bets []domain.LootboxBet
+	for _, p := range gamble.Participants {
+		if p.UserID == gamble.InitiatorID {
+			bets = p.LootboxBets
+			break
+		}
+	}
+
+	if len(bets) == 0 {
+		return fmt.Errorf("failed to find initiator bets for gamble %s: %w", gambleID, domain.ErrGambleNotFound)
 	}
 
 	// Note: Duplicate join prevention is enforced by database constraint
@@ -406,6 +414,7 @@ func (s *service) openParticipantsLootboxes(ctx context.Context, gamble *domain.
 					GambleID:   gamble.ID,
 					UserID:     p.UserID,
 					ItemID:     drop.ItemID,
+					Quantity:   drop.Quantity,
 					Value:      totalValue,
 					ShineLevel: drop.ShineLevel,
 				})
@@ -499,7 +508,7 @@ func (s *service) awardItemsToWinner(ctx context.Context, tx repository.GambleTx
 
 	itemsToAdd := make(map[int]int)
 	for _, item := range allOpenedItems {
-		itemsToAdd[item.ItemID]++
+		itemsToAdd[item.ItemID] += item.Quantity
 	}
 
 	for i, slot := range inv.Slots {

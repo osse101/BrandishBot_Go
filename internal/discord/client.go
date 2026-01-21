@@ -310,12 +310,11 @@ func (c *APIClient) StartGamble(platform, platformID, username, itemName string,
 }
 
 // JoinGamble joins an active gamble
-func (c *APIClient) JoinGamble(platform, platformID, username, gambleID, itemName string, quantity int) (string, error) {
+func (c *APIClient) JoinGamble(platform, platformID, username, gambleID string) (string, error) {
 	req := map[string]interface{}{
 		"platform":    platform,
 		"platform_id": platformID,
 		"username":    username,
-		"bets":        []map[string]interface{}{{"item_name": itemName, "quantity": quantity}},
 	}
 
 	// Note: gambleID goes in the URL query parameter

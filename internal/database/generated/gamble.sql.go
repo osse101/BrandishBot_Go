@@ -132,14 +132,15 @@ func (q *Queries) JoinGamble(ctx context.Context, arg JoinGambleParams) error {
 }
 
 const saveOpenedItem = `-- name: SaveOpenedItem :exec
-INSERT INTO gamble_opened_items (gamble_id, user_id, item_id, value)
-VALUES ($1, $2, $3, $4)
+INSERT INTO gamble_opened_items (gamble_id, user_id, item_id, quantity, value)
+VALUES ($1, $2, $3, $4, $5)
 `
 
 type SaveOpenedItemParams struct {
 	GambleID pgtype.UUID `json:"gamble_id"`
 	UserID   pgtype.UUID `json:"user_id"`
 	ItemID   pgtype.Int4 `json:"item_id"`
+	Quantity int32       `json:"quantity"`
 	Value    int64       `json:"value"`
 }
 
@@ -148,6 +149,7 @@ func (q *Queries) SaveOpenedItem(ctx context.Context, arg SaveOpenedItemParams) 
 		arg.GambleID,
 		arg.UserID,
 		arg.ItemID,
+		arg.Quantity,
 		arg.Value,
 	)
 	return err

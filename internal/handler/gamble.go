@@ -55,7 +55,6 @@ type JoinGambleRequest struct {
 	Platform   string              `json:"platform"`
 	PlatformID string              `json:"platform_id"`
 	Username   string              `json:"username"`
-	Bets       []domain.LootboxBet `json:"bets"`
 }
 
 func (h *GambleHandler) HandleJoinGamble(w http.ResponseWriter, r *http.Request) {
@@ -74,7 +73,7 @@ func (h *GambleHandler) HandleJoinGamble(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if err := h.service.JoinGamble(r.Context(), gambleID, req.Platform, req.PlatformID, req.Username, req.Bets); err != nil {
+	if err := h.service.JoinGamble(r.Context(), gambleID, req.Platform, req.PlatformID, req.Username); err != nil {
 		logger.FromContext(r.Context()).Error("Failed to join gamble", "error", err)
 		statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
 		return

@@ -193,6 +193,7 @@ func (r *GambleRepository) SaveOpenedItems(ctx context.Context, items []domain.G
 			GambleID: pgtype.UUID{Bytes: item.GambleID, Valid: true},
 			UserID:   pgtype.UUID{Bytes: userID, Valid: true},
 			ItemID:   pgtype.Int4{Int32: int32(item.ItemID), Valid: true},
+			Quantity: int32(item.Quantity),
 			Value:    item.Value,
 		}
 
@@ -306,6 +307,7 @@ func (t *gambleTx) SaveOpenedItems(ctx context.Context, items []domain.GambleOpe
 			GambleID: pgtype.UUID{Bytes: item.GambleID, Valid: true},
 			UserID:   pgtype.UUID{Bytes: userID, Valid: true},
 			ItemID:   pgtype.Int4{Int32: int32(item.ItemID), Valid: true},
+			Quantity: int32(item.Quantity),
 			Value:    item.Value,
 		}
 		err = t.q.SaveOpenedItem(ctx, params)

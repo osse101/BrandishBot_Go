@@ -201,17 +201,17 @@ func (_c *MockGambleService_GetGamble_Call) RunAndReturn(run func(context.Contex
 	return _c
 }
 
-// JoinGamble provides a mock function with given fields: ctx, gambleID, platform, platformID, username, bets
-func (_m *MockGambleService) JoinGamble(ctx context.Context, gambleID uuid.UUID, platform string, platformID string, username string, bets []domain.LootboxBet) error {
-	ret := _m.Called(ctx, gambleID, platform, platformID, username, bets)
+// JoinGamble provides a mock function with given fields: ctx, gambleID, platform, platformID, username
+func (_m *MockGambleService) JoinGamble(ctx context.Context, gambleID uuid.UUID, platform string, platformID string, username string) error {
+	ret := _m.Called(ctx, gambleID, platform, platformID, username)
 
 	if len(ret) == 0 {
 		panic("no return value specified for JoinGamble")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string, string, string, []domain.LootboxBet) error); ok {
-		r0 = rf(ctx, gambleID, platform, platformID, username, bets)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string, string, string) error); ok {
+		r0 = rf(ctx, gambleID, platform, platformID, username)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -230,14 +230,13 @@ type MockGambleService_JoinGamble_Call struct {
 //   - platform string
 //   - platformID string
 //   - username string
-//   - bets []domain.LootboxBet
-func (_e *MockGambleService_Expecter) JoinGamble(ctx interface{}, gambleID interface{}, platform interface{}, platformID interface{}, username interface{}, bets interface{}) *MockGambleService_JoinGamble_Call {
-	return &MockGambleService_JoinGamble_Call{Call: _e.mock.On("JoinGamble", ctx, gambleID, platform, platformID, username, bets)}
+func (_e *MockGambleService_Expecter) JoinGamble(ctx interface{}, gambleID interface{}, platform interface{}, platformID interface{}, username interface{}) *MockGambleService_JoinGamble_Call {
+	return &MockGambleService_JoinGamble_Call{Call: _e.mock.On("JoinGamble", ctx, gambleID, platform, platformID, username)}
 }
 
-func (_c *MockGambleService_JoinGamble_Call) Run(run func(ctx context.Context, gambleID uuid.UUID, platform string, platformID string, username string, bets []domain.LootboxBet)) *MockGambleService_JoinGamble_Call {
+func (_c *MockGambleService_JoinGamble_Call) Run(run func(ctx context.Context, gambleID uuid.UUID, platform string, platformID string, username string)) *MockGambleService_JoinGamble_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(uuid.UUID), args[2].(string), args[3].(string), args[4].(string), args[5].([]domain.LootboxBet))
+		run(args[0].(context.Context), args[1].(uuid.UUID), args[2].(string), args[3].(string), args[4].(string))
 	})
 	return _c
 }
@@ -247,7 +246,7 @@ func (_c *MockGambleService_JoinGamble_Call) Return(_a0 error) *MockGambleServic
 	return _c
 }
 
-func (_c *MockGambleService_JoinGamble_Call) RunAndReturn(run func(context.Context, uuid.UUID, string, string, string, []domain.LootboxBet) error) *MockGambleService_JoinGamble_Call {
+func (_c *MockGambleService_JoinGamble_Call) RunAndReturn(run func(context.Context, uuid.UUID, string, string, string) error) *MockGambleService_JoinGamble_Call {
 	_c.Call.Return(run)
 	return _c
 }

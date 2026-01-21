@@ -78,6 +78,7 @@ type GambleOpenedItem struct {
 	UserID   pgtype.UUID `json:"user_id"`
 	ItemID   pgtype.Int4 `json:"item_id"`
 	Value    int64       `json:"value"`
+	Quantity int32       `json:"quantity"`
 }
 
 type GambleParticipant struct {

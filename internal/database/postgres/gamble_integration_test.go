@@ -33,7 +33,7 @@ func setupGambleIntegrationTest(t *testing.T) (*pgxpool.Pool, *UserRepository, g
 	// 2. Setup Lootbox Service with deterministic loot table
 	lootTable := map[string][]lootbox.LootItem{
 		"lootbox_tier1": {
-			{ItemName: "money", Min: 100, Max: 100, Chance: 1.0},
+			{ItemName: domain.ItemMoney, Min: 100, Max: 100, Chance: 1.0},
 		},
 	}
 	lootTableData, err := json.Marshal(map[string]interface{}{"tables": lootTable})
@@ -43,12 +43,6 @@ func setupGambleIntegrationTest(t *testing.T) (*pgxpool.Pool, *UserRepository, g
 	lootTablePath := filepath.Join(tmpDir, "loot_tables.json")
 	err = os.WriteFile(lootTablePath, lootTableData, 0644)
 	require.NoError(t, err)
-
-	// Since we are reusing the pool/repo which uses database connection,
-	// and lootbox service needs repo to look up items "money".
-	// The real lootbox service uses a repo interface.
-	// postgres.UserRepository implements it (GetItemByName, GetItemsByNames).
-	// We need to make sure the item "money" exists in the DB (seeded by migrations).
 
 	lootRepo := NewUserRepository(pool)
 	lootSvc, err := lootbox.NewService(lootRepo, lootTablePath)
@@ -107,17 +101,17 @@ func TestGambleLifecycle_Integration(t *testing.T) {
 	require.NoError(t, repo.UpsertUser(ctx, userB))
 
 	// Refresh to get IDs
-	userA, _ = repo.GetUserByPlatformUsername(ctx, domain.PlatformTwitch, "UserA")
-	userB, _ = repo.GetUserByPlatformUsername(ctx, domain.PlatformTwitch, "UserB")
+	userA, _ = repo.GetUserByPlatformUsername(ctx, domain.PlatformTwitch, userA.Username)
+	userB, _ = repo.GetUserByPlatformUsername(ctx, domain.PlatformTwitch, userB.Username)
 
 	// Verify Item "lootbox_tier1" exists
 	// GetItemByName in UserRepository looks up by internal name (despite the name)
-	lbItem, err := repo.GetItemByName(ctx, "lootbox_tier1")
+	lbItem, err := repo.GetItemByName(ctx, domain.ItemLootbox1)
 	require.NoError(t, err)
 	require.NotNil(t, lbItem)
 
 	// Verify Item "money" exists
-	moneyItem, err := repo.GetItemByName(ctx, "money")
+	moneyItem, err := repo.GetItemByName(ctx, domain.ItemMoney)
 	require.NoError(t, err)
 	require.NotNil(t, moneyItem)
 
@@ -133,8 +127,8 @@ func TestGambleLifecycle_Integration(t *testing.T) {
 	// --- Step 2: Start Gamble ---
 	// User A starts gamble betting 2 lootboxes
 	// Lootbox returns 100 money each. Total value = 200.
-	betsA := []domain.LootboxBet{{ItemName: "lootbox_tier1", Quantity: 2}}
-	gamble, err := svc.StartGamble(ctx, domain.PlatformTwitch, "twitchA", "UserA", betsA)
+	betsA := []domain.LootboxBet{{ItemName: domain.ItemLootbox1, Quantity: 2}}
+	gamble, err := svc.StartGamble(ctx, domain.PlatformTwitch, userA.TwitchID, userA.Username, betsA)
 	require.NoError(t, err)
 	require.NotNil(t, gamble)
 	assert.Equal(t, domain.GambleStateJoining, gamble.State)
@@ -145,16 +139,14 @@ func TestGambleLifecycle_Integration(t *testing.T) {
 	require.Equal(t, 3, getQty(invAAfterStart, lbItem.ID))
 
 	// --- Step 3: Join Gamble ---
-	// User B joins betting 1 lootbox
 	// Lootbox returns 100 money. Total value = 100.
-	betsB := []domain.LootboxBet{{ItemName: "lootbox_tier1", Quantity: 1}}
-	err = svc.JoinGamble(ctx, gamble.ID, domain.PlatformTwitch, "twitchB", "UserB", betsB)
+	err = svc.JoinGamble(ctx, gamble.ID, domain.PlatformTwitch, userB.TwitchID, userB.Username)
 	require.NoError(t, err)
 
 	// Verify inventory deduction B
 	invBAfterJoin, err := repo.GetInventory(ctx, userB.ID)
 	require.NoError(t, err)
-	require.Equal(t, 4, getQty(invBAfterJoin, lbItem.ID))
+	require.Equal(t, 3, getQty(invBAfterJoin, lbItem.ID))
 
 	// Mock time passing by setting join deadline to the past
 	time.Sleep(2 * time.Second)
@@ -171,27 +163,35 @@ func TestGambleLifecycle_Integration(t *testing.T) {
 	require.NotNil(t, result)
 
 	// Verify Result
-	assert.Equal(t, userA.ID, result.WinnerID)
-	assert.Equal(t, int64(300), result.TotalValue)
+	// Since both bet 2, tiebreaker picks winner. But result should have total value 400.
+	assert.Equal(t, int64(400), result.TotalValue)
 
 	// Verify Gamble State in DB
 	finalGamble, err := svc.GetGamble(ctx, gamble.ID)
 	require.NoError(t, err)
 	assert.Equal(t, domain.GambleStateCompleted, finalGamble.State)
 
-	// Verify Winner Inventory (User A)
-	// Should have 3 lootboxes left + 300 money
-	invAFinal, err := repo.GetInventory(ctx, userA.ID)
-	require.NoError(t, err)
-	require.Equal(t, 3, getQty(invAFinal, lbItem.ID))
-	require.Equal(t, 2, getQty(invAFinal, moneyItem.ID)) //FIXME: 2 shouldn't be the correct quantity
+	// Verify Loser Inventory
+	winnerInv, _ := repo.GetInventory(ctx, result.WinnerID)
+	require.NotNil(t, winnerInv)
+	
+	var loserID string
+	if result.WinnerID == userA.ID {
+		loserID = userB.ID
+	} else {
+		loserID = userA.ID
+	}
+	
+	loserInv, _ := repo.GetInventory(ctx, loserID)
+	require.NotNil(t, loserInv)
 
-	// Verify Loser Inventory (User B)
-	// Should have 4 lootboxes left + 0 money
-	invBFinal, err := repo.GetInventory(ctx, userB.ID)
-	require.NoError(t, err)
-	require.Equal(t, 4, getQty(invBFinal, lbItem.ID))
-	require.Equal(t, 0, getQty(invBFinal, moneyItem.ID))
+	// Winner should have 3 lootboxes + 400 money
+	require.Equal(t, 3, getQty(winnerInv, lbItem.ID))
+	require.Equal(t, 400, getQty(winnerInv, moneyItem.ID)) // 4 items of 100 money each
+
+	// Loser should have 3 lootboxes + 0 money
+	require.Equal(t, 3, getQty(loserInv, lbItem.ID))
+	require.Equal(t, 0, getQty(loserInv, moneyItem.ID))
 
 	// Wait for async stats/xp if needed (shutdown handles this usually, but we check values directly)
 	// We mocked job/stats so no side effects to check there.
@@ -216,15 +216,15 @@ func TestGamble_Concurrency_Join(t *testing.T) {
 	// Setup host
 	host := &domain.User{Username: "Host", TwitchID: "twitchHost"}
 	require.NoError(t, repo.UpsertUser(ctx, host))
-	host, _ = repo.GetUserByPlatformUsername(ctx, domain.PlatformTwitch, "Host")
+	host, _ = repo.GetUserByPlatformUsername(ctx, domain.PlatformTwitch, host.Username)
 
-	lbItem, _ := repo.GetItemByName(ctx, "lootbox_tier1")
+	lbItem, _ := repo.GetItemByName(ctx, domain.ItemLootbox1)
 	invHost := domain.Inventory{Slots: []domain.InventorySlot{{ItemID: lbItem.ID, Quantity: 10}}}
 	repo.UpdateInventory(ctx, host.ID, invHost)
 
 	// Start gamble
-	bets := []domain.LootboxBet{{ItemName: "lootbox_tier1", Quantity: 1}}
-	gamble, err := svc.StartGamble(ctx, domain.PlatformTwitch, "twitchHost", "Host", bets)
+	bets := []domain.LootboxBet{{ItemName: domain.ItemLootbox1, Quantity: 1}}
+	gamble, err := svc.StartGamble(ctx, domain.PlatformTwitch, host.TwitchID, host.Username, bets)
 	require.NoError(t, err)
 
 	// Concurrent Joiners
@@ -241,8 +241,6 @@ func TestGamble_Concurrency_Join(t *testing.T) {
 			u := &domain.User{Username: uname, TwitchID: pid}
 
 			// Setup user with inventory
-			// We need a separate connection/context for setup to avoid contention?
-			// No, repository is thread safe.
 			if err := repo.UpsertUser(ctx, u); err != nil {
 				errChan <- err
 				return
@@ -252,7 +250,7 @@ func TestGamble_Concurrency_Join(t *testing.T) {
 			repo.UpdateInventory(ctx, u.ID, inv)
 
 			// Join
-			err := svc.JoinGamble(ctx, gamble.ID, domain.PlatformTwitch, pid, uname, bets)
+			err := svc.JoinGamble(ctx, gamble.ID, domain.PlatformTwitch, u.TwitchID, u.Username)
 			if err != nil {
 				errChan <- fmt.Errorf("user %d failed to join: %w", idx, err)
 			}

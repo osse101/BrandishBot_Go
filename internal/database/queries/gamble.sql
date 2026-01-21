@@ -28,8 +28,8 @@ SET state = $1
 WHERE id = $2 AND state = $3;
 
 -- name: SaveOpenedItem :exec
-INSERT INTO gamble_opened_items (gamble_id, user_id, item_id, value)
-VALUES ($1, $2, $3, $4);
+INSERT INTO gamble_opened_items (gamble_id, user_id, item_id, quantity, value)
+VALUES ($1, $2, $3, $4, $5);
 
 -- name: GetActiveGamble :one
 SELECT id, initiator_id, state, created_at, join_deadline

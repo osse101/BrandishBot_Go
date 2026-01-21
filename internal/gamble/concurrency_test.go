@@ -35,15 +35,17 @@ func TestStartGamble_Concurrent_RaceCondition(t *testing.T) {
 	repo.On("GetItemByID", ctx, 1).Return(lootboxItem, nil)
 
 	tx := new(MockTx)
-	inventory := &domain.Inventory{Slots: []domain.InventorySlot{{ItemID: 1, Quantity: 5}}}
+	inv1 := &domain.Inventory{Slots: []domain.InventorySlot{{ItemID: 1, Quantity: 5}}}
+	inv2 := &domain.Inventory{Slots: []domain.InventorySlot{{ItemID: 1, Quantity: 5}}}
 
-	repo.On("GetInventory", ctx, "user1").Return(inventory, nil).Maybe()
-	repo.On("GetInventory", ctx, "user2").Return(inventory, nil).Maybe()
+	repo.On("GetInventory", ctx, "user1").Return(inv1, nil).Maybe()
+	repo.On("GetInventory", ctx, "user2").Return(inv2, nil).Maybe()
 
 	repo.On("BeginTx", ctx).Return(tx, nil).Twice()
 
-	tx.On("GetInventory", ctx, "user1").Return(inventory, nil)
-	tx.On("GetInventory", ctx, "user2").Return(inventory, nil)
+	tx.On("GetInventory", ctx, "user1").Return(inv1, nil)
+	tx.On("GetInventory", ctx, "user2").Return(inv2, nil)
+
 	tx.On("UpdateInventory", ctx, "user1", mock.Anything).Return(nil)
 	tx.On("UpdateInventory", ctx, "user2", mock.Anything).Return(nil)
 	tx.On("Commit", ctx).Return(nil)
@@ -94,17 +96,19 @@ func TestJoinGamble_SameUserTwice_ShouldReject(t *testing.T) {
 	ctx := context.Background()
 	gambleID := uuid.New()
 	user := &domain.User{ID: "user1"}
-	bets := []domain.LootboxBet{{ItemName: "lootbox_tier1", Quantity: 1}}
 
 	gamble := &domain.Gamble{
 		ID:           gambleID,
+		InitiatorID:  "initiator_user",
 		State:        domain.GambleStateJoining,
 		JoinDeadline: time.Now().Add(time.Minute),
-		Participants: []domain.Participant{}, // Empty, simulating race condition passed check
+		Participants: []domain.Participant{
+			{UserID: "initiator_user", GambleID: gambleID, LootboxBets: []domain.LootboxBet{{ItemName: domain.ItemLootbox1, Quantity: 1}}},
+		},
 	}
 
 	lootboxItem := &domain.Item{ID: 1, InternalName: domain.ItemLootbox1}
-	repo.On("GetItemByName", ctx, "lootbox_tier1").Return(lootboxItem, nil)
+	repo.On("GetItemByName", ctx, domain.ItemLootbox1).Return(lootboxItem, nil)
 	repo.On("GetItemByID", ctx, 1).Return(lootboxItem, nil)
 
 	repo.On("GetUserByPlatformID", ctx, "twitch", "123").Return(user, nil)
@@ -121,7 +125,7 @@ func TestJoinGamble_SameUserTwice_ShouldReject(t *testing.T) {
 	// Simulate DB Constraint Violation
 	repo.On("JoinGamble", ctx, mock.Anything).Return(domain.ErrUserAlreadyJoined)
 
-	err := s.JoinGamble(ctx, gambleID, "twitch", "123", "user1", bets)
+	err := s.JoinGamble(ctx, gambleID, domain.PlatformTwitch, "123", "user1")
 
 	assert.Error(t, err)
 	assert.ErrorIs(t, err, domain.ErrUserAlreadyJoined)
@@ -139,7 +143,7 @@ func TestExecuteGamble_Concurrent_Idempotent(t *testing.T) {
 		ID:    gambleID,
 		State: domain.GambleStateJoining,
 		Participants: []domain.Participant{
-			{UserID: "user1", LootboxBets: []domain.LootboxBet{{ItemName: "lootbox_tier1", Quantity: 1}}},
+			{UserID: "user1", LootboxBets: []domain.LootboxBet{{ItemName: domain.ItemLootbox1, Quantity: 1}}},
 		},
 		JoinDeadline: time.Now().Add(-time.Minute), // Deadline PASSED, ready to execute
 	}
@@ -157,11 +161,11 @@ func TestExecuteGamble_Concurrent_Idempotent(t *testing.T) {
 	// Failed one rolls back
 	tx2.On("Rollback", ctx).Return(nil).Maybe()
 
-	lootboxItem := &domain.Item{ID: 1, InternalName: "box1"}
+	lootboxItem := &domain.Item{ID: 1, InternalName: domain.ItemLootbox1}
 	drops := []lootbox.DroppedItem{{ItemID: 10, Quantity: 5, Value: 100}}
-	repo.On("GetItemByName", ctx, "lootbox_tier1").Return(lootboxItem, nil)
+	repo.On("GetItemByName", ctx, domain.ItemLootbox1).Return(lootboxItem, nil)
 	repo.On("GetItemByID", ctx, 1).Return(lootboxItem, nil)
-	lootboxSvc.On("OpenLootbox", ctx, "box1", 1).Return(drops, nil)
+	lootboxSvc.On("OpenLootbox", ctx, domain.ItemLootbox1, 1).Return(drops, nil)
 	tx1.On("SaveOpenedItems", ctx, mock.Anything).Return(nil)
 
 	tx1.On("GetInventory", ctx, "user1").Return(&domain.Inventory{}, nil)

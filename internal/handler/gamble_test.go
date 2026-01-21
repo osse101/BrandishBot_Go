@@ -152,10 +152,9 @@ func TestHandleJoinGamble(t *testing.T) {
 				Platform:   "discord",
 				PlatformID: "123",
 				Username:   "testuser",
-				Bets:       []domain.LootboxBet{},
 			},
 			setupMocks: func(mg *mocks.MockGambleService) {
-				mg.On("JoinGamble", mock.Anything, validUUID, domain.PlatformDiscord, "123", "testuser", mock.Anything).Return(errors.New(ErrMsgGenericServerError))
+				mg.On("JoinGamble", mock.Anything, validUUID, domain.PlatformDiscord, "123", "testuser").Return(errors.New(ErrMsgGenericServerError))
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   ErrMsgGenericServerError,
@@ -167,10 +166,9 @@ func TestHandleJoinGamble(t *testing.T) {
 				Platform:   "discord",
 				PlatformID: "123",
 				Username:   "testuser",
-				Bets:       []domain.LootboxBet{},
 			},
 			setupMocks: func(mg *mocks.MockGambleService) {
-				mg.On("JoinGamble", mock.Anything, validUUID, domain.PlatformDiscord, "123", "testuser", mock.Anything).Return(nil)
+				mg.On("JoinGamble", mock.Anything, validUUID, domain.PlatformDiscord, "123", "testuser").Return(nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   "Successfully joined gamble",
