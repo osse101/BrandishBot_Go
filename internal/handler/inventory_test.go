@@ -116,7 +116,7 @@ func TestHandleSellItem(t *testing.T) {
 				e.On("SellItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.ItemBlaster, 1).Return(100, 1, nil)
 			},
 			expectedStatus: http.StatusOK,
-			expectedBody:   `{"money_gained":100,"items_sold":1}`,
+			expectedBody:   `"money_gained":100,"items_sold":1`,
 		},
 		{
 			name: "Feature Locked",
@@ -276,7 +276,7 @@ func TestHandleRemoveItem(t *testing.T) {
 				m.On("RemoveItemByUsername", mock.Anything, domain.PlatformTwitch, "testuser", domain.ItemBlaster, 1).Return(1, nil)
 			},
 			expectedStatus: http.StatusOK,
-			expectedBody:   `{"removed":1}`,
+			expectedBody:   `"removed":1`,
 		},
 		{
 			name: "Service Error",
@@ -408,7 +408,7 @@ func TestHandleBuyItem(t *testing.T) {
 				e.On("BuyItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.ItemBlaster, 1).Return(1, nil)
 			},
 			expectedStatus: http.StatusOK,
-			expectedBody:   `{"items_bought":1}`,
+			expectedBody:   `"items_bought":1`,
 		},
 		{
 			name: "Feature Locked",

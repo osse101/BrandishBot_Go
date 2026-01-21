@@ -505,7 +505,7 @@
       "auto_unlock": false
     },
     {
-      "key": "item_rarecandy",
+      "key": "xp_rarecandy",
       "name": "Rare Candy",
       "type": "item",
       "description": "Unlock rare candy - instantly grants XP to a job",

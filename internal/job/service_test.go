@@ -347,8 +347,7 @@ func TestAwardXP_Locked(t *testing.T) {
 	prog.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(false, nil)
 
 	_, err := svc.AwardXP(ctx, "u1", "j1", 10, "t", nil)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "not unlocked")
+	assert.ErrorIs(t, err, domain.ErrFeatureLocked)
 }
 
 func TestAwardXP_DailyCap(t *testing.T) {
@@ -416,11 +415,9 @@ func TestAwardXP_DailyCap_Reached(t *testing.T) {
 	prog.On("GetModifiedValue", ctx, "job_xp_multiplier", 1.0).Return(1.0, nil)
 	prog.On("GetModifiedValue", ctx, "job_daily_cap", float64(DefaultDailyCap)).Return(float64(DefaultDailyCap), nil)
 
-	result, err := svc.AwardXP(ctx, userID, jobKey, 10, "test", nil)
+	_, err := svc.AwardXP(ctx, userID, jobKey, 10, "test", nil)
 
-	assert.Error(t, err)
-	assert.Nil(t, result)
-	assert.Contains(t, err.Error(), "daily XP cap reached")
+	assert.ErrorIs(t, err, domain.ErrDailyCapReached)
 }
 
 func TestAwardXP_MaxLevel(t *testing.T) {

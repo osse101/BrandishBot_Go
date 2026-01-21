@@ -18,7 +18,6 @@ const (
 	ItemLootbox3 = "item_lootbox3"
 	ItemMine = "item_mine"
 	ItemMoney = "item_money"
-	ItemRarecandy = "item_rarecandy"
 	ItemRevivel = "item_revivel"
 	ItemRevivem = "item_revivem"
 	ItemRevives = "item_revives"
@@ -28,6 +27,7 @@ const (
 	ItemThis = "item_this"
 	ItemTnt = "item_tnt"
 	ItemTrap = "item_trap"
+	ItemXpRarecandy = "xp_rarecandy"
 
 	// Features
 	FeatureBuy = "feature_buy"
