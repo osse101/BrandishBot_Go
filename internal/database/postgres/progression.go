@@ -668,12 +668,12 @@ func (t *progressionTx) Rollback(ctx context.Context) error {
 
 // GetInventory is required by repository.Tx but not used in progression
 func (t *progressionTx) GetInventory(ctx context.Context, userID string) (*domain.Inventory, error) {
-	return nil, fmt.Errorf("inventory operations not supported in progression transactions")
+	return nil, errors.New(ErrMsgInventoryOpsNotSupportedInProgression)
 }
 
 // UpdateInventory is required by repository.Tx but not used in progression
 func (t *progressionTx) UpdateInventory(ctx context.Context, userID string, inventory domain.Inventory) error {
-	return fmt.Errorf("inventory operations not supported in progression transactions")
+	return errors.New(ErrMsgInventoryOpsNotSupportedInProgression)
 }
 
 // GetNodeByFeatureKey retrieves a node by its modifier feature_key and returns the current unlock level
@@ -730,7 +730,7 @@ func (r *progressionRepository) GetDailyEngagementTotals(ctx context.Context, si
 func (r *progressionRepository) GetSyncMetadata(ctx context.Context, configName string) (*domain.SyncMetadata, error) {
 	row, err := r.q.GetSyncMetadata(ctx, configName)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, fmt.Errorf("sync metadata not found")
+		return nil, errors.New(ErrMsgSyncMetadataNotFound)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get sync metadata: %w", err)

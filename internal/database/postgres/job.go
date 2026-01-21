@@ -71,7 +71,7 @@ func (r *JobRepository) GetJobByKey(ctx context.Context, jobKey string) (*domain
 	row, err := r.q.GetJobByKey(ctx, jobKey)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("job not found: %s", jobKey)
+			return nil, fmt.Errorf(ErrMsgJobNotFound, jobKey, err)
 		}
 		return nil, fmt.Errorf("failed to get job: %w", err)
 	}

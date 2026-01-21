@@ -56,7 +56,7 @@ func (r *ItemRepository) GetAllItems(ctx context.Context) ([]domain.Item, error)
 func (r *ItemRepository) GetItemByID(ctx context.Context, id int) (*domain.Item, error) {
 	row, err := r.q.GetItemByID(ctx, int32(id))
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, fmt.Errorf("item not found")
+		return nil, domain.ErrItemNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get item: %w", err)
@@ -78,7 +78,7 @@ func (r *ItemRepository) GetItemByID(ctx context.Context, id int) (*domain.Item,
 func (r *ItemRepository) GetItemByInternalName(ctx context.Context, internalName string) (*domain.Item, error) {
 	row, err := r.q.GetItemByInternalName(ctx, internalName)
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, fmt.Errorf("item not found")
+		return nil, domain.ErrItemNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get item: %w", err)
@@ -188,7 +188,7 @@ func (r *ItemRepository) AssignItemTag(ctx context.Context, itemID, typeID int) 
 func (r *ItemRepository) GetSyncMetadata(ctx context.Context, configName string) (*domain.SyncMetadata, error) {
 	row, err := r.q.GetSyncMetadata(ctx, configName)
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, fmt.Errorf("sync metadata not found")
+		return nil, errors.New(ErrMsgSyncMetadataNotFound)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get sync metadata: %w", err)

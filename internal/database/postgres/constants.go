@@ -145,7 +145,7 @@ const (
 	ErrMsgFailedToInsertDisassembleOutput    = "failed to insert disassemble output"
 	ErrMsgFailedToUpsertRecipeAssociation    = "failed to upsert recipe association"
 	ErrMsgFailedToMarshalBaseCost            = "failed to marshal base cost"
-	ErrMsgNoAssociatedUpgradeRecipeFound     = "no associated upgrade recipe found for disassemble recipe %d"
+	ErrMsgNoAssociatedUpgradeRecipeFound     = "no associated upgrade recipe found for disassemble recipe %d | %w"
 )
 
 // Error Messages - Economy Operations
@@ -180,7 +180,7 @@ const (
 	ErrMsgFailedToConvertBonusValue     = "failed to convert bonus value for job %d"
 	ErrMsgFailedToResetDailyXP          = "failed to reset daily XP"
 	ErrMsgFailedToMarshalMetadata       = "failed to marshal metadata"
-	ErrMsgJobNotFound                   = "job not found: %s"
+	ErrMsgJobNotFound                   = "job not found: %s | %w"
 )
 
 // Error Messages - Stats Operations

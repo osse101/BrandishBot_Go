@@ -240,7 +240,7 @@ func (r *CraftingRepository) GetAssociatedUpgradeRecipeID(ctx context.Context, d
 	id, err := r.q.GetAssociatedUpgradeRecipeID(ctx, int32(disassembleRecipeID))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return 0, fmt.Errorf("no associated upgrade recipe found for disassemble recipe %d", disassembleRecipeID)
+			return 0, fmt.Errorf(ErrMsgNoAssociatedUpgradeRecipeFound, disassembleRecipeID, err)
 		}
 		return 0, fmt.Errorf("failed to query associated upgrade recipe: %w", err)
 	}
