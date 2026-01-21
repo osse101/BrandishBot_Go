@@ -392,7 +392,7 @@ public class CPHInline
 
         try
         {
-            var result = client.GiveItem(fromPlatform, fromUsername, toPlatform, toUsername, itemName, quantity).Result;
+            var result = client.GiveItem(fromPlatform, fromPlatformId, fromUsername, toPlatform, toUsername, itemName, quantity).Result;
             var formatted = ResponseFormatter.FormatMessage(result);
             CPH.SetArgument("response", formatted);
             return true;
@@ -815,6 +815,11 @@ public class CPHInline
         {
             var result = client.StartGamble(platform, platformId, username, lootboxItemName, quantity).Result;
             var formatted = ResponseFormatter.FormatMessage(result);
+            var response = Newtonsoft.Json.Linq.JObject.Parse(result);
+            if(response.ContainsKey("gambleId"))
+            {
+                CPH.SetGlobalVar("gambleId", response["gambleId"].ToString(), persisted:false);
+            }
             CPH.SetArgument("response", formatted);
             return true;
         }
@@ -835,7 +840,7 @@ public class CPHInline
 
     /// <summary>
     /// Join an existing gamble session
-    /// Command: !joinGamble <gamble_id> <lootbox_name> [quantity]
+    /// Command: !joinGamble <gamble_id>
     /// </summary>
     public bool JoinGamble()
     {
@@ -848,19 +853,12 @@ public class CPHInline
              CPH.LogWarn($"JoinGamble Failed: {error}");
              return false;
         }
-        
-        // Note: gamble_id comes from input0
-        if (!GetInputString(0, "gamble_id", true, out string gambleId, ref error) ||
-            !GetInputString(1, "lootbox_name", true, out string lootboxItemName, ref error) ||
-            !GetInputInt(2, "quantity", 1, out int quantity, ref error))
-        {
-             CPH.SetArgument("response", $"{error} Usage: !joinGamble <gamble_id> <lootbox_name> [quantity]");
-             return true;
-        }
 
+        string gambleId = CPH.GetGlobalVar<string>("gambleId", persisted:false);
+        
         try
         {
-            var result = client.JoinGamble(gambleId, platform, platformId, username, lootboxItemName, quantity).Result;
+            var result = client.JoinGamble(gambleId, platform, platformId, username).Result;
             var formatted = ResponseFormatter.FormatMessage(result);
             CPH.SetArgument("response", formatted);
             return true;
@@ -1188,26 +1186,6 @@ public class CPHInline
         }
     }
 
-    /// <summary>
-    /// Get contribution leaderboard
-    /// Command: !topContributors
-    /// </summary>
-    public bool GetContributionLeaderboard()
-    {
-        EnsureInitialized();
-        try
-        {
-            var result = client.GetContributionLeaderboard().Result;
-            CPH.SetArgument("response", result);
-            return true;
-        }
-        catch (Exception ex)
-        {
-            CPH.LogWarn($"GetContributionLeaderboard API Error: {ex.Message}");
-            CPH.SetArgument("response", $"Error: {ex.Message}");
-            return true;
-        }
-    }
 
     /// <summary>
     /// Get current voting session details
@@ -1341,27 +1319,6 @@ public class CPHInline
         }
     }
 
-    /// <summary>
-    /// Admin: Instantly unlock the current vote leader
-    /// Command: !adminInstantUnlock
-    /// </summary>
-    public bool AdminInstantUnlock()
-    {
-        EnsureInitialized();
-        try
-        {
-            var result = client.AdminInstantUnlock().Result;
-            var formatted = ResponseFormatter.FormatMessage(result);
-            CPH.SetArgument("response", formatted);
-            return true;
-        }
-        catch (Exception ex)
-        {
-            CPH.LogWarn($"AdminInstantUnlock API Error: {ex.Message}");
-            CPH.SetArgument("response", $"Error: {ex.Message}");
-            return true;
-        }
-    }
 
     /// <summary>
     /// Admin: Start a new voting session
@@ -1533,7 +1490,7 @@ public class CPHInline
 
         try
         {
-            var result = client.GetUserJobs(platform, platformId).Result;
+            var result = client.GetUserJobs(platform, username).Result;
             CPH.SetArgument("response", result);
             return true;
         }
@@ -1547,7 +1504,7 @@ public class CPHInline
 
     /// <summary>
     /// Award XP to a user (Streamer/Admin only)
-    /// Command: !awardXp <username> <job_name> <amount>
+    /// Command: !awardXp <username> <job_key> <amount>
     /// </summary>
     public bool AwardJobXP()
     {
@@ -1562,16 +1519,16 @@ public class CPHInline
         }
 
         if (!GetInputString(0, "username", true, out string targetUser, ref error) ||
-            !GetInputString(1, "job_name", true, out string jobName, ref error) ||
+            !GetInputString(1, "job_key", true, out string jobKey, ref error) ||
             !GetInputInt(2, "amount", 0, out int amount, ref error))
         {
-            CPH.SetArgument("response", $"{error} Usage: !awardXp <username> <job_name> <amount>");
+            CPH.SetArgument("response", $"{error} Usage: !awardXp <username> <job_key> <amount>");
             return true;
         }
 
         try
         {
-            var result = client.AwardJobXP(platform, platformId, targetUser, jobName, amount).Result;
+            var result = client.AwardJobXP(platform, targetUser, jobKey, amount).Result;
             var formatted = ResponseFormatter.FormatMessage(result);
             CPH.SetArgument("response", formatted);
             return true;
@@ -1591,86 +1548,7 @@ public class CPHInline
         }
     }
 
-    /// <summary>
-    /// Get the active bonus for a job (e.g., search_bonus)
-    /// Command: !jobBonus <job_key> <bonus_type>
-    /// </summary>
-    public bool GetJobBonus()
-    {
-        EnsureInitialized();
-        string error = null;
-        
-        if (!ValidateContext(out string _, out string platformId, out string _, ref error))
-        {
-             CPH.LogWarn($"GetJobBonus Failed: {error}");
-             return false;
-        }
 
-        if (!GetInputString(0, "job_key", true, out string jobKey, ref error) ||
-            !GetInputString(1, "bonus_type", true, out string bonusType, ref error))
-        {
-            CPH.SetArgument("response", $"{error} Usage: !jobBonus <job_key> <bonus_type>");
-            return true;
-        }
-
-        try
-        {
-            var result = client.GetJobBonus(platformId, jobKey, bonusType).Result;
-            CPH.SetArgument("response", result);
-            return true;
-        }
-        catch (Exception ex)
-        {
-            CPH.LogWarn($"GetJobBonus API Error: {ex.Message}");
-            CPH.SetArgument("response", $"Error: {ex.Message}");
-            return true;
-        }
-    }
-
-    /// <summary>
-    /// Award XP to a user for a specific job (Admin only)
-    /// Command: !awardXP <target_user> <job_key> <amount>
-    /// </summary>
-    public bool AdminAwardXP()
-    {
-        EnsureInitialized();
-        string error = null;
-
-        if (!ValidateContext(out string platform, out string platformId, out string username, ref error))
-        {
-            CPH.LogWarn($"AdminAwardXP Failed: {error}");
-            return false;
-        }
-
-        if (!GetInputString(0, "target_user", true, out string targetUser, ref error) ||
-            !GetInputString(1, "job_key", true, out string jobKey, ref error) ||
-            !GetInputInt(2, "amount", 1, out int amount, ref error))
-        {
-            CPH.SetArgument("response", $"{error} Usage: !awardXP <target_user> <job_key> <amount>");
-            return true;
-        }
-
-        try
-        {
-            var result = client.AdminAwardXP(platform, targetUser, jobKey, amount).Result;
-            var formatted = ResponseFormatter.FormatMessage(result);
-            CPH.SetArgument("response", formatted);
-            return true;
-        }
-        catch (Exception ex)
-        {
-            if (IsForbiddenError(ex))
-            {
-                CPH.SetArgument("response", "That feature is locked.");
-            }
-            else
-            {
-                CPH.LogWarn($"AdminAwardXP API Error: {ex.Message}");
-                CPH.SetArgument("response", $"Error: {ex.Message}");
-            }
-            return true;
-        }
-    }
 
     /// <summary>
     /// Get unlocked crafting recipes for the calling user
@@ -1702,7 +1580,6 @@ public class CPHInline
     }
 
     #endregion
-
     #region Account Linking
 
     /// <summary>
@@ -1803,7 +1680,7 @@ public class CPHInline
 
     /// <summary>
     /// Unlink accounts
-    /// Command: !unlink
+    /// Command: !unlink <target_platform>
     /// </summary>
     public bool UnlinkAccounts()
     {
@@ -1816,9 +1693,15 @@ public class CPHInline
             return false;
         }
 
+        if (!GetInputString(0, "target_platform", true, out string targetPlatform, ref error))
+        {
+            CPH.SetArgument("response", $"{error} Usage: !unlink <target_platform>");
+            return true;
+        }
+
         try
         {
-            var result = client.UnlinkAccounts(platform, platformId).Result;
+            var result = client.UnlinkAccounts(platform, platformId, targetPlatform).Result;
             var formatted = ResponseFormatter.FormatMessage(result);
             CPH.SetArgument("response", formatted);
             return true;
@@ -1864,57 +1747,7 @@ public class CPHInline
 
     #region Admin Utilities
 
-    /// <summary>
-    /// Reload item name aliases
-    /// Command: !reloadAliases
-    /// </summary>
-    public bool ReloadAliases()
-    {
-        EnsureInitialized();
-        try
-        {
-            var result = client.ReloadAliases().Result;
-            var formatted = ResponseFormatter.FormatMessage(result);
-            CPH.SetArgument("response", formatted);
-            return true;
-        }
-        catch (Exception ex)
-        {
-            CPH.LogWarn($"ReloadAliases API Error: {ex.Message}");
-            CPH.SetArgument("response", $"Error: {ex.Message}");
-            return true;
-        }
-    }
 
-    /// <summary>
-    /// Test endpoint
-    /// Command: !test
-    /// </summary>
-    public bool Test()
-    {
-        EnsureInitialized();
-        string error = null;
-
-        if (!ValidateContext(out string platform, out string platformId, out string username, ref error))
-        {
-            CPH.LogWarn($"Test Failed: {error}");
-            return false;
-        }
-
-        try
-        {
-            var result = client.Test(platform, platformId, username).Result;
-            var formatted = ResponseFormatter.FormatMessage(result);
-            CPH.SetArgument("response", formatted);
-            return true;
-        }
-        catch (Exception ex)
-        {
-            CPH.LogWarn($"Test API Error: {ex.Message}");
-            CPH.SetArgument("response", $"Error: {ex.Message}");
-            return true;
-        }
-    }
 
     #endregion
 

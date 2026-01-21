@@ -618,7 +618,7 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<string> AdminUnlockAllNodes()
         {
-            return await PostJsonAsync("/api/v1/progression/admin/unlock-all");
+            return await PostJsonAsync("/api/v1/progression/admin/unlock-all", new { });
         }
 
         /// <summary>
@@ -634,7 +634,7 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<string> AdminStartVoting()
         {
-            return await PostJsonAsync("/api/v1/progression/admin/start-voting");
+            return await PostJsonAsync("/api/v1/progression/admin/start-voting", new { });
         }
 
         /// <summary>
@@ -642,7 +642,7 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<string> AdminEndVoting()
         {
-            return await PostJsonAsync("/api/v1/progression/admin/end-voting");
+            return await PostJsonAsync("/api/v1/progression/admin/end-voting", new { });
         }
 
         /// <summary>
@@ -671,7 +671,7 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<string> AdminReloadWeights()
         {
-            return await PostJsonAsync("/api/v1/admin/progression/reload-weights");
+            return await PostJsonAsync("/api/v1/admin/progression/reload-weights", new { });
         }
 
         /// <summary>

@@ -1,2 +1,19 @@
 !inv <"non existant user"> -- should return error to user
 !removeItem <user> <item> -- returns "(no message)"
+!give <"non existant user"> <item> -- should return better error message
+!give <self> <item> -- should return sassy message
+!votestatus -- Vote should have ended already.  Maybe issue with admin unlock while it was active?
+!buyitem <item> -- Success -- should return success message.  (Xp gain warning since locked)
+!buyitem <fake item> -- should return better error message
+!sellitem <item> -- Success -- should return success message.  (Xp gain warning since locked)
+!sellitem <fake item> -- should return better error message
+Lootbox sells for 500 but contains 100. (Base value isn't scaled for buying or selling)
+!statsu -- "Error: One or more errors occurred." -- Missing user_id query parameter
+!getstatus -- Should return a message -- "Get progression status: success"
+!treeprogress -- needs formatter
+!adminstartvote -- Generic error -- "Failed to start voting session" + no nodes available for voting
+!gett -- unhandled
+!up <item> -- generic error -- Item locked
+!up <fake item> -- generic error -- Item not found
+!down <item> -- generic error -- Item locked
+!down <fake item> -- generic error -- Item not found
