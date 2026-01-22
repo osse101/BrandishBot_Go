@@ -56,6 +56,9 @@ func (s *service) StartVotingSession(ctx context.Context, unlockedNodeID *int) e
 
 	if unlockedNodeID != nil {
 		s.publishCycleCompletedEvent(ctx, *unlockedNodeID, sessionID)
+	} else {
+		// Publish voting started event for fresh voting sessions
+		s.publishVotingStartedEvent(ctx, sessionID, selected, "")
 	}
 
 	return nil
@@ -152,6 +155,37 @@ func (s *service) publishCycleCompletedEvent(ctx context.Context, unlockedNodeID
 		} else {
 			log.Info("Published progression cycle completed event", "unlockedNode", unlockedNode.NodeKey, "sessionID", sessionID)
 		}
+	}
+}
+
+func (s *service) publishVotingStartedEvent(ctx context.Context, sessionID int, options []*domain.ProgressionNode, previousUnlock string) {
+	log := logger.FromContext(ctx)
+
+	if s.bus == nil {
+		return
+	}
+
+	// Build options list for event payload
+	optionsList := make([]map[string]interface{}, 0, len(options))
+	for _, node := range options {
+		optionsList = append(optionsList, map[string]interface{}{
+			"node_key":     node.NodeKey,
+			"display_name": node.DisplayName,
+		})
+	}
+
+	if err := s.bus.Publish(ctx, event.Event{
+		Version: "1.0",
+		Type:    event.ProgressionVotingStarted,
+		Payload: map[string]interface{}{
+			"session_id":      sessionID,
+			"options":         optionsList,
+			"previous_unlock": previousUnlock,
+		},
+	}); err != nil {
+		log.Error("Failed to publish voting started event", "error", err)
+	} else {
+		log.Info("Published voting started event", "sessionID", sessionID, "options", len(options))
 	}
 }
 

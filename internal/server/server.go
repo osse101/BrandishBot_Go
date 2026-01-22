@@ -25,6 +25,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/metrics"
 	"github.com/osse101/BrandishBot_Go/internal/naming"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
+	"github.com/osse101/BrandishBot_Go/internal/sse"
 	"github.com/osse101/BrandishBot_Go/internal/stats"
 	"github.com/osse101/BrandishBot_Go/internal/user"
 )
@@ -41,10 +42,11 @@ type Server struct {
 	jobService         job.Service
 	linkingService     linking.Service
 	namingResolver     naming.Resolver
+	sseHub             *sse.Hub
 }
 
 // NewServer creates a new Server instance
-func NewServer(port int, apiKey string, trustedProxies []string, dbPool database.Pool, userService user.Service, economyService economy.Service, craftingService crafting.Service, statsService stats.Service, progressionService progression.Service, gambleService gamble.Service, jobService job.Service, linkingService linking.Service, namingResolver naming.Resolver, eventBus event.Bus) *Server {
+func NewServer(port int, apiKey string, trustedProxies []string, dbPool database.Pool, userService user.Service, economyService economy.Service, craftingService crafting.Service, statsService stats.Service, progressionService progression.Service, gambleService gamble.Service, jobService job.Service, linkingService linking.Service, namingResolver naming.Resolver, eventBus event.Bus, sseHub *sse.Hub) *Server {
 	r := chi.NewRouter()
 
 	// Middleware stack
@@ -161,6 +163,11 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 			r.Get("/status", linkingHandlers.HandleStatus())
 		})
 
+		// SSE events endpoint
+		if sseHub != nil {
+			r.Get("/events", sse.Handler(sseHub))
+		}
+
 		// Admin routes
 		adminJobHandler := handler.NewAdminJobHandler(jobService, userService)
 		adminCacheHandler := handler.NewAdminCacheHandler(userService)
@@ -203,6 +210,7 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 		jobService:         jobService,
 		linkingService:     linkingService,
 		namingResolver:     namingResolver,
+		sseHub:             sseHub,
 	}
 }
 

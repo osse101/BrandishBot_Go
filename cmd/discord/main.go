@@ -110,18 +110,24 @@ func loadConfig() (discord.Config, error) {
 	// Load optional environment variables without defaults
 	devChannelID := os.Getenv("DISCORD_DEV_CHANNEL_ID")
 	gameChannelID := os.Getenv("DISCORD_DIGGING_GAME_CHANNEL_ID")
+	notificationChannelID := os.Getenv("DISCORD_NOTIFICATION_CHANNEL_ID")
 	githubToken := os.Getenv("GITHUB_TOKEN")
 	githubRepo := os.Getenv("GITHUB_OWNER_REPO")
 
+	if notificationChannelID != "" {
+		slog.Info("SSE notifications enabled", "channel_id", notificationChannelID)
+	}
+
 	return discord.Config{
-		Token:                token,
-		AppID:                appID,
-		APIURL:               apiURL,
-		APIKey:               apiKey,
-		DevChannelID:         devChannelID,
-		DiggingGameChannelID: gameChannelID,
-		GithubToken:          githubToken,
-		GithubOwnerRepo:      githubRepo,
+		Token:                 token,
+		AppID:                 appID,
+		APIURL:                apiURL,
+		APIKey:                apiKey,
+		DevChannelID:          devChannelID,
+		DiggingGameChannelID:  gameChannelID,
+		NotificationChannelID: notificationChannelID,
+		GithubToken:           githubToken,
+		GithubOwnerRepo:       githubRepo,
 	}, nil
 }
 

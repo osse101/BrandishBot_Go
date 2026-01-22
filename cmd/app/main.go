@@ -27,6 +27,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 	"github.com/osse101/BrandishBot_Go/internal/scheduler"
 	"github.com/osse101/BrandishBot_Go/internal/server"
+	"github.com/osse101/BrandishBot_Go/internal/sse"
 	"github.com/osse101/BrandishBot_Go/internal/stats"
 	"github.com/osse101/BrandishBot_Go/internal/user"
 	"github.com/osse101/BrandishBot_Go/internal/worker"
@@ -191,7 +192,17 @@ func main() {
 	// Initialize Linking service
 	linkingService := linking.NewService(repos.Linking, userService)
 
-	srv := server.NewServer(cfg.Port, cfg.APIKey, cfg.TrustedProxies, dbPool, userService, economyService, craftingService, statsService, progressionService, gambleService, jobService, linkingService, namingResolver, eventBus)
+	// Initialize SSE Hub for real-time event streaming
+	sseHub := sse.NewHub()
+	sseHub.Start()
+	defer sseHub.Stop()
+
+	// Register SSE subscriber to bridge internal events to SSE clients
+	sseSubscriber := sse.NewSubscriber(sseHub, eventBus)
+	sseSubscriber.Subscribe()
+	slog.Info("SSE hub initialized")
+
+	srv := server.NewServer(cfg.Port, cfg.APIKey, cfg.TrustedProxies, dbPool, userService, economyService, craftingService, statsService, progressionService, gambleService, jobService, linkingService, namingResolver, eventBus, sseHub)
 
 	// Run server in a goroutine
 	go func() {

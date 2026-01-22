@@ -226,6 +226,46 @@ Complete checklist for implementing client wrappers (C#, TypeScript, Python, etc
 
 ---
 
+## 13. Real-time Events (SSE)
+
+| Endpoint | Method | C# Status | Binding Name | Description |
+|----------|--------|-----------|--------------|-------------|
+| `/events` | GET (SSE) | ✅ | `BrandishBotSSE` | Server-Sent Events stream |
+
+### SSE Event Types
+- `job.level_up` - User leveled up a job
+- `progression.voting_started` - New voting session started
+- `progression.cycle_completed` - Node unlocked + new voting session
+
+### Parameters
+- **Connect**: `types` (optional query param) - comma-separated list of event types to filter
+
+### C# Usage Example
+```csharp
+var sseClient = new BrandishBotSSE("http://localhost:8080", "api-key", new[] {
+    SSEEventType.JobLevelUp,
+    SSEEventType.VotingStarted,
+    SSEEventType.CycleCompleted
+});
+
+sseClient.OnJobLevelUp += (sender, evt) => {
+    var payload = evt.GetPayload<JobLevelUpPayload>();
+    Console.WriteLine($"{payload.JobKey} leveled up to {payload.NewLevel}!");
+};
+
+sseClient.OnVotingStarted += (sender, evt) => {
+    var payload = evt.GetPayload<VotingStartedPayload>();
+    Console.WriteLine($"New voting session with {payload.Options.Length} options");
+};
+
+sseClient.Start(); // Non-blocking, runs in background with auto-reconnect
+```
+
+### Discord Bot Configuration
+Set `DISCORD_NOTIFICATION_CHANNEL_ID` environment variable to enable SSE notifications in Discord.
+
+---
+
 ## Implementation Checklist by Client
 
 ### C# Client (`BrandishBotClient.cs`)
@@ -448,7 +488,8 @@ var voteResult = await client.VoteForNode(
 | Message Handler | 1 | 1 (100%) | 0 |
 | Admin Utils | 2 | 2 (100%) | 0 |
 | Health Checks | 2 | 2 (100%) | 0 |
-| **TOTAL** | **52** | **51 (98%)** | **1** |
+| Real-time Events (SSE) | 1 | 1 (100%) | 0 |
+| **TOTAL** | **53** | **52 (98%)** | **1** |
 
 ### Action Items
 1. ⚠️ Update `UpgradeItem` to use string item name instead of int recipe_id

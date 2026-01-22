@@ -1,6 +1,7 @@
 package discord
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -18,26 +19,30 @@ import (
 
 // Bot represents the Discord bot
 type Bot struct {
-	Session              *discordgo.Session
-	Client               *APIClient
-	AppID                string
-	Registry             *CommandRegistry
-	DevChannelID         string
-	DiggingGameChannelID string
-	GithubToken          string
-	GithubOwnerRepo      string
+	Session               *discordgo.Session
+	Client                *APIClient
+	AppID                 string
+	Registry              *CommandRegistry
+	DevChannelID          string
+	DiggingGameChannelID  string
+	NotificationChannelID string
+	GithubToken           string
+	GithubOwnerRepo       string
+	sseClient             *SSEClient
+	sseNotifier           *SSENotifier
 }
 
 // Config holds the bot configuration
 type Config struct {
-	Token                string
-	AppID                string
-	APIURL               string
-	APIKey               string
-	DevChannelID         string
-	DiggingGameChannelID string
-	GithubToken          string
-	GithubOwnerRepo      string
+	Token                 string
+	AppID                 string
+	APIURL                string
+	APIKey                string
+	DevChannelID          string
+	DiggingGameChannelID  string
+	NotificationChannelID string
+	GithubToken           string
+	GithubOwnerRepo       string
 }
 
 // New creates a new Discord bot
@@ -47,16 +52,28 @@ func New(cfg Config) (*Bot, error) {
 		return nil, fmt.Errorf("error creating Discord session: %w", err)
 	}
 
-	return &Bot{
-		Session:              s,
-		Client:               NewAPIClient(cfg.APIURL, cfg.APIKey), // Pass API Key
-		AppID:                cfg.AppID,
-		Registry:             NewCommandRegistry(),
-		DevChannelID:         cfg.DevChannelID,
-		DiggingGameChannelID: cfg.DiggingGameChannelID,
-		GithubToken:          cfg.GithubToken,
-		GithubOwnerRepo:      cfg.GithubOwnerRepo,
-	}, nil
+	bot := &Bot{
+		Session:               s,
+		Client:                NewAPIClient(cfg.APIURL, cfg.APIKey), // Pass API Key
+		AppID:                 cfg.AppID,
+		Registry:              NewCommandRegistry(),
+		DevChannelID:          cfg.DevChannelID,
+		DiggingGameChannelID:  cfg.DiggingGameChannelID,
+		NotificationChannelID: cfg.NotificationChannelID,
+		GithubToken:           cfg.GithubToken,
+		GithubOwnerRepo:       cfg.GithubOwnerRepo,
+	}
+
+	// Initialize SSE client if notification channel is configured
+	if cfg.NotificationChannelID != "" {
+		bot.sseClient = NewSSEClient(cfg.APIURL, cfg.APIKey, []string{
+			SSEEventTypeJobLevelUp,
+			SSEEventTypeVotingStarted,
+			SSEEventTypeCycleCompleted,
+		})
+	}
+
+	return bot, nil
 }
 
 // Start starts the bot
@@ -76,12 +93,26 @@ func (b *Bot) Start() error {
 		return fmt.Errorf("error opening connection: %w", err)
 	}
 
+	// Start SSE client for real-time notifications
+	if b.sseClient != nil && b.NotificationChannelID != "" {
+		b.sseNotifier = NewSSENotifier(b.Session, b.NotificationChannelID)
+		b.sseNotifier.RegisterHandlers(b.sseClient)
+		b.sseClient.Start(context.Background())
+		slog.Info("SSE client started for real-time notifications",
+			"channel_id", b.NotificationChannelID)
+	}
+
 	slog.Info("Discord bot is now running. Press CTRL-C to exit.")
 	return nil
 }
 
 // Stop stops the bot
 func (b *Bot) Stop() {
+	// Stop SSE client first
+	if b.sseClient != nil {
+		b.sseClient.Stop()
+		slog.Info("SSE client stopped")
+	}
 	b.Session.Close()
 }
 

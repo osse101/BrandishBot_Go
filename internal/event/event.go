@@ -22,6 +22,7 @@ type Event struct {
 const (
 	ProgressionCycleCompleted Type = "progression.cycle.completed"
 	ProgressionTargetSet      Type = "progression.target.set"
+	ProgressionVotingStarted  Type = "progression.voting_started"
 	EventTypeEngagement       Type = "engagement"
 )
 
