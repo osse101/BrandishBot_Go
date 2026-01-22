@@ -237,8 +237,11 @@ func (c *Client) connect(ctx context.Context) error {
 		WriteBufferSize: WriteBufferSize,
 	}
 
-	conn, _, err := dialer.DialContext(ctx, c.url, nil)
+	conn, resp, err := dialer.DialContext(ctx, c.url, nil)
 	if err != nil {
+		if resp != nil {
+			return fmt.Errorf("failed to connect: %w (status: %s, code: %d)", err, resp.Status, resp.StatusCode)
+		}
 		return fmt.Errorf("failed to connect: %w", err)
 	}
 
@@ -247,23 +250,26 @@ func (c *Client) connect(ctx context.Context) error {
 	c.mu.Unlock()
 
 	// Read initial message (may contain auth challenge)
+	// We use a short timeout because if auth is disabled, Streamer.bot might not send anything
+	conn.SetReadDeadline(time.Now().Add(2 * time.Second))
 	_, msg, err := conn.ReadMessage()
-	if err != nil {
-		conn.Close()
-		return fmt.Errorf("failed to read initial message: %w", err)
-	}
+	conn.SetReadDeadline(time.Time{}) // Reset deadline
 
-	// Check if authentication is required
-	var challenge AuthChallenge
-	if err := json.Unmarshal(msg, &challenge); err == nil {
-		if challenge.Info.Authentication.Challenge != "" {
-			slog.Info(LogMsgAuthRequired)
-			if err := c.authenticate(challenge); err != nil {
-				conn.Close()
-				return fmt.Errorf("authentication failed: %w", err)
+	if err == nil {
+		// Check if authentication is required
+		var challenge AuthChallenge
+		if err := json.Unmarshal(msg, &challenge); err == nil {
+			if challenge.Info.Authentication.Challenge != "" {
+				slog.Info(LogMsgAuthRequired)
+				if err := c.authenticate(challenge); err != nil {
+					conn.Close()
+					return fmt.Errorf("authentication failed: %w", err)
+				}
+				slog.Info(LogMsgAuthSuccess)
 			}
-			slog.Info(LogMsgAuthSuccess)
 		}
+	} else {
+		slog.Debug("No initial message from Streamer.bot, proceeding assuming no auth required", "error", err)
 	}
 
 	c.setConnected(true)

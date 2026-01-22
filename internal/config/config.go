@@ -52,7 +52,8 @@ type Config struct {
 	GambleJoinDuration time.Duration // Duration for users to join a gamble
 
 	// Streamer.bot configuration
-	StreamerbotWebhookURL string // Webhook URL for Streamer.bot notifications
+	StreamerbotEnabled    bool   // Enable WebSocket connection to Streamer.bot
+	StreamerbotWebhookURL string // WebSocket URL for Streamer.bot (e.g., ws://127.0.0.1:8080/ or http://IP:PORT/streamerbot)
 
 	// Development Settings
 	DevMode bool // When true, bypasses cooldowns and enables test features
@@ -130,6 +131,10 @@ func Load() (*Config, error) {
 	// Dev mode (bypasses cooldowns and enables test features)
 	devModeStr := getEnv("DEV_MODE", "false")
 	cfg.DevMode = devModeStr == "true" || devModeStr == "1"
+
+	// Streamer.bot WebSocket enabled
+	sbEnabledStr := getEnv("STREAMERBOT_ENABLED", "false")
+	cfg.StreamerbotEnabled = sbEnabledStr == "true" || sbEnabledStr == "1"
 
 	// Parse trusted proxies
 	trustedProxiesStr := getEnv("TRUSTED_PROXIES", "")

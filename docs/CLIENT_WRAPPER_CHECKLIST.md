@@ -226,43 +226,40 @@ Complete checklist for implementing client wrappers (C#, TypeScript, Python, etc
 
 ---
 
-## 13. Real-time Events (SSE)
+## 13. Real-time Events
 
-| Endpoint | Method | C# Status | Binding Name | Description |
-|----------|--------|-----------|--------------|-------------|
-| `/events` | GET (SSE) | ✅ | `BrandishBotSSE` | Server-Sent Events stream |
+### SSE (Server-Sent Events) - For Go/Discord Bot
 
-### SSE Event Types
-- `job.level_up` - User leveled up a job
-- `progression.voting_started` - New voting session started
-- `progression.cycle_completed` - Node unlocked + new voting session
+| Endpoint | Method | Status | Description |
+|----------|--------|--------|-------------|
+| `/api/v1/events` | GET (SSE) | ✅ | Server-Sent Events stream |
 
-### Parameters
-- **Connect**: `types` (optional query param) - comma-separated list of event types to filter
+**Event Types**: `job.level_up`, `progression.voting_started`, `progression.cycle_completed`
 
-### C# Usage Example
-```csharp
-var sseClient = new BrandishBotSSE("http://localhost:8080", "api-key", new[] {
-    SSEEventType.JobLevelUp,
-    SSEEventType.VotingStarted,
-    SSEEventType.CycleCompleted
-});
+**Discord Bot**: Set `DISCORD_NOTIFICATION_CHANNEL_ID` environment variable to enable notifications.
 
-sseClient.OnJobLevelUp += (sender, evt) => {
-    var payload = evt.GetPayload<JobLevelUpPayload>();
-    Console.WriteLine($"{payload.JobKey} leveled up to {payload.NewLevel}!");
-};
+### Streamer.bot WebSocket Integration - For Streamer.bot/Twitch
 
-sseClient.OnVotingStarted += (sender, evt) => {
-    var payload = evt.GetPayload<VotingStartedPayload>();
-    Console.WriteLine($"New voting session with {payload.Options.Length} options");
-};
+The Go API server connects as a WebSocket CLIENT to Streamer.bot's WebSocket server and sends `DoAction` commands when events occur. No C# client code needed - just configure Streamer.bot actions.
 
-sseClient.Start(); // Non-blocking, runs in background with auto-reconnect
+**Configuration** (API Server):
+```bash
+STREAMERBOT_ENABLED=true
+STREAMERBOT_WEBHOOK_URL=ws://127.0.0.1:8090/streamerbot
 ```
 
-### Discord Bot Configuration
-Set `DISCORD_NOTIFICATION_CHANNEL_ID` environment variable to enable SSE notifications in Discord.
+**Required Streamer.bot Actions** (create these in Streamer.bot):
+
+| Action Name | Triggered When | Available Arguments |
+|-------------|----------------|---------------------|
+| `BrandishBot_JobLevelUp` | User levels up a job | `%user_id%`, `%job_key%`, `%old_level%`, `%new_level%`, `%source%` |
+| `BrandishBot_VotingStarted` | New voting session starts | `%session_id%`, `%options_count%`, `%option_1%`, `%option_2%`, etc. |
+| `BrandishBot_CycleCompleted` | Feature unlocked | `%unlocked_node_key%`, `%unlocked_node_name%`, `%new_session_id%`, `%options_count%` |
+
+**Example Streamer.bot Action** (for job level up):
+1. Create action named `BrandishBot_JobLevelUp`
+2. Add sub-action: Twitch > Send Message to Channel
+3. Message: `Congrats! Someone leveled up their %job_key% job to level %new_level%!`
 
 ---
 
@@ -488,8 +485,10 @@ var voteResult = await client.VoteForNode(
 | Message Handler | 1 | 1 (100%) | 0 |
 | Admin Utils | 2 | 2 (100%) | 0 |
 | Health Checks | 2 | 2 (100%) | 0 |
-| Real-time Events (SSE) | 1 | 1 (100%) | 0 |
-| **TOTAL** | **53** | **52 (98%)** | **1** |
+| Real-time Events | 1 | N/A | N/A |
+| **TOTAL** | **52** | **51 (98%)** | **1** |
+
+> **Note**: Real-time events use SSE for Go/Discord and Streamer.bot WebSocket (server-initiated) for Twitch integration. No C# client code needed for Streamer.bot - the Go server pushes events directly.
 
 ### Action Items
 1. ⚠️ Update `UpgradeItem` to use string item name instead of int recipe_id

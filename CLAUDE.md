@@ -73,7 +73,7 @@ All services follow this pattern. Discord commands mirror this via API client ca
 | Handler | `internal/handler/progression.go` |
 | Discord | `internal/discord/cmd_progression.go` |
 | Loader | `internal/progression/tree_loader.go` |
-| Events | `internal/progression/handler.go`, `notifier.go` |
+| Events | `internal/progression/handler.go` |
 | Domain | `internal/domain/progression.go:1-189` |
 
 **Key methods:** `VoteForUnlock`, `CheckAndUnlockNode`, `GetModifiedValue`, `RecordEngagement`

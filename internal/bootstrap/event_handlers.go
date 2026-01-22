@@ -22,21 +22,12 @@ type EventHandlerDependencies struct {
 // RegisterEventHandlers sets up all event handlers and subscribers.
 // This includes:
 // - Progression event handler (for cycle completion events)
-// - Progression notifier (webhooks to Discord and Streamer.bot)
 // - Metrics collector (for event-based metrics)
 // - Event logger (persists events to database)
 func RegisterEventHandlers(deps EventHandlerDependencies) error {
 	// Register progression handler
 	progressionHandler := progression.NewEventHandler(deps.ProgressionService)
 	progressionHandler.Register(deps.EventBus)
-
-	// Initialize and register Progression Notifier
-	discordWebhookURL := fmt.Sprintf(DiscordWebhookURLFormat, deps.Config.DiscordWebhookPort)
-	progressionNotifier := progression.NewNotifier(discordWebhookURL, deps.Config.StreamerbotWebhookURL)
-	progressionNotifier.Subscribe(deps.EventBus)
-	slog.Info(LogMsgProgressionNotifierInit,
-		"discord_webhook", discordWebhookURL,
-		"streamerbot_webhook", deps.Config.StreamerbotWebhookURL)
 
 	// Register Metrics Collector
 	metricsCollector := metrics.NewEventMetricsCollector()

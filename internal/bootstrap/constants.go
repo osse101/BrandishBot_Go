@@ -105,15 +105,8 @@ const (
 // Event Handler Configuration
 // =============================================================================
 
-const (
-	// DiscordWebhookURLFormat is the URL format for Discord webhook notifications
-	// Format parameters: port
-	DiscordWebhookURLFormat = "http://discord:%s/admin/announce"
-)
-
 // Log messages for event handler registration
 const (
-	LogMsgProgressionNotifierInit     = "Progression notifier initialized"
 	LogMsgMetricsCollectorRegistered  = "Metrics collector registered"
 	LogMsgEventLoggerInitialized      = "Event logger initialized"
 	ErrMsgFailedRegisterMetrics       = "failed to register metrics collector"

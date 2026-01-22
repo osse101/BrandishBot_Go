@@ -29,6 +29,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/server"
 	"github.com/osse101/BrandishBot_Go/internal/sse"
 	"github.com/osse101/BrandishBot_Go/internal/stats"
+	"github.com/osse101/BrandishBot_Go/internal/streamerbot"
 	"github.com/osse101/BrandishBot_Go/internal/user"
 	"github.com/osse101/BrandishBot_Go/internal/worker"
 )
@@ -201,6 +202,19 @@ func main() {
 	sseSubscriber := sse.NewSubscriber(sseHub, eventBus)
 	sseSubscriber.Subscribe()
 	slog.Info("SSE hub initialized")
+
+	// Initialize Streamer.bot WebSocket client if enabled
+	var sbClient *streamerbot.Client
+	if cfg.StreamerbotEnabled && cfg.StreamerbotWebhookURL != "" {
+		sbClient = streamerbot.NewClient(cfg.StreamerbotWebhookURL, "")
+		sbClient.Start(context.Background())
+		defer sbClient.Stop()
+
+		// Register Streamer.bot subscriber to bridge internal events to DoAction commands
+		sbSubscriber := streamerbot.NewSubscriber(sbClient, eventBus)
+		sbSubscriber.Subscribe()
+		slog.Info("Streamer.bot WebSocket client initialized", "url", cfg.StreamerbotWebhookURL)
+	}
 
 	srv := server.NewServer(cfg.Port, cfg.APIKey, cfg.TrustedProxies, dbPool, userService, economyService, craftingService, statsService, progressionService, gambleService, jobService, linkingService, namingResolver, eventBus, sseHub)
 
