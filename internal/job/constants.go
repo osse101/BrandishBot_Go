@@ -55,6 +55,11 @@ const (
 	ScholarBonusPerLevel   = 10.0 // 10% engagement value increase per level
 )
 
+// XP source types for tracking and special behavior
+const (
+	SourceRareCandy = "rarecandy" // Rare candy usage - bypasses daily cap
+)
+
 // Job Epiphany constants
 const (
 	EpiphanyChance     = 0.05 // 5% chance

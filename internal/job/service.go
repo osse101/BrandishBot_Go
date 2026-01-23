@@ -195,7 +195,7 @@ func (s *service) AwardXP(ctx context.Context, userID string, jobKey string, bas
 
 	actualAmount := s.calculateActualXP(ctx, userID, jobKey, baseAmount, source)
 
-	if err := s.checkDailyCap(ctx, userID, jobKey, currentProgress, &actualAmount); err != nil {
+	if err := s.checkDailyCap(ctx, userID, jobKey, currentProgress, &actualAmount, source); err != nil {
 		return nil, err
 	}
 
@@ -273,7 +273,14 @@ func (s *service) calculateActualXP(ctx context.Context, userID, jobKey string, 
 	return actualAmount
 }
 
-func (s *service) checkDailyCap(ctx context.Context, userID, jobKey string, currentProgress *domain.UserJob, actualAmount *int) error {
+func (s *service) checkDailyCap(ctx context.Context, userID, jobKey string, currentProgress *domain.UserJob, actualAmount *int, source string) error {
+	// Skip daily cap for rare candy
+	if source == SourceRareCandy {
+		logger.FromContext(ctx).Info("Bypassing daily XP cap for rare candy",
+			"user_id", userID, "job", jobKey, "xp", *actualAmount)
+		return nil
+	}
+
 	dailyCap := s.getDailyCap(ctx)
 	if currentProgress.XPGainedToday+int64(*actualAmount) > int64(dailyCap) {
 		remaining := int64(dailyCap) - currentProgress.XPGainedToday

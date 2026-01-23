@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/lootbox"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
@@ -333,10 +334,10 @@ func (s *service) handleRareCandy(ctx context.Context, _ *service, user *domain.
 	totalXP := quantity * rarecandyXPAmount
 	if s.jobService != nil {
 		metadata := map[string]interface{}{
-			"source":   "rarecandy",
+			"source":   job.SourceRareCandy,
 			"quantity": quantity,
 		}
-		if _, err := s.jobService.AwardXP(ctx, user.ID, jobName, totalXP, "rarecandy", metadata); err != nil {
+		if _, err := s.jobService.AwardXP(ctx, user.ID, jobName, totalXP, job.SourceRareCandy, metadata); err != nil {
 			log.Error(LogWarnFailedToAwardJobXP, "error", err, "job", jobName)
 			return "", fmt.Errorf(ErrMsgFailedToAwardXP)
 		}

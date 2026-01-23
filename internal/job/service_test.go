@@ -420,6 +420,90 @@ func TestAwardXP_DailyCap_Reached(t *testing.T) {
 	assert.ErrorIs(t, err, domain.ErrDailyCapReached)
 }
 
+func TestAwardXP_RareCandy_BypassesDailyCap(t *testing.T) {
+	repo := new(MockRepository)
+	prog := new(MockProgressionService)
+	svc := NewService(repo, prog, nil, nil, nil).(*service)
+	svc.rnd = func() float64 { return 1.0 }
+
+	ctx := context.Background()
+
+	userID := "u1"
+	jobKey := JobKeyBlacksmith
+	jobID := 1
+	rarecandyXP := 500
+
+	job := &domain.Job{ID: jobID, JobKey: jobKey}
+
+	prog.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
+	repo.On("GetJobByKey", ctx, jobKey).Return(job, nil)
+	// User has already reached the cap
+	repo.On("GetUserJob", ctx, userID, jobID).Return(&domain.UserJob{
+		UserID: userID, JobID: jobID, XPGainedToday: int64(DefaultDailyCap),
+	}, nil)
+
+	prog.On("GetModifiedValue", ctx, "job_xp_multiplier", 1.0).Return(1.0, nil)
+	prog.On("GetModifiedValue", ctx, "job_daily_cap", float64(DefaultDailyCap)).Return(float64(DefaultDailyCap), nil)
+	prog.On("GetModifiedValue", ctx, "job_max_level", float64(DefaultMaxLevel)).Return(float64(DefaultMaxLevel), nil)
+
+	repo.On("UpsertUserJob", ctx, mock.MatchedBy(func(uj *domain.UserJob) bool {
+		// Verify that XP was awarded and xp_gained_today includes rare candy XP
+		return uj.XPGainedToday == int64(DefaultDailyCap+rarecandyXP) && uj.CurrentXP == int64(rarecandyXP)
+	})).Return(nil)
+
+	repo.On("RecordJobXPEvent", ctx, mock.MatchedBy(func(e *domain.JobXPEvent) bool {
+		return e.XPAmount == rarecandyXP && e.SourceType == SourceRareCandy
+	})).Return(nil)
+
+	result, err := svc.AwardXP(ctx, userID, jobKey, rarecandyXP, SourceRareCandy, nil)
+
+	assert.NoError(t, err)
+	assert.Equal(t, rarecandyXP, result.XPGained)
+}
+
+func TestAwardXP_RareCandy_ExceedsNormalCap(t *testing.T) {
+	repo := new(MockRepository)
+	prog := new(MockProgressionService)
+	svc := NewService(repo, prog, nil, nil, nil).(*service)
+	svc.rnd = func() float64 { return 1.0 }
+
+	ctx := context.Background()
+
+	userID := "u1"
+	jobKey := JobKeyBlacksmith
+	jobID := 1
+	initialXP := 400
+	rarecandyXP := 1500 // 3 rare candies
+
+	job := &domain.Job{ID: jobID, JobKey: jobKey}
+
+	prog.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
+	repo.On("GetJobByKey", ctx, jobKey).Return(job, nil)
+	// User has 400 XP gained today
+	repo.On("GetUserJob", ctx, userID, jobID).Return(&domain.UserJob{
+		UserID: userID, JobID: jobID, XPGainedToday: int64(initialXP), CurrentXP: int64(initialXP),
+	}, nil)
+
+	prog.On("GetModifiedValue", ctx, "job_xp_multiplier", 1.0).Return(1.0, nil)
+	prog.On("GetModifiedValue", ctx, "job_daily_cap", float64(DefaultDailyCap)).Return(float64(DefaultDailyCap), nil)
+	prog.On("GetModifiedValue", ctx, "job_max_level", float64(DefaultMaxLevel)).Return(float64(DefaultMaxLevel), nil)
+
+	repo.On("UpsertUserJob", ctx, mock.MatchedBy(func(uj *domain.UserJob) bool {
+		// Verify that XP was awarded and xp_gained_today exceeds normal cap
+		return uj.XPGainedToday == int64(initialXP+rarecandyXP) && uj.CurrentXP == int64(initialXP+rarecandyXP)
+	})).Return(nil)
+
+	repo.On("RecordJobXPEvent", ctx, mock.MatchedBy(func(e *domain.JobXPEvent) bool {
+		return e.XPAmount == rarecandyXP && e.SourceType == SourceRareCandy
+	})).Return(nil)
+
+	result, err := svc.AwardXP(ctx, userID, jobKey, rarecandyXP, SourceRareCandy, nil)
+
+	assert.NoError(t, err)
+	assert.Equal(t, rarecandyXP, result.XPGained)
+	assert.Equal(t, int64(initialXP+rarecandyXP), result.NewXP)
+}
+
 func TestAwardXP_MaxLevel(t *testing.T) {
 	repo := new(MockRepository)
 	prog := new(MockProgressionService)
