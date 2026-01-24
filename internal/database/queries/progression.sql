@@ -311,3 +311,15 @@ JOIN engagement_weights ew ON em.metric_type = ew.metric_type
 WHERE recorded_at >= $1
 GROUP BY DATE(recorded_at)
 ORDER BY day ASC;
+
+-- name: ClearAllVotingOptions :exec
+DELETE FROM progression_voting_options;
+
+-- name: ClearAllVotingSessions :exec
+DELETE FROM progression_voting_sessions;
+
+-- name: ClearAllUnlockProgress :exec
+DELETE FROM progression_unlock_progress;
+
+-- name: ClearUnlockProgressForNode :exec
+DELETE FROM progression_unlock_progress WHERE node_id = $1;

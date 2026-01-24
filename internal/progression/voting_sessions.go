@@ -101,7 +101,31 @@ func (s *service) handleSingleOptionAutoSelect(ctx context.Context, progress *do
 
 	targetLevel := s.calculateNextTargetLevel(ctx, node)
 
-	if err := s.repo.SetUnlockTarget(ctx, progress.ID, node.ID, targetLevel, 0); err != nil {
+	// Create a voting session to satisfy FK constraint
+	sessionID, err := s.repo.CreateVotingSession(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to create auto-select session: %w", err)
+	}
+
+	// Add the single option to the session
+	if err = s.repo.AddVotingOption(ctx, sessionID, node.ID, targetLevel); err != nil {
+		log.Warn("Failed to add voting option for auto-select", "nodeID", node.ID, "error", err)
+	}
+
+	// Get the option ID we just created (first and only option in session)
+	session, err := s.repo.GetSessionByID(ctx, sessionID)
+	if err != nil || session == nil || len(session.Options) == 0 {
+		return fmt.Errorf("failed to get auto-select session options: %w", err)
+	}
+	optionID := session.Options[0].ID
+
+	// Immediately end the session with the single option as winner
+	if err = s.repo.EndVotingSession(ctx, sessionID, optionID); err != nil {
+		return fmt.Errorf("failed to end auto-select session: %w", err)
+	}
+
+	// Now set the unlock target with a valid session ID
+	if err := s.repo.SetUnlockTarget(ctx, progress.ID, node.ID, targetLevel, sessionID); err != nil {
 		return fmt.Errorf("failed to set unlock target: %w", err)
 	}
 
@@ -118,13 +142,14 @@ func (s *service) handleSingleOptionAutoSelect(ctx context.Context, progress *do
 				"node_key":      node.NodeKey,
 				"target_level":  targetLevel,
 				"auto_selected": true,
+				"session_id":    sessionID,
 			},
 		}); err != nil {
 			log.Error("Failed to publish progression target set event", "error", err)
 		}
 	}
 
-	log.Info("Auto-selected target set", "nodeKey", node.NodeKey, "targetLevel", targetLevel)
+	log.Info("Auto-selected target set", "nodeKey", node.NodeKey, "targetLevel", targetLevel, "sessionID", sessionID)
 	return nil
 }
 

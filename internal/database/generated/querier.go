@@ -18,12 +18,16 @@ type Querier interface {
 	AssignItemTag(ctx context.Context, arg AssignItemTagParams) error
 	CleanupExpiredTokens(ctx context.Context) error
 	CleanupOldEvents(ctx context.Context, days int32) (int64, error)
+	ClearAllUnlockProgress(ctx context.Context) error
 	ClearAllUserProgression(ctx context.Context) error
 	ClearAllUserVotes(ctx context.Context) error
 	ClearAllVoting(ctx context.Context) error
+	ClearAllVotingOptions(ctx context.Context) error
+	ClearAllVotingSessions(ctx context.Context) error
 	ClearDisassembleOutputs(ctx context.Context, recipeID int32) error
 	ClearItemTags(ctx context.Context, itemID int32) error
 	ClearNodePrerequisites(ctx context.Context, nodeID int32) error
+	ClearUnlockProgressForNode(ctx context.Context, nodeID pgtype.Int4) error
 	ClearUnlocksExceptRoot(ctx context.Context) error
 	CompleteUnlock(ctx context.Context, id int32) error
 	CountUnlocks(ctx context.Context) (int64, error)

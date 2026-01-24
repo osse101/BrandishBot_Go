@@ -43,6 +43,15 @@ func (q *Queries) AddVotingOption(ctx context.Context, arg AddVotingOptionParams
 	return err
 }
 
+const clearAllUnlockProgress = `-- name: ClearAllUnlockProgress :exec
+DELETE FROM progression_unlock_progress
+`
+
+func (q *Queries) ClearAllUnlockProgress(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, clearAllUnlockProgress)
+	return err
+}
+
 const clearAllUserProgression = `-- name: ClearAllUserProgression :exec
 DELETE FROM user_progression
 `
@@ -70,12 +79,39 @@ func (q *Queries) ClearAllVoting(ctx context.Context) error {
 	return err
 }
 
+const clearAllVotingOptions = `-- name: ClearAllVotingOptions :exec
+DELETE FROM progression_voting_options
+`
+
+func (q *Queries) ClearAllVotingOptions(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, clearAllVotingOptions)
+	return err
+}
+
+const clearAllVotingSessions = `-- name: ClearAllVotingSessions :exec
+DELETE FROM progression_voting_sessions
+`
+
+func (q *Queries) ClearAllVotingSessions(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, clearAllVotingSessions)
+	return err
+}
+
 const clearNodePrerequisites = `-- name: ClearNodePrerequisites :exec
 DELETE FROM progression_prerequisites WHERE node_id = $1
 `
 
 func (q *Queries) ClearNodePrerequisites(ctx context.Context, nodeID int32) error {
 	_, err := q.db.Exec(ctx, clearNodePrerequisites, nodeID)
+	return err
+}
+
+const clearUnlockProgressForNode = `-- name: ClearUnlockProgressForNode :exec
+DELETE FROM progression_unlock_progress WHERE node_id = $1
+`
+
+func (q *Queries) ClearUnlockProgressForNode(ctx context.Context, nodeID pgtype.Int4) error {
+	_, err := q.db.Exec(ctx, clearUnlockProgressForNode, nodeID)
 	return err
 }
 

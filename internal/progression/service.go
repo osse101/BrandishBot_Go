@@ -463,6 +463,15 @@ func (s *service) GetProgressionStatus(ctx context.Context) (*domain.Progression
 		return nil, fmt.Errorf("failed to get unlocks: %w", err)
 	}
 
+	// Get total node count to determine if all are unlocked
+	allNodes, err := s.repo.GetAllNodes(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all nodes: %w", err)
+	}
+
+	// Check if all nodes are unlocked at their max level
+	allUnlocked := s.checkAllNodesUnlocked(ctx, allNodes, unlocks)
+
 	contributionScore, err := s.GetEngagementScore(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get contribution score: %w", err)
@@ -484,10 +493,35 @@ func (s *service) GetProgressionStatus(ctx context.Context) (*domain.Progression
 
 	return &domain.ProgressionStatus{
 		TotalUnlocked:        len(unlocks),
+		TotalNodes:          len(allNodes),
+		AllNodesUnlocked:    allUnlocked,
 		ContributionScore:    contributionScore,
 		ActiveSession:        activeSession,
 		ActiveUnlockProgress: unlockProgress,
 	}, nil
+}
+
+// checkAllNodesUnlocked returns true if all nodes are unlocked at their max level
+func (s *service) checkAllNodesUnlocked(ctx context.Context, allNodes []*domain.ProgressionNode, unlocks []*domain.ProgressionUnlock) bool {
+	if len(allNodes) == 0 {
+		return false
+	}
+
+	// Build map of unlock levels by node ID
+	unlockMap := make(map[int]int) // nodeID -> highest unlocked level
+	for _, unlock := range unlocks {
+		if existing, ok := unlockMap[unlock.NodeID]; !ok || unlock.CurrentLevel > existing {
+			unlockMap[unlock.NodeID] = unlock.CurrentLevel
+		}
+	}
+
+	// Check if all nodes are unlocked at max level
+	for _, node := range allNodes {
+		if level, ok := unlockMap[node.ID]; !ok || level < node.MaxLevel {
+			return false
+		}
+	}
+	return true
 }
 
 // AdminUnlock forces a node to unlock (for testing)
@@ -496,11 +530,16 @@ func (s *service) AdminUnlock(ctx context.Context, nodeKey string, level int) er
 
 	node, err := s.repo.GetNodeByKey(ctx, nodeKey)
 	if err != nil || node == nil {
-		return fmt.Errorf("node not found: %s", nodeKey)
+		// Get available node keys for helpful error message
+		availableKeys := s.getAvailableNodeKeys(ctx)
+		if len(availableKeys) > 0 {
+			return fmt.Errorf("%w: %s. Valid nodes: %v", domain.ErrNodeNotFound, nodeKey, availableKeys)
+		}
+		return fmt.Errorf("%w: %s", domain.ErrNodeNotFound, nodeKey)
 	}
 
 	if level > node.MaxLevel {
-		return fmt.Errorf("level %d exceeds max level %d", level, node.MaxLevel)
+		return fmt.Errorf("%w: level %d exceeds max level %d for node %s", domain.ErrMaxLevelExceeded, level, node.MaxLevel, nodeKey)
 	}
 
 	engagementScore, err := s.GetEngagementScore(ctx)
@@ -528,7 +567,7 @@ func (s *service) AdminUnlockAll(ctx context.Context) error {
 	}
 
 	if len(nodes) == 0 {
-		return fmt.Errorf("no nodes found")
+		return fmt.Errorf("%w: no nodes found", domain.ErrNodeNotFound)
 	}
 
 	// Unlock each node at its max level
@@ -551,7 +590,12 @@ func (s *service) AdminRelock(ctx context.Context, nodeKey string, level int) er
 
 	node, err := s.repo.GetNodeByKey(ctx, nodeKey)
 	if err != nil || node == nil {
-		return fmt.Errorf("node not found: %s", nodeKey)
+		// Get available node keys for helpful error message
+		availableKeys := s.getAvailableNodeKeys(ctx)
+		if len(availableKeys) > 0 {
+			return fmt.Errorf("%w: %s. Valid nodes: %v", domain.ErrNodeNotFound, nodeKey, availableKeys)
+		}
+		return fmt.Errorf("%w: %s", domain.ErrNodeNotFound, nodeKey)
 	}
 
 	if err := s.repo.RelockNode(ctx, node.ID, level); err != nil {
@@ -560,6 +604,19 @@ func (s *service) AdminRelock(ctx context.Context, nodeKey string, level int) er
 
 	log.Info("Admin relocked node", "nodeKey", nodeKey, "level", level)
 	return nil
+}
+
+// getAvailableNodeKeys returns a list of valid node keys for error messages
+func (s *service) getAvailableNodeKeys(ctx context.Context) []string {
+	nodes, err := s.repo.GetAllNodes(ctx)
+	if err != nil {
+		return nil
+	}
+	keys := make([]string, 0, len(nodes))
+	for _, node := range nodes {
+		keys = append(keys, node.NodeKey)
+	}
+	return keys
 }
 
 // ResetProgressionTree performs annual reset
@@ -613,17 +670,17 @@ func (s *service) ForceInstantUnlock(ctx context.Context) (*domain.ProgressionUn
 	// Get active session
 	session, err := s.repo.GetActiveSession(ctx)
 	if err != nil || session == nil {
-		return nil, fmt.Errorf("no active voting session found")
+		return nil, domain.ErrNoActiveSession
 	}
 
 	if session.Status != "voting" {
-		return nil, fmt.Errorf("voting session already ended")
+		return nil, domain.ErrNoActiveSession
 	}
 
 	// Find winning option
 	winner := findWinningOption(session.Options)
 	if winner == nil {
-		return nil, fmt.Errorf("no voting options found")
+		return nil, domain.ErrNoActiveSession
 	}
 
 	// End voting session
@@ -653,7 +710,7 @@ func (s *service) ForceInstantUnlock(ctx context.Context) (*domain.ProgressionUn
 	// Mark progress complete and start new
 	if progress != nil {
 		if _, err := s.repo.CompleteUnlock(ctx, progress.ID, 0); err != nil {
-			log.Error("Failed to complete unlock progress", "progressID", progress.ID, "error", err)
+			log.Error("Failed to complete unlock progress", "error", err)
 			// We don't return error here because the node IS unlocked, but we log the inconsistency
 		}
 	}
@@ -683,14 +740,12 @@ func (s *service) ForceInstantUnlock(ctx context.Context) (*domain.ProgressionUn
 
 // GetRequiredNodes returns a list of locked prerequisite nodes preventing the target node from being unlocked
 func (s *service) GetRequiredNodes(ctx context.Context, nodeKey string) ([]*domain.ProgressionNode, error) {
-	log := logger.FromContext(ctx)
-
 	targetNode, err := s.repo.GetNodeByKey(ctx, nodeKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get node: %w", err)
 	}
 	if targetNode == nil {
-		return nil, fmt.Errorf("node not found: %s", nodeKey)
+		return nil, domain.ErrNodeNotFound
 	}
 
 	// Track which nodes we've already checked to avoid cycles
@@ -730,7 +785,6 @@ func (s *service) GetRequiredNodes(ctx context.Context, nodeKey string) ([]*doma
 	}
 
 	if err := checkPrereqs(targetNode.ID); err != nil {
-		log.Error("Failed to check prerequisites", "error", err, "nodeKey", nodeKey)
 		return nil, err
 	}
 

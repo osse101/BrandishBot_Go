@@ -228,6 +228,12 @@ func (r *progressionRepository) RelockNode(ctx context.Context, nodeID int, leve
 		return fmt.Errorf("failed to relock node: %w", err)
 	}
 
+	// Clear any unlock progress records targeting this node to prevent stale state
+	if err := r.q.ClearUnlockProgressForNode(ctx, pgtype.Int4{Int32: int32(nodeID), Valid: true}); err != nil {
+		logger.FromContext(ctx).Warn("failed to clear unlock progress for relocked node", "error", err, "node_id", nodeID)
+		// Don't fail the relock operation, just log
+	}
+
 	// Publish event at data layer
 	if r.bus != nil {
 		// Get node key for event payload
@@ -598,19 +604,34 @@ func (r *progressionRepository) ResetTree(ctx context.Context, resetBy string, r
 		return fmt.Errorf("failed to record reset: %w", err)
 	}
 
+	// Clear user votes first (has FK to voting sessions)
+	if err := q.ClearAllUserVotes(ctx); err != nil {
+		return fmt.Errorf("failed to clear user votes: %w", err)
+	}
+
+	// Clear unlock progress (has FK to voting sessions)
+	if err := q.ClearAllUnlockProgress(ctx); err != nil {
+		return fmt.Errorf("failed to clear unlock progress: %w", err)
+	}
+
+	// Clear voting sessions (has FK to voting options via winning_option_id)
+	if err := q.ClearAllVotingSessions(ctx); err != nil {
+		return fmt.Errorf("failed to clear voting sessions: %w", err)
+	}
+
+	// Clear voting options (now safe after sessions cleared)
+	if err := q.ClearAllVotingOptions(ctx); err != nil {
+		return fmt.Errorf("failed to clear voting options: %w", err)
+	}
+
 	// Clear unlocks (except root)
 	if err := q.ClearUnlocksExceptRoot(ctx); err != nil {
 		return fmt.Errorf("failed to clear unlocks: %w", err)
 	}
 
-	// Clear voting
+	// Clear voting (legacy table)
 	if err := q.ClearAllVoting(ctx); err != nil {
 		return fmt.Errorf("failed to clear voting: %w", err)
-	}
-
-	// Clear user votes
-	if err := q.ClearAllUserVotes(ctx); err != nil {
-		return fmt.Errorf("failed to clear user votes: %w", err)
 	}
 
 	// Optionally preserve user progression

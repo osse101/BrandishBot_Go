@@ -110,6 +110,8 @@ type ProgressionTreeNode struct {
 // ProgressionStatus represents current community status
 type ProgressionStatus struct {
 	TotalUnlocked        int                       `json:"total_unlocked"`
+	TotalNodes           int                       `json:"total_nodes"`
+	AllNodesUnlocked     bool                      `json:"all_nodes_unlocked"`
 	ContributionScore    int                       `json:"contribution_score"`
 	ActiveSession        *ProgressionVotingSession `json:"active_session,omitempty"`
 	ActiveUnlockProgress *UnlockProgress           `json:"active_unlock_progress,omitempty"`

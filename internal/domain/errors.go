@@ -9,8 +9,8 @@ const (
 	ErrMsgUserNotFound = "user not found"
 
 	// Item errors
-	ErrMsgItemNotFound = "item not found"
-	ErrMsgItemNotHandled = "item not handled"
+	ErrMsgItemNotFound   = "item does not exist"
+	ErrMsgItemNotHandled = "item cannot be used (no use effect)"
 
 	// Inventory errors
 	ErrMsgInsufficientQuantity = "insufficient quantity"
@@ -67,6 +67,9 @@ const (
 
 	// Progression errors
 	ErrMsgUserAlreadyVoted = "user has already voted"
+	ErrMsgNodeNotFound     = "node not found"
+	ErrMsgMaxLevelExceeded = "max level exceeded"
+	ErrMsgNoActiveSession  = "no active voting session"
 
 	// Recipe/Crafting errors
 	ErrMsgRecipeNotFound = "recipe not found"
@@ -144,4 +147,7 @@ var (
 
 	// Progression errors
 	ErrUserAlreadyVoted = errors.New(ErrMsgUserAlreadyVoted)
+	ErrNodeNotFound     = errors.New(ErrMsgNodeNotFound)
+	ErrMaxLevelExceeded = errors.New(ErrMsgMaxLevelExceeded)
+	ErrNoActiveSession  = errors.New(ErrMsgNoActiveSession)
 )

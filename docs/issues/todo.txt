@@ -1,1 +1,9 @@
-Lootbox sells for 500 but contains 100. (Base value isn't scaled for buying or selling)
+GetVotingSession -- After vote ends, returns formatting error
+NodeUnlockProgress -- Returns "node has been unlocked" when it is the active node.  Should return the progress towards being unlocked as percentage.
+VoteStatus -- Returns "Unlock Time: 500" when it should show "Unlock Time: short" (Mostly based on node size field, but also depends on the tiers of the other options.)
+AdminStartVote -- On first node that autoselects and has no engagement requirement, does not continue to next vote.  Should create new vote session.
+GetProgressionStatus -- Does not update for nodes that instantly unlock.
+AdminStartVote -- Should publish a new vote session to the chat, through webhooks.
+AdminStartVote -- Repeated use continues to create new vote sessions.  Should be blocked by the active session.
+AdminStartVote -- Continued; vote session is not being set.
+Errorlog: Listing every node in existance is too verbose.  Admin should look up the node name.  error="node not found: money. Valid nodes: [progression_system item_money item_lootbox0 feature_economy feature_buy feature_sell feature_upgrade feature_disassemble item_lootbox1 feature_search item_shovel item_lootbox2 item_lootbox3 feature_gamble feature_duel feature_expedition upgrade_search_cooldown_reduction upgrade_job_xp_multiplier upgrade_job_daily_cap upgrade_gamble_win_bonus item_stick item_shield item_revives item_revivem item_revivel item_mine item_trap item_tnt item_this item_deez item_bigmissile item_hugemissile xp_rarecandy]" nodeKey=money level=1
