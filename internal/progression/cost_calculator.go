@@ -87,6 +87,6 @@ func FormatUnlockDuration(size string) string {
 	case NodeSizeLarge:
 		return "Long"
 	default:
-		return "Unknown"
+		return "Mystery"
 	}
 }

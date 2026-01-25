@@ -176,24 +176,21 @@ func (s *service) publishCycleCompletedEvent(ctx context.Context, unlockedNodeID
 		return
 	}
 
-	session, err := s.repo.GetActiveSession(ctx)
-	if err != nil {
-		log.Warn("Failed to get session for event", "error", err)
-		return
-	}
-
 	if s.bus != nil {
 		if err := s.bus.Publish(ctx, event.Event{
 			Version: "1.0",
 			Type:    event.ProgressionCycleCompleted,
 			Payload: map[string]interface{}{
-				"unlocked_node":  unlockedNode,
-				"voting_session": session,
+				"unlocked_node": map[string]interface{}{
+					"node_key":     unlockedNode.NodeKey,
+					"display_name": unlockedNode.DisplayName,
+					"description":  unlockedNode.Description,
+				},
 			},
 		}); err != nil {
 			log.Error("Failed to publish progression cycle completed event", "error", err)
 		} else {
-			log.Info("Published progression cycle completed event", "unlockedNode", unlockedNode.NodeKey, "sessionID", sessionID)
+			log.Info("Published progression cycle completed event", "unlockedNode", unlockedNode.NodeKey)
 		}
 	}
 }
@@ -208,9 +205,13 @@ func (s *service) publishVotingStartedEvent(ctx context.Context, sessionID int, 
 	// Build options list for event payload
 	optionsList := make([]map[string]interface{}, 0, len(options))
 	for _, node := range options {
+		unlockDuration := FormatUnlockDuration(node.Size)
+
 		optionsList = append(optionsList, map[string]interface{}{
-			"node_key":     node.NodeKey,
-			"display_name": node.DisplayName,
+			"node_key":        node.NodeKey,
+			"display_name":    node.DisplayName,
+			"description":     node.Description,
+			"unlock_duration": unlockDuration,
 		})
 	}
 
@@ -218,7 +219,6 @@ func (s *service) publishVotingStartedEvent(ctx context.Context, sessionID int, 
 		Version: "1.0",
 		Type:    event.ProgressionVotingStarted,
 		Payload: map[string]interface{}{
-			"session_id":      sessionID,
 			"options":         optionsList,
 			"previous_unlock": previousUnlock,
 		},

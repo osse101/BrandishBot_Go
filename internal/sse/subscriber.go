@@ -91,8 +91,7 @@ func (s *Subscriber) handleCycleCompleted(_ context.Context, evt event.Event) er
 
 	// Build SSE payload
 	ssePayload := CycleCompletedPayload{
-		UnlockedNode:  extractNodeInfo(payload["unlocked_node"]),
-		VotingSession: extractSessionInfo(payload["voting_session"]),
+		UnlockedNode: extractNodeInfo(payload["unlocked_node"]),
 	}
 
 	s.hub.Broadcast(EventTypeCycleCompleted, ssePayload)
@@ -114,7 +113,6 @@ func (s *Subscriber) handleVotingStarted(_ context.Context, evt event.Event) err
 
 	// Build SSE payload
 	ssePayload := VotingStartedPayload{
-		SessionID:      getIntFromMap(payload, "session_id"),
 		PreviousUnlock: getStringFromMap(payload, "previous_unlock"),
 		AutoSelected:   false,
 	}
@@ -124,8 +122,10 @@ func (s *Subscriber) handleVotingStarted(_ context.Context, evt event.Event) err
 		ssePayload.Options = make([]VotingOptionInfo, 0, len(opts))
 		for _, opt := range opts {
 			ssePayload.Options = append(ssePayload.Options, VotingOptionInfo{
-				NodeKey:     getStringFromMap(opt, "node_key"),
-				DisplayName: getStringFromMap(opt, "display_name"),
+				NodeKey:        getStringFromMap(opt, "node_key"),
+				DisplayName:    getStringFromMap(opt, "display_name"),
+				Description:    getStringFromMap(opt, "description"),
+				UnlockDuration: getStringFromMap(opt, "unlock_duration"),
 			})
 		}
 	} else if opts, ok := payload["options"].([]interface{}); ok {
@@ -133,8 +133,10 @@ func (s *Subscriber) handleVotingStarted(_ context.Context, evt event.Event) err
 		for _, opt := range opts {
 			if optMap, ok := opt.(map[string]interface{}); ok {
 				ssePayload.Options = append(ssePayload.Options, VotingOptionInfo{
-					NodeKey:     getStringFromMap(optMap, "node_key"),
-					DisplayName: getStringFromMap(optMap, "display_name"),
+					NodeKey:        getStringFromMap(optMap, "node_key"),
+					DisplayName:    getStringFromMap(optMap, "display_name"),
+					Description:    getStringFromMap(optMap, "description"),
+					UnlockDuration: getStringFromMap(optMap, "unlock_duration"),
 				})
 			}
 		}
@@ -144,7 +146,6 @@ func (s *Subscriber) handleVotingStarted(_ context.Context, evt event.Event) err
 
 	slog.Debug(LogMsgEventBroadcast,
 		"event_type", EventTypeVotingStarted,
-		"session_id", ssePayload.SessionID,
 		"options_count", len(ssePayload.Options))
 
 	return nil
@@ -162,7 +163,6 @@ func (s *Subscriber) handleTargetSet(_ context.Context, evt event.Event) error {
 	// Normal voting start is handled by cycle_completed
 	if autoSelected, ok := payload["auto_selected"].(bool); ok && autoSelected {
 		ssePayload := VotingStartedPayload{
-			SessionID:      0, // No session when auto-selected
 			NodeKey:        getStringFromMap(payload, "node_key"),
 			TargetLevel:    getIntFromMap(payload, "target_level"),
 			AutoSelected:   true,
@@ -213,61 +213,22 @@ func extractNodeInfo(v interface{}) NodeInfo {
 		return NodeInfo{
 			NodeKey:     node.NodeKey,
 			DisplayName: node.DisplayName,
+			Description: node.Description,
 		}
 	case domain.ProgressionNode:
 		return NodeInfo{
 			NodeKey:     node.NodeKey,
 			DisplayName: node.DisplayName,
+			Description: node.Description,
 		}
 	case map[string]interface{}:
 		return NodeInfo{
 			NodeKey:     getStringFromMap(node, "node_key"),
 			DisplayName: getStringFromMap(node, "display_name"),
+			Description: getStringFromMap(node, "description"),
 		}
 	}
 
 	return NodeInfo{}
 }
 
-func extractSessionInfo(v interface{}) *VotingSessionInfo {
-	if v == nil {
-		return nil
-	}
-
-	switch session := v.(type) {
-	case *domain.ProgressionVotingSession:
-		info := &VotingSessionInfo{
-			SessionID: session.ID,
-			Options:   make([]VotingOptionInfo, 0, len(session.Options)),
-		}
-		for _, opt := range session.Options {
-			optInfo := VotingOptionInfo{
-				NodeKey: "",
-			}
-			if opt.NodeDetails != nil {
-				optInfo.NodeKey = opt.NodeDetails.NodeKey
-				optInfo.DisplayName = opt.NodeDetails.DisplayName
-			}
-			info.Options = append(info.Options, optInfo)
-		}
-		return info
-	case map[string]interface{}:
-		info := &VotingSessionInfo{
-			SessionID: getIntFromMap(session, "id"),
-		}
-		if opts, ok := session["options"].([]interface{}); ok {
-			info.Options = make([]VotingOptionInfo, 0, len(opts))
-			for _, opt := range opts {
-				if optMap, ok := opt.(map[string]interface{}); ok {
-					info.Options = append(info.Options, VotingOptionInfo{
-						NodeKey:     getStringFromMap(optMap, "node_key"),
-						DisplayName: getStringFromMap(optMap, "display_name"),
-					})
-				}
-			}
-		}
-		return info
-	}
-
-	return nil
-}

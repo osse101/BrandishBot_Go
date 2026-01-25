@@ -85,7 +85,6 @@ func (s *Subscriber) handleVotingStarted(_ context.Context, evt event.Event) err
 	}
 
 	args := map[string]string{
-		"session_id":      fmt.Sprintf("%d", getIntFromMap(payload, "session_id")),
 		"previous_unlock": getStringFromMap(payload, "previous_unlock"),
 	}
 
@@ -100,6 +99,8 @@ func (s *Subscriber) handleVotingStarted(_ context.Context, evt event.Event) err
 				}
 				args[fmt.Sprintf("option_%d", i+1)] = displayName
 				args[fmt.Sprintf("option_%d_key", i+1)] = getStringFromMap(optMap, "node_key")
+				args[fmt.Sprintf("option_%d_description", i+1)] = getStringFromMap(optMap, "description")
+				args[fmt.Sprintf("option_%d_duration", i+1)] = getStringFromMap(optMap, "unlock_duration")
 			}
 		}
 	}
@@ -126,30 +127,10 @@ func (s *Subscriber) handleCycleCompleted(_ context.Context, evt event.Event) er
 
 	// Extract unlocked node info
 	if unlockedNode := payload["unlocked_node"]; unlockedNode != nil {
-		switch node := unlockedNode.(type) {
-		case *domain.ProgressionNode:
-			args["unlocked_node_key"] = node.NodeKey
-			args["unlocked_node_name"] = node.DisplayName
-		case domain.ProgressionNode:
-			args["unlocked_node_key"] = node.NodeKey
-			args["unlocked_node_name"] = node.DisplayName
-		case map[string]interface{}:
-			args["unlocked_node_key"] = getStringFromMap(node, "node_key")
-			args["unlocked_node_name"] = getStringFromMap(node, "display_name")
-		}
-	}
-
-	// Extract voting session info
-	if votingSession := payload["voting_session"]; votingSession != nil {
-		switch session := votingSession.(type) {
-		case *domain.ProgressionVotingSession:
-			args["new_session_id"] = fmt.Sprintf("%d", session.ID)
-			args["options_count"] = fmt.Sprintf("%d", len(session.Options))
-		case map[string]interface{}:
-			args["new_session_id"] = fmt.Sprintf("%d", getIntFromMap(session, "id"))
-			if opts, ok := session["options"].([]interface{}); ok {
-				args["options_count"] = fmt.Sprintf("%d", len(opts))
-			}
+		if node, ok := unlockedNode.(map[string]interface{}); ok {
+			args["node_key"] = getStringFromMap(node, "node_key")
+			args["display_name"] = getStringFromMap(node, "display_name")
+			args["description"] = getStringFromMap(node, "description")
 		}
 	}
 
