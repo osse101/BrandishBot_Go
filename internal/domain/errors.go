@@ -66,10 +66,11 @@ const (
 	ErrMsgFeatureLocked = "feature is locked"
 
 	// Progression errors
-	ErrMsgUserAlreadyVoted = "user has already voted"
-	ErrMsgNodeNotFound     = "node not found"
-	ErrMsgMaxLevelExceeded = "max level exceeded"
-	ErrMsgNoActiveSession  = "no active voting session"
+	ErrMsgUserAlreadyVoted      = "user has already voted"
+	ErrMsgNodeNotFound          = "node not found"
+	ErrMsgMaxLevelExceeded      = "max level exceeded"
+	ErrMsgNoActiveSession       = "no active voting session"
+	ErrMsgSessionAlreadyActive  = "voting session already active"
 
 	// Recipe/Crafting errors
 	ErrMsgRecipeNotFound = "recipe not found"
@@ -146,8 +147,9 @@ var (
 	ErrInvalidPlatform = errors.New(ErrMsgInvalidPlatform)
 
 	// Progression errors
-	ErrUserAlreadyVoted = errors.New(ErrMsgUserAlreadyVoted)
-	ErrNodeNotFound     = errors.New(ErrMsgNodeNotFound)
-	ErrMaxLevelExceeded = errors.New(ErrMsgMaxLevelExceeded)
-	ErrNoActiveSession  = errors.New(ErrMsgNoActiveSession)
+	ErrUserAlreadyVoted     = errors.New(ErrMsgUserAlreadyVoted)
+	ErrNodeNotFound         = errors.New(ErrMsgNodeNotFound)
+	ErrMaxLevelExceeded     = errors.New(ErrMsgMaxLevelExceeded)
+	ErrNoActiveSession      = errors.New(ErrMsgNoActiveSession)
+	ErrSessionAlreadyActive = errors.New(ErrMsgSessionAlreadyActive)
 )

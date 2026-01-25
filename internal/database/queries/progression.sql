@@ -172,6 +172,12 @@ WHERE status = ('voting')::text
 ORDER BY started_at DESC
 LIMIT 1;
 
+-- name: GetMostRecentSession :one
+SELECT id, started_at, ended_at, voting_deadline, winning_option_id, status
+FROM progression_voting_sessions
+ORDER BY started_at DESC
+LIMIT 1;
+
 -- name: GetSessionByID :one
 SELECT id, started_at, ended_at, voting_deadline, winning_option_id, status
 FROM progression_voting_sessions

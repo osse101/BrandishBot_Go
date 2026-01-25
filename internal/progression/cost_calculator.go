@@ -76,3 +76,17 @@ func ValidateSize(size string) error {
 		return fmt.Errorf("size must be 'small', 'medium', or 'large', got '%s'", size)
 	}
 }
+
+// FormatUnlockDuration returns a human-readable string for unlock duration based on node size
+func FormatUnlockDuration(size string) string {
+	switch NodeSize(size) {
+	case NodeSizeSmall:
+		return "Short"
+	case NodeSizeMedium:
+		return "Medium"
+	case NodeSizeLarge:
+		return "Long"
+	default:
+		return "Unknown"
+	}
+}

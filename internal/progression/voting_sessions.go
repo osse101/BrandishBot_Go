@@ -19,6 +19,11 @@ const (
 // unlockedNodeID should be provided if this session is being started after a node unlock
 func (s *service) StartVotingSession(ctx context.Context, unlockedNodeID *int) error {
 	log := logger.FromContext(ctx)
+	existingSession, _ := s.repo.GetActiveSession(ctx)
+	if existingSession != nil {
+		log.Warn("Attempted to start voting while session already active", "sessionID", existingSession.ID)
+		return domain.ErrSessionAlreadyActive
+	}
 
 	progress, err := s.ensureActiveUnlockProgress(ctx)
 	if err != nil {
@@ -112,19 +117,7 @@ func (s *service) handleSingleOptionAutoSelect(ctx context.Context, progress *do
 		log.Warn("Failed to add voting option for auto-select", "nodeID", node.ID, "error", err)
 	}
 
-	// Get the option ID we just created (first and only option in session)
-	session, err := s.repo.GetSessionByID(ctx, sessionID)
-	if err != nil || session == nil || len(session.Options) == 0 {
-		return fmt.Errorf("failed to get auto-select session options: %w", err)
-	}
-	optionID := session.Options[0].ID
-
-	// Immediately end the session with the single option as winner
-	if err = s.repo.EndVotingSession(ctx, sessionID, optionID); err != nil {
-		return fmt.Errorf("failed to end auto-select session: %w", err)
-	}
-
-	// Now set the unlock target with a valid session ID
+	// Set the unlock target with a valid session ID
 	if err := s.repo.SetUnlockTarget(ctx, progress.ID, node.ID, targetLevel, sessionID); err != nil {
 		return fmt.Errorf("failed to set unlock target: %w", err)
 	}
@@ -150,6 +143,28 @@ func (s *service) handleSingleOptionAutoSelect(ctx context.Context, progress *do
 	}
 
 	log.Info("Auto-selected target set", "nodeKey", node.NodeKey, "targetLevel", targetLevel, "sessionID", sessionID)
+
+	s.publishVotingStartedEvent(ctx, sessionID, []*domain.ProgressionNode{node}, "")
+
+	if node.UnlockCost == 0 {
+		log.Info("Zero-cost node, unlocking immediately", "nodeKey", node.NodeKey)
+		// Use semaphore pattern to avoid concurrent unlock attempts
+		select {
+		case s.unlockSem <- struct{}{}:
+			s.wg.Add(1)
+			go func() {
+				defer s.wg.Done()
+				defer func() { <-s.unlockSem }()
+				if _, err := s.CheckAndUnlockNode(s.shutdownCtx); err != nil {
+					log.Error("Failed to unlock zero-cost node", "error", err)
+				}
+				// CheckAndUnlockNode already starts next session via goroutine
+			}()
+		default:
+			log.Debug("Unlock already in progress, skipping zero-cost auto-unlock")
+		}
+	}
+
 	return nil
 }
 
@@ -415,6 +430,26 @@ func (s *service) CheckAndUnlockNode(ctx context.Context) (*domain.ProgressionUn
 		err = s.repo.UnlockNode(ctx, *progress.NodeID, *progress.TargetLevel, "vote", progress.ContributionsAccumulated)
 		if err != nil {
 			return nil, fmt.Errorf("failed to unlock node: %w", err)
+		}
+
+		// End the associated voting session if there is one
+		if progress.VotingSessionID != nil {
+			session, err := s.repo.GetSessionByID(ctx, *progress.VotingSessionID)
+			if err == nil && session != nil && len(session.Options) > 0 {
+				// Find the option that matches our target node
+				var winningOptionID int
+				for _, opt := range session.Options {
+					if opt.NodeID == *progress.NodeID {
+						winningOptionID = opt.ID
+						break
+					}
+				}
+				if winningOptionID > 0 {
+					if err := s.repo.EndVotingSession(ctx, *progress.VotingSessionID, winningOptionID); err != nil {
+						log.Warn("Failed to end voting session on unlock", "sessionID", *progress.VotingSessionID, "error", err)
+					}
+				}
+			}
 		}
 
 		// Complete unlock and start next with rollover

@@ -414,6 +414,23 @@ func (h *ProgressionHandlers) HandleGetVotingSession() http.HandlerFunc {
 		}
 
 		if session == nil {
+			recentSession, err := h.service.GetMostRecentVotingSession(r.Context())
+			if err != nil {
+				log.Error("Get most recent session: service error", "error", err)
+				respondError(w, http.StatusInternalServerError, ErrMsgGetVotingSessionFailed)
+				return
+			}
+
+			if recentSession != nil && recentSession.Status == "completed" {
+				log.Info("Get voting session: returning completed session", "sessionID", recentSession.ID)
+				respondJSON(w, http.StatusOK, map[string]interface{}{
+					"session":      recentSession,
+					"message":      "Voting has ended. Results are shown below.",
+					"is_completed": true,
+				})
+				return
+			}
+
 			log.Info("Get voting session: no active session")
 			respondJSON(w, http.StatusOK, map[string]interface{}{
 				"session": nil,
@@ -473,6 +490,7 @@ func (h *ProgressionHandlers) enrichUnlockProgress(ctx context.Context, progress
 		"completion_percentage":     0.0,
 		"target_unlock_cost":        0,
 		"target_node_name":          "",
+		"is_already_unlocked":       false,
 	}
 
 	if progress.NodeID != nil {
@@ -480,6 +498,16 @@ func (h *ProgressionHandlers) enrichUnlockProgress(ctx context.Context, progress
 		if err == nil && node != nil {
 			response["target_unlock_cost"] = node.UnlockCost
 			response["target_node_name"] = node.DisplayName
+
+			if progress.TargetLevel != nil {
+				isUnlocked, _ := h.service.IsNodeUnlocked(ctx, node.NodeKey, *progress.TargetLevel)
+				if isUnlocked {
+					response["is_already_unlocked"] = true
+					response["completion_percentage"] = 100.0
+					return response
+				}
+			}
+
 			if node.UnlockCost > 0 {
 				percent := (float64(progress.ContributionsAccumulated) / float64(node.UnlockCost)) * 100
 				if percent > 100 {
@@ -530,6 +558,11 @@ func (h *ProgressionHandlers) HandleAdminStartVoting() http.HandlerFunc {
 
 		err := h.service.StartVotingSession(r.Context(), nil)
 		if err != nil {
+			if errors.Is(err, domain.ErrSessionAlreadyActive) {
+				log.Warn("Attempted to start voting while session already active")
+				respondError(w, http.StatusConflict, err.Error())
+				return
+			}
 			log.Error("Failed to start voting session", "error", err)
 			respondError(w, http.StatusInternalServerError, err.Error())
 			return

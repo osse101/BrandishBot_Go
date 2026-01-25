@@ -67,7 +67,7 @@ func TestStartVotingSession_AutoSelect_PublishesEvent(t *testing.T) {
 	// Initialize service with mock bus
 	service := NewService(mockRepo, NewMockUser(), mockBus)
 
-	// Expect Publish to be called with specific event
+	// Expect Publish to be called with ProgressionTargetSet event
 	mockBus.On("Publish", ctx, mock.MatchedBy(func(evt event.Event) bool {
 		if evt.Type != event.ProgressionTargetSet {
 			return false
@@ -92,17 +92,20 @@ func TestStartVotingSession_AutoSelect_PublishesEvent(t *testing.T) {
 		return true
 	})).Return(nil)
 
+	mockBus.On("Publish", ctx, mock.MatchedBy(func(evt event.Event) bool {
+		return evt.Type == event.ProgressionVotingStarted
+	})).Return(nil)
+
 	// Act
 	err := service.StartVotingSession(ctx, nil)
 
 	// Assert
 	assert.NoError(t, err)
 
-	// Verify bus call
+	// Verify bus calls
 	mockBus.AssertExpectations(t)
 
-	// Verify no session created (core logic check)
 	session, err := mockRepo.GetActiveSession(ctx)
 	assert.NoError(t, err)
-	assert.Nil(t, session)
+	assert.NotNil(t, session, "Session should exist in 'voting' status for auto-select")
 }

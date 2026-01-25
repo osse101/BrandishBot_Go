@@ -911,6 +911,64 @@ func (_c *MockProgressionService_GetModifierForFeature_Call) RunAndReturn(run fu
 	return _c
 }
 
+// GetMostRecentVotingSession provides a mock function with given fields: ctx
+func (_m *MockProgressionService) GetMostRecentVotingSession(ctx context.Context) (*domain.ProgressionVotingSession, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetMostRecentVotingSession")
+	}
+
+	var r0 *domain.ProgressionVotingSession
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) (*domain.ProgressionVotingSession, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) *domain.ProgressionVotingSession); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*domain.ProgressionVotingSession)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockProgressionService_GetMostRecentVotingSession_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetMostRecentVotingSession'
+type MockProgressionService_GetMostRecentVotingSession_Call struct {
+	*mock.Call
+}
+
+// GetMostRecentVotingSession is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockProgressionService_Expecter) GetMostRecentVotingSession(ctx interface{}) *MockProgressionService_GetMostRecentVotingSession_Call {
+	return &MockProgressionService_GetMostRecentVotingSession_Call{Call: _e.mock.On("GetMostRecentVotingSession", ctx)}
+}
+
+func (_c *MockProgressionService_GetMostRecentVotingSession_Call) Run(run func(ctx context.Context)) *MockProgressionService_GetMostRecentVotingSession_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockProgressionService_GetMostRecentVotingSession_Call) Return(_a0 *domain.ProgressionVotingSession, _a1 error) *MockProgressionService_GetMostRecentVotingSession_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockProgressionService_GetMostRecentVotingSession_Call) RunAndReturn(run func(context.Context) (*domain.ProgressionVotingSession, error)) *MockProgressionService_GetMostRecentVotingSession_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetNode provides a mock function with given fields: ctx, id
 func (_m *MockProgressionService) GetNode(ctx context.Context, id int) (*domain.ProgressionNode, error) {
 	ret := _m.Called(ctx, id)
@@ -1497,6 +1555,64 @@ func (_c *MockProgressionService_IsItemUnlocked_Call) Return(_a0 bool, _a1 error
 }
 
 func (_c *MockProgressionService_IsItemUnlocked_Call) RunAndReturn(run func(context.Context, string) (bool, error)) *MockProgressionService_IsItemUnlocked_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// IsNodeUnlocked provides a mock function with given fields: ctx, nodeKey, level
+func (_m *MockProgressionService) IsNodeUnlocked(ctx context.Context, nodeKey string, level int) (bool, error) {
+	ret := _m.Called(ctx, nodeKey, level)
+
+	if len(ret) == 0 {
+		panic("no return value specified for IsNodeUnlocked")
+	}
+
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, int) (bool, error)); ok {
+		return rf(ctx, nodeKey, level)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, int) bool); ok {
+		r0 = rf(ctx, nodeKey, level)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, int) error); ok {
+		r1 = rf(ctx, nodeKey, level)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockProgressionService_IsNodeUnlocked_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsNodeUnlocked'
+type MockProgressionService_IsNodeUnlocked_Call struct {
+	*mock.Call
+}
+
+// IsNodeUnlocked is a helper method to define mock.On call
+//   - ctx context.Context
+//   - nodeKey string
+//   - level int
+func (_e *MockProgressionService_Expecter) IsNodeUnlocked(ctx interface{}, nodeKey interface{}, level interface{}) *MockProgressionService_IsNodeUnlocked_Call {
+	return &MockProgressionService_IsNodeUnlocked_Call{Call: _e.mock.On("IsNodeUnlocked", ctx, nodeKey, level)}
+}
+
+func (_c *MockProgressionService_IsNodeUnlocked_Call) Run(run func(ctx context.Context, nodeKey string, level int)) *MockProgressionService_IsNodeUnlocked_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(int))
+	})
+	return _c
+}
+
+func (_c *MockProgressionService_IsNodeUnlocked_Call) Return(_a0 bool, _a1 error) *MockProgressionService_IsNodeUnlocked_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockProgressionService_IsNodeUnlocked_Call) RunAndReturn(run func(context.Context, string, int) (bool, error)) *MockProgressionService_IsNodeUnlocked_Call {
 	_c.Call.Return(run)
 	return _c
 }

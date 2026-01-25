@@ -28,6 +28,14 @@ func (m *ReliabilityMockRepository) GetActiveSession(ctx context.Context) (*doma
 	return args.Get(0).(*domain.ProgressionVotingSession), args.Error(1)
 }
 
+func (m *ReliabilityMockRepository) GetMostRecentSession(ctx context.Context) (*domain.ProgressionVotingSession, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.ProgressionVotingSession), args.Error(1)
+}
+
 func (m *ReliabilityMockRepository) EndVotingSession(ctx context.Context, sessionID int, winningOptionID int) error {
 	args := m.Called(ctx, sessionID, winningOptionID)
 	return args.Error(0)

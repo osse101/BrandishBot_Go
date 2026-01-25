@@ -536,6 +536,19 @@ func (m *MockRepository) GetActiveSession(ctx context.Context) (*domain.Progress
 	return nil, nil
 }
 
+// GetMostRecentSession returns the most recent session regardless of status
+func (m *MockRepository) GetMostRecentSession(ctx context.Context) (*domain.ProgressionVotingSession, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	var mostRecent *domain.ProgressionVotingSession
+	for _, session := range m.sessions {
+		if mostRecent == nil || session.StartedAt.After(mostRecent.StartedAt) {
+			mostRecent = session
+		}
+	}
+	return mostRecent, nil
+}
+
 func (m *MockRepository) GetSessionByID(ctx context.Context, sessionID int) (*domain.ProgressionVotingSession, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()

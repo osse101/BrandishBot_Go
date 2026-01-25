@@ -65,6 +65,34 @@ func (r *progressionRepository) GetActiveSession(ctx context.Context) (*domain.P
 	return session, nil
 }
 
+// GetMostRecentSession returns the most recent voting session regardless of status
+func (r *progressionRepository) GetMostRecentSession(ctx context.Context) (*domain.ProgressionVotingSession, error) {
+	row, err := r.q.GetMostRecentSession(ctx)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get most recent session: %w", err)
+	}
+
+	session := &domain.ProgressionVotingSession{
+		ID:              int(row.ID),
+		StartedAt:       row.StartedAt.Time,
+		Status:          row.Status,
+		EndedAt:         ptrTime(row.EndedAt),
+		VotingDeadline:  row.VotingDeadline.Time,
+		WinningOptionID: ptrInt(row.WinningOptionID),
+	}
+
+	// Get options
+	session.Options, err = r.getSessionOptions(ctx, session.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return session, nil
+}
+
 func (r *progressionRepository) GetSessionByID(ctx context.Context, sessionID int) (*domain.ProgressionVotingSession, error) {
 	row, err := r.q.GetSessionByID(ctx, int32(sessionID))
 	if err != nil {

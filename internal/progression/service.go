@@ -22,10 +22,12 @@ type Service interface {
 	// Feature checks
 	IsFeatureUnlocked(ctx context.Context, featureKey string) (bool, error)
 	IsItemUnlocked(ctx context.Context, itemName string) (bool, error)
+	IsNodeUnlocked(ctx context.Context, nodeKey string, level int) (bool, error) // Bug #2: Check if specific node/level is unlocked
 
 	// Voting
 	VoteForUnlock(ctx context.Context, platform, platformID, nodeKey string) error
 	GetActiveVotingSession(ctx context.Context) (*domain.ProgressionVotingSession, error)
+	GetMostRecentVotingSession(ctx context.Context) (*domain.ProgressionVotingSession, error) // Bug #1: Get most recent session (any status)
 	StartVotingSession(ctx context.Context, unlockedNodeID *int) error
 	EndVoting(ctx context.Context) (*domain.ProgressionVotingOption, error)
 
@@ -270,11 +272,27 @@ func (s *service) IsItemUnlocked(ctx context.Context, itemName string) (bool, er
 	return unlocked, nil
 }
 
-// VoteForUnlock allows a user to vote for next unlock (updated for voting sessions)
+func (s *service) IsNodeUnlocked(ctx context.Context, nodeKey string, level int) (bool, error) {
+	// Check cache first
+	if unlocked, found := s.unlockCache.Get(nodeKey, level); found {
+		return unlocked, nil
+	}
+
+	// Cache miss - query database
+	unlocked, err := s.repo.IsNodeUnlocked(ctx, nodeKey, level)
+	if err != nil {
+		return false, err
+	}
+
+	// Cache the result
+	s.unlockCache.Set(nodeKey, level, unlocked)
+
+	return unlocked, nil
+}
+
 func (s *service) VoteForUnlock(ctx context.Context, platform, platformID, nodeKey string) error {
 	log := logger.FromContext(ctx)
 
-	// Convert platform_id to internal user ID
 	user, err := s.user.GetUserByPlatformID(ctx, platform, platformID)
 	if err != nil {
 		return fmt.Errorf("failed to resolve user: %w", err)
@@ -285,7 +303,6 @@ func (s *service) VoteForUnlock(ctx context.Context, platform, platformID, nodeK
 
 	userID := user.ID
 
-	// Get active voting session
 	session, err := s.repo.GetActiveSession(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get active session: %w", err)
@@ -308,7 +325,6 @@ func (s *service) VoteForUnlock(ctx context.Context, platform, platformID, nodeK
 		return fmt.Errorf("node not in current voting options")
 	}
 
-	// Check if user already voted in this session
 	hasVoted, err := s.repo.HasUserVotedInSession(ctx, userID, session.ID)
 	if err != nil {
 		return fmt.Errorf("failed to check vote status: %w", err)
@@ -317,7 +333,6 @@ func (s *service) VoteForUnlock(ctx context.Context, platform, platformID, nodeK
 		return domain.ErrUserAlreadyVoted
 	}
 
-	// Increment vote and record user vote
 	err = s.repo.IncrementOptionVote(ctx, selectedOption.ID)
 	if err != nil {
 		return fmt.Errorf("failed to increment vote: %w", err)
@@ -335,6 +350,28 @@ func (s *service) VoteForUnlock(ctx context.Context, platform, platformID, nodeK
 // GetActiveVotingSession returns the current voting session
 func (s *service) GetActiveVotingSession(ctx context.Context) (*domain.ProgressionVotingSession, error) {
 	session, err := s.repo.GetActiveSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if session == nil {
+		return nil, nil
+	}
+
+	// Enrich options with estimates
+	for i := range session.Options {
+		if session.Options[i].NodeDetails != nil {
+			estimate, err := s.EstimateUnlockTime(ctx, session.Options[i].NodeDetails.NodeKey)
+			if err == nil && estimate != nil {
+				session.Options[i].EstimatedUnlockDate = estimate.EstimatedUnlockDate
+			}
+		}
+	}
+
+	return session, nil
+}
+
+func (s *service) GetMostRecentVotingSession(ctx context.Context) (*domain.ProgressionVotingSession, error) {
+	session, err := s.repo.GetMostRecentSession(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -491,13 +528,19 @@ func (s *service) GetProgressionStatus(ctx context.Context) (*domain.Progression
 		}
 	}
 
+	isTransitioning := false
+	if activeSession == nil && unlockProgress != nil && unlockProgress.UnlockedAt != nil {
+		isTransitioning = true
+	}
+
 	return &domain.ProgressionStatus{
 		TotalUnlocked:        len(unlocks),
-		TotalNodes:          len(allNodes),
-		AllNodesUnlocked:    allUnlocked,
+		TotalNodes:           len(allNodes),
+		AllNodesUnlocked:     allUnlocked,
 		ContributionScore:    contributionScore,
 		ActiveSession:        activeSession,
 		ActiveUnlockProgress: unlockProgress,
+		IsTransitioning:      isTransitioning,
 	}, nil
 }
 
@@ -530,11 +573,6 @@ func (s *service) AdminUnlock(ctx context.Context, nodeKey string, level int) er
 
 	node, err := s.repo.GetNodeByKey(ctx, nodeKey)
 	if err != nil || node == nil {
-		// Get available node keys for helpful error message
-		availableKeys := s.getAvailableNodeKeys(ctx)
-		if len(availableKeys) > 0 {
-			return fmt.Errorf("%w: %s. Valid nodes: %v", domain.ErrNodeNotFound, nodeKey, availableKeys)
-		}
 		return fmt.Errorf("%w: %s", domain.ErrNodeNotFound, nodeKey)
 	}
 
@@ -590,11 +628,6 @@ func (s *service) AdminRelock(ctx context.Context, nodeKey string, level int) er
 
 	node, err := s.repo.GetNodeByKey(ctx, nodeKey)
 	if err != nil || node == nil {
-		// Get available node keys for helpful error message
-		availableKeys := s.getAvailableNodeKeys(ctx)
-		if len(availableKeys) > 0 {
-			return fmt.Errorf("%w: %s. Valid nodes: %v", domain.ErrNodeNotFound, nodeKey, availableKeys)
-		}
 		return fmt.Errorf("%w: %s", domain.ErrNodeNotFound, nodeKey)
 	}
 
@@ -606,18 +639,6 @@ func (s *service) AdminRelock(ctx context.Context, nodeKey string, level int) er
 	return nil
 }
 
-// getAvailableNodeKeys returns a list of valid node keys for error messages
-func (s *service) getAvailableNodeKeys(ctx context.Context) []string {
-	nodes, err := s.repo.GetAllNodes(ctx)
-	if err != nil {
-		return nil
-	}
-	keys := make([]string, 0, len(nodes))
-	for _, node := range nodes {
-		keys = append(keys, node.NodeKey)
-	}
-	return keys
-}
 
 // ResetProgressionTree performs annual reset
 func (s *service) ResetProgressionTree(ctx context.Context, resetBy string, reason string, preserveUserData bool) error {

@@ -7,6 +7,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/progression"
 )
 
 // VoteCommand returns the vote command definition and handler
@@ -264,10 +265,14 @@ func VotingSessionCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		var optionsList string
 		for _, opt := range session.Options {
 			name := "Unknown Node"
+			duration := ""
+			nodeKey := ""
 			if opt.NodeDetails != nil {
 				name = opt.NodeDetails.DisplayName
+				nodeKey = opt.NodeDetails.NodeKey
+				duration = progression.FormatUnlockDuration(opt.NodeDetails.Size)
 			}
-			optionsList += fmt.Sprintf("**%s** (Level %d) - %d votes (ID: `%s`)\n", name, opt.TargetLevel, opt.VoteCount, opt.NodeDetails.NodeKey)
+			optionsList += fmt.Sprintf("**%s** (Level %d) - %d votes\n  └ %s • ID: `%s`\n", name, opt.TargetLevel, opt.VoteCount, duration, nodeKey)
 		}
 
 		embed := &discordgo.MessageEmbed{

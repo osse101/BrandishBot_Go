@@ -923,6 +923,64 @@ func (_c *MockRepository_GetEngagementWeights_Call) RunAndReturn(run func(contex
 	return _c
 }
 
+// GetMostRecentSession provides a mock function with given fields: ctx
+func (_m *MockRepository) GetMostRecentSession(ctx context.Context) (*domain.ProgressionVotingSession, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetMostRecentSession")
+	}
+
+	var r0 *domain.ProgressionVotingSession
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) (*domain.ProgressionVotingSession, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) *domain.ProgressionVotingSession); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*domain.ProgressionVotingSession)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockRepository_GetMostRecentSession_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetMostRecentSession'
+type MockRepository_GetMostRecentSession_Call struct {
+	*mock.Call
+}
+
+// GetMostRecentSession is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockRepository_Expecter) GetMostRecentSession(ctx interface{}) *MockRepository_GetMostRecentSession_Call {
+	return &MockRepository_GetMostRecentSession_Call{Call: _e.mock.On("GetMostRecentSession", ctx)}
+}
+
+func (_c *MockRepository_GetMostRecentSession_Call) Run(run func(ctx context.Context)) *MockRepository_GetMostRecentSession_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockRepository_GetMostRecentSession_Call) Return(_a0 *domain.ProgressionVotingSession, _a1 error) *MockRepository_GetMostRecentSession_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockRepository_GetMostRecentSession_Call) RunAndReturn(run func(context.Context) (*domain.ProgressionVotingSession, error)) *MockRepository_GetMostRecentSession_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetNodeByFeatureKey provides a mock function with given fields: ctx, featureKey
 func (_m *MockRepository) GetNodeByFeatureKey(ctx context.Context, featureKey string) (*domain.ProgressionNode, int, error) {
 	ret := _m.Called(ctx, featureKey)

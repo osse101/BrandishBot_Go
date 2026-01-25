@@ -115,6 +115,7 @@ type ProgressionStatus struct {
 	ContributionScore    int                       `json:"contribution_score"`
 	ActiveSession        *ProgressionVotingSession `json:"active_session,omitempty"`
 	ActiveUnlockProgress *UnlockProgress           `json:"active_unlock_progress,omitempty"`
+	IsTransitioning      bool                      `json:"is_transitioning"` // Bug #5: True when between unlock completion and new session start
 }
 
 // ContributionBreakdown shows user's contribution by type

@@ -541,6 +541,36 @@ func (q *Queries) GetEngagementWeights(ctx context.Context) ([]GetEngagementWeig
 	return items, nil
 }
 
+const getMostRecentSession = `-- name: GetMostRecentSession :one
+SELECT id, started_at, ended_at, voting_deadline, winning_option_id, status
+FROM progression_voting_sessions
+ORDER BY started_at DESC
+LIMIT 1
+`
+
+type GetMostRecentSessionRow struct {
+	ID              int32            `json:"id"`
+	StartedAt       pgtype.Timestamp `json:"started_at"`
+	EndedAt         pgtype.Timestamp `json:"ended_at"`
+	VotingDeadline  pgtype.Timestamp `json:"voting_deadline"`
+	WinningOptionID pgtype.Int4      `json:"winning_option_id"`
+	Status          string           `json:"status"`
+}
+
+func (q *Queries) GetMostRecentSession(ctx context.Context) (GetMostRecentSessionRow, error) {
+	row := q.db.QueryRow(ctx, getMostRecentSession)
+	var i GetMostRecentSessionRow
+	err := row.Scan(
+		&i.ID,
+		&i.StartedAt,
+		&i.EndedAt,
+		&i.VotingDeadline,
+		&i.WinningOptionID,
+		&i.Status,
+	)
+	return i, err
+}
+
 const getNodeByFeatureKey = `-- name: GetNodeByFeatureKey :one
 SELECT n.id, n.node_key, n.node_type, n.display_name, n.description, n.max_level, n.unlock_cost, n.sort_order, n.created_at, n.tier, n.size, n.category, n.modifier_config, COALESCE(u.current_level, 0)::int as unlock_level
 FROM progression_nodes n
