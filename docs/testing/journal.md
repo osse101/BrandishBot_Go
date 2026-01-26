@@ -298,4 +298,102 @@ Before adding tests to a new service:
 
 ---
 
-*Last updated: December 2024*
+*Last updated: January 2026*
+
+## Test Design Principles
+
+### Lesson 16: Defensive Nil Checks Are Counterproductive in Tests
+**Date:** January 26, 2026  
+**Context:** Fixed nil pointer dereference in `internal/progression/integration_test.go`
+
+**The Problem:**
+Test accessed `newSession.Options` without checking if `newSession` was nil first, causing a panic.
+
+**The Wrong Fix:**
+Added defensive nil check:
+```go
+if newSession != nil {
+    // Check session options
+} else {
+    // Verify target is set directly
+}
+```
+
+This made the test pass but was **fundamentally wrong**.
+
+**Why Defensive Nil Checks Are Bad:**
+
+1. **They mask bugs** - If the implementation fails to create a session when it should, the defensive nil-check branch will pass silently, hiding a real bug. Tests should fail loudly to expose problems.
+
+2. **They make expectations unclear** - A test with `if session exists do X, else do Y` doesn't clearly communicate what the expected behavior is. Tests should be unambiguous specifications.
+
+3. **They enable non-determinism** - When a test doesn't know what state to expect, it indicates the test setup is wrong or the test is testing multiple scenarios at once.
+
+**The Right Approach:**
+Tests should **assert expected behavior** based on **known state**:
+
+```go
+// After unlocking lootbox0, 4 options become available:
+// - money (root child, still available)
+// - upgrade, disassemble, search (lootbox0 children, now unlocked)
+// Since 4 options remain (≥2), a voting session SHOULD be created.
+
+newSession, _ := repo.GetActiveSession(ctx)
+assert.NotNil(t, newSession, "A new voting session should be created (4 options available)")
+assert.NotEqual(t, session.ID, newSession.ID, "Should be a different session")
+```
+
+**Key Principle:** If you know the test tree structure and what was unlocked, you should know exactly whether a session will be created or not.
+
+### Lesson 17: Make Integration Tests Deterministic
+**Related to:** Lesson 16
+
+**Problem:** Tests voted for `session.Options[0]`:
+
+```go
+nodeKey := session.Options[0].NodeDetails.NodeKey  // Could be money OR lootbox0
+service.VoteForUnlock(ctx, "discord", "user1", nodeKey)
+```
+
+This was non-deterministic because:
+- If money wins: Only lootbox0 remains → no session created
+- If lootbox0 wins: 4 options remain → session created
+
+**Solution:** Make tests deterministic by explicitly choosing which node to vote for:
+
+```go
+// Find lootbox0 option
+var lootboxKey string
+for _, opt := range session.Options {
+    if opt.NodeDetails.NodeKey == "item_lootbox0" {
+        lootboxKey = opt.NodeDetails.NodeKey
+        break
+    }
+}
+if lootboxKey == "" {
+    t.Fatal("lootbox0 not found in session options")
+}
+
+service.VoteForUnlock(ctx, "discord", "user1", lootboxKey)
+```
+
+Now the test always votes for lootbox0, making the outcome predictable and assertions clear.
+
+**General Testing Principles:**
+
+✅ **Do:**
+- Assert expected behavior based on known state
+- Make tests deterministic
+- Fail loudly when behavior is incorrect
+- Document test expectations with comments explaining the "why"
+
+❌ **Don't:**
+- Add defensive nil checks "just in case"
+- Write tests that handle multiple possible outcomes
+- Use `Options[0]` when the order matters for the test outcome
+- Future-proof tests against behavior changes (tests should break when behavior changes!)
+
+**Key Quotes:**
+> "Tests should verify expected behavior, not handle uncertainty."
+
+> "Nil checks mask real bugs. If the code unexpectedly doesn't create a session when it should, the nil-check branch will pass silently, hiding the bug. The test should FAIL loudly to expose the problem."

@@ -8,8 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// Phase 3: Integration Tests - End-to-End Workflows
-
 // TestVotingFlow_Complete tests the full voting and unlock cycle
 func TestVotingFlow_Complete(t *testing.T) {
 	repo := NewMockRepository()
@@ -25,11 +23,22 @@ func TestVotingFlow_Complete(t *testing.T) {
 	assert.NotNil(t, session)
 	assert.Len(t, session.Options, 2) // money and lootbox0 available
 
-	// Step 2: Multiple users vote
-	nodeKey := session.Options[0].NodeDetails.NodeKey
-	service.VoteForUnlock(ctx, "discord", "user1", nodeKey)
-	service.VoteForUnlock(ctx, "discord", "user2", nodeKey)
-	service.VoteForUnlock(ctx, "discord", "user3", nodeKey)
+	// Step 2: Multiple users vote for lootbox0 specifically (deterministic test)
+	// Find lootbox0 option
+	var lootboxKey string
+	for _, opt := range session.Options {
+		if opt.NodeDetails.NodeKey == "item_lootbox0" {
+			lootboxKey = opt.NodeDetails.NodeKey
+			break
+		}
+	}
+	if lootboxKey == "" {
+		t.Fatal("lootbox0 not found in session options")
+	}
+
+	service.VoteForUnlock(ctx, "discord", "user1", lootboxKey)
+	service.VoteForUnlock(ctx, "discord", "user2", lootboxKey)
+	service.VoteForUnlock(ctx, "discord", "user3", lootboxKey)
 
 	// Step 3: End voting
 	winner, err := service.EndVoting(ctx)
@@ -61,23 +70,20 @@ func TestVotingFlow_Complete(t *testing.T) {
 	isUnlocked, _ := repo.IsNodeUnlocked(ctx, winner.NodeDetails.NodeKey, 1)
 	assert.True(t, isUnlocked)
 
-	// Step 8: Verify new target is set or new session started (depends on available options)
-	// With new flow: if only 1 option remains after unlock, no voting session is created,
-	// but the next target is set. If 2+ options remain, a new session starts.
+	// Step 8: Verify new session is started
+	// After unlocking lootbox0, 4 options become available:
+	// - money (root child, still available)
+	// - upgrade, disassemble, search (lootbox0 children, now unlocked)
+	// Since 4 options remain (≥2), a new voting session SHOULD be created.
 	time.Sleep(20 * time.Millisecond)
 	newProgress, _ := repo.GetActiveUnlockProgress(ctx)
 	assert.NotNil(t, newProgress)
 	assert.NotEqual(t, progress.ID, newProgress.ID, "New progress should be created after unlock")
 
-	// Check if target is set or session is active
+	// Verify a new session was created
 	newSession, _ := repo.GetActiveSession(ctx)
-	if newSession != nil {
-		// Session was created (2+ options available)
-		assert.NotEqual(t, session.ID, newSession.ID)
-	} else {
-		// No session but target should be set (1 option remaining)
-		assert.NotNil(t, newProgress.NodeID, "New target should be set when no voting session")
-	}
+	assert.NotNil(t, newSession, "A new voting session should be created (4 options available)")
+	assert.NotEqual(t, session.ID, newSession.ID, "Should be a different session")
 }
 
 // TestVotingFlow_MultipleVoters verifies multi-user voting scenarios
@@ -109,10 +115,23 @@ func TestVotingFlow_AutoNextSession(t *testing.T) {
 	service := NewService(repo, NewMockUser(), nil)
 	ctx := context.Background()
 
-	// Complete first unlock cycle
+	// Complete first unlock cycle - vote for lootbox0 specifically
 	service.StartVotingSession(ctx, nil)
 	session1, _ := repo.GetActiveSession(ctx)
-	service.VoteForUnlock(ctx, "discord", "user1", session1.Options[0].NodeDetails.NodeKey)
+
+	// Find lootbox0 option
+	var lootboxKey string
+	for _, opt := range session1.Options {
+		if opt.NodeDetails.NodeKey == "item_lootbox0" {
+			lootboxKey = opt.NodeDetails.NodeKey
+			break
+		}
+	}
+	if lootboxKey == "" {
+		t.Fatal("lootbox0 not found in session options")
+	}
+
+	service.VoteForUnlock(ctx, "discord", "user1", lootboxKey)
 	service.EndVoting(ctx)
 
 	progress, _ := repo.GetActiveUnlockProgress(ctx)
@@ -124,22 +143,19 @@ func TestVotingFlow_AutoNextSession(t *testing.T) {
 	// Wait for async transition
 	time.Sleep(20 * time.Millisecond)
 
-	// NEW FLOW: After unlock, a session is only created if 2+ options remain
-	// The test tree has only 2 options initially (money and lootbox0),
-	// so after unlocking one, only 1 remains -> no session, but target is set
+	// After unlocking lootbox0, 4 options become available:
+	// - money (root child, still available)
+	// - upgrade, disassemble, search (lootbox0 children, now unlocked)
+	// Since 4 options remain (≥2), a voting session SHOULD be created.
 	newProgress, _ := repo.GetActiveUnlockProgress(ctx)
 	assert.NotNil(t, newProgress)
 	assert.NotEqual(t, progress.ID, newProgress.ID, "New progress should be created")
 
-	// A session may or may not exist depending on available options
+	// Verify a new session was created
 	session2, _ := repo.GetActiveSession(ctx)
-	if session2 != nil {
-		assert.NotEqual(t, session1.ID, session2.ID)
-		assert.Equal(t, "voting", session2.Status)
-	} else {
-		// No session but target should be set
-		assert.NotNil(t, newProgress.NodeID, "Target should be set when no session")
-	}
+	assert.NotNil(t, session2, "A new voting session should be created (4 options available)")
+	assert.NotEqual(t, session1.ID, session2.ID, "Should be a different session")
+	assert.Equal(t, "voting", session2.Status, "New session should be in voting status")
 }
 
 // TestMultiLevel_Progressive tests unlocking multiple levels of same node
@@ -198,30 +214,36 @@ func TestMultiLevel_SessionTargeting(t *testing.T) {
 		}
 	}
 
-	if cooldownKey != "" {
-		service.VoteForUnlock(ctx, "discord", "user1", cooldownKey)
-		service.EndVoting(ctx)
+	assert.NotEmpty(t, cooldownKey, "Cooldown level 1 should be in the initial session options")
 
-		// Complete unlock
-		progress, _ := repo.GetActiveUnlockProgress(ctx)
-		needed := 1500 - progress.ContributionsAccumulated
-		service.AddContribution(ctx, needed)
-		service.CheckAndUnlockNode(ctx)
+	service.VoteForUnlock(ctx, "discord", "user1", cooldownKey)
+	service.EndVoting(ctx)
 
-		// Wait for new session
-		time.Sleep(20 * time.Millisecond)
+	// Complete unlock
+	progress, _ := repo.GetActiveUnlockProgress(ctx)
+	needed := 1500 - progress.ContributionsAccumulated
+	service.AddContribution(ctx, needed)
+	service.CheckAndUnlockNode(ctx)
 
-		// New session should target level 2
-		newSession, _ := repo.GetActiveSession(ctx)
-		hasLevel2 := false
-		for _, opt := range newSession.Options {
-			if opt.NodeID == 5 && opt.TargetLevel == 2 {
-				hasLevel2 = true
-				break
-			}
+	// Wait for new session
+	time.Sleep(20 * time.Millisecond)
+
+	// After unlocking cooldown level 1, we have 3 options available:
+	// - cooldown_reduction level 2 (multi-level node)
+	// - buy (requires economy, which is unlocked)
+	// - sell (requires economy, which is unlocked)
+	// Therefore, a voting session MUST be created.
+	newSession, _ := repo.GetActiveSession(ctx)
+	assert.NotNil(t, newSession, "A voting session should exist - 3 options remain (cooldown L2, buy, sell)")
+
+	hasLevel2 := false
+	for _, opt := range newSession.Options {
+		if opt.NodeID == 5 && opt.TargetLevel == 2 {
+			hasLevel2 = true
+			break
 		}
-		assert.True(t, hasLevel2, "Next session should include cooldown level 2")
 	}
+	assert.True(t, hasLevel2, "Next session should include cooldown level 2")
 }
 
 // TestRollover_ExcessPoints verifies excess contributions carry over
