@@ -1499,27 +1499,6 @@ public class CPHInline
     #region Jobs System
 
     /// <summary>
-    /// Get all available jobs
-    /// Command: !jobs
-    /// </summary>
-    public bool GetAllJobs()
-    {
-        EnsureInitialized();
-        try
-        {
-            var result = client.GetAllJobs().Result;
-            CPH.SetArgument("response", result);
-            return true;
-        }
-        catch (Exception ex)
-        {
-            CPH.LogWarn($"GetAllJobs API Error: {ex.Message}");
-            CPH.SetArgument("response", $"Error: {ex.Message}");
-            return true;
-        }
-    }
-
-    /// <summary>
     /// Get user's job progress
     /// Command: !myJobs [target_user]
     /// </summary>

@@ -322,6 +322,7 @@ func (s *service) awardVoterContributions(ctx context.Context, sessionID int, pr
 }
 
 // AddContribution adds contribution points to current unlock progress
+// Uses cache-based estimation when far from threshold, atomic write+check when close (within 3-5 contributions)
 func (s *service) AddContribution(ctx context.Context, amount int) error {
 	log := logger.FromContext(ctx)
 
@@ -331,14 +332,17 @@ func (s *service) AddContribution(ctx context.Context, amount int) error {
 	}
 
 	var progressID int
+	var currentTotal int
 	if progress == nil {
 		// Create new progress if none exists
 		progressID, err = s.repo.CreateUnlockProgress(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to create unlock progress: %w", err)
 		}
+		currentTotal = 0
 	} else {
 		progressID = progress.ID
+		currentTotal = progress.ContributionsAccumulated
 	}
 
 	// Check for contribution boost upgrade
@@ -348,46 +352,94 @@ func (s *service) AddContribution(ctx context.Context, amount int) error {
 		amount = (amount * 3) / 2
 	}
 
+	// Read cache to determine strategy
+	s.mu.RLock()
+	cachedCost := s.cachedTargetCost
+	cachedID := s.cachedProgressID
+	s.mu.RUnlock()
+
+	// Calculate estimated total and remaining
+	estimatedTotal := currentTotal + amount
+	var remaining int
+	var useAtomicCheck bool
+
+	if cachedCost > 0 && cachedID == progressID {
+		remaining = cachedCost - estimatedTotal
+		if remaining < 0 {
+			remaining = 0
+		}
+		// Within 3-5 contributions of threshold? Use atomic write+check
+		// This prevents race conditions when multiple contributions could trigger unlock
+		if remaining <= amount*5 {
+			useAtomicCheck = true
+		}
+	}
+
 	// Write contribution to DB
 	err = s.repo.AddContribution(ctx, progressID, amount)
 	if err != nil {
 		return err
 	}
 
-	// Check cache for instant unlock detection (zero extra queries!)
-	s.mu.RLock()
-	cachedCost := s.cachedTargetCost
-	cachedID := s.cachedProgressID
-	s.mu.RUnlock()
-
-	// If cache is populated and matches current progress
-	if cachedCost > 0 && cachedID == progressID {
-		// Get updated progress to check new total
+	if useAtomicCheck {
+		// Close to threshold - re-query for exact total to accurately detect unlock
 		updatedProgress, err := s.repo.GetActiveUnlockProgress(ctx)
-		if err == nil && updatedProgress != nil {
-			// Threshold met - trigger unlock asynchronously
-			if updatedProgress.ContributionsAccumulated >= cachedCost {
-				log.Info("Unlock threshold met, triggering unlock",
-					"accumulated", updatedProgress.ContributionsAccumulated,
-					"required", cachedCost)
+		if err != nil {
+			log.Warn("Failed to get updated progress after contribution", "error", err)
+			return nil
+		}
 
-				// Non-blocking send to semaphore - if unlock already in progress, skip
-				select {
-				case s.unlockSem <- struct{}{}:
-					// Got the semaphore, proceed with unlock
-					s.wg.Add(1)
-					go func() {
-						defer s.wg.Done()
-						defer func() { <-s.unlockSem }() // Release semaphore when done
-						if _, err := s.CheckAndUnlockNode(s.shutdownCtx); err != nil {
-							log.Error("Failed to check and unlock node in background", "error", err)
-						}
-					}()
-				default:
-					// Unlock already in progress, skip this trigger
-					log.Debug("Unlock already in progress, skipping duplicate trigger")
-				}
+		actualTotal := updatedProgress.ContributionsAccumulated
+		remaining = cachedCost - actualTotal
+		if remaining < 0 {
+			remaining = 0
+		}
+
+		log.Info("Contribution progress updated",
+			"current", actualTotal,
+			"required", cachedCost,
+			"remaining", remaining,
+			"added", amount,
+			"strategy", "atomic")
+
+		// Threshold met - trigger unlock asynchronously
+		if actualTotal >= cachedCost {
+			log.Info("Unlock threshold met, triggering unlock",
+				"accumulated", actualTotal,
+				"required", cachedCost)
+
+			// Non-blocking send to semaphore - if unlock already in progress, skip
+			select {
+			case s.unlockSem <- struct{}{}:
+				// Got the semaphore, proceed with unlock
+				s.wg.Add(1)
+				go func() {
+					defer s.wg.Done()
+					defer func() { <-s.unlockSem }() // Release semaphore when done
+					if _, err := s.CheckAndUnlockNode(s.shutdownCtx); err != nil {
+						log.Error("Failed to check and unlock node in background", "error", err)
+					}
+				}()
+			default:
+				// Unlock already in progress, skip this trigger
+				log.Debug("Unlock already in progress, skipping duplicate trigger")
 			}
+		}
+	} else {
+		// Far from threshold - use cache-based estimation (no extra query)
+		if cachedCost > 0 && cachedID == progressID {
+			log.Info("Contribution progress updated",
+				"current", estimatedTotal,
+				"required", cachedCost,
+				"remaining", remaining,
+				"added", amount,
+				"strategy", "cache")
+		} else {
+			// No target set yet, just log the contribution
+			log.Info("Contribution added",
+				"added", amount,
+				"estimated_total", estimatedTotal,
+				"target", "not_set")
 		}
 	}
 

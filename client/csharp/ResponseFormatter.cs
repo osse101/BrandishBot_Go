@@ -225,13 +225,6 @@ namespace BrandishBot.Client
                     return response["message"].ToString();
                 }
 
-                // Check if already unlocked
-                if (response["unlocked_at"] != null)
-                {
-                    string nodeName = response["target_node_name"]?.ToString() ?? "Unknown";
-                    return $"{nodeName} has been unlocked!";
-                }
-
                 string targetNodeName = response["target_node_name"]?.ToString();
                 int contributions = (int?)response["contributions_accumulated"] ?? 0;
                 int target = (int?)response["target_unlock_cost"] ?? 0;
