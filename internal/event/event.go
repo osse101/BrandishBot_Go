@@ -23,6 +23,7 @@ const (
 	ProgressionCycleCompleted Type = "progression.cycle.completed"
 	ProgressionTargetSet      Type = "progression.target.set"
 	ProgressionVotingStarted  Type = "progression.voting_started"
+	ProgressionAllUnlocked    Type = "progression.all_unlocked"
 	EventTypeEngagement       Type = "engagement"
 )
 

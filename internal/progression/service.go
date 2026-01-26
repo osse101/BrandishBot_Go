@@ -59,8 +59,13 @@ type Service interface {
 	AdminUnlock(ctx context.Context, nodeKey string, level int) error
 	AdminUnlockAll(ctx context.Context) error
 	AdminRelock(ctx context.Context, nodeKey string, level int) error
+	AdminFreezeVoting(ctx context.Context) error                                                     // Freeze voting session (pause until unlock)
+	AdminStartVoting(ctx context.Context) error                                                      // Resume frozen vote OR start new if nodes available
 	ResetProgressionTree(ctx context.Context, resetBy string, reason string, preserveUserData bool) error
 	InvalidateWeightCache() // Clears engagement weight cache (forces reload on next engagement)
+
+	// Initialization
+	InitializeProgressionState(ctx context.Context) error // Called on startup to ensure valid state
 
 	// Test helpers (should only be used in tests)
 	InvalidateUnlockCacheForTest()

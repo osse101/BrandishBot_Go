@@ -34,6 +34,9 @@ const (
 	// EventTypeCycleCompleted is sent when a progression cycle completes (node unlocked + new voting)
 	EventTypeCycleCompleted = "progression.cycle_completed"
 
+	// EventTypeAllUnlocked is sent when all progression nodes have been unlocked
+	EventTypeAllUnlocked = "progression.all_unlocked"
+
 	// EventTypeKeepalive is the keepalive ping event type
 	EventTypeKeepalive = "keepalive"
 )

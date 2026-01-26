@@ -399,6 +399,111 @@ func (_c *MockRepository_EndVotingSession_Call) RunAndReturn(run func(context.Co
 	return _c
 }
 
+// FreezeVotingSession provides a mock function with given fields: ctx, sessionID
+func (_m *MockRepository) FreezeVotingSession(ctx context.Context, sessionID int) error {
+	ret := _m.Called(ctx, sessionID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FreezeVotingSession")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, int) error); ok {
+		r0 = rf(ctx, sessionID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockRepository_FreezeVotingSession_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FreezeVotingSession'
+type MockRepository_FreezeVotingSession_Call struct {
+	*mock.Call
+}
+
+// FreezeVotingSession is a helper method to define mock.On call
+//   - ctx context.Context
+//   - sessionID int
+func (_e *MockRepository_Expecter) FreezeVotingSession(ctx interface{}, sessionID interface{}) *MockRepository_FreezeVotingSession_Call {
+	return &MockRepository_FreezeVotingSession_Call{Call: _e.mock.On("FreezeVotingSession", ctx, sessionID)}
+}
+
+func (_c *MockRepository_FreezeVotingSession_Call) Run(run func(ctx context.Context, sessionID int)) *MockRepository_FreezeVotingSession_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int))
+	})
+	return _c
+}
+
+func (_c *MockRepository_FreezeVotingSession_Call) Return(_a0 error) *MockRepository_FreezeVotingSession_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockRepository_FreezeVotingSession_Call) RunAndReturn(run func(context.Context, int) error) *MockRepository_FreezeVotingSession_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetActiveOrFrozenSession provides a mock function with given fields: ctx
+func (_m *MockRepository) GetActiveOrFrozenSession(ctx context.Context) (*domain.ProgressionVotingSession, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetActiveOrFrozenSession")
+	}
+
+	var r0 *domain.ProgressionVotingSession
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) (*domain.ProgressionVotingSession, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) *domain.ProgressionVotingSession); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*domain.ProgressionVotingSession)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockRepository_GetActiveOrFrozenSession_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetActiveOrFrozenSession'
+type MockRepository_GetActiveOrFrozenSession_Call struct {
+	*mock.Call
+}
+
+// GetActiveOrFrozenSession is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockRepository_Expecter) GetActiveOrFrozenSession(ctx interface{}) *MockRepository_GetActiveOrFrozenSession_Call {
+	return &MockRepository_GetActiveOrFrozenSession_Call{Call: _e.mock.On("GetActiveOrFrozenSession", ctx)}
+}
+
+func (_c *MockRepository_GetActiveOrFrozenSession_Call) Run(run func(ctx context.Context)) *MockRepository_GetActiveOrFrozenSession_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockRepository_GetActiveOrFrozenSession_Call) Return(_a0 *domain.ProgressionVotingSession, _a1 error) *MockRepository_GetActiveOrFrozenSession_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockRepository_GetActiveOrFrozenSession_Call) RunAndReturn(run func(context.Context) (*domain.ProgressionVotingSession, error)) *MockRepository_GetActiveOrFrozenSession_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetActiveSession provides a mock function with given fields: ctx
 func (_m *MockRepository) GetActiveSession(ctx context.Context) (*domain.ProgressionVotingSession, error) {
 	ret := _m.Called(ctx)
@@ -2039,6 +2144,53 @@ func (_c *MockRepository_ResetTree_Call) Return(_a0 error) *MockRepository_Reset
 }
 
 func (_c *MockRepository_ResetTree_Call) RunAndReturn(run func(context.Context, string, string, bool) error) *MockRepository_ResetTree_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ResumeVotingSession provides a mock function with given fields: ctx, sessionID
+func (_m *MockRepository) ResumeVotingSession(ctx context.Context, sessionID int) error {
+	ret := _m.Called(ctx, sessionID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ResumeVotingSession")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, int) error); ok {
+		r0 = rf(ctx, sessionID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockRepository_ResumeVotingSession_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ResumeVotingSession'
+type MockRepository_ResumeVotingSession_Call struct {
+	*mock.Call
+}
+
+// ResumeVotingSession is a helper method to define mock.On call
+//   - ctx context.Context
+//   - sessionID int
+func (_e *MockRepository_Expecter) ResumeVotingSession(ctx interface{}, sessionID interface{}) *MockRepository_ResumeVotingSession_Call {
+	return &MockRepository_ResumeVotingSession_Call{Call: _e.mock.On("ResumeVotingSession", ctx, sessionID)}
+}
+
+func (_c *MockRepository_ResumeVotingSession_Call) Run(run func(ctx context.Context, sessionID int)) *MockRepository_ResumeVotingSession_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int))
+	})
+	return _c
+}
+
+func (_c *MockRepository_ResumeVotingSession_Call) Return(_a0 error) *MockRepository_ResumeVotingSession_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockRepository_ResumeVotingSession_Call) RunAndReturn(run func(context.Context, int) error) *MockRepository_ResumeVotingSession_Call {
 	_c.Call.Return(run)
 	return _c
 }

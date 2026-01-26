@@ -71,6 +71,52 @@ func (_c *MockProgressionService_AddContribution_Call) RunAndReturn(run func(con
 	return _c
 }
 
+// AdminFreezeVoting provides a mock function with given fields: ctx
+func (_m *MockProgressionService) AdminFreezeVoting(ctx context.Context) error {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AdminFreezeVoting")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockProgressionService_AdminFreezeVoting_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AdminFreezeVoting'
+type MockProgressionService_AdminFreezeVoting_Call struct {
+	*mock.Call
+}
+
+// AdminFreezeVoting is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockProgressionService_Expecter) AdminFreezeVoting(ctx interface{}) *MockProgressionService_AdminFreezeVoting_Call {
+	return &MockProgressionService_AdminFreezeVoting_Call{Call: _e.mock.On("AdminFreezeVoting", ctx)}
+}
+
+func (_c *MockProgressionService_AdminFreezeVoting_Call) Run(run func(ctx context.Context)) *MockProgressionService_AdminFreezeVoting_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockProgressionService_AdminFreezeVoting_Call) Return(_a0 error) *MockProgressionService_AdminFreezeVoting_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockProgressionService_AdminFreezeVoting_Call) RunAndReturn(run func(context.Context) error) *MockProgressionService_AdminFreezeVoting_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // AdminRelock provides a mock function with given fields: ctx, nodeKey, level
 func (_m *MockProgressionService) AdminRelock(ctx context.Context, nodeKey string, level int) error {
 	ret := _m.Called(ctx, nodeKey, level)
@@ -115,6 +161,52 @@ func (_c *MockProgressionService_AdminRelock_Call) Return(_a0 error) *MockProgre
 }
 
 func (_c *MockProgressionService_AdminRelock_Call) RunAndReturn(run func(context.Context, string, int) error) *MockProgressionService_AdminRelock_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// AdminStartVoting provides a mock function with given fields: ctx
+func (_m *MockProgressionService) AdminStartVoting(ctx context.Context) error {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AdminStartVoting")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockProgressionService_AdminStartVoting_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AdminStartVoting'
+type MockProgressionService_AdminStartVoting_Call struct {
+	*mock.Call
+}
+
+// AdminStartVoting is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockProgressionService_Expecter) AdminStartVoting(ctx interface{}) *MockProgressionService_AdminStartVoting_Call {
+	return &MockProgressionService_AdminStartVoting_Call{Call: _e.mock.On("AdminStartVoting", ctx)}
+}
+
+func (_c *MockProgressionService_AdminStartVoting_Call) Run(run func(ctx context.Context)) *MockProgressionService_AdminStartVoting_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockProgressionService_AdminStartVoting_Call) Return(_a0 error) *MockProgressionService_AdminStartVoting_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockProgressionService_AdminStartVoting_Call) RunAndReturn(run func(context.Context) error) *MockProgressionService_AdminStartVoting_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1377,6 +1469,52 @@ func (_c *MockProgressionService_GetUserEngagementByUsername_Call) Return(_a0 *d
 }
 
 func (_c *MockProgressionService_GetUserEngagementByUsername_Call) RunAndReturn(run func(context.Context, string, string) (*domain.ContributionBreakdown, error)) *MockProgressionService_GetUserEngagementByUsername_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// InitializeProgressionState provides a mock function with given fields: ctx
+func (_m *MockProgressionService) InitializeProgressionState(ctx context.Context) error {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for InitializeProgressionState")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockProgressionService_InitializeProgressionState_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'InitializeProgressionState'
+type MockProgressionService_InitializeProgressionState_Call struct {
+	*mock.Call
+}
+
+// InitializeProgressionState is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockProgressionService_Expecter) InitializeProgressionState(ctx interface{}) *MockProgressionService_InitializeProgressionState_Call {
+	return &MockProgressionService_InitializeProgressionState_Call{Call: _e.mock.On("InitializeProgressionState", ctx)}
+}
+
+func (_c *MockProgressionService_InitializeProgressionState_Call) Run(run func(ctx context.Context)) *MockProgressionService_InitializeProgressionState_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockProgressionService_InitializeProgressionState_Call) Return(_a0 error) *MockProgressionService_InitializeProgressionState_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockProgressionService_InitializeProgressionState_Call) RunAndReturn(run func(context.Context) error) *MockProgressionService_InitializeProgressionState_Call {
 	_c.Call.Return(run)
 	return _c
 }

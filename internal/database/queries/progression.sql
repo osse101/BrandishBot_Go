@@ -216,6 +216,23 @@ SET ended_at = NOW(),
     status = 'completed'
 WHERE id = $1;
 
+-- name: FreezeVotingSession :exec
+UPDATE progression_voting_sessions
+SET status = 'frozen'
+WHERE id = $1 AND status = 'voting';
+
+-- name: ResumeVotingSession :exec
+UPDATE progression_voting_sessions
+SET status = 'voting'
+WHERE id = $1 AND status = 'frozen';
+
+-- name: GetActiveOrFrozenSession :one
+SELECT id, started_at, ended_at, voting_deadline, winning_option_id, status
+FROM progression_voting_sessions
+WHERE status IN ('voting', 'frozen')
+ORDER BY started_at DESC
+LIMIT 1;
+
 -- name: GetSessionVoters :many
 SELECT DISTINCT user_id
 FROM user_votes

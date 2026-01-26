@@ -523,15 +523,50 @@ func (h *ProgressionHandlers) enrichUnlockProgress(ctx context.Context, progress
 	return response
 }
 
-// HandleAdminEndVoting admin force-ends current voting
-// @Summary Admin end voting
-// @Description Force end the current voting session and determine winner (admin only)
+// HandleAdminEndVoting admin freezes current voting (pauses until unlock)
+// @Summary Admin freeze voting
+// @Description Freeze the current voting session until the next unlock completes (admin only)
+// @Tags progression,admin
+// @Produce json
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /progression/admin/end-voting [post]
+func (h *ProgressionHandlers) HandleAdminEndVoting() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromContext(r.Context())
+
+		err := h.service.AdminFreezeVoting(r.Context())
+		if err != nil {
+			if errors.Is(err, domain.ErrNoActiveSession) {
+				log.Warn("No active voting session to freeze")
+				respondError(w, http.StatusBadRequest, err.Error())
+				return
+			}
+			if errors.Is(err, domain.ErrSessionAlreadyFrozen) {
+				log.Info("Voting session already frozen")
+				respondJSON(w, http.StatusOK, SuccessResponse{Message: "Voting session already frozen"})
+				return
+			}
+			log.Error("Failed to freeze voting", "error", err)
+			respondError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		log.Info("Admin froze voting session")
+		respondJSON(w, http.StatusOK, SuccessResponse{Message: "Voting session frozen"})
+	}
+}
+
+// HandleAdminForceEndVoting admin force-ends current voting and selects winner
+// @Summary Admin force end voting
+// @Description Force end the current voting session and determine winner immediately (admin only)
 // @Tags progression,admin
 // @Produce json
 // @Success 200 {object} AdminEndVotingResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /progression/admin/end-voting [post]
-func (h *ProgressionHandlers) HandleAdminEndVoting() http.HandlerFunc {
+// @Router /progression/admin/force-end-voting [post]
+func (h *ProgressionHandlers) HandleAdminForceEndVoting() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		h.handleAdminAction(w, r,
 			func(ctx context.Context) (interface{}, error) { return h.service.EndVoting(ctx) },
@@ -544,31 +579,43 @@ func (h *ProgressionHandlers) HandleAdminEndVoting() http.HandlerFunc {
 	}
 }
 
-// HandleAdminStartVoting admin starts a new voting session
-// @Summary Admin start voting
-// @Description Start a new voting session with 4 random options (admin only)
+// HandleAdminStartVoting admin starts or resumes a voting session
+// @Summary Admin start/resume voting
+// @Description Resume a frozen voting session OR start a new one if nodes are available (admin only)
 // @Tags progression,admin
 // @Produce json
 // @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 409 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /progression/admin/start-voting [post]
 func (h *ProgressionHandlers) HandleAdminStartVoting() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
 
-		err := h.service.StartVotingSession(r.Context(), nil)
+		err := h.service.AdminStartVoting(r.Context())
 		if err != nil {
 			if errors.Is(err, domain.ErrSessionAlreadyActive) {
-				log.Warn("Attempted to start voting while session already active")
+				log.Warn("Voting session already active")
 				respondError(w, http.StatusConflict, err.Error())
 				return
 			}
-			log.Error("Failed to start voting session", "error", err)
+			if errors.Is(err, domain.ErrNoNodesAvailable) {
+				log.Info("No nodes available for voting")
+				respondError(w, http.StatusBadRequest, err.Error())
+				return
+			}
+			if errors.Is(err, domain.ErrAccumulationInProgress) {
+				log.Warn("Cannot start voting while accumulation in progress")
+				respondError(w, http.StatusConflict, err.Error())
+				return
+			}
+			log.Error("Failed to start/resume voting session", "error", err)
 			respondError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 
-		log.Info("Admin started voting session")
+		log.Info("Admin started/resumed voting session")
 		respondJSON(w, http.StatusOK, SuccessResponse{Message: MsgVotingSessionStartSuccess})
 	}
 }

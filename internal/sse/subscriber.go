@@ -36,12 +36,16 @@ func (s *Subscriber) Subscribe() {
 	// Subscribe to progression target set (can indicate auto-selected voting)
 	s.bus.Subscribe(event.ProgressionTargetSet, s.handleTargetSet)
 
+	// Subscribe to progression all unlocked events
+	s.bus.Subscribe(event.ProgressionAllUnlocked, s.handleAllUnlocked)
+
 	slog.Info("SSE subscriber registered for event types",
 		"types", []string{
 			string(domain.EventJobLevelUp),
 			string(event.ProgressionCycleCompleted),
 			string(event.ProgressionVotingStarted),
 			string(event.ProgressionTargetSet),
+			string(event.ProgressionAllUnlocked),
 		})
 }
 
@@ -176,6 +180,26 @@ func (s *Subscriber) handleTargetSet(_ context.Context, evt event.Event) error {
 			"node_key", ssePayload.NodeKey,
 			"auto_selected", true)
 	}
+
+	return nil
+}
+
+// handleAllUnlocked processes progression all unlocked events
+func (s *Subscriber) handleAllUnlocked(_ context.Context, evt event.Event) error {
+	payload, ok := evt.Payload.(map[string]interface{})
+	if !ok {
+		slog.Warn("Invalid all unlocked event payload type")
+		return nil
+	}
+
+	ssePayload := AllUnlockedPayload{
+		Message: getStringFromMap(payload, "message"),
+	}
+
+	s.hub.Broadcast(EventTypeAllUnlocked, ssePayload)
+
+	slog.Debug(LogMsgEventBroadcast,
+		"event_type", EventTypeAllUnlocked)
 
 	return nil
 }

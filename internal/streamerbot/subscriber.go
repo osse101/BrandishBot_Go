@@ -34,11 +34,15 @@ func (s *Subscriber) Subscribe() {
 	// Subscribe to progression cycle completed events
 	s.bus.Subscribe(event.ProgressionCycleCompleted, s.handleCycleCompleted)
 
+	// Subscribe to progression all unlocked events
+	s.bus.Subscribe(event.ProgressionAllUnlocked, s.handleAllUnlocked)
+
 	slog.Info("Streamer.bot subscriber registered for event types",
 		"types", []string{
 			string(domain.EventJobLevelUp),
 			string(event.ProgressionVotingStarted),
 			string(event.ProgressionCycleCompleted),
+			string(event.ProgressionAllUnlocked),
 		})
 }
 
@@ -139,6 +143,28 @@ func (s *Subscriber) handleCycleCompleted(_ context.Context, evt event.Event) er
 	if err := s.client.DoAction(ActionCycleCompleted, args); err != nil {
 		// Use Debug level - Streamer.bot being unavailable is expected
 		slog.Debug("Failed to send cycle completed to Streamer.bot", "error", err)
+	}
+
+	return nil
+}
+
+// handleAllUnlocked sends a DoAction when all progression nodes are unlocked
+func (s *Subscriber) handleAllUnlocked(_ context.Context, evt event.Event) error {
+	payload, ok := evt.Payload.(map[string]interface{})
+	if !ok {
+		slog.Warn("Invalid all unlocked event payload type")
+		return nil
+	}
+
+	args := map[string]string{
+		"message": getStringFromMap(payload, "message"),
+	}
+
+	slog.Debug(LogMsgEventReceived, "event_type", event.ProgressionAllUnlocked, "args", args)
+
+	if err := s.client.DoAction(ActionAllUnlocked, args); err != nil {
+		// Use Debug level - Streamer.bot being unavailable is expected
+		slog.Debug("Failed to send all unlocked to Streamer.bot", "error", err)
 	}
 
 	return nil

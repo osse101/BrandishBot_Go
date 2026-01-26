@@ -45,6 +45,7 @@ const (
 	ActionJobLevelUp      = "BrandishBot_JobLevelUp"
 	ActionVotingStarted   = "BrandishBot_VotingStarted"
 	ActionCycleCompleted  = "BrandishBot_CycleCompleted"
+	ActionAllUnlocked     = "BrandishBot_AllUnlocked"
 )
 
 // Response status values

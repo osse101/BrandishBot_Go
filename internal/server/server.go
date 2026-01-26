@@ -152,7 +152,8 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 				r.Post("/relock", progressionHandlers.HandleAdminRelock())
 				r.Post("/instant-unlock", progressionHandlers.HandleAdminInstantUnlock())
 				r.Post("/start-voting", progressionHandlers.HandleAdminStartVoting())
-				r.Post("/end-voting", progressionHandlers.HandleAdminEndVoting())
+				r.Post("/end-voting", progressionHandlers.HandleAdminEndVoting())           // Freezes vote
+				r.Post("/force-end-voting", progressionHandlers.HandleAdminForceEndVoting()) // Ends vote immediately
 				r.Post("/reset", progressionHandlers.HandleAdminReset())
 				r.Post("/contribution", progressionHandlers.HandleAdminAddContribution())
 			})

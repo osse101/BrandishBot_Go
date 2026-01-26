@@ -144,6 +144,12 @@ func main() {
 	defer jobScheduler.Stop()
 	slog.Info("Job scheduler initialized")
 
+	// Initialize progression state (ensure valid target on startup)
+	if err := progressionService.InitializeProgressionState(context.Background()); err != nil {
+		slog.Warn("Failed to initialize progression state", "error", err)
+		// Don't exit - this is a non-critical error
+	}
+
 	// Initialize Lootbox Service
 	lootboxSvc, err := lootbox.NewService(repos.User, config.ConfigPathLootTables)
 	if err != nil {

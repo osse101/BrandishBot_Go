@@ -48,4 +48,6 @@ const (
 
 	// Session Status
 	SessionStatusVoting = "voting"
+	SessionStatusFrozen = "frozen"
+	SessionStatusCompleted = "completed"
 )

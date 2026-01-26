@@ -37,3 +37,8 @@ type VotingOptionInfo struct {
 	Description    string `json:"description"`
 	UnlockDuration string `json:"unlock_duration"` // "Short", "Medium", or "Long"
 }
+
+// AllUnlockedPayload represents the SSE payload when all nodes are unlocked
+type AllUnlockedPayload struct {
+	Message string `json:"message"`
+}

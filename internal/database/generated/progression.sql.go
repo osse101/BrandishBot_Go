@@ -207,6 +207,48 @@ func (q *Queries) EndVotingSession(ctx context.Context, arg EndVotingSessionPara
 	return err
 }
 
+const freezeVotingSession = `-- name: FreezeVotingSession :exec
+UPDATE progression_voting_sessions
+SET status = 'frozen'
+WHERE id = $1 AND status = 'voting'
+`
+
+func (q *Queries) FreezeVotingSession(ctx context.Context, id int32) error {
+	_, err := q.db.Exec(ctx, freezeVotingSession, id)
+	return err
+}
+
+const getActiveOrFrozenSession = `-- name: GetActiveOrFrozenSession :one
+SELECT id, started_at, ended_at, voting_deadline, winning_option_id, status
+FROM progression_voting_sessions
+WHERE status IN ('voting', 'frozen')
+ORDER BY started_at DESC
+LIMIT 1
+`
+
+type GetActiveOrFrozenSessionRow struct {
+	ID              int32            `json:"id"`
+	StartedAt       pgtype.Timestamp `json:"started_at"`
+	EndedAt         pgtype.Timestamp `json:"ended_at"`
+	VotingDeadline  pgtype.Timestamp `json:"voting_deadline"`
+	WinningOptionID pgtype.Int4      `json:"winning_option_id"`
+	Status          string           `json:"status"`
+}
+
+func (q *Queries) GetActiveOrFrozenSession(ctx context.Context) (GetActiveOrFrozenSessionRow, error) {
+	row := q.db.QueryRow(ctx, getActiveOrFrozenSession)
+	var i GetActiveOrFrozenSessionRow
+	err := row.Scan(
+		&i.ID,
+		&i.StartedAt,
+		&i.EndedAt,
+		&i.VotingDeadline,
+		&i.WinningOptionID,
+		&i.Status,
+	)
+	return i, err
+}
+
 const getActiveSession = `-- name: GetActiveSession :one
 SELECT id, started_at, ended_at, voting_deadline, winning_option_id, status
 FROM progression_voting_sessions
@@ -1315,6 +1357,17 @@ type RelockNodeParams struct {
 
 func (q *Queries) RelockNode(ctx context.Context, arg RelockNodeParams) error {
 	_, err := q.db.Exec(ctx, relockNode, arg.NodeID, arg.CurrentLevel)
+	return err
+}
+
+const resumeVotingSession = `-- name: ResumeVotingSession :exec
+UPDATE progression_voting_sessions
+SET status = 'voting'
+WHERE id = $1 AND status = 'frozen'
+`
+
+func (q *Queries) ResumeVotingSession(ctx context.Context, id int32) error {
+	_, err := q.db.Exec(ctx, resumeVotingSession, id)
 	return err
 }
 

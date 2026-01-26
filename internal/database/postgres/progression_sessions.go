@@ -171,6 +171,49 @@ func (r *progressionRepository) EndVotingSession(ctx context.Context, sessionID 
 	return nil
 }
 
+func (r *progressionRepository) FreezeVotingSession(ctx context.Context, sessionID int) error {
+	err := r.q.FreezeVotingSession(ctx, int32(sessionID))
+	if err != nil {
+		return fmt.Errorf("failed to freeze voting session: %w", err)
+	}
+	return nil
+}
+
+func (r *progressionRepository) ResumeVotingSession(ctx context.Context, sessionID int) error {
+	err := r.q.ResumeVotingSession(ctx, int32(sessionID))
+	if err != nil {
+		return fmt.Errorf("failed to resume voting session: %w", err)
+	}
+	return nil
+}
+
+func (r *progressionRepository) GetActiveOrFrozenSession(ctx context.Context) (*domain.ProgressionVotingSession, error) {
+	row, err := r.q.GetActiveOrFrozenSession(ctx)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get active or frozen session: %w", err)
+	}
+
+	session := &domain.ProgressionVotingSession{
+		ID:              int(row.ID),
+		StartedAt:       row.StartedAt.Time,
+		Status:          row.Status,
+		EndedAt:         ptrTime(row.EndedAt),
+		VotingDeadline:  row.VotingDeadline.Time,
+		WinningOptionID: ptrInt(row.WinningOptionID),
+	}
+
+	// Get options
+	session.Options, err = r.getSessionOptions(ctx, session.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return session, nil
+}
+
 func (r *progressionRepository) GetSessionVoters(ctx context.Context, sessionID int) ([]string, error) {
 	rows, err := r.q.GetSessionVoters(ctx, pgtype.Int4{Int32: int32(sessionID), Valid: true})
 	if err != nil {

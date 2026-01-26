@@ -30,10 +30,13 @@ type Progression interface {
 	CreateVotingSession(ctx context.Context) (int, error)
 	AddVotingOption(ctx context.Context, sessionID, nodeID, targetLevel int) error
 	GetActiveSession(ctx context.Context) (*domain.ProgressionVotingSession, error)
-	GetMostRecentSession(ctx context.Context) (*domain.ProgressionVotingSession, error) // Bug #1: Get most recent session (any status)
+	GetActiveOrFrozenSession(ctx context.Context) (*domain.ProgressionVotingSession, error) // Get session with status 'voting' or 'frozen'
+	GetMostRecentSession(ctx context.Context) (*domain.ProgressionVotingSession, error)    // Bug #1: Get most recent session (any status)
 	GetSessionByID(ctx context.Context, sessionID int) (*domain.ProgressionVotingSession, error)
 	IncrementOptionVote(ctx context.Context, optionID int) error
 	EndVotingSession(ctx context.Context, sessionID int, winningOptionID int) error
+	FreezeVotingSession(ctx context.Context, sessionID int) error  // Pause voting until unlock completes
+	ResumeVotingSession(ctx context.Context, sessionID int) error  // Resume frozen voting session
 	GetSessionVoters(ctx context.Context, sessionID int) ([]string, error)
 	HasUserVotedInSession(ctx context.Context, userID string, sessionID int) (bool, error)
 	RecordUserSessionVote(ctx context.Context, userID string, sessionID, optionID, nodeID int) error

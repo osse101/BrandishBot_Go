@@ -42,7 +42,9 @@ type Querier interface {
 	EndVoting(ctx context.Context, arg EndVotingParams) error
 	EndVotingSession(ctx context.Context, arg EndVotingSessionParams) error
 	EnsureInventoryRow(ctx context.Context, arg EnsureInventoryRowParams) error
+	FreezeVotingSession(ctx context.Context, id int32) error
 	GetActiveGamble(ctx context.Context) (Gamble, error)
+	GetActiveOrFrozenSession(ctx context.Context) (GetActiveOrFrozenSessionRow, error)
 	GetActiveSession(ctx context.Context) (GetActiveSessionRow, error)
 	GetActiveUnlockProgress(ctx context.Context) (ProgressionUnlockProgress, error)
 	GetActiveVoting(ctx context.Context) (ProgressionVoting, error)
@@ -146,6 +148,7 @@ type Querier interface {
 	RecordUserVote(ctx context.Context, arg RecordUserVoteParams) error
 	RelockNode(ctx context.Context, arg RelockNodeParams) error
 	ResetDailyJobXP(ctx context.Context) (pgconn.CommandTag, error)
+	ResumeVotingSession(ctx context.Context, id int32) error
 	SaveOpenedItem(ctx context.Context, arg SaveOpenedItemParams) error
 	SetUnlockTarget(ctx context.Context, arg SetUnlockTargetParams) error
 	StartVoting(ctx context.Context, arg StartVotingParams) error

@@ -36,6 +36,24 @@ func (m *ReliabilityMockRepository) GetMostRecentSession(ctx context.Context) (*
 	return args.Get(0).(*domain.ProgressionVotingSession), args.Error(1)
 }
 
+func (m *ReliabilityMockRepository) GetActiveOrFrozenSession(ctx context.Context) (*domain.ProgressionVotingSession, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.ProgressionVotingSession), args.Error(1)
+}
+
+func (m *ReliabilityMockRepository) FreezeVotingSession(ctx context.Context, sessionID int) error {
+	args := m.Called(ctx, sessionID)
+	return args.Error(0)
+}
+
+func (m *ReliabilityMockRepository) ResumeVotingSession(ctx context.Context, sessionID int) error {
+	args := m.Called(ctx, sessionID)
+	return args.Error(0)
+}
+
 func (m *ReliabilityMockRepository) EndVotingSession(ctx context.Context, sessionID int, winningOptionID int) error {
 	args := m.Called(ctx, sessionID, winningOptionID)
 	return args.Error(0)
@@ -225,6 +243,7 @@ func TestForceInstantUnlock_Reliability(t *testing.T) {
 		},
 	}
 	mockRepo.On("GetActiveSession", mock.Anything).Return(session, nil)
+	mockRepo.On("GetActiveOrFrozenSession", mock.Anything).Return(nil, nil) // No active/frozen session for post-unlock
 
 	// End voting success
 	mockRepo.On("EndVotingSession", mock.Anything, 1, 10).Return(nil)

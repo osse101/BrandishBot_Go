@@ -536,6 +536,44 @@ func (m *MockRepository) GetActiveSession(ctx context.Context) (*domain.Progress
 	return nil, nil
 }
 
+// GetActiveOrFrozenSession returns a session with status 'voting' or 'frozen'
+func (m *MockRepository) GetActiveOrFrozenSession(ctx context.Context) (*domain.ProgressionVotingSession, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	for _, session := range m.sessions {
+		if session.Status == "voting" || session.Status == "frozen" {
+			return session, nil
+		}
+	}
+	return nil, nil
+}
+
+// FreezeVotingSession pauses a voting session
+func (m *MockRepository) FreezeVotingSession(ctx context.Context, sessionID int) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if session, ok := m.sessions[sessionID]; ok {
+		if session.Status == "voting" {
+			session.Status = "frozen"
+			return nil
+		}
+	}
+	return fmt.Errorf("session not found or not voting")
+}
+
+// ResumeVotingSession resumes a frozen voting session
+func (m *MockRepository) ResumeVotingSession(ctx context.Context, sessionID int) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if session, ok := m.sessions[sessionID]; ok {
+		if session.Status == "frozen" {
+			session.Status = "voting"
+			return nil
+		}
+	}
+	return fmt.Errorf("session not found or not frozen")
+}
+
 // GetMostRecentSession returns the most recent session regardless of status
 func (m *MockRepository) GetMostRecentSession(ctx context.Context) (*domain.ProgressionVotingSession, error) {
 	m.mu.RLock()
