@@ -427,13 +427,25 @@ namespace BrandishBot.Client
         }
 
         /// <summary>
-        /// Get unlocked crafting recipes for a user
+        /// Get unlocked crafting recipes for a user (self-mode)
         /// </summary>
         public async Task<string> GetUnlockedRecipes(string platform, string platformId, string username)
         {
             var query = BuildQuery(
                 "platform=" + platform,
                 "platform_id=" + platformId,
+                "user=" + username
+            );
+            return await GetAsync("/api/v1/recipes" + query);
+        }
+
+        /// <summary>
+        /// Get unlocked crafting recipes for a user by username (target-mode)
+        /// </summary>
+        public async Task<string> GetUnlockedRecipesByUsername(string platform, string username)
+        {
+            var query = BuildQuery(
+                "platform=" + platform,
                 "user=" + username
             );
             return await GetAsync("/api/v1/recipes" + query);
@@ -484,13 +496,25 @@ namespace BrandishBot.Client
         #region Stats & Leaderboards
 
         /// <summary>
-        /// Get user statistics
+        /// Get user statistics (self-mode)
         /// </summary>
         public async Task<string> GetUserStats(string platform, string platformId)
         {
             var query = BuildQuery(
                 "platform=" + platform,
                 "platform_id=" + platformId
+            );
+            return await GetAsync("/api/v1/stats/user" + query);
+        }
+
+        /// <summary>
+        /// Get user statistics by username (target-mode)
+        /// </summary>
+        public async Task<string> GetUserStatsByUsername(string platform, string username)
+        {
+            var query = BuildQuery(
+                "platform=" + platform,
+                "username=" + username
             );
             return await GetAsync("/api/v1/stats/user" + query);
         }
@@ -687,17 +711,22 @@ namespace BrandishBot.Client
         #region Jobs System
 
         /// <summary>
-        /// Get all available jobs
+        /// Get user's job progress (self-mode)
         /// </summary>
-        public async Task<string> GetAllJobs()
+        public async Task<string> GetUserJobs(string platform, string platformId, string username)
         {
-            return await GetAsync("/api/v1/jobs");
+            var query = BuildQuery(
+                "platform=" + platform,
+                "platform_id=" + platformId,
+                "username=" + username
+            );
+            return await GetAsync("/api/v1/jobs/user" + query);
         }
 
         /// <summary>
-        /// Get user's job progress
+        /// Get user's job progress by username (target-mode)
         /// </summary>
-        public async Task<string> GetUserJobs(string platform, string username)
+        public async Task<string> GetUserJobsByUsername(string platform, string username)
         {
             var query = BuildQuery(
                 "platform=" + platform,

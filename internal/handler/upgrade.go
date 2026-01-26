@@ -8,7 +8,22 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
+	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
+
+// CraftingHandler handles crafting-related requests
+type CraftingHandler struct {
+	service  crafting.Service
+	userRepo repository.User
+}
+
+// NewCraftingHandler creates a new CraftingHandler
+func NewCraftingHandler(service crafting.Service, userRepo repository.User) *CraftingHandler {
+	return &CraftingHandler{
+		service:  service,
+		userRepo: userRepo,
+	}
+}
 
 type UpgradeItemResponse struct {
 	Message          string `json:"message"`
@@ -95,12 +110,13 @@ func HandleUpgradeItem(svc crafting.Service, progressionSvc progression.Service,
 // @Param item query string false "Item name to get recipe for"
 // @Param user query string false "Username to get unlocked recipes for"
 // @Param platform query string false "Platform (required if user provided)"
-// @Param platform_id query string false "Platform ID (required if user provided)"
+// @Param platform_id query string false "Platform ID (self-mode, optional for target-mode)"
 // @Success 200 {object} map[string]interface{} "Recipes or single recipe"
 // @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /recipes [get]
-func HandleGetRecipes(svc crafting.Service) http.HandlerFunc {
+func (h *CraftingHandler) HandleGetRecipes() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
 
@@ -109,18 +125,33 @@ func HandleGetRecipes(svc crafting.Service) http.HandlerFunc {
 
 		log.Debug("Get recipes request", "item", itemName, "user", username)
 
-		// Case 1: Only user provided - return unlocked recipes
+		// Case 1: Only user provided - return unlocked recipes (dual-mode support)
 		if username != "" && itemName == "" {
 			platform, ok := GetQueryParam(r, w, "platform")
 			if !ok {
 				return
 			}
-			platformID, ok := GetQueryParam(r, w, "platform_id")
-			if !ok {
-				return
+
+			platformID := r.URL.Query().Get("platform_id")
+
+			// Target-mode: resolve user by username if platform_id not provided
+			if platformID == "" {
+				user, err := h.userRepo.GetUserByPlatformUsername(r.Context(), platform, username)
+				if err != nil {
+					log.Error("Failed to find user by username", "error", err, "platform", platform, "username", username)
+					respondError(w, http.StatusNotFound, "User not found")
+					return
+				}
+				platformID = getPlatformID(user, platform)
+				if platformID == "" {
+					log.Error("User found but no platform ID", "username", username, "platform", platform)
+					respondError(w, http.StatusNotFound, "User not found on platform")
+					return
+				}
+				log.Debug("Resolved username to platform_id", "username", username, "platform_id", platformID)
 			}
 
-			recipes, err := svc.GetUnlockedRecipes(r.Context(), platform, platformID, username)
+			recipes, err := h.service.GetUnlockedRecipes(r.Context(), platform, platformID, username)
 			if err != nil {
 				log.Error("Failed to get unlocked recipes", "error", err, "username", username)
 				statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
@@ -140,7 +171,7 @@ func HandleGetRecipes(svc crafting.Service) http.HandlerFunc {
 			platform := r.URL.Query().Get("platform")
 			platformID := r.URL.Query().Get("platform_id")
 
-			recipe, err := svc.GetRecipe(r.Context(), itemName, platform, platformID, username)
+			recipe, err := h.service.GetRecipe(r.Context(), itemName, platform, platformID, username)
 			if err != nil {
 				log.Error("Failed to get recipe", "error", err, "item", itemName)
 				statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
@@ -153,7 +184,7 @@ func HandleGetRecipes(svc crafting.Service) http.HandlerFunc {
 			return
 		}
 
-		recipes, err := svc.GetAllRecipes(r.Context())
+		recipes, err := h.service.GetAllRecipes(r.Context())
 		if err != nil {
 			log.Error("Failed to get all recipes", "error", err)
 			statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)

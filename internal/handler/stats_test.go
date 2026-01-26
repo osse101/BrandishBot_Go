@@ -86,35 +86,51 @@ func TestHandleRecordEvent(t *testing.T) {
 func TestHandleGetUserStats(t *testing.T) {
 	tests := []struct {
 		name           string
-		userID         string
+		platform       string
+		platformID     string
 		period         string
-		setupMock      func(*mocks.MockStatsService)
+		setupMock      func(*mocks.MockStatsService, *mocks.MockRepositoryUser)
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
-			name:   "Success",
-			userID: "testuser",
-			period: domain.PeriodDaily,
-			setupMock: func(m *mocks.MockStatsService) {
+			name:       "Success with platform_id",
+			platform:   domain.PlatformTwitch,
+			platformID: "test123",
+			period:     domain.PeriodDaily,
+			setupMock: func(svc *mocks.MockStatsService, repo *mocks.MockRepositoryUser) {
+				user := &domain.User{ID: "user123"}
+				repo.On("GetUserByPlatformID", mock.Anything, domain.PlatformTwitch, "test123").Return(user, nil)
 				summary := &domain.StatsSummary{TotalEvents: 10}
-				m.On("GetUserStats", mock.Anything, "testuser", domain.PeriodDaily).Return(summary, nil)
+				svc.On("GetUserStats", mock.Anything, "user123", domain.PeriodDaily).Return(summary, nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `"total_events":10`,
 		},
 		{
-			name:           "Missing UserID",
-			userID:         "",
-			setupMock:      func(m *mocks.MockStatsService) {},
+			name:       "Missing platform",
+			platform:   "",
+			platformID: "test123",
+			setupMock:  func(svc *mocks.MockStatsService, repo *mocks.MockRepositoryUser) {},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Missing user_id",
+			expectedBody:   "Missing platform",
 		},
 		{
-			name:   "Service Error",
-			userID: "testuser",
-			setupMock: func(m *mocks.MockStatsService) {
-				m.On("GetUserStats", mock.Anything, "testuser", domain.PeriodDaily).Return(nil, errors.New(ErrMsgGenericServerError))
+			name:       "Missing platform_id and username",
+			platform:   domain.PlatformTwitch,
+			platformID: "",
+			setupMock:  func(svc *mocks.MockStatsService, repo *mocks.MockRepositoryUser) {},
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "Either platform_id or username is required",
+		},
+		{
+			name:       "Service Error",
+			platform:   domain.PlatformTwitch,
+			platformID: "test123",
+			setupMock: func(svc *mocks.MockStatsService, repo *mocks.MockRepositoryUser) {
+				user := &domain.User{ID: "user123"}
+				repo.On("GetUserByPlatformID", mock.Anything, domain.PlatformTwitch, "test123").Return(user, nil)
+				svc.On("GetUserStats", mock.Anything, "user123", domain.PeriodDaily).Return(nil, errors.New(ErrMsgGenericServerError))
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   ErrMsgGenericServerError,
@@ -124,13 +140,18 @@ func TestHandleGetUserStats(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockSvc := mocks.NewMockStatsService(t)
-			tt.setupMock(mockSvc)
+			mockUserRepo := mocks.NewMockRepositoryUser(t)
+			tt.setupMock(mockSvc, mockUserRepo)
 
-			handler := HandleGetUserStats(mockSvc)
+			statsHandler := NewStatsHandler(mockSvc, mockUserRepo)
+			handler := statsHandler.HandleGetUserStats()
 
 			url := "/stats/user"
-			if tt.userID != "" {
-				url += "?user_id=" + tt.userID
+			if tt.platform != "" {
+				url += "?platform=" + tt.platform
+			}
+			if tt.platformID != "" {
+				url += "&platform_id=" + tt.platformID
 			}
 			if tt.period != "" {
 				url += "&period=" + tt.period
@@ -145,6 +166,7 @@ func TestHandleGetUserStats(t *testing.T) {
 				assert.Contains(t, w.Body.String(), tt.expectedBody)
 			}
 			mockSvc.AssertExpectations(t)
+			mockUserRepo.AssertExpectations(t)
 		})
 	}
 }

@@ -100,6 +100,20 @@ func updatePlatformID(user *domain.User, platform, platformID string) {
 	}
 }
 
+// getPlatformID gets the platform ID from a user for a given platform
+func getPlatformID(user *domain.User, platform string) string {
+	switch platform {
+	case domain.PlatformTwitch:
+		return user.TwitchID
+	case domain.PlatformYoutube:
+		return user.YoutubeID
+	case domain.PlatformDiscord:
+		return user.DiscordID
+	default:
+		return ""
+	}
+}
+
 // HandleGetTimeout returns the remaining timeout duration for a user
 // @Summary Get user timeout
 // @Description Get the remaining timeout duration for a user

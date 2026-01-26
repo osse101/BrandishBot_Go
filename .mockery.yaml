@@ -175,3 +175,9 @@ packages:
       mockname: "MockWorkerJob"
     interfaces:
       Job:
+  github.com/osse101/BrandishBot_Go/internal/repository:
+    config:
+      filename: "mock_repository_{{.InterfaceName | snakecase}}.go"
+      mockname: "MockRepository{{.InterfaceName}}"
+    interfaces:
+      User:

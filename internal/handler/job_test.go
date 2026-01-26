@@ -18,7 +18,8 @@ import (
 
 func TestHandleGetUserJobs(t *testing.T) {
 	svc := mocks.NewMockJobService(t)
-	h := NewJobHandler(svc)
+	userRepo := mocks.NewMockRepositoryUser(t)
+	h := NewJobHandler(svc, userRepo)
 
 	platform := domain.PlatformTwitch
 	platformID := "u1"
@@ -49,7 +50,8 @@ func TestHandleGetUserJobs(t *testing.T) {
 
 func TestHandleGetUserJobs_MissingUser(t *testing.T) {
 	svc := mocks.NewMockJobService(t)
-	h := NewJobHandler(svc)
+	userRepo := mocks.NewMockRepositoryUser(t)
+	h := NewJobHandler(svc, userRepo)
 
 	req := httptest.NewRequest("GET", "/jobs", nil)
 	w := httptest.NewRecorder()
@@ -61,7 +63,8 @@ func TestHandleGetUserJobs_MissingUser(t *testing.T) {
 
 func TestHandleAwardXP(t *testing.T) {
 	svc := mocks.NewMockJobService(t)
-	h := NewJobHandler(svc)
+	userRepo := mocks.NewMockRepositoryUser(t)
+	h := NewJobHandler(svc, userRepo)
 
 	reqBody := AwardXPRequest{
 		Platform:       domain.PlatformTwitch,
@@ -96,7 +99,8 @@ func TestHandleAwardXP(t *testing.T) {
 
 func TestHandleAwardXP_InvalidRequest(t *testing.T) {
 	svc := mocks.NewMockJobService(t)
-	h := NewJobHandler(svc)
+	userRepo := mocks.NewMockRepositoryUser(t)
+	h := NewJobHandler(svc, userRepo)
 
 	req := httptest.NewRequest("POST", "/jobs/award-xp", bytes.NewReader([]byte(`{}`))) // Empty body maps to default values (User/Key empty)
 	w := httptest.NewRecorder()
@@ -110,7 +114,8 @@ func TestHandleAwardXP_InvalidRequest(t *testing.T) {
 
 func TestHandleGetUserJobs_ServiceError(t *testing.T) {
 	svc := mocks.NewMockJobService(t)
-	h := NewJobHandler(svc)
+	userRepo := mocks.NewMockRepositoryUser(t)
+	h := NewJobHandler(svc, userRepo)
 
 	svc.On("GetUserJobsByPlatform", mock.Anything, "twitch", "u1").Return(nil, errors.New("database error"))
 
@@ -124,7 +129,8 @@ func TestHandleGetUserJobs_ServiceError(t *testing.T) {
 
 func TestHandleGetUserJobs_NoPrimaryJob(t *testing.T) {
 	svc := mocks.NewMockJobService(t)
-	h := NewJobHandler(svc)
+	userRepo := mocks.NewMockRepositoryUser(t)
+	h := NewJobHandler(svc, userRepo)
 
 	userJobs := []domain.UserJobInfo{
 		{JobKey: job.JobKeyBlacksmith, Level: 5},
@@ -149,7 +155,8 @@ func TestHandleGetUserJobs_NoPrimaryJob(t *testing.T) {
 
 func TestHandleAwardXP_ServiceError_DailyCap(t *testing.T) {
 	svc := mocks.NewMockJobService(t)
-	h := NewJobHandler(svc)
+	userRepo := mocks.NewMockRepositoryUser(t)
+	h := NewJobHandler(svc, userRepo)
 
 	reqBody := AwardXPRequest{
 		Platform:       domain.PlatformTwitch,
@@ -173,7 +180,8 @@ func TestHandleAwardXP_ServiceError_DailyCap(t *testing.T) {
 
 func TestHandleAwardXP_NegativeXP(t *testing.T) {
 	svc := mocks.NewMockJobService(t)
-	h := NewJobHandler(svc)
+	userRepo := mocks.NewMockRepositoryUser(t)
+	h := NewJobHandler(svc, userRepo)
 
 	reqBody := AwardXPRequest{
 		Platform:       domain.PlatformTwitch,
@@ -195,7 +203,8 @@ func TestHandleAwardXP_NegativeXP(t *testing.T) {
 
 func TestHandleAwardXP_ZeroXP(t *testing.T) {
 	svc := mocks.NewMockJobService(t)
-	h := NewJobHandler(svc)
+	userRepo := mocks.NewMockRepositoryUser(t)
+	h := NewJobHandler(svc, userRepo)
 
 	reqBody := AwardXPRequest{
 		Platform:       domain.PlatformTwitch,
@@ -217,7 +226,8 @@ func TestHandleAwardXP_ZeroXP(t *testing.T) {
 
 func TestHandleAwardXP_InvalidJSON(t *testing.T) {
 	svc := mocks.NewMockJobService(t)
-	h := NewJobHandler(svc)
+	userRepo := mocks.NewMockRepositoryUser(t)
+	h := NewJobHandler(svc, userRepo)
 
 	req := httptest.NewRequest("POST", "/jobs/award-xp", bytes.NewReader([]byte(`{invalid json`)))
 	w := httptest.NewRecorder()
@@ -229,7 +239,8 @@ func TestHandleAwardXP_InvalidJSON(t *testing.T) {
 
 func TestHandleAwardXP_MissingUserID(t *testing.T) {
 	svc := mocks.NewMockJobService(t)
-	h := NewJobHandler(svc)
+	userRepo := mocks.NewMockRepositoryUser(t)
+	h := NewJobHandler(svc, userRepo)
 
 	reqBody := AwardXPRequest{
 		// UserID missing
@@ -249,7 +260,8 @@ func TestHandleAwardXP_MissingUserID(t *testing.T) {
 
 func TestHandleAwardXP_MissingJobKey(t *testing.T) {
 	svc := mocks.NewMockJobService(t)
-	h := NewJobHandler(svc)
+	userRepo := mocks.NewMockRepositoryUser(t)
+	h := NewJobHandler(svc, userRepo)
 
 	reqBody := AwardXPRequest{
 		Platform:       domain.PlatformTwitch,
@@ -270,7 +282,8 @@ func TestHandleAwardXP_MissingJobKey(t *testing.T) {
 
 func TestHandleAwardXP_ServiceError_JobNotFound(t *testing.T) {
 	svc := mocks.NewMockJobService(t)
-	h := NewJobHandler(svc)
+	userRepo := mocks.NewMockRepositoryUser(t)
+	h := NewJobHandler(svc, userRepo)
 
 	reqBody := AwardXPRequest{
 		Platform:       domain.PlatformTwitch,
@@ -294,7 +307,8 @@ func TestHandleAwardXP_ServiceError_JobNotFound(t *testing.T) {
 
 func TestHandleAwardXP_ServiceError_FeatureLocked(t *testing.T) {
 	svc := mocks.NewMockJobService(t)
-	h := NewJobHandler(svc)
+	userRepo := mocks.NewMockRepositoryUser(t)
+	h := NewJobHandler(svc, userRepo)
 
 	reqBody := AwardXPRequest{
 		Platform:       domain.PlatformTwitch,
@@ -318,7 +332,8 @@ func TestHandleAwardXP_ServiceError_FeatureLocked(t *testing.T) {
 
 func TestHandleAwardXP_WithMetadata(t *testing.T) {
 	svc := mocks.NewMockJobService(t)
-	h := NewJobHandler(svc)
+	userRepo := mocks.NewMockRepositoryUser(t)
+	h := NewJobHandler(svc, userRepo)
 
 	reqBody := AwardXPRequest{
 		Platform:       domain.PlatformTwitch,

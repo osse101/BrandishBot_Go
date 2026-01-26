@@ -6,8 +6,23 @@ import (
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
+	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/osse101/BrandishBot_Go/internal/stats"
 )
+
+// StatsHandler handles stats-related requests
+type StatsHandler struct {
+	service  stats.Service
+	userRepo repository.User
+}
+
+// NewStatsHandler creates a new StatsHandler
+func NewStatsHandler(service stats.Service, userRepo repository.User) *StatsHandler {
+	return &StatsHandler{
+		service:  service,
+		userRepo: userRepo,
+	}
+}
 
 // RecordEventRequest represents a request to record a custom event
 type RecordEventRequest struct {
@@ -49,30 +64,66 @@ func HandleRecordEvent(svc stats.Service) http.HandlerFunc {
 }
 
 // HandleGetUserStats handles GET requests for user statistics
+// Supports dual-mode: platform+platform_id (self-mode) or platform+username (target-mode)
 // @Summary Get user stats
 // @Description Get statistics for a specific user
 // @Tags stats
 // @Produce json
-// @Param user_id query string true "User ID"
+// @Param platform query string true "Platform (twitch, youtube, discord)"
+// @Param platform_id query string false "Platform-specific user ID (self-mode)"
+// @Param username query string false "Username (target-mode)"
 // @Param period query string false "Period (daily, weekly, all_time)"
 // @Success 200 {object} domain.StatsSummary
 // @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /stats/user [get]
-func HandleGetUserStats(svc stats.Service) http.HandlerFunc {
+func (h *StatsHandler) HandleGetUserStats() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
 
-		userID, ok := GetQueryParam(r, w, "user_id")
+		platform, ok := GetQueryParam(r, w, "platform")
 		if !ok {
 			return
+		}
+
+		platformID := r.URL.Query().Get("platform_id")
+		username := r.URL.Query().Get("username")
+
+		// Require either platform_id or username
+		if platformID == "" && username == "" {
+			log.Warn("Missing required parameter: either platform_id or username required")
+			respondError(w, http.StatusBadRequest, "Either platform_id or username is required")
+			return
+		}
+
+		// Target-mode: resolve user by username
+		var userID string
+		if platformID == "" && username != "" {
+			user, err := h.userRepo.GetUserByPlatformUsername(r.Context(), platform, username)
+			if err != nil {
+				log.Error("Failed to find user by username", "error", err, "platform", platform, "username", username)
+				respondError(w, http.StatusNotFound, "User not found")
+				return
+			}
+			userID = user.ID
+			log.Debug("Resolved username to user_id", "username", username, "user_id", userID)
+		} else {
+			// Self-mode: get user by platform_id
+			user, err := h.userRepo.GetUserByPlatformID(r.Context(), platform, platformID)
+			if err != nil {
+				log.Error("Failed to find user by platform_id", "error", err, "platform", platform, "platform_id", platformID)
+				respondError(w, http.StatusNotFound, "User not found")
+				return
+			}
+			userID = user.ID
 		}
 
 		period := GetOptionalQueryParam(r, "period", domain.PeriodDaily)
 
 		log.Debug("Get user stats request", "user_id", userID, "period", period)
 
-		summary, err := svc.GetUserStats(r.Context(), userID, period)
+		summary, err := h.service.GetUserStats(r.Context(), userID, period)
 		if err != nil {
 			log.Error("Failed to get user stats", "error", err, "user_id", userID)
 			statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)

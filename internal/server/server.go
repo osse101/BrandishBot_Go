@@ -25,6 +25,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/metrics"
 	"github.com/osse101/BrandishBot_Go/internal/naming"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
+	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/osse101/BrandishBot_Go/internal/sse"
 	"github.com/osse101/BrandishBot_Go/internal/stats"
 	"github.com/osse101/BrandishBot_Go/internal/user"
@@ -46,7 +47,7 @@ type Server struct {
 }
 
 // NewServer creates a new Server instance
-func NewServer(port int, apiKey string, trustedProxies []string, dbPool database.Pool, userService user.Service, economyService economy.Service, craftingService crafting.Service, statsService stats.Service, progressionService progression.Service, gambleService gamble.Service, jobService job.Service, linkingService linking.Service, namingResolver naming.Resolver, eventBus event.Bus, sseHub *sse.Hub) *Server {
+func NewServer(port int, apiKey string, trustedProxies []string, dbPool database.Pool, userService user.Service, economyService economy.Service, craftingService crafting.Service, statsService stats.Service, progressionService progression.Service, gambleService gamble.Service, jobService job.Service, linkingService linking.Service, namingResolver naming.Resolver, eventBus event.Bus, sseHub *sse.Hub, userRepo repository.User) *Server {
 	r := chi.NewRouter()
 
 	// Middleware stack
@@ -98,7 +99,10 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 
 		r.Post("/message/handle", handler.HandleMessageHandler(userService, progressionService, eventBus))
 		r.Post("/test", handler.HandleTest(userService))
-		r.Get("/recipes", handler.HandleGetRecipes(craftingService))
+
+		// Crafting routes
+		craftingHandler := handler.NewCraftingHandler(craftingService, userRepo)
+		r.Get("/recipes", craftingHandler.HandleGetRecipes())
 
 		r.Route("/prices", func(r chi.Router) {
 			r.Get("/", handler.HandleGetPrices(economyService))
@@ -114,16 +118,17 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 		})
 
 		// Job routes
-		jobHandler := handler.NewJobHandler(jobService)
+		jobHandler := handler.NewJobHandler(jobService, userRepo)
 		r.Route("/jobs", func(r chi.Router) {
 			r.Get("/user", jobHandler.HandleGetUserJobs)
 			r.Post("/award-xp", jobHandler.HandleAwardXP)
 		})
 
 		// Stats routes
+		statsHandler := handler.NewStatsHandler(statsService, userRepo)
 		r.Route("/stats", func(r chi.Router) {
 			r.Post("/event", handler.HandleRecordEvent(statsService))
-			r.Get("/user", handler.HandleGetUserStats(statsService))
+			r.Get("/user", statsHandler.HandleGetUserStats())
 			r.Get("/system", handler.HandleGetSystemStats(statsService))
 			r.Get("/leaderboard", handler.HandleGetLeaderboard(statsService))
 		})

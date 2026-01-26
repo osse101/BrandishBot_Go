@@ -5,32 +5,61 @@ import (
 
 	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
+	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
 
 type JobHandler struct {
-	service job.Service
+	service  job.Service
+	userRepo repository.User
 }
 
-func NewJobHandler(service job.Service) *JobHandler {
+func NewJobHandler(service job.Service, userRepo repository.User) *JobHandler {
 	return &JobHandler{
-		service: service,
+		service:  service,
+		userRepo: userRepo,
 	}
 }
 
 // HandleGetUserJobs returns a user's job progress
+// Supports dual-mode: platform+platform_id (self-mode) or platform+username (target-mode)
 func (h *JobHandler) HandleGetUserJobs(w http.ResponseWriter, r *http.Request) {
+	log := logger.FromContext(r.Context())
+
 	platform, ok := GetQueryParam(r, w, "platform")
 	if !ok {
 		return
 	}
-	platformID, ok := GetQueryParam(r, w, "platform_id")
-	if !ok {
+
+	platformID := r.URL.Query().Get("platform_id")
+	username := r.URL.Query().Get("username")
+
+	// Require either platform_id or username
+	if platformID == "" && username == "" {
+		log.Warn("Missing required parameter: either platform_id or username required")
+		respondError(w, http.StatusBadRequest, "Either platform_id or username is required")
 		return
+	}
+
+	// Target-mode: resolve user by username
+	if platformID == "" && username != "" {
+		user, err := h.userRepo.GetUserByPlatformUsername(r.Context(), platform, username)
+		if err != nil {
+			log.Error("Failed to find user by username", "error", err, "platform", platform, "username", username)
+			respondError(w, http.StatusNotFound, "User not found")
+			return
+		}
+		platformID = getPlatformID(user, platform)
+		if platformID == "" {
+			log.Error("User found but no platform ID", "username", username, "platform", platform)
+			respondError(w, http.StatusNotFound, "User not found on platform")
+			return
+		}
+		log.Debug("Resolved username to platform_id", "username", username, "platform_id", platformID)
 	}
 
 	userJobs, err := h.service.GetUserJobsByPlatform(r.Context(), platform, platformID)
 	if err != nil {
-		logger.FromContext(r.Context()).Error("Failed to get user jobs", "error", err, "platform", platform, "platform_id", platformID)
+		log.Error("Failed to get user jobs", "error", err, "platform", platform, "platform_id", platformID)
 		statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
 		return
 	}
@@ -38,7 +67,7 @@ func (h *JobHandler) HandleGetUserJobs(w http.ResponseWriter, r *http.Request) {
 	primaryJob, _ := h.service.GetPrimaryJob(r.Context(), platform, platformID)
 
 	respondJSON(w, http.StatusOK, map[string]interface{}{
-		"platform":      platform,
+		"platform":    platform,
 		"platform_id": platformID,
 		"primary_job": primaryJob,
 		"jobs":        userJobs,

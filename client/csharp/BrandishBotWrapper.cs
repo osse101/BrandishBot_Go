@@ -923,31 +923,58 @@ public class CPHInline
     #region Stats & Leaderboards
 
     /// <summary>
-    /// Get user statistics (Self)
-    /// Command: !stats
+    /// Get user statistics
+    /// Command: !stats [target_user]
     /// </summary>
     public bool GetUserStats()
     {
         EnsureInitialized();
         string error = null;
 
-        if (!ValidateContext(out string platform, out string platformId, out string username, ref error))
+        if (!CPH.TryGetArg("userType", out string platform))
         {
-            CPH.LogWarn($"GetUserStats Failed: {error}");
+            CPH.LogWarn("GetUserStats Failed: Missing userType");
             return false;
         }
 
-        try
+        // Check for target_user parameter (optional)
+        if (GetInputString(0, "target_user", true, out string targetUser, ref error) && !string.IsNullOrWhiteSpace(targetUser))
         {
-            var result = client.GetUserStats(platform, platformId).Result;
-            CPH.SetArgument("response", result);
-            return true;
+            // Target-mode: query another user by username
+            try
+            {
+                var result = client.GetUserStatsByUsername(platform, targetUser).Result;
+                CPH.SetArgument("response", result);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                CPH.LogWarn($"GetUserStatsByUsername Error: {ex.Message}");
+                CPH.SetArgument("response", $"Error: {ex.Message}");
+                return true;
+            }
         }
-        catch (Exception ex)
+        else
         {
-            CPH.LogWarn($"GetUserStats API Error: {ex.Message}");
-            CPH.SetArgument("response", $"Error: {ex.Message}");
-            return true;
+            // Self-mode: query own stats
+            if (!ValidateContext(out string _, out string platformId, out string username, ref error))
+            {
+                CPH.LogWarn($"GetUserStats Failed: {error}");
+                return false;
+            }
+
+            try
+            {
+                var result = client.GetUserStats(platform, platformId).Result;
+                CPH.SetArgument("response", result);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                CPH.LogWarn($"GetUserStats API Error: {ex.Message}");
+                CPH.SetArgument("response", $"Error: {ex.Message}");
+                return true;
+            }
         }
     }
 
@@ -1494,30 +1521,57 @@ public class CPHInline
 
     /// <summary>
     /// Get user's job progress
-    /// Command: !myJobs
+    /// Command: !myJobs [target_user]
     /// </summary>
     public bool GetUserJobs()
     {
         EnsureInitialized();
         string error = null;
-        
-        if (!ValidateContext(out string platform, out string platformId, out string username, ref error))
+
+        if (!CPH.TryGetArg("userType", out string platform))
         {
-            CPH.LogWarn($"GetUserJobs Failed: {error}");
+            CPH.LogWarn("GetUserJobs Failed: Missing userType");
             return false;
         }
 
-        try
+        // Check for target_user parameter (optional)
+        if (GetInputString(0, "target_user", true, out string targetUser, ref error) && !string.IsNullOrWhiteSpace(targetUser))
         {
-            var result = client.GetUserJobs(platform, username).Result;
-            CPH.SetArgument("response", result);
-            return true;
+            // Target-mode: query another user by username
+            try
+            {
+                var result = client.GetUserJobsByUsername(platform, targetUser).Result;
+                CPH.SetArgument("response", result);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                CPH.LogWarn($"GetUserJobsByUsername Error: {ex.Message}");
+                CPH.SetArgument("response", $"Error: {ex.Message}");
+                return true;
+            }
         }
-        catch (Exception ex)
+        else
         {
-            CPH.LogWarn($"GetUserJobs API Error: {ex.Message}");
-            CPH.SetArgument("response", $"Error: {ex.Message}");
-            return true;
+            // Self-mode: query own jobs
+            if (!ValidateContext(out string _, out string platformId, out string username, ref error))
+            {
+                CPH.LogWarn($"GetUserJobs Failed: {error}");
+                return false;
+            }
+
+            try
+            {
+                var result = client.GetUserJobs(platform, platformId, username).Result;
+                CPH.SetArgument("response", result);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                CPH.LogWarn($"GetUserJobs API Error: {ex.Message}");
+                CPH.SetArgument("response", $"Error: {ex.Message}");
+                return true;
+            }
         }
     }
 
@@ -1573,28 +1627,59 @@ public class CPHInline
     /// Get unlocked crafting recipes for the calling user
     /// Uses: userType, userId, userName (from streamer.bot context)
     /// </summary>
+    /// <summary>
+    /// Get unlocked recipes for a user
+    /// Command: !recipes [target_user]
+    /// </summary>
     public bool GetUnlockedRecipes()
     {
         EnsureInitialized();
         string error = null;
 
-        if (!ValidateContext(out string platform, out string platformId, out string username, ref error))
+        if (!CPH.TryGetArg("userType", out string platform))
         {
-            CPH.LogWarn($"GetUnlockedRecipes Failed: {error}");
+            CPH.LogWarn("GetUnlockedRecipes Failed: Missing userType");
             return false;
         }
 
-        try
+        // Check for target_user parameter (optional)
+        if (GetInputString(0, "target_user", true, out string targetUser, ref error) && !string.IsNullOrWhiteSpace(targetUser))
         {
-            var result = client.GetUnlockedRecipes(platform, platformId, username).Result;
-            CPH.SetArgument("response", result);
-            return true;
+            // Target-mode: query another user by username
+            try
+            {
+                var result = client.GetUnlockedRecipesByUsername(platform, targetUser).Result;
+                CPH.SetArgument("response", result);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                CPH.LogWarn($"GetUnlockedRecipesByUsername Error: {ex.Message}");
+                CPH.SetArgument("response", $"Error: {ex.Message}");
+                return true;
+            }
         }
-        catch (Exception ex)
+        else
         {
-            CPH.LogWarn($"GetUnlockedRecipes API Error: {ex.Message}");
-            CPH.SetArgument("response", $"Error: {ex.Message}");
-            return true;
+            // Self-mode: query own recipes
+            if (!ValidateContext(out string _, out string platformId, out string username, ref error))
+            {
+                CPH.LogWarn($"GetUnlockedRecipes Failed: {error}");
+                return false;
+            }
+
+            try
+            {
+                var result = client.GetUnlockedRecipes(platform, platformId, username).Result;
+                CPH.SetArgument("response", result);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                CPH.LogWarn($"GetUnlockedRecipes API Error: {ex.Message}");
+                CPH.SetArgument("response", $"Error: {ex.Message}");
+                return true;
+            }
         }
     }
 
