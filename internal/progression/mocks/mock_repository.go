@@ -352,7 +352,7 @@ func (_c *MockRepository_CreateVotingSession_Call) RunAndReturn(run func(context
 }
 
 // EndVotingSession provides a mock function with given fields: ctx, sessionID, winningOptionID
-func (_m *MockRepository) EndVotingSession(ctx context.Context, sessionID int, winningOptionID int) error {
+func (_m *MockRepository) EndVotingSession(ctx context.Context, sessionID int, winningOptionID *int) error {
 	ret := _m.Called(ctx, sessionID, winningOptionID)
 
 	if len(ret) == 0 {
@@ -360,7 +360,7 @@ func (_m *MockRepository) EndVotingSession(ctx context.Context, sessionID int, w
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, int, int) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, int, *int) error); ok {
 		r0 = rf(ctx, sessionID, winningOptionID)
 	} else {
 		r0 = ret.Error(0)
@@ -377,14 +377,14 @@ type MockRepository_EndVotingSession_Call struct {
 // EndVotingSession is a helper method to define mock.On call
 //   - ctx context.Context
 //   - sessionID int
-//   - winningOptionID int
+//   - winningOptionID *int
 func (_e *MockRepository_Expecter) EndVotingSession(ctx interface{}, sessionID interface{}, winningOptionID interface{}) *MockRepository_EndVotingSession_Call {
 	return &MockRepository_EndVotingSession_Call{Call: _e.mock.On("EndVotingSession", ctx, sessionID, winningOptionID)}
 }
 
-func (_c *MockRepository_EndVotingSession_Call) Run(run func(ctx context.Context, sessionID int, winningOptionID int)) *MockRepository_EndVotingSession_Call {
+func (_c *MockRepository_EndVotingSession_Call) Run(run func(ctx context.Context, sessionID int, winningOptionID *int)) *MockRepository_EndVotingSession_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(int), args[2].(int))
+		run(args[0].(context.Context), args[1].(int), args[2].(*int))
 	})
 	return _c
 }
@@ -394,7 +394,7 @@ func (_c *MockRepository_EndVotingSession_Call) Return(_a0 error) *MockRepositor
 	return _c
 }
 
-func (_c *MockRepository_EndVotingSession_Call) RunAndReturn(run func(context.Context, int, int) error) *MockRepository_EndVotingSession_Call {
+func (_c *MockRepository_EndVotingSession_Call) RunAndReturn(run func(context.Context, int, *int) error) *MockRepository_EndVotingSession_Call {
 	_c.Call.Return(run)
 	return _c
 }

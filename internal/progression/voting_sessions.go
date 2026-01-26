@@ -270,7 +270,8 @@ func (s *service) EndVoting(ctx context.Context) (*domain.ProgressionVotingOptio
 		return nil, fmt.Errorf("no voting options found")
 	}
 
-	if err = s.repo.EndVotingSession(ctx, session.ID, winner.ID); err != nil {
+	winnerID := winner.ID
+	if err = s.repo.EndVotingSession(ctx, session.ID, &winnerID); err != nil {
 		return nil, fmt.Errorf("failed to end voting session: %w", err)
 	}
 
@@ -520,7 +521,8 @@ func (s *service) CheckAndUnlockNode(ctx context.Context) (*domain.ProgressionUn
 					}
 				}
 				if winningOptionID > 0 {
-					if err := s.repo.EndVotingSession(ctx, *progress.VotingSessionID, winningOptionID); err != nil {
+					optID := winningOptionID
+					if err := s.repo.EndVotingSession(ctx, *progress.VotingSessionID, &optID); err != nil {
 						log.Warn("Failed to end voting session on unlock", "sessionID", *progress.VotingSessionID, "error", err)
 					}
 				}
@@ -593,7 +595,8 @@ func (s *service) handlePostUnlockTransition(ctx context.Context, unlockedNodeID
 		// End voting and get winner
 		winner := findWinningOption(activeSession.Options)
 		if winner != nil {
-			if err := s.repo.EndVotingSession(ctx, activeSession.ID, winner.ID); err != nil {
+			winnerID := winner.ID
+			if err := s.repo.EndVotingSession(ctx, activeSession.ID, &winnerID); err != nil {
 				log.Warn("Failed to end parallel voting session", "sessionID", activeSession.ID, "error", err)
 			} else {
 				newTargetNode = winner.NodeDetails
@@ -644,8 +647,8 @@ func (s *service) handlePostUnlockTransition(ctx context.Context, unlockedNodeID
 	s.cachedProgressID = newProgressID
 	s.mu.Unlock()
 
-	// End the placeholder session
-	if err := s.repo.EndVotingSession(ctx, sessionID, 0); err != nil {
+	// End the placeholder session (no winning option for placeholder)
+	if err := s.repo.EndVotingSession(ctx, sessionID, nil); err != nil {
 		log.Warn("Failed to end placeholder session", "error", err)
 	}
 
@@ -809,7 +812,7 @@ func (s *service) AdminStartVoting(ctx context.Context) error {
 
 		if len(remainingAvailable) >= 2 {
 			// End the placeholder session and start a real voting session
-			if err := s.repo.EndVotingSession(ctx, sessionID, 0); err != nil {
+			if err := s.repo.EndVotingSession(ctx, sessionID, nil); err != nil {
 				log.Warn("Failed to end placeholder session", "error", err)
 			}
 			return s.startVotingWithOptions(ctx, remainingAvailable, nil)
@@ -1000,8 +1003,8 @@ func (s *service) InitializeProgressionState(ctx context.Context) error {
 	s.cachedProgressID = progressID
 	s.mu.Unlock()
 
-	// End the placeholder session
-	if err := s.repo.EndVotingSession(ctx, sessionID, 0); err != nil {
+	// End the placeholder session (no winning option for placeholder)
+	if err := s.repo.EndVotingSession(ctx, sessionID, nil); err != nil {
 		log.Warn("Failed to end placeholder session", "error", err)
 	}
 

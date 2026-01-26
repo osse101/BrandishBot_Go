@@ -158,10 +158,16 @@ func (r *progressionRepository) IncrementOptionVote(ctx context.Context, optionI
 	return err
 }
 
-func (r *progressionRepository) EndVotingSession(ctx context.Context, sessionID int, winningOptionID int) error {
+func (r *progressionRepository) EndVotingSession(ctx context.Context, sessionID int, winningOptionID *int) error {
+	var optionID pgtype.Int4
+	if winningOptionID != nil {
+		optionID = pgtype.Int4{Int32: int32(*winningOptionID), Valid: true}
+	}
+	// else: leave optionID with Valid: false (NULL)
+
 	err := r.q.EndVotingSession(ctx, generated.EndVotingSessionParams{
 		ID:              int32(sessionID),
-		WinningOptionID: pgtype.Int4{Int32: int32(winningOptionID), Valid: true},
+		WinningOptionID: optionID,
 	})
 
 	if err != nil {

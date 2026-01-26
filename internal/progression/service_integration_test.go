@@ -253,7 +253,7 @@ func testFKConstraints(t *testing.T, ctx context.Context, svc Service, repo Repo
 		optionID := session2.Options[0].ID
 
 		// End the session
-		err = repo.EndVotingSession(ctx, sessionID2, optionID)
+		err = repo.EndVotingSession(ctx, sessionID2, &optionID)
 		if err != nil {
 			t.Fatalf("Failed to end session: %v", err)
 		}

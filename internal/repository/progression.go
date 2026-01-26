@@ -34,7 +34,7 @@ type Progression interface {
 	GetMostRecentSession(ctx context.Context) (*domain.ProgressionVotingSession, error)    // Bug #1: Get most recent session (any status)
 	GetSessionByID(ctx context.Context, sessionID int) (*domain.ProgressionVotingSession, error)
 	IncrementOptionVote(ctx context.Context, optionID int) error
-	EndVotingSession(ctx context.Context, sessionID int, winningOptionID int) error
+	EndVotingSession(ctx context.Context, sessionID int, winningOptionID *int) error
 	FreezeVotingSession(ctx context.Context, sessionID int) error  // Pause voting until unlock completes
 	ResumeVotingSession(ctx context.Context, sessionID int) error  // Resume frozen voting session
 	GetSessionVoters(ctx context.Context, sessionID int) ([]string, error)

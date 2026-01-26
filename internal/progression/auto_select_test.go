@@ -196,7 +196,8 @@ func TestStartVotingSession_MultiLevelNode_AutoSelect(t *testing.T) {
 	// End the current voting session first (Bug #7 fix prevents duplicate sessions)
 	activeSession, _ := repo.GetActiveSession(ctx)
 	if activeSession != nil && len(activeSession.Options) > 0 {
-		repo.EndVotingSession(ctx, activeSession.ID, activeSession.Options[0].ID)
+		optionID := activeSession.Options[0].ID
+		repo.EndVotingSession(ctx, activeSession.ID, &optionID)
 	}
 
 	// Simulate unlock completion

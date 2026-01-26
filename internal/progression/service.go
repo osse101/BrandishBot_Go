@@ -710,7 +710,8 @@ func (s *service) ForceInstantUnlock(ctx context.Context) (*domain.ProgressionUn
 	}
 
 	// End voting session
-	if err := s.repo.EndVotingSession(ctx, session.ID, winner.ID); err != nil {
+	winnerID := winner.ID
+	if err := s.repo.EndVotingSession(ctx, session.ID, &winnerID); err != nil {
 		return nil, fmt.Errorf("failed to end voting: %w", err)
 	}
 

@@ -196,7 +196,7 @@ func TestProgressionRepository_Integration(t *testing.T) {
 		// End voting session
 		if len(session.Options) > 0 {
 			winningOptionID := session.Options[0].ID
-			err = repo.EndVotingSession(ctx, sessionID, winningOptionID)
+			err = repo.EndVotingSession(ctx, sessionID, &winningOptionID)
 			if err != nil {
 				t.Fatalf("EndVotingSession failed: %v", err)
 			}

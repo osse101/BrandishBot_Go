@@ -54,7 +54,7 @@ func (m *ReliabilityMockRepository) ResumeVotingSession(ctx context.Context, ses
 	return args.Error(0)
 }
 
-func (m *ReliabilityMockRepository) EndVotingSession(ctx context.Context, sessionID int, winningOptionID int) error {
+func (m *ReliabilityMockRepository) EndVotingSession(ctx context.Context, sessionID int, winningOptionID *int) error {
 	args := m.Called(ctx, sessionID, winningOptionID)
 	return args.Error(0)
 }
@@ -245,8 +245,9 @@ func TestForceInstantUnlock_Reliability(t *testing.T) {
 	mockRepo.On("GetActiveSession", mock.Anything).Return(session, nil)
 	mockRepo.On("GetActiveOrFrozenSession", mock.Anything).Return(nil, nil) // No active/frozen session for post-unlock
 
-	// End voting success
-	mockRepo.On("EndVotingSession", mock.Anything, 1, 10).Return(nil)
+	// End voting success - match pointer to 10
+	optionIDPtr := 10
+	mockRepo.On("EndVotingSession", mock.Anything, 1, &optionIDPtr).Return(nil)
 
 	// Get unlock progress
 	mockRepo.On("GetActiveUnlockProgress", mock.Anything).Return(&domain.UnlockProgress{ID: 5}, nil)

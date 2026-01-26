@@ -618,13 +618,13 @@ func (m *MockRepository) IncrementOptionVote(ctx context.Context, optionID int) 
 	return fmt.Errorf("option not found")
 }
 
-func (m *MockRepository) EndVotingSession(ctx context.Context, sessionID int, winningOptionID int) error {
+func (m *MockRepository) EndVotingSession(ctx context.Context, sessionID int, winningOptionID *int) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if session, ok := m.sessions[sessionID]; ok {
 		session.Status = "ended"
 		session.EndedAt = timePtr(time.Now())
-		session.WinningOptionID = &winningOptionID
+		session.WinningOptionID = winningOptionID
 		return nil
 	}
 	return fmt.Errorf("session not found")

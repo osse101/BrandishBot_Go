@@ -142,7 +142,8 @@ func TestVoteForUnlock_SessionNotVoting(t *testing.T) {
 	// Create and end session
 	service.StartVotingSession(ctx, nil)
 	session, _ := repo.GetActiveSession(ctx)
-	repo.EndVotingSession(ctx, session.ID, session.Options[0].ID)
+	optionID := session.Options[0].ID
+	repo.EndVotingSession(ctx, session.ID, &optionID)
 
 	err := service.VoteForUnlock(ctx, "discord", "user1", "item_money")
 	assert.Error(t, err)
