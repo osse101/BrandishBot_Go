@@ -1,6 +1,60 @@
-GetVotingSession -- Formatting error (ResponseFormatter.cs)
-/stats/user -- 1) user_id also requires platform 2) platform & username should also be acceptable inputs
-VotingStarted Websocket -- Session ID is not worth sending.  It is not used by the client.  This should send the same data as GetVotingSession.
-NodeUnlockProgress(internal) -- Logging needs to display contribution amount and total required as raw values.  Currently displays nothing.
-CycleCompleted Websocket -- This should only send the feature that was unlocked, I think.  There is overlap with VotingStarted.  If we can, votingstarted should be the only one announcing the next vote.  There should be a slight delay between Node unlock and new vote started (on the client side, like a delayed publish).
+!sellPrices -- Returns list of all items.  Should only return unlocked items.
+BuyPrices -- Displays and sells items that haven't been unlocked.
+Commands -- add contribution on all command handlers
+Gamble tried to execute after timer ended but was stopped by internal timer -- level=INFO msg="Executing scheduled gamble" gambleID=2f680867-a486-49bb-b26c-2fa2fd6d75e1
+    time=2026-01-27T04:06:56.822Z level=INFO msg="ExecuteGamble called" gambleID=2f680867-a486-49bb-b26c-2fa2fd6d75e1
+    time=2026-01-27T04:06:56.823Z level=ERROR msg="Failed to execute gamble" gambleID=2f680867-a486-49bb-b26c-2fa2fd6d75e1 error="cannot execute gamble before join deadline (deadline: 2026-01-27 04:06:57.810559 +0000 UTC)"
+GambleStart -- Response is "(no message)".  Should contain gamble ID.
+GetActiveGamble -- Returns no response on missing ID parameter.
+GetUserJobs -- Needs Formatting
+!use <item> <valid-nonuser-target> -- Treats "nonuser target" as a user.
+Discord commands target old endpoints.
 
+BrandishBot_VotingStarted -- Input string was not in a correct format?
+[2026-01-27 00:52:01.953 DBG] ActionQueue :: 'Default' (00000000-0000-0000-0000-000000000000) :: Performing non-blocking 'BrandishBot_VotingStarted' (774f5e7b-fd4b-4760-a33a-0524c55b9938, 8d1ce5cc-2fe3-4957-8f59-6291f85046c5)
+[2026-01-27 00:52:01.953 DBG] InlineCode :: Running default entry point from instance '9cde82e3-8447-47fb-8fe1-52293997f3fb'
+[2026-01-27 00:52:01.955 ERR] InlineCode :: There was an error running the instance for ''
+System.FormatException: Input string was not in a correct format.
+
+Server stack trace: 
+   at System.Number.StringToNumber(String str, NumberStyles options, NumberBuffer& number, NumberFormatInfo info, Boolean parseDecimal)
+   at System.Number.ParseInt32(String s, NumberStyles style, NumberFormatInfo info)
+   at System.String.System.IConvertible.ToInt32(IFormatProvider provider)
+   at System.Convert.ChangeType(Object value, Type conversionType, IFormatProvider provider)
+   at _xM2ejQibMq8txiVDwkuPKwYciLDA.TryGetArg[T](String argName, T& value)
+   at System.Runtime.Remoting.Messaging.StackBuilderSink._PrivateProcessMessage(IntPtr md, Object[] args, Object server, Object[]& outArgs)
+   at System.Runtime.Remoting.Messaging.StackBuilderSink.SyncProcessMessage(IMessage msg)
+
+Exception rethrown at [0]: 
+   at System.Runtime.Remoting.Proxies.RealProxy.HandleReturnMessage(IMessage reqMsg, IMessage retMsg)
+   at System.Runtime.Remoting.Proxies.RealProxy.PrivateInvoke(MessageData& msgData, Int32 type)
+   at Streamer.bot.Plugin.Interface.IInlineInvokeProxy.TryGetArg[T](String argName, T& value)
+   at qefbb830fa204a4b86bebba31dea5ff8.CPHInline.Execute()
+   at _qvWICFSGcJadAvnFSAXKD499KME._ICRxweZUix6yibvD2P8Y1CZjvBo(Dictionary`2 , String )
+   at _qvWICFSGcJadAvnFSAXKD499KME._ICRxweZUix6yibvD2P8Y1CZjvBo(Dictionary`2 , String )
+   at _mOmTqYKGqI4jFJa5lSTzEWXpfki._GjMSMDhB6FZ7HMt6ai4dt6t2iPg(Guid , _mt6qaYtzB3KbzHISkTBJYnHYjIA , Dictionary`2 , String , Boolean )
+   at _c5L3xg5oCj0mC8CAVh1U0QxPwGh._C5dwc2njiIyGqFaPne8at5tflcD.MoveNext()
+[2026-01-27 00:52:02.106 DBG] InlineCode :: Running default entry point from instance '05b79b0e-11b3-454f-a503-1eb104353768'
+
+"`%option_1%`"	"Advanced Lootbox"
+"`%option_1_description%`"	"Unlock lootbox1 with better rewards"
+"`%option_1_duration%`"	"Medium"
+"`%option_1_key%`"	"item_lootbox1"
+"`%option_2%`"	"Upgrade Items"
+"`%option_2_description%`"	"Unlock item upgrading/crafting system"
+"`%option_2_duration%`"	"Medium"
+"`%option_2_key%`"	"feature_upgrade"
+"`%option_3%`"	"Job XP Boost"
+"`%option_3_description%`"	"Increase job XP gains by +10% per level (max 5 levels = +50%)"
+"`%option_3_duration%`"	"Short"
+"`%option_3_key%`"	"upgrade_job_xp_multiplier"
+"`%option_4%`"	"Medium Revive"
+"`%option_4_description%`"	"Unlock medium revive - reduces timeout by 10 minutes"
+"`%option_4_duration%`"	"Medium"
+"`%option_4_key%`"	"item_revivem"
+"`%options_count%`"	"4"
+"`%previous_unlock%`"	"Search System"
+"`%actionId%`"	"774f5e7b-fd4b-4760-a33a-0524c55b9938"
+"`%actionName%`"	"BrandishBot_VotingStarted"
+"`%runningActionId%`"	"8d1ce5cc-2fe3-4957-8f59-6291f85046c5"
+"`%actionQueuedAt%`"	"2026-01-27 12:52:01 AM"

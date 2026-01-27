@@ -115,7 +115,7 @@ namespace BrandishBot.Client
                 }
 
                 return formattedItems.Count > 0 
-                    ? string.Join(" | ", formattedItems)
+                    ? string.Join(" ", formattedItems)
                     : "Empty inventory";
             }
             catch (Exception ex)
