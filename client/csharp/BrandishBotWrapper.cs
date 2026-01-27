@@ -173,7 +173,8 @@ public class CPHInline
     {
         if (string.IsNullOrEmpty(message)) return message;
         int colonIndex = message.IndexOf(": ");
-        if (colonIndex > 0 && colonIndex < 15 && char.IsDigit(message[0]))
+        // If it starts with a number (HTTP Status Code) and has a colon, strip the prefix
+        if (colonIndex > 0 && char.IsDigit(message[0]))
         {
             return message.Substring(colonIndex + 2);
         }
@@ -339,7 +340,7 @@ public class CPHInline
         catch (Exception ex)
         {
             LogWarning("AddItem", ex);
-            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
             return true;
         }
     }
@@ -383,7 +384,7 @@ public class CPHInline
         catch (Exception ex)
         {
             LogWarning("RemoveItem", ex);
-            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
             return true;
         }
     }
@@ -430,7 +431,7 @@ public class CPHInline
         catch (Exception ex)
         {
             LogWarning("GiveItem", ex);
-            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
             return true;
         }
     }
@@ -482,7 +483,7 @@ public class CPHInline
             else
             {
                 LogWarning("BuyItem", ex);
-                CPH.SetArgument("response", $"Error: {errorMsg}");
+                CPH.SetArgument("response", errorMsg);
             }
             return true;
         }
@@ -532,7 +533,7 @@ public class CPHInline
             else
             {
                 LogWarning("SellItem", ex);
-                CPH.SetArgument("response", $"Error: {errorMsg}");
+                CPH.SetArgument("response", errorMsg);
             }
             return true;
         }
@@ -739,7 +740,7 @@ public class CPHInline
             else
             {
                 LogWarning("UpgradeItem", ex);
-                CPH.SetArgument("response", $"Error: {errorMsg}");
+                CPH.SetArgument("response", errorMsg);
             }
             return true;
         }
@@ -789,7 +790,7 @@ public class CPHInline
             else
             {
                 LogWarning("DisassembleItem", ex);
-                CPH.SetArgument("response", $"Error: {errorMsg}");
+                CPH.SetArgument("response", errorMsg);
             }
             return true;
         }
@@ -869,7 +870,7 @@ public class CPHInline
             else
             {
                 LogWarning("StartGamble", ex);
-                CPH.SetArgument("response", $"Error: {errorMsg}");
+                CPH.SetArgument("response", errorMsg);
             }
             return true;
         }
@@ -910,7 +911,7 @@ public class CPHInline
             else
             {
                 LogWarning("JoinGamble", ex);
-                CPH.SetArgument("response", $"Error: {errorMsg}");
+                CPH.SetArgument("response", errorMsg);
             }
             return true;
         }
@@ -969,7 +970,7 @@ public class CPHInline
             catch (Exception ex)
             {
                 LogWarning("GetUserStatsByUsername", ex);
-                CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
+                CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
                 return true;
             }
         }
@@ -991,7 +992,7 @@ public class CPHInline
             catch (Exception ex)
             {
                 LogWarning("GetUserStats", ex);
-                CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
+                CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
                 return true;
             }
         }
@@ -1014,7 +1015,7 @@ public class CPHInline
         catch (Exception ex)
         {
             LogWarning("GetSystemStats", ex);
-            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
             return true;
         }
     }
@@ -1051,7 +1052,7 @@ public class CPHInline
         catch (Exception ex)
         {
             LogWarning("GetLeaderboard", ex);
-            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
             return true;
         }
     }
@@ -1095,7 +1096,7 @@ public class CPHInline
         catch (Exception ex)
         {
             LogWarning("GetUserTimeout", ex);
-            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
             return true;
         }
     }
@@ -1120,7 +1121,7 @@ public class CPHInline
         catch (Exception ex)
         {
             LogWarning("GetProgressionTree", ex);
-            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
             return true;
         }
     }
@@ -1141,7 +1142,7 @@ public class CPHInline
         catch (Exception ex)
         {
             LogWarning("GetAvailableNodes", ex);
-            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
             return true;
         }
     }
@@ -1185,7 +1186,7 @@ public class CPHInline
         catch (Exception ex)
         {
             LogWarning("VoteForNode", ex);
-            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
             return true;
         }
     }
@@ -1206,7 +1207,7 @@ public class CPHInline
         catch (Exception ex)
         {
             LogWarning("GetProgressionStatus", ex);
-            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
             return true;
         }
     }
@@ -1268,7 +1269,7 @@ public class CPHInline
         catch (Exception ex)
         {
             LogWarning("GetVotingSession", ex);
-            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
             return true;
         }
     }
@@ -1290,7 +1291,7 @@ public class CPHInline
         catch (Exception ex)
         {
             LogWarning("GetUnlockProgress", ex);
-            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
             return true;
         }
     }
@@ -1325,7 +1326,7 @@ public class CPHInline
         catch (Exception ex)
         {
             LogWarning("AdminUnlockNode", ex);
-            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
             return true;
         }
     }
@@ -1348,7 +1349,7 @@ public class CPHInline
         catch (Exception ex)
         {
             LogWarning("AdminUnlockAllNodes", ex);
-            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
             return true;
         }
     }
@@ -1379,7 +1380,7 @@ public class CPHInline
         catch (Exception ex)
         {
             LogWarning("AdminRelockNode", ex);
-            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
             return true;
         }
     }
@@ -1402,7 +1403,7 @@ public class CPHInline
         catch (Exception ex)
         {
             LogWarning("AdminStartVoting", ex);
-            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
             return true;
         }
     }
@@ -1424,7 +1425,7 @@ public class CPHInline
         catch (Exception ex)
         {
             LogWarning("AdminEndVoting", ex);
-            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
             return true;
         }
     }
@@ -1464,7 +1465,7 @@ public class CPHInline
         catch (Exception ex)
         {
             LogWarning("AdminResetProgression", ex);
-            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
             return true;
         }
     }
@@ -1508,7 +1509,7 @@ public class CPHInline
         catch (Exception ex)
         {
             LogWarning("AdminAddContribution", ex);
-            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
             return true;
         }
     }
@@ -1545,7 +1546,7 @@ public class CPHInline
             catch (Exception ex)
             {
                 LogWarning("GetUserJobsByUsername", ex);
-                CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
+                CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
                 return true;
             }
         }
@@ -1567,7 +1568,7 @@ public class CPHInline
             catch (Exception ex)
             {
                 LogWarning("GetUserJobs", ex);
-                CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
+                CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
                 return true;
             }
         }
@@ -1614,7 +1615,7 @@ public class CPHInline
             else
             {
                 LogWarning("AwardJobXP", ex);
-                CPH.SetArgument("response", $"Error: {errorMsg}");
+                CPH.SetArgument("response", errorMsg);
             }
             return true;
         }
@@ -1654,7 +1655,7 @@ public class CPHInline
             catch (Exception ex)
             {
                 LogWarning("GetUnlockedRecipesByUsername", ex);
-                CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
+                CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
                 return true;
             }
         }
@@ -1676,7 +1677,7 @@ public class CPHInline
             catch (Exception ex)
             {
                 LogWarning("GetUnlockedRecipes", ex);
-                CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
+                CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
                 return true;
             }
         }
@@ -1710,7 +1711,7 @@ public class CPHInline
         catch (Exception ex)
         {
             LogWarning("InitiateLinking", ex);
-            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
             return true;
         }
     }
@@ -1746,7 +1747,7 @@ public class CPHInline
         catch (Exception ex)
         {
             LogWarning("ClaimLinkingCode", ex);
-            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
             return true;
         }
     }
@@ -1776,7 +1777,7 @@ public class CPHInline
         catch (Exception ex)
         {
             LogWarning("ConfirmLinking", ex);
-            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
             return true;
         }
     }
@@ -1812,7 +1813,7 @@ public class CPHInline
         catch (Exception ex)
         {
             LogWarning("UnlinkAccounts", ex);
-            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
             return true;
         }
     }
