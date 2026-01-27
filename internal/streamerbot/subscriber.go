@@ -92,21 +92,35 @@ func (s *Subscriber) handleVotingStarted(_ context.Context, evt event.Event) err
 		"previous_unlock": getStringFromMap(payload, "previous_unlock"),
 	}
 
-	// Extract options
-	if opts, ok := payload["options"].([]interface{}); ok {
+	// Extract options - handle both []map[string]interface{} and []interface{}
+	var optsRaw interface{}
+	if optsRaw, ok = payload["options"]; !ok {
+		slog.Warn("Voting started event missing options field", "sessionID", evt.Metadata["session_id"])
+	}
+
+	extractedOptions := false
+	if opts, ok := optsRaw.([]map[string]interface{}); ok {
+		args["options_count"] = fmt.Sprintf("%d", len(opts))
+		for i, optMap := range opts {
+			s.populateOptionArgs(args, i+1, optMap)
+		}
+		extractedOptions = true
+	} else if opts, ok := optsRaw.([]interface{}); ok {
 		args["options_count"] = fmt.Sprintf("%d", len(opts))
 		for i, opt := range opts {
 			if optMap, ok := opt.(map[string]interface{}); ok {
-				displayName := getStringFromMap(optMap, "display_name")
-				if displayName == "" {
-					displayName = getStringFromMap(optMap, "node_key")
-				}
-				args[fmt.Sprintf("option_%d", i+1)] = displayName
-				args[fmt.Sprintf("option_%d_key", i+1)] = getStringFromMap(optMap, "node_key")
-				args[fmt.Sprintf("option_%d_description", i+1)] = getStringFromMap(optMap, "description")
-				args[fmt.Sprintf("option_%d_duration", i+1)] = getStringFromMap(optMap, "unlock_duration")
+				s.populateOptionArgs(args, i+1, optMap)
+			} else {
+				slog.Warn("Individual option is not a map", "index", i, "type", fmt.Sprintf("%T", opt))
 			}
 		}
+		extractedOptions = true
+	} else if optsRaw != nil {
+		slog.Warn("Invalid options type in voting started event", "type", fmt.Sprintf("%T", optsRaw))
+	}
+
+	if !extractedOptions {
+		slog.Warn("Failed to extract options for Streamer.bot", "payload_keys", getMapKeys(payload))
 	}
 
 	slog.Debug(LogMsgEventReceived, "event_type", event.ProgressionVotingStarted, "args", args)
@@ -117,6 +131,17 @@ func (s *Subscriber) handleVotingStarted(_ context.Context, evt event.Event) err
 	}
 
 	return nil
+}
+
+func (s *Subscriber) populateOptionArgs(args map[string]string, index int, optMap map[string]interface{}) {
+	displayName := getStringFromMap(optMap, "display_name")
+	if displayName == "" {
+		displayName = getStringFromMap(optMap, "node_key")
+	}
+	args[fmt.Sprintf("option_%d", index)] = displayName
+	args[fmt.Sprintf("option_%d_key", index)] = getStringFromMap(optMap, "node_key")
+	args[fmt.Sprintf("option_%d_description", index)] = getStringFromMap(optMap, "description")
+	args[fmt.Sprintf("option_%d_duration", index)] = getStringFromMap(optMap, "unlock_duration")
 }
 
 // handleCycleCompleted sends a DoAction for progression cycle completion events
@@ -190,4 +215,12 @@ func getIntFromMap(m map[string]interface{}, key string) int {
 	default:
 		return 0
 	}
+}
+
+func getMapKeys(m map[string]interface{}) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
 }

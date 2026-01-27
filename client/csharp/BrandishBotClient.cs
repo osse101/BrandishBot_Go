@@ -186,7 +186,8 @@ namespace BrandishBot.Client
             string errorBody = await response.Content.ReadAsStringAsync();
             string errorMessage = ExtractErrorMessage(errorBody, response.StatusCode);
 
-            throw new HttpRequestException(errorMessage);
+            // Include status code in the message so it can be identified by the wrapper
+            throw new HttpRequestException($"{(int)response.StatusCode} {response.StatusCode}: {errorMessage}");
         }
 
         #endregion

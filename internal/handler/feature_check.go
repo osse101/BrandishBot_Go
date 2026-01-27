@@ -35,7 +35,7 @@ func CheckFeatureLocked(w http.ResponseWriter, r *http.Request, svc progression.
 			names = append(names, n.DisplayName)
 		}
 
-		msg := ErrMsgFeatureLocked
+		msg := ErrMsgFeatureLocked + ": " + key
 		if len(names) > 0 {
 			msg = fmt.Sprintf("LOCKED_NODES: %s", strings.Join(names, ", "))
 		}

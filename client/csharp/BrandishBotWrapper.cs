@@ -144,21 +144,52 @@ public class CPHInline
     private bool IsForbiddenError(Exception ex)
     {
         if (ex == null) return false;
+        string message = GetErrorMessage(ex);
+        return message.Contains("403") || message.Contains("Forbidden");
+    }
 
-        // Check if it's an AggregateException and look at inner exceptions
-        if (ex is AggregateException aex)
+    /// <summary>
+    /// Helper: Get the most meaningful error message from an exception
+    /// Unwraps AggregateException to get the actual inner error
+    /// </summary>
+    private string GetErrorMessage(Exception ex)
+    {
+        if (ex == null) return "Unknown error";
+        
+        // Unwrapping AggregateException which occurs when using .Result on async tasks
+        if (ex is AggregateException aex && aex.InnerException != null)
         {
-            foreach (var inner in aex.InnerExceptions)
-            {
-                if (inner.Message.Contains("403") || inner.Message.Contains("Forbidden"))
-                {
-                    return true;
-                }
-            }
+            return aex.InnerException.Message;
         }
+        
+        return ex.Message;
+    }
 
-        // Check the exception message directly
-        return ex.Message.Contains("403") || ex.Message.Contains("Forbidden");
+    /// <summary>
+    /// Helper: Strip HTTP status code prefix from error message
+    /// Format: "403 Forbidden: Actual Message" -> "Actual Message"
+    /// </summary>
+    private string StripStatusCode(string message)
+    {
+        if (string.IsNullOrEmpty(message)) return message;
+        int colonIndex = message.IndexOf(": ");
+        if (colonIndex > 0 && colonIndex < 15 && char.IsDigit(message[0]))
+        {
+            return message.Substring(colonIndex + 2);
+        }
+        return message;
+    }
+
+    private void LogException(string context, Exception ex)
+    {
+        string message = GetErrorMessage(ex);
+        CPH.LogError($"{context} failed: {message}");
+    }
+
+    private void LogWarning(string context, Exception ex)
+    {
+        string message = GetErrorMessage(ex);
+        CPH.LogWarn($"{context} Error: {message}");
     }
 
     #region Version    /// <summary>
@@ -178,7 +209,7 @@ public class CPHInline
         }
         catch (Exception ex)
         {
-            CPH.LogError($"GetVersion failed: {ex.Message}");
+            LogException("GetVersion", ex);
             return false;
         }
     }
@@ -207,7 +238,7 @@ public class CPHInline
         }
         catch (Exception ex)
         {
-            CPH.LogError($"RegisterUser failed: {ex.Message}");
+            LogException("RegisterUser", ex);
             return false;
         }
     }
@@ -235,25 +266,19 @@ public class CPHInline
                 CPH.SetArgument("response", ResponseFormatter.FormatInventory(result));
                 return true;
             }
-            catch (AggregateException aex)
+            catch (Exception ex)
             {
-                var inner = aex.InnerException ?? aex;
-                CPH.LogWarn($"GetInventoryByUsername Error: {inner.Message}");
+                string message = GetErrorMessage(ex);
+                LogWarning("GetInventoryByUsername", ex);
                 // Better error message for user not found
-                if (inner.Message.Contains("not found") || inner.Message.Contains("404"))
+                if (message.Contains("not found") || message.Contains("404"))
                 {
                     CPH.SetArgument("response", $"User not found: {targetUser}");
                 }
                 else
                 {
-                    CPH.SetArgument("response", $"Error: {inner.Message}");
+                    CPH.SetArgument("response", $"Error: {StripStatusCode(message)}");
                 }
-                return true;
-            }
-            catch (Exception ex)
-            {
-                CPH.LogWarn($"GetInventoryByUsername Error: {ex.Message}");
-                CPH.SetArgument("response", $"Error: {ex.Message}");
                 return true;
             }
         }else
@@ -268,8 +293,8 @@ public class CPHInline
             }
             catch (Exception ex)
             {
-                CPH.LogWarn($"GetInventory Error: {ex.Message}");
-                CPH.SetArgument("response", $"Error: {ex.Message}");
+                LogWarning("GetInventory", ex);
+                CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
                 return true;
             }
         }
@@ -311,17 +336,10 @@ public class CPHInline
             CPH.SetArgument("response", formatted);
             return true;
         }
-        catch (AggregateException aex)
-        {
-             var inner = aex.InnerException ?? aex;
-             CPH.LogWarn($"AddItem Error: {inner.Message}");
-             CPH.SetArgument("response", $"Error: {inner.Message}");
-             return true;
-        }
         catch (Exception ex)
         {
-            CPH.LogWarn($"AddItem API Error: {ex.Message}");
-            CPH.SetArgument("response", $"Error: {ex.Message}");
+            LogWarning("AddItem", ex);
+            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
             return true;
         }
     }
@@ -362,17 +380,10 @@ public class CPHInline
             CPH.SetArgument("response", formatted);
             return true;
         }
-        catch (AggregateException aex)
-        {
-             var inner = aex.InnerException ?? aex;
-             CPH.LogWarn($"RemoveItem Error: {inner.Message}");
-             CPH.SetArgument("response", $"Error: {inner.Message}");
-             return true;
-        }
         catch (Exception ex)
         {
-            CPH.LogWarn($"RemoveItem API Error: {ex.Message}");
-            CPH.SetArgument("response", $"Error: {ex.Message}");
+            LogWarning("RemoveItem", ex);
+            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
             return true;
         }
     }
@@ -418,8 +429,8 @@ public class CPHInline
         }
         catch (Exception ex)
         {
-            CPH.LogWarn($"GiveItem API Error: {ex.Message}");
-            CPH.SetArgument("response", $"Error: {ex.Message}");
+            LogWarning("GiveItem", ex);
+            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
             return true;
         }
     }
@@ -463,14 +474,15 @@ public class CPHInline
         }
         catch (Exception ex)
         {
+            string errorMsg = StripStatusCode(GetErrorMessage(ex));
             if (IsForbiddenError(ex))
             {
-                CPH.SetArgument("response", "That feature is locked.");
+                CPH.SetArgument("response", errorMsg);
             }
             else
             {
-                CPH.LogWarn($"BuyItem API Error: {ex.Message}");
-                CPH.SetArgument("response", $"Error: {ex.Message}");
+                LogWarning("BuyItem", ex);
+                CPH.SetArgument("response", $"Error: {errorMsg}");
             }
             return true;
         }
@@ -512,14 +524,15 @@ public class CPHInline
         }
         catch (Exception ex)
         {
+            string errorMsg = StripStatusCode(GetErrorMessage(ex));
             if (IsForbiddenError(ex))
             {
-                CPH.SetArgument("response", "That feature is locked.");
+                CPH.SetArgument("response", errorMsg);
             }
             else
             {
-                CPH.LogWarn($"SellItem API Error: {ex.Message}");
-                CPH.SetArgument("response", $"Error: {ex.Message}");
+                LogWarning("SellItem", ex);
+                CPH.SetArgument("response", $"Error: {errorMsg}");
             }
             return true;
         }
@@ -632,14 +645,15 @@ public class CPHInline
         }
         catch (Exception ex)
         {
+            string errorMsg = StripStatusCode(GetErrorMessage(ex));
             if (IsForbiddenError(ex))
             {
-                CPH.SetArgument("response", "That feature is locked.");
+                CPH.SetArgument("response", errorMsg);
             }
             else
             {
-                CPH.LogWarn($"UseItem API Error: {ex.Message}");
-                CPH.SetArgument("response", $"Error: {ex.Message}");
+                LogWarning("UseItem", ex);
+                CPH.SetArgument("response", $"Error: {errorMsg}");
             }
             return true;
         }
@@ -666,12 +680,13 @@ public class CPHInline
         }
         catch (Exception ex)
         {
+            string errorMsg = StripStatusCode(GetErrorMessage(ex));
             if (IsForbiddenError(ex))
             {
-                CPH.SetArgument("response", "That feature is locked.");
+                CPH.SetArgument("response", errorMsg);
                 return true;
             }
-            CPH.LogError($"Search failed: {ex.Message}");
+            LogException("Search", ex);
             return false;
         }
     }
@@ -716,14 +731,15 @@ public class CPHInline
         }
         catch (Exception ex)
         {
+            string errorMsg = StripStatusCode(GetErrorMessage(ex));
             if (IsForbiddenError(ex))
             {
-                CPH.SetArgument("response", "That feature is locked.");
+                CPH.SetArgument("response", errorMsg);
             }
             else
             {
-                CPH.LogWarn($"UpgradeItem API Error: {ex.Message}");
-                CPH.SetArgument("response", $"Error: {ex.Message}");
+                LogWarning("UpgradeItem", ex);
+                CPH.SetArgument("response", $"Error: {errorMsg}");
             }
             return true;
         }
@@ -765,14 +781,15 @@ public class CPHInline
         }
         catch (Exception ex)
         {
+            string errorMsg = StripStatusCode(GetErrorMessage(ex));
             if (IsForbiddenError(ex))
             {
-                CPH.SetArgument("response", "That feature is locked.");
+                CPH.SetArgument("response", errorMsg);
             }
             else
             {
-                CPH.LogWarn($"DisassembleItem API Error: {ex.Message}");
-                CPH.SetArgument("response", $"Error: {ex.Message}");
+                LogWarning("DisassembleItem", ex);
+                CPH.SetArgument("response", $"Error: {errorMsg}");
             }
             return true;
         }
@@ -794,7 +811,7 @@ public class CPHInline
         }
         catch (Exception ex)
         {
-            CPH.LogError($"GetRecipes failed: {ex.Message}");
+            LogException("GetRecipes", ex);
             return false;
         }
     }
@@ -844,14 +861,15 @@ public class CPHInline
         }
         catch (Exception ex)
         {
+            string errorMsg = StripStatusCode(GetErrorMessage(ex));
             if (IsForbiddenError(ex))
             {
-                CPH.SetArgument("response", "That feature is locked.");
+                CPH.SetArgument("response", errorMsg);
             }
             else
             {
-                CPH.LogWarn($"StartGamble API Error: {ex.Message}");
-                CPH.SetArgument("response", $"Error: {ex.Message}");
+                LogWarning("StartGamble", ex);
+                CPH.SetArgument("response", $"Error: {errorMsg}");
             }
             return true;
         }
@@ -884,14 +902,15 @@ public class CPHInline
         }
         catch (Exception ex)
         {
+            string errorMsg = StripStatusCode(GetErrorMessage(ex));
             if (IsForbiddenError(ex))
             {
-                CPH.SetArgument("response", "That feature is locked.");
+                CPH.SetArgument("response", errorMsg);
             }
             else
             {
-                CPH.LogWarn($"JoinGamble API Error: {ex.Message}");
-                CPH.SetArgument("response", $"Error: {ex.Message}");
+                LogWarning("JoinGamble", ex);
+                CPH.SetArgument("response", $"Error: {errorMsg}");
             }
             return true;
         }
@@ -913,7 +932,7 @@ public class CPHInline
         }
         catch (Exception ex)
         {
-            CPH.LogError($"GetActiveGamble failed: {ex.Message}");
+            LogException("GetActiveGamble", ex);
             return false;
         }
     }
@@ -949,8 +968,8 @@ public class CPHInline
             }
             catch (Exception ex)
             {
-                CPH.LogWarn($"GetUserStatsByUsername Error: {ex.Message}");
-                CPH.SetArgument("response", $"Error: {ex.Message}");
+                LogWarning("GetUserStatsByUsername", ex);
+                CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
                 return true;
             }
         }
@@ -971,8 +990,8 @@ public class CPHInline
             }
             catch (Exception ex)
             {
-                CPH.LogWarn($"GetUserStats API Error: {ex.Message}");
-                CPH.SetArgument("response", $"Error: {ex.Message}");
+                LogWarning("GetUserStats", ex);
+                CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
                 return true;
             }
         }
@@ -994,8 +1013,8 @@ public class CPHInline
         }
         catch (Exception ex)
         {
-            CPH.LogWarn($"GetSystemStats API Error: {ex.Message}");
-            CPH.SetArgument("response", $"Error: {ex.Message}");
+            LogWarning("GetSystemStats", ex);
+            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
             return true;
         }
     }
@@ -1031,8 +1050,8 @@ public class CPHInline
         }
         catch (Exception ex)
         {
-            CPH.LogWarn($"GetLeaderboard API Error: {ex.Message}");
-            CPH.SetArgument("response", $"Error: {ex.Message}");
+            LogWarning("GetLeaderboard", ex);
+            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
             return true;
         }
     }
@@ -1075,8 +1094,8 @@ public class CPHInline
         }
         catch (Exception ex)
         {
-            CPH.LogWarn($"GetUserTimeout API Error: {ex.Message}");
-            CPH.SetArgument("response", $"Error: {ex.Message}");
+            LogWarning("GetUserTimeout", ex);
+            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
             return true;
         }
     }
@@ -1100,8 +1119,8 @@ public class CPHInline
         }
         catch (Exception ex)
         {
-            CPH.LogWarn($"GetProgressionTree API Error: {ex.Message}");
-            CPH.SetArgument("response", $"Error: {ex.Message}");
+            LogWarning("GetProgressionTree", ex);
+            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
             return true;
         }
     }
@@ -1121,8 +1140,8 @@ public class CPHInline
         }
         catch (Exception ex)
         {
-            CPH.LogWarn($"GetAvailableNodes API Error: {ex.Message}");
-            CPH.SetArgument("response", $"Error: {ex.Message}");
+            LogWarning("GetAvailableNodes", ex);
+            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
             return true;
         }
     }
@@ -1165,8 +1184,8 @@ public class CPHInline
         }
         catch (Exception ex)
         {
-            CPH.LogWarn($"VoteForNode API Error: {ex.Message}");
-            CPH.SetArgument("response", $"Error: {ex.Message}");
+            LogWarning("VoteForNode", ex);
+            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
             return true;
         }
     }
@@ -1186,8 +1205,8 @@ public class CPHInline
         }
         catch (Exception ex)
         {
-            CPH.LogWarn($"GetProgressionStatus API Error: {ex.Message}");
-            CPH.SetArgument("response", $"Error: {ex.Message}");
+            LogWarning("GetProgressionStatus", ex);
+            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
             return true;
         }
     }
@@ -1248,8 +1267,8 @@ public class CPHInline
         }
         catch (Exception ex)
         {
-            CPH.LogWarn($"GetVotingSession API Error: {ex.Message}");
-            CPH.SetArgument("response", $"Error: {ex.Message}");
+            LogWarning("GetVotingSession", ex);
+            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
             return true;
         }
     }
@@ -1270,8 +1289,8 @@ public class CPHInline
         }
         catch (Exception ex)
         {
-            CPH.LogWarn($"GetUnlockProgress API Error: {ex.Message}");
-            CPH.SetArgument("response", $"Error: {ex.Message}");
+            LogWarning("GetUnlockProgress", ex);
+            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
             return true;
         }
     }
@@ -1305,8 +1324,8 @@ public class CPHInline
         }
         catch (Exception ex)
         {
-            CPH.LogWarn($"AdminUnlockNode API Error: {ex.Message}");
-            CPH.SetArgument("response", $"Error: {ex.Message}");
+            LogWarning("AdminUnlockNode", ex);
+            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
             return true;
         }
     }
@@ -1328,8 +1347,8 @@ public class CPHInline
         }
         catch (Exception ex)
         {
-            CPH.LogWarn($"AdminUnlockAllNodes API Error: {ex.Message}");
-            CPH.SetArgument("response", $"Error: {ex.Message}");
+            LogWarning("AdminUnlockAllNodes", ex);
+            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
             return true;
         }
     }
@@ -1359,8 +1378,8 @@ public class CPHInline
         }
         catch (Exception ex)
         {
-            CPH.LogWarn($"AdminRelockNode API Error: {ex.Message}");
-            CPH.SetArgument("response", $"Error: {ex.Message}");
+            LogWarning("AdminRelockNode", ex);
+            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
             return true;
         }
     }
@@ -1382,8 +1401,8 @@ public class CPHInline
         }
         catch (Exception ex)
         {
-            CPH.LogWarn($"AdminStartVoting API Error: {ex.Message}");
-            CPH.SetArgument("response", $"Error: {ex.Message}");
+            LogWarning("AdminStartVoting", ex);
+            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
             return true;
         }
     }
@@ -1404,8 +1423,8 @@ public class CPHInline
         }
         catch (Exception ex)
         {
-            CPH.LogWarn($"AdminEndVoting API Error: {ex.Message}");
-            CPH.SetArgument("response", $"Error: {ex.Message}");
+            LogWarning("AdminEndVoting", ex);
+            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
             return true;
         }
     }
@@ -1444,8 +1463,8 @@ public class CPHInline
         }
         catch (Exception ex)
         {
-            CPH.LogWarn($"AdminResetProgression API Error: {ex.Message}");
-            CPH.SetArgument("response", $"Error: {ex.Message}");
+            LogWarning("AdminResetProgression", ex);
+            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
             return true;
         }
     }
@@ -1488,8 +1507,8 @@ public class CPHInline
         }
         catch (Exception ex)
         {
-            CPH.LogWarn($"AdminAddContribution API Error: {ex.Message}");
-            CPH.SetArgument("response", $"Error: {ex.Message}");
+            LogWarning("AdminAddContribution", ex);
+            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
             return true;
         }
     }
@@ -1525,8 +1544,8 @@ public class CPHInline
             }
             catch (Exception ex)
             {
-                CPH.LogWarn($"GetUserJobsByUsername Error: {ex.Message}");
-                CPH.SetArgument("response", $"Error: {ex.Message}");
+                LogWarning("GetUserJobsByUsername", ex);
+                CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
                 return true;
             }
         }
@@ -1547,8 +1566,8 @@ public class CPHInline
             }
             catch (Exception ex)
             {
-                CPH.LogWarn($"GetUserJobs API Error: {ex.Message}");
-                CPH.SetArgument("response", $"Error: {ex.Message}");
+                LogWarning("GetUserJobs", ex);
+                CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
                 return true;
             }
         }
@@ -1587,14 +1606,15 @@ public class CPHInline
         }
         catch (Exception ex)
         {
+            string errorMsg = StripStatusCode(GetErrorMessage(ex));
             if (IsForbiddenError(ex))
             {
-                CPH.SetArgument("response", "That feature is locked.");
+                CPH.SetArgument("response", errorMsg);
             }
             else
             {
-                CPH.LogWarn($"AwardJobXP API Error: {ex.Message}");
-                CPH.SetArgument("response", $"Error: {ex.Message}");
+                LogWarning("AwardJobXP", ex);
+                CPH.SetArgument("response", $"Error: {errorMsg}");
             }
             return true;
         }
@@ -1633,8 +1653,8 @@ public class CPHInline
             }
             catch (Exception ex)
             {
-                CPH.LogWarn($"GetUnlockedRecipesByUsername Error: {ex.Message}");
-                CPH.SetArgument("response", $"Error: {ex.Message}");
+                LogWarning("GetUnlockedRecipesByUsername", ex);
+                CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
                 return true;
             }
         }
@@ -1655,8 +1675,8 @@ public class CPHInline
             }
             catch (Exception ex)
             {
-                CPH.LogWarn($"GetUnlockedRecipes API Error: {ex.Message}");
-                CPH.SetArgument("response", $"Error: {ex.Message}");
+                LogWarning("GetUnlockedRecipes", ex);
+                CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
                 return true;
             }
         }
@@ -1689,8 +1709,8 @@ public class CPHInline
         }
         catch (Exception ex)
         {
-            CPH.LogWarn($"InitiateLinking API Error: {ex.Message}");
-            CPH.SetArgument("response", $"Error: {ex.Message}");
+            LogWarning("InitiateLinking", ex);
+            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
             return true;
         }
     }
@@ -1725,8 +1745,8 @@ public class CPHInline
         }
         catch (Exception ex)
         {
-            CPH.LogWarn($"ClaimLinkingCode API Error: {ex.Message}");
-            CPH.SetArgument("response", $"Error: {ex.Message}");
+            LogWarning("ClaimLinkingCode", ex);
+            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
             return true;
         }
     }
@@ -1755,8 +1775,8 @@ public class CPHInline
         }
         catch (Exception ex)
         {
-            CPH.LogWarn($"ConfirmLinking API Error: {ex.Message}");
-            CPH.SetArgument("response", $"Error: {ex.Message}");
+            LogWarning("ConfirmLinking", ex);
+            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
             return true;
         }
     }
@@ -1791,8 +1811,8 @@ public class CPHInline
         }
         catch (Exception ex)
         {
-            CPH.LogWarn($"UnlinkAccounts API Error: {ex.Message}");
-            CPH.SetArgument("response", $"Error: {ex.Message}");
+            LogWarning("UnlinkAccounts", ex);
+            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
             return true;
         }
     }
@@ -1820,8 +1840,8 @@ public class CPHInline
         }
         catch (Exception ex)
         {
-            CPH.LogWarn($"GetLinkingStatus API Error: {ex.Message}");
-            CPH.SetArgument("response", $"Error: {ex.Message}");
+            LogWarning("GetLinkingStatus", ex);
+            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
             return true;
         }
     }
@@ -1856,19 +1876,9 @@ public class CPHInline
             CPH.SetArgument("response", formatted);
             return true;
         }
-        catch (AggregateException aex)
-        {
-            var innerEx = aex.InnerException ?? aex;
-            CPH.LogError($"HandleMessage failed: {innerEx.GetType().Name}: {innerEx.Message}");
-            if (innerEx.InnerException != null)
-            {
-                CPH.LogError($"Inner exception: {innerEx.InnerException.Message}");
-            }
-            return false;
-        }
         catch (Exception ex)
         {
-            CPH.LogError($"HandleMessage failed: {ex.GetType().Name}: {ex.Message}");
+            LogException("HandleMessage", ex);
             return false;
         }
     }
@@ -1894,7 +1904,7 @@ public class CPHInline
         }
         catch (Exception ex)
         {
-            CPH.LogError($"HealthCheck failed: {ex.Message}");
+            LogException("HealthCheck", ex);
             return false;
         }
     }

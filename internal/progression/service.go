@@ -348,6 +348,11 @@ func (s *service) VoteForUnlock(ctx context.Context, platform, platformID, nodeK
 		return fmt.Errorf("failed to record user vote: %w", err)
 	}
 
+	// Record engagement immediately to trigger contribution logs and accumulation
+	if err := s.RecordEngagement(ctx, userID, "vote_cast", 1); err != nil {
+		log.Warn("Failed to record vote engagement", "userID", userID, "error", err)
+	}
+
 	log.Info("Vote recorded", "userID", userID, "platform", platform, "platformID", platformID, "nodeKey", nodeKey, "sessionID", session.ID)
 	return nil
 }

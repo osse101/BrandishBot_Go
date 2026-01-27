@@ -226,7 +226,7 @@ func (s *service) publishVotingStartedEvent(ctx context.Context, sessionID int, 
 	}
 
 	// Build options list for event payload
-	optionsList := make([]map[string]interface{}, 0, len(options))
+	optionsList := make([]interface{}, 0, len(options))
 	for _, node := range options {
 		unlockDuration := FormatUnlockDuration(node.Size)
 
@@ -275,16 +275,17 @@ func (s *service) EndVoting(ctx context.Context) (*domain.ProgressionVotingOptio
 		return nil, fmt.Errorf("failed to end voting session: %w", err)
 	}
 
-	progress, err := s.ensureProgressForEndVoting(ctx)
+	progress, err := s.repo.GetActiveUnlockProgress(ctx)
 	if err != nil {
-		log.Warn("Failed to ensure unlock progress", "error", err)
+		log.Warn("Failed to get active unlock progress", "error", err)
 	}
 
-	if progress != nil {
+	// Get voter IDs for logging
+	voters, _ := s.repo.GetSessionVoters(ctx, session.ID)
+
+	if progress != nil && progress.NodeID == nil {
 		s.setUnlockTargetInternal(ctx, progress, winner, session.ID)
 	}
-
-	voters := s.awardVoterContributions(ctx, session.ID, progress)
 
 	log.Info("Voting ended", "sessionID", session.ID, "winningNode", winner.NodeID, "votes", winner.VoteCount, "voterCount", len(voters))
 
@@ -318,29 +319,10 @@ func (s *service) setUnlockTargetInternal(ctx context.Context, progress *domain.
 }
 
 func (s *service) awardVoterContributions(ctx context.Context, sessionID int, progress *domain.UnlockProgress) []string {
-	log := logger.FromContext(ctx)
 	voters, err := s.repo.GetSessionVoters(ctx, sessionID)
 	if err != nil {
-		log.Warn("Failed to get session voters", "error", err)
+		logger.FromContext(ctx).Warn("Failed to get session voters", "error", err)
 		return nil
-	}
-
-	for _, voterID := range voters {
-		metric := &domain.EngagementMetric{
-			UserID:      voterID,
-			MetricType:  "vote_cast",
-			MetricValue: 1,
-			Metadata:    map[string]interface{}{"session_id": sessionID},
-		}
-		if err := s.repo.RecordEngagement(ctx, metric); err != nil {
-			log.Warn("Failed to record contribution", "userID", voterID, "error", err)
-		}
-	}
-
-	if progress != nil && len(voters) > 0 {
-		if err := s.repo.AddContribution(ctx, progress.ID, len(voters)); err != nil {
-			log.Warn("Failed to add contributions to progress", "error", err)
-		}
 	}
 	return voters
 }
@@ -579,30 +561,52 @@ func (s *service) handlePostUnlockTransition(ctx context.Context, unlockedNodeID
 	log := logger.FromContext(ctx)
 
 	// Check for active or frozen parallel voting session
-	activeSession, _ := s.repo.GetActiveOrFrozenSession(ctx)
+	session, _ := s.repo.GetActiveOrFrozenSession(ctx)
+
+	// If no active session, check if there was a recently ended one that we can pick up
+	if session == nil {
+		recent, err := s.repo.GetMostRecentSession(ctx)
+		if err == nil && recent != nil && recent.Status == SessionStatusCompleted && recent.WinningOptionID != nil {
+			session = recent
+		}
+	}
 
 	var newTargetNode *domain.ProgressionNode
 	var newTargetLevel int
 
-	if activeSession != nil {
-		// Resume if frozen, then end the session
-		if activeSession.Status == SessionStatusFrozen {
-			if err := s.repo.ResumeVotingSession(ctx, activeSession.ID); err != nil {
-				log.Warn("Failed to resume frozen session before ending", "sessionID", activeSession.ID, "error", err)
+	if session != nil {
+		var winner *domain.ProgressionVotingOption
+
+		if session.Status == SessionStatusCompleted && session.WinningOptionID != nil {
+			// Already completed, just find the winning option in the session data
+			for _, opt := range session.Options {
+				if opt.ID == *session.WinningOptionID {
+					winner = &opt
+					break
+				}
+			}
+		} else {
+			// Still active/frozen, resume if frozen then end it
+			if session.Status == SessionStatusFrozen {
+				if err := s.repo.ResumeVotingSession(ctx, session.ID); err != nil {
+					log.Warn("Failed to resume frozen session before ending", "sessionID", session.ID, "error", err)
+				}
+			}
+
+			// Determine winner and end session
+			winner = findWinningOption(session.Options)
+			if winner != nil {
+				winnerID := winner.ID
+				if err := s.repo.EndVotingSession(ctx, session.ID, &winnerID); err != nil {
+					log.Warn("Failed to end parallel voting session", "sessionID", session.ID, "error", err)
+				}
 			}
 		}
 
-		// End voting and get winner
-		winner := findWinningOption(activeSession.Options)
 		if winner != nil {
-			winnerID := winner.ID
-			if err := s.repo.EndVotingSession(ctx, activeSession.ID, &winnerID); err != nil {
-				log.Warn("Failed to end parallel voting session", "sessionID", activeSession.ID, "error", err)
-			} else {
-				newTargetNode = winner.NodeDetails
-				newTargetLevel = winner.TargetLevel
-				log.Info("Ended parallel vote, winner becomes new target", "sessionID", activeSession.ID, "winnerNodeID", winner.NodeID)
-			}
+			newTargetNode = winner.NodeDetails
+			newTargetLevel = winner.TargetLevel
+			log.Info("Found target from voting session", "sessionID", session.ID, "status", session.Status, "winnerNodeID", winner.NodeID)
 		}
 	}
 
