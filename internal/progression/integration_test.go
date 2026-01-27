@@ -29,9 +29,11 @@ func TestVotingFlow_Complete(t *testing.T) {
 	// Step 2: Multiple users vote for lootbox0 specifically (deterministic test)
 	// Find lootbox0 option
 	var lootboxKey string
+	var winnerNodeID int
 	for _, opt := range session.Options {
 		if opt.NodeDetails.NodeKey == "item_lootbox0" {
 			lootboxKey = opt.NodeDetails.NodeKey
+			winnerNodeID = opt.NodeID
 			break
 		}
 	}
@@ -56,7 +58,8 @@ func TestVotingFlow_Complete(t *testing.T) {
 	assert.Equal(t, winner.NodeID, *progress.NodeID)
 
 	// Step 5: Add contributions to meet threshold
-	unlockCost := winner.NodeDetails.UnlockCost
+	node, _ := repo.GetNodeByID(ctx, winnerNodeID)
+	unlockCost := node.UnlockCost
 	currentContrib := progress.ContributionsAccumulated
 	needed := unlockCost - currentContrib
 
@@ -130,9 +133,11 @@ func TestVotingFlow_AutoNextSession(t *testing.T) {
 
 	// Find lootbox0 option
 	var lootboxKey string
+	var lootboxNodeID int
 	for _, opt := range session1.Options {
 		if opt.NodeDetails.NodeKey == "item_lootbox0" {
 			lootboxKey = opt.NodeDetails.NodeKey
+			lootboxNodeID = opt.NodeID
 			break
 		}
 	}
@@ -144,7 +149,8 @@ func TestVotingFlow_AutoNextSession(t *testing.T) {
 	service.EndVoting(ctx)
 
 	progress, _ := repo.GetActiveUnlockProgress(ctx)
-	cost := session1.Options[0].NodeDetails.UnlockCost
+	node, _ := repo.GetNodeByID(ctx, lootboxNodeID)
+	cost := node.UnlockCost
 	service.AddContribution(ctx, cost-progress.ContributionsAccumulated)
 
 	service.CheckAndUnlockNode(ctx)
@@ -212,16 +218,22 @@ func TestMultiLevel_SessionTargeting(t *testing.T) {
 	service := NewService(repo, NewMockUser(), nil)
 	ctx := context.Background()
 
-	// Unlock money and economy to access cooldown
-	repo.UnlockNode(ctx, 2, 1, "test", 0)
-	repo.UnlockNode(ctx, 3, 1, "test", 0)
+	// Pre-unlock all other paths to isolate the cooldown node
+	repo.UnlockNode(ctx, 2, 1, "test", 0) // money
+	repo.UnlockNode(ctx, 3, 1, "test", 0) // economy
+	repo.UnlockNode(ctx, 6, 1, "test", 0) // buy
+	repo.UnlockNode(ctx, 7, 1, "test", 0) // sell
+	repo.UnlockNode(ctx, 4, 1, "test", 0) // lootbox0
+	repo.UnlockNode(ctx, 8, 1, "test", 0) // upgrade
+	repo.UnlockNode(ctx, 9, 1, "test", 0) // disassemble
+	repo.UnlockNode(ctx, 10, 1, "test", 0) // search
 
-	// Start session
+	// Only Cooldown level 1 is available now. Start session.
 	service.StartVotingSession(ctx, nil)
-	session, _ := repo.GetActiveSession(ctx)
-
+	
 	// Vote for cooldown level 1
 	var cooldownKey string
+	session, _ := repo.GetActiveSession(ctx)
 	for _, opt := range session.Options {
 		if opt.NodeID == 5 {
 			cooldownKey = opt.NodeDetails.NodeKey
@@ -229,42 +241,26 @@ func TestMultiLevel_SessionTargeting(t *testing.T) {
 		}
 	}
 
-	assert.NotEmpty(t, cooldownKey, "Cooldown level 1 should be in the initial session options")
-
+	assert.NotEmpty(t, cooldownKey, "Cooldown level 1 should be available")
 	service.VoteForUnlock(ctx, "discord", "user1", cooldownKey)
 	service.EndVoting(ctx)
 
-	// Complete unlock
+	// Complete unlock of Cooldown L1
 	progress, _ := repo.GetActiveUnlockProgress(ctx)
-	needed := 1500 - progress.ContributionsAccumulated
+	node, _ := repo.GetNodeByID(ctx, 5)
+	needed := node.UnlockCost - progress.ContributionsAccumulated
 	service.AddContribution(ctx, needed)
 	service.CheckAndUnlockNode(ctx)
 
-	// Wait for new session
+	// Wait for async transition
 	time.Sleep(100 * time.Millisecond)
 
-	// After unlocking cooldown level 1, we have 3-4 options available:
-	// - cooldown_reduction level 2 (multi-level node)
-	// - buy (requires economy, which is unlocked)
-	// - sell (requires economy, which is unlocked)
-	// - item_lootbox0 (root child, always available)
-	// Therefore, a target MUST be set and a voting session SHOULD be created (if 2+ options remain).
-	
+	// Since all other nodes are unlocked, Cooldown level 2 MUST be the new target.
 	newProgress, _ := repo.GetActiveUnlockProgress(ctx)
-	isTarget := newProgress != nil && newProgress.NodeID != nil && *newProgress.NodeID == 5 && *newProgress.TargetLevel == 2
-	
-	newSession, _ := repo.GetActiveSession(ctx)
-	hasInOptions := false
-	if newSession != nil {
-		for _, opt := range newSession.Options {
-			if opt.NodeID == 5 && opt.TargetLevel == 2 {
-				hasInOptions = true
-				break
-			}
-		}
-	}
-	
-	assert.True(t, isTarget || hasInOptions, "Next cycle should target cooldown level 2 (either as current target or as voting option)")
+	assert.NotNil(t, newProgress)
+	assert.NotNil(t, newProgress.NodeID)
+	assert.Equal(t, 5, *newProgress.NodeID)
+	assert.Equal(t, 2, *newProgress.TargetLevel, "Next target should be exactly cooldown level 2")
 }
 
 // TestRollover_ExcessPoints verifies excess contributions carry over
@@ -279,13 +275,16 @@ func TestRollover_ExcessPoints(t *testing.T) {
 
 	// Setup progress with target
 	progressID, _ := repo.CreateUnlockProgress(ctx)
-	moneyID := 2 // cost 500
+	moneyID := 2
+	node, _ := repo.GetNodeByID(ctx, moneyID)
+	cost := node.UnlockCost
+
 	repo.SetUnlockTarget(ctx, progressID, moneyID, 1, 1)
 
-	// Add 400 points (100 short)
-	repo.AddContribution(ctx, progressID, 400)
+	// Add cost-100 points
+	repo.AddContribution(ctx, progressID, cost-100)
 
-	// Add 250 more (150 excess)
+	// Add 250 more (150 excess if cost-100 was 400, but let's be dynamic)
 	repo.AddContribution(ctx, progressID, 250)
 
 	// Unlock
@@ -316,7 +315,8 @@ func TestCache_ThresholdDetection(t *testing.T) {
 	service.EndVoting(ctx)
 
 	progress, _ := repo.GetActiveUnlockProgress(ctx)
-	unlockCost := session.Options[0].NodeDetails.UnlockCost
+	node, _ := repo.GetNodeByID(ctx, session.Options[0].NodeID)
+	unlockCost := node.UnlockCost
 	current := progress.ContributionsAccumulated
 
 	// Add partial contribution (no instant unlock)
@@ -340,6 +340,8 @@ func TestCache_ThresholdDetection(t *testing.T) {
 
 	// Verify new progress created with rollover
 	newProgress, _ := repo.GetActiveUnlockProgress(ctx)
+	assert.NotNil(t, newProgress)
 	assert.NotEqual(t, progress.ID, newProgress.ID)
 	assert.Equal(t, 10, newProgress.ContributionsAccumulated)
 }
+
