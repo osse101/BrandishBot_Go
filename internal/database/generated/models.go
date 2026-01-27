@@ -172,6 +172,8 @@ type ProgressionNode struct {
 	Category    string           `json:"category"`
 	// JSON configuration for value modification (feature_key, modifier_type, per_level_value, base_value, max_value, min_value)
 	ModifierConfig []byte `json:"modifier_config"`
+	// Dynamic prerequisites stored as JSON array: [{"type":"nodes_unlocked_below_tier","tier":2,"count":5}]
+	DynamicPrerequisites []byte `json:"dynamic_prerequisites"`
 }
 
 type ProgressionPrerequisite struct {

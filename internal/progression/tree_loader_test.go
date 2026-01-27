@@ -211,7 +211,7 @@ func TestTreeLoader_Validate(t *testing.T) {
 		config := &TreeConfig{
 			Version: "1.0",
 			Nodes: []NodeConfig{
-				{Key: "node", Name: "Node", Type: "feature", Tier: 5, Size: "medium", Category: "test", MaxLevel: 1, Prerequisites: []string{}},
+				{Key: "node", Name: "Node", Type: "feature", Tier: -1, Size: "medium", Category: "test", MaxLevel: 1, Prerequisites: []string{}},
 			},
 		}
 		err := loader.Validate(config)
@@ -350,6 +350,111 @@ func TestTreeLoader_CycleDetection(t *testing.T) {
 				{Key: "root", Name: "Root", Type: "feature", Tier: 0, Size: "medium", Category: "core", MaxLevel: 1, Prerequisites: []string{}},
 				{Key: "child1", Name: "Child1", Type: "item", Tier: 1, Size: "small", Category: "items", MaxLevel: 1, Prerequisites: []string{"root"}},
 				{Key: "child2", Name: "Child2", Type: "item", Tier: 1, Size: "small", Category: "items", MaxLevel: 1, Prerequisites: []string{"root"}},
+			},
+		}
+		err := loader.Validate(config)
+		assert.NoError(t, err)
+	})
+}
+
+func TestTreeLoader_DynamicPrerequisites(t *testing.T) {
+	loader := NewTreeLoader()
+
+	t.Run("valid dynamic prerequisite - nodes_unlocked_below_tier", func(t *testing.T) {
+		config := &TreeConfig{
+			Version: "1.0",
+			Nodes: []NodeConfig{
+				{Key: "root", Name: "Root", Type: "feature", Tier: 0, Size: "medium", Category: "core", MaxLevel: 1, Prerequisites: []string{}},
+				{Key: "tier3_gate", Name: "Tier 3 Gate", Type: "mechanic", Tier: 3, Size: "large", Category: "progression", MaxLevel: 1, Prerequisites: []string{"-nodes_unlocked_below_tier:3:8"}},
+			},
+		}
+		err := loader.Validate(config)
+		assert.NoError(t, err)
+	})
+
+	t.Run("valid dynamic prerequisite - total_nodes_unlocked", func(t *testing.T) {
+		config := &TreeConfig{
+			Version: "1.0",
+			Nodes: []NodeConfig{
+				{Key: "root", Name: "Root", Type: "feature", Tier: 0, Size: "medium", Category: "core", MaxLevel: 1, Prerequisites: []string{}},
+				{Key: "endgame", Name: "Endgame", Type: "feature", Tier: 4, Size: "large", Category: "progression", MaxLevel: 1, Prerequisites: []string{"-total_nodes_unlocked:15"}},
+			},
+		}
+		err := loader.Validate(config)
+		assert.NoError(t, err)
+	})
+
+	t.Run("mixed static and dynamic prerequisites", func(t *testing.T) {
+		config := &TreeConfig{
+			Version: "1.0",
+			Nodes: []NodeConfig{
+				{Key: "root", Name: "Root", Type: "feature", Tier: 0, Size: "medium", Category: "core", MaxLevel: 1, Prerequisites: []string{}},
+				{Key: "intermediate", Name: "Intermediate", Type: "feature", Tier: 1, Size: "medium", Category: "progression", MaxLevel: 1, Prerequisites: []string{"root"}},
+				{Key: "advanced", Name: "Advanced", Type: "feature", Tier: 2, Size: "large", Category: "progression", MaxLevel: 1, Prerequisites: []string{"intermediate", "-nodes_unlocked_below_tier:2:5", "-total_nodes_unlocked:10"}},
+			},
+		}
+		err := loader.Validate(config)
+		assert.NoError(t, err)
+	})
+
+	t.Run("invalid dynamic prerequisite - missing static parent", func(t *testing.T) {
+		config := &TreeConfig{
+			Version: "1.0",
+			Nodes: []NodeConfig{
+				{Key: "root", Name: "Root", Type: "feature", Tier: 0, Size: "medium", Category: "core", MaxLevel: 1, Prerequisites: []string{}},
+				{Key: "child", Name: "Child", Type: "feature", Tier: 1, Size: "medium", Category: "progression", MaxLevel: 1, Prerequisites: []string{"nonexistent", "-nodes_unlocked_below_tier:2:5"}},
+			},
+		}
+		err := loader.Validate(config)
+		assert.Error(t, err)
+		assert.True(t, errors.Is(err, ErrMissingParent))
+	})
+
+	t.Run("invalid dynamic prerequisite - bad syntax", func(t *testing.T) {
+		config := &TreeConfig{
+			Version: "1.0",
+			Nodes: []NodeConfig{
+				{Key: "root", Name: "Root", Type: "feature", Tier: 0, Size: "medium", Category: "core", MaxLevel: 1, Prerequisites: []string{}},
+				{Key: "child", Name: "Child", Type: "feature", Tier: 1, Size: "medium", Category: "progression", MaxLevel: 1, Prerequisites: []string{"-nodes_unlocked_below_tier:2"}},
+			},
+		}
+		err := loader.Validate(config)
+		assert.Error(t, err)
+		assert.True(t, errors.Is(err, ErrInvalidConfig))
+	})
+
+	t.Run("invalid dynamic prerequisite - invalid tier (negative)", func(t *testing.T) {
+		config := &TreeConfig{
+			Version: "1.0",
+			Nodes: []NodeConfig{
+				{Key: "root", Name: "Root", Type: "feature", Tier: 0, Size: "medium", Category: "core", MaxLevel: 1, Prerequisites: []string{}},
+				{Key: "child", Name: "Child", Type: "feature", Tier: 1, Size: "medium", Category: "progression", MaxLevel: 1, Prerequisites: []string{"-nodes_unlocked_below_tier:-1:5"}},
+			},
+		}
+		err := loader.Validate(config)
+		assert.Error(t, err)
+		assert.True(t, errors.Is(err, ErrInvalidConfig))
+	})
+
+	t.Run("invalid dynamic prerequisite - invalid count", func(t *testing.T) {
+		config := &TreeConfig{
+			Version: "1.0",
+			Nodes: []NodeConfig{
+				{Key: "root", Name: "Root", Type: "feature", Tier: 0, Size: "medium", Category: "core", MaxLevel: 1, Prerequisites: []string{}},
+				{Key: "child", Name: "Child", Type: "feature", Tier: 1, Size: "medium", Category: "progression", MaxLevel: 1, Prerequisites: []string{"-nodes_unlocked_below_tier:2:0"}},
+			},
+		}
+		err := loader.Validate(config)
+		assert.Error(t, err)
+		assert.True(t, errors.Is(err, ErrInvalidConfig))
+	})
+
+	t.Run("multiple dynamic prerequisites", func(t *testing.T) {
+		config := &TreeConfig{
+			Version: "1.0",
+			Nodes: []NodeConfig{
+				{Key: "root", Name: "Root", Type: "feature", Tier: 0, Size: "medium", Category: "core", MaxLevel: 1, Prerequisites: []string{}},
+				{Key: "advanced", Name: "Advanced", Type: "feature", Tier: 2, Size: "large", Category: "progression", MaxLevel: 1, Prerequisites: []string{"-nodes_unlocked_below_tier:2:5", "-nodes_unlocked_below_tier:3:3", "-total_nodes_unlocked:15"}},
 			},
 		}
 		err := loader.Validate(config)

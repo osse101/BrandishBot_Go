@@ -2,6 +2,7 @@ package progression
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
@@ -213,7 +214,7 @@ func (s *service) GetAvailableUnlocks(ctx context.Context) ([]*domain.Progressio
 			continue
 		}
 
-		// Check if all prerequisites are unlocked
+		// Check if all static prerequisites are unlocked
 		allPrereqsMet := true
 		for _, prereq := range prerequisites {
 			prereqUnlocked, err := s.repo.IsNodeUnlocked(ctx, prereq.NodeKey, 1)
@@ -223,12 +224,66 @@ func (s *service) GetAvailableUnlocks(ctx context.Context) ([]*domain.Progressio
 			}
 		}
 
+		if !allPrereqsMet {
+			continue
+		}
+
+		// Check dynamic prerequisites
+		dynamicPrereqsJSON, err := s.repo.GetNodeDynamicPrerequisites(ctx, node.ID)
+		if err != nil {
+			log.Warn("Failed to get dynamic prerequisites", "nodeKey", node.NodeKey, "error", err)
+			continue
+		}
+
+		var dynamicPrereqs []domain.DynamicPrerequisite
+		if len(dynamicPrereqsJSON) > 0 && string(dynamicPrereqsJSON) != "[]" {
+			if err := json.Unmarshal(dynamicPrereqsJSON, &dynamicPrereqs); err != nil {
+				log.Warn("Failed to parse dynamic prerequisites", "nodeKey", node.NodeKey, "error", err)
+				continue
+			}
+
+			for _, dynPrereq := range dynamicPrereqs {
+				met, err := s.checkDynamicPrerequisite(ctx, dynPrereq)
+				if err != nil {
+					log.Warn("Failed to check dynamic prerequisite", "nodeKey", node.NodeKey, "error", err)
+					allPrereqsMet = false
+					break
+				}
+				if !met {
+					allPrereqsMet = false
+					break
+				}
+			}
+		}
+
 		if allPrereqsMet {
 			available = append(available, node)
 		}
 	}
 
 	return available, nil
+}
+
+// checkDynamicPrerequisite evaluates a dynamic prerequisite
+func (s *service) checkDynamicPrerequisite(ctx context.Context, prereq domain.DynamicPrerequisite) (bool, error) {
+	switch prereq.Type {
+	case "nodes_unlocked_below_tier":
+		count, err := s.repo.CountUnlockedNodesBelowTier(ctx, prereq.Tier)
+		if err != nil {
+			return false, fmt.Errorf("failed to count unlocked nodes below tier %d: %w", prereq.Tier, err)
+		}
+		return count >= prereq.Count, nil
+
+	case "total_nodes_unlocked":
+		count, err := s.repo.CountTotalUnlockedNodes(ctx)
+		if err != nil {
+			return false, fmt.Errorf("failed to count total unlocked nodes: %w", err)
+		}
+		return count >= prereq.Count, nil
+
+	default:
+		return false, fmt.Errorf("unknown dynamic prerequisite type: %s", prereq.Type)
+	}
 }
 
 // GetNode returns a single node by ID

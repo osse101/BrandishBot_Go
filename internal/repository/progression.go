@@ -69,6 +69,12 @@ type Progression interface {
 	GetSyncMetadata(ctx context.Context, configName string) (*domain.SyncMetadata, error)
 	UpsertSyncMetadata(ctx context.Context, metadata *domain.SyncMetadata) error
 
+	// Dynamic prerequisites
+	CountUnlockedNodesBelowTier(ctx context.Context, tier int) (int, error)
+	CountTotalUnlockedNodes(ctx context.Context) (int, error)
+	GetNodeDynamicPrerequisites(ctx context.Context, nodeID int) ([]byte, error)
+	UpdateNodeDynamicPrerequisites(ctx context.Context, nodeID int, jsonData []byte) error
+
 	// Transaction support
 	BeginTx(ctx context.Context) (Tx, error)
 }

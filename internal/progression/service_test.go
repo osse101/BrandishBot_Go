@@ -580,7 +580,7 @@ func (m *MockRepository) GetMostRecentSession(ctx context.Context) (*domain.Prog
 	defer m.mu.RUnlock()
 	var mostRecent *domain.ProgressionVotingSession
 	for _, session := range m.sessions {
-		if mostRecent == nil || session.StartedAt.After(mostRecent.StartedAt) {
+		if mostRecent == nil || session.StartedAt.After(mostRecent.StartedAt) || (session.StartedAt.Equal(mostRecent.StartedAt) && session.ID > mostRecent.ID) {
 			mostRecent = session
 		}
 	}
@@ -757,6 +757,50 @@ func (m *MockRepository) GetDailyEngagementTotals(ctx context.Context, since tim
 		}
 	}
 	return result, nil
+}
+
+// Dynamic prerequisite operations
+
+func (m *MockRepository) CountUnlockedNodesBelowTier(ctx context.Context, tier int) (int, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	count := 0
+	for _, unlock := range m.unlocks {
+		for _, unlock := range unlock {
+			if node, ok := m.nodes[unlock.NodeID]; ok && node.Tier < tier {
+				count++
+				break // Count each node only once
+			}
+		}
+	}
+	return count, nil
+}
+
+func (m *MockRepository) CountTotalUnlockedNodes(ctx context.Context) (int, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	count := 0
+	for nodeID := range m.unlocks {
+		if len(m.unlocks[nodeID]) > 0 {
+			count++
+		}
+	}
+	return count, nil
+}
+
+func (m *MockRepository) GetNodeDynamicPrerequisites(ctx context.Context, nodeID int) ([]byte, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	// For now, return empty array as mock doesn't store dynamic prerequisites
+	return []byte("[]"), nil
+}
+
+func (m *MockRepository) UpdateNodeDynamicPrerequisites(ctx context.Context, nodeID int, jsonData []byte) error {
+	// Mock doesn't need to store this
+	return nil
 }
 
 // Test helper functions

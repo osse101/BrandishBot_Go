@@ -2,6 +2,7 @@ package progression
 
 import (
 	"fmt"
+	"math"
 )
 
 // NodeSize represents the size/scope of a progression node
@@ -13,56 +14,42 @@ const (
 	NodeSizeLarge  NodeSize = "large"
 )
 
-// Base unlock costs per tier
-const (
-	TierFoundation   = 0    // Tier 0: Auto-unlocked root nodes
-	TierBasic        = 500  // Tier 1: First unlocks
-	TierIntermediate = 1000 // Tier 2: Standard features
-	TierAdvanced     = 2000 // Tier 3: Complex features
-	TierEndgame      = 3000 // Tier 4: Late-game content
-)
-
-var baseCosts = map[int]int{
-	0: TierFoundation,
-	1: TierBasic,
-	2: TierIntermediate,
-	3: TierAdvanced,
-	4: TierEndgame,
+// Base unlock costs by size
+var baseCosts = map[NodeSize]int{
+	NodeSizeSmall:  200,
+	NodeSizeMedium: 400,
+	NodeSizeLarge:  800,
 }
 
-// Size multipliers: small:medium:large = 1:2:4
-var sizeMultipliers = map[NodeSize]float64{
-	NodeSizeSmall:  1.0,
-	NodeSizeMedium: 2.0,
-	NodeSizeLarge:  4.0,
-}
-
-// CalculateUnlockCost computes the unlock cost for a node based on tier, size, and level
-// Formula: baseCost[tier] * sizeMultiplier[size]
-// Note: MaxLevel doesn't affect cost - each level costs the same
+// CalculateUnlockCost computes the unlock cost for a node based on tier and size
+// Formula: baseCost[size] * (1.30^tier)
+// Supports arbitrary tier numbers (tier >= 0) with exponential scaling
+// Tier 0 returns the base cost (1.30^0 = 1)
 func CalculateUnlockCost(tier int, size NodeSize) (int, error) {
 	// Validate tier
-	baseCost, ok := baseCosts[tier]
-	if !ok {
-		return 0, fmt.Errorf("invalid tier %d: must be 0-4", tier)
+	if tier < 0 {
+		return 0, fmt.Errorf("invalid tier %d: must be >= 0", tier)
 	}
 
 	// Validate size
-	multiplier, ok := sizeMultipliers[size]
+	baseCost, ok := baseCosts[size]
 	if !ok {
 		return 0, fmt.Errorf("invalid size %s: must be small, medium, or large", size)
 	}
 
-	// Calculate final cost
-	cost := float64(baseCost) * multiplier
+	// Calculate exponential tier multiplier: 1.30^tier
+	tierMultiplier := math.Pow(1.30, float64(tier))
 
-	return int(cost), nil
+	// Final cost = baseCost * tierMultiplier
+	cost := float64(baseCost) * tierMultiplier
+
+	return int(math.Round(cost)), nil
 }
 
-// ValidateTier checks if a tier value is valid (0-4)
+// ValidateTier checks if a tier value is valid (>= 0)
 func ValidateTier(tier int) error {
-	if tier < 0 || tier > 4 {
-		return fmt.Errorf("tier must be between 0 and 4, got %d", tier)
+	if tier < 0 {
+		return fmt.Errorf("tier must be >= 0, got %d", tier)
 	}
 	return nil
 }

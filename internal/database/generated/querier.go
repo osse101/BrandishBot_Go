@@ -30,6 +30,8 @@ type Querier interface {
 	ClearUnlockProgressForNode(ctx context.Context, nodeID pgtype.Int4) error
 	ClearUnlocksExceptRoot(ctx context.Context) error
 	CompleteUnlock(ctx context.Context, id int32) error
+	CountTotalUnlockedNodes(ctx context.Context) (int32, error)
+	CountUnlockedNodesBelowTier(ctx context.Context, tier int32) (int32, error)
 	CountUnlocks(ctx context.Context) (int64, error)
 	CreateGamble(ctx context.Context, arg CreateGambleParams) error
 	CreateToken(ctx context.Context, arg CreateTokenParams) error
@@ -95,6 +97,7 @@ type Querier interface {
 	GetNodeByID(ctx context.Context, id int32) (GetNodeByIDRow, error)
 	GetNodeByKey(ctx context.Context, nodeKey string) (GetNodeByKeyRow, error)
 	GetNodeDependents(ctx context.Context, prerequisiteNodeID int32) ([]GetNodeDependentsRow, error)
+	GetNodeDynamicPrerequisites(ctx context.Context, id int32) ([]byte, error)
 	GetNodePrerequisites(ctx context.Context, nodeID int32) ([]GetNodePrerequisitesRow, error)
 	GetPlatformID(ctx context.Context, name string) (int32, error)
 	GetRecipeByTargetItemID(ctx context.Context, targetItemID int32) (GetRecipeByTargetItemIDRow, error)
@@ -163,6 +166,7 @@ type Querier interface {
 	UpdateInventory(ctx context.Context, arg UpdateInventoryParams) error
 	UpdateItem(ctx context.Context, arg UpdateItemParams) error
 	UpdateNode(ctx context.Context, arg UpdateNodeParams) error
+	UpdateNodeDynamicPrerequisites(ctx context.Context, arg UpdateNodeDynamicPrerequisitesParams) error
 	UpdateOptionLastHighest(ctx context.Context, id int32) error
 	UpdateToken(ctx context.Context, arg UpdateTokenParams) error
 	UpdateUser(ctx context.Context, arg UpdateUserParams) error

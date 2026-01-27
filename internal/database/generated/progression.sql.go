@@ -136,6 +136,32 @@ func (q *Queries) CompleteUnlock(ctx context.Context, id int32) error {
 	return err
 }
 
+const countTotalUnlockedNodes = `-- name: CountTotalUnlockedNodes :one
+SELECT COUNT(DISTINCT node_id)::int
+FROM progression_unlocks
+`
+
+func (q *Queries) CountTotalUnlockedNodes(ctx context.Context) (int32, error) {
+	row := q.db.QueryRow(ctx, countTotalUnlockedNodes)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const countUnlockedNodesBelowTier = `-- name: CountUnlockedNodesBelowTier :one
+SELECT COUNT(DISTINCT pu.node_id)::int
+FROM progression_unlocks pu
+JOIN progression_nodes pn ON pu.node_id = pn.id
+WHERE pn.tier < $1
+`
+
+func (q *Queries) CountUnlockedNodesBelowTier(ctx context.Context, tier int32) (int32, error) {
+	row := q.db.QueryRow(ctx, countUnlockedNodesBelowTier, tier)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const countUnlocks = `-- name: CountUnlocks :one
 SELECT COUNT(*) FROM progression_unlocks
 `
@@ -614,7 +640,7 @@ func (q *Queries) GetMostRecentSession(ctx context.Context) (GetMostRecentSessio
 }
 
 const getNodeByFeatureKey = `-- name: GetNodeByFeatureKey :one
-SELECT n.id, n.node_key, n.node_type, n.display_name, n.description, n.max_level, n.unlock_cost, n.sort_order, n.created_at, n.tier, n.size, n.category, n.modifier_config, COALESCE(u.current_level, 0)::int as unlock_level
+SELECT n.id, n.node_key, n.node_type, n.display_name, n.description, n.max_level, n.unlock_cost, n.sort_order, n.created_at, n.tier, n.size, n.category, n.modifier_config, n.dynamic_prerequisites, COALESCE(u.current_level, 0)::int as unlock_level
 FROM progression_nodes n
 LEFT JOIN progression_unlocks u ON u.node_id = n.id
 WHERE n.modifier_config->>'feature_key' = $1
@@ -622,20 +648,21 @@ LIMIT 1
 `
 
 type GetNodeByFeatureKeyRow struct {
-	ID             int32            `json:"id"`
-	NodeKey        string           `json:"node_key"`
-	NodeType       string           `json:"node_type"`
-	DisplayName    string           `json:"display_name"`
-	Description    pgtype.Text      `json:"description"`
-	MaxLevel       pgtype.Int4      `json:"max_level"`
-	UnlockCost     pgtype.Int4      `json:"unlock_cost"`
-	SortOrder      pgtype.Int4      `json:"sort_order"`
-	CreatedAt      pgtype.Timestamp `json:"created_at"`
-	Tier           int32            `json:"tier"`
-	Size           string           `json:"size"`
-	Category       string           `json:"category"`
-	ModifierConfig []byte           `json:"modifier_config"`
-	UnlockLevel    int32            `json:"unlock_level"`
+	ID                   int32            `json:"id"`
+	NodeKey              string           `json:"node_key"`
+	NodeType             string           `json:"node_type"`
+	DisplayName          string           `json:"display_name"`
+	Description          pgtype.Text      `json:"description"`
+	MaxLevel             pgtype.Int4      `json:"max_level"`
+	UnlockCost           pgtype.Int4      `json:"unlock_cost"`
+	SortOrder            pgtype.Int4      `json:"sort_order"`
+	CreatedAt            pgtype.Timestamp `json:"created_at"`
+	Tier                 int32            `json:"tier"`
+	Size                 string           `json:"size"`
+	Category             string           `json:"category"`
+	ModifierConfig       []byte           `json:"modifier_config"`
+	DynamicPrerequisites []byte           `json:"dynamic_prerequisites"`
+	UnlockLevel          int32            `json:"unlock_level"`
 }
 
 func (q *Queries) GetNodeByFeatureKey(ctx context.Context, modifierConfig []byte) (GetNodeByFeatureKeyRow, error) {
@@ -655,6 +682,7 @@ func (q *Queries) GetNodeByFeatureKey(ctx context.Context, modifierConfig []byte
 		&i.Size,
 		&i.Category,
 		&i.ModifierConfig,
+		&i.DynamicPrerequisites,
 		&i.UnlockLevel,
 	)
 	return i, err
@@ -800,6 +828,19 @@ func (q *Queries) GetNodeDependents(ctx context.Context, prerequisiteNodeID int3
 		return nil, err
 	}
 	return items, nil
+}
+
+const getNodeDynamicPrerequisites = `-- name: GetNodeDynamicPrerequisites :one
+SELECT COALESCE(dynamic_prerequisites, '[]'::jsonb)
+FROM progression_nodes
+WHERE id = $1
+`
+
+func (q *Queries) GetNodeDynamicPrerequisites(ctx context.Context, id int32) ([]byte, error) {
+	row := q.db.QueryRow(ctx, getNodeDynamicPrerequisites, id)
+	var dynamic_prerequisites []byte
+	err := row.Scan(&dynamic_prerequisites)
+	return dynamic_prerequisites, err
 }
 
 const getNodePrerequisites = `-- name: GetNodePrerequisites :many
@@ -1491,6 +1532,22 @@ func (q *Queries) UpdateNode(ctx context.Context, arg UpdateNodeParams) error {
 		arg.Category,
 		arg.SortOrder,
 	)
+	return err
+}
+
+const updateNodeDynamicPrerequisites = `-- name: UpdateNodeDynamicPrerequisites :exec
+UPDATE progression_nodes
+SET dynamic_prerequisites = $2
+WHERE id = $1
+`
+
+type UpdateNodeDynamicPrerequisitesParams struct {
+	ID                   int32  `json:"id"`
+	DynamicPrerequisites []byte `json:"dynamic_prerequisites"`
+}
+
+func (q *Queries) UpdateNodeDynamicPrerequisites(ctx context.Context, arg UpdateNodeDynamicPrerequisitesParams) error {
+	_, err := q.db.Exec(ctx, updateNodeDynamicPrerequisites, arg.ID, arg.DynamicPrerequisites)
 	return err
 }
 

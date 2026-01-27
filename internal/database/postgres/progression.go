@@ -779,3 +779,39 @@ func (r *progressionRepository) UpsertSyncMetadata(ctx context.Context, metadata
 
 	return nil
 }
+
+// Dynamic prerequisite operations
+
+func (r *progressionRepository) CountUnlockedNodesBelowTier(ctx context.Context, tier int) (int, error) {
+	count, err := r.q.CountUnlockedNodesBelowTier(ctx, int32(tier))
+	if err != nil {
+		return 0, fmt.Errorf("failed to count unlocked nodes below tier: %w", err)
+	}
+	return int(count), nil
+}
+
+func (r *progressionRepository) CountTotalUnlockedNodes(ctx context.Context) (int, error) {
+	count, err := r.q.CountTotalUnlockedNodes(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count total unlocked nodes: %w", err)
+	}
+	return int(count), nil
+}
+
+func (r *progressionRepository) GetNodeDynamicPrerequisites(ctx context.Context, nodeID int) ([]byte, error) {
+	data, err := r.q.GetNodeDynamicPrerequisites(ctx, int32(nodeID))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get node dynamic prerequisites: %w", err)
+	}
+	return data, nil
+}
+
+func (r *progressionRepository) UpdateNodeDynamicPrerequisites(ctx context.Context, nodeID int, jsonData []byte) error {
+	if err := r.q.UpdateNodeDynamicPrerequisites(ctx, generated.UpdateNodeDynamicPrerequisitesParams{
+		ID:                   int32(nodeID),
+		DynamicPrerequisites: jsonData,
+	}); err != nil {
+		return fmt.Errorf("failed to update node dynamic prerequisites: %w", err)
+	}
+	return nil
+}

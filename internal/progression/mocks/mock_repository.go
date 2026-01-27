@@ -239,6 +239,119 @@ func (_c *MockRepository_CompleteUnlock_Call) RunAndReturn(run func(context.Cont
 	return _c
 }
 
+// CountTotalUnlockedNodes provides a mock function with given fields: ctx
+func (_m *MockRepository) CountTotalUnlockedNodes(ctx context.Context) (int, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CountTotalUnlockedNodes")
+	}
+
+	var r0 int
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) (int, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) int); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Get(0).(int)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockRepository_CountTotalUnlockedNodes_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CountTotalUnlockedNodes'
+type MockRepository_CountTotalUnlockedNodes_Call struct {
+	*mock.Call
+}
+
+// CountTotalUnlockedNodes is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockRepository_Expecter) CountTotalUnlockedNodes(ctx interface{}) *MockRepository_CountTotalUnlockedNodes_Call {
+	return &MockRepository_CountTotalUnlockedNodes_Call{Call: _e.mock.On("CountTotalUnlockedNodes", ctx)}
+}
+
+func (_c *MockRepository_CountTotalUnlockedNodes_Call) Run(run func(ctx context.Context)) *MockRepository_CountTotalUnlockedNodes_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockRepository_CountTotalUnlockedNodes_Call) Return(_a0 int, _a1 error) *MockRepository_CountTotalUnlockedNodes_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockRepository_CountTotalUnlockedNodes_Call) RunAndReturn(run func(context.Context) (int, error)) *MockRepository_CountTotalUnlockedNodes_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// CountUnlockedNodesBelowTier provides a mock function with given fields: ctx, tier
+func (_m *MockRepository) CountUnlockedNodesBelowTier(ctx context.Context, tier int) (int, error) {
+	ret := _m.Called(ctx, tier)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CountUnlockedNodesBelowTier")
+	}
+
+	var r0 int
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, int) (int, error)); ok {
+		return rf(ctx, tier)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, int) int); ok {
+		r0 = rf(ctx, tier)
+	} else {
+		r0 = ret.Get(0).(int)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, int) error); ok {
+		r1 = rf(ctx, tier)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockRepository_CountUnlockedNodesBelowTier_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CountUnlockedNodesBelowTier'
+type MockRepository_CountUnlockedNodesBelowTier_Call struct {
+	*mock.Call
+}
+
+// CountUnlockedNodesBelowTier is a helper method to define mock.On call
+//   - ctx context.Context
+//   - tier int
+func (_e *MockRepository_Expecter) CountUnlockedNodesBelowTier(ctx interface{}, tier interface{}) *MockRepository_CountUnlockedNodesBelowTier_Call {
+	return &MockRepository_CountUnlockedNodesBelowTier_Call{Call: _e.mock.On("CountUnlockedNodesBelowTier", ctx, tier)}
+}
+
+func (_c *MockRepository_CountUnlockedNodesBelowTier_Call) Run(run func(ctx context.Context, tier int)) *MockRepository_CountUnlockedNodesBelowTier_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int))
+	})
+	return _c
+}
+
+func (_c *MockRepository_CountUnlockedNodesBelowTier_Call) Return(_a0 int, _a1 error) *MockRepository_CountUnlockedNodesBelowTier_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockRepository_CountUnlockedNodesBelowTier_Call) RunAndReturn(run func(context.Context, int) (int, error)) *MockRepository_CountUnlockedNodesBelowTier_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CreateUnlockProgress provides a mock function with given fields: ctx
 func (_m *MockRepository) CreateUnlockProgress(ctx context.Context) (int, error) {
 	ret := _m.Called(ctx)
@@ -1266,6 +1379,65 @@ func (_c *MockRepository_GetNodeByKey_Call) Return(_a0 *domain.ProgressionNode, 
 }
 
 func (_c *MockRepository_GetNodeByKey_Call) RunAndReturn(run func(context.Context, string) (*domain.ProgressionNode, error)) *MockRepository_GetNodeByKey_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetNodeDynamicPrerequisites provides a mock function with given fields: ctx, nodeID
+func (_m *MockRepository) GetNodeDynamicPrerequisites(ctx context.Context, nodeID int) ([]byte, error) {
+	ret := _m.Called(ctx, nodeID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetNodeDynamicPrerequisites")
+	}
+
+	var r0 []byte
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, int) ([]byte, error)); ok {
+		return rf(ctx, nodeID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, int) []byte); ok {
+		r0 = rf(ctx, nodeID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]byte)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, int) error); ok {
+		r1 = rf(ctx, nodeID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockRepository_GetNodeDynamicPrerequisites_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetNodeDynamicPrerequisites'
+type MockRepository_GetNodeDynamicPrerequisites_Call struct {
+	*mock.Call
+}
+
+// GetNodeDynamicPrerequisites is a helper method to define mock.On call
+//   - ctx context.Context
+//   - nodeID int
+func (_e *MockRepository_Expecter) GetNodeDynamicPrerequisites(ctx interface{}, nodeID interface{}) *MockRepository_GetNodeDynamicPrerequisites_Call {
+	return &MockRepository_GetNodeDynamicPrerequisites_Call{Call: _e.mock.On("GetNodeDynamicPrerequisites", ctx, nodeID)}
+}
+
+func (_c *MockRepository_GetNodeDynamicPrerequisites_Call) Run(run func(ctx context.Context, nodeID int)) *MockRepository_GetNodeDynamicPrerequisites_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int))
+	})
+	return _c
+}
+
+func (_c *MockRepository_GetNodeDynamicPrerequisites_Call) Return(_a0 []byte, _a1 error) *MockRepository_GetNodeDynamicPrerequisites_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockRepository_GetNodeDynamicPrerequisites_Call) RunAndReturn(run func(context.Context, int) ([]byte, error)) *MockRepository_GetNodeDynamicPrerequisites_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -2341,6 +2513,54 @@ func (_c *MockRepository_UnlockUserProgression_Call) Return(_a0 error) *MockRepo
 }
 
 func (_c *MockRepository_UnlockUserProgression_Call) RunAndReturn(run func(context.Context, string, string, string, map[string]interface{}) error) *MockRepository_UnlockUserProgression_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpdateNodeDynamicPrerequisites provides a mock function with given fields: ctx, nodeID, jsonData
+func (_m *MockRepository) UpdateNodeDynamicPrerequisites(ctx context.Context, nodeID int, jsonData []byte) error {
+	ret := _m.Called(ctx, nodeID, jsonData)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateNodeDynamicPrerequisites")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, int, []byte) error); ok {
+		r0 = rf(ctx, nodeID, jsonData)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockRepository_UpdateNodeDynamicPrerequisites_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateNodeDynamicPrerequisites'
+type MockRepository_UpdateNodeDynamicPrerequisites_Call struct {
+	*mock.Call
+}
+
+// UpdateNodeDynamicPrerequisites is a helper method to define mock.On call
+//   - ctx context.Context
+//   - nodeID int
+//   - jsonData []byte
+func (_e *MockRepository_Expecter) UpdateNodeDynamicPrerequisites(ctx interface{}, nodeID interface{}, jsonData interface{}) *MockRepository_UpdateNodeDynamicPrerequisites_Call {
+	return &MockRepository_UpdateNodeDynamicPrerequisites_Call{Call: _e.mock.On("UpdateNodeDynamicPrerequisites", ctx, nodeID, jsonData)}
+}
+
+func (_c *MockRepository_UpdateNodeDynamicPrerequisites_Call) Run(run func(ctx context.Context, nodeID int, jsonData []byte)) *MockRepository_UpdateNodeDynamicPrerequisites_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int), args[2].([]byte))
+	})
+	return _c
+}
+
+func (_c *MockRepository_UpdateNodeDynamicPrerequisites_Call) Return(_a0 error) *MockRepository_UpdateNodeDynamicPrerequisites_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockRepository_UpdateNodeDynamicPrerequisites_Call) RunAndReturn(run func(context.Context, int, []byte) error) *MockRepository_UpdateNodeDynamicPrerequisites_Call {
 	_c.Call.Return(run)
 	return _c
 }

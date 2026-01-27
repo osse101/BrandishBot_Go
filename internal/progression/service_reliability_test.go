@@ -204,6 +204,22 @@ func (m *ReliabilityMockRepository) GetDailyEngagementTotals(ctx context.Context
 	return args.Get(0).(map[time.Time]int), args.Error(1)
 }
 
+func (m *ReliabilityMockRepository) CountUnlockedNodesBelowTier(ctx context.Context, tier int) (int, error) {
+	panic("not implemented")
+}
+
+func (m *ReliabilityMockRepository) CountTotalUnlockedNodes(ctx context.Context) (int, error) {
+	panic("not implemented")
+}
+
+func (m *ReliabilityMockRepository) GetNodeDynamicPrerequisites(ctx context.Context, nodeID int) ([]byte, error) {
+	panic("not implemented")
+}
+
+func (m *ReliabilityMockRepository) UpdateNodeDynamicPrerequisites(ctx context.Context, nodeID int, jsonData []byte) error {
+	panic("not implemented")
+}
+
 // ReliabilityMockBus is a minimal mock for event bus
 type ReliabilityMockBus struct {
 	mock.Mock

@@ -12,34 +12,37 @@ func TestCalculateUnlockCost(t *testing.T) {
 		want    int
 		wantErr bool
 	}{
-		// Foundation tier (auto-unlocked)
-		{"tier 0 small", 0, NodeSizeSmall, 0, false},
-		{"tier 0 medium", 0, NodeSizeMedium, 0, false},
-		{"tier 0 large", 0, NodeSizeLarge, 0, false},
+		// Foundation tier (auto-unlocked, tier multiplier = 1.30^0 = 1)
+		{"tier 0 small", 0, NodeSizeSmall, 200, false},
+		{"tier 0 medium", 0, NodeSizeMedium, 400, false},
+		{"tier 0 large", 0, NodeSizeLarge, 800, false},
 
-		// Basic tier
-		{"tier 1 small", 1, NodeSizeSmall, 500, false},
-		{"tier 1 medium", 1, NodeSizeMedium, 1000, false},
-		{"tier 1 large", 1, NodeSizeLarge, 2000, false},
+		// Tier 1 (1.30^1 = 1.30)
+		{"tier 1 small", 1, NodeSizeSmall, 260, false},
+		{"tier 1 medium", 1, NodeSizeMedium, 520, false},
+		{"tier 1 large", 1, NodeSizeLarge, 1040, false},
 
-		// Intermediate tier
-		{"tier 2 small", 2, NodeSizeSmall, 1000, false},
-		{"tier 2 medium", 2, NodeSizeMedium, 2000, false},
-		{"tier 2 large", 2, NodeSizeLarge, 4000, false},
+		// Tier 2 (1.30^2 = 1.69)
+		{"tier 2 small", 2, NodeSizeSmall, 338, false},
+		{"tier 2 medium", 2, NodeSizeMedium, 676, false},
+		{"tier 2 large", 2, NodeSizeLarge, 1352, false},
 
-		// Advanced tier
-		{"tier 3 small", 3, NodeSizeSmall, 2000, false},
-		{"tier 3 medium", 3, NodeSizeMedium, 4000, false},
-		{"tier 3 large", 3, NodeSizeLarge, 8000, false},
+		// Tier 3 (1.30^3 = 2.197)
+		{"tier 3 small", 3, NodeSizeSmall, 439, false},
+		{"tier 3 medium", 3, NodeSizeMedium, 879, false},
+		{"tier 3 large", 3, NodeSizeLarge, 1758, false},
 
-		// Endgame tier
-		{"tier 4 small", 4, NodeSizeSmall, 3000, false},
-		{"tier 4 medium", 4, NodeSizeMedium, 6000, false},
-		{"tier 4 large", 4, NodeSizeLarge, 12000, false},
+		// Tier 4 (1.30^4 = 2.8561)
+		{"tier 4 small", 4, NodeSizeSmall, 571, false},
+		{"tier 4 medium", 4, NodeSizeMedium, 1142, false},
+		{"tier 4 large", 4, NodeSizeLarge, 2285, false},
+
+		// Higher tiers (demonstrating exponential scaling)
+		{"tier 5 small", 5, NodeSizeSmall, 743, false},
+		{"tier 10 small", 10, NodeSizeSmall, 2757, false},
 
 		// Error cases
 		{"invalid tier negative", -1, NodeSizeSmall, 0, true},
-		{"invalid tier too high", 5, NodeSizeSmall, 0, true},
 		{"invalid size", 1, "huge", 0, true},
 	}
 
@@ -68,8 +71,10 @@ func TestValidateTier(t *testing.T) {
 		{"tier 2 valid", 2, false},
 		{"tier 3 valid", 3, false},
 		{"tier 4 valid", 4, false},
+		{"tier 5 valid", 5, false},
+		{"tier 10 valid", 10, false},
+		{"tier 100 valid", 100, false},
 		{"tier -1 invalid", -1, true},
-		{"tier 5 invalid", 5, true},
 	}
 
 	for _, tt := range tests {

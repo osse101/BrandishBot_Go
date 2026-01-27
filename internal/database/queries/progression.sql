@@ -346,3 +346,23 @@ DELETE FROM progression_unlock_progress;
 
 -- name: ClearUnlockProgressForNode :exec
 DELETE FROM progression_unlock_progress WHERE node_id = $1;
+
+-- name: CountUnlockedNodesBelowTier :one
+SELECT COUNT(DISTINCT pu.node_id)::int
+FROM progression_unlocks pu
+JOIN progression_nodes pn ON pu.node_id = pn.id
+WHERE pn.tier < $1;
+
+-- name: CountTotalUnlockedNodes :one
+SELECT COUNT(DISTINCT node_id)::int
+FROM progression_unlocks;
+
+-- name: GetNodeDynamicPrerequisites :one
+SELECT COALESCE(dynamic_prerequisites, '[]'::jsonb)
+FROM progression_nodes
+WHERE id = $1;
+
+-- name: UpdateNodeDynamicPrerequisites :exec
+UPDATE progression_nodes
+SET dynamic_prerequisites = $2
+WHERE id = $1;

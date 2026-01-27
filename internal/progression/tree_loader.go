@@ -111,16 +111,32 @@ func (t *treeLoader) Validate(config *TreeConfig) error {
 		nodesByKey[node.Key] = node
 	}
 
-	// Validate prerequisite references exist
+	// Validate prerequisites (both static and dynamic)
 	for _, node := range config.Nodes {
-		for _, prereqKey := range node.Prerequisites {
-			if _, exists := nodesByKey[prereqKey]; !exists {
-				return fmt.Errorf("%w: node '%s' references prerequisite '%s'", ErrMissingParent, node.Key, prereqKey)
+		for _, prereqStr := range node.Prerequisites {
+			isDynamic, dynamicPrereq, staticKey, err := ParsePrerequisite(prereqStr)
+			if err != nil {
+				return fmt.Errorf("%w: node '%s' has invalid prerequisite '%s': %w",
+					ErrInvalidConfig, node.Key, prereqStr, err)
+			}
+
+			if isDynamic {
+				// Validate dynamic prerequisite parameters
+				if err := ValidateDynamicPrerequisite(dynamicPrereq); err != nil {
+					return fmt.Errorf("%w: node '%s' dynamic prerequisite invalid: %w",
+						ErrInvalidConfig, node.Key, err)
+				}
+			} else {
+				// Validate static prerequisite references valid node
+				if _, exists := nodesByKey[staticKey]; !exists {
+					return fmt.Errorf("%w: node '%s' references prerequisite '%s'",
+						ErrMissingParent, node.Key, staticKey)
+				}
 			}
 		}
 	}
 
-	// Check for cycles using DFS
+	// Check for cycles using DFS (only for static prerequisites)
 	return detectCycles(config.Nodes, nodesByKey)
 }
 
@@ -178,9 +194,20 @@ func detectCycles(nodes []NodeConfig, nodesByKey map[string]*NodeConfig) error {
 		state[key] = 1 // visiting
 
 		node := nodesByKey[key]
-		// Check all prerequisites for cycles
-		for _, prereqKey := range node.Prerequisites {
-			if err := dfs(prereqKey); err != nil {
+		// Check only static prerequisites for cycles (skip dynamic ones)
+		for _, prereqStr := range node.Prerequisites {
+			isDynamic, _, staticKey, err := ParsePrerequisite(prereqStr)
+			if err != nil {
+				// Skip invalid prerequisites (they were validated earlier)
+				continue
+			}
+
+			// Skip dynamic prerequisites - they don't form cycles
+			if isDynamic {
+				continue
+			}
+
+			if err := dfs(staticKey); err != nil {
 				return err
 			}
 		}
@@ -270,9 +297,21 @@ func (t *treeLoader) loadExistingNodes(ctx context.Context, repo repository.Prog
 }
 
 func (t *treeLoader) arePrerequisitesMet(node NodeConfig, existingByKey map[string]*domain.ProgressionNode, insertedNodeIDs map[string]int) bool {
-	for _, prereqKey := range node.Prerequisites {
-		if _, ok := existingByKey[prereqKey]; !ok {
-			if _, ok := insertedNodeIDs[prereqKey]; !ok {
+	for _, prereqStr := range node.Prerequisites {
+		isDynamic, _, staticKey, err := ParsePrerequisite(prereqStr)
+		if err != nil {
+			// If parsing fails, skip (validation should have caught this earlier)
+			return false
+		}
+
+		// Skip dynamic prerequisites - they don't block node insertion
+		if isDynamic {
+			continue
+		}
+
+		// Check if static prerequisite exists
+		if _, ok := existingByKey[staticKey]; !ok {
+			if _, ok := insertedNodeIDs[staticKey]; !ok {
 				return false
 			}
 		}
@@ -300,6 +339,9 @@ func (t *treeLoader) syncOneNode(ctx context.Context, repo repository.Progressio
 			if err := syncPrerequisites(ctx, repo, existing.ID, nodeConfig.Prerequisites, existingByKey, insertedNodeIDs); err != nil {
 				return fmt.Errorf("failed to sync prerequisites for '%s': %w", nodeConfig.Key, err)
 			}
+			if err := syncDynamicPrerequisites(ctx, repo, existing.ID, nodeConfig.Prerequisites); err != nil {
+				return fmt.Errorf("failed to sync dynamic prerequisites for '%s': %w", nodeConfig.Key, err)
+			}
 			result.NodesUpdated++
 			log.Info("Updated progression node", "key", nodeConfig.Key)
 		} else {
@@ -314,6 +356,10 @@ func (t *treeLoader) syncOneNode(ctx context.Context, repo repository.Progressio
 
 		if err := syncPrerequisites(ctx, repo, nodeID, nodeConfig.Prerequisites, existingByKey, insertedNodeIDs); err != nil {
 			return fmt.Errorf("failed to sync prerequisites for '%s': %w", nodeConfig.Key, err)
+		}
+
+		if err := syncDynamicPrerequisites(ctx, repo, nodeID, nodeConfig.Prerequisites); err != nil {
+			return fmt.Errorf("failed to sync dynamic prerequisites for '%s': %w", nodeConfig.Key, err)
 		}
 
 		result.NodesInserted++
