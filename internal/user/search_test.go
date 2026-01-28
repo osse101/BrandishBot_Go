@@ -352,6 +352,7 @@ func TestHandleSearch_CooldownBoundaries(t *testing.T) {
 			}
 
 			// ACT
+			svc.rnd = func() float64 { return 0.5 } // Force success if search executes
 			message, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
 
 			// ASSERT
@@ -374,6 +375,7 @@ func TestHandleSearch_NewUserCreation(t *testing.T) {
 	svc, repo := createSearchTestService()
 
 	// ACT - Search with non-existent user
+	svc.rnd = func() float64 { return 0.5 } // Force success
 	message, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "", "newuser")
 
 	// ASSERT
@@ -509,29 +511,14 @@ func TestHandleSearch_NamingResolution(t *testing.T) {
 	mockResolver := svc.namingResolver.(*MockNamingResolver)
 	mockResolver.DisplayNames[domain.ItemLootbox0] = "Mysterious Chest"
 
-	// Mock RNG is not available, so we loop until success
-	found := false
-	maxAttempts := 100 // Should be plenty given 80% success rate
+	// Force success
+	svc.rnd = func() float64 { return 0.5 }
 
-	for i := 0; i < maxAttempts; i++ {
-		// Reset cooldown manually
-		if repo.cooldowns[user.ID] == nil {
-			repo.cooldowns[user.ID] = make(map[string]*time.Time)
-		}
-		// Clear cooldown
-		delete(repo.cooldowns[user.ID], domain.ActionSearch)
+	// Call with devMode false (default in createSearchTestService)
+	msg, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
+	require.NoError(t, err)
 
-		// Call with devMode false (default in createSearchTestService)
-		msg, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
-		require.NoError(t, err)
-
-		if strings.Contains(msg, "Mysterious Chest") {
-			found = true
-			break
-		}
-	}
-
-	assert.True(t, found, "Should use display name 'Mysterious Chest' in search result at least once")
+	assert.Contains(t, msg, "Mysterious Chest", "Should use display name 'Mysterious Chest' in search result")
 }
 
 // =============================================================================
@@ -552,6 +539,7 @@ func TestHandleSearch_CooldownUpdate(t *testing.T) {
 		}
 
 		// ACT
+		svc.rnd = func() float64 { return 0.5 } // Force success
 		_, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
 
 		// ASSERT
@@ -599,6 +587,7 @@ func TestHandleSearch_MultipleSearches(t *testing.T) {
 		repo.users[TestUsername] = user
 
 		// ACT - First search
+		svc.rnd = func() float64 { return 0.5 } // Force success
 		_, err1 := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
 		require.NoError(t, err1)
 

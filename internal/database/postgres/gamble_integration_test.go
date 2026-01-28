@@ -36,7 +36,10 @@ func setupGambleIntegrationTest(t *testing.T) (*pgxpool.Pool, *UserRepository, g
 			{ItemName: domain.ItemMoney, Min: 100, Max: 100, Chance: 1.0},
 		},
 	}
-	lootTableData, err := json.Marshal(map[string]interface{}{"tables": lootTable})
+	lootTableData, err := json.Marshal(map[string]interface{}{
+		"version": "1.0",
+		"tables":  lootTable,
+	})
 	require.NoError(t, err)
 
 	tmpDir := t.TempDir()

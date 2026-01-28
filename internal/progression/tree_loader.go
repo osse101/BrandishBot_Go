@@ -13,6 +13,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
+	"github.com/osse101/BrandishBot_Go/internal/validation"
 )
 
 // Sentinel errors for tree loader
@@ -21,6 +22,11 @@ var (
 	ErrMissingParent    = errors.New("parent node not found")
 	ErrCycleDetected    = errors.New("cycle detected in tree")
 	ErrInvalidConfig    = errors.New("invalid configuration")
+)
+
+// Schema paths
+const (
+	ProgressionTreeSchemaPath = "configs/schemas/progression_tree.schema.json"
 )
 
 // TreeConfig represents the JSON configuration for the progression tree
@@ -67,11 +73,15 @@ type SyncResult struct {
 	AutoUnlocked  int
 }
 
-type treeLoader struct{}
+type treeLoader struct {
+	schemaValidator validation.SchemaValidator
+}
 
 // NewTreeLoader creates a new TreeLoader instance
 func NewTreeLoader() TreeLoader {
-	return &treeLoader{}
+	return &treeLoader{
+		schemaValidator: validation.NewSchemaValidator(),
+	}
 }
 
 // Load reads and parses a progression tree JSON file
@@ -79,6 +89,11 @@ func (t *treeLoader) Load(path string) (*TreeConfig, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read tree config file: %w", err)
+	}
+
+	// Validate against schema first
+	if err := t.schemaValidator.ValidateBytes(data, ProgressionTreeSchemaPath); err != nil {
+		return nil, fmt.Errorf("schema validation failed for %s: %w", path, err)
 	}
 
 	var config TreeConfig

@@ -9,6 +9,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
+	"github.com/osse101/BrandishBot_Go/internal/validation"
 )
 
 // LootItem defines an item that can be dropped from a lootbox
@@ -37,6 +38,11 @@ const (
 	MultLegendary = 2.0
 )
 
+// Schema paths
+const (
+	LootTablesSchemaPath = "configs/schemas/loot_tables.schema.json"
+)
+
 // DroppedItem represents an item generated from opening a lootbox
 type DroppedItem struct {
 	ItemID     int
@@ -58,17 +64,19 @@ type Service interface {
 }
 
 type service struct {
-	repo       ItemRepository
-	lootTables map[string][]LootItem
-	rnd        func() float64
+	repo            ItemRepository
+	lootTables      map[string][]LootItem
+	rnd             func() float64
+	schemaValidator validation.SchemaValidator
 }
 
 // NewService creates a new lootbox service
 func NewService(repo ItemRepository, lootTablesPath string) (Service, error) {
 	svc := &service{
-		repo:       repo,
-		lootTables: make(map[string][]LootItem),
-		rnd:        utils.RandomFloat,
+		repo:            repo,
+		lootTables:      make(map[string][]LootItem),
+		rnd:             utils.RandomFloat,
+		schemaValidator: validation.NewSchemaValidator(),
 	}
 
 	// Load loot tables from JSON file
@@ -85,12 +93,22 @@ func (s *service) loadLootTables(path string) error {
 		return fmt.Errorf("%s: %w", ErrContextFailedToReadLootFile, err)
 	}
 
+	// Validate against schema first
+	if err := s.schemaValidator.ValidateBytes(data, LootTablesSchemaPath); err != nil {
+		return fmt.Errorf("schema validation failed for %s: %w", path, err)
+	}
+
 	// Parse the nested structure with "tables" key
 	var config struct {
 		Tables map[string][]LootItem `json:"tables"`
 	}
 	if err := json.Unmarshal(data, &config); err != nil {
 		return fmt.Errorf("%s: %w", ErrContextFailedToParseLootFile, err)
+	}
+
+	// Additional validation for table structure
+	if len(config.Tables) == 0 {
+		return fmt.Errorf("no loot tables defined in configuration")
 	}
 
 	s.lootTables = config.Tables

@@ -1,0 +1,74 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "graph_layout.schema.json",
+    "title": "Graph Layout",
+    "description": "Node positions and decorative edges for the Graph Editor",
+    "type": "object",
+    "required": [
+        "version",
+        "positions"
+    ],
+    "properties": {
+        "version": {
+            "type": "string",
+            "description": "Schema version"
+        },
+        "positions": {
+            "type": "object",
+            "description": "Map of node keys to their positions",
+            "additionalProperties": {
+                "$ref": "#/definitions/Position"
+            }
+        },
+        "decorativeEdges": {
+            "type": "array",
+            "description": "List of decorative edges (visual only, not data connections)",
+            "items": {
+                "$ref": "#/definitions/DecorativeEdge"
+            }
+        }
+    },
+    "definitions": {
+        "Position": {
+            "type": "object",
+            "required": [
+                "x",
+                "y"
+            ],
+            "properties": {
+                "x": {
+                    "type": "number",
+                    "description": "X coordinate on the canvas"
+                },
+                "y": {
+                    "type": "number",
+                    "description": "Y coordinate on the canvas"
+                }
+            },
+            "additionalProperties": false
+        },
+        "DecorativeEdge": {
+            "type": "object",
+            "required": [
+                "id",
+                "source",
+                "target"
+            ],
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "description": "Unique edge identifier"
+                },
+                "source": {
+                    "type": "string",
+                    "description": "Source node key"
+                },
+                "target": {
+                    "type": "string",
+                    "description": "Target node key"
+                }
+            },
+            "additionalProperties": false
+        }
+    }
+}

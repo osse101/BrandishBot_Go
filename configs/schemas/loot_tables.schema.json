@@ -1,0 +1,70 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "loot_tables.schema.json",
+    "title": "Loot Tables Configuration",
+    "description": "BrandishBot loot table definitions for lootboxes and rewards",
+    "type": "object",
+    "required": [
+        "version",
+        "tables"
+    ],
+    "properties": {
+        "version": {
+            "type": "string",
+            "description": "Schema version"
+        },
+        "schema": {
+            "type": "string",
+            "description": "Schema identifier"
+        },
+        "last_updated": {
+            "type": "string",
+            "format": "date",
+            "description": "Last update date in YYYY-MM-DD format"
+        },
+        "tables": {
+            "type": "object",
+            "description": "Map of table names to their loot entries",
+            "additionalProperties": {
+                "type": "array",
+                "items": {
+                    "$ref": "#/definitions/LootEntry"
+                }
+            }
+        }
+    },
+    "definitions": {
+        "LootEntry": {
+            "type": "object",
+            "required": [
+                "item_name",
+                "min",
+                "max",
+                "chance"
+            ],
+            "properties": {
+                "item_name": {
+                    "type": "string",
+                    "description": "Internal name of the item to drop"
+                },
+                "min": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Minimum quantity to drop"
+                },
+                "max": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Maximum quantity to drop"
+                },
+                "chance": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "description": "Drop chance (0.0 to 1.0, relative weight within table)"
+                }
+            },
+            "additionalProperties": false
+        }
+    }
+}

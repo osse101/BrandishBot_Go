@@ -13,6 +13,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
+	"github.com/osse101/BrandishBot_Go/internal/validation"
 )
 
 // Sentinel errors for item loader
@@ -21,6 +22,11 @@ var (
 	ErrInvalidTag            = errors.New("invalid tag")
 	ErrInvalidHandler        = errors.New("invalid handler")
 	ErrInvalidConfig         = errors.New("invalid configuration")
+)
+
+// Schema paths
+const (
+	ItemsSchemaPath = "configs/schemas/items.schema.json"
 )
 
 // Config represents the JSON configuration for items
@@ -59,11 +65,15 @@ type SyncResult struct {
 	ItemsSkipped  int
 }
 
-type itemLoader struct{}
+type itemLoader struct {
+	schemaValidator validation.SchemaValidator
+}
 
 // NewLoader creates a new Loader instance
 func NewLoader() Loader {
-	return &itemLoader{}
+	return &itemLoader{
+		schemaValidator: validation.NewSchemaValidator(),
+	}
 }
 
 // Load reads and parses an items JSON file
@@ -71,6 +81,11 @@ func (l *itemLoader) Load(path string) (*Config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf(ErrMsgReadConfigFileFailed, err)
+	}
+
+	// Validate against schema first
+	if err := l.schemaValidator.ValidateBytes(data, ItemsSchemaPath); err != nil {
+		return nil, fmt.Errorf("schema validation failed for %s: %w", path, err)
 	}
 
 	var config Config

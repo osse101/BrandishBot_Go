@@ -8,6 +8,7 @@
 *.so
 *.dylib
 bin/
+.vscode/
 
 # Built binaries
 /main

@@ -59,7 +59,8 @@ func TestLoader_Load(t *testing.T) {
 
 		_, err := loader.Load(tmpFile)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to parse items config")
+		// Schema validation now happens first and catches JSON parse errors
+		assert.Contains(t, err.Error(), "schema validation failed")
 	})
 }
 
