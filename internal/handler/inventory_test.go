@@ -405,6 +405,7 @@ func TestHandleBuyItem(t *testing.T) {
 			},
 			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureBuy).Return(true, nil)
+				p.On("RecordEngagement", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 				e.On("BuyItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.ItemBlaster, 1).Return(1, nil)
 			},
 			expectedStatus: http.StatusOK,
@@ -597,10 +598,12 @@ func TestHandleUseItem(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockUser := mocks.NewMockUserService(t)
+		mockProg := mocks.NewMockProgressionService(t)
 			mockBus := mocks.NewMockEventBus(t)
+		mockProg.On("RecordEngagement", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 			tt.setupMock(mockUser, mockBus)
 
-			handler := HandleUseItem(mockUser, mockBus)
+			handler := HandleUseItem(mockUser, mockProg, mockBus)
 
 			body, _ := json.Marshal(tt.requestBody)
 			req := httptest.NewRequest("POST", "/user/item/use", bytes.NewBuffer(body))

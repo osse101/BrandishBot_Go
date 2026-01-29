@@ -85,8 +85,11 @@ func TestHandleStartGamble(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mockGamble := mocks.NewMockGambleService(t)
 			mockProgression := mocks.NewMockProgressionService(t)
-			handler := NewGambleHandler(mockGamble, mockProgression)
+			mockEventBus := mocks.NewMockEventBus(t)
+			mockEventBus.On("Publish", mock.Anything, mock.Anything).Return(nil).Maybe()
+			handler := NewGambleHandler(mockGamble, mockProgression, mockEventBus)
 
+			mockProgression.On("RecordEngagement", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 			if tt.setupMocks != nil {
 				tt.setupMocks(mockGamble, mockProgression)
 			}
@@ -175,11 +178,15 @@ func TestHandleJoinGamble(t *testing.T) {
 		},
 	}
 
+			mockEventBus := mocks.NewMockEventBus(t)
+			mockProg := mocks.NewMockProgressionService(t)
+			mockProg.On("RecordEngagement", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
+			mockEventBus.On("Publish", mock.Anything, mock.Anything).Return(nil).Maybe()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockGamble := mocks.NewMockGambleService(t)
 			// Progression service is not used in JoinGamble, so we can pass nil or a mock
-			handler := NewGambleHandler(mockGamble, mocks.NewMockProgressionService(t))
+			handler := NewGambleHandler(mockGamble, mockProg, mockEventBus)
 
 			if tt.setupMocks != nil {
 				tt.setupMocks(mockGamble)
@@ -258,9 +265,11 @@ func TestHandleGetGamble(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+			mockProg := mocks.NewMockProgressionService(t)
+			mockEventBus := mocks.NewMockEventBus(t)
 		t.Run(tt.name, func(t *testing.T) {
 			mockGamble := mocks.NewMockGambleService(t)
-			handler := NewGambleHandler(mockGamble, mocks.NewMockProgressionService(t))
+			handler := NewGambleHandler(mockGamble, mockProg, mockEventBus)
 
 			if tt.setupMocks != nil {
 				tt.setupMocks(mockGamble)

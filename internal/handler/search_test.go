@@ -36,6 +36,7 @@ func TestHandleSearch(t *testing.T) {
 			},
 			setupMock: func(u *mocks.MockUserService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSearch).Return(true, nil)
+				p.On("RecordEngagement", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 
 				u.On("HandleSearch", mock.Anything, domain.PlatformTwitch, "test-id", "testuser").Return("Found a sword!", nil)
 				// Expect both engagement and search.performed events

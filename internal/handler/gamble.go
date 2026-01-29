@@ -6,20 +6,24 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/gamble"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
+	"github.com/osse101/BrandishBot_Go/internal/middleware"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 )
 
 type GambleHandler struct {
 	service        gamble.Service
 	progressionSvc progression.Service
+	eventBus       event.Bus
 }
 
-func NewGambleHandler(service gamble.Service, progressionSvc progression.Service) *GambleHandler {
+func NewGambleHandler(service gamble.Service, progressionSvc progression.Service, eventBus event.Bus) *GambleHandler {
 	return &GambleHandler{
 		service:        service,
 		progressionSvc: progressionSvc,
+		eventBus:       eventBus,
 	}
 }
 
@@ -46,6 +50,22 @@ func (h *GambleHandler) HandleStartGamble(w http.ResponseWriter, r *http.Request
 		logger.FromContext(r.Context()).Error("Failed to start gamble", "error", err)
 		statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
 		return
+	}
+
+	log := logger.FromContext(r.Context())
+
+	// Track engagement for gamble start
+	middleware.TrackEngagementFromContext(
+		middleware.WithUserID(r.Context(), req.Username),
+		h.eventBus,
+		"gamble_started",
+		1,
+	)
+
+	// Record contribution for gamble start (higher value)
+	if err := h.progressionSvc.RecordEngagement(r.Context(), req.Username, "gamble_started", 3); err != nil {
+		log.Error("Failed to record gamble start engagement", "error", err)
+		// Don't fail the request
 	}
 
 	respondJSON(w, http.StatusCreated, gamble)
@@ -77,6 +97,22 @@ func (h *GambleHandler) HandleJoinGamble(w http.ResponseWriter, r *http.Request)
 		logger.FromContext(r.Context()).Error("Failed to join gamble", "error", err)
 		statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
 		return
+	}
+
+	log := logger.FromContext(r.Context())
+
+	// Track engagement for gamble join
+	middleware.TrackEngagementFromContext(
+		middleware.WithUserID(r.Context(), req.Username),
+		h.eventBus,
+		"gamble_joined",
+		1,
+	)
+
+	// Record contribution for gamble join
+	if err := h.progressionSvc.RecordEngagement(r.Context(), req.Username, "gamble_joined", 2); err != nil {
+		log.Error("Failed to record gamble join engagement", "error", err)
+		// Don't fail the request
 	}
 
 	respondJSON(w, http.StatusOK, map[string]string{"message": MsgJoinedGambleSuccess})

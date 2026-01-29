@@ -47,6 +47,7 @@ func TestHandleUpgradeItem(t *testing.T) {
 					// Add event matching logic if needed
 					return true
 				})).Return(nil)
+				p.On("RecordEngagement", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `{"message":"Successfully upgraded to 2x lootbox","new_item":"lootbox","quantity_upgraded":2,"is_masterwork":false,"bonus_quantity":0}`,
@@ -117,6 +118,7 @@ func TestHandleUpgradeItem(t *testing.T) {
 					}, nil)
 
 				b.On("Publish", mock.Anything, mock.Anything).Return(nil)
+				p.On("RecordEngagement", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `{"message":"MASTERWORK! Critical success! You received 20x lootbox (Bonus: +10)","new_item":"lootbox","quantity_upgraded":20,"is_masterwork":true,"bonus_quantity":10}`,

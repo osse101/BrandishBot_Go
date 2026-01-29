@@ -288,6 +288,12 @@ func HandleBuyItem(svc economy.Service, progressionSvc progression.Service, even
 			bought,
 		)
 
+	// Record contribution for buying
+	if err := progressionSvc.RecordEngagement(r.Context(), req.Username, "item_bought", bought); err != nil {
+		log.Error("Failed to record buy engagement", "error", err)
+		// Don't fail the request
+	}
+
 		// Publish item.bought event
 		// Note: We don't have the exact cost here, would need to modify economy.Service to return it
 		if err := PublishEvent(r.Context(), eventBus, "item.bought", map[string]interface{}{
@@ -329,7 +335,7 @@ type UseItemResponse struct {
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /user/item/use [post]
-func HandleUseItem(svc user.Service, eventBus event.Bus) http.HandlerFunc {
+func HandleUseItem(svc user.Service, progressionSvc progression.Service, eventBus event.Bus) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req UseItemRequest
 		if err := DecodeAndValidateRequest(r, w, &req, "Use item"); err != nil {
@@ -357,6 +363,12 @@ func HandleUseItem(svc user.Service, eventBus event.Bus) http.HandlerFunc {
 			"message", message)
 
 		// Track engagement for item usage
+
+	// Record contribution for item usage
+	if err := progressionSvc.RecordEngagement(r.Context(), req.Username, "item_used", req.Quantity); err != nil {
+		log.Error("Failed to record use engagement", "error", err)
+		// Don't fail the request
+	}
 		middleware.TrackEngagementFromContext(
 			middleware.WithUserID(r.Context(), req.Username),
 			eventBus,
