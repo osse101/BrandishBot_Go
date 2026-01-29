@@ -90,7 +90,8 @@ migrate-create:
 # Development commands
 test:
 	@echo "Running tests..."
-	@DB_PORT=5433 DB_USER=testuser DB_PASSWORD=testpass DB_NAME=testdb go test ./... -cover -race
+	@mkdir -p logs
+	@DB_PORT=5433 DB_USER=testuser DB_PASSWORD=testpass DB_NAME=testdb go test ./... -coverprofile=logs/coverage.out -covermode=atomic -race
 
 unit:
 	@echo "Running unit tests (fast)..."
@@ -106,26 +107,22 @@ watch:
 	fi
 
 test-coverage:
-	@echo "Running tests with coverage..."
-	@mkdir -p logs
-	@go test -coverprofile=logs/coverage.out -covermode=atomic ./...
+	@echo "Generating coverage report..."
+	@if [ ! -f logs/coverage.out ]; then \
+		echo "Coverage profile not found. Running tests..."; \
+		$(MAKE) test; \
+	fi
 	@go tool cover -html=logs/coverage.out -o logs/coverage.html
-	@COVERAGE=$$(go tool cover -func=logs/coverage.out | grep total | awk '{print $$3}'); \
-	echo "Coverage report generated: logs/coverage.html"; \
-	echo "Total Coverage: $$COVERAGE"
+	@echo "Coverage report generated: logs/coverage.html"
+	@./scripts/check_coverage.sh logs/coverage.out 0
 
 test-coverage-check:
 	@echo "Checking coverage threshold (80%)..."
-	@mkdir -p logs
-	@go test -coverprofile=logs/coverage.out -covermode=atomic ./... >/dev/null 2>&1
-	@COVERAGE=$$(go tool cover -func=logs/coverage.out | grep total | awk '{print $$3}' | sed 's/%//'); \
-	THRESHOLD=80; \
-	if [ $$(echo "$$COVERAGE $$THRESHOLD" | awk '{if ($$1 < $$2) print 1; else print 0}') -eq 1 ]; then \
-		echo "❌ Coverage $$COVERAGE% is below $$THRESHOLD% threshold"; \
-		exit 1; \
-	else \
-		echo "✅ Coverage $$COVERAGE% meets $$THRESHOLD% threshold"; \
+	@if [ ! -f logs/coverage.out ]; then \
+		echo "Coverage profile not found. Running tests..."; \
+		$(MAKE) test; \
 	fi
+	@./scripts/check_coverage.sh logs/coverage.out 80
 
 lint:
 	@echo "Running linters..."
