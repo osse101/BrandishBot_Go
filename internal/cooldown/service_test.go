@@ -1,7 +1,6 @@
 package cooldown_test
 
 import (
-	"context"
 	"errors"
 	"testing"
 	"time"
@@ -10,42 +9,6 @@ import (
 
 	"github.com/osse101/BrandishBot_Go/internal/cooldown"
 )
-
-// MockBackend is a simple mock for testing the Service interface
-type MockBackend struct {
-	checkCooldownFunc   func(ctx context.Context, userID, action string) (bool, time.Duration, error)
-	enforceCooldownFunc func(ctx context.Context, userID, action string, fn func() error) error
-	resetCooldownFunc   func(ctx context.Context, userID, action string) error
-	getLastUsedFunc     func(ctx context.Context, userID, action string) (*time.Time, error)
-}
-
-func (m *MockBackend) CheckCooldown(ctx context.Context, userID, action string) (bool, time.Duration, error) {
-	if m.checkCooldownFunc != nil {
-		return m.checkCooldownFunc(ctx, userID, action)
-	}
-	return false, 0, nil
-}
-
-func (m *MockBackend) EnforceCooldown(ctx context.Context, userID, action string, fn func() error) error {
-	if m.enforceCooldownFunc != nil {
-		return m.enforceCooldownFunc(ctx, userID, action, fn)
-	}
-	return fn()
-}
-
-func (m *MockBackend) ResetCooldown(ctx context.Context, userID, action string) error {
-	if m.resetCooldownFunc != nil {
-		return m.resetCooldownFunc(ctx, userID, action)
-	}
-	return nil
-}
-
-func (m *MockBackend) GetLastUsed(ctx context.Context, userID, action string) (*time.Time, error) {
-	if m.getLastUsedFunc != nil {
-		return m.getLastUsedFunc(ctx, userID, action)
-	}
-	return nil, nil
-}
 
 // TestErrOnCooldown_Error tests the error message formatting
 func TestErrOnCooldown_Error(t *testing.T) {
