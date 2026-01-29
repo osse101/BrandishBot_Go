@@ -237,14 +237,14 @@ func (c *APIClient) getInventoryInternal(path, platform, platformID, username, f
 }
 
 // UseItem uses an item from inventory
-func (c *APIClient) UseItem(platform, platformID, username, itemName string, quantity int) (string, error) {
+func (c *APIClient) UseItem(platform, platformID, username, itemName string, quantity int, target string) (string, error) {
 	req := map[string]interface{}{
 		"platform":    platform,
 		"platform_id": platformID,
 		"username":    username,
 		"item_name":   itemName,
 		"quantity":    quantity,
-		"target_user": "", // Optional, empty for non-targeted items
+		"target_user": target, // Optional, can be username or job name
 	}
 
 	resp, err := c.doRequest(http.MethodPost, "/api/v1/user/item/use", req)
@@ -571,7 +571,7 @@ func (c *APIClient) AddItemByUsername(platform, username, itemName string, quant
 	var resp struct {
 		Message string `json:"message"`
 	}
-	if err := c.doRequestAndParse(http.MethodPost, "/api/v1/user/item/add-by-username", req, &resp); err != nil {
+	if err := c.doRequestAndParse(http.MethodPost, "/api/v1/user/item/add", req, &resp); err != nil {
 		return "", err
 	}
 	return resp.Message, nil
@@ -589,7 +589,7 @@ func (c *APIClient) RemoveItemByUsername(platform, username, itemName string, qu
 	var resp struct {
 		Removed int `json:"removed"`
 	}
-	if err := c.doRequestAndParse(http.MethodPost, "/api/v1/user/item/remove-by-username", req, &resp); err != nil {
+	if err := c.doRequestAndParse(http.MethodPost, "/api/v1/user/item/remove", req, &resp); err != nil {
 		return 0, err
 	}
 	return resp.Removed, nil
@@ -606,7 +606,7 @@ func (c *APIClient) GiveItemByUsername(fromPlatform, fromUsername, toPlatform, t
 		"quantity":      quantity,
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "/api/v1/user/item/give-by-username", req)
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/user/item/give", req)
 	if err != nil {
 		return "", err
 	}

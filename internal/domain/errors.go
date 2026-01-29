@@ -64,6 +64,7 @@ const (
 
 	// Feature errors
 	ErrMsgFeatureLocked = "feature is locked"
+	ErrMsgItemLocked    = "item is locked"
 
 	// Progression errors
 	ErrMsgUserAlreadyVoted         = "user has already voted"
@@ -138,6 +139,7 @@ var (
 
 	// Feature errors
 	ErrFeatureLocked = errors.New(ErrMsgFeatureLocked)
+	ErrItemLocked    = errors.New(ErrMsgItemLocked)
 
 	// Recipe/Crafting errors
 	ErrRecipeNotFound = errors.New(ErrMsgRecipeNotFound)

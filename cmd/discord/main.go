@@ -183,6 +183,7 @@ func getCommandFactories(bot *discord.Bot) []CommandFactory {
 
 		// Job commands
 		discord.JobBonusCommand,
+		discord.JobProgressCommand,
 
 		// Stats commands
 		discord.LeaderboardCommand,

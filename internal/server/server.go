@@ -115,6 +115,7 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 			r.Post("/start", gambleHandler.HandleStartGamble)
 			r.Post("/join", gambleHandler.HandleJoinGamble)
 			r.Get("/get", gambleHandler.HandleGetGamble)
+			r.Get("/active", gambleHandler.HandleGetActiveGamble)
 		})
 
 		// Job routes

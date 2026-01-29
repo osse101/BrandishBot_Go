@@ -28,6 +28,12 @@ func UseItemCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 				Description: "Quantity to use",
 				Required:    false,
 			},
+			{
+				Type:        discordgo.ApplicationCommandOptionString,
+				Name:        "target",
+				Description: "Target (username or job name, e.g., 'blacksmith')",
+				Required:    false,
+			},
 		},
 	}
 
@@ -40,8 +46,13 @@ func UseItemCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		options := getOptions(i)
 		itemName := options[0].StringValue()
 		quantity := 1
+		target := ""
+
 		if len(options) > 1 {
 			quantity = int(options[1].IntValue())
+		}
+		if len(options) > 2 {
+			target = options[2].StringValue()
 		}
 
 		// Ensure user exists
@@ -49,7 +60,7 @@ func UseItemCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			return
 		}
 
-		msg, err := client.UseItem(domain.PlatformDiscord, user.ID, user.Username, itemName, quantity)
+		msg, err := client.UseItem(domain.PlatformDiscord, user.ID, user.Username, itemName, quantity, target)
 		if err != nil {
 			slog.Error("Failed to use item", "error", err)
 			respondFriendlyError(s, i, err.Error())

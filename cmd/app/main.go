@@ -184,7 +184,7 @@ func main() {
 	slog.Info("Cooldown service initialized", "dev_mode", cfg.DevMode)
 
 	// Initialize services that depend on naming resolver
-	economyService := economy.NewService(repos.Economy, jobService, namingResolver)
+	economyService := economy.NewService(repos.Economy, jobService, namingResolver, progressionService)
 	gambleService := gamble.NewService(repos.Gamble, eventBus, lootboxSvc, statsService, cfg.GambleJoinDuration, jobService, progressionService, namingResolver)
 	craftingService := crafting.NewService(repos.Crafting, jobService, statsService, namingResolver)
 

@@ -54,13 +54,23 @@ func (w *GambleWorker) handleGambleStarted(ctx context.Context, e event.Event) e
 
 func (w *GambleWorker) scheduleExecution(g *domain.Gamble) {
 	duration := time.Until(g.JoinDeadline)
-	if duration < 0 {
-		duration = 0
-	}
 
 	log := logger.FromContext(context.Background())
 	log.Info(LogMsgSchedulingGambleExecution, "gambleID", g.ID, "duration", duration)
 
+	// If deadline has already passed, execute immediately in a goroutine
+	if duration <= 0 {
+		go func() {
+			ctx := context.Background()
+			log.Info(LogMsgExecutingScheduledGamble, "gambleID", g.ID)
+			if _, err := w.service.ExecuteGamble(ctx, g.ID); err != nil {
+				log.Error(LogMsgFailedToExecuteGamble, "gambleID", g.ID, "error", err)
+			}
+		}()
+		return
+	}
+
+	// Schedule for future execution
 	time.AfterFunc(duration, func() {
 		ctx := context.Background()
 		log.Info(LogMsgExecutingScheduledGamble, "gambleID", g.ID)

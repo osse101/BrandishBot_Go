@@ -106,3 +106,22 @@ func (h *GambleHandler) HandleGetGamble(w http.ResponseWriter, r *http.Request) 
 
 	respondJSON(w, http.StatusOK, gamble)
 }
+
+func (h *GambleHandler) HandleGetActiveGamble(w http.ResponseWriter, r *http.Request) {
+	gamble, err := h.service.GetActiveGamble(r.Context())
+	if err != nil {
+		logger.FromContext(r.Context()).Error("Failed to get active gamble", "error", err)
+		statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
+		return
+	}
+
+	if gamble == nil {
+		respondJSON(w, http.StatusOK, map[string]bool{"active": false})
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"active": true,
+		"gamble": gamble,
+	})
+}

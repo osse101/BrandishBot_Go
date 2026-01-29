@@ -28,26 +28,58 @@ type JobService interface {
 	AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error)
 }
 
+// ProgressionService defines the interface for progression operations
+type ProgressionService interface {
+	IsItemUnlocked(ctx context.Context, itemName string) (bool, error)
+}
+
 type service struct {
-	repo           repository.Economy
-	jobService     JobService
-	namingResolver naming.Resolver
-	wg             sync.WaitGroup
+	repo               repository.Economy
+	jobService         JobService
+	namingResolver     naming.Resolver
+	progressionService ProgressionService
+	wg                 sync.WaitGroup
 }
 
 // NewService creates a new economy service
-func NewService(repo repository.Economy, jobService JobService, namingResolver naming.Resolver) Service {
+func NewService(repo repository.Economy, jobService JobService, namingResolver naming.Resolver, progressionService ProgressionService) Service {
 	return &service{
-		repo:           repo,
-		jobService:     jobService,
-		namingResolver: namingResolver,
+		repo:               repo,
+		jobService:         jobService,
+		namingResolver:     namingResolver,
+		progressionService: progressionService,
 	}
 }
 
 func (s *service) GetSellablePrices(ctx context.Context) ([]domain.Item, error) {
 	log := logger.FromContext(ctx)
 	log.Info(LogMsgGetSellablePricesCalled)
-	return s.repo.GetSellablePrices(ctx)
+
+	allItems, err := s.repo.GetSellablePrices(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Filter out locked items if progression service is available
+	if s.progressionService == nil {
+		return allItems, nil
+	}
+
+	filtered := make([]domain.Item, 0, len(allItems))
+	for _, item := range allItems {
+		unlocked, err := s.progressionService.IsItemUnlocked(ctx, item.InternalName)
+		if err != nil {
+			// Log error but don't fail the request - include item if check fails
+			log.Warn("Failed to check unlock status", "item", item.InternalName, "error", err)
+			filtered = append(filtered, item)
+			continue
+		}
+		if unlocked {
+			filtered = append(filtered, item)
+		}
+	}
+
+	return filtered, nil
 }
 
 // resolveItemName attempts to resolve a user-provided item name to its internal name.
@@ -284,6 +316,17 @@ func (s *service) BuyItem(ctx context.Context, platform, platformID, username, i
 	}
 	if !isBuyable {
 		return 0, fmt.Errorf(ErrMsgItemNotBuyableFmt, item.InternalName, domain.ErrNotBuyable)
+	}
+
+	// Check if item is unlocked (progression)
+	if s.progressionService != nil {
+		unlocked, err := s.progressionService.IsItemUnlocked(ctx, item.InternalName)
+		if err != nil {
+			return 0, fmt.Errorf("failed to check unlock status: %w", err)
+		}
+		if !unlocked {
+			return 0, domain.ErrItemLocked
+		}
 	}
 
 	// Get money item after buyable check
