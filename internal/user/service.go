@@ -309,7 +309,7 @@ func (s *service) removeItemFromUserInternal(ctx context.Context, user *domain.U
 }
 
 // useItemInternal handles item usage logic within a transaction
-func (s *service) useItemInternal(ctx context.Context, user *domain.User, itemName string, quantity int, targetUser *domain.User) (string, error) {
+func (s *service) useItemInternal(ctx context.Context, user *domain.User, itemName string, quantity int, targetName string) (string, error) {
 	log := logger.FromContext(ctx)
 
 	itemToUse, err := s.getItemByNameCached(ctx, itemName)
@@ -345,11 +345,12 @@ func (s *service) useItemInternal(ctx context.Context, user *domain.User, itemNa
 			log.Warn("No handler for item", "itemName", itemName)
 			return domain.ErrItemNotHandled
 		}
-		var args map[string]interface{}
-		if targetUser == nil {
-			args = map[string]interface{}{"username": user.Username}
-		} else {
-			args = map[string]interface{}{"targetUsername": targetUser.Username, "username": user.Username}
+		args := map[string]interface{}{
+			ArgsUsername: user.Username,
+		}
+		if targetName != "" {
+			args[ArgsTargetUsername] = targetName
+			args[ArgsJobName] = targetName
 		}
 		message, err = handler.Handle(ctx, s, user, inventory, itemToUse, quantity, args)
 		if err != nil {
@@ -648,18 +649,18 @@ func (s *service) executeGiveItemTx(ctx context.Context, owner, receiver *domain
 	})
 }
 
-func (s *service) UseItem(ctx context.Context, platform, platformID, username, itemName string, quantity int, targetUsername string) (string, error) {
+func (s *service) UseItem(ctx context.Context, platform, platformID, username, itemName string, quantity int, targetName string) (string, error) {
 	log := logger.FromContext(ctx)
 	log.Info("UseItem called",
 		"platform", platform, "platformID", platformID, "username", username,
-		"itemName", itemName, "quantity", quantity, "targetUsername", targetUsername)
+		"itemName", itemName, "quantity", quantity, "targetName", targetName)
 
 	user, err := s.getUserOrRegister(ctx, platform, platformID, username)
 	if err != nil {
 		log.Error("Failed to get user or register", "error", err)
 		return "", domain.ErrFailedToGetUser
 	}
-	
+
 	// Resolve public name to internal name
 	resolvedName, err := s.resolveItemName(ctx, itemName)
 	if err != nil {
@@ -667,17 +668,7 @@ func (s *service) UseItem(ctx context.Context, platform, platformID, username, i
 		return "", domain.ErrInvalidInput
 	}
 
-	// targetUser is optional depending on the item
-	var targetUser *domain.User = nil
-	if targetUsername != "" {
-		targetUser, err = s.GetUserByPlatformUsername(ctx, platform, targetUsername)
-		if err != nil {
-			log.Error("Failed to resolve target username", "error", err)
-			return "", domain.ErrFailedToGetUser
-		}
-	}
-
-	return s.useItemInternal(ctx, user, resolvedName, quantity, targetUser)
+	return s.useItemInternal(ctx, user, resolvedName, quantity, targetName)
 }
 
 // resolveItemName attempts to resolve a user-provided item name to its internal name.

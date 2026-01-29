@@ -667,6 +667,50 @@ func TestUseItem_Blaster(t *testing.T) {
 	}
 }
 
+func TestUseItem_RareCandy(t *testing.T) {
+	repo := NewFakeRepository()
+	setupTestData(repo)
+
+	// Add Rare Candy to repo
+	repo.items[domain.ItemRareCandy] = &domain.Item{
+		ID:           6,
+		InternalName: domain.ItemRareCandy,
+		PublicName:   domain.ItemRareCandy,
+		Description:  "Tastes like progression",
+		BaseValue:    100,
+	}
+
+	svc := NewService(repo, nil, nil, nil, NewMockNamingResolver(), nil, false).(*service)
+	ctx := context.Background()
+	alice := domain.User{
+		ID:       "user-alice",
+		Username: "alice",
+		TwitchID: "alice123",
+	}
+
+	// Setup: Give alice some Rare Candy
+	svc.RegisterUser(ctx, alice)
+	svc.AddItemByUsername(ctx, domain.PlatformTwitch, alice.Username, domain.ItemRareCandy, 5)
+
+	// Test using Rare Candy on a job name (which is NOT a user)
+	// This should work now because we don't resolve the target as a user anymore
+	message, err := svc.UseItem(ctx, domain.PlatformTwitch, alice.TwitchID, alice.Username, domain.ItemRareCandy, 1, "blacksmith")
+	if err != nil {
+		t.Fatalf("UseItem failed: %v", err)
+	}
+
+	expectedMsg := "Used 1 rare candy! Granted 500 XP to blacksmith."
+	if message != expectedMsg {
+		t.Errorf("Expected message '%s', got '%s'", expectedMsg, message)
+	}
+
+	// Verify inventory
+	inv, _ := repo.GetInventory(ctx, alice.ID)
+	if inv.Slots[0].Quantity != 4 {
+		t.Errorf("Expected 4 Rare Candy left, got %d", inv.Slots[0].Quantity)
+	}
+}
+
 func TestGetInventory(t *testing.T) {
 	repo := NewFakeRepository()
 	setupTestData(repo)
