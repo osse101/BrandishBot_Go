@@ -305,6 +305,65 @@ func (_c *MockProgressionService_AdminUnlockAll_Call) RunAndReturn(run func(cont
 	return _c
 }
 
+// AreItemsUnlocked provides a mock function with given fields: ctx, itemNames
+func (_m *MockProgressionService) AreItemsUnlocked(ctx context.Context, itemNames []string) (map[string]bool, error) {
+	ret := _m.Called(ctx, itemNames)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AreItemsUnlocked")
+	}
+
+	var r0 map[string]bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, []string) (map[string]bool, error)); ok {
+		return rf(ctx, itemNames)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, []string) map[string]bool); ok {
+		r0 = rf(ctx, itemNames)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(map[string]bool)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, []string) error); ok {
+		r1 = rf(ctx, itemNames)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockProgressionService_AreItemsUnlocked_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AreItemsUnlocked'
+type MockProgressionService_AreItemsUnlocked_Call struct {
+	*mock.Call
+}
+
+// AreItemsUnlocked is a helper method to define mock.On call
+//   - ctx context.Context
+//   - itemNames []string
+func (_e *MockProgressionService_Expecter) AreItemsUnlocked(ctx interface{}, itemNames interface{}) *MockProgressionService_AreItemsUnlocked_Call {
+	return &MockProgressionService_AreItemsUnlocked_Call{Call: _e.mock.On("AreItemsUnlocked", ctx, itemNames)}
+}
+
+func (_c *MockProgressionService_AreItemsUnlocked_Call) Run(run func(ctx context.Context, itemNames []string)) *MockProgressionService_AreItemsUnlocked_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]string))
+	})
+	return _c
+}
+
+func (_c *MockProgressionService_AreItemsUnlocked_Call) Return(_a0 map[string]bool, _a1 error) *MockProgressionService_AreItemsUnlocked_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockProgressionService_AreItemsUnlocked_Call) RunAndReturn(run func(context.Context, []string) (map[string]bool, error)) *MockProgressionService_AreItemsUnlocked_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CheckAndUnlockCriteria provides a mock function with given fields: ctx
 func (_m *MockProgressionService) CheckAndUnlockCriteria(ctx context.Context) (*domain.ProgressionUnlock, error) {
 	ret := _m.Called(ctx)

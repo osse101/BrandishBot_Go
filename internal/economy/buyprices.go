@@ -2,6 +2,7 @@ package economy
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
@@ -17,24 +18,31 @@ func (s *service) GetBuyablePrices(ctx context.Context) ([]domain.Item, error) {
 		return nil, err
 	}
 
-	// Filter out locked items if progression service is available
+	// Return all items if no progression service
 	if s.progressionService == nil {
 		return allItems, nil
 	}
 
+	// Extract item names for batch checking
+	itemNames := make([]string, len(allItems))
+	for i, item := range allItems {
+		itemNames[i] = item.InternalName
+	}
+
+	// Batch check unlock status
+	unlockStatus, err := s.progressionService.AreItemsUnlocked(ctx, itemNames)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check item unlock status: %w", err)
+	}
+
+	// Filter to only unlocked items
 	filtered := make([]domain.Item, 0, len(allItems))
 	for _, item := range allItems {
-		unlocked, err := s.progressionService.IsItemUnlocked(ctx, item.InternalName)
-		if err != nil {
-			// Log error but don't fail the request - include item if check fails
-			log.Warn("Failed to check unlock status", "item", item.InternalName, "error", err)
-			filtered = append(filtered, item)
-			continue
-		}
-		if unlocked {
+		if unlockStatus[item.InternalName] {
 			filtered = append(filtered, item)
 		}
 	}
 
+	log.Info("Buyable prices filtered", "total", len(allItems), "unlocked", len(filtered))
 	return filtered, nil
 }

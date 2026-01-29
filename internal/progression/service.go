@@ -23,6 +23,7 @@ type Service interface {
 	// Feature checks
 	IsFeatureUnlocked(ctx context.Context, featureKey string) (bool, error)
 	IsItemUnlocked(ctx context.Context, itemName string) (bool, error)
+	AreItemsUnlocked(ctx context.Context, itemNames []string) (map[string]bool, error)
 	IsNodeUnlocked(ctx context.Context, nodeKey string, level int) (bool, error) // Bug #2: Check if specific node/level is unlocked
 
 	// Voting
@@ -348,6 +349,47 @@ func (s *service) IsNodeUnlocked(ctx context.Context, nodeKey string, level int)
 	s.unlockCache.Set(nodeKey, level, unlocked)
 
 	return unlocked, nil
+}
+
+// AreItemsUnlocked checks if multiple items are unlocked in a single batch operation.
+// Returns a map of itemName -> unlocked status.
+// This is much more efficient than calling IsItemUnlocked N times.
+func (s *service) AreItemsUnlocked(ctx context.Context, itemNames []string) (map[string]bool, error) {
+	if len(itemNames) == 0 {
+		return make(map[string]bool), nil
+	}
+
+	result := make(map[string]bool, len(itemNames))
+	uncachedKeys := make([]string, 0)
+	uncachedNames := make([]string, 0)
+
+	// Check cache first for all items
+	for _, itemName := range itemNames {
+		nodeKey := fmt.Sprintf("item_%s", itemName)
+		if unlocked, found := s.unlockCache.Get(nodeKey, 1); found {
+			result[itemName] = unlocked
+		} else {
+			uncachedKeys = append(uncachedKeys, nodeKey)
+			uncachedNames = append(uncachedNames, itemName)
+		}
+	}
+
+	// If all were cached, return early
+	if len(uncachedKeys) == 0 {
+		return result, nil
+	}
+
+	// Query DB for uncached items and populate cache
+	for i, nodeKey := range uncachedKeys {
+		unlocked, err := s.repo.IsNodeUnlocked(ctx, nodeKey, 1)
+		if err != nil {
+			return nil, fmt.Errorf("failed to check unlock status for %s: %w", nodeKey, err)
+		}
+		s.unlockCache.Set(nodeKey, 1, unlocked)
+		result[uncachedNames[i]] = unlocked
+	}
+
+	return result, nil
 }
 
 func (s *service) VoteForUnlock(ctx context.Context, platform, platformID, nodeKey string) error {

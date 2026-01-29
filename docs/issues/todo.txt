@@ -1,1 +1,11 @@
-Commands -- add contribution on all command handlers
+AddContribution:
+-HandleMessageHandler
+
+- Commands -- add contribution on all command handlers
+search
+buy
+use
+upgrade
+vote
+gamble-start (if continues to execution)
+gamble-join (per user)
