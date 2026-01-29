@@ -1,6 +1,7 @@
 package discord
 
 import (
+	"fmt"
 	"log/slog"
 
 	"github.com/bwmarrin/discordgo"
@@ -49,14 +50,15 @@ func GambleStartCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			return
 		}
 
-		msg, err := client.StartGamble(domain.PlatformDiscord, user.ID, user.Username, itemName, quantity)
+		gambleID, err := client.StartGamble(domain.PlatformDiscord, user.ID, user.Username, itemName, quantity)
 		if err != nil {
 			slog.Error("Failed to start gamble", "error", err)
 			respondFriendlyError(s, i, err.Error())
 			return
 		}
 
-		embed := createEmbed("🎲 Gamble Started!", msg, 0xe74c3c, "")
+		description := fmt.Sprintf("**Gamble ID:** `%s`\n\nOthers can join using `/gamble-join %s`\n\nThe gamble will execute shortly after the join deadline.", gambleID, gambleID)
+		embed := createEmbed("🎲 Gamble Started!", description, 0xe74c3c, "")
 		sendEmbed(s, i, embed)
 	}
 

@@ -34,6 +34,11 @@ type StartGambleRequest struct {
 	Bets       []domain.LootboxBet `json:"bets"`
 }
 
+type StartGambleResponse struct {
+	Message  string `json:"message"`
+	GambleID string `json:"gamble_id"`
+}
+
 func (h *GambleHandler) HandleStartGamble(w http.ResponseWriter, r *http.Request) {
 	// Check if gamble feature is unlocked
 	if CheckFeatureLocked(w, r, h.progressionSvc, progression.FeatureGamble) {
@@ -68,7 +73,11 @@ func (h *GambleHandler) HandleStartGamble(w http.ResponseWriter, r *http.Request
 		// Don't fail the request
 	}
 
-	respondJSON(w, http.StatusCreated, gamble)
+	response := StartGambleResponse{
+		Message:  "Gamble started! Others can join using the gamble ID.",
+		GambleID: gamble.ID.String(),
+	}
+	respondJSON(w, http.StatusCreated, response)
 }
 
 type JoinGambleRequest struct {

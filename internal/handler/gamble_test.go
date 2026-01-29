@@ -77,7 +77,7 @@ func TestHandleStartGamble(t *testing.T) {
 				mg.On("StartGamble", mock.Anything, "discord", "123", "testuser", mock.Anything).Return(&domain.Gamble{ID: uuid.MustParse("00000000-0000-0000-0000-000000000001")}, nil)
 			},
 			expectedStatus: http.StatusCreated,
-			expectedBody:   `"id":"00000000-0000-0000-0000-000000000001"`,
+			expectedBody:   `"gamble_id":"00000000-0000-0000-0000-000000000001"`,
 		},
 	}
 

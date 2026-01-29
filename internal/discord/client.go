@@ -306,7 +306,7 @@ func (c *APIClient) StartGamble(platform, platformID, username, itemName string,
 		return "", fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	return gambleResp.Message, nil
+	return gambleResp.GambleID, nil
 }
 
 // JoinGamble joins an active gamble

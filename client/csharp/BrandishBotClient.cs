@@ -459,16 +459,28 @@ namespace BrandishBot.Client
         /// <summary>
         /// Start a new gamble session
         /// </summary>
-        public async Task<string> StartGamble(string platform, string platformId, string username, 
+        public async Task<string> StartGamble(string platform, string platformId, string username,
             string itemName, int quantity=1)
         {
-            return await PostJsonAsync("/api/v1/gamble/start", new
+            var responseJson = await PostJsonAsync("/api/v1/gamble/start", new
             {
                 platform = platform,
                 platform_id = platformId,
                 username = username,
                 bets = new[] { new { item_name = itemName, quantity = quantity } }
             });
+
+            // Parse the response to extract gamble_id
+            try
+            {
+                var response = JObject.Parse(responseJson);
+                return response["gamble_id"]?.Value<string>() ?? responseJson;
+            }
+            catch
+            {
+                // Fallback to raw response if parsing fails
+                return responseJson;
+            }
         }
 
         /// <summary>
