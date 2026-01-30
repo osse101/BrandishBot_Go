@@ -23,6 +23,23 @@ Handler (internal/handler/) → Service (internal/*/service.go) → Repository (
 
 All services follow this pattern. Discord commands mirror this via API client calls.
 
+## Core Modules
+
+| Module | Purpose |
+|--------|---------|
+| `internal/bootstrap/` | Application initialization, dependency injection |
+| `internal/config/` | Configuration management, environment variables |
+| `internal/cooldown/` | Cooldown service for rate limiting |
+| `internal/features/` | Feature flags and toggles |
+| `internal/logger/` | Structured logging with Zap |
+| `internal/metrics/` | Prometheus metrics collection |
+| `internal/middleware/` | HTTP middleware (CORS, logging, recovery) |
+| `internal/scheduler/` | Background job scheduling |
+| `internal/sse/` | Server-Sent Events for real-time updates |
+| `internal/streamerbot/` | Streamer.bot WebSocket integration |
+| `internal/testing/` | Test utilities and helpers |
+| `internal/utils/` | Shared utility functions |
+
 ---
 
 ## Feature Quick Reference
@@ -75,9 +92,72 @@ All services follow this pattern. Discord commands mirror this via API client ca
 | Loader | `internal/progression/tree_loader.go` |
 | Events | `internal/progression/handler.go` |
 | Domain | `internal/domain/progression.go:1-189` |
+| Cost Calculator | `internal/progression/cost_calculator.go` |
+| Prerequisites | `internal/progression/prerequisite_parser.go` |
+| Voting Sessions | `internal/progression/voting_sessions.go` |
 
 **Key methods:** `VoteForUnlock`, `CheckAndUnlockNode`, `GetModifiedValue`, `RecordEngagement`
 **Caching:** Unlock cache (event-invalidated) + modifier cache (30-min TTL)
+
+#### Parallel Voting Architecture
+
+The progression system supports concurrent voting on multiple nodes with unlock accumulation:
+
+**Voting Session Statuses:**
+- `voting` - Active voting, accumulating unlocks
+- `frozen` - Voting frozen by admin, accumulation continues
+- `completed` - Voting ended, cycle completed
+
+**Workflow:**
+1. Users vote on multiple nodes concurrently
+2. System accumulates unlocked nodes during voting period
+3. When cycle completes, all accumulated unlocks are published
+4. New voting session starts for next tier
+
+**Implementation:** `internal/progression/voting_sessions.go`
+
+**Admin Controls:**
+- Freeze voting: Prevents new votes, accumulation continues
+- Force-end session: Manually trigger cycle completion
+- Start new session: Begin next voting cycle
+
+#### Dynamic Prerequisites
+
+Progression nodes can have dynamic prerequisites that evaluate at runtime:
+
+**Prerequisite Types:**
+- `nodes_unlocked_below_tier` - Requires X nodes unlocked in tiers < N
+- `total_nodes_unlocked` - Requires X total nodes unlocked
+
+**Configuration Format:**
+```json
+{
+  "node_id": "feature_1",
+  "prerequisites": ["tier:2:5", "total:10"]
+}
+```
+
+**Implementation:** `internal/progression/prerequisite_parser.go`, `internal/progression/progression.go`
+
+#### Node Cost Calculation
+
+Node unlock costs scale by tier and size:
+
+**Formula:** `baseCost[size] × (1.30^tier)`
+
+**Base Costs by Size:**
+- Small: 200 engagement points
+- Medium: 400 engagement points
+- Large: 800 engagement points
+
+**Tier Multipliers (1.30^tier):**
+- Tier 1: 1.00x
+- Tier 2: 1.30x
+- Tier 3: 1.69x
+- Tier 4: 2.20x
+- Tier 5: 2.86x
+
+**Implementation:** `internal/progression/cost_calculator.go`
 
 ### Gamble/Lootbox System
 | Layer | Location |
@@ -125,8 +205,94 @@ All services follow this pattern. Discord commands mirror this via API client ca
 | Event Log | `internal/eventlog/service.go` |
 | Metrics | `internal/metrics/collector.go` |
 
-**Key types:** `ProgressionCycleCompleted`, `EventTypeEngagement`, `EventGambleStarted`
+**Key Event Types:**
+- `EventTypeEngagement` - User engagement events
+- `EventGambleStarted`, `EventGambleComplete` - Gamble lifecycle
+- `EventTypeJobLevelUp` - Job level progression
+- `EventTypeProgressionCycleCompleted` - Voting cycle completion
+- `EventTypeProgressionTargetSet` - New unlock target set
+- `EventTypeProgressionVotingStarted` - Voting session started
+- `EventTypeProgressionAllUnlocked` - All nodes unlocked
+
+**Event Constructors:**
+- `NewProgressionCycleCompletedEvent()` - Published when voting cycle ends
+- `NewProgressionTargetSetEvent()` - Published when new target set
+- `NewEngagementEvent()` - Published on user engagement
+
 **Retry:** Exponential backoff (2s → 4s → 8s → 16s → 32s)
+
+**Publishing Locations:**
+- `internal/progression/handler.go` - Progression events
+- `internal/gamble/service.go` - Gamble events
+- `internal/job/service.go` - Job level events
+
+### Server-Sent Events (SSE)
+| Layer | Location |
+|-------|----------|
+| Hub | `internal/sse/hub.go` |
+| Client | `internal/sse/client.go` |
+| Handler | `internal/handler/sse.go` |
+| Integration | `internal/sse/event_integration.go` |
+
+**Endpoint:** `GET /api/v1/events`
+
+**Event Types Broadcasted:**
+- `job.level_up` - User leveled up in a job
+- `progression.cycle.completed` - Voting cycle completed
+- `progression.target.set` - New unlock target set
+- `progression.voting_started` - New voting session started
+- `progression.all_unlocked` - All nodes unlocked
+- `gamble.complete` - Gamble session completed
+
+**Architecture:**
+- Hub with 100-message buffer per client
+- 30-second keepalive messages
+- Automatic client cleanup on disconnect
+
+**Client Integration:**
+- Discord: `internal/discord/sse_client.go`
+- Streamer.bot: `internal/streamerbot/client.go`
+
+### Cooldown System
+| Layer | Location |
+|-------|----------|
+| Service | `internal/cooldown/service.go` |
+| Repository | `internal/repository/cooldown.go` |
+| Postgres | `internal/database/postgres/cooldown.go` |
+
+**Features:**
+- Check-then-lock pattern for race-free cooldown checks
+- Configurable cooldown durations per action
+- User-specific and global cooldowns
+- Transaction-based enforcement
+
+**Key methods:** `CheckAndSetCooldown`, `GetCooldown`, `ClearCooldown`
+
+### Job Scheduler
+| Layer | Location |
+|-------|----------|
+| Scheduler | `internal/scheduler/scheduler.go` |
+| Jobs | `internal/scheduler/jobs/` |
+
+**Scheduled Jobs:**
+- Progression cycle management (tier progression)
+- Gamble cleanup (expired sessions)
+- Stats aggregation (leaderboards)
+
+**Implementation:** Cron-based scheduling with graceful shutdown
+
+### Streamer.bot Integration
+| Layer | Location |
+|-------|----------|
+| Client | `internal/streamerbot/client.go` |
+| WebSocket | `internal/streamerbot/websocket.go` |
+| Events | `internal/streamerbot/event_handler.go` |
+
+**Features:**
+- WebSocket connection to Streamer.bot
+- Real-time event forwarding
+- Automatic reconnection
+- Event filtering and transformation
 
 ### Discord Bot
 | Layer | Location |
@@ -156,13 +322,17 @@ All services follow this pattern. Discord commands mirror this via API client ca
 **Connection:** `internal/database/database.go`
 
 ### Key Tables
-- `users`, `user_platform_links` - User accounts
-- `items`, `inventories` - Items and user inventories (JSONB)
-- `crafting_recipes`, `disassemble_recipes` - Recipes
+- `users`, `user_platform_links` - User accounts and platform linkage
+- `items`, `user_inventory` - Items and user inventories (JSONB)
+- `crafting_recipes`, `disassemble_recipes` - Crafting recipes
 - `progression_nodes`, `progression_unlocks`, `progression_voting_sessions` - Progression tree
-- `gambles`, `gamble_participants` - Gamble sessions
+- `progression_voting_options`, `progression_voting_weights` - Voting system
+- `engagement_metrics` - User engagement tracking
+- `gambles`, `gamble_participants`, `gamble_opened_items` - Gamble sessions
 - `jobs`, `user_jobs` - Job/XP system
 - `stats_events`, `events` - Event logging
+- `cooldowns` - Cooldown tracking
+- `loot_tables`, `loot_table_items` - Loot drop configuration
 
 ---
 
@@ -170,13 +340,13 @@ All services follow this pattern. Discord commands mirror this via API client ca
 
 | Config | Location | Loader |
 |--------|----------|--------|
-| Items | `configs/items.json` | `internal/item/loader.go` |
+| Items | `configs/items/items.json` | `internal/item/loader.go` |
 | Crafting Recipes | `configs/recipes/crafting.json` | `internal/crafting/recipe_loader.go` |
 | Disassemble Recipes | `configs/recipes/disassemble.json` | `internal/crafting/recipe_loader.go` |
-| Progression Tree | `configs/progression/tree.json` | `internal/progression/tree_loader.go` |
+| Progression Tree | `configs/progression_tree.json` | `internal/progression/tree_loader.go` |
 | Loot Tables | `configs/loot_tables.json` | `internal/lootbox/service.go` |
-| Item Aliases | `configs/item_aliases.json` | `internal/naming/resolver.go` |
-| Item Themes | `configs/item_themes.json` | `internal/naming/resolver.go` |
+| Item Aliases | `configs/items/aliases.json` | `internal/naming/resolver.go` |
+| Item Themes | `configs/items/themes.json` | `internal/naming/resolver.go` |
 
 ---
 
@@ -189,7 +359,7 @@ All services follow this pattern. Discord commands mirror this via API client ca
 4. Implement repository in `internal/database/postgres/*.go`
 5. Add SQLC query in `internal/database/queries/*.sql` and run `make generate`
 6. Add handler in `internal/handler/*.go`
-7. Register route in `internal/server/routes.go`
+7. Register route in `internal/server/server.go`
 
 ### Adding a New Discord Command
 1. Create `internal/discord/cmd_*.go` with `*Command()` function
@@ -214,8 +384,22 @@ All services follow this pattern. Discord commands mirror this via API client ca
 
 ---
 
-## Service Dependencies (from cmd/app/main.go)
+## Service Dependencies & Initialization Order
 
+From `cmd/app/main.go`, services initialize in this order:
+
+1. **Config & Database** - Load env vars, connect to Postgres
+2. **Event System** - Initialize event bus and resilient publisher
+3. **Repositories** - Create all repository instances
+4. **Core Services** - User, economy, item, naming services
+5. **Feature Services** - Job, stats, progression, cooldown services
+6. **Game Services** - Crafting, lootbox, gamble services
+7. **Background Systems** - Scheduler, gamble worker
+8. **Real-Time Systems** - SSE hub, Streamer.bot client
+9. **HTTP Server** - API routes and middleware
+10. **Event Handlers** - Subscribe to event bus
+
+**Dependency Relationships:**
 ```
 user.Service      ← stats, job, lootbox, naming, cooldown
 crafting.Service  ← job, stats, naming
@@ -236,6 +420,7 @@ job.Service       ← progression, stats, event bus
 | DB Setup | `cmd/setup/main.go` |
 | Debug Tools | `cmd/debug/main.go` |
 | DB Reset | `cmd/reset/main.go` |
+| Progression Key Generator | `cmd/gen-progression-keys/main.go` |
 
 ---
 
@@ -250,23 +435,78 @@ job.Service       ← progression, stats, event bus
 
 ## API Endpoints Summary
 
-**Health:** `GET /healthz`, `GET /readyz`, `GET /version`, `GET /metrics`
+### Health & Monitoring
+- `GET /healthz` - Health check
+- `GET /readyz` - Readiness check
+- `GET /version` - Version info
+- `GET /metrics` - Prometheus metrics
 
-**User:** `/api/v1/user/register`, `/api/v1/user/inventory`, `/api/v1/user/item/*`
+### User Management
+- `POST /api/v1/user/register` - Register new user
+- `GET /api/v1/user/inventory` - Get user inventory
+- `GET /api/v1/user/inventory/:username` - Get inventory by username
+- `PUT /api/v1/user/timeout` - Set user timeout
+- `GET /api/v1/user/search` - Search users
+- `POST /api/v1/user/item/add` - Add item to inventory
+- `POST /api/v1/user/item/remove` - Remove item from inventory
+- `POST /api/v1/user/item/use` - Use consumable item
 
-**Economy:** `/api/v1/prices`, `/api/v1/prices/buy`, `/api/v1/economy/buy`, `/api/v1/economy/sell`
+### Economy
+- `GET /api/v1/prices` - Get sellable item prices
+- `GET /api/v1/prices/buy` - Get buyable item prices
+- `POST /api/v1/economy/buy` - Buy item
+- `POST /api/v1/economy/sell` - Sell item
 
-**Crafting:** `/api/v1/user/item/upgrade`, `/api/v1/user/item/disassemble`, `/api/v1/crafting/recipes`
+### Crafting
+- `POST /api/v1/user/item/upgrade` - Upgrade item
+- `POST /api/v1/user/item/disassemble` - Disassemble item
+- `GET /api/v1/crafting/recipes` - Get unlocked recipes
 
-**Progression:** `/api/v1/progression/*` (tree, available, vote, status, engagement, admin)
+### Progression
+- `GET /api/v1/progression/tree` - Get progression tree
+- `GET /api/v1/progression/available` - Get available nodes to unlock
+- `POST /api/v1/progression/vote` - Vote for node unlock
+- `GET /api/v1/progression/status` - Get current voting status
+- `POST /api/v1/progression/engagement` - Record engagement
+- `POST /api/v1/progression/engagement/:username` - Record engagement by username
+- `GET /api/v1/progression/leaderboard` - Get engagement leaderboard
+- `GET /api/v1/progression/session` - Get current voting session
+- `POST /api/v1/progression/admin/freeze` - Freeze voting (admin)
+- `POST /api/v1/progression/admin/force-end` - Force end session (admin)
+- `POST /api/v1/progression/admin/start` - Start new session (admin)
+- `PUT /api/v1/progression/admin/weights` - Update voting weights (admin)
 
-**Gamble:** `/api/v1/gamble/start`, `/api/v1/gamble/join`, `/api/v1/gamble/get`
+### Gamble
+- `POST /api/v1/gamble/start` - Start gamble session
+- `POST /api/v1/gamble/join` - Join gamble session
+- `GET /api/v1/gamble/get` - Get gamble session details
 
-**Jobs:** `/api/v1/jobs`, `/api/v1/jobs/user`, `/api/v1/jobs/award-xp`, `/api/v1/jobs/bonus`
+### Jobs
+- `GET /api/v1/jobs` - Get all jobs
+- `GET /api/v1/jobs/user` - Get user jobs
+- `POST /api/v1/jobs/award-xp` - Award XP to user
+- `GET /api/v1/jobs/bonus` - Get job bonus multiplier
+- `POST /api/v1/admin/jobs/xp` - Award XP (admin)
 
-**Stats:** `/api/v1/stats/event`, `/api/v1/stats/user`, `/api/v1/stats/system`, `/api/v1/stats/leaderboard`
+### Stats
+- `POST /api/v1/stats/event` - Record user event
+- `GET /api/v1/stats/user` - Get user stats
+- `GET /api/v1/stats/system` - Get system stats
+- `GET /api/v1/stats/leaderboard` - Get leaderboard
 
-**Docs:** `/swagger/`
+### Message Handling
+- `POST /api/v1/message/handle` - Handle chat message
+- `POST /api/v1/message/test` - Test message handling
+
+### Admin
+- `POST /api/v1/admin/reload-aliases` - Reload item aliases
+- `GET /api/v1/admin/cache/stats` - Get cache statistics
+
+### Real-Time Events
+- `GET /api/v1/events` - Server-Sent Events stream
+
+### Documentation
+- `/swagger/` - Swagger UI
 
 ---
 
@@ -327,7 +567,7 @@ When completing a feature or task, clean up all temporary artifacts:
 
 ### Sync Checklist for New/Modified Endpoints
 - [ ] Handler implemented in `internal/handler/`
-- [ ] Route registered in `internal/server/routes.go`
+- [ ] Route registered in `internal/server/server.go`
 - [ ] Discord client method in `internal/discord/client.go`
 - [ ] C# client method in `client/csharp/BrandishBotClient.cs`
 - [ ] `docs/CLIENT_WRAPPER_CHECKLIST.md` updated
