@@ -1,6 +1,7 @@
 # Progression System Admin Guide
 
 ## Table of Contents
+
 1. [Overview](#overview)
 2. [Admin Commands](#admin-commands)
 3. [Common Tasks](#common-tasks)
@@ -13,6 +14,7 @@
 ## Overview
 
 As an admin, you have full control over the progression system including:
+
 - ✅ Force-unlocking features for testing or events
 - 🔒 Relocking features if needed
 - ⚡ Ending votes early with instant unlock
@@ -28,11 +30,13 @@ As an admin, you have full control over the progression system including:
 ### 1. Unlock a Feature/Item
 
 **Use When**:
+
 - Testing features before public unlock
 - Special events or milestones
 - Correcting issues from failed votes
 
 **Command**:
+
 ```bash
 curl -X POST http://localhost:8080/progression/admin/unlock \
   -H "Content-Type: application/json" \
@@ -43,6 +47,7 @@ curl -X POST http://localhost:8080/progression/admin/unlock \
 ```
 
 **Response**:
+
 ```json
 {
   "message": "Node unlocked successfully",
@@ -58,11 +63,13 @@ curl -X POST http://localhost:8080/progression/admin/unlock \
 ### 2. Relock a Feature/Item
 
 **Use When**:
+
 - Reverting accidental unlocks
 - Temporarily disabling broken features
 - Testing the locked state
 
 **Command**:
+
 ```bash
 curl -X POST http://localhost:8080/progression/admin/relock \
   -H "Content-Type: application/json" \
@@ -79,11 +86,13 @@ curl -X POST http://localhost:8080/progression/admin/relock \
 ### 3. Instant Unlock (End Voting Early)
 
 **Use When**:
+
 - Voting has overwhelming support
 - Special celebration/event
 - Stuck voting that won't reach threshold
 
 **Command**:
+
 ```bash
 curl -X POST http://localhost:8080/progression/admin/instant-unlock \
   -H "Content-Type: application/json" \
@@ -99,11 +108,13 @@ curl -X POST http://localhost:8080/progression/admin/instant-unlock \
 ### 4. Reset Progression Tree
 
 **Use When**:
+
 - Annual reset (recommended once per year)
 - Major version update
 - Starting fresh after testing
 
 **Command**:
+
 ```bash
 curl -X POST http://localhost:8080/progression/admin/reset \
   -H "Content-Type: application/json" \
@@ -115,10 +126,12 @@ curl -X POST http://localhost:8080/progression/admin/reset \
 ```
 
 **Parameters**:
+
 - `preserve_user_data: true` - Keeps user-specific unlocks (recipes)
 - `preserve_user_data: false` - Wipes everything except root node
 
 **⚠️ CRITICAL**: This is destructive! Backup database first:
+
 ```bash
 pg_dump brandish_bot > backup_before_reset_$(date +%Y%m%d).sql
 ```
@@ -174,6 +187,7 @@ curl http://localhost:8080/progression/tree | \
 ```
 
 **Output**:
+
 ```json
 {"key": "progression_system", "level": 1}
 {"key": "item_money", "level": 1}
@@ -191,6 +205,7 @@ curl http://localhost:8080/progression/status | jq '.active_voting'
 ```
 
 **Output**:
+
 ```json
 {
   "node_key": "item_lootbox0",
@@ -231,6 +246,7 @@ curl "http://localhost:8080/progression/engagement?user_id=user123" | jq
 ```
 
 **Output**:
+
 ```json
 {
   "user_id": "user123",
@@ -258,8 +274,9 @@ curl "http://localhost:8080/progression/engagement?user_id=user123" | jq
 ### SQL Queries for Monitoring
 
 **Check unlock status**:
+
 ```sql
-SELECT 
+SELECT
   n.node_key,
   n.display_name,
   u.unlocked_at,
@@ -270,8 +287,9 @@ ORDER BY u.unlocked_at DESC NULLS LAST;
 ```
 
 **Top contributors**:
+
 ```sql
-SELECT 
+SELECT
   user_id,
   SUM(metric_value * w.weight) as total_score
 FROM engagement_metrics em
@@ -282,8 +300,9 @@ LIMIT 10;
 ```
 
 **Voting history**:
+
 ```sql
-SELECT 
+SELECT
   n.node_key,
   v.vote_count,
   v.voting_started_at,
@@ -303,10 +322,12 @@ ORDER BY v.voting_started_at DESC;
 **Cause**: Parent nodes are not unlocked yet.
 
 **Solution**:
+
 1. Check the tree structure in [PROGRESSION_TREE.md](../planning/PROGRESSION_TREE.md)
 2. Unlock parent nodes first (or use admin unlock)
 
 **Example**: To unlock `feature_buy`:
+
 ```bash
 # Must unlock in order:
 curl -X POST .../unlock -d '{"node_key": "item_money", "level": 1}'
@@ -321,6 +342,7 @@ curl -X POST .../unlock -d '{"node_key": "feature_buy", "level": 1}'
 **Cause**: Cache issue or node_key mismatch.
 
 **Solution**:
+
 1. Verify the node is actually unlocked:
    ```bash
    curl http://localhost:8080/progression/tree | jq '.nodes[] | select(.node_key == "feature_buy")'
@@ -328,7 +350,7 @@ curl -X POST .../unlock -d '{"node_key": "feature_buy", "level": 1}'
 2. Check the feature key constant matches:
    ```go
    // Should be "feature_buy", not "buy" or "feature-buy"
-   progression.FeatureBuy == "feature_buy"
+   progression.FeatureEconomy == "feature_buy"
    ```
 3. Restart the server to clear any caches
 
@@ -339,6 +361,7 @@ curl -X POST .../unlock -d '{"node_key": "feature_buy", "level": 1}'
 **Cause**: Handler not recording engagement or async recording failing.
 
 **Solution**:
+
 1. Check server logs for "Failed to record engagement" errors
 2. Verify database connection is healthy
 3. Check `engagement_weights` table has entries:
@@ -357,8 +380,9 @@ curl -X POST .../unlock -d '{"node_key": "feature_buy", "level": 1}'
 **Cause**: Clock skew or `voting_ends_at` not set properly.
 
 **Solution**:
+
 1. Check current time: `SELECT NOW();`
-2. Check voting end time: 
+2. Check voting end time:
    ```sql
    SELECT voting_ends_at, is_active FROM progression_voting WHERE is_active = true;
    ```
@@ -439,11 +463,13 @@ UPDATE engagement_weights SET weight = 5.0 WHERE metric_type = 'item_crafted';
 □ Run reset command  
 □ Confirm only root node unlocked  
 □ Check reset was logged:
+
 ```sql
 SELECT * FROM progression_resets ORDER BY reset_at DESC LIMIT 1;
 ```
+
 □ Announce completion  
-□ Start community voting for first unlock  
+□ Start community voting for first unlock
 
 ---
 
@@ -454,11 +480,12 @@ SELECT * FROM progression_resets ORDER BY reset_at DESC LIMIT 1;
 If you accidentally reset without `preserve_user_data`:
 
 1. **Immediately restore from backup**:
+
    ```bash
    psql brandish_bot < backup_before_reset.sql
    ```
 
-2. **If no backup exists**, contact users and offer compensation  
+2. **If no backup exists**, contact users and offer compensation
 
 3. **Prevent future**: Add confirmation prompts to reset scripts
 
@@ -469,16 +496,19 @@ If you accidentally reset without `preserve_user_data`:
 If progression endpoints return 500 errors:
 
 1. Check database connection:
+
    ```bash
    psql brandish_bot -c "SELECT COUNT(*) FROM progression_nodes;"
    ```
 
 2. Check migration status:
+
    ```bash
    psql brandish_bot -c "SELECT version FROM schema_migrations ORDER BY version DESC LIMIT 5;"
    ```
 
 3. Restart server:
+
    ```bash
    systemctl restart brandish-bot
    # or
@@ -494,12 +524,14 @@ If progression endpoints return 500 errors:
 
 ## Support
 
-**Questions?** 
+**Questions?**
+
 - Check [API Documentation](../api/PROGRESSION_API.md)
 - View [Tree Structure](../planning/PROGRESSION_TREE.md)
 - Review database schema in `migrations/0014_create_progression_tables.up.sql`
 
 **Found a bug?**
+
 - Create an issue with reproduction steps
 - Include relevant logs and database state
 - Mention which admin command was used

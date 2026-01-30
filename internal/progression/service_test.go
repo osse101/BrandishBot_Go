@@ -861,7 +861,7 @@ func setupTestTree(repo *MockRepository) {
 	buyID := 6
 	buy := &domain.ProgressionNode{
 		ID:          buyID,
-		NodeKey:     FeatureBuy,
+		NodeKey:     FeatureEconomy,
 		NodeType:    "feature",
 		DisplayName: "Buy Items",
 		Description: "Buy items feature",
@@ -871,13 +871,13 @@ func setupTestTree(repo *MockRepository) {
 		CreatedAt:   time.Now(),
 	}
 	repo.nodes[buyID] = buy
-	repo.nodesByKey[FeatureBuy] = buy
+	repo.nodesByKey[FeatureEconomy] = buy
 
 	// Sell node (child of economy)
 	sellID := 7
 	sell := &domain.ProgressionNode{
 		ID:          sellID,
-		NodeKey:     FeatureSell,
+		NodeKey:     FeatureEconomy,
 		NodeType:    "feature",
 		DisplayName: "Sell Items",
 		Description: "Sell items feature",
@@ -887,7 +887,7 @@ func setupTestTree(repo *MockRepository) {
 		CreatedAt:   time.Now(),
 	}
 	repo.nodes[sellID] = sell
-	repo.nodesByKey[FeatureSell] = sell
+	repo.nodesByKey[FeatureEconomy] = sell
 
 	// Lootbox0 node (child of root)
 	lootbox0ID := 4

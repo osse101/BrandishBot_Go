@@ -121,6 +121,14 @@ func generateKeysFile(tree ProgressionTree) string {
 		}
 	}
 
+	// Jobs
+	if nodes, ok := groups["job"]; ok {
+		sb.WriteString(fmt.Sprintf("\n\t// Jobs\n"))
+		for _, node := range nodes {
+			sb.WriteString(fmt.Sprintf("\tJob%s = %q\n", pascalCase(stripPrefix(node.Key, "job_")), node.Key))
+		}
+	}
+
 	sb.WriteString("\n\t// Session Status\n")
 	sb.WriteString("\tSessionStatusVoting = \"voting\"\n")
 	sb.WriteString("\tSessionStatusFrozen = \"frozen\"\n")

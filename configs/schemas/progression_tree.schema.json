@@ -1,158 +1,146 @@
 {
-    "$schema": "http://json-schema.org/draft-07/schema#",
-    "$id": "progression_tree.schema.json",
-    "title": "Progression Tree",
-    "description": "BrandishBot progression tree configuration with community-unlockable features and items",
-    "type": "object",
-    "required": [
-        "version",
-        "nodes"
-    ],
-    "properties": {
-        "version": {
-            "type": "string",
-            "description": "Schema version"
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "progression_tree.schema.json",
+  "title": "Progression Tree",
+  "description": "BrandishBot progression tree configuration with community-unlockable features and items",
+  "type": "object",
+  "required": ["version", "nodes"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Schema version"
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable description of the progression tree"
+    },
+    "nodes": {
+      "type": "array",
+      "description": "List of progression nodes",
+      "items": {
+        "$ref": "#/definitions/ProgressionNode"
+      }
+    }
+  },
+  "definitions": {
+    "ProgressionNode": {
+      "type": "object",
+      "required": [
+        "key",
+        "name",
+        "type",
+        "tier",
+        "size",
+        "category",
+        "max_level",
+        "prerequisites",
+        "sort_order"
+      ],
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Unique identifier for the node (used for prerequisites and references)",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "name": {
+          "type": "string",
+          "description": "Display name shown to users"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["feature", "item", "upgrade", "job"],
+          "description": "Type of node: feature (system capability), item (unlockable item), upgrade (leveled improvement)"
         },
         "description": {
+          "type": "string",
+          "description": "Detailed description of what unlocking this node provides"
+        },
+        "tier": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 999,
+          "description": "Tier level (0 = base, higher = more advanced)"
+        },
+        "size": {
+          "type": "string",
+          "enum": ["small", "medium", "large"],
+          "description": "Size category affecting unlock cost"
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "combat",
+            "core",
+            "crafting",
+            "economy",
+            "exploration",
+            "farming",
+            "gambling",
+            "items",
+            "upgrades",
+            "utility",
+            "weapon"
+          ],
+          "description": "Grouping category for organization"
+        },
+        "max_level": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "description": "Maximum level for this node (1 for non-upgrades)"
+        },
+        "prerequisites": {
+          "type": "array",
+          "items": {
             "type": "string",
-            "description": "Human-readable description of the progression tree"
+            "pattern": "^([a-z][a-z0-9_]*|-nodes_unlocked_below_tier:\\d+:\\d+|-total_nodes_unlocked:\\d+)$"
+          },
+          "description": "List of prerequisites that must be met before this node can be unlocked. Supports three formats: 1) Static node reference (e.g., 'feature_economy'), 2) Dynamic nodes unlocked below tier (e.g., '-nodes_unlocked_below_tier:3:10' requires 10 nodes at or below tier 3), 3) Dynamic total nodes unlocked (e.g., '-total_nodes_unlocked:20' requires 20 total nodes unlocked)"
         },
-        "nodes": {
-            "type": "array",
-            "description": "List of progression nodes",
-            "items": {
-                "$ref": "#/definitions/ProgressionNode"
-            }
+        "sort_order": {
+          "type": "integer",
+          "description": "Display sorting order within the same tier"
+        },
+        "auto_unlock": {
+          "type": "boolean",
+          "default": false,
+          "description": "If true, this node is unlocked automatically when prerequisites are met"
+        },
+        "modifier_config": {
+          "$ref": "#/definitions/ModifierConfig"
         }
+      },
+      "additionalProperties": false
     },
-    "definitions": {
-        "ProgressionNode": {
-            "type": "object",
-            "required": [
-                "key",
-                "name",
-                "type",
-                "tier",
-                "size",
-                "category",
-                "max_level",
-                "prerequisites",
-                "sort_order"
-            ],
-            "properties": {
-                "key": {
-                    "type": "string",
-                    "description": "Unique identifier for the node (used for prerequisites and references)",
-                    "pattern": "^[a-z][a-z0-9_]*$"
-                },
-                "name": {
-                    "type": "string",
-                    "description": "Display name shown to users"
-                },
-                "type": {
-                    "type": "string",
-                    "enum": [
-                        "feature",
-                        "item",
-                        "upgrade"
-                    ],
-                    "description": "Type of node: feature (system capability), item (unlockable item), upgrade (leveled improvement)"
-                },
-                "description": {
-                    "type": "string",
-                    "description": "Detailed description of what unlocking this node provides"
-                },
-                "tier": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "maximum": 999,
-                    "description": "Tier level (0 = base, higher = more advanced)"
-                },
-                "size": {
-                    "type": "string",
-                    "enum": [
-                        "small",
-                        "medium",
-                        "large"
-                    ],
-                    "description": "Size category affecting unlock cost"
-                },
-                "category": {
-                    "type": "string",
-                    "enum": [
-                        "combat",
-                        "core",
-                        "crafting",
-                        "economy",
-                        "exploration",
-                        "gambling",
-                        "items",
-                        "upgrades",
-                        "utility",
-                        "weapon"
-                    ],
-                    "description": "Grouping category for organization"
-                },
-                "max_level": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "maximum": 100,
-                    "description": "Maximum level for this node (1 for non-upgrades)"
-                },
-                "prerequisites": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    },
-                    "description": "List of node keys that must be unlocked before this node"
-                },
-                "sort_order": {
-                    "type": "integer",
-                    "description": "Display sorting order within the same tier"
-                },
-                "auto_unlock": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "If true, this node is unlocked automatically when prerequisites are met"
-                },
-                "modifier_config": {
-                    "$ref": "#/definitions/ModifierConfig"
-                }
-            },
-            "additionalProperties": false
+    "ModifierConfig": {
+      "type": "object",
+      "description": "Configuration for upgrade-type nodes that modify game values",
+      "required": [
+        "feature_key",
+        "modifier_type",
+        "base_value",
+        "per_level_value"
+      ],
+      "properties": {
+        "feature_key": {
+          "type": "string",
+          "description": "Identifier for the feature being modified"
         },
-        "ModifierConfig": {
-            "type": "object",
-            "description": "Configuration for upgrade-type nodes that modify game values",
-            "required": [
-                "feature_key",
-                "modifier_type",
-                "base_value",
-                "per_level_value"
-            ],
-            "properties": {
-                "feature_key": {
-                    "type": "string",
-                    "description": "Identifier for the feature being modified"
-                },
-                "modifier_type": {
-                    "type": "string",
-                    "enum": [
-                        "multiplicative",
-                        "linear"
-                    ],
-                    "description": "How the modifier is applied: multiplicative (value * modifier) or linear (value + modifier)"
-                },
-                "base_value": {
-                    "type": "number",
-                    "description": "Base value at level 0"
-                },
-                "per_level_value": {
-                    "type": "number",
-                    "description": "Value change per level"
-                }
-            },
-            "additionalProperties": false
+        "modifier_type": {
+          "type": "string",
+          "enum": ["multiplicative", "linear"],
+          "description": "How the modifier is applied: multiplicative (value * modifier) or linear (value + modifier)"
+        },
+        "base_value": {
+          "type": "number",
+          "description": "Base value at level 0"
+        },
+        "per_level_value": {
+          "type": "number",
+          "description": "Value change per level"
         }
+      },
+      "additionalProperties": false
     }
+  }
 }

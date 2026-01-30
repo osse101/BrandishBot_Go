@@ -179,7 +179,7 @@ type SellItemResponse struct {
 func HandleSellItem(svc economy.Service, progressionSvc progression.Service, eventBus event.Bus) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Check if sell feature is unlocked
-		if CheckFeatureLocked(w, r, progressionSvc, progression.FeatureSell) {
+		if CheckFeatureLocked(w, r, progressionSvc, progression.FeatureEconomy) {
 			return
 		}
 
@@ -257,7 +257,7 @@ type BuyItemResponse struct {
 func HandleBuyItem(svc economy.Service, progressionSvc progression.Service, eventBus event.Bus) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Check if buy feature is unlocked
-		if CheckFeatureLocked(w, r, progressionSvc, progression.FeatureBuy) {
+		if CheckFeatureLocked(w, r, progressionSvc, progression.FeatureEconomy) {
 			return
 		}
 

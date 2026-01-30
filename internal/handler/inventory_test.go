@@ -112,7 +112,7 @@ func TestHandleSellItem(t *testing.T) {
 				Quantity:   1,
 			},
 			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService) {
-				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSell).Return(true, nil)
+				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureEconomy).Return(true, nil)
 				e.On("SellItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.ItemBlaster, 1).Return(100, 1, nil)
 			},
 			expectedStatus: http.StatusOK,
@@ -128,8 +128,8 @@ func TestHandleSellItem(t *testing.T) {
 				Quantity:   1,
 			},
 			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService) {
-				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSell).Return(false, nil)
-				p.On("GetRequiredNodes", mock.Anything, progression.FeatureSell).Return([]*domain.ProgressionNode{
+				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureEconomy).Return(false, nil)
+				p.On("GetRequiredNodes", mock.Anything, progression.FeatureEconomy).Return([]*domain.ProgressionNode{
 					{DisplayName: "Sell System"},
 				}, nil)
 			},
@@ -146,7 +146,7 @@ func TestHandleSellItem(t *testing.T) {
 				Quantity:   1,
 			},
 			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService) {
-				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSell).Return(false, domain.ErrDatabaseError)
+				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureEconomy).Return(false, domain.ErrDatabaseError)
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   ErrMsgGenericServerError,
@@ -155,7 +155,7 @@ func TestHandleSellItem(t *testing.T) {
 			name:        "Invalid Request Body",
 			requestBody: "invalid json",
 			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService) {
-				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSell).Return(true, nil)
+				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureEconomy).Return(true, nil)
 			},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   "Invalid request body",
@@ -169,7 +169,7 @@ func TestHandleSellItem(t *testing.T) {
 				Quantity:   1,
 			},
 			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService) {
-				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSell).Return(true, nil)
+				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureEconomy).Return(true, nil)
 			},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   "Invalid request",
@@ -184,7 +184,7 @@ func TestHandleSellItem(t *testing.T) {
 				Quantity:   0,
 			},
 			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService) {
-				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSell).Return(true, nil)
+				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureEconomy).Return(true, nil)
 			},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   "Invalid request",
@@ -199,7 +199,7 @@ func TestHandleSellItem(t *testing.T) {
 				Quantity:   1,
 			},
 			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService) {
-				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSell).Return(true, nil)
+				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureEconomy).Return(true, nil)
 				e.On("SellItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", "UnknownItem", 1).
 					Return(0, 0, errors.New(ErrMsgItemNotFoundError))
 			},
@@ -216,7 +216,7 @@ func TestHandleSellItem(t *testing.T) {
 				Quantity:   100,
 			},
 			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService) {
-				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSell).Return(true, nil)
+				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureEconomy).Return(true, nil)
 				e.On("SellItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.ItemBlaster, 100).
 					Return(0, 0, errors.New(ErrMsgInsufficientItemsErr))
 			},
@@ -404,7 +404,7 @@ func TestHandleBuyItem(t *testing.T) {
 				Quantity:   1,
 			},
 			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService) {
-				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureBuy).Return(true, nil)
+				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureEconomy).Return(true, nil)
 				p.On("RecordEngagement", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 				e.On("BuyItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.ItemBlaster, 1).Return(1, nil)
 			},
@@ -421,8 +421,8 @@ func TestHandleBuyItem(t *testing.T) {
 				Quantity:   1,
 			},
 			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService) {
-				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureBuy).Return(false, nil)
-				p.On("GetRequiredNodes", mock.Anything, progression.FeatureBuy).Return([]*domain.ProgressionNode{
+				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureEconomy).Return(false, nil)
+				p.On("GetRequiredNodes", mock.Anything, progression.FeatureEconomy).Return([]*domain.ProgressionNode{
 					{DisplayName: "Buy System"},
 				}, nil)
 			},
@@ -439,7 +439,7 @@ func TestHandleBuyItem(t *testing.T) {
 				Quantity:   1,
 			},
 			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService) {
-				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureBuy).Return(false, errors.New(ErrMsgGenericServerError))
+				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureEconomy).Return(false, errors.New(ErrMsgGenericServerError))
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   ErrMsgGenericServerError,
@@ -448,7 +448,7 @@ func TestHandleBuyItem(t *testing.T) {
 			name:        "Invalid Request Body",
 			requestBody: "invalid json",
 			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService) {
-				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureBuy).Return(true, nil)
+				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureEconomy).Return(true, nil)
 			},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   "Invalid request body",
@@ -462,7 +462,7 @@ func TestHandleBuyItem(t *testing.T) {
 				Quantity: 1,
 			},
 			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService) {
-				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureBuy).Return(true, nil)
+				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureEconomy).Return(true, nil)
 			},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   "Invalid request",
@@ -477,7 +477,7 @@ func TestHandleBuyItem(t *testing.T) {
 				Quantity:   0,
 			},
 			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService) {
-				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureBuy).Return(true, nil)
+				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureEconomy).Return(true, nil)
 			},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   "Invalid request",
@@ -492,7 +492,7 @@ func TestHandleBuyItem(t *testing.T) {
 				Quantity:   1,
 			},
 			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService) {
-				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureBuy).Return(true, nil)
+				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureEconomy).Return(true, nil)
 				e.On("BuyItem", mock.Anything, domain.PlatformTwitch, "test-id", "pooruser", domain.ItemBlaster, 1).
 					Return(0, errors.New(ErrMsgNotEnoughMoneyError))
 			},
@@ -509,7 +509,7 @@ func TestHandleBuyItem(t *testing.T) {
 				Quantity:   1,
 			},
 			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService) {
-				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureBuy).Return(true, nil)
+				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureEconomy).Return(true, nil)
 				e.On("BuyItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", "RareItem", 1).
 					Return(0, errors.New(ErrMsgGenericServerError))
 			},
