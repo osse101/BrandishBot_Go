@@ -91,7 +91,7 @@ migrate-create:
 test:
 	@echo "Running tests..."
 	@mkdir -p logs
-	@DB_PORT=5433 DB_USER=testuser DB_PASSWORD=testpass DB_NAME=testdb go test ./... -coverprofile=logs/coverage.out -covermode=atomic -race
+	@go test ./... -coverprofile=logs/coverage.out -covermode=atomic -race
 
 unit:
 	@echo "Running unit tests (fast)..."
