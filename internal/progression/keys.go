@@ -30,7 +30,7 @@ const (
 	ItemXpRarecandy = "xp_rarecandy"
 
 	// Features
-	FeatureComposte = "feature_composte"
+	FeatureCompost = "feature_compost"
 	FeatureDisassemble = "feature_disassemble"
 	FeatureDuel = "feature_duel"
 	FeatureEconomy = "feature_economy"
