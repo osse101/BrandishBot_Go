@@ -17,6 +17,7 @@
 **Description**: Bet your lives in this game of chance
 
 **Implementation Checklist**:
+
 - [ ] Add duel feature service (if not exists)
 - [ ] Add unlock check in duel handlers
 - [ ] Update duel initiation logic to verify unlock
@@ -26,12 +27,14 @@
 - [ ] Test unlocked behavior (can challenge others to duels)
 
 **Files to Modify**:
+
 - `internal/handler/duel.go` (create if doesn't exist) - Add duel endpoints
 - `internal/duel/service.go` (create if doesn't exist) - Add duel logic
 - `internal/duel/service_test.go` (create if doesn't exist) - Add tests
 - `internal/server/server.go` - Register duel routes
 
 **Acceptance Criteria**:
+
 - ✓ Cannot access duel feature when locked
 - ✓ Can initiate duels when unlocked
 - ✓ Error message: "Duels feature not unlocked"
@@ -47,6 +50,7 @@ Duels are a gambling minigame where users bet their "lives" (timeout risk) in a 
 4. **Result Phase**: Loser receives timeout, winner gets reward
 
 **Suggested Service Structure**:
+
 ```go
 // internal/duel/service.go
 package duel
@@ -81,6 +85,7 @@ func (s *Service) AcceptDuel(ctx context.Context, duelID string, accepterID stri
 ```
 
 **API Endpoints**:
+
 - `POST /api/v1/duel/challenge` - Initiate duel
 - `POST /api/v1/duel/:id/accept` - Accept duel challenge
 - `POST /api/v1/duel/:id/decline` - Decline duel challenge
@@ -99,6 +104,7 @@ func (s *Service) AcceptDuel(ctx context.Context, duelID string, accepterID stri
 **Description**: Turn junk into gems through the passage of time
 
 **Implementation Checklist**:
+
 - [ ] Add compost feature service (if not exists)
 - [ ] Add unlock check in compost handlers
 - [ ] Update compost conversion logic to verify unlock
@@ -108,12 +114,14 @@ func (s *Service) AcceptDuel(ctx context.Context, duelID string, accepterID stri
 - [ ] Test unlocked behavior (can convert junk to gems over time)
 
 **Files to Modify**:
+
 - `internal/handler/compost.go` (create if doesn't exist) - Add compost endpoints
 - `internal/compost/service.go` (create if doesn't exist) - Add compost conversion logic
 - `internal/compost/service_test.go` (create if doesn't exist) - Add tests
 - `internal/server/server.go` - Register compost routes
 
 **Acceptance Criteria**:
+
 - ✓ Cannot access compost feature when locked
 - ✓ Can convert junk items to gems over time when unlocked
 - ✓ Error message: "Compost feature not unlocked"
@@ -217,12 +225,12 @@ CREATE INDEX idx_compost_harvest_ready ON compost_deposits(harvest_ready_at) WHE
 
 Suggested conversion based on item rarity/value:
 
-| Item Type | Compost Time | Gem Output |
-|-----------|--------------|------------|
-| Common | 24 hours | 10-20 gems |
-| Uncommon | 36 hours | 30-50 gems |
-| Rare | 48 hours | 75-100 gems |
-| Epic | 72 hours | 150-200 gems |
+| Item Type | Compost Time | Gem Output   |
+| --------- | ------------ | ------------ |
+| Common    | 24 hours     | 10-20 gems   |
+| Uncommon  | 36 hours     | 30-50 gems   |
+| Rare      | 48 hours     | 75-100 gems  |
+| Epic      | 72 hours     | 150-200 gems |
 
 ### Testing Pattern
 
@@ -266,11 +274,13 @@ func TestCompost_Harvest_NotReady(t *testing.T) {
 ### Feature Dependencies
 
 **Depends on**:
+
 - `job_farmer` (prerequisite)
 - Item system (for removing/adding items)
 - Time-based job system (scheduler)
 
 **Related upgrades** (potential future):
+
 - Compost speed upgrade (reduce conversion time)
 - Compost efficiency upgrade (increase gem output)
 
@@ -288,6 +298,7 @@ func TestCompost_Harvest_NotReady(t *testing.T) {
 ### Estimated Effort
 
 **Medium-High Complexity** (6-10 hours):
+
 - New service module required
 - Database schema needed
 - Time-based mechanics
@@ -299,6 +310,7 @@ func TestCompost_Harvest_NotReady(t *testing.T) {
 If full time-based system is too complex initially:
 
 **Instant Conversion**:
+
 - User deposits junk items
 - Immediately converts to gems at reduced rate
 - No waiting period
@@ -319,6 +331,7 @@ This can be enhanced later to add time-based conversion for better gem rates.
 **Description**: Unlock expedition/adventure system
 
 **Implementation Checklist**:
+
 - [ ] Add expedition feature service (if not exists)
 - [ ] Add unlock check in expedition handlers
 - [ ] Update expedition logic to verify unlock
@@ -328,12 +341,14 @@ This can be enhanced later to add time-based conversion for better gem rates.
 - [ ] Test unlocked behavior (can start expeditions)
 
 **Files to Modify**:
+
 - `internal/handler/expedition.go` (create if doesn't exist) - Add expedition endpoints
 - `internal/expedition/service.go` (create if doesn't exist) - Add expedition logic
 - `internal/expedition/service_test.go` (create if doesn't exist) - Add tests
 - `internal/server/server.go` - Register expedition routes
 
 **Acceptance Criteria**:
+
 - ✓ Cannot access expedition feature when locked
 - ✓ Can start expeditions when unlocked
 - ✓ Error message: "Expedition feature not unlocked"
@@ -341,7 +356,7 @@ This can be enhanced later to add time-based conversion for better gem rates.
 
 **Implementation Details**:
 
-Expeditions are adventure-based activities where users send characters on timed missions to find items:
+Expeditions are adventure-based activities where users send characters on timed missions to find items [feature document](../expedition_system.md):
 
 1. **Start Phase**: User starts expedition with chosen difficulty/duration
 2. **Active Phase**: Expedition runs for set time (e.g., 1-24 hours)
@@ -349,6 +364,7 @@ Expeditions are adventure-based activities where users send characters on timed 
 4. **Cooldown Phase**: Wait before next expedition
 
 **Suggested Service Structure**:
+
 ```go
 // internal/expedition/service.go
 package expedition
@@ -386,6 +402,7 @@ func (s *Service) CompleteExpedition(ctx context.Context, userID string, expedit
 ```
 
 **API Endpoints**:
+
 - `POST /api/v1/expedition/start` - Start new expedition
 - `GET /api/v1/expedition/active` - Get user's active expedition
 - `POST /api/v1/expedition/:id/complete` - Complete and collect rewards
@@ -400,6 +417,7 @@ func (s *Service) CompleteExpedition(ctx context.Context, userID string, expedit
 | Legendary Quest | 24 hours | Very Hard | Epic/Legendary |
 
 **Database Schema**:
+
 ```sql
 CREATE TABLE expeditions (
     id SERIAL PRIMARY KEY,
@@ -417,11 +435,13 @@ CREATE INDEX idx_expeditions_complete_at ON expeditions(complete_at) WHERE compl
 ```
 
 **Integration with Explorer Job**:
+
 - Award explorer XP when starting expeditions
 - Explorer level improves expedition rewards
 - Higher levels unlock better expedition types
 
 **Discord Bot Integration**:
+
 ```go
 // /expedition start <type>
 // /expedition status
@@ -450,6 +470,7 @@ Recommended implementation order:
 3. **feature_expedition** (Tier 4) - Adventure system, endgame content
 
 **Overall Priority**: High
+
 - Completes feature gate implementation (100% coverage)
 - Adds major gameplay systems (PvP duels, expeditions, resource conversion)
 - Unlocks job progression (gambler → duel, explorer → expedition, farmer → compost)
@@ -457,17 +478,20 @@ Recommended implementation order:
 ## Related Systems
 
 ### Duels
+
 - **Gamble** - Similar random outcome mechanics
 - **User Timeout** - Applies timeout penalties
 - **Job (Gambler)** - Prerequisites and XP integration
 
 ### Compost
+
 - **Farming** - Primary activity for job_farmer
 - **Economy** - Provides alternative currency acquisition
 - **Inventory** - Manages item deposits and gem rewards
 - **Scheduler** - Handles time-based conversion checks
 
 ### Expeditions
+
 - **Exploration** - Core adventure mechanics
 - **Job (Explorer)** - Prerequisites and XP rewards
 - **Loot** - Reward generation system
