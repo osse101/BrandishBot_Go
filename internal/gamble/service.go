@@ -43,28 +43,30 @@ type ProgressionService interface {
 
 
 type service struct {
-	repo           repository.Gamble
-	eventBus       event.Bus
-	lootboxSvc     lootbox.Service
-	jobService     JobService
-	progressionSvc ProgressionService
-	statsSvc       stats.Service
-	namingResolver naming.Resolver
-	joinDuration   time.Duration
-	wg             sync.WaitGroup // Tracks async goroutines for graceful shutdown
+	repo               repository.Gamble
+	eventBus           event.Bus
+	resilientPublisher *event.ResilientPublisher
+	lootboxSvc         lootbox.Service
+	jobService         JobService
+	progressionSvc     ProgressionService
+	statsSvc           stats.Service
+	namingResolver     naming.Resolver
+	joinDuration       time.Duration
+	wg                 sync.WaitGroup // Tracks async goroutines for graceful shutdown
 }
 
 // NewService creates a new gamble service
-func NewService(repo repository.Gamble, eventBus event.Bus, lootboxSvc lootbox.Service, statsSvc stats.Service, joinDuration time.Duration, jobService JobService, progressionSvc ProgressionService, namingResolver naming.Resolver) Service {
+func NewService(repo repository.Gamble, eventBus event.Bus, resilientPublisher *event.ResilientPublisher, lootboxSvc lootbox.Service, statsSvc stats.Service, joinDuration time.Duration, jobService JobService, progressionSvc ProgressionService, namingResolver naming.Resolver) Service {
 	return &service{
-		repo:           repo,
-		eventBus:       eventBus,
-		lootboxSvc:     lootboxSvc,
-		jobService:     jobService,
-		progressionSvc: progressionSvc,
-		statsSvc:       statsSvc,
-		namingResolver: namingResolver,
-		joinDuration:   joinDuration,
+		repo:               repo,
+		eventBus:           eventBus,
+		resilientPublisher: resilientPublisher,
+		lootboxSvc:         lootboxSvc,
+		jobService:         jobService,
+		progressionSvc:     progressionSvc,
+		statsSvc:           statsSvc,
+		namingResolver:     namingResolver,
+		joinDuration:       joinDuration,
 	}
 }
 
@@ -334,6 +336,9 @@ func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.Gamb
 	if err := tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("%s: %w", ErrContextFailedToCommitTx, err)
 	}
+
+	// Publish gamble completion event (async with retry)
+	s.publishGambleCompletedEvent(ctx, result, len(gamble.Participants))
 
 	if winnerID != "" {
 		s.wg.Add(1)
@@ -731,4 +736,16 @@ func (s *service) publishGambleStartedEvent(ctx context.Context, gamble *domain.
 	if err != nil {
 		logger.FromContext(ctx).Error("Failed to publish "+LogContextGambleStartedEvent, "error", err)
 	}
+}
+
+func (s *service) publishGambleCompletedEvent(ctx context.Context, result *domain.GambleResult, participantCount int) {
+	log := logger.FromContext(ctx)
+
+	if s.resilientPublisher == nil {
+		log.Error("Failed to publish GambleCompleted event", "reason", "resilientPublisher is nil")
+		return
+	}
+
+	evt := event.NewGambleCompletedEvent(result.GambleID.String(), result.WinnerID, result.TotalValue, participantCount)
+	s.resilientPublisher.PublishWithRetry(ctx, evt)
 }

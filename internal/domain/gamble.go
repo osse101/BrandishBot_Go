@@ -19,7 +19,8 @@ const (
 
 // Event types
 const (
-	EventGambleStarted = "GambleStarted"
+	EventGambleStarted   = "GambleStarted"
+	EventGambleCompleted = "GambleCompleted"
 )
 
 // Gamble represents a multiplayer lootbox gamble session

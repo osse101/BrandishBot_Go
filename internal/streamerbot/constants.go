@@ -42,10 +42,11 @@ const (
 
 // Action names for BrandishBot events
 const (
-	ActionJobLevelUp      = "BrandishBot_JobLevelUp"
-	ActionVotingStarted   = "BrandishBot_VotingStarted"
-	ActionCycleCompleted  = "BrandishBot_CycleCompleted"
-	ActionAllUnlocked     = "BrandishBot_AllUnlocked"
+	ActionJobLevelUp       = "BrandishBot_JobLevelUp"
+	ActionVotingStarted    = "BrandishBot_VotingStarted"
+	ActionCycleCompleted   = "BrandishBot_CycleCompleted"
+	ActionAllUnlocked      = "BrandishBot_AllUnlocked"
+	ActionGambleCompleted  = "BrandishBot_GambleCompleted"
 )
 
 // Response status values

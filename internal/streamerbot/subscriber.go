@@ -37,12 +37,16 @@ func (s *Subscriber) Subscribe() {
 	// Subscribe to progression all unlocked events
 	s.bus.Subscribe(event.ProgressionAllUnlocked, s.handleAllUnlocked)
 
+	// Subscribe to gamble completed events
+	s.bus.Subscribe(event.Type(domain.EventGambleCompleted), s.handleGambleCompleted)
+
 	slog.Info("Streamer.bot subscriber registered for event types",
 		"types", []string{
 			string(domain.EventJobLevelUp),
 			string(event.ProgressionVotingStarted),
 			string(event.ProgressionCycleCompleted),
 			string(event.ProgressionAllUnlocked),
+			string(domain.EventGambleCompleted),
 		})
 }
 
@@ -190,6 +194,41 @@ func (s *Subscriber) handleAllUnlocked(_ context.Context, evt event.Event) error
 	if err := s.client.DoAction(ActionAllUnlocked, args); err != nil {
 		// Use Debug level - Streamer.bot being unavailable is expected
 		slog.Debug("Failed to send all unlocked to Streamer.bot", "error", err)
+	}
+
+	return nil
+}
+
+// handleGambleCompleted sends a DoAction when a gamble completes
+func (s *Subscriber) handleGambleCompleted(_ context.Context, evt event.Event) error {
+	payload, ok := evt.Payload.(event.GambleCompletedPayloadV1)
+	if !ok {
+		// Fallback for untyped payload
+		payloadMap, ok := evt.Payload.(map[string]interface{})
+		if !ok {
+			slog.Warn("Invalid gamble completed event payload type")
+			return nil
+		}
+		payload = event.GambleCompletedPayloadV1{
+			GambleID:         getStringFromMap(payloadMap, "gamble_id"),
+			WinnerID:         getStringFromMap(payloadMap, "winner_id"),
+			TotalValue:       int64(getIntFromMap(payloadMap, "total_value")),
+			ParticipantCount: getIntFromMap(payloadMap, "participant_count"),
+		}
+	}
+
+	args := map[string]string{
+		"gamble_id":         payload.GambleID,
+		"winner_id":         payload.WinnerID,
+		"total_value":       fmt.Sprintf("%d", payload.TotalValue),
+		"participant_count": fmt.Sprintf("%d", payload.ParticipantCount),
+		"has_winner":        fmt.Sprintf("%t", payload.WinnerID != ""),
+	}
+
+	slog.Debug(LogMsgEventReceived, "event_type", domain.EventGambleCompleted, "args", args)
+
+	if err := s.client.DoAction(ActionGambleCompleted, args); err != nil {
+		slog.Debug("Failed to send gamble completed to Streamer.bot", "error", err)
 	}
 
 	return nil

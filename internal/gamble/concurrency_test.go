@@ -17,7 +17,7 @@ import (
 func TestStartGamble_Concurrent_RaceCondition(t *testing.T) {
 	// Logic: We simulate the DB constraint by making the second CreateGamble call fail.
 	repo := new(MockRepository)
-	s := NewService(repo, nil, new(MockLootboxService), nil, time.Minute, nil, nil, nil)
+	s := NewService(repo, nil, nil, new(MockLootboxService), nil, time.Minute, nil, nil, nil)
 
 	ctx := context.Background()
 	user1 := &domain.User{ID: "user1"}
@@ -91,7 +91,7 @@ func TestStartGamble_Concurrent_RaceCondition(t *testing.T) {
 
 func TestJoinGamble_SameUserTwice_ShouldReject(t *testing.T) {
 	repo := new(MockRepository)
-	s := NewService(repo, nil, new(MockLootboxService), nil, time.Minute, nil, nil, nil)
+	s := NewService(repo, nil, nil, new(MockLootboxService), nil, time.Minute, nil, nil, nil)
 
 	ctx := context.Background()
 	gambleID := uuid.New()
@@ -134,7 +134,7 @@ func TestJoinGamble_SameUserTwice_ShouldReject(t *testing.T) {
 func TestExecuteGamble_Concurrent_Idempotent(t *testing.T) {
 	repo := new(MockRepository)
 	lootboxSvc := new(MockLootboxService)
-	s := NewService(repo, nil, lootboxSvc, nil, time.Minute, nil, nil, nil)
+	s := NewService(repo, nil, nil, lootboxSvc, nil, time.Minute, nil, nil, nil)
 
 	ctx := context.Background()
 	gambleID := uuid.New()

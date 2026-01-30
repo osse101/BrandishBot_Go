@@ -63,6 +63,7 @@ func setupGambleIntegrationTest(t *testing.T) (*pgxpool.Pool, *UserRepository, g
 	gambleSvc := gamble.NewService(
 		gambleRepo,
 		eventBus,
+		nil, // resilientPublisher
 		lootSvc,
 		statsSvc,
 		time.Second, // Short join duration for testing

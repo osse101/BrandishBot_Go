@@ -94,6 +94,31 @@ func NewProgressionTargetEvent(nodeKey string) Event {
 	}
 }
 
+// GambleCompletedPayloadV1 is the typed payload for gamble completion events
+type GambleCompletedPayloadV1 struct {
+	GambleID         string `json:"gamble_id"`
+	WinnerID         string `json:"winner_id"`
+	TotalValue       int64  `json:"total_value"`
+	ParticipantCount int    `json:"participant_count"`
+	Timestamp        int64  `json:"timestamp"`
+}
+
+// NewGambleCompletedEvent creates a new gamble completed event with type-safe payload
+func NewGambleCompletedEvent(gambleID, winnerID string, totalValue int64, participantCount int) Event {
+	return Event{
+		Version: EventSchemaVersion,
+		Type:    "GambleCompleted",
+		Payload: GambleCompletedPayloadV1{
+			GambleID:         gambleID,
+			WinnerID:         winnerID,
+			TotalValue:       totalValue,
+			ParticipantCount: participantCount,
+			Timestamp:        time.Now().Unix(),
+		},
+		Metadata: make(map[string]interface{}),
+	}
+}
+
 // Handler is a function that handles an event
 type Handler func(ctx context.Context, event Event) error
 
