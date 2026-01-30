@@ -38,18 +38,17 @@ func TestGetRequiredNodes_MultiplePrerequisites(t *testing.T) {
 	service := NewService(repo, NewMockUser(), nil)
 	ctx := context.Background()
 
-	// Buy requires economy, which requires money (both are NOT unlocked)
-	required, err := service.GetRequiredNodes(ctx, "feature_buy")
+	// Upgrade requires lootbox0 (which is NOT unlocked)
+	required, err := service.GetRequiredNodes(ctx, FeatureUpgrade)
 	assert.NoError(t, err)
-	assert.Len(t, required, 2)
+	assert.Len(t, required, 1)
 
-	// Should include both economy and money
+	// Should include lootbox0
 	keys := make(map[string]bool)
 	for _, node := range required {
 		keys[node.NodeKey] = true
 	}
-	assert.True(t, keys["feature_economy"])
-	assert.True(t, keys["item_money"])
+	assert.True(t, keys["item_lootbox0"])
 }
 
 func TestGetRequiredNodes_PartiallyUnlocked(t *testing.T) {
@@ -73,12 +72,11 @@ func TestGetRequiredNodes_AllUnlocked(t *testing.T) {
 	service := NewService(repo, NewMockUser(), nil)
 	ctx := context.Background()
 
-	// Unlock the whole chain
-	repo.UnlockNode(ctx, 2, 1, "test", 0) // money
-	repo.UnlockNode(ctx, 3, 1, "test", 0) // economy
+	// Unlock the lootbox0 chain
+	repo.UnlockNode(ctx, 4, 1, "test", 0) // lootbox0
 
-	// Buy should have no locked prerequisites
-	required, err := service.GetRequiredNodes(ctx, "feature_buy")
+	// Upgrade should have no locked prerequisites
+	required, err := service.GetRequiredNodes(ctx, FeatureUpgrade)
 	assert.NoError(t, err)
 	assert.Empty(t, required)
 }

@@ -857,37 +857,36 @@ func setupTestTree(repo *MockRepository) {
 	repo.nodes[economyID] = economy
 	repo.nodesByKey["feature_economy"] = economy
 
-	// Buy node (child of economy)
-	buyID := 6
-	buy := &domain.ProgressionNode{
-		ID:          buyID,
-		NodeKey:     FeatureEconomy,
+	// Buy node - replaced with Gamble feature (economy-related)
+	gambleID := 6
+	gamble := &domain.ProgressionNode{
+		ID:          gambleID,
+		NodeKey:     FeatureGamble,
 		NodeType:    "feature",
-		DisplayName: "Buy Items",
-		Description: "Buy items feature",
+		DisplayName: "Gambling",
+		Description: "Gambling feature",
 		MaxLevel:    1,
 		UnlockCost:  800,
 		SortOrder:   11,
 		CreatedAt:   time.Now(),
 	}
-	repo.nodes[buyID] = buy
-	repo.nodesByKey[FeatureEconomy] = buy
-
-	// Sell node (child of economy)
-	sellID := 7
-	sell := &domain.ProgressionNode{
-		ID:          sellID,
-		NodeKey:     FeatureEconomy,
+	repo.nodes[gambleID] = gamble
+	repo.nodesByKey[FeatureGamble] = gamble
+	// Sell node - replaced with Events feature (economy-related)
+	eventsID := 7
+	events := &domain.ProgressionNode{
+		ID:          eventsID,
+		NodeKey:     FeatureEvents,
 		NodeType:    "feature",
-		DisplayName: "Sell Items",
-		Description: "Sell items feature",
+		DisplayName: "Events",
+		Description: "Events feature",
 		MaxLevel:    1,
 		UnlockCost:  800,
 		SortOrder:   12,
 		CreatedAt:   time.Now(),
 	}
-	repo.nodes[sellID] = sell
-	repo.nodesByKey[FeatureEconomy] = sell
+	repo.nodes[eventsID] = events
+	repo.nodesByKey[FeatureEvents] = events
 
 	// Lootbox0 node (child of root)
 	lootbox0ID := 4
@@ -973,8 +972,8 @@ func setupTestTree(repo *MockRepository) {
 	// These mirror the old parent-child relationships
 	repo.prerequisites[moneyID] = []int{rootID}           // money requires root
 	repo.prerequisites[economyID] = []int{moneyID}        // economy requires money
-	repo.prerequisites[buyID] = []int{economyID}          // buy requires economy
-	repo.prerequisites[sellID] = []int{economyID}         // sell requires economy
+	repo.prerequisites[gambleID] = []int{economyID}  // gamble requires economy
+	repo.prerequisites[eventsID] = []int{economyID}  // events requires economy
 	repo.prerequisites[lootbox0ID] = []int{rootID}        // lootbox0 requires root
 	repo.prerequisites[upgradeID] = []int{lootbox0ID}     // upgrade requires lootbox0
 	repo.prerequisites[disassembleID] = []int{lootbox0ID} // disassemble requires lootbox0

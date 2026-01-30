@@ -19,7 +19,7 @@ func VoteCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			{
 				Type:        discordgo.ApplicationCommandOptionString,
 				Name:        "node",
-				Description: "Node key to vote for (e.g., feature_buy, item_money)",
+				Description: "Node key to vote for (e.g., feature_economy, item_money)",
 				Required:    true,
 			},
 		},
@@ -56,7 +56,7 @@ func AdminUnlockCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			{
 				Type:        discordgo.ApplicationCommandOptionString,
 				Name:        "node",
-				Description: "Node key to unlock (e.g., feature_buy)",
+				Description: "Node key to unlock (e.g., feature_economy)",
 				Required:    true,
 			},
 			{
