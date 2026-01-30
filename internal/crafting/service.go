@@ -175,6 +175,14 @@ func (s *service) UpgradeItem(ctx context.Context, platform, platformID, usernam
 	log := logger.FromContext(ctx)
 	log.Info("UpgradeItem called", "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity)
 
+	if quantity <= 0 {
+		return nil, fmt.Errorf("invalid quantity: must be positive")
+	}
+
+	if quantity > domain.MaxTransactionQuantity {
+		quantity = domain.MaxTransactionQuantity
+	}
+
 	// Resolve public name to internal name
 	resolvedName, err := s.resolveItemName(ctx, itemName)
 	if err != nil {
@@ -453,6 +461,14 @@ func (s *service) processDisassembleOutputs(ctx context.Context, inventory *doma
 func (s *service) DisassembleItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (*DisassembleResult, error) {
 	log := logger.FromContext(ctx)
 	log.Info("DisassembleItem called", "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity)
+
+	if quantity <= 0 {
+		return nil, fmt.Errorf("invalid quantity: must be positive")
+	}
+
+	if quantity > domain.MaxTransactionQuantity {
+		quantity = domain.MaxTransactionQuantity
+	}
 
 	user, item, recipe, err := s.validateDisassembleInput(ctx, platform, platformID, itemName)
 	if err != nil {

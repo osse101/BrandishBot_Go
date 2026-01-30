@@ -55,6 +55,9 @@ type MockRepository struct {
 	// User locks for simulating DB row locking
 	userLocks   map[string]*sync.Mutex
 	userLocksMu sync.Mutex
+
+	// Error injection
+	shouldFailUpdateInventory bool
 }
 
 func NewMockRepository() *MockRepository {
@@ -137,6 +140,11 @@ func (m *MockRepository) GetInventory(ctx context.Context, userID string) (*doma
 func (m *MockRepository) UpdateInventory(ctx context.Context, userID string, inventory domain.Inventory) error {
 	m.Lock()
 	defer m.Unlock()
+
+	if m.shouldFailUpdateInventory {
+		return fmt.Errorf("injected failure")
+	}
+
 	// deep copy to store
 	newSlots := make([]domain.InventorySlot, len(inventory.Slots))
 	copy(newSlots, inventory.Slots)
