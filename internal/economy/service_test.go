@@ -10,71 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
-	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
-
-// MockRepository implements Repository interface for testing
-type MockRepository struct {
-	mock.Mock
-}
-
-func (m *MockRepository) GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error) {
-	args := m.Called(ctx, platform, platformID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*domain.User), args.Error(1)
-}
-
-func (m *MockRepository) GetItemByName(ctx context.Context, itemName string) (*domain.Item, error) {
-	args := m.Called(ctx, itemName)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*domain.Item), args.Error(1)
-}
-
-func (m *MockRepository) GetInventory(ctx context.Context, userID string) (*domain.Inventory, error) {
-	args := m.Called(ctx, userID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*domain.Inventory), args.Error(1)
-}
-
-func (m *MockRepository) UpdateInventory(ctx context.Context, userID string, inventory domain.Inventory) error {
-	args := m.Called(ctx, userID, inventory)
-	return args.Error(0)
-}
-
-func (m *MockRepository) GetSellablePrices(ctx context.Context) ([]domain.Item, error) {
-	args := m.Called(ctx)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]domain.Item), args.Error(1)
-}
-
-func (m *MockRepository) IsItemBuyable(ctx context.Context, itemName string) (bool, error) {
-	args := m.Called(ctx, itemName)
-	return args.Bool(0), args.Error(1)
-}
-
-func (m *MockRepository) BeginTx(ctx context.Context) (repository.EconomyTx, error) {
-	args := m.Called(ctx)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(repository.EconomyTx), args.Error(1)
-}
-
-func (m *MockRepository) GetBuyablePrices(ctx context.Context) ([]domain.Item, error) {
-	args := m.Called(ctx)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]domain.Item), args.Error(1)
-}
 
 // Test fixtures
 func createTestUser() *domain.User {
@@ -858,4 +794,177 @@ func TestBuyItem_DatabaseErrors(t *testing.T) {
 			}
 		})
 	}
+}
+
+// =============================================================================
+// ProgressionService Integration Tests
+// =============================================================================
+
+func TestGetSellablePrices_ProgressionFilter(t *testing.T) {
+	// ARRANGE
+	mockRepo := &MockRepository{}
+	mockProgression := &MockProgressionService{}
+	service := NewService(mockRepo, nil, nil, mockProgression)
+	ctx := context.Background()
+
+	allItems := []domain.Item{
+		{ID: 1, InternalName: "item1", BaseValue: 100},
+		{ID: 2, InternalName: "item2", BaseValue: 200},
+	}
+
+	mockRepo.On("GetSellablePrices", ctx).Return(allItems, nil)
+	mockProgression.On("AreItemsUnlocked", ctx, []string{"item1", "item2"}).
+		Return(map[string]bool{"item1": true, "item2": false}, nil)
+
+	// ACT
+	items, err := service.GetSellablePrices(ctx)
+
+	// ASSERT
+	require.NoError(t, err)
+	assert.Len(t, items, 1)
+	assert.Equal(t, "item1", items[0].InternalName)
+	mockRepo.AssertExpectations(t)
+	mockProgression.AssertExpectations(t)
+}
+
+func TestGetBuyablePrices_ProgressionFilter(t *testing.T) {
+	// ARRANGE
+	mockRepo := &MockRepository{}
+	mockProgression := &MockProgressionService{}
+	service := NewService(mockRepo, nil, nil, mockProgression)
+	ctx := context.Background()
+
+	allItems := []domain.Item{
+		{ID: 1, InternalName: "item1", BaseValue: 100},
+		{ID: 2, InternalName: "item2", BaseValue: 200},
+	}
+
+	mockRepo.On("GetBuyablePrices", ctx).Return(allItems, nil)
+	mockProgression.On("AreItemsUnlocked", ctx, []string{"item1", "item2"}).
+		Return(map[string]bool{"item1": false, "item2": true}, nil)
+
+	// ACT
+	items, err := service.GetBuyablePrices(ctx)
+
+	// ASSERT
+	require.NoError(t, err)
+	assert.Len(t, items, 1)
+	assert.Equal(t, "item2", items[0].InternalName)
+	mockRepo.AssertExpectations(t)
+	mockProgression.AssertExpectations(t)
+}
+
+func TestBuyItem_ProgressionLocked(t *testing.T) {
+	// ARRANGE
+	mockRepo := &MockRepository{}
+	mockProgression := &MockProgressionService{}
+	service := NewService(mockRepo, nil, nil, mockProgression)
+	ctx := context.Background()
+
+	user := createTestUser()
+	item := createTestItem(1, "locked_item", 100)
+
+	mockRepo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "").Return(user, nil)
+	mockRepo.On("GetItemByName", ctx, "locked_item").Return(item, nil)
+
+	mockTx := &MockTx{}
+	mockRepo.On("BeginTx", ctx).Return(mockTx, nil)
+	mockTx.On("Rollback", ctx).Return(nil)
+
+	mockRepo.On("IsItemBuyable", ctx, "locked_item").Return(true, nil)
+	mockProgression.On("IsItemUnlocked", ctx, "locked_item").Return(false, nil)
+
+	// ACT
+	_, err := service.BuyItem(ctx, domain.PlatformTwitch, "", "testuser", "locked_item", 1)
+
+	// ASSERT
+	require.Error(t, err)
+	assert.Equal(t, domain.ErrItemLocked, err)
+	mockRepo.AssertExpectations(t)
+	mockProgression.AssertExpectations(t)
+}
+
+// =============================================================================
+// NamingResolver Integration Tests
+// =============================================================================
+
+func TestBuyItem_NamingResolution(t *testing.T) {
+	// ARRANGE
+	mockRepo := &MockRepository{}
+	mockResolver := &MockNamingResolver{}
+	service := NewService(mockRepo, nil, mockResolver, nil)
+	ctx := context.Background()
+
+	user := createTestUser()
+	internalName := "lootbox_tier1"
+	publicName := "box"
+	item := createTestItem(10, internalName, 100)
+	moneyItem := createMoneyItem()
+	inventory := createInventoryWithMoney(500)
+
+	mockRepo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "").Return(user, nil)
+
+	// Naming resolution setup
+	mockResolver.On("ResolvePublicName", publicName).Return(internalName, true)
+
+	// Repo should be called with resolved name
+	mockRepo.On("GetItemByName", ctx, internalName).Return(item, nil)
+	mockRepo.On("IsItemBuyable", ctx, internalName).Return(true, nil)
+	mockRepo.On("GetItemByName", ctx, domain.ItemMoney).Return(moneyItem, nil)
+
+	mockTx := &MockTx{}
+	mockRepo.On("BeginTx", ctx).Return(mockTx, nil)
+	mockTx.On("GetInventory", ctx, user.ID).Return(inventory, nil)
+	mockTx.On("UpdateInventory", ctx, user.ID, mock.Anything).Return(nil)
+	mockTx.On("Commit", ctx).Return(nil)
+	mockTx.On("Rollback", ctx).Return(nil)
+
+	// ACT
+	purchased, err := service.BuyItem(ctx, domain.PlatformTwitch, "", "testuser", publicName, 1)
+
+	// ASSERT
+	require.NoError(t, err)
+	assert.Equal(t, 1, purchased)
+	mockRepo.AssertExpectations(t)
+	mockResolver.AssertExpectations(t)
+}
+
+func TestSellItem_NamingResolution(t *testing.T) {
+	// ARRANGE
+	mockRepo := &MockRepository{}
+	mockResolver := &MockNamingResolver{}
+	service := NewService(mockRepo, nil, mockResolver, nil)
+	ctx := context.Background()
+
+	user := createTestUser()
+	internalName := "lootbox_tier1"
+	publicName := "box"
+	item := createTestItem(10, internalName, 100)
+	moneyItem := createMoneyItem()
+	inventory := createInventoryWithItem(10, 5)
+
+	mockRepo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "").Return(user, nil)
+
+	// Naming resolution setup
+	mockResolver.On("ResolvePublicName", publicName).Return(internalName, true)
+
+	// Repo should be called with resolved name
+	mockRepo.On("GetItemByName", ctx, internalName).Return(item, nil)
+	mockRepo.On("GetItemByName", ctx, domain.ItemMoney).Return(moneyItem, nil)
+
+	mockTx := &MockTx{}
+	mockRepo.On("BeginTx", ctx).Return(mockTx, nil)
+	mockTx.On("GetInventory", ctx, user.ID).Return(inventory, nil)
+	mockTx.On("UpdateInventory", ctx, user.ID, mock.Anything).Return(nil)
+	mockTx.On("Commit", ctx).Return(nil)
+	mockTx.On("Rollback", ctx).Return(nil)
+
+	// ACT
+	moneyGained, _, err := service.SellItem(ctx, domain.PlatformTwitch, "", "testuser", publicName, 1)
+
+	// ASSERT
+	require.NoError(t, err)
+	assert.Equal(t, 100, moneyGained)
+	mockRepo.AssertExpectations(t)
+	mockResolver.AssertExpectations(t)
 }
