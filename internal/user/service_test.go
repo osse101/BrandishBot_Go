@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/lootbox"
 )
 
@@ -694,12 +695,12 @@ func TestUseItem_RareCandy(t *testing.T) {
 
 	// Test using Rare Candy on a job name (which is NOT a user)
 	// This should work now because we don't resolve the target as a user anymore
-	message, err := svc.UseItem(ctx, domain.PlatformTwitch, alice.TwitchID, alice.Username, domain.ItemRareCandy, 1, "blacksmith")
+	message, err := svc.UseItem(ctx, domain.PlatformTwitch, alice.TwitchID, alice.Username, domain.ItemRareCandy, 1, job.JobKeyBlacksmith)
 	if err != nil {
 		t.Fatalf("UseItem failed: %v", err)
 	}
 
-	expectedMsg := "Used 1 rare candy! Granted 500 XP to blacksmith."
+	expectedMsg := "Used 1 rare candy! Granted 500 XP to blacksmith." // Message construction uses hardcoded strings in handler currently
 	if message != expectedMsg {
 		t.Errorf("Expected message '%s', got '%s'", expectedMsg, message)
 	}
@@ -857,12 +858,12 @@ func TestUseItem_Lootbox0(t *testing.T) {
 	// Message format changed
 	// "Opened 1 lootbox0 and received: 5x money"
 	// We check if it contains expected parts
-	if !strings.Contains(msg, "Opened") || !strings.Contains(msg, "lootbox_tier0") {
-		t.Errorf("Expected message to contain 'Opened' and 'lootbox_tier0', got '%s'", msg)
+	if !strings.Contains(msg, "Opened") || !strings.Contains(msg, domain.ItemLootbox0) {
+		t.Errorf("Expected message to contain 'Opened' and '%s', got '%s'", domain.ItemLootbox0, msg)
 	}
 
-	if !strings.Contains(msg, "money") {
-		t.Errorf("Expected message to contain 'money', got '%s'", msg)
+	if !strings.Contains(msg, domain.ItemMoney) {
+		t.Errorf("Expected message to contain '%s', got '%s'", domain.ItemMoney, msg)
 	}
 
 	// Verify inventory (should have money now)
@@ -906,8 +907,8 @@ func TestUseItem_Lootbox2(t *testing.T) {
 	}
 
 	// Message format changed
-	if !strings.Contains(msg, "Opened") || !strings.Contains(msg, "lootbox_tier1") {
-		t.Errorf("Expected message to contain 'Opened' and 'lootbox_tier1', got '%s'", msg)
+	if !strings.Contains(msg, "Opened") || !strings.Contains(msg, domain.ItemLootbox1) {
+		t.Errorf("Expected message to contain 'Opened' and '%s', got '%s'", domain.ItemLootbox1, msg)
 	}
 
 	// Verify inventory: should have 1 lootbox1
