@@ -50,7 +50,7 @@ func (b *postgresBackend) CheckCooldown(ctx context.Context, userID, action stri
 
 	cooldownDuration := b.getEffectiveCooldown(ctx, action)
 
-	onCooldown, remaining := b.checkCooldownInternal(lastUsed, cooldownDuration)
+	onCooldown, remaining := b.checkCooldownInternal(time.Now(), lastUsed, cooldownDuration)
 	return onCooldown, remaining, nil
 }
 
@@ -105,7 +105,7 @@ func (b *postgresBackend) EnforceCooldown(ctx context.Context, userID, action st
 
 	if lastUsed != nil {
 		cooldownDuration := b.getEffectiveCooldown(ctx, action)
-		onCooldown, remaining := b.checkCooldownInternal(lastUsed, cooldownDuration)
+		onCooldown, remaining := b.checkCooldownInternal(time.Now(), lastUsed, cooldownDuration)
 		if onCooldown {
 			log.Debug(LogMsgRaceConditionDetected,
 				"action", action, "userID", userID, "remaining", remaining)
@@ -209,12 +209,12 @@ func (b *postgresBackend) getEffectiveCooldown(ctx context.Context, action strin
 	return duration
 }
 
-func (b *postgresBackend) checkCooldownInternal(lastUsed *time.Time, duration time.Duration) (bool, time.Duration) {
+func (b *postgresBackend) checkCooldownInternal(now time.Time, lastUsed *time.Time, duration time.Duration) (bool, time.Duration) {
 	if lastUsed == nil {
 		return false, 0
 	}
 
-	elapsed := time.Since(*lastUsed)
+	elapsed := now.Sub(*lastUsed)
 	if elapsed < duration {
 		return true, duration - elapsed
 	}
