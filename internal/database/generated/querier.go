@@ -125,6 +125,10 @@ type Querier interface {
 	GetUserProgressions(ctx context.Context, arg GetUserProgressionsParams) ([]UserProgression, error)
 	GetVoting(ctx context.Context, arg GetVotingParams) (ProgressionVoting, error)
 	HasUserVoted(ctx context.Context, arg HasUserVotedParams) (bool, error)
+	// Read-only check for whether a user has voted in a session.
+	// Does NOT prevent concurrent votes - use HasUserVotedInSessionForUpdate for that.
+	// Safe for: tests, display logic, non-critical status checks.
+	// For concurrent-safe voting: Use HasUserVotedInSessionForUpdate within a transaction.
 	HasUserVotedInSession(ctx context.Context, arg HasUserVotedInSessionParams) (bool, error)
 	// Locks the user's vote record for the session to prevent concurrent vote attempts.
 	// Returns true if user has already voted in this session.

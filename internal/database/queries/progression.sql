@@ -239,6 +239,10 @@ FROM user_votes
 WHERE session_id = $1;
 
 -- name: HasUserVotedInSession :one
+-- Read-only check for whether a user has voted in a session.
+-- Does NOT prevent concurrent votes - use HasUserVotedInSessionForUpdate for that.
+-- Safe for: tests, display logic, non-critical status checks.
+-- For concurrent-safe voting: Use HasUserVotedInSessionForUpdate within a transaction.
 SELECT EXISTS(
     SELECT 1 FROM user_votes
     WHERE user_id = $1 AND session_id = $2

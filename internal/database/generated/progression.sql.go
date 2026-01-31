@@ -1162,6 +1162,10 @@ type HasUserVotedInSessionParams struct {
 	SessionID pgtype.Int4 `json:"session_id"`
 }
 
+// Read-only check for whether a user has voted in a session.
+// Does NOT prevent concurrent votes - use HasUserVotedInSessionForUpdate for that.
+// Safe for: tests, display logic, non-critical status checks.
+// For concurrent-safe voting: Use HasUserVotedInSessionForUpdate within a transaction.
 func (q *Queries) HasUserVotedInSession(ctx context.Context, arg HasUserVotedInSessionParams) (bool, error) {
 	row := q.db.QueryRow(ctx, hasUserVotedInSession, arg.UserID, arg.SessionID)
 	var exists bool
