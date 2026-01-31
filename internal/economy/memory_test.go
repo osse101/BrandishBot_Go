@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
-	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/osse101/BrandishBot_Go/internal/testing/leaktest"
 )
 
@@ -15,7 +14,7 @@ import (
 func TestBuyItem_NoGoroutineLeak(t *testing.T) {
 	// Use existing MockRepository from service_test.go
 	repo := new(MockRepository)
-	mockJob := new(mockJobService)
+	mockJob := new(MockJobService)
 
 	user := createTestUser()
 	item := createTestItem(2, "Lootbox1", 10)
@@ -63,7 +62,7 @@ func TestBuyItem_NoGoroutineLeak(t *testing.T) {
 // TestService_Shutdown_NoGoroutineLeak verifies shutdown properly waits for goroutines
 func TestService_Shutdown_NoGoroutineLeak(t *testing.T) {
 	repo := new(MockRepository)
-	mockJob := new(mockJobService)
+	mockJob := new(MockJobService)
 
 	svc := NewService(repo, mockJob, nil, nil)
 	checker := leaktest.NewGoroutineChecker(t)
@@ -79,47 +78,3 @@ func TestService_Shutdown_NoGoroutineLeak(t *testing.T) {
 	// Should have no leaks after shutdown
 	checker.Check(0)
 }
-
-// mockJobService implements JobService for testing
-type mockJobService struct {
-	mock.Mock
-}
-
-func (m *mockJobService) AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error) {
-	args := m.Called(ctx, userID, jobKey, baseAmount, source, metadata)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*domain.XPAwardResult), args.Error(1)
-}
-
-// MockTx implements repository.Tx for testing
-type MockTx struct {
-	mock.Mock
-}
-
-func (m *MockTx) GetInventory(ctx context.Context, userID string) (*domain.Inventory, error) {
-	args := m.Called(ctx, userID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*domain.Inventory), args.Error(1)
-}
-
-func (m *MockTx) UpdateInventory(ctx context.Context, userID string, inventory domain.Inventory) error {
-	args := m.Called(ctx, userID, inventory)
-	return args.Error(0)
-}
-
-func (m *MockTx) Commit(ctx context.Context) error {
-	args := m.Called(ctx)
-	return args.Error(0)
-}
-
-func (m *MockTx) Rollback(ctx context.Context) error {
-	args := m.Called(ctx)
-	return args.Error(0)
-}
-
-// Ensure MockTx implements repository.Tx
-var _ repository.EconomyTx = (*MockTx)(nil)
