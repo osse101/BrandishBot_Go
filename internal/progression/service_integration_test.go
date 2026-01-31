@@ -2,10 +2,9 @@ package progression
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"os"
-	"path/filepath"
-	"sort"
 	"strings"
 	"sync"
 	"testing"
@@ -22,75 +21,98 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/event"
 )
 
+// TestMain sets up shared container for all tests in the package
+func TestMain(m *testing.M) {
+	flag.Parse()
+
+	var terminate func()
+
+	if !testing.Short() {
+		ctx := context.Background()
+		var connStr string
+		connStr, terminate = setupContainer(ctx)
+		testDBConnString = connStr
+
+		// Create shared pool if container started successfully
+		if connStr != "" {
+			var err error
+			testPool, err = database.NewPool(connStr, 20, 30*time.Minute, time.Hour)
+			if err != nil {
+				fmt.Printf("WARNING: Failed to create test pool: %v\n", err)
+			}
+		}
+	}
+
+	code := m.Run()
+
+	if testPool != nil {
+		testPool.Close()
+	}
+	if terminate != nil {
+		terminate()
+	}
+
+	os.Exit(code)
+}
+
+func setupContainer(ctx context.Context) (string, func()) {
+	// Handle potential panics from testcontainers
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("Recovered from panic in setupContainer: %v\n", r)
+		}
+	}()
+
+	pgContainer, err := postgres.Run(ctx,
+		"postgres:15-alpine",
+		postgres.WithDatabase("testdb"),
+		postgres.WithUsername("testuser"),
+		postgres.WithPassword("testpass"),
+		testcontainers.WithWaitStrategy(
+			wait.ForLog("database system is ready to accept connections").
+				WithOccurrence(2).
+				WithStartupTimeout(15*time.Second)),
+	)
+	if err != nil {
+		fmt.Printf("WARNING: Failed to start postgres container: %v\n", err)
+		return "", func() {}
+	}
+
+	connStr, err := pgContainer.ConnectionString(ctx, "sslmode=disable")
+	if err != nil {
+		fmt.Printf("WARNING: Failed to get connection string: %v\n", err)
+		pgContainer.Terminate(ctx)
+		return "", func() {}
+	}
+
+	return connStr, func() {
+		if err := pgContainer.Terminate(ctx); err != nil {
+			fmt.Printf("Failed to terminate container: %v\n", err)
+		}
+	}
+}
+
 // TestProgressionService_Integration tests the service layer with real PostgreSQL
 // to catch FK constraint violations, async timing issues, and state inconsistencies
 func TestProgressionService_Integration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
 	}
+	if testDBConnString == "" {
+		t.Skip("Skipping integration test: database not available")
+	}
 
 	ctx := context.Background()
 
-	// Start Postgres container
-	var pgContainer *postgres.PostgresContainer
-	var err error
-
-	func() {
-		defer func() {
-			if r := recover(); r != nil {
-				t.Skipf("Skipping integration test due to panic (likely Docker issue): %v", r)
-			}
-		}()
-		pgContainer, err = postgres.Run(ctx,
-			"postgres:15-alpine",
-			postgres.WithDatabase("testdb"),
-			postgres.WithUsername("testuser"),
-			postgres.WithPassword("testpass"),
-			testcontainers.WithWaitStrategy(
-				wait.ForLog("database system is ready to accept connections").
-					WithOccurrence(2).
-					WithStartupTimeout(5*time.Second)),
-		)
-	}()
-
-	if pgContainer == nil {
-		if err != nil {
-			t.Fatalf("failed to start postgres container: %v", err)
-		}
-		return
-	}
-	if err != nil {
-		t.Fatalf("failed to start postgres container: %v", err)
-	}
-	defer func() {
-		if err := pgContainer.Terminate(ctx); err != nil {
-			t.Fatalf("failed to terminate container: %v", err)
-		}
-	}()
-
-	connStr, err := pgContainer.ConnectionString(ctx, "sslmode=disable")
-	if err != nil {
-		t.Fatalf("failed to get connection string: %v", err)
-	}
-
-	// Connect to database
-	pool, err := database.NewPool(connStr, 10, 30*time.Minute, time.Hour)
-	if err != nil {
-		t.Fatalf("failed to connect to database: %v", err)
-	}
-	defer pool.Close()
-
-	// Apply migrations
-	if err := applyMigrations(ctx, t, pool, "../../migrations"); err != nil {
-		t.Fatalf("failed to apply migrations: %v", err)
-	}
+	// Use shared pool and migrations
+	ensureMigrations(t)
 
 	// Create event bus for service
 	bus := event.NewMemoryBus()
 
 	// Create repositories
-	repo := dbpostgres.NewProgressionRepository(pool, bus)
-	userRepo := dbpostgres.NewUserRepository(pool)
+	repo := dbpostgres.NewProgressionRepository(testPool, bus)
+	userRepo := dbpostgres.NewUserRepository(testPool)
 
 	// Create service
 	svc := NewService(repo, userRepo, bus)
@@ -100,23 +122,23 @@ func TestProgressionService_Integration(t *testing.T) {
 
 	// Run test suites
 	t.Run("AutoSelectFlow", func(t *testing.T) {
-		testAutoSelectFlow(t, ctx, svc, repo, pool)
+		testAutoSelectFlow(t, ctx, svc, repo, testPool)
 	})
 
 	t.Run("FKConstraints", func(t *testing.T) {
-		testFKConstraints(t, ctx, svc, repo, pool)
+		testFKConstraints(t, ctx, svc, repo, testPool)
 	})
 
 	t.Run("AsyncTiming", func(t *testing.T) {
-		testAsyncTiming(t, ctx, svc, repo, pool)
+		testAsyncTiming(t, ctx, svc, repo, testPool)
 	})
 
 	t.Run("SessionLifecycle", func(t *testing.T) {
-		testSessionLifecycle(t, ctx, svc, repo, pool)
+		testSessionLifecycle(t, ctx, svc, repo, testPool)
 	})
 
 	t.Run("ZeroCostAutoUnlock", func(t *testing.T) {
-		testZeroCostAutoUnlock(t, ctx, svc, repo, pool)
+		testZeroCostAutoUnlock(t, ctx, svc, repo, testPool)
 	})
 
 	// Shutdown service gracefully
@@ -492,73 +514,3 @@ func testZeroCostAutoUnlock(t *testing.T, ctx context.Context, svc Service, repo
 	}
 }
 
-// Helper function to clean up progression state between tests
-func cleanupProgressionState(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
-	// Delete in order to respect FK constraints
-	// First, clear FK references
-	_, _ = pool.Exec(ctx, "UPDATE progression_voting_sessions SET winning_option_id = NULL WHERE winning_option_id IS NOT NULL")
-
-	queries := []string{
-		"DELETE FROM progression_unlock_progress",
-		"DELETE FROM progression_voting_options",
-		"DELETE FROM progression_voting_sessions",
-		"DELETE FROM engagement_metrics",
-		"DELETE FROM progression_unlocks",
-	}
-
-	for _, query := range queries {
-		_, err := pool.Exec(ctx, query)
-		if err != nil {
-			// Ignore errors for tables that don't exist
-			if !strings.Contains(err.Error(), "does not exist") {
-				t.Logf("Warning: cleanup query failed: %v", err)
-			}
-		}
-	}
-}
-
-// applyMigrations applies SQL migrations from the migrations directory
-func applyMigrations(ctx context.Context, t *testing.T, pool *pgxpool.Pool, migrationsDir string) error {
-	entries, err := os.ReadDir(migrationsDir)
-	if err != nil {
-		return fmt.Errorf("failed to read migrations dir: %w", err)
-	}
-
-	var migrationFiles []string
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			name := entry.Name()
-			if (strings.HasSuffix(name, ".up.sql") || strings.HasSuffix(name, ".sql")) && !strings.HasSuffix(name, ".down.sql") {
-				migrationFiles = append(migrationFiles, filepath.Join(migrationsDir, name))
-			}
-		}
-	}
-	sort.Strings(migrationFiles)
-
-	t.Logf("Applying %d migrations", len(migrationFiles))
-
-	for _, file := range migrationFiles {
-		content, err := os.ReadFile(file)
-		if err != nil {
-			return fmt.Errorf("failed to read migration file %s: %w", file, err)
-		}
-
-		contentStr := string(content)
-
-		// Strip out goose markers
-		contentStr = strings.Replace(contentStr, "-- +goose Up\n", "", 1)
-		contentStr = strings.Replace(contentStr, "-- +goose Up", "", 1)
-
-		if downIdx := strings.Index(contentStr, "-- +goose Down"); downIdx != -1 {
-			contentStr = contentStr[:downIdx]
-		}
-
-		contentStr = strings.TrimSpace(contentStr)
-
-		_, err = pool.Exec(ctx, contentStr)
-		if err != nil {
-			return fmt.Errorf("failed to execute migration %s: %w", file, err)
-		}
-	}
-	return nil
-}

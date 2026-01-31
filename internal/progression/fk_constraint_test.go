@@ -6,11 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/modules/postgres"
-	"github.com/testcontainers/testcontainers-go/wait"
-
-	"github.com/osse101/BrandishBot_Go/internal/database"
 	dbpostgres "github.com/osse101/BrandishBot_Go/internal/database/postgres"
 	"github.com/osse101/BrandishBot_Go/internal/event"
 )
@@ -27,64 +22,18 @@ func TestAutoSelectFKConstraintBug(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
 	}
+	if testDBConnString == "" {
+		t.Skip("Skipping integration test: database not available")
+	}
 
 	ctx := context.Background()
 
-	// Start Postgres container
-	var pgContainer *postgres.PostgresContainer
-	var err error
-
-	func() {
-		defer func() {
-			if r := recover(); r != nil {
-				t.Skipf("Skipping integration test due to panic (likely Docker issue): %v", r)
-			}
-		}()
-		pgContainer, err = postgres.Run(ctx,
-			"postgres:15-alpine",
-			postgres.WithDatabase("testdb"),
-			postgres.WithUsername("testuser"),
-			postgres.WithPassword("testpass"),
-			testcontainers.WithWaitStrategy(
-				wait.ForLog("database system is ready to accept connections").
-					WithOccurrence(2).
-					WithStartupTimeout(5*time.Second)),
-		)
-	}()
-
-	if pgContainer == nil {
-		if err != nil {
-			t.Fatalf("failed to start postgres container: %v", err)
-		}
-		return
-	}
-	if err != nil {
-		t.Fatalf("failed to start postgres container: %v", err)
-	}
-	defer func() {
-		if err := pgContainer.Terminate(ctx); err != nil {
-			t.Fatalf("failed to terminate container: %v", err)
-		}
-	}()
-
-	connStr, err := pgContainer.ConnectionString(ctx, "sslmode=disable")
-	if err != nil {
-		t.Fatalf("failed to get connection string: %v", err)
-	}
-
-	pool, err := database.NewPool(connStr, 10, 30*time.Minute, time.Hour)
-	if err != nil {
-		t.Fatalf("failed to connect to database: %v", err)
-	}
-	defer pool.Close()
-
-	if err := applyMigrations(ctx, t, pool, "../../migrations"); err != nil {
-		t.Fatalf("failed to apply migrations: %v", err)
-	}
+	// Use shared pool and migrations
+	ensureMigrations(t)
 
 	bus := event.NewMemoryBus()
-	repo := dbpostgres.NewProgressionRepository(pool, bus)
-	userRepo := dbpostgres.NewUserRepository(pool)
+	repo := dbpostgres.NewProgressionRepository(testPool, bus)
+	userRepo := dbpostgres.NewUserRepository(testPool)
 	svc := NewService(repo, userRepo, bus)
 
 	time.Sleep(100 * time.Millisecond)
@@ -135,7 +84,7 @@ func TestAutoSelectFKConstraintBug(t *testing.T) {
 
 	// Test 2: Zero-cost auto-unlock should not violate FK constraints
 	t.Run("ZeroCostAutoUnlock", func(t *testing.T) {
-		cleanupProgressionState(t, ctx, pool)
+		cleanupProgressionState(t, ctx, testPool)
 
 		// This tests the scenario where:
 		// 1. Auto-select creates session
@@ -156,7 +105,7 @@ func TestAutoSelectFKConstraintBug(t *testing.T) {
 
 		// Query for any FK constraint violations in the database
 		var violationCount int
-		err = pool.QueryRow(ctx, `
+		err = testPool.QueryRow(ctx, `
 			SELECT COUNT(*) FROM progression_unlock_progress
 			WHERE voting_session_id IS NOT NULL
 			AND NOT EXISTS (

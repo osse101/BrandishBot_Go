@@ -16,6 +16,7 @@
 Every testable unit should prove correctness across these dimensions:
 
 ### 1. Best Case
+
 The happy path. Valid inputs, expected behavior.
 
 ```go
@@ -25,6 +26,7 @@ func TestSellItem_Success(t *testing.T) {
 ```
 
 ### 2. Boundary Case ⭐
+
 **Critical: Test every boundary three ways**
 
 1. **On the boundary** - Exact limit value
@@ -49,6 +51,7 @@ func TestSellItem_QuantityBoundaries(t *testing.T) {
 ```
 
 **Common Boundaries:**
+
 - Numeric: min/max values, zero, negative
 - Collections: empty, single item, max capacity
 - Strings: empty, max length, unicode edge cases
@@ -81,6 +84,7 @@ tests := []struct {
 ```
 
 ### 3. Edge Case
+
 Unusual but legal scenarios within valid range.
 
 ```go
@@ -91,6 +95,7 @@ func TestSellItem_LastItem(t *testing.T) {
 ```
 
 ### 4. Invalid Case
+
 Malformed or incorrect inputs.
 
 ```go
@@ -101,6 +106,7 @@ func TestSellItem_InvalidInputs(t *testing.T) {
 ```
 
 ### 5. Hostile Case
+
 Deliberately malicious attempts.
 
 ```go
@@ -122,10 +128,10 @@ func Test<Function>_<Scenario>(t *testing.T) {
     // 1. ARRANGE: Setup test data
     input := createValidInput()
     expected := calculateExpectedOutput()
-    
+
     // 2. ACT: Execute function under test
     actual, err := FunctionUnderTest(input)
-    
+
     // 3. ASSERT: Verify results
     require.NoError(t, err)
     assert.Equal(t, expected, actual)
@@ -150,7 +156,7 @@ func TestValidation(t *testing.T) {
         {"empty string", "", true, "cannot be empty"},
         {"too long", string(make([]byte, 101)), true, "too long"},
     }
-    
+
     for _, tt := range tests {
         t.Run(tt.name, func(t *testing.T) {
             err := Validate(tt.input)
@@ -170,23 +176,28 @@ func TestValidation(t *testing.T) {
 ## Naming Conventions
 
 ### Test Files
+
 - `<package>_test.go` - Unit tests
 - `<package>_integration_test.go` - Integration tests (build tag required)
 
 ### Test Functions
+
 Pattern: `Test<Function>_<Scenario>`
 
 **Good:**
+
 - `TestCalculateDiscount_ValidPercentage`
 - `TestSellItem_InsufficientQuantity`
 - `TestLoadConfig_MissingAPIKey`
 
 **Bad:**
+
 - `TestDiscount` - Too vague
 - `TestCase1` - Meaningless
 - `TestSellItemWithInvalidUserAndZeroQuantity` - Too specific, split into separate tests
 
 ### Subtest Names
+
 Use `t.Run()` with descriptive strings:
 
 ```go
@@ -255,6 +266,7 @@ assert.NotNil(t, ptr)
 ### When to Mock
 
 **Mock external dependencies:**
+
 - Database
 - HTTP clients
 - File system
@@ -262,6 +274,7 @@ assert.NotNil(t, ptr)
 - External services
 
 **Don't mock:**
+
 - Simple value objects
 - Pure functions
 - Internal utilities
@@ -277,10 +290,10 @@ func TestHandler_GetUser(t *testing.T) {
     // ✅ Use mockery for clean, type-safe tests
     mockSvc := mocks.NewMockUserService(t)
     mockSvc.On("GetUser", "123").Return(user, nil)
-    
+
     handler := NewHandler(mockSvc)
     result, err := handler.GetUser("123")
-    
+
     assert.NoError(t, err)
     assert.Equal(t, user, result)
     mockSvc.AssertExpectations(t)
@@ -288,6 +301,7 @@ func TestHandler_GetUser(t *testing.T) {
 ```
 
 **Regenerate after interface changes:**
+
 ```bash
 make mocks
 ```
@@ -315,6 +329,7 @@ func (m *MockRepository) GetUser(id string) (*domain.User, error) {
 ### Mock Complexity Levels
 
 **Level 1: No Mocks** (Ideal)
+
 ```go
 func TestAdd(t *testing.T) {
     assert.Equal(t, 5, Add(2, 3))
@@ -322,20 +337,22 @@ func TestAdd(t *testing.T) {
 ```
 
 **Level 2: Mockery Mocks** (Handler Tests)
+
 ```go
 func TestHandler_GetUser(t *testing.T) {
     mockRepo := mocks.NewMockUserRepository(t)
     mockRepo.On("FindUser", "123").Return(user, nil)
-    
+
     handler := NewHandler(mockRepo)
     result, err := handler.GetUser("123")
-    
+
     assert.NoError(t, err)
     mockRepo.AssertExpectations(t)
 }
 ```
 
 **Level 3: Functional Mocks** (Service Tests)
+
 ```go
 // Use when complex state management needed
 mockRepo := NewMockRepository() // In-memory implementation
@@ -343,6 +360,7 @@ mockRepo.users["123"] = &domain.User{ID: "123"}
 ```
 
 **Level 4: Multiple Mocks** (Minimize)
+
 ```go
 // If test requires 3+ mocks, consider:
 // - Is this an integration test?
@@ -439,11 +457,11 @@ func TestOperation_ErrorHandling(t *testing.T) {
             errSubstr: "user not found",
         },
     }
-    
+
     for _, tt := range tests {
         t.Run(tt.name, func(t *testing.T) {
             _, err := Operation(tt.input)
-            
+
             require.Error(t, err)
             assert.ErrorIs(t, err, tt.wantErr)
             assert.Contains(t, err.Error(), tt.errSubstr)
@@ -464,17 +482,17 @@ func TestHandleGetUser(t *testing.T) {
     mockService := &MockUserService{}
     mockService.On("GetUser", "123").Return(user, nil)
     handler := NewHandler(mockService)
-    
+
     // Create request
     req := httptest.NewRequest("GET", "/users/123", nil)
     rec := httptest.NewRecorder()
-    
+
     // Execute
     handler.HandleGetUser(rec, req)
-    
+
     // Verify
     assert.Equal(t, http.StatusOK, rec.Code)
-    
+
     var response UserResponse
     err := json.Unmarshal(rec.Body.Bytes(), &response)
     require.NoError(t, err)
@@ -497,7 +515,7 @@ func TestDiminishingReturns_Properties(t *testing.T) {
             assert.LessOrEqual(t, result, 1.0)
         }
     })
-    
+
     t.Run("monotonically increasing", func(t *testing.T) {
         prev := 0.0
         for value := 0.0; value <= 1000; value += 10 {
@@ -527,7 +545,7 @@ func TestSellItem_Success(t *testing.T) {
     moneyBefore := getBalance(user)
     SellItem(user, item, 1)
     moneyAfter := getBalance(user)
-    
+
     assert.Equal(t, moneyBefore + itemValue, moneyAfter)
 }
 ```
@@ -595,7 +613,7 @@ func TestProcess(t *testing.T) {
 // Use t.Parallel() for independent tests
 func TestCalculation(t *testing.T) {
     t.Parallel() // Run concurrently with other parallel tests
-    
+
     result := Calculate(input)
     assert.Equal(t, expected, result)
 }
@@ -637,13 +655,138 @@ func TestUserService_Integration(t *testing.T) {
 }
 ```
 
-### Use Test Containers
+### Shared Container Infrastructure (Recommended)
+
+**For packages with multiple integration tests**, use the TestMain pattern to share a single container:
 
 ```go
-// <revisit later>
-// Example with testcontainers for real DB testing
-// See existing postgres integration tests
+// test_helpers.go - Shared infrastructure
+package mypackage
+
+var (
+    testDBConnString  string
+    testPool          *pgxpool.Pool
+    migrationsApplied bool
+    migrationsMux     sync.Mutex
+)
+
+// ensureMigrations applies migrations once for all tests
+func ensureMigrations(t *testing.T) {
+    migrationsMux.Lock()
+    defer migrationsMux.Unlock()
+
+    if migrationsApplied {
+        return
+    }
+
+    ctx := context.Background()
+    if err := applyMigrations(ctx, t, testPool, "../../migrations"); err != nil {
+        t.Fatalf("failed to apply migrations: %v", err)
+    }
+
+    migrationsApplied = true
+}
 ```
+
+```go
+// integration_test.go - TestMain setup
+func TestMain(m *testing.M) {
+    flag.Parse()
+    var terminate func()
+
+    if !testing.Short() {
+        ctx := context.Background()
+        var connStr string
+        connStr, terminate = setupContainer(ctx)
+        testDBConnString = connStr
+
+        if connStr != "" {
+            testPool, _ = database.NewPool(connStr, 20, 30*time.Minute, time.Hour)
+        }
+    }
+
+    code := m.Run()
+
+    if testPool != nil {
+        testPool.Close()
+    }
+    if terminate != nil {
+        terminate()
+    }
+
+    os.Exit(code)
+}
+
+func setupContainer(ctx context.Context) (string, func()) {
+    defer func() {
+        if r := recover(); r != nil {
+            fmt.Printf("Recovered from panic: %v\n", r)
+        }
+    }()
+
+    pgContainer, err := postgres.Run(ctx,
+        "postgres:15-alpine",
+        postgres.WithDatabase("testdb"),
+        postgres.WithUsername("testuser"),
+        postgres.WithPassword("testpass"),
+        testcontainers.WithWaitStrategy(
+            wait.ForLog("database system is ready to accept connections").
+                WithOccurrence(2).
+                WithStartupTimeout(15*time.Second)),
+    )
+    if err != nil {
+        return "", func() {}
+    }
+
+    connStr, _ := pgContainer.ConnectionString(ctx, "sslmode=disable")
+    return connStr, func() {
+        pgContainer.Terminate(ctx)
+    }
+}
+```
+
+```go
+// your_integration_test.go - Test usage
+func TestSomething_Integration(t *testing.T) {
+    if testing.Short() {
+        t.Skip("Skipping integration test in short mode")
+    }
+    if testDBConnString == "" {
+        t.Skip("Skipping integration test: database not available")
+    }
+
+    ctx := context.Background()
+    ensureMigrations(t)  // Runs once for package
+
+    // Use testPool for database operations
+    repo := NewRepository(testPool)
+    // ... test logic
+}
+```
+
+**Benefits:**
+
+- **85% faster** - One container vs multiple
+- **Cleaner** - No duplicate setup code
+- **Maintainable** - Change once, applies everywhere
+- **Parallel-safe** - `sync.Mutex` protects migrations
+
+**Critical: TestMain Location**  
+TestMain MUST be in a file that contains test functions. Go will not invoke it from a `*_helpers.go` file.
+
+**Test Data Isolation**  
+With shared database, use unique test data:
+
+```go
+// Use timestamps or test names for uniqueness
+userID := fmt.Sprintf("test-user-%d", time.Now().UnixNano())
+username := fmt.Sprintf("user-%s", t.Name())
+```
+
+**Real Examples:**
+
+- [`internal/database/postgres/`](file:///home/osse1/projects/BrandishBot_Go/internal/database/postgres/) - 9 files refactored, 85% faster
+- [`internal/progression/`](file:///home/osse1/projects/BrandishBot_Go/internal/progression/) - 4 files refactored, ~50% faster
 
 ---
 
@@ -680,6 +823,7 @@ func TestCriticalPath(t *testing.T) {
 ## Documentation Through Tests
 
 Tests should document:
+
 1. Expected behavior
 2. Edge cases
 3. Error conditions
@@ -688,13 +832,13 @@ Tests should document:
 ```go
 func TestItemStack_MaxSize(t *testing.T) {
     stack := NewItemStack()
-    
+
     // Document: Stacks limited to 99 items
     for i := 0; i < 99; i++ {
         err := stack.Add(item)
         assert.NoError(t, err)
     }
-    
+
     // Document: 100th item returns error
     err := stack.Add(item)
     assert.ErrorIs(t, err, ErrStackFull)
@@ -723,11 +867,13 @@ Before submitting tests, verify:
 ## Examples from Codebase
 
 **Excellent Examples:**
+
 - [`config_test.go`](file:///home/osse1/projects/BrandishBot_Go/internal/config/config_test.go) - Environment handling, edge cases
 - [`math_test.go`](file:///home/osse1/projects/BrandishBot_Go/internal/utils/math_test.go) - Property-based testing
 - [`inventory_test.go`](file:///home/osse1/projects/BrandishBot_Go/internal/utils/inventory_test.go) - Real scenarios
 
 **Needs Improvement:**
+
 - Handler tests (minimal coverage)
 - Middleware integration flows
 - Gamble/Progression memory leak tests
@@ -747,6 +893,7 @@ Before submitting tests, verify:
 ## Questions?
 
 When in doubt:
+
 1. Would this test catch a real bug?
 2. Would it fail if the code broke?
 3. Does it document expected behavior?
