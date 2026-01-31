@@ -15,6 +15,173 @@ make migrate-up       # Apply migrations
 make docker-up        # Start all services
 ```
 
+---
+
+## ⚡ Agent/Skill/MCP Usage Policy
+
+**CRITICAL: Use specialized agents, skills, and MCPs proactively. Don't do work manually when tools are available.**
+
+### 🤖 Task Agents (Automatic Delegation)
+
+**Always delegate to agents for:**
+
+| Trigger | Agent | When to Use |
+|---------|-------|-------------|
+| **Code review** | `code-reviewer` or `golang-pro` | When user asks to "review", before commits, after writing code |
+| **Concurrency analysis** | `golang-pro` | Code with goroutines/channels/mutexes, mentions of "race", "deadlock", or working on workers/SSE/events |
+| **Security audit** | `security-auditor` | User asks about security, reviewing auth/API endpoints, before production |
+| **Performance optimization** | `performance-engineer` | User mentions "slow", "optimize", "bottleneck", database query optimization |
+| **Database design** | `sql-pro` or `database-architect` | Designing schemas, complex queries, optimizing indexes |
+| **Codebase exploration** | `Explore` | Finding patterns across files, "where is X", understanding code structure |
+| **Constant extraction** | `hardcoded-constants-extractor` | After writing handlers/commands, user mentions "magic numbers" |
+| **Test generation** | `test-automator` | Writing new features, test coverage requests, integration tests |
+| **Refactoring** | `golang-pro` | Reducing duplication, improving code quality, modernizing patterns |
+
+**Agent Chaining (Multi-Agent Workflows):**
+
+Chain agents automatically for complex tasks:
+- **"Review this code"** → `code-reviewer` → `security-auditor` → `golang-pro`
+- **"Optimize database"** → `Explore` → `sql-pro` → `performance-engineer`
+- **"Add feature X"** → `Plan` → `backend-architect` → `test-automator`
+- **"Find and fix Y"** → `Explore` → specialized agent → implement fix
+
+**Examples:**
+
+❌ **DON'T:**
+```
+User: "Review the progression voting code"
+Claude: *reads files manually and analyzes myself*
+```
+
+✅ **DO:**
+```
+User: "Review the progression voting code"
+Claude: *uses golang-pro agent for Go-specific analysis*
+Claude: *chains to code-reviewer for security review*
+Claude: *reports findings and implements fixes*
+```
+
+---
+
+### 🎯 Skills (Action-Trigger Based)
+
+**Use Skills via the Skill tool for project-specific tasks:**
+
+| User Action/Request | Skill to Use | Notes |
+|---------------------|--------------|-------|
+| "Check migrations", "Apply migrations" | `goose` skill | See `.agent/skills/goose/SKILL.md` |
+| "Query database", "Check DB data" | `postgres` skill | See `.agent/skills/postgres/SKILL.md` |
+| "Run tests", "Test this feature" | `testing` skill | See `.agent/skills/testing/SKILL.md` |
+| "Deploy", "Rollback deployment" | `deployment` skill | See `.agent/skills/deployment/SKILL.md` |
+| "Add Discord command", "Create slash command" | `discord` skill | See `.agent/skills/discord/SKILL.md` |
+| "Modify progression tree", "Add node" | `progression` skill | See `.agent/skills/progression/SKILL.md` |
+| "Concurrency patterns", "Go async best practices" | `systems-programming:go-concurrency-patterns` | Goroutines, channels, worker pools |
+
+**Skill Detection:**
+- When user mentions a specific operation (migrations, tests, deployment), use the corresponding skill
+- Skills are documented in `.agent/skills/*/SKILL.md` files
+- Refer to **AGENTS.md Action-Trigger Guide** for full skill mapping
+
+---
+
+### 🔌 MCPs (Data Access & Memory)
+
+**Use MCPs for direct data operations:**
+
+| MCP | When to Use | Example |
+|-----|-------------|---------|
+| `mcp__postgres__query` | Direct database queries for debugging/validation | `SELECT * FROM progression_nodes WHERE tier = 3` |
+| `mcp__memory__*` | Store technical decisions, architecture patterns, lessons learned | Track refactoring decisions, document pain points |
+| `mcp__memory__search_nodes` | Retrieve past decisions/patterns | "What did we decide about caching strategy?" |
+
+**MCP Usage Pattern:**
+
+```
+✅ Use postgres MCP:
+- Quick data validation ("How many users voted?")
+- Debugging ("Show me the current voting session")
+- Ad-hoc reports ("Count items by rarity")
+
+✅ Use memory MCP:
+- Document architecture decisions after making them
+- Store discovered patterns for future reference
+- Track technical debt items
+```
+
+---
+
+### 🔄 Decision Tree: Which Tool to Use?
+
+```
+User asks for analysis/review/optimization?
+  ├─ YES → Use Task Agent (golang-pro, code-reviewer, etc.)
+  └─ NO
+      ├─ User wants to run commands (migrations, tests, deploy)?
+      │   └─ YES → Use Skill (goose, testing, deployment)
+      └─ User wants data/memory lookup?
+          └─ YES → Use MCP (postgres query, memory search)
+```
+
+---
+
+### 📊 Usage Examples by Scenario
+
+**Scenario: User wants to add a new feature**
+```
+1. Use Plan agent to design implementation
+2. Use backend-architect agent for service design
+3. Use Skills (goose) to create migration
+4. Implement feature manually
+5. Use test-automator agent for tests
+6. Use hardcoded-constants-extractor for cleanup
+7. Use code-reviewer before commit
+```
+
+**Scenario: User reports a bug**
+```
+1. Use Explore agent to find related code
+2. Use golang-pro agent if concurrency-related
+3. Use postgres MCP to inspect data state
+4. Fix bug manually
+5. Use testing skill to verify fix
+6. Document in memory MCP for future reference
+```
+
+**Scenario: Performance issue**
+```
+1. Use Explore agent to find bottleneck locations
+2. Use performance-engineer agent for analysis
+3. Use sql-pro agent for query optimization
+4. Use postgres MCP to test queries
+5. Implement optimizations
+6. Use testing skill to benchmark
+```
+
+---
+
+### ⚠️ Anti-Patterns to Avoid
+
+❌ Reading files manually when Explore agent should be used
+❌ Analyzing Go concurrency yourself instead of using golang-pro
+❌ Writing tests manually instead of using test-automator
+❌ Manually checking migrations instead of using goose skill
+❌ Skipping code-reviewer before commits
+❌ Not documenting decisions in memory MCP
+
+---
+
+### 🎯 Success Criteria
+
+You're using tools correctly when:
+- ✅ Every code review request triggers an agent
+- ✅ Every "find X" request uses Explore agent
+- ✅ Database operations use postgres MCP for validation
+- ✅ Skills are invoked for project commands (tests, migrations, deploy)
+- ✅ Multi-agent workflows happen automatically for complex tasks
+- ✅ Important decisions are stored in memory MCP
+
+---
+
 ## Architecture Pattern
 
 ```
