@@ -40,6 +40,7 @@ type Progression interface {
 	GetSessionVoters(ctx context.Context, sessionID int) ([]string, error)
 	HasUserVotedInSession(ctx context.Context, userID string, sessionID int) (bool, error)
 	RecordUserSessionVote(ctx context.Context, userID string, sessionID, optionID, nodeID int) error
+	CheckAndRecordVoteAtomic(ctx context.Context, userID string, sessionID, optionID, nodeID int) error
 
 	// Unlock progress tracking
 	CreateUnlockProgress(ctx context.Context) (int, error)

@@ -661,6 +661,32 @@ func (m *MockRepository) RecordUserSessionVote(ctx context.Context, userID strin
 	return nil
 }
 
+func (m *MockRepository) CheckAndRecordVoteAtomic(ctx context.Context, userID string, sessionID, optionID, nodeID int) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// Check if user has already voted
+	if m.sessionVotes[sessionID] != nil && m.sessionVotes[sessionID][userID] {
+		return domain.ErrUserAlreadyVoted
+	}
+
+	// Increment vote count for the option
+	for i, opt := range m.sessionOptions[sessionID] {
+		if opt.ID == optionID {
+			m.sessionOptions[sessionID][i].VoteCount++
+			break
+		}
+	}
+
+	// Record the user's vote
+	if m.sessionVotes[sessionID] == nil {
+		m.sessionVotes[sessionID] = make(map[string]bool)
+	}
+	m.sessionVotes[sessionID][userID] = true
+
+	return nil
+}
+
 // Unlock progress mock methods
 func (m *MockRepository) CreateUnlockProgress(ctx context.Context) (int, error) {
 	m.mu.Lock()

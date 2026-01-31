@@ -1169,6 +1169,29 @@ func (q *Queries) HasUserVotedInSession(ctx context.Context, arg HasUserVotedInS
 	return exists, err
 }
 
+const hasUserVotedInSessionForUpdate = `-- name: HasUserVotedInSessionForUpdate :one
+SELECT EXISTS(
+    SELECT 1 FROM user_votes
+    WHERE user_id = $1 AND session_id = $2
+    FOR UPDATE
+)
+`
+
+type HasUserVotedInSessionForUpdateParams struct {
+	UserID    string      `json:"user_id"`
+	SessionID pgtype.Int4 `json:"session_id"`
+}
+
+// Locks the user's vote record for the session to prevent concurrent vote attempts.
+// Returns true if user has already voted in this session.
+// Must be used within a transaction.
+func (q *Queries) HasUserVotedInSessionForUpdate(ctx context.Context, arg HasUserVotedInSessionForUpdateParams) (bool, error) {
+	row := q.db.QueryRow(ctx, hasUserVotedInSessionForUpdate, arg.UserID, arg.SessionID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const incrementOptionVote = `-- name: IncrementOptionVote :exec
 UPDATE progression_voting_options
 SET vote_count = vote_count + 1

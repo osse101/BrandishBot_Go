@@ -250,6 +250,7 @@ func main() {
 		EconomyService:     economyService,
 		CraftingService:    craftingService,
 		GambleService:      gambleService,
+		GambleWorker:       gambleWorker,
 		ResilientPublisher: resilientPublisher,
 	})
 }

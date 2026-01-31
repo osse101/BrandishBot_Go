@@ -181,6 +181,56 @@ func (_c *MockRepository_BeginTx_Call) RunAndReturn(run func(context.Context) (r
 	return _c
 }
 
+// CheckAndRecordVoteAtomic provides a mock function with given fields: ctx, userID, sessionID, optionID, nodeID
+func (_m *MockRepository) CheckAndRecordVoteAtomic(ctx context.Context, userID string, sessionID int, optionID int, nodeID int) error {
+	ret := _m.Called(ctx, userID, sessionID, optionID, nodeID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CheckAndRecordVoteAtomic")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, int, int, int) error); ok {
+		r0 = rf(ctx, userID, sessionID, optionID, nodeID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockRepository_CheckAndRecordVoteAtomic_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CheckAndRecordVoteAtomic'
+type MockRepository_CheckAndRecordVoteAtomic_Call struct {
+	*mock.Call
+}
+
+// CheckAndRecordVoteAtomic is a helper method to define mock.On call
+//   - ctx context.Context
+//   - userID string
+//   - sessionID int
+//   - optionID int
+//   - nodeID int
+func (_e *MockRepository_Expecter) CheckAndRecordVoteAtomic(ctx interface{}, userID interface{}, sessionID interface{}, optionID interface{}, nodeID interface{}) *MockRepository_CheckAndRecordVoteAtomic_Call {
+	return &MockRepository_CheckAndRecordVoteAtomic_Call{Call: _e.mock.On("CheckAndRecordVoteAtomic", ctx, userID, sessionID, optionID, nodeID)}
+}
+
+func (_c *MockRepository_CheckAndRecordVoteAtomic_Call) Run(run func(ctx context.Context, userID string, sessionID int, optionID int, nodeID int)) *MockRepository_CheckAndRecordVoteAtomic_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(int), args[3].(int), args[4].(int))
+	})
+	return _c
+}
+
+func (_c *MockRepository_CheckAndRecordVoteAtomic_Call) Return(_a0 error) *MockRepository_CheckAndRecordVoteAtomic_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockRepository_CheckAndRecordVoteAtomic_Call) RunAndReturn(run func(context.Context, string, int, int, int) error) *MockRepository_CheckAndRecordVoteAtomic_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CompleteUnlock provides a mock function with given fields: ctx, progressID, rolloverPoints
 func (_m *MockRepository) CompleteUnlock(ctx context.Context, progressID int, rolloverPoints int) (int, error) {
 	ret := _m.Called(ctx, progressID, rolloverPoints)

@@ -254,6 +254,55 @@ func (r *progressionRepository) RecordUserSessionVote(ctx context.Context, userI
 	return nil
 }
 
+// CheckAndRecordVoteAtomic atomically checks if a user has voted and records their vote if they haven't.
+// This method uses SELECT FOR UPDATE to prevent race conditions when multiple concurrent vote requests arrive.
+// Returns domain.ErrUserAlreadyVoted if the user has already voted in this session.
+func (r *progressionRepository) CheckAndRecordVoteAtomic(ctx context.Context, userID string, sessionID, optionID, nodeID int) error {
+	// Begin transaction
+	txHelper, err := beginTx(ctx, r.pool, r.q)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer SafeRollback(ctx, txHelper.Tx())
+
+	// Check if user has already voted with row lock
+	hasVoted, err := txHelper.Queries().HasUserVotedInSessionForUpdate(ctx, generated.HasUserVotedInSessionForUpdateParams{
+		UserID:    userID,
+		SessionID: pgtype.Int4{Int32: int32(sessionID), Valid: true},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to check vote status: %w", err)
+	}
+
+	if hasVoted {
+		return domain.ErrUserAlreadyVoted
+	}
+
+	// Increment vote count for the option
+	err = txHelper.Queries().IncrementOptionVote(ctx, int32(optionID))
+	if err != nil {
+		return fmt.Errorf("failed to increment vote: %w", err)
+	}
+
+	// Record the user's vote
+	err = txHelper.Queries().RecordUserSessionVote(ctx, generated.RecordUserSessionVoteParams{
+		UserID:    userID,
+		SessionID: pgtype.Int4{Int32: int32(sessionID), Valid: true},
+		OptionID:  pgtype.Int4{Int32: int32(optionID), Valid: true},
+		NodeID:    int32(nodeID),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to record user vote: %w", err)
+	}
+
+	// Commit transaction
+	if err := txHelper.Commit(ctx); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
+}
+
 // Unlock Progress tracking
 
 func (r *progressionRepository) CreateUnlockProgress(ctx context.Context) (int, error) {

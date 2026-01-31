@@ -11,6 +11,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 	"github.com/osse101/BrandishBot_Go/internal/server"
 	"github.com/osse101/BrandishBot_Go/internal/user"
+	"github.com/osse101/BrandishBot_Go/internal/worker"
 )
 
 // ShutdownComponents holds all components that need graceful shutdown.
@@ -21,6 +22,7 @@ type ShutdownComponents struct {
 	EconomyService     economy.Service
 	CraftingService    crafting.Service
 	GambleService      gamble.Service
+	GambleWorker       *worker.GambleWorker
 	ResilientPublisher *event.ResilientPublisher
 }
 
@@ -37,6 +39,13 @@ func GracefulShutdown(ctx context.Context, components ShutdownComponents) {
 	// Shutdown server first (stop accepting new requests)
 	if err := components.Server.Stop(ctx); err != nil {
 		slog.Error(LogMsgServerForcedShutdown, "error", err)
+	}
+
+	// Shutdown gamble worker first to cancel pending timers
+	if components.GambleWorker != nil {
+		if err := components.GambleWorker.Shutdown(ctx); err != nil {
+			slog.Error("Gamble worker shutdown failed", "error", err)
+		}
 	}
 
 	// Shutdown services (order doesn't matter, all run independently)

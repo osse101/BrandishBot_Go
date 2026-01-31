@@ -244,6 +244,16 @@ SELECT EXISTS(
     WHERE user_id = $1 AND session_id = $2
 );
 
+-- name: HasUserVotedInSessionForUpdate :one
+-- Locks the user's vote record for the session to prevent concurrent vote attempts.
+-- Returns true if user has already voted in this session.
+-- Must be used within a transaction.
+SELECT EXISTS(
+    SELECT 1 FROM user_votes
+    WHERE user_id = $1 AND session_id = $2
+    FOR UPDATE
+);
+
 -- name: RecordUserSessionVote :exec
 INSERT INTO user_votes (user_id, session_id, option_id, node_id, target_level)
 VALUES ($1, $2, $3, $4, 1);

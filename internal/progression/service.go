@@ -427,22 +427,10 @@ func (s *service) VoteForUnlock(ctx context.Context, platform, platformID, nodeK
 		return fmt.Errorf("node not in current voting options")
 	}
 
-	hasVoted, err := s.repo.HasUserVotedInSession(ctx, userID, session.ID)
+	// Use atomic transaction to prevent race conditions in concurrent vote attempts
+	err = s.repo.CheckAndRecordVoteAtomic(ctx, userID, session.ID, selectedOption.ID, selectedOption.NodeID)
 	if err != nil {
-		return fmt.Errorf("failed to check vote status: %w", err)
-	}
-	if hasVoted {
-		return domain.ErrUserAlreadyVoted
-	}
-
-	err = s.repo.IncrementOptionVote(ctx, selectedOption.ID)
-	if err != nil {
-		return fmt.Errorf("failed to increment vote: %w", err)
-	}
-
-	err = s.repo.RecordUserSessionVote(ctx, userID, session.ID, selectedOption.ID, selectedOption.NodeID)
-	if err != nil {
-		return fmt.Errorf("failed to record user vote: %w", err)
+		return err
 	}
 
 	// Record engagement immediately to trigger contribution logs and accumulation

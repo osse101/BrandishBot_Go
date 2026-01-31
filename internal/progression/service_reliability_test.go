@@ -159,6 +159,9 @@ func (m *ReliabilityMockRepository) HasUserVotedInSession(ctx context.Context, u
 func (m *ReliabilityMockRepository) RecordUserSessionVote(ctx context.Context, userID string, sessionID, optionID, nodeID int) error {
 	panic("not implemented")
 }
+func (m *ReliabilityMockRepository) CheckAndRecordVoteAtomic(ctx context.Context, userID string, sessionID, optionID, nodeID int) error {
+	panic("not implemented")
+}
 func (m *ReliabilityMockRepository) CreateUnlockProgress(ctx context.Context) (int, error) {
 	panic("not implemented")
 }

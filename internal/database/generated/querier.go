@@ -126,6 +126,10 @@ type Querier interface {
 	GetVoting(ctx context.Context, arg GetVotingParams) (ProgressionVoting, error)
 	HasUserVoted(ctx context.Context, arg HasUserVotedParams) (bool, error)
 	HasUserVotedInSession(ctx context.Context, arg HasUserVotedInSessionParams) (bool, error)
+	// Locks the user's vote record for the session to prevent concurrent vote attempts.
+	// Returns true if user has already voted in this session.
+	// Must be used within a transaction.
+	HasUserVotedInSessionForUpdate(ctx context.Context, arg HasUserVotedInSessionForUpdateParams) (bool, error)
 	IncrementOptionVote(ctx context.Context, id int32) error
 	IncrementVote(ctx context.Context, arg IncrementVoteParams) error
 	InsertCraftingRecipe(ctx context.Context, arg InsertCraftingRecipeParams) (int32, error)
