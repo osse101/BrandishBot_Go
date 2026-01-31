@@ -2,6 +2,8 @@ package database
 
 import (
 	"context"
+	"flag"
+	"fmt"
 	"os"
 	"sync"
 	"testing"
@@ -10,18 +12,85 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/modules/postgres"
+	"github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/osse101/BrandishBot_Go/internal/testing/leaktest"
 )
+
+var (
+	testDBConnString string
+)
+
+func TestMain(m *testing.M) {
+	flag.Parse()
+
+	var terminate func()
+
+	if !testing.Short() {
+		ctx := context.Background()
+		var connStr string
+		connStr, terminate = setupContainer(ctx)
+		testDBConnString = connStr
+	}
+
+	code := m.Run()
+
+	if terminate != nil {
+		terminate()
+	}
+
+	os.Exit(code)
+}
+
+func setupContainer(ctx context.Context) (string, func()) {
+	// Handle potential panics from testcontainers
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("Recovered from panic in setupContainer: %v\n", r)
+		}
+	}()
+
+	pgContainer, err := postgres.Run(ctx,
+		"postgres:15-alpine",
+		postgres.WithDatabase("testdb"),
+		postgres.WithUsername("testuser"),
+		postgres.WithPassword("testpass"),
+		testcontainers.WithWaitStrategy(
+			wait.ForLog("database system is ready to accept connections").
+				WithOccurrence(2).
+				WithStartupTimeout(5*time.Second)),
+	)
+	if err != nil {
+		fmt.Printf("WARNING: Failed to start postgres container: %v\n", err)
+		return "", func() {}
+	}
+
+	connStr, err := pgContainer.ConnectionString(ctx, "sslmode=disable")
+	if err != nil {
+		fmt.Printf("WARNING: Failed to get connection string: %v\n", err)
+		pgContainer.Terminate(ctx)
+		return "", func() {}
+	}
+
+	return connStr, func() {
+		if err := pgContainer.Terminate(ctx); err != nil {
+			fmt.Printf("Failed to terminate container: %v\n", err)
+		}
+	}
+}
 
 // TestPool_ConnectionsReleased verifies connections are returned to the pool
 func TestPool_ConnectionsReleased(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
 	}
+	if testDBConnString == "" {
+		t.Skip("Skipping integration test: database not available")
+	}
 
-	connString := getTestDBConnString(t)
-	pool, err := NewPool(connString, 5, 1*time.Minute, 5*time.Minute)
+	pool, err := NewPool(testDBConnString, 5, 1*time.Minute, 5*time.Minute)
 	require.NoError(t, err)
 	defer pool.Close()
 
@@ -51,10 +120,12 @@ func TestPool_MaxConnsEnforced(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
 	}
+	if testDBConnString == "" {
+		t.Skip("Skipping integration test: database not available")
+	}
 
-	connString := getTestDBConnString(t)
 	maxConns := 3
-	pool, err := NewPool(connString, maxConns, 1*time.Minute, 5*time.Minute)
+	pool, err := NewPool(testDBConnString, maxConns, 1*time.Minute, 5*time.Minute)
 	require.NoError(t, err)
 	defer pool.Close()
 
@@ -109,9 +180,11 @@ func TestPool_NoConnectionLeakOnError(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
 	}
+	if testDBConnString == "" {
+		t.Skip("Skipping integration test: database not available")
+	}
 
-	connString := getTestDBConnString(t)
-	pool, err := NewPool(connString, 5, 1*time.Minute, 5*time.Minute)
+	pool, err := NewPool(testDBConnString, 5, 1*time.Minute, 5*time.Minute)
 	require.NoError(t, err)
 	defer pool.Close()
 
@@ -141,9 +214,11 @@ func TestPool_ConcurrentAccess(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
 	}
+	if testDBConnString == "" {
+		t.Skip("Skipping integration test: database not available")
+	}
 
-	connString := getTestDBConnString(t)
-	pool, err := NewPool(connString, 10, 1*time.Minute, 5*time.Minute)
+	pool, err := NewPool(testDBConnString, 10, 1*time.Minute, 5*time.Minute)
 	require.NoError(t, err)
 	defer pool.Close()
 
@@ -182,46 +257,4 @@ func TestPool_ConcurrentAccess(t *testing.T) {
 
 	// Check for goroutine leaks
 	checker.Check(2) // Allow small tolerance for background workers
-}
-
-// getTestDBConnString returns test database connection string
-// Skips test if required env vars not set or database is not available
-func getTestDBConnString(t *testing.T) string {
-	t.Helper()
-
-	// Build connection string from environment variables with defaults
-	dbUser := getEnvOrSkip(t, "DB_USER", "postgres")
-	dbPassword := getEnvOrSkip(t, "DB_PASSWORD", "postgres")
-	dbHost := getEnvOrSkip(t, "DB_HOST", "localhost")
-	dbPort := getEnvOrSkip(t, "DB_PORT", "5432")
-	dbName := getEnvOrSkip(t, "DB_NAME", "brandishbot")
-
-	connString := "postgres://" + dbUser + ":" + dbPassword + "@" + dbHost + ":" + dbPort + "/" + dbName + "?sslmode=disable"
-
-	// Try to connect to verify database is available
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
-
-	pool, err := pgxpool.New(ctx, connString)
-	if err != nil {
-		t.Skipf("Skipping test: cannot connect to test database: %v", err)
-	}
-	defer pool.Close()
-
-	// Verify we can actually ping the database
-	if err := pool.Ping(ctx); err != nil {
-		t.Skipf("Skipping test: cannot ping test database: %v", err)
-	}
-
-	return connString
-}
-
-// getEnvOrSkip returns the value of an environment variable, or defaultValue if not set.
-// This helper is used for test database configuration.
-func getEnvOrSkip(t *testing.T, key, defaultValue string) string {
-	t.Helper()
-	if val := os.Getenv(key); val != "" {
-		return val
-	}
-	return defaultValue
 }
