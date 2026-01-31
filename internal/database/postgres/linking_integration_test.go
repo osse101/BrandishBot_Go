@@ -5,11 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/modules/postgres"
-	"github.com/testcontainers/testcontainers-go/wait"
-
-	"github.com/osse101/BrandishBot_Go/internal/database"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
 
@@ -17,64 +12,16 @@ func TestLinkingRepository_Integration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
 	}
+	if testDBConnString == "" {
+		t.Skip("Skipping integration test: database not available")
+	}
 
 	ctx := context.Background()
 
-	// Start Postgres container
-	var pgContainer *postgres.PostgresContainer
-	var err error
+	// Use shared pool and migrations
+	ensureMigrations(t)
 
-	func() {
-		defer func() {
-			if r := recover(); r != nil {
-				t.Skipf("Skipping integration test due to panic (likely Docker issue): %v", r)
-			}
-		}()
-		pgContainer, err = postgres.Run(ctx,
-			"postgres:15-alpine",
-			postgres.WithDatabase("testdb"),
-			postgres.WithUsername("testuser"),
-			postgres.WithPassword("testpass"),
-			testcontainers.WithWaitStrategy(
-				wait.ForLog("database system is ready to accept connections").
-					WithOccurrence(2).
-					WithStartupTimeout(5*time.Second)),
-		)
-	}()
-
-	if pgContainer == nil {
-		if err != nil {
-			t.Fatalf("failed to start postgres container: %v", err)
-		}
-		return
-	}
-	if err != nil {
-		t.Fatalf("failed to start postgres container: %v", err)
-	}
-	defer func() {
-		if err := pgContainer.Terminate(ctx); err != nil {
-			t.Fatalf("failed to terminate container: %v", err)
-		}
-	}()
-
-	connStr, err := pgContainer.ConnectionString(ctx, "sslmode=disable")
-	if err != nil {
-		t.Fatalf("failed to get connection string: %v", err)
-	}
-
-	// Connect to database
-	pool, err := database.NewPool(connStr, 10, 30*time.Minute, time.Hour)
-	if err != nil {
-		t.Fatalf("failed to connect to database: %v", err)
-	}
-	defer pool.Close()
-
-	// Apply migrations
-	if err := applyMigrations(ctx, t, pool, "../../../migrations"); err != nil {
-		t.Fatalf("failed to apply migrations: %v", err)
-	}
-
-	repo := NewLinkingRepository(pool)
+	repo := NewLinkingRepository(testPool)
 
 	t.Run("CreateAndGetToken", func(t *testing.T) {
 		token := &repository.LinkToken{

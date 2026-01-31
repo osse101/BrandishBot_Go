@@ -6,11 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/modules/postgres"
-	"github.com/testcontainers/testcontainers-go/wait"
-
-	"github.com/osse101/BrandishBot_Go/internal/database"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/user"
 )
@@ -21,48 +16,17 @@ func TestConcurrentAddItem_Integration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
 	}
+	if testDBConnString == "" {
+		t.Skip("Skipping integration test: database not available")
+	}
 
 	ctx := context.Background()
 
-	// Start Postgres container
-	pgContainer, err := postgres.Run(ctx,
-		"postgres:15-alpine",
-		postgres.WithDatabase("testdb"),
-		postgres.WithUsername("testuser"),
-		postgres.WithPassword("testpass"),
-		testcontainers.WithWaitStrategy(
-			wait.ForLog("database system is ready to accept connections").
-				WithOccurrence(2).
-				WithStartupTimeout(5*time.Second)),
-	)
-	if err != nil {
-		t.Fatalf("failed to start postgres container: %v", err)
-	}
-	defer func() {
-		if err := pgContainer.Terminate(ctx); err != nil {
-			t.Logf("failed to terminate container: %v", err)
-		}
-	}()
-
-	connStr, err := pgContainer.ConnectionString(ctx, "sslmode=disable")
-	if err != nil {
-		t.Fatalf("failed to get connection string: %v", err)
-	}
-
-	// Connect to database
-	pool, err := database.NewPool(connStr, 25, 30*time.Minute, time.Hour)
-	if err != nil {
-		t.Fatalf("failed to connect to database: %v", err)
-	}
-	defer pool.Close()
-
-	// Apply migrations
-	if err := applyMigrations(ctx, t, pool, "../../../migrations"); err != nil {
-		t.Fatalf("failed to apply migrations: %v", err)
-	}
+	// Use shared pool and migrations
+	ensureMigrations(t)
 
 	// Create repository and service
-	repo := NewUserRepository(pool)
+	repo := NewUserRepository(testPool)
 	svc := user.NewService(repo, nil, nil, nil, &mockNamingResolver{}, nil, false)
 
 	// Create a test user

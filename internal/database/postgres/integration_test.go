@@ -2,15 +2,12 @@ package postgres
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"os"
-	"path/filepath"
-	"sort"
-	"strings"
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -19,72 +16,94 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
+// TestMain sets up shared container for all tests in the package
+func TestMain(m *testing.M) {
+	flag.Parse()
+
+	var terminate func()
+
+	if !testing.Short() {
+		ctx := context.Background()
+		var connStr string
+		connStr, terminate = setupContainer(ctx)
+		testDBConnString = connStr
+
+		// Create shared pool if container started successfully
+		if connStr != "" {
+			var err error
+			testPool, err = database.NewPool(connStr, 20, 30*time.Minute, time.Hour)
+			if err != nil {
+				fmt.Printf("WARNING: Failed to create test pool: %v\n", err)
+			}
+		}
+	}
+
+	code := m.Run()
+
+	if testPool != nil {
+		testPool.Close()
+	}
+	if terminate != nil {
+		terminate()
+	}
+
+	os.Exit(code)
+}
+
+func setupContainer(ctx context.Context) (string, func()) {
+	// Handle potential panics from testcontainers
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("Recovered from panic in setupContainer: %v\n", r)
+		}
+	}()
+
+	pgContainer, err := postgres.Run(ctx,
+		"postgres:15-alpine",
+		postgres.WithDatabase("testdb"),
+		postgres.WithUsername("testuser"),
+		postgres.WithPassword("testpass"),
+		testcontainers.WithWaitStrategy(
+			wait.ForLog("database system is ready to accept connections").
+				WithOccurrence(2).
+				WithStartupTimeout(15*time.Second)),
+	)
+	if err != nil {
+		fmt.Printf("WARNING: Failed to start postgres container: %v\n", err)
+		return "", func() {}
+	}
+
+	connStr, err := pgContainer.ConnectionString(ctx, "sslmode=disable")
+	if err != nil {
+		fmt.Printf("WARNING: Failed to get connection string: %v\n", err)
+		pgContainer.Terminate(ctx)
+		return "", func() {}
+	}
+
+	return connStr, func() {
+		if err := pgContainer.Terminate(ctx); err != nil {
+			fmt.Printf("Failed to terminate container: %v\n", err)
+		}
+	}
+}
+
 func TestUserRepository_Integration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
 	}
+	if testDBConnString == "" {
+		t.Skip("Skipping integration test: database not available")
+	}
 
 	ctx := context.Background()
 
-	// Start Postgres container
-	var pgContainer *postgres.PostgresContainer
-	var err error
+	// Use shared pool and apply migrations once
+	ensureMigrations(t)
 
-	func() {
-		defer func() {
-			if r := recover(); r != nil {
-				t.Skipf("Skipping integration test due to panic (likely Docker issue): %v", r)
-			}
-		}()
-		pgContainer, err = postgres.Run(ctx,
-			"postgres:15-alpine",
-			postgres.WithDatabase("testdb"),
-			postgres.WithUsername("testuser"),
-			postgres.WithPassword("testpass"),
-			testcontainers.WithWaitStrategy(
-				wait.ForLog("database system is ready to accept connections").
-					WithOccurrence(2).
-					WithStartupTimeout(5*time.Second)),
-		)
-	}()
 
-	if pgContainer == nil {
-		// If panic occurred and was recovered, we already skipped.
-		// If no panic but pgContainer is nil (shouldn't happen if err is nil), return.
-		if err != nil {
-			t.Fatalf("failed to start postgres container: %v", err)
-		}
-		return
-	}
-	if err != nil {
-		t.Fatalf("failed to start postgres container: %v", err)
-	}
-	defer func() {
-		if err := pgContainer.Terminate(ctx); err != nil {
-			t.Fatalf("failed to terminate container: %v", err)
-		}
-	}()
-
-	connStr, err := pgContainer.ConnectionString(ctx, "sslmode=disable")
-	if err != nil {
-		t.Fatalf("failed to get connection string: %v", err)
-	}
-
-	// Connect to database
-	pool, err := database.NewPool(connStr, 10, 30*time.Minute, time.Hour)
-	if err != nil {
-		t.Fatalf("failed to connect to database: %v", err)
-	}
-	defer pool.Close()
-
-	// Apply migrations
-	if err := applyMigrations(ctx, t, pool, "../../../migrations"); err != nil {
-		t.Fatalf("failed to apply migrations: %v", err)
-	}
-
-	repo := NewUserRepository(pool)
-	craftingRepo := NewCraftingRepository(pool)
-	economyRepo := NewEconomyRepository(pool)
+	repo := NewUserRepository(testPool)
+	craftingRepo := NewCraftingRepository(testPool)
+	economyRepo := NewEconomyRepository(testPool)
 
 	t.Run("UpsertUser", func(t *testing.T) {
 		user := &domain.User{
@@ -373,56 +392,4 @@ func TestUserRepository_Integration(t *testing.T) {
 	})
 }
 
-func applyMigrations(ctx context.Context, t *testing.T, pool *pgxpool.Pool, migrationsDir string) error {
-	entries, err := os.ReadDir(migrationsDir)
-	if err != nil {
-		return fmt.Errorf("failed to read migrations dir: %w", err)
-	}
 
-	var migrationFiles []string
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			name := entry.Name()
-			// Accept both .up.sql and .sql files (exclude .down.sql and archive dir)
-			if (strings.HasSuffix(name, ".up.sql") || strings.HasSuffix(name, ".sql")) && !strings.HasSuffix(name, ".down.sql") {
-				migrationFiles = append(migrationFiles, filepath.Join(migrationsDir, name))
-			}
-		}
-	}
-	sort.Strings(migrationFiles)
-
-	t.Logf("Applying %d migrations in order:", len(migrationFiles))
-	for i, file := range migrationFiles {
-		t.Logf("  %d. %s", i+1, filepath.Base(file))
-	}
-
-	for _, file := range migrationFiles {
-		content, err := os.ReadFile(file)
-		if err != nil {
-			return fmt.Errorf("failed to read migration file %s: %w", file, err)
-		}
-
-		contentStr := string(content)
-
-		// Strip out goose markers (for goose v3 compatibility)
-		// Remove "-- +goose Up" from the beginning
-		contentStr = strings.Replace(contentStr, "-- +goose Up\n", "", 1)
-		// Remove "-- +goose Up" without newline
-		contentStr = strings.Replace(contentStr, "-- +goose Up", "", 1)
-
-		// Strip out the "Down" section if it exists (goose-style migrations)
-		if downIdx := strings.Index(contentStr, "-- +goose Down"); downIdx != -1 {
-			contentStr = contentStr[:downIdx]
-		}
-
-		// Trim any leading/trailing whitespace
-		contentStr = strings.TrimSpace(contentStr)
-
-		t.Logf("Executing: %s", filepath.Base(file))
-		_, err = pool.Exec(ctx, contentStr)
-		if err != nil {
-			return fmt.Errorf("failed to execute migration %s: %w", file, err)
-		}
-	}
-	return nil
-}

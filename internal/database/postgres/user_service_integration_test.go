@@ -13,12 +13,8 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/modules/postgres"
-	"github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/osse101/BrandishBot_Go/internal/cooldown"
-	"github.com/osse101/BrandishBot_Go/internal/database"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/lootbox"
 	"github.com/osse101/BrandishBot_Go/internal/user"
@@ -133,70 +129,16 @@ func setupIntegrationTest(t *testing.T) (*pgxpool.Pool, *UserRepository, user.Se
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
 	}
-
-	ctx := context.Background()
-
-	// Start Postgres container
-	var pgContainer *postgres.PostgresContainer
-	var err error
-
-	func() {
-		defer func() {
-			if r := recover(); r != nil {
-				t.Skipf("Skipping integration test due to panic (likely Docker issue): %v", r)
-			}
-		}()
-		pgContainer, err = postgres.Run(ctx,
-			"postgres:15-alpine",
-			postgres.WithDatabase("testdb"),
-			postgres.WithUsername("testuser"),
-			postgres.WithPassword("testpass"),
-			testcontainers.WithWaitStrategy(
-				wait.ForLog("database system is ready to accept connections").
-					WithOccurrence(2).
-					WithStartupTimeout(5*time.Second)),
-		)
-	}()
-
-	if pgContainer == nil {
-		if err != nil {
-			t.Fatalf("failed to start postgres container: %v", err)
-		}
-		t.Skip("Skipping test because container failed to start (likely no docker)")
-		return nil, nil, nil
-	}
-	if err != nil {
-		t.Fatalf("failed to start postgres container: %v", err)
+	if testDBConnString == "" {
+		t.Skip("Skipping integration test: database not available")
 	}
 
-	// Ensure container cleanup
-	t.Cleanup(func() {
-		if err := pgContainer.Terminate(ctx); err != nil {
-			t.Logf("failed to terminate container: %v", err)
-		}
-	})
+	// Use shared pool and migrations
+	ensureMigrations(t)
 
-	connStr, err := pgContainer.ConnectionString(ctx, "sslmode=disable")
-	if err != nil {
-		t.Fatalf("failed to get connection string: %v", err)
-	}
-
-	// Connect to database
-	pool, err := database.NewPool(connStr, 10, 30*time.Minute, time.Hour)
-	if err != nil {
-		t.Fatalf("failed to connect to database: %v", err)
-	}
-	t.Cleanup(func() { pool.Close() })
-
-	// Apply migrations
-	// Using ../../../migrations because we are in internal/database/postgres
-	if err := applyMigrationsForTest(ctx, pool, "../../../migrations"); err != nil {
-		t.Fatalf("failed to apply migrations: %v", err)
-	}
-
-	repo := NewUserRepository(pool)
+	repo := NewUserRepository(testPool)
 	cooldownConfig := cooldown.Config{DevMode: true}
-	cooldownSvc := cooldown.NewPostgresService(pool, cooldownConfig, nil)
+	cooldownSvc := cooldown.NewPostgresService(testPool, cooldownConfig, nil)
 
 	svc := user.NewService(
 		repo,
@@ -208,7 +150,7 @@ func setupIntegrationTest(t *testing.T) (*pgxpool.Pool, *UserRepository, user.Se
 		true, // Dev mode to bypass cooldowns
 	)
 
-	return pool, repo, svc
+	return testPool, repo, svc
 }
 
 func TestUserService_InventoryOperations_Integration(t *testing.T) {
@@ -221,8 +163,8 @@ func TestUserService_InventoryOperations_Integration(t *testing.T) {
 
 	t.Run("Concurrent GiveItem Between Users", func(t *testing.T) {
 		// Setup users
-		userA := &domain.User{Username: "userA", TwitchID: "twitchA"}
-		userB := &domain.User{Username: "userB", TwitchID: "twitchB"}
+		userA := &domain.User{Username: "inventoryUserA", TwitchID: "inventorytwitchA"}
+		userB := &domain.User{Username: "inventoryUserB", TwitchID: "inventorytwitchB"}
 
 		// Register users and seed inventory
 		if err := repo.UpsertUser(ctx, userA); err != nil {

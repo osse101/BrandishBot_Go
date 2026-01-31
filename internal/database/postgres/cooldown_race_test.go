@@ -1,4 +1,4 @@
-package postgres_test
+package postgres
 
 import (
 	"context"
@@ -9,59 +9,34 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/modules/postgres"
-	"github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/osse101/BrandishBot_Go/internal/cooldown"
-	"github.com/osse101/BrandishBot_Go/internal/database"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
 func TestCooldownService_RaceCondition(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping integration test")
+		t.Skip("Skipping integration test in short mode")
+	}
+	if testDBConnString == "" {
+		t.Skip("Skipping integration test: database not available")
 	}
 
 	ctx := context.Background()
 
-	// 1. Setup Postgres Container
-	pgContainer, err := postgres.Run(ctx,
-		"postgres:15-alpine",
-		postgres.WithDatabase("testdb"),
-		postgres.WithUsername("testuser"),
-		postgres.WithPassword("testpass"),
-		testcontainers.WithWaitStrategy(
-			wait.ForLog("database system is ready to accept connections").
-				WithOccurrence(2).
-				WithStartupTimeout(15*time.Second)),
-	)
-	require.NoError(t, err)
-	defer func() {
-		_ = pgContainer.Terminate(ctx)
-	}()
+	// Apply migrations once
+	ensureMigrations(t)
 
-	connStr, err := pgContainer.ConnectionString(ctx, "sslmode=disable")
-	require.NoError(t, err)
-
-	pool, err := database.NewPool(connStr, 20, 30*time.Minute, time.Hour) // MaxConns=20 for concurrency
-	require.NoError(t, err)
-	defer pool.Close()
-
-	// 2. Apply Migrations
-	// Assuming migrations are in the standard location relative to this file
-	require.NoError(t, applyMigrations(ctx, pool, "../../../migrations"))
-
-	// 3. Create Test User
-	userID := "550e8400-e29b-41d4-a716-446655440000"
-	_, err = pool.Exec(ctx, `
+	// Create Test User
+	userID := "550e8400-e29b-41d4-a716-446655441000"
+	_, err := testPool.Exec(ctx, `
 		INSERT INTO users (user_id, username, created_at, updated_at)
 		VALUES ($1, $2, NOW(), NOW())
-	`, userID, "race-runner")
+	`, userID, "cd-race-runner")
 	require.NoError(t, err)
 
-	// 4. Initialize Service
-	svc := cooldown.NewPostgresService(pool, cooldown.Config{
+	// Initialize Service
+	svc := cooldown.NewPostgresService(testPool, cooldown.Config{
 		DevMode: false,
 		Cooldowns: map[string]time.Duration{
 			domain.ActionSearch: 5 * time.Minute,
