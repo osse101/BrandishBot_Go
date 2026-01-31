@@ -97,6 +97,33 @@ func (s *service) validateItem(ctx context.Context, itemName string) (*domain.It
 	return item, nil
 }
 
+func (s *service) validateQuantity(quantity int) error {
+	if quantity <= 0 {
+		return fmt.Errorf("quantity must be positive (got %d): %w", quantity, domain.ErrInvalidQuantity)
+	}
+	return nil
+}
+
+func (s *service) validatePlatformInput(platform, platformID string) error {
+	if platform == "" || platformID == "" {
+		return fmt.Errorf("platform and platformID cannot be empty: %w", domain.ErrInvalidInput)
+	}
+	validPlatforms := []string{domain.PlatformTwitch, domain.PlatformDiscord, domain.PlatformYoutube}
+	for _, p := range validPlatforms {
+		if platform == p {
+			return nil
+		}
+	}
+	return fmt.Errorf("invalid platform '%s': %w", platform, domain.ErrInvalidPlatform)
+}
+
+func (s *service) validateItemName(itemName string) error {
+	if itemName == "" {
+		return fmt.Errorf("item name cannot be empty: %w", domain.ErrInvalidInput)
+	}
+	return nil
+}
+
 // resolveItemName attempts to resolve a user-provided item name to its internal name.
 // It first tries the naming resolver, then falls back to using the input as-is.
 // This allows users to use either public names ("junkbox") or internal names ("lootbox_tier0").
@@ -174,6 +201,17 @@ func addItemToInventory(inventory *domain.Inventory, itemID, quantity int) {
 func (s *service) UpgradeItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (*Result, error) {
 	log := logger.FromContext(ctx)
 	log.Info("UpgradeItem called", "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity)
+
+	// Validate inputs
+	if err := s.validateQuantity(quantity); err != nil {
+		return nil, err
+	}
+	if err := s.validatePlatformInput(platform, platformID); err != nil {
+		return nil, err
+	}
+	if err := s.validateItemName(itemName); err != nil {
+		return nil, err
+	}
 
 	// Resolve public name to internal name
 	resolvedName, err := s.resolveItemName(ctx, itemName)
@@ -314,6 +352,11 @@ func (s *service) GetRecipe(ctx context.Context, itemName, platform, platformID,
 	log := logger.FromContext(ctx)
 	log.Info("GetRecipe called", "itemName", itemName, "platform", platform, "platformID", platformID, "username", username)
 
+	// Validate inputs
+	if err := s.validateItemName(itemName); err != nil {
+		return nil, err
+	}
+
 	// Resolve public name to internal name
 	resolvedName, err := s.resolveItemName(ctx, itemName)
 	if err != nil {
@@ -363,6 +406,11 @@ func (s *service) GetRecipe(ctx context.Context, itemName, platform, platformID,
 func (s *service) GetUnlockedRecipes(ctx context.Context, platform, platformID, username string) ([]repository.UnlockedRecipeInfo, error) {
 	log := logger.FromContext(ctx)
 	log.Info("GetUnlockedRecipes called", "platform", platform, "platformID", platformID, "username", username)
+
+	// Validate inputs
+	if err := s.validatePlatformInput(platform, platformID); err != nil {
+		return nil, err
+	}
 
 	user, err := s.validateUser(ctx, platform, platformID)
 	if err != nil {
@@ -453,6 +501,17 @@ func (s *service) processDisassembleOutputs(ctx context.Context, inventory *doma
 func (s *service) DisassembleItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (*DisassembleResult, error) {
 	log := logger.FromContext(ctx)
 	log.Info("DisassembleItem called", "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity)
+
+	// Validate inputs
+	if err := s.validateQuantity(quantity); err != nil {
+		return nil, err
+	}
+	if err := s.validatePlatformInput(platform, platformID); err != nil {
+		return nil, err
+	}
+	if err := s.validateItemName(itemName); err != nil {
+		return nil, err
+	}
 
 	user, item, recipe, err := s.validateDisassembleInput(ctx, platform, platformID, itemName)
 	if err != nil {

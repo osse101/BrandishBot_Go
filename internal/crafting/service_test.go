@@ -55,6 +55,16 @@ type MockRepository struct {
 	// User locks for simulating DB row locking
 	userLocks   map[string]*sync.Mutex
 	userLocksMu sync.Mutex
+
+	// Error injection for testing
+	shouldFailBeginTx         bool
+	shouldFailGetInventory    bool
+	shouldFailUpdateInventory bool
+	shouldFailCommit          bool
+	beginTxError              error
+	getInventoryError         error
+	updateInventoryError      error
+	commitError               error
 }
 
 func NewMockRepository() *MockRepository {
@@ -69,6 +79,20 @@ func NewMockRepository() *MockRepository {
 		unlockedRecipes:    make(map[string]map[int]bool),
 		userLocks:          make(map[string]*sync.Mutex),
 	}
+}
+
+// ResetErrorFlags resets all error injection flags
+func (m *MockRepository) ResetErrorFlags() {
+	m.Lock()
+	defer m.Unlock()
+	m.shouldFailBeginTx = false
+	m.shouldFailGetInventory = false
+	m.shouldFailUpdateInventory = false
+	m.shouldFailCommit = false
+	m.beginTxError = nil
+	m.getInventoryError = nil
+	m.updateInventoryError = nil
+	m.commitError = nil
 }
 
 // GetUserLock returns a mutex for a specific user ID, creating it if necessary
@@ -196,6 +220,14 @@ func (m *MockRepository) GetUnlockedRecipesForUser(ctx context.Context, userID s
 }
 
 func (m *MockRepository) BeginTx(ctx context.Context) (repository.CraftingTx, error) {
+	m.RLock()
+	defer m.RUnlock()
+	if m.shouldFailBeginTx {
+		if m.beginTxError != nil {
+			return nil, m.beginTxError
+		}
+		return nil, fmt.Errorf("failed to begin transaction")
+	}
 	return &MockTx{repo: m, lockedUsers: make(map[string]bool)}, nil
 }
 
@@ -374,6 +406,19 @@ type MockTx struct {
 }
 
 func (t *MockTx) GetInventory(ctx context.Context, userID string) (*domain.Inventory, error) {
+	// Check for error injection
+	t.repo.RLock()
+	shouldFail := t.repo.shouldFailGetInventory
+	injectedErr := t.repo.getInventoryError
+	t.repo.RUnlock()
+
+	if shouldFail {
+		if injectedErr != nil {
+			return nil, injectedErr
+		}
+		return nil, fmt.Errorf("failed to get inventory")
+	}
+
 	// Simulate SELECT FOR UPDATE by locking the user record
 	if !t.lockedUsers[userID] {
 		lock := t.repo.GetUserLock(userID)
@@ -386,17 +431,43 @@ func (t *MockTx) GetInventory(ctx context.Context, userID string) (*domain.Inven
 }
 
 func (t *MockTx) UpdateInventory(ctx context.Context, userID string, inventory domain.Inventory) error {
+	// Check for error injection
+	t.repo.RLock()
+	shouldFail := t.repo.shouldFailUpdateInventory
+	injectedErr := t.repo.updateInventoryError
+	t.repo.RUnlock()
+
+	if shouldFail {
+		if injectedErr != nil {
+			return injectedErr
+		}
+		return fmt.Errorf("failed to update inventory")
+	}
+
 	// Should ideally check if lock is held
 	return t.repo.UpdateInventory(ctx, userID, inventory)
 }
 
 func (t *MockTx) Commit(ctx context.Context) error {
-	// Release all locks
+	// Check for error injection
+	t.repo.RLock()
+	shouldFail := t.repo.shouldFailCommit
+	injectedErr := t.repo.commitError
+	t.repo.RUnlock()
+
+	// Release all locks (even on error, like Rollback does)
 	for userID := range t.lockedUsers {
 		// fmt.Printf("Tx %p: Releasing lock for %s\n", t, userID)
 		t.repo.GetUserLock(userID).Unlock()
 	}
 	t.lockedUsers = make(map[string]bool)
+
+	if shouldFail {
+		if injectedErr != nil {
+			return injectedErr
+		}
+		return fmt.Errorf("failed to commit transaction")
+	}
 	return nil
 }
 
@@ -613,10 +684,11 @@ func TestDisassembleItem(t *testing.T) {
 		}})
 
 		// Act
-		_, err := svc.DisassembleItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemLootbox1, 1)
+		_, err := svc.DisassembleItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox1, 1)
 
 		// Assert
 		assert.Error(t, err)
+		assert.ErrorIs(t, err, domain.ErrRecipeLocked)
 	})
 
 	t.Run("Error Case: No Recipe Exists", func(t *testing.T) {
@@ -626,19 +698,22 @@ func TestDisassembleItem(t *testing.T) {
 		ctx := context.Background()
 
 		// Act
-		_, err := svc.DisassembleItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemLootbox0, 1) // No disassemble recipe for lootbox0
+		_, err := svc.DisassembleItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox0, 1) // No disassemble recipe for lootbox0
 
 		// Assert
 		assert.Error(t, err)
+		assert.ErrorIs(t, err, domain.ErrRecipeNotFound)
 	})
 
 	t.Run("Nil/Empty Case: Empty User", func(t *testing.T) {
 		repo := NewMockRepository()
+		setupTestData(repo) // Need to setup items so item validation passes
 		svc := NewService(repo, nil, nil, nil)
 		ctx := context.Background()
 
-		_, err := svc.DisassembleItem(ctx, domain.PlatformTwitch, "", "", domain.ItemLootbox1, 1)
+		_, err := svc.DisassembleItem(ctx, domain.PlatformTwitch, "nonexistent", "", domain.ItemLootbox1, 1)
 		assert.Error(t, err)
+		assert.ErrorIs(t, err, domain.ErrUserNotFound)
 	})
 
 	t.Run("Concurrent Case: Parallel Disassemble", func(t *testing.T) {
@@ -786,6 +861,7 @@ func TestUpgradeItem(t *testing.T) {
 
 		_, err := svc.UpgradeItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox1, 1)
 		assert.Error(t, err)
+		assert.ErrorIs(t, err, domain.ErrRecipeLocked)
 	})
 
 	t.Run("Concurrent Case: Parallel Upgrades", func(t *testing.T) {
@@ -876,6 +952,7 @@ func TestGetRecipe(t *testing.T) {
 
 		_, err := svc.GetRecipe(ctx, "invalid-item", "", "", "")
 		assert.Error(t, err)
+		assert.ErrorIs(t, err, domain.ErrItemNotFound)
 	})
 }
 
@@ -940,4 +1017,618 @@ func TestGetRecipe_Concurrent(t *testing.T) {
 		}()
 	}
 	wg.Wait()
+}
+
+// Phase 3: Input Validation Tests
+
+func TestUpgradeItem_InputValidation(t *testing.T) {
+	repo := NewMockRepository()
+	setupTestData(repo)
+	svc := NewService(repo, nil, nil, nil)
+	ctx := context.Background()
+
+	t.Run("Negative Quantity", func(t *testing.T) {
+		_, err := svc.UpgradeItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox1, -1)
+		assert.Error(t, err)
+		assert.ErrorIs(t, err, domain.ErrInvalidQuantity)
+		assert.Contains(t, err.Error(), "quantity must be positive")
+	})
+
+	t.Run("Zero Quantity", func(t *testing.T) {
+		_, err := svc.UpgradeItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox1, 0)
+		assert.Error(t, err)
+		assert.ErrorIs(t, err, domain.ErrInvalidQuantity)
+		assert.Contains(t, err.Error(), "quantity must be positive")
+	})
+
+	t.Run("Empty Platform", func(t *testing.T) {
+		_, err := svc.UpgradeItem(ctx, "", "twitch-alice", "alice", domain.ItemLootbox1, 1)
+		assert.Error(t, err)
+		assert.ErrorIs(t, err, domain.ErrInvalidInput)
+		assert.Contains(t, err.Error(), "platform and platformID cannot be empty")
+	})
+
+	t.Run("Empty PlatformID", func(t *testing.T) {
+		_, err := svc.UpgradeItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemLootbox1, 1)
+		assert.Error(t, err)
+		assert.ErrorIs(t, err, domain.ErrInvalidInput)
+		assert.Contains(t, err.Error(), "platform and platformID cannot be empty")
+	})
+
+	t.Run("Invalid Platform", func(t *testing.T) {
+		_, err := svc.UpgradeItem(ctx, "invalid-platform", "some-id", "alice", domain.ItemLootbox1, 1)
+		assert.Error(t, err)
+		assert.ErrorIs(t, err, domain.ErrInvalidPlatform)
+		assert.Contains(t, err.Error(), "invalid platform")
+	})
+
+	t.Run("Empty Item Name", func(t *testing.T) {
+		_, err := svc.UpgradeItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", "", 1)
+		assert.Error(t, err)
+		assert.ErrorIs(t, err, domain.ErrInvalidInput)
+		assert.Contains(t, err.Error(), "item name cannot be empty")
+	})
+}
+
+func TestDisassembleItem_InputValidation(t *testing.T) {
+	repo := NewMockRepository()
+	setupTestData(repo)
+	svc := NewService(repo, nil, nil, nil)
+	ctx := context.Background()
+
+	t.Run("Negative Quantity", func(t *testing.T) {
+		_, err := svc.DisassembleItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox1, -1)
+		assert.Error(t, err)
+		assert.ErrorIs(t, err, domain.ErrInvalidQuantity)
+		assert.Contains(t, err.Error(), "quantity must be positive")
+	})
+
+	t.Run("Zero Quantity", func(t *testing.T) {
+		_, err := svc.DisassembleItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox1, 0)
+		assert.Error(t, err)
+		assert.ErrorIs(t, err, domain.ErrInvalidQuantity)
+		assert.Contains(t, err.Error(), "quantity must be positive")
+	})
+
+	t.Run("Empty Platform", func(t *testing.T) {
+		_, err := svc.DisassembleItem(ctx, "", "twitch-alice", "alice", domain.ItemLootbox1, 1)
+		assert.Error(t, err)
+		assert.ErrorIs(t, err, domain.ErrInvalidInput)
+		assert.Contains(t, err.Error(), "platform and platformID cannot be empty")
+	})
+
+	t.Run("Empty PlatformID", func(t *testing.T) {
+		_, err := svc.DisassembleItem(ctx, domain.PlatformTwitch, "", "alice", domain.ItemLootbox1, 1)
+		assert.Error(t, err)
+		assert.ErrorIs(t, err, domain.ErrInvalidInput)
+		assert.Contains(t, err.Error(), "platform and platformID cannot be empty")
+	})
+
+	t.Run("Invalid Platform", func(t *testing.T) {
+		_, err := svc.DisassembleItem(ctx, "invalid-platform", "some-id", "alice", domain.ItemLootbox1, 1)
+		assert.Error(t, err)
+		assert.ErrorIs(t, err, domain.ErrInvalidPlatform)
+		assert.Contains(t, err.Error(), "invalid platform")
+	})
+
+	t.Run("Empty Item Name", func(t *testing.T) {
+		_, err := svc.DisassembleItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", "", 1)
+		assert.Error(t, err)
+		assert.ErrorIs(t, err, domain.ErrInvalidInput)
+		assert.Contains(t, err.Error(), "item name cannot be empty")
+	})
+}
+
+func TestGetRecipe_InputValidation(t *testing.T) {
+	repo := NewMockRepository()
+	setupTestData(repo)
+	svc := NewService(repo, nil, nil, nil)
+	ctx := context.Background()
+
+	t.Run("Empty Item Name", func(t *testing.T) {
+		_, err := svc.GetRecipe(ctx, "", domain.PlatformTwitch, "twitch-alice", "alice")
+		assert.Error(t, err)
+		assert.ErrorIs(t, err, domain.ErrInvalidInput)
+		assert.Contains(t, err.Error(), "item name cannot be empty")
+	})
+}
+
+func TestGetUnlockedRecipes_InputValidation(t *testing.T) {
+	repo := NewMockRepository()
+	setupTestData(repo)
+	svc := NewService(repo, nil, nil, nil)
+	ctx := context.Background()
+
+	t.Run("Empty Platform", func(t *testing.T) {
+		_, err := svc.GetUnlockedRecipes(ctx, "", "twitch-alice", "alice")
+		assert.Error(t, err)
+		assert.ErrorIs(t, err, domain.ErrInvalidInput)
+		assert.Contains(t, err.Error(), "platform and platformID cannot be empty")
+	})
+
+	t.Run("Empty PlatformID", func(t *testing.T) {
+		_, err := svc.GetUnlockedRecipes(ctx, domain.PlatformTwitch, "", "alice")
+		assert.Error(t, err)
+		assert.ErrorIs(t, err, domain.ErrInvalidInput)
+		assert.Contains(t, err.Error(), "platform and platformID cannot be empty")
+	})
+
+	t.Run("Invalid Platform", func(t *testing.T) {
+		_, err := svc.GetUnlockedRecipes(ctx, "invalid-platform", "some-id", "alice")
+		assert.Error(t, err)
+		assert.ErrorIs(t, err, domain.ErrInvalidPlatform)
+		assert.Contains(t, err.Error(), "invalid platform")
+	})
+}
+
+// Phase 4: Transaction Failure Tests
+
+func TestUpgradeItem_TransactionFailures(t *testing.T) {
+	t.Run("BeginTx Failure", func(t *testing.T) {
+		repo := NewMockRepository()
+		setupTestData(repo)
+		svc := NewService(repo, nil, nil, nil).(*service)
+		svc.rnd = func() float64 { return 1.0 }
+		ctx := context.Background()
+
+		// Unlock recipe and add materials
+		repo.UnlockRecipe(ctx, "user-alice", 1)
+		repo.inventories["user-alice"] = &domain.Inventory{
+			Slots: []domain.InventorySlot{
+				{ItemID: 1, Quantity: 10}, // lootbox_tier0
+			},
+		}
+
+		// Get original inventory state
+		originalInv, _ := repo.GetInventory(ctx, "user-alice")
+		originalQuantity := originalInv.Slots[0].Quantity
+
+		// Inject BeginTx error
+		repo.Lock()
+		repo.shouldFailBeginTx = true
+		repo.Unlock()
+
+		// Attempt upgrade
+		_, err := svc.UpgradeItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox1, 1)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to begin transaction")
+
+		// Verify inventory unchanged
+		repo.ResetErrorFlags()
+		inv, _ := repo.GetInventory(ctx, "user-alice")
+		assert.Equal(t, originalQuantity, inv.Slots[0].Quantity, "inventory should be unchanged after BeginTx failure")
+	})
+
+	t.Run("GetInventory Failure", func(t *testing.T) {
+		repo := NewMockRepository()
+		setupTestData(repo)
+		svc := NewService(repo, nil, nil, nil).(*service)
+		svc.rnd = func() float64 { return 1.0 }
+		ctx := context.Background()
+
+		// Unlock recipe and add materials
+		repo.UnlockRecipe(ctx, "user-alice", 1)
+		repo.inventories["user-alice"] = &domain.Inventory{
+			Slots: []domain.InventorySlot{
+				{ItemID: 1, Quantity: 10},
+			},
+		}
+
+		originalQuantity := repo.inventories["user-alice"].Slots[0].Quantity
+
+		// Inject GetInventory error
+		repo.Lock()
+		repo.shouldFailGetInventory = true
+		repo.Unlock()
+
+		// Attempt upgrade
+		_, err := svc.UpgradeItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox1, 1)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to get inventory")
+
+		// Verify inventory unchanged (rollback should have occurred)
+		repo.ResetErrorFlags()
+		inv, _ := repo.GetInventory(ctx, "user-alice")
+		assert.Equal(t, originalQuantity, inv.Slots[0].Quantity, "inventory should be unchanged after GetInventory failure")
+	})
+
+	t.Run("UpdateInventory Failure", func(t *testing.T) {
+		repo := NewMockRepository()
+		setupTestData(repo)
+		svc := NewService(repo, nil, nil, nil).(*service)
+		svc.rnd = func() float64 { return 1.0 }
+		ctx := context.Background()
+
+		// Unlock recipe and add materials
+		repo.UnlockRecipe(ctx, "user-alice", 1)
+		repo.inventories["user-alice"] = &domain.Inventory{
+			Slots: []domain.InventorySlot{
+				{ItemID: 1, Quantity: 10},
+			},
+		}
+
+		originalQuantity := repo.inventories["user-alice"].Slots[0].Quantity
+
+		// Inject UpdateInventory error
+		repo.Lock()
+		repo.shouldFailUpdateInventory = true
+		repo.Unlock()
+
+		// Attempt upgrade
+		_, err := svc.UpgradeItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox1, 1)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to update inventory")
+
+		// Verify inventory unchanged (rollback should have occurred)
+		repo.ResetErrorFlags()
+		inv, _ := repo.GetInventory(ctx, "user-alice")
+		assert.Equal(t, originalQuantity, inv.Slots[0].Quantity, "inventory should be unchanged after UpdateInventory failure")
+	})
+
+	t.Run("Commit Failure", func(t *testing.T) {
+		repo := NewMockRepository()
+		setupTestData(repo)
+		svc := NewService(repo, nil, nil, nil).(*service)
+		svc.rnd = func() float64 { return 1.0 }
+		ctx := context.Background()
+
+		// Unlock recipe and add materials
+		repo.UnlockRecipe(ctx, "user-alice", 1)
+		repo.inventories["user-alice"] = &domain.Inventory{
+			Slots: []domain.InventorySlot{
+				{ItemID: 1, Quantity: 10},
+			},
+		}
+
+		// Inject Commit error
+		repo.Lock()
+		repo.shouldFailCommit = true
+		repo.Unlock()
+
+		// Attempt upgrade
+		_, err := svc.UpgradeItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox1, 1)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to commit transaction")
+
+		// Note: Our mock doesn't support true transaction isolation, so inventory changes
+		// persist even on commit failure. In a real database, the transaction would be rolled back.
+		// The important thing is that the service correctly returns the error.
+		repo.ResetErrorFlags()
+	})
+}
+
+func TestDisassembleItem_TransactionFailures(t *testing.T) {
+	t.Run("BeginTx Failure", func(t *testing.T) {
+		repo := NewMockRepository()
+		setupTestData(repo)
+		svc := NewService(repo, nil, nil, nil).(*service)
+		svc.rnd = func() float64 { return 1.0 }
+		ctx := context.Background()
+
+		// Unlock recipe and add item to disassemble
+		repo.UnlockRecipe(ctx, "user-alice", 1)
+		repo.inventories["user-alice"] = &domain.Inventory{
+			Slots: []domain.InventorySlot{
+				{ItemID: 2, Quantity: 5}, // lootbox_tier1
+			},
+		}
+
+		originalQuantity := repo.inventories["user-alice"].Slots[0].Quantity
+
+		// Inject BeginTx error
+		repo.Lock()
+		repo.shouldFailBeginTx = true
+		repo.Unlock()
+
+		// Attempt disassemble
+		_, err := svc.DisassembleItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox1, 1)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to begin transaction")
+
+		// Verify inventory unchanged
+		repo.ResetErrorFlags()
+		inv, _ := repo.GetInventory(ctx, "user-alice")
+		assert.Equal(t, originalQuantity, inv.Slots[0].Quantity, "inventory should be unchanged after BeginTx failure")
+	})
+
+	t.Run("GetInventory Failure", func(t *testing.T) {
+		repo := NewMockRepository()
+		setupTestData(repo)
+		svc := NewService(repo, nil, nil, nil).(*service)
+		svc.rnd = func() float64 { return 1.0 }
+		ctx := context.Background()
+
+		// Unlock recipe and add item
+		repo.UnlockRecipe(ctx, "user-alice", 1)
+		repo.inventories["user-alice"] = &domain.Inventory{
+			Slots: []domain.InventorySlot{
+				{ItemID: 2, Quantity: 5},
+			},
+		}
+
+		originalQuantity := repo.inventories["user-alice"].Slots[0].Quantity
+
+		// Inject GetInventory error
+		repo.Lock()
+		repo.shouldFailGetInventory = true
+		repo.Unlock()
+
+		// Attempt disassemble
+		_, err := svc.DisassembleItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox1, 1)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to get inventory")
+
+		// Verify inventory unchanged
+		repo.ResetErrorFlags()
+		inv, _ := repo.GetInventory(ctx, "user-alice")
+		assert.Equal(t, originalQuantity, inv.Slots[0].Quantity, "inventory should be unchanged after GetInventory failure")
+	})
+
+	t.Run("UpdateInventory Failure", func(t *testing.T) {
+		repo := NewMockRepository()
+		setupTestData(repo)
+		svc := NewService(repo, nil, nil, nil).(*service)
+		svc.rnd = func() float64 { return 1.0 }
+		ctx := context.Background()
+
+		// Unlock recipe and add item
+		repo.UnlockRecipe(ctx, "user-alice", 1)
+		repo.inventories["user-alice"] = &domain.Inventory{
+			Slots: []domain.InventorySlot{
+				{ItemID: 2, Quantity: 5},
+			},
+		}
+
+		originalQuantity := repo.inventories["user-alice"].Slots[0].Quantity
+
+		// Inject UpdateInventory error
+		repo.Lock()
+		repo.shouldFailUpdateInventory = true
+		repo.Unlock()
+
+		// Attempt disassemble
+		_, err := svc.DisassembleItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox1, 1)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to update inventory")
+
+		// Verify inventory unchanged
+		repo.ResetErrorFlags()
+		inv, _ := repo.GetInventory(ctx, "user-alice")
+		assert.Equal(t, originalQuantity, inv.Slots[0].Quantity, "inventory should be unchanged after UpdateInventory failure")
+	})
+
+	t.Run("Commit Failure", func(t *testing.T) {
+		repo := NewMockRepository()
+		setupTestData(repo)
+		svc := NewService(repo, nil, nil, nil).(*service)
+		svc.rnd = func() float64 { return 1.0 }
+		ctx := context.Background()
+
+		// Unlock recipe and add item
+		repo.UnlockRecipe(ctx, "user-alice", 1)
+		repo.inventories["user-alice"] = &domain.Inventory{
+			Slots: []domain.InventorySlot{
+				{ItemID: 2, Quantity: 5},
+			},
+		}
+
+		// Inject Commit error
+		repo.Lock()
+		repo.shouldFailCommit = true
+		repo.Unlock()
+
+		// Attempt disassemble
+		_, err := svc.DisassembleItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox1, 1)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to commit transaction")
+
+		// Note: Our mock doesn't support true transaction isolation, so inventory changes
+		// persist even on commit failure. In a real database, the transaction would be rolled back.
+		// The important thing is that the service correctly returns the error.
+		repo.ResetErrorFlags()
+	})
+}
+
+// Phase 6: Multi-Material Recipe Tests
+
+func TestUpgradeItem_MultiMaterialRecipe(t *testing.T) {
+	t.Run("Both Materials Available", func(t *testing.T) {
+		repo := NewMockRepository()
+		setupTestData(repo)
+		svc := NewService(repo, nil, nil, nil).(*service)
+		svc.rnd = func() float64 { return 1.0 } // Prevent masterwork
+		ctx := context.Background()
+
+		// Create a recipe requiring 2 materials: 2x lootbox0 + 1x lootbox1 -> lootbox2
+		repo.recipes[99] = &domain.Recipe{
+			ID:           99,
+			TargetItemID: 3, // lootbox_tier2
+			BaseCost: []domain.RecipeCost{
+				{ItemID: 1, Quantity: 2}, // 2x lootbox_tier0
+				{ItemID: 2, Quantity: 1}, // 1x lootbox_tier1
+			},
+		}
+
+		// Unlock the recipe
+		repo.UnlockRecipe(ctx, "user-alice", 99)
+
+		// Give user both materials
+		repo.inventories["user-alice"] = &domain.Inventory{
+			Slots: []domain.InventorySlot{
+				{ItemID: 1, Quantity: 10}, // lootbox_tier0
+				{ItemID: 2, Quantity: 5},  // lootbox_tier1
+			},
+		}
+
+		// Craft 2 items
+		result, err := svc.UpgradeItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox2, 2)
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+
+		// Verify both materials consumed correctly
+		inv, _ := repo.GetInventory(ctx, "user-alice")
+		lootbox0Slot := -1
+		lootbox1Slot := -1
+		lootbox2Slot := -1
+		for i, slot := range inv.Slots {
+			if slot.ItemID == 1 {
+				lootbox0Slot = i
+			} else if slot.ItemID == 2 {
+				lootbox1Slot = i
+			} else if slot.ItemID == 3 {
+				lootbox2Slot = i
+			}
+		}
+		assert.Equal(t, 6, inv.Slots[lootbox0Slot].Quantity, "should consume 4x lootbox0 (2 per craft)")
+		assert.Equal(t, 3, inv.Slots[lootbox1Slot].Quantity, "should consume 2x lootbox1 (1 per craft)")
+		assert.NotEqual(t, -1, lootbox2Slot, "should have created lootbox2")
+		assert.Equal(t, 2, inv.Slots[lootbox2Slot].Quantity, "should create 2x lootbox2")
+	})
+
+	t.Run("Limited By Scarcest Material", func(t *testing.T) {
+		repo := NewMockRepository()
+		setupTestData(repo)
+		svc := NewService(repo, nil, nil, nil).(*service)
+		svc.rnd = func() float64 { return 1.0 } // Prevent masterwork
+		ctx := context.Background()
+
+		// Create a recipe requiring 2 materials
+		repo.recipes[99] = &domain.Recipe{
+			ID:           99,
+			TargetItemID: 3,
+			BaseCost: []domain.RecipeCost{
+				{ItemID: 1, Quantity: 2}, // 2x lootbox_tier0
+				{ItemID: 2, Quantity: 1}, // 1x lootbox_tier1
+			},
+		}
+		repo.UnlockRecipe(ctx, "user-alice", 99)
+
+		// Give user materials where lootbox1 is the bottleneck
+		repo.inventories["user-alice"] = &domain.Inventory{
+			Slots: []domain.InventorySlot{
+				{ItemID: 1, Quantity: 100}, // Plenty of lootbox0
+				{ItemID: 2, Quantity: 2},   // Only 2 lootbox1 (bottleneck)
+			},
+		}
+
+		// Request 10 crafts, but should only do 2 (limited by lootbox1)
+		result, err := svc.UpgradeItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox2, 10)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, result.Quantity, "should be limited by scarcest material (lootbox1)")
+	})
+
+	t.Run("One Material Missing", func(t *testing.T) {
+		repo := NewMockRepository()
+		setupTestData(repo)
+		svc := NewService(repo, nil, nil, nil).(*service)
+		svc.rnd = func() float64 { return 1.0 } // Prevent masterwork
+		ctx := context.Background()
+
+		// Create a recipe requiring 2 materials
+		repo.recipes[99] = &domain.Recipe{
+			ID:           99,
+			TargetItemID: 3,
+			BaseCost: []domain.RecipeCost{
+				{ItemID: 1, Quantity: 2}, // 2x lootbox_tier0
+				{ItemID: 2, Quantity: 1}, // 1x lootbox_tier1
+			},
+		}
+		repo.UnlockRecipe(ctx, "user-alice", 99)
+
+		// Give user only one material
+		repo.inventories["user-alice"] = &domain.Inventory{
+			Slots: []domain.InventorySlot{
+				{ItemID: 1, Quantity: 10}, // Has lootbox0
+				// Missing lootbox1
+			},
+		}
+
+		// Should fail due to missing material
+		_, err := svc.UpgradeItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox2, 1)
+		assert.Error(t, err)
+		assert.ErrorIs(t, err, domain.ErrInsufficientQuantity)
+	})
+}
+
+// Phase 7: Multi-Output Disassemble Tests
+
+func TestDisassembleItem_MultipleOutputs(t *testing.T) {
+	t.Run("Multiple Outputs Added Correctly", func(t *testing.T) {
+		repo := NewMockRepository()
+		setupTestData(repo)
+		svc := NewService(repo, nil, nil, nil).(*service)
+		svc.rnd = func() float64 { return 1.0 } // No perfect salvage
+		ctx := context.Background()
+
+		// Create disassemble recipe with multiple outputs: lootbox2 -> 2x lootbox0 + 1x lootbox1
+		repo.disassembleRecipes[99] = &domain.DisassembleRecipe{
+			ID:               99,
+			SourceItemID:     3, // lootbox_tier2
+			QuantityConsumed: 1,
+			Outputs: []domain.RecipeOutput{
+				{ItemID: 1, Quantity: 2}, // 2x lootbox_tier0
+				{ItemID: 2, Quantity: 1}, // 1x lootbox_tier1
+			},
+		}
+		repo.recipeAssociations[99] = 1 // Associate with upgrade recipe 1
+		repo.UnlockRecipe(ctx, "user-alice", 1)
+
+		// Give user the item to disassemble
+		repo.inventories["user-alice"] = &domain.Inventory{
+			Slots: []domain.InventorySlot{
+				{ItemID: 3, Quantity: 2}, // 2x lootbox_tier2
+			},
+		}
+
+		// Disassemble 2 items
+		result, err := svc.DisassembleItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox2, 2)
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.Equal(t, 2, result.QuantityProcessed)
+		assert.False(t, result.IsPerfectSalvage)
+
+		// Verify all outputs in result map
+		assert.Contains(t, result.Outputs, domain.ItemLootbox0)
+		assert.Contains(t, result.Outputs, domain.ItemLootbox1)
+		assert.Equal(t, 4, result.Outputs[domain.ItemLootbox0], "should get 4x lootbox0 (2 per disassemble)")
+		assert.Equal(t, 2, result.Outputs[domain.ItemLootbox1], "should get 2x lootbox1 (1 per disassemble)")
+	})
+
+	t.Run("Perfect Salvage Applied To All Outputs", func(t *testing.T) {
+		repo := NewMockRepository()
+		setupTestData(repo)
+		svc := NewService(repo, nil, nil, nil).(*service)
+		svc.rnd = func() float64 { return 0.0 } // Always perfect salvage
+		ctx := context.Background()
+
+		// Create disassemble recipe with multiple outputs
+		repo.disassembleRecipes[99] = &domain.DisassembleRecipe{
+			ID:               99,
+			SourceItemID:     3,
+			QuantityConsumed: 1,
+			Outputs: []domain.RecipeOutput{
+				{ItemID: 1, Quantity: 2}, // 2x lootbox_tier0
+				{ItemID: 2, Quantity: 1}, // 1x lootbox_tier1
+			},
+		}
+		repo.recipeAssociations[99] = 1
+		repo.UnlockRecipe(ctx, "user-alice", 1)
+
+		repo.inventories["user-alice"] = &domain.Inventory{
+			Slots: []domain.InventorySlot{
+				{ItemID: 3, Quantity: 1},
+			},
+		}
+
+		result, err := svc.DisassembleItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox2, 1)
+		assert.NoError(t, err)
+		assert.True(t, result.IsPerfectSalvage)
+		assert.Equal(t, PerfectSalvageMultiplier, result.Multiplier)
+
+		// Verify perfect salvage multiplier applied to all outputs
+		// For lootbox0: base 2 * 1.5 = 3 (ceil)
+		// For lootbox1: base 1 * 1.5 = 2 (ceil)
+		assert.Equal(t, 3, result.Outputs[domain.ItemLootbox0], "perfect salvage should apply 1.5x multiplier to lootbox0")
+		assert.Equal(t, 2, result.Outputs[domain.ItemLootbox1], "perfect salvage should apply 1.5x multiplier to lootbox1")
+	})
 }
