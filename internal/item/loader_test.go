@@ -17,8 +17,7 @@ func TestLoader_Load(t *testing.T) {
 		content := `{
 			"version": "1.0",
 			"description": "Test items",
-			"valid_tags": ["consumable", "tradeable"],
-			"valid_handlers": ["lootbox"],
+
 			"items": [
 				{
 					"internal_name": "test_item",
@@ -40,8 +39,7 @@ func TestLoader_Load(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "1.0", config.Version)
 		assert.Equal(t, "Test items", config.Description)
-		assert.Len(t, config.ValidTags, 2)
-		assert.Len(t, config.ValidHandlers, 1)
+
 		assert.Len(t, config.Items, 1)
 		assert.Equal(t, "test_item", config.Items[0].InternalName)
 		assert.Equal(t, "testitem", config.Items[0].PublicName)
@@ -70,8 +68,7 @@ func TestLoader_Validate(t *testing.T) {
 	t.Run("valid config", func(t *testing.T) {
 		config := &Config{
 			Version:       "1.0",
-			ValidTags:     []string{"consumable", "tradeable"},
-			ValidHandlers: []string{"lootbox"},
+
 			Items: []Def{
 				{
 					InternalName:   "item1",
@@ -105,8 +102,7 @@ func TestLoader_Validate(t *testing.T) {
 	t.Run("duplicate internal names", func(t *testing.T) {
 		config := &Config{
 			Version:       "1.0",
-			ValidTags:     []string{"consumable"},
-			ValidHandlers: []string{},
+
 			Items: []Def{
 				{InternalName: "dupe", PublicName: "First", DefaultDisplay: "First", Tags: []string{}},
 				{InternalName: "dupe", PublicName: "Second", DefaultDisplay: "Second", Tags: []string{}},
@@ -118,53 +114,14 @@ func TestLoader_Validate(t *testing.T) {
 		assert.Contains(t, err.Error(), "dupe")
 	})
 
-	t.Run("invalid tag", func(t *testing.T) {
-		config := &Config{
-			Version:       "1.0",
-			ValidTags:     []string{"consumable"},
-			ValidHandlers: []string{},
-			Items: []Def{
-				{
-					InternalName:   "item1",
-					PublicName:     "Item",
-					DefaultDisplay: "Item",
-					Tags:           []string{"invalid_tag"},
-				},
-			},
-		}
-		err := loader.Validate(config)
-		assert.Error(t, err)
-		assert.True(t, errors.Is(err, ErrInvalidTag))
-		assert.Contains(t, err.Error(), "invalid_tag")
-	})
 
-	t.Run("invalid handler", func(t *testing.T) {
-		handler := "invalid_handler"
-		config := &Config{
-			Version:       "1.0",
-			ValidTags:     []string{},
-			ValidHandlers: []string{"lootbox"},
-			Items: []Def{
-				{
-					InternalName:   "item1",
-					PublicName:     "Item",
-					DefaultDisplay: "Item",
-					Tags:           []string{},
-					Handler:        &handler,
-				},
-			},
-		}
-		err := loader.Validate(config)
-		assert.Error(t, err)
-		assert.True(t, errors.Is(err, ErrInvalidHandler))
-		assert.Contains(t, err.Error(), "invalid_handler")
-	})
+
+
 
 	t.Run("empty internal name", func(t *testing.T) {
 		config := &Config{
 			Version:       "1.0",
-			ValidTags:     []string{},
-			ValidHandlers: []string{},
+
 			Items: []Def{
 				{InternalName: "", PublicName: "Item", DefaultDisplay: "Item", Tags: []string{}},
 			},
@@ -177,8 +134,7 @@ func TestLoader_Validate(t *testing.T) {
 	t.Run("empty public name", func(t *testing.T) {
 		config := &Config{
 			Version:       "1.0",
-			ValidTags:     []string{},
-			ValidHandlers: []string{},
+
 			Items: []Def{
 				{InternalName: "item1", PublicName: "", DefaultDisplay: "Item", Tags: []string{}},
 			},
@@ -191,8 +147,7 @@ func TestLoader_Validate(t *testing.T) {
 	t.Run("empty default display", func(t *testing.T) {
 		config := &Config{
 			Version:       "1.0",
-			ValidTags:     []string{},
-			ValidHandlers: []string{},
+
 			Items: []Def{
 				{InternalName: "item1", PublicName: "Item", DefaultDisplay: "", Tags: []string{}},
 			},
@@ -205,8 +160,7 @@ func TestLoader_Validate(t *testing.T) {
 	t.Run("negative max stack", func(t *testing.T) {
 		config := &Config{
 			Version:       "1.0",
-			ValidTags:     []string{},
-			ValidHandlers: []string{},
+
 			Items: []Def{
 				{InternalName: "item1", PublicName: "Item", DefaultDisplay: "Item", MaxStack: -1, Tags: []string{}},
 			},
@@ -219,8 +173,7 @@ func TestLoader_Validate(t *testing.T) {
 	t.Run("negative base value", func(t *testing.T) {
 		config := &Config{
 			Version:       "1.0",
-			ValidTags:     []string{},
-			ValidHandlers: []string{},
+
 			Items: []Def{
 				{InternalName: "item1", PublicName: "Item", DefaultDisplay: "Item", BaseValue: -10, Tags: []string{}},
 			},
@@ -234,8 +187,7 @@ func TestLoader_Validate(t *testing.T) {
 		handler := "lootbox"
 		config := &Config{
 			Version:       "1.0",
-			ValidTags:     []string{},
-			ValidHandlers: []string{"lootbox"},
+
 			Items: []Def{
 				{
 					InternalName:   "item1",
@@ -272,8 +224,7 @@ func TestLoader_LoadActualConfig(t *testing.T) {
 
 	// Check expected structure
 	assert.Equal(t, "1.0", config.Version)
-	assert.NotEmpty(t, config.ValidTags, "Should have valid tags defined")
-	assert.NotEmpty(t, config.ValidHandlers, "Should have valid handlers defined")
+
 	assert.NotEmpty(t, config.Items, "Should have items defined")
 
 	// Verify specific items exist

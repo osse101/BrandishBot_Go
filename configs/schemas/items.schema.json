@@ -17,20 +17,6 @@
             "type": "string",
             "description": "Human-readable description"
         },
-        "valid_tags": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            },
-            "description": "List of valid tags that can be used on items"
-        },
-        "valid_handlers": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            },
-            "description": "List of valid item handlers"
-        },
         "items": {
             "type": "array",
             "description": "List of item definitions",

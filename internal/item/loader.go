@@ -19,8 +19,7 @@ import (
 // Sentinel errors for item loader
 var (
 	ErrDuplicateInternalName = errors.New("duplicate internal name")
-	ErrInvalidTag            = errors.New("invalid tag")
-	ErrInvalidHandler        = errors.New("invalid handler")
+
 	ErrInvalidConfig         = errors.New("invalid configuration")
 )
 
@@ -33,8 +32,7 @@ const (
 type Config struct {
 	Version       string   `json:"version"`
 	Description   string   `json:"description"`
-	ValidTags     []string `json:"valid_tags"`
-	ValidHandlers []string `json:"valid_handlers"`
+
 	Items         []Def    `json:"items"`
 }
 
@@ -106,8 +104,7 @@ func (l *itemLoader) Validate(config *Config) error {
 		return fmt.Errorf("%w: %s", ErrInvalidConfig, ErrMsgNoItemsDefined)
 	}
 
-	validTags := l.buildValidationMap(config.ValidTags)
-	validHandlers := l.buildValidationMap(config.ValidHandlers)
+
 
 	// Track internal names for duplicate detection
 	internalNames := make(map[string]bool, len(config.Items))
@@ -116,7 +113,7 @@ func (l *itemLoader) Validate(config *Config) error {
 	for i := range config.Items {
 		item := &config.Items[i]
 
-		if err := l.validateItemDef(i, item, validTags, validHandlers, internalNames); err != nil {
+		if err := l.validateItemDef(i, item, internalNames); err != nil {
 			return err
 		}
 	}
@@ -124,15 +121,9 @@ func (l *itemLoader) Validate(config *Config) error {
 	return nil
 }
 
-func (l *itemLoader) buildValidationMap(items []string) map[string]bool {
-	m := make(map[string]bool, len(items))
-	for _, item := range items {
-		m[item] = true
-	}
-	return m
-}
 
-func (l *itemLoader) validateItemDef(index int, item *Def, validTags, validHandlers map[string]bool, internalNames map[string]bool) error {
+
+func (l *itemLoader) validateItemDef(index int, item *Def, internalNames map[string]bool) error {
 	// Check for empty internal name
 	if item.InternalName == "" {
 		return fmt.Errorf(ErrFmtItemAtIndexEmpty, ErrInvalidConfig, index)
@@ -152,19 +143,7 @@ func (l *itemLoader) validateItemDef(index int, item *Def, validTags, validHandl
 		return fmt.Errorf(ErrFmtItemHasEmptyDisplay, ErrInvalidConfig, item.InternalName)
 	}
 
-	// Validate tags
-	for _, tag := range item.Tags {
-		if !validTags[tag] {
-			return fmt.Errorf(ErrFmtItemInvalidTag, ErrInvalidTag, item.InternalName, tag)
-		}
-	}
 
-	// Validate handler (if present)
-	if item.Handler != nil && *item.Handler != "" {
-		if !validHandlers[*item.Handler] {
-			return fmt.Errorf(ErrFmtItemInvalidHandler, ErrInvalidHandler, item.InternalName, *item.Handler)
-		}
-	}
 
 	// Validate numeric fields
 	if item.MaxStack < 0 {

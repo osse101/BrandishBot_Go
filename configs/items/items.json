@@ -1,24 +1,6 @@
 {
   "version": "1.0",
   "description": "Item definitions for BrandishBot",
-  "valid_tags": [
-    "consumable",
-    "tradeable",
-    "can_open",
-    "upgradeable",
-    "disassembleable",
-    "sellable",
-    "buyable",
-    "currency"
-  ],
-  "valid_handlers": [
-    "lootbox",
-    "weapon",
-    "revive",
-    "shield",
-    "rarecandy",
-    "explosive"
-  ],
   "items": [
     {
       "internal_name": "money",

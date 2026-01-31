@@ -27,8 +27,7 @@ const (
 	ErrMsgEmptyDefaultDisplay = "has empty default_display"
 	ErrMsgNegativeMaxStack    = "has negative max_stack"
 	ErrMsgNegativeBaseValue   = "has negative base_value"
-	ErrMsgInvalidTag          = "has invalid tag '%s' (not in valid_tags)"
-	ErrMsgInvalidHandler      = "has invalid handler '%s' (not in valid_handlers)"
+
 )
 
 // Database operation error messages
@@ -65,6 +64,5 @@ const (
 	ErrFmtItemHasEmptyDisplay  = "%w: item '%s' has empty default_display"
 	ErrFmtItemNegativeMaxStack = "%w: item '%s' has negative max_stack"
 	ErrFmtItemNegativeValue    = "%w: item '%s' has negative base_value"
-	ErrFmtItemInvalidTag       = "%w: item '%s' has invalid tag '%s' (not in valid_tags)"
-	ErrFmtItemInvalidHandler   = "%w: item '%s' has invalid handler '%s' (not in valid_handlers)"
+
 )
