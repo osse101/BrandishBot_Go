@@ -245,7 +245,6 @@
       "max_stack": 100,
       "base_value": 500,
       "tags": [
-        "weapon",
         "consumable",
         "tradeable",
         "sellable",
@@ -266,7 +265,6 @@
       "max_stack": 1,
       "base_value": 5000,
       "tags": [
-        "equipment",
         "consumable",
         "tradeable",
         "sellable",
@@ -313,7 +311,6 @@
         "consumable",
         "tradeable"
       ],
-      "handler": "filter",
       "default_display": "A video filter"
     }
   ]

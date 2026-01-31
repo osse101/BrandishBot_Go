@@ -73,6 +73,7 @@
                         "type": "string",
                         "enum": [
                             "consumable",
+                            "material",
                             "tradeable",
                             "can_open",
                             "upgradeable",
