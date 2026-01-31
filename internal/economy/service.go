@@ -63,6 +63,53 @@ func (s *service) GetSellablePrices(ctx context.Context) ([]domain.Item, error) 
 
 	// Return all items if no progression service
 	if s.progressionService == nil {
+		// Populate sell prices for all items
+		for i := range allItems {
+			sellPrice := calculateSellPrice(allItems[i].BaseValue)
+			allItems[i].SellPrice = &sellPrice
+		}
+		return allItems, nil
+	}
+
+	// Extract item names for batch checking
+	itemNames := make([]string, len(allItems))
+	for i, item := range allItems {
+		itemNames[i] = item.InternalName
+	}
+
+	// Batch check unlock status
+	unlockStatus, err := s.progressionService.AreItemsUnlocked(ctx, itemNames)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check item unlock status: %w", err)
+	}
+
+	// Filter to only unlocked items and populate sell prices
+	filtered := make([]domain.Item, 0, len(allItems))
+	for _, item := range allItems {
+		if unlockStatus[item.InternalName] {
+			// Calculate and set sell price
+			sellPrice := calculateSellPrice(item.BaseValue)
+			item.SellPrice = &sellPrice
+			filtered = append(filtered, item)
+		}
+	}
+
+	log.Info("Sellable prices filtered", "total", len(allItems), "unlocked", len(filtered))
+	return filtered, nil
+}
+
+// GetBuyablePrices retrieves all buyable items with prices
+func (s *service) GetBuyablePrices(ctx context.Context) ([]domain.Item, error) {
+	log := logger.FromContext(ctx)
+	log.Info(LogMsgGetBuyablePricesCalled)
+
+	allItems, err := s.repo.GetBuyablePrices(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Return all items if no progression service
+	if s.progressionService == nil {
 		return allItems, nil
 	}
 
@@ -86,7 +133,7 @@ func (s *service) GetSellablePrices(ctx context.Context) ([]domain.Item, error) 
 		}
 	}
 
-	log.Info("Sellable prices filtered", "total", len(allItems), "unlocked", len(filtered))
+	log.Info("Buyable prices filtered", "total", len(allItems), "unlocked", len(filtered))
 	return filtered, nil
 }
 
@@ -149,9 +196,17 @@ func (s *service) getSellEntities(ctx context.Context, platform, platformID, ite
 	return user, item, moneyItem, nil
 }
 
+// calculateSellPrice calculates the sell price for an item based on its base value.
+// Uses SellPriceRatio to determine the percentage of base_value returned when selling.
+// Returns integer price (rounded down to prevent fractional currency).
+func calculateSellPrice(baseValue int) int {
+	return int(float64(baseValue) * SellPriceRatio)
+}
+
 // processSellTransaction handles the inventory updates for selling an item
 func processSellTransaction(inventory *domain.Inventory, item, moneyItem *domain.Item, itemSlotIndex, actualSellQuantity int) int {
-	moneyGained := actualSellQuantity * item.BaseValue
+	sellPrice := calculateSellPrice(item.BaseValue)
+	moneyGained := actualSellQuantity * sellPrice
 
 	// Remove sold items
 	if inventory.Slots[itemSlotIndex].Quantity <= actualSellQuantity {

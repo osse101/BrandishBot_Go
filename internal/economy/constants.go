@@ -78,3 +78,11 @@ const (
 	ActionTypeSell = "sell"
 	ActionTypeBuy  = "buy"
 )
+
+// ==================== Economy Configuration ====================
+
+// SellPriceRatio defines the percentage of base_value returned when selling items.
+// Formula: sellPrice = baseValue × SellPriceRatio
+// - 0.60 (60%) is standard for most RPGs - prevents buy/sell loops while being fair
+// - 0.40 (40%) is to start low and leave room for modifiers
+const SellPriceRatio = 0.40

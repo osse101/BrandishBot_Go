@@ -150,7 +150,7 @@ func TestSellItem_Success(t *testing.T) {
 
 	// ASSERT
 	require.NoError(t, err)
-	assert.Equal(t, 300, moneyGained, "Should receive correct money (3 * 100)")
+	assert.Equal(t, 120, moneyGained, "Should receive correct money (3 * 40) - 40% of base value")
 	assert.Equal(t, 3, quantitySold, "Should sell requested quantity")
 	mockRepo.AssertExpectations(t)
 	mockTx.AssertExpectations(t)
@@ -189,7 +189,7 @@ func TestSellItem_SellAllItems(t *testing.T) {
 
 	// ASSERT
 	require.NoError(t, err)
-	assert.Equal(t, 500, moneyGained, "Should receive correct money (100 * 5)")
+	assert.Equal(t, 200, moneyGained, "Should receive correct money (100 * 2) - 40% of base value (5)")
 	assert.Equal(t, 100, quantitySold, "Should sell all items")
 	mockRepo.AssertExpectations(t)
 }
@@ -226,7 +226,7 @@ func TestSellItem_PartialQuantity(t *testing.T) {
 
 	// ASSERT
 	require.NoError(t, err)
-	assert.Equal(t, 600, moneyGained, "Should sell what's available (30 * 20)")
+	assert.Equal(t, 240, moneyGained, "Should sell what's available (30 * 8) - 40% of base value (20)")
 	assert.Equal(t, 30, quantitySold, "Should return actual quantity sold")
 }
 
@@ -475,7 +475,11 @@ func TestGetSellablePrices_Success(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, items, 2)
 	assert.Equal(t, domain.PublicNameLootbox, items[0].InternalName)
-	assert.Equal(t, 100, items[0].BaseValue)
+	assert.Equal(t, 100, items[0].BaseValue, "Base value should remain unchanged (buy price)")
+	require.NotNil(t, items[0].SellPrice, "Sell price should be populated")
+	assert.Equal(t, 40, *items[0].SellPrice, "Sell price should be 40% of base value")
+	require.NotNil(t, items[1].SellPrice, "Sell price should be populated")
+	assert.Equal(t, 20, *items[1].SellPrice, "Sell price should be 40% of base value")
 	mockRepo.AssertExpectations(t)
 }
 
