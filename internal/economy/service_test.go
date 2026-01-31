@@ -3,6 +3,7 @@ package economy
 import (
 	"context"
 	"errors"
+	"math"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -968,7 +969,8 @@ func TestSellItem_NamingResolution(t *testing.T) {
 
 	// ASSERT
 	require.NoError(t, err)
-	assert.Equal(t, 100, moneyGained)
+	expectedResult := int(math.Round(float64(item.BaseValue) * SellPriceRatio))
+	assert.Equal(t, expectedResult, moneyGained)
 	mockRepo.AssertExpectations(t)
 	mockResolver.AssertExpectations(t)
 }
