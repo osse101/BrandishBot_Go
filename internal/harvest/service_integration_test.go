@@ -89,10 +89,12 @@ func TestHarvest_Integration(t *testing.T) {
 	tests := []struct {
 		name            string
 		hoursElapsed    float64
+		featureLocked   bool
 		expectedGains   map[string]int
 		expectedXPAward bool
 		expectedXP      int
 		expectedSpoiled bool
+		expectedError   bool
 	}{
 		{
 			name:         "Normal Harvest - No XP (less than 5h)",
@@ -102,6 +104,12 @@ func TestHarvest_Integration(t *testing.T) {
 			},
 			expectedXPAward: false,
 			expectedSpoiled: false,
+		},
+		{
+			name:          "Harvest Locked - Feature Farming Locked",
+			hoursElapsed:  10.0,
+			featureLocked: true,
+			expectedError: true,
 		},
 		{
 			name:         "Farmer XP Harvest - 6 hours",
@@ -138,6 +146,18 @@ func TestHarvest_Integration(t *testing.T) {
 
 			// --- Mock Setup for User & State Retrieval ---
 			mockUserRepo.On("GetUserByPlatformID", mock.Anything, "discord", "123456").Return(user, nil)
+
+			// Feature Unlock Mock (Farming)
+			// Harvest now requires feature_farming to be unlocked
+			mockProgressionSvc.On("IsFeatureUnlocked", mock.Anything, "feature_farming").Return(!tt.featureLocked, nil)
+
+			if tt.featureLocked {
+				// If locked, we expect error and no further calls
+				_, err := svc.Harvest(context.Background(), "discord", "123456", "TestUser")
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), "harvest requires farming feature to be unlocked")
+				return
+			}
 
 			// Helper to calculate last harvested based on elapsed
 			lastHarvested := time.Now().Add(-time.Duration(tt.hoursElapsed * float64(time.Hour)))

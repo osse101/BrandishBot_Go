@@ -83,6 +83,15 @@ func (s *service) Harvest(ctx context.Context, platform, platformID, username st
 		}
 	}
 
+	// 2. Check if harvest feature (farming) is unlocked
+	unlocked, err := s.progressionSvc.IsFeatureUnlocked(ctx, "feature_farming")
+	if err != nil {
+		return nil, fmt.Errorf("failed to check farming feature unlock: %w", err)
+	}
+	if !unlocked {
+		return nil, fmt.Errorf("harvest requires farming feature to be unlocked: %w", domain.ErrFeatureLocked)
+	}
+
 	// 2. Initialize harvest state if first time
 	harvestState, err := s.harvestRepo.GetHarvestState(ctx, user.ID)
 	if err != nil {
