@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
@@ -14,7 +15,10 @@ import (
 )
 
 const (
-	minHarvestInterval = 1.0 // Minimum 1 hour between harvests
+	minHarvestInterval = 1.0   // Minimum 1 hour between harvests
+	farmerXPThreshold  = 5.0   // Minimum 5 hours for Farmer XP
+	farmerXPPerHour    = 10    // Base XP per hour of waiting
+	spoiledThreshold   = 336.0 // 168h (max tier) + 168h (1 week)
 )
 
 // Service defines the harvest system business logic
@@ -27,6 +31,7 @@ type service struct {
 	harvestRepo    repository.HarvestRepository
 	userRepo       repository.User
 	progressionSvc progression.Service
+	jobSvc         job.Service
 }
 
 // NewService creates a new harvest service
@@ -34,11 +39,13 @@ func NewService(
 	harvestRepo repository.HarvestRepository,
 	userRepo repository.User,
 	progressionSvc progression.Service,
+	jobSvc job.Service,
 ) Service {
 	return &service{
 		harvestRepo:    harvestRepo,
 		userRepo:       userRepo,
 		progressionSvc: progressionSvc,
+		jobSvc:         jobSvc,
 	}
 }
 
@@ -124,12 +131,44 @@ func (s *service) Harvest(ctx context.Context, platform, platformID, username st
 	}
 
 	// 7. Calculate rewards (accumulate across tiers)
-	rewards, err := s.calculateRewards(ctx, hoursElapsed)
-	if err != nil {
-		return nil, fmt.Errorf("failed to calculate rewards: %w", err)
+	var rewards map[string]int
+	var message string
+
+	// Check for spoiled harvest (neglected for > 1 week after max tier)
+	if hoursElapsed > spoiledThreshold {
+		log.Info("Harvest spoiled", "hours", hoursElapsed)
+		rewards = map[string]int{
+			"lootbox1": 1,
+			"stick":    3,
+		}
+		message = "Your crops spoiled! You salvaged 1 Decent Lootbox and 3 Sticks."
+	} else {
+		rewards, err = s.calculateRewards(ctx, hoursElapsed)
+		if err != nil {
+			return nil, fmt.Errorf("failed to calculate rewards: %w", err)
+		}
+		message = "Harvest successful!"
 	}
 
-	// If no rewards (all items locked), still update timestamp but warn user
+	// 8. Award Farmer XP (if applicable)
+	// Award XP even if spoiled, based on actual time waited
+	if hoursElapsed >= farmerXPThreshold {
+		xpAmount := int(hoursElapsed * farmerXPPerHour)
+		_, err := s.jobSvc.AwardXP(ctx, user.ID, job.JobKeyFarmer, xpAmount, job.SourceHarvest, map[string]interface{}{
+			"hours_waited": hoursElapsed,
+			"spoiled":      hoursElapsed > spoiledThreshold,
+		})
+		if err != nil {
+			// Log warning but don't fail the harvest
+			// It's possible the user hasn't unlocked the Farmer job yet
+			log.Warn("Failed to award Farmer XP", "error", err)
+		} else {
+			log.Info("Awarded Farmer XP", "amount", xpAmount)
+			message += fmt.Sprintf(" You gained %d Farmer XP.", xpAmount)
+		}
+	}
+
+	// If no rewards (all items locked) and not spoiled, still update timestamp but warn user
 	if len(rewards) == 0 {
 		log.Warn("No rewards available - all items locked by progression")
 
@@ -150,7 +189,7 @@ func (s *service) Harvest(ctx context.Context, platform, platformID, username st
 		}, nil
 	}
 
-	// 8. Get inventory and add rewards (within transaction)
+	// 9. Get inventory and add rewards (within transaction)
 	inventory, err := tx.GetInventory(ctx, user.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get inventory: %w", err)
@@ -203,12 +242,12 @@ func (s *service) Harvest(ctx context.Context, platform, platformID, username st
 		return nil, fmt.Errorf("failed to update inventory: %w", err)
 	}
 
-	// 9. Update harvest state timestamp
+	// 10. Update harvest state timestamp
 	if err := tx.UpdateHarvestState(ctx, user.ID, now); err != nil {
 		return nil, fmt.Errorf("failed to update harvest state: %w", err)
 	}
 
-	// 10. Commit transaction
+	// 11. Commit transaction
 	if err := tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("failed to commit transaction: %w", err)
 	}
@@ -219,7 +258,7 @@ func (s *service) Harvest(ctx context.Context, platform, platformID, username st
 		ItemsGained:       rewards,
 		HoursSinceHarvest: hoursElapsed,
 		NextHarvestAt:     now.Add(time.Hour),
-		Message:           "Harvest successful!",
+		Message:           message,
 	}, nil
 }
 

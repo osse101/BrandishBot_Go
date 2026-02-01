@@ -81,7 +81,6 @@ func (s *service) GetUserJobsByPlatform(ctx context.Context, platform, platformI
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
-
 	return s.GetUserJobs(ctx, user.ID)
 }
 
@@ -296,10 +295,10 @@ func (s *service) calculateActualXP(ctx context.Context, userID, jobKey string, 
 }
 
 func (s *service) checkDailyCap(ctx context.Context, userID, jobKey string, currentProgress *domain.UserJob, actualAmount *int, source string) error {
-	// Skip daily cap for rare candy
-	if source == SourceRareCandy {
-		logger.FromContext(ctx).Info("Bypassing daily XP cap for rare candy",
-			"user_id", userID, "job", jobKey, "xp", *actualAmount)
+	// Skip daily cap for rare candy and harvest
+	if source == SourceRareCandy || source == SourceHarvest {
+		logger.FromContext(ctx).Info("Bypassing daily XP cap",
+			"user_id", userID, "job", jobKey, "xp", *actualAmount, "source", source)
 		return nil
 	}
 

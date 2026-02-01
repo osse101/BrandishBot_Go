@@ -58,6 +58,7 @@ const (
 // XP source types for tracking and special behavior
 const (
 	SourceRareCandy = "rarecandy" // Rare candy usage - bypasses daily cap
+	SourceHarvest   = "harvest"   // Harvest XP - bypasses daily cap
 )
 
 // Job Epiphany constants

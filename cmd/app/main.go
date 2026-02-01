@@ -193,7 +193,7 @@ func main() {
 	userService := user.NewService(repos.User, statsService, jobService, lootboxSvc, namingResolver, cooldownSvc, cfg.DevMode)
 
 	// Initialize Harvest Service
-	harvestService := harvest.NewService(repos.Harvest, repos.User, progressionService)
+	harvestService := harvest.NewService(repos.Harvest, repos.User, progressionService, jobService)
 	slog.Info("Harvest service initialized")
 
 	// Initialize Gamble Worker

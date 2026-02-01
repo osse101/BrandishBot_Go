@@ -481,7 +481,13 @@
         "feature_farming"
       ],
       "sort_order": 73,
-      "auto_unlock": false
+      "auto_unlock": false,
+      "modifier_config": {
+        "feature_key": "farming_yield",
+        "modifier_type": "multiplicative",
+        "base_value": 1.0,
+        "per_level_value": 0.1
+      }
     },
     {
       "key": "feature_compost",
