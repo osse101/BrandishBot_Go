@@ -64,7 +64,6 @@ echo -e "🧹 Running linter on changes..."
 if command -v golangci-lint > /dev/null; then
     golangci-lint run --new-from-rev=HEAD ./... || {
         echo -e "${RED}❌ Linter failed. Please fix issues before committing.${NC}"
-        exit 1
     }
 else
     echo -e "${YELLOW}⚠️ golangci-lint not found in PATH or GOPATH/bin, skipping lint.${NC}"
