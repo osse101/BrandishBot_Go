@@ -18,7 +18,6 @@ help:
 	@echo "  make migrate-create NAME= - Create a new migration file"
 	@echo ""
 	@echo "Development Commands:"
-	@echo "  make setup                - Initialize development environment"
 	@echo "  make test                 - Run all tests with coverage"
 	@echo "  make test-coverage        - Generate  HTML coverage report"
 	@echo "  make test-coverage-check  - Verify 80%+ coverage threshold"
@@ -90,10 +89,6 @@ migrate-create:
 	@$(GOOSE) -dir migrations create $(NAME) sql
 
 # Development commands
-setup:
-	@echo "Setting up development environment..."
-	@./scripts/init_dev.sh
-
 test:
 	@echo "Running tests..."
 	@mkdir -p logs
@@ -101,12 +96,12 @@ test:
 
 unit:
 	@echo "Running unit tests (fast)..."
-	@go test -short -cover ./...
+	@./scripts/unit_tests.sh
 
 watch:
 	@echo "Watching for changes to run unit tests..."
 	@if command -v entr > /dev/null; then \
-		find . -name "*.go" | entr -c $(MAKE) unit; \
+		find . -name "*.go" | entr -c ./scripts/unit_tests.sh; \
 	else \
 		echo "Error: 'entr' is not installed. Please install it to use this feature."; \
 		exit 1; \
