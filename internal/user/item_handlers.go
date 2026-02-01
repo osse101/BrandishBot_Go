@@ -3,6 +3,7 @@ package user
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"strconv"
 	"strings"
 	"time"
@@ -190,39 +191,15 @@ func getWeaponTimeout(itemName string) time.Duration {
 	return BlasterTimeoutDuration // default fallback
 }
 
-func (s *service) handleWeapon(ctx context.Context, _ *service, _ *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args map[string]interface{}) (string, error) {
+func (s *service) handleWeapon(ctx context.Context, _ *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args map[string]interface{}) (string, error) {
 	log := logger.FromContext(ctx)
 	log.Info(LogMsgHandleWeaponCalled, "item", item.InternalName, "quantity", quantity)
 
-	targetUsername, ok := args[ArgsTargetUsername].(string)
+	targetUsername, targetProvided := args[ArgsTargetUsername].(string)
 	username, _ := args[ArgsUsername].(string)
+	platform, _ := args[ArgsPlatform].(string)
 
-	// Special handling for grenades - no target required (random targeting)
-	if item.InternalName == domain.ItemGrenade {
-		// Grenade doesn't require a target, it selects randomly
-		if !ok || targetUsername == "" {
-			log.Info("Grenade used without target - random targeting will be implemented by caller")
-			// For now, we require a target until we implement random user selection
-			// This will be handled at a higher level (Discord bot/API) which knows active users
-			return "", fmt.Errorf(ErrMsgTargetUsernameRequired)
-		}
-	} else if item.InternalName == domain.ItemTNT {
-		// TNT is AoE - doesn't require a specific target
-		// The target can be empty for TNT, and it will affect multiple users
-		log.Info("TNT used - AoE targeting will be implemented by caller")
-		// For now, require target until AoE logic is implemented at caller level
-		if !ok || targetUsername == "" {
-			return "", fmt.Errorf(ErrMsgTargetUsernameRequired)
-		}
-	} else {
-		// Standard weapons require a target
-		if !ok || targetUsername == "" {
-			log.Warn(LogWarnTargetUsernameMissingWeapon)
-			return "", fmt.Errorf(ErrMsgTargetUsernameRequired)
-		}
-	}
-
-	// Find item slot
+	// Find item slot first (before target selection)
 	itemSlotIndex, slotQuantity := utils.FindSlot(inventory, item.ID)
 	if itemSlotIndex == -1 {
 		log.Warn(LogWarnWeaponNotInInventory, "item", item.InternalName)
@@ -232,20 +209,115 @@ func (s *service) handleWeapon(ctx context.Context, _ *service, _ *domain.User, 
 		log.Warn(LogWarnNotEnoughWeapons, "item", item.InternalName)
 		return "", fmt.Errorf(ErrMsgNotEnoughItemsInInventory)
 	}
-	utils.RemoveFromSlot(inventory, itemSlotIndex, quantity)
 
-	// Get timeout for this weapon type
 	timeout := getWeaponTimeout(item.InternalName)
+	displayName := s.namingResolver.GetDisplayName(item.InternalName, "")
 
+	// Special handling for TNT - multi-target (5-9 targets)
+	if item.InternalName == domain.ItemTNT {
+		log.Info("TNT used, selecting 5-9 random targets")
+		
+		// Select 5-9 random targets
+		numTargets := 5 + rand.Intn(5) // Random number between 5 and 9
+		targets, err := s.activeChatterTracker.GetRandomTargets(platform, numTargets)
+		if err != nil {
+			log.Warn("No active targets available for TNT", "error", err)
+			return "", fmt.Errorf(ErrMsgNoActiveTargets)
+		}
+		
+		// Remove item from inventory
+		utils.RemoveFromSlot(inventory, itemSlotIndex, quantity)
+		
+		// Apply timeout to all targets and collect names
+		hitUsernames := make([]string, 0, len(targets))
+		for _, target := range targets {
+			if err := s.TimeoutUser(ctx, target.Username, timeout, MsgBlasterReasonBy+username); err != nil {
+				log.Error(LogWarnFailedToTimeoutUser, "error", err, "target", target.Username)
+				// Continue with other targets even if one fails
+			}
+			
+			// Remove from active chatters
+			s.activeChatterTracker.Remove(platform, target.UserID)
+			hitUsernames = append(hitUsernames, target.Username)
+		}
+		
+		log.Info("TNT hit multiple targets", "count", len(hitUsernames), "targets", hitUsernames)
+		
+		// Format message with all hit users
+		targetsStr := formatTargetList(hitUsernames)
+		return fmt.Sprintf("%s used %s! Hit %d targets: %s! Timed out for %v.", 
+			username, displayName, len(hitUsernames), targetsStr, timeout), nil
+	}
+	
+	// Special handling for grenade - single random target
+	if item.InternalName == domain.ItemGrenade {
+		log.Info("Grenade used, selecting single random target")
+		
+		randomUsername, randomUserID, err := s.activeChatterTracker.GetRandomTarget(platform)
+		if err != nil {
+			log.Warn("No active targets available for grenade", "error", err)
+			return "", fmt.Errorf(ErrMsgNoActiveTargets)
+		}
+		
+		// Remove item from inventory
+		utils.RemoveFromSlot(inventory, itemSlotIndex, quantity)
+		
+		// Apply timeout
+		if err := s.TimeoutUser(ctx, randomUsername, timeout, MsgBlasterReasonBy+username); err != nil {
+			log.Error(LogWarnFailedToTimeoutUser, "error", err, "target", randomUsername)
+			// Continue anyway, as the item was used
+		}
+		
+		// Remove from active chatters
+		s.activeChatterTracker.Remove(platform, randomUserID)
+		log.Info("Grenade hit target", "target", randomUsername)
+		
+		return fmt.Sprintf("%s used %s! Hit random target: %s! Timed out for %v.", 
+			username, displayName, randomUsername, timeout), nil
+	}
+	
+	// Standard weapons require a user-provided target
+	if !targetProvided || targetUsername == "" {
+		log.Warn(LogWarnTargetUsernameMissingWeapon)
+		return "", fmt.Errorf(ErrMsgTargetUsernameRequired)
+	}
+	
+	// Remove item from inventory
+	utils.RemoveFromSlot(inventory, itemSlotIndex, quantity)
+	
 	// Apply timeout
 	if err := s.TimeoutUser(ctx, targetUsername, timeout, MsgBlasterReasonBy+username); err != nil {
 		log.Error(LogWarnFailedToTimeoutUser, "error", err, "target", targetUsername)
 		// Continue anyway, as the item was used
 	}
-
-	displayName := s.namingResolver.GetDisplayName(item.InternalName, "")
+	
 	log.Info(LogMsgWeaponUsed, "target", targetUsername, "item", item.InternalName, "quantity", quantity)
 	return fmt.Sprintf("%s used %s on %s! %d %s(s) fired. Timed out for %v.", username, displayName, targetUsername, quantity, displayName, timeout), nil
+}
+
+// formatTargetList formats a list of usernames for display
+func formatTargetList(usernames []string) string {
+	if len(usernames) == 0 {
+		return ""
+	}
+	if len(usernames) == 1 {
+		return usernames[0]
+	}
+	if len(usernames) == 2 {
+		return usernames[0] + " and " + usernames[1]
+	}
+	// For 3+, use comma-separated with "and" before last
+	result := ""
+	for i, name := range usernames {
+		if i == len(usernames)-1 {
+			result += ", and " + name
+		} else if i > 0 {
+			result += ", " + name
+		} else {
+			result += name
+		}
+	}
+	return result
 }
 
 // handleBlaster is a legacy wrapper for backward compatibility

@@ -30,11 +30,11 @@ const EnvUserCacheTTL = "USER_CACHE_TTL"
 // Endpoint Handler Arguments
 // ============================================================================
 
-// ArgsUsername is the key for the username argument
+// Handler argument keys
 const ArgsUsername = "username"
-
-// ArgsTargetUsername is the key for the target username argument
-const ArgsTargetUsername = "targetUsername"
+const ArgsTargetUsername = "target_username"
+const ArgsJobName = "job_name"
+const ArgsPlatform = "platform"
 
 // ============================================================================
 // Search Mechanic - Probability Thresholds
@@ -77,9 +77,6 @@ const BulkFeedbackThreshold = 5
 
 // BlasterTimeoutDuration is the default duration a user is timed out when hit by a blaster
 const BlasterTimeoutDuration = 60 * time.Second
-
-// ArgsJobName is the key for the job name argument
-const ArgsJobName = "jobName"
 
 // ============================================================================
 // Resource Generation Constants

@@ -65,6 +65,8 @@ type service struct {
 	itemIDToName    map[int]string         // Index for ID -> name lookups
 	itemCacheMu     sync.RWMutex           // Protects both maps
 
+	activeChatterTracker *ActiveChatterTracker // Tracks users eligible for random targeting
+
 	rnd func() float64 // For RNG - allows deterministic testing
 }
 
@@ -108,20 +110,21 @@ func loadCacheConfig() CacheConfig {
 // NewService creates a new user service
 func NewService(repo repository.User, statsService stats.Service, jobService JobService, lootboxService lootbox.Service, namingResolver naming.Resolver, cooldownService cooldown.Service, devMode bool) Service {
 	return &service{
-		repo:            repo,
-		handlerRegistry: NewHandlerRegistry(),
-		timeouts:        make(map[string]*timeoutInfo),
-		lootboxService:  lootboxService,
-		jobService:      jobService,
-		statsService:    statsService,
-		stringFinder:    NewStringFinder(),
-		namingResolver:  namingResolver,
-		cooldownService: cooldownService,
-		devMode:         devMode,
-		itemCacheByName: make(map[string]domain.Item),
-		itemIDToName:    make(map[int]string),
-		userCache:       newUserCache(loadCacheConfig()),
-		rnd:             utils.RandomFloat,
+		repo:                 repo,
+		handlerRegistry:      NewHandlerRegistry(),
+		timeouts:             make(map[string]*timeoutInfo),
+		lootboxService:       lootboxService,
+		jobService:           jobService,
+		statsService:         statsService,
+		stringFinder:         NewStringFinder(),
+		namingResolver:       namingResolver,
+		cooldownService:      cooldownService,
+		devMode:              devMode,
+		itemCacheByName:      make(map[string]domain.Item),
+		itemIDToName:         make(map[int]string),
+		userCache:            newUserCache(loadCacheConfig()),
+		activeChatterTracker: NewActiveChatterTracker(),
+		rnd:                  utils.RandomFloat,
 	}
 }
 
@@ -200,6 +203,9 @@ func (s *service) HandleIncomingMessage(ctx context.Context, platform, platformI
 		log.Error("Failed to get user", "error", err, "platform", platform, "platformID", platformID)
 		return nil, domain.ErrFailedToGetUser
 	}
+
+	// Track this user as an active chatter for random targeting
+	s.activeChatterTracker.Track(platform, user.ID, username)
 
 	// Find matches in message
 	matches := s.stringFinder.FindMatches(message)
@@ -309,7 +315,7 @@ func (s *service) removeItemFromUserInternal(ctx context.Context, user *domain.U
 }
 
 // useItemInternal handles item usage logic within a transaction
-func (s *service) useItemInternal(ctx context.Context, user *domain.User, itemName string, quantity int, targetName string) (string, error) {
+func (s *service) useItemInternal(ctx context.Context, user *domain.User, platform, itemName string, quantity int, targetName string) (string, error) {
 	log := logger.FromContext(ctx)
 
 	itemToUse, err := s.getItemByNameCached(ctx, itemName)
@@ -347,6 +353,7 @@ func (s *service) useItemInternal(ctx context.Context, user *domain.User, itemNa
 		}
 		args := map[string]interface{}{
 			ArgsUsername: user.Username,
+			ArgsPlatform: platform,
 		}
 		if targetName != "" {
 			args[ArgsTargetUsername] = targetName
@@ -668,7 +675,7 @@ func (s *service) UseItem(ctx context.Context, platform, platformID, username, i
 		return "", domain.ErrInvalidInput
 	}
 
-	return s.useItemInternal(ctx, user, resolvedName, quantity, targetName)
+	return s.useItemInternal(ctx, user, platform, resolvedName, quantity, targetName)
 }
 
 // resolveItemName attempts to resolve a user-provided item name to its internal name.
