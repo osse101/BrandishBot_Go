@@ -19,6 +19,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/features"
 	"github.com/osse101/BrandishBot_Go/internal/gamble"
 	"github.com/osse101/BrandishBot_Go/internal/handler"
+	"github.com/osse101/BrandishBot_Go/internal/harvest"
 	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/linking"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
@@ -42,12 +43,13 @@ type Server struct {
 	gambleService      gamble.Service
 	jobService         job.Service
 	linkingService     linking.Service
+	harvestService     harvest.Service
 	namingResolver     naming.Resolver
 	sseHub             *sse.Hub
 }
 
 // NewServer creates a new Server instance
-func NewServer(port int, apiKey string, trustedProxies []string, dbPool database.Pool, userService user.Service, economyService economy.Service, craftingService crafting.Service, statsService stats.Service, progressionService progression.Service, gambleService gamble.Service, jobService job.Service, linkingService linking.Service, namingResolver naming.Resolver, eventBus event.Bus, sseHub *sse.Hub, userRepo repository.User) *Server {
+func NewServer(port int, apiKey string, trustedProxies []string, dbPool database.Pool, userService user.Service, economyService economy.Service, craftingService crafting.Service, statsService stats.Service, progressionService progression.Service, gambleService gamble.Service, jobService job.Service, linkingService linking.Service, harvestService harvest.Service, namingResolver naming.Resolver, eventBus event.Bus, sseHub *sse.Hub, userRepo repository.User) *Server {
 	r := chi.NewRouter()
 
 	// Middleware stack
@@ -117,6 +119,10 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 			r.Get("/get", gambleHandler.HandleGetGamble)
 			r.Get("/active", gambleHandler.HandleGetActiveGamble)
 		})
+
+		// Harvest routes
+		harvestHandler := handler.NewHarvestHandler(harvestService)
+		r.Post("/harvest", harvestHandler.Harvest)
 
 		// Job routes
 		jobHandler := handler.NewJobHandler(jobService, userRepo)
@@ -216,6 +222,7 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 		gambleService:      gambleService,
 		jobService:         jobService,
 		linkingService:     linkingService,
+		harvestService:     harvestService,
 		namingResolver:     namingResolver,
 		sseHub:             sseHub,
 	}

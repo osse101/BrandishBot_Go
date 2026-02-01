@@ -20,6 +20,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/economy"
 	"github.com/osse101/BrandishBot_Go/internal/eventlog"
 	"github.com/osse101/BrandishBot_Go/internal/gamble"
+	"github.com/osse101/BrandishBot_Go/internal/harvest"
 	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/linking"
 	"github.com/osse101/BrandishBot_Go/internal/lootbox"
@@ -191,6 +192,10 @@ func main() {
 	// Initialize services that depend on job service and naming resolver
 	userService := user.NewService(repos.User, statsService, jobService, lootboxSvc, namingResolver, cooldownSvc, cfg.DevMode)
 
+	// Initialize Harvest Service
+	harvestService := harvest.NewService(repos.Harvest, repos.User, progressionService)
+	slog.Info("Harvest service initialized")
+
 	// Initialize Gamble Worker
 	gambleWorker := worker.NewGambleWorker(gambleService)
 	gambleWorker.Subscribe(eventBus)
@@ -222,7 +227,7 @@ func main() {
 		slog.Info("Streamer.bot WebSocket client initialized", "url", cfg.StreamerbotWebhookURL)
 	}
 
-	srv := server.NewServer(cfg.Port, cfg.APIKey, cfg.TrustedProxies, dbPool, userService, economyService, craftingService, statsService, progressionService, gambleService, jobService, linkingService, namingResolver, eventBus, sseHub, repos.User)
+	srv := server.NewServer(cfg.Port, cfg.APIKey, cfg.TrustedProxies, dbPool, userService, economyService, craftingService, statsService, progressionService, gambleService, jobService, linkingService, harvestService, namingResolver, eventBus, sseHub, repos.User)
 
 	// Run server in a goroutine
 	go func() {
