@@ -92,6 +92,11 @@ func (m *MockProgressionService) IsFeatureUnlocked(ctx context.Context, featureK
 	return args.Bool(0), args.Error(1)
 }
 
+func (m *MockProgressionService) IsNodeUnlocked(ctx context.Context, nodeKey string, level int) (bool, error) {
+	args := m.Called(ctx, nodeKey, level)
+	return args.Bool(0), args.Error(1)
+}
+
 func (m *MockProgressionService) GetProgressionStatus(ctx context.Context) (*domain.ProgressionStatus, error) {
 	args := m.Called(ctx)
 	if args.Get(0) == nil {
@@ -216,6 +221,7 @@ func TestAwardXP_Success(t *testing.T) {
 	job := &domain.Job{ID: jobID, JobKey: jobKey}
 
 	prog.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
+	prog.On("IsNodeUnlocked", ctx, jobKey, 1).Return(true, nil)
 	repo.On("GetJobByKey", ctx, jobKey).Return(job, nil)
 	repo.On("GetUserJob", ctx, userID, jobID).Return(nil, nil) // New user job
 	repo.On("UpsertUserJob", ctx, mock.MatchedBy(func(uj *domain.UserJob) bool {
@@ -259,6 +265,7 @@ func TestAwardXP_Epiphany(t *testing.T) {
 	job := &domain.Job{ID: jobID, JobKey: jobKey}
 
 	prog.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
+	prog.On("IsNodeUnlocked", ctx, jobKey, 1).Return(true, nil)
 	repo.On("GetJobByKey", ctx, jobKey).Return(job, nil)
 	repo.On("GetUserJob", ctx, userID, jobID).Return(nil, nil)
 
@@ -310,6 +317,7 @@ func TestAwardXP_LevelUp(t *testing.T) {
 	job := &domain.Job{ID: jobID, JobKey: jobKey}
 
 	prog.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
+	prog.On("IsNodeUnlocked", ctx, jobKey, 1).Return(true, nil)
 	repo.On("GetJobByKey", ctx, jobKey).Return(job, nil)
 	// Current XP 0
 	repo.On("GetUserJob", ctx, userID, jobID).Return(&domain.UserJob{
@@ -338,13 +346,28 @@ func TestAwardXP_LevelUp(t *testing.T) {
 	statsSvc.AssertExpectations(t)
 }
 
-func TestAwardXP_Locked(t *testing.T) {
+func TestAwardXP_Locked_System(t *testing.T) {
 	repo := new(MockRepository)
 	prog := new(MockProgressionService)
 	svc := NewService(repo, prog, nil, nil, nil)
 	ctx := context.Background()
 
 	prog.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(false, nil)
+
+	_, err := svc.AwardXP(ctx, "u1", "j1", 10, "t", nil)
+	assert.ErrorIs(t, err, domain.ErrFeatureLocked)
+}
+
+
+
+func TestAwardXP_Locked_Job(t *testing.T) {
+	repo := new(MockRepository)
+	prog := new(MockProgressionService)
+	svc := NewService(repo, prog, nil, nil, nil)
+	ctx := context.Background()
+
+	prog.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
+	prog.On("IsNodeUnlocked", ctx, "j1", 1).Return(false, nil)
 
 	_, err := svc.AwardXP(ctx, "u1", "j1", 10, "t", nil)
 	assert.ErrorIs(t, err, domain.ErrFeatureLocked)
@@ -367,6 +390,7 @@ func TestAwardXP_DailyCap(t *testing.T) {
 	job := &domain.Job{ID: jobID, JobKey: jobKey}
 
 	prog.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
+	prog.On("IsNodeUnlocked", ctx, jobKey, 1).Return(true, nil)
 	repo.On("GetJobByKey", ctx, jobKey).Return(job, nil)
 	// User has 0 XP gained today
 	repo.On("GetUserJob", ctx, userID, jobID).Return(&domain.UserJob{
@@ -406,6 +430,7 @@ func TestAwardXP_DailyCap_Reached(t *testing.T) {
 	job := &domain.Job{ID: jobID, JobKey: jobKey}
 
 	prog.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
+	prog.On("IsNodeUnlocked", ctx, jobKey, 1).Return(true, nil)
 	repo.On("GetJobByKey", ctx, jobKey).Return(job, nil)
 	// User has already reached the cap
 	repo.On("GetUserJob", ctx, userID, jobID).Return(&domain.UserJob{
@@ -436,6 +461,7 @@ func TestAwardXP_RareCandy_BypassesDailyCap(t *testing.T) {
 	job := &domain.Job{ID: jobID, JobKey: jobKey}
 
 	prog.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
+	prog.On("IsNodeUnlocked", ctx, jobKey, 1).Return(true, nil)
 	repo.On("GetJobByKey", ctx, jobKey).Return(job, nil)
 	// User has already reached the cap
 	repo.On("GetUserJob", ctx, userID, jobID).Return(&domain.UserJob{
@@ -478,6 +504,7 @@ func TestAwardXP_RareCandy_ExceedsNormalCap(t *testing.T) {
 	job := &domain.Job{ID: jobID, JobKey: jobKey}
 
 	prog.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
+	prog.On("IsNodeUnlocked", ctx, jobKey, 1).Return(true, nil)
 	repo.On("GetJobByKey", ctx, jobKey).Return(job, nil)
 	// User has 400 XP gained today
 	repo.On("GetUserJob", ctx, userID, jobID).Return(&domain.UserJob{
@@ -526,6 +553,7 @@ func TestAwardXP_MaxLevel(t *testing.T) {
 	job := &domain.Job{ID: jobID, JobKey: jobKey}
 
 	prog.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
+	prog.On("IsNodeUnlocked", ctx, jobKey, 1).Return(true, nil)
 	repo.On("GetJobByKey", ctx, jobKey).Return(job, nil)
 	repo.On("GetUserJob", ctx, userID, jobID).Return(&domain.UserJob{
 		UserID: userID, JobID: jobID, CurrentXP: startXP, CurrentLevel: 10, XPGainedToday: 0,
@@ -659,6 +687,7 @@ func TestGetUserJobs_NoProgress(t *testing.T) {
 	}
 
 	repo.On("GetAllJobs", ctx).Return(jobs, nil)
+	prog.On("IsNodeUnlocked", ctx, JobKeyBlacksmith, 1).Return(true, nil) // Mock unlock status
 	repo.On("GetUserJobs", ctx, "u1").Return([]domain.UserJob{}, nil) // No progress
 
 	result, err := svc.GetUserJobs(ctx, "u1")

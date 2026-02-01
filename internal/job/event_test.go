@@ -89,6 +89,12 @@ func (m *MockProgression) IsFeatureUnlocked(ctx context.Context, featureKey stri
 	args := m.Called(ctx, featureKey)
 	return args.Bool(0), args.Error(1)
 }
+
+func (m *MockProgression) IsNodeUnlocked(ctx context.Context, nodeKey string, level int) (bool, error) {
+	args := m.Called(ctx, nodeKey, level)
+	return args.Bool(0), args.Error(1)
+}
+
 func (m *MockProgression) GetProgressionStatus(ctx context.Context) (*domain.ProgressionStatus, error) {
 	return nil, nil
 }
@@ -148,6 +154,7 @@ func TestAwardXP_PublishesEventOnLevelUp(t *testing.T) {
 	}
 
 	mockProg.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
+	mockProg.On("IsNodeUnlocked", ctx, "explorer", 1).Return(true, nil)
 	mockRepo.On("GetJobByKey", ctx, "explorer").Return(job, nil)
 	mockRepo.On("GetUserJob", ctx, "user123", 1).Return(userJob, nil)
 	mockRepo.On("UpsertUserJob", ctx, mock.Anything).Return(nil)
@@ -218,6 +225,7 @@ func TestAwardXP_GuaranteedCriticalSuccess(t *testing.T) {
 	}
 
 	mockProg.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
+	mockProg.On("IsNodeUnlocked", ctx, "warrior", 1).Return(true, nil)
 	mockRepo.On("GetJobByKey", ctx, "warrior").Return(job, nil)
 	mockRepo.On("GetUserJob", ctx, "user_crit", 1).Return(userJob, nil)
 	mockRepo.On("UpsertUserJob", ctx, mock.Anything).Return(nil)
@@ -275,6 +283,7 @@ func TestAwardXP_GuaranteedNoCriticalSuccess(t *testing.T) {
 	}
 
 	mockProg.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
+	mockProg.On("IsNodeUnlocked", ctx, "mage", 1).Return(true, nil)
 	mockRepo.On("GetJobByKey", ctx, "mage").Return(job, nil)
 	mockRepo.On("GetUserJob", ctx, "user_nocrit", 1).Return(userJob, nil)
 	mockRepo.On("UpsertUserJob", ctx, mock.Anything).Return(nil)

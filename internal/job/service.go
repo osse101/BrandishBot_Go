@@ -20,6 +20,7 @@ import (
 type ProgressionService interface {
 	IsFeatureUnlocked(ctx context.Context, featureKey string) (bool, error)
 	GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error)
+	IsNodeUnlocked(ctx context.Context, nodeKey string, level int) (bool, error)
 }
 
 // Service defines the job system business logic
@@ -116,6 +117,18 @@ func (s *service) GetUserJobs(ctx context.Context, userID string) ([]domain.User
 	// Combine job info with progress
 	result := make([]domain.UserJobInfo, 0, len(jobs))
 	for _, job := range jobs {
+		// Check if job is unlocked in progression tree
+		// Jobs are nodes in the tree (e.g. "job_blacksmith")
+		unlocked, err := s.progressionSvc.IsNodeUnlocked(ctx, job.JobKey, 1)
+		if err != nil {
+			log.Warn("Failed to check job unlock status", "error", err, "job", job.JobKey)
+			continue
+		}
+		
+		if !unlocked {
+			continue
+		}
+
 		progress := progressMap[job.ID]
 		info := domain.UserJobInfo{
 			JobKey:      job.JobKey,
@@ -181,6 +194,15 @@ func (s *service) AwardXP(ctx context.Context, userID string, jobKey string, bas
 			return nil, fmt.Errorf("failed to check jobs_xp unlock: %w", err)
 		}
 		return nil, fmt.Errorf("jobs XP system not unlocked: %w", domain.ErrFeatureLocked)
+	}
+
+	// Check if specific job is unlocked
+	jobUnlocked, err := s.progressionSvc.IsNodeUnlocked(ctx, jobKey, 1)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check job unlock: %w", err)
+	}
+	if !jobUnlocked {
+		return nil, fmt.Errorf("job %s is not unlocked: %w", jobKey, domain.ErrFeatureLocked)
 	}
 
 	job, err := s.repo.GetJobByKey(ctx, jobKey)
