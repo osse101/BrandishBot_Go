@@ -530,7 +530,14 @@ func (s *service) getDailyCap(ctx context.Context) int {
 }
 
 func (s *service) getMaxJobLevel(ctx context.Context) (int, error) {
-	// TODO: Get from jobs_xp node unlock level
-	// Level 1 = max 10, Level 2 = max 20, etc.
-	return DefaultMaxLevel, nil
+	// TODO(upgrade_job_level_cap): Apply job_level_cap modifier (linear: +10 per level)
+	// Base cap is DefaultMaxLevel, upgrade adds +10 per level (max +30 at level 3)
+	// Apply progression modifier for job level cap
+	modified, err := s.progressionSvc.GetModifiedValue(ctx, "job_level_cap", float64(DefaultMaxLevel))
+	if err != nil {
+		log := logger.FromContext(ctx)
+		log.Warn("Failed to get job level cap modifier, using default", "error", err)
+		return DefaultMaxLevel, nil
+	}
+	return int(modified), nil
 }

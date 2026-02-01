@@ -53,11 +53,17 @@ type JobService interface {
 	AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error)
 }
 
+// ProgressionService defines the interface for progression operations
+type ProgressionService interface {
+	GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error)
+}
+
 // Crafting balance constants are defined in constants.go
 
 type service struct {
 	repo           repository.Crafting
 	jobService     JobService
+	progressionSvc ProgressionService
 	statsSvc       stats.Service
 	namingResolver naming.Resolver // For resolving public names to internal names
 	rnd            func() float64  // For rolling RNG (does not need to be cryptographically secure)
@@ -65,10 +71,11 @@ type service struct {
 }
 
 // NewService creates a new crafting service
-func NewService(repo repository.Crafting, jobService JobService, statsSvc stats.Service, namingResolver naming.Resolver) Service {
+func NewService(repo repository.Crafting, jobService JobService, statsSvc stats.Service, namingResolver naming.Resolver, progressionSvc ProgressionService) Service {
 	return &service{
 		repo:           repo,
 		jobService:     jobService,
+		progressionSvc: progressionSvc,
 		statsSvc:       statsSvc,
 		namingResolver: namingResolver,
 		rnd:            utils.RandomFloat,
@@ -315,8 +322,18 @@ func (s *service) calculateUpgradeOutput(ctx context.Context, userID string, ite
 	outputQuantity := 0
 	masterworkCount := 0
 
+	// Get modified masterwork chance (base 0.10 = 10%)
+	masterworkChance := MasterworkChance
+	if s.progressionSvc != nil {
+		if modifiedChance, err := s.progressionSvc.GetModifiedValue(ctx, "crafting_success_rate", MasterworkChance); err == nil {
+			masterworkChance = modifiedChance
+		} else {
+			log.Warn("Failed to apply crafting_success_rate modifier, using base chance", "error", err)
+		}
+	}
+
 	for i := 0; i < actualQuantity; i++ {
-		if s.rnd() < MasterworkChance {
+		if s.rnd() < masterworkChance {
 			masterworkCount++
 			outputQuantity += MasterworkMultiplier
 		} else {
@@ -701,9 +718,21 @@ func (s *service) executeDisassembleTx(ctx context.Context, userID string, itemI
 }
 
 func (s *service) calculatePerfectSalvage(quantity int) int {
+	// Get modified perfect salvage chance (base 0.10 = 10%)
+	// Note: Using same modifier key as masterwork since they're both "crafting success"
+	salvageChance := PerfectSalvageChance
+	if s.progressionSvc != nil {
+		// Use background context since we don't have ctx in this helper
+		ctx := context.Background()
+		if modifiedChance, err := s.progressionSvc.GetModifiedValue(ctx, "crafting_success_rate", PerfectSalvageChance); err == nil {
+			salvageChance = modifiedChance
+		}
+		// Silently fall back to base chance on error (no logging in helper)
+	}
+
 	count := 0
 	for i := 0; i < quantity; i++ {
-		if s.rnd() < PerfectSalvageChance {
+		if s.rnd() < salvageChance {
 			count++
 		}
 	}

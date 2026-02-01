@@ -535,7 +535,20 @@ func (s *service) RecordEngagement(ctx context.Context, userID string, metricTyp
 
 	// If we have a weight, calculate score
 	if weight > 0 {
-		score := int(float64(value) * weight)
+		baseScore := float64(value) * weight
+
+		// TODO(upgrade_progression_basic): Apply progression_rate modifier
+		// TODO(upgrade_progression_two): Stacks multiplicatively with basic
+		// TODO(upgrade_progression_three): Triple stacking with tier 1 & 2
+		// Apply progression rate modifier (stacks multiplicatively across all three upgrades)
+		modifiedScore, err := s.GetModifiedValue(ctx, "progression_rate", baseScore)
+		if err != nil {
+			// Log warning but continue with base score if modifier fails
+			logger.FromContext(ctx).Warn("Failed to apply progression_rate modifier, using base score", "error", err)
+			modifiedScore = baseScore
+		}
+
+		score := int(modifiedScore)
 		if score > 0 {
 			if err := s.AddContribution(ctx, score); err != nil {
 				logger.FromContext(ctx).Warn("Failed to add contribution from engagement", "error", err)

@@ -820,6 +820,8 @@ func TestGetSellablePrices_ProgressionFilter(t *testing.T) {
 	mockRepo.On("GetSellablePrices", ctx).Return(allItems, nil)
 	mockProgression.On("AreItemsUnlocked", ctx, []string{"item1", "item2"}).
 		Return(map[string]bool{"item1": true, "item2": false}, nil)
+	// Mock GetModifiedValue for economy_bonus - return base value (no modifier applied, 1.0x multiplier)
+	mockProgression.On("GetModifiedValue", ctx, "economy_bonus", 40.0).Return(40.0, nil)
 
 	// ACT
 	items, err := service.GetSellablePrices(ctx)

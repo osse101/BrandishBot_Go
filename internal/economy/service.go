@@ -32,6 +32,7 @@ type JobService interface {
 type ProgressionService interface {
 	IsItemUnlocked(ctx context.Context, itemName string) (bool, error)
 	AreItemsUnlocked(ctx context.Context, itemNames []string) (map[string]bool, error)
+	GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error)
 }
 
 type service struct {
@@ -65,7 +66,7 @@ func (s *service) GetSellablePrices(ctx context.Context) ([]domain.Item, error) 
 	if s.progressionService == nil {
 		// Populate sell prices for all items
 		for i := range allItems {
-			sellPrice := calculateSellPrice(allItems[i].BaseValue)
+			sellPrice := s.calculateSellPriceWithModifier(ctx, allItems[i].BaseValue)
 			allItems[i].SellPrice = &sellPrice
 		}
 		return allItems, nil
@@ -88,7 +89,7 @@ func (s *service) GetSellablePrices(ctx context.Context) ([]domain.Item, error) 
 	for _, item := range allItems {
 		if unlockStatus[item.InternalName] {
 			// Calculate and set sell price
-			sellPrice := calculateSellPrice(item.BaseValue)
+			sellPrice := s.calculateSellPriceWithModifier(ctx, item.BaseValue)
 			item.SellPrice = &sellPrice
 			filtered = append(filtered, item)
 		}
@@ -203,9 +204,26 @@ func calculateSellPrice(baseValue int) int {
 	return int(float64(baseValue) * SellPriceRatio)
 }
 
+// calculateSellPriceWithModifier applies economy_bonus modifier to sell price
+func (s *service) calculateSellPriceWithModifier(ctx context.Context, baseValue int) int {
+	basePrice := calculateSellPrice(baseValue)
+
+	if s.progressionService == nil {
+		return basePrice
+	}
+
+	modified, err := s.progressionService.GetModifiedValue(ctx, "economy_bonus", float64(basePrice))
+	if err != nil {
+		logger.FromContext(ctx).Warn("Failed to apply economy_bonus modifier, using base price", "error", err)
+		return basePrice
+	}
+
+	return int(modified)
+}
+
 // processSellTransaction handles the inventory updates for selling an item
-func processSellTransaction(inventory *domain.Inventory, item, moneyItem *domain.Item, itemSlotIndex, actualSellQuantity int) int {
-	sellPrice := calculateSellPrice(item.BaseValue)
+func (s *service) processSellTransaction(ctx context.Context, inventory *domain.Inventory, item, moneyItem *domain.Item, itemSlotIndex, actualSellQuantity int) int {
+	sellPrice := s.calculateSellPriceWithModifier(ctx, item.BaseValue)
 	moneyGained := actualSellQuantity * sellPrice
 
 	// Remove sold items
@@ -270,7 +288,7 @@ func (s *service) SellItem(ctx context.Context, platform, platformID, username, 
 	}
 
 	// Process the sell transaction
-	moneyGained := processSellTransaction(inventory, item, moneyItem, itemSlotIndex, actualSellQuantity)
+	moneyGained := s.processSellTransaction(ctx, inventory, item, moneyItem, itemSlotIndex, actualSellQuantity)
 
 	// Save updated inventory
 	if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
