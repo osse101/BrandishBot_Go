@@ -22,8 +22,24 @@ fi
 
 # 2. Setup .env file
 if [ ! -f .env ]; then
-    echo "Creating .env file from defaults..."
-    cat <<EOF > .env
+    if [ -f .env.example ]; then
+        echo "Creating .env file from .env.example..."
+        cp .env.example .env
+
+        # Update defaults for local dev
+        # Use a temporary file for sed compatibility across Linux/macOS
+        sed 's/^DB_PASSWORD=.*/DB_PASSWORD=pass/' .env > .env.tmp && mv .env.tmp .env
+
+        # Add PORT if missing (it's not in .env.example)
+        if ! grep -q "^PORT=" .env; then
+            echo "" >> .env
+            echo "PORT=8080" >> .env
+        fi
+
+        echo -e "${GREEN}✓ .env file created and configured.${NC}"
+    else
+        echo -e "${YELLOW}Warning: .env.example not found. Creating .env from scratch...${NC}"
+        cat <<EOF > .env
 DB_USER=dev
 DB_PASSWORD=pass
 DB_HOST=localhost
@@ -32,7 +48,8 @@ DB_NAME=app
 LOG_LEVEL=INFO
 PORT=8080
 EOF
-    echo -e "${GREEN}✓ .env file created.${NC}"
+        echo -e "${GREEN}✓ .env file created from scratch.${NC}"
+    fi
 else
     echo "✓ .env file already exists."
 fi
