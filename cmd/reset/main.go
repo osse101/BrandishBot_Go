@@ -65,5 +65,5 @@ func main() {
 	log.Printf("Database %s created successfully.\n", dbName)
 
 	log.Println("\n✅ Database reset complete!")
-	log.Println("Next step: Run 'go run cmd/setup/main.go' to apply migrations")
+	log.Println("Next step: Run 'make migrate-up' to apply migrations")
 }
