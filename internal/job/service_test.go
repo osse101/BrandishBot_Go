@@ -618,6 +618,7 @@ func TestGetPrimaryJob(t *testing.T) {
 
 	repo.On("GetUserByPlatformID", ctx, "twitch", "u1").Return(&domain.User{ID: "u1"}, nil)
 	repo.On("GetAllJobs", ctx).Return(jobs, nil)
+	prog.On("IsNodeUnlocked", ctx, mock.Anything, 1).Return(true, nil)
 	repo.On("GetUserJobs", ctx, "u1").Return(userJobs, nil)
 
 	primary, err := svc.GetPrimaryJob(ctx, "twitch", "u1")
@@ -739,6 +740,7 @@ func TestGetPrimaryJob_NoJobs(t *testing.T) {
 
 	repo.On("GetUserByPlatformID", ctx, "twitch", "u1").Return(&domain.User{ID: "u1"}, nil)
 	repo.On("GetAllJobs", ctx).Return([]domain.Job{}, nil)
+	prog.On("IsNodeUnlocked", ctx, mock.Anything, 1).Return(true, nil)
 	repo.On("GetUserJobs", ctx, "u1").Return([]domain.UserJob{}, nil)
 
 	result, err := svc.GetPrimaryJob(ctx, "twitch", "u1")
@@ -763,6 +765,7 @@ func TestGetPrimaryJob_TieOnLevel_HigherXP(t *testing.T) {
 	}
 
 	repo.On("GetUserByPlatformID", ctx, "twitch", "u1").Return(&domain.User{ID: "u1"}, nil)
+	prog.On("IsNodeUnlocked", ctx, mock.Anything, 1).Return(true, nil)
 	repo.On("GetAllJobs", ctx).Return(jobs, nil)
 	repo.On("GetUserJobs", ctx, "u1").Return(userJobs, nil)
 
@@ -780,6 +783,7 @@ func TestGetPrimaryJob_ErrorPropagation(t *testing.T) {
 	ctx := context.Background()
 
 	repo.On("GetUserByPlatformID", ctx, "twitch", "u1").Return(&domain.User{ID: "u1"}, nil)
+	prog.On("IsNodeUnlocked", ctx, mock.Anything, 1).Return(true, nil)
 	repo.On("GetAllJobs", ctx).Return(nil, assert.AnError)
 
 	result, err := svc.GetPrimaryJob(ctx, "twitch", "u1")
@@ -915,6 +919,7 @@ func TestAwardXP_RepositoryFailure_GetJob(t *testing.T) {
 	ctx := context.Background()
 
 	prog.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
+	prog.On("IsNodeUnlocked", ctx, JobKeyBlacksmith, 1).Return(true, nil)
 	repo.On("GetJobByKey", ctx, JobKeyBlacksmith).Return(nil, assert.AnError)
 
 	result, err := svc.AwardXP(ctx, "u1", JobKeyBlacksmith, 10, "test", nil)
@@ -931,6 +936,7 @@ func TestAwardXP_RepositoryFailure_Upsert(t *testing.T) {
 	job := &domain.Job{ID: 1, JobKey: JobKeyBlacksmith}
 
 	prog.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
+	prog.On("IsNodeUnlocked", ctx, JobKeyBlacksmith, 1).Return(true, nil)
 	repo.On("GetJobByKey", ctx, JobKeyBlacksmith).Return(job, nil)
 	repo.On("GetUserJob", ctx, "u1", 1).Return(nil, nil)
 	repo.On("UpsertUserJob", ctx, mock.Anything).Return(assert.AnError)
@@ -962,6 +968,7 @@ func TestAwardXP_PartialDailyCapRemaining(t *testing.T) {
 	}
 
 	prog.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
+	prog.On("IsNodeUnlocked", ctx, JobKeyBlacksmith, 1).Return(true, nil)
 	repo.On("GetJobByKey", ctx, JobKeyBlacksmith).Return(job, nil)
 	repo.On("GetUserJob", ctx, "u1", 1).Return(userJob, nil)
 
