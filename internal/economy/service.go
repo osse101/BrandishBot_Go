@@ -445,6 +445,9 @@ func (s *service) BuyItem(ctx context.Context, platform, platformID, username, i
 
 // calculateAffordableQuantity determines how many items can be purchased with available money
 func calculateAffordableQuantity(desired, unitPrice, balance int) (quantity, cost int) {
+	if unitPrice == 0 {
+		return desired, 0
+	}
 	if balance < unitPrice {
 		return 0, 0
 	}
