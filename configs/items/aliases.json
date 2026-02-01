@@ -1,8 +1,79 @@
 {
   "version": "1.0",
   "schema": "item-aliases",
-  "last_updated": "2026-01-05",
+  "last_updated": "2026-02-01",
   "aliases": {
+    "money": {
+      "default": [
+        "money",
+        "A heavy pouch of coins",
+        "Shiny credits"
+      ],
+      "themes": {
+        "halloween": [
+          "Curse-touched coins",
+          "Bags of ghost-gold"
+        ],
+        "christmas": [
+          "Festive stockings full of coins",
+          "Winter-frosted credits"
+        ]
+      }
+    },
+    "item_shovel": {
+      "default": [
+        "A basic shovel",
+        "A well-used spade",
+        "A sturdy dirt-mover",
+        "A rusty garden shovel"
+      ],
+      "themes": {
+        "halloween": [
+          "A grave-digging spade",
+          "A bone-handled shovel"
+        ],
+        "christmas": [
+          "A snow-clearing shovel",
+          "A candy-cane spade"
+        ]
+      }
+    },
+    "item_stick": {
+      "default": [
+        "A simple stick",
+        "A sturdy branch",
+        "A piece of gnarled wood",
+        "A simple wooden stick"
+      ],
+      "themes": {
+        "halloween": [
+          "A brittle skeleton arm",
+          "A twisted witch-wood branch"
+        ],
+        "christmas": [
+          "A long peppermint stick",
+          "A snapped pine branch"
+        ]
+      }
+    },
+    "item_shield": {
+      "default": [
+        "A sturdy shield",
+        "A reinforced buckler",
+        "A battered iron protector",
+        "A defensive plate"
+      ],
+      "themes": {
+        "halloween": [
+          "A coffin-lid shield",
+          "A web-covered buckler"
+        ],
+        "christmas": [
+          "A giant cookie shield",
+          "A festive wreath-guard"
+        ]
+      }
+    },
     "lootbox_tier0": {
       "default": [
         "A dingy box",
@@ -57,6 +128,24 @@
         ]
       }
     },
+    "lootbox_tier3": {
+      "default": [
+        "A radiant diamond chest",
+        "A glowing crystalline box",
+        "An ethereal treasure vault",
+        "A legendary relic box"
+      ],
+      "themes": {
+        "halloween": [
+          "An ancient soul-reaper's chest",
+          "A spectral void box"
+        ],
+        "christmas": [
+          "Santa's ultimate gift bundle",
+          "A magical winter solstice vault"
+        ]
+      }
+    },
     "weapon_blaster": {
       "default": [
         "A shiny ray gun",
@@ -73,6 +162,146 @@
           "A snowball launcher"
         ]
       }
+    },
+    "weapon_hugeblaster": {
+      "default": [
+        "A devastating orbital cannon",
+        "A massive energy projector",
+        "A heavy plasma discharger",
+        "A titan-class ray gun"
+      ],
+      "themes": {
+        "halloween": [
+          "The Spectral Doomsday Cannon",
+          "A Haunting Abyss Ray"
+        ],
+        "christmas": [
+          "The Northern Lights Projector",
+          "A Giant Nutcracker Cannon"
+        ]
+      }
+    },
+    "weapon_this": {
+      "default": [
+        "this",
+        "Exactly what you asked for",
+        "The 'this' weapon",
+        "A literal 'this'"
+      ]
+    },
+    "revive_small": {
+      "default": [
+        "A small healing potion",
+        "A minor rejuvenation vial",
+        "A quick recovery tonic",
+        "A faintly glowing elixir"
+      ],
+      "themes": {
+        "halloween": [
+          "A vial of zombie essence",
+          "A witch's brew of restoration"
+        ],
+        "christmas": [
+          "A bottle of magic eggnog",
+          "A warm cup of holiday cheer"
+        ]
+      }
+    },
+    "explosive_tnt": {
+      "default": [
+        "A bundle of dynamite",
+        "A high-yield explosive charge",
+        "A dangerous red cylinder",
+        "A stack of TNT"
+      ],
+      "themes": {
+        "halloween": [
+          "A volatile pumpkin bomb",
+          "A cluster of unstable spirits"
+        ],
+        "christmas": [
+          "An explosive gift surprise",
+          "A high-pressure coal blast"
+        ]
+      }
+    },
+    "xp_rarecandy": {
+      "default": [
+        "A glowing rare candy",
+        "A shimmering experience crystal",
+        "A sweet taste of power",
+        "A luminous skill-booster"
+      ],
+      "themes": {
+        "halloween": [
+          "A haunted soul-sweet",
+          "Specter-flavored hard candy"
+        ],
+        "christmas": [
+          "A magical peppermint swirl",
+          "A sugarplum of wisdom"
+        ]
+      }
+    },
+    "item_grenade": {
+      "default": [
+        "A volatile grenade",
+        "A primed explosive orb",
+        "A high-fragmentation device",
+        "A ticking surprise"
+      ],
+      "themes": {
+        "halloween": [
+          "A spooky smoke pellet",
+          "A jack-o-lantern grenade"
+        ],
+        "christmas": [
+          "An explosive bauble",
+          "A snowball packed with ice"
+        ]
+      }
+    },
+    "weapon_mirror": {
+      "default": [
+        "A reflective mirror shield",
+        "A crystalline surface of deflection",
+        "A polished silver barricade",
+        "A shimmering light-bender"
+      ],
+      "themes": {
+        "halloween": [
+          "A haunted silver looking-glass",
+          "A shadow-reflecting pane"
+        ],
+        "christmas": [
+          "A polished ice wall",
+          "A shiny golden ornament shield"
+        ]
+      }
+    },
+    "item_scrap": {
+      "default": [
+        "A pile of scrap metal",
+        "A heap of salvaged parts",
+        "Some jagged metallic debris",
+        "Abandoned mechanical bits"
+      ]
+    },
+    "item_script": {
+      "default": [
+        "A mysterious script",
+        "A cryptic scroll of code",
+        "A glowing digital parchment",
+        "An ancient sequence structure"
+      ]
+    },
+    "item_video_filter": {
+      "default": [
+        "A video filter",
+        "A digital lens overlay",
+        "A chromatic visual modifier",
+        "A pixelated aesthetic enhancer"
+      ]
     }
   }
 }
