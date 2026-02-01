@@ -140,6 +140,7 @@ func getCommandFactories(bot *discord.Bot) []CommandFactory {
 		discord.PingCommand,
 		discord.ProfileCommand,
 		discord.SearchCommand,
+		discord.HarvestCommand,
 		discord.InfoCommand,
 		discord.CheckTimeoutCommand,
 

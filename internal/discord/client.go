@@ -1307,3 +1307,36 @@ func (c *APIClient) Test(platform, platformID, username string) (string, error) 
 
 	return result.Message, nil
 }
+
+// Harvest collects accumulated rewards for a user
+func (c *APIClient) Harvest(platform, platformID, username string) (*domain.HarvestResponse, error) {
+	req := map[string]string{
+		"platform":    platform,
+		"platform_id": platformID,
+		"username":    username,
+	}
+
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/harvest", req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		// Try to read error message
+		var errResp struct {
+			Error string `json:"error"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
+			return nil, fmt.Errorf("%s", errResp.Error)
+		}
+		return nil, fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	var harvestResp domain.HarvestResponse
+	if err := json.NewDecoder(resp.Body).Decode(&harvestResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return &harvestResp, nil
+}
