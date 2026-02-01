@@ -186,7 +186,7 @@ func main() {
 
 	// Initialize services that depend on naming resolver
 	economyService := economy.NewService(repos.Economy, jobService, namingResolver, progressionService)
-	gambleService := gamble.NewService(repos.Gamble, eventBus, resilientPublisher, lootboxSvc, statsService, cfg.GambleJoinDuration, jobService, progressionService, namingResolver)
+	gambleService := gamble.NewService(repos.Gamble, eventBus, resilientPublisher, lootboxSvc, statsService, cfg.GambleJoinDuration, jobService, progressionService, namingResolver, nil)
 	craftingService := crafting.NewService(repos.Crafting, jobService, statsService, namingResolver)
 
 	// Initialize services that depend on job service and naming resolver
