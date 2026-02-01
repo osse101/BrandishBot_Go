@@ -76,17 +76,17 @@ func (_c *MockUserService_AddItemByUsername_Call) RunAndReturn(run func(context.
 	return _c
 }
 
-// ApplyShield provides a mock function with given fields: ctx, _a1, quantity
-func (_m *MockUserService) ApplyShield(ctx context.Context, _a1 *domain.User, quantity int) error {
-	ret := _m.Called(ctx, _a1, quantity)
+// ApplyShield provides a mock function with given fields: ctx, _a1, quantity, isMirror
+func (_m *MockUserService) ApplyShield(ctx context.Context, _a1 *domain.User, quantity int, isMirror bool) error {
+	ret := _m.Called(ctx, _a1, quantity, isMirror)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ApplyShield")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *domain.User, int) error); ok {
-		r0 = rf(ctx, _a1, quantity)
+	if rf, ok := ret.Get(0).(func(context.Context, *domain.User, int, bool) error); ok {
+		r0 = rf(ctx, _a1, quantity, isMirror)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -103,13 +103,14 @@ type MockUserService_ApplyShield_Call struct {
 //   - ctx context.Context
 //   - _a1 *domain.User
 //   - quantity int
-func (_e *MockUserService_Expecter) ApplyShield(ctx interface{}, _a1 interface{}, quantity interface{}) *MockUserService_ApplyShield_Call {
-	return &MockUserService_ApplyShield_Call{Call: _e.mock.On("ApplyShield", ctx, _a1, quantity)}
+//   - isMirror bool
+func (_e *MockUserService_Expecter) ApplyShield(ctx interface{}, _a1 interface{}, quantity interface{}, isMirror interface{}) *MockUserService_ApplyShield_Call {
+	return &MockUserService_ApplyShield_Call{Call: _e.mock.On("ApplyShield", ctx, _a1, quantity, isMirror)}
 }
 
-func (_c *MockUserService_ApplyShield_Call) Run(run func(ctx context.Context, _a1 *domain.User, quantity int)) *MockUserService_ApplyShield_Call {
+func (_c *MockUserService_ApplyShield_Call) Run(run func(ctx context.Context, _a1 *domain.User, quantity int, isMirror bool)) *MockUserService_ApplyShield_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*domain.User), args[2].(int))
+		run(args[0].(context.Context), args[1].(*domain.User), args[2].(int), args[3].(bool))
 	})
 	return _c
 }
@@ -119,7 +120,7 @@ func (_c *MockUserService_ApplyShield_Call) Return(_a0 error) *MockUserService_A
 	return _c
 }
 
-func (_c *MockUserService_ApplyShield_Call) RunAndReturn(run func(context.Context, *domain.User, int) error) *MockUserService_ApplyShield_Call {
+func (_c *MockUserService_ApplyShield_Call) RunAndReturn(run func(context.Context, *domain.User, int, bool) error) *MockUserService_ApplyShield_Call {
 	_c.Call.Return(run)
 	return _c
 }

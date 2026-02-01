@@ -30,6 +30,8 @@ func NewHandlerRegistry() *HandlerRegistry {
 			&ReviveHandler{},
 			&ShieldHandler{},
 			&RareCandyHandler{},
+			&ResourceGeneratorHandler{},
+			&UtilityHandler{},
 		},
 	}
 }
@@ -71,7 +73,11 @@ func (h *WeaponHandler) CanHandle(itemName string) bool {
 		itemName == domain.ItemHugeBlaster ||
 		itemName == domain.ItemThis ||
 		itemName == domain.ItemDeez ||
-		strings.HasPrefix(itemName, "weapon_")
+		itemName == domain.ItemMissile ||
+		itemName == domain.ItemGrenade ||
+		itemName == domain.ItemTNT ||
+		strings.HasPrefix(itemName, "weapon_") ||
+		strings.HasPrefix(itemName, "explosive_")
 }
 
 // Handle processes weapon usage
@@ -100,7 +106,8 @@ type ShieldHandler struct{}
 
 // CanHandle returns true for shield items
 func (h *ShieldHandler) CanHandle(itemName string) bool {
-	return itemName == domain.ItemShield
+	return itemName == domain.ItemShield ||
+		itemName == domain.ItemMirrorShield
 }
 
 // Handle processes shield activation
@@ -120,4 +127,30 @@ func (h *RareCandyHandler) CanHandle(itemName string) bool {
 // Handle processes rare candy usage
 func (h *RareCandyHandler) Handle(ctx context.Context, s *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args map[string]interface{}) (string, error) {
 	return s.handleRareCandy(ctx, s, user, inventory, item, quantity, args)
+}
+
+// ResourceGeneratorHandler handles items that generate other items
+type ResourceGeneratorHandler struct{}
+
+// CanHandle returns true for resource generator items
+func (h *ResourceGeneratorHandler) CanHandle(itemName string) bool {
+	return itemName == domain.ItemShovel
+}
+
+// Handle processes resource generation
+func (h *ResourceGeneratorHandler) Handle(ctx context.Context, s *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args map[string]interface{}) (string, error) {
+	return s.handleResourceGenerator(ctx, s, user, inventory, item, quantity, args)
+}
+
+// UtilityHandler handles miscellaneous items with simple effects
+type UtilityHandler struct{}
+
+// CanHandle returns true for utility items
+func (h *UtilityHandler) CanHandle(itemName string) bool {
+	return itemName == domain.ItemStick
+}
+
+// Handle processes utility item usage
+func (h *UtilityHandler) Handle(ctx context.Context, s *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args map[string]interface{}) (string, error) {
+	return s.handleUtility(ctx, s, user, inventory, item, quantity, args)
 }

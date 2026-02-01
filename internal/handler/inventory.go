@@ -324,6 +324,43 @@ type UseItemResponse struct {
 	Message string `json:"message"`
 }
 
+// mapItemToProgressionNode maps internal item names to progression node keys
+func mapItemToProgressionNode(itemName string) string {
+	mapping := map[string]string{
+		// Weapons
+		"weapon_missile":    progression.ItemWeaponMissile,
+		"item_grenade":      progression.ItemGrenade,
+		"explosive_tnt":     progression.ItemTnt,
+		"weapon_hugeblaster": progression.ItemHugemissile,
+
+		// Defense
+		"item_shield":       progression.ItemShield,
+		"weapon_mirror":     progression.ItemWeaponMirror,
+
+		// Recovery
+		"revive_small":      progression.ItemRevives,
+
+		// Progression
+		"xp_rarecandy":      progression.ItemXpRarecandy,
+
+		// Lootboxes
+		"lootbox_tier0":     progression.ItemLootbox0,
+		"lootbox_tier1":     progression.ItemLootbox1,
+		"lootbox_tier2":     progression.ItemLootbox2,
+		"lootbox_tier3":     progression.ItemLootbox3,
+
+		// Utilities
+		"item_shovel":       progression.ItemShovel,
+		"item_stick":        progression.ItemStick,
+		"item_video_filter": progression.ItemVideoFilter,
+
+		// Passive items (economy checks these separately)
+		"item_scrap":        progression.ItemScrap,
+		"item_script":       progression.ItemScript,
+	}
+	return mapping[itemName]
+}
+
 // HandleUseItem handles using an item
 // @Summary Use item
 // @Description Use an item from inventory
@@ -333,6 +370,7 @@ type UseItemResponse struct {
 // @Param request body UseItemRequest true "Usage details"
 // @Success 200 {object} UseItemResponse
 // @Failure 400 {object} ErrorResponse
+// @Failure 403 {object} ErrorResponse "Item locked by progression"
 // @Failure 500 {object} ErrorResponse
 // @Router /user/item/use [post]
 func HandleUseItem(svc user.Service, progressionSvc progression.Service, eventBus event.Bus) http.HandlerFunc {
@@ -348,6 +386,17 @@ func HandleUseItem(svc user.Service, progressionSvc progression.Service, eventBu
 		}
 
 		log := logger.FromContext(r.Context())
+
+		// Check if item is progression-locked
+		if progressionSvc != nil {
+			// Map item internal name to progression node key
+			nodeKey := mapItemToProgressionNode(req.ItemName)
+			if nodeKey != "" {
+				if CheckFeatureLocked(w, r, progressionSvc, nodeKey) {
+					return // CheckFeatureLocked already wrote 403 response
+				}
+			}
+		}
 
 		message, err := svc.UseItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.ItemName, req.Quantity, req.TargetUser)
 		if err != nil {

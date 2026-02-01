@@ -177,6 +177,9 @@ var weaponTimeouts = map[string]time.Duration{
 	domain.ItemHugeBlaster: 6000 * time.Second,
 	domain.ItemThis:        101 * time.Second,
 	domain.ItemDeez:        202 * time.Second,
+	domain.ItemMissile:     60 * time.Second,
+	domain.ItemGrenade:     60 * time.Second,
+	domain.ItemTNT:         60 * time.Second,
 }
 
 // getWeaponTimeout returns the timeout duration for a weapon, with a default fallback
@@ -190,12 +193,35 @@ func getWeaponTimeout(itemName string) time.Duration {
 func (s *service) handleWeapon(ctx context.Context, _ *service, _ *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args map[string]interface{}) (string, error) {
 	log := logger.FromContext(ctx)
 	log.Info(LogMsgHandleWeaponCalled, "item", item.InternalName, "quantity", quantity)
+
 	targetUsername, ok := args[ArgsTargetUsername].(string)
-	if !ok || targetUsername == "" {
-		log.Warn(LogWarnTargetUsernameMissingWeapon)
-		return "", fmt.Errorf(ErrMsgTargetUsernameRequired)
-	}
 	username, _ := args[ArgsUsername].(string)
+
+	// Special handling for grenades - no target required (random targeting)
+	if item.InternalName == domain.ItemGrenade {
+		// Grenade doesn't require a target, it selects randomly
+		if !ok || targetUsername == "" {
+			log.Info("Grenade used without target - random targeting will be implemented by caller")
+			// For now, we require a target until we implement random user selection
+			// This will be handled at a higher level (Discord bot/API) which knows active users
+			return "", fmt.Errorf(ErrMsgTargetUsernameRequired)
+		}
+	} else if item.InternalName == domain.ItemTNT {
+		// TNT is AoE - doesn't require a specific target
+		// The target can be empty for TNT, and it will affect multiple users
+		log.Info("TNT used - AoE targeting will be implemented by caller")
+		// For now, require target until AoE logic is implemented at caller level
+		if !ok || targetUsername == "" {
+			return "", fmt.Errorf(ErrMsgTargetUsernameRequired)
+		}
+	} else {
+		// Standard weapons require a target
+		if !ok || targetUsername == "" {
+			log.Warn(LogWarnTargetUsernameMissingWeapon)
+			return "", fmt.Errorf(ErrMsgTargetUsernameRequired)
+		}
+	}
+
 	// Find item slot
 	itemSlotIndex, slotQuantity := utils.FindSlot(inventory, item.ID)
 	if itemSlotIndex == -1 {
@@ -281,7 +307,7 @@ func (s *service) handleRevive(ctx context.Context, _ *service, _ *domain.User, 
 
 func (s *service) handleShield(ctx context.Context, _ *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, _ map[string]interface{}) (string, error) {
 	log := logger.FromContext(ctx)
-	log.Info(LogMsgHandleShieldCalled, "quantity", quantity)
+	log.Info(LogMsgHandleShieldCalled, "item", item.InternalName, "quantity", quantity)
 
 	// Find item slot
 	itemSlotIndex, slotQuantity := utils.FindSlot(inventory, item.ID)
@@ -295,14 +321,22 @@ func (s *service) handleShield(ctx context.Context, _ *service, user *domain.Use
 	}
 	utils.RemoveFromSlot(inventory, itemSlotIndex, quantity)
 
-	// Apply shield status to user (store in user metadata or a separate shield table)
-	if err := s.ApplyShield(ctx, user, quantity); err != nil {
+	// Determine if this is a mirror shield
+	isMirror := item.InternalName == domain.ItemMirrorShield
+
+	// Apply shield status to user
+	if err := s.ApplyShield(ctx, user, quantity, isMirror); err != nil {
 		log.Error(LogWarnFailedToApplyShield, "error", err)
 		return "", fmt.Errorf(ErrMsgFailedToApplyShield)
 	}
 
-	log.Info(LogMsgShieldApplied, "quantity", quantity)
-	return fmt.Sprintf("Activated %d shield(s)! You are protected from the next %d weapon attack(s).", quantity, quantity), nil
+	displayName := s.namingResolver.GetDisplayName(item.InternalName, "")
+	log.Info(LogMsgShieldApplied, "item", item.InternalName, "quantity", quantity, "is_mirror", isMirror)
+
+	if isMirror {
+		return fmt.Sprintf("Activated %d %s! Next %d attacks will be REFLECTED!", quantity, displayName, quantity), nil
+	}
+	return fmt.Sprintf("Activated %d %s! Protected from next %d attacks.", quantity, displayName, quantity), nil
 }
 
 // rarecandyXPAmount defines the XP granted per rare candy
@@ -345,4 +379,54 @@ func (s *service) handleRareCandy(ctx context.Context, _ *service, user *domain.
 
 	log.Info(LogMsgRareCandyUsed, "job", jobName, "xp", totalXP, "quantity", quantity)
 	return fmt.Sprintf("Used %d rare candy! Granted %d XP to %s.", quantity, totalXP, jobName), nil
+}
+
+func (s *service) handleResourceGenerator(ctx context.Context, _ *service, _ *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args map[string]interface{}) (string, error) {
+	log := logger.FromContext(ctx)
+	log.Info(LogMsgResourceGeneratorCalled, "item", item.InternalName, "quantity", quantity)
+
+	username, _ := args[ArgsUsername].(string)
+
+	// Find item slot
+	itemSlotIndex, slotQuantity := utils.FindSlot(inventory, item.ID)
+	if itemSlotIndex == -1 {
+		return "", fmt.Errorf(ErrMsgItemNotFoundInInventory)
+	}
+	if slotQuantity < quantity {
+		return "", fmt.Errorf(ErrMsgNotEnoughItemsInInventory)
+	}
+	utils.RemoveFromSlot(inventory, itemSlotIndex, quantity)
+
+	// Generate sticks (shovel generates 2 sticks per use)
+	stickItem, err := s.getItemByNameCached(ctx, domain.ItemStick)
+	if err != nil {
+		return "", fmt.Errorf("failed to get stick item: %w", err)
+	}
+
+	sticksGenerated := quantity * ShovelSticksPerUse
+	utils.AddItemsToInventory(inventory, []domain.InventorySlot{
+		{ItemID: stickItem.ID, Quantity: sticksGenerated, ShineLevel: "COMMON"},
+	}, nil)
+
+	displayName := s.namingResolver.GetDisplayName(domain.ItemStick, "")
+	return fmt.Sprintf("%s%d %s!", username+MsgShovelUsed, sticksGenerated, displayName), nil
+}
+
+func (s *service) handleUtility(ctx context.Context, _ *service, _ *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args map[string]interface{}) (string, error) {
+	log := logger.FromContext(ctx)
+	log.Info(LogMsgUtilityCalled, "item", item.InternalName, "quantity", quantity)
+
+	username, _ := args[ArgsUsername].(string)
+
+	// Find item slot
+	itemSlotIndex, slotQuantity := utils.FindSlot(inventory, item.ID)
+	if itemSlotIndex == -1 {
+		return "", fmt.Errorf(ErrMsgItemNotFoundInInventory)
+	}
+	if slotQuantity < quantity {
+		return "", fmt.Errorf(ErrMsgNotEnoughItemsInInventory)
+	}
+	utils.RemoveFromSlot(inventory, itemSlotIndex, quantity)
+
+	return username + MsgStickUsed, nil
 }

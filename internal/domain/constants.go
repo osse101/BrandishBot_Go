@@ -16,6 +16,8 @@ const (
 	ItemHugeBlaster = "weapon_hugeblaster" // hugemissile - 100 min timeout
 	ItemThis        = "weapon_this"        // meme weapon - 101s timeout
 	ItemDeez        = "weapon_deez"        // meme weapon - 202s timeout
+	ItemMissile     = "weapon_missile"     // missile - 60s timeout (Tier 1 progression)
+	ItemGrenade     = "item_grenade"       // grenade - 60s random timeout (Tier 2 progression)
 
 	// Revive items
 	ItemReviveSmall  = "revive_small"  // revives - 60s recovery
@@ -28,8 +30,13 @@ const (
 	ItemTNT  = "explosive_tnt"  // tnt - ultimate trap
 
 	// Utility items
-	ItemStick  = "item_stick"  // basic crafting material
-	ItemShield = "item_shield" // blocks weapon attacks
+	ItemStick       = "item_stick"       // basic crafting material
+	ItemShield      = "item_shield"      // blocks weapon attacks
+	ItemMirrorShield = "weapon_mirror"   // mirror shield - reflects attacks (Tier 4 progression)
+	ItemShovel      = "item_shovel"      // shovel - generates sticks (Tier 2 progression)
+	ItemVideoFilter = "item_video_filter" // video filter - requires Streamer.bot (Tier 1 progression)
+	ItemScrap       = "item_scrap"       // scrap - crafting material (Tier 2 progression)
+	ItemScript      = "item_script"      // script - currency (Tier 2 progression)
 
 	// Progression items
 	ItemRareCandy = "xp_rarecandy" // instant job XP
@@ -49,6 +56,7 @@ const (
 	PublicNameHugeMissile = "hugemissile" // Huge blaster
 	PublicNameThis        = "this"        // Meme weapon
 	PublicNameDeez        = "deez"        // Meme weapon upgrade
+	PublicNameGrenade     = "grenade"     // Grenade
 
 	// Revive public names
 	PublicNameReviveS = "revives" // Small revive
@@ -61,8 +69,11 @@ const (
 	PublicNameTNT  = "tnt"  // Ultimate explosive
 
 	// Utility public names
-	PublicNameStick  = "stick"  // Basic material
-	PublicNameShield = "shield" // Defensive item
+	PublicNameStick        = "stick"        // Basic material
+	PublicNameShield       = "shield"       // Defensive item
+	PublicNameMirrorShield = "mirrorshield" // Mirror shield
+	PublicNameShovel       = "shovel"       // Shovel
+	PublicNameVideoFilter  = "filter"       // Video filter
 
 	// Progression public names
 	PublicNameRareCandy = "rarecandy" // XP item

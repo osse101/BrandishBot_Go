@@ -82,6 +82,13 @@ const BlasterTimeoutDuration = 60 * time.Second
 const ArgsJobName = "jobName"
 
 // ============================================================================
+// Resource Generation Constants
+// ============================================================================
+
+// ShovelSticksPerUse defines how many sticks are generated per shovel use
+const ShovelSticksPerUse = 2
+
+// ============================================================================
 // Inventory Limits
 // ============================================================================
 
@@ -129,6 +136,12 @@ const ErrMsgFailedToApplyShield = "failed to apply shield"
 // ErrMsgFailedToAwardXP is returned when XP award fails
 const ErrMsgFailedToAwardXP = "failed to award XP"
 
+// ErrMsgFilterServiceUnavailable is returned when video filter service is unavailable
+const ErrMsgFilterServiceUnavailable = "video filter service is unavailable"
+
+// ErrMsgNoActiveTargets is returned when no active users are available for targeting
+const ErrMsgNoActiveTargets = "no active users to target"
+
 // ============================================================================
 // Log Messages - Operations
 // ============================================================================
@@ -155,6 +168,8 @@ const (
 	LogMsgHandleReviveCalled           = "handleRevive called"
 	LogMsgHandleShieldCalled           = "handleShield called"
 	LogMsgHandleRareCandyCalled        = "handleRareCandy called"
+	LogMsgResourceGeneratorCalled      = "ResourceGeneratorHandler called"
+	LogMsgUtilityCalled                = "UtilityHandler called"
 )
 
 // ============================================================================
@@ -305,6 +320,15 @@ const (
 
 const (
 	MsgGiveItemSuccess = "Successfully gave %d %s to %s"
+)
+
+// ============================================================================
+// User-Facing Messages - Resource Generation
+// ============================================================================
+
+const (
+	MsgShovelUsed = " used a shovel and found "
+	MsgStickUsed  = " planted a stick as a monument to their achievement!"
 )
 
 // ============================================================================
