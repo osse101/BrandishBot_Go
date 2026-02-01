@@ -1,4 +1,4 @@
-.PHONY: help migrate-up migrate-down migrate-status migrate-create test build run clean docker-build docker-up docker-down deploy-staging deploy-production rollback-staging rollback-production health-check-staging health-check-prod
+.PHONY: help migrate-up migrate-down migrate-status migrate-create test build run clean docker-build docker-up docker-down deploy-staging deploy-production rollback-staging rollback-production health-check-staging health-check-prod install-hooks
 
 # Tool paths
 GOOSE   := go run github.com/pressly/goose/v3/cmd/goose
@@ -28,6 +28,7 @@ help:
 	@echo "  make run                  - Run the application from bin/app"
 	@echo "  make swagger              - Generate Swagger docs"
 	@echo "  make generate             - Generate sqlc code"
+	@echo "  make install-hooks        - Install git hooks (pre-commit formatting)"
 	@echo ""
 	@echo "Benchmark Commands:"
 	@echo "  make bench                - Run all benchmarks"
@@ -131,6 +132,12 @@ lint:
 lint-fix:
 	@echo "Running linters with auto-fix..."
 	@$(LINT) run --fix ./...
+
+install-hooks:
+	@echo "Installing git hooks..."
+	@chmod +x scripts/pre-commit.sh
+	@ln -sf ../../scripts/pre-commit.sh .git/hooks/pre-commit
+	@echo "✓ Git hooks installed"
 
 # Benchmark commands
 .PHONY: bench bench-hot bench-save bench-baseline bench-compare bench-profile
