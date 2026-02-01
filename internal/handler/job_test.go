@@ -67,11 +67,11 @@ func TestHandleAwardXP(t *testing.T) {
 	h := NewJobHandler(svc, userRepo)
 
 	reqBody := AwardXPRequest{
-		Platform:       domain.PlatformTwitch,
-		PlatformID:     "u1",
-		JobKey:         job.JobKeyBlacksmith,
-		XPAmount:       100,
-		Source:         "test",
+		Platform:   domain.PlatformTwitch,
+		PlatformID: "u1",
+		JobKey:     job.JobKeyBlacksmith,
+		XPAmount:   100,
+		Source:     "test",
 	}
 	body, _ := json.Marshal(reqBody)
 
@@ -159,11 +159,11 @@ func TestHandleAwardXP_ServiceError_DailyCap(t *testing.T) {
 	h := NewJobHandler(svc, userRepo)
 
 	reqBody := AwardXPRequest{
-		Platform:       domain.PlatformTwitch,
-		PlatformID:     "u1",
-		JobKey:         job.JobKeyBlacksmith,
-		XPAmount:       100,
-		Source:         "test",
+		Platform:   domain.PlatformTwitch,
+		PlatformID: "u1",
+		JobKey:     job.JobKeyBlacksmith,
+		XPAmount:   100,
+		Source:     "test",
 	}
 	body, _ := json.Marshal(reqBody)
 
@@ -184,11 +184,11 @@ func TestHandleAwardXP_NegativeXP(t *testing.T) {
 	h := NewJobHandler(svc, userRepo)
 
 	reqBody := AwardXPRequest{
-		Platform:       domain.PlatformTwitch,
-		PlatformID:     "u1",
-		JobKey:         job.JobKeyBlacksmith,
-		XPAmount:       -50, // Negative XP
-		Source:         "test",
+		Platform:   domain.PlatformTwitch,
+		PlatformID: "u1",
+		JobKey:     job.JobKeyBlacksmith,
+		XPAmount:   -50, // Negative XP
+		Source:     "test",
 	}
 	body, _ := json.Marshal(reqBody)
 
@@ -207,11 +207,11 @@ func TestHandleAwardXP_ZeroXP(t *testing.T) {
 	h := NewJobHandler(svc, userRepo)
 
 	reqBody := AwardXPRequest{
-		Platform:       domain.PlatformTwitch,
-		PlatformID:     "u1",
-		JobKey:         job.JobKeyBlacksmith,
-		XPAmount:       0, // Zero XP
-		Source:         "test",
+		Platform:   domain.PlatformTwitch,
+		PlatformID: "u1",
+		JobKey:     job.JobKeyBlacksmith,
+		XPAmount:   0, // Zero XP
+		Source:     "test",
 	}
 	body, _ := json.Marshal(reqBody)
 
@@ -264,11 +264,11 @@ func TestHandleAwardXP_MissingJobKey(t *testing.T) {
 	h := NewJobHandler(svc, userRepo)
 
 	reqBody := AwardXPRequest{
-		Platform:       domain.PlatformTwitch,
-		PlatformID:     "u1",
+		Platform:   domain.PlatformTwitch,
+		PlatformID: "u1",
 		// JobKey missing
-		XPAmount:       100,
-		Source:         "test",
+		XPAmount: 100,
+		Source:   "test",
 	}
 	body, _ := json.Marshal(reqBody)
 
@@ -286,11 +286,11 @@ func TestHandleAwardXP_ServiceError_JobNotFound(t *testing.T) {
 	h := NewJobHandler(svc, userRepo)
 
 	reqBody := AwardXPRequest{
-		Platform:       domain.PlatformTwitch,
-		PlatformID:     "u1",
-		JobKey:         "invalid_job",
-		XPAmount:       100,
-		Source:         "test",
+		Platform:   domain.PlatformTwitch,
+		PlatformID: "u1",
+		JobKey:     "invalid_job",
+		XPAmount:   100,
+		Source:     "test",
 	}
 	body, _ := json.Marshal(reqBody)
 
@@ -311,11 +311,11 @@ func TestHandleAwardXP_ServiceError_FeatureLocked(t *testing.T) {
 	h := NewJobHandler(svc, userRepo)
 
 	reqBody := AwardXPRequest{
-		Platform:       domain.PlatformTwitch,
-		PlatformID:     "u1",
-		JobKey:         job.JobKeyBlacksmith,
-		XPAmount:       100,
-		Source:         "test",
+		Platform:   domain.PlatformTwitch,
+		PlatformID: "u1",
+		JobKey:     job.JobKeyBlacksmith,
+		XPAmount:   100,
+		Source:     "test",
 	}
 	body, _ := json.Marshal(reqBody)
 
@@ -336,11 +336,11 @@ func TestHandleAwardXP_WithMetadata(t *testing.T) {
 	h := NewJobHandler(svc, userRepo)
 
 	reqBody := AwardXPRequest{
-		Platform:       domain.PlatformTwitch,
-		PlatformID:     "u1",
-		JobKey:         job.JobKeyBlacksmith,
-		XPAmount:       50,
-		Source:         "upgrade",
+		Platform:   domain.PlatformTwitch,
+		PlatformID: "u1",
+		JobKey:     job.JobKeyBlacksmith,
+		XPAmount:   50,
+		Source:     "upgrade",
 		Metadata: map[string]interface{}{
 			"item_quality": "rare",
 			"recipe_id":    123,

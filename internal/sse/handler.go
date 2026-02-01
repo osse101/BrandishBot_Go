@@ -46,7 +46,7 @@ func Handler(hub *Hub) http.HandlerFunc {
 		}()
 
 		// Send initial connection event
-		connectEvent := SSEEvent{
+		connectEvent := Event{
 			ID:        client.ID,
 			Type:      "connected",
 			Timestamp: time.Now().Unix(),
@@ -94,7 +94,7 @@ func Handler(hub *Hub) http.HandlerFunc {
 
 			case <-ticker.C:
 				// Send keepalive ping
-				keepalive := SSEEvent{
+				keepalive := Event{
 					ID:        "",
 					Type:      EventTypeKeepalive,
 					Timestamp: time.Now().Unix(),

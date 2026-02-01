@@ -2,6 +2,7 @@ package validation
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -105,7 +106,8 @@ func (v *validator) loadSchema(schemaPath string) (*jsonschema.Schema, error) {
 
 // formatValidationError formats validation errors to be user-friendly
 func formatValidationError(err error) error {
-	if validationErr, ok := err.(*jsonschema.ValidationError); ok {
+	var validationErr *jsonschema.ValidationError
+	if errors.As(err, &validationErr) {
 		var errors []string
 		collectErrors(validationErr, &errors)
 		return fmt.Errorf("schema validation failed:\n%s", strings.Join(errors, "\n"))

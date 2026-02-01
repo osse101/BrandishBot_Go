@@ -26,8 +26,8 @@ type InventoryService interface {
 	GetInventoryByUsername(ctx context.Context, platform, username, filter string) ([]InventoryItem, error)
 }
 
-// UserManagementService handles user lifecycle operations
-type UserManagementService interface {
+// ManagementService handles user lifecycle operations
+type ManagementService interface {
 	RegisterUser(ctx context.Context, user domain.User) (domain.User, error)
 	UpdateUser(ctx context.Context, user domain.User) error
 	FindUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error)
@@ -56,7 +56,7 @@ type GameplayService interface {
 // New code should depend on the smallest interface that meets its needs.
 type Service interface {
 	InventoryService
-	UserManagementService
+	ManagementService
 	AccountLinkingService
 	GameplayService
 

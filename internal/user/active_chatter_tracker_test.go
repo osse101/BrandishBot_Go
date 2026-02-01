@@ -249,7 +249,7 @@ func TestActiveChatterTracker_Concurrency(t *testing.T) {
 	operationsPerGoroutine := 100
 
 	for i := 0; i < numGoroutines; i++ {
-		go func(id int) {
+		go func(_ int) {
 			for j := 0; j < operationsPerGoroutine; j++ {
 				// Mix of operations
 				switch j % 4 {

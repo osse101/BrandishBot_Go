@@ -12,10 +12,10 @@ const (
 
 // File operation error messages
 const (
-	ErrMsgReadConfigFileFailed  = "failed to read items config file: %w"
-	ErrMsgParseConfigFailed     = "failed to parse items config: %w"
-	ErrMsgStatConfigFileFailed  = "failed to stat config file: %w"
-	ErrMsgReadForHashFailed     = "failed to read config file: %w"
+	ErrMsgReadConfigFileFailed = "failed to read items config file: %w"
+	ErrMsgParseConfigFailed    = "failed to parse items config: %w"
+	ErrMsgStatConfigFileFailed = "failed to stat config file: %w"
+	ErrMsgReadForHashFailed    = "failed to read config file: %w"
 )
 
 // Validation error messages (fragments used with error wrapping)
@@ -27,7 +27,6 @@ const (
 	ErrMsgEmptyDefaultDisplay = "has empty default_display"
 	ErrMsgNegativeMaxStack    = "has negative max_stack"
 	ErrMsgNegativeBaseValue   = "has negative base_value"
-
 )
 
 // Database operation error messages
@@ -48,11 +47,11 @@ const (
 
 // Sync operation log messages
 const (
-	LogMsgConfigUnchanged       = "Items config file unchanged, skipping sync"
-	LogMsgSyncCompleted         = "Items sync completed"
-	LogMsgUpdatedItem           = "Updated item"
-	LogMsgInsertedItem          = "Inserted item"
-	LogMsgUpdateMetadataFailed  = "Failed to update sync metadata"
+	LogMsgConfigUnchanged      = "Items config file unchanged, skipping sync"
+	LogMsgSyncCompleted        = "Items sync completed"
+	LogMsgUpdatedItem          = "Updated item"
+	LogMsgInsertedItem         = "Inserted item"
+	LogMsgUpdateMetadataFailed = "Failed to update sync metadata"
 )
 
 // ==================== Format Strings for Error Construction ====================
@@ -64,5 +63,4 @@ const (
 	ErrFmtItemHasEmptyDisplay  = "%w: item '%s' has empty default_display"
 	ErrFmtItemNegativeMaxStack = "%w: item '%s' has negative max_stack"
 	ErrFmtItemNegativeValue    = "%w: item '%s' has negative base_value"
-
 )

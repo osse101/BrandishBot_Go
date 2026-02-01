@@ -71,13 +71,13 @@ const (
 	ErrMsgUnavailableError     = "Server is temporarily unavailable. Please try again later."
 
 	// User and inventory messages
-	ErrMsgUserNotFoundError     = "User not found"
-	ErrMsgItemNotFoundError     = "Item not found"
-	ErrMsgInsufficientItemsErr  = "Not enough items"
-	ErrMsgNotInInventoryError   = "You don't have that item"
-	ErrMsgInventoryFullError    = "Inventory is full"
-	ErrMsgNotSellableError      = "Item is not sellable"
-	ErrMsgNotBuyableError       = "Item is not buyable"
+	ErrMsgUserNotFoundError    = "User not found"
+	ErrMsgItemNotFoundError    = "Item not found"
+	ErrMsgInsufficientItemsErr = "Not enough items"
+	ErrMsgNotInInventoryError  = "You don't have that item"
+	ErrMsgInventoryFullError   = "Inventory is full"
+	ErrMsgNotSellableError     = "Item is not sellable"
+	ErrMsgNotBuyableError      = "Item is not buyable"
 
 	// Economy messages
 	ErrMsgNotEnoughMoneyError = "Not enough money"
@@ -96,14 +96,14 @@ const (
 	ErrMsgOnCooldownError = "Action is on cooldown. Try again later"
 
 	// Gamble messages
-	ErrMsgGambleNotFoundError          = "Gamble not found"
-	ErrMsgGambleAlreadyActiveError     = "You already have an active gamble"
-	ErrMsgNotAcceptingParticipantsErr  = "Gamble is not accepting new participants"
-	ErrMsgJoinDeadlinePassedError      = "Too late to join this gamble"
-	ErrMsgLootboxRequiredError         = "At least one lootbox is required"
-	ErrMsgBetQuantityPositiveError     = "Bet quantity must be positive"
-	ErrMsgNotLootboxError              = "That item is not a lootbox"
-	ErrMsgAlreadyJoinedError           = "You have already joined this gamble"
+	ErrMsgGambleNotFoundError         = "Gamble not found"
+	ErrMsgGambleAlreadyActiveError    = "You already have an active gamble"
+	ErrMsgNotAcceptingParticipantsErr = "Gamble is not accepting new participants"
+	ErrMsgJoinDeadlinePassedError     = "Too late to join this gamble"
+	ErrMsgLootboxRequiredError        = "At least one lootbox is required"
+	ErrMsgBetQuantityPositiveError    = "Bet quantity must be positive"
+	ErrMsgNotLootboxError             = "That item is not a lootbox"
+	ErrMsgAlreadyJoinedError          = "You have already joined this gamble"
 
 	// Voting messages
 	ErrMsgAlreadyVotedError = "You have already voted"

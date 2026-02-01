@@ -63,7 +63,8 @@ func HandleMessageHandler(userService user.Service, progressionSvc progression.S
 				"platform", req.Platform,
 				"platform_id", req.PlatformID,
 				"username", req.Username)
-			statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
+			statusCode, userMsg := mapServiceErrorToUserMessage(err)
+			respondError(w, statusCode, userMsg)
 			return
 		}
 

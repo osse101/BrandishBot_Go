@@ -57,7 +57,7 @@ const (
 
 // Background task log messages
 const (
-	LogMsgEconomyShuttingDown = "Economy service shutting down, waiting for background tasks..."
+	LogMsgEconomyShuttingDown   = "Economy service shutting down, waiting for background tasks..."
 	ErrMsgAwardMerchantXPFailed = "Failed to award Merchant XP: UserID %d: %w"
 	LogMsgMerchantLeveledUp     = "Merchant leveled up!"
 )

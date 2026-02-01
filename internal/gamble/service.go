@@ -41,7 +41,6 @@ type ProgressionService interface {
 	GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error)
 }
 
-
 type service struct {
 	repo               repository.Gamble
 	eventBus           event.Bus
@@ -380,7 +379,7 @@ func (s *service) transitionToOpeningState(ctx context.Context, tx repository.Ga
 		return fmt.Errorf("failed to transition gamble state: %w", err)
 	}
 	if rowsAffected == 0 {
-		return fmt.Errorf(ErrMsgGambleAlreadyExecuted)
+		return errors.New(ErrMsgGambleAlreadyExecuted)
 	}
 	return nil
 }

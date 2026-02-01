@@ -178,14 +178,14 @@ func TestGambleLifecycle_Integration(t *testing.T) {
 	// Verify Loser Inventory
 	winnerInv, _ := repo.GetInventory(ctx, result.WinnerID)
 	require.NotNil(t, winnerInv)
-	
+
 	var loserID string
 	if result.WinnerID == userA.ID {
 		loserID = userB.ID
 	} else {
 		loserID = userA.ID
 	}
-	
+
 	loserInv, _ := repo.GetInventory(ctx, loserID)
 	require.NotNil(t, loserInv)
 

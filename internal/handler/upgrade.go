@@ -62,7 +62,8 @@ func HandleUpgradeItem(svc crafting.Service, progressionSvc progression.Service,
 		result, err := svc.UpgradeItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.Item, req.Quantity)
 		if err != nil {
 			log.Error("Failed to upgrade item", "error", err, "username", req.Username, "item", req.Item)
-			statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
+			statusCode, userMsg := mapServiceErrorToUserMessage(err)
+			respondError(w, statusCode, userMsg)
 			return
 		}
 
@@ -75,11 +76,11 @@ func HandleUpgradeItem(svc crafting.Service, progressionSvc progression.Service,
 		// Track engagement for crafting
 		trackCraftingEngagement(r.Context(), eventBus, req.Username, "item_crafted", result.Quantity)
 
-	// Record contribution for crafting
-	if err := progressionSvc.RecordEngagement(r.Context(), req.Username, "item_crafted", result.Quantity); err != nil {
-		log.Error("Failed to record upgrade engagement", "error", err)
-		// Don't fail the request
-	}
+		// Record contribution for crafting
+		if err := progressionSvc.RecordEngagement(r.Context(), req.Username, "item_crafted", result.Quantity); err != nil {
+			log.Error("Failed to record upgrade engagement", "error", err)
+			// Don't fail the request
+		}
 
 		// Publish item.upgraded event
 		if err := publishCraftingEvent(r.Context(), eventBus, "item.upgraded", map[string]interface{}{
@@ -160,7 +161,8 @@ func (h *CraftingHandler) HandleGetRecipes() http.HandlerFunc {
 			recipes, err := h.service.GetUnlockedRecipes(r.Context(), platform, platformID, username)
 			if err != nil {
 				log.Error("Failed to get unlocked recipes", "error", err, "username", username)
-				statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
+				statusCode, userMsg := mapServiceErrorToUserMessage(err)
+				respondError(w, statusCode, userMsg)
 				return
 			}
 
@@ -180,7 +182,8 @@ func (h *CraftingHandler) HandleGetRecipes() http.HandlerFunc {
 			recipe, err := h.service.GetRecipe(r.Context(), itemName, platform, platformID, username)
 			if err != nil {
 				log.Error("Failed to get recipe", "error", err, "item", itemName)
-				statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
+				statusCode, userMsg := mapServiceErrorToUserMessage(err)
+				respondError(w, statusCode, userMsg)
 				return
 			}
 
@@ -193,7 +196,8 @@ func (h *CraftingHandler) HandleGetRecipes() http.HandlerFunc {
 		recipes, err := h.service.GetAllRecipes(r.Context())
 		if err != nil {
 			log.Error("Failed to get all recipes", "error", err)
-			statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
+			statusCode, userMsg := mapServiceErrorToUserMessage(err)
+			respondError(w, statusCode, userMsg)
 			return
 		}
 

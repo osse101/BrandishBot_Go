@@ -101,9 +101,9 @@ type ProgressionReset struct {
 
 // DynamicPrerequisite represents a dynamic prerequisite requirement
 type DynamicPrerequisite struct {
-	Type  string `json:"type"`  // "nodes_unlocked_below_tier" or "total_nodes_unlocked"
-	Tier  int    `json:"tier,omitempty"`  // For nodes_unlocked_below_tier only
-	Count int    `json:"count"` // Required count
+	Type  string `json:"type"`           // "nodes_unlocked_below_tier" or "total_nodes_unlocked"
+	Tier  int    `json:"tier,omitempty"` // For nodes_unlocked_below_tier only
+	Count int    `json:"count"`          // Required count
 }
 
 // ProgressionTreeNode combines node info with unlock status for display

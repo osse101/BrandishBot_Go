@@ -9,14 +9,14 @@ import (
 
 // CompostDeposit represents a composting deposit
 type CompostDeposit struct {
-	ID          uuid.UUID  `json:"id"`
-	UserID      uuid.UUID  `json:"user_id"`
-	ItemKey     string     `json:"item_key"`
-	Quantity    int        `json:"quantity"`
-	DepositedAt time.Time  `json:"deposited_at"`
-	ReadyAt     time.Time  `json:"ready_at"`
-	HarvestedAt *time.Time `json:"harvested_at,omitempty"`
-	GemsAwarded *int       `json:"gems_awarded,omitempty"`
+	ID          uuid.UUID        `json:"id"`
+	UserID      uuid.UUID        `json:"user_id"`
+	ItemKey     string           `json:"item_key"`
+	Quantity    int              `json:"quantity"`
+	DepositedAt time.Time        `json:"deposited_at"`
+	ReadyAt     time.Time        `json:"ready_at"`
+	HarvestedAt *time.Time       `json:"harvested_at,omitempty"`
+	GemsAwarded *int             `json:"gems_awarded,omitempty"`
 	Metadata    *CompostMetadata `json:"metadata,omitempty"`
 }
 
@@ -29,9 +29,9 @@ type CompostMetadata struct {
 
 // CompostStatus represents a user's compost status
 type CompostStatus struct {
-	ActiveDeposits []CompostDeposit `json:"active_deposits"`
-	ReadyCount     int              `json:"ready_count"`
-	TotalGemsPending int            `json:"total_gems_pending"`
+	ActiveDeposits   []CompostDeposit `json:"active_deposits"`
+	ReadyCount       int              `json:"ready_count"`
+	TotalGemsPending int              `json:"total_gems_pending"`
 }
 
 // MarshalCompostMetadata converts CompostMetadata to JSONB

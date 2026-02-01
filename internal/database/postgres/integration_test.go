@@ -100,7 +100,6 @@ func TestUserRepository_Integration(t *testing.T) {
 	// Use shared pool and apply migrations once
 	ensureMigrations(t)
 
-
 	repo := NewUserRepository(testPool)
 	craftingRepo := NewCraftingRepository(testPool)
 	economyRepo := NewEconomyRepository(testPool)
@@ -391,5 +390,3 @@ func TestUserRepository_Integration(t *testing.T) {
 		}
 	})
 }
-
-

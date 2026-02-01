@@ -46,65 +46,65 @@ const (
 
 // Validation error messages
 const (
-	ErrMsgUserNotFound           = "user not found"
-	ErrMsgItemNotFoundFmt        = "item not found: %s"
-	ErrMsgItemNotFoundPublicFmt  = "item not found: %s (not found as public or internal name)"
-	ErrMsgResolveItemFailedFmt   = "failed to resolve item name '%s': %w"
+	ErrMsgUserNotFound            = "user not found"
+	ErrMsgItemNotFoundFmt         = "item not found: %s"
+	ErrMsgItemNotFoundPublicFmt   = "item not found: %s (not found as public or internal name)"
+	ErrMsgResolveItemFailedFmt    = "failed to resolve item name '%s': %w"
 	ErrMsgInsufficientMaterialFmt = "insufficient material (itemID: %d)"
-	ErrMsgInsufficientCraftFmt   = "insufficient materials to craft %s"
-	ErrMsgInsufficientItemsFmt   = "insufficient items to disassemble %s (need %d, have %d)"
+	ErrMsgInsufficientCraftFmt    = "insufficient materials to craft %s"
+	ErrMsgInsufficientItemsFmt    = "insufficient items to disassemble %s (need %d, have %d)"
 )
 
 // Recipe error messages
 const (
-	ErrMsgNoRecipeFmt             = "no recipe found for item: %s"
-	ErrMsgRecipeNotUnlockedFmt    = "recipe for %s is not unlocked"
-	ErrMsgNoDisassembleRecipeFmt  = "no disassemble recipe found for item: %s"
+	ErrMsgNoRecipeFmt               = "no recipe found for item: %s"
+	ErrMsgRecipeNotUnlockedFmt      = "recipe for %s is not unlocked"
+	ErrMsgNoDisassembleRecipeFmt    = "no disassemble recipe found for item: %s"
 	ErrMsgDisassembleNotUnlockedFmt = "disassemble recipe for %s is not unlocked"
 )
 
 // Database operation error messages
 const (
-	ErrMsgGetUserFailed                = "failed to get user: %w"
-	ErrMsgGetItemFailed                = "failed to get item: %w"
-	ErrMsgGetRecipeFailed              = "failed to get recipe: %w"
-	ErrMsgCheckRecipeUnlockFailed      = "failed to check recipe unlock: %w"
-	ErrMsgGetUnlockedRecipesFailed     = "failed to get unlocked recipes: %w"
-	ErrMsgGetAllRecipesFailed          = "failed to get all recipes: %w"
-	ErrMsgBeginTransactionFailed       = "failed to begin transaction: %w"
-	ErrMsgGetInventoryFailed           = "failed to get inventory: %w"
-	ErrMsgUpdateInventoryFailed        = "failed to update inventory: %w"
-	ErrMsgCommitTransactionFailed      = "failed to commit transaction: %w"
-	ErrMsgGetDisassembleRecipeFailed   = "failed to get disassemble recipe: %w"
-	ErrMsgGetAssociatedRecipeFailed    = "failed to get associated upgrade recipe: %w"
-	ErrMsgGetOutputItemsFailed         = "failed to get output items: %w"
-	ErrMsgOutputItemNotFoundFmt        = "output item not found: %d"
+	ErrMsgGetUserFailed              = "failed to get user: %w"
+	ErrMsgGetItemFailed              = "failed to get item: %w"
+	ErrMsgGetRecipeFailed            = "failed to get recipe: %w"
+	ErrMsgCheckRecipeUnlockFailed    = "failed to check recipe unlock: %w"
+	ErrMsgGetUnlockedRecipesFailed   = "failed to get unlocked recipes: %w"
+	ErrMsgGetAllRecipesFailed        = "failed to get all recipes: %w"
+	ErrMsgBeginTransactionFailed     = "failed to begin transaction: %w"
+	ErrMsgGetInventoryFailed         = "failed to get inventory: %w"
+	ErrMsgUpdateInventoryFailed      = "failed to update inventory: %w"
+	ErrMsgCommitTransactionFailed    = "failed to commit transaction: %w"
+	ErrMsgGetDisassembleRecipeFailed = "failed to get disassemble recipe: %w"
+	ErrMsgGetAssociatedRecipeFailed  = "failed to get associated upgrade recipe: %w"
+	ErrMsgGetOutputItemsFailed       = "failed to get output items: %w"
+	ErrMsgOutputItemNotFoundFmt      = "output item not found: %d"
 )
 
 // Recipe loader error messages
 const (
-	ErrMsgReadCraftingConfigFailed        = "failed to read crafting config file: %w"
-	ErrMsgParseCraftingConfigFailed       = "failed to parse crafting config: %w"
-	ErrMsgReadDisassembleConfigFailed     = "failed to read disassemble config file: %w"
-	ErrMsgParseDisassembleConfigFailed    = "failed to parse disassemble config: %w"
-	ErrMsgGetItemsForValidationFailed     = "failed to get items for validation: %w"
-	ErrMsgCheckCraftingFileChangeFailed   = "failed to check crafting file change: %w"
-	ErrMsgCheckDisassembleFileChangeFailed = "failed to check disassemble file change: %w"
-	ErrMsgGetItemsFailed                  = "failed to get items: %w"
-	ErrMsgSyncCraftingRecipesFailed       = "failed to sync crafting recipes: %w"
-	ErrMsgSyncDisassembleRecipesFailed    = "failed to sync disassemble recipes: %w"
-	ErrMsgGetExistingCraftingRecipesFailed = "failed to get existing crafting recipes: %w"
-	ErrMsgUpdateCraftingRecipeFmt         = "failed to update crafting recipe '%s': %w"
-	ErrMsgInsertCraftingRecipeFmt         = "failed to insert crafting recipe '%s': %w"
+	ErrMsgReadCraftingConfigFailed            = "failed to read crafting config file: %w"
+	ErrMsgParseCraftingConfigFailed           = "failed to parse crafting config: %w"
+	ErrMsgReadDisassembleConfigFailed         = "failed to read disassemble config file: %w"
+	ErrMsgParseDisassembleConfigFailed        = "failed to parse disassemble config: %w"
+	ErrMsgGetItemsForValidationFailed         = "failed to get items for validation: %w"
+	ErrMsgCheckCraftingFileChangeFailed       = "failed to check crafting file change: %w"
+	ErrMsgCheckDisassembleFileChangeFailed    = "failed to check disassemble file change: %w"
+	ErrMsgGetItemsFailed                      = "failed to get items: %w"
+	ErrMsgSyncCraftingRecipesFailed           = "failed to sync crafting recipes: %w"
+	ErrMsgSyncDisassembleRecipesFailed        = "failed to sync disassemble recipes: %w"
+	ErrMsgGetExistingCraftingRecipesFailed    = "failed to get existing crafting recipes: %w"
+	ErrMsgUpdateCraftingRecipeFmt             = "failed to update crafting recipe '%s': %w"
+	ErrMsgInsertCraftingRecipeFmt             = "failed to insert crafting recipe '%s': %w"
 	ErrMsgGetExistingDisassembleRecipesFailed = "failed to get existing disassemble recipes: %w"
-	ErrMsgGetCraftingRecipesForAssocFailed = "failed to get crafting recipes for associations: %w"
-	ErrMsgUpdateDisassembleRecipeFmt      = "failed to update disassemble recipe '%s': %w"
-	ErrMsgClearOutputsFmt                 = "failed to clear outputs for recipe '%s': %w"
-	ErrMsgInsertOutputFmt                 = "failed to insert output for recipe '%s': %w"
-	ErrMsgUpsertAssociationFmt            = "failed to upsert association for '%s': %w"
-	ErrMsgInsertDisassembleRecipeFmt      = "failed to insert disassemble recipe '%s': %w"
-	ErrMsgStatConfigFileFailed            = "failed to stat config file: %w"
-	ErrMsgReadConfigFileFailed            = "failed to read config file: %w"
+	ErrMsgGetCraftingRecipesForAssocFailed    = "failed to get crafting recipes for associations: %w"
+	ErrMsgUpdateDisassembleRecipeFmt          = "failed to update disassemble recipe '%s': %w"
+	ErrMsgClearOutputsFmt                     = "failed to clear outputs for recipe '%s': %w"
+	ErrMsgInsertOutputFmt                     = "failed to insert output for recipe '%s': %w"
+	ErrMsgUpsertAssociationFmt                = "failed to upsert association for '%s': %w"
+	ErrMsgInsertDisassembleRecipeFmt          = "failed to insert disassemble recipe '%s': %w"
+	ErrMsgStatConfigFileFailed                = "failed to stat config file: %w"
+	ErrMsgReadConfigFileFailed                = "failed to read config file: %w"
 )
 
 // ==================== Log Messages ====================
@@ -131,15 +131,15 @@ const (
 
 // Recipe loader log messages
 const (
-	LogMsgRecipeConfigUnchanged            = "Recipe config files unchanged, skipping sync"
-	LogMsgRecipeSyncCompleted              = "Recipe sync completed"
-	LogMsgOrphanedRecipesFound             = "Found orphaned recipes in database (in DB but not in config)"
-	LogMsgUpdateCraftingSyncMetadataFailed = "Failed to update crafting sync metadata"
+	LogMsgRecipeConfigUnchanged               = "Recipe config files unchanged, skipping sync"
+	LogMsgRecipeSyncCompleted                 = "Recipe sync completed"
+	LogMsgOrphanedRecipesFound                = "Found orphaned recipes in database (in DB but not in config)"
+	LogMsgUpdateCraftingSyncMetadataFailed    = "Failed to update crafting sync metadata"
 	LogMsgUpdateDisassembleSyncMetadataFailed = "Failed to update disassemble sync metadata"
-	LogMsgUpdatedCraftingRecipe            = "Updated crafting recipe"
-	LogMsgInsertedCraftingRecipe           = "Inserted crafting recipe"
-	LogMsgUpdatedDisassembleRecipe         = "Updated disassemble recipe"
-	LogMsgInsertedDisassembleRecipe        = "Inserted disassemble recipe"
+	LogMsgUpdatedCraftingRecipe               = "Updated crafting recipe"
+	LogMsgInsertedCraftingRecipe              = "Inserted crafting recipe"
+	LogMsgUpdatedDisassembleRecipe            = "Updated disassemble recipe"
+	LogMsgInsertedDisassembleRecipe           = "Inserted disassemble recipe"
 )
 
 // ==================== Metadata Keys ====================

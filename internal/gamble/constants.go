@@ -119,7 +119,7 @@ const (
 
 // Validation and state error messages
 const (
-	ErrMsgCannotExecuteBeforeDeadline       = "cannot execute gamble before join deadline"
-	ErrMsgGambleAlreadyExecuted             = "gamble is already being executed or has been executed"
+	ErrMsgCannotExecuteBeforeDeadline        = "cannot execute gamble before join deadline"
+	ErrMsgGambleAlreadyExecuted              = "gamble is already being executed or has been executed"
 	ErrMsgItemNotFoundAsPublicOrInternalName = "not found as public or internal name"
 )

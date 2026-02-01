@@ -36,17 +36,17 @@ type DuelResult struct {
 
 // Duel represents a duel challenge between two users
 type Duel struct {
-	ID          uuid.UUID  `json:"id"`
-	ChallengerID uuid.UUID `json:"challenger_id"`
-	OpponentID  *uuid.UUID `json:"opponent_id,omitempty"`
-	State       DuelState  `json:"state"`
-	Stakes      DuelStakes `json:"stakes"`
-	CreatedAt   time.Time  `json:"created_at"`
-	ExpiresAt   time.Time  `json:"expires_at"`
-	StartedAt   *time.Time `json:"started_at,omitempty"`
-	CompletedAt *time.Time `json:"completed_at,omitempty"`
-	WinnerID    *uuid.UUID `json:"winner_id,omitempty"`
-	ResultData  *DuelResult `json:"result_data,omitempty"`
+	ID           uuid.UUID   `json:"id"`
+	ChallengerID uuid.UUID   `json:"challenger_id"`
+	OpponentID   *uuid.UUID  `json:"opponent_id,omitempty"`
+	State        DuelState   `json:"state"`
+	Stakes       DuelStakes  `json:"stakes"`
+	CreatedAt    time.Time   `json:"created_at"`
+	ExpiresAt    time.Time   `json:"expires_at"`
+	StartedAt    *time.Time  `json:"started_at,omitempty"`
+	CompletedAt  *time.Time  `json:"completed_at,omitempty"`
+	WinnerID     *uuid.UUID  `json:"winner_id,omitempty"`
+	ResultData   *DuelResult `json:"result_data,omitempty"`
 }
 
 // MarshalStakes converts DuelStakes to JSONB

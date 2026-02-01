@@ -67,7 +67,7 @@ func TestLoader_Validate(t *testing.T) {
 
 	t.Run("valid config", func(t *testing.T) {
 		config := &Config{
-			Version:       "1.0",
+			Version: "1.0",
 
 			Items: []Def{
 				{
@@ -101,7 +101,7 @@ func TestLoader_Validate(t *testing.T) {
 
 	t.Run("duplicate internal names", func(t *testing.T) {
 		config := &Config{
-			Version:       "1.0",
+			Version: "1.0",
 
 			Items: []Def{
 				{InternalName: "dupe", PublicName: "First", DefaultDisplay: "First", Tags: []string{}},
@@ -114,13 +114,9 @@ func TestLoader_Validate(t *testing.T) {
 		assert.Contains(t, err.Error(), "dupe")
 	})
 
-
-
-
-
 	t.Run("empty internal name", func(t *testing.T) {
 		config := &Config{
-			Version:       "1.0",
+			Version: "1.0",
 
 			Items: []Def{
 				{InternalName: "", PublicName: "Item", DefaultDisplay: "Item", Tags: []string{}},
@@ -133,7 +129,7 @@ func TestLoader_Validate(t *testing.T) {
 
 	t.Run("empty public name", func(t *testing.T) {
 		config := &Config{
-			Version:       "1.0",
+			Version: "1.0",
 
 			Items: []Def{
 				{InternalName: "item1", PublicName: "", DefaultDisplay: "Item", Tags: []string{}},
@@ -146,7 +142,7 @@ func TestLoader_Validate(t *testing.T) {
 
 	t.Run("empty default display", func(t *testing.T) {
 		config := &Config{
-			Version:       "1.0",
+			Version: "1.0",
 
 			Items: []Def{
 				{InternalName: "item1", PublicName: "Item", DefaultDisplay: "", Tags: []string{}},
@@ -159,7 +155,7 @@ func TestLoader_Validate(t *testing.T) {
 
 	t.Run("negative max stack", func(t *testing.T) {
 		config := &Config{
-			Version:       "1.0",
+			Version: "1.0",
 
 			Items: []Def{
 				{InternalName: "item1", PublicName: "Item", DefaultDisplay: "Item", MaxStack: -1, Tags: []string{}},
@@ -172,7 +168,7 @@ func TestLoader_Validate(t *testing.T) {
 
 	t.Run("negative base value", func(t *testing.T) {
 		config := &Config{
-			Version:       "1.0",
+			Version: "1.0",
 
 			Items: []Def{
 				{InternalName: "item1", PublicName: "Item", DefaultDisplay: "Item", BaseValue: -10, Tags: []string{}},
@@ -186,7 +182,7 @@ func TestLoader_Validate(t *testing.T) {
 	t.Run("valid handler", func(t *testing.T) {
 		handler := "lootbox"
 		config := &Config{
-			Version:       "1.0",
+			Version: "1.0",
 
 			Items: []Def{
 				{

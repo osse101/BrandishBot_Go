@@ -17,9 +17,9 @@ const (
 
 // Log messages - service events
 const (
-	LogMsgEventPayloadNotMap      = "Event payload is not a map, skipping log"
-	LogMsgFailedToLogEvent        = "Failed to log event to database"
-	LogMsgEventLogged             = "Event logged to database"
+	LogMsgEventPayloadNotMap = "Event payload is not a map, skipping log"
+	LogMsgFailedToLogEvent   = "Failed to log event to database"
+	LogMsgEventLogged        = "Event logged to database"
 )
 
 // Log messages - cleanup job
@@ -31,12 +31,12 @@ const (
 
 // Log field keys - structured logging fields
 const (
-	LogFieldType         = "type"
-	LogFieldUserID       = "user_id"
-	LogFieldError        = "error"
+	LogFieldType          = "type"
+	LogFieldUserID        = "user_id"
+	LogFieldError         = "error"
 	LogFieldRetentionDays = "retentionDays"
-	LogFieldDuration     = "duration"
-	LogFieldDeletedCount = "deletedCount"
+	LogFieldDuration      = "duration"
+	LogFieldDeletedCount  = "deletedCount"
 )
 
 // Data validation constants

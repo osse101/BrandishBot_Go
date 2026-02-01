@@ -25,7 +25,7 @@ const (
 	// Validation errors (used for partial matches)
 	ErrMsgInvalidQuantity = "quantity" // Used in contains checks for various quantity errors
 	ErrMsgInvalidPlatform = "invalid platform"
-	ErrMsgInvalidInput = "invalid input"
+	ErrMsgInvalidInput    = "invalid input"
 
 	// Gamble errors
 	ErrMsgGambleAlreadyActive       = "a gamble is already active"
@@ -67,14 +67,14 @@ const (
 	ErrMsgItemLocked    = "item is locked"
 
 	// Progression errors
-	ErrMsgUserAlreadyVoted         = "user has already voted"
-	ErrMsgNodeNotFound             = "node not found"
-	ErrMsgMaxLevelExceeded         = "max level exceeded"
-	ErrMsgNoActiveSession          = "no active voting session"
-	ErrMsgSessionAlreadyActive     = "voting session already active"
-	ErrMsgAccumulationInProgress   = "cannot start voting while accumulation is in progress"
-	ErrMsgSessionAlreadyFrozen     = "voting session is already frozen"
-	ErrMsgNoNodesAvailable         = "no nodes available for voting"
+	ErrMsgUserAlreadyVoted       = "user has already voted"
+	ErrMsgNodeNotFound           = "node not found"
+	ErrMsgMaxLevelExceeded       = "max level exceeded"
+	ErrMsgNoActiveSession        = "no active voting session"
+	ErrMsgSessionAlreadyActive   = "voting session already active"
+	ErrMsgAccumulationInProgress = "cannot start voting while accumulation is in progress"
+	ErrMsgSessionAlreadyFrozen   = "voting session is already frozen"
+	ErrMsgNoNodesAvailable       = "no nodes available for voting"
 
 	// Recipe/Crafting errors
 	ErrMsgRecipeNotFound = "recipe not found"
@@ -84,7 +84,6 @@ const (
 	// Harvest errors
 	ErrMsgHarvestStateNotFound = "harvest state not found"
 	ErrMsgHarvestTooSoon       = "harvest too soon (minimum 1 hour)"
-
 )
 
 // Common domain errors
@@ -95,7 +94,7 @@ var (
 	ErrUserNotFound = errors.New(ErrMsgUserNotFound)
 
 	// Item errors
-	ErrItemNotFound = errors.New(ErrMsgItemNotFound)
+	ErrItemNotFound   = errors.New(ErrMsgItemNotFound)
 	ErrItemNotHandled = errors.New(ErrMsgItemNotHandled)
 
 	// Inventory errors
@@ -151,19 +150,19 @@ var (
 	ErrInvalidRecipe  = errors.New(ErrMsgInvalidRecipe)
 
 	// Validation errors
-	ErrInvalidInput = errors.New(ErrMsgInvalidInput)
+	ErrInvalidInput    = errors.New(ErrMsgInvalidInput)
 	ErrInvalidQuantity = errors.New(ErrMsgInvalidQuantity)
 	ErrInvalidPlatform = errors.New(ErrMsgInvalidPlatform)
 
 	// Progression errors
-	ErrUserAlreadyVoted        = errors.New(ErrMsgUserAlreadyVoted)
-	ErrNodeNotFound            = errors.New(ErrMsgNodeNotFound)
-	ErrMaxLevelExceeded        = errors.New(ErrMsgMaxLevelExceeded)
-	ErrNoActiveSession         = errors.New(ErrMsgNoActiveSession)
-	ErrSessionAlreadyActive    = errors.New(ErrMsgSessionAlreadyActive)
-	ErrAccumulationInProgress  = errors.New(ErrMsgAccumulationInProgress)
-	ErrSessionAlreadyFrozen    = errors.New(ErrMsgSessionAlreadyFrozen)
-	ErrNoNodesAvailable        = errors.New(ErrMsgNoNodesAvailable)
+	ErrUserAlreadyVoted       = errors.New(ErrMsgUserAlreadyVoted)
+	ErrNodeNotFound           = errors.New(ErrMsgNodeNotFound)
+	ErrMaxLevelExceeded       = errors.New(ErrMsgMaxLevelExceeded)
+	ErrNoActiveSession        = errors.New(ErrMsgNoActiveSession)
+	ErrSessionAlreadyActive   = errors.New(ErrMsgSessionAlreadyActive)
+	ErrAccumulationInProgress = errors.New(ErrMsgAccumulationInProgress)
+	ErrSessionAlreadyFrozen   = errors.New(ErrMsgSessionAlreadyFrozen)
+	ErrNoNodesAvailable       = errors.New(ErrMsgNoNodesAvailable)
 
 	// Harvest errors
 	ErrHarvestStateNotFound = errors.New(ErrMsgHarvestStateNotFound)

@@ -219,18 +219,18 @@ func TestMultiLevel_SessionTargeting(t *testing.T) {
 	ctx := context.Background()
 
 	// Pre-unlock all other paths to isolate the cooldown node
-	repo.UnlockNode(ctx, 2, 1, "test", 0) // money
-	repo.UnlockNode(ctx, 3, 1, "test", 0) // economy
-	repo.UnlockNode(ctx, 6, 1, "test", 0) // buy
-	repo.UnlockNode(ctx, 7, 1, "test", 0) // sell
-	repo.UnlockNode(ctx, 4, 1, "test", 0) // lootbox0
-	repo.UnlockNode(ctx, 8, 1, "test", 0) // upgrade
-	repo.UnlockNode(ctx, 9, 1, "test", 0) // disassemble
+	repo.UnlockNode(ctx, 2, 1, "test", 0)  // money
+	repo.UnlockNode(ctx, 3, 1, "test", 0)  // economy
+	repo.UnlockNode(ctx, 6, 1, "test", 0)  // buy
+	repo.UnlockNode(ctx, 7, 1, "test", 0)  // sell
+	repo.UnlockNode(ctx, 4, 1, "test", 0)  // lootbox0
+	repo.UnlockNode(ctx, 8, 1, "test", 0)  // upgrade
+	repo.UnlockNode(ctx, 9, 1, "test", 0)  // disassemble
 	repo.UnlockNode(ctx, 10, 1, "test", 0) // search
 
 	// Only Cooldown level 1 is available now. Start session.
 	service.StartVotingSession(ctx, nil)
-	
+
 	// Vote for cooldown level 1
 	var cooldownKey string
 	session, _ := repo.GetActiveSession(ctx)
@@ -344,4 +344,3 @@ func TestCache_ThresholdDetection(t *testing.T) {
 	assert.NotEqual(t, progress.ID, newProgress.ID)
 	assert.Equal(t, 10, newProgress.ContributionsAccumulated)
 }
-

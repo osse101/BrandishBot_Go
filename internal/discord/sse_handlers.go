@@ -42,12 +42,12 @@ type JobLevelUpPayload struct {
 
 // VotingStartedPayload is the payload for voting started events
 type VotingStartedPayload struct {
-	SessionID      int                 `json:"session_id"`
-	NodeKey        string              `json:"node_key,omitempty"`
-	TargetLevel    int                 `json:"target_level"`
-	AutoSelected   bool                `json:"auto_selected"`
-	Options        []VotingOptionInfo  `json:"options,omitempty"`
-	PreviousUnlock string              `json:"previous_unlock"`
+	SessionID      int                `json:"session_id"`
+	NodeKey        string             `json:"node_key,omitempty"`
+	TargetLevel    int                `json:"target_level"`
+	AutoSelected   bool               `json:"auto_selected"`
+	Options        []VotingOptionInfo `json:"options,omitempty"`
+	PreviousUnlock string             `json:"previous_unlock"`
 }
 
 // VotingOptionInfo contains voting option details
@@ -58,7 +58,7 @@ type VotingOptionInfo struct {
 
 // CycleCompletedPayload is the payload for cycle completed events
 type CycleCompletedPayload struct {
-	UnlockedNode  NodeInfo          `json:"unlocked_node"`
+	UnlockedNode  NodeInfo           `json:"unlocked_node"`
 	VotingSession *VotingSessionInfo `json:"voting_session,omitempty"`
 }
 
@@ -70,8 +70,8 @@ type NodeInfo struct {
 
 // VotingSessionInfo contains voting session details
 type VotingSessionInfo struct {
-	SessionID int                 `json:"session_id"`
-	Options   []VotingOptionInfo  `json:"options"`
+	SessionID int                `json:"session_id"`
+	Options   []VotingOptionInfo `json:"options"`
 }
 
 func (n *SSENotifier) handleJobLevelUp(event SSEEvent) error {

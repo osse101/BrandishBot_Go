@@ -26,10 +26,10 @@ func NewDuelHandler(service duel.Service, progressionSvc progression.Service) *D
 
 // ChallengeRequest represents a duel challenge request
 type ChallengeRequest struct {
-	Platform         string             `json:"platform"`
-	PlatformID       string             `json:"platform_id"`
-	OpponentUsername string             `json:"opponent_username"`
-	Stakes           domain.DuelStakes  `json:"stakes"`
+	Platform         string            `json:"platform"`
+	PlatformID       string            `json:"platform_id"`
+	OpponentUsername string            `json:"opponent_username"`
+	Stakes           domain.DuelStakes `json:"stakes"`
 }
 
 // ChallengeResponse represents a duel challenge response
@@ -80,8 +80,8 @@ type AcceptDuelRequest struct {
 
 // AcceptDuelResponse represents a duel accept response
 type AcceptDuelResponse struct {
-	Message string              `json:"message"`
-	Result  *domain.DuelResult  `json:"result"`
+	Message string             `json:"message"`
+	Result  *domain.DuelResult `json:"result"`
 }
 
 // HandleAccept handles duel accept requests

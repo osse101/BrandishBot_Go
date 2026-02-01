@@ -998,8 +998,8 @@ func setupTestTree(repo *MockRepository) {
 	// These mirror the old parent-child relationships
 	repo.prerequisites[moneyID] = []int{rootID}           // money requires root
 	repo.prerequisites[economyID] = []int{moneyID}        // economy requires money
-	repo.prerequisites[gambleID] = []int{economyID}  // gamble requires economy
-	repo.prerequisites[eventsID] = []int{economyID}  // events requires economy
+	repo.prerequisites[gambleID] = []int{economyID}       // gamble requires economy
+	repo.prerequisites[eventsID] = []int{economyID}       // events requires economy
 	repo.prerequisites[lootbox0ID] = []int{rootID}        // lootbox0 requires root
 	repo.prerequisites[upgradeID] = []int{lootbox0ID}     // upgrade requires lootbox0
 	repo.prerequisites[disassembleID] = []int{lootbox0ID} // disassemble requires lootbox0

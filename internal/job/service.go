@@ -124,7 +124,7 @@ func (s *service) GetUserJobs(ctx context.Context, userID string) ([]domain.User
 			log.Warn("Failed to check job unlock status", "error", err, "job", job.JobKey)
 			continue
 		}
-		
+
 		if !unlocked {
 			continue
 		}
@@ -341,7 +341,6 @@ func (s *service) updateUserJobProgress(ctx context.Context, progress *domain.Us
 	return nil
 }
 
-
 // GetJobBonus returns the bonus value for a specific job and bonus type
 func (s *service) GetJobBonus(ctx context.Context, userID, jobKey, bonusType string) (float64, error) {
 	level, err := s.GetJobLevel(ctx, userID, jobKey)
@@ -369,7 +368,6 @@ func (s *service) GetJobBonus(ctx context.Context, userID, jobKey, bonusType str
 
 	return bestBonus, nil
 }
-
 
 func (s *service) recordXPAndLevelUpEvents(ctx context.Context, userID, jobKey string, jobID int, actualAmount int, oldLevel, newLevel int, source string, metadata map[string]interface{}, now *time.Time) {
 	log := logger.FromContext(ctx)

@@ -53,7 +53,8 @@ func (h *GambleHandler) HandleStartGamble(w http.ResponseWriter, r *http.Request
 	gamble, err := h.service.StartGamble(r.Context(), req.Platform, req.PlatformID, req.Username, req.Bets)
 	if err != nil {
 		logger.FromContext(r.Context()).Error("Failed to start gamble", "error", err)
-		statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
+		statusCode, userMsg := mapServiceErrorToUserMessage(err)
+		respondError(w, statusCode, userMsg)
 		return
 	}
 
@@ -81,9 +82,9 @@ func (h *GambleHandler) HandleStartGamble(w http.ResponseWriter, r *http.Request
 }
 
 type JoinGambleRequest struct {
-	Platform   string              `json:"platform"`
-	PlatformID string              `json:"platform_id"`
-	Username   string              `json:"username"`
+	Platform   string `json:"platform"`
+	PlatformID string `json:"platform_id"`
+	Username   string `json:"username"`
 }
 
 func (h *GambleHandler) HandleJoinGamble(w http.ResponseWriter, r *http.Request) {
@@ -104,7 +105,8 @@ func (h *GambleHandler) HandleJoinGamble(w http.ResponseWriter, r *http.Request)
 
 	if err := h.service.JoinGamble(r.Context(), gambleID, req.Platform, req.PlatformID, req.Username); err != nil {
 		logger.FromContext(r.Context()).Error("Failed to join gamble", "error", err)
-		statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
+		statusCode, userMsg := mapServiceErrorToUserMessage(err)
+		respondError(w, statusCode, userMsg)
 		return
 	}
 
@@ -141,7 +143,8 @@ func (h *GambleHandler) HandleGetGamble(w http.ResponseWriter, r *http.Request) 
 	gamble, err := h.service.GetGamble(r.Context(), gambleID)
 	if err != nil {
 		logger.FromContext(r.Context()).Error("Failed to get gamble", "error", err)
-		statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
+		statusCode, userMsg := mapServiceErrorToUserMessage(err)
+		respondError(w, statusCode, userMsg)
 		return
 	}
 	if gamble == nil {
@@ -156,7 +159,8 @@ func (h *GambleHandler) HandleGetActiveGamble(w http.ResponseWriter, r *http.Req
 	gamble, err := h.service.GetActiveGamble(r.Context())
 	if err != nil {
 		logger.FromContext(r.Context()).Error("Failed to get active gamble", "error", err)
-		statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
+		statusCode, userMsg := mapServiceErrorToUserMessage(err)
+		respondError(w, statusCode, userMsg)
 		return
 	}
 

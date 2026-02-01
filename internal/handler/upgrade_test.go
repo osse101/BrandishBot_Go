@@ -85,7 +85,7 @@ func TestHandleUpgradeItem(t *testing.T) {
 			mockSetup: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, b *mocks.MockEventBus) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureUpgrade).Return(true, nil)
 				c.On("UpgradeItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.PublicNameJunkbox, 1).
-					Return(nil, fmt.Errorf(ErrMsgGenericServerError)) // Return nil result on error
+					Return(nil, errors.New(ErrMsgGenericServerError)) // Return nil result on error
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   ErrMsgGenericServerError,
@@ -254,7 +254,7 @@ func TestHandleGetRecipes(t *testing.T) {
 		expectedBody   string
 	}{
 		{
-			name: "Get All Recipes",
+			name:        "Get All Recipes",
 			queryParams: map[string]string{},
 			mockSetup: func(c *mocks.MockCraftingService, u *mocks.MockRepositoryUser) {
 				c.On("GetAllRecipes", mock.Anything).Return([]repository.RecipeListItem{
@@ -346,7 +346,7 @@ func TestHandleGetRecipes(t *testing.T) {
 			expectedBody:   "User not found",
 		},
 		{
-			name: "Service Error - GetAllRecipes",
+			name:        "Service Error - GetAllRecipes",
 			queryParams: map[string]string{},
 			mockSetup: func(c *mocks.MockCraftingService, u *mocks.MockRepositoryUser) {
 				c.On("GetAllRecipes", mock.Anything).Return(nil, errors.New("db error"))

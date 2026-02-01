@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
+
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
@@ -213,4 +214,3 @@ func JobProgressCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 
 	return cmd, handler
 }
-

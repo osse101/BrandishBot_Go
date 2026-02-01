@@ -61,8 +61,8 @@ type Service interface {
 	AdminUnlock(ctx context.Context, nodeKey string, level int) error
 	AdminUnlockAll(ctx context.Context) error
 	AdminRelock(ctx context.Context, nodeKey string, level int) error
-	AdminFreezeVoting(ctx context.Context) error                                                     // Freeze voting session (pause until unlock)
-	AdminStartVoting(ctx context.Context) error                                                      // Resume frozen vote OR start new if nodes available
+	AdminFreezeVoting(ctx context.Context) error // Freeze voting session (pause until unlock)
+	AdminStartVoting(ctx context.Context) error  // Resume frozen vote OR start new if nodes available
 	ResetProgressionTree(ctx context.Context, resetBy string, reason string, preserveUserData bool) error
 	InvalidateWeightCache() // Clears engagement weight cache (forces reload on next engagement)
 
@@ -733,7 +733,6 @@ func (s *service) AdminRelock(ctx context.Context, nodeKey string, level int) er
 	log.Info("Admin relocked node", "nodeKey", nodeKey, "level", level)
 	return nil
 }
-
 
 // ResetProgressionTree performs annual reset
 func (s *service) ResetProgressionTree(ctx context.Context, resetBy string, reason string, preserveUserData bool) error {

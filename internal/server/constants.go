@@ -14,11 +14,11 @@ const (
 
 // Log messages for server lifecycle and request handling
 const (
-	LogMsgServerStarting    = "Server starting"
-	LogMsgRequestStarted    = "Request started"
-	LogMsgRequestCompleted  = "Request completed"
-	LogMsgRequestHeaders    = "Request headers"
-	LogMsgAuthFailed        = "Authentication failed"
+	LogMsgServerStarting   = "Server starting"
+	LogMsgRequestStarted   = "Request started"
+	LogMsgRequestCompleted = "Request completed"
+	LogMsgRequestHeaders   = "Request headers"
+	LogMsgAuthFailed       = "Authentication failed"
 )
 
 // HTTP header names
@@ -34,10 +34,10 @@ const (
 
 // Security header values
 const (
-	HeaderValueNoSniff                = "nosniff"
-	HeaderValueSameOrigin             = "SAMEORIGIN"
-	HeaderValueXSSBlock               = "1; mode=block"
-	HeaderValueReferrerStrictOrigin   = "strict-origin-when-cross-origin"
+	HeaderValueNoSniff              = "nosniff"
+	HeaderValueSameOrigin           = "SAMEORIGIN"
+	HeaderValueXSSBlock             = "1; mode=block"
+	HeaderValueReferrerStrictOrigin = "strict-origin-when-cross-origin"
 )
 
 // Public path prefixes that bypass authentication

@@ -40,8 +40,8 @@ func (m *mockItemRepo) GetItemsByNames(ctx context.Context, names []string) ([]d
 // Helper to create temp config file
 func createTempConfig(t *testing.T, tables map[string][]LootItem) string {
 	config := struct {
-		Version string                   `json:"version"`
-		Tables  map[string][]LootItem    `json:"tables"`
+		Version string                `json:"version"`
+		Tables  map[string][]LootItem `json:"tables"`
 	}{
 		Version: "1.0",
 		Tables:  tables,

@@ -42,11 +42,11 @@ const (
 
 // Action names for BrandishBot events
 const (
-	ActionJobLevelUp       = "BrandishBot_JobLevelUp"
-	ActionVotingStarted    = "BrandishBot_VotingStarted"
-	ActionCycleCompleted   = "BrandishBot_CycleCompleted"
-	ActionAllUnlocked      = "BrandishBot_AllUnlocked"
-	ActionGambleCompleted  = "BrandishBot_GambleCompleted"
+	ActionJobLevelUp      = "BrandishBot_JobLevelUp"
+	ActionVotingStarted   = "BrandishBot_VotingStarted"
+	ActionCycleCompleted  = "BrandishBot_CycleCompleted"
+	ActionAllUnlocked     = "BrandishBot_AllUnlocked"
+	ActionGambleCompleted = "BrandishBot_GambleCompleted"
 )
 
 // Response status values
@@ -57,20 +57,20 @@ const (
 
 // Log messages
 const (
-	LogMsgConnecting       = "Connecting to Streamer.bot WebSocket"
-	LogMsgConnected        = "Connected to Streamer.bot WebSocket"
-	LogMsgDisconnected     = "Disconnected from Streamer.bot WebSocket"
-	LogMsgReconnecting     = "Reconnecting to Streamer.bot WebSocket"
-	LogMsgAuthRequired     = "Streamer.bot requires authentication"
-	LogMsgAuthSuccess      = "Streamer.bot authentication successful"
-	LogMsgAuthFailed       = "Streamer.bot authentication failed"
-	LogMsgSendingAction    = "Sending DoAction to Streamer.bot"
-	LogMsgActionSent       = "DoAction sent to Streamer.bot"
-	LogMsgActionFailed     = "Failed to send DoAction to Streamer.bot"
-	LogMsgReadError        = "Error reading from Streamer.bot WebSocket"
-	LogMsgWriteError       = "Error writing to Streamer.bot WebSocket"
-	LogMsgClientStopped    = "Streamer.bot client stopped"
-	LogMsgEventReceived    = "Received event from internal bus"
-	LogMsgGivingUp         = "Streamer.bot connection failed too many times, entering dormant mode"
-	LogMsgDormantRetry     = "Streamer.bot dormant, retrying connection due to incoming event"
+	LogMsgConnecting    = "Connecting to Streamer.bot WebSocket"
+	LogMsgConnected     = "Connected to Streamer.bot WebSocket"
+	LogMsgDisconnected  = "Disconnected from Streamer.bot WebSocket"
+	LogMsgReconnecting  = "Reconnecting to Streamer.bot WebSocket"
+	LogMsgAuthRequired  = "Streamer.bot requires authentication"
+	LogMsgAuthSuccess   = "Streamer.bot authentication successful"
+	LogMsgAuthFailed    = "Streamer.bot authentication failed"
+	LogMsgSendingAction = "Sending DoAction to Streamer.bot"
+	LogMsgActionSent    = "DoAction sent to Streamer.bot"
+	LogMsgActionFailed  = "Failed to send DoAction to Streamer.bot"
+	LogMsgReadError     = "Error reading from Streamer.bot WebSocket"
+	LogMsgWriteError    = "Error writing to Streamer.bot WebSocket"
+	LogMsgClientStopped = "Streamer.bot client stopped"
+	LogMsgEventReceived = "Received event from internal bus"
+	LogMsgGivingUp      = "Streamer.bot connection failed too many times, entering dormant mode"
+	LogMsgDormantRetry  = "Streamer.bot dormant, retrying connection due to incoming event"
 )

@@ -3,7 +3,7 @@ package handler
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -80,7 +80,7 @@ func TestHandleDisassembleItem(t *testing.T) {
 			mockSetup: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, b *mocks.MockEventBus) {
 				p.On("IsFeatureUnlocked", mock.Anything, "feature_disassemble").Return(true, nil)
 				c.On("DisassembleItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", "lootbox_tier1", 1).
-					Return(nil, fmt.Errorf(ErrMsgGenericServerError))
+					Return(nil, errors.New(ErrMsgGenericServerError))
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   ErrMsgGenericServerError,

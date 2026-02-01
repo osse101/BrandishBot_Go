@@ -513,4 +513,3 @@ func testZeroCostAutoUnlock(t *testing.T, ctx context.Context, svc Service, repo
 		// Don't fail the test - this is documenting the bug
 	}
 }
-

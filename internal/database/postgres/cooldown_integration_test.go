@@ -80,5 +80,3 @@ func TestCooldownService_ConcurrentRequests_Integration(t *testing.T) {
 	assert.Equal(t, int32(1), successCount.Load(),
 		"Expected exactly 1 successful request, got %d. Race condition not fixed!", successCount.Load())
 }
-
-

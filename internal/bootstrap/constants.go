@@ -45,12 +45,12 @@ const (
 
 // Log messages for logger initialization
 const (
-	LogMsgLoggingInitialized   = "Logging initialized"
-	LogMsgStartingBrandishBot  = "Starting BrandishBot"
-	LogMsgConfigurationLoaded  = "Configuration loaded"
-	LogMsgFailedCreateLogsDir  = "failed to create logs directory"
-	LogMsgFailedOpenLogFile    = "failed to open log file"
-	LogMsgFailedDeleteOldLog   = "Failed to delete old log file %s: %v\n"
+	LogMsgLoggingInitialized  = "Logging initialized"
+	LogMsgStartingBrandishBot = "Starting BrandishBot"
+	LogMsgConfigurationLoaded = "Configuration loaded"
+	LogMsgFailedCreateLogsDir = "failed to create logs directory"
+	LogMsgFailedOpenLogFile   = "failed to open log file"
+	LogMsgFailedDeleteOldLog  = "Failed to delete old log file %s: %v\n"
 )
 
 // =============================================================================
@@ -70,8 +70,8 @@ const (
 
 // Log messages for event system initialization
 const (
-	LogMsgEventSystemInitialized        = "Event system initialized"
-	LogMsgFailedCreateDeadLetterDir     = "failed to create dead-letter directory"
+	LogMsgEventSystemInitialized         = "Event system initialized"
+	LogMsgFailedCreateDeadLetterDir      = "failed to create dead-letter directory"
 	LogMsgFailedCreateResilientPublisher = "failed to create resilient publisher"
 )
 
@@ -81,24 +81,24 @@ const (
 
 const (
 	// Config sync log messages
-	LogMsgSyncingProgressionTree      = "Syncing progression tree from JSON config..."
-	LogMsgSyncingItems                = "Syncing items from JSON config..."
-	LogMsgSyncingRecipes              = "Syncing recipes from JSON config..."
-	LogMsgProgressionTreeSynced       = "Progression tree synced successfully"
-	LogMsgProgressionTreeUnchanged    = "Progression tree config unchanged, sync skipped"
-	LogMsgItemsSynced                 = "Items synced successfully"
-	LogMsgRecipesSynced               = "Recipes synced successfully"
+	LogMsgSyncingProgressionTree   = "Syncing progression tree from JSON config..."
+	LogMsgSyncingItems             = "Syncing items from JSON config..."
+	LogMsgSyncingRecipes           = "Syncing recipes from JSON config..."
+	LogMsgProgressionTreeSynced    = "Progression tree synced successfully"
+	LogMsgProgressionTreeUnchanged = "Progression tree config unchanged, sync skipped"
+	LogMsgItemsSynced              = "Items synced successfully"
+	LogMsgRecipesSynced            = "Recipes synced successfully"
 
 	// Config sync error messages
-	ErrMsgFailedLoadProgressionTree   = "failed to load progression tree config"
-	ErrMsgInvalidProgressionTree      = "invalid progression tree config"
-	ErrMsgFailedSyncProgressionTree   = "failed to sync progression tree to database"
-	ErrMsgFailedLoadItems             = "failed to load items config"
-	ErrMsgInvalidItems                = "invalid items config"
-	ErrMsgFailedSyncItems             = "failed to sync items to database"
-	ErrMsgFailedLoadRecipes           = "failed to load recipe config"
-	ErrMsgInvalidRecipes              = "invalid recipe configuration"
-	ErrMsgFailedSyncRecipes           = "failed to sync recipes to database"
+	ErrMsgFailedLoadProgressionTree = "failed to load progression tree config"
+	ErrMsgInvalidProgressionTree    = "invalid progression tree config"
+	ErrMsgFailedSyncProgressionTree = "failed to sync progression tree to database"
+	ErrMsgFailedLoadItems           = "failed to load items config"
+	ErrMsgInvalidItems              = "invalid items config"
+	ErrMsgFailedSyncItems           = "failed to sync items to database"
+	ErrMsgFailedLoadRecipes         = "failed to load recipe config"
+	ErrMsgInvalidRecipes            = "invalid recipe configuration"
+	ErrMsgFailedSyncRecipes         = "failed to sync recipes to database"
 )
 
 // =============================================================================
@@ -107,10 +107,10 @@ const (
 
 // Log messages for event handler registration
 const (
-	LogMsgMetricsCollectorRegistered  = "Metrics collector registered"
-	LogMsgEventLoggerInitialized      = "Event logger initialized"
-	ErrMsgFailedRegisterMetrics       = "failed to register metrics collector"
-	ErrMsgFailedSubscribeEventLogger  = "failed to subscribe event logger"
+	LogMsgMetricsCollectorRegistered = "Metrics collector registered"
+	LogMsgEventLoggerInitialized     = "Event logger initialized"
+	ErrMsgFailedRegisterMetrics      = "failed to register metrics collector"
+	ErrMsgFailedSubscribeEventLogger = "failed to subscribe event logger"
 )
 
 // =============================================================================

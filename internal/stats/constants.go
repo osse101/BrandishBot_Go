@@ -83,16 +83,16 @@ const (
 
 // Service operation log messages
 const (
-	LogMsgEventRecorded           = "Event recorded"
-	LogMsgRetrievedUserStats      = "Retrieved user stats"
-	LogMsgRetrievedSystemStats    = "Retrieved system stats"
-	LogMsgRetrievedLeaderboard    = "Retrieved leaderboard"
+	LogMsgEventRecorded        = "Event recorded"
+	LogMsgRetrievedUserStats   = "Retrieved user stats"
+	LogMsgRetrievedSystemStats = "Retrieved system stats"
+	LogMsgRetrievedLeaderboard = "Retrieved leaderboard"
 )
 
 // Error log messages
 const (
-	LogMsgFailedToRecordEvent       = "Failed to record event"
-	LogMsgFailedToCheckDailyStreak  = "Failed to check daily streak"
+	LogMsgFailedToRecordEvent        = "Failed to record event"
+	LogMsgFailedToCheckDailyStreak   = "Failed to check daily streak"
 	LogMsgFailedToGetUserEventCounts = "Failed to get user event counts"
 	LogMsgFailedToGetTotalEventCount = "Failed to get total event count"
 	LogMsgFailedToGetEventCounts     = "Failed to get event counts"

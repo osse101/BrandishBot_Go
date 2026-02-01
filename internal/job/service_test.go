@@ -358,8 +358,6 @@ func TestAwardXP_Locked_System(t *testing.T) {
 	assert.ErrorIs(t, err, domain.ErrFeatureLocked)
 }
 
-
-
 func TestAwardXP_Locked_Job(t *testing.T) {
 	repo := new(MockRepository)
 	prog := new(MockProgressionService)
@@ -689,7 +687,7 @@ func TestGetUserJobs_NoProgress(t *testing.T) {
 
 	repo.On("GetAllJobs", ctx).Return(jobs, nil)
 	prog.On("IsNodeUnlocked", ctx, JobKeyBlacksmith, 1).Return(true, nil) // Mock unlock status
-	repo.On("GetUserJobs", ctx, "u1").Return([]domain.UserJob{}, nil) // No progress
+	repo.On("GetUserJobs", ctx, "u1").Return([]domain.UserJob{}, nil)     // No progress
 
 	result, err := svc.GetUserJobs(ctx, "u1")
 	assert.NoError(t, err)

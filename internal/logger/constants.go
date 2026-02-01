@@ -2,9 +2,9 @@ package logger
 
 // UUID Generation Constants
 const (
-	UUIDBytesLength     = 16
-	FallbackUUID        = "00000000-0000-0000-0000-000000000000"
-	UUIDFormatPattern   = "%x-%x-%x-%x-%x"
+	UUIDBytesLength   = 16
+	FallbackUUID      = "00000000-0000-0000-0000-000000000000"
+	UUIDFormatPattern = "%x-%x-%x-%x-%x"
 )
 
 // Context Keys

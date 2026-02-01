@@ -6,15 +6,15 @@ package metrics
 
 // HTTP metric names
 const (
-	MetricNameHTTPRequestsTotal      = "http_requests_total"
-	MetricNameHTTPRequestDuration    = "http_request_duration_seconds"
-	MetricNameHTTPRequestsInFlight   = "http_requests_in_flight"
+	MetricNameHTTPRequestsTotal    = "http_requests_total"
+	MetricNameHTTPRequestDuration  = "http_request_duration_seconds"
+	MetricNameHTTPRequestsInFlight = "http_requests_in_flight"
 )
 
 // Event metric names
 const (
-	MetricNameEventsPublished      = "events_published_total"
-	MetricNameEventHandlerErrors   = "event_handler_errors_total"
+	MetricNameEventsPublished    = "events_published_total"
+	MetricNameEventHandlerErrors = "event_handler_errors_total"
 )
 
 // Business metric names
@@ -35,15 +35,15 @@ const (
 
 // HTTP metric help text
 const (
-	HelpTextHTTPRequestsTotal     = "Total number of HTTP requests"
-	HelpTextHTTPRequestDuration   = "HTTP request latency in seconds"
-	HelpTextHTTPRequestsInFlight  = "Current number of HTTP requests being served"
+	HelpTextHTTPRequestsTotal    = "Total number of HTTP requests"
+	HelpTextHTTPRequestDuration  = "HTTP request latency in seconds"
+	HelpTextHTTPRequestsInFlight = "Current number of HTTP requests being served"
 )
 
 // Event metric help text
 const (
-	HelpTextEventsPublished     = "Total number of events published"
-	HelpTextEventHandlerErrors  = "Total number of event handler errors"
+	HelpTextEventsPublished    = "Total number of events published"
+	HelpTextEventHandlerErrors = "Total number of event handler errors"
 )
 
 // Business metric help text
@@ -64,13 +64,13 @@ const (
 
 // Common label names used across metrics
 const (
-	LabelMethod      = "method"
-	LabelPath        = "path"
-	LabelStatus      = "status"
-	LabelType        = "type"
-	LabelItem        = "item"
-	LabelSourceItem  = "source_item"
-	LabelResultItem  = "result_item"
+	LabelMethod     = "method"
+	LabelPath       = "path"
+	LabelStatus     = "status"
+	LabelType       = "type"
+	LabelItem       = "item"
+	LabelSourceItem = "source_item"
+	LabelResultItem = "result_item"
 )
 
 // ============================================================================
@@ -112,6 +112,6 @@ var HTTPLatencyBuckets = []float64{.001, .005, .01, .025, .05, .1, .25, .5, 1, 2
 
 // Debug log messages
 const (
-	LogMsgEventPayloadNotMap    = "Event payload is not a map"
-	LogMsgMetricsRecorded       = "Metrics recorded for event"
+	LogMsgEventPayloadNotMap = "Event payload is not a map"
+	LogMsgMetricsRecorded    = "Metrics recorded for event"
 )

@@ -49,7 +49,8 @@ func HandleSearch(svc user.Service, progressionSvc progression.Service, eventBus
 		message, err := svc.HandleSearch(r.Context(), req.Platform, req.PlatformID, req.Username)
 		if err != nil {
 			log.Error("Failed to handle search", "error", err, "username", req.Username)
-			statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
+			statusCode, userMsg := mapServiceErrorToUserMessage(err)
+			respondError(w, statusCode, userMsg)
 			return
 		}
 
@@ -65,11 +66,11 @@ func HandleSearch(svc user.Service, progressionSvc progression.Service, eventBus
 			1,
 		)
 
-	// Record contribution for search (higher value due to cooldown)
-	if err := progressionSvc.RecordEngagement(r.Context(), req.Username, "search_performed", 5); err != nil {
-		log.Error("Failed to record search engagement", "error", err)
-		// Don't fail the request
-	}
+		// Record contribution for search (higher value due to cooldown)
+		if err := progressionSvc.RecordEngagement(r.Context(), req.Username, "search_performed", 5); err != nil {
+			log.Error("Failed to record search engagement", "error", err)
+			// Don't fail the request
+		}
 
 		// Publish search.performed event
 		if err := eventBus.Publish(r.Context(), event.Event{

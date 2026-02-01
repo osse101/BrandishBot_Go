@@ -19,11 +19,11 @@ const (
 
 // ExpeditionMetadata stores expedition configuration and results
 type ExpeditionMetadata struct {
-	Difficulty      string            `json:"difficulty,omitempty"`
-	MinParticipants int               `json:"min_participants,omitempty"`
-	MaxParticipants int               `json:"max_participants,omitempty"`
-	LootTableKey    string            `json:"loot_table_key,omitempty"`
-	SuccessRate     float64           `json:"success_rate,omitempty"`
+	Difficulty      string             `json:"difficulty,omitempty"`
+	MinParticipants int                `json:"min_participants,omitempty"`
+	MaxParticipants int                `json:"max_participants,omitempty"`
+	LootTableKey    string             `json:"loot_table_key,omitempty"`
+	SuccessRate     float64            `json:"success_rate,omitempty"`
 	Modifiers       map[string]float64 `json:"modifiers,omitempty"`
 }
 

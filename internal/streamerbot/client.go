@@ -251,9 +251,9 @@ func (c *Client) connect(ctx context.Context) error {
 
 	// Read initial message (may contain auth challenge)
 	// We use a short timeout because if auth is disabled, Streamer.bot might not send anything
-	conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+	_ = conn.SetReadDeadline(time.Now().Add(2 * time.Second))
 	_, msg, err := conn.ReadMessage()
-	conn.SetReadDeadline(time.Time{}) // Reset deadline
+	_ = conn.SetReadDeadline(time.Time{}) // Reset deadline
 
 	if err == nil {
 		// Check if authentication is required
@@ -384,7 +384,7 @@ func (c *Client) sendRequest(req Request) error {
 		return fmt.Errorf("no connection")
 	}
 
-	conn.SetWriteDeadline(time.Now().Add(WriteTimeout))
+	_ = conn.SetWriteDeadline(time.Now().Add(WriteTimeout))
 	return conn.WriteJSON(req)
 }
 

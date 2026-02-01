@@ -37,7 +37,7 @@ func TestActiveChatterTracker_GetRandomTargets(t *testing.T) {
 			t.Errorf("Duplicate target found: %s", target.UserID)
 		}
 		seen[target.UserID] = true
-		
+
 		if target.Username == "" || target.UserID == "" {
 			t.Error("Expected non-empty username and userID")
 		}

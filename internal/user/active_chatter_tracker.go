@@ -43,10 +43,10 @@ func NewActiveChatterTracker() *ActiveChatterTracker {
 // Track adds or updates a chatter's last message timestamp
 func (t *ActiveChatterTracker) Track(platform, userID, username string) {
 	key := makeKey(platform, userID)
-	
+
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	
+
 	t.chatters[key] = &chatterInfo{
 		UserID:        userID,
 		Username:      username,
@@ -60,10 +60,10 @@ func (t *ActiveChatterTracker) Track(platform, userID, username string) {
 func (t *ActiveChatterTracker) GetRandomTarget(platform string) (username string, userID string, err error) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
-	
+
 	now := time.Now()
 	expiryThreshold := now.Add(-ChatterExpiryDuration)
-	
+
 	// Collect all active (non-expired) chatters for this platform
 	var activeChatters []*chatterInfo
 	for _, info := range t.chatters {
@@ -71,13 +71,13 @@ func (t *ActiveChatterTracker) GetRandomTarget(platform string) (username string
 			activeChatters = append(activeChatters, info)
 		}
 	}
-	
+
 	if len(activeChatters) == 0 {
 		return "", "", fmt.Errorf("no active targets available")
 	}
-	
+
 	// Select a random chatter
-	selected := activeChatters[rand.Intn(len(activeChatters))]
+	selected := activeChatters[rand.Intn(len(activeChatters))] //nolint:gosec // weak random is fine for games
 	return selected.Username, selected.UserID, nil
 }
 
@@ -93,10 +93,10 @@ type TargetInfo struct {
 func (t *ActiveChatterTracker) GetRandomTargets(platform string, count int) ([]TargetInfo, error) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
-	
+
 	now := time.Now()
 	expiryThreshold := now.Add(-ChatterExpiryDuration)
-	
+
 	// Collect all active (non-expired) chatters for this platform
 	var activeChatters []*chatterInfo
 	for _, info := range t.chatters {
@@ -104,46 +104,46 @@ func (t *ActiveChatterTracker) GetRandomTargets(platform string, count int) ([]T
 			activeChatters = append(activeChatters, info)
 		}
 	}
-	
+
 	if len(activeChatters) == 0 {
 		return nil, fmt.Errorf("no active targets available")
 	}
-	
+
 	// Determine how many targets we can actually select
 	numToSelect := count
 	if numToSelect > len(activeChatters) {
 		numToSelect = len(activeChatters)
 	}
-	
+
 	// Shuffle and select first N (Fisher-Yates shuffle for first N elements)
 	targets := make([]TargetInfo, numToSelect)
 	selectedIndices := make([]int, len(activeChatters))
 	for i := range selectedIndices {
 		selectedIndices[i] = i
 	}
-	
+
 	// Partial Fisher-Yates shuffle (only shuffle first numToSelect positions)
 	for i := 0; i < numToSelect; i++ {
-		j := i + rand.Intn(len(selectedIndices)-i)
+		j := i + rand.Intn(len(selectedIndices)-i) //nolint:gosec // weak random is fine for games
 		selectedIndices[i], selectedIndices[j] = selectedIndices[j], selectedIndices[i]
-		
+
 		selectedChatter := activeChatters[selectedIndices[i]]
 		targets[i] = TargetInfo{
 			Username: selectedChatter.Username,
 			UserID:   selectedChatter.UserID,
 		}
 	}
-	
+
 	return targets, nil
 }
 
 // Remove removes a chatter from the active list (e.g., when they've been hit)
 func (t *ActiveChatterTracker) Remove(platform, userID string) {
 	key := makeKey(platform, userID)
-	
+
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	
+
 	delete(t.chatters, key)
 }
 
@@ -151,7 +151,7 @@ func (t *ActiveChatterTracker) Remove(platform, userID string) {
 func (t *ActiveChatterTracker) cleanupLoop() {
 	ticker := time.NewTicker(CleanupInterval)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-ticker.C:
@@ -166,10 +166,10 @@ func (t *ActiveChatterTracker) cleanupLoop() {
 func (t *ActiveChatterTracker) cleanup() {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	
+
 	now := time.Now()
 	expiryThreshold := now.Add(-ChatterExpiryDuration)
-	
+
 	for key, info := range t.chatters {
 		if info.LastMessageAt.Before(expiryThreshold) {
 			delete(t.chatters, key)
@@ -191,16 +191,16 @@ func makeKey(platform, userID string) string {
 func (t *ActiveChatterTracker) GetActiveCount(platform string) int {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
-	
+
 	now := time.Now()
 	expiryThreshold := now.Add(-ChatterExpiryDuration)
 	count := 0
-	
+
 	for _, info := range t.chatters {
 		if info.Platform == platform && info.LastMessageAt.After(expiryThreshold) {
 			count++
 		}
 	}
-	
+
 	return count
 }

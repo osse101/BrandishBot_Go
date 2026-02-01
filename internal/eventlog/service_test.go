@@ -63,7 +63,7 @@ func TestService_HandleEvent(t *testing.T) {
 	userID := "user123"
 	payload := map[string]interface{}{
 		eventlog.PayloadKeyUserID: userID,
-		"item_name":                "sword",
+		"item_name":               "sword",
 	}
 	evt := event.Event{
 		Type:    domain.EventTypeItemSold,

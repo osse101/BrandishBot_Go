@@ -73,7 +73,7 @@ type service struct {
 // Compile-time interface checks
 var _ Service = (*service)(nil)
 var _ InventoryService = (*service)(nil)
-var _ UserManagementService = (*service)(nil)
+var _ ManagementService = (*service)(nil)
 var _ AccountLinkingService = (*service)(nil)
 var _ GameplayService = (*service)(nil)
 
@@ -388,7 +388,7 @@ func (s *service) getInventoryInternal(ctx context.Context, user *domain.User, f
 
 	// Optimization: Batch fetch all item details using cache
 	itemMap := make(map[int]domain.Item)
-	var missingIDs []int
+	missingIDs := make([]int, 0, len(inventory.Slots))
 
 	s.itemCacheMu.RLock()
 	for _, slot := range inventory.Slots {
@@ -456,7 +456,7 @@ func (s *service) AddItemByUsername(ctx context.Context, platform, username, ite
 	if err != nil {
 		return err
 	}
-	
+
 	return s.addItemToUserInternal(ctx, user, itemName, quantity)
 }
 
@@ -586,7 +586,7 @@ func (s *service) GiveItem(ctx context.Context, ownerPlatform, ownerPlatformID, 
 		return domain.ErrUserNotFound
 	}
 
-	if( quantity <= 0 || quantity > domain.MaxTransactionQuantity ) {
+	if quantity <= 0 || quantity > domain.MaxTransactionQuantity {
 		log.Error("Quantity validation failed", "error", domain.ErrInvalidInput)
 		return domain.ErrInvalidInput
 	}
@@ -862,7 +862,6 @@ func (s *service) validateItem(ctx context.Context, itemName string) (*domain.It
 	return item, nil
 }
 
-
 // HandleSearch performs a search action for a user with cooldown tracking
 func (s *service) HandleSearch(ctx context.Context, platform, platformID, username string) (string, error) {
 	log := logger.FromContext(ctx)
@@ -1046,7 +1045,7 @@ func (s *service) processSearchFailure(ctx context.Context, user *domain.User, r
 // getUserOrRegister gets a user by platform ID, or auto-registers them if not found
 func (s *service) getUserOrRegister(ctx context.Context, platform, platformID, username string) (*domain.User, error) {
 	log := logger.FromContext(ctx)
-	if username == "" || platform == "" || !validPlatforms[platform]{
+	if username == "" || platform == "" || !validPlatforms[platform] {
 		log.Error("Invalid platform or username", "platform", platform, "username", username)
 		return nil, domain.ErrInvalidInput
 	}

@@ -275,7 +275,7 @@ func (f *FakeRepository) MergeUsersInTransaction(ctx context.Context, primaryUse
 	f.inventories[primaryUserID] = &mergedInventory
 
 	// Delete secondary user
-	f.DeleteUser(ctx, secondaryUserID)
+	_ = f.DeleteUser(ctx, secondaryUserID)
 
 	return nil
 }

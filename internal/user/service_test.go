@@ -259,13 +259,13 @@ func TestGiveItem(t *testing.T) {
 
 func TestGiveItem_Comprehensive(t *testing.T) {
 	tests := []struct {
-		name           string
-		ownerItems     int
-		giveQty        int
-		expectedOwner  int
-		expectedRecv   int
-		expectError    bool
-		errorMessage   string
+		name          string
+		ownerItems    int
+		giveQty       int
+		expectedOwner int
+		expectedRecv  int
+		expectError   bool
+		errorMessage  string
 	}{
 		{
 			name:          "give partial quantity",
@@ -284,40 +284,40 @@ func TestGiveItem_Comprehensive(t *testing.T) {
 			expectError:   false,
 		},
 		{
-			name:           "give more than owned",
-			ownerItems:     5,
-			giveQty:        10,
-			expectedOwner:  5,
-			expectedRecv:   0,
-			expectError:    true,
-			errorMessage:   domain.ErrMsgInsufficientQuantity,
+			name:          "give more than owned",
+			ownerItems:    5,
+			giveQty:       10,
+			expectedOwner: 5,
+			expectedRecv:  0,
+			expectError:   true,
+			errorMessage:  domain.ErrMsgInsufficientQuantity,
 		},
 		{
-			name:           "give from empty inventory",
-			ownerItems:     0,
-			giveQty:        1,
-			expectedOwner:  0,
-			expectedRecv:   0,
-			expectError:    true,
-			errorMessage:   domain.ErrMsgNotInInventory,
+			name:          "give from empty inventory",
+			ownerItems:    0,
+			giveQty:       1,
+			expectedOwner: 0,
+			expectedRecv:  0,
+			expectError:   true,
+			errorMessage:  domain.ErrMsgNotInInventory,
 		},
 		{
-			name:           "give zero quantity",
-			ownerItems:     10,
-			giveQty:        0,
-			expectedOwner:  10,
-			expectedRecv:   0,
-			expectError:    true,
-			errorMessage:   domain.ErrMsgInvalidInput,
+			name:          "give zero quantity",
+			ownerItems:    10,
+			giveQty:       0,
+			expectedOwner: 10,
+			expectedRecv:  0,
+			expectError:   true,
+			errorMessage:  domain.ErrMsgInvalidInput,
 		},
 		{
-			name:           "give negative quantity",
-			ownerItems:     10,
-			giveQty:        -1,
-			expectedOwner:  10,
-			expectedRecv:   0,
-			expectError:    true,
-			errorMessage:   domain.ErrMsgInvalidInput,
+			name:          "give negative quantity",
+			ownerItems:    10,
+			giveQty:       -1,
+			expectedOwner: 10,
+			expectedRecv:  0,
+			expectError:   true,
+			errorMessage:  domain.ErrMsgInvalidInput,
 		},
 	}
 	alice := domain.User{
@@ -464,19 +464,6 @@ func TestGiveItem_CrossPlatform(t *testing.T) {
 	if len(bobInv.Slots) != 1 || bobInv.Slots[0].Quantity != 5 {
 		t.Errorf("Bob should have 5, got %+v", bobInv.Slots)
 	}
-}
-
-func contains(s, substr string) bool {
-	return len(s) > 0 && len(substr) > 0 && (s == substr || len(s) >= len(substr) && (s[:len(substr)] == substr || s[len(s)-len(substr):] == substr || findSubstring(s, substr)))
-}
-
-func findSubstring(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }
 
 func TestRegisterUser(t *testing.T) {

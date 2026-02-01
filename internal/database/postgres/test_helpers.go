@@ -14,10 +14,10 @@ import (
 )
 
 var (
-	testDBConnString   string
-	testPool           *pgxpool.Pool
-	migrationsApplied  bool
-	migrationsMux      sync.Mutex
+	testDBConnString  string
+	testPool          *pgxpool.Pool
+	migrationsApplied bool
+	migrationsMux     sync.Mutex
 )
 
 // ensureMigrations applies migrations once for all tests in the package

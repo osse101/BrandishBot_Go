@@ -2,6 +2,7 @@ package stats
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -36,7 +37,7 @@ func (s *service) RecordUserEvent(ctx context.Context, userID string, eventType 
 	log := logger.FromContext(ctx)
 
 	if userID == "" {
-		return fmt.Errorf(ErrMsgUserIDRequired)
+		return errors.New(ErrMsgUserIDRequired)
 	}
 
 	event := &domain.StatsEvent{
@@ -178,7 +179,7 @@ func (s *service) GetUserStats(ctx context.Context, userID string, period string
 	log := logger.FromContext(ctx)
 
 	if userID == "" {
-		return nil, fmt.Errorf(ErrMsgUserIDRequired)
+		return nil, errors.New(ErrMsgUserIDRequired)
 	}
 
 	startTime, endTime := getPeriodRange(period)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base32"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -110,12 +111,12 @@ func (s *service) ClaimLink(ctx context.Context, tokenStr, platform, platformID 
 
 	token, err := s.repo.GetToken(ctx, strings.ToUpper(tokenStr))
 	if err != nil {
-		return nil, fmt.Errorf(ErrMsgTokenNotFound)
+		return nil, errors.New(ErrMsgTokenNotFound)
 	}
 
 	// Validate token state
 	if token.State != StatePending {
-		return nil, fmt.Errorf(ErrMsgTokenAlreadyUsed)
+		return nil, errors.New(ErrMsgTokenAlreadyUsed)
 	}
 
 	if time.Now().After(token.ExpiresAt) {
@@ -123,12 +124,12 @@ func (s *service) ClaimLink(ctx context.Context, tokenStr, platform, platformID 
 		if err := s.repo.UpdateToken(ctx, token); err != nil {
 			log.Error(LogMsgFailedToExpireToken, LogKeyError, err)
 		}
-		return nil, fmt.Errorf(ErrMsgTokenExpired)
+		return nil, errors.New(ErrMsgTokenExpired)
 	}
 
 	// Can't link to same platform
 	if token.SourcePlatform == platform && token.SourcePlatformID == platformID {
-		return nil, fmt.Errorf(ErrMsgCannotLinkSameAccount)
+		return nil, errors.New(ErrMsgCannotLinkSameAccount)
 	}
 
 	// Update token with target info
@@ -151,7 +152,7 @@ func (s *service) ConfirmLink(ctx context.Context, platform, platformID string) 
 	// Find claimed token for this source
 	token, err := s.repo.GetClaimedTokenForSource(ctx, platform, platformID)
 	if err != nil {
-		return nil, fmt.Errorf(ErrMsgNoPendingLink)
+		return nil, errors.New(ErrMsgNoPendingLink)
 	}
 
 	// Verify not expired
@@ -160,7 +161,7 @@ func (s *service) ConfirmLink(ctx context.Context, platform, platformID string) 
 		if err := s.repo.UpdateToken(ctx, token); err != nil {
 			log.Error(LogMsgFailedToExpireToken, LogKeyError, err)
 		}
-		return nil, fmt.Errorf(ErrMsgLinkTokenExpired)
+		return nil, errors.New(ErrMsgLinkTokenExpired)
 	}
 
 	// Find or create users for both platforms
@@ -272,7 +273,7 @@ func (s *service) ConfirmUnlink(ctx context.Context, platform, platformID, targe
 	s.mu.RUnlock()
 
 	if !exists || time.Now().After(expiry) {
-		return fmt.Errorf(ErrMsgNoPendingUnlink)
+		return errors.New(ErrMsgNoPendingUnlink)
 	}
 
 	s.mu.Lock()
@@ -282,7 +283,7 @@ func (s *service) ConfirmUnlink(ctx context.Context, platform, platformID, targe
 	// Find user and unlink
 	user, err := s.userService.FindUserByPlatformID(ctx, platform, platformID)
 	if err != nil {
-		return fmt.Errorf(ErrMsgUserNotFound)
+		return errors.New(ErrMsgUserNotFound)
 	}
 
 	if err := s.userService.UnlinkPlatform(ctx, user.ID, targetPlatform); err != nil {

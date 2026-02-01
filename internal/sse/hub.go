@@ -8,8 +8,8 @@ import (
 	"github.com/google/uuid"
 )
 
-// SSEEvent represents an event sent over SSE
-type SSEEvent struct {
+// Event represents an event sent over SSE
+type Event struct {
 	ID        string      `json:"id"`
 	Type      string      `json:"type"`
 	Timestamp int64       `json:"timestamp"`
@@ -19,7 +19,7 @@ type SSEEvent struct {
 // Client represents a connected SSE client
 type Client struct {
 	ID           string
-	EventChannel chan SSEEvent
+	EventChannel chan Event
 	EventFilter  map[string]bool // nil means all events, otherwise only specified types
 	done         chan struct{}
 }
@@ -27,7 +27,7 @@ type Client struct {
 // Hub manages SSE client connections and event broadcasting
 type Hub struct {
 	clients    map[string]*Client
-	broadcast  chan SSEEvent
+	broadcast  chan Event
 	register   chan *Client
 	unregister chan string
 	mu         sync.RWMutex
@@ -39,7 +39,7 @@ type Hub struct {
 func NewHub() *Hub {
 	h := &Hub{
 		clients:    make(map[string]*Client),
-		broadcast:  make(chan SSEEvent, BroadcastBufferSize),
+		broadcast:  make(chan Event, BroadcastBufferSize),
 		register:   make(chan *Client, ClientChannelBuffer),
 		unregister: make(chan string, ClientChannelBuffer),
 		shutdown:   make(chan struct{}),
@@ -114,7 +114,7 @@ func (h *Hub) run() {
 func (h *Hub) Register(eventTypes []string) *Client {
 	client := &Client{
 		ID:           uuid.New().String(),
-		EventChannel: make(chan SSEEvent, ClientEventBuffer),
+		EventChannel: make(chan Event, ClientEventBuffer),
 		done:         make(chan struct{}),
 	}
 
@@ -140,7 +140,7 @@ func (h *Hub) Unregister(clientID string) {
 
 // Broadcast sends an event to all interested clients
 func (h *Hub) Broadcast(eventType string, payload interface{}) {
-	event := SSEEvent{
+	event := Event{
 		ID:        uuid.New().String(),
 		Type:      eventType,
 		Timestamp: time.Now().Unix(),
@@ -163,7 +163,7 @@ func (h *Hub) ClientCount() int {
 }
 
 // FormatSSEMessage formats an SSE event for transmission
-func FormatSSEMessage(event SSEEvent) ([]byte, error) {
+func FormatSSEMessage(event Event) ([]byte, error) {
 	data, err := json.Marshal(event)
 	if err != nil {
 		return nil, err

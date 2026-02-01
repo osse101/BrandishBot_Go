@@ -255,4 +255,3 @@ func extractNodeInfo(v interface{}) NodeInfo {
 
 	return NodeInfo{}
 }
-

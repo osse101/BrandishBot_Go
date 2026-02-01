@@ -178,10 +178,10 @@ func TestHandleJoinGamble(t *testing.T) {
 		},
 	}
 
-			mockEventBus := mocks.NewMockEventBus(t)
-			mockProg := mocks.NewMockProgressionService(t)
-			mockProg.On("RecordEngagement", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
-			mockEventBus.On("Publish", mock.Anything, mock.Anything).Return(nil).Maybe()
+	mockEventBus := mocks.NewMockEventBus(t)
+	mockProg := mocks.NewMockProgressionService(t)
+	mockProg.On("RecordEngagement", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
+	mockEventBus.On("Publish", mock.Anything, mock.Anything).Return(nil).Maybe()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockGamble := mocks.NewMockGambleService(t)
@@ -265,8 +265,8 @@ func TestHandleGetGamble(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-			mockProg := mocks.NewMockProgressionService(t)
-			mockEventBus := mocks.NewMockEventBus(t)
+		mockProg := mocks.NewMockProgressionService(t)
+		mockEventBus := mocks.NewMockEventBus(t)
 		t.Run(tt.name, func(t *testing.T) {
 			mockGamble := mocks.NewMockGambleService(t)
 			handler := NewGambleHandler(mockGamble, mockProg, mockEventBus)

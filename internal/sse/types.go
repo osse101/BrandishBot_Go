@@ -11,11 +11,11 @@ type JobLevelUpPayload struct {
 
 // VotingStartedPayload represents the SSE payload for voting session start
 type VotingStartedPayload struct {
-	NodeKey        string             `json:"node_key,omitempty"`   // Set when auto-selected
-	TargetLevel    int                `json:"target_level"`         // Set when auto-selected
-	AutoSelected   bool               `json:"auto_selected"`        // True if only one option was available
-	Options        []VotingOptionInfo `json:"options,omitempty"`    // Available voting options
-	PreviousUnlock string             `json:"previous_unlock"`      // Node that was just unlocked
+	NodeKey        string             `json:"node_key,omitempty"` // Set when auto-selected
+	TargetLevel    int                `json:"target_level"`       // Set when auto-selected
+	AutoSelected   bool               `json:"auto_selected"`      // True if only one option was available
+	Options        []VotingOptionInfo `json:"options,omitempty"`  // Available voting options
+	PreviousUnlock string             `json:"previous_unlock"`    // Node that was just unlocked
 }
 
 // CycleCompletedPayload represents the SSE payload for progression cycle completion

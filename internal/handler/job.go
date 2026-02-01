@@ -60,7 +60,8 @@ func (h *JobHandler) HandleGetUserJobs(w http.ResponseWriter, r *http.Request) {
 	userJobs, err := h.service.GetUserJobsByPlatform(r.Context(), platform, platformID)
 	if err != nil {
 		log.Error("Failed to get user jobs", "error", err, "platform", platform, "platform_id", platformID)
-		statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
+		statusCode, userMsg := mapServiceErrorToUserMessage(err)
+		respondError(w, statusCode, userMsg)
 		return
 	}
 
@@ -104,7 +105,8 @@ func (h *JobHandler) HandleAwardXP(w http.ResponseWriter, r *http.Request) {
 			"platform_id", req.PlatformID,
 			"job_key", req.JobKey,
 		)
-		statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
+		statusCode, userMsg := mapServiceErrorToUserMessage(err)
+		respondError(w, statusCode, userMsg)
 		return
 	}
 

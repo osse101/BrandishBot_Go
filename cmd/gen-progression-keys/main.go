@@ -84,7 +84,7 @@ func generateKeysFile(tree ProgressionTree) string {
 		// Find progression_system
 		for _, node := range nodes {
 			if node.Key == "progression_system" {
-				sb.WriteString(fmt.Sprintf("\t// System\n"))
+				sb.WriteString("\t// System\n")
 				sb.WriteString(fmt.Sprintf("\tFeature%s = %q\n", pascalCase(node.Key), node.Key))
 				break
 			}
@@ -93,7 +93,7 @@ func generateKeysFile(tree ProgressionTree) string {
 
 	// Items
 	if nodes, ok := groups["item"]; ok {
-		sb.WriteString(fmt.Sprintf("\n\t// Items\n"))
+		sb.WriteString("\n\t// Items\n")
 		for _, node := range nodes {
 			sb.WriteString(fmt.Sprintf("\tItem%s = %q\n", pascalCase(stripPrefix(node.Key, "item_")), node.Key))
 		}
@@ -105,7 +105,7 @@ func generateKeysFile(tree ProgressionTree) string {
 		for _, node := range nodes {
 			if node.Key != "progression_system" {
 				if featureCount == 0 {
-					sb.WriteString(fmt.Sprintf("\n\t// Features\n"))
+					sb.WriteString("\n\t// Features\n")
 				}
 				sb.WriteString(fmt.Sprintf("\tFeature%s = %q\n", pascalCase(stripPrefix(node.Key, "feature_")), node.Key))
 				featureCount++
@@ -115,7 +115,7 @@ func generateKeysFile(tree ProgressionTree) string {
 
 	// Upgrades
 	if nodes, ok := groups["upgrade"]; ok {
-		sb.WriteString(fmt.Sprintf("\n\t// Upgrades\n"))
+		sb.WriteString("\n\t// Upgrades\n")
 		for _, node := range nodes {
 			sb.WriteString(fmt.Sprintf("\tUpgrade%s = %q\n", pascalCase(stripPrefix(node.Key, "upgrade_")), node.Key))
 		}
@@ -123,7 +123,7 @@ func generateKeysFile(tree ProgressionTree) string {
 
 	// Jobs
 	if nodes, ok := groups["job"]; ok {
-		sb.WriteString(fmt.Sprintf("\n\t// Jobs\n"))
+		sb.WriteString("\n\t// Jobs\n")
 		for _, node := range nodes {
 			sb.WriteString(fmt.Sprintf("\tJob%s = %q\n", pascalCase(stripPrefix(node.Key, "job_")), node.Key))
 		}

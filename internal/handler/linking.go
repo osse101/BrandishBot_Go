@@ -62,7 +62,8 @@ func (h *LinkingHandlers) HandleInitiate() http.HandlerFunc {
 		token, err := h.svc.InitiateLink(r.Context(), req.Platform, req.PlatformID)
 		if err != nil {
 			log.Error("Failed to initiate link", "error", err)
-			statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
+			statusCode, userMsg := mapServiceErrorToUserMessage(err)
+			respondError(w, statusCode, userMsg)
 			return
 		}
 
@@ -147,7 +148,8 @@ func (h *LinkingHandlers) HandleUnlink() http.HandlerFunc {
 			// Step 1: Initiate unlink
 			if err := h.svc.InitiateUnlink(r.Context(), req.Platform, req.PlatformID, req.TargetPlatform); err != nil {
 				log.Error("Failed to initiate unlink", "error", err)
-				statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
+				statusCode, userMsg := mapServiceErrorToUserMessage(err)
+				respondError(w, statusCode, userMsg)
 				return
 			}
 
@@ -189,7 +191,8 @@ func (h *LinkingHandlers) HandleStatus() http.HandlerFunc {
 		status, err := h.svc.GetStatus(r.Context(), platform, platformID)
 		if err != nil {
 			log.Error("Failed to get link status", "error", err)
-			statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
+			statusCode, userMsg := mapServiceErrorToUserMessage(err)
+			respondError(w, statusCode, userMsg)
 			return
 		}
 

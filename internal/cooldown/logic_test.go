@@ -50,38 +50,38 @@ func TestCheckCooldownInternal(t *testing.T) {
 	duration := 5 * time.Minute
 
 	tests := []struct {
-		name          string
-		lastUsed      *time.Time
+		name           string
+		lastUsed       *time.Time
 		wantOnCooldown bool
 		wantRemaining  time.Duration
 	}{
 		{
-			name:          "nil lastUsed",
-			lastUsed:      nil,
+			name:           "nil lastUsed",
+			lastUsed:       nil,
 			wantOnCooldown: false,
 			wantRemaining:  0,
 		},
 		{
-			name:          "active cooldown",
-			lastUsed:      ptr(now.Add(-2 * time.Minute)), // 2 mins ago
+			name:           "active cooldown",
+			lastUsed:       ptr(now.Add(-2 * time.Minute)), // 2 mins ago
 			wantOnCooldown: true,
 			wantRemaining:  3 * time.Minute, // 5 - 2 = 3
 		},
 		{
-			name:          "expired cooldown",
-			lastUsed:      ptr(now.Add(-6 * time.Minute)), // 6 mins ago
+			name:           "expired cooldown",
+			lastUsed:       ptr(now.Add(-6 * time.Minute)), // 6 mins ago
 			wantOnCooldown: false,
 			wantRemaining:  0,
 		},
 		{
-			name:          "exact boundary",
-			lastUsed:      ptr(now.Add(-5 * time.Minute)), // 5 mins ago
+			name:           "exact boundary",
+			lastUsed:       ptr(now.Add(-5 * time.Minute)), // 5 mins ago
 			wantOnCooldown: false,
 			wantRemaining:  0,
 		},
 		{
-			name:          "just before expiry",
-			lastUsed:      ptr(now.Add(-5 * time.Minute + 1*time.Second)), // 4m 59s ago
+			name:           "just before expiry",
+			lastUsed:       ptr(now.Add(-5*time.Minute + 1*time.Second)), // 4m 59s ago
 			wantOnCooldown: true,
 			wantRemaining:  1 * time.Second,
 		},

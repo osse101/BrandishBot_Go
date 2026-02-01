@@ -8,10 +8,10 @@ const (
 
 // Error Messages - Database Operations
 const (
-	ErrMsgFailedToParseConnString    = "failed to parse connection string"
-	ErrMsgFailedToCreatePool         = "failed to create connection pool"
-	ErrMsgFailedToPingDatabase       = "failed to ping database"
-	ErrMsgFailedToBeginTransaction   = "failed to begin transaction"
+	ErrMsgFailedToParseConnString     = "failed to parse connection string"
+	ErrMsgFailedToCreatePool          = "failed to create connection pool"
+	ErrMsgFailedToPingDatabase        = "failed to ping database"
+	ErrMsgFailedToBeginTransaction    = "failed to begin transaction"
 	ErrMsgFailedToRollbackTransaction = "Failed to rollback transaction"
 )
 

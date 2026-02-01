@@ -55,13 +55,13 @@ const (
 	ErrMsgHandleMessageFailed = "Failed to handle message"
 
 	// Admin error messages
-	ErrMsgReloadConfigFailed  = "Failed to reload configuration"
-	ErrMsgAmountMustBePositive = "amount must be positive"
-	ErrMsgAmountExceedsMax     = "amount exceeds maximum (10000)"
+	ErrMsgReloadConfigFailed          = "Failed to reload configuration"
+	ErrMsgAmountMustBePositive        = "amount must be positive"
+	ErrMsgAmountExceedsMax            = "amount exceeds maximum (10000)"
 	ErrMsgPlatformUsernameJobRequired = "platform, username, and job_key are required"
 
 	// Gamble error messages
-	ErrMsgInvalidGambleID = "Invalid gamble ID"
+	ErrMsgInvalidGambleID    = "Invalid gamble ID"
 	ErrMsgGambleNotFoundHTTP = "Gamble not found"
 
 	// Inventory filter error messages
@@ -103,7 +103,7 @@ const (
 	MsgPlatformUnlinked     = "Platform unlinked"
 
 	// Info messages
-	MsgNoActiveVotingSession = "No active voting session"
+	MsgNoActiveVotingSession  = "No active voting session"
 	MsgNoActiveUnlockProgress = "No active unlock progress"
 
 	// Admin success messages

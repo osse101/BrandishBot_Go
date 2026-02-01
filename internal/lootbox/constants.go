@@ -71,8 +71,8 @@ const (
 
 // Warning messages for missing or invalid data
 const (
-	LogMsgNoLootTableFound     = "No loot table found for lootbox"
-	LogMsgDroppedItemNotInDB   = "Dropped item not found in DB"
+	LogMsgNoLootTableFound   = "No loot table found for lootbox"
+	LogMsgDroppedItemNotInDB = "Dropped item not found in DB"
 )
 
 // Log field keys for structured logging

@@ -33,7 +33,7 @@ func (s *service) StartVotingSession(ctx context.Context, unlockedNodeID *int) e
 		return fmt.Errorf("failed to get unlock progress: %w", err)
 	}
 
-	// Note: Parallel voting is allowed. A voting session can be active 
+	// Note: Parallel voting is allowed. A voting session can be active
 	// while a node is currently being unlocked (accumulation in progress).
 	// When that node finishes, the winner of this session becomes the next target.
 	if progress != nil && progress.NodeID != nil {

@@ -20,7 +20,7 @@ import (
 var (
 	ErrDuplicateInternalName = errors.New("duplicate internal name")
 
-	ErrInvalidConfig         = errors.New("invalid configuration")
+	ErrInvalidConfig = errors.New("invalid configuration")
 )
 
 // Schema paths
@@ -30,10 +30,10 @@ const (
 
 // Config represents the JSON configuration for items
 type Config struct {
-	Version       string   `json:"version"`
-	Description   string   `json:"description"`
+	Version     string `json:"version"`
+	Description string `json:"description"`
 
-	Items         []Def    `json:"items"`
+	Items []Def `json:"items"`
 }
 
 // Def represents a single item definition in the JSON
@@ -104,8 +104,6 @@ func (l *itemLoader) Validate(config *Config) error {
 		return fmt.Errorf("%w: %s", ErrInvalidConfig, ErrMsgNoItemsDefined)
 	}
 
-
-
 	// Track internal names for duplicate detection
 	internalNames := make(map[string]bool, len(config.Items))
 
@@ -120,8 +118,6 @@ func (l *itemLoader) Validate(config *Config) error {
 
 	return nil
 }
-
-
 
 func (l *itemLoader) validateItemDef(index int, item *Def, internalNames map[string]bool) error {
 	// Check for empty internal name
@@ -142,8 +138,6 @@ func (l *itemLoader) validateItemDef(index int, item *Def, internalNames map[str
 	if item.DefaultDisplay == "" {
 		return fmt.Errorf(ErrFmtItemHasEmptyDisplay, ErrInvalidConfig, item.InternalName)
 	}
-
-
 
 	// Validate numeric fields
 	if item.MaxStack < 0 {

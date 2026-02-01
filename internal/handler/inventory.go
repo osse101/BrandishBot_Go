@@ -43,7 +43,8 @@ func HandleAddItemByUsername(svc user.Service) http.HandlerFunc {
 
 		if err := svc.AddItemByUsername(r.Context(), req.Platform, req.Username, req.ItemName, req.Quantity); err != nil {
 			log.Error("Failed to add item by username", "error", err, "username", req.Username, "item", req.ItemName)
-			statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
+			statusCode, userMsg := mapServiceErrorToUserMessage(err)
+			respondError(w, statusCode, userMsg)
 			return
 		}
 
@@ -87,7 +88,8 @@ func HandleRemoveItemByUsername(svc user.Service) http.HandlerFunc {
 		removed, err := svc.RemoveItemByUsername(r.Context(), req.Platform, req.Username, req.ItemName, req.Quantity)
 		if err != nil {
 			log.Error("Failed to remove item by username", "error", err, "username", req.Username, "item", req.ItemName)
-			statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
+			statusCode, userMsg := mapServiceErrorToUserMessage(err)
+			respondError(w, statusCode, userMsg)
 			return
 		}
 
@@ -101,13 +103,13 @@ func HandleRemoveItemByUsername(svc user.Service) http.HandlerFunc {
 }
 
 type GiveItemRequest struct {
-	OwnerPlatform      string `json:"owner_platform" validate:"required,platform"`
-	OwnerPlatformID    string `json:"owner_platform_id" validate:"required"`
-	Owner              string `json:"owner" validate:"required,max=100,excludesall=\x00\n\r\t"`
-	ReceiverPlatform   string `json:"receiver_platform" validate:"required,platform"`
-	Receiver           string `json:"receiver" validate:"required,max=100,excludesall=\x00\n\r\t"`
-	ItemName           string `json:"item_name" validate:"required,max=100"`
-	Quantity           int    `json:"quantity" validate:"min=1,max=10000"`
+	OwnerPlatform    string `json:"owner_platform" validate:"required,platform"`
+	OwnerPlatformID  string `json:"owner_platform_id" validate:"required"`
+	Owner            string `json:"owner" validate:"required,max=100,excludesall=\x00\n\r\t"`
+	ReceiverPlatform string `json:"receiver_platform" validate:"required,platform"`
+	Receiver         string `json:"receiver" validate:"required,max=100,excludesall=\x00\n\r\t"`
+	ItemName         string `json:"item_name" validate:"required,max=100"`
+	Quantity         int    `json:"quantity" validate:"min=1,max=10000"`
 }
 
 // HandleGiveItem handles transferring items between users
@@ -132,7 +134,7 @@ func HandleGiveItem(svc user.Service) http.HandlerFunc {
 
 		// Check for self-gifting (same platform and same username)
 		if req.OwnerPlatform == req.ReceiverPlatform &&
-		   (req.Owner == req.Receiver || req.OwnerPlatformID == req.Receiver) {
+			(req.Owner == req.Receiver || req.OwnerPlatformID == req.Receiver) {
 			log.Info("Self-gifting attempt detected", "user", req.Owner)
 			respondError(w, http.StatusBadRequest, "You can't give items to yourself! Nice try though.")
 			return
@@ -140,7 +142,8 @@ func HandleGiveItem(svc user.Service) http.HandlerFunc {
 
 		if err := svc.GiveItem(r.Context(), req.OwnerPlatform, req.OwnerPlatformID, req.Owner, req.ReceiverPlatform, req.Receiver, req.ItemName, req.Quantity); err != nil {
 			log.Error("Failed to give item", "error", err, "owner", req.Owner, "receiver", req.Receiver, "item", req.ItemName)
-			statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
+			statusCode, userMsg := mapServiceErrorToUserMessage(err)
+			respondError(w, statusCode, userMsg)
 			return
 		}
 
@@ -193,7 +196,8 @@ func HandleSellItem(svc economy.Service, progressionSvc progression.Service, eve
 		moneyGained, itemsSold, err := svc.SellItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.ItemName, req.Quantity)
 		if err != nil {
 			log.Error("Failed to sell item", "error", err, "username", req.Username, "item", req.ItemName)
-			statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
+			statusCode, userMsg := mapServiceErrorToUserMessage(err)
+			respondError(w, statusCode, userMsg)
 			return
 		}
 
@@ -271,7 +275,8 @@ func HandleBuyItem(svc economy.Service, progressionSvc progression.Service, even
 		bought, err := svc.BuyItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.ItemName, req.Quantity)
 		if err != nil {
 			log.Error("Failed to buy item", "error", err, "username", req.Username, "item", req.ItemName)
-			statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
+			statusCode, userMsg := mapServiceErrorToUserMessage(err)
+			respondError(w, statusCode, userMsg)
 			return
 		}
 
@@ -288,11 +293,11 @@ func HandleBuyItem(svc economy.Service, progressionSvc progression.Service, even
 			bought,
 		)
 
-	// Record contribution for buying
-	if err := progressionSvc.RecordEngagement(r.Context(), req.Username, "item_bought", bought); err != nil {
-		log.Error("Failed to record buy engagement", "error", err)
-		// Don't fail the request
-	}
+		// Record contribution for buying
+		if err := progressionSvc.RecordEngagement(r.Context(), req.Username, "item_bought", bought); err != nil {
+			log.Error("Failed to record buy engagement", "error", err)
+			// Don't fail the request
+		}
 
 		// Publish item.bought event
 		// Note: We don't have the exact cost here, would need to modify economy.Service to return it
@@ -328,26 +333,26 @@ type UseItemResponse struct {
 func mapItemToProgressionNode(itemName string) string {
 	mapping := map[string]string{
 		// Weapons
-		"weapon_missile":    progression.ItemWeaponMissile,
-		"item_grenade":      progression.ItemGrenade,
-		"explosive_tnt":     progression.ItemTnt,
+		"weapon_missile":     progression.ItemWeaponMissile,
+		"item_grenade":       progression.ItemGrenade,
+		"explosive_tnt":      progression.ItemTnt,
 		"weapon_hugeblaster": progression.ItemHugemissile,
 
 		// Defense
-		"item_shield":       progression.ItemShield,
-		"weapon_mirror":     progression.ItemWeaponMirror,
+		"item_shield":   progression.ItemShield,
+		"weapon_mirror": progression.ItemWeaponMirror,
 
 		// Recovery
-		"revive_small":      progression.ItemRevives,
+		"revive_small": progression.ItemRevives,
 
 		// Progression
-		"xp_rarecandy":      progression.ItemXpRarecandy,
+		"xp_rarecandy": progression.ItemXpRarecandy,
 
 		// Lootboxes
-		"lootbox_tier0":     progression.ItemLootbox0,
-		"lootbox_tier1":     progression.ItemLootbox1,
-		"lootbox_tier2":     progression.ItemLootbox2,
-		"lootbox_tier3":     progression.ItemLootbox3,
+		"lootbox_tier0": progression.ItemLootbox0,
+		"lootbox_tier1": progression.ItemLootbox1,
+		"lootbox_tier2": progression.ItemLootbox2,
+		"lootbox_tier3": progression.ItemLootbox3,
 
 		// Utilities
 		"item_shovel":       progression.ItemShovel,
@@ -355,8 +360,8 @@ func mapItemToProgressionNode(itemName string) string {
 		"item_video_filter": progression.ItemVideoFilter,
 
 		// Passive items (economy checks these separately)
-		"item_scrap":        progression.ItemScrap,
-		"item_script":       progression.ItemScript,
+		"item_scrap":  progression.ItemScrap,
+		"item_script": progression.ItemScript,
 	}
 	return mapping[itemName]
 }
@@ -401,7 +406,8 @@ func HandleUseItem(svc user.Service, progressionSvc progression.Service, eventBu
 		message, err := svc.UseItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.ItemName, req.Quantity, req.TargetUser)
 		if err != nil {
 			log.Error("Failed to use item", "error", err, "username", req.Username, "item", req.ItemName)
-			statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
+			statusCode, userMsg := mapServiceErrorToUserMessage(err)
+			respondError(w, statusCode, userMsg)
 			return
 		}
 
@@ -413,11 +419,11 @@ func HandleUseItem(svc user.Service, progressionSvc progression.Service, eventBu
 
 		// Track engagement for item usage
 
-	// Record contribution for item usage
-	if err := progressionSvc.RecordEngagement(r.Context(), req.Username, "item_used", req.Quantity); err != nil {
-		log.Error("Failed to record use engagement", "error", err)
-		// Don't fail the request
-	}
+		// Record contribution for item usage
+		if err := progressionSvc.RecordEngagement(r.Context(), req.Username, "item_used", req.Quantity); err != nil {
+			log.Error("Failed to record use engagement", "error", err)
+			// Don't fail the request
+		}
 		middleware.TrackEngagementFromContext(
 			middleware.WithUserID(r.Context(), req.Username),
 			eventBus,
@@ -492,7 +498,8 @@ func HandleGetInventory(svc user.Service, progSvc progression.Service) http.Hand
 			unlocked, err := progSvc.IsFeatureUnlocked(r.Context(), featureKey)
 			if err != nil {
 				log.Error("Failed to check filter unlock", "error", err)
-				statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
+				statusCode, userMsg := mapServiceErrorToUserMessage(err)
+				respondError(w, statusCode, userMsg)
 				return
 			}
 			if !unlocked {
@@ -507,7 +514,8 @@ func HandleGetInventory(svc user.Service, progSvc progression.Service) http.Hand
 		items, err := svc.GetInventory(r.Context(), platform, platformID, username, filter)
 		if err != nil {
 			log.Error("Failed to get inventory", "error", err, "username", username)
-			statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
+			statusCode, userMsg := mapServiceErrorToUserMessage(err)
+			respondError(w, statusCode, userMsg)
 			return
 		}
 
@@ -518,7 +526,6 @@ func HandleGetInventory(svc user.Service, progSvc progression.Service) http.Hand
 		})
 	}
 }
-
 
 // HandleGetInventoryByUsername gets inventory by username only
 // @Summary Get inventory by username
@@ -550,7 +557,8 @@ func HandleGetInventoryByUsername(svc user.Service) http.HandlerFunc {
 		items, err := svc.GetInventoryByUsername(r.Context(), platform, username, filter)
 		if err != nil {
 			log.Error("Failed to get inventory by username", "error", err, "username", username)
-			statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
+			statusCode, userMsg := mapServiceErrorToUserMessage(err)
+			respondError(w, statusCode, userMsg)
 			return
 		}
 
@@ -561,4 +569,3 @@ func HandleGetInventoryByUsername(svc user.Service) http.HandlerFunc {
 		})
 	}
 }
-

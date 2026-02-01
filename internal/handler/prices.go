@@ -43,7 +43,8 @@ func handleGetPricesInternal(w http.ResponseWriter, r *http.Request, fetcher fun
 	items, err := fetcher(r.Context())
 	if err != nil {
 		log.Error("Failed to get "+label+" prices", "error", err)
-		statusCode, userMsg := mapServiceErrorToUserMessage(err); respondError(w, statusCode, userMsg)
+		statusCode, userMsg := mapServiceErrorToUserMessage(err)
+		respondError(w, statusCode, userMsg)
 		return
 	}
 

@@ -33,10 +33,10 @@ func TestHandleAddItem(t *testing.T) {
 		{
 			name: "Success",
 			requestBody: AddItemByUsernameRequest{
-				Platform:   domain.PlatformTwitch,
-				Username:   "testuser",
-				ItemName:   domain.ItemBlaster,
-				Quantity:   1,
+				Platform: domain.PlatformTwitch,
+				Username: "testuser",
+				ItemName: domain.ItemBlaster,
+				Quantity: 1,
 			},
 			setupMock: func(m *mocks.MockUserService) {
 				m.On("AddItemByUsername", mock.Anything, domain.PlatformTwitch, "testuser", domain.ItemBlaster, 1).Return(nil)
@@ -57,10 +57,10 @@ func TestHandleAddItem(t *testing.T) {
 		{
 			name: "Service Error",
 			requestBody: AddItemByUsernameRequest{
-				Platform:   domain.PlatformTwitch,
-				Username:   "testuser",
-				ItemName:   domain.ItemBlaster,
-				Quantity:   1,
+				Platform: domain.PlatformTwitch,
+				Username: "testuser",
+				ItemName: domain.ItemBlaster,
+				Quantity: 1,
 			},
 			setupMock: func(m *mocks.MockUserService) {
 				m.On("AddItemByUsername", mock.Anything, domain.PlatformTwitch, "testuser", domain.ItemBlaster, 1).Return(errors.New(ErrMsgGenericServerError))
@@ -267,10 +267,10 @@ func TestHandleRemoveItem(t *testing.T) {
 		{
 			name: "Success",
 			requestBody: RemoveItemByUsernameRequest{
-				Platform:   domain.PlatformTwitch,
-				Username:   "testuser",
-				ItemName:   domain.ItemBlaster,
-				Quantity:   1,
+				Platform: domain.PlatformTwitch,
+				Username: "testuser",
+				ItemName: domain.ItemBlaster,
+				Quantity: 1,
 			},
 			setupMock: func(m *mocks.MockUserService) {
 				m.On("RemoveItemByUsername", mock.Anything, domain.PlatformTwitch, "testuser", domain.ItemBlaster, 1).Return(1, nil)
@@ -281,10 +281,10 @@ func TestHandleRemoveItem(t *testing.T) {
 		{
 			name: "Service Error",
 			requestBody: RemoveItemByUsernameRequest{
-				Platform:   domain.PlatformTwitch,
-				Username:   "testuser",
-				ItemName:   domain.ItemBlaster,
-				Quantity:   1,
+				Platform: domain.PlatformTwitch,
+				Username: "testuser",
+				ItemName: domain.ItemBlaster,
+				Quantity: 1,
 			},
 			setupMock: func(m *mocks.MockUserService) {
 				m.On("RemoveItemByUsername", mock.Anything, domain.PlatformTwitch, "testuser", domain.ItemBlaster, 1).Return(0, errors.New(ErrMsgGenericServerError))
@@ -329,13 +329,13 @@ func TestHandleGiveItem(t *testing.T) {
 		{
 			name: "Success",
 			requestBody: GiveItemRequest{
-				OwnerPlatform:      domain.PlatformTwitch,
-				OwnerPlatformID:    "owner-id",
-				Owner:              "owner",
-				ReceiverPlatform:   domain.PlatformTwitch,
-				Receiver:           "receiver",
-				ItemName:           domain.ItemBlaster,
-				Quantity:           1,
+				OwnerPlatform:    domain.PlatformTwitch,
+				OwnerPlatformID:  "owner-id",
+				Owner:            "owner",
+				ReceiverPlatform: domain.PlatformTwitch,
+				Receiver:         "receiver",
+				ItemName:         domain.ItemBlaster,
+				Quantity:         1,
 			},
 			setupMock: func(m *mocks.MockUserService) {
 				m.On("GiveItem", mock.Anything, domain.PlatformTwitch, "owner-id", "owner", domain.PlatformTwitch, "receiver", domain.ItemBlaster, 1).Return(nil)
@@ -346,13 +346,13 @@ func TestHandleGiveItem(t *testing.T) {
 		{
 			name: "Service Error",
 			requestBody: GiveItemRequest{
-				OwnerPlatform:      domain.PlatformTwitch,
-				OwnerPlatformID:    "owner-id",
-				Owner:              "owner",
-				ReceiverPlatform:   domain.PlatformTwitch,
-				Receiver:           "receiver",
-				ItemName:           domain.ItemBlaster,
-				Quantity:           1,
+				OwnerPlatform:    domain.PlatformTwitch,
+				OwnerPlatformID:  "owner-id",
+				Owner:            "owner",
+				ReceiverPlatform: domain.PlatformTwitch,
+				Receiver:         "receiver",
+				ItemName:         domain.ItemBlaster,
+				Quantity:         1,
 			},
 			setupMock: func(m *mocks.MockUserService) {
 				m.On("GiveItem", mock.Anything, domain.PlatformTwitch, "owner-id", "owner", domain.PlatformTwitch, "receiver", domain.ItemBlaster, 1).Return(errors.New(ErrMsgGenericServerError))
@@ -598,9 +598,9 @@ func TestHandleUseItem(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockUser := mocks.NewMockUserService(t)
-		mockProg := mocks.NewMockProgressionService(t)
+			mockProg := mocks.NewMockProgressionService(t)
 			mockBus := mocks.NewMockEventBus(t)
-		mockProg.On("RecordEngagement", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
+			mockProg.On("RecordEngagement", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 			tt.setupMock(mockUser, mockBus)
 
 			handler := HandleUseItem(mockUser, mockProg, mockBus)
