@@ -136,6 +136,64 @@ func (_c *MockJobProgressionService_IsFeatureUnlocked_Call) RunAndReturn(run fun
 	return _c
 }
 
+// IsNodeUnlocked provides a mock function with given fields: ctx, nodeKey, level
+func (_m *MockJobProgressionService) IsNodeUnlocked(ctx context.Context, nodeKey string, level int) (bool, error) {
+	ret := _m.Called(ctx, nodeKey, level)
+
+	if len(ret) == 0 {
+		panic("no return value specified for IsNodeUnlocked")
+	}
+
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, int) (bool, error)); ok {
+		return rf(ctx, nodeKey, level)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, int) bool); ok {
+		r0 = rf(ctx, nodeKey, level)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, int) error); ok {
+		r1 = rf(ctx, nodeKey, level)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockJobProgressionService_IsNodeUnlocked_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsNodeUnlocked'
+type MockJobProgressionService_IsNodeUnlocked_Call struct {
+	*mock.Call
+}
+
+// IsNodeUnlocked is a helper method to define mock.On call
+//   - ctx context.Context
+//   - nodeKey string
+//   - level int
+func (_e *MockJobProgressionService_Expecter) IsNodeUnlocked(ctx interface{}, nodeKey interface{}, level interface{}) *MockJobProgressionService_IsNodeUnlocked_Call {
+	return &MockJobProgressionService_IsNodeUnlocked_Call{Call: _e.mock.On("IsNodeUnlocked", ctx, nodeKey, level)}
+}
+
+func (_c *MockJobProgressionService_IsNodeUnlocked_Call) Run(run func(ctx context.Context, nodeKey string, level int)) *MockJobProgressionService_IsNodeUnlocked_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(int))
+	})
+	return _c
+}
+
+func (_c *MockJobProgressionService_IsNodeUnlocked_Call) Return(_a0 bool, _a1 error) *MockJobProgressionService_IsNodeUnlocked_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockJobProgressionService_IsNodeUnlocked_Call) RunAndReturn(run func(context.Context, string, int) (bool, error)) *MockJobProgressionService_IsNodeUnlocked_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewMockJobProgressionService creates a new instance of MockJobProgressionService. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewMockJobProgressionService(t interface {
