@@ -9,6 +9,18 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type CompostDeposit struct {
+	ID          uuid.UUID          `json:"id"`
+	UserID      uuid.UUID          `json:"user_id"`
+	ItemKey     string             `json:"item_key"`
+	Quantity    int32              `json:"quantity"`
+	DepositedAt pgtype.Timestamptz `json:"deposited_at"`
+	ReadyAt     pgtype.Timestamptz `json:"ready_at"`
+	HarvestedAt pgtype.Timestamptz `json:"harvested_at"`
+	GemsAwarded pgtype.Int4        `json:"gems_awarded"`
+	Metadata    []byte             `json:"metadata"`
+}
+
 type ConfigSyncMetadatum struct {
 	ConfigName   string             `json:"config_name"`
 	LastSyncTime pgtype.Timestamptz `json:"last_sync_time"`
@@ -40,6 +52,20 @@ type DisassembleRecipe struct {
 	RecipeKey        string           `json:"recipe_key"`
 }
 
+type Duel struct {
+	ID           uuid.UUID          `json:"id"`
+	ChallengerID uuid.UUID          `json:"challenger_id"`
+	OpponentID   pgtype.UUID        `json:"opponent_id"`
+	State        string             `json:"state"`
+	Stakes       []byte             `json:"stakes"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	ExpiresAt    pgtype.Timestamptz `json:"expires_at"`
+	StartedAt    pgtype.Timestamptz `json:"started_at"`
+	CompletedAt  pgtype.Timestamptz `json:"completed_at"`
+	WinnerID     pgtype.UUID        `json:"winner_id"`
+	ResultData   []byte             `json:"result_data"`
+}
+
 type EngagementMetric struct {
 	ID          int32            `json:"id"`
 	UserID      string           `json:"user_id"`
@@ -63,6 +89,25 @@ type Event struct {
 	Payload   []byte             `json:"payload"`
 	Metadata  []byte             `json:"metadata"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+type Expedition struct {
+	ID                 uuid.UUID          `json:"id"`
+	InitiatorID        uuid.UUID          `json:"initiator_id"`
+	ExpeditionType     string             `json:"expedition_type"`
+	State              string             `json:"state"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	JoinDeadline       pgtype.Timestamptz `json:"join_deadline"`
+	CompletionDeadline pgtype.Timestamptz `json:"completion_deadline"`
+	CompletedAt        pgtype.Timestamptz `json:"completed_at"`
+	Metadata           []byte             `json:"metadata"`
+}
+
+type ExpeditionParticipant struct {
+	ExpeditionID uuid.UUID          `json:"expedition_id"`
+	UserID       uuid.UUID          `json:"user_id"`
+	JoinedAt     pgtype.Timestamptz `json:"joined_at"`
+	Rewards      []byte             `json:"rewards"`
 }
 
 type Gamble struct {

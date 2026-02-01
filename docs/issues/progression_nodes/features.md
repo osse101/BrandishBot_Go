@@ -4,6 +4,18 @@
 
 8 out of 11 total features already have gates implemented. These are the remaining 3.
 
+## Current Status (2026-02-01)
+
+**Structural implementation completed** for all three features:
+- ✅ Database migrations created (duels, compost, expeditions)
+- ✅ Domain types defined with JSONB marshaling
+- ✅ Repository interfaces with transaction support
+- ✅ Service layer with placeholder logic
+- ✅ HTTP handlers with progression unlock checks
+- ✅ Builds successfully with no errors
+
+**Next phase**: Implement business logic, route registration, and Discord commands.
+
 ---
 
 ## Tier 3 Features
@@ -18,20 +30,32 @@
 
 **Implementation Checklist**:
 
-- [ ] Add duel feature service (if not exists)
-- [ ] Add unlock check in duel handlers
-- [ ] Update duel initiation logic to verify unlock
+- [x] Add duel feature service (✅ `internal/duel/service.go`)
+- [x] Add unlock check in duel handlers (✅ `CheckFeatureLocked` in all handlers)
+- [x] Create domain types (✅ `internal/domain/duel.go`)
+- [x] Create repository interface (✅ `internal/repository/duel.go`)
+- [x] Create database migration (✅ `migrations/0010_add_duels.sql`)
+- [x] Create HTTP handlers (✅ `internal/handler/duel.go`)
+- [ ] Implement duel execution logic (coin flip/dice roll in `Accept()`)
+- [ ] Implement repository (Postgres implementation)
+- [ ] Register routes in `internal/server/server.go`
 - [ ] Add tests for duel when locked/unlocked
 - [ ] Verify with admin unlock: `curl -X POST .../admin/unlock -d '{"node_key": "feature_duel", "level": 1}'`
 - [ ] Test locked behavior (duel feature unavailable)
 - [ ] Test unlocked behavior (can challenge others to duels)
+- [ ] Create Discord commands (`/duel challenge`, `/duel accept`, etc.)
+- [ ] Update API client wrappers (Go Discord, C# Streamer.bot)
 
-**Files to Modify**:
+**Files Created**:
 
-- `internal/handler/duel.go` (create if doesn't exist) - Add duel endpoints
-- `internal/duel/service.go` (create if doesn't exist) - Add duel logic
-- `internal/duel/service_test.go` (create if doesn't exist) - Add tests
-- `internal/server/server.go` - Register duel routes
+- ✅ `internal/handler/duel.go` - 5 endpoints (challenge, accept, decline, get pending, get duel)
+- ✅ `internal/duel/service.go` - Service with placeholder logic
+- ✅ `internal/domain/duel.go` - Domain types (DuelState, DuelStakes, DuelResult)
+- ✅ `internal/repository/duel.go` - Repository interface with transaction support
+- ✅ `migrations/0010_add_duels.sql` - Database schema
+- ⏳ `internal/duel/service_test.go` - Not yet created
+- ⏳ `internal/database/postgres/duel.go` - Not yet created
+- ⏳ `internal/discord/cmd_duel.go` - Not yet created
 
 **Acceptance Criteria**:
 
@@ -105,20 +129,33 @@ func (s *Service) AcceptDuel(ctx context.Context, duelID string, accepterID stri
 
 **Implementation Checklist**:
 
-- [ ] Add compost feature service (if not exists)
-- [ ] Add unlock check in compost handlers
-- [ ] Update compost conversion logic to verify unlock
+- [x] Add compost feature service (✅ `internal/compost/service.go`)
+- [x] Add unlock check in compost handlers (✅ `CheckFeatureLocked` in all handlers)
+- [x] Create domain types (✅ `internal/domain/compost.go`)
+- [x] Create repository interface (✅ `internal/repository/compost.go`)
+- [x] Create database migration (✅ `migrations/0011_add_compost.sql`)
+- [x] Create HTTP handlers (✅ `internal/handler/compost.go`)
+- [ ] Implement conversion rate logic (item rarity → gems calculation)
+- [ ] Implement harvest logic with inventory updates
+- [ ] Implement repository (Postgres implementation)
+- [ ] Register routes in `internal/server/server.go`
 - [ ] Add tests for compost when locked/unlocked
 - [ ] Verify with admin unlock: `curl -X POST .../admin/unlock -d '{"node_key": "feature_compost", "level": 1}'`
 - [ ] Test locked behavior (compost feature unavailable)
 - [ ] Test unlocked behavior (can convert junk to gems over time)
+- [ ] Create Discord commands (`/compost deposit`, `/compost status`, `/compost harvest`)
+- [ ] Update API client wrappers (Go Discord, C# Streamer.bot)
 
-**Files to Modify**:
+**Files Created**:
 
-- `internal/handler/compost.go` (create if doesn't exist) - Add compost endpoints
-- `internal/compost/service.go` (create if doesn't exist) - Add compost conversion logic
-- `internal/compost/service_test.go` (create if doesn't exist) - Add tests
-- `internal/server/server.go` - Register compost routes
+- ✅ `internal/handler/compost.go` - 3 endpoints (deposit, status, harvest)
+- ✅ `internal/compost/service.go` - Service with placeholder logic
+- ✅ `internal/domain/compost.go` - Domain types (CompostDeposit, CompostStatus, CompostMetadata)
+- ✅ `internal/repository/compost.go` - Repository interface with transaction support
+- ✅ `migrations/0011_add_compost.sql` - Database schema
+- ⏳ `internal/compost/service_test.go` - Not yet created
+- ⏳ `internal/database/postgres/compost.go` - Not yet created
+- ⏳ `internal/discord/cmd_compost.go` - Not yet created
 
 **Acceptance Criteria**:
 
@@ -332,20 +369,35 @@ This can be enhanced later to add time-based conversion for better gem rates.
 
 **Implementation Checklist**:
 
-- [ ] Add expedition feature service (if not exists)
-- [ ] Add unlock check in expedition handlers
-- [ ] Update expedition logic to verify unlock
+- [x] Add expedition feature service (✅ `internal/expedition/service.go`)
+- [x] Add unlock check in expedition handlers (✅ `CheckFeatureLocked` in all handlers)
+- [x] Create domain types (✅ `internal/domain/expedition.go`)
+- [x] Create repository interface (✅ `internal/repository/expedition.go`)
+- [x] Create database migration (✅ `migrations/0012_add_expeditions.sql`)
+- [x] Create HTTP handlers (✅ `internal/handler/expedition.go`)
+- [ ] Implement expedition execution logic (reward generation in `ExecuteExpedition()`)
+- [ ] Implement repository (Postgres implementation)
+- [ ] Create expedition worker (follows gamble worker pattern)
+- [ ] Integrate worker with scheduler
+- [ ] Register routes in `internal/server/server.go`
 - [ ] Add tests for expedition when locked/unlocked
 - [ ] Verify with admin unlock: `curl -X POST .../admin/unlock -d '{"node_key": "feature_expedition", "level": 1}'`
 - [ ] Test locked behavior (expedition feature unavailable)
 - [ ] Test unlocked behavior (can start expeditions)
+- [ ] Create Discord commands (`/expedition start`, `/expedition join`, `/expedition status`)
+- [ ] Update API client wrappers (Go Discord, C# Streamer.bot)
 
-**Files to Modify**:
+**Files Created**:
 
-- `internal/handler/expedition.go` (create if doesn't exist) - Add expedition endpoints
-- `internal/expedition/service.go` (create if doesn't exist) - Add expedition logic
-- `internal/expedition/service_test.go` (create if doesn't exist) - Add tests
-- `internal/server/server.go` - Register expedition routes
+- ✅ `internal/handler/expedition.go` - 4 endpoints (start, join, get, get active)
+- ✅ `internal/expedition/service.go` - Service with placeholder logic
+- ✅ `internal/domain/expedition.go` - Domain types (ExpeditionState, ExpeditionMetadata, ExpeditionRewards)
+- ✅ `internal/repository/expedition.go` - Repository interface with transaction support
+- ✅ `migrations/0012_add_expeditions.sql` - Database schema (expeditions + participants)
+- ⏳ `internal/expedition/service_test.go` - Not yet created
+- ⏳ `internal/database/postgres/expedition.go` - Not yet created
+- ⏳ `internal/worker/expedition_worker.go` - Not yet created
+- ⏳ `internal/discord/cmd_expedition.go` - Not yet created
 
 **Acceptance Criteria**:
 
@@ -496,3 +548,64 @@ Recommended implementation order:
 - **Job (Explorer)** - Prerequisites and XP rewards
 - **Loot** - Reward generation system
 - **Scheduler** - Time-based expedition management
+
+---
+
+## Implementation Progress Summary
+
+### Phase 1: Structural Foundation ✅ COMPLETE (2026-02-01)
+
+All three features have the following **structural foundation** implemented:
+
+| Component | Duels | Compost | Expeditions |
+|-----------|-------|---------|-------------|
+| Database Migration | ✅ 0010 | ✅ 0011 | ✅ 0012 |
+| Domain Types | ✅ duel.go | ✅ compost.go | ✅ expedition.go |
+| Repository Interface | ✅ repository/duel.go | ✅ repository/compost.go | ✅ repository/expedition.go |
+| Service Layer | ✅ duel/service.go | ✅ compost/service.go | ✅ expedition/service.go |
+| HTTP Handlers | ✅ handler/duel.go | ✅ handler/compost.go | ✅ handler/expedition.go |
+| Progression Checks | ✅ All handlers | ✅ All handlers | ✅ All handlers |
+| Build Status | ✅ Compiles | ✅ Compiles | ✅ Compiles |
+
+**API Endpoints Created:**
+- **Duels**: 5 endpoints (challenge, accept, decline, get pending, get duel)
+- **Compost**: 3 endpoints (deposit, status, harvest)
+- **Expeditions**: 4 endpoints (start, join, get, get active)
+
+**Total**: 12 new API endpoints ready for implementation
+
+### Phase 2: Business Logic & Implementation ⏳ PENDING
+
+The following components need to be implemented for each feature:
+
+| Task | Duels | Compost | Expeditions |
+|------|-------|---------|-------------|
+| Postgres Repository | ⏳ | ⏳ | ⏳ |
+| Business Logic | ⏳ Accept() | ⏳ Harvest() | ⏳ ExecuteExpedition() |
+| Route Registration | ⏳ | ⏳ | ⏳ |
+| Worker Integration | N/A | N/A | ⏳ Required |
+| Discord Commands | ⏳ | ⏳ | ⏳ |
+| Client Wrappers | ⏳ | ⏳ | ⏳ |
+| Unit Tests | ⏳ | ⏳ | ⏳ |
+| Integration Tests | ⏳ | ⏳ | ⏳ |
+
+### Next Steps (Priority Order)
+
+1. **Implement Postgres repositories** for all three features
+2. **Register routes** in `internal/server/server.go`
+3. **Implement business logic**:
+   - Duels: Random outcome logic (coin flip/dice roll)
+   - Compost: Conversion rate calculations (item rarity → gems)
+   - Expeditions: Reward generation system + worker
+4. **Create Discord commands** for all three features
+5. **Update client wrappers** (Go Discord + C# Streamer.bot)
+6. **Write tests** (unit + integration)
+7. **Test with admin unlock** and verify locked/unlocked states
+
+### Estimated Remaining Effort
+
+- **Duels**: 6-8 hours (repository, business logic, Discord, tests)
+- **Compost**: 8-10 hours (repository, conversion logic, Discord, tests)
+- **Expeditions**: 12-15 hours (repository, execution logic, worker, Discord, tests)
+
+**Total**: ~26-33 hours to complete all three features
