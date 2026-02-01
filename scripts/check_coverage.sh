@@ -1,10 +1,11 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+set -euo pipefail
+export LC_ALL=C.UTF-8
 
 # Usage: ./check_coverage.sh <coverage_file> <threshold>
 
-COVERAGE_FILE="$1"
-THRESHOLD="$2"
+COVERAGE_FILE="${1:-}"
+THRESHOLD="${2:-}"
 
 if [ -z "$COVERAGE_FILE" ]; then
     echo "Error: Coverage file path required."

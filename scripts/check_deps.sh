@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 # scripts/check_deps.sh
 # Checks for required dependencies
 

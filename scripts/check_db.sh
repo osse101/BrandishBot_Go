@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Check if Docker database is running and start if needed
 
-set -e
+set -euo pipefail
 
 echo "Checking Docker database status..."
 

@@ -1,7 +1,8 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
 # scripts/unit_tests.sh
-# Runs unit tests (skipping integration tests via -short flag)s
+# Runs unit tests (skipping integration tests via -short flag)
 
 # Colors
 GREEN='\033[0;32m'
@@ -9,7 +10,9 @@ RED='\033[0;31m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-TARGET=$1
+export LC_ALL=C.UTF-8
+
+TARGET="${1:-}"
 
 if [ -z "$TARGET" ]; then
     TARGET="./..."

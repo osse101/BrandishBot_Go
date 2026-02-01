@@ -1,5 +1,5 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+set -euo pipefail
 
 # scripts/deploy_remote.sh
 # Deployment script for remote servers (pulls images instead of building)

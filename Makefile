@@ -63,6 +63,12 @@ help:
 	@echo "  make rollback-production  - Rollback production to previous version"
 	@echo "  make health-check-staging - Check staging environment health"
 	@echo "  make health-check-prod    - Check production environment health"
+	@echo ""
+	@echo "Audit & Security:"
+	@echo "  make test-migrations      - Test migration up/down/idempotency"
+	@echo "  make test-security        - Run security integration tests"
+	@echo "  make check-deps           - Check for required dependencies"
+	@echo "  make check-db             - Ensure Docker database is running"
 
 # Database connection string from environment
 DB_URL ?= postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=disable
@@ -404,6 +410,23 @@ health-check-staging:
 
 health-check-prod:
 	@./scripts/health-check.sh production
+
+# Audit & Security targets
+test-migrations:
+	@chmod +x scripts/test_migrations.sh
+	@./scripts/test_migrations.sh
+
+test-security:
+	@chmod +x scripts/test_security.sh
+	@./scripts/test_security.sh
+
+check-deps:
+	@chmod +x scripts/check_deps.sh
+	@./scripts/check_deps.sh
+
+check-db:
+	@chmod +x scripts/check_db.sh
+	@./scripts/check_db.sh
 
 
 # Mock generation

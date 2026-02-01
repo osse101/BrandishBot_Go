@@ -1,11 +1,12 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+set -euo pipefail
+export LC_ALL=C.UTF-8
 
 # scripts/push_image.sh
 # Builds and pushes Docker images to the configured registry
 
-ENVIRONMENT="${1}"
-VERSION="${2}"
+ENVIRONMENT="${1:-}"
+VERSION="${2:-}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
