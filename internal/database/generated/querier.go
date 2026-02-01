@@ -34,6 +34,7 @@ type Querier interface {
 	CountUnlockedNodesBelowTier(ctx context.Context, tier int32) (int32, error)
 	CountUnlocks(ctx context.Context) (int64, error)
 	CreateGamble(ctx context.Context, arg CreateGambleParams) error
+	CreateHarvestState(ctx context.Context, dollar_1 uuid.UUID) (HarvestState, error)
 	CreateToken(ctx context.Context, arg CreateTokenParams) error
 	CreateUnlockProgress(ctx context.Context) (int32, error)
 	CreateUser(ctx context.Context, username string) (uuid.UUID, error)
@@ -77,6 +78,8 @@ type Querier interface {
 	GetEventsByUser(ctx context.Context, arg GetEventsByUserParams) ([]StatsEvent, error)
 	GetGamble(ctx context.Context, id uuid.UUID) (Gamble, error)
 	GetGambleParticipants(ctx context.Context, gambleID uuid.UUID) ([]GetGambleParticipantsRow, error)
+	GetHarvestState(ctx context.Context, dollar_1 uuid.UUID) (HarvestState, error)
+	GetHarvestStateWithLock(ctx context.Context, dollar_1 uuid.UUID) (HarvestState, error)
 	GetInventory(ctx context.Context, userID uuid.UUID) ([]byte, error)
 	GetInventoryForUpdate(ctx context.Context, userID uuid.UUID) ([]byte, error)
 	GetItemByID(ctx context.Context, itemID int32) (GetItemByIDRow, error)
@@ -171,6 +174,7 @@ type Querier interface {
 	UpdateDisassembleRecipe(ctx context.Context, arg UpdateDisassembleRecipeParams) error
 	UpdateGambleState(ctx context.Context, arg UpdateGambleStateParams) error
 	UpdateGambleStateIfMatches(ctx context.Context, arg UpdateGambleStateIfMatchesParams) (pgconn.CommandTag, error)
+	UpdateHarvestState(ctx context.Context, arg UpdateHarvestStateParams) error
 	UpdateInventory(ctx context.Context, arg UpdateInventoryParams) error
 	UpdateItem(ctx context.Context, arg UpdateItemParams) error
 	UpdateNode(ctx context.Context, arg UpdateNodeParams) error

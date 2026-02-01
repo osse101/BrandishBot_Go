@@ -81,6 +81,10 @@ const (
 	ErrMsgRecipeLocked   = "recipe is locked"
 	ErrMsgInvalidRecipe  = "invalid recipe"
 
+	// Harvest errors
+	ErrMsgHarvestStateNotFound = "harvest state not found"
+	ErrMsgHarvestTooSoon       = "harvest too soon (minimum 1 hour)"
+
 )
 
 // Common domain errors
@@ -160,4 +164,8 @@ var (
 	ErrAccumulationInProgress  = errors.New(ErrMsgAccumulationInProgress)
 	ErrSessionAlreadyFrozen    = errors.New(ErrMsgSessionAlreadyFrozen)
 	ErrNoNodesAvailable        = errors.New(ErrMsgNoNodesAvailable)
+
+	// Harvest errors
+	ErrHarvestStateNotFound = errors.New(ErrMsgHarvestStateNotFound)
+	ErrHarvestTooSoon       = errors.New(ErrMsgHarvestTooSoon)
 )

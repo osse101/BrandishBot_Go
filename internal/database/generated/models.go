@@ -132,6 +132,13 @@ type GambleParticipant struct {
 	LootboxBets []byte    `json:"lootbox_bets"`
 }
 
+type HarvestState struct {
+	UserID          uuid.UUID          `json:"user_id"`
+	LastHarvestedAt pgtype.Timestamptz `json:"last_harvested_at"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+}
+
 type Item struct {
 	ItemID          int32       `json:"item_id"`
 	InternalName    string      `json:"internal_name"`
