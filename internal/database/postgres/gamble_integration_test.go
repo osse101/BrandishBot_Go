@@ -70,6 +70,7 @@ func setupGambleIntegrationTest(t *testing.T) (*pgxpool.Pool, *UserRepository, g
 		jobSvc,
 		progressionSvc,
 		nil,
+		nil,
 	)
 
 	cleanup := func() {

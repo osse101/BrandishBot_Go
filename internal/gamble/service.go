@@ -51,11 +51,15 @@ type service struct {
 	statsSvc           stats.Service
 	namingResolver     naming.Resolver
 	joinDuration       time.Duration
+	rng                func(int) int
 	wg                 sync.WaitGroup // Tracks async goroutines for graceful shutdown
 }
 
 // NewService creates a new gamble service
-func NewService(repo repository.Gamble, eventBus event.Bus, resilientPublisher *event.ResilientPublisher, lootboxSvc lootbox.Service, statsSvc stats.Service, joinDuration time.Duration, jobService JobService, progressionSvc ProgressionService, namingResolver naming.Resolver) Service {
+func NewService(repo repository.Gamble, eventBus event.Bus, resilientPublisher *event.ResilientPublisher, lootboxSvc lootbox.Service, statsSvc stats.Service, joinDuration time.Duration, jobService JobService, progressionSvc ProgressionService, namingResolver naming.Resolver, rng func(int) int) Service {
+	if rng == nil {
+		rng = utils.SecureRandomInt
+	}
 	return &service{
 		repo:               repo,
 		eventBus:           eventBus,
@@ -66,6 +70,7 @@ func NewService(repo repository.Gamble, eventBus event.Bus, resilientPublisher *
 		statsSvc:           statsSvc,
 		namingResolver:     namingResolver,
 		joinDuration:       joinDuration,
+		rng:                rng,
 	}
 }
 
@@ -469,7 +474,8 @@ func (s *service) determineGambleWinners(ctx context.Context, id uuid.UUID, user
 	}
 
 	if len(winners) > 1 {
-		idx := utils.SecureRandomInt(len(winners))
+		sort.Strings(winners)
+		idx := s.rng(len(winners))
 		winnerID := winners[idx]
 		if s.statsSvc != nil {
 			for _, uid := range winners {

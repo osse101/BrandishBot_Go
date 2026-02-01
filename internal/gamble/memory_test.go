@@ -47,7 +47,7 @@ func TestStartGamble_NoGoroutineLeak(t *testing.T) {
 	repo.On("CreateGamble", mock.Anything, mock.Anything).Return(nil)
 	repo.On("JoinGamble", mock.Anything, mock.Anything).Return(nil)
 
-	svc := NewService(repo, nil, nil, lootboxSvc, statsSvc, 30*time.Second, nil, nil, nil)
+	svc := NewService(repo, nil, nil, lootboxSvc, statsSvc, 30*time.Second, nil, nil, nil, nil)
 	checker := leaktest.NewGoroutineChecker(t)
 
 	// Execute
@@ -84,7 +84,7 @@ func TestExecuteGamble_NoGoroutineLeak(t *testing.T) {
 	repo.On("CompleteGamble", mock.Anything, mock.Anything).Return(nil)
 	lootboxSvc.On("OpenLootbox", mock.Anything, mock.Anything, mock.Anything).Return([]lootbox.DroppedItem{}, nil).Maybe()
 
-	svc := NewService(repo, nil, nil, lootboxSvc, statsSvc, 30*time.Second, nil, nil, nil)
+	svc := NewService(repo, nil, nil, lootboxSvc, statsSvc, 30*time.Second, nil, nil, nil, nil)
 	checker := leaktest.NewGoroutineChecker(t)
 
 	// Execute
