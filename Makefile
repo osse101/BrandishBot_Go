@@ -7,6 +7,12 @@ LINT    := go run github.com/golangci/golangci-lint/cmd/golangci-lint
 MOCKERY := go run github.com/vektra/mockery/v2
 SQLC    := go run github.com/sqlc-dev/sqlc/cmd/sqlc
 
+# Load environment variables from .env if it exists
+ifneq (,$(wildcard ./.env))
+    include .env
+    export
+endif
+
 # Default target
 help:
 	@echo "BrandishBot_Go - Makefile Commands"
@@ -29,6 +35,7 @@ help:
 	@echo "  make swagger              - Generate Swagger docs"
 	@echo "  make generate             - Generate sqlc code"
 	@echo "  make install-hooks        - Install git hooks (pre-commit formatting)"
+	@echo "  make setup                - Setup development environment (deps, docker, db, migrations)"
 	@echo ""
 	@echo "Benchmark Commands:"
 	@echo "  make bench                - Run all benchmarks"
@@ -102,7 +109,7 @@ test:
 
 unit:
 	@echo "Running unit tests (fast)..."
-	@./scripts/unit_tests.sh
+	@go test -short ./...
 
 watch:
 	@echo "Watching for changes to run unit tests..."
@@ -263,6 +270,19 @@ docker-discord-restart:
 	@echo "✓ Discord bot restarted"
 
 # Development shortcuts
+setup:
+	@echo "🚀 Starting environment setup..."
+	@if [ ! -f .env ]; then \
+		echo "Creating .env from .env.example..."; \
+		cp .env.example .env; \
+	fi
+	@$(MAKE) check-deps
+	@$(MAKE) docker-up
+	@$(MAKE) check-db
+	@$(MAKE) migrate-up
+	@$(MAKE) generate
+	@echo "✅ Setup complete!"
+
 run:
 	@echo "Starting BrandishBot from bin/app..."
 	@./bin/app
