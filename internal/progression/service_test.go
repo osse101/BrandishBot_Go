@@ -110,6 +110,35 @@ func (m *MockRepository) GetNodeByFeatureKey(ctx context.Context, featureKey str
 	return nil, 0, nil
 }
 
+func (m *MockRepository) GetAllNodesByFeatureKey(ctx context.Context, featureKey string) ([]*domain.ProgressionNode, []int, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	nodes := make([]*domain.ProgressionNode, 0)
+	levels := make([]int, 0)
+
+	// Find all nodes with matching feature_key in ModifierConfig (sorted by tier)
+	for _, node := range m.nodes {
+		if node.ModifierConfig != nil && node.ModifierConfig.FeatureKey == featureKey {
+			// Get unlock level for this node
+			nodeLevels, ok := m.unlocks[node.ID]
+			currentLevel := 0
+			if ok {
+				// Get highest unlock level
+				for level := range nodeLevels {
+					if level > currentLevel {
+						currentLevel = level
+					}
+				}
+			}
+			nodes = append(nodes, node)
+			levels = append(levels, currentLevel)
+		}
+	}
+
+	return nodes, levels, nil
+}
+
 func (m *MockRepository) GetNodeByID(ctx context.Context, id int) (*domain.ProgressionNode, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()

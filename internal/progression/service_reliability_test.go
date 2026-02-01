@@ -306,6 +306,10 @@ func (m *ReliabilityMockRepository) GetNodeByFeatureKey(ctx context.Context, fea
 	return nil, 0, nil
 }
 
+func (m *ReliabilityMockRepository) GetAllNodesByFeatureKey(ctx context.Context, featureKey string) ([]*domain.ProgressionNode, []int, error) {
+	return nil, nil, nil
+}
+
 func (m *ReliabilityMockRepository) GetSyncMetadata(ctx context.Context, configName string) (*domain.SyncMetadata, error) {
 	args := m.Called(ctx, configName)
 	if args.Get(0) == nil {

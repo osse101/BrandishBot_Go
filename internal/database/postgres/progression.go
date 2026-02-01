@@ -732,6 +732,49 @@ func (r *progressionRepository) GetNodeByFeatureKey(ctx context.Context, feature
 	return node, int(row.UnlockLevel), nil
 }
 
+// GetAllNodesByFeatureKey retrieves all nodes with the same feature_key and their unlock levels
+func (r *progressionRepository) GetAllNodesByFeatureKey(ctx context.Context, featureKey string) ([]*domain.ProgressionNode, []int, error) {
+	rows, err := r.q.GetAllNodesByFeatureKey(ctx, []byte(featureKey))
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get nodes by feature key: %w", err)
+	}
+
+	nodes := make([]*domain.ProgressionNode, 0, len(rows))
+	levels := make([]int, 0, len(rows))
+
+	for _, row := range rows {
+		// Parse ModifierConfig
+		var modifierConfig *domain.ModifierConfig
+		if len(row.ModifierConfig) > 0 {
+			modifierConfig = &domain.ModifierConfig{}
+			if err := json.Unmarshal(row.ModifierConfig, modifierConfig); err != nil {
+				return nil, nil, fmt.Errorf("failed to unmarshal modifier config: %w", err)
+			}
+		}
+
+		node := &domain.ProgressionNode{
+			ID:             int(row.ID),
+			NodeKey:        row.NodeKey,
+			NodeType:       row.NodeType,
+			DisplayName:    row.DisplayName,
+			Description:    row.Description.String,
+			MaxLevel:       int(row.MaxLevel.Int32),
+			UnlockCost:     int(row.UnlockCost.Int32),
+			Tier:           int(row.Tier),
+			Size:           row.Size,
+			Category:       row.Category,
+			SortOrder:      int(row.SortOrder.Int32),
+			CreatedAt:      row.CreatedAt.Time,
+			ModifierConfig: modifierConfig,
+		}
+
+		nodes = append(nodes, node)
+		levels = append(levels, int(row.UnlockLevel))
+	}
+
+	return nodes, levels, nil
+}
+
 func (r *progressionRepository) GetDailyEngagementTotals(ctx context.Context, since time.Time) (map[time.Time]int, error) {
 	rows, err := r.q.GetDailyEngagementTotals(ctx, pgtype.Timestamp{Time: since, Valid: true})
 	if err != nil {

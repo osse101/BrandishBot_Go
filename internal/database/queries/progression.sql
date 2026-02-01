@@ -341,6 +341,13 @@ LEFT JOIN progression_unlocks u ON u.node_id = n.id
 WHERE n.modifier_config->>'feature_key' = $1
 LIMIT 1;
 
+-- name: GetAllNodesByFeatureKey :many
+SELECT n.*, COALESCE(u.current_level, 0)::int as unlock_level
+FROM progression_nodes n
+LEFT JOIN progression_unlocks u ON u.node_id = n.id
+WHERE n.modifier_config->>'feature_key' = $1
+ORDER BY n.tier ASC, n.id ASC;
+
 -- name: GetDailyEngagementTotals :many
 SELECT DATE(recorded_at)::timestamp as day, SUM(em.metric_value * ew.weight)::bigint as total_points
 FROM engagement_metrics em

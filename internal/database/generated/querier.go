@@ -58,6 +58,7 @@ type Querier interface {
 	GetAllItems(ctx context.Context) ([]GetAllItemsRow, error)
 	GetAllJobs(ctx context.Context) ([]Job, error)
 	GetAllNodes(ctx context.Context) ([]GetAllNodesRow, error)
+	GetAllNodesByFeatureKey(ctx context.Context, modifierConfig []byte) ([]GetAllNodesByFeatureKeyRow, error)
 	GetAllRecipes(ctx context.Context) ([]GetAllRecipesRow, error)
 	GetAllUnlocks(ctx context.Context) ([]ProgressionUnlock, error)
 	GetAssociatedUpgradeRecipeID(ctx context.Context, disassembleRecipeID int32) (int32, error)

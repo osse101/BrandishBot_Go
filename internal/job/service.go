@@ -529,9 +529,8 @@ func (s *service) getDailyCap(ctx context.Context) int {
 }
 
 func (s *service) getMaxJobLevel(ctx context.Context) (int, error) {
-	// TODO(upgrade_job_level_cap): Apply job_level_cap modifier (linear: +10 per level)
-	// Base cap is DefaultMaxLevel, upgrade adds +10 per level (max +30 at level 3)
-	// Apply progression modifier for job level cap
+	// Apply progression modifier for job level cap (linear: +10 per level)
+	// Base cap is DefaultMaxLevel, upgrade_job_level_cap adds +10 per level (max +30 at level 3)
 	modified, err := s.progressionSvc.GetModifiedValue(ctx, "job_level_cap", float64(DefaultMaxLevel))
 	if err != nil {
 		log := logger.FromContext(ctx)

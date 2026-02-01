@@ -537,10 +537,8 @@ func (s *service) RecordEngagement(ctx context.Context, userID string, metricTyp
 	if weight > 0 {
 		baseScore := float64(value) * weight
 
-		// TODO(upgrade_progression_basic): Apply progression_rate modifier
-		// TODO(upgrade_progression_two): Stacks multiplicatively with basic
-		// TODO(upgrade_progression_three): Triple stacking with tier 1 & 2
 		// Apply progression rate modifier (stacks multiplicatively across all three upgrades)
+		// upgrade_progression_basic, upgrade_progression_two, upgrade_progression_three
 		modifiedScore, err := s.GetModifiedValue(ctx, "progression_rate", baseScore)
 		if err != nil {
 			// Log warning but continue with base score if modifier fails
@@ -982,28 +980,34 @@ func (s *service) Shutdown(ctx context.Context) error {
 
 // GetModifiedValue retrieves a feature value modified by progression nodes
 // Returns the modified value or the baseValue on error (safe fallback)
+// Supports stacking multiple modifiers with the same feature_key (multiplicative)
 func (s *service) GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error) {
 	// 1. Check cache first
 	if cached, ok := s.modifierCache.Get(featureKey); ok {
 		return cached.Value, nil
 	}
 
-	// 2. Get modifier from repository
-	modifier, err := s.GetModifierForFeature(ctx, featureKey)
+	// 2. Get ALL modifiers for this feature
+	modifiers, err := s.GetAllModifiersForFeature(ctx, featureKey)
 	if err != nil {
 		// Fallback to base value on error
 		return baseValue, err
 	}
-	if modifier == nil {
-		// No modifier configured for this feature
+	if len(modifiers) == 0 {
+		// No modifiers configured for this feature
 		return baseValue, nil
 	}
 
-	// 3. Calculate value
-	value := ApplyModifier(modifier, baseValue)
+	// 3. Apply all modifiers (stacks multiplicatively)
+	value := baseValue
+	totalLevel := 0
+	for _, modifier := range modifiers {
+		value = ApplyModifier(modifier, value)
+		totalLevel += modifier.CurrentLevel
+	}
 
-	// 4. Cache the result
-	s.modifierCache.Set(featureKey, value, modifier.CurrentLevel)
+	// 4. Cache with total level across all modifiers
+	s.modifierCache.Set(featureKey, value, totalLevel)
 
 	return value, nil
 }
@@ -1032,6 +1036,32 @@ func (s *service) GetModifierForFeature(ctx context.Context, featureKey string) 
 	}
 
 	return modifier, nil
+}
+
+// GetAllModifiersForFeature retrieves ALL modifiers for a feature key
+func (s *service) GetAllModifiersForFeature(ctx context.Context, featureKey string) ([]*ValueModifier, error) {
+	nodes, levels, err := s.repo.GetAllNodesByFeatureKey(ctx, featureKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get nodes for feature %s: %w", featureKey, err)
+	}
+
+	modifiers := make([]*ValueModifier, 0, len(nodes))
+	for i, node := range nodes {
+		if node.ModifierConfig != nil {
+			modifier := &ValueModifier{
+				NodeKey:       node.NodeKey,
+				ModifierType:  ModifierType(node.ModifierConfig.ModifierType),
+				BaseValue:     node.ModifierConfig.BaseValue,
+				PerLevelValue: node.ModifierConfig.PerLevelValue,
+				CurrentLevel:  levels[i],
+				MaxValue:      node.ModifierConfig.MaxValue,
+				MinValue:      node.ModifierConfig.MinValue,
+			}
+			modifiers = append(modifiers, modifier)
+		}
+	}
+
+	return modifiers, nil
 }
 
 // handleNodeUnlocked invalidates caches when any node is unlocked

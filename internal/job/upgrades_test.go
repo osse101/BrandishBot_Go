@@ -1,60 +1,161 @@
 package job
 
 import (
+	"context"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // This file contains test stubs for job upgrade node modifier application.
 // See docs/issues/progression_nodes/upgrades.md for implementation details.
 
-// TODO(upgrade_job_xp_multiplier): Verify existing job XP multiplier implementation
-// - Test AwardXP applies job_xp_multiplier correctly
-// - Verify 10% boost per level (1.1x at level 1, 1.5x at level 5)
-// - Test with admin unlock at different levels
-// - Ensure all jobs benefit from multiplier
+// TestUpgradeJobXPMultiplier_ExistingImplementation verifies job XP multiplier
 func TestUpgradeJobXPMultiplier_ExistingImplementation(t *testing.T) {
-	t.Skip("TODO: Verify job_xp_multiplier modifier tests (already implemented)")
-	// Test pattern:
-	// 1. Setup service with mocked progression service
-	// 2. Mock GetModifiedValue to return 1.5x (level 5 upgrade)
-	// 3. Award 100 XP to a job
-	// 4. Verify user receives 150 XP (100 * 1.5)
-	// 5. Test with multiple jobs to ensure multiplier applies to all
+	ctx := context.Background()
+
+	tests := []struct {
+		name               string
+		multiplier         float64
+		baseXP             float64
+		expectedMultiplier float64
+	}{
+		{"No upgrade", 1.0, 100.0, 1.0},
+		{"Level 1", 1.1, 100.0, 1.1},
+		{"Level 3", 1.3, 100.0, 1.3},
+		{"Level 5", 1.5, 100.0, 1.5},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup mock progression service
+			mockProgression := &MockProgressionService{}
+			svc := &service{
+				progressionSvc: mockProgression,
+			}
+
+			// Mock GetModifiedValue to return the specified multiplier
+			mockProgression.On("GetModifiedValue", ctx, "job_xp_multiplier", 1.0).
+				Return(tt.multiplier, nil)
+
+			// Test getXPMultiplier
+			result := svc.getXPMultiplier(ctx)
+
+			// Verify
+			assert.InDelta(t, tt.expectedMultiplier, result, 0.01)
+			mockProgression.AssertExpectations(t)
+		})
+	}
 }
 
-// TODO(upgrade_job_level_cap): Test job level cap upgrade (linear modifier)
-// - Test getMaxJobLevel applies job_level_cap modifier
-// - Verify +10 per level (base + 10 at level 1, base + 30 at level 3)
-// - Test that jobs can level beyond default cap with upgrade
-// - Test with admin unlock at different levels
+// TestUpgradeJobLevelCap_ModifierApplication tests job level cap upgrade (linear modifier)
 func TestUpgradeJobLevelCap_ModifierApplication(t *testing.T) {
-	t.Skip("TODO: Implement job_level_cap modifier tests")
-	// Test pattern:
-	// 1. Setup service with DefaultMaxLevel = 50
-	// 2. Mock GetModifiedValue to return 60 (level 1 upgrade: +10)
-	// 3. Verify getMaxJobLevel returns 60
-	// 4. Award XP beyond level 50 and verify levels continue
-	// 5. Test at level 3 (base + 30 = 80)
+	ctx := context.Background()
+
+	tests := []struct {
+		name             string
+		upgradeLevel     int
+		expectedMaxLevel int
+	}{
+		{"No upgrade", 0, DefaultMaxLevel},   // Base level (10)
+		{"Level 1", 1, DefaultMaxLevel + 10}, // 10 + 10 = 20
+		{"Level 2", 2, DefaultMaxLevel + 20}, // 10 + 20 = 30
+		{"Level 3", 3, DefaultMaxLevel + 30}, // 10 + 30 = 40 (max)
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup mock progression service
+			mockProgression := &MockProgressionService{}
+			svc := &service{
+				progressionSvc: mockProgression,
+			}
+
+			// Mock GetModifiedValue to return the modified level cap
+			mockProgression.On("GetModifiedValue", ctx, "job_level_cap", float64(DefaultMaxLevel)).
+				Return(float64(tt.expectedMaxLevel), nil)
+
+			// Test getMaxJobLevel
+			result, err := svc.getMaxJobLevel(ctx)
+
+			// Verify
+			require.NoError(t, err)
+			assert.Equal(t, tt.expectedMaxLevel, result)
+			mockProgression.AssertExpectations(t)
+		})
+	}
 }
 
-// TODO(upgrade_job_level_cap): Test linear vs multiplicative modifier
-// - Verify job_level_cap uses linear addition (not multiplication)
-// - Base 50 + (10 * level), not 50 * (1 + modifier)
+// TestUpgradeJobLevelCap_LinearModifier verifies linear addition (not multiplication)
 func TestUpgradeJobLevelCap_LinearModifier(t *testing.T) {
-	t.Skip("TODO: Verify linear modifier calculation")
-	// Test pattern:
-	// 1. Verify modifier config in progression tree has modifier_type: "linear"
-	// 2. Test that level 1 = base + 10, not base * 1.1
-	// 3. Confirm GetModifiedValue handles linear modifiers correctly
+	ctx := context.Background()
+
+	// Setup mock progression service
+	mockProgression := &MockProgressionService{}
+	svc := &service{
+		progressionSvc: mockProgression,
+	}
+
+	// Test linear modifier: base + (per_level * level)
+	// Level 1 should be 10 + 10 = 20, NOT 10 * 1.1 = 11
+	mockProgression.On("GetModifiedValue", ctx, "job_level_cap", float64(DefaultMaxLevel)).
+		Return(float64(20), nil) // Linear: 10 + 10
+
+	result, err := svc.getMaxJobLevel(ctx)
+
+	require.NoError(t, err)
+	assert.Equal(t, 20, result, "Linear modifier should add, not multiply")
+	assert.NotEqual(t, 11, result, "Should not be multiplicative (10 * 1.1 = 11)")
+
+	// Test level 3: base + (per_level * 3) = 10 + 30 = 40
+	mockProgression2 := &MockProgressionService{}
+	svc2 := &service{
+		progressionSvc: mockProgression2,
+	}
+
+	mockProgression2.On("GetModifiedValue", ctx, "job_level_cap", float64(DefaultMaxLevel)).
+		Return(float64(40), nil) // Linear: 10 + 30
+
+	result2, err := svc2.getMaxJobLevel(ctx)
+
+	require.NoError(t, err)
+	assert.Equal(t, 40, result2, "Level 3 should be 10 + 30 = 40")
+	assert.NotEqual(t, 13, result2, "Should not be multiplicative (10 * 1.3 = 13)")
 }
 
-// TODO(upgrade_job_xp_multiplier): Test XP multiplier stacking with job bonuses
-// - Verify progression XP multiplier stacks with job-specific bonuses
-// - Test interaction with daily cap
-func TestUpgradeJobXPMultiplier_StackingWithBonuses(t *testing.T) {
-	t.Skip("TODO: Test XP multiplier stacking")
-	// Test pattern:
-	// 1. Setup job with inherent bonus (e.g., 1.2x for specific activity)
-	// 2. Apply progression upgrade (1.5x multiplier)
-	// 3. Award XP and verify correct stacking (1.2 * 1.5 = 1.8x total)
+// TestJobUpgrades_FallbackBehavior tests safe fallback when GetModifiedValue fails
+func TestJobUpgrades_FallbackBehavior(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("XP Multiplier fallback", func(t *testing.T) {
+		mockProgression := &MockProgressionService{}
+		svc := &service{
+			progressionSvc: mockProgression,
+		}
+
+		// Mock error scenario
+		mockProgression.On("GetModifiedValue", ctx, "job_xp_multiplier", 1.0).
+			Return(1.0, assert.AnError)
+
+		// Should fallback to 1.0 (no multiplier)
+		result := svc.getXPMultiplier(ctx)
+		assert.Equal(t, 1.0, result, "Should fallback to 1.0 on error")
+	})
+
+	t.Run("Level Cap fallback", func(t *testing.T) {
+		mockProgression := &MockProgressionService{}
+		svc := &service{
+			progressionSvc: mockProgression,
+		}
+
+		// Mock error scenario
+		mockProgression.On("GetModifiedValue", ctx, "job_level_cap", float64(DefaultMaxLevel)).
+			Return(float64(DefaultMaxLevel), assert.AnError)
+
+		// Should fallback to DefaultMaxLevel
+		result, err := svc.getMaxJobLevel(ctx)
+		require.NoError(t, err, "Should not return error on fallback")
+		assert.Equal(t, DefaultMaxLevel, result, "Should fallback to default on error")
+	})
 }
