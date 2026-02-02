@@ -666,7 +666,7 @@ func (s *service) handlePostUnlockTransition(ctx context.Context, unlockedNodeID
 
 	// Start voting for next cycle if 2+ options remain
 	if len(remainingAvailable) >= 2 {
-		if err := s.startVotingWithOptions(ctx, remainingAvailable, &unlockedNodeID); err != nil {
+		if err := s.startVotingWithOptions(ctx, remainingAvailable, &newTargetNode.ID); err != nil {
 			log.Warn("Failed to start next voting session", "error", err)
 		}
 	} else if len(remainingAvailable) == 1 {
