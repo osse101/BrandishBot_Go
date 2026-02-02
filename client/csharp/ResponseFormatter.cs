@@ -183,7 +183,7 @@ namespace BrandishBot.Client
 
         /// <summary>
         /// Format voting session options into a readable string
-        /// Format: "display_name(target_level) - Unlock Cost: unlock_cost Votes: vote_count |"
+        /// Format: "display_name(target_level) - Unlock Time: duration Votes: vote_count |"
         /// Target level is omitted if it is 1
         /// </summary>
         /// <param name="jsonResponse">JSON object with options array</param>
