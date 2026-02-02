@@ -50,6 +50,16 @@ type ProgressionService interface {
 	IsNodeUnlocked(ctx context.Context, nodeKey string, level int) (bool, error)
 }
 
+// Option defines a functional option for the lootbox service
+type Option func(*service)
+
+// WithRnd sets a custom random number generator function
+func WithRnd(rnd func() float64) Option {
+	return func(s *service) {
+		s.rnd = rnd
+	}
+}
+
 type service struct {
 	repo            ItemRepository
 	progressionSvc  ProgressionService
@@ -59,13 +69,17 @@ type service struct {
 }
 
 // NewService creates a new lootbox service
-func NewService(repo ItemRepository, progressionSvc ProgressionService, lootTablesPath string) (Service, error) {
+func NewService(repo ItemRepository, progressionSvc ProgressionService, lootTablesPath string, opts ...Option) (Service, error) {
 	svc := &service{
 		repo:            repo,
 		progressionSvc:  progressionSvc,
 		lootTables:      make(map[string][]LootItem),
 		rnd:             utils.RandomFloat,
 		schemaValidator: validation.NewSchemaValidator(),
+	}
+
+	for _, opt := range opts {
+		opt(svc)
 	}
 
 	// Load loot tables from JSON file
@@ -224,7 +238,8 @@ func (s *service) convertToDroppedItems(ctx context.Context, dropCounts map[stri
 			continue
 		}
 
-		shine, mult := s.calculateShine(info.Chance, boxShine, canUpgrade)
+		// Use a random roll for shine.
+		shine, mult := s.calculateShine(s.rnd(), boxShine, canUpgrade)
 
 		quantity := info.Qty
 		boostedValue := int(float64(item.BaseValue) * mult)
@@ -255,26 +270,26 @@ func (s *service) convertToDroppedItems(ctx context.Context, dropCounts map[stri
 	return drops, nil
 }
 
-// calculateShine determines the visual rarity "shine" and value multiplier of a drop based on its chance
+// calculateShine determines the visual rarity "shine" and value multiplier of a drop based on a roll.
 // The boxShine level shifts the constraints: a more rare box makes it easier to get rare item shine levels.
-func (s *service) calculateShine(chance float64, boxShine domain.ShineLevel, canUpgrade bool) (domain.ShineLevel, float64) {
+func (s *service) calculateShine(roll float64, boxShine domain.ShineLevel, canUpgrade bool) (domain.ShineLevel, float64) {
 	dist := s.getShineDistance(boxShine)
 	bonus := 0.03 * float64(dist)
 
 	shine := domain.ShineCommon
-	if chance <= ShineLegendaryThreshold+bonus {
+	if roll <= ShineLegendaryThreshold+bonus {
 		shine = domain.ShineLegendary
-	} else if chance <= ShineEpicThreshold+bonus {
+	} else if roll <= ShineEpicThreshold+bonus {
 		shine = domain.ShineEpic
-	} else if chance <= ShineRareThreshold+bonus {
+	} else if roll <= ShineRareThreshold+bonus {
 		shine = domain.ShineRare
-	} else if chance <= ShineUncommonThreshold+bonus {
+	} else if roll <= ShineUncommonThreshold+bonus {
 		shine = domain.ShineUncommon
-	} else if chance <= ShineCommonThreshold+bonus {
+	} else if roll <= ShineCommonThreshold+bonus {
 		shine = domain.ShineCommon
-	} else if chance <= ShinePoorThreshold+bonus {
+	} else if roll <= ShinePoorThreshold+bonus {
 		shine = domain.ShinePoor
-	} else if chance <= ShineJunkThreshold+bonus {
+	} else if roll <= ShineJunkThreshold+bonus {
 		shine = domain.ShineJunk
 	} else {
 		shine = domain.ShineCursed

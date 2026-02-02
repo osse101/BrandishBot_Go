@@ -4,35 +4,27 @@ package lootbox
 // Shine Rarity Thresholds
 // ============================================================================
 
-// ShineLegendaryThreshold defines the maximum drop chance (<=1%) to be
-// classified as LEGENDARY shine tier. Drops with this rarity get the highest
-// value multiplier and visual effects.
+// ShineLegendaryThreshold defines the maximum roll (<=1%) for LEGENDARY shine.
 const ShineLegendaryThreshold = 0.01
 
-// ShineEpicThreshold defines the maximum drop chance (<=5%) to be classified
-// as EPIC shine tier. Drops rarer than 5% but more common than legendary.
+// ShineEpicThreshold defines the maximum roll (<=5%) for EPIC shine.
 const ShineEpicThreshold = 0.05
 
-// ShineRareThreshold defines the maximum drop chance (<=15%) to be classified
-// as RARE shine tier. Moderately rare drops with enhanced value.
+// ShineRareThreshold defines the maximum roll (<=15%) for RARE shine.
 const ShineRareThreshold = 0.15
 
-// ShineUncommonThreshold defines the maximum drop chance (<=30%) to be
-// classified as UNCOMMON shine tier. Drops common enough to see regularly
-// but not guaranteed.
+// ShineUncommonThreshold defines the maximum roll (<=30%) for UNCOMMON shine.
 const ShineUncommonThreshold = 0.30
 
-// ShineCommonThreshold defines the maximum drop chance (<=50%) to be
-// classified as COMMON shine tier. Baseline items.
-const ShineCommonThreshold = 0.50
+// ShineCommonThreshold defines the maximum roll (<=70%) for COMMON shine.
+// This is the largest bucket, making Common the most likely outcome.
+const ShineCommonThreshold = 0.70
 
-// ShinePoorThreshold defines the maximum drop chance (<=70%) to be
-// classified as POOR shine tier. Less valuable than common items.
-const ShinePoorThreshold = 0.70
+// ShinePoorThreshold defines the maximum roll (<=85%) for POOR shine.
+const ShinePoorThreshold = 0.85
 
-// ShineJunkThreshold defines the maximum drop chance (<=90%) to be
-// classified as JUNK shine tier. Common fodder.
-const ShineJunkThreshold = 0.90
+// ShineJunkThreshold defines the maximum roll (<=95%) for JUNK shine.
+const ShineJunkThreshold = 0.95
 
 // ============================================================================
 // Drop Mechanics
