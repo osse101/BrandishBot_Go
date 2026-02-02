@@ -206,7 +206,7 @@ func createTestService(repo *MockRepo, lootboxSvc *MockLootboxService) *service 
 
 func TestProcessLootbox(t *testing.T) {
 	// Setup items
-	lootbox0 := &domain.Item{ID: 100, InternalName: domain.ItemLootbox0}
+	lootbox0 := &domain.Item{ID: 100, InternalName: domain.ItemLootbox0, PublicName: "junkbox"}
 
 	money := &domain.Item{ID: 1, InternalName: domain.ItemMoney}
 
@@ -237,7 +237,7 @@ func TestProcessLootbox(t *testing.T) {
 		// Verify
 		assert.NoError(t, err)
 		assert.Contains(t, msg, "Opened")
-		assert.Contains(t, msg, "money")
+		assert.Contains(t, msg, "Shiny credits")
 
 		// Verify inventory changes
 		// Should have consumed lootbox0 and gained money

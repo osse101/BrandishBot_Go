@@ -40,7 +40,9 @@ func (m *MockNamingResolver) RegisterItem(internalName, publicName string) {}
 
 func NewMockNamingResolver() *MockNamingResolver {
 	return &MockNamingResolver{
-		DisplayNames: make(map[string]string),
+		DisplayNames: map[string]string{
+			"money": "Shiny credits",
+		},
 	}
 }
 
@@ -79,14 +81,14 @@ func setupTestData(repo *FakeRepository) {
 	repo.items[domain.ItemMoney] = &domain.Item{
 		ID:           3,
 		InternalName: domain.ItemMoney,
-		PublicName:   domain.ItemMoney,
+		PublicName:   "money",
 		Description:  "Currency",
 		BaseValue:    1,
 	}
 	repo.items[domain.ItemLootbox0] = &domain.Item{
 		ID:           4,
 		InternalName: domain.ItemLootbox0,
-		PublicName:   domain.ItemLootbox0,
+		PublicName:   "junkbox",
 		Description:  "Empty Lootbox",
 		BaseValue:    10,
 	}
@@ -843,14 +845,14 @@ func TestUseItem_Lootbox0(t *testing.T) {
 	}
 
 	// Message format changed
-	// "Opened 1 lootbox0 and received: 5x money"
+	// "Opened Junkbox and received: 5 Shiny credits"
 	// We check if it contains expected parts
-	if !strings.Contains(msg, "Opened") || !strings.Contains(msg, domain.ItemLootbox0) {
-		t.Errorf("Expected message to contain 'Opened' and '%s', got '%s'", domain.ItemLootbox0, msg)
+	if !strings.Contains(msg, "Opened") || !strings.Contains(msg, "Junkbox") {
+		t.Errorf("Expected message to contain 'Opened' and 'Junkbox', got '%s'", msg)
 	}
 
-	if !strings.Contains(msg, domain.ItemMoney) {
-		t.Errorf("Expected message to contain '%s', got '%s'", domain.ItemMoney, msg)
+	if !strings.Contains(msg, "Shiny credits") {
+		t.Errorf("Expected message to contain 'Shiny credits', got '%s'", msg)
 	}
 
 	// Verify inventory (should have money now)

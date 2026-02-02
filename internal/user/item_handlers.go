@@ -10,6 +10,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
+
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
@@ -61,22 +64,24 @@ func (s *service) consumeLootboxFromInventory(inventory *domain.Inventory, item 
 
 func (s *service) processLootboxDrops(ctx context.Context, user *domain.User, inventory *domain.Inventory, lootboxItem *domain.Item, quantity int, drops []lootbox.DroppedItem) (string, error) {
 	var msgBuilder strings.Builder
-	displayName := s.namingResolver.GetDisplayName(lootboxItem.InternalName, "")
+	// User Request: Use public name for the lootbox
+	displayName := cases.Title(language.English).String(lootboxItem.PublicName)
 
 	msgBuilder.WriteString(MsgLootboxOpened)
-	msgBuilder.WriteString(" ")
-	msgBuilder.WriteString(strconv.Itoa(quantity))
+	if quantity > 1 {
+		msgBuilder.WriteString(" ")
+		msgBuilder.WriteString(strconv.Itoa(quantity))
+	}
 	msgBuilder.WriteString(" ")
 	msgBuilder.WriteString(displayName)
 	msgBuilder.WriteString(MsgLootboxReceived)
 
 	stats := s.aggregateDropsAndUpdateInventory(inventory, drops, &msgBuilder)
 
-	// 4. Append "Juice" - Feedback based on results
+	// User Request: "All lootbox open messages were too verbose and should be at the level I gave as example"
+	// Example: "Opened Junkbox and received: 1 Shiny credit" or " ... 5 Shiny credits"
 	// LevelUp Philosophy: "If a number goes up, the player should feel it."
-	msgBuilder.WriteString(MsgLootboxValue)
-	msgBuilder.WriteString(strconv.Itoa(stats.totalValue))
-	msgBuilder.WriteString(MsgLootboxValueEnd)
+	// Removing explicit Value output as per user request to reduce verbosity
 
 	if stats.hasLegendary {
 		if s.statsService != nil && user != nil {
@@ -146,19 +151,18 @@ func (s *service) aggregateDropsAndUpdateInventory(inventory *domain.Inventory, 
 			msgBuilder.WriteString(LootboxDropSeparator)
 		}
 
-		// Get display name with shine level
+		// Get display name (which might be "Shiny credit" for money or "Ray Gun" for blaster)
+		// We trust the resolver to give the base name, and we handle basic pluralization
 		itemDisplayName := s.namingResolver.GetDisplayName(drop.ItemName, drop.ShineLevel)
 
-		// Write drop info directly to builder to minimize allocations
+		// Simplify output: "Quantity Name"
 		msgBuilder.WriteString(strconv.Itoa(drop.Quantity))
-		msgBuilder.WriteString(LootboxDisplayQuantityPrefix)
+		msgBuilder.WriteString(" ")
 		msgBuilder.WriteString(itemDisplayName)
 
-		// Add shine annotation for visual impact
-		if drop.ShineLevel != "" && drop.ShineLevel != domain.ShineCommon {
-			msgBuilder.WriteString(LootboxShineAnnotationOpen)
-			msgBuilder.WriteString(string(drop.ShineLevel))
-			msgBuilder.WriteString(LootboxShineAnnotationClose)
+		// Simple pluralization if quantity > 1
+		if drop.Quantity > 1 {
+			msgBuilder.WriteString("s")
 		}
 
 		first = false

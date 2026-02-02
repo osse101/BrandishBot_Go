@@ -139,10 +139,15 @@ func (r *resolver) GetDisplayName(internalName string, shineLevel domain.ShineLe
 
 // formatWithShine adds shine level prefix if not COMMON
 func (r *resolver) formatWithShine(name string, shineLevel domain.ShineLevel) string {
-	if shineLevel == "" || shineLevel == domain.ShineCommon {
-		return name
+	shineLevelStr := string("")
+	switch shineLevel {
+	case domain.ShineCursed:
+		shineLevelStr = "👻"
+	case domain.ShineLegendary:
+		shineLevelStr = "👑"
+	default:
 	}
-	return fmt.Sprintf(ShineFormatTemplate, shineLevel, name)
+	return fmt.Sprintf(ShineFormatTemplate, name, shineLevelStr)
 }
 
 // GetActiveTheme returns the currently active theme

@@ -529,25 +529,30 @@ func TestHandleSearch_DatabaseErrors(t *testing.T) {
 	})
 }
 
-// CASE 6: NAMING RESOLUTION
-func TestHandleSearch_NamingResolution(t *testing.T) {
+// CASE 6: NAMING RESOLUTION (UPDATED: Now uses Public Name directly)
+func TestHandleSearch_PublicNameUsage(t *testing.T) {
 	// ARRANGE
 	svc, repo := createSearchTestService()
 	user := createTestUser()
 	repo.users[TestUsername] = user
 
-	// Configure mock resolver
+	// Set Public Name on item
+	repo.items[domain.ItemLootbox0].PublicName = "junkbox"
+
+	// Configure mock resolver with something different to ensure we are NOT using it
 	mockResolver := svc.namingResolver.(*MockNamingResolver)
 	mockResolver.DisplayNames[domain.ItemLootbox0] = "Mysterious Chest"
 
 	// Force success
 	svc.rnd = func() float64 { return 0.5 }
 
-	// Call with devMode false (default in createSearchTestService)
+	// Call with devMode false
 	msg, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
 	require.NoError(t, err)
 
-	assert.Contains(t, msg, "Mysterious Chest", "Should use display name 'Mysterious Chest' in search result")
+	// ASSERT
+	assert.Contains(t, msg, "Junkbox", "Should use Title-cased Public Name 'Junkbox' in search result")
+	assert.NotContains(t, msg, "Mysterious Chest", "Should NOT use naming resolver display name for search result")
 }
 
 // =============================================================================

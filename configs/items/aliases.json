@@ -6,7 +6,7 @@
     "money": {
       "default": [
         "money",
-        "A heavy pouch of coins",
+        "heavy pouch of coins",
         "Shiny credits"
       ],
       "themes": {
@@ -22,162 +22,162 @@
     },
     "item_shovel": {
       "default": [
-        "A basic shovel",
-        "A well-used spade",
-        "A sturdy dirt-mover",
-        "A rusty garden shovel"
+        "basic shovel",
+        "well-used spade",
+        "sturdy dirt-mover",
+        "rusty garden shovel"
       ],
       "themes": {
         "halloween": [
-          "A grave-digging spade",
-          "A bone-handled shovel"
+          "grave-digging spade",
+          "bone-handled shovel"
         ],
         "christmas": [
-          "A snow-clearing shovel",
-          "A candy-cane spade"
+          "snow-clearing shovel",
+          "candy-cane spade"
         ]
       }
     },
     "item_stick": {
       "default": [
-        "A simple stick",
-        "A sturdy branch",
-        "A piece of gnarled wood",
-        "A simple wooden stick"
+        "simple stick",
+        "sturdy branch",
+        "piece of gnarled wood",
+        "simple wooden stick"
       ],
       "themes": {
         "halloween": [
-          "A brittle skeleton arm",
-          "A twisted witch-wood branch"
+          "brittle skeleton arm",
+          "twisted witch-wood branch"
         ],
         "christmas": [
-          "A long peppermint stick",
-          "A snapped pine branch"
+          "long peppermint stick",
+          "snapped pine branch"
         ]
       }
     },
     "item_shield": {
       "default": [
-        "A sturdy shield",
-        "A reinforced buckler",
-        "A battered iron protector",
-        "A defensive plate"
+        "sturdy shield",
+        "reinforced buckler",
+        "battered iron protector",
+        "defensive plate"
       ],
       "themes": {
         "halloween": [
-          "A coffin-lid shield",
-          "A web-covered buckler"
+          "coffin-lid shield",
+          "web-covered buckler"
         ],
         "christmas": [
-          "A giant cookie shield",
-          "A festive wreath-guard"
+          "giant cookie shield",
+          "festive wreath-guard"
         ]
       }
     },
     "lootbox_tier0": {
       "default": [
-        "A dingy box",
-        "A worn door box",
-        "A cheap looking box",
-        "A battered box"
+        "dingy box",
+        "worn door box",
+        "cheap looking box",
+        "battered box"
       ],
       "themes": {
         "halloween": [
-          "A battered pumpkin container",
-          "A cheap looking skull chest",
-          "A spooky rattling box"
+          "battered pumpkin container",
+          "cheap looking skull chest",
+          "spooky rattling box"
         ],
         "christmas": [
-          "A frosty gift box",
-          "A tinsel-wrapped crate",
-          "A snow-dusted parcel"
+          "frosty gift box",
+          "tinsel-wrapped crate",
+          "snow-dusted parcel"
         ]
       }
     },
     "lootbox_tier1": {
       "default": [
-        "A sturdy chest",
-        "A well-crafted box",
-        "A reliable container"
+        "sturdy chest",
+        "well-crafted box",
+        "reliable container"
       ],
       "themes": {
         "halloween": [
-          "A haunted treasure chest",
-          "A glowing jack-o-lantern box"
+          "haunted treasure chest",
+          "glowing jack-o-lantern box"
         ],
         "christmas": [
-          "A red velvet gift box",
+          "red velvet gift box",
           "An ornate holiday chest"
         ]
       }
     },
     "lootbox_tier2": {
       "default": [
-        "A gleaming golden chest",
-        "A magnificent treasure box",
+        "gleaming golden chest",
+        "magnificent treasure box",
         "An ornate gilded container"
       ],
       "themes": {
         "halloween": [
-          "A legendary cursed chest",
-          "A phantom's treasure trove"
+          "legendary cursed chest",
+          "phantom's treasure trove"
         ],
         "christmas": [
           "Santa's special delivery",
-          "A magical winter chest"
+          "magical winter chest"
         ]
       }
     },
     "lootbox_tier3": {
       "default": [
-        "A radiant diamond chest",
-        "A glowing crystalline box",
+        "radiant diamond chest",
+        "glowing crystalline box",
         "An ethereal treasure vault",
-        "A legendary relic box"
+        "legendary relic box"
       ],
       "themes": {
         "halloween": [
           "An ancient soul-reaper's chest",
-          "A spectral void box"
+          "spectral void box"
         ],
         "christmas": [
           "Santa's ultimate gift bundle",
-          "A magical winter solstice vault"
+          "magical winter solstice vault"
         ]
       }
     },
     "weapon_blaster": {
       "default": [
-        "A shiny ray gun",
-        "A crackling energy weapon",
-        "A humming blaster"
+        "shiny ray gun",
+        "crackling energy weapon",
+        "humming blaster"
       ],
       "themes": {
         "halloween": [
-          "A ghostly plasma gun",
-          "A spectral beam cannon"
+          "ghostly plasma gun",
+          "spectral beam cannon"
         ],
         "christmas": [
-          "A candy cane cannon",
-          "A snowball launcher"
+          "candy cane cannon",
+          "snowball launcher"
         ]
       }
     },
     "weapon_hugeblaster": {
       "default": [
-        "A devastating orbital cannon",
-        "A massive energy projector",
-        "A heavy plasma discharger",
-        "A titan-class ray gun"
+        "devastating orbital cannon",
+        "massive energy projector",
+        "heavy plasma discharger",
+        "titan-class ray gun"
       ],
       "themes": {
         "halloween": [
           "The Spectral Doomsday Cannon",
-          "A Haunting Abyss Ray"
+          "Haunting Abyss Ray"
         ],
         "christmas": [
           "The Northern Lights Projector",
-          "A Giant Nutcracker Cannon"
+          "Giant Nutcracker Cannon"
         ]
       }
     },
@@ -186,121 +186,121 @@
         "this",
         "Exactly what you asked for",
         "The 'this' weapon",
-        "A literal 'this'"
+        "literal 'this'"
       ]
     },
     "revive_small": {
       "default": [
-        "A small healing potion",
-        "A minor rejuvenation vial",
-        "A quick recovery tonic",
-        "A faintly glowing elixir"
+        "small healing potion",
+        "minor rejuvenation vial",
+        "quick recovery tonic",
+        "faintly glowing elixir"
       ],
       "themes": {
         "halloween": [
-          "A vial of zombie essence",
-          "A witch's brew of restoration"
+          "vial of zombie essence",
+          "witch's brew of restoration"
         ],
         "christmas": [
-          "A bottle of magic eggnog",
-          "A warm cup of holiday cheer"
+          "bottle of magic eggnog",
+          "warm cup of holiday cheer"
         ]
       }
     },
     "explosive_tnt": {
       "default": [
-        "A bundle of dynamite",
-        "A high-yield explosive charge",
-        "A dangerous red cylinder",
-        "A stack of TNT"
+        "bundle of dynamite",
+        "high-yield explosive charge",
+        "dangerous red cylinder",
+        "stack of TNT"
       ],
       "themes": {
         "halloween": [
-          "A volatile pumpkin bomb",
-          "A cluster of unstable spirits"
+          "volatile pumpkin bomb",
+          "cluster of unstable spirits"
         ],
         "christmas": [
           "An explosive gift surprise",
-          "A high-pressure coal blast"
+          "high-pressure coal blast"
         ]
       }
     },
     "xp_rarecandy": {
       "default": [
-        "A glowing rare candy",
-        "A shimmering experience crystal",
-        "A sweet taste of power",
-        "A luminous skill-booster"
+        "glowing rare candy",
+        "shimmering experience crystal",
+        "sweet taste of power",
+        "luminous skill-booster"
       ],
       "themes": {
         "halloween": [
-          "A haunted soul-sweet",
+          "haunted soul-sweet",
           "Specter-flavored hard candy"
         ],
         "christmas": [
-          "A magical peppermint swirl",
-          "A sugarplum of wisdom"
+          "magical peppermint swirl",
+          "sugarplum of wisdom"
         ]
       }
     },
     "item_grenade": {
       "default": [
-        "A volatile grenade",
-        "A primed explosive orb",
-        "A high-fragmentation device",
-        "A ticking surprise"
+        "volatile grenade",
+        "primed explosive orb",
+        "high-fragmentation device",
+        "ticking surprise"
       ],
       "themes": {
         "halloween": [
-          "A spooky smoke pellet",
-          "A jack-o-lantern grenade"
+          "spooky smoke pellet",
+          "jack-o-lantern grenade"
         ],
         "christmas": [
           "An explosive bauble",
-          "A snowball packed with ice"
+          "snowball packed with ice"
         ]
       }
     },
     "weapon_mirror": {
       "default": [
-        "A reflective mirror shield",
-        "A crystalline surface of deflection",
-        "A polished silver barricade",
-        "A shimmering light-bender"
+        "reflective mirror shield",
+        "crystalline surface of deflection",
+        "polished silver barricade",
+        "shimmering light-bender"
       ],
       "themes": {
         "halloween": [
-          "A haunted silver looking-glass",
-          "A shadow-reflecting pane"
+          "haunted silver looking-glass",
+          "shadow-reflecting pane"
         ],
         "christmas": [
-          "A polished ice wall",
-          "A shiny golden ornament shield"
+          "polished ice wall",
+          "shiny golden ornament shield"
         ]
       }
     },
     "item_scrap": {
       "default": [
-        "A pile of scrap metal",
-        "A heap of salvaged parts",
+        "pile of scrap metal",
+        "heap of salvaged parts",
         "Some jagged metallic debris",
         "Abandoned mechanical bits"
       ]
     },
     "item_script": {
       "default": [
-        "A mysterious script",
-        "A cryptic scroll of code",
-        "A glowing digital parchment",
+        "mysterious script",
+        "cryptic scroll of code",
+        "glowing digital parchment",
         "An ancient sequence structure"
       ]
     },
     "item_video_filter": {
       "default": [
-        "A video filter",
-        "A digital lens overlay",
-        "A chromatic visual modifier",
-        "A pixelated aesthetic enhancer"
+        "video filter",
+        "digital lens overlay",
+        "chromatic visual modifier",
+        "pixelated aesthetic enhancer"
       ]
     }
   }
