@@ -69,18 +69,53 @@ namespace BrandishBot.Client
             }
         }
 
-        private BrandishBotClient(string baseUrl, string apiKey)
+        private readonly bool _isForwardingInstance;
+
+        public BrandishBotClient(string baseUrl, string apiKey, bool isForwardingInstance = false)
         {
             _baseUrl = baseUrl.TrimEnd('/');
             _apiKey = apiKey;
+            _isForwardingInstance = isForwardingInstance;
             _httpClient = new HttpClient();
             _httpClient.DefaultRequestHeaders.Add("X-API-Key", apiKey);
+        }
+
+        private BrandishBotClient _forwardTo;
+
+        /// <summary>
+        /// Set a secondary client to forward all requests to in the background (fire-and-forget)
+        /// </summary>
+        public void SetForwardingClient(BrandishBotClient devClient)
+        {
+            _forwardTo = devClient;
+        }
+
+        private void ForwardRequest(string method, string endpoint, Func<BrandishBotClient, Task<string>> action)
+        {
+            // Prevent recursion: Don't forward if we are already a forwarder
+            if (_isForwardingInstance || _forwardTo == null) return;
+            
+            // Fire and forget in the background
+            Task.Run(async () =>
+            {
+                try
+                {
+                    var response = await action(_forwardTo).ConfigureAwait(false);
+                    // Log the result to streamer.bot (if we had a reference, but we use CPH.Log in the wrapper)
+                    // For now, we'll just let it run. To see logs, we'd need to pass a logger or use a static delegate.
+                }
+                catch (Exception ex)
+                {
+                    // Silent fail for dev PC
+                }
+            });
         }
 
         #region Helper Methods
 
         private async Task<string> PostJsonAsync(string endpoint, object data)
         {
+            ForwardRequest("POST", endpoint, c => c.PostJsonAsync(endpoint, data));
             var jsonBody = JsonConvert.SerializeObject(data);
             var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
             var response = await _httpClient.PostAsync(_baseUrl + endpoint, content);
@@ -89,6 +124,7 @@ namespace BrandishBot.Client
 
         private async Task<string> GetAsync(string endpoint)
         {
+            ForwardRequest("GET", endpoint, c => c.GetAsync(endpoint));
             var response = await _httpClient.GetAsync(_baseUrl + endpoint);
             return await HandleHttpResponse(response);
         }

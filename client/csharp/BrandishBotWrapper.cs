@@ -21,42 +21,59 @@ public class CPHInline
     private static readonly System.Text.RegularExpressions.Regex UsernameRegex = 
         new System.Text.RegularExpressions.Regex(@"^[a-zA-Z0-9_]+$", System.Text.RegularExpressions.RegexOptions.Compiled);
 
+    private static bool lastDevEnabled = false;
+    private static string lastDevUrl = "";
+
     // Initialize the client (called automatically on first use)
     private void EnsureInitialized()
     {
         try
         {
-            // Check if client is null or from unloaded AppDomain (hot reload)
             if (client == null)
             {
-                string baseUrl = "http://127.0.0.1:8080";
-                //string baseUrl = CPH.GetGlobalVar<string>("ServerBaseURL", persisted:true);
+                string baseUrl = CPH.GetGlobalVar<string>("ServerBaseURL", persisted:true);
                 string apiKey = CPH.GetGlobalVar<string>("ServerApiKey", persisted:true);
-                
-                if (string.IsNullOrEmpty(baseUrl))
-                {
-                    CPH.LogError("CONFIGURATION ERROR: ServerBaseURL global variable is not set!");
-                    CPH.LogError("Name: ServerBaseURL, Value: http://IP:PORT (or your server URL)");
-                    throw new InvalidOperationException("ServerBaseURL not configured");
-                }
+                if (string.IsNullOrEmpty(baseUrl)) baseUrl = "http://127.0.0.1:8080";
                 
                 if (string.IsNullOrEmpty(apiKey))
                 {
                     CPH.LogError("CONFIGURATION ERROR: ServerApiKey global variable is not set!");
-                    CPH.LogError("Name: ServerApiKey, Value: your-api-key-here");
                     throw new InvalidOperationException("ServerApiKey not configured");
                 }
                 
                 BrandishBotClient.Initialize(baseUrl, apiKey);
                 client = BrandishBotClient.Instance;
             }
+
+            // Sync Dev Client State (Allows turning it off/on dynamically)
+            bool devEnabled = CPH.GetGlobalVar<bool>("BrandishBot_DevEnabled", persisted:true);
+            string devUrl = CPH.GetGlobalVar<string>("DevBaseURL", persisted:true);
+
+            if (devEnabled != lastDevEnabled || devUrl != lastDevUrl)
+            {
+                if (devEnabled)
+                {
+                    string devKey = CPH.GetGlobalVar<string>("DevApiKey", persisted:true);
+                    if (!string.IsNullOrEmpty(devUrl) && !string.IsNullOrEmpty(devKey))
+                    {
+                        var devClient = new BrandishBotClient(devUrl, devKey, isForwardingInstance: true);
+                        client.SetForwardingClient(devClient);
+                        CPH.LogInfo($"[BrandishBot] Dev Forwarding ENABLED -> {devUrl}");
+                    }
+                }
+                else
+                {
+                    client.SetForwardingClient(null);
+                    CPH.LogInfo("[BrandishBot] Dev Forwarding DISABLED");
+                }
+                lastDevEnabled = devEnabled;
+                lastDevUrl = devUrl;
+            }
         }
         catch (AppDomainUnloadedException)
         {
-            // Hot reload occurred - reset client and retry
-            CPH.LogInfo("Detected hot reload, reinitializing client...");
             client = null;
-            EnsureInitialized(); // Retry
+            EnsureInitialized();
         }
     }
 
@@ -1873,8 +1890,7 @@ public class CPHInline
         try
         {
             var result = client.HandleMessage(platform, platformId, username, message).Result;
-            var formatted = ResponseFormatter.FormatMessage(result);
-            CPH.SetArgument("response", formatted);
+            CPH.SetArgument("response", result);
             return true;
         }
         catch (Exception ex)

@@ -276,6 +276,109 @@ func (s *service) GetAvailableUnlocks(ctx context.Context) ([]*domain.Progressio
 	return available, nil
 }
 
+// GetAvailableUnlocksWithFutureTarget returns nodes available for voting now, plus nodes that will become available
+// once the current unlock target is unlocked. This prevents voting gaps when a node with dependents completes.
+func (s *service) GetAvailableUnlocksWithFutureTarget(ctx context.Context) ([]*domain.ProgressionNode, error) {
+	log := logger.FromContext(ctx)
+
+	// Get currently available nodes
+	available, err := s.GetAvailableUnlocks(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get current available unlocks: %w", err)
+	}
+
+	// Get current unlock progress to check if there's an active target
+	progress, err := s.repo.GetActiveUnlockProgress(ctx)
+	if err != nil {
+		log.Warn("Failed to get active unlock progress, using only current available", "error", err)
+		return available, nil
+	}
+
+	// If no target is set, return only currently available
+	if progress == nil || progress.NodeID == nil {
+		return available, nil
+	}
+
+	// Get the target node being worked towards
+	targetNode, err := s.repo.GetNodeByID(ctx, *progress.NodeID)
+	if err != nil || targetNode == nil {
+		log.Warn("Failed to get target node, using only current available", "nodeID", progress.NodeID, "error", err)
+		return available, nil
+	}
+
+	// Get all nodes that have the target as a prerequisite (future-available nodes)
+	futureAvailable, err := s.getNodesDependentOn(ctx, targetNode.ID, targetNode.NodeKey)
+	if err != nil {
+		log.Warn("Failed to get dependent nodes, using only current available", "error", err)
+		return available, nil
+	}
+
+	// Combine both sets, avoiding duplicates
+	seen := make(map[int]bool)
+	combined := make([]*domain.ProgressionNode, 0, len(available)+len(futureAvailable))
+
+	for _, node := range available {
+		if !seen[node.ID] {
+			combined = append(combined, node)
+			seen[node.ID] = true
+		}
+	}
+
+	for _, node := range futureAvailable {
+		if !seen[node.ID] {
+			combined = append(combined, node)
+			seen[node.ID] = true
+		}
+	}
+
+	log.Debug("GetAvailableUnlocksWithFutureTarget results",
+		"currentAvailable", len(available),
+		"futureAvailable", len(futureAvailable),
+		"combined", len(combined),
+		"targetNodeKey", targetNode.NodeKey)
+
+	return combined, nil
+}
+
+// getNodesDependentOn returns all nodes that have the specified node as a prerequisite
+// (i.e., nodes that will become available once the specified node is unlocked)
+func (s *service) getNodesDependentOn(ctx context.Context, nodeID int, nodeKey string) ([]*domain.ProgressionNode, error) {
+	log := logger.FromContext(ctx)
+
+	// Get all nodes
+	allNodes, err := s.repo.GetAllNodes(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all nodes: %w", err)
+	}
+
+	dependent := make([]*domain.ProgressionNode, 0)
+
+	for _, node := range allNodes {
+		// Skip if already fully unlocked
+		isUnlocked, err := s.repo.IsNodeUnlocked(ctx, node.NodeKey, node.MaxLevel)
+		if err != nil || isUnlocked {
+			continue
+		}
+
+		// Get prerequisites for this node
+		prerequisites, err := s.repo.GetPrerequisites(ctx, node.ID)
+		if err != nil {
+			log.Warn("Failed to get prerequisites", "nodeKey", node.NodeKey, "error", err)
+			continue
+		}
+
+		// Check if the target node is a prerequisite
+		for _, prereq := range prerequisites {
+			if prereq.NodeKey == nodeKey {
+				dependent = append(dependent, node)
+				break
+			}
+		}
+	}
+
+	return dependent, nil
+}
+
 // checkDynamicPrerequisite evaluates a dynamic prerequisite
 func (s *service) checkDynamicPrerequisite(ctx context.Context, prereq domain.DynamicPrerequisite) (bool, error) {
 	switch prereq.Type {
