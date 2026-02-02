@@ -118,7 +118,7 @@ func TestHarvest_Integration(t *testing.T) {
 				"money": 12,
 			},
 			expectedXPAward: true,
-			expectedXP:      60,
+			expectedXP:      48,
 			expectedSpoiled: false,
 		},
 		{
@@ -129,7 +129,7 @@ func TestHarvest_Integration(t *testing.T) {
 				"stick":    3,
 			},
 			expectedXPAward: true,
-			expectedXP:      3400,
+			expectedXP:      2720,
 			expectedSpoiled: true,
 		},
 	}

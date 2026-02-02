@@ -17,7 +17,7 @@ import (
 const (
 	minHarvestInterval = 1.0   // Minimum 1 hour between harvests
 	farmerXPThreshold  = 5.0   // Minimum 5 hours for Farmer XP
-	farmerXPPerHour    = 10    // Base XP per hour of waiting
+	farmerXPPerHour    = 8     // Base XP per hour of waiting
 	spoiledThreshold   = 336.0 // 168h (max tier) + 168h (1 week)
 )
 

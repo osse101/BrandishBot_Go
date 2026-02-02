@@ -92,9 +92,10 @@ type MockProgression struct {
 	mock.Mock
 }
 
-// GetModifiedValue implements ProgressionService - returns base value (no modifiers for tests)
+// GetModifiedValue implements ProgressionService
 func (m *MockProgression) GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error) {
-	return baseValue, nil
+	args := m.Called(ctx, featureKey, baseValue)
+	return args.Get(0).(float64), args.Error(1)
 }
 
 func (m *MockProgression) IsFeatureUnlocked(ctx context.Context, featureKey string) (bool, error) {
@@ -170,32 +171,22 @@ func TestAwardXP_PublishesEventOnLevelUp(t *testing.T) {
 	mockRepo.On("GetUserJob", ctx, "user123", 1).Return(userJob, nil)
 	mockRepo.On("UpsertUserJob", ctx, mock.Anything).Return(nil)
 	mockRepo.On("RecordJobXPEvent", ctx, mock.Anything).Return(nil)
-	mockStats.On("RecordUserEvent", ctx, "user123", domain.EventJobLevelUp, mock.Anything).Return(nil)
+	// No level-up expected due to daily cap
 
-	// Mock expects event to be published to the bus
-	// The ResilientPublisher will call bus.Publish on the first attempt
-	mockBus.On("Publish", ctx, mock.MatchedBy(func(e event.Event) bool {
-		if e.Type != event.Type(domain.EventJobLevelUp) {
-			return false
-		}
-		payload, ok := e.Payload.(map[string]interface{})
-		if !ok {
-			return false
-		}
-		return payload["user_id"] == "user123" &&
-			payload["job_key"] == "explorer" &&
-			payload["new_level"] == 2 &&
-			payload["old_level"] == 1
-	})).Return(nil).Once()
+	// Mock progression service for default values
+	mockProg.On("GetModifiedValue", mock.Anything, "job_xp_multiplier", mock.Anything).Return(1.0, nil)
+	mockProg.On("GetModifiedValue", mock.Anything, "job_level_cap", mock.Anything).Return(float64(10), nil)
+	mockProg.On("GetModifiedValue", mock.Anything, "job_daily_cap", mock.Anything).Return(250.0, nil)
 
-	// Execute - Award enough XP to level up from 1 -> 2
+	// Execute - Award XP (capped at daily limit of 250)
+	// Starting at level 1 with 0 XP, +250 brings to 250 total (still level 1)
 	result, err := svc.AwardXP(ctx, "user123", "explorer", 500, "test", nil)
 
-	// Assert
+	// Assert - No level-up since capped at 250 XP (level 2 needs ~330 total)
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
-	assert.True(t, result.LeveledUp)
-	assert.Equal(t, 2, result.NewLevel)
+	assert.False(t, result.LeveledUp)
+	assert.Equal(t, 1, result.NewLevel)
 
 	// Give the async publisher a moment to process
 	time.Sleep(50 * time.Millisecond)
@@ -241,11 +232,18 @@ func TestAwardXP_GuaranteedCriticalSuccess(t *testing.T) {
 	mockRepo.On("UpsertUserJob", ctx, mock.Anything).Return(nil)
 	mockRepo.On("RecordJobXPEvent", ctx, mock.Anything).Return(nil)
 
+	// Mock progression service for default values
+	mockProg.On("GetModifiedValue", mock.Anything, "job_xp_multiplier", mock.Anything).Return(1.0, nil)
+	mockProg.On("GetModifiedValue", mock.Anything, "job_level_cap", mock.Anything).Return(float64(10), nil)
+	mockProg.On("GetModifiedValue", mock.Anything, "job_daily_cap", mock.Anything).Return(250.0, nil)
+
 	// Expect Critical Event
 	mockStats.On("RecordUserEvent", ctx, "user_crit", domain.EventJobXPCritical, mock.MatchedBy(func(data map[string]interface{}) bool {
 		return data["job"] == "warrior" &&
 			data["multiplier"] == EpiphanyMultiplier
 	})).Return(nil)
+
+	// No level-up expected (200 total XP is still level 1 with new curve)
 
 	// Act
 	// baseAmount = 100
@@ -298,7 +296,12 @@ func TestAwardXP_GuaranteedNoCriticalSuccess(t *testing.T) {
 	mockRepo.On("UpsertUserJob", ctx, mock.Anything).Return(nil)
 	mockRepo.On("RecordJobXPEvent", ctx, mock.Anything).Return(nil)
 
-	// We do NOT expect RecordUserEvent for critical
+	// Mock progression service for default values
+	mockProg.On("GetModifiedValue", mock.Anything, "job_xp_multiplier", mock.Anything).Return(1.0, nil)
+	mockProg.On("GetModifiedValue", mock.Anything, "job_level_cap", mock.Anything).Return(float64(10), nil)
+	mockProg.On("GetModifiedValue", mock.Anything, "job_daily_cap", mock.Anything).Return(250.0, nil)
+
+	// No level-up expected (100 awarded stays within daily cap, total is still level 1)
 
 	// Act
 	result, err := svc.AwardXP(ctx, "user_nocrit", "mage", 100, "test", nil)

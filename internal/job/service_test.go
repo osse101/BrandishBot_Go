@@ -301,9 +301,9 @@ func TestAwardXP_Epiphany(t *testing.T) {
 		return m["job"] == jobKey && m["bonus_xp"] == (expectedXP-baseXP)
 	})).Return(nil)
 
-	// Since 200 XP causes a level up (default curve), expect level up event too
+	// Level up from 0 to 1 is expected (200 XP > 100 needed for level 1)
 	statsSvc.On("RecordUserEvent", ctx, userID, domain.EventJobLevelUp, mock.MatchedBy(func(m map[string]interface{}) bool {
-		return m["job"] == jobKey && m["level"] == 1
+		return m["job"] == jobKey && m["level"] == 1 && m["old_level"] == 0
 	})).Return(nil)
 
 	result, err := svc.AwardXP(ctx, userID, jobKey, baseXP, "test", nil)
@@ -963,13 +963,13 @@ func TestAwardXP_PartialDailyCapRemaining(t *testing.T) {
 	ctx := context.Background()
 
 	job := &domain.Job{ID: 1, JobKey: JobKeyBlacksmith}
-	// User has 400 XP gained today, cap is 500, so only 100 remaining
+	// User has 200 XP gained today, cap is 250, so only 50 remaining
 	userJob := &domain.UserJob{
 		UserID:        "u1",
 		JobID:         1,
 		CurrentXP:     2000,
 		CurrentLevel:  5,
-		XPGainedToday: 400,
+		XPGainedToday: 200,
 	}
 
 	prog.On("IsNodeUnlocked", ctx, JobKeyBlacksmith, 1).Return(true, nil)
@@ -980,17 +980,17 @@ func TestAwardXP_PartialDailyCapRemaining(t *testing.T) {
 	prog.On("GetModifiedValue", ctx, "job_level_cap", mock.Anything).Return(float64(DefaultMaxLevel), nil)
 	prog.On("GetModifiedValue", ctx, "job_daily_cap", float64(DefaultDailyCap)).Return(float64(DefaultDailyCap), nil)
 
-	// Try to award 200, but should only get 100
+	// Try to award 100, but should only get 50
 	repo.On("UpsertUserJob", ctx, mock.MatchedBy(func(uj *domain.UserJob) bool {
-		return uj.XPGainedToday == 500 && uj.CurrentXP == 2100 // 2000 + 100
+		return uj.XPGainedToday == 250 && uj.CurrentXP == 2050 // 2000 + 50
 	})).Return(nil)
 	repo.On("RecordJobXPEvent", ctx, mock.MatchedBy(func(e *domain.JobXPEvent) bool {
-		return e.XPAmount == 100
+		return e.XPAmount == 50
 	})).Return(nil)
 
-	result, err := svc.AwardXP(ctx, "u1", JobKeyBlacksmith, 200, "test", nil)
+	result, err := svc.AwardXP(ctx, "u1", JobKeyBlacksmith, 100, "test", nil)
 	assert.NoError(t, err)
-	assert.Equal(t, 100, result.XPGained) // Only 100 awarded
+	assert.Equal(t, 50, result.XPGained) // Only 50 awarded
 }
 
 // XP Calculation Edge Cases

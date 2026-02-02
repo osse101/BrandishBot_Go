@@ -1041,6 +1041,16 @@ func (s *service) processSearchFailure(ctx context.Context, user *domain.User, r
 	// Format failure message
 	resultMessage := formatSearchFailureMessage(failureType)
 
+	// Award Explorer XP for searching (even on failure)
+	s.wg.Add(1)
+	go func() {
+		defer s.wg.Done()
+		if err := s.awardExplorerXPSimple(context.Background(), user.ID, params.xpMultiplier); err != nil {
+			logger.FromContext(ctx).Warn("Failed to award Explorer XP on search failure",
+				"error", err, "user_id", user.ID)
+		}
+	}()
+
 	// Record search attempt (to track daily count)
 	if s.statsService != nil {
 		_ = s.statsService.RecordUserEvent(ctx, user.ID, domain.EventSearch, map[string]interface{}{
@@ -1120,6 +1130,33 @@ func (s *service) awardExplorerXP(ctx context.Context, userID, itemName string, 
 	} else if result != nil && result.LeveledUp {
 		logger.FromContext(ctx).Info("Explorer leveled up!", "user_id", userID, "new_level", result.NewLevel)
 	}
+}
+
+// awardExplorerXPSimple awards Explorer job XP for a search attempt (success or failure)
+func (s *service) awardExplorerXPSimple(ctx context.Context, userID string, xpMultiplier float64) error {
+	if s.jobService == nil {
+		return nil // Job system not enabled
+	}
+
+	xp := int(float64(job.ExplorerXPPerItem) * xpMultiplier)
+	if xp < 1 {
+		xp = 1
+	}
+
+	metadata := map[string]interface{}{
+		"multiplier": xpMultiplier,
+	}
+
+	result, err := s.jobService.AwardXP(ctx, userID, job.JobKeyExplorer, xp, "search", metadata)
+	if err != nil {
+		return err
+	}
+
+	if result != nil && result.LeveledUp {
+		logger.FromContext(ctx).Info("Explorer leveled up!", "user_id", userID, "new_level", result.NewLevel)
+	}
+
+	return nil
 }
 
 func (s *service) Shutdown(ctx context.Context) error {

@@ -6,7 +6,7 @@ const (
 	BaseXP = 100.0
 
 	// LevelExponent is the exponent used in the XP formula: XP = BaseXP * (Level ^ LevelExponent)
-	LevelExponent = 1.5
+	LevelExponent = 1.2
 
 	// MaxIterationLevel is the maximum level to iterate to when calculating levels
 	MaxIterationLevel = 100
@@ -21,7 +21,7 @@ const (
 	DefaultXPMultiplier = 1.0
 
 	// DefaultDailyCap is the base daily XP cap per job
-	DefaultDailyCap = 500
+	DefaultDailyCap = 250
 )
 
 // Job keys for referencing specific jobs
@@ -41,10 +41,10 @@ const (
 
 	// Gambler XP awards
 	GamblerXPPerLootbox = 20
-	GamblerWinBonus     = 50
+	GamblerWinBonus     = 20
 
 	// Explorer XP awards
-	ExplorerXPPerItem = 10
+	ExplorerXPPerItem = 20
 
 	// Merchant XP awards (value-based)
 	MerchantXPValueDivisor = 10.0 // XP = ceil(transactionValue / divisor)
