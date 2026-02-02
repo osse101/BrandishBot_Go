@@ -236,7 +236,6 @@ func TestAwardXP_Success(t *testing.T) {
 
 	job := &domain.Job{ID: jobID, JobKey: jobKey}
 
-	prog.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
 	prog.On("IsNodeUnlocked", ctx, jobKey, 1).Return(true, nil)
 	repo.On("GetJobByKey", ctx, jobKey).Return(job, nil)
 	repo.On("GetUserJob", ctx, userID, jobID).Return(nil, nil) // New user job
@@ -281,7 +280,6 @@ func TestAwardXP_Epiphany(t *testing.T) {
 
 	job := &domain.Job{ID: jobID, JobKey: jobKey}
 
-	prog.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
 	prog.On("IsNodeUnlocked", ctx, jobKey, 1).Return(true, nil)
 	repo.On("GetJobByKey", ctx, jobKey).Return(job, nil)
 	repo.On("GetUserJob", ctx, userID, jobID).Return(nil, nil)
@@ -334,7 +332,6 @@ func TestAwardXP_LevelUp(t *testing.T) {
 
 	job := &domain.Job{ID: jobID, JobKey: jobKey}
 
-	prog.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
 	prog.On("IsNodeUnlocked", ctx, jobKey, 1).Return(true, nil)
 	repo.On("GetJobByKey", ctx, jobKey).Return(job, nil)
 	// Current XP 0
@@ -365,25 +362,12 @@ func TestAwardXP_LevelUp(t *testing.T) {
 	statsSvc.AssertExpectations(t)
 }
 
-func TestAwardXP_Locked_System(t *testing.T) {
-	repo := new(MockRepository)
-	prog := new(MockProgressionService)
-	svc := NewService(repo, prog, nil, nil, nil)
-	ctx := context.Background()
-
-	prog.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(false, nil)
-
-	_, err := svc.AwardXP(ctx, "u1", "j1", 10, "t", nil)
-	assert.ErrorIs(t, err, domain.ErrFeatureLocked)
-}
-
 func TestAwardXP_Locked_Job(t *testing.T) {
 	repo := new(MockRepository)
 	prog := new(MockProgressionService)
 	svc := NewService(repo, prog, nil, nil, nil)
 	ctx := context.Background()
 
-	prog.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
 	prog.On("IsNodeUnlocked", ctx, "j1", 1).Return(false, nil)
 
 	_, err := svc.AwardXP(ctx, "u1", "j1", 10, "t", nil)
@@ -406,7 +390,6 @@ func TestAwardXP_DailyCap(t *testing.T) {
 
 	job := &domain.Job{ID: jobID, JobKey: jobKey}
 
-	prog.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
 	prog.On("IsNodeUnlocked", ctx, jobKey, 1).Return(true, nil)
 	repo.On("GetJobByKey", ctx, jobKey).Return(job, nil)
 	// User has 0 XP gained today
@@ -447,7 +430,6 @@ func TestAwardXP_DailyCap_Reached(t *testing.T) {
 
 	job := &domain.Job{ID: jobID, JobKey: jobKey}
 
-	prog.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
 	prog.On("IsNodeUnlocked", ctx, jobKey, 1).Return(true, nil)
 	repo.On("GetJobByKey", ctx, jobKey).Return(job, nil)
 	// User has already reached the cap
@@ -479,7 +461,6 @@ func TestAwardXP_RareCandy_BypassesDailyCap(t *testing.T) {
 
 	job := &domain.Job{ID: jobID, JobKey: jobKey}
 
-	prog.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
 	prog.On("IsNodeUnlocked", ctx, jobKey, 1).Return(true, nil)
 	repo.On("GetJobByKey", ctx, jobKey).Return(job, nil)
 	// User has already reached the cap
@@ -523,7 +504,6 @@ func TestAwardXP_RareCandy_ExceedsNormalCap(t *testing.T) {
 
 	job := &domain.Job{ID: jobID, JobKey: jobKey}
 
-	prog.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
 	prog.On("IsNodeUnlocked", ctx, jobKey, 1).Return(true, nil)
 	repo.On("GetJobByKey", ctx, jobKey).Return(job, nil)
 	// User has 400 XP gained today
@@ -573,7 +553,6 @@ func TestAwardXP_MaxLevel(t *testing.T) {
 
 	job := &domain.Job{ID: jobID, JobKey: jobKey}
 
-	prog.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
 	prog.On("IsNodeUnlocked", ctx, jobKey, 1).Return(true, nil)
 	repo.On("GetJobByKey", ctx, jobKey).Return(job, nil)
 	repo.On("GetUserJob", ctx, userID, jobID).Return(&domain.UserJob{
@@ -945,7 +924,6 @@ func TestAwardXP_RepositoryFailure_GetJob(t *testing.T) {
 	svc := NewService(repo, prog, nil, nil, nil)
 	ctx := context.Background()
 
-	prog.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
 	prog.On("IsNodeUnlocked", ctx, JobKeyBlacksmith, 1).Return(true, nil)
 	repo.On("GetJobByKey", ctx, JobKeyBlacksmith).Return(nil, assert.AnError)
 
@@ -962,7 +940,6 @@ func TestAwardXP_RepositoryFailure_Upsert(t *testing.T) {
 
 	job := &domain.Job{ID: 1, JobKey: JobKeyBlacksmith}
 
-	prog.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
 	prog.On("IsNodeUnlocked", ctx, JobKeyBlacksmith, 1).Return(true, nil)
 	repo.On("GetJobByKey", ctx, JobKeyBlacksmith).Return(job, nil)
 	repo.On("GetUserJob", ctx, "u1", 1).Return(nil, nil)
@@ -995,7 +972,6 @@ func TestAwardXP_PartialDailyCapRemaining(t *testing.T) {
 		XPGainedToday: 400,
 	}
 
-	prog.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
 	prog.On("IsNodeUnlocked", ctx, JobKeyBlacksmith, 1).Return(true, nil)
 	repo.On("GetJobByKey", ctx, JobKeyBlacksmith).Return(job, nil)
 	repo.On("GetUserJob", ctx, "u1", 1).Return(userJob, nil)

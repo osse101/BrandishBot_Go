@@ -750,40 +750,6 @@ func (c *APIClient) GetUnlockedRecipes(platform, platformID, username string) ([
 	return recipesResp.Recipes, nil
 }
 
-// GetJobBonus retrieves the active bonus for a job
-func (c *APIClient) GetJobBonus(userID, jobKey, bonusType string) (int, error) {
-	params := url.Values{}
-	params.Set("user_id", userID)
-	params.Set("job_key", jobKey)
-	params.Set("bonus_type", bonusType)
-
-	path := fmt.Sprintf("/api/v1/jobs/bonus?%s", params.Encode())
-	resp, err := c.doRequest(http.MethodGet, path, nil)
-	if err != nil {
-		return 0, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		var errResp struct {
-			Error string `json:"error"`
-		}
-		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
-			return 0, fmt.Errorf("API error: %s", errResp.Error)
-		}
-		return 0, fmt.Errorf("API returned status: %d", resp.StatusCode)
-	}
-
-	var bonusResp struct {
-		BonusVal int `json:"bonus_val"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&bonusResp); err != nil {
-		return 0, fmt.Errorf("failed to decode response: %w", err)
-	}
-
-	return bonusResp.BonusVal, nil
-}
-
 // AdminAddContribution adds contribution points (admin only)
 func (c *APIClient) AdminAddContribution(amount int) (string, error) {
 	req := map[string]interface{}{

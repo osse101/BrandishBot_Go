@@ -165,7 +165,6 @@ func TestAwardXP_PublishesEventOnLevelUp(t *testing.T) {
 		CurrentLevel: 1,
 	}
 
-	mockProg.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
 	mockProg.On("IsNodeUnlocked", ctx, "explorer", 1).Return(true, nil)
 	mockRepo.On("GetJobByKey", ctx, "explorer").Return(job, nil)
 	mockRepo.On("GetUserJob", ctx, "user123", 1).Return(userJob, nil)
@@ -236,7 +235,6 @@ func TestAwardXP_GuaranteedCriticalSuccess(t *testing.T) {
 		CurrentLevel: 1,
 	}
 
-	mockProg.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
 	mockProg.On("IsNodeUnlocked", ctx, "warrior", 1).Return(true, nil)
 	mockRepo.On("GetJobByKey", ctx, "warrior").Return(job, nil)
 	mockRepo.On("GetUserJob", ctx, "user_crit", 1).Return(userJob, nil)
@@ -294,7 +292,6 @@ func TestAwardXP_GuaranteedNoCriticalSuccess(t *testing.T) {
 		CurrentLevel: 1,
 	}
 
-	mockProg.On("IsFeatureUnlocked", ctx, "feature_jobs_xp").Return(true, nil)
 	mockProg.On("IsNodeUnlocked", ctx, "mage", 1).Return(true, nil)
 	mockRepo.On("GetJobByKey", ctx, "mage").Return(job, nil)
 	mockRepo.On("GetUserJob", ctx, "user_nocrit", 1).Return(userJob, nil)

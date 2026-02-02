@@ -183,7 +183,6 @@ func getCommandFactories(bot *discord.Bot) []CommandFactory {
 		discord.RecipesCommand,
 
 		// Job commands
-		discord.JobBonusCommand,
 		discord.JobProgressCommand,
 
 		// Stats commands

@@ -1,8 +1,11 @@
 # Job Implementation Tasks
 
-6 job nodes requiring unlock gate implementation.
-
 All jobs are Tier 2, medium size.
+
+> [!IMPORTANT]
+> The top-level `feature_jobs_xp` node has been removed from the gating logic to simplify the progression tree. Jobs are now gated solely by their individual nodes (e.g., `job_blacksmith`).
+>
+> Remaining stabilization and integration tasks are tracked in [job_system_last_mile.md](../job_system_last_mile.md).
 
 ---
 
@@ -15,6 +18,7 @@ All jobs are Tier 2, medium size.
 **Description**: Job for Upgrading and Disassembling Items
 
 **Implementation Checklist**:
+
 - [ ] Add unlock check in job service for blacksmith activation
 - [ ] Update crafting XP award to verify blacksmith unlock
 - [ ] Add tests for blacksmith job when locked/unlocked
@@ -23,12 +27,14 @@ All jobs are Tier 2, medium size.
 - [ ] Test unlocked behavior (can earn blacksmith XP from crafting)
 
 **Files to Modify**:
+
 - `internal/job/service.go` - Add blacksmith unlock check in GetUserJobs/AwardXP
 - `internal/job/service_test.go` - Add locked/unlocked tests
 - `internal/crafting/service.go` - Check blacksmith unlock before awarding XP
 - `internal/handler/job.go` - Verify unlock
 
 **Acceptance Criteria**:
+
 - ✓ Cannot activate blacksmith job when locked
 - ✓ Can earn XP from upgrading/disassembling when unlocked
 - ✓ Error message: "Blacksmith job not unlocked"
@@ -45,6 +51,7 @@ All jobs are Tier 2, medium size.
 **Description**: Job for exploring to find items
 
 **Implementation Checklist**:
+
 - [ ] Add unlock check in job service for explorer activation
 - [ ] Update search/exploration to award explorer XP when unlocked
 - [ ] Add tests for explorer job when locked/unlocked
@@ -53,11 +60,13 @@ All jobs are Tier 2, medium size.
 - [ ] Test unlocked behavior (earn XP from searching)
 
 **Files to Modify**:
+
 - `internal/job/service.go` - Add explorer unlock check
 - `internal/job/service_test.go` - Add tests
 - `internal/handler/job.go` - Verify unlock
 
 **Acceptance Criteria**:
+
 - ✓ Cannot activate explorer job when locked
 - ✓ Earn XP from search activities when unlocked
 - ✓ Error message: "Explorer job not unlocked"
@@ -74,6 +83,7 @@ All jobs are Tier 2, medium size.
 **Description**: Job for playing games of chance
 
 **Implementation Checklist**:
+
 - [ ] Add unlock check in job service for gambler activation
 - [ ] Update gamble service to award gambler XP when unlocked
 - [ ] Add tests for gambler job when locked/unlocked
@@ -82,12 +92,14 @@ All jobs are Tier 2, medium size.
 - [ ] Test unlocked behavior (earn XP from gambling)
 
 **Files to Modify**:
+
 - `internal/job/service.go` - Add gambler unlock check
 - `internal/job/service_test.go` - Add tests
 - `internal/gamble/service.go` - Check gambler unlock before awarding XP
 - `internal/handler/job.go` - Verify unlock
 
 **Acceptance Criteria**:
+
 - ✓ Cannot activate gambler job when locked
 - ✓ Earn XP from gamble participation when unlocked
 - ✓ Error message: "Gambler job not unlocked"
@@ -104,6 +116,7 @@ All jobs are Tier 2, medium size.
 **Description**: Unlock Farmer Job - earn XP through farming activities and crop management
 
 **Implementation Checklist**:
+
 - [ ] Add unlock check in job service for farmer activation
 - [ ] Update farming service to award farmer XP when unlocked
 - [ ] Add tests for farmer job when locked/unlocked
@@ -112,11 +125,13 @@ All jobs are Tier 2, medium size.
 - [ ] Test unlocked behavior (earn XP from farming)
 
 **Files to Modify**:
+
 - `internal/job/service.go` - Add farmer unlock check
 - `internal/job/service_test.go` - Add tests
 - `internal/handler/job.go` - Verify unlock
 
 **Acceptance Criteria**:
+
 - ✓ Cannot activate farmer job when locked
 - ✓ Earn XP from farming activities when unlocked
 - ✓ Error message: "Farmer job not unlocked"
@@ -133,6 +148,7 @@ All jobs are Tier 2, medium size.
 **Description**: Unlock Merchant Job - earn XP through buying and selling items
 
 **Implementation Checklist**:
+
 - [ ] Add unlock check in job service for merchant activation
 - [ ] Update economy service to award merchant XP when unlocked
 - [ ] Add tests for merchant job when locked/unlocked
@@ -141,12 +157,14 @@ All jobs are Tier 2, medium size.
 - [ ] Test unlocked behavior (earn XP from buy/sell transactions)
 
 **Files to Modify**:
+
 - `internal/job/service.go` - Add merchant unlock check
 - `internal/job/service_test.go` - Add tests
 - `internal/economy/service.go` - Check merchant unlock before awarding XP
 - `internal/handler/job.go` - Verify unlock
 
 **Acceptance Criteria**:
+
 - ✓ Cannot activate merchant job when locked
 - ✓ Earn XP from economy transactions when unlocked
 - ✓ Error message: "Merchant job not unlocked"
@@ -163,6 +181,7 @@ All jobs are Tier 2, medium size.
 **Description**: Job for using the progression system
 
 **Implementation Checklist**:
+
 - [ ] Add unlock check in job service for scholar activation
 - [ ] Update progression service to award scholar XP when unlocked
 - [ ] Add tests for scholar job when locked/unlocked
@@ -171,12 +190,14 @@ All jobs are Tier 2, medium size.
 - [ ] Test unlocked behavior (earn XP from progression engagement)
 
 **Files to Modify**:
+
 - `internal/job/service.go` - Add scholar unlock check
 - `internal/job/service_test.go` - Add tests
 - `internal/progression/service.go` - Check scholar unlock before awarding XP
 - `internal/handler/job.go` - Verify unlock
 
 **Acceptance Criteria**:
+
 - ✓ Cannot activate scholar job when locked
 - ✓ Earn XP from voting/progression activity when unlocked
 - ✓ Error message: "Scholar job not unlocked"
@@ -251,18 +272,19 @@ func TestJobXXX_Unlocked(t *testing.T) {
 
 Each job needs XP awarded from its associated activity:
 
-| Job | Activity | Service | Method |
-|-----|----------|---------|--------|
-| Blacksmith | Upgrading/Disassembling | `crafting.Service` | `UpgradeItem`, `DisassembleItem` |
-| Explorer | Searching | TBD (search service) | Search operations |
-| Gambler | Gambling | `gamble.Service` | `ExecuteGamble` |
-| Farmer | Farming | TBD (farming service) | Farming operations |
-| Merchant | Buy/Sell | `economy.Service` | `BuyItem`, `SellItem` |
-| Scholar | Progression | `progression.Service` | `VoteForUnlock`, `RecordEngagement` |
+| Job        | Activity                | Service               | Method                              |
+| ---------- | ----------------------- | --------------------- | ----------------------------------- |
+| Blacksmith | Upgrading/Disassembling | `crafting.Service`    | `UpgradeItem`, `DisassembleItem`    |
+| Explorer   | Searching               | TBD (search service)  | Search operations                   |
+| Gambler    | Gambling                | `gamble.Service`      | `ExecuteGamble`                     |
+| Farmer     | Farming                 | TBD (farming service) | Farming operations                  |
+| Merchant   | Buy/Sell                | `economy.Service`     | `BuyItem`, `SellItem`               |
+| Scholar    | Progression             | `progression.Service` | `VoteForUnlock`, `RecordEngagement` |
 
 ## Priority
 
 Recommended implementation order:
+
 1. **Scholar** - Progression engagement (core mechanic)
 2. **Gambler** - Already have gamble service
 3. **Blacksmith** - Already have crafting service

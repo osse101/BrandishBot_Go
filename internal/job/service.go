@@ -198,12 +198,6 @@ func (s *service) GetPrimaryJob(ctx context.Context, platform string, platformID
 
 // AwardXP awards XP to a user for a specific job
 func (s *service) AwardXP(ctx context.Context, userID string, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error) {
-	if unlocked, err := s.isJobsXPUnlocked(ctx); err != nil || !unlocked {
-		if err != nil {
-			return nil, fmt.Errorf("failed to check jobs_xp unlock: %w", err)
-		}
-		return nil, fmt.Errorf("jobs XP system not unlocked: %w", domain.ErrFeatureLocked)
-	}
 
 	// Check if specific job is unlocked
 	jobUnlocked, err := s.progressionSvc.IsNodeUnlocked(ctx, jobKey, 1)
@@ -257,14 +251,6 @@ func (s *service) AwardXPByPlatform(ctx context.Context, platform string, platfo
 	}
 
 	return s.AwardXP(ctx, user.ID, jobKey, baseAmount, source, metadata)
-}
-
-func (s *service) isJobsXPUnlocked(ctx context.Context) (bool, error) {
-	unlocked, err := s.progressionSvc.IsFeatureUnlocked(ctx, "feature_jobs_xp")
-	if err != nil {
-		return false, err
-	}
-	return unlocked, nil
 }
 
 func (s *service) getOrCreateUserJob(ctx context.Context, userID string, jobID int) (*domain.UserJob, error) {
