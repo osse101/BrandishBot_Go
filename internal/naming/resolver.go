@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
@@ -30,7 +31,7 @@ type Resolver interface {
 	ResolvePublicName(publicName string) (internalName string, ok bool)
 
 	// GetDisplayName generates a display name with optional shine prefix
-	GetDisplayName(internalName string, shineLevel string) string
+	GetDisplayName(internalName string, shineLevel domain.ShineLevel) string
 
 	// GetActiveTheme returns the currently active theme based on date
 	GetActiveTheme() string
@@ -101,7 +102,7 @@ func (r *resolver) ResolvePublicName(publicName string) (string, bool) {
 }
 
 // GetDisplayName generates a display name with optional shine prefix
-func (r *resolver) GetDisplayName(internalName string, shineLevel string) string {
+func (r *resolver) GetDisplayName(internalName string, shineLevel domain.ShineLevel) string {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -137,8 +138,8 @@ func (r *resolver) GetDisplayName(internalName string, shineLevel string) string
 }
 
 // formatWithShine adds shine level prefix if not COMMON
-func (r *resolver) formatWithShine(name string, shineLevel string) string {
-	if shineLevel == "" || shineLevel == ShineCommonLevel {
+func (r *resolver) formatWithShine(name string, shineLevel domain.ShineLevel) string {
+	if shineLevel == "" || shineLevel == domain.ShineCommon {
 		return name
 	}
 	return fmt.Sprintf(ShineFormatTemplate, shineLevel, name)

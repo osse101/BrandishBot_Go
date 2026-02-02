@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"go/format"
 	"log"
 	"os"
 	"path/filepath"
@@ -40,6 +41,12 @@ func main() {
 	// Generate code
 	code := generateKeysFile(tree)
 
+	// Format code
+	formattedCode, err := format.Source([]byte(code))
+	if err != nil {
+		log.Fatalf("Failed to format generated code: %v\nError: %v\nCode:\n%s", err, err, code)
+	}
+
 	// Ensure output directory exists
 	dir := filepath.Dir(*outputPath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
@@ -47,7 +54,7 @@ func main() {
 	}
 
 	// Write file
-	if err := os.WriteFile(*outputPath, []byte(code), 0644); err != nil {
+	if err := os.WriteFile(*outputPath, formattedCode, 0644); err != nil {
 		log.Fatalf("Failed to write output file: %v", err)
 	}
 

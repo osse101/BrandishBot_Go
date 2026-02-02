@@ -190,7 +190,7 @@ func main() {
 	craftingService := crafting.NewService(repos.Crafting, jobService, statsService, namingResolver, progressionService)
 
 	// Initialize services that depend on job service and naming resolver
-	userService := user.NewService(repos.User, statsService, jobService, lootboxSvc, namingResolver, cooldownSvc, cfg.DevMode)
+	userService := user.NewService(repos.User, repos.Trap, statsService, jobService, lootboxSvc, namingResolver, cooldownSvc, cfg.DevMode)
 
 	// Initialize Harvest Service
 	harvestService := harvest.NewService(repos.Harvest, repos.User, progressionService, jobService)

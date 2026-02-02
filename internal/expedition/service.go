@@ -35,7 +35,7 @@ type JobService interface {
 
 // LootboxService defines the interface for lootbox operations
 type LootboxService interface {
-	OpenLootbox(ctx context.Context, lootboxKey string, quantity int) ([]DroppedItem, error)
+	OpenLootbox(ctx context.Context, lootboxKey string, quantity int, boxShine domain.ShineLevel) ([]DroppedItem, error)
 }
 
 // DroppedItem represents an item dropped from a lootbox
@@ -44,7 +44,7 @@ type DroppedItem struct {
 	ItemName   string
 	Quantity   int
 	Value      int
-	ShineLevel string
+	ShineLevel domain.ShineLevel
 }
 
 type service struct {

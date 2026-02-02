@@ -225,16 +225,16 @@ func TestOpenLootbox(t *testing.T) {
 
 		// Case 1: Common Box
 		// Use high quantity to ensure drop
-		dropsCommon, err := svc.OpenLootbox(context.Background(), "box", 1000, ShineCommon)
+		dropsCommon, err := svc.OpenLootbox(context.Background(), "box", 1000, domain.ShineCommon)
 		require.NoError(t, err)
 		require.NotEmpty(t, dropsCommon)
-		assert.Equal(t, ShineEpic, dropsCommon[0].ShineLevel)
+		assert.Equal(t, domain.ShineEpic, dropsCommon[0].ShineLevel)
 
 		// Case 2: Uncommon Box
-		dropsUncommon, err := svc.OpenLootbox(context.Background(), "box", 1000, ShineUncommon)
+		dropsUncommon, err := svc.OpenLootbox(context.Background(), "box", 1000, domain.ShineUncommon)
 		require.NoError(t, err)
 		require.NotEmpty(t, dropsUncommon)
-		assert.Equal(t, ShineLegendary, dropsUncommon[0].ShineLevel)
+		assert.Equal(t, domain.ShineLegendary, dropsUncommon[0].ShineLevel)
 	})
 
 	t.Run("Negative Shine Shift Verification", func(t *testing.T) {
@@ -268,12 +268,12 @@ func TestOpenLootbox(t *testing.T) {
 		// Item (0.5%) is NOT <= -2%.
 		// Item (0.5%) IS <= 2% (Epic).
 		// Result: Legendary Item becomes Epic.
-		dropsPoor, err := svc.OpenLootbox(context.Background(), "box", 1000, ShinePoor)
+		dropsPoor, err := svc.OpenLootbox(context.Background(), "box", 1000, domain.ShinePoor)
 		require.NoError(t, err)
 		for _, d := range dropsPoor {
 			if d.ItemName == "legendary_item" {
 				// Verify Poor box downgraded Legendary to Epic
-				assert.Equal(t, ShineEpic, d.ShineLevel, "Legendary item in Poor box should downgrade to Epic")
+				assert.Equal(t, domain.ShineEpic, d.ShineLevel, "Legendary item in Poor box should downgrade to Epic")
 			}
 		}
 
@@ -285,12 +285,12 @@ func TestOpenLootbox(t *testing.T) {
 		// Item (4.0% Epic) is NOT <= -1%
 		// Item (4.0% Epic) IS <= 9% (Rare)
 		// Result: Epic Item becomes Rare.
-		dropsJunk, err := svc.OpenLootbox(context.Background(), "box", 1000, ShineJunk)
+		dropsJunk, err := svc.OpenLootbox(context.Background(), "box", 1000, domain.ShineJunk)
 		require.NoError(t, err)
 		for _, d := range dropsJunk {
 			if d.ItemName == "epic_item" {
 				// Verify Junk box downgraded Epic to Rare
-				assert.Equal(t, ShineRare, d.ShineLevel, "Epic item in Junk box should downgrade to Rare")
+				assert.Equal(t, domain.ShineRare, d.ShineLevel, "Epic item in Junk box should downgrade to Rare")
 			}
 		}
 	})

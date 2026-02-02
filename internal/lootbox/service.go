@@ -20,30 +20,6 @@ type LootItem struct {
 	Chance   float64 `json:"chance"`
 }
 
-// Shine levels
-const (
-	ShineCommon    = "COMMON"
-	ShineUncommon  = "UNCOMMON"
-	ShineRare      = "RARE"
-	ShineEpic      = "EPIC"
-	ShineLegendary = "LEGENDARY"
-	ShinePoor      = "POOR"
-	ShineJunk      = "JUNK"
-	ShineCursed    = "CURSED"
-)
-
-// Shine multipliers (Boosts Gamble Score)
-const (
-	MultCommon    = 1.0
-	MultUncommon  = 1.1
-	MultRare      = 1.25
-	MultEpic      = 1.5
-	MultLegendary = 2.0
-	MultPoor      = 0.8
-	MultJunk      = 0.6
-	MultCursed    = 0.4
-)
-
 // Schema paths
 const (
 	LootTablesSchemaPath = "configs/schemas/loot_tables.schema.json"
@@ -55,7 +31,7 @@ type DroppedItem struct {
 	ItemName   string
 	Quantity   int
 	Value      int
-	ShineLevel string
+	ShineLevel domain.ShineLevel
 }
 
 // ItemRepository defines the interface for fetching item data
@@ -66,7 +42,7 @@ type ItemRepository interface {
 
 // Service defines the lootbox opening interface
 type Service interface {
-	OpenLootbox(ctx context.Context, lootboxName string, quantity int, boxShine string) ([]DroppedItem, error)
+	OpenLootbox(ctx context.Context, lootboxName string, quantity int, boxShine domain.ShineLevel) ([]DroppedItem, error)
 }
 
 // ProgressionService defines the interface for checking feature unlocks
@@ -129,7 +105,7 @@ func (s *service) loadLootTables(path string) error {
 }
 
 // OpenLootbox simulates opening lootboxes and returns the dropped items
-func (s *service) OpenLootbox(ctx context.Context, lootboxName string, quantity int, boxShine string) ([]DroppedItem, error) {
+func (s *service) OpenLootbox(ctx context.Context, lootboxName string, quantity int, boxShine domain.ShineLevel) ([]DroppedItem, error) {
 	if quantity <= 0 {
 		return nil, nil
 	}
@@ -211,7 +187,7 @@ func (s *service) updateDropCounts(loot LootItem, qty int, dropCounts map[string
 	dropCounts[loot.ItemName] = info
 }
 
-func (s *service) convertToDroppedItems(ctx context.Context, dropCounts map[string]dropInfo, boxShine string) ([]DroppedItem, error) {
+func (s *service) convertToDroppedItems(ctx context.Context, dropCounts map[string]dropInfo, boxShine domain.ShineLevel) ([]DroppedItem, error) {
 	log := logger.FromContext(ctx)
 
 	itemNames := make([]string, 0, len(dropCounts))
@@ -281,92 +257,92 @@ func (s *service) convertToDroppedItems(ctx context.Context, dropCounts map[stri
 
 // calculateShine determines the visual rarity "shine" and value multiplier of a drop based on its chance
 // The boxShine level shifts the constraints: a more rare box makes it easier to get rare item shine levels.
-func (s *service) calculateShine(chance float64, boxShine string, canUpgrade bool) (string, float64) {
+func (s *service) calculateShine(chance float64, boxShine domain.ShineLevel, canUpgrade bool) (domain.ShineLevel, float64) {
 	dist := s.getShineDistance(boxShine)
 	bonus := 0.03 * float64(dist)
 
-	shine := ShineCommon
+	shine := domain.ShineCommon
 	if chance <= ShineLegendaryThreshold+bonus {
-		shine = ShineLegendary
+		shine = domain.ShineLegendary
 	} else if chance <= ShineEpicThreshold+bonus {
-		shine = ShineEpic
+		shine = domain.ShineEpic
 	} else if chance <= ShineRareThreshold+bonus {
-		shine = ShineRare
+		shine = domain.ShineRare
 	} else if chance <= ShineUncommonThreshold+bonus {
-		shine = ShineUncommon
+		shine = domain.ShineUncommon
 	} else if chance <= ShineCommonThreshold+bonus {
-		shine = ShineCommon
+		shine = domain.ShineCommon
 	} else if chance <= ShinePoorThreshold+bonus {
-		shine = ShinePoor
+		shine = domain.ShinePoor
 	} else if chance <= ShineJunkThreshold+bonus {
-		shine = ShineJunk
+		shine = domain.ShineJunk
 	} else {
-		shine = ShineCursed
+		shine = domain.ShineCursed
 	}
 
 	// Critical Shine Upgrade: 1% chance to upgrade the shine level (locked by progression)
 	if canUpgrade && s.rnd() < CriticalShineUpgradeChance {
 		switch shine {
-		case ShineCursed:
-			shine = ShineJunk
-		case ShineJunk:
-			shine = ShinePoor
-		case ShinePoor:
-			shine = ShineCommon
-		case ShineCommon:
-			shine = ShineUncommon
-		case ShineUncommon:
-			shine = ShineRare
-		case ShineRare:
-			shine = ShineEpic
-		case ShineEpic:
-			shine = ShineLegendary
+		case domain.ShineCursed:
+			shine = domain.ShineJunk
+		case domain.ShineJunk:
+			shine = domain.ShinePoor
+		case domain.ShinePoor:
+			shine = domain.ShineCommon
+		case domain.ShineCommon:
+			shine = domain.ShineUncommon
+		case domain.ShineUncommon:
+			shine = domain.ShineRare
+		case domain.ShineRare:
+			shine = domain.ShineEpic
+		case domain.ShineEpic:
+			shine = domain.ShineLegendary
 		}
 	}
 
 	return shine, s.getShineMultiplier(shine)
 }
 
-func (s *service) getShineDistance(shine string) int {
+func (s *service) getShineDistance(shine domain.ShineLevel) int {
 	switch shine {
-	case ShineLegendary:
+	case domain.ShineLegendary:
 		return 4
-	case ShineEpic:
+	case domain.ShineEpic:
 		return 3
-	case ShineRare:
+	case domain.ShineRare:
 		return 2
-	case ShineUncommon:
+	case domain.ShineUncommon:
 		return 1
-	case ShineCommon:
+	case domain.ShineCommon:
 		return 0
-	case ShinePoor:
+	case domain.ShinePoor:
 		return -1
-	case ShineJunk:
+	case domain.ShineJunk:
 		return -2
-	case ShineCursed:
+	case domain.ShineCursed:
 		return -3
 	default:
 		return 0
 	}
 }
 
-func (s *service) getShineMultiplier(shine string) float64 {
+func (s *service) getShineMultiplier(shine domain.ShineLevel) float64 {
 	switch shine {
-	case ShineLegendary:
-		return MultLegendary
-	case ShineEpic:
-		return MultEpic
-	case ShineRare:
-		return MultRare
-	case ShineUncommon:
-		return MultUncommon
-	case ShinePoor:
-		return MultPoor
-	case ShineJunk:
-		return MultJunk
-	case ShineCursed:
-		return MultCursed
+	case domain.ShineLegendary:
+		return domain.MultLegendary
+	case domain.ShineEpic:
+		return domain.MultEpic
+	case domain.ShineRare:
+		return domain.MultRare
+	case domain.ShineUncommon:
+		return domain.MultUncommon
+	case domain.ShinePoor:
+		return domain.MultPoor
+	case domain.ShineJunk:
+		return domain.MultJunk
+	case domain.ShineCursed:
+		return domain.MultCursed
 	default:
-		return MultCommon
+		return domain.MultCommon
 	}
 }

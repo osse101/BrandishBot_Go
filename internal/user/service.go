@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/osse101/BrandishBot_Go/internal/cooldown"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/job"
@@ -42,6 +43,7 @@ type timeoutInfo struct {
 // service implements the Service interface
 type service struct {
 	repo            repository.User
+	trapRepo        repository.TrapRepository
 	handlerRegistry *HandlerRegistry
 	timeoutMu       sync.Mutex
 	timeouts        map[string]*timeoutInfo
@@ -108,9 +110,10 @@ func loadCacheConfig() CacheConfig {
 }
 
 // NewService creates a new user service
-func NewService(repo repository.User, statsService stats.Service, jobService JobService, lootboxService lootbox.Service, namingResolver naming.Resolver, cooldownService cooldown.Service, devMode bool) Service {
+func NewService(repo repository.User, trapRepo repository.TrapRepository, statsService stats.Service, jobService JobService, lootboxService lootbox.Service, namingResolver naming.Resolver, cooldownService cooldown.Service, devMode bool) Service {
 	return &service{
 		repo:                 repo,
+		trapRepo:             trapRepo,
 		handlerRegistry:      NewHandlerRegistry(),
 		timeouts:             make(map[string]*timeoutInfo),
 		lootboxService:       lootboxService,
@@ -206,6 +209,23 @@ func (s *service) HandleIncomingMessage(ctx context.Context, platform, platformI
 
 	// Track this user as an active chatter for random targeting
 	s.activeChatterTracker.Track(platform, user.ID, username)
+
+	// Check for active trap on this user and trigger if it exists
+	if s.trapRepo != nil {
+		userUUID, _ := uuid.Parse(user.ID)
+		trap, err := s.trapRepo.GetActiveTrap(ctx, userUUID)
+		if err != nil {
+			log.Warn("Failed to check for trap", "user_id", user.ID, "error", err)
+		} else if trap != nil {
+			// Trigger trap asynchronously (don't block message processing)
+			go func() {
+				asyncCtx := context.Background() // New context for async operation
+				if err := s.triggerTrap(asyncCtx, trap, user); err != nil {
+					log.Error(LogMsgTrapTriggered, "trap_id", trap.ID, "error", err)
+				}
+			}()
+		}
+	}
 
 	// Find matches in message
 	matches := s.stringFinder.FindMatches(message)
@@ -1009,7 +1029,7 @@ func (s *service) processSearchSuccess(ctx context.Context, user *domain.User, r
 	return s.formatSearchSuccessMessage(ctx, item, quantity, isCritical, params), nil
 }
 
-func (s *service) addItemToTx(ctx context.Context, tx repository.Tx, userID string, itemID int, quantity int, shineLevel string) error {
+func (s *service) addItemToTx(ctx context.Context, tx repository.Tx, userID string, itemID int, quantity int, shineLevel domain.ShineLevel) error {
 	log := logger.FromContext(ctx)
 	inventory, err := tx.GetInventory(ctx, userID)
 	if err != nil {
@@ -1155,6 +1175,53 @@ func (s *service) awardExplorerXPSimple(ctx context.Context, userID string, xpMu
 	if result != nil && result.LeveledUp {
 		logger.FromContext(ctx).Info("Explorer leveled up!", "user_id", userID, "new_level", result.NewLevel)
 	}
+
+	return nil
+}
+
+// triggerTrap executes trap trigger logic when a user sends a message
+func (s *service) triggerTrap(ctx context.Context, trap *domain.Trap, victim *domain.User) error {
+	log := logger.FromContext(ctx)
+
+	// 1. Mark trap as triggered
+	if err := s.trapRepo.TriggerTrap(ctx, trap.ID); err != nil {
+		return fmt.Errorf("failed to mark trap as triggered: %w", err)
+	}
+
+	// 2. Apply timeout
+	timeout := time.Duration(trap.CalculateTimeout()) * time.Second
+	if err := s.TimeoutUser(ctx, victim.Username, timeout, "BOOM! Stepped on a trap!"); err != nil {
+		return fmt.Errorf("failed to timeout user: %w", err)
+	}
+
+	// 3. Remove from active chatters (prevent immediate re-targeting by grenades)
+	s.activeChatterTracker.Remove(domain.PlatformTwitch, victim.ID)
+
+	// 4. Publish event
+	if s.statsService != nil {
+		// Fetch setter info for event
+		setter, err := s.repo.GetUserByID(ctx, trap.SetterID.String())
+		if err != nil {
+			log.Warn("Failed to get trap setter for event", "setter_id", trap.SetterID)
+		} else {
+			eventData := &domain.TrapTriggeredData{
+				TrapID:           trap.ID,
+				SetterID:         trap.SetterID,
+				SetterUsername:   setter.Username,
+				TargetID:         trap.TargetID,
+				TargetUsername:   victim.Username,
+				ShineLevel:       trap.ShineLevel,
+				TimeoutSeconds:   trap.CalculateTimeout(),
+				WasSelfTriggered: false,
+			}
+			_ = s.statsService.RecordUserEvent(ctx, victim.ID, domain.EventTrapTriggered, eventData.ToMap())
+		}
+	}
+
+	log.Info(LogMsgTrapTriggered,
+		"victim", victim.Username,
+		"timeout", timeout.Seconds(),
+		"trap_id", trap.ID)
 
 	return nil
 }

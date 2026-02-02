@@ -27,7 +27,8 @@ func TestConcurrentAddItem_Integration(t *testing.T) {
 
 	// Create repository and service
 	repo := NewUserRepository(testPool)
-	svc := user.NewService(repo, nil, nil, nil, &mockNamingResolver{}, nil, false)
+	trapRepo := NewTrapRepository(testPool)
+	svc := user.NewService(repo, trapRepo, nil, nil, nil, &mockNamingResolver{}, nil, false)
 
 	// Create a test user
 	testUser := &domain.User{
@@ -113,7 +114,7 @@ func TestConcurrentAddItem_Integration(t *testing.T) {
 // mockNamingResolver is a minimal implementation for testing
 type mockNamingResolver struct{}
 
-func (m *mockNamingResolver) GetDisplayName(internalName, shineLevel string) string {
+func (m *mockNamingResolver) GetDisplayName(internalName string, shineLevel domain.ShineLevel) string {
 	return internalName
 }
 

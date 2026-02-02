@@ -26,6 +26,7 @@ func NewHandlerRegistry() *HandlerRegistry {
 	return &HandlerRegistry{
 		handlers: []ItemHandler{
 			&LootboxHandler{},
+			&TrapHandler{}, // Must come before WeaponHandler to avoid matching "explosive_" prefix
 			&WeaponHandler{},
 			&ReviveHandler{},
 			&ShieldHandler{},
@@ -153,4 +154,17 @@ func (h *UtilityHandler) CanHandle(itemName string) bool {
 // Handle processes utility item usage
 func (h *UtilityHandler) Handle(ctx context.Context, s *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args map[string]interface{}) (string, error) {
 	return s.handleUtility(ctx, s, user, inventory, item, quantity, args)
+}
+
+// TrapHandler handles trap items (must come before WeaponHandler to prevent matching "explosive_" prefix)
+type TrapHandler struct{}
+
+// CanHandle returns true for trap items
+func (h *TrapHandler) CanHandle(itemName string) bool {
+	return itemName == domain.ItemTrap
+}
+
+// Handle processes trap placement
+func (h *TrapHandler) Handle(ctx context.Context, s *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args map[string]interface{}) (string, error) {
+	return s.handleTrap(ctx, s, user, inventory, item, quantity, args)
 }

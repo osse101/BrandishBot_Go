@@ -368,6 +368,17 @@ type UserProgression struct {
 	Metadata        []byte           `json:"metadata"`
 }
 
+// Stores active and historical trap placements
+type UserTrap struct {
+	ID             uuid.UUID          `json:"id"`
+	SetterID       uuid.UUID          `json:"setter_id"`
+	TargetID       uuid.UUID          `json:"target_id"`
+	ShineLevel     string             `json:"shine_level"`
+	TimeoutSeconds int32              `json:"timeout_seconds"`
+	PlacedAt       pgtype.Timestamptz `json:"placed_at"`
+	TriggeredAt    pgtype.Timestamptz `json:"triggered_at"`
+}
+
 type UserVote struct {
 	UserID      string           `json:"user_id"`
 	NodeID      int32            `json:"node_id"`

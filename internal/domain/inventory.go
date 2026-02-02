@@ -2,9 +2,9 @@ package domain
 
 // InventorySlot represents a single item slot in the user's inventory
 type InventorySlot struct {
-	ItemID     int    `json:"item_id"`
-	Quantity   int    `json:"quantity"`
-	ShineLevel string `json:"shine,omitempty"` // COMMON/UNCOMMON/RARE/EPIC/LEGENDARY
+	ItemID     int        `json:"item_id"`
+	Quantity   int        `json:"quantity"`
+	ShineLevel ShineLevel `json:"shine,omitempty"` // COMMON/UNCOMMON/RARE/EPIC/LEGENDARY
 }
 
 // Inventory represents the structure stored in the JSONB column

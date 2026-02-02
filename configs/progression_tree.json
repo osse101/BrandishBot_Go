@@ -130,7 +130,7 @@
       "category": "items",
       "max_level": 1,
       "prerequisites": [
-        "item_grenade"
+        "item_trap"
       ],
       "sort_order": 58,
       "auto_unlock": false
@@ -363,6 +363,21 @@
       "auto_unlock": false
     },
     {
+      "key": "item_mine",
+      "name": "Mine Item",
+      "type": "item",
+      "description": "Unlock Explosive Mine - basic trap item",
+      "tier": 1,
+      "size": "small",
+      "category": "items",
+      "max_level": 1,
+      "prerequisites": [
+        "weapon_missile"
+      ],
+      "sort_order": 109,
+      "auto_unlock": false
+    },
+    {
       "key": "item_grenade",
       "name": "Grenade",
       "type": "item",
@@ -375,6 +390,36 @@
         "weapon_missile"
       ],
       "sort_order": 111,
+      "auto_unlock": false
+    },
+    {
+      "key": "item_trap",
+      "name": "Trap Item",
+      "type": "item",
+      "description": "Unlock Explosive Trap - targeted time-delayed blast",
+      "tier": 3,
+      "size": "medium",
+      "category": "items",
+      "max_level": 1,
+      "prerequisites": [
+        "item_mine"
+      ],
+      "sort_order": 112,
+      "auto_unlock": false
+    },
+    {
+      "key": "item_bomb",
+      "name": "Bomb",
+      "type": "item",
+      "description": "Unlock Explosive Bomb - A buried trap with many explosives",
+      "tier": 4,
+      "size": "medium",
+      "category": "items",
+      "max_level": 1,
+      "prerequisites": [
+        "item_trap"
+      ],
+      "sort_order": 113,
       "auto_unlock": false
     },
     {

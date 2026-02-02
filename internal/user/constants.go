@@ -78,6 +78,9 @@ const BulkFeedbackThreshold = 5
 // BlasterTimeoutDuration is the default duration a user is timed out when hit by a blaster
 const BlasterTimeoutDuration = 60 * time.Second
 
+// TrapCooldownDuration is the cooldown after a trap triggers to prevent immediate re-trapping
+const TrapCooldownDuration = 10 * time.Minute
+
 // ============================================================================
 // Resource Generation Constants
 // ============================================================================
@@ -165,6 +168,7 @@ const (
 	LogMsgHandleReviveCalled           = "handleRevive called"
 	LogMsgHandleShieldCalled           = "handleShield called"
 	LogMsgHandleRareCandyCalled        = "handleRareCandy called"
+	LogMsgHandleTrapCalled             = "handleTrap called"
 	LogMsgResourceGeneratorCalled      = "ResourceGeneratorHandler called"
 	LogMsgUtilityCalled                = "UtilityHandler called"
 )
@@ -201,6 +205,8 @@ const (
 	LogMsgReviveUsed                 = "revive used"
 	LogMsgShieldApplied              = "shield applied"
 	LogMsgRareCandyUsed              = "rare candy used"
+	LogMsgTrapUsed                   = "trap used"
+	LogMsgTrapTriggered              = "trap triggered"
 	LogMsgUserCacheHit               = "User cache hit"
 	LogMsgFoundExistingUser          = "Found existing user"
 	LogMsgAutoRegisteringUser        = "Auto-registering new user"
@@ -236,6 +242,9 @@ const (
 	LogWarnNotEnoughRevives             = "not enough revives in inventory"
 	LogWarnNotEnoughShields             = "not enough shields in inventory"
 	LogWarnNotEnoughRareCandy           = "not enough rare candy in inventory"
+	LogWarnNotEnoughTraps               = "not enough traps in inventory"
+	LogWarnTrapNotInInventory           = "trap not in inventory"
+	LogWarnTargetUsernameMissingTrap    = "target username missing for trap"
 	LogWarnJobNameMissing               = "job name missing for rare candy"
 	LogWarnFailedToGetSearchCounts      = "Failed to get search counts"
 	LogWarnFailedToAwardExplorerXP      = "Failed to award Explorer XP"
@@ -324,8 +333,10 @@ const (
 // ============================================================================
 
 const (
-	MsgShovelUsed = " used a shovel and found "
-	MsgStickUsed  = " planted a stick as a monument to their achievement!"
+	MsgShovelUsed        = " used a shovel and found "
+	MsgStickUsed         = " planted a stick as a monument to their achievement!"
+	MsgTrapSet           = "Trap set on %s! It will trigger when they speak."
+	MsgTrapSelfTriggered = "BOOM! You stepped on %s's existing trap! Your trap has been placed anyway."
 )
 
 // ============================================================================

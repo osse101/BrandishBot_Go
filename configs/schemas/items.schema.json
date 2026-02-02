@@ -93,7 +93,8 @@
                         "revive",
                         "shield",
                         "rarecandy",
-                        "explosive"
+                        "explosive",
+                        "trap"
                     ],
                     "description": "Item handler for special behavior"
                 },

@@ -20,7 +20,7 @@ const (
 )
 
 // grantSearchReward adds lootbox to inventory within a transaction
-func (s *service) grantSearchReward(ctx context.Context, user *domain.User, quantity int, shineLevel string) error {
+func (s *service) grantSearchReward(ctx context.Context, user *domain.User, quantity int, shineLevel domain.ShineLevel) error {
 	log := logger.FromContext(ctx)
 
 	item, err := s.getItemByNameCached(ctx, domain.ItemLootbox0)
@@ -38,19 +38,19 @@ func (s *service) grantSearchReward(ctx context.Context, user *domain.User, quan
 	})
 }
 
-var searchShineLevels = []string{
-	"CURSED",    // 0
-	"JUNK",      // 1
-	"POOR",      // 2
-	"COMMON",    // 3
-	"UNCOMMON",  // 4
-	"RARE",      // 5
-	"EPIC",      // 6
-	"LEGENDARY", // 7
+var searchShineLevels = []domain.ShineLevel{
+	domain.ShineCursed,    // 0
+	domain.ShineJunk,      // 1
+	domain.ShinePoor,      // 2
+	domain.ShineCommon,    // 3
+	domain.ShineUncommon,  // 4
+	domain.ShineRare,      // 5
+	domain.ShineEpic,      // 6
+	domain.ShineLegendary, // 7
 }
 
 // calculateSearchShine determines the shine level for search results based on a point system
-func (s *service) calculateSearchShine(isCritical bool, params searchParams) string {
+func (s *service) calculateSearchShine(isCritical bool, params searchParams) domain.ShineLevel {
 	// 1. Determine base index based on daily count (current count includes the one we just did)
 	// Bracket mapping: 1=uncommon, 2-5=common, 6-9=poor, 10-14=junk, 15+=cursed
 	baseIndex := 0
@@ -96,7 +96,7 @@ func (s *service) formatSearchSuccessMessage(ctx context.Context, item *domain.I
 	actualShine := s.calculateSearchShine(isCritical, params)
 
 	// Use naming resolver to get name WITHOUT shine prefix for user display
-	displayName := s.namingResolver.GetDisplayName(item.InternalName, "COMMON")
+	displayName := s.namingResolver.GetDisplayName(item.InternalName, domain.ShineCommon)
 	var resultMessage string
 
 	if isCritical {

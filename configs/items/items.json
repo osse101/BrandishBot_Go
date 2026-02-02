@@ -249,9 +249,8 @@
         "upgradeable",
         "disassembleable"
       ],
-      "handler": "explosive",
+      "handler": "trap",
       "handler_config": {
-        "damage_type": "search_trap",
         "timeout_seconds": 60
       },
       "default_display": "A bear trap with explosives"

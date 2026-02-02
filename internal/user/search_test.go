@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -210,6 +211,34 @@ func (m *mockSearchRepo) GetAllItems(ctx context.Context) ([]domain.Item, error)
 	return items, nil
 }
 
+func (m *mockSearchRepo) CreateTrap(ctx context.Context, trap *domain.Trap) error {
+	return nil
+}
+
+func (m *mockSearchRepo) GetActiveTrap(ctx context.Context, targetID uuid.UUID) (*domain.Trap, error) {
+	return nil, nil
+}
+
+func (m *mockSearchRepo) GetActiveTrapForUpdate(ctx context.Context, targetID uuid.UUID) (*domain.Trap, error) {
+	return nil, nil
+}
+
+func (m *mockSearchRepo) TriggerTrap(ctx context.Context, trapID uuid.UUID) error {
+	return nil
+}
+
+func (m *mockSearchRepo) GetTrapsByUser(ctx context.Context, setterID uuid.UUID, limit int) ([]*domain.Trap, error) {
+	return nil, nil
+}
+
+func (m *mockSearchRepo) GetTriggeredTrapsForTarget(ctx context.Context, targetID uuid.UUID, limit int) ([]*domain.Trap, error) {
+	return nil, nil
+}
+
+func (m *mockSearchRepo) CleanupStaleTraps(ctx context.Context, daysOld int) (int, error) {
+	return 0, nil
+}
+
 // Mock cooldown service
 type mockCooldownService struct {
 	repo *mockSearchRepo
@@ -255,7 +284,7 @@ func (m *mockCooldownService) GetLastUsed(ctx context.Context, userID, action st
 func createSearchTestService() (*service, *mockSearchRepo) {
 	repo := newMockSearchRepo()
 	statsSvc := &mockStatsService{mockCounts: make(map[domain.EventType]int)}
-	svc := NewService(repo, statsSvc, nil, nil, NewMockNamingResolver(), &mockCooldownService{repo: repo}, false).(*service)
+	svc := NewService(repo, repo, statsSvc, nil, nil, NewMockNamingResolver(), &mockCooldownService{repo: repo}, false).(*service)
 
 	// Add standard test items
 	repo.items[domain.ItemLootbox0] = &domain.Item{

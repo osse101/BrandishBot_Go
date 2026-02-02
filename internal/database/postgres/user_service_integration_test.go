@@ -25,7 +25,7 @@ func (m *MockJobService) AwardXP(ctx context.Context, userID, jobKey string, bas
 
 type MockLootboxService struct{}
 
-func (m *MockLootboxService) OpenLootbox(ctx context.Context, lootboxName string, quantity int, boxShine string) ([]lootbox.DroppedItem, error) {
+func (m *MockLootboxService) OpenLootbox(ctx context.Context, lootboxName string, quantity int, boxShine domain.ShineLevel) ([]lootbox.DroppedItem, error) {
 	return []lootbox.DroppedItem{}, nil
 }
 
@@ -53,7 +53,7 @@ func (m *MockStatsService) GetLeaderboard(ctx context.Context, eventType domain.
 
 type MockNamingResolver struct{}
 
-func (m *MockNamingResolver) GetDisplayName(internalName string, shineLevel string) string {
+func (m *MockNamingResolver) GetDisplayName(internalName string, shineLevel domain.ShineLevel) string {
 	return internalName
 }
 
@@ -89,11 +89,13 @@ func setupIntegrationTest(t *testing.T) (*pgxpool.Pool, *UserRepository, user.Se
 	ensureMigrations(t)
 
 	repo := NewUserRepository(testPool)
+	trapRepo := NewTrapRepository(testPool)
 	cooldownConfig := cooldown.Config{DevMode: true}
 	cooldownSvc := cooldown.NewPostgresService(testPool, cooldownConfig, nil)
 
 	svc := user.NewService(
 		repo,
+		trapRepo,
 		&MockStatsService{},
 		&MockJobService{},
 		&MockLootboxService{},
@@ -241,9 +243,11 @@ func TestUserService_AsyncXPAward_Integration(t *testing.T) {
 	slowJobSvc := &SlowJobService{delay: 200 * time.Millisecond}
 	cooldownConfig := cooldown.Config{DevMode: true}
 	cooldownSvc := cooldown.NewPostgresService(pool, cooldownConfig, nil)
+	trapRepo := NewTrapRepository(pool)
 
 	svc := user.NewService(
 		repo,
+		trapRepo,
 		&MockStatsService{},
 		slowJobSvc,
 		&MockLootboxService{},

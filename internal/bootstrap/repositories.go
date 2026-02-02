@@ -24,6 +24,7 @@ type Repositories struct {
 	Linking     repository.Linking
 	Progression repository.Progression
 	Harvest     repository.HarvestRepository
+	Trap        repository.TrapRepository
 }
 
 // InitializeRepositories creates all repository implementations.
@@ -42,5 +43,6 @@ func InitializeRepositories(dbPool *pgxpool.Pool, eventBus event.Bus) *Repositor
 		Linking:     postgres.NewLinkingRepository(dbPool),
 		Progression: postgres.NewProgressionRepository(dbPool, eventBus),
 		Harvest:     postgres.NewHarvestRepository(dbPool),
+		Trap:        postgres.NewTrapRepository(dbPool),
 	}
 }

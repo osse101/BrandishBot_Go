@@ -18,6 +18,7 @@ type Querier interface {
 	AssignItemTag(ctx context.Context, arg AssignItemTagParams) error
 	CleanupExpiredTokens(ctx context.Context) error
 	CleanupOldEvents(ctx context.Context, days int32) (int64, error)
+	CleanupStaleTraps(ctx context.Context, dollar_1 interface{}) error
 	ClearAllUnlockProgress(ctx context.Context) error
 	ClearAllUserProgression(ctx context.Context) error
 	ClearAllUserVotes(ctx context.Context) error
@@ -36,6 +37,7 @@ type Querier interface {
 	CreateGamble(ctx context.Context, arg CreateGambleParams) error
 	CreateHarvestState(ctx context.Context, dollar_1 uuid.UUID) (HarvestState, error)
 	CreateToken(ctx context.Context, arg CreateTokenParams) error
+	CreateTrap(ctx context.Context, arg CreateTrapParams) (UserTrap, error)
 	CreateUnlockProgress(ctx context.Context) (int32, error)
 	CreateUser(ctx context.Context, username string) (uuid.UUID, error)
 	CreateVotingSession(ctx context.Context) (int32, error)
@@ -49,6 +51,8 @@ type Querier interface {
 	GetActiveGamble(ctx context.Context) (Gamble, error)
 	GetActiveOrFrozenSession(ctx context.Context) (GetActiveOrFrozenSessionRow, error)
 	GetActiveSession(ctx context.Context) (GetActiveSessionRow, error)
+	GetActiveTrap(ctx context.Context, targetID uuid.UUID) (UserTrap, error)
+	GetActiveTrapForUpdate(ctx context.Context, targetID uuid.UUID) (UserTrap, error)
 	GetActiveUnlockProgress(ctx context.Context) (ProgressionUnlockProgress, error)
 	GetActiveVoting(ctx context.Context) (ProgressionVoting, error)
 	// Crafting Recipe Repository Queries
@@ -115,6 +119,8 @@ type Querier interface {
 	GetTopUsers(ctx context.Context, arg GetTopUsersParams) ([]GetTopUsersRow, error)
 	GetTotalEngagementScore(ctx context.Context) (int64, error)
 	GetTotalEventCount(ctx context.Context, arg GetTotalEventCountParams) (int64, error)
+	GetTrapsByUser(ctx context.Context, arg GetTrapsByUserParams) ([]UserTrap, error)
+	GetTriggeredTrapsForTarget(ctx context.Context, arg GetTriggeredTrapsForTargetParams) ([]UserTrap, error)
 	GetUnlock(ctx context.Context, arg GetUnlockParams) (ProgressionUnlock, error)
 	GetUnlockedRecipesForUser(ctx context.Context, userID uuid.UUID) ([]GetUnlockedRecipesForUserRow, error)
 	GetUserByID(ctx context.Context, userID uuid.UUID) (User, error)
@@ -168,6 +174,7 @@ type Querier interface {
 	SaveOpenedItem(ctx context.Context, arg SaveOpenedItemParams) error
 	SetUnlockTarget(ctx context.Context, arg SetUnlockTargetParams) error
 	StartVoting(ctx context.Context, arg StartVotingParams) error
+	TriggerTrap(ctx context.Context, id uuid.UUID) error
 	UnlockNode(ctx context.Context, arg UnlockNodeParams) error
 	UnlockRecipe(ctx context.Context, arg UnlockRecipeParams) error
 	UnlockUserProgression(ctx context.Context, arg UnlockUserProgressionParams) error

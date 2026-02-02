@@ -29,4 +29,13 @@ const (
 
 	// EventTypeDailyResetComplete is published when the daily job XP reset completes
 	EventTypeDailyResetComplete = "daily_reset.complete"
+
+	// EventTrapPlaced is published when a trap is placed on a user
+	EventTrapPlaced = "trap.placed"
+
+	// EventTrapTriggered is published when a trap is triggered
+	EventTrapTriggered = "trap.triggered"
+
+	// EventTrapSelfTriggered is published when a user triggers their own trap
+	EventTrapSelfTriggered = "trap.self_triggered"
 )

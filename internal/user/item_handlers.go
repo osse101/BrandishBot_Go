@@ -9,10 +9,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/lootbox"
+	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
@@ -42,7 +44,7 @@ func (s *service) processLootbox(ctx context.Context, user *domain.User, invento
 	return s.processLootboxDrops(ctx, user, inventory, lootboxItem, quantity, drops)
 }
 
-func (s *service) consumeLootboxFromInventory(inventory *domain.Inventory, item *domain.Item, quantity int) (string, error) {
+func (s *service) consumeLootboxFromInventory(inventory *domain.Inventory, item *domain.Item, quantity int) (domain.ShineLevel, error) {
 	itemSlotIndex, slotQuantity := utils.FindSlot(inventory, item.ID)
 	if itemSlotIndex == -1 {
 		return "", errors.New(ErrMsgItemNotFoundInInventory)
@@ -128,9 +130,9 @@ func (s *service) aggregateDropsAndUpdateInventory(inventory *domain.Inventory, 
 	for _, drop := range drops {
 		// Track stats for feedback
 		stats.totalValue += drop.Value
-		if drop.ShineLevel == lootbox.ShineLegendary {
+		if drop.ShineLevel == domain.ShineLegendary {
 			stats.hasLegendary = true
-		} else if drop.ShineLevel == lootbox.ShineEpic {
+		} else if drop.ShineLevel == domain.ShineEpic {
 			stats.hasEpic = true
 		}
 
@@ -153,9 +155,9 @@ func (s *service) aggregateDropsAndUpdateInventory(inventory *domain.Inventory, 
 		msgBuilder.WriteString(itemDisplayName)
 
 		// Add shine annotation for visual impact
-		if drop.ShineLevel != "" && drop.ShineLevel != lootbox.ShineCommon {
+		if drop.ShineLevel != "" && drop.ShineLevel != domain.ShineCommon {
 			msgBuilder.WriteString(LootboxShineAnnotationOpen)
-			msgBuilder.WriteString(drop.ShineLevel)
+			msgBuilder.WriteString(string(drop.ShineLevel))
 			msgBuilder.WriteString(LootboxShineAnnotationClose)
 		}
 
@@ -369,6 +371,147 @@ func (s *service) handleRevive(ctx context.Context, _ *service, _ *domain.User, 
 	return fmt.Sprintf("%s used %d %s on %s! Reduced timeout by %v.", username, quantity, displayName, targetUsername, totalRecovery), nil
 }
 
+func (s *service) handleTrap(ctx context.Context, _ *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args map[string]interface{}) (string, error) {
+	log := logger.FromContext(ctx)
+	log.Info(LogMsgHandleTrapCalled, "item", item.InternalName, "quantity", quantity)
+
+	// 1. Validate quantity
+	if quantity != 1 {
+		return "", errors.New("can only use 1 trap at a time")
+	}
+
+	// 2. Extract target from args
+	targetUsername, ok := args[ArgsTargetUsername].(string)
+	if !ok || targetUsername == "" {
+		log.Warn(LogWarnTargetUsernameMissingTrap)
+		return "", errors.New(ErrMsgTargetUsernameRequired)
+	}
+
+	platform, _ := args[ArgsPlatform].(string)
+	if platform == "" {
+		platform = domain.PlatformTwitch // default
+	}
+
+	// 3. Validate target exists
+	targetUser, err := s.repo.GetUserByPlatformUsername(ctx, platform, targetUsername)
+	if err != nil || targetUser == nil {
+		log.Warn("Target user not found", "username", targetUsername, "platform", platform, "error", err)
+		return "", errors.New("target user not found")
+	}
+
+	// 4. Find item in inventory
+	itemSlotIndex, slotQuantity := utils.FindSlot(inventory, item.ID)
+	if itemSlotIndex == -1 {
+		log.Warn(LogWarnTrapNotInInventory, "item", item.InternalName)
+		return "", errors.New(ErrMsgItemNotFoundInInventory)
+	}
+	if slotQuantity < quantity {
+		log.Warn(LogWarnNotEnoughTraps, "item", item.InternalName)
+		return "", errors.New(ErrMsgNotEnoughItemsInInventory)
+	}
+
+	// 5. Atomic check-and-set: Check for existing trap, trigger if exists, place new trap
+	var existingTrap *domain.Trap
+	var selfTriggered bool
+
+	err = s.withTx(ctx, func(tx repository.UserTx) error {
+		// Check for existing trap on target
+		targetUserID, _ := uuid.Parse(targetUser.ID)
+		existingTrap, err = s.trapRepo.GetActiveTrapForUpdate(ctx, targetUserID)
+		if err != nil {
+			return fmt.Errorf("failed to check existing trap: %w", err)
+		}
+
+		// If trap exists, trigger it on setter (self-trap logic)
+		if existingTrap != nil {
+			selfTriggered = true
+			timeout := time.Duration(existingTrap.CalculateTimeout()) * time.Second
+
+			// Timeout the setter (not the target)
+			if err := s.TimeoutUser(ctx, user.Username, timeout,
+				fmt.Sprintf("stepped on %s's trap while placing one!", targetUsername)); err != nil {
+				return fmt.Errorf("failed to apply self-trap timeout: %w", err)
+			}
+
+			// Mark existing trap as triggered
+			if err := s.trapRepo.TriggerTrap(ctx, existingTrap.ID); err != nil {
+				return fmt.Errorf("failed to trigger existing trap: %w", err)
+			}
+
+			// Publish self-trap event
+			if s.statsService != nil {
+				eventData := &domain.TrapTriggeredData{
+					TrapID:           existingTrap.ID,
+					SetterID:         existingTrap.SetterID,
+					SetterUsername:   targetUsername, // Original setter
+					TargetID:         existingTrap.TargetID,
+					TargetUsername:   user.Username,
+					ShineLevel:       existingTrap.ShineLevel,
+					TimeoutSeconds:   existingTrap.CalculateTimeout(),
+					WasSelfTriggered: true,
+				}
+				_ = s.statsService.RecordUserEvent(ctx, user.ID, domain.EventTrapSelfTriggered, eventData.ToMap())
+			}
+		}
+
+		// Consume item from inventory
+		utils.RemoveFromSlot(inventory, itemSlotIndex, quantity)
+		if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
+			return fmt.Errorf("failed to update inventory: %w", err)
+		}
+
+		// Get shine level from inventory slot
+		shineLevel := inventory.Slots[itemSlotIndex].ShineLevel
+		if shineLevel == "" {
+			shineLevel = domain.ShineCommon // default
+		}
+
+		// Create new trap
+		userID, _ := uuid.Parse(user.ID)
+		newTrap := &domain.Trap{
+			ID:             uuid.New(),
+			SetterID:       userID,
+			TargetID:       targetUserID,
+			ShineLevel:     shineLevel,
+			TimeoutSeconds: 60, // default timeout, will be modified by shine level on trigger
+			PlacedAt:       time.Now(),
+		}
+
+		if err := s.trapRepo.CreateTrap(ctx, newTrap); err != nil {
+			return fmt.Errorf("failed to create trap: %w", err)
+		}
+
+		// Publish trap placed event
+		if s.statsService != nil {
+			eventData := &domain.TrapPlacedData{
+				TrapID:         newTrap.ID,
+				SetterID:       userID,
+				SetterUsername: user.Username,
+				TargetID:       targetUserID,
+				TargetUsername: targetUsername,
+				ShineLevel:     shineLevel,
+				TimeoutSeconds: newTrap.TimeoutSeconds,
+			}
+			_ = s.statsService.RecordUserEvent(ctx, user.ID, domain.EventTrapPlaced, eventData.ToMap())
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		log.Error("Failed to place trap", "error", err, "target", targetUsername)
+		return "", err
+	}
+
+	// 7. Build response message
+	log.Info(LogMsgTrapUsed, "target", targetUsername, "item", item.InternalName)
+	if selfTriggered {
+		return fmt.Sprintf(MsgTrapSelfTriggered, targetUsername), nil
+	}
+
+	return fmt.Sprintf(MsgTrapSet, targetUsername), nil
+}
+
 func (s *service) handleShield(ctx context.Context, _ *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, _ map[string]interface{}) (string, error) {
 	log := logger.FromContext(ctx)
 	log.Info(LogMsgHandleShieldCalled, "item", item.InternalName, "quantity", quantity)
@@ -469,7 +612,7 @@ func (s *service) handleResourceGenerator(ctx context.Context, _ *service, _ *do
 
 	sticksGenerated := quantity * ShovelSticksPerUse
 	utils.AddItemsToInventory(inventory, []domain.InventorySlot{
-		{ItemID: stickItem.ID, Quantity: sticksGenerated, ShineLevel: "COMMON"},
+		{ItemID: stickItem.ID, Quantity: sticksGenerated, ShineLevel: domain.ShineCommon},
 	}, nil)
 
 	displayName := s.namingResolver.GetDisplayName(domain.ItemStick, "")

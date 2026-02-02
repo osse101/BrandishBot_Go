@@ -572,7 +572,7 @@ func (s *service) GetActiveGamble(ctx context.Context) (*domain.Gamble, error) {
 }
 
 // Helper to consume item from inventory and return its shine level
-func consumeItem(inventory *domain.Inventory, itemID, quantity int) (string, error) {
+func consumeItem(inventory *domain.Inventory, itemID, quantity int) (domain.ShineLevel, error) {
 	for i := range inventory.Slots {
 		if inventory.Slots[i].ItemID == itemID {
 			if inventory.Slots[i].Quantity < quantity {
@@ -589,7 +589,7 @@ func consumeItem(inventory *domain.Inventory, itemID, quantity int) (string, err
 			return shineLevel, nil
 		}
 	}
-	return "", domain.ErrItemNotFound
+	return domain.ShineLevel(""), domain.ErrItemNotFound
 }
 
 // calculateTotalLootboxes sums up lootbox quantities from bets

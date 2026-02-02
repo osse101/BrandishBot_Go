@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
@@ -285,4 +286,32 @@ func (f *FakeRepository) GetAllItems(ctx context.Context) ([]domain.Item, error)
 		items = append(items, *item)
 	}
 	return items, nil
+}
+
+func (f *FakeRepository) CreateTrap(ctx context.Context, trap *domain.Trap) error {
+	return nil
+}
+
+func (f *FakeRepository) GetActiveTrap(ctx context.Context, targetID uuid.UUID) (*domain.Trap, error) {
+	return nil, nil
+}
+
+func (f *FakeRepository) GetActiveTrapForUpdate(ctx context.Context, targetID uuid.UUID) (*domain.Trap, error) {
+	return nil, nil
+}
+
+func (f *FakeRepository) TriggerTrap(ctx context.Context, trapID uuid.UUID) error {
+	return nil
+}
+
+func (f *FakeRepository) GetTrapsByUser(ctx context.Context, setterID uuid.UUID, limit int) ([]*domain.Trap, error) {
+	return nil, nil
+}
+
+func (f *FakeRepository) GetTriggeredTrapsForTarget(ctx context.Context, targetID uuid.UUID, limit int) ([]*domain.Trap, error) {
+	return nil, nil
+}
+
+func (f *FakeRepository) CleanupStaleTraps(ctx context.Context, daysOld int) (int, error) {
+	return 0, nil
 }

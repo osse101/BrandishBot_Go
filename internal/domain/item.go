@@ -15,3 +15,29 @@ type Item struct {
 	Types          []string `json:"types" db:"types"`               // Populated from join/separate query
 	Handler        *string  `json:"handler,omitempty" db:"handler"` // Nullable: some items have no handler
 }
+
+// ShineLevel represents the visual rarity and quality of an item
+type ShineLevel string
+
+const (
+	ShineCommon    ShineLevel = "COMMON"
+	ShineUncommon  ShineLevel = "UNCOMMON"
+	ShineRare      ShineLevel = "RARE"
+	ShineEpic      ShineLevel = "EPIC"
+	ShineLegendary ShineLevel = "LEGENDARY"
+	ShinePoor      ShineLevel = "POOR"
+	ShineJunk      ShineLevel = "JUNK"
+	ShineCursed    ShineLevel = "CURSED"
+)
+
+// Shine multipliers (Boosts item value and Gamble Score)
+const (
+	MultCommon    = 1.0
+	MultUncommon  = 1.1
+	MultRare      = 1.25
+	MultEpic      = 1.5
+	MultLegendary = 2.0
+	MultPoor      = 0.8
+	MultJunk      = 0.6
+	MultCursed    = 0.4
+)
