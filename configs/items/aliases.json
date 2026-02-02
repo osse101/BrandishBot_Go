@@ -6,17 +6,15 @@
     "money": {
       "default": [
         "money",
-        "heavy pouch of coins",
-        "Shiny credits"
+        "Shiny credit"
       ],
       "themes": {
         "halloween": [
-          "Curse-touched coins",
-          "Bags of ghost-gold"
+          "Curse-touched coin",
+          "ghost-gold"
         ],
         "christmas": [
-          "Festive stockings full of coins",
-          "Winter-frosted credits"
+          "Winter-frosted credit"
         ]
       }
     },
