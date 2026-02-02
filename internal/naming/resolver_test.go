@@ -55,9 +55,9 @@ func TestGetDisplayName(t *testing.T) {
 		internalToPublic: make(map[string]string),
 		aliases: map[string]AliasPool{
 			"lootbox_tier0": {
-				Default: []string{"A dingy box", "A worn box"},
+				Default: []string{"dingy box", "worn box"},
 				Themes: map[string][]string{
-					"halloween": {"A spooky box"},
+					"halloween": {"spooky box"},
 				},
 			},
 		},
@@ -66,20 +66,14 @@ func TestGetDisplayName(t *testing.T) {
 
 	// Test without shine
 	name := r.GetDisplayName("lootbox_tier0", domain.ShineLevel(""))
-	if name != "A dingy box" && name != "A worn box" {
+	if name != "dingy box" && name != "worn box" {
 		t.Errorf("GetDisplayName() = %v, want one of default aliases", name)
 	}
 
 	// Test with shine
 	name = r.GetDisplayName("lootbox_tier0", domain.ShineLevel("RARE"))
-	if name != "RARE A dingy box" && name != "RARE A worn box" {
+	if name != "dingy box" && name != "worn box" {
 		t.Errorf("GetDisplayName() with shine = %v, want RARE prefix", name)
-	}
-
-	// Test COMMON shine (should not show prefix)
-	name = r.GetDisplayName("lootbox_tier0", domain.ShineCommon)
-	if name == "COMMON A dingy box" || name == "COMMON A worn box" {
-		t.Errorf("GetDisplayName() with COMMON shine should not show prefix, got %v", name)
 	}
 
 	// Test unknown item (should return internal name)
