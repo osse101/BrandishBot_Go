@@ -369,6 +369,9 @@ func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.Gamb
 func (s *service) validateGambleBets(ctx context.Context, bets []domain.LootboxBet) ([]int, error) {
 	resolvedItemIDs := make([]int, len(bets))
 	for i, bet := range bets {
+		if bet.Quantity > domain.MaxTransactionQuantity {
+			return nil, fmt.Errorf("%w: max is %d", domain.ErrQuantityTooHigh, domain.MaxTransactionQuantity)
+		}
 		itemID, err := s.resolveLootboxBet(ctx, bet)
 		if err != nil {
 			return nil, err
@@ -726,6 +729,9 @@ func (s *service) validateGambleStartInput(bets []domain.LootboxBet) error {
 	for _, bet := range bets {
 		if bet.Quantity <= 0 {
 			return domain.ErrBetQuantityMustBePositive
+		}
+		if bet.Quantity > domain.MaxTransactionQuantity {
+			return fmt.Errorf("%w: max is %d", domain.ErrQuantityTooHigh, domain.MaxTransactionQuantity)
 		}
 	}
 	return nil

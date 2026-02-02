@@ -24,6 +24,7 @@ const (
 
 	// Validation errors (used for partial matches)
 	ErrMsgInvalidQuantity = "quantity" // Used in contains checks for various quantity errors
+	ErrMsgQuantityTooHigh = "quantity too high"
 	ErrMsgInvalidPlatform = "invalid platform"
 	ErrMsgInvalidInput    = "invalid input"
 
@@ -152,6 +153,7 @@ var (
 	// Validation errors
 	ErrInvalidInput    = errors.New(ErrMsgInvalidInput)
 	ErrInvalidQuantity = errors.New(ErrMsgInvalidQuantity)
+	ErrQuantityTooHigh = errors.New(ErrMsgQuantityTooHigh)
 	ErrInvalidPlatform = errors.New(ErrMsgInvalidPlatform)
 
 	// Progression errors

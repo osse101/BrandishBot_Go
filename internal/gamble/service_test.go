@@ -296,6 +296,20 @@ func TestStartGamble_InvalidBetQuantity(t *testing.T) {
 	assert.ErrorIs(t, err, domain.ErrBetQuantityMustBePositive)
 }
 
+func TestStartGamble_ExcessiveBetQuantity(t *testing.T) {
+	repo := new(MockRepository)
+	s := NewService(repo, nil, nil, new(MockLootboxService), nil, time.Minute, nil, nil, nil, nil)
+
+	ctx := context.Background()
+	bets := []domain.LootboxBet{{ItemName: "lootbox_tier1", Quantity: domain.MaxTransactionQuantity + 1}}
+
+	gamble, err := s.StartGamble(ctx, domain.PlatformTwitch, "123", "testuser", bets)
+
+	assert.Error(t, err)
+	assert.Nil(t, gamble)
+	assert.ErrorIs(t, err, domain.ErrQuantityTooHigh)
+}
+
 func TestStartGamble_UserNotFound(t *testing.T) {
 	repo := new(MockRepository)
 	s := NewService(repo, nil, nil, new(MockLootboxService), nil, time.Minute, nil, nil, nil, nil)
