@@ -15,7 +15,7 @@ func TestVotingFlow_Complete(t *testing.T) {
 	}
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, NewMockUser(), nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	// Step 1: Start voting session
@@ -99,7 +99,7 @@ func TestVotingFlow_MultipleVoters(t *testing.T) {
 	}
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, NewMockUser(), nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	service.StartVotingSession(ctx, nil)
@@ -124,7 +124,7 @@ func TestVotingFlow_AutoNextSession(t *testing.T) {
 	}
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, NewMockUser(), nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	// Complete first unlock cycle - vote for lootbox0 specifically
@@ -180,7 +180,7 @@ func TestMultiLevel_Progressive(t *testing.T) {
 	}
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, NewMockUser(), nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	// Unlock prerequisites first
@@ -215,7 +215,7 @@ func TestMultiLevel_SessionTargeting(t *testing.T) {
 	}
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, NewMockUser(), nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	// Pre-unlock all other paths to isolate the cooldown node
@@ -270,7 +270,7 @@ func TestRollover_ExcessPoints(t *testing.T) {
 	}
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, NewMockUser(), nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	// Setup progress with target
@@ -305,7 +305,7 @@ func TestCache_ThresholdDetection(t *testing.T) {
 	}
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, NewMockUser(), nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	// Complete voting to set cache

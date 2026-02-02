@@ -16,7 +16,7 @@ import (
 func TestStartVotingSession_NoGoroutineLeak(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestNodes(repo)
-	svc := NewService(repo, NewMockUser(), nil)
+	svc := NewService(repo, NewMockUser(), nil, nil, nil)
 
 	checker := leaktest.NewGoroutineChecker(t)
 
@@ -34,7 +34,7 @@ func TestStartVotingSession_NoGoroutineLeak(t *testing.T) {
 func TestVoteForUnlock_NoGoroutineLeak(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestNodes(repo)
-	svc := NewService(repo, NewMockUser(), nil)
+	svc := NewService(repo, NewMockUser(), nil, nil, nil)
 
 	// Start a voting session first
 	ctx := context.Background()
@@ -59,7 +59,7 @@ func TestVoteForUnlock_NoGoroutineLeak(t *testing.T) {
 func TestEndVoting_NoGoroutineLeak(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestNodes(repo)
-	svc := NewService(repo, NewMockUser(), nil)
+	svc := NewService(repo, NewMockUser(), nil, nil, nil)
 
 	ctx := context.Background()
 
@@ -86,7 +86,7 @@ func TestEndVoting_NoGoroutineLeak(t *testing.T) {
 func TestAddContribution_NoGoroutineLeak(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestNodes(repo)
-	svc := NewService(repo, NewMockUser(), nil)
+	svc := NewService(repo, NewMockUser(), nil, nil, nil)
 
 	// Start progress tracking
 	ctx := context.Background()
@@ -106,7 +106,7 @@ func TestAddContribution_NoGoroutineLeak(t *testing.T) {
 func TestCheckAndUnlockNode_NoGoroutineLeak(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestNodes(repo)
-	svc := NewService(repo, NewMockUser(), nil)
+	svc := NewService(repo, NewMockUser(), nil, nil, nil)
 
 	ctx := context.Background()
 
@@ -132,7 +132,7 @@ func TestCheckAndUnlockNode_NoGoroutineLeak(t *testing.T) {
 
 func TestRecordEngagement_NoGoroutineLeak(t *testing.T) {
 	repo := NewMockRepository()
-	svc := NewService(repo, NewMockUser(), nil)
+	svc := NewService(repo, NewMockUser(), nil, nil, nil)
 
 	checker := leaktest.NewGoroutineChecker(t)
 
@@ -162,7 +162,7 @@ func TestRecordEngagement_NoGoroutineLeak(t *testing.T) {
 func TestGetProgressionStatus_NoGoroutineLeak(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestNodes(repo)
-	svc := NewService(repo, NewMockUser(), nil)
+	svc := NewService(repo, NewMockUser(), nil, nil, nil)
 
 	ctx := context.Background()
 	_ = svc.StartVotingSession(ctx, nil)

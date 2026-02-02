@@ -2,86 +2,100 @@
 
 ## 1. Overview
 
-Briefly describe the item and its role in the game.
+Briefly describe the item's role in the gameplay loop and its thematic purpose.
 
-- **Internal Name:** `item_example`
-- **Public Name:** `example`
-- **Display Name:** `A Mysterious Example`
+- **Internal Name:** `item_internal_name`
+- **Public Name:** `public_name`
+- **Display Name:** `Default Display Name`
 - **Tier:** [0-4]
-- **Tags:** `[consumable, tradeable, upgradeable, disassembleable, sellable, buyable]`
+- **Tags:** `[consumable, material, tradeable, upgradeable, disassembleable, sellable, buyable]`
+
+---
 
 ## 2. Utility & Mechanics
 
-Detailed explanation of what happens when the item is used.
+Detailed technical specification of the item's primary behavior.
 
-### Behavior
+### Behavior Logic
 
-- [ ] Active Use (via `!use [item]`)
-- [ ] Passive Effect
-- [ ] Currency / Material
+- [ ] **Active Use**: Triggered via `!use [item] [args]`.
+- [ ] **Passive Effect**: Constant buff/debuff while in inventory.
+- [ ] **Event-Driven**: Triggered by external hooks (e.g., chat messages, reactions, level ups).
+
+### Execution Flow
+
+1. **Pre-conditions**: (e.g., Target must be active, User must not be timed out).
+2. **Action**: (e.g., Apply status, grant item, trigger event).
+3. **Feedback**: (e.g., Channel message, DM to user, visual "juice").
 
 ### API / Handler Input Args
 
-What arguments does the handler expect in the `args` map?
+What keys should be present in the `args map[string]interface{}`?
 
-- `target_username`: (string) The user being targeted (if applicable)
-- `job_name`: (string) The job to apply effects to (if applicable)
-- ...
+- `target_username`: (string) Targeted user.
+- `quantity`: (int) Number of items being used.
+- `platform`: (string) Origin platform (twitch/discord).
 
-### Handler Implementation
+---
 
-- **Existing Handler:** [e.g., `weapon`, `lootbox`, `revive`, `shield`, `rarecandy`]
-- **New Handler Needed:** Yes/No (If yes, describe the logic)
-- **Similar To:** [Existing item/handler this is based on]
+## 3. Technical Infrastructure
 
-## 3. Interactions
+### Persistence & State
+
+- **Database Changes**: Does this item require a new table or new columns in `users`/`inventory`?
+- **TTL/Cleanup**: If the item creates a lasting state (like a trap or a buff), how and when is it cleaned up?
+
+### Concurrency & Performance
+
+- **Atomicity**: Does the logic require a database transaction (`tx`) to prevent dupes or race conditions?
+- **Locking**: Are there shared resources that need mutex protection?
+- **Complexity**: Is the effect expensive? Should it run in a goroutine?
+
+### Event Hooks
+
+Where does this item interface with the rest of the bot?
+
+- `internal/user/item_handlers.go`: Standard `!use` logic.
+- `internal/user/service.go`: Hooks into message/user lifecycle.
+- `internal/handler/`: Direct command handler hooks.
+
+---
+
+## 4. Interactions
 
 ### Shine Interaction
 
-How does the `ShineLevel` (COMMON, UNCOMMON, RARE, EPIC, LEGENDARY) affect the item?
+How does quality (COMMON to LEGENDARY) scale the effect?
 
-- **Duration Multiplier:** (e.g., EPIC +50% duration)
-- **Effect Potency:** (e.g., RARE +20% damage)
-- **Drop Quality:** (e.g., Higher shine lootbox = better drop tables)
-- **Visuals:** Any special messages or "juice" for high shine?
+- **Potency**: (e.g., More XP, more damage).
+- **Duration**: (e.g., Longer buffs, shorter timeouts).
+- **Visuals**: Special emojis or message prefixes for high-tier shine.
 
 ### Upgrade / Crafting Interaction
 
-How does the item participate in the crafting system?
+- **Upgradeable**: Yes/No (Define materials and target item).
+- **Disassembleable**: Yes/No (Define materials returned).
+- **Masterwork/Perfect Salvage**: Any item-specific critical success effects?
 
-- **Is Upgradeable:** Yes/No
-  - **Recipe Cost:** What materials are needed to "upgrade" to this item?
-  - **Success Rewards:** Masterwork multiplier (e.g., 2x output on critical success).
-- **Is Disassembleable:** Yes/No
-  - **Scrap Output:** What materials are returned?
-  - **Perfect Salvage:** Multiplier for perfect salvage events.
+---
 
-## 4. Systems Integration
+## 5. Systems Integration
 
-Which existing systems are used, or what new systems are required?
+- **Progression**: Which node unlocks this item?
+- **Job System**: Does it grant XP? Which job is the "specialist" for this item?
+- **Stats & Tracking**: What metrics should be recorded (e.g., `EventItemUsed`, `StatTotalDamageDealt`)?
+- **Cooldowns**: Standard global cooldown or item-specific lockout?
 
-- [ ] **Progression:** Gated behind a node? (e.g., `feature_farming`)
-- [ ] **Job System:** Does it grant XP? Which job?
-- [ ] **Stats/Events:** What events are recorded? (e.g., `EventLootboxJackpot`)
-- [ ] **Cooldown:** Does it have a global or per-user cooldown?
+---
 
-## 5. Scope of Work
+## 6. Scope of Work
 
-Identify high-level changes across the codebase.
+### Implementation Checklist
 
-### Repositories Affected
-
-- `configs/items/items.json`: Definition and handler config.
-- `internal/domain/item.go`: Any new domain constants.
-- `internal/user/item_handlers.go`: Logic for `!use`.
-- `internal/lootbox/service.go`: If it's a new type of lootbox.
-- `internal/naming/constants.go`: Public name and display name mappings.
-- `migrations/`: Any new database tables or schema changes.
-
-### Similar Handlers
-
-List existing handlers that can be referenced for implementation:
-
-- `handleWeapon`: Reference for targeting logic.
-- `handleLootbox`: Reference for drop processing.
-- `handleShield`: Reference for buff/status application.
+- [ ] Add definition to `configs/items/items.json`.
+- [ ] Create database migration in `migrations/`.
+- [ ] Register handler in `internal/user/handler_registry.go`.
+- [ ] Implement logic in `internal/user/item_handlers.go`.
+- [ ] (Optional) Create new domain constants in `internal/domain/`.
+- [ ] Add unit tests for success and failure cases.
+- [ ] Ensure `naming/constants.go` is updated for display resolution.

@@ -115,7 +115,7 @@ func TestProgressionService_Integration(t *testing.T) {
 	userRepo := dbpostgres.NewUserRepository(testPool)
 
 	// Create service
-	svc := NewService(repo, userRepo, bus)
+	svc := NewService(repo, userRepo, bus, nil, nil)
 
 	// Wait for service to be ready
 	time.Sleep(100 * time.Millisecond)

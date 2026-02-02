@@ -1041,7 +1041,7 @@ func setupTestTree(repo *MockRepository) {
 func TestGetProgressionTree(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, NewMockUser(), nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	tree, err := service.GetProgressionTree(ctx)
@@ -1076,7 +1076,7 @@ func TestGetProgressionTree(t *testing.T) {
 func TestGetAvailableUnlocks(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, NewMockUser(), nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	// Initially, only money and lootbox0 should be available (root is unlocked)
@@ -1110,7 +1110,7 @@ func TestVoteForUnlock(t *testing.T) {
 func TestIsFeatureUnlocked(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, NewMockUser(), nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	// Progression system should be unlocked
@@ -1135,7 +1135,7 @@ func TestIsFeatureUnlocked(t *testing.T) {
 func TestIsItemUnlocked(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, NewMockUser(), nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	// Money should not be unlocked
@@ -1165,7 +1165,7 @@ func TestIsItemUnlocked(t *testing.T) {
 
 func TestEngagementTracking(t *testing.T) {
 	repo := NewMockRepository()
-	service := NewService(repo, NewMockUser(), nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	// Record engagement metrics
@@ -1208,7 +1208,7 @@ func TestEngagementTracking(t *testing.T) {
 func TestAdminUnlock(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, NewMockUser(), nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	// Admin unlock money
@@ -1230,7 +1230,7 @@ func TestAdminUnlock(t *testing.T) {
 func TestAdminRelock(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, NewMockUser(), nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	// Unlock then relock
@@ -1253,7 +1253,7 @@ func TestAdminRelock(t *testing.T) {
 func TestResetProgressionTree(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, NewMockUser(), nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	// Unlock some nodes
@@ -1296,7 +1296,7 @@ func timePtr(t time.Time) *time.Time {
 func TestMultiLevelUnlock(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, NewMockUser(), nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	// Unlock economy first (prerequisite for cooldown reduction)

@@ -12,7 +12,7 @@ import (
 
 func TestGetEngagementVelocity(t *testing.T) {
 	repo := NewMockRepository()
-	service := NewService(repo, NewMockUser(), nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	t.Run("Empty Data", func(t *testing.T) {
@@ -80,7 +80,7 @@ func TestGetEngagementVelocity(t *testing.T) {
 
 func TestEstimateUnlockTime(t *testing.T) {
 	repo := NewMockRepository()
-	service := NewService(repo, NewMockUser(), nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	// Setup: Node costs 1000.

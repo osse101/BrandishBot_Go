@@ -91,7 +91,7 @@ func main() {
 
 	// Initialize core services
 	statsService := stats.NewService(repos.Stats)
-	progressionService := progression.NewService(repos.Progression, repos.User, eventBus)
+	progressionService := progression.NewService(repos.Progression, repos.User, eventBus, resilientPublisher, nil)
 
 	// Sync configuration files to database
 	if err := bootstrap.SyncProgressionTree(context.Background(), repos.Progression); err != nil {

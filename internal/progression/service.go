@@ -9,9 +9,16 @@ import (
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/event"
+	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
+
+// JobService defines the interface for the job system
+type JobService interface {
+	AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error)
+	GetJobLevel(ctx context.Context, userID, jobKey string) (int, error)
+}
 
 // Service defines the progression system business logic
 type Service interface {
@@ -77,9 +84,11 @@ type Service interface {
 }
 
 type service struct {
-	repo repository.Progression
-	user repository.User
-	bus  event.Bus
+	repo       repository.Progression
+	user       repository.User
+	bus        event.Bus
+	jobService JobService
+	publisher  *event.ResilientPublisher
 
 	// In-memory cache for unlock threshold checking
 	mu               sync.RWMutex
@@ -107,12 +116,14 @@ type service struct {
 }
 
 // NewService creates a new progression service
-func NewService(repo repository.Progression, userRepo repository.User, bus event.Bus) Service {
+func NewService(repo repository.Progression, userRepo repository.User, bus event.Bus, publisher *event.ResilientPublisher, jobService JobService) Service {
 	shutdownCtx, shutdownCancel := context.WithCancel(context.Background())
 	svc := &service{
 		repo:           repo,
 		user:           userRepo,
 		bus:            bus,
+		jobService:     jobService,
+		publisher:      publisher,
 		modifierCache:  NewModifierCache(30 * time.Minute), // 30-min TTL
 		unlockCache:    NewUnlockCache(),                   // No TTL - invalidate on unlock/relock
 		unlockSem:      make(chan struct{}, 1),             // Buffer of 1 = only one unlock check at a time
@@ -535,10 +546,24 @@ func (s *service) RecordEngagement(ctx context.Context, userID string, metricTyp
 			modifiedScore = baseScore
 		}
 
+		// Apply Scholar bonus (per-user contribution multiplier)
+		scholarMultiplier := s.calculateScholarBonus(ctx, userID)
+		if scholarMultiplier > 1.0 {
+			log := logger.FromContext(ctx)
+			log.Info("Applying Scholar bonus",
+				"user_id", userID,
+				"base_score", modifiedScore,
+				"multiplier", scholarMultiplier)
+			modifiedScore = modifiedScore * scholarMultiplier
+		}
+
 		score := int(modifiedScore)
 		if score > 0 {
 			if err := s.AddContribution(ctx, score); err != nil {
 				logger.FromContext(ctx).Warn("Failed to add contribution from engagement", "error", err)
+			} else {
+				// Award Scholar XP asynchronously (don't block engagement recording)
+				s.awardScholarXP(ctx, userID, metricType, value)
 			}
 		}
 	}
@@ -550,6 +575,58 @@ func (s *service) RecordEngagement(ctx context.Context, userID string, metricTyp
 func (s *service) GetEngagementScore(ctx context.Context) (int, error) {
 	// Get score since last unlock (or beginning)
 	return s.repo.GetEngagementScore(ctx, nil)
+}
+
+// calculateScholarBonus calculates the contribution multiplier from Scholar job
+// Returns 1.0 + (level × 0.10), e.g., level 5 = 1.5x multiplier
+func (s *service) calculateScholarBonus(ctx context.Context, userID string) float64 {
+	log := logger.FromContext(ctx)
+
+	if s.jobService == nil {
+		return 1.0
+	}
+
+	level, err := s.jobService.GetJobLevel(ctx, userID, job.JobKeyScholar)
+	if err != nil {
+		log.Warn("Failed to get Scholar level, using 1.0x multiplier", "error", err)
+		return 1.0
+	}
+
+	if level == 0 {
+		return 1.0
+	}
+
+	// 10% bonus per level
+	multiplier := 1.0 + (float64(level) * job.ScholarBonusPerLevel / 100.0)
+	return multiplier
+}
+
+// awardScholarXP awards XP to Scholar job for any engagement action
+// Runs asynchronously to avoid blocking engagement recording
+func (s *service) awardScholarXP(ctx context.Context, userID, metricType string, value int) {
+	if s.jobService == nil {
+		return
+	}
+
+	log := logger.FromContext(ctx)
+
+	// Award XP asynchronously (don't block engagement recording)
+	s.wg.Add(1)
+	go func() {
+		defer s.wg.Done()
+
+		metadata := map[string]interface{}{
+			"metric_type": metricType,
+			"value":       value,
+		}
+
+		result, err := s.jobService.AwardXP(ctx, userID, job.JobKeyScholar, job.ScholarXPPerEngagement, "engagement", metadata)
+		if err != nil {
+			log.Warn("Failed to award Scholar XP", "error", err, "user_id", userID)
+		} else if result != nil && result.LeveledUp {
+			log.Info("Scholar leveled up!", "user_id", userID, "new_level", result.NewLevel)
+		}
+	}()
 }
 
 // GetUserEngagement returns user's contribution breakdown

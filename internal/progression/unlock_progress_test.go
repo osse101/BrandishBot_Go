@@ -13,7 +13,7 @@ import (
 func TestCheckAndUnlock_Success(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, NewMockUser(), nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	// 1. Setup active progress
@@ -41,7 +41,7 @@ func TestCheckAndUnlock_Success(t *testing.T) {
 func TestCheckAndUnlock_Rollover(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, NewMockUser(), nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	progressID, _ := repo.CreateUnlockProgress(ctx)
@@ -65,7 +65,7 @@ func TestCheckAndUnlock_Rollover(t *testing.T) {
 func TestCheckAndUnlock_StartsNewSession(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, NewMockUser(), nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	// Ensure money is available for session (root unlocks it)
@@ -100,7 +100,7 @@ func TestCheckAndUnlock_StartsNewSession(t *testing.T) {
 func TestCheckAndUnlock_ClearsCacheOnUnlock(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, NewMockUser(), nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	progressID, _ := repo.CreateUnlockProgress(ctx)
@@ -122,7 +122,7 @@ func TestCheckAndUnlock_ClearsCacheOnUnlock(t *testing.T) {
 func TestCheckAndUnlock_NoProgress(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, NewMockUser(), nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	// No active progress exists
@@ -140,7 +140,7 @@ func TestCheckAndUnlock_NoProgress(t *testing.T) {
 func TestCheckAndUnlock_TargetNotSet(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, NewMockUser(), nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	repo.CreateUnlockProgress(ctx)
@@ -154,7 +154,7 @@ func TestCheckAndUnlock_TargetNotSet(t *testing.T) {
 func TestCheckAndUnlock_BelowThreshold(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, NewMockUser(), nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	progressID, _ := repo.CreateUnlockProgress(ctx)
@@ -173,7 +173,7 @@ func TestCheckAndUnlock_BelowThreshold(t *testing.T) {
 
 func TestAddContribution_Success(t *testing.T) {
 	repo := NewMockRepository()
-	service := NewService(repo, NewMockUser(), nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	// Create progress
@@ -193,7 +193,7 @@ func TestAddContribution_Success(t *testing.T) {
 
 func TestAddContribution_CreatesProgress(t *testing.T) {
 	repo := NewMockRepository()
-	service := NewService(repo, NewMockUser(), nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	// No progress exists
@@ -209,7 +209,7 @@ func TestAddContribution_CreatesProgress(t *testing.T) {
 func TestAddContribution_InstantUnlock(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, NewMockUser(), nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	// Setup everything needed for instant unlock (via cache)
@@ -266,7 +266,7 @@ func TestAddContribution_InstantUnlock(t *testing.T) {
 
 func TestGetUnlockProgress_Active(t *testing.T) {
 	repo := NewMockRepository()
-	service := NewService(repo, NewMockUser(), nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	repo.CreateUnlockProgress(ctx)
@@ -280,7 +280,7 @@ func TestGetUnlockProgress_Active(t *testing.T) {
 
 func TestGetUnlockProgress_None(t *testing.T) {
 	repo := NewMockRepository()
-	service := NewService(repo, NewMockUser(), nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	progress, err := service.GetUnlockProgress(ctx)

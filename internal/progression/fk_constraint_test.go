@@ -34,7 +34,7 @@ func TestAutoSelectFKConstraintBug(t *testing.T) {
 	bus := event.NewMemoryBus()
 	repo := dbpostgres.NewProgressionRepository(testPool, bus)
 	userRepo := dbpostgres.NewUserRepository(testPool)
-	svc := NewService(repo, userRepo, bus)
+	svc := NewService(repo, userRepo, bus, nil, nil)
 
 	time.Sleep(100 * time.Millisecond)
 

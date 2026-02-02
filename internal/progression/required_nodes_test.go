@@ -10,7 +10,7 @@ import (
 func TestGetRequiredNodes_NoPrerequisites(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, NewMockUser(), nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	// Money only requires root, which is auto-unlocked
@@ -22,7 +22,7 @@ func TestGetRequiredNodes_NoPrerequisites(t *testing.T) {
 func TestGetRequiredNodes_DirectPrerequisite(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, NewMockUser(), nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	// Economy requires money (which is NOT unlocked)
@@ -35,7 +35,7 @@ func TestGetRequiredNodes_DirectPrerequisite(t *testing.T) {
 func TestGetRequiredNodes_MultiplePrerequisites(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, NewMockUser(), nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	// Upgrade requires lootbox0 (which is NOT unlocked)
@@ -54,7 +54,7 @@ func TestGetRequiredNodes_MultiplePrerequisites(t *testing.T) {
 func TestGetRequiredNodes_PartiallyUnlocked(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, NewMockUser(), nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	// Unlock money
@@ -69,7 +69,7 @@ func TestGetRequiredNodes_PartiallyUnlocked(t *testing.T) {
 func TestGetRequiredNodes_AllUnlocked(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, NewMockUser(), nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	// Unlock the lootbox0 chain
@@ -84,7 +84,7 @@ func TestGetRequiredNodes_AllUnlocked(t *testing.T) {
 func TestGetRequiredNodes_NodeNotFound(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, NewMockUser(), nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	_, err := service.GetRequiredNodes(ctx, "nonexistent_node")
