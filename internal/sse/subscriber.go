@@ -43,6 +43,9 @@ func (s *Subscriber) Subscribe() {
 	s.bus.Subscribe(event.TimeoutApplied, s.handleTimeoutApplied)
 	s.bus.Subscribe(event.TimeoutCleared, s.handleTimeoutCleared)
 
+	// Subscribe to gamble completed events
+	s.bus.Subscribe(event.Type(domain.EventGambleCompleted), s.handleGambleCompleted)
+
 	slog.Info("SSE subscriber registered for event types",
 		"types", []string{
 			string(domain.EventJobLevelUp),
@@ -52,6 +55,7 @@ func (s *Subscriber) Subscribe() {
 			string(event.ProgressionAllUnlocked),
 			string(event.TimeoutApplied),
 			string(event.TimeoutCleared),
+			string(domain.EventGambleCompleted),
 		})
 }
 
@@ -351,6 +355,43 @@ func (s *Subscriber) handleTimeoutCleared(_ context.Context, evt event.Event) er
 		"event_type", EventTypeTimeoutCleared,
 		"platform", ssePayload.Platform,
 		"username", ssePayload.Username)
+
+	return nil
+}
+
+// handleGambleCompleted processes gamble completion events
+func (s *Subscriber) handleGambleCompleted(_ context.Context, evt event.Event) error {
+	payload, ok := evt.Payload.(event.GambleCompletedPayloadV1)
+	if !ok {
+		// Fallback for untyped payload
+		payloadMap, ok := evt.Payload.(map[string]interface{})
+		if !ok {
+			slog.Warn("Invalid gamble completed event payload type")
+			return nil
+		}
+		payload = event.GambleCompletedPayloadV1{
+			GambleID:         getStringFromMap(payloadMap, "gamble_id"),
+			WinnerID:         getStringFromMap(payloadMap, "winner_id"),
+			TotalValue:       int64(getIntFromMap(payloadMap, "total_value")),
+			ParticipantCount: getIntFromMap(payloadMap, "participant_count"),
+			Timestamp:        int64(getIntFromMap(payloadMap, "timestamp")),
+		}
+	}
+
+	ssePayload := GambleCompletedPayload{
+		GambleID:         payload.GambleID,
+		WinnerID:         payload.WinnerID,
+		TotalValue:       payload.TotalValue,
+		ParticipantCount: payload.ParticipantCount,
+		Timestamp:        payload.Timestamp,
+	}
+
+	s.hub.Broadcast(EventTypeGambleCompleted, ssePayload)
+
+	slog.Debug(LogMsgEventBroadcast,
+		"event_type", EventTypeGambleCompleted,
+		"gamble_id", ssePayload.GambleID,
+		"winner_id", ssePayload.WinnerID)
 
 	return nil
 }

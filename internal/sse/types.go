@@ -43,6 +43,15 @@ type AllUnlockedPayload struct {
 	Message string `json:"message"`
 }
 
+// GambleCompletedPayload represents the SSE payload for gamble completion events
+type GambleCompletedPayload struct {
+	GambleID         string `json:"gamble_id"`
+	WinnerID         string `json:"winner_id"`
+	TotalValue       int64  `json:"total_value"`
+	ParticipantCount int    `json:"participant_count"`
+	Timestamp        int64  `json:"timestamp"`
+}
+
 // TimeoutPayload represents the SSE payload for timeout events
 type TimeoutPayload struct {
 	Platform        string `json:"platform"`

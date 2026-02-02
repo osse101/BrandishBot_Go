@@ -37,6 +37,9 @@ const (
 	// EventTypeAllUnlocked is sent when all progression nodes have been unlocked
 	EventTypeAllUnlocked = "progression.all_unlocked"
 
+	// EventTypeGambleCompleted is sent when a gamble session completes
+	EventTypeGambleCompleted = "gamble.completed"
+
 	// EventTypeKeepalive is the keepalive ping event type
 	EventTypeKeepalive = "keepalive"
 

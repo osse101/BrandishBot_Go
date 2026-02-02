@@ -27,6 +27,12 @@ const (
 
 	// SSEEventTypeCycleCompleted is the event type for progression cycle completion
 	SSEEventTypeCycleCompleted = "progression.cycle_completed"
+
+	// SSEEventTypeAllUnlocked is the event type for all progression nodes unlocked
+	SSEEventTypeAllUnlocked = "progression.all_unlocked"
+
+	// SSEEventTypeGambleCompleted is the event type for gamble completion
+	SSEEventTypeGambleCompleted = "gamble.completed"
 )
 
 // SSE log messages

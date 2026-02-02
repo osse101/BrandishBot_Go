@@ -29,6 +29,8 @@ func (n *SSENotifier) RegisterHandlers(client *SSEClient) {
 	client.OnEvent(SSEEventTypeJobLevelUp, n.handleJobLevelUp)
 	client.OnEvent(SSEEventTypeVotingStarted, n.handleVotingStarted)
 	client.OnEvent(SSEEventTypeCycleCompleted, n.handleCycleCompleted)
+	client.OnEvent(SSEEventTypeAllUnlocked, n.handleAllUnlocked)
+	client.OnEvent(SSEEventTypeGambleCompleted, n.handleGambleCompleted)
 }
 
 // JobLevelUpPayload is the payload for job level up events
@@ -72,6 +74,19 @@ type NodeInfo struct {
 type VotingSessionInfo struct {
 	SessionID int                `json:"session_id"`
 	Options   []VotingOptionInfo `json:"options"`
+}
+
+// AllUnlockedPayload is the payload for all unlocked events
+type AllUnlockedPayload struct {
+	Message string `json:"message"`
+}
+
+// GambleCompletedPayload is the payload for gamble completed events
+type GambleCompletedPayload struct {
+	GambleID         string `json:"gamble_id"`
+	WinnerID         string `json:"winner_id"`
+	TotalValue       int64  `json:"total_value"`
+	ParticipantCount int    `json:"participant_count"`
 }
 
 func (n *SSENotifier) handleJobLevelUp(event SSEEvent) error {
@@ -236,6 +251,86 @@ func (n *SSENotifier) handleCycleCompleted(event SSEEvent) error {
 	}
 
 	slog.Info(sseLogMsgNotificationSent, "event_type", event.Type, "unlocked_node", payload.UnlockedNode.NodeKey)
+	return nil
+}
+
+func (n *SSENotifier) handleAllUnlocked(event SSEEvent) error {
+	if n.notificationChanID == "" {
+		return nil
+	}
+
+	var payload AllUnlockedPayload
+	if err := json.Unmarshal(event.Payload, &payload); err != nil {
+		slog.Warn(sseLogMsgParseError, "error", err, "event_type", event.Type)
+		return nil
+	}
+
+	embed := &discordgo.MessageEmbed{
+		Title:       "🎉 All Features Unlocked!",
+		Description: payload.Message,
+		Color:       0xFFD700, // Gold
+		Timestamp:   time.Now().Format(time.RFC3339),
+		Footer: &discordgo.MessageEmbedFooter{
+			Text: "Progression System",
+		},
+	}
+
+	if embed.Description == "" {
+		embed.Description = "Congratulations! Every single feature and upgrade in BrandishBot has been unlocked by the community!"
+	}
+
+	_, err := n.session.ChannelMessageSendEmbed(n.notificationChanID, embed)
+	if err != nil {
+		slog.Error(sseLogMsgNotificationError, "error", err, "event_type", event.Type)
+		return err
+	}
+
+	slog.Info(sseLogMsgNotificationSent, "event_type", event.Type)
+	return nil
+}
+
+func (n *SSENotifier) handleGambleCompleted(event SSEEvent) error {
+	if n.notificationChanID == "" {
+		return nil
+	}
+
+	var payload GambleCompletedPayload
+	if err := json.Unmarshal(event.Payload, &payload); err != nil {
+		slog.Warn(sseLogMsgParseError, "error", err, "event_type", event.Type)
+		return nil
+	}
+
+	title := "Gamble Completed!"
+	description := ""
+	color := 0x9B59B6 // Purple
+
+	if payload.WinnerID != "" {
+		description = fmt.Sprintf("The gamble has concluded! **%s** won a total value of **%d** credits from **%d** participants!",
+			payload.WinnerID, payload.TotalValue, payload.ParticipantCount)
+	} else {
+		title = "Gamble Ended (No Winner)"
+		description = fmt.Sprintf("The gamble has concluded with no winner. Total value was **%d** credits from **%d** participants.",
+			payload.TotalValue, payload.ParticipantCount)
+		color = 0x95A5A6 // Grey
+	}
+
+	embed := &discordgo.MessageEmbed{
+		Title:       title,
+		Description: description,
+		Color:       color,
+		Timestamp:   time.Now().Format(time.RFC3339),
+		Footer: &discordgo.MessageEmbedFooter{
+			Text: "Gamble System",
+		},
+	}
+
+	_, err := n.session.ChannelMessageSendEmbed(n.notificationChanID, embed)
+	if err != nil {
+		slog.Error(sseLogMsgNotificationError, "error", err, "event_type", event.Type)
+		return err
+	}
+
+	slog.Info(sseLogMsgNotificationSent, "event_type", event.Type, "gamble_id", payload.GambleID)
 	return nil
 }
 

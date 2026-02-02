@@ -70,6 +70,8 @@ func New(cfg Config) (*Bot, error) {
 			SSEEventTypeJobLevelUp,
 			SSEEventTypeVotingStarted,
 			SSEEventTypeCycleCompleted,
+			SSEEventTypeAllUnlocked,
+			SSEEventTypeGambleCompleted,
 		})
 	}
 
