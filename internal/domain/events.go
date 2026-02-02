@@ -26,4 +26,7 @@ const (
 
 	// EventTypeEngagement is published when a user interaction occurs (commands, messages, etc.)
 	EventTypeEngagement = "engagement"
+
+	// EventTypeDailyResetComplete is published when the daily job XP reset completes
+	EventTypeDailyResetComplete = "daily_reset.complete"
 )

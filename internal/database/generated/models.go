@@ -37,6 +37,12 @@ type CraftingRecipe struct {
 	RecipeKey    string           `json:"recipe_key"`
 }
 
+type DailyResetState struct {
+	ID              int32              `json:"id"`
+	LastResetTime   pgtype.Timestamptz `json:"last_reset_time"`
+	RecordsAffected int32              `json:"records_affected"`
+}
+
 type DisassembleOutput struct {
 	OutputID int32 `json:"output_id"`
 	RecipeID int32 `json:"recipe_id"`

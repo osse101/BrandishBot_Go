@@ -201,6 +201,11 @@ func main() {
 	gambleWorker.Subscribe(eventBus)
 	gambleWorker.Start() // Checks for existing active gamble on startup
 
+	// Initialize Daily Reset Worker
+	dailyResetWorker := worker.NewDailyResetWorker(jobService, resilientPublisher)
+	dailyResetWorker.Start()
+	slog.Info("Daily reset worker initialized")
+
 	// Initialize Linking service
 	linkingService := linking.NewService(repos.Linking, userService)
 
@@ -256,6 +261,7 @@ func main() {
 		CraftingService:    craftingService,
 		GambleService:      gambleService,
 		GambleWorker:       gambleWorker,
+		DailyResetWorker:   dailyResetWorker,
 		ResilientPublisher: resilientPublisher,
 	})
 }

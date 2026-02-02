@@ -260,15 +260,41 @@ func (r *JobRepository) GetJobLevelBonuses(ctx context.Context, jobID int, level
 }
 
 // ResetDailyJobXP resets the xp_gained_today counter for all users
-// This should be called by a daily cron job
-func (r *JobRepository) ResetDailyJobXP(ctx context.Context) error {
+// Returns the number of records affected
+func (r *JobRepository) ResetDailyJobXP(ctx context.Context) (int64, error) {
 	result, err := r.q.ResetDailyJobXP(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to reset daily XP: %w", err)
+		return 0, fmt.Errorf("failed to reset daily XP: %w", err)
 	}
 
 	rows := result.RowsAffected()
 	logger.FromContext(ctx).Info("Reset daily XP", "records_affected", rows)
+
+	return rows, nil
+}
+
+// GetLastDailyResetTime retrieves the last daily reset time and records affected
+func (r *JobRepository) GetLastDailyResetTime(ctx context.Context) (time.Time, int64, error) {
+	row, err := r.q.GetLastDailyResetTime(ctx)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return time.Time{}, 0, nil
+		}
+		return time.Time{}, 0, fmt.Errorf("failed to get last reset time: %w", err)
+	}
+
+	return row.LastResetTime.Time, int64(row.RecordsAffected), nil
+}
+
+// UpdateDailyResetTime updates the last reset time and records affected
+func (r *JobRepository) UpdateDailyResetTime(ctx context.Context, resetTime time.Time, recordsAffected int64) error {
+	err := r.q.UpdateDailyResetTime(ctx, generated.UpdateDailyResetTimeParams{
+		LastResetTime:   pgtype.Timestamptz{Time: resetTime, Valid: true},
+		RecordsAffected: int32(recordsAffected),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update reset time: %w", err)
+	}
 
 	return nil
 }

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
@@ -17,4 +18,7 @@ type Job interface {
 	UpsertUserJob(ctx context.Context, userJob *domain.UserJob) error
 	RecordJobXPEvent(ctx context.Context, event *domain.JobXPEvent) error
 	GetJobLevelBonuses(ctx context.Context, jobID int, level int) ([]domain.JobLevelBonus, error)
+	ResetDailyJobXP(ctx context.Context) (int64, error)
+	GetLastDailyResetTime(ctx context.Context) (time.Time, int64, error)
+	UpdateDailyResetTime(ctx context.Context, resetTime time.Time, recordsAffected int64) error
 }

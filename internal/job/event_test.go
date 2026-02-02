@@ -75,6 +75,18 @@ func (m *MockRepo) GetUserJobsByPlatform(ctx context.Context, platform, platform
 	return nil, nil
 }
 
+func (m *MockRepo) ResetDailyJobXP(ctx context.Context) (int64, error) {
+	return 0, nil
+}
+
+func (m *MockRepo) GetLastDailyResetTime(ctx context.Context) (time.Time, int64, error) {
+	return time.Time{}, 0, nil
+}
+
+func (m *MockRepo) UpdateDailyResetTime(ctx context.Context, resetTime time.Time, recordsAffected int64) error {
+	return nil
+}
+
 // Mock Progression
 type MockProgression struct {
 	mock.Mock

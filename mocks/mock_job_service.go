@@ -254,6 +254,64 @@ func (_c *MockJobService_GetAllJobs_Call) RunAndReturn(run func(context.Context)
 	return _c
 }
 
+// GetDailyResetStatus provides a mock function with given fields: ctx
+func (_m *MockJobService) GetDailyResetStatus(ctx context.Context) (*domain.DailyResetStatus, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetDailyResetStatus")
+	}
+
+	var r0 *domain.DailyResetStatus
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) (*domain.DailyResetStatus, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) *domain.DailyResetStatus); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*domain.DailyResetStatus)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockJobService_GetDailyResetStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetDailyResetStatus'
+type MockJobService_GetDailyResetStatus_Call struct {
+	*mock.Call
+}
+
+// GetDailyResetStatus is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockJobService_Expecter) GetDailyResetStatus(ctx interface{}) *MockJobService_GetDailyResetStatus_Call {
+	return &MockJobService_GetDailyResetStatus_Call{Call: _e.mock.On("GetDailyResetStatus", ctx)}
+}
+
+func (_c *MockJobService_GetDailyResetStatus_Call) Run(run func(ctx context.Context)) *MockJobService_GetDailyResetStatus_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockJobService_GetDailyResetStatus_Call) Return(_a0 *domain.DailyResetStatus, _a1 error) *MockJobService_GetDailyResetStatus_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockJobService_GetDailyResetStatus_Call) RunAndReturn(run func(context.Context) (*domain.DailyResetStatus, error)) *MockJobService_GetDailyResetStatus_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetJobBonus provides a mock function with given fields: ctx, userID, jobKey, bonusType
 func (_m *MockJobService) GetJobBonus(ctx context.Context, userID string, jobKey string, bonusType string) (float64, error) {
 	ret := _m.Called(ctx, userID, jobKey, bonusType)
@@ -708,6 +766,62 @@ func (_c *MockJobService_GetXPProgress_Call) Return(currentLevel int, xpToNext i
 }
 
 func (_c *MockJobService_GetXPProgress_Call) RunAndReturn(run func(int64) (int, int64)) *MockJobService_GetXPProgress_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ResetDailyJobXP provides a mock function with given fields: ctx
+func (_m *MockJobService) ResetDailyJobXP(ctx context.Context) (int64, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ResetDailyJobXP")
+	}
+
+	var r0 int64
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) (int64, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) int64); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockJobService_ResetDailyJobXP_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ResetDailyJobXP'
+type MockJobService_ResetDailyJobXP_Call struct {
+	*mock.Call
+}
+
+// ResetDailyJobXP is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockJobService_Expecter) ResetDailyJobXP(ctx interface{}) *MockJobService_ResetDailyJobXP_Call {
+	return &MockJobService_ResetDailyJobXP_Call{Call: _e.mock.On("ResetDailyJobXP", ctx)}
+}
+
+func (_c *MockJobService_ResetDailyJobXP_Call) Run(run func(ctx context.Context)) *MockJobService_ResetDailyJobXP_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockJobService_ResetDailyJobXP_Call) Return(_a0 int64, _a1 error) *MockJobService_ResetDailyJobXP_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockJobService_ResetDailyJobXP_Call) RunAndReturn(run func(context.Context) (int64, error)) *MockJobService_ResetDailyJobXP_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -105,6 +105,23 @@ func (q *Queries) GetJobLevelBonuses(ctx context.Context, arg GetJobLevelBonuses
 	return items, nil
 }
 
+const getLastDailyResetTime = `-- name: GetLastDailyResetTime :one
+SELECT last_reset_time, records_affected
+FROM daily_reset_state WHERE id = 1
+`
+
+type GetLastDailyResetTimeRow struct {
+	LastResetTime   pgtype.Timestamptz `json:"last_reset_time"`
+	RecordsAffected int32              `json:"records_affected"`
+}
+
+func (q *Queries) GetLastDailyResetTime(ctx context.Context) (GetLastDailyResetTimeRow, error) {
+	row := q.db.QueryRow(ctx, getLastDailyResetTime)
+	var i GetLastDailyResetTimeRow
+	err := row.Scan(&i.LastResetTime, &i.RecordsAffected)
+	return i, err
+}
+
 const getUserJob = `-- name: GetUserJob :one
 SELECT user_id, job_id, current_xp, current_level, xp_gained_today, last_xp_gain
 FROM user_jobs
@@ -240,6 +257,22 @@ SET xp_gained_today = 0
 
 func (q *Queries) ResetDailyJobXP(ctx context.Context) (pgconn.CommandTag, error) {
 	return q.db.Exec(ctx, resetDailyJobXP)
+}
+
+const updateDailyResetTime = `-- name: UpdateDailyResetTime :exec
+UPDATE daily_reset_state
+SET last_reset_time = $1, records_affected = $2
+WHERE id = 1
+`
+
+type UpdateDailyResetTimeParams struct {
+	LastResetTime   pgtype.Timestamptz `json:"last_reset_time"`
+	RecordsAffected int32              `json:"records_affected"`
+}
+
+func (q *Queries) UpdateDailyResetTime(ctx context.Context, arg UpdateDailyResetTimeParams) error {
+	_, err := q.db.Exec(ctx, updateDailyResetTime, arg.LastResetTime, arg.RecordsAffected)
+	return err
 }
 
 const upsertUserJob = `-- name: UpsertUserJob :exec

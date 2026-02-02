@@ -20,6 +20,19 @@ const (
 )
 
 // ============================================================================
+// Log Messages - Daily Reset Worker
+// ============================================================================
+
+// Log messages for daily reset worker operations
+const (
+	LogMsgDailyResetStarting      = "Daily reset starting"
+	LogMsgDailyResetCompleted     = "Daily reset completed"
+	LogMsgDailyResetFailed        = "Daily reset failed"
+	LogMsgDailyResetScheduled     = "Daily reset scheduled"
+	LogMsgDailyResetManualTrigger = "Daily reset manually triggered"
+)
+
+// ============================================================================
 // Test Configuration
 // ============================================================================
 

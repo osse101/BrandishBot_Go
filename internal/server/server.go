@@ -183,13 +183,16 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 
 		// Admin routes
 		adminJobHandler := handler.NewAdminJobHandler(jobService, userService)
+		adminDailyResetHandler := handler.NewAdminDailyResetHandler(jobService)
 		adminCacheHandler := handler.NewAdminCacheHandler(userService)
 		r.Route("/admin", func(r chi.Router) {
 			r.Post("/reload-aliases", handler.HandleReloadAliases(namingResolver))
 
 			// Admin job routes
-			r.Route("/job", func(r chi.Router) {
+			r.Route("/jobs", func(r chi.Router) {
 				r.Post("/award-xp", adminJobHandler.HandleAdminAwardXP)
+				r.Post("/reset-daily-xp", adminDailyResetHandler.HandleManualReset)
+				r.Get("/reset-status", adminDailyResetHandler.HandleGetResetStatus)
 			})
 
 			// Admin progression routes

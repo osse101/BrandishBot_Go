@@ -4,6 +4,7 @@ import (
 	"context"
 	"math"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -80,6 +81,21 @@ func (m *MockRepository) GetUserJobsByPlatform(ctx context.Context, platform, pl
 		return nil, args.Error(1)
 	}
 	return args.Get(0).([]domain.UserJob), args.Error(1)
+}
+
+func (m *MockRepository) ResetDailyJobXP(ctx context.Context) (int64, error) {
+	args := m.Called(ctx)
+	return int64(args.Int(0)), args.Error(1)
+}
+
+func (m *MockRepository) GetLastDailyResetTime(ctx context.Context) (time.Time, int64, error) {
+	args := m.Called(ctx)
+	return time.Time{}, int64(args.Int(1)), args.Error(2)
+}
+
+func (m *MockRepository) UpdateDailyResetTime(ctx context.Context, resetTime time.Time, recordsAffected int64) error {
+	args := m.Called(ctx, resetTime, recordsAffected)
+	return args.Error(0)
 }
 
 // MockProgressionService

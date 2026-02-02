@@ -65,3 +65,10 @@ type XPAwardResult struct {
 	NewLevel  int    `json:"new_level"`
 	LeveledUp bool   `json:"leveled_up"`
 }
+
+// DailyResetStatus shows the state of daily job XP resets
+type DailyResetStatus struct {
+	LastResetTime   time.Time `json:"last_reset_time"`
+	NextResetTime   time.Time `json:"next_reset_time"`
+	RecordsAffected int64     `json:"records_affected"`
+}

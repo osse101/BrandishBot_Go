@@ -94,6 +94,7 @@ type Querier interface {
 	GetJobLevelBonuses(ctx context.Context, arg GetJobLevelBonusesParams) ([]JobLevelBonuse, error)
 	GetLastCooldown(ctx context.Context, arg GetLastCooldownParams) (pgtype.Timestamptz, error)
 	GetLastCooldownForUpdate(ctx context.Context, arg GetLastCooldownForUpdateParams) (pgtype.Timestamptz, error)
+	GetLastDailyResetTime(ctx context.Context) (GetLastDailyResetTimeRow, error)
 	GetLogEventsByType(ctx context.Context, arg GetLogEventsByTypeParams) ([]Event, error)
 	GetLogEventsByUser(ctx context.Context, arg GetLogEventsByUserParams) ([]Event, error)
 	GetMostRecentSession(ctx context.Context) (GetMostRecentSessionRow, error)
@@ -172,6 +173,7 @@ type Querier interface {
 	UnlockUserProgression(ctx context.Context, arg UnlockUserProgressionParams) error
 	UpdateCooldown(ctx context.Context, arg UpdateCooldownParams) error
 	UpdateCraftingRecipe(ctx context.Context, arg UpdateCraftingRecipeParams) error
+	UpdateDailyResetTime(ctx context.Context, arg UpdateDailyResetTimeParams) error
 	UpdateDisassembleRecipe(ctx context.Context, arg UpdateDisassembleRecipeParams) error
 	UpdateGambleState(ctx context.Context, arg UpdateGambleStateParams) error
 	UpdateGambleStateIfMatches(ctx context.Context, arg UpdateGambleStateIfMatchesParams) (pgconn.CommandTag, error)

@@ -50,3 +50,12 @@ JOIN user_platform_links upl ON uj.user_id = upl.user_id
 JOIN platforms p ON upl.platform_id = p.platform_id
 WHERE p.name = $1 AND upl.platform_user_id = $2
 ORDER BY uj.current_level DESC, uj.current_xp DESC;
+
+-- name: GetLastDailyResetTime :one
+SELECT last_reset_time, records_affected
+FROM daily_reset_state WHERE id = 1;
+
+-- name: UpdateDailyResetTime :exec
+UPDATE daily_reset_state
+SET last_reset_time = $1, records_affected = $2
+WHERE id = 1;

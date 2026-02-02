@@ -23,6 +23,7 @@ type ShutdownComponents struct {
 	CraftingService    crafting.Service
 	GambleService      gamble.Service
 	GambleWorker       *worker.GambleWorker
+	DailyResetWorker   *worker.DailyResetWorker
 	ResilientPublisher *event.ResilientPublisher
 }
 
@@ -41,10 +42,16 @@ func GracefulShutdown(ctx context.Context, components ShutdownComponents) {
 		slog.Error(LogMsgServerForcedShutdown, "error", err)
 	}
 
-	// Shutdown gamble worker first to cancel pending timers
+	// Shutdown workers first to cancel pending timers
 	if components.GambleWorker != nil {
 		if err := components.GambleWorker.Shutdown(ctx); err != nil {
 			slog.Error("Gamble worker shutdown failed", "error", err)
+		}
+	}
+
+	if components.DailyResetWorker != nil {
+		if err := components.DailyResetWorker.Shutdown(ctx); err != nil {
+			slog.Error("Daily reset worker shutdown failed", "error", err)
 		}
 	}
 
