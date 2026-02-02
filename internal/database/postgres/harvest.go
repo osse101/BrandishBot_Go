@@ -34,25 +34,14 @@ func NewHarvestRepository(db *pgxpool.Pool) *HarvestRepository {
 
 // GetHarvestState retrieves the harvest state for a user
 func (r *HarvestRepository) GetHarvestState(ctx context.Context, userID string) (*domain.HarvestState, error) {
-	userUUID, err := uuid.Parse(userID)
+	state, err := fetchHarvestState(ctx, userID, r.q.GetHarvestState)
 	if err != nil {
-		return nil, fmt.Errorf("invalid user ID: %w", err)
-	}
-
-	state, err := r.q.GetHarvestState(ctx, userUUID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, domain.ErrHarvestStateNotFound
+		if errors.Is(err, domain.ErrHarvestStateNotFound) {
+			return nil, err
 		}
 		return nil, fmt.Errorf("failed to get harvest state: %w", err)
 	}
-
-	return &domain.HarvestState{
-		UserID:          state.UserID.String(),
-		LastHarvestedAt: state.LastHarvestedAt.Time,
-		CreatedAt:       state.CreatedAt.Time,
-		UpdatedAt:       state.UpdatedAt.Time,
-	}, nil
+	return state, nil
 }
 
 // CreateHarvestState initializes harvest state for a new user
@@ -107,25 +96,14 @@ func (t *harvestTx) Rollback(ctx context.Context) error {
 
 // GetHarvestStateWithLock retrieves the harvest state with FOR UPDATE lock
 func (t *harvestTx) GetHarvestStateWithLock(ctx context.Context, userID string) (*domain.HarvestState, error) {
-	userUUID, err := uuid.Parse(userID)
+	state, err := fetchHarvestState(ctx, userID, t.q.GetHarvestStateWithLock)
 	if err != nil {
-		return nil, fmt.Errorf("invalid user ID: %w", err)
-	}
-
-	state, err := t.q.GetHarvestStateWithLock(ctx, userUUID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, domain.ErrHarvestStateNotFound
+		if errors.Is(err, domain.ErrHarvestStateNotFound) {
+			return nil, err
 		}
 		return nil, fmt.Errorf("failed to get harvest state with lock: %w", err)
 	}
-
-	return &domain.HarvestState{
-		UserID:          state.UserID.String(),
-		LastHarvestedAt: state.LastHarvestedAt.Time,
-		CreatedAt:       state.CreatedAt.Time,
-		UpdatedAt:       state.UpdatedAt.Time,
-	}, nil
+	return state, nil
 }
 
 // UpdateHarvestState updates the last harvested timestamp
@@ -149,4 +127,27 @@ func (t *harvestTx) GetInventory(ctx context.Context, userID string) (*domain.In
 // UpdateInventory updates a user's inventory within transaction
 func (t *harvestTx) UpdateInventory(ctx context.Context, userID string, inventory domain.Inventory) error {
 	return updateInventory(ctx, t.q, userID, inventory)
+}
+
+// fetchHarvestState is a helper to fetch and map harvest state with common logic
+func fetchHarvestState(ctx context.Context, userID string, fetcher func(context.Context, uuid.UUID) (generated.HarvestState, error)) (*domain.HarvestState, error) {
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid user ID: %w", err)
+	}
+
+	state, err := fetcher(ctx, userUUID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrHarvestStateNotFound
+		}
+		return nil, err
+	}
+
+	return &domain.HarvestState{
+		UserID:          state.UserID.String(),
+		LastHarvestedAt: state.LastHarvestedAt.Time,
+		CreatedAt:       state.CreatedAt.Time,
+		UpdatedAt:       state.UpdatedAt.Time,
+	}, nil
 }

@@ -120,83 +120,20 @@ func mapServiceErrorToUserMessage(err error) (int, string) {
 		return http.StatusInternalServerError, ErrMsgUnknownError
 	}
 
-	// For crafting errors with wrapped context, extract the detailed message
 	errMsg := err.Error()
 
-	// Check for specific domain errors
-	switch {
-	case errors.Is(err, domain.ErrUserNotFound):
-		// Extract custom message if wrapped
-		if len(errMsg) > len("user not found") {
-			return http.StatusBadRequest, errMsg
-		}
-		return http.StatusBadRequest, ErrMsgUserNotFoundError
-	case errors.Is(err, domain.ErrItemNotFound):
-		return http.StatusBadRequest, ErrMsgItemNotFoundError
-	case errors.Is(err, domain.ErrInsufficientFunds):
-		return http.StatusBadRequest, ErrMsgNotEnoughMoneyError
-	case errors.Is(err, domain.ErrInsufficientQuantity):
-		return http.StatusBadRequest, ErrMsgInsufficientItemsErr
-	case errors.Is(err, domain.ErrNotInInventory):
-		return http.StatusBadRequest, ErrMsgNotInInventoryError
-	case errors.Is(err, domain.ErrInventoryFull):
-		return http.StatusBadRequest, ErrMsgInventoryFullError
-	case errors.Is(err, domain.ErrNotSellable):
-		return http.StatusBadRequest, ErrMsgNotSellableError
-	case errors.Is(err, domain.ErrNotBuyable):
-		return http.StatusBadRequest, ErrMsgNotBuyableError
-	case errors.Is(err, domain.ErrRecipeLocked):
-		// Extract item-specific message from wrapped error
-		if len(errMsg) > len("recipe locked") {
-			// Remove the wrapped error suffix to get clean message
-			before, _, found := cutSuffix(errMsg, " | recipe locked")
-			if found {
-				return http.StatusForbidden, before + ". Unlock it in the progression tree"
-			}
-		}
-		return http.StatusForbidden, ErrMsgRecipeLockedError
-	case errors.Is(err, domain.ErrFeatureLocked):
-		return http.StatusForbidden, ErrMsgFeatureLockedProgressionError
-	case errors.Is(err, domain.ErrDailyCapReached):
-		return http.StatusBadRequest, ErrMsgDailyCapReachedError
-	case errors.Is(err, domain.ErrOnCooldown):
-		return http.StatusTooManyRequests, ErrMsgOnCooldownError
-	case errors.Is(err, domain.ErrGambleNotFound):
-		return http.StatusBadRequest, ErrMsgGambleNotFoundError
-	case errors.Is(err, domain.ErrGambleAlreadyActive):
-		return http.StatusBadRequest, ErrMsgGambleAlreadyActiveError
-	case errors.Is(err, domain.ErrNotInJoiningState):
-		return http.StatusBadRequest, ErrMsgNotAcceptingParticipantsErr
-	case errors.Is(err, domain.ErrJoinDeadlinePassed):
-		return http.StatusBadRequest, ErrMsgJoinDeadlinePassedError
-	case errors.Is(err, domain.ErrAtLeastOneLootboxRequired):
-		return http.StatusBadRequest, ErrMsgLootboxRequiredError
-	case errors.Is(err, domain.ErrBetQuantityMustBePositive):
-		return http.StatusBadRequest, ErrMsgBetQuantityPositiveError
-	case errors.Is(err, domain.ErrNotALootbox):
-		return http.StatusBadRequest, ErrMsgNotLootboxError
-	case errors.Is(err, domain.ErrUserAlreadyJoined):
-		return http.StatusBadRequest, ErrMsgAlreadyJoinedError
-	case errors.Is(err, domain.ErrUserAlreadyVoted):
-		return http.StatusBadRequest, ErrMsgAlreadyVotedError
-	case errors.Is(err, domain.ErrRecipeNotFound):
-		// Extract item-specific message from wrapped error
-		if len(errMsg) > len("recipe not found") {
-			// Remove the wrapped error suffix to get clean message
-			before, _, found := cutSuffix(errMsg, " | recipe not found")
-			if found {
-				return http.StatusBadRequest, before
-			}
-		}
-		return http.StatusBadRequest, ErrMsgRecipeNotFoundError
-	case errors.Is(err, domain.ErrInvalidPlatform):
-		return http.StatusBadRequest, ErrMsgInvalidPlatformError
-	case errors.Is(err, domain.ErrDatabaseError):
-		return http.StatusInternalServerError, ErrMsgGenericServerError
-	case errors.Is(err, domain.ErrConnectionTimeout):
-		return http.StatusInternalServerError, ErrMsgGenericServerError
-	case errors.Is(err, domain.ErrDeadlockDetected):
-		return http.StatusInternalServerError, ErrMsgGenericServerError
+	// Try domain specific mappers
+	if code, msg, ok := mapUserAndItemErrors(err, errMsg); ok {
+		return code, msg
+	}
+	if code, msg, ok := mapEconomyAndFeatureErrors(err, errMsg); ok {
+		return code, msg
+	}
+	if code, msg, ok := mapGambleErrors(err); ok {
+		return code, msg
+	}
+	if code, msg, ok := mapSystemErrors(err); ok {
+		return code, msg
 	}
 
 	// For wrapped errors with domain errors as the base, try unwrapping
@@ -215,6 +152,95 @@ func mapServiceErrorToUserMessage(err error) (int, string) {
 
 	// Default to generic message for very long or system-level errors
 	return http.StatusInternalServerError, ErrMsgGenericServerError
+}
+
+func mapUserAndItemErrors(err error, errMsg string) (int, string, bool) {
+	switch {
+	case errors.Is(err, domain.ErrUserNotFound):
+		if len(errMsg) > len("user not found") {
+			return http.StatusBadRequest, errMsg, true
+		}
+		return http.StatusBadRequest, ErrMsgUserNotFoundError, true
+	case errors.Is(err, domain.ErrItemNotFound):
+		return http.StatusBadRequest, ErrMsgItemNotFoundError, true
+	case errors.Is(err, domain.ErrInsufficientFunds):
+		return http.StatusBadRequest, ErrMsgNotEnoughMoneyError, true
+	case errors.Is(err, domain.ErrInsufficientQuantity):
+		return http.StatusBadRequest, ErrMsgInsufficientItemsErr, true
+	case errors.Is(err, domain.ErrNotInInventory):
+		return http.StatusBadRequest, ErrMsgNotInInventoryError, true
+	case errors.Is(err, domain.ErrInventoryFull):
+		return http.StatusBadRequest, ErrMsgInventoryFullError, true
+	case errors.Is(err, domain.ErrNotSellable):
+		return http.StatusBadRequest, ErrMsgNotSellableError, true
+	case errors.Is(err, domain.ErrNotBuyable):
+		return http.StatusBadRequest, ErrMsgNotBuyableError, true
+	case errors.Is(err, domain.ErrInvalidPlatform):
+		return http.StatusBadRequest, ErrMsgInvalidPlatformError, true
+	}
+	return 0, "", false
+}
+
+func mapEconomyAndFeatureErrors(err error, errMsg string) (int, string, bool) {
+	switch {
+	case errors.Is(err, domain.ErrRecipeLocked):
+		if len(errMsg) > len("recipe locked") {
+			before, _, found := cutSuffix(errMsg, " | recipe locked")
+			if found {
+				return http.StatusForbidden, before + ". Unlock it in the progression tree", true
+			}
+		}
+		return http.StatusForbidden, ErrMsgRecipeLockedError, true
+	case errors.Is(err, domain.ErrFeatureLocked):
+		return http.StatusForbidden, ErrMsgFeatureLockedProgressionError, true
+	case errors.Is(err, domain.ErrDailyCapReached):
+		return http.StatusBadRequest, ErrMsgDailyCapReachedError, true
+	case errors.Is(err, domain.ErrOnCooldown):
+		return http.StatusTooManyRequests, ErrMsgOnCooldownError, true
+	case errors.Is(err, domain.ErrRecipeNotFound):
+		if len(errMsg) > len("recipe not found") {
+			before, _, found := cutSuffix(errMsg, " | recipe not found")
+			if found {
+				return http.StatusBadRequest, before, true
+			}
+		}
+		return http.StatusBadRequest, ErrMsgRecipeNotFoundError, true
+	case errors.Is(err, domain.ErrUserAlreadyVoted):
+		return http.StatusBadRequest, ErrMsgAlreadyVotedError, true
+	}
+	return 0, "", false
+}
+
+func mapGambleErrors(err error) (int, string, bool) {
+	switch {
+	case errors.Is(err, domain.ErrGambleNotFound):
+		return http.StatusBadRequest, ErrMsgGambleNotFoundError, true
+	case errors.Is(err, domain.ErrGambleAlreadyActive):
+		return http.StatusBadRequest, ErrMsgGambleAlreadyActiveError, true
+	case errors.Is(err, domain.ErrNotInJoiningState):
+		return http.StatusBadRequest, ErrMsgNotAcceptingParticipantsErr, true
+	case errors.Is(err, domain.ErrJoinDeadlinePassed):
+		return http.StatusBadRequest, ErrMsgJoinDeadlinePassedError, true
+	case errors.Is(err, domain.ErrAtLeastOneLootboxRequired):
+		return http.StatusBadRequest, ErrMsgLootboxRequiredError, true
+	case errors.Is(err, domain.ErrBetQuantityMustBePositive):
+		return http.StatusBadRequest, ErrMsgBetQuantityPositiveError, true
+	case errors.Is(err, domain.ErrNotALootbox):
+		return http.StatusBadRequest, ErrMsgNotLootboxError, true
+	case errors.Is(err, domain.ErrUserAlreadyJoined):
+		return http.StatusBadRequest, ErrMsgAlreadyJoinedError, true
+	}
+	return 0, "", false
+}
+
+func mapSystemErrors(err error) (int, string, bool) {
+	switch {
+	case errors.Is(err, domain.ErrDatabaseError),
+		errors.Is(err, domain.ErrConnectionTimeout),
+		errors.Is(err, domain.ErrDeadlockDetected):
+		return http.StatusInternalServerError, ErrMsgGenericServerError, true
+	}
+	return 0, "", false
 }
 
 // cutSuffix removes suffix from s and returns the result and true if it was found.

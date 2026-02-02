@@ -3,10 +3,6 @@ package postgres
 import (
 	"context"
 	"errors"
-	"fmt"
-	"os"
-	"path/filepath"
-	"sort"
 	"strings"
 	"sync"
 	"testing"
@@ -79,50 +75,6 @@ func (m *MockNamingResolver) Reload() error {
 
 func (m *MockNamingResolver) RegisterItem(internalName, publicName string) {
 	// No-op
-}
-
-func applyMigrationsForTest(ctx context.Context, pool *pgxpool.Pool, migrationsDir string) error {
-	entries, err := os.ReadDir(migrationsDir)
-	if err != nil {
-		return fmt.Errorf("failed to read migrations dir: %w", err)
-	}
-
-	var migrationFiles []string
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			name := entry.Name()
-			// Accept both .up.sql and .sql files (exclude .down.sql and archive dir)
-			if (strings.HasSuffix(name, ".up.sql") || strings.HasSuffix(name, ".sql")) && !strings.HasSuffix(name, ".down.sql") {
-				migrationFiles = append(migrationFiles, filepath.Join(migrationsDir, name))
-			}
-		}
-	}
-	sort.Strings(migrationFiles)
-
-	for _, file := range migrationFiles {
-		content, err := os.ReadFile(file)
-		if err != nil {
-			return fmt.Errorf("failed to read migration file %s: %w", file, err)
-		}
-
-		contentStr := string(content)
-
-		// Strip out goose markers (for goose v3 compatibility)
-		contentStr = strings.Replace(contentStr, "-- +goose Up\n", "", 1)
-		contentStr = strings.Replace(contentStr, "-- +goose Up", "", 1)
-
-		if downIdx := strings.Index(contentStr, "-- +goose Down"); downIdx != -1 {
-			contentStr = contentStr[:downIdx]
-		}
-
-		contentStr = strings.TrimSpace(contentStr)
-
-		_, err = pool.Exec(ctx, contentStr)
-		if err != nil {
-			return fmt.Errorf("failed to execute migration %s: %w", file, err)
-		}
-	}
-	return nil
 }
 
 func setupIntegrationTest(t *testing.T) (*pgxpool.Pool, *UserRepository, user.Service) {

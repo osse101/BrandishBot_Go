@@ -199,29 +199,6 @@ func (s *service) recordSearchFailureEvents(ctx context.Context, user *domain.Us
 	}
 }
 
-// appendStreakBonus appends streak information to the message if applicable
-func (s *service) appendStreakBonus(ctx context.Context, user *domain.User, message string, isFirstSearchDaily bool) string {
-	log := logger.FromContext(ctx)
-
-	if !isFirstSearchDaily || s.statsService == nil {
-		return message
-	}
-
-	streak, err := s.statsService.GetUserCurrentStreak(ctx, user.ID)
-	if err != nil {
-		log.Warn("Failed to get user streak", "error", err)
-		return message
-	}
-
-	if streak > 0 && streak%5 == 0 {
-		message += fmt.Sprintf(domain.MsgStreakBonus, streak)
-	}
-
-	// For failures, we don't have access to searchParams easily here,
-	// but can be called by processSearchFailure which has params.
-	return message
-}
-
 // formatSearchFailureMessageWithMeta appends streak and exhausted status to failure messages
 func (s *service) formatSearchFailureMessageWithMeta(message string, params searchParams) string {
 	result := message

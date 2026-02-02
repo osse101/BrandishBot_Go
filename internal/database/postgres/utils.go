@@ -45,15 +45,6 @@ func ptrTime(t pgtype.Timestamp) *time.Time {
 	return &t.Time
 }
 
-// ptrTimeTz converts a pgtype.Timestamptz to *time.Time.
-// Returns nil if the timestamp is not valid.
-func ptrTimeTz(t pgtype.Timestamptz) *time.Time {
-	if !t.Valid {
-		return nil
-	}
-	return &t.Time
-}
-
 // ptrInt converts a pgtype.Int4 to *int.
 // Returns nil if the int is not valid.
 func ptrInt(i pgtype.Int4) *int {

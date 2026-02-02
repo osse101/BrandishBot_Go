@@ -442,17 +442,11 @@ func (s *service) VoteForUnlock(ctx context.Context, platform, platformID, nodeK
 	return nil
 }
 
-// GetActiveVotingSession returns the current voting session
-func (s *service) GetActiveVotingSession(ctx context.Context) (*domain.ProgressionVotingSession, error) {
-	session, err := s.repo.GetActiveSession(ctx)
-	if err != nil {
-		return nil, err
-	}
+// enrichSessionWithEstimates adds unlock time estimates to session options
+func (s *service) enrichSessionWithEstimates(ctx context.Context, session *domain.ProgressionVotingSession) {
 	if session == nil {
-		return nil, nil
+		return
 	}
-
-	// Enrich options with estimates
 	for i := range session.Options {
 		if session.Options[i].NodeDetails != nil {
 			estimate, err := s.EstimateUnlockTime(ctx, session.Options[i].NodeDetails.NodeKey)
@@ -461,7 +455,15 @@ func (s *service) GetActiveVotingSession(ctx context.Context) (*domain.Progressi
 			}
 		}
 	}
+}
 
+// GetActiveVotingSession returns the current voting session
+func (s *service) GetActiveVotingSession(ctx context.Context) (*domain.ProgressionVotingSession, error) {
+	session, err := s.repo.GetActiveSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+	s.enrichSessionWithEstimates(ctx, session)
 	return session, nil
 }
 
@@ -470,20 +472,7 @@ func (s *service) GetMostRecentVotingSession(ctx context.Context) (*domain.Progr
 	if err != nil {
 		return nil, err
 	}
-	if session == nil {
-		return nil, nil
-	}
-
-	// Enrich options with estimates
-	for i := range session.Options {
-		if session.Options[i].NodeDetails != nil {
-			estimate, err := s.EstimateUnlockTime(ctx, session.Options[i].NodeDetails.NodeKey)
-			if err == nil && estimate != nil {
-				session.Options[i].EstimatedUnlockDate = estimate.EstimatedUnlockDate
-			}
-		}
-	}
-
+	s.enrichSessionWithEstimates(ctx, session)
 	return session, nil
 }
 
@@ -613,7 +602,7 @@ func (s *service) GetProgressionStatus(ctx context.Context) (*domain.Progression
 	}
 
 	// Check if all nodes are unlocked at their max level
-	allUnlocked := s.checkAllNodesUnlocked(ctx, allNodes, unlocks)
+	allUnlocked := s.checkAllNodesUnlocked(allNodes, unlocks)
 
 	contributionScore, err := s.GetEngagementScore(ctx)
 	if err != nil {
@@ -651,7 +640,7 @@ func (s *service) GetProgressionStatus(ctx context.Context) (*domain.Progression
 }
 
 // checkAllNodesUnlocked returns true if all nodes are unlocked at their max level
-func (s *service) checkAllNodesUnlocked(ctx context.Context, allNodes []*domain.ProgressionNode, unlocks []*domain.ProgressionUnlock) bool {
+func (s *service) checkAllNodesUnlocked(allNodes []*domain.ProgressionNode, unlocks []*domain.ProgressionUnlock) bool {
 	if len(allNodes) == 0 {
 		return false
 	}

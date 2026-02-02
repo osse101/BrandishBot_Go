@@ -78,7 +78,7 @@ func (s *service) StartVotingSession(ctx context.Context, unlockedNodeID *int) e
 	if unlockedNodeID != nil {
 		// Bug #1 Fix: Publish both cycle completed and voting started events
 		// The voting started event needs the previous unlock name for SSE clients
-		s.publishCycleCompletedEvent(ctx, *unlockedNodeID, sessionID)
+		s.publishCycleCompletedEvent(ctx, *unlockedNodeID)
 
 		// Get the unlocked node name for the voting started event
 		unlockedNode, err := s.repo.GetNodeByID(ctx, *unlockedNodeID)
@@ -194,7 +194,7 @@ func (s *service) handleSingleOptionAutoSelect(ctx context.Context, progress *do
 	return nil
 }
 
-func (s *service) publishCycleCompletedEvent(ctx context.Context, unlockedNodeID int, sessionID int) {
+func (s *service) publishCycleCompletedEvent(ctx context.Context, unlockedNodeID int) {
 	log := logger.FromContext(ctx)
 	unlockedNode, err := s.repo.GetNodeByID(ctx, unlockedNodeID)
 	if err != nil {
@@ -287,47 +287,19 @@ func (s *service) EndVoting(ctx context.Context) (*domain.ProgressionVotingOptio
 	voters, _ := s.repo.GetSessionVoters(ctx, session.ID)
 
 	if progress != nil && progress.NodeID == nil {
-		s.setUnlockTargetInternal(ctx, progress, winner, session.ID)
+		if err := s.repo.SetUnlockTarget(ctx, progress.ID, winner.NodeID, winner.TargetLevel, session.ID); err != nil {
+			log.Warn("Failed to set unlock target", "error", err)
+		} else if winner.NodeDetails != nil {
+			s.mu.Lock()
+			s.cachedTargetCost = winner.NodeDetails.UnlockCost
+			s.cachedProgressID = progress.ID
+			s.mu.Unlock()
+		}
 	}
 
 	log.Info("Voting ended", "sessionID", session.ID, "winningNode", winner.NodeID, "votes", winner.VoteCount, "voterCount", len(voters))
 
 	return winner, nil
-}
-
-func (s *service) ensureProgressForEndVoting(ctx context.Context) (*domain.UnlockProgress, error) {
-	progress, err := s.repo.GetActiveUnlockProgress(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if progress == nil {
-		id, err := s.repo.CreateUnlockProgress(ctx)
-		if err != nil {
-			return nil, err
-		}
-		return &domain.UnlockProgress{ID: id}, nil
-	}
-	return progress, nil
-}
-
-func (s *service) setUnlockTargetInternal(ctx context.Context, progress *domain.UnlockProgress, winner *domain.ProgressionVotingOption, sessionID int) {
-	if err := s.repo.SetUnlockTarget(ctx, progress.ID, winner.NodeID, winner.TargetLevel, sessionID); err != nil {
-		logger.FromContext(ctx).Warn("Failed to set unlock target", "error", err)
-	} else if winner.NodeDetails != nil {
-		s.mu.Lock()
-		s.cachedTargetCost = winner.NodeDetails.UnlockCost
-		s.cachedProgressID = progress.ID
-		s.mu.Unlock()
-	}
-}
-
-func (s *service) awardVoterContributions(ctx context.Context, sessionID int, progress *domain.UnlockProgress) []string {
-	voters, err := s.repo.GetSessionVoters(ctx, sessionID)
-	if err != nil {
-		logger.FromContext(ctx).Warn("Failed to get session voters", "error", err)
-		return nil
-	}
-	return voters
 }
 
 // AddContribution adds contribution points to current unlock progress
@@ -660,7 +632,7 @@ func (s *service) handlePostUnlockTransition(ctx context.Context, unlockedNodeID
 	}
 
 	// Publish cycle completed event
-	s.publishCycleCompletedEvent(ctx, unlockedNodeID, sessionID)
+	s.publishCycleCompletedEvent(ctx, unlockedNodeID)
 
 	// Get remaining available nodes (excluding new target)
 	available, err := s.GetAvailableUnlocks(ctx)
