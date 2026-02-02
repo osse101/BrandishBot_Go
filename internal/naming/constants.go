@@ -6,7 +6,16 @@ package naming
 
 // ShineCommonLevel is the default shine level that does not display a prefix
 // in the formatted display name. Items with COMMON shine show only their name.
-const ShineCommonLevel = "COMMON"
+const (
+	ShineCommonLevel    = "COMMON"
+	ShineUncommonLevel  = "UNCOMMON"
+	ShineRareLevel      = "RARE"
+	ShineEpicLevel      = "EPIC"
+	ShineLegendaryLevel = "LEGENDARY"
+	ShinePoorLevel      = "POOR"
+	ShineJunkLevel      = "JUNK"
+	ShineCursedLevel    = "CURSED"
+)
 
 // ShineFormatTemplate is the format string for displaying items with non-common
 // shine levels. Format: "<SHINE_LEVEL> <item_name>"

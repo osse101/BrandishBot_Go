@@ -27,6 +27,9 @@ const (
 	ShineRare      = "RARE"
 	ShineEpic      = "EPIC"
 	ShineLegendary = "LEGENDARY"
+	ShinePoor      = "POOR"
+	ShineJunk      = "JUNK"
+	ShineCursed    = "CURSED"
 )
 
 // Shine multipliers (Boosts Gamble Score)
@@ -36,6 +39,9 @@ const (
 	MultRare      = 1.25
 	MultEpic      = 1.5
 	MultLegendary = 2.0
+	MultPoor      = 0.8
+	MultJunk      = 0.6
+	MultCursed    = 0.4
 )
 
 // Schema paths
@@ -278,6 +284,12 @@ func (s *service) calculateShine(chance float64) (string, float64) {
 		mult = MultRare
 	case ShineUncommon:
 		mult = MultUncommon
+	case ShinePoor:
+		mult = MultPoor
+	case ShineJunk:
+		mult = MultJunk
+	case ShineCursed:
+		mult = MultCursed
 	default:
 		mult = MultCommon
 	}

@@ -908,6 +908,7 @@ type searchParams struct {
 	xpMultiplier       float64
 	successThreshold   float64
 	dailyCount         int
+	streak             int
 }
 
 // executeSearch performs the actual search logic (called within cooldown enforcement)
@@ -966,6 +967,15 @@ func (s *service) calculateSearchParameters(ctx context.Context, user *domain.Us
 		log.Info(LogMsgDiminishedReturnsApplied, "username", user.Username, "dailyCount", dailyCount)
 	}
 
+	if params.isFirstSearchDaily && s.statsService != nil {
+		streak, err := s.statsService.GetUserCurrentStreak(ctx, user.ID)
+		if err != nil {
+			log.Warn("Failed to get user streak", "error", err)
+		} else {
+			params.streak = streak
+		}
+	}
+
 	return params
 }
 
@@ -977,7 +987,8 @@ func (s *service) processSearchSuccess(ctx context.Context, user *domain.User, r
 	}
 
 	// Grant reward
-	if err := s.grantSearchReward(ctx, user, quantity); err != nil {
+	shineLevel := s.calculateSearchShine(isCritical, params)
+	if err := s.grantSearchReward(ctx, user, quantity, shineLevel); err != nil {
 		return "", err
 	}
 
@@ -998,7 +1009,7 @@ func (s *service) processSearchSuccess(ctx context.Context, user *domain.User, r
 	return s.formatSearchSuccessMessage(ctx, item, quantity, isCritical, params), nil
 }
 
-func (s *service) addItemToTx(ctx context.Context, tx repository.Tx, userID string, itemID int, quantity int) error {
+func (s *service) addItemToTx(ctx context.Context, tx repository.Tx, userID string, itemID int, quantity int, shineLevel string) error {
 	log := logger.FromContext(ctx)
 	inventory, err := tx.GetInventory(ctx, userID)
 	if err != nil {
@@ -1010,7 +1021,7 @@ func (s *service) addItemToTx(ctx context.Context, tx repository.Tx, userID stri
 	if i != -1 {
 		inventory.Slots[i].Quantity += quantity
 	} else {
-		inventory.Slots = append(inventory.Slots, domain.InventorySlot{ItemID: itemID, Quantity: quantity})
+		inventory.Slots = append(inventory.Slots, domain.InventorySlot{ItemID: itemID, Quantity: quantity, ShineLevel: shineLevel})
 	}
 
 	if err := tx.UpdateInventory(ctx, userID, *inventory); err != nil {
@@ -1038,8 +1049,8 @@ func (s *service) processSearchFailure(ctx context.Context, user *domain.User, r
 		})
 	}
 
-	// Append streak bonus if applicable
-	return s.appendStreakBonus(ctx, user, resultMessage, params.isFirstSearchDaily)
+	// Append streak and exhausted status if applicable
+	return s.formatSearchFailureMessageWithMeta(resultMessage, params)
 }
 
 // getUserOrRegister gets a user by platform ID, or auto-registers them if not found

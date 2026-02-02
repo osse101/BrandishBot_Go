@@ -106,8 +106,8 @@ const (
 const (
 	MsgSearchNothingFound    = "You have found nothing"
 	MsgSearchNearMiss        = "You found nothing... but you saw something glint in the distance!"
-	MsgSearchCriticalSuccess = "You found a hidden stash! (CRITICAL SUCCESS!)"
-	MsgSearchCriticalFail    = "You tried to search, but disaster struck! (CRITICAL FAIL!)"
+	MsgSearchCriticalSuccess = "You found a hidden stash!"
+	MsgSearchCriticalFail    = "You tried to search, but disaster struck!"
 	MsgFirstSearchBonus      = " (First Search of the Day!)"
 	MsgStreakBonus           = " (🔥 %d Day Streak!)"
 )
