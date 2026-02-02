@@ -196,6 +196,8 @@ func (m *MockLootboxService) OpenLootbox(ctx context.Context, lootboxName string
 // Helper to create a service with a mock repo and lootbox service
 func createTestService(repo *MockRepo, lootboxSvc *MockLootboxService) *service {
 	namingResolver := NewMockNamingResolver()
+	namingResolver.DisplayNames["money"] = "Shiny credit"
+	namingResolver.DisplayNames["lootbox_tier0"] = "junkbox"
 
 	return &service{
 		repo:           repo,
@@ -236,8 +238,8 @@ func TestProcessLootbox(t *testing.T) {
 
 		// Verify
 		assert.NoError(t, err)
-		assert.Contains(t, msg, "Opened")
-		assert.Contains(t, msg, "Shiny credits")
+		assert.Contains(t, msg, "Opened a junkbox")
+		assert.Contains(t, msg, "5 Shiny credits")
 
 		// Verify inventory changes
 		// Should have consumed lootbox0 and gained money

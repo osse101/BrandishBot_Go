@@ -10,8 +10,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/job"
@@ -64,16 +62,20 @@ func (s *service) consumeLootboxFromInventory(inventory *domain.Inventory, item 
 
 func (s *service) processLootboxDrops(ctx context.Context, user *domain.User, inventory *domain.Inventory, lootboxItem *domain.Item, quantity int, drops []lootbox.DroppedItem) (string, error) {
 	var msgBuilder strings.Builder
-	// User Request: Use public name for the lootbox
-	displayName := cases.Title(language.English).String(lootboxItem.PublicName)
+	// User Request: Use alias for the lootbox when opening
+	displayName := s.namingResolver.GetDisplayName(lootboxItem.InternalName, "")
 
 	msgBuilder.WriteString(MsgLootboxOpened)
-	if quantity > 1 {
-		msgBuilder.WriteString(" ")
-		msgBuilder.WriteString(strconv.Itoa(quantity))
-	}
 	msgBuilder.WriteString(" ")
-	msgBuilder.WriteString(displayName)
+	if quantity > 1 {
+		msgBuilder.WriteString(strconv.Itoa(quantity))
+		msgBuilder.WriteString(" ")
+		msgBuilder.WriteString(s.pluralize(displayName, quantity))
+	} else {
+		msgBuilder.WriteString(getIndefiniteArticle(displayName))
+		msgBuilder.WriteString(" ")
+		msgBuilder.WriteString(displayName)
+	}
 	msgBuilder.WriteString(MsgLootboxReceived)
 
 	stats := s.aggregateDropsAndUpdateInventory(inventory, drops, &msgBuilder)
@@ -152,18 +154,13 @@ func (s *service) aggregateDropsAndUpdateInventory(inventory *domain.Inventory, 
 		}
 
 		// Get display name (which might be "Shiny credit" for money or "Ray Gun" for blaster)
-		// We trust the resolver to give the base name, and we handle basic pluralization
+		// We trust the resolver to give the base name, and we handle pluralization
 		itemDisplayName := s.namingResolver.GetDisplayName(drop.ItemName, drop.ShineLevel)
 
 		// Simplify output: "Quantity Name"
 		msgBuilder.WriteString(strconv.Itoa(drop.Quantity))
 		msgBuilder.WriteString(" ")
-		msgBuilder.WriteString(itemDisplayName)
-
-		// Simple pluralization if quantity > 1
-		if drop.Quantity > 1 {
-			msgBuilder.WriteString("s")
-		}
+		msgBuilder.WriteString(s.pluralize(itemDisplayName, drop.Quantity))
 
 		first = false
 	}
@@ -640,4 +637,67 @@ func (s *service) handleUtility(ctx context.Context, _ *service, _ *domain.User,
 	utils.RemoveFromSlot(inventory, itemSlotIndex, quantity)
 
 	return username + MsgStickUsed, nil
+}
+
+// pluralize handles simple pluralization for game items and phrases
+func (s *service) pluralize(name string, quantity int) string {
+	if quantity <= 1 || name == "" {
+		return name
+	}
+
+	// Check for shine emojis at the end (Legendary/Cursed)
+	suffix := ""
+	baseName := name
+	// Emojis are multi-byte
+	if strings.HasSuffix(name, "👑") {
+		suffix = "👑"
+		baseName = strings.TrimSuffix(name, "👑")
+	} else if strings.HasSuffix(name, "👻") {
+		suffix = "👻"
+		baseName = strings.TrimSuffix(name, "👻")
+	}
+
+	// Handle "of" phrases: "pouch of coins" -> "pouches of coins"
+	if strings.Contains(baseName, " of ") {
+		parts := strings.SplitN(baseName, " of ", 2)
+		return s.pluralize(parts[0], quantity) + " of " + parts[1] + suffix
+	}
+
+	// Common uncountable or collective nouns in game context
+	lower := strings.ToLower(baseName)
+	switch lower {
+	case "money", "ghost-gold", "coins", "scrap", "junk", "credits":
+		return baseName + suffix
+	}
+	if strings.HasSuffix(lower, " coins") {
+		return baseName + suffix
+	}
+
+	// Basic pluralization rules
+	if strings.HasSuffix(baseName, "y") && len(baseName) > 1 {
+		vowels := "aeiouAEIOU"
+		if !strings.ContainsAny(string(baseName[len(baseName)-2]), vowels) {
+			return baseName[:len(baseName)-1] + "ies" + suffix
+		}
+	}
+
+	if strings.HasSuffix(baseName, "s") || strings.HasSuffix(baseName, "x") ||
+		strings.HasSuffix(baseName, "ch") || strings.HasSuffix(baseName, "sh") {
+		return baseName + "es" + suffix
+	}
+
+	return baseName + "s" + suffix
+}
+
+// getIndefiniteArticle returns "a" or "an" based on the first letter of the word
+func getIndefiniteArticle(word string) string {
+	if len(word) == 0 {
+		return "a"
+	}
+	// Simplified a/an logic logic
+	first := strings.ToLower(string(word[0]))
+	if strings.ContainsAny(first, "aeiou") {
+		return "an"
+	}
+	return "a"
 }

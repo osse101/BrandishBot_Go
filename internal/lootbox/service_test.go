@@ -272,20 +272,14 @@ func TestOpenLootbox(t *testing.T) {
 		require.NoError(t, err)
 
 		s := svc.(*service)
-		// Sequential RNG for items: only 1 roll per item since canUpgrade is false
-		rolls := []float64{0.005, 0.04} // legendary_item, epic_item
-		var rollIdx int
-		s.rnd = func() float64 {
-			val := rolls[rollIdx%len(rolls)]
-			rollIdx++
-			return val
-		}
 
 		// Sub-Test 1: Poor Box (-3% Shift)
-		// ... (Threshold explanations) ...
-		rollIdx = 0
+		// We want a roll that is normally Legendary (<= 0.01) but becomes Epic with -0.03 bonus.
+		// Roll 0.005: 0.005 > -0.02 (Legendary thresh) but 0.005 <= 0.02 (Epic thresh).
+		s.rnd = func() float64 { return 0.005 }
 		dropsPoor, err := svc.OpenLootbox(context.Background(), "box", 1000, domain.ShinePoor)
 		require.NoError(t, err)
+		require.NotEmpty(t, dropsPoor)
 		for _, d := range dropsPoor {
 			if d.ItemName == "legendary_item" {
 				assert.Equal(t, domain.ShineEpic, d.ShineLevel, "Legendary item in Poor box should downgrade to Epic")
@@ -293,13 +287,14 @@ func TestOpenLootbox(t *testing.T) {
 		}
 
 		// Sub-Test 2: Junk Box (-6% Shift)
-		// ... (Threshold explanations) ...
-		rollIdx = 0
+		// We want a roll that is normally Epic (<= 0.05) but becomes Rare with -0.06 bonus.
+		// Roll 0.04: 0.04 > -0.01 (Epic thresh) but 0.04 <= 0.09 (Rare thresh).
+		s.rnd = func() float64 { return 0.04 }
 		dropsJunk, err := svc.OpenLootbox(context.Background(), "box", 1000, domain.ShineJunk)
 		require.NoError(t, err)
+		require.NotEmpty(t, dropsJunk)
 		for _, d := range dropsJunk {
 			if d.ItemName == "epic_item" {
-				// Verify Junk box downgraded Epic to Rare
 				assert.Equal(t, domain.ShineRare, d.ShineLevel, "Epic item in Junk box should downgrade to Rare")
 			}
 		}
