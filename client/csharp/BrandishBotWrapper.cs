@@ -53,10 +53,10 @@ public class CPHInline
             {
                 if (devEnabled)
                 {
-                    string devKey = CPH.GetGlobalVar<string>("DevApiKey", persisted:true);
-                    if (!string.IsNullOrEmpty(devUrl) && !string.IsNullOrEmpty(devKey))
+                    string apiKey = CPH.GetGlobalVar<string>("ServerApiKey", persisted: true);
+                    if (!string.IsNullOrEmpty(devUrl) && !string.IsNullOrEmpty(apiKey))
                     {
-                        var devClient = new BrandishBotClient(devUrl, devKey, isForwardingInstance: true);
+                        var devClient = new BrandishBotClient(devUrl, apiKey, isForwardingInstance: true);
                         client.SetForwardingClient(devClient);
                         CPH.LogInfo($"[BrandishBot] Dev Forwarding ENABLED -> {devUrl}");
                     }
