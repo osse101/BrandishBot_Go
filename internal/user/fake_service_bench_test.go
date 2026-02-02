@@ -297,7 +297,7 @@ func BenchmarkService_HandleIncomingMessage(b *testing.B) {
 	namingResolver := &fakeBenchNamingResolver{}
 	cooldownService := &fakeBenchCooldownService{}
 
-	service := NewService(repo, repo, statsService, jobService, lootboxService, namingResolver, cooldownService, false)
+	service := NewService(repo, repo, statsService, jobService, lootboxService, namingResolver, cooldownService, nil, false)
 
 	ctx := context.Background()
 
@@ -321,7 +321,7 @@ func BenchmarkService_HandleIncomingMessage_WithMatches(b *testing.B) {
 	namingResolver := &fakeBenchNamingResolver{}
 	cooldownService := &fakeBenchCooldownService{}
 
-	service := NewService(repo, repo, statsService, jobService, lootboxService, namingResolver, cooldownService, false)
+	service := NewService(repo, repo, statsService, jobService, lootboxService, namingResolver, cooldownService, nil, false)
 
 	ctx := context.Background()
 	message := "this is a longer message with multiple words to test string matching performance"
@@ -346,7 +346,7 @@ func BenchmarkService_AddItem(b *testing.B) {
 	namingResolver := &fakeBenchNamingResolver{}
 	cooldownService := &fakeBenchCooldownService{}
 
-	service := NewService(repo, repo, statsService, jobService, lootboxService, namingResolver, cooldownService, false)
+	service := NewService(repo, repo, statsService, jobService, lootboxService, namingResolver, cooldownService, nil, false)
 
 	ctx := context.Background()
 
@@ -370,7 +370,7 @@ func BenchmarkService_AddItem_NewItem(b *testing.B) {
 	namingResolver := &fakeBenchNamingResolver{}
 	cooldownService := &fakeBenchCooldownService{}
 
-	service := NewService(repo, repo, statsService, jobService, lootboxService, namingResolver, cooldownService, false)
+	service := NewService(repo, repo, statsService, jobService, lootboxService, namingResolver, cooldownService, nil, false)
 
 	ctx := context.Background()
 
@@ -394,7 +394,7 @@ func BenchmarkService_AddItem_Individual10(b *testing.B) {
 	namingResolver := &fakeBenchNamingResolver{}
 	cooldownService := &fakeBenchCooldownService{}
 
-	service := NewService(repo, repo, statsService, jobService, lootboxService, namingResolver, cooldownService, false)
+	service := NewService(repo, repo, statsService, jobService, lootboxService, namingResolver, cooldownService, nil, false)
 
 	ctx := context.Background()
 

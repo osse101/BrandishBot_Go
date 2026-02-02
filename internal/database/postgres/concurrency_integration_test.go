@@ -28,7 +28,7 @@ func TestConcurrentAddItem_Integration(t *testing.T) {
 	// Create repository and service
 	repo := NewUserRepository(testPool)
 	trapRepo := NewTrapRepository(testPool)
-	svc := user.NewService(repo, trapRepo, nil, nil, nil, &mockNamingResolver{}, nil, false)
+	svc := user.NewService(repo, trapRepo, nil, nil, nil, &mockNamingResolver{}, nil, nil, false)
 
 	// Create a test user
 	testUser := &domain.User{

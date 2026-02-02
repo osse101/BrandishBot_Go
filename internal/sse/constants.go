@@ -39,6 +39,12 @@ const (
 
 	// EventTypeKeepalive is the keepalive ping event type
 	EventTypeKeepalive = "keepalive"
+
+	// EventTypeTimeoutApplied is sent when a timeout is applied to a user
+	EventTypeTimeoutApplied = "timeout.applied"
+
+	// EventTypeTimeoutCleared is sent when a timeout is cleared for a user
+	EventTypeTimeoutCleared = "timeout.cleared"
 )
 
 // Log messages

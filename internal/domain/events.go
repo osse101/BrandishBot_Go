@@ -38,4 +38,10 @@ const (
 
 	// EventTrapSelfTriggered is published when a user triggers their own trap
 	EventTrapSelfTriggered = "trap.self_triggered"
+
+	// EventTypeTimeoutApplied is published when a timeout is applied to a user
+	EventTypeTimeoutApplied = "timeout.applied"
+
+	// EventTypeTimeoutCleared is published when a timeout is cleared for a user
+	EventTypeTimeoutCleared = "timeout.cleared"
 )

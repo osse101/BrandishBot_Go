@@ -1306,3 +1306,23 @@ func (c *APIClient) Harvest(platform, platformID, username string) (*domain.Harv
 
 	return &harvestResp, nil
 }
+
+// AdminClearTimeout clears a user's timeout (admin only)
+func (c *APIClient) AdminClearTimeout(platform, username string) (string, error) {
+	req := map[string]string{
+		"platform": platform,
+		"username": username,
+	}
+	return c.doAction(http.MethodPost, "/api/v1/admin/timeout/clear", req)
+}
+
+// SetUserTimeout applies or extends a timeout for a user
+func (c *APIClient) SetUserTimeout(platform, username string, durationSeconds int, reason string) (string, error) {
+	req := map[string]interface{}{
+		"platform":         platform,
+		"username":         username,
+		"duration_seconds": durationSeconds,
+		"reason":           reason,
+	}
+	return c.doAction(http.MethodPut, "/api/v1/user/timeout", req)
+}

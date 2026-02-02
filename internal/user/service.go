@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/osse101/BrandishBot_Go/internal/cooldown"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/lootbox"
@@ -46,14 +47,15 @@ type service struct {
 	trapRepo        repository.TrapRepository
 	handlerRegistry *HandlerRegistry
 	timeoutMu       sync.Mutex
-	timeouts        map[string]*timeoutInfo
+	timeouts        map[string]*timeoutInfo // Keyed by "platform:username"
 	lootboxService  lootbox.Service
 	jobService      JobService
 	statsService    stats.Service
 	stringFinder    *StringFinder
 	namingResolver  naming.Resolver
 	cooldownService cooldown.Service
-	devMode         bool // When true, bypasses cooldowns
+	eventBus        event.Bus // Event bus for publishing timeout events
+	devMode         bool      // When true, bypasses cooldowns
 	wg              sync.WaitGroup
 	userCache       *userCache // In-memory cache for user lookups
 
@@ -110,7 +112,7 @@ func loadCacheConfig() CacheConfig {
 }
 
 // NewService creates a new user service
-func NewService(repo repository.User, trapRepo repository.TrapRepository, statsService stats.Service, jobService JobService, lootboxService lootbox.Service, namingResolver naming.Resolver, cooldownService cooldown.Service, devMode bool) Service {
+func NewService(repo repository.User, trapRepo repository.TrapRepository, statsService stats.Service, jobService JobService, lootboxService lootbox.Service, namingResolver naming.Resolver, cooldownService cooldown.Service, eventBus event.Bus, devMode bool) Service {
 	return &service{
 		repo:                 repo,
 		trapRepo:             trapRepo,
@@ -122,6 +124,7 @@ func NewService(repo repository.User, trapRepo repository.TrapRepository, statsS
 		stringFinder:         NewStringFinder(),
 		namingResolver:       namingResolver,
 		cooldownService:      cooldownService,
+		eventBus:             eventBus,
 		devMode:              devMode,
 		itemCacheByName:      make(map[string]domain.Item),
 		itemIDToName:         make(map[int]string),
@@ -757,45 +760,104 @@ func (s *service) GetUserByPlatformUsername(ctx context.Context, platform, usern
 	return s.repo.GetUserByPlatformUsername(ctx, platform, username)
 }
 
-// TimeoutUser times out a user for a specified duration.
-// Note: Timeouts are currently in-memory and will be lost on server restart. This is a known design choice.
-func (s *service) TimeoutUser(ctx context.Context, username string, duration time.Duration, reason string) error {
+// timeoutKey generates a platform-aware key for the timeout map
+func timeoutKey(platform, username string) string {
+	return fmt.Sprintf("%s:%s", platform, username)
+}
+
+// AddTimeout applies or extends a timeout for a user (accumulating).
+// If the user already has a timeout, the new duration is ADDED to the remaining time.
+// Note: Timeouts are in-memory and will be lost on server restart.
+func (s *service) AddTimeout(ctx context.Context, platform, username string, duration time.Duration, reason string) error {
 	log := logger.FromContext(ctx)
-	log.Info("TimeoutUser called", "username", username, "duration", duration, "reason", reason)
+	key := timeoutKey(platform, username)
+	log.Info("AddTimeout called", "platform", platform, "username", username, "duration", duration, "reason", reason)
 
 	s.timeoutMu.Lock()
 	defer s.timeoutMu.Unlock()
 
-	// If user is already timed out, stop the existing timer
-	if info, exists := s.timeouts[username]; exists {
+	var newExpiresAt time.Time
+	now := time.Now()
+
+	// Check if user already has a timeout - accumulate if so
+	if info, exists := s.timeouts[key]; exists {
 		info.timer.Stop()
-		log.Info("Existing timeout cancelled", "username", username)
+		remaining := time.Until(info.expiresAt)
+		if remaining < 0 {
+			remaining = 0
+		}
+		// Accumulate: new expiry = now + remaining + new duration
+		newExpiresAt = now.Add(remaining + duration)
+		log.Info("Timeout accumulated", "platform", platform, "username", username, "previousRemaining", remaining, "added", duration, "newTotal", time.Until(newExpiresAt))
+	} else {
+		// No existing timeout
+		newExpiresAt = now.Add(duration)
+		log.Info("New timeout created", "platform", platform, "username", username, "duration", duration)
 	}
 
-	// Create a new timer
-	// Note: Using slog.Default() here since the timer callback runs asynchronously
-	// and the original context may no longer be valid
-	timer := time.AfterFunc(duration, func() {
+	// Create timer for expiry
+	timer := time.AfterFunc(time.Until(newExpiresAt), func() {
 		s.timeoutMu.Lock()
-		delete(s.timeouts, username)
+		delete(s.timeouts, key)
 		s.timeoutMu.Unlock()
-		slog.Default().Info("User timeout expired", "username", username, "reason", reason)
+		slog.Default().Info("User timeout expired", "platform", platform, "username", username, "reason", reason)
 	})
 
-	s.timeouts[username] = &timeoutInfo{
+	s.timeouts[key] = &timeoutInfo{
 		timer:     timer,
-		expiresAt: time.Now().Add(duration),
+		expiresAt: newExpiresAt,
 	}
-	log.Info("User timed out", "username", username, "duration", duration)
+
+	// Publish timeout event
+	if s.eventBus != nil {
+		totalSeconds := int(time.Until(newExpiresAt).Seconds())
+		evt := event.NewTimeoutAppliedEvent(platform, username, totalSeconds, reason)
+		if err := s.eventBus.Publish(ctx, evt); err != nil {
+			log.Warn("Failed to publish timeout applied event", "error", err)
+		}
+	}
+
 	return nil
 }
 
-// GetTimeout returns the remaining duration of a user's timeout
-func (s *service) GetTimeout(ctx context.Context, username string) (time.Duration, error) {
+// ClearTimeout removes a user's timeout (admin action).
+func (s *service) ClearTimeout(ctx context.Context, platform, username string) error {
+	log := logger.FromContext(ctx)
+	key := timeoutKey(platform, username)
+	log.Info("ClearTimeout called", "platform", platform, "username", username)
+
 	s.timeoutMu.Lock()
 	defer s.timeoutMu.Unlock()
 
-	info, exists := s.timeouts[username]
+	info, exists := s.timeouts[key]
+	if !exists {
+		log.Info("No timeout to clear", "platform", platform, "username", username)
+		return nil
+	}
+
+	info.timer.Stop()
+	delete(s.timeouts, key)
+	log.Info("Timeout cleared", "platform", platform, "username", username)
+
+	// Publish timeout cleared event
+	if s.eventBus != nil {
+		evt := event.NewTimeoutClearedEvent(platform, username)
+		if err := s.eventBus.Publish(ctx, evt); err != nil {
+			log.Warn("Failed to publish timeout cleared event", "error", err)
+		}
+	}
+
+	return nil
+}
+
+// GetTimeoutPlatform returns the remaining duration of a user's timeout for a specific platform.
+func (s *service) GetTimeoutPlatform(ctx context.Context, platform, username string) (time.Duration, error) {
+	key := timeoutKey(platform, username)
+
+	s.timeoutMu.Lock()
+	defer s.timeoutMu.Unlock()
+
+	info, exists := s.timeouts[key]
 	if !exists {
 		return 0, nil
 	}
@@ -807,17 +869,18 @@ func (s *service) GetTimeout(ctx context.Context, username string) (time.Duratio
 	return remaining, nil
 }
 
-// ReduceTimeout reduces a user's timeout by the specified duration (used by revive items)
-func (s *service) ReduceTimeout(ctx context.Context, username string, reduction time.Duration) error {
+// ReduceTimeoutPlatform reduces a user's timeout by the specified duration for a specific platform.
+func (s *service) ReduceTimeoutPlatform(ctx context.Context, platform, username string, reduction time.Duration) error {
 	log := logger.FromContext(ctx)
-	log.Info("ReduceTimeout called", "username", username, "reduction", reduction)
+	key := timeoutKey(platform, username)
+	log.Info("ReduceTimeoutPlatform called", "platform", platform, "username", username, "reduction", reduction)
 
 	s.timeoutMu.Lock()
 	defer s.timeoutMu.Unlock()
 
-	info, exists := s.timeouts[username]
+	info, exists := s.timeouts[key]
 	if !exists {
-		log.Info("User not timed out, nothing to reduce", "username", username)
+		log.Info("User not timed out, nothing to reduce", "platform", platform, "username", username)
 		return nil
 	}
 
@@ -828,8 +891,16 @@ func (s *service) ReduceTimeout(ctx context.Context, username string, reduction 
 	if remaining <= 0 {
 		// Timeout is fully reduced, remove it
 		info.timer.Stop()
-		delete(s.timeouts, username)
-		log.Info("Timeout fully removed", "username", username)
+		delete(s.timeouts, key)
+		log.Info("Timeout fully removed via reduction", "platform", platform, "username", username)
+
+		// Publish cleared event since timeout is gone
+		if s.eventBus != nil {
+			evt := event.NewTimeoutClearedEvent(platform, username)
+			if err := s.eventBus.Publish(ctx, evt); err != nil {
+				log.Warn("Failed to publish timeout cleared event", "error", err)
+			}
+		}
 		return nil
 	}
 
@@ -838,13 +909,36 @@ func (s *service) ReduceTimeout(ctx context.Context, username string, reduction 
 	info.expiresAt = newExpiresAt
 	info.timer = time.AfterFunc(remaining, func() {
 		s.timeoutMu.Lock()
-		delete(s.timeouts, username)
+		delete(s.timeouts, key)
 		s.timeoutMu.Unlock()
-		slog.Default().Info("User timeout expired", "username", username)
+		slog.Default().Info("User timeout expired", "platform", platform, "username", username)
 	})
 
-	log.Info("Timeout reduced", "username", username, "newRemaining", remaining)
+	log.Info("Timeout reduced", "platform", platform, "username", username, "newRemaining", remaining)
 	return nil
+}
+
+// TimeoutUser times out a user for a specified duration.
+// Legacy method - defaults to Twitch platform for backward compatibility.
+// Note: This method REPLACES the existing timeout (does not accumulate).
+// For accumulating timeouts, use AddTimeout.
+func (s *service) TimeoutUser(ctx context.Context, username string, duration time.Duration, reason string) error {
+	// Legacy behavior: use AddTimeout with twitch platform
+	// Note: The original TimeoutUser replaced timeouts, but we're now using accumulating AddTimeout
+	// for consistency. If true replacement behavior is needed, we'd need to clear first.
+	return s.AddTimeout(ctx, domain.PlatformTwitch, username, duration, reason)
+}
+
+// GetTimeout returns the remaining duration of a user's timeout.
+// Legacy method - defaults to Twitch platform for backward compatibility.
+func (s *service) GetTimeout(ctx context.Context, username string) (time.Duration, error) {
+	return s.GetTimeoutPlatform(ctx, domain.PlatformTwitch, username)
+}
+
+// ReduceTimeout reduces a user's timeout by the specified duration (used by revive items).
+// Legacy method - defaults to Twitch platform for backward compatibility.
+func (s *service) ReduceTimeout(ctx context.Context, username string, reduction time.Duration) error {
+	return s.ReduceTimeoutPlatform(ctx, domain.PlatformTwitch, username, reduction)
 }
 
 // ApplyShield activates shield protection for a user (blocks next weapon attacks)

@@ -194,6 +194,10 @@ func getCommandFactories(bot *discord.Bot) []CommandFactory {
 		discord.RemoveItemCommand,
 		discord.AdminAwardXPCommand,
 
+		// Admin timeout commands
+		discord.AdminTimeoutClearCommand,
+		discord.AdminSetTimeoutCommand,
+
 		// Linking commands
 		discord.LinkCommand,
 		discord.UnlinkCommand,

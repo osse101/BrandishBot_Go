@@ -39,6 +39,10 @@ func (s *Subscriber) Subscribe() {
 	// Subscribe to progression all unlocked events
 	s.bus.Subscribe(event.ProgressionAllUnlocked, s.handleAllUnlocked)
 
+	// Subscribe to timeout events
+	s.bus.Subscribe(event.TimeoutApplied, s.handleTimeoutApplied)
+	s.bus.Subscribe(event.TimeoutCleared, s.handleTimeoutCleared)
+
 	slog.Info("SSE subscriber registered for event types",
 		"types", []string{
 			string(domain.EventJobLevelUp),
@@ -46,6 +50,8 @@ func (s *Subscriber) Subscribe() {
 			string(event.ProgressionVotingStarted),
 			string(event.ProgressionTargetSet),
 			string(event.ProgressionAllUnlocked),
+			string(event.TimeoutApplied),
+			string(event.TimeoutCleared),
 		})
 }
 
@@ -254,4 +260,97 @@ func extractNodeInfo(v interface{}) NodeInfo {
 	}
 
 	return NodeInfo{}
+}
+
+// handleTimeoutApplied processes timeout applied events
+func (s *Subscriber) handleTimeoutApplied(_ context.Context, evt event.Event) error {
+	// Try typed payload first
+	if payload, ok := evt.Payload.(event.TimeoutPayloadV1); ok {
+		ssePayload := TimeoutPayload{
+			Platform:        payload.Platform,
+			Username:        payload.Username,
+			Action:          payload.Action,
+			DurationSeconds: payload.DurationSeconds,
+			Reason:          payload.Reason,
+		}
+
+		s.hub.Broadcast(EventTypeTimeoutApplied, ssePayload)
+
+		slog.Debug(LogMsgEventBroadcast,
+			"event_type", EventTypeTimeoutApplied,
+			"platform", payload.Platform,
+			"username", payload.Username,
+			"duration_seconds", payload.DurationSeconds)
+
+		return nil
+	}
+
+	// Fall back to map parsing
+	payload, ok := evt.Payload.(map[string]interface{})
+	if !ok {
+		slog.Warn("Invalid timeout applied event payload type")
+		return nil
+	}
+
+	ssePayload := TimeoutPayload{
+		Platform:        getStringFromMap(payload, "platform"),
+		Username:        getStringFromMap(payload, "username"),
+		Action:          getStringFromMap(payload, "action"),
+		DurationSeconds: getIntFromMap(payload, "duration_seconds"),
+		Reason:          getStringFromMap(payload, "reason"),
+	}
+
+	s.hub.Broadcast(EventTypeTimeoutApplied, ssePayload)
+
+	slog.Debug(LogMsgEventBroadcast,
+		"event_type", EventTypeTimeoutApplied,
+		"platform", ssePayload.Platform,
+		"username", ssePayload.Username)
+
+	return nil
+}
+
+// handleTimeoutCleared processes timeout cleared events
+func (s *Subscriber) handleTimeoutCleared(_ context.Context, evt event.Event) error {
+	// Try typed payload first
+	if payload, ok := evt.Payload.(event.TimeoutPayloadV1); ok {
+		ssePayload := TimeoutPayload{
+			Platform:        payload.Platform,
+			Username:        payload.Username,
+			Action:          payload.Action,
+			DurationSeconds: 0,
+		}
+
+		s.hub.Broadcast(EventTypeTimeoutCleared, ssePayload)
+
+		slog.Debug(LogMsgEventBroadcast,
+			"event_type", EventTypeTimeoutCleared,
+			"platform", payload.Platform,
+			"username", payload.Username)
+
+		return nil
+	}
+
+	// Fall back to map parsing
+	payload, ok := evt.Payload.(map[string]interface{})
+	if !ok {
+		slog.Warn("Invalid timeout cleared event payload type")
+		return nil
+	}
+
+	ssePayload := TimeoutPayload{
+		Platform:        getStringFromMap(payload, "platform"),
+		Username:        getStringFromMap(payload, "username"),
+		Action:          "cleared",
+		DurationSeconds: 0,
+	}
+
+	s.hub.Broadcast(EventTypeTimeoutCleared, ssePayload)
+
+	slog.Debug(LogMsgEventBroadcast,
+		"event_type", EventTypeTimeoutCleared,
+		"platform", ssePayload.Platform,
+		"username", ssePayload.Username)
+
+	return nil
 }

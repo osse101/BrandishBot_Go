@@ -284,7 +284,7 @@ func (m *mockCooldownService) GetLastUsed(ctx context.Context, userID, action st
 func createSearchTestService() (*service, *mockSearchRepo) {
 	repo := newMockSearchRepo()
 	statsSvc := &mockStatsService{mockCounts: make(map[domain.EventType]int)}
-	svc := NewService(repo, repo, statsSvc, nil, nil, NewMockNamingResolver(), &mockCooldownService{repo: repo}, false).(*service)
+	svc := NewService(repo, repo, statsSvc, nil, nil, NewMockNamingResolver(), &mockCooldownService{repo: repo}, nil, false).(*service)
 
 	// Add standard test items
 	repo.items[domain.ItemLootbox0] = &domain.Item{

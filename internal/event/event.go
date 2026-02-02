@@ -25,6 +25,10 @@ const (
 	ProgressionVotingStarted  Type = "progression.voting_started"
 	ProgressionAllUnlocked    Type = "progression.all_unlocked"
 	EventTypeEngagement       Type = "engagement"
+
+	// Timeout event types
+	TimeoutApplied Type = "timeout.applied"
+	TimeoutCleared Type = "timeout.cleared"
 )
 
 // Typed event payloads for type safety
@@ -101,6 +105,49 @@ type GambleCompletedPayloadV1 struct {
 	TotalValue       int64  `json:"total_value"`
 	ParticipantCount int    `json:"participant_count"`
 	Timestamp        int64  `json:"timestamp"`
+}
+
+// TimeoutPayloadV1 is the typed payload for timeout events
+type TimeoutPayloadV1 struct {
+	Platform        string `json:"platform"`
+	Username        string `json:"username"`
+	Action          string `json:"action"` // "applied" or "cleared"
+	DurationSeconds int    `json:"duration_seconds"`
+	Reason          string `json:"reason,omitempty"`
+	Timestamp       int64  `json:"timestamp"`
+}
+
+// NewTimeoutAppliedEvent creates a new timeout applied event
+func NewTimeoutAppliedEvent(platform, username string, durationSeconds int, reason string) Event {
+	return Event{
+		Version: EventSchemaVersion,
+		Type:    TimeoutApplied,
+		Payload: TimeoutPayloadV1{
+			Platform:        platform,
+			Username:        username,
+			Action:          "applied",
+			DurationSeconds: durationSeconds,
+			Reason:          reason,
+			Timestamp:       time.Now().Unix(),
+		},
+		Metadata: make(map[string]interface{}),
+	}
+}
+
+// NewTimeoutClearedEvent creates a new timeout cleared event
+func NewTimeoutClearedEvent(platform, username string) Event {
+	return Event{
+		Version: EventSchemaVersion,
+		Type:    TimeoutCleared,
+		Payload: TimeoutPayloadV1{
+			Platform:        platform,
+			Username:        username,
+			Action:          "cleared",
+			DurationSeconds: 0,
+			Timestamp:       time.Now().Unix(),
+		},
+		Metadata: make(map[string]interface{}),
+	}
 }
 
 // NewGambleCompletedEvent creates a new gamble completed event with type-safe payload

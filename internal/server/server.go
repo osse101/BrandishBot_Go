@@ -83,6 +83,7 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 		r.Route("/user", func(r chi.Router) {
 			r.Post("/register", handler.HandleRegisterUser(userService))
 			r.Get("/timeout", handler.HandleGetTimeout(userService))
+			r.Put("/timeout", handler.HandleSetTimeout(userService))
 			r.Get("/inventory", handler.HandleGetInventory(userService, progressionService))
 			r.Get("/inventory-by-username", handler.HandleGetInventoryByUsername(userService))
 			r.Post("/search", handler.HandleSearch(userService, progressionService, eventBus))
@@ -187,6 +188,11 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 		adminCacheHandler := handler.NewAdminCacheHandler(userService)
 		r.Route("/admin", func(r chi.Router) {
 			r.Post("/reload-aliases", handler.HandleReloadAliases(namingResolver))
+
+			// Admin timeout routes
+			r.Route("/timeout", func(r chi.Router) {
+				r.Post("/clear", handler.HandleAdminClearTimeout(userService))
+			})
 
 			// Admin job routes
 			r.Route("/jobs", func(r chi.Router) {

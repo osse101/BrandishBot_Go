@@ -122,6 +122,15 @@ namespace BrandishBot.Client
             return await HandleHttpResponse(response);
         }
 
+        private async Task<string> PutJsonAsync(string endpoint, object data)
+        {
+            ForwardRequest("PUT", endpoint, c => c.PutJsonAsync(endpoint, data));
+            var jsonBody = JsonConvert.SerializeObject(data);
+            var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
+            var response = await _httpClient.PutAsync(_baseUrl + endpoint, content);
+            return await HandleHttpResponse(response);
+        }
+
         private async Task<string> GetAsync(string endpoint)
         {
             ForwardRequest("GET", endpoint, c => c.GetAsync(endpoint));
@@ -882,6 +891,58 @@ namespace BrandishBot.Client
                 platform_id = platformId,
                 username = username,
                 message = message
+            });
+        }
+
+        #endregion
+
+        #region Timeout Management
+
+        /// <summary>
+        /// Get user's timeout status
+        /// </summary>
+        /// <param name="platform">Platform (twitch, youtube, discord)</param>
+        /// <param name="username">Username to check</param>
+        /// <returns>JSON with platform, username, is_timed_out, remaining_seconds</returns>
+        public async Task<string> GetUserTimeout(string platform, string username)
+        {
+            var query = BuildQuery(
+                "platform=" + platform,
+                "username=" + username
+            );
+            return await GetAsync("/api/v1/user/timeout" + query);
+        }
+
+        /// <summary>
+        /// Set or extend a user's timeout (accumulates with existing timeout)
+        /// </summary>
+        /// <param name="platform">Platform (twitch, youtube, discord)</param>
+        /// <param name="username">Username to timeout</param>
+        /// <param name="durationSeconds">Duration in seconds (1-86400)</param>
+        /// <param name="reason">Optional reason for the timeout</param>
+        public async Task<string> SetUserTimeoutAsync(string platform, string username, int durationSeconds, string reason = null)
+        {
+            var body = new
+            {
+                platform = platform,
+                username = username,
+                duration_seconds = durationSeconds,
+                reason = reason ?? ""
+            };
+            return await PutJsonAsync("/api/v1/user/timeout", body);
+        }
+
+        /// <summary>
+        /// Admin: Clear a user's timeout
+        /// </summary>
+        /// <param name="platform">Platform (twitch, youtube, discord)</param>
+        /// <param name="username">Username to clear timeout for</param>
+        public async Task<string> AdminClearTimeoutAsync(string platform, string username)
+        {
+            return await PostJsonAsync("/api/v1/admin/timeout/clear", new
+            {
+                platform = platform,
+                username = username
             });
         }
 

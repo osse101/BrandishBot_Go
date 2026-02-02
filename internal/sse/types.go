@@ -42,3 +42,12 @@ type VotingOptionInfo struct {
 type AllUnlockedPayload struct {
 	Message string `json:"message"`
 }
+
+// TimeoutPayload represents the SSE payload for timeout events
+type TimeoutPayload struct {
+	Platform        string `json:"platform"`
+	Username        string `json:"username"`
+	Action          string `json:"action"` // "applied" or "cleared"
+	DurationSeconds int    `json:"duration_seconds"`
+	Reason          string `json:"reason,omitempty"`
+}
