@@ -117,7 +117,7 @@ unit:
 watch:
 	@echo "Watching for changes to run unit tests..."
 	@if command -v entr > /dev/null; then \
-		find . -name "*.go" | entr -c ./scripts/unit_tests.sh; \
+		find . -name "*.go" | entr -c $(MAKE) unit; \
 	else \
 		echo "Error: 'entr' is not installed. Please install it to use this feature."; \
 		exit 1; \
@@ -131,7 +131,7 @@ test-coverage:
 	fi
 	@go tool cover -html=logs/coverage.out -o logs/coverage.html
 	@echo "Coverage report generated: logs/coverage.html"
-	@./scripts/check_coverage.sh logs/coverage.out 0
+	@go run ./cmd/devtool check-coverage logs/coverage.out 0
 
 test-coverage-check:
 	@echo "Checking coverage threshold (80%)..."
@@ -139,7 +139,7 @@ test-coverage-check:
 		echo "Coverage profile not found. Running tests..."; \
 		$(MAKE) test; \
 	fi
-	@./scripts/check_coverage.sh logs/coverage.out 80
+	@go run ./cmd/devtool check-coverage logs/coverage.out 80
 
 lint:
 	@echo "Running linters..."
@@ -466,12 +466,10 @@ test-security:
 	@./scripts/test_security.sh
 
 check-deps:
-	@chmod +x scripts/check_deps.sh
-	@./scripts/check_deps.sh
+	@go run ./cmd/devtool check-deps
 
 check-db:
-	@chmod +x scripts/check_db.sh
-	@./scripts/check_db.sh
+	@go run ./cmd/devtool check-db
 
 
 # Mock generation
