@@ -9,6 +9,27 @@ namespace BrandishBot.Client
     public static class ResponseFormatter
     {
         /// <summary>
+        /// Map node size to human-readable unlock duration
+        /// </summary>
+        private static string FormatSizeToDuration(string size)
+        {
+            if (string.IsNullOrEmpty(size))
+                return "Unknown";
+
+            switch (size.ToLower())
+            {
+                case "small":
+                    return "Short";
+                case "medium":
+                    return "Medium";
+                case "large":
+                    return "Long";
+                default:
+                    return "Mystery";
+            }
+        }
+
+        /// <summary>
         /// Format price response as "Type prices: item1: price1, item2: price2, ..."
         /// Parses JSON price arrays and formats them into a readable string
         /// </summary>
@@ -187,13 +208,14 @@ namespace BrandishBot.Client
 
                     string displayName = nodeDetails["display_name"]?.ToString() ?? "Unknown";
                     int targetLevel = (int?)option["target_level"] ?? 1;
-                    int unlockTime = (int?)nodeDetails["unlock_cost"] ?? 0;
+                    string size = nodeDetails["size"]?.ToString() ?? "unknown";
+                    string unlockDuration = FormatSizeToDuration(size);
                     int voteCount = (int?)option["vote_count"] ?? 0;
 
                     // Build level suffix - omit if target_level is 1
                     string levelStr = targetLevel != 1 ? $"({targetLevel})" : "";
 
-                    formattedOptions.Add($"{count}) {displayName}{levelStr} - Unlock Time: {unlockTime} Votes: {voteCount} |");
+                    formattedOptions.Add($"{count}) {displayName}{levelStr} - Unlock Time: {unlockDuration} Votes: {voteCount} |");
                 }
 
                 return formattedOptions.Count > 0
