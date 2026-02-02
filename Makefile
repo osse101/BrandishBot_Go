@@ -1,4 +1,4 @@
-.PHONY: help migrate-up migrate-down migrate-status migrate-create test build run clean docker-build docker-up docker-down deploy-staging deploy-production rollback-staging rollback-production health-check-staging health-check-prod install-hooks
+.PHONY: help migrate-up migrate-down migrate-status migrate-create test build run clean docker-build docker-up docker-down deploy-staging deploy-production rollback-staging rollback-production health-check-staging health-check-prod install-hooks reset-staging seed-staging validate-staging
 
 # Tool paths
 GOOSE   := go run github.com/pressly/goose/v3/cmd/goose
@@ -70,6 +70,9 @@ help:
 	@echo "  make rollback-production  - Rollback production to previous version"
 	@echo "  make health-check-staging - Check staging environment health"
 	@echo "  make health-check-prod    - Check production environment health"
+	@echo "  make reset-staging        - Full staging reset (down + volume rm + up)"
+	@echo "  make seed-staging         - Seed staging with test data"
+	@echo "  make validate-staging     - Run validation tests against staging"
 	@echo ""
 	@echo "Audit & Security:"
 	@echo "  make test-migrations      - Test migration up/down/idempotency"
@@ -430,6 +433,28 @@ health-check-staging:
 
 health-check-prod:
 	@./scripts/health-check.sh production
+
+# Staging reset and validation targets
+reset-staging:
+	@echo "🔄 Resetting staging environment..."
+	@echo "Stopping staging containers..."
+	@docker compose -f docker-compose.staging.yml down -v
+	@echo "Starting fresh staging environment..."
+	@docker compose -f docker-compose.staging.yml up -d
+	@echo "Waiting for services to be ready..."
+	@sleep 15
+	@$(MAKE) health-check-staging
+	@echo "✅ Staging reset complete"
+
+seed-staging:
+	@echo "🌱 Seeding staging database..."
+	@docker compose -f docker-compose.staging.yml exec -T db psql -U $(DB_USER) -d $(DB_NAME) < scripts/setup_test_user.sql || echo "Note: Seed script may not exist"
+	@echo "✅ Staging seeded (if seed scripts exist)"
+
+validate-staging:
+	@echo "🔍 Validating staging environment..."
+	@STAGING_URL=http://localhost:8081 $(MAKE) test-staging
+	@echo "✅ Staging validation complete"
 
 # Audit & Security targets
 test-migrations:

@@ -45,34 +45,6 @@
       ]
     },
     {
-      "recipe_key": "weapon_blaster",
-      "target_item": "weapon_bigblaster",
-      "costs": [
-        {
-          "item": "weapon_blaster",
-          "quantity": 10
-        },
-        {
-          "item": "money",
-          "quantity": 1000
-        }
-      ]
-    },
-    {
-      "recipe_key": "weapon_bigblaster",
-      "target_item": "weapon_hugeblaster",
-      "costs": [
-        {
-          "item": "weapon_bigblaster",
-          "quantity": 1
-        },
-        {
-          "item": "money",
-          "quantity": 5000
-        }
-      ]
-    },
-    {
       "recipe_key": "weapon_this",
       "target_item": "weapon_deez",
       "costs": [
@@ -83,34 +55,6 @@
         {
           "item": "money",
           "quantity": 500
-        }
-      ]
-    },
-    {
-      "recipe_key": "revive_small",
-      "target_item": "revive_medium",
-      "costs": [
-        {
-          "item": "revive_small",
-          "quantity": 10
-        },
-        {
-          "item": "money",
-          "quantity": 500
-        }
-      ]
-    },
-    {
-      "recipe_key": "revive_medium",
-      "target_item": "revive_large",
-      "costs": [
-        {
-          "item": "revive_medium",
-          "quantity": 1
-        },
-        {
-          "item": "money",
-          "quantity": 3000
         }
       ]
     },

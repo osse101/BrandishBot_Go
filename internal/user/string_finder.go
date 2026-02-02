@@ -38,7 +38,8 @@ func NewStringFinder() *StringFinder {
 func (sf *StringFinder) loadDefaultRules() {
 	// These would ideally come from a config or DB
 	sf.addRule("Bapanada", "OBS", 10)
-	sf.addRule("going", "TRAP", 5)
+	sf.addRule("gary", "OBS", 10)
+	sf.addRule("shedinja", "OBS", 10)
 }
 
 func (sf *StringFinder) addRule(patternStr, code string, priority int) {

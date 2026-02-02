@@ -48,36 +48,6 @@
       "associated_upgrade": "lootbox_tier2"
     },
     {
-      "recipe_key": "weapon_bigblaster",
-      "quantity_consumed": 1,
-      "outputs": [
-        {
-          "item": "weapon_blaster",
-          "quantity": 2
-        },
-        {
-          "item": "money",
-          "quantity": 250
-        }
-      ],
-      "associated_upgrade": "weapon_blaster"
-    },
-    {
-      "recipe_key": "weapon_hugeblaster",
-      "quantity_consumed": 1,
-      "outputs": [
-        {
-          "item": "weapon_bigblaster",
-          "quantity": 1
-        },
-        {
-          "item": "money",
-          "quantity": 1250
-        }
-      ],
-      "associated_upgrade": "weapon_bigblaster"
-    },
-    {
       "recipe_key": "weapon_deez",
       "quantity_consumed": 1,
       "outputs": [
@@ -91,36 +61,6 @@
         }
       ],
       "associated_upgrade": "weapon_this"
-    },
-    {
-      "recipe_key": "revive_medium",
-      "quantity_consumed": 1,
-      "outputs": [
-        {
-          "item": "revive_small",
-          "quantity": 2
-        },
-        {
-          "item": "money",
-          "quantity": 125
-        }
-      ],
-      "associated_upgrade": "revive_small"
-    },
-    {
-      "recipe_key": "revive_large",
-      "quantity_consumed": 1,
-      "outputs": [
-        {
-          "item": "revive_medium",
-          "quantity": 1
-        },
-        {
-          "item": "money",
-          "quantity": 750
-        }
-      ],
-      "associated_upgrade": "revive_medium"
     },
     {
       "recipe_key": "explosive_trap",

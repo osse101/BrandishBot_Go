@@ -181,6 +181,21 @@
       "default_display": "this"
     },
     {
+      "internal_name": "weapon_deez",
+      "public_name": "deez",
+      "description": "A legendary meme weapon with a dreadful curse",
+      "tier": 2,
+      "max_stack": 100,
+      "base_value": 1001,
+      "tags": [
+        "consumable",
+        "tradeable",
+        "sellable",
+        "disassembleable"
+      ],
+      "default_display": "deez"
+    },
+    {
       "internal_name": "revive_small",
       "public_name": "revives",
       "description": "A small revive - reduces timeout by 60s",
@@ -198,6 +213,68 @@
         "recovery_seconds": 60
       },
       "default_display": "A small healing potion"
+    },
+    {
+      "internal_name": "explosive_mine",
+      "public_name": "mine",
+      "description": "A basic explosive - creates a small blast",
+      "tier": 1,
+      "max_stack": 1000,
+      "base_value": 250,
+      "tags": [
+        "consumable",
+        "tradeable",
+        "sellable",
+        "buyable",
+        "upgradeable"
+      ],
+      "handler": "explosive",
+      "handler_config": {
+        "damage_type": "search_trap",
+        "timeout_seconds": 60
+      },
+      "default_display": "A small land mine"
+    },
+    {
+      "internal_name": "explosive_trap",
+      "public_name": "trap",
+      "description": "A medium explosive - creates a targetted blast",
+      "tier": 2,
+      "max_stack": 100,
+      "base_value": 2500,
+      "tags": [
+        "consumable",
+        "tradeable",
+        "sellable",
+        "upgradeable",
+        "disassembleable"
+      ],
+      "handler": "explosive",
+      "handler_config": {
+        "damage_type": "search_trap",
+        "timeout_seconds": 60
+      },
+      "default_display": "A bear trap with explosives"
+    },
+    {
+      "internal_name": "explosive_bomb",
+      "public_name": "bomb",
+      "description": "A large explosive - bringer of fear",
+      "tier": 2,
+      "max_stack": 100,
+      "base_value": 2500,
+      "tags": [
+        "consumable",
+        "tradeable",
+        "sellable",
+        "disassembleable"
+      ],
+      "handler": "explosive",
+      "handler_config": {
+        "damage_type": "search_trap",
+        "timeout_seconds": 60
+      },
+      "default_display": "A buried trap with many explosives"
     },
     {
       "internal_name": "explosive_tnt",
