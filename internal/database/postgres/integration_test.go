@@ -2,86 +2,107 @@ package postgres
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"os"
-	"path/filepath"
-	"sort"
-	"strings"
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/osse101/BrandishBot_Go/internal/database"
-	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
+
+	"github.com/osse101/BrandishBot_Go/internal/database"
+	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
+
+// TestMain sets up shared container for all tests in the package
+func TestMain(m *testing.M) {
+	flag.Parse()
+
+	var terminate func()
+
+	if !testing.Short() {
+		ctx := context.Background()
+		var connStr string
+		connStr, terminate = setupContainer(ctx)
+		testDBConnString = connStr
+
+		// Create shared pool if container started successfully
+		if connStr != "" {
+			var err error
+			testPool, err = database.NewPool(connStr, 20, 30*time.Minute, time.Hour)
+			if err != nil {
+				fmt.Printf("WARNING: Failed to create test pool: %v\n", err)
+			}
+		}
+	}
+
+	code := m.Run()
+
+	if testPool != nil {
+		testPool.Close()
+	}
+	if terminate != nil {
+		terminate()
+	}
+
+	os.Exit(code)
+}
+
+func setupContainer(ctx context.Context) (string, func()) {
+	// Handle potential panics from testcontainers
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("Recovered from panic in setupContainer: %v\n", r)
+		}
+	}()
+
+	pgContainer, err := postgres.Run(ctx,
+		"postgres:15-alpine",
+		postgres.WithDatabase("testdb"),
+		postgres.WithUsername("testuser"),
+		postgres.WithPassword("testpass"),
+		testcontainers.WithWaitStrategy(
+			wait.ForLog("database system is ready to accept connections").
+				WithOccurrence(2).
+				WithStartupTimeout(15*time.Second)),
+	)
+	if err != nil {
+		fmt.Printf("WARNING: Failed to start postgres container: %v\n", err)
+		return "", func() {}
+	}
+
+	connStr, err := pgContainer.ConnectionString(ctx, "sslmode=disable")
+	if err != nil {
+		fmt.Printf("WARNING: Failed to get connection string: %v\n", err)
+		pgContainer.Terminate(ctx)
+		return "", func() {}
+	}
+
+	return connStr, func() {
+		if err := pgContainer.Terminate(ctx); err != nil {
+			fmt.Printf("Failed to terminate container: %v\n", err)
+		}
+	}
+}
 
 func TestUserRepository_Integration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
 	}
+	if testDBConnString == "" {
+		t.Skip("Skipping integration test: database not available")
+	}
 
 	ctx := context.Background()
 
-	// Start Postgres container
-	var pgContainer *postgres.PostgresContainer
-	var err error
+	// Use shared pool and apply migrations once
+	ensureMigrations(t)
 
-	func() {
-		defer func() {
-			if r := recover(); r != nil {
-				t.Skipf("Skipping integration test due to panic (likely Docker issue): %v", r)
-			}
-		}()
-		pgContainer, err = postgres.Run(ctx,
-			"postgres:15-alpine",
-			postgres.WithDatabase("testdb"),
-			postgres.WithUsername("testuser"),
-			postgres.WithPassword("testpass"),
-			testcontainers.WithWaitStrategy(
-				wait.ForLog("database system is ready to accept connections").
-					WithOccurrence(2).
-					WithStartupTimeout(5*time.Second)),
-		)
-	}()
-
-	if pgContainer == nil {
-		// If panic occurred and was recovered, we already skipped.
-		// If no panic but pgContainer is nil (shouldn't happen if err is nil), return.
-		if err != nil {
-			t.Fatalf("failed to start postgres container: %v", err)
-		}
-		return
-	}
-	if err != nil {
-		t.Fatalf("failed to start postgres container: %v", err)
-	}
-	defer func() {
-		if err := pgContainer.Terminate(ctx); err != nil {
-			t.Fatalf("failed to terminate container: %v", err)
-		}
-	}()
-
-	connStr, err := pgContainer.ConnectionString(ctx, "sslmode=disable")
-	if err != nil {
-		t.Fatalf("failed to get connection string: %v", err)
-	}
-
-	// Connect to database
-	pool, err := database.NewPool(connStr, 10, 30*time.Minute, time.Hour)
-	if err != nil {
-		t.Fatalf("failed to connect to database: %v", err)
-	}
-	defer pool.Close()
-
-	// Apply migrations
-	if err := applyMigrations(ctx, pool, "../../../migrations"); err != nil {
-		t.Fatalf("failed to apply migrations: %v", err)
-	}
-
-	repo := NewUserRepository(pool)
+	repo := NewUserRepository(testPool)
+	craftingRepo := NewCraftingRepository(testPool)
+	economyRepo := NewEconomyRepository(testPool)
 
 	t.Run("UpsertUser", func(t *testing.T) {
 		user := &domain.User{
@@ -99,9 +120,9 @@ func TestUserRepository_Integration(t *testing.T) {
 		}
 
 		// Verify retrieval
-		retrieved, err := repo.GetUserByUsername(ctx, "testuser")
+		retrieved, err := repo.GetUserByPlatformUsername(ctx, domain.PlatformTwitch, "testuser")
 		if err != nil {
-			t.Fatalf("GetUserByUsername failed: %v", err)
+			t.Fatalf("GetUserByPlatformUsername failed: %v", err)
 		}
 		if retrieved.Username != "testuser" {
 			t.Errorf("expected username testuser, got %s", retrieved.Username)
@@ -126,7 +147,7 @@ func TestUserRepository_Integration(t *testing.T) {
 
 		// Update inventory
 		// Need an item first
-		money, err := repo.GetItemByName(ctx, "money")
+		money, err := craftingRepo.GetItemByName(ctx, "money")
 		if err != nil {
 			t.Fatalf("failed to get money item: %v", err)
 		}
@@ -202,13 +223,13 @@ func TestUserRepository_Integration(t *testing.T) {
 
 	t.Run("Recipe Operations", func(t *testing.T) {
 		// Get an item to use as target
-		money, err := repo.GetItemByName(ctx, "money")
+		money, err := craftingRepo.GetItemByName(ctx, "money")
 		if err != nil || money == nil {
 			t.Skip("money item not found, skipping recipe test")
 		}
 
 		// Get recipe by target item ID
-		recipe, err := repo.GetRecipeByTargetItemID(ctx, money.ID)
+		recipe, err := craftingRepo.GetRecipeByTargetItemID(ctx, money.ID)
 		if err != nil {
 			t.Fatalf("GetRecipeByTargetItemID failed: %v", err)
 		}
@@ -221,7 +242,7 @@ func TestUserRepository_Integration(t *testing.T) {
 			}
 
 			// Check if unlocked (should be false initially)
-			unlocked, err := repo.IsRecipeUnlocked(ctx, user.ID, recipe.ID)
+			unlocked, err := craftingRepo.IsRecipeUnlocked(ctx, user.ID, recipe.ID)
 			if err != nil {
 				t.Fatalf("IsRecipeUnlocked failed: %v", err)
 			}
@@ -230,12 +251,12 @@ func TestUserRepository_Integration(t *testing.T) {
 			}
 
 			// Unlock the recipe
-			if err := repo.UnlockRecipe(ctx, user.ID, recipe.ID); err != nil {
+			if err := craftingRepo.UnlockRecipe(ctx, user.ID, recipe.ID); err != nil {
 				t.Fatalf("UnlockRecipe failed: %v", err)
 			}
 
 			// Verify it's now unlocked
-			unlocked, err = repo.IsRecipeUnlocked(ctx, user.ID, recipe.ID)
+			unlocked, err = craftingRepo.IsRecipeUnlocked(ctx, user.ID, recipe.ID)
 			if err != nil {
 				t.Fatalf("IsRecipeUnlocked failed: %v", err)
 			}
@@ -244,7 +265,7 @@ func TestUserRepository_Integration(t *testing.T) {
 			}
 
 			// Get unlocked recipes
-			unlockedRecipes, err := repo.GetUnlockedRecipesForUser(ctx, user.ID)
+			unlockedRecipes, err := craftingRepo.GetUnlockedRecipesForUser(ctx, user.ID)
 			if err != nil {
 				t.Fatalf("GetUnlockedRecipesForUser failed: %v", err)
 			}
@@ -256,7 +277,7 @@ func TestUserRepository_Integration(t *testing.T) {
 
 	t.Run("Item Buyability", func(t *testing.T) {
 		// Test checking if an item is buyable
-		isBuyable, err := repo.IsItemBuyable(ctx, "money")
+		isBuyable, err := economyRepo.IsItemBuyable(ctx, "money")
 		if err != nil {
 			t.Fatalf("IsItemBuyable failed: %v", err)
 		}
@@ -267,7 +288,7 @@ func TestUserRepository_Integration(t *testing.T) {
 		}
 
 		// Test with non-existent item
-		isBuyable, err = repo.IsItemBuyable(ctx, "nonexistent_item_xyz")
+		isBuyable, err = economyRepo.IsItemBuyable(ctx, "nonexistent_item_xyz")
 		if err != nil {
 			t.Fatalf("IsItemBuyable failed for non-existent item: %v", err)
 		}
@@ -277,7 +298,7 @@ func TestUserRepository_Integration(t *testing.T) {
 	})
 
 	t.Run("GetSellablePrices", func(t *testing.T) {
-		items, err := repo.GetSellablePrices(ctx)
+		items, err := economyRepo.GetSellablePrices(ctx)
 		if err != nil {
 			t.Fatalf("GetSellablePrices failed: %v", err)
 		}
@@ -289,8 +310,8 @@ func TestUserRepository_Integration(t *testing.T) {
 
 		// Verify items have required fields
 		for _, item := range items {
-			if item.InternalName == "" {
-				t.Error("sellable item has empty name")
+			if item.PublicName == "" {
+				t.Error("sellable item has empty public name")
 			}
 			if item.BaseValue < 0 {
 				t.Error("sellable item has negative base value")
@@ -300,13 +321,13 @@ func TestUserRepository_Integration(t *testing.T) {
 
 	t.Run("GetItemByID", func(t *testing.T) {
 		// First get an item to know its ID
-		money, err := repo.GetItemByName(ctx, "money")
+		money, err := craftingRepo.GetItemByName(ctx, "money")
 		if err != nil || money == nil {
 			t.Skip("money item not found, skipping GetItemByID test")
 		}
 
 		// Get by ID
-		item, err := repo.GetItemByID(ctx, money.ID)
+		item, err := craftingRepo.GetItemByID(ctx, money.ID)
 		if err != nil {
 			t.Fatalf("GetItemByID failed: %v", err)
 		}
@@ -318,7 +339,7 @@ func TestUserRepository_Integration(t *testing.T) {
 		}
 
 		// Test with non-existent ID
-		item, err = repo.GetItemByID(ctx, 999999)
+		item, err = craftingRepo.GetItemByID(ctx, 999999)
 		if err != nil {
 			t.Fatalf("GetItemByID failed for non-existent item: %v", err)
 		}
@@ -327,10 +348,10 @@ func TestUserRepository_Integration(t *testing.T) {
 		}
 	})
 
-	t.Run("GetUserByUsername - Not Found", func(t *testing.T) {
-		user, err := repo.GetUserByUsername(ctx, "nonexistent_user_xyz")
-		if err != nil {
-			t.Fatalf("GetUserByUsername failed: %v", err)
+	t.Run("GetUserByPlatformUsername - Not Found", func(t *testing.T) {
+		user, err := repo.GetUserByPlatformUsername(ctx, domain.PlatformTwitch, "nonexistent_user_xyz")
+		if err != nil && err != domain.ErrUserNotFound {
+			t.Fatalf("GetUserByPlatformUsername failed: %v", err)
 		}
 		if user != nil {
 			t.Error("expected nil for non-existent user")
@@ -368,58 +389,4 @@ func TestUserRepository_Integration(t *testing.T) {
 			t.Error("expected error for non-existent platform ID")
 		}
 	})
-}
-
-func applyMigrations(ctx context.Context, pool *pgxpool.Pool, migrationsDir string) error {
-	entries, err := os.ReadDir(migrationsDir)
-	if err != nil {
-		return fmt.Errorf("failed to read migrations dir: %w", err)
-	}
-
-	var migrationFiles []string
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			name := entry.Name()
-			// Accept both .up.sql and .sql files (exclude .down.sql and archive dir)
-			if (strings.HasSuffix(name, ".up.sql") || strings.HasSuffix(name, ".sql")) && !strings.HasSuffix(name, ".down.sql") {
-				migrationFiles = append(migrationFiles, filepath.Join(migrationsDir, name))
-			}
-		}
-	}
-	sort.Strings(migrationFiles)
-
-	fmt.Printf("Applying %d migrations in order:\n", len(migrationFiles))
-	for i, file := range migrationFiles {
-		fmt.Printf("  %d. %s\n", i+1, filepath.Base(file))
-	}
-
-	for _, file := range migrationFiles {
-		content, err := os.ReadFile(file)
-		if err != nil {
-			return fmt.Errorf("failed to read migration file %s: %w", file, err)
-		}
-
-		contentStr := string(content)
-
-		// Strip out goose markers (for goose v3 compatibility)
-		// Remove "-- +goose Up" from the beginning
-		contentStr = strings.Replace(contentStr, "-- +goose Up\n", "", 1)
-		// Remove "-- +goose Up" without newline
-		contentStr = strings.Replace(contentStr, "-- +goose Up", "", 1)
-
-		// Strip out the "Down" section if it exists (goose-style migrations)
-		if downIdx := strings.Index(contentStr, "-- +goose Down"); downIdx != -1 {
-			contentStr = contentStr[:downIdx]
-		}
-
-		// Trim any leading/trailing whitespace
-		contentStr = strings.TrimSpace(contentStr)
-
-		fmt.Printf("Executing: %s\n", filepath.Base(file))
-		_, err = pool.Exec(ctx, contentStr)
-		if err != nil {
-			return fmt.Errorf("failed to execute migration %s: %w", file, err)
-		}
-	}
-	return nil
 }

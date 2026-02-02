@@ -9,9 +9,9 @@ import (
 )
 
 func TestTimeoutUser(t *testing.T) {
-	repo := NewMockRepository()
+	repo := NewFakeRepository()
 	setupTestData(repo)
-	svc := NewService(repo, nil, nil, nil, NewMockNamingResolver(), nil, false)
+	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, false)
 	ctx := context.Background()
 
 	// Test setting a timeout
@@ -34,17 +34,17 @@ func TestTimeoutUser(t *testing.T) {
 }
 
 func TestHandleBlaster_Timeout(t *testing.T) {
-	repo := NewMockRepository()
+	repo := NewFakeRepository()
 	setupTestData(repo)
-	svc := NewService(repo, nil, nil, nil, NewMockNamingResolver(), nil, false)
+	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, false)
 	ctx := context.Background()
 	item := domain.ItemBlaster
 
 	// Setup: Give alice a blaster
-	svc.AddItem(ctx, domain.PlatformTwitch, "", "alice", item, 1)
+	svc.AddItemByUsername(ctx, domain.PlatformTwitch, "alice", item, 1)
 
 	// Use blaster on bob
-	msg, err := svc.UseItem(ctx, domain.PlatformTwitch, "", "alice", item, 1, "bob")
+	msg, err := svc.UseItem(ctx, domain.PlatformTwitch, "alice123", "alice", item, 1, "bob")
 	if err != nil {
 		t.Fatalf("UseItem failed: %v", err)
 	}

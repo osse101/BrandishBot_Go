@@ -26,11 +26,11 @@ type Config struct {
 	Environment string // "dev", "staging", "prod"
 
 	// Discord Configuration
-	DiscordToken        string `mapstructure:"DISCORD_TOKEN"`
-	DiscordAppID        string `mapstructure:"DISCORD_APP_ID"`
-	DiscordDevChannelID string `mapstructure:"DISCORD_DEV_CHANNEL_ID"`
+	DiscordToken                string `mapstructure:"DISCORD_TOKEN"`
+	DiscordAppID                string `mapstructure:"DISCORD_APP_ID"`
+	DiscordDevChannelID         string `mapstructure:"DISCORD_DEV_CHANNEL_ID"`
 	DiscordDiggingGameChannelID string `mapstructure:"DISCORD_DIGGING_GAME_CHANNEL_ID"`
-	DiscordWebhookPort  string `mapstructure:"DISCORD_WEBHOOK_PORT"`
+	DiscordWebhookPort          string `mapstructure:"DISCORD_WEBHOOK_PORT"`
 
 	// GitHub Configuration
 	GithubToken     string `mapstructure:"GITHUB_TOKEN"`
@@ -44,21 +44,24 @@ type Config struct {
 	DBName     string
 
 	// Database Pool
-	DBMaxConns           int
-	DBMaxConnIdleTime    time.Duration
-	DBMaxConnLifetime    time.Duration
+	DBMaxConns        int
+	DBMaxConnIdleTime time.Duration
+	DBMaxConnLifetime time.Duration
 
 	// Gamble configuration
 	GambleJoinDuration time.Duration // Duration for users to join a gamble
 
 	// Streamer.bot configuration
-	StreamerbotWebhookURL string // Webhook URL for Streamer.bot notifications
+	StreamerbotEnabled    bool   // Enable WebSocket connection to Streamer.bot
+	StreamerbotWebhookURL string // WebSocket URL for Streamer.bot (e.g., ws://127.0.0.1:8080/ or http://IP:PORT/streamerbot)
 
 	// Development Settings
 	DevMode bool // When true, bypasses cooldowns and enables test features
 
-	// Progression Tree
-	SyncProgressionTree bool // When true, syncs progression_tree.json to database on startup
+	// Event Publishing
+	EventMaxRetries     int           // Max retries for event publishing (default: 5)
+	EventRetryDelay     time.Duration // Base delay for exponential backoff (default: 2s)
+	EventDeadLetterPath string        // Path to dead-letter log file (default: logs/event_deadletter.jsonl)
 }
 
 // Load loads the configuration from environment variables
@@ -91,11 +94,11 @@ func Load() (*Config, error) {
 		APIKey: getEnv("API_KEY", ""),
 
 		// Discord config
-		DiscordToken:        getEnv("DISCORD_TOKEN", ""),
-		DiscordAppID:        getEnv("DISCORD_APP_ID", ""),
-		DiscordDevChannelID: getEnv("DISCORD_DEV_CHANNEL_ID", ""),
+		DiscordToken:                getEnv("DISCORD_TOKEN", ""),
+		DiscordAppID:                getEnv("DISCORD_APP_ID", ""),
+		DiscordDevChannelID:         getEnv("DISCORD_DEV_CHANNEL_ID", ""),
 		DiscordDiggingGameChannelID: getEnv("DISCORD_DIGGING_GAME_CHANNEL_ID", ""),
-		DiscordWebhookPort:  getEnv("DISCORD_WEBHOOK_PORT", "8082"),
+		DiscordWebhookPort:          getEnv("DISCORD_WEBHOOK_PORT", "8082"),
 
 		// GitHub config
 		GithubToken:     getEnv("GITHUB_TOKEN", ""),
@@ -103,6 +106,11 @@ func Load() (*Config, error) {
 
 		// Streamer.bot config
 		StreamerbotWebhookURL: getEnv("STREAMERBOT_WEBHOOK_URL", ""),
+
+		// Event publishing config
+		EventMaxRetries:     getEnvAsInt("EVENT_MAX_RETRIES", 5),
+		EventRetryDelay:     getEnvAsDuration("EVENT_RETRY_DELAY", 2*time.Second),
+		EventDeadLetterPath: getEnv("EVENT_DEADLETTER_PATH", "logs/event_deadletter.jsonl"),
 	}
 
 	portStr := getEnv("PORT", "8080")
@@ -124,9 +132,9 @@ func Load() (*Config, error) {
 	devModeStr := getEnv("DEV_MODE", "false")
 	cfg.DevMode = devModeStr == "true" || devModeStr == "1"
 
-	// Progression tree sync (syncs JSON config to database on startup)
-	syncTreeStr := getEnv("SYNC_PROGRESSION_TREE", "false")
-	cfg.SyncProgressionTree = syncTreeStr == "true" || syncTreeStr == "1"
+	// Streamer.bot WebSocket enabled
+	sbEnabledStr := getEnv("STREAMERBOT_ENABLED", "false")
+	cfg.StreamerbotEnabled = sbEnabledStr == "true" || sbEnabledStr == "1"
 
 	// Parse trusted proxies
 	trustedProxiesStr := getEnv("TRUSTED_PROXIES", "")
@@ -166,6 +174,7 @@ func (c *Config) GetDBConnString() string {
 		c.DBName,
 	)
 }
+
 // getEnvAsInt retrieves an environment variable as an integer or returns a default value
 func getEnvAsInt(key string, defaultValue int) int {
 	valueStr := getEnv(key, "")

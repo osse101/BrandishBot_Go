@@ -2,14 +2,23 @@ package progression
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/event"
+	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
+	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
+
+// JobService defines the interface for the job system
+type JobService interface {
+	AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error)
+	GetJobLevel(ctx context.Context, userID, jobKey string) (int, error)
+}
 
 // Service defines the progression system business logic
 type Service interface {
@@ -21,10 +30,13 @@ type Service interface {
 	// Feature checks
 	IsFeatureUnlocked(ctx context.Context, featureKey string) (bool, error)
 	IsItemUnlocked(ctx context.Context, itemName string) (bool, error)
+	AreItemsUnlocked(ctx context.Context, itemNames []string) (map[string]bool, error)
+	IsNodeUnlocked(ctx context.Context, nodeKey string, level int) (bool, error) // Bug #2: Check if specific node/level is unlocked
 
 	// Voting
-	VoteForUnlock(ctx context.Context, userID string, nodeKey string) error
+	VoteForUnlock(ctx context.Context, platform, platformID, nodeKey string) error
 	GetActiveVotingSession(ctx context.Context) (*domain.ProgressionVotingSession, error)
+	GetMostRecentVotingSession(ctx context.Context) (*domain.ProgressionVotingSession, error) // Bug #1: Get most recent session (any status)
 	StartVotingSession(ctx context.Context, unlockedNodeID *int) error
 	EndVoting(ctx context.Context) (*domain.ProgressionVotingOption, error)
 
@@ -38,8 +50,15 @@ type Service interface {
 	// Contribution tracking
 	RecordEngagement(ctx context.Context, userID string, metricType string, value int) error
 	GetEngagementScore(ctx context.Context) (int, error)
-	GetUserEngagement(ctx context.Context, userID string) (*domain.ContributionBreakdown, error)
+	GetUserEngagement(ctx context.Context, platform, platformID string) (*domain.ContributionBreakdown, error)
+	GetUserEngagementByUsername(ctx context.Context, platform, username string) (*domain.ContributionBreakdown, error)
 	GetContributionLeaderboard(ctx context.Context, limit int) ([]domain.ContributionLeaderboardEntry, error)
+	GetEngagementVelocity(ctx context.Context, days int) (*domain.VelocityMetrics, error)
+	EstimateUnlockTime(ctx context.Context, nodeKey string) (*domain.UnlockEstimate, error)
+
+	// Value modification
+	GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error)
+	GetModifierForFeature(ctx context.Context, featureKey string) (*ValueModifier, error)
 
 	// Status
 	GetProgressionStatus(ctx context.Context) (*domain.ProgressionStatus, error)
@@ -47,31 +66,49 @@ type Service interface {
 
 	// Admin functions
 	AdminUnlock(ctx context.Context, nodeKey string, level int) error
+	AdminUnlockAll(ctx context.Context) error
 	AdminRelock(ctx context.Context, nodeKey string, level int) error
+	AdminFreezeVoting(ctx context.Context) error // Freeze voting session (pause until unlock)
+	AdminStartVoting(ctx context.Context) error  // Resume frozen vote OR start new if nodes available
 	ResetProgressionTree(ctx context.Context, resetBy string, reason string, preserveUserData bool) error
 	InvalidateWeightCache() // Clears engagement weight cache (forces reload on next engagement)
-	
+
+	// Initialization
+	InitializeProgressionState(ctx context.Context) error // Called on startup to ensure valid state
+
+	// Test helpers (should only be used in tests)
+	InvalidateUnlockCacheForTest()
+
 	// Shutdown gracefully shuts down the service
 	Shutdown(ctx context.Context) error
 }
 
 type service struct {
-	repo Repository
-	bus  event.Bus
-	
+	repo       repository.Progression
+	user       repository.User
+	bus        event.Bus
+	jobService JobService
+	publisher  *event.ResilientPublisher
+
 	// In-memory cache for unlock threshold checking
 	mu               sync.RWMutex
-	cachedTargetCost int  // unlock_cost of target node
-	cachedProgressID int  // current unlock progress ID
-	
+	cachedTargetCost int // unlock_cost of target node
+	cachedProgressID int // current unlock progress ID
+
 	// Cache for engagement weights (reduces DB load)
 	weightsMu     sync.RWMutex
 	cachedWeights map[string]float64
 	weightsExpiry time.Time
-	
+
+	// Cache for modifier values (reduces DB load for feature values)
+	modifierCache *ModifierCache
+
+	// Cache for node unlock status (reduces DB load for feature checks)
+	unlockCache *UnlockCache
+
 	// Semaphore to prevent concurrent unlock attempts
 	unlockSem chan struct{}
-	
+
 	// Graceful shutdown support
 	wg             sync.WaitGroup
 	shutdownCtx    context.Context
@@ -79,15 +116,34 @@ type service struct {
 }
 
 // NewService creates a new progression service
-func NewService(repo Repository, bus event.Bus) Service {
+func NewService(repo repository.Progression, userRepo repository.User, bus event.Bus, publisher *event.ResilientPublisher, jobService JobService) Service {
 	shutdownCtx, shutdownCancel := context.WithCancel(context.Background())
-	return &service{
+	svc := &service{
 		repo:           repo,
+		user:           userRepo,
 		bus:            bus,
-		unlockSem:      make(chan struct{}, 1), // Buffer of 1 = only one unlock check at a time
+		jobService:     jobService,
+		publisher:      publisher,
+		modifierCache:  NewModifierCache(30 * time.Minute), // 30-min TTL
+		unlockCache:    NewUnlockCache(),                   // No TTL - invalidate on unlock/relock
+		unlockSem:      make(chan struct{}, 1),             // Buffer of 1 = only one unlock check at a time
 		shutdownCtx:    shutdownCtx,
 		shutdownCancel: shutdownCancel,
 	}
+
+	// Subscribe to node unlock/relock events to invalidate caches
+	if bus != nil {
+		bus.Subscribe("progression.node_unlocked", svc.handleNodeUnlocked)
+		bus.Subscribe("progression.node_relocked", svc.handleNodeRelocked)
+	}
+
+	return svc
+}
+
+// InvalidateUnlockCacheForTest clears the unlock cache for testing purposes
+// This should only be used in tests where there's no event bus to trigger automatic invalidation
+func (s *service) InvalidateUnlockCacheForTest() {
+	s.unlockCache.InvalidateAll()
 }
 
 // GetProgressionTree returns the full tree with unlock status
@@ -117,14 +173,14 @@ func (s *service) GetProgressionTree(ctx context.Context) ([]*domain.Progression
 	for _, node := range nodes {
 		level, isUnlocked := unlockMap[node.ID]
 
-		// Get children
-		children, err := s.repo.GetChildNodes(ctx, node.ID)
+		// Get dependents (nodes that require this node)
+		dependents, err := s.repo.GetDependents(ctx, node.ID)
 		if err != nil {
-			log.Warn("Failed to get child nodes", "nodeID", node.ID, "error", err)
+			log.Warn("Failed to get dependent nodes", "nodeID", node.ID, "error", err)
 		}
 
-		childIDs := make([]int, 0, len(children))
-		for _, child := range children {
+		childIDs := make([]int, 0, len(dependents))
+		for _, child := range dependents {
 			childIDs = append(childIDs, child.ID)
 		}
 
@@ -153,11 +209,6 @@ func (s *service) GetAvailableUnlocks(ctx context.Context) ([]*domain.Progressio
 	available := make([]*domain.ProgressionNode, 0)
 
 	for _, node := range nodes {
-		// Skip root (already unlocked)
-		if node.ParentNodeID == nil {
-			continue
-		}
-
 		// Check if already unlocked at max level
 		isUnlocked, err := s.repo.IsNodeUnlocked(ctx, node.NodeKey, node.MaxLevel)
 		if err != nil {
@@ -168,22 +219,186 @@ func (s *service) GetAvailableUnlocks(ctx context.Context) ([]*domain.Progressio
 			continue // Already maxed out
 		}
 
-		// Check if parent is unlocked
-		parentNode, err := s.repo.GetNodeByID(ctx, *node.ParentNodeID)
+		// Get prerequisites for this node
+		prerequisites, err := s.repo.GetPrerequisites(ctx, node.ID)
 		if err != nil {
-			log.Warn("Failed to get parent node", "parentID", *node.ParentNodeID, "error", err)
+			log.Warn("Failed to get prerequisites", "nodeKey", node.NodeKey, "error", err)
 			continue
 		}
 
-		parentUnlocked, err := s.repo.IsNodeUnlocked(ctx, parentNode.NodeKey, 1)
-		if err != nil || !parentUnlocked {
-			continue // Parent not unlocked
+		// Check if all static prerequisites are unlocked
+		allPrereqsMet := true
+		for _, prereq := range prerequisites {
+			prereqUnlocked, err := s.repo.IsNodeUnlocked(ctx, prereq.NodeKey, 1)
+			if err != nil || !prereqUnlocked {
+				allPrereqsMet = false
+				break
+			}
 		}
 
-		available = append(available, node)
+		if !allPrereqsMet {
+			continue
+		}
+
+		// Check dynamic prerequisites
+		dynamicPrereqsJSON, err := s.repo.GetNodeDynamicPrerequisites(ctx, node.ID)
+		if err != nil {
+			log.Warn("Failed to get dynamic prerequisites", "nodeKey", node.NodeKey, "error", err)
+			continue
+		}
+
+		var dynamicPrereqs []domain.DynamicPrerequisite
+		if len(dynamicPrereqsJSON) > 0 && string(dynamicPrereqsJSON) != "[]" {
+			if err := json.Unmarshal(dynamicPrereqsJSON, &dynamicPrereqs); err != nil {
+				log.Warn("Failed to parse dynamic prerequisites", "nodeKey", node.NodeKey, "error", err)
+				continue
+			}
+
+			for _, dynPrereq := range dynamicPrereqs {
+				met, err := s.checkDynamicPrerequisite(ctx, dynPrereq)
+				if err != nil {
+					log.Warn("Failed to check dynamic prerequisite", "nodeKey", node.NodeKey, "error", err)
+					allPrereqsMet = false
+					break
+				}
+				if !met {
+					allPrereqsMet = false
+					break
+				}
+			}
+		}
+
+		if allPrereqsMet {
+			available = append(available, node)
+		}
 	}
 
 	return available, nil
+}
+
+// GetAvailableUnlocksWithFutureTarget returns nodes available for voting now, plus nodes that will become available
+// once the current unlock target is unlocked. This prevents voting gaps when a node with dependents completes.
+func (s *service) GetAvailableUnlocksWithFutureTarget(ctx context.Context) ([]*domain.ProgressionNode, error) {
+	log := logger.FromContext(ctx)
+
+	// Get currently available nodes
+	available, err := s.GetAvailableUnlocks(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get current available unlocks: %w", err)
+	}
+
+	// Get current unlock progress to check if there's an active target
+	progress, err := s.repo.GetActiveUnlockProgress(ctx)
+	if err != nil {
+		log.Warn("Failed to get active unlock progress, using only current available", "error", err)
+		return available, nil
+	}
+
+	// If no target is set, return only currently available
+	if progress == nil || progress.NodeID == nil {
+		return available, nil
+	}
+
+	// Get the target node being worked towards
+	targetNode, err := s.repo.GetNodeByID(ctx, *progress.NodeID)
+	if err != nil || targetNode == nil {
+		log.Warn("Failed to get target node, using only current available", "nodeID", progress.NodeID, "error", err)
+		return available, nil
+	}
+
+	// Get all nodes that have the target as a prerequisite (future-available nodes)
+	futureAvailable, err := s.getNodesDependentOn(ctx, targetNode.ID, targetNode.NodeKey)
+	if err != nil {
+		log.Warn("Failed to get dependent nodes, using only current available", "error", err)
+		return available, nil
+	}
+
+	// Combine both sets, avoiding duplicates
+	seen := make(map[int]bool)
+	combined := make([]*domain.ProgressionNode, 0, len(available)+len(futureAvailable))
+
+	for _, node := range available {
+		if !seen[node.ID] {
+			combined = append(combined, node)
+			seen[node.ID] = true
+		}
+	}
+
+	for _, node := range futureAvailable {
+		if !seen[node.ID] {
+			combined = append(combined, node)
+			seen[node.ID] = true
+		}
+	}
+
+	log.Debug("GetAvailableUnlocksWithFutureTarget results",
+		"currentAvailable", len(available),
+		"futureAvailable", len(futureAvailable),
+		"combined", len(combined),
+		"targetNodeKey", targetNode.NodeKey)
+
+	return combined, nil
+}
+
+// getNodesDependentOn returns all nodes that have the specified node as a prerequisite
+// (i.e., nodes that will become available once the specified node is unlocked)
+func (s *service) getNodesDependentOn(ctx context.Context, nodeID int, nodeKey string) ([]*domain.ProgressionNode, error) {
+	log := logger.FromContext(ctx)
+
+	// Get all nodes
+	allNodes, err := s.repo.GetAllNodes(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all nodes: %w", err)
+	}
+
+	dependent := make([]*domain.ProgressionNode, 0)
+
+	for _, node := range allNodes {
+		// Skip if already fully unlocked
+		isUnlocked, err := s.repo.IsNodeUnlocked(ctx, node.NodeKey, node.MaxLevel)
+		if err != nil || isUnlocked {
+			continue
+		}
+
+		// Get prerequisites for this node
+		prerequisites, err := s.repo.GetPrerequisites(ctx, node.ID)
+		if err != nil {
+			log.Warn("Failed to get prerequisites", "nodeKey", node.NodeKey, "error", err)
+			continue
+		}
+
+		// Check if the target node is a prerequisite
+		for _, prereq := range prerequisites {
+			if prereq.NodeKey == nodeKey {
+				dependent = append(dependent, node)
+				break
+			}
+		}
+	}
+
+	return dependent, nil
+}
+
+// checkDynamicPrerequisite evaluates a dynamic prerequisite
+func (s *service) checkDynamicPrerequisite(ctx context.Context, prereq domain.DynamicPrerequisite) (bool, error) {
+	switch prereq.Type {
+	case "nodes_unlocked_below_tier":
+		count, err := s.repo.CountUnlockedNodesBelowTier(ctx, prereq.Tier)
+		if err != nil {
+			return false, fmt.Errorf("failed to count unlocked nodes below tier %d: %w", prereq.Tier, err)
+		}
+		return count >= prereq.Count, nil
+
+	case "total_nodes_unlocked":
+		count, err := s.repo.CountTotalUnlockedNodes(ctx)
+		if err != nil {
+			return false, fmt.Errorf("failed to count total unlocked nodes: %w", err)
+		}
+		return count >= prereq.Count, nil
+
+	default:
+		return false, fmt.Errorf("unknown dynamic prerequisite type: %s", prereq.Type)
+	}
 }
 
 // GetNode returns a single node by ID
@@ -193,27 +408,123 @@ func (s *service) GetNode(ctx context.Context, id int) (*domain.ProgressionNode,
 
 // IsFeatureUnlocked checks if a feature is available
 func (s *service) IsFeatureUnlocked(ctx context.Context, featureKey string) (bool, error) {
-	return s.repo.IsNodeUnlocked(ctx, featureKey, 1)
+	// Check cache first (hottest query in the system)
+	if unlocked, found := s.unlockCache.Get(featureKey, 1); found {
+		return unlocked, nil
+	}
+
+	// Cache miss - query database
+	unlocked, err := s.repo.IsNodeUnlocked(ctx, featureKey, 1)
+	if err != nil {
+		return false, err
+	}
+
+	// Cache the result
+	s.unlockCache.Set(featureKey, 1, unlocked)
+
+	return unlocked, nil
 }
 
 // IsItemUnlocked checks if an item is available
 func (s *service) IsItemUnlocked(ctx context.Context, itemName string) (bool, error) {
 	// Item names are prefixed with "item_"
 	nodeKey := fmt.Sprintf("item_%s", itemName)
-	return s.repo.IsNodeUnlocked(ctx, nodeKey, 1)
+
+	// Check cache first
+	if unlocked, found := s.unlockCache.Get(nodeKey, 1); found {
+		return unlocked, nil
+	}
+
+	// Cache miss - query database
+	unlocked, err := s.repo.IsNodeUnlocked(ctx, nodeKey, 1)
+	if err != nil {
+		return false, err
+	}
+
+	// Cache the result
+	s.unlockCache.Set(nodeKey, 1, unlocked)
+
+	return unlocked, nil
 }
 
-// VoteForUnlock allows a user to vote for next unlock (updated for voting sessions)
-func (s *service) VoteForUnlock(ctx context.Context, userID string, nodeKey string) error {
+func (s *service) IsNodeUnlocked(ctx context.Context, nodeKey string, level int) (bool, error) {
+	// Check cache first
+	if unlocked, found := s.unlockCache.Get(nodeKey, level); found {
+		return unlocked, nil
+	}
+
+	// Cache miss - query database
+	unlocked, err := s.repo.IsNodeUnlocked(ctx, nodeKey, level)
+	if err != nil {
+		return false, err
+	}
+
+	// Cache the result
+	s.unlockCache.Set(nodeKey, level, unlocked)
+
+	return unlocked, nil
+}
+
+// AreItemsUnlocked checks if multiple items are unlocked in a single batch operation.
+// Returns a map of itemName -> unlocked status.
+// This is much more efficient than calling IsItemUnlocked N times.
+func (s *service) AreItemsUnlocked(ctx context.Context, itemNames []string) (map[string]bool, error) {
+	if len(itemNames) == 0 {
+		return make(map[string]bool), nil
+	}
+
+	result := make(map[string]bool, len(itemNames))
+	uncachedKeys := make([]string, 0)
+	uncachedNames := make([]string, 0)
+
+	// Check cache first for all items
+	for _, itemName := range itemNames {
+		nodeKey := fmt.Sprintf("item_%s", itemName)
+		if unlocked, found := s.unlockCache.Get(nodeKey, 1); found {
+			result[itemName] = unlocked
+		} else {
+			uncachedKeys = append(uncachedKeys, nodeKey)
+			uncachedNames = append(uncachedNames, itemName)
+		}
+	}
+
+	// If all were cached, return early
+	if len(uncachedKeys) == 0 {
+		return result, nil
+	}
+
+	// Query DB for uncached items and populate cache
+	for i, nodeKey := range uncachedKeys {
+		unlocked, err := s.repo.IsNodeUnlocked(ctx, nodeKey, 1)
+		if err != nil {
+			return nil, fmt.Errorf("failed to check unlock status for %s: %w", nodeKey, err)
+		}
+		s.unlockCache.Set(nodeKey, 1, unlocked)
+		result[uncachedNames[i]] = unlocked
+	}
+
+	return result, nil
+}
+
+func (s *service) VoteForUnlock(ctx context.Context, platform, platformID, nodeKey string) error {
 	log := logger.FromContext(ctx)
 
-	// Get active voting session
+	user, err := s.user.GetUserByPlatformID(ctx, platform, platformID)
+	if err != nil {
+		return fmt.Errorf("failed to resolve user: %w", err)
+	}
+	if user == nil {
+		return fmt.Errorf("user not found")
+	}
+
+	userID := user.ID
+
 	session, err := s.repo.GetActiveSession(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get active session: %w", err)
 	}
 
-	if session == nil || session.Status != "voting" {
+	if session == nil || session.Status != SessionStatusVoting {
 		return fmt.Errorf("no active voting session")
 	}
 
@@ -230,33 +541,53 @@ func (s *service) VoteForUnlock(ctx context.Context, userID string, nodeKey stri
 		return fmt.Errorf("node not in current voting options")
 	}
 
-	// Check if user already voted in this session
-	hasVoted, err := s.repo.HasUserVotedInSession(ctx, userID, session.ID)
+	// Use atomic transaction to prevent race conditions in concurrent vote attempts
+	err = s.repo.CheckAndRecordVoteAtomic(ctx, userID, session.ID, selectedOption.ID, selectedOption.NodeID)
 	if err != nil {
-		return fmt.Errorf("failed to check vote status: %w", err)
-	}
-	if hasVoted {
-		return fmt.Errorf("user already voted in this session")
+		return err
 	}
 
-	// Increment vote and record user vote
-	err = s.repo.IncrementOptionVote(ctx, selectedOption.ID)
-	if err != nil {
-		return fmt.Errorf("failed to increment vote: %w", err)
+	// Record engagement immediately to trigger contribution logs and accumulation
+	if err := s.RecordEngagement(ctx, userID, "vote_cast", 1); err != nil {
+		log.Warn("Failed to record vote engagement", "userID", userID, "error", err)
 	}
 
-	err = s.repo.RecordUserSessionVote(ctx, userID, session.ID, selectedOption.ID, selectedOption.NodeID)
-	if err != nil {
-		return fmt.Errorf("failed to record user vote: %w", err)
-	}
-
-	log.Info("Vote recorded", "userID", userID, "nodeKey", nodeKey, "sessionID", session.ID)
+	log.Info("Vote recorded", "userID", userID, "platform", platform, "platformID", platformID, "nodeKey", nodeKey, "sessionID", session.ID)
 	return nil
+}
+
+// enrichSessionWithEstimates adds unlock time estimates to session options
+func (s *service) enrichSessionWithEstimates(ctx context.Context, session *domain.ProgressionVotingSession) {
+	if session == nil {
+		return
+	}
+	for i := range session.Options {
+		if session.Options[i].NodeDetails != nil {
+			estimate, err := s.EstimateUnlockTime(ctx, session.Options[i].NodeDetails.NodeKey)
+			if err == nil && estimate != nil {
+				session.Options[i].EstimatedUnlockDate = estimate.EstimatedUnlockDate
+			}
+		}
+	}
 }
 
 // GetActiveVotingSession returns the current voting session
 func (s *service) GetActiveVotingSession(ctx context.Context) (*domain.ProgressionVotingSession, error) {
-	return s.repo.GetActiveSession(ctx)
+	session, err := s.repo.GetActiveSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+	s.enrichSessionWithEstimates(ctx, session)
+	return session, nil
+}
+
+func (s *service) GetMostRecentVotingSession(ctx context.Context) (*domain.ProgressionVotingSession, error) {
+	session, err := s.repo.GetMostRecentSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+	s.enrichSessionWithEstimates(ctx, session)
+	return session, nil
 }
 
 // RecordEngagement records user engagement event
@@ -274,7 +605,7 @@ func (s *service) RecordEngagement(ctx context.Context, userID string, metricTyp
 
 	// Try to get weights from cache first
 	weight := s.getCachedWeight(metricType)
-	
+
 	// If not in cache or expired, fetch from DB
 	if weight == 0.0 {
 		weights, err := s.repo.GetEngagementWeights(ctx)
@@ -290,7 +621,7 @@ func (s *service) RecordEngagement(ctx context.Context, userID string, metricTyp
 			}
 		}
 	}
-	
+
 	// Fallback defaults if still no weight found
 	if weight == 0.0 {
 		switch metricType {
@@ -307,10 +638,35 @@ func (s *service) RecordEngagement(ctx context.Context, userID string, metricTyp
 
 	// If we have a weight, calculate score
 	if weight > 0 {
-		score := int(float64(value) * weight)
+		baseScore := float64(value) * weight
+
+		// Apply progression rate modifier (stacks multiplicatively across all three upgrades)
+		// upgrade_progression_basic, upgrade_progression_two, upgrade_progression_three
+		modifiedScore, err := s.GetModifiedValue(ctx, "progression_rate", baseScore)
+		if err != nil {
+			// Log warning but continue with base score if modifier fails
+			logger.FromContext(ctx).Warn("Failed to apply progression_rate modifier, using base score", "error", err)
+			modifiedScore = baseScore
+		}
+
+		// Apply Scholar bonus (per-user contribution multiplier)
+		scholarMultiplier := s.calculateScholarBonus(ctx, userID)
+		if scholarMultiplier > 1.0 {
+			log := logger.FromContext(ctx)
+			log.Info("Applying Scholar bonus",
+				"user_id", userID,
+				"base_score", modifiedScore,
+				"multiplier", scholarMultiplier)
+			modifiedScore = modifiedScore * scholarMultiplier
+		}
+
+		score := int(modifiedScore)
 		if score > 0 {
 			if err := s.AddContribution(ctx, score); err != nil {
 				logger.FromContext(ctx).Warn("Failed to add contribution from engagement", "error", err)
+			} else {
+				// Award Scholar XP asynchronously (don't block engagement recording)
+				s.awardScholarXP(ctx, userID, metricType, value)
 			}
 		}
 	}
@@ -324,9 +680,84 @@ func (s *service) GetEngagementScore(ctx context.Context) (int, error) {
 	return s.repo.GetEngagementScore(ctx, nil)
 }
 
+// calculateScholarBonus calculates the contribution multiplier from Scholar job
+// Returns 1.0 + (level × 0.10), e.g., level 5 = 1.5x multiplier
+func (s *service) calculateScholarBonus(ctx context.Context, userID string) float64 {
+	log := logger.FromContext(ctx)
+
+	if s.jobService == nil {
+		return 1.0
+	}
+
+	level, err := s.jobService.GetJobLevel(ctx, userID, job.JobKeyScholar)
+	if err != nil {
+		log.Warn("Failed to get Scholar level, using 1.0x multiplier", "error", err)
+		return 1.0
+	}
+
+	if level == 0 {
+		return 1.0
+	}
+
+	// 10% bonus per level
+	multiplier := 1.0 + (float64(level) * job.ScholarBonusPerLevel / 100.0)
+	return multiplier
+}
+
+// awardScholarXP awards XP to Scholar job for any engagement action
+// Runs asynchronously to avoid blocking engagement recording
+func (s *service) awardScholarXP(ctx context.Context, userID, metricType string, value int) {
+	if s.jobService == nil {
+		return
+	}
+
+	log := logger.FromContext(ctx)
+
+	// Award XP asynchronously (don't block engagement recording)
+	s.wg.Add(1)
+	go func() {
+		defer s.wg.Done()
+
+		metadata := map[string]interface{}{
+			"metric_type": metricType,
+			"value":       value,
+		}
+
+		result, err := s.jobService.AwardXP(ctx, userID, job.JobKeyScholar, job.ScholarXPPerEngagement, "engagement", metadata)
+		if err != nil {
+			log.Warn("Failed to award Scholar XP", "error", err, "user_id", userID)
+		} else if result != nil && result.LeveledUp {
+			log.Info("Scholar leveled up!", "user_id", userID, "new_level", result.NewLevel)
+		}
+	}()
+}
+
 // GetUserEngagement returns user's contribution breakdown
-func (s *service) GetUserEngagement(ctx context.Context, userID string) (*domain.ContributionBreakdown, error) {
-	return s.repo.GetUserEngagement(ctx, userID)
+func (s *service) GetUserEngagement(ctx context.Context, platform, platformID string) (*domain.ContributionBreakdown, error) {
+	// Convert platform_id to internal user ID
+	user, err := s.user.GetUserByPlatformID(ctx, platform, platformID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve user: %w", err)
+	}
+	if user == nil {
+		return nil, fmt.Errorf("user not found")
+	}
+
+	return s.repo.GetUserEngagement(ctx, user.ID)
+}
+
+// GetUserEngagementByUsername returns user's contribution breakdown by username
+func (s *service) GetUserEngagementByUsername(ctx context.Context, platform, username string) (*domain.ContributionBreakdown, error) {
+	// Convert username to internal user ID
+	user, err := s.user.GetUserByPlatformUsername(ctx, platform, username)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve user: %w", err)
+	}
+	if user == nil {
+		return nil, fmt.Errorf("user not found")
+	}
+
+	return s.repo.GetUserEngagement(ctx, user.ID)
 }
 
 // GetContributionLeaderboard retrieves top contributors
@@ -344,20 +775,71 @@ func (s *service) GetProgressionStatus(ctx context.Context) (*domain.Progression
 		return nil, fmt.Errorf("failed to get unlocks: %w", err)
 	}
 
+	// Get total node count to determine if all are unlocked
+	allNodes, err := s.repo.GetAllNodes(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all nodes: %w", err)
+	}
+
+	// Check if all nodes are unlocked at their max level
+	allUnlocked := s.checkAllNodesUnlocked(allNodes, unlocks)
+
 	contributionScore, err := s.GetEngagementScore(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get contribution score: %w", err)
 	}
 
-	activeSession, _ := s.repo.GetActiveSession(ctx)
-	unlockProgress, _ := s.repo.GetActiveUnlockProgress(ctx)
+	activeSession, _ := s.GetActiveVotingSession(ctx) // Use service method to get enriched session
+	unlockProgress, _ := s.GetUnlockProgress(ctx)     // Use service method (which currently just calls repo, but consistent)
+
+	// Enrich unlock progress with estimate
+	if unlockProgress != nil && unlockProgress.NodeID != nil {
+		node, err := s.repo.GetNodeByID(ctx, *unlockProgress.NodeID)
+		if err == nil && node != nil {
+			estimate, err := s.EstimateUnlockTime(ctx, node.NodeKey)
+			if err == nil && estimate != nil {
+				unlockProgress.EstimatedUnlockDate = estimate.EstimatedUnlockDate
+			}
+		}
+	}
+
+	isTransitioning := false
+	if activeSession == nil && unlockProgress != nil && unlockProgress.UnlockedAt != nil {
+		isTransitioning = true
+	}
 
 	return &domain.ProgressionStatus{
 		TotalUnlocked:        len(unlocks),
+		TotalNodes:           len(allNodes),
+		AllNodesUnlocked:     allUnlocked,
 		ContributionScore:    contributionScore,
 		ActiveSession:        activeSession,
 		ActiveUnlockProgress: unlockProgress,
+		IsTransitioning:      isTransitioning,
 	}, nil
+}
+
+// checkAllNodesUnlocked returns true if all nodes are unlocked at their max level
+func (s *service) checkAllNodesUnlocked(allNodes []*domain.ProgressionNode, unlocks []*domain.ProgressionUnlock) bool {
+	if len(allNodes) == 0 {
+		return false
+	}
+
+	// Build map of unlock levels by node ID
+	unlockMap := make(map[int]int) // nodeID -> highest unlocked level
+	for _, unlock := range unlocks {
+		if existing, ok := unlockMap[unlock.NodeID]; !ok || unlock.CurrentLevel > existing {
+			unlockMap[unlock.NodeID] = unlock.CurrentLevel
+		}
+	}
+
+	// Check if all nodes are unlocked at max level
+	for _, node := range allNodes {
+		if level, ok := unlockMap[node.ID]; !ok || level < node.MaxLevel {
+			return false
+		}
+	}
+	return true
 }
 
 // AdminUnlock forces a node to unlock (for testing)
@@ -366,11 +848,11 @@ func (s *service) AdminUnlock(ctx context.Context, nodeKey string, level int) er
 
 	node, err := s.repo.GetNodeByKey(ctx, nodeKey)
 	if err != nil || node == nil {
-		return fmt.Errorf("node not found: %s", nodeKey)
+		return fmt.Errorf("%w: %s", domain.ErrNodeNotFound, nodeKey)
 	}
 
 	if level > node.MaxLevel {
-		return fmt.Errorf("level %d exceeds max level %d", level, node.MaxLevel)
+		return fmt.Errorf("%w: level %d exceeds max level %d for node %s", domain.ErrMaxLevelExceeded, level, node.MaxLevel, nodeKey)
 	}
 
 	engagementScore, err := s.GetEngagementScore(ctx)
@@ -387,13 +869,41 @@ func (s *service) AdminUnlock(ctx context.Context, nodeKey string, level int) er
 	return nil
 }
 
+// AdminUnlockAll unlocks all progression nodes at their max level (for debugging)
+func (s *service) AdminUnlockAll(ctx context.Context) error {
+	log := logger.FromContext(ctx)
+
+	// Get all nodes
+	nodes, err := s.repo.GetAllNodes(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get all nodes: %w", err)
+	}
+
+	if len(nodes) == 0 {
+		return fmt.Errorf("%w: no nodes found", domain.ErrNodeNotFound)
+	}
+
+	// Unlock each node at its max level
+	unlockedCount := 0
+	for _, node := range nodes {
+		if err := s.AdminUnlock(ctx, node.NodeKey, node.MaxLevel); err != nil {
+			log.Warn("Failed to unlock node", "nodeKey", node.NodeKey, "error", err)
+			continue
+		}
+		unlockedCount++
+	}
+
+	log.Info("Admin unlocked all nodes", "total", len(nodes), "unlocked", unlockedCount)
+	return nil
+}
+
 // AdminRelock locks a node again (for testing)
 func (s *service) AdminRelock(ctx context.Context, nodeKey string, level int) error {
 	log := logger.FromContext(ctx)
 
 	node, err := s.repo.GetNodeByKey(ctx, nodeKey)
 	if err != nil || node == nil {
-		return fmt.Errorf("node not found: %s", nodeKey)
+		return fmt.Errorf("%w: %s", domain.ErrNodeNotFound, nodeKey)
 	}
 
 	if err := s.repo.RelockNode(ctx, node.ID, level); err != nil {
@@ -430,10 +940,10 @@ func (s *service) CheckAndUnlockCriteria(ctx context.Context) (*domain.Progressi
 		s.wg.Add(1)
 		go func() {
 			defer s.wg.Done()
-			
+
 			ctx, cancel := context.WithTimeout(s.shutdownCtx, 1*time.Minute)
 			defer cancel()
-			
+
 			// Inject request ID into context for tracing
 			if reqID != "" {
 				ctx = logger.WithRequestID(ctx, reqID)
@@ -448,7 +958,6 @@ func (s *service) CheckAndUnlockCriteria(ctx context.Context) (*domain.Progressi
 	return nil, nil
 }
 
-
 // ForceInstantUnlock selects highest voted option and unlocks immediately
 func (s *service) ForceInstantUnlock(ctx context.Context) (*domain.ProgressionUnlock, error) {
 	log := logger.FromContext(ctx)
@@ -456,28 +965,31 @@ func (s *service) ForceInstantUnlock(ctx context.Context) (*domain.ProgressionUn
 	// Get active session
 	session, err := s.repo.GetActiveSession(ctx)
 	if err != nil || session == nil {
-		return nil, fmt.Errorf("no active voting session found")
+		return nil, domain.ErrNoActiveSession
 	}
 
 	if session.Status != "voting" {
-		return nil, fmt.Errorf("voting session already ended")
+		return nil, domain.ErrNoActiveSession
 	}
 
 	// Find winning option
 	winner := findWinningOption(session.Options)
 	if winner == nil {
-		return nil, fmt.Errorf("no voting options found")
+		return nil, domain.ErrNoActiveSession
 	}
 
 	// End voting session
-	if err := s.repo.EndVotingSession(ctx, session.ID, winner.ID); err != nil {
+	winnerID := winner.ID
+	if err := s.repo.EndVotingSession(ctx, session.ID, &winnerID); err != nil {
 		return nil, fmt.Errorf("failed to end voting: %w", err)
 	}
 
 	// Set unlock target
 	progress, _ := s.repo.GetActiveUnlockProgress(ctx)
 	if progress != nil {
-		s.repo.SetUnlockTarget(ctx, progress.ID, winner.NodeID, winner.TargetLevel, session.ID)
+		if err := s.repo.SetUnlockTarget(ctx, progress.ID, winner.NodeID, winner.TargetLevel, session.ID); err != nil {
+			log.Warn("Failed to set unlock target during instant unlock", "error", err)
+		}
 	}
 
 	// Unlock the node immediately
@@ -494,7 +1006,7 @@ func (s *service) ForceInstantUnlock(ctx context.Context) (*domain.ProgressionUn
 	// Mark progress complete and start new
 	if progress != nil {
 		if _, err := s.repo.CompleteUnlock(ctx, progress.ID, 0); err != nil {
-			log.Error("Failed to complete unlock progress", "progressID", progress.ID, "error", err)
+			log.Error("Failed to complete unlock progress", "error", err)
 			// We don't return error here because the node IS unlocked, but we log the inconsistency
 		}
 	}
@@ -504,10 +1016,10 @@ func (s *service) ForceInstantUnlock(ctx context.Context) (*domain.ProgressionUn
 	s.wg.Add(1)
 	go func() {
 		defer s.wg.Done()
-		
+
 		ctx, cancel := context.WithTimeout(s.shutdownCtx, 1*time.Minute)
 		defer cancel()
-		
+
 		// Inject request ID into context for tracing
 		if reqID != "" {
 			ctx = logger.WithRequestID(ctx, reqID)
@@ -522,54 +1034,57 @@ func (s *service) ForceInstantUnlock(ctx context.Context) (*domain.ProgressionUn
 	return s.repo.GetUnlock(ctx, winner.NodeID, winner.TargetLevel)
 }
 
-// GetRequiredNodes returns a list of locked ancestor nodes that are preventing the target node from being unlocked
+// GetRequiredNodes returns a list of locked prerequisite nodes preventing the target node from being unlocked
 func (s *service) GetRequiredNodes(ctx context.Context, nodeKey string) ([]*domain.ProgressionNode, error) {
-	log := logger.FromContext(ctx)
-
 	targetNode, err := s.repo.GetNodeByKey(ctx, nodeKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get node: %w", err)
 	}
 	if targetNode == nil {
-		return nil, fmt.Errorf("node not found: %s", nodeKey)
+		return nil, domain.ErrNodeNotFound
 	}
 
-	var lockedAncestors []*domain.ProgressionNode
-	currentNode := targetNode
+	// Track which nodes we've already checked to avoid cycles
+	visited := make(map[int]bool)
+	var lockedPrereqs []*domain.ProgressionNode
 
-	// Traverse up the tree
-	for currentNode.ParentNodeID != nil {
-		parentNode, err := s.repo.GetNodeByID(ctx, *currentNode.ParentNodeID)
+	// Recursively check prerequisites
+	var checkPrereqs func(nodeID int) error
+	checkPrereqs = func(nodeID int) error {
+		if visited[nodeID] {
+			return nil // Already checked
+		}
+		visited[nodeID] = true
+
+		prerequisites, err := s.repo.GetPrerequisites(ctx, nodeID)
 		if err != nil {
-			log.Error("Failed to get parent node during traversal", "error", err, "nodeID", currentNode.ID)
-			break
-		}
-		if parentNode == nil {
-			log.Warn("Parent node ID found but node does not exist", "parentID", *currentNode.ParentNodeID)
-			break
+			return fmt.Errorf("failed to get prerequisites for node %d: %w", nodeID, err)
 		}
 
-		// Check if parent is fully locked (level 0)
-		isUnlocked, err := s.repo.IsNodeUnlocked(ctx, parentNode.NodeKey, 1)
-		if err != nil {
-			return nil, fmt.Errorf("failed to check unlock status for %s: %w", parentNode.NodeKey, err)
-		}
+		for _, prereq := range prerequisites {
+			// Check if this prerequisite is unlocked
+			isUnlocked, err := s.repo.IsNodeUnlocked(ctx, prereq.NodeKey, 1)
+			if err != nil {
+				return fmt.Errorf("failed to check unlock status for %s: %w", prereq.NodeKey, err)
+			}
 
-		if !isUnlocked {
-			// Prepend to list (so root is first) - actually, standard append is fine, user probably wants closest blocker first?
-			// "Requires: [Parent], [Grandparent]" reads better as "requires Parent (which requires Grandparent)"
-			// Let's keep it strictly ordered by traversal (closest ancestor first)
-			lockedAncestors = append(lockedAncestors, parentNode)
-		} else {
-			// optimization: if parent is unlocked, then all its ancestors MUST be unlocked (in a strict tree)
-			// so we can stop checking
-			break
+			if !isUnlocked {
+				// Add to locked list
+				lockedPrereqs = append(lockedPrereqs, prereq)
+				// Recursively check its prerequisites too
+				if err := checkPrereqs(prereq.ID); err != nil {
+					return err
+				}
+			}
 		}
-
-		currentNode = parentNode
+		return nil
 	}
 
-	return lockedAncestors, nil
+	if err := checkPrereqs(targetNode.ID); err != nil {
+		return nil, err
+	}
+
+	return lockedPrereqs, nil
 }
 
 // getCachedWeight retrieves weight from cache if not expired
@@ -611,17 +1126,17 @@ func (s *service) InvalidateWeightCache() {
 func (s *service) Shutdown(ctx context.Context) error {
 	log := logger.FromContext(ctx)
 	log.Info("Shutting down progression service")
-	
+
 	// Cancel shutdown context to signal goroutines to stop
 	s.shutdownCancel()
-	
+
 	// Wait for goroutines with timeout
 	done := make(chan struct{})
 	go func() {
 		s.wg.Wait()
 		close(done)
 	}()
-	
+
 	select {
 	case <-done:
 		log.Info("Progression service shutdown complete")
@@ -632,4 +1147,272 @@ func (s *service) Shutdown(ctx context.Context) error {
 	}
 }
 
+// GetModifiedValue retrieves a feature value modified by progression nodes
+// Returns the modified value or the baseValue on error (safe fallback)
+// Supports stacking multiple modifiers with the same feature_key (multiplicative)
+func (s *service) GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error) {
+	// 1. Check cache first
+	if cached, ok := s.modifierCache.Get(featureKey); ok {
+		return cached.Value, nil
+	}
 
+	// 2. Get ALL modifiers for this feature
+	modifiers, err := s.GetAllModifiersForFeature(ctx, featureKey)
+	if err != nil {
+		// Fallback to base value on error
+		return baseValue, err
+	}
+	if len(modifiers) == 0 {
+		// No modifiers configured for this feature
+		return baseValue, nil
+	}
+
+	// 3. Apply all modifiers (stacks multiplicatively)
+	value := baseValue
+	totalLevel := 0
+	for _, modifier := range modifiers {
+		value = ApplyModifier(modifier, value)
+		totalLevel += modifier.CurrentLevel
+	}
+
+	// 4. Cache with total level across all modifiers
+	s.modifierCache.Set(featureKey, value, totalLevel)
+
+	return value, nil
+}
+
+// GetModifierForFeature retrieves the modifier configuration and current level for a feature
+func (s *service) GetModifierForFeature(ctx context.Context, featureKey string) (*ValueModifier, error) {
+	// Query repository for node with this feature_key
+	node, currentLevel, err := s.repo.GetNodeByFeatureKey(ctx, featureKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get node for feature %s: %w", featureKey, err)
+	}
+	if node == nil || node.ModifierConfig == nil {
+		// No modifier configured for this feature
+		return nil, nil
+	}
+
+	// Build ValueModifier from node's ModifierConfig
+	modifier := &ValueModifier{
+		NodeKey:       node.NodeKey,
+		ModifierType:  ModifierType(node.ModifierConfig.ModifierType),
+		BaseValue:     node.ModifierConfig.BaseValue,
+		PerLevelValue: node.ModifierConfig.PerLevelValue,
+		CurrentLevel:  currentLevel,
+		MaxValue:      node.ModifierConfig.MaxValue,
+		MinValue:      node.ModifierConfig.MinValue,
+	}
+
+	return modifier, nil
+}
+
+// GetAllModifiersForFeature retrieves ALL modifiers for a feature key
+func (s *service) GetAllModifiersForFeature(ctx context.Context, featureKey string) ([]*ValueModifier, error) {
+	nodes, levels, err := s.repo.GetAllNodesByFeatureKey(ctx, featureKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get nodes for feature %s: %w", featureKey, err)
+	}
+
+	modifiers := make([]*ValueModifier, 0, len(nodes))
+	for i, node := range nodes {
+		if node.ModifierConfig != nil {
+			modifier := &ValueModifier{
+				NodeKey:       node.NodeKey,
+				ModifierType:  ModifierType(node.ModifierConfig.ModifierType),
+				BaseValue:     node.ModifierConfig.BaseValue,
+				PerLevelValue: node.ModifierConfig.PerLevelValue,
+				CurrentLevel:  levels[i],
+				MaxValue:      node.ModifierConfig.MaxValue,
+				MinValue:      node.ModifierConfig.MinValue,
+			}
+			modifiers = append(modifiers, modifier)
+		}
+	}
+
+	return modifiers, nil
+}
+
+// handleNodeUnlocked invalidates caches when any node is unlocked
+func (s *service) handleNodeUnlocked(ctx context.Context, e event.Event) error {
+	// Invalidate modifier cache - values may have changed
+	s.modifierCache.InvalidateAll()
+
+	// Invalidate unlock cache - new features may be available
+	s.unlockCache.InvalidateAll()
+
+	log := logger.FromContext(ctx)
+	if payload, ok := e.Payload.(map[string]interface{}); ok {
+		log.Info("Invalidated caches due to node unlock",
+			"node_key", payload["node_key"],
+			"level", payload["level"])
+	}
+	return nil
+}
+
+// handleNodeRelocked invalidates caches when any node is relocked
+func (s *service) handleNodeRelocked(ctx context.Context, e event.Event) error {
+	// Invalidate modifier cache - values have changed
+	s.modifierCache.InvalidateAll()
+
+	// Invalidate unlock cache - features may no longer be available
+	s.unlockCache.InvalidateAll()
+
+	log := logger.FromContext(ctx)
+	if payload, ok := e.Payload.(map[string]interface{}); ok {
+		log.Info("Invalidated caches due to node relock",
+			"node_key", payload["node_key"],
+			"level", payload["level"])
+	}
+	return nil
+}
+
+// GetEngagementVelocity calculates engagement velocity over a period
+func (s *service) GetEngagementVelocity(ctx context.Context, days int) (*domain.VelocityMetrics, error) {
+	if days <= 0 {
+		days = 7
+	}
+
+	since := time.Now().AddDate(0, 0, -days)
+	totals, err := s.repo.GetDailyEngagementTotals(ctx, since)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get daily totals: %w", err)
+	}
+
+	totalPoints := 0
+	sampleSize := len(totals)
+
+	if sampleSize == 0 {
+		return &domain.VelocityMetrics{
+			PointsPerDay: 0,
+			Trend:        "stable",
+			PeriodDays:   days,
+			SampleSize:   0,
+			TotalPoints:  0,
+		}, nil
+	}
+
+	orderedDays := make([]time.Time, 0, len(totals))
+	for day, points := range totals {
+		totalPoints += points
+		orderedDays = append(orderedDays, day)
+	}
+
+	// Sort days
+	for i := 0; i < len(orderedDays)-1; i++ {
+		for j := 0; j < len(orderedDays)-i-1; j++ {
+			if orderedDays[j].After(orderedDays[j+1]) {
+				orderedDays[j], orderedDays[j+1] = orderedDays[j+1], orderedDays[j]
+			}
+		}
+	}
+
+	avg := float64(totalPoints) / float64(days)
+
+	// Trend detection
+	trend := "stable"
+	if sampleSize >= 2 {
+		half := sampleSize / 2
+		firstHalfSum := 0
+		secondHalfSum := 0
+
+		for i := 0; i < half; i++ {
+			firstHalfSum += totals[orderedDays[i]]
+		}
+		for i := half; i < sampleSize; i++ {
+			secondHalfSum += totals[orderedDays[i]]
+		}
+
+		firstHalfAvg := float64(firstHalfSum) / float64(half)
+		secondHalfAvg := float64(secondHalfSum) / float64(sampleSize-half)
+
+		if secondHalfAvg > firstHalfAvg*1.1 {
+			trend = "increasing"
+		} else if secondHalfAvg < firstHalfAvg*0.9 {
+			trend = "decreasing"
+		}
+	}
+
+	return &domain.VelocityMetrics{
+		PointsPerDay: avg,
+		Trend:        trend,
+		PeriodDays:   days,
+		SampleSize:   sampleSize,
+		TotalPoints:  totalPoints,
+	}, nil
+}
+
+// EstimateUnlockTime predicts when a node will unlock
+func (s *service) EstimateUnlockTime(ctx context.Context, nodeKey string) (*domain.UnlockEstimate, error) {
+	node, err := s.repo.GetNodeByKey(ctx, nodeKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get node: %w", err)
+	}
+	if node == nil {
+		return nil, fmt.Errorf("node not found: %s", nodeKey)
+	}
+
+	// Get current velocity (7 days default)
+	velocity, err := s.GetEngagementVelocity(ctx, 7)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get current progress
+	var currentProgress int
+	progress, _ := s.repo.GetActiveUnlockProgress(ctx)
+	if progress != nil && progress.NodeID != nil && *progress.NodeID == node.ID {
+		currentProgress = progress.ContributionsAccumulated
+	}
+
+	// Check if already unlocked (max level)
+	isUnlocked, _ := s.repo.IsNodeUnlocked(ctx, nodeKey, node.MaxLevel)
+	if isUnlocked {
+		return &domain.UnlockEstimate{
+			NodeKey:             nodeKey,
+			EstimatedDays:       0,
+			Confidence:          "high",
+			RequiredPoints:      0,
+			CurrentProgress:     node.UnlockCost,
+			CurrentVelocity:     velocity.PointsPerDay,
+			EstimatedUnlockDate: func() *time.Time { t := time.Now(); return &t }(),
+		}, nil
+	}
+
+	required := node.UnlockCost - currentProgress
+	if required <= 0 {
+		required = 0
+	}
+
+	var estimatedDays float64
+	var estimatedDate *time.Time
+
+	if velocity.PointsPerDay > 0 {
+		estimatedDays = float64(required) / velocity.PointsPerDay
+		t := time.Now().Add(time.Duration(estimatedDays * 24 * float64(time.Hour)))
+		estimatedDate = &t
+	} else {
+		estimatedDays = -1 // Infinite
+	}
+
+	confidence := "low"
+	if velocity.SampleSize >= 7 {
+		if velocity.Trend == "stable" || velocity.Trend == "increasing" {
+			confidence = "high"
+		} else {
+			confidence = "medium"
+		}
+	} else if velocity.SampleSize >= 3 {
+		confidence = "medium"
+	}
+
+	return &domain.UnlockEstimate{
+		NodeKey:             nodeKey,
+		EstimatedDays:       estimatedDays,
+		Confidence:          confidence,
+		RequiredPoints:      required,
+		CurrentProgress:     currentProgress,
+		CurrentVelocity:     velocity.PointsPerDay,
+		EstimatedUnlockDate: estimatedDate,
+	}, nil
+}

@@ -1,12 +1,13 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+set -euo pipefail
+export LC_ALL=C.UTF-8
 
 # BrandishBot Rollback Script
 # Usage: ./scripts/rollback.sh <environment> [version]
 # Example: ./scripts/rollback.sh production v1.1.0
 
-ENVIRONMENT="${1}"
-TARGET_VERSION="${2}"
+ENVIRONMENT="${1:-}"
+TARGET_VERSION="${2:-}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 

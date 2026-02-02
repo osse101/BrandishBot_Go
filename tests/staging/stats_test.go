@@ -15,7 +15,7 @@ import (
 func TestStatsEndpoints(t *testing.T) {
 	t.Run("SystemStats", func(t *testing.T) {
 		resp, body := makeRequest(t, "GET", "/stats/system", nil)
-		
+
 		if resp.StatusCode != http.StatusOK {
 			t.Errorf("Expected status 200, got %d. Body: %s", resp.StatusCode, string(body))
 		}
@@ -35,7 +35,7 @@ func TestStatsEndpoints(t *testing.T) {
 		eventType := "message_sent"
 		path := fmt.Sprintf("/stats/leaderboard?event_type=%s", eventType)
 		resp, body := makeRequest(t, "GET", path, nil)
-		
+
 		if resp.StatusCode != http.StatusOK {
 			t.Errorf("Expected status 200, got %d. Body: %s", resp.StatusCode, string(body))
 		}
@@ -57,7 +57,7 @@ func TestStatsEndpoints(t *testing.T) {
 		platform := domain.PlatformTwitch
 		path := fmt.Sprintf("/stats/user?user_id=%s&platform=%s", userID, platform)
 		resp, body := makeRequest(t, "GET", path, nil)
-		
+
 		// 200 or 404 are both valid (404 if user doesn't exist)
 		if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNotFound {
 			t.Errorf("Expected status 200 or 404, got %d. Body: %s", resp.StatusCode, string(body))
@@ -100,7 +100,7 @@ func TestRecordEvent(t *testing.T) {
 	}
 
 	resp, body = makeRequest(t, "POST", "/stats/event", event)
-	
+
 	// Should accept the event
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		t.Errorf("Expected status 200 or 201, got %d. Body: %s", resp.StatusCode, string(body))

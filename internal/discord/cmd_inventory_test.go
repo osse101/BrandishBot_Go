@@ -8,8 +8,9 @@ import (
 	"testing"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/osse101/BrandishBot_Go/internal/user"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/osse101/BrandishBot_Go/internal/user"
 )
 
 func TestInventoryCommand_Empty(t *testing.T) {
@@ -17,13 +18,13 @@ func TestInventoryCommand_Empty(t *testing.T) {
 	cmd, handler := InventoryCommand()
 
 	// Mock Register User
-	ctx.Mux.HandleFunc("/user/register", func(w http.ResponseWriter, r *http.Request) {
+	ctx.Mux.HandleFunc("/api/v1/user/register", func(w http.ResponseWriter, r *http.Request) {
 		WriteJSON(w, map[string]interface{}{"id": "u", "username": "t"})
 	})
 
 	// Mock Empty Inventory
-	ctx.Mux.HandleFunc("/user/inventory", func(w http.ResponseWriter, r *http.Request) {
-		WriteJSON(w, map[string]interface{}{"items": []user.UserInventoryItem{}})
+	ctx.Mux.HandleFunc("/api/v1/user/inventory", func(w http.ResponseWriter, r *http.Request) {
+		WriteJSON(w, map[string]interface{}{"items": []user.InventoryItem{}})
 	})
 
 	// Request
@@ -42,7 +43,7 @@ func TestInventoryCommand_Empty(t *testing.T) {
 	// Capture Response
 	var sentEmbed *discordgo.MessageEmbed
 	ctx.DiscordMocks.RoundTripFunc = func(req *http.Request) (*http.Response, error) {
-		if req.Method == "PATCH" {
+		if req.Method == http.MethodPatch {
 			var body discordgo.WebhookEdit
 			json.NewDecoder(req.Body).Decode(&body)
 			if body.Embeds != nil && len(*body.Embeds) > 0 {
@@ -68,13 +69,13 @@ func TestInventoryCommand_WithItems(t *testing.T) {
 	ctx := SetupTestContext(t)
 	cmd, handler := InventoryCommand()
 
-	ctx.Mux.HandleFunc("/user/register", func(w http.ResponseWriter, r *http.Request) {
+	ctx.Mux.HandleFunc("/api/v1/user/register", func(w http.ResponseWriter, r *http.Request) {
 		WriteJSON(w, map[string]interface{}{"id": "u", "username": "t"})
 	})
 
-	ctx.Mux.HandleFunc("/user/inventory", func(w http.ResponseWriter, r *http.Request) {
+	ctx.Mux.HandleFunc("/api/v1/user/inventory", func(w http.ResponseWriter, r *http.Request) {
 		WriteJSON(w, map[string]interface{}{
-			"items": []user.UserInventoryItem{
+			"items": []user.InventoryItem{
 				{Name: "sword", Quantity: 1},
 				{Name: "potion", Quantity: 5},
 			},
@@ -95,7 +96,7 @@ func TestInventoryCommand_WithItems(t *testing.T) {
 
 	var sentEmbed *discordgo.MessageEmbed
 	ctx.DiscordMocks.RoundTripFunc = func(req *http.Request) (*http.Response, error) {
-		if req.Method == "PATCH" {
+		if req.Method == http.MethodPatch {
 			var body discordgo.WebhookEdit
 			json.NewDecoder(req.Body).Decode(&body)
 			if body.Embeds != nil && len(*body.Embeds) > 0 {
@@ -122,7 +123,7 @@ func TestInventoryCommand_RegisterError(t *testing.T) {
 	_, handler := InventoryCommand()
 
 	// Mock Register Error
-	ctx.Mux.HandleFunc("/user/register", func(w http.ResponseWriter, r *http.Request) {
+	ctx.Mux.HandleFunc("/api/v1/user/register", func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "server error", http.StatusInternalServerError)
 	})
 
@@ -137,7 +138,7 @@ func TestInventoryCommand_RegisterError(t *testing.T) {
 
 	var sentContent string
 	ctx.DiscordMocks.RoundTripFunc = func(req *http.Request) (*http.Response, error) {
-		if req.Method == "PATCH" {
+		if req.Method == http.MethodPatch {
 			var body discordgo.WebhookEdit
 			json.NewDecoder(req.Body).Decode(&body)
 			if body.Content != nil {

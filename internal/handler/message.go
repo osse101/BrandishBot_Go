@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/osse101/BrandishBot_Go/internal/event"
@@ -47,34 +46,12 @@ func HandleMessageHandler(userService user.Service, progressionSvc progression.S
 
 		if r.Method != http.MethodPost {
 			log.Warn("Method not allowed", "method", r.Method)
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			http.Error(w, ErrMsgMethodNotAllowed, http.StatusMethodNotAllowed)
 			return
 		}
 
 		var req HandleMessageRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			log.Error("Failed to decode request body", "error", err)
-			http.Error(w, "Invalid request body", http.StatusBadRequest)
-			return
-		}
-
-		log.Debug("Decoded request",
-			"platform", req.Platform,
-			"platform_id", req.PlatformID,
-			"username", req.Username)
-
-		// Validate request
-		if err := GetValidator().ValidateStruct(req); err != nil {
-			log.Warn("Invalid request", "error", err)
-			validationErrors := FormatValidationError(err)
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			if err := json.NewEncoder(w).Encode(map[string]interface{}{
-				"error":   "Validation failed",
-				"details": validationErrors,
-			}); err != nil {
-				log.Error("Failed to encode response", "error", err)
-			}
+		if err := DecodeAndValidateRequest(r, w, &req, "Handle message"); err != nil {
 			return
 		}
 
@@ -86,7 +63,8 @@ func HandleMessageHandler(userService user.Service, progressionSvc progression.S
 				"platform", req.Platform,
 				"platform_id", req.PlatformID,
 				"username", req.Username)
-			http.Error(w, "Failed to handle message", http.StatusInternalServerError)
+			statusCode, userMsg := mapServiceErrorToUserMessage(err)
+			respondError(w, statusCode, userMsg)
 			return
 		}
 
@@ -104,8 +82,6 @@ func HandleMessageHandler(userService user.Service, progressionSvc progression.S
 			"user_id", result.User.ID,
 			"username", result.User.Username)
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
 		respondJSON(w, http.StatusOK, result)
 	}
 }

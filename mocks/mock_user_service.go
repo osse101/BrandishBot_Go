@@ -26,17 +26,17 @@ func (_m *MockUserService) EXPECT() *MockUserService_Expecter {
 	return &MockUserService_Expecter{mock: &_m.Mock}
 }
 
-// AddItem provides a mock function with given fields: ctx, platform, platformID, username, itemName, quantity
-func (_m *MockUserService) AddItem(ctx context.Context, platform string, platformID string, username string, itemName string, quantity int) error {
-	ret := _m.Called(ctx, platform, platformID, username, itemName, quantity)
+// AddItemByUsername provides a mock function with given fields: ctx, platform, username, itemName, quantity
+func (_m *MockUserService) AddItemByUsername(ctx context.Context, platform string, username string, itemName string, quantity int) error {
+	ret := _m.Called(ctx, platform, username, itemName, quantity)
 
 	if len(ret) == 0 {
-		panic("no return value specified for AddItem")
+		panic("no return value specified for AddItemByUsername")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, string, int) error); ok {
-		r0 = rf(ctx, platform, platformID, username, itemName, quantity)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, int) error); ok {
+		r0 = rf(ctx, platform, username, itemName, quantity)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -44,35 +44,181 @@ func (_m *MockUserService) AddItem(ctx context.Context, platform string, platfor
 	return r0
 }
 
-// MockUserService_AddItem_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddItem'
-type MockUserService_AddItem_Call struct {
+// MockUserService_AddItemByUsername_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddItemByUsername'
+type MockUserService_AddItemByUsername_Call struct {
 	*mock.Call
 }
 
-// AddItem is a helper method to define mock.On call
+// AddItemByUsername is a helper method to define mock.On call
 //   - ctx context.Context
 //   - platform string
-//   - platformID string
 //   - username string
 //   - itemName string
 //   - quantity int
-func (_e *MockUserService_Expecter) AddItem(ctx interface{}, platform interface{}, platformID interface{}, username interface{}, itemName interface{}, quantity interface{}) *MockUserService_AddItem_Call {
-	return &MockUserService_AddItem_Call{Call: _e.mock.On("AddItem", ctx, platform, platformID, username, itemName, quantity)}
+func (_e *MockUserService_Expecter) AddItemByUsername(ctx interface{}, platform interface{}, username interface{}, itemName interface{}, quantity interface{}) *MockUserService_AddItemByUsername_Call {
+	return &MockUserService_AddItemByUsername_Call{Call: _e.mock.On("AddItemByUsername", ctx, platform, username, itemName, quantity)}
 }
 
-func (_c *MockUserService_AddItem_Call) Run(run func(ctx context.Context, platform string, platformID string, username string, itemName string, quantity int)) *MockUserService_AddItem_Call {
+func (_c *MockUserService_AddItemByUsername_Call) Run(run func(ctx context.Context, platform string, username string, itemName string, quantity int)) *MockUserService_AddItemByUsername_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(string), args[4].(string), args[5].(int))
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(string), args[4].(int))
 	})
 	return _c
 }
 
-func (_c *MockUserService_AddItem_Call) Return(_a0 error) *MockUserService_AddItem_Call {
+func (_c *MockUserService_AddItemByUsername_Call) Return(_a0 error) *MockUserService_AddItemByUsername_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockUserService_AddItem_Call) RunAndReturn(run func(context.Context, string, string, string, string, int) error) *MockUserService_AddItem_Call {
+func (_c *MockUserService_AddItemByUsername_Call) RunAndReturn(run func(context.Context, string, string, string, int) error) *MockUserService_AddItemByUsername_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// AddTimeout provides a mock function with given fields: ctx, platform, username, duration, reason
+func (_m *MockUserService) AddTimeout(ctx context.Context, platform string, username string, duration time.Duration, reason string) error {
+	ret := _m.Called(ctx, platform, username, duration, reason)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AddTimeout")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, time.Duration, string) error); ok {
+		r0 = rf(ctx, platform, username, duration, reason)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockUserService_AddTimeout_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddTimeout'
+type MockUserService_AddTimeout_Call struct {
+	*mock.Call
+}
+
+// AddTimeout is a helper method to define mock.On call
+//   - ctx context.Context
+//   - platform string
+//   - username string
+//   - duration time.Duration
+//   - reason string
+func (_e *MockUserService_Expecter) AddTimeout(ctx interface{}, platform interface{}, username interface{}, duration interface{}, reason interface{}) *MockUserService_AddTimeout_Call {
+	return &MockUserService_AddTimeout_Call{Call: _e.mock.On("AddTimeout", ctx, platform, username, duration, reason)}
+}
+
+func (_c *MockUserService_AddTimeout_Call) Run(run func(ctx context.Context, platform string, username string, duration time.Duration, reason string)) *MockUserService_AddTimeout_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(time.Duration), args[4].(string))
+	})
+	return _c
+}
+
+func (_c *MockUserService_AddTimeout_Call) Return(_a0 error) *MockUserService_AddTimeout_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockUserService_AddTimeout_Call) RunAndReturn(run func(context.Context, string, string, time.Duration, string) error) *MockUserService_AddTimeout_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ApplyShield provides a mock function with given fields: ctx, _a1, quantity, isMirror
+func (_m *MockUserService) ApplyShield(ctx context.Context, _a1 *domain.User, quantity int, isMirror bool) error {
+	ret := _m.Called(ctx, _a1, quantity, isMirror)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ApplyShield")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *domain.User, int, bool) error); ok {
+		r0 = rf(ctx, _a1, quantity, isMirror)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockUserService_ApplyShield_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ApplyShield'
+type MockUserService_ApplyShield_Call struct {
+	*mock.Call
+}
+
+// ApplyShield is a helper method to define mock.On call
+//   - ctx context.Context
+//   - _a1 *domain.User
+//   - quantity int
+//   - isMirror bool
+func (_e *MockUserService_Expecter) ApplyShield(ctx interface{}, _a1 interface{}, quantity interface{}, isMirror interface{}) *MockUserService_ApplyShield_Call {
+	return &MockUserService_ApplyShield_Call{Call: _e.mock.On("ApplyShield", ctx, _a1, quantity, isMirror)}
+}
+
+func (_c *MockUserService_ApplyShield_Call) Run(run func(ctx context.Context, _a1 *domain.User, quantity int, isMirror bool)) *MockUserService_ApplyShield_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*domain.User), args[2].(int), args[3].(bool))
+	})
+	return _c
+}
+
+func (_c *MockUserService_ApplyShield_Call) Return(_a0 error) *MockUserService_ApplyShield_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockUserService_ApplyShield_Call) RunAndReturn(run func(context.Context, *domain.User, int, bool) error) *MockUserService_ApplyShield_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ClearTimeout provides a mock function with given fields: ctx, platform, username
+func (_m *MockUserService) ClearTimeout(ctx context.Context, platform string, username string) error {
+	ret := _m.Called(ctx, platform, username)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ClearTimeout")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) error); ok {
+		r0 = rf(ctx, platform, username)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockUserService_ClearTimeout_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ClearTimeout'
+type MockUserService_ClearTimeout_Call struct {
+	*mock.Call
+}
+
+// ClearTimeout is a helper method to define mock.On call
+//   - ctx context.Context
+//   - platform string
+//   - username string
+func (_e *MockUserService_Expecter) ClearTimeout(ctx interface{}, platform interface{}, username interface{}) *MockUserService_ClearTimeout_Call {
+	return &MockUserService_ClearTimeout_Call{Call: _e.mock.On("ClearTimeout", ctx, platform, username)}
+}
+
+func (_c *MockUserService_ClearTimeout_Call) Run(run func(ctx context.Context, platform string, username string)) *MockUserService_ClearTimeout_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockUserService_ClearTimeout_Call) Return(_a0 error) *MockUserService_ClearTimeout_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockUserService_ClearTimeout_Call) RunAndReturn(run func(context.Context, string, string) error) *MockUserService_ClearTimeout_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -137,24 +283,69 @@ func (_c *MockUserService_FindUserByPlatformID_Call) RunAndReturn(run func(conte
 	return _c
 }
 
+// GetCacheStats provides a mock function with no fields
+func (_m *MockUserService) GetCacheStats() user.CacheStats {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetCacheStats")
+	}
+
+	var r0 user.CacheStats
+	if rf, ok := ret.Get(0).(func() user.CacheStats); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(user.CacheStats)
+	}
+
+	return r0
+}
+
+// MockUserService_GetCacheStats_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetCacheStats'
+type MockUserService_GetCacheStats_Call struct {
+	*mock.Call
+}
+
+// GetCacheStats is a helper method to define mock.On call
+func (_e *MockUserService_Expecter) GetCacheStats() *MockUserService_GetCacheStats_Call {
+	return &MockUserService_GetCacheStats_Call{Call: _e.mock.On("GetCacheStats")}
+}
+
+func (_c *MockUserService_GetCacheStats_Call) Run(run func()) *MockUserService_GetCacheStats_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockUserService_GetCacheStats_Call) Return(_a0 user.CacheStats) *MockUserService_GetCacheStats_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockUserService_GetCacheStats_Call) RunAndReturn(run func() user.CacheStats) *MockUserService_GetCacheStats_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetInventory provides a mock function with given fields: ctx, platform, platformID, username, filter
-func (_m *MockUserService) GetInventory(ctx context.Context, platform string, platformID string, username string, filter string) ([]user.UserInventoryItem, error) {
+func (_m *MockUserService) GetInventory(ctx context.Context, platform string, platformID string, username string, filter string) ([]user.InventoryItem, error) {
 	ret := _m.Called(ctx, platform, platformID, username, filter)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetInventory")
 	}
 
-	var r0 []user.UserInventoryItem
+	var r0 []user.InventoryItem
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, string) ([]user.UserInventoryItem, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, string) ([]user.InventoryItem, error)); ok {
 		return rf(ctx, platform, platformID, username, filter)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, string) []user.UserInventoryItem); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, string) []user.InventoryItem); ok {
 		r0 = rf(ctx, platform, platformID, username, filter)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]user.UserInventoryItem)
+			r0 = ret.Get(0).([]user.InventoryItem)
 		}
 	}
 
@@ -189,12 +380,73 @@ func (_c *MockUserService_GetInventory_Call) Run(run func(ctx context.Context, p
 	return _c
 }
 
-func (_c *MockUserService_GetInventory_Call) Return(_a0 []user.UserInventoryItem, _a1 error) *MockUserService_GetInventory_Call {
+func (_c *MockUserService_GetInventory_Call) Return(_a0 []user.InventoryItem, _a1 error) *MockUserService_GetInventory_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockUserService_GetInventory_Call) RunAndReturn(run func(context.Context, string, string, string, string) ([]user.UserInventoryItem, error)) *MockUserService_GetInventory_Call {
+func (_c *MockUserService_GetInventory_Call) RunAndReturn(run func(context.Context, string, string, string, string) ([]user.InventoryItem, error)) *MockUserService_GetInventory_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetInventoryByUsername provides a mock function with given fields: ctx, platform, username, filter
+func (_m *MockUserService) GetInventoryByUsername(ctx context.Context, platform string, username string, filter string) ([]user.InventoryItem, error) {
+	ret := _m.Called(ctx, platform, username, filter)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetInventoryByUsername")
+	}
+
+	var r0 []user.InventoryItem
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string) ([]user.InventoryItem, error)); ok {
+		return rf(ctx, platform, username, filter)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string) []user.InventoryItem); ok {
+		r0 = rf(ctx, platform, username, filter)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]user.InventoryItem)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, string) error); ok {
+		r1 = rf(ctx, platform, username, filter)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockUserService_GetInventoryByUsername_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetInventoryByUsername'
+type MockUserService_GetInventoryByUsername_Call struct {
+	*mock.Call
+}
+
+// GetInventoryByUsername is a helper method to define mock.On call
+//   - ctx context.Context
+//   - platform string
+//   - username string
+//   - filter string
+func (_e *MockUserService_Expecter) GetInventoryByUsername(ctx interface{}, platform interface{}, username interface{}, filter interface{}) *MockUserService_GetInventoryByUsername_Call {
+	return &MockUserService_GetInventoryByUsername_Call{Call: _e.mock.On("GetInventoryByUsername", ctx, platform, username, filter)}
+}
+
+func (_c *MockUserService_GetInventoryByUsername_Call) Run(run func(ctx context.Context, platform string, username string, filter string)) *MockUserService_GetInventoryByUsername_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(string))
+	})
+	return _c
+}
+
+func (_c *MockUserService_GetInventoryByUsername_Call) Return(_a0 []user.InventoryItem, _a1 error) *MockUserService_GetInventoryByUsername_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockUserService_GetInventoryByUsername_Call) RunAndReturn(run func(context.Context, string, string, string) ([]user.InventoryItem, error)) *MockUserService_GetInventoryByUsername_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -316,17 +568,135 @@ func (_c *MockUserService_GetTimeout_Call) RunAndReturn(run func(context.Context
 	return _c
 }
 
-// GiveItem provides a mock function with given fields: ctx, ownerPlatform, ownerPlatformID, ownerUsername, receiverPlatform, receiverPlatformID, receiverUsername, itemName, quantity
-func (_m *MockUserService) GiveItem(ctx context.Context, ownerPlatform string, ownerPlatformID string, ownerUsername string, receiverPlatform string, receiverPlatformID string, receiverUsername string, itemName string, quantity int) error {
-	ret := _m.Called(ctx, ownerPlatform, ownerPlatformID, ownerUsername, receiverPlatform, receiverPlatformID, receiverUsername, itemName, quantity)
+// GetTimeoutPlatform provides a mock function with given fields: ctx, platform, username
+func (_m *MockUserService) GetTimeoutPlatform(ctx context.Context, platform string, username string) (time.Duration, error) {
+	ret := _m.Called(ctx, platform, username)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetTimeoutPlatform")
+	}
+
+	var r0 time.Duration
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) (time.Duration, error)); ok {
+		return rf(ctx, platform, username)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) time.Duration); ok {
+		r0 = rf(ctx, platform, username)
+	} else {
+		r0 = ret.Get(0).(time.Duration)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = rf(ctx, platform, username)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockUserService_GetTimeoutPlatform_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetTimeoutPlatform'
+type MockUserService_GetTimeoutPlatform_Call struct {
+	*mock.Call
+}
+
+// GetTimeoutPlatform is a helper method to define mock.On call
+//   - ctx context.Context
+//   - platform string
+//   - username string
+func (_e *MockUserService_Expecter) GetTimeoutPlatform(ctx interface{}, platform interface{}, username interface{}) *MockUserService_GetTimeoutPlatform_Call {
+	return &MockUserService_GetTimeoutPlatform_Call{Call: _e.mock.On("GetTimeoutPlatform", ctx, platform, username)}
+}
+
+func (_c *MockUserService_GetTimeoutPlatform_Call) Run(run func(ctx context.Context, platform string, username string)) *MockUserService_GetTimeoutPlatform_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockUserService_GetTimeoutPlatform_Call) Return(_a0 time.Duration, _a1 error) *MockUserService_GetTimeoutPlatform_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockUserService_GetTimeoutPlatform_Call) RunAndReturn(run func(context.Context, string, string) (time.Duration, error)) *MockUserService_GetTimeoutPlatform_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetUserByPlatformUsername provides a mock function with given fields: ctx, platform, username
+func (_m *MockUserService) GetUserByPlatformUsername(ctx context.Context, platform string, username string) (*domain.User, error) {
+	ret := _m.Called(ctx, platform, username)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetUserByPlatformUsername")
+	}
+
+	var r0 *domain.User
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) (*domain.User, error)); ok {
+		return rf(ctx, platform, username)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) *domain.User); ok {
+		r0 = rf(ctx, platform, username)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*domain.User)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = rf(ctx, platform, username)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockUserService_GetUserByPlatformUsername_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetUserByPlatformUsername'
+type MockUserService_GetUserByPlatformUsername_Call struct {
+	*mock.Call
+}
+
+// GetUserByPlatformUsername is a helper method to define mock.On call
+//   - ctx context.Context
+//   - platform string
+//   - username string
+func (_e *MockUserService_Expecter) GetUserByPlatformUsername(ctx interface{}, platform interface{}, username interface{}) *MockUserService_GetUserByPlatformUsername_Call {
+	return &MockUserService_GetUserByPlatformUsername_Call{Call: _e.mock.On("GetUserByPlatformUsername", ctx, platform, username)}
+}
+
+func (_c *MockUserService_GetUserByPlatformUsername_Call) Run(run func(ctx context.Context, platform string, username string)) *MockUserService_GetUserByPlatformUsername_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockUserService_GetUserByPlatformUsername_Call) Return(_a0 *domain.User, _a1 error) *MockUserService_GetUserByPlatformUsername_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockUserService_GetUserByPlatformUsername_Call) RunAndReturn(run func(context.Context, string, string) (*domain.User, error)) *MockUserService_GetUserByPlatformUsername_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GiveItem provides a mock function with given fields: ctx, ownerPlatform, ownerPlatformID, ownerUsername, receiverPlatform, receiverUsername, itemName, quantity
+func (_m *MockUserService) GiveItem(ctx context.Context, ownerPlatform string, ownerPlatformID string, ownerUsername string, receiverPlatform string, receiverUsername string, itemName string, quantity int) error {
+	ret := _m.Called(ctx, ownerPlatform, ownerPlatformID, ownerUsername, receiverPlatform, receiverUsername, itemName, quantity)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GiveItem")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, string, string, string, string, int) error); ok {
-		r0 = rf(ctx, ownerPlatform, ownerPlatformID, ownerUsername, receiverPlatform, receiverPlatformID, receiverUsername, itemName, quantity)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, string, string, string, int) error); ok {
+		r0 = rf(ctx, ownerPlatform, ownerPlatformID, ownerUsername, receiverPlatform, receiverUsername, itemName, quantity)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -345,17 +715,16 @@ type MockUserService_GiveItem_Call struct {
 //   - ownerPlatformID string
 //   - ownerUsername string
 //   - receiverPlatform string
-//   - receiverPlatformID string
 //   - receiverUsername string
 //   - itemName string
 //   - quantity int
-func (_e *MockUserService_Expecter) GiveItem(ctx interface{}, ownerPlatform interface{}, ownerPlatformID interface{}, ownerUsername interface{}, receiverPlatform interface{}, receiverPlatformID interface{}, receiverUsername interface{}, itemName interface{}, quantity interface{}) *MockUserService_GiveItem_Call {
-	return &MockUserService_GiveItem_Call{Call: _e.mock.On("GiveItem", ctx, ownerPlatform, ownerPlatformID, ownerUsername, receiverPlatform, receiverPlatformID, receiverUsername, itemName, quantity)}
+func (_e *MockUserService_Expecter) GiveItem(ctx interface{}, ownerPlatform interface{}, ownerPlatformID interface{}, ownerUsername interface{}, receiverPlatform interface{}, receiverUsername interface{}, itemName interface{}, quantity interface{}) *MockUserService_GiveItem_Call {
+	return &MockUserService_GiveItem_Call{Call: _e.mock.On("GiveItem", ctx, ownerPlatform, ownerPlatformID, ownerUsername, receiverPlatform, receiverUsername, itemName, quantity)}
 }
 
-func (_c *MockUserService_GiveItem_Call) Run(run func(ctx context.Context, ownerPlatform string, ownerPlatformID string, ownerUsername string, receiverPlatform string, receiverPlatformID string, receiverUsername string, itemName string, quantity int)) *MockUserService_GiveItem_Call {
+func (_c *MockUserService_GiveItem_Call) Run(run func(ctx context.Context, ownerPlatform string, ownerPlatformID string, ownerUsername string, receiverPlatform string, receiverUsername string, itemName string, quantity int)) *MockUserService_GiveItem_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(string), args[4].(string), args[5].(string), args[6].(string), args[7].(string), args[8].(int))
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(string), args[4].(string), args[5].(string), args[6].(string), args[7].(int))
 	})
 	return _c
 }
@@ -365,7 +734,7 @@ func (_c *MockUserService_GiveItem_Call) Return(_a0 error) *MockUserService_Give
 	return _c
 }
 
-func (_c *MockUserService_GiveItem_Call) RunAndReturn(run func(context.Context, string, string, string, string, string, string, string, int) error) *MockUserService_GiveItem_Call {
+func (_c *MockUserService_GiveItem_Call) RunAndReturn(run func(context.Context, string, string, string, string, string, string, int) error) *MockUserService_GiveItem_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -539,6 +908,103 @@ func (_c *MockUserService_MergeUsers_Call) RunAndReturn(run func(context.Context
 	return _c
 }
 
+// ReduceTimeout provides a mock function with given fields: ctx, username, reduction
+func (_m *MockUserService) ReduceTimeout(ctx context.Context, username string, reduction time.Duration) error {
+	ret := _m.Called(ctx, username, reduction)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReduceTimeout")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, time.Duration) error); ok {
+		r0 = rf(ctx, username, reduction)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockUserService_ReduceTimeout_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReduceTimeout'
+type MockUserService_ReduceTimeout_Call struct {
+	*mock.Call
+}
+
+// ReduceTimeout is a helper method to define mock.On call
+//   - ctx context.Context
+//   - username string
+//   - reduction time.Duration
+func (_e *MockUserService_Expecter) ReduceTimeout(ctx interface{}, username interface{}, reduction interface{}) *MockUserService_ReduceTimeout_Call {
+	return &MockUserService_ReduceTimeout_Call{Call: _e.mock.On("ReduceTimeout", ctx, username, reduction)}
+}
+
+func (_c *MockUserService_ReduceTimeout_Call) Run(run func(ctx context.Context, username string, reduction time.Duration)) *MockUserService_ReduceTimeout_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(time.Duration))
+	})
+	return _c
+}
+
+func (_c *MockUserService_ReduceTimeout_Call) Return(_a0 error) *MockUserService_ReduceTimeout_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockUserService_ReduceTimeout_Call) RunAndReturn(run func(context.Context, string, time.Duration) error) *MockUserService_ReduceTimeout_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ReduceTimeoutPlatform provides a mock function with given fields: ctx, platform, username, reduction
+func (_m *MockUserService) ReduceTimeoutPlatform(ctx context.Context, platform string, username string, reduction time.Duration) error {
+	ret := _m.Called(ctx, platform, username, reduction)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReduceTimeoutPlatform")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, time.Duration) error); ok {
+		r0 = rf(ctx, platform, username, reduction)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockUserService_ReduceTimeoutPlatform_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReduceTimeoutPlatform'
+type MockUserService_ReduceTimeoutPlatform_Call struct {
+	*mock.Call
+}
+
+// ReduceTimeoutPlatform is a helper method to define mock.On call
+//   - ctx context.Context
+//   - platform string
+//   - username string
+//   - reduction time.Duration
+func (_e *MockUserService_Expecter) ReduceTimeoutPlatform(ctx interface{}, platform interface{}, username interface{}, reduction interface{}) *MockUserService_ReduceTimeoutPlatform_Call {
+	return &MockUserService_ReduceTimeoutPlatform_Call{Call: _e.mock.On("ReduceTimeoutPlatform", ctx, platform, username, reduction)}
+}
+
+func (_c *MockUserService_ReduceTimeoutPlatform_Call) Run(run func(ctx context.Context, platform string, username string, reduction time.Duration)) *MockUserService_ReduceTimeoutPlatform_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(time.Duration))
+	})
+	return _c
+}
+
+func (_c *MockUserService_ReduceTimeoutPlatform_Call) Return(_a0 error) *MockUserService_ReduceTimeoutPlatform_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockUserService_ReduceTimeoutPlatform_Call) RunAndReturn(run func(context.Context, string, string, time.Duration) error) *MockUserService_ReduceTimeoutPlatform_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // RegisterUser provides a mock function with given fields: ctx, _a1
 func (_m *MockUserService) RegisterUser(ctx context.Context, _a1 domain.User) (domain.User, error) {
 	ret := _m.Called(ctx, _a1)
@@ -596,27 +1062,27 @@ func (_c *MockUserService_RegisterUser_Call) RunAndReturn(run func(context.Conte
 	return _c
 }
 
-// RemoveItem provides a mock function with given fields: ctx, platform, platformID, username, itemName, quantity
-func (_m *MockUserService) RemoveItem(ctx context.Context, platform string, platformID string, username string, itemName string, quantity int) (int, error) {
-	ret := _m.Called(ctx, platform, platformID, username, itemName, quantity)
+// RemoveItemByUsername provides a mock function with given fields: ctx, platform, username, itemName, quantity
+func (_m *MockUserService) RemoveItemByUsername(ctx context.Context, platform string, username string, itemName string, quantity int) (int, error) {
+	ret := _m.Called(ctx, platform, username, itemName, quantity)
 
 	if len(ret) == 0 {
-		panic("no return value specified for RemoveItem")
+		panic("no return value specified for RemoveItemByUsername")
 	}
 
 	var r0 int
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, string, int) (int, error)); ok {
-		return rf(ctx, platform, platformID, username, itemName, quantity)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, int) (int, error)); ok {
+		return rf(ctx, platform, username, itemName, quantity)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, string, int) int); ok {
-		r0 = rf(ctx, platform, platformID, username, itemName, quantity)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, int) int); ok {
+		r0 = rf(ctx, platform, username, itemName, quantity)
 	} else {
 		r0 = ret.Get(0).(int)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, string, string, string, int) error); ok {
-		r1 = rf(ctx, platform, platformID, username, itemName, quantity)
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, string, int) error); ok {
+		r1 = rf(ctx, platform, username, itemName, quantity)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -624,35 +1090,34 @@ func (_m *MockUserService) RemoveItem(ctx context.Context, platform string, plat
 	return r0, r1
 }
 
-// MockUserService_RemoveItem_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RemoveItem'
-type MockUserService_RemoveItem_Call struct {
+// MockUserService_RemoveItemByUsername_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RemoveItemByUsername'
+type MockUserService_RemoveItemByUsername_Call struct {
 	*mock.Call
 }
 
-// RemoveItem is a helper method to define mock.On call
+// RemoveItemByUsername is a helper method to define mock.On call
 //   - ctx context.Context
 //   - platform string
-//   - platformID string
 //   - username string
 //   - itemName string
 //   - quantity int
-func (_e *MockUserService_Expecter) RemoveItem(ctx interface{}, platform interface{}, platformID interface{}, username interface{}, itemName interface{}, quantity interface{}) *MockUserService_RemoveItem_Call {
-	return &MockUserService_RemoveItem_Call{Call: _e.mock.On("RemoveItem", ctx, platform, platformID, username, itemName, quantity)}
+func (_e *MockUserService_Expecter) RemoveItemByUsername(ctx interface{}, platform interface{}, username interface{}, itemName interface{}, quantity interface{}) *MockUserService_RemoveItemByUsername_Call {
+	return &MockUserService_RemoveItemByUsername_Call{Call: _e.mock.On("RemoveItemByUsername", ctx, platform, username, itemName, quantity)}
 }
 
-func (_c *MockUserService_RemoveItem_Call) Run(run func(ctx context.Context, platform string, platformID string, username string, itemName string, quantity int)) *MockUserService_RemoveItem_Call {
+func (_c *MockUserService_RemoveItemByUsername_Call) Run(run func(ctx context.Context, platform string, username string, itemName string, quantity int)) *MockUserService_RemoveItemByUsername_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(string), args[4].(string), args[5].(int))
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(string), args[4].(int))
 	})
 	return _c
 }
 
-func (_c *MockUserService_RemoveItem_Call) Return(_a0 int, _a1 error) *MockUserService_RemoveItem_Call {
+func (_c *MockUserService_RemoveItemByUsername_Call) Return(_a0 int, _a1 error) *MockUserService_RemoveItemByUsername_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockUserService_RemoveItem_Call) RunAndReturn(run func(context.Context, string, string, string, string, int) (int, error)) *MockUserService_RemoveItem_Call {
+func (_c *MockUserService_RemoveItemByUsername_Call) RunAndReturn(run func(context.Context, string, string, string, int) (int, error)) *MockUserService_RemoveItemByUsername_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -796,6 +1261,53 @@ func (_c *MockUserService_UnlinkPlatform_Call) Return(_a0 error) *MockUserServic
 }
 
 func (_c *MockUserService_UnlinkPlatform_Call) RunAndReturn(run func(context.Context, string, string) error) *MockUserService_UnlinkPlatform_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpdateUser provides a mock function with given fields: ctx, _a1
+func (_m *MockUserService) UpdateUser(ctx context.Context, _a1 domain.User) error {
+	ret := _m.Called(ctx, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateUser")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, domain.User) error); ok {
+		r0 = rf(ctx, _a1)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockUserService_UpdateUser_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateUser'
+type MockUserService_UpdateUser_Call struct {
+	*mock.Call
+}
+
+// UpdateUser is a helper method to define mock.On call
+//   - ctx context.Context
+//   - _a1 domain.User
+func (_e *MockUserService_Expecter) UpdateUser(ctx interface{}, _a1 interface{}) *MockUserService_UpdateUser_Call {
+	return &MockUserService_UpdateUser_Call{Call: _e.mock.On("UpdateUser", ctx, _a1)}
+}
+
+func (_c *MockUserService_UpdateUser_Call) Run(run func(ctx context.Context, _a1 domain.User)) *MockUserService_UpdateUser_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(domain.User))
+	})
+	return _c
+}
+
+func (_c *MockUserService_UpdateUser_Call) Return(_a0 error) *MockUserService_UpdateUser_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockUserService_UpdateUser_Call) RunAndReturn(run func(context.Context, domain.User) error) *MockUserService_UpdateUser_Call {
 	_c.Call.Return(run)
 	return _c
 }

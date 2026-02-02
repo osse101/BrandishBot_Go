@@ -1,10 +1,9 @@
 package handler
 
 import (
-	"encoding/json"
-	"fmt"
+	"context"
+	"errors"
 	"net/http"
-	"strconv"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
@@ -35,8 +34,8 @@ func (h *ProgressionHandlers) HandleGetTree() http.HandlerFunc {
 
 		tree, err := h.service.GetProgressionTree(r.Context())
 		if err != nil {
-			log.Error("Failed to get progression tree", "error", err)
-			respondError(w, http.StatusInternalServerError, "Failed to retrieve progression tree")
+			log.Error("Get progression tree: service error", "error", err)
+			respondError(w, http.StatusInternalServerError, ErrMsgGetProgressionTreeFailed)
 			return
 		}
 
@@ -44,6 +43,7 @@ func (h *ProgressionHandlers) HandleGetTree() http.HandlerFunc {
 			Nodes: tree,
 		}
 
+		log.Info("Get progression tree: success")
 		respondJSON(w, http.StatusOK, response)
 	}
 }
@@ -62,8 +62,8 @@ func (h *ProgressionHandlers) HandleGetAvailable() http.HandlerFunc {
 
 		available, err := h.service.GetAvailableUnlocks(r.Context())
 		if err != nil {
-			log.Error("Failed to get available unlocks", "error", err)
-			respondError(w, http.StatusInternalServerError, "Failed to retrieve available unlocks")
+			log.Error("Get available unlocks: service error", "error", err)
+			respondError(w, http.StatusInternalServerError, ErrMsgGetAvailableUnlocksFailed)
 			return
 		}
 
@@ -71,10 +71,10 @@ func (h *ProgressionHandlers) HandleGetAvailable() http.HandlerFunc {
 			Available: available,
 		}
 
+		log.Info("Get available unlocks: success")
 		respondJSON(w, http.StatusOK, response)
 	}
 }
-
 
 // HandleVote allows a user to vote for the next unlock
 // @Summary Vote for unlock
@@ -89,30 +89,27 @@ func (h *ProgressionHandlers) HandleGetAvailable() http.HandlerFunc {
 // @Router /progression/vote [post]
 func (h *ProgressionHandlers) HandleVote() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		var req VoteRequest
+		if err := DecodeAndValidateRequest(r, w, &req, "Vote for unlock"); err != nil {
+			return
+		}
+
 		log := logger.FromContext(r.Context())
 
-		var req VoteRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			respondError(w, http.StatusBadRequest, "Invalid request body")
-			return
-		}
-
-		// Validate request
-		if err := GetValidator().ValidateStruct(req); err != nil {
-			respondError(w, http.StatusBadRequest, fmt.Sprintf("Invalid request: %v", err))
-			return
-		}
-
 		// Cast vote
-		err := h.service.VoteForUnlock(r.Context(), req.UserID, req.NodeKey)
+		err := h.service.VoteForUnlock(r.Context(), req.Platform, req.PlatformID, req.NodeKey)
 		if err != nil {
-			log.Error("Failed to cast vote", "error", err, "userID", req.UserID, "nodeKey", req.NodeKey)
+			if errors.Is(err, domain.ErrUserAlreadyVoted) {
+				respondJSON(w, http.StatusOK, SuccessResponse{Message: MsgAlreadyVoted})
+				return
+			}
+			log.Warn("Vote request: service error", "error", err, "platform", req.Platform, "platformID", req.PlatformID, "nodeKey", req.NodeKey)
 			respondError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 
-		log.Info("Vote cast successfully", "userID", req.UserID, "nodeKey", req.NodeKey)
-		respondJSON(w, http.StatusOK, SuccessResponse{Message: "Vote recorded successfully"})
+		log.Info("Vote cast successfully", "platform", req.Platform, "platformID", req.PlatformID, "nodeKey", req.NodeKey)
+		respondJSON(w, http.StatusOK, SuccessResponse{Message: MsgVoteRecordedSuccess})
 	}
 }
 
@@ -130,11 +127,12 @@ func (h *ProgressionHandlers) HandleGetStatus() http.HandlerFunc {
 
 		status, err := h.service.GetProgressionStatus(r.Context())
 		if err != nil {
-			log.Error("Failed to get progression status", "error", err)
-			respondError(w, http.StatusInternalServerError, "Failed to retrieve progression status")
+			log.Error("Get progression status: service error", "error", err)
+			respondError(w, http.StatusInternalServerError, ErrMsgGetProgressionStatusFailed)
 			return
 		}
 
+		log.Info("Get progression status: success")
 		respondJSON(w, http.StatusOK, status)
 	}
 }
@@ -144,7 +142,8 @@ func (h *ProgressionHandlers) HandleGetStatus() http.HandlerFunc {
 // @Description Returns user's engagement contribution breakdown by type
 // @Tags progression
 // @Produce json
-// @Param user_id query string true "User ID"
+// @Param platform query string true "Platform (twitch, youtube, discord)"
+// @Param platform_id query string true "Platform-specific user ID"
 // @Success 200 {object} domain.EngagementBreakdown
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
@@ -153,19 +152,59 @@ func (h *ProgressionHandlers) HandleGetEngagement() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
 
-		userID := r.URL.Query().Get("user_id")
-		if userID == "" {
-			respondError(w, http.StatusBadRequest, "user_id query parameter is required")
+		platform, ok := GetQueryParam(r, w, "platform")
+		if !ok {
+			return
+		}
+		platformID, ok := GetQueryParam(r, w, "platform_id")
+		if !ok {
 			return
 		}
 
-		breakdown, err := h.service.GetUserEngagement(r.Context(), userID)
+		breakdown, err := h.service.GetUserEngagement(r.Context(), platform, platformID)
 		if err != nil {
-			log.Error("Failed to get user engagement", "error", err, "userID", userID)
-			respondError(w, http.StatusInternalServerError, "Failed to retrieve engagement data")
+			log.Error("Get user engagement: service error", "error", err, "platform", platform, "platformID", platformID)
+			respondError(w, http.StatusInternalServerError, ErrMsgGetEngagementDataFailed)
 			return
 		}
 
+		log.Info("Get user engagement: success", "platform", platform, "platformID", platformID)
+		respondJSON(w, http.StatusOK, breakdown)
+	}
+}
+
+// HandleGetEngagementByUsername returns user's engagement breakdown by username
+// @Summary Get user engagement by username
+// @Description Returns user's engagement contribution breakdown by type using username
+// @Tags progression
+// @Produce json
+// @Param platform query string true "Platform (twitch, youtube, discord)"
+// @Param username query string true "Username"
+// @Success 200 {object} domain.EngagementBreakdown
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /progression/engagement-by-username [get]
+func (h *ProgressionHandlers) HandleGetEngagementByUsername() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromContext(r.Context())
+
+		platform, ok := GetQueryParam(r, w, "platform")
+		if !ok {
+			return
+		}
+		username, ok := GetQueryParam(r, w, "username")
+		if !ok {
+			return
+		}
+
+		breakdown, err := h.service.GetUserEngagementByUsername(r.Context(), platform, username)
+		if err != nil {
+			log.Error("Get user engagement by username: service error", "error", err, "platform", platform, "username", username)
+			respondError(w, http.StatusInternalServerError, ErrMsgGetEngagementDataFailed)
+			return
+		}
+
+		log.Info("Get user engagement by username: success", "platform", platform, "username", username)
 		respondJSON(w, http.StatusOK, breakdown)
 	}
 }
@@ -183,102 +222,119 @@ func (h *ProgressionHandlers) HandleGetContributionLeaderboard() http.HandlerFun
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
 
-		limit := 10 // default
-		if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
-			if parsedLimit, err := strconv.Atoi(limitStr); err == nil && parsedLimit > 0 {
-				limit = parsedLimit
-			}
-		}
-
+		limit := getQueryInt(r, "limit", 10)
 		leaderboard, err := h.service.GetContributionLeaderboard(r.Context(), limit)
 		if err != nil {
-			log.Error("Failed to get contribution leaderboard", "error", err)
-			respondError(w, http.StatusInternalServerError, "Failed to retrieve leaderboard")
+			log.Error("Get contribution leaderboard: service error", "error", err, "limit", limit)
+			respondError(w, http.StatusInternalServerError, ErrMsgGetLeaderboardFailed)
 			return
 		}
-
+		log.Info("Get contribution leaderboard: success", "limit", limit)
 		respondJSON(w, http.StatusOK, leaderboard)
+	}
+}
+
+// HandleGetVelocity returns engagement velocity metrics (Admin/Debug)
+// @Summary Get engagement velocity
+// @Description Returns engagement velocity metrics (points/day) and trend
+// @Tags progression,admin
+// @Produce json
+// @Param days query int false "Number of days (default 7)"
+// @Success 200 {object} domain.VelocityMetrics
+// @Failure 500 {object} ErrorResponse
+// @Router /progression/velocity [get]
+func (h *ProgressionHandlers) HandleGetVelocity() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromContext(r.Context())
+
+		days := getQueryInt(r, "days", 7)
+		velocity, err := h.service.GetEngagementVelocity(r.Context(), days)
+		if err != nil {
+			log.Error("Get engagement velocity: service error", "error", err, "days", days)
+			respondError(w, http.StatusInternalServerError, ErrMsgGetVelocityMetricsFailed)
+			return
+		}
+		log.Info("Get engagement velocity: success", "days", days)
+		respondJSON(w, http.StatusOK, velocity)
 	}
 }
 
 // Admin endpoints
 
 // HandleAdminUnlock admin force-unlocks a node
-// @Summary Admin unlock node
-// @Description Force unlock a specific node/level (admin only)
-// @Tags progression,admin
-// @Accept json
-// @Produce json
-// @Param request body AdminUnlockRequest true "Admin unlock request"
-// @Success 200 {object} SuccessResponse
-// @Failure 400 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
-// @Router /progression/admin/unlock [post]
+// ... (swagger comments)
 func (h *ProgressionHandlers) HandleAdminUnlock() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		log := logger.FromContext(r.Context())
-
-		var req AdminUnlockRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			respondError(w, http.StatusBadRequest, "Invalid request body")
-			return
-		}
-
-		// Validate request
-		if err := GetValidator().ValidateStruct(req); err != nil {
-			respondError(w, http.StatusBadRequest, fmt.Sprintf("Invalid request: %v", err))
-			return
-		}
-
-		err := h.service.AdminUnlock(r.Context(), req.NodeKey, req.Level)
-		if err != nil {
-			log.Error("Failed to admin unlock", "error", err, "nodeKey", req.NodeKey, "level", req.Level)
-			respondError(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-
-		log.Info("Admin unlocked node", "nodeKey", req.NodeKey, "level", req.Level)
-		respondJSON(w, http.StatusOK, SuccessResponse{Message: "Node unlocked successfully"})
-	}
+	return h.handleAdminNodeAction(func(ctx context.Context, nodeKey string, level int) error {
+		return h.service.AdminUnlock(ctx, nodeKey, level)
+	}, "Admin unlocked node", MsgNodeUnlockedSuccess)
 }
 
 // HandleAdminRelock admin relocks a node
-// @Summary Admin relock node
-// @Description Relock a specific node/level (admin only, for testing)
-// @Tags progression,admin
-// @Accept json
-// @Produce json
-// @Param request body AdminRelockRequest true "Admin relock request"
-// @Success 200 {object} SuccessResponse
-// @Failure 400 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
-// @Router /progression/admin/relock [post]
+// ... (swagger comments)
 func (h *ProgressionHandlers) HandleAdminRelock() http.HandlerFunc {
+	return h.handleAdminNodeAction(func(ctx context.Context, nodeKey string, level int) error {
+		return h.service.AdminRelock(ctx, nodeKey, level)
+	}, "Admin relocked node", MsgNodeRelockedSuccess)
+}
+
+// HandleAdminUnlockAll admin unlocks all nodes at max level (DEBUG)
+// @Summary Admin unlock all nodes
+// @Description Unlocks all progression nodes at their maximum level (for debugging)
+// @Tags progression,admin
+// @Produce json
+// @Success 200 {object} SuccessResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /progression/admin/unlock-all [post]
+func (h *ProgressionHandlers) HandleAdminUnlockAll() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
 
-		var req AdminRelockRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			respondError(w, http.StatusBadRequest, "Invalid request body")
-			return
-		}
-
-		// Validate request
-		if err := GetValidator().ValidateStruct(req); err != nil {
-			respondError(w, http.StatusBadRequest, fmt.Sprintf("Invalid request: %v", err))
-			return
-		}
-
-		err := h.service.AdminRelock(r.Context(), req.NodeKey, req.Level)
-		if err != nil {
-			log.Error("Failed to admin relock", "error", err, "nodeKey", req.NodeKey, "level", req.Level)
+		if err := h.service.AdminUnlockAll(r.Context()); err != nil {
+			log.Error("Failed to unlock all nodes", "error", err)
 			respondError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 
-		log.Info("Admin relocked node", "nodeKey", req.NodeKey, "level", req.Level)
-		respondJSON(w, http.StatusOK, SuccessResponse{Message: "Node relocked successfully"})
+		log.Info("Admin unlocked all nodes")
+		respondJSON(w, http.StatusOK, SuccessResponse{Message: MsgAllNodesUnlockedSuccess})
 	}
+}
+
+func (h *ProgressionHandlers) handleAdminNodeAction(action func(context.Context, string, int) error, logMsg, successMsg string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// We use a shared struct for validation since both use same fields
+		var req struct {
+			NodeKey string `json:"node_key" validate:"required,max=50"`
+			Level   int    `json:"level" validate:"min=1"`
+		}
+		if err := DecodeAndValidateRequest(r, w, &req, "Admin node action"); err != nil {
+			return
+		}
+
+		log := logger.FromContext(r.Context())
+
+		if err := action(r.Context(), req.NodeKey, req.Level); err != nil {
+			log.Error("Admin node action: service error", "error", err, "nodeKey", req.NodeKey, "level", req.Level)
+			respondError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		log.Info(logMsg, "nodeKey", req.NodeKey, "level", req.Level)
+		respondJSON(w, http.StatusOK, SuccessResponse{Message: successMsg})
+	}
+}
+
+func (h *ProgressionHandlers) handleAdminAction(w http.ResponseWriter, r *http.Request, action func(context.Context) (interface{}, error), errLogMsg, infoLogMsg string, responseFactory func(interface{}) interface{}) {
+	log := logger.FromContext(r.Context())
+	res, err := action(r.Context())
+	if err != nil {
+		log.Error(errLogMsg, "error", err)
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	log.Info(infoLogMsg)
+	respondJSON(w, http.StatusOK, responseFactory(res))
 }
 
 // HandleAdminInstantUnlock forces immediate unlock of current vote leader
@@ -291,20 +347,14 @@ func (h *ProgressionHandlers) HandleAdminRelock() http.HandlerFunc {
 // @Router /progression/admin/instant-unlock [post]
 func (h *ProgressionHandlers) HandleAdminInstantUnlock() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log := logger.FromContext(r.Context())
-
-		unlock, err := h.service.ForceInstantUnlock(r.Context())
-		if err != nil {
-			log.Error("Failed to instant unlock", "error", err)
-			respondError(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-
-		log.Info("Admin forced instant unlock", "nodeID", unlock.NodeID, "level", unlock.CurrentLevel)
-		respondJSON(w, http.StatusOK, AdminInstantUnlockResponse{
-			Unlock:  unlock,
-			Message: "Instant unlock successful",
-		})
+		h.handleAdminAction(w, r,
+			func(ctx context.Context) (interface{}, error) { return h.service.ForceInstantUnlock(ctx) },
+			"Failed to instant unlock",
+			"Admin forced instant unlock",
+			func(res interface{}) interface{} {
+				unlock := res.(*domain.ProgressionUnlock)
+				return AdminInstantUnlockResponse{Unlock: unlock, Message: MsgInstantUnlockSuccess}
+			})
 	}
 }
 
@@ -321,19 +371,12 @@ func (h *ProgressionHandlers) HandleAdminInstantUnlock() http.HandlerFunc {
 // @Router /progression/admin/reset [post]
 func (h *ProgressionHandlers) HandleAdminReset() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log := logger.FromContext(r.Context())
-
 		var req AdminResetRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			respondError(w, http.StatusBadRequest, "Invalid request body")
+		if err := DecodeAndValidateRequest(r, w, &req, "Admin reset"); err != nil {
 			return
 		}
 
-		// Validate request
-		if err := GetValidator().ValidateStruct(req); err != nil {
-			respondError(w, http.StatusBadRequest, fmt.Sprintf("Invalid request: %v", err))
-			return
-		}
+		log := logger.FromContext(r.Context())
 
 		if req.Reason == "" {
 			req.Reason = "Annual reset"
@@ -341,13 +384,13 @@ func (h *ProgressionHandlers) HandleAdminReset() http.HandlerFunc {
 
 		err := h.service.ResetProgressionTree(r.Context(), req.ResetBy, req.Reason, req.PreserveUserProgression)
 		if err != nil {
-			log.Error("Failed to reset tree", "error", err)
+			log.Error("Admin reset: service error", "error", err, "resetBy", req.ResetBy)
 			respondError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 
 		log.Info("Admin reset progression tree", "resetBy", req.ResetBy, "reason", req.Reason)
-		respondJSON(w, http.StatusOK, SuccessResponse{Message: "Progression tree reset successfully"})
+		respondJSON(w, http.StatusOK, SuccessResponse{Message: MsgProgressionResetSuccess})
 	}
 }
 
@@ -365,19 +408,38 @@ func (h *ProgressionHandlers) HandleGetVotingSession() http.HandlerFunc {
 
 		session, err := h.service.GetActiveVotingSession(r.Context())
 		if err != nil {
-			log.Error("Failed to get voting session", "error", err)
-			respondError(w, http.StatusInternalServerError, "Failed to retrieve voting session")
+			log.Error("Get voting session: service error", "error", err)
+			respondError(w, http.StatusInternalServerError, ErrMsgGetVotingSessionFailed)
 			return
 		}
 
 		if session == nil {
+			recentSession, err := h.service.GetMostRecentVotingSession(r.Context())
+			if err != nil {
+				log.Error("Get most recent session: service error", "error", err)
+				respondError(w, http.StatusInternalServerError, ErrMsgGetVotingSessionFailed)
+				return
+			}
+
+			if recentSession != nil && recentSession.Status == "completed" {
+				log.Info("Get voting session: returning completed session", "sessionID", recentSession.ID)
+				respondJSON(w, http.StatusOK, map[string]interface{}{
+					"session":      recentSession,
+					"message":      "Voting has ended. Results are shown below.",
+					"is_completed": true,
+				})
+				return
+			}
+
+			log.Info("Get voting session: no active session")
 			respondJSON(w, http.StatusOK, map[string]interface{}{
 				"session": nil,
-				"message": "No active voting session",
+				"message": MsgNoActiveVotingSession,
 			})
 			return
 		}
 
+		log.Info("Get voting session: success")
 		respondJSON(w, http.StatusOK, session)
 	}
 }
@@ -396,104 +458,165 @@ func (h *ProgressionHandlers) HandleGetUnlockProgress() http.HandlerFunc {
 
 		progress, err := h.service.GetUnlockProgress(r.Context())
 		if err != nil {
-			log.Error("Failed to get unlock progress", "error", err)
-			respondError(w, http.StatusInternalServerError, "Failed to retrieve unlock progress")
+			log.Error("Get unlock progress: service error", "error", err)
+			respondError(w, http.StatusInternalServerError, ErrMsgGetUnlockProgressFailed)
 			return
 		}
 
 		if progress == nil {
+			log.Info("Get unlock progress: no active progress")
 			respondJSON(w, http.StatusOK, map[string]interface{}{
 				"progress": nil,
-				"message":  "No active unlock progress",
+				"message":  MsgNoActiveUnlockProgress,
 			})
 			return
 		}
 
-		// Enrich with percentage if target node exists
-		response := map[string]interface{}{
-			"id":                        progress.ID,
-			"node_id":                   progress.NodeID,
-			"target_level":              progress.TargetLevel,
-			"contributions_accumulated": progress.ContributionsAccumulated,
-			"started_at":                progress.StartedAt,
-			"unlocked_at":               progress.UnlockedAt,
-			"voting_session_id":         progress.VotingSessionID,
-			"completion_percentage":     0.0,
-			"target_unlock_cost":        0,
-			"target_node_name":          "",
-		}
-
-		if progress.NodeID != nil {
-			node, err := h.service.GetNode(r.Context(), *progress.NodeID)
-			if err != nil {
-				log.Warn("Failed to get target node for progress", "error", err, "nodeID", *progress.NodeID)
-			} else if node != nil {
-				response["target_unlock_cost"] = node.UnlockCost
-				response["target_node_name"] = node.DisplayName
-				if node.UnlockCost > 0 {
-					percent := (float64(progress.ContributionsAccumulated) / float64(node.UnlockCost)) * 100
-					if percent > 100 {
-						percent = 100
-					}
-					response["completion_percentage"] = percent
-				} else {
-					response["completion_percentage"] = 100.0 // Free unlock?
-				}
-			}
-		}
-
+		log.Info("Get unlock progress: success")
+		response := h.enrichUnlockProgress(r.Context(), progress)
 		respondJSON(w, http.StatusOK, response)
 	}
 }
 
-// HandleAdminEndVoting admin force-ends current voting
-// @Summary Admin end voting
-// @Description Force end the current voting session and determine winner (admin only)
+func (h *ProgressionHandlers) enrichUnlockProgress(ctx context.Context, progress *domain.UnlockProgress) map[string]interface{} {
+	response := map[string]interface{}{
+		"id":                        progress.ID,
+		"node_id":                   progress.NodeID,
+		"target_level":              progress.TargetLevel,
+		"contributions_accumulated": progress.ContributionsAccumulated,
+		"started_at":                progress.StartedAt,
+		"unlocked_at":               progress.UnlockedAt,
+		"voting_session_id":         progress.VotingSessionID,
+		"completion_percentage":     0.0,
+		"target_unlock_cost":        0,
+		"target_node_name":          "",
+		"is_already_unlocked":       false,
+	}
+
+	if progress.NodeID != nil {
+		node, err := h.service.GetNode(ctx, *progress.NodeID)
+		if err == nil && node != nil {
+			response["target_unlock_cost"] = node.UnlockCost
+			response["target_node_name"] = node.DisplayName
+
+			if progress.TargetLevel != nil {
+				isUnlocked, _ := h.service.IsNodeUnlocked(ctx, node.NodeKey, *progress.TargetLevel)
+				if isUnlocked {
+					response["is_already_unlocked"] = true
+					response["completion_percentage"] = 100.0
+					return response
+				}
+			}
+
+			if node.UnlockCost > 0 {
+				percent := (float64(progress.ContributionsAccumulated) / float64(node.UnlockCost)) * 100
+				if percent > 100 {
+					percent = 100
+				}
+				response["completion_percentage"] = percent
+			} else {
+				response["completion_percentage"] = 100.0
+			}
+		}
+	}
+
+	return response
+}
+
+// HandleAdminEndVoting admin freezes current voting (pauses until unlock)
+// @Summary Admin freeze voting
+// @Description Freeze the current voting session until the next unlock completes (admin only)
 // @Tags progression,admin
 // @Produce json
-// @Success 200 {object} AdminEndVotingResponse
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /progression/admin/end-voting [post]
 func (h *ProgressionHandlers) HandleAdminEndVoting() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
 
-		winner, err := h.service.EndVoting(r.Context())
+		err := h.service.AdminFreezeVoting(r.Context())
 		if err != nil {
-			log.Error("Failed to end voting", "error", err)
+			if errors.Is(err, domain.ErrNoActiveSession) {
+				log.Warn("No active voting session to freeze")
+				respondError(w, http.StatusBadRequest, err.Error())
+				return
+			}
+			if errors.Is(err, domain.ErrSessionAlreadyFrozen) {
+				log.Info("Voting session already frozen")
+				respondJSON(w, http.StatusOK, SuccessResponse{Message: "Voting session already frozen"})
+				return
+			}
+			log.Error("Failed to freeze voting", "error", err)
 			respondError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 
-		log.Info("Admin ended voting", "winningNodeID", winner.NodeID, "votes", winner.VoteCount)
-		respondJSON(w, http.StatusOK, AdminEndVotingResponse{
-			Winner:  winner,
-			Message: "Voting ended successfully",
-		})
+		log.Info("Admin froze voting session")
+		respondJSON(w, http.StatusOK, SuccessResponse{Message: "Voting session frozen"})
 	}
 }
 
-// HandleAdminStartVoting admin starts a new voting session
-// @Summary Admin start voting
-// @Description Start a new voting session with 4 random options (admin only)
+// HandleAdminForceEndVoting admin force-ends current voting and selects winner
+// @Summary Admin force end voting
+// @Description Force end the current voting session and determine winner immediately (admin only)
+// @Tags progression,admin
+// @Produce json
+// @Success 200 {object} AdminEndVotingResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /progression/admin/force-end-voting [post]
+func (h *ProgressionHandlers) HandleAdminForceEndVoting() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		h.handleAdminAction(w, r,
+			func(ctx context.Context) (interface{}, error) { return h.service.EndVoting(ctx) },
+			"Failed to end voting",
+			"Admin ended voting",
+			func(res interface{}) interface{} {
+				winner := res.(*domain.ProgressionVotingOption)
+				return AdminEndVotingResponse{Winner: winner, Message: MsgVotingEndedSuccess}
+			})
+	}
+}
+
+// HandleAdminStartVoting admin starts or resumes a voting session
+// @Summary Admin start/resume voting
+// @Description Resume a frozen voting session OR start a new one if nodes are available (admin only)
 // @Tags progression,admin
 // @Produce json
 // @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 409 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /progression/admin/start-voting [post]
 func (h *ProgressionHandlers) HandleAdminStartVoting() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
 
-		err := h.service.StartVotingSession(r.Context(), nil)
+		err := h.service.AdminStartVoting(r.Context())
 		if err != nil {
-			log.Error("Failed to start voting session", "error", err)
+			if errors.Is(err, domain.ErrSessionAlreadyActive) {
+				log.Warn("Voting session already active")
+				respondError(w, http.StatusConflict, err.Error())
+				return
+			}
+			if errors.Is(err, domain.ErrNoNodesAvailable) {
+				log.Info("No nodes available for voting")
+				respondError(w, http.StatusBadRequest, err.Error())
+				return
+			}
+			if errors.Is(err, domain.ErrAccumulationInProgress) {
+				log.Warn("Cannot start voting while accumulation in progress")
+				respondError(w, http.StatusConflict, err.Error())
+				return
+			}
+			log.Error("Failed to start/resume voting session", "error", err)
 			respondError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 
-		log.Info("Admin started voting session")
-		respondJSON(w, http.StatusOK, SuccessResponse{Message: "Voting session started successfully"})
+		log.Info("Admin started/resumed voting session")
+		respondJSON(w, http.StatusOK, SuccessResponse{Message: MsgVotingSessionStartSuccess})
 	}
 }
 
@@ -510,27 +633,45 @@ func (h *ProgressionHandlers) HandleAdminStartVoting() http.HandlerFunc {
 // @Router /progression/admin/contribution [post]
 func (h *ProgressionHandlers) HandleAdminAddContribution() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log := logger.FromContext(r.Context())
-
 		var req AdminAddContributionRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			respondError(w, http.StatusBadRequest, "Invalid request body")
+		if err := DecodeAndValidateRequest(r, w, &req, "Admin add contribution"); err != nil {
 			return
 		}
 
+		log := logger.FromContext(r.Context())
+
 		if req.Amount <= 0 {
-			respondError(w, http.StatusBadRequest, "Amount must be positive")
+			log.Warn("Admin add contribution: invalid amount", "amount", req.Amount)
+			respondError(w, http.StatusBadRequest, ErrMsgAmountMustBePositive)
 			return
 		}
 
 		if err := h.service.AddContribution(r.Context(), req.Amount); err != nil {
-			log.Error("Failed to add contribution", "error", err, "amount", req.Amount)
+			log.Error("Admin add contribution: service error", "error", err, "amount", req.Amount)
 			respondError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 
 		log.Info("Admin added contribution", "amount", req.Amount)
-		respondJSON(w, http.StatusOK, SuccessResponse{Message: "Contribution added successfully"})
+		respondJSON(w, http.StatusOK, SuccessResponse{Message: MsgContributionAddedSuccess})
+	}
+}
+
+// HandleAdminReloadWeights invalidates the engagement weight cache
+// @Summary Admin reload weights
+// @Description Invalidate engagement weight cache to force reload from database (admin only)
+// @Tags progression,admin
+// @Produce json
+// @Success 200 {object} SuccessResponse
+// @Router /admin/progression/reload-weights [post]
+func (h *ProgressionHandlers) HandleAdminReloadWeights() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromContext(r.Context())
+
+		h.service.InvalidateWeightCache()
+
+		log.Info("Admin invalidated engagement weight cache")
+		respondJSON(w, http.StatusOK, SuccessResponse{Message: MsgWeightCacheInvalidated})
 	}
 }
 
@@ -545,8 +686,9 @@ type AvailableUnlocksResponse struct {
 }
 
 type VoteRequest struct {
-	UserID  string `json:"user_id" validate:"required,max=100,excludesall=\x00\n\r\t"`
-	NodeKey string `json:"node_key" validate:"required,max=50"`
+	Platform   string `json:"platform" validate:"required,max=20"`
+	PlatformID string `json:"platform_id" validate:"required,max=100,excludesall=\x00\n\r\t"`
+	NodeKey    string `json:"node_key" validate:"required,max=50"`
 }
 
 type AdminUnlockRequest struct {

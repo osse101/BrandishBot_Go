@@ -1,10 +1,17 @@
-.PHONY: help migrate-up migrate-down migrate-status migrate-create test build run clean docker-build docker-up docker-down deploy-staging deploy-production rollback-staging rollback-production health-check-staging health-check-prod
+.PHONY: help migrate-up migrate-down migrate-status migrate-create test build run clean docker-build docker-up docker-down deploy-staging deploy-production rollback-staging rollback-production health-check-staging health-check-prod install-hooks reset-staging seed-staging validate-staging
 
 # Tool paths
-GOOSE := $(shell command -v goose 2> /dev/null || echo $(HOME)/go/bin/goose)
-SWAG := $(shell command -v swag 2> /dev/null || echo $(HOME)/go/bin/swag)
-LINT := $(shell command -v golangci-lint 2> /dev/null || echo $(HOME)/go/bin/golangci-lint)
-MOCKERY := $(shell command -v mockery 2> /dev/null || echo $(HOME)/go/bin/mockery)
+GOOSE   := go run github.com/pressly/goose/v3/cmd/goose
+SWAG    := go run github.com/swaggo/swag/cmd/swag
+LINT    := go run github.com/golangci/golangci-lint/cmd/golangci-lint
+MOCKERY := go run github.com/vektra/mockery/v2
+SQLC    := go run github.com/sqlc-dev/sqlc/cmd/sqlc
+
+# Load environment variables from .env if it exists
+ifneq (,$(wildcard ./.env))
+    include .env
+    export
+endif
 
 # Default target
 help:
@@ -26,6 +33,17 @@ help:
 	@echo "  make clean                - Remove build artifacts (bin/)"
 	@echo "  make run                  - Run the application from bin/app"
 	@echo "  make swagger              - Generate Swagger docs"
+	@echo "  make generate             - Generate sqlc code"
+	@echo "  make install-hooks        - Install git hooks (pre-commit formatting)"
+	@echo "  make setup                - Setup development environment (deps, docker, db, migrations)"
+	@echo ""
+	@echo "Benchmark Commands:"
+	@echo "  make bench                - Run all benchmarks"
+	@echo "  make bench-hot            - Run hot path benchmarks only"
+	@echo "  make bench-save           - Run benchmarks and save timestamped results"
+	@echo "  make bench-baseline       - Set current results as baseline"
+	@echo "  make bench-compare        - Compare current benchmarks to baseline"
+	@echo "  make bench-profile        - Profile hot paths (CPU + memory)"
 	@echo ""
 	@echo "Docker Commands:"
 	@echo "  make docker-up            - Start services with Docker Compose"
@@ -52,6 +70,15 @@ help:
 	@echo "  make rollback-production  - Rollback production to previous version"
 	@echo "  make health-check-staging - Check staging environment health"
 	@echo "  make health-check-prod    - Check production environment health"
+	@echo "  make reset-staging        - Full staging reset (down + volume rm + up)"
+	@echo "  make seed-staging         - Seed staging with test data"
+	@echo "  make validate-staging     - Run validation tests against staging"
+	@echo ""
+	@echo "Audit & Security:"
+	@echo "  make test-migrations      - Test migration up/down/idempotency"
+	@echo "  make test-security        - Run security integration tests"
+	@echo "  make check-deps           - Check for required dependencies"
+	@echo "  make check-db             - Ensure Docker database is running"
 
 # Database connection string from environment
 DB_URL ?= postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=disable
@@ -80,42 +107,39 @@ migrate-create:
 # Development commands
 test:
 	@echo "Running tests..."
-	@DB_PORT=5433 DB_USER=testuser DB_PASSWORD=testpass DB_NAME=testdb go test ./... -cover -race
+	@mkdir -p logs
+	@go test ./... -coverprofile=logs/coverage.out -covermode=atomic -race
 
 unit:
 	@echo "Running unit tests (fast)..."
-	@./scripts/unit_tests.sh
+	@go test -short ./...
 
 watch:
 	@echo "Watching for changes to run unit tests..."
 	@if command -v entr > /dev/null; then \
-		find . -name "*.go" | entr -c ./scripts/unit_tests.sh; \
+		find . -name "*.go" | entr -c $(MAKE) unit; \
 	else \
 		echo "Error: 'entr' is not installed. Please install it to use this feature."; \
 		exit 1; \
 	fi
 
 test-coverage:
-	@echo "Running tests with coverage..."
-	@mkdir -p logs
-	@go test -coverprofile=logs/coverage.out -covermode=atomic ./...
+	@echo "Generating coverage report..."
+	@if [ ! -f logs/coverage.out ]; then \
+		echo "Coverage profile not found. Running tests..."; \
+		$(MAKE) test; \
+	fi
 	@go tool cover -html=logs/coverage.out -o logs/coverage.html
-	@COVERAGE=$$(go tool cover -func=logs/coverage.out | grep total | awk '{print $$3}'); \
-	echo "Coverage report generated: logs/coverage.html"; \
-	echo "Total Coverage: $$COVERAGE"
+	@echo "Coverage report generated: logs/coverage.html"
+	@go run ./cmd/devtool check-coverage logs/coverage.out 0
 
 test-coverage-check:
 	@echo "Checking coverage threshold (80%)..."
-	@mkdir -p logs
-	@go test -coverprofile=logs/coverage.out -covermode=atomic ./... >/dev/null 2>&1
-	@COVERAGE=$$(go tool cover -func=logs/coverage.out | grep total | awk '{print $$3}' | sed 's/%//'); \
-	THRESHOLD=80; \
-	if [ $$(echo "$$COVERAGE < $$THRESHOLD" | bc -l) -eq 1 ]; then \
-		echo "❌ Coverage $$COVERAGE% is below $$THRESHOLD% threshold"; \
-		exit 1; \
-	else \
-		echo "✅ Coverage $$COVERAGE% meets $$THRESHOLD% threshold"; \
+	@if [ ! -f logs/coverage.out ]; then \
+		echo "Coverage profile not found. Running tests..."; \
+		$(MAKE) test; \
 	fi
+	@go run ./cmd/devtool check-coverage logs/coverage.out 80
 
 lint:
 	@echo "Running linters..."
@@ -125,12 +149,88 @@ lint-fix:
 	@echo "Running linters with auto-fix..."
 	@$(LINT) run --fix ./...
 
+install-hooks:
+	@echo "Installing git hooks..."
+	@chmod +x scripts/pre-commit.sh
+	@ln -sf ../../scripts/pre-commit.sh .git/hooks/pre-commit
+	@echo "✓ Git hooks installed"
+
+# Benchmark commands
+.PHONY: bench bench-hot bench-save bench-baseline bench-compare bench-profile
+
+bench:
+	@echo "Running all benchmarks..."
+	@go test -bench=. -benchmem -benchtime=2s ./...
+
+bench-hot:
+	@echo "Running hot path benchmarks..."
+	@echo "  → Handler: HandleMessageHandler"
+	@go test -bench=BenchmarkHandler_HandleMessage -benchmem -benchtime=2s ./internal/handler 2>/dev/null || echo "    (benchmark not yet implemented)"
+	@echo "  → Service: HandleIncomingMessage"
+	@go test -bench=BenchmarkService_HandleIncomingMessage -benchmem -benchtime=2s ./internal/user 2>/dev/null || echo "    (benchmark not yet implemented)"
+	@echo "  → Service: AddItem"
+	@go test -bench=BenchmarkService_AddItem -benchmem -benchtime=2s ./internal/user 2>/dev/null || echo "    (benchmark not yet implemented)"
+	@echo "  → Utils: Inventory operations (existing)"
+	@go test -bench=. -benchmem -benchtime=2s ./internal/utils
+
+bench-save:
+	@echo "Running benchmarks and saving results..."
+	@mkdir -p benchmarks/results
+	@go test -bench=. -benchmem -benchtime=2s ./... 2>&1 | tee benchmarks/results/$$(date +%Y%m%d-%H%M%S).txt
+	@echo "✓ Results saved to benchmarks/results/"
+
+bench-baseline:
+	@echo "Setting benchmark baseline..."
+	@mkdir -p benchmarks/results
+	@go test -bench=. -benchmem -benchtime=2s ./... 2>&1 | tee benchmarks/results/baseline.txt
+	@echo "✓ Baseline set: benchmarks/results/baseline.txt"
+
+bench-compare:
+	@if [ ! -f benchmarks/results/baseline.txt ]; then \
+		echo "❌ Error: No baseline found. Run 'make bench-baseline' first."; \
+		exit 1; \
+	fi
+	@echo "Running benchmarks and comparing to baseline..."
+	@mkdir -p benchmarks/results
+	@go test -bench=. -benchmem -benchtime=2s ./... > benchmarks/results/current.txt 2>&1 || true
+	@if command -v benchstat > /dev/null 2>&1; then \
+		benchstat benchmarks/results/baseline.txt benchmarks/results/current.txt; \
+	else \
+		echo ""; \
+		echo "⚠️  benchstat not installed. Install with:"; \
+		echo "   go install golang.org/x/perf/cmd/benchstat@latest"; \
+		echo ""; \
+		echo "Showing raw comparison:"; \
+		echo "======================"; \
+		echo "BASELINE:"; \
+		grep "^Benchmark" benchmarks/results/baseline.txt | head -5; \
+		echo ""; \
+		echo "CURRENT:"; \
+		grep "^Benchmark" benchmarks/results/current.txt | head -5; \
+	fi
+
+bench-profile:
+	@echo "Profiling hot paths..."
+	@mkdir -p benchmarks/profiles
+	@echo "  → CPU profile (if benchmark exists)..."
+	@go test -bench=BenchmarkHandler_HandleMessage -cpuprofile=benchmarks/profiles/cpu.prof ./internal/handler 2>/dev/null || \
+		go test -bench=BenchmarkAddItems -cpuprofile=benchmarks/profiles/cpu.prof ./internal/utils
+	@echo "  → Memory profile (if benchmark exists)..."
+	@go test -bench=BenchmarkHandler_HandleMessage -memprofile=benchmarks/profiles/mem.prof -benchmem ./internal/handler 2>/dev/null || \
+		go test -bench=BenchmarkAddItems -memprofile=benchmarks/profiles/mem.prof -benchmem ./internal/utils
+	@echo "✓ Profiles saved to benchmarks/profiles/"
+	@echo ""
+	@echo "View CPU profile with:"
+	@echo "  go tool pprof -http=:8080 benchmarks/profiles/cpu.prof"
+	@echo "View memory profile with:"
+	@echo "  go tool pprof -http=:8080 benchmarks/profiles/mem.prof"
+
 # Build targets
 build:
 	@echo "Building all binaries to bin/..."
 	@mkdir -p bin
 	@VERSION=$$(git describe --tags --always --dirty 2>/dev/null || echo "dev"); \
-	BUILD_TIME=$$(date -u '+%Y-%m-%d_%H:%M:%S'); \
+	BUILD_TIME=$$(date -u '+%Y-%m-%d_%H:%M'); \
 	GIT_COMMIT=$$(git rev-parse --short HEAD 2>/dev/null || echo "unknown"); \
 	LDFLAGS="-X github.com/osse101/BrandishBot_Go/internal/handler.Version=$$VERSION \
 	         -X github.com/osse101/BrandishBot_Go/internal/handler.BuildTime=$$BUILD_TIME \
@@ -173,6 +273,19 @@ docker-discord-restart:
 	@echo "✓ Discord bot restarted"
 
 # Development shortcuts
+setup:
+	@echo "🚀 Starting environment setup..."
+	@if [ ! -f .env ]; then \
+		echo "Creating .env from .env.example..."; \
+		cp .env.example .env; \
+	fi
+	@$(MAKE) check-deps
+	@$(MAKE) docker-up
+	@$(MAKE) check-db
+	@$(MAKE) migrate-up
+	@$(MAKE) generate
+	@echo "✅ Setup complete!"
+
 run:
 	@echo "Starting BrandishBot from bin/app..."
 	@./bin/app
@@ -184,8 +297,20 @@ clean:
 
 swagger:
 	@echo "Generating Swagger documentation..."
-	@$$HOME/go/bin/swag init -g cmd/app/main.go --output ./docs/swagger
+	@$(SWAG) init -g cmd/app/main.go --output ./docs/swagger
 	@echo "Swagger docs updated: docs/swagger/"
+
+generate:
+	@echo "Generating sqlc code..."
+	@$(SQLC) generate
+	@echo "✓ sqlc code generated"
+	@echo "Generating progression keys from config..."
+	@go run ./cmd/gen-progression-keys -config configs/progression_tree.json -output internal/progression/keys.go
+	@echo "✓ progression keys generated"
+	@echo "Generating mocks..."
+	@$(MOCKERY)
+	@echo "✓ mocks generated"
+	@go mod tidy
 
 # Docker commands
 docker-up:
@@ -199,7 +324,7 @@ docker-down:
 docker-build:
 	@echo "Rebuilding Docker images (no cache)..."
 	@VERSION=$$(git describe --tags --always --dirty 2>/dev/null || echo "dev"); \
-	BUILD_TIME=$$(date -u '+%Y-%m-%d_%H:%M:%S'); \
+	BUILD_TIME=$$(date -u '+%Y-%m-%d_%H:%M'); \
 	GIT_COMMIT=$$(git rev-parse --short HEAD 2>/dev/null || echo "unknown"); \
 	echo "Building with VERSION=$$VERSION BUILD_TIME=$$BUILD_TIME GIT_COMMIT=$$GIT_COMMIT"; \
 	VERSION=$$VERSION BUILD_TIME=$$BUILD_TIME GIT_COMMIT=$$GIT_COMMIT docker compose build --no-cache
@@ -208,7 +333,7 @@ docker-build:
 docker-build-fast:
 	@echo "Building Docker images (with cache, faster)..."
 	@VERSION=$$(git describe --tags --always --dirty 2>/dev/null || echo "dev"); \
-	BUILD_TIME=$$(date -u '+%Y-%m-%d_%H:%M:%S'); \
+	BUILD_TIME=$$(date -u '+%Y-%m-%d_%H:%M'); \
 	GIT_COMMIT=$$(git rev-parse --short HEAD 2>/dev/null || echo "unknown"); \
 	VERSION=$$VERSION BUILD_TIME=$$BUILD_TIME GIT_COMMIT=$$GIT_COMMIT DOCKER_BUILDKIT=1 docker compose build
 	@echo "Docker images built successfully"
@@ -308,6 +433,43 @@ health-check-staging:
 
 health-check-prod:
 	@./scripts/health-check.sh production
+
+# Staging reset and validation targets
+reset-staging:
+	@echo "🔄 Resetting staging environment..."
+	@echo "Stopping staging containers..."
+	@docker compose -f docker-compose.staging.yml down -v
+	@echo "Starting fresh staging environment..."
+	@docker compose -f docker-compose.staging.yml up -d
+	@echo "Waiting for services to be ready..."
+	@sleep 15
+	@$(MAKE) health-check-staging
+	@echo "✅ Staging reset complete"
+
+seed-staging:
+	@echo "🌱 Seeding staging database..."
+	@docker compose -f docker-compose.staging.yml exec -T db psql -U $(DB_USER) -d $(DB_NAME) < scripts/setup_test_user.sql || echo "Note: Seed script may not exist"
+	@echo "✅ Staging seeded (if seed scripts exist)"
+
+validate-staging:
+	@echo "🔍 Validating staging environment..."
+	@STAGING_URL=http://localhost:8081 $(MAKE) test-staging
+	@echo "✅ Staging validation complete"
+
+# Audit & Security targets
+test-migrations:
+	@chmod +x scripts/test_migrations.sh
+	@./scripts/test_migrations.sh
+
+test-security:
+	@chmod +x scripts/test_security.sh
+	@./scripts/test_security.sh
+
+check-deps:
+	@go run ./cmd/devtool check-deps
+
+check-db:
+	@go run ./cmd/devtool check-db
 
 
 # Mock generation

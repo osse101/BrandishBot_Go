@@ -226,6 +226,43 @@ Complete checklist for implementing client wrappers (C#, TypeScript, Python, etc
 
 ---
 
+## 13. Real-time Events
+
+### SSE (Server-Sent Events) - For Go/Discord Bot
+
+| Endpoint | Method | Status | Description |
+|----------|--------|--------|-------------|
+| `/api/v1/events` | GET (SSE) | ✅ | Server-Sent Events stream |
+
+**Event Types**: `job.level_up`, `progression.voting_started`, `progression.cycle_completed`
+
+**Discord Bot**: Set `DISCORD_NOTIFICATION_CHANNEL_ID` environment variable to enable notifications.
+
+### Streamer.bot WebSocket Integration - For Streamer.bot/Twitch
+
+The Go API server connects as a WebSocket CLIENT to Streamer.bot's WebSocket server and sends `DoAction` commands when events occur. No C# client code needed - just configure Streamer.bot actions.
+
+**Configuration** (API Server):
+```bash
+STREAMERBOT_ENABLED=true
+STREAMERBOT_WEBHOOK_URL=ws://127.0.0.1:8090/streamerbot
+```
+
+**Required Streamer.bot Actions** (create these in Streamer.bot):
+
+| Action Name | Triggered When | Available Arguments |
+|-------------|----------------|---------------------|
+| `BrandishBot_JobLevelUp` | User levels up a job | `%user_id%`, `%job_key%`, `%old_level%`, `%new_level%`, `%source%` |
+| `BrandishBot_VotingStarted` | New voting session starts | `%session_id%`, `%options_count%`, `%option_1%`, `%option_2%`, etc. |
+| `BrandishBot_CycleCompleted` | Feature unlocked | `%unlocked_node_key%`, `%unlocked_node_name%`, `%new_session_id%`, `%options_count%` |
+
+**Example Streamer.bot Action** (for job level up):
+1. Create action named `BrandishBot_JobLevelUp`
+2. Add sub-action: Twitch > Send Message to Channel
+3. Message: `Congrats! Someone leveled up their %job_key% job to level %new_level%!`
+
+---
+
 ## Implementation Checklist by Client
 
 ### C# Client (`BrandishBotClient.cs`)
@@ -448,7 +485,10 @@ var voteResult = await client.VoteForNode(
 | Message Handler | 1 | 1 (100%) | 0 |
 | Admin Utils | 2 | 2 (100%) | 0 |
 | Health Checks | 2 | 2 (100%) | 0 |
+| Real-time Events | 1 | N/A | N/A |
 | **TOTAL** | **52** | **51 (98%)** | **1** |
+
+> **Note**: Real-time events use SSE for Go/Discord and Streamer.bot WebSocket (server-initiated) for Twitch integration. No C# client code needed for Streamer.bot - the Go server pushes events directly.
 
 ### Action Items
 1. ⚠️ Update `UpgradeItem` to use string item name instead of int recipe_id

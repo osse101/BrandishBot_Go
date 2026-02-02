@@ -36,16 +36,13 @@ func InfoCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	}
 
 	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-		}); err != nil {
-			slog.Error("Failed to send deferred response", "error", err)
+		if !deferResponse(s, i) {
 			return
 		}
 
 		// Get feature name from options, default to "overview"
 		featureName := "overview"
-		options := i.ApplicationCommandData().Options
+		options := getOptions(i)
 		if len(options) > 0 {
 			featureName = options[0].StringValue()
 		}
@@ -66,11 +63,7 @@ func InfoCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		// Create appropriate embed based on feature
 		embed := createInfoEmbed(featureName, infoText)
 
-		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Embeds: &[]*discordgo.MessageEmbed{embed},
-		}); err != nil {
-			slog.Error("Failed to send info", "error", err)
-		}
+		sendEmbed(s, i, embed)
 	}
 
 	return cmd, handler
@@ -83,7 +76,7 @@ var InfoDir = "configs/discord/info"
 func loadInfoText(featureName string) (string, error) {
 	// Sanitize feature name to prevent directory traversal
 	featureName = strings.ToLower(strings.TrimSpace(featureName))
-	
+
 	// Prevent directory traversal
 	if strings.Contains(featureName, "..") || strings.Contains(featureName, "/") || strings.Contains(featureName, "\\") {
 		return "", fmt.Errorf("invalid feature name: %s", featureName)
@@ -100,7 +93,7 @@ func loadInfoText(featureName string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to resolve absolute info directory: %w", err)
 	}
-	
+
 	absFilename, err := filepath.Abs(filename)
 	if err != nil {
 		return "", fmt.Errorf("failed to resolve absolute filename: %w", err)
@@ -115,7 +108,7 @@ func loadInfoText(featureName string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to read info file: %w", err)
 	}
-	
+
 	return string(data), nil
 }
 

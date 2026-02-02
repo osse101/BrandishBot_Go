@@ -1,7 +1,12 @@
 {
-  "lootbox_tier0": {
-    "themes": {
-      "halloween": ["Spooky box"]
+  "version": "1.0",
+  "schema": "item-aliases",
+  "last_updated": "2026-01-05",
+  "aliases": {
+    "lootbox_tier0": {
+      "themes": {
+        "halloween": ["Spooky box"]
+      }
     }
   }
 }

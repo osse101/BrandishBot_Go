@@ -3,27 +3,33 @@ package server
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	httpSwagger "github.com/swaggo/http-swagger"
+
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
 	"github.com/osse101/BrandishBot_Go/internal/database"
 	"github.com/osse101/BrandishBot_Go/internal/economy"
 	"github.com/osse101/BrandishBot_Go/internal/event"
+	"github.com/osse101/BrandishBot_Go/internal/features"
 	"github.com/osse101/BrandishBot_Go/internal/gamble"
 	"github.com/osse101/BrandishBot_Go/internal/handler"
+	"github.com/osse101/BrandishBot_Go/internal/harvest"
 	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/linking"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/metrics"
 	"github.com/osse101/BrandishBot_Go/internal/naming"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
+	"github.com/osse101/BrandishBot_Go/internal/repository"
+	"github.com/osse101/BrandishBot_Go/internal/sse"
 	"github.com/osse101/BrandishBot_Go/internal/stats"
 	"github.com/osse101/BrandishBot_Go/internal/user"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 type Server struct {
@@ -37,11 +43,13 @@ type Server struct {
 	gambleService      gamble.Service
 	jobService         job.Service
 	linkingService     linking.Service
+	harvestService     harvest.Service
 	namingResolver     naming.Resolver
+	sseHub             *sse.Hub
 }
 
 // NewServer creates a new Server instance
-func NewServer(port int, apiKey string, trustedProxies []string, dbPool database.Pool, userService user.Service, economyService economy.Service, craftingService crafting.Service, statsService stats.Service, progressionService progression.Service, gambleService gamble.Service, jobService job.Service, linkingService linking.Service, namingResolver naming.Resolver, eventBus event.Bus) *Server {
+func NewServer(port int, apiKey string, trustedProxies []string, dbPool database.Pool, userService user.Service, economyService economy.Service, craftingService crafting.Service, statsService stats.Service, progressionService progression.Service, gambleService gamble.Service, jobService job.Service, linkingService linking.Service, harvestService harvest.Service, namingResolver naming.Resolver, eventBus event.Bus, sseHub *sse.Hub, userRepo repository.User) *Server {
 	r := chi.NewRouter()
 
 	// Middleware stack
@@ -52,108 +60,158 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 	r.Use(AuthMiddleware(apiKey, trustedProxies, detector))
 	r.Use(SecurityLoggingMiddleware(trustedProxies, detector))
 	r.Use(RequestSizeLimitMiddleware(1 << 20)) // 1MB limit
-	r.Use(metrics.MetricsMiddleware)
+	r.Use(metrics.Middleware)
 	r.Use(loggingMiddleware)
 
-	// Health check routes
+	// Health check routes (unversioned)
 	r.Get("/healthz", handler.HandleHealthz())
 	r.Get("/readyz", handler.HandleReadyz(dbPool))
-	
+
 	// Version endpoint (public, for deployment verification)
 	r.Get("/version", handler.HandleVersion())
 
 	// Metrics endpoint (public, for Prometheus scraping)
 	r.Handle("/metrics", promhttp.Handler())
 
-	// User routes
-	r.Route("/user", func(r chi.Router) {
-		r.Post("/register", handler.HandleRegisterUser(userService))
-		r.Get("/timeout", handler.HandleGetTimeout(userService))
-		r.Get("/inventory", handler.HandleGetInventory(userService, progressionService))
-		r.Post("/search", handler.HandleSearch(userService, progressionService, eventBus))
+	// API v1 routes
+	r.Route("/api/v1", func(r chi.Router) {
+		// Info endpoint
+		featureLoader := features.NewLoader("configs/info")
+		r.Get("/info", handler.HandleGetInfo(featureLoader))
 
-		r.Route("/item", func(r chi.Router) {
-			r.Post("/add", handler.HandleAddItem(userService))
-			r.Post("/remove", handler.HandleRemoveItem(userService))
-			r.Post("/give", handler.HandleGiveItem(userService))
-			r.Post("/sell", handler.HandleSellItem(economyService, progressionService, eventBus))
-			r.Post("/buy", handler.HandleBuyItem(economyService, progressionService, eventBus))
-			r.Post("/use", handler.HandleUseItem(userService, eventBus))
-			r.Post("/upgrade", handler.HandleUpgradeItem(craftingService, progressionService, eventBus))
-			r.Post("/disassemble", handler.HandleDisassembleItem(craftingService, progressionService, eventBus))
+		// User routes
+		r.Route("/user", func(r chi.Router) {
+			r.Post("/register", handler.HandleRegisterUser(userService))
+			r.Get("/timeout", handler.HandleGetTimeout(userService))
+			r.Put("/timeout", handler.HandleSetTimeout(userService))
+			r.Get("/inventory", handler.HandleGetInventory(userService, progressionService))
+			r.Get("/inventory-by-username", handler.HandleGetInventoryByUsername(userService))
+			r.Post("/search", handler.HandleSearch(userService, progressionService, eventBus))
+
+			r.Route("/item", func(r chi.Router) {
+				r.Post("/add", handler.HandleAddItemByUsername(userService))
+				r.Post("/remove", handler.HandleRemoveItemByUsername(userService))
+				r.Post("/give", handler.HandleGiveItem(userService))
+				r.Post("/sell", handler.HandleSellItem(economyService, progressionService, eventBus))
+				r.Post("/buy", handler.HandleBuyItem(economyService, progressionService, eventBus))
+				r.Post("/use", handler.HandleUseItem(userService, progressionService, eventBus))
+				r.Post("/upgrade", handler.HandleUpgradeItem(craftingService, progressionService, eventBus))
+				r.Post("/disassemble", handler.HandleDisassembleItem(craftingService, progressionService, eventBus))
+			})
 		})
-	})
 
-	r.Post("/message/handle", handler.HandleMessageHandler(userService, progressionService, eventBus))
-	r.Post("/test", handler.HandleTest(userService))
-	r.Get("/recipes", handler.HandleGetRecipes(craftingService))
+		r.Post("/message/handle", handler.HandleMessageHandler(userService, progressionService, eventBus))
+		r.Post("/test", handler.HandleTest(userService))
 
-	r.Route("/prices", func(r chi.Router) {
-		r.Get("/", handler.HandleGetPrices(economyService))
-		r.Get("/buy", handler.HandleGetBuyPrices(economyService))
-	})
+		// Crafting routes
+		craftingHandler := handler.NewCraftingHandler(craftingService, userRepo)
+		r.Get("/recipes", craftingHandler.HandleGetRecipes())
 
-	// Gamble routes
-	gambleHandler := handler.NewGambleHandler(gambleService, progressionService)
-	r.Route("/gamble", func(r chi.Router) {
-		r.Post("/start", gambleHandler.HandleStartGamble)
-		r.Post("/join", gambleHandler.HandleJoinGamble)
-		r.Get("/get", gambleHandler.HandleGetGamble)
-	})
+		r.Route("/prices", func(r chi.Router) {
+			r.Get("/", handler.HandleGetPrices(economyService))
+			r.Get("/buy", handler.HandleGetBuyPrices(economyService))
+		})
 
-	// Job routes
-	jobHandler := handler.NewJobHandler(jobService)
-	r.Get("/jobs", jobHandler.HandleGetAllJobs) // Handle /jobs exactly
-	r.Route("/jobs", func(r chi.Router) {
-		r.Get("/", jobHandler.HandleGetAllJobs) // Handle /jobs/ if needed, or remove
-		r.Get("/user", jobHandler.HandleGetUserJobs)
-		r.Post("/award-xp", jobHandler.HandleAwardXP)
-		r.Get("/bonus", jobHandler.HandleGetJobBonus)
-	})
+		// Gamble routes
+		gambleHandler := handler.NewGambleHandler(gambleService, progressionService, eventBus)
+		r.Route("/gamble", func(r chi.Router) {
+			r.Post("/start", gambleHandler.HandleStartGamble)
+			r.Post("/join", gambleHandler.HandleJoinGamble)
+			r.Get("/get", gambleHandler.HandleGetGamble)
+			r.Get("/active", gambleHandler.HandleGetActiveGamble)
+		})
 
-	// Stats routes
-	r.Route("/stats", func(r chi.Router) {
-		r.Post("/event", handler.HandleRecordEvent(statsService))
-		r.Get("/user", handler.HandleGetUserStats(statsService))
-		r.Get("/system", handler.HandleGetSystemStats(statsService))
-		r.Get("/leaderboard", handler.HandleGetLeaderboard(statsService))
-	})
+		// Harvest routes
+		harvestHandler := handler.NewHarvestHandler(harvestService)
+		r.Post("/harvest", harvestHandler.Harvest)
 
-	// Progression routes
-	progressionHandlers := handler.NewProgressionHandlers(progressionService)
-	r.Route("/progression", func(r chi.Router) {
-		r.Get("/tree", progressionHandlers.HandleGetTree())
-		r.Get("/available", progressionHandlers.HandleGetAvailable())
-		r.Post("/vote", progressionHandlers.HandleVote())
-		r.Get("/status", progressionHandlers.HandleGetStatus())
-		r.Get("/engagement", progressionHandlers.HandleGetEngagement())
-		r.Get("/leaderboard", progressionHandlers.HandleGetContributionLeaderboard())
-		r.Get("/session", progressionHandlers.HandleGetVotingSession())
-		r.Get("/unlock-progress", progressionHandlers.HandleGetUnlockProgress())
+		// Job routes
+		jobHandler := handler.NewJobHandler(jobService, userRepo)
+		r.Route("/jobs", func(r chi.Router) {
+			r.Get("/user", jobHandler.HandleGetUserJobs)
+			r.Post("/award-xp", jobHandler.HandleAwardXP)
+		})
 
+		// Stats routes
+		statsHandler := handler.NewStatsHandler(statsService, userRepo)
+		r.Route("/stats", func(r chi.Router) {
+			r.Post("/event", handler.HandleRecordEvent(statsService))
+			r.Get("/user", statsHandler.HandleGetUserStats())
+			r.Get("/system", handler.HandleGetSystemStats(statsService))
+			r.Get("/leaderboard", handler.HandleGetLeaderboard(statsService))
+		})
+
+		// Progression routes
+		progressionHandlers := handler.NewProgressionHandlers(progressionService)
+		r.Route("/progression", func(r chi.Router) {
+			r.Get("/tree", progressionHandlers.HandleGetTree())
+			r.Get("/available", progressionHandlers.HandleGetAvailable())
+			r.Post("/vote", progressionHandlers.HandleVote())
+			r.Get("/status", progressionHandlers.HandleGetStatus())
+			r.Get("/engagement", progressionHandlers.HandleGetEngagement())
+			r.Get("/engagement-by-username", progressionHandlers.HandleGetEngagementByUsername())
+			r.Get("/leaderboard", progressionHandlers.HandleGetContributionLeaderboard())
+			r.Get("/session", progressionHandlers.HandleGetVotingSession())
+			r.Get("/unlock-progress", progressionHandlers.HandleGetUnlockProgress())
+
+			r.Route("/admin", func(r chi.Router) {
+				r.Post("/unlock", progressionHandlers.HandleAdminUnlock())
+				r.Post("/unlock-all", progressionHandlers.HandleAdminUnlockAll())
+				r.Post("/relock", progressionHandlers.HandleAdminRelock())
+				r.Post("/instant-unlock", progressionHandlers.HandleAdminInstantUnlock())
+				r.Post("/start-voting", progressionHandlers.HandleAdminStartVoting())
+				r.Post("/end-voting", progressionHandlers.HandleAdminEndVoting())            // Freezes vote
+				r.Post("/force-end-voting", progressionHandlers.HandleAdminForceEndVoting()) // Ends vote immediately
+				r.Post("/reset", progressionHandlers.HandleAdminReset())
+				r.Post("/contribution", progressionHandlers.HandleAdminAddContribution())
+			})
+		})
+
+		// Linking routes
+		linkingHandlers := handler.NewLinkingHandlers(linkingService)
+		r.Route("/link", func(r chi.Router) {
+			r.Post("/initiate", linkingHandlers.HandleInitiate())
+			r.Post("/claim", linkingHandlers.HandleClaim())
+			r.Post("/confirm", linkingHandlers.HandleConfirm())
+			r.Post("/unlink", linkingHandlers.HandleUnlink())
+			r.Get("/status", linkingHandlers.HandleStatus())
+		})
+
+		// SSE events endpoint
+		if sseHub != nil {
+			r.Get("/events", sse.Handler(sseHub))
+		}
+
+		// Admin routes
+		adminJobHandler := handler.NewAdminJobHandler(jobService, userService)
+		adminDailyResetHandler := handler.NewAdminDailyResetHandler(jobService)
+		adminCacheHandler := handler.NewAdminCacheHandler(userService)
 		r.Route("/admin", func(r chi.Router) {
-			r.Post("/unlock", progressionHandlers.HandleAdminUnlock())
-			r.Post("/relock", progressionHandlers.HandleAdminRelock())
-			r.Post("/instant-unlock", progressionHandlers.HandleAdminInstantUnlock())
-			r.Post("/start-voting", progressionHandlers.HandleAdminStartVoting())
-			r.Post("/end-voting", progressionHandlers.HandleAdminEndVoting())
-			r.Post("/reset", progressionHandlers.HandleAdminReset())
-			r.Post("/contribution", progressionHandlers.HandleAdminAddContribution())
+			r.Post("/reload-aliases", handler.HandleReloadAliases(namingResolver))
+
+			// Admin timeout routes
+			r.Route("/timeout", func(r chi.Router) {
+				r.Post("/clear", handler.HandleAdminClearTimeout(userService))
+			})
+
+			// Admin job routes
+			r.Route("/jobs", func(r chi.Router) {
+				r.Post("/award-xp", adminJobHandler.HandleAdminAwardXP)
+				r.Post("/reset-daily-xp", adminDailyResetHandler.HandleManualReset)
+				r.Get("/reset-status", adminDailyResetHandler.HandleGetResetStatus)
+			})
+
+			// Admin progression routes
+			r.Route("/progression", func(r chi.Router) {
+				r.Post("/reload-weights", progressionHandlers.HandleAdminReloadWeights())
+			})
+
+			// Admin cache routes
+			r.Route("/cache", func(r chi.Router) {
+				r.Get("/stats", adminCacheHandler.HandleGetCacheStats)
+			})
 		})
 	})
-
-	// Linking routes
-	linkingHandlers := handler.NewLinkingHandlers(linkingService)
-	r.Route("/link", func(r chi.Router) {
-		r.Post("/initiate", linkingHandlers.HandleInitiate())
-		r.Post("/claim", linkingHandlers.HandleClaim())
-		r.Post("/confirm", linkingHandlers.HandleConfirm())
-		r.Post("/unlink", linkingHandlers.HandleUnlink())
-		r.Get("/status", linkingHandlers.HandleStatus())
-	})
-
-	// Admin routes
-	r.Post("/admin/reload-aliases", handler.HandleReloadAliases(namingResolver))
 
 	// Swagger documentation
 	r.Get("/swagger/*", httpSwagger.WrapHandler)
@@ -173,7 +231,9 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 		gambleService:      gambleService,
 		jobService:         jobService,
 		linkingService:     linkingService,
+		harvestService:     harvestService,
 		namingResolver:     namingResolver,
+		sseHub:             sseHub,
 	}
 }
 
@@ -212,11 +272,11 @@ func loggingMiddleware(next http.Handler) http.Handler {
 
 		// Skip logging for health check endpoints and metrics
 		// Use HasPrefix to catch potential variations (e.g. /healthz/)
-		if strings.HasPrefix(r.URL.Path, "/healthz") || 
-		   strings.HasPrefix(r.URL.Path, "/readyz") || 
-		   strings.HasPrefix(r.URL.Path, "/metrics") {
-			next.ServeHTTP(w, r)
-			return
+		for _, path := range PublicPaths {
+			if strings.HasPrefix(r.URL.Path, path) {
+				next.ServeHTTP(w, r)
+				return
+			}
 		}
 
 		// Generate unique request ID
@@ -230,7 +290,7 @@ func loggingMiddleware(next http.Handler) http.Handler {
 		log := logger.FromContext(ctx)
 
 		// Log request start with details
-		log.Info("Request started",
+		log.Info(LogMsgRequestStarted,
 			"method", r.Method,
 			"path", r.URL.Path,
 			"remote_addr", r.RemoteAddr,
@@ -240,13 +300,13 @@ func loggingMiddleware(next http.Handler) http.Handler {
 		// Sanitize headers for logging
 		sanitizedHeaders := make(http.Header)
 		for k, v := range r.Header {
-			if strings.EqualFold(k, "X-API-Key") || strings.EqualFold(k, "Authorization") {
-				sanitizedHeaders[k] = []string{"[REDACTED]"}
+			if strings.EqualFold(k, HeaderAPIKey) || strings.EqualFold(k, HeaderAuthorization) {
+				sanitizedHeaders[k] = []string{RedactedValue}
 			} else {
 				sanitizedHeaders[k] = v
 			}
 		}
-		log.Debug("Request headers", "headers", sanitizedHeaders)
+		log.Debug(LogMsgRequestHeaders, "headers", sanitizedHeaders)
 
 		// Wrap response writer to capture status code
 		rw := newResponseWriter(w)
@@ -256,7 +316,7 @@ func loggingMiddleware(next http.Handler) http.Handler {
 
 		// Log request completion with metrics
 		duration := time.Since(start)
-		log.Info("Request completed",
+		log.Info(LogMsgRequestCompleted,
 			"method", r.Method,
 			"path", r.URL.Path,
 			"status", rw.statusCode,
@@ -267,7 +327,7 @@ func loggingMiddleware(next http.Handler) http.Handler {
 
 // Start starts the server
 func (s *Server) Start() error {
-	fmt.Printf("Server starting on %s\n", s.httpServer.Addr)
+	slog.Default().Info(LogMsgServerStarting, "addr", s.httpServer.Addr)
 	return s.httpServer.ListenAndServe()
 }
 

@@ -11,9 +11,6 @@ WORKDIR /app
 # Install build dependencies (git needed for some Go modules)
 RUN apk add --no-cache git
 
-# Install goose for migrations
-RUN go install github.com/pressly/goose/v3/cmd/goose@v3.11.0
-
 # Copy go mod and sum files first for better layer caching
 COPY go.mod go.sum ./
 
@@ -25,11 +22,12 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 # Copy source code
 COPY . .
 
-# Build the application with optimizations and version information
+# Build goose and the application with optimizations and version information
 # -ldflags="-w -s" strips debug info and symbol table
 # Embed version, build time, and git commit in the binary
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
+    go build -o /go/bin/goose github.com/pressly/goose/v3/cmd/goose && \
     CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -ldflags="-w -s \
       -X github.com/osse101/BrandishBot_Go/internal/handler.Version=${VERSION} \
@@ -59,7 +57,8 @@ WORKDIR /app
 # ca-certificates: for HTTPS connections
 # tzdata: for timezone support
 # postgresql-client: for pg_isready in entrypoint
-RUN apk add --no-cache ca-certificates tzdata postgresql-client && \
+# wget: for healthcheck
+RUN apk add --no-cache ca-certificates tzdata postgresql-client wget && \
     # Create non-root user for security
     addgroup -g 1000 appuser && \
     adduser -D -u 1000 -G appuser appuser && \
@@ -84,8 +83,9 @@ USER appuser
 EXPOSE 8080
 
 # Add healthcheck
+# Use --server-response to check HTTP status code (wget --spider treats JSON as "broken link")
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/healthz || exit 1
+    CMD wget --quiet --tries=1 --server-response http://localhost:8080/healthz 2>&1 | grep -q "HTTP/1.1 200" || exit 1
 
 # Command to run
 ENTRYPOINT ["./docker-entrypoint.sh"]

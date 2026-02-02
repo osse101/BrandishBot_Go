@@ -28,7 +28,33 @@ func (m *ReliabilityMockRepository) GetActiveSession(ctx context.Context) (*doma
 	return args.Get(0).(*domain.ProgressionVotingSession), args.Error(1)
 }
 
-func (m *ReliabilityMockRepository) EndVotingSession(ctx context.Context, sessionID int, winningOptionID int) error {
+func (m *ReliabilityMockRepository) GetMostRecentSession(ctx context.Context) (*domain.ProgressionVotingSession, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.ProgressionVotingSession), args.Error(1)
+}
+
+func (m *ReliabilityMockRepository) GetActiveOrFrozenSession(ctx context.Context) (*domain.ProgressionVotingSession, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.ProgressionVotingSession), args.Error(1)
+}
+
+func (m *ReliabilityMockRepository) FreezeVotingSession(ctx context.Context, sessionID int) error {
+	args := m.Called(ctx, sessionID)
+	return args.Error(0)
+}
+
+func (m *ReliabilityMockRepository) ResumeVotingSession(ctx context.Context, sessionID int) error {
+	args := m.Called(ctx, sessionID)
+	return args.Error(0)
+}
+
+func (m *ReliabilityMockRepository) EndVotingSession(ctx context.Context, sessionID int, winningOptionID *int) error {
 	args := m.Called(ctx, sessionID, winningOptionID)
 	return args.Error(0)
 }
@@ -89,7 +115,9 @@ func (m *ReliabilityMockRepository) AddVotingOption(ctx context.Context, session
 }
 
 // Other interface methods to satisfy interface... panic if called unexpectedly
-func (m *ReliabilityMockRepository) GetNodeByKey(ctx context.Context, nodeKey string) (*domain.ProgressionNode, error) { panic("not implemented") }
+func (m *ReliabilityMockRepository) GetNodeByKey(ctx context.Context, nodeKey string) (*domain.ProgressionNode, error) {
+	panic("not implemented")
+}
 func (m *ReliabilityMockRepository) GetAllNodes(ctx context.Context) ([]*domain.ProgressionNode, error) {
 	args := m.Called(ctx)
 	if args.Get(0) == nil {
@@ -98,28 +126,102 @@ func (m *ReliabilityMockRepository) GetAllNodes(ctx context.Context) ([]*domain.
 	return args.Get(0).([]*domain.ProgressionNode), args.Error(1)
 }
 
-func (m *ReliabilityMockRepository) GetNodeByID(ctx context.Context, id int) (*domain.ProgressionNode, error) { panic("not implemented") }
-func (m *ReliabilityMockRepository) GetChildNodes(ctx context.Context, parentID int) ([]*domain.ProgressionNode, error) { panic("not implemented") }
-func (m *ReliabilityMockRepository) GetAllUnlocks(ctx context.Context) ([]*domain.ProgressionUnlock, error) { panic("not implemented") }
-func (m *ReliabilityMockRepository) IsNodeUnlocked(ctx context.Context, nodeKey string, level int) (bool, error) { panic("not implemented") }
-func (m *ReliabilityMockRepository) RelockNode(ctx context.Context, nodeID int, level int) error { panic("not implemented") }
-func (m *ReliabilityMockRepository) GetSessionByID(ctx context.Context, sessionID int) (*domain.ProgressionVotingSession, error) { panic("not implemented") }
-func (m *ReliabilityMockRepository) IncrementOptionVote(ctx context.Context, optionID int) error { panic("not implemented") }
-func (m *ReliabilityMockRepository) GetSessionVoters(ctx context.Context, sessionID int) ([]string, error) { panic("not implemented") }
-func (m *ReliabilityMockRepository) HasUserVotedInSession(ctx context.Context, userID string, sessionID int) (bool, error) { panic("not implemented") }
-func (m *ReliabilityMockRepository) RecordUserSessionVote(ctx context.Context, userID string, sessionID, optionID, nodeID int) error { panic("not implemented") }
-func (m *ReliabilityMockRepository) CreateUnlockProgress(ctx context.Context) (int, error) { panic("not implemented") }
-func (m *ReliabilityMockRepository) AddContribution(ctx context.Context, progressID int, amount int) error { panic("not implemented") }
-func (m *ReliabilityMockRepository) UnlockUserProgression(ctx context.Context, userID string, progressionType string, key string, metadata map[string]interface{}) error { panic("not implemented") }
-func (m *ReliabilityMockRepository) IsUserProgressionUnlocked(ctx context.Context, userID string, progressionType string, key string) (bool, error) { panic("not implemented") }
-func (m *ReliabilityMockRepository) GetUserProgressions(ctx context.Context, userID string, progressionType string) ([]*domain.UserProgression, error) { panic("not implemented") }
-func (m *ReliabilityMockRepository) RecordEngagement(ctx context.Context, metric *domain.EngagementMetric) error { panic("not implemented") }
-func (m *ReliabilityMockRepository) GetUserEngagement(ctx context.Context, userID string) (*domain.ContributionBreakdown, error) { panic("not implemented") }
-func (m *ReliabilityMockRepository) GetEngagementWeights(ctx context.Context) (map[string]float64, error) { panic("not implemented") }
-func (m *ReliabilityMockRepository) GetContributionLeaderboard(ctx context.Context, limit int) ([]domain.ContributionLeaderboardEntry, error) { panic("not implemented") }
-func (m *ReliabilityMockRepository) ResetTree(ctx context.Context, resetBy string, reason string, preserveUserData bool) error { panic("not implemented") }
-func (m *ReliabilityMockRepository) RecordReset(ctx context.Context, reset *domain.ProgressionReset) error { panic("not implemented") }
-func (m *ReliabilityMockRepository) BeginTx(ctx context.Context) (repository.Tx, error) { panic("not implemented") }
+func (m *ReliabilityMockRepository) GetNodeByID(ctx context.Context, id int) (*domain.ProgressionNode, error) {
+	panic("not implemented")
+}
+func (m *ReliabilityMockRepository) GetDependents(ctx context.Context, nodeID int) ([]*domain.ProgressionNode, error) {
+	panic("not implemented")
+}
+func (m *ReliabilityMockRepository) GetPrerequisites(ctx context.Context, nodeID int) ([]*domain.ProgressionNode, error) {
+	panic("not implemented")
+}
+func (m *ReliabilityMockRepository) GetAllUnlocks(ctx context.Context) ([]*domain.ProgressionUnlock, error) {
+	panic("not implemented")
+}
+func (m *ReliabilityMockRepository) IsNodeUnlocked(ctx context.Context, nodeKey string, level int) (bool, error) {
+	panic("not implemented")
+}
+func (m *ReliabilityMockRepository) RelockNode(ctx context.Context, nodeID int, level int) error {
+	panic("not implemented")
+}
+func (m *ReliabilityMockRepository) GetSessionByID(ctx context.Context, sessionID int) (*domain.ProgressionVotingSession, error) {
+	panic("not implemented")
+}
+func (m *ReliabilityMockRepository) IncrementOptionVote(ctx context.Context, optionID int) error {
+	panic("not implemented")
+}
+func (m *ReliabilityMockRepository) GetSessionVoters(ctx context.Context, sessionID int) ([]string, error) {
+	panic("not implemented")
+}
+func (m *ReliabilityMockRepository) HasUserVotedInSession(ctx context.Context, userID string, sessionID int) (bool, error) {
+	panic("not implemented")
+}
+func (m *ReliabilityMockRepository) RecordUserSessionVote(ctx context.Context, userID string, sessionID, optionID, nodeID int) error {
+	panic("not implemented")
+}
+func (m *ReliabilityMockRepository) CheckAndRecordVoteAtomic(ctx context.Context, userID string, sessionID, optionID, nodeID int) error {
+	panic("not implemented")
+}
+func (m *ReliabilityMockRepository) CreateUnlockProgress(ctx context.Context) (int, error) {
+	panic("not implemented")
+}
+func (m *ReliabilityMockRepository) AddContribution(ctx context.Context, progressID int, amount int) error {
+	panic("not implemented")
+}
+func (m *ReliabilityMockRepository) UnlockUserProgression(ctx context.Context, userID string, progressionType string, key string, metadata map[string]interface{}) error {
+	panic("not implemented")
+}
+func (m *ReliabilityMockRepository) IsUserProgressionUnlocked(ctx context.Context, userID string, progressionType string, key string) (bool, error) {
+	panic("not implemented")
+}
+func (m *ReliabilityMockRepository) GetUserProgressions(ctx context.Context, userID string, progressionType string) ([]*domain.UserProgression, error) {
+	panic("not implemented")
+}
+func (m *ReliabilityMockRepository) RecordEngagement(ctx context.Context, metric *domain.EngagementMetric) error {
+	panic("not implemented")
+}
+func (m *ReliabilityMockRepository) GetUserEngagement(ctx context.Context, userID string) (*domain.ContributionBreakdown, error) {
+	panic("not implemented")
+}
+func (m *ReliabilityMockRepository) GetEngagementWeights(ctx context.Context) (map[string]float64, error) {
+	panic("not implemented")
+}
+func (m *ReliabilityMockRepository) GetContributionLeaderboard(ctx context.Context, limit int) ([]domain.ContributionLeaderboardEntry, error) {
+	panic("not implemented")
+}
+func (m *ReliabilityMockRepository) ResetTree(ctx context.Context, resetBy string, reason string, preserveUserData bool) error {
+	panic("not implemented")
+}
+func (m *ReliabilityMockRepository) RecordReset(ctx context.Context, reset *domain.ProgressionReset) error {
+	panic("not implemented")
+}
+func (m *ReliabilityMockRepository) BeginTx(ctx context.Context) (repository.Tx, error) {
+	panic("not implemented")
+}
+
+func (m *ReliabilityMockRepository) GetDailyEngagementTotals(ctx context.Context, since time.Time) (map[time.Time]int, error) {
+	args := m.Called(ctx, since)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(map[time.Time]int), args.Error(1)
+}
+
+func (m *ReliabilityMockRepository) CountUnlockedNodesBelowTier(ctx context.Context, tier int) (int, error) {
+	panic("not implemented")
+}
+
+func (m *ReliabilityMockRepository) CountTotalUnlockedNodes(ctx context.Context) (int, error) {
+	panic("not implemented")
+}
+
+func (m *ReliabilityMockRepository) GetNodeDynamicPrerequisites(ctx context.Context, nodeID int) ([]byte, error) {
+	panic("not implemented")
+}
+
+func (m *ReliabilityMockRepository) UpdateNodeDynamicPrerequisites(ctx context.Context, nodeID int, jsonData []byte) error {
+	panic("not implemented")
+}
 
 // ReliabilityMockBus is a minimal mock for event bus
 type ReliabilityMockBus struct {
@@ -143,7 +245,11 @@ func (m *ReliabilityMockBus) Close() error {
 func TestForceInstantUnlock_Reliability(t *testing.T) {
 	mockRepo := new(ReliabilityMockRepository)
 	mockBus := new(ReliabilityMockBus)
-	service := NewService(mockRepo, mockBus)
+
+	// Allow service to subscribe to events
+	mockBus.On("Subscribe", mock.Anything, mock.Anything).Return()
+
+	service := NewService(mockRepo, NewMockUser(), mockBus, nil, nil)
 	ctx := context.Background()
 
 	// Setup active session
@@ -156,9 +262,11 @@ func TestForceInstantUnlock_Reliability(t *testing.T) {
 		},
 	}
 	mockRepo.On("GetActiveSession", mock.Anything).Return(session, nil)
+	mockRepo.On("GetActiveOrFrozenSession", mock.Anything).Return(nil, nil) // No active/frozen session for post-unlock
 
-	// End voting success
-	mockRepo.On("EndVotingSession", mock.Anything, 1, 10).Return(nil)
+	// End voting success - match pointer to 10
+	optionIDPtr := 10
+	mockRepo.On("EndVotingSession", mock.Anything, 1, &optionIDPtr).Return(nil)
 
 	// Get unlock progress
 	mockRepo.On("GetActiveUnlockProgress", mock.Anything).Return(&domain.UnlockProgress{ID: 5}, nil)
@@ -178,7 +286,7 @@ func TestForceInstantUnlock_Reliability(t *testing.T) {
 	// Expect GetAllNodes call from StartVotingSession -> GetAvailableUnlocks
 	// Return empty list so it stops there elegantly
 	mockRepo.On("GetAllNodes", mock.Anything).Return([]*domain.ProgressionNode{}, nil)
-	
+
 	// Get Unlock (final return)
 	mockRepo.On("GetUnlock", mock.Anything, 100, 1).Return(&domain.ProgressionUnlock{ID: 99}, nil)
 
@@ -189,7 +297,28 @@ func TestForceInstantUnlock_Reliability(t *testing.T) {
 	// Wait a bit for async goroutine to execute
 	time.Sleep(100 * time.Millisecond)
 
-    assert.NoError(t, err)
-    assert.NotNil(t, unlock)
-    // We confirm that despite "critical db fail" in CompleteUnlock, execution continued.
+	assert.NoError(t, err)
+	assert.NotNil(t, unlock)
+	// We confirm that despite "critical db fail" in CompleteUnlock, execution continued.
+}
+
+func (m *ReliabilityMockRepository) GetNodeByFeatureKey(ctx context.Context, featureKey string) (*domain.ProgressionNode, int, error) {
+	return nil, 0, nil
+}
+
+func (m *ReliabilityMockRepository) GetAllNodesByFeatureKey(ctx context.Context, featureKey string) ([]*domain.ProgressionNode, []int, error) {
+	return nil, nil, nil
+}
+
+func (m *ReliabilityMockRepository) GetSyncMetadata(ctx context.Context, configName string) (*domain.SyncMetadata, error) {
+	args := m.Called(ctx, configName)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.SyncMetadata), args.Error(1)
+}
+
+func (m *ReliabilityMockRepository) UpsertSyncMetadata(ctx context.Context, metadata *domain.SyncMetadata) error {
+	args := m.Called(ctx, metadata)
+	return args.Error(0)
 }

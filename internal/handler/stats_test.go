@@ -2,56 +2,18 @@ package handler
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/mocks"
 )
-
-// MockStatsService mocks the stats.Service interface
-type MockStatsService struct {
-	mock.Mock
-}
-
-func (m *MockStatsService) RecordUserEvent(ctx context.Context, userID string, eventType domain.EventType, metadata map[string]interface{}) error {
-	args := m.Called(ctx, userID, eventType, metadata)
-	return args.Error(0)
-}
-
-func (m *MockStatsService) GetUserStats(ctx context.Context, userID string, period string) (*domain.StatsSummary, error) {
-	args := m.Called(ctx, userID, period)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*domain.StatsSummary), args.Error(1)
-}
-
-func (m *MockStatsService) GetUserCurrentStreak(ctx context.Context, userID string) (int, error) {
-	args := m.Called(ctx, userID)
-	return args.Int(0), args.Error(1)
-}
-
-func (m *MockStatsService) GetSystemStats(ctx context.Context, period string) (*domain.StatsSummary, error) {
-	args := m.Called(ctx, period)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*domain.StatsSummary), args.Error(1)
-}
-
-func (m *MockStatsService) GetLeaderboard(ctx context.Context, eventType domain.EventType, period string, limit int) ([]domain.LeaderboardEntry, error) {
-	args := m.Called(ctx, eventType, period, limit)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]domain.LeaderboardEntry), args.Error(1)
-}
 
 func TestHandleRecordEvent(t *testing.T) {
 	InitValidator()
@@ -59,7 +21,7 @@ func TestHandleRecordEvent(t *testing.T) {
 	tests := []struct {
 		name           string
 		requestBody    interface{}
-		setupMock      func(*MockStatsService)
+		setupMock      func(*mocks.MockStatsService)
 		expectedStatus int
 		expectedBody   string
 	}{
@@ -67,11 +29,11 @@ func TestHandleRecordEvent(t *testing.T) {
 			name: "Success",
 			requestBody: RecordEventRequest{
 				UserID:    "testuser",
-				EventType: "item_used",
+				EventType: domain.EventTypeItemUsed,
 				EventData: map[string]interface{}{"item": "potion"},
 			},
-			setupMock: func(m *MockStatsService) {
-				m.On("RecordUserEvent", mock.Anything, "testuser", domain.EventType("item_used"), mock.Anything).Return(nil)
+			setupMock: func(m *mocks.MockStatsService) {
+				m.On("RecordUserEvent", mock.Anything, "testuser", domain.EventType(domain.EventTypeItemUsed), mock.Anything).Return(nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   "Event recorded successfully",
@@ -79,9 +41,9 @@ func TestHandleRecordEvent(t *testing.T) {
 		{
 			name: "Invalid Request - Missing UserID",
 			requestBody: RecordEventRequest{
-				EventType: "item_used",
+				EventType: domain.EventTypeItemUsed,
 			},
-			setupMock:      func(m *MockStatsService) {},
+			setupMock:      func(m *mocks.MockStatsService) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   "Invalid request",
 		},
@@ -89,19 +51,19 @@ func TestHandleRecordEvent(t *testing.T) {
 			name: "Service Error",
 			requestBody: RecordEventRequest{
 				UserID:    "testuser",
-				EventType: "item_used",
+				EventType: domain.EventTypeItemUsed,
 			},
-			setupMock: func(m *MockStatsService) {
-				m.On("RecordUserEvent", mock.Anything, "testuser", domain.EventType("item_used"), mock.Anything).Return(errors.New("service error"))
+			setupMock: func(m *mocks.MockStatsService) {
+				m.On("RecordUserEvent", mock.Anything, "testuser", domain.EventType(domain.EventTypeItemUsed), mock.Anything).Return(errors.New(ErrMsgGenericServerError))
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "service error",
+			expectedBody:   ErrMsgGenericServerError,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockSvc := &MockStatsService{}
+			mockSvc := mocks.NewMockStatsService(t)
 			tt.setupMock(mockSvc)
 
 			handler := HandleRecordEvent(mockSvc)
@@ -124,51 +86,72 @@ func TestHandleRecordEvent(t *testing.T) {
 func TestHandleGetUserStats(t *testing.T) {
 	tests := []struct {
 		name           string
-		userID         string
+		platform       string
+		platformID     string
 		period         string
-		setupMock      func(*MockStatsService)
+		setupMock      func(*mocks.MockStatsService, *mocks.MockRepositoryUser)
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
-			name:   "Success",
-			userID: "testuser",
-			period: "daily",
-			setupMock: func(m *MockStatsService) {
+			name:       "Success with platform_id",
+			platform:   domain.PlatformTwitch,
+			platformID: "test123",
+			period:     domain.PeriodDaily,
+			setupMock: func(svc *mocks.MockStatsService, repo *mocks.MockRepositoryUser) {
+				user := &domain.User{ID: "user123"}
+				repo.On("GetUserByPlatformID", mock.Anything, domain.PlatformTwitch, "test123").Return(user, nil)
 				summary := &domain.StatsSummary{TotalEvents: 10}
-				m.On("GetUserStats", mock.Anything, "testuser", "daily").Return(summary, nil)
+				svc.On("GetUserStats", mock.Anything, "user123", domain.PeriodDaily).Return(summary, nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `"total_events":10`,
 		},
 		{
-			name:           "Missing UserID",
-			userID:         "",
-			setupMock:      func(m *MockStatsService) {},
+			name:           "Missing platform",
+			platform:       "",
+			platformID:     "test123",
+			setupMock:      func(svc *mocks.MockStatsService, repo *mocks.MockRepositoryUser) {},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Missing user_id",
+			expectedBody:   "Missing platform",
 		},
 		{
-			name:   "Service Error",
-			userID: "testuser",
-			setupMock: func(m *MockStatsService) {
-				m.On("GetUserStats", mock.Anything, "testuser", "daily").Return(nil, errors.New("service error"))
+			name:           "Missing platform_id and username",
+			platform:       domain.PlatformTwitch,
+			platformID:     "",
+			setupMock:      func(svc *mocks.MockStatsService, repo *mocks.MockRepositoryUser) {},
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "Either platform_id or username is required",
+		},
+		{
+			name:       "Service Error",
+			platform:   domain.PlatformTwitch,
+			platformID: "test123",
+			setupMock: func(svc *mocks.MockStatsService, repo *mocks.MockRepositoryUser) {
+				user := &domain.User{ID: "user123"}
+				repo.On("GetUserByPlatformID", mock.Anything, domain.PlatformTwitch, "test123").Return(user, nil)
+				svc.On("GetUserStats", mock.Anything, "user123", domain.PeriodDaily).Return(nil, errors.New(ErrMsgGenericServerError))
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "service error",
+			expectedBody:   ErrMsgGenericServerError,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockSvc := &MockStatsService{}
-			tt.setupMock(mockSvc)
+			mockSvc := mocks.NewMockStatsService(t)
+			mockUserRepo := mocks.NewMockRepositoryUser(t)
+			tt.setupMock(mockSvc, mockUserRepo)
 
-			handler := HandleGetUserStats(mockSvc)
+			statsHandler := NewStatsHandler(mockSvc, mockUserRepo)
+			handler := statsHandler.HandleGetUserStats()
 
 			url := "/stats/user"
-			if tt.userID != "" {
-				url += "?user_id=" + tt.userID
+			if tt.platform != "" {
+				url += "?platform=" + tt.platform
+			}
+			if tt.platformID != "" {
+				url += "&platform_id=" + tt.platformID
 			}
 			if tt.period != "" {
 				url += "&period=" + tt.period
@@ -183,6 +166,7 @@ func TestHandleGetUserStats(t *testing.T) {
 				assert.Contains(t, w.Body.String(), tt.expectedBody)
 			}
 			mockSvc.AssertExpectations(t)
+			mockUserRepo.AssertExpectations(t)
 		})
 	}
 }
@@ -191,34 +175,34 @@ func TestHandleGetSystemStats(t *testing.T) {
 	tests := []struct {
 		name           string
 		period         string
-		setupMock      func(*MockStatsService)
+		setupMock      func(*mocks.MockStatsService)
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name:   "Success",
-			period: "daily",
-			setupMock: func(m *MockStatsService) {
+			period: domain.PeriodDaily,
+			setupMock: func(m *mocks.MockStatsService) {
 				summary := &domain.StatsSummary{TotalEvents: 100}
-				m.On("GetSystemStats", mock.Anything, "daily").Return(summary, nil)
+				m.On("GetSystemStats", mock.Anything, domain.PeriodDaily).Return(summary, nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `"total_events":100`,
 		},
 		{
 			name:   "Service Error",
-			period: "daily",
-			setupMock: func(m *MockStatsService) {
-				m.On("GetSystemStats", mock.Anything, "daily").Return(nil, errors.New("service error"))
+			period: domain.PeriodDaily,
+			setupMock: func(m *mocks.MockStatsService) {
+				m.On("GetSystemStats", mock.Anything, domain.PeriodDaily).Return(nil, errors.New(ErrMsgGenericServerError))
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "service error",
+			expectedBody:   ErrMsgGenericServerError,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockSvc := &MockStatsService{}
+			mockSvc := mocks.NewMockStatsService(t)
 			tt.setupMock(mockSvc)
 
 			handler := HandleGetSystemStats(mockSvc)
@@ -246,17 +230,17 @@ func TestHandleGetLeaderboard(t *testing.T) {
 		name           string
 		eventType      string
 		limit          string
-		setupMock      func(*MockStatsService)
+		setupMock      func(*mocks.MockStatsService)
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name:      "Success",
-			eventType: "item_used",
+			eventType: domain.EventTypeItemUsed,
 			limit:     "5",
-			setupMock: func(m *MockStatsService) {
+			setupMock: func(m *mocks.MockStatsService) {
 				entries := []domain.LeaderboardEntry{{UserID: "user1", Count: 10}}
-				m.On("GetLeaderboard", mock.Anything, domain.EventType("item_used"), "daily", 5).Return(entries, nil)
+				m.On("GetLeaderboard", mock.Anything, domain.EventType(domain.EventTypeItemUsed), domain.PeriodDaily, 5).Return(entries, nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `"user_id":"user1"`,
@@ -264,32 +248,32 @@ func TestHandleGetLeaderboard(t *testing.T) {
 		{
 			name:           "Missing EventType",
 			eventType:      "",
-			setupMock:      func(m *MockStatsService) {},
+			setupMock:      func(m *mocks.MockStatsService) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   "Missing event_type",
 		},
 		{
 			name:           "Invalid Limit",
-			eventType:      "item_used",
+			eventType:      domain.EventTypeItemUsed,
 			limit:          "invalid",
-			setupMock:      func(m *MockStatsService) {},
+			setupMock:      func(m *mocks.MockStatsService) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   "Invalid limit",
 		},
 		{
 			name:      "Service Error",
-			eventType: "item_used",
-			setupMock: func(m *MockStatsService) {
-				m.On("GetLeaderboard", mock.Anything, domain.EventType("item_used"), "daily", 10).Return(nil, errors.New("service error"))
+			eventType: domain.EventTypeItemUsed,
+			setupMock: func(m *mocks.MockStatsService) {
+				m.On("GetLeaderboard", mock.Anything, domain.EventType(domain.EventTypeItemUsed), domain.PeriodDaily, 10).Return(nil, errors.New(ErrMsgGenericServerError))
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "service error",
+			expectedBody:   ErrMsgGenericServerError,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockSvc := &MockStatsService{}
+			mockSvc := mocks.NewMockStatsService(t)
 			tt.setupMock(mockSvc)
 
 			handler := HandleGetLeaderboard(mockSvc)

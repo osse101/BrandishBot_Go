@@ -3,9 +3,11 @@ package discord
 import (
 	"fmt"
 	"log/slog"
+	"strconv"
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
+
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
@@ -15,6 +17,12 @@ func InventoryCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		Name:        "inventory",
 		Description: "View your inventory",
 		Options: []*discordgo.ApplicationCommandOption{
+			{
+				Type:        discordgo.ApplicationCommandOptionUser,
+				Name:        "user",
+				Description: "View another user's inventory (optional)",
+				Required:    false,
+			},
 			{
 				Type:        discordgo.ApplicationCommandOptionString,
 				Name:        "filter",
@@ -39,63 +47,78 @@ func InventoryCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	}
 
 	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-		}); err != nil {
-			slog.Error("Failed to send deferred response", "error", err)
+		if !deferResponse(s, i) {
 			return
 		}
 
-		user := i.Member.User
-		if user == nil {
-			user = i.User
-		}
-
+		user := getInteractionUser(i)
 		// Ensure user exists
-		_, err := client.RegisterUser(user.Username, user.ID)
-		if err != nil {
-			slog.Error("Failed to register user", "error", err)
-			respondFriendlyError(s, i, err.Error())
+		if !ensureUserRegistered(s, i, client, user, true) {
 			return
 		}
 
 		var filter string
-		if len(i.ApplicationCommandData().Options) > 0 {
-			filter = i.ApplicationCommandData().Options[0].StringValue()
+		var targetUser *discordgo.User
+		for _, opt := range i.ApplicationCommandData().Options {
+			switch opt.Name {
+			case "filter":
+				filter = opt.StringValue()
+			case "user":
+				targetUser = opt.UserValue(s)
+			}
 		}
 
-		items, err := client.GetInventory(domain.PlatformDiscord, user.ID, user.Username, filter)
-		if err != nil {
-			slog.Error("Failed to get inventory", "error", err)
-			respondFriendlyError(s, i, err.Error())
+		// If no target user specified, use the command caller
+		if targetUser == nil {
+			targetUser = user
+		}
+
+		// Ensure target user is registered
+		if !ensureUserRegistered(s, i, client, targetUser, true) {
 			return
+		}
+
+		// Get inventory based on whether targeting self or others
+		var items []SimpleInventoryItem
+		if targetUser.ID == user.ID {
+			//If querying self, use the standard method with platformId
+			inventoryItems, err := client.GetInventory(domain.PlatformDiscord, targetUser.ID, targetUser.Username, filter)
+			if err != nil {
+				slog.Error("Failed to get inventory", "error", err)
+				respondFriendlyError(s, i, err.Error())
+				return
+			}
+			items = ConvertToSimpleInventory(inventoryItems)
+		} else {
+			// If querying another user, use username-based method
+			inventoryItems, err := client.GetInventoryByUsername(domain.PlatformDiscord, targetUser.Username, filter)
+			if err != nil {
+				slog.Error("Failed to get inventory", "error", err)
+				respondFriendlyError(s, i, err.Error())
+				return
+			}
+			items = ConvertToSimpleInventory(inventoryItems)
 		}
 
 		var description string
 		if len(items) == 0 {
 			description = "Your inventory is empty."
 		} else {
-			var lines []string
-			for _, item := range items {
-				lines = append(lines, fmt.Sprintf("**%s** x%d", item.Name, item.Quantity))
+			var sb strings.Builder
+			for i, item := range items {
+				if i > 0 {
+					sb.WriteByte('\n')
+				}
+				sb.WriteString("**")
+				sb.WriteString(item.Name)
+				sb.WriteString("** x")
+				sb.WriteString(strconv.Itoa(item.Quantity))
 			}
-			description = strings.Join(lines, "\n")
+			description = sb.String()
 		}
 
-		embed := &discordgo.MessageEmbed{
-			Title:       fmt.Sprintf("%s's Inventory", user.Username),
-			Description: description,
-			Color:       0x9b59b6, // Purple
-			Footer: &discordgo.MessageEmbedFooter{
-				Text: "BrandishBot",
-			},
-		}
-
-		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Embeds: &[]*discordgo.MessageEmbed{embed},
-		}); err != nil {
-			slog.Error("Failed to send inventory embed", "error", err)
-		}
+		embed := createEmbed(fmt.Sprintf("%s's Inventory", targetUser.Username), description, 0x9b59b6, "")
+		sendEmbed(s, i, embed)
 	}
 
 	return cmd, handler

@@ -1,0 +1,114 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "items.schema.json",
+    "title": "Items Configuration",
+    "description": "BrandishBot item definitions",
+    "type": "object",
+    "required": [
+        "version",
+        "items"
+    ],
+    "properties": {
+        "version": {
+            "type": "string",
+            "description": "Schema version"
+        },
+        "description": {
+            "type": "string",
+            "description": "Human-readable description"
+        },
+        "items": {
+            "type": "array",
+            "description": "List of item definitions",
+            "items": {
+                "$ref": "#/definitions/Item"
+            }
+        }
+    },
+    "definitions": {
+        "Item": {
+            "type": "object",
+            "required": [
+                "internal_name",
+                "public_name",
+                "description",
+                "tier",
+                "max_stack",
+                "base_value",
+                "tags"
+            ],
+            "properties": {
+                "internal_name": {
+                    "type": "string",
+                    "description": "Unique internal identifier for the item",
+                    "pattern": "^[a-z][a-z0-9_]*$"
+                },
+                "public_name": {
+                    "type": "string",
+                    "description": "Display name shown to users"
+                },
+                "description": {
+                    "type": "string",
+                    "description": "Item description"
+                },
+                "tier": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10,
+                    "description": "Item tier/rarity level"
+                },
+                "max_stack": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Maximum number of items that can stack in inventory"
+                },
+                "base_value": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "Base monetary value of the item"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "enum": [
+                            "consumable",
+                            "material",
+                            "tradeable",
+                            "can_open",
+                            "upgradeable",
+                            "disassembleable",
+                            "sellable",
+                            "buyable",
+                            "currency"
+                        ]
+                    },
+                    "description": "Item behavior tags"
+                },
+                "handler": {
+                    "type": "string",
+                    "enum": [
+                        "lootbox",
+                        "weapon",
+                        "revive",
+                        "shield",
+                        "rarecandy",
+                        "explosive",
+                        "trap"
+                    ],
+                    "description": "Item handler for special behavior"
+                },
+                "handler_config": {
+                    "type": "object",
+                    "description": "Handler-specific configuration",
+                    "additionalProperties": true
+                },
+                "default_display": {
+                    "type": "string",
+                    "description": "Default display text for the item"
+                }
+            },
+            "additionalProperties": false
+        }
+    }
+}

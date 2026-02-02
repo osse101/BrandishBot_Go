@@ -4,10 +4,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/osse101/BrandishBot_Go/internal/domain"
-	"github.com/osse101/BrandishBot_Go/internal/lootbox"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/lootbox"
 )
 
 // MockStatsServiceForLootboxTests - distinct name to avoid conflicts if any
@@ -59,8 +60,8 @@ type MockLootboxServiceForLootboxTests struct {
 	mock.Mock
 }
 
-func (m *MockLootboxServiceForLootboxTests) OpenLootbox(ctx context.Context, lootboxName string, quantity int) ([]lootbox.DroppedItem, error) {
-	args := m.Called(ctx, lootboxName, quantity)
+func (m *MockLootboxServiceForLootboxTests) OpenLootbox(ctx context.Context, lootboxName string, quantity int, boxShine domain.ShineLevel) ([]lootbox.DroppedItem, error) {
+	args := m.Called(ctx, lootboxName, quantity, boxShine)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -77,7 +78,7 @@ func (m *MockNamingResolverForLootboxTests) ResolvePublicName(publicName string)
 	return args.String(0), args.Bool(1)
 }
 
-func (m *MockNamingResolverForLootboxTests) GetDisplayName(internalName string, shineLevel string) string {
+func (m *MockNamingResolverForLootboxTests) GetDisplayName(internalName string, shineLevel domain.ShineLevel) string {
 	args := m.Called(internalName, shineLevel)
 	return args.String(0)
 }
@@ -99,7 +100,7 @@ func (m *MockNamingResolverForLootboxTests) RegisterItem(internalName, publicNam
 func TestProcessLootboxDrops_JackpotEvents(t *testing.T) {
 	// Test data
 	user := &domain.User{
-		ID: "user-123",
+		ID:       "user-123",
 		Username: "testuser",
 	}
 	lootboxItem := &domain.Item{
@@ -116,8 +117,8 @@ func TestProcessLootboxDrops_JackpotEvents(t *testing.T) {
 		mockStats := new(MockStatsServiceForLootboxTests)
 		mockLootbox := new(MockLootboxServiceForLootboxTests)
 		mockNaming := new(MockNamingResolverForLootboxTests)
-		mockRepo := NewMockRepository()
-		svc := NewService(mockRepo, mockStats, nil, mockLootbox, mockNaming, nil, false).(*service)
+		mockRepo := NewFakeRepository()
+		svc := NewService(mockRepo, mockRepo, mockStats, nil, mockLootbox, mockNaming, nil, nil, false).(*service)
 		inventory := &domain.Inventory{Slots: []domain.InventorySlot{}}
 
 		// Prepare drops
@@ -127,13 +128,13 @@ func TestProcessLootboxDrops_JackpotEvents(t *testing.T) {
 				ItemName:   "legendary_sword",
 				Quantity:   1,
 				Value:      1000,
-				ShineLevel: lootbox.ShineLegendary,
+				ShineLevel: domain.ShineLegendary,
 			},
 		}
 
 		// Expectations
-		mockNaming.On("GetDisplayName", "legendary_sword", lootbox.ShineLegendary).Return("Legendary Sword")
-		mockNaming.On("GetDisplayName", "lootbox_tier1", "").Return("Lootbox Tier 1")
+		mockNaming.On("GetDisplayName", "legendary_sword", domain.ShineLegendary).Return("Legendary Sword")
+		mockNaming.On("GetDisplayName", "lootbox_tier1", domain.ShineLevel("")).Return("Lootbox Tier 1")
 
 		// Expect stats service to be called with EventLootboxJackpot
 		mockStats.On("RecordUserEvent",
@@ -160,8 +161,8 @@ func TestProcessLootboxDrops_JackpotEvents(t *testing.T) {
 		mockStats := new(MockStatsServiceForLootboxTests)
 		mockLootbox := new(MockLootboxServiceForLootboxTests)
 		mockNaming := new(MockNamingResolverForLootboxTests)
-		mockRepo := NewMockRepository()
-		svc := NewService(mockRepo, mockStats, nil, mockLootbox, mockNaming, nil, false).(*service)
+		mockRepo := NewFakeRepository()
+		svc := NewService(mockRepo, mockRepo, mockStats, nil, mockLootbox, mockNaming, nil, nil, false).(*service)
 		inventory := &domain.Inventory{Slots: []domain.InventorySlot{}}
 
 		// Prepare drops
@@ -171,13 +172,13 @@ func TestProcessLootboxDrops_JackpotEvents(t *testing.T) {
 				ItemName:   "epic_shield",
 				Quantity:   1,
 				Value:      500,
-				ShineLevel: lootbox.ShineEpic,
+				ShineLevel: domain.ShineEpic,
 			},
 		}
 
 		// Expectations
-		mockNaming.On("GetDisplayName", "epic_shield", lootbox.ShineEpic).Return("Epic Shield")
-		mockNaming.On("GetDisplayName", "lootbox_tier1", "").Return("Lootbox Tier 1")
+		mockNaming.On("GetDisplayName", "epic_shield", domain.ShineEpic).Return("Epic Shield")
+		mockNaming.On("GetDisplayName", "lootbox_tier1", domain.ShineLevel("")).Return("Lootbox Tier 1")
 
 		// Expect stats service to be called with EventLootboxBigWin
 		mockStats.On("RecordUserEvent",
@@ -204,8 +205,8 @@ func TestProcessLootboxDrops_JackpotEvents(t *testing.T) {
 		mockStats := new(MockStatsServiceForLootboxTests)
 		mockLootbox := new(MockLootboxServiceForLootboxTests)
 		mockNaming := new(MockNamingResolverForLootboxTests)
-		mockRepo := NewMockRepository()
-		svc := NewService(mockRepo, mockStats, nil, mockLootbox, mockNaming, nil, false).(*service)
+		mockRepo := NewFakeRepository()
+		svc := NewService(mockRepo, mockRepo, mockStats, nil, mockLootbox, mockNaming, nil, nil, false).(*service)
 		inventory := &domain.Inventory{Slots: []domain.InventorySlot{}}
 
 		// Prepare drops
@@ -215,17 +216,13 @@ func TestProcessLootboxDrops_JackpotEvents(t *testing.T) {
 				ItemName:   "common_rock",
 				Quantity:   1,
 				Value:      5,
-				ShineLevel: lootbox.ShineCommon,
+				ShineLevel: domain.ShineCommon,
 			},
 		}
 
 		// Expectations
-		mockNaming.On("GetDisplayName", "common_rock", lootbox.ShineCommon).Return("Rock")
-		mockNaming.On("GetDisplayName", "lootbox_tier1", "").Return("Lootbox Tier 1")
-
-		// No call to RecordUserEvent expected for common drops
-		// This is implicit since we don't set up any expectations on mockStats
-		// But explicit AssertNotCalled is safer
+		mockNaming.On("GetDisplayName", "common_rock", domain.ShineCommon).Return("Rock")
+		mockNaming.On("GetDisplayName", "lootbox_tier1", domain.ShineLevel("")).Return("Lootbox Tier 1")
 
 		// Execute
 		msg, err := svc.processLootboxDrops(ctx, user, inventory, lootboxItem, 1, drops)
@@ -264,7 +261,7 @@ func TestProcessLootboxDrops_BulkFeedbackThreshold(t *testing.T) {
 				ItemName:   "common_rock",
 				Quantity:   1,
 				Value:      5,
-				ShineLevel: lootbox.ShineCommon,
+				ShineLevel: domain.ShineCommon,
 			},
 		}
 	}
@@ -273,12 +270,12 @@ func TestProcessLootboxDrops_BulkFeedbackThreshold(t *testing.T) {
 	t.Run("No Bulk Feedback Below Threshold (quantity=4)", func(t *testing.T) {
 		mockStats := new(MockStatsServiceForLootboxTests)
 		mockNaming := new(MockNamingResolverForLootboxTests)
-		mockRepo := NewMockRepository()
-		svc := NewService(mockRepo, mockStats, nil, nil, mockNaming, nil, false).(*service)
+		mockRepo := NewFakeRepository()
+		svc := NewService(mockRepo, mockRepo, mockStats, nil, nil, mockNaming, nil, nil, false).(*service)
 		inventory := &domain.Inventory{Slots: []domain.InventorySlot{}}
 
-		mockNaming.On("GetDisplayName", "common_rock", lootbox.ShineCommon).Return("Rock")
-		mockNaming.On("GetDisplayName", "lootbox_tier1", "").Return("Lootbox Tier 1")
+		mockNaming.On("GetDisplayName", "common_rock", domain.ShineCommon).Return("Rock")
+		mockNaming.On("GetDisplayName", "lootbox_tier1", domain.ShineLevel("")).Return("Lootbox Tier 1")
 
 		msg, err := svc.processLootboxDrops(ctx, user, inventory, lootboxItem, 4, createCommonDrops())
 
@@ -290,12 +287,12 @@ func TestProcessLootboxDrops_BulkFeedbackThreshold(t *testing.T) {
 	t.Run("Bulk Feedback At Threshold (quantity=5)", func(t *testing.T) {
 		mockStats := new(MockStatsServiceForLootboxTests)
 		mockNaming := new(MockNamingResolverForLootboxTests)
-		mockRepo := NewMockRepository()
-		svc := NewService(mockRepo, mockStats, nil, nil, mockNaming, nil, false).(*service)
+		mockRepo := NewFakeRepository()
+		svc := NewService(mockRepo, mockRepo, mockStats, nil, nil, mockNaming, nil, nil, false).(*service)
 		inventory := &domain.Inventory{Slots: []domain.InventorySlot{}}
 
-		mockNaming.On("GetDisplayName", "common_rock", lootbox.ShineCommon).Return("Rock")
-		mockNaming.On("GetDisplayName", "lootbox_tier1", "").Return("Lootbox Tier 1")
+		mockNaming.On("GetDisplayName", "common_rock", domain.ShineCommon).Return("Rock")
+		mockNaming.On("GetDisplayName", "lootbox_tier1", domain.ShineLevel("")).Return("Lootbox Tier 1")
 
 		msg, err := svc.processLootboxDrops(ctx, user, inventory, lootboxItem, 5, createCommonDrops())
 
@@ -307,12 +304,12 @@ func TestProcessLootboxDrops_BulkFeedbackThreshold(t *testing.T) {
 	t.Run("Bulk Feedback Above Threshold (quantity=6)", func(t *testing.T) {
 		mockStats := new(MockStatsServiceForLootboxTests)
 		mockNaming := new(MockNamingResolverForLootboxTests)
-		mockRepo := NewMockRepository()
-		svc := NewService(mockRepo, mockStats, nil, nil, mockNaming, nil, false).(*service)
+		mockRepo := NewFakeRepository()
+		svc := NewService(mockRepo, mockRepo, mockStats, nil, nil, mockNaming, nil, nil, false).(*service)
 		inventory := &domain.Inventory{Slots: []domain.InventorySlot{}}
 
-		mockNaming.On("GetDisplayName", "common_rock", lootbox.ShineCommon).Return("Rock")
-		mockNaming.On("GetDisplayName", "lootbox_tier1", "").Return("Lootbox Tier 1")
+		mockNaming.On("GetDisplayName", "common_rock", domain.ShineCommon).Return("Rock")
+		mockNaming.On("GetDisplayName", "lootbox_tier1", domain.ShineLevel("")).Return("Lootbox Tier 1")
 
 		msg, err := svc.processLootboxDrops(ctx, user, inventory, lootboxItem, 6, createCommonDrops())
 
@@ -324,8 +321,8 @@ func TestProcessLootboxDrops_BulkFeedbackThreshold(t *testing.T) {
 	t.Run("Jackpot Takes Precedence Over Bulk Feedback", func(t *testing.T) {
 		mockStats := new(MockStatsServiceForLootboxTests)
 		mockNaming := new(MockNamingResolverForLootboxTests)
-		mockRepo := NewMockRepository()
-		svc := NewService(mockRepo, mockStats, nil, nil, mockNaming, nil, false).(*service)
+		mockRepo := NewFakeRepository()
+		svc := NewService(mockRepo, mockRepo, mockStats, nil, nil, mockNaming, nil, nil, false).(*service)
 		inventory := &domain.Inventory{Slots: []domain.InventorySlot{}}
 
 		legendaryDrops := []lootbox.DroppedItem{
@@ -334,12 +331,12 @@ func TestProcessLootboxDrops_BulkFeedbackThreshold(t *testing.T) {
 				ItemName:   "legendary_sword",
 				Quantity:   1,
 				Value:      1000,
-				ShineLevel: lootbox.ShineLegendary,
+				ShineLevel: domain.ShineLegendary,
 			},
 		}
 
-		mockNaming.On("GetDisplayName", "legendary_sword", lootbox.ShineLegendary).Return("Legendary Sword")
-		mockNaming.On("GetDisplayName", "lootbox_tier1", "").Return("Lootbox Tier 1")
+		mockNaming.On("GetDisplayName", "legendary_sword", domain.ShineLegendary).Return("Legendary Sword")
+		mockNaming.On("GetDisplayName", "lootbox_tier1", domain.ShineLevel("")).Return("Lootbox Tier 1")
 		mockStats.On("RecordUserEvent", mock.Anything, user.ID, domain.EventLootboxJackpot, mock.Anything).Return(nil)
 
 		msg, err := svc.processLootboxDrops(ctx, user, inventory, lootboxItem, 10, legendaryDrops)
@@ -353,8 +350,8 @@ func TestProcessLootboxDrops_BulkFeedbackThreshold(t *testing.T) {
 	t.Run("Big Win Takes Precedence Over Bulk Feedback", func(t *testing.T) {
 		mockStats := new(MockStatsServiceForLootboxTests)
 		mockNaming := new(MockNamingResolverForLootboxTests)
-		mockRepo := NewMockRepository()
-		svc := NewService(mockRepo, mockStats, nil, nil, mockNaming, nil, false).(*service)
+		mockRepo := NewFakeRepository()
+		svc := NewService(mockRepo, mockRepo, mockStats, nil, nil, mockNaming, nil, nil, false).(*service)
 		inventory := &domain.Inventory{Slots: []domain.InventorySlot{}}
 
 		epicDrops := []lootbox.DroppedItem{
@@ -363,12 +360,12 @@ func TestProcessLootboxDrops_BulkFeedbackThreshold(t *testing.T) {
 				ItemName:   "epic_shield",
 				Quantity:   1,
 				Value:      500,
-				ShineLevel: lootbox.ShineEpic,
+				ShineLevel: domain.ShineEpic,
 			},
 		}
 
-		mockNaming.On("GetDisplayName", "epic_shield", lootbox.ShineEpic).Return("Epic Shield")
-		mockNaming.On("GetDisplayName", "lootbox_tier1", "").Return("Lootbox Tier 1")
+		mockNaming.On("GetDisplayName", "epic_shield", domain.ShineEpic).Return("Epic Shield")
+		mockNaming.On("GetDisplayName", "lootbox_tier1", domain.ShineLevel("")).Return("Lootbox Tier 1")
 		mockStats.On("RecordUserEvent", mock.Anything, user.ID, domain.EventLootboxBigWin, mock.Anything).Return(nil)
 
 		msg, err := svc.processLootboxDrops(ctx, user, inventory, lootboxItem, 10, epicDrops)
@@ -378,4 +375,3 @@ func TestProcessLootboxDrops_BulkFeedbackThreshold(t *testing.T) {
 		assert.NotContains(t, msg, "Nice haul!", "Bulk feedback should NOT appear when big win")
 	})
 }
-

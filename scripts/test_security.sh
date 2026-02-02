@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Test security features
 
-set -e
+set -euo pipefail
 
 # Load API key from .env file
 if [ ! -f .env ]; then

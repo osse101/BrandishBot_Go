@@ -4,6 +4,66 @@ A collection of practical insights gained from BrandishBot_Go development, parti
 
 ---
 
+## 2026-01-04: Resilient Event Publishing - Fire-and-Forget with Retry
+
+### Context
+Implemented `ResilientPublisher` to decouple critical business logic (XP awards) from event system availability. Previously, event publishing failures were either ignored (loss of data) or could potentially block/fail the transaction (bad UX).
+
+### The Pattern: Fire-and-Forget with Retry Queue
+
+**Core Concept**: Business transaction succeeds first, then event is queued for background delivery.
+
+```go
+// 1. Commit business transaction (XP Award) - Source of Truth updated
+repo.UpsertUserJob(...)
+
+// 2. Attempt publish (Best effort)
+err := bus.Publish(...)
+
+// 3. On failure, queue for background retry
+if err != nil {
+    retryQueue <- event // Non-blocking
+}
+```
+
+### Components
+
+1.  **ResilientPublisher**: Wraps `event.Bus`. Handles retries with exponential backoff (2s, 4s, 8s...).
+2.  **DeadLetterWriter**: If retries exhaust (after 5 attempts), event is written to disk (`logs/event_deadletter.jsonl`) for manual recovery.
+3.  **Shutdown Safety**: `Shutdown()` method drains the retry queue or dumps to dead-letter file to prevent data loss on restart.
+
+### Key Learnings
+
+**1. Don't Fail the User for System Noise**
+- Users care about their XP/Loot. They shouldn't get an error just because the event bus (RabbitMQ/NATS/Internal) blipped.
+- Log the error, retry in background, keep the user happy.
+
+**2. Dead-Letter Queues are Essential**
+- Infinite retries choke the system.
+- Drop-on-fail loses data.
+- Dead-letter file allows post-mortem analysis and potential replay.
+
+**3. Integration Testing Asynchrony**
+- Testing background retries requires `time.Sleep` or channel synchronization.
+- Mock the underlying bus to simulate failures.
+- Verify the *eventual* outcome, not just the immediate return.
+
+**4. Configuration is Key**
+- `EventMaxRetries`, `EventRetryDelay` should be configurable via env vars.
+- Allows tuning for different environments (faster retries in dev, more durable in prod).
+
+### Usage
+
+```go
+// In Service Constructor
+publisher, _ := event.NewResilientPublisher(bus, 5, 2*time.Second, dlPath)
+
+// In Method
+publisher.PublishWithRetry(ctx, event) // Never returns error
+```
+
+---
+
 ## 2025-12-22: Cooldown Service - Check-Then-Lock Pattern for Race-Free Operations
 
 ### Context
@@ -388,4 +448,43 @@ Before making concurrency changes:
 
 ---
 
-*Last updated: December 2024*
+## 2026-01-03: Event Publishing for Auto-Selected Progression Targets
+
+### Context
+Implemented `EventProgressionTargetSet` to support the "Auto-Skip Single Option Votes" feature. When only one progression node is available, the system automatically selects it and sets it as the target, bypassing the voting session.
+
+### Implementation Pattern
+
+**Event Definition**: Added `ProgressionTargetSet` to `internal/event/event.go`.
+
+```go
+const (
+    ProgressionCycleCompleted Type = "progression.cycle.completed"
+    ProgressionTargetSet      Type = "progression.target.set"
+)
+```
+
+**Publishing Logic**: Added to `StartVotingSession` in `internal/progression/voting_sessions.go`.
+
+```go
+if s.bus != nil {
+    if err := s.bus.Publish(ctx, event.Event{
+        Type: event.ProgressionTargetSet,
+        Payload: map[string]interface{}{
+            "node_key":     node.NodeKey,
+            "target_level": targetLevel,
+            "auto_selected": true,
+        },
+    }); err != nil {
+        log.Error("Failed to publish progression target set event", "error", err)
+    }
+}
+```
+
+### Key Learnings
+- **Event-Driven UX**: Even when user interaction is skipped (auto-select), publishing an event allows other systems (UI, Notifications) to inform the user about what happened.
+- **Mocking Strategy**: Tests using `MockRepository` need to be resilient to changes in service dependencies (like `event.Bus`). In this case, `bus` is nil in most tests, which simplifies testing core logic without mocking the bus everywhere.
+
+---
+
+*Last updated: January 2026*

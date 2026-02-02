@@ -8,6 +8,7 @@
 *.so
 *.dylib
 bin/
+.vscode/
 
 # Built binaries
 /main
@@ -45,3 +46,20 @@ Output/
 # Log files
 logs/
 *.log
+*.jsonl
+
+# Temp files
+temp/
+tmp/
+
+# AI usage files and development artifacts
+.mcp.json
+.agent/*
+.claude/*
+.jules/*
+.Jules/*
+
+# Benchmark results (keep baseline.txt, ignore temporary files)
+benchmarks/results/*.txt
+!benchmarks/results/baseline.txt
+benchmarks/profiles/*.prof

@@ -5,15 +5,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/osse101/BrandishBot_Go/internal/crafting"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/lootbox"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
-// MockRepo is a minimal mock for the repository needed for lootbox tests
 // MockRepo is a minimal mock for the repository needed for lootbox tests
 type MockRepo struct {
 	mock.Mock
@@ -36,6 +35,14 @@ func (m *MockRepo) DeleteUser(ctx context.Context, userID string) error {
 
 func (m *MockRepo) GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error) {
 	args := m.Called(ctx, platform, platformID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.User), args.Error(1)
+}
+
+func (m *MockRepo) GetUserByPlatformUsername(ctx context.Context, platform, username string) (*domain.User, error) {
+	args := m.Called(ctx, platform, username)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -84,20 +91,20 @@ func (m *MockRepo) GetItemsByIDs(ctx context.Context, itemIDs []int) ([]domain.I
 	return args.Get(0).([]domain.Item), args.Error(1)
 }
 
+func (m *MockRepo) GetItemsByNames(ctx context.Context, names []string) ([]domain.Item, error) {
+	args := m.Called(ctx, names)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]domain.Item), args.Error(1)
+}
+
 func (m *MockRepo) GetItemByID(ctx context.Context, id int) (*domain.Item, error) {
 	args := m.Called(ctx, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*domain.Item), args.Error(1)
-}
-
-func (m *MockRepo) GetUserByUsername(ctx context.Context, username string) (*domain.User, error) {
-	args := m.Called(ctx, username)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*domain.User), args.Error(1)
 }
 
 func (m *MockRepo) GetSellablePrices(ctx context.Context) ([]domain.Item, error) {
@@ -113,12 +120,12 @@ func (m *MockRepo) IsItemBuyable(ctx context.Context, itemName string) (bool, er
 	return args.Bool(0), args.Error(1)
 }
 
-func (m *MockRepo) BeginTx(ctx context.Context) (repository.Tx, error) {
+func (m *MockRepo) BeginTx(ctx context.Context) (repository.UserTx, error) {
 	args := m.Called(ctx)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(repository.Tx), args.Error(1)
+	return args.Get(0).(repository.UserTx), args.Error(1)
 }
 
 func (m *MockRepo) GetRecipeByTargetItemID(ctx context.Context, itemID int) (*domain.Recipe, error) {
@@ -139,12 +146,12 @@ func (m *MockRepo) UnlockRecipe(ctx context.Context, userID string, recipeID int
 	return args.Error(0)
 }
 
-func (m *MockRepo) GetUnlockedRecipesForUser(ctx context.Context, userID string) ([]crafting.UnlockedRecipeInfo, error) {
+func (m *MockRepo) GetUnlockedRecipesForUser(ctx context.Context, userID string) ([]repository.UnlockedRecipeInfo, error) {
 	args := m.Called(ctx, userID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]crafting.UnlockedRecipeInfo), args.Error(1)
+	return args.Get(0).([]repository.UnlockedRecipeInfo), args.Error(1)
 }
 
 func (m *MockRepo) GetLastCooldown(ctx context.Context, userID, action string) (*time.Time, error) {
@@ -165,13 +172,21 @@ func (m *MockRepo) MergeUsersInTransaction(ctx context.Context, primaryUserID, s
 	return args.Error(0)
 }
 
+func (m *MockRepo) GetAllItems(ctx context.Context) ([]domain.Item, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]domain.Item), args.Error(1)
+}
+
 // MockLootboxService is a mock for lootbox.Service
 type MockLootboxService struct {
 	mock.Mock
 }
 
-func (m *MockLootboxService) OpenLootbox(ctx context.Context, lootboxName string, quantity int) ([]lootbox.DroppedItem, error) {
-	args := m.Called(ctx, lootboxName, quantity)
+func (m *MockLootboxService) OpenLootbox(ctx context.Context, lootboxName string, quantity int, boxShine domain.ShineLevel) ([]lootbox.DroppedItem, error) {
+	args := m.Called(ctx, lootboxName, quantity, boxShine)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -181,7 +196,9 @@ func (m *MockLootboxService) OpenLootbox(ctx context.Context, lootboxName string
 // Helper to create a service with a mock repo and lootbox service
 func createTestService(repo *MockRepo, lootboxSvc *MockLootboxService) *service {
 	namingResolver := NewMockNamingResolver()
-	
+	namingResolver.DisplayNames["money"] = "Shiny credit"
+	namingResolver.DisplayNames["lootbox_tier0"] = "junkbox"
+
 	return &service{
 		repo:           repo,
 		lootboxService: lootboxSvc,
@@ -191,7 +208,7 @@ func createTestService(repo *MockRepo, lootboxSvc *MockLootboxService) *service 
 
 func TestProcessLootbox(t *testing.T) {
 	// Setup items
-	lootbox0 := &domain.Item{ID: 100, InternalName: domain.ItemLootbox0}
+	lootbox0 := &domain.Item{ID: 100, InternalName: domain.ItemLootbox0, PublicName: "junkbox"}
 
 	money := &domain.Item{ID: 1, InternalName: domain.ItemMoney}
 
@@ -204,9 +221,9 @@ func TestProcessLootbox(t *testing.T) {
 
 		// Mock lootbox service response
 		drops := []lootbox.DroppedItem{
-			{ItemID: money.ID, ItemName: domain.ItemMoney, Quantity: 5, Value: 50, ShineLevel: "COMMON"},
+			{ItemID: money.ID, ItemName: domain.ItemMoney, Quantity: 5, Value: 50, ShineLevel: domain.ShineCommon},
 		}
-		lootboxSvc.On("OpenLootbox", ctx, domain.ItemLootbox0, 1).Return(drops, nil)
+		lootboxSvc.On("OpenLootbox", ctx, domain.ItemLootbox0, 1, domain.ShineLevel("")).Return(drops, nil)
 
 		// Setup inventory with lootbox0
 		inventory := &domain.Inventory{
@@ -221,8 +238,8 @@ func TestProcessLootbox(t *testing.T) {
 
 		// Verify
 		assert.NoError(t, err)
-		assert.Contains(t, msg, "Opened")
-		assert.Contains(t, msg, "money")
+		assert.Contains(t, msg, "Opened a junkbox")
+		assert.Contains(t, msg, "5 Shiny credits")
 
 		// Verify inventory changes
 		// Should have consumed lootbox0 and gained money

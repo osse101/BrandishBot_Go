@@ -7,9 +7,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
 
 // Mock objects
@@ -17,18 +19,18 @@ type MockRepository struct {
 	mock.Mock
 }
 
-func (m *MockRepository) CreateToken(ctx context.Context, token *LinkToken) error {
+func (m *MockRepository) CreateToken(ctx context.Context, token *repository.LinkToken) error {
 	args := m.Called(ctx, token)
 	return args.Error(0)
 }
-func (m *MockRepository) GetToken(ctx context.Context, tokenStr string) (*LinkToken, error) {
+func (m *MockRepository) GetToken(ctx context.Context, tokenStr string) (*repository.LinkToken, error) {
 	args := m.Called(ctx, tokenStr)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*LinkToken), args.Error(1)
+	return args.Get(0).(*repository.LinkToken), args.Error(1)
 }
-func (m *MockRepository) UpdateToken(ctx context.Context, token *LinkToken) error {
+func (m *MockRepository) UpdateToken(ctx context.Context, token *repository.LinkToken) error {
 	args := m.Called(ctx, token)
 	return args.Error(0)
 }
@@ -36,12 +38,12 @@ func (m *MockRepository) InvalidateTokensForSource(ctx context.Context, platform
 	args := m.Called(ctx, platform, platformID)
 	return args.Error(0)
 }
-func (m *MockRepository) GetClaimedTokenForSource(ctx context.Context, platform, platformID string) (*LinkToken, error) {
+func (m *MockRepository) GetClaimedTokenForSource(ctx context.Context, platform, platformID string) (*repository.LinkToken, error) {
 	args := m.Called(ctx, platform, platformID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*LinkToken), args.Error(1)
+	return args.Get(0).(*repository.LinkToken), args.Error(1)
 }
 func (m *MockRepository) CleanupExpired(ctx context.Context) error {
 	args := m.Called(ctx)
@@ -75,7 +77,6 @@ func (m *MockUserService) GetLinkedPlatforms(ctx context.Context, platform, plat
 	args := m.Called(ctx, platform, platformID)
 	return args.Get(0).([]string), args.Error(1)
 }
-
 
 // TestUnlinkCache_RaceCondition validates that unlink cache access is thread-safe
 func TestUnlinkCache_Concurrency(t *testing.T) {
@@ -119,14 +120,14 @@ func TestConfirmLink_SourceUserCreationFlow(t *testing.T) {
 	svc := NewService(repo, userService)
 	ctx := context.Background()
 
-	token := &LinkToken{
-		Token: "ABCDEF",
-		SourcePlatform: domain.PlatformDiscord,
+	token := &repository.LinkToken{
+		Token:            "ABCDEF",
+		SourcePlatform:   domain.PlatformDiscord,
 		SourcePlatformID: "discord-123",
-		TargetPlatform: domain.PlatformTwitch,
+		TargetPlatform:   domain.PlatformTwitch,
 		TargetPlatformID: "twitch-456",
-		State: StateClaimed,
-		ExpiresAt: time.Now().Add(1 * time.Hour),
+		State:            StateClaimed,
+		ExpiresAt:        time.Now().Add(1 * time.Hour),
 	}
 
 	repo.On("GetClaimedTokenForSource", ctx, domain.PlatformDiscord, "discord-123").Return(token, nil)
@@ -134,7 +135,7 @@ func TestConfirmLink_SourceUserCreationFlow(t *testing.T) {
 
 	// Step 1: Source user search -> Not Found (Triggers creation flow)
 	userService.On("FindUserByPlatformID", ctx, domain.PlatformDiscord, "discord-123").Return(nil, fmt.Errorf("not found"))
-	
+
 	// Step 2: RegisterUser MUST be called for the new source user
 	createdUser := domain.User{ID: "new-source-id", DiscordID: "discord-123"}
 	userService.On("RegisterUser", ctx, mock.MatchedBy(func(u domain.User) bool {
@@ -148,13 +149,13 @@ func TestConfirmLink_SourceUserCreationFlow(t *testing.T) {
 	// Step 4: MergeUsers called with the ID from Step 2 (new-source-id)
 	// If the fix is missing, this would receive "" (empty string)
 	userService.On("MergeUsers", ctx, "new-source-id", "existing-user-id").Return(nil)
-	
+
 	// Step 5: Get Status
 	userService.On("GetLinkedPlatforms", ctx, domain.PlatformDiscord, "discord-123").Return([]string{domain.PlatformDiscord, domain.PlatformTwitch}, nil)
 
 	_, err := svc.ConfirmLink(ctx, domain.PlatformDiscord, "discord-123")
 	assert.NoError(t, err)
-	
+
 	userService.AssertExpectations(t)
 }
 
@@ -169,11 +170,11 @@ func TestInitiateLink_Success(t *testing.T) {
 	ctx := context.Background()
 
 	repo.On("InvalidateTokensForSource", ctx, domain.PlatformDiscord, "discord-123").Return(nil)
-	repo.On("CreateToken", ctx, mock.MatchedBy(func(token *LinkToken) bool {
-		return token.SourcePlatform == domain.PlatformDiscord && 
-		       token.SourcePlatformID == "discord-123" &&
-		       token.State == StatePending &&
-		       len(token.Token) == TokenLength
+	repo.On("CreateToken", ctx, mock.MatchedBy(func(token *repository.LinkToken) bool {
+		return token.SourcePlatform == domain.PlatformDiscord &&
+			token.SourcePlatformID == "discord-123" &&
+			token.State == StatePending &&
+			len(token.Token) == TokenLength
 	})).Return(nil)
 
 	token, err := svc.InitiateLink(ctx, domain.PlatformDiscord, "discord-123")
@@ -194,7 +195,7 @@ func TestClaimLink_Success(t *testing.T) {
 	svc := NewService(repo, userService)
 	ctx := context.Background()
 
-	pendingToken := &LinkToken{
+	pendingToken := &repository.LinkToken{
 		Token:            "ABC123",
 		SourcePlatform:   domain.PlatformDiscord,
 		SourcePlatformID: "discord-123",
@@ -204,10 +205,10 @@ func TestClaimLink_Success(t *testing.T) {
 	}
 
 	repo.On("GetToken", ctx, "ABC123").Return(pendingToken, nil)
-	repo.On("UpdateToken", ctx, mock.MatchedBy(func(token *LinkToken) bool {
+	repo.On("UpdateToken", ctx, mock.MatchedBy(func(token *repository.LinkToken) bool {
 		return token.State == StateClaimed &&
-		       token.TargetPlatform == domain.PlatformTwitch &&
-		       token.TargetPlatformID == "twitch-456"
+			token.TargetPlatform == domain.PlatformTwitch &&
+			token.TargetPlatformID == "twitch-456"
 	})).Return(nil)
 
 	token, err := svc.ClaimLink(ctx, "ABC123", domain.PlatformTwitch, "twitch-456")
@@ -225,7 +226,7 @@ func TestConfirmLink_MergeTwoExistingUsers(t *testing.T) {
 	svc := NewService(repo, userService)
 	ctx := context.Background()
 
-	token := &LinkToken{
+	token := &repository.LinkToken{
 		Token:            "ABC123",
 		SourcePlatform:   domain.PlatformDiscord,
 		SourcePlatformID: "discord-123",
@@ -260,7 +261,7 @@ func TestConfirmLink_LinkToNewUser(t *testing.T) {
 	svc := NewService(repo, userService)
 	ctx := context.Background()
 
-	token := &LinkToken{
+	token := &repository.LinkToken{
 		Token:            "ABC123",
 		SourcePlatform:   domain.PlatformDiscord,
 		SourcePlatformID: "discord-123",
@@ -320,7 +321,7 @@ func TestClaimLink_ExpiredToken(t *testing.T) {
 	svc := NewService(repo, userService)
 	ctx := context.Background()
 
-	expiredToken := &LinkToken{
+	expiredToken := &repository.LinkToken{
 		Token:            "ABC123",
 		SourcePlatform:   domain.PlatformDiscord,
 		SourcePlatformID: "discord-123",
@@ -330,7 +331,7 @@ func TestClaimLink_ExpiredToken(t *testing.T) {
 	}
 
 	repo.On("GetToken", ctx, "ABC123").Return(expiredToken, nil)
-	repo.On("UpdateToken", ctx, mock.MatchedBy(func(token *LinkToken) bool {
+	repo.On("UpdateToken", ctx, mock.MatchedBy(func(token *repository.LinkToken) bool {
 		return token.State == StateExpired
 	})).Return(nil)
 
@@ -348,7 +349,7 @@ func TestClaimLink_AlreadyUsedToken(t *testing.T) {
 	svc := NewService(repo, userService)
 	ctx := context.Background()
 
-	usedToken := &LinkToken{
+	usedToken := &repository.LinkToken{
 		Token:            "ABC123",
 		SourcePlatform:   domain.PlatformDiscord,
 		SourcePlatformID: "discord-123",
@@ -372,7 +373,7 @@ func TestClaimLink_SamePlatformRejection(t *testing.T) {
 	svc := NewService(repo, userService)
 	ctx := context.Background()
 
-	token := &LinkToken{
+	token := &repository.LinkToken{
 		Token:            "ABC123",
 		SourcePlatform:   domain.PlatformDiscord,
 		SourcePlatformID: "discord-123",
@@ -397,7 +398,7 @@ func TestConfirmLink_ExpiredConfirmation(t *testing.T) {
 	svc := NewService(repo, userService)
 	ctx := context.Background()
 
-	expiredToken := &LinkToken{
+	expiredToken := &repository.LinkToken{
 		Token:            "ABC123",
 		SourcePlatform:   domain.PlatformDiscord,
 		SourcePlatformID: "discord-123",
@@ -408,7 +409,7 @@ func TestConfirmLink_ExpiredConfirmation(t *testing.T) {
 	}
 
 	repo.On("GetClaimedTokenForSource", ctx, domain.PlatformDiscord, "discord-123").Return(expiredToken, nil)
-	repo.On("UpdateToken", ctx, mock.MatchedBy(func(token *LinkToken) bool {
+	repo.On("UpdateToken", ctx, mock.MatchedBy(func(token *repository.LinkToken) bool {
 		return token.State == StateExpired
 	})).Return(nil)
 
@@ -525,4 +526,3 @@ func TestGetStatus_UserNotFound(t *testing.T) {
 	assert.Nil(t, status)
 	userService.AssertExpectations(t)
 }
-

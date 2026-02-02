@@ -70,7 +70,7 @@ func (m *mockStatsRepository) GetTopUsers(ctx context.Context, eventType domain.
 		}
 	}
 
-	var entries []domain.LeaderboardEntry
+	entries := make([]domain.LeaderboardEntry, 0, len(counts))
 	for userID, count := range counts {
 		entries = append(entries, domain.LeaderboardEntry{
 			UserID:    userID,

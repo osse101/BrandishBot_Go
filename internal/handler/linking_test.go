@@ -2,7 +2,6 @@ package handler
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -10,68 +9,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/osse101/BrandishBot_Go/internal/domain"
-	"github.com/osse101/BrandishBot_Go/internal/linking"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/linking"
+	"github.com/osse101/BrandishBot_Go/internal/repository"
+	"github.com/osse101/BrandishBot_Go/mocks"
 )
 
-// ============================================================================
-// MOCKS
-// ============================================================================
-
-type MockLinkingService struct {
-	mock.Mock
-}
-
-func (m *MockLinkingService) InitiateLink(ctx context.Context, platform, platformID string) (*linking.LinkToken, error) {
-	args := m.Called(ctx, platform, platformID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*linking.LinkToken), args.Error(1)
-}
-
-func (m *MockLinkingService) ClaimLink(ctx context.Context, tokenStr, platform, platformID string) (*linking.LinkToken, error) {
-	args := m.Called(ctx, tokenStr, platform, platformID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*linking.LinkToken), args.Error(1)
-}
-
-func (m *MockLinkingService) ConfirmLink(ctx context.Context, platform, platformID string) (*linking.LinkResult, error) {
-	args := m.Called(ctx, platform, platformID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*linking.LinkResult), args.Error(1)
-}
-
-func (m *MockLinkingService) InitiateUnlink(ctx context.Context, platform, platformID, targetPlatform string) error {
-	args := m.Called(ctx, platform, platformID, targetPlatform)
-	return args.Error(0)
-}
-
-func (m *MockLinkingService) ConfirmUnlink(ctx context.Context, platform, platformID, targetPlatform string) error {
-	args := m.Called(ctx, platform, platformID, targetPlatform)
-	return args.Error(0)
-}
-
-func (m *MockLinkingService) GetStatus(ctx context.Context, platform, platformID string) (*linking.LinkStatus, error) {
-	args := m.Called(ctx, platform, platformID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*linking.LinkStatus), args.Error(1)
-}
-
-// ============================================================================
-// REQUEST VALIDATION TESTS
-// ============================================================================
-
 func TestHandleInitiate_InvalidJSON(t *testing.T) {
-	svc := new(MockLinkingService)
+	svc := mocks.NewMockLinkingService(t)
 	handler := NewLinkingHandlers(svc)
 
 	req := httptest.NewRequest(http.MethodPost, "/link/initiate", bytes.NewBufferString("invalid json"))
@@ -83,13 +31,12 @@ func TestHandleInitiate_InvalidJSON(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "Invalid request")
 }
 
-
 // ============================================================================
 // HTTP METHOD TESTS
 // ============================================================================
 
 func TestHandleInitiate_MethodNotAllowed(t *testing.T) {
-	svc := new(MockLinkingService)
+	svc := mocks.NewMockLinkingService(t)
 	handler := NewLinkingHandlers(svc)
 
 	req := httptest.NewRequest(http.MethodGet, "/link/initiate", nil)
@@ -101,7 +48,7 @@ func TestHandleInitiate_MethodNotAllowed(t *testing.T) {
 }
 
 func TestHandleClaim_MethodNotAllowed(t *testing.T) {
-	svc := new(MockLinkingService)
+	svc := mocks.NewMockLinkingService(t)
 	handler := NewLinkingHandlers(svc)
 
 	req := httptest.NewRequest(http.MethodGet, "/link/claim", nil)
@@ -117,10 +64,10 @@ func TestHandleClaim_MethodNotAllowed(t *testing.T) {
 // ============================================================================
 
 func TestHandleInitiate_Success(t *testing.T) {
-	svc := new(MockLinkingService)
+	svc := mocks.NewMockLinkingService(t)
 	handler := NewLinkingHandlers(svc)
 
-	token := &linking.LinkToken{
+	token := &repository.LinkToken{
 		Token:            "ABC123",
 		SourcePlatform:   domain.PlatformDiscord,
 		SourcePlatformID: "discord-123",
@@ -153,10 +100,10 @@ func TestHandleInitiate_Success(t *testing.T) {
 }
 
 func TestHandleClaim_Success(t *testing.T) {
-	svc := new(MockLinkingService)
+	svc := mocks.NewMockLinkingService(t)
 	handler := NewLinkingHandlers(svc)
 
-	token := &linking.LinkToken{
+	token := &repository.LinkToken{
 		Token:            "ABC123",
 		SourcePlatform:   domain.PlatformDiscord,
 		SourcePlatformID: "discord-123",
@@ -191,7 +138,7 @@ func TestHandleClaim_Success(t *testing.T) {
 }
 
 func TestHandleConfirm_Success(t *testing.T) {
-	svc := new(MockLinkingService)
+	svc := mocks.NewMockLinkingService(t)
 	handler := NewLinkingHandlers(svc)
 
 	result := &linking.LinkResult{
@@ -223,7 +170,7 @@ func TestHandleConfirm_Success(t *testing.T) {
 }
 
 func TestHandleUnlink_InitiateSuccess(t *testing.T) {
-	svc := new(MockLinkingService)
+	svc := mocks.NewMockLinkingService(t)
 	handler := NewLinkingHandlers(svc)
 
 	svc.On("InitiateUnlink", mock.Anything, domain.PlatformDiscord, "discord-123", domain.PlatformTwitch).Return(nil)
@@ -251,7 +198,7 @@ func TestHandleUnlink_InitiateSuccess(t *testing.T) {
 }
 
 func TestHandleUnlink_ConfirmSuccess(t *testing.T) {
-	svc := new(MockLinkingService)
+	svc := mocks.NewMockLinkingService(t)
 	handler := NewLinkingHandlers(svc)
 
 	svc.On("ConfirmUnlink", mock.Anything, domain.PlatformDiscord, "discord-123", domain.PlatformTwitch).Return(nil)
@@ -279,7 +226,7 @@ func TestHandleUnlink_ConfirmSuccess(t *testing.T) {
 }
 
 func TestHandleStatus_Success(t *testing.T) {
-	svc := new(MockLinkingService)
+	svc := mocks.NewMockLinkingService(t)
 	handler := NewLinkingHandlers(svc)
 
 	status := &linking.LinkStatus{
@@ -307,7 +254,7 @@ func TestHandleStatus_Success(t *testing.T) {
 // ============================================================================
 
 func TestHandleClaim_ExpiredToken(t *testing.T) {
-	svc := new(MockLinkingService)
+	svc := mocks.NewMockLinkingService(t)
 	handler := NewLinkingHandlers(svc)
 
 	svc.On("ClaimLink", mock.Anything, "ABC123", domain.PlatformTwitch, "twitch-456").Return(nil, fmt.Errorf("token expired"))
@@ -331,7 +278,7 @@ func TestHandleClaim_ExpiredToken(t *testing.T) {
 }
 
 func TestHandleConfirm_NoToken(t *testing.T) {
-	svc := new(MockLinkingService)
+	svc := mocks.NewMockLinkingService(t)
 	handler := NewLinkingHandlers(svc)
 
 	svc.On("ConfirmLink", mock.Anything, domain.PlatformDiscord, "discord-123").Return(nil, fmt.Errorf("no pending link to confirm"))
@@ -353,7 +300,7 @@ func TestHandleConfirm_NoToken(t *testing.T) {
 }
 
 func TestHandleStatus_MissingParams(t *testing.T) {
-	svc := new(MockLinkingService)
+	svc := mocks.NewMockLinkingService(t)
 	handler := NewLinkingHandlers(svc)
 
 	// Missing platform_id
@@ -367,7 +314,7 @@ func TestHandleStatus_MissingParams(t *testing.T) {
 }
 
 func TestHandleInitiate_ServiceError(t *testing.T) {
-	svc := new(MockLinkingService)
+	svc := mocks.NewMockLinkingService(t)
 	handler := NewLinkingHandlers(svc)
 
 	svc.On("InitiateLink", mock.Anything, domain.PlatformDiscord, "discord-123").Return(nil, fmt.Errorf("internal error"))

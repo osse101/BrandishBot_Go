@@ -1,12 +1,13 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+set -euo pipefail
+export LC_ALL=C.UTF-8
 
 # BrandishBot Production Deployment Script
 # Usage: ./scripts/deploy.sh <environment> <version>
 # Example: ./scripts/deploy.sh staging v1.2.0-rc1
 
-ENVIRONMENT="${1}"
-VERSION="${2}"
+ENVIRONMENT="${1:-}"
+VERSION="${2:-}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 

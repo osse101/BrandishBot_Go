@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 )
 
 // Type represents the type of an event
@@ -11,16 +12,159 @@ type Type string
 
 // Event represents a generic event in the system
 type Event struct {
-	Type     Type
-	Payload  interface{}
-	Metadata map[string]interface{}
+	Version  string                 `json:"version"` // Event schema version (e.g., "1.0")
+	Type     Type                   `json:"type"`
+	Payload  interface{}            `json:"payload"`
+	Metadata map[string]interface{} `json:"metadata"`
 }
 
 // Common event types
 const (
 	ProgressionCycleCompleted Type = "progression.cycle.completed"
+	ProgressionTargetSet      Type = "progression.target.set"
+	ProgressionVotingStarted  Type = "progression.voting_started"
+	ProgressionAllUnlocked    Type = "progression.all_unlocked"
+	EventTypeEngagement       Type = "engagement"
+
+	// Timeout event types
+	TimeoutApplied Type = "timeout.applied"
+	TimeoutCleared Type = "timeout.cleared"
 )
 
+// Typed event payloads for type safety
+
+// EngagementPayloadV1 is the typed payload for engagement events
+type EngagementPayloadV1 struct {
+	UserID       int64  `json:"user_id"`
+	PlatformID   int64  `json:"platform_id"`
+	ActivityType string `json:"activity_type"`
+	Timestamp    int64  `json:"timestamp"`
+}
+
+// ProgressionCyclePayloadV1 is the typed payload for progression cycle events
+type ProgressionCyclePayloadV1 struct {
+	CycleID   int64  `json:"cycle_id"`
+	NodeKey   string `json:"node_key,omitempty"`
+	Timestamp int64  `json:"timestamp"`
+}
+
+// ProgressionTargetPayloadV1 is the typed payload for progression target events
+type ProgressionTargetPayloadV1 struct {
+	NodeKey   string `json:"node_key"`
+	Timestamp int64  `json:"timestamp"`
+}
+
+// Type-safe event constructors
+
+// NewEngagementEvent creates a new engagement event with type-safe payload
+func NewEngagementEvent(userID, platformID int64, activityType string) Event {
+	return Event{
+		Version: EventSchemaVersion,
+		Type:    EventTypeEngagement,
+		Payload: EngagementPayloadV1{
+			UserID:       userID,
+			PlatformID:   platformID,
+			ActivityType: activityType,
+			Timestamp:    time.Now().Unix(),
+		},
+		Metadata: make(map[string]interface{}),
+	}
+}
+
+// NewProgressionCycleEvent creates a new progression cycle event
+func NewProgressionCycleEvent(cycleID int64, nodeKey string) Event {
+	return Event{
+		Version: EventSchemaVersion,
+		Type:    ProgressionCycleCompleted,
+		Payload: ProgressionCyclePayloadV1{
+			CycleID:   cycleID,
+			NodeKey:   nodeKey,
+			Timestamp: time.Now().Unix(),
+		},
+		Metadata: make(map[string]interface{}),
+	}
+}
+
+// NewProgressionTargetEvent creates a new progression target event
+func NewProgressionTargetEvent(nodeKey string) Event {
+	return Event{
+		Version: EventSchemaVersion,
+		Type:    ProgressionTargetSet,
+		Payload: ProgressionTargetPayloadV1{
+			NodeKey:   nodeKey,
+			Timestamp: time.Now().Unix(),
+		},
+		Metadata: make(map[string]interface{}),
+	}
+}
+
+// GambleCompletedPayloadV1 is the typed payload for gamble completion events
+type GambleCompletedPayloadV1 struct {
+	GambleID         string `json:"gamble_id"`
+	WinnerID         string `json:"winner_id"`
+	TotalValue       int64  `json:"total_value"`
+	ParticipantCount int    `json:"participant_count"`
+	Timestamp        int64  `json:"timestamp"`
+}
+
+// TimeoutPayloadV1 is the typed payload for timeout events
+type TimeoutPayloadV1 struct {
+	Platform        string `json:"platform"`
+	Username        string `json:"username"`
+	Action          string `json:"action"` // "applied" or "cleared"
+	DurationSeconds int    `json:"duration_seconds"`
+	Reason          string `json:"reason,omitempty"`
+	Timestamp       int64  `json:"timestamp"`
+}
+
+// NewTimeoutAppliedEvent creates a new timeout applied event
+func NewTimeoutAppliedEvent(platform, username string, durationSeconds int, reason string) Event {
+	return Event{
+		Version: EventSchemaVersion,
+		Type:    TimeoutApplied,
+		Payload: TimeoutPayloadV1{
+			Platform:        platform,
+			Username:        username,
+			Action:          "applied",
+			DurationSeconds: durationSeconds,
+			Reason:          reason,
+			Timestamp:       time.Now().Unix(),
+		},
+		Metadata: make(map[string]interface{}),
+	}
+}
+
+// NewTimeoutClearedEvent creates a new timeout cleared event
+func NewTimeoutClearedEvent(platform, username string) Event {
+	return Event{
+		Version: EventSchemaVersion,
+		Type:    TimeoutCleared,
+		Payload: TimeoutPayloadV1{
+			Platform:        platform,
+			Username:        username,
+			Action:          "cleared",
+			DurationSeconds: 0,
+			Timestamp:       time.Now().Unix(),
+		},
+		Metadata: make(map[string]interface{}),
+	}
+}
+
+// NewGambleCompletedEvent creates a new gamble completed event with type-safe payload
+func NewGambleCompletedEvent(gambleID, winnerID string, totalValue int64, participantCount int) Event {
+	return Event{
+		Version: EventSchemaVersion,
+		Type:    "GambleCompleted",
+		Payload: GambleCompletedPayloadV1{
+			GambleID:         gambleID,
+			WinnerID:         winnerID,
+			TotalValue:       totalValue,
+			ParticipantCount: participantCount,
+			Timestamp:        time.Now().Unix(),
+		},
+		Metadata: make(map[string]interface{}),
+	}
+}
 
 // Handler is a function that handles an event
 type Handler func(ctx context.Context, event Event) error
@@ -65,7 +209,7 @@ func (b *MemoryBus) Publish(ctx context.Context, event Event) error {
 	}
 
 	if len(errs) > 0 {
-		return fmt.Errorf("encountered %d errors while handling event %s: %v", len(errs), event.Type, errs)
+		return fmt.Errorf(LogMsgHandlerErrorFormat, len(errs), event.Type, errs)
 	}
 
 	return nil

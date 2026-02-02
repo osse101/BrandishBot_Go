@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/bwmarrin/discordgo"
+
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
@@ -37,14 +38,11 @@ func LeaderboardCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	}
 
 	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-		}); err != nil {
-			slog.Error("Failed to send deferred response", "error", err)
+		if !deferResponse(s, i) {
 			return
 		}
 
-		options := i.ApplicationCommandData().Options
+		options := getOptions(i)
 		metric := "engagement_score"
 		limit := 10
 
@@ -65,7 +63,7 @@ func LeaderboardCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		} else {
 			msg, err = client.GetLeaderboard(metric, limit)
 		}
-		
+
 		if err != nil {
 			slog.Error("Failed to get leaderboard", "error", err)
 			respondFriendlyError(s, i, err.Error())
@@ -107,30 +105,18 @@ func StatsCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	}
 
 	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-		}); err != nil {
-			slog.Error("Failed to send deferred response", "error", err)
+		if !deferResponse(s, i) {
 			return
 		}
 
-		// Default to command user
-		user := i.Member.User
-		if user == nil {
-			user = i.User
-		}
-
-		// Check if a different user was specified
-		options := i.ApplicationCommandData().Options
+		user := getInteractionUser(i)
+		options := getOptions(i)
 		if len(options) > 0 {
 			user = options[0].UserValue(s)
 		}
 
 		// Ensure user exists
-		_, err := client.RegisterUser(user.Username, user.ID)
-		if err != nil {
-			slog.Error("Failed to register user", "error", err)
-			respondError(s, i, "Error connecting to game server.")
+		if !ensureUserRegistered(s, i, client, user, false) {
 			return
 		}
 
@@ -141,20 +127,8 @@ func StatsCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			return
 		}
 
-		embed := &discordgo.MessageEmbed{
-			Title:       fmt.Sprintf("📊 Stats for %s", user.Username),
-			Description: msg,
-			Color:       0x3498db, // Blue
-			Footer: &discordgo.MessageEmbedFooter{
-				Text: "BrandishBot",
-			},
-		}
-
-		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Embeds: &[]*discordgo.MessageEmbed{embed},
-		}); err != nil {
-			slog.Error("Failed to send response", "error", err)
-		}
+		embed := createEmbed(fmt.Sprintf("📊 Stats for %s", user.Username), msg, 0x3498db, "")
+		sendEmbed(s, i, embed)
 	}
 
 	return cmd, handler

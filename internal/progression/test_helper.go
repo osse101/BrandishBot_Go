@@ -18,8 +18,8 @@ func NewTestHelper(service Service) *TestHelper {
 // This should be called in test setup to enable all features
 func (h *TestHelper) UnlockAllFeatures(ctx context.Context) error {
 	features := []string{
-		FeatureBuy,
-		FeatureSell,
+		FeatureEconomy,
+		FeatureEconomy,
 		FeatureUpgrade,
 		FeatureDisassemble,
 		FeatureEconomy,

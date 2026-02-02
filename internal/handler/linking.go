@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/osse101/BrandishBot_Go/internal/linking"
@@ -51,30 +50,27 @@ func (h *LinkingHandlers) HandleInitiate() http.HandlerFunc {
 		log := logger.FromContext(r.Context())
 
 		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			http.Error(w, ErrMsgMethodNotAllowed, http.StatusMethodNotAllowed)
 			return
 		}
 
 		var req InitiateRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Invalid request", http.StatusBadRequest)
+		if err := DecodeAndValidateRequest(r, w, &req, "Initiate link"); err != nil {
 			return
 		}
 
 		token, err := h.svc.InitiateLink(r.Context(), req.Platform, req.PlatformID)
 		if err != nil {
 			log.Error("Failed to initiate link", "error", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			statusCode, userMsg := mapServiceErrorToUserMessage(err)
+			respondError(w, statusCode, userMsg)
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(map[string]interface{}{
+		respondJSON(w, http.StatusOK, map[string]interface{}{
 			"token":      token.Token,
 			"expires_in": int(token.ExpiresAt.Sub(token.CreatedAt).Seconds()),
-		}); err != nil {
-			log.Error("Failed to encode response", "error", err)
-		}
+		})
 	}
 }
 
@@ -84,13 +80,12 @@ func (h *LinkingHandlers) HandleClaim() http.HandlerFunc {
 		log := logger.FromContext(r.Context())
 
 		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			http.Error(w, ErrMsgMethodNotAllowed, http.StatusMethodNotAllowed)
 			return
 		}
 
 		var req ClaimRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Invalid request", http.StatusBadRequest)
+		if err := DecodeAndValidateRequest(r, w, &req, "Claim link"); err != nil {
 			return
 		}
 
@@ -101,13 +96,10 @@ func (h *LinkingHandlers) HandleClaim() http.HandlerFunc {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(map[string]interface{}{
+		respondJSON(w, http.StatusOK, map[string]interface{}{
 			"source_platform":       token.SourcePlatform,
 			"awaiting_confirmation": true,
-		}); err != nil {
-			log.Error("Failed to encode response", "error", err)
-		}
+		})
 	}
 }
 
@@ -117,13 +109,12 @@ func (h *LinkingHandlers) HandleConfirm() http.HandlerFunc {
 		log := logger.FromContext(r.Context())
 
 		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			http.Error(w, ErrMsgMethodNotAllowed, http.StatusMethodNotAllowed)
 			return
 		}
 
 		var req ConfirmRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Invalid request", http.StatusBadRequest)
+		if err := DecodeAndValidateRequest(r, w, &req, "Confirm link"); err != nil {
 			return
 		}
 
@@ -134,10 +125,7 @@ func (h *LinkingHandlers) HandleConfirm() http.HandlerFunc {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(result); err != nil {
-			log.Error("Failed to encode response", "error", err)
-		}
+		respondJSON(w, http.StatusOK, result)
 	}
 }
 
@@ -147,13 +135,12 @@ func (h *LinkingHandlers) HandleUnlink() http.HandlerFunc {
 		log := logger.FromContext(r.Context())
 
 		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			http.Error(w, ErrMsgMethodNotAllowed, http.StatusMethodNotAllowed)
 			return
 		}
 
 		var req UnlinkRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Invalid request", http.StatusBadRequest)
+		if err := DecodeAndValidateRequest(r, w, &req, "Unlink"); err != nil {
 			return
 		}
 
@@ -161,17 +148,15 @@ func (h *LinkingHandlers) HandleUnlink() http.HandlerFunc {
 			// Step 1: Initiate unlink
 			if err := h.svc.InitiateUnlink(r.Context(), req.Platform, req.PlatformID, req.TargetPlatform); err != nil {
 				log.Error("Failed to initiate unlink", "error", err)
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				statusCode, userMsg := mapServiceErrorToUserMessage(err)
+				respondError(w, statusCode, userMsg)
 				return
 			}
 
-			w.Header().Set("Content-Type", "application/json")
-			if err := json.NewEncoder(w).Encode(map[string]interface{}{
+			respondJSON(w, http.StatusOK, map[string]interface{}{
 				"awaiting_confirmation": true,
-				"message":               "Confirm within 60 seconds",
-			}); err != nil {
-				log.Error("Failed to encode response", "error", err)
-			}
+				"message":               MsgConfirmWithinSeconds,
+			})
 			return
 		}
 
@@ -182,13 +167,10 @@ func (h *LinkingHandlers) HandleUnlink() http.HandlerFunc {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(map[string]interface{}{
+		respondJSON(w, http.StatusOK, map[string]interface{}{
 			"success": true,
-			"message": "Platform unlinked",
-		}); err != nil {
-			log.Error("Failed to encode response", "error", err)
-		}
+			"message": MsgPlatformUnlinked,
+		})
 	}
 }
 
@@ -197,24 +179,23 @@ func (h *LinkingHandlers) HandleStatus() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
 
-		platform := r.URL.Query().Get("platform")
-		platformID := r.URL.Query().Get("platform_id")
-
-		if platform == "" || platformID == "" {
-			http.Error(w, "Missing platform or platform_id", http.StatusBadRequest)
+		platform, ok := GetQueryParam(r, w, "platform")
+		if !ok {
+			return
+		}
+		platformID, ok := GetQueryParam(r, w, "platform_id")
+		if !ok {
 			return
 		}
 
 		status, err := h.svc.GetStatus(r.Context(), platform, platformID)
 		if err != nil {
 			log.Error("Failed to get link status", "error", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			statusCode, userMsg := mapServiceErrorToUserMessage(err)
+			respondError(w, statusCode, userMsg)
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(status); err != nil {
-			log.Error("Failed to encode response", "error", err)
-		}
+		respondJSON(w, http.StatusOK, status)
 	}
 }

@@ -2,24 +2,14 @@ package stats
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
+	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
-
-// Repository defines the interface for stats persistence
-type Repository interface {
-	RecordEvent(ctx context.Context, event *domain.StatsEvent) error
-	GetEventsByUser(ctx context.Context, userID string, startTime, endTime time.Time) ([]domain.StatsEvent, error)
-	GetEventsByType(ctx context.Context, eventType domain.EventType, startTime, endTime time.Time) ([]domain.StatsEvent, error)
-	GetUserEventsByType(ctx context.Context, userID string, eventType domain.EventType, limit int) ([]domain.StatsEvent, error)
-	GetTopUsers(ctx context.Context, eventType domain.EventType, startTime, endTime time.Time, limit int) ([]domain.LeaderboardEntry, error)
-	GetEventCounts(ctx context.Context, startTime, endTime time.Time) (map[domain.EventType]int, error)
-	GetUserEventCounts(ctx context.Context, userID string, startTime, endTime time.Time) (map[domain.EventType]int, error)
-	GetTotalEventCount(ctx context.Context, startTime, endTime time.Time) (int, error)
-}
 
 // Service defines the interface for stats operations
 type Service interface {
@@ -32,11 +22,11 @@ type Service interface {
 
 // service implements the Service interface
 type service struct {
-	repo Repository
+	repo repository.Stats
 }
 
 // NewService creates a new stats service
-func NewService(repo Repository) Service {
+func NewService(repo repository.Stats) Service {
 	return &service{
 		repo: repo,
 	}
@@ -47,7 +37,7 @@ func (s *service) RecordUserEvent(ctx context.Context, userID string, eventType 
 	log := logger.FromContext(ctx)
 
 	if userID == "" {
-		return fmt.Errorf("user ID is required")
+		return errors.New(ErrMsgUserIDRequired)
 	}
 
 	event := &domain.StatsEvent{
@@ -58,16 +48,16 @@ func (s *service) RecordUserEvent(ctx context.Context, userID string, eventType 
 	}
 
 	if err := s.repo.RecordEvent(ctx, event); err != nil {
-		log.Error("Failed to record event", "error", err, "user_id", userID, "event_type", eventType)
-		return fmt.Errorf("failed to record event: %w", err)
+		log.Error(LogMsgFailedToRecordEvent, "error", err, "user_id", userID, "event_type", eventType)
+		return fmt.Errorf(ErrMsgRecordEventFailed, err)
 	}
 
-	log.Debug("Event recorded", "event_id", event.EventID, "user_id", userID, "event_type", eventType)
+	log.Debug(LogMsgEventRecorded, "event_id", event.EventID, "user_id", userID, "event_type", eventType)
 
 	// Check for daily streak
 	if eventType != domain.EventDailyStreak {
 		if err := s.checkDailyStreak(ctx, userID); err != nil {
-			log.Warn("Failed to check daily streak", "error", err, "user_id", userID)
+			log.Warn(LogMsgFailedToCheckDailyStreak, "error", err, "user_id", userID)
 		}
 	}
 
@@ -77,9 +67,9 @@ func (s *service) RecordUserEvent(ctx context.Context, userID string, eventType 
 // checkDailyStreak calculates and records daily login streak
 func (s *service) checkDailyStreak(ctx context.Context, userID string) error {
 	// Get the last streak event
-	events, err := s.repo.GetUserEventsByType(ctx, userID, domain.EventDailyStreak, 1)
+	events, err := s.repo.GetUserEventsByType(ctx, userID, domain.EventDailyStreak, StreakEventQueryLimit)
 	if err != nil {
-		return fmt.Errorf("failed to get streak events: %w", err)
+		return fmt.Errorf(ErrMsgGetStreakEventsFailed, err)
 	}
 
 	var lastStreak int
@@ -88,7 +78,7 @@ func (s *service) checkDailyStreak(ctx context.Context, userID string) error {
 	if len(events) > 0 {
 		lastStreakTime = events[0].CreatedAt
 		// Extract streak from metadata
-		if streakVal, ok := events[0].EventData["streak"]; ok {
+		if streakVal, ok := events[0].EventData[MetadataKeyStreak]; ok {
 			// Handle float64 (JSON default) or int
 			switch v := streakVal.(type) {
 			case float64:
@@ -112,7 +102,7 @@ func (s *service) checkDailyStreak(ctx context.Context, userID string) error {
 	}
 
 	// Check if it was yesterday
-	yesterday := now.UTC().AddDate(0, 0, -1)
+	yesterday := now.UTC().AddDate(0, 0, DayOffsetYesterday)
 	y3, m3, d3 := yesterday.Date()
 
 	newStreak := 1
@@ -123,13 +113,13 @@ func (s *service) checkDailyStreak(ctx context.Context, userID string) error {
 
 	// Record new streak
 	meta := map[string]interface{}{
-		"streak": newStreak,
+		MetadataKeyStreak: newStreak,
 	}
 
 	// Use RecordUserEvent but with EventDailyStreak type (which will be skipped by the check above)
 	// Triggers "STREAK_INCREASED" if streak > 1? The client can handle that based on event.
 	if err := s.RecordUserEvent(ctx, userID, domain.EventDailyStreak, meta); err != nil {
-		return fmt.Errorf("failed to record streak event: %w", err)
+		return fmt.Errorf(ErrMsgRecordStreakEventFailed, err)
 	}
 
 	return nil
@@ -138,9 +128,9 @@ func (s *service) checkDailyStreak(ctx context.Context, userID string) error {
 // GetUserCurrentStreak retrieves the current daily login streak for a user
 func (s *service) GetUserCurrentStreak(ctx context.Context, userID string) (int, error) {
 	// Get the last streak event
-	events, err := s.repo.GetUserEventsByType(ctx, userID, domain.EventDailyStreak, 1)
+	events, err := s.repo.GetUserEventsByType(ctx, userID, domain.EventDailyStreak, StreakEventQueryLimit)
 	if err != nil {
-		return 0, fmt.Errorf("failed to get streak events: %w", err)
+		return 0, fmt.Errorf(ErrMsgGetStreakEventsFailed, err)
 	}
 
 	if len(events) == 0 {
@@ -152,7 +142,7 @@ func (s *service) GetUserCurrentStreak(ctx context.Context, userID string) (int,
 	var streak int
 
 	// Extract streak from metadata
-	if streakVal, ok := lastEvent.EventData["streak"]; ok {
+	if streakVal, ok := lastEvent.EventData[MetadataKeyStreak]; ok {
 		switch v := streakVal.(type) {
 		case float64:
 			streak = int(v)
@@ -174,7 +164,7 @@ func (s *service) GetUserCurrentStreak(ctx context.Context, userID string) (int,
 	}
 
 	// If yesterday, valid
-	yesterday := now.UTC().AddDate(0, 0, -1)
+	yesterday := now.UTC().AddDate(0, 0, DayOffsetYesterday)
 	y3, m3, d3 := yesterday.Date()
 	if y1 == y3 && m1 == m3 && d1 == d3 {
 		return streak, nil
@@ -189,15 +179,15 @@ func (s *service) GetUserStats(ctx context.Context, userID string, period string
 	log := logger.FromContext(ctx)
 
 	if userID == "" {
-		return nil, fmt.Errorf("user ID is required")
+		return nil, errors.New(ErrMsgUserIDRequired)
 	}
 
 	startTime, endTime := getPeriodRange(period)
 
 	eventCounts, err := s.repo.GetUserEventCounts(ctx, userID, startTime, endTime)
 	if err != nil {
-		log.Error("Failed to get user event counts", "error", err, "user_id", userID)
-		return nil, fmt.Errorf("failed to get user event counts: %w", err)
+		log.Error(LogMsgFailedToGetUserEventCounts, "error", err, "user_id", userID)
+		return nil, fmt.Errorf(ErrMsgGetUserEventCountsFailed, err)
 	}
 
 	totalEvents := 0
@@ -213,7 +203,7 @@ func (s *service) GetUserStats(ctx context.Context, userID string, period string
 		EventCounts: eventCounts,
 	}
 
-	log.Debug("Retrieved user stats", "user_id", userID, "period", period, "total_events", totalEvents)
+	log.Debug(LogMsgRetrievedUserStats, "user_id", userID, "period", period, "total_events", totalEvents)
 	return summary, nil
 }
 
@@ -225,14 +215,14 @@ func (s *service) GetSystemStats(ctx context.Context, period string) (*domain.St
 
 	totalEvents, err := s.repo.GetTotalEventCount(ctx, startTime, endTime)
 	if err != nil {
-		log.Error("Failed to get total event count", "error", err)
-		return nil, fmt.Errorf("failed to get total event count: %w", err)
+		log.Error(LogMsgFailedToGetTotalEventCount, "error", err)
+		return nil, fmt.Errorf(ErrMsgGetTotalEventCountFailed, err)
 	}
 
 	eventCounts, err := s.repo.GetEventCounts(ctx, startTime, endTime)
 	if err != nil {
-		log.Error("Failed to get event counts", "error", err)
-		return nil, fmt.Errorf("failed to get event counts: %w", err)
+		log.Error(LogMsgFailedToGetEventCounts, "error", err)
+		return nil, fmt.Errorf(ErrMsgGetEventCountsFailed, err)
 	}
 
 	summary := &domain.StatsSummary{
@@ -243,7 +233,7 @@ func (s *service) GetSystemStats(ctx context.Context, period string) (*domain.St
 		EventCounts: eventCounts,
 	}
 
-	log.Debug("Retrieved system stats", "period", period, "total_events", totalEvents)
+	log.Debug(LogMsgRetrievedSystemStats, "period", period, "total_events", totalEvents)
 	return summary, nil
 }
 
@@ -252,18 +242,18 @@ func (s *service) GetLeaderboard(ctx context.Context, eventType domain.EventType
 	log := logger.FromContext(ctx)
 
 	if limit <= 0 {
-		limit = 10 // Default to top 10
+		limit = DefaultLeaderboardLimit
 	}
 
 	startTime, endTime := getPeriodRange(period)
 
 	entries, err := s.repo.GetTopUsers(ctx, eventType, startTime, endTime, limit)
 	if err != nil {
-		log.Error("Failed to get leaderboard", "error", err, "event_type", eventType)
-		return nil, fmt.Errorf("failed to get leaderboard: %w", err)
+		log.Error(LogMsgFailedToGetLeaderboard, "error", err, "event_type", eventType)
+		return nil, fmt.Errorf(ErrMsgGetLeaderboardFailed, err)
 	}
 
-	log.Debug("Retrieved leaderboard", "event_type", eventType, "period", period, "entries", len(entries))
+	log.Debug(LogMsgRetrievedLeaderboard, "event_type", eventType, "period", period, "entries", len(entries))
 	return entries, nil
 }
 
@@ -273,19 +263,19 @@ func getPeriodRange(period string) (startTime, endTime time.Time) {
 	endTime = now
 
 	switch period {
-	case "hourly":
+	case PeriodHourly:
 		startTime = now.Add(-1 * time.Hour)
-	case "daily":
+	case PeriodDaily:
 		startTime = now.AddDate(0, 0, -1)
-	case "weekly":
+	case PeriodWeekly:
 		startTime = now.AddDate(0, 0, -7)
-	case "monthly":
+	case PeriodMonthly:
 		startTime = now.AddDate(0, -1, 0)
-	case "yearly":
+	case PeriodYearly:
 		startTime = now.AddDate(-1, 0, 0)
-	case "all":
+	case PeriodAll:
 		// Set to a very old date for "all time"
-		startTime = time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
+		startTime = time.Date(AllTimeStartYear, AllTimeStartMonth, AllTimeStartDay, 0, 0, 0, 0, time.UTC)
 	default:
 		// Default to daily
 		startTime = now.AddDate(0, 0, -1)

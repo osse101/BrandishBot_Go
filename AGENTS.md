@@ -6,14 +6,32 @@ This document provides AI agents with structured guidance on navigating, underst
 
 ## 📚 Quick Navigation by Task Type
 
-| If You're Working On... | Start Here | Journal to Update |
-|------------------------|-----------|------------------|
-| **New Feature Development** | [FEATURE_DEVELOPMENT_GUIDE.md](docs/development/FEATURE_DEVELOPMENT_GUIDE.md) | [docs/development/journal.md](docs/development/journal.md) |
-| **Architecture/Design Decisions** | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | [docs/architecture/journal.md](docs/architecture/journal.md) |
-| **Writing Tests** | [TEST_GUIDANCE.md](docs/testing/TEST_GUIDANCE.md) | [docs/testing/journal.md](docs/testing/journal.md) |
-| **Database Operations** | [DATABASE.md](docs/DATABASE.md), [MIGRATIONS.md](docs/MIGRATIONS.md) | [docs/development/journal.md](docs/development/journal.md) |
-| **Deployment** | [DEPLOYMENT_WORKFLOW.md](docs/deployment/DEPLOYMENT_WORKFLOW.md) | N/A |
-| **Feature Planning/Proposals** | [gamble_feature.md](docs/planning/gamble_feature.md) (template example) | [docs/development/journal.md](docs/development/journal.md) |
+| If You're Working On...           | Start Here                                                                    | Journal to Update                                            |
+| --------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| **New Feature Development**       | [FEATURE_DEVELOPMENT_GUIDE.md](docs/development/FEATURE_DEVELOPMENT_GUIDE.md) | [docs/development/journal.md](docs/development/journal.md)   |
+| **Architecture/Design Decisions** | [ARCHITECTURE.md](docs/ARCHITECTURE.md)                                       | [docs/architecture/journal.md](docs/architecture/journal.md) |
+| **Writing Tests**                 | [TEST_GUIDANCE.md](docs/testing/TEST_GUIDANCE.md)                             | [docs/testing/journal.md](docs/testing/journal.md)           |
+| **Database Operations**           | [DATABASE.md](docs/DATABASE.md), [MIGRATIONS.md](docs/MIGRATIONS.md)          | [docs/development/journal.md](docs/development/journal.md)   |
+| **Deployment**                    | [DEPLOYMENT_WORKFLOW.md](docs/deployment/DEPLOYMENT_WORKFLOW.md)              | N/A                                                          |
+| **Feature Planning/Proposals**    | [gamble_feature.md](docs/planning/gamble_feature.md) (template example)       | [docs/development/journal.md](docs/development/journal.md)   |
+| **Benchmarking**                  | [BENCHMARKING.md](docs/benchmarking/BENCHMARKING.md)                          | [docs/benchmarking/journal.md](docs/benchmarking/journal.md) |
+| **API Documentation**             | [API_COVERAGE.md](docs/API_COVERAGE.md)                                       | [docs/development/journal.md](docs/development/journal.md)   |
+
+---
+
+## 🎯 Action-Trigger Guide
+
+| Trigger (Situation)                | Action (Resource/Skill)                                                               |
+| ---------------------------------- | ------------------------------------------------------------------------------------- |
+| **Need to check/run migrations**   | View **[Goose Skill](.agent/skills/goose/SKILL.md)**                                  |
+| **Need to inspect database**       | View **[Postgres Skill](.agent/skills/postgres/SKILL.md)**                            |
+| **Need to run tests**              | View **[Testing Skill](.agent/skills/testing/SKILL.md)**                              |
+| **Need to deploy/rollback**        | View **[Deployment Skill](.agent/skills/deployment/SKILL.md)**                        |
+| **Need to create Discord command** | View **[Discord Skill](.agent/skills/discord/SKILL.md)**                              |
+| **Need to modify progression**     | View **[Progression Skill](.agent/skills/progression/SKILL.md)**                      |
+| **Need to create a new feature**   | Follow **[Feature Development Guide](docs/development/FEATURE_DEVELOPMENT_GUIDE.md)** |
+| **Need to fix a complex bug**      | Check **[Journals](#-journal-files)** for similar past issues                         |
+| **Encountering currency/locking**  | Review **[Concurrency Guidelines](#-concurrency-guidelines)**                         |
 
 ---
 
@@ -26,12 +44,13 @@ This document provides AI agents with structured guidance on navigating, underst
 
 ### Journal Locations
 
-| Journal | Purpose | When to Read | When to Update |
-|---------|---------|--------------|----------------|
-| [docs/development/journal.md](docs/development/journal.md) | Development patterns, concurrency, transactions, refactoring | Building features, fixing bugs | After discovering patterns, solving tricky bugs |
-| [docs/architecture/journal.md](docs/architecture/journal.md) | System design, scaling, service architecture | Design decisions, multi-instance work | After architectural changes or ADR decisions |
-| [docs/testing/journal.md](docs/testing/journal.md) | Testing patterns, mocks, coverage strategies | Writing tests, debugging test failures | After learning testing lessons |
-| [docs/tools/journal.md](docs/tools/journal.md) | Documenting learnings, patterns, and best practices for tools | Using tools | After learning tools lessons |
+| Journal                                                      | Purpose                                                              | When to Read                           | When to Update                                                                                      |
+| ------------------------------------------------------------ | -------------------------------------------------------------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| [docs/development/journal.md](docs/development/journal.md)   | Development patterns, concurrency, transactions, refactoring         | Building features, fixing bugs         | After discovering patterns, solving tricky bugs                                                     |
+| [docs/architecture/journal.md](docs/architecture/journal.md) | System design, scaling, service architecture                         | Design decisions, multi-instance work  | After architectural changes or ADR decisions                                                        |
+| [docs/testing/journal.md](docs/testing/journal.md)           | Testing patterns, mocks, coverage strategies                         | Writing tests, debugging test failures | After learning testing lessons                                                                      |
+| [docs/tools/journal.md](docs/tools/journal.md)               | Documenting learnings, patterns, and best practices for tools        | Using tools                            | After learning tools lessons                                                                        |
+| [docs/benchmarking/journal.md](docs/benchmarking/journal.md) | Documenting learnings, patterns, and best practices for benchmarking | When optimizing                        | After an optimization leads to no improvement or after a new category of optimization is discovered |
 
 ### Journal Entry Format
 
@@ -41,16 +60,20 @@ When adding to a journal, use this structure:
 ## YYYY-MM-DD: Title - Brief Description
 
 ### Context
+
 What problem were you solving?
 
 ### Solution/Pattern
+
 What did you learn or implement?
 
 ### Key Learnings
+
 - Bullet points of insights
 - Include code examples if helpful
 
 ### Impact
+
 What effect does this have on the codebase?
 
 ---
@@ -62,7 +85,7 @@ What effect does this have on the codebase?
 
 For specialized AI behaviors, personality configurations, and role-specific prompts, refer to:
 
-📄 **[ai_personalities.md](ai_personalities.md)**
+📄 **[docs/ai_personalities.md](docs/ai_personalities.md)**
 
 This file contains persona definitions for different task types (debugging, feature development, code review, etc.).
 
@@ -70,7 +93,7 @@ This file contains persona definitions for different task types (debugging, feat
 
 ## 📁 Project Structure Overview
 
-```
+```MD
 BrandishBot_Go/
 ├── cmd/                    # Entry points (app, discord, setup, debug)
 ├── internal/               # Core application code
@@ -88,7 +111,7 @@ BrandishBot_Go/
 
 ### Documentation Structure
 
-```
+```MD
 docs/
 ├── ARCHITECTURE.md         # System architecture overview
 ├── DATABASE.md             # Database design and schema
@@ -101,6 +124,7 @@ docs/
 ├── development/            # Development guides
 │   ├── journal.md          # 📓 Development journal
 │   ├── FEATURE_DEVELOPMENT_GUIDE.md  # ** START HERE for features **
+│   ├── PROGRESSION_GUIDANCE.md       # ** Deep Dive for Progression **
 │   └── CODE_QUALITY_RECOMMENDATIONS.md
 ├── testing/                # Testing documentation
 │   ├── journal.md          # 📓 Testing journal
@@ -126,6 +150,8 @@ make build              # Build all binaries to bin/
 make run                # Run application from bin/app
 make test               # Run tests with coverage and race detection
 make lint               # Run code linters
+make mocks              # Generate mocks
+make generate           # Generate sql using sqlc
 
 # Database
 make migrate-up         # Run pending migrations
@@ -137,11 +163,14 @@ make migrate-create NAME=xyz  # Create new migration
 make docker-up          # Start services with Docker Compose
 make docker-down        # Stop services
 make docker-build       # Rebuild images (no cache)
+make docker-build-fast  # Rebuild images (with cache)
 
 # Testing
 make test-integration   # Run integration tests
 make test-staging       # Run staging integration tests
 make test-coverage      # Generate HTML coverage report
+make unit               # Run unit tests
+make test               # Run all tests
 ```
 
 ---
@@ -156,7 +185,7 @@ When running background commands:
 2. **Terminate with IDs** using `send_command_input(..., Terminate: true)`
 3. **Clean up at session end** - terminate ALL background processes
 
-```
+```MD
 ❌ AVOID: Searching for processes by port (unreliable)
 ✅ CORRECT: Use tracked command ID for cleanup
 ```
@@ -247,20 +276,20 @@ Before submitting changes:
 ## The Right Tool for Go Code
 
 1. **sed** → Simple text files, one-liners
-2. **replace_file_content** → Single contiguous block edits  
+2. **replace_file_content** → Single contiguous block edits
 3. **multi_replace_file_content** → Multiple block edits
 
 ---
 
 ## 🆘 Troubleshooting Quick Reference
 
-| Issue | Solution |
-|-------|----------|
-| "database does not exist" | Check `.env.example` DB_NAME, ensure migrations ran |
-| Mock type mismatch | Check interface for exact return types |
-| Race condition | Use `SELECT ... FOR UPDATE` in transaction |
-| Test goroutine leak | Add `time.Sleep` before check, use tolerance |
-| Build fails after refactor | Search for old field/type names with grep |
+| Issue                      | Solution                                            |
+| -------------------------- | --------------------------------------------------- |
+| "database does not exist"  | Check `.env.example` DB_NAME, ensure migrations ran |
+| Mock type mismatch         | Check interface for exact return types              |
+| Race condition             | Use `SELECT ... FOR UPDATE` in transaction          |
+| Test goroutine leak        | Add `time.Sleep` before check, use tolerance        |
+| Build fails after refactor | Search for old field/type names with grep           |
 
 ---
 
@@ -275,4 +304,4 @@ When stuck or unsure:
 
 ---
 
-*This guidance was last updated: December 2025*
+~This guidance was last updated: January 2026~

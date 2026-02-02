@@ -13,6 +13,9 @@ services:
     environment:
       - DB_HOST=db
       - ENVIRONMENT=staging
+    volumes:
+      - ./logs:/app/logs
+      - ./configs:/app/configs:ro
     depends_on:
       - db
     restart: unless-stopped
@@ -48,6 +51,9 @@ services:
     environment:
       - API_URL=http://app:8080
       - ENVIRONMENT=staging
+    volumes:
+      - ./configs:/app/configs:ro
+      - ./logs/discord:/app/logs
     depends_on:
       - app
     restart: unless-stopped
@@ -87,7 +93,7 @@ services:
         max-file: "3"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 10s
       timeout: 5s
       retries: 5

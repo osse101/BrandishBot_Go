@@ -15,24 +15,17 @@ func ProfileCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	}
 
 	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-		}); err != nil {
-			slog.Error("Failed to send deferred response", "error", err)
+		if !deferResponse(s, i) {
 			return
 		}
 
-		user := i.Member.User
-		if user == nil {
-			user = i.User
-		}
+		user := getInteractionUser(i)
 
-		domainUser, err := client.RegisterUser(user.Username, user.ID)
-		if err != nil {
-			slog.Error("Failed to register user", "error", err)
-			respondFriendlyError(s, i, err.Error())
+		// Ensure user exists
+		if !ensureUserRegistered(s, i, client, user, true) {
 			return
 		}
+		domainUser, _ := client.RegisterUser(user.Username, user.ID)
 
 		// Get inventory to calculate net worth
 		inventory, err := client.GetInventory("discord", user.ID, user.Username, "")
@@ -65,11 +58,7 @@ func ProfileCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			},
 		}
 
-		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Embeds: &[]*discordgo.MessageEmbed{embed},
-		}); err != nil {
-			slog.Error("Failed to send profile embed", "error", err)
-		}
+		sendEmbed(s, i, embed)
 	}
 
 	return cmd, handler
@@ -91,24 +80,17 @@ func CheckTimeoutCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	}
 
 	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-		}); err != nil {
-			slog.Error("Failed to send deferred response", "error", err)
+		if !deferResponse(s, i) {
 			return
 		}
 
-		options := i.ApplicationCommandData().Options
+		options := getOptions(i)
 		var targetUser *discordgo.User
-		
+
 		if len(options) > 0 {
 			targetUser = options[0].UserValue(s)
 		} else {
-			if i.Member != nil {
-				targetUser = i.Member.User
-			} else {
-				targetUser = i.User
-			}
+			targetUser = getInteractionUser(i)
 		}
 
 		isTimedOut, remainingSeconds, err := client.GetUserTimeout(targetUser.Username)
@@ -128,20 +110,8 @@ func CheckTimeoutCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			color = 0x2ecc71 // Green
 		}
 
-		embed := &discordgo.MessageEmbed{
-			Title:       "⏱️ Timeout Status",
-			Description: description,
-			Color:       color,
-			Footer: &discordgo.MessageEmbedFooter{
-				Text: "BrandishBot",
-			},
-		}
-
-		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Embeds: &[]*discordgo.MessageEmbed{embed},
-		}); err != nil {
-			slog.Error("Failed to send response", "error", err)
-		}
+		embed := createEmbed("⏱️ Timeout Status", description, color, "")
+		sendEmbed(s, i, embed)
 	}
 
 	return cmd, handler

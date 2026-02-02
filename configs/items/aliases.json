@@ -1,72 +1,304 @@
 {
-  "lootbox_tier0": {
-    "default": [
-      "A dingy box",
-      "A worn door box",
-      "A cheap looking box",
-      "A battered box"
-    ],
-    "themes": {
-      "halloween": [
-        "A battered pumpkin container",
-        "A cheap looking skull chest",
-        "A spooky rattling box"
+  "version": "1.0",
+  "schema": "item-aliases",
+  "last_updated": "2026-02-01",
+  "aliases": {
+    "money": {
+      "default": [
+        "money",
+        "Shiny credit"
       ],
-      "christmas": [
-        "A frosty gift box",
-        "A tinsel-wrapped crate",
-        "A snow-dusted parcel"
+      "themes": {
+        "halloween": [
+          "Curse-touched coin",
+          "ghost-gold"
+        ],
+        "christmas": [
+          "Winter-frosted credit"
+        ]
+      }
+    },
+    "item_shovel": {
+      "default": [
+        "basic shovel",
+        "well-used spade",
+        "sturdy dirt-mover",
+        "rusty garden shovel"
+      ],
+      "themes": {
+        "halloween": [
+          "grave-digging spade",
+          "bone-handled shovel"
+        ],
+        "christmas": [
+          "snow-clearing shovel",
+          "candy-cane spade"
+        ]
+      }
+    },
+    "item_stick": {
+      "default": [
+        "simple stick",
+        "sturdy branch",
+        "piece of gnarled wood",
+        "simple wooden stick"
+      ],
+      "themes": {
+        "halloween": [
+          "brittle skeleton arm",
+          "twisted witch-wood branch"
+        ],
+        "christmas": [
+          "long peppermint stick",
+          "snapped pine branch"
+        ]
+      }
+    },
+    "item_shield": {
+      "default": [
+        "sturdy shield",
+        "reinforced buckler",
+        "battered iron protector",
+        "defensive plate"
+      ],
+      "themes": {
+        "halloween": [
+          "coffin-lid shield",
+          "web-covered buckler"
+        ],
+        "christmas": [
+          "giant cookie shield",
+          "festive wreath-guard"
+        ]
+      }
+    },
+    "lootbox_tier0": {
+      "default": [
+        "dingy box",
+        "worn door box",
+        "cheap looking box",
+        "battered box"
+      ],
+      "themes": {
+        "halloween": [
+          "battered pumpkin container",
+          "cheap looking skull chest",
+          "spooky rattling box"
+        ],
+        "christmas": [
+          "frosty gift box",
+          "tinsel-wrapped crate",
+          "snow-dusted parcel"
+        ]
+      }
+    },
+    "lootbox_tier1": {
+      "default": [
+        "sturdy chest",
+        "well-crafted box",
+        "reliable container"
+      ],
+      "themes": {
+        "halloween": [
+          "haunted treasure chest",
+          "glowing jack-o-lantern box"
+        ],
+        "christmas": [
+          "red velvet gift box",
+          "An ornate holiday chest"
+        ]
+      }
+    },
+    "lootbox_tier2": {
+      "default": [
+        "gleaming golden chest",
+        "magnificent treasure box",
+        "An ornate gilded container"
+      ],
+      "themes": {
+        "halloween": [
+          "legendary cursed chest",
+          "phantom's treasure trove"
+        ],
+        "christmas": [
+          "Santa's special delivery",
+          "magical winter chest"
+        ]
+      }
+    },
+    "lootbox_tier3": {
+      "default": [
+        "radiant diamond chest",
+        "glowing crystalline box",
+        "An ethereal treasure vault",
+        "legendary relic box"
+      ],
+      "themes": {
+        "halloween": [
+          "An ancient soul-reaper's chest",
+          "spectral void box"
+        ],
+        "christmas": [
+          "Santa's ultimate gift bundle",
+          "magical winter solstice vault"
+        ]
+      }
+    },
+    "weapon_blaster": {
+      "default": [
+        "shiny ray gun",
+        "crackling energy weapon",
+        "humming blaster"
+      ],
+      "themes": {
+        "halloween": [
+          "ghostly plasma gun",
+          "spectral beam cannon"
+        ],
+        "christmas": [
+          "candy cane cannon",
+          "snowball launcher"
+        ]
+      }
+    },
+    "weapon_hugeblaster": {
+      "default": [
+        "devastating orbital cannon",
+        "massive energy projector",
+        "heavy plasma discharger",
+        "titan-class ray gun"
+      ],
+      "themes": {
+        "halloween": [
+          "The Spectral Doomsday Cannon",
+          "Haunting Abyss Ray"
+        ],
+        "christmas": [
+          "The Northern Lights Projector",
+          "Giant Nutcracker Cannon"
+        ]
+      }
+    },
+    "weapon_this": {
+      "default": [
+        "this",
+        "Exactly what you asked for",
+        "The 'this' weapon",
+        "literal 'this'"
       ]
-    }
-  },
-  "lootbox_tier1": {
-    "default": [
-      "A sturdy chest",
-      "A well-crafted box",
-      "A reliable container"
-    ],
-    "themes": {
-      "halloween": [
-        "A haunted treasure chest",
-        "A glowing jack-o-lantern box"
+    },
+    "revive_small": {
+      "default": [
+        "small healing potion",
+        "minor rejuvenation vial",
+        "quick recovery tonic",
+        "faintly glowing elixir"
       ],
-      "christmas": [
-        "A red velvet gift box",
-        "An ornate holiday chest"
+      "themes": {
+        "halloween": [
+          "vial of zombie essence",
+          "witch's brew of restoration"
+        ],
+        "christmas": [
+          "bottle of magic eggnog",
+          "warm cup of holiday cheer"
+        ]
+      }
+    },
+    "explosive_tnt": {
+      "default": [
+        "bundle of dynamite",
+        "high-yield explosive charge",
+        "dangerous red cylinder",
+        "stack of TNT"
+      ],
+      "themes": {
+        "halloween": [
+          "volatile pumpkin bomb",
+          "cluster of unstable spirits"
+        ],
+        "christmas": [
+          "An explosive gift surprise",
+          "high-pressure coal blast"
+        ]
+      }
+    },
+    "xp_rarecandy": {
+      "default": [
+        "glowing rare candy",
+        "shimmering experience crystal",
+        "sweet taste of power",
+        "luminous skill-booster"
+      ],
+      "themes": {
+        "halloween": [
+          "haunted soul-sweet",
+          "Specter-flavored hard candy"
+        ],
+        "christmas": [
+          "magical peppermint swirl",
+          "sugarplum of wisdom"
+        ]
+      }
+    },
+    "item_grenade": {
+      "default": [
+        "volatile grenade",
+        "primed explosive orb",
+        "high-fragmentation device",
+        "ticking surprise"
+      ],
+      "themes": {
+        "halloween": [
+          "spooky smoke pellet",
+          "jack-o-lantern grenade"
+        ],
+        "christmas": [
+          "An explosive bauble",
+          "snowball packed with ice"
+        ]
+      }
+    },
+    "weapon_mirror": {
+      "default": [
+        "reflective mirror shield",
+        "crystalline surface of deflection",
+        "polished silver barricade",
+        "shimmering light-bender"
+      ],
+      "themes": {
+        "halloween": [
+          "haunted silver looking-glass",
+          "shadow-reflecting pane"
+        ],
+        "christmas": [
+          "polished ice wall",
+          "shiny golden ornament shield"
+        ]
+      }
+    },
+    "item_scrap": {
+      "default": [
+        "pile of scrap metal",
+        "heap of salvaged parts",
+        "Some jagged metallic debris",
+        "Abandoned mechanical bits"
       ]
-    }
-  },
-  "lootbox_tier2": {
-    "default": [
-      "A gleaming golden chest",
-      "A magnificent treasure box",
-      "An ornate gilded container"
-    ],
-    "themes": {
-      "halloween": [
-        "A legendary cursed chest",
-        "A phantom's treasure trove"
-      ],
-      "christmas": [
-        "Santa's special delivery",
-        "A magical winter chest"
+    },
+    "item_script": {
+      "default": [
+        "mysterious script",
+        "cryptic scroll of code",
+        "glowing digital parchment",
+        "An ancient sequence structure"
       ]
-    }
-  },
-  "weapon_blaster": {
-    "default": [
-      "A shiny ray gun",
-      "A crackling energy weapon",
-      "A humming blaster"
-    ],
-    "themes": {
-      "halloween": [
-        "A ghostly plasma gun",
-        "A spectral beam cannon"
-      ],
-      "christmas": [
-        "A candy cane cannon",
-        "A snowball launcher"
+    },
+    "item_video_filter": {
+      "default": [
+        "video filter",
+        "digital lens overlay",
+        "chromatic visual modifier",
+        "pixelated aesthetic enhancer"
       ]
     }
   }

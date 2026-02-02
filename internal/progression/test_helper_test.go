@@ -9,7 +9,7 @@ import (
 func TestUnlockAllFeatures(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	helper := NewTestHelper(service)
@@ -22,8 +22,8 @@ func TestUnlockAllFeatures(t *testing.T) {
 
 	// Verify features are unlocked
 	features := []string{
-		FeatureBuy,
-		FeatureSell,
+		FeatureEconomy,
+		FeatureEconomy,
 		FeatureUpgrade,
 		FeatureDisassemble,
 	}
@@ -43,19 +43,19 @@ func TestUnlockAllFeatures(t *testing.T) {
 func TestUnlockFeature(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	helper := NewTestHelper(service)
 
 	// Unlock buy feature
-	err := helper.UnlockFeature(ctx, FeatureBuy)
+	err := helper.UnlockFeature(ctx, FeatureEconomy)
 	if err != nil {
 		t.Fatalf("UnlockFeature failed: %v", err)
 	}
 
 	// Verify it's unlocked
-	unlocked, err := service.IsFeatureUnlocked(ctx, FeatureBuy)
+	unlocked, err := service.IsFeatureUnlocked(ctx, FeatureEconomy)
 	if err != nil {
 		t.Fatalf("IsFeatureUnlocked failed: %v", err)
 	}

@@ -1,0 +1,80 @@
+name: Weekly Benchmarks
+
+on:
+  schedule:
+    - cron: "0 2 * * 0" # 2 AM UTC every Sunday
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch all history for comparison
+
+      - name: Merge develop into master
+        run: |
+          git config --global user.name "GitHub Action"
+          git config --global user.email "action@github.com"
+          git checkout master
+          git merge origin/develop --no-ff -m "chore: merge develop into master for weekly benchmark"
+          git push origin master
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.0"
+          cache: true
+
+      - name: Install benchstat
+        run: go install golang.org/x/perf/cmd/benchstat@latest
+
+      - name: Create benchmarks directory
+        run: mkdir -p benchmarks/results
+
+      - name: Run benchmarks
+        run: |
+          go test -bench=. -benchmem -benchtime=2s ./... 2>&1 | tee benchmarks/results/weekly-$(date +%Y%m%d).txt
+
+      - name: Download previous benchmark
+        continue-on-error: true
+        uses: dawidd6/action-download-artifact@v3
+        with:
+          workflow: weekly-benchmark.yml
+          name: benchmark-results
+          path: benchmarks/previous
+
+      - name: Compare with previous
+        continue-on-error: true
+        run: |
+          if [ -f benchmarks/previous/latest.txt ]; then
+            echo "## Benchmark Comparison" > benchmarks/results/comparison.md
+            echo "\`\`\`" >> benchmarks/results/comparison.md
+            benchstat benchmarks/previous/latest.txt benchmarks/results/weekly-$(date +%Y%m%d).txt >> benchmarks/results/comparison.md || true
+            echo "\`\`\`" >> benchmarks/results/comparison.md
+            cat benchmarks/results/comparison.md
+          else
+            echo "No previous benchmark found - this is the first run"
+          fi
+
+      - name: Copy current as latest
+        run: |
+          cp benchmarks/results/weekly-$(date +%Y%m%d).txt benchmarks/results/latest.txt
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: benchmarks/results/
+          retention-days: 90
+
+      - name: Comment on commit (if regression detected)
+        if: failure()
+        run: |
+          echo "Benchmark regression detected!"
+          echo "Check the artifacts for details."

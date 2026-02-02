@@ -5,76 +5,24 @@ import (
 	"testing"
 	"time"
 
-	"github.com/osse101/BrandishBot_Go/internal/database"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/modules/postgres"
-	"github.com/testcontainers/testcontainers-go/wait"
 )
 
 func TestStatsRepository_Integration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
 	}
+	if testDBConnString == "" {
+		t.Skip("Skipping integration test: database not available")
+	}
 
 	ctx := context.Background()
 
-	// Start Postgres container
-	var pgContainer *postgres.PostgresContainer
-	var err error
-
-	func() {
-		defer func() {
-			if r := recover(); r != nil {
-				t.Skipf("Skipping integration test due to panic (likely Docker issue): %v", r)
-			}
-		}()
-		pgContainer, err = postgres.Run(ctx,
-			"postgres:15-alpine",
-			postgres.WithDatabase("testdb"),
-			postgres.WithUsername("testuser"),
-			postgres.WithPassword("testpass"),
-			testcontainers.WithWaitStrategy(
-				wait.ForLog("database system is ready to accept connections").
-					WithOccurrence(2).
-					WithStartupTimeout(5*time.Second)),
-		)
-	}()
-
-	if pgContainer == nil {
-		if err != nil {
-			t.Fatalf("failed to start postgres container: %v", err)
-		}
-		return
-	}
-	if err != nil {
-		t.Fatalf("failed to start postgres container: %v", err)
-	}
-	defer func() {
-		if err := pgContainer.Terminate(ctx); err != nil {
-			t.Fatalf("failed to terminate container: %v", err)
-		}
-	}()
-
-	connStr, err := pgContainer.ConnectionString(ctx, "sslmode=disable")
-	if err != nil {
-		t.Fatalf("failed to get connection string: %v", err)
-	}
-
-	// Connect to database
-	pool, err := database.NewPool(connStr, 10, 30*time.Minute, time.Hour)
-	if err != nil {
-		t.Fatalf("failed to connect to database: %v", err)
-	}
-	defer pool.Close()
-
-	// Apply migrations
-	if err := applyMigrations(ctx, pool, "../../../migrations"); err != nil {
-		t.Fatalf("failed to apply migrations: %v", err)
-	}
+	// Use shared pool and migrations
+	ensureMigrations(t)
 
 	// Create test user first (required for foreign key constraints)
-	userRepo := NewUserRepository(pool)
+	userRepo := NewUserRepository(testPool)
 	testUser := &domain.User{
 		Username: "test_stats_user",
 		TwitchID: "test123",
@@ -83,7 +31,7 @@ func TestStatsRepository_Integration(t *testing.T) {
 		t.Fatalf("failed to create test user: %v", err)
 	}
 
-	statsRepo := NewStatsRepository(pool)
+	statsRepo := NewStatsRepository(testPool)
 
 	t.Run("RecordEvent", func(t *testing.T) {
 		event := &domain.StatsEvent{

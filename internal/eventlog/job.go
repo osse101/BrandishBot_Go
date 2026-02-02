@@ -24,17 +24,17 @@ func NewCleanupJob(service Service, retentionDays int) *CleanupJob {
 // Process executes the cleanup job
 func (j *CleanupJob) Process(ctx context.Context) error {
 	log := logger.FromContext(ctx)
-	log.Info("Starting event log cleanup job", "retentionDays", j.retentionDays)
+	log.Info(LogMsgCleanupJobStarting, LogFieldRetentionDays, j.retentionDays)
 
 	start := time.Now()
 	count, err := j.service.CleanupOldEvents(ctx, j.retentionDays)
 	duration := time.Since(start)
 
 	if err != nil {
-		log.Error("Event log cleanup failed", "error", err, "duration", duration)
+		log.Error(LogMsgCleanupJobFailed, LogFieldError, err, LogFieldDuration, duration)
 		return err
 	}
 
-	log.Info("Event log cleanup completed", "deletedCount", count, "duration", duration)
+	log.Info(LogMsgCleanupJobCompleted, LogFieldDeletedCount, count, LogFieldDuration, duration)
 	return nil
 }

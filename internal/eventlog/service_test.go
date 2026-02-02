@@ -1,12 +1,16 @@
-package eventlog
+package eventlog_test
 
 import (
 	"context"
 	"testing"
 
-	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/event"
+	"github.com/osse101/BrandishBot_Go/internal/eventlog"
+	"github.com/osse101/BrandishBot_Go/internal/eventlog/mocks"
 )
 
 // MockEventBus is a mock implementation of event.Bus
@@ -24,19 +28,19 @@ func (m *MockEventBus) Subscribe(eventType event.Type, handler event.Handler) {
 }
 
 func TestService_Subscribe(t *testing.T) {
-	mockRepo := new(MockRepository)
-	service := NewService(mockRepo)
+	mockRepo := mocks.NewMockRepository(t)
+	service := eventlog.NewService(mockRepo)
 	mockBus := new(MockEventBus)
 
 	// Expect subscription to all event types
 	eventTypes := []event.Type{
-		"item.sold",
-		"item.bought",
-		"item.upgraded",
-		"item.disassembled",
-		"item.used",
-		"search.performed",
-		"engagement",
+		domain.EventTypeItemSold,
+		domain.EventTypeItemBought,
+		domain.EventTypeItemUpgraded,
+		domain.EventTypeItemDisassembled,
+		domain.EventTypeItemUsed,
+		domain.EventTypeSearchPerformed,
+		domain.EventTypeEngagement,
 	}
 
 	for _, et := range eventTypes {
@@ -49,42 +53,34 @@ func TestService_Subscribe(t *testing.T) {
 }
 
 func TestService_HandleEvent(t *testing.T) {
-	mockRepo := new(MockRepository)
-	// We need to access the private handleEvent method, but since we are in the same package (eventlog),
-	// we can test it directly if we export it or use the service instance.
-	// However, handleEvent is private.
-	// But we can test it by simulating the handler call if we could capture it.
-	// Alternatively, we can export it for testing or just test via public methods if possible.
-	// Since Subscribe registers the handler, we can't easily trigger it unless we mock the Bus to capture the handler.
+	mockRepo := mocks.NewMockRepository(t)
+	service := eventlog.NewService(mockRepo)
 
-	// Let's use the service instance and call the handler directly via reflection or by changing it to public?
-	// Or better: make handleEvent public or internal (it is internal to package).
-	// Since this test is in `package eventlog`, we can access `handleEvent`.
-
-	svc := NewService(mockRepo).(*service)
+	// Use test hooks to access private method
+	hooks := eventlog.NewTestHooks(service)
 
 	ctx := context.Background()
 	userID := "user123"
 	payload := map[string]interface{}{
-		"user_id":   userID,
-		"item_name": "sword",
+		eventlog.PayloadKeyUserID: userID,
+		"item_name":               "sword",
 	}
 	evt := event.Event{
-		Type:    "item.sold",
+		Type:    domain.EventTypeItemSold,
 		Payload: payload,
 	}
 
 	// Expect LogEvent to be called
-	mockRepo.On("LogEvent", ctx, "item.sold", &userID, payload, mock.Anything).Return(nil)
+	mockRepo.On("LogEvent", ctx, domain.EventTypeItemSold, &userID, payload, mock.Anything).Return(nil)
 
-	err := svc.handleEvent(ctx, evt)
+	err := hooks.HandleEvent(ctx, evt)
 	assert.NoError(t, err)
 	mockRepo.AssertExpectations(t)
 }
 
 func TestService_CleanupOldEvents(t *testing.T) {
-	mockRepo := new(MockRepository)
-	service := NewService(mockRepo)
+	mockRepo := mocks.NewMockRepository(t)
+	service := eventlog.NewService(mockRepo)
 	ctx := context.Background()
 
 	mockRepo.On("CleanupOldEvents", ctx, 10).Return(int64(5), nil)

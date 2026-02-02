@@ -18,9 +18,9 @@ type HealthStatus struct {
 }
 
 var (
-	startTime        = time.Now()
-	commandCounter   int64
-	lastCommandTime  time.Time
+	startTime       = time.Now()
+	commandCounter  int64
+	lastCommandTime time.Time
 )
 
 // RecordCommand increments the command counter
@@ -59,5 +59,9 @@ func (h *HTTPServer) HandleHealth(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(health)
+	if err := json.NewEncoder(w).Encode(health); err != nil {
+		// Can't write error response at this point since headers are sent
+		// Silently ignore as this is a health check endpoint
+		_ = err
+	}
 }

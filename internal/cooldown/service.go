@@ -6,6 +6,11 @@ import (
 	"time"
 )
 
+// ProgressionService defines the interface for progression system
+type ProgressionService interface {
+	GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error)
+}
+
 // Service manages action cooldowns for users
 type Service interface {
 	// CheckCooldown checks if a user's action is on cooldown
@@ -31,12 +36,12 @@ type ErrOnCooldown struct {
 
 func (e ErrOnCooldown) Error() string {
 	minutes := int(e.Remaining.Minutes())
-	seconds := int(e.Remaining.Seconds()) % 60
-	
+	seconds := int(e.Remaining.Seconds()) % SecondsPerMinute
+
 	if minutes > 0 {
-		return fmt.Sprintf("action '%s' on cooldown: %dm %ds remaining", e.Action, minutes, seconds)
+		return fmt.Sprintf(ErrFmtCooldownWithMinutes, e.Action, minutes, seconds)
 	}
-	return fmt.Sprintf("action '%s' on cooldown: %ds remaining", e.Action, seconds)
+	return fmt.Sprintf(ErrFmtCooldownSecondsOnly, e.Action, seconds)
 }
 
 // Is allows errors.Is() to work with ErrOnCooldown

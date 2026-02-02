@@ -5,7 +5,9 @@ import (
 	"log/slog"
 
 	"github.com/bwmarrin/discordgo"
+
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/progression"
 )
 
 // VoteCommand returns the vote command definition and handler
@@ -17,57 +19,29 @@ func VoteCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			{
 				Type:        discordgo.ApplicationCommandOptionString,
 				Name:        "node",
-				Description: "Node key to vote for (e.g., feature_buy, item_money)",
+				Description: "Node key to vote for (e.g., feature_economy, item_money)",
 				Required:    true,
 			},
 		},
 	}
 
 	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-		}); err != nil {
-			slog.Error("Failed to send deferred response", "error", err)
-			return
-		}
+		handleEmbedResponse(s, i, func() (string, error) {
+			user := getInteractionUser(i)
+			options := getOptions(i)
+			nodeKey := options[0].StringValue()
 
-		user := i.Member.User
-		if user == nil {
-			user = i.User
-		}
+			// Ensure user exists
+			_, err := client.RegisterUser(user.Username, user.ID)
+			if err != nil {
+				return "", fmt.Errorf("failed to register user: %w", err)
+			}
 
-		options := i.ApplicationCommandData().Options
-		nodeKey := options[0].StringValue()
-
-		// Ensure user exists
-		_, err := client.RegisterUser(user.Username, user.ID)
-		if err != nil {
-			slog.Error("Failed to register user", "error", err)
-			respondError(s, i, "Error connecting to game server.")
-			return
-		}
-
-		msg, err := client.VoteForNode(domain.PlatformDiscord, user.ID, user.Username, nodeKey)
-		if err != nil {
-			slog.Error("Failed to vote", "error", err)
-			respondFriendlyError(s, i, err.Error())
-			return
-		}
-
-		embed := &discordgo.MessageEmbed{
-			Title:       "✅ Vote Recorded",
-			Description: msg,
-			Color:       0x3498db, // Blue
-			Footer: &discordgo.MessageEmbedFooter{
-				Text: "BrandishBot",
-			},
-		}
-
-		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Embeds: &[]*discordgo.MessageEmbed{embed},
-		}); err != nil {
-			slog.Error("Failed to send response", "error", err)
-		}
+			return client.VoteForNode(domain.PlatformDiscord, user.ID, user.Username, nodeKey)
+		}, ResponseConfig{
+			Title: "✅ Vote Recorded",
+			Color: 0x3498db, // Blue
+		}, true)
 	}
 
 	return cmd, handler
@@ -82,7 +56,7 @@ func AdminUnlockCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			{
 				Type:        discordgo.ApplicationCommandOptionString,
 				Name:        "node",
-				Description: "Node key to unlock (e.g., feature_buy)",
+				Description: "Node key to unlock (e.g., feature_economy)",
 				Required:    true,
 			},
 			{
@@ -95,41 +69,38 @@ func AdminUnlockCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	}
 
 	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-		}); err != nil {
-			slog.Error("Failed to send deferred response", "error", err)
-			return
-		}
+		handleEmbedResponse(s, i, func() (string, error) {
+			options := getOptions(i)
+			nodeKey := options[0].StringValue()
+			level := 1
+			if len(options) > 1 {
+				level = int(options[1].IntValue())
+			}
 
-		options := i.ApplicationCommandData().Options
-		nodeKey := options[0].StringValue()
-		level := 1
-		if len(options) > 1 {
-			level = int(options[1].IntValue())
-		}
+			return client.AdminUnlockNode(nodeKey, level)
+		}, ResponseConfig{
+			Title: "🔓 Admin Unlock",
+			Color: 0xe67e22, // Orange
+		}, true)
+	}
 
-		msg, err := client.AdminUnlockNode(nodeKey, level)
-		if err != nil {
-			slog.Error("Failed to unlock node", "error", err)
-			respondError(s, i, fmt.Sprintf("Failed to unlock: %v", err))
-			return
-		}
+	return cmd, handler
+}
 
-		embed := &discordgo.MessageEmbed{
-			Title:       "🔓 Admin Unlock",
-			Description: msg,
-			Color:       0xe67e22, // Orange
-			Footer: &discordgo.MessageEmbedFooter{
-				Text: "BrandishBot Admin",
-			},
-		}
+// AdminUnlockAllCommand returns the admin unlock all command definition and handler
+func AdminUnlockAllCommand() (*discordgo.ApplicationCommand, CommandHandler) {
+	cmd := &discordgo.ApplicationCommand{
+		Name:        "admin-unlock-all",
+		Description: "[Admin] Force unlock ALL progression nodes (DEBUG ONLY)",
+	}
 
-		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Embeds: &[]*discordgo.MessageEmbed{embed},
-		}); err != nil {
-			slog.Error("Failed to send response", "error", err)
-		}
+	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
+		handleEmbedResponse(s, i, func() (string, error) {
+			return client.AdminUnlockAllNodes()
+		}, ResponseConfig{
+			Title: "🔓 Admin Unlock All",
+			Color: 0xe74c3c, // Red (warning color for debug command)
+		}, true)
 	}
 
 	return cmd, handler
@@ -143,10 +114,7 @@ func UnlockProgressCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	}
 
 	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-		}); err != nil {
-			slog.Error("Failed to send deferred response", "error", err)
+		if !deferResponse(s, i) {
 			return
 		}
 
@@ -159,9 +127,11 @@ func UnlockProgressCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 
 		if progress == nil {
 			slog.Info("No active unlock progress")
-			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 				Content: &[]string{"No active unlock progress."}[0],
-			})
+			}); err != nil {
+				slog.Error("Failed to send response", "error", err)
+			}
 			return
 		}
 
@@ -199,12 +169,7 @@ func UnlockProgressCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 				Text: "BrandishBot Progression",
 			},
 		}
-
-		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Embeds: &[]*discordgo.MessageEmbed{embed},
-		}); err != nil {
-			slog.Error("Failed to send response", "error", err)
-		}
+		sendEmbed(s, i, embed)
 	}
 
 	return cmd, handler
@@ -226,32 +191,22 @@ func EngagementCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	}
 
 	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-		}); err != nil {
-			slog.Error("Failed to send deferred response", "error", err)
+		if !deferResponse(s, i) {
 			return
 		}
 
-		targetUser := i.Member.User
-		if targetUser == nil {
-			targetUser = i.User
-		}
-		
-		options := i.ApplicationCommandData().Options
+		targetUser := getInteractionUser(i)
+		options := getOptions(i)
 		if len(options) > 0 {
 			targetUser = options[0].UserValue(s)
 		}
 
 		// Ensure user registered
-		_, err := client.RegisterUser(targetUser.Username, targetUser.ID)
-		if err != nil {
-			slog.Error("Failed to register/get user", "error", err)
-			respondFriendlyError(s, i, err.Error())
+		if !ensureUserRegistered(s, i, client, targetUser, true) {
 			return
 		}
 
-		engagement, err := client.GetUserEngagement(targetUser.ID)
+		engagement, err := client.GetUserEngagement("discord", targetUser.ID)
 		if err != nil {
 			slog.Error("Failed to get engagement", "error", err)
 			respondFriendlyError(s, i, err.Error())
@@ -269,15 +224,10 @@ func EngagementCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 				{Name: "Items Used", Value: fmt.Sprintf("%d", engagement.ItemsUsed), Inline: true},
 			},
 			Footer: &discordgo.MessageEmbedFooter{
-				Text: "BrandishBot",
+				Text: FooterBrandishBot,
 			},
 		}
-
-		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Embeds: &[]*discordgo.MessageEmbed{embed},
-		}); err != nil {
-			slog.Error("Failed to send response", "error", err)
-		}
+		sendEmbed(s, i, embed)
 	}
 
 	return cmd, handler
@@ -291,10 +241,7 @@ func VotingSessionCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	}
 
 	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-		}); err != nil {
-			slog.Error("Failed to send deferred response", "error", err)
+		if !deferResponse(s, i) {
 			return
 		}
 
@@ -307,19 +254,25 @@ func VotingSessionCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 
 		if session == nil {
 			msg := "No active voting session currently."
-			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 				Content: &msg,
-			})
+			}); err != nil {
+				slog.Error("Failed to send response", "error", err)
+			}
 			return
 		}
 
 		var optionsList string
 		for _, opt := range session.Options {
 			name := "Unknown Node"
+			duration := ""
+			nodeKey := ""
 			if opt.NodeDetails != nil {
 				name = opt.NodeDetails.DisplayName
+				nodeKey = opt.NodeDetails.NodeKey
+				duration = progression.FormatUnlockDuration(opt.NodeDetails.Size)
 			}
-			optionsList += fmt.Sprintf("**%s** (Level %d) - %d votes (ID: `%s`)\n", name, opt.TargetLevel, opt.VoteCount, opt.NodeDetails.NodeKey)
+			optionsList += fmt.Sprintf("**%s** (Level %d) - %d votes\n  └ %s • ID: `%s`\n", name, opt.TargetLevel, opt.VoteCount, duration, nodeKey)
 		}
 
 		embed := &discordgo.MessageEmbed{
@@ -330,12 +283,7 @@ func VotingSessionCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 				Text: "Use /vote <node_key> to vote!",
 			},
 		}
-
-		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Embeds: &[]*discordgo.MessageEmbed{embed},
-		}); err != nil {
-			slog.Error("Failed to send response", "error", err)
-		}
+		sendEmbed(s, i, embed)
 	}
 
 	return cmd, handler
@@ -347,7 +295,7 @@ func createProgressBar(percent float64) string {
 	if filledBars > totalBars {
 		filledBars = totalBars
 	}
-	
+
 	bar := "`["
 	for i := 0; i < totalBars; i++ {
 		if i < filledBars {

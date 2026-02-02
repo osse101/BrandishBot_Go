@@ -1,136 +1,114 @@
 package handler
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
+	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
 
 type JobHandler struct {
-	service job.Service
+	service  job.Service
+	userRepo repository.User
 }
 
-func NewJobHandler(service job.Service) *JobHandler {
+func NewJobHandler(service job.Service, userRepo repository.User) *JobHandler {
 	return &JobHandler{
-		service: service,
-	}
-}
-
-// HandleGetAllJobs returns all job definitions with unlock status
-func (h *JobHandler) HandleGetAllJobs(w http.ResponseWriter, r *http.Request) {
-	jobs, err := h.service.GetAllJobs(r.Context())
-	if err != nil {
-		logger.FromContext(r.Context()).Error("Failed to get jobs", "error", err)
-		http.Error(w, "Failed to retrieve jobs", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(map[string]interface{}{
-		"jobs": jobs,
-	}); err != nil {
-		logger.FromContext(r.Context()).Error("Failed to encode response", "error", err)
+		service:  service,
+		userRepo: userRepo,
 	}
 }
 
 // HandleGetUserJobs returns a user's job progress
+// Supports dual-mode: platform+platform_id (self-mode) or platform+username (target-mode)
 func (h *JobHandler) HandleGetUserJobs(w http.ResponseWriter, r *http.Request) {
-	userID := r.URL.Query().Get("user_id")
-	if userID == "" {
-		http.Error(w, "Missing user_id parameter", http.StatusBadRequest)
+	log := logger.FromContext(r.Context())
+
+	platform, ok := GetQueryParam(r, w, "platform")
+	if !ok {
 		return
 	}
 
-	userJobs, err := h.service.GetUserJobs(r.Context(), userID)
+	platformID := r.URL.Query().Get("platform_id")
+	username := r.URL.Query().Get("username")
+
+	// Require either platform_id or username
+	if platformID == "" && username == "" {
+		log.Warn("Missing required parameter: either platform_id or username required")
+		respondError(w, http.StatusBadRequest, "Either platform_id or username is required")
+		return
+	}
+
+	// Target-mode: resolve user by username
+	if platformID == "" && username != "" {
+		user, err := h.userRepo.GetUserByPlatformUsername(r.Context(), platform, username)
+		if err != nil {
+			log.Error("Failed to find user by username", "error", err, "platform", platform, "username", username)
+			respondError(w, http.StatusNotFound, "User not found")
+			return
+		}
+		platformID = getPlatformID(user, platform)
+		if platformID == "" {
+			log.Error("User found but no platform ID", "username", username, "platform", platform)
+			respondError(w, http.StatusNotFound, "User not found on platform")
+			return
+		}
+		log.Debug("Resolved username to platform_id", "username", username, "platform_id", platformID)
+	}
+
+	userJobs, err := h.service.GetUserJobsByPlatform(r.Context(), platform, platformID)
 	if err != nil {
-		logger.FromContext(r.Context()).Error("Failed to get user jobs", "error", err, "user_id", userID)
-		http.Error(w, "Failed to retrieve user jobs", http.StatusInternalServerError)
+		log.Error("Failed to get user jobs", "error", err, "platform", platform, "platform_id", platformID)
+		statusCode, userMsg := mapServiceErrorToUserMessage(err)
+		respondError(w, statusCode, userMsg)
 		return
 	}
 
-	primaryJob, _ := h.service.GetPrimaryJob(r.Context(), userID)
+	primaryJob, _ := h.service.GetPrimaryJob(r.Context(), platform, platformID)
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(map[string]interface{}{
-		"user_id":     userID,
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"platform":    platform,
+		"platform_id": platformID,
 		"primary_job": primaryJob,
 		"jobs":        userJobs,
-	}); err != nil {
-		logger.FromContext(r.Context()).Error("Failed to encode response", "error", err)
-	}
+	})
 }
 
 // AwardXPRequest is the request body for awarding XP
 type AwardXPRequest struct {
-	UserID   string                 `json:"user_id"`
-	JobKey   string                 `json:"job_key"`
-	XPAmount int                    `json:"xp_amount"`
-	Source   string                 `json:"source"`
-	Metadata map[string]interface{} `json:"metadata,omitempty"`
+	Platform   string                 `json:"platform"`
+	PlatformID string                 `json:"platform_id"`
+	JobKey     string                 `json:"job_key"`
+	XPAmount   int                    `json:"xp_amount"`
+	Source     string                 `json:"source"`
+	Metadata   map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // HandleAwardXP awards XP to a user's job (internal/bot use)
 func (h *JobHandler) HandleAwardXP(w http.ResponseWriter, r *http.Request) {
 	var req AwardXPRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+	if err := DecodeAndValidateRequest(r, w, &req, "Award XP"); err != nil {
 		return
 	}
 
-	if req.UserID == "" || req.JobKey == "" || req.XPAmount <= 0 {
-		http.Error(w, "Missing required fields", http.StatusBadRequest)
+	if req.Platform == "" || req.PlatformID == "" || req.JobKey == "" || req.XPAmount <= 0 {
+		http.Error(w, ErrMsgMissingRequiredFields, http.StatusBadRequest)
 		return
 	}
 
-	result, err := h.service.AwardXP(r.Context(), req.UserID, req.JobKey, req.XPAmount, req.Source, req.Metadata)
+	result, err := h.service.AwardXPByPlatform(r.Context(), req.Platform, req.PlatformID, req.JobKey, req.XPAmount, req.Source, req.Metadata)
 	if err != nil {
 		logger.FromContext(r.Context()).Error("Failed to award XP",
 			"error", err,
-			"user_id", req.UserID,
+			"platform", req.Platform,
+			"platform_id", req.PlatformID,
 			"job_key", req.JobKey,
 		)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		statusCode, userMsg := mapServiceErrorToUserMessage(err)
+		respondError(w, statusCode, userMsg)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(result); err != nil {
-		logger.FromContext(r.Context()).Error("Failed to encode response", "error", err)
-	}
-}
-
-// HandleGetJobBonus returns the active bonus for a specific job and bonus type
-func (h *JobHandler) HandleGetJobBonus(w http.ResponseWriter, r *http.Request) {
-	userID := r.URL.Query().Get("user_id")
-	jobKey := r.URL.Query().Get("job_key")
-	bonusType := r.URL.Query().Get("bonus_type")
-
-	if userID == "" || jobKey == "" || bonusType == "" {
-		http.Error(w, "Missing required parameters (user_id, job_key, bonus_type)", http.StatusBadRequest)
-		return
-	}
-
-	bonus, err := h.service.GetJobBonus(r.Context(), userID, jobKey, bonusType)
-	if err != nil {
-		logger.FromContext(r.Context()).Error("Failed to get job bonus",
-			"error", err,
-			"user_id", userID,
-			"job_key", jobKey,
-			"bonus_type", bonusType,
-		)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(map[string]interface{}{
-		"user_id":    userID,
-		"job_key":    jobKey,
-		"bonus_type": bonusType,
-		"bonus_val":  bonus,
-	}); err != nil {
-		logger.FromContext(r.Context()).Error("Failed to encode response", "error", err)
-	}
+	respondJSON(w, http.StatusOK, result)
 }

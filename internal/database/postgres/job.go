@@ -3,58 +3,64 @@ package postgres
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/osse101/BrandishBot_Go/internal/database/generated"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/logger"
 )
 
 // JobRepository implements the job repository for PostgreSQL
 type JobRepository struct {
 	db *pgxpool.Pool
+	q  *generated.Queries
 }
 
 // NewJobRepository creates a new JobRepository
 func NewJobRepository(db *pgxpool.Pool) *JobRepository {
-	return &JobRepository{db: db}
+	return &JobRepository{
+		db: db,
+		q:  generated.New(db),
+	}
+}
+
+func (r *JobRepository) GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error) {
+	row, err := r.q.GetUserByPlatformID(ctx, generated.GetUserByPlatformIDParams{
+		Name:           platform,
+		PlatformUserID: platformID,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrUserNotFound
+		}
+		return nil, fmt.Errorf("failed to get user core data: %w", err)
+	}
+	return mapUserAndLinks(ctx, r.q, row.UserID, row.Username)
 }
 
 // GetAllJobs retrieves all job definitions
 func (r *JobRepository) GetAllJobs(ctx context.Context) ([]domain.Job, error) {
-	query := `
-		SELECT id, job_key, display_name, description, associated_features, created_at
-		FROM jobs
-		ORDER BY id
-	`
-
-	rows, err := r.db.Query(ctx, query)
+	rows, err := r.q.GetAllJobs(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query jobs: %w", err)
 	}
-	defer rows.Close()
 
-	var jobs []domain.Job
-	for rows.Next() {
-		var job domain.Job
-		var features []string
-		err := rows.Scan(
-			&job.ID,
-			&job.JobKey,
-			&job.DisplayName,
-			&job.Description,
-			&features,
-			&job.CreatedAt,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan job: %w", err)
-		}
-		job.AssociatedFeatures = features
-		jobs = append(jobs, job)
-	}
-
-	if err = rows.Err(); err != nil {
-		return nil, fmt.Errorf("row iteration error: %w", err)
+	jobs := make([]domain.Job, 0, len(rows))
+	for _, row := range rows {
+		jobs = append(jobs, domain.Job{
+			ID:                 int(row.ID),
+			JobKey:             row.JobKey,
+			DisplayName:        row.DisplayName,
+			Description:        row.Description.String,
+			AssociatedFeatures: row.AssociatedFeatures,
+			CreatedAt:          row.CreatedAt.Time,
+		})
 	}
 
 	return jobs, nil
@@ -62,68 +68,73 @@ func (r *JobRepository) GetAllJobs(ctx context.Context) ([]domain.Job, error) {
 
 // GetJobByKey retrieves a job by its key
 func (r *JobRepository) GetJobByKey(ctx context.Context, jobKey string) (*domain.Job, error) {
-	query := `
-		SELECT id, job_key, display_name, description, associated_features, created_at
-		FROM jobs
-		WHERE job_key = $1
-	`
-
-	var job domain.Job
-	var features []string
-	err := r.db.QueryRow(ctx, query, jobKey).Scan(
-		&job.ID,
-		&job.JobKey,
-		&job.DisplayName,
-		&job.Description,
-		&features,
-		&job.CreatedAt,
-	)
-
-	if err == pgx.ErrNoRows {
-		return nil, fmt.Errorf("job not found: %s", jobKey)
-	}
+	row, err := r.q.GetJobByKey(ctx, jobKey)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf(ErrMsgJobNotFound, jobKey, err)
+		}
 		return nil, fmt.Errorf("failed to get job: %w", err)
 	}
 
-	job.AssociatedFeatures = features
-	return &job, nil
+	return &domain.Job{
+		ID:                 int(row.ID),
+		JobKey:             row.JobKey,
+		DisplayName:        row.DisplayName,
+		Description:        row.Description.String,
+		AssociatedFeatures: row.AssociatedFeatures,
+		CreatedAt:          row.CreatedAt.Time,
+	}, nil
 }
 
 // GetUserJobs retrieves all job progress for a user
 func (r *JobRepository) GetUserJobs(ctx context.Context, userID string) ([]domain.UserJob, error) {
-	query := `
-		SELECT user_id, job_id, current_xp, current_level, xp_gained_today, last_xp_gain
-		FROM user_jobs
-		WHERE user_id = $1
-		ORDER BY current_level DESC, current_xp DESC
-	`
+	userUUID, err := parseUserUUID(userID)
+	if err != nil {
+		return nil, err
+	}
 
-	rows, err := r.db.Query(ctx, query, userID)
+	rows, err := r.q.GetUserJobs(ctx, userUUID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query user jobs: %w", err)
 	}
-	defer rows.Close()
 
-	var userJobs []domain.UserJob
-	for rows.Next() {
-		var uj domain.UserJob
-		err := rows.Scan(
-			&uj.UserID,
-			&uj.JobID,
-			&uj.CurrentXP,
-			&uj.CurrentLevel,
-			&uj.XPGainedToday,
-			&uj.LastXPGain,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan user job: %w", err)
-		}
-		userJobs = append(userJobs, uj)
+	userJobs := make([]domain.UserJob, 0, len(rows))
+	for _, row := range rows {
+		lastXPGain := row.LastXpGain.Time
+		userJobs = append(userJobs, domain.UserJob{
+			UserID:        row.UserID.String(),
+			JobID:         int(row.JobID),
+			CurrentXP:     row.CurrentXp,
+			CurrentLevel:  int(row.CurrentLevel),
+			XPGainedToday: row.XpGainedToday.Int64,
+			LastXPGain:    &lastXPGain,
+		})
 	}
 
-	if err = rows.Err(); err != nil {
-		return nil, fmt.Errorf("row iteration error: %w", err)
+	return userJobs, nil
+}
+
+// GetUserJobsByPlatform retrieves all job progress for a user by their platform ID
+func (r *JobRepository) GetUserJobsByPlatform(ctx context.Context, platform, platformID string) ([]domain.UserJob, error) {
+	rows, err := r.q.GetUserJobsByPlatform(ctx, generated.GetUserJobsByPlatformParams{
+		Name:           platform,
+		PlatformUserID: platformID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to query user jobs by platform: %w", err)
+	}
+
+	userJobs := make([]domain.UserJob, 0, len(rows))
+	for _, row := range rows {
+		lastXPGain := row.LastXpGain.Time
+		userJobs = append(userJobs, domain.UserJob{
+			UserID:        row.UserID.String(),
+			JobID:         int(row.JobID),
+			CurrentXP:     row.CurrentXp,
+			CurrentLevel:  int(row.CurrentLevel),
+			XPGainedToday: row.XpGainedToday.Int64,
+			LastXPGain:    &lastXPGain,
+		})
 	}
 
 	return userJobs, nil
@@ -131,54 +142,55 @@ func (r *JobRepository) GetUserJobs(ctx context.Context, userID string) ([]domai
 
 // GetUserJob retrieves a single user's progress for a specific job
 func (r *JobRepository) GetUserJob(ctx context.Context, userID string, jobID int) (*domain.UserJob, error) {
-	query := `
-		SELECT user_id, job_id, current_xp, current_level, xp_gained_today, last_xp_gain
-		FROM user_jobs
-		WHERE user_id = $1 AND job_id = $2
-	`
-
-	var uj domain.UserJob
-	err := r.db.QueryRow(ctx, query, userID, jobID).Scan(
-		&uj.UserID,
-		&uj.JobID,
-		&uj.CurrentXP,
-		&uj.CurrentLevel,
-		&uj.XPGainedToday,
-		&uj.LastXPGain,
-	)
-
-	if err == pgx.ErrNoRows {
-		return nil, nil // Not an error, just no progress yet
-	}
+	userUUID, err := parseUserUUID(userID)
 	if err != nil {
+		return nil, err
+	}
+
+	row, err := r.q.GetUserJob(ctx, generated.GetUserJobParams{
+		UserID: userUUID,
+		JobID:  int32(jobID),
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil // Not an error, just no progress yet
+		}
 		return nil, fmt.Errorf("failed to get user job: %w", err)
 	}
 
-	return &uj, nil
+	lastXPGain := row.LastXpGain.Time
+	return &domain.UserJob{
+		UserID:        row.UserID.String(),
+		JobID:         int(row.JobID),
+		CurrentXP:     row.CurrentXp,
+		CurrentLevel:  int(row.CurrentLevel),
+		XPGainedToday: row.XpGainedToday.Int64,
+		LastXPGain:    &lastXPGain,
+	}, nil
 }
 
 // UpsertUserJob creates or updates a user's job progress
 func (r *JobRepository) UpsertUserJob(ctx context.Context, userJob *domain.UserJob) error {
-	query := `
-		INSERT INTO user_jobs (user_id, job_id, current_xp, current_level, xp_gained_today, last_xp_gain)
-		VALUES ($1, $2, $3, $4, $5, $6)
-		ON CONFLICT (user_id, job_id)
-		DO UPDATE SET
-			current_xp = EXCLUDED.current_xp,
-			current_level = EXCLUDED.current_level,
-			xp_gained_today = EXCLUDED.xp_gained_today,
-			last_xp_gain = EXCLUDED.last_xp_gain
-	`
+	userUUID, err := parseUserUUID(userJob.UserID)
+	if err != nil {
+		return err
+	}
 
-	_, err := r.db.Exec(ctx, query,
-		userJob.UserID,
-		userJob.JobID,
-		userJob.CurrentXP,
-		userJob.CurrentLevel,
-		userJob.XPGainedToday,
-		userJob.LastXPGain,
-	)
+	var lastXPGain time.Time
+	if userJob.LastXPGain != nil {
+		lastXPGain = *userJob.LastXPGain
+	}
 
+	params := generated.UpsertUserJobParams{
+		UserID:        userUUID,
+		JobID:         int32(userJob.JobID),
+		CurrentXp:     userJob.CurrentXP,
+		CurrentLevel:  int32(userJob.CurrentLevel),
+		XpGainedToday: pgtype.Int8{Int64: userJob.XPGainedToday, Valid: true},
+		LastXpGain:    pgtype.Timestamptz{Time: lastXPGain, Valid: userJob.LastXPGain != nil},
+	}
+
+	err = r.q.UpsertUserJob(ctx, params)
 	if err != nil {
 		return fmt.Errorf("failed to upsert user job: %w", err)
 	}
@@ -188,26 +200,27 @@ func (r *JobRepository) UpsertUserJob(ctx context.Context, userJob *domain.UserJ
 
 // RecordJobXPEvent logs an XP gain event
 func (r *JobRepository) RecordJobXPEvent(ctx context.Context, event *domain.JobXPEvent) error {
-	query := `
-		INSERT INTO job_xp_events (id, user_id, job_id, xp_amount, source_type, source_metadata, recorded_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
-	`
-
 	metadataJSON, err := json.Marshal(event.SourceMetadata)
 	if err != nil {
 		return fmt.Errorf("failed to marshal metadata: %w", err)
 	}
 
-	_, err = r.db.Exec(ctx, query,
-		event.ID,
-		event.UserID,
-		event.JobID,
-		event.XPAmount,
-		event.SourceType,
-		metadataJSON,
-		event.RecordedAt,
-	)
+	userUUID, err := parseUserUUID(event.UserID)
+	if err != nil {
+		return err
+	}
 
+	params := generated.RecordJobXPEventParams{
+		ID:             event.ID,
+		UserID:         userUUID,
+		JobID:          int32(event.JobID),
+		XpAmount:       int32(event.XPAmount),
+		SourceType:     event.SourceType,
+		SourceMetadata: metadataJSON,
+		RecordedAt:     pgtype.Timestamptz{Time: event.RecordedAt, Valid: true},
+	}
+
+	err = r.q.RecordJobXPEvent(ctx, params)
 	if err != nil {
 		return fmt.Errorf("failed to record XP event: %w", err)
 	}
@@ -217,58 +230,71 @@ func (r *JobRepository) RecordJobXPEvent(ctx context.Context, event *domain.JobX
 
 // GetJobLevelBonuses retrieves bonuses for a job at or below a given level
 func (r *JobRepository) GetJobLevelBonuses(ctx context.Context, jobID int, level int) ([]domain.JobLevelBonus, error) {
-	query := `
-		SELECT id, job_id, min_level, bonus_type, bonus_value, description
-		FROM job_level_bonuses
-		WHERE job_id = $1 AND min_level <= $2
-		ORDER BY min_level DESC
-	`
-
-	rows, err := r.db.Query(ctx, query, jobID, level)
+	rows, err := r.q.GetJobLevelBonuses(ctx, generated.GetJobLevelBonusesParams{
+		JobID:    int32(jobID),
+		MinLevel: int32(level),
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to query job bonuses: %w", err)
 	}
-	defer rows.Close()
 
-	var bonuses []domain.JobLevelBonus
-	for rows.Next() {
-		var bonus domain.JobLevelBonus
-		err := rows.Scan(
-			&bonus.ID,
-			&bonus.JobID,
-			&bonus.MinLevel,
-			&bonus.BonusType,
-			&bonus.BonusValue,
-			&bonus.Description,
-		)
+	bonuses := make([]domain.JobLevelBonus, 0, len(rows))
+	for _, row := range rows {
+		// Convert pgtype.Numeric to float64 with proper error handling
+		bonusValue, err := numericToFloat64(row.BonusValue)
 		if err != nil {
-			return nil, fmt.Errorf("failed to scan bonus: %w", err)
+			return nil, fmt.Errorf("failed to convert bonus value for job %d: %w", row.JobID, err)
 		}
-		bonuses = append(bonuses, bonus)
-	}
 
-	if err = rows.Err(); err != nil {
-		return nil, fmt.Errorf("row iteration error: %w", err)
+		bonuses = append(bonuses, domain.JobLevelBonus{
+			ID:          int(row.ID),
+			JobID:       int(row.JobID),
+			MinLevel:    int(row.MinLevel),
+			BonusType:   row.BonusType,
+			BonusValue:  bonusValue,
+			Description: row.Description.String,
+		})
 	}
 
 	return bonuses, nil
 }
 
 // ResetDailyJobXP resets the xp_gained_today counter for all users
-// This should be called by a daily cron job
-func (r *JobRepository) ResetDailyJobXP(ctx context.Context) error {
-	query := `
-		UPDATE user_jobs
-		SET xp_gained_today = 0
-	`
-
-	result, err := r.db.Exec(ctx, query)
+// Returns the number of records affected
+func (r *JobRepository) ResetDailyJobXP(ctx context.Context) (int64, error) {
+	result, err := r.q.ResetDailyJobXP(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to reset daily XP: %w", err)
+		return 0, fmt.Errorf("failed to reset daily XP: %w", err)
 	}
 
 	rows := result.RowsAffected()
-	fmt.Printf("Reset daily XP for %d user-job records\n", rows)
+	logger.FromContext(ctx).Info("Reset daily XP", "records_affected", rows)
+
+	return rows, nil
+}
+
+// GetLastDailyResetTime retrieves the last daily reset time and records affected
+func (r *JobRepository) GetLastDailyResetTime(ctx context.Context) (time.Time, int64, error) {
+	row, err := r.q.GetLastDailyResetTime(ctx)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return time.Time{}, 0, nil
+		}
+		return time.Time{}, 0, fmt.Errorf("failed to get last reset time: %w", err)
+	}
+
+	return row.LastResetTime.Time, int64(row.RecordsAffected), nil
+}
+
+// UpdateDailyResetTime updates the last reset time and records affected
+func (r *JobRepository) UpdateDailyResetTime(ctx context.Context, resetTime time.Time, recordsAffected int64) error {
+	err := r.q.UpdateDailyResetTime(ctx, generated.UpdateDailyResetTimeParams{
+		LastResetTime:   pgtype.Timestamptz{Time: resetTime, Valid: true},
+		RecordsAffected: int32(recordsAffected),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update reset time: %w", err)
+	}
 
 	return nil
 }

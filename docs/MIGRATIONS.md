@@ -1,105 +1,92 @@
 # Database Migrations Guide
 
-## What Are Migrations?
+## Overview
 
-Database migrations are incremental SQL files that evolve your database schema over time. Instead of having one large SQL file, you have multiple smaller files that represent individual changes.
+BrandishBot uses [goose](https://github.com/pressly/goose) for database migrations. Migrations are managed as single `.sql` files containing both Up and Down logic, separated by goose markers.
 
 ## Migration Files
 
-Migrations are located in the `migrations/` directory and follow this naming pattern:
+Migrations are located in the `migrations/` directory:
 
 ```
-0001_initial_schema.up.sql       # Creates users, platforms, links
-0001_initial_schema.down.sql     # Removes users, platforms, links
-0002_create_items.up.sql         # Creates items table
-0002_create_items.down.sql       # Removes items table
-...
+migrations/
+├── 0001_initial_schema_v1.sql
+├── 0002_add_modifier_config.sql
+└── ...
 ```
 
-- **`.up.sql`**: Applies the change (forward migration)
-- **`.down.sql`**: Reverses the change (rollback migration)
+### File Format
 
-## How Migrations Work
+Each migration file uses the following format:
 
-1. **Sequential Order**: Migrations are numbered (0001, 0002, 0003, etc.)
-2. **Applied Once**: Each migration is applied in order when you run setup
-3. **Idempotent**: Migrations use `IF NOT EXISTS` and `ON CONFLICT` to be safe to run multiple times
+```sql
+-- +goose Up
+-- SQL for applying the change
+CREATE TABLE example (id SERIAL PRIMARY KEY);
+
+-- +goose Down
+-- SQL for rolling back the change
+DROP TABLE example;
+```
 
 ## Running Migrations
 
-### Apply All Migrations
+The `Makefile` provides the primary interface for migration tasks:
 
-```bash
-go run cmd/setup/main.go
-```
+| Command                      | Description                          |
+| :--------------------------- | :----------------------------------- |
+| `make migrate-status`        | Show the current migration status    |
+| `make migrate-up`            | Apply all pending migrations         |
+| `make migrate-down`          | Rollback the last applied migration  |
+| `make migrate-create NAME=x` | Create a new migration file template |
 
-This will:
-1. Create the database if it doesn't exist
-2. Read all `.up.sql` files from `migrations/` directory
-3. Apply them in alphabetical order (0001, 0002, 0003, etc.)
+### Local Development Setup
 
-### Verify Database State
+When setting up your environment for the first time:
 
-```bash
-go run cmd/debug/main.go
-```
-
-This shows the contents of all tables.
+1.  Ensure Docker is running: `make check-db`
+2.  Run all migrations: `make migrate-up`
 
 ## Creating New Migrations
 
-When you need to add a new table or modify the schema:
+To add a new table or modify the schema:
 
-1. **Create a new migration file** with the next number:
-   ```
-   migrations/0006_add_feature.up.sql
-   migrations/0006_add_feature.down.sql
-   ```
+1.  **Generate a template**:
+    ```bash
+    make migrate-create NAME=add_my_new_feature
+    ```
+2.  **Edit the file**: Open the newly created file in `migrations/` and fill in the `-- +goose Up` and `-- +goose Down` sections.
+3.  **Test locally**:
+    ```bash
+    make migrate-up
+    make migrate-down
+    make migrate-up
+    ```
 
-2. **Write the SQL**:
-   - `.up.sql` - Add your new table/column/index
-   - `.down.sql` - Remove what you added
+## Best Practices
 
-3. **Run setup** to apply the new migration:
-   ```bash
-   go run cmd/setup/main.go
-   ```
+- **Immutability**: Never edit a migration file that has already been committed and applied to shared environments. Always create a new migration for changes.
+- **Safety**: Use `IF NOT EXISTS` for table/index creation and `IF EXISTS` for dropping when possible, although goose handles versioning automatically.
+- **Transactions**: Goose runs each migration in its own transaction by default.
+- **Naming**: Use descriptive names (e.g., `add_user_preferences`) rather than generic ones.
 
-## Example: Adding a New Table
+## Troubleshooting
 
-**migrations/0006_add_stats.up.sql**:
-```sql
-CREATE TABLE IF NOT EXISTS user_stats (
-    user_id UUID PRIMARY KEY REFERENCES users(user_id),
-    total_items INTEGER DEFAULT 0,
-    created_at TIMESTAMP DEFAULT NOW()
-);
+### Version Mismatch
+
+If you encounter a version mismatch or "out of order" error, check the `goose_db_version` table in your database:
+
+```bash
+go run cmd/debug/main.go
+# Or manually:
+# SELECT * FROM goose_db_version;
 ```
 
-**migrations/0006_add_stats.down.sql**:
-```sql
-DROP TABLE IF EXISTS user_stats;
+### Resetting the Database
+
+If you need to completely wipe and restart the database:
+
+```bash
+go run cmd/reset/main.go
+make migrate-up
 ```
-
-## Current Migrations
-
-1. **0001_initial_schema**: Creates users, platforms, and user_platform_links tables
-2. **0002_create_items**: Creates items table
-3. **0003_item_types**: Creates item_types and item_type_assignments tables
-4. **0004_user_inventory**: Creates user_inventory table with JSONB
-5. **0005_seed_items**: Seeds lootbox items and types
-
-## Benefits
-
-- ✅ **Version Control**: Track database changes in Git
-- ✅ **Team Collaboration**: Everyone applies the same changes
-- ✅ **Incremental**: Add features one step at a time
-- ✅ **Rollback**: Can reverse changes with .down.sql files
-- ✅ **Production Safety**: Only new migrations are applied
-
-## Important Notes
-
-- **Never edit** existing migration files after they've been applied
-- **Always create** new migration files for changes
-- **Test migrations** before applying to production
-- **Keep migrations small** - one logical change per migration

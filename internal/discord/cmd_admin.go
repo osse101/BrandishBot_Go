@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/bwmarrin/discordgo"
+
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
@@ -37,14 +38,11 @@ func AddItemCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	}
 
 	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-		}); err != nil {
-			slog.Error("Failed to send deferred response", "error", err)
+		if !deferResponse(s, i) {
 			return
 		}
 
-		options := i.ApplicationCommandData().Options
+		options := getOptions(i)
 		targetUser := options[0].UserValue(s)
 		itemName := options[1].StringValue()
 		quantity := int(options[2].IntValue())
@@ -53,31 +51,19 @@ func AddItemCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		_, err := client.RegisterUser(targetUser.Username, targetUser.ID)
 		if err != nil {
 			slog.Error("Failed to register user", "error", err)
-			respondError(s, i, "Error connecting to game server.")
+			respondFriendlyError(s, i, err.Error())
 			return
 		}
 
-		msg, err := client.AddItem(domain.PlatformDiscord, targetUser.ID, itemName, quantity)
+		msg, err := client.AddItemByUsername(domain.PlatformDiscord, targetUser.Username, itemName, quantity)
 		if err != nil {
 			slog.Error("Failed to add item", "error", err)
 			respondError(s, i, fmt.Sprintf("Failed to add item: %v", err))
 			return
 		}
 
-		embed := &discordgo.MessageEmbed{
-			Title:       "✅ Items Added",
-			Description: fmt.Sprintf("Added %d x %s to %s\n\n%s", quantity, itemName, targetUser.Username, msg),
-			Color:       0x2ecc71, // Green
-			Footer: &discordgo.MessageEmbedFooter{
-				Text: "Admin Action",
-			},
-		}
-
-		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Embeds: &[]*discordgo.MessageEmbed{embed},
-		}); err != nil {
-			slog.Error("Failed to send response", "error", err)
-		}
+		embed := createEmbed("✅ Items Added", fmt.Sprintf("Added %d x %s to %s\n\n%s", quantity, itemName, targetUser.Username, msg), 0x2ecc71, FooterAdminAction)
+		sendEmbed(s, i, embed)
 	}
 
 	return cmd, handler
@@ -112,14 +98,11 @@ func RemoveItemCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	}
 
 	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-		}); err != nil {
-			slog.Error("Failed to send deferred response", "error", err)
+		if !deferResponse(s, i) {
 			return
 		}
 
-		options := i.ApplicationCommandData().Options
+		options := getOptions(i)
 		targetUser := options[0].UserValue(s)
 		itemName := options[1].StringValue()
 		quantity := int(options[2].IntValue())
@@ -128,23 +111,141 @@ func RemoveItemCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		_, err := client.RegisterUser(targetUser.Username, targetUser.ID)
 		if err != nil {
 			slog.Error("Failed to register user", "error", err)
-			respondError(s, i, "Error connecting to game server.")
+			respondFriendlyError(s, i, err.Error())
 			return
 		}
 
-		msg, err := client.RemoveItem(domain.PlatformDiscord, targetUser.ID, itemName, quantity)
+		removed, err := client.RemoveItemByUsername(domain.PlatformDiscord, targetUser.Username, itemName, quantity)
 		if err != nil {
 			slog.Error("Failed to remove item", "error", err)
 			respondError(s, i, fmt.Sprintf("Failed to remove item: %v", err))
 			return
 		}
 
+		// Build description with partial removal warning if applicable
+		description := fmt.Sprintf("Removed %d x %s from %s\n\n**Items removed:** %d",
+			quantity, itemName, targetUser.Username, removed)
+
+		if removed < quantity {
+			description += fmt.Sprintf("\n\n⚠️ **Partial Removal**: Only %d items were available (requested %d)",
+				removed, quantity)
+		}
+
+		embed := createEmbed("🗑️ Items Removed", description, 0xe74c3c, FooterAdminAction)
+		sendEmbed(s, i, embed)
+	}
+
+	return cmd, handler
+}
+
+// AdminAwardXPCommand returns the award XP command definition and handler (admin only)
+func AdminAwardXPCommand() (*discordgo.ApplicationCommand, CommandHandler) {
+	cmd := &discordgo.ApplicationCommand{
+		Name:        "admin-award-xp",
+		Description: "[ADMIN] Award job XP to a user",
+		Options: []*discordgo.ApplicationCommandOption{
+			{
+				Type:        discordgo.ApplicationCommandOptionString,
+				Name:        "platform",
+				Description: "Platform (discord, twitch, youtube)",
+				Required:    true,
+				Choices: []*discordgo.ApplicationCommandOptionChoice{
+					{Name: "Discord", Value: domain.PlatformDiscord},
+					{Name: "Twitch", Value: domain.PlatformTwitch},
+					{Name: "YouTube", Value: domain.PlatformYoutube},
+				},
+			},
+			{
+				Type:        discordgo.ApplicationCommandOptionString,
+				Name:        "username",
+				Description: "Username on the specified platform",
+				Required:    true,
+			},
+			{
+				Type:         discordgo.ApplicationCommandOptionString,
+				Name:         "job",
+				Description:  "Job to award XP to",
+				Required:     true,
+				Autocomplete: true,
+			},
+			{
+				Type:        discordgo.ApplicationCommandOptionInteger,
+				Name:        "amount",
+				Description: "Amount of XP to award (1-10000)",
+				Required:    true,
+				MinValue:    floatPtr(1.0),
+				MaxValue:    10000.0,
+			},
+		},
+		DefaultMemberPermissions: &[]int64{discordgo.PermissionAdministrator}[0],
+	}
+
+	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
+		if !deferResponse(s, i) {
+			return
+		}
+
+		options := getOptions(i)
+		platform := options[0].StringValue()
+		username := options[1].StringValue()
+		jobKey := options[2].StringValue()
+		amount := int(options[3].IntValue())
+
+		// Call API to award XP
+		result, err := client.AdminAwardXP(platform, username, jobKey, amount)
+		if err != nil {
+			slog.Error("Failed to award XP", "error", err)
+			respondError(s, i, fmt.Sprintf("Failed to award XP: %v", err))
+			return
+		}
+
+		// Build response message
+		description := fmt.Sprintf("Awarded **%d XP** to **%s** (@%s) for job **%s**",
+			amount, platform, username, jobKey)
+
+		if result.LeveledUp {
+			description += fmt.Sprintf("\n\n🎉 **Level Up!** %s → %d",
+				jobKey, result.NewLevel)
+		}
+
 		embed := &discordgo.MessageEmbed{
-			Title:       "🗑️ Items Removed",
-			Description: fmt.Sprintf("Removed %d x %s from %s\n\n%s", quantity, itemName, targetUser.Username, msg),
-			Color:       0xe74c3c, // Red
+			Title:       "✅ XP Awarded",
+			Description: description,
+			Color:       0x3498db, // Blue
+			Fields: []*discordgo.MessageEmbedField{
+				{
+					Name:   "Platform",
+					Value:  platform,
+					Inline: true,
+				},
+				{
+					Name:   "Username",
+					Value:  username,
+					Inline: true,
+				},
+				{
+					Name:   "Job",
+					Value:  jobKey,
+					Inline: true,
+				},
+				{
+					Name:   "XP Awarded",
+					Value:  fmt.Sprintf("%d", amount),
+					Inline: true,
+				},
+				{
+					Name:   "New Level",
+					Value:  fmt.Sprintf("%d", result.NewLevel),
+					Inline: true,
+				},
+				{
+					Name:   "Total XP",
+					Value:  fmt.Sprintf("%d", result.NewXP),
+					Inline: true,
+				},
+			},
 			Footer: &discordgo.MessageEmbedFooter{
-				Text: "Admin Action",
+				Text: fmt.Sprintf("Admin Action by %s", i.Member.User.Username),
 			},
 		}
 
@@ -158,3 +259,6 @@ func RemoveItemCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	return cmd, handler
 }
 
+func floatPtr(v float64) *float64 {
+	return &v
+}

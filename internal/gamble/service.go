@@ -9,42 +9,22 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/lootbox"
+	"github.com/osse101/BrandishBot_Go/internal/naming"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/osse101/BrandishBot_Go/internal/stats"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
-// Repository defines the interface for data access required by the gamble service
-type Repository interface {
-	CreateGamble(ctx context.Context, gamble *domain.Gamble) error
-	GetGamble(ctx context.Context, id uuid.UUID) (*domain.Gamble, error)
-	JoinGamble(ctx context.Context, participant *domain.Participant) error
-	UpdateGambleState(ctx context.Context, id uuid.UUID, state domain.GambleState) error
-	UpdateGambleStateIfMatches(ctx context.Context, id uuid.UUID, expectedState, newState domain.GambleState) (int64, error)
-	SaveOpenedItems(ctx context.Context, items []domain.GambleOpenedItem) error
-	CompleteGamble(ctx context.Context, result *domain.GambleResult) error
-	GetActiveGamble(ctx context.Context) (*domain.Gamble, error)
-
-	// Transaction support
-	BeginTx(ctx context.Context) (repository.Tx, error)
-	BeginGambleTx(ctx context.Context) (repository.GambleTx, error)
-
-	// Inventory operations (reused from other services)
-	GetInventory(ctx context.Context, userID string) (*domain.Inventory, error)
-	UpdateInventory(ctx context.Context, userID string, inventory domain.Inventory) error
-	GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error)
-	GetItemByID(ctx context.Context, id int) (*domain.Item, error)
-}
-
 // Service defines the interface for gamble operations
 type Service interface {
 	StartGamble(ctx context.Context, platform, platformID, username string, bets []domain.LootboxBet) (*domain.Gamble, error)
-	JoinGamble(ctx context.Context, gambleID uuid.UUID, platform, platformID, username string, bets []domain.LootboxBet) error
+	JoinGamble(ctx context.Context, gambleID uuid.UUID, platform, platformID, username string) error
 	GetGamble(ctx context.Context, id uuid.UUID) (*domain.Gamble, error)
 	ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.GambleResult, error)
 	GetActiveGamble(ctx context.Context) (*domain.Gamble, error)
@@ -56,256 +36,203 @@ type JobService interface {
 	AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error)
 }
 
-// NearMissThreshold defines the percentage of the winner's score required to trigger a "Near Miss" event
-const NearMissThreshold = 0.95
+// ProgressionService defines the interface for progression system
+type ProgressionService interface {
+	GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error)
+}
 
 type service struct {
-	repo         Repository
-	eventBus     event.Bus
-	lootboxSvc   lootbox.Service
-	jobService   JobService
-	statsSvc     stats.Service
-	joinDuration time.Duration
-	wg           sync.WaitGroup // Tracks async goroutines for graceful shutdown
+	repo               repository.Gamble
+	eventBus           event.Bus
+	resilientPublisher *event.ResilientPublisher
+	lootboxSvc         lootbox.Service
+	jobService         JobService
+	progressionSvc     ProgressionService
+	statsSvc           stats.Service
+	namingResolver     naming.Resolver
+	joinDuration       time.Duration
+	rng                func(int) int
+	wg                 sync.WaitGroup // Tracks async goroutines for graceful shutdown
 }
 
 // NewService creates a new gamble service
-func NewService(repo Repository, eventBus event.Bus, lootboxSvc lootbox.Service, statsSvc stats.Service, joinDuration time.Duration, jobService JobService) Service {
-	return &service{
-		repo:         repo,
-		eventBus:     eventBus,
-		lootboxSvc:   lootboxSvc,
-		jobService:   jobService,
-		statsSvc:     statsSvc,
-		joinDuration: joinDuration,
+func NewService(repo repository.Gamble, eventBus event.Bus, resilientPublisher *event.ResilientPublisher, lootboxSvc lootbox.Service, statsSvc stats.Service, joinDuration time.Duration, jobService JobService, progressionSvc ProgressionService, namingResolver naming.Resolver, rng func(int) int) Service {
+	if rng == nil {
+		rng = utils.SecureRandomInt
 	}
+	return &service{
+		repo:               repo,
+		eventBus:           eventBus,
+		resilientPublisher: resilientPublisher,
+		lootboxSvc:         lootboxSvc,
+		jobService:         jobService,
+		progressionSvc:     progressionSvc,
+		statsSvc:           statsSvc,
+		namingResolver:     namingResolver,
+		joinDuration:       joinDuration,
+		rng:                rng,
+	}
+}
+
+// resolveItemName attempts to resolve a user-provided item name to its internal name.
+// It first tries the naming resolver, then falls back to using the input as-is.
+// This allows users to use either public names ("junkbox") or internal names ("lootbox_tier0").
+func (s *service) resolveItemName(ctx context.Context, itemName string) (string, error) {
+	// Try naming resolver first (handles public names)
+	if s.namingResolver != nil {
+		if internalName, ok := s.namingResolver.ResolvePublicName(itemName); ok {
+			return internalName, nil
+		}
+	}
+
+	// Fall back - assume it's already an internal name
+	// Validate by checking if item exists
+	item, err := s.repo.GetItemByName(ctx, itemName)
+	if err != nil {
+		return "", fmt.Errorf("%s '%s': %w", ErrContextFailedToResolveItemName, itemName, err)
+	}
+	if item == nil {
+		return "", fmt.Errorf("%w: %s (%s)", domain.ErrItemNotFound, itemName, ErrMsgItemNotFoundAsPublicOrInternalName)
+	}
+
+	return itemName, nil
+}
+
+// resolveLootboxBet resolves a bet's item name to its item ID
+// Returns the resolved item ID or an error
+func (s *service) resolveLootboxBet(ctx context.Context, bet domain.LootboxBet) (int, error) {
+	// Resolve name to internal name
+	internalName, err := s.resolveItemName(ctx, bet.ItemName)
+	if err != nil {
+		return 0, fmt.Errorf("%s '%s': %w", ErrContextFailedToResolveItemName, bet.ItemName, err)
+	}
+
+	// Get item by internal name to get ID
+	item, err := s.repo.GetItemByName(ctx, internalName)
+	if err != nil {
+		return 0, fmt.Errorf("%s: %w", ErrContextFailedToGetItem, err)
+	}
+	if item == nil {
+		return 0, fmt.Errorf("%w: %s", domain.ErrItemNotFound, internalName)
+	}
+
+	// Validate it's a lootbox
+	if len(item.InternalName) < LootboxPrefixLength || item.InternalName[:LootboxPrefixLength] != LootboxPrefix {
+		return 0, fmt.Errorf("%w: %s (id:%d)", domain.ErrNotALootbox, item.InternalName, item.ID)
+	}
+
+	return item.ID, nil
 }
 
 // StartGamble initiates a new gamble
 func (s *service) StartGamble(ctx context.Context, platform, platformID, username string, bets []domain.LootboxBet) (*domain.Gamble, error) {
 	log := logger.FromContext(ctx)
-	log.Info("StartGamble called", "platform", platform, "platformID", platformID, "username", username, "bets", bets)
+	log.Info(LogMsgStartGambleCalled, "platform", platform, "platformID", platformID, "username", username, "bets", bets)
 
-	// Validate input
-	if len(bets) == 0 {
-		return nil, domain.ErrAtLeastOneLootboxRequired
-	}
-	for _, bet := range bets {
-		if bet.Quantity <= 0 {
-			return nil, domain.ErrBetQuantityMustBePositive
-		}
+	if err := s.validateGambleStartInput(bets); err != nil {
+		return nil, err
 	}
 
-	// Get user
-	user, err := s.repo.GetUserByPlatformID(ctx, platform, platformID)
+	user, err := s.getAndValidateGambleUser(ctx, platform, platformID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get user: %w", err)
-	}
-	if user == nil {
-		return nil, domain.ErrUserNotFound
+		return nil, err
 	}
 
-	// Check for active gamble
-	active, err := s.repo.GetActiveGamble(ctx)
+	if err := s.ensureNoActiveGamble(ctx); err != nil {
+		return nil, err
+	}
+
+	gamble := s.createGambleRecord(user.ID)
+
+	// Validate bets and resolve item names to IDs
+	resolvedItemIDs, err := s.validateGambleBets(ctx, bets)
 	if err != nil {
-		return nil, fmt.Errorf("failed to check active gamble: %w", err)
-	}
-	if active != nil {
-		return nil, domain.ErrGambleAlreadyActive
+		return nil, err
 	}
 
-	// Create gamble record
-	gamble := &domain.Gamble{
-		ID:           uuid.New(),
-		InitiatorID:  user.ID,
-		State:        domain.GambleStateJoining,
-		CreatedAt:    time.Now(),
-		JoinDeadline: time.Now().Add(s.joinDuration),
+	inventory, err := s.repo.GetInventory(ctx, user.ID)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", ErrContextFailedToGetInventory, err)
 	}
 
-	// Validate that all bet items are lootboxes
-	for _, bet := range bets {
-		item, err := s.repo.GetItemByID(ctx, bet.ItemID)
+	// Create a local copy of bets to avoid modifying the caller's slice and race conditions
+	gambleBets := make([]domain.LootboxBet, len(bets))
+	copy(gambleBets, bets)
+
+	// Consume bet items from inventory using resolved IDs
+	for i := range gambleBets {
+		itemID := resolvedItemIDs[i]
+		shineLevel, err := consumeItem(inventory, itemID, gambleBets[i].Quantity)
 		if err != nil {
-			return nil, fmt.Errorf("failed to validate bet item %d: %w", bet.ItemID, err)
+			return nil, fmt.Errorf("%s (item %d): %w", ErrContextFailedToConsumeBet, itemID, err)
 		}
-		if item == nil {
-			return nil, fmt.Errorf("%w: bet item %d", domain.ErrItemNotFound, bet.ItemID)
-		}
-		if len(item.InternalName) < 7 || item.InternalName[:7] != "lootbox" {
-			return nil, fmt.Errorf("%w: %s (id:%d)", domain.ErrNotALootbox, item.InternalName, item.ID)
-		}
+		gambleBets[i].ShineLevel = shineLevel
 	}
 
-	// Begin transaction
-	tx, err := s.repo.BeginTx(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer repository.SafeRollback(ctx, tx)
-
-	// Get inventory
-	inventory, err := tx.GetInventory(ctx, user.ID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get inventory: %w", err)
-	}
-
-	// Consume bets
-	for _, bet := range bets {
-		// Verify ownership and quantity
-		// Using utils.FindSlot (assuming it exists based on previous context)
-		// We need to import "github.com/osse101/BrandishBot_Go/internal/utils" if not already
-		// But wait, utils.FindSlot returns index and quantity.
-		// I'll implement a helper here or assume utils is available.
-		// Checking imports... yes, utils is imported.
-
-		// Note: We need to handle the case where the user doesn't have the item.
-		// Since I can't see utils.FindSlot signature right now, I'll assume standard behavior.
-		// Actually, I'll implement a local helper `consumeItem` to be safe and clean.
-		if err := consumeItem(inventory, bet.ItemID, bet.Quantity); err != nil {
-			return nil, fmt.Errorf("failed to consume bet (item %d): %w", bet.ItemID, err)
-		}
-	}
-
-	// Update inventory
-	if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
-		return nil, fmt.Errorf("failed to update inventory: %w", err)
-	}
-
-	// Save gamble
-	if err := s.repo.CreateGamble(ctx, gamble); err != nil {
-		if errors.Is(err, domain.ErrGambleAlreadyActive) {
-			return nil, domain.ErrGambleAlreadyActive
-		}
-		return nil, fmt.Errorf("failed to create gamble: %w", err)
-	}
-
-	// Add initiator as participant
 	participant := &domain.Participant{
 		GambleID:    gamble.ID,
 		UserID:      user.ID,
-		LootboxBets: bets,
+		LootboxBets: gambleBets,
 		Username:    username,
 	}
-	if err := s.repo.JoinGamble(ctx, participant); err != nil {
-		return nil, fmt.Errorf("failed to add initiator as participant: %w", err)
+
+	if err := s.executeGambleStartTx(ctx, user.ID, inventory, gamble, participant); err != nil {
+		return nil, err
 	}
 
-	if err := tx.Commit(ctx); err != nil {
-		return nil, fmt.Errorf("failed to commit transaction: %w", err)
-	}
+	s.publishGambleStartedEvent(ctx, gamble)
 
-	// Publish GambleStarted event
-	if s.eventBus != nil {
-		err := s.eventBus.Publish(ctx, event.Event{
-			Type:    event.Type(domain.EventGambleStarted),
-			Payload: gamble,
-		})
-		if err != nil {
-			log.Error("Failed to publish GambleStarted event", "error", err)
-			// Don't fail the request, just log
-		}
-	}
-
-	// Award Gambler XP for joining (async, don't block)
-	// Run async with detached context to prevent cancellation affecting XP award
 	s.wg.Add(1)
-	go s.awardGamblerXP(context.Background(), user.ID, calculateTotalLootboxes(bets), "start", false)
+	go s.awardGamblerXP(context.Background(), user.ID, calculateTotalLootboxes(gambleBets), "start", false)
 
 	return gamble, nil
 }
 
 // JoinGamble adds a user to an existing gamble
-func (s *service) JoinGamble(ctx context.Context, gambleID uuid.UUID, platform, platformID, username string, bets []domain.LootboxBet) error {
+func (s *service) JoinGamble(ctx context.Context, gambleID uuid.UUID, platform, platformID, username string) error {
 	log := logger.FromContext(ctx)
-	log.Info("JoinGamble called", "gambleID", gambleID, "username", username)
-
-	// Validate bets
-	if len(bets) == 0 {
-		return domain.ErrAtLeastOneLootboxRequired
-	}
+	log.Info(LogMsgJoinGambleCalled, "gambleID", gambleID, "username", username)
 
 	// Get User
-	user, err := s.repo.GetUserByPlatformID(ctx, platform, platformID)
+	user, err := s.getAndValidateGambleUser(ctx, platform, platformID)
 	if err != nil {
-		return fmt.Errorf("failed to get user: %w", err)
-	}
-	if user == nil {
-		return domain.ErrUserNotFound
+		return err
 	}
 
 	// Get Gamble
-	gamble, err := s.repo.GetGamble(ctx, gambleID)
+	gamble, err := s.getAndValidateActiveGamble(ctx, gambleID)
 	if err != nil {
-		return fmt.Errorf("failed to get gamble: %w", err)
+		return err
 	}
-	if gamble == nil {
-		return domain.ErrGambleNotFound
+
+	// Get initiator's bets to use for this joiner
+	var initiatorBets []domain.LootboxBet
+	for _, p := range gamble.Participants {
+		if p.UserID == gamble.InitiatorID {
+			initiatorBets = p.LootboxBets
+			break
+		}
 	}
-	if gamble.State != domain.GambleStateJoining {
-		return domain.ErrNotInJoiningState
+
+	if len(initiatorBets) == 0 {
+		return fmt.Errorf("failed to find initiator bets for gamble %s: %w", gambleID, domain.ErrGambleNotFound)
 	}
-	if time.Now().After(gamble.JoinDeadline) {
-		return domain.ErrJoinDeadlinePassed
-	}
+
+	// Create a deep copy of bets to use for this joiner to avoid side effects
+	bets := make([]domain.LootboxBet, len(initiatorBets))
+	copy(bets, initiatorBets)
 
 	// Note: Duplicate join prevention is enforced by database constraint
 	// (idx_gamble_participants_unique_user on gamble_participants table)
 
-	// Validate that all bet items are lootboxes
-	for _, bet := range bets {
-		item, err := s.repo.GetItemByID(ctx, bet.ItemID)
-		if err != nil {
-			return fmt.Errorf("failed to validate bet item %d: %w", bet.ItemID, err)
-		}
-		if item == nil {
-			return fmt.Errorf("%w: bet item %d", domain.ErrItemNotFound, bet.ItemID)
-		}
-		if len(item.InternalName) < 7 || item.InternalName[:7] != "lootbox" {
-			return fmt.Errorf("%w: %s (id:%d)", domain.ErrNotALootbox, item.InternalName, item.ID)
-		}
-	}
-
-	// Begin Transaction
-	tx, err := s.repo.BeginTx(ctx)
+	// Validate bets and resolve item names to IDs
+	resolvedItemIDs, err := s.validateGambleBets(ctx, bets)
 	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer repository.SafeRollback(ctx, tx)
-
-	// Get Inventory
-	inventory, err := tx.GetInventory(ctx, user.ID)
-	if err != nil {
-		return fmt.Errorf("failed to get inventory: %w", err)
+		return err
 	}
 
-	// Consume Bets
-	for _, bet := range bets {
-		if err := consumeItem(inventory, bet.ItemID, bet.Quantity); err != nil {
-			return fmt.Errorf("failed to consume bet (item %d): %w", bet.ItemID, err)
-		}
-	}
-
-	// Update Inventory
-	if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
-		return fmt.Errorf("failed to update inventory: %w", err)
-	}
-
-	// Add Participant
-	participant := &domain.Participant{
-		GambleID:    gamble.ID,
-		UserID:      user.ID,
-		LootboxBets: bets,
-		Username:    username,
-	}
-	if err := s.repo.JoinGamble(ctx, participant); err != nil {
-		if errors.Is(err, domain.ErrUserAlreadyJoined) {
-			return domain.ErrUserAlreadyJoined
-		}
-		return fmt.Errorf("failed to join gamble: %w", err)
-	}
-
-	if err := tx.Commit(ctx); err != nil {
+	// Execute transaction
+	if err := s.executeGambleJoinTx(ctx, user.ID, gamble.ID, username, bets, resolvedItemIDs); err != nil {
 		return err
 	}
 
@@ -317,227 +244,100 @@ func (s *service) JoinGamble(ctx context.Context, gambleID uuid.UUID, platform, 
 	return nil
 }
 
+// executeGambleJoinTx encapsulates the transactional logic for joining a gamble
+func (s *service) executeGambleJoinTx(ctx context.Context, userID string, gambleID uuid.UUID, username string, bets []domain.LootboxBet, resolvedItemIDs []int) error {
+	tx, err := s.repo.BeginTx(ctx)
+	if err != nil {
+		return fmt.Errorf("%s: %w", ErrContextFailedToBeginTx, err)
+	}
+	defer repository.SafeRollback(ctx, tx)
+
+	// Get Inventory
+	inventory, err := tx.GetInventory(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("%s: %w", ErrContextFailedToGetInventory, err)
+	}
+
+	// Consume Bets using resolved item IDs
+	for i := range bets {
+		itemID := resolvedItemIDs[i]
+		shineLevel, err := consumeItem(inventory, itemID, bets[i].Quantity)
+		if err != nil {
+			return fmt.Errorf("%s (item %d): %w", ErrContextFailedToConsumeBet, itemID, err)
+		}
+		bets[i].ShineLevel = shineLevel
+	}
+
+	// Update Inventory
+	if err := tx.UpdateInventory(ctx, userID, *inventory); err != nil {
+		return fmt.Errorf("%s: %w", ErrContextFailedToUpdateInventory, err)
+	}
+
+	// Add Participant
+	participant := &domain.Participant{
+		GambleID:    gambleID,
+		UserID:      userID,
+		LootboxBets: bets,
+		Username:    username,
+	}
+	if err := s.repo.JoinGamble(ctx, participant); err != nil {
+		if errors.Is(err, domain.ErrUserAlreadyJoined) {
+			return domain.ErrUserAlreadyJoined
+		}
+		return fmt.Errorf("%s: %w", ErrContextFailedToJoinGamble, err)
+	}
+
+	return tx.Commit(ctx)
+}
+
 // ExecuteGamble runs the gamble logic
 func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.GambleResult, error) {
 	log := logger.FromContext(ctx)
-	log.Info("ExecuteGamble called", "gambleID", id)
+	log.Info(LogMsgExecuteGambleCalled, "gambleID", id)
 
-	// Get Gamble with participants
 	gamble, err := s.repo.GetGamble(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get gamble: %w", err)
+		return nil, fmt.Errorf("%s: %w", ErrContextFailedToGetGamble, err)
 	}
 	if gamble == nil {
 		return nil, domain.ErrGambleNotFound
 	}
 
-	// Check if already completed (graceful handling of duplicate execution)
 	if gamble.State == domain.GambleStateCompleted {
-		log.Info("Gamble already completed, skipping execution", "gambleID", id)
+		log.Info(LogMsgGambleAlreadyCompleted, "gambleID", id)
 		return nil, nil
 	}
 
-	// Only execute if in Joining state
-	if gamble.State != domain.GambleStateJoining {
-		return nil, fmt.Errorf("%w (current: %s)", domain.ErrNotInJoiningState, gamble.State)
+	if err := s.validateGambleExecution(gamble); err != nil {
+		return nil, err
 	}
 
-	// Enforce deadline
-	if time.Now().Before(gamble.JoinDeadline) {
-		return nil, fmt.Errorf("cannot execute gamble before join deadline (deadline: %v)", gamble.JoinDeadline)
-	}
-
-	// Begin transaction for all database operations
 	tx, err := s.repo.BeginGambleTx(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+		return nil, fmt.Errorf("%s: %w", ErrContextFailedToBeginTx, err)
 	}
 	defer repository.SafeRollback(ctx, tx)
 
-	// Use compare-and-swap for idempotent state transition
-	rowsAffected, err := tx.UpdateGambleStateIfMatches(
-		ctx, id,
-		domain.GambleStateJoining,
-		domain.GambleStateOpening,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to transition gamble state: %w", err)
-	}
-	if rowsAffected == 0 {
-		log.Warn("Gamble state transition failed - already being executed", "gambleID", id)
-		return nil, fmt.Errorf("gamble is already being executed or has been executed")
-	}
-	log.Info("Gamble state transitioned to Opening", "gambleID", id)
-
-	// Open lootboxes and track results (in-memory, no DB operations)
-	userValues := make(map[string]int64)
-	var allOpenedItems []domain.GambleOpenedItem
-	var totalGambleValue int64
-
-	// For each participant, open their lootboxes
-	for _, p := range gamble.Participants {
-		for _, bet := range p.LootboxBets {
-			// Get lootbox item to find its name
-			lootboxItem, err := s.repo.GetItemByID(ctx, bet.ItemID)
-			if err != nil {
-				log.Error("Failed to get lootbox item", "itemID", bet.ItemID, "error", err)
-				continue
-			}
-			if lootboxItem == nil {
-				log.Warn("Lootbox item not found", "itemID", bet.ItemID)
-				continue
-			}
-
-			// Open lootbox using shared service
-			drops, err := s.lootboxSvc.OpenLootbox(ctx, lootboxItem.InternalName, bet.Quantity)
-			if err != nil {
-				log.Error("Failed to open lootbox", "lootbox", lootboxItem.InternalName, "error", err)
-				continue
-			}
-
-			// Process drops
-			for _, drop := range drops {
-				totalValue := int64(drop.Value * drop.Quantity)
-
-				openedItem := domain.GambleOpenedItem{
-					GambleID:   id,
-					UserID:     p.UserID,
-					ItemID:     drop.ItemID,
-					Value:      totalValue,
-					ShineLevel: drop.ShineLevel,
-				}
-				allOpenedItems = append(allOpenedItems, openedItem)
-				userValues[p.UserID] += totalValue
-				totalGambleValue += totalValue
-			}
-		}
+	if err := s.transitionToOpeningState(ctx, tx, id); err != nil {
+		return nil, err
 	}
 
-	// Critical Failure Tracking (Low scores relative to average)
-	if len(userValues) > 1 && totalGambleValue > 0 && s.statsSvc != nil {
-		averageScore := float64(totalGambleValue) / float64(len(userValues))
-		criticalFailThreshold := int64(averageScore * 0.2) // 20% of average
+	userValues, allOpenedItems, totalGambleValue := s.openParticipantsLootboxes(ctx, gamble)
+	s.trackCriticalFailures(ctx, id, userValues, totalGambleValue)
 
-		for userID, val := range userValues {
-			if val <= criticalFailThreshold {
-				_ = s.statsSvc.RecordUserEvent(ctx, userID, domain.EventGambleCriticalFail, map[string]interface{}{
-					"gamble_id":     id,
-					"score":         val,
-					"average_score": averageScore,
-					"threshold":     criticalFailThreshold,
-				})
-			}
-		}
-	}
-
-	// Save opened items
 	if err := tx.SaveOpenedItems(ctx, allOpenedItems); err != nil {
 		return nil, fmt.Errorf("failed to save opened items: %w", err)
 	}
 
-	// Determine Winner
-	var highestValue int64 = -1
-	var winners []string
+	winnerID, highestValue := s.determineGambleWinners(ctx, id, userValues)
+	s.trackNearMisses(ctx, id, winnerID, highestValue, userValues)
 
-	for userID, val := range userValues {
-		if val > highestValue {
-			highestValue = val
-			winners = []string{userID}
-		} else if val == highestValue {
-			winners = append(winners, userID)
-		}
-	}
-
-	// Tie-breaking
-	winnerID := ""
-	if len(winners) > 0 {
-		if len(winners) > 1 {
-			// Randomly select one
-			idx := utils.SecureRandomInt(len(winners))
-			winnerID = winners[idx]
-
-			log.Info("Tie-break resolved", "winnerID", winnerID, "originalValue", highestValue)
-
-			// Track tie-break losers
-			if s.statsSvc != nil {
-				for _, uid := range winners {
-					if uid != winnerID {
-						_ = s.statsSvc.RecordUserEvent(ctx, uid, domain.EventGambleTieBreakLost, map[string]interface{}{
-							"gamble_id": id,
-							"score":     highestValue,
-						})
-					}
-				}
-			}
-		} else {
-			winnerID = winners[0]
-		}
-	}
-
-	// Near Miss Tracking (Close scores)
-	if winnerID != "" && highestValue > 0 && s.statsSvc != nil {
-		threshold := int64(float64(highestValue) * NearMissThreshold)
-		for userID, val := range userValues {
-			if userID == winnerID {
-				continue
-			}
-
-			// Skip if this user was already tracked as a tie-break loser (value == highestValue)
-			if val == highestValue {
-				continue
-			}
-
-			if val >= threshold {
-				_ = s.statsSvc.RecordUserEvent(ctx, userID, domain.EventGambleNearMiss, map[string]interface{}{
-					"gamble_id":    id,
-					"score":        val,
-					"winner_score": highestValue,
-					"diff":         highestValue - val,
-				})
-			}
-		}
-	}
-
-	// Award items to winner
 	if winnerID != "" {
-		inv, err := tx.GetInventory(ctx, winnerID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get winner inventory: %w", err)
-		}
-
-		// Add all items
-		// Optimization: Aggregate items first to avoid O(N*M) loop
-		itemsToAdd := make(map[int]int)
-		for _, item := range allOpenedItems {
-			itemsToAdd[item.ItemID]++
-		}
-
-		// Update existing slots
-		for i, slot := range inv.Slots {
-			if qty, ok := itemsToAdd[slot.ItemID]; ok {
-				inv.Slots[i].Quantity += qty
-				delete(itemsToAdd, slot.ItemID)
-			}
-		}
-
-		// Append new slots
-		// Sort keys for deterministic output
-		var newItemIDs []int
-		for itemID := range itemsToAdd {
-			newItemIDs = append(newItemIDs, itemID)
-		}
-		sort.Ints(newItemIDs)
-
-		for _, itemID := range newItemIDs {
-			inv.Slots = append(inv.Slots, domain.InventorySlot{ItemID: itemID, Quantity: itemsToAdd[itemID]})
-		}
-
-		if err := tx.UpdateInventory(ctx, winnerID, *inv); err != nil {
-			return nil, fmt.Errorf("failed to update winner inventory: %w", err)
+		if err := s.awardItemsToWinner(ctx, tx, winnerID, allOpenedItems); err != nil {
+			return nil, err
 		}
 	}
 
-	// Complete Gamble
 	result := &domain.GambleResult{
 		GambleID:   id,
 		WinnerID:   winnerID,
@@ -549,19 +349,219 @@ func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.Gamb
 		return nil, fmt.Errorf("failed to complete gamble: %w", err)
 	}
 
-	// Commit transaction
 	if err := tx.Commit(ctx); err != nil {
-		return nil, fmt.Errorf("failed to commit gamble transaction: %w", err)
+		return nil, fmt.Errorf("%s: %w", ErrContextFailedToCommitTx, err)
 	}
 
-	// Award bonus XP to winner (async)
-	// Run async with detached context to prevent cancellation affecting XP award
+	// Publish gamble completion event (async with retry)
+	s.publishGambleCompletedEvent(ctx, result, len(gamble.Participants))
+
 	if winnerID != "" {
 		s.wg.Add(1)
 		go s.awardGamblerXP(context.Background(), winnerID, 0, "win", true)
 	}
 
 	return result, nil
+}
+
+// validateGambleBets validates bets and resolves item names to IDs
+// Returns a slice of resolved item IDs corresponding to each bet
+func (s *service) validateGambleBets(ctx context.Context, bets []domain.LootboxBet) ([]int, error) {
+	resolvedItemIDs := make([]int, len(bets))
+	for i, bet := range bets {
+		if bet.Quantity > domain.MaxTransactionQuantity {
+			return nil, fmt.Errorf("%w: max is %d", domain.ErrQuantityTooHigh, domain.MaxTransactionQuantity)
+		}
+		itemID, err := s.resolveLootboxBet(ctx, bet)
+		if err != nil {
+			return nil, err
+		}
+		resolvedItemIDs[i] = itemID
+	}
+	return resolvedItemIDs, nil
+}
+
+func (s *service) validateGambleExecution(gamble *domain.Gamble) error {
+	if gamble.State != domain.GambleStateJoining {
+		return fmt.Errorf("%w (current: %s)", domain.ErrNotInJoiningState, gamble.State)
+	}
+	// Allow execution within grace period of deadline to handle clock skew/network delays
+	deadlineWithGrace := gamble.JoinDeadline.Add(-ExecutionGracePeriod)
+	if time.Now().Before(deadlineWithGrace) {
+		return fmt.Errorf("%s (deadline: %v, grace_period: %v)", ErrMsgCannotExecuteBeforeDeadline, gamble.JoinDeadline, ExecutionGracePeriod)
+	}
+	return nil
+}
+
+func (s *service) transitionToOpeningState(ctx context.Context, tx repository.GambleTx, id uuid.UUID) error {
+	rowsAffected, err := tx.UpdateGambleStateIfMatches(ctx, id, domain.GambleStateJoining, domain.GambleStateOpening)
+	if err != nil {
+		return fmt.Errorf("failed to transition gamble state: %w", err)
+	}
+	if rowsAffected == 0 {
+		return errors.New(ErrMsgGambleAlreadyExecuted)
+	}
+	return nil
+}
+
+func (s *service) openParticipantsLootboxes(ctx context.Context, gamble *domain.Gamble) (map[string]int64, []domain.GambleOpenedItem, int64) {
+	userValues := make(map[string]int64)
+	var allOpenedItems []domain.GambleOpenedItem
+	var totalGambleValue int64
+
+	for _, p := range gamble.Participants {
+		for _, bet := range p.LootboxBets {
+			// Resolve bet item name to ID to get lootbox item
+			itemID, err := s.resolveLootboxBet(ctx, bet)
+			if err != nil {
+				continue
+			}
+
+			lootboxItem, err := s.repo.GetItemByID(ctx, itemID)
+			if err != nil || lootboxItem == nil {
+				continue
+			}
+
+			drops, err := s.lootboxSvc.OpenLootbox(ctx, lootboxItem.InternalName, bet.Quantity, bet.ShineLevel)
+			if err != nil {
+				continue
+			}
+
+			for _, drop := range drops {
+				totalValue := int64(drop.Value * drop.Quantity)
+				if s.progressionSvc != nil {
+					modifiedValue, err := s.progressionSvc.GetModifiedValue(ctx, ProgressionFeatureGambleWinBonus, float64(totalValue))
+					if err == nil {
+						totalValue = int64(modifiedValue)
+					}
+				}
+
+				allOpenedItems = append(allOpenedItems, domain.GambleOpenedItem{
+					GambleID:   gamble.ID,
+					UserID:     p.UserID,
+					ItemID:     drop.ItemID,
+					Quantity:   drop.Quantity,
+					Value:      totalValue,
+					ShineLevel: drop.ShineLevel,
+				})
+
+				userValues[p.UserID] += totalValue
+				totalGambleValue += totalValue
+			}
+		}
+	}
+	return userValues, allOpenedItems, totalGambleValue
+}
+
+func (s *service) trackCriticalFailures(ctx context.Context, id uuid.UUID, userValues map[string]int64, totalGambleValue int64) {
+	if len(userValues) <= 1 || totalGambleValue <= 0 || s.statsSvc == nil {
+		return
+	}
+	averageScore := float64(totalGambleValue) / float64(len(userValues))
+	criticalFailThreshold := int64(averageScore * CriticalFailThreshold)
+	for userID, val := range userValues {
+		if val <= criticalFailThreshold {
+			_ = s.statsSvc.RecordUserEvent(ctx, userID, domain.EventGambleCriticalFail, map[string]interface{}{
+				"gamble_id":     id,
+				"score":         val,
+				"average_score": averageScore,
+				"threshold":     criticalFailThreshold,
+			})
+		}
+	}
+}
+
+func (s *service) determineGambleWinners(ctx context.Context, id uuid.UUID, userValues map[string]int64) (string, int64) {
+	var highestValue int64 = InitialHighestValue
+	var winners []string
+
+	for userID, val := range userValues {
+		if val > highestValue {
+			highestValue = val
+			winners = []string{userID}
+		} else if val == highestValue {
+			winners = append(winners, userID)
+		}
+	}
+
+	if len(winners) == 0 {
+		return "", 0
+	}
+
+	if len(winners) > 1 {
+		sort.Strings(winners)
+		idx := s.rng(len(winners))
+		winnerID := winners[idx]
+		if s.statsSvc != nil {
+			for _, uid := range winners {
+				if uid != winnerID {
+					_ = s.statsSvc.RecordUserEvent(ctx, uid, domain.EventGambleTieBreakLost, map[string]interface{}{
+						"gamble_id": id,
+						"score":     highestValue,
+					})
+				}
+			}
+		}
+		return winnerID, highestValue
+	}
+	return winners[0], highestValue
+}
+
+func (s *service) trackNearMisses(ctx context.Context, id uuid.UUID, winnerID string, highestValue int64, userValues map[string]int64) {
+	if winnerID == "" || highestValue <= 0 || s.statsSvc == nil {
+		return
+	}
+	threshold := int64(float64(highestValue) * NearMissThreshold)
+	for userID, val := range userValues {
+		if userID == winnerID || val == highestValue {
+			continue
+		}
+		if val >= threshold {
+			_ = s.statsSvc.RecordUserEvent(ctx, userID, domain.EventGambleNearMiss, map[string]interface{}{
+				"gamble_id":    id,
+				"score":        val,
+				"winner_score": highestValue,
+				"diff":         highestValue - val,
+			})
+		}
+	}
+}
+
+func (s *service) awardItemsToWinner(ctx context.Context, tx repository.GambleTx, winnerID string, allOpenedItems []domain.GambleOpenedItem) error {
+	inv, err := tx.GetInventory(ctx, winnerID)
+	if err != nil {
+		return fmt.Errorf("%s: %w", ErrContextFailedToGetWinnerInv, err)
+	}
+
+	itemsToAdd := make(map[int]int)
+	for _, item := range allOpenedItems {
+		itemsToAdd[item.ItemID] += item.Quantity
+	}
+
+	for i, slot := range inv.Slots {
+		if qty, ok := itemsToAdd[slot.ItemID]; ok {
+			inv.Slots[i].Quantity += qty
+			delete(itemsToAdd, slot.ItemID)
+		}
+	}
+
+	var newItemIDs []int
+	if len(itemsToAdd) > 0 {
+		newItemIDs = make([]int, 0, len(itemsToAdd))
+		for itemID := range itemsToAdd {
+			newItemIDs = append(newItemIDs, itemID)
+		}
+		sort.Ints(newItemIDs)
+	}
+
+	for _, itemID := range newItemIDs {
+		inv.Slots = append(inv.Slots, domain.InventorySlot{ItemID: itemID, Quantity: itemsToAdd[itemID]})
+	}
+
+	if err := tx.UpdateInventory(ctx, winnerID, *inv); err != nil {
+		return fmt.Errorf("%s: %w", ErrContextFailedToUpdateWinnerInv, err)
+	}
+	return nil
 }
 
 // GetGamble retrieves a gamble by ID
@@ -574,13 +574,14 @@ func (s *service) GetActiveGamble(ctx context.Context) (*domain.Gamble, error) {
 	return s.repo.GetActiveGamble(ctx)
 }
 
-// Helper to consume item from inventory
-func consumeItem(inventory *domain.Inventory, itemID, quantity int) error {
+// Helper to consume item from inventory and return its shine level
+func consumeItem(inventory *domain.Inventory, itemID, quantity int) (domain.ShineLevel, error) {
 	for i := range inventory.Slots {
 		if inventory.Slots[i].ItemID == itemID {
-			if inventory.Slots [i].Quantity < quantity {
-				return domain.ErrInsufficientQuantity
+			if inventory.Slots[i].Quantity < quantity {
+				return "", domain.ErrInsufficientQuantity
 			}
+			shineLevel := inventory.Slots[i].ShineLevel
 			if inventory.Slots[i].Quantity == quantity {
 				// Remove slot
 				inventory.Slots = append(inventory.Slots[:i], inventory.Slots[i+1:]...)
@@ -588,10 +589,10 @@ func consumeItem(inventory *domain.Inventory, itemID, quantity int) error {
 				// Reduce quantity
 				inventory.Slots[i].Quantity -= quantity
 			}
-			return nil
+			return shineLevel, nil
 		}
 	}
-	return domain.ErrItemNotFound
+	return domain.ShineLevel(""), domain.ErrItemNotFound
 }
 
 // calculateTotalLootboxes sums up lootbox quantities from bets
@@ -606,7 +607,7 @@ func calculateTotalLootboxes(bets []domain.LootboxBet) int {
 // awardGamblerXP awards  Gambler job XP for gambling operations
 func (s *service) awardGamblerXP(ctx context.Context, userID string, lootboxCount int, source string, isWin bool) {
 	defer s.wg.Done() // Signal completion when goroutine ends
-	
+
 	if s.jobService == nil {
 		return // Job system not enabled
 	}
@@ -622,23 +623,23 @@ func (s *service) awardGamblerXP(ctx context.Context, userID string, lootboxCoun
 	}
 
 	metadata := map[string]interface{}{
-		"source":        source,
-		"lootbox_count": lootboxCount,
-		"is_win":        isWin,
+		MetadataKeySource:       source,
+		MetadataKeyLootboxCount: lootboxCount,
+		MetadataKeyIsWin:        isWin,
 	}
 
 	result, err := s.jobService.AwardXP(ctx, userID, job.JobKeyGambler, xp, source, metadata)
 	if err != nil {
-		logger.FromContext(ctx).Warn("Failed to award Gambler XP", "error", err, "user_id", userID)
+		logger.FromContext(ctx).Warn(LogMsgFailedToAwardGamblerXP, "error", err, "user_id", userID)
 	} else if result != nil && result.LeveledUp {
-		logger.FromContext(ctx).Info("Gambler leveled up!", "user_id", userID, "new_level", result.NewLevel)
+		logger.FromContext(ctx).Info(LogMsgGamblerLeveledUp, "user_id", userID, "new_level", result.NewLevel)
 	}
 }
 
 // Shutdown gracefully shuts down the gamble service by waiting for all async operations to complete
 func (s *service) Shutdown(ctx context.Context) error {
 	log := logger.FromContext(ctx)
-	log.Info("Shutting down gamble service, waiting for async operations...")
+	log.Info(LogMsgShuttingDownGambleService)
 
 	// Wait for all async XP awards to complete
 	done := make(chan struct{})
@@ -649,10 +650,126 @@ func (s *service) Shutdown(ctx context.Context) error {
 
 	select {
 	case <-done:
-		log.Info("Gamble service shutdown complete")
+		log.Info(LogMsgGambleServiceShutdownDone)
 		return nil
 	case <-ctx.Done():
-		log.Warn("Gamble service shutdown forced by context cancellation")
+		log.Warn(LogMsgGambleServiceShutdownForced)
 		return ctx.Err()
 	}
+}
+
+func (s *service) getAndValidateGambleUser(ctx context.Context, platform, platformID string) (*domain.User, error) {
+	user, err := s.repo.GetUserByPlatformID(ctx, platform, platformID)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", ErrContextFailedToGetUser, err)
+	}
+	if user == nil {
+		return nil, domain.ErrUserNotFound
+	}
+	return user, nil
+}
+
+func (s *service) ensureNoActiveGamble(ctx context.Context) error {
+	active, err := s.repo.GetActiveGamble(ctx)
+	if err != nil {
+		return fmt.Errorf("%s: %w", ErrContextFailedToCheckActive, err)
+	}
+	if active != nil {
+		return domain.ErrGambleAlreadyActive
+	}
+	return nil
+}
+
+func (s *service) getAndValidateActiveGamble(ctx context.Context, gambleID uuid.UUID) (*domain.Gamble, error) {
+	gamble, err := s.repo.GetGamble(ctx, gambleID)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", ErrContextFailedToGetGamble, err)
+	}
+	if gamble == nil {
+		return nil, domain.ErrGambleNotFound
+	}
+	if gamble.State != domain.GambleStateJoining {
+		return nil, domain.ErrNotInJoiningState
+	}
+	if time.Now().After(gamble.JoinDeadline) {
+		return nil, domain.ErrJoinDeadlinePassed
+	}
+	return gamble, nil
+}
+
+func (s *service) executeGambleStartTx(ctx context.Context, userID string, inventory *domain.Inventory, gamble *domain.Gamble, participant *domain.Participant) error {
+	tx, err := s.repo.BeginTx(ctx)
+	if err != nil {
+		return fmt.Errorf("%s: %w", ErrContextFailedToBeginTx, err)
+	}
+	defer repository.SafeRollback(ctx, tx)
+
+	if err := tx.UpdateInventory(ctx, userID, *inventory); err != nil {
+		return fmt.Errorf("%s: %w", ErrContextFailedToUpdateInventory, err)
+	}
+
+	if err := s.repo.CreateGamble(ctx, gamble); err != nil {
+		if errors.Is(err, domain.ErrGambleAlreadyActive) {
+			return domain.ErrGambleAlreadyActive
+		}
+		return fmt.Errorf("%s: %w", ErrContextFailedToCreateGamble, err)
+	}
+
+	if err := s.repo.JoinGamble(ctx, participant); err != nil {
+		return fmt.Errorf("%s: %w", ErrContextFailedToAddInitiator, err)
+	}
+
+	return tx.Commit(ctx)
+}
+
+func (s *service) validateGambleStartInput(bets []domain.LootboxBet) error {
+	if len(bets) == 0 {
+		return domain.ErrAtLeastOneLootboxRequired
+	}
+	for _, bet := range bets {
+		if bet.Quantity <= 0 {
+			return domain.ErrBetQuantityMustBePositive
+		}
+		if bet.Quantity > domain.MaxTransactionQuantity {
+			return fmt.Errorf("%w: max is %d", domain.ErrQuantityTooHigh, domain.MaxTransactionQuantity)
+		}
+	}
+	return nil
+}
+
+func (s *service) createGambleRecord(initiatorID string) *domain.Gamble {
+	return &domain.Gamble{
+		ID:           uuid.New(),
+		InitiatorID:  initiatorID,
+		State:        domain.GambleStateJoining,
+		CreatedAt:    time.Now(),
+		JoinDeadline: time.Now().Add(s.joinDuration),
+	}
+}
+
+func (s *service) publishGambleStartedEvent(ctx context.Context, gamble *domain.Gamble) {
+	if s.eventBus == nil {
+		logger.FromContext(ctx).Error("Failed to publish "+LogContextGambleStartedEvent, "reason", LogReasonEventBusNil)
+		return
+	}
+	err := s.eventBus.Publish(ctx, event.Event{
+		Version: EventSchemaVersion,
+		Type:    domain.EventGambleStarted,
+		Payload: gamble,
+	})
+	if err != nil {
+		logger.FromContext(ctx).Error("Failed to publish "+LogContextGambleStartedEvent, "error", err)
+	}
+}
+
+func (s *service) publishGambleCompletedEvent(ctx context.Context, result *domain.GambleResult, participantCount int) {
+	log := logger.FromContext(ctx)
+
+	if s.resilientPublisher == nil {
+		log.Error("Failed to publish GambleCompleted event", "reason", "resilientPublisher is nil")
+		return
+	}
+
+	evt := event.NewGambleCompletedEvent(result.GambleID.String(), result.WinnerID, result.TotalValue, participantCount)
+	s.resilientPublisher.PublishWithRetry(ctx, evt)
 }

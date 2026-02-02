@@ -9,7 +9,8 @@ const (
 	ErrMsgUserNotFound = "user not found"
 
 	// Item errors
-	ErrMsgItemNotFound = "item not found"
+	ErrMsgItemNotFound   = "item does not exist"
+	ErrMsgItemNotHandled = "item cannot be used (no use effect)"
 
 	// Inventory errors
 	ErrMsgInsufficientQuantity = "insufficient quantity"
@@ -23,51 +24,67 @@ const (
 
 	// Validation errors (used for partial matches)
 	ErrMsgInvalidQuantity = "quantity" // Used in contains checks for various quantity errors
+	ErrMsgQuantityTooHigh = "quantity too high"
+	ErrMsgInvalidPlatform = "invalid platform"
+	ErrMsgInvalidInput    = "invalid input"
 
 	// Gamble errors
-	ErrMsgGambleAlreadyActive        = "a gamble is already active"
-	ErrMsgGambleNotFound             = "gamble not found"
-	ErrMsgNotInJoiningState          = "not in joining state"
-	ErrMsgJoinDeadlinePassed         = "join deadline has passed"
-	ErrMsgAtLeastOneLootboxRequired  = "at least one lootbox bet is required"
-	ErrMsgBetQuantityMustBePositive  = "bet quantity must be positive"
-	ErrMsgFailedToTransitionState    = "failed to transition gamble state"
-	ErrMsgFailedToSaveOpenedItems    = "failed to save opened items"
-	ErrMsgNotALootbox                = "not a lootbox"
-	ErrMsgUserAlreadyJoined          = "user has already joined this gamble"
+	ErrMsgGambleAlreadyActive       = "a gamble is already active"
+	ErrMsgGambleNotFound            = "gamble not found"
+	ErrMsgNotInJoiningState         = "not in joining state"
+	ErrMsgJoinDeadlinePassed        = "join deadline has passed"
+	ErrMsgAtLeastOneLootboxRequired = "at least one lootbox bet is required"
+	ErrMsgBetQuantityMustBePositive = "bet quantity must be positive"
+	ErrMsgFailedToTransitionState   = "failed to transition gamble state"
+	ErrMsgFailedToSaveOpenedItems   = "failed to save opened items"
+	ErrMsgNotALootbox               = "not a lootbox"
+	ErrMsgUserAlreadyJoined         = "user has already joined this gamble"
 
 	// User service errors
 	ErrMsgNotEnoughItems       = "not enough items"
 	ErrMsgFailedToRegisterUser = "failed to register user"
 
+	// Job errors
+	ErrMsgDailyCapReached = "daily XP cap reached"
+
 	// Database/System errors
-	ErrMsgConnectionTimeout = "connection timeout"
-	ErrMsgDatabaseError     = "database error"
-	ErrMsgDeadlockDetected  = "deadlock detected"
-	ErrMsgFailedToGetUser   = "failed to get user"
-	ErrMsgFailedToGetItem   = "failed to get item"
-	ErrMsgFailedToGetInventory   = "failed to get inventory"
-	ErrMsgFailedToUpdateInventory   = "failed to update inventory"
-	ErrMsgFailedToBeginTx   = "failed to begin transaction"
-	ErrMsgFailedToCommitTx   = "failed to commit transaction"
-	ErrMsgFailedToRollbackTx   = "failed to rollback transaction"
+	ErrMsgConnectionTimeout       = "connection timeout"
+	ErrMsgDatabaseError           = "database error"
+	ErrMsgDeadlockDetected        = "deadlock detected"
+	ErrMsgFailedToGetUser         = "failed to get user"
+	ErrMsgFailedToGetItem         = "failed to get item"
+	ErrMsgFailedToGetItemDetails  = "failed to get item details"
+	ErrMsgFailedToGetInventory    = "failed to get inventory"
+	ErrMsgFailedToUpdateInventory = "failed to update inventory"
+	ErrMsgFailedToBeginTx         = "failed to begin transaction"
+	ErrMsgFailedToCommitTx        = "failed to commit transaction"
+	ErrMsgFailedToRollbackTx      = "failed to rollback transaction"
 
 	// Cooldown errors
 	ErrMsgOnCooldown = "action on cooldown"
 
 	// Feature errors
 	ErrMsgFeatureLocked = "feature is locked"
+	ErrMsgItemLocked    = "item is locked"
+
+	// Progression errors
+	ErrMsgUserAlreadyVoted       = "user has already voted"
+	ErrMsgNodeNotFound           = "node not found"
+	ErrMsgMaxLevelExceeded       = "max level exceeded"
+	ErrMsgNoActiveSession        = "no active voting session"
+	ErrMsgSessionAlreadyActive   = "voting session already active"
+	ErrMsgAccumulationInProgress = "cannot start voting while accumulation is in progress"
+	ErrMsgSessionAlreadyFrozen   = "voting session is already frozen"
+	ErrMsgNoNodesAvailable       = "no nodes available for voting"
 
 	// Recipe/Crafting errors
 	ErrMsgRecipeNotFound = "recipe not found"
 	ErrMsgRecipeLocked   = "recipe is locked"
 	ErrMsgInvalidRecipe  = "invalid recipe"
 
-	// Platform errors
-	ErrMsgInvalidPlatform = "invalid platform"
-
-	// Input errors
-	ErrMsgInvalidInput = "invalid input"
+	// Harvest errors
+	ErrMsgHarvestStateNotFound = "harvest state not found"
+	ErrMsgHarvestTooSoon       = "harvest too soon (minimum 1 hour)"
 )
 
 // Common domain errors
@@ -78,7 +95,8 @@ var (
 	ErrUserNotFound = errors.New(ErrMsgUserNotFound)
 
 	// Item errors
-	ErrItemNotFound = errors.New(ErrMsgItemNotFound)
+	ErrItemNotFound   = errors.New(ErrMsgItemNotFound)
+	ErrItemNotHandled = errors.New(ErrMsgItemNotHandled)
 
 	// Inventory errors
 	ErrInsufficientQuantity = errors.New(ErrMsgInsufficientQuantity)
@@ -104,23 +122,28 @@ var (
 	ErrNotEnoughItems       = errors.New(ErrMsgNotEnoughItems)
 	ErrFailedToRegisterUser = errors.New(ErrMsgFailedToRegisterUser)
 
+	// Job errors
+	ErrDailyCapReached = errors.New(ErrMsgDailyCapReached)
+
 	// Database/System errors
-	ErrConnectionTimeout = errors.New(ErrMsgConnectionTimeout)
-	ErrDatabaseError     = errors.New(ErrMsgDatabaseError)
-	ErrDeadlockDetected  = errors.New(ErrMsgDeadlockDetected)
-	ErrFailedToGetUser   = errors.New(ErrMsgFailedToGetUser)
-	ErrFailedToGetItem   = errors.New(ErrMsgFailedToGetItem)
-	ErrFailedToGetInventory   = errors.New(ErrMsgFailedToGetInventory)
-	ErrFailedToUpdateInventory   = errors.New(ErrMsgFailedToUpdateInventory)
-	ErrFailedToBeginTx   = errors.New(ErrMsgFailedToBeginTx)
-	ErrFailedToCommitTx   = errors.New(ErrMsgFailedToCommitTx)
-	ErrFailedToRollbackTx   = errors.New(ErrMsgFailedToRollbackTx)
+	ErrConnectionTimeout       = errors.New(ErrMsgConnectionTimeout)
+	ErrDatabaseError           = errors.New(ErrMsgDatabaseError)
+	ErrDeadlockDetected        = errors.New(ErrMsgDeadlockDetected)
+	ErrFailedToGetUser         = errors.New(ErrMsgFailedToGetUser)
+	ErrFailedToGetItem         = errors.New(ErrMsgFailedToGetItem)
+	ErrFailedToGetItemDetails  = errors.New(ErrMsgFailedToGetItemDetails)
+	ErrFailedToGetInventory    = errors.New(ErrMsgFailedToGetInventory)
+	ErrFailedToUpdateInventory = errors.New(ErrMsgFailedToUpdateInventory)
+	ErrFailedToBeginTx         = errors.New(ErrMsgFailedToBeginTx)
+	ErrFailedToCommitTx        = errors.New(ErrMsgFailedToCommitTx)
+	ErrFailedToRollbackTx      = errors.New(ErrMsgFailedToRollbackTx)
 
 	// Cooldown errors
 	ErrOnCooldown = errors.New(ErrMsgOnCooldown)
 
 	// Feature errors
 	ErrFeatureLocked = errors.New(ErrMsgFeatureLocked)
+	ErrItemLocked    = errors.New(ErrMsgItemLocked)
 
 	// Recipe/Crafting errors
 	ErrRecipeNotFound = errors.New(ErrMsgRecipeNotFound)
@@ -128,8 +151,22 @@ var (
 	ErrInvalidRecipe  = errors.New(ErrMsgInvalidRecipe)
 
 	// Validation errors
-	ErrInvalidInput = errors.New(ErrMsgInvalidInput)
-
-	// Platform errors
+	ErrInvalidInput    = errors.New(ErrMsgInvalidInput)
+	ErrInvalidQuantity = errors.New(ErrMsgInvalidQuantity)
+	ErrQuantityTooHigh = errors.New(ErrMsgQuantityTooHigh)
 	ErrInvalidPlatform = errors.New(ErrMsgInvalidPlatform)
+
+	// Progression errors
+	ErrUserAlreadyVoted       = errors.New(ErrMsgUserAlreadyVoted)
+	ErrNodeNotFound           = errors.New(ErrMsgNodeNotFound)
+	ErrMaxLevelExceeded       = errors.New(ErrMsgMaxLevelExceeded)
+	ErrNoActiveSession        = errors.New(ErrMsgNoActiveSession)
+	ErrSessionAlreadyActive   = errors.New(ErrMsgSessionAlreadyActive)
+	ErrAccumulationInProgress = errors.New(ErrMsgAccumulationInProgress)
+	ErrSessionAlreadyFrozen   = errors.New(ErrMsgSessionAlreadyFrozen)
+	ErrNoNodesAvailable       = errors.New(ErrMsgNoNodesAvailable)
+
+	// Harvest errors
+	ErrHarvestStateNotFound = errors.New(ErrMsgHarvestStateNotFound)
+	ErrHarvestTooSoon       = errors.New(ErrMsgHarvestTooSoon)
 )

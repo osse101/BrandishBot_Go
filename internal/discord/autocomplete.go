@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
+
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/job"
 )
@@ -117,13 +118,12 @@ func handleJobAutocomplete(s *discordgo.Session, i *discordgo.InteractionCreate)
 // handleItemAutocomplete provides autocomplete suggestions for item names
 // onlyOwned: if true, only shows items from user's inventory
 // filterFunc: optional custom filter function
+// handleItemAutocomplete provides autocomplete suggestions for item names
+// onlyOwned: if true, only shows items from user's inventory
+// filterFunc: optional custom filter function
 func handleItemAutocomplete(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient, onlyOwned bool, filterFunc func(string) bool) {
-	user := i.Member.User
-	if user == nil {
-		user = i.User
-	}
-	
-	// Defensive check: ensure we have a valid user (should always be present in Discord commands)
+	user := getInteractionUser(i)
+
 	if user == nil {
 		slog.Error("Failed to get user from autocomplete interaction")
 		_ = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
@@ -137,71 +137,71 @@ func handleItemAutocomplete(s *discordgo.Session, i *discordgo.InteractionCreate
 		return
 	}
 
-	// Get the value the user is currently typing
-	data := i.ApplicationCommandData()
-	var focusedValue string
-	for _, opt := range data.Options {
-		if opt.Focused {
-			focusedValue = strings.ToLower(opt.StringValue())
-			break
-		}
-	}
+	focusedValue := getFocusedOptionValue(i.ApplicationCommandData().Options)
 
 	var choices []*discordgo.ApplicationCommandOptionChoice
-
 	if onlyOwned {
-		// Get user's inventory
-		inventory, err := client.GetInventory(domain.PlatformDiscord, i.Member.User.ID, i.Member.User.Username, "")
-		if err != nil {
-			slog.Error("Failed to get inventory for autocomplete", "error", err, "user", user.Username)
-			// Fallback to showing common items
-			choices = getCommonItemChoices(focusedValue)
-		} else {
-			// Build choices from inventory
-			for _, item := range inventory {
-				itemNameLower := strings.ToLower(item.Name)
-				
-				// Filter by what user is typing
-				if focusedValue == "" || strings.Contains(itemNameLower, focusedValue) {
-					// Apply custom filter if provided
-					if filterFunc != nil && !filterFunc(item.Name) {
-						continue
-					}
-
-					displayName := fmt.Sprintf("%s (x%d)", item.Name, item.Quantity)
-					choices = append(choices, &discordgo.ApplicationCommandOptionChoice{
-						Name:  displayName,
-						Value: item.Name,
-					})
-				}
-
-				// Discord limit
-				if len(choices) >= 25 {
-					break
-				}
-			}
-		}
+		choices = getOwnedItemChoices(client, user, focusedValue, filterFunc)
 	} else {
-		// Show all buyable items
 		choices = getBuyableItemChoices(focusedValue)
 	}
 
-	// If no choices, provide a helpful message
 	if len(choices) == 0 {
-		if onlyOwned {
-			choices = append(choices, &discordgo.ApplicationCommandOptionChoice{
-				Name:  "No items found (try /search to find items)",
-				Value: "none",
-			})
-		} else {
-			choices = append(choices, &discordgo.ApplicationCommandOptionChoice{
-				Name:  "No matching items",
-				Value: "none",
-			})
-		}
+		choices = getNoItemsChoices(onlyOwned)
 	}
 
-	// Respond with choices
+	respondAutocomplete(s, i, choices)
+}
+
+func getFocusedOptionValue(options []*discordgo.ApplicationCommandInteractionDataOption) string {
+	for _, opt := range options {
+		if opt.Focused {
+			return strings.ToLower(opt.StringValue())
+		}
+	}
+	return ""
+}
+
+func getOwnedItemChoices(client *APIClient, user *discordgo.User, focusedValue string, filterFunc func(string) bool) []*discordgo.ApplicationCommandOptionChoice {
+	inventory, err := client.GetInventory(domain.PlatformDiscord, user.ID, user.Username, "")
+	if err != nil {
+		slog.Error("Failed to get inventory for autocomplete", "error", err, "user", user.Username)
+		return getCommonItemChoices(focusedValue)
+	}
+
+	var choices []*discordgo.ApplicationCommandOptionChoice
+	for _, item := range inventory {
+		itemNameLower := strings.ToLower(item.Name)
+		if focusedValue == "" || strings.Contains(itemNameLower, focusedValue) {
+			if filterFunc != nil && !filterFunc(item.Name) {
+				continue
+			}
+
+			displayName := fmt.Sprintf("%s (x%d)", item.Name, item.Quantity)
+			choices = append(choices, &discordgo.ApplicationCommandOptionChoice{
+				Name:  displayName,
+				Value: item.Name,
+			})
+		}
+		if len(choices) >= 25 {
+			break
+		}
+	}
+	return choices
+}
+
+func getNoItemsChoices(onlyOwned bool) []*discordgo.ApplicationCommandOptionChoice {
+	if onlyOwned {
+		return []*discordgo.ApplicationCommandOptionChoice{
+			{Name: "No items found (try /search to find items)", Value: "none"},
+		}
+	}
+	return []*discordgo.ApplicationCommandOptionChoice{
+		{Name: "No matching items", Value: "none"},
+	}
+}
+
+func respondAutocomplete(s *discordgo.Session, i *discordgo.InteractionCreate, choices []*discordgo.ApplicationCommandOptionChoice) {
 	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionApplicationCommandAutocompleteResult,
 		Data: &discordgo.InteractionResponseData{
@@ -218,9 +218,9 @@ func handleGambleItemAutocomplete(s *discordgo.Session, i *discordgo.Interaction
 	// Filter to only show lootbox items
 	lootboxFilter := func(itemName string) bool {
 		// Use prefix check for precision - avoids matching non-lootbox items like "toolbox"
-		return strings.HasPrefix(itemName, "lootbox") || 
-		       itemName == "junkbox" || 
-		       itemName == "goldbox"
+		return strings.HasPrefix(itemName, "lootbox") ||
+			itemName == "junkbox" ||
+			itemName == "goldbox"
 	}
 
 	handleItemAutocomplete(s, i, client, true, lootboxFilter)

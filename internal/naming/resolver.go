@@ -3,12 +3,14 @@ package naming
 import (
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
 // AliasPool contains alias variants for an item
@@ -29,7 +31,7 @@ type Resolver interface {
 	ResolvePublicName(publicName string) (internalName string, ok bool)
 
 	// GetDisplayName generates a display name with optional shine prefix
-	GetDisplayName(internalName string, shineLevel string) string
+	GetDisplayName(internalName string, shineLevel domain.ShineLevel) string
 
 	// GetActiveTheme returns the currently active theme based on date
 	GetActiveTheme() string
@@ -100,7 +102,7 @@ func (r *resolver) ResolvePublicName(publicName string) (string, bool) {
 }
 
 // GetDisplayName generates a display name with optional shine prefix
-func (r *resolver) GetDisplayName(internalName string, shineLevel string) string {
+func (r *resolver) GetDisplayName(internalName string, shineLevel domain.ShineLevel) string {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -131,16 +133,21 @@ func (r *resolver) GetDisplayName(internalName string, shineLevel string) string
 	}
 
 	// Random selection from alias pool
-	alias := aliases[rand.Intn(len(aliases))]
+	alias := aliases[utils.RandomInt(0, len(aliases)-1)]
 	return r.formatWithShine(alias, shineLevel)
 }
 
 // formatWithShine adds shine level prefix if not COMMON
-func (r *resolver) formatWithShine(name string, shineLevel string) string {
-	if shineLevel == "" || shineLevel == "COMMON" {
-		return name
+func (r *resolver) formatWithShine(name string, shineLevel domain.ShineLevel) string {
+	shineLevelStr := string("")
+	switch shineLevel {
+	case domain.ShineCursed:
+		shineLevelStr = "👻"
+	case domain.ShineLegendary:
+		shineLevelStr = "👑"
+	default:
 	}
-	return fmt.Sprintf("%s %s", shineLevel, name)
+	return fmt.Sprintf(ShineFormatTemplate, name, shineLevelStr)
 }
 
 // GetActiveTheme returns the currently active theme
@@ -174,9 +181,9 @@ func isInPeriod(now time.Time, startStr, endStr string) bool {
 	currentDay := now.Day()
 
 	// Create comparable date values (month * 100 + day)
-	current := currentMonth*100 + currentDay
-	start := startMonth*100 + startDay
-	end := endMonth*100 + endDay
+	current := currentMonth*DateComparisonMultiplier + currentDay
+	start := startMonth*DateComparisonMultiplier + startDay
+	end := endMonth*DateComparisonMultiplier + endDay
 
 	if start <= end {
 		// Normal range (e.g., 10-15 to 11-02)
@@ -188,8 +195,8 @@ func isInPeriod(now time.Time, startStr, endStr string) bool {
 
 // parseMonthDay parses "MM-DD" format
 func parseMonthDay(s string) (month, day int) {
-	parts := strings.Split(s, "-")
-	if len(parts) != 2 {
+	parts := strings.Split(s, DateSeparator)
+	if len(parts) != DatePartsCount {
 		return 0, 0
 	}
 	month, _ = strconv.Atoi(parts[0])
@@ -205,54 +212,75 @@ func (r *resolver) Reload() error {
 	// Load aliases
 	if r.aliasesPath != "" {
 		if err := r.loadAliases(); err != nil {
-			return fmt.Errorf("failed to load aliases: %w", err)
+			return fmt.Errorf("%s: %w", ErrContextFailedToLoadAliases, err)
 		}
 	}
 
 	// Load themes
 	if r.themesPath != "" {
 		if err := r.loadThemes(); err != nil {
-			return fmt.Errorf("failed to load themes: %w", err)
+			return fmt.Errorf("%s: %w", ErrContextFailedToLoadThemes, err)
 		}
+	}
+
+	return nil
+}
+
+func (r *resolver) loadVersionedConfig(path string, target interface{}, schema string) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+
+	// Wrapper to handle common fields
+	var wrapper struct {
+		Version string `json:"version"`
+		Schema  string `json:"schema"`
+	}
+	if err := json.Unmarshal(data, &wrapper); err != nil {
+		return fmt.Errorf(ErrContextFailedToParseConfig+": %w", path, err)
+	}
+
+	if wrapper.Version == "" {
+		return fmt.Errorf(ErrMsgMissingVersionField, path)
+	}
+	if wrapper.Schema != schema {
+		return fmt.Errorf(ErrMsgInvalidSchema, path, schema, wrapper.Schema)
+	}
+
+	// Now unmarshal to actual target
+	if err := json.Unmarshal(data, target); err != nil {
+		return fmt.Errorf(ErrContextFailedToDecodeData+": %w", path, err)
 	}
 
 	return nil
 }
 
 func (r *resolver) loadAliases() error {
-	data, err := os.ReadFile(r.aliasesPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			// File doesn't exist yet, that's okay
-			return nil
-		}
+	var config struct {
+		Aliases map[string]AliasPool `json:"aliases"`
+	}
+	if err := r.loadVersionedConfig(r.aliasesPath, &config, SchemaItemAliases); err != nil {
 		return err
 	}
-
-	var aliases map[string]AliasPool
-	if err := json.Unmarshal(data, &aliases); err != nil {
-		return err
+	if config.Aliases != nil {
+		r.aliases = config.Aliases
 	}
-
-	r.aliases = aliases
 	return nil
 }
 
 func (r *resolver) loadThemes() error {
-	data, err := os.ReadFile(r.themesPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			// File doesn't exist yet, that's okay
-			return nil
-		}
+	var config struct {
+		Themes map[string]ThemePeriod `json:"themes"`
+	}
+	if err := r.loadVersionedConfig(r.themesPath, &config, SchemaItemThemes); err != nil {
 		return err
 	}
-
-	var themes map[string]ThemePeriod
-	if err := json.Unmarshal(data, &themes); err != nil {
-		return err
+	if config.Themes != nil {
+		r.themes = config.Themes
 	}
-
-	r.themes = themes
 	return nil
 }

@@ -1716,7 +1716,7 @@
                 "items": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/user.UserInventoryItem"
+                        "$ref": "#/definitions/user.InventoryItem"
                     }
                 }
             }
@@ -2032,7 +2032,7 @@
                 }
             }
         },
-        "user.UserInventoryItem": {
+        "user.InventoryItem": {
             "type": "object",
             "properties": {
                 "description": {

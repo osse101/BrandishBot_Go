@@ -1,6 +1,7 @@
 package discord
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -12,31 +13,36 @@ import (
 	"time"
 
 	"github.com/bwmarrin/discordgo"
+
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
 // Bot represents the Discord bot
 type Bot struct {
-	Session         *discordgo.Session
-	Client          *APIClient
-	AppID           string
-	Registry        *CommandRegistry
-	DevChannelID         string
-	DiggingGameChannelID string
-	GithubToken          string
-	GithubOwnerRepo      string
+	Session               *discordgo.Session
+	Client                *APIClient
+	AppID                 string
+	Registry              *CommandRegistry
+	DevChannelID          string
+	DiggingGameChannelID  string
+	NotificationChannelID string
+	GithubToken           string
+	GithubOwnerRepo       string
+	sseClient             *SSEClient
+	sseNotifier           *SSENotifier
 }
 
 // Config holds the bot configuration
 type Config struct {
-	Token                string
-	AppID                string
-	APIURL               string
-	APIKey               string
-	DevChannelID         string
-	DiggingGameChannelID string
-	GithubToken          string
-	GithubOwnerRepo      string
+	Token                 string
+	AppID                 string
+	APIURL                string
+	APIKey                string
+	DevChannelID          string
+	DiggingGameChannelID  string
+	NotificationChannelID string
+	GithubToken           string
+	GithubOwnerRepo       string
 }
 
 // New creates a new Discord bot
@@ -46,16 +52,30 @@ func New(cfg Config) (*Bot, error) {
 		return nil, fmt.Errorf("error creating Discord session: %w", err)
 	}
 
-	return &Bot{
-		Session:              s,
-		Client:               NewAPIClient(cfg.APIURL, cfg.APIKey), // Pass API Key
-		AppID:                cfg.AppID,
-		Registry:             NewCommandRegistry(),
-		DevChannelID:         cfg.DevChannelID,
-		DiggingGameChannelID: cfg.DiggingGameChannelID,
-		GithubToken:          cfg.GithubToken,
-		GithubOwnerRepo:      cfg.GithubOwnerRepo,
-	}, nil
+	bot := &Bot{
+		Session:               s,
+		Client:                NewAPIClient(cfg.APIURL, cfg.APIKey), // Pass API Key
+		AppID:                 cfg.AppID,
+		Registry:              NewCommandRegistry(),
+		DevChannelID:          cfg.DevChannelID,
+		DiggingGameChannelID:  cfg.DiggingGameChannelID,
+		NotificationChannelID: cfg.NotificationChannelID,
+		GithubToken:           cfg.GithubToken,
+		GithubOwnerRepo:       cfg.GithubOwnerRepo,
+	}
+
+	// Initialize SSE client if notification channel is configured
+	if cfg.NotificationChannelID != "" {
+		bot.sseClient = NewSSEClient(cfg.APIURL, cfg.APIKey, []string{
+			SSEEventTypeJobLevelUp,
+			SSEEventTypeVotingStarted,
+			SSEEventTypeCycleCompleted,
+			SSEEventTypeAllUnlocked,
+			SSEEventTypeGambleCompleted,
+		})
+	}
+
+	return bot, nil
 }
 
 // Start starts the bot
@@ -63,7 +83,7 @@ func (b *Bot) Start() error {
 	b.Session.AddHandler(b.ready)
 	b.Session.AddHandler(b.interactionCreate)
 	b.Session.AddHandler(b.messageCreate)
-	
+
 	// Add autocomplete handler
 	b.Session.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		if i.Type == discordgo.InteractionApplicationCommandAutocomplete {
@@ -75,12 +95,26 @@ func (b *Bot) Start() error {
 		return fmt.Errorf("error opening connection: %w", err)
 	}
 
+	// Start SSE client for real-time notifications
+	if b.sseClient != nil && b.NotificationChannelID != "" {
+		b.sseNotifier = NewSSENotifier(b.Session, b.NotificationChannelID)
+		b.sseNotifier.RegisterHandlers(b.sseClient)
+		b.sseClient.Start(context.Background())
+		slog.Info("SSE client started for real-time notifications",
+			"channel_id", b.NotificationChannelID)
+	}
+
 	slog.Info("Discord bot is now running. Press CTRL-C to exit.")
 	return nil
 }
 
 // Stop stops the bot
 func (b *Bot) Stop() {
+	// Stop SSE client first
+	if b.sseClient != nil {
+		b.sseClient.Stop()
+		slog.Info("SSE client stopped")
+	}
 	b.Session.Close()
 }
 
@@ -166,7 +200,7 @@ func (b *Bot) SendDailyCommitReport() error {
 				Date string `json:"date"`
 			} `json:"author"`
 		} `json:"commit"`
-		HtmlUrl string `json:"html_url"`
+		HTMLURL string `json:"html_url"`
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&commits); err != nil {
@@ -184,7 +218,7 @@ func (b *Bot) SendDailyCommitReport() error {
 		if len(msg) > 50 {
 			msg = msg[:47] + "..."
 		}
-		fmt.Fprintf(&sb, "• [`%s`](%s) %s - *%s*\n", c.Sha[:7], c.HtmlUrl, msg, c.Commit.Author.Name)
+		fmt.Fprintf(&sb, "• [`%s`](%s) %s - *%s*\n", c.Sha[:7], c.HTMLURL, msg, c.Commit.Author.Name)
 	}
 
 	embed := &discordgo.MessageEmbed{
@@ -215,7 +249,7 @@ func (b *Bot) messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	// We don't reply here, just track engagement/process commands
 	_, err := b.Client.HandleMessage(
 		domain.PlatformDiscord,
-		domain.DiscordBotId, // Use constant Platform ID for the bot interaction context
+		domain.DiscordBotID, // Use constant Platform ID for the bot interaction context
 		m.Author.Username,
 		m.Content,
 	)

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using BrandishBot.Client;
 
@@ -15,31 +16,219 @@ public class CPHInline
 {
     // Singleton client - shared across all method calls in this action
     private static BrandishBotClient client;
+    
+    // Compiled regex for username validation (performance optimization)
+    private static readonly System.Text.RegularExpressions.Regex UsernameRegex = 
+        new System.Text.RegularExpressions.Regex(@"^[a-zA-Z0-9_]+$", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    private static bool lastDevEnabled = false;
+    private static string lastDevUrl = "";
 
     // Initialize the client (called automatically on first use)
     private void EnsureInitialized()
     {
-        if (client == null)
+        try
         {
-            string baseUrl = CPH.GetGlobalVar<string>("ServerBaseURL", persisted:true);
-            string apiKey = CPH.GetGlobalVar<string>("ServerApiKey", persisted:true);
-            
-            if (string.IsNullOrEmpty(baseUrl))
+            if (client == null)
             {
-                CPH.LogError("CONFIGURATION ERROR: ServerBaseURL global variable is not set!");
-                CPH.LogError("Name: ServerBaseURL, Value: http://IP:PORT (or your server URL)");
-                throw new InvalidOperationException("ServerBaseURL not configured");
+                string baseUrl = CPH.GetGlobalVar<string>("ServerBaseURL", persisted:true);
+                string apiKey = CPH.GetGlobalVar<string>("ServerApiKey", persisted:true);
+                if (string.IsNullOrEmpty(baseUrl)) baseUrl = "http://127.0.0.1:8080";
+                
+                if (string.IsNullOrEmpty(apiKey))
+                {
+                    CPH.LogError("CONFIGURATION ERROR: ServerApiKey global variable is not set!");
+                    throw new InvalidOperationException("ServerApiKey not configured");
+                }
+                
+                BrandishBotClient.Initialize(baseUrl, apiKey);
+                client = BrandishBotClient.Instance;
             }
-            
-            if (string.IsNullOrEmpty(apiKey))
+
+            // Sync Dev Client State (Allows turning it off/on dynamically)
+            bool devEnabled = CPH.GetGlobalVar<bool>("BrandishBot_DevEnabled", persisted:true);
+            string devUrl = CPH.GetGlobalVar<string>("DevBaseURL", persisted:true);
+
+            if (devEnabled != lastDevEnabled || devUrl != lastDevUrl)
             {
-                CPH.LogError("CONFIGURATION ERROR: ServerApiKey global variable is not set!");
-                CPH.LogError("Name: ServerApiKey, Value: your-api-key-here");
-                throw new InvalidOperationException("ServerApiKey not configured");
+                if (devEnabled)
+                {
+                    string apiKey = CPH.GetGlobalVar<string>("ServerApiKey", persisted: true);
+                    if (!string.IsNullOrEmpty(devUrl) && !string.IsNullOrEmpty(apiKey))
+                    {
+                        var devClient = new BrandishBotClient(devUrl, apiKey, isForwardingInstance: true);
+                        client.SetForwardingClient(devClient);
+                        CPH.LogInfo($"[BrandishBot] Dev Forwarding ENABLED -> {devUrl}");
+                    }
+                }
+                else
+                {
+                    client.SetForwardingClient(null);
+                    CPH.LogInfo("[BrandishBot] Dev Forwarding DISABLED");
+                }
+                lastDevEnabled = devEnabled;
+                lastDevUrl = devUrl;
             }
-            
-            BrandishBotClient.Initialize(baseUrl, apiKey);
-            client = BrandishBotClient.Instance;
+        }
+        catch (AppDomainUnloadedException)
+        {
+            client = null;
+            EnsureInitialized();
+        }
+    }
+
+    /// <summary>
+    /// Helper: Validate context arguments (userType, userId, userName)
+    /// </summary>
+    private bool ValidateContext(out string platform, out string platformId, out string username, ref string error)
+    {
+        platform = null;
+        platformId = null;
+        username = null;
+
+        if (!CPH.TryGetArg("userType", out platform))
+        {
+            error = "Context Error: Missing 'userType'.";
+            return false;
+        }
+        if (!CPH.TryGetArg("userId", out platformId))
+        {
+            error = "Context Error: Missing 'userId'.";
+            return false;
+        }
+        // userName is often useful for logging or display even if not strictly required by some ID-based endpoints
+        CPH.TryGetArg("userName", out username);
+        
+        return true;
+    }
+
+    /// <summary>
+    /// Helper: Get a string argument from inputX
+    /// </summary>
+    private bool GetInputString(int index, string paramName, bool required, out string value, ref string error)
+    {
+        value = null;
+        string key = $"input{index}";
+        bool exists = CPH.TryGetArg(key, out string inputVal);
+        
+        if (exists && !string.IsNullOrWhiteSpace(inputVal))
+        {
+            // For usernames, validate alphanumeric + underscore (filters invisible chars like U+034F)
+            string trimmed = inputVal.Trim();
+            if (!string.IsNullOrEmpty(trimmed) && UsernameRegex.IsMatch(trimmed))
+            {
+                value = trimmed;
+                return true;
+            }
+        }
+
+        if (required)
+        {
+            error = $"Missing required argument: <{paramName}>.";
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Helper: Get an integer argument from inputX with default value
+    /// </summary>
+    private bool GetInputInt(int index, string paramName, int defaultValue, out int value, ref string error)
+    {
+        value = defaultValue;
+        string key = $"input{index}";
+        bool exists = CPH.TryGetArg(key, out string inputVal);
+
+        if (exists && !string.IsNullOrWhiteSpace(inputVal))
+        {
+            if (int.TryParse(inputVal, out int parsed))
+            {
+                value = parsed;
+                return true;
+            }
+            error = $"Invalid argument <{paramName}>: '{inputVal}' is not a number.";
+            return false;
+        }
+
+        // Return true (success) using default value if not provided
+        return true;
+    }
+
+    /// <summary>
+    /// Helper: Check if exception is a 403 Forbidden error
+    /// </summary>
+    private bool IsForbiddenError(Exception ex)
+    {
+        if (ex == null) return false;
+        string message = GetErrorMessage(ex);
+        return message.Contains("403") || message.Contains("Forbidden");
+    }
+
+    /// <summary>
+    /// Helper: Get the most meaningful error message from an exception
+    /// Unwraps AggregateException to get the actual inner error
+    /// </summary>
+    private string GetErrorMessage(Exception ex)
+    {
+        if (ex == null) return "Unknown error";
+        
+        // Unwrapping AggregateException which occurs when using .Result on async tasks
+        if (ex is AggregateException aex && aex.InnerException != null)
+        {
+            return aex.InnerException.Message;
+        }
+        
+        return ex.Message;
+    }
+
+    /// <summary>
+    /// Helper: Strip HTTP status code prefix from error message
+    /// Format: "403 Forbidden: Actual Message" -> "Actual Message"
+    /// </summary>
+    private string StripStatusCode(string message)
+    {
+        if (string.IsNullOrEmpty(message)) return message;
+        int colonIndex = message.IndexOf(": ");
+        // If it starts with a number (HTTP Status Code) and has a colon, strip the prefix
+        if (colonIndex > 0 && char.IsDigit(message[0]))
+        {
+            return message.Substring(colonIndex + 2);
+        }
+        return message;
+    }
+
+    private void LogException(string context, Exception ex)
+    {
+        string message = GetErrorMessage(ex);
+        CPH.LogError($"{context} failed: {message}");
+    }
+
+    private void LogWarning(string context, Exception ex)
+    {
+        string message = GetErrorMessage(ex);
+        CPH.LogWarn($"{context} Error: {message}");
+    }
+
+    #region Version    /// <summary>
+    /// Get the backend version
+    /// Args: (none)
+    /// </summary>
+    public bool GetVersion()
+    {
+        EnsureInitialized();
+
+        try
+        {
+            var result = client.GetVersion().Result;
+            var formatted = ResponseFormatter.FormatVersion(result);
+            CPH.SetArgument("response", formatted);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            LogException("GetVersion", ex);
+            return false;
         }
     }
 
@@ -48,6 +237,7 @@ public class CPHInline
     /// <summary>
     /// Register a new user
     /// Uses: userType, userId, userName (from streamer.bot context)
+    /// Note: auto-called on first interaction
     /// </summary>
     public bool RegisterUser()
     {
@@ -60,12 +250,13 @@ public class CPHInline
         try
         {
             var result = client.RegisterUser(platform, platformId, username).Result;
-            CPH.SetArgument("response", result);
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)
         {
-            CPH.LogError($"RegisterUser failed: {ex.Message}");
+            LogException("RegisterUser", ex);
             return false;
         }
     }
@@ -76,108 +267,189 @@ public class CPHInline
 
     /// <summary>
     /// Get user's inventory
-    /// Uses: userType, userId (from streamer.bot context)
+    /// Uses: userType, userId, userName (from streamer.bot context)
+    /// Note: Will use username-based lookup if provided
     /// </summary>
     public bool GetInventory()
     {
         EnsureInitialized();
-        
+        string error = null;
         if (!CPH.TryGetArg("userType", out string platform)) return false;
-        if (!CPH.TryGetArg("userId", out string platformId)) return false;
 
-        try
-        {
-            var result = client.GetInventory(platform, platformId).Result;
-            CPH.SetArgument("response", result);
-            return true;
-        }
-        catch (Exception ex)
-        {
-            CPH.LogError($"GetInventory failed: {ex.Message}");
-            return false;
+        if (GetInputString(0, "target_user", true, out string targetUser, ref error) && !string.IsNullOrWhiteSpace(targetUser))
+        {   //target other user
+            try
+            {
+                var result = client.GetInventoryByUsername(platform, targetUser).Result;
+                CPH.SetArgument("response", ResponseFormatter.FormatInventory(result));
+                return true;
+            }
+            catch (Exception ex)
+            {
+                string message = GetErrorMessage(ex);
+                LogWarning("GetInventoryByUsername", ex);
+                // Better error message for user not found
+                if (message.Contains("not found") || message.Contains("404"))
+                {
+                    CPH.SetArgument("response", $"User not found: {targetUser}");
+                }
+                else
+                {
+                    CPH.SetArgument("response", $"Error: {StripStatusCode(message)}");
+                }
+                return true;
+            }
+        }else
+        {   //target self
+            try
+            {
+                if (!CPH.TryGetArg("userName", out string userName)) return false;
+                if (!CPH.TryGetArg("userId", out string platformId)) return false;
+                var result = client.GetInventory(platform, platformId, userName).Result;
+                CPH.SetArgument("response", ResponseFormatter.FormatInventory(result));
+                return true;
+            }
+            catch (Exception ex)
+            {
+                LogWarning("GetInventory", ex);
+                CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
+                return true;
+            }
         }
     }
 
     /// <summary>
     /// Add item to user's inventory (Admin/Streamer only)
-    /// Uses: userType, userId (from streamer.bot)
-    /// Args: item_id, quantity
+    /// Command: !addItem <target_user> <item_name> [quantity]
     /// </summary>
     public bool AddItem()
     {
         EnsureInitialized();
+        string error = null;
         
-        if (!CPH.TryGetArg("userType", out string platform)) return false;
-        if (!CPH.TryGetArg("userId", out string platformId)) return false;
-        if (!CPH.TryGetArg("item_id", out int itemId)) return false;
-        if (!CPH.TryGetArg("quantity", out int quantity)) return false;
+        // Get platform from context (for the platform name)
+        if (!CPH.TryGetArg("userType", out string platform))
+        {
+            CPH.LogWarn("AddItem Failed: Missing userType");
+            return false;
+        }
+
+        if (!GetInputString(0, "target_user", true, out string targetUser, ref error) ||
+            !GetInputString(1, "item_name", true, out string itemName, ref error) ||
+            !GetInputInt(2, "quantity", 1, out int quantity, ref error))
+        {
+            CPH.SetArgument("response", $"{error} Usage: !addItem <target_user> <item_name> [quantity]");
+            return true;
+        }
+        if( quantity < 1 )
+        {
+            CPH.SetArgument("response", "Invalid quantity. Usage: !addItem <target_user> <item_name> [quantity]");
+            return true;
+        }
 
         try
         {
-            var result = client.AddItem(platform, platformId, itemId, quantity).Result;
-            CPH.SetArgument("response", result);
+            var result = client.AddItemByUsername(platform, targetUser, itemName, quantity).Result;
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)
         {
-            CPH.LogError($"AddItem failed: {ex.Message}");
-            return false;
+            LogWarning("AddItem", ex);
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
+            return true;
         }
     }
 
     /// <summary>
     /// Remove item from user's inventory (Admin/Streamer only)
-    /// Uses: userType, userId (from streamer.bot)
-    /// Args: item_id, quantity
+    /// Command: !removeItem <target_user> <item_name> [quantity]
     /// </summary>
     public bool RemoveItem()
     {
         EnsureInitialized();
+        string error = null;
         
-        if (!CPH.TryGetArg("userType", out string platform)) return false;
-        if (!CPH.TryGetArg("userId", out string platformId)) return false;
-        if (!CPH.TryGetArg("item_id", out int itemId)) return false;
-        if (!CPH.TryGetArg("quantity", out int quantity)) return false;
+        // Get platform from context
+        if (!CPH.TryGetArg("userType", out string platform))
+        {
+            CPH.LogWarn("RemoveItem Failed: Missing userType");
+            return false;
+        }
+
+        if (!GetInputString(0, "target_user", true, out string targetUser, ref error) ||
+            !GetInputString(1, "item_name", true, out string itemName, ref error) ||
+            !GetInputInt(2, "quantity", 1, out int quantity, ref error))
+        {
+            CPH.SetArgument("response", $"{error} Usage: !removeItem <target_user> <item_name> [quantity]");
+            return true;
+        }
+        if( quantity < 1 )
+        {
+            CPH.SetArgument("response", "Invalid quantity. Usage: !removeItem <target_user> <item_name> [quantity]");
+            return true;
+        }
 
         try
         {
-            var result = client.RemoveItem(platform, platformId, itemId, quantity).Result;
-            CPH.SetArgument("response", result);
+            var result = client.RemoveItemByUsername(platform, targetUser, itemName, quantity).Result;
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)
         {
-            CPH.LogError($"RemoveItem failed: {ex.Message}");
-            return false;
+            LogWarning("RemoveItem", ex);
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
+            return true;
         }
     }
 
     /// <summary>
     /// Give item from one user to another
-    /// Args: from_platform, from_platform_id, to_platform, to_platform_id, to_username, item_id, quantity
+    /// Command: !giveItem <target_user> <item_name> [quantity]
     /// </summary>
     public bool GiveItem()
     {
         EnsureInitialized();
         
-        if (!CPH.TryGetArg("from_platform", out string fromPlatform)) return false;
-        if (!CPH.TryGetArg("from_platform_id", out string fromPlatformId)) return false;
-        if (!CPH.TryGetArg("to_platform", out string toPlatform)) return false;
-        if (!CPH.TryGetArg("to_platform_id", out string toPlatformId)) return false;
-        if (!CPH.TryGetArg("to_username", out string toUsername)) return false;
-        if (!CPH.TryGetArg("item_id", out int itemId)) return false;
-        if (!CPH.TryGetArg("quantity", out int quantity)) return false;
+        // This command is triggered by the Sender. 
+        // We need: Sender (context), Receiver (target_username arg), Item, Quantity
+        string error = null;
+        if (!ValidateContext(out string fromPlatform, out string fromPlatformId, out string fromUsername, ref error))
+        {
+             CPH.LogWarn($"GiveItem Context Error: {error}");
+             return false;
+        }
+
+        if (!GetInputString(0, "target_user", true, out string toUsername, ref error) ||
+            !GetInputString(1, "item_name", true, out string itemName, ref error) ||
+            !GetInputInt(2, "quantity", 1, out int quantity, ref error))
+        {
+            CPH.SetArgument("response", $"{error} Usage: !giveItem <target_user> <item_name> [quantity]");
+            return true;
+        }
+        if( quantity < 1 )
+        {
+            CPH.SetArgument("response", "Invalid quantity. Usage: !giveItem <target_user> <item_name> [quantity]");
+            return true;
+        }
+
+        string toPlatform = fromPlatform; 
 
         try
         {
-            var result = client.GiveItem(fromPlatform, fromPlatformId, toPlatform, toPlatformId, toUsername, itemId, quantity).Result;
-            CPH.SetArgument("response", result);
+            var result = client.GiveItem(fromPlatform, fromPlatformId, fromUsername, toPlatform, toUsername, itemName, quantity).Result;
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)
         {
-            CPH.LogError($"GiveItem failed: {ex.Message}");
-            return false;
+            LogWarning("GiveItem", ex);
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
+            return true;
         }
     }
 
@@ -187,77 +459,143 @@ public class CPHInline
 
     /// <summary>
     /// Buy an item from the shop
-    /// Uses: userType, userId, userName (from streamer.bot)
-    /// Args: item_id, quantity
+    /// Command: !buyItem <item_name> [quantity]
     /// </summary>
     public bool BuyItem()
     {
         EnsureInitialized();
+        string error = null;
         
-        if (!CPH.TryGetArg("userType", out string platform)) return false;
-        if (!CPH.TryGetArg("userId", out string platformId)) return false;
-        if (!CPH.TryGetArg("userName", out string username)) return false;
-        if (!CPH.TryGetArg("item_id", out int itemId)) return false;
-        if (!CPH.TryGetArg("quantity", out int quantity)) return false;
+        if (!ValidateContext(out string platform, out string platformId, out string username, ref error))
+        {
+            CPH.LogWarn($"BuyItem Failed: {error}");
+            return false;
+        }
 
+        if (!GetInputString(0, "item_name", true, out string itemName, ref error) ||
+            !GetInputInt(1, "quantity", 1, out int quantity, ref error))
+        {
+            CPH.SetArgument("response", $"{error} Usage: !buyItem <item_name> [quantity]");
+            return true;
+        }
+        if( quantity < 1 )
+        {
+            CPH.SetArgument("response", "Invalid quantity. Usage: !buyItem <item_name> [quantity]");
+            return true;
+        }
         try
         {
-            var result = client.BuyItem(platform, platformId, username, itemId, quantity).Result;
-            CPH.SetArgument("response", result);
+            var result = client.BuyItem(platform, platformId, username, itemName, quantity).Result;
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)
         {
-            CPH.LogError($"BuyItem failed: {ex.Message}");
-            return false;
+            string errorMsg = StripStatusCode(GetErrorMessage(ex));
+            if (IsForbiddenError(ex))
+            {
+                CPH.SetArgument("response", errorMsg);
+            }
+            else
+            {
+                LogWarning("BuyItem", ex);
+                CPH.SetArgument("response", errorMsg);
+            }
+            return true;
         }
     }
 
     /// <summary>
     /// Sell an item from inventory
-    /// Uses: userType, userId, userName (from streamer.bot)
-    /// Args: item_id, quantity
+    /// Command: !sellItem <item_name> [quantity]
     /// </summary>
     public bool SellItem()
     {
         EnsureInitialized();
+        string error = null;
         
-        if (!CPH.TryGetArg("userType", out string platform)) return false;
-        if (!CPH.TryGetArg("userId", out string platformId)) return false;
-        if (!CPH.TryGetArg("userName", out string username)) return false;
-        if (!CPH.TryGetArg("item_id", out int itemId)) return false;
-        if (!CPH.TryGetArg("quantity", out int quantity)) return false;
+        if (!ValidateContext(out string platform, out string platformId, out string username, ref error))
+        {
+            CPH.LogWarn($"SellItem Failed: {error}");
+            return false;
+        }
+
+        if (!GetInputString(0, "item_name", true, out string itemName, ref error) ||
+            !GetInputInt(1, "quantity", 1, out int quantity, ref error))
+        {
+            CPH.SetArgument("response", $"{error} Usage: !sellItem <item_name> [quantity]");
+            return true;
+        }
+        if( quantity < 1 )
+        {
+            CPH.SetArgument("response", "Invalid quantity. Usage: !sellItem <item_name> [quantity]");
+            return true;
+        }
 
         try
         {
-            var result = client.SellItem(platform, platformId, username, itemId, quantity).Result;
-            CPH.SetArgument("response", result);
+            var result = client.SellItem(platform, platformId, username, itemName, quantity).Result;
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)
         {
-            CPH.LogError($"SellItem failed: {ex.Message}");
+            string errorMsg = StripStatusCode(GetErrorMessage(ex));
+            if (IsForbiddenError(ex))
+            {
+                CPH.SetArgument("response", errorMsg);
+            }
+            else
+            {
+                LogWarning("SellItem", ex);
+                CPH.SetArgument("response", errorMsg);
+            }
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Get current item sell prices
+    /// Args: (none)
+    /// </summary>
+    public bool GetSellPrices()
+    {
+        EnsureInitialized();
+
+        try
+        {
+            var result = client.GetSellPrices().Result;
+            var formatted = ResponseFormatter.FormatPrices(result, "Sell");
+            CPH.SetArgument("response", formatted);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            CPH.LogError($"GetSellPrices failed: {ex.Message}");
             return false;
         }
     }
 
     /// <summary>
-    /// Get current item prices
+    /// Get current item buy prices
     /// Args: (none)
     /// </summary>
-    public bool GetPrices()
+    public bool GetBuyPrices()
     {
         EnsureInitialized();
 
         try
         {
-            var result = client.GetPrices().Result;
-            CPH.SetArgument("response", result);
+            var result = client.GetBuyPrices().Result;
+            var formatted = ResponseFormatter.FormatPrices(result, "Buy");
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)
         {
-            CPH.LogError($"GetPrices failed: {ex.Message}");
+            CPH.LogError($"GetBuyPrices failed: {ex.Message}");
             return false;
         }
     }
@@ -268,31 +606,74 @@ public class CPHInline
 
     /// <summary>
     /// Use an item (opens lootboxes, activates items, etc.)
-    /// Uses: userType, userId, userName (from streamer.bot)
-    /// Args: item_id, quantity, target_username (optional)
+    /// Command: !useItem <item_name> [quantity] [target_user]
     /// </summary>
     public bool UseItem()
     {
         EnsureInitialized();
+        string error = null;
         
-        if (!CPH.TryGetArg("userType", out string platform)) return false;
-        if (!CPH.TryGetArg("userId", out string platformId)) return false;
-        if (!CPH.TryGetArg("userName", out string username)) return false;
-        if (!CPH.TryGetArg("item_id", out int itemId)) return false;
-        if (!CPH.TryGetArg("quantity", out int quantity)) return false;
+        if (!ValidateContext(out string platform, out string platformId, out string username, ref error))
+        {
+            CPH.LogWarn($"UseItem Failed: {error}");
+            return false;
+        }
+
+        // !useItem <item> [quantity] [target]
+        // Strategy:
+        // input1 could be quantity (int) OR target (string) if quantity is omitted (default 1)
+        // Check input1 type.
+
+        if (!GetInputString(0, "item_name", true, out string itemName, ref error))
+        {
+            CPH.SetArgument("response", $"{error} Usage: !useItem <item_name> [quantity] [target_user]");
+            return true;
+        }
+
+        int quantity = 1;
+        string targetUsername = "";
         
-        CPH.TryGetArg("target_username", out string targetUsername);
+        // Check input1
+        if (CPH.TryGetArg("input1", out string input1) && !string.IsNullOrWhiteSpace(input1))
+        {
+            if (int.TryParse(input1, out int q))
+            {
+                quantity = q;
+                // If input1 is quantity, input2 might be target
+                GetInputString(2, "target_user", false, out targetUsername, ref error);
+            }
+            else
+            {
+                // input1 is NOT a number, so it must be target. Quantity is default 1.
+                targetUsername = input1;
+            }
+        }
+        if( quantity < 1 )
+        {
+            CPH.SetArgument("response", "Invalid quantity. Usage: !useItem <item_name> [quantity] [target_user]");
+            return true;
+        }
 
         try
         {
-            var result = client.UseItem(platform, platformId, username, itemId, quantity, targetUsername).Result;
-            CPH.SetArgument("response", result);
+            var result = client.UseItem(platform, platformId, username, itemName, quantity, targetUsername).Result;
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)
         {
-            CPH.LogError($"UseItem failed: {ex.Message}");
-            return false;
+            string errorMsg = StripStatusCode(GetErrorMessage(ex));
+            if (IsForbiddenError(ex))
+            {
+                CPH.SetArgument("response", errorMsg);
+            }
+            else
+            {
+                LogWarning("UseItem", ex);
+                CPH.SetArgument("response", $"Error: {errorMsg}");
+            }
+            return true;
         }
     }
 
@@ -311,12 +692,19 @@ public class CPHInline
         try
         {
             var result = client.Search(platform, platformId, username).Result;
-            CPH.SetArgument("response", result);
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)
         {
-            CPH.LogError($"Search failed: {ex.Message}");
+            string errorMsg = StripStatusCode(GetErrorMessage(ex));
+            if (IsForbiddenError(ex))
+            {
+                CPH.SetArgument("response", errorMsg);
+                return true;
+            }
+            LogException("Search", ex);
             return false;
         }
     }
@@ -327,56 +715,101 @@ public class CPHInline
 
     /// <summary>
     /// Upgrade an item using a recipe
-    /// Uses: userType, userId, userName (from streamer.bot)
-    /// Args: recipe_id
+    /// Command: !upgradeItem <item_name> [quantity]
     /// </summary>
     public bool UpgradeItem()
     {
         EnsureInitialized();
+        string error = null;
         
-        if (!CPH.TryGetArg("userType", out string platform)) return false;
-        if (!CPH.TryGetArg("userId", out string platformId)) return false;
-        if (!CPH.TryGetArg("userName", out string username)) return false;
-        if (!CPH.TryGetArg("recipe_id", out int recipeId)) return false;
+        if (!ValidateContext(out string platform, out string platformId, out string username, ref error))
+        {
+            CPH.LogWarn($"UpgradeItem Failed: {error}");
+            return false;
+        }
+
+        if (!GetInputString(0, "item_name", true, out string itemName, ref error) ||
+            !GetInputInt(1, "quantity", 1, out int quantity, ref error))
+        {
+             CPH.SetArgument("response", $"{error} Usage: !upgradeItem <item_name> [quantity]");
+             return true;
+        }
+        if( quantity < 1 )
+        {
+            CPH.SetArgument("response", "Invalid quantity. Usage: !upgradeItem <item_name> [quantity]");
+            return true;
+        }
 
         try
         {
-            var result = client.UpgradeItem(platform, platformId, username, recipeId).Result;
-            CPH.SetArgument("response", result);
+            var result = client.UpgradeItem(platform, platformId, username, itemName, quantity).Result;
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)
         {
-            CPH.LogError($"UpgradeItem failed: {ex.Message}");
-            return false;
+            string errorMsg = StripStatusCode(GetErrorMessage(ex));
+            if (IsForbiddenError(ex))
+            {
+                CPH.SetArgument("response", errorMsg);
+            }
+            else
+            {
+                LogWarning("UpgradeItem", ex);
+                CPH.SetArgument("response", errorMsg);
+            }
+            return true;
         }
     }
 
     /// <summary>
     /// Disassemble an item to get materials
-    /// Uses: userType, userId, userName (from streamer.bot)
-    /// Args: item_id, quantity
+    /// Command: !disassembleItem <item_name> [quantity]
     /// </summary>
     public bool DisassembleItem()
     {
         EnsureInitialized();
+        string error = null;
         
-        if (!CPH.TryGetArg("userType", out string platform)) return false;
-        if (!CPH.TryGetArg("userId", out string platformId)) return false;
-        if (!CPH.TryGetArg("userName", out string username)) return false;
-        if (!CPH.TryGetArg("item_id", out int itemId)) return false;
-        if (!CPH.TryGetArg("quantity", out int quantity)) return false;
+        if (!ValidateContext(out string platform, out string platformId, out string username, ref error))
+        {
+             CPH.LogWarn($"DisassembleItem Failed: {error}");
+             return false;
+        }
+
+        if (!GetInputString(0, "item_name", true, out string itemName, ref error) ||
+            !GetInputInt(1, "quantity", 1, out int quantity, ref error))
+        {
+             CPH.SetArgument("response", $"{error} Usage: !disassembleItem <item_name> [quantity]");
+             return true;
+        }
+        if( quantity < 1 )
+        {
+            CPH.SetArgument("response", "Invalid quantity. Usage: !disassembleItem <item_name> [quantity]");
+            return true;
+        }
 
         try
         {
-            var result = client.DisassembleItem(platform, platformId, username, itemId, quantity).Result;
-            CPH.SetArgument("response", result);
+            var result = client.DisassembleItem(platform, platformId, username, itemName, quantity).Result;
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)
         {
-            CPH.LogError($"DisassembleItem failed: {ex.Message}");
-            return false;
+            string errorMsg = StripStatusCode(GetErrorMessage(ex));
+            if (IsForbiddenError(ex))
+            {
+                CPH.SetArgument("response", errorMsg);
+            }
+            else
+            {
+                LogWarning("DisassembleItem", ex);
+                CPH.SetArgument("response", errorMsg);
+            }
+            return true;
         }
     }
 
@@ -396,7 +829,7 @@ public class CPHInline
         }
         catch (Exception ex)
         {
-            CPH.LogError($"GetRecipes failed: {ex.Message}");
+            LogException("GetRecipes", ex);
             return false;
         }
     }
@@ -407,57 +840,97 @@ public class CPHInline
 
     /// <summary>
     /// Start a new gamble session
-    /// Uses: userType, userId, userName (from streamer.bot)
-    /// Args: lootbox_item_id, quantity
+    /// Command: !startGamble <lootbox_name> [quantity]
     /// </summary>
     public bool StartGamble()
     {
         EnsureInitialized();
+        string error = null;
         
-        if (!CPH.TryGetArg("userType", out string platform)) return false;
-        if (!CPH.TryGetArg("userId", out string platformId)) return false;
-        if (!CPH.TryGetArg("userName", out string username)) return false;
-        if (!CPH.TryGetArg("lootbox_item_id", out int lootboxItemId)) return false;
-        if (!CPH.TryGetArg("quantity", out int quantity)) return false;
+        if (!ValidateContext(out string platform, out string platformId, out string username, ref error))
+        {
+             CPH.LogWarn($"StartGamble Failed: {error}");
+             return false;
+        }
+
+        if (!GetInputString(0, "lootbox_name", true, out string lootboxItemName, ref error) ||
+            !GetInputInt(1, "quantity", 1, out int quantity, ref error))
+        {
+             CPH.SetArgument("response", $"{error} Usage: !startGamble <lootbox_name> [quantity]");
+             return true;
+        }
+        if( quantity < 1 )
+        {
+            CPH.SetArgument("response", "Invalid quantity. Usage: !startGamble <lootbox_name> [quantity]");
+            return true;
+        }
 
         try
         {
-            var result = client.StartGamble(platform, platformId, username, lootboxItemId, quantity).Result;
-            CPH.SetArgument("response", result);
+            var result = client.StartGamble(platform, platformId, username, lootboxItemName, quantity).Result;
+            var formatted = ResponseFormatter.FormatMessage(result);
+            var response = Newtonsoft.Json.Linq.JObject.Parse(result);
+            if(response.ContainsKey("gambleId"))
+            {
+                CPH.SetGlobalVar("gambleId", response["gambleId"].ToString(), persisted:false);
+            }
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)
         {
-            CPH.LogError($"StartGamble failed: {ex.Message}");
-            return false;
+            string errorMsg = StripStatusCode(GetErrorMessage(ex));
+            if (IsForbiddenError(ex))
+            {
+                CPH.SetArgument("response", errorMsg);
+            }
+            else
+            {
+                LogWarning("StartGamble", ex);
+                CPH.SetArgument("response", errorMsg);
+            }
+            return true;
         }
     }
 
     /// <summary>
     /// Join an existing gamble session
-    /// Args: gamble_id, platform, platform_id, username, lootbox_item_id, quantity
+    /// Command: !joinGamble <gamble_id>
     /// </summary>
     public bool JoinGamble()
     {
         EnsureInitialized();
+        string error = null;
         
-        if (!CPH.TryGetArg("gamble_id", out string gambleId)) return false;
-        if (!CPH.TryGetArg("platform", out string platform)) return false;
-        if (!CPH.TryGetArg("platform_id", out string platformId)) return false;
-        if (!CPH.TryGetArg("username", out string username)) return false;
-        if (!CPH.TryGetArg("lootbox_item_id", out int lootboxItemId)) return false;
-        if (!CPH.TryGetArg("quantity", out int quantity)) return false;
+        // Use ValidateContext for platform details
+        if (!ValidateContext(out string platform, out string platformId, out string username, ref error))
+        {
+             CPH.LogWarn($"JoinGamble Failed: {error}");
+             return false;
+        }
 
+        string gambleId = CPH.GetGlobalVar<string>("gambleId", persisted:false);
+        
         try
         {
-            var result = client.JoinGamble(gambleId, platform, platformId, username, lootboxItemId, quantity).Result;
-            CPH.SetArgument("response", result);
+            var result = client.JoinGamble(gambleId, platform, platformId, username).Result;
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)
         {
-            CPH.LogError($"JoinGamble failed: {ex.Message}");
-            return false;
+            string errorMsg = StripStatusCode(GetErrorMessage(ex));
+            if (IsForbiddenError(ex))
+            {
+                CPH.SetArgument("response", errorMsg);
+            }
+            else
+            {
+                LogWarning("JoinGamble", ex);
+                CPH.SetArgument("response", errorMsg);
+            }
+            return true;
         }
     }
 
@@ -477,10 +950,925 @@ public class CPHInline
         }
         catch (Exception ex)
         {
-            CPH.LogError($"GetActiveGamble failed: {ex.Message}");
+            LogException("GetActiveGamble", ex);
             return false;
         }
     }
+
+    #endregion
+
+    #region Stats & Leaderboards
+
+    /// <summary>
+    /// Get user statistics
+    /// Command: !stats [target_user]
+    /// </summary>
+    public bool GetUserStats()
+    {
+        EnsureInitialized();
+        string error = null;
+
+        if (!CPH.TryGetArg("userType", out string platform))
+        {
+            CPH.LogWarn("GetUserStats Failed: Missing userType");
+            return false;
+        }
+
+        // Check for target_user parameter (optional)
+        if (GetInputString(0, "target_user", true, out string targetUser, ref error) && !string.IsNullOrWhiteSpace(targetUser))
+        {
+            // Target-mode: query another user by username
+            try
+            {
+                var result = client.GetUserStatsByUsername(platform, targetUser).Result;
+                CPH.SetArgument("response", result);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                LogWarning("GetUserStatsByUsername", ex);
+                CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
+                return true;
+            }
+        }
+        else
+        {
+            // Self-mode: query own stats
+            if (!ValidateContext(out string _, out string platformId, out string username, ref error))
+            {
+                CPH.LogWarn($"GetUserStats Failed: {error}");
+                return false;
+            }
+
+            try
+            {
+                var result = client.GetUserStats(platform, platformId).Result;
+                CPH.SetArgument("response", result);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                LogWarning("GetUserStats", ex);
+                CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
+                return true;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Get system-wide statistics
+    /// Command: !serverStats
+    /// </summary>
+    public bool GetSystemStats()
+    {
+        EnsureInitialized();
+
+        try
+        {
+            var result = client.GetSystemStats().Result;
+            CPH.SetArgument("response", result);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            LogWarning("GetSystemStats", ex);
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Get leaderboard
+    /// Command: !leaderboard [metric] [limit]
+    /// </summary>
+    public bool GetLeaderboard()
+    {
+        EnsureInitialized();
+        string error = null;
+        
+        // Defaults
+        string metric = "engagement_score";
+        int limit = 10;
+
+        if (GetInputString(0, "metric", false, out string inputMetric, ref error))
+        {
+            metric = inputMetric;
+        }
+        
+        if (GetInputInt(1, "limit", 10, out int inputLimit, ref error))
+        {
+            limit = inputLimit;
+        }
+
+        try
+        {
+            var result = client.GetLeaderboard(metric, limit).Result;
+            CPH.SetArgument("response", result);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            LogWarning("GetLeaderboard", ex);
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Check timeout status for a user (gett command)
+    /// Command: !gett [username]
+    /// </summary>
+    public bool GetUserTimeout()
+    {
+        EnsureInitialized();
+        string error = null;
+        string targetUser = null;
+        
+        GetInputString(0, "username", false, out targetUser, ref error);
+        if (string.IsNullOrEmpty(targetUser))
+        {
+            // Fallback to self
+            CPH.TryGetArg("userName", out targetUser);
+        }
+
+        try
+        {
+            var result = client.GetUserTimeout(targetUser).Result;
+            var jsonResult = Newtonsoft.Json.Linq.JObject.Parse(result);
+            bool isTimedOut = jsonResult.Value<bool>("is_timed_out");
+            double remainingSeconds = jsonResult.Value<double>("remaining_seconds");
+
+            if (isTimedOut)
+            {
+                int minutes = (int)(remainingSeconds / 60);
+                int seconds = (int)(remainingSeconds % 60);
+                CPH.SetArgument("response", $"{targetUser} is timed out for {minutes}m {seconds}s");
+            }
+            else
+            {
+                CPH.SetArgument("response", $"{targetUser} is not timed out");
+            }
+            return true;
+        }
+        catch (Exception ex)
+        {
+            LogWarning("GetUserTimeout", ex);
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
+            return true;
+        }
+    }
+
+    #endregion
+
+    #region Progression System
+
+    /// <summary>
+    /// Get progression tree structure
+    /// Command: !tree
+    /// </summary>
+    public bool GetProgressionTree()
+    {
+        EnsureInitialized();
+        try
+        {
+            var result = client.GetProgressionTree().Result;
+            CPH.SetArgument("response", result);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            LogWarning("GetProgressionTree", ex);
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Get available (unlockable) progression nodes
+    /// Command: !nodes
+    /// </summary>
+    public bool GetAvailableNodes()
+    {
+        EnsureInitialized();
+        try
+        {
+            var result = client.GetAvailableNodes().Result;
+            CPH.SetArgument("response", result);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            LogWarning("GetAvailableNodes", ex);
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Vote to unlock a progression node
+    /// Command: !vote <node_key>
+    /// </summary>
+    public bool VoteForNode()
+    {
+        EnsureInitialized();
+        string error = null;
+        
+        if (!ValidateContext(out string platform, out string platformId, out string username, ref error))
+        {
+            CPH.LogWarn($"VoteForNode Failed: {error}");
+            return false;
+        }
+
+        if (!GetInputInt(0, "node_key", 0, out int nodeKey, ref error))
+        {
+            CPH.SetArgument("response", $"{error} Usage: !vote <node_key>");
+            return true;
+        }
+
+        List<string> activeNodes = CPH.GetGlobalVar<List<string>>("ActiveNodes");
+        if(nodeKey <= 0 || nodeKey > activeNodes.Count)
+        {
+            CPH.SetArgument("response", "Invalid node key. Must be between 1 and " + activeNodes.Count);
+            return true;
+        }
+        string nodeKeyString = activeNodes[nodeKey-1];
+
+        try
+        {
+            var result = client.VoteForNode(platform, platformId, nodeKeyString).Result;
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            LogWarning("VoteForNode", ex);
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Get progression status
+    /// Command: !progression
+    /// </summary>
+    public bool GetProgressionStatus()
+    {
+        EnsureInitialized();
+        try
+        {
+            var result = client.GetProgressionStatus().Result;
+            CPH.SetArgument("response", result);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            LogWarning("GetProgressionStatus", ex);
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Get user engagement breakdown
+    /// Command: !engagement [target_user] (defaults to self)
+    /// Note: Will use username-based lookup if provided
+    /// </summary>
+    public bool GetUserEngagement()
+    {
+        EnsureInitialized();
+        string error = null;
+        if (!CPH.TryGetArg("userType", out string platform)) return false;
+
+        if (GetInputString(0, "target_user", true, out string targetUser, ref error) && !string.IsNullOrWhiteSpace(targetUser))
+        {   //target other user
+            try
+            {
+                var result = client.GetUserEngagementByUsername(platform, targetUser).Result;
+                CPH.SetArgument("response", result);
+                return true;
+            }catch(Exception ex){
+                CPH.LogError($"GetUserEngagementByUsername failed: {ex.Message}");
+                return false;
+            }
+        }else
+        {   //target self
+            try
+            {
+                if (!CPH.TryGetArg("userId", out string platformId)) return false;
+                var result = client.GetUserEngagement(platform, platformId).Result;
+                CPH.SetArgument("response", result);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                CPH.LogError($"GetUserEngagement failed: {ex.Message}");
+                return false;
+            }
+        }
+    }
+
+
+    /// <summary>
+    /// Get current voting session details
+    /// Command: !votingSession
+    /// </summary>
+    public bool GetVotingSession()
+    {
+        EnsureInitialized();
+        try
+        {
+            var result = client.GetVotingSession().Result;
+            var formatted = ResponseFormatter.FormatVotingOptions(result);
+            CPH.SetArgument("response", formatted);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            LogWarning("GetVotingSession", ex);
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Get unlock progress for the current voting session
+    /// Command: !unlockProgress or !treeprogress
+    /// </summary>
+    public bool GetUnlockProgress()
+    {
+        EnsureInitialized();
+        try
+        {
+            var result = client.GetUnlockProgress().Result;
+            var formatted = ResponseFormatter.FormatUnlockProgress(result);
+            CPH.SetArgument("response", formatted);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            LogWarning("GetUnlockProgress", ex);
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
+            return true;
+        }
+    }
+
+    #endregion
+
+    #region Progression Admin
+
+    /// <summary>
+    /// Admin: Unlock a specific node
+    /// Command: !adminUnlock <node_key> [level]
+    /// </summary>
+    public bool AdminUnlockNode()
+    {
+        EnsureInitialized();
+        string error = null;
+
+        if (!GetInputString(0, "node_key", true, out string nodeKey, ref error) ||
+            !GetInputInt(1, "level", 1, out int level, ref error))
+        {
+             CPH.SetArgument("response", $"{error} Usage: !adminUnlock <node_key> [level]");
+             return true;
+        }
+
+        try
+        {
+            var result = client.AdminUnlockNode(nodeKey, level).Result;
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            LogWarning("AdminUnlockNode", ex);
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Admin: Unlock ALL progression nodes at max level (DEBUG ONLY)
+    /// Command: !adminUnlockAll
+    /// </summary>
+    public bool AdminUnlockAllNodes()
+    {
+        EnsureInitialized();
+
+        try
+        {
+            var result = client.AdminUnlockAllNodes().Result;
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            LogWarning("AdminUnlockAllNodes", ex);
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Admin: Re-lock a specific node
+    /// Command: !adminRelock <node_key> [level]
+    /// </summary>
+    public bool AdminRelockNode()
+    {
+        EnsureInitialized();
+        string error = null;
+
+        if (!GetInputString(0, "node_key", true, out string nodeKey, ref error) ||
+            !GetInputInt(1, "level", 1, out int level, ref error))
+        {
+             CPH.SetArgument("response", $"{error} Usage: !adminRelock <node_key> [level]");
+             return true;
+        }
+
+        try
+        {
+            var result = client.AdminRelockNode(nodeKey, level).Result;
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            LogWarning("AdminRelockNode", ex);
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
+            return true;
+        }
+    }
+
+
+    /// <summary>
+    /// Admin: Start a new voting session
+    /// Command: !adminStartVoting
+    /// </summary>
+    public bool AdminStartVoting()
+    {
+        EnsureInitialized();
+        try
+        {
+            var result = client.AdminStartVoting().Result;
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            LogWarning("AdminStartVoting", ex);
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Admin: End the current voting session
+    /// Command: !adminEndVoting
+    /// </summary>
+    public bool AdminEndVoting()
+    {
+        EnsureInitialized();
+        try
+        {
+            var result = client.AdminEndVoting().Result;
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            LogWarning("AdminEndVoting", ex);
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Admin: Reset the entire progression system
+    /// Command: !adminReset <reason> [preserve_users]
+    /// </summary>
+    public bool AdminResetProgression()
+    {
+        EnsureInitialized();
+        string error = null;
+
+        if (!GetInputString(0, "reason", true, out string reason, ref error))
+        {
+             CPH.SetArgument("response", $"{error} Usage: !adminReset <reason> [preserve_users(true/false)]");
+             return true;
+        }
+
+        bool preserve = true;
+        if (GetInputString(1, "preserve_users", false, out string preserveStr, ref error))
+        {
+            bool.TryParse(preserveStr, out preserve);
+        }
+        
+        // Context for who reset it
+        CPH.TryGetArg("userName", out string resetBy);
+        if (string.IsNullOrEmpty(resetBy)) resetBy = "StreamerBot";
+
+        try
+        {
+            var result = client.AdminResetProgression(resetBy, reason, preserve).Result;
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            LogWarning("AdminResetProgression", ex);
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Admin: Add contribution points manually
+    /// Command: !adminAddContribution <amount>
+    /// </summary>
+    public bool AdminAddContribution()
+    {
+        EnsureInitialized();
+        string error = null;
+
+        if (!GetInputInt(0, "amount", 0, out int amount, ref error))
+        {
+             // 0 is default from helper but amount is required here really, or 0 adds 0 which is safe.
+             // If GetInputInt returned false that means it was malformed if it existed.
+             // If it didn't exist, it returned true with default 0.
+        }
+        
+        if (amount == 0 && CPH.TryGetArg("input0", out string _))
+        {
+             // If they typed something and we got 0 (and no error), it means default?
+             // Helper returns false if malformed.
+             // If they typed nothing, amount is 0.
+             // We probably want to enforce non-zero.
+             if (!CPH.TryGetArg("input0", out string s) || string.IsNullOrWhiteSpace(s))
+             {
+                 CPH.SetArgument("response", "Usage: !adminAddContribution <amount>");
+                 return true;
+             }
+        }
+
+        try
+        {
+            var result = client.AdminAddContribution(amount).Result;
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            LogWarning("AdminAddContribution", ex);
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
+            return true;
+        }
+    }
+
+    #endregion
+
+    #region Jobs System
+
+    /// <summary>
+    /// Get user's job progress
+    /// Command: !myJobs [target_user]
+    /// </summary>
+    public bool GetUserJobs()
+    {
+        EnsureInitialized();
+        string error = null;
+
+        if (!CPH.TryGetArg("userType", out string platform))
+        {
+            CPH.LogWarn("GetUserJobs Failed: Missing userType");
+            return false;
+        }
+
+        // Check for target_user parameter (optional)
+        if (GetInputString(0, "target_user", true, out string targetUser, ref error) && !string.IsNullOrWhiteSpace(targetUser))
+        {
+            // Target-mode: query another user by username
+            try
+            {
+                var result = client.GetUserJobsByUsername(platform, targetUser).Result;
+                CPH.SetArgument("response", result);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                LogWarning("GetUserJobsByUsername", ex);
+                CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
+                return true;
+            }
+        }
+        else
+        {
+            // Self-mode: query own jobs
+            if (!ValidateContext(out string _, out string platformId, out string username, ref error))
+            {
+                CPH.LogWarn($"GetUserJobs Failed: {error}");
+                return false;
+            }
+
+            try
+            {
+                var result = client.GetUserJobs(platform, platformId, username).Result;
+                CPH.SetArgument("response", result);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                LogWarning("GetUserJobs", ex);
+                CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
+                return true;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Award XP to a user (Streamer/Admin only)
+    /// Command: !awardXp <username> <job_key> <amount>
+    /// </summary>
+    public bool AwardJobXP()
+    {
+        EnsureInitialized();
+        string error = null;
+        
+        // Context is admin
+        if (!ValidateContext(out string platform, out string platformId, out string _, ref error))
+        {
+            CPH.LogWarn($"AwardJobXP Failed: {error}");
+            return false;
+        }
+
+        if (!GetInputString(0, "username", true, out string targetUser, ref error) ||
+            !GetInputString(1, "job_key", true, out string jobKey, ref error) ||
+            !GetInputInt(2, "amount", 0, out int amount, ref error))
+        {
+            CPH.SetArgument("response", $"{error} Usage: !awardXp <username> <job_key> <amount>");
+            return true;
+        }
+
+        try
+        {
+            var result = client.AwardJobXP(platform, targetUser, jobKey, amount).Result;
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            string errorMsg = StripStatusCode(GetErrorMessage(ex));
+            if (IsForbiddenError(ex))
+            {
+                CPH.SetArgument("response", errorMsg);
+            }
+            else
+            {
+                LogWarning("AwardJobXP", ex);
+                CPH.SetArgument("response", errorMsg);
+            }
+            return true;
+        }
+    }
+
+
+
+    /// <summary>
+    /// Get unlocked crafting recipes for the calling user
+    /// Uses: userType, userId, userName (from streamer.bot context)
+    /// </summary>
+    /// <summary>
+    /// Get unlocked recipes for a user
+    /// Command: !recipes [target_user]
+    /// </summary>
+    public bool GetUnlockedRecipes()
+    {
+        EnsureInitialized();
+        string error = null;
+
+        if (!CPH.TryGetArg("userType", out string platform))
+        {
+            CPH.LogWarn("GetUnlockedRecipes Failed: Missing userType");
+            return false;
+        }
+
+        // Check for target_user parameter (optional)
+        if (GetInputString(0, "target_user", true, out string targetUser, ref error) && !string.IsNullOrWhiteSpace(targetUser))
+        {
+            // Target-mode: query another user by username
+            try
+            {
+                var result = client.GetUnlockedRecipesByUsername(platform, targetUser).Result;
+                CPH.SetArgument("response", result);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                LogWarning("GetUnlockedRecipesByUsername", ex);
+                CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
+                return true;
+            }
+        }
+        else
+        {
+            // Self-mode: query own recipes
+            if (!ValidateContext(out string _, out string platformId, out string username, ref error))
+            {
+                CPH.LogWarn($"GetUnlockedRecipes Failed: {error}");
+                return false;
+            }
+
+            try
+            {
+                var result = client.GetUnlockedRecipes(platform, platformId, username).Result;
+                CPH.SetArgument("response", result);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                LogWarning("GetUnlockedRecipes", ex);
+                CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
+                return true;
+            }
+        }
+    }
+
+    #endregion
+    #region Account Linking
+
+    /// <summary>
+    /// Initiate account linking process
+    /// Command: !linkAccount
+    /// </summary>
+    public bool InitiateLinking()
+    {
+        EnsureInitialized();
+        string error = null;
+
+        if (!ValidateContext(out string platform, out string platformId, out string username, ref error))
+        {
+            CPH.LogWarn($"InitiateLinking Failed: {error}");
+            return false;
+        }
+
+        try
+        {
+            var result = client.InitiateLinking(platform, platformId, username).Result;
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            LogWarning("InitiateLinking", ex);
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Claim a linking code from another platform
+    /// Command: !claimCode <code>
+    /// </summary>
+    public bool ClaimLinkingCode()
+    {
+        EnsureInitialized();
+        string error = null;
+
+        if (!ValidateContext(out string platform, out string platformId, out string username, ref error))
+        {
+            CPH.LogWarn($"ClaimLinkingCode Failed: {error}");
+            return false;
+        }
+
+        if (!GetInputString(0, "code", true, out string code, ref error))
+        {
+            CPH.SetArgument("response", $"{error} Usage: !claimCode <code>");
+            return true;
+        }
+
+        try
+        {
+            var result = client.ClaimLinkingCode(platform, platformId, username, code).Result;
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            LogWarning("ClaimLinkingCode", ex);
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Confirm account linking
+    /// Command: !confirmLink
+    /// </summary>
+    public bool ConfirmLinking()
+    {
+        EnsureInitialized();
+        string error = null;
+
+        if (!ValidateContext(out string platform, out string platformId, out string _, ref error))
+        {
+            CPH.LogWarn($"ConfirmLinking Failed: {error}");
+            return false;
+        }
+
+        try
+        {
+            var result = client.ConfirmLinking(platform, platformId).Result;
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            LogWarning("ConfirmLinking", ex);
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Unlink accounts
+    /// Command: !unlink <target_platform>
+    /// </summary>
+    public bool UnlinkAccounts()
+    {
+        EnsureInitialized();
+        string error = null;
+
+        if (!ValidateContext(out string platform, out string platformId, out string _, ref error))
+        {
+            CPH.LogWarn($"UnlinkAccounts Failed: {error}");
+            return false;
+        }
+
+        if (!GetInputString(0, "target_platform", true, out string targetPlatform, ref error))
+        {
+            CPH.SetArgument("response", $"{error} Usage: !unlink <target_platform>");
+            return true;
+        }
+
+        try
+        {
+            var result = client.UnlinkAccounts(platform, platformId, targetPlatform).Result;
+            var formatted = ResponseFormatter.FormatMessage(result);
+            CPH.SetArgument("response", formatted);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            LogWarning("UnlinkAccounts", ex);
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Get linking status for a user
+    /// Command: !linkStatus
+    /// </summary>
+    public bool GetLinkingStatus()
+    {
+        EnsureInitialized();
+        string error = null;
+
+        if (!ValidateContext(out string platform, out string platformId, out string _, ref error))
+        {
+            CPH.LogWarn($"GetLinkingStatus Failed: {error}");
+            return false;
+        }
+
+        try
+        {
+            var result = client.GetLinkingStatus(platform, platformId).Result;
+            CPH.SetArgument("response", result);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            LogWarning("GetLinkingStatus", ex);
+            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
+            return true;
+        }
+    }
+
+    #endregion
+
+    #region Admin Utilities
+
+
 
     #endregion
 
@@ -505,29 +1893,20 @@ public class CPHInline
             CPH.SetArgument("response", result);
             return true;
         }
-        catch (AggregateException aex)
-        {
-            var innerEx = aex.InnerException ?? aex;
-            CPH.LogError($"HandleMessage failed: {innerEx.GetType().Name}: {innerEx.Message}");
-            if (innerEx.InnerException != null)
-            {
-                CPH.LogError($"Inner exception: {innerEx.InnerException.Message}");
-            }
-            return false;
-        }
         catch (Exception ex)
         {
-            CPH.LogError($"HandleMessage failed: {ex.GetType().Name}: {ex.Message}");
+            LogException("HandleMessage", ex);
             return false;
         }
     }
 
+
     #endregion
 
-    #region Health Checks
+    #region Health Check
 
     /// <summary>
-    /// Check if API is alive
+    /// Health check endpoint
     /// Args: (none)
     /// </summary>
     public bool HealthCheck()
@@ -542,7 +1921,7 @@ public class CPHInline
         }
         catch (Exception ex)
         {
-            CPH.LogError($"HealthCheck failed: {ex.Message}");
+            LogException("HealthCheck", ex);
             return false;
         }
     }

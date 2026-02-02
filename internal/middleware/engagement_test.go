@@ -6,9 +6,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/osse101/BrandishBot_Go/internal/event"
 )
 
 // TestWithUserID_GetUserID tests context user ID management
@@ -173,7 +174,7 @@ func TestEngagementTracker_Track(t *testing.T) {
 		tracker := NewEngagementTracker(mockBus)
 
 		mockBus.On("Publish", mock.Anything, mock.MatchedBy(func(evt event.Event) bool {
-			if evt.Type != "engagement" {
+			if evt.Type != event.EventTypeEngagement {
 				return false
 			}
 			// Verify the custom value was used
@@ -252,7 +253,7 @@ func TestEngagementTracker_TrackCommand(t *testing.T) {
 		tracker := NewEngagementTracker(mockBus)
 
 		mockBus.On("Publish", mock.Anything, mock.MatchedBy(func(evt event.Event) bool {
-			return evt.Type == "engagement"
+			return evt.Type == event.EventTypeEngagement
 		})).Return(nil)
 
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -296,7 +297,7 @@ func TestTrackEngagementFromContext(t *testing.T) {
 		mockBus := &MockEventBus{}
 
 		mockBus.On("Publish", mock.Anything, mock.MatchedBy(func(evt event.Event) bool {
-			return evt.Type == "engagement"
+			return evt.Type == event.EventTypeEngagement
 		})).Return(nil)
 
 		ctx := WithUserID(context.Background(), "ctx-user")

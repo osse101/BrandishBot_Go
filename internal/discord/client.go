@@ -46,21 +46,21 @@ func (c *APIClient) doRequest(method, path string, body interface{}) (*http.Resp
 	}
 
 	url := fmt.Sprintf("%s%s", c.BaseURL, path)
-	
+
 	// Retry configuration
 	maxRetries := 3
 	retryDelay := 500 * time.Millisecond
-	
+
 	var lastErr error
 	for attempt := 0; attempt <= maxRetries; attempt++ {
 		if attempt > 0 {
 			// Exponential backoff with jitter
-			jitter := time.Duration(time.Now().UnixNano() % 100) * time.Millisecond
-			delay := retryDelay * time.Duration(1<<uint(attempt-1)) + jitter
+			jitter := time.Duration(time.Now().UnixNano()%100) * time.Millisecond
+			delay := retryDelay*time.Duration(1<<uint(attempt-1)) + jitter
 			time.Sleep(delay)
 			slog.Info("Retrying API request", "attempt", attempt, "path", path, "delay", delay)
 		}
-		
+
 		req, err := http.NewRequest(method, url, bytes.NewBuffer(reqBody))
 		if err != nil {
 			return nil, fmt.Errorf("failed to create request: %w", err)
@@ -77,12 +77,12 @@ func (c *APIClient) doRequest(method, path string, body interface{}) (*http.Resp
 			slog.Warn("API request failed", "error", err, "attempt", attempt)
 			continue
 		}
-		
+
 		// Success or non-retryable error
 		if resp.StatusCode < 500 {
 			return resp, nil
 		}
-		
+
 		// Server error - retry
 		resp.Body.Close()
 		lastErr = fmt.Errorf("server error: %d", resp.StatusCode)
@@ -90,6 +90,44 @@ func (c *APIClient) doRequest(method, path string, body interface{}) (*http.Resp
 	}
 
 	return nil, fmt.Errorf("max retries exceeded: %w", lastErr)
+}
+
+// doRequestAndParse performs a request and parses the JSON response into the target struct
+func (c *APIClient) doRequestAndParse(method, path string, body interface{}, target interface{}) error {
+	resp, err := c.doRequest(method, path, body)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		var errResp struct {
+			Error string `json:"error"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
+			return fmt.Errorf("API error: %s", errResp.Error)
+		}
+		return fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	if target != nil {
+		if err := json.NewDecoder(resp.Body).Decode(target); err != nil {
+			return fmt.Errorf("failed to decode response: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// doAction performs a request and expects a standard response with a "message" field
+func (c *APIClient) doAction(method, path string, body interface{}) (string, error) {
+	var resp struct {
+		Message string `json:"message"`
+	}
+	if err := c.doRequestAndParse(method, path, body, &resp); err != nil {
+		return "", err
+	}
+	return resp.Message, nil
 }
 
 // RegisterUser registers or retrieves a user
@@ -102,7 +140,7 @@ func (c *APIClient) RegisterUser(username, discordID string) (*domain.User, erro
 		"new_platform_id":   discordID,
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "/user/register", req)
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/user/register", req)
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +166,7 @@ func (c *APIClient) Search(platform, platformID, username string) (string, error
 		"username":    username,
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "/user/search", req)
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/user/search", req)
 	if err != nil {
 		return "", err
 	}
@@ -156,28 +194,40 @@ func (c *APIClient) Search(platform, platformID, username string) (string, error
 }
 
 // GetInventory retrieves user inventory
-func (c *APIClient) GetInventory(platform, platformID, username, filter string) ([]user.UserInventoryItem, error) {
+func (c *APIClient) GetInventory(platform, platformID, username, filter string) ([]user.InventoryItem, error) {
+	return c.getInventoryInternal("/api/v1/user/inventory", platform, platformID, username, filter)
+}
+
+func (c *APIClient) getInventoryInternal(path, platform, platformID, username, filter string) ([]user.InventoryItem, error) {
 	params := url.Values{}
 	params.Set("platform", platform)
 	params.Set("username", username)
-	params.Set("platform_id", platformID)
+	if platformID != "" {
+		params.Set("platform_id", platformID)
+	}
 	if filter != "" {
 		params.Set("filter", filter)
 	}
 
-	path := fmt.Sprintf("/user/inventory?%s", params.Encode())
-	resp, err := c.doRequest(http.MethodGet, path, nil)
+	fullPath := fmt.Sprintf("%s?%s", path, params.Encode())
+	resp, err := c.doRequest(http.MethodGet, fullPath, nil)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		var errResp struct {
+			Error string `json:"error"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
+			return nil, fmt.Errorf("API error: %s", errResp.Error)
+		}
 		return nil, fmt.Errorf("API returned status: %d", resp.StatusCode)
 	}
 
 	var invResp struct {
-		Items []user.UserInventoryItem `json:"items"`
+		Items []user.InventoryItem `json:"items"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&invResp); err != nil {
 		return nil, fmt.Errorf("failed to decode inventory: %w", err)
@@ -187,17 +237,17 @@ func (c *APIClient) GetInventory(platform, platformID, username, filter string) 
 }
 
 // UseItem uses an item from inventory
-func (c *APIClient) UseItem(platform, platformID, username, itemName string, quantity int) (string, error) {
+func (c *APIClient) UseItem(platform, platformID, username, itemName string, quantity int, target string) (string, error) {
 	req := map[string]interface{}{
-		"platform":      platform,
-		"platform_id":   platformID,
-		"username":      username,
-		"item_name":     itemName,
-		"quantity":      quantity,
-		"target_user":   "", // Optional, empty for non-targeted items
+		"platform":    platform,
+		"platform_id": platformID,
+		"username":    username,
+		"item_name":   itemName,
+		"quantity":    quantity,
+		"target_user": target, // Optional, can be username or job name
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "/user/item/use", req)
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/user/item/use", req)
 	if err != nil {
 		return "", err
 	}
@@ -232,7 +282,7 @@ func (c *APIClient) StartGamble(platform, platformID, username, itemName string,
 		"bets":        []map[string]interface{}{{"item_name": itemName, "quantity": quantity}},
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "/gamble/start", req)
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/gamble/start", req)
 	if err != nil {
 		return "", err
 	}
@@ -256,20 +306,19 @@ func (c *APIClient) StartGamble(platform, platformID, username, itemName string,
 		return "", fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	return gambleResp.Message, nil
+	return gambleResp.GambleID, nil
 }
 
 // JoinGamble joins an active gamble
-func (c *APIClient) JoinGamble(platform, platformID, username, gambleID, itemName string, quantity int) (string, error) {
+func (c *APIClient) JoinGamble(platform, platformID, username, gambleID string) (string, error) {
 	req := map[string]interface{}{
 		"platform":    platform,
 		"platform_id": platformID,
 		"username":    username,
-		"bets":        []map[string]interface{}{{"item_name": itemName, "quantity": quantity}},
 	}
 
 	// Note: gambleID goes in the URL query parameter
-	path := fmt.Sprintf("/gamble/join?id=%s", gambleID)
+	path := fmt.Sprintf("/api/v1/gamble/join?id=%s", gambleID)
 	resp, err := c.doRequest(http.MethodPost, path, req)
 	if err != nil {
 		return "", err
@@ -305,30 +354,13 @@ func (c *APIClient) VoteForNode(platform, platformID, username, nodeKey string) 
 		"node_key":    nodeKey,
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "/progression/vote", req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		var errResp struct {
-			Error string `json:"error"`
-		}
-		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
-			return "", fmt.Errorf("API error: %s", errResp.Error)
-		}
-		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
-	}
-
-	var voteResp struct {
+	var resp struct {
 		Message string `json:"message"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&voteResp); err != nil {
-		return "", fmt.Errorf("failed to decode response: %w", err)
+	if err := c.doRequestAndParse(http.MethodPost, "/api/v1/progression/vote", req, &resp); err != nil {
+		return "", err
 	}
-
-	return voteResp.Message, nil
+	return resp.Message, nil
 }
 
 // AdminUnlockNode force-unlocks a progression node (admin only)
@@ -337,31 +369,12 @@ func (c *APIClient) AdminUnlockNode(nodeKey string, level int) (string, error) {
 		"node_key": nodeKey,
 		"level":    level,
 	}
+	return c.doAction(http.MethodPost, "/api/v1/progression/admin/unlock", req)
+}
 
-	resp, err := c.doRequest(http.MethodPost, "/progression/admin/unlock", req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		var errResp struct {
-			Error string `json:"error"`
-		}
-		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
-			return "", fmt.Errorf("API error: %s", errResp.Error)
-		}
-		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
-	}
-
-	var unlockResp struct {
-		Message string `json:"message"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&unlockResp); err != nil {
-		return "", fmt.Errorf("failed to decode response: %w", err)
-	}
-
-	return unlockResp.Message, nil
+// AdminUnlockAllNodes force-unlocks ALL progression nodes at max level (admin only, DEBUG)
+func (c *APIClient) AdminUnlockAllNodes() (string, error) {
+	return c.doAction(http.MethodPost, "/api/v1/progression/admin/unlock-all", nil)
 }
 
 // AdminRelockNode relocks a progression node (admin only)
@@ -370,59 +383,18 @@ func (c *APIClient) AdminRelockNode(nodeKey string, level int) (string, error) {
 		"node_key": nodeKey,
 		"level":    level,
 	}
-
-	resp, err := c.doRequest(http.MethodPost, "/progression/admin/relock", req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		var errResp struct {
-			Error string `json:"error"`
-		}
-		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
-			return "", fmt.Errorf("API error: %s", errResp.Error)
-		}
-		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
-	}
-
-	var relockResp struct {
-		Message string `json:"message"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&relockResp); err != nil {
-		return "", fmt.Errorf("failed to decode response: %w", err)
-	}
-
-	return relockResp.Message, nil
+	return c.doAction(http.MethodPost, "/api/v1/progression/admin/relock", req)
 }
 
 // AdminInstantUnlock force-unlocks the current vote leader (admin only)
 func (c *APIClient) AdminInstantUnlock() (string, error) {
-	resp, err := c.doRequest(http.MethodPost, "/progression/admin/instant-unlock", nil)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		var errResp struct {
-			Error string `json:"error"`
-		}
-		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
-			return "", fmt.Errorf("API error: %s", errResp.Error)
-		}
-		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
-	}
-
-	var instantResp struct {
+	var resp struct {
 		Message string `json:"message"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&instantResp); err != nil {
-		return "", fmt.Errorf("failed to decode response: %w", err)
+	if err := c.doRequestAndParse(http.MethodPost, "/api/v1/progression/admin/instant-unlock", nil, &resp); err != nil {
+		return "", err
 	}
-
-	return instantResp.Message, nil
+	return resp.Message, nil
 }
 
 // AdminResetProgression resets the entire progression tree (admin only)
@@ -433,7 +405,7 @@ func (c *APIClient) AdminResetProgression(resetBy, reason string, preserveUser b
 		"preserve_user_progression": preserveUser,
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "/progression/admin/reset", req)
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/progression/admin/reset", req)
 	if err != nil {
 		return "", err
 	}
@@ -459,65 +431,51 @@ func (c *APIClient) AdminResetProgression(resetBy, reason string, preserveUser b
 	return resetResp.Message, nil
 }
 
-// AdminStartVoting starts a new voting session (admin only)
-func (c *APIClient) AdminStartVoting() (string, error) {
-	resp, err := c.doRequest(http.MethodPost, "/progression/admin/start-voting", nil)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		var errResp struct {
-			Error string `json:"error"`
-		}
-		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
-			return "", fmt.Errorf("API error: %s", errResp.Error)
-		}
-		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
-	}
-
-	var startResp struct {
+// AdminReloadWeights invalidates the engagement weight cache (admin only)
+func (c *APIClient) AdminReloadWeights() (string, error) {
+	var resp struct {
 		Message string `json:"message"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&startResp); err != nil {
-		return "", fmt.Errorf("failed to decode response: %w", err)
+	if err := c.doRequestAndParse(http.MethodPost, "/api/admin/progression/reload-weights", nil, &resp); err != nil {
+		return "", err
 	}
+	return resp.Message, nil
+}
 
-	return startResp.Message, nil
+// AdminGetCacheStats retrieves user cache statistics (admin only)
+func (c *APIClient) AdminGetCacheStats() (*user.CacheStats, error) {
+	var stats user.CacheStats
+	if err := c.doRequestAndParse(http.MethodGet, "/api/v1/admin/cache/stats", nil, &stats); err != nil {
+		return nil, err
+	}
+	return &stats, nil
+}
+
+// AdminStartVoting starts a new voting session (admin only)
+func (c *APIClient) AdminStartVoting() (string, error) {
+	var resp struct {
+		Message string `json:"message"`
+	}
+	if err := c.doRequestAndParse(http.MethodPost, "/api/v1/progression/admin/start-voting", nil, &resp); err != nil {
+		return "", err
+	}
+	return resp.Message, nil
 }
 
 // AdminEndVoting forces the current voting session to end (admin only)
 func (c *APIClient) AdminEndVoting() (string, error) {
-	resp, err := c.doRequest(http.MethodPost, "/progression/admin/end-voting", nil)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		var errResp struct {
-			Error string `json:"error"`
-		}
-		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
-			return "", fmt.Errorf("API error: %s", errResp.Error)
-		}
-		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
-	}
-
-	var endResp struct {
+	var resp struct {
 		Message string `json:"message"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&endResp); err != nil {
-		return "", fmt.Errorf("failed to decode response: %w", err)
+	if err := c.doRequestAndParse(http.MethodPost, "/api/v1/progression/admin/end-voting", nil, &resp); err != nil {
+		return "", err
 	}
-
-	return endResp.Message, nil
+	return resp.Message, nil
 }
 
 // GetProgressionTree retrieves the full progression tree
 func (c *APIClient) GetProgressionTree() ([]*domain.ProgressionTreeNode, error) {
-	resp, err := c.doRequest(http.MethodGet, "/progression/tree", nil)
+	resp, err := c.doRequest(http.MethodGet, "/api/v1/progression/tree", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -546,31 +504,7 @@ func (c *APIClient) BuyItem(platform, platformID, username, itemName string, qua
 		"item_name":   itemName,
 		"quantity":    quantity,
 	}
-
-	resp, err := c.doRequest(http.MethodPost, "/user/item/buy", req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		var errResp struct {
-			Error string `json:"error"`
-		}
-		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
-			return "", fmt.Errorf("API error: %s", errResp.Error)
-		}
-		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
-	}
-
-	var buyResp struct {
-		Message string `json:"message"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&buyResp); err != nil {
-		return "", fmt.Errorf("failed to decode response: %w", err)
-	}
-
-	return buyResp.Message, nil
+	return c.doAction(http.MethodPost, "/api/v1/user/item/buy", req)
 }
 
 // SellItem sells an item from inventory
@@ -582,8 +516,97 @@ func (c *APIClient) SellItem(platform, platformID, username, itemName string, qu
 		"item_name":   itemName,
 		"quantity":    quantity,
 	}
+	return c.doAction(http.MethodPost, "/api/v1/user/item/sell", req)
+}
 
-	resp, err := c.doRequest(http.MethodPost, "/user/item/sell", req)
+// GetSellPrices retrieves current sell prices
+func (c *APIClient) GetSellPrices() (string, error) {
+	return c.getPricesInternal("/api/v1/prices")
+}
+
+func (c *APIClient) getPricesInternal(endpoint string) (string, error) {
+	resp, err := c.doRequest(http.MethodGet, endpoint, nil)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	var pricesResp struct {
+		Message string        `json:"message"`
+		Items   []domain.Item `json:"items"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&pricesResp); err != nil {
+		return "", fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	if len(pricesResp.Items) == 0 {
+		return "No items available.", nil
+	}
+
+	var sb strings.Builder
+	for _, item := range pricesResp.Items {
+		fmt.Fprintf(&sb, "**%s**: %d coins\n", item.InternalName, item.BaseValue)
+	}
+	return sb.String(), nil
+}
+
+// GetBuyPrices retrieves current buy prices
+func (c *APIClient) GetBuyPrices() (string, error) {
+	return c.getPricesInternal("/api/v1/prices/buy")
+}
+
+// AddItemByUsername adds an item by username (no platformID required)
+func (c *APIClient) AddItemByUsername(platform, username, itemName string, quantity int) (string, error) {
+	req := map[string]interface{}{
+		"platform":  platform,
+		"username":  username,
+		"item_name": itemName,
+		"quantity":  quantity,
+	}
+
+	var resp struct {
+		Message string `json:"message"`
+	}
+	if err := c.doRequestAndParse(http.MethodPost, "/api/v1/user/item/add", req, &resp); err != nil {
+		return "", err
+	}
+	return resp.Message, nil
+}
+
+// RemoveItemByUsername removes an item by username (no platformID required)
+func (c *APIClient) RemoveItemByUsername(platform, username, itemName string, quantity int) (int, error) {
+	req := map[string]interface{}{
+		"platform":  platform,
+		"username":  username,
+		"item_name": itemName,
+		"quantity":  quantity,
+	}
+
+	var resp struct {
+		Removed int `json:"removed"`
+	}
+	if err := c.doRequestAndParse(http.MethodPost, "/api/v1/user/item/remove", req, &resp); err != nil {
+		return 0, err
+	}
+	return resp.Removed, nil
+}
+
+// GiveItemByUsername transfers an item by usernames (no platformIDs required)
+func (c *APIClient) GiveItemByUsername(fromPlatform, fromUsername, toPlatform, toUsername, itemName string, quantity int) (string, error) {
+	req := map[string]interface{}{
+		"from_platform": fromPlatform,
+		"from_username": fromUsername,
+		"to_platform":   toPlatform,
+		"to_username":   toUsername,
+		"item_name":     itemName,
+		"quantity":      quantity,
+	}
+
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/user/item/give", req)
 	if err != nil {
 		return "", err
 	}
@@ -599,76 +622,14 @@ func (c *APIClient) SellItem(platform, platformID, username, itemName string, qu
 		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
 	}
 
-	var sellResp struct {
+	var result struct {
 		Message string `json:"message"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&sellResp); err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return "", fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	return sellResp.Message, nil
-}
-
-// GetSellPrices retrieves current sell prices
-func (c *APIClient) GetSellPrices() (string, error) {
-	resp, err := c.doRequest(http.MethodGet, "/prices", nil)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
-	}
-
-	var pricesResp struct {
-		Message string        `json:"message"`
-		Items   []domain.Item `json:"items"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&pricesResp); err != nil {
-		return "", fmt.Errorf("failed to decode response: %w", err)
-	}
-
-	if len(pricesResp.Items) == 0 {
-		return "No sellable items available.", nil
-	}
-
-	var sb strings.Builder
-	for _, item := range pricesResp.Items {
-		fmt.Fprintf(&sb, "**%s**: %d coins\n", item.InternalName, item.BaseValue)
-	}
-	return sb.String(), nil
-}
-
-// GetBuyPrices retrieves current buy prices
-func (c *APIClient) GetBuyPrices() (string, error) {
-	resp, err := c.doRequest(http.MethodGet, "/prices/buy", nil)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
-	}
-
-	var pricesResp struct {
-		Message string        `json:"message"`
-		Items   []domain.Item `json:"items"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&pricesResp); err != nil {
-		return "", fmt.Errorf("failed to decode response: %w", err)
-	}
-
-	if len(pricesResp.Items) == 0 {
-		return "No buyable items available.", nil
-	}
-
-	var sb strings.Builder
-	for _, item := range pricesResp.Items {
-		fmt.Fprintf(&sb, "**%s**: %d coins\n", item.InternalName, item.BaseValue)
-	}
-	return sb.String(), nil
+	return result.Message, nil
 }
 
 // GiveItem transfers an item between users user
@@ -683,7 +644,7 @@ func (c *APIClient) GiveItem(fromPlatform, fromPlatformID, toPlatform, toPlatfor
 		"quantity":         quantity,
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "/user/item/give", req)
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/user/item/give", req)
 	if err != nil {
 		return "", err
 	}
@@ -718,31 +679,7 @@ func (c *APIClient) UpgradeItem(platform, platformID, username, itemName string,
 		"item":        itemName,
 		"quantity":    quantity,
 	}
-
-	resp, err := c.doRequest(http.MethodPost, "/user/item/upgrade", req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		var errResp struct {
-			Error string `json:"error"`
-		}
-		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
-			return "", fmt.Errorf("API error: %s", errResp.Error)
-		}
-		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
-	}
-
-	var upgradeResp struct {
-		Message string `json:"message"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&upgradeResp); err != nil {
-		return "", fmt.Errorf("failed to decode response: %w", err)
-	}
-
-	return upgradeResp.Message, nil
+	return c.doAction(http.MethodPost, "/api/v1/user/item/upgrade", req)
 }
 
 // DisassembleItem breaks down an item for materials
@@ -751,34 +688,10 @@ func (c *APIClient) DisassembleItem(platform, platformID, username, itemName str
 		"platform":    platform,
 		"platform_id": platformID,
 		"username":    username,
-		"item_name":   itemName,
+		"item":        itemName,
 		"quantity":    quantity,
 	}
-
-	resp, err := c.doRequest(http.MethodPost, "/user/item/disassemble", req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		var errResp struct {
-			Error string `json:"error"`
-		}
-		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
-			return "", fmt.Errorf("API error: %s", errResp.Error)
-		}
-		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
-	}
-
-	var disassembleResp struct {
-		Message string `json:"message"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&disassembleResp); err != nil {
-		return "", fmt.Errorf("failed to decode response: %w", err)
-	}
-
-	return disassembleResp.Message, nil
+	return c.doAction(http.MethodPost, "/api/v1/user/item/disassemble", req)
 }
 
 // Recipe represents a recipe returned by the API
@@ -789,7 +702,7 @@ type Recipe struct {
 
 // GetRecipes retrieves all crafting recipes
 func (c *APIClient) GetRecipes() ([]Recipe, error) {
-	resp, err := c.doRequest(http.MethodGet, "/recipes", nil)
+	resp, err := c.doRequest(http.MethodGet, "/api/v1/recipes", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -816,7 +729,7 @@ func (c *APIClient) GetUnlockedRecipes(platform, platformID, username string) ([
 	params.Set("platform_id", platformID)
 	params.Set("user", username)
 
-	path := fmt.Sprintf("/recipes?%s", params.Encode())
+	path := fmt.Sprintf("/api/v1/recipes?%s", params.Encode())
 	resp, err := c.doRequest(http.MethodGet, path, nil)
 	if err != nil {
 		return nil, err
@@ -837,47 +750,13 @@ func (c *APIClient) GetUnlockedRecipes(platform, platformID, username string) ([
 	return recipesResp.Recipes, nil
 }
 
-// GetJobBonus retrieves the active bonus for a job
-func (c *APIClient) GetJobBonus(userID, jobKey, bonusType string) (int, error) {
-	params := url.Values{}
-	params.Set("user_id", userID)
-	params.Set("job_key", jobKey)
-	params.Set("bonus_type", bonusType)
-
-	path := fmt.Sprintf("/jobs/bonus?%s", params.Encode())
-	resp, err := c.doRequest(http.MethodGet, path, nil)
-	if err != nil {
-		return 0, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		var errResp struct {
-			Error string `json:"error"`
-		}
-		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
-			return 0, fmt.Errorf("API error: %s", errResp.Error)
-		}
-		return 0, fmt.Errorf("API returned status: %d", resp.StatusCode)
-	}
-
-	var bonusResp struct {
-		BonusVal int `json:"bonus_val"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&bonusResp); err != nil {
-		return 0, fmt.Errorf("failed to decode response: %w", err)
-	}
-
-	return bonusResp.BonusVal, nil
-}
-
 // AdminAddContribution adds contribution points (admin only)
 func (c *APIClient) AdminAddContribution(amount int) (string, error) {
 	req := map[string]interface{}{
 		"amount": amount,
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "/progression/admin/contribution", req)
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/progression/admin/contribution", req)
 	if err != nil {
 		return "", err
 	}
@@ -908,7 +787,7 @@ func (c *APIClient) GetUserTimeout(username string) (bool, float64, error) {
 	params := url.Values{}
 	params.Set("username", username)
 
-	path := fmt.Sprintf("/user/timeout?%s", params.Encode())
+	path := fmt.Sprintf("/api/v1/user/timeout?%s", params.Encode())
 	resp, err := c.doRequest(http.MethodGet, path, nil)
 	if err != nil {
 		return false, 0, err
@@ -942,7 +821,7 @@ func (c *APIClient) GetLeaderboard(metric string, limit int) (string, error) {
 	params.Set("metric", metric)
 	params.Set("limit", fmt.Sprintf("%d", limit))
 
-	path := fmt.Sprintf("/stats/leaderboard?%s", params.Encode())
+	path := fmt.Sprintf("/api/v1/stats/leaderboard?%s", params.Encode())
 	resp, err := c.doRequest(http.MethodGet, path, nil)
 	if err != nil {
 		return "", err
@@ -973,7 +852,7 @@ func (c *APIClient) GetUserStats(platform, platformID string) (string, error) {
 	params.Set("platform", platform)
 	params.Set("platform_id", platformID)
 
-	path := fmt.Sprintf("/stats/user?%s", params.Encode())
+	path := fmt.Sprintf("/api/v1/stats/user?%s", params.Encode())
 	resp, err := c.doRequest(http.MethodGet, path, nil)
 	if err != nil {
 		return "", err
@@ -998,53 +877,30 @@ func (c *APIClient) GetUserStats(platform, platformID string) (string, error) {
 	return statsResp.Message, nil
 }
 
-// AddItem adds items to a user's inventory (admin only)
-func (c *APIClient) AddItem(platform, platformID, itemName string, quantity int) (string, error) {
-	req := map[string]interface{}{
-		"platform":    platform,
-		"platform_id": platformID,
-		"item_name":   itemName,
-		"quantity":    quantity,
-	}
-
-	resp, err := c.doRequest(http.MethodPost, "/user/item/add", req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		var errResp struct {
-			Error string `json:"error"`
-		}
-		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
-			return "", fmt.Errorf("API error: %s", errResp.Error)
-		}
-		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
-	}
-
-	var addResp struct {
-		Message string `json:"message"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&addResp); err != nil {
-		return "", fmt.Errorf("failed to decode response: %w", err)
-	}
-
-	return addResp.Message, nil
+// GetInventoryByUsername retrieves user inventory by username
+func (c *APIClient) GetInventoryByUsername(platform, username, filter string) ([]user.InventoryItem, error) {
+	return c.getInventoryInternal("/api/v1/user/inventory-by-username", platform, "", username, filter)
 }
 
-// RemoveItem removes items from a user's inventory (admin only)
-func (c *APIClient) RemoveItem(platform, platformID, itemName string, quantity int) (string, error) {
+// XPAwardResult represents the result of awarding XP
+type XPAwardResult struct {
+	LeveledUp bool `json:"leveled_up"`
+	NewLevel  int  `json:"new_level"`
+	NewXP     int  `json:"new_xp"`
+}
+
+// AdminAwardXP awards job XP to a user via platform and username (admin only)
+func (c *APIClient) AdminAwardXP(platform, username, jobKey string, amount int) (*XPAwardResult, error) {
 	req := map[string]interface{}{
-		"platform":    platform,
-		"platform_id": platformID,
-		"item_name":   itemName,
-		"quantity":    quantity,
+		"platform": platform,
+		"username": username,
+		"job_key":  jobKey,
+		"amount":   amount,
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "/user/item/remove", req)
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/admin/job/award-xp", req)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
@@ -1053,24 +909,33 @@ func (c *APIClient) RemoveItem(platform, platformID, itemName string, quantity i
 			Error string `json:"error"`
 		}
 		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
-			return "", fmt.Errorf("API error: %s", errResp.Error)
+			return nil, fmt.Errorf("API error: %s", errResp.Error)
 		}
-		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
+		return nil, fmt.Errorf("API returned status: %d", resp.StatusCode)
 	}
 
-	var removeResp struct {
-		Message string `json:"message"`
+	var awardResp struct {
+		Success bool `json:"success"`
+		Result  struct {
+			LeveledUp bool `json:"leveled_up"`
+			NewLevel  int  `json:"new_level"`
+			NewXP     int  `json:"new_xp"`
+		} `json:"result"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&removeResp); err != nil {
-		return "", fmt.Errorf("failed to decode response: %w", err)
+	if err := json.NewDecoder(resp.Body).Decode(&awardResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	return removeResp.Message, nil
+	return &XPAwardResult{
+		LeveledUp: awardResp.Result.LeveledUp,
+		NewLevel:  awardResp.Result.NewLevel,
+		NewXP:     awardResp.Result.NewXP,
+	}, nil
 }
 
 // GetUnlockProgress returns current unlock progress
 func (c *APIClient) GetUnlockProgress() (*map[string]interface{}, error) {
-	resp, err := c.doRequest(http.MethodGet, "/progression/unlock-progress", nil)
+	resp, err := c.doRequest(http.MethodGet, "/api/v1/progression/unlock-progress", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1095,11 +960,12 @@ func (c *APIClient) GetUnlockProgress() (*map[string]interface{}, error) {
 }
 
 // GetUserEngagement returns user's engagement breakdown
-func (c *APIClient) GetUserEngagement(userID string) (*domain.ContributionBreakdown, error) {
+func (c *APIClient) GetUserEngagement(platform, platformID string) (*domain.ContributionBreakdown, error) {
 	params := url.Values{}
-	params.Set("user_id", userID)
+	params.Set("platform", platform)
+	params.Set("platform_id", platformID)
 
-	path := fmt.Sprintf("/progression/engagement?%s", params.Encode())
+	path := fmt.Sprintf("/api/v1/progression/engagement?%s", params.Encode())
 	resp, err := c.doRequest(http.MethodGet, path, nil)
 	if err != nil {
 		return nil, err
@@ -1129,7 +995,7 @@ func (c *APIClient) GetContributionLeaderboard(limit int) (string, error) {
 	params := url.Values{}
 	params.Set("limit", fmt.Sprintf("%d", limit))
 
-	path := fmt.Sprintf("/progression/leaderboard?%s", params.Encode())
+	path := fmt.Sprintf("/api/v1/progression/leaderboard?%s", params.Encode())
 	resp, err := c.doRequest(http.MethodGet, path, nil)
 	if err != nil {
 		return "", err
@@ -1164,7 +1030,7 @@ func (c *APIClient) GetContributionLeaderboard(limit int) (string, error) {
 
 // GetVotingSession returns current voting session
 func (c *APIClient) GetVotingSession() (*domain.ProgressionVotingSession, error) {
-	resp, err := c.doRequest(http.MethodGet, "/progression/session", nil)
+	resp, err := c.doRequest(http.MethodGet, "/api/v1/progression/session", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1210,7 +1076,7 @@ func (c *APIClient) HandleMessage(platform, platformID, username, message string
 		"message":     message,
 	}
 
-	resp, err := c.doRequest(http.MethodPost, "/message/handle", req)
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/message/handle", req)
 	if err != nil {
 		return nil, err
 	}
@@ -1232,4 +1098,231 @@ func (c *APIClient) HandleMessage(platform, platformID, username, message string
 	}
 
 	return &result, nil
+}
+
+// GetAllJobs retrieves all available jobs
+func (c *APIClient) GetAllJobs() ([]domain.Job, error) {
+	resp, err := c.doRequest(http.MethodGet, "/api/v1/jobs", nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	var jobsResp struct {
+		Jobs []domain.Job `json:"jobs"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&jobsResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return jobsResp.Jobs, nil
+}
+
+// GetUserJobs retrieves job progress for a user
+func (c *APIClient) GetUserJobs(platform, platformID string) (map[string]interface{}, error) {
+	params := url.Values{}
+	params.Set("platform", platform)
+	params.Set("platform_id", platformID)
+
+	userID := fmt.Sprintf("%s:%s", platform, platformID)
+	params.Set("user_id", userID)
+
+	path := fmt.Sprintf("/api/v1/jobs/user?%s", params.Encode())
+	resp, err := c.doRequest(http.MethodGet, path, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return result, nil
+}
+
+// AwardJobXP awards XP (Standard/Bot method)
+func (c *APIClient) AwardJobXP(userID, jobKey string, amount int, source string) (*domain.XPAwardResult, error) {
+	req := map[string]interface{}{
+		"user_id":   userID,
+		"job_key":   jobKey,
+		"xp_amount": amount,
+		"source":    source,
+	}
+
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/jobs/award-xp", req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	var result domain.XPAwardResult
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return &result, nil
+}
+
+// GetSystemStats retrieves system-wide statistics
+func (c *APIClient) GetSystemStats() (string, error) {
+	resp, err := c.doRequest(http.MethodGet, "/api/v1/stats/system", nil)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	var statsResp struct {
+		Message string `json:"message"`
+		Stats   string `json:"stats"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&statsResp); err != nil {
+		return "", fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	if statsResp.Stats != "" {
+		return statsResp.Stats, nil
+	}
+	return statsResp.Message, nil
+}
+
+// RecordEvent records a generic user event
+func (c *APIClient) RecordEvent(platform, platformID, eventType string, metadata map[string]interface{}) (string, error) {
+	req := map[string]interface{}{
+		"platform":    platform,
+		"platform_id": platformID,
+		"event_type":  eventType,
+		"metadata":    metadata,
+	}
+
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/stats/event", req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	var result struct {
+		Message string `json:"message"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return result.Message, nil
+}
+
+// ReloadAliases reloads item aliases (admin only)
+func (c *APIClient) ReloadAliases() error {
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/admin/reload-aliases", nil)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+	return nil
+}
+
+// Test endpoint
+func (c *APIClient) Test(platform, platformID, username string) (string, error) {
+	req := map[string]string{
+		"platform":    platform,
+		"platform_id": platformID,
+		"username":    username,
+	}
+
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/test", req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	var result struct {
+		Message string `json:"message"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return result.Message, nil
+}
+
+// Harvest collects accumulated rewards for a user
+func (c *APIClient) Harvest(platform, platformID, username string) (*domain.HarvestResponse, error) {
+	req := map[string]string{
+		"platform":    platform,
+		"platform_id": platformID,
+		"username":    username,
+	}
+
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/harvest", req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		// Try to read error message
+		var errResp struct {
+			Error string `json:"error"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
+			return nil, fmt.Errorf("%s", errResp.Error)
+		}
+		return nil, fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	var harvestResp domain.HarvestResponse
+	if err := json.NewDecoder(resp.Body).Decode(&harvestResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return &harvestResp, nil
+}
+
+// AdminClearTimeout clears a user's timeout (admin only)
+func (c *APIClient) AdminClearTimeout(platform, username string) (string, error) {
+	req := map[string]string{
+		"platform": platform,
+		"username": username,
+	}
+	return c.doAction(http.MethodPost, "/api/v1/admin/timeout/clear", req)
+}
+
+// SetUserTimeout applies or extends a timeout for a user
+func (c *APIClient) SetUserTimeout(platform, username string, durationSeconds int, reason string) (string, error) {
+	req := map[string]interface{}{
+		"platform":         platform,
+		"username":         username,
+		"duration_seconds": durationSeconds,
+		"reason":           reason,
+	}
+	return c.doAction(http.MethodPut, "/api/v1/user/timeout", req)
 }

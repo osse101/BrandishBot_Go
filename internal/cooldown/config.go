@@ -30,7 +30,7 @@ func (c *Config) GetCooldownDuration(action string) time.Duration {
 	case domain.ActionSearch:
 		return domain.SearchCooldownDuration
 	default:
-		// Unknown action - use 5 minute default
-		return 5 * time.Minute
+		// Unknown action - use default
+		return DefaultCooldownDuration
 	}
 }

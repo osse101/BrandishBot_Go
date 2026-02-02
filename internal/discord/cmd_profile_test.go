@@ -8,8 +8,9 @@ import (
 	"testing"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/osse101/BrandishBot_Go/internal/user"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/osse101/BrandishBot_Go/internal/user"
 )
 
 func TestProfileCommand_Success(t *testing.T) {
@@ -17,14 +18,14 @@ func TestProfileCommand_Success(t *testing.T) {
 	cmd, handler := ProfileCommand()
 
 	// Mock Register
-	ctx.Mux.HandleFunc("/user/register", func(w http.ResponseWriter, r *http.Request) {
+	ctx.Mux.HandleFunc("/api/v1/user/register", func(w http.ResponseWriter, r *http.Request) {
 		WriteJSON(w, map[string]interface{}{"internal_id": "u-123", "username": "Tester"})
 	})
 
 	// Mock Inventory (for item count)
-	ctx.Mux.HandleFunc("/user/inventory", func(w http.ResponseWriter, r *http.Request) {
+	ctx.Mux.HandleFunc("/api/v1/user/inventory", func(w http.ResponseWriter, r *http.Request) {
 		WriteJSON(w, map[string]interface{}{
-			"items": []user.UserInventoryItem{
+			"items": []user.InventoryItem{
 				{Name: "item1", Quantity: 1},
 				{Name: "item2", Quantity: 2},
 			},
@@ -66,7 +67,7 @@ func TestProfileCommand_Success(t *testing.T) {
 		for i, f := range sentEmbed.Fields {
 			t.Logf("Field %d: Name='%s' Value='%s'", i, f.Name, f.Value)
 		}
-		
+
 		assert.Contains(t, sentEmbed.Title, "Tester's Profile")
 		// Check Fields
 		foundID := false
@@ -89,7 +90,7 @@ func TestProfileCommand_RegisterError(t *testing.T) {
 	_, handler := ProfileCommand()
 
 	// Mock Error
-	ctx.Mux.HandleFunc("/user/register", func(w http.ResponseWriter, r *http.Request) {
+	ctx.Mux.HandleFunc("/api/v1/user/register", func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "error", http.StatusInternalServerError)
 	})
 

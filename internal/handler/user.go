@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
@@ -36,34 +35,12 @@ func HandleRegisterUser(userService user.Service) http.HandlerFunc {
 
 		if r.Method != http.MethodPost {
 			log.Warn("Method not allowed", "method", r.Method)
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			http.Error(w, ErrMsgMethodNotAllowed, http.StatusMethodNotAllowed)
 			return
 		}
 
 		var req RegisterUserRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			log.Error("Failed to decode register user request", "error", err)
-			http.Error(w, "Invalid request body", http.StatusBadRequest)
-			return
-		}
-
-		log.Debug("Register user request",
-			"username", req.Username,
-			"known_platform", req.KnownPlatform,
-			"new_platform", req.NewPlatform)
-
-		// Validate request
-		if err := GetValidator().ValidateStruct(req); err != nil {
-			log.Warn("Invalid request", "error", err)
-			validationErrors := FormatValidationError(err)
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			if err := json.NewEncoder(w).Encode(map[string]interface{}{
-				"error":   "Validation failed",
-				"details": validationErrors,
-			}); err != nil {
-				log.Error("Failed to encode response", "error", err)
-			}
+		if err := DecodeAndValidateRequest(r, w, &req, "Register user"); err != nil {
 			return
 		}
 
@@ -74,7 +51,7 @@ func HandleRegisterUser(userService user.Service) http.HandlerFunc {
 			log.Debug("User not found by platform ID, will create new user", "platform", req.KnownPlatform)
 			if req.Username == "" {
 				log.Warn("Username required for new user")
-				http.Error(w, "Username is required for new users", http.StatusBadRequest)
+				http.Error(w, ErrMsgUsernameRequired, http.StatusBadRequest)
 				return
 			}
 			isNewUser = true
@@ -95,7 +72,8 @@ func HandleRegisterUser(userService user.Service) http.HandlerFunc {
 		updatedUser, err := userService.RegisterUser(r.Context(), *user)
 		if err != nil {
 			log.Error("Failed to register user", "error", err, "username", req.Username)
-			http.Error(w, "Failed to register user", http.StatusInternalServerError)
+			statusCode, userMsg := mapServiceErrorToUserMessage(err)
+			respondError(w, statusCode, userMsg)
 			return
 		}
 
@@ -104,24 +82,36 @@ func HandleRegisterUser(userService user.Service) http.HandlerFunc {
 			"username", updatedUser.Username,
 			"is_new", isNewUser)
 
-		w.Header().Set("Content-Type", "application/json")
+		statusCode := http.StatusOK
 		if isNewUser {
-			w.WriteHeader(http.StatusCreated)
-		} else {
-			w.WriteHeader(http.StatusOK)
+			statusCode = http.StatusCreated
 		}
-		respondJSON(w, http.StatusOK, updatedUser)
+		respondJSON(w, statusCode, updatedUser)
 	}
 }
 
 func updatePlatformID(user *domain.User, platform, platformID string) {
 	switch platform {
-	case "twitch":
+	case domain.PlatformTwitch:
 		user.TwitchID = platformID
-	case "youtube":
+	case domain.PlatformYoutube:
 		user.YoutubeID = platformID
-	case "discord":
+	case domain.PlatformDiscord:
 		user.DiscordID = platformID
+	}
+}
+
+// getPlatformID gets the platform ID from a user for a given platform
+func getPlatformID(user *domain.User, platform string) string {
+	switch platform {
+	case domain.PlatformTwitch:
+		return user.TwitchID
+	case domain.PlatformYoutube:
+		return user.YoutubeID
+	case domain.PlatformDiscord:
+		return user.DiscordID
+	default:
+		return ""
 	}
 }
 
@@ -130,6 +120,7 @@ func updatePlatformID(user *domain.User, platform, platformID string) {
 // @Description Get the remaining timeout duration for a user
 // @Tags user
 // @Produce json
+// @Param platform query string false "Platform (default: twitch)" Enums(twitch, youtube, discord)
 // @Param username query string true "Username to check"
 // @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} ErrorResponse
@@ -139,28 +130,32 @@ func HandleGetTimeout(svc user.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
 
-		username := r.URL.Query().Get("username")
-		if username == "" {
-			http.Error(w, "Missing username parameter", http.StatusBadRequest)
+		username, ok := GetQueryParam(r, w, "username")
+		if !ok {
 			return
 		}
 
-		duration, err := svc.GetTimeout(r.Context(), username)
+		// Platform is optional, defaults to twitch for backward compatibility
+		platform := r.URL.Query().Get("platform")
+		if platform == "" {
+			platform = domain.PlatformTwitch
+		}
+
+		duration, err := svc.GetTimeoutPlatform(r.Context(), platform, username)
 		if err != nil {
-			log.Error("Failed to get timeout", "error", err, "username", username)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			log.Error("Failed to get timeout", "error", err, "platform", platform, "username", username)
+			statusCode, userMsg := mapServiceErrorToUserMessage(err)
+			respondError(w, statusCode, userMsg)
 			return
 		}
 
 		response := map[string]interface{}{
+			"platform":          platform,
 			"username":          username,
 			"is_timed_out":      duration > 0,
 			"remaining_seconds": duration.Seconds(),
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(response); err != nil {
-			log.Error("Failed to encode response", "error", err)
-		}
+		respondJSON(w, http.StatusOK, response)
 	}
 }

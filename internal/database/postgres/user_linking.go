@@ -2,33 +2,50 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
+	"github.com/google/uuid"
+
+	"github.com/osse101/BrandishBot_Go/internal/database/generated"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
 // GetUserByID retrieves a user by internal ID with all linked platform IDs
 func (r *UserRepository) GetUserByID(ctx context.Context, userID string) (*domain.User, error) {
-	query := `
-		SELECT u.user_id, u.username, u.created_at, u.updated_at,
-		       COALESCE(MAX(CASE WHEN p.name = 'twitch' THEN upl.platform_user_id END), '') as twitch_id,
-		       COALESCE(MAX(CASE WHEN p.name = 'youtube' THEN upl.platform_user_id END), '') as youtube_id,
-		       COALESCE(MAX(CASE WHEN p.name = 'discord' THEN upl.platform_user_id END), '') as discord_id
-		FROM users u
-		LEFT JOIN user_platform_links upl ON u.user_id = upl.user_id
-		LEFT JOIN platforms p ON upl.platform_id = p.platform_id
-		WHERE u.user_id = $1
-		GROUP BY u.user_id, u.username, u.created_at, u.updated_at
-	`
-	var user domain.User
-	err := r.db.QueryRow(ctx, query, userID).Scan(
-		&user.ID, &user.Username,
-		&user.CreatedAt, &user.UpdatedAt,
-		&user.TwitchID, &user.YoutubeID, &user.DiscordID,
-	)
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid user id: %w", err)
+	}
+
+	row, err := r.q.GetUserByID(ctx, userUUID)
 	if err != nil {
 		return nil, fmt.Errorf("user not found: %w", err)
 	}
+
+	user := domain.User{
+		ID:        row.UserID.String(),
+		Username:  row.Username,
+		CreatedAt: row.CreatedAt.Time,
+		UpdatedAt: row.UpdatedAt.Time,
+	}
+
+	links, err := r.q.GetUserPlatformLinks(ctx, row.UserID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user links: %w", err)
+	}
+
+	for _, link := range links {
+		switch link.Name {
+		case "twitch":
+			user.TwitchID = link.PlatformUserID
+		case "youtube":
+			user.YoutubeID = link.PlatformUserID
+		case "discord":
+			user.DiscordID = link.PlatformUserID
+		}
+	}
+
 	return &user, nil
 }
 
@@ -39,34 +56,39 @@ func (r *UserRepository) UpdateUser(ctx context.Context, user domain.User) error
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer SafeRollback(ctx, tx)
+
+	q := r.q.WithTx(tx)
+	userUUID, err := uuid.Parse(user.ID)
+	if err != nil {
+		return fmt.Errorf("invalid user id: %w", err)
+	}
 
 	// Update user timestamp
-	_, err = tx.Exec(ctx, `UPDATE users SET updated_at = NOW() WHERE user_id = $1`, user.ID)
+	err = q.UpdateUserTimestamp(ctx, userUUID)
 	if err != nil {
-		return fmt.Errorf("failed to update user: %w", err)
+		return fmt.Errorf("failed to update user timestamp: %w", err)
 	}
 
 	// Helper function to update platform link
 	updatePlatformLink := func(platformName, platformUserID string) error {
 		if platformUserID == "" {
-			// Remove platform link if ID is empty
-			_, err := tx.Exec(ctx, `
-				DELETE FROM user_platform_links 
-				WHERE user_id = $1 
-				AND platform_id = (SELECT platform_id FROM platforms WHERE name = $2)
-			`, user.ID, platformName)
-			return err
+			return q.DeleteUserPlatformLink(ctx, generated.DeleteUserPlatformLinkParams{
+				UserID: userUUID,
+				Name:   platformName,
+			})
 		}
-		
-		// Insert or update platform link
-		_, err := tx.Exec(ctx, `
-			INSERT INTO user_platform_links (user_id, platform_id, platform_user_id)
-			VALUES ($1, (SELECT platform_id FROM platforms WHERE name = $2), $3)
-			ON CONFLICT (user_id, platform_id) 
-			DO UPDATE SET platform_user_id = $3
-		`, user.ID, platformName, platformUserID)
-		return err
+
+		platformID, err := q.GetPlatformID(ctx, platformName)
+		if err != nil {
+			return fmt.Errorf("failed to get platform id: %w", err)
+		}
+
+		return q.UpsertUserPlatformLink(ctx, generated.UpsertUserPlatformLinkParams{
+			UserID:         userUUID,
+			PlatformID:     platformID,
+			PlatformUserID: platformUserID,
+		})
 	}
 
 	// Update each platform
@@ -84,45 +106,52 @@ func (r *UserRepository) UpdateUser(ctx context.Context, user domain.User) error
 }
 
 // MergeUsersInTransaction merges secondary user into primary user atomically
-// All operations succeed or all are rolled back (no data loss)
 func (r *UserRepository) MergeUsersInTransaction(ctx context.Context, primaryUserID, secondaryUserID string, mergedUser domain.User, mergedInventory domain.Inventory) error {
-	// Begin transaction
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer SafeRollback(ctx, tx)
+
+	q := r.q.WithTx(tx)
+	primUUID, err := uuid.Parse(primaryUserID)
+	if err != nil {
+		return fmt.Errorf("invalid primary user id: %w", err)
+	}
+	secUUID, err := uuid.Parse(secondaryUserID)
+	if err != nil {
+		return fmt.Errorf("invalid secondary user id: %w", err)
+	}
 
 	// 1. Delete secondary user's inventory
-	_, err = tx.Exec(ctx, `DELETE FROM user_inventory WHERE user_id = $1`, secondaryUserID)
-	if err != nil {
+	if err := q.DeleteInventory(ctx, secUUID); err != nil {
 		return fmt.Errorf("failed to delete secondary inventory: %w", err)
 	}
 
 	// 2. Delete secondary user (CASCADE removes platform links)
-	_, err = tx.Exec(ctx, `DELETE FROM users WHERE user_id = $1`, secondaryUserID)
-	if err != nil {
+	if err := q.DeleteUser(ctx, secUUID); err != nil {
 		return fmt.Errorf("failed to delete secondary user: %w", err)
 	}
 
 	// 3. Update primary user timestamp
-	_, err = tx.Exec(ctx, `UPDATE users SET updated_at = NOW() WHERE user_id = $1`, primaryUserID)
-	if err != nil {
+	if err := q.UpdateUserTimestamp(ctx, primUUID); err != nil {
 		return fmt.Errorf("failed to update primary user: %w", err)
 	}
 
 	// 4. Update primary user's platform links with merged data
 	updatePlatformLink := func(platformName, platformUserID string) error {
 		if platformUserID == "" {
-			return nil // Skip empty platformsIDs
+			return nil
 		}
-		_, err := tx.Exec(ctx, `
-			INSERT INTO user_platform_links (user_id, platform_id, platform_user_id)
-			VALUES ($1, (SELECT platform_id FROM platforms WHERE name = $2), $3)
-			ON CONFLICT (user_id, platform_id) 
-			DO UPDATE SET platform_user_id = $3
-		`, primaryUserID, platformName, platformUserID)
-		return err
+		platformID, err := q.GetPlatformID(ctx, platformName)
+		if err != nil {
+			return fmt.Errorf("failed to get platform id: %w", err)
+		}
+		return q.UpsertUserPlatformLink(ctx, generated.UpsertUserPlatformLinkParams{
+			UserID:         primUUID,
+			PlatformID:     platformID,
+			PlatformUserID: platformUserID,
+		})
 	}
 
 	if err := updatePlatformLink("twitch", mergedUser.TwitchID); err != nil {
@@ -136,34 +165,36 @@ func (r *UserRepository) MergeUsersInTransaction(ctx context.Context, primaryUse
 	}
 
 	// 5. Update primary user's inventory with merged data
-	_, err = tx.Exec(ctx, `
-		INSERT INTO user_inventory (user_id, inventory_data)
-		VALUES ($1, $2)
-		ON CONFLICT (user_id) DO UPDATE
-		SET inventory_data = EXCLUDED.inventory_data
-	`, primaryUserID, mergedInventory)
+	inventoryJSON, err := json.Marshal(mergedInventory)
+	if err != nil {
+		return fmt.Errorf("failed to marshal inventory: %w", err)
+	}
+
+	err = q.UpdateInventory(ctx, generated.UpdateInventoryParams{
+		UserID:        primUUID,
+		InventoryData: inventoryJSON,
+	})
 	if err != nil {
 		return fmt.Errorf("failed to update primary inventory: %w", err)
 	}
 
-	// Commit transaction - all or nothing
-	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("failed to commit merge transaction: %w", err)
-	}
-
-	return nil
+	return tx.Commit(ctx)
 }
 
 // DeleteUser deletes a user by ID
 func (r *UserRepository) DeleteUser(ctx context.Context, userID string) error {
-	query := `DELETE FROM users WHERE user_id = $1`
-	_, err := r.db.Exec(ctx, query, userID)
-	return err
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		return fmt.Errorf("invalid user id: %w", err)
+	}
+	return r.q.DeleteUser(ctx, userUUID)
 }
 
 // DeleteInventory deletes a user's inventory
 func (r *UserRepository) DeleteInventory(ctx context.Context, userID string) error {
-	query := `DELETE FROM user_inventory WHERE user_id = $1`
-	_, err := r.db.Exec(ctx, query, userID)
-	return err
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		return fmt.Errorf("invalid user id: %w", err)
+	}
+	return r.q.DeleteInventory(ctx, userUUID)
 }

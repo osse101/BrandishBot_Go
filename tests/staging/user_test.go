@@ -17,15 +17,15 @@ func TestUserRegistration(t *testing.T) {
 	username := "StagingTestUser"
 	platform := domain.PlatformTwitch
 	userID := fmt.Sprintf("staging_user_%d", time.Now().Unix())
-	
+
 	request := map[string]interface{}{
-		"user_id":   userID,
-		"username":  username,
-		"platform":  platform,
+		"user_id":  userID,
+		"username": username,
+		"platform": platform,
 	}
 
 	resp, body := makeRequest(t, "POST", "/user/register", request)
-	
+
 	// 200 for success, 400 if already exists
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusBadRequest {
 		t.Errorf("Unexpected status: %d. Body: %s", resp.StatusCode, string(body))
@@ -38,14 +38,14 @@ func TestInventoryEndpoint(t *testing.T) {
 	userID := "00000000-0000-0000-0000-000000000001"
 	platformID := "test_platform"
 	username := "TestUser"
-	
+
 	path := fmt.Sprintf("/user/inventory?user_id=%s&platform_id=%s&username=%s", userID, platformID, username)
 	resp, body := makeRequest(t, "GET", path, nil)
-	
+
 	if resp.StatusCode == http.StatusNotFound {
 		t.Skip("User not found - this is expected for staging tests")
 	}
-	
+
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("Expected status 200, got %d. Body: %s", resp.StatusCode, string(body))
 	}
@@ -64,7 +64,7 @@ func TestInventoryEndpoint(t *testing.T) {
 // TestPricesEndpoint tests the prices endpoint
 func TestPricesEndpoint(t *testing.T) {
 	resp, body := makeRequest(t, "GET", "/prices", nil)
-	
+
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("Expected status 200, got %d. Body: %s", resp.StatusCode, string(body))
 	}
@@ -90,7 +90,7 @@ func TestRecipesEndpoint(t *testing.T) {
 
 	path := fmt.Sprintf("/recipes?user=%s&platform=%s&platform_id=%s", userID, platform, platformID)
 	resp, body := makeRequest(t, "GET", path, nil)
-	
+
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("Expected status 200, got %d. Body: %s", resp.StatusCode, string(body))
 	}

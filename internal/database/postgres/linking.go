@@ -4,124 +4,101 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/osse101/BrandishBot_Go/internal/linking"
+
+	"github.com/osse101/BrandishBot_Go/internal/database/generated"
+	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
 
-// LinkingRepository implements linking.Repository
+// LinkingRepository implements repository.Linking
 type LinkingRepository struct {
-	db *pgxpool.Pool
+	pool *pgxpool.Pool
+	q    *generated.Queries
 }
 
 // NewLinkingRepository creates a new linking repository
-func NewLinkingRepository(db *pgxpool.Pool) *LinkingRepository {
-	return &LinkingRepository{db: db}
+func NewLinkingRepository(pool *pgxpool.Pool) *LinkingRepository {
+	return &LinkingRepository{
+		pool: pool,
+		q:    generated.New(pool),
+	}
 }
 
 // CreateToken creates a new link token
-func (r *LinkingRepository) CreateToken(ctx context.Context, token *linking.LinkToken) error {
-	query := `
-		INSERT INTO link_tokens (token, source_platform, source_platform_id, state, created_at, expires_at)
-		VALUES ($1, $2, $3, $4, $5, $6)
-	`
-	_, err := r.db.Exec(ctx, query,
-		token.Token,
-		token.SourcePlatform,
-		token.SourcePlatformID,
-		token.State,
-		token.CreatedAt,
-		token.ExpiresAt,
-	)
+func (r *LinkingRepository) CreateToken(ctx context.Context, token *repository.LinkToken) error {
+	err := r.q.CreateToken(ctx, generated.CreateTokenParams{
+		Token:            token.Token,
+		SourcePlatform:   token.SourcePlatform,
+		SourcePlatformID: token.SourcePlatformID,
+		State:            pgtype.Text{String: token.State, Valid: token.State != ""},
+		CreatedAt:        pgtype.Timestamptz{Time: token.CreatedAt, Valid: true},
+		ExpiresAt:        pgtype.Timestamptz{Time: token.ExpiresAt, Valid: true},
+	})
 	return err
 }
 
 // GetToken retrieves a link token by its string value
-func (r *LinkingRepository) GetToken(ctx context.Context, tokenStr string) (*linking.LinkToken, error) {
-	query := `
-		SELECT token, source_platform, source_platform_id, 
-		       COALESCE(target_platform, ''), COALESCE(target_platform_id, ''),
-		       state, created_at, expires_at
-		FROM link_tokens
-		WHERE token = $1
-	`
-	var token linking.LinkToken
-	err := r.db.QueryRow(ctx, query, tokenStr).Scan(
-		&token.Token,
-		&token.SourcePlatform,
-		&token.SourcePlatformID,
-		&token.TargetPlatform,
-		&token.TargetPlatformID,
-		&token.State,
-		&token.CreatedAt,
-		&token.ExpiresAt,
-	)
+func (r *LinkingRepository) GetToken(ctx context.Context, tokenStr string) (*repository.LinkToken, error) {
+	row, err := r.q.GetToken(ctx, tokenStr)
 	if err != nil {
 		return nil, fmt.Errorf("token not found: %w", err)
 	}
-	return &token, nil
+
+	return &repository.LinkToken{
+		Token:            row.Token,
+		SourcePlatform:   row.SourcePlatform,
+		SourcePlatformID: row.SourcePlatformID,
+		TargetPlatform:   row.TargetPlatform,
+		TargetPlatformID: row.TargetPlatformID,
+		State:            row.State.String,
+		CreatedAt:        row.CreatedAt.Time,
+		ExpiresAt:        row.ExpiresAt.Time,
+	}, nil
 }
 
 // UpdateToken updates a link token
-func (r *LinkingRepository) UpdateToken(ctx context.Context, token *linking.LinkToken) error {
-	query := `
-		UPDATE link_tokens
-		SET target_platform = $2, target_platform_id = $3, state = $4
-		WHERE token = $1
-	`
-	_, err := r.db.Exec(ctx, query,
-		token.Token,
-		token.TargetPlatform,
-		token.TargetPlatformID,
-		token.State,
-	)
+func (r *LinkingRepository) UpdateToken(ctx context.Context, token *repository.LinkToken) error {
+	err := r.q.UpdateToken(ctx, generated.UpdateTokenParams{
+		Token:            token.Token,
+		TargetPlatform:   pgtype.Text{String: token.TargetPlatform, Valid: token.TargetPlatform != ""},
+		TargetPlatformID: pgtype.Text{String: token.TargetPlatformID, Valid: token.TargetPlatformID != ""},
+		State:            pgtype.Text{String: token.State, Valid: token.State != ""},
+	})
 	return err
 }
 
 // InvalidateTokensForSource marks all pending/claimed tokens for a source as expired
 func (r *LinkingRepository) InvalidateTokensForSource(ctx context.Context, platform, platformID string) error {
-	query := `
-		UPDATE link_tokens
-		SET state = 'expired'
-		WHERE source_platform = $1 AND source_platform_id = $2 AND state IN ('pending', 'claimed')
-	`
-	_, err := r.db.Exec(ctx, query, platform, platformID)
-	return err
+	return r.q.InvalidateTokensForSource(ctx, generated.InvalidateTokensForSourceParams{
+		SourcePlatform:   platform,
+		SourcePlatformID: platformID,
+	})
 }
 
 // CleanupExpired removes expired tokens older than 1 hour
 func (r *LinkingRepository) CleanupExpired(ctx context.Context) error {
-	query := `
-		DELETE FROM link_tokens
-		WHERE expires_at < NOW() - INTERVAL '1 hour'
-	`
-	_, err := r.db.Exec(ctx, query)
-	return err
+	return r.q.CleanupExpiredTokens(ctx)
 }
 
 // GetClaimedTokenForSource finds a claimed token for confirmation
-func (r *LinkingRepository) GetClaimedTokenForSource(ctx context.Context, platform, platformID string) (*linking.LinkToken, error) {
-	query := `
-		SELECT token, source_platform, source_platform_id, 
-		       COALESCE(target_platform, ''), COALESCE(target_platform_id, ''),
-		       state, created_at, expires_at
-		FROM link_tokens
-		WHERE source_platform = $1 AND source_platform_id = $2 AND state = 'claimed'
-		ORDER BY created_at DESC
-		LIMIT 1
-	`
-	var token linking.LinkToken
-	err := r.db.QueryRow(ctx, query, platform, platformID).Scan(
-		&token.Token,
-		&token.SourcePlatform,
-		&token.SourcePlatformID,
-		&token.TargetPlatform,
-		&token.TargetPlatformID,
-		&token.State,
-		&token.CreatedAt,
-		&token.ExpiresAt,
-	)
+func (r *LinkingRepository) GetClaimedTokenForSource(ctx context.Context, platform, platformID string) (*repository.LinkToken, error) {
+	row, err := r.q.GetClaimedTokenForSource(ctx, generated.GetClaimedTokenForSourceParams{
+		SourcePlatform:   platform,
+		SourcePlatformID: platformID,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("no claimed token found: %w", err)
 	}
-	return &token, nil
+
+	return &repository.LinkToken{
+		Token:            row.Token,
+		SourcePlatform:   row.SourcePlatform,
+		SourcePlatformID: row.SourcePlatformID,
+		TargetPlatform:   row.TargetPlatform,
+		TargetPlatformID: row.TargetPlatformID,
+		State:            row.State.String,
+		CreatedAt:        row.CreatedAt.Time,
+		ExpiresAt:        row.ExpiresAt.Time,
+	}, nil
 }

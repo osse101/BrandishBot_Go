@@ -31,14 +31,11 @@ func AdminRelockCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	}
 
 	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-		}); err != nil {
-			slog.Error("Failed to send deferred response", "error", err)
+		if !deferResponse(s, i) {
 			return
 		}
 
-		options := i.ApplicationCommandData().Options
+		options := getOptions(i)
 		nodeKey := options[0].StringValue()
 		level := 0
 		if len(options) > 1 {
@@ -52,20 +49,8 @@ func AdminRelockCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			return
 		}
 
-		embed := &discordgo.MessageEmbed{
-			Title:       "🔒 Admin Relock",
-			Description: msg,
-			Color:       0x95a5a6, // Grey
-			Footer: &discordgo.MessageEmbedFooter{
-				Text: "BrandishBot Admin",
-			},
-		}
-
-		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Embeds: &[]*discordgo.MessageEmbed{embed},
-		}); err != nil {
-			slog.Error("Failed to send response", "error", err)
-		}
+		embed := createEmbed("🔒 Admin Relock", msg, 0x95a5a6, FooterBrandishBotAdmin)
+		sendEmbed(s, i, embed)
 	}
 
 	return cmd, handler
@@ -74,16 +59,13 @@ func AdminRelockCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 // AdminInstantResolveCommand returns the admin instant resolve command
 func AdminInstantResolveCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	cmd := &discordgo.ApplicationCommand{
-		Name:        "admin-instant-resolve",
-		Description: "[Admin] Force end voting and unlock winner immediately",
+		Name:                     "admin-instant-resolve",
+		Description:              "[Admin] Force end voting and unlock winner immediately",
 		DefaultMemberPermissions: &[]int64{discordgo.PermissionAdministrator}[0],
 	}
 
 	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-		}); err != nil {
-			slog.Error("Failed to send deferred response", "error", err)
+		if !deferResponse(s, i) {
 			return
 		}
 
@@ -94,20 +76,8 @@ func AdminInstantResolveCommand() (*discordgo.ApplicationCommand, CommandHandler
 			return
 		}
 
-		embed := &discordgo.MessageEmbed{
-			Title:       "⚡ Admin Instant Resolve",
-			Description: msg,
-			Color:       0xf1c40f, // Yellow
-			Footer: &discordgo.MessageEmbedFooter{
-				Text: "BrandishBot Admin",
-			},
-		}
-
-		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Embeds: &[]*discordgo.MessageEmbed{embed},
-		}); err != nil {
-			slog.Error("Failed to send response", "error", err)
-		}
+		embed := createEmbed("⚡ Admin Instant Resolve", msg, 0xf1c40f, FooterBrandishBotAdmin)
+		sendEmbed(s, i, embed)
 	}
 
 	return cmd, handler
@@ -130,14 +100,11 @@ func AdminResetTreeCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	}
 
 	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-		}); err != nil {
-			slog.Error("Failed to send deferred response", "error", err)
+		if !deferResponse(s, i) {
 			return
 		}
 
-		options := i.ApplicationCommandData().Options
+		options := getOptions(i)
 		confirmation := options[0].StringValue()
 
 		if confirmation != "CONFIRM RESET" {
@@ -145,10 +112,7 @@ func AdminResetTreeCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			return
 		}
 
-		user := i.Member.User
-		if user == nil {
-			user = i.User
-		}
+		user := getInteractionUser(i)
 
 		msg, err := client.AdminResetProgression(user.Username, "Discord Admin Command", true)
 		if err != nil {
@@ -157,20 +121,8 @@ func AdminResetTreeCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			return
 		}
 
-		embed := &discordgo.MessageEmbed{
-			Title:       "☢️ Progression Tree Reset",
-			Description: msg,
-			Color:       0xff0000, // Red
-			Footer: &discordgo.MessageEmbedFooter{
-				Text: "BrandishBot Admin",
-			},
-		}
-
-		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Embeds: &[]*discordgo.MessageEmbed{embed},
-		}); err != nil {
-			slog.Error("Failed to send response", "error", err)
-		}
+		embed := createEmbed("☢️ Progression Tree Reset", msg, 0xff0000, FooterBrandishBotAdmin)
+		sendEmbed(s, i, embed)
 	}
 
 	return cmd, handler
@@ -179,16 +131,13 @@ func AdminResetTreeCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 // AdminTreeStatusCommand returns the tree status command
 func AdminTreeStatusCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	cmd := &discordgo.ApplicationCommand{
-		Name:        "admin-tree-status",
-		Description: "[Admin] View full progression tree status",
+		Name:                     "admin-tree-status",
+		Description:              "[Admin] View full progression tree status",
 		DefaultMemberPermissions: &[]int64{discordgo.PermissionAdministrator}[0],
 	}
 
 	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-		}); err != nil {
-			slog.Error("Failed to send deferred response", "error", err)
+		if !deferResponse(s, i) {
 			return
 		}
 
@@ -200,7 +149,7 @@ func AdminTreeStatusCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		}
 
 		statusText := formatTreeStatus(nodes)
-		
+
 		// Check length limit
 		if len(statusText) > 4000 {
 			// Send as file if too long
@@ -219,20 +168,8 @@ func AdminTreeStatusCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			return
 		}
 
-		embed := &discordgo.MessageEmbed{
-			Title:       "🌳 Progression Tree Status",
-			Description: statusText,
-			Color:       0x2ecc71,
-			Footer: &discordgo.MessageEmbedFooter{
-				Text: "BrandishBot Admin",
-			},
-		}
-
-		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Embeds: &[]*discordgo.MessageEmbed{embed},
-		}); err != nil {
-			slog.Error("Failed to send response", "error", err)
-		}
+		embed := createEmbed("🌳 Progression Tree Status", statusText, 0x2ecc71, FooterBrandishBotAdmin)
+		sendEmbed(s, i, embed)
 	}
 
 	return cmd, handler
@@ -241,43 +178,17 @@ func AdminTreeStatusCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 // AdminStartVotingCommand returns the start voting command
 func AdminStartVotingCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	cmd := &discordgo.ApplicationCommand{
-		Name:        "admin-start-voting",
-		Description: "[Admin] Start a new voting session",
+		Name:                     "admin-start-voting",
+		Description:              "[Admin] Start a new voting session",
 		DefaultMemberPermissions: &[]int64{discordgo.PermissionAdministrator}[0],
 	}
 
-	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-		}); err != nil {
-			slog.Error("Failed to send deferred response", "error", err)
-			return
-		}
-
-		msg, err := client.AdminStartVoting()
-		if err != nil {
-			errorMsg := fmt.Sprintf("❌ Failed to start voting: %v", err)
-			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-				Content: &errorMsg,
-			})
-			return
-		}
-
-		embed := &discordgo.MessageEmbed{
-			Title:       "🗳️ Admin Start Voting",
-			Description: msg,
-			Color:       0x9B59B6, // Purple
-			Footer: &discordgo.MessageEmbedFooter{
-				Text: "BrandishBot Admin",
-			},
-		}
-
-		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Embeds: &[]*discordgo.MessageEmbed{embed},
-		}); err != nil {
-			slog.Error("Failed to edit interaction response", "error", err)
-		}
-	}
+	handler := genericAdminCommandHandler(
+		"🗳️ Admin Start Voting",
+		0x9B59B6,
+		"Failed to start voting",
+		func(c *APIClient) (string, error) { return c.AdminStartVoting() },
+	)
 
 	return cmd, handler
 }
@@ -285,43 +196,17 @@ func AdminStartVotingCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 // AdminEndVotingCommand returns the end voting command
 func AdminEndVotingCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	cmd := &discordgo.ApplicationCommand{
-		Name:        "admin-end-voting",
-		Description: "[Admin] End current voting session",
+		Name:                     "admin-end-voting",
+		Description:              "[Admin] End current voting session",
 		DefaultMemberPermissions: &[]int64{discordgo.PermissionAdministrator}[0],
 	}
 
-	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-		}); err != nil {
-			slog.Error("Failed to send deferred response", "error", err)
-			return
-		}
-
-		msg, err := client.AdminEndVoting()
-		if err != nil {
-			errorMsg := fmt.Sprintf("❌ Failed to end voting: %v", err)
-			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-				Content: &errorMsg,
-			})
-			return
-		}
-
-		embed := &discordgo.MessageEmbed{
-			Title:       "🛑 Admin End Voting",
-			Description: msg,
-			Color:       0x9B59B6, // Purple
-			Footer: &discordgo.MessageEmbedFooter{
-				Text: "BrandishBot Admin",
-			},
-		}
-
-		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Embeds: &[]*discordgo.MessageEmbed{embed},
-		}); err != nil {
-			slog.Error("Failed to edit interaction response", "error", err)
-		}
-	}
+	handler := genericAdminCommandHandler(
+		"🛑 Admin End Voting",
+		0x9B59B6,
+		"Failed to end voting",
+		func(c *APIClient) (string, error) { return c.AdminEndVoting() },
+	)
 
 	return cmd, handler
 }
@@ -343,40 +228,67 @@ func AdminAddContributionCommand() (*discordgo.ApplicationCommand, CommandHandle
 	}
 
 	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-		}); err != nil {
-			slog.Error("Failed to send deferred response", "error", err)
+		if !deferResponse(s, i) {
 			return
 		}
 
-		options := i.ApplicationCommandData().Options
+		options := getOptions(i)
 		amount := int(options[0].IntValue())
 
 		msg, err := client.AdminAddContribution(amount)
 		if err != nil {
 			errorMsg := fmt.Sprintf("❌ Failed to add contribution: %v", err)
-			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 				Content: &errorMsg,
-			})
+			}); err != nil {
+				slog.Error("Failed to send error response", "error", err)
+			}
 			return
 		}
 
-		embed := &discordgo.MessageEmbed{
-			Title:       "📈 Admin Contribution Added",
-			Description: fmt.Sprintf("Successfully added **%d** contribution points.\n\n%s", amount, msg),
-			Color:       0x2ecc71, // Green
-			Footer: &discordgo.MessageEmbedFooter{
-				Text: "BrandishBot Admin",
-			},
-		}
-
-		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Embeds: &[]*discordgo.MessageEmbed{embed},
-		}); err != nil {
-			slog.Error("Failed to edit interaction response", "error", err)
-		}
+		embed := createEmbed("📈 Admin Contribution Added", fmt.Sprintf("Successfully added **%d** contribution points.\n\n%s", amount, msg), 0x2ecc71, FooterBrandishBotAdmin)
+		sendEmbed(s, i, embed)
 	}
 
 	return cmd, handler
+}
+
+// AdminReloadWeightsCommand returns the reload weights command definition and handler
+func AdminReloadWeightsCommand() (*discordgo.ApplicationCommand, CommandHandler) {
+	cmd := &discordgo.ApplicationCommand{
+		Name:                     "admin-reload-weights",
+		Description:              "[Admin] Reload engagement weight cache",
+		DefaultMemberPermissions: &[]int64{discordgo.PermissionAdministrator}[0],
+	}
+
+	handler := genericAdminCommandHandler(
+		"🔄 Engagement Weights Reloaded",
+		0x3498db,
+		"Failed to reload weights",
+		func(c *APIClient) (string, error) { return c.AdminReloadWeights() },
+	)
+
+	return cmd, handler
+}
+
+func genericAdminCommandHandler(title string, color int, errLogMsg string, action func(*APIClient) (string, error)) CommandHandler {
+	return func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
+		if !deferResponse(s, i) {
+			return
+		}
+
+		msg, err := action(client)
+		if err != nil {
+			errorMsg := fmt.Sprintf("❌ %s: %v", errLogMsg, err)
+			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+				Content: &errorMsg,
+			}); err != nil {
+				slog.Error("Failed to send error response", "error", err)
+			}
+			return
+		}
+
+		embed := createEmbed(title, msg, color, FooterBrandishBotAdmin)
+		sendEmbed(s, i, embed)
+	}
 }

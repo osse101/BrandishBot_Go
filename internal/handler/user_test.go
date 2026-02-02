@@ -7,10 +7,13 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
-	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
+	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/mocks"
 )
 
@@ -74,7 +77,7 @@ func TestHandleRegisterUser(t *testing.T) {
 			},
 			setupMock:      func(m *mocks.MockUserService) {},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Validation failed",
+			expectedBody:   "Invalid request",
 		},
 		{
 			name: "Service Error - Register Failed",
@@ -87,10 +90,10 @@ func TestHandleRegisterUser(t *testing.T) {
 			},
 			setupMock: func(m *mocks.MockUserService) {
 				m.On("FindUserByPlatformID", mock.Anything, domain.PlatformTwitch, "12345").Return(nil, errors.New("not found"))
-				m.On("RegisterUser", mock.Anything, mock.Anything).Return(domain.User{}, errors.New("db error"))
+				m.On("RegisterUser", mock.Anything, mock.Anything).Return(domain.User{}, errors.New(ErrMsgGenericServerError))
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "Failed to register user",
+			expectedBody:   ErrMsgGenericServerError,
 		},
 	}
 
@@ -112,6 +115,107 @@ func TestHandleRegisterUser(t *testing.T) {
 				assert.Contains(t, w.Body.String(), tt.expectedBody)
 			}
 			mockSvc.AssertExpectations(t)
+		})
+	}
+}
+
+func TestHandleGetTimeout(t *testing.T) {
+	tests := []struct {
+		name           string
+		queryParams    map[string]string
+		setupMock      func(*mocks.MockUserService)
+		expectedStatus int
+		verifyBody     func(*testing.T, string)
+	}{
+		{
+			name:        "Success - Is Timed Out",
+			queryParams: map[string]string{"username": "baduser"},
+			setupMock: func(m *mocks.MockUserService) {
+				m.On("GetTimeoutPlatform", mock.Anything, domain.PlatformTwitch, "baduser").Return(time.Duration(60)*time.Second, nil) // 1 minute
+			},
+			expectedStatus: http.StatusOK,
+			verifyBody: func(t *testing.T, body string) {
+				var resp map[string]interface{}
+				err := json.Unmarshal([]byte(body), &resp)
+				require.NoError(t, err)
+				assert.Equal(t, domain.PlatformTwitch, resp["platform"])
+				assert.Equal(t, "baduser", resp["username"])
+				assert.Equal(t, true, resp["is_timed_out"])
+				assert.Equal(t, 60.0, resp["remaining_seconds"])
+			},
+		},
+		{
+			name:        "Success - Not Timed Out",
+			queryParams: map[string]string{"username": "gooduser"},
+			setupMock: func(m *mocks.MockUserService) {
+				m.On("GetTimeoutPlatform", mock.Anything, domain.PlatformTwitch, "gooduser").Return(time.Duration(0), nil)
+			},
+			expectedStatus: http.StatusOK,
+			verifyBody: func(t *testing.T, body string) {
+				var resp map[string]interface{}
+				err := json.Unmarshal([]byte(body), &resp)
+				require.NoError(t, err)
+				assert.Equal(t, domain.PlatformTwitch, resp["platform"])
+				assert.Equal(t, "gooduser", resp["username"])
+				assert.Equal(t, false, resp["is_timed_out"])
+				assert.Equal(t, 0.0, resp["remaining_seconds"])
+			},
+		},
+		{
+			name:        "Success - With Explicit Platform",
+			queryParams: map[string]string{"username": "discorduser", "platform": domain.PlatformDiscord},
+			setupMock: func(m *mocks.MockUserService) {
+				m.On("GetTimeoutPlatform", mock.Anything, domain.PlatformDiscord, "discorduser").Return(time.Duration(30)*time.Second, nil)
+			},
+			expectedStatus: http.StatusOK,
+			verifyBody: func(t *testing.T, body string) {
+				var resp map[string]interface{}
+				err := json.Unmarshal([]byte(body), &resp)
+				require.NoError(t, err)
+				assert.Equal(t, domain.PlatformDiscord, resp["platform"])
+				assert.Equal(t, "discorduser", resp["username"])
+				assert.Equal(t, true, resp["is_timed_out"])
+				assert.Equal(t, 30.0, resp["remaining_seconds"])
+			},
+		},
+		{
+			name:           "Missing Username",
+			queryParams:    map[string]string{},
+			setupMock:      func(m *mocks.MockUserService) {},
+			expectedStatus: http.StatusBadRequest,
+			verifyBody:     func(t *testing.T, body string) {},
+		},
+		{
+			name:        "Service Error",
+			queryParams: map[string]string{"username": "erroruser"},
+			setupMock: func(m *mocks.MockUserService) {
+				m.On("GetTimeoutPlatform", mock.Anything, domain.PlatformTwitch, "erroruser").Return(time.Duration(0), errors.New(ErrMsgGenericServerError))
+			},
+			expectedStatus: http.StatusInternalServerError,
+			verifyBody:     func(t *testing.T, body string) {},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockSvc := mocks.NewMockUserService(t)
+			tt.setupMock(mockSvc)
+
+			handler := HandleGetTimeout(mockSvc)
+
+			req := httptest.NewRequest("GET", "/user/timeout", nil)
+			q := req.URL.Query()
+			for k, v := range tt.queryParams {
+				q.Add(k, v)
+			}
+			req.URL.RawQuery = q.Encode()
+
+			rec := httptest.NewRecorder()
+
+			handler(rec, req)
+
+			assert.Equal(t, tt.expectedStatus, rec.Code)
+			tt.verifyBody(t, rec.Body.String())
 		})
 	}
 }

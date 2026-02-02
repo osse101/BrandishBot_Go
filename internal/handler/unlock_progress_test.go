@@ -7,10 +7,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/osse101/BrandishBot_Go/internal/domain"
-	"github.com/osse101/BrandishBot_Go/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/mocks"
 )
 
 func TestHandleGetUnlockProgress_WithPercentage(t *testing.T) {
@@ -38,6 +39,7 @@ func TestHandleGetUnlockProgress_WithPercentage(t *testing.T) {
 
 	mockService.On("GetUnlockProgress", mock.Anything).Return(mockProgress, nil)
 	mockService.On("GetNode", mock.Anything, nodeID).Return(mockNode, nil)
+	mockService.On("IsNodeUnlocked", mock.Anything, mockNode.NodeKey, targetLevel).Return(false, nil)
 
 	req, _ := http.NewRequest("GET", "/progression/unlock-progress", nil)
 	rr := httptest.NewRecorder()

@@ -3,6 +3,7 @@ package eventlog
 import (
 	"context"
 
+	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 )
@@ -29,13 +30,13 @@ func NewService(repo Repository) Service {
 func (s *service) Subscribe(bus event.Bus) error {
 	// Subscribe to all domain event types
 	eventTypes := []event.Type{
-		"item.sold",
-		"item.bought",
-		"item.upgraded",
-		"item.disassembled",
-		"item.used",
-		"search.performed",
-		"engagement",
+		domain.EventTypeItemSold,
+		domain.EventTypeItemBought,
+		domain.EventTypeItemUpgraded,
+		domain.EventTypeItemDisassembled,
+		domain.EventTypeItemUsed,
+		domain.EventTypeSearchPerformed,
+		domain.EventTypeEngagement,
 	}
 
 	for _, eventType := range eventTypes {
@@ -52,23 +53,23 @@ func (s *service) handleEvent(ctx context.Context, evt event.Event) error {
 	// Extract payload as map
 	payload, ok := evt.Payload.(map[string]interface{})
 	if !ok {
-		log.Debug("Event payload is not a map, skipping log", "type", evt.Type)
+		log.Debug(LogMsgEventPayloadNotMap, LogFieldType, evt.Type)
 		return nil
 	}
 
 	// Extract user_id if present
 	var userID *string
-	if uid, ok := payload["user_id"].(string); ok {
+	if uid, ok := payload[PayloadKeyUserID].(string); ok {
 		userID = &uid
 	}
 
 	// Log event to database
 	if err := s.repo.LogEvent(ctx, string(evt.Type), userID, payload, evt.Metadata); err != nil {
-		log.Error("Failed to log event to database", "error", err, "type", evt.Type)
+		log.Error(LogMsgFailedToLogEvent, LogFieldError, err, LogFieldType, evt.Type)
 		return err
 	}
 
-	log.Debug("Event logged to database", "type", evt.Type, "user_id", userID)
+	log.Debug(LogMsgEventLogged, LogFieldType, evt.Type, LogFieldUserID, userID)
 	return nil
 }
 

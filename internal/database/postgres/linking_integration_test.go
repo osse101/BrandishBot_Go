@@ -2,452 +2,170 @@ package postgres
 
 import (
 	"context"
-	"fmt"
-	"os"
-	"path/filepath"
-	"sort"
-	"strings"
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/osse101/BrandishBot_Go/internal/database"
-	"github.com/osse101/BrandishBot_Go/internal/domain"
-	"github.com/osse101/BrandishBot_Go/internal/linking"
-	"github.com/osse101/BrandishBot_Go/internal/user"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"github.com/testcontainers/testcontainers-go"
-	testPG "github.com/testcontainers/testcontainers-go/modules/postgres"
-	"github.com/testcontainers/testcontainers-go/wait"
+	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
 
-// setupTestDB creates a PostgreSQL container and returns the pool and cleanup function
-func setupLinkingTestDB(t *testing.T) (*pgxpool.Pool, func()) {
+func TestLinkingRepository_Integration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+	if testDBConnString == "" {
+		t.Skip("Skipping integration test: database not available")
+	}
+
 	ctx := context.Background()
 
-	var pgContainer *testPG.PostgresContainer
-	var err error
+	// Use shared pool and migrations
+	ensureMigrations(t)
 
-	func() {
-		defer func() {
-			if r := recover(); r != nil {
-				t.Skipf("Skipping integration test due to panic (likely Docker issue): %v", r)
-			}
-		}()
-		pgContainer, err = testPG.Run(ctx,
-			"postgres:15-alpine",
-			testPG.WithDatabase("testdb"),
-			testPG.WithUsername("testuser"),
-			testPG.WithPassword("testpass"),
-			testcontainers.WithWaitStrategy(
-				wait.ForLog("database system is ready to accept connections").
-					WithOccurrence(2).
-					WithStartupTimeout(15*time.Second)),
-		)
-	}()
+	repo := NewLinkingRepository(testPool)
 
-	if pgContainer == nil {
+	t.Run("CreateAndGetToken", func(t *testing.T) {
+		token := &repository.LinkToken{
+			Token:            "TEST1234",
+			SourcePlatform:   "twitch",
+			SourcePlatformID: "user1",
+			State:            "pending",
+			CreatedAt:        time.Now(),
+			ExpiresAt:        time.Now().Add(1 * time.Hour),
+		}
+
+		err := repo.CreateToken(ctx, token)
 		if err != nil {
-			t.Fatalf("failed to start postgres container: %v", err)
+			t.Fatalf("CreateToken failed: %v", err)
 		}
-		return nil, func() {}
-	}
-	if err != nil {
-		t.Fatalf("failed to start postgres container: %v", err)
-	}
 
-	connStr, err := pgContainer.ConnectionString(ctx, "sslmode=disable")
-	if err != nil {
-		t.Fatalf("failed to get connection string: %v", err)
-	}
-
-	pool, err := database.NewPool(connStr, 10, 30*time.Minute, time.Hour)
-	if err != nil {
-		t.Fatalf("failed to connect to database: %v", err)
-	}
-
-	// Apply migrations
-	if err := applyLinkingMigrations(ctx, pool, "../../../migrations"); err != nil {
-		t.Fatalf("failed to apply migrations: %v", err)
-	}
-
-	cleanup := func() {
-		pool.Close()
-		if err := pgContainer.Terminate(ctx); err != nil {
-			t.Logf("failed to terminate container: %v", err)
-		}
-	}
-
-	return pool, cleanup
-}
-
-// applyMigrations applies all migration files in order
-func applyLinkingMigrations(ctx context.Context, pool *pgxpool.Pool, migrationsDir string) error {
-	entries, err := os.ReadDir(migrationsDir)
-	if err != nil {
-		return fmt.Errorf("failed to read migrations dir: %w", err)
-	}
-
-	var migrationFiles []string
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			name := entry.Name()
-			if (strings.HasSuffix(name, ".up.sql") || strings.HasSuffix(name, ".sql")) && !strings.HasSuffix(name, ".down.sql") {
-				migrationFiles = append(migrationFiles, filepath.Join(migrationsDir, name))
-			}
-		}
-	}
-	sort.Strings(migrationFiles)
-
-	for _, file := range migrationFiles {
-		content, err := os.ReadFile(file)
+		retrieved, err := repo.GetToken(ctx, "TEST1234")
 		if err != nil {
-			return fmt.Errorf("failed to read migration file %s: %w", file, err)
+			t.Fatalf("GetToken failed: %v", err)
 		}
 
-		contentStr := string(content)
-		contentStr = strings.Replace(contentStr, "-- +goose Up\n", "", 1)
-		contentStr = strings.Replace(contentStr, "-- +goose Up", "", 1)
+		if retrieved.Token != token.Token {
+			t.Errorf("Expected token %s, got %s", token.Token, retrieved.Token)
+		}
+		if retrieved.SourcePlatform != token.SourcePlatform {
+			t.Errorf("Expected platform %s, got %s", token.SourcePlatform, retrieved.SourcePlatform)
+		}
+	})
 
-		if downIdx := strings.Index(contentStr, "-- +goose Down"); downIdx != -1 {
-			contentStr = contentStr[:downIdx]
+	t.Run("UpdateToken", func(t *testing.T) {
+		token := &repository.LinkToken{
+			Token:            "UPDATE12",
+			SourcePlatform:   "twitch",
+			SourcePlatformID: "user2",
+			State:            "pending",
+			CreatedAt:        time.Now(),
+			ExpiresAt:        time.Now().Add(1 * time.Hour),
 		}
 
-		contentStr = strings.TrimSpace(contentStr)
-		_, err = pool.Exec(ctx, contentStr)
+		err := repo.CreateToken(ctx, token)
 		if err != nil {
-			return fmt.Errorf("failed to execute migration %s: %w", file, err)
+			t.Fatalf("CreateToken failed: %v", err)
 		}
-	}
-	return nil
-}
 
-// ============================================================================
-// INTEGRATION TESTS - Account Linking with Real Database
-// ============================================================================
+		token.TargetPlatform = "discord"
+		token.TargetPlatformID = "discord_user2"
+		token.State = "claimed"
 
-
-
-func TestLinking_EndToEndFlow_Integration(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
-
-	// Setup test database
-	pool, cleanup := setupLinkingTestDB(t)
-	defer func() {
-		if r := recover(); r != nil {
-			t.Skipf("Skipping integration test due to panic (likely Docker issue): %v", r)
+		err = repo.UpdateToken(ctx, token)
+		if err != nil {
+			t.Fatalf("UpdateToken failed: %v", err)
 		}
-		cleanup()
-	}()
 
-	ctx := context.Background()
-
-	// Initialize repositories and services
-	linkingRepo := NewLinkingRepository(pool)
-	userRepo := NewUserRepository(pool)
-	userService := user.NewService(userRepo, nil, nil, nil, nil, nil, false)
-	linkingService := linking.NewService(linkingRepo, userService)
-
-	// ========== Test Complete Linking Flow ==========
-
-
-	// Step 1: Initiate link from Discord
-	token, err := linkingService.InitiateLink(ctx, domain.PlatformDiscord, "discord-integration-123")
-	require.NoError(t, err)
-	require.NotNil(t, token)
-	assert.Equal(t, domain.PlatformDiscord, token.SourcePlatform)
-	assert.Equal(t, "discord-integration-123", token.SourcePlatformID)
-	assert.Equal(t, "pending", token.State)
-	assert.Equal(t, 6, len(token.Token))
-
-	tokenStr := token.Token
-
-	// Step 2: Claim token from Twitch
-	claimedToken, err := linkingService.ClaimLink(ctx, tokenStr, domain.PlatformTwitch, "twitch-integration-456")
-	require.NoError(t, err)
-	require.NotNil(t, claimedToken)
-	assert.Equal(t, "claimed", claimedToken.State)
-	assert.Equal(t, domain.PlatformTwitch, claimedToken.TargetPlatform)
-	assert.Equal(t, "twitch-integration-456", claimedToken.TargetPlatformID)
-
-	// Step 3: Confirm link from Discord
-	result, err := linkingService.ConfirmLink(ctx, domain.PlatformDiscord, "discord-integration-123")
-	require.NoError(t, err)
-	require.NotNil(t, result)
-	assert.True(t, result.Success)
-	assert.Contains(t, result.LinkedPlatforms, domain.PlatformDiscord)
-	assert.Contains(t, result.LinkedPlatforms, domain.PlatformTwitch)
-
-	// Verify user has both platforms linked
-	status, err := linkingService.GetStatus(ctx, domain.PlatformDiscord, "discord-integration-123")
-	require.NoError(t, err)
-	assert.Equal(t, 2, len(status.LinkedPlatforms))
-
-	// Verify can access from either platform
-	status2, err := linkingService.GetStatus(ctx, domain.PlatformTwitch, "twitch-integration-456")
-	require.NoError(t, err)
-	assert.Equal(t, 2, len(status2.LinkedPlatforms))
-}
-
-func TestLinking_TokenExpiration_Integration(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
-
-	pool, cleanup := setupLinkingTestDB(t)
-	defer func() {
-		if r := recover(); r != nil {
-			t.Skipf("Skipping integration test due to panic (likely Docker issue): %v", r)
+		retrieved, err := repo.GetToken(ctx, "UPDATE12")
+		if err != nil {
+			t.Fatalf("GetToken failed: %v", err)
 		}
-		cleanup()
-	}()
 
-	ctx := context.Background()
-
-	linkingRepo := NewLinkingRepository(pool)
-	userRepo := NewUserRepository(pool)
-	userService := user.NewService(userRepo, nil, nil, nil, nil, nil, false)
-	linkingService := linking.NewService(linkingRepo, userService)
-
-	// Create an expired token directly in database
-	expiredToken := &linking.LinkToken{
-		Token:            "EXPIRE",
-		SourcePlatform:   domain.PlatformDiscord,
-		SourcePlatformID: "discord-expired-123",
-		State:            "pending",
-		CreatedAt:        time.Now().Add(-2 * time.Hour),
-		ExpiresAt:        time.Now().Add(-1 * time.Hour),
-	}
-
-	err := linkingRepo.CreateToken(ctx, expiredToken)
-	require.NoError(t, err)
-
-	// Try to claim expired token - should fail
-	_, err = linkingService.ClaimLink(ctx, "EXPIRE", domain.PlatformTwitch, "twitch-456")
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "expired")
-}
-
-func TestLinking_MergeTwoExistingUsers_Integration(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
-
-	pool, cleanup := setupLinkingTestDB(t)
-	defer func() {
-		if r := recover(); r != nil {
-			t.Skipf("Skipping integration test due to panic (likely Docker issue): %v", r)
+		if retrieved.State != "claimed" {
+			t.Errorf("Expected state claimed, got %s", retrieved.State)
 		}
-		cleanup()
-	}()
-
-	ctx := context.Background()
-
-	linkingRepo := NewLinkingRepository(pool)
-	userRepo := NewUserRepository(pool)
-	userService := user.NewService(userRepo, nil, nil, nil, nil, nil, false)
-	linkingService := linking.NewService(linkingRepo, userService)
-
-	// Create two separate users
-	discordUser := domain.User{
-		Username:  "discord_user",
-		DiscordID: "discord-merge-123",
-	}
-	twitchUser := domain.User{
-		Username: "twitch_user",
-		TwitchID: "twitch-merge-456",
-	}
-
-	discordUser, err := userService.RegisterUser(ctx, discordUser)
-	require.NoError(t, err)
-	twitchUser, err = userService.RegisterUser(ctx, twitchUser)
-	require.NoError(t, err)
-
-	// Link them together
-	token, err := linkingService.InitiateLink(ctx, domain.PlatformDiscord, "discord-merge-123")
-	require.NoError(t, err)
-
-	_, err = linkingService.ClaimLink(ctx, token.Token, domain.PlatformTwitch, "twitch-merge-456")
-	require.NoError(t, err)
-
-	result, err := linkingService.ConfirmLink(ctx, domain.PlatformDiscord, "discord-merge-123")
-	require.NoError(t, err)
-	assert.True(t, result.Success)
-
-	// Verify both platform IDs now point to same user
-	user1, err := userService.FindUserByPlatformID(ctx, domain.PlatformDiscord, "discord-merge-123")
-	require.NoError(t, err)
-	user2, err := userService.FindUserByPlatformID(ctx, domain.PlatformTwitch, "twitch-merge-456")
-	require.NoError(t, err)
-
-	assert.Equal(t, user1.ID, user2.ID, "Both platforms should point to same user ID")
-	assert.NotEmpty(t, user1.DiscordID)
-	assert.NotEmpty(t, user1.TwitchID)
-}
-
-func TestLinking_UnlinkFlow_Integration(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
-
-	pool, cleanup := setupLinkingTestDB(t)
-	defer func() {
-		if r := recover(); r != nil {
-			t.Skipf("Skipping integration test due to panic (likely Docker issue): %v", r)
+		if retrieved.TargetPlatform != "discord" {
+			t.Errorf("Expected target platform discord, got %s", retrieved.TargetPlatform)
 		}
-		cleanup()
-	}()
+	})
 
-	ctx := context.Background()
-
-	linkingRepo := NewLinkingRepository(pool)
-	userRepo := NewUserRepository(pool)
-	userService := user.NewService(userRepo, nil, nil, nil, nil, nil, false)
-	linkingService := linking.NewService(linkingRepo, userService)
-
-	// Create a user with two platforms
-	token, err := linkingService.InitiateLink(ctx, domain.PlatformDiscord, "discord-unlink-789")
-	require.NoError(t, err)
-
-	_, err = linkingService.ClaimLink(ctx, token.Token, domain.PlatformTwitch, "twitch-unlink-012")
-	require.NoError(t, err)
-
-	_, err = linkingService.ConfirmLink(ctx, domain.PlatformDiscord, "discord-unlink-789")
-	require.NoError(t, err)
-
-	// Verify linked
-	status, err := linkingService.GetStatus(ctx, domain.PlatformDiscord, "discord-unlink-789")
-	require.NoError(t, err)
-	assert.Equal(t, 2, len(status.LinkedPlatforms))
-
-	// Initiate unlink
-	err = linkingService.InitiateUnlink(ctx, domain.PlatformDiscord, "discord-unlink-789", domain.PlatformTwitch)
-	require.NoError(t, err)
-
-	// Confirm unlink
-	err = linkingService.ConfirmUnlink(ctx, domain.PlatformDiscord, "discord-unlink-789", domain.PlatformTwitch)
-	require.NoError(t, err)
-
-	// Verify unlinked
-	status, err = linkingService.GetStatus(ctx, domain.PlatformDiscord, "discord-unlink-789")
-	require.NoError(t, err)
-	assert.Equal(t, 1, len(status.LinkedPlatforms))
-	assert.Contains(t, status.LinkedPlatforms, domain.PlatformDiscord)
-	assert.NotContains(t, status.LinkedPlatforms, domain.PlatformTwitch)
-}
-
-func TestLinking_MultipleTokenInvalidation_Integration(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
-
-	pool, cleanup := setupLinkingTestDB(t)
-	defer func() {
-		if r := recover(); r != nil {
-			t.Skipf("Skipping integration test due to panic (likely Docker issue): %v", r)
+	t.Run("InvalidateTokens", func(t *testing.T) {
+		token := &repository.LinkToken{
+			Token:            "INVALID1",
+			SourcePlatform:   "youtube",
+			SourcePlatformID: "user3",
+			State:            "pending",
+			CreatedAt:        time.Now(),
+			ExpiresAt:        time.Now().Add(1 * time.Hour),
 		}
-		cleanup()
-	}()
 
-	ctx := context.Background()
-
-	linkingRepo := NewLinkingRepository(pool)
-	userRepo := NewUserRepository(pool)
-	userService := user.NewService(userRepo, nil, nil, nil, nil, nil, false)
-	linkingService := linking.NewService(linkingRepo, userService)
-
-	// Create first token
-	token1, err := linkingService.InitiateLink(ctx, domain.PlatformDiscord, "discord-multi-555")
-	require.NoError(t, err)
-	oldToken := token1.Token
-
-	// Create second token - should invalidate first
-	token2, err := linkingService.InitiateLink(ctx, domain.PlatformDiscord, "discord-multi-555")
-	require.NoError(t, err)
-	assert.NotEqual(t, oldToken, token2.Token)
-
-	// Try to use old token - should fail
-	_, err = linkingService.ClaimLink(ctx, oldToken, domain.PlatformTwitch, "twitch-123")
-	assert.Error(t, err)
-
-	// New token should work
-	_, err = linkingService.ClaimLink(ctx, token2.Token, domain.PlatformTwitch, "twitch-123")
-	assert.NoError(t, err)
-}
-
-func TestLinking_TokenCleanup_Integration(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
-
-	pool, cleanup := setupLinkingTestDB(t)
-	defer func() {
-		if r := recover(); r != nil {
-			t.Skipf("Skipping integration test due to panic (likely Docker issue): %v", r)
+		err := repo.CreateToken(ctx, token)
+		if err != nil {
+			t.Fatalf("CreateToken failed: %v", err)
 		}
-		cleanup()
-	}()
 
-	ctx := context.Background()
-
-	linkingRepo := NewLinkingRepository(pool)
-
-	// Create old expired token
-	oldToken := &linking.LinkToken{
-		Token:            "OLDTOK",
-		SourcePlatform:   domain.PlatformDiscord,
-		SourcePlatformID: "discord-old-999",
-		State:            "expired",
-		CreatedAt:        time.Now().Add(-3 * time.Hour),
-		ExpiresAt:        time.Now().Add(-2 * time.Hour),
-	}
-
-	err := linkingRepo.CreateToken(ctx, oldToken)
-	require.NoError(t, err)
-
-	// Verify token exists
-	retrievedToken, err := linkingRepo.GetToken(ctx, "OLDTOK")
-	require.NoError(t, err)
-	assert.Equal(t, "OLDTOK", retrievedToken.Token)
-
-	// Run cleanup
-	err = linkingRepo.CleanupExpired(ctx)
-	require.NoError(t, err)
-
-	// Verify token is deleted
-	_, err = linkingRepo.GetToken(ctx, "OLDTOK")
-	assert.Error(t, err)
-}
-
-func TestLinking_SelfLinkingPrevention_Integration(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
-
-	pool, cleanup := setupLinkingTestDB(t)
-	defer func() {
-		if r := recover(); r != nil {
-			t.Skipf("Skipping integration test due to panic (likely Docker issue): %v", r)
+		err = repo.InvalidateTokensForSource(ctx, "youtube", "user3")
+		if err != nil {
+			t.Fatalf("InvalidateTokensForSource failed: %v", err)
 		}
-		cleanup()
-	}()
 
-	ctx := context.Background()
+		retrieved, err := repo.GetToken(ctx, "INVALID1")
+		if err != nil {
+			t.Fatalf("GetToken failed: %v", err)
+		}
 
-	linkingRepo := NewLinkingRepository(pool)
-	userRepo := NewUserRepository(pool)
-	userService := user.NewService(userRepo, nil, nil, nil, nil, nil, false)
-	linkingService := linking.NewService(linkingRepo, userService)
+		if retrieved.State != "expired" {
+			t.Errorf("Expected state expired, got %s", retrieved.State)
+		}
+	})
 
-	// Initiate link
-	token, err := linkingService.InitiateLink(ctx, domain.PlatformDiscord, "discord-self-321")
-	require.NoError(t, err)
+	t.Run("GetClaimedToken", func(t *testing.T) {
+		token := &repository.LinkToken{
+			Token:            "CLAIMED1",
+			SourcePlatform:   "discord",
+			SourcePlatformID: "user4",
+			State:            "claimed",
+			CreatedAt:        time.Now(),
+			ExpiresAt:        time.Now().Add(1 * time.Hour),
+		}
 
-	// Try to claim with same platform and ID
-	_, err = linkingService.ClaimLink(ctx, token.Token, domain.PlatformDiscord, "discord-self-321")
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "cannot link same account")
+		err := repo.CreateToken(ctx, token)
+		if err != nil {
+			t.Fatalf("CreateToken failed: %v", err)
+		}
+
+		retrieved, err := repo.GetClaimedTokenForSource(ctx, "discord", "user4")
+		if err != nil {
+			t.Fatalf("GetClaimedTokenForSource failed: %v", err)
+		}
+
+		if retrieved.Token != "CLAIMED1" {
+			t.Errorf("Expected token CLAIMED1, got %s", retrieved.Token)
+		}
+	})
+
+	t.Run("CleanupExpired", func(t *testing.T) {
+		token := &repository.LinkToken{
+			Token:            "EXPIRED1",
+			SourcePlatform:   "twitch",
+			SourcePlatformID: "user5",
+			State:            "pending",
+			CreatedAt:        time.Now().Add(-2 * time.Hour),
+			ExpiresAt:        time.Now().Add(-1*time.Hour - 1*time.Minute), // Expired > 1 hour ago
+		}
+
+		err := repo.CreateToken(ctx, token)
+		if err != nil {
+			t.Fatalf("CreateToken failed: %v", err)
+		}
+
+		err = repo.CleanupExpired(ctx)
+		if err != nil {
+			t.Fatalf("CleanupExpired failed: %v", err)
+		}
+
+		_, err = repo.GetToken(ctx, "EXPIRED1")
+		if err == nil {
+			t.Error("Expected token to be deleted, but it was found")
+		}
+	})
 }

@@ -17,6 +17,7 @@ The Progression System provides community-driven feature unlocking through votin
 **Description**: Returns the complete progression tree with unlock status for each node.
 
 **Response**:
+
 ```json
 {
   "nodes": [
@@ -40,6 +41,7 @@ The Progression System provides community-driven feature unlocking through votin
 ```
 
 **Fields**:
+
 - `node_key` - Unique identifier for the node
 - `node_type` - Type: `feature`, `item`, `upgrade`, `mechanic`
 - `max_level` - Maximum unlock level (typically 1, but can be higher for upgrades)
@@ -56,6 +58,7 @@ The Progression System provides community-driven feature unlocking through votin
 **Description**: Returns nodes that are currently available for voting (prerequisites met, not yet unlocked).
 
 **Response**:
+
 ```json
 {
   "available": [
@@ -80,6 +83,7 @@ The Progression System provides community-driven feature unlocking through votin
 **Description**: Submit a vote for unlocking a specific node/level.
 
 **Request Body**:
+
 ```json
 {
   "user_id": "user123",
@@ -89,6 +93,7 @@ The Progression System provides community-driven feature unlocking through votin
 ```
 
 **Response** (Success):
+
 ```json
 {
   "message": "Vote recorded successfully",
@@ -104,6 +109,7 @@ The Progression System provides community-driven feature unlocking through votin
 ```
 
 **Error Responses**:
+
 - `400` - User already voted, node already unlocked, or prerequisites not met
 - `404` - Node not found
 - `500` - Server error
@@ -117,6 +123,7 @@ The Progression System provides community-driven feature unlocking through votin
 **Description**: Get current voting status and unlock statistics.
 
 **Response**:
+
 ```json
 {
   "active_voting": {
@@ -142,9 +149,11 @@ The Progression System provides community-driven feature unlocking through votin
 **Description**: Get engagement metrics for a specific user.
 
 **Query Parameters**:
+
 - `user_id` (required) - User ID to get engagement for
 
 **Response**:
+
 ```json
 {
   "user_id": "user123",
@@ -165,6 +174,7 @@ The Progression System provides community-driven feature unlocking through votin
 ```
 
 **Score Calculation**:
+
 ```
 Total Score = (messages × 1.0) + (commands × 2.0) + (items_crafted × 3.0) + (items_used × 1.5)
 Example: (50 × 1.0) + (25 × 2.0) + (8 × 3.0) + (12 × 1.5) = 50 + 50 + 24 + 18 = 142
@@ -183,6 +193,7 @@ Example: (50 × 1.0) + (25 × 2.0) + (8 × 3.0) + (12 × 1.5) = 50 + 50 + 24 + 1
 **Description**: Forcefully unlock a node at a specific level (bypasses voting).
 
 **Request Body**:
+
 ```json
 {
   "node_key": "feature_upgrade",
@@ -191,6 +202,7 @@ Example: (50 × 1.0) + (25 × 2.0) + (8 × 3.0) + (12 × 1.5) = 50 + 50 + 24 + 1
 ```
 
 **Response**:
+
 ```json
 {
   "message": "Node unlocked successfully",
@@ -200,6 +212,7 @@ Example: (50 × 1.0) + (25 × 2.0) + (8 × 3.0) + (12 × 1.5) = 50 + 50 + 24 + 1
 ```
 
 **Use Cases**:
+
 - Testing features before public unlock
 - Special events or milestones
 - Correcting unlock issues
@@ -213,6 +226,7 @@ Example: (50 × 1.0) + (25 × 2.0) + (8 × 3.0) + (12 × 1.5) = 50 + 50 + 24 + 1
 **Description**: Relock a previously unlocked node.
 
 **Request Body**:
+
 ```json
 {
   "node_key": "feature_upgrade",
@@ -221,6 +235,7 @@ Example: (50 × 1.0) + (25 × 2.0) + (8 × 3.0) + (12 × 1.5) = 50 + 50 + 24 + 1
 ```
 
 **Response**:
+
 ```json
 {
   "message": "Node relocked successfully",
@@ -238,6 +253,7 @@ Example: (50 × 1.0) + (25 × 2.0) + (8 × 3.0) + (12 × 1.5) = 50 + 50 + 24 + 1
 **Description**: End active voting early and unlock the node immediately.
 
 **Request Body**:
+
 ```json
 {
   "node_key": "item_money"
@@ -245,6 +261,7 @@ Example: (50 × 1.0) + (25 × 2.0) + (8 × 3.0) + (12 × 1.5) = 50 + 50 + 24 + 1
 ```
 
 **Response**:
+
 ```json
 {
   "message": "Voting ended and node unlocked",
@@ -262,6 +279,7 @@ Example: (50 × 1.0) + (25 × 2.0) + (8 × 3.0) + (12 × 1.5) = 50 + 50 + 24 + 1
 **Description**: Reset the entire progression tree (annual reset).
 
 **Request Body**:
+
 ```json
 {
   "reset_by": "admin_username",
@@ -271,9 +289,11 @@ Example: (50 × 1.0) + (25 × 2.0) + (8 × 3.0) + (12 × 1.5) = 50 + 50 + 24 + 1
 ```
 
 **Parameters**:
+
 - `preserve_user_data` - If true, keeps user-specific progression (recipes unlocked)
 
 **Response**:
+
 ```json
 {
   "message": "Progression tree reset successfully",
@@ -297,11 +317,13 @@ Certain endpoints are feature-gated and return `403 Forbidden` if the feature is
 - **Disassemble Items** (`POST /user/item/disassemble`) → Requires `feature_disassemble` unlocked
 
 **Error Response**:
+
 ```json
 {
   "error": "Upgrade feature is not yet unlocked"
 }
 ```
+
 **Status Code**: `403 Forbidden`
 
 ---
@@ -310,12 +332,12 @@ Certain endpoints are feature-gated and return `403 Forbidden` if the feature is
 
 User actions are automatically tracked for progression:
 
-| Action | Metric Type | Weight | Examples |
-|--------|------------|--------|----------|
-| Send Message | `message` | 1.0 | Chat messages |
-| Use Command | `command` | 2.0 | Any API endpoint |
-| Craft/Upgrade Item | `item_crafted` | 3.0 | Upgrade, disassemble |
-| Use Item | `item_used` | 1.5 | Consume potions, etc. |
+| Action             | Metric Type    | Weight | Examples              |
+| ------------------ | -------------- | ------ | --------------------- |
+| Send Message       | `message`      | 1.0    | Chat messages         |
+| Use Command        | `command`      | 2.0    | Any API endpoint      |
+| Craft/Upgrade Item | `item_crafted` | 3.0    | Upgrade, disassemble  |
+| Use Item           | `item_used`    | 1.5    | Consume potions, etc. |
 
 **Tracking is automatic** - handlers record engagement after successful operations.
 
@@ -342,7 +364,7 @@ graph TD
     D -->|No| F[Voting Fails]
     E --> G[Feature/Item Active]
     F --> H[Voting Can Restart]
-    
+
     Z[Admin Override] -.->|instant-unlock| E
 ```
 
@@ -350,20 +372,21 @@ graph TD
 
 ## Error Codes
 
-| Code | Meaning | Common Causes |
-|------|---------|---------------|
-| 400 | Bad Request | Invalid JSON, missing fields, already voted |
-| 403 | Forbidden | Feature not unlocked, prerequisites not met |
-| 404 | Not Found | Node doesn't exist |
-| 500 | Internal Server Error | Database error, service failure |
+| Code | Meaning               | Common Causes                               |
+| ---- | --------------------- | ------------------------------------------- |
+| 400  | Bad Request           | Invalid JSON, missing fields, already voted |
+| 403  | Forbidden             | Feature not unlocked, prerequisites not met |
+| 404  | Not Found             | Node doesn't exist                          |
+| 500  | Internal Server Error | Database error, service failure             |
 
 ---
 
 ## Rate Limiting
 
-*To be implemented in production*
+_To be implemented in production_
 
 Recommended limits:
+
 - Voting: 1 vote per user per node/level
 - Status checks: 100 requests/minute per IP
 - Admin operations: 10 requests/minute per admin
@@ -419,7 +442,7 @@ helper := progression.NewTestHelper(progressionService)
 helper.UnlockAllFeatures(ctx) // Unlocks buy, sell, upgrade, disassemble
 
 // Or unlock specific features:
-helper.UnlockFeature(ctx, progression.FeatureBuy)
+helper.UnlockFeature(ctx, progression.FeatureEconomy)
 ```
 
 ---

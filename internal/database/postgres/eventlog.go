@@ -3,30 +3,29 @@ package postgres
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"strings"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/osse101/BrandishBot_Go/internal/database/generated"
 	"github.com/osse101/BrandishBot_Go/internal/eventlog"
 )
 
 type eventLogRepository struct {
-	db *pgxpool.Pool
+	pool *pgxpool.Pool
+	q    *generated.Queries
 }
 
 // NewEventLogRepository creates a new PostgreSQL event log repository
-func NewEventLogRepository(db *pgxpool.Pool) eventlog.Repository {
-	return &eventLogRepository{db: db}
+func NewEventLogRepository(pool *pgxpool.Pool) eventlog.Repository {
+	return &eventLogRepository{
+		pool: pool,
+		q:    generated.New(pool),
+	}
 }
 
 // LogEvent stores an event in the database
 func (r *eventLogRepository) LogEvent(ctx context.Context, eventType string, userID *string, payload, metadata map[string]interface{}) error {
-	query := `
-		INSERT INTO events (event_type, user_id, payload, metadata)
-		VALUES ($1, $2, $3, $4)
-	`
-
 	payloadJSON, err := json.Marshal(payload)
 	if err != nil {
 		return err
@@ -40,152 +39,142 @@ func (r *eventLogRepository) LogEvent(ctx context.Context, eventType string, use
 		}
 	}
 
-	_, err = r.db.Exec(ctx, query, eventType, userID, payloadJSON, metadataJSON)
-	return err
+	var uid pgtype.Text
+	if userID != nil {
+		uid = pgtype.Text{String: *userID, Valid: true}
+	} else {
+		uid = pgtype.Text{Valid: false}
+	}
+
+	return r.q.LogEvent(ctx, generated.LogEventParams{
+		EventType: eventType,
+		UserID:    uid,
+		Payload:   payloadJSON,
+		Metadata:  metadataJSON,
+	})
 }
 
 // GetEvents retrieves events based on filter criteria
 func (r *eventLogRepository) GetEvents(ctx context.Context, filter eventlog.EventFilter) ([]eventlog.Event, error) {
-	var queryBuilder strings.Builder
-	queryBuilder.WriteString(`
-		SELECT id, event_type, user_id, payload, metadata, created_at
-		FROM events
-		WHERE 1=1`)
-
-	args := []interface{}{}
-	argNum := 1
+	// Prepare params
+	params := generated.GetEventsParams{
+		Limit: int32(filter.Limit),
+	}
 
 	if filter.UserID != nil {
-		fmt.Fprintf(&queryBuilder, " AND user_id = $%d", argNum)
-		args = append(args, *filter.UserID)
-		argNum++
+		params.UserID = pgtype.Text{String: *filter.UserID, Valid: true}
+	} else {
+		params.UserID = pgtype.Text{Valid: false}
 	}
 
 	if filter.EventType != nil {
-		fmt.Fprintf(&queryBuilder, " AND event_type = $%d", argNum)
-		args = append(args, *filter.EventType)
-		argNum++
+		params.EventType = pgtype.Text{String: *filter.EventType, Valid: true}
+	} else {
+		params.EventType = pgtype.Text{Valid: false}
 	}
 
 	if filter.Since != nil {
-		fmt.Fprintf(&queryBuilder, " AND created_at >= $%d", argNum)
-		args = append(args, *filter.Since)
-		argNum++
+		params.Since = pgtype.Timestamptz{Time: *filter.Since, Valid: true}
+	} else {
+		params.Since = pgtype.Timestamptz{Valid: false}
 	}
 
 	if filter.Until != nil {
-		fmt.Fprintf(&queryBuilder, " AND created_at <= $%d", argNum)
-		args = append(args, *filter.Until)
-		argNum++
+		params.Until = pgtype.Timestamptz{Time: *filter.Until, Valid: true}
+	} else {
+		params.Until = pgtype.Timestamptz{Valid: false}
 	}
 
-	queryBuilder.WriteString(" ORDER BY created_at DESC")
-
-	if filter.Limit > 0 {
-		fmt.Fprintf(&queryBuilder, " LIMIT $%d", argNum)
-		args = append(args, filter.Limit)
-	}
-
-	rows, err := r.db.Query(ctx, queryBuilder.String(), args...)
+	rows, err := r.q.GetEvents(ctx, params)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	return r.scanEvents(rows)
+	events := make([]eventlog.Event, 0, len(rows))
+	for _, row := range rows {
+		evt, err := mapRowToEvent(row)
+		if err != nil {
+			return nil, err
+		}
+		events = append(events, evt)
+	}
+
+	return events, nil
 }
 
 // GetEventsByUser retrieves events for a specific user
 func (r *eventLogRepository) GetEventsByUser(ctx context.Context, userID string, limit int) ([]eventlog.Event, error) {
-	query := `
-		SELECT id, event_type, user_id, payload, metadata, created_at
-		FROM events
-		WHERE user_id = $1
-		ORDER BY created_at DESC
-		LIMIT $2
-	`
-
-	rows, err := r.db.Query(ctx, query, userID, limit)
+	rows, err := r.q.GetLogEventsByUser(ctx, generated.GetLogEventsByUserParams{
+		UserID: pgtype.Text{String: userID, Valid: true},
+		Limit:  int32(limit),
+	})
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	return r.scanEvents(rows)
+	events := make([]eventlog.Event, 0, len(rows))
+	for _, row := range rows {
+		evt, err := mapRowToEvent(row)
+		if err != nil {
+			return nil, err
+		}
+		events = append(events, evt)
+	}
+
+	return events, nil
 }
 
 // GetEventsByType retrieves events of a specific type
 func (r *eventLogRepository) GetEventsByType(ctx context.Context, eventType string, limit int) ([]eventlog.Event, error) {
-	query := `
-		SELECT id, event_type, user_id, payload, metadata, created_at
-		FROM events
-		WHERE event_type = $1
-		ORDER BY created_at DESC
-		LIMIT $2
-	`
-
-	rows, err := r.db.Query(ctx, query, eventType, limit)
+	rows, err := r.q.GetLogEventsByType(ctx, generated.GetLogEventsByTypeParams{
+		EventType: eventType,
+		Limit:     int32(limit),
+	})
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	return r.scanEvents(rows)
+	events := make([]eventlog.Event, 0, len(rows))
+	for _, row := range rows {
+		evt, err := mapRowToEvent(row)
+		if err != nil {
+			return nil, err
+		}
+		events = append(events, evt)
+	}
+
+	return events, nil
 }
 
 // CleanupOldEvents removes events older than the specified number of days
 func (r *eventLogRepository) CleanupOldEvents(ctx context.Context, retentionDays int) (int64, error) {
-	query := `
-		DELETE FROM events
-		WHERE created_at < NOW() - INTERVAL '1 day' * $1
-	`
-
-	result, err := r.db.Exec(ctx, query, retentionDays)
-	if err != nil {
-		return 0, err
-	}
-
-	return result.RowsAffected(), nil
+	return r.q.CleanupOldEvents(ctx, int32(retentionDays))
 }
 
-// scanEvents scans rows into Event structs
-func (r *eventLogRepository) scanEvents(rows pgx.Rows) ([]eventlog.Event, error) {
-	var events []eventlog.Event
-
-	for rows.Next() {
-		var evt eventlog.Event
-		var payloadJSON, metadataJSON []byte
-
-		err := rows.Scan(
-			&evt.ID,
-			&evt.EventType,
-			&evt.UserID,
-			&payloadJSON,
-			&metadataJSON,
-			&evt.CreatedAt,
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		// Unmarshal payload
-		if err := json.Unmarshal(payloadJSON, &evt.Payload); err != nil {
-			return nil, err
-		}
-
-		// Unmarshal metadata if present
-		if len(metadataJSON) > 0 {
-			if err := json.Unmarshal(metadataJSON, &evt.Metadata); err != nil {
-				return nil, err
-			}
-		}
-
-		events = append(events, evt)
+func mapRowToEvent(row generated.Event) (eventlog.Event, error) {
+	evt := eventlog.Event{
+		ID:        row.ID,
+		EventType: row.EventType,
+		UserID:    nil, // Handle nullable ptr below
+		CreatedAt: row.CreatedAt.Time,
 	}
 
-	if err := rows.Err(); err != nil {
-		return nil, err
+	if row.UserID.Valid {
+		uid := row.UserID.String
+		evt.UserID = &uid
 	}
 
-	return events, nil
+	if len(row.Payload) > eventlog.MinDataLength {
+		if err := json.Unmarshal(row.Payload, &evt.Payload); err != nil {
+			return evt, err
+		}
+	}
+
+	if len(row.Metadata) > eventlog.MinDataLength {
+		if err := json.Unmarshal(row.Metadata, &evt.Metadata); err != nil {
+			return evt, err
+		}
+	}
+
+	return evt, nil
 }

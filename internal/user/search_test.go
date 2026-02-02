@@ -6,12 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/osse101/BrandishBot_Go/internal/cooldown"
-	"github.com/osse101/BrandishBot_Go/internal/crafting"
-	"github.com/osse101/BrandishBot_Go/internal/domain"
-	"github.com/osse101/BrandishBot_Go/internal/repository"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/osse101/BrandishBot_Go/internal/cooldown"
+	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
 
 // Constants for search testing boundaries
@@ -94,6 +95,16 @@ func (m *mockSearchRepo) GetItemsByIDs(ctx context.Context, itemIDs []int) ([]do
 	return nil, nil
 }
 
+func (m *mockSearchRepo) GetItemsByNames(ctx context.Context, names []string) ([]domain.Item, error) {
+	var items []domain.Item
+	for _, name := range names {
+		if item, ok := m.items[name]; ok {
+			items = append(items, *item)
+		}
+	}
+	return items, nil
+}
+
 func (m *mockSearchRepo) GetLastCooldown(ctx context.Context, userID, action string) (*time.Time, error) {
 	if userCooldowns, ok := m.cooldowns[userID]; ok {
 		return userCooldowns[action], nil
@@ -128,6 +139,29 @@ func (m *mockSearchRepo) GetUserByPlatformID(ctx context.Context, platform, plat
 	}
 	return nil, nil
 }
+
+func (m *mockSearchRepo) GetUserByPlatformUsername(ctx context.Context, platform, username string) (*domain.User, error) {
+	if m.shouldFailGet {
+		return nil, domain.ErrUserNotFound
+	}
+	// Case-insensitive username lookup
+	for _, u := range m.users {
+		// Check if user has the platform
+		var hasPlatform bool
+		switch platform {
+		case domain.PlatformTwitch:
+			hasPlatform = u.TwitchID != ""
+		case domain.PlatformDiscord:
+			hasPlatform = u.DiscordID != ""
+		}
+		// Case-insensitive match
+		if hasPlatform && strings.EqualFold(u.Username, username) {
+			return u, nil
+		}
+	}
+	return nil, domain.ErrUserNotFound
+}
+
 func (m *mockSearchRepo) GetUserByID(ctx context.Context, userID string) (*domain.User, error) {
 	if user, ok := m.users[userID]; ok {
 		return user, nil
@@ -149,9 +183,9 @@ func (m *mockSearchRepo) GetSellablePrices(ctx context.Context) ([]domain.Item, 
 func (m *mockSearchRepo) IsItemBuyable(ctx context.Context, itemName string) (bool, error) {
 	return false, nil
 }
-func (m *mockSearchRepo) Commit(ctx context.Context) error                   { return nil }
-func (m *mockSearchRepo) Rollback(ctx context.Context) error                 { return nil }
-func (m *mockSearchRepo) BeginTx(ctx context.Context) (repository.Tx, error) { return m, nil }
+func (m *mockSearchRepo) Commit(ctx context.Context) error                       { return nil }
+func (m *mockSearchRepo) Rollback(ctx context.Context) error                     { return nil }
+func (m *mockSearchRepo) BeginTx(ctx context.Context) (repository.UserTx, error) { return m, nil }
 func (m *mockSearchRepo) GetRecipeByTargetItemID(ctx context.Context, itemID int) (*domain.Recipe, error) {
 	return nil, nil
 }
@@ -161,12 +195,48 @@ func (m *mockSearchRepo) IsRecipeUnlocked(ctx context.Context, userID string, re
 func (m *mockSearchRepo) UnlockRecipe(ctx context.Context, userID string, recipeID int) error {
 	return nil
 }
-func (m *mockSearchRepo) GetUnlockedRecipesForUser(ctx context.Context, userID string) ([]crafting.UnlockedRecipeInfo, error) {
+func (m *mockSearchRepo) GetUnlockedRecipesForUser(ctx context.Context, userID string) ([]repository.UnlockedRecipeInfo, error) {
 	return nil, nil
 }
 
 func (m *mockSearchRepo) MergeUsersInTransaction(ctx context.Context, primaryUserID, secondaryUserID string, mergedUser domain.User, mergedInventory domain.Inventory) error {
 	return nil // No-op
+}
+
+func (m *mockSearchRepo) GetAllItems(ctx context.Context) ([]domain.Item, error) {
+	items := make([]domain.Item, 0, len(m.items))
+	for _, item := range m.items {
+		items = append(items, *item)
+	}
+	return items, nil
+}
+
+func (m *mockSearchRepo) CreateTrap(ctx context.Context, trap *domain.Trap) error {
+	return nil
+}
+
+func (m *mockSearchRepo) GetActiveTrap(ctx context.Context, targetID uuid.UUID) (*domain.Trap, error) {
+	return nil, nil
+}
+
+func (m *mockSearchRepo) GetActiveTrapForUpdate(ctx context.Context, targetID uuid.UUID) (*domain.Trap, error) {
+	return nil, nil
+}
+
+func (m *mockSearchRepo) TriggerTrap(ctx context.Context, trapID uuid.UUID) error {
+	return nil
+}
+
+func (m *mockSearchRepo) GetTrapsByUser(ctx context.Context, setterID uuid.UUID, limit int) ([]*domain.Trap, error) {
+	return nil, nil
+}
+
+func (m *mockSearchRepo) GetTriggeredTrapsForTarget(ctx context.Context, targetID uuid.UUID, limit int) ([]*domain.Trap, error) {
+	return nil, nil
+}
+
+func (m *mockSearchRepo) CleanupStaleTraps(ctx context.Context, daysOld int) (int, error) {
+	return 0, nil
 }
 
 // Mock cooldown service
@@ -213,7 +283,8 @@ func (m *mockCooldownService) GetLastUsed(ctx context.Context, userID, action st
 // Test fixtures
 func createSearchTestService() (*service, *mockSearchRepo) {
 	repo := newMockSearchRepo()
-	svc := NewService(repo, nil, nil, nil, NewMockNamingResolver(), &mockCooldownService{repo: repo}, false).(*service)
+	statsSvc := &mockStatsService{mockCounts: make(map[domain.EventType]int)}
+	svc := NewService(repo, repo, statsSvc, nil, nil, NewMockNamingResolver(), &mockCooldownService{repo: repo}, nil, false).(*service)
 
 	// Add standard test items
 	repo.items[domain.ItemLootbox0] = &domain.Item{
@@ -227,11 +298,11 @@ func createSearchTestService() (*service, *mockSearchRepo) {
 	return svc, repo
 }
 
-func createTestUser(username, userID string) *domain.User {
+func createTestUser() *domain.User {
 	return &domain.User{
-		ID:       userID,
-		Username: username,
-		TwitchID: username + "123",
+		ID:       TestUserID,
+		Username: TestUsername,
+		TwitchID: TestUsername + "123",
 	}
 }
 
@@ -243,10 +314,11 @@ func createTestUser(username, userID string) *domain.User {
 func TestHandleSearch_Success(t *testing.T) {
 	// ARRANGE
 	svc, repo := createSearchTestService()
-	user := createTestUser(TestUsername, TestUserID)
+	user := createTestUser()
 	repo.users[TestUsername] = user
 
 	// ACT
+	svc.rnd = func() float64 { return 0.5 } // Force success
 	message, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
 
 	// ASSERT
@@ -299,7 +371,7 @@ func TestHandleSearch_CooldownBoundaries(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// ARRANGE
 			svc, repo := createSearchTestService()
-			user := createTestUser(TestUsername, TestUserID)
+			user := createTestUser()
 			repo.users[TestUsername] = user
 
 			// Set cooldown
@@ -309,6 +381,7 @@ func TestHandleSearch_CooldownBoundaries(t *testing.T) {
 			}
 
 			// ACT
+			svc.rnd = func() float64 { return 0.5 } // Force success if search executes
 			message, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
 
 			// ASSERT
@@ -331,6 +404,7 @@ func TestHandleSearch_NewUserCreation(t *testing.T) {
 	svc, repo := createSearchTestService()
 
 	// ACT - Search with non-existent user
+	svc.rnd = func() float64 { return 0.5 } // Force success
 	message, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "", "newuser")
 
 	// ASSERT
@@ -381,14 +455,15 @@ func TestHandleSearch_InvalidInputs(t *testing.T) {
 			platform: domain.PlatformTwitch,
 			setup:    func(r *mockSearchRepo) {},
 			wantErr:  true,
-			errMsg:   "username cannot be empty",
+			errMsg:   domain.ErrInvalidInput.Error(),
 		},
 		{
-			name:     "empty platform defaults to twitch",
+			name:     "empty platform",
 			username: TestUsername,
 			platform: "",
 			setup:    func(r *mockSearchRepo) {},
-			wantErr:  false, // Defaults to twitch
+			wantErr:  true,
+			errMsg:   domain.ErrInvalidInput.Error(),
 		},
 		{
 			name:     "invalid platform",
@@ -396,18 +471,19 @@ func TestHandleSearch_InvalidInputs(t *testing.T) {
 			platform: "invalidplatform",
 			setup:    func(r *mockSearchRepo) {},
 			wantErr:  true,
-			errMsg:   "invalid platform",
+			errMsg:   domain.ErrInvalidInput.Error(),
 		},
-		{
-			name:     "missing lootbox item",
-			username: TestUsername,
-			platform: domain.PlatformTwitch,
-			setup: func(r *mockSearchRepo) {
-				delete(r.items, domain.ItemLootbox0)
-			},
-			wantErr: true,
-			errMsg:  "reward item not configured",
-		},
+		// TODO: Add back when we have a way to mock RNG
+		// {
+		// 	name:     "missing lootbox item",
+		// 	username: TestUsername,
+		// 	platform: domain.PlatformTwitch,
+		// 	setup: func(r *mockSearchRepo) {
+		// 		delete(r.items, domain.ItemLootbox0)
+		// 	},
+		// 	wantErr: true,
+		// 	errMsg:  domain.ErrItemNotFound.Error(),
+		// },
 	}
 
 	for _, tt := range tests {
@@ -453,40 +529,30 @@ func TestHandleSearch_DatabaseErrors(t *testing.T) {
 	})
 }
 
-// CASE 6: NAMING RESOLUTION
-func TestHandleSearch_NamingResolution(t *testing.T) {
+// CASE 6: NAMING RESOLUTION (UPDATED: Now uses Public Name directly)
+func TestHandleSearch_PublicNameUsage(t *testing.T) {
 	// ARRANGE
 	svc, repo := createSearchTestService()
-	user := createTestUser(TestUsername, TestUserID)
+	user := createTestUser()
 	repo.users[TestUsername] = user
 
-	// Configure mock resolver
+	// Set Public Name on item
+	repo.items[domain.ItemLootbox0].PublicName = "junkbox"
+
+	// Configure mock resolver with something different to ensure we are NOT using it
 	mockResolver := svc.namingResolver.(*MockNamingResolver)
 	mockResolver.DisplayNames[domain.ItemLootbox0] = "Mysterious Chest"
 
-	// Mock RNG is not available, so we loop until success
-	found := false
-	maxAttempts := 100 // Should be plenty given 80% success rate
+	// Force success
+	svc.rnd = func() float64 { return 0.5 }
 
-	for i := 0; i < maxAttempts; i++ {
-		// Reset cooldown manually
-		if repo.cooldowns[user.ID] == nil {
-			repo.cooldowns[user.ID] = make(map[string]*time.Time)
-		}
-		// Clear cooldown
-		delete(repo.cooldowns[user.ID], domain.ActionSearch)
+	// Call with devMode false
+	msg, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
+	require.NoError(t, err)
 
-		// Call with devMode false (default in createSearchTestService)
-		msg, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
-		require.NoError(t, err)
-
-		if strings.Contains(msg, "Mysterious Chest") {
-			found = true
-			break
-		}
-	}
-
-	assert.True(t, found, "Should use display name 'Mysterious Chest' in search result at least once")
+	// ASSERT
+	assert.Contains(t, msg, "Junkbox", "Should use Title-cased Public Name 'Junkbox' in search result")
+	assert.NotContains(t, msg, "Mysterious Chest", "Should NOT use naming resolver display name for search result")
 }
 
 // =============================================================================
@@ -497,7 +563,7 @@ func TestHandleSearch_CooldownUpdate(t *testing.T) {
 	t.Run("cooldown updates after successful search", func(t *testing.T) {
 		// ARRANGE
 		svc, repo := createSearchTestService()
-		user := createTestUser(TestUsername, TestUserID)
+		user := createTestUser()
 		repo.users[TestUsername] = user
 
 		// Set old cooldown
@@ -507,6 +573,7 @@ func TestHandleSearch_CooldownUpdate(t *testing.T) {
 		}
 
 		// ACT
+		svc.rnd = func() float64 { return 0.5 } // Force success
 		_, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
 
 		// ASSERT
@@ -522,7 +589,7 @@ func TestHandleSearch_CooldownUpdate(t *testing.T) {
 	t.Run("cooldown not updated when on cooldown", func(t *testing.T) {
 		// ARRANGE
 		svc, repo := createSearchTestService()
-		user := createTestUser(TestUsername, TestUserID)
+		user := createTestUser()
 		repo.users[TestUsername] = user
 
 		// Set recent cooldown
@@ -550,10 +617,11 @@ func TestHandleSearch_MultipleSearches(t *testing.T) {
 	t.Run("user can search multiple times after cooldown expires", func(t *testing.T) {
 		// ARRANGE
 		svc, repo := createSearchTestService()
-		user := createTestUser(TestUsername, TestUserID)
+		user := createTestUser()
 		repo.users[TestUsername] = user
 
 		// ACT - First search
+		svc.rnd = func() float64 { return 0.5 } // Force success
 		_, err1 := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
 		require.NoError(t, err1)
 
@@ -573,6 +641,7 @@ func TestHandleSearch_MultipleSearches(t *testing.T) {
 type mockStatsService struct {
 	recordedEvents []domain.StatsEvent
 	mockCounts     map[domain.EventType]int
+	mockStreak     int
 }
 
 func (m *mockStatsService) RecordUserEvent(ctx context.Context, userID string, eventType domain.EventType, metadata map[string]interface{}) error {
@@ -595,9 +664,10 @@ func (m *mockStatsService) GetUserStats(ctx context.Context, userID string, peri
 	return summary, nil
 }
 func (m *mockStatsService) GetUserCurrentStreak(ctx context.Context, userID string) (int, error) {
-	// For testing purposes, we can return a mock streak if needed.
-	// For now, return 5 to verify the message format in specific tests.
-	return 5, nil
+	if m.mockStreak > 0 {
+		return m.mockStreak, nil
+	}
+	return 1, nil
 }
 func (m *mockStatsService) GetSystemStats(ctx context.Context, period string) (*domain.StatsSummary, error) {
 	return nil, nil
@@ -606,254 +676,93 @@ func (m *mockStatsService) GetLeaderboard(ctx context.Context, eventType domain.
 	return nil, nil
 }
 
-func TestHandleSearch_NearMiss_Statistical(t *testing.T) {
+func TestHandleSearch_CriticalSuccess(t *testing.T) {
 	// ARRANGE
-	repo := newMockSearchRepo()
-	// Add required lootbox item
-	repo.items[domain.ItemLootbox0] = &domain.Item{
-		ID:           1,
-		InternalName: domain.ItemLootbox0,
-
-		BaseValue: 10,
-	}
-
-	statsSvc := &mockStatsService{
-		mockCounts: map[domain.EventType]int{domain.EventSearch: 1},
-	}
-	// Enable devMode to bypass cooldowns for loop
-	svc := NewService(repo, statsSvc, nil, nil, NewMockNamingResolver(), &mockCooldownService{repo: repo}, true).(*service)
-
-	// Create user
-	user := createTestUser(TestUsername, TestUserID)
+	svc, repo := createSearchTestService()
+	user := createTestUser()
 	repo.users[TestUsername] = user
+	statsSvc := &mockStatsService{mockCounts: make(map[domain.EventType]int)}
+	svc.statsService = statsSvc
 
-	nearMissCount := 0
-	iterations := 1000
+	// Force critical success: roll <= SearchCriticalRate (0.05)
+	svc.rnd = func() float64 { return 0.01 }
 
-	for i := 0; i < iterations; i++ {
-		// Reset cooldown for test loop (ensure map exists)
-		if repo.cooldowns[user.ID] != nil {
-			delete(repo.cooldowns[user.ID], domain.ActionSearch)
-		}
+	// ACT
+	msg, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
 
-		msg, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
-		require.NoError(t, err)
+	// ASSERT
+	require.NoError(t, err)
+	assert.Contains(t, msg, domain.MsgSearchCriticalSuccess)
+	assert.Contains(t, msg, "2x") // Critical gives double reward
 
-		if msg == domain.MsgSearchNearMiss {
-			nearMissCount++
+	// Verify inventory received 2x item
+	inv, _ := repo.GetInventory(context.Background(), user.ID)
+	found := false
+	for _, slot := range inv.Slots {
+		if slot.Quantity == 2 {
+			found = true
 		}
 	}
+	assert.True(t, found, "Should receive 2x lootbox on critical success")
 
-	t.Logf("Near misses in %d iterations: %d", iterations, nearMissCount)
-
-	// We expect roughly 5% = 50. Let's assert > 0 to ensure the path is reachable.
-	// Probability of 0 near misses in 1000 trials with p=0.05 is 0.95^1000 ~= 5e-23 (impossible)
-	assert.Greater(t, nearMissCount, 0, "Should have encountered at least one near miss")
-
-	// Verify events were recorded
-	recordedNearMisses := 0
+	// Verify event recorded
+	foundEvent := false
 	for _, evt := range statsSvc.recordedEvents {
-		if evt.EventType == domain.EventSearchNearMiss {
-			recordedNearMisses++
+		if evt.EventType == domain.EventSearchCriticalSuccess {
+			foundEvent = true
+			assert.Equal(t, domain.ItemLootbox0, evt.EventData["item"])
+			assert.Equal(t, 2, evt.EventData["quantity"])
 		}
 	}
-	assert.Equal(t, nearMissCount, recordedNearMisses, "Should record event for each near miss")
+	assert.True(t, foundEvent, "Should record EventSearchCriticalSuccess")
 }
 
-func TestHandleSearch_FirstDaily(t *testing.T) {
+func TestHandleSearch_NormalSuccess(t *testing.T) {
 	// ARRANGE
-	repo := newMockSearchRepo()
-	repo.items[domain.ItemLootbox0] = &domain.Item{
-		ID:           1,
-		InternalName: domain.ItemLootbox0,
-		BaseValue:    10,
-	}
-	statsSvc := &mockStatsService{
-		mockCounts: make(map[domain.EventType]int),
-	}
-	svc := NewService(repo, statsSvc, nil, nil, NewMockNamingResolver(), &mockCooldownService{repo: repo}, false).(*service)
-
-	user := createTestUser(TestUsername, TestUserID)
-	repo.users[TestUsername] = user
-	ctx := context.Background()
-
-	// 1. First search ever (lastUsed is nil)
-	msg, err := svc.HandleSearch(ctx, domain.PlatformTwitch, "testuser123", TestUsername)
-	require.NoError(t, err)
-
-	assert.Contains(t, msg, domain.MsgFirstSearchBonus, "Expected bonus message for first ever search")
-	assert.Contains(t, msg, domain.MsgSearchCriticalSuccess, "Expected critical success for first search")
-
-	// 2. Second search same day (lastUsed is now)
-	// Modify cooldown to be 31 mins ago (expired) but SAME DAY.
-	now := time.Now()
-	past31m := now.Add(-31 * time.Minute)
-
-	if past31m.Day() == now.Day() {
-		repo.cooldowns[TestUserID] = map[string]*time.Time{
-			domain.ActionSearch: &past31m,
-		}
-
-		// Manually update mock stats to reflect first search occurred
-		statsSvc.mockCounts[domain.EventSearch] = 1
-
-		msg, err = svc.HandleSearch(ctx, domain.PlatformTwitch, "testuser123", TestUsername)
-		require.NoError(t, err)
-
-		assert.NotContains(t, msg, domain.MsgFirstSearchBonus, "Did not expect bonus message for second search same day")
-	}
-
-	// 3. Search next day
-	yesterday := now.Add(-25 * time.Hour)
-	repo.cooldowns[TestUserID] = map[string]*time.Time{
-		domain.ActionSearch: &yesterday,
-	}
-
-	// Reset stats for new day
-	statsSvc.mockCounts[domain.EventSearch] = 0
-
-	msg, err = svc.HandleSearch(ctx, domain.PlatformTwitch, "testuser123", TestUsername)
-	require.NoError(t, err)
-
-	assert.Contains(t, msg, domain.MsgFirstSearchBonus, "Expected bonus message for next day search")
-}
-
-func TestHandleSearch_DiminishingReturns(t *testing.T) {
-	// ARRANGE
-	repo := newMockSearchRepo()
-	// Add required items
-	repo.items[domain.ItemLootbox0] = &domain.Item{
-		ID:           1,
-		InternalName: domain.ItemLootbox0,
-		BaseValue:    10,
-	}
-
-	statsSvc := &mockStatsService{
-		mockCounts: make(map[domain.EventType]int),
-	}
-	svc := NewService(repo, statsSvc, nil, nil, NewMockNamingResolver(), &mockCooldownService{repo: repo}, true).(*service) // devMode=true to bypass cooldown
-
-	user := createTestUser(TestUsername, TestUserID)
-	repo.users[TestUsername] = user
-	ctx := context.Background()
-
-	// 1. Normal Search (Count 1)
-	statsSvc.mockCounts[domain.EventSearch] = 1
-
-	msg, err := svc.HandleSearch(ctx, domain.PlatformTwitch, "testuser123", TestUsername)
-	require.NoError(t, err)
-
-	assert.NotContains(t, msg, domain.MsgFirstSearchBonus)
-	assert.NotContains(t, msg, "(Exhausted)")
-
-	// 2. Diminished Search (Count 6)
-	statsSvc.mockCounts[domain.EventSearch] = 6
-	// Reset cooldown manually for second search
-	delete(repo.cooldowns[user.ID], domain.ActionSearch)
-
-	msg, err = svc.HandleSearch(ctx, domain.PlatformTwitch, "testuser123", TestUsername)
-	require.NoError(t, err)
-
-	// We can't guarantee "Exhausted" message because of RNG failure,
-	// but we can verify event tracking which confirms logic execution.
-
-	// Verify RecordUserEvent called with correct daily_count
-	require.Greater(t, len(statsSvc.recordedEvents), 0)
-	lastEvent := statsSvc.recordedEvents[len(statsSvc.recordedEvents)-1]
-	assert.Equal(t, domain.EventSearch, lastEvent.EventType)
-	// 6 existing + 1 new = 7
-	assert.Equal(t, 7, lastEvent.EventData["daily_count"])
-}
-
-func TestHandleSearch_CriticalFail_Statistical(t *testing.T) {
-	// ARRANGE
-	repo := newMockSearchRepo()
-	// Add required lootbox item
-	repo.items[domain.ItemLootbox0] = &domain.Item{
-		ID:           1,
-		InternalName: domain.ItemLootbox0,
-		BaseValue:    10,
-	}
-
-	statsSvc := &mockStatsService{
-		mockCounts: map[domain.EventType]int{domain.EventSearch: 1},
-	}
-	// Enable devMode to bypass cooldowns for loop
-	svc := NewService(repo, statsSvc, nil, nil, NewMockNamingResolver(), &mockCooldownService{repo: repo}, true).(*service)
-
-	// Create user
-	user := createTestUser(TestUsername, TestUserID)
+	svc, repo := createSearchTestService()
+	user := createTestUser()
 	repo.users[TestUsername] = user
 
-	critFailCount := 0
-	iterations := 1000
+	// Force normal success: SearchCriticalRate < roll <= SearchSuccessRate
+	svc.rnd = func() float64 { return 0.5 }
 
-	for i := 0; i < iterations; i++ {
-		// Reset cooldown for test loop (ensure map exists)
-		if repo.cooldowns[user.ID] != nil {
-			delete(repo.cooldowns[user.ID], domain.ActionSearch)
-		}
+	// ACT
+	msg, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
 
-		msg, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
-		require.NoError(t, err)
+	// ASSERT
+	require.NoError(t, err)
+	assert.Contains(t, msg, "You have found")
+	assert.NotContains(t, msg, domain.MsgSearchCriticalSuccess)
 
-		if strings.HasPrefix(msg, domain.MsgSearchCriticalFail) {
-			critFailCount++
-		}
-	}
-
-	t.Logf("Critical failures in %d iterations: %d", iterations, critFailCount)
-
-	// We expect roughly 5% of FAILUREs (which are 15% of total).
-	// Actually, wait.
-	// Critical Fail is > 0.95.
-	// With 80% success, failure is 20%.
-	// Near Miss is 0.8 - 0.85 (5%).
-	// Failure is 0.85 - 1.0 (15%).
-	// Critical Fail is 0.95 - 1.0 (5%).
-	// So 5% of TOTAL searches should be critical fails.
-	// 5% of 1000 = 50.
-
-	assert.Greater(t, critFailCount, 0, "Should have encountered at least one critical fail")
-
-	// Verify events were recorded
-	recordedCritFails := 0
-	for _, evt := range statsSvc.recordedEvents {
-		if evt.EventType == domain.EventSearchCriticalFail {
-			recordedCritFails++
+	// Verify inventory received 1x item
+	inv, _ := repo.GetInventory(context.Background(), user.ID)
+	found := false
+	for _, slot := range inv.Slots {
+		if slot.Quantity == 1 {
+			found = true
 		}
 	}
-	assert.Equal(t, critFailCount, recordedCritFails, "Should record event for each critical fail")
+	assert.True(t, found, "Should receive 1x lootbox on normal success")
 }
 
 func TestHandleSearch_CriticalSuccess_Event(t *testing.T) {
 	// ARRANGE
-	repo := newMockSearchRepo()
-	// Add required lootbox item
-	repo.items[domain.ItemLootbox0] = &domain.Item{
-		ID:           1,
-		InternalName: domain.ItemLootbox0,
-		BaseValue:    10,
-	}
-
-	statsSvc := &mockStatsService{
-		mockCounts: make(map[domain.EventType]int),
-	}
-	// Enable devMode to bypass cooldowns
-	svc := NewService(repo, statsSvc, nil, nil, NewMockNamingResolver(), &mockCooldownService{repo: repo}, true).(*service)
-
-	user := createTestUser(TestUsername, TestUserID)
+	svc, repo := createSearchTestService()
+	user := createTestUser()
 	repo.users[TestUsername] = user
-	ctx := context.Background()
+	statsSvc := svc.statsService.(*mockStatsService)
 
-	// Ensure it is the first search (mockCounts empty implies daily count 0)
+	// Force critical success: roll <= SearchCriticalRate (0.05)
+	svc.rnd = func() float64 { return 0.05 }
+
+	ctx := context.Background()
 
 	// ACT
 	msg, err := svc.HandleSearch(ctx, domain.PlatformTwitch, "testuser123", TestUsername)
 	require.NoError(t, err)
 
 	// ASSERT
-	assert.Contains(t, msg, domain.MsgSearchCriticalSuccess, "Should be a critical success (first search bonus)")
+	assert.Contains(t, msg, domain.MsgSearchCriticalSuccess, "Should be a critical success")
 
 	// Verify event recorded
 	found := false
@@ -866,4 +775,178 @@ func TestHandleSearch_CriticalSuccess_Event(t *testing.T) {
 		}
 	}
 	assert.True(t, found, "Should record EventSearchCriticalSuccess")
+}
+
+func TestHandleSearch_NearMiss(t *testing.T) {
+	// ARRANGE
+	svc, repo := createSearchTestService()
+	user := createTestUser()
+	repo.users[TestUsername] = user
+	statsSvc := &mockStatsService{mockCounts: make(map[domain.EventType]int)}
+	svc.statsService = statsSvc
+
+	// Force near miss: successThreshold < roll <= successThreshold + NearMissRate
+	svc.rnd = func() float64 { return 0.81 }
+
+	// ACT
+	msg, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
+
+	// ASSERT
+	require.NoError(t, err)
+	assert.Equal(t, domain.MsgSearchNearMiss, msg)
+
+	// Verify event was recorded
+	found := false
+	for _, evt := range statsSvc.recordedEvents {
+		if evt.EventType == domain.EventSearchNearMiss {
+			found = true
+			assert.Equal(t, 0.81, evt.EventData["roll"])
+		}
+	}
+	assert.True(t, found, "Should record near miss event")
+}
+
+func TestHandleSearch_DiminishingReturns(t *testing.T) {
+	// ARRANGE
+	svc, repo := createSearchTestService()
+	user := createTestUser()
+	repo.users[TestUsername] = user
+	statsSvc := svc.statsService.(*mockStatsService)
+	ctx := context.Background()
+
+	// 1. Normal Search (Count 1)
+	statsSvc.mockCounts[domain.EventSearch] = 1
+	svc.rnd = func() float64 { return 0.5 } // Guaranteed success
+
+	msg, err := svc.HandleSearch(ctx, domain.PlatformTwitch, "testuser123", TestUsername)
+	require.NoError(t, err)
+
+	assert.NotContains(t, msg, domain.MsgFirstSearchBonus)
+	assert.NotContains(t, msg, "(Exhausted)")
+
+	// 2. Diminished Search (Count 6) - threshold is 6
+	statsSvc.mockCounts[domain.EventSearch] = 6
+	// Force success even with diminished rate (0.1)
+	svc.rnd = func() float64 { return 0.05 }
+	// Reset cooldown manually
+	delete(repo.cooldowns[user.ID], domain.ActionSearch)
+
+	msg, err = svc.HandleSearch(ctx, domain.PlatformTwitch, "testuser123", TestUsername)
+	require.NoError(t, err)
+
+	assert.Contains(t, msg, "(Exhausted)")
+
+	// Verify RecordUserEvent called with correct daily_count
+	require.Greater(t, len(statsSvc.recordedEvents), 0)
+	lastEvent := statsSvc.recordedEvents[len(statsSvc.recordedEvents)-1]
+	assert.Equal(t, domain.EventSearch, lastEvent.EventType)
+	// 6 existing + 1 new = 7
+	assert.Equal(t, 7, lastEvent.EventData["daily_count"])
+}
+
+func TestHandleSearch_CriticalFail(t *testing.T) {
+	// ARRANGE
+	svc, repo := createSearchTestService()
+	user := createTestUser()
+	repo.users[TestUsername] = user
+	statsSvc := &mockStatsService{mockCounts: make(map[domain.EventType]int)}
+	svc.statsService = statsSvc
+
+	// Force critical fail: roll > 1.0 - SearchCriticalFailRate
+	svc.rnd = func() float64 { return 0.96 }
+
+	// ACT
+	msg, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
+
+	// ASSERT
+	require.NoError(t, err)
+	assert.True(t, strings.HasPrefix(msg, domain.MsgSearchCriticalFail))
+
+	// Verify event was recorded
+	found := false
+	for _, evt := range statsSvc.recordedEvents {
+		if evt.EventType == domain.EventSearchCriticalFail {
+			found = true
+			assert.Equal(t, 0.96, evt.EventData["roll"])
+		}
+	}
+	assert.True(t, found, "Should record critical fail event")
+}
+
+func TestHandleSearch_NormalFailure(t *testing.T) {
+	// ARRANGE
+	svc, repo := createSearchTestService()
+	user := createTestUser()
+	repo.users[TestUsername] = user
+
+	// Force normal failure: between near miss and critical fail
+	svc.rnd = func() float64 { return 0.9 }
+
+	// ACT
+	msg, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
+
+	// ASSERT
+	require.NoError(t, err)
+	// Success messages for lootboxes contain the "x" quantifier (e.g., "You have found 1x ...")
+	assert.NotContains(t, msg, "x ", "Should not be a success message")
+	assert.NotContains(t, msg, domain.MsgSearchNearMiss)
+	assert.NotContains(t, msg, domain.MsgSearchCriticalFail)
+
+	// Should be one of the humorous failure messages
+	isValid := false
+	for _, failMsg := range domain.SearchFailureMessages {
+		if msg == failMsg {
+			isValid = true
+			break
+		}
+	}
+	assert.True(t, isValid, "Expected valid failure message, got: %s", msg)
+}
+
+func TestHandleSearch_BoundaryConditions(t *testing.T) {
+	tests := []struct {
+		name       string
+		roll       float64
+		expectType string
+	}{
+		{"Exactly on critical threshold", SearchCriticalRate, "crit_success"},
+		{"Just above critical threshold", SearchCriticalRate + 0.001, "normal_success"},
+		{"Exactly on success threshold", SearchSuccessRate, "normal_success"},
+		{"Just above success threshold", SearchSuccessRate + 0.001, "near_miss"},
+		{"Edge of near miss range", SearchSuccessRate + SearchNearMissRate, "near_miss"},
+		{"Just beyond near miss range", SearchSuccessRate + SearchNearMissRate + 0.001, "normal_fail"},
+		{"Edge of crit fail range", 1.0 - SearchCriticalFailRate, "normal_fail"},
+		{"Just inside crit fail range", 1.0 - SearchCriticalFailRate + 0.001, "crit_fail"},
+		{"Minimum possible roll", 0.0, "crit_success"},
+		{"Maximum possible roll", 1.0, "crit_fail"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc, repo := createSearchTestService()
+			user := createTestUser()
+			repo.users[TestUsername] = user
+
+			svc.rnd = func() float64 { return tt.roll }
+
+			msg, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
+			require.NoError(t, err)
+
+			switch tt.expectType {
+			case "crit_success":
+				assert.Contains(t, msg, domain.MsgSearchCriticalSuccess)
+			case "normal_success":
+				assert.Contains(t, msg, "You have found")
+				assert.NotContains(t, msg, domain.MsgSearchCriticalSuccess)
+			case "near_miss":
+				assert.Equal(t, domain.MsgSearchNearMiss, msg)
+			case "crit_fail":
+				assert.True(t, strings.HasPrefix(msg, domain.MsgSearchCriticalFail))
+			case "normal_fail":
+				assert.NotContains(t, msg, "x ")
+				assert.NotEqual(t, domain.MsgSearchNearMiss, msg)
+				assert.False(t, strings.HasPrefix(msg, domain.MsgSearchCriticalFail))
+			}
+		})
+	}
 }

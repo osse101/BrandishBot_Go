@@ -1,15 +1,17 @@
 {
-  "version": "1.0",
-  "description": "BrandishBot Progression Tree - Community-unlockable features and items",
+  "version": "2.0",
+  "description": "BrandishBot Progression Tree - Community-unlockable features and items (Dynamic Cost Calculation)",
   "nodes": [
     {
       "key": "progression_system",
       "name": "Progression System",
       "type": "feature",
       "description": "Unlock the community progression system",
-      "unlock_cost": 0,
+      "tier": 0,
+      "size": "medium",
+      "category": "core",
       "max_level": 1,
-      "parent": null,
+      "prerequisites": [],
       "sort_order": 0,
       "auto_unlock": true
     },
@@ -17,10 +19,14 @@
       "key": "item_money",
       "name": "Money",
       "type": "item",
-      "description": "Unlock the money item for trading",
-      "unlock_cost": 500,
+      "description": "Unlock the money item for trading and commerce",
+      "tier": 0,
+      "size": "small",
+      "category": "items",
       "max_level": 1,
-      "parent": "progression_system",
+      "prerequisites": [
+        "progression_system"
+      ],
       "sort_order": 1,
       "auto_unlock": false
     },
@@ -28,10 +34,14 @@
       "key": "item_lootbox0",
       "name": "Basic Lootbox",
       "type": "item",
-      "description": "Unlock lootbox0 (basic lootbox)",
-      "unlock_cost": 500,
-      "max_level": 1,
-      "parent": "progression_system",
+      "description": "Unlock Basic Lootbox - contains common items and small amounts of currency",
+      "tier": 0,
+      "size": "small",
+      "category": "items",
+      "max_level": 5,
+      "prerequisites": [
+        "progression_system"
+      ],
       "sort_order": 2,
       "auto_unlock": false
     },
@@ -40,32 +50,14 @@
       "name": "Economy System",
       "type": "feature",
       "description": "Unlock buy/sell marketplace features",
-      "unlock_cost": 1500,
+      "tier": 0,
+      "size": "large",
+      "category": "economy",
       "max_level": 1,
-      "parent": "item_money",
+      "prerequisites": [
+        "item_money"
+      ],
       "sort_order": 10,
-      "auto_unlock": false
-    },
-    {
-      "key": "feature_upgrade",
-      "name": "Upgrade Items",
-      "type": "feature",
-      "description": "Unlock item upgrading/crafting system",
-      "unlock_cost": 1500,
-      "max_level": 1,
-      "parent": "item_lootbox0",
-      "sort_order": 20,
-      "auto_unlock": false
-    },
-    {
-      "key": "feature_disassemble",
-      "name": "Disassemble Items",
-      "type": "feature",
-      "description": "Unlock item disassembly for materials",
-      "unlock_cost": 1000,
-      "max_level": 1,
-      "parent": "item_lootbox0",
-      "sort_order": 21,
       "auto_unlock": false
     },
     {
@@ -73,65 +65,250 @@
       "name": "Search System",
       "type": "feature",
       "description": "Unlock item search and filtering",
-      "unlock_cost": 1000,
+      "tier": 1,
+      "size": "large",
+      "category": "exploration",
       "max_level": 1,
-      "parent": "item_lootbox0",
+      "prerequisites": [
+        "item_lootbox0"
+      ],
       "sort_order": 23,
       "auto_unlock": false
     },
     {
-      "key": "feature_buy",
-      "name": "Buy Items",
-      "type": "feature",
-      "description": "Unlock item purchasing from market",
-      "unlock_cost": 800,
+      "key": "item_shovel",
+      "name": "Shovel",
+      "type": "item",
+      "description": "Unlock Shovel - tool for searching and finding buried items",
+      "tier": 2,
+      "size": "medium",
+      "category": "exploration",
       "max_level": 1,
-      "parent": "feature_economy",
-      "sort_order": 11,
+      "prerequisites": [
+        "feature_search"
+      ],
+      "sort_order": 24,
       "auto_unlock": false
     },
     {
-      "key": "feature_sell",
-      "name": "Sell Items",
-      "type": "feature",
-      "description": "Unlock item selling to market",
-      "unlock_cost": 800,
+      "key": "item_stick",
+      "name": "Stick",
+      "type": "item",
+      "description": "Unlock stick - basic crafting material",
+      "tier": 1,
+      "size": "medium",
+      "category": "items",
       "max_level": 1,
-      "parent": "feature_economy",
-      "sort_order": 12,
+      "prerequisites": [
+        "feature_farming"
+      ],
+      "sort_order": 50,
+      "auto_unlock": false
+    },
+    {
+      "key": "item_revives",
+      "name": "Small Revive",
+      "type": "item",
+      "description": "Unlock small revive - reduces timeout by 60s",
+      "tier": 3,
+      "size": "medium",
+      "category": "items",
+      "max_level": 1,
+      "prerequisites": [
+        "item_shield"
+      ],
+      "sort_order": 52,
+      "auto_unlock": false
+    },
+    {
+      "key": "item_this",
+      "name": "This",
+      "type": "item",
+      "description": "Unlock 'this' - meme weapon (101s timeout)",
+      "tier": 3,
+      "size": "medium",
+      "category": "items",
+      "max_level": 1,
+      "prerequisites": [
+        "item_trap"
+      ],
+      "sort_order": 58,
+      "auto_unlock": false
+    },
+    {
+      "key": "feature_upgrade",
+      "name": "Upgrade Item System",
+      "type": "feature",
+      "description": "Unlock item upgrading/crafting system",
+      "tier": 1,
+      "size": "large",
+      "category": "crafting",
+      "max_level": 1,
+      "prerequisites": [
+        "item_lootbox0",
+        "-nodes_unlocked_below_tier:1:4"
+      ],
+      "sort_order": 20,
+      "auto_unlock": false
+    },
+    {
+      "key": "feature_disassemble",
+      "name": "Disassemble System",
+      "type": "feature",
+      "description": "Unlock item disassembly for materials",
+      "tier": 3,
+      "size": "large",
+      "category": "crafting",
+      "max_level": 1,
+      "prerequisites": [
+        "job_blacksmith"
+      ],
+      "sort_order": 21,
       "auto_unlock": false
     },
     {
       "key": "item_lootbox1",
-      "name": "Advanced Lootbox",
+      "name": "Decent Lootbox",
       "type": "item",
-      "description": "Unlock lootbox1 with better rewards",
-      "unlock_cost": 1200,
-      "max_level": 1,
-      "parent": "feature_upgrade",
+      "description": "Unlock Decent Lootbox - improved drop rates and uncommon items",
+      "tier": 1,
+      "size": "medium",
+      "category": "items",
+      "max_level": 5,
+      "prerequisites": [
+        "item_lootbox0"
+      ],
       "sort_order": 22,
       "auto_unlock": false
     },
     {
-      "key": "feature_gamble",
-      "name": "Gambling",
-      "type": "feature",
-      "description": "Unlock gambling mechanics (high risk/reward)",
-      "unlock_cost": 2500,
+      "key": "item_lootbox2",
+      "name": "Good Lootbox",
+      "type": "item",
+      "description": "Unlock Good Lootbox - rare items and better currency drops",
+      "tier": 2,
+      "size": "medium",
+      "category": "items",
+      "max_level": 5,
+      "prerequisites": [
+        "item_lootbox1",
+        "job_gambler"
+      ],
+      "sort_order": 25,
+      "auto_unlock": false
+    },
+    {
+      "key": "upgrade_job_xp_multiplier",
+      "name": "Job XP Boost",
+      "type": "upgrade",
+      "description": "Increase job XP gains and daily cap by +10% per level ",
+      "tier": 3,
+      "size": "small",
+      "category": "upgrades",
+      "max_level": 5,
+      "prerequisites": [
+        "job_scholar",
+        "-nodes_unlocked_below_tier:2:15"
+      ],
+      "sort_order": 41,
+      "auto_unlock": false,
+      "modifier_config": {
+        "feature_key": "job_xp_multiplier",
+        "modifier_type": "multiplicative",
+        "base_value": 1,
+        "per_level_value": 0.1
+      }
+    },
+    {
+      "key": "item_shield",
+      "name": "Shield",
+      "type": "item",
+      "description": "Unlock shield - blocks the next weapon attack",
+      "tier": 2,
+      "size": "medium",
+      "category": "items",
       "max_level": 1,
-      "parent": "feature_economy",
+      "prerequisites": [
+        "weapon_missile"
+      ],
+      "sort_order": 51,
+      "auto_unlock": false
+    },
+    {
+      "key": "item_lootbox3",
+      "name": "Shiny Lootbox",
+      "type": "item",
+      "description": "Unlock Shiny Lootbox - epic items with chance of legendary drops",
+      "tier": 3,
+      "size": "medium",
+      "category": "items",
+      "max_level": 5,
+      "prerequisites": [
+        "item_lootbox2"
+      ],
+      "sort_order": 26,
+      "auto_unlock": false
+    },
+    {
+      "key": "feature_gamble",
+      "name": "Gambling LootBoxes",
+      "type": "feature",
+      "description": "Unlock Lootbox Gambling",
+      "tier": 1,
+      "size": "large",
+      "category": "gambling",
+      "max_level": 1,
+      "prerequisites": [
+        "item_lootbox0"
+      ],
       "sort_order": 30,
       "auto_unlock": false
     },
     {
-      "key": "feature_duel",
-      "name": "Dueling",
-      "type": "feature",
-      "description": "Unlock player vs player combat duels",
-      "unlock_cost": 3000,
+      "key": "item_tnt",
+      "name": "TNT",
+      "type": "item",
+      "description": "Unlock TNT - ultimate explosive with massive effect",
+      "tier": 4,
+      "size": "medium",
+      "category": "items",
       "max_level": 1,
-      "parent": "item_lootbox1",
-      "sort_order": 31,
+      "prerequisites": [
+        "item_this",
+        "-nodes_unlocked_below_tier:2:20"
+      ],
+      "sort_order": 57,
+      "auto_unlock": false
+    },
+    {
+      "key": "item_hugemissile",
+      "name": "Huge Missile",
+      "type": "item",
+      "description": "Unlock huge missile - 100 minute timeout weapon",
+      "tier": 4,
+      "size": "medium",
+      "category": "items",
+      "max_level": 1,
+      "prerequisites": [
+        "weapon_missile",
+        "-nodes_unlocked_below_tier:2:20"
+      ],
+      "sort_order": 61,
+      "auto_unlock": false
+    },
+    {
+      "key": "xp_rarecandy",
+      "name": "Rare Candy",
+      "type": "item",
+      "description": "Unlock rare candy - instantly grants XP to a job",
+      "tier": 2,
+      "size": "medium",
+      "category": "items",
+      "max_level": 1,
+      "prerequisites": [
+        "upgrade_progression_basic"
+      ],
+      "sort_order": 62,
       "auto_unlock": false
     },
     {
@@ -139,21 +316,497 @@
       "name": "Expeditions",
       "type": "feature",
       "description": "Unlock expedition/adventure system",
-      "unlock_cost": 3000,
+      "tier": 4,
+      "size": "large",
+      "category": "exploration",
       "max_level": 1,
-      "parent": "feature_search",
-      "sort_order": 32,
+      "prerequisites": [
+        "job_explorer"
+      ],
+      "sort_order": 43,
       "auto_unlock": false
     },
     {
-      "key": "upgrade_cooldown_reduction",
-      "name": "Cooldown Reduction",
+      "key": "upgrade_gamble_win_bonus",
+      "name": "Gambling Bonus",
       "type": "upgrade",
-      "description": "Reduce command cooldowns (unlockable 5 times)",
-      "unlock_cost": 1500,
+      "description": "Increase gambling winnings by +5% per level",
+      "tier": 2,
+      "size": "small",
+      "category": "upgrades",
       "max_level": 5,
-      "parent": "feature_economy",
+      "prerequisites": [
+        "feature_gamble"
+      ],
+      "sort_order": 43,
+      "auto_unlock": false,
+      "modifier_config": {
+        "feature_key": "gamble_win_bonus",
+        "modifier_type": "multiplicative",
+        "base_value": 1,
+        "per_level_value": 0.05
+      }
+    },
+    {
+      "key": "weapon_missile",
+      "name": "Missile",
+      "type": "item",
+      "description": "Target a player and time them out",
+      "tier": 1,
+      "size": "medium",
+      "category": "weapon",
+      "max_level": 1,
+      "prerequisites": [
+        "item_money"
+      ],
+      "sort_order": 110,
+      "auto_unlock": false
+    },
+    {
+      "key": "item_mine",
+      "name": "Mine Item",
+      "type": "item",
+      "description": "Unlock Explosive Mine - basic trap item",
+      "tier": 1,
+      "size": "small",
+      "category": "items",
+      "max_level": 1,
+      "prerequisites": [
+        "weapon_missile"
+      ],
+      "sort_order": 109,
+      "auto_unlock": false
+    },
+    {
+      "key": "item_grenade",
+      "name": "Grenade",
+      "type": "item",
+      "description": "Randomly time out a user",
+      "tier": 2,
+      "size": "medium",
+      "category": "weapon",
+      "max_level": 1,
+      "prerequisites": [
+        "weapon_missile"
+      ],
+      "sort_order": 111,
+      "auto_unlock": false
+    },
+    {
+      "key": "item_trap",
+      "name": "Trap Item",
+      "type": "item",
+      "description": "Unlock Explosive Trap - targeted time-delayed blast",
+      "tier": 3,
+      "size": "medium",
+      "category": "items",
+      "max_level": 1,
+      "prerequisites": [
+        "item_mine"
+      ],
+      "sort_order": 112,
+      "auto_unlock": false
+    },
+    {
+      "key": "item_bomb",
+      "name": "Bomb",
+      "type": "item",
+      "description": "Unlock Explosive Bomb - A buried trap with many explosives",
+      "tier": 4,
+      "size": "medium",
+      "category": "items",
+      "max_level": 1,
+      "prerequisites": [
+        "item_trap"
+      ],
+      "sort_order": 113,
+      "auto_unlock": false
+    },
+    {
+      "key": "job_blacksmith",
+      "name": "Blacksmith Job",
+      "type": "job",
+      "description": "Job for Upgrading and Disassembling Items",
+      "tier": 2,
+      "size": "medium",
+      "category": "crafting",
+      "max_level": 1,
+      "prerequisites": [
+        "feature_upgrade"
+      ],
+      "sort_order": 70,
+      "auto_unlock": false
+    },
+    {
+      "key": "job_explorer",
+      "name": "Explorer Job",
+      "type": "job",
+      "description": "Job for exploring to find items",
+      "tier": 2,
+      "size": "medium",
+      "category": "exploration",
+      "max_level": 1,
+      "prerequisites": [
+        "feature_search"
+      ],
+      "sort_order": 71,
+      "auto_unlock": false
+    },
+    {
+      "key": "job_gambler",
+      "name": "Gambler Job",
+      "type": "job",
+      "description": "Job for playing games of chance",
+      "tier": 2,
+      "size": "medium",
+      "category": "gambling",
+      "max_level": 1,
+      "prerequisites": [
+        "feature_gamble"
+      ],
+      "sort_order": 72,
+      "auto_unlock": false
+    },
+    {
+      "key": "feature_duel",
+      "name": "Duels Minigame",
+      "type": "feature",
+      "description": "Bet your lives in this game of chance",
+      "tier": 3,
+      "size": "large",
+      "category": "gambling",
+      "max_level": 1,
+      "prerequisites": [
+        "job_gambler"
+      ],
       "sort_order": 40,
+      "auto_unlock": false
+    },
+    {
+      "key": "weapon_mirror",
+      "name": "Mirror Shield",
+      "type": "item",
+      "description": "Reflect attacks back at attackers",
+      "tier": 4,
+      "size": "medium",
+      "category": "combat",
+      "max_level": 1,
+      "prerequisites": [
+        "item_shield",
+        "item_revives"
+      ],
+      "sort_order": 112,
+      "auto_unlock": false
+    },
+    {
+      "key": "feature_farming",
+      "name": "Farming System",
+      "type": "feature",
+      "description": "Take care of the crops for a bountiful harvest",
+      "tier": 1,
+      "size": "large",
+      "category": "farming",
+      "max_level": 1,
+      "prerequisites": [
+        "item_lootbox0"
+      ],
+      "sort_order": 40,
+      "auto_unlock": false
+    },
+    {
+      "key": "job_farmer",
+      "name": "Farmer Job",
+      "type": "job",
+      "description": "Unlock Farmer Job - earn XP through farming activities and crop management",
+      "tier": 2,
+      "size": "medium",
+      "category": "farming",
+      "max_level": 1,
+      "prerequisites": [
+        "feature_farming"
+      ],
+      "sort_order": 73,
+      "auto_unlock": false,
+      "modifier_config": {
+        "feature_key": "farming_yield",
+        "modifier_type": "multiplicative",
+        "base_value": 1.0,
+        "per_level_value": 0.1
+      }
+    },
+    {
+      "key": "feature_compost",
+      "name": "Compost Feature",
+      "type": "feature",
+      "description": "Turn junk into gems through the passage of time",
+      "tier": 3,
+      "size": "large",
+      "category": "farming",
+      "max_level": 1,
+      "prerequisites": [
+        "job_farmer"
+      ],
+      "sort_order": 41,
+      "auto_unlock": false
+    },
+    {
+      "key": "upgrade_progression_basic",
+      "name": "Progression Upgrade Basic",
+      "type": "upgrade",
+      "description": "Improve the rate of progress by 10%",
+      "tier": 1,
+      "size": "small",
+      "category": "core",
+      "max_level": 5,
+      "prerequisites": [
+        "progression_system",
+        "-total_nodes_unlocked:5"
+      ],
+      "sort_order": 90,
+      "auto_unlock": false,
+      "modifier_config": {
+        "feature_key": "progression_rate",
+        "modifier_type": "multiplicative",
+        "base_value": 1.0,
+        "per_level_value": 0.1
+      }
+    },
+    {
+      "key": "job_scholar",
+      "name": "Scholar Job",
+      "type": "job",
+      "description": "Job for using the progression system",
+      "tier": 2,
+      "size": "medium",
+      "category": "core",
+      "max_level": 1,
+      "prerequisites": [
+        "upgrade_progression_basic"
+      ],
+      "sort_order": 75,
+      "auto_unlock": false
+    },
+    {
+      "key": "upgrade_progression_two",
+      "name": "Progression Upgrade 2",
+      "type": "upgrade",
+      "description": "Increase the rate of progress by 10%",
+      "tier": 3,
+      "size": "small",
+      "category": "core",
+      "max_level": 5,
+      "prerequisites": [
+        "job_scholar"
+      ],
+      "sort_order": 95,
+      "auto_unlock": false,
+      "modifier_config": {
+        "feature_key": "progression_rate",
+        "modifier_type": "multiplicative",
+        "base_value": 1.0,
+        "per_level_value": 0.1
+      }
+    },
+    {
+      "key": "upgrade_progression_three",
+      "name": "Progression Upgrade 3",
+      "type": "upgrade",
+      "description": "Increase the rate of progress by 10%",
+      "tier": 4,
+      "size": "small",
+      "category": "core",
+      "max_level": 5,
+      "prerequisites": [
+        "upgrade_progression_two"
+      ],
+      "sort_order": 97,
+      "auto_unlock": false,
+      "modifier_config": {
+        "feature_key": "progression_rate",
+        "modifier_type": "multiplicative",
+        "base_value": 1.0,
+        "per_level_value": 0.1
+      }
+    },
+    {
+      "key": "upgrade_job_level_cap",
+      "name": "Job Level Boost",
+      "type": "upgrade",
+      "description": "Increase the minimum and maximum levels of jobs by 10",
+      "tier": 3,
+      "size": "large",
+      "category": "core",
+      "max_level": 3,
+      "prerequisites": [
+        "job_scholar"
+      ],
+      "sort_order": 96,
+      "auto_unlock": false,
+      "modifier_config": {
+        "feature_key": "job_level_cap",
+        "modifier_type": "linear",
+        "base_value": 0,
+        "per_level_value": 10
+      }
+    },
+    {
+      "key": "upgrade_exploration_1",
+      "name": "Exploration Upgrade",
+      "type": "upgrade",
+      "description": "Improve Search and Expeditions",
+      "tier": 2,
+      "size": "small",
+      "category": "exploration",
+      "max_level": 5,
+      "prerequisites": [
+        "item_shovel"
+      ],
+      "sort_order": 91,
+      "auto_unlock": false,
+      "modifier_config": {
+        "feature_key": "search_quality",
+        "modifier_type": "multiplicative",
+        "base_value": 1.0,
+        "per_level_value": 0.1
+      }
+    },
+    {
+      "key": "item_scrap",
+      "name": "Scrap",
+      "type": "item",
+      "description": "Unlock Scrap - common crafting material from disassembling items",
+      "tier": 2,
+      "size": "medium",
+      "category": "crafting",
+      "max_level": 1,
+      "prerequisites": [
+        "feature_upgrade"
+      ],
+      "sort_order": 12,
+      "auto_unlock": false
+    },
+    {
+      "key": "upgrade_crafting_1",
+      "name": "Crafting Upgrade",
+      "type": "upgrade",
+      "description": "Improve Item Upgrading and Disassembly",
+      "tier": 2,
+      "size": "small",
+      "category": "crafting",
+      "max_level": 5,
+      "prerequisites": [
+        "item_scrap"
+      ],
+      "sort_order": 92,
+      "auto_unlock": false,
+      "modifier_config": {
+        "feature_key": "crafting_success_rate",
+        "modifier_type": "multiplicative",
+        "base_value": 1.0,
+        "per_level_value": 0.1
+      }
+    },
+    {
+      "key": "upgrade_farming_1",
+      "name": "Farming Upgrade",
+      "type": "upgrade",
+      "description": "Improve Farming ",
+      "tier": 2,
+      "size": "small",
+      "category": "farming",
+      "max_level": 5,
+      "prerequisites": [
+        "item_stick"
+      ],
+      "sort_order": 93,
+      "auto_unlock": false,
+      "modifier_config": {
+        "feature_key": "farming_yield",
+        "modifier_type": "multiplicative",
+        "base_value": 1.0,
+        "per_level_value": 0.1
+      }
+    },
+    {
+      "key": "feature_events",
+      "name": "Events Feature",
+      "type": "feature",
+      "description": "Provide a random boost to the community for a price",
+      "tier": 3,
+      "size": "large",
+      "category": "economy",
+      "max_level": 1,
+      "prerequisites": [
+        "job_merchant"
+      ],
+      "sort_order": 42,
+      "auto_unlock": false
+    },
+    {
+      "key": "job_merchant",
+      "name": "Merchant Job",
+      "type": "job",
+      "description": "Unlock Merchant Job - earn XP through buying and selling items",
+      "tier": 2,
+      "size": "large",
+      "category": "economy",
+      "max_level": 1,
+      "prerequisites": [
+        "feature_economy"
+      ],
+      "sort_order": 74,
+      "auto_unlock": false
+    },
+    {
+      "key": "item_script",
+      "name": "Script Item",
+      "type": "item",
+      "description": "Unlock Script - special currency for advanced economy features",
+      "tier": 2,
+      "size": "medium",
+      "category": "economy",
+      "max_level": 1,
+      "prerequisites": [
+        "feature_economy"
+      ],
+      "sort_order": 13,
+      "auto_unlock": false
+    },
+    {
+      "key": "upgrade_economy_1",
+      "name": "Economy Upgrade",
+      "type": "upgrade",
+      "description": "Improve economy features",
+      "tier": 2,
+      "size": "small",
+      "category": "economy",
+      "max_level": 5,
+      "prerequisites": [
+        "item_script"
+      ],
+      "sort_order": 94,
+      "auto_unlock": false,
+      "modifier_config": {
+        "feature_key": "economy_bonus",
+        "modifier_type": "multiplicative",
+        "base_value": 1.0,
+        "per_level_value": 0.05
+      }
+    },
+    {
+      "key": "item_video_filter",
+      "name": "Video Filter",
+      "type": "item",
+      "description": "Apply a filter",
+      "tier": 1,
+      "size": "medium",
+      "category": "items",
+      "max_level": 1,
+      "prerequisites": [
+        "item_money",
+        "-total_nodes_unlocked:5"
+      ],
+      "sort_order": 11,
       "auto_unlock": false
     }
   ]

@@ -219,7 +219,6 @@ Both environments share the same `.env` file but use different values for certai
 - `DB_NAME`
 - `DISCORD_TOKEN`
 - `API_KEY`
-- `STREAMERBOT_WEBHOOK_URL`
 
 **Environment-Specific Variables** (set in docker-compose files):
 
@@ -356,7 +355,6 @@ nano .env
 - `DB_USER` / `DB_PASSWORD` / `DB_NAME`
 - `API_KEY` (generate with `openssl rand -hex 32`)
 - `DISCORD_TOKEN` / `DISCORD_APP_ID` / `DISCORD_GUILD_ID`
-- `STREAMERBOT_WEBHOOK_URL`
 
 #### 4. Deploy Production
 
@@ -575,7 +573,7 @@ docker compose -f docker-compose.production.yml ps db
 docker compose -f docker-compose.staging.yml ps db
 
 # Check database health
-docker compose -f docker-compose.production.yml exec db pg_isready -U $DB_USER
+docker compose -f docker-compose.production.yml exec db pg_isready -U $DB_USER -d $DB_NAME
 
 # Check database logs
 docker compose -f docker-compose.production.yml logs db

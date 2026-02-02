@@ -1,0 +1,26 @@
+# Issue: Progression Service Stabilization and Readiness
+
+## Description
+
+The progression service, while functional, lacks the robustness required for a production environment, specifically regarding graceful shutdown and automated verification of new edge-case features.
+
+### 1. Incomplete Graceful Shutdown
+
+Some asynchronous operations in the progression service (e.g., background unlocks and voting session starts) do not use the service's `WaitGroup`.
+
+- **Impact**: In-flight unlocks may be interrupted during a deployment or restart, potentially leaving the progression tree in an inconsistent state (node unlocked but session not started, or rollover points lost).
+- **Location**: `internal/progression/voting_sessions.go` (various `go` routines).
+
+### 2. Auto-Select Voting Integration Gaps
+
+The new "Auto-Select" feature (bypassing votes when only one node is available) lacks comprehensive integration testing and event signaling.
+
+- **Problem**: There is a risk that `event.TargetSet` is not published consistently, or that contribution rollover doesn't trigger correctly in this specific path.
+- **Impact**: SSE clients (Discord/Streamer.bot) may not receive real-time updates when a lone node is auto-selected.
+- **Location**: `internal/progression/voting_sessions.go:handleSingleOptionAutoSelect`.
+
+## Proposed Solution
+
+- Audit all `go` statements in `internal/progression/` and ensure they use `s.wg.Add(1)` and `defer s.wg.Done()`.
+- Ensure all background routines respect `s.shutdownCtx`.
+- Add integration tests in `internal/progression/service_integration_test.go` specifically covering the transition from an auto-selected node to the next cycle.

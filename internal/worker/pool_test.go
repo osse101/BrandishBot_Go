@@ -18,7 +18,7 @@ func (j *testJob) Process(ctx context.Context) error {
 
 func TestPool(t *testing.T) {
 	var executed int32
-	pool := NewPool(2, 10)
+	pool := NewPool(TestWorkerCount, TestQueueSize)
 	pool.Start()
 
 	job := &testJob{executed: &executed}
@@ -26,11 +26,11 @@ func TestPool(t *testing.T) {
 	pool.Enqueue(job)
 
 	// Wait a bit for workers to process
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(TestWorkerProcessWaitTime * time.Millisecond)
 
 	pool.Stop()
 
-	if atomic.LoadInt32(&executed) != 2 {
-		t.Errorf("Expected 2 jobs executed, got %d", executed)
+	if atomic.LoadInt32(&executed) != TestExpectedJobCount {
+		t.Errorf("Expected %d jobs executed, got %d", TestExpectedJobCount, executed)
 	}
 }

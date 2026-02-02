@@ -9,35 +9,11 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
+	"github.com/osse101/BrandishBot_Go/internal/naming"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/osse101/BrandishBot_Go/internal/stats"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
-
-// Repository defines the interface for data access required by the crafting service
-type Repository interface {
-	GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error)
-	GetItemByName(ctx context.Context, itemName string) (*domain.Item, error)
-	GetItemByID(ctx context.Context, id int) (*domain.Item, error)
-	GetItemsByIDs(ctx context.Context, itemIDs []int) ([]domain.Item, error)
-	GetInventory(ctx context.Context, userID string) (*domain.Inventory, error)
-	UpdateInventory(ctx context.Context, userID string, inventory domain.Inventory) error
-	GetRecipeByTargetItemID(ctx context.Context, itemID int) (*domain.Recipe, error)
-	IsRecipeUnlocked(ctx context.Context, userID string, recipeID int) (bool, error)
-	UnlockRecipe(ctx context.Context, userID string, recipeID int) error
-	GetUnlockedRecipesForUser(ctx context.Context, userID string) ([]UnlockedRecipeInfo, error)
-	BeginTx(ctx context.Context) (repository.Tx, error)
-
-	GetDisassembleRecipeBySourceItemID(ctx context.Context, itemID int) (*domain.DisassembleRecipe, error)
-	GetAssociatedUpgradeRecipeID(ctx context.Context, disassembleRecipeID int) (int, error)
-	GetAllRecipes(ctx context.Context) ([]RecipeListItem, error)
-}
-
-// RecipeListItem represents a recipe in a list
-type RecipeListItem struct {
-	ItemName string `json:"item_name"`
-	ItemID   int    `json:"item_id"`
-}
 
 // RecipeInfo represents recipe information with lock status
 type RecipeInfo struct {
@@ -46,14 +22,8 @@ type RecipeInfo struct {
 	BaseCost []domain.RecipeCost `json:"base_cost,omitempty"`
 }
 
-// UnlockedRecipeInfo represents an unlocked recipe
-type UnlockedRecipeInfo struct {
-	ItemName string `json:"item_name"`
-	ItemID   int    `json:"item_id"`
-}
-
-// CraftingResult contains the result of an upgrade operation
-type CraftingResult struct {
+// Result contains the result of an upgrade operation
+type Result struct {
 	ItemName      string `json:"item_name"`
 	Quantity      int    `json:"quantity"`
 	IsMasterwork  bool   `json:"is_masterwork"`
@@ -70,10 +40,10 @@ type DisassembleResult struct {
 
 // Service defines the interface for crafting operations
 type Service interface {
-	UpgradeItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (*CraftingResult, error)
+	UpgradeItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (*Result, error)
 	GetRecipe(ctx context.Context, itemName, platform, platformID, username string) (*RecipeInfo, error)
-	GetUnlockedRecipes(ctx context.Context, platform, platformID, username string) ([]UnlockedRecipeInfo, error)
-	GetAllRecipes(ctx context.Context) ([]RecipeListItem, error)
+	GetUnlockedRecipes(ctx context.Context, platform, platformID, username string) ([]repository.UnlockedRecipeInfo, error)
+	GetAllRecipes(ctx context.Context) ([]repository.RecipeListItem, error)
 	DisassembleItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (*DisassembleResult, error)
 	Shutdown(ctx context.Context) error
 }
@@ -83,34 +53,32 @@ type JobService interface {
 	AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error)
 }
 
-// Crafting balance constants
-// MasterworkChance determines the probability of a masterwork craft occurring (10% = 1 in 10 crafts)
-// MasterworkMultiplier is applied to output quantity when masterwork procs (2x output)
-const (
-	MasterworkChance     = 0.10
-	MasterworkMultiplier = 2
+// ProgressionService defines the interface for progression operations
+type ProgressionService interface {
+	GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error)
+}
 
-	// PerfectSalvageChance is the probability of a "Perfect Salvage" occurring during disassembly
-	PerfectSalvageChance = 0.10
-	// PerfectSalvageMultiplier is the bonus multiplier for materials when Perfect Salvage triggers
-	PerfectSalvageMultiplier = 1.5
-)
+// Crafting balance constants are defined in constants.go
 
 type service struct {
-	repo       Repository
-	jobService JobService
-	statsSvc   stats.Service
-	rnd        func() float64 // For rolling RNG (does not need to be cryptographically secure)
-	wg         sync.WaitGroup // Tracks async goroutines for graceful shutdown
+	repo           repository.Crafting
+	jobService     JobService
+	progressionSvc ProgressionService
+	statsSvc       stats.Service
+	namingResolver naming.Resolver // For resolving public names to internal names
+	rnd            func() float64  // For rolling RNG (does not need to be cryptographically secure)
+	wg             sync.WaitGroup  // Tracks async goroutines for graceful shutdown
 }
 
 // NewService creates a new crafting service
-func NewService(repo Repository, jobService JobService, statsSvc stats.Service) Service {
+func NewService(repo repository.Crafting, jobService JobService, statsSvc stats.Service, namingResolver naming.Resolver, progressionSvc ProgressionService) Service {
 	return &service{
-		repo:       repo,
-		jobService: jobService,
-		statsSvc:   statsSvc,
-		rnd:        utils.RandomFloat,
+		repo:           repo,
+		jobService:     jobService,
+		progressionSvc: progressionSvc,
+		statsSvc:       statsSvc,
+		namingResolver: namingResolver,
+		rnd:            utils.RandomFloat,
 	}
 }
 
@@ -120,7 +88,7 @@ func (s *service) validateUser(ctx context.Context, platform, platformID string)
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 	if user == nil {
-		return nil, fmt.Errorf("user not found")
+		return nil, domain.ErrUserNotFound
 	}
 	return user, nil
 }
@@ -131,9 +99,60 @@ func (s *service) validateItem(ctx context.Context, itemName string) (*domain.It
 		return nil, fmt.Errorf("failed to get item: %w", err)
 	}
 	if item == nil {
-		return nil, fmt.Errorf("item not found: %s", itemName)
+		return nil, fmt.Errorf("item not found: %s | %w", itemName, domain.ErrItemNotFound)
 	}
 	return item, nil
+}
+
+func (s *service) validateQuantity(quantity int) error {
+	if quantity <= 0 {
+		return fmt.Errorf("quantity must be positive (got %d): %w", quantity, domain.ErrInvalidQuantity)
+	}
+	return nil
+}
+
+func (s *service) validatePlatformInput(platform, platformID string) error {
+	if platform == "" || platformID == "" {
+		return fmt.Errorf("platform and platformID cannot be empty: %w", domain.ErrInvalidInput)
+	}
+	validPlatforms := []string{domain.PlatformTwitch, domain.PlatformDiscord, domain.PlatformYoutube}
+	for _, p := range validPlatforms {
+		if platform == p {
+			return nil
+		}
+	}
+	return fmt.Errorf("invalid platform '%s': %w", platform, domain.ErrInvalidPlatform)
+}
+
+func (s *service) validateItemName(itemName string) error {
+	if itemName == "" {
+		return fmt.Errorf("item name cannot be empty: %w", domain.ErrInvalidInput)
+	}
+	return nil
+}
+
+// resolveItemName attempts to resolve a user-provided item name to its internal name.
+// It first tries the naming resolver, then falls back to using the input as-is.
+// This allows users to use either public names ("junkbox") or internal names ("lootbox_tier0").
+func (s *service) resolveItemName(ctx context.Context, itemName string) (string, error) {
+	// Try naming resolver first (handles public names)
+	if s.namingResolver != nil {
+		if internalName, ok := s.namingResolver.ResolvePublicName(itemName); ok {
+			return internalName, nil
+		}
+	}
+
+	// Fall back - assume it's already an internal name
+	// Validate by checking if item exists
+	item, err := s.validateItem(ctx, itemName)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve item name '%s': %w", itemName, err)
+	}
+	if item == nil {
+		return "", fmt.Errorf("item not found: %s (not found as public or internal name) | %w", itemName, domain.ErrItemNotFound)
+	}
+
+	return itemName, nil
 }
 
 // calculateMaxPossibleCrafts calculates the maximum number of crafts possible given available materials
@@ -157,7 +176,7 @@ func consumeRecipeMaterials(inventory *domain.Inventory, recipe *domain.Recipe, 
 		totalNeeded := cost.Quantity * actualQuantity
 		i, slotQuantity := utils.FindSlot(inventory, cost.ItemID)
 		if i == -1 || slotQuantity < totalNeeded {
-			return fmt.Errorf("insufficient material (itemID: %d)", cost.ItemID)
+			return fmt.Errorf("insufficient material (itemID: %d) | %w", cost.ItemID, domain.ErrInsufficientQuantity)
 		}
 
 		// Remove the materials
@@ -186,9 +205,26 @@ func addItemToInventory(inventory *domain.Inventory, itemID, quantity int) {
 }
 
 // UpgradeItem upgrades as many items as possible based on available materials
-func (s *service) UpgradeItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (*CraftingResult, error) {
+func (s *service) UpgradeItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (*Result, error) {
 	log := logger.FromContext(ctx)
 	log.Info("UpgradeItem called", "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity)
+
+	// Validate inputs
+	if err := s.validateQuantity(quantity); err != nil {
+		return nil, err
+	}
+	if err := s.validatePlatformInput(platform, platformID); err != nil {
+		return nil, err
+	}
+	if err := s.validateItemName(itemName); err != nil {
+		return nil, err
+	}
+
+	// Resolve public name to internal name
+	resolvedName, err := s.resolveItemName(ctx, itemName)
+	if err != nil {
+		return nil, err
+	}
 
 	// Validate user and item
 	user, err := s.validateUser(ctx, platform, platformID)
@@ -196,13 +232,13 @@ func (s *service) UpgradeItem(ctx context.Context, platform, platformID, usernam
 		return nil, err
 	}
 
-	item, err := s.validateItem(ctx, itemName)
+	item, err := s.validateItem(ctx, resolvedName)
 	if err != nil {
 		return nil, err
 	}
 
 	// Get and validate recipe
-	recipe, err := s.getAndValidateRecipe(ctx, item.ID, user.ID, itemName)
+	recipe, err := s.getAndValidateRecipe(ctx, item.ID, user.ID, resolvedName)
 	if err != nil {
 		return nil, err
 	}
@@ -223,7 +259,7 @@ func (s *service) UpgradeItem(ctx context.Context, platform, platformID, usernam
 
 	maxPossible := calculateMaxPossibleCrafts(inventory, recipe, quantity)
 	if maxPossible == 0 {
-		return nil, fmt.Errorf("insufficient materials to craft %s", itemName)
+		return nil, fmt.Errorf("insufficient materials to craft %s | %w", itemName, domain.ErrInsufficientQuantity)
 	}
 
 	actualQuantity := maxPossible
@@ -237,10 +273,7 @@ func (s *service) UpgradeItem(ctx context.Context, platform, platformID, usernam
 	}
 
 	// Calculate output
-	result, err := s.calculateUpgradeOutput(ctx, user.ID, itemName, actualQuantity)
-	if err != nil {
-		return nil, err
-	}
+	result := s.calculateUpgradeOutput(ctx, user.ID, itemName, actualQuantity)
 
 	addItemToInventory(inventory, item.ID, result.Quantity)
 
@@ -264,36 +297,43 @@ func (s *service) UpgradeItem(ctx context.Context, platform, platformID, usernam
 }
 
 func (s *service) getAndValidateRecipe(ctx context.Context, itemID int, userID string, itemName string) (*domain.Recipe, error) {
-	log := logger.FromContext(ctx)
 	recipe, err := s.repo.GetRecipeByTargetItemID(ctx, itemID)
 	if err != nil {
-		log.Error("Failed to get recipe", "error", err)
 		return nil, fmt.Errorf("failed to get recipe: %w", err)
 	}
 	if recipe == nil {
-		return nil, fmt.Errorf("no recipe found for item: %s", itemName)
+		return nil, fmt.Errorf("no recipe found for item: %s | %w", itemName, domain.ErrRecipeNotFound)
 	}
 
 	// Check if user has unlocked this recipe
 	unlocked, err := s.repo.IsRecipeUnlocked(ctx, userID, recipe.ID)
 	if err != nil {
-		log.Error("Failed to check recipe unlock", "error", err)
 		return nil, fmt.Errorf("failed to check recipe unlock: %w", err)
 	}
 	if !unlocked {
-		return nil, fmt.Errorf("recipe for %s is not unlocked", itemName)
+		return nil, fmt.Errorf("recipe for %s is not unlocked | %w", itemName, domain.ErrRecipeLocked)
 	}
 	return recipe, nil
 }
 
-func (s *service) calculateUpgradeOutput(ctx context.Context, userID string, itemName string, actualQuantity int) (*CraftingResult, error) {
+func (s *service) calculateUpgradeOutput(ctx context.Context, userID string, itemName string, actualQuantity int) *Result {
 	log := logger.FromContext(ctx)
 
 	outputQuantity := 0
 	masterworkCount := 0
 
+	// Get modified masterwork chance (base 0.10 = 10%)
+	masterworkChance := MasterworkChance
+	if s.progressionSvc != nil {
+		if modifiedChance, err := s.progressionSvc.GetModifiedValue(ctx, "crafting_success_rate", MasterworkChance); err == nil {
+			masterworkChance = modifiedChance
+		} else {
+			log.Warn("Failed to apply crafting_success_rate modifier, using base chance", "error", err)
+		}
+	}
+
 	for i := 0; i < actualQuantity; i++ {
-		if s.rnd() < MasterworkChance {
+		if s.rnd() < masterworkChance {
 			masterworkCount++
 			outputQuantity += MasterworkMultiplier
 		} else {
@@ -315,12 +355,12 @@ func (s *service) calculateUpgradeOutput(ctx context.Context, userID string, ite
 		}
 	}
 
-	return &CraftingResult{
+	return &Result{
 		ItemName:      itemName,
 		Quantity:      outputQuantity,
 		IsMasterwork:  masterworkTriggered,
 		BonusQuantity: outputQuantity - actualQuantity,
-	}, nil
+	}
 }
 
 // GetRecipe returns recipe information for an item
@@ -329,8 +369,19 @@ func (s *service) GetRecipe(ctx context.Context, itemName, platform, platformID,
 	log := logger.FromContext(ctx)
 	log.Info("GetRecipe called", "itemName", itemName, "platform", platform, "platformID", platformID, "username", username)
 
+	// Validate inputs
+	if err := s.validateItemName(itemName); err != nil {
+		return nil, err
+	}
+
+	// Resolve public name to internal name
+	resolvedName, err := s.resolveItemName(ctx, itemName)
+	if err != nil {
+		return nil, err
+	}
+
 	// Validate and get item
-	item, err := s.validateItem(ctx, itemName)
+	item, err := s.validateItem(ctx, resolvedName)
 	if err != nil {
 		return nil, err
 	}
@@ -338,11 +389,10 @@ func (s *service) GetRecipe(ctx context.Context, itemName, platform, platformID,
 	// Get recipe by target item ID
 	recipe, err := s.repo.GetRecipeByTargetItemID(ctx, item.ID)
 	if err != nil {
-		log.Error("Failed to get recipe", "error", err)
 		return nil, fmt.Errorf("failed to get recipe: %w", err)
 	}
 	if recipe == nil {
-		return nil, fmt.Errorf("no recipe found for item: %s", itemName)
+		return nil, fmt.Errorf("no recipe found for item: %s | %w", itemName, domain.ErrRecipeNotFound)
 	}
 
 	recipeInfo := &RecipeInfo{
@@ -359,7 +409,6 @@ func (s *service) GetRecipe(ctx context.Context, itemName, platform, platformID,
 
 		unlocked, err := s.repo.IsRecipeUnlocked(ctx, user.ID, recipe.ID)
 		if err != nil {
-			log.Error("Failed to check recipe unlock", "error", err)
 			return nil, fmt.Errorf("failed to check recipe unlock: %w", err)
 		}
 
@@ -371,9 +420,14 @@ func (s *service) GetRecipe(ctx context.Context, itemName, platform, platformID,
 }
 
 // GetUnlockedRecipes returns all recipes that a user has unlocked
-func (s *service) GetUnlockedRecipes(ctx context.Context, platform, platformID, username string) ([]UnlockedRecipeInfo, error) {
+func (s *service) GetUnlockedRecipes(ctx context.Context, platform, platformID, username string) ([]repository.UnlockedRecipeInfo, error) {
 	log := logger.FromContext(ctx)
 	log.Info("GetUnlockedRecipes called", "platform", platform, "platformID", platformID, "username", username)
+
+	// Validate inputs
+	if err := s.validatePlatformInput(platform, platformID); err != nil {
+		return nil, err
+	}
 
 	user, err := s.validateUser(ctx, platform, platformID)
 	if err != nil {
@@ -382,7 +436,6 @@ func (s *service) GetUnlockedRecipes(ctx context.Context, platform, platformID, 
 
 	unlockedRecipes, err := s.repo.GetUnlockedRecipesForUser(ctx, user.ID)
 	if err != nil {
-		log.Error("Failed to get unlocked recipes", "error", err)
 		return nil, fmt.Errorf("failed to get unlocked recipes: %w", err)
 	}
 
@@ -391,13 +444,9 @@ func (s *service) GetUnlockedRecipes(ctx context.Context, platform, platformID, 
 }
 
 // GetAllRecipes returns all valid crafting recipes
-func (s *service) GetAllRecipes(ctx context.Context) ([]RecipeListItem, error) {
-	log := logger.FromContext(ctx)
-	log.Debug("GetAllRecipes called")
-
+func (s *service) GetAllRecipes(ctx context.Context) ([]repository.RecipeListItem, error) {
 	recipes, err := s.repo.GetAllRecipes(ctx)
 	if err != nil {
-		log.Error("Failed to get all recipes", "error", err)
 		return nil, fmt.Errorf("failed to get all recipes: %w", err)
 	}
 
@@ -426,11 +475,8 @@ func (s *service) processDisassembleOutputs(ctx context.Context, inventory *doma
 		itemsByID[items[i].ID] = &items[i]
 	}
 
-	// Optimization: Build a map for O(1) inventory lookups
-	slotMap := make(map[int]int, len(inventory.Slots))
-	for i, slot := range inventory.Slots {
-		slotMap[slot.ItemID] = i
-	}
+	// Prepare items to add to inventory
+	itemsToAdd := make([]domain.InventorySlot, 0, len(outputs))
 
 	for _, output := range outputs {
 		// Calculate output for regular items
@@ -450,18 +496,19 @@ func (s *service) processDisassembleOutputs(ctx context.Context, inventory *doma
 		// Get item name for the output
 		outputItem, ok := itemsByID[output.ItemID]
 		if !ok {
-			return nil, fmt.Errorf("output item not found: %d", output.ItemID)
+			return nil, fmt.Errorf("output item not found: %d | %w", output.ItemID, domain.ErrItemNotFound)
 		}
 		outputMap[outputItem.InternalName] = totalOutput
 
-		// Add to inventory
-		if idx, exists := slotMap[output.ItemID]; exists {
-			inventory.Slots[idx].Quantity += totalOutput
-		} else {
-			inventory.Slots = append(inventory.Slots, domain.InventorySlot{ItemID: output.ItemID, Quantity: totalOutput})
-			slotMap[output.ItemID] = len(inventory.Slots) - 1
-		}
+		// Prepare for batch add
+		itemsToAdd = append(itemsToAdd, domain.InventorySlot{
+			ItemID:   output.ItemID,
+			Quantity: totalOutput,
+		})
 	}
+
+	// Add all outputs to inventory using optimized helper
+	utils.AddItemsToInventory(inventory, itemsToAdd, nil)
 
 	return outputMap, nil
 }
@@ -472,88 +519,33 @@ func (s *service) DisassembleItem(ctx context.Context, platform, platformID, use
 	log := logger.FromContext(ctx)
 	log.Info("DisassembleItem called", "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity)
 
-	// Validate user and item
-	user, err := s.validateUser(ctx, platform, platformID)
+	// Validate inputs
+	if err := s.validateQuantity(quantity); err != nil {
+		return nil, err
+	}
+	if err := s.validatePlatformInput(platform, platformID); err != nil {
+		return nil, err
+	}
+	if err := s.validateItemName(itemName); err != nil {
+		return nil, err
+	}
+
+	user, item, recipe, err := s.validateDisassembleInput(ctx, platform, platformID, itemName)
 	if err != nil {
 		return nil, err
 	}
 
-	item, err := s.validateItem(ctx, itemName)
+	actualQuantity, perfectSalvageCount, outputMap, err := s.executeDisassembleTx(ctx, user.ID, item.ID, recipe, quantity, itemName)
 	if err != nil {
 		return nil, err
 	}
 
-	// Get and validate disassemble recipe
-	recipe, err := s.getAndValidateDisassembleRecipe(ctx, item.ID, user.ID, itemName)
-	if err != nil {
-		return nil, err
-	}
-
-	// Begin transaction
-	tx, err := s.repo.BeginTx(ctx)
-	if err != nil {
-		log.Error("Failed to begin transaction", "error", err)
-		return nil, fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer repository.SafeRollback(ctx, tx)
-
-	// Get inventory and calculate actual quantity
-	inventory, err := tx.GetInventory(ctx, user.ID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get inventory: %w", err)
-	}
-
-	actualQuantity, sourceSlotIndex, err := s.calculateDisassembleQuantity(inventory, item.ID, recipe.QuantityConsumed, quantity, itemName)
-	if err != nil {
-		return nil, err
-	}
-
-	// Remove source items
-	totalConsumed := recipe.QuantityConsumed * actualQuantity
-	if inventory.Slots[sourceSlotIndex].Quantity == totalConsumed {
-		inventory.Slots = append(inventory.Slots[:sourceSlotIndex], inventory.Slots[sourceSlotIndex+1:]...)
-	} else {
-		inventory.Slots[sourceSlotIndex].Quantity -= totalConsumed
-	}
-
-	// Calculate perfect salvage
-	perfectSalvageCount := 0
-	for i := 0; i < actualQuantity; i++ {
-		if s.rnd() < PerfectSalvageChance {
-			perfectSalvageCount++
-		}
-	}
 	perfectSalvageTriggered := perfectSalvageCount > 0
 	if perfectSalvageTriggered {
-		log.Info("Perfect Salvage triggered!", "user_id", user.ID, "item", itemName, "quantity", actualQuantity, "perfect_count", perfectSalvageCount)
-
-		if s.statsSvc != nil {
-			_ = s.statsSvc.RecordUserEvent(ctx, user.ID, domain.EventCraftingPerfectSalvage, map[string]interface{}{
-				"item_name":     itemName,
-				"quantity":      actualQuantity,
-				"perfect_count": perfectSalvageCount,
-				"multiplier":    PerfectSalvageMultiplier,
-			})
-		}
-	}
-
-	// Process outputs
-	outputMap, err := s.processDisassembleOutputs(ctx, inventory, recipe.Outputs, actualQuantity, perfectSalvageCount)
-	if err != nil {
-		return nil, err
-	}
-
-	// Update inventory and commit
-	if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
-		return nil, fmt.Errorf("failed to update inventory: %w", err)
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+		s.recordPerfectSalvageEvent(ctx, user.ID, itemName, actualQuantity, perfectSalvageCount)
 	}
 
 	// Award Blacksmith XP (don't fail disassemble if XP award fails)
-	// Run async with detached context to prevent cancellation affecting XP award
 	s.wg.Add(1)
 	go s.awardBlacksmithXP(context.Background(), user.ID, actualQuantity, "disassemble", itemName)
 
@@ -567,32 +559,28 @@ func (s *service) DisassembleItem(ctx context.Context, platform, platformID, use
 }
 
 func (s *service) getAndValidateDisassembleRecipe(ctx context.Context, itemID int, userID string, itemName string) (*domain.DisassembleRecipe, error) {
-	log := logger.FromContext(ctx)
 	// Get disassemble recipe
 	recipe, err := s.repo.GetDisassembleRecipeBySourceItemID(ctx, itemID)
 	if err != nil {
-		log.Error("Failed to get disassemble recipe", "error", err)
 		return nil, fmt.Errorf("failed to get disassemble recipe: %w", err)
 	}
 	if recipe == nil {
-		return nil, fmt.Errorf("no disassemble recipe found for item: %s", itemName)
+		return nil, fmt.Errorf("no disassemble recipe found for item: %s | %w", itemName, domain.ErrRecipeNotFound)
 	}
 
 	// Get associated upgrade recipe ID to check if unlocked
 	upgradeRecipeID, err := s.repo.GetAssociatedUpgradeRecipeID(ctx, recipe.ID)
 	if err != nil {
-		log.Error("Failed to get associated upgrade recipe", "error", err)
 		return nil, fmt.Errorf("failed to get associated upgrade recipe: %w", err)
 	}
 
 	// Check if user has unlocked the associated upgrade recipe
 	unlocked, err := s.repo.IsRecipeUnlocked(ctx, userID, upgradeRecipeID)
 	if err != nil {
-		log.Error("Failed to check recipe unlock", "error", err)
 		return nil, fmt.Errorf("failed to check recipe unlock: %w", err)
 	}
 	if !unlocked {
-		return nil, fmt.Errorf("disassemble recipe for %s is not unlocked", itemName)
+		return nil, fmt.Errorf("disassemble recipe for %s is not unlocked | %w", itemName, domain.ErrRecipeLocked)
 	}
 	return recipe, nil
 }
@@ -601,7 +589,7 @@ func (s *service) calculateDisassembleQuantity(inventory *domain.Inventory, item
 	sourceSlotIndex, userQuantity := utils.FindSlot(inventory, itemID)
 	maxPossible := userQuantity / quantityConsumed
 	if maxPossible == 0 {
-		return 0, -1, fmt.Errorf("insufficient items to disassemble %s (need %d, have %d)", itemName, quantityConsumed, userQuantity)
+		return 0, -1, fmt.Errorf("insufficient items to disassemble %s (need %d, have %d) | %w", itemName, quantityConsumed, userQuantity, domain.ErrInsufficientQuantity)
 	}
 
 	actualQuantity := maxPossible
@@ -615,7 +603,7 @@ func (s *service) calculateDisassembleQuantity(inventory *domain.Inventory, item
 // NOTE: Caller must call s.wg.Add(1) before launching this in a goroutine
 func (s *service) awardBlacksmithXP(ctx context.Context, userID string, quantity int, source, itemName string) {
 	defer s.wg.Done()
-	
+
 	if s.jobService == nil {
 		return // Job system not enabled
 	}
@@ -657,5 +645,109 @@ func (s *service) Shutdown(ctx context.Context) error {
 	case <-ctx.Done():
 		log.Warn("Crafting service shutdown forced by context cancellation")
 		return ctx.Err()
+	}
+}
+
+func (s *service) validateDisassembleInput(ctx context.Context, platform, platformID, itemName string) (*domain.User, *domain.Item, *domain.DisassembleRecipe, error) {
+	resolvedName, err := s.resolveItemName(ctx, itemName)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	user, err := s.validateUser(ctx, platform, platformID)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	item, err := s.validateItem(ctx, resolvedName)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	recipe, err := s.getAndValidateDisassembleRecipe(ctx, item.ID, user.ID, resolvedName)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	return user, item, recipe, nil
+}
+
+func (s *service) executeDisassembleTx(ctx context.Context, userID string, itemID int, recipe *domain.DisassembleRecipe, requestedQuantity int, itemName string) (int, int, map[string]int, error) {
+	tx, err := s.repo.BeginTx(ctx)
+	if err != nil {
+		return 0, 0, nil, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer repository.SafeRollback(ctx, tx)
+
+	inventory, err := tx.GetInventory(ctx, userID)
+	if err != nil {
+		return 0, 0, nil, fmt.Errorf("failed to get inventory: %w", err)
+	}
+
+	actualQuantity, sourceSlotIndex, err := s.calculateDisassembleQuantity(inventory, itemID, recipe.QuantityConsumed, requestedQuantity, itemName)
+	if err != nil {
+		return 0, 0, nil, err
+	}
+
+	// Remove source items
+	totalConsumed := recipe.QuantityConsumed * actualQuantity
+	if inventory.Slots[sourceSlotIndex].Quantity == totalConsumed {
+		inventory.Slots = append(inventory.Slots[:sourceSlotIndex], inventory.Slots[sourceSlotIndex+1:]...)
+	} else {
+		inventory.Slots[sourceSlotIndex].Quantity -= totalConsumed
+	}
+
+	// Calculate perfect salvage
+	perfectSalvageCount := s.calculatePerfectSalvage(actualQuantity)
+
+	// Process outputs
+	outputMap, err := s.processDisassembleOutputs(ctx, inventory, recipe.Outputs, actualQuantity, perfectSalvageCount)
+	if err != nil {
+		return 0, 0, nil, err
+	}
+
+	if err := tx.UpdateInventory(ctx, userID, *inventory); err != nil {
+		return 0, 0, nil, fmt.Errorf("failed to update inventory: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return 0, 0, nil, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return actualQuantity, perfectSalvageCount, outputMap, nil
+}
+
+func (s *service) calculatePerfectSalvage(quantity int) int {
+	// Get modified perfect salvage chance (base 0.10 = 10%)
+	// Note: Using same modifier key as masterwork since they're both "crafting success"
+	salvageChance := PerfectSalvageChance
+	if s.progressionSvc != nil {
+		// Use background context since we don't have ctx in this helper
+		ctx := context.Background()
+		if modifiedChance, err := s.progressionSvc.GetModifiedValue(ctx, "crafting_success_rate", PerfectSalvageChance); err == nil {
+			salvageChance = modifiedChance
+		}
+		// Silently fall back to base chance on error (no logging in helper)
+	}
+
+	count := 0
+	for i := 0; i < quantity; i++ {
+		if s.rnd() < salvageChance {
+			count++
+		}
+	}
+	return count
+}
+
+func (s *service) recordPerfectSalvageEvent(ctx context.Context, userID, itemName string, actualQuantity, perfectCount int) {
+	logger.FromContext(ctx).Info("Perfect Salvage triggered!", "user_id", userID, "item", itemName, "quantity", actualQuantity, "perfect_count", perfectCount)
+
+	if s.statsSvc != nil {
+		_ = s.statsSvc.RecordUserEvent(ctx, userID, domain.EventCraftingPerfectSalvage, map[string]interface{}{
+			"item_name":     itemName,
+			"quantity":      actualQuantity,
+			"perfect_count": perfectCount,
+			"multiplier":    PerfectSalvageMultiplier,
+		})
 	}
 }

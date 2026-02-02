@@ -16,76 +16,99 @@ func (s *service) MergeUsers(ctx context.Context, primaryUserID, secondaryUserID
 	log := logger.FromContext(ctx)
 	log.Info("Merging users", "primary", primaryUserID, "secondary", secondaryUserID)
 
-	// Get both inventories
-	primaryInv, err := s.repo.GetInventory(ctx, primaryUserID)
+	primaryInv, secondaryInv, err := s.getInventoriesForMerge(ctx, primaryUserID, secondaryUserID)
 	if err != nil {
-		return fmt.Errorf("failed to get primary inventory: %w", err)
+		return err
 	}
 
-	secondaryInv, err := s.repo.GetInventory(ctx, secondaryUserID)
-	if err != nil {
-		return fmt.Errorf("failed to get secondary inventory: %w", err)
-	}
+	mergedInv := s.mergeInventories(primaryInv, secondaryInv)
 
-	// Max stack size for items
-	const maxStackSize = 999999
-
-	// Merge inventories
-	if primaryInv == nil {
-		primaryInv = &domain.Inventory{Slots: []domain.InventorySlot{}}
-	}
-	if secondaryInv != nil {
-		for _, slot := range secondaryInv.Slots {
-			found := false
-			for i, pSlot := range primaryInv.Slots {
-				if pSlot.ItemID == slot.ItemID {
-					// Sum quantities with cap
-					newQty := pSlot.Quantity + slot.Quantity
-					if newQty > maxStackSize {
-						newQty = maxStackSize
-					}
-					primaryInv.Slots[i].Quantity = newQty
-					found = true
-					break
-				}
-			}
-			if !found {
-				primaryInv.Slots = append(primaryInv.Slots, slot)
-			}
-		}
-	}
-
-	// Save merged inventory
-	if err := s.repo.UpdateInventory(ctx, primaryUserID, *primaryInv); err != nil {
+	if err := s.repo.UpdateInventory(ctx, primaryUserID, *mergedInv); err != nil {
 		return fmt.Errorf("failed to update primary inventory: %w", err)
 	}
 
-	// TODO: Merge statistics if stats service is available
-
-	// Delete secondary user's inventory
 	if err := s.repo.DeleteInventory(ctx, secondaryUserID); err != nil {
 		log.Warn("Failed to delete secondary inventory", "error", err)
 	}
 
-	// Transfer platform links from secondary to primary
-	// We need to update the user_platform_links table directly to avoid unique constraint violations
-	secondary, err := s.repo.GetUserByID(ctx, secondaryUserID)
+	primary, secondary, err := s.getUsersForMerge(ctx, primaryUserID, secondaryUserID)
 	if err != nil {
-		return fmt.Errorf("failed to get secondary user: %w", err)
+		return err
+	}
+
+	mergedUser := s.mergeUserProfiles(primary, secondary)
+
+	if err := s.repo.MergeUsersInTransaction(ctx, primaryUserID, secondaryUserID, *mergedUser, *mergedInv); err != nil {
+		return fmt.Errorf("failed to merge users in transaction: %w", err)
+	}
+
+	s.invalidateUserCaches(primary, secondary, mergedUser)
+
+	log.Info("Users merged successfully", "primary", primaryUserID)
+	return nil
+}
+
+func (s *service) getInventoriesForMerge(ctx context.Context, primaryUserID, secondaryUserID string) (*domain.Inventory, *domain.Inventory, error) {
+	primaryInv, err := s.repo.GetInventory(ctx, primaryUserID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get primary inventory: %w", err)
+	}
+	secondaryInv, err := s.repo.GetInventory(ctx, secondaryUserID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get secondary inventory: %w", err)
+	}
+	return primaryInv, secondaryInv, nil
+}
+
+func (s *service) mergeInventories(primary, secondary *domain.Inventory) *domain.Inventory {
+	const maxStackSize = MaxStackSize
+	if primary == nil {
+		primary = &domain.Inventory{Slots: []domain.InventorySlot{}}
 	}
 	if secondary == nil {
-		return fmt.Errorf("secondary user not found")
+		return primary
 	}
 
+	for _, sSlot := range secondary.Slots {
+		found := false
+		for i, pSlot := range primary.Slots {
+			if pSlot.ItemID == sSlot.ItemID {
+				newQty := pSlot.Quantity + sSlot.Quantity
+				if newQty > maxStackSize {
+					newQty = maxStackSize
+				}
+				primary.Slots[i].Quantity = newQty
+				found = true
+				break
+			}
+		}
+		if !found {
+			primary.Slots = append(primary.Slots, sSlot)
+		}
+	}
+	return primary
+}
+
+func (s *service) getUsersForMerge(ctx context.Context, primaryUserID, secondaryUserID string) (*domain.User, *domain.User, error) {
 	primary, err := s.repo.GetUserByID(ctx, primaryUserID)
 	if err != nil {
-		return fmt.Errorf("failed to get primary user: %w", err)
+		return nil, nil, fmt.Errorf("failed to get primary user: %w", err)
 	}
 	if primary == nil {
-		return fmt.Errorf("primary user not found")
+		return nil, nil, fmt.Errorf("primary user not found")
 	}
 
-	// Build combined user with all platform IDs
+	secondary, err := s.repo.GetUserByID(ctx, secondaryUserID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get secondary user: %w", err)
+	}
+	if secondary == nil {
+		return nil, nil, fmt.Errorf("secondary user not found")
+	}
+	return primary, secondary, nil
+}
+
+func (s *service) mergeUserProfiles(primary, secondary *domain.User) *domain.User {
 	merged := *primary
 	if secondary.DiscordID != "" && merged.DiscordID == "" {
 		merged.DiscordID = secondary.DiscordID
@@ -96,15 +119,18 @@ func (s *service) MergeUsers(ctx context.Context, primaryUserID, secondaryUserID
 	if secondary.YoutubeID != "" && merged.YoutubeID == "" {
 		merged.YoutubeID = secondary.YoutubeID
 	}
+	return &merged
+}
 
-	// ATOMIC MERGE: All operations in single transaction (all succeed or all rollback)
-	// This prevents data loss if any step fails
-	if err := s.repo.MergeUsersInTransaction(ctx, primaryUserID, secondaryUserID, merged, *primaryInv); err != nil {
-		return fmt.Errorf("failed to merge users in transaction: %w", err)
+func (s *service) invalidateUserCaches(users ...*domain.User) {
+	for _, u := range users {
+		if u == nil {
+			continue
+		}
+		for platform, platformID := range getPlatformKeysFromUser(*u) {
+			s.userCache.Invalidate(platform, platformID)
+		}
 	}
-
-	log.Info("Users merged successfully", "primary", primaryUserID)
-	return nil
 }
 
 // UnlinkPlatform removes a platform from a user account
@@ -117,12 +143,16 @@ func (s *service) UnlinkPlatform(ctx context.Context, userID, platform string) e
 		return fmt.Errorf("user not found: %w", err)
 	}
 
+	var platformID string
 	switch platform {
 	case domain.PlatformDiscord:
+		platformID = user.DiscordID
 		user.DiscordID = ""
 	case domain.PlatformTwitch:
+		platformID = user.TwitchID
 		user.TwitchID = ""
 	case domain.PlatformYoutube:
+		platformID = user.YoutubeID
 		user.YoutubeID = ""
 	default:
 		return fmt.Errorf("unknown platform: %s", platform)
@@ -130,6 +160,17 @@ func (s *service) UnlinkPlatform(ctx context.Context, userID, platform string) e
 
 	if err := s.repo.UpdateUser(ctx, *user); err != nil {
 		return fmt.Errorf("failed to update user: %w", err)
+	}
+
+	// Invalidate cache
+	if platformID != "" {
+		s.userCache.Invalidate(platform, platformID)
+	}
+
+	// Also invalidate other keys as user object changed
+	keys := getPlatformKeysFromUser(*user)
+	for p, id := range keys {
+		s.userCache.Invalidate(p, id)
 	}
 
 	log.Info("Platform unlinked", "user_id", userID, "platform", platform)

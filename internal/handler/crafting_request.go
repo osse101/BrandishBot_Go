@@ -2,13 +2,9 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/osse101/BrandishBot_Go/internal/event"
-	"github.com/osse101/BrandishBot_Go/internal/logger"
-	"github.com/osse101/BrandishBot_Go/internal/middleware"
 )
 
 // CraftingActionRequest represents a common request for crafting operations (upgrade, disassemble, etc.)
@@ -21,51 +17,23 @@ type CraftingActionRequest struct {
 }
 
 // decodeCraftingRequest decodes and validates a crafting action request from the HTTP request body
-func decodeCraftingRequest(r *http.Request, actionName string) (*CraftingActionRequest, error) {
-	log := logger.FromContext(r.Context())
-
+func decodeCraftingRequest(r *http.Request, w http.ResponseWriter, actionName string) (*CraftingActionRequest, error) {
 	var req CraftingActionRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		log.Error(fmt.Sprintf("Failed to decode %s request", actionName), "error", err)
-		return nil, fmt.Errorf("invalid request body: %w", err)
-	}
-
-	log.Debug(fmt.Sprintf("%s request", actionName),
-		"username", req.Username,
-		"item", req.Item,
-		"quantity", req.Quantity)
-
-	// Validate request
-	if err := GetValidator().ValidateStruct(req); err != nil {
-		log.Warn("Invalid request", "error", err)
-		return nil, fmt.Errorf("Invalid request: %v", err)
+	if err := DecodeAndValidateRequest(r, w, &req, actionName); err != nil {
+		return nil, err
 	}
 
 	return &req, nil
 }
 
 // trackCraftingEngagement publishes engagement tracking for a crafting action
+// Deprecated: Use TrackEngagement from event_helpers.go instead
 func trackCraftingEngagement(ctx context.Context, eventBus event.Bus, username, eventType string, quantity int) {
-	middleware.TrackEngagementFromContext(
-		middleware.WithUserID(ctx, username),
-		eventBus,
-		eventType,
-		quantity,
-	)
+	TrackEngagement(ctx, eventBus, username, eventType, quantity)
 }
 
 // publishCraftingEvent publishes a crafting event to the event bus
+// Deprecated: Use PublishEvent from event_helpers.go instead
 func publishCraftingEvent(ctx context.Context, eventBus event.Bus, eventType event.Type, payload map[string]interface{}) error {
-	log := logger.FromContext(ctx)
-
-	if err := eventBus.Publish(ctx, event.Event{
-		Type:    eventType,
-		Payload: payload,
-	}); err != nil {
-		log.Error(fmt.Sprintf("Failed to publish %s event", eventType), "error", err)
-		return err
-	}
-
-	return nil
+	return PublishEvent(ctx, eventBus, eventType, payload)
 }
-

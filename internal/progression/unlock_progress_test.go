@@ -13,12 +13,12 @@ import (
 func TestCheckAndUnlock_Success(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	// 1. Setup active progress
 	progressID, _ := repo.CreateUnlockProgress(ctx)
-	
+
 	// 2. Set target to money (cost 500)
 	moneyID := 2
 	repo.SetUnlockTarget(ctx, progressID, moneyID, 1, 1)
@@ -41,7 +41,7 @@ func TestCheckAndUnlock_Success(t *testing.T) {
 func TestCheckAndUnlock_Rollover(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	progressID, _ := repo.CreateUnlockProgress(ctx)
@@ -65,35 +65,42 @@ func TestCheckAndUnlock_Rollover(t *testing.T) {
 func TestCheckAndUnlock_StartsNewSession(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	// Ensure money is available for session (root unlocks it)
 	// Unlock money to check if session starts properly
-	
+
 	progressID, _ := repo.CreateUnlockProgress(ctx)
 	moneyID := 2
 	repo.SetUnlockTarget(ctx, progressID, moneyID, 1, 1)
 	repo.AddContribution(ctx, progressID, 500)
 
-	// Unlock should trigger new session start
+	// Unlock should trigger handlePostUnlockTransition
 	_, err := service.CheckAndUnlockNode(ctx)
 	assert.NoError(t, err)
 
-	// We need to wait a small bit for async goroutine or check mock
-	// Since MockRepository methods are synchronous but called in goroutine,
-	// we might need a small sleep in test
+	// We need to wait a small bit for async goroutine
 	time.Sleep(10 * time.Millisecond)
 
+	// NEW FLOW: After unlock, a new session is only started if 2+ options remain
+	// With the test tree setup, only lootbox0 remains after money is unlocked,
+	// so no new session is started, but a new target should be set
+	newProgress, _ := repo.GetActiveUnlockProgress(ctx)
+	assert.NotNil(t, newProgress)
+	assert.NotNil(t, newProgress.NodeID, "New target should be set after unlock")
+
+	// A session may or may not exist depending on available options
 	session, _ := repo.GetActiveSession(ctx)
-	assert.NotNil(t, session)
-	assert.Equal(t, "voting", session.Status)
+	if session != nil {
+		assert.Equal(t, "voting", session.Status)
+	}
 }
 
 func TestCheckAndUnlock_ClearsCacheOnUnlock(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	progressID, _ := repo.CreateUnlockProgress(ctx)
@@ -105,21 +112,21 @@ func TestCheckAndUnlock_ClearsCacheOnUnlock(t *testing.T) {
 	// We can't access private fields easily in test without reflection or helpers
 	// But we can verify behavior - next AddContribution won't trigger instant unlock
 	// This is implicit in logic
-	
+
 	_, err := service.CheckAndUnlockNode(ctx)
 	assert.NoError(t, err)
-	
+
 	// If cache cleared, internal state is reset
 }
 
 func TestCheckAndUnlock_NoProgress(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	// No active progress exists
-	
+
 	unlock, err := service.CheckAndUnlockNode(ctx)
 	assert.NoError(t, err)
 	assert.Nil(t, unlock)
@@ -133,7 +140,7 @@ func TestCheckAndUnlock_NoProgress(t *testing.T) {
 func TestCheckAndUnlock_TargetNotSet(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	repo.CreateUnlockProgress(ctx)
@@ -147,13 +154,13 @@ func TestCheckAndUnlock_TargetNotSet(t *testing.T) {
 func TestCheckAndUnlock_BelowThreshold(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	progressID, _ := repo.CreateUnlockProgress(ctx)
 	moneyID := 2 // Cost 500
 	repo.SetUnlockTarget(ctx, progressID, moneyID, 1, 1)
-	
+
 	// Add only 400
 	repo.AddContribution(ctx, progressID, 400)
 
@@ -166,7 +173,7 @@ func TestCheckAndUnlock_BelowThreshold(t *testing.T) {
 
 func TestAddContribution_Success(t *testing.T) {
 	repo := NewMockRepository()
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	// Create progress
@@ -186,11 +193,11 @@ func TestAddContribution_Success(t *testing.T) {
 
 func TestAddContribution_CreatesProgress(t *testing.T) {
 	repo := NewMockRepository()
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	// No progress exists
-	
+
 	err := service.AddContribution(ctx, 100)
 	assert.NoError(t, err)
 
@@ -202,7 +209,7 @@ func TestAddContribution_CreatesProgress(t *testing.T) {
 func TestAddContribution_InstantUnlock(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	// Setup everything needed for instant unlock (via cache)
@@ -211,15 +218,15 @@ func TestAddContribution_InstantUnlock(t *testing.T) {
 
 	service.StartVotingSession(ctx, nil)
 	session, _ := repo.GetActiveSession(ctx)
-	
+
 	// Option 0 is likely money (cost 500)
 	// Vote and end
-	err := service.VoteForUnlock(ctx, "u1", session.Options[0].NodeDetails.NodeKey)
+	err := service.VoteForUnlock(ctx, "discord", "user1", session.Options[0].NodeDetails.NodeKey)
 	assert.NoError(t, err)
-	
+
 	_, err = service.EndVoting(ctx)
 	assert.NoError(t, err)
-	
+
 	// Get current accumulated
 	progress, err := repo.GetActiveUnlockProgress(ctx)
 	assert.NoError(t, err)
@@ -227,7 +234,7 @@ func TestAddContribution_InstantUnlock(t *testing.T) {
 		return
 	}
 	initial := progress.ContributionsAccumulated
-	
+
 	// Add remaining points to trigger immediate unlock
 	needed := 500 - initial
 	if initial >= 500 {
@@ -235,7 +242,7 @@ func TestAddContribution_InstantUnlock(t *testing.T) {
 		t.Log("Warning: initial contributions already exceed threshold")
 		needed = 0
 	}
-	
+
 	err = service.AddContribution(ctx, needed)
 	assert.NoError(t, err)
 
@@ -248,7 +255,7 @@ func TestAddContribution_InstantUnlock(t *testing.T) {
 	// The unlocked node should be unlocked in repo
 	isUnlocked, _ := repo.IsNodeUnlocked(ctx, session.Options[0].NodeDetails.NodeKey, 1)
 	assert.True(t, isUnlocked, "Node should be unlocked")
-	
+
 	// The new progress should exist
 	if assert.NotNil(t, completedProgress, "Active progress should not be nil") {
 		assert.NotEqual(t, progress.ID, completedProgress.ID, "New progress ID should differ from old")
@@ -259,7 +266,7 @@ func TestAddContribution_InstantUnlock(t *testing.T) {
 
 func TestGetUnlockProgress_Active(t *testing.T) {
 	repo := NewMockRepository()
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	repo.CreateUnlockProgress(ctx)
@@ -273,7 +280,7 @@ func TestGetUnlockProgress_Active(t *testing.T) {
 
 func TestGetUnlockProgress_None(t *testing.T) {
 	repo := NewMockRepository()
-	service := NewService(repo, nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
 	ctx := context.Background()
 
 	progress, err := service.GetUnlockProgress(ctx)

@@ -87,7 +87,7 @@ func (m *ThreadSafeMockRepository) GetTopUsers(ctx context.Context, eventType do
 		}
 	}
 
-	var entries []domain.LeaderboardEntry
+	entries := make([]domain.LeaderboardEntry, 0, len(counts))
 	for userID, count := range counts {
 		entries = append(entries, domain.LeaderboardEntry{
 			UserID:    userID,

@@ -1,0 +1,104 @@
+{
+  "version": "1.0",
+  "description": "Crafting recipes for BrandishBot",
+  "recipes": [
+    {
+      "recipe_key": "lootbox_tier0",
+      "target_item": "lootbox_tier1",
+      "costs": [
+        {
+          "item": "lootbox_tier0",
+          "quantity": 5
+        },
+        {
+          "item": "money",
+          "quantity": 100
+        }
+      ]
+    },
+    {
+      "recipe_key": "lootbox_tier1",
+      "target_item": "lootbox_tier2",
+      "costs": [
+        {
+          "item": "lootbox_tier1",
+          "quantity": 3
+        },
+        {
+          "item": "money",
+          "quantity": 500
+        }
+      ]
+    },
+    {
+      "recipe_key": "lootbox_tier2",
+      "target_item": "lootbox_tier3",
+      "costs": [
+        {
+          "item": "lootbox_tier2",
+          "quantity": 3
+        },
+        {
+          "item": "money",
+          "quantity": 2500
+        }
+      ]
+    },
+    {
+      "recipe_key": "weapon_this",
+      "target_item": "weapon_deez",
+      "costs": [
+        {
+          "item": "weapon_this",
+          "quantity": 10
+        },
+        {
+          "item": "money",
+          "quantity": 500
+        }
+      ]
+    },
+    {
+      "recipe_key": "explosive_mine",
+      "target_item": "explosive_trap",
+      "costs": [
+        {
+          "item": "explosive_mine",
+          "quantity": 10
+        },
+        {
+          "item": "money",
+          "quantity": 250
+        }
+      ]
+    },
+    {
+      "recipe_key": "explosive_trap",
+      "target_item": "explosive_tnt",
+      "costs": [
+        {
+          "item": "explosive_trap",
+          "quantity": 1
+        },
+        {
+          "item": "money",
+          "quantity": 2500
+        }
+      ]
+    },
+    {
+      "recipe_key": "item_stick",
+      "target_item": "item_shield",
+      "costs": [
+        {
+          "item": "item_stick",
+          "quantity": 10
+        },
+        {
+          "item": "money",
+          "quantity": 500
+        }
+      ]
+    }
+  ]
+}

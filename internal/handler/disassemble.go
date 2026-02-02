@@ -3,6 +3,8 @@ package handler
 import (
 	"fmt"
 	"net/http"
+	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
@@ -40,16 +42,16 @@ func HandleDisassembleItem(svc crafting.Service, progressionSvc progression.Serv
 			return
 		}
 
-		req, err := decodeCraftingRequest(r, "Disassemble item")
+		req, err := decodeCraftingRequest(r, w, "Disassemble item")
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
 		result, err := svc.DisassembleItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.Item, req.Quantity)
 		if err != nil {
 			log.Error("Failed to disassemble item", "error", err, "username", req.Username, "item", req.Item)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			statusCode, userMsg := mapServiceErrorToUserMessage(err)
+			respondError(w, statusCode, userMsg)
 			return
 		}
 
@@ -70,23 +72,36 @@ func HandleDisassembleItem(svc crafting.Service, progressionSvc progression.Serv
 			"materials_gained":   result.Outputs,
 			"is_perfect_salvage": result.IsPerfectSalvage,
 		}); err != nil {
-			// Error already logged in publishCraftingEvent
+			_ = err // Error already logged in publishCraftingEvent
 		}
 
 		// Construct user message
-		var outputParts []string
-		for k, v := range result.Outputs {
-			outputParts = append(outputParts, fmt.Sprintf("%dx %s", v, k))
+		// Optimization: Use strings.Builder and avoid fmt.Sprintf in loop
+		var sb strings.Builder
+
+		// Sort keys for deterministic output
+		keys := make([]string, 0, len(result.Outputs))
+		for k := range result.Outputs {
+			keys = append(keys, k)
 		}
-		outputStr := strings.Join(outputParts, ", ")
+		sort.Strings(keys)
+
+		for i, k := range keys {
+			if i > 0 {
+				sb.WriteString(", ")
+			}
+			v := result.Outputs[k]
+			sb.WriteString(strconv.Itoa(v))
+			sb.WriteString("x ")
+			sb.WriteString(k)
+		}
+		outputStr := sb.String()
 
 		message := fmt.Sprintf("Disassembled %d items into: %s", result.QuantityProcessed, outputStr)
 		if result.IsPerfectSalvage {
 			message = fmt.Sprintf("PERFECT SALVAGE! You efficiently recovered more materials! (+50%% Bonus): %s", outputStr)
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
 		respondJSON(w, http.StatusOK, DisassembleItemResponse{
 			Message:           message,
 			Outputs:           result.Outputs,

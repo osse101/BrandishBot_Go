@@ -1,6 +1,11 @@
 # Build stage
 FROM golang:1.24-alpine AS builder
 
+# Build arguments
+ARG VERSION=dev
+ARG BUILD_TIME=unknown
+ARG GIT_COMMIT=unknown
+
 WORKDIR /app
 
 # Install build dependencies
@@ -27,9 +32,22 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 # Runtime stage
 FROM alpine:3.19
 
+# Build arguments (for labels)
+ARG VERSION=dev
+ARG BUILD_TIME=unknown
+ARG GIT_COMMIT=unknown
+
+# Add image metadata (OCI standard labels)
+LABEL org.opencontainers.image.title="BrandishBot-Discord"
+LABEL org.opencontainers.image.description="Discord bot for BrandishBot game progression"
+LABEL org.opencontainers.image.version="${VERSION}"
+LABEL org.opencontainers.image.revision="${GIT_COMMIT}"
+LABEL org.opencontainers.image.created="${BUILD_TIME}"
+LABEL org.opencontainers.image.vendor="BrandishBot Project"
+
 WORKDIR /app
 
-# Install runtime dependencies
+# Install runtime dependencies (ca-certificates for HTTPS, tzdata for timezones)
 RUN apk add --no-cache ca-certificates tzdata
 
 # Create non-root user

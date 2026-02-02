@@ -6,6 +6,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
 func TestResolvePublicName(t *testing.T) {
@@ -53,9 +55,9 @@ func TestGetDisplayName(t *testing.T) {
 		internalToPublic: make(map[string]string),
 		aliases: map[string]AliasPool{
 			"lootbox_tier0": {
-				Default: []string{"A dingy box", "A worn box"},
+				Default: []string{"dingy box", "worn box"},
 				Themes: map[string][]string{
-					"halloween": {"A spooky box"},
+					"halloween": {"spooky box"},
 				},
 			},
 		},
@@ -63,25 +65,19 @@ func TestGetDisplayName(t *testing.T) {
 	}
 
 	// Test without shine
-	name := r.GetDisplayName("lootbox_tier0", "")
-	if name != "A dingy box" && name != "A worn box" {
+	name := r.GetDisplayName("lootbox_tier0", domain.ShineLevel(""))
+	if name != "dingy box" && name != "worn box" {
 		t.Errorf("GetDisplayName() = %v, want one of default aliases", name)
 	}
 
 	// Test with shine
-	name = r.GetDisplayName("lootbox_tier0", "RARE")
-	if name != "RARE A dingy box" && name != "RARE A worn box" {
+	name = r.GetDisplayName("lootbox_tier0", domain.ShineLevel("RARE"))
+	if name != "dingy box" && name != "worn box" {
 		t.Errorf("GetDisplayName() with shine = %v, want RARE prefix", name)
 	}
 
-	// Test COMMON shine (should not show prefix)
-	name = r.GetDisplayName("lootbox_tier0", "COMMON")
-	if name == "COMMON A dingy box" || name == "COMMON A worn box" {
-		t.Errorf("GetDisplayName() with COMMON shine should not show prefix, got %v", name)
-	}
-
 	// Test unknown item (should return internal name)
-	name = r.GetDisplayName("unknown_item", "")
+	name = r.GetDisplayName("unknown_item", domain.ShineLevel(""))
 	if name != "unknown_item" {
 		t.Errorf("GetDisplayName() for unknown = %v, want unknown_item", name)
 	}

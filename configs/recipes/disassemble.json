@@ -1,0 +1,111 @@
+{
+  "version": "1.0",
+  "description": "Disassemble recipes for BrandishBot",
+  "recipes": [
+    {
+      "recipe_key": "lootbox_tier1",
+      "quantity_consumed": 1,
+      "outputs": [
+        {
+          "item": "lootbox_tier0",
+          "quantity": 1
+        },
+        {
+          "item": "money",
+          "quantity": 25
+        }
+      ],
+      "associated_upgrade": "lootbox_tier0"
+    },
+    {
+      "recipe_key": "lootbox_tier2",
+      "quantity_consumed": 1,
+      "outputs": [
+        {
+          "item": "lootbox_tier1",
+          "quantity": 1
+        },
+        {
+          "item": "money",
+          "quantity": 125
+        }
+      ],
+      "associated_upgrade": "lootbox_tier1"
+    },
+    {
+      "recipe_key": "lootbox_tier3",
+      "quantity_consumed": 1,
+      "outputs": [
+        {
+          "item": "lootbox_tier2",
+          "quantity": 1
+        },
+        {
+          "item": "money",
+          "quantity": 625
+        }
+      ],
+      "associated_upgrade": "lootbox_tier2"
+    },
+    {
+      "recipe_key": "weapon_deez",
+      "quantity_consumed": 1,
+      "outputs": [
+        {
+          "item": "weapon_this",
+          "quantity": 2
+        },
+        {
+          "item": "money",
+          "quantity": 125
+        }
+      ],
+      "associated_upgrade": "weapon_this"
+    },
+    {
+      "recipe_key": "explosive_trap",
+      "quantity_consumed": 1,
+      "outputs": [
+        {
+          "item": "explosive_mine",
+          "quantity": 2
+        },
+        {
+          "item": "money",
+          "quantity": 62
+        }
+      ],
+      "associated_upgrade": "explosive_mine"
+    },
+    {
+      "recipe_key": "explosive_tnt",
+      "quantity_consumed": 1,
+      "outputs": [
+        {
+          "item": "explosive_trap",
+          "quantity": 1
+        },
+        {
+          "item": "money",
+          "quantity": 625
+        }
+      ],
+      "associated_upgrade": "explosive_trap"
+    },
+    {
+      "recipe_key": "item_shield",
+      "quantity_consumed": 1,
+      "outputs": [
+        {
+          "item": "item_stick",
+          "quantity": 2
+        },
+        {
+          "item": "money",
+          "quantity": 125
+        }
+      ],
+      "associated_upgrade": "item_stick"
+    }
+  ]
+}

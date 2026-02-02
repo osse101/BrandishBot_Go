@@ -1,5 +1,6 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+set -euo pipefail
+export LC_ALL=C.UTF-8
 
 # BrandishBot Health Check Script
 # Usage: ./scripts/health-check.sh <environment>

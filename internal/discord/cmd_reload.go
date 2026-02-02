@@ -12,7 +12,7 @@ import (
 func ReloadCommand(bot *Bot) (*discordgo.ApplicationCommand, CommandHandler) {
 	// Create admin permission value
 	adminPerm := int64(discordgo.PermissionAdministrator)
-	
+
 	cmd := &discordgo.ApplicationCommand{
 		Name:        "reload",
 		Description: "[ADMIN] Reload Discord commands (sync or remove)",
@@ -28,14 +28,11 @@ func ReloadCommand(bot *Bot) (*discordgo.ApplicationCommand, CommandHandler) {
 	}
 
 	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-		}); err != nil {
-			slog.Error("Failed to send deferred response", "error", err)
+		if !deferResponse(s, i) {
 			return
 		}
 
-		options := i.ApplicationCommandData().Options
+		options := getOptions(i)
 		var commandName string
 		if len(options) > 0 {
 			commandName = options[0].StringValue()
@@ -104,7 +101,7 @@ func registerMissingCommands(s *discordgo.Session, bot *Bot) (string, error) {
 	// Check which commands from our registry are missing
 	var missingCmds []*discordgo.ApplicationCommand
 	var updatedCmds []*discordgo.ApplicationCommand
-	
+
 	for name, cmd := range bot.Registry.Commands {
 		if existing, exists := existingMap[name]; exists {
 			// Check if it needs updating (description changed, etc.)
@@ -146,7 +143,7 @@ func registerMissingCommands(s *discordgo.Session, bot *Bot) (string, error) {
 	}
 
 	totalAfter := len(existingCmds) + registered
-	
+
 	var sb strings.Builder
 	sb.WriteString("✅ Commands synchronized!\n\n")
 	if registered > 0 {

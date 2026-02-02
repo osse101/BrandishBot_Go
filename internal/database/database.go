@@ -3,7 +3,8 @@ package database
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
+	"math"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -19,23 +20,26 @@ type Pool interface {
 func NewPool(connString string, maxConns int, maxIdle, maxLife time.Duration) (*pgxpool.Pool, error) {
 	config, err := pgxpool.ParseConfig(connString)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse connection string: %w", err)
+		return nil, fmt.Errorf("%s: %w", ErrMsgFailedToParseConnString, err)
 	}
 
+	if maxConns > math.MaxInt32 {
+		maxConns = math.MaxInt32
+	}
 	config.MaxConns = int32(maxConns)
-	config.MinConns = 2 // Keeping min conns at 2
+	config.MinConns = DefaultMinConnections
 	config.MaxConnLifetime = maxLife
 	config.MaxConnIdleTime = maxIdle
 
 	pool, err := pgxpool.NewWithConfig(context.Background(), config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create connection pool: %w", err)
+		return nil, fmt.Errorf("%s: %w", ErrMsgFailedToCreatePool, err)
 	}
 
 	if err := pool.Ping(context.Background()); err != nil {
-		return nil, fmt.Errorf("failed to ping database: %w", err)
+		return nil, fmt.Errorf("%s: %w", ErrMsgFailedToPingDatabase, err)
 	}
 
-	log.Println("Successfully connected to the database")
+	slog.Default().Info(LogMsgSuccessfullyConnectedToDatabase)
 	return pool, nil
 }
