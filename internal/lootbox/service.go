@@ -66,20 +66,27 @@ type ItemRepository interface {
 
 // Service defines the lootbox opening interface
 type Service interface {
-	OpenLootbox(ctx context.Context, lootboxName string, quantity int) ([]DroppedItem, error)
+	OpenLootbox(ctx context.Context, lootboxName string, quantity int, boxShine string) ([]DroppedItem, error)
+}
+
+// ProgressionService defines the interface for checking feature unlocks
+type ProgressionService interface {
+	IsNodeUnlocked(ctx context.Context, nodeKey string, level int) (bool, error)
 }
 
 type service struct {
 	repo            ItemRepository
+	progressionSvc  ProgressionService
 	lootTables      map[string][]LootItem
 	rnd             func() float64
 	schemaValidator validation.SchemaValidator
 }
 
 // NewService creates a new lootbox service
-func NewService(repo ItemRepository, lootTablesPath string) (Service, error) {
+func NewService(repo ItemRepository, progressionSvc ProgressionService, lootTablesPath string) (Service, error) {
 	svc := &service{
 		repo:            repo,
+		progressionSvc:  progressionSvc,
 		lootTables:      make(map[string][]LootItem),
 		rnd:             utils.RandomFloat,
 		schemaValidator: validation.NewSchemaValidator(),
@@ -122,7 +129,7 @@ func (s *service) loadLootTables(path string) error {
 }
 
 // OpenLootbox simulates opening lootboxes and returns the dropped items
-func (s *service) OpenLootbox(ctx context.Context, lootboxName string, quantity int) ([]DroppedItem, error) {
+func (s *service) OpenLootbox(ctx context.Context, lootboxName string, quantity int, boxShine string) ([]DroppedItem, error) {
 	if quantity <= 0 {
 		return nil, nil
 	}
@@ -138,7 +145,7 @@ func (s *service) OpenLootbox(ctx context.Context, lootboxName string, quantity 
 		return nil, nil
 	}
 
-	return s.convertToDroppedItems(ctx, dropCounts)
+	return s.convertToDroppedItems(ctx, dropCounts, boxShine)
 }
 
 type dropInfo struct {
@@ -204,7 +211,7 @@ func (s *service) updateDropCounts(loot LootItem, qty int, dropCounts map[string
 	dropCounts[loot.ItemName] = info
 }
 
-func (s *service) convertToDroppedItems(ctx context.Context, dropCounts map[string]dropInfo) ([]DroppedItem, error) {
+func (s *service) convertToDroppedItems(ctx context.Context, dropCounts map[string]dropInfo, boxShine string) ([]DroppedItem, error) {
 	log := logger.FromContext(ctx)
 
 	itemNames := make([]string, 0, len(dropCounts))
@@ -223,6 +230,16 @@ func (s *service) convertToDroppedItems(ctx context.Context, dropCounts map[stri
 		itemMap[items[i].InternalName] = &items[i]
 	}
 
+	// Check if lucky upgrade is unlocked via progression
+	canUpgrade := false
+	if s.progressionSvc != nil {
+		// "feature_gamble" is the key for the gamble feature which unlocks lucky upgrades
+		unlocked, err := s.progressionSvc.IsNodeUnlocked(ctx, "feature_gamble", 1)
+		if err == nil {
+			canUpgrade = unlocked
+		}
+	}
+
 	drops := make([]DroppedItem, 0, len(dropCounts))
 	for itemName, info := range dropCounts {
 		item, found := itemMap[itemName]
@@ -231,13 +248,29 @@ func (s *service) convertToDroppedItems(ctx context.Context, dropCounts map[stri
 			continue
 		}
 
-		shine, mult := s.calculateShine(info.Chance)
+		shine, mult := s.calculateShine(info.Chance, boxShine, canUpgrade)
+
+		quantity := info.Qty
 		boostedValue := int(float64(item.BaseValue) * mult)
+
+		// Money special logic: scale quantity instead of individual value
+		if itemName == "money" {
+			quantity = int(float64(info.Qty) * mult)
+			if info.Qty > 0 && quantity == 0 {
+				quantity = 1
+			}
+			boostedValue = item.BaseValue // Keep base value (usually 1)
+		} else {
+			// Normal item truncation protection
+			if item.BaseValue > 0 && boostedValue == 0 {
+				boostedValue = 1
+			}
+		}
 
 		drops = append(drops, DroppedItem{
 			ItemID:     item.ID,
 			ItemName:   item.InternalName,
-			Quantity:   info.Qty,
+			Quantity:   quantity,
 			Value:      boostedValue,
 			ShineLevel: shine,
 		})
@@ -247,22 +280,39 @@ func (s *service) convertToDroppedItems(ctx context.Context, dropCounts map[stri
 }
 
 // calculateShine determines the visual rarity "shine" and value multiplier of a drop based on its chance
-func (s *service) calculateShine(chance float64) (string, float64) {
+// The boxShine level shifts the constraints: a more rare box makes it easier to get rare item shine levels.
+func (s *service) calculateShine(chance float64, boxShine string, canUpgrade bool) (string, float64) {
+	dist := s.getShineDistance(boxShine)
+	bonus := 0.03 * float64(dist)
+
 	shine := ShineCommon
-	if chance <= ShineLegendaryThreshold {
+	if chance <= ShineLegendaryThreshold+bonus {
 		shine = ShineLegendary
-	} else if chance <= ShineEpicThreshold {
+	} else if chance <= ShineEpicThreshold+bonus {
 		shine = ShineEpic
-	} else if chance <= ShineRareThreshold {
+	} else if chance <= ShineRareThreshold+bonus {
 		shine = ShineRare
-	} else if chance <= ShineUncommonThreshold {
+	} else if chance <= ShineUncommonThreshold+bonus {
 		shine = ShineUncommon
+	} else if chance <= ShineCommonThreshold+bonus {
+		shine = ShineCommon
+	} else if chance <= ShinePoorThreshold+bonus {
+		shine = ShinePoor
+	} else if chance <= ShineJunkThreshold+bonus {
+		shine = ShineJunk
+	} else {
+		shine = ShineCursed
 	}
 
-	// Critical Shine Upgrade: 1% chance to upgrade the shine level
-	// This adds a fun "Lucky!" moment for players
-	if s.rnd() < CriticalShineUpgradeChance {
+	// Critical Shine Upgrade: 1% chance to upgrade the shine level (locked by progression)
+	if canUpgrade && s.rnd() < CriticalShineUpgradeChance {
 		switch shine {
+		case ShineCursed:
+			shine = ShineJunk
+		case ShineJunk:
+			shine = ShinePoor
+		case ShinePoor:
+			shine = ShineCommon
 		case ShineCommon:
 			shine = ShineUncommon
 		case ShineUncommon:
@@ -274,25 +324,49 @@ func (s *service) calculateShine(chance float64) (string, float64) {
 		}
 	}
 
-	var mult float64
+	return shine, s.getShineMultiplier(shine)
+}
+
+func (s *service) getShineDistance(shine string) int {
 	switch shine {
 	case ShineLegendary:
-		mult = MultLegendary
+		return 4
 	case ShineEpic:
-		mult = MultEpic
+		return 3
 	case ShineRare:
-		mult = MultRare
+		return 2
 	case ShineUncommon:
-		mult = MultUncommon
+		return 1
+	case ShineCommon:
+		return 0
 	case ShinePoor:
-		mult = MultPoor
+		return -1
 	case ShineJunk:
-		mult = MultJunk
+		return -2
 	case ShineCursed:
-		mult = MultCursed
+		return -3
 	default:
-		mult = MultCommon
+		return 0
 	}
+}
 
-	return shine, mult
+func (s *service) getShineMultiplier(shine string) float64 {
+	switch shine {
+	case ShineLegendary:
+		return MultLegendary
+	case ShineEpic:
+		return MultEpic
+	case ShineRare:
+		return MultRare
+	case ShineUncommon:
+		return MultUncommon
+	case ShinePoor:
+		return MultPoor
+	case ShineJunk:
+		return MultJunk
+	case ShineCursed:
+		return MultCursed
+	default:
+		return MultCommon
+	}
 }

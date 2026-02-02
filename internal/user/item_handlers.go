@@ -22,12 +22,13 @@ func (s *service) processLootbox(ctx context.Context, user *domain.User, invento
 	log := logger.FromContext(ctx)
 
 	// 1. Validate and consume lootboxes
-	if err := s.consumeLootboxFromInventory(inventory, lootboxItem, quantity); err != nil {
+	shineLevel, err := s.consumeLootboxFromInventory(inventory, lootboxItem, quantity)
+	if err != nil {
 		return "", err
 	}
 
 	// 2. Use lootbox service to open lootboxes
-	drops, err := s.lootboxService.OpenLootbox(ctx, lootboxItem.InternalName, quantity)
+	drops, err := s.lootboxService.OpenLootbox(ctx, lootboxItem.InternalName, quantity, shineLevel)
 	if err != nil {
 		log.Error("Failed to open lootbox", "error", err, "lootbox", lootboxItem.InternalName)
 		return "", fmt.Errorf("failed to open lootbox: %w", err)
@@ -41,18 +42,19 @@ func (s *service) processLootbox(ctx context.Context, user *domain.User, invento
 	return s.processLootboxDrops(ctx, user, inventory, lootboxItem, quantity, drops)
 }
 
-func (s *service) consumeLootboxFromInventory(inventory *domain.Inventory, item *domain.Item, quantity int) error {
+func (s *service) consumeLootboxFromInventory(inventory *domain.Inventory, item *domain.Item, quantity int) (string, error) {
 	itemSlotIndex, slotQuantity := utils.FindSlot(inventory, item.ID)
 	if itemSlotIndex == -1 {
-		return errors.New(ErrMsgItemNotFoundInInventory)
+		return "", errors.New(ErrMsgItemNotFoundInInventory)
 	}
 
 	if slotQuantity < quantity {
-		return errors.New(ErrMsgNotEnoughItemsInInventory)
+		return "", errors.New(ErrMsgNotEnoughItemsInInventory)
 	}
 
+	shineLevel := inventory.Slots[itemSlotIndex].ShineLevel
 	utils.RemoveFromSlot(inventory, itemSlotIndex, quantity)
-	return nil
+	return shineLevel, nil
 }
 
 func (s *service) processLootboxDrops(ctx context.Context, user *domain.User, inventory *domain.Inventory, lootboxItem *domain.Item, quantity int, drops []lootbox.DroppedItem) (string, error) {

@@ -60,8 +60,8 @@ type MockLootboxServiceForLootboxTests struct {
 	mock.Mock
 }
 
-func (m *MockLootboxServiceForLootboxTests) OpenLootbox(ctx context.Context, lootboxName string, quantity int) ([]lootbox.DroppedItem, error) {
-	args := m.Called(ctx, lootboxName, quantity)
+func (m *MockLootboxServiceForLootboxTests) OpenLootbox(ctx context.Context, lootboxName string, quantity int, boxShine string) ([]lootbox.DroppedItem, error) {
+	args := m.Called(ctx, lootboxName, quantity, boxShine)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

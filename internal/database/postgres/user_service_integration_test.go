@@ -29,7 +29,7 @@ func (m *MockJobService) AwardXP(ctx context.Context, userID, jobKey string, bas
 
 type MockLootboxService struct{}
 
-func (m *MockLootboxService) OpenLootbox(ctx context.Context, lootboxName string, quantity int) ([]lootbox.DroppedItem, error) {
+func (m *MockLootboxService) OpenLootbox(ctx context.Context, lootboxName string, quantity int, boxShine string) ([]lootbox.DroppedItem, error) {
 	return []lootbox.DroppedItem{}, nil
 }
 

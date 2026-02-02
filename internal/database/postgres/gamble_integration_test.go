@@ -48,17 +48,15 @@ func setupGambleIntegrationTest(t *testing.T) (*pgxpool.Pool, *UserRepository, g
 	require.NoError(t, err)
 
 	lootRepo := NewUserRepository(pool)
-	lootSvc, err := lootbox.NewService(lootRepo, lootTablePath)
-	require.NoError(t, err)
-
 	// 3. Setup Gamble Service
 	gambleRepo := NewGambleRepository(pool)
 	eventBus := event.NewMemoryBus()
 	statsSvc := &MockStatsService{}
 	jobSvc := &MockJobService{}
-
-	// mock progression service
 	progressionSvc := &MockProgressionService{}
+
+	lootSvc, err := lootbox.NewService(lootRepo, progressionSvc, lootTablePath)
+	require.NoError(t, err)
 
 	gambleSvc := gamble.NewService(
 		gambleRepo,
@@ -87,6 +85,9 @@ func (m *MockProgressionService) GetModifiedValue(ctx context.Context, featureKe
 }
 
 func (m *MockProgressionService) IsFeatureUnlocked(ctx context.Context, featureKey string) (bool, error) {
+	return true, nil
+}
+func (m *MockProgressionService) IsNodeUnlocked(ctx context.Context, nodeKey string, level int) (bool, error) {
 	return true, nil
 }
 
@@ -168,8 +169,9 @@ func TestGambleLifecycle_Integration(t *testing.T) {
 	require.NotNil(t, result)
 
 	// Verify Result
-	// Since both bet 2, tiebreaker picks winner. But result should have total value 400.
-	assert.Equal(t, int64(400), result.TotalValue)
+	// Since both bet 2, tiebreaker picks winner. But result should have total value 160.
+	// 400 base reduced by Cursed shine (0.4) = 160.
+	assert.Equal(t, int64(160), result.TotalValue)
 
 	// Verify Gamble State in DB
 	finalGamble, err := svc.GetGamble(ctx, gamble.ID)
@@ -190,9 +192,9 @@ func TestGambleLifecycle_Integration(t *testing.T) {
 	loserInv, _ := repo.GetInventory(ctx, loserID)
 	require.NotNil(t, loserInv)
 
-	// Winner should have 3 lootboxes + 400 money
+	// Winner should have 3 lootboxes + 160 money
 	require.Equal(t, 3, getQty(winnerInv, lbItem.ID))
-	require.Equal(t, 400, getQty(winnerInv, moneyItem.ID)) // 4 items of 100 money each
+	require.Equal(t, 160, getQty(winnerInv, moneyItem.ID)) // 4 items of 40 money each
 
 	// Loser should have 3 lootboxes + 0 money
 	require.Equal(t, 3, getQty(loserInv, lbItem.ID))

@@ -211,7 +211,7 @@ func (f *fakeBenchJobService) AwardXP(ctx context.Context, userID, jobKey string
 // Mock lootbox service
 type fakeBenchLootboxService struct{}
 
-func (f *fakeBenchLootboxService) OpenLootbox(ctx context.Context, lootboxName string, quantity int) ([]lootbox.DroppedItem, error) {
+func (f *fakeBenchLootboxService) OpenLootbox(ctx context.Context, lootboxName string, quantity int, boxShine string) ([]lootbox.DroppedItem, error) {
 	return []lootbox.DroppedItem{
 		{ItemID: 1, ItemName: "money", Quantity: 10, Value: 10, ShineLevel: "COMMON"},
 	}, nil

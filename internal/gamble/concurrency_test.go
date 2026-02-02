@@ -165,7 +165,7 @@ func TestExecuteGamble_Concurrent_Idempotent(t *testing.T) {
 	drops := []lootbox.DroppedItem{{ItemID: 10, Quantity: 5, Value: 100}}
 	repo.On("GetItemByName", ctx, domain.ItemLootbox1).Return(lootboxItem, nil)
 	repo.On("GetItemByID", ctx, 1).Return(lootboxItem, nil)
-	lootboxSvc.On("OpenLootbox", ctx, domain.ItemLootbox1, 1).Return(drops, nil)
+	lootboxSvc.On("OpenLootbox", ctx, domain.ItemLootbox1, 1, mock.Anything).Return(drops, nil)
 	tx1.On("SaveOpenedItems", ctx, mock.Anything).Return(nil)
 
 	tx1.On("GetInventory", ctx, "user1").Return(&domain.Inventory{}, nil)
@@ -211,15 +211,15 @@ func TestConsumeItem_MultipleItemsRemoval(t *testing.T) {
 		},
 	}
 
-	err := consumeItem(inventory, 1, 5)
+	_, err := consumeItem(inventory, 1, 5)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(inventory.Slots))
 
-	err = consumeItem(inventory, 2, 3)
+	_, err = consumeItem(inventory, 2, 3)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(inventory.Slots))
 
-	err = consumeItem(inventory, 3, 2)
+	_, err = consumeItem(inventory, 3, 2)
 	assert.NoError(t, err)
 	assert.Empty(t, inventory.Slots)
 }

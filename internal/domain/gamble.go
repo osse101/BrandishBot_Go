@@ -37,8 +37,9 @@ type Gamble struct {
 
 // LootboxBet represents a wager of a specific lootbox item
 type LootboxBet struct {
-	ItemName string `json:"item_name"`
-	Quantity int    `json:"quantity"`
+	ItemName   string `json:"item_name"`
+	Quantity   int    `json:"quantity"`
+	ShineLevel string `json:"shine_level,omitempty"`
 }
 
 // Participant represents a user who has joined the gamble

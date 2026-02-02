@@ -155,18 +155,24 @@ func (s *service) StartGamble(ctx context.Context, platform, platformID, usernam
 		return nil, fmt.Errorf("%s: %w", ErrContextFailedToGetInventory, err)
 	}
 
+	// Create a local copy of bets to avoid modifying the caller's slice and race conditions
+	gambleBets := make([]domain.LootboxBet, len(bets))
+	copy(gambleBets, bets)
+
 	// Consume bet items from inventory using resolved IDs
-	for i, bet := range bets {
+	for i := range gambleBets {
 		itemID := resolvedItemIDs[i]
-		if err := consumeItem(inventory, itemID, bet.Quantity); err != nil {
+		shineLevel, err := consumeItem(inventory, itemID, gambleBets[i].Quantity)
+		if err != nil {
 			return nil, fmt.Errorf("%s (item %d): %w", ErrContextFailedToConsumeBet, itemID, err)
 		}
+		gambleBets[i].ShineLevel = shineLevel
 	}
 
 	participant := &domain.Participant{
 		GambleID:    gamble.ID,
 		UserID:      user.ID,
-		LootboxBets: bets,
+		LootboxBets: gambleBets,
 		Username:    username,
 	}
 
@@ -177,7 +183,7 @@ func (s *service) StartGamble(ctx context.Context, platform, platformID, usernam
 	s.publishGambleStartedEvent(ctx, gamble)
 
 	s.wg.Add(1)
-	go s.awardGamblerXP(context.Background(), user.ID, calculateTotalLootboxes(bets), "start", false)
+	go s.awardGamblerXP(context.Background(), user.ID, calculateTotalLootboxes(gambleBets), "start", false)
 
 	return gamble, nil
 }
@@ -200,17 +206,21 @@ func (s *service) JoinGamble(ctx context.Context, gambleID uuid.UUID, platform, 
 	}
 
 	// Get initiator's bets to use for this joiner
-	var bets []domain.LootboxBet
+	var initiatorBets []domain.LootboxBet
 	for _, p := range gamble.Participants {
 		if p.UserID == gamble.InitiatorID {
-			bets = p.LootboxBets
+			initiatorBets = p.LootboxBets
 			break
 		}
 	}
 
-	if len(bets) == 0 {
+	if len(initiatorBets) == 0 {
 		return fmt.Errorf("failed to find initiator bets for gamble %s: %w", gambleID, domain.ErrGambleNotFound)
 	}
+
+	// Create a deep copy of bets to use for this joiner to avoid side effects
+	bets := make([]domain.LootboxBet, len(initiatorBets))
+	copy(bets, initiatorBets)
 
 	// Note: Duplicate join prevention is enforced by database constraint
 	// (idx_gamble_participants_unique_user on gamble_participants table)
@@ -249,11 +259,13 @@ func (s *service) executeGambleJoinTx(ctx context.Context, userID string, gamble
 	}
 
 	// Consume Bets using resolved item IDs
-	for i, bet := range bets {
+	for i := range bets {
 		itemID := resolvedItemIDs[i]
-		if err := consumeItem(inventory, itemID, bet.Quantity); err != nil {
+		shineLevel, err := consumeItem(inventory, itemID, bets[i].Quantity)
+		if err != nil {
 			return fmt.Errorf("%s (item %d): %w", ErrContextFailedToConsumeBet, itemID, err)
 		}
+		bets[i].ShineLevel = shineLevel
 	}
 
 	// Update Inventory
@@ -407,7 +419,7 @@ func (s *service) openParticipantsLootboxes(ctx context.Context, gamble *domain.
 				continue
 			}
 
-			drops, err := s.lootboxSvc.OpenLootbox(ctx, lootboxItem.InternalName, bet.Quantity)
+			drops, err := s.lootboxSvc.OpenLootbox(ctx, lootboxItem.InternalName, bet.Quantity, bet.ShineLevel)
 			if err != nil {
 				continue
 			}
@@ -559,13 +571,14 @@ func (s *service) GetActiveGamble(ctx context.Context) (*domain.Gamble, error) {
 	return s.repo.GetActiveGamble(ctx)
 }
 
-// Helper to consume item from inventory
-func consumeItem(inventory *domain.Inventory, itemID, quantity int) error {
+// Helper to consume item from inventory and return its shine level
+func consumeItem(inventory *domain.Inventory, itemID, quantity int) (string, error) {
 	for i := range inventory.Slots {
 		if inventory.Slots[i].ItemID == itemID {
 			if inventory.Slots[i].Quantity < quantity {
-				return domain.ErrInsufficientQuantity
+				return "", domain.ErrInsufficientQuantity
 			}
+			shineLevel := inventory.Slots[i].ShineLevel
 			if inventory.Slots[i].Quantity == quantity {
 				// Remove slot
 				inventory.Slots = append(inventory.Slots[:i], inventory.Slots[i+1:]...)
@@ -573,10 +586,10 @@ func consumeItem(inventory *domain.Inventory, itemID, quantity int) error {
 				// Reduce quantity
 				inventory.Slots[i].Quantity -= quantity
 			}
-			return nil
+			return shineLevel, nil
 		}
 	}
-	return domain.ErrItemNotFound
+	return "", domain.ErrItemNotFound
 }
 
 // calculateTotalLootboxes sums up lootbox quantities from bets

@@ -22,6 +22,18 @@ const ShineRareThreshold = 0.15
 // but not guaranteed.
 const ShineUncommonThreshold = 0.30
 
+// ShineCommonThreshold defines the maximum drop chance (<=50%) to be
+// classified as COMMON shine tier. Baseline items.
+const ShineCommonThreshold = 0.50
+
+// ShinePoorThreshold defines the maximum drop chance (<=70%) to be
+// classified as POOR shine tier. Less valuable than common items.
+const ShinePoorThreshold = 0.70
+
+// ShineJunkThreshold defines the maximum drop chance (<=90%) to be
+// classified as JUNK shine tier. Common fodder.
+const ShineJunkThreshold = 0.90
+
 // ============================================================================
 // Drop Mechanics
 // ============================================================================

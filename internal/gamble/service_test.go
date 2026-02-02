@@ -125,8 +125,8 @@ type MockLootboxService struct {
 	mock.Mock
 }
 
-func (m *MockLootboxService) OpenLootbox(ctx context.Context, lootboxName string, quantity int) ([]lootbox.DroppedItem, error) {
-	args := m.Called(ctx, lootboxName, quantity)
+func (m *MockLootboxService) OpenLootbox(ctx context.Context, lootboxName string, quantity int, boxShine string) ([]lootbox.DroppedItem, error) {
+	args := m.Called(ctx, lootboxName, quantity, boxShine)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -562,7 +562,7 @@ func TestExecuteGamble_Success(t *testing.T) {
 	tx.On("UpdateGambleStateIfMatches", ctx, gambleID, domain.GambleStateJoining, domain.GambleStateOpening).Return(int64(1), nil)
 	repo.On("GetItemByName", ctx, domain.ItemLootbox1).Return(lootboxItem, nil)
 	repo.On("GetItemByID", ctx, 1).Return(lootboxItem, nil)
-	lootboxSvc.On("OpenLootbox", ctx, domain.PublicNameLootbox, 1).Return(droppedItems, nil)
+	lootboxSvc.On("OpenLootbox", ctx, mock.Anything, mock.Anything, mock.Anything).Return(droppedItems, nil)
 	tx.On("SaveOpenedItems", ctx, mock.Anything).Return(nil)
 	tx.On("GetInventory", ctx, "user1").Return(winnerInventory, nil)
 	tx.On("UpdateInventory", ctx, "user1", mock.Anything).Return(nil)
@@ -606,7 +606,7 @@ func TestExecuteGamble_MultipleParticipants(t *testing.T) {
 	tx.On("UpdateGambleStateIfMatches", ctx, gambleID, domain.GambleStateJoining, domain.GambleStateOpening).Return(int64(1), nil)
 	repo.On("GetItemByName", ctx, domain.ItemLootbox1).Return(lootboxItem, nil)
 	repo.On("GetItemByID", ctx, 1).Return(lootboxItem, nil)
-	lootboxSvc.On("OpenLootbox", ctx, domain.ItemLootbox1, mock.Anything).Return(droppedItems, nil)
+	lootboxSvc.On("OpenLootbox", ctx, domain.ItemLootbox1, mock.Anything, mock.Anything).Return(droppedItems, nil)
 	tx.On("SaveOpenedItems", ctx, mock.Anything).Return(nil)
 	tx.On("GetInventory", ctx, mock.Anything).Return(inventory, nil)
 	tx.On("UpdateInventory", ctx, mock.Anything, mock.Anything).Return(nil)
@@ -735,7 +735,7 @@ func TestExecuteGamble_SaveOpenedItemsFails(t *testing.T) {
 	tx.On("UpdateGambleStateIfMatches", ctx, gambleID, domain.GambleStateJoining, domain.GambleStateOpening).Return(int64(1), nil)
 	repo.On("GetItemByName", ctx, domain.ItemLootbox1).Return(lootboxItem, nil)
 	repo.On("GetItemByID", ctx, 1).Return(lootboxItem, nil)
-	lootboxSvc.On("OpenLootbox", ctx, domain.ItemLootbox1, mock.Anything).Return(droppedItems, nil)
+	lootboxSvc.On("OpenLootbox", ctx, domain.ItemLootbox1, mock.Anything, mock.Anything).Return(droppedItems, nil)
 	tx.On("SaveOpenedItems", ctx, mock.Anything).Return(domain.ErrDatabaseError)
 	tx.On("Rollback", ctx).Return(nil).Maybe()
 
@@ -860,9 +860,9 @@ func TestExecuteGamble_NearMiss(t *testing.T) {
 	repo.On("GetItemByID", ctx, 2).Return(lootboxItem2, nil)
 	repo.On("GetItemByID", ctx, 3).Return(lootboxItem3, nil)
 
-	lootboxSvc.On("OpenLootbox", ctx, domain.ItemLootbox0, 1).Return(drops1, nil)
-	lootboxSvc.On("OpenLootbox", ctx, domain.ItemLootbox1, 1).Return(drops2, nil)
-	lootboxSvc.On("OpenLootbox", ctx, domain.ItemLootbox2, 1).Return(drops3, nil)
+	lootboxSvc.On("OpenLootbox", ctx, domain.ItemLootbox0, 1, mock.Anything).Return(drops1, nil)
+	lootboxSvc.On("OpenLootbox", ctx, domain.ItemLootbox1, 1, mock.Anything).Return(drops2, nil)
+	lootboxSvc.On("OpenLootbox", ctx, domain.ItemLootbox2, 1, mock.Anything).Return(drops3, nil)
 
 	tx.On("SaveOpenedItems", ctx, mock.Anything).Return(nil)
 	tx.On("GetInventory", ctx, "user1").Return(&domain.Inventory{}, nil)
@@ -935,9 +935,9 @@ func TestExecuteGamble_CriticalFailure(t *testing.T) {
 	repo.On("GetItemByID", ctx, 2).Return(lootboxItem2, nil)
 	repo.On("GetItemByID", ctx, 3).Return(lootboxItem3, nil)
 
-	lootboxSvc.On("OpenLootbox", ctx, domain.ItemLootbox0, 1).Return(drops1, nil)
-	lootboxSvc.On("OpenLootbox", ctx, domain.ItemLootbox1, 1).Return(drops2, nil)
-	lootboxSvc.On("OpenLootbox", ctx, domain.ItemLootbox2, 1).Return(drops3, nil)
+	lootboxSvc.On("OpenLootbox", ctx, domain.ItemLootbox0, 1, mock.Anything).Return(drops1, nil)
+	lootboxSvc.On("OpenLootbox", ctx, domain.ItemLootbox1, 1, mock.Anything).Return(drops2, nil)
+	lootboxSvc.On("OpenLootbox", ctx, domain.ItemLootbox2, 1, mock.Anything).Return(drops3, nil)
 
 	tx.On("SaveOpenedItems", ctx, mock.Anything).Return(nil)
 	tx.On("GetInventory", ctx, mock.Anything).Return(&domain.Inventory{}, nil)
@@ -1005,7 +1005,7 @@ func TestExecuteGamble_TieBreak(t *testing.T) {
 
 	repo.On("GetItemByName", ctx, domain.ItemLootbox1).Return(lootboxItem, nil)
 	repo.On("GetItemByID", ctx, 1).Return(lootboxItem, nil)
-	lootboxSvc.On("OpenLootbox", ctx, domain.ItemLootbox1, 1).Return(drops, nil)
+	lootboxSvc.On("OpenLootbox", ctx, domain.ItemLootbox1, 1, mock.Anything).Return(drops, nil)
 
 	tx.On("SaveOpenedItems", ctx, mock.Anything).Return(nil)
 	tx.On("GetInventory", ctx, mock.Anything).Return(&domain.Inventory{}, nil)
