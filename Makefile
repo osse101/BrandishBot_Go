@@ -364,8 +364,8 @@ test-integration:
 
 test-staging:
 	@echo "Running staging integration tests..."
-	@echo "Target: $${STAGING_URL:-http://localhost:8080}"
-	@go test -tags=staging -v ./tests/staging
+	@echo "Target: $${STAGING_URL:-http://localhost:8081}"
+	@STAGING_URL=$${STAGING_URL:-http://localhost:8081} go test -tags=staging -v ./tests/staging
 
 db-test-up:
 	@echo "Starting test database..."

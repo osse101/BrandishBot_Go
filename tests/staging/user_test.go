@@ -24,7 +24,7 @@ func TestUserRegistration(t *testing.T) {
 		"platform": platform,
 	}
 
-	resp, body := makeRequest(t, "POST", "/user/register", request)
+	resp, body := makeRequest(t, "POST", "/api/v1/user/register", request)
 
 	// 200 for success, 400 if already exists
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusBadRequest {
@@ -39,7 +39,7 @@ func TestInventoryEndpoint(t *testing.T) {
 	platformID := "test_platform"
 	username := "TestUser"
 
-	path := fmt.Sprintf("/user/inventory?user_id=%s&platform_id=%s&username=%s", userID, platformID, username)
+	path := fmt.Sprintf("/api/v1/user/inventory?platform=twitch&user_id=%s&platform_id=%s&username=%s", userID, platformID, username)
 	resp, body := makeRequest(t, "GET", path, nil)
 
 	if resp.StatusCode == http.StatusNotFound {
@@ -63,7 +63,7 @@ func TestInventoryEndpoint(t *testing.T) {
 
 // TestPricesEndpoint tests the prices endpoint
 func TestPricesEndpoint(t *testing.T) {
-	resp, body := makeRequest(t, "GET", "/prices", nil)
+	resp, body := makeRequest(t, "GET", "/api/v1/prices", nil)
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("Expected status 200, got %d. Body: %s", resp.StatusCode, string(body))
@@ -84,11 +84,12 @@ func TestPricesEndpoint(t *testing.T) {
 func TestRecipesEndpoint(t *testing.T) {
 	// Needs either item or user, providing generic query
 	// Requires platform/platform_id if user is provided
-	userID := "00000000-0000-0000-0000-000000000001"
-	platform := domain.PlatformDiscord
-	platformID := "test_platform"
+	// Use the same user registered in TestUserRegistration or another known one
+	username := "StagingTestUser"
+	platform := domain.PlatformTwitch
+	platformID := "test_platform" // Not used for lookup if username provided but good practice
 
-	path := fmt.Sprintf("/recipes?user=%s&platform=%s&platform_id=%s", userID, platform, platformID)
+	path := fmt.Sprintf("/api/v1/recipes?user=%s&platform=%s&platform_id=%s", username, platform, platformID)
 	resp, body := makeRequest(t, "GET", path, nil)
 
 	if resp.StatusCode != http.StatusOK {
