@@ -33,8 +33,8 @@ func TestGetInventoryByUsername(t *testing.T) {
 			{ItemID: 2, Quantity: 5},
 		},
 	}
-	repo.items["sword"] = &domain.Item{ID: 1, InternalName: "sword", Types: []string{}}
-	repo.items["shield"] = &domain.Item{ID: 2, InternalName: "shield", Types: []string{}}
+	repo.items["sword"] = &domain.Item{ID: 1, InternalName: "sword", PublicName: "sword", Types: []string{}}
+	repo.items["shield"] = &domain.Item{ID: 2, InternalName: "shield", PublicName: "shield", Types: []string{}}
 
 	t.Run("successful retrieval", func(t *testing.T) {
 		items, err := svc.GetInventoryByUsername(context.Background(), "twitch", "alice", "")

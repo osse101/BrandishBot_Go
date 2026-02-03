@@ -308,8 +308,8 @@ func (s *service) removeItemFromUserInternal(ctx context.Context, user *domain.U
 			return domain.ErrFailedToGetInventory
 		}
 
-		// Remove item from inventory using utility function
-		i, slotQty := utils.FindSlot(inventory, item.ID)
+		// Remove item from inventory using random selection (in case multiple slots with different shine levels exist)
+		i, slotQty := utils.FindRandomSlot(inventory, item.ID, s.rnd)
 		if i == -1 {
 			log.Warn("Item not in inventory", "itemName", itemName)
 			return domain.ErrNotInInventory
@@ -359,8 +359,8 @@ func (s *service) useItemInternal(ctx context.Context, user *domain.User, platfo
 			return domain.ErrFailedToGetInventory
 		}
 
-		// Find item in inventory using utility function
-		itemSlotIndex, slotQty := utils.FindSlot(inventory, itemToUse.ID)
+		// Find item in inventory using random selection (in case multiple slots exist with different shine levels)
+		itemSlotIndex, slotQty := utils.FindRandomSlot(inventory, itemToUse.ID, s.rnd)
 		if itemSlotIndex == -1 {
 			return domain.ErrNotInInventory
 		}
@@ -442,7 +442,10 @@ func (s *service) getInventoryInternal(ctx context.Context, user *domain.User, f
 		s.itemCacheMu.Unlock()
 	}
 
-	items := make([]InventoryItem, 0, len(inventory.Slots))
+	// Group items by name to merge same items with different shine levels
+	itemsByName := make(map[string]int)
+	itemOrder := make([]string, 0)
+
 	for _, slot := range inventory.Slots {
 		item, ok := itemMap[slot.ItemID]
 		if !ok {
@@ -464,9 +467,19 @@ func (s *service) getInventoryInternal(ctx context.Context, user *domain.User, f
 			}
 		}
 
+		// Accumulate quantity by name
+		if _, exists := itemsByName[item.PublicName]; !exists {
+			itemOrder = append(itemOrder, item.PublicName)
+		}
+		itemsByName[item.PublicName] += slot.Quantity
+	}
+
+	// Convert back to array in order of first appearance
+	items := make([]InventoryItem, 0, len(itemsByName))
+	for _, name := range itemOrder {
 		items = append(items, InventoryItem{
-			Name:     item.PublicName,
-			Quantity: slot.Quantity,
+			Name:     name,
+			Quantity: itemsByName[name],
 		})
 	}
 
@@ -633,8 +646,8 @@ func (s *service) executeGiveItemTx(ctx context.Context, owner, receiver *domain
 			return domain.ErrFailedToGetInventory
 		}
 
-		// Find item in owner's inventory using utility function
-		ownerSlotIndex, ownerSlotQty := utils.FindSlot(ownerInventory, item.ID)
+		// Find item in owner's inventory using random selection (in case multiple slots with different shine levels exist)
+		ownerSlotIndex, ownerSlotQty := utils.FindRandomSlot(ownerInventory, item.ID, s.rnd)
 		if ownerSlotIndex == -1 {
 			log.Warn("Item not found in owner's inventory", "item", item.InternalName)
 			return domain.ErrNotInInventory

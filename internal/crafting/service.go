@@ -171,10 +171,11 @@ func calculateMaxPossibleCrafts(inventory *domain.Inventory, recipe *domain.Reci
 }
 
 // consumeRecipeMaterials removes the required materials from inventory for crafting
-func consumeRecipeMaterials(inventory *domain.Inventory, recipe *domain.Recipe, actualQuantity int) error {
+func consumeRecipeMaterials(inventory *domain.Inventory, recipe *domain.Recipe, actualQuantity int, rnd func() float64) error {
 	for _, cost := range recipe.BaseCost {
 		totalNeeded := cost.Quantity * actualQuantity
-		i, slotQuantity := utils.FindSlot(inventory, cost.ItemID)
+		// Use random selection in case multiple slots with different shine levels exist
+		i, slotQuantity := utils.FindRandomSlot(inventory, cost.ItemID, rnd)
 		if i == -1 || slotQuantity < totalNeeded {
 			return fmt.Errorf("insufficient material (itemID: %d) | %w", cost.ItemID, domain.ErrInsufficientQuantity)
 		}
@@ -268,7 +269,7 @@ func (s *service) UpgradeItem(ctx context.Context, platform, platformID, usernam
 	}
 
 	// Consume materials
-	if err := consumeRecipeMaterials(inventory, recipe, actualQuantity); err != nil {
+	if err := consumeRecipeMaterials(inventory, recipe, actualQuantity, s.rnd); err != nil {
 		return nil, err
 	}
 
@@ -586,7 +587,8 @@ func (s *service) getAndValidateDisassembleRecipe(ctx context.Context, itemID in
 }
 
 func (s *service) calculateDisassembleQuantity(inventory *domain.Inventory, itemID int, quantityConsumed int, quantity int, itemName string) (int, int, error) {
-	sourceSlotIndex, userQuantity := utils.FindSlot(inventory, itemID)
+	// Use random selection in case multiple slots with different shine levels exist
+	sourceSlotIndex, userQuantity := utils.FindRandomSlot(inventory, itemID, s.rnd)
 	maxPossible := userQuantity / quantityConsumed
 	if maxPossible == 0 {
 		return 0, -1, fmt.Errorf("insufficient items to disassemble %s (need %d, have %d) | %w", itemName, quantityConsumed, userQuantity, domain.ErrInsufficientQuantity)

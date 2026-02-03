@@ -21,6 +21,34 @@ func FindSlot(inventory *domain.Inventory, itemID int) (int, int) {
 	return -1, 0
 }
 
+// FindRandomSlot finds a random slot with the given item ID in an inventory.
+// If multiple slots exist with the same item ID, one is selected randomly using the provided RNG function.
+// Returns the index of the randomly selected slot and the quantity found.
+// Returns -1, 0 if not found.
+func FindRandomSlot(inventory *domain.Inventory, itemID int, rnd func() float64) (int, int) {
+	// Find all matching slots
+	matchingIndices := make([]int, 0)
+	for i, slot := range inventory.Slots {
+		if slot.ItemID == itemID {
+			matchingIndices = append(matchingIndices, i)
+		}
+	}
+
+	if len(matchingIndices) == 0 {
+		return -1, 0
+	}
+
+	if len(matchingIndices) == 1 {
+		slotIdx := matchingIndices[0]
+		return slotIdx, inventory.Slots[slotIdx].Quantity
+	}
+
+	// Randomly select one
+	randomIdx := int(rnd() * float64(len(matchingIndices)))
+	slotIdx := matchingIndices[randomIdx]
+	return slotIdx, inventory.Slots[slotIdx].Quantity
+}
+
 // BuildSlotMap creates a map of item ID to slot index for O(1) lookups.
 // This is useful when adding many items to an inventory to avoid repeated linear scans.
 func BuildSlotMap(inventory *domain.Inventory) map[int]int {

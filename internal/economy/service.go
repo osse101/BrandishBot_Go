@@ -40,6 +40,7 @@ type service struct {
 	jobService         JobService
 	namingResolver     naming.Resolver
 	progressionService ProgressionService
+	rnd                func() float64 // For RNG - allows deterministic testing
 	wg                 sync.WaitGroup
 }
 
@@ -50,6 +51,7 @@ func NewService(repo repository.Economy, jobService JobService, namingResolver n
 		jobService:         jobService,
 		namingResolver:     namingResolver,
 		progressionService: progressionService,
+		rnd:                utils.RandomFloat,
 	}
 }
 
@@ -276,7 +278,8 @@ func (s *service) SellItem(ctx context.Context, platform, platformID, username, 
 		return 0, 0, fmt.Errorf(ErrMsgGetInventoryFailed, err)
 	}
 
-	itemSlotIndex, slotQuantity := utils.FindSlot(inventory, item.ID)
+	// Use random selection in case multiple slots with different shine levels exist
+	itemSlotIndex, slotQuantity := utils.FindRandomSlot(inventory, item.ID, s.rnd)
 	if itemSlotIndex == -1 {
 		return 0, 0, fmt.Errorf(ErrMsgItemNotInInventoryFmt, itemName, domain.ErrNotInInventory)
 	}
@@ -425,7 +428,8 @@ func (s *service) BuyItem(ctx context.Context, platform, platformID, username, i
 		return 0, fmt.Errorf(ErrMsgGetInventoryFailed, err)
 	}
 
-	moneySlotIndex, moneyBalance := utils.FindSlot(inventory, moneyItem.ID)
+	// Use random selection in case multiple money slots exist with different shine levels
+	moneySlotIndex, moneyBalance := utils.FindRandomSlot(inventory, moneyItem.ID, s.rnd)
 	if moneyBalance <= 0 {
 		return 0, domain.ErrInsufficientFunds
 	}

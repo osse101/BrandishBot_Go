@@ -51,7 +51,7 @@ func (s *service) processLootbox(ctx context.Context, user *domain.User, invento
 }
 
 func (s *service) consumeLootboxFromInventory(inventory *domain.Inventory, item *domain.Item, quantity int) (domain.ShineLevel, error) {
-	itemSlotIndex, slotQuantity := utils.FindSlot(inventory, item.ID)
+	itemSlotIndex, slotQuantity := utils.FindRandomSlot(inventory, item.ID, s.rnd)
 	if itemSlotIndex == -1 {
 		return "", errors.New(ErrMsgItemNotFoundInInventory)
 	}
@@ -204,8 +204,8 @@ func (s *service) handleWeapon(ctx context.Context, _ *service, _ *domain.User, 
 	username, _ := args[ArgsUsername].(string)
 	platform, _ := args[ArgsPlatform].(string)
 
-	// Find item slot first (before target selection)
-	itemSlotIndex, slotQuantity := utils.FindSlot(inventory, item.ID)
+	// Find item slot first (before target selection), randomly if multiple exist with different shines
+	itemSlotIndex, slotQuantity := utils.FindRandomSlot(inventory, item.ID, s.rnd)
 	if itemSlotIndex == -1 {
 		log.Warn(LogWarnWeaponNotInInventory, "item", item.InternalName)
 		return "", errors.New(ErrMsgItemNotFoundInInventory)
@@ -351,8 +351,8 @@ func (s *service) handleRevive(ctx context.Context, _ *service, _ *domain.User, 
 	}
 	username, _ := args[ArgsUsername].(string)
 
-	// Find item slot
-	itemSlotIndex, slotQuantity := utils.FindSlot(inventory, item.ID)
+	// Find item slot (randomly if multiple exist with different shines)
+	itemSlotIndex, slotQuantity := utils.FindRandomSlot(inventory, item.ID, s.rnd)
 	if itemSlotIndex == -1 {
 		log.Warn(LogWarnReviveNotInInventory, "item", item.InternalName)
 		return "", errors.New(ErrMsgItemNotFoundInInventory)
@@ -433,8 +433,8 @@ func (s *service) handleTrap(ctx context.Context, _ *service, user *domain.User,
 	}
 
 	// 4. Find item in inventory (initial check)
-	// We need at least 1 item to start
-	itemSlotIndex, slotQuantity := utils.FindSlot(inventory, item.ID)
+	// We need at least 1 item to start (randomly if multiple exist with different shines)
+	itemSlotIndex, slotQuantity := utils.FindRandomSlot(inventory, item.ID, s.rnd)
 	if itemSlotIndex == -1 {
 		log.Warn(LogWarnTrapNotInInventory, "item", item.InternalName)
 		return "", errors.New(ErrMsgItemNotFoundInInventory)
@@ -461,8 +461,8 @@ func (s *service) handleTrap(ctx context.Context, _ *service, user *domain.User,
 			return fmt.Errorf("failed to get inventory: %w", err)
 		}
 
-		// Re-validate inventory
-		txSlotIndex, txSlotQty := utils.FindSlot(txInventory, item.ID)
+		// Re-validate inventory (randomly select from potentially multiple slots)
+		txSlotIndex, txSlotQty := utils.FindRandomSlot(txInventory, item.ID, s.rnd)
 		if txSlotIndex == -1 || txSlotQty < 1 {
 			return fmt.Errorf("item no longer available")
 		}
@@ -608,8 +608,8 @@ func (s *service) handleShield(ctx context.Context, _ *service, user *domain.Use
 	log := logger.FromContext(ctx)
 	log.Info(LogMsgHandleShieldCalled, "item", item.InternalName, "quantity", quantity)
 
-	// Find item slot
-	itemSlotIndex, slotQuantity := utils.FindSlot(inventory, item.ID)
+	// Find item slot (randomly if multiple exist with different shines)
+	itemSlotIndex, slotQuantity := utils.FindRandomSlot(inventory, item.ID, s.rnd)
 	if itemSlotIndex == -1 {
 		log.Warn(LogWarnShieldNotInInventory)
 		return "", errors.New(ErrMsgItemNotFoundInInventory)
@@ -651,8 +651,8 @@ func (s *service) handleRareCandy(ctx context.Context, _ *service, user *domain.
 		return "", errors.New(ErrMsgJobNameRequired)
 	}
 
-	// Find item slot
-	itemSlotIndex, slotQuantity := utils.FindSlot(inventory, item.ID)
+	// Find item slot (randomly if multiple exist with different shines)
+	itemSlotIndex, slotQuantity := utils.FindRandomSlot(inventory, item.ID, s.rnd)
 	if itemSlotIndex == -1 {
 		log.Warn(LogWarnRareCandyNotInInventory)
 		return "", errors.New(ErrMsgItemNotFoundInInventory)
@@ -686,8 +686,8 @@ func (s *service) handleResourceGenerator(ctx context.Context, _ *service, _ *do
 
 	username, _ := args[ArgsUsername].(string)
 
-	// Find item slot
-	itemSlotIndex, slotQuantity := utils.FindSlot(inventory, item.ID)
+	// Find item slot (randomly if multiple exist with different shines)
+	itemSlotIndex, slotQuantity := utils.FindRandomSlot(inventory, item.ID, s.rnd)
 	if itemSlotIndex == -1 {
 		return "", errors.New(ErrMsgItemNotFoundInInventory)
 	}
@@ -717,8 +717,8 @@ func (s *service) handleUtility(ctx context.Context, _ *service, _ *domain.User,
 
 	username, _ := args[ArgsUsername].(string)
 
-	// Find item slot
-	itemSlotIndex, slotQuantity := utils.FindSlot(inventory, item.ID)
+	// Find item slot (randomly if multiple exist with different shines)
+	itemSlotIndex, slotQuantity := utils.FindRandomSlot(inventory, item.ID, s.rnd)
 	if itemSlotIndex == -1 {
 		return "", errors.New(ErrMsgItemNotFoundInInventory)
 	}
