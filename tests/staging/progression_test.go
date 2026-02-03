@@ -91,6 +91,20 @@ func TestVotingFlow(t *testing.T) {
 		t.Skip("No available nodes to vote for")
 	}
 
+	// Register user first
+	registerRequest := map[string]interface{}{
+		"username":          fmt.Sprintf("voter_%d", time.Now().Unix()),
+		"known_platform":    "twitch",
+		"known_platform_id": userID,
+		"new_platform":      "twitch",
+		"new_platform_id":   userID,
+	}
+
+	regResp, regBody := makeRequest(t, "POST", "/api/v1/user/register", registerRequest)
+	if regResp.StatusCode != http.StatusCreated && regResp.StatusCode != http.StatusOK {
+		t.Fatalf("Failed to register voter: %d. Body: %s", regResp.StatusCode, string(regBody))
+	}
+
 	// Vote for the first available node
 	voteRequest := map[string]interface{}{
 		"platform":    "twitch",
@@ -108,9 +122,23 @@ func TestVotingFlow(t *testing.T) {
 
 // TestEngagementTracking tests the engagement endpoint
 func TestEngagementTracking(t *testing.T) {
-	userID := "test_user_engagement"
+	userID := fmt.Sprintf("test_eng_%d", time.Now().Unix())
+	platform := "twitch"
 
-	resp, body := makeRequest(t, "GET", fmt.Sprintf("/api/v1/progression/engagement?platform=twitch&platform_id=%s", userID), nil)
+	// Register first
+	regReq := map[string]interface{}{
+		"username":          "EngagementTestUser",
+		"known_platform":    platform,
+		"known_platform_id": userID,
+		"new_platform":      platform,
+		"new_platform_id":   userID,
+	}
+	regResp, _ := makeRequest(t, "POST", "/api/v1/user/register", regReq)
+	if regResp.StatusCode != http.StatusCreated && regResp.StatusCode != http.StatusOK {
+		t.Fatalf("Failed to register engagement user")
+	}
+
+	resp, body := makeRequest(t, "GET", fmt.Sprintf("/api/v1/progression/engagement?platform=%s&platform_id=%s", platform, userID), nil)
 
 	// Should return 200 even if user doesn't exist (0 engagement)
 	if resp.StatusCode != http.StatusOK {
