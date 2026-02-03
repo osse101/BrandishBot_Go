@@ -1,5 +1,7 @@
 package domain
 
+import "time"
+
 // Item represents an item in the system with three-layer naming:
 // - InternalName: stable code identifier (e.g., "weapon_blaster")
 // - PublicName: user-facing command name (e.g., "missile")
@@ -29,6 +31,26 @@ const (
 	ShineJunk      ShineLevel = "JUNK"
 	ShineCursed    ShineLevel = "CURSED"
 )
+
+// GetTimeoutAdjustment returns the timeout adjustment in seconds based on shine level
+// Distance from common * 10s
+func (s ShineLevel) GetTimeoutAdjustment() time.Duration {
+	shineModifier := map[ShineLevel]time.Duration{
+		ShineCursed:    -30 * time.Second,
+		ShineJunk:      -20 * time.Second,
+		ShinePoor:      -10 * time.Second,
+		ShineCommon:    0 * time.Second,
+		ShineUncommon:  10 * time.Second,
+		ShineRare:      20 * time.Second,
+		ShineEpic:      30 * time.Second,
+		ShineLegendary: 40 * time.Second,
+	}
+
+	if modifier, ok := shineModifier[s]; ok {
+		return modifier
+	}
+	return 0
+}
 
 // Shine multipliers (Boosts item value and Gamble Score)
 const (

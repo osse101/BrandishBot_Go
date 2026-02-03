@@ -215,8 +215,9 @@ func (s *service) handleWeapon(ctx context.Context, _ *service, _ *domain.User, 
 		return "", errors.New(ErrMsgNotEnoughItemsInInventory)
 	}
 
-	timeout := getWeaponTimeout(item.InternalName)
-	displayName := s.namingResolver.GetDisplayName(item.InternalName, "")
+	shineLevel := inventory.Slots[itemSlotIndex].ShineLevel
+	timeout := getWeaponTimeout(item.InternalName) + shineLevel.GetTimeoutAdjustment()
+	displayName := s.namingResolver.GetDisplayName(item.InternalName, shineLevel)
 
 	// Special handling for TNT - multi-target (5-9 targets)
 	if item.InternalName == domain.ItemTNT {
@@ -363,7 +364,8 @@ func (s *service) handleRevive(ctx context.Context, _ *service, _ *domain.User, 
 	utils.RemoveFromSlot(inventory, itemSlotIndex, quantity)
 
 	// Get recovery time for this revive type
-	recovery := getReviveRecovery(item.InternalName)
+	shineLevel := inventory.Slots[itemSlotIndex].ShineLevel
+	recovery := getReviveRecovery(item.InternalName) + shineLevel.GetTimeoutAdjustment()
 	totalRecovery := time.Duration(quantity) * recovery
 
 	// Reduce timeout for target user
@@ -372,7 +374,7 @@ func (s *service) handleRevive(ctx context.Context, _ *service, _ *domain.User, 
 		// Continue anyway, as the item was used
 	}
 
-	displayName := s.namingResolver.GetDisplayName(item.InternalName, "")
+	displayName := s.namingResolver.GetDisplayName(item.InternalName, shineLevel)
 	log.Info(LogMsgReviveUsed, "target", targetUsername, "item", item.InternalName, "quantity", quantity)
 	return fmt.Sprintf("%s used %d %s on %s! Reduced timeout by %v.", username, quantity, displayName, targetUsername, totalRecovery), nil
 }
@@ -412,8 +414,6 @@ func (s *service) handleTrap(ctx context.Context, _ *service, user *domain.User,
 				potentialTargets = append(potentialTargets, t.Username)
 			}
 			// If we got fewer targets than quantity, we just use what we found
-			// Unless NO targets found, in which case we already handled the error/fallback above
-			// But GetRandomTargets might return empty slice if error occurred
 			if len(potentialTargets) == 0 {
 				potentialTargets = []string{user.Username}
 			}
