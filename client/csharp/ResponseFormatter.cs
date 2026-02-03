@@ -270,5 +270,77 @@ namespace BrandishBot.Client
                 return $"Error formatting unlock progress: {ex.Message}. Raw: {jsonResponse}";
             }
         }
+        /// <summary>
+        /// Format progression status JSON response for readability
+        /// Format: Progression: [unlocked]/[total] | Session: [node_keys] ([time] [days]d ago) | Unlock: [node_id/key] ([time] [days]d ago)
+        /// </summary>
+        public static string FormatProgressionStatus(string jsonResponse)
+        {
+            try
+            {
+                var status = Newtonsoft.Json.Linq.JObject.Parse(jsonResponse);
+                int totalNodes = (int?)status["total_nodes"] ?? 0;
+                int totalUnlocked = (int?)status["total_unlocked"] ?? 0;
+
+                var parts = new List<string>();
+                parts.Add($"Progression: {totalUnlocked}/{totalNodes}");
+
+                var activeSession = status["active_session"];
+                if (activeSession != null && activeSession.Type != Newtonsoft.Json.Linq.JTokenType.Null)
+                {
+                    string startedAt = FormatShortTimestamp(activeSession["started_at"]?.ToString());
+                    var options = activeSession["options"];
+                    var nodeKeys = new List<string>();
+                    if (options != null)
+                    {
+                        foreach (var option in options)
+                        {
+                            var nodeKey = option["node_details"]?["node_key"]?.ToString();
+                            if (!string.IsNullOrEmpty(nodeKey))
+                            {
+                                nodeKeys.Add(nodeKey);
+                            }
+                        }
+                    }
+                    string keysStr = nodeKeys.Count > 0 ? string.Join(", ", nodeKeys) : "unknown";
+                    parts.Add($"Session: {keysStr} ({startedAt})");
+                }
+
+                var activeProgress = status["active_unlock_progress"];
+                if (activeProgress != null && activeProgress.Type != Newtonsoft.Json.Linq.JTokenType.Null)
+                {
+                    string startedAt = FormatShortTimestamp(activeProgress["started_at"]?.ToString());
+                    
+                    // Prefer node_key if available (as requested), fallback to node_id
+                    string nodeKey = activeProgress["node_key"]?.ToString();
+                    string nodeId = activeProgress["node_id"]?.ToString();
+                    string identifier = !string.IsNullOrEmpty(nodeKey) ? nodeKey : (nodeId ?? "unknown");
+                    
+                    parts.Add($"Unlock: {identifier} ({startedAt})");
+                }
+
+                return string.Join(" | ", parts);
+            }
+            catch (Exception ex)
+            {
+                return $"Error formatting progression status: {ex.Message}";
+            }
+        }
+
+        /// <summary>
+        /// Shorten timestamps to "HH:mm Xd ago"
+        /// </summary>
+        private static string FormatShortTimestamp(string isoTimestamp)
+        {
+            if (string.IsNullOrEmpty(isoTimestamp)) return "n/a";
+            if (DateTime.TryParse(isoTimestamp, null, System.Globalization.DateTimeStyles.AssumeUniversal, out DateTime dt))
+            {
+                DateTime utcDt = dt.ToUniversalTime();
+                TimeSpan diff = DateTime.UtcNow - utcDt;
+                int days = (int)Math.Floor(diff.TotalDays);
+                return $"{utcDt:HH:mm} {days}d ago";
+            }
+            return isoTimestamp;
+        }
     }
 }
