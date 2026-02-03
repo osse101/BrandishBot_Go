@@ -40,6 +40,10 @@ func (s *Subscriber) Subscribe() {
 	// Subscribe to gamble completed events
 	s.bus.Subscribe(event.Type(domain.EventGambleCompleted), s.handleGambleCompleted)
 
+	// Subscribe to timeout events
+	s.bus.Subscribe(event.TimeoutApplied, s.handleTimeoutUpdate)
+	s.bus.Subscribe(event.TimeoutCleared, s.handleTimeoutUpdate)
+
 	slog.Info("Streamer.bot subscriber registered for event types",
 		"types", []string{
 			string(domain.EventJobLevelUp),
@@ -47,6 +51,8 @@ func (s *Subscriber) Subscribe() {
 			string(event.ProgressionCycleCompleted),
 			string(event.ProgressionAllUnlocked),
 			string(domain.EventGambleCompleted),
+			string(event.TimeoutApplied),
+			string(event.TimeoutCleared),
 		})
 }
 
@@ -229,6 +235,47 @@ func (s *Subscriber) handleGambleCompleted(_ context.Context, evt event.Event) e
 
 	if err := s.client.DoAction(ActionGambleCompleted, args); err != nil {
 		slog.Debug("Failed to send gamble completed to Streamer.bot", "error", err)
+	}
+
+	return nil
+}
+
+// handleTimeoutUpdate sends a DoAction for timeout applied or cleared events
+func (s *Subscriber) handleTimeoutUpdate(_ context.Context, evt event.Event) error {
+	var payload event.TimeoutPayloadV1
+
+	// Attempt to extract typed payload
+	if p, ok := evt.Payload.(event.TimeoutPayloadV1); ok {
+		payload = p
+	} else {
+		// Fallback to map parsing (useful if events are unmarshaled from JSON)
+		pMap, ok := evt.Payload.(map[string]interface{})
+		if !ok {
+			slog.Warn("Invalid timeout event payload type", "type", fmt.Sprintf("%T", evt.Payload))
+			return nil
+		}
+		payload = event.TimeoutPayloadV1{
+			Platform:        getStringFromMap(pMap, "platform"),
+			Username:        getStringFromMap(pMap, "username"),
+			Action:          getStringFromMap(pMap, "action"),
+			DurationSeconds: getIntFromMap(pMap, "duration_seconds"),
+			Reason:          getStringFromMap(pMap, "reason"),
+		}
+	}
+
+	args := map[string]string{
+		"platform":         payload.Platform,
+		"username":         payload.Username,
+		"action":           payload.Action,
+		"duration_seconds": fmt.Sprintf("%d", payload.DurationSeconds),
+		"reason":           payload.Reason,
+	}
+
+	slog.Debug(LogMsgEventReceived, "event_type", evt.Type, "args", args)
+
+	if err := s.client.DoAction(ActionTimeoutUpdate, args); err != nil {
+		// Streamer.bot being offline is expected, use debug level
+		slog.Debug("Failed to send timeout update to Streamer.bot", "error", err)
 	}
 
 	return nil

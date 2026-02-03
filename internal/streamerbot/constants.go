@@ -47,6 +47,7 @@ const (
 	ActionCycleCompleted  = "BrandishBot_CycleCompleted"
 	ActionAllUnlocked     = "BrandishBot_AllUnlocked"
 	ActionGambleCompleted = "BrandishBot_GambleCompleted"
+	ActionTimeoutUpdate   = "BrandishBot_TimeoutUpdate"
 )
 
 // Response status values

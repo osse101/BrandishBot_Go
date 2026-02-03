@@ -1903,6 +1903,194 @@ public class CPHInline
 
     #endregion
 
+    #region Predictions
+
+    /// <summary>
+    /// Process a Twitch prediction outcome
+    ///
+    /// Required Args (from Twitch Prediction Completed event):
+    /// - eventSource: Platform (usually "twitch")
+    /// - prediction.winningOutcome.id: Winner outcome ID
+    /// - prediction.winningOutcome.title: Winner outcome title
+    /// - prediction.winningOutcome.users: Number of users who predicted this outcome
+    /// - prediction.winningOutcome.points: Total points spent on this outcome
+    /// - prediction.outcome0.users, prediction.outcome0.points: First outcome stats
+    /// - prediction.outcome1.users, prediction.outcome1.points: Second outcome stats
+    ///
+    /// Optional Args (for individual participant tracking):
+    /// - prediction.topPredictor0.userName, prediction.topPredictor0.userId, prediction.topPredictor0.points
+    /// - prediction.topPredictor1.userName, etc. (if available from custom integration)
+    ///
+    /// NOTE: Standard Twitch prediction events only provide aggregate data (total users/points per outcome).
+    /// This wrapper creates synthetic participant entries from the aggregates.
+    /// For full individual tracking, integrate with Twitch API to fetch top predictors.
+    ///
+    /// Returns: Sets "predictionResult" arg with contribution awarded and XP details
+    /// </summary>
+    public bool ProcessPredictionOutcome()
+    {
+        EnsureInitialized();
+
+        try
+        {
+            // Get platform (default to twitch for predictions)
+            if (!CPH.TryGetArg("eventSource", out string platform))
+            {
+                platform = "twitch";
+            }
+
+            // Get winning outcome data
+            if (!CPH.TryGetArg("prediction.winningOutcome.title", out string winningTitle))
+            {
+                CPH.LogError("[Prediction] Missing winning outcome title");
+                return false;
+            }
+
+            if (!CPH.TryGetArg("prediction.winningOutcome.points", out string winningPointsStr) ||
+                !int.TryParse(winningPointsStr, out int winningPoints))
+            {
+                CPH.LogError("[Prediction] Missing or invalid winning outcome points");
+                return false;
+            }
+
+            // Calculate total points across all outcomes
+            int totalPoints = 0;
+            int outcomeIndex = 0;
+            var participants = new List<PredictionParticipant>();
+
+            // Collect points from all outcomes (up to 10 outcomes, though typically 2)
+            while (outcomeIndex < 10)
+            {
+                string pointsKey = $"prediction.outcome{outcomeIndex}.points";
+                string usersKey = $"prediction.outcome{outcomeIndex}.users";
+                string titleKey = $"prediction.outcome{outcomeIndex}.title";
+
+                if (CPH.TryGetArg(pointsKey, out string pointsStr) &&
+                    int.TryParse(pointsStr, out int points))
+                {
+                    totalPoints += points;
+
+                    // Create synthetic participants for this outcome (aggregate entry)
+                    if (CPH.TryGetArg(usersKey, out string usersStr) &&
+                        int.TryParse(usersStr, out int userCount) &&
+                        CPH.TryGetArg(titleKey, out string outcomeTitle))
+                    {
+                        // Create a synthetic participant representing this outcome's aggregate
+                        participants.Add(new PredictionParticipant
+                        {
+                            Username = $"outcome_{outcomeIndex}_{outcomeTitle}",
+                            PlatformId = "0", // Synthetic ID
+                            PointsSpent = points
+                        });
+
+                        CPH.LogInfo($"[Prediction] Outcome {outcomeIndex} ({outcomeTitle}): {userCount} users, {points} points");
+                    }
+
+                    outcomeIndex++;
+                }
+                else
+                {
+                    break; // No more outcomes
+                }
+            }
+
+            if (totalPoints == 0)
+            {
+                CPH.LogWarn("[Prediction] Total points is 0, skipping prediction processing");
+                return true;
+            }
+
+            // Try to get broadcaster as the "winner" (or use first top predictor if available)
+            string winnerUsername = "unknown_winner";
+            string winnerPlatformId = "0";
+
+            // Check for custom top predictor data (if integrated)
+            if (CPH.TryGetArg("prediction.topPredictor0.userName", out string topPredictorName) &&
+                CPH.TryGetArg("prediction.topPredictor0.userId", out string topPredictorId))
+            {
+                winnerUsername = topPredictorName;
+                winnerPlatformId = topPredictorId;
+                CPH.LogInfo($"[Prediction] Using top predictor as winner: {winnerUsername}");
+            }
+            else if (CPH.TryGetArg("broadcastUserName", out string broadcasterName) &&
+                     CPH.TryGetArg("broadcastUserId", out string broadcasterId))
+            {
+                // Fallback: Use broadcaster as synthetic winner
+                winnerUsername = broadcasterName;
+                winnerPlatformId = broadcasterId;
+                CPH.LogInfo($"[Prediction] Using broadcaster as synthetic winner: {winnerUsername}");
+            }
+
+            // Create winner object
+            var winner = new PredictionWinner
+            {
+                Username = winnerUsername,
+                PlatformId = winnerPlatformId,
+                PointsWon = winningPoints
+            };
+
+            // Add individual predictors if provided (custom integration)
+            int predictorIndex = 0;
+            while (predictorIndex < 100) // Max 100 top predictors
+            {
+                string nameKey = $"prediction.topPredictor{predictorIndex}.userName";
+                string idKey = $"prediction.topPredictor{predictorIndex}.userId";
+                string pointsKey = $"prediction.topPredictor{predictorIndex}.points";
+
+                if (CPH.TryGetArg(nameKey, out string predictorName) &&
+                    CPH.TryGetArg(idKey, out string predictorId) &&
+                    CPH.TryGetArg(pointsKey, out string predictorPointsStr) &&
+                    int.TryParse(predictorPointsStr, out int predictorPoints))
+                {
+                    participants.Add(new PredictionParticipant
+                    {
+                        Username = predictorName,
+                        PlatformId = predictorId,
+                        PointsSpent = predictorPoints
+                    });
+
+                    predictorIndex++;
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            if (predictorIndex > 0)
+            {
+                CPH.LogInfo($"[Prediction] Added {predictorIndex} individual predictors");
+            }
+
+            // Call the API
+            CPH.LogInfo($"[Prediction] Processing outcome: {totalPoints} total points, {participants.Count} participant entries");
+
+            var result = client.ProcessPredictionOutcome(platform, winner, totalPoints, participants).Result;
+
+            // Set result arguments
+            CPH.SetArgument("predictionResult", result.Message);
+            CPH.SetArgument("contributionAwarded", result.ContributionAwarded);
+            CPH.SetArgument("winnerXpAwarded", result.WinnerXpAwarded);
+            CPH.SetArgument("participantsProcessed", result.ParticipantsProcessed);
+            CPH.SetArgument("totalPoints", result.TotalPoints);
+
+            CPH.LogInfo($"[Prediction] ✓ Processed: {result.ContributionAwarded} contribution, {result.WinnerXpAwarded} XP to winner, {result.ParticipantsProcessed} participants");
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            CPH.LogError($"[Prediction] Failed: {ex.Message}");
+            if (ex.InnerException != null)
+            {
+                CPH.LogError($"[Prediction] Inner: {ex.InnerException.Message}");
+            }
+            return false;
+        }
+    }
+
+    #endregion
+
     #region Health Check
 
     /// <summary>

@@ -948,6 +948,35 @@ namespace BrandishBot.Client
 
         #endregion
 
+        #region Predictions
+
+        /// <summary>
+        /// Process a prediction outcome from Twitch/YouTube
+        /// Converts channel points to progression contribution and awards XP
+        /// </summary>
+        /// <param name="platform">Platform (twitch or youtube)</param>
+        /// <param name="winner">Winner information</param>
+        /// <param name="totalPointsSpent">Total channel points spent across all participants</param>
+        /// <param name="participants">All participants with their points spent</param>
+        public async Task<PredictionResult> ProcessPredictionOutcome(
+            string platform,
+            PredictionWinner winner,
+            int totalPointsSpent,
+            List<PredictionParticipant> participants)
+        {
+            var response = await PostJsonAsync("/api/v1/prediction", new
+            {
+                platform = platform,
+                winner = winner,
+                total_points_spent = totalPointsSpent,
+                participants = participants
+            });
+
+            return JsonConvert.DeserializeObject<PredictionResult>(response);
+        }
+
+        #endregion
+
         #region Health Checks
 
         /// <summary>
@@ -968,6 +997,61 @@ namespace BrandishBot.Client
 
         #endregion
     }
+
+    #region Prediction Models
+
+    /// <summary>
+    /// Represents the winner of a prediction
+    /// </summary>
+    public class PredictionWinner
+    {
+        [JsonProperty("username")]
+        public string Username { get; set; }
+
+        [JsonProperty("platform_id")]
+        public string PlatformId { get; set; }
+
+        [JsonProperty("points_won")]
+        public int PointsWon { get; set; }
+    }
+
+    /// <summary>
+    /// Represents a participant in a prediction
+    /// </summary>
+    public class PredictionParticipant
+    {
+        [JsonProperty("username")]
+        public string Username { get; set; }
+
+        [JsonProperty("platform_id")]
+        public string PlatformId { get; set; }
+
+        [JsonProperty("points_spent")]
+        public int PointsSpent { get; set; }
+    }
+
+    /// <summary>
+    /// Result of processing a prediction outcome
+    /// </summary>
+    public class PredictionResult
+    {
+        [JsonProperty("total_points")]
+        public int TotalPoints { get; set; }
+
+        [JsonProperty("contribution_awarded")]
+        public int ContributionAwarded { get; set; }
+
+        [JsonProperty("participants_processed")]
+        public int ParticipantsProcessed { get; set; }
+
+        [JsonProperty("winner_xp_awarded")]
+        public int WinnerXpAwarded { get; set; }
+
+        [JsonProperty("message")]
+        public string Message { get; set; }
+    }
+
+    #endregion
 
     #region Platform Constants
 

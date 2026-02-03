@@ -1326,3 +1326,36 @@ func (c *APIClient) SetUserTimeout(platform, username string, durationSeconds in
 	}
 	return c.doAction(http.MethodPut, "/api/v1/user/timeout", req)
 }
+
+// ProcessPredictionOutcome processes a prediction outcome from Twitch/YouTube
+func (c *APIClient) ProcessPredictionOutcome(platform string, winner domain.PredictionWinner, totalPointsSpent int, participants []domain.PredictionParticipant) (*domain.PredictionResult, error) {
+	req := domain.PredictionOutcomeRequest{
+		Platform:         platform,
+		Winner:           winner,
+		TotalPointsSpent: totalPointsSpent,
+		Participants:     participants,
+	}
+
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/prediction", req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		var errResp struct {
+			Error string `json:"error"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
+			return nil, fmt.Errorf("API error: %s", errResp.Error)
+		}
+		return nil, fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	var result domain.PredictionResult
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return &result, nil
+}

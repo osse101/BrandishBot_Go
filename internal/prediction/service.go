@@ -82,8 +82,8 @@ func (s *service) ProcessOutcome(ctx context.Context, req *domain.PredictionOutc
 		return nil, fmt.Errorf("failed to record engagement: %w", err)
 	}
 
-	// 4. Award winner XP (async, 100 to Gambler)
-	winnerXP := s.awardWinnerXP(ctx, req.Platform, req.Winner)
+	// 4. Award winner XP and grenade (async, 100 XP to Gambler + 1 grenade if unlocked)
+	winnerXP := s.awardWinnerRewards(ctx, req.Platform, req.Winner)
 
 	// 5. Award participants XP (async, 10 each to Gambler)
 	s.awardParticipantsXP(ctx, req.Platform, req.Participants)
@@ -150,8 +150,8 @@ func (s *service) recordTotalEngagement(ctx context.Context, totalPoints, contri
 	return nil
 }
 
-// awardWinnerXP awards XP to the prediction winner (async, graceful degradation)
-func (s *service) awardWinnerXP(ctx context.Context, platform string, winner domain.PredictionWinner) int {
+// awardWinnerRewards awards XP and grenade to the prediction winner (async, graceful degradation)
+func (s *service) awardWinnerRewards(ctx context.Context, platform string, winner domain.PredictionWinner) int {
 	s.wg.Add(1)
 	go func() {
 		defer s.wg.Done()
@@ -184,6 +184,27 @@ func (s *service) awardWinnerXP(ctx context.Context, platform string, winner dom
 			"username", winner.Username,
 			"xp", WinnerXP,
 			"job", GamblerJobKey)
+
+		// Award grenade if unlocked
+		grenadeUnlocked, err := s.progressionService.IsItemUnlocked(bgCtx, GrenadeItemName)
+		if err != nil {
+			log.Warn("Failed to check grenade unlock status", "error", err)
+			return
+		}
+
+		if grenadeUnlocked {
+			if err := s.userService.AddItemByUsername(bgCtx, platform, winner.Username, GrenadeItemName, GrenadeQuantity); err != nil {
+				log.Error("Failed to award grenade to winner",
+					"username", winner.Username,
+					"error", err)
+				return
+			}
+
+			log.Info("Awarded grenade to prediction winner",
+				"username", winner.Username,
+				"item", GrenadeItemName,
+				"quantity", GrenadeQuantity)
+		}
 	}()
 
 	return WinnerXP
