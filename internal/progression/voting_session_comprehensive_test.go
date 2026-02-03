@@ -109,7 +109,7 @@ func TestVoteForUnlock_Success(t *testing.T) {
 
 	// Vote for first option
 	nodeKey := session.Options[0].NodeDetails.NodeKey
-	err := service.VoteForUnlock(ctx, "discord", "user1", nodeKey)
+	err := service.VoteForUnlock(ctx, domain.PlatformDiscord, "user1", "user1", nodeKey)
 	assert.NoError(t, err)
 
 	// Verify vote was recorded
@@ -128,7 +128,7 @@ func TestVoteForUnlock_NoActiveSession(t *testing.T) {
 	ctx := context.Background()
 
 	// No session started
-	err := service.VoteForUnlock(ctx, "discord", "user1", "item_money")
+	err := service.VoteForUnlock(ctx, domain.PlatformDiscord, "user1", "user1", "item_money")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "no active voting session")
 }
@@ -145,7 +145,7 @@ func TestVoteForUnlock_SessionNotVoting(t *testing.T) {
 	optionID := session.Options[0].ID
 	repo.EndVotingSession(ctx, session.ID, &optionID)
 
-	err := service.VoteForUnlock(ctx, "discord", "user1", "item_money")
+	err := service.VoteForUnlock(ctx, domain.PlatformDiscord, "user1", "user1", "item_money")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "no active voting session")
 }
@@ -159,7 +159,7 @@ func TestVoteForUnlock_NodeNotInOptions(t *testing.T) {
 	service.StartVotingSession(ctx, nil)
 
 	// Try to vote for node not in options
-	err := service.VoteForUnlock(ctx, "discord", "user1", "feature_economy")
+	err := service.VoteForUnlock(ctx, domain.PlatformDiscord, "user1", "user1", "feature_economy")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "not in current voting options")
 }
@@ -175,11 +175,11 @@ func TestVoteForUnlock_UserAlreadyVoted(t *testing.T) {
 	nodeKey := session.Options[0].NodeDetails.NodeKey
 
 	// First vote succeeds
-	err := service.VoteForUnlock(ctx, "discord", "user1", nodeKey)
+	err := service.VoteForUnlock(ctx, domain.PlatformDiscord, "user1", "user1", nodeKey)
 	assert.NoError(t, err)
 
 	// Second vote fails
-	err = service.VoteForUnlock(ctx, "discord", "user1", nodeKey)
+	err = service.VoteForUnlock(ctx, domain.PlatformDiscord, "user1", "user1", nodeKey)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "already voted")
 }
@@ -196,8 +196,8 @@ func TestEndVoting_Success(t *testing.T) {
 	session, _ := repo.GetActiveSession(ctx)
 
 	// Cast some votes
-	service.VoteForUnlock(ctx, "discord", "user1", session.Options[0].NodeDetails.NodeKey)
-	service.VoteForUnlock(ctx, "discord", "user2", session.Options[0].NodeDetails.NodeKey)
+	service.VoteForUnlock(ctx, domain.PlatformDiscord, "user1", "user1", session.Options[0].NodeDetails.NodeKey)
+	service.VoteForUnlock(ctx, domain.PlatformDiscord, "user2", "user2", session.Options[0].NodeDetails.NodeKey)
 
 	winner, err := service.EndVoting(ctx)
 	assert.NoError(t, err)
@@ -219,8 +219,8 @@ func TestEndVoting_TieBreaker(t *testing.T) {
 	session, _ := repo.GetActiveSession(ctx)
 
 	// Create tie - 1 vote each
-	service.VoteForUnlock(ctx, "discord", "user1", session.Options[0].NodeDetails.NodeKey)
-	service.VoteForUnlock(ctx, "discord", "user2", session.Options[1].NodeDetails.NodeKey)
+	service.VoteForUnlock(ctx, domain.PlatformDiscord, "user1", "user1", session.Options[0].NodeDetails.NodeKey)
+	service.VoteForUnlock(ctx, domain.PlatformDiscord, "user2", "user2", session.Options[1].NodeDetails.NodeKey)
 
 	winner, err := service.EndVoting(ctx)
 	assert.NoError(t, err)
@@ -255,14 +255,14 @@ func TestEndVoting_AwardsContributions(t *testing.T) {
 	session, _ := repo.GetActiveSession(ctx)
 
 	// Cast votes
-	service.VoteForUnlock(ctx, "discord", "user1", session.Options[0].NodeDetails.NodeKey)
-	service.VoteForUnlock(ctx, "discord", "user2", session.Options[0].NodeDetails.NodeKey)
+	service.VoteForUnlock(ctx, domain.PlatformDiscord, "user1", "user1", session.Options[0].NodeDetails.NodeKey)
+	service.VoteForUnlock(ctx, domain.PlatformDiscord, "user2", "user2", session.Options[0].NodeDetails.NodeKey)
 
 	_, err := service.EndVoting(ctx)
 	assert.NoError(t, err)
 
 	// Verify engagement metrics recorded
-	user1Engagement, _ := service.GetUserEngagement(ctx, "discord", "user1")
+	user1Engagement, _ := service.GetUserEngagement(ctx, domain.PlatformDiscord, "user1")
 	assert.Greater(t, user1Engagement.TotalScore, 0)
 }
 

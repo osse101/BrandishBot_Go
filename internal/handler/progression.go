@@ -97,18 +97,18 @@ func (h *ProgressionHandlers) HandleVote() http.HandlerFunc {
 		log := logger.FromContext(r.Context())
 
 		// Cast vote
-		err := h.service.VoteForUnlock(r.Context(), req.Platform, req.PlatformID, req.NodeKey)
+		err := h.service.VoteForUnlock(r.Context(), req.Platform, req.PlatformID, req.Username, req.NodeKey)
 		if err != nil {
 			if errors.Is(err, domain.ErrUserAlreadyVoted) {
 				respondJSON(w, http.StatusOK, SuccessResponse{Message: MsgAlreadyVoted})
 				return
 			}
-			log.Warn("Vote request: service error", "error", err, "platform", req.Platform, "platformID", req.PlatformID, "nodeKey", req.NodeKey)
+			log.Warn("Vote request: service error", "error", err, "platform", req.Platform, "platformID", req.PlatformID, "username", req.Username, "nodeKey", req.NodeKey)
 			respondError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 
-		log.Info("Vote cast successfully", "platform", req.Platform, "platformID", req.PlatformID, "nodeKey", req.NodeKey)
+		log.Info("Vote cast successfully", "platform", req.Platform, "platformID", req.PlatformID, "username", req.Username, "nodeKey", req.NodeKey)
 		respondJSON(w, http.StatusOK, SuccessResponse{Message: MsgVoteRecordedSuccess})
 	}
 }
@@ -688,6 +688,7 @@ type AvailableUnlocksResponse struct {
 type VoteRequest struct {
 	Platform   string `json:"platform" validate:"required,max=20"`
 	PlatformID string `json:"platform_id" validate:"required,max=100,excludesall=\x00\n\r\t"`
+	Username   string `json:"username" validate:"required,max=100"`
 	NodeKey    string `json:"node_key" validate:"required,max=50"`
 }
 

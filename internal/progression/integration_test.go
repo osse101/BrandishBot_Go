@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -41,9 +42,9 @@ func TestVotingFlow_Complete(t *testing.T) {
 		t.Fatal("lootbox0 not found in session options")
 	}
 
-	service.VoteForUnlock(ctx, "discord", "user1", lootboxKey)
-	service.VoteForUnlock(ctx, "discord", "user2", lootboxKey)
-	service.VoteForUnlock(ctx, "discord", "user3", lootboxKey)
+	service.VoteForUnlock(ctx, domain.PlatformDiscord, "user1", "user1", lootboxKey)
+	service.VoteForUnlock(ctx, domain.PlatformDiscord, "user2", "user2", lootboxKey)
+	service.VoteForUnlock(ctx, domain.PlatformDiscord, "user3", "user3", lootboxKey)
 
 	// Step 3: End voting
 	winner, err := service.EndVoting(ctx)
@@ -106,9 +107,9 @@ func TestVotingFlow_MultipleVoters(t *testing.T) {
 	session, _ := repo.GetActiveSession(ctx)
 
 	// Multiple users vote for different options
-	service.VoteForUnlock(ctx, "discord", "user1", session.Options[0].NodeDetails.NodeKey)
-	service.VoteForUnlock(ctx, "discord", "user2", session.Options[0].NodeDetails.NodeKey)
-	service.VoteForUnlock(ctx, "discord", "user3", session.Options[1].NodeDetails.NodeKey)
+	service.VoteForUnlock(ctx, domain.PlatformDiscord, "user1", "user1", session.Options[0].NodeDetails.NodeKey)
+	service.VoteForUnlock(ctx, domain.PlatformDiscord, "user2", "user2", session.Options[0].NodeDetails.NodeKey)
+	service.VoteForUnlock(ctx, domain.PlatformDiscord, "user3", "user3", session.Options[1].NodeDetails.NodeKey)
 
 	winner, _ := service.EndVoting(ctx)
 
@@ -145,7 +146,7 @@ func TestVotingFlow_AutoNextSession(t *testing.T) {
 		t.Fatal("lootbox0 not found in session options")
 	}
 
-	service.VoteForUnlock(ctx, "discord", "user1", lootboxKey)
+	service.VoteForUnlock(ctx, domain.PlatformDiscord, "user1", "user1", lootboxKey)
 	service.EndVoting(ctx)
 
 	progress, _ := repo.GetActiveUnlockProgress(ctx)
@@ -242,7 +243,7 @@ func TestMultiLevel_SessionTargeting(t *testing.T) {
 	}
 
 	assert.NotEmpty(t, cooldownKey, "Cooldown level 1 should be available")
-	service.VoteForUnlock(ctx, "discord", "user1", cooldownKey)
+	service.VoteForUnlock(ctx, domain.PlatformDiscord, "user1", "user1", cooldownKey)
 	service.EndVoting(ctx)
 
 	// Complete unlock of Cooldown L1
@@ -311,7 +312,7 @@ func TestCache_ThresholdDetection(t *testing.T) {
 	// Complete voting to set cache
 	service.StartVotingSession(ctx, nil)
 	session, _ := repo.GetActiveSession(ctx)
-	service.VoteForUnlock(ctx, "discord", "user1", session.Options[0].NodeDetails.NodeKey)
+	service.VoteForUnlock(ctx, domain.PlatformDiscord, "user1", "user1", session.Options[0].NodeDetails.NodeKey)
 	service.EndVoting(ctx)
 
 	progress, _ := repo.GetActiveUnlockProgress(ctx)

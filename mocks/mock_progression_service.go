@@ -2005,17 +2005,17 @@ func (_c *MockProgressionService_StartVotingSession_Call) RunAndReturn(run func(
 	return _c
 }
 
-// VoteForUnlock provides a mock function with given fields: ctx, platform, platformID, nodeKey
-func (_m *MockProgressionService) VoteForUnlock(ctx context.Context, platform string, platformID string, nodeKey string) error {
-	ret := _m.Called(ctx, platform, platformID, nodeKey)
+// VoteForUnlock provides a mock function with given fields: ctx, platform, platformID, username, nodeKey
+func (_m *MockProgressionService) VoteForUnlock(ctx context.Context, platform string, platformID string, username string, nodeKey string) error {
+	ret := _m.Called(ctx, platform, platformID, username, nodeKey)
 
 	if len(ret) == 0 {
 		panic("no return value specified for VoteForUnlock")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, string) error); ok {
-		r0 = rf(ctx, platform, platformID, nodeKey)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, string) error); ok {
+		r0 = rf(ctx, platform, platformID, username, nodeKey)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -2032,14 +2032,15 @@ type MockProgressionService_VoteForUnlock_Call struct {
 //   - ctx context.Context
 //   - platform string
 //   - platformID string
+//   - username string
 //   - nodeKey string
-func (_e *MockProgressionService_Expecter) VoteForUnlock(ctx interface{}, platform interface{}, platformID interface{}, nodeKey interface{}) *MockProgressionService_VoteForUnlock_Call {
-	return &MockProgressionService_VoteForUnlock_Call{Call: _e.mock.On("VoteForUnlock", ctx, platform, platformID, nodeKey)}
+func (_e *MockProgressionService_Expecter) VoteForUnlock(ctx interface{}, platform interface{}, platformID interface{}, username interface{}, nodeKey interface{}) *MockProgressionService_VoteForUnlock_Call {
+	return &MockProgressionService_VoteForUnlock_Call{Call: _e.mock.On("VoteForUnlock", ctx, platform, platformID, username, nodeKey)}
 }
 
-func (_c *MockProgressionService_VoteForUnlock_Call) Run(run func(ctx context.Context, platform string, platformID string, nodeKey string)) *MockProgressionService_VoteForUnlock_Call {
+func (_c *MockProgressionService_VoteForUnlock_Call) Run(run func(ctx context.Context, platform string, platformID string, username string, nodeKey string)) *MockProgressionService_VoteForUnlock_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(string))
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(string), args[4].(string))
 	})
 	return _c
 }
@@ -2049,7 +2050,7 @@ func (_c *MockProgressionService_VoteForUnlock_Call) Return(_a0 error) *MockProg
 	return _c
 }
 
-func (_c *MockProgressionService_VoteForUnlock_Call) RunAndReturn(run func(context.Context, string, string, string) error) *MockProgressionService_VoteForUnlock_Call {
+func (_c *MockProgressionService_VoteForUnlock_Call) RunAndReturn(run func(context.Context, string, string, string, string) error) *MockProgressionService_VoteForUnlock_Call {
 	_c.Call.Return(run)
 	return _c
 }

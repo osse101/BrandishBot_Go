@@ -48,7 +48,7 @@ func TestVoteForUnlock_NoGoroutineLeak(t *testing.T) {
 		// Vote for first available node
 		session, _ := svc.GetActiveVotingSession(ctx)
 		if session != nil && len(session.Options) > 0 && session.Options[0].NodeDetails != nil {
-			_ = svc.VoteForUnlock(ctx, "discord", userID, session.Options[0].NodeDetails.NodeKey)
+			_ = svc.VoteForUnlock(ctx, domain.PlatformDiscord, userID, userID, session.Options[0].NodeDetails.NodeKey)
 		}
 	}
 
@@ -72,7 +72,7 @@ func TestEndVoting_NoGoroutineLeak(t *testing.T) {
 		// Cast some votes
 		session, _ := svc.GetActiveVotingSession(ctx)
 		if session != nil && len(session.Options) > 0 && session.Options[0].NodeDetails != nil {
-			_ = svc.VoteForUnlock(ctx, "discord", "voter1", session.Options[0].NodeDetails.NodeKey)
+			_ = svc.VoteForUnlock(ctx, domain.PlatformDiscord, "voter1", "voter1", session.Options[0].NodeDetails.NodeKey)
 		}
 
 		// End voting
@@ -114,7 +114,7 @@ func TestCheckAndUnlockNode_NoGoroutineLeak(t *testing.T) {
 	_ = svc.StartVotingSession(ctx, nil)
 	session, _ := svc.GetActiveVotingSession(ctx)
 	if session != nil && len(session.Options) > 0 && session.Options[0].NodeDetails != nil {
-		_ = svc.VoteForUnlock(ctx, "discord", "voter1", session.Options[0].NodeDetails.NodeKey)
+		_ = svc.VoteForUnlock(ctx, domain.PlatformDiscord, "voter1", "voter1", session.Options[0].NodeDetails.NodeKey)
 		_, _ = svc.EndVoting(ctx)
 
 		// Add contributions to meet threshold
