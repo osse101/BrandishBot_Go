@@ -6,8 +6,8 @@ export LC_ALL=C.UTF-8
 # Usage: ./scripts/deploy.sh <environment> <version>
 # Example: ./scripts/deploy.sh staging v1.2.0-rc1
 
-ENVIRONMENT="${1:-}"
-VERSION="${2:-}"
+TARGET_ENV="${1:-}"
+DEPLOY_VERSION="${2:-}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
@@ -31,7 +31,7 @@ log_error() {
 }
 
 # Validate arguments
-if [[ -z "$ENVIRONMENT" ]] || [[ -z "$VERSION" ]]; then
+if [[ -z "$TARGET_ENV" ]] || [[ -z "$DEPLOY_VERSION" ]]; then
     log_error "Usage: $0 <environment> <version>"
     log_info "Example: $0 staging v1.2.0-rc1"
     log_info "         $0 production v1.2.0"
@@ -39,26 +39,26 @@ if [[ -z "$ENVIRONMENT" ]] || [[ -z "$VERSION" ]]; then
 fi
 
 # Validate environment
-if [[ "$ENVIRONMENT" != "staging" ]] && [[ "$ENVIRONMENT" != "production" ]]; then
+if [[ "$TARGET_ENV" != "staging" ]] && [[ "$TARGET_ENV" != "production" ]]; then
     log_error "Environment must be 'staging' or 'production'"
     exit 1
 fi
 
 # Set compose file based on environment
-if [[ "$ENVIRONMENT" == "staging" ]]; then
+if [[ "$TARGET_ENV" == "staging" ]]; then
     COMPOSE_FILE="docker-compose.staging.yml"
-elif [[ "$ENVIRONMENT" == "production" ]]; then
+elif [[ "$TARGET_ENV" == "production" ]]; then
     COMPOSE_FILE="docker-compose.production.yml"
 fi
 
 log_info "=== BrandishBot Deployment ==="
-log_info "Environment: $ENVIRONMENT"
-log_info "Version: $VERSION"
+log_info "Environment: $TARGET_ENV"
+log_info "Version: $DEPLOY_VERSION"
 log_info "Compose File: $COMPOSE_FILE"
 echo ""
 
 # Production confirmation
-if [[ "$ENVIRONMENT" == "production" ]]; then
+if [[ "$TARGET_ENV" == "production" ]]; then
     log_warn "You are about to deploy to PRODUCTION"
     echo -n "Type 'yes' to continue: "
     read -r CONFIRM
@@ -81,7 +81,7 @@ fi
 # Step 1: Pre-deployment health check
 log_info "Step 1/7: Pre-deployment health check"
 if [[ -f "$SCRIPT_DIR/health-check.sh" ]]; then
-    if ! bash "$SCRIPT_DIR/health-check.sh" "$ENVIRONMENT" 2>/dev/null; then
+    if ! bash "$SCRIPT_DIR/health-check.sh" "$TARGET_ENV" 2>/dev/null; then
         log_warn "Pre-deployment health check failed (service may not be running yet)"
     else
         log_info "Current deployment is healthy"
@@ -93,7 +93,7 @@ fi
 # Step 2: Database backup
 log_info "Step 2/7: Creating database backup"
 mkdir -p "$PROJECT_DIR/backups"
-BACKUP_FILE="backups/backup_${ENVIRONMENT}_$(date +%Y%m%d_%H%M%S).sql"
+BACKUP_FILE="backups/backup_${TARGET_ENV}_$(date +%Y%m%d_%H%M%S).sql"
 if docker compose -f "$COMPOSE_FILE" ps db | grep -q "Up"; then
     DB_CONTAINER=$(docker compose -f "$COMPOSE_FILE" ps -q db)
     if [[ -n "$DB_CONTAINER" ]]; then
@@ -110,20 +110,27 @@ fi
 
 # Step 3: Build Docker image with version tag
 log_info "Step 3/7: Building Docker image"
+IMAGE_NAME="${DOCKER_IMAGE_NAME:-brandishbot}"
+if [[ -n "${DOCKER_USER:-}" ]]; then
+    FULL_IMAGE_NAME="${DOCKER_USER}/${IMAGE_NAME}"
+else
+    FULL_IMAGE_NAME="${IMAGE_NAME}"
+fi
+
 docker build \
-    --build-arg VERSION="$VERSION" \
-    -t "brandishbot:$VERSION" \
-    -t "brandishbot:latest-$ENVIRONMENT" \
+    --build-arg VERSION="$DEPLOY_VERSION" \
+    -t "$FULL_IMAGE_NAME:$DEPLOY_VERSION" \
+    -t "$FULL_IMAGE_NAME:latest-$TARGET_ENV" \
     -f Dockerfile \
     . || {
     log_error "Docker build failed"
     exit 1
 }
-log_info "Docker image built: brandishbot:$VERSION"
+log_info "Docker image built: brandishbot:$DEPLOY_VERSION"
 
 # Step 4: Deploy new containers
 log_info "Step 4/7: Deploying new containers"
-export DOCKER_IMAGE_TAG="$VERSION"
+export DOCKER_IMAGE_TAG="$DEPLOY_VERSION"
 docker compose -f "$COMPOSE_FILE" up -d app discord || {
     log_error "Deployment failed"
     log_info "Attempting rollback..."
@@ -142,7 +149,7 @@ while [[ $ATTEMPT -lt $MAX_ATTEMPTS ]]; do
     ATTEMPT=$((ATTEMPT + 1))
     sleep 2
     
-    if bash "$SCRIPT_DIR/health-check.sh" "$ENVIRONMENT" 2>/dev/null; then
+    if bash "$SCRIPT_DIR/health-check.sh" "$TARGET_ENV" 2>/dev/null; then
         HEALTHY=true
         break
     fi
@@ -163,16 +170,21 @@ log_info "Health checks passed"
 # Step 6: Run smoke tests
 log_info "Step 6/7: Running smoke tests"
 PORT=8080
-if [[ "$ENVIRONMENT" == "staging" ]]; then
+if [[ "$TARGET_ENV" == "staging" ]]; then
     PORT=8081
 fi
 
 # Test /healthz endpoint
-if curl -sf "http://localhost:$PORT/healthz" > /dev/null; then
+if curl -sf "http://127.0.0.1:$PORT/healthz" > /dev/null; then
     log_info "✓ /healthz endpoint responding"
 else
-    log_error "✗ /healthz endpoint failed"
-    exit 1
+    log_warn "✗ /healthz endpoint failed on 127.0.0.1, trying localhost..."
+    if curl -sf "http://localhost:$PORT/healthz" > /dev/null; then
+        log_info "✓ /healthz endpoint responding"
+    else
+        log_error "✗ /healthz endpoint failed"
+        exit 1
+    fi
 fi
 
 # Test /progression/tree endpoint
@@ -188,14 +200,14 @@ docker images "brandishbot" --format "{{.Tag}}" | grep -v "latest" | tail -n +6 
 
 echo ""
 log_info "=== Deployment Complete ==="
-log_info "Environment: $ENVIRONMENT"
-log_info "Version: $VERSION"
+log_info "Environment: $TARGET_ENV"
+log_info "Version: $DEPLOY_VERSION"
 log_info "Status: SUCCESS"
 log_info ""
 log_info "Next steps:"
 log_info "  - Check logs: docker compose -f $COMPOSE_FILE logs -f app"
 log_info "  - Run staging tests: STAGING_URL=http://localhost:$PORT make test-staging"
-if [[ "$ENVIRONMENT" == "production" ]]; then
+if [[ "$TARGET_ENV" == "production" ]]; then
     log_info "  - Monitor for errors"
     log_info "  - If issues arise, rollback: ./scripts/rollback.sh production"
 fi
