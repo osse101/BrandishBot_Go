@@ -27,6 +27,10 @@ func main() {
 			os.Exit(1)
 		}
 		runCheckCoverage(os.Args[2], os.Args[3])
+	case "test-security":
+		runTestSecurity()
+	case "test-migrations":
+		runTestMigrations()
 	default:
 		printUsage()
 		os.Exit(1)
@@ -39,4 +43,6 @@ func printUsage() {
 	fmt.Println("  check-deps      Check for required dependencies")
 	fmt.Println("  check-db        Check if database is running and ready")
 	fmt.Println("  check-coverage  Check test coverage against a threshold")
+	fmt.Println("  test-security   Run API security tests")
+	fmt.Println("  test-migrations Test database migrations (up/down/idempotency)")
 }

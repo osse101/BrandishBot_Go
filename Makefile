@@ -458,12 +458,10 @@ validate-staging:
 
 # Audit & Security targets
 test-migrations:
-	@chmod +x scripts/test_migrations.sh
-	@./scripts/test_migrations.sh
+	@go run ./cmd/devtool test-migrations
 
 test-security:
-	@chmod +x scripts/test_security.sh
-	@./scripts/test_security.sh
+	@go run ./cmd/devtool test-security
 
 check-deps:
 	@go run ./cmd/devtool check-deps
