@@ -2,6 +2,7 @@ package worker
 
 import (
 	"context"
+	"os"
 	"testing"
 	"time"
 
@@ -140,6 +141,9 @@ func TestDailyResetWorkerStart(t *testing.T) {
 
 	publisher, err := event.NewResilientPublisher(mockBus, 1, 10*time.Millisecond, "test_dead.jsonl")
 	assert.NoError(t, err)
+	t.Cleanup(func() {
+		os.Remove("test_dead.jsonl")
+	})
 	defer publisher.Shutdown(context.Background())
 
 	worker := NewDailyResetWorker(jobSvc, publisher)
@@ -161,6 +165,9 @@ func TestDailyResetWorkerShutdown(t *testing.T) {
 
 	publisher, err := event.NewResilientPublisher(mockBus, 1, 10*time.Millisecond, "test_dead2.jsonl")
 	assert.NoError(t, err)
+	t.Cleanup(func() {
+		os.Remove("test_dead2.jsonl")
+	})
 	defer publisher.Shutdown(context.Background())
 
 	worker := NewDailyResetWorker(jobSvc, publisher)
@@ -183,6 +190,9 @@ func TestDailyResetWorkerShutdownTimeout(t *testing.T) {
 
 	publisher, err := event.NewResilientPublisher(mockBus, 1, 10*time.Millisecond, "test_dead3.jsonl")
 	assert.NoError(t, err)
+	t.Cleanup(func() {
+		os.Remove("test_dead3.jsonl")
+	})
 	defer publisher.Shutdown(context.Background())
 
 	worker := NewDailyResetWorker(jobSvc, publisher)
