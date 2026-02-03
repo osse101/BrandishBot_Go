@@ -1,6 +1,8 @@
 package utils
 
-import "github.com/osse101/BrandishBot_Go/internal/domain"
+import (
+	"github.com/osse101/BrandishBot_Go/internal/domain"
+)
 
 // InventoryLookupLinearScanThreshold defines when to switch from linear scan to map-based lookup.
 // Benchmarks show linear scan is faster for small M (items to add) even with large N (inventory size).
@@ -33,6 +35,9 @@ func BuildSlotMap(inventory *domain.Inventory) map[int]int {
 // If the quantity equals the slot quantity, the slot is removed entirely.
 // Assumes the caller has already validated that slotIndex is valid and quantity <= slot.Quantity.
 func RemoveFromSlot(inventory *domain.Inventory, slotIndex, quantity int) {
+	if slotIndex < 0 || slotIndex >= len(inventory.Slots) {
+		return
+	}
 	if inventory.Slots[slotIndex].Quantity == quantity {
 		inventory.Slots = append(inventory.Slots[:slotIndex], inventory.Slots[slotIndex+1:]...)
 	} else {
