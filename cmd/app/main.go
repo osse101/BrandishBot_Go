@@ -25,6 +25,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/linking"
 	"github.com/osse101/BrandishBot_Go/internal/lootbox"
 	"github.com/osse101/BrandishBot_Go/internal/naming"
+	"github.com/osse101/BrandishBot_Go/internal/prediction"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 	"github.com/osse101/BrandishBot_Go/internal/scheduler"
 	"github.com/osse101/BrandishBot_Go/internal/server"
@@ -209,6 +210,17 @@ func main() {
 	// Initialize Linking service
 	linkingService := linking.NewService(repos.Linking, userService)
 
+	// Initialize Prediction service
+	predictionService := prediction.NewService(
+		progressionService,
+		jobService,
+		userService,
+		statsService,
+		eventBus,
+		resilientPublisher,
+	)
+	slog.Info("Prediction service initialized")
+
 	// Initialize SSE Hub for real-time event streaming
 	sseHub := sse.NewHub()
 	sseHub.Start()
@@ -232,7 +244,7 @@ func main() {
 		slog.Info("Streamer.bot WebSocket client initialized", "url", cfg.StreamerbotWebhookURL)
 	}
 
-	srv := server.NewServer(cfg.Port, cfg.APIKey, cfg.TrustedProxies, dbPool, userService, economyService, craftingService, statsService, progressionService, gambleService, jobService, linkingService, harvestService, namingResolver, eventBus, sseHub, repos.User)
+	srv := server.NewServer(cfg.Port, cfg.APIKey, cfg.TrustedProxies, dbPool, userService, economyService, craftingService, statsService, progressionService, gambleService, jobService, linkingService, harvestService, predictionService, namingResolver, eventBus, sseHub, repos.User)
 
 	// Run server in a goroutine
 	go func() {
@@ -260,6 +272,7 @@ func main() {
 		EconomyService:     economyService,
 		CraftingService:    craftingService,
 		GambleService:      gambleService,
+		PredictionService:  predictionService,
 		GambleWorker:       gambleWorker,
 		DailyResetWorker:   dailyResetWorker,
 		ResilientPublisher: resilientPublisher,

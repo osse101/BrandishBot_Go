@@ -25,6 +25,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/metrics"
 	"github.com/osse101/BrandishBot_Go/internal/naming"
+	"github.com/osse101/BrandishBot_Go/internal/prediction"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/osse101/BrandishBot_Go/internal/sse"
@@ -44,12 +45,13 @@ type Server struct {
 	jobService         job.Service
 	linkingService     linking.Service
 	harvestService     harvest.Service
+	predictionService  prediction.Service
 	namingResolver     naming.Resolver
 	sseHub             *sse.Hub
 }
 
 // NewServer creates a new Server instance
-func NewServer(port int, apiKey string, trustedProxies []string, dbPool database.Pool, userService user.Service, economyService economy.Service, craftingService crafting.Service, statsService stats.Service, progressionService progression.Service, gambleService gamble.Service, jobService job.Service, linkingService linking.Service, harvestService harvest.Service, namingResolver naming.Resolver, eventBus event.Bus, sseHub *sse.Hub, userRepo repository.User) *Server {
+func NewServer(port int, apiKey string, trustedProxies []string, dbPool database.Pool, userService user.Service, economyService economy.Service, craftingService crafting.Service, statsService stats.Service, progressionService progression.Service, gambleService gamble.Service, jobService job.Service, linkingService linking.Service, harvestService harvest.Service, predictionService prediction.Service, namingResolver naming.Resolver, eventBus event.Bus, sseHub *sse.Hub, userRepo repository.User) *Server {
 	r := chi.NewRouter()
 
 	// Middleware stack
@@ -177,6 +179,10 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 			r.Get("/status", linkingHandlers.HandleStatus())
 		})
 
+		// Prediction routes
+		predictionHandlers := handler.NewPredictionHandlers(predictionService)
+		r.Post("/prediction", predictionHandlers.HandleProcessOutcome())
+
 		// SSE events endpoint
 		if sseHub != nil {
 			r.Get("/events", sse.Handler(sseHub))
@@ -232,6 +238,7 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 		jobService:         jobService,
 		linkingService:     linkingService,
 		harvestService:     harvestService,
+		predictionService:  predictionService,
 		namingResolver:     namingResolver,
 		sseHub:             sseHub,
 	}

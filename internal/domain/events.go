@@ -44,4 +44,7 @@ const (
 
 	// EventTypeTimeoutCleared is published when a timeout is cleared for a user
 	EventTypeTimeoutCleared = "timeout.cleared"
+
+	// EventTypePredictionProcessed is published when a prediction outcome is processed
+	EventTypePredictionProcessed = "prediction.processed"
 )
