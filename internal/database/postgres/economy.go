@@ -52,7 +52,11 @@ func (t *EconomyTx) Commit(ctx context.Context) error {
 
 // Rollback rolls back the transaction
 func (t *EconomyTx) Rollback(ctx context.Context) error {
-	return t.tx.Rollback(ctx)
+	err := t.tx.Rollback(ctx)
+	if errors.Is(err, pgx.ErrTxClosed) {
+		return fmt.Errorf("%w: %v", repository.ErrTxClosed, err)
+	}
+	return err
 }
 
 // GetUserByPlatformID finds a user by their platform-specific ID

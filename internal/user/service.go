@@ -1136,7 +1136,7 @@ func (s *service) processSearchSuccess(ctx context.Context, user *domain.User, r
 	return s.formatSearchSuccessMessage(ctx, item, quantity, isCritical, params), nil
 }
 
-func (s *service) addItemToTx(ctx context.Context, tx repository.Tx, userID string, itemID int, quantity int, shineLevel domain.ShineLevel) error {
+func (s *service) addItemToTx(ctx context.Context, tx repository.UserTx, userID string, itemID int, quantity int, shineLevel domain.ShineLevel) error {
 	log := logger.FromContext(ctx)
 	inventory, err := tx.GetInventory(ctx, userID)
 	if err != nil {

@@ -30,11 +30,11 @@ func NewConfig(level, format, serviceName, version, environment string, addSourc
 // ProductionConfig returns production-ready defaults
 func ProductionConfig() Config {
 	return Config{
-		Level:       "info",
-		Format:      "json",
-		ServiceName: "brandish-bot",
-		Version:     "1.0.0",
-		Environment: "prod",
+		Level:       LogLevelInfo,
+		Format:      LogFormatJSON,
+		ServiceName: DefaultServiceName,
+		Version:     ProductionVersion,
+		Environment: EnvironmentProduction,
 		AddSource:   false,
 	}
 }
@@ -42,11 +42,11 @@ func ProductionConfig() Config {
 // DevelopmentConfig returns development-friendly defaults
 func DevelopmentConfig() Config {
 	return Config{
-		Level:       "debug",
-		Format:      "text",
-		ServiceName: "brandish-bot",
-		Version:     "dev",
-		Environment: "dev",
+		Level:       LogLevelDebug,
+		Format:      LogFormatText,
+		ServiceName: DefaultServiceName,
+		Version:     DefaultVersion,
+		Environment: EnvironmentDev,
 		AddSource:   true,
 	}
 }
@@ -54,13 +54,13 @@ func DevelopmentConfig() Config {
 // LogLevel converts string level to slog.Level
 func (c Config) LogLevel() slog.Level {
 	switch strings.ToLower(c.Level) {
-	case "debug":
+	case LogLevelDebug:
 		return slog.LevelDebug
-	case "info":
+	case LogLevelInfo:
 		return slog.LevelInfo
-	case "warn", "warning":
+	case LogLevelWarn, LogLevelWarning:
 		return slog.LevelWarn
-	case "error":
+	case LogLevelError:
 		return slog.LevelError
 	default:
 		return slog.LevelInfo
@@ -69,15 +69,15 @@ func (c Config) LogLevel() slog.Level {
 
 // IsJSON returns true if format is JSON
 func (c Config) IsJSON() bool {
-	return strings.ToLower(c.Format) == "json"
+	return strings.ToLower(c.Format) == LogFormatJSON
 }
 
 // BaseAttributes returns common attributes to add to all logs
 func (c Config) BaseAttributes() []slog.Attr {
 	return []slog.Attr{
-		slog.String("service", c.ServiceName),
-		slog.String("version", c.Version),
-		slog.String("environment", c.Environment),
+		slog.String(AttrKeyService, c.ServiceName),
+		slog.String(AttrKeyVersion, c.Version),
+		slog.String(AttrKeyEnvironment, c.Environment),
 	}
 }
 
@@ -85,11 +85,11 @@ func (c Config) BaseAttributes() []slog.Attr {
 // Prefer using NewConfig with explicit values from your app config
 func DefaultConfig() Config {
 	return Config{
-		Level:       "info",
-		Format:      "text",
-		ServiceName: "brandish-bot",
-		Version:     "dev",
-		Environment: "dev",
+		Level:       LogLevelInfo,
+		Format:      LogFormatText,
+		ServiceName: DefaultServiceName,
+		Version:     DefaultVersion,
+		Environment: EnvironmentDev,
 		AddSource:   false,
 	}
 }

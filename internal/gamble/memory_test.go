@@ -39,7 +39,7 @@ func TestStartGamble_NoGoroutineLeak(t *testing.T) {
 	lootboxItem := &domain.Item{ID: 1, InternalName: domain.ItemLootbox1}
 	repo.On("GetItemByName", mock.Anything, domain.ItemLootbox1).Return(lootboxItem, nil)
 	repo.On("GetItemByID", mock.Anything, 1).Return(lootboxItem, nil)
-	repo.On("BeginTx", mock.Anything).Return(tx, nil)
+	repo.On("BeginGambleTx", mock.Anything).Return(tx, nil)
 	tx.On("GetInventory", mock.Anything, user.ID).Return(inventory, nil)
 	tx.On("UpdateInventory", mock.Anything, user.ID, mock.Anything).Return(nil)
 	tx.On("Commit", mock.Anything).Return(nil)

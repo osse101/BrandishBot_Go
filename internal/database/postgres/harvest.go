@@ -91,7 +91,11 @@ func (t *harvestTx) Commit(ctx context.Context) error {
 
 // Rollback rolls back the transaction
 func (t *harvestTx) Rollback(ctx context.Context) error {
-	return t.tx.Rollback(ctx)
+	err := t.tx.Rollback(ctx)
+	if errors.Is(err, pgx.ErrTxClosed) {
+		return fmt.Errorf("%w: %v", repository.ErrTxClosed, err)
+	}
+	return err
 }
 
 // GetHarvestStateWithLock retrieves the harvest state with FOR UPDATE lock
