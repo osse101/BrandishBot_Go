@@ -24,3 +24,13 @@ The new "Auto-Select" feature (bypassing votes when only one node is available) 
 - Audit all `go` statements in `internal/progression/` and ensure they use `s.wg.Add(1)` and `defer s.wg.Done()`.
 - Ensure all background routines respect `s.shutdownCtx`.
 - Add integration tests in `internal/progression/service_integration_test.go` specifically covering the transition from an auto-selected node to the next cycle.
+
+## Status Update (2026-01-29)
+
+### Audit Findings
+- **Graceful Shutdown**: Usage of `s.wg.Add(1)` and `defer s.wg.Done()` was verified in `handleSingleOptionAutoSelect`, `AddContribution`, and `CheckAndUnlockNode` in `internal/progression/voting_sessions.go`. All spawned goroutines appear to be correctly tracked.
+- **Integration Tests**: `service_integration_test.go` and `auto_select_test.go` exist in `internal/progression/`.
+
+**Next Steps**:
+- Final verification of all `go` routines across the entire module.
+- Confirmation that `auto_select_test.go` covers the specific transition scenarios mentioned (auto-select -> next cycle).
