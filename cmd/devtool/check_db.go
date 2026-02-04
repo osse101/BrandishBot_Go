@@ -7,13 +7,22 @@ import (
 	"time"
 )
 
-func runCheckDB() {
-	fmt.Println("Checking Docker database status...")
+type CheckDBCommand struct{}
+
+func (c *CheckDBCommand) Name() string {
+	return "check-db"
+}
+
+func (c *CheckDBCommand) Description() string {
+	return "Check if database is running and ready"
+}
+
+func (c *CheckDBCommand) Run(args []string) error {
+	PrintHeader("Checking Docker database status...")
 
 	// Check if docker compose is available
 	if err := runCommand("docker", "compose", "version"); err != nil {
-		fmt.Println("Error: docker compose not found. Please install Docker Compose.")
-		os.Exit(1)
+		return fmt.Errorf("docker compose not found. Please install Docker Compose")
 	}
 
 	// Check if db service is running
@@ -27,15 +36,14 @@ func runCheckDB() {
 	}
 
 	if running {
-		fmt.Println("✓ Database is already running")
+		PrintSuccess("Database is already running")
 	} else {
-		fmt.Println("Starting database...")
+		PrintInfo("Starting database...")
 		if err := runCommandVerbose("docker", "compose", "up", "-d", "db"); err != nil {
-			fmt.Printf("Error starting database: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("error starting database: %v", err)
 		}
 
-		fmt.Println("Waiting for database to be ready...")
+		PrintInfo("Waiting for database to be ready...")
 		time.Sleep(3 * time.Second)
 
 		// Wait for database to accept connections
@@ -53,24 +61,25 @@ func runCheckDB() {
 		for attempt := 0; attempt < maxAttempts; attempt++ {
 			err := runCommand("docker", "compose", "exec", "-T", "db", "pg_isready", "-U", dbUser, "-d", dbName)
 			if err == nil {
-				fmt.Println("✓ Database is ready")
+				PrintSuccess("Database is ready")
 				ready = true
 				break
 			}
 
 			if attempt == maxAttempts-1 {
-				fmt.Println("Error: Database failed to start after 30 seconds")
+				PrintError("Database failed to start after 30 seconds")
 				_ = runCommandVerbose("docker", "compose", "logs", "db")
-				os.Exit(1)
+				return fmt.Errorf("database failed to start")
 			}
 
 			fmt.Printf("Waiting for database... (%d/%d)\n", attempt+1, maxAttempts)
 			time.Sleep(1 * time.Second)
 		}
 		if !ready {
-			os.Exit(1)
+			return fmt.Errorf("database not ready")
 		}
 	}
 
-	fmt.Println("Database check complete")
+	PrintSuccess("Database check complete")
+	return nil
 }

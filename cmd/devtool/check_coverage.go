@@ -7,31 +7,42 @@ import (
 	"strings"
 )
 
-func runCheckCoverage(file, thresholdStr string) {
-	fmt.Printf("Checking coverage threshold (%s%%)...\n", thresholdStr)
+type CheckCoverageCommand struct{}
+
+func (c *CheckCoverageCommand) Name() string {
+	return "check-coverage"
+}
+
+func (c *CheckCoverageCommand) Description() string {
+	return "Check test coverage against a threshold"
+}
+
+func (c *CheckCoverageCommand) Run(args []string) error {
+	if len(args) < 2 {
+		return fmt.Errorf("usage: check-coverage <coverage_file> <threshold>")
+	}
+
+	file := args[0]
+	thresholdStr := args[1]
+
+	PrintHeader(fmt.Sprintf("Checking coverage threshold (%s%%)...", thresholdStr))
 
 	if _, err := os.Stat(file); os.IsNotExist(err) {
-		fmt.Printf("Error: Coverage file '%s' not found.\n", file)
-		fmt.Println("Run tests first to generate it.")
-		os.Exit(1)
+		PrintError("Coverage file '%s' not found.", file)
+		PrintInfo("Run tests first to generate it.")
+		return fmt.Errorf("coverage file not found")
 	}
 
 	threshold, err := strconv.ParseFloat(thresholdStr, 64)
 	if err != nil {
-		fmt.Printf("Error: Invalid threshold '%s'\n", thresholdStr)
-		os.Exit(1)
+		return fmt.Errorf("invalid threshold '%s'", thresholdStr)
 	}
 
 	// Run go tool cover -func=file
 	out, err := getCommandOutput("go", "tool", "cover", fmt.Sprintf("-func=%s", file))
 	if err != nil {
-		fmt.Printf("Error running go tool cover: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("error running go tool cover: %v", err)
 	}
-
-	// Output format:
-	// ...
-	// total:  (statements)    82.5%
 
 	lines := strings.Split(out, "\n")
 	var totalLine string
@@ -43,17 +54,12 @@ func runCheckCoverage(file, thresholdStr string) {
 	}
 
 	if totalLine == "" {
-		fmt.Println("Error: Could not determine coverage from output.")
-		os.Exit(1)
+		return fmt.Errorf("could not determine coverage from output")
 	}
 
-	// Parse percentage
-	// total:  (statements)    82.5%
-	// Split fields
 	fields := strings.Fields(totalLine)
 	if len(fields) < 3 {
-		fmt.Println("Error: Unexpected output format.")
-		os.Exit(1)
+		return fmt.Errorf("unexpected output format")
 	}
 
 	pctStr := fields[len(fields)-1] // Last field is percentage
@@ -61,16 +67,16 @@ func runCheckCoverage(file, thresholdStr string) {
 
 	coverage, err := strconv.ParseFloat(pctStr, 64)
 	if err != nil {
-		fmt.Printf("Error: Could not parse coverage percentage '%s'\n", pctStr)
-		os.Exit(1)
+		return fmt.Errorf("could not parse coverage percentage '%s'", pctStr)
 	}
 
-	fmt.Printf("Total Coverage: %.1f%%\n", coverage)
+	PrintInfo("Total Coverage: %.1f%%", coverage)
 
 	if coverage >= threshold {
-		fmt.Println("✅ Coverage meets threshold.")
+		PrintSuccess("Coverage meets threshold.")
+		return nil
 	} else {
-		fmt.Println("❌ Coverage is below threshold.")
-		os.Exit(1)
+		PrintError("Coverage is below threshold.")
+		return fmt.Errorf("coverage below threshold")
 	}
 }
