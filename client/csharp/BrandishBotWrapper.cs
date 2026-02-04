@@ -242,16 +242,14 @@ public class CPHInline
     public bool RegisterUser()
     {
         EnsureInitialized();
-        
         if (!CPH.TryGetArg("userType", out string platform)) return false;
         if (!CPH.TryGetArg("userId", out string platformId)) return false;
         if (!CPH.TryGetArg("userName", out string username)) return false;
 
         try
         {
-            var result = client.RegisterUser(platform, platformId, username).Result;
-            var formatted = ResponseFormatter.FormatMessage(result);
-            CPH.SetArgument("response", formatted);
+            client.RegisterUser(platform, platformId, username).Wait();
+            CPH.SetArgument("response", "Registration successful!");
             return true;
         }
         catch (Exception ex)
@@ -276,45 +274,39 @@ public class CPHInline
         string error = null;
         if (!CPH.TryGetArg("userType", out string platform)) return false;
 
-        if (GetInputString(0, "target_user", true, out string targetUser, ref error) && !string.IsNullOrWhiteSpace(targetUser))
-        {   //target other user
-            try
+        bool isTargetMode = GetInputString(0, "target_user", true, out string targetUser, ref error) && !string.IsNullOrWhiteSpace(targetUser);
+        
+        try
+        {
+            GetInventoryResponse result;
+            if (isTargetMode)
             {
-                var result = client.GetInventoryByUsername(platform, targetUser).Result;
-                CPH.SetArgument("response", ResponseFormatter.FormatInventory(result));
-                return true;
+                result = client.GetInventoryByUsername(platform, targetUser).Result;
             }
-            catch (Exception ex)
-            {
-                string message = GetErrorMessage(ex);
-                LogWarning("GetInventoryByUsername", ex);
-                // Better error message for user not found
-                if (message.Contains("not found") || message.Contains("404"))
-                {
-                    CPH.SetArgument("response", $"User not found: {targetUser}");
-                }
-                else
-                {
-                    CPH.SetArgument("response", $"Error: {StripStatusCode(message)}");
-                }
-                return true;
-            }
-        }else
-        {   //target self
-            try
+            else
             {
                 if (!CPH.TryGetArg("userName", out string userName)) return false;
                 if (!CPH.TryGetArg("userId", out string platformId)) return false;
-                var result = client.GetInventory(platform, platformId, userName).Result;
-                CPH.SetArgument("response", ResponseFormatter.FormatInventory(result));
-                return true;
+                result = client.GetInventory(platform, platformId, userName).Result;
             }
-            catch (Exception ex)
+
+            CPH.SetArgument("response", ResponseFormatter.FormatInventory(result));
+            return true;
+        }
+        catch (Exception ex)
+        {
+            string message = GetErrorMessage(ex);
+            LogWarning(isTargetMode ? "GetInventoryByUsername" : "GetInventory", ex);
+            
+            if (message.Contains("not found") || message.Contains("404"))
             {
-                LogWarning("GetInventory", ex);
-                CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
-                return true;
+                CPH.SetArgument("response", isTargetMode ? $"User not found: {targetUser}" : "User not registered.");
             }
+            else
+            {
+                CPH.SetArgument("response", $"Error: {StripStatusCode(message)}");
+            }
+            return true;
         }
     }
 
@@ -465,12 +457,7 @@ public class CPHInline
     {
         EnsureInitialized();
         string error = null;
-        
-        if (!ValidateContext(out string platform, out string platformId, out string username, ref error))
-        {
-            CPH.LogWarn($"BuyItem Failed: {error}");
-            return false;
-        }
+        if (!ValidateContext(out string platform, out string platformId, out string username, ref error)) return false;
 
         if (!GetInputString(0, "item_name", true, out string itemName, ref error) ||
             !GetInputInt(1, "quantity", 1, out int quantity, ref error))
@@ -478,30 +465,16 @@ public class CPHInline
             CPH.SetArgument("response", $"{error} Usage: !buyItem <item_name> [quantity]");
             return true;
         }
-        if( quantity < 1 )
-        {
-            CPH.SetArgument("response", "Invalid quantity. Usage: !buyItem <item_name> [quantity]");
-            return true;
-        }
+
         try
         {
             var result = client.BuyItem(platform, platformId, username, itemName, quantity).Result;
-            var formatted = ResponseFormatter.FormatMessage(result);
-            CPH.SetArgument("response", formatted);
+            CPH.SetArgument("response", ResponseFormatter.FormatMessage(result));
             return true;
         }
         catch (Exception ex)
         {
-            string errorMsg = StripStatusCode(GetErrorMessage(ex));
-            if (IsForbiddenError(ex))
-            {
-                CPH.SetArgument("response", errorMsg);
-            }
-            else
-            {
-                LogWarning("BuyItem", ex);
-                CPH.SetArgument("response", errorMsg);
-            }
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
             return true;
         }
     }
@@ -824,7 +797,7 @@ public class CPHInline
         try
         {
             var result = client.GetRecipes().Result;
-            CPH.SetArgument("response", result);
+            CPH.SetArgument("response", ResponseFormatter.FormatRecipes(result));
             return true;
         }
         catch (Exception ex)
@@ -846,12 +819,7 @@ public class CPHInline
     {
         EnsureInitialized();
         string error = null;
-        
-        if (!ValidateContext(out string platform, out string platformId, out string username, ref error))
-        {
-             CPH.LogWarn($"StartGamble Failed: {error}");
-             return false;
-        }
+        if (!ValidateContext(out string platform, out string platformId, out string username, ref error)) return false;
 
         if (!GetInputString(0, "lootbox_name", true, out string lootboxItemName, ref error) ||
             !GetInputInt(1, "quantity", 1, out int quantity, ref error))
@@ -859,36 +827,20 @@ public class CPHInline
              CPH.SetArgument("response", $"{error} Usage: !startGamble <lootbox_name> [quantity]");
              return true;
         }
-        if( quantity < 1 )
-        {
-            CPH.SetArgument("response", "Invalid quantity. Usage: !startGamble <lootbox_name> [quantity]");
-            return true;
-        }
 
         try
         {
             var result = client.StartGamble(platform, platformId, username, lootboxItemName, quantity).Result;
-            var formatted = ResponseFormatter.FormatMessage(result);
-            var response = Newtonsoft.Json.Linq.JObject.Parse(result);
-            if(response.ContainsKey("gambleId"))
+            if (!string.IsNullOrEmpty(result.GambleId))
             {
-                CPH.SetGlobalVar("gambleId", response["gambleId"].ToString(), persisted:false);
+                CPH.SetGlobalVar("gambleId", result.GambleId, persisted: false);
             }
-            CPH.SetArgument("response", formatted);
+            CPH.SetArgument("response", ResponseFormatter.FormatMessage(result));
             return true;
         }
         catch (Exception ex)
         {
-            string errorMsg = StripStatusCode(GetErrorMessage(ex));
-            if (IsForbiddenError(ex))
-            {
-                CPH.SetArgument("response", errorMsg);
-            }
-            else
-            {
-                LogWarning("StartGamble", ex);
-                CPH.SetArgument("response", errorMsg);
-            }
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
             return true;
         }
     }
@@ -1046,24 +998,15 @@ public class CPHInline
         EnsureInitialized();
         string error = null;
         
-        // Defaults
         string metric = "engagement_score";
-        int limit = 10;
-
-        if (GetInputString(0, "metric", false, out string inputMetric, ref error))
-        {
-            metric = inputMetric;
-        }
+        if (GetInputString(0, "metric", false, out string inputMetric, ref error)) metric = inputMetric;
         
-        if (GetInputInt(1, "limit", 10, out int inputLimit, ref error))
-        {
-            limit = inputLimit;
-        }
+        if (!GetInputInt(1, "limit", 10, out int limit, ref error)) limit = 10;
 
         try
         {
-            var result = client.GetLeaderboard(metric, limit).Result;
-            CPH.SetArgument("response", result);
+            var result = client.GetLeaderboard(metric, limit: limit).Result;
+            CPH.SetArgument("response", ResponseFormatter.FormatLeaderboard(result, metric));
             return true;
         }
         catch (Exception ex)
@@ -1091,9 +1034,11 @@ public class CPHInline
             CPH.TryGetArg("userName", out targetUser);
         }
 
+        if (!CPH.TryGetArg("userType", out string platform)) platform = "twitch";
+
         try
         {
-            var result = client.GetUserTimeout(targetUser).Result;
+            var result = client.GetUserTimeout(platform, targetUser).Result;
             var jsonResult = Newtonsoft.Json.Linq.JObject.Parse(result);
             bool isTimedOut = jsonResult.Value<bool>("is_timed_out");
             double remainingSeconds = jsonResult.Value<double>("remaining_seconds");
@@ -1218,7 +1163,7 @@ public class CPHInline
         try
         {
             var result = client.GetProgressionStatus().Result;
-            CPH.SetArgument("response", result);
+            CPH.SetArgument("response", ResponseFormatter.FormatProgressionStatus(result));
             return true;
         }
         catch (Exception ex)
@@ -1279,8 +1224,7 @@ public class CPHInline
         try
         {
             var result = client.GetVotingSession().Result;
-            var formatted = ResponseFormatter.FormatVotingOptions(result);
-            CPH.SetArgument("response", formatted);
+            CPH.SetArgument("response", ResponseFormatter.FormatVotingOptions(result));
             return true;
         }
         catch (Exception ex)
@@ -1301,8 +1245,7 @@ public class CPHInline
         try
         {
             var result = client.GetUnlockProgress().Result;
-            var formatted = ResponseFormatter.FormatUnlockProgress(result);
-            CPH.SetArgument("response", formatted);
+            CPH.SetArgument("response", ResponseFormatter.FormatUnlockProgress(result));
             return true;
         }
         catch (Exception ex)
@@ -1666,7 +1609,7 @@ public class CPHInline
             try
             {
                 var result = client.GetUnlockedRecipesByUsername(platform, targetUser).Result;
-                CPH.SetArgument("response", result);
+                CPH.SetArgument("response", ResponseFormatter.FormatRecipes(result));
                 return true;
             }
             catch (Exception ex)
@@ -1688,7 +1631,7 @@ public class CPHInline
             try
             {
                 var result = client.GetUnlockedRecipes(platform, platformId, username).Result;
-                CPH.SetArgument("response", result);
+                CPH.SetArgument("response", ResponseFormatter.FormatRecipes(result));
                 return true;
             }
             catch (Exception ex)
@@ -1853,7 +1796,7 @@ public class CPHInline
         try
         {
             var result = client.GetLinkingStatus(platform, platformId).Result;
-            CPH.SetArgument("response", result);
+            CPH.SetArgument("response", ResponseFormatter.FormatLinkingStatus(result));
             return true;
         }
         catch (Exception ex)
@@ -2074,7 +2017,7 @@ public class CPHInline
             CPH.SetArgument("participantsProcessed", result.ParticipantsProcessed);
             CPH.SetArgument("totalPoints", result.TotalPoints);
 
-            CPH.LogInfo($"[Prediction] ✓ Processed: {result.ContributionAwarded} contribution, {result.WinnerXpAwarded} XP to winner, {result.ParticipantsProcessed} participants");
+            CPH.LogInfo($"[Prediction] ✓ {ResponseFormatter.FormatPredictionResult(result)}");
 
             return true;
         }
