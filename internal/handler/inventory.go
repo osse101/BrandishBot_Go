@@ -23,15 +23,17 @@ type AddItemByUsernameRequest struct {
 
 // HandleAddItemByUsername handles adding items by username only
 // @Summary Add item by username
-// @Description Add an item to a user's inventory using only platform and username
+// @Description Add an item to a user's inventory using only platform and username. This is an admin/system action.
 // @Tags inventory
 // @Accept json
 // @Produce json
-// @Param request body AddItemByUsernameRequest true "Item details"
+// @Security ApiKeyAuth
+// @Param request body AddItemByUsernameRequest true "Item details including platform, username, and quantity"
 // @Success 200 {object} SuccessResponse
-// @Failure 400 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
-// @Router /user/item/add-by-username [post]
+// @Failure 400 {object} ErrorResponse "Invalid request data"
+// @Failure 401 {object} ErrorResponse "Unauthorized"
+// @Failure 500 {object} ErrorResponse "Internal server error"
+// @Router /api/v1/user/item/add [post]
 func HandleAddItemByUsername(svc user.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req AddItemByUsernameRequest
@@ -75,7 +77,7 @@ type RemoveItemResponse struct {
 // @Success 200 {object} RemoveItemResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /user/item/remove-by-username [post]
+// @Router /api/v1/user/item/remove [post]
 func HandleRemoveItemByUsername(svc user.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req RemoveItemByUsernameRequest
@@ -114,15 +116,15 @@ type GiveItemRequest struct {
 
 // HandleGiveItem handles transferring items between users
 // @Summary Give item to another user
-// @Description Transfer an item from one user to another
+// @Description Transfer an item from one user's inventory to another user.
 // @Tags inventory
 // @Accept json
 // @Produce json
-// @Param request body GiveItemRequest true "Transfer details"
+// @Param request body GiveItemRequest true "Transfer details including owner and receiver info"
 // @Success 200 {object} SuccessResponse
-// @Failure 400 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
-// @Router /user/item/give [post]
+// @Failure 400 {object} ErrorResponse "Invalid request or self-gifting attempt"
+// @Failure 500 {object} ErrorResponse "Internal server error"
+// @Router /api/v1/user/item/give [post]
 func HandleGiveItem(svc user.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req GiveItemRequest
@@ -169,16 +171,16 @@ type SellItemResponse struct {
 
 // HandleSellItem handles selling items for currency
 // @Summary Sell item
-// @Description Sell an item for currency
+// @Description Sell an item from inventory for currency. Requires Economy feature to be unlocked.
 // @Tags economy
 // @Accept json
 // @Produce json
-// @Param request body SellItemRequest true "Sell details"
+// @Param request body SellItemRequest true "Details of the item to sell and quantity"
 // @Success 200 {object} SellItemResponse
-// @Failure 400 {object} ErrorResponse
-// @Failure 403 {object} ErrorResponse "Feature locked"
-// @Failure 500 {object} ErrorResponse
-// @Router /user/item/sell [post]
+// @Failure 400 {object} ErrorResponse "Item not found or not sellable"
+// @Failure 403 {object} ErrorResponse "Economy feature locked"
+// @Failure 500 {object} ErrorResponse "Internal server error"
+// @Router /api/v1/user/item/sell [post]
 func HandleSellItem(svc economy.Service, progressionSvc progression.Service, eventBus event.Bus) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Check if sell feature is unlocked
@@ -257,7 +259,7 @@ type BuyItemResponse struct {
 // @Failure 400 {object} ErrorResponse
 // @Failure 403 {object} ErrorResponse "Feature locked"
 // @Failure 500 {object} ErrorResponse
-// @Router /user/item/buy [post]
+// @Router /api/v1/user/item/buy [post]
 func HandleBuyItem(svc economy.Service, progressionSvc progression.Service, eventBus event.Bus) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Check if buy feature is unlocked
@@ -377,7 +379,7 @@ func mapItemToProgressionNode(itemName string) string {
 // @Failure 400 {object} ErrorResponse
 // @Failure 403 {object} ErrorResponse "Item locked by progression"
 // @Failure 500 {object} ErrorResponse
-// @Router /user/item/use [post]
+// @Router /api/v1/user/item/use [post]
 func HandleUseItem(svc user.Service, progressionSvc progression.Service, eventBus event.Bus) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req UseItemRequest
@@ -464,7 +466,7 @@ type GetInventoryResponse struct {
 // @Success 200 {object} GetInventoryResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /user/inventory [get]
+// @Router /api/v1/user/inventory [get]
 func HandleGetInventory(svc user.Service, progSvc progression.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
@@ -539,7 +541,7 @@ func HandleGetInventory(svc user.Service, progSvc progression.Service) http.Hand
 // @Success 200 {object} GetInventoryResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /user/inventory-by-username [get]
+// @Router /api/v1/user/inventory-by-username [get]
 func HandleGetInventoryByUsername(svc user.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())

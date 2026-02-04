@@ -41,7 +41,7 @@ type RecordEventRequest struct {
 // @Success 200 {object} SuccessResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /stats/event [post]
+// @Router /api/v1/stats/event [post]
 func HandleRecordEvent(svc stats.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req RecordEventRequest
@@ -78,7 +78,7 @@ func HandleRecordEvent(svc stats.Service) http.HandlerFunc {
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /stats/user [get]
+// @Router /api/v1/stats/user [get]
 func (h *StatsHandler) HandleGetUserStats() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
@@ -146,7 +146,7 @@ func (h *StatsHandler) HandleGetUserStats() http.HandlerFunc {
 // @Param period query string false "Period (daily, weekly, all_time)"
 // @Success 200 {object} domain.StatsSummary
 // @Failure 500 {object} ErrorResponse
-// @Router /stats/system [get]
+// @Router /api/v1/stats/system [get]
 func HandleGetSystemStats(svc stats.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
@@ -180,7 +180,7 @@ func HandleGetSystemStats(svc stats.Service) http.HandlerFunc {
 // @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /stats/leaderboard [get]
+// @Router /api/v1/stats/leaderboard [get]
 func HandleGetLeaderboard(svc stats.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())

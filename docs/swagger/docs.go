@@ -18,59 +18,141 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/healthz": {
-            "get": {
-                "description": "Returns OK if the service is running",
+        "/admin/jobs/reset-daily-xp": {
+            "post": {
+                "description": "Triggers an immediate reset of all users' daily XP counters",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "health"
+                    "admin"
                 ],
-                "summary": "Liveness check",
+                "summary": "Manually trigger daily job XP reset",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/handler.HealthResponse"
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
             }
         },
-        "/message/handle": {
-            "post": {
-                "description": "Process a chat message for potential commands or triggers\nProcess a chat message for potential commands or triggers",
-                "consumes": [
-                    "application/json",
-                    "application/json"
-                ],
+        "/admin/jobs/reset-status": {
+            "get": {
+                "description": "Returns information about the last daily reset and when the next one is scheduled",
                 "produces": [
-                    "application/json",
                     "application/json"
                 ],
                 "tags": [
-                    "message",
-                    "message"
+                    "admin"
                 ],
-                "summary": "Handle chat message",
-                "parameters": [
-                    {
-                        "description": "Message details",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
+                "summary": "Get daily reset status",
+                "responses": {
+                    "200": {
+                        "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/handler.HandleMessageRequest"
+                            "$ref": "#/definitions/domain.DailyResetStatus"
                         }
                     },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/progression/reload-weights": {
+            "post": {
+                "description": "Invalidate engagement weight cache to force reload from database (admin only)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "progression",
+                    "admin"
+                ],
+                "summary": "Admin reload weights",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.SuccessResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/reload-aliases": {
+            "post": {
+                "description": "Reloads the item name aliases and themes from JSON configuration files",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Reload alias configuration",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "security": [
                     {
-                        "description": "Message details",
+                        "ApiKeyAuth": []
+                    }
+                ]
+            }
+        },
+        "/admin/timeout/clear": {
+            "post": {
+                "description": "Remove a user's timeout (admin only)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Clear user timeout",
+                "parameters": [
+                    {
+                        "description": "Clear timeout request",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handler.HandleMessageRequest"
+                            "$ref": "#/definitions/handler.AdminClearTimeoutRequest"
                         }
                     }
                 ],
@@ -78,7 +160,8 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/domain.User"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "400": {
@@ -96,7 +179,165 @@ const docTemplate = `{
                 }
             }
         },
-        "/prices": {
+        "/api/v1/admin/cache/stats": {
+            "get": {
+                "description": "Returns cache hit/miss statistics for monitoring (admin only)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Get user cache stats",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/user.CacheStats"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/harvest": {
+            "post": {
+                "description": "Collect rewards that have accumulated since the last harvest",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "harvest"
+                ],
+                "summary": "Harvest accumulated rewards",
+                "parameters": [
+                    {
+                        "description": "Harvest request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.HarvestRewardsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Harvest successful",
+                        "schema": {
+                            "$ref": "#/definitions/domain.HarvestResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request or harvest too soon",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/message/handle": {
+            "post": {
+                "description": "Process a chat message for potential commands or triggers",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "message"
+                ],
+                "summary": "Handle chat message",
+                "parameters": [
+                    {
+                        "description": "Message details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.HandleMessageRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.MessageResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/prediction": {
+            "post": {
+                "description": "Convert channel points to progression contribution and award XP to participants",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "prediction"
+                ],
+                "summary": "Process prediction outcome",
+                "parameters": [
+                    {
+                        "description": "Prediction outcome data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain.PredictionOutcomeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.PredictionResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/prices": {
             "get": {
                 "description": "Get current sell prices for items",
                 "produces": [
@@ -125,6 +366,1142 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/prices/buy": {
+            "get": {
+                "description": "Get current buy prices for items",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "economy"
+                ],
+                "summary": "Get item buy prices",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/domain.Item"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/progression/available": {
+            "get": {
+                "description": "Returns nodes that are available for voting (prerequisites met, not maxed out)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "progression"
+                ],
+                "summary": "Get available unlocks",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.AvailableUnlocksResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/progression/engagement": {
+            "get": {
+                "description": "Returns user's engagement contribution breakdown by type",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "progression"
+                ],
+                "summary": "Get user engagement",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Platform (twitch, youtube, discord)",
+                        "name": "platform",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Platform-specific user ID",
+                        "name": "platform_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ContributionBreakdown"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/progression/engagement-by-username": {
+            "get": {
+                "description": "Returns user's engagement contribution breakdown by type using username",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "progression"
+                ],
+                "summary": "Get user engagement by username",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Platform (twitch, youtube, discord)",
+                        "name": "platform",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Username",
+                        "name": "username",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ContributionBreakdown"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/progression/leaderboard": {
+            "get": {
+                "description": "Returns top contributors by total contributions",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "progression"
+                ],
+                "summary": "Get contribution leaderboard",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Number of entries (default 10, max 100)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/domain.ContributionLeaderboardEntry"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/progression/status": {
+            "get": {
+                "description": "Returns current community progression status including unlocks and engagement",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "progression"
+                ],
+                "summary": "Get progression status",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ProgressionStatus"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/progression/tree": {
+            "get": {
+                "description": "Returns the complete progression tree with unlock status for each node",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "progression"
+                ],
+                "summary": "Get progression tree",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ProgressionTreeResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/progression/vote": {
+            "post": {
+                "description": "Cast a vote for the next unlock (one vote per user per node/level)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "progression"
+                ],
+                "summary": "Vote for unlock",
+                "parameters": [
+                    {
+                        "description": "Vote request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.VoteRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/stats/event": {
+            "post": {
+                "description": "Record a custom user event",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "stats"
+                ],
+                "summary": "Record event",
+                "parameters": [
+                    {
+                        "description": "Event details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.RecordEventRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/stats/leaderboard": {
+            "get": {
+                "description": "Get leaderboard for a specific event type",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "stats"
+                ],
+                "summary": "Get leaderboard",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Event Type",
+                        "name": "event_type",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Period (daily, weekly, all_time)",
+                        "name": "period",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Limit (default 10)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/stats/system": {
+            "get": {
+                "description": "Get system-wide statistics",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "stats"
+                ],
+                "summary": "Get system stats",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Period (daily, weekly, all_time)",
+                        "name": "period",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.StatsSummary"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/stats/user": {
+            "get": {
+                "description": "Get statistics for a specific user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "stats"
+                ],
+                "summary": "Get user stats",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Platform (twitch, youtube, discord)",
+                        "name": "platform",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Platform-specific user ID (self-mode)",
+                        "name": "platform_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Username (target-mode)",
+                        "name": "username",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Period (daily, weekly, all_time)",
+                        "name": "period",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.StatsSummary"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/user/inventory": {
+            "get": {
+                "description": "Get the user's inventory",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "inventory"
+                ],
+                "summary": "Get inventory",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Platform ID",
+                        "name": "platform_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Username",
+                        "name": "username",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by item type (upgrade, sellable, consumable)",
+                        "name": "filter",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.GetInventoryResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/user/inventory-by-username": {
+            "get": {
+                "description": "Get a user's inventory using only platform and username",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "inventory"
+                ],
+                "summary": "Get inventory by username",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Platform",
+                        "name": "platform",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Username",
+                        "name": "username",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by item type",
+                        "name": "filter",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.GetInventoryResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/user/item/add": {
+            "post": {
+                "description": "Add an item to a user's inventory using only platform and username. This is an admin/system action.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "inventory"
+                ],
+                "summary": "Add item by username",
+                "parameters": [
+                    {
+                        "description": "Item details including platform, username, and quantity",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.AddItemByUsernameRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request data",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/user/item/buy": {
+            "post": {
+                "description": "Buy an item with currency",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "economy"
+                ],
+                "summary": "Buy item",
+                "parameters": [
+                    {
+                        "description": "Buy details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.BuyItemRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.BuyItemResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Feature locked",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/user/item/give": {
+            "post": {
+                "description": "Transfer an item from one user's inventory to another user.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "inventory"
+                ],
+                "summary": "Give item to another user",
+                "parameters": [
+                    {
+                        "description": "Transfer details including owner and receiver info",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.GiveItemRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request or self-gifting attempt",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/user/item/remove": {
+            "post": {
+                "description": "Remove an item from a user's inventory using only platform and username",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "inventory"
+                ],
+                "summary": "Remove item by username",
+                "parameters": [
+                    {
+                        "description": "Item details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.RemoveItemByUsernameRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.RemoveItemResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/user/item/sell": {
+            "post": {
+                "description": "Sell an item from inventory for currency. Requires Economy feature to be unlocked.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "economy"
+                ],
+                "summary": "Sell item",
+                "parameters": [
+                    {
+                        "description": "Details of the item to sell and quantity",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.SellItemRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.SellItemResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Item not found or not sellable",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Economy feature locked",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/user/item/use": {
+            "post": {
+                "description": "Use an item from inventory",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "inventory"
+                ],
+                "summary": "Use item",
+                "parameters": [
+                    {
+                        "description": "Usage details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.UseItemRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.UseItemResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Item locked by progression",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/user/register": {
+            "post": {
+                "description": "Register a new user or link an existing user to a new platform",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "user"
+                ],
+                "summary": "Register or link a user",
+                "parameters": [
+                    {
+                        "description": "Registration details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.RegisterUserRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User updated",
+                        "schema": {
+                            "$ref": "#/definitions/domain.User"
+                        }
+                    },
+                    "201": {
+                        "description": "User created",
+                        "schema": {
+                            "$ref": "#/definitions/domain.User"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/user/timeout": {
+            "get": {
+                "description": "Get the remaining timeout duration for a user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "user"
+                ],
+                "summary": "Get user timeout",
+                "parameters": [
+                    {
+                        "enum": [
+                            "twitch",
+                            "youtube",
+                            "discord"
+                        ],
+                        "type": "string",
+                        "description": "Platform (default: twitch)",
+                        "name": "platform",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Username to check",
+                        "name": "username",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/healthz": {
+            "get": {
+                "description": "Returns OK if the service is running",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "health"
+                ],
+                "summary": "Liveness check",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.HealthResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/progression/admin/contribution": {
+            "post": {
+                "description": "Manually add contribution points to the current unlock progress (admin only)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "progression",
+                    "admin"
+                ],
+                "summary": "Admin add contribution",
+                "parameters": [
+                    {
+                        "description": "Contribution request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.AdminAddContributionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/progression/admin/end-voting": {
+            "post": {
+                "description": "Freeze the current voting session until the next unlock completes (admin only)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "progression",
+                    "admin"
+                ],
+                "summary": "Admin freeze voting",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/progression/admin/force-end-voting": {
+            "post": {
+                "description": "Force end the current voting session and determine winner immediately (admin only)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "progression",
+                    "admin"
+                ],
+                "summary": "Admin force end voting",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.AdminEndVotingResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/progression/admin/instant-unlock": {
             "post": {
                 "description": "Force immediate unlock of current vote leader (overrides 24hr timer)",
@@ -141,53 +1518,6 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/handler.AdminInstantUnlockResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/progression/admin/relock": {
-            "post": {
-                "description": "Relock a specific node/level (admin only, for testing)",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "progression",
-                    "admin"
-                ],
-                "summary": "Admin relock node",
-                "parameters": [
-                    {
-                        "description": "Admin relock request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.AdminRelockRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/handler.SuccessResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
                         }
                     },
                     "500": {
@@ -246,12 +1576,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/progression/admin/unlock": {
+        "/progression/admin/start-voting": {
             "post": {
-                "description": "Force unlock a specific node/level (admin only)",
-                "consumes": [
-                    "application/json"
-                ],
+                "description": "Resume a frozen voting session OR start a new one if nodes are available (admin only)",
                 "produces": [
                     "application/json"
                 ],
@@ -259,18 +1586,7 @@ const docTemplate = `{
                     "progression",
                     "admin"
                 ],
-                "summary": "Admin unlock node",
-                "parameters": [
-                    {
-                        "description": "Admin unlock request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.AdminUnlockRequest"
-                        }
-                    }
-                ],
+                "summary": "Admin start/resume voting",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -284,69 +1600,8 @@ const docTemplate = `{
                             "$ref": "#/definitions/handler.ErrorResponse"
                         }
                     },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/progression/available": {
-            "get": {
-                "description": "Returns nodes that are available for voting (prerequisites met, not maxed out)",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "progression"
-                ],
-                "summary": "Get available unlocks",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/handler.AvailableUnlocksResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/progression/engagement": {
-            "get": {
-                "description": "Returns user's engagement contribution breakdown by type",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "progression"
-                ],
-                "summary": "Get user engagement",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "User ID",
-                        "name": "user_id",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/domain.EngagementBreakdown"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/handler.ErrorResponse"
                         }
@@ -360,82 +1615,17 @@ const docTemplate = `{
                 }
             }
         },
-        "/progression/status": {
-            "get": {
-                "description": "Returns current community progression status including unlocks and engagement",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "progression"
-                ],
-                "summary": "Get progression status",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/domain.ProgressionStatus"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/progression/tree": {
-            "get": {
-                "description": "Returns the complete progression tree with unlock status for each node",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "progression"
-                ],
-                "summary": "Get progression tree",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ProgressionTreeResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/progression/vote": {
+        "/progression/admin/unlock-all": {
             "post": {
-                "description": "Cast a vote for the next unlock (one vote per user per node/level)",
-                "consumes": [
-                    "application/json"
-                ],
+                "description": "Unlocks all progression nodes at their maximum level (for debugging)",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "progression"
+                    "progression",
+                    "admin"
                 ],
-                "summary": "Vote for unlock",
-                "parameters": [
-                    {
-                        "description": "Vote request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.VoteRequest"
-                        }
-                    }
-                ],
+                "summary": "Admin unlock all nodes",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -443,10 +1633,91 @@ const docTemplate = `{
                             "$ref": "#/definitions/handler.SuccessResponse"
                         }
                     },
-                    "400": {
-                        "description": "Bad Request",
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/progression/session": {
+            "get": {
+                "description": "Returns the current voting session with all available options",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "progression"
+                ],
+                "summary": "Get voting session",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ProgressionVotingSession"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/progression/unlock-progress": {
+            "get": {
+                "description": "Returns the current unlock progress including accumulated contributions",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "progression"
+                ],
+                "summary": "Get unlock progress",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.UnlockProgress"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/progression/velocity": {
+            "get": {
+                "description": "Returns engagement velocity metrics (points/day) and trend",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "progression",
+                    "admin"
+                ],
+                "summary": "Get engagement velocity",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Number of days (default 7)",
+                        "name": "days",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.VelocityMetrics"
                         }
                     },
                     "500": {
@@ -506,6 +1777,18 @@ const docTemplate = `{
                         "description": "Username to get unlocked recipes for",
                         "name": "user",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Platform (required if user provided)",
+                        "name": "platform",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Platform ID (self-mode, optional for target-mode)",
+                        "name": "platform_id",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -522,322 +1805,8 @@ const docTemplate = `{
                             "$ref": "#/definitions/handler.ErrorResponse"
                         }
                     },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/stats/event": {
-            "post": {
-                "description": "Record a custom user event",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "stats"
-                ],
-                "summary": "Record event",
-                "parameters": [
-                    {
-                        "description": "Event details",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.RecordEventRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/handler.SuccessResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/stats/leaderboard": {
-            "get": {
-                "description": "Get leaderboard for a specific event type",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "stats"
-                ],
-                "summary": "Get leaderboard",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Event Type",
-                        "name": "event_type",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Period (daily, weekly, all_time)",
-                        "name": "period",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Limit (default 10)",
-                        "name": "limit",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/stats/system": {
-            "get": {
-                "description": "Get system-wide statistics",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "stats"
-                ],
-                "summary": "Get system stats",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Period (daily, weekly, all_time)",
-                        "name": "period",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/domain.StatsSummary"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/stats/user": {
-            "get": {
-                "description": "Get statistics for a specific user",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "stats"
-                ],
-                "summary": "Get user stats",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "User ID",
-                        "name": "user_id",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Period (daily, weekly, all_time)",
-                        "name": "period",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/domain.StatsSummary"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/user/inventory": {
-            "get": {
-                "description": "Get all items in a user's inventory",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "inventory"
-                ],
-                "summary": "Get user inventory",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Username",
-                        "name": "username",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/handler.GetInventoryResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/user/item/add": {
-            "post": {
-                "description": "Add an item to a user's inventory (admin/system action)",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "inventory"
-                ],
-                "summary": "Add item to inventory",
-                "parameters": [
-                    {
-                        "description": "Item details",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.AddItemRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/handler.SuccessResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/user/item/buy": {
-            "post": {
-                "description": "Buy an item with currency",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "economy"
-                ],
-                "summary": "Buy item",
-                "parameters": [
-                    {
-                        "description": "Buy details",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.BuyItemRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/handler.BuyItemResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Feature locked",
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/handler.ErrorResponse"
                         }
@@ -853,17 +1822,14 @@ const docTemplate = `{
         },
         "/user/item/disassemble": {
             "post": {
-                "description": "Disassemble an item into materials\nDisassemble an item into materials",
+                "description": "Disassemble an item into materials",
                 "consumes": [
-                    "application/json",
                     "application/json"
                 ],
                 "produces": [
-                    "application/json",
                     "application/json"
                 ],
                 "tags": [
-                    "crafting",
                     "crafting"
                 ],
                 "summary": "Disassemble item",
@@ -874,16 +1840,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handler.DisassembleItemRequest"
-                        }
-                    },
-                    {
-                        "description": "Disassemble details",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.DisassembleItemRequest"
+                            "$ref": "#/definitions/handler.CraftingActionRequest"
                         }
                     }
                 ],
@@ -915,163 +1872,16 @@ const docTemplate = `{
                 }
             }
         },
-        "/user/item/give": {
-            "post": {
-                "description": "Transfer an item from one user to another",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "inventory"
-                ],
-                "summary": "Give item to another user",
-                "parameters": [
-                    {
-                        "description": "Transfer details",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.GiveItemRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/handler.SuccessResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/user/item/remove": {
-            "post": {
-                "description": "Remove an item from a user's inventory",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "inventory"
-                ],
-                "summary": "Remove item from inventory",
-                "parameters": [
-                    {
-                        "description": "Item details",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.RemoveItemRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/handler.RemoveItemResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/user/item/sell": {
-            "post": {
-                "description": "Sell an item for currency",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "economy"
-                ],
-                "summary": "Sell item",
-                "parameters": [
-                    {
-                        "description": "Sell details",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.SellItemRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/handler.SellItemResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Feature locked",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/user/item/upgrade": {
             "post": {
-                "description": "Upgrade an item to a higher tier\nUpgrade an item to a higher tier",
+                "description": "Upgrade an item to a higher tier",
                 "consumes": [
-                    "application/json",
                     "application/json"
                 ],
                 "produces": [
-                    "application/json",
                     "application/json"
                 ],
                 "tags": [
-                    "crafting",
                     "crafting"
                 ],
                 "summary": "Upgrade item",
@@ -1082,16 +1892,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handler.UpgradeItemRequest"
-                        }
-                    },
-                    {
-                        "description": "Upgrade details",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.UpgradeItemRequest"
+                            "$ref": "#/definitions/handler.CraftingActionRequest"
                         }
                     }
                 ],
@@ -1123,130 +1924,20 @@ const docTemplate = `{
                 }
             }
         },
-        "/user/item/use": {
-            "post": {
-                "description": "Use an item from inventory",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "inventory"
-                ],
-                "summary": "Use item",
-                "parameters": [
-                    {
-                        "description": "Usage details",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.UseItemRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/handler.UseItemResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/user/register": {
-            "post": {
-                "description": "Register a new user or link an existing user to a new platform",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "user"
-                ],
-                "summary": "Register or link a user",
-                "parameters": [
-                    {
-                        "description": "Registration details",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.RegisterUserRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "User updated",
-                        "schema": {
-                            "$ref": "#/definitions/domain.User"
-                        }
-                    },
-                    "201": {
-                        "description": "User created",
-                        "schema": {
-                            "$ref": "#/definitions/domain.User"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/user/search": {
             "post": {
-                "description": "Search for items (lootbox mechanic)\nSearch for items (lootbox mechanic)",
+                "description": "Search for items (lootbox mechanic)",
                 "consumes": [
-                    "application/json",
                     "application/json"
                 ],
                 "produces": [
-                    "application/json",
                     "application/json"
                 ],
                 "tags": [
-                    "user",
                     "user"
                 ],
                 "summary": "Search for items",
                 "parameters": [
-                    {
-                        "description": "Search details",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.SearchRequest"
-                        }
-                    },
                     {
                         "description": "Search details",
                         "name": "request",
@@ -1290,12 +1981,65 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/user/timeout": {
+            "put": {
+                "description": "Apply or extend a timeout for a user (accumulates with existing timeout)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "user"
+                ],
+                "summary": "Set user timeout",
+                "parameters": [
+                    {
+                        "description": "Timeout details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.SetTimeoutRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
-        "domain.EngagementBreakdown": {
+        "domain.ContributionBreakdown": {
             "type": "object",
             "properties": {
+                "by_type": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
                 "commands_used": {
                     "type": "integer"
                 },
@@ -1313,19 +2057,217 @@ const docTemplate = `{
                 }
             }
         },
+        "domain.ContributionLeaderboardEntry": {
+            "type": "object",
+            "properties": {
+                "contribution": {
+                    "type": "integer"
+                },
+                "rank": {
+                    "type": "integer"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.DailyResetStatus": {
+            "type": "object",
+            "properties": {
+                "last_reset_time": {
+                    "type": "string"
+                },
+                "next_reset_time": {
+                    "type": "string"
+                },
+                "records_affected": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.FoundString": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.HarvestResponse": {
+            "type": "object",
+            "properties": {
+                "hours_since_harvest": {
+                    "type": "number"
+                },
+                "items_gained": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "message": {
+                    "type": "string"
+                },
+                "next_harvest_at": {
+                    "type": "string"
+                }
+            }
+        },
         "domain.Item": {
             "type": "object",
             "properties": {
                 "base_value": {
+                    "description": "Buy price",
                     "type": "integer"
                 },
-                "item_description": {
+                "default_display": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "handler": {
+                    "description": "Nullable: some items have no handler",
+                    "type": "string"
+                },
+                "internal_name": {
                     "type": "string"
                 },
                 "item_id": {
                     "type": "integer"
                 },
-                "item_name": {
+                "public_name": {
+                    "type": "string"
+                },
+                "sell_price": {
+                    "description": "Calculated sell price (only set for sellable items)",
+                    "type": "integer"
+                },
+                "types": {
+                    "description": "Populated from join/separate query",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "domain.MessageResult": {
+            "type": "object",
+            "properties": {
+                "matches": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.FoundString"
+                    }
+                },
+                "user": {
+                    "$ref": "#/definitions/domain.User"
+                }
+            }
+        },
+        "domain.ModifierConfig": {
+            "type": "object",
+            "properties": {
+                "base_value": {
+                    "type": "number"
+                },
+                "feature_key": {
+                    "type": "string"
+                },
+                "max_value": {
+                    "type": "number"
+                },
+                "min_value": {
+                    "type": "number"
+                },
+                "modifier_type": {
+                    "type": "string"
+                },
+                "per_level_value": {
+                    "type": "number"
+                }
+            }
+        },
+        "domain.PredictionOutcomeRequest": {
+            "type": "object",
+            "required": [
+                "participants",
+                "platform",
+                "total_points_spent",
+                "winner"
+            ],
+            "properties": {
+                "participants": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/domain.PredictionParticipant"
+                    }
+                },
+                "platform": {
+                    "type": "string",
+                    "enum": [
+                        "twitch",
+                        "youtube"
+                    ]
+                },
+                "total_points_spent": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "winner": {
+                    "$ref": "#/definitions/domain.PredictionWinner"
+                }
+            }
+        },
+        "domain.PredictionParticipant": {
+            "type": "object",
+            "properties": {
+                "platform_id": {
+                    "type": "string"
+                },
+                "points_spent": {
+                    "type": "integer"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.PredictionResult": {
+            "type": "object",
+            "properties": {
+                "contribution_awarded": {
+                    "type": "integer"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "participants_processed": {
+                    "type": "integer"
+                },
+                "total_points": {
+                    "type": "integer"
+                },
+                "winner_xp_awarded": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.PredictionWinner": {
+            "type": "object",
+            "properties": {
+                "platform_id": {
+                    "type": "string"
+                },
+                "points_won": {
+                    "type": "integer"
+                },
+                "username": {
                     "type": "string"
                 }
             }
@@ -1333,6 +2275,10 @@ const docTemplate = `{
         "domain.ProgressionNode": {
             "type": "object",
             "properties": {
+                "category": {
+                    "description": "Grouping: economy, combat, etc.",
+                    "type": "string"
+                },
                 "created_at": {
                     "type": "string"
                 },
@@ -1348,6 +2294,14 @@ const docTemplate = `{
                 "max_level": {
                     "type": "integer"
                 },
+                "modifier_config": {
+                    "description": "Value modification configuration (nullable JSON in DB)",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/domain.ModifierConfig"
+                        }
+                    ]
+                },
                 "node_key": {
                     "type": "string"
                 },
@@ -1355,14 +2309,19 @@ const docTemplate = `{
                     "description": "'feature', 'item', 'mechanic', 'upgrade'",
                     "type": "string"
                 },
-                "parent_node_id": {
-                    "description": "NULL for root",
-                    "type": "integer"
+                "size": {
+                    "description": "small, medium, large",
+                    "type": "string"
                 },
                 "sort_order": {
                     "type": "integer"
                 },
+                "tier": {
+                    "description": "Dynamic cost calculation fields (v2.0)",
+                    "type": "integer"
+                },
                 "unlock_cost": {
+                    "description": "Calculated from tier+size, stored for performance",
                     "type": "integer"
                 }
             }
@@ -1370,10 +2329,23 @@ const docTemplate = `{
         "domain.ProgressionStatus": {
             "type": "object",
             "properties": {
-                "active_voting": {
-                    "$ref": "#/definitions/domain.ProgressionVoting"
+                "active_session": {
+                    "$ref": "#/definitions/domain.ProgressionVotingSession"
                 },
-                "engagement_score": {
+                "active_unlock_progress": {
+                    "$ref": "#/definitions/domain.UnlockProgress"
+                },
+                "all_nodes_unlocked": {
+                    "type": "boolean"
+                },
+                "contribution_score": {
+                    "type": "integer"
+                },
+                "is_transitioning": {
+                    "description": "Bug #5: True when between unlock completion and new session start",
+                    "type": "boolean"
+                },
+                "total_nodes": {
                     "type": "integer"
                 },
                 "total_unlocked": {
@@ -1384,6 +2356,10 @@ const docTemplate = `{
         "domain.ProgressionTreeNode": {
             "type": "object",
             "properties": {
+                "category": {
+                    "description": "Grouping: economy, combat, etc.",
+                    "type": "string"
+                },
                 "children": {
                     "description": "Child node IDs",
                     "type": "array",
@@ -1409,6 +2385,14 @@ const docTemplate = `{
                 "max_level": {
                     "type": "integer"
                 },
+                "modifier_config": {
+                    "description": "Value modification configuration (nullable JSON in DB)",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/domain.ModifierConfig"
+                        }
+                    ]
+                },
                 "node_key": {
                     "type": "string"
                 },
@@ -1416,14 +2400,19 @@ const docTemplate = `{
                     "description": "'feature', 'item', 'mechanic', 'upgrade'",
                     "type": "string"
                 },
-                "parent_node_id": {
-                    "description": "NULL for root",
-                    "type": "integer"
+                "size": {
+                    "description": "small, medium, large",
+                    "type": "string"
                 },
                 "sort_order": {
                     "type": "integer"
                 },
+                "tier": {
+                    "description": "Dynamic cost calculation fields (v2.0)",
+                    "type": "integer"
+                },
                 "unlock_cost": {
+                    "description": "Calculated from tier+size, stored for performance",
                     "type": "integer"
                 },
                 "unlocked_level": {
@@ -1456,16 +2445,26 @@ const docTemplate = `{
                 }
             }
         },
-        "domain.ProgressionVoting": {
+        "domain.ProgressionVotingOption": {
             "type": "object",
             "properties": {
+                "estimated_unlock_date": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "integer"
                 },
-                "is_active": {
-                    "type": "boolean"
+                "last_highest_vote_at": {
+                    "description": "When first reached current highest",
+                    "type": "string"
+                },
+                "node_details": {
+                    "$ref": "#/definitions/domain.ProgressionNode"
                 },
                 "node_id": {
+                    "type": "integer"
+                },
+                "session_id": {
                     "type": "integer"
                 },
                 "target_level": {
@@ -1473,12 +2472,36 @@ const docTemplate = `{
                 },
                 "vote_count": {
                     "type": "integer"
-                },
-                "voting_ends_at": {
+                }
+            }
+        },
+        "domain.ProgressionVotingSession": {
+            "type": "object",
+            "properties": {
+                "ended_at": {
                     "type": "string"
                 },
-                "voting_started_at": {
+                "id": {
+                    "type": "integer"
+                },
+                "options": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.ProgressionVotingOption"
+                    }
+                },
+                "started_at": {
                     "type": "string"
+                },
+                "status": {
+                    "description": "'voting', 'completed'",
+                    "type": "string"
+                },
+                "voting_deadline": {
+                    "type": "string"
+                },
+                "winning_option_id": {
+                    "type": "integer"
                 }
             }
         },
@@ -1509,6 +2532,37 @@ const docTemplate = `{
                 }
             }
         },
+        "domain.UnlockProgress": {
+            "type": "object",
+            "properties": {
+                "contributions_accumulated": {
+                    "type": "integer"
+                },
+                "estimated_unlock_date": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "node_id": {
+                    "description": "NULL until vote ends",
+                    "type": "integer"
+                },
+                "started_at": {
+                    "type": "string"
+                },
+                "target_level": {
+                    "description": "NULL until vote ends",
+                    "type": "integer"
+                },
+                "unlocked_at": {
+                    "type": "string"
+                },
+                "voting_session_id": {
+                    "type": "integer"
+                }
+            }
+        },
         "domain.User": {
             "type": "object",
             "properties": {
@@ -1535,10 +2589,32 @@ const docTemplate = `{
                 }
             }
         },
-        "handler.AddItemRequest": {
+        "domain.VelocityMetrics": {
+            "type": "object",
+            "properties": {
+                "period_days": {
+                    "type": "integer"
+                },
+                "points_per_day": {
+                    "type": "number"
+                },
+                "sample_size": {
+                    "type": "integer"
+                },
+                "total_points": {
+                    "type": "integer"
+                },
+                "trend": {
+                    "description": "\"increasing\", \"stable\", \"decreasing\"",
+                    "type": "string"
+                }
+            }
+        },
+        "handler.AddItemByUsernameRequest": {
             "type": "object",
             "required": [
                 "item_name",
+                "platform",
                 "username"
             ],
             "properties": {
@@ -1560,6 +2636,41 @@ const docTemplate = `{
                 }
             }
         },
+        "handler.AdminAddContributionRequest": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "integer"
+                }
+            }
+        },
+        "handler.AdminClearTimeoutRequest": {
+            "type": "object",
+            "required": [
+                "platform",
+                "username"
+            ],
+            "properties": {
+                "platform": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string",
+                    "maxLength": 100
+                }
+            }
+        },
+        "handler.AdminEndVotingResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "winner": {
+                    "$ref": "#/definitions/domain.ProgressionVotingOption"
+                }
+            }
+        },
         "handler.AdminInstantUnlockResponse": {
             "type": "object",
             "properties": {
@@ -1568,22 +2679,6 @@ const docTemplate = `{
                 },
                 "unlock": {
                     "$ref": "#/definitions/domain.ProgressionUnlock"
-                }
-            }
-        },
-        "handler.AdminRelockRequest": {
-            "type": "object",
-            "required": [
-                "node_key"
-            ],
-            "properties": {
-                "level": {
-                    "type": "integer",
-                    "minimum": 1
-                },
-                "node_key": {
-                    "type": "string",
-                    "maxLength": 50
                 }
             }
         },
@@ -1606,22 +2701,6 @@ const docTemplate = `{
                 }
             }
         },
-        "handler.AdminUnlockRequest": {
-            "type": "object",
-            "required": [
-                "node_key"
-            ],
-            "properties": {
-                "level": {
-                    "type": "integer",
-                    "minimum": 1
-                },
-                "node_key": {
-                    "type": "string",
-                    "maxLength": 50
-                }
-            }
-        },
         "handler.AvailableUnlocksResponse": {
             "type": "object",
             "properties": {
@@ -1630,9 +2709,6 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/domain.ProgressionNode"
                     }
-                },
-                "current": {
-                    "$ref": "#/definitions/domain.ProgressionVoting"
                 }
             }
         },
@@ -1640,6 +2716,8 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "item_name",
+                "platform",
+                "platform_id",
                 "username"
             ],
             "properties": {
@@ -1648,6 +2726,9 @@ const docTemplate = `{
                     "maxLength": 100
                 },
                 "platform": {
+                    "type": "string"
+                },
+                "platform_id": {
                     "type": "string"
                 },
                 "quantity": {
@@ -1666,13 +2747,18 @@ const docTemplate = `{
             "properties": {
                 "items_bought": {
                     "type": "integer"
+                },
+                "message": {
+                    "type": "string"
                 }
             }
         },
-        "handler.DisassembleItemRequest": {
+        "handler.CraftingActionRequest": {
             "type": "object",
             "required": [
                 "item",
+                "platform",
+                "platform_id",
                 "username"
             ],
             "properties": {
@@ -1681,6 +2767,9 @@ const docTemplate = `{
                     "maxLength": 100
                 },
                 "platform": {
+                    "type": "string"
+                },
+                "platform_id": {
                     "type": "string"
                 },
                 "quantity": {
@@ -1697,6 +2786,15 @@ const docTemplate = `{
         "handler.DisassembleItemResponse": {
             "type": "object",
             "properties": {
+                "is_perfect_salvage": {
+                    "type": "boolean"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "multiplier": {
+                    "type": "number"
+                },
                 "outputs": {
                     "type": "object",
                     "additionalProperties": {
@@ -1732,7 +2830,10 @@ const docTemplate = `{
             "required": [
                 "item_name",
                 "owner",
-                "receiver"
+                "owner_platform",
+                "owner_platform_id",
+                "receiver",
+                "receiver_platform"
             ],
             "properties": {
                 "item_name": {
@@ -1743,7 +2844,10 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 100
                 },
-                "platform": {
+                "owner_platform": {
+                    "type": "string"
+                },
+                "owner_platform_id": {
                     "type": "string"
                 },
                 "quantity": {
@@ -1754,10 +2858,36 @@ const docTemplate = `{
                 "receiver": {
                     "type": "string",
                     "maxLength": 100
+                },
+                "receiver_platform": {
+                    "type": "string"
                 }
             }
         },
         "handler.HandleMessageRequest": {
+            "type": "object",
+            "required": [
+                "platform",
+                "platform_id",
+                "username"
+            ],
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "platform": {
+                    "type": "string"
+                },
+                "platform_id": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string",
+                    "maxLength": 100
+                }
+            }
+        },
+        "handler.HarvestRewardsRequest": {
             "type": "object",
             "required": [
                 "platform",
@@ -1848,10 +2978,11 @@ const docTemplate = `{
                 }
             }
         },
-        "handler.RemoveItemRequest": {
+        "handler.RemoveItemByUsernameRequest": {
             "type": "object",
             "required": [
                 "item_name",
+                "platform",
                 "username"
             ],
             "properties": {
@@ -1876,6 +3007,9 @@ const docTemplate = `{
         "handler.RemoveItemResponse": {
             "type": "object",
             "properties": {
+                "message": {
+                    "type": "string"
+                },
                 "removed": {
                     "type": "integer"
                 }
@@ -1884,10 +3018,15 @@ const docTemplate = `{
         "handler.SearchRequest": {
             "type": "object",
             "required": [
+                "platform",
+                "platform_id",
                 "username"
             ],
             "properties": {
                 "platform": {
+                    "type": "string"
+                },
+                "platform_id": {
                     "type": "string"
                 },
                 "username": {
@@ -1908,6 +3047,8 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "item_name",
+                "platform",
+                "platform_id",
                 "username"
             ],
             "properties": {
@@ -1916,6 +3057,9 @@ const docTemplate = `{
                     "maxLength": 100
                 },
                 "platform": {
+                    "type": "string"
+                },
+                "platform_id": {
                     "type": "string"
                 },
                 "quantity": {
@@ -1935,8 +3079,37 @@ const docTemplate = `{
                 "items_sold": {
                     "type": "integer"
                 },
+                "message": {
+                    "type": "string"
+                },
                 "money_gained": {
                     "type": "integer"
+                }
+            }
+        },
+        "handler.SetTimeoutRequest": {
+            "type": "object",
+            "required": [
+                "duration_seconds",
+                "platform",
+                "username"
+            ],
+            "properties": {
+                "duration_seconds": {
+                    "type": "integer",
+                    "maximum": 86400,
+                    "minimum": 1
+                },
+                "platform": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "username": {
+                    "type": "string",
+                    "maxLength": 100
                 }
             }
         },
@@ -1948,34 +3121,18 @@ const docTemplate = `{
                 }
             }
         },
-        "handler.UpgradeItemRequest": {
-            "type": "object",
-            "required": [
-                "item",
-                "username"
-            ],
-            "properties": {
-                "item": {
-                    "type": "string",
-                    "maxLength": 100
-                },
-                "platform": {
-                    "type": "string"
-                },
-                "quantity": {
-                    "type": "integer",
-                    "maximum": 10000,
-                    "minimum": 1
-                },
-                "username": {
-                    "type": "string",
-                    "maxLength": 100
-                }
-            }
-        },
         "handler.UpgradeItemResponse": {
             "type": "object",
             "properties": {
+                "bonus_quantity": {
+                    "type": "integer"
+                },
+                "is_masterwork": {
+                    "type": "boolean"
+                },
+                "message": {
+                    "type": "string"
+                },
                 "new_item": {
                     "type": "string"
                 },
@@ -1988,6 +3145,8 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "item_name",
+                "platform",
+                "platform_id",
                 "username"
             ],
             "properties": {
@@ -1998,12 +3157,15 @@ const docTemplate = `{
                 "platform": {
                     "type": "string"
                 },
+                "platform_id": {
+                    "type": "string"
+                },
                 "quantity": {
                     "type": "integer",
                     "maximum": 10000,
                     "minimum": 1
                 },
-                "target_username": {
+                "target_user": {
                     "type": "string",
                     "maxLength": 100
                 },
@@ -2025,32 +3187,56 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "node_key",
-                "user_id"
+                "platform",
+                "platform_id",
+                "username"
             ],
             "properties": {
                 "node_key": {
                     "type": "string",
                     "maxLength": 50
                 },
-                "user_id": {
+                "platform": {
+                    "type": "string",
+                    "maxLength": 20
+                },
+                "platform_id": {
                     "type": "string",
                     "maxLength": 100
+                },
+                "username": {
+                    "type": "string",
+                    "maxLength": 100
+                }
+            }
+        },
+        "user.CacheStats": {
+            "type": "object",
+            "properties": {
+                "evictions": {
+                    "type": "integer",
+                    "format": "int64"
+                },
+                "hits": {
+                    "type": "integer",
+                    "format": "int64"
+                },
+                "misses": {
+                    "type": "integer",
+                    "format": "int64"
+                },
+                "size": {
+                    "type": "integer"
                 }
             }
         },
         "user.InventoryItem": {
             "type": "object",
             "properties": {
-                "description": {
-                    "type": "string"
-                },
                 "name": {
                     "type": "string"
                 },
                 "quantity": {
-                    "type": "integer"
-                },
-                "value": {
                     "type": "integer"
                 }
             }

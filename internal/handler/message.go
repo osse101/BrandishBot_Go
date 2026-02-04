@@ -26,21 +26,10 @@ type HandleMessageRequest struct {
 // @Accept json
 // @Produce json
 // @Param request body HandleMessageRequest true "Message details"
-// @Success 200 {object} domain.User
-// @Failure 400 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
-// @Router /message/handle [post]
-// HandleMessageHandler handles the incoming message flow.
-// @Summary Handle chat message
-// @Description Process a chat message for potential commands or triggers
-// @Tags message
-// @Accept json
-// @Produce json
-// @Param request body HandleMessageRequest true "Message details"
 // @Success 200 {object} domain.MessageResult
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /message/handle [post]
+// @Router /api/v1/message/handle [post]
 func HandleMessageHandler(userService user.Service, progressionSvc progression.Service, eventBus event.Bus) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()

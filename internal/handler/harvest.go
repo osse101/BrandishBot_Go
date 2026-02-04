@@ -38,7 +38,7 @@ func NewHarvestHandler(harvestSvc harvest.Service) *HarvestHandler {
 // @Success 200 {object} domain.HarvestResponse "Harvest successful"
 // @Failure 400 {object} ErrorResponse "Invalid request or harvest too soon"
 // @Failure 500 {object} ErrorResponse "Internal server error"
-// @Router /harvest [post]
+// @Router /api/v1/harvest [post]
 func (h *HarvestHandler) Harvest(w http.ResponseWriter, r *http.Request) {
 	log := logger.FromContext(r.Context())
 

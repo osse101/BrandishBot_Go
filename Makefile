@@ -301,6 +301,8 @@ swagger:
 	@echo "Swagger docs updated: docs/swagger/"
 
 generate:
+	@echo "Generating Swagger documentation..."
+	@$(MAKE) swagger
 	@echo "Generating sqlc code..."
 	@$(SQLC) generate
 	@echo "✓ sqlc code generated"
