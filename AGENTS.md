@@ -101,10 +101,10 @@ BrandishBot_Go/
 │   ├── domain/             # Domain models and constants
 │   ├── handler/            # HTTP handlers
 │   ├── server/             # Server configuration and routing
-│   └── [feature]/          # Feature-specific packages (user, economy, etc.)
+│   └── [feature]/          # Feature-specific packages (user, economy, harvest, etc.)
 ├── configs/                # JSON configuration files
 ├── migrations/             # Database migration files
-├── scripts/                # Deployment and utility scripts
+├── scripts/                # Deployment and utility scripts (no legacy bash scripts)
 ├── tests/                  # Integration and staging tests
 └── docs/                   # Documentation (see below)
 ```
@@ -149,8 +149,9 @@ docs/
 make build              # Build all binaries to bin/
 make run                # Run application from bin/app
 make test               # Run tests with coverage and race detection
+make unit               # Run unit tests (short mode)
 make lint               # Run code linters
-make mocks              # Generate mocks
+make mocks              # Generate mocks (using mockery)
 make generate           # Generate sql using sqlc
 
 # Database
@@ -169,8 +170,11 @@ make docker-build-fast  # Rebuild images (with cache)
 make test-integration   # Run integration tests
 make test-staging       # Run staging integration tests
 make test-coverage      # Generate HTML coverage report
-make unit               # Run unit tests
-make test               # Run all tests
+
+# Audit & Maintenance (via devtool)
+make test-migrations    # Test migration up/down idempotency
+make check-deps         # Check required dependencies
+make check-db           # Ensure database is running
 ```
 
 ---
@@ -252,6 +256,7 @@ Before submitting changes:
 - [ ] Coverage meets 80% threshold for new code
 - [ ] Edge cases tested (empty inputs, boundaries, errors)
 - [ ] Mocks reused from existing test files
+- [ ] Run `make unit` for quick feedback during development
 
 **Full details**: See [docs/testing/TEST_GUIDANCE.md](docs/testing/TEST_GUIDANCE.md).
 

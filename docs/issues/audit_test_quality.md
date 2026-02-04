@@ -65,3 +65,5 @@ internal/user -> mocks -> internal/user (IMPORT CYCLE!)
 ## 4. Add Benchmarks
 *   [ ] Add benchmarks for `CraftingService.UpgradeItem` and `DisassembleItem`.
 *   [ ] Add benchmarks for `GambleService.ExecuteGamble` with varying numbers of participants.
+
+**Status Update 2026-01-29**: Confirmed benchmarks are still missing in `internal/crafting` and `internal/gamble`. This item remains open.

@@ -100,6 +100,7 @@ Visit http://localhost:8080/swagger/index.html
 
 **Development**:
 - `make test` - Run tests with coverage
+- `make unit` - Run unit tests (fast)
 - `make test-coverage` - Generate HTML coverage report
 - `make build` - Build all binaries
 - `make swagger` - Regenerate Swagger docs
@@ -121,16 +122,25 @@ Visit http://localhost:8080/swagger/index.html
 ```
 ├── cmd/              # Entry points
 │   ├── app/         # Main application
+│   ├── discord/     # Discord bot entry point
 │   ├── setup/       # Database setup
 │   ├── reset/       # Database reset utility
 │   └── debug/       # Debug tools
 ├── internal/        # Application code
 │   ├── handler/     # HTTP handlers
 │   ├── domain/      # Domain models
+│   ├── repository/  # Database interfaces
+│   ├── database/    # SQLC and Postgres implementation
 │   ├── user/        # User service
-│   ├── crafting/    # Crafting service
 │   ├── economy/     # Economy service
-│   └── stats/       # Statistics service
+│   ├── crafting/    # Crafting service
+│   ├── harvest/     # Harvest (Farming) service
+│   ├── progression/ # Progression tree service
+│   ├── gamble/      # Gambling & Lootbox service
+│   ├── job/         # Job & XP service
+│   ├── stats/       # Statistics service
+│   ├── discord/     # Discord bot implementation
+│   └── cooldown/    # Cooldown service
 ├── migrations/      # SQL migrations
 └── docs/            # Documentation & Swagger
 ```
