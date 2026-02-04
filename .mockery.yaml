@@ -187,3 +187,5 @@ packages:
       mockname: "MockRepository{{.InterfaceName}}"
     interfaces:
       User:
+      HarvestRepository:
+      HarvestTx:
