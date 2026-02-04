@@ -114,7 +114,6 @@ BrandishBot_Go/
 │   ├── architecture/             # Architecture docs & journals
 │   ├── development/              # Dev guides & journals
 │   ├── testing/                  # Testing guides
-│   └── CLIENT_WRAPPER_CHECKLIST.md
 └── .env                          # Environment configuration
 ```
 

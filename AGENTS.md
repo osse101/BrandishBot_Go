@@ -9,13 +9,13 @@ This document provides AI agents with structured guidance on navigating, underst
 | If You're Working On...           | Start Here                                                                    | Journal to Update                                            |
 | --------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------ |
 | **New Feature Development**       | [FEATURE_DEVELOPMENT_GUIDE.md](docs/development/FEATURE_DEVELOPMENT_GUIDE.md) | [docs/development/journal.md](docs/development/journal.md)   |
-| **Architecture/Design Decisions** | [ARCHITECTURE.md](docs/ARCHITECTURE.md)                                       | [docs/architecture/journal.md](docs/architecture/journal.md) |
+| **Architecture/Design Decisions** | [ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md)                          | [docs/architecture/journal.md](docs/architecture/journal.md) |
 | **Writing Tests**                 | [TEST_GUIDANCE.md](docs/testing/TEST_GUIDANCE.md)                             | [docs/testing/journal.md](docs/testing/journal.md)           |
-| **Database Operations**           | [DATABASE.md](docs/DATABASE.md), [MIGRATIONS.md](docs/MIGRATIONS.md)          | [docs/development/journal.md](docs/development/journal.md)   |
+| **Database Operations**           | [DATABASE.md](docs/database/DATABASE.md), [MIGRATIONS.md](docs/database/MIGRATIONS.md)          | [docs/development/journal.md](docs/development/journal.md)   |
 | **Deployment**                    | [DEPLOYMENT_WORKFLOW.md](docs/deployment/DEPLOYMENT_WORKFLOW.md)              | N/A                                                          |
 | **Feature Planning/Proposals**    | [gamble_feature.md](docs/planning/gamble_feature.md) (template example)       | [docs/development/journal.md](docs/development/journal.md)   |
 | **Benchmarking**                  | [BENCHMARKING.md](docs/benchmarking/BENCHMARKING.md)                          | [docs/benchmarking/journal.md](docs/benchmarking/journal.md) |
-| **API Documentation**             | [API_COVERAGE.md](docs/API_COVERAGE.md)                                       | [docs/development/journal.md](docs/development/journal.md)   |
+| **API Documentation**             | [API_COVERAGE.md](docs/api/API_COVERAGE.md)                                   | [docs/development/journal.md](docs/development/journal.md)   |
 
 ---
 
@@ -85,7 +85,7 @@ What effect does this have on the codebase?
 
 For specialized AI behaviors, personality configurations, and role-specific prompts, refer to:
 
-📄 **[docs/ai_personalities.md](docs/ai_personalities.md)**
+📄 **[docs/development/ai_personalities.md](docs/development/ai_personalities.md)**
 
 This file contains persona definitions for different task types (debugging, feature development, code review, etc.).
 
@@ -113,29 +113,41 @@ BrandishBot_Go/
 
 ```MD
 docs/
-├── ARCHITECTURE.md         # System architecture overview
-├── DATABASE.md             # Database design and schema
-├── MIGRATIONS.md           # Migration guide
-├── PLAYER_COMMANDS.md      # User-facing commands
-├── USAGE.md                # API usage examples
-├── architecture/           # Architecture lessons and designs
+├── api/                    # API documentation
+│   └── API_COVERAGE.md     # API coverage report
+├── architecture/           # Architecture docs & journals
+│   ├── ARCHITECTURE.md     # System architecture overview
 │   ├── journal.md          # 📓 Architecture journal
 │   └── cooldown-service.md # Service design doc
+├── archived/               # Archived documentation
+│   ├── PRODUCTION_READINESS.md
+│   └── SECURITY_ANALYSIS.md
+├── database/               # Database docs
+│   ├── DATABASE.md         # Database design and schema
+│   └── MIGRATIONS.md       # Migration guide
+├── deployment/             # Deployment guides
+│   ├── DEPLOYMENT_WORKFLOW.md
+│   ├── ENVIRONMENTS.md
+│   └── VERSION_DETECTION.md
 ├── development/            # Development guides
 │   ├── journal.md          # 📓 Development journal
+│   ├── AGENT_PROFILES.md   # Agent profiles
+│   ├── ai_personalities.md # AI personalities
 │   ├── FEATURE_DEVELOPMENT_GUIDE.md  # ** START HERE for features **
 │   ├── PROGRESSION_GUIDANCE.md       # ** Deep Dive for Progression **
 │   └── CODE_QUALITY_RECOMMENDATIONS.md
+├── discord/                # Discord docs
+│   └── DISCORD_REFACTORING_PATTERNS.md
+├── planning/               # Feature proposals and roadmaps
+│   ├── gamble_feature.md   # Feature proposal template
+│   └── PROGRESSION_*.md    # Progression system docs
 ├── testing/                # Testing documentation
 │   ├── journal.md          # 📓 Testing journal
 │   ├── TEST_GUIDANCE.md    # How to write tests
 │   └── DATABASE_TESTING.md # Database test patterns
-├── planning/               # Feature proposals and roadmaps
-│   ├── gamble_feature.md   # Feature proposal template
-│   └── PROGRESSION_*.md    # Progression system docs
-└── deployment/             # Deployment guides
-    ├── DEPLOYMENT_WORKFLOW.md
-    └── ENVIRONMENTS.md
+└── usage/                  # Usage guides
+    ├── PLAYER_COMMANDS.md  # User-facing commands
+    └── USAGE.md            # API usage examples
 ```
 
 ---

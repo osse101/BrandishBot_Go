@@ -455,7 +455,7 @@ func (c *UserCache) Get(key string) (*User, bool) {
 
 - `docs/issues/CODE_REVIEW_ISSUES.md` - Event system documentation
 - `docs/issues/api-versioning-framework.md` - API versioning improvements
-- `docs/VERSION_DETECTION.md` - Version detection guide
+- `docs/deployment/VERSION_DETECTION.md` - Version detection guide
 
 ## References
 

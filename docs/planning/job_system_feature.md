@@ -37,10 +37,9 @@ Jobs add vertical progression that rewards consistent play. Unlike global progre
 ---
 
 ## 6. References / Constraint Docs
-- Architecture constraints: [ARCHITECTURE.md](file:///home/osse1/projects/BrandishBot_Go/docs/ARCHITECTURE.md)
-- Progression system: [progression/service.go](file:///home/osse1/projects/BrandishBot_Go/internal/progression/service.go)
-- Security analysis: [SECURITY_ANALYSIS.md](file:///home/osse1/projects/BrandishBot_Go/docs/SECURITY_ANALYSIS.md)
-- Migrations guide: [MIGRATIONS.md](file:///home/osse1/projects/BrandishBot_Go/docs/MIGRATIONS.md)
+- Architecture constraints: [ARCHITECTURE.md](../architecture/ARCHITECTURE.md)
+- Security analysis: [SECURITY_ANALYSIS.md](../archived/SECURITY_ANALYSIS.md)
+- Migrations guide: [MIGRATIONS.md](../database/MIGRATIONS.md)
 
 ---
 

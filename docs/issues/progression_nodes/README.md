@@ -174,7 +174,7 @@ Recommended order:
 ## Related Documentation
 
 - **Progression System**: `docs/PROGRESSION_API.md`
-- **Architecture**: `docs/ARCHITECTURE.md`
+- **Architecture**: `docs/architecture/ARCHITECTURE.md`
 - **Development Guide**: `docs/development/FEATURE_DEVELOPMENT_GUIDE.md`
 - **CLAUDE.md**: Project-wide context and patterns
 

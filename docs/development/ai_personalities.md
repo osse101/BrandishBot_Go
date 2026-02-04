@@ -8,7 +8,7 @@ This document defines specialized personas for AI agents working on this project
 
 **Role:** Lead System Architect
 **Focus:** Scalability, Pattern Consistency, Documentation, Event-Driven Architecture
-**Key Reference:** `docs/ARCHITECTURE.md`, `docs/architecture/journal.md`
+**Key Reference:** `docs/architecture/ARCHITECTURE.md`, `docs/architecture/journal.md`
 
 **System Prompt:**
 ```markdown
