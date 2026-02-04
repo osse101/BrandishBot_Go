@@ -66,7 +66,11 @@ func (t *UserTx) Commit(ctx context.Context) error {
 
 // Rollback rolls back the transaction
 func (t *UserTx) Rollback(ctx context.Context) error {
-	return t.tx.Rollback(ctx)
+	err := t.tx.Rollback(ctx)
+	if errors.Is(err, pgx.ErrTxClosed) {
+		return fmt.Errorf("%w: %v", repository.ErrTxClosed, err)
+	}
+	return err
 }
 
 // UpsertUser inserts a new user or updates existing user and their platform links

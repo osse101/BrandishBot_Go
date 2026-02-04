@@ -11,7 +11,11 @@ import (
 
 type contextKey string
 
-const requestIDKey contextKey = "request_id"
+const (
+	requestIDKey contextKey = "request_id"
+	userIDKey    contextKey = "user_id"
+	usernameKey  contextKey = "username"
+)
 
 var (
 	// defaultLogger is the package-level logger instance
@@ -91,18 +95,45 @@ func GetRequestID(ctx context.Context) string {
 	return ""
 }
 
+// WithUser adds user ID and username to the context
+func WithUser(ctx context.Context, userID, username string) context.Context {
+	ctx = context.WithValue(ctx, userIDKey, userID)
+	ctx = context.WithValue(ctx, usernameKey, username)
+	return ctx
+}
+
+// GetUser retrieves user ID and username from context
+func GetUser(ctx context.Context) (userID, username string) {
+	if id, ok := ctx.Value(userIDKey).(string); ok {
+		userID = id
+	}
+	if name, ok := ctx.Value(usernameKey).(string); ok {
+		username = name
+	}
+	return userID, username
+}
+
 // RequestIDFromContext returns the request ID from a context
 // Deprecated: Use GetRequestID instead
 func RequestIDFromContext(ctx context.Context) string {
 	return GetRequestID(ctx)
 }
 
-// FromContext returns a logger with request ID from context if available
+// FromContext returns a logger with request ID and user context from context if available
 func FromContext(ctx context.Context) *slog.Logger {
+	log := slog.Default()
+
+	// Add request ID if present
 	if id := GetRequestID(ctx); id != "" {
-		return slog.Default().With("request_id", id)
+		log = log.With("request_id", id)
 	}
-	return slog.Default()
+
+	// Add user context if present
+	if userID, username := GetUser(ctx); userID != "" {
+		log = log.With("user_id", userID, "username", username)
+	}
+
+	return log
 }
 
 // Debug logs a debug message

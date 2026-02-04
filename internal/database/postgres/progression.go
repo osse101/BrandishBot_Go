@@ -684,17 +684,11 @@ func (t *progressionTx) Commit(ctx context.Context) error {
 }
 
 func (t *progressionTx) Rollback(ctx context.Context) error {
-	return t.tx.Rollback(ctx)
-}
-
-// GetInventory is required by repository.Tx but not used in progression
-func (t *progressionTx) GetInventory(ctx context.Context, userID string) (*domain.Inventory, error) {
-	return nil, errors.New(ErrMsgInventoryOpsNotSupportedInProgression)
-}
-
-// UpdateInventory is required by repository.Tx but not used in progression
-func (t *progressionTx) UpdateInventory(ctx context.Context, userID string, inventory domain.Inventory) error {
-	return errors.New(ErrMsgInventoryOpsNotSupportedInProgression)
+	err := t.tx.Rollback(ctx)
+	if errors.Is(err, pgx.ErrTxClosed) {
+		return fmt.Errorf("%w: %v", repository.ErrTxClosed, err)
+	}
+	return err
 }
 
 // GetNodeByFeatureKey retrieves a node by its modifier feature_key and returns the current unlock level

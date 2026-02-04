@@ -20,7 +20,6 @@ type Gamble interface {
 	GetActiveGamble(ctx context.Context) (*domain.Gamble, error)
 
 	// Transaction support
-	BeginTx(ctx context.Context) (Tx, error)
 	BeginGambleTx(ctx context.Context) (GambleTx, error)
 
 	// Inventory operations (reused from other services)

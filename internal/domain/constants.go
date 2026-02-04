@@ -150,11 +150,6 @@ const (
 	FilterTypeConsumable = "consumable"
 )
 
-// Error messages
-const (
-	ErrMsgTxClosed = "tx is closed"
-)
-
 // Economy constants
 const (
 	MaxTransactionQuantity = 10000

@@ -17,6 +17,7 @@ bin/
 /debug
 /reset
 /setup
+/devtool
 
 # Test binary, built with `go test -c`
 *.test

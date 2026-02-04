@@ -234,15 +234,6 @@ func (r *GambleRepository) GetActiveGamble(ctx context.Context) (*domain.Gamble,
 	}, nil
 }
 
-// BeginTx start a transaction provided by the embedded UserRepository but returning generic repository.Tx
-func (r *GambleRepository) BeginTx(ctx context.Context) (repository.Tx, error) {
-	tx, err := r.UserRepository.BeginTx(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return tx, nil
-}
-
 // BeginGambleTx starts a transaction and returns a GambleTx for gamble operations
 func (r *GambleRepository) BeginGambleTx(ctx context.Context) (repository.GambleTx, error) {
 	tx, err := r.db.Begin(ctx)
@@ -270,7 +261,11 @@ func (t *gambleTx) Commit(ctx context.Context) error {
 
 // Rollback rolls back the transaction
 func (t *gambleTx) Rollback(ctx context.Context) error {
-	return t.tx.Rollback(ctx)
+	err := t.tx.Rollback(ctx)
+	if errors.Is(err, pgx.ErrTxClosed) {
+		return fmt.Errorf("%w: %v", repository.ErrTxClosed, err)
+	}
+	return err
 }
 
 // UpdateGambleStateIfMatches performs CAS operation within transaction

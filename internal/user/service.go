@@ -202,7 +202,7 @@ func (s *service) FindUserByPlatformID(ctx context.Context, platform, platformID
 // HandleIncomingMessage checks if a user exists for an incoming message, creates one if not, and finds string matches.
 func (s *service) HandleIncomingMessage(ctx context.Context, platform, platformID, username, message string) (*domain.MessageResult, error) {
 	log := logger.FromContext(ctx)
-	log.Info("HandleIncomingMessage called", "platform", platform, "platformID", platformID, "username", username)
+	log.Debug("HandleIncomingMessage called", "platform", platform, "platformID", platformID, "username", username)
 
 	user, err := s.getUserOrRegister(ctx, platform, platformID, username)
 	if err != nil {
@@ -1136,7 +1136,7 @@ func (s *service) processSearchSuccess(ctx context.Context, user *domain.User, r
 	return s.formatSearchSuccessMessage(ctx, item, quantity, isCritical, params), nil
 }
 
-func (s *service) addItemToTx(ctx context.Context, tx repository.Tx, userID string, itemID int, quantity int, shineLevel domain.ShineLevel) error {
+func (s *service) addItemToTx(ctx context.Context, tx repository.UserTx, userID string, itemID int, quantity int, shineLevel domain.ShineLevel) error {
 	log := logger.FromContext(ctx)
 	inventory, err := tx.GetInventory(ctx, userID)
 	if err != nil {
