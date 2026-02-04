@@ -63,7 +63,7 @@ For complex tasks, spawn an agent with specific profile context.
 
 **Key Files:**
 - `docs/development/FEATURE_DEVELOPMENT_GUIDE.md`
-- `docs/CLIENT_WRAPPER_CHECKLIST.md`
+- `docs/development/CLIENT_WRAPPER_CHECKLIST.md`
 - `CLAUDE.md` - Architecture Pattern section
 
 **Example Usage:**
@@ -80,7 +80,7 @@ For complex tasks, spawn an agent with specific profile context.
 **Purpose:** Identify and eliminate code duplication systematically.
 
 **Workflow:**
-1. Read `docs/DISCORD_REFACTORING_PATTERNS.md` (essential reference)
+1. Read `docs/discord/DISCORD_REFACTORING_PATTERNS.md` (essential reference)
 2. Read `docs/development/journal.md` for refactoring patterns
 3. Use Grep to identify duplicate patterns (3+ occurrences)
 4. Calculate impact: `pattern_lines × occurrences = total_saved`
@@ -91,7 +91,7 @@ For complex tasks, spawn an agent with specific profile context.
 9. Run `make test` to ensure no breakage
 
 **Key Files:**
-- `docs/DISCORD_REFACTORING_PATTERNS.md` ⭐ CRITICAL
+- `docs/discord/DISCORD_REFACTORING_PATTERNS.md` ⭐ CRITICAL
 - `docs/development/journal.md`
 - Target scope (e.g., `internal/discord/`, `internal/handler/`)
 
@@ -117,7 +117,7 @@ For complex tasks, spawn an agent with specific profile context.
 **Purpose:** Keep Go Discord, C# Streamer.bot, and API handlers synchronized.
 
 **Workflow:**
-1. Read `docs/CLIENT_WRAPPER_CHECKLIST.md`
+1. Read `docs/development/CLIENT_WRAPPER_CHECKLIST.md`
 2. If adding/modifying endpoint:
    - Update `internal/handler/*.go`
    - Update `internal/server/routes.go`
@@ -131,7 +131,7 @@ For complex tasks, spawn an agent with specific profile context.
 4. Run `make test` for Go changes
 
 **Key Files:**
-- `docs/CLIENT_WRAPPER_CHECKLIST.md` ⭐ CRITICAL
+- `docs/development/CLIENT_WRAPPER_CHECKLIST.md` ⭐ CRITICAL
 - `internal/handler/` (Go API handlers)
 - `internal/discord/client.go` (Go Discord client)
 - `client/csharp/BrandishBotClient.cs` (C# client)

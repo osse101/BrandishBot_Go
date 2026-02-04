@@ -608,5 +608,5 @@ Replace `Platform.Twitch` with `Platform.YouTube` and use YouTube-specific argum
 ---
 
 ## Related Files
-- [C# Client Source](file:///home/osse1/projects/BrandishBot_Go/client/csharp/BrandishBotClient.cs)
-- [API Endpoint Reference](file:///home/osse1/projects/BrandishBot_Go/docs/CLIENT_WRAPPER_CHECKLIST.md)
+- [C# Client Source](../../client/csharp/BrandishBotClient.cs)
+- [API Endpoint Reference](../development/CLIENT_WRAPPER_CHECKLIST.md)

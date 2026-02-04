@@ -10,9 +10,9 @@
 
 This document is the **single source of truth** for keeping these three systems synchronized:
 
-1. **API Endpoints** - [`internal/server/server.go`](file:///home/osse1/projects/BrandishBot_Go/internal/server/server.go)
-2. **Discord Commands** - [`internal/discord/cmd_*.go`](file:///home/osse1/projects/BrandishBot_Go/internal/discord/)
-3. **C# Client/Wrapper** - [`client/csharp/`](file:///home/osse1/projects/BrandishBot_Go/client/csharp/)
+1. **API Endpoints** - [`internal/server/server.go`](../../internal/server/server.go)
+2. **Discord Commands** - [`internal/discord/cmd_*.go`](../../internal/discord/)
+3. **C# Client/Wrapper** - [`client/csharp/`](../../client/csharp/)
 
 ---
 
@@ -235,11 +235,11 @@ public bool FeatureAction()
 
 ## Related Documentation
 
-- [Server Routes](file:///home/osse1/projects/BrandishBot_Go/internal/server/server.go) - All API endpoints
-- [Discord Commands](file:///home/osse1/projects/BrandishBot_Go/internal/discord/) - Bot commands
-- [C# Client](file:///home/osse1/projects/BrandishBot_Go/client/csharp/BrandishBotClient.cs) - API client
-- [C# Wrapper](file:///home/osse1/projects/BrandishBot_Go/client/csharp/BrandishBotWrapper.cs) - Streamer.bot integration
-- [Client README](file:///home/osse1/projects/BrandishBot_Go/client/csharp/README.md) - C# usage guide
+- [Server Routes](../../internal/server/server.go) - All API endpoints
+- [Discord Commands](../../internal/discord/) - Bot commands
+- [C# Client](../../client/csharp/BrandishBotClient.cs) - API client
+- [C# Wrapper](../../client/csharp/BrandishBotWrapper.cs) - Streamer.bot integration
+- [Client README](../../client/csharp/README.md) - C# usage guide
 
 ---
 

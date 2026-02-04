@@ -37,11 +37,11 @@ Adds a social, high-stakes multiplayer mechanic that integrates existing lootbox
 - Chatbot UX: TBD  
 
 ## 7. References / Constraint Docs
-- Architecture constraints: [ARCHITECTURE.md](file:///home/osse1/projects/BrandishBot_Go/docs/ARCHITECTURE.md)
-- Database configuration: [DATABASE.md](file:///home/osse1/projects/BrandishBot_Go/docs/DATABASE.md)
-- Migrations & schema evolution: [MIGRATIONS.md](file:///home/osse1/projects/BrandishBot_Go/docs/MIGRATIONS.md)
-- Security analysis & input validation: [SECURITY_ANALYSIS.md](file:///home/osse1/projects/BrandishBot_Go/docs/SECURITY_ANALYSIS.md)
-- Code quality & testing standards: [CODE_QUALITY_RECOMMENDATIONS.md](file:///home/osse1/projects/BrandishBot_Go/docs/development/CODE_QUALITY_RECOMMENDATIONS.md)
+- Architecture constraints: [ARCHITECTURE.md](../architecture/ARCHITECTURE.md)
+- Database configuration: [DATABASE.md](../database/DATABASE.md)
+- Migrations & schema evolution: [MIGRATIONS.md](../database/MIGRATIONS.md)
+- Security analysis & input validation: [SECURITY_ANALYSIS.md](../archived/SECURITY_ANALYSIS.md)
+- Code quality & testing standards: [CODE_QUALITY_RECOMMENDATIONS.md](../development/CODE_QUALITY_RECOMMENDATIONS.md)
 
 ## 8. Non-functional Constraints
 - **Stack**: Go 1.x, Docker, pgx/v5, PostgreSQL 15+, goose (migrations), Swagger, validator
@@ -157,7 +157,7 @@ Events emitted for bot integration and statistics tracking:
 - **Duplicate join attempts** → PRIMARY KEY constraint prevents duplicates; return 409 Conflict.
 
 ## 13. Security & Authorization
-- **Authentication**: All endpoints require `X-API-Key` header (see [SECURITY_ANALYSIS.md](file:///home/osse1/projects/BrandishBot_Go/docs/SECURITY_ANALYSIS.md)).
+- **Authentication**: All endpoints require `X-API-Key` header (see [SECURITY_ANALYSIS.md](../archived/SECURITY_ANALYSIS.md)).
 - **Input validation**:
   - `user_id`: Valid UUID format
   - `lootbox_ids`: Array of valid UUIDs, length 1-10
@@ -209,7 +209,7 @@ Events emitted for bot integration and statistics tracking:
 ## 16. Migrations
 ### Migration file
 - **File**: `migrations/YYYYMMDDHHMMSS_create_gamble_tables.sql` (goose naming convention)
-- **Migration tool**: goose (see [MIGRATIONS.md](file:///home/osse1/projects/BrandishBot_Go/docs/MIGRATIONS.md))
+- **Migration tool**: goose (see [MIGRATIONS.md](../database/MIGRATIONS.md))
 
 ### Up migration
 ```sql
@@ -393,7 +393,7 @@ This document follows the **BrandishBot_Go Feature Design Template**. When creat
 11. **Acceptance Criteria** (section 19): Define clear, testable success conditions
 
 ### Best Practices
-- **Link guideline documents**: Always reference [ARCHITECTURE.md](file:///home/osse1/projects/BrandishBot_Go/docs/ARCHITECTURE.md), [SECURITY_ANALYSIS.md](file:///home/osse1/projects/BrandishBot_Go/docs/SECURITY_ANALYSIS.md), etc.
+- **Link guideline documents**: Always reference [ARCHITECTURE.md](../architecture/ARCHITECTURE.md), [SECURITY_ANALYSIS.md](../archived/SECURITY_ANALYSIS.md), etc.
 - **Use project conventions**: 
   - goose for migrations (not generic "SQL migrations")
   - pgx/v5 for database access

@@ -545,7 +545,7 @@ This template ensures helpers are well-documented and easy to use.
 
 ## Related Documents
 
-- `docs/ARCHITECTURE.md` - Overall system design
+- `docs/architecture/ARCHITECTURE.md` - Overall system design
 - `docs/development/journal.md` - Development patterns
 - `internal/discord/commands.go` - Implementation of helpers
 

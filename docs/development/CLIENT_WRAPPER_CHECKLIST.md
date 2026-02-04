@@ -498,7 +498,7 @@ var voteResult = await client.VoteForNode(
 ---
 
 ## Related Documentation
-- [Production Deployment Strategy](file:///home/osse1/projects/BrandishBot_Go/docs/deployment/PRODUCTION_STRATEGY.md)
-- [API Routes Reference](file:///home/osse1/projects/BrandishBot_Go/cmd/app/main.go)
-- [C# Client Source](file:///home/osse1/projects/BrandishBot_Go/client/csharp/BrandishBotClient.cs)
-- [Discord Client Reference](file:///home/osse1/projects/BrandishBot_Go/internal/discord/client.go)
+- [Production Deployment Strategy](../deployment/PRODUCTION_STRATEGY.md)
+- [API Routes Reference](../../cmd/app/main.go)
+- [C# Client Source](../../client/csharp/BrandishBotClient.cs)
+- [Discord Client Reference](../../internal/discord/client.go)
