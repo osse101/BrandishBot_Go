@@ -34,3 +34,8 @@ The new "Auto-Select" feature (bypassing votes when only one node is available) 
 **Next Steps**:
 - Final verification of all `go` routines across the entire module.
 - Confirmation that `auto_select_test.go` covers the specific transition scenarios mentioned (auto-select -> next cycle).
+
+## Status Update (2026-01-30)
+
+- **Graceful Shutdown**: Confirmed that `internal/progression/voting_sessions.go` correctly uses `wg.Add(1)` and `defer wg.Done()` for asynchronous tasks like `handlePostUnlockTransition` and `CheckAndUnlockNode`. The shutdown mechanism appears robust. This item is considered **Resolved**.
+- **Auto-Select**: Integration tests exist, but full verification of event consistency for SSE clients remains an open item for confirmation.

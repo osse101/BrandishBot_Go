@@ -23,3 +23,7 @@ The SSE client used for real-time notifications (`sseClient`) is stopped, but th
 - Implement a `context.Context` based shutdown for all background tickers in the bot.
 - Add a `sync.WaitGroup` to the `Bot` struct to track all background goroutines.
 - Update `Stop()` to cancel the context and wait for the `WaitGroup` before closing the Discord session.
+
+## Status Update (2026-01-30)
+
+Verified that `StartDailyCommitChecker` in `internal/discord/bot.go` still launches a fire-and-forget goroutine without context cancellation or WaitGroup tracking. The `Stop()` method does not wait for this task. The issue persists.
