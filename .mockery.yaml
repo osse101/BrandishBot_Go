@@ -189,3 +189,9 @@ packages:
       User:
       HarvestRepository:
       HarvestTx:
+  github.com/osse101/BrandishBot_Go/internal/harvest:
+    config:
+      filename: "mock_harvest_{{.InterfaceName | snakecase}}.go"
+      mockname: "MockHarvest{{.InterfaceName}}"
+    interfaces:
+      Service:
