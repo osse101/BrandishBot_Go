@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/osse101/BrandishBot_Go/internal/cooldown"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
@@ -196,6 +197,10 @@ func mapEconomyAndFeatureErrors(err error, errMsg string) (int, string, bool) {
 	case errors.Is(err, domain.ErrDailyCapReached):
 		return http.StatusBadRequest, ErrMsgDailyCapReachedError, true
 	case errors.Is(err, domain.ErrOnCooldown):
+		var cooldownErr cooldown.ErrOnCooldown
+		if errors.As(err, &cooldownErr) {
+			return http.StatusTooManyRequests, cooldownErr.Error(), true
+		}
 		return http.StatusTooManyRequests, ErrMsgOnCooldownError, true
 	case errors.Is(err, domain.ErrRecipeNotFound):
 		if len(errMsg) > len("recipe not found") {

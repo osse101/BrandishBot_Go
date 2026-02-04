@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -385,12 +386,13 @@ func TestHandleSearch_CooldownBoundaries(t *testing.T) {
 			message, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
 
 			// ASSERT
-			require.NoError(t, err)
-
 			if tt.expectCooldown {
-				assert.True(t, strings.HasPrefix(message, "You can search again in"),
-					"Expected cooldown message, got: %s", message)
+				require.Error(t, err)
+				var cooldownErr cooldown.ErrOnCooldown
+				assert.True(t, errors.As(err, &cooldownErr))
+				assert.Equal(t, domain.ActionSearch, cooldownErr.Action)
 			} else {
+				require.NoError(t, err)
 				assert.False(t, strings.HasPrefix(message, "You can search again in"),
 					"Expected search to execute, got cooldown: %s", message)
 			}
@@ -599,11 +601,12 @@ func TestHandleSearch_CooldownUpdate(t *testing.T) {
 		}
 
 		// ACT
-		message, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
+		_, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
 
 		// ASSERT
-		require.NoError(t, err)
-		assert.True(t, strings.HasPrefix(message, "You can search again in"))
+		require.Error(t, err)
+		var cooldownErr cooldown.ErrOnCooldown
+		assert.True(t, errors.As(err, &cooldownErr))
 
 		// Verify cooldown was NOT updated
 		cooldown, err := repo.GetLastCooldown(context.Background(), user.ID, domain.ActionSearch)

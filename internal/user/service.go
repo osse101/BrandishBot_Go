@@ -1010,18 +1010,8 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 	})
 
 	if err != nil {
-		// Check if it's a cooldown error
-		var cooldownErr cooldown.ErrOnCooldown
-		if errors.As(err, &cooldownErr) {
-			// Return user-friendly cooldown message
-			minutes := int(cooldownErr.Remaining.Minutes())
-			seconds := int(cooldownErr.Remaining.Seconds()) % 60
-			if minutes > 0 {
-				return fmt.Sprintf("You can search again in %dm %ds.", minutes, seconds), nil
-			}
-			return fmt.Sprintf("You can search again in %ds.", seconds), nil
-		}
-		// Other error
+		// Just return the error - it might be a cooldown error or something else.
+		// The error mapper in the handler layer will convert it to a user-friendly message.
 		return "", err
 	}
 

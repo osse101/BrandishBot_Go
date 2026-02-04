@@ -166,6 +166,16 @@ public class CPHInline
     }
 
     /// <summary>
+    /// Helper: Check if exception is a 429 Too Many Requests (cooldown) error
+    /// </summary>
+    private bool IsTooManyRequestsError(Exception ex)
+    {
+        if (ex == null) return false;
+        string message = GetErrorMessage(ex);
+        return message.Contains("429") || message.Contains("Too Many Requests");
+    }
+
+    /// <summary>
     /// Helper: Get the most meaningful error message from an exception
     /// Unwraps AggregateException to get the actual inner error
     /// </summary>
@@ -516,7 +526,7 @@ public class CPHInline
         catch (Exception ex)
         {
             string errorMsg = StripStatusCode(GetErrorMessage(ex));
-            if (IsForbiddenError(ex))
+            if (IsForbiddenError(ex) || IsTooManyRequestsError(ex))
             {
                 CPH.SetArgument("response", errorMsg);
             }
@@ -637,7 +647,7 @@ public class CPHInline
         catch (Exception ex)
         {
             string errorMsg = StripStatusCode(GetErrorMessage(ex));
-            if (IsForbiddenError(ex))
+            if (IsForbiddenError(ex) || IsTooManyRequestsError(ex))
             {
                 CPH.SetArgument("response", errorMsg);
             }
@@ -672,7 +682,7 @@ public class CPHInline
         catch (Exception ex)
         {
             string errorMsg = StripStatusCode(GetErrorMessage(ex));
-            if (IsForbiddenError(ex))
+            if (IsForbiddenError(ex) || IsTooManyRequestsError(ex))
             {
                 CPH.SetArgument("response", errorMsg);
                 return true;
@@ -723,7 +733,7 @@ public class CPHInline
         catch (Exception ex)
         {
             string errorMsg = StripStatusCode(GetErrorMessage(ex));
-            if (IsForbiddenError(ex))
+            if (IsForbiddenError(ex) || IsTooManyRequestsError(ex))
             {
                 CPH.SetArgument("response", errorMsg);
             }
@@ -773,7 +783,7 @@ public class CPHInline
         catch (Exception ex)
         {
             string errorMsg = StripStatusCode(GetErrorMessage(ex));
-            if (IsForbiddenError(ex))
+            if (IsForbiddenError(ex) || IsTooManyRequestsError(ex))
             {
                 CPH.SetArgument("response", errorMsg);
             }
@@ -873,7 +883,7 @@ public class CPHInline
         catch (Exception ex)
         {
             string errorMsg = StripStatusCode(GetErrorMessage(ex));
-            if (IsForbiddenError(ex))
+            if (IsForbiddenError(ex) || IsTooManyRequestsError(ex))
             {
                 CPH.SetArgument("response", errorMsg);
             }
@@ -1568,7 +1578,7 @@ public class CPHInline
         catch (Exception ex)
         {
             string errorMsg = StripStatusCode(GetErrorMessage(ex));
-            if (IsForbiddenError(ex))
+            if (IsForbiddenError(ex) || IsTooManyRequestsError(ex))
             {
                 CPH.SetArgument("response", errorMsg);
             }

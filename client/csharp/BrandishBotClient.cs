@@ -154,6 +154,7 @@ namespace BrandishBot.Client
                 case System.Net.HttpStatusCode.NotFound: return "Resource not found.";
                 case System.Net.HttpStatusCode.InternalServerError: return "Server error occurred. Please try again.";
                 case System.Net.HttpStatusCode.ServiceUnavailable: return "Server is temporarily unavailable. Please try again later.";
+                case (System.Net.HttpStatusCode)429: return "That action is on cooldown. Please wait a bit.";
                 default: return "An error occurred. Please try again.";
             }
         }
