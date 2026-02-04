@@ -11,38 +11,39 @@ func main() {
 	// Load .env file if it exists
 	_ = godotenv.Load()
 
+	registry := NewRegistry()
+	registry.Register(&CheckDepsCommand{})
+	registry.Register(&CheckDBCommand{})
+	registry.Register(&CheckCoverageCommand{})
+	registry.Register(&TestSecurityCommand{})
+	registry.Register(&TestMigrationsCommand{})
+	registry.Register(&DoctorCommand{})
+	registry.Register(&SetupCommand{})
+
 	if len(os.Args) < 2 {
-		printUsage()
+		registry.PrintHelp()
 		os.Exit(1)
 	}
 
-	switch os.Args[1] {
-	case "check-deps":
-		runCheckDeps()
-	case "check-db":
-		runCheckDB()
-	case "check-coverage":
-		if len(os.Args) < 4 {
-			fmt.Println("Usage: check-coverage <coverage_file> <threshold>")
-			os.Exit(1)
-		}
-		runCheckCoverage(os.Args[2], os.Args[3])
-	case "test-security":
-		runTestSecurity()
-	case "test-migrations":
-		runTestMigrations()
-	default:
-		printUsage()
+	commandName := os.Args[1]
+	if commandName == "help" {
+		registry.PrintHelp()
+		return
+	}
+
+	cmd, ok := registry.Get(commandName)
+	if !ok {
+		fmt.Printf("Unknown command: %s\n", commandName)
+		registry.PrintHelp()
 		os.Exit(1)
 	}
-}
 
-func printUsage() {
-	fmt.Println("Usage: devtool <command> [args...]")
-	fmt.Println("Commands:")
-	fmt.Println("  check-deps      Check for required dependencies")
-	fmt.Println("  check-db        Check if database is running and ready")
-	fmt.Println("  check-coverage  Check test coverage against a threshold")
-	fmt.Println("  test-security   Run API security tests")
-	fmt.Println("  test-migrations Test database migrations (up/down/idempotency)")
+	args := os.Args[2:]
+	if err := cmd.Run(args); err != nil {
+		// Ensure error is printed if the command failed
+		// Some commands print their own errors using UI helpers, but we print here to be safe
+		// and ensure the user knows why it exited with 1.
+		fmt.Printf("Error: %v\n", err)
+		os.Exit(1)
+	}
 }
