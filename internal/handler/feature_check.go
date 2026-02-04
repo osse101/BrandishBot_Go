@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/osse101/BrandishBot_Go/internal/logger"
+	"github.com/osse101/BrandishBot_Go/internal/middleware"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 )
 
@@ -21,7 +22,19 @@ func CheckFeatureLocked(w http.ResponseWriter, r *http.Request, svc progression.
 		return true
 	}
 	if !unlocked {
-		log.Warn("Feature is locked", "feature", key)
+		// Get user context for enhanced logging
+		userID := middleware.GetUserID(r.Context())
+
+		// Inject user context into logger if available
+		if userID != "" {
+			ctx := logger.WithUser(r.Context(), userID, "")
+			r = r.WithContext(ctx)
+			log = logger.FromContext(ctx)
+		}
+
+		log.Warn("Feature is locked",
+			"feature", key,
+			"reason", "progression_locked")
 
 		nodes, err := svc.GetRequiredNodes(r.Context(), key)
 		if err != nil {

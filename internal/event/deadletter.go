@@ -1,10 +1,13 @@
 package event
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"sync"
 	"time"
+
+	"github.com/osse101/BrandishBot_Go/internal/logger"
 )
 
 // DeadLetterSchemaVersion is the current version of the dead-letter log format
@@ -39,6 +42,12 @@ func NewDeadLetterWriter(path string) (*DeadLetterWriter, error) {
 func (dlw *DeadLetterWriter) Write(event Event, attempts int, lastError error) error {
 	dlw.mu.Lock()
 	defer dlw.mu.Unlock()
+
+	log := logger.FromContext(context.Background())
+	log.Warn("event_dead_lettered",
+		"event_type", event.Type,
+		"attempts", attempts,
+		"error", lastError.Error())
 
 	entry := DeadLetterEntry{
 		SchemaVersion: DeadLetterSchemaVersion,

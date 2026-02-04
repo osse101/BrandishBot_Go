@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -244,11 +245,12 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 	}
 }
 
-// responseWriter wraps http.ResponseWriter to capture the status code
+// responseWriter wraps http.ResponseWriter to capture the status code and error message
 type responseWriter struct {
 	http.ResponseWriter
-	statusCode int
-	written    bool
+	statusCode   int
+	written      bool
+	errorMessage string
 }
 
 func newResponseWriter(w http.ResponseWriter) *responseWriter {
@@ -270,6 +272,17 @@ func (rw *responseWriter) Write(b []byte) (int, error) {
 	if !rw.written {
 		rw.WriteHeader(http.StatusOK)
 	}
+
+	// Capture error message from JSON error responses (status >= 400)
+	if rw.statusCode >= 400 && rw.errorMessage == "" && len(b) > 0 {
+		var errorResp struct {
+			Error string `json:"error"`
+		}
+		if err := json.Unmarshal(b, &errorResp); err == nil && errorResp.Error != "" {
+			rw.errorMessage = errorResp.Error
+		}
+	}
+
 	return rw.ResponseWriter.Write(b)
 }
 
@@ -323,12 +336,17 @@ func loggingMiddleware(next http.Handler) http.Handler {
 
 		// Log request completion with metrics
 		duration := time.Since(start)
-		log.Info(LogMsgRequestCompleted,
+		logFields := []any{
 			"method", r.Method,
 			"path", r.URL.Path,
 			"status", rw.statusCode,
 			"duration_ms", duration.Milliseconds(),
-			"duration", duration)
+			"duration", duration,
+		}
+		if rw.errorMessage != "" {
+			logFields = append(logFields, "error", rw.errorMessage)
+		}
+		log.Info(LogMsgRequestCompleted, logFields...)
 	})
 }
 

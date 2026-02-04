@@ -362,7 +362,7 @@ func (t *treeLoader) syncOneNode(ctx context.Context, repo repository.Progressio
 				return fmt.Errorf("failed to sync dynamic prerequisites for '%s': %w", nodeConfig.Key, err)
 			}
 			result.NodesUpdated++
-			log.Info("Updated progression node", "key", nodeConfig.Key)
+			log.Debug("Updated progression node", "key", nodeConfig.Key)
 		} else {
 			result.NodesSkipped++
 		}
@@ -382,14 +382,14 @@ func (t *treeLoader) syncOneNode(ctx context.Context, repo repository.Progressio
 		}
 
 		result.NodesInserted++
-		log.Info("Inserted progression node", "key", nodeConfig.Key, "id", nodeID)
+		log.Debug("Inserted progression node", "key", nodeConfig.Key, "id", nodeID)
 
 		if nodeConfig.AutoUnlock {
 			if err := repo.UnlockNode(ctx, nodeID, 1, "auto", 0); err != nil {
 				log.Warn("Failed to auto-unlock node", "key", nodeConfig.Key, "error", err)
 			} else {
 				result.AutoUnlocked++
-				log.Info("Auto-unlocked node", "key", nodeConfig.Key)
+				log.Debug("Auto-unlocked node", "key", nodeConfig.Key)
 			}
 		}
 	}
