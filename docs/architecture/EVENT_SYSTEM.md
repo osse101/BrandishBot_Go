@@ -343,7 +343,7 @@ type JobLevelUpPayload struct {
 ## Related Documentation
 
 - [Event Catalog](../events/EVENT_CATALOG.md) - All event types and schemas
-- [Developer Guide](DEVELOPER_GUIDE.md) - How to add new events
+- [Developer Guide](../development/EVENT_INTEGRATION.md) - How to add new events
 - [Resilient Event Publishing Issue](../../docs/issues/resolved/resilient-event-publishing.md)
 
 ---

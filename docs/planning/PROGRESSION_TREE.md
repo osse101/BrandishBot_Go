@@ -283,5 +283,5 @@ item_lootbox2 (from lootbox1)
 
 **See Also**:
 - [API Documentation](../api/PROGRESSION_API.md)
-- [Admin Guide](PROGRESSION_ADMIN_GUIDE.md)
+- [Admin Guide](../usage/PROGRESSION_ADMIN.md)
 - [Database Schema](../../migrations/0014_create_progression_tables.up.sql)

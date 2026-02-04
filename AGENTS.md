@@ -14,7 +14,7 @@ This document provides AI agents with structured guidance on navigating, underst
 | **Database Operations**           | [DATABASE.md](docs/database/DATABASE.md), [MIGRATIONS.md](docs/database/MIGRATIONS.md)          | [docs/development/journal.md](docs/development/journal.md)   |
 | **Deployment**                    | [DEPLOYMENT_WORKFLOW.md](docs/deployment/DEPLOYMENT_WORKFLOW.md)              | N/A                                                          |
 | **Feature Planning/Proposals**    | [gamble_feature.md](docs/planning/gamble_feature.md) (template example)       | [docs/development/journal.md](docs/development/journal.md)   |
-| **Benchmarking**                  | [BENCHMARKING.md](docs/benchmarking/BENCHMARKING.md)                          | [docs/benchmarking/journal.md](docs/benchmarking/journal.md) |
+| **Benchmarking**                  | [README.md](docs/benchmarking/README.md)                                      | [docs/benchmarking/journal.md](docs/benchmarking/journal.md) |
 | **API Documentation**             | [API_COVERAGE.md](docs/api/API_COVERAGE.md)                                   | [docs/development/journal.md](docs/development/journal.md)   |
 
 ---
@@ -117,6 +117,7 @@ docs/
 │   └── API_COVERAGE.md     # API coverage report
 ├── architecture/           # Architecture docs & journals
 │   ├── ARCHITECTURE.md     # System architecture overview
+│   ├── EVENT_SYSTEM.md     # Event system architecture
 │   ├── journal.md          # 📓 Architecture journal
 │   └── cooldown-service.md # Service design doc
 ├── archived/               # Archived documentation
@@ -133,6 +134,7 @@ docs/
 │   ├── journal.md          # 📓 Development journal
 │   ├── AGENT_PROFILES.md   # Agent profiles
 │   ├── ai_personalities.md # AI personalities
+│   ├── EVENT_INTEGRATION.md # How to use events
 │   ├── FEATURE_DEVELOPMENT_GUIDE.md  # ** START HERE for features **
 │   ├── PROGRESSION_GUIDANCE.md       # ** Deep Dive for Progression **
 │   └── CODE_QUALITY_RECOMMENDATIONS.md
@@ -143,10 +145,14 @@ docs/
 │   └── PROGRESSION_*.md    # Progression system docs
 ├── testing/                # Testing documentation
 │   ├── journal.md          # 📓 Testing journal
-│   ├── TEST_GUIDANCE.md    # How to write tests
-│   └── DATABASE_TESTING.md # Database test patterns
+│   ├── DATABASE_SETUP.md   # Database setup (quick start)
+│   ├── DATABASE_TESTING.md # Database test patterns
+│   ├── MOCKING.md          # Mocking guide
+│   ├── RUNNING_TESTS.md    # Command reference
+│   └── TEST_GUIDANCE.md    # How to write tests
 └── usage/                  # Usage guides
     ├── PLAYER_COMMANDS.md  # User-facing commands
+    ├── PROGRESSION_ADMIN.md # Admin guide for progression
     └── USAGE.md            # API usage examples
 ```
 
