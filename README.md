@@ -176,6 +176,8 @@ Visit http://localhost:8080/swagger/index.html
 
 ## Testing
 
+For detailed guidance, see [Test Guidance](docs/testing/TEST_GUIDANCE.md) and [Running Tests](docs/testing/RUNNING_TESTS.md).
+
 ```bash
 # Run all tests
 make test
@@ -192,7 +194,7 @@ BrandishBot uses an asynchronous event-driven architecture for decoupled, reliab
 📚 **Documentation:**
 - **[Event Catalog](docs/events/EVENT_CATALOG.md)** - All 22+ event types with schemas and examples
 - **[Architecture](docs/architecture/EVENT_SYSTEM.md)** - Event bus, ResilientPublisher, retry logic
-- **[Developer Guide](docs/architecture/DEVELOPER_GUIDE.md)** - How to publish and subscribe to events
+- **[Developer Guide](docs/development/EVENT_INTEGRATION.md)** - How to publish and subscribe to events
 
 **Key Features:**
 - 🔄 Automatic retry with exponential backoff (2s → 4s → 8s → 16s → 32s)
