@@ -25,3 +25,7 @@ The `internal/expedition/service.go` method `ExecuteExpedition` is a placeholder
 - Implement the resolution logic for Duels including random winner selection and reward distribution.
 - Implement the Expedition execution logic, integrating with the `LootboxService` and handling multi-participant reward splits.
 - Add background workers or scheduler jobs to handle timeouts/expirations for both systems (ref: `gamble_worker.go`).
+
+## Status Update (2026-01-30)
+
+Verified that `internal/duel/service.go` (`Accept`) and `internal/expedition/service.go` (`ExecuteExpedition`) still return "not implemented" errors. The issue persists.

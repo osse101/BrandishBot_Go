@@ -199,3 +199,11 @@ CREATE TABLE duels (
 - `/accept` command
 - `/decline` command
 - Embed responses with duel status
+
+## Status Update (2026-01-30)
+
+**Implementation Status: In Progress**
+
+- **Database**: Table `duels` exists (via migration `0010_add_duels.sql`).
+- **Service**: `internal/duel/service.go` exists, but the `Accept` method is not implemented (`fmt.Errorf("not implemented")`). The actual game logic (coin flip, rewards) is missing.
+- **Discord Integration**: Duel commands (`/duel`, `/accept`, `/decline`) are not registered in `cmd/discord/main.go` or `internal/discord/commands.go`.
