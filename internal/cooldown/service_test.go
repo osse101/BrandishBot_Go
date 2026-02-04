@@ -2,6 +2,7 @@ package cooldown_test
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -20,12 +21,12 @@ func TestErrOnCooldown_Error(t *testing.T) {
 		{
 			name:          "minutes and seconds",
 			err:           cooldown.ErrOnCooldown{Action: "search", Remaining: 2*time.Minute + 30*time.Second},
-			wantSubstring: "action 'search' on cooldown: 2m 30s remaining",
+			wantSubstring: fmt.Sprintf(cooldown.ErrFmtCooldownWithMinutes, "search", 2, 30),
 		},
 		{
 			name:          "seconds only",
 			err:           cooldown.ErrOnCooldown{Action: "attack", Remaining: 45 * time.Second},
-			wantSubstring: "action 'attack' on cooldown: 45s remaining",
+			wantSubstring: fmt.Sprintf(cooldown.ErrFmtCooldownSecondsOnly, "attack", 45),
 		},
 	}
 
@@ -50,6 +51,5 @@ func TestErrOnCooldown_Is(t *testing.T) {
 
 func TestErrOnCooldown_ZeroRemaining(t *testing.T) {
 	err := cooldown.ErrOnCooldown{Action: "magic", Remaining: 0}
-	// "action '%s' on cooldown: %ds remaining"
-	assert.Equal(t, "action 'magic' on cooldown: 0s remaining", err.Error())
+	assert.Equal(t, fmt.Sprintf(cooldown.ErrFmtCooldownSecondsOnly, "magic", 0), err.Error())
 }
