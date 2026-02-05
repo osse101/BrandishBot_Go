@@ -475,17 +475,16 @@ func TestHandleSearch_InvalidInputs(t *testing.T) {
 			wantErr:  true,
 			errMsg:   domain.ErrInvalidInput.Error(),
 		},
-		// TODO: Add back when we have a way to mock RNG
-		// {
-		// 	name:     "missing lootbox item",
-		// 	username: TestUsername,
-		// 	platform: domain.PlatformTwitch,
-		// 	setup: func(r *mockSearchRepo) {
-		// 		delete(r.items, domain.ItemLootbox0)
-		// 	},
-		// 	wantErr: true,
-		// 	errMsg:  domain.ErrItemNotFound.Error(),
-		// },
+		{
+			name:     "missing lootbox item",
+			username: TestUsername,
+			platform: domain.PlatformTwitch,
+			setup: func(r *mockSearchRepo) {
+				delete(r.items, domain.ItemLootbox0)
+			},
+			wantErr: true,
+			errMsg:  domain.ErrItemNotFound.Error(),
+		},
 	}
 
 	for _, tt := range tests {
@@ -493,6 +492,10 @@ func TestHandleSearch_InvalidInputs(t *testing.T) {
 			// ARRANGE
 			svc, repo := createSearchTestService()
 			tt.setup(repo)
+
+			// Fix: Set rnd to ensure we reach the item check if needed
+			// Most invalid input tests fail before calling rnd, but "missing lootbox item" needs success roll
+			svc.rnd = func() float64 { return 0.5 }
 
 			// ACT
 			_, err := svc.HandleSearch(context.Background(), tt.platform, "", tt.username)
