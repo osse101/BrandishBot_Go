@@ -222,6 +222,35 @@ func TestDisassembleItem(t *testing.T) {
 			}
 		}
 	})
+
+	t.Run("Split Stack Case: Disassemble", func(t *testing.T) {
+		repo := NewMockRepository()
+		setupTestData(repo)
+		svc := NewService(repo, nil, nil, nil, nil).(*service)
+		svc.rnd = func() float64 { return 0.5 }
+		ctx := context.Background()
+
+		// Arrange: Split stack of 10 items (5 + 5)
+		repo.UpdateInventory(ctx, "user-alice", domain.Inventory{Slots: []domain.InventorySlot{
+			{ItemID: 2, Quantity: 5},
+			{ItemID: 2, Quantity: 5},
+		}})
+		repo.UnlockRecipe(ctx, "user-alice", 1) // recipe for disassemble item 2 (lootbox1)
+
+		// Act: Disassemble 10 items (needs to consume both stacks)
+		result, err := svc.DisassembleItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox1, 10)
+
+		// Assert
+		assert.NoError(t, err)
+		assert.Equal(t, 10, result.QuantityProcessed)
+
+		inv, _ := repo.GetInventory(ctx, "user-alice")
+		for _, slot := range inv.Slots {
+			if slot.ItemID == 2 {
+				assert.Equal(t, 0, slot.Quantity)
+			}
+		}
+	})
 }
 
 func TestUpgradeItem(t *testing.T) {
@@ -369,6 +398,38 @@ func TestUpgradeItem(t *testing.T) {
 				assert.Equal(t, 10, slot.Quantity)
 			}
 		}
+	})
+
+	t.Run("Split Stack Case: Upgrade", func(t *testing.T) {
+		repo := NewMockRepository()
+		setupTestData(repo)
+		svc := NewService(repo, nil, nil, nil, nil).(*service)
+		svc.rnd = func() float64 { return 0.5 }
+		ctx := context.Background()
+
+		// Arrange: Split stack of 10 items (5 + 5)
+		// Recipe needs 1 item per craft. Requesting 10 crafts.
+		repo.UpdateInventory(ctx, "user-alice", domain.Inventory{Slots: []domain.InventorySlot{
+			{ItemID: 1, Quantity: 5},
+			{ItemID: 1, Quantity: 5},
+		}})
+		repo.UnlockRecipe(ctx, "user-alice", 1)
+
+		// Act
+		result, err := svc.UpgradeItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox1, 10)
+
+		// Assert
+		assert.NoError(t, err)
+		assert.Equal(t, 10, result.Quantity, "Should craft 10 items using materials from both stacks")
+
+		inv, _ := repo.GetInventory(ctx, "user-alice")
+		totalRemaining := 0
+		for _, slot := range inv.Slots {
+			if slot.ItemID == 1 {
+				totalRemaining += slot.Quantity
+			}
+		}
+		assert.Equal(t, 0, totalRemaining, "All materials should be consumed")
 	})
 }
 
