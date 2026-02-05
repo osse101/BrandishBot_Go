@@ -3,6 +3,7 @@
 **Status:** Backlog
 **Priority:** Low
 **Created:** 2026-01-16
+**Last Updated:** 2026-01-30
 **Component:** `internal/user`
 
 ## Overview

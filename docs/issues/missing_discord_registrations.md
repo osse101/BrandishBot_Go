@@ -25,3 +25,7 @@ Commands for the newly implemented expedition system have not been added to the 
 - Create `internal/discord/cmd_duel.go` and `internal/discord/cmd_expedition.go` (if they don't exist) with appropriate command factories.
 - Register these factories in `getCommandFactories` within `cmd/discord/main.go`.
 - Ensure autocomplete is implemented for expedition types and user targets.
+
+## Status Update (2026-01-30)
+
+Verified that `cmd/discord/main.go` does not register any commands for Duel or Expedition systems. The issue persists.
