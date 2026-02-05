@@ -159,7 +159,7 @@ func (s *service) resolveItemName(ctx context.Context, itemName string) (string,
 func calculateMaxPossibleCrafts(inventory *domain.Inventory, recipe *domain.Recipe, requestedQuantity int) int {
 	maxPossible := requestedQuantity
 	for _, cost := range recipe.BaseCost {
-		_, userQuantity := utils.FindSlot(inventory, cost.ItemID)
+		userQuantity := utils.GetTotalQuantity(inventory, cost.ItemID)
 		if cost.Quantity > 0 {
 			affordableWithThis := userQuantity / cost.Quantity
 			if affordableWithThis < maxPossible {
@@ -174,17 +174,8 @@ func calculateMaxPossibleCrafts(inventory *domain.Inventory, recipe *domain.Reci
 func consumeRecipeMaterials(inventory *domain.Inventory, recipe *domain.Recipe, actualQuantity int, rnd func() float64) error {
 	for _, cost := range recipe.BaseCost {
 		totalNeeded := cost.Quantity * actualQuantity
-		// Use random selection in case multiple slots with different shine levels exist
-		i, slotQuantity := utils.FindRandomSlot(inventory, cost.ItemID, rnd)
-		if i == -1 || slotQuantity < totalNeeded {
+		if err := utils.ConsumeItems(inventory, cost.ItemID, totalNeeded, rnd); err != nil {
 			return fmt.Errorf("insufficient material (itemID: %d) | %w", cost.ItemID, domain.ErrInsufficientQuantity)
-		}
-
-		// Remove the materials
-		if slotQuantity == totalNeeded {
-			inventory.Slots = append(inventory.Slots[:i], inventory.Slots[i+1:]...)
-		} else {
-			inventory.Slots[i].Quantity -= totalNeeded
 		}
 	}
 	return nil
@@ -586,19 +577,19 @@ func (s *service) getAndValidateDisassembleRecipe(ctx context.Context, itemID in
 	return recipe, nil
 }
 
-func (s *service) calculateDisassembleQuantity(inventory *domain.Inventory, itemID int, quantityConsumed int, quantity int, itemName string) (int, int, error) {
-	// Use random selection in case multiple slots with different shine levels exist
-	sourceSlotIndex, userQuantity := utils.FindRandomSlot(inventory, itemID, s.rnd)
+func (s *service) calculateDisassembleQuantity(inventory *domain.Inventory, itemID int, quantityConsumed int, quantity int, itemName string) (int, error) {
+	// Use total quantity across all slots
+	userQuantity := utils.GetTotalQuantity(inventory, itemID)
 	maxPossible := userQuantity / quantityConsumed
 	if maxPossible == 0 {
-		return 0, -1, fmt.Errorf("insufficient items to disassemble %s (need %d, have %d) | %w", itemName, quantityConsumed, userQuantity, domain.ErrInsufficientQuantity)
+		return 0, fmt.Errorf("insufficient items to disassemble %s (need %d, have %d) | %w", itemName, quantityConsumed, userQuantity, domain.ErrInsufficientQuantity)
 	}
 
 	actualQuantity := maxPossible
 	if actualQuantity > quantity {
 		actualQuantity = quantity
 	}
-	return actualQuantity, sourceSlotIndex, nil
+	return actualQuantity, nil
 }
 
 // awardBlacksmithXP awards Blacksmith job XP for crafting operations
@@ -686,17 +677,15 @@ func (s *service) executeDisassembleTx(ctx context.Context, userID string, itemI
 		return 0, 0, nil, fmt.Errorf("failed to get inventory: %w", err)
 	}
 
-	actualQuantity, sourceSlotIndex, err := s.calculateDisassembleQuantity(inventory, itemID, recipe.QuantityConsumed, requestedQuantity, itemName)
+	actualQuantity, err := s.calculateDisassembleQuantity(inventory, itemID, recipe.QuantityConsumed, requestedQuantity, itemName)
 	if err != nil {
 		return 0, 0, nil, err
 	}
 
 	// Remove source items
 	totalConsumed := recipe.QuantityConsumed * actualQuantity
-	if inventory.Slots[sourceSlotIndex].Quantity == totalConsumed {
-		inventory.Slots = append(inventory.Slots[:sourceSlotIndex], inventory.Slots[sourceSlotIndex+1:]...)
-	} else {
-		inventory.Slots[sourceSlotIndex].Quantity -= totalConsumed
+	if err := utils.ConsumeItems(inventory, itemID, totalConsumed, s.rnd); err != nil {
+		return 0, 0, nil, fmt.Errorf("failed to consume disassemble items: %w", err)
 	}
 
 	// Calculate perfect salvage
