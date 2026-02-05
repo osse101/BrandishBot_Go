@@ -1101,12 +1101,6 @@ func TestGetAvailableUnlocks(t *testing.T) {
 	}
 }
 
-// TestVoteForUnlock is obsolete - voting now uses session-based system
-// See voting_sessions_test.go for new voting tests
-func TestVoteForUnlock(t *testing.T) {
-	t.Skip("Obsolete test - voting now uses session-based system")
-}
-
 func TestIsFeatureUnlocked(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestTree(repo)
