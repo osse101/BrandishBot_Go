@@ -274,7 +274,7 @@ func (s *service) UpgradeItem(ctx context.Context, platform, platformID, usernam
 	}
 
 	// Calculate output
-	result := s.calculateUpgradeOutput(ctx, user.ID, itemName, actualQuantity)
+	result := s.calculateUpgradeOutput(ctx, user.ID, resolvedName, actualQuantity)
 
 	addItemToInventory(inventory, item.ID, result.Quantity)
 

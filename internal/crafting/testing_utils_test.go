@@ -550,3 +550,93 @@ func setupTestData(repo *MockRepository) {
 		Slots: []domain.InventorySlot{},
 	}
 }
+
+// MockJobService for testing XP awards
+type MockJobService struct {
+	mu    sync.Mutex
+	calls []struct {
+		UserID   string
+		JobKey   string
+		Amount   int
+		Source   string
+		Metadata map[string]interface{}
+	}
+	blockChan chan struct{} // If set, AwardXP waits for this channel to close
+}
+
+func (m *MockJobService) AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error) {
+	if m.blockChan != nil {
+		<-m.blockChan
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.calls = append(m.calls, struct {
+		UserID   string
+		JobKey   string
+		Amount   int
+		Source   string
+		Metadata map[string]interface{}
+	}{UserID: userID, JobKey: jobKey, Amount: baseAmount, Source: source, Metadata: metadata})
+	return &domain.XPAwardResult{LeveledUp: false}, nil
+}
+
+// MockProgressionService for testing modifiers
+type MockProgressionService struct {
+	modifiers   map[string]float64
+	returnValue float64 // Generic fallback
+	returnError error
+	calls       []struct {
+		ctx        context.Context
+		featureKey string
+		baseValue  float64
+	}
+}
+
+func (m *MockProgressionService) GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error) {
+	m.calls = append(m.calls, struct {
+		ctx        context.Context
+		featureKey string
+		baseValue  float64
+	}{ctx, featureKey, baseValue})
+
+	if m.returnError != nil {
+		return 0, m.returnError
+	}
+
+	// Check specific modifier map first
+	if m.modifiers != nil {
+		if val, ok := m.modifiers[featureKey]; ok {
+			return val, nil
+		}
+	}
+
+	// Fallback to generic return value if set
+	if m.returnValue > 0 {
+		return m.returnValue, nil
+	}
+
+	return baseValue, nil
+}
+
+// MockNamingResolver for testing name resolution
+type MockNamingResolver struct {
+	publicToInternal map[string]string
+}
+
+func (m *MockNamingResolver) ResolvePublicName(publicName string) (internalName string, ok bool) {
+	internal, ok := m.publicToInternal[publicName]
+	return internal, ok
+}
+
+// Stubs for other naming.Resolver methods
+func (m *MockNamingResolver) GetDisplayName(internalName string, shineLevel domain.ShineLevel) string {
+	return internalName
+}
+func (m *MockNamingResolver) GetActiveTheme() string { return "" }
+func (m *MockNamingResolver) Reload() error          { return nil }
+func (m *MockNamingResolver) RegisterItem(internalName, publicName string) {
+	if m.publicToInternal == nil {
+		m.publicToInternal = make(map[string]string)
+	}
+	m.publicToInternal[publicName] = internalName
+}
