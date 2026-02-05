@@ -280,7 +280,7 @@ func (s *service) EndVoting(ctx context.Context) (*domain.ProgressionVotingOptio
 		return nil, fmt.Errorf("failed to get active session: %w", err)
 	}
 
-	if session == nil || session.Status != SessionStatusVoting {
+	if session == nil || session.Status != domain.VotingStatusVoting {
 		return nil, fmt.Errorf("no active voting session")
 	}
 
@@ -557,7 +557,7 @@ func (s *service) handlePostUnlockTransition(ctx context.Context, unlockedNodeID
 	// If no active session, check if there was a recently ended one that we can pick up
 	if session == nil {
 		recent, err := s.repo.GetMostRecentSession(ctx)
-		if err == nil && recent != nil && recent.Status == SessionStatusCompleted && recent.WinningOptionID != nil {
+		if err == nil && recent != nil && recent.Status == domain.VotingStatusCompleted && recent.WinningOptionID != nil {
 			session = recent
 		}
 	}
@@ -568,7 +568,7 @@ func (s *service) handlePostUnlockTransition(ctx context.Context, unlockedNodeID
 	if session != nil {
 		var winner *domain.ProgressionVotingOption
 
-		if session.Status == SessionStatusCompleted && session.WinningOptionID != nil {
+		if session.Status == domain.VotingStatusCompleted && session.WinningOptionID != nil {
 			// Already completed, just find the winning option in the session data
 			for _, opt := range session.Options {
 				if opt.ID == *session.WinningOptionID {
@@ -578,7 +578,7 @@ func (s *service) handlePostUnlockTransition(ctx context.Context, unlockedNodeID
 			}
 		} else {
 			// Still active/frozen, resume if frozen then end it
-			if session.Status == SessionStatusFrozen {
+			if session.Status == domain.VotingStatusFrozen {
 				if err := s.repo.ResumeVotingSession(ctx, session.ID); err != nil {
 					log.Warn("Failed to resume frozen session before ending", "sessionID", session.ID, "error", err)
 				}
@@ -702,7 +702,7 @@ func (s *service) AdminFreezeVoting(ctx context.Context) error {
 		return domain.ErrNoActiveSession
 	}
 
-	if session.Status == SessionStatusFrozen {
+	if session.Status == domain.VotingStatusFrozen {
 		log.Info("Voting session already frozen", "sessionID", session.ID)
 		return domain.ErrSessionAlreadyFrozen
 	}
@@ -722,7 +722,7 @@ func (s *service) AdminStartVoting(ctx context.Context) error {
 	// Check for frozen session first
 	session, _ := s.repo.GetActiveOrFrozenSession(ctx)
 	if session != nil {
-		if session.Status == SessionStatusFrozen {
+		if session.Status == domain.VotingStatusFrozen {
 			// Resume frozen vote
 			if err := s.repo.ResumeVotingSession(ctx, session.ID); err != nil {
 				return fmt.Errorf("failed to resume voting session: %w", err)

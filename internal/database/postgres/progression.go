@@ -201,7 +201,7 @@ func (r *progressionRepository) UnlockNode(ctx context.Context, nodeID int, leve
 		}
 
 		if err := r.bus.Publish(ctx, event.Event{
-			Type:    "progression.node_unlocked",
+			Type:    event.ProgressionNodeUnlocked,
 			Version: "1.0",
 			Payload: map[string]interface{}{
 				"node_id":  nodeID,
@@ -244,7 +244,7 @@ func (r *progressionRepository) RelockNode(ctx context.Context, nodeID int, leve
 		}
 
 		if err := r.bus.Publish(ctx, event.Event{
-			Type:    "progression.node_relocked",
+			Type:    event.ProgressionNodeRelocked,
 			Version: "1.0",
 			Payload: map[string]interface{}{
 				"node_id":  nodeID,

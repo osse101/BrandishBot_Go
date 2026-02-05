@@ -134,8 +134,8 @@ func NewService(repo repository.Progression, userRepo repository.User, bus event
 
 	// Subscribe to node unlock/relock events to invalidate caches
 	if bus != nil {
-		bus.Subscribe("progression.node_unlocked", svc.handleNodeUnlocked)
-		bus.Subscribe("progression.node_relocked", svc.handleNodeRelocked)
+		bus.Subscribe(event.ProgressionNodeUnlocked, svc.handleNodeUnlocked)
+		bus.Subscribe(event.ProgressionNodeRelocked, svc.handleNodeRelocked)
 	}
 
 	return svc
@@ -549,7 +549,7 @@ func (s *service) VoteForUnlock(ctx context.Context, platform, platformID, usern
 		return fmt.Errorf("failed to get active session: %w", err)
 	}
 
-	if session == nil || session.Status != SessionStatusVoting {
+	if session == nil || session.Status != domain.VotingStatusVoting {
 		return fmt.Errorf("no active voting session")
 	}
 
@@ -993,7 +993,7 @@ func (s *service) ForceInstantUnlock(ctx context.Context) (*domain.ProgressionUn
 		return nil, domain.ErrNoActiveSession
 	}
 
-	if session.Status != "voting" {
+	if session.Status != domain.VotingStatusVoting {
 		return nil, domain.ErrNoActiveSession
 	}
 

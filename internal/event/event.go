@@ -24,6 +24,8 @@ const (
 	ProgressionTargetSet      Type = "progression.target.set"
 	ProgressionVotingStarted  Type = "progression.voting_started"
 	ProgressionAllUnlocked    Type = "progression.all_unlocked"
+	ProgressionNodeUnlocked   Type = "progression.node_unlocked"
+	ProgressionNodeRelocked   Type = "progression.node_relocked"
 	EventTypeEngagement       Type = "engagement"
 
 	// Timeout event types

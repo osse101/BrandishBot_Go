@@ -6,19 +6,6 @@ const (
 	PgErrorCodeUniqueViolation = "23505"
 )
 
-// Platform Names - used in user_platform_links table
-const (
-	PlatformNameTwitch  = "twitch"
-	PlatformNameYouTube = "youtube"
-	PlatformNameDiscord = "discord"
-)
-
-// Event Types - Progression System
-const (
-	EventTypeProgressionNodeUnlocked = "progression.node_unlocked"
-	EventTypeProgressionNodeRelocked = "progression.node_relocked"
-)
-
 // Event Versions
 const (
 	EventVersion1_0 = "1.0"
@@ -38,12 +25,6 @@ const (
 	DefaultEngagementWeightCommand     = 2.0
 	DefaultEngagementWeightItemCrafted = 3.0
 	DefaultEngagementWeightItemUsed    = 1.5
-)
-
-// Progression Voting Status Values
-const (
-	VotingStatusVoting    = "voting"
-	VotingStatusCompleted = "completed"
 )
 
 // Inventory Constants
