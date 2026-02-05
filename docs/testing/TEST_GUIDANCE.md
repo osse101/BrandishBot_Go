@@ -281,13 +281,14 @@ assert.NotNil(t, ptr)
 
 ### Mockery (Recommended)
 
-**For handler/controller tests**, use auto-generated mocks with mockery:
+**For handler/controller tests**, use auto-generated mocks with mockery. Note that service mocks are in the global `mocks` package, while repository mocks are local to their package (e.g., `internal/user/mocks`).
 
 ```go
 import "github.com/osse101/BrandishBot_Go/mocks"
 
 func TestHandler_GetUser(t *testing.T) {
     // ✅ Use mockery for clean, type-safe tests
+    // Service mocks are in the global package
     mockSvc := mocks.NewMockUserService(t)
     mockSvc.On("GetUser", "123").Return(user, nil)
 
