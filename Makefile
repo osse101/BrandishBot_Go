@@ -159,71 +159,22 @@ install-hooks:
 .PHONY: bench bench-hot bench-save bench-baseline bench-compare bench-profile
 
 bench:
-	@echo "Running all benchmarks..."
-	@go test -bench=. -benchmem -benchtime=2s ./...
+	@go run ./cmd/devtool bench run
 
 bench-hot:
-	@echo "Running hot path benchmarks..."
-	@echo "  → Handler: HandleMessageHandler"
-	@go test -bench=BenchmarkHandler_HandleMessage -benchmem -benchtime=2s ./internal/handler 2>/dev/null || echo "    (benchmark not yet implemented)"
-	@echo "  → Service: HandleIncomingMessage"
-	@go test -bench=BenchmarkService_HandleIncomingMessage -benchmem -benchtime=2s ./internal/user 2>/dev/null || echo "    (benchmark not yet implemented)"
-	@echo "  → Service: AddItem"
-	@go test -bench=BenchmarkService_AddItem -benchmem -benchtime=2s ./internal/user 2>/dev/null || echo "    (benchmark not yet implemented)"
-	@echo "  → Utils: Inventory operations (existing)"
-	@go test -bench=. -benchmem -benchtime=2s ./internal/utils
+	@go run ./cmd/devtool bench hot
 
 bench-save:
-	@echo "Running benchmarks and saving results..."
-	@mkdir -p benchmarks/results
-	@go test -bench=. -benchmem -benchtime=2s ./... 2>&1 | tee benchmarks/results/$$(date +%Y%m%d-%H%M%S).txt
-	@echo "✓ Results saved to benchmarks/results/"
+	@go run ./cmd/devtool bench save
 
 bench-baseline:
-	@echo "Setting benchmark baseline..."
-	@mkdir -p benchmarks/results
-	@go test -bench=. -benchmem -benchtime=2s ./... 2>&1 | tee benchmarks/results/baseline.txt
-	@echo "✓ Baseline set: benchmarks/results/baseline.txt"
+	@go run ./cmd/devtool bench baseline
 
 bench-compare:
-	@if [ ! -f benchmarks/results/baseline.txt ]; then \
-		echo "❌ Error: No baseline found. Run 'make bench-baseline' first."; \
-		exit 1; \
-	fi
-	@echo "Running benchmarks and comparing to baseline..."
-	@mkdir -p benchmarks/results
-	@go test -bench=. -benchmem -benchtime=2s ./... > benchmarks/results/current.txt 2>&1 || true
-	@if command -v benchstat > /dev/null 2>&1; then \
-		benchstat benchmarks/results/baseline.txt benchmarks/results/current.txt; \
-	else \
-		echo ""; \
-		echo "⚠️  benchstat not installed. Install with:"; \
-		echo "   go install golang.org/x/perf/cmd/benchstat@latest"; \
-		echo ""; \
-		echo "Showing raw comparison:"; \
-		echo "======================"; \
-		echo "BASELINE:"; \
-		grep "^Benchmark" benchmarks/results/baseline.txt | head -5; \
-		echo ""; \
-		echo "CURRENT:"; \
-		grep "^Benchmark" benchmarks/results/current.txt | head -5; \
-	fi
+	@go run ./cmd/devtool bench compare
 
 bench-profile:
-	@echo "Profiling hot paths..."
-	@mkdir -p benchmarks/profiles
-	@echo "  → CPU profile (if benchmark exists)..."
-	@go test -bench=BenchmarkHandler_HandleMessage -cpuprofile=benchmarks/profiles/cpu.prof ./internal/handler 2>/dev/null || \
-		go test -bench=BenchmarkAddItems -cpuprofile=benchmarks/profiles/cpu.prof ./internal/utils
-	@echo "  → Memory profile (if benchmark exists)..."
-	@go test -bench=BenchmarkHandler_HandleMessage -memprofile=benchmarks/profiles/mem.prof -benchmem ./internal/handler 2>/dev/null || \
-		go test -bench=BenchmarkAddItems -memprofile=benchmarks/profiles/mem.prof -benchmem ./internal/utils
-	@echo "✓ Profiles saved to benchmarks/profiles/"
-	@echo ""
-	@echo "View CPU profile with:"
-	@echo "  go tool pprof -http=:8080 benchmarks/profiles/cpu.prof"
-	@echo "View memory profile with:"
-	@echo "  go tool pprof -http=:8080 benchmarks/profiles/mem.prof"
+	@go run ./cmd/devtool bench profile
 
 # Build targets
 build:
