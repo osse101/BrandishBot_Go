@@ -171,7 +171,7 @@ func testAutoSelectFlow(t *testing.T, ctx context.Context, svc Service, repo Rep
 	}
 
 	// Verify session has valid status
-	if session.Status != SessionStatusVoting {
+	if session.Status != domain.VotingStatusVoting {
 		t.Errorf("Expected session status 'voting', got '%s'", session.Status)
 	}
 
@@ -380,7 +380,7 @@ func testSessionLifecycle(t *testing.T, ctx context.Context, svc Service, repo R
 		t.Fatal("Failed to get first session")
 	}
 
-	if session1.Status != SessionStatusVoting {
+	if session1.Status != domain.VotingStatusVoting {
 		t.Errorf("Expected status 'voting', got '%s'", session1.Status)
 	}
 

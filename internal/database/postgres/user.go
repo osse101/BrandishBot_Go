@@ -105,9 +105,9 @@ func (r *UserRepository) UpsertUser(ctx context.Context, user *domain.User) erro
 	}
 
 	platforms := map[string]string{
-		"twitch":  user.TwitchID,
-		"youtube": user.YoutubeID,
-		"discord": user.DiscordID,
+		domain.PlatformTwitch:  user.TwitchID,
+		domain.PlatformYoutube: user.YoutubeID,
+		domain.PlatformDiscord: user.DiscordID,
 	}
 
 	for platformName, externalID := range platforms {

@@ -63,9 +63,4 @@ const (
 	JobGambler    = "job_gambler"
 	JobMerchant   = "job_merchant"
 	JobScholar    = "job_scholar"
-
-	// Session Status
-	SessionStatusVoting    = "voting"
-	SessionStatusFrozen    = "frozen"
-	SessionStatusCompleted = "completed"
 )

@@ -102,6 +102,13 @@ const (
 	DiscordBotID    = "BrandishBot#6125"
 )
 
+// VotingStatus constants
+const (
+	VotingStatusVoting    = "voting"
+	VotingStatusFrozen    = "frozen"
+	VotingStatusCompleted = "completed"
+)
+
 // Message constants
 const (
 	MsgSearchNothingFound    = "You have found nothing"
