@@ -79,6 +79,11 @@ type JoinExpeditionRequest struct {
 
 // HandleJoin handles expedition join requests
 func (h *ExpeditionHandler) HandleJoin(w http.ResponseWriter, r *http.Request) {
+	// Check if expedition feature is unlocked
+	if CheckFeatureLocked(w, r, h.progressionSvc, progression.FeatureExpedition) {
+		return
+	}
+
 	expeditionIDStr, ok := GetQueryParam(r, w, "id")
 	if !ok {
 		return
@@ -106,6 +111,11 @@ func (h *ExpeditionHandler) HandleJoin(w http.ResponseWriter, r *http.Request) {
 
 // HandleGet handles expedition get requests
 func (h *ExpeditionHandler) HandleGet(w http.ResponseWriter, r *http.Request) {
+	// Check if expedition feature is unlocked
+	if CheckFeatureLocked(w, r, h.progressionSvc, progression.FeatureExpedition) {
+		return
+	}
+
 	expeditionIDStr, ok := GetQueryParam(r, w, "id")
 	if !ok {
 		return
@@ -129,6 +139,11 @@ func (h *ExpeditionHandler) HandleGet(w http.ResponseWriter, r *http.Request) {
 
 // HandleGetActive handles active expedition requests
 func (h *ExpeditionHandler) HandleGetActive(w http.ResponseWriter, r *http.Request) {
+	// Check if expedition feature is unlocked
+	if CheckFeatureLocked(w, r, h.progressionSvc, progression.FeatureExpedition) {
+		return
+	}
+
 	expedition, err := h.service.GetActiveExpedition(r.Context())
 	if err != nil {
 		logger.FromContext(r.Context()).Error("Failed to get active expedition", "error", err)
@@ -142,6 +157,11 @@ func (h *ExpeditionHandler) HandleGetActive(w http.ResponseWriter, r *http.Reque
 
 // HandleGetJournal handles expedition journal requests
 func (h *ExpeditionHandler) HandleGetJournal(w http.ResponseWriter, r *http.Request) {
+	// Check if expedition feature is unlocked
+	if CheckFeatureLocked(w, r, h.progressionSvc, progression.FeatureExpedition) {
+		return
+	}
+
 	expeditionIDStr, ok := GetQueryParam(r, w, "id")
 	if !ok {
 		return
@@ -165,6 +185,11 @@ func (h *ExpeditionHandler) HandleGetJournal(w http.ResponseWriter, r *http.Requ
 
 // HandleGetStatus handles expedition status requests
 func (h *ExpeditionHandler) HandleGetStatus(w http.ResponseWriter, r *http.Request) {
+	// Check if expedition feature is unlocked
+	if CheckFeatureLocked(w, r, h.progressionSvc, progression.FeatureExpedition) {
+		return
+	}
+
 	status, err := h.service.GetStatus(r.Context())
 	if err != nil {
 		logger.FromContext(r.Context()).Error("Failed to get expedition status", "error", err)
