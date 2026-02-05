@@ -9,12 +9,18 @@ BrandishBot_Go uses [mockery](https://github.com/vektra/mockery) to auto-generat
 ### Using Generated Mocks
 
 ```go
-import "github.com/osse101/BrandishBot_Go/mocks"
+import (
+    "github.com/osse101/BrandishBot_Go/mocks"
+    usermocks "github.com/osse101/BrandishBot_Go/internal/user/mocks"
+)
 
 func TestHandleAddItem(t *testing.T) {
-    // Create mock with mockery
+    // Create service mock (from global mocks)
     mockSvc := mocks.NewMockUserService(t)
     
+    // Create repository mock (from local package mocks)
+    mockRepo := usermocks.NewMockRepository(t)
+
     // Set expectations
     mockSvc.On("AddItem", mock.Anything, "twitch", "id", "user", "Sword", 1).
         Return(nil)
@@ -38,21 +44,19 @@ make mocks
 
 ## Available Mocks
 
-All mocks are in the `mocks/` package with explicit naming:
+Mocks are distributed to avoid import cycles:
 
-**Handler Layer:**
-- `MockUserService` - User service operations
-- `MockEconomyService` - Economy/shop operations
-- `MockProgressionService` - Progression unlocks
-- `MockCraftingService` - Crafting/upgrades
-- `MockEventBus` - Event publishing
+**Global Mocks (`mocks/` package):**
+- **Service Mocks:** `MockUserService`, `MockEconomyService`, `MockProgressionService`
+- **Core Interfaces:** `MockEventBus`, `MockDBPool`
+- Used primarily for testing Handlers and Controllers.
 
-**Repository Layer:**
-- `MockUserRepository` - User data access
-- `MockEconomyRepository` - Economy data
-- `MockRepositoryTx` - Transactions
+**Local Mocks (`internal/<package>/mocks/`):**
+- **Repository Mocks:** `MockRepository` (within each domain package)
+- **Tx Mocks:** `MockTx` (transaction wrappers)
+- Used for testing Services without creating circular dependencies.
 
-**See [.mockery.yaml](file:///home/osse1/projects/BrandishBot_Go/.mockery.yaml) for complete list**
+**See [.mockery.yaml](file:///home/osse1/projects/BrandishBot_Go/.mockery.yaml) for complete configuration.**
 
 ## Patterns
 
@@ -235,27 +239,31 @@ func TestUserService(t *testing.T) {
 
 ## Configuration
 
-Mocks are configured in [.mockery.yaml](file:///home/osse1/projects/BrandishBot_Go/.mockery.yaml):
+Mocks are configured in [.mockery.yaml](file:///home/osse1/projects/BrandishBot_Go/.mockery.yaml) using a mixed strategy:
 
 ```yaml
-with-expecter: true  # Enable EXPECT() pattern
-dir: "mocks"         # Output directory
-outpkg: "mocks"      # Package name
-
 packages:
   github.com/osse101/BrandishBot_Go/internal/user:
     config:
+      # Service mocks go to global mocks/ folder
       filename: "mock_user_{{.InterfaceName | snakecase}}.go"
       mockname: "MockUser{{.InterfaceName}}"
     interfaces:
       Service:
       Repository:
+        config:
+          # Repository mocks go to internal/user/mocks/ folder
+          dir: "{{.InterfaceDir}}/mocks"
+          outpkg: "mocks"
+          filename: "mock_repository.go"
+          mockname: "MockRepository"
+          with-expecter: true
 ```
 
 **Key settings:**
-- `with-expecter: true` - Enables type-safe EXPECT() pattern
-- Custom filenames per package - Prevents naming collisions
-- Explicit mock names - `MockUserService`, not just `MockService`
+- **Service Mocks:** Generated in root `mocks/` for ease of use in handlers.
+- **Repository Mocks:** Generated in `internal/<pkg>/mocks/` to prevent import cycles.
+- `with-expecter: true` - Enables type-safe EXPECT() pattern.
 
 ## Adding New Mocks
 
