@@ -420,4 +420,105 @@ namespace BrandishBot.Client
         [JsonProperty("recipes")]
         public List<Recipe> Recipes { get; set; }
     }
+
+    // --- Expedition Models ---
+
+    public class StartExpeditionResponse
+    {
+        [JsonProperty("message")]
+        public string Message { get; set; }
+
+        [JsonProperty("expedition_id")]
+        public string ExpeditionId { get; set; }
+
+        [JsonProperty("join_deadline")]
+        public string JoinDeadline { get; set; }
+    }
+
+    public class ExpeditionStatus
+    {
+        [JsonProperty("has_active")]
+        public bool HasActive { get; set; }
+
+        [JsonProperty("active_details")]
+        public ExpeditionDetails ActiveDetails { get; set; }
+
+        [JsonProperty("cooldown_expires")]
+        public string CooldownExpires { get; set; }
+
+        [JsonProperty("on_cooldown")]
+        public bool OnCooldown { get; set; }
+    }
+
+    public class ExpeditionDetails
+    {
+        [JsonProperty("expedition")]
+        public Expedition Expedition { get; set; }
+
+        [JsonProperty("participants")]
+        public List<ExpeditionParticipant> Participants { get; set; }
+    }
+
+    public class Expedition
+    {
+        [JsonProperty("id")]
+        public string Id { get; set; }
+
+        [JsonProperty("initiator_id")]
+        public string InitiatorId { get; set; }
+
+        [JsonProperty("expedition_type")]
+        public string ExpeditionType { get; set; }
+
+        [JsonProperty("state")]
+        public string State { get; set; }
+
+        [JsonProperty("created_at")]
+        public DateTime CreatedAt { get; set; }
+
+        [JsonProperty("join_deadline")]
+        public DateTime JoinDeadline { get; set; }
+    }
+
+    public class ExpeditionParticipant
+    {
+        [JsonProperty("user_id")]
+        public string UserId { get; set; }
+
+        [JsonProperty("username")]
+        public string Username { get; set; }
+
+        [JsonProperty("is_leader")]
+        public bool IsLeader { get; set; }
+
+        [JsonProperty("final_money")]
+        public int FinalMoney { get; set; }
+
+        [JsonProperty("final_xp")]
+        public int FinalXp { get; set; }
+
+        [JsonProperty("final_items")]
+        public List<string> FinalItems { get; set; }
+    }
+
+    public class ExpeditionJournalEntry
+    {
+        [JsonProperty("turn_number")]
+        public int TurnNumber { get; set; }
+
+        [JsonProperty("encounter_type")]
+        public string EncounterType { get; set; }
+
+        [JsonProperty("outcome")]
+        public string Outcome { get; set; }
+
+        [JsonProperty("narrative")]
+        public string Narrative { get; set; }
+
+        [JsonProperty("fatigue")]
+        public int Fatigue { get; set; }
+
+        [JsonProperty("purse")]
+        public int Purse { get; set; }
+    }
 }

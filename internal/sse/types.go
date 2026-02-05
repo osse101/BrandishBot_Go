@@ -52,6 +52,29 @@ type GambleCompletedPayload struct {
 	Timestamp        int64  `json:"timestamp"`
 }
 
+// ExpeditionStartedPayload represents the SSE payload for expedition start events
+type ExpeditionStartedPayload struct {
+	ExpeditionID string `json:"expedition_id"`
+	JoinDeadline string `json:"join_deadline"`
+}
+
+// ExpeditionTurnPayload represents the SSE payload for expedition turn events
+type ExpeditionTurnPayload struct {
+	ExpeditionID string `json:"expedition_id"`
+	TurnNumber   int    `json:"turn_number"`
+	Narrative    string `json:"narrative"`
+	Fatigue      int    `json:"fatigue"`
+	Purse        int    `json:"purse"`
+}
+
+// ExpeditionCompletedPayload represents the SSE payload for expedition completion events
+type ExpeditionCompletedPayload struct {
+	ExpeditionID string `json:"expedition_id"`
+	TotalTurns   int    `json:"total_turns"`
+	Won          bool   `json:"won"`
+	AllKO        bool   `json:"all_ko"`
+}
+
 // TimeoutPayload represents the SSE payload for timeout events
 type TimeoutPayload struct {
 	Platform        string `json:"platform"`

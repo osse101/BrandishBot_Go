@@ -25,6 +25,7 @@ type ShutdownComponents struct {
 	GambleService      gamble.Service
 	PredictionService  prediction.Service
 	GambleWorker       *worker.GambleWorker
+	ExpeditionWorker   *worker.ExpeditionWorker
 	DailyResetWorker   *worker.DailyResetWorker
 	ResilientPublisher *event.ResilientPublisher
 }
@@ -48,6 +49,12 @@ func GracefulShutdown(ctx context.Context, components ShutdownComponents) {
 	if components.GambleWorker != nil {
 		if err := components.GambleWorker.Shutdown(ctx); err != nil {
 			slog.Error("Gamble worker shutdown failed", "error", err)
+		}
+	}
+
+	if components.ExpeditionWorker != nil {
+		if err := components.ExpeditionWorker.Shutdown(ctx); err != nil {
+			slog.Error("Expedition worker shutdown failed", "error", err)
 		}
 	}
 

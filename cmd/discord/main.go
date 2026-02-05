@@ -152,6 +152,10 @@ func getCommandFactories(bot *discord.Bot) []CommandFactory {
 		discord.GambleStartCommand,
 		discord.GambleJoinCommand,
 
+		// Expedition commands
+		discord.ExploreCommand,
+		discord.ExpeditionJournalCommand,
+
 		// Progression commands
 		discord.VoteCommand,
 		discord.UnlockProgressCommand,

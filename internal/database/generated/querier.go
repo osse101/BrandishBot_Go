@@ -14,6 +14,7 @@ import (
 
 type Querier interface {
 	AddContribution(ctx context.Context, arg AddContributionParams) error
+	AddExpeditionParticipant(ctx context.Context, arg AddExpeditionParticipantParams) error
 	AddVotingOption(ctx context.Context, arg AddVotingOptionParams) error
 	AssignItemTag(ctx context.Context, arg AssignItemTagParams) error
 	CleanupExpiredTokens(ctx context.Context) error
@@ -30,10 +31,12 @@ type Querier interface {
 	ClearNodePrerequisites(ctx context.Context, nodeID int32) error
 	ClearUnlockProgressForNode(ctx context.Context, nodeID pgtype.Int4) error
 	ClearUnlocksExceptRoot(ctx context.Context) error
+	CompleteExpedition(ctx context.Context, id uuid.UUID) error
 	CompleteUnlock(ctx context.Context, id int32) error
 	CountTotalUnlockedNodes(ctx context.Context) (int32, error)
 	CountUnlockedNodesBelowTier(ctx context.Context, tier int32) (int32, error)
 	CountUnlocks(ctx context.Context) (int64, error)
+	CreateExpedition(ctx context.Context, arg CreateExpeditionParams) error
 	CreateGamble(ctx context.Context, arg CreateGambleParams) error
 	CreateHarvestState(ctx context.Context, dollar_1 uuid.UUID) (HarvestState, error)
 	CreateToken(ctx context.Context, arg CreateTokenParams) error
@@ -48,6 +51,7 @@ type Querier interface {
 	EndVotingSession(ctx context.Context, arg EndVotingSessionParams) error
 	EnsureInventoryRow(ctx context.Context, arg EnsureInventoryRowParams) error
 	FreezeVotingSession(ctx context.Context, id int32) error
+	GetActiveExpedition(ctx context.Context) (Expedition, error)
 	GetActiveGamble(ctx context.Context) (Gamble, error)
 	GetActiveOrFrozenSession(ctx context.Context) (GetActiveOrFrozenSessionRow, error)
 	GetActiveSession(ctx context.Context) (GetActiveSessionRow, error)
@@ -81,6 +85,9 @@ type Querier interface {
 	GetEvents(ctx context.Context, arg GetEventsParams) ([]Event, error)
 	GetEventsByType(ctx context.Context, arg GetEventsByTypeParams) ([]StatsEvent, error)
 	GetEventsByUser(ctx context.Context, arg GetEventsByUserParams) ([]StatsEvent, error)
+	GetExpedition(ctx context.Context, id uuid.UUID) (Expedition, error)
+	GetExpeditionJournalEntries(ctx context.Context, expeditionID uuid.UUID) ([]ExpeditionJournalEntry, error)
+	GetExpeditionParticipants(ctx context.Context, expeditionID uuid.UUID) ([]GetExpeditionParticipantsRow, error)
 	GetGamble(ctx context.Context, id uuid.UUID) (Gamble, error)
 	GetGambleParticipants(ctx context.Context, gambleID uuid.UUID) ([]GetGambleParticipantsRow, error)
 	GetHarvestState(ctx context.Context, dollar_1 uuid.UUID) (HarvestState, error)
@@ -96,6 +103,7 @@ type Querier interface {
 	GetItemsByNames(ctx context.Context, dollar_1 []string) ([]GetItemsByNamesRow, error)
 	GetJobByKey(ctx context.Context, jobKey string) (Job, error)
 	GetJobLevelBonuses(ctx context.Context, arg GetJobLevelBonusesParams) ([]JobLevelBonuse, error)
+	GetLastCompletedExpedition(ctx context.Context) (Expedition, error)
 	GetLastCooldown(ctx context.Context, arg GetLastCooldownParams) (pgtype.Timestamptz, error)
 	GetLastCooldownForUpdate(ctx context.Context, arg GetLastCooldownForUpdateParams) (pgtype.Timestamptz, error)
 	GetLastDailyResetTime(ctx context.Context) (GetLastDailyResetTimeRow, error)
@@ -171,6 +179,8 @@ type Querier interface {
 	RelockNode(ctx context.Context, arg RelockNodeParams) error
 	ResetDailyJobXP(ctx context.Context) (pgconn.CommandTag, error)
 	ResumeVotingSession(ctx context.Context, id int32) error
+	SaveExpeditionJournalEntry(ctx context.Context, arg SaveExpeditionJournalEntryParams) error
+	SaveExpeditionParticipantRewards(ctx context.Context, arg SaveExpeditionParticipantRewardsParams) error
 	SaveOpenedItem(ctx context.Context, arg SaveOpenedItemParams) error
 	SetUnlockTarget(ctx context.Context, arg SetUnlockTargetParams) error
 	StartVoting(ctx context.Context, arg StartVotingParams) error
@@ -182,6 +192,9 @@ type Querier interface {
 	UpdateCraftingRecipe(ctx context.Context, arg UpdateCraftingRecipeParams) error
 	UpdateDailyResetTime(ctx context.Context, arg UpdateDailyResetTimeParams) error
 	UpdateDisassembleRecipe(ctx context.Context, arg UpdateDisassembleRecipeParams) error
+	UpdateExpeditionParticipantResults(ctx context.Context, arg UpdateExpeditionParticipantResultsParams) error
+	UpdateExpeditionState(ctx context.Context, arg UpdateExpeditionStateParams) error
+	UpdateExpeditionStateIfMatches(ctx context.Context, arg UpdateExpeditionStateIfMatchesParams) (pgconn.CommandTag, error)
 	UpdateGambleState(ctx context.Context, arg UpdateGambleStateParams) error
 	UpdateGambleStateIfMatches(ctx context.Context, arg UpdateGambleStateIfMatchesParams) (pgconn.CommandTag, error)
 	UpdateHarvestState(ctx context.Context, arg UpdateHarvestStateParams) error

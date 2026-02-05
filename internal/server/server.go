@@ -17,6 +17,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/database"
 	"github.com/osse101/BrandishBot_Go/internal/economy"
 	"github.com/osse101/BrandishBot_Go/internal/event"
+	"github.com/osse101/BrandishBot_Go/internal/expedition"
 	"github.com/osse101/BrandishBot_Go/internal/features"
 	"github.com/osse101/BrandishBot_Go/internal/gamble"
 	"github.com/osse101/BrandishBot_Go/internal/handler"
@@ -47,12 +48,13 @@ type Server struct {
 	linkingService     linking.Service
 	harvestService     harvest.Service
 	predictionService  prediction.Service
+	expeditionService  expedition.Service
 	namingResolver     naming.Resolver
 	sseHub             *sse.Hub
 }
 
 // NewServer creates a new Server instance
-func NewServer(port int, apiKey string, trustedProxies []string, dbPool database.Pool, userService user.Service, economyService economy.Service, craftingService crafting.Service, statsService stats.Service, progressionService progression.Service, gambleService gamble.Service, jobService job.Service, linkingService linking.Service, harvestService harvest.Service, predictionService prediction.Service, namingResolver naming.Resolver, eventBus event.Bus, sseHub *sse.Hub, userRepo repository.User) *Server {
+func NewServer(port int, apiKey string, trustedProxies []string, dbPool database.Pool, userService user.Service, economyService economy.Service, craftingService crafting.Service, statsService stats.Service, progressionService progression.Service, gambleService gamble.Service, jobService job.Service, linkingService linking.Service, harvestService harvest.Service, predictionService prediction.Service, expeditionService expedition.Service, namingResolver naming.Resolver, eventBus event.Bus, sseHub *sse.Hub, userRepo repository.User) *Server {
 	r := chi.NewRouter()
 
 	// Middleware stack
@@ -122,6 +124,17 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 			r.Post("/join", gambleHandler.HandleJoinGamble)
 			r.Get("/get", gambleHandler.HandleGetGamble)
 			r.Get("/active", gambleHandler.HandleGetActiveGamble)
+		})
+
+		// Expedition routes
+		expeditionHandler := handler.NewExpeditionHandler(expeditionService, progressionService)
+		r.Route("/expedition", func(r chi.Router) {
+			r.Post("/start", expeditionHandler.HandleStart)
+			r.Post("/join", expeditionHandler.HandleJoin)
+			r.Get("/get", expeditionHandler.HandleGet)
+			r.Get("/active", expeditionHandler.HandleGetActive)
+			r.Get("/journal", expeditionHandler.HandleGetJournal)
+			r.Get("/status", expeditionHandler.HandleGetStatus)
 		})
 
 		// Harvest routes
@@ -240,6 +253,7 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 		linkingService:     linkingService,
 		harvestService:     harvestService,
 		predictionService:  predictionService,
+		expeditionService:  expeditionService,
 		namingResolver:     namingResolver,
 		sseHub:             sseHub,
 	}

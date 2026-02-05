@@ -31,6 +31,9 @@ func (n *SSENotifier) RegisterHandlers(client *SSEClient) {
 	client.OnEvent(SSEEventTypeCycleCompleted, n.handleCycleCompleted)
 	client.OnEvent(SSEEventTypeAllUnlocked, n.handleAllUnlocked)
 	client.OnEvent(SSEEventTypeGambleCompleted, n.handleGambleCompleted)
+	client.OnEvent(SSEEventTypeExpeditionStarted, n.handleExpeditionStarted)
+	client.OnEvent(SSEEventTypeExpeditionTurn, n.handleExpeditionTurn)
+	client.OnEvent(SSEEventTypeExpeditionCompleted, n.handleExpeditionCompleted)
 }
 
 // JobLevelUpPayload is the payload for job level up events
@@ -331,6 +334,149 @@ func (n *SSENotifier) handleGambleCompleted(event SSEEvent) error {
 	}
 
 	slog.Info(sseLogMsgNotificationSent, "event_type", event.Type, "gamble_id", payload.GambleID)
+	return nil
+}
+
+// ExpeditionStartedPayload is the payload for expedition started events
+type ExpeditionStartedPayload struct {
+	ExpeditionID string `json:"expedition_id"`
+	JoinDeadline string `json:"join_deadline"`
+}
+
+// ExpeditionTurnPayload is the payload for expedition turn events
+type ExpeditionTurnPayload struct {
+	ExpeditionID string `json:"expedition_id"`
+	TurnNumber   int    `json:"turn_number"`
+	Narrative    string `json:"narrative"`
+	Fatigue      int    `json:"fatigue"`
+	Purse        int    `json:"purse"`
+}
+
+// ExpeditionCompletedPayload is the payload for expedition completed events
+type ExpeditionCompletedPayload struct {
+	ExpeditionID string `json:"expedition_id"`
+	TotalTurns   int    `json:"total_turns"`
+	Won          bool   `json:"won"`
+	AllKO        bool   `json:"all_ko"`
+}
+
+func (n *SSENotifier) handleExpeditionStarted(event SSEEvent) error {
+	if n.notificationChanID == "" {
+		return nil
+	}
+
+	var payload ExpeditionStartedPayload
+	if err := json.Unmarshal(event.Payload, &payload); err != nil {
+		slog.Warn(sseLogMsgParseError, "error", err, "event_type", event.Type)
+		return nil
+	}
+
+	embed := &discordgo.MessageEmbed{
+		Title:       "Expedition Recruiting!",
+		Description: fmt.Sprintf("A new expedition is recruiting!\n\n**Join Deadline:** `%s`\n\nUse `/explore` to join before the deadline.", payload.JoinDeadline),
+		Color:       0x9B59B6, // Purple
+		Timestamp:   time.Now().Format(time.RFC3339),
+		Footer: &discordgo.MessageEmbedFooter{
+			Text: "Expedition System",
+		},
+	}
+
+	_, err := n.session.ChannelMessageSendEmbed(n.notificationChanID, embed)
+	if err != nil {
+		slog.Error(sseLogMsgNotificationError, "error", err, "event_type", event.Type)
+		return err
+	}
+
+	slog.Info(sseLogMsgNotificationSent, "event_type", event.Type, "expedition_id", payload.ExpeditionID)
+	return nil
+}
+
+func (n *SSENotifier) handleExpeditionTurn(event SSEEvent) error {
+	if n.notificationChanID == "" {
+		return nil
+	}
+
+	var payload ExpeditionTurnPayload
+	if err := json.Unmarshal(event.Payload, &payload); err != nil {
+		slog.Warn(sseLogMsgParseError, "error", err, "event_type", event.Type)
+		return nil
+	}
+
+	// Only send notifications for every 5th turn and turn 0 (intro) to avoid spam
+	if payload.TurnNumber != 0 && payload.TurnNumber%5 != 0 {
+		return nil
+	}
+
+	var description string
+	if payload.TurnNumber == 0 {
+		description = fmt.Sprintf("*%s*", payload.Narrative)
+	} else {
+		description = fmt.Sprintf("**Turn %d** | Fatigue: %d | Purse: %d\n\n%s", payload.TurnNumber, payload.Fatigue, payload.Purse, payload.Narrative)
+	}
+
+	embed := &discordgo.MessageEmbed{
+		Title:       "Expedition Update",
+		Description: description,
+		Color:       0x8E44AD, // Dark purple
+		Footer: &discordgo.MessageEmbedFooter{
+			Text: "Expedition System",
+		},
+	}
+
+	_, err := n.session.ChannelMessageSendEmbed(n.notificationChanID, embed)
+	if err != nil {
+		slog.Error(sseLogMsgNotificationError, "error", err, "event_type", event.Type)
+		return err
+	}
+
+	return nil
+}
+
+func (n *SSENotifier) handleExpeditionCompleted(event SSEEvent) error {
+	if n.notificationChanID == "" {
+		return nil
+	}
+
+	var payload ExpeditionCompletedPayload
+	if err := json.Unmarshal(event.Payload, &payload); err != nil {
+		slog.Warn(sseLogMsgParseError, "error", err, "event_type", event.Type)
+		return nil
+	}
+
+	title := "Expedition Complete!"
+	color := 0x2ECC71 // Green
+	var description string
+
+	if payload.Won {
+		description = fmt.Sprintf("The expedition was a success! The party survived all **%d turns**!\n\nRewards have been distributed to all participants.", payload.TotalTurns)
+	} else if payload.AllKO {
+		title = "Expedition Failed"
+		description = fmt.Sprintf("The entire party was knocked out after **%d turns**.\n\nPartial rewards have been distributed.", payload.TotalTurns)
+		color = 0xE74C3C // Red
+	} else {
+		description = fmt.Sprintf("The expedition ended after **%d turns** due to exhaustion.\n\nPartial rewards have been distributed.", payload.TotalTurns)
+		color = 0xF39C12 // Orange
+	}
+
+	description += fmt.Sprintf("\n\nUse `/expedition-journal %s` to view the full journal.", payload.ExpeditionID)
+
+	embed := &discordgo.MessageEmbed{
+		Title:       title,
+		Description: description,
+		Color:       color,
+		Timestamp:   time.Now().Format(time.RFC3339),
+		Footer: &discordgo.MessageEmbedFooter{
+			Text: "Expedition System",
+		},
+	}
+
+	_, err := n.session.ChannelMessageSendEmbed(n.notificationChanID, embed)
+	if err != nil {
+		slog.Error(sseLogMsgNotificationError, "error", err, "event_type", event.Type)
+		return err
+	}
+
+	slog.Info(sseLogMsgNotificationSent, "event_type", event.Type, "expedition_id", payload.ExpeditionID, "won", payload.Won)
 	return nil
 }
 

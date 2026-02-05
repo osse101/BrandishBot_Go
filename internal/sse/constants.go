@@ -40,6 +40,15 @@ const (
 	// EventTypeGambleCompleted is sent when a gamble session completes
 	EventTypeGambleCompleted = "gamble.completed"
 
+	// EventTypeExpeditionStarted is sent when a new expedition starts recruiting
+	EventTypeExpeditionStarted = "expedition.started"
+
+	// EventTypeExpeditionTurn is sent for each turn of an expedition (live playback)
+	EventTypeExpeditionTurn = "expedition.turn"
+
+	// EventTypeExpeditionCompleted is sent when an expedition finishes
+	EventTypeExpeditionCompleted = "expedition.completed"
+
 	// EventTypeKeepalive is the keepalive ping event type
 	EventTypeKeepalive = "keepalive"
 

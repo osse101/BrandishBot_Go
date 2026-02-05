@@ -33,6 +33,15 @@ const (
 
 	// SSEEventTypeGambleCompleted is the event type for gamble completion
 	SSEEventTypeGambleCompleted = "gamble.completed"
+
+	// SSEEventTypeExpeditionStarted is the event type for expedition start
+	SSEEventTypeExpeditionStarted = "expedition.started"
+
+	// SSEEventTypeExpeditionTurn is the event type for expedition turn updates
+	SSEEventTypeExpeditionTurn = "expedition.turn"
+
+	// SSEEventTypeExpeditionCompleted is the event type for expedition completion
+	SSEEventTypeExpeditionCompleted = "expedition.completed"
 )
 
 // SSE log messages

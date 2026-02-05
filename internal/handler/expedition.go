@@ -139,3 +139,39 @@ func (h *ExpeditionHandler) HandleGetActive(w http.ResponseWriter, r *http.Reque
 
 	respondJSON(w, http.StatusOK, expedition)
 }
+
+// HandleGetJournal handles expedition journal requests
+func (h *ExpeditionHandler) HandleGetJournal(w http.ResponseWriter, r *http.Request) {
+	expeditionIDStr, ok := GetQueryParam(r, w, "id")
+	if !ok {
+		return
+	}
+	expeditionID, err := uuid.Parse(expeditionIDStr)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "Invalid expedition ID")
+		return
+	}
+
+	entries, err := h.service.GetJournal(r.Context(), expeditionID)
+	if err != nil {
+		logger.FromContext(r.Context()).Error("Failed to get expedition journal", "error", err)
+		statusCode, userMsg := mapServiceErrorToUserMessage(err)
+		respondError(w, statusCode, userMsg)
+		return
+	}
+
+	respondJSON(w, http.StatusOK, entries)
+}
+
+// HandleGetStatus handles expedition status requests
+func (h *ExpeditionHandler) HandleGetStatus(w http.ResponseWriter, r *http.Request) {
+	status, err := h.service.GetStatus(r.Context())
+	if err != nil {
+		logger.FromContext(r.Context()).Error("Failed to get expedition status", "error", err)
+		statusCode, userMsg := mapServiceErrorToUserMessage(err)
+		respondError(w, statusCode, userMsg)
+		return
+	}
+
+	respondJSON(w, http.StatusOK, status)
+}

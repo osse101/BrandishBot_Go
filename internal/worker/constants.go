@@ -20,6 +20,18 @@ const (
 )
 
 // ============================================================================
+// Log Messages - Expedition Worker
+// ============================================================================
+
+// Log messages for expedition worker operations
+const (
+	LogMsgFailedToCheckActiveExpeditionOnStartup = "Failed to check active expedition on startup"
+	LogMsgSchedulingExpeditionExecution          = "Scheduling expedition execution"
+	LogMsgExecutingScheduledExpedition           = "Executing scheduled expedition"
+	LogMsgFailedToExecuteExpedition              = "Failed to execute expedition"
+)
+
+// ============================================================================
 // Log Messages - Daily Reset Worker
 // ============================================================================
 

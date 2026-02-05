@@ -1327,6 +1327,139 @@ func (c *APIClient) SetUserTimeout(platform, username string, durationSeconds in
 	return c.doAction(http.MethodPut, "/api/v1/user/timeout", req)
 }
 
+// StartExpedition starts a new expedition
+func (c *APIClient) StartExpedition(platform, platformID, username, expeditionType string) (string, string, error) {
+	req := map[string]interface{}{
+		"platform":        platform,
+		"platform_id":     platformID,
+		"username":        username,
+		"expedition_type": expeditionType,
+	}
+
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/expedition/start", req)
+	if err != nil {
+		return "", "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		var errResp struct {
+			Error string `json:"error"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
+			return "", "", fmt.Errorf("API error: %s", errResp.Error)
+		}
+		return "", "", fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	var startResp struct {
+		Message      string `json:"message"`
+		ExpeditionID string `json:"expedition_id"`
+		JoinDeadline string `json:"join_deadline"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&startResp); err != nil {
+		return "", "", fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return startResp.ExpeditionID, startResp.JoinDeadline, nil
+}
+
+// JoinExpedition joins an active expedition
+func (c *APIClient) JoinExpedition(platform, platformID, username, expeditionID string) (string, error) {
+	req := map[string]interface{}{
+		"platform":    platform,
+		"platform_id": platformID,
+		"username":    username,
+	}
+
+	path := fmt.Sprintf("/api/v1/expedition/join?id=%s", expeditionID)
+	resp, err := c.doRequest(http.MethodPost, path, req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		var errResp struct {
+			Error string `json:"error"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
+			return "", fmt.Errorf("API error: %s", errResp.Error)
+		}
+		return "", fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	var joinResp struct {
+		Message string `json:"message"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&joinResp); err != nil {
+		return "", fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return joinResp.Message, nil
+}
+
+// ExpeditionStatusResponse represents the expedition status from the API
+type ExpeditionStatusResponse struct {
+	HasActive       bool               `json:"has_active"`
+	ActiveDetails   *ExpeditionDetails `json:"active_details,omitempty"`
+	CooldownExpires *string            `json:"cooldown_expires,omitempty"`
+	OnCooldown      bool               `json:"on_cooldown"`
+}
+
+// ExpeditionDetails represents expedition details from the API
+type ExpeditionDetails struct {
+	ID           string `json:"id"`
+	State        string `json:"state"`
+	JoinDeadline string `json:"join_deadline"`
+}
+
+// GetExpeditionStatus retrieves the current expedition status
+func (c *APIClient) GetExpeditionStatus() (*ExpeditionStatusResponse, error) {
+	var status ExpeditionStatusResponse
+	if err := c.doRequestAndParse(http.MethodGet, "/api/v1/expedition/status", nil, &status); err != nil {
+		return nil, err
+	}
+	return &status, nil
+}
+
+// ExpeditionJournalEntry represents a journal entry from the API
+type ExpeditionJournalEntry struct {
+	TurnNumber    int    `json:"turn_number"`
+	EncounterType string `json:"encounter_type"`
+	Outcome       string `json:"outcome"`
+	Narrative     string `json:"narrative"`
+	Fatigue       int    `json:"fatigue"`
+	Purse         int    `json:"purse"`
+}
+
+// GetExpeditionJournal retrieves the journal for a completed expedition
+func (c *APIClient) GetExpeditionJournal(expeditionID string) ([]ExpeditionJournalEntry, error) {
+	path := fmt.Sprintf("/api/v1/expedition/journal?id=%s", expeditionID)
+	resp, err := c.doRequest(http.MethodGet, path, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		var errResp struct {
+			Error string `json:"error"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
+			return nil, fmt.Errorf("API error: %s", errResp.Error)
+		}
+		return nil, fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	var entries []ExpeditionJournalEntry
+	if err := json.NewDecoder(resp.Body).Decode(&entries); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return entries, nil
+}
+
 // ProcessPredictionOutcome processes a prediction outcome from Twitch/YouTube
 func (c *APIClient) ProcessPredictionOutcome(platform string, winner domain.PredictionWinner, totalPointsSpent int, participants []domain.PredictionParticipant) (*domain.PredictionResult, error) {
 	req := domain.PredictionOutcomeRequest{

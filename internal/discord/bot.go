@@ -72,6 +72,9 @@ func New(cfg Config) (*Bot, error) {
 			SSEEventTypeCycleCompleted,
 			SSEEventTypeAllUnlocked,
 			SSEEventTypeGambleCompleted,
+			SSEEventTypeExpeditionStarted,
+			SSEEventTypeExpeditionTurn,
+			SSEEventTypeExpeditionCompleted,
 		})
 	}
 

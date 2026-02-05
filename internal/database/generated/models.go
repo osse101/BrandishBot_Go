@@ -109,11 +109,32 @@ type Expedition struct {
 	Metadata           []byte             `json:"metadata"`
 }
 
+type ExpeditionJournalEntry struct {
+	ID            int32              `json:"id"`
+	ExpeditionID  uuid.UUID          `json:"expedition_id"`
+	TurnNumber    int32              `json:"turn_number"`
+	EncounterType string             `json:"encounter_type"`
+	Outcome       string             `json:"outcome"`
+	SkillChecked  pgtype.Text        `json:"skill_checked"`
+	SkillPassed   pgtype.Bool        `json:"skill_passed"`
+	PrimaryMember pgtype.Text        `json:"primary_member"`
+	Narrative     string             `json:"narrative"`
+	Fatigue       int32              `json:"fatigue"`
+	Purse         int32              `json:"purse"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+}
+
 type ExpeditionParticipant struct {
 	ExpeditionID uuid.UUID          `json:"expedition_id"`
 	UserID       uuid.UUID          `json:"user_id"`
 	JoinedAt     pgtype.Timestamptz `json:"joined_at"`
 	Rewards      []byte             `json:"rewards"`
+	Username     pgtype.Text        `json:"username"`
+	IsLeader     pgtype.Bool        `json:"is_leader"`
+	JobLevels    []byte             `json:"job_levels"`
+	FinalMoney   pgtype.Int4        `json:"final_money"`
+	FinalXp      pgtype.Int4        `json:"final_xp"`
+	FinalItems   []byte             `json:"final_items"`
 }
 
 type Gamble struct {

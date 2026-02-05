@@ -19,6 +19,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/database"
 	"github.com/osse101/BrandishBot_Go/internal/economy"
 	"github.com/osse101/BrandishBot_Go/internal/eventlog"
+	"github.com/osse101/BrandishBot_Go/internal/expedition"
 	"github.com/osse101/BrandishBot_Go/internal/gamble"
 	"github.com/osse101/BrandishBot_Go/internal/harvest"
 	"github.com/osse101/BrandishBot_Go/internal/job"
@@ -202,6 +203,28 @@ func main() {
 	gambleWorker.Subscribe(eventBus)
 	gambleWorker.Start() // Checks for existing active gamble on startup
 
+	// Initialize Expedition Service and Worker
+	expeditionConfig, err := expedition.LoadEncounterConfig(config.ConfigPathExpeditionEncounters)
+	if err != nil {
+		slog.Error("Failed to load expedition encounter config", "error", err)
+		os.Exit(1)
+	}
+	expeditionService := expedition.NewService(
+		repos.Expedition,
+		eventBus,
+		progressionService,
+		jobService,
+		userService,
+		cooldownSvc,
+		expeditionConfig,
+		3*time.Minute,  // join duration
+		15*time.Minute, // cooldown duration
+	)
+	expeditionWorker := worker.NewExpeditionWorker(expeditionService)
+	expeditionWorker.Subscribe(eventBus)
+	expeditionWorker.Start()
+	slog.Info("Expedition service and worker initialized")
+
 	// Initialize Daily Reset Worker
 	dailyResetWorker := worker.NewDailyResetWorker(jobService, resilientPublisher)
 	dailyResetWorker.Start()
@@ -244,7 +267,7 @@ func main() {
 		slog.Info("Streamer.bot WebSocket client initialized", "url", cfg.StreamerbotWebhookURL)
 	}
 
-	srv := server.NewServer(cfg.Port, cfg.APIKey, cfg.TrustedProxies, dbPool, userService, economyService, craftingService, statsService, progressionService, gambleService, jobService, linkingService, harvestService, predictionService, namingResolver, eventBus, sseHub, repos.User)
+	srv := server.NewServer(cfg.Port, cfg.APIKey, cfg.TrustedProxies, dbPool, userService, economyService, craftingService, statsService, progressionService, gambleService, jobService, linkingService, harvestService, predictionService, expeditionService, namingResolver, eventBus, sseHub, repos.User)
 
 	// Run server in a goroutine
 	go func() {
@@ -274,6 +297,7 @@ func main() {
 		GambleService:      gambleService,
 		PredictionService:  predictionService,
 		GambleWorker:       gambleWorker,
+		ExpeditionWorker:   expeditionWorker,
 		DailyResetWorker:   dailyResetWorker,
 		ResilientPublisher: resilientPublisher,
 	})
