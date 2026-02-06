@@ -3,6 +3,7 @@ package progression
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/event"
@@ -76,6 +77,11 @@ func (s *service) StartVotingSession(ctx context.Context, unlockedNodeID *int) e
 	}
 
 	selected := selectRandomNodes(available, MaxVotingOptions)
+
+	// Enforce consistent ordering of options (sort by NodeKey)
+	sort.Slice(selected, func(i, j int) bool {
+		return selected[i].NodeKey < selected[j].NodeKey
+	})
 
 	sessionID, err := s.repo.CreateVotingSession(ctx)
 	if err != nil {
@@ -842,6 +848,11 @@ func (s *service) startVotingWithOptions(ctx context.Context, options []*domain.
 	}
 
 	selected := selectRandomNodes(options, MaxVotingOptions)
+
+	// Enforce consistent ordering of options (sort by NodeKey)
+	sort.Slice(selected, func(i, j int) bool {
+		return selected[i].NodeKey < selected[j].NodeKey
+	})
 
 	sessionID, err := s.repo.CreateVotingSession(ctx)
 	if err != nil {

@@ -58,25 +58,25 @@ func TestProgressionHandlers_HandleVote(t *testing.T) {
 	}{
 		{
 			name: "Success",
-			body: VoteRequest{Platform: "discord", PlatformID: "u1", Username: "user1", NodeKey: "n1"},
+			body: VoteRequest{Platform: "discord", PlatformID: "u1", Username: "user1", OptionIndex: 1},
 			setupMock: func(m *mocks.MockProgressionService) {
-				m.On("VoteForUnlock", mock.Anything, "discord", "u1", "user1", "n1").Return(nil)
+				m.On("VoteForUnlock", mock.Anything, "discord", "u1", "user1", 1).Return(nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedMsg:    "Vote recorded successfully",
 		},
 		{
 			name:           "Invalid Body (Validation)",
-			body:           VoteRequest{Platform: "discord", PlatformID: "", Username: "user1", NodeKey: "n1"},
+			body:           VoteRequest{Platform: "discord", PlatformID: "", Username: "user1", OptionIndex: 1},
 			setupMock:      func(m *mocks.MockProgressionService) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedMsg:    "Invalid request",
 		},
 		{
 			name: "Service Error",
-			body: VoteRequest{Platform: "discord", PlatformID: "u1", Username: "user1", NodeKey: "n1"},
+			body: VoteRequest{Platform: "discord", PlatformID: "u1", Username: "user1", OptionIndex: 1},
 			setupMock: func(m *mocks.MockProgressionService) {
-				m.On("VoteForUnlock", mock.Anything, "discord", "u1", "user1", "n1").Return(errors.New("already voted"))
+				m.On("VoteForUnlock", mock.Anything, "discord", "u1", "user1", 1).Return(errors.New("already voted"))
 			},
 			expectedStatus: http.StatusBadRequest, // Handler returns 400 on service error for vote
 			expectedMsg:    "already voted",

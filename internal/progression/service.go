@@ -35,7 +35,7 @@ type Service interface {
 	IsNodeUnlocked(ctx context.Context, nodeKey string, level int) (bool, error) // Bug #2: Check if specific node/level is unlocked
 
 	// Voting
-	VoteForUnlock(ctx context.Context, platform, platformID, username, nodeKey string) error
+	VoteForUnlock(ctx context.Context, platform, platformID, username string, optionIndex int) error
 	GetActiveVotingSession(ctx context.Context) (*domain.ProgressionVotingSession, error)
 	GetMostRecentVotingSession(ctx context.Context) (*domain.ProgressionVotingSession, error) // Bug #1: Get most recent session (any status)
 	StartVotingSession(ctx context.Context, unlockedNodeID *int) error
@@ -507,7 +507,7 @@ func (s *service) AreItemsUnlocked(ctx context.Context, itemNames []string) (map
 	return result, nil
 }
 
-func (s *service) VoteForUnlock(ctx context.Context, platform, platformID, username, nodeKey string) error {
+func (s *service) VoteForUnlock(ctx context.Context, platform, platformID, username string, optionIndex int) error {
 	log := logger.FromContext(ctx)
 
 	user, err := s.user.GetUserByPlatformID(ctx, platform, platformID)
@@ -553,18 +553,12 @@ func (s *service) VoteForUnlock(ctx context.Context, platform, platformID, usern
 		return fmt.Errorf("no active voting session")
 	}
 
-	// Find option matching nodeKey
-	var selectedOption *domain.ProgressionVotingOption
-	for i := range session.Options {
-		if session.Options[i].NodeDetails != nil && session.Options[i].NodeDetails.NodeKey == nodeKey {
-			selectedOption = &session.Options[i]
-			break
-		}
+	// Validate option index (1-based)
+	if optionIndex < 1 || optionIndex > len(session.Options) {
+		return fmt.Errorf("invalid option index: %d (must be between 1 and %d)", optionIndex, len(session.Options))
 	}
 
-	if selectedOption == nil {
-		return fmt.Errorf("node not in current voting options")
-	}
+	selectedOption := &session.Options[optionIndex-1]
 
 	// Use atomic transaction to prevent race conditions in concurrent vote attempts
 	err = s.repo.CheckAndRecordVoteAtomic(ctx, userID, session.ID, selectedOption.ID, selectedOption.NodeID)
@@ -577,7 +571,7 @@ func (s *service) VoteForUnlock(ctx context.Context, platform, platformID, usern
 		log.Warn("Failed to record vote engagement", "userID", userID, "error", err)
 	}
 
-	log.Info("Vote recorded", "userID", userID, "platform", platform, "platformID", platformID, "nodeKey", nodeKey, "sessionID", session.ID)
+	log.Info("Vote recorded", "userID", userID, "platform", platform, "platformID", platformID, "optionIndex", optionIndex, "nodeKey", selectedOption.NodeDetails.NodeKey, "sessionID", session.ID)
 	return nil
 }
 

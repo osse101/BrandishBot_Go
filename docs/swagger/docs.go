@@ -787,7 +787,7 @@ const docTemplate = `{
         },
         "/api/v1/progression/vote": {
             "post": {
-                "description": "Cast a vote for the next unlock (one vote per user per node/level)",
+                "description": "Cast a vote for the next unlock by selecting an option index (1-based)",
                 "consumes": [
                     "application/json"
                 ],
@@ -3414,15 +3414,15 @@ const docTemplate = `{
         "handler.VoteRequest": {
             "type": "object",
             "required": [
-                "node_key",
+                "option_index",
                 "platform",
                 "platform_id",
                 "username"
             ],
             "properties": {
-                "node_key": {
-                    "type": "string",
-                    "maxLength": 50
+                "option_index": {
+                    "type": "integer",
+                    "minimum": 1
                 },
                 "platform": {
                     "type": "string",

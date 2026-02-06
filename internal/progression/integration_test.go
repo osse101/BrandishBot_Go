@@ -28,23 +28,23 @@ func TestVotingFlow_Complete(t *testing.T) {
 	assert.Len(t, session.Options, 2) // money and lootbox0 available
 
 	// Step 2: Multiple users vote for lootbox0 specifically (deterministic test)
-	// Find lootbox0 option
-	var lootboxKey string
+	// Find lootbox0 option index
+	var lootboxIndex int
 	var winnerNodeID int
-	for _, opt := range session.Options {
+	for i, opt := range session.Options {
 		if opt.NodeDetails.NodeKey == "item_lootbox0" {
-			lootboxKey = opt.NodeDetails.NodeKey
+			lootboxIndex = i + 1
 			winnerNodeID = opt.NodeID
 			break
 		}
 	}
-	if lootboxKey == "" {
+	if lootboxIndex == 0 {
 		t.Fatal("lootbox0 not found in session options")
 	}
 
-	service.VoteForUnlock(ctx, domain.PlatformDiscord, "user1", "user1", lootboxKey)
-	service.VoteForUnlock(ctx, domain.PlatformDiscord, "user2", "user2", lootboxKey)
-	service.VoteForUnlock(ctx, domain.PlatformDiscord, "user3", "user3", lootboxKey)
+	service.VoteForUnlock(ctx, domain.PlatformDiscord, "user1", "user1", lootboxIndex)
+	service.VoteForUnlock(ctx, domain.PlatformDiscord, "user2", "user2", lootboxIndex)
+	service.VoteForUnlock(ctx, domain.PlatformDiscord, "user3", "user3", lootboxIndex)
 
 	// Step 3: End voting
 	winner, err := service.EndVoting(ctx)
@@ -107,9 +107,9 @@ func TestVotingFlow_MultipleVoters(t *testing.T) {
 	session, _ := repo.GetActiveSession(ctx)
 
 	// Multiple users vote for different options
-	service.VoteForUnlock(ctx, domain.PlatformDiscord, "user1", "user1", session.Options[0].NodeDetails.NodeKey)
-	service.VoteForUnlock(ctx, domain.PlatformDiscord, "user2", "user2", session.Options[0].NodeDetails.NodeKey)
-	service.VoteForUnlock(ctx, domain.PlatformDiscord, "user3", "user3", session.Options[1].NodeDetails.NodeKey)
+	service.VoteForUnlock(ctx, domain.PlatformDiscord, "user1", "user1", 1)
+	service.VoteForUnlock(ctx, domain.PlatformDiscord, "user2", "user2", 1)
+	service.VoteForUnlock(ctx, domain.PlatformDiscord, "user3", "user3", 2)
 
 	winner, _ := service.EndVoting(ctx)
 
@@ -132,21 +132,21 @@ func TestVotingFlow_AutoNextSession(t *testing.T) {
 	service.StartVotingSession(ctx, nil)
 	session1, _ := repo.GetActiveSession(ctx)
 
-	// Find lootbox0 option
-	var lootboxKey string
+	// Find lootbox0 option index
+	var lootboxIndex int
 	var lootboxNodeID int
-	for _, opt := range session1.Options {
+	for i, opt := range session1.Options {
 		if opt.NodeDetails.NodeKey == "item_lootbox0" {
-			lootboxKey = opt.NodeDetails.NodeKey
+			lootboxIndex = i + 1
 			lootboxNodeID = opt.NodeID
 			break
 		}
 	}
-	if lootboxKey == "" {
+	if lootboxIndex == 0 {
 		t.Fatal("lootbox0 not found in session options")
 	}
 
-	service.VoteForUnlock(ctx, domain.PlatformDiscord, "user1", "user1", lootboxKey)
+	service.VoteForUnlock(ctx, domain.PlatformDiscord, "user1", "user1", lootboxIndex)
 	service.EndVoting(ctx)
 
 	progress, _ := repo.GetActiveUnlockProgress(ctx)
@@ -232,18 +232,17 @@ func TestMultiLevel_SessionTargeting(t *testing.T) {
 	// Only Cooldown level 1 is available now. Start session.
 	service.StartVotingSession(ctx, nil)
 
-	// Vote for cooldown level 1
-	var cooldownKey string
+	var cooldownIndex int
 	session, _ := repo.GetActiveSession(ctx)
-	for _, opt := range session.Options {
+	for i, opt := range session.Options {
 		if opt.NodeID == 5 {
-			cooldownKey = opt.NodeDetails.NodeKey
+			cooldownIndex = i + 1
 			break
 		}
 	}
 
-	assert.NotEmpty(t, cooldownKey, "Cooldown level 1 should be available")
-	service.VoteForUnlock(ctx, domain.PlatformDiscord, "user1", "user1", cooldownKey)
+	assert.NotEqual(t, 0, cooldownIndex, "Cooldown level 1 should be available")
+	service.VoteForUnlock(ctx, domain.PlatformDiscord, "user1", "user1", cooldownIndex)
 	service.EndVoting(ctx)
 
 	// Complete unlock of Cooldown L1
@@ -312,7 +311,7 @@ func TestCache_ThresholdDetection(t *testing.T) {
 	// Complete voting to set cache
 	service.StartVotingSession(ctx, nil)
 	session, _ := repo.GetActiveSession(ctx)
-	service.VoteForUnlock(ctx, domain.PlatformDiscord, "user1", "user1", session.Options[0].NodeDetails.NodeKey)
+	service.VoteForUnlock(ctx, domain.PlatformDiscord, "user1", "user1", 1)
 	service.EndVoting(ctx)
 
 	progress, _ := repo.GetActiveUnlockProgress(ctx)

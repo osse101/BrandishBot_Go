@@ -222,7 +222,7 @@ func TestAddContribution_InstantUnlock(t *testing.T) {
 
 	// Option 0 is likely money (cost 500)
 	// Vote and end
-	err := service.VoteForUnlock(ctx, domain.PlatformDiscord, "user1", "user1", session.Options[0].NodeDetails.NodeKey)
+	err := service.VoteForUnlock(ctx, domain.PlatformDiscord, "user1", "user1", 1)
 	assert.NoError(t, err)
 
 	_, err = service.EndVoting(ctx)

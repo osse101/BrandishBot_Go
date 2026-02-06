@@ -78,7 +78,7 @@ func (h *ProgressionHandlers) HandleGetAvailable() http.HandlerFunc {
 
 // HandleVote allows a user to vote for the next unlock
 // @Summary Vote for unlock
-// @Description Cast a vote for the next unlock (one vote per user per node/level)
+// @Description Cast a vote for the next unlock by selecting an option index (1-based)
 // @Tags progression
 // @Accept json
 // @Produce json
@@ -97,18 +97,18 @@ func (h *ProgressionHandlers) HandleVote() http.HandlerFunc {
 		log := logger.FromContext(r.Context())
 
 		// Cast vote
-		err := h.service.VoteForUnlock(r.Context(), req.Platform, req.PlatformID, req.Username, req.NodeKey)
+		err := h.service.VoteForUnlock(r.Context(), req.Platform, req.PlatformID, req.Username, req.OptionIndex)
 		if err != nil {
 			if errors.Is(err, domain.ErrUserAlreadyVoted) {
 				respondJSON(w, http.StatusOK, SuccessResponse{Message: MsgAlreadyVoted})
 				return
 			}
-			log.Warn("Vote request: service error", "error", err, "platform", req.Platform, "platformID", req.PlatformID, "username", req.Username, "nodeKey", req.NodeKey)
+			log.Warn("Vote request: service error", "error", err, "platform", req.Platform, "platformID", req.PlatformID, "username", req.Username, "optionIndex", req.OptionIndex)
 			respondError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 
-		log.Info("Vote cast successfully", "platform", req.Platform, "platformID", req.PlatformID, "username", req.Username, "nodeKey", req.NodeKey)
+		log.Info("Vote cast successfully", "platform", req.Platform, "platformID", req.PlatformID, "username", req.Username, "optionIndex", req.OptionIndex)
 		respondJSON(w, http.StatusOK, SuccessResponse{Message: MsgVoteRecordedSuccess})
 	}
 }
@@ -686,10 +686,10 @@ type AvailableUnlocksResponse struct {
 }
 
 type VoteRequest struct {
-	Platform   string `json:"platform" validate:"required,max=20"`
-	PlatformID string `json:"platform_id" validate:"required,max=100,excludesall=\x00\n\r\t"`
-	Username   string `json:"username" validate:"required,max=100"`
-	NodeKey    string `json:"node_key" validate:"required,max=50"`
+	Platform    string `json:"platform" validate:"required,max=20"`
+	PlatformID  string `json:"platform_id" validate:"required,max=100,excludesall=\x00\n\r\t"`
+	Username    string `json:"username" validate:"required,max=100"`
+	OptionIndex int    `json:"option_index" validate:"required,min=1"`
 }
 
 type AdminUnlockRequest struct {

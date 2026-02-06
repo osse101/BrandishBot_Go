@@ -823,9 +823,9 @@ definitions:
     type: object
   handler.VoteRequest:
     properties:
-      node_key:
-        maxLength: 50
-        type: string
+      option_index:
+        minimum: 1
+        type: integer
       platform:
         maxLength: 20
         type: string
@@ -836,7 +836,7 @@ definitions:
         maxLength: 100
         type: string
     required:
-    - node_key
+    - option_index
     - platform
     - platform_id
     - username
@@ -1625,7 +1625,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: Cast a vote for the next unlock (one vote per user per node/level)
+      description: Cast a vote for the next unlock by selecting an option index (1-based)
       parameters:
       - description: Vote request
         in: body

@@ -1121,7 +1121,7 @@ public class CPHInline
 
     /// <summary>
     /// Vote to unlock a progression node
-    /// Command: !vote <node_key>
+    /// Command: !vote <option_index>
     /// </summary>
     public bool VoteForNode()
     {
@@ -1134,23 +1134,21 @@ public class CPHInline
             return false;
         }
 
-        if (!GetInputInt(0, "node_key", 0, out int nodeKey, ref error))
+        if (!GetInputInt(0, "option_index", 0, out int optionIndex, ref error))
         {
-            CPH.SetArgument("response", $"{error} Usage: !vote <node_key>");
+            CPH.SetArgument("response", $"{error} Usage: !vote <option_index>");
             return true;
         }
 
-        List<string> activeNodes = CPH.GetGlobalVar<List<string>>("ActiveNodes");
-        if(nodeKey <= 0 || nodeKey > activeNodes.Count)
+        if (optionIndex <= 0 || optionIndex > 4)
         {
-            CPH.SetArgument("response", "Invalid node key. Must be between 1 and " + activeNodes.Count);
+            CPH.SetArgument("response", "Invalid option index. Must be 1 or greater.");
             return true;
         }
-        string nodeKeyString = activeNodes[nodeKey-1];
 
         try
         {
-            var result = client.VoteForNode(platform, platformId, nodeKeyString).Result;
+            var result = client.VoteForNode(platform, platformId, optionIndex).Result;
             var formatted = ResponseFormatter.FormatMessage(result);
             CPH.SetArgument("response", formatted);
             return true;
