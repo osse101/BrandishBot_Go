@@ -66,6 +66,18 @@ func (p *Pool) Enqueue(job Job) {
 	p.jobQueue <- job
 }
 
+// EnqueueContext adds a job to the queue with context cancellation support
+func (p *Pool) EnqueueContext(ctx context.Context, job Job) error {
+	select {
+	case p.jobQueue <- job:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-p.quit:
+		return context.Canceled
+	}
+}
+
 // Stop stops the workers and waits for them to finish
 func (p *Pool) Stop() {
 	close(p.quit)
