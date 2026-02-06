@@ -95,7 +95,7 @@ This file contains persona definitions for different task types (debugging, feat
 
 ```MD
 BrandishBot_Go/
-├── cmd/                    # Entry points (app, discord, setup, debug)
+├── cmd/                    # Entry points (app, discord, devtool, setup, debug)
 ├── internal/               # Core application code
 │   ├── database/postgres/  # Repository implementations
 │   ├── domain/             # Domain models and constants

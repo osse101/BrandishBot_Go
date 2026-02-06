@@ -487,4 +487,40 @@ if s.bus != nil {
 
 ---
 
+---
+
+## 2026-01-05: Repository Status Audit & Consolidated Knowledge
+
+### Context
+A comprehensive audit of the repository memories and state was conducted to consolidate knowledge and remove obsolete references. This entry serves as a baseline for the current architectural state.
+
+### 1. Tooling Consolidation (`cmd/devtool`)
+- **Legacy Removal**: All legacy bash scripts (`check_deps.sh`, `check_db.sh`, `unit_tests.sh`, etc.) have been removed.
+- **Unified Tool**: `cmd/devtool` is the central utility for all development tasks.
+    - **Setup**: `devtool setup` (handles .env, DB, deps).
+    - **Testing**: `devtool check-coverage`, `devtool test-migrations`.
+    - **Benchmarking**: `devtool bench` (supports `benchstat`).
+    - **Health**: `devtool doctor` (diagnoses env issues).
+- **Design**: Implements a Command pattern with a centralized Registry and standardized UI output (`ui.go`).
+
+### 2. Service Maturity Status
+- **Expedition Service**: **Fully Implemented**. Includes `Engine` (pure logic), `Service` (orchestration), and Event Workflow.
+- **Duel Service**: **Partial Implementation**. `Accept` method is currently a placeholder (`not implemented`).
+- **Harvest Service**: **Production Ready**. Tier 1 rewards are always unlocked.
+- **Progression**: `StartVotingSession` is synchronous.
+
+### 3. Testing & Mocking Architecture
+- **Dual Mock Pattern**:
+    - **Global Mocks** (`mocks/`): For Services, used by Handlers.
+    - **Local Mocks** (`internal/<pkg>/mocks/`): For Repositories, used by Services (prevents cycles).
+- **Specialized Mocks**:
+    - `internal/progression`: Uses a hand-rolled `MockRepository`.
+    - `internal/crafting`: Uses shared mocks in `testing_utils_test.go`.
+- **Execution**: Tests in `internal/handler` and `internal/cooldown` **must** be run as a package (`go test ./...`) to resolve dependencies.
+
+### 4. Key Architectural Facts
+- **Error Handling**: `internal/handler` returns `text/plain` for validation errors and `application/json` for domain errors.
+- **Events**: `progression.target.set` tracks auto-selections.
+- **Database**: Migrations managed exclusively via `goose`.
+
 *Last updated: January 2026*
