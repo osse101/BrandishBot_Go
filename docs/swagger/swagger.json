@@ -193,6 +193,185 @@
                 }
             }
         },
+        "/api/v1/admin/simulate/capabilities": {
+            "get": {
+                "description": "Returns all available scenario capabilities for UI rendering",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "scenario"
+                ],
+                "summary": "Get scenario capabilities",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.CapabilitiesResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/simulate/run": {
+            "post": {
+                "description": "Executes a pre-built scenario by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "scenario"
+                ],
+                "summary": "Run a scenario",
+                "parameters": [
+                    {
+                        "description": "Run scenario request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.RunScenarioRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/scenario.ExecutionResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/simulate/run-custom": {
+            "post": {
+                "description": "Executes a custom scenario definition provided in the request",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "scenario"
+                ],
+                "summary": "Run a custom scenario",
+                "parameters": [
+                    {
+                        "description": "Custom scenario request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.RunCustomScenarioRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/scenario.ExecutionResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/simulate/scenario": {
+            "get": {
+                "description": "Returns details of a specific scenario by ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "scenario"
+                ],
+                "summary": "Get a specific scenario",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Scenario ID",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/scenario.Scenario"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/simulate/scenarios": {
+            "get": {
+                "description": "Returns all pre-built scenarios available for execution",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "scenario"
+                ],
+                "summary": "Get all scenarios",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ScenariosResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/harvest": {
             "post": {
                 "description": "Collect rewards that have accumulated since the last harvest",
@@ -2741,6 +2920,23 @@
                 }
             }
         },
+        "handler.CapabilitiesResponse": {
+            "type": "object",
+            "properties": {
+                "capabilities": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/scenario.CapabilityInfo"
+                    }
+                },
+                "features": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "handler.CraftingActionRequest": {
             "type": "object",
             "required": [
@@ -3003,6 +3199,44 @@
                 }
             }
         },
+        "handler.RunCustomScenarioRequest": {
+            "type": "object",
+            "properties": {
+                "parameters": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "scenario": {
+                    "$ref": "#/definitions/scenario.Scenario"
+                }
+            }
+        },
+        "handler.RunScenarioRequest": {
+            "type": "object",
+            "properties": {
+                "parameters": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "scenario_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "handler.ScenariosResponse": {
+            "type": "object",
+            "properties": {
+                "scenarios": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/scenario.ScenarioSummary"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
         "handler.SearchRequest": {
             "type": "object",
             "required": [
@@ -3195,6 +3429,345 @@
                 "username": {
                     "type": "string",
                     "maxLength": 100
+                }
+            }
+        },
+        "scenario.ActionInfo": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "$ref": "#/definitions/scenario.ActionType"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "example": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "name": {
+                    "type": "string"
+                },
+                "parameters": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/scenario.ParameterInfo"
+                    }
+                }
+            }
+        },
+        "scenario.ActionType": {
+            "type": "string",
+            "enum": [
+                "set_state",
+                "time_warp",
+                "inject_event",
+                "assert",
+                "execute_harvest",
+                "inject_quest",
+                "execute_quest",
+                "trigger_search",
+                "claim_reward"
+            ],
+            "x-enum-varnames": [
+                "ActionSetState",
+                "ActionTimeWarp",
+                "ActionInjectEvent",
+                "ActionAssert",
+                "ActionExecuteHarvest",
+                "ActionInjectQuest",
+                "ActionExecuteQuest",
+                "ActionTriggerSearch",
+                "ActionClaimReward"
+            ]
+        },
+        "scenario.Assertion": {
+            "type": "object",
+            "properties": {
+                "max": {
+                    "description": "For between assertions"
+                },
+                "min": {
+                    "description": "For between assertions"
+                },
+                "path": {
+                    "description": "JSONPath-like path to the value to check",
+                    "type": "string"
+                },
+                "reason": {
+                    "description": "Human-readable reason for the assertion",
+                    "type": "string"
+                },
+                "type": {
+                    "$ref": "#/definitions/scenario.AssertionType"
+                },
+                "value": {}
+            }
+        },
+        "scenario.AssertionResult": {
+            "type": "object",
+            "properties": {
+                "actual": {},
+                "error": {
+                    "type": "string"
+                },
+                "expected": {},
+                "passed": {
+                    "type": "boolean"
+                },
+                "path": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "type": {
+                    "$ref": "#/definitions/scenario.AssertionType"
+                }
+            }
+        },
+        "scenario.AssertionType": {
+            "type": "string",
+            "enum": [
+                "equals",
+                "greater_than",
+                "less_than",
+                "contains",
+                "not_empty",
+                "empty",
+                "true",
+                "false",
+                "between",
+                "error_contains"
+            ],
+            "x-enum-varnames": [
+                "AssertEquals",
+                "AssertGreaterThan",
+                "AssertLessThan",
+                "AssertContains",
+                "AssertNotEmpty",
+                "AssertEmpty",
+                "AssertTrue",
+                "AssertFalse",
+                "AssertBetween",
+                "AssertErrorContains"
+            ]
+        },
+        "scenario.CapabilityInfo": {
+            "type": "object",
+            "properties": {
+                "actions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/scenario.ActionInfo"
+                    }
+                },
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "type": {
+                    "$ref": "#/definitions/scenario.CapabilityType"
+                }
+            }
+        },
+        "scenario.CapabilityType": {
+            "type": "string",
+            "enum": [
+                "time_warp",
+                "event_injector",
+                "multi_user"
+            ],
+            "x-enum-varnames": [
+                "CapabilityTimeWarp",
+                "CapabilityEventInjector",
+                "CapabilityMultiUser"
+            ]
+        },
+        "scenario.ExecutionResult": {
+            "type": "object",
+            "properties": {
+                "completed_at": {
+                    "type": "string"
+                },
+                "duration_ms": {
+                    "type": "integer"
+                },
+                "error": {
+                    "type": "string"
+                },
+                "final_state": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "scenario_id": {
+                    "type": "string"
+                },
+                "scenario_name": {
+                    "type": "string"
+                },
+                "started_at": {
+                    "type": "string"
+                },
+                "steps": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/scenario.StepResult"
+                    }
+                },
+                "success": {
+                    "type": "boolean"
+                },
+                "user": {
+                    "$ref": "#/definitions/scenario.SimulatedUser"
+                }
+            }
+        },
+        "scenario.ParameterInfo": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "required": {
+                    "type": "boolean"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "scenario.Scenario": {
+            "type": "object",
+            "properties": {
+                "capabilities": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/scenario.CapabilityType"
+                    }
+                },
+                "description": {
+                    "type": "string"
+                },
+                "feature": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "steps": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/scenario.Step"
+                    }
+                }
+            }
+        },
+        "scenario.ScenarioSummary": {
+            "type": "object",
+            "properties": {
+                "capabilities": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/scenario.CapabilityType"
+                    }
+                },
+                "description": {
+                    "type": "string"
+                },
+                "feature": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "step_count": {
+                    "type": "integer"
+                }
+            }
+        },
+        "scenario.SimulatedUser": {
+            "type": "object",
+            "properties": {
+                "platform": {
+                    "type": "string"
+                },
+                "platform_id": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "scenario.Step": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "$ref": "#/definitions/scenario.ActionType"
+                },
+                "assertions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/scenario.Assertion"
+                    }
+                },
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "parameters": {
+                    "type": "object",
+                    "additionalProperties": true
+                }
+            }
+        },
+        "scenario.StepResult": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "$ref": "#/definitions/scenario.ActionType"
+                },
+                "assertions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/scenario.AssertionResult"
+                    }
+                },
+                "duration_ms": {
+                    "type": "integer"
+                },
+                "error": {
+                    "type": "string"
+                },
+                "output": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "step_index": {
+                    "type": "integer"
+                },
+                "step_name": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean"
                 }
             }
         },

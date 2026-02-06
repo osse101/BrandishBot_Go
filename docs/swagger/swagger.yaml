@@ -485,6 +485,17 @@ definitions:
       message:
         type: string
     type: object
+  handler.CapabilitiesResponse:
+    properties:
+      capabilities:
+        items:
+          $ref: '#/definitions/scenario.CapabilityInfo'
+        type: array
+      features:
+        items:
+          type: string
+        type: array
+    type: object
   handler.CraftingActionRequest:
     properties:
       item:
@@ -668,6 +679,31 @@ definitions:
       removed:
         type: integer
     type: object
+  handler.RunCustomScenarioRequest:
+    properties:
+      parameters:
+        additionalProperties: true
+        type: object
+      scenario:
+        $ref: '#/definitions/scenario.Scenario'
+    type: object
+  handler.RunScenarioRequest:
+    properties:
+      parameters:
+        additionalProperties: true
+        type: object
+      scenario_id:
+        type: string
+    type: object
+  handler.ScenariosResponse:
+    properties:
+      scenarios:
+        items:
+          $ref: '#/definitions/scenario.ScenarioSummary'
+        type: array
+      total:
+        type: integer
+    type: object
   handler.SearchRequest:
     properties:
       platform:
@@ -804,6 +840,244 @@ definitions:
     - platform
     - platform_id
     - username
+    type: object
+  scenario.ActionInfo:
+    properties:
+      action:
+        $ref: '#/definitions/scenario.ActionType'
+      description:
+        type: string
+      example:
+        additionalProperties: true
+        type: object
+      name:
+        type: string
+      parameters:
+        items:
+          $ref: '#/definitions/scenario.ParameterInfo'
+        type: array
+    type: object
+  scenario.ActionType:
+    enum:
+    - set_state
+    - time_warp
+    - inject_event
+    - assert
+    - execute_harvest
+    - inject_quest
+    - execute_quest
+    - trigger_search
+    - claim_reward
+    type: string
+    x-enum-varnames:
+    - ActionSetState
+    - ActionTimeWarp
+    - ActionInjectEvent
+    - ActionAssert
+    - ActionExecuteHarvest
+    - ActionInjectQuest
+    - ActionExecuteQuest
+    - ActionTriggerSearch
+    - ActionClaimReward
+  scenario.Assertion:
+    properties:
+      max:
+        description: For between assertions
+      min:
+        description: For between assertions
+      path:
+        description: JSONPath-like path to the value to check
+        type: string
+      reason:
+        description: Human-readable reason for the assertion
+        type: string
+      type:
+        $ref: '#/definitions/scenario.AssertionType'
+      value: {}
+    type: object
+  scenario.AssertionResult:
+    properties:
+      actual: {}
+      error:
+        type: string
+      expected: {}
+      passed:
+        type: boolean
+      path:
+        type: string
+      reason:
+        type: string
+      type:
+        $ref: '#/definitions/scenario.AssertionType'
+    type: object
+  scenario.AssertionType:
+    enum:
+    - equals
+    - greater_than
+    - less_than
+    - contains
+    - not_empty
+    - empty
+    - "true"
+    - "false"
+    - between
+    - error_contains
+    type: string
+    x-enum-varnames:
+    - AssertEquals
+    - AssertGreaterThan
+    - AssertLessThan
+    - AssertContains
+    - AssertNotEmpty
+    - AssertEmpty
+    - AssertTrue
+    - AssertFalse
+    - AssertBetween
+    - AssertErrorContains
+  scenario.CapabilityInfo:
+    properties:
+      actions:
+        items:
+          $ref: '#/definitions/scenario.ActionInfo'
+        type: array
+      description:
+        type: string
+      name:
+        type: string
+      type:
+        $ref: '#/definitions/scenario.CapabilityType'
+    type: object
+  scenario.CapabilityType:
+    enum:
+    - time_warp
+    - event_injector
+    - multi_user
+    type: string
+    x-enum-varnames:
+    - CapabilityTimeWarp
+    - CapabilityEventInjector
+    - CapabilityMultiUser
+  scenario.ExecutionResult:
+    properties:
+      completed_at:
+        type: string
+      duration_ms:
+        type: integer
+      error:
+        type: string
+      final_state:
+        additionalProperties: true
+        type: object
+      scenario_id:
+        type: string
+      scenario_name:
+        type: string
+      started_at:
+        type: string
+      steps:
+        items:
+          $ref: '#/definitions/scenario.StepResult'
+        type: array
+      success:
+        type: boolean
+      user:
+        $ref: '#/definitions/scenario.SimulatedUser'
+    type: object
+  scenario.ParameterInfo:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+      required:
+        type: boolean
+      type:
+        type: string
+    type: object
+  scenario.Scenario:
+    properties:
+      capabilities:
+        items:
+          $ref: '#/definitions/scenario.CapabilityType'
+        type: array
+      description:
+        type: string
+      feature:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      steps:
+        items:
+          $ref: '#/definitions/scenario.Step'
+        type: array
+    type: object
+  scenario.ScenarioSummary:
+    properties:
+      capabilities:
+        items:
+          $ref: '#/definitions/scenario.CapabilityType'
+        type: array
+      description:
+        type: string
+      feature:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      step_count:
+        type: integer
+    type: object
+  scenario.SimulatedUser:
+    properties:
+      platform:
+        type: string
+      platform_id:
+        type: string
+      user_id:
+        type: string
+      username:
+        type: string
+    type: object
+  scenario.Step:
+    properties:
+      action:
+        $ref: '#/definitions/scenario.ActionType'
+      assertions:
+        items:
+          $ref: '#/definitions/scenario.Assertion'
+        type: array
+      description:
+        type: string
+      name:
+        type: string
+      parameters:
+        additionalProperties: true
+        type: object
+    type: object
+  scenario.StepResult:
+    properties:
+      action:
+        $ref: '#/definitions/scenario.ActionType'
+      assertions:
+        items:
+          $ref: '#/definitions/scenario.AssertionResult'
+        type: array
+      duration_ms:
+        type: integer
+      error:
+        type: string
+      output:
+        additionalProperties: true
+        type: object
+      step_index:
+        type: integer
+      step_name:
+        type: string
+      success:
+        type: boolean
     type: object
   user.CacheStats:
     properties:
@@ -958,6 +1232,123 @@ paths:
       summary: Get user cache stats
       tags:
       - admin
+  /api/v1/admin/simulate/capabilities:
+    get:
+      description: Returns all available scenario capabilities for UI rendering
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.CapabilitiesResponse'
+      summary: Get scenario capabilities
+      tags:
+      - scenario
+  /api/v1/admin/simulate/run:
+    post:
+      consumes:
+      - application/json
+      description: Executes a pre-built scenario by ID
+      parameters:
+      - description: Run scenario request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.RunScenarioRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/scenario.ExecutionResult'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Run a scenario
+      tags:
+      - scenario
+  /api/v1/admin/simulate/run-custom:
+    post:
+      consumes:
+      - application/json
+      description: Executes a custom scenario definition provided in the request
+      parameters:
+      - description: Custom scenario request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.RunCustomScenarioRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/scenario.ExecutionResult'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Run a custom scenario
+      tags:
+      - scenario
+  /api/v1/admin/simulate/scenario:
+    get:
+      description: Returns details of a specific scenario by ID
+      parameters:
+      - description: Scenario ID
+        in: query
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/scenario.Scenario'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Get a specific scenario
+      tags:
+      - scenario
+  /api/v1/admin/simulate/scenarios:
+    get:
+      description: Returns all pre-built scenarios available for execution
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.ScenariosResponse'
+      summary: Get all scenarios
+      tags:
+      - scenario
   /api/v1/harvest:
     post:
       consumes:

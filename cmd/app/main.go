@@ -29,6 +29,8 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/prediction"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 	"github.com/osse101/BrandishBot_Go/internal/quest"
+	"github.com/osse101/BrandishBot_Go/internal/scenario"
+	"github.com/osse101/BrandishBot_Go/internal/scenario/providers"
 	"github.com/osse101/BrandishBot_Go/internal/scheduler"
 	"github.com/osse101/BrandishBot_Go/internal/server"
 	"github.com/osse101/BrandishBot_Go/internal/sse"
@@ -281,7 +283,20 @@ func main() {
 		slog.Info("Streamer.bot WebSocket client initialized", "url", cfg.StreamerbotWebhookURL)
 	}
 
-	srv := server.NewServer(cfg.Port, cfg.APIKey, cfg.TrustedProxies, dbPool, userService, economyService, craftingService, statsService, progressionService, gambleService, jobService, linkingService, harvestService, predictionService, expeditionService, questService, namingResolver, eventBus, sseHub, repos.User)
+	// Initialize Scenario Engine for admin testing
+	scenarioRegistry := scenario.NewRegistry()
+
+	// Register scenario providers
+	harvestProvider := providers.NewHarvestProvider(dbPool, harvestService, repos.Harvest, repos.User)
+	scenarioRegistry.Register(harvestProvider)
+
+	questProvider := providers.NewQuestProvider(dbPool, questService, repos.Quest, repos.User)
+	scenarioRegistry.Register(questProvider)
+
+	scenarioEngine := scenario.NewEngine(scenarioRegistry)
+	slog.Info("Scenario engine initialized", "features", scenarioRegistry.Features())
+
+	srv := server.NewServer(cfg.Port, cfg.APIKey, cfg.TrustedProxies, dbPool, userService, economyService, craftingService, statsService, progressionService, gambleService, jobService, linkingService, harvestService, predictionService, expeditionService, questService, namingResolver, eventBus, sseHub, repos.User, scenarioEngine)
 
 	// Run server in a goroutine
 	go func() {

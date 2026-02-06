@@ -31,6 +31,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 	"github.com/osse101/BrandishBot_Go/internal/quest"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
+	"github.com/osse101/BrandishBot_Go/internal/scenario"
 	"github.com/osse101/BrandishBot_Go/internal/sse"
 	"github.com/osse101/BrandishBot_Go/internal/stats"
 	"github.com/osse101/BrandishBot_Go/internal/user"
@@ -53,10 +54,11 @@ type Server struct {
 	questService       quest.Service
 	namingResolver     naming.Resolver
 	sseHub             *sse.Hub
+	scenarioEngine     *scenario.Engine
 }
 
 // NewServer creates a new Server instance
-func NewServer(port int, apiKey string, trustedProxies []string, dbPool database.Pool, userService user.Service, economyService economy.Service, craftingService crafting.Service, statsService stats.Service, progressionService progression.Service, gambleService gamble.Service, jobService job.Service, linkingService linking.Service, harvestService harvest.Service, predictionService prediction.Service, expeditionService expedition.Service, questService quest.Service, namingResolver naming.Resolver, eventBus event.Bus, sseHub *sse.Hub, userRepo repository.User) *Server {
+func NewServer(port int, apiKey string, trustedProxies []string, dbPool database.Pool, userService user.Service, economyService economy.Service, craftingService crafting.Service, statsService stats.Service, progressionService progression.Service, gambleService gamble.Service, jobService job.Service, linkingService linking.Service, harvestService harvest.Service, predictionService prediction.Service, expeditionService expedition.Service, questService quest.Service, namingResolver naming.Resolver, eventBus event.Bus, sseHub *sse.Hub, userRepo repository.User, scenarioEngine *scenario.Engine) *Server {
 	r := chi.NewRouter()
 
 	// Middleware stack
@@ -240,6 +242,18 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 			r.Route("/cache", func(r chi.Router) {
 				r.Get("/stats", adminCacheHandler.HandleGetCacheStats)
 			})
+
+			// Admin scenario simulation routes
+			if scenarioEngine != nil {
+				scenarioHandler := handler.NewScenarioHandler(scenarioEngine)
+				r.Route("/simulate", func(r chi.Router) {
+					r.Get("/capabilities", scenarioHandler.HandleGetCapabilities())
+					r.Get("/scenarios", scenarioHandler.HandleGetScenarios())
+					r.Get("/scenario", scenarioHandler.HandleGetScenario())
+					r.Post("/run", scenarioHandler.HandleRunScenario())
+					r.Post("/run-custom", scenarioHandler.HandleRunCustomScenario())
+				})
+			}
 		})
 	})
 
@@ -267,6 +281,7 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 		questService:       questService,
 		namingResolver:     namingResolver,
 		sseHub:             sseHub,
+		scenarioEngine:     scenarioEngine,
 	}
 }
 
