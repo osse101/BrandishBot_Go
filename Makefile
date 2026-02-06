@@ -151,8 +151,9 @@ lint-fix:
 
 install-hooks:
 	@echo "Installing git hooks..."
-	@chmod +x scripts/pre-commit.sh
-	@ln -sf ../../scripts/pre-commit.sh .git/hooks/pre-commit
+	@echo "#!/bin/sh" > .git/hooks/pre-commit
+	@echo "go run ./cmd/devtool pre-commit" >> .git/hooks/pre-commit
+	@chmod +x .git/hooks/pre-commit
 	@echo "✓ Git hooks installed"
 
 # Benchmark commands
