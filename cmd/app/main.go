@@ -28,6 +28,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/naming"
 	"github.com/osse101/BrandishBot_Go/internal/prediction"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
+	"github.com/osse101/BrandishBot_Go/internal/quest"
 	"github.com/osse101/BrandishBot_Go/internal/scheduler"
 	"github.com/osse101/BrandishBot_Go/internal/server"
 	"github.com/osse101/BrandishBot_Go/internal/sse"
@@ -186,13 +187,21 @@ func main() {
 	}, progressionService)
 	slog.Info("Cooldown service initialized", "dev_mode", cfg.DevMode)
 
+	// Initialize Quest Service (needed by economy service)
+	questService, err := quest.NewService(repos.Quest, jobService, resilientPublisher)
+	if err != nil {
+		slog.Error("Failed to initialize quest service", "error", err)
+		os.Exit(1)
+	}
+	slog.Info("Quest service initialized")
+
 	// Initialize services that depend on naming resolver
-	economyService := economy.NewService(repos.Economy, jobService, namingResolver, progressionService)
+	economyService := economy.NewService(repos.Economy, jobService, namingResolver, progressionService, questService)
 	gambleService := gamble.NewService(repos.Gamble, eventBus, resilientPublisher, lootboxSvc, statsService, cfg.GambleJoinDuration, jobService, progressionService, namingResolver, nil)
-	craftingService := crafting.NewService(repos.Crafting, jobService, statsService, namingResolver, progressionService)
+	craftingService := crafting.NewService(repos.Crafting, jobService, statsService, namingResolver, progressionService, questService)
 
 	// Initialize services that depend on job service and naming resolver
-	userService := user.NewService(repos.User, repos.Trap, statsService, jobService, lootboxSvc, namingResolver, cooldownSvc, eventBus, cfg.DevMode)
+	userService := user.NewService(repos.User, repos.Trap, statsService, jobService, lootboxSvc, namingResolver, cooldownSvc, eventBus, questService, cfg.DevMode)
 
 	// Initialize Harvest Service
 	harvestService := harvest.NewService(repos.Harvest, repos.User, progressionService, jobService)
@@ -229,6 +238,11 @@ func main() {
 	dailyResetWorker := worker.NewDailyResetWorker(jobService, resilientPublisher)
 	dailyResetWorker.Start()
 	slog.Info("Daily reset worker initialized")
+
+	// Initialize Weekly Reset Worker (runs Monday 00:00 UTC)
+	weeklyResetWorker := worker.NewWeeklyResetWorker(questService)
+	weeklyResetWorker.Start()
+	slog.Info("Weekly reset worker initialized")
 
 	// Initialize Linking service
 	linkingService := linking.NewService(repos.Linking, userService)
@@ -267,7 +281,7 @@ func main() {
 		slog.Info("Streamer.bot WebSocket client initialized", "url", cfg.StreamerbotWebhookURL)
 	}
 
-	srv := server.NewServer(cfg.Port, cfg.APIKey, cfg.TrustedProxies, dbPool, userService, economyService, craftingService, statsService, progressionService, gambleService, jobService, linkingService, harvestService, predictionService, expeditionService, namingResolver, eventBus, sseHub, repos.User)
+	srv := server.NewServer(cfg.Port, cfg.APIKey, cfg.TrustedProxies, dbPool, userService, economyService, craftingService, statsService, progressionService, gambleService, jobService, linkingService, harvestService, predictionService, expeditionService, questService, namingResolver, eventBus, sseHub, repos.User)
 
 	// Run server in a goroutine
 	go func() {
@@ -296,9 +310,11 @@ func main() {
 		CraftingService:    craftingService,
 		GambleService:      gambleService,
 		PredictionService:  predictionService,
+		QuestService:       questService,
 		GambleWorker:       gambleWorker,
 		ExpeditionWorker:   expeditionWorker,
 		DailyResetWorker:   dailyResetWorker,
+		WeeklyResetWorker:  weeklyResetWorker,
 		ResilientPublisher: resilientPublisher,
 	})
 }

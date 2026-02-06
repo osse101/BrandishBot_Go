@@ -14,7 +14,7 @@ import (
 func TestBuyItem_ZeroPrice(t *testing.T) {
 	// ARRANGE
 	mockRepo := &MockRepository{}
-	service := NewService(mockRepo, nil, nil, nil)
+	service := NewService(mockRepo, nil, nil, nil, nil)
 	ctx := context.Background()
 
 	user := createTestUser()

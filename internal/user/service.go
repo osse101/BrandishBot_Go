@@ -18,6 +18,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/lootbox"
 	"github.com/osse101/BrandishBot_Go/internal/naming"
+	"github.com/osse101/BrandishBot_Go/internal/quest"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/osse101/BrandishBot_Go/internal/stats"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
@@ -71,6 +72,8 @@ type service struct {
 
 	activeChatterTracker *ActiveChatterTracker // Tracks users eligible for random targeting
 
+	questService quest.Service
+
 	rnd func() float64 // For RNG - allows deterministic testing
 }
 
@@ -112,7 +115,7 @@ func loadCacheConfig() CacheConfig {
 }
 
 // NewService creates a new user service
-func NewService(repo repository.User, trapRepo repository.TrapRepository, statsService stats.Service, jobService JobService, lootboxService lootbox.Service, namingResolver naming.Resolver, cooldownService cooldown.Service, eventBus event.Bus, devMode bool) Service {
+func NewService(repo repository.User, trapRepo repository.TrapRepository, statsService stats.Service, jobService JobService, lootboxService lootbox.Service, namingResolver naming.Resolver, cooldownService cooldown.Service, eventBus event.Bus, questService quest.Service, devMode bool) Service {
 	return &service{
 		repo:                 repo,
 		trapRepo:             trapRepo,
@@ -130,6 +133,7 @@ func NewService(repo repository.User, trapRepo repository.TrapRepository, statsS
 		itemIDToName:         make(map[int]string),
 		userCache:            newUserCache(loadCacheConfig()),
 		activeChatterTracker: NewActiveChatterTracker(),
+		questService:         questService,
 		rnd:                  utils.RandomFloat,
 	}
 }
@@ -1010,9 +1014,17 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 	})
 
 	if err != nil {
-		// Just return the error - it might be a cooldown error or something else.
-		// The error mapper in the handler layer will convert it to a user-friendly message.
 		return "", err
+	}
+
+	// Track quest progress for search (async, fire-and-forget)
+	if s.questService != nil {
+		go func() {
+			// Use background context for async task to outlive request
+			if err := s.questService.OnSearch(context.Background(), user.ID); err != nil {
+				slog.Warn("Failed to track quest progress for search", "error", err, "user_id", user.ID)
+			}
+		}()
 	}
 
 	log.Info("Search completed", "username", username, "result", resultMessage)

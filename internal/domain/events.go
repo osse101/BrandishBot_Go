@@ -47,4 +47,13 @@ const (
 
 	// EventTypePredictionProcessed is published when a prediction outcome is processed
 	EventTypePredictionProcessed = "prediction.processed"
+
+	// Quest events
+	EventTypeWeeklyQuestReset     = "quest.weekly_reset"
+	EventTypeQuestProgressUpdated = "quest.progress_updated"
+	EventTypeQuestCompleted       = "quest.completed"
+	EventTypeQuestClaimed         = "quest.claimed"
+
+	// Economy events
+	EventTypeWeeklySaleActive = "economy.weekly_sale_active"
 )

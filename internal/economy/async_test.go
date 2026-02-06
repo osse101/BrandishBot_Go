@@ -19,7 +19,7 @@ func TestBuyItem_AwardsXP(t *testing.T) {
 	// ARRANGE
 	mockRepo := &MockRepository{}
 	mockJobService := &MockJobService{}
-	service := NewService(mockRepo, mockJobService, nil, nil)
+	service := NewService(mockRepo, mockJobService, nil, nil, nil)
 	ctx := context.Background()
 
 	user := createTestUser()
@@ -29,14 +29,14 @@ func TestBuyItem_AwardsXP(t *testing.T) {
 	inventory := createInventoryWithMoney(500)
 
 	// Mock DB interactions
-	mockRepo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "").Return(user, nil)
-	mockRepo.On("GetItemByName", ctx, domain.PublicNameLootbox).Return(item, nil)
-	mockRepo.On("IsItemBuyable", ctx, domain.PublicNameLootbox).Return(true, nil)
-	mockRepo.On("GetItemByName", ctx, domain.ItemMoney).Return(moneyItem, nil)
+	mockRepo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "").Return(user, nil, nil)
+	mockRepo.On("GetItemByName", ctx, domain.PublicNameLootbox).Return(item, nil, nil)
+	mockRepo.On("IsItemBuyable", ctx, domain.PublicNameLootbox).Return(true, nil, nil)
+	mockRepo.On("GetItemByName", ctx, domain.ItemMoney).Return(moneyItem, nil, nil)
 
 	mockTx := &MockTx{}
-	mockRepo.On("BeginTx", ctx).Return(mockTx, nil)
-	mockTx.On("GetInventory", ctx, user.ID).Return(inventory, nil)
+	mockRepo.On("BeginTx", ctx).Return(mockTx, nil, nil)
+	mockTx.On("GetInventory", ctx, user.ID).Return(inventory, nil, nil)
 	mockTx.On("UpdateInventory", ctx, user.ID, mock.Anything).Return(nil)
 	mockTx.On("Commit", ctx).Return(nil)
 	mockTx.On("Rollback", ctx).Return(nil)
@@ -48,7 +48,7 @@ func TestBuyItem_AwardsXP(t *testing.T) {
 		return m[MetadataKeyAction] == ActionTypeBuy &&
 			m[MetadataKeyItemName] == domain.PublicNameLootbox &&
 			m[MetadataKeyValue] == itemPrice
-	})).Return(&domain.XPAwardResult{LeveledUp: false}, nil)
+	})).Return(&domain.XPAwardResult{LeveledUp: false}, nil, nil)
 
 	// ACT
 	purchased, err := service.BuyItem(ctx, domain.PlatformTwitch, "", "testuser", domain.PublicNameLootbox, 1)
@@ -70,7 +70,7 @@ func TestSellItem_AwardsXP(t *testing.T) {
 	// ARRANGE
 	mockRepo := &MockRepository{}
 	mockJobService := &MockJobService{}
-	service := NewService(mockRepo, mockJobService, nil, nil)
+	service := NewService(mockRepo, mockJobService, nil, nil, nil)
 	ctx := context.Background()
 
 	user := createTestUser()
@@ -80,13 +80,13 @@ func TestSellItem_AwardsXP(t *testing.T) {
 	inventory := createInventoryWithItem(10, 5)
 
 	// Mock DB interactions
-	mockRepo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "").Return(user, nil)
-	mockRepo.On("GetItemByName", ctx, domain.PublicNameLootbox).Return(item, nil)
-	mockRepo.On("GetItemByName", ctx, domain.ItemMoney).Return(moneyItem, nil)
+	mockRepo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "").Return(user, nil, nil)
+	mockRepo.On("GetItemByName", ctx, domain.PublicNameLootbox).Return(item, nil, nil)
+	mockRepo.On("GetItemByName", ctx, domain.ItemMoney).Return(moneyItem, nil, nil)
 
 	mockTx := &MockTx{}
-	mockRepo.On("BeginTx", ctx).Return(mockTx, nil)
-	mockTx.On("GetInventory", ctx, user.ID).Return(inventory, nil)
+	mockRepo.On("BeginTx", ctx).Return(mockTx, nil, nil)
+	mockTx.On("GetInventory", ctx, user.ID).Return(inventory, nil, nil)
 	mockTx.On("UpdateInventory", ctx, user.ID, mock.Anything).Return(nil)
 	mockTx.On("Commit", ctx).Return(nil)
 	mockTx.On("Rollback", ctx).Return(nil)
@@ -101,7 +101,7 @@ func TestSellItem_AwardsXP(t *testing.T) {
 		return m[MetadataKeyAction] == ActionTypeSell &&
 			m[MetadataKeyItemName] == domain.PublicNameLootbox &&
 			m[MetadataKeyValue] == moneyGained
-	})).Return(&domain.XPAwardResult{LeveledUp: true, NewLevel: 5}, nil)
+	})).Return(&domain.XPAwardResult{LeveledUp: true, NewLevel: 5}, nil, nil)
 
 	// ACT
 	_, _, err := service.SellItem(ctx, domain.PlatformTwitch, "", "testuser", domain.PublicNameLootbox, 1)
@@ -122,7 +122,7 @@ func TestShutdown_WaitsForTasks(t *testing.T) {
 	// ARRANGE
 	mockRepo := &MockRepository{}
 	mockJobService := &MockJobService{}
-	service := NewService(mockRepo, mockJobService, nil, nil)
+	service := NewService(mockRepo, mockJobService, nil, nil, nil)
 	ctx := context.Background()
 
 	user := createTestUser()
@@ -132,14 +132,14 @@ func TestShutdown_WaitsForTasks(t *testing.T) {
 	inventory := createInventoryWithMoney(500)
 
 	// Mock DB interactions
-	mockRepo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "").Return(user, nil)
-	mockRepo.On("GetItemByName", ctx, domain.PublicNameLootbox).Return(item, nil)
-	mockRepo.On("IsItemBuyable", ctx, domain.PublicNameLootbox).Return(true, nil)
-	mockRepo.On("GetItemByName", ctx, domain.ItemMoney).Return(moneyItem, nil)
+	mockRepo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "").Return(user, nil, nil)
+	mockRepo.On("GetItemByName", ctx, domain.PublicNameLootbox).Return(item, nil, nil)
+	mockRepo.On("IsItemBuyable", ctx, domain.PublicNameLootbox).Return(true, nil, nil)
+	mockRepo.On("GetItemByName", ctx, domain.ItemMoney).Return(moneyItem, nil, nil)
 
 	mockTx := &MockTx{}
-	mockRepo.On("BeginTx", ctx).Return(mockTx, nil)
-	mockTx.On("GetInventory", ctx, user.ID).Return(inventory, nil)
+	mockRepo.On("BeginTx", ctx).Return(mockTx, nil, nil)
+	mockTx.On("GetInventory", ctx, user.ID).Return(inventory, nil, nil)
 	mockTx.On("UpdateInventory", ctx, user.ID, mock.Anything).Return(nil)
 	mockTx.On("Commit", ctx).Return(nil)
 	mockTx.On("Rollback", ctx).Return(nil)
@@ -154,7 +154,7 @@ func TestShutdown_WaitsForTasks(t *testing.T) {
 			close(jobStarted) // Signal job started
 			<-jobBlock        // Wait until allowed to finish
 		}).
-		Return(&domain.XPAwardResult{LeveledUp: false}, nil)
+		Return(&domain.XPAwardResult{LeveledUp: false}, nil, nil)
 
 	// ACT
 	// 1. Trigger the async job
@@ -209,7 +209,7 @@ func TestShutdown_Timeout(t *testing.T) {
 	// However, we can use a "stuck" job to simulate this.
 	mockJobService := &MockJobService{}
 
-	service := NewService(mockRepo, mockJobService, nil, nil)
+	service := NewService(mockRepo, mockJobService, nil, nil, nil)
 	ctx := context.Background()
 
 	user := createTestUser()
@@ -219,14 +219,14 @@ func TestShutdown_Timeout(t *testing.T) {
 	inventory := createInventoryWithMoney(500)
 
 	// Mock DB interactions for BuyItem
-	mockRepo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "").Return(user, nil)
-	mockRepo.On("GetItemByName", ctx, domain.PublicNameLootbox).Return(item, nil)
-	mockRepo.On("IsItemBuyable", ctx, domain.PublicNameLootbox).Return(true, nil)
-	mockRepo.On("GetItemByName", ctx, domain.ItemMoney).Return(moneyItem, nil)
+	mockRepo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "").Return(user, nil, nil)
+	mockRepo.On("GetItemByName", ctx, domain.PublicNameLootbox).Return(item, nil, nil)
+	mockRepo.On("IsItemBuyable", ctx, domain.PublicNameLootbox).Return(true, nil, nil)
+	mockRepo.On("GetItemByName", ctx, domain.ItemMoney).Return(moneyItem, nil, nil)
 
 	mockTx := &MockTx{}
-	mockRepo.On("BeginTx", ctx).Return(mockTx, nil)
-	mockTx.On("GetInventory", ctx, user.ID).Return(inventory, nil)
+	mockRepo.On("BeginTx", ctx).Return(mockTx, nil, nil)
+	mockTx.On("GetInventory", ctx, user.ID).Return(inventory, nil, nil)
 	mockTx.On("UpdateInventory", ctx, user.ID, mock.Anything).Return(nil)
 	mockTx.On("Commit", ctx).Return(nil)
 	mockTx.On("Rollback", ctx).Return(nil)
@@ -239,7 +239,7 @@ func TestShutdown_Timeout(t *testing.T) {
 		Run(func(args mock.Arguments) {
 			<-done // Block until test finishes
 		}).
-		Return(nil, nil)
+		Return(nil, nil, nil)
 
 	// Trigger the stuck job
 	_, err := service.BuyItem(ctx, domain.PlatformTwitch, "", "testuser", domain.PublicNameLootbox, 1)
@@ -262,7 +262,7 @@ func TestService_ConcurrentAccess(t *testing.T) {
 	// ARRANGE
 	mockRepo := &MockRepository{}
 	// No job service to keep it simpler/faster
-	service := NewService(mockRepo, nil, nil, nil)
+	service := NewService(mockRepo, nil, nil, nil, nil)
 	ctx := context.Background()
 
 	// We'll simulate concurrent reads (GetSellablePrices) and writes (BuyItem)
@@ -273,7 +273,7 @@ func TestService_ConcurrentAccess(t *testing.T) {
 	var wg sync.WaitGroup
 	concurrency := 10
 
-	mockRepo.On("GetSellablePrices", mock.Anything).Return([]domain.Item{}, nil)
+	mockRepo.On("GetSellablePrices", mock.Anything).Return([]domain.Item{}, nil, nil)
 
 	// ACT
 	for i := 0; i < concurrency; i++ {

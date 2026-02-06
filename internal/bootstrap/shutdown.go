@@ -10,6 +10,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/gamble"
 	"github.com/osse101/BrandishBot_Go/internal/prediction"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
+	"github.com/osse101/BrandishBot_Go/internal/quest"
 	"github.com/osse101/BrandishBot_Go/internal/server"
 	"github.com/osse101/BrandishBot_Go/internal/user"
 	"github.com/osse101/BrandishBot_Go/internal/worker"
@@ -24,9 +25,11 @@ type ShutdownComponents struct {
 	CraftingService    crafting.Service
 	GambleService      gamble.Service
 	PredictionService  prediction.Service
+	QuestService       quest.Service
 	GambleWorker       *worker.GambleWorker
 	ExpeditionWorker   *worker.ExpeditionWorker
 	DailyResetWorker   *worker.DailyResetWorker
+	WeeklyResetWorker  *worker.WeeklyResetWorker
 	ResilientPublisher *event.ResilientPublisher
 }
 
@@ -64,6 +67,12 @@ func GracefulShutdown(ctx context.Context, components ShutdownComponents) {
 		}
 	}
 
+	if components.WeeklyResetWorker != nil {
+		if err := components.WeeklyResetWorker.Shutdown(ctx); err != nil {
+			slog.Error("Weekly reset worker shutdown failed", "error", err)
+		}
+	}
+
 	// Shutdown services (order doesn't matter, all run independently)
 	shutdownService(ctx, ServiceNameProgression, components.ProgressionService)
 	shutdownService(ctx, ServiceNameUser, components.UserService)
@@ -71,6 +80,7 @@ func GracefulShutdown(ctx context.Context, components ShutdownComponents) {
 	shutdownService(ctx, ServiceNameCrafting, components.CraftingService)
 	shutdownService(ctx, ServiceNameGamble, components.GambleService)
 	shutdownService(ctx, "prediction", components.PredictionService)
+	shutdownService(ctx, "quest", components.QuestService)
 
 	// Shutdown resilient publisher last to flush pending events
 	slog.Info(LogMsgShuttingDownEventPublisher)

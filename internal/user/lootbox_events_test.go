@@ -118,7 +118,7 @@ func TestProcessLootboxDrops_JackpotEvents(t *testing.T) {
 		mockLootbox := new(MockLootboxServiceForLootboxTests)
 		mockNaming := new(MockNamingResolverForLootboxTests)
 		mockRepo := NewFakeRepository()
-		svc := NewService(mockRepo, mockRepo, mockStats, nil, mockLootbox, mockNaming, nil, nil, false).(*service)
+		svc := NewService(mockRepo, mockRepo, mockStats, nil, mockLootbox, mockNaming, nil, nil, nil, false).(*service)
 		inventory := &domain.Inventory{Slots: []domain.InventorySlot{}}
 
 		// Prepare drops
@@ -162,7 +162,7 @@ func TestProcessLootboxDrops_JackpotEvents(t *testing.T) {
 		mockLootbox := new(MockLootboxServiceForLootboxTests)
 		mockNaming := new(MockNamingResolverForLootboxTests)
 		mockRepo := NewFakeRepository()
-		svc := NewService(mockRepo, mockRepo, mockStats, nil, mockLootbox, mockNaming, nil, nil, false).(*service)
+		svc := NewService(mockRepo, mockRepo, mockStats, nil, mockLootbox, mockNaming, nil, nil, nil, false).(*service)
 		inventory := &domain.Inventory{Slots: []domain.InventorySlot{}}
 
 		// Prepare drops
@@ -206,7 +206,7 @@ func TestProcessLootboxDrops_JackpotEvents(t *testing.T) {
 		mockLootbox := new(MockLootboxServiceForLootboxTests)
 		mockNaming := new(MockNamingResolverForLootboxTests)
 		mockRepo := NewFakeRepository()
-		svc := NewService(mockRepo, mockRepo, mockStats, nil, mockLootbox, mockNaming, nil, nil, false).(*service)
+		svc := NewService(mockRepo, mockRepo, mockStats, nil, mockLootbox, mockNaming, nil, nil, nil, false).(*service)
 		inventory := &domain.Inventory{Slots: []domain.InventorySlot{}}
 
 		// Prepare drops
@@ -271,7 +271,7 @@ func TestProcessLootboxDrops_BulkFeedbackThreshold(t *testing.T) {
 		mockStats := new(MockStatsServiceForLootboxTests)
 		mockNaming := new(MockNamingResolverForLootboxTests)
 		mockRepo := NewFakeRepository()
-		svc := NewService(mockRepo, mockRepo, mockStats, nil, nil, mockNaming, nil, nil, false).(*service)
+		svc := NewService(mockRepo, mockRepo, mockStats, nil, nil, mockNaming, nil, nil, nil, false).(*service)
 		inventory := &domain.Inventory{Slots: []domain.InventorySlot{}}
 
 		mockNaming.On("GetDisplayName", "common_rock", domain.ShineCommon).Return("Rock")
@@ -288,7 +288,7 @@ func TestProcessLootboxDrops_BulkFeedbackThreshold(t *testing.T) {
 		mockStats := new(MockStatsServiceForLootboxTests)
 		mockNaming := new(MockNamingResolverForLootboxTests)
 		mockRepo := NewFakeRepository()
-		svc := NewService(mockRepo, mockRepo, mockStats, nil, nil, mockNaming, nil, nil, false).(*service)
+		svc := NewService(mockRepo, mockRepo, mockStats, nil, nil, mockNaming, nil, nil, nil, false).(*service)
 		inventory := &domain.Inventory{Slots: []domain.InventorySlot{}}
 
 		mockNaming.On("GetDisplayName", "common_rock", domain.ShineCommon).Return("Rock")
@@ -305,7 +305,7 @@ func TestProcessLootboxDrops_BulkFeedbackThreshold(t *testing.T) {
 		mockStats := new(MockStatsServiceForLootboxTests)
 		mockNaming := new(MockNamingResolverForLootboxTests)
 		mockRepo := NewFakeRepository()
-		svc := NewService(mockRepo, mockRepo, mockStats, nil, nil, mockNaming, nil, nil, false).(*service)
+		svc := NewService(mockRepo, mockRepo, mockStats, nil, nil, mockNaming, nil, nil, nil, false).(*service)
 		inventory := &domain.Inventory{Slots: []domain.InventorySlot{}}
 
 		mockNaming.On("GetDisplayName", "common_rock", domain.ShineCommon).Return("Rock")
@@ -322,7 +322,7 @@ func TestProcessLootboxDrops_BulkFeedbackThreshold(t *testing.T) {
 		mockStats := new(MockStatsServiceForLootboxTests)
 		mockNaming := new(MockNamingResolverForLootboxTests)
 		mockRepo := NewFakeRepository()
-		svc := NewService(mockRepo, mockRepo, mockStats, nil, nil, mockNaming, nil, nil, false).(*service)
+		svc := NewService(mockRepo, mockRepo, mockStats, nil, nil, mockNaming, nil, nil, nil, false).(*service)
 		inventory := &domain.Inventory{Slots: []domain.InventorySlot{}}
 
 		legendaryDrops := []lootbox.DroppedItem{
@@ -351,7 +351,7 @@ func TestProcessLootboxDrops_BulkFeedbackThreshold(t *testing.T) {
 		mockStats := new(MockStatsServiceForLootboxTests)
 		mockNaming := new(MockNamingResolverForLootboxTests)
 		mockRepo := NewFakeRepository()
-		svc := NewService(mockRepo, mockRepo, mockStats, nil, nil, mockNaming, nil, nil, false).(*service)
+		svc := NewService(mockRepo, mockRepo, mockStats, nil, nil, mockNaming, nil, nil, nil, false).(*service)
 		inventory := &domain.Inventory{Slots: []domain.InventorySlot{}}
 
 		epicDrops := []lootbox.DroppedItem{

@@ -17,6 +17,7 @@ type Querier interface {
 	AddExpeditionParticipant(ctx context.Context, arg AddExpeditionParticipantParams) error
 	AddVotingOption(ctx context.Context, arg AddVotingOptionParams) error
 	AssignItemTag(ctx context.Context, arg AssignItemTagParams) error
+	ClaimQuestReward(ctx context.Context, arg ClaimQuestRewardParams) error
 	CleanupExpiredTokens(ctx context.Context) error
 	CleanupOldEvents(ctx context.Context, days int32) (int64, error)
 	CleanupStaleTraps(ctx context.Context, dollar_1 interface{}) error
@@ -32,6 +33,7 @@ type Querier interface {
 	ClearUnlockProgressForNode(ctx context.Context, nodeID pgtype.Int4) error
 	ClearUnlocksExceptRoot(ctx context.Context) error
 	CompleteExpedition(ctx context.Context, id uuid.UUID) error
+	CompleteQuest(ctx context.Context, arg CompleteQuestParams) error
 	CompleteUnlock(ctx context.Context, id int32) error
 	CountTotalUnlockedNodes(ctx context.Context) (int32, error)
 	CountUnlockedNodesBelowTier(ctx context.Context, tier int32) (int32, error)
@@ -39,11 +41,15 @@ type Querier interface {
 	CreateExpedition(ctx context.Context, arg CreateExpeditionParams) error
 	CreateGamble(ctx context.Context, arg CreateGambleParams) error
 	CreateHarvestState(ctx context.Context, dollar_1 uuid.UUID) (HarvestState, error)
+	CreateQuest(ctx context.Context, arg CreateQuestParams) (Quest, error)
+	CreateQuestProgress(ctx context.Context, arg CreateQuestProgressParams) (QuestProgress, error)
+	CreateQuestProgressForUser(ctx context.Context, arg CreateQuestProgressForUserParams) (QuestProgress, error)
 	CreateToken(ctx context.Context, arg CreateTokenParams) error
 	CreateTrap(ctx context.Context, arg CreateTrapParams) (UserTrap, error)
 	CreateUnlockProgress(ctx context.Context) (int32, error)
 	CreateUser(ctx context.Context, username string) (uuid.UUID, error)
 	CreateVotingSession(ctx context.Context) (int32, error)
+	DeactivateAllQuests(ctx context.Context) error
 	DeleteInventory(ctx context.Context, userID uuid.UUID) error
 	DeleteUser(ctx context.Context, userID uuid.UUID) error
 	DeleteUserPlatformLink(ctx context.Context, arg DeleteUserPlatformLinkParams) error
@@ -54,6 +60,8 @@ type Querier interface {
 	GetActiveExpedition(ctx context.Context) (Expedition, error)
 	GetActiveGamble(ctx context.Context) (Gamble, error)
 	GetActiveOrFrozenSession(ctx context.Context) (GetActiveOrFrozenSessionRow, error)
+	GetActiveQuests(ctx context.Context) ([]Quest, error)
+	GetActiveQuestsForWeek(ctx context.Context, arg GetActiveQuestsForWeekParams) ([]Quest, error)
 	GetActiveSession(ctx context.Context) (GetActiveSessionRow, error)
 	GetActiveTrap(ctx context.Context, targetID uuid.UUID) (UserTrap, error)
 	GetActiveTrapForUpdate(ctx context.Context, targetID uuid.UUID) (UserTrap, error)
@@ -129,8 +137,10 @@ type Querier interface {
 	GetTotalEventCount(ctx context.Context, arg GetTotalEventCountParams) (int64, error)
 	GetTrapsByUser(ctx context.Context, arg GetTrapsByUserParams) ([]UserTrap, error)
 	GetTriggeredTrapsForTarget(ctx context.Context, arg GetTriggeredTrapsForTargetParams) ([]UserTrap, error)
+	GetUnclaimedCompletedQuests(ctx context.Context, userID uuid.UUID) ([]GetUnclaimedCompletedQuestsRow, error)
 	GetUnlock(ctx context.Context, arg GetUnlockParams) (ProgressionUnlock, error)
 	GetUnlockedRecipesForUser(ctx context.Context, userID uuid.UUID) ([]GetUnlockedRecipesForUserRow, error)
+	GetUserActiveQuestProgress(ctx context.Context, userID uuid.UUID) ([]GetUserActiveQuestProgressRow, error)
 	GetUserByID(ctx context.Context, userID uuid.UUID) (User, error)
 	GetUserByPlatformID(ctx context.Context, arg GetUserByPlatformIDParams) (GetUserByPlatformIDRow, error)
 	GetUserByPlatformUsername(ctx context.Context, arg GetUserByPlatformUsernameParams) (GetUserByPlatformUsernameRow, error)
@@ -142,7 +152,9 @@ type Querier interface {
 	GetUserJobsByPlatform(ctx context.Context, arg GetUserJobsByPlatformParams) ([]UserJob, error)
 	GetUserPlatformLinks(ctx context.Context, userID uuid.UUID) ([]GetUserPlatformLinksRow, error)
 	GetUserProgressions(ctx context.Context, arg GetUserProgressionsParams) ([]UserProgression, error)
+	GetUserQuestProgress(ctx context.Context, userID uuid.UUID) ([]GetUserQuestProgressRow, error)
 	GetVoting(ctx context.Context, arg GetVotingParams) (ProgressionVoting, error)
+	GetWeeklyQuestResetState(ctx context.Context) (WeeklyQuestResetState, error)
 	HasUserVoted(ctx context.Context, arg HasUserVotedParams) (bool, error)
 	// Read-only check for whether a user has voted in a session.
 	// Does NOT prevent concurrent votes - use HasUserVotedInSessionForUpdate for that.
@@ -154,6 +166,7 @@ type Querier interface {
 	// Must be used within a transaction.
 	HasUserVotedInSessionForUpdate(ctx context.Context, arg HasUserVotedInSessionForUpdateParams) (bool, error)
 	IncrementOptionVote(ctx context.Context, id int32) error
+	IncrementQuestProgress(ctx context.Context, arg IncrementQuestProgressParams) error
 	IncrementVote(ctx context.Context, arg IncrementVoteParams) error
 	InsertCraftingRecipe(ctx context.Context, arg InsertCraftingRecipeParams) (int32, error)
 	InsertDisassembleOutput(ctx context.Context, arg InsertDisassembleOutputParams) error
@@ -178,6 +191,7 @@ type Querier interface {
 	RecordUserVote(ctx context.Context, arg RecordUserVoteParams) error
 	RelockNode(ctx context.Context, arg RelockNodeParams) error
 	ResetDailyJobXP(ctx context.Context) (pgconn.CommandTag, error)
+	ResetInactiveQuestProgress(ctx context.Context) (pgconn.CommandTag, error)
 	ResumeVotingSession(ctx context.Context, id int32) error
 	SaveExpeditionJournalEntry(ctx context.Context, arg SaveExpeditionJournalEntryParams) error
 	SaveExpeditionParticipantRewards(ctx context.Context, arg SaveExpeditionParticipantRewardsParams) error
@@ -206,6 +220,7 @@ type Querier interface {
 	UpdateToken(ctx context.Context, arg UpdateTokenParams) error
 	UpdateUser(ctx context.Context, arg UpdateUserParams) error
 	UpdateUserTimestamp(ctx context.Context, userID uuid.UUID) error
+	UpdateWeeklyQuestResetState(ctx context.Context, arg UpdateWeeklyQuestResetStateParams) error
 	UpsertRecipeAssociation(ctx context.Context, arg UpsertRecipeAssociationParams) error
 	UpsertSyncMetadata(ctx context.Context, arg UpsertSyncMetadataParams) error
 	UpsertUserJob(ctx context.Context, arg UpsertUserJobParams) error

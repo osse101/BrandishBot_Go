@@ -29,6 +29,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/naming"
 	"github.com/osse101/BrandishBot_Go/internal/prediction"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
+	"github.com/osse101/BrandishBot_Go/internal/quest"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/osse101/BrandishBot_Go/internal/sse"
 	"github.com/osse101/BrandishBot_Go/internal/stats"
@@ -49,12 +50,13 @@ type Server struct {
 	harvestService     harvest.Service
 	predictionService  prediction.Service
 	expeditionService  expedition.Service
+	questService       quest.Service
 	namingResolver     naming.Resolver
 	sseHub             *sse.Hub
 }
 
 // NewServer creates a new Server instance
-func NewServer(port int, apiKey string, trustedProxies []string, dbPool database.Pool, userService user.Service, economyService economy.Service, craftingService crafting.Service, statsService stats.Service, progressionService progression.Service, gambleService gamble.Service, jobService job.Service, linkingService linking.Service, harvestService harvest.Service, predictionService prediction.Service, expeditionService expedition.Service, namingResolver naming.Resolver, eventBus event.Bus, sseHub *sse.Hub, userRepo repository.User) *Server {
+func NewServer(port int, apiKey string, trustedProxies []string, dbPool database.Pool, userService user.Service, economyService economy.Service, craftingService crafting.Service, statsService stats.Service, progressionService progression.Service, gambleService gamble.Service, jobService job.Service, linkingService linking.Service, harvestService harvest.Service, predictionService prediction.Service, expeditionService expedition.Service, questService quest.Service, namingResolver naming.Resolver, eventBus event.Bus, sseHub *sse.Hub, userRepo repository.User) *Server {
 	r := chi.NewRouter()
 
 	// Middleware stack
@@ -157,6 +159,14 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 			r.Get("/leaderboard", handler.HandleGetLeaderboard(statsService))
 		})
 
+		// Quest routes
+		questHandler := handler.NewQuestHandler(questService, progressionService)
+		r.Route("/quests", func(r chi.Router) {
+			r.Get("/active", questHandler.GetActiveQuests)
+			r.Get("/progress", questHandler.GetUserQuestProgress)
+			r.Post("/claim", questHandler.ClaimQuestReward)
+		})
+
 		// Progression routes
 		progressionHandlers := handler.NewProgressionHandlers(progressionService)
 		r.Route("/progression", func(r chi.Router) {
@@ -254,6 +264,7 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 		harvestService:     harvestService,
 		predictionService:  predictionService,
 		expeditionService:  expeditionService,
+		questService:       questService,
 		namingResolver:     namingResolver,
 		sseHub:             sseHub,
 	}

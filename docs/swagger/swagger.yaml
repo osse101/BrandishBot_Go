@@ -1702,6 +1702,41 @@ paths:
       summary: Register or link a user
       tags:
       - user
+  /api/v1/user/search:
+    post:
+      consumes:
+      - application/json
+      description: Allows players to search for loot boxes. Results depend on daily
+        usage and character progression.
+      parameters:
+      - description: User identification
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.SearchRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.SearchResponse'
+        "401":
+          description: Invalid API Key
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "429":
+          description: Action on cooldown
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Perform environment search
+      tags:
+      - user
   /api/v1/user/timeout:
     get:
       description: Get the remaining timeout duration for a user
@@ -2106,44 +2141,6 @@ paths:
       summary: Upgrade item
       tags:
       - crafting
-  /user/search:
-    post:
-      consumes:
-      - application/json
-      description: Search for items (lootbox mechanic)
-      parameters:
-      - description: Search details
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/handler.SearchRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/handler.SearchResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/handler.ErrorResponse'
-        "403":
-          description: Feature locked
-          schema:
-            $ref: '#/definitions/handler.ErrorResponse'
-        "429":
-          description: Cooldown
-          schema:
-            $ref: '#/definitions/handler.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/handler.ErrorResponse'
-      summary: Search for items
-      tags:
-      - user
   /user/timeout:
     put:
       consumes:

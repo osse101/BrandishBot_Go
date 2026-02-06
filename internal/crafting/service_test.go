@@ -18,7 +18,7 @@ func TestDisassembleItem(t *testing.T) {
 	t.Run("Best Case: Success", func(t *testing.T) {
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, nil, nil, nil, nil).(*service)
+		svc := NewService(repo, nil, nil, nil, nil, nil).(*service)
 		svc.rnd = func() float64 { return 1.0 } // No perfect salvage
 		ctx := context.Background()
 
@@ -44,7 +44,7 @@ func TestDisassembleItem(t *testing.T) {
 		repo := NewMockRepository()
 		setupTestData(repo)
 		mockStats := &MockStatsService{}
-		svc := NewService(repo, nil, mockStats, nil, nil).(*service)
+		svc := NewService(repo, nil, mockStats, nil, nil, nil).(*service)
 		svc.rnd = func() float64 { return 0.0 } // Trigger perfect salvage
 		ctx := context.Background()
 
@@ -84,7 +84,7 @@ func TestDisassembleItem(t *testing.T) {
 	t.Run("Boundary Case: Exact Items", func(t *testing.T) {
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, nil, nil, nil, nil).(*service)
+		svc := NewService(repo, nil, nil, nil, nil, nil).(*service)
 		svc.rnd = func() float64 { return 1.0 }
 		ctx := context.Background()
 
@@ -114,7 +114,7 @@ func TestDisassembleItem(t *testing.T) {
 	t.Run("Error Case: Insufficient Items", func(t *testing.T) {
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, nil, nil, nil, nil)
+		svc := NewService(repo, nil, nil, nil, nil, nil)
 		ctx := context.Background()
 
 		// Arrange: Alice has 1 lootbox1, wants to disassemble 2
@@ -134,7 +134,7 @@ func TestDisassembleItem(t *testing.T) {
 	t.Run("Error Case: Recipe Not Unlocked", func(t *testing.T) {
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, nil, nil, nil, nil)
+		svc := NewService(repo, nil, nil, nil, nil, nil)
 		ctx := context.Background()
 
 		repo.UpdateInventory(ctx, "user-alice", domain.Inventory{Slots: []domain.InventorySlot{
@@ -152,7 +152,7 @@ func TestDisassembleItem(t *testing.T) {
 	t.Run("Error Case: No Recipe Exists", func(t *testing.T) {
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, nil, nil, nil, nil)
+		svc := NewService(repo, nil, nil, nil, nil, nil)
 		ctx := context.Background()
 
 		// Act
@@ -166,7 +166,7 @@ func TestDisassembleItem(t *testing.T) {
 	t.Run("Nil/Empty Case: Empty User", func(t *testing.T) {
 		repo := NewMockRepository()
 		setupTestData(repo) // Need to setup items so item validation passes
-		svc := NewService(repo, nil, nil, nil, nil)
+		svc := NewService(repo, nil, nil, nil, nil, nil)
 		ctx := context.Background()
 
 		_, err := svc.DisassembleItem(ctx, domain.PlatformTwitch, "nonexistent", "", domain.ItemLootbox1, 1)
@@ -177,7 +177,7 @@ func TestDisassembleItem(t *testing.T) {
 	t.Run("Concurrent Case: Parallel Disassemble", func(t *testing.T) {
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, nil, nil, nil, nil).(*service)
+		svc := NewService(repo, nil, nil, nil, nil, nil).(*service)
 		svc.rnd = func() float64 { return 1.0 }
 		ctx := context.Background()
 
@@ -227,7 +227,7 @@ func TestDisassembleItem(t *testing.T) {
 	t.Run("Split Stack Case: Disassemble", func(t *testing.T) {
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, nil, nil, nil, nil).(*service)
+		svc := NewService(repo, nil, nil, nil, nil, nil).(*service)
 		svc.rnd = func() float64 { return 0.5 }
 		ctx := context.Background()
 
@@ -258,7 +258,7 @@ func TestUpgradeItem(t *testing.T) {
 	t.Run("Best Case: Success", func(t *testing.T) {
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, nil, nil, nil, nil).(*service)
+		svc := NewService(repo, nil, nil, nil, nil, nil).(*service)
 		svc.rnd = func() float64 { return 1.0 } // Fail masterwork
 		ctx := context.Background()
 
@@ -291,7 +291,7 @@ func TestUpgradeItem(t *testing.T) {
 		repo := NewMockRepository()
 		setupTestData(repo)
 		mockStats := &MockStatsService{}
-		svc := NewService(repo, nil, mockStats, nil, nil).(*service)
+		svc := NewService(repo, nil, mockStats, nil, nil, nil).(*service)
 		svc.rnd = func() float64 { return 0.0 } // Trigger masterwork
 		ctx := context.Background()
 
@@ -321,7 +321,7 @@ func TestUpgradeItem(t *testing.T) {
 	t.Run("Error Case: Insufficient Materials", func(t *testing.T) {
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, nil, nil, nil, nil).(*service)
+		svc := NewService(repo, nil, nil, nil, nil, nil).(*service)
 		svc.rnd = func() float64 { return 1.0 }
 		ctx := context.Background()
 
@@ -342,7 +342,7 @@ func TestUpgradeItem(t *testing.T) {
 	t.Run("Error Case: Recipe Not Unlocked", func(t *testing.T) {
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, nil, nil, nil, nil)
+		svc := NewService(repo, nil, nil, nil, nil, nil)
 		ctx := context.Background()
 
 		repo.UpdateInventory(ctx, "user-alice", domain.Inventory{Slots: []domain.InventorySlot{
@@ -357,7 +357,7 @@ func TestUpgradeItem(t *testing.T) {
 	t.Run("Concurrent Case: Parallel Upgrades", func(t *testing.T) {
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, nil, nil, nil, nil).(*service)
+		svc := NewService(repo, nil, nil, nil, nil, nil).(*service)
 		svc.rnd = func() float64 { return 1.0 }
 		ctx := context.Background()
 
@@ -404,7 +404,7 @@ func TestUpgradeItem(t *testing.T) {
 	t.Run("Split Stack Case: Upgrade", func(t *testing.T) {
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, nil, nil, nil, nil).(*service)
+		svc := NewService(repo, nil, nil, nil, nil, nil).(*service)
 		svc.rnd = func() float64 { return 0.5 }
 		ctx := context.Background()
 
@@ -438,7 +438,7 @@ func TestGetRecipe(t *testing.T) {
 	t.Run("Best Case: Unlocked", func(t *testing.T) {
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, nil, nil, nil, nil)
+		svc := NewService(repo, nil, nil, nil, nil, nil)
 		ctx := context.Background()
 
 		repo.UnlockRecipe(ctx, "user-alice", 1)
@@ -450,7 +450,7 @@ func TestGetRecipe(t *testing.T) {
 	t.Run("Best Case: No User Context", func(t *testing.T) {
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, nil, nil, nil, nil)
+		svc := NewService(repo, nil, nil, nil, nil, nil)
 		ctx := context.Background()
 
 		recipe, err := svc.GetRecipe(ctx, domain.ItemLootbox1, "", "", "")
@@ -461,7 +461,7 @@ func TestGetRecipe(t *testing.T) {
 	t.Run("Boundary Case: Locked", func(t *testing.T) {
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, nil, nil, nil, nil)
+		svc := NewService(repo, nil, nil, nil, nil, nil)
 		ctx := context.Background()
 
 		recipe, err := svc.GetRecipe(ctx, domain.ItemLootbox1, domain.PlatformTwitch, "twitch-alice", "alice")
@@ -472,7 +472,7 @@ func TestGetRecipe(t *testing.T) {
 	t.Run("Error Case: Item Not Found", func(t *testing.T) {
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, nil, nil, nil, nil)
+		svc := NewService(repo, nil, nil, nil, nil, nil)
 		ctx := context.Background()
 
 		_, err := svc.GetRecipe(ctx, "invalid-item", "", "", "")
@@ -485,7 +485,7 @@ func TestGetAllRecipes(t *testing.T) {
 	t.Run("Best Case: Returns Recipes", func(t *testing.T) {
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, nil, nil, nil, nil)
+		svc := NewService(repo, nil, nil, nil, nil, nil)
 		ctx := context.Background()
 
 		recipes, err := svc.GetAllRecipes(ctx)
@@ -496,7 +496,7 @@ func TestGetAllRecipes(t *testing.T) {
 
 func TestShutdown(t *testing.T) {
 	repo := NewMockRepository()
-	svc := NewService(repo, nil, nil, nil, nil)
+	svc := NewService(repo, nil, nil, nil, nil, nil)
 	assert.NoError(t, svc.Shutdown(context.Background()))
 }
 
@@ -505,7 +505,7 @@ func TestGetUnlockedRecipes(t *testing.T) {
 	t.Run("Best Case: Returns Unlocked", func(t *testing.T) {
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, nil, nil, nil, nil)
+		svc := NewService(repo, nil, nil, nil, nil, nil)
 		ctx := context.Background()
 
 		repo.UnlockRecipe(ctx, "user-alice", 1)
@@ -517,7 +517,7 @@ func TestGetUnlockedRecipes(t *testing.T) {
 	t.Run("Nil/Empty Case: No Unlocked", func(t *testing.T) {
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, nil, nil, nil, nil)
+		svc := NewService(repo, nil, nil, nil, nil, nil)
 		ctx := context.Background()
 
 		recipes, err := svc.GetUnlockedRecipes(ctx, domain.PlatformTwitch, "twitch-alice", "alice")
@@ -530,7 +530,7 @@ func TestGetUnlockedRecipes(t *testing.T) {
 func TestGetRecipe_Concurrent(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, nil, nil, nil, nil)
+	svc := NewService(repo, nil, nil, nil, nil, nil)
 	ctx := context.Background()
 
 	var wg sync.WaitGroup
@@ -552,7 +552,7 @@ func TestGetRecipe_Concurrent(t *testing.T) {
 func TestUpgradeItem_InputValidation(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, nil, nil, nil, nil)
+	svc := NewService(repo, nil, nil, nil, nil, nil)
 	ctx := context.Background()
 
 	tests := []struct {
@@ -633,7 +633,7 @@ func TestUpgradeItem_InputValidation(t *testing.T) {
 func TestDisassembleItem_InputValidation(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, nil, nil, nil, nil)
+	svc := NewService(repo, nil, nil, nil, nil, nil)
 	ctx := context.Background()
 
 	tests := []struct {
@@ -714,7 +714,7 @@ func TestDisassembleItem_InputValidation(t *testing.T) {
 func TestGetRecipe_InputValidation(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, nil, nil, nil, nil)
+	svc := NewService(repo, nil, nil, nil, nil, nil)
 	ctx := context.Background()
 
 	tests := []struct {
@@ -744,7 +744,7 @@ func TestGetRecipe_InputValidation(t *testing.T) {
 func TestGetUnlockedRecipes_InputValidation(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, nil, nil, nil, nil)
+	svc := NewService(repo, nil, nil, nil, nil, nil)
 	ctx := context.Background()
 
 	tests := []struct {
@@ -793,7 +793,7 @@ func TestUpgradeItem_TransactionFailures(t *testing.T) {
 	t.Run("BeginTx Failure", func(t *testing.T) {
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, nil, nil, nil, nil).(*service)
+		svc := NewService(repo, nil, nil, nil, nil, nil).(*service)
 		svc.rnd = func() float64 { return 1.0 }
 		ctx := context.Background()
 
@@ -828,7 +828,7 @@ func TestUpgradeItem_TransactionFailures(t *testing.T) {
 	t.Run("GetInventory Failure", func(t *testing.T) {
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, nil, nil, nil, nil).(*service)
+		svc := NewService(repo, nil, nil, nil, nil, nil).(*service)
 		svc.rnd = func() float64 { return 1.0 }
 		ctx := context.Background()
 
@@ -861,7 +861,7 @@ func TestUpgradeItem_TransactionFailures(t *testing.T) {
 	t.Run("UpdateInventory Failure", func(t *testing.T) {
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, nil, nil, nil, nil).(*service)
+		svc := NewService(repo, nil, nil, nil, nil, nil).(*service)
 		svc.rnd = func() float64 { return 1.0 }
 		ctx := context.Background()
 
@@ -894,7 +894,7 @@ func TestUpgradeItem_TransactionFailures(t *testing.T) {
 	t.Run("Commit Failure", func(t *testing.T) {
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, nil, nil, nil, nil).(*service)
+		svc := NewService(repo, nil, nil, nil, nil, nil).(*service)
 		svc.rnd = func() float64 { return 1.0 }
 		ctx := context.Background()
 
@@ -927,7 +927,7 @@ func TestDisassembleItem_TransactionFailures(t *testing.T) {
 	t.Run("BeginTx Failure", func(t *testing.T) {
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, nil, nil, nil, nil).(*service)
+		svc := NewService(repo, nil, nil, nil, nil, nil).(*service)
 		svc.rnd = func() float64 { return 1.0 }
 		ctx := context.Background()
 
@@ -960,7 +960,7 @@ func TestDisassembleItem_TransactionFailures(t *testing.T) {
 	t.Run("GetInventory Failure", func(t *testing.T) {
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, nil, nil, nil, nil).(*service)
+		svc := NewService(repo, nil, nil, nil, nil, nil).(*service)
 		svc.rnd = func() float64 { return 1.0 }
 		ctx := context.Background()
 
@@ -993,7 +993,7 @@ func TestDisassembleItem_TransactionFailures(t *testing.T) {
 	t.Run("UpdateInventory Failure", func(t *testing.T) {
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, nil, nil, nil, nil).(*service)
+		svc := NewService(repo, nil, nil, nil, nil, nil).(*service)
 		svc.rnd = func() float64 { return 1.0 }
 		ctx := context.Background()
 
@@ -1026,7 +1026,7 @@ func TestDisassembleItem_TransactionFailures(t *testing.T) {
 	t.Run("Commit Failure", func(t *testing.T) {
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, nil, nil, nil, nil).(*service)
+		svc := NewService(repo, nil, nil, nil, nil, nil).(*service)
 		svc.rnd = func() float64 { return 1.0 }
 		ctx := context.Background()
 
@@ -1061,7 +1061,7 @@ func TestUpgradeItem_MultiMaterialRecipe(t *testing.T) {
 	t.Run("Both Materials Available", func(t *testing.T) {
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, nil, nil, nil, nil).(*service)
+		svc := NewService(repo, nil, nil, nil, nil, nil).(*service)
 		svc.rnd = func() float64 { return 1.0 } // Prevent masterwork
 		ctx := context.Background()
 
@@ -1114,7 +1114,7 @@ func TestUpgradeItem_MultiMaterialRecipe(t *testing.T) {
 	t.Run("Limited By Scarcest Material", func(t *testing.T) {
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, nil, nil, nil, nil).(*service)
+		svc := NewService(repo, nil, nil, nil, nil, nil).(*service)
 		svc.rnd = func() float64 { return 1.0 } // Prevent masterwork
 		ctx := context.Background()
 
@@ -1146,7 +1146,7 @@ func TestUpgradeItem_MultiMaterialRecipe(t *testing.T) {
 	t.Run("One Material Missing", func(t *testing.T) {
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, nil, nil, nil, nil).(*service)
+		svc := NewService(repo, nil, nil, nil, nil, nil).(*service)
 		svc.rnd = func() float64 { return 1.0 } // Prevent masterwork
 		ctx := context.Background()
 
@@ -1182,7 +1182,7 @@ func TestDisassembleItem_MultipleOutputs(t *testing.T) {
 	t.Run("Multiple Outputs Added Correctly", func(t *testing.T) {
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, nil, nil, nil, nil).(*service)
+		svc := NewService(repo, nil, nil, nil, nil, nil).(*service)
 		svc.rnd = func() float64 { return 1.0 } // No perfect salvage
 		ctx := context.Background()
 
@@ -1223,7 +1223,7 @@ func TestDisassembleItem_MultipleOutputs(t *testing.T) {
 	t.Run("Perfect Salvage Applied To All Outputs", func(t *testing.T) {
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, nil, nil, nil, nil).(*service)
+		svc := NewService(repo, nil, nil, nil, nil, nil).(*service)
 		svc.rnd = func() float64 { return 0.0 } // Always perfect salvage
 		ctx := context.Background()
 
@@ -1277,7 +1277,7 @@ func TestUpgradeItem_WithXP(t *testing.T) {
 			}{},
 		}
 
-		svc := NewService(repo, mockJob, nil, nil, nil).(*service)
+		svc := NewService(repo, mockJob, nil, nil, nil, nil).(*service)
 		svc.rnd = func() float64 { return 1.0 } // No masterwork
 		ctx := context.Background()
 
@@ -1312,7 +1312,7 @@ func TestUpgradeItem_WithProgression(t *testing.T) {
 			},
 		}
 
-		svc := NewService(repo, nil, nil, nil, mockProg).(*service)
+		svc := NewService(repo, nil, nil, nil, mockProg, nil).(*service)
 		svc.rnd = func() float64 { return 0.5 } // Would fail base 10%, but passes 100%
 		ctx := context.Background()
 
@@ -1338,7 +1338,7 @@ func TestUpgradeItem_WithNamingResolution(t *testing.T) {
 			},
 		}
 
-		svc := NewService(repo, nil, nil, mockNaming, nil)
+		svc := NewService(repo, nil, nil, mockNaming, nil, nil)
 		ctx := context.Background()
 
 		// We need 1 lootbox0 to make 1 lootbox1
@@ -1371,7 +1371,7 @@ func TestShutdown_WaitsForAsync(t *testing.T) {
 		}{},
 	}
 
-	svc := NewService(repo, mockJob, nil, nil, nil).(*service)
+	svc := NewService(repo, mockJob, nil, nil, nil, nil).(*service)
 	svc.rnd = func() float64 { return 1.0 }
 	ctx := context.Background()
 

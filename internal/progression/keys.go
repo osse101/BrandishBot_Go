@@ -33,16 +33,17 @@ const (
 	ItemXpRarecandy   = "xp_rarecandy"
 
 	// Features
-	FeatureCompost     = "feature_compost"
-	FeatureDisassemble = "feature_disassemble"
-	FeatureDuel        = "feature_duel"
-	FeatureEconomy     = "feature_economy"
-	FeatureEvents      = "feature_events"
-	FeatureExpedition  = "feature_expedition"
-	FeatureFarming     = "feature_farming"
-	FeatureGamble      = "feature_gamble"
-	FeatureSearch      = "feature_search"
-	FeatureUpgrade     = "feature_upgrade"
+	FeatureCompost      = "feature_compost"
+	FeatureDisassemble  = "feature_disassemble"
+	FeatureDuel         = "feature_duel"
+	FeatureEconomy      = "feature_economy"
+	FeatureEvents       = "feature_events"
+	FeatureExpedition   = "feature_expedition"
+	FeatureFarming      = "feature_farming"
+	FeatureGamble       = "feature_gamble"
+	FeatureSearch       = "feature_search"
+	FeatureUpgrade      = "feature_upgrade"
+	FeatureWeeklyQuests = "feature_weekly_quests"
 
 	// Upgrades
 	UpgradeCrafting1        = "upgrade_crafting_1"

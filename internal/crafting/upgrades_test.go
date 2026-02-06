@@ -15,7 +15,6 @@ import (
 // Tests verify that the crafting_success_rate modifier correctly applies to
 // both masterwork crafting and perfect salvage operations.
 
-
 // TestUpgradeCrafting1_MasterworkModifier_Level1 verifies 10% boost at level 1
 func TestUpgradeCrafting1_MasterworkModifier_Level1(t *testing.T) {
 	// ARRANGE
@@ -23,7 +22,7 @@ func TestUpgradeCrafting1_MasterworkModifier_Level1(t *testing.T) {
 	setupTestData(repo)
 	mockProg := &MockProgressionService{}
 
-	svc := NewService(repo, nil, nil, nil, mockProg).(*service)
+	svc := NewService(repo, nil, nil, nil, mockProg, nil).(*service)
 	ctx := context.Background()
 
 	// Level 1 upgrade: 1.10x multiplier (0.10 * 1.10 = 0.11 = 11% chance)
@@ -65,7 +64,7 @@ func TestUpgradeCrafting1_MasterworkModifier_Level5(t *testing.T) {
 	setupTestData(repo)
 	mockProg := &MockProgressionService{}
 
-	svc := NewService(repo, nil, nil, nil, mockProg).(*service)
+	svc := NewService(repo, nil, nil, nil, mockProg, nil).(*service)
 	ctx := context.Background()
 
 	// Level 5 upgrade: 1.50x multiplier (0.10 * 1.50 = 0.15 = 15% chance)
@@ -103,7 +102,7 @@ func TestUpgradeCrafting1_MasterworkModifier_NoUpgrade(t *testing.T) {
 	setupTestData(repo)
 	mockProg := &MockProgressionService{}
 
-	svc := NewService(repo, nil, nil, nil, mockProg).(*service)
+	svc := NewService(repo, nil, nil, nil, mockProg, nil).(*service)
 	ctx := context.Background()
 
 	// No upgrade: return base value (1.0x multiplier)
@@ -140,7 +139,7 @@ func TestUpgradeCrafting1_PerfectSalvageModifier_Level1(t *testing.T) {
 	setupTestData(repo)
 	mockProg := &MockProgressionService{}
 
-	svc := NewService(repo, nil, nil, nil, mockProg).(*service)
+	svc := NewService(repo, nil, nil, nil, mockProg, nil).(*service)
 	ctx := context.Background()
 
 	// Level 1 upgrade: 1.10x multiplier (0.10 * 1.10 = 0.11 = 11% chance)
@@ -177,7 +176,7 @@ func TestUpgradeCrafting1_PerfectSalvageModifier_Level5(t *testing.T) {
 	setupTestData(repo)
 	mockProg := &MockProgressionService{}
 
-	svc := NewService(repo, nil, nil, nil, mockProg).(*service)
+	svc := NewService(repo, nil, nil, nil, mockProg, nil).(*service)
 	ctx := context.Background()
 
 	// Level 5 upgrade: 1.50x multiplier (0.10 * 1.50 = 0.15 = 15% chance)
@@ -213,7 +212,7 @@ func TestUpgradeCrafting1_ModifierFailureFallback_Masterwork(t *testing.T) {
 	setupTestData(repo)
 	mockProg := &MockProgressionService{}
 
-	svc := NewService(repo, nil, nil, nil, mockProg).(*service)
+	svc := NewService(repo, nil, nil, nil, mockProg, nil).(*service)
 	ctx := context.Background()
 
 	// Progression service returns error
@@ -250,7 +249,7 @@ func TestUpgradeCrafting1_NilProgressionService_Masterwork(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
 
-	svc := NewService(repo, nil, nil, nil, nil).(*service) // nil progression service
+	svc := NewService(repo, nil, nil, nil, nil, nil).(*service) // nil progression service
 	ctx := context.Background()
 
 	repo.UnlockRecipe(ctx, "user-alice", 1)
@@ -282,7 +281,7 @@ func TestUpgradeCrafting1_NilProgressionService_PerfectSalvage(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
 
-	svc := NewService(repo, nil, nil, nil, nil).(*service)
+	svc := NewService(repo, nil, nil, nil, nil, nil).(*service)
 	ctx := context.Background()
 
 	repo.UnlockRecipe(ctx, "user-alice", 1)
@@ -315,7 +314,7 @@ func TestUpgradeCrafting1_MasterworkMultiplier(t *testing.T) {
 	setupTestData(repo)
 	mockProg := &MockProgressionService{}
 
-	svc := NewService(repo, nil, nil, nil, mockProg).(*service)
+	svc := NewService(repo, nil, nil, nil, mockProg, nil).(*service)
 	ctx := context.Background()
 
 	// Return base value
@@ -348,7 +347,7 @@ func TestUpgradeCrafting1_PerfectSalvageMultiplier(t *testing.T) {
 	setupTestData(repo)
 	mockProg := &MockProgressionService{}
 
-	svc := NewService(repo, nil, nil, nil, mockProg).(*service)
+	svc := NewService(repo, nil, nil, nil, mockProg, nil).(*service)
 	ctx := context.Background()
 
 	// Return base value
@@ -380,7 +379,7 @@ func TestUpgradeCrafting1_BulkCrafting_WithModifier(t *testing.T) {
 	setupTestData(repo)
 	mockProg := &MockProgressionService{}
 
-	svc := NewService(repo, nil, nil, nil, mockProg).(*service)
+	svc := NewService(repo, nil, nil, nil, mockProg, nil).(*service)
 	ctx := context.Background()
 
 	// Level 3 upgrade: 1.30x multiplier (0.10 * 1.30 = 0.13 = 13% chance)

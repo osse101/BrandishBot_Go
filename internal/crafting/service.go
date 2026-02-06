@@ -3,6 +3,7 @@ package crafting
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"math"
 	"sync"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/naming"
+	"github.com/osse101/BrandishBot_Go/internal/quest"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/osse101/BrandishBot_Go/internal/stats"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
@@ -66,18 +68,20 @@ type service struct {
 	progressionSvc ProgressionService
 	statsSvc       stats.Service
 	namingResolver naming.Resolver // For resolving public names to internal names
-	rnd            func() float64  // For rolling RNG (does not need to be cryptographically secure)
-	wg             sync.WaitGroup  // Tracks async goroutines for graceful shutdown
+	questService   quest.Service
+	rnd            func() float64 // For rolling RNG (does not need to be cryptographically secure)
+	wg             sync.WaitGroup // Tracks async goroutines for graceful shutdown
 }
 
 // NewService creates a new crafting service
-func NewService(repo repository.Crafting, jobService JobService, statsSvc stats.Service, namingResolver naming.Resolver, progressionSvc ProgressionService) Service {
+func NewService(repo repository.Crafting, jobService JobService, statsSvc stats.Service, namingResolver naming.Resolver, progressionSvc ProgressionService, questService quest.Service) Service {
 	return &service{
 		repo:           repo,
 		jobService:     jobService,
 		progressionSvc: progressionSvc,
 		statsSvc:       statsSvc,
 		namingResolver: namingResolver,
+		questService:   questService,
 		rnd:            utils.RandomFloat,
 	}
 }
@@ -282,6 +286,22 @@ func (s *service) UpgradeItem(ctx context.Context, platform, platformID, usernam
 	// Run async with detached context to prevent cancellation affecting XP award
 	s.wg.Add(1)
 	go s.awardBlacksmithXP(context.Background(), user.ID, actualQuantity, "upgrade", itemName)
+
+	// Track quest progress (async, fire-and-forget)
+	if s.questService != nil {
+		s.wg.Add(1)
+		go func() {
+			defer s.wg.Done()
+			// Extract recipe key from the recipe
+			recipeKey := resolvedName // Use item name as fallback
+			if recipe != nil && recipe.RecipeKey != "" {
+				recipeKey = recipe.RecipeKey
+			}
+			if err := s.questService.OnRecipeCrafted(context.Background(), user.ID, recipeKey, actualQuantity); err != nil {
+				slog.Warn("Failed to track quest progress for crafting", "error", err, "item", itemName)
+			}
+		}()
+	}
 
 	log.Info("Items upgraded", "username", username, "item", itemName, "quantity", result.Quantity, "masterwork", result.IsMasterwork)
 
@@ -540,6 +560,21 @@ func (s *service) DisassembleItem(ctx context.Context, platform, platformID, use
 	// Award Blacksmith XP (don't fail disassemble if XP award fails)
 	s.wg.Add(1)
 	go s.awardBlacksmithXP(context.Background(), user.ID, actualQuantity, "disassemble", itemName)
+
+	// Track quest progress (async, fire-and-forget)
+	if s.questService != nil {
+		s.wg.Add(1)
+		go func() {
+			defer s.wg.Done()
+			recipeKey := itemName // Use item name as fallback
+			if recipe != nil && recipe.RecipeKey != "" {
+				recipeKey = recipe.RecipeKey
+			}
+			if err := s.questService.OnRecipeCrafted(context.Background(), user.ID, recipeKey, actualQuantity); err != nil {
+				slog.Warn("Failed to track quest progress for disassemble", "error", err, "item", itemName)
+			}
+		}()
+	}
 
 	log.Info("Items disassembled", "username", username, "item", itemName, "quantity", actualQuantity, "outputs", outputMap, "perfect_salvage", perfectSalvageTriggered)
 	return &DisassembleResult{

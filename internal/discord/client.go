@@ -1492,3 +1492,90 @@ func (c *APIClient) ProcessPredictionOutcome(platform string, winner domain.Pred
 
 	return &result, nil
 }
+
+// GetActiveQuests retrieves the current week's active quests
+func (c *APIClient) GetActiveQuests() ([]domain.Quest, error) {
+	resp, err := c.doRequest(http.MethodGet, "/api/v1/quests/active", nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		var errResp struct {
+			Error string `json:"error"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
+			return nil, fmt.Errorf("API error: %s", errResp.Error)
+		}
+		return nil, fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	var quests []domain.Quest
+	if err := json.NewDecoder(resp.Body).Decode(&quests); err != nil {
+		return nil, fmt.Errorf("failed to decode quests: %w", err)
+	}
+
+	return quests, nil
+}
+
+// GetUserQuestProgress retrieves a user's quest progress
+func (c *APIClient) GetUserQuestProgress(userID string) ([]domain.QuestProgress, error) {
+	params := url.Values{}
+	params.Set("user_id", userID)
+
+	path := fmt.Sprintf("/api/v1/quests/progress?%s", params.Encode())
+	resp, err := c.doRequest(http.MethodGet, path, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		var errResp struct {
+			Error string `json:"error"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
+			return nil, fmt.Errorf("API error: %s", errResp.Error)
+		}
+		return nil, fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	var progress []domain.QuestProgress
+	if err := json.NewDecoder(resp.Body).Decode(&progress); err != nil {
+		return nil, fmt.Errorf("failed to decode quest progress: %w", err)
+	}
+
+	return progress, nil
+}
+
+// ClaimQuestReward claims a completed quest's reward
+func (c *APIClient) ClaimQuestReward(userID string, questID int) (map[string]interface{}, error) {
+	req := map[string]interface{}{
+		"user_id":  userID,
+		"quest_id": questID,
+	}
+
+	resp, err := c.doRequest(http.MethodPost, "/api/v1/quests/claim", req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		var errResp struct {
+			Error string `json:"error"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
+			return nil, fmt.Errorf("API error: %s", errResp.Error)
+		}
+		return nil, fmt.Errorf("API returned status: %d", resp.StatusCode)
+	}
+
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return result, nil
+}

@@ -1,0 +1,82 @@
+{
+  "version": "1.0",
+  "quest_pool": [
+    {
+      "quest_key": "buy_weapon_items",
+      "quest_type": "buy_items",
+      "description": "Buy {requirement} Weapons",
+      "target_category": "Weapon",
+      "base_requirement": 3,
+      "base_reward_money": 800,
+      "base_reward_xp": 150
+    },
+    {
+      "quest_key": "buy_armor_items",
+      "quest_type": "buy_items",
+      "description": "Buy {requirement} Armor items",
+      "target_category": "Armor",
+      "base_requirement": 3,
+      "base_reward_money": 800,
+      "base_reward_xp": 150
+    },
+    {
+      "quest_key": "buy_consumable_items",
+      "quest_type": "buy_items",
+      "description": "Buy {requirement} Consumables",
+      "target_category": "Consumable",
+      "base_requirement": 5,
+      "base_reward_money": 600,
+      "base_reward_xp": 100
+    },
+    {
+      "quest_key": "sell_any_items",
+      "quest_type": "sell_items",
+      "description": "Sell {requirement} items of any type",
+      "base_requirement": 10,
+      "base_reward_money": 750,
+      "base_reward_xp": 150
+    },
+    {
+      "quest_key": "sell_weapon_items",
+      "quest_type": "sell_items",
+      "description": "Sell {requirement} Weapons",
+      "target_category": "Weapon",
+      "base_requirement": 5,
+      "base_reward_money": 1250,
+      "base_reward_xp": 250
+    },
+    {
+      "quest_key": "earn_from_sales_medium",
+      "quest_type": "earn_money",
+      "description": "Earn {requirement} money from selling items",
+      "base_requirement": 5000,
+      "base_reward_money": 1500,
+      "base_reward_xp": 300
+    },
+    {
+      "quest_key": "upgrade_items",
+      "quest_type": "craft_recipe",
+      "description": "Perform crafting recipe: Upgrade Mine {requirement} times",
+      "target_recipe_key": "upgrade_mine",
+      "base_requirement": 3,
+      "base_reward_money": 1000,
+      "base_reward_xp": 200
+    },
+    {
+      "quest_key": "search_items",
+      "quest_type": "perform_searches",
+      "description": "Perform {requirement} searches this week",
+      "base_requirement": 10,
+      "base_reward_money": 500,
+      "base_reward_xp": 100
+    },
+    {
+      "quest_key": "earn_from_sales_high",
+      "quest_type": "earn_money",
+      "description": "Earn {requirement} money from selling items",
+      "base_requirement": 10000,
+      "base_reward_money": 3000,
+      "base_reward_xp": 600
+    }
+  ]
+}

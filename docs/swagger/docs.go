@@ -1322,6 +1322,58 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/user/search": {
+            "post": {
+                "description": "Allows players to search for loot boxes. Results depend on daily usage and character progression.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "user"
+                ],
+                "summary": "Perform environment search",
+                "parameters": [
+                    {
+                        "description": "User identification",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.SearchRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.SearchResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Invalid API Key",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "429": {
+                        "description": "Action on cooldown",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/user/timeout": {
             "get": {
                 "description": "Get the remaining timeout duration for a user",
@@ -1911,64 +1963,6 @@ const docTemplate = `{
                     },
                     "403": {
                         "description": "Feature locked",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/user/search": {
-            "post": {
-                "description": "Search for items (lootbox mechanic)",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "user"
-                ],
-                "summary": "Search for items",
-                "parameters": [
-                    {
-                        "description": "Search details",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.SearchRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/handler.SearchResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Feature locked",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    },
-                    "429": {
-                        "description": "Cooldown",
                         "schema": {
                             "$ref": "#/definitions/handler.ErrorResponse"
                         }

@@ -2,14 +2,21 @@ package economy
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"log/slog"
 	"math"
+	"os"
+	"strings"
 	"sync"
+	"time"
 
+	"github.com/osse101/BrandishBot_Go/internal/config"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/naming"
+	"github.com/osse101/BrandishBot_Go/internal/quest"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
@@ -40,19 +47,30 @@ type service struct {
 	jobService         JobService
 	namingResolver     naming.Resolver
 	progressionService ProgressionService
+	questService       quest.Service
 	rnd                func() float64 // For RNG - allows deterministic testing
 	wg                 sync.WaitGroup
+	weeklySales        []domain.WeeklySale
+	weeklySalesMu      sync.RWMutex
 }
 
 // NewService creates a new economy service
-func NewService(repo repository.Economy, jobService JobService, namingResolver naming.Resolver, progressionService ProgressionService) Service {
-	return &service{
+func NewService(repo repository.Economy, jobService JobService, namingResolver naming.Resolver, progressionService ProgressionService, questService quest.Service) Service {
+	s := &service{
 		repo:               repo,
 		jobService:         jobService,
 		namingResolver:     namingResolver,
 		progressionService: progressionService,
+		questService:       questService,
 		rnd:                utils.RandomFloat,
 	}
+
+	// Load weekly sales configuration (log errors but don't fail startup)
+	if err := s.loadWeeklySales(); err != nil {
+		slog.Warn("Failed to load weekly sales configuration", "error", err)
+	}
+
+	return s
 }
 
 func (s *service) GetSellablePrices(ctx context.Context) ([]domain.Item, error) {
@@ -138,6 +156,66 @@ func (s *service) GetBuyablePrices(ctx context.Context) ([]domain.Item, error) {
 
 	log.Info("Buyable prices filtered", "total", len(allItems), "unlocked", len(filtered))
 	return filtered, nil
+}
+
+// loadWeeklySales loads the weekly sales configuration from file
+func (s *service) loadWeeklySales() error {
+	data, err := os.ReadFile(config.ConfigPathWeeklySales)
+	if err != nil {
+		return fmt.Errorf("failed to read weekly sales config: %w", err)
+	}
+
+	var cfg domain.WeeklySaleConfig
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		return fmt.Errorf("failed to parse weekly sales config: %w", err)
+	}
+
+	s.weeklySalesMu.Lock()
+	s.weeklySales = cfg.SalesSchedule
+	s.weeklySalesMu.Unlock()
+
+	return nil
+}
+
+// getCurrentWeeklySale returns the current week's sale (based on week offset)
+func (s *service) getCurrentWeeklySale() *domain.WeeklySale {
+	s.weeklySalesMu.RLock()
+	defer s.weeklySalesMu.RUnlock()
+
+	if len(s.weeklySales) == 0 {
+		return nil
+	}
+
+	// Calculate which week we're in (0-3 for 4-week rotation)
+	_, weekNum := time.Now().ISOWeek()
+	weekOffset := (weekNum - 1) % 4 // 0, 1, 2, 3
+
+	// Find the sale for this week's offset
+	for _, sale := range s.weeklySales {
+		if sale.WeekOffset == weekOffset {
+			return &sale
+		}
+	}
+
+	return nil
+}
+
+// applyWeeklySaleDiscount applies the current weekly sale discount to a buy price
+// Returns the discounted price
+func (s *service) applyWeeklySaleDiscount(basePrice int, itemCategory string) int {
+	sale := s.getCurrentWeeklySale()
+	if sale == nil {
+		return basePrice
+	}
+
+	// Check if item category matches the sale
+	if sale.TargetCategory != nil && !strings.EqualFold(*sale.TargetCategory, itemCategory) {
+		return basePrice
+	}
+
+	// Apply discount
+	discount := float64(basePrice) * (sale.DiscountPercent / 100.0)
+	return basePrice - int(discount)
 }
 
 // resolveItemName attempts to resolve a user-provided item name to its internal name.
@@ -307,6 +385,18 @@ func (s *service) SellItem(ctx context.Context, platform, platformID, username, 
 	s.wg.Add(1)
 	go s.awardMerchantXP(context.Background(), user.ID, xp, ActionTypeSell, itemName, moneyGained)
 
+	// Track quest progress (async, fire-and-forget)
+	if s.questService != nil {
+		itemCategory := getItemCategory(item)
+		s.wg.Add(1)
+		go func() {
+			defer s.wg.Done()
+			if err := s.questService.OnItemSold(context.Background(), user.ID, itemCategory, actualSellQuantity, moneyGained); err != nil {
+				log.Warn("Failed to track quest progress for item sale", "error", err, "item", itemName)
+			}
+		}()
+	}
+
 	log.Info(LogMsgItemSold, "username", username, "item", itemName, "quantity", actualSellQuantity, "moneyGained", moneyGained)
 	return moneyGained, actualSellQuantity, nil
 }
@@ -434,10 +524,17 @@ func (s *service) BuyItem(ctx context.Context, platform, platformID, username, i
 		return 0, domain.ErrInsufficientFunds
 	}
 
-	// Calculate affordable quantity
-	actualQuantity, cost := calculateAffordableQuantity(quantity, item.BaseValue, moneyBalance)
+	// Apply weekly sale discount to item price if applicable
+	itemCategory := getItemCategory(item)
+	discountedPrice := s.applyWeeklySaleDiscount(item.BaseValue, itemCategory)
+	if discountedPrice < item.BaseValue {
+		log.Info("Weekly sale discount applied", "item", itemName, "category", itemCategory, "original_price", item.BaseValue, "discounted_price", discountedPrice)
+	}
+
+	// Calculate affordable quantity with discounted price
+	actualQuantity, cost := calculateAffordableQuantity(quantity, discountedPrice, moneyBalance)
 	if actualQuantity == 0 {
-		return 0, fmt.Errorf(ErrMsgInsufficientFundsToBuyOneFmt, itemName, item.BaseValue, moneyBalance, domain.ErrInsufficientFunds)
+		return 0, fmt.Errorf(ErrMsgInsufficientFundsToBuyOneFmt, itemName, discountedPrice, moneyBalance, domain.ErrInsufficientFunds)
 	}
 
 	if quantity > actualQuantity {
@@ -460,6 +557,18 @@ func (s *service) BuyItem(ctx context.Context, platform, platformID, username, i
 	xp := calculateMerchantXP(cost)
 	s.wg.Add(1)
 	go s.awardMerchantXP(context.Background(), user.ID, xp, ActionTypeBuy, itemName, cost)
+
+	// Track quest progress (async, fire-and-forget)
+	if s.questService != nil {
+		itemCategory := getItemCategory(item)
+		s.wg.Add(1)
+		go func() {
+			defer s.wg.Done()
+			if err := s.questService.OnItemBought(context.Background(), user.ID, itemCategory, actualQuantity); err != nil {
+				log.Warn("Failed to track quest progress for item purchase", "error", err, "item", itemName)
+			}
+		}()
+	}
 
 	log.Info(LogMsgItemPurchased, "username", username, "item", itemName, "quantity", actualQuantity)
 	return actualQuantity, nil
@@ -507,6 +616,15 @@ func (s *service) awardMerchantXP(ctx context.Context, userID string, xp int, ac
 	} else if result != nil && result.LeveledUp {
 		logger.FromContext(ctx).Info(LogMsgMerchantLeveledUp, "user_id", userID, "new_level", result.NewLevel)
 	}
+}
+
+// getItemCategory extracts the category from an item's types
+// Uses the first type if available, otherwise returns generic "Item"
+func getItemCategory(item *domain.Item) string {
+	if item != nil && len(item.Types) > 0 {
+		return item.Types[0]
+	}
+	return "Item"
 }
 
 func (s *service) Shutdown(ctx context.Context) error {

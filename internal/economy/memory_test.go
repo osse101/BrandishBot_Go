@@ -21,17 +21,17 @@ func TestBuyItem_NoGoroutineLeak(t *testing.T) {
 	money := createMoneyItem()
 
 	// Mock all required calls for BuyItem
-	repo.On("GetUserByPlatformID", mock.Anything, "discord", "discord-id").Return(user, nil)
-	repo.On("GetItemByName", mock.Anything, "Lootbox1").Return(item, nil)
-	repo.On("GetItemByName", mock.Anything, domain.ItemMoney).Return(money, nil)
-	repo.On("IsItemBuyable", mock.Anything, "Lootbox1").Return(true, nil)
+	repo.On("GetUserByPlatformID", mock.Anything, "discord", "discord-id").Return(user, nil, nil)
+	repo.On("GetItemByName", mock.Anything, "Lootbox1").Return(item, nil, nil)
+	repo.On("GetItemByName", mock.Anything, domain.ItemMoney).Return(money, nil, nil)
+	repo.On("IsItemBuyable", mock.Anything, "Lootbox1").Return(true, nil, nil)
 
 	// Mock transaction
 	mockTx := new(MockTx)
-	repo.On("BeginTx", mock.Anything).Return(mockTx, nil)
+	repo.On("BeginTx", mock.Anything).Return(mockTx, nil, nil)
 
 	inv := createInventoryWithMoney(1000)
-	mockTx.On("GetInventory", mock.Anything, user.ID).Return(inv, nil)
+	mockTx.On("GetInventory", mock.Anything, user.ID).Return(inv, nil, nil)
 	mockTx.On("UpdateInventory", mock.Anything, user.ID, mock.Anything).Return(nil)
 	mockTx.On("Commit", mock.Anything).Return(nil)
 	mockTx.On("Rollback", mock.Anything).Return(nil)
@@ -40,7 +40,7 @@ func TestBuyItem_NoGoroutineLeak(t *testing.T) {
 	mockJob.On("AwardXP", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 		Return(&domain.XPAwardResult{}, nil).Maybe()
 
-	svc := NewService(repo, mockJob, nil, nil)
+	svc := NewService(repo, mockJob, nil, nil, nil)
 	checker := leaktest.NewGoroutineChecker(t)
 
 	// Perform buy operation
@@ -64,7 +64,7 @@ func TestService_Shutdown_NoGoroutineLeak(t *testing.T) {
 	repo := new(MockRepository)
 	mockJob := new(MockJobService)
 
-	svc := NewService(repo, mockJob, nil, nil)
+	svc := NewService(repo, mockJob, nil, nil, nil)
 	checker := leaktest.NewGoroutineChecker(t)
 
 	// Call shutdown (no-op if nothing running)

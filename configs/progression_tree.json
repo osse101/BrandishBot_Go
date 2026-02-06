@@ -808,6 +808,21 @@
       ],
       "sort_order": 11,
       "auto_unlock": false
+    },
+    {
+      "key": "feature_weekly_quests",
+      "name": "Weekly Quests",
+      "type": "feature",
+      "description": "Complete rotating weekly challenges for money and experience. New quests every Monday.",
+      "tier": 2,
+      "size": "medium",
+      "category": "economy",
+      "max_level": 1,
+      "prerequisites": [
+        "feature_economy"
+      ],
+      "sort_order": 50,
+      "auto_unlock": false
     }
   ]
 }

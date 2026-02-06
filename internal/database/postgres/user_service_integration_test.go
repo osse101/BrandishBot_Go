@@ -102,6 +102,7 @@ func setupIntegrationTest(t *testing.T) (*pgxpool.Pool, *UserRepository, user.Se
 		&MockNamingResolver{},
 		cooldownSvc,
 		nil,  // No event bus for tests
+		nil,  // No quest service for tests
 		true, // Dev mode to bypass cooldowns
 	)
 
@@ -255,6 +256,7 @@ func TestUserService_AsyncXPAward_Integration(t *testing.T) {
 		&MockNamingResolver{},
 		cooldownSvc,
 		nil, // No event bus for tests
+		nil, // No quests for tests
 		true,
 	)
 

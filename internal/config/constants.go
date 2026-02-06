@@ -11,4 +11,6 @@ const (
 	ConfigPathItemAliases          = "configs/items/aliases.json"
 	ConfigPathItemThemes           = "configs/items/themes.json"
 	ConfigPathExpeditionEncounters = "configs/expedition/encounters.json"
+	ConfigPathQuestPool            = "configs/quests/weekly_quest_pool.json"
+	ConfigPathWeeklySales          = "configs/economy/weekly_sales.json"
 )

@@ -20,7 +20,7 @@ func TestUpgradeEconomy1_SellPriceModifier_Level1(t *testing.T) {
 	// ARRANGE
 	mockRepo := &MockRepository{}
 	mockProgression := &MockProgressionService{}
-	service := NewService(mockRepo, nil, nil, mockProgression)
+	service := NewService(mockRepo, nil, nil, mockProgression, nil)
 	ctx := context.Background()
 
 	// Item with base value 100, base sell price = 100 * 0.40 = 40
@@ -30,12 +30,12 @@ func TestUpgradeEconomy1_SellPriceModifier_Level1(t *testing.T) {
 
 	mockRepo.On("GetSellablePrices", ctx).Return(allItems, nil)
 	mockProgression.On("AreItemsUnlocked", ctx, []string{"test_item"}).
-		Return(map[string]bool{"test_item": true}, nil)
+		Return(map[string]bool{"test_item": true}, nil, nil)
 
 	// Level 1 upgrade: 1.05x multiplier
 	// Base sell price: 40, Modified: 40 * 1.05 = 42
 	mockProgression.On("GetModifiedValue", ctx, "economy_bonus", 40.0).
-		Return(42.0, nil)
+		Return(42.0, nil, nil)
 
 	// ACT
 	items, err := service.GetSellablePrices(ctx)
@@ -53,7 +53,7 @@ func TestUpgradeEconomy1_SellPriceModifier_Level5(t *testing.T) {
 	// ARRANGE
 	mockRepo := &MockRepository{}
 	mockProgression := &MockProgressionService{}
-	service := NewService(mockRepo, nil, nil, mockProgression)
+	service := NewService(mockRepo, nil, nil, mockProgression, nil)
 	ctx := context.Background()
 
 	// Item with base value 100, base sell price = 100 * 0.40 = 40
@@ -63,12 +63,12 @@ func TestUpgradeEconomy1_SellPriceModifier_Level5(t *testing.T) {
 
 	mockRepo.On("GetSellablePrices", ctx).Return(allItems, nil)
 	mockProgression.On("AreItemsUnlocked", ctx, []string{"test_item"}).
-		Return(map[string]bool{"test_item": true}, nil)
+		Return(map[string]bool{"test_item": true}, nil, nil)
 
 	// Level 5 upgrade: 1.25x multiplier
 	// Base sell price: 40, Modified: 40 * 1.25 = 50
 	mockProgression.On("GetModifiedValue", ctx, "economy_bonus", 40.0).
-		Return(50.0, nil)
+		Return(50.0, nil, nil)
 
 	// ACT
 	items, err := service.GetSellablePrices(ctx)
@@ -86,7 +86,7 @@ func TestUpgradeEconomy1_SellPriceModifier_MultipleItems(t *testing.T) {
 	// ARRANGE
 	mockRepo := &MockRepository{}
 	mockProgression := &MockProgressionService{}
-	service := NewService(mockRepo, nil, nil, mockProgression)
+	service := NewService(mockRepo, nil, nil, mockProgression, nil)
 	ctx := context.Background()
 
 	allItems := []domain.Item{
@@ -96,7 +96,7 @@ func TestUpgradeEconomy1_SellPriceModifier_MultipleItems(t *testing.T) {
 
 	mockRepo.On("GetSellablePrices", ctx).Return(allItems, nil)
 	mockProgression.On("AreItemsUnlocked", ctx, []string{"cheap_item", "expensive_item"}).
-		Return(map[string]bool{"cheap_item": true, "expensive_item": true}, nil)
+		Return(map[string]bool{"cheap_item": true, "expensive_item": true}, nil, nil)
 
 	// Level 2 upgrade: 1.10x multiplier
 	mockProgression.On("GetModifiedValue", ctx, "economy_bonus", 4.0).Return(4.4, nil)
@@ -119,7 +119,7 @@ func TestUpgradeEconomy1_ModifierFailureFallback(t *testing.T) {
 	// ARRANGE
 	mockRepo := &MockRepository{}
 	mockProgression := &MockProgressionService{}
-	service := NewService(mockRepo, nil, nil, mockProgression)
+	service := NewService(mockRepo, nil, nil, mockProgression, nil)
 	ctx := context.Background()
 
 	allItems := []domain.Item{
@@ -128,7 +128,7 @@ func TestUpgradeEconomy1_ModifierFailureFallback(t *testing.T) {
 
 	mockRepo.On("GetSellablePrices", ctx).Return(allItems, nil)
 	mockProgression.On("AreItemsUnlocked", ctx, []string{"test_item"}).
-		Return(map[string]bool{"test_item": true}, nil)
+		Return(map[string]bool{"test_item": true}, nil, nil)
 
 	// Progression service returns error
 	mockProgression.On("GetModifiedValue", ctx, "economy_bonus", 40.0).
@@ -149,7 +149,7 @@ func TestUpgradeEconomy1_ModifierFailureFallback(t *testing.T) {
 func TestUpgradeEconomy1_NilProgressionService(t *testing.T) {
 	// ARRANGE
 	mockRepo := &MockRepository{}
-	service := NewService(mockRepo, nil, nil, nil) // nil progression service
+	service := NewService(mockRepo, nil, nil, nil, nil) // nil progression service
 	ctx := context.Background()
 
 	allItems := []domain.Item{
@@ -174,7 +174,7 @@ func TestUpgradeEconomy1_IntegrationWithSellItem(t *testing.T) {
 	mockRepo := &MockRepository{}
 	mockTx := &MockTx{}
 	mockProgression := &MockProgressionService{}
-	service := NewService(mockRepo, nil, nil, mockProgression)
+	service := NewService(mockRepo, nil, nil, mockProgression, nil)
 	ctx := context.Background()
 
 	user := createTestUser()
@@ -201,7 +201,7 @@ func TestUpgradeEconomy1_IntegrationWithSellItem(t *testing.T) {
 	// Base sell price: 40, Modified: 40 * 1.15 = 46
 	// Selling 2 items: 2 * 46 = 92
 	mockProgression.On("GetModifiedValue", ctx, "economy_bonus", 40.0).
-		Return(46.0, nil)
+		Return(46.0, nil, nil)
 
 	// ACT
 	moneyGained, quantitySold, err := service.SellItem(ctx, domain.PlatformTwitch, "", "testuser", "test_item", 2)
@@ -220,7 +220,7 @@ func TestUpgradeEconomy1_RoundingBehavior(t *testing.T) {
 	// ARRANGE
 	mockRepo := &MockRepository{}
 	mockProgression := &MockProgressionService{}
-	service := NewService(mockRepo, nil, nil, mockProgression)
+	service := NewService(mockRepo, nil, nil, mockProgression, nil)
 	ctx := context.Background()
 
 	// Item that produces fractional result: base value 15
@@ -232,9 +232,9 @@ func TestUpgradeEconomy1_RoundingBehavior(t *testing.T) {
 
 	mockRepo.On("GetSellablePrices", ctx).Return(allItems, nil)
 	mockProgression.On("AreItemsUnlocked", ctx, []string{"test_item"}).
-		Return(map[string]bool{"test_item": true}, nil)
+		Return(map[string]bool{"test_item": true}, nil, nil)
 	mockProgression.On("GetModifiedValue", ctx, "economy_bonus", 6.0).
-		Return(6.3, nil)
+		Return(6.3, nil, nil)
 
 	// ACT
 	items, err := service.GetSellablePrices(ctx)
@@ -254,7 +254,7 @@ func TestUpgradeEconomy1_BuyPriceNotAffected(t *testing.T) {
 	// ARRANGE
 	mockRepo := &MockRepository{}
 	mockProgression := &MockProgressionService{}
-	service := NewService(mockRepo, nil, nil, mockProgression)
+	service := NewService(mockRepo, nil, nil, mockProgression, nil)
 	ctx := context.Background()
 
 	allItems := []domain.Item{
@@ -263,7 +263,7 @@ func TestUpgradeEconomy1_BuyPriceNotAffected(t *testing.T) {
 
 	mockRepo.On("GetBuyablePrices", ctx).Return(allItems, nil)
 	mockProgression.On("AreItemsUnlocked", ctx, []string{"buyable_item"}).
-		Return(map[string]bool{"buyable_item": true}, nil)
+		Return(map[string]bool{"buyable_item": true}, nil, nil)
 
 	// ACT
 	items, err := service.GetBuyablePrices(ctx)
