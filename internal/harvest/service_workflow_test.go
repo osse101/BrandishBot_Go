@@ -3,6 +3,7 @@ package harvest
 import (
 	"context"
 	"errors"
+	"sort"
 	"testing"
 	"time"
 
@@ -30,6 +31,10 @@ func TestHarvest_Workflow(t *testing.T) {
 		tooSoon           bool // If true, override hoursElapsed to be small
 		allRewardsLocked  bool // If true, lock all items
 		commitFail        bool // If true, simulate commit failure
+		xpAwardFail       bool // NEW: Simulate failure in AwardXP
+		partialItemLookup bool // NEW: Simulate missing items in DB
+		initialInventory  []domain.InventorySlot // NEW: Setup initial inventory state
+		expectedInvSlots  []domain.InventorySlot // NEW: Expected final inventory state (nil = default check)
 		expectedGains     map[string]int
 		expectedXPAward   bool
 		expectedXP        int
@@ -107,6 +112,51 @@ func TestHarvest_Workflow(t *testing.T) {
 			expectedError:     true,
 			expectedErrorText: "failed to commit transaction",
 		},
+		// --- QA NEW TESTS ---
+		{
+			name:            "Farmer XP Award Failure - Continues Gracefully",
+			hoursElapsed:    6.0,
+			expectedGains:   map[string]int{"money": 12},
+			expectedXPAward: true,
+			expectedXP:      48,
+			xpAwardFail:     true, // Simulate error
+			// Expect success, but message won't have XP details (checked in test logic)
+		},
+		{
+			name:              "Item Lookup Partial Failure - Skips Missing Items",
+			hoursElapsed:      24.0, // Should get money and stick
+			expectedGains:     map[string]int{"money": 22, "stick": 3},
+			expectedXPAward:   true,
+			expectedXP:        192,
+			partialItemLookup: true, // Only return first item found (money), skip stick
+			// Expect inventory to update only with money
+			expectedInvSlots: []domain.InventorySlot{
+				{ItemID: 1, Quantity: 22}, // ID 1 = money
+			},
+		},
+		{
+			name:          "Inventory Slot Stacking - Existing Item",
+			hoursElapsed:  2.0, // 2 money
+			expectedGains: map[string]int{"money": 2},
+			initialInventory: []domain.InventorySlot{
+				{ItemID: 1, Quantity: 10}, // User already has 10 money (ID 1)
+			},
+			expectedInvSlots: []domain.InventorySlot{
+				{ItemID: 1, Quantity: 12}, // Should stack to 12
+			},
+		},
+		{
+			name:          "Inventory New Slot - Different Item",
+			hoursElapsed:  2.0, // 2 money (ID 1)
+			expectedGains: map[string]int{"money": 2},
+			initialInventory: []domain.InventorySlot{
+				{ItemID: 2, Quantity: 5}, // User has stick (ID 2)
+			},
+			expectedInvSlots: []domain.InventorySlot{
+				{ItemID: 2, Quantity: 5},
+				{ItemID: 1, Quantity: 2}, // New slot for money
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -132,8 +182,6 @@ func TestHarvest_Workflow(t *testing.T) {
 			}
 
 			// --- Feature Unlock ---
-			// Don't setup IsFeatureUnlocked if user retrieval fails (which isn't tested here, but good practice)
-			// But here we assume user retrieval succeeds eventually
 			mockProgressionSvc.On("IsFeatureUnlocked", mock.Anything, "feature_farming").Return(!tt.featureLocked, nil)
 
 			if tt.featureLocked {
@@ -169,7 +217,6 @@ func TestHarvest_Workflow(t *testing.T) {
 
 			// --- Transaction Start ---
 			mockHarvestRepo.On("BeginTx", mock.Anything).Return(mockTx, nil)
-			// Defer rollback is called (using Maybe because safe rollback checks error)
 			mockTx.On("Rollback", mock.Anything).Return(nil).Maybe()
 
 			// --- Get State With Lock ---
@@ -178,9 +225,7 @@ func TestHarvest_Workflow(t *testing.T) {
 			}, nil)
 
 			// --- Validate Minimum Time ---
-			// Logic handles this after lock
 			if tt.tooSoon {
-				// Execute
 				_, err := svc.Harvest(context.Background(), "discord", "123456", "TestUser")
 				assert.Error(t, err)
 				if tt.expectedErrorText != "" {
@@ -192,22 +237,23 @@ func TestHarvest_Workflow(t *testing.T) {
 			// --- Calculate Rewards ---
 			if !tt.expectedSpoiled {
 				if tt.allRewardsLocked {
-					// Setup IsItemUnlocked to return false
 					mockProgressionSvc.On("IsItemUnlocked", mock.Anything, mock.Anything).Return(false, nil).Maybe()
 				} else {
-					// Basic unlocks
 					mockProgressionSvc.On("IsItemUnlocked", mock.Anything, mock.Anything).Return(true, nil).Maybe()
 				}
 			}
 
 			// --- Award XP ---
 			if tt.expectedXPAward {
-				mockJobSvc.On("AwardXP", mock.Anything, defaultUser.ID, job.JobKeyFarmer, tt.expectedXP, job.SourceHarvest, mock.Anything).Return(&domain.XPAwardResult{XPGained: tt.expectedXP}, nil)
+				if tt.xpAwardFail {
+					mockJobSvc.On("AwardXP", mock.Anything, defaultUser.ID, job.JobKeyFarmer, tt.expectedXP, job.SourceHarvest, mock.Anything).Return(nil, errors.New("xp error"))
+				} else {
+					mockJobSvc.On("AwardXP", mock.Anything, defaultUser.ID, job.JobKeyFarmer, tt.expectedXP, job.SourceHarvest, mock.Anything).Return(&domain.XPAwardResult{XPGained: tt.expectedXP}, nil)
+				}
 			}
 
 			// --- Empty Rewards Warning Path ---
 			if tt.allRewardsLocked && !tt.expectedSpoiled {
-				// Should update timestamp and commit, but NOT update inventory
 				mockTx.On("UpdateHarvestState", mock.Anything, defaultUser.ID, mock.Anything).Return(nil)
 				mockTx.On("Commit", mock.Anything).Return(nil)
 
@@ -220,19 +266,46 @@ func TestHarvest_Workflow(t *testing.T) {
 			}
 
 			// --- Inventory & Item Handling ---
-			mockTx.On("GetInventory", mock.Anything, defaultUser.ID).Return(&domain.Inventory{Slots: []domain.InventorySlot{}}, nil)
+			initialInv := &domain.Inventory{Slots: []domain.InventorySlot{}}
+			if tt.initialInventory != nil {
+				initialInv.Slots = tt.initialInventory
+			}
+			mockTx.On("GetInventory", mock.Anything, defaultUser.ID).Return(initialInv, nil)
 
 			// Mock item lookup
 			mockItems := []domain.Item{}
-			for name := range tt.expectedGains {
-				mockItems = append(mockItems, domain.Item{InternalName: name, ID: 1, PublicName: name})
-				mockUserRepo.On("GetItemsByNames", mock.Anything, mock.Anything).Return(func(_ context.Context, names []string) []domain.Item {
-					return mockItems
-				}, nil)
+			// Sort keys to ensure deterministic item ID assignment for testing
+			keys := make([]string, 0, len(tt.expectedGains))
+			for k := range tt.expectedGains {
+				keys = append(keys, k)
+			}
+			sort.Strings(keys)
+
+			// Assign IDs based on index (1-based) to distinguish items
+			// But note: map iteration order is random, so we must sort keys first if we want deterministic IDs
+			// or just map name->ID explicitly in the test setup.
+			// Here we loop through sorted keys
+			for i, name := range keys {
+				mockItems = append(mockItems, domain.Item{InternalName: name, ID: i + 1, PublicName: name})
 			}
 
+			mockUserRepo.On("GetItemsByNames", mock.Anything, mock.Anything).Return(func(_ context.Context, names []string) []domain.Item {
+				if tt.partialItemLookup && len(mockItems) > 0 {
+					return mockItems[:1] // Return only the first item
+				}
+				return mockItems
+			}, nil)
+
 			// Update Inventory
-			mockTx.On("UpdateInventory", mock.Anything, defaultUser.ID, mock.Anything).Return(nil)
+			if tt.expectedInvSlots != nil {
+				mockTx.On("UpdateInventory", mock.Anything, defaultUser.ID, mock.MatchedBy(func(inv domain.Inventory) bool {
+					// Compare inv.Slots with tt.expectedInvSlots using assert.ElementsMatch
+					// Note: MatchedBy return value is boolean, asserting inside might log but we need return
+					return assert.ElementsMatch(t, tt.expectedInvSlots, inv.Slots)
+				})).Return(nil)
+			} else {
+				mockTx.On("UpdateInventory", mock.Anything, defaultUser.ID, mock.Anything).Return(nil)
+			}
 
 			// Update Timestamp
 			mockTx.On("UpdateHarvestState", mock.Anything, defaultUser.ID, mock.Anything).Return(nil)
@@ -260,6 +333,13 @@ func TestHarvest_Workflow(t *testing.T) {
 
 				if tt.expectedSpoiled {
 					assert.Contains(t, resp.Message, "spoiled")
+				}
+				if tt.expectedXPAward {
+					if tt.xpAwardFail {
+						assert.NotContains(t, resp.Message, "You gained")
+					} else {
+						assert.Contains(t, resp.Message, "You gained")
+					}
 				}
 			}
 		})
