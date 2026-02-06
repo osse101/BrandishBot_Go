@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -10,15 +11,18 @@ import (
 // Scheduler manages scheduled jobs
 type Scheduler struct {
 	workerPool *worker.Pool
-	quit       chan struct{}
+	ctx        context.Context
+	cancel     context.CancelFunc
 	wg         sync.WaitGroup
 }
 
 // New creates a new scheduler
 func New(pool *worker.Pool) *Scheduler {
+	ctx, cancel := context.WithCancel(context.Background())
 	return &Scheduler{
 		workerPool: pool,
-		quit:       make(chan struct{}),
+		ctx:        ctx,
+		cancel:     cancel,
 	}
 }
 
@@ -33,15 +37,10 @@ func (s *Scheduler) Schedule(interval time.Duration, job worker.Job) {
 		for {
 			select {
 			case <-ticker.C:
-				// Enqueue job to worker pool
-				// Note: Enqueue is blocking in current implementation if queue is full?
-				// Let's check worker.Pool.Enqueue implementation.
-				// It sends to channel: p.jobQueue <- job
-				// If queue is full, this will block the scheduler goroutine.
-				// This is acceptable for now, or we could use a non-blocking send.
-				s.workerPool.Enqueue(job)
-				// We can log here if needed, but better to keep scheduler simple.
-			case <-s.quit:
+				// Attempt to enqueue job with context cancellation support
+				// If the pool is full and we are stopping, this will return quickly.
+				_ = s.workerPool.EnqueueContext(s.ctx, job)
+			case <-s.ctx.Done():
 				return
 			}
 		}
@@ -57,6 +56,6 @@ func (s *Scheduler) Start() {
 
 // Stop stops all scheduled jobs
 func (s *Scheduler) Stop() {
-	close(s.quit)
+	s.cancel()
 	s.wg.Wait()
 }
