@@ -35,6 +35,7 @@ Feeling lucky? Type `!gamble start lootbox1 1` to risk it all for GLORY!
 | `!sell <item> [qty]` | Sell items for cash. | **Item** |
 | `!give <target> <item> [qty]` | Transfer items to another player. | **Item** |
 | `!use blaster <target>` | Time out a user for 60 seconds. | 1x **Blaster** |
+| `!use trap <target>` | Plant a hidden trap. Explodes when target speaks. | 1x **Trap** |
 
 ### 2. Twitch Chat (The Shout)
 Need cash? `!search` for loot or `!sell` your junk!
@@ -45,6 +46,7 @@ Silence the haters! `!use blaster @troll` to timeout them for 60s!
 *   **Lootbox1** (Cost: 50): Basic. Contains **Money** (10-100) or **Lootbox0** (50%).
 *   **Lootbox2** (Cost: 100): Rare. Contains **Money** (100-500) or **Lootbox1** (50%). Has a 10% chance for a **Blaster**.
 *   **Blaster**: Use with `!use blaster <target>`. Awards **Merchant XP** when buying/selling.
+*   **Trap**: Use with `!use trap <target>`. Waits for the target to chat, then times them out.
 
 ---
 

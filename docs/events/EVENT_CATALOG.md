@@ -283,6 +283,30 @@ publisher.PublishWithRetry(ctx, event.Event{
 
 ---
 
+### trap_* Events
+
+**Source:** `internal/user/service.go` and `internal/user/item_handlers.go`
+
+**Payload:**
+```json
+{
+  "trap_id": "string (UUID)",
+  "setter_id": "string (UUID)",
+  "setter_username": "string",
+  "target_id": "string (UUID)",
+  "target_username": "string",
+  "shine_level": "string",
+  "timeout_seconds": "integer",
+  "was_self_triggered": "boolean"
+}
+```
+
+**Event Types:**
+- `trap.triggered`: Trap successfully triggered on the target
+- `trap.self_triggered`: User tried to trap someone who already had a trap, triggering the existing trap on themselves
+
+---
+
 ## Event Template
 
 When adding a new event, use this template:
