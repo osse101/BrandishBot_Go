@@ -20,6 +20,7 @@ func main() {
 	registry.Register(&DoctorCommand{})
 	registry.Register(&SetupCommand{})
 	registry.Register(&BenchCommand{})
+	registry.Register(&PreCommitCommand{})
 
 	if len(os.Args) < 2 {
 		registry.PrintHelp()
