@@ -121,6 +121,11 @@ type MockProgressionService struct {
 	mock.Mock
 }
 
+// IsFeatureUnlocked implements [ProgressionService].
+func (m *MockProgressionService) IsFeatureUnlocked(ctx context.Context, featureKey string) (bool, error) {
+	return true, nil
+}
+
 func (m *MockProgressionService) IsItemUnlocked(ctx context.Context, itemName string) (bool, error) {
 	args := m.Called(ctx, itemName)
 	return args.Bool(0), args.Error(1)

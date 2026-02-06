@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/osse101/BrandishBot_Go/internal/progression"
+
 	"github.com/osse101/BrandishBot_Go/internal/config"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/job"
@@ -39,6 +41,7 @@ type JobService interface {
 type ProgressionService interface {
 	IsItemUnlocked(ctx context.Context, itemName string) (bool, error)
 	AreItemsUnlocked(ctx context.Context, itemNames []string) (map[string]bool, error)
+	IsFeatureUnlocked(ctx context.Context, featureKey string) (bool, error)
 	GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error)
 }
 
@@ -201,8 +204,20 @@ func (s *service) getCurrentWeeklySale() *domain.WeeklySale {
 }
 
 // applyWeeklySaleDiscount applies the current weekly sale discount to a buy price
-// Returns the discounted price
-func (s *service) applyWeeklySaleDiscount(basePrice int, itemCategory string) int {
+// Returns the discounted price. Requires feature_weekly_discount to be unlocked.
+func (s *service) applyWeeklySaleDiscount(ctx context.Context, basePrice int, itemCategory string) int {
+	// Check if weekly discount feature is unlocked
+	if s.progressionService != nil {
+		unlocked, err := s.progressionService.IsFeatureUnlocked(ctx, progression.FeatureWeeklyDiscount)
+		if err != nil {
+			logger.FromContext(ctx).Warn("Failed to check if weekly discount is unlocked", "error", err)
+			return basePrice
+		}
+		if !unlocked {
+			return basePrice
+		}
+	}
+
 	sale := s.getCurrentWeeklySale()
 	if sale == nil {
 		return basePrice
@@ -526,7 +541,7 @@ func (s *service) BuyItem(ctx context.Context, platform, platformID, username, i
 
 	// Apply weekly sale discount to item price if applicable
 	itemCategory := getItemCategory(item)
-	discountedPrice := s.applyWeeklySaleDiscount(item.BaseValue, itemCategory)
+	discountedPrice := s.applyWeeklySaleDiscount(ctx, item.BaseValue, itemCategory)
 	if discountedPrice < item.BaseValue {
 		log.Info("Weekly sale discount applied", "item", itemName, "category", itemCategory, "original_price", item.BaseValue, "discounted_price", discountedPrice)
 	}

@@ -823,6 +823,21 @@
       ],
       "sort_order": 50,
       "auto_unlock": false
+    },
+    {
+      "key": "feature_weekly_discount",
+      "name": "Weekly Discount",
+      "type": "feature",
+      "description": "Weekly discounts on items.",
+      "tier": 2,
+      "size": "medium",
+      "category": "economy",
+      "max_level": 1,
+      "prerequisites": [
+        "feature_economy"
+      ],
+      "sort_order": 51,
+      "auto_unlock": false
     }
   ]
 }
