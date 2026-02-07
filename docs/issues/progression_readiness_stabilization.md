@@ -44,3 +44,8 @@ The new "Auto-Select" feature (bypassing votes when only one node is available) 
 
 - **Documentation**: The `progression.target.set` event, used for auto-select logic, has been documented in `docs/events/EVENT_CATALOG.md`.
 - **Auto-Select Verification**: Code review of `auto_select_test.go` confirms that the core logic and FK constraint handling are tested. Event consistency verification is still pending an automated test, but the event structure is now formally defined.
+
+## Status Update (2026-02-06)
+
+- **Graceful Shutdown**: Re-verified `internal/progression/voting_sessions.go`. All `go func()` invocations (in `AddContribution`, `handleSingleOptionAutoSelect`, `CheckAndUnlockNode`) are wrapped with `s.wg.Add(1)` and `defer s.wg.Done()`. This component is definitively **Resolved**.
+- **Auto-Select**: Pending final automated verification for SSE consistency. Status remains **In Progress**.

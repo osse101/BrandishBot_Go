@@ -333,10 +333,13 @@ Feature node:
 - `/party` - View party
 - `/expedition-status` - View current status
 
-## Status Update (2026-01-30)
+## Status Update (2026-02-06)
 
-**Implementation Status: In Progress**
+**Implementation Status: Resolved**
 
 - **Database**: Tables `expeditions` and `expedition_participants` exist (via migration `0012_add_expeditions.sql`).
-- **Service**: `internal/expedition/service.go` exists, but `ExecuteExpedition` is a placeholder (`fmt.Errorf("not implemented")`).
-- **Discord Integration**: Expedition commands (`/explore`, etc.) are not registered in `cmd/discord/main.go`.
+- **Service**: `internal/expedition` is fully implemented, including `ExecuteExpedition` logic with engine execution, journal generation, reward distribution, and event publishing.
+- **Discord Integration**: `internal/discord/cmd_expedition.go` implements `/explore` and `/expedition-journal` commands.
+- **Worker**: `internal/worker/expedition_worker.go` exists to handle background execution.
+
+This feature is considered **Resolved** and implemented.
