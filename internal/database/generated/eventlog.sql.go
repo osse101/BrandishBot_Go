@@ -8,6 +8,7 @@ package generated
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -146,6 +147,51 @@ func (q *Queries) GetLogEventsByUser(ctx context.Context, arg GetLogEventsByUser
 			&i.Payload,
 			&i.Metadata,
 			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getRecentlyActiveUsers = `-- name: GetRecentlyActiveUsers :many
+SELECT DISTINCT u.user_id, u.username, p.name as platform, pl.platform_user_id, MAX(e.created_at) as last_active
+FROM events e
+JOIN users u ON e.user_id = cast(u.user_id as text)
+JOIN user_platform_links pl ON u.user_id = pl.user_id
+JOIN platforms p ON pl.platform_id = p.platform_id
+GROUP BY u.user_id, u.username, p.name, pl.platform_user_id
+ORDER BY last_active DESC
+LIMIT $1
+`
+
+type GetRecentlyActiveUsersRow struct {
+	UserID         uuid.UUID   `json:"user_id"`
+	Username       string      `json:"username"`
+	Platform       string      `json:"platform"`
+	PlatformUserID string      `json:"platform_user_id"`
+	LastActive     interface{} `json:"last_active"`
+}
+
+func (q *Queries) GetRecentlyActiveUsers(ctx context.Context, limit int32) ([]GetRecentlyActiveUsersRow, error) {
+	rows, err := q.db.Query(ctx, getRecentlyActiveUsers, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetRecentlyActiveUsersRow
+	for rows.Next() {
+		var i GetRecentlyActiveUsersRow
+		if err := rows.Scan(
+			&i.UserID,
+			&i.Username,
+			&i.Platform,
+			&i.PlatformUserID,
+			&i.LastActive,
 		); err != nil {
 			return nil, err
 		}

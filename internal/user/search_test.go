@@ -212,6 +212,10 @@ func (m *mockSearchRepo) GetAllItems(ctx context.Context) ([]domain.Item, error)
 	return items, nil
 }
 
+func (m *mockSearchRepo) GetRecentlyActiveUsers(ctx context.Context, limit int) ([]domain.User, error) {
+	return nil, nil
+}
+
 func (m *mockSearchRepo) CreateTrap(ctx context.Context, trap *domain.Trap) error {
 	return nil
 }

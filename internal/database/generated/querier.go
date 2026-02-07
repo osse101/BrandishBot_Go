@@ -125,6 +125,7 @@ type Querier interface {
 	GetNodeDynamicPrerequisites(ctx context.Context, id int32) ([]byte, error)
 	GetNodePrerequisites(ctx context.Context, nodeID int32) ([]GetNodePrerequisitesRow, error)
 	GetPlatformID(ctx context.Context, name string) (int32, error)
+	GetRecentlyActiveUsers(ctx context.Context, limit int32) ([]GetRecentlyActiveUsersRow, error)
 	GetRecipeByTargetItemID(ctx context.Context, targetItemID int32) (GetRecipeByTargetItemIDRow, error)
 	GetSellablePrices(ctx context.Context) ([]GetSellablePricesRow, error)
 	GetSessionByID(ctx context.Context, id int32) (GetSessionByIDRow, error)

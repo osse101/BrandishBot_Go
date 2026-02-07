@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 
+	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
 
@@ -65,4 +66,35 @@ func (h *AdminUserHandler) HandleUserLookup(w http.ResponseWriter, r *http.Reque
 	}
 
 	respondJSON(w, http.StatusOK, resp)
+}
+
+// HandleGetRecentUsers returns a list of recently active users
+// GET /api/v1/admin/users/recent
+func (h *AdminUserHandler) HandleGetRecentUsers(w http.ResponseWriter, r *http.Request) {
+	limit := 10 // Default limit
+
+	users, err := h.userRepo.GetRecentlyActiveUsers(r.Context(), limit)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to get recent users: "+err.Error())
+		return
+	}
+
+	respondJSON(w, http.StatusOK, users)
+}
+
+// HandleGetItems returns all items for autocomplete
+// GET /api/v1/admin/items
+func (h *AdminUserHandler) HandleGetItems(w http.ResponseWriter, r *http.Request) {
+	items, err := h.userRepo.GetAllItems(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to get items: "+err.Error())
+		return
+	}
+	respondJSON(w, http.StatusOK, items)
+}
+
+// HandleGetJobs returns all jobs for autocomplete
+// GET /api/v1/admin/jobs
+func (h *AdminUserHandler) HandleGetJobs(w http.ResponseWriter, r *http.Request) {
+	respondJSON(w, http.StatusOK, job.AllJobs)
 }

@@ -227,10 +227,15 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 		r.Route("/admin", func(r chi.Router) {
 			r.Get("/metrics", adminMetricsHandler.HandleGetMetrics)
 
-			// User lookup
-			r.Route("/user", func(r chi.Router) {
+			// User management
+			r.Route("/users", func(r chi.Router) {
 				r.Get("/lookup", adminUserHandler.HandleUserLookup)
+				r.Get("/recent", adminUserHandler.HandleGetRecentUsers)
 			})
+
+			// Autocomplete lists
+			r.Get("/items", adminUserHandler.HandleGetItems)
+			r.Get("/jobs", adminUserHandler.HandleGetJobs)
 
 			// Event log
 			r.Get("/events", adminEventsHandler.HandleGetEvents)

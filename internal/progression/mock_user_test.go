@@ -164,4 +164,9 @@ func (m *MockUser) MergeUsersInTransaction(ctx context.Context, primaryUserID, s
 	return nil
 }
 
+// GetRecentlyActiveUsers returns recently active users (stub)
+func (m *MockUser) GetRecentlyActiveUsers(ctx context.Context, limit int) ([]domain.User, error) {
+	return nil, nil
+}
+
 var _ repository.User = (*MockUser)(nil)

@@ -180,6 +180,14 @@ func (m *MockRepo) GetAllItems(ctx context.Context) ([]domain.Item, error) {
 	return args.Get(0).([]domain.Item), args.Error(1)
 }
 
+func (m *MockRepo) GetRecentlyActiveUsers(ctx context.Context, limit int) ([]domain.User, error) {
+	args := m.Called(ctx, limit)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]domain.User), args.Error(1)
+}
+
 // MockLootboxService is a mock for lootbox.Service
 type MockLootboxService struct {
 	mock.Mock

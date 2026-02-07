@@ -239,6 +239,33 @@ func (r *UserRepository) GetAllItems(ctx context.Context) ([]domain.Item, error)
 	return items, nil
 }
 
+// GetRecentlyActiveUsers retrieves users who recently had events
+func (r *UserRepository) GetRecentlyActiveUsers(ctx context.Context, limit int) ([]domain.User, error) {
+	rows, err := r.q.GetRecentlyActiveUsers(ctx, int32(limit))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get recently active users: %w", err)
+	}
+
+	users := make([]domain.User, 0, len(rows))
+	for _, row := range rows {
+		users = append(users, domain.User{
+			ID:        row.UserID.String(),
+			Username:  row.Username,
+			TwitchID:  renderPlatformID(row.Platform, row.PlatformUserID, domain.PlatformTwitch),
+			YoutubeID: renderPlatformID(row.Platform, row.PlatformUserID, domain.PlatformYoutube),
+			DiscordID: renderPlatformID(row.Platform, row.PlatformUserID, domain.PlatformDiscord),
+		})
+	}
+	return users, nil
+}
+
+func renderPlatformID(platform, platformUserID, targetPlatform string) string {
+	if platform == targetPlatform {
+		return platformUserID
+	}
+	return ""
+}
+
 // GetItemByID retrieves an item by its ID
 func (r *UserRepository) GetItemByID(ctx context.Context, id int) (*domain.Item, error) {
 	return getItemByID(ctx, r.q, id)

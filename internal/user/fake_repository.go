@@ -327,3 +327,14 @@ func (f *FakeRepository) GetTriggeredTrapsForTarget(ctx context.Context, targetI
 func (f *FakeRepository) CleanupStaleTraps(ctx context.Context, daysOld int) (int, error) {
 	return 0, nil
 }
+
+func (f *FakeRepository) GetRecentlyActiveUsers(ctx context.Context, limit int) ([]domain.User, error) {
+	users := make([]domain.User, 0, len(f.users))
+	for _, u := range f.users {
+		users = append(users, *u)
+		if len(users) >= limit {
+			break
+		}
+	}
+	return users, nil
+}

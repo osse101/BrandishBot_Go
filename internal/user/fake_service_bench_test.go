@@ -180,6 +180,10 @@ func (f *fakeBenchRepository) GetAllItems(ctx context.Context) ([]domain.Item, e
 	return []domain.Item{}, nil // Bench mock doesn't store items
 }
 
+func (f *fakeBenchRepository) GetRecentlyActiveUsers(ctx context.Context, limit int) ([]domain.User, error) {
+	return []domain.User{}, nil
+}
+
 // Mock transaction
 type fakeBenchTx struct {
 	repo *fakeBenchRepository

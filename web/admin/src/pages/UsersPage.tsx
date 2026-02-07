@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { apiGet, apiPost } from "../api/client";
 import { useToast } from "../components/shared/Toast";
 import { JsonViewer } from "../components/shared/JsonViewer";
@@ -27,6 +27,31 @@ export function UsersPage() {
   const [stats, setStats] = useState<unknown>(null);
   const [quests, setQuests] = useState<QuestProgress[]>([]);
   const [events, setEvents] = useState<EventLogEntry[]>([]);
+  const [allItems, setAllItems] = useState<
+    { internal_name: string; public_name?: string }[]
+  >([]);
+  const [allJobs, setAllJobs] = useState<
+    { Key: string; DisplayName: string }[]
+  >([]);
+
+  useEffect(() => {
+    const fetchAutocompleteData = async () => {
+      try {
+        const items = await apiGet<
+          { internal_name: string; public_name?: string }[]
+        >("/api/v1/admin/items");
+        setAllItems(items ?? []);
+        const jobs =
+          await apiGet<{ Key: string; DisplayName: string }[]>(
+            "/api/v1/admin/jobs",
+          );
+        setAllJobs(jobs ?? []);
+      } catch {
+        // Silently fail
+      }
+    };
+    fetchAutocompleteData();
+  }, []);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,7 +60,7 @@ export function UsersPage() {
     setUser(null);
     try {
       const u = await apiGet<User>(
-        `/api/v1/admin/user/lookup?platform=${platform}&username=${encodeURIComponent(username.trim())}`,
+        `/api/v1/admin/users/lookup?platform=${platform}&username=${encodeURIComponent(username.trim())}`,
       );
       setUser(u);
       // Load initial tab data
@@ -146,6 +171,18 @@ export function UsersPage() {
           {searching ? "Searching..." : "Search"}
         </button>
       </form>
+
+      {/* Recently Active Users */}
+      {!user && !searching && (
+        <RecentUsersList
+          onSelectUser={(u) => {
+            setPlatform(u.platform);
+            setUsername(u.username);
+            setUser(u);
+            loadTabData("inventory", u.platform, u.username);
+          }}
+        />
+      )}
 
       {/* User Profile */}
       {user && (
@@ -301,7 +338,15 @@ export function UsersPage() {
                 }
                 className="w-full px-2 py-1.5 bg-gray-800 border border-gray-700 rounded text-sm text-gray-200 focus:outline-none focus:border-blue-500"
                 placeholder="item name"
+                list="all-items"
               />
+              <datalist id="all-items">
+                {allItems.map((it) => (
+                  <option key={it.internal_name} value={it.internal_name}>
+                    {it.public_name}
+                  </option>
+                ))}
+              </datalist>
             </div>
             <div className="w-20">
               <label className="text-xs text-gray-500 block mb-1">Qty</label>
@@ -359,6 +404,7 @@ export function UsersPage() {
                 }
                 className="w-full px-2 py-1.5 bg-gray-800 border border-gray-700 rounded text-sm text-gray-200 focus:outline-none focus:border-blue-500"
                 placeholder="item name"
+                list="all-items"
               />
             </div>
             <div className="w-20">
@@ -411,8 +457,16 @@ export function UsersPage() {
                   setXpForm((f) => ({ ...f, job_key: e.target.value }))
                 }
                 className="w-full px-2 py-1.5 bg-gray-800 border border-gray-700 rounded text-sm text-gray-200 focus:outline-none focus:border-blue-500"
-                placeholder="e.g. miner"
+                placeholder="e.g. blacksmith"
+                list="all-jobs"
               />
+              <datalist id="all-jobs">
+                {allJobs.map((j) => (
+                  <option key={j.Key} value={j.Key}>
+                    {j.DisplayName}
+                  </option>
+                ))}
+              </datalist>
             </div>
             <div className="w-20">
               <label className="text-xs text-gray-500 block mb-1">Amount</label>
@@ -453,6 +507,56 @@ export function UsersPage() {
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+function RecentUsersList({
+  onSelectUser,
+}: {
+  onSelectUser: (u: User) => void;
+}) {
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchRecent = async () => {
+    try {
+      const data = await apiGet<User[]>("/api/v1/admin/users/recent");
+      setUsers(data ?? []);
+    } catch {
+      // Handle error
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRecent();
+  }, []);
+
+  if (loading)
+    return <p className="text-sm text-gray-500">Loading recent users...</p>;
+  if (users.length === 0) return null;
+
+  return (
+    <div className="bg-gray-900 rounded-lg border border-gray-800 p-4">
+      <h3 className="text-sm font-medium text-gray-300 mb-3">
+        Recently Active Users
+      </h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+        {users.map((u) => (
+          <button
+            key={u.id}
+            onClick={() => onSelectUser(u)}
+            className="text-left p-3 rounded-md bg-gray-800 border border-gray-700 hover:border-blue-500 transition-colors group"
+          >
+            <div className="text-sm font-medium text-gray-200 group-hover:text-blue-400">
+              {u.username}
+            </div>
+            <div className="text-xs text-gray-500">{u.platform}</div>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
