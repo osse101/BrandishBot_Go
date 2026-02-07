@@ -17,9 +17,9 @@ func VoteCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		Description: "Vote for a progression node unlock",
 		Options: []*discordgo.ApplicationCommandOption{
 			{
-				Type:        discordgo.ApplicationCommandOptionString,
-				Name:        "node",
-				Description: "Node key to vote for (e.g., feature_economy, item_money)",
+				Type:        discordgo.ApplicationCommandOptionInteger,
+				Name:        "option",
+				Description: "Option index to vote for (from /voting-session)",
 				Required:    true,
 			},
 		},
@@ -29,7 +29,7 @@ func VoteCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		handleEmbedResponse(s, i, func() (string, error) {
 			user := getInteractionUser(i)
 			options := getOptions(i)
-			nodeKey := options[0].StringValue()
+			optionIndex := int(options[0].IntValue())
 
 			// Ensure user exists
 			_, err := client.RegisterUser(user.Username, user.ID)
@@ -37,7 +37,7 @@ func VoteCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 				return "", fmt.Errorf("failed to register user: %w", err)
 			}
 
-			return client.VoteForNode(domain.PlatformDiscord, user.ID, user.Username, nodeKey)
+			return client.VoteForNode(domain.PlatformDiscord, user.ID, user.Username, optionIndex)
 		}, ResponseConfig{
 			Title: "✅ Vote Recorded",
 			Color: 0x3498db, // Blue

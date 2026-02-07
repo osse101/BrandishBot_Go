@@ -345,13 +345,13 @@ func (c *APIClient) JoinGamble(platform, platformID, username, gambleID string) 
 	return joinResp.Message, nil
 }
 
-// VoteForNode votes for a progression node unlock
-func (c *APIClient) VoteForNode(platform, platformID, username, nodeKey string) (string, error) {
+// VoteForNode votes for a progression node unlock using an option index
+func (c *APIClient) VoteForNode(platform, platformID, username string, optionIndex int) (string, error) {
 	req := map[string]interface{}{
-		"platform":    platform,
-		"platform_id": platformID,
-		"username":    username,
-		"node_key":    nodeKey,
+		"platform":     platform,
+		"platform_id":  platformID,
+		"username":     username,
+		"option_index": optionIndex,
 	}
 
 	var resp struct {
