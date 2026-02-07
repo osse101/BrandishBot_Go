@@ -2,13 +2,11 @@ package discord
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"os"
 	"os/signal"
-	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -30,6 +28,9 @@ type Bot struct {
 	GithubOwnerRepo       string
 	sseClient             *SSEClient
 	sseNotifier           *SSENotifier
+	ctx                   context.Context
+	cancel                context.CancelFunc
+	wg                    sync.WaitGroup
 }
 
 // Config holds the bot configuration
@@ -102,9 +103,13 @@ func (b *Bot) Start() error {
 	if b.sseClient != nil && b.NotificationChannelID != "" {
 		b.sseNotifier = NewSSENotifier(b.Session, b.NotificationChannelID)
 		b.sseNotifier.RegisterHandlers(b.sseClient)
-		b.sseClient.Start(context.Background())
+
+		b.ctx, b.cancel = context.WithCancel(context.Background())
+		b.sseClient.Start(b.ctx)
 		slog.Info("SSE client started for real-time notifications",
 			"channel_id", b.NotificationChannelID)
+	} else {
+		b.ctx, b.cancel = context.WithCancel(context.Background())
 	}
 
 	slog.Info("Discord bot is now running. Press CTRL-C to exit.")
@@ -113,12 +118,25 @@ func (b *Bot) Start() error {
 
 // Stop stops the bot
 func (b *Bot) Stop() {
-	// Stop SSE client first
+	slog.Info("Shutting down bot...")
+
+	// Cancel context to stop all background tasks
+	if b.cancel != nil {
+		b.cancel()
+	}
+
+	// Stop SSE client
 	if b.sseClient != nil {
 		b.sseClient.Stop()
 		slog.Info("SSE client stopped")
 	}
+
+	// Wait for all background goroutines to finish
+	b.wg.Wait()
+	slog.Info("All background tasks finished")
+
 	b.Session.Close()
+	slog.Info("Discord session closed")
 }
 
 // Run runs the bot until a signal is received
@@ -155,86 +173,64 @@ func (b *Bot) SendDevMessage(embed *discordgo.MessageEmbed) error {
 	return err
 }
 
-// StartDailyCommitChecker starts a ticker to check for commits every 24 hours
-func (b *Bot) StartDailyCommitChecker() {
-	ticker := time.NewTicker(24 * time.Hour)
+// StartDailyPatchNotesChecker starts a ticker to check for patch notes every 24 hours.
+func (b *Bot) StartDailyPatchNotesChecker() {
+	b.wg.Add(1)
 	go func() {
-		for range ticker.C {
-			if err := b.SendDailyCommitReport(); err != nil {
-				slog.Error("Failed to send daily commit report", "error", err)
+		defer b.wg.Done()
+		ticker := time.NewTicker(24 * time.Hour)
+		defer ticker.Stop()
+
+		slog.Info("Daily patch notes checker started")
+
+		for {
+			select {
+			case <-ticker.C:
+				if err := b.SendDailyPatchNotesReport(); err != nil {
+					slog.Error("Failed to send daily patch notes report", "error", err)
+				}
+			case <-b.ctx.Done():
+				slog.Info("Daily patch notes checker stopping")
+				return
 			}
 		}
 	}()
 }
 
-// SendDailyCommitReport queries GitHub and sends a summary of commits from the last 24h
-func (b *Bot) SendDailyCommitReport() error {
-	if b.GithubToken == "" || b.GithubOwnerRepo == "" {
-		slog.Warn("GitHub not configured, skipping commit report")
-		return nil
-	}
-
-	since := time.Now().Add(-24 * time.Hour).Format(time.RFC3339)
-	url := fmt.Sprintf("https://api.github.com/repos/%s/commits?since=%s", b.GithubOwnerRepo, since)
-
-	req, err := http.NewRequest("GET", url, nil)
+// SendDailyPatchNotesReport reads docs/patchnotes.md and sends it to the developer channel
+func (b *Bot) SendDailyPatchNotesReport() error {
+	content, err := os.ReadFile("docs/patchnotes.md")
 	if err != nil {
-		return err
-	}
-	req.Header.Set("Authorization", "token "+b.GithubToken)
-	req.Header.Set("Accept", "application/vnd.github.v3+json")
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("github api returned %d", resp.StatusCode)
-	}
-
-	var commits []struct {
-		Sha    string `json:"sha"`
-		Commit struct {
-			Message string `json:"message"`
-			Author  struct {
-				Name string `json:"name"`
-				Date string `json:"date"`
-			} `json:"author"`
-		} `json:"commit"`
-		HTMLURL string `json:"html_url"`
-	}
-
-	if err := json.NewDecoder(resp.Body).Decode(&commits); err != nil {
-		return err
-	}
-
-	if len(commits) == 0 {
-		return nil // No commits to report
-	}
-
-	var sb strings.Builder
-	// Optimization: Use strings.Builder for efficient string concatenation (O(n) vs O(n^2))
-	for _, c := range commits {
-		msg := c.Commit.Message
-		if len(msg) > 50 {
-			msg = msg[:47] + "..."
+		if os.IsNotExist(err) {
+			slog.Warn("docs/patchnotes.md not found, skipping report")
+			return nil
 		}
-		fmt.Fprintf(&sb, "• [`%s`](%s) %s - *%s*\n", c.Sha[:7], c.HTMLURL, msg, c.Commit.Author.Name)
+		return fmt.Errorf("failed to read patch notes: %w", err)
+	}
+
+	// Limit content length for Discord embed (max 4096)
+	description := string(content)
+	if len(description) > 4000 {
+		description = description[:3997] + "..."
 	}
 
 	embed := &discordgo.MessageEmbed{
-		Title:       "Daily Commit Summary",
-		Description: sb.String(),
-		Color:       0x0099FF, // Blue
+		Title:       "Latest Patch Notes",
+		Description: description,
+		Color:       0x00FF99, // Greenish
 		Timestamp:   time.Now().Format(time.RFC3339),
 		Footer: &discordgo.MessageEmbedFooter{
-			Text: "GitHub Activity",
+			Text: "Weekly Automated Updates",
 		},
 	}
 
 	return b.SendDevMessage(embed)
+}
+
+// SendDailyCommitReport is deprecated in favor of SendDailyPatchNotesReport
+func (b *Bot) SendDailyCommitReport() error {
+	slog.Warn("SendDailyCommitReport is deprecated, use SendDailyPatchNotesReport instead")
+	return nil
 }
 
 func (b *Bot) messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {

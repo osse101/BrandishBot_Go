@@ -52,7 +52,7 @@ func main() {
 	httpServer.Start()
 	defer httpServer.Stop()
 
-	bot.StartDailyCommitChecker()
+	bot.StartDailyPatchNotesChecker()
 
 	// Register all commands
 	registerCommands(bot, getCommandFactories(bot))

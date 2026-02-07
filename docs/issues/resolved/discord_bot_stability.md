@@ -28,15 +28,11 @@ The SSE client used for real-time notifications (`sseClient`) is stopped, but th
 
 Verified that `StartDailyCommitChecker` in `internal/discord/bot.go` still launches a fire-and-forget goroutine without context cancellation or WaitGroup tracking. The `Stop()` method does not wait for this task. The issue persists.
 
-## Status Update (2026-02-06)
+## Status Update (2026-02-07)
 
-Verified that `StartDailyCommitChecker` is still implemented as an untracked goroutine:
-```go
-func (b *Bot) StartDailyCommitChecker() {
-    ticker := time.NewTicker(24 * time.Hour)
-    go func() {
-        // ...
-    }()
-}
-```
-The `Stop()` method closes the session and SSE client but does not wait for the ticker goroutine. The issue is confirmed to be **Open**.
+Resolved.
+
+- Implemented `context.Context` based shutdown for background tasks.
+- Added `sync.WaitGroup` to track and wait for goroutines.
+- Updated `Stop()` to cancel context, wait for `WaitGroup`, and stop SSE client gracefully.
+- Re-routed `StartDailyCommitChecker` to use `docs/patchnotes.md` as requested.
