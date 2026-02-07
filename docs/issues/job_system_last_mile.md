@@ -43,3 +43,10 @@ Implement RPG-style requirements for advanced features:
 
 - **Completed**: Bonus integration for Blacksmith, Merchant, and Gambler is done via progression modifiers. Farmer XP awarding is implemented.
 - **Pending**: Explorer job integration (Search Shine), Farmer job benefits, explicit Level Gating, and UI updates.
+
+## Status Update (2026-02-06)
+
+- **Explorer Job**: `internal/user/search_helpers.go` confirmed to not use Explorer job level for shine calculations.
+- **Farmer Job**: `internal/harvest/service.go` awards XP but does not use job level to modify yield or speed.
+- **Workers**: Daily and weekly reset workers are implemented and functioning.
+- **Status**: Still In Progress for feature integration.
