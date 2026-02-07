@@ -1148,7 +1148,7 @@ public class CPHInline
 
         try
         {
-            var result = client.VoteForNode(platform, platformId, optionIndex).Result;
+            var result = client.VoteForNode(platform, platformId, username, optionIndex).Result;
             var formatted = ResponseFormatter.FormatMessage(result);
             CPH.SetArgument("response", formatted);
             return true;

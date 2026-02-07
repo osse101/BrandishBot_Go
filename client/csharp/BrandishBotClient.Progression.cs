@@ -24,12 +24,13 @@ namespace BrandishBot.Client
         /// <summary>
         /// Vote to unlock a progression node
         /// </summary>
-        public async Task<SuccessResponse> VoteForNode(string platform, string platformId, int optionIndex)
+        public async Task<SuccessResponse> VoteForNode(string platform, string platformId, string username, int optionIndex)
         {
             return await PostAsync<SuccessResponse>("/api/v1/progression/vote", new
             {
                 platform = platform,
                 platform_id = platformId,
+                username = username,
                 option_index = optionIndex
             });
         }
