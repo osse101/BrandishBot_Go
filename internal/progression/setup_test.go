@@ -84,7 +84,7 @@ func applyMigrations(ctx context.Context, t *testing.T, pool *pgxpool.Pool, migr
 }
 
 // cleanupProgressionState cleans up progression state between tests
-func cleanupProgressionState(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+func cleanupProgressionState(ctx context.Context, t *testing.T, pool *pgxpool.Pool) {
 	// Delete in order to respect FK constraints
 	// First, clear FK references
 	_, _ = pool.Exec(ctx, "UPDATE progression_voting_sessions SET winning_option_id = NULL WHERE winning_option_id IS NOT NULL")

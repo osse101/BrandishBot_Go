@@ -65,9 +65,9 @@ func FindRandomSlot(inventory *domain.Inventory, itemID int, rnd func() float64)
 	return slotIdx, inventory.Slots[slotIdx].Quantity
 }
 
-// slotKey is a composite key for inventory slot lookups that respects ShineLevel.
+// SlotKey is a composite key for inventory slot lookups that respects ShineLevel.
 // Items should only stack if both ItemID and ShineLevel match.
-type slotKey struct {
+type SlotKey struct {
 	ItemID     int
 	ShineLevel domain.ShineLevel
 }
@@ -75,10 +75,10 @@ type slotKey struct {
 // BuildSlotMap creates a map of (ItemID, ShineLevel) to slot index for O(1) lookups.
 // This is useful when adding many items to an inventory to avoid repeated linear scans.
 // Items only stack if both ItemID and ShineLevel match.
-func BuildSlotMap(inventory *domain.Inventory) map[slotKey]int {
-	slotMap := make(map[slotKey]int, len(inventory.Slots))
+func BuildSlotMap(inventory *domain.Inventory) map[SlotKey]int {
+	slotMap := make(map[SlotKey]int, len(inventory.Slots))
 	for i, slot := range inventory.Slots {
-		key := slotKey{ItemID: slot.ItemID, ShineLevel: slot.ShineLevel}
+		key := SlotKey{ItemID: slot.ItemID, ShineLevel: slot.ShineLevel}
 		slotMap[key] = i
 	}
 	return slotMap
@@ -103,7 +103,7 @@ func RemoveFromSlot(inventory *domain.Inventory, slotIndex, quantity int) {
 // For larger batches, uses map-based lookup for O(N+M) complexity.
 // Items only stack if BOTH ItemID and ShineLevel match - this prevents shine corruption.
 // The slotMap parameter is optional and will be created if nil and needed.
-func AddItemsToInventory(inventory *domain.Inventory, items []domain.InventorySlot, slotMap map[slotKey]int) {
+func AddItemsToInventory(inventory *domain.Inventory, items []domain.InventorySlot, slotMap map[SlotKey]int) {
 	if len(items) == 0 {
 		return
 	}
@@ -118,7 +118,7 @@ func AddItemsToInventory(inventory *domain.Inventory, items []domain.InventorySl
 	for _, item := range items {
 		if useMap {
 			// Map-based lookup with composite key (ItemID + ShineLevel)
-			key := slotKey{ItemID: item.ItemID, ShineLevel: item.ShineLevel}
+			key := SlotKey{ItemID: item.ItemID, ShineLevel: item.ShineLevel}
 			if idx, exists := slotMap[key]; exists {
 				inventory.Slots[idx].Quantity += item.Quantity
 			} else {

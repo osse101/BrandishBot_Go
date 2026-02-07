@@ -68,7 +68,7 @@ func (t *UserTx) Commit(ctx context.Context) error {
 func (t *UserTx) Rollback(ctx context.Context) error {
 	err := t.tx.Rollback(ctx)
 	if errors.Is(err, pgx.ErrTxClosed) {
-		return fmt.Errorf("%w: %v", repository.ErrTxClosed, err)
+		return fmt.Errorf("%w: %w", repository.ErrTxClosed, err)
 	}
 	return err
 }

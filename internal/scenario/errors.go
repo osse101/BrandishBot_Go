@@ -147,5 +147,5 @@ func WrapProviderError(provider, action string, err error) error {
 
 // WrapDatabaseError wraps a database error with context
 func WrapDatabaseError(operation string, err error) error {
-	return fmt.Errorf("%w: %s: %v", ErrDatabaseOperation, operation, err)
+	return fmt.Errorf("%w: %s: %w", ErrDatabaseOperation, operation, err)
 }

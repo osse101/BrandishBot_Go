@@ -23,7 +23,7 @@ const (
 
 // HTTP header names
 const (
-	HeaderAPIKey         = "X-API-Key"
+	HeaderAPIKey         = "X-API-Key" // #nosec G101
 	HeaderAuthorization  = "Authorization"
 	HeaderForwardedFor   = "X-Forwarded-For"
 	HeaderContentType    = "X-Content-Type-Options"

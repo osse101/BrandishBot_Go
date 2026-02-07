@@ -699,7 +699,7 @@ definitions:
     properties:
       scenarios:
         items:
-          $ref: '#/definitions/scenario.ScenarioSummary'
+          $ref: '#/definitions/scenario.Summary'
         type: array
       total:
         type: integer
@@ -1013,23 +1013,6 @@ definitions:
           $ref: '#/definitions/scenario.Step'
         type: array
     type: object
-  scenario.ScenarioSummary:
-    properties:
-      capabilities:
-        items:
-          $ref: '#/definitions/scenario.CapabilityType'
-        type: array
-      description:
-        type: string
-      feature:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
-      step_count:
-        type: integer
-    type: object
   scenario.SimulatedUser:
     properties:
       platform:
@@ -1078,6 +1061,23 @@ definitions:
         type: string
       success:
         type: boolean
+    type: object
+  scenario.Summary:
+    properties:
+      capabilities:
+        items:
+          $ref: '#/definitions/scenario.CapabilityType'
+        type: array
+      description:
+        type: string
+      feature:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      step_count:
+        type: integer
     type: object
   user.CacheStats:
     properties:

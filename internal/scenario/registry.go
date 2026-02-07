@@ -107,9 +107,9 @@ func (r *Registry) GetAllScenarios() []Scenario {
 }
 
 // GetScenarioSummaries returns summaries of all scenarios
-func (r *Registry) GetScenarioSummaries() []ScenarioSummary {
+func (r *Registry) GetScenarioSummaries() []Summary {
 	scenarios := r.GetAllScenarios()
-	summaries := make([]ScenarioSummary, len(scenarios))
+	summaries := make([]Summary, len(scenarios))
 	for i, s := range scenarios {
 		summaries[i] = s.ToSummary()
 	}

@@ -151,7 +151,7 @@ func (s *service) recordTotalEngagement(ctx context.Context, totalPoints, contri
 }
 
 // awardWinnerRewards awards XP and grenade to the prediction winner (async, graceful degradation)
-func (s *service) awardWinnerRewards(ctx context.Context, platform string, winner domain.PredictionWinner) int {
+func (s *service) awardWinnerRewards(_ context.Context, platform string, winner domain.PredictionWinner) int {
 	s.wg.Add(1)
 	go func() {
 		defer s.wg.Done()
@@ -211,7 +211,7 @@ func (s *service) awardWinnerRewards(ctx context.Context, platform string, winne
 }
 
 // awardParticipantsXP awards XP to all participants (async, graceful degradation)
-func (s *service) awardParticipantsXP(ctx context.Context, platform string, participants []domain.PredictionParticipant) {
+func (s *service) awardParticipantsXP(_ context.Context, platform string, participants []domain.PredictionParticipant) {
 	for _, participant := range participants {
 		s.wg.Add(1)
 		go func(p domain.PredictionParticipant) {
@@ -251,7 +251,7 @@ func (s *service) awardParticipantsXP(ctx context.Context, platform string, part
 }
 
 // recordParticipantStats records prediction participation stats for all participants
-func (s *service) recordParticipantStats(ctx context.Context, platform string, participants []domain.PredictionParticipant, totalPoints int) {
+func (s *service) recordParticipantStats(_ context.Context, platform string, participants []domain.PredictionParticipant, totalPoints int) {
 	for _, participant := range participants {
 		s.wg.Add(1)
 		go func(p domain.PredictionParticipant) {

@@ -2,7 +2,6 @@ package worker
 
 import (
 	"context"
-	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -15,20 +14,17 @@ import (
 
 // ExpeditionWorker schedules expedition execution after the join deadline
 type ExpeditionWorker struct {
-	service  expedition.Service
-	mu       sync.Mutex
-	timers   map[uuid.UUID]*time.Timer
-	shutdown chan struct{}
-	wg       sync.WaitGroup
+	BaseWorker
+	service expedition.Service
 }
 
 // NewExpeditionWorker creates a new ExpeditionWorker
 func NewExpeditionWorker(service expedition.Service) *ExpeditionWorker {
-	return &ExpeditionWorker{
-		service:  service,
-		timers:   make(map[uuid.UUID]*time.Timer),
-		shutdown: make(chan struct{}),
+	w := &ExpeditionWorker{
+		service: service,
 	}
+	w.init()
+	return w
 }
 
 // Start checks for any existing active expedition on startup and schedules it
@@ -61,6 +57,7 @@ func (w *ExpeditionWorker) handleExpeditionStarted(_ context.Context, e event.Ev
 	return nil
 }
 
+//nolint:dupl
 func (w *ExpeditionWorker) scheduleExecution(exp *domain.Expedition) {
 	duration := time.Until(exp.JoinDeadline)
 
@@ -74,11 +71,7 @@ func (w *ExpeditionWorker) scheduleExecution(exp *domain.Expedition) {
 	}
 
 	// Stop existing timer if one exists
-	w.mu.Lock()
-	if existingTimer, ok := w.timers[exp.ID]; ok {
-		existingTimer.Stop()
-		delete(w.timers, exp.ID)
-	}
+	w.stopTimer(exp.ID)
 
 	// Schedule for future execution
 	timer := time.AfterFunc(duration, func() {
@@ -89,14 +82,10 @@ func (w *ExpeditionWorker) scheduleExecution(exp *domain.Expedition) {
 		}
 
 		w.executeExpedition(exp.ID)
-
-		w.mu.Lock()
-		delete(w.timers, exp.ID)
-		w.mu.Unlock()
+		w.removeTimer(exp.ID)
 	})
 
-	w.timers[exp.ID] = timer
-	w.mu.Unlock()
+	w.registerTimer(exp.ID, timer)
 }
 
 func (w *ExpeditionWorker) executeExpedition(expeditionID uuid.UUID) {
@@ -116,33 +105,5 @@ func (w *ExpeditionWorker) executeExpedition(expeditionID uuid.UUID) {
 
 // Shutdown gracefully shuts down the expedition worker
 func (w *ExpeditionWorker) Shutdown(ctx context.Context) error {
-	log := logger.FromContext(ctx)
-	log.Info("Shutting down expedition worker")
-
-	close(w.shutdown)
-
-	// Cancel all pending timers
-	w.mu.Lock()
-	for expeditionID, timer := range w.timers {
-		timer.Stop()
-		log.Info("Cancelled pending expedition execution", "expeditionID", expeditionID)
-	}
-	w.timers = make(map[uuid.UUID]*time.Timer)
-	w.mu.Unlock()
-
-	// Wait for in-flight executions
-	done := make(chan struct{})
-	go func() {
-		w.wg.Wait()
-		close(done)
-	}()
-
-	select {
-	case <-done:
-		log.Info("Expedition worker shutdown complete")
-		return nil
-	case <-ctx.Done():
-		log.Warn("Expedition worker shutdown timeout")
-		return ctx.Err()
-	}
+	return w.shutdownInternal(ctx, "expedition worker")
 }

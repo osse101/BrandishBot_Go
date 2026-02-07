@@ -37,19 +37,19 @@ func TestRaceConditions(t *testing.T) {
 
 	// Run test scenarios
 	t.Run("ConcurrentAddContribution", func(t *testing.T) {
-		testConcurrentAddContribution(t, ctx, svc, repo, testPool)
+		testConcurrentAddContribution(ctx, t, svc, repo, testPool)
 	})
 
 	t.Run("ConcurrentVoting", func(t *testing.T) {
-		testConcurrentVoting(t, ctx, svc, repo, testPool)
+		testConcurrentVoting(ctx, t, svc, repo, testPool)
 	})
 
 	t.Run("ConcurrentCheckAndUnlock", func(t *testing.T) {
-		testConcurrentCheckAndUnlock(t, ctx, svc, repo, testPool)
+		testConcurrentCheckAndUnlock(ctx, t, svc, repo, testPool)
 	})
 
 	t.Run("SessionEndingDuringVote", func(t *testing.T) {
-		testSessionEndingDuringVote(t, ctx, svc, repo, testPool)
+		testSessionEndingDuringVote(ctx, t, svc, repo, testPool)
 	})
 
 	// Shutdown service
@@ -60,8 +60,8 @@ func TestRaceConditions(t *testing.T) {
 
 // testConcurrentAddContribution tests race conditions when multiple goroutines
 // add contributions simultaneously
-func testConcurrentAddContribution(t *testing.T, ctx context.Context, svc Service, repo Repository, pool *pgxpool.Pool) {
-	cleanupProgressionState(t, ctx, pool)
+func testConcurrentAddContribution(ctx context.Context, t *testing.T, svc Service, repo Repository, pool *pgxpool.Pool) {
+	cleanupProgressionState(ctx, t, pool)
 
 	// Start a voting session to have an active progress
 	if err := svc.StartVotingSession(ctx, nil); err != nil {
@@ -107,8 +107,8 @@ func testConcurrentAddContribution(t *testing.T, ctx context.Context, svc Servic
 }
 
 // testConcurrentVoting tests race conditions when multiple users vote simultaneously
-func testConcurrentVoting(t *testing.T, ctx context.Context, svc Service, repo Repository, pool *pgxpool.Pool) {
-	cleanupProgressionState(t, ctx, pool)
+func testConcurrentVoting(ctx context.Context, t *testing.T, svc Service, repo Repository, pool *pgxpool.Pool) {
+	cleanupProgressionState(ctx, t, pool)
 
 	// This test validates that concurrent voting doesn't lose votes or corrupt state
 	// We test the voting option increment logic, not the full VoteForUnlock flow
@@ -168,8 +168,8 @@ func testConcurrentVoting(t *testing.T, ctx context.Context, svc Service, repo R
 
 // testConcurrentCheckAndUnlock tests what happens when multiple goroutines
 // call CheckAndUnlockNode simultaneously
-func testConcurrentCheckAndUnlock(t *testing.T, ctx context.Context, svc Service, repo Repository, pool *pgxpool.Pool) {
-	cleanupProgressionState(t, ctx, pool)
+func testConcurrentCheckAndUnlock(ctx context.Context, t *testing.T, svc Service, repo Repository, pool *pgxpool.Pool) {
+	cleanupProgressionState(ctx, t, pool)
 
 	// For this test, we need an auto-select scenario or to manually set the target
 	// Let's manually create the scenario
@@ -254,8 +254,8 @@ func testConcurrentCheckAndUnlock(t *testing.T, ctx context.Context, svc Service
 
 // testSessionEndingDuringVote tests what happens when voting ends while
 // votes are being cast
-func testSessionEndingDuringVote(t *testing.T, ctx context.Context, svc Service, repo Repository, pool *pgxpool.Pool) {
-	cleanupProgressionState(t, ctx, pool)
+func testSessionEndingDuringVote(ctx context.Context, t *testing.T, svc Service, repo Repository, pool *pgxpool.Pool) {
+	cleanupProgressionState(ctx, t, pool)
 
 	// Start session
 	if err := svc.StartVotingSession(ctx, nil); err != nil {

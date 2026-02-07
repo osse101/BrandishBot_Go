@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/osse101/BrandishBot_Go/internal/cooldown"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/event"
@@ -422,36 +423,9 @@ func (s *service) getInventoryInternal(ctx context.Context, user *domain.User, f
 	}
 
 	// Optimization: Batch fetch all item details using cache
-	itemMap := make(map[int]domain.Item)
-	missingIDs := make([]int, 0, len(inventory.Slots))
-
-	s.itemCacheMu.RLock()
-	for _, slot := range inventory.Slots {
-		// Use index to find item name, then look up in primary cache
-		if itemName, ok := s.itemIDToName[slot.ItemID]; ok {
-			if item, ok := s.itemCacheByName[itemName]; ok {
-				itemMap[slot.ItemID] = item
-				continue
-			}
-		}
-		missingIDs = append(missingIDs, slot.ItemID)
-	}
-	s.itemCacheMu.RUnlock()
-
-	if len(missingIDs) > 0 {
-		itemList, err := s.repo.GetItemsByIDs(ctx, missingIDs)
-		if err != nil {
-			log.Error("Failed to get item details", "error", err)
-			return nil, domain.ErrFailedToGetItemDetails
-		}
-
-		s.itemCacheMu.Lock()
-		for _, item := range itemList {
-			s.itemCacheByName[item.InternalName] = item
-			s.itemIDToName[item.ID] = item.InternalName
-			itemMap[item.ID] = item
-		}
-		s.itemCacheMu.Unlock()
+	itemMap, err := s.ensureItemsInCache(ctx, inventory)
+	if err != nil {
+		return nil, err
 	}
 
 	// Group items to merge identical items (same ID and shine)
@@ -509,6 +483,44 @@ func (s *service) getInventoryInternal(ctx context.Context, user *domain.User, f
 	}
 
 	return items, nil
+}
+
+// ensureItemsInCache ensures all items in the inventory are present in the service's item cache
+// and returns a map of itemID -> Item.
+func (s *service) ensureItemsInCache(ctx context.Context, inventory *domain.Inventory) (map[int]domain.Item, error) {
+	log := logger.FromContext(ctx)
+	itemMap := make(map[int]domain.Item)
+	missingIDs := make([]int, 0, len(inventory.Slots))
+
+	s.itemCacheMu.RLock()
+	for _, slot := range inventory.Slots {
+		if itemName, ok := s.itemIDToName[slot.ItemID]; ok {
+			if item, ok := s.itemCacheByName[itemName]; ok {
+				itemMap[slot.ItemID] = item
+				continue
+			}
+		}
+		missingIDs = append(missingIDs, slot.ItemID)
+	}
+	s.itemCacheMu.RUnlock()
+
+	if len(missingIDs) > 0 {
+		itemList, err := s.repo.GetItemsByIDs(ctx, missingIDs)
+		if err != nil {
+			log.Error("Failed to get item details", "error", err)
+			return nil, domain.ErrFailedToGetItemDetails
+		}
+
+		s.itemCacheMu.Lock()
+		for _, item := range itemList {
+			s.itemCacheByName[item.InternalName] = item
+			s.itemIDToName[item.ID] = item.InternalName
+			itemMap[item.ID] = item
+		}
+		s.itemCacheMu.Unlock()
+	}
+
+	return itemMap, nil
 }
 
 // AddItemByUsername adds an item by platform username

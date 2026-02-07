@@ -154,8 +154,8 @@ type ParameterInfo struct {
 	Description string `json:"description"`
 }
 
-// ScenarioSummary provides a brief overview of a scenario for listing
-type ScenarioSummary struct {
+// Summary provides a brief overview of a scenario for listing
+type Summary struct {
 	ID           string           `json:"id"`
 	Name         string           `json:"name"`
 	Description  string           `json:"description"`
@@ -164,9 +164,9 @@ type ScenarioSummary struct {
 	StepCount    int              `json:"step_count"`
 }
 
-// ToSummary converts a Scenario to a ScenarioSummary
-func (s *Scenario) ToSummary() ScenarioSummary {
-	return ScenarioSummary{
+// ToSummary converts a Scenario to a Summary
+func (s *Scenario) ToSummary() Summary {
+	return Summary{
 		ID:           s.ID,
 		Name:         s.Name,
 		Description:  s.Description,

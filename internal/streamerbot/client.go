@@ -169,30 +169,10 @@ func (c *Client) connectLoop(ctx context.Context) {
 
 			// Check if we should give up and enter dormant mode
 			if consecutiveFailures >= MaxConsecutiveFailures {
-				c.mu.Lock()
-				c.dormant = true
-				c.mu.Unlock()
-
-				slog.Warn(LogMsgGivingUp,
-					"consecutive_failures", consecutiveFailures,
-					"max_allowed", MaxConsecutiveFailures)
-
-				// Wait for wakeup signal or shutdown
-				select {
-				case <-c.wakeup:
-					slog.Info("Streamer.bot waking from dormant mode")
-					c.mu.Lock()
-					c.dormant = false
-					c.mu.Unlock()
-					// Reset counters for fresh retry
-					backoff = DefaultReconnectDelay
-					consecutiveFailures = 0
-					continue
-				case <-c.shutdown:
-					return
-				case <-ctx.Done():
+				if stop := c.handleDormantMode(ctx, &consecutiveFailures, &backoff); stop {
 					return
 				}
+				continue
 			}
 
 			// Only log first few failures and then periodically to avoid log spam
@@ -226,6 +206,34 @@ func (c *Client) connectLoop(ctx context.Context) {
 			c.dormant = false
 			c.mu.Unlock()
 		}
+	}
+}
+
+// handleDormantMode enters dormant mode after too many failures and waits for a wakeup signal
+func (c *Client) handleDormantMode(ctx context.Context, consecutiveFailures *int, backoff *time.Duration) bool {
+	c.mu.Lock()
+	c.dormant = true
+	c.mu.Unlock()
+
+	slog.Warn(LogMsgGivingUp,
+		"consecutive_failures", *consecutiveFailures,
+		"max_allowed", MaxConsecutiveFailures)
+
+	// Wait for wakeup signal or shutdown
+	select {
+	case <-c.wakeup:
+		slog.Info("Streamer.bot waking from dormant mode")
+		c.mu.Lock()
+		c.dormant = false
+		c.mu.Unlock()
+		// Reset counters for fresh retry
+		*backoff = DefaultReconnectDelay
+		*consecutiveFailures = 0
+		return false
+	case <-c.shutdown:
+		return true
+	case <-ctx.Done():
+		return true
 	}
 }
 

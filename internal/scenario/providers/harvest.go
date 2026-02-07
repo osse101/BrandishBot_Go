@@ -2,6 +2,7 @@ package providers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -119,7 +120,7 @@ func (p *HarvestProvider) executeSetState(ctx context.Context, step scenario.Ste
 	// Get or create the user
 	user, err := p.userRepo.GetUserByPlatformID(ctx, platform, platformID)
 	if err != nil {
-		if err == domain.ErrUserNotFound {
+		if errors.Is(err, domain.ErrUserNotFound) {
 			// Create the user
 			newUser := &domain.User{
 				Username:  username,
@@ -148,7 +149,7 @@ func (p *HarvestProvider) executeSetState(ctx context.Context, step scenario.Ste
 	// Initialize harvest state if needed
 	harvestState, err := p.harvestRepo.GetHarvestState(ctx, user.ID)
 	if err != nil {
-		if err == domain.ErrHarvestStateNotFound {
+		if errors.Is(err, domain.ErrHarvestStateNotFound) {
 			harvestState, err = p.harvestRepo.CreateHarvestState(ctx, user.ID)
 			if err != nil {
 				return nil, fmt.Errorf("failed to create harvest state: %w", err)
@@ -209,7 +210,7 @@ func (p *HarvestProvider) executeTimeWarp(ctx context.Context, step scenario.Ste
 }
 
 // executeHarvest runs the actual harvest operation
-func (p *HarvestProvider) executeHarvest(ctx context.Context, step scenario.Step, state *scenario.ExecutionState, result *scenario.StepResult) (*scenario.StepResult, error) {
+func (p *HarvestProvider) executeHarvest(ctx context.Context, _ scenario.Step, state *scenario.ExecutionState, result *scenario.StepResult) (*scenario.StepResult, error) {
 	// Ensure user is initialized
 	if state.User == nil {
 		return nil, scenario.ErrUserNotInitialized
@@ -239,66 +240,26 @@ func (p *HarvestProvider) executeHarvest(ctx context.Context, step scenario.Step
 // Pre-built scenario definitions
 
 func (p *HarvestProvider) patientFarmerScenario() scenario.Scenario {
-	return scenario.Scenario{
-		ID:          "harvest_patient_farmer",
-		Name:        "The Patient Farmer",
-		Description: "Tests maximum tier harvest (168 hours). Sets up a user, warps time to simulate 168h wait, then executes harvest.",
-		Feature:     FeatureHarvest,
-		Capabilities: []scenario.CapabilityType{
-			scenario.CapabilityTimeWarp,
-		},
-		Steps: []scenario.Step{
+	return p.baseHarvestScenario(
+		"harvest_patient_farmer",
+		"The Patient Farmer",
+		"Tests maximum tier harvest (168 hours). Sets up a user, warps time to simulate 168h wait, then executes harvest.",
+		"patient_farmer",
+		"scenario_patient_farmer",
+		168.0,
+		[]scenario.Assertion{
 			{
-				Name:        "initialize",
-				Description: "Set up user and harvest state",
-				Action:      scenario.ActionSetState,
-				Parameters: map[string]interface{}{
-					ParamUsername: "patient_farmer",
-					ParamPlatform: DefaultPlatform,
-					"platform_id": "scenario_patient_farmer",
-				},
-				Assertions: []scenario.Assertion{
-					{
-						Type: scenario.AssertNotEmpty,
-						Path: "output.user_id",
-					},
-				},
+				Type: scenario.AssertNotEmpty,
+				Path: "output.items_gained",
 			},
 			{
-				Name:        "time_warp",
-				Description: "Warp time to simulate 168 hours (max tier) since last harvest",
-				Action:      scenario.ActionTimeWarp,
-				Parameters: map[string]interface{}{
-					ParamHours: 168.0,
-				},
-				Assertions: []scenario.Assertion{
-					{
-						Type:  scenario.AssertEquals,
-						Path:  "output.warped_hours",
-						Value: 168.0,
-					},
-				},
-			},
-			{
-				Name:        "execute_harvest",
-				Description: "Execute the harvest and verify max tier rewards",
-				Action:      scenario.ActionExecuteHarvest,
-				Parameters:  map[string]interface{}{},
-				Assertions: []scenario.Assertion{
-					{
-						Type: scenario.AssertNotEmpty,
-						Path: "output.items_gained",
-					},
-					{
-						Type:   scenario.AssertGreaterThan,
-						Path:   "output.hours_since_harvest",
-						Value:  167.0,
-						Reason: "Should show approximately 168 hours elapsed",
-					},
-				},
+				Type:   scenario.AssertGreaterThan,
+				Path:   "output.hours_since_harvest",
+				Value:  167.0,
+				Reason: "Should show approximately 168 hours elapsed",
 			},
 		},
-	}
+	)
 }
 
 func (p *HarvestProvider) spoiledHarvestScenario() scenario.Scenario {
@@ -405,10 +366,33 @@ func (p *HarvestProvider) firstTimeFarmerScenario() scenario.Scenario {
 }
 
 func (p *HarvestProvider) quickHarvestScenario() scenario.Scenario {
+	return p.baseHarvestScenario(
+		"harvest_quick",
+		"Quick Harvest",
+		"Tests minimum harvest time (1 hour). Verifies basic tier rewards.",
+		"quick_farmer",
+		"scenario_quick_farmer",
+		2.0,
+		[]scenario.Assertion{
+			{
+				Type: scenario.AssertNotEmpty,
+				Path: "output.items_gained",
+			},
+			{
+				Type:   scenario.AssertGreaterThan,
+				Path:   "output.hours_since_harvest",
+				Value:  1.0,
+				Reason: "Should show at least 1 hour elapsed",
+			},
+		},
+	)
+}
+
+func (p *HarvestProvider) baseHarvestScenario(id, name, description, username, platformID string, warpHours float64, harvestAssertions []scenario.Assertion) scenario.Scenario {
 	return scenario.Scenario{
-		ID:          "harvest_quick",
-		Name:        "Quick Harvest",
-		Description: "Tests minimum harvest time (1 hour). Verifies basic tier rewards.",
+		ID:          id,
+		Name:        name,
+		Description: description,
 		Feature:     FeatureHarvest,
 		Capabilities: []scenario.CapabilityType{
 			scenario.CapabilityTimeWarp,
@@ -419,9 +403,9 @@ func (p *HarvestProvider) quickHarvestScenario() scenario.Scenario {
 				Description: "Set up user and harvest state",
 				Action:      scenario.ActionSetState,
 				Parameters: map[string]interface{}{
-					ParamUsername: "quick_farmer",
+					ParamUsername: username,
 					ParamPlatform: DefaultPlatform,
-					"platform_id": "scenario_quick_farmer",
+					"platform_id": platformID,
 				},
 				Assertions: []scenario.Assertion{
 					{
@@ -432,36 +416,25 @@ func (p *HarvestProvider) quickHarvestScenario() scenario.Scenario {
 			},
 			{
 				Name:        "time_warp",
-				Description: "Warp time to simulate 2 hours since last harvest",
+				Description: fmt.Sprintf("Warp time to simulate %.0f hours since last harvest", warpHours),
 				Action:      scenario.ActionTimeWarp,
 				Parameters: map[string]interface{}{
-					ParamHours: 2.0,
+					ParamHours: warpHours,
 				},
 				Assertions: []scenario.Assertion{
 					{
 						Type:  scenario.AssertEquals,
 						Path:  "output.warped_hours",
-						Value: 2.0,
+						Value: warpHours,
 					},
 				},
 			},
 			{
 				Name:        "execute_harvest",
-				Description: "Execute the harvest and verify basic tier rewards",
+				Description: "Execute the harvest and verify rewards",
 				Action:      scenario.ActionExecuteHarvest,
 				Parameters:  map[string]interface{}{},
-				Assertions: []scenario.Assertion{
-					{
-						Type: scenario.AssertNotEmpty,
-						Path: "output.items_gained",
-					},
-					{
-						Type:   scenario.AssertGreaterThan,
-						Path:   "output.hours_since_harvest",
-						Value:  1.0,
-						Reason: "Should show at least 1 hour elapsed",
-					},
-				},
+				Assertions:  harvestAssertions,
 			},
 		},
 	}

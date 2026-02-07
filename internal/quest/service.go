@@ -109,7 +109,7 @@ func (s *service) GenerateWeeklyQuests(ctx context.Context, year, weekNumber int
 
 	// Use week number as seed for deterministic randomization
 	seed := int64(year*100 + weekNumber)
-	rng := rand.New(rand.NewSource(seed))
+	rng := rand.New(rand.NewSource(seed)) //nolint:gosec
 
 	// Shuffle pool and take first 3
 	s.mu.RLock()

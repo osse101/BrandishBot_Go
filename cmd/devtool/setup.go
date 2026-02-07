@@ -30,7 +30,7 @@ func (c *SetupCommand) Run(args []string) error {
 	if _, err := os.Stat(".env"); os.IsNotExist(err) {
 		PrintInfo("Creating .env from .env.example...")
 		if err := copyFile(".env.example", ".env"); err != nil {
-			return fmt.Errorf("failed to create .env: %v", err)
+			return fmt.Errorf("failed to create .env: %w", err)
 		}
 		PrintSuccess(".env created")
 		// Reload .env into current process
@@ -53,13 +53,13 @@ func (c *SetupCommand) Run(args []string) error {
 	// We rely on 'make migrate-up' for simplicity, or call goose directly.
 	// Since we checked 'make' exists, we can use it.
 	if err := runCommandVerbose("make", "migrate-up"); err != nil {
-		return fmt.Errorf("migrations failed: %v", err)
+		return fmt.Errorf("migrations failed: %w", err)
 	}
 
 	// 5. Generate Code
 	PrintInfo("Step 5/5: Generating code...")
 	if err := runCommandVerbose("make", "generate"); err != nil {
-		return fmt.Errorf("code generation failed: %v", err)
+		return fmt.Errorf("code generation failed: %w", err)
 	}
 
 	PrintSuccess("Setup complete! You can now run 'make run' or 'devtool run'.")

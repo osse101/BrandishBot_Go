@@ -231,9 +231,9 @@ func TestHandleHarvest(t *testing.T) {
 			expectedBody:   `"gems_awarded":50`,
 		},
 		{
-			name:        "Invalid Request Body",
-			requestBody: "invalid-json",
-			setupMocks:  func(m *mocks.MockCompostService, pm *mocks.MockProgressionService) {},
+			name:           "Invalid Request Body",
+			requestBody:    "invalid-json",
+			setupMocks:     func(m *mocks.MockCompostService, pm *mocks.MockProgressionService) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   "Invalid request body",
 		},

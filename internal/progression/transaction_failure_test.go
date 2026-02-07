@@ -33,26 +33,26 @@ func TestTransactionFailures(t *testing.T) {
 
 	// Run test scenarios
 	t.Run("SetUnlockTargetWithInvalidNode", func(t *testing.T) {
-		testSetUnlockTargetInvalidNode(t, ctx, repo, testPool)
+		testSetUnlockTargetInvalidNode(ctx, t, repo, testPool)
 	})
 
 	t.Run("SetUnlockTargetWithInvalidSession", func(t *testing.T) {
-		testSetUnlockTargetInvalidSession(t, ctx, repo, testPool)
+		testSetUnlockTargetInvalidSession(ctx, t, repo, testPool)
 	})
 
 	t.Run("AddVotingOptionWithInvalidNode", func(t *testing.T) {
-		testAddVotingOptionInvalidNode(t, ctx, repo, testPool)
+		testAddVotingOptionInvalidNode(ctx, t, repo, testPool)
 	})
 
 	t.Run("ConcurrentSessionCreation", func(t *testing.T) {
-		testConcurrentSessionCreation(t, ctx, repo, testPool)
+		testConcurrentSessionCreation(ctx, t, repo, testPool)
 	})
 }
 
 // testSetUnlockTargetInvalidNode tests what happens when SetUnlockTarget is called
 // with a node ID that doesn't exist
-func testSetUnlockTargetInvalidNode(t *testing.T, ctx context.Context, repo Repository, pool *pgxpool.Pool) {
-	cleanupProgressionState(t, ctx, pool)
+func testSetUnlockTargetInvalidNode(ctx context.Context, t *testing.T, repo Repository, pool *pgxpool.Pool) {
+	cleanupProgressionState(ctx, t, pool)
 
 	// Create session and progress
 	sessionID, err := repo.CreateVotingSession(ctx)
@@ -87,8 +87,8 @@ func testSetUnlockTargetInvalidNode(t *testing.T, ctx context.Context, repo Repo
 
 // testSetUnlockTargetInvalidSession tests what happens when SetUnlockTarget is called
 // with a session ID that doesn't exist
-func testSetUnlockTargetInvalidSession(t *testing.T, ctx context.Context, repo Repository, pool *pgxpool.Pool) {
-	cleanupProgressionState(t, ctx, pool)
+func testSetUnlockTargetInvalidSession(ctx context.Context, t *testing.T, repo Repository, pool *pgxpool.Pool) {
+	cleanupProgressionState(ctx, t, pool)
 
 	// Get a valid node
 	nodes, err := repo.GetAllNodes(ctx)
@@ -125,8 +125,8 @@ func testSetUnlockTargetInvalidSession(t *testing.T, ctx context.Context, repo R
 
 // testAddVotingOptionInvalidNode tests what happens when AddVotingOption is called
 // with an invalid node ID
-func testAddVotingOptionInvalidNode(t *testing.T, ctx context.Context, repo Repository, pool *pgxpool.Pool) {
-	cleanupProgressionState(t, ctx, pool)
+func testAddVotingOptionInvalidNode(ctx context.Context, t *testing.T, repo Repository, pool *pgxpool.Pool) {
+	cleanupProgressionState(ctx, t, pool)
 
 	// Create session
 	sessionID, err := repo.CreateVotingSession(ctx)
@@ -156,8 +156,8 @@ func testAddVotingOptionInvalidNode(t *testing.T, ctx context.Context, repo Repo
 
 // testConcurrentSessionCreation tests what happens when multiple goroutines
 // try to create sessions concurrently
-func testConcurrentSessionCreation(t *testing.T, ctx context.Context, repo Repository, pool *pgxpool.Pool) {
-	cleanupProgressionState(t, ctx, pool)
+func testConcurrentSessionCreation(ctx context.Context, t *testing.T, repo Repository, pool *pgxpool.Pool) {
+	cleanupProgressionState(ctx, t, pool)
 
 	// This tests for race conditions in session creation
 	// Multiple goroutines should be able to create sessions without corruption

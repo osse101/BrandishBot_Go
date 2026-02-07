@@ -11,13 +11,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/osse101/BrandishBot_Go/internal/progression"
-
 	"github.com/osse101/BrandishBot_Go/internal/config"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/naming"
+	"github.com/osse101/BrandishBot_Go/internal/progression"
 	"github.com/osse101/BrandishBot_Go/internal/quest"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/osse101/BrandishBot_Go/internal/utils"

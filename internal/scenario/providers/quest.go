@@ -2,6 +2,7 @@ package providers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -117,7 +118,7 @@ func (p *QuestProvider) executeSetState(ctx context.Context, step scenario.Step,
 	// Get or create the user
 	user, err := p.userRepo.GetUserByPlatformID(ctx, platform, platformID)
 	if err != nil {
-		if err == domain.ErrUserNotFound {
+		if errors.Is(err, domain.ErrUserNotFound) {
 			// Create the user
 			newUser := &domain.User{
 				Username:  username,

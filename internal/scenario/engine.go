@@ -36,10 +36,8 @@ func (e *Engine) ExecuteScenario(ctx context.Context, scenario Scenario, provide
 	state := NewExecutionState()
 
 	// Apply any provided parameters to state
-	if params != nil {
-		for k, v := range params {
-			state.SetResult(k, v)
-		}
+	for k, v := range params {
+		state.SetResult(k, v)
 	}
 
 	// Execute each step
@@ -127,49 +125,59 @@ func (e *Engine) checkAssertion(assertion Assertion, output map[string]interface
 		Passed:   true,
 	}
 
-	// Get the actual value from output or state
 	actual, found := e.getValueByPath(assertion.Path, output, state)
 	result.Actual = actual
 
-	// Handle not found case based on assertion type
 	if !found {
-		switch assertion.Type {
-		case AssertEmpty:
-			result.Passed = true
-			return result
-		case AssertNotEmpty:
-			result.Passed = false
-			result.Error = fmt.Sprintf("path '%s' not found", assertion.Path)
-			return result
-		default:
-			result.Passed = false
-			result.Error = fmt.Sprintf("path '%s' not found", assertion.Path)
-			return result
-		}
+		return e.handleNotFoundAssertion(assertion, result)
 	}
 
-	// Evaluate based on assertion type
+	switch assertion.Type {
+	case AssertEquals, AssertGreaterThan, AssertLessThan, AssertBetween:
+		return e.checkComparisonAssertion(assertion, actual, result)
+	case AssertContains, AssertErrorContains:
+		return e.checkStringAssertion(assertion, actual, result)
+	case AssertNotEmpty, AssertEmpty:
+		return e.checkPresenceAssertion(assertion, actual, result)
+	case AssertTrue, AssertFalse:
+		return e.checkBooleanAssertion(assertion, actual, result)
+	default:
+		result.Passed = false
+		result.Error = fmt.Sprintf("unknown assertion type: %s", assertion.Type)
+		return result
+	}
+}
+
+func (e *Engine) handleNotFoundAssertion(assertion Assertion, result AssertionResult) AssertionResult {
+	switch assertion.Type {
+	case AssertEmpty:
+		result.Passed = true
+	default:
+		result.Passed = false
+		result.Error = fmt.Sprintf("path '%s' not found", assertion.Path)
+	}
+	return result
+}
+
+func (e *Engine) checkComparisonAssertion(assertion Assertion, actual interface{}, result AssertionResult) AssertionResult {
 	switch assertion.Type {
 	case AssertEquals:
 		result.Passed = e.valuesEqual(actual, assertion.Value)
 		if !result.Passed {
 			result.Error = fmt.Sprintf("expected %v, got %v", assertion.Value, actual)
 		}
-
 	case AssertGreaterThan:
 		passed, err := e.compareNumeric(actual, assertion.Value, ">")
 		result.Passed = passed
 		if err != nil {
 			result.Error = err.Error()
 		}
-
 	case AssertLessThan:
 		passed, err := e.compareNumeric(actual, assertion.Value, "<")
 		result.Passed = passed
 		if err != nil {
 			result.Error = err.Error()
 		}
-
 	case AssertBetween:
 		passedMin, err1 := e.compareNumeric(actual, assertion.Min, ">=")
 		passedMax, err2 := e.compareNumeric(actual, assertion.Max, "<=")
@@ -178,64 +186,66 @@ func (e *Engine) checkAssertion(assertion Assertion, output map[string]interface
 			result.Error = fmt.Sprintf("between comparison failed: min=%v, max=%v", err1, err2)
 		}
 		result.Expected = fmt.Sprintf("between %v and %v", assertion.Min, assertion.Max)
+	}
+	return result
+}
 
-	case AssertContains:
-		str, ok := actual.(string)
-		expected, expectedOk := assertion.Value.(string)
-		if !ok || !expectedOk {
-			result.Passed = false
-			result.Error = "contains assertion requires string values"
-		} else {
-			result.Passed = strings.Contains(str, expected)
-			if !result.Passed {
-				result.Error = fmt.Sprintf("'%s' does not contain '%s'", str, expected)
-			}
+func (e *Engine) checkStringAssertion(assertion Assertion, actual interface{}, result AssertionResult) AssertionResult {
+	str, ok := actual.(string)
+	expected, expectedOk := assertion.Value.(string)
+	if !ok || !expectedOk {
+		result.Passed = false
+		result.Error = fmt.Sprintf("%s assertion requires string values", assertion.Type)
+		return result
+	}
+
+	if assertion.Type == AssertContains {
+		result.Passed = strings.Contains(str, expected)
+		if !result.Passed {
+			result.Error = fmt.Sprintf("'%s' does not contain '%s'", str, expected)
 		}
+	} else { // AssertErrorContains
+		result.Passed = strings.Contains(strings.ToLower(str), strings.ToLower(expected))
+		if !result.Passed {
+			result.Error = fmt.Sprintf("error '%s' does not contain '%s'", str, expected)
+		}
+	}
+	return result
+}
 
-	case AssertNotEmpty:
-		result.Passed = !e.isEmpty(actual)
+func (e *Engine) checkPresenceAssertion(assertion Assertion, actual interface{}, result AssertionResult) AssertionResult {
+	isEmpty := e.isEmpty(actual)
+	if assertion.Type == AssertNotEmpty {
+		result.Passed = !isEmpty
 		if !result.Passed {
 			result.Error = "value is empty"
 		}
-
-	case AssertEmpty:
-		result.Passed = e.isEmpty(actual)
+	} else { // AssertEmpty
+		result.Passed = isEmpty
 		if !result.Passed {
 			result.Error = fmt.Sprintf("expected empty, got %v", actual)
 		}
+	}
+	return result
+}
 
-	case AssertTrue:
-		b, ok := actual.(bool)
-		result.Passed = ok && b
-		if !result.Passed {
-			result.Error = fmt.Sprintf("expected true, got %v", actual)
-		}
-
-	case AssertFalse:
-		b, ok := actual.(bool)
-		result.Passed = ok && !b
-		if !result.Passed {
-			result.Error = fmt.Sprintf("expected false, got %v", actual)
-		}
-
-	case AssertErrorContains:
-		str, ok := actual.(string)
-		expected, expectedOk := assertion.Value.(string)
-		if !ok || !expectedOk {
-			result.Passed = false
-			result.Error = "error_contains assertion requires string values"
-		} else {
-			result.Passed = strings.Contains(strings.ToLower(str), strings.ToLower(expected))
-			if !result.Passed {
-				result.Error = fmt.Sprintf("error '%s' does not contain '%s'", str, expected)
-			}
-		}
-
-	default:
+func (e *Engine) checkBooleanAssertion(assertion Assertion, actual interface{}, result AssertionResult) AssertionResult {
+	b, ok := actual.(bool)
+	if !ok {
 		result.Passed = false
-		result.Error = fmt.Sprintf("unknown assertion type: %s", assertion.Type)
+		result.Error = fmt.Sprintf("expected boolean, got %v", actual)
+		return result
 	}
 
+	if assertion.Type == AssertTrue {
+		result.Passed = b
+	} else { // AssertFalse
+		result.Passed = !b
+	}
+
+	if !result.Passed {
+		result.Error = fmt.Sprintf("expected %v, got %v", assertion.Type == AssertTrue, b)
+	}
 	return result
 }
 

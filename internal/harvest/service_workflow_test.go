@@ -27,12 +27,12 @@ func TestHarvest_Workflow(t *testing.T) {
 		featureLocked     bool
 		userNotFound      bool // If true, simulate user not found initially
 		upsertFail        bool
-		firstTimeHarvest  bool // If true, simulate no harvest state
-		tooSoon           bool // If true, override hoursElapsed to be small
-		allRewardsLocked  bool // If true, lock all items
-		commitFail        bool // If true, simulate commit failure
-		xpAwardFail       bool // NEW: Simulate failure in AwardXP
-		partialItemLookup bool // NEW: Simulate missing items in DB
+		firstTimeHarvest  bool                   // If true, simulate no harvest state
+		tooSoon           bool                   // If true, override hoursElapsed to be small
+		allRewardsLocked  bool                   // If true, lock all items
+		commitFail        bool                   // If true, simulate commit failure
+		xpAwardFail       bool                   // NEW: Simulate failure in AwardXP
+		partialItemLookup bool                   // NEW: Simulate missing items in DB
 		initialInventory  []domain.InventorySlot // NEW: Setup initial inventory state
 		expectedInvSlots  []domain.InventorySlot // NEW: Expected final inventory state (nil = default check)
 		expectedGains     map[string]int

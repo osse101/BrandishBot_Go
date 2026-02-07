@@ -54,7 +54,7 @@ func (t *EconomyTx) Commit(ctx context.Context) error {
 func (t *EconomyTx) Rollback(ctx context.Context) error {
 	err := t.tx.Rollback(ctx)
 	if errors.Is(err, pgx.ErrTxClosed) {
-		return fmt.Errorf("%w: %v", repository.ErrTxClosed, err)
+		return fmt.Errorf("%w: %w", repository.ErrTxClosed, err)
 	}
 	return err
 }

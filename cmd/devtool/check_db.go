@@ -40,7 +40,7 @@ func (c *CheckDBCommand) Run(args []string) error {
 	} else {
 		PrintInfo("Starting database...")
 		if err := runCommandVerbose("docker", "compose", "up", "-d", "db"); err != nil {
-			return fmt.Errorf("error starting database: %v", err)
+			return fmt.Errorf("error starting database: %w", err)
 		}
 
 		PrintInfo("Waiting for database to be ready...")

@@ -343,7 +343,7 @@ func (s *service) GetAvailableUnlocksWithFutureTarget(ctx context.Context) ([]*d
 
 // getNodesDependentOn returns all nodes that have the specified node as a prerequisite
 // (i.e., nodes that will become available once the specified node is unlocked)
-func (s *service) getNodesDependentOn(ctx context.Context, nodeID int, nodeKey string) ([]*domain.ProgressionNode, error) {
+func (s *service) getNodesDependentOn(ctx context.Context, _ int, nodeKey string) ([]*domain.ProgressionNode, error) {
 	log := logger.FromContext(ctx)
 
 	// Get all nodes

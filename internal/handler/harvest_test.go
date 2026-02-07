@@ -9,11 +9,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/handler"
 	"github.com/osse101/BrandishBot_Go/mocks"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 func TestHarvestHandler_Harvest(t *testing.T) {
@@ -35,11 +36,11 @@ func TestHarvestHandler_Harvest(t *testing.T) {
 			method: http.MethodPost,
 			requestBody: handler.HarvestRewardsRequest{
 				Username:   "testuser",
-				Platform:   "discord",
+				Platform:   domain.PlatformDiscord,
 				PlatformID: "12345",
 			},
 			setupMock: func(m *mocks.MockHarvestService) {
-				m.On("Harvest", mock.Anything, "discord", "12345", "testuser").
+				m.On("Harvest", mock.Anything, domain.PlatformDiscord, "12345", "testuser").
 					Return(&domain.HarvestResponse{
 						ItemsGained:       map[string]int{"gold": 100},
 						HoursSinceHarvest: 5.0,
@@ -60,11 +61,11 @@ func TestHarvestHandler_Harvest(t *testing.T) {
 			method: http.MethodPost,
 			requestBody: handler.HarvestRewardsRequest{
 				Username:   "eageruser",
-				Platform:   "discord",
+				Platform:   domain.PlatformDiscord,
 				PlatformID: "12345",
 			},
 			setupMock: func(m *mocks.MockHarvestService) {
-				m.On("Harvest", mock.Anything, "discord", "12345", "eageruser").
+				m.On("Harvest", mock.Anything, domain.PlatformDiscord, "12345", "eageruser").
 					Return(nil, domain.ErrHarvestTooSoon)
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -75,11 +76,11 @@ func TestHarvestHandler_Harvest(t *testing.T) {
 			method: http.MethodPost,
 			requestBody: handler.HarvestRewardsRequest{
 				Username:   "unknown",
-				Platform:   "discord",
+				Platform:   domain.PlatformDiscord,
 				PlatformID: "99999",
 			},
 			setupMock: func(m *mocks.MockHarvestService) {
-				m.On("Harvest", mock.Anything, "discord", "99999", "unknown").
+				m.On("Harvest", mock.Anything, domain.PlatformDiscord, "99999", "unknown").
 					Return(nil, domain.ErrUserNotFound)
 			},
 			expectedStatus: http.StatusNotFound,
@@ -90,11 +91,11 @@ func TestHarvestHandler_Harvest(t *testing.T) {
 			method: http.MethodPost,
 			requestBody: handler.HarvestRewardsRequest{
 				Username:   "newuser",
-				Platform:   "discord",
+				Platform:   domain.PlatformDiscord,
 				PlatformID: "12345",
 			},
 			setupMock: func(m *mocks.MockHarvestService) {
-				m.On("Harvest", mock.Anything, "discord", "12345", "newuser").
+				m.On("Harvest", mock.Anything, domain.PlatformDiscord, "12345", "newuser").
 					Return(nil, domain.ErrFeatureLocked)
 			},
 			expectedStatus: http.StatusForbidden,
@@ -105,11 +106,11 @@ func TestHarvestHandler_Harvest(t *testing.T) {
 			method: http.MethodPost,
 			requestBody: handler.HarvestRewardsRequest{
 				Username:   "broken",
-				Platform:   "discord",
+				Platform:   domain.PlatformDiscord,
 				PlatformID: "12345",
 			},
 			setupMock: func(m *mocks.MockHarvestService) {
-				m.On("Harvest", mock.Anything, "discord", "12345", "broken").
+				m.On("Harvest", mock.Anything, domain.PlatformDiscord, "12345", "broken").
 					Return(nil, domain.ErrDatabaseError)
 			},
 			expectedStatus: http.StatusInternalServerError,
@@ -120,7 +121,7 @@ func TestHarvestHandler_Harvest(t *testing.T) {
 			method: http.MethodGet,
 			requestBody: handler.HarvestRewardsRequest{
 				Username:   "testuser",
-				Platform:   "discord",
+				Platform:   domain.PlatformDiscord,
 				PlatformID: "12345",
 			},
 			setupMock:      func(m *mocks.MockHarvestService) {}, // No mock call expected
@@ -128,10 +129,10 @@ func TestHarvestHandler_Harvest(t *testing.T) {
 			expectedError:  "method not allowed",
 		},
 		{
-			name:   "Invalid Body (Malformed JSON)",
-			method: http.MethodPost,
-			requestBody: "invalid-json", // passing string which will be written as raw body
-			setupMock: func(m *mocks.MockHarvestService) {},
+			name:           "Invalid Body (Malformed JSON)",
+			method:         http.MethodPost,
+			requestBody:    "invalid-json", // passing string which will be written as raw body
+			setupMock:      func(m *mocks.MockHarvestService) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedError:  "invalid request body",
 		},
@@ -139,8 +140,8 @@ func TestHarvestHandler_Harvest(t *testing.T) {
 			name:   "Validation Error (Missing Fields)",
 			method: http.MethodPost,
 			requestBody: handler.HarvestRewardsRequest{
-				Username: "", // Required field missing
-				Platform: "discord",
+				Username:   "", // Required field missing
+				Platform:   domain.PlatformDiscord,
 				PlatformID: "12345",
 			},
 			setupMock:      func(m *mocks.MockHarvestService) {},
@@ -148,7 +149,7 @@ func TestHarvestHandler_Harvest(t *testing.T) {
 			expectedError:  "invalid request",
 		},
 		{
-			name: "Validation Error (Invalid Platform)",
+			name:   "Validation Error (Invalid Platform)",
 			method: http.MethodPost,
 			requestBody: handler.HarvestRewardsRequest{
 				Username:   "testuser",

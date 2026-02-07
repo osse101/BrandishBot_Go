@@ -28,8 +28,8 @@ type CapabilitiesResponse struct {
 
 // ScenariosResponse is the response for the scenarios endpoint
 type ScenariosResponse struct {
-	Scenarios []scenario.ScenarioSummary `json:"scenarios"`
-	Total     int                        `json:"total"`
+	Scenarios []scenario.Summary `json:"scenarios"`
+	Total     int                `json:"total"`
 }
 
 // RunScenarioRequest is the request body for running a scenario

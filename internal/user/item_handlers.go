@@ -384,225 +384,244 @@ func (s *service) handleTrap(ctx context.Context, _ *service, user *domain.User,
 	log := logger.FromContext(ctx)
 	log.Info(LogMsgHandleTrapCalled, "item", item.InternalName, "quantity", quantity)
 
-	// 1. Validate quantity
-	// 1. Validate input
 	if quantity < 1 {
 		return "", errors.New(ErrMsgInvalidQuantity)
 	}
 
-	// 2. Extract common args
 	platform, _ := args[ArgsPlatform].(string)
 	if platform == "" {
-		platform = domain.PlatformTwitch // default
+		platform = domain.PlatformTwitch
 	}
 
-	// 3. Determine targets based on item type
-	var potentialTargets []string
-	var isMine bool
+	potentialTargets, isMine, err := s.getTrapTargets(ctx, item, quantity, user, platform, args)
+	if err != nil {
+		return "", err
+	}
 
+	if err := s.validateTrapInventory(inventory, item, quantity, isMine); err != nil {
+		log.Warn("Trap inventory validation failed", "item", item.InternalName, "error", err)
+		return "", err
+	}
+
+	itemsConsumed, trapsPlaced, selfTriggered, badLuckSelf, err := s.executeTrapTransaction(ctx, user, item, quantity, platform, potentialTargets, isMine)
+	if err != nil {
+		return "", err
+	}
+
+	return s.formatTrapResponse(user, item, potentialTargets, itemsConsumed, trapsPlaced, selfTriggered, badLuckSelf), nil
+}
+
+func (s *service) getTrapTargets(ctx context.Context, item *domain.Item, quantity int, user *domain.User, platform string, args map[string]interface{}) ([]string, bool, error) {
+	log := logger.FromContext(ctx)
 	if item.InternalName == domain.ItemMine {
-		isMine = true
 		log.Info("Mine used, selecting random targets", "count", quantity)
-
-		// Get random targets
-		// We request 'quantity' targets to try and use all mines
 		targets, err := s.activeChatterTracker.GetRandomTargets(platform, quantity)
 		if err != nil {
-			// No targets found, add self as single target (fallback)
+			return []string{user.Username}, true, nil
+		}
+		var potentialTargets []string
+		for _, t := range targets {
+			potentialTargets = append(potentialTargets, t.Username)
+		}
+		if len(potentialTargets) == 0 {
 			potentialTargets = []string{user.Username}
-		} else {
-			for _, t := range targets {
-				potentialTargets = append(potentialTargets, t.Username)
-			}
-			// If we got fewer targets than quantity, we just use what we found
-			if len(potentialTargets) == 0 {
-				potentialTargets = []string{user.Username}
-			}
 		}
-	} else {
-		// Standard trap requires explicit target and single quantity
-		if quantity != 1 {
-			return "", errors.New("can only use 1 trap at a time")
-		}
-
-		targetUsername, ok := args[ArgsTargetUsername].(string)
-		if !ok || targetUsername == "" {
-			log.Warn(LogWarnTargetUsernameMissingTrap)
-			return "", errors.New(ErrMsgTargetUsernameRequired)
-		}
-		potentialTargets = []string{targetUsername}
+		return potentialTargets, true, nil
 	}
 
-	// 4. Find item in inventory (initial check)
-	// We need at least 1 item to start (randomly if multiple exist with different shines)
+	if quantity != 1 {
+		return nil, false, errors.New("can only use 1 trap at a time")
+	}
+
+	targetUsername, ok := args[ArgsTargetUsername].(string)
+	if !ok || targetUsername == "" {
+		return nil, false, errors.New(ErrMsgTargetUsernameRequired)
+	}
+	return []string{targetUsername}, false, nil
+}
+
+func (s *service) validateTrapInventory(inventory *domain.Inventory, item *domain.Item, quantity int, isMine bool) error {
 	itemSlotIndex, slotQuantity := utils.FindRandomSlot(inventory, item.ID, s.rnd)
 	if itemSlotIndex == -1 {
-		log.Warn(LogWarnTrapNotInInventory, "item", item.InternalName)
-		return "", errors.New(ErrMsgItemNotFoundInInventory)
+		return errors.New(ErrMsgItemNotFoundInInventory)
 	}
-	if slotQuantity < 1 { // Changed from < quantity because we might use fewer
-		log.Warn(LogWarnNotEnoughTraps, "item", item.InternalName)
-		return "", errors.New(ErrMsgNotEnoughItemsInInventory)
+	if slotQuantity < 1 {
+		return errors.New(ErrMsgNotEnoughItemsInInventory)
 	}
-	// Also ensure we have enough for the requested quantity if it's a Trap (mines adjust)
 	if !isMine && slotQuantity < quantity {
-		return "", errors.New(ErrMsgNotEnoughItemsInInventory)
+		return errors.New(ErrMsgNotEnoughItemsInInventory)
 	}
+	return nil
+}
 
-	// 5. Execute Loop
+func (s *service) executeTrapTransaction(ctx context.Context, user *domain.User, item *domain.Item, quantity int, platform string, potentialTargets []string, isMine bool) (int, int, bool, bool, error) {
 	itemsConsumed := 0
 	trapsPlaced := 0
 	selfTriggered := false
-	badLuckSelf := false // Self selected by random targeting
+	badLuckSelf := false
 
 	err := s.withTx(ctx, func(tx repository.UserTx) error {
-		// Re-fetch inventory inside transaction
 		txInventory, err := tx.GetInventory(ctx, user.ID)
 		if err != nil {
 			return fmt.Errorf("failed to get inventory: %w", err)
 		}
 
-		// Re-validate inventory (randomly select from potentially multiple slots)
 		txSlotIndex, txSlotQty := utils.FindRandomSlot(txInventory, item.ID, s.rnd)
 		if txSlotIndex == -1 || txSlotQty < 1 {
 			return fmt.Errorf("item no longer available")
 		}
 
-		// Cap targets by available inventory
-		maxPossible := txSlotQty
-		if quantity < maxPossible {
-			maxPossible = quantity
+		maxPossible := quantity
+		if txSlotQty < maxPossible {
+			maxPossible = txSlotQty
 		}
 
-		// Loop through targets
-		for _, targetName := range potentialTargets {
-			if itemsConsumed >= maxPossible {
-				break
-			}
-
-			// Check for "bad luck" self-selection (only relevant for mines)
-			if isMine && strings.EqualFold(targetName, user.Username) {
-				// We targeted ourselves randomly!
-				// Consume the item, apply self-trap (if we want that logic), or just break
-				// Requirement: "break if self is selected randomly"
-				badLuckSelf = true
-				itemsConsumed++ // We use the mine that blew us up
-				trapsPlaced++   // Technically we placed it on ourselves
-
-				// Apply timeout for bad luck
-				if err := s.TimeoutUser(ctx, user.Username, 60*time.Second, "tripped on your own mine immediately!"); err != nil {
-					log.Error("Failed to timeout user for bad luck", "error", err)
-				}
-
-				break // Stop processing
-			}
-
-			targetUser, err := s.repo.GetUserByPlatformUsername(ctx, platform, targetName)
+		if isMine && len(potentialTargets) == 1 && strings.EqualFold(potentialTargets[0], user.Username) {
+			// Special case: if we ONLY targeted ourselves (e.g. no other active chatters)
+			badLuckSelf = true
+			itemsConsumed = 1
+			trapsPlaced = 1
+			s.handleSelfTargetMine(ctx, user)
+		} else {
+			consumed, placed, triggered, badLuck, err := s.processTrapTargets(ctx, user, potentialTargets, platform, maxPossible, txInventory.Slots[txSlotIndex].ShineLevel, isMine)
 			if err != nil {
-				log.Warn("Target user not found, skipping", "username", targetName)
-				continue
+				return err
 			}
-
-			targetUserID, _ := uuid.Parse(targetUser.ID)
-			existingTrap, err := s.trapRepo.GetActiveTrapForUpdate(ctx, targetUserID)
-			if err != nil {
-				return fmt.Errorf("failed to check existing trap: %w", err)
-			}
-
-			// If trap exists, trigger it on setter (Self-Trigger Logic)
-			if existingTrap != nil {
-				itemsConsumed++ // Triggering a trap consumes the item used to trigger it
-				selfTriggered = true
-
-				timeout := time.Duration(existingTrap.CalculateTimeout()) * time.Second
-				if err := s.TimeoutUser(ctx, user.Username, timeout,
-					fmt.Sprintf("stepped on %s's trap entirely by accident!", targetName)); err != nil {
-					return fmt.Errorf("failed to apply self-trap timeout: %w", err)
-				}
-
-				if err := s.trapRepo.TriggerTrap(ctx, existingTrap.ID); err != nil {
-					return fmt.Errorf("failed to trigger existing trap: %w", err)
-				}
-
-				// Record event
-				if s.statsService != nil {
-					eventData := &domain.TrapTriggeredData{
-						TrapID:           existingTrap.ID,
-						SetterID:         existingTrap.SetterID,
-						SetterUsername:   targetName,
-						TargetID:         existingTrap.TargetID,
-						TargetUsername:   user.Username,
-						ShineLevel:       existingTrap.ShineLevel,
-						TimeoutSeconds:   existingTrap.CalculateTimeout(),
-						WasSelfTriggered: true,
-					}
-					_ = s.statsService.RecordUserEvent(ctx, user.ID, domain.EventTrapSelfTriggered, eventData.ToMap())
-				}
-
-				break // Stop processing after self-trigger
-			}
-
-			// Place new trap
-			itemsConsumed++
-			trapsPlaced++
-
-			// Get shine level (safe read)
-			shineLevel := txInventory.Slots[txSlotIndex].ShineLevel
-			if shineLevel == "" {
-				shineLevel = domain.ShineCommon
-			}
-
-			userID, _ := uuid.Parse(user.ID)
-			newTrap := &domain.Trap{
-				ID:             uuid.New(),
-				SetterID:       userID,
-				TargetID:       targetUserID,
-				ShineLevel:     shineLevel,
-				TimeoutSeconds: 60,
-				PlacedAt:       time.Now(),
-			}
-
-			if err := s.trapRepo.CreateTrap(ctx, newTrap); err != nil {
-				return fmt.Errorf("failed to create trap: %w", err)
-			}
+			itemsConsumed = consumed
+			trapsPlaced = placed
+			selfTriggered = triggered
+			badLuckSelf = badLuck
 		}
 
-		// Dedudct consumed items
 		if itemsConsumed > 0 {
 			utils.RemoveFromSlot(txInventory, txSlotIndex, itemsConsumed)
 			if err := tx.UpdateInventory(ctx, user.ID, *txInventory); err != nil {
 				return fmt.Errorf("failed to update inventory: %w", err)
 			}
 		}
-
 		return nil
 	})
 
-	if err != nil {
-		return "", err
+	return itemsConsumed, trapsPlaced, selfTriggered, badLuckSelf, err
+}
+
+func (s *service) processTrapTargets(ctx context.Context, user *domain.User, potentialTargets []string, platform string, maxPossible int, shineLevel domain.ShineLevel, isMine bool) (int, int, bool, bool, error) {
+	log := logger.FromContext(ctx)
+	itemsConsumed := 0
+	trapsPlaced := 0
+	selfTriggered := false
+	badLuckSelf := false
+
+	if shineLevel == "" {
+		shineLevel = domain.ShineCommon
 	}
 
-	// Construct message
+	for _, targetName := range potentialTargets {
+		if itemsConsumed >= maxPossible {
+			break
+		}
+
+		if isMine && strings.EqualFold(targetName, user.Username) {
+			badLuckSelf = true
+			itemsConsumed++
+			trapsPlaced++
+			s.handleSelfTargetMine(ctx, user)
+			break
+		}
+
+		targetUser, err := s.repo.GetUserByPlatformUsername(ctx, platform, targetName)
+		if err != nil {
+			log.Warn("Target user not found, skipping", "username", targetName)
+			continue
+		}
+
+		targetUserID, _ := uuid.Parse(targetUser.ID)
+		existingTrap, err := s.trapRepo.GetActiveTrapForUpdate(ctx, targetUserID)
+		if err != nil {
+			return itemsConsumed, trapsPlaced, selfTriggered, false, fmt.Errorf("failed to check existing trap: %w", err)
+		}
+
+		if existingTrap != nil {
+			itemsConsumed++
+			selfTriggered = true
+			if err := s.handleExistingTrapTrigger(ctx, user, targetName, existingTrap); err != nil {
+				return itemsConsumed, trapsPlaced, true, false, err
+			}
+			break
+		}
+
+		itemsConsumed++
+		trapsPlaced++
+		userID, _ := uuid.Parse(user.ID)
+		newTrap := &domain.Trap{
+			ID:             uuid.New(),
+			SetterID:       userID,
+			TargetID:       targetUserID,
+			ShineLevel:     shineLevel,
+			TimeoutSeconds: 60,
+			PlacedAt:       time.Now(),
+		}
+		if err := s.trapRepo.CreateTrap(ctx, newTrap); err != nil {
+			return itemsConsumed, trapsPlaced, false, false, fmt.Errorf("failed to create trap: %w", err)
+		}
+	}
+	return itemsConsumed, trapsPlaced, selfTriggered, badLuckSelf, nil
+}
+
+func (s *service) formatTrapResponse(user *domain.User, item *domain.Item, potentialTargets []string, itemsConsumed, trapsPlaced int, selfTriggered, badLuckSelf bool) string {
 	if selfTriggered {
-		return fmt.Sprintf("%s tried to use %s but stepped on a trap!", user.Username, item.PublicName), nil
+		return fmt.Sprintf("%s tried to use %s but stepped on a trap!", user.Username, item.PublicName)
 	}
 	if badLuckSelf {
-		return fmt.Sprintf("%s dropped a mine straight on their own foot!", user.Username), nil
+		return fmt.Sprintf("%s dropped a mine straight on their own foot!", user.Username)
 	}
-
 	if trapsPlaced == 0 && itemsConsumed == 0 {
-		return "No targets found.", nil
+		return "No targets found."
 	}
-
 	targetMsg := "someone"
 	if len(potentialTargets) == 1 {
 		targetMsg = potentialTargets[0]
 	} else if trapsPlaced > 0 {
 		targetMsg = fmt.Sprintf("%d people", trapsPlaced)
 	}
+	return fmt.Sprintf("%s set %d %s for %s!", user.Username, trapsPlaced, item.PublicName, targetMsg)
+}
 
-	return fmt.Sprintf("%s set %d %s for %s!", user.Username, trapsPlaced, item.PublicName, targetMsg), nil
+func (s *service) handleSelfTargetMine(ctx context.Context, user *domain.User) {
+	log := logger.FromContext(ctx)
+	if err := s.TimeoutUser(ctx, user.Username, 60*time.Second, "tripped on your own mine immediately!"); err != nil {
+		log.Error("Failed to timeout user for bad luck", "error", err)
+	}
+}
 
+func (s *service) handleExistingTrapTrigger(ctx context.Context, user *domain.User, targetName string, existingTrap *domain.Trap) error {
+	timeout := time.Duration(existingTrap.CalculateTimeout()) * time.Second
+	if err := s.TimeoutUser(ctx, user.Username, timeout, fmt.Sprintf("stepped on %s's trap entirely by accident!", targetName)); err != nil {
+		return fmt.Errorf("failed to apply self-trap timeout: %w", err)
+	}
+	if err := s.trapRepo.TriggerTrap(ctx, existingTrap.ID); err != nil {
+		return fmt.Errorf("failed to trigger existing trap: %w", err)
+	}
+
+	s.recordTrapSelfTriggerStats(ctx, user, targetName, existingTrap)
+	return nil
+}
+
+func (s *service) recordTrapSelfTriggerStats(ctx context.Context, user *domain.User, targetName string, trap *domain.Trap) {
+	if s.statsService == nil {
+		return
+	}
+	eventData := &domain.TrapTriggeredData{
+		TrapID:           trap.ID,
+		SetterID:         trap.SetterID,
+		SetterUsername:   targetName,
+		TargetID:         trap.TargetID,
+		TargetUsername:   user.Username,
+		ShineLevel:       trap.ShineLevel,
+		TimeoutSeconds:   trap.CalculateTimeout(),
+		WasSelfTriggered: true,
+	}
+	_ = s.statsService.RecordUserEvent(ctx, user.ID, domain.EventTrapSelfTriggered, eventData.ToMap())
 }
 
 func (s *service) handleShield(ctx context.Context, _ *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, _ map[string]interface{}) (string, error) {

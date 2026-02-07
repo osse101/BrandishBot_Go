@@ -209,9 +209,9 @@ func TestBuildSlotMap(t *testing.T) {
 		slotMap := BuildSlotMap(inventory)
 
 		assert.Equal(t, 3, len(slotMap), "Should have 3 entries (different shine levels are separate)")
-		assert.Equal(t, 0, slotMap[slotKey{ItemID: 10, ShineLevel: domain.ShineCommon}])
-		assert.Equal(t, 1, slotMap[slotKey{ItemID: 10, ShineLevel: domain.ShineLegendary}])
-		assert.Equal(t, 2, slotMap[slotKey{ItemID: 20, ShineLevel: domain.ShineRare}])
+		assert.Equal(t, 0, slotMap[SlotKey{ItemID: 10, ShineLevel: domain.ShineCommon}])
+		assert.Equal(t, 1, slotMap[SlotKey{ItemID: 10, ShineLevel: domain.ShineLegendary}])
+		assert.Equal(t, 2, slotMap[SlotKey{ItemID: 20, ShineLevel: domain.ShineRare}])
 	})
 
 	t.Run("handles empty inventory", func(t *testing.T) {
@@ -449,8 +449,8 @@ func TestAddItemsToInventory(t *testing.T) {
 		// Rest should be added
 		assert.Equal(t, 12, len(inventory.Slots))
 		// Verify map was updated with new items
-		assert.Equal(t, 2, slotMap[slotKey{ItemID: 30, ShineLevel: domain.ShineCommon}])   // Third item added at index 2
-		assert.Equal(t, 11, slotMap[slotKey{ItemID: 120, ShineLevel: domain.ShineCommon}]) // Last item added at index 11
+		assert.Equal(t, 2, slotMap[SlotKey{ItemID: 30, ShineLevel: domain.ShineCommon}])   // Third item added at index 2
+		assert.Equal(t, 11, slotMap[SlotKey{ItemID: 120, ShineLevel: domain.ShineCommon}]) // Last item added at index 11
 	})
 }
 

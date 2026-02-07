@@ -3235,7 +3235,7 @@ const docTemplate = `{
                 "scenarios": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/scenario.ScenarioSummary"
+                        "$ref": "#/definitions/scenario.Summary"
                     }
                 },
                 "total": {
@@ -3677,32 +3677,6 @@ const docTemplate = `{
                 }
             }
         },
-        "scenario.ScenarioSummary": {
-            "type": "object",
-            "properties": {
-                "capabilities": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/scenario.CapabilityType"
-                    }
-                },
-                "description": {
-                    "type": "string"
-                },
-                "feature": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "step_count": {
-                    "type": "integer"
-                }
-            }
-        },
         "scenario.SimulatedUser": {
             "type": "object",
             "properties": {
@@ -3774,6 +3748,32 @@ const docTemplate = `{
                 },
                 "success": {
                     "type": "boolean"
+                }
+            }
+        },
+        "scenario.Summary": {
+            "type": "object",
+            "properties": {
+                "capabilities": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/scenario.CapabilityType"
+                    }
+                },
+                "description": {
+                    "type": "string"
+                },
+                "feature": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "step_count": {
+                    "type": "integer"
                 }
             }
         },

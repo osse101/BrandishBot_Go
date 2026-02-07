@@ -554,133 +554,135 @@ func (s *service) CheckAndUnlockNode(ctx context.Context) (*domain.ProgressionUn
 // It ends any active/frozen parallel voting session, sets winner as new target,
 // and starts voting for the next cycle
 // Note: rollover is already added by CompleteUnlock, passed here for logging only
-func (s *service) handlePostUnlockTransition(ctx context.Context, unlockedNodeID int, newProgressID int, rollover int) {
+func (s *service) handlePostUnlockTransition(ctx context.Context, unlockedNodeID int, newProgressID int, _ int) {
 	log := logger.FromContext(ctx)
 
-	// Check for active or frozen parallel voting session
-	session, _ := s.repo.GetActiveOrFrozenSession(ctx)
+	// 1. Resolve parallel/frozen session to find next target
+	newTargetNode, newTargetLevel := s.resolveNextTarget(ctx)
 
-	// If no active session, check if there was a recently ended one that we can pick up
+	// 2. Setup the new target
+	if newTargetNode == nil {
+		log.Info("All nodes unlocked after this unlock")
+		s.publishAllUnlockedEvent(ctx)
+		return
+	}
+
+	sessionID, err := s.setupNewTarget(ctx, newProgressID, newTargetNode, newTargetLevel)
+	if err != nil {
+		log.Error("Failed to setup new target", "error", err)
+		return
+	}
+
+	// 3. Cleanup and notify
+	s.publishCycleCompletedEvent(ctx, unlockedNodeID)
+
+	// 4. Initialize voting for the cycle AFTER the next one
+	s.initNextVotingCycle(ctx, newTargetNode)
+
+	// End the placeholder session
+	if err := s.repo.EndVotingSession(ctx, sessionID, nil); err != nil {
+		log.Warn("Failed to end placeholder session", "error", err)
+	}
+}
+
+func (s *service) resolveNextTarget(ctx context.Context) (*domain.ProgressionNode, int) {
+	log := logger.FromContext(ctx)
+
+	// Check parallel/frozen/recent session
+	session, _ := s.repo.GetActiveOrFrozenSession(ctx)
 	if session == nil {
 		recent, err := s.repo.GetMostRecentSession(ctx)
-		if err == nil && recent != nil && recent.Status == domain.VotingStatusCompleted && recent.WinningOptionID != nil {
+		if err == nil && recent != nil && recent.Status == domain.VotingStatusCompleted {
 			session = recent
 		}
 	}
 
-	var newTargetNode *domain.ProgressionNode
-	var newTargetLevel int
-
 	if session != nil {
-		var winner *domain.ProgressionVotingOption
-
-		if session.Status == domain.VotingStatusCompleted && session.WinningOptionID != nil {
-			// Already completed, just find the winning option in the session data
-			for _, opt := range session.Options {
-				if opt.ID == *session.WinningOptionID {
-					winner = &opt
-					break
-				}
-			}
-		} else {
-			// Still active/frozen, resume if frozen then end it
-			if session.Status == domain.VotingStatusFrozen {
-				if err := s.repo.ResumeVotingSession(ctx, session.ID); err != nil {
-					log.Warn("Failed to resume frozen session before ending", "sessionID", session.ID, "error", err)
-				}
-			}
-
-			// Determine winner and end session
-			winner = findWinningOption(session.Options)
-			if winner != nil {
-				winnerID := winner.ID
-				if err := s.repo.EndVotingSession(ctx, session.ID, &winnerID); err != nil {
-					log.Warn("Failed to end parallel voting session", "sessionID", session.ID, "error", err)
-				}
-			}
-		}
-
-		if winner != nil {
-			newTargetNode = winner.NodeDetails
-			newTargetLevel = winner.TargetLevel
+		winner := s.resolveSessionWinner(ctx, session)
+		if winner != nil && winner.NodeDetails != nil {
 			log.Info("Found target from voting session", "sessionID", session.ID, "status", session.Status, "winnerNodeID", winner.NodeID)
+			return winner.NodeDetails, winner.TargetLevel
 		}
 	}
 
-	// If no winner from voting, pick random from available
-	if newTargetNode == nil {
-		available, err := s.GetAvailableUnlocks(ctx)
-		if err != nil {
-			log.Error("Failed to get available nodes for next target", "error", err)
-			return
-		}
-
-		if len(available) == 0 {
-			log.Info("All nodes unlocked after this unlock")
-			s.publishAllUnlockedEvent(ctx)
-			return
-		}
-
-		// Pick random
-		newTargetNode = available[utils.SecureRandomInt(len(available))]
-		newTargetLevel = s.calculateNextTargetLevel(ctx, newTargetNode)
-		log.Info("No active vote, picked random next target", "nodeKey", newTargetNode.NodeKey)
+	// Fallback to random if no winner found
+	available, err := s.GetAvailableUnlocks(ctx)
+	if err != nil || len(available) == 0 {
+		return nil, 0
 	}
 
-	// Create session placeholder for FK and set target
+	newTargetNode := available[utils.SecureRandomInt(len(available))]
+	newTargetLevel := s.calculateNextTargetLevel(ctx, newTargetNode)
+	log.Info("No active vote, picked random next target", "nodeKey", newTargetNode.NodeKey)
+	return newTargetNode, newTargetLevel
+}
+
+func (s *service) resolveSessionWinner(ctx context.Context, session *domain.ProgressionVotingSession) *domain.ProgressionVotingOption {
+	log := logger.FromContext(ctx)
+
+	if session.Status == domain.VotingStatusCompleted && session.WinningOptionID != nil {
+		for _, opt := range session.Options {
+			if opt.ID == *session.WinningOptionID {
+				return &opt
+			}
+		}
+		return nil
+	}
+
+	// Active/Frozen: needs to be ended
+	if session.Status == domain.VotingStatusFrozen {
+		_ = s.repo.ResumeVotingSession(ctx, session.ID)
+	}
+
+	winner := findWinningOption(session.Options)
+	if winner != nil {
+		winnerID := winner.ID
+		if err := s.repo.EndVotingSession(ctx, session.ID, &winnerID); err != nil {
+			log.Warn("Failed to end parallel voting session", "sessionID", session.ID, "error", err)
+		}
+	}
+	return winner
+}
+
+func (s *service) setupNewTarget(ctx context.Context, progressID int, node *domain.ProgressionNode, level int) (int, error) {
+	// Create placeholder for FK
 	sessionID, err := s.repo.CreateVotingSession(ctx)
 	if err != nil {
-		log.Error("Failed to create session for new target", "error", err)
-		return
+		return 0, err
 	}
 
-	if err := s.repo.SetUnlockTarget(ctx, newProgressID, newTargetNode.ID, newTargetLevel, sessionID); err != nil {
-		log.Error("Failed to set new unlock target", "error", err)
-		return
+	if err := s.repo.SetUnlockTarget(ctx, progressID, node.ID, level, sessionID); err != nil {
+		return sessionID, err
 	}
 
-	// Note: rollover was already added by CompleteUnlock (InsertNextUnlockProgress)
-	// Don't add it again here
-
-	// Cache the new target
+	// Cache new target
 	s.mu.Lock()
-	s.cachedTargetCost = newTargetNode.UnlockCost
-	s.cachedProgressID = newProgressID
+	s.cachedTargetCost = node.UnlockCost
+	s.cachedProgressID = progressID
 	s.mu.Unlock()
 
-	// End the placeholder session (no winning option for placeholder)
-	if err := s.repo.EndVotingSession(ctx, sessionID, nil); err != nil {
-		log.Warn("Failed to end placeholder session", "error", err)
-	}
+	return sessionID, nil
+}
 
-	// Publish cycle completed event
-	s.publishCycleCompletedEvent(ctx, unlockedNodeID)
-
-	// Get remaining available nodes (excluding new target)
+func (s *service) initNextVotingCycle(ctx context.Context, currentTarget *domain.ProgressionNode) {
+	log := logger.FromContext(ctx)
 	available, err := s.GetAvailableUnlocks(ctx)
 	if err != nil {
-		log.Warn("Failed to get available nodes for next voting", "error", err)
 		return
 	}
 
-	remainingAvailable := make([]*domain.ProgressionNode, 0, len(available))
+	remaining := make([]*domain.ProgressionNode, 0, len(available))
 	for _, n := range available {
-		if n.ID != newTargetNode.ID {
-			remainingAvailable = append(remainingAvailable, n)
+		if n.ID != currentTarget.ID {
+			remaining = append(remaining, n)
 		}
 	}
 
-	// Start voting for next cycle if 2+ options remain
-	if len(remainingAvailable) >= 2 {
-		if err := s.startVotingWithOptions(ctx, remainingAvailable, &newTargetNode.ID); err != nil {
-			log.Warn("Failed to start next voting session", "error", err)
-		}
-	} else if len(remainingAvailable) == 1 {
+	if len(remaining) >= 2 {
+		_ = s.startVotingWithOptions(ctx, remaining, &currentTarget.ID)
+	} else if len(remaining) == 1 {
 		log.Info("Only one option remaining, no voting needed for next cycle")
-		// Publish voting started with auto-selected info
-		s.publishVotingStartedEvent(ctx, 0, remainingAvailable, newTargetNode.DisplayName)
-	} else {
-		log.Info("No more options available after new target")
+		s.publishVotingStartedEvent(ctx, 0, remaining, currentTarget.DisplayName)
 	}
 }
 

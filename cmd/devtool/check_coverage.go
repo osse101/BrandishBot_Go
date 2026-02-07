@@ -41,7 +41,7 @@ func (c *CheckCoverageCommand) Run(args []string) error {
 	// Run go tool cover -func=file
 	out, err := getCommandOutput("go", "tool", "cover", fmt.Sprintf("-func=%s", file))
 	if err != nil {
-		return fmt.Errorf("error running go tool cover: %v", err)
+		return fmt.Errorf("error running go tool cover: %w", err)
 	}
 
 	lines := strings.Split(out, "\n")

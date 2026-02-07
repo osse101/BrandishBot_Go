@@ -8,6 +8,11 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
+const (
+	PrereqNodesUnlockedBelowTier = "nodes_unlocked_below_tier"
+	PrereqTotalNodesUnlocked     = "total_nodes_unlocked"
+)
+
 // ParsePrerequisite parses a prerequisite string (static or dynamic)
 // Returns: isDynamic, dynamicPrerequisite, staticKey, error
 func ParsePrerequisite(prereqStr string) (isDynamic bool, dynamic *domain.DynamicPrerequisite, staticKey string, err error) {
@@ -19,7 +24,7 @@ func ParsePrerequisite(prereqStr string) (isDynamic bool, dynamic *domain.Dynami
 	parts := strings.Split(prereqStr[1:], ":") // Remove "-" prefix
 
 	switch parts[0] {
-	case "nodes_unlocked_below_tier":
+	case PrereqNodesUnlockedBelowTier:
 		if len(parts) != 3 {
 			return false, nil, "", fmt.Errorf("invalid syntax: expected -nodes_unlocked_below_tier:tier:count, got %s", prereqStr)
 		}
@@ -31,9 +36,9 @@ func ParsePrerequisite(prereqStr string) (isDynamic bool, dynamic *domain.Dynami
 		if err != nil {
 			return false, nil, "", fmt.Errorf("invalid count in %s: %w", prereqStr, err)
 		}
-		return true, &domain.DynamicPrerequisite{Type: "nodes_unlocked_below_tier", Tier: tier, Count: count}, "", nil
+		return true, &domain.DynamicPrerequisite{Type: PrereqNodesUnlockedBelowTier, Tier: tier, Count: count}, "", nil
 
-	case "total_nodes_unlocked":
+	case PrereqTotalNodesUnlocked:
 		if len(parts) != 2 {
 			return false, nil, "", fmt.Errorf("invalid syntax: expected -total_nodes_unlocked:count, got %s", prereqStr)
 		}
@@ -41,7 +46,7 @@ func ParsePrerequisite(prereqStr string) (isDynamic bool, dynamic *domain.Dynami
 		if err != nil {
 			return false, nil, "", fmt.Errorf("invalid count in %s: %w", prereqStr, err)
 		}
-		return true, &domain.DynamicPrerequisite{Type: "total_nodes_unlocked", Count: count}, "", nil
+		return true, &domain.DynamicPrerequisite{Type: PrereqTotalNodesUnlocked, Count: count}, "", nil
 
 	default:
 		return false, nil, "", fmt.Errorf("unknown dynamic prerequisite type: %s", parts[0])
@@ -58,7 +63,7 @@ func ValidateDynamicPrerequisite(prereq *domain.DynamicPrerequisite) error {
 		return fmt.Errorf("count must be > 0, got %d", prereq.Count)
 	}
 
-	if prereq.Type == "nodes_unlocked_below_tier" {
+	if prereq.Type == PrereqNodesUnlockedBelowTier {
 		if err := ValidateTier(prereq.Tier); err != nil {
 			return fmt.Errorf("invalid tier: %w", err)
 		}

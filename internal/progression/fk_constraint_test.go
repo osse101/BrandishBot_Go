@@ -84,7 +84,7 @@ func TestAutoSelectFKConstraintBug(t *testing.T) {
 
 	// Test 2: Zero-cost auto-unlock should not violate FK constraints
 	t.Run("ZeroCostAutoUnlock", func(t *testing.T) {
-		cleanupProgressionState(t, ctx, testPool)
+		cleanupProgressionState(ctx, t, testPool)
 
 		// This tests the scenario where:
 		// 1. Auto-select creates session
