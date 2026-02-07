@@ -1,17 +1,1 @@
-Dashboard black screen: Select Commands->Scenarios: 
-:8080/favicon.ico:1  Failed to load resource: the server responded with a status of 401 (Unauthorized)
-:8080/api/v1/events:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
-:8080/api/v1/events:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
-index-D6c1NBmW.js:61 Uncaught TypeError: f.data.map is not a function
-    at Mv (index-D6c1NBmW.js:61:22237)
-    at Ec (index-D6c1NBmW.js:48:47987)
-    at Gc (index-D6c1NBmW.js:48:70788)
-    at Uo (index-D6c1NBmW.js:48:81120)
-    at rd (index-D6c1NBmW.js:48:116869)
-    at Oh (index-D6c1NBmW.js:48:115915)
-    at rs (index-D6c1NBmW.js:48:115747)
-    at nd (index-D6c1NBmW.js:48:112545)
-    at Td (index-D6c1NBmW.js:48:124330)
-    at MessagePort.Fe (index-D6c1NBmW.js:25:1614)
-
-User inventory not correct (shows empty), user seems identified correctly -> May not connect to expected Database
+Update discord command /vote to use index instead of name
