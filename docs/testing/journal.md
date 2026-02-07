@@ -397,3 +397,27 @@ Now the test always votes for lootbox0, making the outcome predictable and asser
 > "Tests should verify expected behavior, not handle uncertainty."
 
 > "Nil checks mask real bugs. If the code unexpectedly doesn't create a session when it should, the nil-check branch will pass silently, hiding the bug. The test should FAIL loudly to expose the problem."
+
+### Lesson 18: Handler Testing & Mock Accuracy
+**Date:** February 2026
+**Context:** Added tests for `AdminDailyResetHandler` and `CheckFeatureLocked` helper.
+
+**The Problem:**
+1. Tests failed because mock return types didn't match interface (e.g., returning `int` instead of `int64`, or `[]T` instead of `[]*T`).
+2. Tests failed because struct fields were assumed based on similar types (e.g., `LastReset` instead of `LastResetTime`).
+
+**Solution:**
+- Always check the interface definition before mocking (`int64`, pointers, etc.).
+- Always check the struct definition before instantiating expected objects.
+- Use `go test -v ./internal/package` to run all tests in the package to catch undefined references to other files in the same package.
+
+**Pattern:**
+```go
+// Check interface: GetRequiredNodes returns []*domain.ProgressionNode
+svc.On("GetRequiredNodes", ...).Return([]*domain.ProgressionNode{}, nil)
+
+// Check struct: DailyResetStatus uses LastResetTime
+expected := &domain.DailyResetStatus{
+    LastResetTime: time.Now(),
+}
+```
