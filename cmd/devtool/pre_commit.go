@@ -157,13 +157,8 @@ func checkGenerate(files []string) error {
 
 func runLinter() error {
 	PrintInfo("Running linter on changes...")
-	path, err := exec.LookPath("golangci-lint")
-	if err != nil {
-		PrintWarning("golangci-lint not found, skipping lint.")
-		return nil
-	}
-
-	cmd := exec.Command(path, "run", "--new-from-rev=HEAD", "./...")
+	// Use go run to ensure we use the version pinned in tools.go
+	cmd := exec.Command("go", "run", "github.com/golangci/golangci-lint/cmd/golangci-lint", "run", "--new-from-rev=HEAD", "./...")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
