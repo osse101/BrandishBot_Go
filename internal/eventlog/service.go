@@ -15,6 +15,9 @@ type Service interface {
 
 	// CleanupOldEvents removes events older than retention period
 	CleanupOldEvents(ctx context.Context, retentionDays int) (int64, error)
+
+	// GetEvents retrieves events based on filter criteria
+	GetEvents(ctx context.Context, filter EventFilter) ([]Event, error)
 }
 
 type service struct {
@@ -76,4 +79,9 @@ func (s *service) handleEvent(ctx context.Context, evt event.Event) error {
 // CleanupOldEvents removes events older than the retention period
 func (s *service) CleanupOldEvents(ctx context.Context, retentionDays int) (int64, error) {
 	return s.repo.CleanupOldEvents(ctx, retentionDays)
+}
+
+// GetEvents retrieves events based on filter criteria
+func (s *service) GetEvents(ctx context.Context, filter EventFilter) ([]Event, error) {
+	return s.repo.GetEvents(ctx, filter)
 }

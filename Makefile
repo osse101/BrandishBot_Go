@@ -1,4 +1,4 @@
-.PHONY: help migrate-up migrate-down migrate-status migrate-create test build run clean docker-build docker-up docker-down deploy-staging deploy-production rollback-staging rollback-production health-check-staging health-check-prod install-hooks reset-staging seed-staging validate-staging
+.PHONY: help migrate-up migrate-down migrate-status migrate-create test build run clean docker-build docker-up docker-down deploy-staging deploy-production rollback-staging rollback-production health-check-staging health-check-prod install-hooks reset-staging seed-staging validate-staging admin-install admin-dev admin-build admin-clean
 
 # Tool paths
 GOOSE   := go run github.com/pressly/goose/v3/cmd/goose
@@ -423,6 +423,28 @@ check-deps:
 check-db:
 	@go run ./cmd/devtool check-db
 
+
+# Admin dashboard commands
+admin-install:
+	@echo "Installing admin dashboard dependencies..."
+	@cd web/admin && npm ci
+	@echo "✓ Admin dependencies installed"
+
+admin-dev:
+	@echo "Starting admin dashboard dev server..."
+	@cd web/admin && npm run dev
+
+admin-build:
+	@echo "Building admin dashboard..."
+	@cd web/admin && npm ci && npm run build
+	@rm -rf internal/admin/dist
+	@cp -r web/admin/dist internal/admin/dist
+	@echo "✓ Admin dashboard built and copied to internal/admin/dist"
+
+admin-clean:
+	@echo "Cleaning admin dashboard artifacts..."
+	@rm -rf web/admin/dist web/admin/node_modules
+	@echo "✓ Admin artifacts cleaned"
 
 # Mock generation
 .PHONY: mocks clean-mocks

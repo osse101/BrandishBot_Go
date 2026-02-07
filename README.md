@@ -9,6 +9,7 @@ A high-performance game engine API for BrandishBot, built with Go. Provides inve
 - **Economy**: Buy/sell items with dynamic pricing
 - **Statistics**: User and system stats with leaderboards
 - **Discord Bot**: Full-featured Discord integration with slash commands
+- **Admin Dashboard**: Web-based GUI for system monitoring and admin commands
 - **Health Checks**: Production-ready liveness and readiness endpoints
 - **API Documentation**: Interactive Swagger UI at `/swagger/`
 
@@ -53,6 +54,37 @@ make docker-up
 **Admin**: `/add-item`, `/remove-item`
 
 See `/info commands` in Discord for full details.
+
+## Admin Dashboard 🖥️
+
+BrandishBot includes a web-based admin dashboard for system monitoring and administration.
+
+**Access**: `http://localhost:8080/admin/` (or your configured port)
+
+### Features
+
+- **Health Monitoring**: Real-time server status, metrics, and performance stats
+- **Admin Commands**: GUI for progression management, job XP, cache control, and scenarios
+- **Live Events**: Real-time SSE event stream with filtering
+- **User Management**: Search users, view profiles, manage inventory and XP
+
+### Quick Start (Admin Dashboard)
+
+1. **Build the dashboard**:
+```bash
+make admin-build    # Build React frontend
+make build          # Build Go binary with embedded dashboard
+```
+
+2. **Run the server**:
+```bash
+./bin/app
+# Dashboard available at http://localhost:8080/admin/
+```
+
+3. **Login**: Use your `API_KEY` from `.env`
+
+📖 **Full Documentation**: See [docs/ADMIN_DASHBOARD_USAGE.md](docs/ADMIN_DASHBOARD_USAGE.md) for detailed usage, configuration, and extensibility guide.
 
 ## Quick Start
 

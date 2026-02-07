@@ -296,7 +296,7 @@ func main() {
 	scenarioEngine := scenario.NewEngine(scenarioRegistry)
 	slog.Info("Scenario engine initialized", "features", scenarioRegistry.Features())
 
-	srv := server.NewServer(cfg.Port, cfg.APIKey, cfg.TrustedProxies, dbPool, userService, economyService, craftingService, statsService, progressionService, gambleService, jobService, linkingService, harvestService, predictionService, expeditionService, questService, namingResolver, eventBus, sseHub, repos.User, scenarioEngine)
+	srv := server.NewServer(cfg.Port, cfg.APIKey, cfg.TrustedProxies, dbPool, userService, economyService, craftingService, statsService, progressionService, gambleService, jobService, linkingService, harvestService, predictionService, expeditionService, questService, namingResolver, eventBus, sseHub, repos.User, scenarioEngine, eventLogService)
 
 	// Run server in a goroutine
 	go func() {

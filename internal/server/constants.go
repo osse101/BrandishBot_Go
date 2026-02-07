@@ -46,6 +46,7 @@ var PublicPaths = []string{
 	"/healthz",
 	"/readyz",
 	"/metrics",
+	"/admin",
 }
 
 // Header redaction marker

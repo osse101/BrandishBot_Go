@@ -1,4 +1,13 @@
-# Build stage
+# Frontend build stage
+FROM node:20-alpine AS frontend-builder
+
+WORKDIR /frontend
+COPY web/admin/package.json web/admin/package-lock.json* ./
+RUN npm ci
+COPY web/admin/ .
+RUN npm run build
+
+# Go build stage
 FROM golang:1.24-alpine AS builder
 
 # Build arguments
@@ -21,6 +30,9 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 
 # Copy source code
 COPY . .
+
+# Copy frontend build output into the embed directory
+COPY --from=frontend-builder /frontend/dist ./internal/admin/dist
 
 # Build goose and the application with optimizations and version information
 # -ldflags="-w -s" strips debug info and symbol table

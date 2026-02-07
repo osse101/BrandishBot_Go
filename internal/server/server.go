@@ -13,10 +13,12 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	httpSwagger "github.com/swaggo/http-swagger"
 
+	"github.com/osse101/BrandishBot_Go/internal/admin"
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
 	"github.com/osse101/BrandishBot_Go/internal/database"
 	"github.com/osse101/BrandishBot_Go/internal/economy"
 	"github.com/osse101/BrandishBot_Go/internal/event"
+	"github.com/osse101/BrandishBot_Go/internal/eventlog"
 	"github.com/osse101/BrandishBot_Go/internal/expedition"
 	"github.com/osse101/BrandishBot_Go/internal/features"
 	"github.com/osse101/BrandishBot_Go/internal/gamble"
@@ -55,10 +57,11 @@ type Server struct {
 	namingResolver     naming.Resolver
 	sseHub             *sse.Hub
 	scenarioEngine     *scenario.Engine
+	eventlogService    eventlog.Service
 }
 
 // NewServer creates a new Server instance
-func NewServer(port int, apiKey string, trustedProxies []string, dbPool database.Pool, userService user.Service, economyService economy.Service, craftingService crafting.Service, statsService stats.Service, progressionService progression.Service, gambleService gamble.Service, jobService job.Service, linkingService linking.Service, harvestService harvest.Service, predictionService prediction.Service, expeditionService expedition.Service, questService quest.Service, namingResolver naming.Resolver, eventBus event.Bus, sseHub *sse.Hub, userRepo repository.User, scenarioEngine *scenario.Engine) *Server {
+func NewServer(port int, apiKey string, trustedProxies []string, dbPool database.Pool, userService user.Service, economyService economy.Service, craftingService crafting.Service, statsService stats.Service, progressionService progression.Service, gambleService gamble.Service, jobService job.Service, linkingService linking.Service, harvestService harvest.Service, predictionService prediction.Service, expeditionService expedition.Service, questService quest.Service, namingResolver naming.Resolver, eventBus event.Bus, sseHub *sse.Hub, userRepo repository.User, scenarioEngine *scenario.Engine, eventlogService eventlog.Service) *Server {
 	r := chi.NewRouter()
 
 	// Middleware stack
@@ -218,7 +221,19 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 		adminJobHandler := handler.NewAdminJobHandler(jobService, userService)
 		adminDailyResetHandler := handler.NewAdminDailyResetHandler(jobService)
 		adminCacheHandler := handler.NewAdminCacheHandler(userService)
+		adminMetricsHandler := handler.NewAdminMetricsHandler(sseHub)
+		adminUserHandler := handler.NewAdminUserHandler(userRepo)
+		adminEventsHandler := handler.NewAdminEventsHandler(eventlogService)
 		r.Route("/admin", func(r chi.Router) {
+			r.Get("/metrics", adminMetricsHandler.HandleGetMetrics)
+
+			// User lookup
+			r.Route("/user", func(r chi.Router) {
+				r.Get("/lookup", adminUserHandler.HandleUserLookup)
+			})
+
+			// Event log
+			r.Get("/events", adminEventsHandler.HandleGetEvents)
 			r.Post("/reload-aliases", handler.HandleReloadAliases(namingResolver))
 
 			// Admin timeout routes
@@ -257,6 +272,10 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 		})
 	})
 
+	// Admin dashboard (embedded SPA)
+	r.Handle("/admin", http.RedirectHandler("/admin/", http.StatusMovedPermanently))
+	r.Handle("/admin/*", http.StripPrefix("/admin", admin.Handler()))
+
 	// Swagger documentation
 	r.Get("/swagger/*", httpSwagger.WrapHandler)
 
@@ -282,6 +301,7 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 		namingResolver:     namingResolver,
 		sseHub:             sseHub,
 		scenarioEngine:     scenarioEngine,
+		eventlogService:    eventlogService,
 	}
 }
 
