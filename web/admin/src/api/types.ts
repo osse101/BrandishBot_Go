@@ -98,24 +98,29 @@ export interface SSEEvent {
 
 // Scenario
 export interface ScenarioInfo {
+  id: string;
   name: string;
   description: string;
   feature: string;
+  step_count: number;
 }
 
 export interface ScenarioResult {
+  scenario_id: string;
+  scenario_name: string;
   success: boolean;
-  scenario: string;
   duration_ms: number;
   steps: ScenarioStep[];
   error?: string;
+  final_state?: Record<string, unknown>;
 }
 
 export interface ScenarioStep {
-  name: string;
-  status: string;
+  step_name: string;
+  step_index: number;
+  success: boolean;
   duration_ms: number;
-  output?: string;
+  output?: Record<string, unknown>;
   error?: string;
 }
 

@@ -47,6 +47,7 @@ var PublicPaths = []string{
 	"/readyz",
 	"/metrics",
 	"/admin",
+	"/favicon.ico",
 }
 
 // Header redaction marker

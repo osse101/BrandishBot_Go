@@ -3800,11 +3800,21 @@ const docTemplate = `{
         "user.InventoryItem": {
             "type": "object",
             "properties": {
+                "item_name": {
+                    "type": "string"
+                },
                 "name": {
+                    "description": "For backward compatibility",
+                    "type": "string"
+                },
+                "public_name": {
                     "type": "string"
                 },
                 "quantity": {
                     "type": "integer"
+                },
+                "shine_level": {
+                    "type": "string"
                 }
             }
         }

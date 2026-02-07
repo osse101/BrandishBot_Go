@@ -446,9 +446,13 @@ func (s *service) getInventoryInternal(ctx context.Context, user *domain.User, f
 		s.itemCacheMu.Unlock()
 	}
 
-	// Group items by name to merge same items with different shine levels
-	itemsByName := make(map[string]int)
-	itemOrder := make([]string, 0)
+	// Group items to merge identical items (same ID and shine)
+	type itemKey struct {
+		ItemID int
+		Shine  domain.ShineLevel
+	}
+	itemsMap := make(map[itemKey]int)
+	itemOrder := make([]itemKey, 0)
 
 	for _, slot := range inventory.Slots {
 		item, ok := itemMap[slot.ItemID]
@@ -471,19 +475,28 @@ func (s *service) getInventoryInternal(ctx context.Context, user *domain.User, f
 			}
 		}
 
-		// Accumulate quantity by name
-		if _, exists := itemsByName[item.PublicName]; !exists {
-			itemOrder = append(itemOrder, item.PublicName)
+		key := itemKey{ItemID: slot.ItemID, Shine: slot.ShineLevel}
+		if _, exists := itemsMap[key]; !exists {
+			itemOrder = append(itemOrder, key)
 		}
-		itemsByName[item.PublicName] += slot.Quantity
+		itemsMap[key] += slot.Quantity
 	}
 
 	// Convert back to array in order of first appearance
-	items := make([]InventoryItem, 0, len(itemsByName))
-	for _, name := range itemOrder {
+	items := make([]InventoryItem, 0, len(itemsMap))
+	for _, key := range itemOrder {
+		item := itemMap[key.ItemID]
+		shine := string(key.Shine)
+		if shine == "" {
+			shine = string(domain.ShineCommon)
+		}
+
 		items = append(items, InventoryItem{
-			Name:     name,
-			Quantity: itemsByName[name],
+			InternalName: item.InternalName,
+			PublicName:   item.PublicName,
+			Name:         item.PublicName,
+			Quantity:     itemsMap[key],
+			ShineLevel:   shine,
 		})
 	}
 

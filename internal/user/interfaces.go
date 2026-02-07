@@ -9,8 +9,11 @@ import (
 
 // InventoryItem represents an item in a user's inventory with display information
 type InventoryItem struct {
-	Name     string `json:"name"`
-	Quantity int    `json:"quantity"`
+	InternalName string `json:"item_name"`
+	PublicName   string `json:"public_name"`
+	Name         string `json:"name"` // For backward compatibility
+	Quantity     int    `json:"quantity"`
+	ShineLevel   string `json:"shine_level"`
 }
 
 // InventoryService handles inventory operations

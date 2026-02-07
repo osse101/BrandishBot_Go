@@ -1095,10 +1095,17 @@ definitions:
     type: object
   user.InventoryItem:
     properties:
+      item_name:
+        type: string
       name:
+        description: For backward compatibility
+        type: string
+      public_name:
         type: string
       quantity:
         type: integer
+      shine_level:
+        type: string
     type: object
 host: localhost:8080
 info:
