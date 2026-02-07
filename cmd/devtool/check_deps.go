@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"strings"
 )
 
@@ -14,6 +13,12 @@ func (c *CheckDepsCommand) Name() string {
 
 func (c *CheckDepsCommand) Description() string {
 	return "Check for required dependencies"
+}
+
+type toolCheck struct {
+	Name    string
+	Package string
+	CmdArg  string
 }
 
 func (c *CheckDepsCommand) Run(args []string) error {
@@ -79,28 +84,27 @@ func (c *CheckDepsCommand) Run(args []string) error {
 		hasError = true
 	}
 
-	// Check Goose
-	if version, err := getCommandOutput("goose", "--version"); err == nil {
-		parts := strings.Fields(version)
-		if len(parts) >= 1 {
-			v := parts[len(parts)-1]
-			v = strings.TrimPrefix(v, "version:")
-			PrintSuccess("Goose installed: %s", v)
+	// Check Go Tools (from tools.go)
+	PrintHeader("Checking Go Tools (via go run)...")
+	tools := []toolCheck{
+		{Name: "Goose", Package: "github.com/pressly/goose/v3/cmd/goose", CmdArg: "--version"},
+		{Name: "SQLC", Package: "github.com/sqlc-dev/sqlc/cmd/sqlc", CmdArg: "version"},
+		{Name: "Swag", Package: "github.com/swaggo/swag/cmd/swag", CmdArg: "--version"},
+		{Name: "Mockery", Package: "github.com/vektra/mockery/v2", CmdArg: "--version"},
+		{Name: "GolangCI-Lint", Package: "github.com/golangci/golangci-lint/cmd/golangci-lint", CmdArg: "--version"},
+		{Name: "Benchstat", Package: "golang.org/x/perf/cmd/benchstat", CmdArg: "-h"},
+	}
+
+	for _, t := range tools {
+		// Use go run to check if the tool is runnable/installable
+		// We ignore the output content mostly, just care about exit code 0
+		cmd := []string{"run", t.Package, t.CmdArg}
+		if err := runCommand("go", cmd...); err == nil {
+			PrintSuccess("%s ready", t.Name)
 		} else {
-			PrintSuccess("Goose installed: %s", version)
-		}
-	} else {
-		// Check GOPATH/bin
-		home, _ := os.UserHomeDir()
-		goosePath := fmt.Sprintf("%s/go/bin/goose", home)
-		if version, err := getCommandOutput(goosePath, "--version"); err == nil {
-			parts := strings.Fields(version)
-			v := parts[len(parts)-1]
-			v = strings.TrimPrefix(v, "version:")
-			PrintSuccess("Goose installed (in ~/go/bin): %s", v)
-		} else {
-			PrintWarning("Goose not found (Recommended for dev)")
-			fmt.Println("   Install: go install github.com/pressly/goose/v3/cmd/goose@v3.11.0")
+			PrintError("%s check failed", t.Name)
+			fmt.Printf("   Failed to run: go run %s %s\n", t.Package, t.CmdArg)
+			hasError = true
 		}
 	}
 
