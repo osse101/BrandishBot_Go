@@ -253,7 +253,8 @@ func (s *service) HandleIncomingMessage(ctx context.Context, platform, platformI
 // Public methods handle user lookup (auto-register vs username-only), then delegate
 // to these helpers for the actual inventory modification.
 
-// addItemToUserInternal adds an item to a user's inventory within a transaction
+// addItemToUserInternal adds an item to a user's inventory within a transaction.
+// Used for admin adds - defaults to COMMON shine level.
 func (s *service) addItemToUserInternal(ctx context.Context, user *domain.User, itemName string, quantity int) error {
 	log := logger.FromContext(ctx)
 
@@ -274,12 +275,19 @@ func (s *service) addItemToUserInternal(ctx context.Context, user *domain.User, 
 			return domain.ErrFailedToGetInventory
 		}
 
-		// Add item to inventory using utility function
-		i, _ := utils.FindSlot(inventory, item.ID)
+		// Admin adds default to COMMON shine
+		shineLevel := domain.ShineCommon
+
+		// Find slot with matching ItemID AND ShineLevel
+		i, _ := utils.FindSlotWithShine(inventory, item.ID, shineLevel)
 		if i != -1 {
 			inventory.Slots[i].Quantity += quantity
 		} else {
-			inventory.Slots = append(inventory.Slots, domain.InventorySlot{ItemID: item.ID, Quantity: quantity})
+			inventory.Slots = append(inventory.Slots, domain.InventorySlot{
+				ItemID:     item.ID,
+				Quantity:   quantity,
+				ShineLevel: shineLevel,
+			})
 		}
 
 		if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
@@ -515,6 +523,7 @@ func (s *service) AddItemByUsername(ctx context.Context, platform, username, ite
 
 // AddItems adds multiple items to a user's inventory in a single transaction.
 // This is more efficient than calling AddItem multiple times as it reduces transaction overhead.
+// Items added via this method default to COMMON shine level.
 // Useful for bulk operations like lootbox opening.
 func (s *service) AddItems(ctx context.Context, platform, platformID, username string, items map[string]int) error {
 	log := logger.FromContext(ctx)
@@ -565,6 +574,7 @@ func (s *service) AddItems(ctx context.Context, platform, platformID, username s
 
 	// Convert items to InventorySlots for the helper
 	// Also verifies that all items were found
+	// Items default to COMMON shine level
 	slotsToAdd := make([]domain.InventorySlot, 0, len(items))
 	for itemName, quantity := range items {
 		itemID, ok := itemIDMap[itemName]
@@ -573,8 +583,9 @@ func (s *service) AddItems(ctx context.Context, platform, platformID, username s
 			return domain.ErrItemNotFound
 		}
 		slotsToAdd = append(slotsToAdd, domain.InventorySlot{
-			ItemID:   itemID,
-			Quantity: quantity,
+			ItemID:     itemID,
+			Quantity:   quantity,
+			ShineLevel: domain.ShineCommon,
 		})
 	}
 
@@ -674,6 +685,9 @@ func (s *service) executeGiveItemTx(ctx context.Context, owner, receiver *domain
 			return domain.ErrInsufficientQuantity
 		}
 
+		// Capture the shine level being transferred
+		transferredShine := ownerInventory.Slots[ownerSlotIndex].ShineLevel
+
 		receiverInventory, err := tx.GetInventory(ctx, receiver.ID)
 		if err != nil {
 			log.Error("Failed to get receiver inventory", "error", err)
@@ -687,12 +701,16 @@ func (s *service) executeGiveItemTx(ctx context.Context, owner, receiver *domain
 			ownerInventory.Slots[ownerSlotIndex].Quantity -= quantity
 		}
 
-		// Add to receiver using utility function
-		receiverSlotIndex, _ := utils.FindSlot(receiverInventory, item.ID)
+		// Add to receiver - must match BOTH ItemID and ShineLevel to preserve exact item quality
+		receiverSlotIndex, _ := utils.FindSlotWithShine(receiverInventory, item.ID, transferredShine)
 		if receiverSlotIndex != -1 {
 			receiverInventory.Slots[receiverSlotIndex].Quantity += quantity
 		} else {
-			receiverInventory.Slots = append(receiverInventory.Slots, domain.InventorySlot{ItemID: item.ID, Quantity: quantity})
+			receiverInventory.Slots = append(receiverInventory.Slots, domain.InventorySlot{
+				ItemID:     item.ID,
+				Quantity:   quantity,
+				ShineLevel: transferredShine,
+			})
 		}
 
 		if err := tx.UpdateInventory(ctx, owner.ID, *ownerInventory); err != nil {
@@ -1159,11 +1177,16 @@ func (s *service) addItemToTx(ctx context.Context, tx repository.UserTx, userID 
 		return fmt.Errorf("failed to get inventory: %w", err)
 	}
 
-	i, _ := utils.FindSlot(inventory, itemID)
+	// Find slot with matching ItemID AND ShineLevel to prevent shine corruption
+	i, _ := utils.FindSlotWithShine(inventory, itemID, shineLevel)
 	if i != -1 {
 		inventory.Slots[i].Quantity += quantity
 	} else {
-		inventory.Slots = append(inventory.Slots, domain.InventorySlot{ItemID: itemID, Quantity: quantity, ShineLevel: shineLevel})
+		inventory.Slots = append(inventory.Slots, domain.InventorySlot{
+			ItemID:     itemID,
+			Quantity:   quantity,
+			ShineLevel: shineLevel,
+		})
 	}
 
 	if err := tx.UpdateInventory(ctx, userID, *inventory); err != nil {

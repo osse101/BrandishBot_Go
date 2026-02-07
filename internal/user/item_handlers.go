@@ -148,10 +148,11 @@ func (s *service) aggregateDropsAndUpdateInventory(inventory *domain.Inventory, 
 			stats.hasEpic = true
 		}
 
-		// Prepare item for batch add
+		// Prepare item for batch add - preserve shine level from loot table
 		itemsToAdd = append(itemsToAdd, domain.InventorySlot{
-			ItemID:   drop.ItemID,
-			Quantity: drop.Quantity,
+			ItemID:     drop.ItemID,
+			Quantity:   drop.Quantity,
+			ShineLevel: drop.ShineLevel,
 		})
 
 		if !first {

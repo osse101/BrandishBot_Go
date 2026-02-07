@@ -174,29 +174,38 @@ func calculateMaxPossibleCrafts(inventory *domain.Inventory, recipe *domain.Reci
 	return maxPossible
 }
 
-// consumeRecipeMaterials removes the required materials from inventory for crafting
-func consumeRecipeMaterials(inventory *domain.Inventory, recipe *domain.Recipe, actualQuantity int, rnd func() float64) error {
+// consumeRecipeMaterials removes the required materials from inventory for crafting.
+// Returns the consumed materials with their shine levels for calculating output shine.
+func consumeRecipeMaterials(inventory *domain.Inventory, recipe *domain.Recipe, actualQuantity int, rnd func() float64) ([]domain.InventorySlot, error) {
+	allConsumed := make([]domain.InventorySlot, 0)
+
 	for _, cost := range recipe.BaseCost {
 		totalNeeded := cost.Quantity * actualQuantity
-		if err := utils.ConsumeItems(inventory, cost.ItemID, totalNeeded, rnd); err != nil {
-			return fmt.Errorf("insufficient material (itemID: %d) | %w", cost.ItemID, domain.ErrInsufficientQuantity)
+		consumed, err := utils.ConsumeItemsWithTracking(inventory, cost.ItemID, totalNeeded, rnd)
+		if err != nil {
+			return nil, fmt.Errorf("insufficient material (itemID: %d) | %w", cost.ItemID, domain.ErrInsufficientQuantity)
 		}
+		allConsumed = append(allConsumed, consumed...)
 	}
-	return nil
+
+	return allConsumed, nil
 }
 
-// addItemToInventory adds items to the inventory, creating a new slot if necessary
-func addItemToInventory(inventory *domain.Inventory, itemID, quantity int) {
+// addItemToInventory adds items to the inventory with specified shine level.
+// Only stacks with slots that have matching ItemID AND ShineLevel.
+func addItemToInventory(inventory *domain.Inventory, itemID, quantity int, shineLevel domain.ShineLevel) {
+	// Find slot with matching ItemID and ShineLevel
 	for i, slot := range inventory.Slots {
-		if slot.ItemID == itemID {
+		if slot.ItemID == itemID && slot.ShineLevel == shineLevel {
 			inventory.Slots[i].Quantity += quantity
 			return
 		}
 	}
-	// Item not found, add new slot
+	// Item not found with matching shine, add new slot
 	inventory.Slots = append(inventory.Slots, domain.InventorySlot{
-		ItemID:   itemID,
-		Quantity: quantity,
+		ItemID:     itemID,
+		Quantity:   quantity,
+		ShineLevel: shineLevel,
 	})
 }
 
@@ -263,15 +272,20 @@ func (s *service) UpgradeItem(ctx context.Context, platform, platformID, usernam
 		actualQuantity = quantity
 	}
 
-	// Consume materials
-	if err := consumeRecipeMaterials(inventory, recipe, actualQuantity, s.rnd); err != nil {
+	// Consume materials and track what was consumed for shine averaging
+	consumedMaterials, err := consumeRecipeMaterials(inventory, recipe, actualQuantity, s.rnd)
+	if err != nil {
 		return nil, err
 	}
+
+	// Calculate average shine from consumed materials
+	outputShine := utils.CalculateAverageShine(consumedMaterials)
 
 	// Calculate output
 	result := s.calculateUpgradeOutput(ctx, user.ID, resolvedName, actualQuantity)
 
-	addItemToInventory(inventory, item.ID, result.Quantity)
+	// Add crafted item with averaged shine level
+	addItemToInventory(inventory, item.ID, result.Quantity, outputShine)
 
 	// Update inventory and commit
 	if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
@@ -465,8 +479,9 @@ func (s *service) GetAllRecipes(ctx context.Context) ([]repository.RecipeListIte
 	return recipes, nil
 }
 
-// processDisassembleOutputs adds disassemble outputs to inventory and builds result map
-func (s *service) processDisassembleOutputs(ctx context.Context, inventory *domain.Inventory, outputs []domain.RecipeOutput, actualQuantity int, perfectSalvageCount int) (map[string]int, error) {
+// processDisassembleOutputs adds disassemble outputs to inventory and builds result map.
+// Outputs inherit the averaged shine level from the consumed source items.
+func (s *service) processDisassembleOutputs(ctx context.Context, inventory *domain.Inventory, outputs []domain.RecipeOutput, actualQuantity int, perfectSalvageCount int, outputShine domain.ShineLevel) (map[string]int, error) {
 	outputMap := make(map[string]int)
 
 	// Collect IDs
@@ -512,10 +527,11 @@ func (s *service) processDisassembleOutputs(ctx context.Context, inventory *doma
 		}
 		outputMap[outputItem.InternalName] = totalOutput
 
-		// Prepare for batch add
+		// Prepare for batch add - outputs inherit averaged shine from source items
 		itemsToAdd = append(itemsToAdd, domain.InventorySlot{
-			ItemID:   output.ItemID,
-			Quantity: totalOutput,
+			ItemID:     output.ItemID,
+			Quantity:   totalOutput,
+			ShineLevel: outputShine,
 		})
 	}
 
@@ -717,17 +733,21 @@ func (s *service) executeDisassembleTx(ctx context.Context, userID string, itemI
 		return 0, 0, nil, err
 	}
 
-	// Remove source items
+	// Remove source items and track what was consumed for shine averaging
 	totalConsumed := recipe.QuantityConsumed * actualQuantity
-	if err := utils.ConsumeItems(inventory, itemID, totalConsumed, s.rnd); err != nil {
+	consumedItems, err := utils.ConsumeItemsWithTracking(inventory, itemID, totalConsumed, s.rnd)
+	if err != nil {
 		return 0, 0, nil, fmt.Errorf("failed to consume disassemble items: %w", err)
 	}
+
+	// Calculate average shine from consumed source items
+	outputShine := utils.CalculateAverageShine(consumedItems)
 
 	// Calculate perfect salvage
 	perfectSalvageCount := s.calculatePerfectSalvage(actualQuantity)
 
-	// Process outputs
-	outputMap, err := s.processDisassembleOutputs(ctx, inventory, recipe.Outputs, actualQuantity, perfectSalvageCount)
+	// Process outputs with averaged shine from source materials
+	outputMap, err := s.processDisassembleOutputs(ctx, inventory, recipe.Outputs, actualQuantity, perfectSalvageCount, outputShine)
 	if err != nil {
 		return 0, 0, nil, err
 	}
