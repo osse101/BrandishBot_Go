@@ -588,7 +588,7 @@ func (s *service) AddItems(ctx context.Context, platform, platformID, username s
 		}
 
 		// Add all items to inventory using optimized helper
-		utils.AddItemsToInventory(inventory, slotsToAdd, nil)
+		utils.AddItemsToInventory(inventory, slotsToAdd)
 
 		// Single inventory update
 		if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {

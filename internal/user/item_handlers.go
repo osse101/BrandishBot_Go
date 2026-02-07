@@ -171,7 +171,7 @@ func (s *service) aggregateDropsAndUpdateInventory(inventory *domain.Inventory, 
 	}
 
 	// Add all items to inventory using optimized helper
-	utils.AddItemsToInventory(inventory, itemsToAdd, nil)
+	utils.AddItemsToInventory(inventory, itemsToAdd)
 
 	return stats
 }
@@ -705,7 +705,7 @@ func (s *service) handleResourceGenerator(ctx context.Context, _ *service, _ *do
 	sticksGenerated := quantity * ShovelSticksPerUse
 	utils.AddItemsToInventory(inventory, []domain.InventorySlot{
 		{ItemID: stickItem.ID, Quantity: sticksGenerated, ShineLevel: domain.ShineCommon},
-	}, nil)
+	})
 
 	displayName := s.namingResolver.GetDisplayName(domain.ItemStick, "")
 	return fmt.Sprintf("%s%d %s!", username+MsgShovelUsed, sticksGenerated, displayName), nil

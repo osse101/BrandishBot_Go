@@ -193,7 +193,7 @@ func TestAddItemsToInventory(t *testing.T) {
 			{ItemID: 20, Quantity: 10},
 		}
 
-		AddItemsToInventory(inventory, items, nil)
+		AddItemsToInventory(inventory, items)
 
 		assert.Equal(t, 2, len(inventory.Slots))
 		assert.Equal(t, 10, inventory.Slots[0].ItemID)
@@ -217,7 +217,7 @@ func TestAddItemsToInventory(t *testing.T) {
 			{ItemID: 20, Quantity: 2},
 		}
 
-		AddItemsToInventory(inventory, items, nil)
+		AddItemsToInventory(inventory, items)
 
 		assert.Equal(t, 3, len(inventory.Slots))
 		assert.Equal(t, 8, inventory.Slots[0].Quantity)  // 5 + 3
@@ -239,7 +239,7 @@ func TestAddItemsToInventory(t *testing.T) {
 			items[i] = domain.InventorySlot{ItemID: 10 + i*10, Quantity: i + 1}
 		}
 
-		AddItemsToInventory(inventory, items, nil)
+		AddItemsToInventory(inventory, items)
 
 		// First two items should be updated
 		assert.Equal(t, 6, inventory.Slots[0].Quantity)  // 5 + 1
@@ -260,7 +260,7 @@ func TestAddItemsToInventory(t *testing.T) {
 			items[i] = domain.InventorySlot{ItemID: i + 10, Quantity: 1}
 		}
 
-		AddItemsToInventory(inventory, items, nil)
+		AddItemsToInventory(inventory, items)
 
 		assert.Equal(t, 10, len(inventory.Slots)) // 1 existing + 9 new
 	})
@@ -277,7 +277,7 @@ func TestAddItemsToInventory(t *testing.T) {
 			items[i] = domain.InventorySlot{ItemID: i + 10, Quantity: 1}
 		}
 
-		AddItemsToInventory(inventory, items, nil)
+		AddItemsToInventory(inventory, items)
 
 		assert.Equal(t, 11, len(inventory.Slots)) // 1 existing + 10 new
 	})
@@ -296,7 +296,7 @@ func TestAddItemsToInventory(t *testing.T) {
 			{ItemID: 10, Quantity: 1},
 		}
 
-		AddItemsToInventory(inventory, items, nil)
+		AddItemsToInventory(inventory, items)
 
 		// Should accumulate all quantities
 		assert.Equal(t, 1, len(inventory.Slots))
@@ -312,38 +312,32 @@ func TestAddItemsToInventory(t *testing.T) {
 
 		items := []domain.InventorySlot{}
 
-		AddItemsToInventory(inventory, items, nil)
+		AddItemsToInventory(inventory, items)
 
 		assert.Equal(t, 1, len(inventory.Slots))
 		assert.Equal(t, 5, inventory.Slots[0].Quantity) // unchanged
 	})
 
-	t.Run("uses provided slot map when given", func(t *testing.T) {
+	t.Run("respects shine level when stacking", func(t *testing.T) {
 		inventory := &domain.Inventory{
 			Slots: []domain.InventorySlot{
-				{ItemID: 10, Quantity: 5},
-				{ItemID: 20, Quantity: 10},
+				{ItemID: 10, Quantity: 5, ShineLevel: domain.ShineCommon},
+				{ItemID: 20, Quantity: 10, ShineLevel: domain.ShineRare},
 			},
 		}
 
-		slotMap := BuildSlotMap(inventory)
-
-		// Add 12 items to trigger map-based path (>= 10)
-		items := make([]domain.InventorySlot, 12)
-		for i := 0; i < 12; i++ {
-			items[i] = domain.InventorySlot{ItemID: (i + 1) * 10, Quantity: i + 1}
+		items := []domain.InventorySlot{
+			{ItemID: 10, Quantity: 3, ShineLevel: domain.ShineCommon}, // Matches, should stack
+			{ItemID: 20, Quantity: 2, ShineLevel: domain.ShineCommon}, // Mismatch, should NOT stack
 		}
 
-		AddItemsToInventory(inventory, items, slotMap)
+		AddItemsToInventory(inventory, items)
 
-		// First two items should be updated via map
-		assert.Equal(t, 6, inventory.Slots[0].Quantity)  // 10: 5 + 1
-		assert.Equal(t, 12, inventory.Slots[1].Quantity) // 20: 10 + 2
-		// Rest should be added
-		assert.Equal(t, 12, len(inventory.Slots))
-		// Verify map was updated with new items
-		assert.Equal(t, 2, slotMap[30])   // Third item added at index 2
-		assert.Equal(t, 11, slotMap[120]) // Last item added at index 11
+		assert.Equal(t, 3, len(inventory.Slots))
+		assert.Equal(t, 8, inventory.Slots[0].Quantity) // 5 + 3
+		assert.Equal(t, 10, inventory.Slots[1].Quantity) // unchanged
+		assert.Equal(t, 2, inventory.Slots[2].Quantity) // new slot
+		assert.Equal(t, domain.ShineCommon, inventory.Slots[2].ShineLevel)
 	})
 }
 
@@ -374,7 +368,7 @@ func BenchmarkAddItemsLinearScan(b *testing.B) {
 		}
 		copy(testInv.Slots, inventory.Slots)
 
-		AddItemsToInventory(testInv, items, nil)
+		AddItemsToInventory(testInv, items)
 	}
 }
 
@@ -401,36 +395,7 @@ func BenchmarkAddItemsMapLookup(b *testing.B) {
 		}
 		copy(testInv.Slots, inventory.Slots)
 
-		AddItemsToInventory(testInv, items, nil)
-	}
-}
-
-func BenchmarkAddItemsWithPrebuiltMap(b *testing.B) {
-	// Create inventory with 1000 items (large N)
-	inventory := &domain.Inventory{
-		Slots: make([]domain.InventorySlot, 1000),
-	}
-	for i := 0; i < 1000; i++ {
-		inventory.Slots[i] = domain.InventorySlot{ItemID: i, Quantity: 10}
-	}
-
-	// Add 50 items (large M)
-	items := make([]domain.InventorySlot, 50)
-	for i := 0; i < 50; i++ {
-		items[i] = domain.InventorySlot{ItemID: i, Quantity: 1}
-	}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		// Clone inventory for each iteration
-		testInv := &domain.Inventory{
-			Slots: make([]domain.InventorySlot, len(inventory.Slots)),
-		}
-		copy(testInv.Slots, inventory.Slots)
-
-		// Pre-build the slot map
-		slotMap := BuildSlotMap(testInv)
-		AddItemsToInventory(testInv, items, slotMap)
+		AddItemsToInventory(testInv, items)
 	}
 }
 

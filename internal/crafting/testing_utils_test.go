@@ -640,3 +640,49 @@ func (m *MockNamingResolver) RegisterItem(internalName, publicName string) {
 	}
 	m.publicToInternal[publicName] = internalName
 }
+
+// MockQuestService for testing quest progress
+type MockQuestService struct {
+	mu           sync.Mutex
+	craftedCalls []struct {
+		UserID    string
+		RecipeKey string
+		Quantity  int
+	}
+	returnError error
+}
+
+func (m *MockQuestService) OnRecipeCrafted(ctx context.Context, userID string, recipeKey string, quantity int) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.craftedCalls = append(m.craftedCalls, struct {
+		UserID    string
+		RecipeKey string
+		Quantity  int
+	}{UserID: userID, RecipeKey: recipeKey, Quantity: quantity})
+
+	return m.returnError
+}
+
+// Stubs for other QuestService methods
+func (m *MockQuestService) GetActiveQuests(ctx context.Context) ([]domain.Quest, error) {
+	return nil, nil
+}
+func (m *MockQuestService) GetUserQuestProgress(ctx context.Context, userID string) ([]domain.QuestProgress, error) {
+	return nil, nil
+}
+func (m *MockQuestService) ClaimQuestReward(ctx context.Context, userID string, questID int) (money, xp int, err error) {
+	return 0, 0, nil
+}
+func (m *MockQuestService) OnItemBought(ctx context.Context, userID string, itemCategory string, quantity int) error {
+	return nil
+}
+func (m *MockQuestService) OnItemSold(ctx context.Context, userID string, itemCategory string, quantity, moneyEarned int) error {
+	return nil
+}
+func (m *MockQuestService) OnSearch(ctx context.Context, userID string) error { return nil }
+func (m *MockQuestService) ResetWeeklyQuests(ctx context.Context) error       { return nil }
+func (m *MockQuestService) GenerateWeeklyQuests(ctx context.Context, year, weekNumber int) error {
+	return nil
+}
+func (m *MockQuestService) Shutdown(ctx context.Context) error { return nil }

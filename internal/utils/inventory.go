@@ -53,6 +53,8 @@ func FindRandomSlot(inventory *domain.Inventory, itemID int, rnd func() float64)
 
 // BuildSlotMap creates a map of item ID to slot index for O(1) lookups.
 // This is useful when adding many items to an inventory to avoid repeated linear scans.
+// NOTE: This map assumes unique Item IDs. If multiple slots have the same ItemID
+// (e.g. different shine levels), this map will only point to the last one visited.
 func BuildSlotMap(inventory *domain.Inventory) map[int]int {
 	slotMap := make(map[int]int, len(inventory.Slots))
 	for i, slot := range inventory.Slots {
@@ -75,43 +77,54 @@ func RemoveFromSlot(inventory *domain.Inventory, slotIndex, quantity int) {
 	}
 }
 
+// slotKey uniquely identifies an inventory slot for map lookups
+type slotKey struct {
+	ItemID     int
+	ShineLevel domain.ShineLevel
+}
+
 // AddItemsToInventory adds multiple items to inventory using a hybrid lookup strategy.
 // For small batches (< InventoryLookupLinearScanThreshold), uses linear scan to avoid map allocation overhead.
 // For larger batches, uses map-based lookup for O(N+M) complexity.
-// The slotMap parameter is optional and will be created if nil and needed.
-func AddItemsToInventory(inventory *domain.Inventory, items []domain.InventorySlot, slotMap map[int]int) {
+//
+// NOTE: This function respects ShineLevel. Items with different shine levels will NOT stack.
+func AddItemsToInventory(inventory *domain.Inventory, items []domain.InventorySlot) {
 	if len(items) == 0 {
 		return
 	}
 
 	useMap := len(items) >= InventoryLookupLinearScanThreshold
 
-	// Build map if needed and not provided
-	if useMap && slotMap == nil {
-		slotMap = BuildSlotMap(inventory)
-	}
+	if useMap {
+		// Build internal map keyed by (ID, Shine)
+		slotMap := make(map[slotKey]int, len(inventory.Slots))
+		for i, slot := range inventory.Slots {
+			key := slotKey{ItemID: slot.ItemID, ShineLevel: slot.ShineLevel}
+			slotMap[key] = i
+		}
 
-	for _, item := range items {
-		if useMap {
-			// Map-based lookup
-			if idx, exists := slotMap[item.ItemID]; exists {
+		for _, item := range items {
+			key := slotKey{ItemID: item.ItemID, ShineLevel: item.ShineLevel}
+			if idx, exists := slotMap[key]; exists {
 				inventory.Slots[idx].Quantity += item.Quantity
 			} else {
-				inventory.Slots = append(inventory.Slots, domain.InventorySlot{ItemID: item.ItemID, Quantity: item.Quantity})
-				slotMap[item.ItemID] = len(inventory.Slots) - 1
+				inventory.Slots = append(inventory.Slots, item)
+				slotMap[key] = len(inventory.Slots) - 1
 			}
-		} else {
-			// Linear scan
+		}
+	} else {
+		// Linear scan
+		for _, item := range items {
 			found := false
 			for i := range inventory.Slots {
-				if inventory.Slots[i].ItemID == item.ItemID {
+				if inventory.Slots[i].ItemID == item.ItemID && inventory.Slots[i].ShineLevel == item.ShineLevel {
 					inventory.Slots[i].Quantity += item.Quantity
 					found = true
 					break
 				}
 			}
 			if !found {
-				inventory.Slots = append(inventory.Slots, domain.InventorySlot{ItemID: item.ItemID, Quantity: item.Quantity})
+				inventory.Slots = append(inventory.Slots, item)
 			}
 		}
 	}

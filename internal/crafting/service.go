@@ -185,21 +185,6 @@ func consumeRecipeMaterials(inventory *domain.Inventory, recipe *domain.Recipe, 
 	return nil
 }
 
-// addItemToInventory adds items to the inventory, creating a new slot if necessary
-func addItemToInventory(inventory *domain.Inventory, itemID, quantity int) {
-	for i, slot := range inventory.Slots {
-		if slot.ItemID == itemID {
-			inventory.Slots[i].Quantity += quantity
-			return
-		}
-	}
-	// Item not found, add new slot
-	inventory.Slots = append(inventory.Slots, domain.InventorySlot{
-		ItemID:   itemID,
-		Quantity: quantity,
-	})
-}
-
 // UpgradeItem upgrades as many items as possible based on available materials
 func (s *service) UpgradeItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (*Result, error) {
 	log := logger.FromContext(ctx)
@@ -271,7 +256,11 @@ func (s *service) UpgradeItem(ctx context.Context, platform, platformID, usernam
 	// Calculate output
 	result := s.calculateUpgradeOutput(ctx, user.ID, resolvedName, actualQuantity)
 
-	addItemToInventory(inventory, item.ID, result.Quantity)
+	utils.AddItemsToInventory(inventory, []domain.InventorySlot{{
+		ItemID:     item.ID,
+		Quantity:   result.Quantity,
+		ShineLevel: domain.ShineCommon,
+	}})
 
 	// Update inventory and commit
 	if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
@@ -514,13 +503,14 @@ func (s *service) processDisassembleOutputs(ctx context.Context, inventory *doma
 
 		// Prepare for batch add
 		itemsToAdd = append(itemsToAdd, domain.InventorySlot{
-			ItemID:   output.ItemID,
-			Quantity: totalOutput,
+			ItemID:     output.ItemID,
+			Quantity:   totalOutput,
+			ShineLevel: domain.ShineCommon,
 		})
 	}
 
 	// Add all outputs to inventory using optimized helper
-	utils.AddItemsToInventory(inventory, itemsToAdd, nil)
+	utils.AddItemsToInventory(inventory, itemsToAdd)
 
 	return outputMap, nil
 }
