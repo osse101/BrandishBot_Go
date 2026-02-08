@@ -9,6 +9,7 @@ import (
 	"github.com/joho/godotenv"
 
 	"github.com/osse101/BrandishBot_Go/internal/discord"
+	"github.com/osse101/BrandishBot_Go/internal/info"
 )
 
 // Default values for optional configuration
@@ -42,6 +43,9 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Initialize info loader
+	infoLoader := info.NewLoader("configs/info")
+
 	// Start services
 	webhookPort := os.Getenv("DISCORD_WEBHOOK_PORT")
 	if webhookPort == "" {
@@ -53,7 +57,7 @@ func main() {
 	defer httpServer.Stop()
 
 	// Register all commands
-	registerCommands(bot, getCommandFactories(bot))
+	registerCommands(bot, getCommandFactories(bot, infoLoader))
 
 	// Register with Discord API
 	forceUpdate := os.Getenv("DISCORD_FORCE_COMMAND_UPDATE") == "true"
@@ -132,14 +136,16 @@ func loadConfig() (discord.Config, error) {
 // getCommandFactories returns a list of all available Discord command factories.
 // This provides a single place to see and manage all registered commands.
 // Note: ReloadCommand requires the bot instance, so it's wrapped here.
-func getCommandFactories(bot *discord.Bot) []CommandFactory {
+func getCommandFactories(bot *discord.Bot, infoLoader *info.Loader) []CommandFactory {
 	return []CommandFactory{
 		// Core commands
 		discord.PingCommand,
 		discord.ProfileCommand,
 		discord.SearchCommand,
 		discord.HarvestCommand,
-		discord.InfoCommand,
+		func() (*discordgo.ApplicationCommand, discord.CommandHandler) {
+			return discord.InfoCommand(infoLoader)
+		},
 		discord.CheckTimeoutCommand,
 
 		// Inventory commands
