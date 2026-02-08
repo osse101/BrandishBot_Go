@@ -1,0 +1,20 @@
+**Farming & Compost** 🌾
+
+Grow your wealth over time with the Farming system!
+
+## 🚀 How to Play
+
+1. **Wait**: Your farm accumulates rewards passively.
+2. **Harvest**: Use `/harvest` to collect your items.
+3. **Repeat**: The longer you wait (up to 1 week), the better the rewards!
+
+## ⚠️ Warning
+
+*   **Spoilage**: Don't wait *too* long! Crops spoil after 2 weeks of neglect.
+*   **Minimum**: Wait at least 1 hour between harvests.
+*   **XP**: Farming awards **Farmer XP** (after 5 hours).
+
+## 🎁 Rewards
+
+*   **Compost**: Find lootboxes, items, and crafting materials.
+*   **Unlock**: Upgrade the Compost Bin in the Progression Tree to get better loot!

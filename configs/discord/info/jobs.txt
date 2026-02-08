@@ -1,0 +1,23 @@
+**Jobs & Skills** 🛠️
+
+Level up your RPG jobs to unlock abilities and get stronger!
+
+## 🚀 How to Play
+
+1. **Perform Actions**: Search, craft, sell, or gamble.
+2. **Gain XP**: Earn XP in the related job.
+3. **Level Up**: Unlock new perks and bonuses!
+
+## 🛠️ The Jobs
+
+*   **Blacksmith** 🔨: Crafting upgrades.
+*   **Explorer** 🧭: Searching and discovering loot.
+*   **Farmer** 🌾: Harvesting and waiting.
+*   **Gambler** 🎲: Winning gambles.
+*   **Merchant** 💰: Buying and selling items.
+*   **Scholar** 📚: Voting and progressing the community.
+
+## 🎁 Benefits
+
+*   **Expeditions**: Higher job levels = more successful encounters!
+*   **Passive Bonuses**: (Coming Soon) Better prices, more loot, and special abilities.

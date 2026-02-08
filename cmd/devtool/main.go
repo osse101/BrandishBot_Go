@@ -21,6 +21,10 @@ func main() {
 	registry.Register(&SetupCommand{})
 	registry.Register(&BenchCommand{})
 	registry.Register(&PreCommitCommand{})
+	registry.Register(&DeployCommand{})
+	registry.Register(&RollbackCommand{})
+	registry.Register(&HealthCheckCommand{})
+	registry.Register(&PushCommand{})
 
 	if len(os.Args) < 2 {
 		registry.PrintHelp()
