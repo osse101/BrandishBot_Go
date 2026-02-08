@@ -112,6 +112,9 @@ func (b *Bot) Start() error {
 		b.ctx, b.cancel = context.WithCancel(context.Background())
 	}
 
+	// Start background tasks
+	b.StartDailyPatchNotesChecker()
+
 	slog.Info("Discord bot is now running. Press CTRL-C to exit.")
 	return nil
 }
