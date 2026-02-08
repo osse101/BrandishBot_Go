@@ -7,6 +7,11 @@ A high-performance game engine API for BrandishBot, built with Go. Provides inve
 - **Inventory Management**: Add, remove, trade, and track items
 - **Crafting System**: Recipe-based item crafting and upgrading
 - **Economy**: Buy/sell items with dynamic pricing
+- **Expeditions**: Cooperative multiplayer adventures with procedural encounters
+- **Quests**: Weekly challenges for rewards and XP
+- **Farming**: Harvest resources over time with the Compost system
+- **Jobs**: RPG-style job progression (Blacksmith, Merchant, etc.)
+- **Subscriptions**: Integration with Twitch/YouTube subscriptions
 - **Statistics**: User and system stats with leaderboards
 - **Discord Bot**: Full-featured Discord integration with slash commands
 - **Admin Dashboard**: Web-based GUI for system monitoring and admin commands
@@ -48,6 +53,11 @@ make docker-up
 **Economy**: `/buy`, `/sell`, `/prices`, `/give`  
 **Inventory**: `/inventory`, `/search`, `/use`  
 **Crafting**: `/upgrade`, `/disassemble`, `/recipes`  
+**Expeditions**: `/explore`, `/expedition-journal`
+**Quests**: `/quests`, `/claimquest`
+**Farming**: `/harvest`
+**Jobs**: `/job-progress`
+**Linking**: `/link`, `/unlink`
 **Gambling**: `/gamble`, `/join-gamble`  
 **Stats**: `/stats`, `/leaderboard`  
 **Progression**: `/vote`  

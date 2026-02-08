@@ -21,6 +21,20 @@ Complete command reference for BrandishBot!
 `/prices` - View market prices
 `/give @user [item] [quantity]` - Gift items
 
+## 🗺️ Expeditions
+
+`/explore` - Start or join an expedition
+`/expedition-journal [id]` - Read completed journals
+
+## 📜 Quests
+
+`/quests` - View weekly quests
+`/claimquest [id]` - Claim rewards
+
+## 🌾 Farming
+
+`/harvest` - Collect accumulated rewards
+
 ## 🔨 Crafting
 
 `/recipes` - View crafting recipes
@@ -36,10 +50,16 @@ Complete command reference for BrandishBot!
 
 `/stats [@user]` - View statistics
 `/leaderboard [metric] [limit]` - Top players
+`/job-progress` - View job levels
 
 ## 🌳 Progression
 
 `/vote [feature-key]` - Vote for feature unlocks
+
+## 🔗 Account Linking
+
+`/link` - Link Discord to Twitch/YouTube
+`/unlink` - Unlink accounts
 
 ## 🛡️ Admin Commands
 
@@ -66,15 +86,5 @@ Complete command reference for BrandishBot!
 1. `/stats` - Track your progress
 2. `/leaderboard` - See rankings
 3. `/vote` - Unlock features
-
----
-
-## 💡 Command Tips
-
-- Most commands have **optional parameters**
-- Use `/info [feature]` for detailed help
-- Check your inventory before trading
-- Admin commands require permissions
-- Commands have cooldowns to prevent spam
 
 Need more help? Use `/info` with a specific feature name!

@@ -10,6 +10,12 @@ Buy, sell, and trade items. Earn money through gameplay and manage your wealth.
 **🎒 Inventory Management**
 Collect items, use lootboxes, and build your collection. Transfer items to other players.
 
+**🗺️ Expeditions & Quests**
+Join forces with other players to explore dangerous lands and complete weekly challenges.
+
+**🌾 Farming & Harvest**
+Grow your wealth passively with the Compost system.
+
 **🔨 Crafting & Upgrades**
 Craft powerful items using recipes. Disassemble unwanted items for materials.
 
