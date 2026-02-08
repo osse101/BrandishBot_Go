@@ -1,12 +1,12 @@
 package naming
 
 // ============================================================================
-// Shine Level Constants
+// Quality Level Constants
 // ============================================================================
 
-// ShineFormatTemplate is the format string for displaying items with non-common
-// shine levels. Format: "<SHINE_LEVEL> <item_name>"
-const ShineFormatTemplate = "%s%s"
+// QualityFormatTemplate is the format string for displaying items with non-common
+// quality levels. Format: "<QUALITY_LEVEL> <item_name>"
+const QualityFormatTemplate = "%s%s"
 
 // ============================================================================
 // Date Parsing Constants

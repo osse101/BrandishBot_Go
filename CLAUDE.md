@@ -359,7 +359,7 @@ Node unlock costs scale by tier and size:
 | Domain | `internal/domain/gamble.go:1-67` |
 
 **Key methods:** `StartGamble`, `JoinGamble`, `ExecuteGamble`, `OpenLootbox`
-**Shine levels:** COMMON(1.0x), UNCOMMON(1.1x), RARE(1.25x), EPIC(1.5x), LEGENDARY(2.0x)
+**Quality levels:** COMMON(1.0x), UNCOMMON(1.1x), RARE(1.25x), EPIC(1.5x), LEGENDARY(2.0x)
 **Near-miss threshold:** 95%
 
 ### Job/XP System

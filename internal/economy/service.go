@@ -370,7 +370,7 @@ func (s *service) SellItem(ctx context.Context, platform, platformID, username, 
 		return 0, 0, fmt.Errorf(ErrMsgGetInventoryFailed, err)
 	}
 
-	// Use random selection in case multiple slots with different shine levels exist
+	// Use random selection in case multiple slots with different quality levels exist
 	itemSlotIndex, slotQuantity := utils.FindRandomSlot(inventory, item.ID, s.rnd)
 	if itemSlotIndex == -1 {
 		return 0, 0, fmt.Errorf(ErrMsgItemNotInInventoryFmt, itemName, domain.ErrNotInInventory)
@@ -532,7 +532,7 @@ func (s *service) BuyItem(ctx context.Context, platform, platformID, username, i
 		return 0, fmt.Errorf(ErrMsgGetInventoryFailed, err)
 	}
 
-	// Use random selection in case multiple money slots exist with different shine levels
+	// Use random selection in case multiple money slots exist with different quality levels
 	moneySlotIndex, moneyBalance := utils.FindRandomSlot(inventory, moneyItem.ID, s.rnd)
 	if moneyBalance <= 0 {
 		return 0, domain.ErrInsufficientFunds

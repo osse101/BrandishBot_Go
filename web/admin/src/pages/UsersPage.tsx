@@ -227,7 +227,7 @@ export function UsersPage() {
                   { key: "item_name", header: "Item" },
                   { key: "public_name", header: "Display Name" },
                   { key: "quantity", header: "Qty" },
-                  { key: "shine_level", header: "Shine" },
+                  { key: "quality_level", header: "Quality" },
                 ]}
                 data={inventory as unknown as Record<string, unknown>[]}
                 keyField="item_name"

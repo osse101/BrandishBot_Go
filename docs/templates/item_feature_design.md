@@ -63,13 +63,13 @@ Where does this item interface with the rest of the bot?
 
 ## 4. Interactions
 
-### Shine Interaction
+### Quality Interaction
 
 How does quality (COMMON to LEGENDARY) scale the effect?
 
 - **Potency**: (e.g., More XP, more damage).
 - **Duration**: (e.g., Longer buffs, shorter timeouts).
-- **Visuals**: Special emojis or message prefixes for high-tier shine.
+- **Visuals**: Special emojis or message prefixes for high-tier quality.
 
 ### Upgrade / Crafting Interaction
 

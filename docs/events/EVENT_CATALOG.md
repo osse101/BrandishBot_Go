@@ -295,7 +295,7 @@ publisher.PublishWithRetry(ctx, event.Event{
   "setter_username": "string",
   "target_id": "string (UUID)",
   "target_username": "string",
-  "shine_level": "string",
+  "quality_level": "string",
   "timeout_seconds": "integer",
   "was_self_triggered": "boolean"
 }

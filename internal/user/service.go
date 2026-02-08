@@ -255,7 +255,7 @@ func (s *service) HandleIncomingMessage(ctx context.Context, platform, platformI
 // to these helpers for the actual inventory modification.
 
 // addItemToUserInternal adds an item to a user's inventory within a transaction.
-// Used for admin adds - defaults to COMMON shine level.
+// Used for admin adds - defaults to COMMON quality level.
 func (s *service) addItemToUserInternal(ctx context.Context, user *domain.User, itemName string, quantity int) error {
 	log := logger.FromContext(ctx)
 
@@ -276,18 +276,18 @@ func (s *service) addItemToUserInternal(ctx context.Context, user *domain.User, 
 			return domain.ErrFailedToGetInventory
 		}
 
-		// Admin adds default to COMMON shine
-		shineLevel := domain.ShineCommon
+		// Admin adds default to COMMON quality
+		qualityLevel := domain.QualityCommon
 
-		// Find slot with matching ItemID AND ShineLevel
-		i, _ := utils.FindSlotWithShine(inventory, item.ID, shineLevel)
+		// Find slot with matching ItemID AND QualityLevel
+		i, _ := utils.FindSlotWithQuality(inventory, item.ID, qualityLevel)
 		if i != -1 {
 			inventory.Slots[i].Quantity += quantity
 		} else {
 			inventory.Slots = append(inventory.Slots, domain.InventorySlot{
-				ItemID:     item.ID,
-				Quantity:   quantity,
-				ShineLevel: shineLevel,
+				ItemID:       item.ID,
+				Quantity:     quantity,
+				QualityLevel: qualityLevel,
 			})
 		}
 
@@ -321,7 +321,7 @@ func (s *service) removeItemFromUserInternal(ctx context.Context, user *domain.U
 			return domain.ErrFailedToGetInventory
 		}
 
-		// Remove item from inventory using random selection (in case multiple slots with different shine levels exist)
+		// Remove item from inventory using random selection (in case multiple slots with different quality levels exist)
 		i, slotQty := utils.FindRandomSlot(inventory, item.ID, s.rnd)
 		if i == -1 {
 			log.Warn("Item not in inventory", "itemName", itemName)
@@ -372,7 +372,7 @@ func (s *service) useItemInternal(ctx context.Context, user *domain.User, platfo
 			return domain.ErrFailedToGetInventory
 		}
 
-		// Find item in inventory using random selection (in case multiple slots exist with different shine levels)
+		// Find item in inventory using random selection (in case multiple slots exist with different quality levels)
 		itemSlotIndex, slotQty := utils.FindRandomSlot(inventory, itemToUse.ID, s.rnd)
 		if itemSlotIndex == -1 {
 			return domain.ErrNotInInventory
@@ -428,10 +428,10 @@ func (s *service) getInventoryInternal(ctx context.Context, user *domain.User, f
 		return nil, err
 	}
 
-	// Group items to merge identical items (same ID and shine)
+	// Group items to merge identical items (same ID and quality)
 	type itemKey struct {
-		ItemID int
-		Shine  domain.ShineLevel
+		ItemID  int
+		Quality domain.QualityLevel
 	}
 	itemsMap := make(map[itemKey]int)
 	itemOrder := make([]itemKey, 0)
@@ -457,7 +457,7 @@ func (s *service) getInventoryInternal(ctx context.Context, user *domain.User, f
 			}
 		}
 
-		key := itemKey{ItemID: slot.ItemID, Shine: slot.ShineLevel}
+		key := itemKey{ItemID: slot.ItemID, Quality: slot.QualityLevel}
 		if _, exists := itemsMap[key]; !exists {
 			itemOrder = append(itemOrder, key)
 		}
@@ -468,9 +468,9 @@ func (s *service) getInventoryInternal(ctx context.Context, user *domain.User, f
 	items := make([]InventoryItem, 0, len(itemsMap))
 	for _, key := range itemOrder {
 		item := itemMap[key.ItemID]
-		shine := string(key.Shine)
-		if shine == "" {
-			shine = string(domain.ShineCommon)
+		quality := string(key.Quality)
+		if quality == "" {
+			quality = string(domain.QualityCommon)
 		}
 
 		items = append(items, InventoryItem{
@@ -478,7 +478,7 @@ func (s *service) getInventoryInternal(ctx context.Context, user *domain.User, f
 			PublicName:   item.PublicName,
 			Name:         item.PublicName,
 			Quantity:     itemsMap[key],
-			ShineLevel:   shine,
+			QualityLevel: quality,
 		})
 	}
 
@@ -535,7 +535,7 @@ func (s *service) AddItemByUsername(ctx context.Context, platform, username, ite
 
 // AddItems adds multiple items to a user's inventory in a single transaction.
 // This is more efficient than calling AddItem multiple times as it reduces transaction overhead.
-// Items added via this method default to COMMON shine level.
+// Items added via this method default to COMMON quality level.
 // Useful for bulk operations like lootbox opening.
 func (s *service) AddItems(ctx context.Context, platform, platformID, username string, items map[string]int) error {
 	log := logger.FromContext(ctx)
@@ -586,7 +586,7 @@ func (s *service) AddItems(ctx context.Context, platform, platformID, username s
 
 	// Convert items to InventorySlots for the helper
 	// Also verifies that all items were found
-	// Items default to COMMON shine level
+	// Items default to COMMON quality level
 	slotsToAdd := make([]domain.InventorySlot, 0, len(items))
 	for itemName, quantity := range items {
 		itemID, ok := itemIDMap[itemName]
@@ -595,9 +595,9 @@ func (s *service) AddItems(ctx context.Context, platform, platformID, username s
 			return domain.ErrItemNotFound
 		}
 		slotsToAdd = append(slotsToAdd, domain.InventorySlot{
-			ItemID:     itemID,
-			Quantity:   quantity,
-			ShineLevel: domain.ShineCommon,
+			ItemID:       itemID,
+			Quantity:     quantity,
+			QualityLevel: domain.QualityCommon,
 		})
 	}
 
@@ -686,7 +686,7 @@ func (s *service) executeGiveItemTx(ctx context.Context, owner, receiver *domain
 			return domain.ErrFailedToGetInventory
 		}
 
-		// Find item in owner's inventory using random selection (in case multiple slots with different shine levels exist)
+		// Find item in owner's inventory using random selection (in case multiple slots with different quality levels exist)
 		ownerSlotIndex, ownerSlotQty := utils.FindRandomSlot(ownerInventory, item.ID, s.rnd)
 		if ownerSlotIndex == -1 {
 			log.Warn("Item not found in owner's inventory", "item", item.InternalName)
@@ -697,8 +697,8 @@ func (s *service) executeGiveItemTx(ctx context.Context, owner, receiver *domain
 			return domain.ErrInsufficientQuantity
 		}
 
-		// Capture the shine level being transferred
-		transferredShine := ownerInventory.Slots[ownerSlotIndex].ShineLevel
+		// Capture the quality level being transferred
+		transferredQuality := ownerInventory.Slots[ownerSlotIndex].QualityLevel
 
 		receiverInventory, err := tx.GetInventory(ctx, receiver.ID)
 		if err != nil {
@@ -713,15 +713,15 @@ func (s *service) executeGiveItemTx(ctx context.Context, owner, receiver *domain
 			ownerInventory.Slots[ownerSlotIndex].Quantity -= quantity
 		}
 
-		// Add to receiver - must match BOTH ItemID and ShineLevel to preserve exact item quality
-		receiverSlotIndex, _ := utils.FindSlotWithShine(receiverInventory, item.ID, transferredShine)
+		// Add to receiver - must match BOTH ItemID and QualityLevel to preserve exact item quality
+		receiverSlotIndex, _ := utils.FindSlotWithQuality(receiverInventory, item.ID, transferredQuality)
 		if receiverSlotIndex != -1 {
 			receiverInventory.Slots[receiverSlotIndex].Quantity += quantity
 		} else {
 			receiverInventory.Slots = append(receiverInventory.Slots, domain.InventorySlot{
-				ItemID:     item.ID,
-				Quantity:   quantity,
-				ShineLevel: transferredShine,
+				ItemID:       item.ID,
+				Quantity:     quantity,
+				QualityLevel: transferredQuality,
 			})
 		}
 
@@ -1159,8 +1159,8 @@ func (s *service) processSearchSuccess(ctx context.Context, user *domain.User, r
 	}
 
 	// Grant reward
-	shineLevel := s.calculateSearchShine(isCritical, params)
-	if err := s.grantSearchReward(ctx, user, quantity, shineLevel); err != nil {
+	qualityLevel := s.calculateSearchQuality(isCritical, params)
+	if err := s.grantSearchReward(ctx, user, quantity, qualityLevel); err != nil {
 		return "", err
 	}
 
@@ -1181,7 +1181,7 @@ func (s *service) processSearchSuccess(ctx context.Context, user *domain.User, r
 	return s.formatSearchSuccessMessage(ctx, item, quantity, isCritical, params), nil
 }
 
-func (s *service) addItemToTx(ctx context.Context, tx repository.UserTx, userID string, itemID int, quantity int, shineLevel domain.ShineLevel) error {
+func (s *service) addItemToTx(ctx context.Context, tx repository.UserTx, userID string, itemID int, quantity int, qualityLevel domain.QualityLevel) error {
 	log := logger.FromContext(ctx)
 	inventory, err := tx.GetInventory(ctx, userID)
 	if err != nil {
@@ -1189,15 +1189,15 @@ func (s *service) addItemToTx(ctx context.Context, tx repository.UserTx, userID 
 		return fmt.Errorf("failed to get inventory: %w", err)
 	}
 
-	// Find slot with matching ItemID AND ShineLevel to prevent shine corruption
-	i, _ := utils.FindSlotWithShine(inventory, itemID, shineLevel)
+	// Find slot with matching ItemID AND QualityLevel to prevent quality corruption
+	i, _ := utils.FindSlotWithQuality(inventory, itemID, qualityLevel)
 	if i != -1 {
 		inventory.Slots[i].Quantity += quantity
 	} else {
 		inventory.Slots = append(inventory.Slots, domain.InventorySlot{
-			ItemID:     itemID,
-			Quantity:   quantity,
-			ShineLevel: shineLevel,
+			ItemID:       itemID,
+			Quantity:     quantity,
+			QualityLevel: qualityLevel,
 		})
 	}
 
@@ -1367,7 +1367,7 @@ func (s *service) triggerTrap(ctx context.Context, trap *domain.Trap, victim *do
 				SetterUsername:   setter.Username,
 				TargetID:         trap.TargetID,
 				TargetUsername:   victim.Username,
-				ShineLevel:       trap.ShineLevel,
+				QualityLevel:     trap.QualityLevel,
 				TimeoutSeconds:   trap.CalculateTimeout(),
 				WasSelfTriggered: false,
 			}

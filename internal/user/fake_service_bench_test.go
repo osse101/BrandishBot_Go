@@ -245,9 +245,9 @@ func (f *fakeBenchJobService) AwardXP(ctx context.Context, userID, jobKey string
 // Mock lootbox service
 type fakeBenchLootboxService struct{}
 
-func (f *fakeBenchLootboxService) OpenLootbox(ctx context.Context, lootboxName string, quantity int, boxShine domain.ShineLevel) ([]lootbox.DroppedItem, error) {
+func (f *fakeBenchLootboxService) OpenLootbox(ctx context.Context, lootboxName string, quantity int, boxQuality domain.QualityLevel) ([]lootbox.DroppedItem, error) {
 	return []lootbox.DroppedItem{
-		{ItemID: 1, ItemName: "money", Quantity: 10, Value: 10, ShineLevel: domain.ShineCommon},
+		{ItemID: 1, ItemName: "money", Quantity: 10, Value: 10, QualityLevel: domain.QualityCommon},
 	}, nil
 }
 
@@ -258,7 +258,7 @@ func (f *fakeBenchNamingResolver) ResolvePublicName(publicName string) (string, 
 	return publicName, true
 }
 
-func (f *fakeBenchNamingResolver) GetDisplayName(internalName string, shineLevel domain.ShineLevel) string {
+func (f *fakeBenchNamingResolver) GetDisplayName(internalName string, qualityLevel domain.QualityLevel) string {
 	return internalName
 }
 

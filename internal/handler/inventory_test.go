@@ -642,12 +642,12 @@ func TestHandleGetInventory(t *testing.T) {
 			filter:     "",
 			setupMock: func(m *mocks.MockUserService, p *mocks.MockProgressionService) {
 				items := []user.InventoryItem{
-					{InternalName: domain.ItemBlaster, PublicName: "missile", Name: "missile", Quantity: 1, ShineLevel: "COMMON"},
+					{InternalName: domain.ItemBlaster, PublicName: "missile", Name: "missile", Quantity: 1, QualityLevel: "COMMON"},
 				}
 				m.On("GetInventory", mock.Anything, domain.PlatformDiscord, "test-platformid", "testuser", "").Return(items, nil)
 			},
 			expectedStatus: http.StatusOK,
-			expectedBody:   `"items":[{"item_name":"weapon_blaster","public_name":"missile","name":"missile","quantity":1,"shine_level":"COMMON"}]`,
+			expectedBody:   `"items":[{"item_name":"weapon_blaster","public_name":"missile","name":"missile","quantity":1,"quality_level":"COMMON"}]`,
 		},
 		{
 			name:       "Success with Filter",
@@ -657,13 +657,13 @@ func TestHandleGetInventory(t *testing.T) {
 			filter:     domain.FilterTypeUpgrade,
 			setupMock: func(m *mocks.MockUserService, p *mocks.MockProgressionService) {
 				items := []user.InventoryItem{
-					{InternalName: domain.ItemLootbox0, PublicName: "junkbox", Name: "junkbox", Quantity: 1, ShineLevel: "COMMON"},
+					{InternalName: domain.ItemLootbox0, PublicName: "junkbox", Name: "junkbox", Quantity: 1, QualityLevel: "COMMON"},
 				}
 				p.On("IsFeatureUnlocked", mock.Anything, "feature_filter_upgrade").Return(true, nil)
 				m.On("GetInventory", mock.Anything, domain.PlatformDiscord, "test-platformid", "testuser", domain.FilterTypeUpgrade).Return(items, nil)
 			},
 			expectedStatus: http.StatusOK,
-			expectedBody:   `"items":[{"item_name":"lootbox_tier0","public_name":"junkbox","name":"junkbox","quantity":1,"shine_level":"COMMON"}]`,
+			expectedBody:   `"items":[{"item_name":"lootbox_tier0","public_name":"junkbox","name":"junkbox","quantity":1,"quality_level":"COMMON"}]`,
 		},
 		{
 			name:       "Filter Locked",
@@ -707,13 +707,13 @@ func TestHandleGetInventory(t *testing.T) {
 			filter:     domain.FilterTypeSellable,
 			setupMock: func(m *mocks.MockUserService, p *mocks.MockProgressionService) {
 				items := []user.InventoryItem{
-					{InternalName: domain.ItemLootbox1, PublicName: "lootbox", Name: "lootbox", Quantity: 5, ShineLevel: "COMMON"},
+					{InternalName: domain.ItemLootbox1, PublicName: "lootbox", Name: "lootbox", Quantity: 5, QualityLevel: "COMMON"},
 				}
 				p.On("IsFeatureUnlocked", mock.Anything, "feature_filter_sellable").Return(true, nil)
 				m.On("GetInventory", mock.Anything, domain.PlatformDiscord, "test-platformid", "testuser", domain.FilterTypeSellable).Return(items, nil)
 			},
 			expectedStatus: http.StatusOK,
-			expectedBody:   `"items":[{"item_name":"lootbox_tier1","public_name":"lootbox","name":"lootbox","quantity":5,"shine_level":"COMMON"}]`,
+			expectedBody:   `"items":[{"item_name":"lootbox_tier1","public_name":"lootbox","name":"lootbox","quantity":5,"quality_level":"COMMON"}]`,
 		},
 		{
 			name:       "Sellable Filter - Locked",
@@ -735,13 +735,13 @@ func TestHandleGetInventory(t *testing.T) {
 			filter:     domain.FilterTypeConsumable,
 			setupMock: func(m *mocks.MockUserService, p *mocks.MockProgressionService) {
 				items := []user.InventoryItem{
-					{InternalName: domain.ItemLootbox0, PublicName: "junkbox", Name: "junkbox", Quantity: 3, ShineLevel: "COMMON"},
+					{InternalName: domain.ItemLootbox0, PublicName: "junkbox", Name: "junkbox", Quantity: 3, QualityLevel: "COMMON"},
 				}
 				p.On("IsFeatureUnlocked", mock.Anything, "feature_filter_consumable").Return(true, nil)
 				m.On("GetInventory", mock.Anything, domain.PlatformDiscord, "test-platformid", "testuser", domain.FilterTypeConsumable).Return(items, nil)
 			},
 			expectedStatus: http.StatusOK,
-			expectedBody:   `"items":[{"item_name":"lootbox_tier0","public_name":"junkbox","name":"junkbox","quantity":3,"shine_level":"COMMON"}]`,
+			expectedBody:   `"items":[{"item_name":"lootbox_tier0","public_name":"junkbox","name":"junkbox","quantity":3,"quality_level":"COMMON"}]`,
 		},
 		{
 			name:       "Consumable Filter - Locked",

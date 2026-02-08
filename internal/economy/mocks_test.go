@@ -154,8 +154,8 @@ func (m *MockNamingResolver) ResolvePublicName(publicName string) (string, bool)
 	return args.String(0), args.Bool(1)
 }
 
-func (m *MockNamingResolver) GetDisplayName(internalName string, shineLevel domain.ShineLevel) string {
-	args := m.Called(internalName, shineLevel)
+func (m *MockNamingResolver) GetDisplayName(internalName string, qualityLevel domain.QualityLevel) string {
+	args := m.Called(internalName, qualityLevel)
 	return args.String(0)
 }
 

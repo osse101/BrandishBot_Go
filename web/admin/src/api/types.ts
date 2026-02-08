@@ -45,7 +45,7 @@ export interface InventoryItem {
   item_name: string;
   public_name?: string;
   quantity: number;
-  shine_level?: string;
+  quality_level?: string;
 }
 
 // Jobs

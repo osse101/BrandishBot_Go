@@ -162,11 +162,11 @@ func (s *service) StartGamble(ctx context.Context, platform, platformID, usernam
 	// Consume bet items from inventory using resolved IDs
 	for i := range gambleBets {
 		itemID := resolvedItemIDs[i]
-		shineLevel, err := consumeItem(inventory, itemID, gambleBets[i].Quantity)
+		qualityLevel, err := consumeItem(inventory, itemID, gambleBets[i].Quantity)
 		if err != nil {
 			return nil, fmt.Errorf("%s (item %d): %w", ErrContextFailedToConsumeBet, itemID, err)
 		}
-		gambleBets[i].ShineLevel = shineLevel
+		gambleBets[i].QualityLevel = qualityLevel
 	}
 
 	participant := &domain.Participant{
@@ -261,11 +261,11 @@ func (s *service) executeGambleJoinTx(ctx context.Context, userID string, gamble
 	// Consume Bets using resolved item IDs
 	for i := range bets {
 		itemID := resolvedItemIDs[i]
-		shineLevel, err := consumeItem(inventory, itemID, bets[i].Quantity)
+		qualityLevel, err := consumeItem(inventory, itemID, bets[i].Quantity)
 		if err != nil {
 			return fmt.Errorf("%s (item %d): %w", ErrContextFailedToConsumeBet, itemID, err)
 		}
-		bets[i].ShineLevel = shineLevel
+		bets[i].QualityLevel = qualityLevel
 	}
 
 	// Update Inventory
@@ -422,7 +422,7 @@ func (s *service) openParticipantsLootboxes(ctx context.Context, gamble *domain.
 				continue
 			}
 
-			drops, err := s.lootboxSvc.OpenLootbox(ctx, lootboxItem.InternalName, bet.Quantity, bet.ShineLevel)
+			drops, err := s.lootboxSvc.OpenLootbox(ctx, lootboxItem.InternalName, bet.Quantity, bet.QualityLevel)
 			if err != nil {
 				continue
 			}
@@ -437,12 +437,12 @@ func (s *service) openParticipantsLootboxes(ctx context.Context, gamble *domain.
 				}
 
 				allOpenedItems = append(allOpenedItems, domain.GambleOpenedItem{
-					GambleID:   gamble.ID,
-					UserID:     p.UserID,
-					ItemID:     drop.ItemID,
-					Quantity:   drop.Quantity,
-					Value:      totalValue,
-					ShineLevel: drop.ShineLevel,
+					GambleID:     gamble.ID,
+					UserID:       p.UserID,
+					ItemID:       drop.ItemID,
+					Quantity:     drop.Quantity,
+					Value:        totalValue,
+					QualityLevel: drop.QualityLevel,
 				})
 
 				userValues[p.UserID] += totalValue
@@ -574,14 +574,14 @@ func (s *service) GetActiveGamble(ctx context.Context) (*domain.Gamble, error) {
 	return s.repo.GetActiveGamble(ctx)
 }
 
-// Helper to consume item from inventory and return its shine level
-func consumeItem(inventory *domain.Inventory, itemID, quantity int) (domain.ShineLevel, error) {
+// Helper to consume item from inventory and return its quality level
+func consumeItem(inventory *domain.Inventory, itemID, quantity int) (domain.QualityLevel, error) {
 	for i := range inventory.Slots {
 		if inventory.Slots[i].ItemID == itemID {
 			if inventory.Slots[i].Quantity < quantity {
 				return "", domain.ErrInsufficientQuantity
 			}
-			shineLevel := inventory.Slots[i].ShineLevel
+			qualityLevel := inventory.Slots[i].QualityLevel
 			if inventory.Slots[i].Quantity == quantity {
 				// Remove slot
 				inventory.Slots = append(inventory.Slots[:i], inventory.Slots[i+1:]...)
@@ -589,10 +589,10 @@ func consumeItem(inventory *domain.Inventory, itemID, quantity int) (domain.Shin
 				// Reduce quantity
 				inventory.Slots[i].Quantity -= quantity
 			}
-			return shineLevel, nil
+			return qualityLevel, nil
 		}
 	}
-	return domain.ShineLevel(""), domain.ErrItemNotFound
+	return domain.QualityLevel(""), domain.ErrItemNotFound
 }
 
 // calculateTotalLootboxes sums up lootbox quantities from bets

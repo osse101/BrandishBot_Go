@@ -13,7 +13,7 @@ type InventoryItem struct {
 	PublicName   string `json:"public_name"`
 	Name         string `json:"name"` // For backward compatibility
 	Quantity     int    `json:"quantity"`
-	ShineLevel   string `json:"shine_level"`
+	QualityLevel string `json:"quality_level"`
 }
 
 // InventoryService handles inventory operations

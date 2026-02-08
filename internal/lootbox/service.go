@@ -27,11 +27,11 @@ const (
 
 // DroppedItem represents an item generated from opening a lootbox
 type DroppedItem struct {
-	ItemID     int
-	ItemName   string
-	Quantity   int
-	Value      int
-	ShineLevel domain.ShineLevel
+	ItemID       int
+	ItemName     string
+	Quantity     int
+	Value        int
+	QualityLevel domain.QualityLevel
 }
 
 // ItemRepository defines the interface for fetching item data
@@ -42,7 +42,7 @@ type ItemRepository interface {
 
 // Service defines the lootbox opening interface
 type Service interface {
-	OpenLootbox(ctx context.Context, lootboxName string, quantity int, boxShine domain.ShineLevel) ([]DroppedItem, error)
+	OpenLootbox(ctx context.Context, lootboxName string, quantity int, boxQuality domain.QualityLevel) ([]DroppedItem, error)
 }
 
 // ProgressionService defines the interface for checking feature unlocks
@@ -119,7 +119,7 @@ func (s *service) loadLootTables(path string) error {
 }
 
 // OpenLootbox simulates opening lootboxes and returns the dropped items
-func (s *service) OpenLootbox(ctx context.Context, lootboxName string, quantity int, boxShine domain.ShineLevel) ([]DroppedItem, error) {
+func (s *service) OpenLootbox(ctx context.Context, lootboxName string, quantity int, boxQuality domain.QualityLevel) ([]DroppedItem, error) {
 	if quantity <= 0 {
 		return nil, nil
 	}
@@ -135,7 +135,7 @@ func (s *service) OpenLootbox(ctx context.Context, lootboxName string, quantity 
 		return nil, nil
 	}
 
-	return s.convertToDroppedItems(ctx, dropCounts, boxShine)
+	return s.convertToDroppedItems(ctx, dropCounts, boxQuality)
 }
 
 type dropInfo struct {
@@ -201,7 +201,7 @@ func (s *service) updateDropCounts(loot LootItem, qty int, dropCounts map[string
 	dropCounts[loot.ItemName] = info
 }
 
-func (s *service) convertToDroppedItems(ctx context.Context, dropCounts map[string]dropInfo, boxShine domain.ShineLevel) ([]DroppedItem, error) {
+func (s *service) convertToDroppedItems(ctx context.Context, dropCounts map[string]dropInfo, boxQuality domain.QualityLevel) ([]DroppedItem, error) {
 	log := logger.FromContext(ctx)
 
 	itemNames := make([]string, 0, len(dropCounts))
@@ -238,8 +238,8 @@ func (s *service) convertToDroppedItems(ctx context.Context, dropCounts map[stri
 			continue
 		}
 
-		// Use a random roll for shine.
-		shine, mult := s.calculateShine(s.rnd(), boxShine, canUpgrade)
+		// Use a random roll for quality.
+		quality, mult := s.calculateQuality(s.rnd(), boxQuality, canUpgrade)
 
 		quantity := info.Qty
 		boostedValue := int(float64(item.BaseValue) * mult)
@@ -259,103 +259,107 @@ func (s *service) convertToDroppedItems(ctx context.Context, dropCounts map[stri
 		}
 
 		drops = append(drops, DroppedItem{
-			ItemID:     item.ID,
-			ItemName:   item.InternalName,
-			Quantity:   quantity,
-			Value:      boostedValue,
-			ShineLevel: shine,
+			ItemID:       item.ID,
+			ItemName:     item.InternalName,
+			Quantity:     quantity,
+			Value:        boostedValue,
+			QualityLevel: quality,
 		})
 	}
 
 	return drops, nil
 }
 
-// calculateShine determines the visual rarity "shine" and value multiplier of a drop based on a roll.
-// The boxShine level shifts the constraints: a more rare box makes it easier to get rare item shine levels.
-func (s *service) calculateShine(roll float64, boxShine domain.ShineLevel, canUpgrade bool) (domain.ShineLevel, float64) {
-	dist := s.getShineDistance(boxShine)
+// calculateQuality determines the visual rarity "quality" and value multiplier of a drop based on a roll.
+// The boxQuality level shifts the constraints: a more rare box makes it easier to get rare item quality levels.
+func (s *service) calculateQuality(roll float64, boxQuality domain.QualityLevel, canUpgrade bool) (domain.QualityLevel, float64) {
+	dist := s.getQualityDistance(boxQuality)
 	bonus := 0.03 * float64(dist)
 
-	shine := domain.ShineCommon
-	if roll <= ShineLegendaryThreshold+bonus {
-		shine = domain.ShineLegendary
-	} else if roll <= ShineEpicThreshold+bonus {
-		shine = domain.ShineEpic
-	} else if roll <= ShineRareThreshold+bonus {
-		shine = domain.ShineRare
-	} else if roll <= ShineUncommonThreshold+bonus {
-		shine = domain.ShineUncommon
-	} else if roll <= ShineCommonThreshold+bonus {
-		shine = domain.ShineCommon
-	} else if roll <= ShinePoorThreshold+bonus {
-		shine = domain.ShinePoor
-	} else if roll <= ShineJunkThreshold+bonus {
-		shine = domain.ShineJunk
-	} else {
-		shine = domain.ShineCursed
+	quality := domain.QualityCursed
+	if roll <= QualityLegendaryThreshold+bonus {
+		quality = domain.QualityLegendary
+	} else if roll <= QualityEpicThreshold+bonus {
+		quality = domain.QualityEpic
+	} else if roll <= QualityRareThreshold+bonus {
+		quality = domain.QualityRare
+	} else if roll <= QualityUncommonThreshold+bonus {
+		quality = domain.QualityUncommon
+	} else if roll <= QualityCommonThreshold+bonus {
+		quality = domain.QualityCommon
+	} else if roll <= QualityPoorThreshold+bonus {
+		quality = domain.QualityPoor
+	} else if roll <= QualityJunkThreshold+bonus {
+		quality = domain.QualityJunk
 	}
 
-	// Critical Shine Upgrade: 1% chance to upgrade the shine level (locked by progression)
-	if canUpgrade && s.rnd() < CriticalShineUpgradeChance {
-		switch shine {
-		case domain.ShineCursed:
-			shine = domain.ShineJunk
-		case domain.ShineJunk:
-			shine = domain.ShinePoor
-		case domain.ShinePoor:
-			shine = domain.ShineCommon
-		case domain.ShineCommon:
-			shine = domain.ShineUncommon
-		case domain.ShineUncommon:
-			shine = domain.ShineRare
-		case domain.ShineRare:
-			shine = domain.ShineEpic
-		case domain.ShineEpic:
-			shine = domain.ShineLegendary
-		}
+	// Critical Quality Upgrade: 1% chance to upgrade the quality level (locked by progression)
+	if canUpgrade && s.rnd() < CriticalQualityUpgradeChance {
+		quality = s.getNextQualityLevel(quality)
 	}
 
-	return shine, s.getShineMultiplier(shine)
+	return quality, s.getQualityMultiplier(quality)
 }
 
-func (s *service) getShineDistance(shine domain.ShineLevel) int {
-	switch shine {
-	case domain.ShineLegendary:
+func (s *service) getNextQualityLevel(q domain.QualityLevel) domain.QualityLevel {
+	switch q {
+	case domain.QualityCursed:
+		return domain.QualityJunk
+	case domain.QualityJunk:
+		return domain.QualityPoor
+	case domain.QualityPoor:
+		return domain.QualityCommon
+	case domain.QualityCommon:
+		return domain.QualityUncommon
+	case domain.QualityUncommon:
+		return domain.QualityRare
+	case domain.QualityRare:
+		return domain.QualityEpic
+	case domain.QualityEpic:
+		return domain.QualityLegendary
+	default:
+		return q
+	}
+}
+
+func (s *service) getQualityDistance(quality domain.QualityLevel) int {
+	switch quality {
+	case domain.QualityLegendary:
 		return 4
-	case domain.ShineEpic:
+	case domain.QualityEpic:
 		return 3
-	case domain.ShineRare:
+	case domain.QualityRare:
 		return 2
-	case domain.ShineUncommon:
+	case domain.QualityUncommon:
 		return 1
-	case domain.ShineCommon:
+	case domain.QualityCommon:
 		return 0
-	case domain.ShinePoor:
+	case domain.QualityPoor:
 		return -1
-	case domain.ShineJunk:
+	case domain.QualityJunk:
 		return -2
-	case domain.ShineCursed:
+	case domain.QualityCursed:
 		return -3
 	default:
 		return 0
 	}
 }
 
-func (s *service) getShineMultiplier(shine domain.ShineLevel) float64 {
-	switch shine {
-	case domain.ShineLegendary:
+func (s *service) getQualityMultiplier(quality domain.QualityLevel) float64 {
+	switch quality {
+	case domain.QualityLegendary:
 		return domain.MultLegendary
-	case domain.ShineEpic:
+	case domain.QualityEpic:
 		return domain.MultEpic
-	case domain.ShineRare:
+	case domain.QualityRare:
 		return domain.MultRare
-	case domain.ShineUncommon:
+	case domain.QualityUncommon:
 		return domain.MultUncommon
-	case domain.ShinePoor:
+	case domain.QualityPoor:
 		return domain.MultPoor
-	case domain.ShineJunk:
+	case domain.QualityJunk:
 		return domain.MultJunk
-	case domain.ShineCursed:
+	case domain.QualityCursed:
 		return domain.MultCursed
 	default:
 		return domain.MultCommon

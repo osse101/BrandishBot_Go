@@ -23,16 +23,16 @@ func (q *Queries) CleanupStaleTraps(ctx context.Context, dollar_1 interface{}) e
 }
 
 const createTrap = `-- name: CreateTrap :one
-INSERT INTO user_traps (id, setter_id, target_id, shine_level, timeout_seconds, placed_at)
+INSERT INTO user_traps (id, setter_id, target_id, quality_level, timeout_seconds, placed_at)
 VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, setter_id, target_id, shine_level, timeout_seconds, placed_at, triggered_at
+RETURNING id, setter_id, target_id, quality_level, timeout_seconds, placed_at, triggered_at
 `
 
 type CreateTrapParams struct {
 	ID             uuid.UUID          `json:"id"`
 	SetterID       uuid.UUID          `json:"setter_id"`
 	TargetID       uuid.UUID          `json:"target_id"`
-	ShineLevel     string             `json:"shine_level"`
+	QualityLevel   string             `json:"quality_level"`
 	TimeoutSeconds int32              `json:"timeout_seconds"`
 	PlacedAt       pgtype.Timestamptz `json:"placed_at"`
 }
@@ -42,7 +42,7 @@ func (q *Queries) CreateTrap(ctx context.Context, arg CreateTrapParams) (UserTra
 		arg.ID,
 		arg.SetterID,
 		arg.TargetID,
-		arg.ShineLevel,
+		arg.QualityLevel,
 		arg.TimeoutSeconds,
 		arg.PlacedAt,
 	)
@@ -51,7 +51,7 @@ func (q *Queries) CreateTrap(ctx context.Context, arg CreateTrapParams) (UserTra
 		&i.ID,
 		&i.SetterID,
 		&i.TargetID,
-		&i.ShineLevel,
+		&i.QualityLevel,
 		&i.TimeoutSeconds,
 		&i.PlacedAt,
 		&i.TriggeredAt,
@@ -60,7 +60,7 @@ func (q *Queries) CreateTrap(ctx context.Context, arg CreateTrapParams) (UserTra
 }
 
 const getActiveTrap = `-- name: GetActiveTrap :one
-SELECT id, setter_id, target_id, shine_level, timeout_seconds, placed_at, triggered_at
+SELECT id, setter_id, target_id, quality_level, timeout_seconds, placed_at, triggered_at
 FROM user_traps
 WHERE target_id = $1 AND triggered_at IS NULL
 LIMIT 1
@@ -73,7 +73,7 @@ func (q *Queries) GetActiveTrap(ctx context.Context, targetID uuid.UUID) (UserTr
 		&i.ID,
 		&i.SetterID,
 		&i.TargetID,
-		&i.ShineLevel,
+		&i.QualityLevel,
 		&i.TimeoutSeconds,
 		&i.PlacedAt,
 		&i.TriggeredAt,
@@ -82,7 +82,7 @@ func (q *Queries) GetActiveTrap(ctx context.Context, targetID uuid.UUID) (UserTr
 }
 
 const getActiveTrapForUpdate = `-- name: GetActiveTrapForUpdate :one
-SELECT id, setter_id, target_id, shine_level, timeout_seconds, placed_at, triggered_at
+SELECT id, setter_id, target_id, quality_level, timeout_seconds, placed_at, triggered_at
 FROM user_traps
 WHERE target_id = $1 AND triggered_at IS NULL
 LIMIT 1
@@ -96,7 +96,7 @@ func (q *Queries) GetActiveTrapForUpdate(ctx context.Context, targetID uuid.UUID
 		&i.ID,
 		&i.SetterID,
 		&i.TargetID,
-		&i.ShineLevel,
+		&i.QualityLevel,
 		&i.TimeoutSeconds,
 		&i.PlacedAt,
 		&i.TriggeredAt,
@@ -105,7 +105,7 @@ func (q *Queries) GetActiveTrapForUpdate(ctx context.Context, targetID uuid.UUID
 }
 
 const getTrapsByUser = `-- name: GetTrapsByUser :many
-SELECT id, setter_id, target_id, shine_level, timeout_seconds, placed_at, triggered_at
+SELECT id, setter_id, target_id, quality_level, timeout_seconds, placed_at, triggered_at
 FROM user_traps
 WHERE setter_id = $1
 ORDER BY placed_at DESC
@@ -130,7 +130,7 @@ func (q *Queries) GetTrapsByUser(ctx context.Context, arg GetTrapsByUserParams) 
 			&i.ID,
 			&i.SetterID,
 			&i.TargetID,
-			&i.ShineLevel,
+			&i.QualityLevel,
 			&i.TimeoutSeconds,
 			&i.PlacedAt,
 			&i.TriggeredAt,
@@ -146,7 +146,7 @@ func (q *Queries) GetTrapsByUser(ctx context.Context, arg GetTrapsByUserParams) 
 }
 
 const getTriggeredTrapsForTarget = `-- name: GetTriggeredTrapsForTarget :many
-SELECT id, setter_id, target_id, shine_level, timeout_seconds, placed_at, triggered_at
+SELECT id, setter_id, target_id, quality_level, timeout_seconds, placed_at, triggered_at
 FROM user_traps
 WHERE target_id = $1 AND triggered_at IS NOT NULL
 ORDER BY triggered_at DESC
@@ -171,7 +171,7 @@ func (q *Queries) GetTriggeredTrapsForTarget(ctx context.Context, arg GetTrigger
 			&i.ID,
 			&i.SetterID,
 			&i.TargetID,
-			&i.ShineLevel,
+			&i.QualityLevel,
 			&i.TimeoutSeconds,
 			&i.PlacedAt,
 			&i.TriggeredAt,

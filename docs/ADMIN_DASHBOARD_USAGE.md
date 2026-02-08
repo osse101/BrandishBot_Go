@@ -338,7 +338,7 @@ If the SSE connection drops, it automatically reconnects with exponential backof
 - Returns user profile with ID, platform links, creation date
 
 #### Profile Tabs
-- **Inventory**: View all items with quantities and shine levels
+- **Inventory**: View all items with quantities and quality levels
 - **Jobs**: View all job levels and XP progress
 - **Stats**: User statistics and event counts
 - **Quests**: Active quests and completion progress

@@ -18,41 +18,41 @@ type Item struct {
 	Handler        *string  `json:"handler,omitempty" db:"handler"` // Nullable: some items have no handler
 }
 
-// ShineLevel represents the visual rarity and quality of an item
-type ShineLevel string
+// QualityLevel represents the visual rarity and quality of an item
+type QualityLevel string
 
 const (
-	ShineCommon    ShineLevel = "COMMON"
-	ShineUncommon  ShineLevel = "UNCOMMON"
-	ShineRare      ShineLevel = "RARE"
-	ShineEpic      ShineLevel = "EPIC"
-	ShineLegendary ShineLevel = "LEGENDARY"
-	ShinePoor      ShineLevel = "POOR"
-	ShineJunk      ShineLevel = "JUNK"
-	ShineCursed    ShineLevel = "CURSED"
+	QualityCommon    QualityLevel = "COMMON"
+	QualityUncommon  QualityLevel = "UNCOMMON"
+	QualityRare      QualityLevel = "RARE"
+	QualityEpic      QualityLevel = "EPIC"
+	QualityLegendary QualityLevel = "LEGENDARY"
+	QualityPoor      QualityLevel = "POOR"
+	QualityJunk      QualityLevel = "JUNK"
+	QualityCursed    QualityLevel = "CURSED"
 )
 
-// GetTimeoutAdjustment returns the timeout adjustment in seconds based on shine level
+// GetTimeoutAdjustment returns the timeout adjustment in seconds based on quality level
 // Distance from common * 10s
-func (s ShineLevel) GetTimeoutAdjustment() time.Duration {
-	shineModifier := map[ShineLevel]time.Duration{
-		ShineCursed:    -30 * time.Second,
-		ShineJunk:      -20 * time.Second,
-		ShinePoor:      -10 * time.Second,
-		ShineCommon:    0 * time.Second,
-		ShineUncommon:  10 * time.Second,
-		ShineRare:      20 * time.Second,
-		ShineEpic:      30 * time.Second,
-		ShineLegendary: 40 * time.Second,
+func (s QualityLevel) GetTimeoutAdjustment() time.Duration {
+	qualityModifier := map[QualityLevel]time.Duration{
+		QualityCursed:    -30 * time.Second,
+		QualityJunk:      -20 * time.Second,
+		QualityPoor:      -10 * time.Second,
+		QualityCommon:    0 * time.Second,
+		QualityUncommon:  10 * time.Second,
+		QualityRare:      20 * time.Second,
+		QualityEpic:      30 * time.Second,
+		QualityLegendary: 40 * time.Second,
 	}
 
-	if modifier, ok := shineModifier[s]; ok {
+	if modifier, ok := qualityModifier[s]; ok {
 		return modifier
 	}
 	return 0
 }
 
-// Shine multipliers (Boosts item value and Gamble Score)
+// Quality multipliers (Boosts item value and Gamble Score)
 const (
 	MultCommon    = 1.0
 	MultUncommon  = 1.1

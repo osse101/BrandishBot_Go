@@ -629,7 +629,7 @@ func (m *MockNamingResolver) ResolvePublicName(publicName string) (internalName 
 }
 
 // Stubs for other naming.Resolver methods
-func (m *MockNamingResolver) GetDisplayName(internalName string, shineLevel domain.ShineLevel) string {
+func (m *MockNamingResolver) GetDisplayName(internalName string, qualityLevel domain.QualityLevel) string {
 	return internalName
 }
 func (m *MockNamingResolver) GetActiveTheme() string { return "" }

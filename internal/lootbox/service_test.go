@@ -106,7 +106,7 @@ func TestOpenLootbox(t *testing.T) {
 			if d.ItemName == "common_sword" {
 				foundCommon = true
 				assert.NotZero(t, d.Value)
-				assert.NotEmpty(t, d.ShineLevel)
+				assert.NotEmpty(t, d.QualityLevel)
 			}
 		}
 		assert.True(t, foundCommon, "Should have dropped common_sword")
@@ -196,13 +196,13 @@ func TestOpenLootbox(t *testing.T) {
 		require.NoError(t, err)
 		assert.Len(t, drops, 1)
 
-		// Cursed Shine (0.4) * 100 Quantity = 40 Quantity
+		// Cursed Quality (0.4) * 100 Quantity = 40 Quantity
 		assert.Equal(t, "money", drops[0].ItemName)
 		assert.Equal(t, 40, drops[0].Quantity)
 		assert.Equal(t, 1, drops[0].Value)
 	})
 
-	t.Run("Shine Shift Verification", func(t *testing.T) {
+	t.Run("Quality Shift Verification", func(t *testing.T) {
 		repo := &mockItemRepo{
 			items: map[string]*domain.Item{
 				"test_item": {ID: 1, InternalName: "test_item", BaseValue: 100},
@@ -235,23 +235,23 @@ func TestOpenLootbox(t *testing.T) {
 			return val
 		}
 
-		dropsCommon, err := svc.OpenLootbox(context.Background(), "box", 1000, domain.ShineCommon)
+		dropsCommon, err := svc.OpenLootbox(context.Background(), "box", 1000, domain.QualityCommon)
 		require.NoError(t, err)
 		require.NotEmpty(t, dropsCommon)
-		assert.Equal(t, domain.ShineEpic, dropsCommon[0].ShineLevel)
+		assert.Equal(t, domain.QualityEpic, dropsCommon[0].QualityLevel)
 
 		// Case 2: Uncommon Box
 		// Reset roll index
 		rollIdx = 0
 		// With Uncommon Box (bonus 0.03), Legendary Thresh = 0.01 + 0.03 = 0.04.
 		// Roll 0.04 <= 0.04. Should be Legendary.
-		dropsUncommon, err := svc.OpenLootbox(context.Background(), "box", 1000, domain.ShineUncommon)
+		dropsUncommon, err := svc.OpenLootbox(context.Background(), "box", 1000, domain.QualityUncommon)
 		require.NoError(t, err)
 		require.NotEmpty(t, dropsUncommon)
-		assert.Equal(t, domain.ShineLegendary, dropsUncommon[0].ShineLevel)
+		assert.Equal(t, domain.QualityLegendary, dropsUncommon[0].QualityLevel)
 	})
 
-	t.Run("Negative Shine Shift Verification", func(t *testing.T) {
+	t.Run("Negative Quality Shift Verification", func(t *testing.T) {
 		repo := &mockItemRepo{
 			items: map[string]*domain.Item{
 				"legendary_item": {ID: 1, InternalName: "legendary_item", BaseValue: 1000},
@@ -277,12 +277,12 @@ func TestOpenLootbox(t *testing.T) {
 		// We want a roll that is normally Legendary (<= 0.01) but becomes Epic with -0.03 bonus.
 		// Roll 0.005: 0.005 > -0.02 (Legendary thresh) but 0.005 <= 0.02 (Epic thresh).
 		s.rnd = func() float64 { return 0.005 }
-		dropsPoor, err := svc.OpenLootbox(context.Background(), "box", 1000, domain.ShinePoor)
+		dropsPoor, err := svc.OpenLootbox(context.Background(), "box", 1000, domain.QualityPoor)
 		require.NoError(t, err)
 		require.NotEmpty(t, dropsPoor)
 		for _, d := range dropsPoor {
 			if d.ItemName == "legendary_item" {
-				assert.Equal(t, domain.ShineEpic, d.ShineLevel, "Legendary item in Poor box should downgrade to Epic")
+				assert.Equal(t, domain.QualityEpic, d.QualityLevel, "Legendary item in Poor box should downgrade to Epic")
 			}
 		}
 
@@ -290,12 +290,12 @@ func TestOpenLootbox(t *testing.T) {
 		// We want a roll that is normally Epic (<= 0.05) but becomes Rare with -0.06 bonus.
 		// Roll 0.04: 0.04 > -0.01 (Epic thresh) but 0.04 <= 0.09 (Rare thresh).
 		s.rnd = func() float64 { return 0.04 }
-		dropsJunk, err := svc.OpenLootbox(context.Background(), "box", 1000, domain.ShineJunk)
+		dropsJunk, err := svc.OpenLootbox(context.Background(), "box", 1000, domain.QualityJunk)
 		require.NoError(t, err)
 		require.NotEmpty(t, dropsJunk)
 		for _, d := range dropsJunk {
 			if d.ItemName == "epic_item" {
-				assert.Equal(t, domain.ShineRare, d.ShineLevel, "Epic item in Junk box should downgrade to Rare")
+				assert.Equal(t, domain.QualityRare, d.QualityLevel, "Epic item in Junk box should downgrade to Rare")
 			}
 		}
 	})

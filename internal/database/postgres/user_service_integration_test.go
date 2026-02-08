@@ -25,7 +25,7 @@ func (m *MockJobService) AwardXP(ctx context.Context, userID, jobKey string, bas
 
 type MockLootboxService struct{}
 
-func (m *MockLootboxService) OpenLootbox(ctx context.Context, lootboxName string, quantity int, boxShine domain.ShineLevel) ([]lootbox.DroppedItem, error) {
+func (m *MockLootboxService) OpenLootbox(ctx context.Context, lootboxName string, quantity int, boxQuality domain.QualityLevel) ([]lootbox.DroppedItem, error) {
 	return []lootbox.DroppedItem{}, nil
 }
 
@@ -53,7 +53,7 @@ func (m *MockStatsService) GetLeaderboard(ctx context.Context, eventType domain.
 
 type MockNamingResolver struct{}
 
-func (m *MockNamingResolver) GetDisplayName(internalName string, shineLevel domain.ShineLevel) string {
+func (m *MockNamingResolver) GetDisplayName(internalName string, qualityLevel domain.QualityLevel) string {
 	return internalName
 }
 

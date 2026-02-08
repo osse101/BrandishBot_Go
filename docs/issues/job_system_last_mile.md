@@ -12,7 +12,7 @@ The core job system infrastructure is complete, including XP awarding, daily res
 Currently, job benefits are integrated primarily through progression system modifiers rather than direct level checks.
 
 - [x] **Blacksmith**: Link `UpgradeItem` success rates or cost reductions to Blacksmith job level. (Implemented via `crafting_success_rate` modifier)
-- [ ] **Explorer**: Link Search "Shine" chance or item rarity weight to Explorer job level. (Not implemented - `calculateSearchShine` logic does not use modifiers)
+- [ ] **Explorer**: Link Search "Quality" chance or item rarity weight to Explorer job level. (Not implemented - `calculateSearchQuality` logic does not use modifiers)
 - [x] **Merchant**: Integrate Merchant level into buy/sell price calculations. (Implemented via `economy_bonus` modifier)
 - [x] **Gambler**: Add a small win probability bonus based on Gambler level. (Implemented via `gamble_win_bonus` modifier)
 
@@ -42,11 +42,11 @@ Implement RPG-style requirements for advanced features:
 ## Status Update (2026-01-30)
 
 - **Completed**: Bonus integration for Blacksmith, Merchant, and Gambler is done via progression modifiers. Farmer XP awarding is implemented.
-- **Pending**: Explorer job integration (Search Shine), Farmer job benefits, explicit Level Gating, and UI updates.
+- **Pending**: Explorer job integration (Search Quality), Farmer job benefits, explicit Level Gating, and UI updates.
 
 ## Status Update (2026-02-06)
 
-- **Explorer Job**: `internal/user/search_helpers.go` confirmed to not use Explorer job level for shine calculations.
+- **Explorer Job**: `internal/user/search_helpers.go` confirmed to not use Explorer job level for quality calculations.
 - **Farmer Job**: `internal/harvest/service.go` awards XP but does not use job level to modify yield or speed.
 - **Workers**: Daily and weekly reset workers are implemented and functioning.
 - **Status**: Still In Progress for feature integration.

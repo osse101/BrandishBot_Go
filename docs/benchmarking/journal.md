@@ -71,7 +71,7 @@ BenchmarkHandler_HandleMessage-20    5108 ns/op   9029 B/op   52 allocs/op
 
 ✅ **Profile before implementing** - Should have used pprof CPU/memory profiles first  
 ✅ **Understand allocation sources** - Not all allocs are equal  
-✅ **Small payloads != optimization target** - easyjson shines at >10KB payloads  
+✅ **Small payloads != optimization target** - easyjson qualities at >10KB payloads  
 ✅ **Benchmarks prevent bad deployments** - Without benchmarks, we'd ship slower code!  
 ✅ **Hypothesis can be wrong** - That's why we measure!  
 

@@ -34,7 +34,7 @@ func (r *TrapRepository) CreateTrap(ctx context.Context, trap *domain.Trap) erro
 		ID:             trap.ID,
 		SetterID:       trap.SetterID,
 		TargetID:       trap.TargetID,
-		ShineLevel:     string(trap.ShineLevel),
+		QualityLevel:   string(trap.QualityLevel),
 		TimeoutSeconds: int32(trap.TimeoutSeconds),
 		PlacedAt:       pgtype.Timestamptz{Time: trap.PlacedAt, Valid: true},
 	}
@@ -139,7 +139,7 @@ func (r *TrapRepository) mapTrap(row generated.UserTrap) *domain.Trap {
 		ID:             row.ID,
 		SetterID:       row.SetterID,
 		TargetID:       row.TargetID,
-		ShineLevel:     domain.ShineLevel(row.ShineLevel),
+		QualityLevel:   domain.QualityLevel(row.QualityLevel),
 		TimeoutSeconds: int(row.TimeoutSeconds),
 		PlacedAt:       row.PlacedAt.Time,
 	}

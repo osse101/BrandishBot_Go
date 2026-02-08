@@ -60,8 +60,8 @@ type MockLootboxServiceForLootboxTests struct {
 	mock.Mock
 }
 
-func (m *MockLootboxServiceForLootboxTests) OpenLootbox(ctx context.Context, lootboxName string, quantity int, boxShine domain.ShineLevel) ([]lootbox.DroppedItem, error) {
-	args := m.Called(ctx, lootboxName, quantity, boxShine)
+func (m *MockLootboxServiceForLootboxTests) OpenLootbox(ctx context.Context, lootboxName string, quantity int, boxQuality domain.QualityLevel) ([]lootbox.DroppedItem, error) {
+	args := m.Called(ctx, lootboxName, quantity, boxQuality)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -78,8 +78,8 @@ func (m *MockNamingResolverForLootboxTests) ResolvePublicName(publicName string)
 	return args.String(0), args.Bool(1)
 }
 
-func (m *MockNamingResolverForLootboxTests) GetDisplayName(internalName string, shineLevel domain.ShineLevel) string {
-	args := m.Called(internalName, shineLevel)
+func (m *MockNamingResolverForLootboxTests) GetDisplayName(internalName string, qualityLevel domain.QualityLevel) string {
+	args := m.Called(internalName, qualityLevel)
 	return args.String(0)
 }
 
@@ -124,17 +124,17 @@ func TestProcessLootboxDrops_JackpotEvents(t *testing.T) {
 		// Prepare drops
 		drops := []lootbox.DroppedItem{
 			{
-				ItemID:     101,
-				ItemName:   "legendary_sword",
-				Quantity:   1,
-				Value:      1000,
-				ShineLevel: domain.ShineLegendary,
+				ItemID:       101,
+				ItemName:     "legendary_sword",
+				Quantity:     1,
+				Value:        1000,
+				QualityLevel: domain.QualityLegendary,
 			},
 		}
 
 		// Expectations
-		mockNaming.On("GetDisplayName", "legendary_sword", domain.ShineLegendary).Return("Legendary Sword")
-		mockNaming.On("GetDisplayName", "lootbox_tier1", domain.ShineLevel("")).Return("Lootbox Tier 1")
+		mockNaming.On("GetDisplayName", "legendary_sword", domain.QualityLegendary).Return("Legendary Sword")
+		mockNaming.On("GetDisplayName", "lootbox_tier1", domain.QualityLevel("")).Return("Lootbox Tier 1")
 
 		// Expect stats service to be called with EventLootboxJackpot
 		mockStats.On("RecordUserEvent",
@@ -168,17 +168,17 @@ func TestProcessLootboxDrops_JackpotEvents(t *testing.T) {
 		// Prepare drops
 		drops := []lootbox.DroppedItem{
 			{
-				ItemID:     102,
-				ItemName:   "epic_shield",
-				Quantity:   1,
-				Value:      500,
-				ShineLevel: domain.ShineEpic,
+				ItemID:       102,
+				ItemName:     "epic_shield",
+				Quantity:     1,
+				Value:        500,
+				QualityLevel: domain.QualityEpic,
 			},
 		}
 
 		// Expectations
-		mockNaming.On("GetDisplayName", "epic_shield", domain.ShineEpic).Return("Epic Shield")
-		mockNaming.On("GetDisplayName", "lootbox_tier1", domain.ShineLevel("")).Return("Lootbox Tier 1")
+		mockNaming.On("GetDisplayName", "epic_shield", domain.QualityEpic).Return("Epic Shield")
+		mockNaming.On("GetDisplayName", "lootbox_tier1", domain.QualityLevel("")).Return("Lootbox Tier 1")
 
 		// Expect stats service to be called with EventLootboxBigWin
 		mockStats.On("RecordUserEvent",
@@ -212,17 +212,17 @@ func TestProcessLootboxDrops_JackpotEvents(t *testing.T) {
 		// Prepare drops
 		drops := []lootbox.DroppedItem{
 			{
-				ItemID:     103,
-				ItemName:   "common_rock",
-				Quantity:   1,
-				Value:      5,
-				ShineLevel: domain.ShineCommon,
+				ItemID:       103,
+				ItemName:     "common_rock",
+				Quantity:     1,
+				Value:        5,
+				QualityLevel: domain.QualityCommon,
 			},
 		}
 
 		// Expectations
-		mockNaming.On("GetDisplayName", "common_rock", domain.ShineCommon).Return("Rock")
-		mockNaming.On("GetDisplayName", "lootbox_tier1", domain.ShineLevel("")).Return("Lootbox Tier 1")
+		mockNaming.On("GetDisplayName", "common_rock", domain.QualityCommon).Return("Rock")
+		mockNaming.On("GetDisplayName", "lootbox_tier1", domain.QualityLevel("")).Return("Lootbox Tier 1")
 
 		// Execute
 		msg, err := svc.processLootboxDrops(ctx, user, inventory, lootboxItem, 1, drops)
@@ -257,11 +257,11 @@ func TestProcessLootboxDrops_BulkFeedbackThreshold(t *testing.T) {
 	createCommonDrops := func() []lootbox.DroppedItem {
 		return []lootbox.DroppedItem{
 			{
-				ItemID:     103,
-				ItemName:   "common_rock",
-				Quantity:   1,
-				Value:      5,
-				ShineLevel: domain.ShineCommon,
+				ItemID:       103,
+				ItemName:     "common_rock",
+				Quantity:     1,
+				Value:        5,
+				QualityLevel: domain.QualityCommon,
 			},
 		}
 	}
@@ -274,8 +274,8 @@ func TestProcessLootboxDrops_BulkFeedbackThreshold(t *testing.T) {
 		svc := NewService(mockRepo, mockRepo, mockStats, nil, nil, mockNaming, nil, nil, nil, false).(*service)
 		inventory := &domain.Inventory{Slots: []domain.InventorySlot{}}
 
-		mockNaming.On("GetDisplayName", "common_rock", domain.ShineCommon).Return("Rock")
-		mockNaming.On("GetDisplayName", "lootbox_tier1", domain.ShineLevel("")).Return("Lootbox Tier 1")
+		mockNaming.On("GetDisplayName", "common_rock", domain.QualityCommon).Return("Rock")
+		mockNaming.On("GetDisplayName", "lootbox_tier1", domain.QualityLevel("")).Return("Lootbox Tier 1")
 
 		msg, err := svc.processLootboxDrops(ctx, user, inventory, lootboxItem, 4, createCommonDrops())
 
@@ -291,8 +291,8 @@ func TestProcessLootboxDrops_BulkFeedbackThreshold(t *testing.T) {
 		svc := NewService(mockRepo, mockRepo, mockStats, nil, nil, mockNaming, nil, nil, nil, false).(*service)
 		inventory := &domain.Inventory{Slots: []domain.InventorySlot{}}
 
-		mockNaming.On("GetDisplayName", "common_rock", domain.ShineCommon).Return("Rock")
-		mockNaming.On("GetDisplayName", "lootbox_tier1", domain.ShineLevel("")).Return("Lootbox Tier 1")
+		mockNaming.On("GetDisplayName", "common_rock", domain.QualityCommon).Return("Rock")
+		mockNaming.On("GetDisplayName", "lootbox_tier1", domain.QualityLevel("")).Return("Lootbox Tier 1")
 
 		msg, err := svc.processLootboxDrops(ctx, user, inventory, lootboxItem, 5, createCommonDrops())
 
@@ -308,8 +308,8 @@ func TestProcessLootboxDrops_BulkFeedbackThreshold(t *testing.T) {
 		svc := NewService(mockRepo, mockRepo, mockStats, nil, nil, mockNaming, nil, nil, nil, false).(*service)
 		inventory := &domain.Inventory{Slots: []domain.InventorySlot{}}
 
-		mockNaming.On("GetDisplayName", "common_rock", domain.ShineCommon).Return("Rock")
-		mockNaming.On("GetDisplayName", "lootbox_tier1", domain.ShineLevel("")).Return("Lootbox Tier 1")
+		mockNaming.On("GetDisplayName", "common_rock", domain.QualityCommon).Return("Rock")
+		mockNaming.On("GetDisplayName", "lootbox_tier1", domain.QualityLevel("")).Return("Lootbox Tier 1")
 
 		msg, err := svc.processLootboxDrops(ctx, user, inventory, lootboxItem, 6, createCommonDrops())
 
@@ -327,16 +327,16 @@ func TestProcessLootboxDrops_BulkFeedbackThreshold(t *testing.T) {
 
 		legendaryDrops := []lootbox.DroppedItem{
 			{
-				ItemID:     101,
-				ItemName:   "legendary_sword",
-				Quantity:   1,
-				Value:      1000,
-				ShineLevel: domain.ShineLegendary,
+				ItemID:       101,
+				ItemName:     "legendary_sword",
+				Quantity:     1,
+				Value:        1000,
+				QualityLevel: domain.QualityLegendary,
 			},
 		}
 
-		mockNaming.On("GetDisplayName", "legendary_sword", domain.ShineLegendary).Return("Legendary Sword")
-		mockNaming.On("GetDisplayName", "lootbox_tier1", domain.ShineLevel("")).Return("Lootbox Tier 1")
+		mockNaming.On("GetDisplayName", "legendary_sword", domain.QualityLegendary).Return("Legendary Sword")
+		mockNaming.On("GetDisplayName", "lootbox_tier1", domain.QualityLevel("")).Return("Lootbox Tier 1")
 		mockStats.On("RecordUserEvent", mock.Anything, user.ID, domain.EventLootboxJackpot, mock.Anything).Return(nil)
 
 		msg, err := svc.processLootboxDrops(ctx, user, inventory, lootboxItem, 10, legendaryDrops)
@@ -356,16 +356,16 @@ func TestProcessLootboxDrops_BulkFeedbackThreshold(t *testing.T) {
 
 		epicDrops := []lootbox.DroppedItem{
 			{
-				ItemID:     102,
-				ItemName:   "epic_shield",
-				Quantity:   1,
-				Value:      500,
-				ShineLevel: domain.ShineEpic,
+				ItemID:       102,
+				ItemName:     "epic_shield",
+				Quantity:     1,
+				Value:        500,
+				QualityLevel: domain.QualityEpic,
 			},
 		}
 
-		mockNaming.On("GetDisplayName", "epic_shield", domain.ShineEpic).Return("Epic Shield")
-		mockNaming.On("GetDisplayName", "lootbox_tier1", domain.ShineLevel("")).Return("Lootbox Tier 1")
+		mockNaming.On("GetDisplayName", "epic_shield", domain.QualityEpic).Return("Epic Shield")
+		mockNaming.On("GetDisplayName", "lootbox_tier1", domain.QualityLevel("")).Return("Lootbox Tier 1")
 		mockStats.On("RecordUserEvent", mock.Anything, user.ID, domain.EventLootboxBigWin, mock.Anything).Return(nil)
 
 		msg, err := svc.processLootboxDrops(ctx, user, inventory, lootboxItem, 10, epicDrops)

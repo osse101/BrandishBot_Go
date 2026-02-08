@@ -151,67 +151,67 @@ func TestFindSlot_RealWorldScenarios(t *testing.T) {
 	})
 }
 
-// TestFindSlotWithShine verifies shine-aware slot lookup
-func TestFindSlotWithShine(t *testing.T) {
-	t.Run("finds slot with matching ItemID and ShineLevel", func(t *testing.T) {
+// TestFindSlotWithQuality verifies quality-aware slot lookup
+func TestFindSlotWithQuality(t *testing.T) {
+	t.Run("finds slot with matching ItemID and QualityLevel", func(t *testing.T) {
 		inventory := &domain.Inventory{
 			Slots: []domain.InventorySlot{
-				{ItemID: 1, Quantity: 5, ShineLevel: domain.ShineCommon},
-				{ItemID: 1, Quantity: 10, ShineLevel: domain.ShineLegendary},
-				{ItemID: 2, Quantity: 3, ShineLevel: domain.ShineRare},
+				{ItemID: 1, Quantity: 5, QualityLevel: domain.QualityCommon},
+				{ItemID: 1, Quantity: 10, QualityLevel: domain.QualityLegendary},
+				{ItemID: 2, Quantity: 3, QualityLevel: domain.QualityRare},
 			},
 		}
 
-		index, quantity := FindSlotWithShine(inventory, 1, domain.ShineLegendary)
+		index, quantity := FindSlotWithQuality(inventory, 1, domain.QualityLegendary)
 
 		assert.Equal(t, 1, index, "Should find legendary slot")
 		assert.Equal(t, 10, quantity, "Should return correct quantity")
 	})
 
-	t.Run("returns -1 when ItemID matches but ShineLevel doesn't", func(t *testing.T) {
+	t.Run("returns -1 when ItemID matches but QualityLevel doesn't", func(t *testing.T) {
 		inventory := &domain.Inventory{
 			Slots: []domain.InventorySlot{
-				{ItemID: 1, Quantity: 5, ShineLevel: domain.ShineCommon},
+				{ItemID: 1, Quantity: 5, QualityLevel: domain.QualityCommon},
 			},
 		}
 
-		index, quantity := FindSlotWithShine(inventory, 1, domain.ShineLegendary)
+		index, quantity := FindSlotWithQuality(inventory, 1, domain.QualityLegendary)
 
-		assert.Equal(t, -1, index, "Should not find slot with different shine")
+		assert.Equal(t, -1, index, "Should not find slot with different quality")
 		assert.Equal(t, 0, quantity)
 	})
 
 	t.Run("returns -1 when ItemID doesn't match", func(t *testing.T) {
 		inventory := &domain.Inventory{
 			Slots: []domain.InventorySlot{
-				{ItemID: 1, Quantity: 5, ShineLevel: domain.ShineCommon},
+				{ItemID: 1, Quantity: 5, QualityLevel: domain.QualityCommon},
 			},
 		}
 
-		index, quantity := FindSlotWithShine(inventory, 2, domain.ShineCommon)
+		index, quantity := FindSlotWithQuality(inventory, 2, domain.QualityCommon)
 
 		assert.Equal(t, -1, index, "Should not find slot with different ItemID")
 		assert.Equal(t, 0, quantity)
 	})
 }
 
-// TestBuildSlotMap verifies slot map creation with shine awareness
+// TestBuildSlotMap verifies slot map creation with quality awareness
 func TestBuildSlotMap(t *testing.T) {
-	t.Run("creates correct map for inventory with shine levels", func(t *testing.T) {
+	t.Run("creates correct map for inventory with quality levels", func(t *testing.T) {
 		inventory := &domain.Inventory{
 			Slots: []domain.InventorySlot{
-				{ItemID: 10, Quantity: 5, ShineLevel: domain.ShineCommon},
-				{ItemID: 10, Quantity: 3, ShineLevel: domain.ShineLegendary},
-				{ItemID: 20, Quantity: 10, ShineLevel: domain.ShineRare},
+				{ItemID: 10, Quantity: 5, QualityLevel: domain.QualityCommon},
+				{ItemID: 10, Quantity: 3, QualityLevel: domain.QualityLegendary},
+				{ItemID: 20, Quantity: 10, QualityLevel: domain.QualityRare},
 			},
 		}
 
 		slotMap := BuildSlotMap(inventory)
 
-		assert.Equal(t, 3, len(slotMap), "Should have 3 entries (different shine levels are separate)")
-		assert.Equal(t, 0, slotMap[SlotKey{ItemID: 10, ShineLevel: domain.ShineCommon}])
-		assert.Equal(t, 1, slotMap[SlotKey{ItemID: 10, ShineLevel: domain.ShineLegendary}])
-		assert.Equal(t, 2, slotMap[SlotKey{ItemID: 20, ShineLevel: domain.ShineRare}])
+		assert.Equal(t, 3, len(slotMap), "Should have 3 entries (different quality levels are separate)")
+		assert.Equal(t, 0, slotMap[SlotKey{ItemID: 10, QualityLevel: domain.QualityCommon}])
+		assert.Equal(t, 1, slotMap[SlotKey{ItemID: 10, QualityLevel: domain.QualityLegendary}])
+		assert.Equal(t, 2, slotMap[SlotKey{ItemID: 20, QualityLevel: domain.QualityRare}])
 	})
 
 	t.Run("handles empty inventory", func(t *testing.T) {
@@ -225,7 +225,7 @@ func TestBuildSlotMap(t *testing.T) {
 	})
 }
 
-// TestAddItemsToInventory verifies the hybrid lookup strategy with shine awareness
+// TestAddItemsToInventory verifies the hybrid lookup strategy with quality awareness
 func TestAddItemsToInventory(t *testing.T) {
 	t.Run("adds new items to empty inventory", func(t *testing.T) {
 		inventory := &domain.Inventory{
@@ -233,8 +233,8 @@ func TestAddItemsToInventory(t *testing.T) {
 		}
 
 		items := []domain.InventorySlot{
-			{ItemID: 10, Quantity: 5, ShineLevel: domain.ShineCommon},
-			{ItemID: 20, Quantity: 10, ShineLevel: domain.ShineRare},
+			{ItemID: 10, Quantity: 5, QualityLevel: domain.QualityCommon},
+			{ItemID: 20, Quantity: 10, QualityLevel: domain.QualityRare},
 		}
 
 		AddItemsToInventory(inventory, items, nil)
@@ -242,21 +242,21 @@ func TestAddItemsToInventory(t *testing.T) {
 		assert.Equal(t, 2, len(inventory.Slots))
 		assert.Equal(t, 10, inventory.Slots[0].ItemID)
 		assert.Equal(t, 5, inventory.Slots[0].Quantity)
-		assert.Equal(t, domain.ShineCommon, inventory.Slots[0].ShineLevel)
+		assert.Equal(t, domain.QualityCommon, inventory.Slots[0].QualityLevel)
 		assert.Equal(t, 20, inventory.Slots[1].ItemID)
 		assert.Equal(t, 10, inventory.Slots[1].Quantity)
-		assert.Equal(t, domain.ShineRare, inventory.Slots[1].ShineLevel)
+		assert.Equal(t, domain.QualityRare, inventory.Slots[1].QualityLevel)
 	})
 
-	t.Run("separates items by shine level (prevents corruption)", func(t *testing.T) {
+	t.Run("separates items by quality level (prevents corruption)", func(t *testing.T) {
 		inventory := &domain.Inventory{
 			Slots: []domain.InventorySlot{
-				{ItemID: 10, Quantity: 5, ShineLevel: domain.ShineLegendary},
+				{ItemID: 10, Quantity: 5, QualityLevel: domain.QualityLegendary},
 			},
 		}
 
 		items := []domain.InventorySlot{
-			{ItemID: 10, Quantity: 3, ShineLevel: domain.ShineCommon},
+			{ItemID: 10, Quantity: 3, QualityLevel: domain.QualityCommon},
 		}
 
 		AddItemsToInventory(inventory, items, nil)
@@ -264,43 +264,43 @@ func TestAddItemsToInventory(t *testing.T) {
 		// Should create separate slots, NOT stack into legendary
 		assert.Equal(t, 2, len(inventory.Slots), "Should have 2 separate slots")
 		assert.Equal(t, 5, inventory.Slots[0].Quantity, "Legendary slot unchanged")
-		assert.Equal(t, domain.ShineLegendary, inventory.Slots[0].ShineLevel)
+		assert.Equal(t, domain.QualityLegendary, inventory.Slots[0].QualityLevel)
 		assert.Equal(t, 3, inventory.Slots[1].Quantity, "Common slot added")
-		assert.Equal(t, domain.ShineCommon, inventory.Slots[1].ShineLevel)
+		assert.Equal(t, domain.QualityCommon, inventory.Slots[1].QualityLevel)
 	})
 
-	t.Run("stacks items with matching ItemID and ShineLevel", func(t *testing.T) {
+	t.Run("stacks items with matching ItemID and QualityLevel", func(t *testing.T) {
 		inventory := &domain.Inventory{
 			Slots: []domain.InventorySlot{
-				{ItemID: 10, Quantity: 5, ShineLevel: domain.ShineRare},
+				{ItemID: 10, Quantity: 5, QualityLevel: domain.QualityRare},
 			},
 		}
 
 		items := []domain.InventorySlot{
-			{ItemID: 10, Quantity: 3, ShineLevel: domain.ShineRare},
+			{ItemID: 10, Quantity: 3, QualityLevel: domain.QualityRare},
 		}
 
 		AddItemsToInventory(inventory, items, nil)
 
-		// Should stack since both ItemID and ShineLevel match
+		// Should stack since both ItemID and QualityLevel match
 		assert.Equal(t, 1, len(inventory.Slots), "Should have 1 slot")
 		assert.Equal(t, 8, inventory.Slots[0].Quantity, "Should stack: 5 + 3")
-		assert.Equal(t, domain.ShineRare, inventory.Slots[0].ShineLevel)
+		assert.Equal(t, domain.QualityRare, inventory.Slots[0].QualityLevel)
 	})
 
 	t.Run("adds to existing items (linear scan path)", func(t *testing.T) {
 		inventory := &domain.Inventory{
 			Slots: []domain.InventorySlot{
-				{ItemID: 10, Quantity: 5, ShineLevel: domain.ShineCommon},
-				{ItemID: 20, Quantity: 10, ShineLevel: domain.ShineCommon},
+				{ItemID: 10, Quantity: 5, QualityLevel: domain.QualityCommon},
+				{ItemID: 20, Quantity: 10, QualityLevel: domain.QualityCommon},
 			},
 		}
 
 		// Only adding 3 items, should use linear scan (< threshold of 10)
 		items := []domain.InventorySlot{
-			{ItemID: 10, Quantity: 3, ShineLevel: domain.ShineCommon},
-			{ItemID: 30, Quantity: 7, ShineLevel: domain.ShineCommon},
-			{ItemID: 20, Quantity: 2, ShineLevel: domain.ShineCommon},
+			{ItemID: 10, Quantity: 3, QualityLevel: domain.QualityCommon},
+			{ItemID: 30, Quantity: 7, QualityLevel: domain.QualityCommon},
+			{ItemID: 20, Quantity: 2, QualityLevel: domain.QualityCommon},
 		}
 
 		AddItemsToInventory(inventory, items, nil)
@@ -314,15 +314,15 @@ func TestAddItemsToInventory(t *testing.T) {
 	t.Run("adds to existing items (map-based path)", func(t *testing.T) {
 		inventory := &domain.Inventory{
 			Slots: []domain.InventorySlot{
-				{ItemID: 10, Quantity: 5, ShineLevel: domain.ShineCommon},
-				{ItemID: 20, Quantity: 10, ShineLevel: domain.ShineCommon},
+				{ItemID: 10, Quantity: 5, QualityLevel: domain.QualityCommon},
+				{ItemID: 20, Quantity: 10, QualityLevel: domain.QualityCommon},
 			},
 		}
 
 		// Adding 12 items, should use map-based lookup (>= threshold of 10)
 		items := make([]domain.InventorySlot, 12)
 		for i := 0; i < 12; i++ {
-			items[i] = domain.InventorySlot{ItemID: 10 + i*10, Quantity: i + 1, ShineLevel: domain.ShineCommon}
+			items[i] = domain.InventorySlot{ItemID: 10 + i*10, Quantity: i + 1, QualityLevel: domain.QualityCommon}
 		}
 
 		AddItemsToInventory(inventory, items, nil)
@@ -337,13 +337,13 @@ func TestAddItemsToInventory(t *testing.T) {
 	t.Run("boundary test: exactly 9 items uses linear scan", func(t *testing.T) {
 		inventory := &domain.Inventory{
 			Slots: []domain.InventorySlot{
-				{ItemID: 1, Quantity: 100, ShineLevel: domain.ShineCommon},
+				{ItemID: 1, Quantity: 100, QualityLevel: domain.QualityCommon},
 			},
 		}
 
 		items := make([]domain.InventorySlot, 9)
 		for i := 0; i < 9; i++ {
-			items[i] = domain.InventorySlot{ItemID: i + 10, Quantity: 1, ShineLevel: domain.ShineCommon}
+			items[i] = domain.InventorySlot{ItemID: i + 10, Quantity: 1, QualityLevel: domain.QualityCommon}
 		}
 
 		AddItemsToInventory(inventory, items, nil)
@@ -354,13 +354,13 @@ func TestAddItemsToInventory(t *testing.T) {
 	t.Run("boundary test: exactly 10 items uses map", func(t *testing.T) {
 		inventory := &domain.Inventory{
 			Slots: []domain.InventorySlot{
-				{ItemID: 1, Quantity: 100, ShineLevel: domain.ShineCommon},
+				{ItemID: 1, Quantity: 100, QualityLevel: domain.QualityCommon},
 			},
 		}
 
 		items := make([]domain.InventorySlot, 10)
 		for i := 0; i < 10; i++ {
-			items[i] = domain.InventorySlot{ItemID: i + 10, Quantity: 1, ShineLevel: domain.ShineCommon}
+			items[i] = domain.InventorySlot{ItemID: i + 10, Quantity: 1, QualityLevel: domain.QualityCommon}
 		}
 
 		AddItemsToInventory(inventory, items, nil)
@@ -368,18 +368,18 @@ func TestAddItemsToInventory(t *testing.T) {
 		assert.Equal(t, 11, len(inventory.Slots)) // 1 existing + 10 new
 	})
 
-	t.Run("handles duplicate item IDs with same shine", func(t *testing.T) {
+	t.Run("handles duplicate item IDs with same quality", func(t *testing.T) {
 		inventory := &domain.Inventory{
 			Slots: []domain.InventorySlot{
-				{ItemID: 10, Quantity: 5, ShineLevel: domain.ShineCommon},
+				{ItemID: 10, Quantity: 5, QualityLevel: domain.QualityCommon},
 			},
 		}
 
-		// Adding same item ID and shine multiple times
+		// Adding same item ID and quality multiple times
 		items := []domain.InventorySlot{
-			{ItemID: 10, Quantity: 3, ShineLevel: domain.ShineCommon},
-			{ItemID: 10, Quantity: 2, ShineLevel: domain.ShineCommon},
-			{ItemID: 10, Quantity: 1, ShineLevel: domain.ShineCommon},
+			{ItemID: 10, Quantity: 3, QualityLevel: domain.QualityCommon},
+			{ItemID: 10, Quantity: 2, QualityLevel: domain.QualityCommon},
+			{ItemID: 10, Quantity: 1, QualityLevel: domain.QualityCommon},
 		}
 
 		AddItemsToInventory(inventory, items, nil)
@@ -389,17 +389,17 @@ func TestAddItemsToInventory(t *testing.T) {
 		assert.Equal(t, 11, inventory.Slots[0].Quantity) // 5 + 3 + 2 + 1
 	})
 
-	t.Run("handles duplicate item IDs with different shines", func(t *testing.T) {
+	t.Run("handles duplicate item IDs with different qualities", func(t *testing.T) {
 		inventory := &domain.Inventory{
 			Slots: []domain.InventorySlot{
-				{ItemID: 10, Quantity: 5, ShineLevel: domain.ShineCommon},
+				{ItemID: 10, Quantity: 5, QualityLevel: domain.QualityCommon},
 			},
 		}
 
-		// Adding same item ID but different shines - should create separate slots
+		// Adding same item ID but different qualities - should create separate slots
 		items := []domain.InventorySlot{
-			{ItemID: 10, Quantity: 3, ShineLevel: domain.ShineCommon},
-			{ItemID: 10, Quantity: 2, ShineLevel: domain.ShineLegendary},
+			{ItemID: 10, Quantity: 3, QualityLevel: domain.QualityCommon},
+			{ItemID: 10, Quantity: 2, QualityLevel: domain.QualityLegendary},
 		}
 
 		AddItemsToInventory(inventory, items, nil)
@@ -413,7 +413,7 @@ func TestAddItemsToInventory(t *testing.T) {
 	t.Run("handles empty items list", func(t *testing.T) {
 		inventory := &domain.Inventory{
 			Slots: []domain.InventorySlot{
-				{ItemID: 10, Quantity: 5, ShineLevel: domain.ShineCommon},
+				{ItemID: 10, Quantity: 5, QualityLevel: domain.QualityCommon},
 			},
 		}
 
@@ -428,8 +428,8 @@ func TestAddItemsToInventory(t *testing.T) {
 	t.Run("uses provided slot map when given", func(t *testing.T) {
 		inventory := &domain.Inventory{
 			Slots: []domain.InventorySlot{
-				{ItemID: 10, Quantity: 5, ShineLevel: domain.ShineCommon},
-				{ItemID: 20, Quantity: 10, ShineLevel: domain.ShineCommon},
+				{ItemID: 10, Quantity: 5, QualityLevel: domain.QualityCommon},
+				{ItemID: 20, Quantity: 10, QualityLevel: domain.QualityCommon},
 			},
 		}
 
@@ -438,7 +438,7 @@ func TestAddItemsToInventory(t *testing.T) {
 		// Add 12 items to trigger map-based path (>= 10)
 		items := make([]domain.InventorySlot, 12)
 		for i := 0; i < 12; i++ {
-			items[i] = domain.InventorySlot{ItemID: (i + 1) * 10, Quantity: i + 1, ShineLevel: domain.ShineCommon}
+			items[i] = domain.InventorySlot{ItemID: (i + 1) * 10, Quantity: i + 1, QualityLevel: domain.QualityCommon}
 		}
 
 		AddItemsToInventory(inventory, items, slotMap)
@@ -449,8 +449,8 @@ func TestAddItemsToInventory(t *testing.T) {
 		// Rest should be added
 		assert.Equal(t, 12, len(inventory.Slots))
 		// Verify map was updated with new items
-		assert.Equal(t, 2, slotMap[SlotKey{ItemID: 30, ShineLevel: domain.ShineCommon}])   // Third item added at index 2
-		assert.Equal(t, 11, slotMap[SlotKey{ItemID: 120, ShineLevel: domain.ShineCommon}]) // Last item added at index 11
+		assert.Equal(t, 2, slotMap[SlotKey{ItemID: 30, QualityLevel: domain.QualityCommon}])   // Third item added at index 2
+		assert.Equal(t, 11, slotMap[SlotKey{ItemID: 120, QualityLevel: domain.QualityCommon}]) // Last item added at index 11
 	})
 }
 
@@ -461,16 +461,16 @@ func BenchmarkAddItemsLinearScan(b *testing.B) {
 		Slots: make([]domain.InventorySlot, 1000),
 	}
 	for i := 0; i < 1000; i++ {
-		inventory.Slots[i] = domain.InventorySlot{ItemID: i, Quantity: 10, ShineLevel: domain.ShineCommon}
+		inventory.Slots[i] = domain.InventorySlot{ItemID: i, Quantity: 10, QualityLevel: domain.QualityCommon}
 	}
 
 	// Add 5 items (small M, below threshold)
 	items := []domain.InventorySlot{
-		{ItemID: 0, Quantity: 1, ShineLevel: domain.ShineCommon},
-		{ItemID: 1, Quantity: 1, ShineLevel: domain.ShineCommon},
-		{ItemID: 2, Quantity: 1, ShineLevel: domain.ShineCommon},
-		{ItemID: 3, Quantity: 1, ShineLevel: domain.ShineCommon},
-		{ItemID: 4, Quantity: 1, ShineLevel: domain.ShineCommon},
+		{ItemID: 0, Quantity: 1, QualityLevel: domain.QualityCommon},
+		{ItemID: 1, Quantity: 1, QualityLevel: domain.QualityCommon},
+		{ItemID: 2, Quantity: 1, QualityLevel: domain.QualityCommon},
+		{ItemID: 3, Quantity: 1, QualityLevel: domain.QualityCommon},
+		{ItemID: 4, Quantity: 1, QualityLevel: domain.QualityCommon},
 	}
 
 	b.ResetTimer()
@@ -491,13 +491,13 @@ func BenchmarkAddItemsMapLookup(b *testing.B) {
 		Slots: make([]domain.InventorySlot, 1000),
 	}
 	for i := 0; i < 1000; i++ {
-		inventory.Slots[i] = domain.InventorySlot{ItemID: i, Quantity: 10, ShineLevel: domain.ShineCommon}
+		inventory.Slots[i] = domain.InventorySlot{ItemID: i, Quantity: 10, QualityLevel: domain.QualityCommon}
 	}
 
 	// Add 50 items (large M, above threshold)
 	items := make([]domain.InventorySlot, 50)
 	for i := 0; i < 50; i++ {
-		items[i] = domain.InventorySlot{ItemID: i, Quantity: 1, ShineLevel: domain.ShineCommon}
+		items[i] = domain.InventorySlot{ItemID: i, Quantity: 1, QualityLevel: domain.QualityCommon}
 	}
 
 	b.ResetTimer()
@@ -518,13 +518,13 @@ func BenchmarkAddItemsWithPrebuiltMap(b *testing.B) {
 		Slots: make([]domain.InventorySlot, 1000),
 	}
 	for i := 0; i < 1000; i++ {
-		inventory.Slots[i] = domain.InventorySlot{ItemID: i, Quantity: 10, ShineLevel: domain.ShineCommon}
+		inventory.Slots[i] = domain.InventorySlot{ItemID: i, Quantity: 10, QualityLevel: domain.QualityCommon}
 	}
 
 	// Add 50 items (large M)
 	items := make([]domain.InventorySlot, 50)
 	for i := 0; i < 50; i++ {
-		items[i] = domain.InventorySlot{ItemID: i, Quantity: 1, ShineLevel: domain.ShineCommon}
+		items[i] = domain.InventorySlot{ItemID: i, Quantity: 1, QualityLevel: domain.QualityCommon}
 	}
 
 	b.ResetTimer()

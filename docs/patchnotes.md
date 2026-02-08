@@ -10,7 +10,7 @@
 
 ## Gameplay Updates
 *   **Lootboxes**: Now feature rarity levels—get better loot!
-*   **Weapons**: All weapons can now have "Shine" visual effects.
+*   **Weapons**: All weapons can now have "Quality" visual effects.
 *   **Progression**: Reduced the cost of unlock nodes and balanced Job XP gain.
 *   **Voting**: New users are automatically registered when voting. The previous vote winner is now displayed.
 

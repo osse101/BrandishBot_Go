@@ -23,7 +23,7 @@ const (
 )
 
 // grantSearchReward adds lootbox to inventory within a transaction
-func (s *service) grantSearchReward(ctx context.Context, user *domain.User, quantity int, shineLevel domain.ShineLevel) error {
+func (s *service) grantSearchReward(ctx context.Context, user *domain.User, quantity int, qualityLevel domain.QualityLevel) error {
 	log := logger.FromContext(ctx)
 
 	item, err := s.getItemByNameCached(ctx, domain.ItemLootbox0)
@@ -37,23 +37,23 @@ func (s *service) grantSearchReward(ctx context.Context, user *domain.User, quan
 	}
 
 	return s.withTx(ctx, func(tx repository.UserTx) error {
-		return s.addItemToTx(ctx, tx, user.ID, item.ID, quantity, shineLevel)
+		return s.addItemToTx(ctx, tx, user.ID, item.ID, quantity, qualityLevel)
 	})
 }
 
-var searchShineLevels = []domain.ShineLevel{
-	domain.ShineCursed,    // 0
-	domain.ShineJunk,      // 1
-	domain.ShinePoor,      // 2
-	domain.ShineCommon,    // 3
-	domain.ShineUncommon,  // 4
-	domain.ShineRare,      // 5
-	domain.ShineEpic,      // 6
-	domain.ShineLegendary, // 7
+var searchQualityLevels = []domain.QualityLevel{
+	domain.QualityCursed,    // 0
+	domain.QualityJunk,      // 1
+	domain.QualityPoor,      // 2
+	domain.QualityCommon,    // 3
+	domain.QualityUncommon,  // 4
+	domain.QualityRare,      // 5
+	domain.QualityEpic,      // 6
+	domain.QualityLegendary, // 7
 }
 
-// calculateSearchShine determines the shine level for search results based on a point system
-func (s *service) calculateSearchShine(isCritical bool, params searchParams) domain.ShineLevel {
+// calculateSearchQuality determines the quality level for search results based on a point system
+func (s *service) calculateSearchQuality(isCritical bool, params searchParams) domain.QualityLevel {
 	// 1. Determine base index based on daily count (current count includes the one we just did)
 	// Bracket mapping: 1=uncommon, 2-5=common, 6-9=poor, 10-14=junk, 15+=cursed
 	baseIndex := 0
@@ -82,21 +82,21 @@ func (s *service) calculateSearchShine(isCritical bool, params searchParams) dom
 
 	// 3. Calculate final index and clamp
 	finalIndex := baseIndex + points
-	if finalIndex >= len(searchShineLevels) {
-		finalIndex = len(searchShineLevels) - 1
+	if finalIndex >= len(searchQualityLevels) {
+		finalIndex = len(searchQualityLevels) - 1
 	}
 	if finalIndex < 0 {
 		finalIndex = 0
 	}
 
-	return searchShineLevels[finalIndex]
+	return searchQualityLevels[finalIndex]
 }
 
 // formatSearchSuccessMessage builds the success message with appropriate formatting
 func (s *service) formatSearchSuccessMessage(ctx context.Context, item *domain.Item, quantity int, isCritical bool, params searchParams) string {
 	log := logger.FromContext(ctx)
 
-	actualShine := s.calculateSearchShine(isCritical, params)
+	actualQuality := s.calculateSearchQuality(isCritical, params)
 
 	// User Request: "Search should use the item's public name"
 	displayName := cases.Title(language.English).String(item.PublicName)
@@ -104,10 +104,10 @@ func (s *service) formatSearchSuccessMessage(ctx context.Context, item *domain.I
 
 	if isCritical {
 		resultMessage = fmt.Sprintf("%s You found %dx%s", domain.MsgSearchCriticalSuccess, quantity, displayName)
-		log.Info("Search CRITICAL success", "item", item.InternalName, "quantity", quantity, "shine", actualShine)
+		log.Info("Search CRITICAL success", "item", item.InternalName, "quantity", quantity, "quality", actualQuality)
 	} else {
 		resultMessage = fmt.Sprintf("You have found %dx%s", quantity, displayName)
-		log.Info("Search successful - lootbox found", "item", item.InternalName, "shine", actualShine)
+		log.Info("Search successful - lootbox found", "item", item.InternalName, "quality", actualQuality)
 	}
 
 	// Show streak only on the first search of the day

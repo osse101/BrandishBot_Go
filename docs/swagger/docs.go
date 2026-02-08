@@ -3810,11 +3810,11 @@ const docTemplate = `{
                 "public_name": {
                     "type": "string"
                 },
+                "quality_level": {
+                    "type": "string"
+                },
                 "quantity": {
                     "type": "integer"
-                },
-                "shine_level": {
-                    "type": "string"
                 }
             }
         }

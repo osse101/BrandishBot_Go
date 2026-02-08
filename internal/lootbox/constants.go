@@ -1,39 +1,39 @@
 package lootbox
 
 // ============================================================================
-// Shine Rarity Thresholds
+// Quality Rarity Thresholds
 // ============================================================================
 
-// ShineLegendaryThreshold defines the maximum roll (<=1%) for LEGENDARY shine.
-const ShineLegendaryThreshold = 0.01
+// QualityLegendaryThreshold defines the maximum roll (<=1%) for LEGENDARY quality.
+const QualityLegendaryThreshold = 0.01
 
-// ShineEpicThreshold defines the maximum roll (<=5%) for EPIC shine.
-const ShineEpicThreshold = 0.05
+// QualityEpicThreshold defines the maximum roll (<=5%) for EPIC quality.
+const QualityEpicThreshold = 0.05
 
-// ShineRareThreshold defines the maximum roll (<=15%) for RARE shine.
-const ShineRareThreshold = 0.15
+// QualityRareThreshold defines the maximum roll (<=15%) for RARE quality.
+const QualityRareThreshold = 0.15
 
-// ShineUncommonThreshold defines the maximum roll (<=30%) for UNCOMMON shine.
-const ShineUncommonThreshold = 0.30
+// QualityUncommonThreshold defines the maximum roll (<=30%) for UNCOMMON quality.
+const QualityUncommonThreshold = 0.30
 
-// ShineCommonThreshold defines the maximum roll (<=70%) for COMMON shine.
+// QualityCommonThreshold defines the maximum roll (<=70%) for COMMON quality.
 // This is the largest bucket, making Common the most likely outcome.
-const ShineCommonThreshold = 0.70
+const QualityCommonThreshold = 0.70
 
-// ShinePoorThreshold defines the maximum roll (<=85%) for POOR shine.
-const ShinePoorThreshold = 0.85
+// QualityPoorThreshold defines the maximum roll (<=85%) for POOR quality.
+const QualityPoorThreshold = 0.85
 
-// ShineJunkThreshold defines the maximum roll (<=95%) for JUNK shine.
-const ShineJunkThreshold = 0.95
+// QualityJunkThreshold defines the maximum roll (<=95%) for JUNK quality.
+const QualityJunkThreshold = 0.95
 
 // ============================================================================
 // Drop Mechanics
 // ============================================================================
 
-// CriticalShineUpgradeChance is the probability (1%) that a dropped item will
-// have its shine level upgraded by one tier. This creates exciting "Lucky!"
+// CriticalQualityUpgradeChance is the probability (1%) that a dropped item will
+// have its quality level upgraded by one tier. This creates exciting "Lucky!"
 // moments where a common drop becomes uncommon, rare becomes epic, etc.
-const CriticalShineUpgradeChance = 0.01
+const CriticalQualityUpgradeChance = 0.01
 
 // GuaranteedDropThreshold defines the chance value (>=1.0) that ensures an
 // item will always drop from the loot table. Used to distinguish between

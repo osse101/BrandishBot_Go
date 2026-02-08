@@ -24,9 +24,9 @@ func (_m *MockLootboxService) EXPECT() *MockLootboxService_Expecter {
 	return &MockLootboxService_Expecter{mock: &_m.Mock}
 }
 
-// OpenLootbox provides a mock function with given fields: ctx, lootboxName, quantity, boxShine
-func (_m *MockLootboxService) OpenLootbox(ctx context.Context, lootboxName string, quantity int, boxShine domain.ShineLevel) ([]lootbox.DroppedItem, error) {
-	ret := _m.Called(ctx, lootboxName, quantity, boxShine)
+// OpenLootbox provides a mock function with given fields: ctx, lootboxName, quantity, boxQuality
+func (_m *MockLootboxService) OpenLootbox(ctx context.Context, lootboxName string, quantity int, boxQuality domain.QualityLevel) ([]lootbox.DroppedItem, error) {
+	ret := _m.Called(ctx, lootboxName, quantity, boxQuality)
 
 	if len(ret) == 0 {
 		panic("no return value specified for OpenLootbox")
@@ -34,19 +34,19 @@ func (_m *MockLootboxService) OpenLootbox(ctx context.Context, lootboxName strin
 
 	var r0 []lootbox.DroppedItem
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, int, domain.ShineLevel) ([]lootbox.DroppedItem, error)); ok {
-		return rf(ctx, lootboxName, quantity, boxShine)
+	if rf, ok := ret.Get(0).(func(context.Context, string, int, domain.QualityLevel) ([]lootbox.DroppedItem, error)); ok {
+		return rf(ctx, lootboxName, quantity, boxQuality)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, int, domain.ShineLevel) []lootbox.DroppedItem); ok {
-		r0 = rf(ctx, lootboxName, quantity, boxShine)
+	if rf, ok := ret.Get(0).(func(context.Context, string, int, domain.QualityLevel) []lootbox.DroppedItem); ok {
+		r0 = rf(ctx, lootboxName, quantity, boxQuality)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]lootbox.DroppedItem)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, int, domain.ShineLevel) error); ok {
-		r1 = rf(ctx, lootboxName, quantity, boxShine)
+	if rf, ok := ret.Get(1).(func(context.Context, string, int, domain.QualityLevel) error); ok {
+		r1 = rf(ctx, lootboxName, quantity, boxQuality)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -63,14 +63,14 @@ type MockLootboxService_OpenLootbox_Call struct {
 //   - ctx context.Context
 //   - lootboxName string
 //   - quantity int
-//   - boxShine domain.ShineLevel
-func (_e *MockLootboxService_Expecter) OpenLootbox(ctx interface{}, lootboxName interface{}, quantity interface{}, boxShine interface{}) *MockLootboxService_OpenLootbox_Call {
-	return &MockLootboxService_OpenLootbox_Call{Call: _e.mock.On("OpenLootbox", ctx, lootboxName, quantity, boxShine)}
+//   - boxQuality domain.QualityLevel
+func (_e *MockLootboxService_Expecter) OpenLootbox(ctx interface{}, lootboxName interface{}, quantity interface{}, boxQuality interface{}) *MockLootboxService_OpenLootbox_Call {
+	return &MockLootboxService_OpenLootbox_Call{Call: _e.mock.On("OpenLootbox", ctx, lootboxName, quantity, boxQuality)}
 }
 
-func (_c *MockLootboxService_OpenLootbox_Call) Run(run func(ctx context.Context, lootboxName string, quantity int, boxShine domain.ShineLevel)) *MockLootboxService_OpenLootbox_Call {
+func (_c *MockLootboxService_OpenLootbox_Call) Run(run func(ctx context.Context, lootboxName string, quantity int, boxQuality domain.QualityLevel)) *MockLootboxService_OpenLootbox_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(int), args[3].(domain.ShineLevel))
+		run(args[0].(context.Context), args[1].(string), args[2].(int), args[3].(domain.QualityLevel))
 	})
 	return _c
 }
@@ -80,7 +80,7 @@ func (_c *MockLootboxService_OpenLootbox_Call) Return(_a0 []lootbox.DroppedItem,
 	return _c
 }
 
-func (_c *MockLootboxService_OpenLootbox_Call) RunAndReturn(run func(context.Context, string, int, domain.ShineLevel) ([]lootbox.DroppedItem, error)) *MockLootboxService_OpenLootbox_Call {
+func (_c *MockLootboxService_OpenLootbox_Call) RunAndReturn(run func(context.Context, string, int, domain.QualityLevel) ([]lootbox.DroppedItem, error)) *MockLootboxService_OpenLootbox_Call {
 	_c.Call.Return(run)
 	return _c
 }

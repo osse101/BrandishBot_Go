@@ -21,7 +21,7 @@ func (m *MockNamingResolver) ResolvePublicName(publicName string) (string, bool)
 	return publicName, true
 }
 
-func (m *MockNamingResolver) GetDisplayName(internalName string, shineLevel domain.ShineLevel) string {
+func (m *MockNamingResolver) GetDisplayName(internalName string, qualityLevel domain.QualityLevel) string {
 	if name, ok := m.DisplayNames[internalName]; ok {
 		return name
 	}
@@ -549,7 +549,7 @@ func TestUseItem(t *testing.T) {
 	// Create a mock lootbox service
 	lootboxSvc := new(MockLootboxService)
 	drops := []lootbox.DroppedItem{
-		{ItemID: 4, ItemName: domain.ItemLootbox0, Quantity: 1, Value: 10, ShineLevel: domain.ShineCommon},
+		{ItemID: 4, ItemName: domain.ItemLootbox0, Quantity: 1, Value: 10, QualityLevel: domain.QualityCommon},
 	}
 	lootboxSvc.On("OpenLootbox", mock.Anything, domain.ItemLootbox1, 1, mock.Anything).Return(drops, nil)
 
@@ -829,7 +829,7 @@ func TestUseItem_Lootbox0(t *testing.T) {
 	// Create a mock lootbox service
 	lootboxSvc := new(MockLootboxService)
 	drops := []lootbox.DroppedItem{
-		{ItemID: 3, ItemName: domain.ItemMoney, Quantity: 5, Value: 5, ShineLevel: "COMMON"},
+		{ItemID: 3, ItemName: domain.ItemMoney, Quantity: 5, Value: 5, QualityLevel: "COMMON"},
 	}
 	lootboxSvc.On("OpenLootbox", mock.Anything, domain.ItemLootbox0, 1, mock.Anything).Return(drops, nil)
 
@@ -880,7 +880,7 @@ func TestUseItem_Lootbox2(t *testing.T) {
 	// Create a mock lootbox service
 	lootboxSvc := new(MockLootboxService)
 	drops := []lootbox.DroppedItem{
-		{ItemID: 1, ItemName: domain.ItemLootbox1, Quantity: 1, Value: 50, ShineLevel: "COMMON"},
+		{ItemID: 1, ItemName: domain.ItemLootbox1, Quantity: 1, Value: 50, QualityLevel: "COMMON"},
 	}
 	lootboxSvc.On("OpenLootbox", mock.Anything, domain.ItemLootbox2, 1, mock.Anything).Return(drops, nil)
 

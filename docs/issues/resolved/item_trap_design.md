@@ -23,7 +23,7 @@ The **Explosive Trap** is a tactical consumable that allows a player to booby-tr
 2. **Persistence**: A trap record is created in the database associating User A (setter) and User B (target).
 3. **Activation**: The trap remains dormant until User B sends any message in chat.
 4. **Trigger**:
-   - User B is timed out for **60 seconds** (scaled by shine).
+   - User B is timed out for **60 seconds** (scaled by quality).
    - A public message is sent to the channel: _"BOOM! [UserB] stepped on [UserA]'s trap!"_
    - The trap record is marked as completed/removed.
 
@@ -47,7 +47,7 @@ To prevent spam and encourage strategic timing, only one trap can be active on a
   - `id`: Primary Key
   - `setter_id`: User who placed the trap.
   - `target_id`: User who is trapped.
-  - `shine_level`: Determines timeout duration.
+  - `quality_level`: Determines timeout duration.
   - `placed_at`: Timestamp for stale trap cleanup.
   - `triggered_at`: Nullable, set when fired.
 - **Cleanup**: Considerations for a monthly maintenance task to remove very stale, untriggered traps.
@@ -68,12 +68,12 @@ To prevent spam and encourage strategic timing, only one trap can be active on a
 
 ## 4. Interactions
 
-### Shine Interaction
+### Quality Interaction
 
-Shine level modifies the severity of the explosion (timeout duration).
+Quality level modifies the severity of the explosion (timeout duration).
 
 - **Base Duration**: 60 seconds (Common).
-- **Scaling**: +/- 10 seconds per shine level.
+- **Scaling**: +/- 10 seconds per quality level.
 - **Example**:
   - _Junk_: 40s
   - _Common_: 60s
