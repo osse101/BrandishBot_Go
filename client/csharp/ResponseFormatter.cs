@@ -338,5 +338,13 @@ namespace BrandishBot.Client
 
             return string.Join(" | ", parts);
         }
+
+        /// <summary>
+        /// Format info response - just returns the description field
+        /// </summary>
+        public static string FormatInfo(InfoResponse info)
+        {
+            return info?.Description ?? "(no info available)";
+        }
     }
 }

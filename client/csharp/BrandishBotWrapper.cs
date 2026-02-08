@@ -242,7 +242,64 @@ public class CPHInline
         }
     }
 
-    #region User Management
+    #endregion
+
+    #region Info
+
+    /// <summary>
+    /// Get info about a feature or topic
+    /// Command: !info [name]
+    /// Uses: userType (from context for platform detection)
+    /// Backend automatically determines if name is a feature or topic
+    /// </summary>
+    public bool GetInfo()
+    {
+        EnsureInitialized();
+
+        // Get platform from context
+        if (!CPH.TryGetArg("userType", out string platform))
+        {
+            CPH.LogWarn("GetInfo: Missing userType");
+            return false;
+        }
+
+        string error = null;
+        string name = null;
+
+        // Parse arguments: !info [name]
+        // input0 = name (feature or topic)
+        GetInputString(0, "name", false, out name, ref error);
+
+        try
+        {
+            // Pass name as feature - backend will search topics too if feature not found
+            var result = client.GetInfo(platform, name, null).Result;
+            var formatted = ResponseFormatter.FormatInfo(result);
+            CPH.SetArgument("response", formatted);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            string message = GetErrorMessage(ex);
+            LogWarning("GetInfo", ex);
+
+            if (message.Contains("not found") || message.Contains("404"))
+            {
+                if (!string.IsNullOrEmpty(name))
+                    CPH.SetArgument("response", $"Info not found: {name}");
+                else
+                    CPH.SetArgument("response", "Info not available");
+            }
+            else
+            {
+                CPH.SetArgument("response", $"Error: {StripStatusCode(message)}");
+            }
+            return true;
+        }
+    }
+
+    #endregion
+
 
     /// <summary>
     /// Register a new user

@@ -415,6 +415,27 @@ namespace BrandishBot.Client
         public string GitCommit { get; set; }
     }
 
+    // --- Info Models ---
+
+    public class InfoResponse
+    {
+        [JsonProperty("platform")]
+        public string Platform { get; set; }
+
+        [JsonProperty("feature")]
+        public string Feature { get; set; }
+
+        [JsonProperty("topic")]
+        public string Topic { get; set; }
+
+        [JsonProperty("description")]
+        public string Description { get; set; }
+
+        [JsonProperty("link")]
+        public string Link { get; set; }
+    }
+
+
     public class RecipeListResponse
     {
         [JsonProperty("recipes")]

@@ -40,11 +40,23 @@ namespace BrandishBot.Client
         }
 
         /// <summary>
-        /// Get feature information
+        /// Get feature information for a specific platform
         /// </summary>
-        public async Task<string> GetInfo()
+        /// <param name="platform">Platform name (discord, twitch, youtube)</param>
+        /// <param name="feature">Feature name (optional, defaults to overview)</param>
+        /// <param name="topic">Topic name within feature (optional, for hierarchical features)</param>
+        public async Task<InfoResponse> GetInfo(string platform, string feature = null, string topic = null)
         {
-            return await GetAsync<string>("/api/v1/info");
+            var queryParams = new List<string> { $"platform={platform}" };
+            
+            if (!string.IsNullOrEmpty(feature))
+                queryParams.Add($"feature={feature}");
+            
+            if (!string.IsNullOrEmpty(topic))
+                queryParams.Add($"topic={topic}");
+            
+            string query = string.Join("&", queryParams);
+            return await GetAsync<InfoResponse>($"/api/v1/info?{query}");
         }
 
         /// <summary>

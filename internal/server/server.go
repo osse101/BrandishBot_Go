@@ -20,10 +20,10 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/eventlog"
 	"github.com/osse101/BrandishBot_Go/internal/expedition"
-	"github.com/osse101/BrandishBot_Go/internal/features"
 	"github.com/osse101/BrandishBot_Go/internal/gamble"
 	"github.com/osse101/BrandishBot_Go/internal/handler"
 	"github.com/osse101/BrandishBot_Go/internal/harvest"
+	"github.com/osse101/BrandishBot_Go/internal/info"
 	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/linking"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
@@ -90,8 +90,8 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 	// API v1 routes
 	r.Route("/api/v1", func(r chi.Router) {
 		// Info endpoint
-		featureLoader := features.NewLoader("configs/info")
-		r.Get("/info", handler.HandleGetInfo(featureLoader))
+		infoLoader := info.NewLoader("configs/info")
+		r.Get("/info", handler.HandleGetInfo(infoLoader))
 
 		// User routes
 		r.Route("/user", func(r chi.Router) {
