@@ -36,32 +36,34 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/scenario"
 	"github.com/osse101/BrandishBot_Go/internal/sse"
 	"github.com/osse101/BrandishBot_Go/internal/stats"
+	"github.com/osse101/BrandishBot_Go/internal/subscription"
 	"github.com/osse101/BrandishBot_Go/internal/user"
 )
 
 type Server struct {
-	httpServer         *http.Server
-	dbPool             database.Pool
-	userService        user.Service
-	economyService     economy.Service
-	craftingService    crafting.Service
-	statsService       stats.Service
-	progressionService progression.Service
-	gambleService      gamble.Service
-	jobService         job.Service
-	linkingService     linking.Service
-	harvestService     harvest.Service
-	predictionService  prediction.Service
-	expeditionService  expedition.Service
-	questService       quest.Service
-	namingResolver     naming.Resolver
-	sseHub             *sse.Hub
-	scenarioEngine     *scenario.Engine
-	eventlogService    eventlog.Service
+	httpServer          *http.Server
+	dbPool              database.Pool
+	userService         user.Service
+	economyService      economy.Service
+	craftingService     crafting.Service
+	statsService        stats.Service
+	progressionService  progression.Service
+	gambleService       gamble.Service
+	jobService          job.Service
+	linkingService      linking.Service
+	harvestService      harvest.Service
+	predictionService   prediction.Service
+	expeditionService   expedition.Service
+	questService        quest.Service
+	subscriptionService subscription.Service
+	namingResolver      naming.Resolver
+	sseHub              *sse.Hub
+	scenarioEngine      *scenario.Engine
+	eventlogService     eventlog.Service
 }
 
 // NewServer creates a new Server instance
-func NewServer(port int, apiKey string, trustedProxies []string, dbPool database.Pool, userService user.Service, economyService economy.Service, craftingService crafting.Service, statsService stats.Service, progressionService progression.Service, gambleService gamble.Service, jobService job.Service, linkingService linking.Service, harvestService harvest.Service, predictionService prediction.Service, expeditionService expedition.Service, questService quest.Service, namingResolver naming.Resolver, eventBus event.Bus, sseHub *sse.Hub, userRepo repository.User, scenarioEngine *scenario.Engine, eventlogService eventlog.Service) *Server {
+func NewServer(port int, apiKey string, trustedProxies []string, dbPool database.Pool, userService user.Service, economyService economy.Service, craftingService crafting.Service, statsService stats.Service, progressionService progression.Service, gambleService gamble.Service, jobService job.Service, linkingService linking.Service, harvestService harvest.Service, predictionService prediction.Service, expeditionService expedition.Service, questService quest.Service, subscriptionService subscription.Service, namingResolver naming.Resolver, eventBus event.Bus, sseHub *sse.Hub, userRepo repository.User, scenarioEngine *scenario.Engine, eventlogService eventlog.Service) *Server {
 	r := chi.NewRouter()
 
 	// Middleware stack
@@ -208,6 +210,13 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 			r.Get("/status", linkingHandlers.HandleStatus())
 		})
 
+		// Subscription routes
+		subscriptionHandler := handler.NewSubscriptionHandler(subscriptionService)
+		r.Route("/subscriptions", func(r chi.Router) {
+			r.Post("/event", subscriptionHandler.HandleSubscriptionEvent)
+			r.Get("/user", subscriptionHandler.HandleGetUserSubscription)
+		})
+
 		// Prediction routes
 		predictionHandlers := handler.NewPredictionHandlers(predictionService)
 		r.Post("/prediction", predictionHandlers.HandleProcessOutcome())
@@ -290,23 +299,24 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 			Handler:           r,
 			ReadHeaderTimeout: 5 * time.Second,
 		},
-		dbPool:             dbPool,
-		userService:        userService,
-		economyService:     economyService,
-		craftingService:    craftingService,
-		statsService:       statsService,
-		progressionService: progressionService,
-		gambleService:      gambleService,
-		jobService:         jobService,
-		linkingService:     linkingService,
-		harvestService:     harvestService,
-		predictionService:  predictionService,
-		expeditionService:  expeditionService,
-		questService:       questService,
-		namingResolver:     namingResolver,
-		sseHub:             sseHub,
-		scenarioEngine:     scenarioEngine,
-		eventlogService:    eventlogService,
+		dbPool:              dbPool,
+		userService:         userService,
+		economyService:      economyService,
+		craftingService:     craftingService,
+		statsService:        statsService,
+		progressionService:  progressionService,
+		gambleService:       gambleService,
+		jobService:          jobService,
+		linkingService:      linkingService,
+		harvestService:      harvestService,
+		predictionService:   predictionService,
+		expeditionService:   expeditionService,
+		questService:        questService,
+		subscriptionService: subscriptionService,
+		namingResolver:      namingResolver,
+		sseHub:              sseHub,
+		scenarioEngine:      scenarioEngine,
+		eventlogService:     eventlogService,
 	}
 }
 

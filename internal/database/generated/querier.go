@@ -51,6 +51,7 @@ type Querier interface {
 	CreateVotingSession(ctx context.Context) (int32, error)
 	DeactivateAllQuests(ctx context.Context) error
 	DeleteInventory(ctx context.Context, userID uuid.UUID) error
+	DeleteSubscription(ctx context.Context, arg DeleteSubscriptionParams) error
 	DeleteUser(ctx context.Context, userID uuid.UUID) error
 	DeleteUserPlatformLink(ctx context.Context, arg DeleteUserPlatformLinkParams) error
 	EndVoting(ctx context.Context, arg EndVotingParams) error
@@ -76,6 +77,7 @@ type Querier interface {
 	GetAllNodes(ctx context.Context) ([]GetAllNodesRow, error)
 	GetAllNodesByFeatureKey(ctx context.Context, modifierConfig []byte) ([]GetAllNodesByFeatureKeyRow, error)
 	GetAllRecipes(ctx context.Context) ([]GetAllRecipesRow, error)
+	GetAllTiers(ctx context.Context) ([]SubscriptionTier, error)
 	GetAllUnlocks(ctx context.Context) ([]ProgressionUnlock, error)
 	GetAssociatedUpgradeRecipeID(ctx context.Context, disassembleRecipeID int32) (int32, error)
 	GetBuyablePrices(ctx context.Context) ([]GetBuyablePricesRow, error)
@@ -96,6 +98,7 @@ type Querier interface {
 	GetExpedition(ctx context.Context, id uuid.UUID) (Expedition, error)
 	GetExpeditionJournalEntries(ctx context.Context, expeditionID uuid.UUID) ([]ExpeditionJournalEntry, error)
 	GetExpeditionParticipants(ctx context.Context, expeditionID uuid.UUID) ([]GetExpeditionParticipantsRow, error)
+	GetExpiringSubscriptions(ctx context.Context, expiresAt pgtype.Timestamptz) ([]GetExpiringSubscriptionsRow, error)
 	GetGamble(ctx context.Context, id uuid.UUID) (Gamble, error)
 	GetGambleParticipants(ctx context.Context, gambleID uuid.UUID) ([]GetGambleParticipantsRow, error)
 	GetHarvestState(ctx context.Context, dollar_1 uuid.UUID) (HarvestState, error)
@@ -132,6 +135,7 @@ type Querier interface {
 	GetSessionOptions(ctx context.Context, sessionID int32) ([]GetSessionOptionsRow, error)
 	GetSessionVoters(ctx context.Context, sessionID pgtype.Int4) ([]string, error)
 	GetSyncMetadata(ctx context.Context, configName string) (GetSyncMetadataRow, error)
+	GetTierByPlatformAndName(ctx context.Context, arg GetTierByPlatformAndNameParams) (SubscriptionTier, error)
 	GetToken(ctx context.Context, token string) (GetTokenRow, error)
 	GetTopUsers(ctx context.Context, arg GetTopUsersParams) ([]GetTopUsersRow, error)
 	GetTotalEngagementScore(ctx context.Context) (int64, error)
@@ -154,6 +158,9 @@ type Querier interface {
 	GetUserPlatformLinks(ctx context.Context, userID uuid.UUID) ([]GetUserPlatformLinksRow, error)
 	GetUserProgressions(ctx context.Context, arg GetUserProgressionsParams) ([]UserProgression, error)
 	GetUserQuestProgress(ctx context.Context, userID uuid.UUID) ([]GetUserQuestProgressRow, error)
+	GetUserSubscription(ctx context.Context, arg GetUserSubscriptionParams) (GetUserSubscriptionRow, error)
+	GetUserSubscriptionHistory(ctx context.Context, arg GetUserSubscriptionHistoryParams) ([]SubscriptionHistory, error)
+	GetUserSubscriptions(ctx context.Context, userID uuid.UUID) ([]GetUserSubscriptionsRow, error)
 	GetVoting(ctx context.Context, arg GetVotingParams) (ProgressionVoting, error)
 	GetWeeklyQuestResetState(ctx context.Context) (WeeklyQuestResetState, error)
 	HasUserVoted(ctx context.Context, arg HasUserVotedParams) (bool, error)
@@ -184,10 +191,12 @@ type Querier interface {
 	IsUserProgressionUnlocked(ctx context.Context, arg IsUserProgressionUnlockedParams) (bool, error)
 	JoinGamble(ctx context.Context, arg JoinGambleParams) error
 	LogEvent(ctx context.Context, arg LogEventParams) error
+	MarkSubscriptionExpired(ctx context.Context, arg MarkSubscriptionExpiredParams) error
 	RecordEngagement(ctx context.Context, arg RecordEngagementParams) error
 	RecordEvent(ctx context.Context, arg RecordEventParams) (RecordEventRow, error)
 	RecordJobXPEvent(ctx context.Context, arg RecordJobXPEventParams) error
 	RecordReset(ctx context.Context, arg RecordResetParams) error
+	RecordSubscriptionHistory(ctx context.Context, arg RecordSubscriptionHistoryParams) error
 	RecordUserSessionVote(ctx context.Context, arg RecordUserSessionVoteParams) error
 	RecordUserVote(ctx context.Context, arg RecordUserVoteParams) error
 	RelockNode(ctx context.Context, arg RelockNodeParams) error
@@ -223,6 +232,7 @@ type Querier interface {
 	UpdateUserTimestamp(ctx context.Context, userID uuid.UUID) error
 	UpdateWeeklyQuestResetState(ctx context.Context, arg UpdateWeeklyQuestResetStateParams) error
 	UpsertRecipeAssociation(ctx context.Context, arg UpsertRecipeAssociationParams) error
+	UpsertSubscription(ctx context.Context, arg UpsertSubscriptionParams) error
 	UpsertSyncMetadata(ctx context.Context, arg UpsertSyncMetadataParams) error
 	UpsertUserJob(ctx context.Context, arg UpsertUserJobParams) error
 	UpsertUserPlatformLink(ctx context.Context, arg UpsertUserPlatformLinkParams) error

@@ -62,6 +62,11 @@ type Config struct {
 	EventMaxRetries     int           // Max retries for event publishing (default: 5)
 	EventRetryDelay     time.Duration // Base delay for exponential backoff (default: 2s)
 	EventDeadLetterPath string        // Path to dead-letter log file (default: logs/event_deadletter.jsonl)
+
+	// Subscription settings
+	SubscriptionCheckInterval   time.Duration // How often to check for expiring subscriptions (default: 6h)
+	SubscriptionDefaultDuration time.Duration // Default subscription length (default: 720h / 30 days)
+	SubscriptionGracePeriod     time.Duration // Grace period before marking expired (default: 24h)
 }
 
 // Load loads the configuration from environment variables
@@ -147,6 +152,11 @@ func Load() (*Config, error) {
 			}
 		}
 	}
+
+	// Subscription settings
+	cfg.SubscriptionCheckInterval = getEnvAsDuration("SUBSCRIPTION_CHECK_INTERVAL", 6*time.Hour)
+	cfg.SubscriptionDefaultDuration = getEnvAsDuration("SUBSCRIPTION_DEFAULT_DURATION", 720*time.Hour) // 30 days
+	cfg.SubscriptionGracePeriod = getEnvAsDuration("SUBSCRIPTION_GRACE_PERIOD", 24*time.Hour)
 
 	// Validate API key is set
 	if cfg.APIKey == "" {

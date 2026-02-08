@@ -12,25 +12,28 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 	"github.com/osse101/BrandishBot_Go/internal/quest"
 	"github.com/osse101/BrandishBot_Go/internal/server"
+	"github.com/osse101/BrandishBot_Go/internal/subscription"
 	"github.com/osse101/BrandishBot_Go/internal/user"
 	"github.com/osse101/BrandishBot_Go/internal/worker"
 )
 
 // ShutdownComponents holds all components that need graceful shutdown.
 type ShutdownComponents struct {
-	Server             *server.Server
-	ProgressionService progression.Service
-	UserService        user.Service
-	EconomyService     economy.Service
-	CraftingService    crafting.Service
-	GambleService      gamble.Service
-	PredictionService  prediction.Service
-	QuestService       quest.Service
-	GambleWorker       *worker.GambleWorker
-	ExpeditionWorker   *worker.ExpeditionWorker
-	DailyResetWorker   *worker.DailyResetWorker
-	WeeklyResetWorker  *worker.WeeklyResetWorker
-	ResilientPublisher *event.ResilientPublisher
+	Server              *server.Server
+	ProgressionService  progression.Service
+	UserService         user.Service
+	EconomyService      economy.Service
+	CraftingService     crafting.Service
+	GambleService       gamble.Service
+	PredictionService   prediction.Service
+	QuestService        quest.Service
+	SubscriptionService subscription.Service
+	GambleWorker        *worker.GambleWorker
+	ExpeditionWorker    *worker.ExpeditionWorker
+	DailyResetWorker    *worker.DailyResetWorker
+	WeeklyResetWorker   *worker.WeeklyResetWorker
+	SubscriptionWorker  *worker.SubscriptionWorker
+	ResilientPublisher  *event.ResilientPublisher
 }
 
 // GracefulShutdown performs graceful shutdown of all application components.
@@ -73,6 +76,12 @@ func GracefulShutdown(ctx context.Context, components ShutdownComponents) {
 		}
 	}
 
+	if components.SubscriptionWorker != nil {
+		if err := components.SubscriptionWorker.Shutdown(ctx); err != nil {
+			slog.Error("Subscription worker shutdown failed", "error", err)
+		}
+	}
+
 	// Shutdown services (order doesn't matter, all run independently)
 	shutdownService(ctx, ServiceNameProgression, components.ProgressionService)
 	shutdownService(ctx, ServiceNameUser, components.UserService)
@@ -81,6 +90,7 @@ func GracefulShutdown(ctx context.Context, components ShutdownComponents) {
 	shutdownService(ctx, ServiceNameGamble, components.GambleService)
 	shutdownService(ctx, "prediction", components.PredictionService)
 	shutdownService(ctx, "quest", components.QuestService)
+	shutdownService(ctx, "subscription", components.SubscriptionService)
 
 	// Shutdown resilient publisher last to flush pending events
 	slog.Info(LogMsgShuttingDownEventPublisher)

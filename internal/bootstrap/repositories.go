@@ -13,20 +13,21 @@ import (
 // This provides a centralized location for repository initialization and
 // makes dependency injection clearer.
 type Repositories struct {
-	User        repository.User
-	Crafting    repository.Crafting
-	Economy     repository.Economy
-	Stats       repository.Stats
-	Item        repository.Item
-	Job         repository.Job
-	EventLog    eventlog.Repository
-	Gamble      repository.Gamble
-	Linking     repository.Linking
-	Progression repository.Progression
-	Harvest     repository.HarvestRepository
-	Trap        repository.TrapRepository
-	Expedition  repository.Expedition
-	Quest       repository.QuestRepository
+	User         repository.User
+	Crafting     repository.Crafting
+	Economy      repository.Economy
+	Stats        repository.Stats
+	Item         repository.Item
+	Job          repository.Job
+	EventLog     eventlog.Repository
+	Gamble       repository.Gamble
+	Linking      repository.Linking
+	Progression  repository.Progression
+	Harvest      repository.HarvestRepository
+	Trap         repository.TrapRepository
+	Expedition   repository.Expedition
+	Quest        repository.QuestRepository
+	Subscription repository.Subscription
 }
 
 // InitializeRepositories creates all repository implementations.
@@ -34,19 +35,20 @@ type Repositories struct {
 // also requires the event bus for publishing progression events.
 func InitializeRepositories(dbPool *pgxpool.Pool, eventBus event.Bus) *Repositories {
 	return &Repositories{
-		User:        postgres.NewUserRepository(dbPool),
-		Crafting:    postgres.NewCraftingRepository(dbPool),
-		Economy:     postgres.NewEconomyRepository(dbPool),
-		Stats:       postgres.NewStatsRepository(dbPool),
-		Item:        postgres.NewItemRepository(dbPool),
-		Job:         postgres.NewJobRepository(dbPool),
-		EventLog:    postgres.NewEventLogRepository(dbPool),
-		Gamble:      postgres.NewGambleRepository(dbPool),
-		Linking:     postgres.NewLinkingRepository(dbPool),
-		Progression: postgres.NewProgressionRepository(dbPool, eventBus),
-		Harvest:     postgres.NewHarvestRepository(dbPool),
-		Trap:        postgres.NewTrapRepository(dbPool),
-		Expedition:  postgres.NewExpeditionRepository(dbPool),
-		Quest:       postgres.NewQuestRepository(dbPool),
+		User:         postgres.NewUserRepository(dbPool),
+		Crafting:     postgres.NewCraftingRepository(dbPool),
+		Economy:      postgres.NewEconomyRepository(dbPool),
+		Stats:        postgres.NewStatsRepository(dbPool),
+		Item:         postgres.NewItemRepository(dbPool),
+		Job:          postgres.NewJobRepository(dbPool),
+		EventLog:     postgres.NewEventLogRepository(dbPool),
+		Gamble:       postgres.NewGambleRepository(dbPool),
+		Linking:      postgres.NewLinkingRepository(dbPool),
+		Progression:  postgres.NewProgressionRepository(dbPool, eventBus),
+		Harvest:      postgres.NewHarvestRepository(dbPool),
+		Trap:         postgres.NewTrapRepository(dbPool),
+		Expedition:   postgres.NewExpeditionRepository(dbPool),
+		Quest:        postgres.NewQuestRepository(dbPool),
+		Subscription: postgres.NewSubscriptionRepository(dbPool),
 	}
 }

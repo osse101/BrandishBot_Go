@@ -372,8 +372,15 @@ func checkDestructiveSQL(newFiles []string) error {
 			continue
 		}
 
-		if destructiveRegex.Match(content) && !strings.Contains(string(content), ignoreComment) {
-			PrintError("Destructive SQL command found in %s", file)
+		contentStr := string(content)
+		// Only check the "Up" part of the migration - Down sections naturally contain DROP commands
+		checkContent := contentStr
+		if idx := strings.Index(contentStr, "-- +goose Down"); idx != -1 {
+			checkContent = contentStr[:idx]
+		}
+
+		if destructiveRegex.MatchString(checkContent) && !strings.Contains(contentStr, ignoreComment) {
+			PrintError("Destructive SQL command found in the 'Up' section of %s", file)
 			PrintInfo("Only allow deletions if absolutely necessary. To bypass this check, add comment: %s", ignoreComment)
 			return fmt.Errorf("destructive SQL found")
 		}

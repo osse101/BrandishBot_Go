@@ -31,6 +31,14 @@ const (
 	// Timeout event types
 	TimeoutApplied Type = "timeout.applied"
 	TimeoutCleared Type = "timeout.cleared"
+
+	// Subscription event types
+	SubscriptionActivated  Type = "subscription.activated"
+	SubscriptionRenewed    Type = "subscription.renewed"
+	SubscriptionUpgraded   Type = "subscription.upgraded"
+	SubscriptionDowngraded Type = "subscription.downgraded"
+	SubscriptionExpired    Type = "subscription.expired"
+	SubscriptionCancelled  Type = "subscription.cancelled"
 )
 
 // Typed event payloads for type safety
@@ -117,6 +125,14 @@ type TimeoutPayloadV1 struct {
 	DurationSeconds int    `json:"duration_seconds"`
 	Reason          string `json:"reason,omitempty"`
 	Timestamp       int64  `json:"timestamp"`
+}
+
+// SubscriptionPayloadV1 is the typed payload for subscription events
+type SubscriptionPayloadV1 struct {
+	UserID    string `json:"user_id"`
+	Platform  string `json:"platform"`
+	TierName  string `json:"tier_name"`
+	Timestamp int64  `json:"timestamp"`
 }
 
 // NewTimeoutAppliedEvent creates a new timeout applied event

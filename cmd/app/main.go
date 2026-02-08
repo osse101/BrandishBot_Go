@@ -36,6 +36,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/sse"
 	"github.com/osse101/BrandishBot_Go/internal/stats"
 	"github.com/osse101/BrandishBot_Go/internal/streamerbot"
+	"github.com/osse101/BrandishBot_Go/internal/subscription"
 	"github.com/osse101/BrandishBot_Go/internal/user"
 	"github.com/osse101/BrandishBot_Go/internal/worker"
 )
@@ -283,6 +284,24 @@ func main() {
 		slog.Info("Streamer.bot WebSocket client initialized", "url", cfg.StreamerbotWebhookURL)
 	}
 
+	// Initialize Subscription service (needs sbClient, so must come after Streamer.bot init)
+	subscriptionService := subscription.NewService(
+		repos.Subscription,
+		repos.User,
+		sbClient, // May be nil if Streamer.bot is disabled
+		resilientPublisher,
+	)
+	slog.Info("Subscription service initialized")
+
+	// Initialize Subscription worker
+	subscriptionWorker := worker.NewSubscriptionWorker(
+		subscriptionService,
+		repos.Subscription,
+		cfg.SubscriptionCheckInterval,
+	)
+	subscriptionWorker.Start()
+	slog.Info("Subscription worker started", "interval", cfg.SubscriptionCheckInterval)
+
 	// Initialize Scenario Engine for admin testing
 	scenarioRegistry := scenario.NewRegistry()
 
@@ -296,7 +315,7 @@ func main() {
 	scenarioEngine := scenario.NewEngine(scenarioRegistry)
 	slog.Info("Scenario engine initialized", "features", scenarioRegistry.Features())
 
-	srv := server.NewServer(cfg.Port, cfg.APIKey, cfg.TrustedProxies, dbPool, userService, economyService, craftingService, statsService, progressionService, gambleService, jobService, linkingService, harvestService, predictionService, expeditionService, questService, namingResolver, eventBus, sseHub, repos.User, scenarioEngine, eventLogService)
+	srv := server.NewServer(cfg.Port, cfg.APIKey, cfg.TrustedProxies, dbPool, userService, economyService, craftingService, statsService, progressionService, gambleService, jobService, linkingService, harvestService, predictionService, expeditionService, questService, subscriptionService, namingResolver, eventBus, sseHub, repos.User, scenarioEngine, eventLogService)
 
 	// Run server in a goroutine
 	go func() {
@@ -318,18 +337,20 @@ func main() {
 
 	// Perform graceful shutdown
 	bootstrap.GracefulShutdown(shutdownCtx, bootstrap.ShutdownComponents{
-		Server:             srv,
-		ProgressionService: progressionService,
-		UserService:        userService,
-		EconomyService:     economyService,
-		CraftingService:    craftingService,
-		GambleService:      gambleService,
-		PredictionService:  predictionService,
-		QuestService:       questService,
-		GambleWorker:       gambleWorker,
-		ExpeditionWorker:   expeditionWorker,
-		DailyResetWorker:   dailyResetWorker,
-		WeeklyResetWorker:  weeklyResetWorker,
-		ResilientPublisher: resilientPublisher,
+		Server:              srv,
+		ProgressionService:  progressionService,
+		UserService:         userService,
+		EconomyService:      economyService,
+		CraftingService:     craftingService,
+		GambleService:       gambleService,
+		PredictionService:   predictionService,
+		QuestService:        questService,
+		SubscriptionService: subscriptionService,
+		GambleWorker:        gambleWorker,
+		ExpeditionWorker:    expeditionWorker,
+		DailyResetWorker:    dailyResetWorker,
+		WeeklyResetWorker:   weeklyResetWorker,
+		SubscriptionWorker:  subscriptionWorker,
+		ResilientPublisher:  resilientPublisher,
 	})
 }

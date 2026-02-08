@@ -44,6 +44,14 @@ func (s *Subscriber) Subscribe() {
 	s.bus.Subscribe(event.TimeoutApplied, s.handleTimeoutUpdate)
 	s.bus.Subscribe(event.TimeoutCleared, s.handleTimeoutUpdate)
 
+	// Subscribe to subscription events
+	s.bus.Subscribe(event.SubscriptionActivated, s.handleSubscriptionUpdate)
+	s.bus.Subscribe(event.SubscriptionRenewed, s.handleSubscriptionUpdate)
+	s.bus.Subscribe(event.SubscriptionUpgraded, s.handleSubscriptionUpdate)
+	s.bus.Subscribe(event.SubscriptionDowngraded, s.handleSubscriptionUpdate)
+	s.bus.Subscribe(event.SubscriptionExpired, s.handleSubscriptionUpdate)
+	s.bus.Subscribe(event.SubscriptionCancelled, s.handleSubscriptionUpdate)
+
 	slog.Info("Streamer.bot subscriber registered for event types",
 		"types", []string{
 			string(domain.EventJobLevelUp),
@@ -53,6 +61,10 @@ func (s *Subscriber) Subscribe() {
 			string(domain.EventGambleCompleted),
 			string(event.TimeoutApplied),
 			string(event.TimeoutCleared),
+			string(event.SubscriptionActivated),
+			string(event.SubscriptionRenewed),
+			string(event.SubscriptionExpired),
+			string(event.SubscriptionCancelled),
 		})
 }
 
@@ -276,6 +288,45 @@ func (s *Subscriber) handleTimeoutUpdate(_ context.Context, evt event.Event) err
 	if err := s.client.DoAction(ActionTimeoutUpdate, args); err != nil {
 		// Streamer.bot being offline is expected, use debug level
 		slog.Debug("Failed to send timeout update to Streamer.bot", "error", err)
+	}
+
+	return nil
+}
+
+// handleSubscriptionUpdate sends a DoAction for subscription lifecycle events
+func (s *Subscriber) handleSubscriptionUpdate(_ context.Context, evt event.Event) error {
+	// Try typed payload first
+	var payload event.SubscriptionPayloadV1
+	if p, ok := evt.Payload.(event.SubscriptionPayloadV1); ok {
+		payload = p
+	} else {
+		// Fall back to map parsing
+		pMap, ok := evt.Payload.(map[string]interface{})
+		if !ok {
+			slog.Warn("Invalid subscription event payload type")
+			return nil
+		}
+		payload = event.SubscriptionPayloadV1{
+			UserID:    getStringFromMap(pMap, "user_id"),
+			Platform:  getStringFromMap(pMap, "platform"),
+			TierName:  getStringFromMap(pMap, "tier_name"),
+			Timestamp: int64(getIntFromMap(pMap, "timestamp")),
+		}
+	}
+
+	args := map[string]string{
+		"user_id":    payload.UserID,
+		"platform":   payload.Platform,
+		"tier_name":  payload.TierName,
+		"event_type": string(evt.Type),
+		"timestamp":  fmt.Sprintf("%d", payload.Timestamp),
+	}
+
+	slog.Debug(LogMsgEventReceived, "event_type", evt.Type, "args", args)
+
+	if err := s.client.DoAction(ActionSubscriptionUpdate, args); err != nil {
+		// Streamer.bot being offline is expected, use debug level
+		slog.Debug("Failed to send subscription update to Streamer.bot", "error", err)
 	}
 
 	return nil

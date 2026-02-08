@@ -51,6 +51,14 @@ func (s *Subscriber) Subscribe() {
 	s.bus.Subscribe(event.Type(domain.EventExpeditionTurn), s.handleExpeditionTurn)
 	s.bus.Subscribe(event.Type(domain.EventExpeditionCompleted), s.handleExpeditionCompleted)
 
+	// Subscribe to subscription events
+	s.bus.Subscribe(event.SubscriptionActivated, s.handleSubscriptionEvent)
+	s.bus.Subscribe(event.SubscriptionRenewed, s.handleSubscriptionEvent)
+	s.bus.Subscribe(event.SubscriptionUpgraded, s.handleSubscriptionEvent)
+	s.bus.Subscribe(event.SubscriptionDowngraded, s.handleSubscriptionEvent)
+	s.bus.Subscribe(event.SubscriptionExpired, s.handleSubscriptionEvent)
+	s.bus.Subscribe(event.SubscriptionCancelled, s.handleSubscriptionEvent)
+
 	slog.Info("SSE subscriber registered for event types",
 		"types", []string{
 			string(domain.EventJobLevelUp),
@@ -64,6 +72,10 @@ func (s *Subscriber) Subscribe() {
 			string(domain.EventExpeditionStarted),
 			string(domain.EventExpeditionTurn),
 			string(domain.EventExpeditionCompleted),
+			string(event.SubscriptionActivated),
+			string(event.SubscriptionRenewed),
+			string(event.SubscriptionExpired),
+			string(event.SubscriptionCancelled),
 		})
 }
 
@@ -473,6 +485,56 @@ func (s *Subscriber) handleGambleCompleted(_ context.Context, evt event.Event) e
 		"event_type", EventTypeGambleCompleted,
 		"gamble_id", ssePayload.GambleID,
 		"winner_id", ssePayload.WinnerID)
+
+	return nil
+}
+
+// handleSubscriptionEvent processes subscription lifecycle events
+func (s *Subscriber) handleSubscriptionEvent(_ context.Context, evt event.Event) error {
+	// Try typed payload first
+	if payload, ok := evt.Payload.(event.SubscriptionPayloadV1); ok {
+		ssePayload := SubscriptionPayload{
+			UserID:    payload.UserID,
+			Platform:  payload.Platform,
+			TierName:  payload.TierName,
+			EventType: string(evt.Type),
+			Timestamp: payload.Timestamp,
+		}
+
+		s.hub.Broadcast(EventTypeSubscription, ssePayload)
+
+		slog.Debug(LogMsgEventBroadcast,
+			"event_type", EventTypeSubscription,
+			"sub_event", evt.Type,
+			"user_id", payload.UserID,
+			"platform", payload.Platform,
+			"tier", payload.TierName)
+
+		return nil
+	}
+
+	// Fall back to map parsing
+	payload, ok := evt.Payload.(map[string]interface{})
+	if !ok {
+		slog.Warn("Invalid subscription event payload type")
+		return nil
+	}
+
+	ssePayload := SubscriptionPayload{
+		UserID:    getStringFromMap(payload, "user_id"),
+		Platform:  getStringFromMap(payload, "platform"),
+		TierName:  getStringFromMap(payload, "tier_name"),
+		EventType: string(evt.Type),
+		Timestamp: int64(getIntFromMap(payload, "timestamp")),
+	}
+
+	s.hub.Broadcast(EventTypeSubscription, ssePayload)
+
+	slog.Debug(LogMsgEventBroadcast,
+		"event_type", EventTypeSubscription,
+		"sub_event", evt.Type,
+		"user_id", ssePayload.UserID,
+		"platform", ssePayload.Platform)
 
 	return nil
 }

@@ -832,6 +832,7 @@ Watch for and extract to constants:
 | `docs/architecture/EVENT_SYSTEM.md` | Event bus architecture |
 | `docs/architecture/cooldown-service.md` | Check-then-lock pattern |
 | `docs/development/FEATURE_DEVELOPMENT_GUIDE.md` | Feature development workflow |
+| `docs/SUBSCRIPTION_SYSTEM.md` | Subscription tracking and UserIsSubscribed pattern |
 | `docs/ARCHITECTURE.md` | Overall system architecture |
 
 ---

@@ -57,6 +57,9 @@ const (
 
 	// EventTypeTimeoutCleared is sent when a timeout is cleared for a user
 	EventTypeTimeoutCleared = "timeout.cleared"
+
+	// EventTypeSubscription is sent for subscription lifecycle events
+	EventTypeSubscription = "subscription"
 )
 
 // Log messages

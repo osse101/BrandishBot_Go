@@ -521,4 +521,117 @@ namespace BrandishBot.Client
         [JsonProperty("purse")]
         public int Purse { get; set; }
     }
+
+    // --- Subscription Models ---
+
+    public class SubscriptionEvent
+    {
+        [JsonProperty("platform")]
+        public string Platform { get; set; }
+
+        [JsonProperty("platform_user_id")]
+        public string PlatformUserId { get; set; }
+
+        [JsonProperty("username")]
+        public string Username { get; set; }
+
+        [JsonProperty("tier_name")]
+        public string TierName { get; set; }
+
+        [JsonProperty("event_type")]
+        public string EventType { get; set; }
+
+        [JsonProperty("timestamp")]
+        public long Timestamp { get; set; }
+    }
+
+    public class SubscriptionTier
+    {
+        [JsonProperty("tier_id")]
+        public int TierId { get; set; }
+
+        [JsonProperty("platform")]
+        public string Platform { get; set; }
+
+        [JsonProperty("tier_name")]
+        public string TierName { get; set; }
+
+        [JsonProperty("display_name")]
+        public string DisplayName { get; set; }
+
+        [JsonProperty("tier_level")]
+        public int TierLevel { get; set; }
+
+        [JsonProperty("created_at")]
+        public DateTime CreatedAt { get; set; }
+    }
+
+    public class Subscription
+    {
+        [JsonProperty("user_id")]
+        public string UserId { get; set; }
+
+        [JsonProperty("platform")]
+        public string Platform { get; set; }
+
+        [JsonProperty("tier_id")]
+        public int TierId { get; set; }
+
+        [JsonProperty("status")]
+        public string Status { get; set; }
+
+        [JsonProperty("subscribed_at")]
+        public DateTime SubscribedAt { get; set; }
+
+        [JsonProperty("expires_at")]
+        public DateTime ExpiresAt { get; set; }
+
+        [JsonProperty("last_verified_at")]
+        public DateTime? LastVerifiedAt { get; set; }
+
+        [JsonProperty("created_at")]
+        public DateTime CreatedAt { get; set; }
+
+        [JsonProperty("updated_at")]
+        public DateTime UpdatedAt { get; set; }
+    }
+
+    public class SubscriptionWithTier
+    {
+        [JsonProperty("user_id")]
+        public string UserId { get; set; }
+
+        [JsonProperty("platform")]
+        public string Platform { get; set; }
+
+        [JsonProperty("tier_id")]
+        public int TierId { get; set; }
+
+        [JsonProperty("status")]
+        public string Status { get; set; }
+
+        [JsonProperty("subscribed_at")]
+        public DateTime SubscribedAt { get; set; }
+
+        [JsonProperty("expires_at")]
+        public DateTime ExpiresAt { get; set; }
+
+        [JsonProperty("last_verified_at")]
+        public DateTime? LastVerifiedAt { get; set; }
+
+        [JsonProperty("created_at")]
+        public DateTime CreatedAt { get; set; }
+
+        [JsonProperty("updated_at")]
+        public DateTime UpdatedAt { get; set; }
+
+        [JsonProperty("tier_name")]
+        public string TierName { get; set; }
+
+        [JsonProperty("display_name")]
+        public string DisplayName { get; set; }
+
+        [JsonProperty("tier_level")]
+        public int TierLevel { get; set; }
+    }
 }

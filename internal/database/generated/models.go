@@ -379,6 +379,27 @@ type StatsEvent struct {
 	CreatedAt pgtype.Timestamp `json:"created_at"`
 }
 
+type SubscriptionHistory struct {
+	HistoryID    int64              `json:"history_id"`
+	UserID       uuid.UUID          `json:"user_id"`
+	Platform     string             `json:"platform"`
+	TierID       int32              `json:"tier_id"`
+	EventType    string             `json:"event_type"`
+	SubscribedAt pgtype.Timestamptz `json:"subscribed_at"`
+	ExpiresAt    pgtype.Timestamptz `json:"expires_at"`
+	Metadata     []byte             `json:"metadata"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+}
+
+type SubscriptionTier struct {
+	TierID      int32              `json:"tier_id"`
+	Platform    string             `json:"platform"`
+	TierName    string             `json:"tier_name"`
+	DisplayName string             `json:"display_name"`
+	TierLevel   int32              `json:"tier_level"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+}
+
 type User struct {
 	UserID    uuid.UUID        `json:"user_id"`
 	Username  string           `json:"username"`
@@ -418,6 +439,18 @@ type UserProgression struct {
 	ProgressionKey  string           `json:"progression_key"`
 	UnlockedAt      pgtype.Timestamp `json:"unlocked_at"`
 	Metadata        []byte           `json:"metadata"`
+}
+
+type UserSubscription struct {
+	UserID         uuid.UUID          `json:"user_id"`
+	Platform       string             `json:"platform"`
+	TierID         int32              `json:"tier_id"`
+	Status         string             `json:"status"`
+	SubscribedAt   pgtype.Timestamptz `json:"subscribed_at"`
+	ExpiresAt      pgtype.Timestamptz `json:"expires_at"`
+	LastVerifiedAt pgtype.Timestamptz `json:"last_verified_at"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
 }
 
 // Stores active and historical trap placements
