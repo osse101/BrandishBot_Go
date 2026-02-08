@@ -1,5 +1,0 @@
-Craft and upgrade items using materials found in the world.
----
-!upgrade <item>
-!disassemble <item>
-!recipes

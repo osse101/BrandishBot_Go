@@ -1,5 +1,0 @@
-Complete jobs to earn XP and currency.
----
-!jobs
-!jobs claim
-!job info <job_name>
