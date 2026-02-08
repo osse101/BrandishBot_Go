@@ -51,15 +51,3 @@ func (s QualityLevel) GetTimeoutAdjustment() time.Duration {
 	}
 	return 0
 }
-
-// Quality multipliers (Boosts item value and Gamble Score)
-const (
-	MultCommon    = 1.0
-	MultUncommon  = 1.1
-	MultRare      = 1.25
-	MultEpic      = 1.5
-	MultLegendary = 2.0
-	MultPoor      = 0.8
-	MultJunk      = 0.6
-	MultCursed    = 0.4
-)

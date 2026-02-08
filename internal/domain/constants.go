@@ -177,3 +177,25 @@ const (
 	// MetadataKeySource is used to store the source/origin in event metadata
 	MetadataKeySource = "source"
 )
+
+// Quality multipliers (Boosts item value and Gamble Score)
+const (
+	MultCommon    = 1.0
+	MultUncommon  = 1.1
+	MultRare      = 1.25
+	MultEpic      = 1.5
+	MultLegendary = 2.0
+	MultPoor      = 0.8
+	MultJunk      = 0.6
+	MultCursed    = 0.4
+)
+
+// Quest type constants
+const (
+	QuestTypeBuyItems        = "buy_items"        // Buy X items of target category
+	QuestTypeSellItems       = "sell_items"       // Sell X items
+	QuestTypeEarnMoney       = "earn_money"       // Earn X money from sales
+	QuestTypeCraftRecipe     = "craft_recipe"     // Perform recipe (upgrade/disassemble) X times
+	QuestTypePerformSearches = "perform_searches" // Perform X searches
+	// Extensible: add new quest types as needed
+)
