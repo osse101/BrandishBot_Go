@@ -41,10 +41,15 @@ type ProgressionService interface {
 	GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error)
 }
 
+// ResilientPublisher defines the interface for resilient event publishing
+type ResilientPublisher interface {
+	PublishWithRetry(ctx context.Context, evt event.Event)
+}
+
 type service struct {
 	repo               repository.Gamble
 	eventBus           event.Bus
-	resilientPublisher *event.ResilientPublisher
+	resilientPublisher ResilientPublisher
 	lootboxSvc         lootbox.Service
 	jobService         JobService
 	progressionSvc     ProgressionService
@@ -56,7 +61,7 @@ type service struct {
 }
 
 // NewService creates a new gamble service
-func NewService(repo repository.Gamble, eventBus event.Bus, resilientPublisher *event.ResilientPublisher, lootboxSvc lootbox.Service, statsSvc stats.Service, joinDuration time.Duration, jobService JobService, progressionSvc ProgressionService, namingResolver naming.Resolver, rng func(int) int) Service {
+func NewService(repo repository.Gamble, eventBus event.Bus, resilientPublisher ResilientPublisher, lootboxSvc lootbox.Service, statsSvc stats.Service, joinDuration time.Duration, jobService JobService, progressionSvc ProgressionService, namingResolver naming.Resolver, rng func(int) int) Service {
 	if rng == nil {
 		rng = utils.SecureRandomInt
 	}
