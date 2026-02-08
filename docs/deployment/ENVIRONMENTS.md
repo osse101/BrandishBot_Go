@@ -116,7 +116,7 @@ make deploy-staging
 ### Testing
 ```bash
 # Run integration tests against staging
-STAGING_URL=http://localhost:8081 make test-staging
+API_URL=http://localhost:8081 make test-staging
 
 # Check health
 make health-check-staging

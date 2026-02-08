@@ -390,7 +390,7 @@ make deploy-staging
 
 # 2. Validate staging
 make health-check-staging
-STAGING_URL=http://localhost:8081 make test-staging
+API_URL=http://localhost:8081 make test-staging
 
 # 3. If staging is good, promote to production
 git checkout production

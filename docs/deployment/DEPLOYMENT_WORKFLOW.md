@@ -206,7 +206,7 @@ make deploy-staging
 make health-check-staging
 
 # Run integration tests
-STAGING_URL=http://localhost:8081 make test-staging
+API_URL=http://localhost:8081 make test-staging
 
 # Check logs for errors
 docker compose -f docker compose.staging.yml logs -f app
@@ -498,7 +498,7 @@ docker compose -f docker compose.production.yml logs -f app
 docker compose -f docker compose.staging.yml logs -f app
 
 # Run tests against staging
-STAGING_URL=http://localhost:8081 make test-staging
+API_URL=http://localhost:8081 make test-staging
 ```
 
 ### File Locations

@@ -66,6 +66,16 @@ func (c *PreCommitCommand) Run(args []string) error {
 		return err
 	}
 
+	// 8. Large File Sentinel
+	if err := checkLargeFiles(stagedFiles); err != nil {
+		return err
+	}
+
+	// 9. Env Template Sync
+	if err := checkEnvSync(); err != nil {
+		return err
+	}
+
 	PrintSuccess("All pre-commit checks passed!")
 	return nil
 }
@@ -194,6 +204,10 @@ func checkMigrationProtections() error {
 
 	if len(newFiles) == 0 {
 		return nil
+	}
+
+	if err := checkDestructiveSQL(newFiles); err != nil {
+		return err
 	}
 
 	return verifyMigrationSequence(newFiles)
@@ -343,5 +357,103 @@ func verifyMigrationSequence(newMigrationFiles []string) error {
 	}
 
 	PrintSuccess("Migration sequence verified (%d new migrations).", len(sortNewPrefixes))
+	return nil
+}
+
+func checkDestructiveSQL(newFiles []string) error {
+	PrintInfo("Checking for destructive SQL...")
+
+	destructiveRegex := regexp.MustCompile(`(?i)\b(DROP\s+TABLE|DROP\s+COLUMN|TRUNCATE|DROP\s+DATABASE)\b`)
+	ignoreComment := "-- skip-destructive-check"
+
+	for _, file := range newFiles {
+		content, err := os.ReadFile(file)
+		if err != nil {
+			continue
+		}
+
+		if destructiveRegex.Match(content) && !strings.Contains(string(content), ignoreComment) {
+			PrintError("Destructive SQL command found in %s", file)
+			PrintInfo("Only allow deletions if absolutely necessary. To bypass this check, add comment: %s", ignoreComment)
+			return fmt.Errorf("destructive SQL found")
+		}
+	}
+
+	return nil
+}
+
+func checkLargeFiles(files []string) error {
+	PrintInfo("Checking file sizes...")
+	const maxSize = 2 * 1024 * 1024 // 2MB
+
+	for _, file := range files {
+		if strings.HasPrefix(file, "media/") {
+			continue
+		}
+
+		info, err := os.Stat(file)
+		if err != nil {
+			continue
+		}
+
+		if !info.IsDir() && info.Size() > maxSize {
+			PrintError("File too large: %s (%.2f MB)", file, float64(info.Size())/(1024*1024))
+			PrintInfo("Large files (over 2MB) are blocked from being committed to the repo.")
+			return fmt.Errorf("file size limit exceeded")
+		}
+	}
+	return nil
+}
+
+func checkEnvSync() error {
+	PrintInfo("Checking env template sync...")
+
+	// 1. Get keys from .env.example
+	exampleContent, err := os.ReadFile(".env.example")
+	if err != nil {
+		return fmt.Errorf("failed to read .env.example: %w", err)
+	}
+
+	exampleKeys := make(map[string]bool)
+	lines := strings.Split(string(exampleContent), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		if parts := strings.SplitN(line, "=", 2); len(parts) >= 1 {
+			key := strings.TrimSpace(parts[0])
+			if key != "" {
+				exampleKeys[key] = true
+			}
+		}
+	}
+
+	// 2. Find keys in codebase
+	envRegex := regexp.MustCompile(`os\.Getenv\("([^"]+)"\)`)
+	foundMissing := false
+
+	// Use git grep to find os.Getenv calls in .go files (much faster)
+	out, _ := getCommandOutput("git", "grep", "-E", `os\.Getenv\("([^"]+)"\)`, "--", "*.go")
+
+	lines = strings.Split(out, "\n")
+	for _, line := range lines {
+		matches := envRegex.FindAllStringSubmatch(line, -1)
+		for _, m := range matches {
+			if len(m) == 2 {
+				key := m[1]
+				if !exampleKeys[key] {
+					PrintError("Environment variable '%s' used in code but missing from .env.example", key)
+					foundMissing = true
+				}
+			}
+		}
+	}
+
+	if foundMissing {
+		return fmt.Errorf("env template out of sync")
+	}
+
+	PrintSuccess(".env.example is in sync with codebase.")
 	return nil
 }

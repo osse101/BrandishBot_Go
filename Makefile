@@ -318,8 +318,8 @@ test-integration:
 
 test-staging:
 	@echo "Running staging integration tests..."
-	@echo "Target: $${STAGING_URL:-http://localhost:8081}"
-	@STAGING_URL=$${STAGING_URL:-http://localhost:8081} go test -tags=staging -v ./tests/staging
+	@echo "Target: $${API_URL:-http://localhost:8081}"
+	@API_URL=$${API_URL:-http://localhost:8081} go test -tags=staging -v ./tests/staging
 
 db-test-up:
 	@echo "Starting test database..."
@@ -407,7 +407,7 @@ seed-staging:
 
 validate-staging:
 	@echo "🔍 Validating staging environment..."
-	@STAGING_URL=http://localhost:8081 $(MAKE) test-staging
+	@API_URL=http://localhost:8081 $(MAKE) test-staging
 	@echo "✅ Staging validation complete"
 
 # Audit & Security targets

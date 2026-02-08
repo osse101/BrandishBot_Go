@@ -206,7 +206,7 @@ log_info "Status: SUCCESS"
 log_info ""
 log_info "Next steps:"
 log_info "  - Check logs: docker compose -f $COMPOSE_FILE logs -f app"
-log_info "  - Run staging tests: STAGING_URL=http://localhost:$PORT make test-staging"
+log_info "  - Run staging tests: API_URL=http://localhost:$PORT make test-staging"
 if [[ "$TARGET_ENV" == "production" ]]; then
     log_info "  - Monitor for errors"
     log_info "  - If issues arise, rollback: ./scripts/rollback.sh production"
