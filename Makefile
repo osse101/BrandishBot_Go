@@ -305,11 +305,11 @@ docker-logs:
 
 push-staging:
 	@echo "Pushing staging image..."
-	@./scripts/push_image.sh staging $$(git describe --tags --always --dirty)
+	@go run ./cmd/devtool push staging $$(git describe --tags --always --dirty)
 
 push-production:
 	@echo "Pushing production image..."
-	@./scripts/push_image.sh production $$(git describe --tags --always --dirty)
+	@go run ./cmd/devtool push production $$(git describe --tags --always --dirty)
 
 # Test database commands
 test-integration:
@@ -368,25 +368,25 @@ db-clean-test:
 # Deployment commands
 deploy-staging:
 	@echo "Deploying to staging..."
-	@./scripts/deploy.sh staging $$(git describe --tags --always)
+	@go run ./cmd/devtool deploy staging $$(git describe --tags --always)
 
 deploy-production:
 	@echo "Deploying to production..."
-	@./scripts/deploy.sh production $$(git describe --tags --always)
+	@go run ./cmd/devtool deploy production $$(git describe --tags --always)
 
 rollback-staging:
 	@echo "Rolling back staging..."
-	@./scripts/rollback.sh staging
+	@go run ./cmd/devtool rollback staging
 
 rollback-production:
 	@echo "Rolling back production..."
-	@./scripts/rollback.sh production
+	@go run ./cmd/devtool rollback production
 
 health-check-staging:
-	@./scripts/health-check.sh staging
+	@go run ./cmd/devtool health-check staging
 
 health-check-prod:
-	@./scripts/health-check.sh production
+	@go run ./cmd/devtool health-check production
 
 # Staging reset and validation targets
 reset-staging:
