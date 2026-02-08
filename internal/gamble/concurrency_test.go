@@ -41,7 +41,7 @@ func TestStartGamble_Concurrent_RaceCondition(t *testing.T) {
 	repo.On("GetInventory", ctx, "user1").Return(inv1, nil).Maybe()
 	repo.On("GetInventory", ctx, "user2").Return(inv2, nil).Maybe()
 
-	repo.On("BeginTx", ctx).Return(tx, nil).Twice()
+	repo.On("BeginGambleTx", ctx).Return(tx, nil).Twice()
 
 	tx.On("GetInventory", ctx, "user1").Return(inv1, nil)
 	tx.On("GetInventory", ctx, "user2").Return(inv2, nil)
@@ -117,7 +117,7 @@ func TestJoinGamble_SameUserTwice_ShouldReject(t *testing.T) {
 	tx := new(MockTx)
 	inventory := &domain.Inventory{Slots: []domain.InventorySlot{{ItemID: 1, Quantity: 5}}}
 	repo.On("GetInventory", ctx, "user1").Return(inventory, nil).Maybe()
-	repo.On("BeginTx", ctx).Return(tx, nil)
+	repo.On("BeginGambleTx", ctx).Return(tx, nil)
 	tx.On("GetInventory", ctx, "user1").Return(inventory, nil)
 	tx.On("UpdateInventory", ctx, "user1", mock.Anything).Return(nil)
 	tx.On("Rollback", ctx).Return(nil)

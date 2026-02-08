@@ -28,7 +28,7 @@ type RegisterUserRequest struct {
 // @Success 201 {object} domain.User "User created"
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /user/register [post]
+// @Router /api/v1/user/register [post]
 func HandleRegisterUser(userService user.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
@@ -120,11 +120,12 @@ func getPlatformID(user *domain.User, platform string) string {
 // @Description Get the remaining timeout duration for a user
 // @Tags user
 // @Produce json
+// @Param platform query string false "Platform (default: twitch)" Enums(twitch, youtube, discord)
 // @Param username query string true "Username to check"
 // @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /user/timeout [get]
+// @Router /api/v1/user/timeout [get]
 func HandleGetTimeout(svc user.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
@@ -134,15 +135,22 @@ func HandleGetTimeout(svc user.Service) http.HandlerFunc {
 			return
 		}
 
-		duration, err := svc.GetTimeout(r.Context(), username)
+		// Platform is optional, defaults to twitch for backward compatibility
+		platform := r.URL.Query().Get("platform")
+		if platform == "" {
+			platform = domain.PlatformTwitch
+		}
+
+		duration, err := svc.GetTimeoutPlatform(r.Context(), platform, username)
 		if err != nil {
-			log.Error("Failed to get timeout", "error", err, "username", username)
+			log.Error("Failed to get timeout", "error", err, "platform", platform, "username", username)
 			statusCode, userMsg := mapServiceErrorToUserMessage(err)
 			respondError(w, statusCode, userMsg)
 			return
 		}
 
 		response := map[string]interface{}{
+			"platform":          platform,
 			"username":          username,
 			"is_timed_out":      duration > 0,
 			"remaining_seconds": duration.Seconds(),

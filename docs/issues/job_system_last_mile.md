@@ -9,18 +9,18 @@ The core job system infrastructure is complete, including XP awarding, daily res
 
 ## 2. Bonus Integration (Gating & Scaling)
 
-Currently, most jobs (except Scholar) do not provide tangible gameplay benefits based on their level.
+Currently, job benefits are integrated primarily through progression system modifiers rather than direct level checks.
 
-- [ ] **Blacksmith**: Link `UpgradeItem` success rates or cost reductions to Blacksmith job level.
-- [ ] **Explorer**: Link Search "Shine" chance or item rarity weight to Explorer job level.
-- [ ] **Merchant**: Integrate Merchant level into buy/sell price calculations (currently solely based on global progression).
-- [ ] **Gambler**: Add a small win probability bonus based on Gambler level.
+- [x] **Blacksmith**: Link `UpgradeItem` success rates or cost reductions to Blacksmith job level. (Implemented via `crafting_success_rate` modifier)
+- [ ] **Explorer**: Link Search "Shine" chance or item rarity weight to Explorer job level. (Not implemented - `calculateSearchShine` logic does not use modifiers)
+- [x] **Merchant**: Integrate Merchant level into buy/sell price calculations. (Implemented via `economy_bonus` modifier)
+- [x] **Gambler**: Add a small win probability bonus based on Gambler level. (Implemented via `gamble_win_bonus` modifier)
 
 ## 3. Level Gating
 
 Implement RPG-style requirements for advanced features:
 
-- [ ] "Requires Blacksmith Level X to craft" for high-tier recipes.
+- [ ] "Requires Blacksmith Level X to craft" for high-tier recipes. (Currently relies on recipe unlocks, not explicit job level checks in code)
 - [ ] "Requires Explorer Level X" for certain search locations (when implemented) -> Usage: `!search item` for the server to select the best location for finding that item type. Defaults to highest level location available.
 
 ## 4. Job Identity & UI
@@ -31,10 +31,22 @@ Implement RPG-style requirements for advanced features:
 ## 5. Farmer Job Implementation
 
 - [x] Implement XP awarding in `harvest.Service`.
-- [ ] Define benefits for Farmer job level in farming features (e.g. increased yield, faster growth times, etc.).
+- [ ] Define benefits for Farmer job level in farming features (e.g. increased yield, faster growth times, etc.). Currently only XP is awarded; no benefits are applied.
 
 ---
 
 **Status**: In Progress
 **Priority**: Medium
 **Related**: `docs/issues/progression_nodes/jobs.md`
+
+## Status Update (2026-01-30)
+
+- **Completed**: Bonus integration for Blacksmith, Merchant, and Gambler is done via progression modifiers. Farmer XP awarding is implemented.
+- **Pending**: Explorer job integration (Search Shine), Farmer job benefits, explicit Level Gating, and UI updates.
+
+## Status Update (2026-02-06)
+
+- **Explorer Job**: `internal/user/search_helpers.go` confirmed to not use Explorer job level for shine calculations.
+- **Farmer Job**: `internal/harvest/service.go` awards XP but does not use job level to modify yield or speed.
+- **Workers**: Daily and weekly reset workers are implemented and functioning.
+- **Status**: Still In Progress for feature integration.

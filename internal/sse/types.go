@@ -42,3 +42,44 @@ type VotingOptionInfo struct {
 type AllUnlockedPayload struct {
 	Message string `json:"message"`
 }
+
+// GambleCompletedPayload represents the SSE payload for gamble completion events
+type GambleCompletedPayload struct {
+	GambleID         string `json:"gamble_id"`
+	WinnerID         string `json:"winner_id"`
+	TotalValue       int64  `json:"total_value"`
+	ParticipantCount int    `json:"participant_count"`
+	Timestamp        int64  `json:"timestamp"`
+}
+
+// ExpeditionStartedPayload represents the SSE payload for expedition start events
+type ExpeditionStartedPayload struct {
+	ExpeditionID string `json:"expedition_id"`
+	JoinDeadline string `json:"join_deadline"`
+}
+
+// ExpeditionTurnPayload represents the SSE payload for expedition turn events
+type ExpeditionTurnPayload struct {
+	ExpeditionID string `json:"expedition_id"`
+	TurnNumber   int    `json:"turn_number"`
+	Narrative    string `json:"narrative"`
+	Fatigue      int    `json:"fatigue"`
+	Purse        int    `json:"purse"`
+}
+
+// ExpeditionCompletedPayload represents the SSE payload for expedition completion events
+type ExpeditionCompletedPayload struct {
+	ExpeditionID string `json:"expedition_id"`
+	TotalTurns   int    `json:"total_turns"`
+	Won          bool   `json:"won"`
+	AllKO        bool   `json:"all_ko"`
+}
+
+// TimeoutPayload represents the SSE payload for timeout events
+type TimeoutPayload struct {
+	Platform        string `json:"platform"`
+	Username        string `json:"username"`
+	Action          string `json:"action"` // "applied" or "cleared"
+	DurationSeconds int    `json:"duration_seconds"`
+	Reason          string `json:"reason,omitempty"`
+}

@@ -9,8 +9,11 @@ import (
 
 // InventoryItem represents an item in a user's inventory with display information
 type InventoryItem struct {
-	Name     string `json:"name"`
-	Quantity int    `json:"quantity"`
+	InternalName string `json:"item_name"`
+	PublicName   string `json:"public_name"`
+	Name         string `json:"name"` // For backward compatibility
+	Quantity     int    `json:"quantity"`
+	ShineLevel   string `json:"shine_level"`
 }
 
 // InventoryService handles inventory operations
@@ -45,9 +48,18 @@ type AccountLinkingService interface {
 type GameplayService interface {
 	HandleSearch(ctx context.Context, platform, platformID, username string) (string, error)
 	HandleIncomingMessage(ctx context.Context, platform, platformID, username, message string) (*domain.MessageResult, error)
+
+	// Platform-aware timeout methods (accumulating)
+	AddTimeout(ctx context.Context, platform, username string, duration time.Duration, reason string) error
+	ClearTimeout(ctx context.Context, platform, username string) error
+	GetTimeoutPlatform(ctx context.Context, platform, username string) (time.Duration, error)
+	ReduceTimeoutPlatform(ctx context.Context, platform, username string, reduction time.Duration) error
+
+	// Legacy timeout methods (default to "twitch" platform for backward compatibility)
 	TimeoutUser(ctx context.Context, username string, duration time.Duration, reason string) error
 	GetTimeout(ctx context.Context, username string) (time.Duration, error)
 	ReduceTimeout(ctx context.Context, username string, reduction time.Duration) error
+
 	ApplyShield(ctx context.Context, user *domain.User, quantity int, isMirror bool) error
 }
 

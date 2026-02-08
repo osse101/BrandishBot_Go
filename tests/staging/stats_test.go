@@ -14,7 +14,7 @@ import (
 // TestStatsEndpoints tests all stats-related endpoints
 func TestStatsEndpoints(t *testing.T) {
 	t.Run("SystemStats", func(t *testing.T) {
-		resp, body := makeRequest(t, "GET", "/stats/system", nil)
+		resp, body := makeRequest(t, "GET", "/api/v1/stats/system", nil)
 
 		if resp.StatusCode != http.StatusOK {
 			t.Errorf("Expected status 200, got %d. Body: %s", resp.StatusCode, string(body))
@@ -33,7 +33,7 @@ func TestStatsEndpoints(t *testing.T) {
 
 	t.Run("Leaderboard", func(t *testing.T) {
 		eventType := "message_sent"
-		path := fmt.Sprintf("/stats/leaderboard?event_type=%s", eventType)
+		path := fmt.Sprintf("/api/v1/stats/leaderboard?event_type=%s", eventType)
 		resp, body := makeRequest(t, "GET", path, nil)
 
 		if resp.StatusCode != http.StatusOK {
@@ -55,7 +55,7 @@ func TestStatsEndpoints(t *testing.T) {
 		// Use a valid UUID for testing
 		userID := "00000000-0000-0000-0000-000000000001"
 		platform := domain.PlatformTwitch
-		path := fmt.Sprintf("/stats/user?user_id=%s&platform=%s", userID, platform)
+		path := fmt.Sprintf("/api/v1/stats/user?platform=%s&platform_id=%s", platform, userID)
 		resp, body := makeRequest(t, "GET", path, nil)
 
 		// 200 or 404 are both valid (404 if user doesn't exist)
@@ -79,7 +79,7 @@ func TestRecordEvent(t *testing.T) {
 		"new_platform":      platform,
 		"new_platform_id":   platformID,
 	}
-	resp, body := makeRequest(t, "POST", "/user/register", regRequest)
+	resp, body := makeRequest(t, "POST", "/api/v1/user/register", regRequest)
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		t.Fatalf("Failed to register user for stats test: %d. Body: %s", resp.StatusCode, string(body))
 	}
@@ -88,7 +88,10 @@ func TestRecordEvent(t *testing.T) {
 	if err := json.Unmarshal(body, &userResp); err != nil {
 		t.Fatalf("Failed to unmarshal register response: %v", err)
 	}
-	registeredUserID := userResp["internal_id"].(string)
+	registeredUserID, ok := userResp["internal_id"].(string)
+	if !ok {
+		t.Fatalf("Response missing internal_id: %s", string(body))
+	}
 
 	// Use valid UUID from registration
 	eventType := "message_sent"
@@ -99,7 +102,7 @@ func TestRecordEvent(t *testing.T) {
 		"metadata":   map[string]interface{}{},
 	}
 
-	resp, body = makeRequest(t, "POST", "/stats/event", event)
+	resp, body = makeRequest(t, "POST", "/api/v1/stats/event", event)
 
 	// Should accept the event
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {

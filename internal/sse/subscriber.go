@@ -39,6 +39,18 @@ func (s *Subscriber) Subscribe() {
 	// Subscribe to progression all unlocked events
 	s.bus.Subscribe(event.ProgressionAllUnlocked, s.handleAllUnlocked)
 
+	// Subscribe to timeout events
+	s.bus.Subscribe(event.TimeoutApplied, s.handleTimeoutApplied)
+	s.bus.Subscribe(event.TimeoutCleared, s.handleTimeoutCleared)
+
+	// Subscribe to gamble completed events
+	s.bus.Subscribe(event.Type(domain.EventGambleCompleted), s.handleGambleCompleted)
+
+	// Subscribe to expedition events
+	s.bus.Subscribe(event.Type(domain.EventExpeditionStarted), s.handleExpeditionStarted)
+	s.bus.Subscribe(event.Type(domain.EventExpeditionTurn), s.handleExpeditionTurn)
+	s.bus.Subscribe(event.Type(domain.EventExpeditionCompleted), s.handleExpeditionCompleted)
+
 	slog.Info("SSE subscriber registered for event types",
 		"types", []string{
 			string(domain.EventJobLevelUp),
@@ -46,6 +58,12 @@ func (s *Subscriber) Subscribe() {
 			string(event.ProgressionVotingStarted),
 			string(event.ProgressionTargetSet),
 			string(event.ProgressionAllUnlocked),
+			string(event.TimeoutApplied),
+			string(event.TimeoutCleared),
+			string(domain.EventGambleCompleted),
+			string(domain.EventExpeditionStarted),
+			string(domain.EventExpeditionTurn),
+			string(domain.EventExpeditionCompleted),
 		})
 }
 
@@ -213,6 +231,13 @@ func getStringFromMap(m map[string]interface{}, key string) string {
 	return ""
 }
 
+func getBoolFromMap(m map[string]interface{}, key string) bool {
+	if v, ok := m[key].(bool); ok {
+		return v
+	}
+	return false
+}
+
 func getIntFromMap(m map[string]interface{}, key string) int {
 	switch v := m[key].(type) {
 	case int:
@@ -254,4 +279,200 @@ func extractNodeInfo(v interface{}) NodeInfo {
 	}
 
 	return NodeInfo{}
+}
+
+// handleTimeoutApplied processes timeout applied events
+func (s *Subscriber) handleTimeoutApplied(_ context.Context, evt event.Event) error {
+	// Try typed payload first
+	if payload, ok := evt.Payload.(event.TimeoutPayloadV1); ok {
+		ssePayload := TimeoutPayload{
+			Platform:        payload.Platform,
+			Username:        payload.Username,
+			Action:          payload.Action,
+			DurationSeconds: payload.DurationSeconds,
+			Reason:          payload.Reason,
+		}
+
+		s.hub.Broadcast(EventTypeTimeoutApplied, ssePayload)
+
+		slog.Debug(LogMsgEventBroadcast,
+			"event_type", EventTypeTimeoutApplied,
+			"platform", payload.Platform,
+			"username", payload.Username,
+			"duration_seconds", payload.DurationSeconds)
+
+		return nil
+	}
+
+	// Fall back to map parsing
+	payload, ok := evt.Payload.(map[string]interface{})
+	if !ok {
+		slog.Warn("Invalid timeout applied event payload type")
+		return nil
+	}
+
+	ssePayload := TimeoutPayload{
+		Platform:        getStringFromMap(payload, "platform"),
+		Username:        getStringFromMap(payload, "username"),
+		Action:          getStringFromMap(payload, "action"),
+		DurationSeconds: getIntFromMap(payload, "duration_seconds"),
+		Reason:          getStringFromMap(payload, "reason"),
+	}
+
+	s.hub.Broadcast(EventTypeTimeoutApplied, ssePayload)
+
+	slog.Debug(LogMsgEventBroadcast,
+		"event_type", EventTypeTimeoutApplied,
+		"platform", ssePayload.Platform,
+		"username", ssePayload.Username)
+
+	return nil
+}
+
+// handleTimeoutCleared processes timeout cleared events
+func (s *Subscriber) handleTimeoutCleared(_ context.Context, evt event.Event) error {
+	// Try typed payload first
+	if payload, ok := evt.Payload.(event.TimeoutPayloadV1); ok {
+		ssePayload := TimeoutPayload{
+			Platform:        payload.Platform,
+			Username:        payload.Username,
+			Action:          payload.Action,
+			DurationSeconds: 0,
+		}
+
+		s.hub.Broadcast(EventTypeTimeoutCleared, ssePayload)
+
+		slog.Debug(LogMsgEventBroadcast,
+			"event_type", EventTypeTimeoutCleared,
+			"platform", payload.Platform,
+			"username", payload.Username)
+
+		return nil
+	}
+
+	// Fall back to map parsing
+	payload, ok := evt.Payload.(map[string]interface{})
+	if !ok {
+		slog.Warn("Invalid timeout cleared event payload type")
+		return nil
+	}
+
+	ssePayload := TimeoutPayload{
+		Platform:        getStringFromMap(payload, "platform"),
+		Username:        getStringFromMap(payload, "username"),
+		Action:          "cleared",
+		DurationSeconds: 0,
+	}
+
+	s.hub.Broadcast(EventTypeTimeoutCleared, ssePayload)
+
+	slog.Debug(LogMsgEventBroadcast,
+		"event_type", EventTypeTimeoutCleared,
+		"platform", ssePayload.Platform,
+		"username", ssePayload.Username)
+
+	return nil
+}
+
+// handleExpeditionStarted processes expedition start events
+func (s *Subscriber) handleExpeditionStarted(_ context.Context, evt event.Event) error {
+	if exp, ok := evt.Payload.(*domain.Expedition); ok {
+		ssePayload := ExpeditionStartedPayload{
+			ExpeditionID: exp.ID.String(),
+			JoinDeadline: exp.JoinDeadline.Format("2006-01-02 15:04:05"),
+		}
+		s.hub.Broadcast(EventTypeExpeditionStarted, ssePayload)
+		slog.Debug(LogMsgEventBroadcast, "event_type", EventTypeExpeditionStarted, "expedition_id", exp.ID)
+		return nil
+	}
+
+	payload, ok := evt.Payload.(map[string]interface{})
+	if !ok {
+		slog.Warn("Invalid expedition started event payload type")
+		return nil
+	}
+
+	ssePayload := ExpeditionStartedPayload{
+		ExpeditionID: getStringFromMap(payload, "expedition_id"),
+		JoinDeadline: getStringFromMap(payload, "join_deadline"),
+	}
+	s.hub.Broadcast(EventTypeExpeditionStarted, ssePayload)
+	return nil
+}
+
+// handleExpeditionTurn processes expedition turn events
+func (s *Subscriber) handleExpeditionTurn(_ context.Context, evt event.Event) error {
+	payload, ok := evt.Payload.(map[string]interface{})
+	if !ok {
+		slog.Warn("Invalid expedition turn event payload type")
+		return nil
+	}
+
+	ssePayload := ExpeditionTurnPayload{
+		ExpeditionID: getStringFromMap(payload, "expedition_id"),
+		TurnNumber:   getIntFromMap(payload, "turn_number"),
+		Narrative:    getStringFromMap(payload, "narrative"),
+		Fatigue:      getIntFromMap(payload, "fatigue"),
+		Purse:        getIntFromMap(payload, "purse"),
+	}
+
+	s.hub.Broadcast(EventTypeExpeditionTurn, ssePayload)
+	return nil
+}
+
+// handleExpeditionCompleted processes expedition completion events
+func (s *Subscriber) handleExpeditionCompleted(_ context.Context, evt event.Event) error {
+	payload, ok := evt.Payload.(map[string]interface{})
+	if !ok {
+		slog.Warn("Invalid expedition completed event payload type")
+		return nil
+	}
+
+	ssePayload := ExpeditionCompletedPayload{
+		ExpeditionID: getStringFromMap(payload, "expedition_id"),
+		TotalTurns:   getIntFromMap(payload, "total_turns"),
+		Won:          getBoolFromMap(payload, "won"),
+		AllKO:        getBoolFromMap(payload, "all_ko"),
+	}
+
+	s.hub.Broadcast(EventTypeExpeditionCompleted, ssePayload)
+	slog.Debug(LogMsgEventBroadcast, "event_type", EventTypeExpeditionCompleted, "expedition_id", ssePayload.ExpeditionID)
+	return nil
+}
+
+// handleGambleCompleted processes gamble completion events
+func (s *Subscriber) handleGambleCompleted(_ context.Context, evt event.Event) error {
+	payload, ok := evt.Payload.(event.GambleCompletedPayloadV1)
+	if !ok {
+		// Fallback for untyped payload
+		payloadMap, ok := evt.Payload.(map[string]interface{})
+		if !ok {
+			slog.Warn("Invalid gamble completed event payload type")
+			return nil
+		}
+		payload = event.GambleCompletedPayloadV1{
+			GambleID:         getStringFromMap(payloadMap, "gamble_id"),
+			WinnerID:         getStringFromMap(payloadMap, "winner_id"),
+			TotalValue:       int64(getIntFromMap(payloadMap, "total_value")),
+			ParticipantCount: getIntFromMap(payloadMap, "participant_count"),
+			Timestamp:        int64(getIntFromMap(payloadMap, "timestamp")),
+		}
+	}
+
+	ssePayload := GambleCompletedPayload{
+		GambleID:         payload.GambleID,
+		WinnerID:         payload.WinnerID,
+		TotalValue:       payload.TotalValue,
+		ParticipantCount: payload.ParticipantCount,
+		Timestamp:        payload.Timestamp,
+	}
+
+	s.hub.Broadcast(EventTypeGambleCompleted, ssePayload)
+
+	slog.Debug(LogMsgEventBroadcast,
+		"event_type", EventTypeGambleCompleted,
+		"gamble_id", ssePayload.GambleID,
+		"winner_id", ssePayload.WinnerID)
+
+	return nil
 }

@@ -1,0 +1,29 @@
+{
+  "version": "1.0",
+  "sales_schedule": [
+    {
+      "week_offset": 0,
+      "target_category": "Weapon",
+      "discount_percent": 25,
+      "description": "Weapons are 25% off this week!"
+    },
+    {
+      "week_offset": 1,
+      "target_category": "Armor",
+      "discount_percent": 20,
+      "description": "Armor is 20% off this week!"
+    },
+    {
+      "week_offset": 2,
+      "target_category": "Consumable",
+      "discount_percent": 30,
+      "description": "Consumables are 30% off this week!"
+    },
+    {
+      "week_offset": 3,
+      "target_category": "Accessory",
+      "discount_percent": 15,
+      "description": "Accessories are 15% off this week!"
+    }
+  ]
+}

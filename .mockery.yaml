@@ -102,6 +102,12 @@ packages:
           mockname: "MockRepository"
           with-expecter: true
       JobService:
+  github.com/osse101/BrandishBot_Go/internal/compost:
+    config:
+      filename: "mock_compost_{{.InterfaceName | snakecase}}.go"
+      mockname: "MockCompost{{.InterfaceName}}"
+    interfaces:
+      Service:
   github.com/osse101/BrandishBot_Go/internal/lootbox:
     config:
       filename: "mock_lootbox_{{.InterfaceName | snakecase}}.go"
@@ -181,3 +187,11 @@ packages:
       mockname: "MockRepository{{.InterfaceName}}"
     interfaces:
       User:
+      HarvestRepository:
+      HarvestTx:
+  github.com/osse101/BrandishBot_Go/internal/harvest:
+    config:
+      filename: "mock_harvest_{{.InterfaceName | snakecase}}.go"
+      mockname: "MockHarvest{{.InterfaceName}}"
+    interfaces:
+      Service:

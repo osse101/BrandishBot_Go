@@ -11,12 +11,15 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/osse101/BrandishBot_Go/internal/cooldown"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/lootbox"
 	"github.com/osse101/BrandishBot_Go/internal/naming"
+	"github.com/osse101/BrandishBot_Go/internal/quest"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/osse101/BrandishBot_Go/internal/stats"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
@@ -46,14 +49,15 @@ type service struct {
 	trapRepo        repository.TrapRepository
 	handlerRegistry *HandlerRegistry
 	timeoutMu       sync.Mutex
-	timeouts        map[string]*timeoutInfo
+	timeouts        map[string]*timeoutInfo // Keyed by "platform:username"
 	lootboxService  lootbox.Service
 	jobService      JobService
 	statsService    stats.Service
 	stringFinder    *StringFinder
 	namingResolver  naming.Resolver
 	cooldownService cooldown.Service
-	devMode         bool // When true, bypasses cooldowns
+	eventBus        event.Bus // Event bus for publishing timeout events
+	devMode         bool      // When true, bypasses cooldowns
 	wg              sync.WaitGroup
 	userCache       *userCache // In-memory cache for user lookups
 
@@ -68,6 +72,8 @@ type service struct {
 	itemCacheMu     sync.RWMutex           // Protects both maps
 
 	activeChatterTracker *ActiveChatterTracker // Tracks users eligible for random targeting
+
+	questService quest.Service
 
 	rnd func() float64 // For RNG - allows deterministic testing
 }
@@ -110,7 +116,7 @@ func loadCacheConfig() CacheConfig {
 }
 
 // NewService creates a new user service
-func NewService(repo repository.User, trapRepo repository.TrapRepository, statsService stats.Service, jobService JobService, lootboxService lootbox.Service, namingResolver naming.Resolver, cooldownService cooldown.Service, devMode bool) Service {
+func NewService(repo repository.User, trapRepo repository.TrapRepository, statsService stats.Service, jobService JobService, lootboxService lootbox.Service, namingResolver naming.Resolver, cooldownService cooldown.Service, eventBus event.Bus, questService quest.Service, devMode bool) Service {
 	return &service{
 		repo:                 repo,
 		trapRepo:             trapRepo,
@@ -122,11 +128,13 @@ func NewService(repo repository.User, trapRepo repository.TrapRepository, statsS
 		stringFinder:         NewStringFinder(),
 		namingResolver:       namingResolver,
 		cooldownService:      cooldownService,
+		eventBus:             eventBus,
 		devMode:              devMode,
 		itemCacheByName:      make(map[string]domain.Item),
 		itemIDToName:         make(map[int]string),
 		userCache:            newUserCache(loadCacheConfig()),
 		activeChatterTracker: NewActiveChatterTracker(),
+		questService:         questService,
 		rnd:                  utils.RandomFloat,
 	}
 }
@@ -199,7 +207,7 @@ func (s *service) FindUserByPlatformID(ctx context.Context, platform, platformID
 // HandleIncomingMessage checks if a user exists for an incoming message, creates one if not, and finds string matches.
 func (s *service) HandleIncomingMessage(ctx context.Context, platform, platformID, username, message string) (*domain.MessageResult, error) {
 	log := logger.FromContext(ctx)
-	log.Info("HandleIncomingMessage called", "platform", platform, "platformID", platformID, "username", username)
+	log.Debug("HandleIncomingMessage called", "platform", platform, "platformID", platformID, "username", username)
 
 	user, err := s.getUserOrRegister(ctx, platform, platformID, username)
 	if err != nil {
@@ -246,7 +254,8 @@ func (s *service) HandleIncomingMessage(ctx context.Context, platform, platformI
 // Public methods handle user lookup (auto-register vs username-only), then delegate
 // to these helpers for the actual inventory modification.
 
-// addItemToUserInternal adds an item to a user's inventory within a transaction
+// addItemToUserInternal adds an item to a user's inventory within a transaction.
+// Used for admin adds - defaults to COMMON shine level.
 func (s *service) addItemToUserInternal(ctx context.Context, user *domain.User, itemName string, quantity int) error {
 	log := logger.FromContext(ctx)
 
@@ -267,12 +276,19 @@ func (s *service) addItemToUserInternal(ctx context.Context, user *domain.User, 
 			return domain.ErrFailedToGetInventory
 		}
 
-		// Add item to inventory using utility function
-		i, _ := utils.FindSlot(inventory, item.ID)
+		// Admin adds default to COMMON shine
+		shineLevel := domain.ShineCommon
+
+		// Find slot with matching ItemID AND ShineLevel
+		i, _ := utils.FindSlotWithShine(inventory, item.ID, shineLevel)
 		if i != -1 {
 			inventory.Slots[i].Quantity += quantity
 		} else {
-			inventory.Slots = append(inventory.Slots, domain.InventorySlot{ItemID: item.ID, Quantity: quantity})
+			inventory.Slots = append(inventory.Slots, domain.InventorySlot{
+				ItemID:     item.ID,
+				Quantity:   quantity,
+				ShineLevel: shineLevel,
+			})
 		}
 
 		if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
@@ -305,8 +321,8 @@ func (s *service) removeItemFromUserInternal(ctx context.Context, user *domain.U
 			return domain.ErrFailedToGetInventory
 		}
 
-		// Remove item from inventory using utility function
-		i, slotQty := utils.FindSlot(inventory, item.ID)
+		// Remove item from inventory using random selection (in case multiple slots with different shine levels exist)
+		i, slotQty := utils.FindRandomSlot(inventory, item.ID, s.rnd)
 		if i == -1 {
 			log.Warn("Item not in inventory", "itemName", itemName)
 			return domain.ErrNotInInventory
@@ -356,8 +372,8 @@ func (s *service) useItemInternal(ctx context.Context, user *domain.User, platfo
 			return domain.ErrFailedToGetInventory
 		}
 
-		// Find item in inventory using utility function
-		itemSlotIndex, slotQty := utils.FindSlot(inventory, itemToUse.ID)
+		// Find item in inventory using random selection (in case multiple slots exist with different shine levels)
+		itemSlotIndex, slotQty := utils.FindRandomSlot(inventory, itemToUse.ID, s.rnd)
 		if itemSlotIndex == -1 {
 			return domain.ErrNotInInventory
 		}
@@ -407,12 +423,77 @@ func (s *service) getInventoryInternal(ctx context.Context, user *domain.User, f
 	}
 
 	// Optimization: Batch fetch all item details using cache
+	itemMap, err := s.ensureItemsInCache(ctx, inventory)
+	if err != nil {
+		return nil, err
+	}
+
+	// Group items to merge identical items (same ID and shine)
+	type itemKey struct {
+		ItemID int
+		Shine  domain.ShineLevel
+	}
+	itemsMap := make(map[itemKey]int)
+	itemOrder := make([]itemKey, 0)
+
+	for _, slot := range inventory.Slots {
+		item, ok := itemMap[slot.ItemID]
+		if !ok {
+			log.Warn("Item missing for slot", "itemID", slot.ItemID)
+			continue
+		}
+
+		// Filter logic - check if item has the specified type
+		if filter != "" {
+			hasType := false
+			for _, t := range item.Types {
+				if t == filter {
+					hasType = true
+					break
+				}
+			}
+			if !hasType {
+				continue
+			}
+		}
+
+		key := itemKey{ItemID: slot.ItemID, Shine: slot.ShineLevel}
+		if _, exists := itemsMap[key]; !exists {
+			itemOrder = append(itemOrder, key)
+		}
+		itemsMap[key] += slot.Quantity
+	}
+
+	// Convert back to array in order of first appearance
+	items := make([]InventoryItem, 0, len(itemsMap))
+	for _, key := range itemOrder {
+		item := itemMap[key.ItemID]
+		shine := string(key.Shine)
+		if shine == "" {
+			shine = string(domain.ShineCommon)
+		}
+
+		items = append(items, InventoryItem{
+			InternalName: item.InternalName,
+			PublicName:   item.PublicName,
+			Name:         item.PublicName,
+			Quantity:     itemsMap[key],
+			ShineLevel:   shine,
+		})
+	}
+
+	return items, nil
+}
+
+// ensureItemsInCache ensures all items in the inventory are present in the service's item cache
+// and returns a map of itemID -> Item.
+func (s *service) ensureItemsInCache(ctx context.Context, inventory *domain.Inventory) (map[int]domain.Item, error) {
+	log := logger.FromContext(ctx)
 	itemMap := make(map[int]domain.Item)
 	missingIDs := make([]int, 0, len(inventory.Slots))
 
 	s.itemCacheMu.RLock()
 	for _, slot := range inventory.Slots {
-		// Use index to find item name, then look up in primary cache
 		if itemName, ok := s.itemIDToName[slot.ItemID]; ok {
 			if item, ok := s.itemCacheByName[itemName]; ok {
 				itemMap[slot.ItemID] = item
@@ -439,35 +520,7 @@ func (s *service) getInventoryInternal(ctx context.Context, user *domain.User, f
 		s.itemCacheMu.Unlock()
 	}
 
-	items := make([]InventoryItem, 0, len(inventory.Slots))
-	for _, slot := range inventory.Slots {
-		item, ok := itemMap[slot.ItemID]
-		if !ok {
-			log.Warn("Item missing for slot", "itemID", slot.ItemID)
-			continue
-		}
-
-		// Filter logic - check if item has the specified type
-		if filter != "" {
-			hasType := false
-			for _, t := range item.Types {
-				if t == filter {
-					hasType = true
-					break
-				}
-			}
-			if !hasType {
-				continue
-			}
-		}
-
-		items = append(items, InventoryItem{
-			Name:     item.PublicName,
-			Quantity: slot.Quantity,
-		})
-	}
-
-	return items, nil
+	return itemMap, nil
 }
 
 // AddItemByUsername adds an item by platform username
@@ -482,6 +535,7 @@ func (s *service) AddItemByUsername(ctx context.Context, platform, username, ite
 
 // AddItems adds multiple items to a user's inventory in a single transaction.
 // This is more efficient than calling AddItem multiple times as it reduces transaction overhead.
+// Items added via this method default to COMMON shine level.
 // Useful for bulk operations like lootbox opening.
 func (s *service) AddItems(ctx context.Context, platform, platformID, username string, items map[string]int) error {
 	log := logger.FromContext(ctx)
@@ -532,6 +586,7 @@ func (s *service) AddItems(ctx context.Context, platform, platformID, username s
 
 	// Convert items to InventorySlots for the helper
 	// Also verifies that all items were found
+	// Items default to COMMON shine level
 	slotsToAdd := make([]domain.InventorySlot, 0, len(items))
 	for itemName, quantity := range items {
 		itemID, ok := itemIDMap[itemName]
@@ -540,8 +595,9 @@ func (s *service) AddItems(ctx context.Context, platform, platformID, username s
 			return domain.ErrItemNotFound
 		}
 		slotsToAdd = append(slotsToAdd, domain.InventorySlot{
-			ItemID:   itemID,
-			Quantity: quantity,
+			ItemID:     itemID,
+			Quantity:   quantity,
+			ShineLevel: domain.ShineCommon,
 		})
 	}
 
@@ -630,8 +686,8 @@ func (s *service) executeGiveItemTx(ctx context.Context, owner, receiver *domain
 			return domain.ErrFailedToGetInventory
 		}
 
-		// Find item in owner's inventory using utility function
-		ownerSlotIndex, ownerSlotQty := utils.FindSlot(ownerInventory, item.ID)
+		// Find item in owner's inventory using random selection (in case multiple slots with different shine levels exist)
+		ownerSlotIndex, ownerSlotQty := utils.FindRandomSlot(ownerInventory, item.ID, s.rnd)
 		if ownerSlotIndex == -1 {
 			log.Warn("Item not found in owner's inventory", "item", item.InternalName)
 			return domain.ErrNotInInventory
@@ -640,6 +696,9 @@ func (s *service) executeGiveItemTx(ctx context.Context, owner, receiver *domain
 			log.Warn("Insufficient quantity in owner's inventory", "item", item.InternalName, "quantity", quantity)
 			return domain.ErrInsufficientQuantity
 		}
+
+		// Capture the shine level being transferred
+		transferredShine := ownerInventory.Slots[ownerSlotIndex].ShineLevel
 
 		receiverInventory, err := tx.GetInventory(ctx, receiver.ID)
 		if err != nil {
@@ -654,12 +713,16 @@ func (s *service) executeGiveItemTx(ctx context.Context, owner, receiver *domain
 			ownerInventory.Slots[ownerSlotIndex].Quantity -= quantity
 		}
 
-		// Add to receiver using utility function
-		receiverSlotIndex, _ := utils.FindSlot(receiverInventory, item.ID)
+		// Add to receiver - must match BOTH ItemID and ShineLevel to preserve exact item quality
+		receiverSlotIndex, _ := utils.FindSlotWithShine(receiverInventory, item.ID, transferredShine)
 		if receiverSlotIndex != -1 {
 			receiverInventory.Slots[receiverSlotIndex].Quantity += quantity
 		} else {
-			receiverInventory.Slots = append(receiverInventory.Slots, domain.InventorySlot{ItemID: item.ID, Quantity: quantity})
+			receiverInventory.Slots = append(receiverInventory.Slots, domain.InventorySlot{
+				ItemID:     item.ID,
+				Quantity:   quantity,
+				ShineLevel: transferredShine,
+			})
 		}
 
 		if err := tx.UpdateInventory(ctx, owner.ID, *ownerInventory); err != nil {
@@ -757,45 +820,104 @@ func (s *service) GetUserByPlatformUsername(ctx context.Context, platform, usern
 	return s.repo.GetUserByPlatformUsername(ctx, platform, username)
 }
 
-// TimeoutUser times out a user for a specified duration.
-// Note: Timeouts are currently in-memory and will be lost on server restart. This is a known design choice.
-func (s *service) TimeoutUser(ctx context.Context, username string, duration time.Duration, reason string) error {
+// timeoutKey generates a platform-aware key for the timeout map
+func timeoutKey(platform, username string) string {
+	return fmt.Sprintf("%s:%s", platform, username)
+}
+
+// AddTimeout applies or extends a timeout for a user (accumulating).
+// If the user already has a timeout, the new duration is ADDED to the remaining time.
+// Note: Timeouts are in-memory and will be lost on server restart.
+func (s *service) AddTimeout(ctx context.Context, platform, username string, duration time.Duration, reason string) error {
 	log := logger.FromContext(ctx)
-	log.Info("TimeoutUser called", "username", username, "duration", duration, "reason", reason)
+	key := timeoutKey(platform, username)
+	log.Info("AddTimeout called", "platform", platform, "username", username, "duration", duration, "reason", reason)
 
 	s.timeoutMu.Lock()
 	defer s.timeoutMu.Unlock()
 
-	// If user is already timed out, stop the existing timer
-	if info, exists := s.timeouts[username]; exists {
+	var newExpiresAt time.Time
+	now := time.Now()
+
+	// Check if user already has a timeout - accumulate if so
+	if info, exists := s.timeouts[key]; exists {
 		info.timer.Stop()
-		log.Info("Existing timeout cancelled", "username", username)
+		remaining := time.Until(info.expiresAt)
+		if remaining < 0 {
+			remaining = 0
+		}
+		// Accumulate: new expiry = now + remaining + new duration
+		newExpiresAt = now.Add(remaining + duration)
+		log.Info("Timeout accumulated", "platform", platform, "username", username, "previousRemaining", remaining, "added", duration, "newTotal", time.Until(newExpiresAt))
+	} else {
+		// No existing timeout
+		newExpiresAt = now.Add(duration)
+		log.Info("New timeout created", "platform", platform, "username", username, "duration", duration)
 	}
 
-	// Create a new timer
-	// Note: Using slog.Default() here since the timer callback runs asynchronously
-	// and the original context may no longer be valid
-	timer := time.AfterFunc(duration, func() {
+	// Create timer for expiry
+	timer := time.AfterFunc(time.Until(newExpiresAt), func() {
 		s.timeoutMu.Lock()
-		delete(s.timeouts, username)
+		delete(s.timeouts, key)
 		s.timeoutMu.Unlock()
-		slog.Default().Info("User timeout expired", "username", username, "reason", reason)
+		slog.Default().Info("User timeout expired", "platform", platform, "username", username, "reason", reason)
 	})
 
-	s.timeouts[username] = &timeoutInfo{
+	s.timeouts[key] = &timeoutInfo{
 		timer:     timer,
-		expiresAt: time.Now().Add(duration),
+		expiresAt: newExpiresAt,
 	}
-	log.Info("User timed out", "username", username, "duration", duration)
+
+	// Publish timeout event
+	if s.eventBus != nil {
+		totalSeconds := int(time.Until(newExpiresAt).Seconds())
+		evt := event.NewTimeoutAppliedEvent(platform, username, totalSeconds, reason)
+		if err := s.eventBus.Publish(ctx, evt); err != nil {
+			log.Warn("Failed to publish timeout applied event", "error", err)
+		}
+	}
+
 	return nil
 }
 
-// GetTimeout returns the remaining duration of a user's timeout
-func (s *service) GetTimeout(ctx context.Context, username string) (time.Duration, error) {
+// ClearTimeout removes a user's timeout (admin action).
+func (s *service) ClearTimeout(ctx context.Context, platform, username string) error {
+	log := logger.FromContext(ctx)
+	key := timeoutKey(platform, username)
+	log.Info("ClearTimeout called", "platform", platform, "username", username)
+
 	s.timeoutMu.Lock()
 	defer s.timeoutMu.Unlock()
 
-	info, exists := s.timeouts[username]
+	info, exists := s.timeouts[key]
+	if !exists {
+		log.Info("No timeout to clear", "platform", platform, "username", username)
+		return nil
+	}
+
+	info.timer.Stop()
+	delete(s.timeouts, key)
+	log.Info("Timeout cleared", "platform", platform, "username", username)
+
+	// Publish timeout cleared event
+	if s.eventBus != nil {
+		evt := event.NewTimeoutClearedEvent(platform, username)
+		if err := s.eventBus.Publish(ctx, evt); err != nil {
+			log.Warn("Failed to publish timeout cleared event", "error", err)
+		}
+	}
+
+	return nil
+}
+
+// GetTimeoutPlatform returns the remaining duration of a user's timeout for a specific platform.
+func (s *service) GetTimeoutPlatform(ctx context.Context, platform, username string) (time.Duration, error) {
+	key := timeoutKey(platform, username)
+
+	s.timeoutMu.Lock()
+	defer s.timeoutMu.Unlock()
+
+	info, exists := s.timeouts[key]
 	if !exists {
 		return 0, nil
 	}
@@ -807,17 +929,18 @@ func (s *service) GetTimeout(ctx context.Context, username string) (time.Duratio
 	return remaining, nil
 }
 
-// ReduceTimeout reduces a user's timeout by the specified duration (used by revive items)
-func (s *service) ReduceTimeout(ctx context.Context, username string, reduction time.Duration) error {
+// ReduceTimeoutPlatform reduces a user's timeout by the specified duration for a specific platform.
+func (s *service) ReduceTimeoutPlatform(ctx context.Context, platform, username string, reduction time.Duration) error {
 	log := logger.FromContext(ctx)
-	log.Info("ReduceTimeout called", "username", username, "reduction", reduction)
+	key := timeoutKey(platform, username)
+	log.Info("ReduceTimeoutPlatform called", "platform", platform, "username", username, "reduction", reduction)
 
 	s.timeoutMu.Lock()
 	defer s.timeoutMu.Unlock()
 
-	info, exists := s.timeouts[username]
+	info, exists := s.timeouts[key]
 	if !exists {
-		log.Info("User not timed out, nothing to reduce", "username", username)
+		log.Info("User not timed out, nothing to reduce", "platform", platform, "username", username)
 		return nil
 	}
 
@@ -828,8 +951,16 @@ func (s *service) ReduceTimeout(ctx context.Context, username string, reduction 
 	if remaining <= 0 {
 		// Timeout is fully reduced, remove it
 		info.timer.Stop()
-		delete(s.timeouts, username)
-		log.Info("Timeout fully removed", "username", username)
+		delete(s.timeouts, key)
+		log.Info("Timeout fully removed via reduction", "platform", platform, "username", username)
+
+		// Publish cleared event since timeout is gone
+		if s.eventBus != nil {
+			evt := event.NewTimeoutClearedEvent(platform, username)
+			if err := s.eventBus.Publish(ctx, evt); err != nil {
+				log.Warn("Failed to publish timeout cleared event", "error", err)
+			}
+		}
 		return nil
 	}
 
@@ -838,13 +969,36 @@ func (s *service) ReduceTimeout(ctx context.Context, username string, reduction 
 	info.expiresAt = newExpiresAt
 	info.timer = time.AfterFunc(remaining, func() {
 		s.timeoutMu.Lock()
-		delete(s.timeouts, username)
+		delete(s.timeouts, key)
 		s.timeoutMu.Unlock()
-		slog.Default().Info("User timeout expired", "username", username)
+		slog.Default().Info("User timeout expired", "platform", platform, "username", username)
 	})
 
-	log.Info("Timeout reduced", "username", username, "newRemaining", remaining)
+	log.Info("Timeout reduced", "platform", platform, "username", username, "newRemaining", remaining)
 	return nil
+}
+
+// TimeoutUser times out a user for a specified duration.
+// Legacy method - defaults to Twitch platform for backward compatibility.
+// Note: This method REPLACES the existing timeout (does not accumulate).
+// For accumulating timeouts, use AddTimeout.
+func (s *service) TimeoutUser(ctx context.Context, username string, duration time.Duration, reason string) error {
+	// Legacy behavior: use AddTimeout with twitch platform
+	// Note: The original TimeoutUser replaced timeouts, but we're now using accumulating AddTimeout
+	// for consistency. If true replacement behavior is needed, we'd need to clear first.
+	return s.AddTimeout(ctx, domain.PlatformTwitch, username, duration, reason)
+}
+
+// GetTimeout returns the remaining duration of a user's timeout.
+// Legacy method - defaults to Twitch platform for backward compatibility.
+func (s *service) GetTimeout(ctx context.Context, username string) (time.Duration, error) {
+	return s.GetTimeoutPlatform(ctx, domain.PlatformTwitch, username)
+}
+
+// ReduceTimeout reduces a user's timeout by the specified duration (used by revive items).
+// Legacy method - defaults to Twitch platform for backward compatibility.
+func (s *service) ReduceTimeout(ctx context.Context, username string, reduction time.Duration) error {
+	return s.ReduceTimeoutPlatform(ctx, domain.PlatformTwitch, username, reduction)
 }
 
 // ApplyShield activates shield protection for a user (blocks next weapon attacks)
@@ -903,19 +1057,17 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 	})
 
 	if err != nil {
-		// Check if it's a cooldown error
-		var cooldownErr cooldown.ErrOnCooldown
-		if errors.As(err, &cooldownErr) {
-			// Return user-friendly cooldown message
-			minutes := int(cooldownErr.Remaining.Minutes())
-			seconds := int(cooldownErr.Remaining.Seconds()) % 60
-			if minutes > 0 {
-				return fmt.Sprintf("You can search again in %dm %ds.", minutes, seconds), nil
-			}
-			return fmt.Sprintf("You can search again in %ds.", seconds), nil
-		}
-		// Other error
 		return "", err
+	}
+
+	// Track quest progress for search (async, fire-and-forget)
+	if s.questService != nil {
+		go func() {
+			// Use background context for async task to outlive request
+			if err := s.questService.OnSearch(context.Background(), user.ID); err != nil {
+				slog.Warn("Failed to track quest progress for search", "error", err, "user_id", user.ID)
+			}
+		}()
 	}
 
 	log.Info("Search completed", "username", username, "result", resultMessage)
@@ -1029,7 +1181,7 @@ func (s *service) processSearchSuccess(ctx context.Context, user *domain.User, r
 	return s.formatSearchSuccessMessage(ctx, item, quantity, isCritical, params), nil
 }
 
-func (s *service) addItemToTx(ctx context.Context, tx repository.Tx, userID string, itemID int, quantity int, shineLevel domain.ShineLevel) error {
+func (s *service) addItemToTx(ctx context.Context, tx repository.UserTx, userID string, itemID int, quantity int, shineLevel domain.ShineLevel) error {
 	log := logger.FromContext(ctx)
 	inventory, err := tx.GetInventory(ctx, userID)
 	if err != nil {
@@ -1037,11 +1189,16 @@ func (s *service) addItemToTx(ctx context.Context, tx repository.Tx, userID stri
 		return fmt.Errorf("failed to get inventory: %w", err)
 	}
 
-	i, _ := utils.FindSlot(inventory, itemID)
+	// Find slot with matching ItemID AND ShineLevel to prevent shine corruption
+	i, _ := utils.FindSlotWithShine(inventory, itemID, shineLevel)
 	if i != -1 {
 		inventory.Slots[i].Quantity += quantity
 	} else {
-		inventory.Slots = append(inventory.Slots, domain.InventorySlot{ItemID: itemID, Quantity: quantity, ShineLevel: shineLevel})
+		inventory.Slots = append(inventory.Slots, domain.InventorySlot{
+			ItemID:     itemID,
+			Quantity:   quantity,
+			ShineLevel: shineLevel,
+		})
 	}
 
 	if err := tx.UpdateInventory(ctx, userID, *inventory); err != nil {

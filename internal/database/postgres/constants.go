@@ -6,19 +6,6 @@ const (
 	PgErrorCodeUniqueViolation = "23505"
 )
 
-// Platform Names - used in user_platform_links table
-const (
-	PlatformNameTwitch  = "twitch"
-	PlatformNameYouTube = "youtube"
-	PlatformNameDiscord = "discord"
-)
-
-// Event Types - Progression System
-const (
-	EventTypeProgressionNodeUnlocked = "progression.node_unlocked"
-	EventTypeProgressionNodeRelocked = "progression.node_relocked"
-)
-
 // Event Versions
 const (
 	EventVersion1_0 = "1.0"
@@ -38,12 +25,6 @@ const (
 	DefaultEngagementWeightCommand     = 2.0
 	DefaultEngagementWeightItemCrafted = 3.0
 	DefaultEngagementWeightItemUsed    = 1.5
-)
-
-// Progression Voting Status Values
-const (
-	VotingStatusVoting    = "voting"
-	VotingStatusCompleted = "completed"
 )
 
 // Inventory Constants
@@ -198,45 +179,44 @@ const (
 
 // Error Messages - Progression Operations
 const (
-	ErrMsgFailedToGetNodeByKey                  = "failed to get node by key"
-	ErrMsgFailedToGetNodeByID                   = "failed to get node by ID"
-	ErrMsgFailedToQueryNodes                    = "failed to query nodes"
-	ErrMsgFailedToQueryPrerequisites            = "failed to query prerequisites"
-	ErrMsgFailedToQueryDependents               = "failed to query dependents"
-	ErrMsgFailedToInsertNode                    = "failed to insert node"
-	ErrMsgFailedToUpdateNode                    = "failed to update node"
-	ErrMsgFailedToGetUnlock                     = "failed to get unlock"
-	ErrMsgFailedToQueryUnlocks                  = "failed to query unlocks"
-	ErrMsgFailedToUnlockNode                    = "failed to unlock node"
-	ErrMsgFailedToRelockNode                    = "failed to relock node"
-	ErrMsgFailedToGetActiveVoting               = "failed to get active voting"
-	ErrMsgFailedToStartVoting                   = "failed to start voting"
-	ErrMsgFailedToGetVoting                     = "failed to get voting"
-	ErrMsgFailedToIncrementVote                 = "failed to increment vote"
-	ErrMsgFailedToEndVoting                     = "failed to end voting"
-	ErrMsgFailedToRecordUserVote                = "failed to record user vote"
-	ErrMsgFailedToUnlockUserProgression         = "failed to unlock user progression"
-	ErrMsgFailedToQueryUserProgressions         = "failed to query user progressions"
-	ErrMsgFailedToRecordEngagement              = "failed to record engagement"
-	ErrMsgFailedToGetWeights                    = "failed to get weights"
-	ErrMsgFailedToQueryEngagementMetrics        = "failed to query engagement metrics"
-	ErrMsgFailedToQueryUserEngagement           = "failed to query user engagement"
-	ErrMsgFailedToQueryEngagementWeights        = "failed to query engagement weights"
-	ErrMsgFailedToCountUnlocks                  = "failed to count unlocks"
-	ErrMsgFailedToGetEngagementScore            = "failed to get engagement score"
-	ErrMsgFailedToRecordReset                   = "failed to record reset"
-	ErrMsgFailedToClearUnlocks                  = "failed to clear unlocks"
-	ErrMsgFailedToClearVoting                   = "failed to clear voting"
-	ErrMsgFailedToClearUserVotes                = "failed to clear user votes"
-	ErrMsgFailedToClearUserProgression          = "failed to clear user progression"
-	ErrMsgFailedToUnmarshalMetadata             = "failed to unmarshal metadata"
-	ErrMsgFailedToGetNodeByFeatureKey           = "failed to get node by feature key"
-	ErrMsgFailedToUnmarshalModifierConfig       = "failed to unmarshal modifier config"
-	ErrMsgFailedToQueryDailyTotals              = "failed to query daily totals"
-	ErrMsgFailedToGetSyncMetadata               = "failed to get sync metadata"
-	ErrMsgFailedToUpsertSyncMetadata            = "failed to upsert sync metadata"
-	ErrMsgSyncMetadataNotFound                  = "sync metadata not found"
-	ErrMsgInventoryOpsNotSupportedInProgression = "inventory operations not supported in progression transactions"
+	ErrMsgFailedToGetNodeByKey            = "failed to get node by key"
+	ErrMsgFailedToGetNodeByID             = "failed to get node by ID"
+	ErrMsgFailedToQueryNodes              = "failed to query nodes"
+	ErrMsgFailedToQueryPrerequisites      = "failed to query prerequisites"
+	ErrMsgFailedToQueryDependents         = "failed to query dependents"
+	ErrMsgFailedToInsertNode              = "failed to insert node"
+	ErrMsgFailedToUpdateNode              = "failed to update node"
+	ErrMsgFailedToGetUnlock               = "failed to get unlock"
+	ErrMsgFailedToQueryUnlocks            = "failed to query unlocks"
+	ErrMsgFailedToUnlockNode              = "failed to unlock node"
+	ErrMsgFailedToRelockNode              = "failed to relock node"
+	ErrMsgFailedToGetActiveVoting         = "failed to get active voting"
+	ErrMsgFailedToStartVoting             = "failed to start voting"
+	ErrMsgFailedToGetVoting               = "failed to get voting"
+	ErrMsgFailedToIncrementVote           = "failed to increment vote"
+	ErrMsgFailedToEndVoting               = "failed to end voting"
+	ErrMsgFailedToRecordUserVote          = "failed to record user vote"
+	ErrMsgFailedToUnlockUserProgression   = "failed to unlock user progression"
+	ErrMsgFailedToQueryUserProgressions   = "failed to query user progressions"
+	ErrMsgFailedToRecordEngagement        = "failed to record engagement"
+	ErrMsgFailedToGetWeights              = "failed to get weights"
+	ErrMsgFailedToQueryEngagementMetrics  = "failed to query engagement metrics"
+	ErrMsgFailedToQueryUserEngagement     = "failed to query user engagement"
+	ErrMsgFailedToQueryEngagementWeights  = "failed to query engagement weights"
+	ErrMsgFailedToCountUnlocks            = "failed to count unlocks"
+	ErrMsgFailedToGetEngagementScore      = "failed to get engagement score"
+	ErrMsgFailedToRecordReset             = "failed to record reset"
+	ErrMsgFailedToClearUnlocks            = "failed to clear unlocks"
+	ErrMsgFailedToClearVoting             = "failed to clear voting"
+	ErrMsgFailedToClearUserVotes          = "failed to clear user votes"
+	ErrMsgFailedToClearUserProgression    = "failed to clear user progression"
+	ErrMsgFailedToUnmarshalMetadata       = "failed to unmarshal metadata"
+	ErrMsgFailedToGetNodeByFeatureKey     = "failed to get node by feature key"
+	ErrMsgFailedToUnmarshalModifierConfig = "failed to unmarshal modifier config"
+	ErrMsgFailedToQueryDailyTotals        = "failed to query daily totals"
+	ErrMsgFailedToGetSyncMetadata         = "failed to get sync metadata"
+	ErrMsgFailedToUpsertSyncMetadata      = "failed to upsert sync metadata"
+	ErrMsgSyncMetadataNotFound            = "sync metadata not found"
 )
 
 // Error Messages - Voting Session Operations

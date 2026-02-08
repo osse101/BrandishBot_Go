@@ -38,4 +38,22 @@ const (
 
 	// EventTrapSelfTriggered is published when a user triggers their own trap
 	EventTrapSelfTriggered = "trap.self_triggered"
+
+	// EventTypeTimeoutApplied is published when a timeout is applied to a user
+	EventTypeTimeoutApplied = "timeout.applied"
+
+	// EventTypeTimeoutCleared is published when a timeout is cleared for a user
+	EventTypeTimeoutCleared = "timeout.cleared"
+
+	// EventTypePredictionProcessed is published when a prediction outcome is processed
+	EventTypePredictionProcessed = "prediction.processed"
+
+	// Quest events
+	EventTypeWeeklyQuestReset     = "quest.weekly_reset"
+	EventTypeQuestProgressUpdated = "quest.progress_updated"
+	EventTypeQuestCompleted       = "quest.completed"
+	EventTypeQuestClaimed         = "quest.claimed"
+
+	// Economy events
+	EventTypeWeeklySaleActive = "economy.weekly_sale_active"
 )

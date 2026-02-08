@@ -2,7 +2,6 @@ package worker
 
 import (
 	"context"
-	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -15,20 +14,17 @@ import (
 
 // GambleWorker checks for expired gambles and executes them
 type GambleWorker struct {
-	service  gamble.Service
-	mu       sync.Mutex
-	timers   map[uuid.UUID]*time.Timer // gambleID -> timer
-	shutdown chan struct{}
-	wg       sync.WaitGroup
+	BaseWorker
+	service gamble.Service
 }
 
 // NewGambleWorker creates a new GambleWorker
 func NewGambleWorker(service gamble.Service) *GambleWorker {
-	return &GambleWorker{
-		service:  service,
-		timers:   make(map[uuid.UUID]*time.Timer),
-		shutdown: make(chan struct{}),
+	w := &GambleWorker{
+		service: service,
 	}
+	w.init()
+	return w
 }
 
 // Start checks for any existing active gamble on startup and schedules it
@@ -61,6 +57,7 @@ func (w *GambleWorker) handleGambleStarted(ctx context.Context, e event.Event) e
 	return nil
 }
 
+//nolint:dupl
 func (w *GambleWorker) scheduleExecution(g *domain.Gamble) {
 	duration := time.Until(g.JoinDeadline)
 
@@ -74,11 +71,7 @@ func (w *GambleWorker) scheduleExecution(g *domain.Gamble) {
 	}
 
 	// Stop existing timer if one exists for this gamble
-	w.mu.Lock()
-	if existingTimer, ok := w.timers[g.ID]; ok {
-		existingTimer.Stop()
-		delete(w.timers, g.ID)
-	}
+	w.stopTimer(g.ID)
 
 	// Schedule for future execution
 	timer := time.AfterFunc(duration, func() {
@@ -93,13 +86,10 @@ func (w *GambleWorker) scheduleExecution(g *domain.Gamble) {
 		w.executeGamble(g.ID)
 
 		// Clean up timer reference
-		w.mu.Lock()
-		delete(w.timers, g.ID)
-		w.mu.Unlock()
+		w.removeTimer(g.ID)
 	})
 
-	w.timers[g.ID] = timer
-	w.mu.Unlock()
+	w.registerTimer(g.ID, timer)
 }
 
 // executeGamble executes a gamble in a tracked goroutine
@@ -121,34 +111,5 @@ func (w *GambleWorker) executeGamble(gambleID uuid.UUID) {
 // Shutdown gracefully shuts down the gamble worker, canceling all pending timers
 // and waiting for any in-flight gamble executions to complete
 func (w *GambleWorker) Shutdown(ctx context.Context) error {
-	log := logger.FromContext(ctx)
-	log.Info("Shutting down gamble worker")
-
-	// Signal shutdown to all timer callbacks
-	close(w.shutdown)
-
-	// Cancel all pending timers
-	w.mu.Lock()
-	for gambleID, timer := range w.timers {
-		timer.Stop()
-		log.Info("Cancelled pending gamble execution", "gambleID", gambleID)
-	}
-	w.timers = make(map[uuid.UUID]*time.Timer)
-	w.mu.Unlock()
-
-	// Wait for any in-flight executions to complete
-	done := make(chan struct{})
-	go func() {
-		w.wg.Wait()
-		close(done)
-	}()
-
-	select {
-	case <-done:
-		log.Info("Gamble worker shutdown complete")
-		return nil
-	case <-ctx.Done():
-		log.Warn("Gamble worker shutdown timeout, some executions may still be running")
-		return ctx.Err()
-	}
+	return w.shutdownInternal(ctx, "gamble worker")
 }

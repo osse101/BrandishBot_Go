@@ -25,6 +25,8 @@ type Repositories struct {
 	Progression repository.Progression
 	Harvest     repository.HarvestRepository
 	Trap        repository.TrapRepository
+	Expedition  repository.Expedition
+	Quest       repository.QuestRepository
 }
 
 // InitializeRepositories creates all repository implementations.
@@ -44,5 +46,7 @@ func InitializeRepositories(dbPool *pgxpool.Pool, eventBus event.Bus) *Repositor
 		Progression: postgres.NewProgressionRepository(dbPool, eventBus),
 		Harvest:     postgres.NewHarvestRepository(dbPool),
 		Trap:        postgres.NewTrapRepository(dbPool),
+		Expedition:  postgres.NewExpeditionRepository(dbPool),
+		Quest:       postgres.NewQuestRepository(dbPool),
 	}
 }

@@ -3,6 +3,7 @@ package job
 import (
 	"context"
 	"errors"
+	"os"
 	"testing"
 	"time"
 
@@ -22,6 +23,9 @@ func TestResilientEvents_Integration(t *testing.T) {
 
 	// Create ResilientPublisher
 	deadLetterPath := "test_deadletter.jsonl"
+	t.Cleanup(func() {
+		os.Remove(deadLetterPath)
+	})
 	publisher, err := event.NewResilientPublisher(mockBus, 3, 10*time.Millisecond, deadLetterPath)
 	if err != nil {
 		t.Fatalf("Failed to create resilient publisher: %v", err)

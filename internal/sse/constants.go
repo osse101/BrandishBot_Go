@@ -37,8 +37,26 @@ const (
 	// EventTypeAllUnlocked is sent when all progression nodes have been unlocked
 	EventTypeAllUnlocked = "progression.all_unlocked"
 
+	// EventTypeGambleCompleted is sent when a gamble session completes
+	EventTypeGambleCompleted = "gamble.completed"
+
+	// EventTypeExpeditionStarted is sent when a new expedition starts recruiting
+	EventTypeExpeditionStarted = "expedition.started"
+
+	// EventTypeExpeditionTurn is sent for each turn of an expedition (live playback)
+	EventTypeExpeditionTurn = "expedition.turn"
+
+	// EventTypeExpeditionCompleted is sent when an expedition finishes
+	EventTypeExpeditionCompleted = "expedition.completed"
+
 	// EventTypeKeepalive is the keepalive ping event type
 	EventTypeKeepalive = "keepalive"
+
+	// EventTypeTimeoutApplied is sent when a timeout is applied to a user
+	EventTypeTimeoutApplied = "timeout.applied"
+
+	// EventTypeTimeoutCleared is sent when a timeout is cleared for a user
+	EventTypeTimeoutCleared = "timeout.cleared"
 )
 
 // Log messages

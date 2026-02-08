@@ -33,8 +33,8 @@ func TestGetInventoryByUsername(t *testing.T) {
 			{ItemID: 2, Quantity: 5},
 		},
 	}
-	repo.items["sword"] = &domain.Item{ID: 1, InternalName: "sword", Types: []string{}}
-	repo.items["shield"] = &domain.Item{ID: 2, InternalName: "shield", Types: []string{}}
+	repo.items["sword"] = &domain.Item{ID: 1, InternalName: "sword", PublicName: "sword", Types: []string{}}
+	repo.items["shield"] = &domain.Item{ID: 2, InternalName: "shield", PublicName: "shield", Types: []string{}}
 
 	t.Run("successful retrieval", func(t *testing.T) {
 		items, err := svc.GetInventoryByUsername(context.Background(), "twitch", "alice", "")
@@ -197,5 +197,24 @@ func TestGiveItemByUsername(t *testing.T) {
 		}
 	})
 
-	//TODO: Add tests for invalid ID, receiver not found, and insufficient quantity
+	t.Run("receiver not found", func(t *testing.T) {
+		err := svc.GiveItem(context.Background(), domain.PlatformTwitch, sender.TwitchID, sender.Username, domain.PlatformTwitch, "NonexistentUser", domain.ItemMoney, 10)
+		if !errors.Is(err, domain.ErrUserNotFound) {
+			t.Fatalf("Expected ErrUserNotFound, got %v", err)
+		}
+	})
+
+	t.Run("insufficient quantity", func(t *testing.T) {
+		err := svc.GiveItem(context.Background(), domain.PlatformTwitch, sender.TwitchID, sender.Username, domain.PlatformDiscord, receiver.Username, domain.ItemMoney, 200)
+		if !errors.Is(err, domain.ErrInsufficientQuantity) {
+			t.Fatalf("Expected ErrInsufficientQuantity, got %v", err)
+		}
+	})
+
+	t.Run("invalid quantity", func(t *testing.T) {
+		err := svc.GiveItem(context.Background(), domain.PlatformTwitch, sender.TwitchID, sender.Username, domain.PlatformDiscord, receiver.Username, domain.ItemMoney, -1)
+		if !errors.Is(err, domain.ErrInvalidInput) {
+			t.Fatalf("Expected ErrInvalidInput, got %v", err)
+		}
+	})
 }

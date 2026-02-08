@@ -6,6 +6,7 @@ import (
 	context "context"
 
 	event "github.com/osse101/BrandishBot_Go/internal/event"
+	eventlog "github.com/osse101/BrandishBot_Go/internal/eventlog"
 
 	mock "github.com/stretchr/testify/mock"
 )
@@ -76,6 +77,65 @@ func (_c *MockEventlogService_CleanupOldEvents_Call) Return(_a0 int64, _a1 error
 }
 
 func (_c *MockEventlogService_CleanupOldEvents_Call) RunAndReturn(run func(context.Context, int) (int64, error)) *MockEventlogService_CleanupOldEvents_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetEvents provides a mock function with given fields: ctx, filter
+func (_m *MockEventlogService) GetEvents(ctx context.Context, filter eventlog.EventFilter) ([]eventlog.Event, error) {
+	ret := _m.Called(ctx, filter)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetEvents")
+	}
+
+	var r0 []eventlog.Event
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, eventlog.EventFilter) ([]eventlog.Event, error)); ok {
+		return rf(ctx, filter)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, eventlog.EventFilter) []eventlog.Event); ok {
+		r0 = rf(ctx, filter)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]eventlog.Event)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, eventlog.EventFilter) error); ok {
+		r1 = rf(ctx, filter)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockEventlogService_GetEvents_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetEvents'
+type MockEventlogService_GetEvents_Call struct {
+	*mock.Call
+}
+
+// GetEvents is a helper method to define mock.On call
+//   - ctx context.Context
+//   - filter eventlog.EventFilter
+func (_e *MockEventlogService_Expecter) GetEvents(ctx interface{}, filter interface{}) *MockEventlogService_GetEvents_Call {
+	return &MockEventlogService_GetEvents_Call{Call: _e.mock.On("GetEvents", ctx, filter)}
+}
+
+func (_c *MockEventlogService_GetEvents_Call) Run(run func(ctx context.Context, filter eventlog.EventFilter)) *MockEventlogService_GetEvents_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(eventlog.EventFilter))
+	})
+	return _c
+}
+
+func (_c *MockEventlogService_GetEvents_Call) Return(_a0 []eventlog.Event, _a1 error) *MockEventlogService_GetEvents_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockEventlogService_GetEvents_Call) RunAndReturn(run func(context.Context, eventlog.EventFilter) ([]eventlog.Event, error)) *MockEventlogService_GetEvents_Call {
 	_c.Call.Return(run)
 	return _c
 }

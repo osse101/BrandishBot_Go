@@ -32,23 +32,12 @@ The shield handler currently has a placeholder implementation. Full implementati
 - `internal/user/item_handlers.go` - `handleWeapon()` to check for shields
 - `migrations/` - new migration file
 
-### 2. Explosive/Trap System
+### 2. ~~Explosive/Trap System~~ [COMPLETED - 2026-01-30]
 
-**Priority:** Low
-**Effort:** High
-
-The explosive items (mine, trap, tnt) are defined but the trap mechanism needs design and implementation:
-
-- [ ] Design trap trigger system (triggered when another user searches?)
-- [ ] Add `active_traps` table to store placed traps
-- [ ] Integrate trap check into search handler
-- [ ] Implement trap placement handler
-- [ ] Define trap effects (timeout victim, steal items, etc.)
-
-**Design questions:**
-- How long do traps persist?
-- Can users detect/disarm traps?
-- What happens when multiple traps are triggered?
+**Status**: Implemented.
+- `user_traps` table exists.
+- `handleTrap` is fully implemented in `internal/user/item_handlers.go`.
+- `triggerTrap` is implemented in `internal/user/service.go` and hooked into message processing.
 
 ### 3. Handler Config Parsing
 

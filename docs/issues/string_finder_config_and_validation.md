@@ -23,3 +23,12 @@ A recent refactoring of the regex compilation logic needs production-level valid
 - Externalize `StringFinder` rules to a configuration file (e.g., `configs/string_finder_rules.json`).
 - Implement a reload mechanism (similar to item aliases) to update rules without restarting the server.
 - Add comprehensive test cases for complex word boundary scenarios (e.g., handles punctuation, emojis, and non-latin characters if applicable).
+
+## Status Update (2026-01-30)
+
+Verified that `internal/user/string_finder.go` still contains hardcoded rules in `loadDefaultRules` ("Bapanada", "gary", "shedinja"). No configuration loading logic is present. The issue persists.
+
+## Status Update (2026-02-06)
+
+Verified that `internal/user/string_finder.go` has not been modified to load configuration files. The `loadDefaultRules` function remains hardcoded.
+- **Status**: Open

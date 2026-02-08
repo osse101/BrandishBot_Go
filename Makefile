@@ -1,4 +1,4 @@
-.PHONY: help migrate-up migrate-down migrate-status migrate-create test build run clean docker-build docker-up docker-down deploy-staging deploy-production rollback-staging rollback-production health-check-staging health-check-prod install-hooks reset-staging seed-staging validate-staging
+.PHONY: help migrate-up migrate-down migrate-status migrate-create test build run clean docker-build docker-up docker-down deploy-staging deploy-production rollback-staging rollback-production health-check-staging health-check-prod install-hooks reset-staging seed-staging validate-staging admin-install admin-dev admin-build admin-clean
 
 # Tool paths
 GOOSE   := go run github.com/pressly/goose/v3/cmd/goose
@@ -117,7 +117,7 @@ unit:
 watch:
 	@echo "Watching for changes to run unit tests..."
 	@if command -v entr > /dev/null; then \
-		find . -name "*.go" | entr -c ./scripts/unit_tests.sh; \
+		find . -name "*.go" | entr -c $(MAKE) unit; \
 	else \
 		echo "Error: 'entr' is not installed. Please install it to use this feature."; \
 		exit 1; \
@@ -131,7 +131,7 @@ test-coverage:
 	fi
 	@go tool cover -html=logs/coverage.out -o logs/coverage.html
 	@echo "Coverage report generated: logs/coverage.html"
-	@./scripts/check_coverage.sh logs/coverage.out 0
+	@go run ./cmd/devtool check-coverage logs/coverage.out 0
 
 test-coverage-check:
 	@echo "Checking coverage threshold (80%)..."
@@ -139,7 +139,7 @@ test-coverage-check:
 		echo "Coverage profile not found. Running tests..."; \
 		$(MAKE) test; \
 	fi
-	@./scripts/check_coverage.sh logs/coverage.out 80
+	@go run ./cmd/devtool check-coverage logs/coverage.out 80
 
 lint:
 	@echo "Running linters..."
@@ -151,79 +151,31 @@ lint-fix:
 
 install-hooks:
 	@echo "Installing git hooks..."
-	@chmod +x scripts/pre-commit.sh
-	@ln -sf ../../scripts/pre-commit.sh .git/hooks/pre-commit
+	@echo "#!/bin/sh" > .git/hooks/pre-commit
+	@echo "go run ./cmd/devtool pre-commit" >> .git/hooks/pre-commit
+	@chmod +x .git/hooks/pre-commit
 	@echo "✓ Git hooks installed"
 
 # Benchmark commands
 .PHONY: bench bench-hot bench-save bench-baseline bench-compare bench-profile
 
 bench:
-	@echo "Running all benchmarks..."
-	@go test -bench=. -benchmem -benchtime=2s ./...
+	@go run ./cmd/devtool bench run
 
 bench-hot:
-	@echo "Running hot path benchmarks..."
-	@echo "  → Handler: HandleMessageHandler"
-	@go test -bench=BenchmarkHandler_HandleMessage -benchmem -benchtime=2s ./internal/handler 2>/dev/null || echo "    (benchmark not yet implemented)"
-	@echo "  → Service: HandleIncomingMessage"
-	@go test -bench=BenchmarkService_HandleIncomingMessage -benchmem -benchtime=2s ./internal/user 2>/dev/null || echo "    (benchmark not yet implemented)"
-	@echo "  → Service: AddItem"
-	@go test -bench=BenchmarkService_AddItem -benchmem -benchtime=2s ./internal/user 2>/dev/null || echo "    (benchmark not yet implemented)"
-	@echo "  → Utils: Inventory operations (existing)"
-	@go test -bench=. -benchmem -benchtime=2s ./internal/utils
+	@go run ./cmd/devtool bench hot
 
 bench-save:
-	@echo "Running benchmarks and saving results..."
-	@mkdir -p benchmarks/results
-	@go test -bench=. -benchmem -benchtime=2s ./... 2>&1 | tee benchmarks/results/$$(date +%Y%m%d-%H%M%S).txt
-	@echo "✓ Results saved to benchmarks/results/"
+	@go run ./cmd/devtool bench save
 
 bench-baseline:
-	@echo "Setting benchmark baseline..."
-	@mkdir -p benchmarks/results
-	@go test -bench=. -benchmem -benchtime=2s ./... 2>&1 | tee benchmarks/results/baseline.txt
-	@echo "✓ Baseline set: benchmarks/results/baseline.txt"
+	@go run ./cmd/devtool bench baseline
 
 bench-compare:
-	@if [ ! -f benchmarks/results/baseline.txt ]; then \
-		echo "❌ Error: No baseline found. Run 'make bench-baseline' first."; \
-		exit 1; \
-	fi
-	@echo "Running benchmarks and comparing to baseline..."
-	@mkdir -p benchmarks/results
-	@go test -bench=. -benchmem -benchtime=2s ./... > benchmarks/results/current.txt 2>&1 || true
-	@if command -v benchstat > /dev/null 2>&1; then \
-		benchstat benchmarks/results/baseline.txt benchmarks/results/current.txt; \
-	else \
-		echo ""; \
-		echo "⚠️  benchstat not installed. Install with:"; \
-		echo "   go install golang.org/x/perf/cmd/benchstat@latest"; \
-		echo ""; \
-		echo "Showing raw comparison:"; \
-		echo "======================"; \
-		echo "BASELINE:"; \
-		grep "^Benchmark" benchmarks/results/baseline.txt | head -5; \
-		echo ""; \
-		echo "CURRENT:"; \
-		grep "^Benchmark" benchmarks/results/current.txt | head -5; \
-	fi
+	@go run ./cmd/devtool bench compare
 
 bench-profile:
-	@echo "Profiling hot paths..."
-	@mkdir -p benchmarks/profiles
-	@echo "  → CPU profile (if benchmark exists)..."
-	@go test -bench=BenchmarkHandler_HandleMessage -cpuprofile=benchmarks/profiles/cpu.prof ./internal/handler 2>/dev/null || \
-		go test -bench=BenchmarkAddItems -cpuprofile=benchmarks/profiles/cpu.prof ./internal/utils
-	@echo "  → Memory profile (if benchmark exists)..."
-	@go test -bench=BenchmarkHandler_HandleMessage -memprofile=benchmarks/profiles/mem.prof -benchmem ./internal/handler 2>/dev/null || \
-		go test -bench=BenchmarkAddItems -memprofile=benchmarks/profiles/mem.prof -benchmem ./internal/utils
-	@echo "✓ Profiles saved to benchmarks/profiles/"
-	@echo ""
-	@echo "View CPU profile with:"
-	@echo "  go tool pprof -http=:8080 benchmarks/profiles/cpu.prof"
-	@echo "View memory profile with:"
-	@echo "  go tool pprof -http=:8080 benchmarks/profiles/mem.prof"
+	@go run ./cmd/devtool bench profile
 
 # Build targets
 build:
@@ -301,6 +253,8 @@ swagger:
 	@echo "Swagger docs updated: docs/swagger/"
 
 generate:
+	@echo "Generating Swagger documentation..."
+	@$(MAKE) swagger
 	@echo "Generating sqlc code..."
 	@$(SQLC) generate
 	@echo "✓ sqlc code generated"
@@ -364,8 +318,8 @@ test-integration:
 
 test-staging:
 	@echo "Running staging integration tests..."
-	@echo "Target: $${STAGING_URL:-http://localhost:8080}"
-	@go test -tags=staging -v ./tests/staging
+	@echo "Target: $${STAGING_URL:-http://localhost:8081}"
+	@STAGING_URL=$${STAGING_URL:-http://localhost:8081} go test -tags=staging -v ./tests/staging
 
 db-test-up:
 	@echo "Starting test database..."
@@ -458,21 +412,39 @@ validate-staging:
 
 # Audit & Security targets
 test-migrations:
-	@chmod +x scripts/test_migrations.sh
-	@./scripts/test_migrations.sh
+	@go run ./cmd/devtool test-migrations
 
 test-security:
-	@chmod +x scripts/test_security.sh
-	@./scripts/test_security.sh
+	@go run ./cmd/devtool test-security
 
 check-deps:
-	@chmod +x scripts/check_deps.sh
-	@./scripts/check_deps.sh
+	@go run ./cmd/devtool check-deps
 
 check-db:
-	@chmod +x scripts/check_db.sh
-	@./scripts/check_db.sh
+	@go run ./cmd/devtool check-db
 
+
+# Admin dashboard commands
+admin-install:
+	@echo "Installing admin dashboard dependencies..."
+	@cd web/admin && npm ci
+	@echo "✓ Admin dependencies installed"
+
+admin-dev:
+	@echo "Starting admin dashboard dev server..."
+	@cd web/admin && npm run dev
+
+admin-build:
+	@echo "Building admin dashboard..."
+	@cd web/admin && npm ci && npm run build
+	@rm -rf internal/admin/dist
+	@cp -r web/admin/dist internal/admin/dist
+	@echo "✓ Admin dashboard built and copied to internal/admin/dist"
+
+admin-clean:
+	@echo "Cleaning admin dashboard artifacts..."
+	@rm -rf web/admin/dist web/admin/node_modules
+	@echo "✓ Admin artifacts cleaned"
 
 # Mock generation
 .PHONY: mocks clean-mocks

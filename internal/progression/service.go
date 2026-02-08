@@ -3,6 +3,7 @@ package progression
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -34,7 +35,7 @@ type Service interface {
 	IsNodeUnlocked(ctx context.Context, nodeKey string, level int) (bool, error) // Bug #2: Check if specific node/level is unlocked
 
 	// Voting
-	VoteForUnlock(ctx context.Context, platform, platformID, nodeKey string) error
+	VoteForUnlock(ctx context.Context, platform, platformID, username string, optionIndex int) error
 	GetActiveVotingSession(ctx context.Context) (*domain.ProgressionVotingSession, error)
 	GetMostRecentVotingSession(ctx context.Context) (*domain.ProgressionVotingSession, error) // Bug #1: Get most recent session (any status)
 	StartVotingSession(ctx context.Context, unlockedNodeID *int) error
@@ -133,8 +134,8 @@ func NewService(repo repository.Progression, userRepo repository.User, bus event
 
 	// Subscribe to node unlock/relock events to invalidate caches
 	if bus != nil {
-		bus.Subscribe("progression.node_unlocked", svc.handleNodeUnlocked)
-		bus.Subscribe("progression.node_relocked", svc.handleNodeRelocked)
+		bus.Subscribe(event.ProgressionNodeUnlocked, svc.handleNodeUnlocked)
+		bus.Subscribe(event.ProgressionNodeRelocked, svc.handleNodeRelocked)
 	}
 
 	return svc
@@ -276,6 +277,109 @@ func (s *service) GetAvailableUnlocks(ctx context.Context) ([]*domain.Progressio
 	return available, nil
 }
 
+// GetAvailableUnlocksWithFutureTarget returns nodes available for voting now, plus nodes that will become available
+// once the current unlock target is unlocked. This prevents voting gaps when a node with dependents completes.
+func (s *service) GetAvailableUnlocksWithFutureTarget(ctx context.Context) ([]*domain.ProgressionNode, error) {
+	log := logger.FromContext(ctx)
+
+	// Get currently available nodes
+	available, err := s.GetAvailableUnlocks(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get current available unlocks: %w", err)
+	}
+
+	// Get current unlock progress to check if there's an active target
+	progress, err := s.repo.GetActiveUnlockProgress(ctx)
+	if err != nil {
+		log.Warn("Failed to get active unlock progress, using only current available", "error", err)
+		return available, nil
+	}
+
+	// If no target is set, return only currently available
+	if progress == nil || progress.NodeID == nil {
+		return available, nil
+	}
+
+	// Get the target node being worked towards
+	targetNode, err := s.repo.GetNodeByID(ctx, *progress.NodeID)
+	if err != nil || targetNode == nil {
+		log.Warn("Failed to get target node, using only current available", "nodeID", progress.NodeID, "error", err)
+		return available, nil
+	}
+
+	// Get all nodes that have the target as a prerequisite (future-available nodes)
+	futureAvailable, err := s.getNodesDependentOn(ctx, targetNode.ID, targetNode.NodeKey)
+	if err != nil {
+		log.Warn("Failed to get dependent nodes, using only current available", "error", err)
+		return available, nil
+	}
+
+	// Combine both sets, avoiding duplicates
+	seen := make(map[int]bool)
+	combined := make([]*domain.ProgressionNode, 0, len(available)+len(futureAvailable))
+
+	for _, node := range available {
+		if !seen[node.ID] {
+			combined = append(combined, node)
+			seen[node.ID] = true
+		}
+	}
+
+	for _, node := range futureAvailable {
+		if !seen[node.ID] {
+			combined = append(combined, node)
+			seen[node.ID] = true
+		}
+	}
+
+	log.Debug("GetAvailableUnlocksWithFutureTarget results",
+		"currentAvailable", len(available),
+		"futureAvailable", len(futureAvailable),
+		"combined", len(combined),
+		"targetNodeKey", targetNode.NodeKey)
+
+	return combined, nil
+}
+
+// getNodesDependentOn returns all nodes that have the specified node as a prerequisite
+// (i.e., nodes that will become available once the specified node is unlocked)
+func (s *service) getNodesDependentOn(ctx context.Context, _ int, nodeKey string) ([]*domain.ProgressionNode, error) {
+	log := logger.FromContext(ctx)
+
+	// Get all nodes
+	allNodes, err := s.repo.GetAllNodes(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all nodes: %w", err)
+	}
+
+	dependent := make([]*domain.ProgressionNode, 0)
+
+	for _, node := range allNodes {
+		// Skip if already fully unlocked
+		isUnlocked, err := s.repo.IsNodeUnlocked(ctx, node.NodeKey, node.MaxLevel)
+		if err != nil || isUnlocked {
+			continue
+		}
+
+		// Get prerequisites for this node
+		prerequisites, err := s.repo.GetPrerequisites(ctx, node.ID)
+		if err != nil {
+			log.Warn("Failed to get prerequisites", "nodeKey", node.NodeKey, "error", err)
+			continue
+		}
+
+		// Check if the target node is a prerequisite
+		for _, prereq := range prerequisites {
+			if prereq.NodeKey == nodeKey {
+				dependent = append(dependent, node)
+				break
+			}
+		}
+	}
+
+	return dependent, nil
+}
+
 // checkDynamicPrerequisite evaluates a dynamic prerequisite
 func (s *service) checkDynamicPrerequisite(ctx context.Context, prereq domain.DynamicPrerequisite) (bool, error) {
 	switch prereq.Type {
@@ -403,15 +507,39 @@ func (s *service) AreItemsUnlocked(ctx context.Context, itemNames []string) (map
 	return result, nil
 }
 
-func (s *service) VoteForUnlock(ctx context.Context, platform, platformID, nodeKey string) error {
+func (s *service) VoteForUnlock(ctx context.Context, platform, platformID, username string, optionIndex int) error {
 	log := logger.FromContext(ctx)
 
 	user, err := s.user.GetUserByPlatformID(ctx, platform, platformID)
-	if err != nil {
+	if err != nil && !errors.Is(err, domain.ErrUserNotFound) {
 		return fmt.Errorf("failed to resolve user: %w", err)
 	}
+
 	if user == nil {
-		return fmt.Errorf("user not found")
+		if username == "" {
+			return fmt.Errorf("user not found and no username provided for auto-registration")
+		}
+		log.Info("Auto-registering new user from vote", "platform", platform, "platformID", platformID, "username", username)
+		newUser := domain.User{Username: username}
+		switch platform {
+		case domain.PlatformTwitch:
+			newUser.TwitchID = platformID
+		case domain.PlatformYoutube:
+			newUser.YoutubeID = platformID
+		case domain.PlatformDiscord:
+			newUser.DiscordID = platformID
+		}
+		if err := s.user.UpsertUser(ctx, &newUser); err != nil {
+			return fmt.Errorf("failed to auto-register user: %w", err)
+		}
+		// Fetch the user again to get their ID if it was generated by the DB
+		user, err = s.user.GetUserByPlatformID(ctx, platform, platformID)
+		if err != nil {
+			return fmt.Errorf("failed to fetch newly registered user: %w", err)
+		}
+		if user == nil {
+			return fmt.Errorf("newly registered user not found")
+		}
 	}
 
 	userID := user.ID
@@ -421,22 +549,16 @@ func (s *service) VoteForUnlock(ctx context.Context, platform, platformID, nodeK
 		return fmt.Errorf("failed to get active session: %w", err)
 	}
 
-	if session == nil || session.Status != SessionStatusVoting {
+	if session == nil || session.Status != domain.VotingStatusVoting {
 		return fmt.Errorf("no active voting session")
 	}
 
-	// Find option matching nodeKey
-	var selectedOption *domain.ProgressionVotingOption
-	for i := range session.Options {
-		if session.Options[i].NodeDetails != nil && session.Options[i].NodeDetails.NodeKey == nodeKey {
-			selectedOption = &session.Options[i]
-			break
-		}
+	// Validate option index (1-based)
+	if optionIndex < 1 || optionIndex > len(session.Options) {
+		return fmt.Errorf("invalid option index: %d (must be between 1 and %d)", optionIndex, len(session.Options))
 	}
 
-	if selectedOption == nil {
-		return fmt.Errorf("node not in current voting options")
-	}
+	selectedOption := &session.Options[optionIndex-1]
 
 	// Use atomic transaction to prevent race conditions in concurrent vote attempts
 	err = s.repo.CheckAndRecordVoteAtomic(ctx, userID, session.ID, selectedOption.ID, selectedOption.NodeID)
@@ -449,7 +571,7 @@ func (s *service) VoteForUnlock(ctx context.Context, platform, platformID, nodeK
 		log.Warn("Failed to record vote engagement", "userID", userID, "error", err)
 	}
 
-	log.Info("Vote recorded", "userID", userID, "platform", platform, "platformID", platformID, "nodeKey", nodeKey, "sessionID", session.ID)
+	log.Info("Vote recorded", "userID", userID, "platform", platform, "platformID", platformID, "optionIndex", optionIndex, "nodeKey", selectedOption.NodeDetails.NodeKey, "sessionID", session.ID)
 	return nil
 }
 
@@ -865,7 +987,7 @@ func (s *service) ForceInstantUnlock(ctx context.Context) (*domain.ProgressionUn
 		return nil, domain.ErrNoActiveSession
 	}
 
-	if session.Status != "voting" {
+	if session.Status != domain.VotingStatusVoting {
 		return nil, domain.ErrNoActiveSession
 	}
 

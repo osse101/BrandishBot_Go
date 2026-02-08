@@ -9,6 +9,7 @@ A high-performance game engine API for BrandishBot, built with Go. Provides inve
 - **Economy**: Buy/sell items with dynamic pricing
 - **Statistics**: User and system stats with leaderboards
 - **Discord Bot**: Full-featured Discord integration with slash commands
+- **Admin Dashboard**: Web-based GUI for system monitoring and admin commands
 - **Health Checks**: Production-ready liveness and readiness endpoints
 - **API Documentation**: Interactive Swagger UI at `/swagger/`
 
@@ -53,6 +54,37 @@ make docker-up
 **Admin**: `/add-item`, `/remove-item`
 
 See `/info commands` in Discord for full details.
+
+## Admin Dashboard 🖥️
+
+BrandishBot includes a web-based admin dashboard for system monitoring and administration.
+
+**Access**: `http://localhost:8080/admin/` (or your configured port)
+
+### Features
+
+- **Health Monitoring**: Real-time server status, metrics, and performance stats
+- **Admin Commands**: GUI for progression management, job XP, cache control, and scenarios
+- **Live Events**: Real-time SSE event stream with filtering
+- **User Management**: Search users, view profiles, manage inventory and XP
+
+### Quick Start (Admin Dashboard)
+
+1. **Build the dashboard**:
+```bash
+make admin-build    # Build React frontend
+make build          # Build Go binary with embedded dashboard
+```
+
+2. **Run the server**:
+```bash
+./bin/app
+# Dashboard available at http://localhost:8080/admin/
+```
+
+3. **Login**: Use your `API_KEY` from `.env`
+
+📖 **Full Documentation**: See [docs/ADMIN_DASHBOARD_USAGE.md](docs/ADMIN_DASHBOARD_USAGE.md) for detailed usage, configuration, and extensibility guide.
 
 ## Quick Start
 
@@ -100,6 +132,7 @@ Visit http://localhost:8080/swagger/index.html
 
 **Development**:
 - `make test` - Run tests with coverage
+- `make unit` - Run unit tests (fast)
 - `make test-coverage` - Generate HTML coverage report
 - `make build` - Build all binaries
 - `make swagger` - Regenerate Swagger docs
@@ -121,16 +154,25 @@ Visit http://localhost:8080/swagger/index.html
 ```
 ├── cmd/              # Entry points
 │   ├── app/         # Main application
+│   ├── discord/     # Discord bot entry point
 │   ├── setup/       # Database setup
 │   ├── reset/       # Database reset utility
 │   └── debug/       # Debug tools
 ├── internal/        # Application code
 │   ├── handler/     # HTTP handlers
 │   ├── domain/      # Domain models
+│   ├── repository/  # Database interfaces
+│   ├── database/    # SQLC and Postgres implementation
 │   ├── user/        # User service
-│   ├── crafting/    # Crafting service
 │   ├── economy/     # Economy service
-│   └── stats/       # Statistics service
+│   ├── crafting/    # Crafting service
+│   ├── harvest/     # Harvest (Farming) service
+│   ├── progression/ # Progression tree service
+│   ├── gamble/      # Gambling & Lootbox service
+│   ├── job/         # Job & XP service
+│   ├── stats/       # Statistics service
+│   ├── discord/     # Discord bot implementation
+│   └── cooldown/    # Cooldown service
 ├── migrations/      # SQL migrations
 └── docs/            # Documentation & Swagger
 ```
@@ -166,6 +208,8 @@ Visit http://localhost:8080/swagger/index.html
 
 ## Testing
 
+For detailed guidance, see [Test Guidance](docs/testing/TEST_GUIDANCE.md) and [Running Tests](docs/testing/RUNNING_TESTS.md).
+
 ```bash
 # Run all tests
 make test
@@ -182,7 +226,7 @@ BrandishBot uses an asynchronous event-driven architecture for decoupled, reliab
 📚 **Documentation:**
 - **[Event Catalog](docs/events/EVENT_CATALOG.md)** - All 22+ event types with schemas and examples
 - **[Architecture](docs/architecture/EVENT_SYSTEM.md)** - Event bus, ResilientPublisher, retry logic
-- **[Developer Guide](docs/architecture/DEVELOPER_GUIDE.md)** - How to publish and subscribe to events
+- **[Developer Guide](docs/development/EVENT_INTEGRATION.md)** - How to publish and subscribe to events
 
 **Key Features:**
 - 🔄 Automatic retry with exponential backoff (2s → 4s → 8s → 16s → 32s)

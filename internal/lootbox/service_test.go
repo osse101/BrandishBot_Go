@@ -182,18 +182,21 @@ func TestOpenLootbox(t *testing.T) {
 		svc, err := NewService(repo, &mockProgression{unlocked: true}, configPath)
 		require.NoError(t, err)
 
-		// Set RNG to high value to prevent lucky upgrade (0.9 > 0.01)
-		// This ensures we stay at basic shine level for the chance.
-		// Chance 1.0 > 0.9 (Junk) -> Cursed Shine (Mult = 0.4)
+		// Set RNG to high value: 0.98 for Cursed quality, 0.9 for no lucky upgrade
 		s := svc.(*service)
-		s.rnd = func() float64 { return 0.9 }
+		var rolls = []float64{0.98, 0.9} // 1st: Cursed, 2nd: No upgrade
+		var rollIdx int
+		s.rnd = func() float64 {
+			val := rolls[rollIdx]
+			rollIdx = (rollIdx + 1) % len(rolls)
+			return val
+		}
 
 		drops, err := svc.OpenLootbox(context.Background(), "money_box", 1, "")
 		require.NoError(t, err)
 		assert.Len(t, drops, 1)
 
 		// Cursed Shine (0.4) * 100 Quantity = 40 Quantity
-		// Value should remain 1 (base value)
 		assert.Equal(t, "money", drops[0].ItemName)
 		assert.Equal(t, 40, drops[0].Quantity)
 		assert.Equal(t, 1, drops[0].Value)
@@ -219,18 +222,29 @@ func TestOpenLootbox(t *testing.T) {
 		svc, err := NewService(repo, &mockProgression{unlocked: false}, configPath)
 		require.NoError(t, err)
 
-		// Set RNG to avoid lucky upgrade (0.9 > 0.01)
+		// Set RNG: 0.04 for Legendary/Epic quality, 0.9 for no lucky upgrade
 		s := svc.(*service)
-		s.rnd = func() float64 { return 0.9 }
 
 		// Case 1: Common Box
-		// Use high quantity to ensure drop
+		// Use high quantity to ensure drop (though not strictly needed with 0.04 < 0.70)
+		rollIdx := 0
+		s.rnd = func() float64 {
+			rolls := []float64{0.04, 0.9} // 1: Epic (<=0.05), 2: No upgrade
+			val := rolls[rollIdx%2]
+			rollIdx++
+			return val
+		}
+
 		dropsCommon, err := svc.OpenLootbox(context.Background(), "box", 1000, domain.ShineCommon)
 		require.NoError(t, err)
 		require.NotEmpty(t, dropsCommon)
 		assert.Equal(t, domain.ShineEpic, dropsCommon[0].ShineLevel)
 
 		// Case 2: Uncommon Box
+		// Reset roll index
+		rollIdx = 0
+		// With Uncommon Box (bonus 0.03), Legendary Thresh = 0.01 + 0.03 = 0.04.
+		// Roll 0.04 <= 0.04. Should be Legendary.
 		dropsUncommon, err := svc.OpenLootbox(context.Background(), "box", 1000, domain.ShineUncommon)
 		require.NoError(t, err)
 		require.NotEmpty(t, dropsUncommon)
@@ -258,38 +272,29 @@ func TestOpenLootbox(t *testing.T) {
 		require.NoError(t, err)
 
 		s := svc.(*service)
-		// Force RNG to return 0.9 to avoid any "Lucky!" critical upgrades logic interfering
-		s.rnd = func() float64 { return 0.9 }
 
 		// Sub-Test 1: Poor Box (-3% Shift)
-		// Legendary Threshold becomes 1% - 3% = -2%.
-		// Epic Threshold becomes 5% - 3% = 2%.
-		// Rare Threshold becomes 15% - 3% = 12%.
-		// Item (0.5%) is NOT <= -2%.
-		// Item (0.5%) IS <= 2% (Epic).
-		// Result: Legendary Item becomes Epic.
+		// We want a roll that is normally Legendary (<= 0.01) but becomes Epic with -0.03 bonus.
+		// Roll 0.005: 0.005 > -0.02 (Legendary thresh) but 0.005 <= 0.02 (Epic thresh).
+		s.rnd = func() float64 { return 0.005 }
 		dropsPoor, err := svc.OpenLootbox(context.Background(), "box", 1000, domain.ShinePoor)
 		require.NoError(t, err)
+		require.NotEmpty(t, dropsPoor)
 		for _, d := range dropsPoor {
 			if d.ItemName == "legendary_item" {
-				// Verify Poor box downgraded Legendary to Epic
 				assert.Equal(t, domain.ShineEpic, d.ShineLevel, "Legendary item in Poor box should downgrade to Epic")
 			}
 		}
 
 		// Sub-Test 2: Junk Box (-6% Shift)
-		// Legendary Threshold: 1% - 6% = -5%
-		// Epic Threshold: 5% - 6% = -1%
-		// Rare Threshold: 15% - 6% = 9%
-		// Item (4.0% Epic) is NOT <= -5%
-		// Item (4.0% Epic) is NOT <= -1%
-		// Item (4.0% Epic) IS <= 9% (Rare)
-		// Result: Epic Item becomes Rare.
+		// We want a roll that is normally Epic (<= 0.05) but becomes Rare with -0.06 bonus.
+		// Roll 0.04: 0.04 > -0.01 (Epic thresh) but 0.04 <= 0.09 (Rare thresh).
+		s.rnd = func() float64 { return 0.04 }
 		dropsJunk, err := svc.OpenLootbox(context.Background(), "box", 1000, domain.ShineJunk)
 		require.NoError(t, err)
+		require.NotEmpty(t, dropsJunk)
 		for _, d := range dropsJunk {
 			if d.ItemName == "epic_item" {
-				// Verify Junk box downgraded Epic to Rare
 				assert.Equal(t, domain.ShineRare, d.ShineLevel, "Epic item in Junk box should downgrade to Rare")
 			}
 		}

@@ -246,7 +246,7 @@ func (s *service) JoinGamble(ctx context.Context, gambleID uuid.UUID, platform, 
 
 // executeGambleJoinTx encapsulates the transactional logic for joining a gamble
 func (s *service) executeGambleJoinTx(ctx context.Context, userID string, gambleID uuid.UUID, username string, bets []domain.LootboxBet, resolvedItemIDs []int) error {
-	tx, err := s.repo.BeginTx(ctx)
+	tx, err := s.repo.BeginGambleTx(ctx)
 	if err != nil {
 		return fmt.Errorf("%s: %w", ErrContextFailedToBeginTx, err)
 	}
@@ -698,7 +698,7 @@ func (s *service) getAndValidateActiveGamble(ctx context.Context, gambleID uuid.
 }
 
 func (s *service) executeGambleStartTx(ctx context.Context, userID string, inventory *domain.Inventory, gamble *domain.Gamble, participant *domain.Participant) error {
-	tx, err := s.repo.BeginTx(ctx)
+	tx, err := s.repo.BeginGambleTx(ctx)
 	if err != nil {
 		return fmt.Errorf("%s: %w", ErrContextFailedToBeginTx, err)
 	}

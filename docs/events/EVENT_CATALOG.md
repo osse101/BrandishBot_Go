@@ -104,6 +104,27 @@ publisher.PublishWithRetry(ctx, event.Event{
 
 ---
 
+### progression.target.set
+
+**Emitted when:** A new progression target is selected (either automatically or by admin) without a voting session
+**Source:** `internal/progression/voting_sessions.go`
+
+**Payload Schema:**
+```json
+{
+  "node_key": "string",
+  "target_level": "integer",
+  "auto_selected": "boolean",
+  "session_id": "integer"
+}
+```
+
+**Subscribers:**
+- Progression Notifier: Updates UI/Stream overlay to show new target
+- Event Log: Persists event for audit trail
+
+---
+
 ### user_registered
 
 **Emitted when:** A new user registers in the system  
@@ -259,6 +280,30 @@ publisher.PublishWithRetry(ctx, event.Event{
 **Event Types:**
 - `lootbox_jackpot`: Hit the jackpot
 - `lootbox_big_win`: Significant win
+
+---
+
+### trap_* Events
+
+**Source:** `internal/user/service.go` and `internal/user/item_handlers.go`
+
+**Payload:**
+```json
+{
+  "trap_id": "string (UUID)",
+  "setter_id": "string (UUID)",
+  "setter_username": "string",
+  "target_id": "string (UUID)",
+  "target_username": "string",
+  "shine_level": "string",
+  "timeout_seconds": "integer",
+  "was_self_triggered": "boolean"
+}
+```
+
+**Event Types:**
+- `trap.triggered`: Trap successfully triggered on the target
+- `trap.self_triggered`: User tried to trap someone who already had a trap, triggering the existing trap on themselves
 
 ---
 

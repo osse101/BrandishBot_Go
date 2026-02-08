@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
@@ -25,23 +26,13 @@ type HandleMessageRequest struct {
 // @Accept json
 // @Produce json
 // @Param request body HandleMessageRequest true "Message details"
-// @Success 200 {object} domain.User
-// @Failure 400 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
-// @Router /message/handle [post]
-// HandleMessageHandler handles the incoming message flow.
-// @Summary Handle chat message
-// @Description Process a chat message for potential commands or triggers
-// @Tags message
-// @Accept json
-// @Produce json
-// @Param request body HandleMessageRequest true "Message details"
 // @Success 200 {object} domain.MessageResult
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /message/handle [post]
+// @Router /api/v1/message/handle [post]
 func HandleMessageHandler(userService user.Service, progressionSvc progression.Service, eventBus event.Bus) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
 		log := logger.FromContext(r.Context())
 
 		if r.Method != http.MethodPost {
@@ -55,7 +46,6 @@ func HandleMessageHandler(userService user.Service, progressionSvc progression.S
 			return
 		}
 
-		log.Info("HandleIncomingMessage called", "platform", req.Platform, "platformID", req.PlatformID, "username", req.Username)
 		result, err := userService.HandleIncomingMessage(r.Context(), req.Platform, req.PlatformID, req.Username, req.Message)
 		if err != nil {
 			log.Error("Failed to handle message",
@@ -68,19 +58,25 @@ func HandleMessageHandler(userService user.Service, progressionSvc progression.S
 			return
 		}
 
-		log.Info("Message processed", "username", req.Username)
+		// Inject user context into logger for downstream operations
+		ctx := logger.WithUser(r.Context(), result.User.ID, result.User.Username)
+		r = r.WithContext(ctx)
 
 		// Track engagement for message
 		middleware.TrackEngagementFromContext(
-			middleware.WithUserID(r.Context(), result.User.ID),
+			middleware.WithUserID(ctx, result.User.ID),
 			eventBus,
 			"message",
 			1,
 		)
 
-		log.Info("Message handled successfully",
-			"user_id", result.User.ID,
-			"username", result.User.Username)
+		// Single consolidated summary log
+		duration := time.Since(start)
+		log.Info("Message processed",
+			"username", req.Username,
+			"platform", req.Platform,
+			"duration_ms", duration.Milliseconds(),
+			"matches_found", len(result.Matches))
 
 		respondJSON(w, http.StatusOK, result)
 	}

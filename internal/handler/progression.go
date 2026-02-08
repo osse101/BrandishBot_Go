@@ -27,7 +27,7 @@ func NewProgressionHandlers(service progression.Service) *ProgressionHandlers {
 // @Produce json
 // @Success 200 {object} ProgressionTreeResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /progression/tree [get]
+// @Router /api/v1/progression/tree [get]
 func (h *ProgressionHandlers) HandleGetTree() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
@@ -55,7 +55,7 @@ func (h *ProgressionHandlers) HandleGetTree() http.HandlerFunc {
 // @Produce json
 // @Success 200 {object} AvailableUnlocksResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /progression/available [get]
+// @Router /api/v1/progression/available [get]
 func (h *ProgressionHandlers) HandleGetAvailable() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
@@ -78,7 +78,7 @@ func (h *ProgressionHandlers) HandleGetAvailable() http.HandlerFunc {
 
 // HandleVote allows a user to vote for the next unlock
 // @Summary Vote for unlock
-// @Description Cast a vote for the next unlock (one vote per user per node/level)
+// @Description Cast a vote for the next unlock by selecting an option index (1-based)
 // @Tags progression
 // @Accept json
 // @Produce json
@@ -86,7 +86,7 @@ func (h *ProgressionHandlers) HandleGetAvailable() http.HandlerFunc {
 // @Success 200 {object} SuccessResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /progression/vote [post]
+// @Router /api/v1/progression/vote [post]
 func (h *ProgressionHandlers) HandleVote() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req VoteRequest
@@ -97,18 +97,18 @@ func (h *ProgressionHandlers) HandleVote() http.HandlerFunc {
 		log := logger.FromContext(r.Context())
 
 		// Cast vote
-		err := h.service.VoteForUnlock(r.Context(), req.Platform, req.PlatformID, req.NodeKey)
+		err := h.service.VoteForUnlock(r.Context(), req.Platform, req.PlatformID, req.Username, req.OptionIndex)
 		if err != nil {
 			if errors.Is(err, domain.ErrUserAlreadyVoted) {
 				respondJSON(w, http.StatusOK, SuccessResponse{Message: MsgAlreadyVoted})
 				return
 			}
-			log.Warn("Vote request: service error", "error", err, "platform", req.Platform, "platformID", req.PlatformID, "nodeKey", req.NodeKey)
+			log.Warn("Vote request: service error", "error", err, "platform", req.Platform, "platformID", req.PlatformID, "username", req.Username, "optionIndex", req.OptionIndex)
 			respondError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 
-		log.Info("Vote cast successfully", "platform", req.Platform, "platformID", req.PlatformID, "nodeKey", req.NodeKey)
+		log.Info("Vote cast successfully", "platform", req.Platform, "platformID", req.PlatformID, "username", req.Username, "optionIndex", req.OptionIndex)
 		respondJSON(w, http.StatusOK, SuccessResponse{Message: MsgVoteRecordedSuccess})
 	}
 }
@@ -120,7 +120,7 @@ func (h *ProgressionHandlers) HandleVote() http.HandlerFunc {
 // @Produce json
 // @Success 200 {object} domain.ProgressionStatus
 // @Failure 500 {object} ErrorResponse
-// @Router /progression/status [get]
+// @Router /api/v1/progression/status [get]
 func (h *ProgressionHandlers) HandleGetStatus() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
@@ -144,10 +144,10 @@ func (h *ProgressionHandlers) HandleGetStatus() http.HandlerFunc {
 // @Produce json
 // @Param platform query string true "Platform (twitch, youtube, discord)"
 // @Param platform_id query string true "Platform-specific user ID"
-// @Success 200 {object} domain.EngagementBreakdown
+// @Success 200 {object} domain.ContributionBreakdown
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /progression/engagement [get]
+// @Router /api/v1/progression/engagement [get]
 func (h *ProgressionHandlers) HandleGetEngagement() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
@@ -180,10 +180,10 @@ func (h *ProgressionHandlers) HandleGetEngagement() http.HandlerFunc {
 // @Produce json
 // @Param platform query string true "Platform (twitch, youtube, discord)"
 // @Param username query string true "Username"
-// @Success 200 {object} domain.EngagementBreakdown
+// @Success 200 {object} domain.ContributionBreakdown
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /progression/engagement-by-username [get]
+// @Router /api/v1/progression/engagement-by-username [get]
 func (h *ProgressionHandlers) HandleGetEngagementByUsername() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
@@ -217,7 +217,7 @@ func (h *ProgressionHandlers) HandleGetEngagementByUsername() http.HandlerFunc {
 // @Param limit query int false "Number of entries (default 10, max 100)"
 // @Success 200 {array} domain.ContributionLeaderboardEntry
 // @Failure 500 {object} ErrorResponse
-// @Router /progression/leaderboard [get]
+// @Router /api/v1/progression/leaderboard [get]
 func (h *ProgressionHandlers) HandleGetContributionLeaderboard() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
@@ -686,9 +686,10 @@ type AvailableUnlocksResponse struct {
 }
 
 type VoteRequest struct {
-	Platform   string `json:"platform" validate:"required,max=20"`
-	PlatformID string `json:"platform_id" validate:"required,max=100,excludesall=\x00\n\r\t"`
-	NodeKey    string `json:"node_key" validate:"required,max=50"`
+	Platform    string `json:"platform" validate:"required,max=20"`
+	PlatformID  string `json:"platform_id" validate:"required,max=100,excludesall=\x00\n\r\t"`
+	Username    string `json:"username" validate:"required,max=100"`
+	OptionIndex int    `json:"option_index" validate:"required,min=1"`
 }
 
 type AdminUnlockRequest struct {

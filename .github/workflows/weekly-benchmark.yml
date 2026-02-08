@@ -9,10 +9,21 @@ jobs:
   benchmark:
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: write
+
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # Fetch all history for comparison
+
+      - name: Merge develop into master
+        run: |
+          git config --global user.name "GitHub Action"
+          git config --global user.email "action@github.com"
+          git checkout master
+          git merge origin/develop --no-ff -m "chore: merge develop into master for weekly benchmark"
+          git push origin master
 
       - name: Set up Go
         uses: actions/setup-go@v5

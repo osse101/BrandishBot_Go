@@ -1,0 +1,1564 @@
+{
+  "version": "1.0",
+  "settings": {
+    "base_fatigue_per_turn": 5,
+    "max_fatigue": 100,
+    "max_turns": 50,
+    "starting_purse": 200,
+    "skill_check_bonus_money": 50,
+    "xp_formula_divisor": 4,
+    "leader_bonus_reward": "lootbox_tier2",
+    "win_bonus_reward": "xp_rarecandy",
+    "win_bonus_money": 500,
+    "party_scale_divisor": 3,
+    "temp_skill_bonus": 0.3
+  },
+  "intro_narratives": [
+    "The expedition lands amid still lakes and a temple of old.",
+    "The party sets out into a vast canyon carved by ancient rivers.",
+    "Dense fog parts to reveal crumbling walls and overgrown paths.",
+    "A rickety bridge marks the entrance to uncharted territory.",
+    "The wind carries whispers of fortune from the mountains ahead.",
+    "Torchlight flickers as the group descends into the depths below.",
+    "A weathered signpost points toward places long forgotten.",
+    "The ground trembles softly beneath boots as the journey begins.",
+    "Rain-soaked ruins emerge from behind a curtain of mist.",
+    "The scent of wildflowers masks the danger lurking in the brush."
+  ],
+  "encounters": {
+    "explore": {
+      "display_name": "Exploration",
+      "base_weight": 0.18,
+      "skills": [
+        "perception",
+        "survival"
+      ],
+      "min_party": 1,
+      "outcomes": {
+        "positive": {
+          "weight": 0.30,
+          "skill_pass": {
+            "effects": {
+              "fatigue_delta": 0,
+              "purse_delta": 0,
+              "reward": "lootbox_tier1",
+              "ko_scale": 0,
+              "revive_scale": 0,
+              "shift_weights": 0.05
+            },
+            "narratives": [
+              {
+                "surprise": "A glint of metal behind fallen stone",
+                "action": "{{primary}} pries open the cache",
+                "outcome": "Supplies recovered in good condition"
+              },
+              {
+                "surprise": "An old map scratched into a cave wall",
+                "action": "{{primary}} deciphers the markings",
+                "outcome": "A shortcut is revealed"
+              },
+              {
+                "surprise": "Tracks of a rare creature wind through the brush",
+                "action": "{{primary}} follows the trail carefully",
+                "outcome": "A hidden grove full of resources is found"
+              }
+            ]
+          },
+          "skill_fail": {
+            "effects": {
+              "fatigue_delta": 0,
+              "purse_delta": 0,
+              "reward": "lootbox_tier1",
+              "ko_scale": 0,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "The party stumbles upon a cache",
+                "action": "{{primary}} reaches in blindly",
+                "outcome": "Something useful inside after all"
+              },
+              {
+                "surprise": "A clearing reveals an abandoned pack",
+                "action": "{{primary}} rummages through it carelessly",
+                "outcome": "A few salvageable items remain"
+              }
+            ]
+          }
+        },
+        "neutral": {
+          "weight": 0.55,
+          "skill_pass": {
+            "effects": {
+              "fatigue_delta": 0,
+              "purse_delta": 0,
+              "reward": "",
+              "ko_scale": 0,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "The path splits in three directions",
+                "action": "{{primary}} examines each route",
+                "outcome": "The correct path is found without delay"
+              },
+              {
+                "surprise": "A dense thicket blocks the way forward",
+                "action": "{{primary}} scouts an alternate route",
+                "outcome": "The group continues without incident"
+              },
+              {
+                "surprise": "Strange markings on the trees",
+                "action": "{{primary}} interprets them as trail markers",
+                "outcome": "The party presses on confidently"
+              }
+            ]
+          },
+          "skill_fail": {
+            "effects": {
+              "fatigue_delta": 3,
+              "purse_delta": 0,
+              "reward": "",
+              "ko_scale": 0,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "The path splits in three directions",
+                "action": "{{primary}} picks one at random",
+                "outcome": "A minor detour costs some energy"
+              },
+              {
+                "surprise": "The undergrowth grows thick and tangled",
+                "action": "{{primary}} hacks through with difficulty",
+                "outcome": "Progress is slow and tiring"
+              }
+            ]
+          }
+        },
+        "negative": {
+          "weight": 0.15,
+          "skill_pass": {
+            "effects": {
+              "fatigue_delta": 5,
+              "purse_delta": 0,
+              "reward": "",
+              "ko_scale": 0,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "The ground gives way beneath their feet",
+                "action": "{{primary}} spots the danger just in time",
+                "outcome": "The group dodges but wastes energy retreating"
+              },
+              {
+                "surprise": "A swarm of insects descends on the party",
+                "action": "{{primary}} leads the group through smoke",
+                "outcome": "They escape but fatigue sets in"
+              }
+            ]
+          },
+          "skill_fail": {
+            "effects": {
+              "fatigue_delta": 10,
+              "purse_delta": -100,
+              "reward": "",
+              "ko_scale": 0,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "The ground gives way beneath their feet",
+                "action": "{{primary}} tumbles into the pit",
+                "outcome": "Supplies scatter and energy is spent climbing out"
+              },
+              {
+                "surprise": "A flash flood sweeps through the canyon",
+                "action": "{{primary}} scrambles for high ground too late",
+                "outcome": "Equipment is damaged and morale drops"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "travel": {
+      "display_name": "Travel",
+      "base_weight": 0.15,
+      "skills": [
+        "survival",
+        "fortitude"
+      ],
+      "min_party": 1,
+      "outcomes": {
+        "positive": {
+          "weight": 0.25,
+          "skill_pass": {
+            "effects": {
+              "fatigue_delta": -5,
+              "purse_delta": 100,
+              "reward": "",
+              "ko_scale": 0,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "A merchant caravan appears on the road",
+                "action": "{{primary}} negotiates favorable trade",
+                "outcome": "Supplies restocked and spirits lifted"
+              },
+              {
+                "surprise": "A sheltered valley offers respite",
+                "action": "{{primary}} identifies edible plants nearby",
+                "outcome": "The party rests and gains provisions"
+              }
+            ]
+          },
+          "skill_fail": {
+            "effects": {
+              "fatigue_delta": -3,
+              "purse_delta": 50,
+              "reward": "",
+              "ko_scale": 0,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "A merchant caravan appears on the road",
+                "action": "{{primary}} attempts to barter awkwardly",
+                "outcome": "A small trade is made despite the effort"
+              }
+            ]
+          }
+        },
+        "neutral": {
+          "weight": 0.50,
+          "skill_pass": {
+            "effects": {
+              "fatigue_delta": 2,
+              "purse_delta": 0,
+              "reward": "",
+              "ko_scale": 0,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "The road stretches endlessly ahead",
+                "action": "{{primary}} keeps the group moving at a steady pace",
+                "outcome": "Miles pass without event"
+              },
+              {
+                "surprise": "A river crossing requires careful navigation",
+                "action": "{{primary}} finds stepping stones",
+                "outcome": "The crossing is uneventful"
+              }
+            ]
+          },
+          "skill_fail": {
+            "effects": {
+              "fatigue_delta": 5,
+              "purse_delta": 0,
+              "reward": "",
+              "ko_scale": 0,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "The road stretches endlessly ahead",
+                "action": "{{primary}} misjudges the distance",
+                "outcome": "The group tires more than expected"
+              },
+              {
+                "surprise": "A river crossing requires careful navigation",
+                "action": "{{primary}} slips on wet rocks",
+                "outcome": "The crossing takes longer than planned"
+              }
+            ]
+          }
+        },
+        "negative": {
+          "weight": 0.25,
+          "skill_pass": {
+            "effects": {
+              "fatigue_delta": 8,
+              "purse_delta": -50,
+              "reward": "",
+              "ko_scale": 0,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "A rockslide blocks the path",
+                "action": "{{primary}} endures the labor of clearing rubble",
+                "outcome": "The way opens but at a cost of energy"
+              }
+            ]
+          },
+          "skill_fail": {
+            "effects": {
+              "fatigue_delta": 12,
+              "purse_delta": -100,
+              "reward": "",
+              "ko_scale": 1,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "A rockslide blocks the path",
+                "action": "{{primary}} is caught in the debris",
+                "outcome": "Injuries slow the group and supplies are lost"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "combat_skirmish": {
+      "display_name": "Skirmish",
+      "base_weight": 0.12,
+      "skills": [
+        "fortitude",
+        "cunning"
+      ],
+      "min_party": 1,
+      "outcomes": {
+        "positive": {
+          "weight": 0.25,
+          "skill_pass": {
+            "effects": {
+              "fatigue_delta": 3,
+              "purse_delta": 150,
+              "reward": "lootbox_tier1",
+              "ko_scale": 0,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "Bandits emerge from the tree line",
+                "action": "{{primary}} charges and scatters them",
+                "outcome": "They flee, leaving spoils behind"
+              },
+              {
+                "surprise": "A pack of wild beasts circles the camp",
+                "action": "{{primary}} drives them off with a fierce display",
+                "outcome": "The creatures retreat and drop a prize"
+              }
+            ]
+          },
+          "skill_fail": {
+            "effects": {
+              "fatigue_delta": 5,
+              "purse_delta": 75,
+              "reward": "",
+              "ko_scale": 0,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "Bandits emerge from the tree line",
+                "action": "{{primary}} swings wildly at the attackers",
+                "outcome": "They withdraw but little is gained"
+              }
+            ]
+          }
+        },
+        "neutral": {
+          "weight": 0.40,
+          "skill_pass": {
+            "effects": {
+              "fatigue_delta": 5,
+              "purse_delta": 50,
+              "reward": "",
+              "ko_scale": 0,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "Hostile scouts block the road",
+                "action": "{{primary}} intimidates them into standing down",
+                "outcome": "They back off and the party continues"
+              },
+              {
+                "surprise": "A territorial creature snarls from the brush",
+                "action": "{{primary}} stands firm and holds their ground",
+                "outcome": "It loses interest and wanders off"
+              }
+            ]
+          },
+          "skill_fail": {
+            "effects": {
+              "fatigue_delta": 8,
+              "purse_delta": -50,
+              "reward": "",
+              "ko_scale": 0,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "Hostile scouts block the road",
+                "action": "{{primary}} gets drawn into a scuffle",
+                "outcome": "They escape but with bruises and lost coin"
+              }
+            ]
+          }
+        },
+        "negative": {
+          "weight": 0.35,
+          "skill_pass": {
+            "effects": {
+              "fatigue_delta": 8,
+              "purse_delta": 0,
+              "reward": "",
+              "ko_scale": 0,
+              "revive_scale": 0,
+              "debuff_primary": true
+            },
+            "narratives": [
+              {
+                "surprise": "An ambush from all sides",
+                "action": "{{primary}} fights through the chaos",
+                "outcome": "The party survives but {{primary}} is shaken"
+              }
+            ]
+          },
+          "skill_fail": {
+            "effects": {
+              "fatigue_delta": 12,
+              "purse_delta": -150,
+              "reward": "",
+              "ko_scale": 1,
+              "revive_scale": 0,
+              "debuff_primary": true
+            },
+            "narratives": [
+              {
+                "surprise": "An ambush from all sides",
+                "action": "{{primary}} is overwhelmed by the onslaught",
+                "outcome": "The group takes heavy losses and retreats"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "combat_elite": {
+      "display_name": "Elite Battle",
+      "base_weight": 0.06,
+      "skills": [
+        "fortitude",
+        "knowledge"
+      ],
+      "min_party": 2,
+      "outcomes": {
+        "positive": {
+          "weight": 0.20,
+          "skill_pass": {
+            "effects": {
+              "fatigue_delta": 5,
+              "purse_delta": 300,
+              "reward": "lootbox_tier2",
+              "ko_scale": 0,
+              "revive_scale": 0,
+              "shift_weights": 0.05
+            },
+            "narratives": [
+              {
+                "surprise": "An armored guardian blocks the passage",
+                "action": "{{primary}} exploits a weakness in its stance",
+                "outcome": "It falls, yielding rare treasures"
+              },
+              {
+                "surprise": "A monstrous creature roars from its den",
+                "action": "{{primary}} coordinates a flanking maneuver",
+                "outcome": "Victory is swift and the spoils are rich"
+              }
+            ]
+          },
+          "skill_fail": {
+            "effects": {
+              "fatigue_delta": 8,
+              "purse_delta": 100,
+              "reward": "lootbox_tier1",
+              "ko_scale": 0,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "An armored guardian blocks the passage",
+                "action": "{{primary}} charges head-on recklessly",
+                "outcome": "A bruising fight, but the enemy is defeated"
+              }
+            ]
+          }
+        },
+        "neutral": {
+          "weight": 0.35,
+          "skill_pass": {
+            "effects": {
+              "fatigue_delta": 8,
+              "purse_delta": 50,
+              "reward": "",
+              "ko_scale": 0,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "A rival expedition confronts the party",
+                "action": "{{primary}} negotiates a tense standoff",
+                "outcome": "Both sides withdraw without bloodshed"
+              }
+            ]
+          },
+          "skill_fail": {
+            "effects": {
+              "fatigue_delta": 12,
+              "purse_delta": -100,
+              "reward": "",
+              "ko_scale": 1,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "A rival expedition confronts the party",
+                "action": "{{primary}} escalates the conflict",
+                "outcome": "A costly skirmish leaves everyone worse off"
+              }
+            ]
+          }
+        },
+        "negative": {
+          "weight": 0.45,
+          "skill_pass": {
+            "effects": {
+              "fatigue_delta": 10,
+              "purse_delta": -100,
+              "reward": "",
+              "ko_scale": 1,
+              "revive_scale": 0,
+              "debuff_primary": true
+            },
+            "narratives": [
+              {
+                "surprise": "A massive beast charges from the shadows",
+                "action": "{{primary}} holds the line as others retreat",
+                "outcome": "The beast is driven off but {{primary}} is wounded"
+              }
+            ]
+          },
+          "skill_fail": {
+            "effects": {
+              "fatigue_delta": 15,
+              "purse_delta": -200,
+              "reward": "",
+              "ko_scale": 2,
+              "revive_scale": 0,
+              "debuff_primary": true
+            },
+            "narratives": [
+              {
+                "surprise": "A massive beast charges from the shadows",
+                "action": "{{primary}} is caught off guard",
+                "outcome": "The party barely escapes with heavy casualties"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "combat_boss": {
+      "display_name": "Boss Fight",
+      "base_weight": 0.03,
+      "skills": [
+        "fortitude",
+        "cunning",
+        "persuasion"
+      ],
+      "min_party": 3,
+      "outcomes": {
+        "positive": {
+          "weight": 0.15,
+          "skill_pass": {
+            "effects": {
+              "fatigue_delta": 8,
+              "purse_delta": 500,
+              "reward": "lootbox_tier3",
+              "ko_scale": 0,
+              "revive_scale": 1,
+              "shift_weights": 0.10
+            },
+            "narratives": [
+              {
+                "surprise": "A dragon emerges from its volcanic lair",
+                "action": "{{primary}} leads a daring assault on its weak point",
+                "outcome": "The beast falls and its hoard is claimed"
+              },
+              {
+                "surprise": "The ancient golem awakens with a thunderous roar",
+                "action": "{{primary}} disables its core with a precise strike",
+                "outcome": "Legendary spoils lie among the rubble"
+              }
+            ]
+          },
+          "skill_fail": {
+            "effects": {
+              "fatigue_delta": 12,
+              "purse_delta": 200,
+              "reward": "lootbox_tier2",
+              "ko_scale": 1,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "A dragon emerges from its volcanic lair",
+                "action": "{{primary}} mounts a desperate attack",
+                "outcome": "The beast is defeated but at great cost"
+              }
+            ]
+          }
+        },
+        "neutral": {
+          "weight": 0.30,
+          "skill_pass": {
+            "effects": {
+              "fatigue_delta": 10,
+              "purse_delta": 100,
+              "reward": "lootbox_tier1",
+              "ko_scale": 1,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "A warlord demands tribute for passage",
+                "action": "{{primary}} negotiates a partial payment",
+                "outcome": "The group passes with modest losses"
+              }
+            ]
+          },
+          "skill_fail": {
+            "effects": {
+              "fatigue_delta": 15,
+              "purse_delta": -200,
+              "reward": "",
+              "ko_scale": 2,
+              "revive_scale": 0,
+              "debuff_primary": true
+            },
+            "narratives": [
+              {
+                "surprise": "A warlord demands tribute for passage",
+                "action": "{{primary}} challenges the warlord foolishly",
+                "outcome": "A devastating battle ensues"
+              }
+            ]
+          }
+        },
+        "negative": {
+          "weight": 0.55,
+          "skill_pass": {
+            "effects": {
+              "fatigue_delta": 12,
+              "purse_delta": -200,
+              "reward": "",
+              "ko_scale": 2,
+              "revive_scale": 0,
+              "debuff_primary": true
+            },
+            "narratives": [
+              {
+                "surprise": "An elder wyrm blocks the only exit",
+                "action": "{{primary}} orchestrates a fighting retreat",
+                "outcome": "The group escapes but battered and broken"
+              }
+            ]
+          },
+          "skill_fail": {
+            "effects": {
+              "fatigue_delta": 20,
+              "purse_delta": -400,
+              "reward": "",
+              "ko_scale": 3,
+              "revive_scale": 0,
+              "debuff_primary": true
+            },
+            "narratives": [
+              {
+                "surprise": "An elder wyrm blocks the only exit",
+                "action": "{{primary}} is paralyzed by its gaze",
+                "outcome": "The party is devastated before escaping"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "camp": {
+      "display_name": "Camp",
+      "base_weight": 0.10,
+      "skills": [
+        "knowledge",
+        "survival"
+      ],
+      "min_party": 1,
+      "outcomes": {
+        "positive": {
+          "weight": 0.40,
+          "skill_pass": {
+            "effects": {
+              "fatigue_delta": -10,
+              "purse_delta": 0,
+              "reward": "",
+              "ko_scale": 0,
+              "revive_scale": 1,
+              "shift_weights": 0.03
+            },
+            "narratives": [
+              {
+                "surprise": "A sheltered alcove offers perfect camping",
+                "action": "{{primary}} sets up an efficient camp",
+                "outcome": "The party rests deeply and morale soars"
+              },
+              {
+                "surprise": "A natural hot spring bubbles nearby",
+                "action": "{{primary}} prepares a healing camp",
+                "outcome": "Wounds mend and strength returns"
+              }
+            ]
+          },
+          "skill_fail": {
+            "effects": {
+              "fatigue_delta": -5,
+              "purse_delta": 0,
+              "reward": "",
+              "ko_scale": 0,
+              "revive_scale": 1
+            },
+            "narratives": [
+              {
+                "surprise": "A sheltered alcove offers decent camping",
+                "action": "{{primary}} fumbles with the supplies",
+                "outcome": "Rest is had, though less than ideal"
+              }
+            ]
+          }
+        },
+        "neutral": {
+          "weight": 0.40,
+          "skill_pass": {
+            "effects": {
+              "fatigue_delta": -5,
+              "purse_delta": 0,
+              "reward": "",
+              "ko_scale": 0,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "Night falls and camp must be made",
+                "action": "{{primary}} organizes a watch rotation",
+                "outcome": "A quiet night passes"
+              },
+              {
+                "surprise": "The trail ends at a suitable clearing",
+                "action": "{{primary}} starts a fire and assigns tasks",
+                "outcome": "Rest comes, but not easily"
+              }
+            ]
+          },
+          "skill_fail": {
+            "effects": {
+              "fatigue_delta": 0,
+              "purse_delta": 0,
+              "reward": "",
+              "ko_scale": 0,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "Night falls and camp must be made",
+                "action": "{{primary}} struggles with the fire",
+                "outcome": "A cold but survivable night"
+              }
+            ]
+          }
+        },
+        "negative": {
+          "weight": 0.20,
+          "skill_pass": {
+            "effects": {
+              "fatigue_delta": 3,
+              "purse_delta": -50,
+              "reward": "",
+              "ko_scale": 0,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "Vermin raid the camp at dawn",
+                "action": "{{primary}} chases them off before too much is lost",
+                "outcome": "Only minor supplies are taken"
+              }
+            ]
+          },
+          "skill_fail": {
+            "effects": {
+              "fatigue_delta": 8,
+              "purse_delta": -150,
+              "reward": "",
+              "ko_scale": 0,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "Vermin raid the camp at dawn",
+                "action": "{{primary}} wakes too late to stop them",
+                "outcome": "Significant supplies are consumed"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "hazard": {
+      "display_name": "Hazard",
+      "base_weight": 0.08,
+      "skills": [
+        "survival",
+        "fortitude"
+      ],
+      "min_party": 1,
+      "outcomes": {
+        "positive": {
+          "weight": 0.20,
+          "skill_pass": {
+            "effects": {
+              "fatigue_delta": 0,
+              "purse_delta": 100,
+              "reward": "",
+              "ko_scale": 0,
+              "revive_scale": 0,
+              "temp_skill": "survival"
+            },
+            "narratives": [
+              {
+                "surprise": "A crumbling bridge spans a bottomless chasm",
+                "action": "{{primary}} reinforces it with rope and skill",
+                "outcome": "A safe crossing and confidence gained"
+              }
+            ]
+          },
+          "skill_fail": {
+            "effects": {
+              "fatigue_delta": 5,
+              "purse_delta": 0,
+              "reward": "",
+              "ko_scale": 0,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "A crumbling bridge spans a bottomless chasm",
+                "action": "{{primary}} crawls across nervously",
+                "outcome": "Made it, but just barely"
+              }
+            ]
+          }
+        },
+        "neutral": {
+          "weight": 0.40,
+          "skill_pass": {
+            "effects": {
+              "fatigue_delta": 5,
+              "purse_delta": 0,
+              "reward": "",
+              "ko_scale": 0,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "Poisonous gas seeps from cracks in the earth",
+                "action": "{{primary}} wraps cloth over everyone's faces",
+                "outcome": "The group pushes through with caution"
+              },
+              {
+                "surprise": "A narrow ledge is the only way forward",
+                "action": "{{primary}} guides each member across carefully",
+                "outcome": "All make it safely but slowly"
+              }
+            ]
+          },
+          "skill_fail": {
+            "effects": {
+              "fatigue_delta": 10,
+              "purse_delta": -50,
+              "reward": "",
+              "ko_scale": 0,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "Poisonous gas seeps from cracks in the earth",
+                "action": "{{primary}} panics and leads the group wrong",
+                "outcome": "Several feel ill before fresh air is found"
+              }
+            ]
+          }
+        },
+        "negative": {
+          "weight": 0.40,
+          "skill_pass": {
+            "effects": {
+              "fatigue_delta": 8,
+              "purse_delta": -100,
+              "reward": "",
+              "ko_scale": 1,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "The ceiling collapses in a thunderous roar",
+                "action": "{{primary}} shields others from the worst",
+                "outcome": "Some are hurt but none fatally"
+              }
+            ]
+          },
+          "skill_fail": {
+            "effects": {
+              "fatigue_delta": 15,
+              "purse_delta": -200,
+              "reward": "",
+              "ko_scale": 2,
+              "revive_scale": 0,
+              "debuff_primary": true
+            },
+            "narratives": [
+              {
+                "surprise": "The ceiling collapses in a thunderous roar",
+                "action": "{{primary}} freezes as rocks rain down",
+                "outcome": "Devastating injuries and lost supplies"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "discovery": {
+      "display_name": "Discovery",
+      "base_weight": 0.07,
+      "skills": [
+        "perception",
+        "knowledge"
+      ],
+      "min_party": 1,
+      "outcomes": {
+        "positive": {
+          "weight": 0.35,
+          "skill_pass": {
+            "effects": {
+              "fatigue_delta": 0,
+              "purse_delta": 200,
+              "reward": "lootbox_tier2",
+              "ko_scale": 0,
+              "revive_scale": 0,
+              "shift_weights": 0.05
+            },
+            "narratives": [
+              {
+                "surprise": "Ancient runes glow on a hidden doorway",
+                "action": "{{primary}} translates the inscription and opens the seal",
+                "outcome": "A treasure vault untouched for centuries"
+              },
+              {
+                "surprise": "A crystalline formation hums with energy",
+                "action": "{{primary}} carefully extracts its core",
+                "outcome": "A priceless artifact is secured"
+              }
+            ]
+          },
+          "skill_fail": {
+            "effects": {
+              "fatigue_delta": 0,
+              "purse_delta": 100,
+              "reward": "lootbox_tier1",
+              "ko_scale": 0,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "Ancient runes glow on a hidden doorway",
+                "action": "{{primary}} forces the door open clumsily",
+                "outcome": "Some treasures within, though the best are damaged"
+              }
+            ]
+          }
+        },
+        "neutral": {
+          "weight": 0.45,
+          "skill_pass": {
+            "effects": {
+              "fatigue_delta": 0,
+              "purse_delta": 50,
+              "reward": "",
+              "ko_scale": 0,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "Strange symbols cover a weathered monument",
+                "action": "{{primary}} studies them with care",
+                "outcome": "Historical knowledge gained, but nothing of material value"
+              },
+              {
+                "surprise": "A peculiar mechanism whirs in the wall",
+                "action": "{{primary}} tinkers with it skillfully",
+                "outcome": "It reveals a passage that saves time"
+              }
+            ]
+          },
+          "skill_fail": {
+            "effects": {
+              "fatigue_delta": 3,
+              "purse_delta": 0,
+              "reward": "",
+              "ko_scale": 0,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "Strange symbols cover a weathered monument",
+                "action": "{{primary}} stares at them in confusion",
+                "outcome": "Time wasted without progress"
+              }
+            ]
+          }
+        },
+        "negative": {
+          "weight": 0.20,
+          "skill_pass": {
+            "effects": {
+              "fatigue_delta": 5,
+              "purse_delta": 0,
+              "reward": "",
+              "ko_scale": 0,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "A trap activates as the party enters a chamber",
+                "action": "{{primary}} recognizes the trigger mechanism",
+                "outcome": "The worst is avoided but energy is spent"
+              }
+            ]
+          },
+          "skill_fail": {
+            "effects": {
+              "fatigue_delta": 10,
+              "purse_delta": -150,
+              "reward": "",
+              "ko_scale": 1,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "A trap activates as the party enters a chamber",
+                "action": "{{primary}} stumbles directly into the mechanism",
+                "outcome": "Poison darts and falling stones take their toll"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "encounter": {
+      "display_name": "Social Encounter",
+      "base_weight": 0.07,
+      "skills": [
+        "persuasion",
+        "cunning"
+      ],
+      "min_party": 1,
+      "outcomes": {
+        "positive": {
+          "weight": 0.30,
+          "skill_pass": {
+            "effects": {
+              "fatigue_delta": -3,
+              "purse_delta": 200,
+              "reward": "",
+              "ko_scale": 0,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "A traveling sage offers to share wisdom",
+                "action": "{{primary}} engages in fascinating conversation",
+                "outcome": "Valuable knowledge and a gift are received"
+              },
+              {
+                "surprise": "Local villagers eye the party suspiciously",
+                "action": "{{primary}} wins their trust with a kind gesture",
+                "outcome": "The villagers offer food and information"
+              }
+            ]
+          },
+          "skill_fail": {
+            "effects": {
+              "fatigue_delta": 0,
+              "purse_delta": 50,
+              "reward": "",
+              "ko_scale": 0,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "A traveling sage offers to share wisdom",
+                "action": "{{primary}} listens but misses the deeper meaning",
+                "outcome": "A small token of thanks is exchanged"
+              }
+            ]
+          }
+        },
+        "neutral": {
+          "weight": 0.45,
+          "skill_pass": {
+            "effects": {
+              "fatigue_delta": 0,
+              "purse_delta": 0,
+              "reward": "",
+              "ko_scale": 0,
+              "revive_scale": 0,
+              "temp_skill": "persuasion"
+            },
+            "narratives": [
+              {
+                "surprise": "A lone wanderer crosses the party's path",
+                "action": "{{primary}} exchanges stories and tips",
+                "outcome": "Both parties part ways enriched"
+              }
+            ]
+          },
+          "skill_fail": {
+            "effects": {
+              "fatigue_delta": 3,
+              "purse_delta": 0,
+              "reward": "",
+              "ko_scale": 0,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "A lone wanderer crosses the party's path",
+                "action": "{{primary}} says the wrong thing",
+                "outcome": "An awkward silence before both move on"
+              }
+            ]
+          }
+        },
+        "negative": {
+          "weight": 0.25,
+          "skill_pass": {
+            "effects": {
+              "fatigue_delta": 3,
+              "purse_delta": -100,
+              "reward": "",
+              "ko_scale": 0,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "A con artist approaches with a too-good deal",
+                "action": "{{primary}} sees through the scheme",
+                "outcome": "The scam is avoided but time is lost"
+              }
+            ]
+          },
+          "skill_fail": {
+            "effects": {
+              "fatigue_delta": 5,
+              "purse_delta": -250,
+              "reward": "",
+              "ko_scale": 0,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "A con artist approaches with a too-good deal",
+                "action": "{{primary}} falls for the ruse completely",
+                "outcome": "A significant sum is swindled away"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "treasure": {
+      "display_name": "Treasure",
+      "base_weight": 0.05,
+      "skills": [
+        "perception",
+        "cunning"
+      ],
+      "min_party": 1,
+      "outcomes": {
+        "positive": {
+          "weight": 0.25,
+          "skill_pass": {
+            "effects": {
+              "fatigue_delta": 0,
+              "purse_delta": 400,
+              "reward": "lootbox_tier2",
+              "ko_scale": 0,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "A treasure chest sits in an alcove, gleaming",
+                "action": "{{primary}} disarms the trap and opens it",
+                "outcome": "Gold and rare items spill forth"
+              },
+              {
+                "surprise": "Gemstones are embedded in the cavern walls",
+                "action": "{{primary}} extracts them with precision",
+                "outcome": "A fortune in precious stones is claimed"
+              }
+            ]
+          },
+          "skill_fail": {
+            "effects": {
+              "fatigue_delta": 0,
+              "purse_delta": 150,
+              "reward": "lootbox_tier1",
+              "ko_scale": 0,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "A treasure chest sits in an alcove, gleaming",
+                "action": "{{primary}} triggers the trap but grabs what they can",
+                "outcome": "Some treasure secured despite the fumble"
+              }
+            ]
+          }
+        },
+        "neutral": {
+          "weight": 0.40,
+          "skill_pass": {
+            "effects": {
+              "fatigue_delta": 0,
+              "purse_delta": 100,
+              "reward": "",
+              "ko_scale": 0,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "Old coins litter the floor of a forgotten room",
+                "action": "{{primary}} gathers them efficiently",
+                "outcome": "A modest collection is secured"
+              }
+            ]
+          },
+          "skill_fail": {
+            "effects": {
+              "fatigue_delta": 3,
+              "purse_delta": 50,
+              "reward": "",
+              "ko_scale": 0,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "Old coins litter the floor of a forgotten room",
+                "action": "{{primary}} drops half while collecting",
+                "outcome": "Better than nothing, at least"
+              }
+            ]
+          }
+        },
+        "negative": {
+          "weight": 0.35,
+          "skill_pass": {
+            "effects": {
+              "fatigue_delta": 5,
+              "purse_delta": -50,
+              "reward": "",
+              "ko_scale": 0,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "The treasure is cursed, glowing with dark energy",
+                "action": "{{primary}} recognizes the danger and steps back",
+                "outcome": "The curse dissipates but nothing is gained"
+              }
+            ]
+          },
+          "skill_fail": {
+            "effects": {
+              "fatigue_delta": 10,
+              "purse_delta": -200,
+              "reward": "",
+              "ko_scale": 1,
+              "revive_scale": 0,
+              "debuff_primary": true
+            },
+            "narratives": [
+              {
+                "surprise": "The treasure is cursed, glowing with dark energy",
+                "action": "{{primary}} grabs it without thinking",
+                "outcome": "A curse takes hold and valuables are drained"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "mystic": {
+      "display_name": "Mystic Event",
+      "base_weight": 0.05,
+      "skills": [
+        "knowledge",
+        "persuasion"
+      ],
+      "min_party": 1,
+      "outcomes": {
+        "positive": {
+          "weight": 0.30,
+          "skill_pass": {
+            "effects": {
+              "fatigue_delta": -5,
+              "purse_delta": 0,
+              "reward": "lootbox_tier2",
+              "ko_scale": 0,
+              "revive_scale": 1,
+              "temp_skill": "knowledge"
+            },
+            "narratives": [
+              {
+                "surprise": "A spectral figure materializes before the party",
+                "action": "{{primary}} speaks the ancient greeting",
+                "outcome": "The spirit grants a blessing and a gift"
+              },
+              {
+                "surprise": "An enchanted pool radiates healing light",
+                "action": "{{primary}} performs the proper ritual",
+                "outcome": "The party is restored and empowered"
+              }
+            ]
+          },
+          "skill_fail": {
+            "effects": {
+              "fatigue_delta": -3,
+              "purse_delta": 0,
+              "reward": "lootbox_tier1",
+              "ko_scale": 0,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "A spectral figure materializes before the party",
+                "action": "{{primary}} addresses it respectfully but incorrectly",
+                "outcome": "A small boon is granted out of pity"
+              }
+            ]
+          }
+        },
+        "neutral": {
+          "weight": 0.35,
+          "skill_pass": {
+            "effects": {
+              "fatigue_delta": 0,
+              "purse_delta": 0,
+              "reward": "",
+              "ko_scale": 0,
+              "revive_scale": 0,
+              "temp_skill": "knowledge"
+            },
+            "narratives": [
+              {
+                "surprise": "Ancient runes pulse with fading power",
+                "action": "{{primary}} channels the residual energy",
+                "outcome": "Knowledge of the arcane is absorbed"
+              }
+            ]
+          },
+          "skill_fail": {
+            "effects": {
+              "fatigue_delta": 5,
+              "purse_delta": 0,
+              "reward": "",
+              "ko_scale": 0,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "Ancient runes pulse with fading power",
+                "action": "{{primary}} touches them carelessly",
+                "outcome": "A jolt of energy but nothing useful learned"
+              }
+            ]
+          }
+        },
+        "negative": {
+          "weight": 0.35,
+          "skill_pass": {
+            "effects": {
+              "fatigue_delta": 5,
+              "purse_delta": -100,
+              "reward": "",
+              "ko_scale": 0,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "A dark altar demands a sacrifice",
+                "action": "{{primary}} refuses and dispels the enchantment",
+                "outcome": "The magic fades but at a cost of energy"
+              }
+            ]
+          },
+          "skill_fail": {
+            "effects": {
+              "fatigue_delta": 12,
+              "purse_delta": -200,
+              "reward": "",
+              "ko_scale": 1,
+              "revive_scale": 0,
+              "debuff_primary": true
+            },
+            "narratives": [
+              {
+                "surprise": "A dark altar demands a sacrifice",
+                "action": "{{primary}} is drawn in by the dark power",
+                "outcome": "Cursed energy drains the party"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "drama": {
+      "display_name": "Party Drama",
+      "base_weight": 0.04,
+      "skills": [
+        "persuasion",
+        "cunning"
+      ],
+      "min_party": 1,
+      "outcomes": {
+        "positive": {
+          "weight": 0.30,
+          "skill_pass": {
+            "effects": {
+              "fatigue_delta": -5,
+              "purse_delta": 0,
+              "reward": "",
+              "ko_scale": 0,
+              "revive_scale": 1,
+              "shift_weights": 0.03
+            },
+            "narratives": [
+              {
+                "surprise": "Tensions rise within the group",
+                "action": "{{primary}} gives an inspiring speech",
+                "outcome": "Unity is restored and spirits lift"
+              },
+              {
+                "surprise": "Someone questions the direction of the expedition",
+                "action": "{{primary}} presents a compelling plan",
+                "outcome": "Confidence is renewed throughout the group"
+              }
+            ]
+          },
+          "skill_fail": {
+            "effects": {
+              "fatigue_delta": -2,
+              "purse_delta": 0,
+              "reward": "",
+              "ko_scale": 0,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "Tensions rise within the group",
+                "action": "{{primary}} attempts to mediate awkwardly",
+                "outcome": "Things calm down, barely"
+              }
+            ]
+          }
+        },
+        "neutral": {
+          "weight": 0.40,
+          "skill_pass": {
+            "effects": {
+              "fatigue_delta": 0,
+              "purse_delta": 0,
+              "reward": "",
+              "ko_scale": 0,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "Arguments about the next step grow heated",
+                "action": "{{primary}} offers a compromise",
+                "outcome": "The matter is settled without incident"
+              }
+            ]
+          },
+          "skill_fail": {
+            "effects": {
+              "fatigue_delta": 5,
+              "purse_delta": 0,
+              "reward": "",
+              "ko_scale": 0,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "Arguments about the next step grow heated",
+                "action": "{{primary}} makes things worse by picking a side",
+                "outcome": "Frustration simmers but the group moves on"
+              }
+            ]
+          }
+        },
+        "negative": {
+          "weight": 0.30,
+          "skill_pass": {
+            "effects": {
+              "fatigue_delta": 3,
+              "purse_delta": -50,
+              "reward": "",
+              "ko_scale": 0,
+              "revive_scale": 0
+            },
+            "narratives": [
+              {
+                "surprise": "A member threatens to leave the expedition",
+                "action": "{{primary}} talks them down from the edge",
+                "outcome": "Grudges remain but the group stays intact"
+              }
+            ]
+          },
+          "skill_fail": {
+            "effects": {
+              "fatigue_delta": 8,
+              "purse_delta": -100,
+              "reward": "",
+              "ko_scale": 0,
+              "revive_scale": 0,
+              "debuff_primary": true
+            },
+            "narratives": [
+              {
+                "surprise": "A member threatens to leave the expedition",
+                "action": "{{primary}} escalates the confrontation",
+                "outcome": "Bitter words are exchanged and trust erodes"
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

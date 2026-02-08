@@ -16,7 +16,7 @@ import (
 // @Produce json
 // @Success 200 {array} domain.Item
 // @Failure 500 {object} ErrorResponse
-// @Router /prices [get]
+// @Router /api/v1/prices [get]
 func HandleGetPrices(svc economy.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		handleGetPricesInternal(w, r, svc.GetSellablePrices, "sellable")
@@ -30,7 +30,7 @@ func HandleGetPrices(svc economy.Service) http.HandlerFunc {
 // @Produce json
 // @Success 200 {array} domain.Item
 // @Failure 500 {object} ErrorResponse
-// @Router /prices/buy [get]
+// @Router /api/v1/prices/buy [get]
 func HandleGetBuyPrices(svc economy.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		handleGetPricesInternal(w, r, svc.GetBuyablePrices, "buyable")

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
@@ -23,6 +24,7 @@ type FakeRepository struct {
 	recipes         map[int]*domain.Recipe // keyed by recipe ID
 	unlockedRecipes map[string]map[int]bool
 	cooldowns       map[string]map[string]*time.Time // userID -> action -> timestamp
+	traps           map[uuid.UUID]*domain.Trap
 }
 
 func NewFakeRepository() *FakeRepository {
@@ -33,6 +35,7 @@ func NewFakeRepository() *FakeRepository {
 		recipes:         make(map[int]*domain.Recipe),
 		unlockedRecipes: make(map[string]map[int]bool),
 		cooldowns:       make(map[string]map[string]*time.Time),
+		traps:           make(map[uuid.UUID]*domain.Trap),
 	}
 }
 
@@ -289,18 +292,28 @@ func (f *FakeRepository) GetAllItems(ctx context.Context) ([]domain.Item, error)
 }
 
 func (f *FakeRepository) CreateTrap(ctx context.Context, trap *domain.Trap) error {
+	f.traps[trap.ID] = trap
 	return nil
 }
 
 func (f *FakeRepository) GetActiveTrap(ctx context.Context, targetID uuid.UUID) (*domain.Trap, error) {
+	for _, t := range f.traps {
+		if t.TargetID == targetID && t.TriggeredAt == nil {
+			return t, nil
+		}
+	}
 	return nil, nil
 }
 
 func (f *FakeRepository) GetActiveTrapForUpdate(ctx context.Context, targetID uuid.UUID) (*domain.Trap, error) {
-	return nil, nil
+	return f.GetActiveTrap(ctx, targetID)
 }
 
 func (f *FakeRepository) TriggerTrap(ctx context.Context, trapID uuid.UUID) error {
+	if t, ok := f.traps[trapID]; ok {
+		now := time.Now()
+		t.TriggeredAt = &now
+	}
 	return nil
 }
 
@@ -314,4 +327,15 @@ func (f *FakeRepository) GetTriggeredTrapsForTarget(ctx context.Context, targetI
 
 func (f *FakeRepository) CleanupStaleTraps(ctx context.Context, daysOld int) (int, error) {
 	return 0, nil
+}
+
+func (f *FakeRepository) GetRecentlyActiveUsers(ctx context.Context, limit int) ([]domain.User, error) {
+	users := make([]domain.User, 0, len(f.users))
+	for _, u := range f.users {
+		users = append(users, *u)
+		if len(users) >= limit {
+			break
+		}
+	}
+	return users, nil
 }

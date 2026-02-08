@@ -66,7 +66,11 @@ func (t *UserTx) Commit(ctx context.Context) error {
 
 // Rollback rolls back the transaction
 func (t *UserTx) Rollback(ctx context.Context) error {
-	return t.tx.Rollback(ctx)
+	err := t.tx.Rollback(ctx)
+	if errors.Is(err, pgx.ErrTxClosed) {
+		return fmt.Errorf("%w: %w", repository.ErrTxClosed, err)
+	}
+	return err
 }
 
 // UpsertUser inserts a new user or updates existing user and their platform links
@@ -101,9 +105,9 @@ func (r *UserRepository) UpsertUser(ctx context.Context, user *domain.User) erro
 	}
 
 	platforms := map[string]string{
-		"twitch":  user.TwitchID,
-		"youtube": user.YoutubeID,
-		"discord": user.DiscordID,
+		domain.PlatformTwitch:  user.TwitchID,
+		domain.PlatformYoutube: user.YoutubeID,
+		domain.PlatformDiscord: user.DiscordID,
 	}
 
 	for platformName, externalID := range platforms {
@@ -233,6 +237,33 @@ func (r *UserRepository) GetAllItems(ctx context.Context) ([]domain.Item, error)
 		items = append(items, *mapItemFields(row.ItemID, row.InternalName, row.PublicName, row.DefaultDisplay, row.ItemDescription, row.BaseValue, row.Handler, row.Types))
 	}
 	return items, nil
+}
+
+// GetRecentlyActiveUsers retrieves users who recently had events
+func (r *UserRepository) GetRecentlyActiveUsers(ctx context.Context, limit int) ([]domain.User, error) {
+	rows, err := r.q.GetRecentlyActiveUsers(ctx, int32(limit))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get recently active users: %w", err)
+	}
+
+	users := make([]domain.User, 0, len(rows))
+	for _, row := range rows {
+		users = append(users, domain.User{
+			ID:        row.UserID.String(),
+			Username:  row.Username,
+			TwitchID:  renderPlatformID(row.Platform, row.PlatformUserID, domain.PlatformTwitch),
+			YoutubeID: renderPlatformID(row.Platform, row.PlatformUserID, domain.PlatformYoutube),
+			DiscordID: renderPlatformID(row.Platform, row.PlatformUserID, domain.PlatformDiscord),
+		})
+	}
+	return users, nil
+}
+
+func renderPlatformID(platform, platformUserID, targetPlatform string) string {
+	if platform == targetPlatform {
+		return platformUserID
+	}
+	return ""
 }
 
 // GetItemByID retrieves an item by its ID

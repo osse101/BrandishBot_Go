@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -211,6 +212,10 @@ func (m *mockSearchRepo) GetAllItems(ctx context.Context) ([]domain.Item, error)
 	return items, nil
 }
 
+func (m *mockSearchRepo) GetRecentlyActiveUsers(ctx context.Context, limit int) ([]domain.User, error) {
+	return nil, nil
+}
+
 func (m *mockSearchRepo) CreateTrap(ctx context.Context, trap *domain.Trap) error {
 	return nil
 }
@@ -284,7 +289,7 @@ func (m *mockCooldownService) GetLastUsed(ctx context.Context, userID, action st
 func createSearchTestService() (*service, *mockSearchRepo) {
 	repo := newMockSearchRepo()
 	statsSvc := &mockStatsService{mockCounts: make(map[domain.EventType]int)}
-	svc := NewService(repo, repo, statsSvc, nil, nil, NewMockNamingResolver(), &mockCooldownService{repo: repo}, false).(*service)
+	svc := NewService(repo, repo, statsSvc, nil, nil, NewMockNamingResolver(), &mockCooldownService{repo: repo}, nil, nil, false).(*service)
 
 	// Add standard test items
 	repo.items[domain.ItemLootbox0] = &domain.Item{
@@ -385,12 +390,13 @@ func TestHandleSearch_CooldownBoundaries(t *testing.T) {
 			message, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
 
 			// ASSERT
-			require.NoError(t, err)
-
 			if tt.expectCooldown {
-				assert.True(t, strings.HasPrefix(message, "You can search again in"),
-					"Expected cooldown message, got: %s", message)
+				require.Error(t, err)
+				var cooldownErr cooldown.ErrOnCooldown
+				assert.True(t, errors.As(err, &cooldownErr))
+				assert.Equal(t, domain.ActionSearch, cooldownErr.Action)
 			} else {
+				require.NoError(t, err)
 				assert.False(t, strings.HasPrefix(message, "You can search again in"),
 					"Expected search to execute, got cooldown: %s", message)
 			}
@@ -473,17 +479,16 @@ func TestHandleSearch_InvalidInputs(t *testing.T) {
 			wantErr:  true,
 			errMsg:   domain.ErrInvalidInput.Error(),
 		},
-		// TODO: Add back when we have a way to mock RNG
-		// {
-		// 	name:     "missing lootbox item",
-		// 	username: TestUsername,
-		// 	platform: domain.PlatformTwitch,
-		// 	setup: func(r *mockSearchRepo) {
-		// 		delete(r.items, domain.ItemLootbox0)
-		// 	},
-		// 	wantErr: true,
-		// 	errMsg:  domain.ErrItemNotFound.Error(),
-		// },
+		{
+			name:     "missing lootbox item",
+			username: TestUsername,
+			platform: domain.PlatformTwitch,
+			setup: func(r *mockSearchRepo) {
+				delete(r.items, domain.ItemLootbox0)
+			},
+			wantErr: true,
+			errMsg:  domain.ErrItemNotFound.Error(),
+		},
 	}
 
 	for _, tt := range tests {
@@ -491,6 +496,10 @@ func TestHandleSearch_InvalidInputs(t *testing.T) {
 			// ARRANGE
 			svc, repo := createSearchTestService()
 			tt.setup(repo)
+
+			// Fix: Set rnd to ensure we reach the item check if needed
+			// Most invalid input tests fail before calling rnd, but "missing lootbox item" needs success roll
+			svc.rnd = func() float64 { return 0.5 }
 
 			// ACT
 			_, err := svc.HandleSearch(context.Background(), tt.platform, "", tt.username)
@@ -529,25 +538,30 @@ func TestHandleSearch_DatabaseErrors(t *testing.T) {
 	})
 }
 
-// CASE 6: NAMING RESOLUTION
-func TestHandleSearch_NamingResolution(t *testing.T) {
+// CASE 6: NAMING RESOLUTION (UPDATED: Now uses Public Name directly)
+func TestHandleSearch_PublicNameUsage(t *testing.T) {
 	// ARRANGE
 	svc, repo := createSearchTestService()
 	user := createTestUser()
 	repo.users[TestUsername] = user
 
-	// Configure mock resolver
+	// Set Public Name on item
+	repo.items[domain.ItemLootbox0].PublicName = "junkbox"
+
+	// Configure mock resolver with something different to ensure we are NOT using it
 	mockResolver := svc.namingResolver.(*MockNamingResolver)
 	mockResolver.DisplayNames[domain.ItemLootbox0] = "Mysterious Chest"
 
 	// Force success
 	svc.rnd = func() float64 { return 0.5 }
 
-	// Call with devMode false (default in createSearchTestService)
+	// Call with devMode false
 	msg, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
 	require.NoError(t, err)
 
-	assert.Contains(t, msg, "Mysterious Chest", "Should use display name 'Mysterious Chest' in search result")
+	// ASSERT
+	assert.Contains(t, msg, "Junkbox", "Should use Title-cased Public Name 'Junkbox' in search result")
+	assert.NotContains(t, msg, "Mysterious Chest", "Should NOT use naming resolver display name for search result")
 }
 
 // =============================================================================
@@ -594,11 +608,12 @@ func TestHandleSearch_CooldownUpdate(t *testing.T) {
 		}
 
 		// ACT
-		message, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
+		_, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
 
 		// ASSERT
-		require.NoError(t, err)
-		assert.True(t, strings.HasPrefix(message, "You can search again in"))
+		require.Error(t, err)
+		var cooldownErr cooldown.ErrOnCooldown
+		assert.True(t, errors.As(err, &cooldownErr))
 
 		// Verify cooldown was NOT updated
 		cooldown, err := repo.GetLastCooldown(context.Background(), user.ID, domain.ActionSearch)

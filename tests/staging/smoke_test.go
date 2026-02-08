@@ -16,7 +16,7 @@ type ProgressionTreeResponse struct {
 }
 
 func TestProgressionTree(t *testing.T) {
-	resp, body := makeRequest(t, "GET", "/progression/tree", nil)
+	resp, body := makeRequest(t, "GET", "/api/v1/progression/tree", nil)
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("Expected status 200, got %d", resp.StatusCode)

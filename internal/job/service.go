@@ -4,11 +4,10 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
-
-	"sync"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/event"
@@ -198,7 +197,6 @@ func (s *service) GetPrimaryJob(ctx context.Context, platform string, platformID
 
 // AwardXP awards XP to a user for a specific job
 func (s *service) AwardXP(ctx context.Context, userID string, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error) {
-
 	// Check if specific job is unlocked
 	jobUnlocked, err := s.progressionSvc.IsNodeUnlocked(ctx, jobKey, 1)
 	if err != nil {

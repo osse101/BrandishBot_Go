@@ -55,7 +55,8 @@ func setupGambleIntegrationTest(t *testing.T) (*pgxpool.Pool, *UserRepository, g
 	jobSvc := &MockJobService{}
 	progressionSvc := &MockProgressionService{}
 
-	lootSvc, err := lootbox.NewService(lootRepo, progressionSvc, lootTablePath)
+	// Use deterministic RNG for lootboxes: 0.5 always rolls Common (1.0x)
+	lootSvc, err := lootbox.NewService(lootRepo, progressionSvc, lootTablePath, lootbox.WithRnd(func() float64 { return 0.5 }))
 	require.NoError(t, err)
 
 	gambleSvc := gamble.NewService(
@@ -169,9 +170,8 @@ func TestGambleLifecycle_Integration(t *testing.T) {
 	require.NotNil(t, result)
 
 	// Verify Result
-	// Since both bet 2, tiebreaker picks winner. But result should have total value 160.
-	// 400 base reduced by Cursed shine (0.4) = 160.
-	assert.Equal(t, int64(160), result.TotalValue)
+	// Expected: 4 boxes * 100 base = 400 (all roll Common quality at 1.0x)
+	assert.Equal(t, int64(400), result.TotalValue)
 
 	// Verify Gamble State in DB
 	finalGamble, err := svc.GetGamble(ctx, gamble.ID)
@@ -192,9 +192,9 @@ func TestGambleLifecycle_Integration(t *testing.T) {
 	loserInv, _ := repo.GetInventory(ctx, loserID)
 	require.NotNil(t, loserInv)
 
-	// Winner should have 3 lootboxes + 160 money
+	// Winner should have 3 lootboxes + 400 money
 	require.Equal(t, 3, getQty(winnerInv, lbItem.ID))
-	require.Equal(t, 160, getQty(winnerInv, moneyItem.ID)) // 4 items of 40 money each
+	require.Equal(t, 400, getQty(winnerInv, moneyItem.ID))
 
 	// Loser should have 3 lootboxes + 0 money
 	require.Equal(t, 3, getQty(loserInv, lbItem.ID))

@@ -111,10 +111,10 @@ const (
 
 const (
 	// ErrFmtCooldownWithMinutes formats cooldown error with minutes and seconds
-	ErrFmtCooldownWithMinutes = "action '%s' on cooldown: %dm %ds remaining"
+	ErrFmtCooldownWithMinutes = "You can %s again in %dm %ds"
 
 	// ErrFmtCooldownSecondsOnly formats cooldown error with seconds only
-	ErrFmtCooldownSecondsOnly = "action '%s' on cooldown: %ds remaining"
+	ErrFmtCooldownSecondsOnly = "You can %s again in %ds"
 )
 
 // =============================================================================

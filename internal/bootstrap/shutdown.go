@@ -8,7 +8,9 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/economy"
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/gamble"
+	"github.com/osse101/BrandishBot_Go/internal/prediction"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
+	"github.com/osse101/BrandishBot_Go/internal/quest"
 	"github.com/osse101/BrandishBot_Go/internal/server"
 	"github.com/osse101/BrandishBot_Go/internal/user"
 	"github.com/osse101/BrandishBot_Go/internal/worker"
@@ -22,8 +24,12 @@ type ShutdownComponents struct {
 	EconomyService     economy.Service
 	CraftingService    crafting.Service
 	GambleService      gamble.Service
+	PredictionService  prediction.Service
+	QuestService       quest.Service
 	GambleWorker       *worker.GambleWorker
+	ExpeditionWorker   *worker.ExpeditionWorker
 	DailyResetWorker   *worker.DailyResetWorker
+	WeeklyResetWorker  *worker.WeeklyResetWorker
 	ResilientPublisher *event.ResilientPublisher
 }
 
@@ -49,9 +55,21 @@ func GracefulShutdown(ctx context.Context, components ShutdownComponents) {
 		}
 	}
 
+	if components.ExpeditionWorker != nil {
+		if err := components.ExpeditionWorker.Shutdown(ctx); err != nil {
+			slog.Error("Expedition worker shutdown failed", "error", err)
+		}
+	}
+
 	if components.DailyResetWorker != nil {
 		if err := components.DailyResetWorker.Shutdown(ctx); err != nil {
 			slog.Error("Daily reset worker shutdown failed", "error", err)
+		}
+	}
+
+	if components.WeeklyResetWorker != nil {
+		if err := components.WeeklyResetWorker.Shutdown(ctx); err != nil {
+			slog.Error("Weekly reset worker shutdown failed", "error", err)
 		}
 	}
 
@@ -61,6 +79,8 @@ func GracefulShutdown(ctx context.Context, components ShutdownComponents) {
 	shutdownService(ctx, ServiceNameEconomy, components.EconomyService)
 	shutdownService(ctx, ServiceNameCrafting, components.CraftingService)
 	shutdownService(ctx, ServiceNameGamble, components.GambleService)
+	shutdownService(ctx, "prediction", components.PredictionService)
+	shutdownService(ctx, "quest", components.QuestService)
 
 	// Shutdown resilient publisher last to flush pending events
 	slog.Info(LogMsgShuttingDownEventPublisher)

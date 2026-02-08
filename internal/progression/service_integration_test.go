@@ -2,6 +2,7 @@ package progression
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -122,23 +123,23 @@ func TestProgressionService_Integration(t *testing.T) {
 
 	// Run test suites
 	t.Run("AutoSelectFlow", func(t *testing.T) {
-		testAutoSelectFlow(t, ctx, svc, repo, testPool)
+		testAutoSelectFlow(ctx, t, svc, repo, testPool)
 	})
 
 	t.Run("FKConstraints", func(t *testing.T) {
-		testFKConstraints(t, ctx, svc, repo, testPool)
+		testFKConstraints(ctx, t, svc, repo, testPool)
 	})
 
 	t.Run("AsyncTiming", func(t *testing.T) {
-		testAsyncTiming(t, ctx, svc, repo, testPool)
+		testAsyncTiming(ctx, t, svc, repo, testPool)
 	})
 
 	t.Run("SessionLifecycle", func(t *testing.T) {
-		testSessionLifecycle(t, ctx, svc, repo, testPool)
+		testSessionLifecycle(ctx, t, svc, repo, testPool)
 	})
 
 	t.Run("ZeroCostAutoUnlock", func(t *testing.T) {
-		testZeroCostAutoUnlock(t, ctx, svc, repo, testPool)
+		testZeroCostAutoUnlock(ctx, t, svc, repo, testPool)
 	})
 
 	// Shutdown service gracefully
@@ -148,9 +149,9 @@ func TestProgressionService_Integration(t *testing.T) {
 }
 
 // testAutoSelectFlow tests the auto-select → unlock → new session flow
-func testAutoSelectFlow(t *testing.T, ctx context.Context, svc Service, repo Repository, pool *pgxpool.Pool) {
+func testAutoSelectFlow(ctx context.Context, t *testing.T, svc Service, repo Repository, pool *pgxpool.Pool) {
 	// Clear any existing sessions and progress
-	cleanupProgressionState(t, ctx, pool)
+	cleanupProgressionState(ctx, t, pool)
 
 	// Create a scenario with only one available node
 	// First, we need to unlock prerequisites to make only one node available
@@ -171,7 +172,7 @@ func testAutoSelectFlow(t *testing.T, ctx context.Context, svc Service, repo Rep
 	}
 
 	// Verify session has valid status
-	if session.Status != SessionStatusVoting {
+	if session.Status != domain.VotingStatusVoting {
 		t.Errorf("Expected session status 'voting', got '%s'", session.Status)
 	}
 
@@ -206,8 +207,8 @@ func testAutoSelectFlow(t *testing.T, ctx context.Context, svc Service, repo Rep
 }
 
 // testFKConstraints explicitly tests foreign key constraint enforcement
-func testFKConstraints(t *testing.T, ctx context.Context, svc Service, repo Repository, pool *pgxpool.Pool) {
-	cleanupProgressionState(t, ctx, pool)
+func testFKConstraints(ctx context.Context, t *testing.T, _ Service, repo Repository, pool *pgxpool.Pool) {
+	cleanupProgressionState(ctx, t, pool)
 
 	// Create a session
 	sessionID, err := repo.CreateVotingSession(ctx)
@@ -295,8 +296,8 @@ func testFKConstraints(t *testing.T, ctx context.Context, svc Service, repo Repo
 }
 
 // testAsyncTiming tests goroutine coordination and timing issues
-func testAsyncTiming(t *testing.T, ctx context.Context, svc Service, repo Repository, pool *pgxpool.Pool) {
-	cleanupProgressionState(t, ctx, pool)
+func testAsyncTiming(ctx context.Context, t *testing.T, svc Service, repo Repository, pool *pgxpool.Pool) {
+	cleanupProgressionState(ctx, t, pool)
 
 	// Start a session
 	err := svc.StartVotingSession(ctx, nil)
@@ -330,7 +331,7 @@ func testAsyncTiming(t *testing.T, ctx context.Context, svc Service, repo Reposi
 	}
 
 	// Test concurrent AddContribution calls (race condition test)
-	progress, err := repo.GetActiveUnlockProgress(ctx)
+	progress, _ := repo.GetActiveUnlockProgress(ctx)
 	if progress == nil {
 		t.Skip("No active progress to test concurrent contributions")
 	}
@@ -366,8 +367,8 @@ func testAsyncTiming(t *testing.T, ctx context.Context, svc Service, repo Reposi
 }
 
 // testSessionLifecycle tests state transitions and consistency
-func testSessionLifecycle(t *testing.T, ctx context.Context, svc Service, repo Repository, pool *pgxpool.Pool) {
-	cleanupProgressionState(t, ctx, pool)
+func testSessionLifecycle(ctx context.Context, t *testing.T, svc Service, repo Repository, pool *pgxpool.Pool) {
+	cleanupProgressionState(ctx, t, pool)
 
 	// Test: voting → ended → new voting cycle
 	err := svc.StartVotingSession(ctx, nil)
@@ -380,7 +381,7 @@ func testSessionLifecycle(t *testing.T, ctx context.Context, svc Service, repo R
 		t.Fatal("Failed to get first session")
 	}
 
-	if session1.Status != SessionStatusVoting {
+	if session1.Status != domain.VotingStatusVoting {
 		t.Errorf("Expected status 'voting', got '%s'", session1.Status)
 	}
 
@@ -417,7 +418,7 @@ func testSessionLifecycle(t *testing.T, ctx context.Context, svc Service, repo R
 	// Test: Can't start new session while one is active
 	if currentSession != nil {
 		err = svc.StartVotingSession(ctx, nil)
-		if err == nil || err != domain.ErrSessionAlreadyActive {
+		if err == nil || !errors.Is(err, domain.ErrSessionAlreadyActive) {
 			t.Errorf("Expected ErrSessionAlreadyActive when starting duplicate session, got: %v", err)
 		}
 	} else {
@@ -454,8 +455,8 @@ func testSessionLifecycle(t *testing.T, ctx context.Context, svc Service, repo R
 }
 
 // testZeroCostAutoUnlock tests the zero-cost node immediate unlock path
-func testZeroCostAutoUnlock(t *testing.T, ctx context.Context, svc Service, repo Repository, pool *pgxpool.Pool) {
-	cleanupProgressionState(t, ctx, pool)
+func testZeroCostAutoUnlock(ctx context.Context, t *testing.T, svc Service, repo Repository, pool *pgxpool.Pool) {
+	cleanupProgressionState(ctx, t, pool)
 
 	// Find or create a zero-cost node for testing
 	// For this test, we'll rely on the progression tree having zero-cost nodes

@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
+
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
@@ -95,15 +98,15 @@ func (s *service) formatSearchSuccessMessage(ctx context.Context, item *domain.I
 
 	actualShine := s.calculateSearchShine(isCritical, params)
 
-	// Use naming resolver to get name WITHOUT shine prefix for user display
-	displayName := s.namingResolver.GetDisplayName(item.InternalName, domain.ShineCommon)
+	// User Request: "Search should use the item's public name"
+	displayName := cases.Title(language.English).String(item.PublicName)
 	var resultMessage string
 
 	if isCritical {
-		resultMessage = fmt.Sprintf("%s You found %dx %s", domain.MsgSearchCriticalSuccess, quantity, displayName)
+		resultMessage = fmt.Sprintf("%s You found %dx%s", domain.MsgSearchCriticalSuccess, quantity, displayName)
 		log.Info("Search CRITICAL success", "item", item.InternalName, "quantity", quantity, "shine", actualShine)
 	} else {
-		resultMessage = fmt.Sprintf("You have found %dx %s", quantity, displayName)
+		resultMessage = fmt.Sprintf("You have found %dx%s", quantity, displayName)
 		log.Info("Search successful - lootbox found", "item", item.InternalName, "shine", actualShine)
 	}
 

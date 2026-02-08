@@ -29,7 +29,7 @@ type MockAPIClient struct {
 	RemoveItemFunc      func(string, string, string, int) (string, error)
 	StartGambleFunc     func(string, string, string, string, int) (string, error)
 	JoinGambleFunc      func(string, string, string, string, string, int) (string, error)
-	VoteForNodeFunc     func(string, string, string, string) (string, error)
+	VoteForNodeFunc     func(string, string, string, int) (string, error)
 }
 
 func (m *MockAPIClient) RegisterUser(username, discordID string) (*domain.User, error) {
@@ -158,9 +158,9 @@ func (m *MockAPIClient) JoinGamble(platform, platformID, username, gambleID, ite
 	return "Joined gamble!", nil
 }
 
-func (m *MockAPIClient) VoteForNode(platform, platformID, username, nodeKey string) (string, error) {
+func (m *MockAPIClient) VoteForNode(platform, platformID, username string, optionIndex int) (string, error) {
 	if m.VoteForNodeFunc != nil {
-		return m.VoteForNodeFunc(platform, platformID, username, nodeKey)
+		return m.VoteForNodeFunc(platform, platformID, username, optionIndex)
 	}
 	return "Vote recorded!", nil
 }

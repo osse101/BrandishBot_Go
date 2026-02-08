@@ -1,0 +1,1 @@
+Update discord command /vote to use index instead of name

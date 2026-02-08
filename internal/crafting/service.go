@@ -3,6 +3,7 @@ package crafting
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"math"
 	"sync"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/naming"
+	"github.com/osse101/BrandishBot_Go/internal/quest"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/osse101/BrandishBot_Go/internal/stats"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
@@ -66,18 +68,20 @@ type service struct {
 	progressionSvc ProgressionService
 	statsSvc       stats.Service
 	namingResolver naming.Resolver // For resolving public names to internal names
-	rnd            func() float64  // For rolling RNG (does not need to be cryptographically secure)
-	wg             sync.WaitGroup  // Tracks async goroutines for graceful shutdown
+	questService   quest.Service
+	rnd            func() float64 // For rolling RNG (does not need to be cryptographically secure)
+	wg             sync.WaitGroup // Tracks async goroutines for graceful shutdown
 }
 
 // NewService creates a new crafting service
-func NewService(repo repository.Crafting, jobService JobService, statsSvc stats.Service, namingResolver naming.Resolver, progressionSvc ProgressionService) Service {
+func NewService(repo repository.Crafting, jobService JobService, statsSvc stats.Service, namingResolver naming.Resolver, progressionSvc ProgressionService, questService quest.Service) Service {
 	return &service{
 		repo:           repo,
 		jobService:     jobService,
 		progressionSvc: progressionSvc,
 		statsSvc:       statsSvc,
 		namingResolver: namingResolver,
+		questService:   questService,
 		rnd:            utils.RandomFloat,
 	}
 }
@@ -159,7 +163,7 @@ func (s *service) resolveItemName(ctx context.Context, itemName string) (string,
 func calculateMaxPossibleCrafts(inventory *domain.Inventory, recipe *domain.Recipe, requestedQuantity int) int {
 	maxPossible := requestedQuantity
 	for _, cost := range recipe.BaseCost {
-		_, userQuantity := utils.FindSlot(inventory, cost.ItemID)
+		userQuantity := utils.GetTotalQuantity(inventory, cost.ItemID)
 		if cost.Quantity > 0 {
 			affordableWithThis := userQuantity / cost.Quantity
 			if affordableWithThis < maxPossible {
@@ -170,37 +174,38 @@ func calculateMaxPossibleCrafts(inventory *domain.Inventory, recipe *domain.Reci
 	return maxPossible
 }
 
-// consumeRecipeMaterials removes the required materials from inventory for crafting
-func consumeRecipeMaterials(inventory *domain.Inventory, recipe *domain.Recipe, actualQuantity int) error {
+// consumeRecipeMaterials removes the required materials from inventory for crafting.
+// Returns the consumed materials with their shine levels for calculating output shine.
+func consumeRecipeMaterials(inventory *domain.Inventory, recipe *domain.Recipe, actualQuantity int, rnd func() float64) ([]domain.InventorySlot, error) {
+	allConsumed := make([]domain.InventorySlot, 0)
+
 	for _, cost := range recipe.BaseCost {
 		totalNeeded := cost.Quantity * actualQuantity
-		i, slotQuantity := utils.FindSlot(inventory, cost.ItemID)
-		if i == -1 || slotQuantity < totalNeeded {
-			return fmt.Errorf("insufficient material (itemID: %d) | %w", cost.ItemID, domain.ErrInsufficientQuantity)
+		consumed, err := utils.ConsumeItemsWithTracking(inventory, cost.ItemID, totalNeeded, rnd)
+		if err != nil {
+			return nil, fmt.Errorf("insufficient material (itemID: %d) | %w", cost.ItemID, domain.ErrInsufficientQuantity)
 		}
-
-		// Remove the materials
-		if slotQuantity == totalNeeded {
-			inventory.Slots = append(inventory.Slots[:i], inventory.Slots[i+1:]...)
-		} else {
-			inventory.Slots[i].Quantity -= totalNeeded
-		}
+		allConsumed = append(allConsumed, consumed...)
 	}
-	return nil
+
+	return allConsumed, nil
 }
 
-// addItemToInventory adds items to the inventory, creating a new slot if necessary
-func addItemToInventory(inventory *domain.Inventory, itemID, quantity int) {
+// addItemToInventory adds items to the inventory with specified shine level.
+// Only stacks with slots that have matching ItemID AND ShineLevel.
+func addItemToInventory(inventory *domain.Inventory, itemID, quantity int, shineLevel domain.ShineLevel) {
+	// Find slot with matching ItemID and ShineLevel
 	for i, slot := range inventory.Slots {
-		if slot.ItemID == itemID {
+		if slot.ItemID == itemID && slot.ShineLevel == shineLevel {
 			inventory.Slots[i].Quantity += quantity
 			return
 		}
 	}
-	// Item not found, add new slot
+	// Item not found with matching shine, add new slot
 	inventory.Slots = append(inventory.Slots, domain.InventorySlot{
-		ItemID:   itemID,
-		Quantity: quantity,
+		ItemID:     itemID,
+		Quantity:   quantity,
+		ShineLevel: shineLevel,
 	})
 }
 
@@ -267,15 +272,20 @@ func (s *service) UpgradeItem(ctx context.Context, platform, platformID, usernam
 		actualQuantity = quantity
 	}
 
-	// Consume materials
-	if err := consumeRecipeMaterials(inventory, recipe, actualQuantity); err != nil {
+	// Consume materials and track what was consumed for shine averaging
+	consumedMaterials, err := consumeRecipeMaterials(inventory, recipe, actualQuantity, s.rnd)
+	if err != nil {
 		return nil, err
 	}
 
-	// Calculate output
-	result := s.calculateUpgradeOutput(ctx, user.ID, itemName, actualQuantity)
+	// Calculate average shine from consumed materials
+	outputShine := utils.CalculateAverageShine(consumedMaterials)
 
-	addItemToInventory(inventory, item.ID, result.Quantity)
+	// Calculate output
+	result := s.calculateUpgradeOutput(ctx, user.ID, resolvedName, actualQuantity)
+
+	// Add crafted item with averaged shine level
+	addItemToInventory(inventory, item.ID, result.Quantity, outputShine)
 
 	// Update inventory and commit
 	if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
@@ -290,6 +300,22 @@ func (s *service) UpgradeItem(ctx context.Context, platform, platformID, usernam
 	// Run async with detached context to prevent cancellation affecting XP award
 	s.wg.Add(1)
 	go s.awardBlacksmithXP(context.Background(), user.ID, actualQuantity, "upgrade", itemName)
+
+	// Track quest progress (async, fire-and-forget)
+	if s.questService != nil {
+		s.wg.Add(1)
+		go func() {
+			defer s.wg.Done()
+			// Extract recipe key from the recipe
+			recipeKey := resolvedName // Use item name as fallback
+			if recipe != nil && recipe.RecipeKey != "" {
+				recipeKey = recipe.RecipeKey
+			}
+			if err := s.questService.OnRecipeCrafted(context.Background(), user.ID, recipeKey, actualQuantity); err != nil {
+				slog.Warn("Failed to track quest progress for crafting", "error", err, "item", itemName)
+			}
+		}()
+	}
 
 	log.Info("Items upgraded", "username", username, "item", itemName, "quantity", result.Quantity, "masterwork", result.IsMasterwork)
 
@@ -453,8 +479,9 @@ func (s *service) GetAllRecipes(ctx context.Context) ([]repository.RecipeListIte
 	return recipes, nil
 }
 
-// processDisassembleOutputs adds disassemble outputs to inventory and builds result map
-func (s *service) processDisassembleOutputs(ctx context.Context, inventory *domain.Inventory, outputs []domain.RecipeOutput, actualQuantity int, perfectSalvageCount int) (map[string]int, error) {
+// processDisassembleOutputs adds disassemble outputs to inventory and builds result map.
+// Outputs inherit the averaged shine level from the consumed source items.
+func (s *service) processDisassembleOutputs(ctx context.Context, inventory *domain.Inventory, outputs []domain.RecipeOutput, actualQuantity int, perfectSalvageCount int, outputShine domain.ShineLevel) (map[string]int, error) {
 	outputMap := make(map[string]int)
 
 	// Collect IDs
@@ -500,10 +527,11 @@ func (s *service) processDisassembleOutputs(ctx context.Context, inventory *doma
 		}
 		outputMap[outputItem.InternalName] = totalOutput
 
-		// Prepare for batch add
+		// Prepare for batch add - outputs inherit averaged shine from source items
 		itemsToAdd = append(itemsToAdd, domain.InventorySlot{
-			ItemID:   output.ItemID,
-			Quantity: totalOutput,
+			ItemID:     output.ItemID,
+			Quantity:   totalOutput,
+			ShineLevel: outputShine,
 		})
 	}
 
@@ -549,6 +577,21 @@ func (s *service) DisassembleItem(ctx context.Context, platform, platformID, use
 	s.wg.Add(1)
 	go s.awardBlacksmithXP(context.Background(), user.ID, actualQuantity, "disassemble", itemName)
 
+	// Track quest progress (async, fire-and-forget)
+	if s.questService != nil {
+		s.wg.Add(1)
+		go func() {
+			defer s.wg.Done()
+			recipeKey := itemName // Use item name as fallback
+			if recipe != nil && recipe.RecipeKey != "" {
+				recipeKey = recipe.RecipeKey
+			}
+			if err := s.questService.OnRecipeCrafted(context.Background(), user.ID, recipeKey, actualQuantity); err != nil {
+				slog.Warn("Failed to track quest progress for disassemble", "error", err, "item", itemName)
+			}
+		}()
+	}
+
 	log.Info("Items disassembled", "username", username, "item", itemName, "quantity", actualQuantity, "outputs", outputMap, "perfect_salvage", perfectSalvageTriggered)
 	return &DisassembleResult{
 		Outputs:           outputMap,
@@ -585,18 +628,19 @@ func (s *service) getAndValidateDisassembleRecipe(ctx context.Context, itemID in
 	return recipe, nil
 }
 
-func (s *service) calculateDisassembleQuantity(inventory *domain.Inventory, itemID int, quantityConsumed int, quantity int, itemName string) (int, int, error) {
-	sourceSlotIndex, userQuantity := utils.FindSlot(inventory, itemID)
+func (s *service) calculateDisassembleQuantity(inventory *domain.Inventory, itemID int, quantityConsumed int, quantity int, itemName string) (int, error) {
+	// Use total quantity across all slots
+	userQuantity := utils.GetTotalQuantity(inventory, itemID)
 	maxPossible := userQuantity / quantityConsumed
 	if maxPossible == 0 {
-		return 0, -1, fmt.Errorf("insufficient items to disassemble %s (need %d, have %d) | %w", itemName, quantityConsumed, userQuantity, domain.ErrInsufficientQuantity)
+		return 0, fmt.Errorf("insufficient items to disassemble %s (need %d, have %d) | %w", itemName, quantityConsumed, userQuantity, domain.ErrInsufficientQuantity)
 	}
 
 	actualQuantity := maxPossible
 	if actualQuantity > quantity {
 		actualQuantity = quantity
 	}
-	return actualQuantity, sourceSlotIndex, nil
+	return actualQuantity, nil
 }
 
 // awardBlacksmithXP awards Blacksmith job XP for crafting operations
@@ -684,24 +728,26 @@ func (s *service) executeDisassembleTx(ctx context.Context, userID string, itemI
 		return 0, 0, nil, fmt.Errorf("failed to get inventory: %w", err)
 	}
 
-	actualQuantity, sourceSlotIndex, err := s.calculateDisassembleQuantity(inventory, itemID, recipe.QuantityConsumed, requestedQuantity, itemName)
+	actualQuantity, err := s.calculateDisassembleQuantity(inventory, itemID, recipe.QuantityConsumed, requestedQuantity, itemName)
 	if err != nil {
 		return 0, 0, nil, err
 	}
 
-	// Remove source items
+	// Remove source items and track what was consumed for shine averaging
 	totalConsumed := recipe.QuantityConsumed * actualQuantity
-	if inventory.Slots[sourceSlotIndex].Quantity == totalConsumed {
-		inventory.Slots = append(inventory.Slots[:sourceSlotIndex], inventory.Slots[sourceSlotIndex+1:]...)
-	} else {
-		inventory.Slots[sourceSlotIndex].Quantity -= totalConsumed
+	consumedItems, err := utils.ConsumeItemsWithTracking(inventory, itemID, totalConsumed, s.rnd)
+	if err != nil {
+		return 0, 0, nil, fmt.Errorf("failed to consume disassemble items: %w", err)
 	}
+
+	// Calculate average shine from consumed source items
+	outputShine := utils.CalculateAverageShine(consumedItems)
 
 	// Calculate perfect salvage
 	perfectSalvageCount := s.calculatePerfectSalvage(actualQuantity)
 
-	// Process outputs
-	outputMap, err := s.processDisassembleOutputs(ctx, inventory, recipe.Outputs, actualQuantity, perfectSalvageCount)
+	// Process outputs with averaged shine from source materials
+	outputMap, err := s.processDisassembleOutputs(ctx, inventory, recipe.Outputs, actualQuantity, perfectSalvageCount, outputShine)
 	if err != nil {
 		return 0, 0, nil, err
 	}

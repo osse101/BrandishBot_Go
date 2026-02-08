@@ -23,6 +23,7 @@ type User interface {
 	GetItemByID(ctx context.Context, id int) (*domain.Item, error)
 	GetItemsByIDs(ctx context.Context, itemIDs []int) ([]domain.Item, error)
 	GetAllItems(ctx context.Context) ([]domain.Item, error)
+	GetRecentlyActiveUsers(ctx context.Context, limit int) ([]domain.User, error)
 
 	BeginTx(ctx context.Context) (UserTx, error)
 

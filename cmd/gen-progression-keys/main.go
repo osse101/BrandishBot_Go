@@ -136,11 +136,6 @@ func generateKeysFile(tree ProgressionTree) string {
 		}
 	}
 
-	sb.WriteString("\n\t// Session Status\n")
-	sb.WriteString("\tSessionStatusVoting = \"voting\"\n")
-	sb.WriteString("\tSessionStatusFrozen = \"frozen\"\n")
-	sb.WriteString("\tSessionStatusCompleted = \"completed\"\n")
-
 	sb.WriteString(")\n")
 
 	return sb.String()

@@ -503,11 +503,11 @@ STAGING_URL=http://localhost:8081 make test-staging
 
 ### File Locations
 
-- Deployment script: [scripts/deploy.sh](file:///home/osse1/projects/BrandishBot_Go/scripts/deploy.sh)
-- Rollback script: [scripts/rollback.sh](file:///home/osse1/projects/BrandishBot_Go/scripts/rollback.sh)
-- Health check: [scripts/health-check.sh](file:///home/osse1/projects/BrandishBot_Go/scripts/health-check.sh)
-- Staging config: [docker compose.staging.yml](file:///home/osse1/projects/BrandishBot_Go/docker compose.staging.yml)
-- Production config: [docker compose.production.yml](file:///home/osse1/projects/BrandishBot_Go/docker compose.production.yml)
+- Deployment script: [scripts/deploy.sh](../../scripts/deploy.sh)
+- Rollback script: [scripts/rollback.sh](../../scripts/rollback.sh)
+- Health check: [scripts/health-check.sh](../../scripts/health-check.sh)
+- Staging config: [docker compose.staging.yml](../../docker compose.staging.yml)
+- Production config: [docker compose.production.yml](../../docker compose.production.yml)
 - Database backups: `backup_<env>_<timestamp>.sql` (project root)
 
 ---
@@ -547,6 +547,6 @@ STAGING_URL=http://localhost:8081 make test-staging
 
 ## Additional Resources
 
-- [Environment Setup Guide](file:///home/osse1/projects/BrandishBot_Go/docs/deployment/ENVIRONMENTS.md)
-- [Staging Tests Documentation](file:///home/osse1/projects/BrandishBot_Go/docs/development/STAGING_TESTS.md)
-- [Database Migrations Guide](file:///home/osse1/projects/BrandishBot_Go/docs/MIGRATIONS.md)
+- [Environment Setup Guide](ENVIRONMENTS.md)
+- [Staging Tests Documentation](../development/STAGING_TESTS.md)
+- [Database Migrations Guide](../database/MIGRATIONS.md)

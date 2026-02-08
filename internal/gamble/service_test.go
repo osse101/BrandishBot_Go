@@ -75,14 +75,6 @@ func (m *MockRepository) GetActiveGamble(ctx context.Context) (*domain.Gamble, e
 	return args.Get(0).(*domain.Gamble), args.Error(1)
 }
 
-func (m *MockRepository) BeginTx(ctx context.Context) (repository.Tx, error) {
-	args := m.Called(ctx)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(repository.Tx), args.Error(1)
-}
-
 func (m *MockRepository) BeginGambleTx(ctx context.Context) (repository.GambleTx, error) {
 	args := m.Called(ctx)
 	if args.Get(0) == nil {
@@ -250,7 +242,7 @@ func TestStartGamble_Success(t *testing.T) {
 	lootboxItem := &domain.Item{ID: 1, InternalName: domain.ItemLootbox1}
 	repo.On("GetItemByName", ctx, "lootbox_tier1").Return(lootboxItem, nil)
 
-	repo.On("BeginTx", ctx).Return(tx, nil)
+	repo.On("BeginGambleTx", ctx).Return(tx, nil)
 	tx.On("UpdateInventory", ctx, "user1", mock.Anything).Return(nil)
 	tx.On("Commit", ctx).Return(nil)
 	tx.On("Rollback", ctx).Return(nil).Maybe()
@@ -425,7 +417,7 @@ func TestJoinGamble_Success(t *testing.T) {
 	lootboxItem := &domain.Item{ID: 1, InternalName: domain.ItemLootbox1}
 	repo.On("GetItemByName", ctx, "lootbox_tier1").Return(lootboxItem, nil)
 
-	repo.On("BeginTx", ctx).Return(tx, nil)
+	repo.On("BeginGambleTx", ctx).Return(tx, nil)
 	tx.On("GetInventory", ctx, "user2").Return(inventory, nil)
 	tx.On("UpdateInventory", ctx, "user2", mock.Anything).Return(nil)
 	tx.On("Commit", ctx).Return(nil)
@@ -536,7 +528,7 @@ func TestJoinGamble_InsufficientLootboxes(t *testing.T) {
 	lootboxItem := &domain.Item{ID: 1, InternalName: domain.ItemLootbox1}
 	repo.On("GetItemByName", ctx, domain.ItemLootbox1).Return(lootboxItem, nil)
 
-	repo.On("BeginTx", ctx).Return(tx, nil)
+	repo.On("BeginGambleTx", ctx).Return(tx, nil)
 	tx.On("GetInventory", ctx, "user2").Return(inventory, nil)
 	tx.On("Rollback", ctx).Return(nil).Maybe()
 
@@ -1062,7 +1054,7 @@ func TestShutdown_WaitsForAsync(t *testing.T) {
 	lootboxItem := &domain.Item{ID: 1, InternalName: domain.ItemLootbox1}
 	repo.On("GetItemByName", ctx, "lootbox_tier1").Return(lootboxItem, nil)
 
-	repo.On("BeginTx", ctx).Return(tx, nil)
+	repo.On("BeginGambleTx", ctx).Return(tx, nil)
 	tx.On("UpdateInventory", ctx, "user1", mock.Anything).Return(nil)
 	tx.On("Commit", ctx).Return(nil)
 	tx.On("Rollback", ctx).Return(nil).Maybe()

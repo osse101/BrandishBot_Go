@@ -1,4 +1,13 @@
-# Build stage
+# Frontend build stage
+FROM node:20-alpine AS frontend-builder
+
+WORKDIR /frontend
+COPY web/admin/package.json web/admin/package-lock.json* ./
+RUN npm ci
+COPY web/admin/ .
+RUN npm run build
+
+# Go build stage
 FROM golang:1.24-alpine AS builder
 
 # Build arguments
@@ -21,6 +30,9 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 
 # Copy source code
 COPY . .
+
+# Copy frontend build output into the embed directory
+COPY --from=frontend-builder /frontend/dist ./internal/admin/dist
 
 # Build goose and the application with optimizations and version information
 # -ldflags="-w -s" strips debug info and symbol table
@@ -83,9 +95,10 @@ USER appuser
 EXPOSE 8080
 
 # Add healthcheck
-# Use --server-response to check HTTP status code (wget --spider treats JSON as "broken link")
+# Use wget -O- to perform a GET (avoiding 405 Method Not Allowed from HEAD requests)
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget --quiet --tries=1 --server-response http://localhost:8080/healthz 2>&1 | grep -q "HTTP/1.1 200" || exit 1
+    CMD (wget --quiet --tries=1 --server-response -O- http://127.0.0.1:8080/healthz 2>&1 | grep -q "HTTP/1.1 200") || \
+        (wget --quiet --tries=1 --server-response -O- http://127.0.0.1:8081/healthz 2>&1 | grep -q "HTTP/1.1 200") || exit 1
 
 # Command to run
 ENTRYPOINT ["./docker-entrypoint.sh"]

@@ -14,10 +14,14 @@ if [[ "$ENVIRONMENT" == "staging" ]]; then
     PORT=8081
 fi
 
+
+
 # Test /healthz endpoint
-if ! curl -sf --max-time "$TIMEOUT" "http://localhost:$PORT/healthz" > /dev/null 2>&1; then
-    echo "Health check failed: /healthz endpoint not responding"
-    exit 1
+if ! curl -sf --max-time "$TIMEOUT" "http://127.0.0.1:$PORT/healthz" > /dev/null 2>&1; then
+    if ! curl -sf --max-time "$TIMEOUT" "http://localhost:$PORT/healthz" > /dev/null 2>&1; then
+        echo "Health check failed: /healthz endpoint not responding"
+        exit 1
+    fi
 fi
 
 # Check if response time is acceptable (< 1 second)

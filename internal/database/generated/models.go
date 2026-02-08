@@ -109,11 +109,32 @@ type Expedition struct {
 	Metadata           []byte             `json:"metadata"`
 }
 
+type ExpeditionJournalEntry struct {
+	ID            int32              `json:"id"`
+	ExpeditionID  uuid.UUID          `json:"expedition_id"`
+	TurnNumber    int32              `json:"turn_number"`
+	EncounterType string             `json:"encounter_type"`
+	Outcome       string             `json:"outcome"`
+	SkillChecked  pgtype.Text        `json:"skill_checked"`
+	SkillPassed   pgtype.Bool        `json:"skill_passed"`
+	PrimaryMember pgtype.Text        `json:"primary_member"`
+	Narrative     string             `json:"narrative"`
+	Fatigue       int32              `json:"fatigue"`
+	Purse         int32              `json:"purse"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+}
+
 type ExpeditionParticipant struct {
 	ExpeditionID uuid.UUID          `json:"expedition_id"`
 	UserID       uuid.UUID          `json:"user_id"`
 	JoinedAt     pgtype.Timestamptz `json:"joined_at"`
 	Rewards      []byte             `json:"rewards"`
+	Username     pgtype.Text        `json:"username"`
+	IsLeader     pgtype.Bool        `json:"is_leader"`
+	JobLevels    []byte             `json:"job_levels"`
+	FinalMoney   pgtype.Int4        `json:"final_money"`
+	FinalXp      pgtype.Int4        `json:"final_xp"`
+	FinalItems   []byte             `json:"final_items"`
 }
 
 type Gamble struct {
@@ -297,6 +318,37 @@ type ProgressionVotingSession struct {
 	CreatedAt       pgtype.Timestamp `json:"created_at"`
 }
 
+type Quest struct {
+	QuestID         int32              `json:"quest_id"`
+	QuestKey        string             `json:"quest_key"`
+	QuestType       string             `json:"quest_type"`
+	Description     string             `json:"description"`
+	TargetCategory  pgtype.Text        `json:"target_category"`
+	TargetRecipeKey pgtype.Text        `json:"target_recipe_key"`
+	BaseRequirement int32              `json:"base_requirement"`
+	BaseRewardMoney int32              `json:"base_reward_money"`
+	BaseRewardXp    int32              `json:"base_reward_xp"`
+	Active          bool               `json:"active"`
+	WeekNumber      int32              `json:"week_number"`
+	Year            int32              `json:"year"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+}
+
+type QuestProgress struct {
+	UserID           uuid.UUID          `json:"user_id"`
+	QuestID          int32              `json:"quest_id"`
+	ProgressCurrent  int32              `json:"progress_current"`
+	ProgressRequired int32              `json:"progress_required"`
+	RewardMoney      int32              `json:"reward_money"`
+	RewardXp         int32              `json:"reward_xp"`
+	StartedAt        pgtype.Timestamptz `json:"started_at"`
+	CompletedAt      pgtype.Timestamptz `json:"completed_at"`
+	ClaimedAt        pgtype.Timestamptz `json:"claimed_at"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+}
+
 type RecipeAssociation struct {
 	AssociationID       int32 `json:"association_id"`
 	UpgradeRecipeID     int32 `json:"upgrade_recipe_id"`
@@ -386,4 +438,13 @@ type UserVote struct {
 	VotedAt     pgtype.Timestamp `json:"voted_at"`
 	SessionID   pgtype.Int4      `json:"session_id"`
 	OptionID    pgtype.Int4      `json:"option_id"`
+}
+
+type WeeklyQuestResetState struct {
+	ID              int32              `json:"id"`
+	LastResetTime   pgtype.Timestamptz `json:"last_reset_time"`
+	WeekNumber      int32              `json:"week_number"`
+	Year            int32              `json:"year"`
+	QuestsGenerated int32              `json:"quests_generated"`
+	ProgressReset   int32              `json:"progress_reset"`
 }

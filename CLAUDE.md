@@ -8,11 +8,17 @@ Go game engine API for live chatroom gaming. HTTP API (port 8080) + Discord bot 
 make run              # Start API server
 make discord-run      # Start Discord bot
 make test             # Run tests
+make unit             # Run unit tests (fast, short mode)
 make lint             # Run linters
 make generate         # Regenerate SQLC/mocks
-make mocks            # Regenerate mocks
+make mocks            # Regenerate mocks (uses mockery)
 make migrate-up       # Apply migrations
 make docker-up        # Start all services
+
+# Devtool Helpers
+make test-migrations  # Test migration idempotency
+make check-deps       # Check dependencies
+make check-db         # Check database status
 ```
 
 ---
@@ -198,6 +204,7 @@ All services follow this pattern. Discord commands mirror this via API client ca
 | `internal/config/` | Configuration management, environment variables |
 | `internal/cooldown/` | Cooldown service for rate limiting |
 | `internal/features/` | Feature flags and toggles |
+| `internal/harvest/` | Passive resource accumulation (farming) |
 | `internal/logger/` | Structured logging with Zap |
 | `internal/metrics/` | Prometheus metrics collection |
 | `internal/middleware/` | HTTP middleware (CORS, logging, recovery) |
@@ -247,6 +254,19 @@ All services follow this pattern. Discord commands mirror this via API client ca
 
 **Key methods:** `UpgradeItem`, `DisassembleItem`, `GetRecipe`, `GetUnlockedRecipes`
 **Special mechanics:** Masterwork (10% chance, 2x), Perfect Salvage (10% chance, 1.5x)
+
+### Harvest System (Farming)
+| Layer | Location |
+|-------|----------|
+| Service | `internal/harvest/service.go` |
+| Repository | `internal/repository/harvest.go` |
+| Postgres | `internal/database/postgres/harvest.go` |
+| Handler | `internal/handler/harvest.go` |
+| Discord | `internal/discord/cmd_harvest.go` |
+| Tiers | `internal/harvest/reward_tiers.go` |
+
+**Key methods:** `Harvest`
+**Mechanics:** Passive accumulation over time (min 1h). Rewards spoil after 336h (2 weeks). Awards Farmer XP.
 
 ### Progression System
 | Layer | Location |
@@ -560,7 +580,7 @@ From `cmd/app/main.go`, services initialize in this order:
 3. **Repositories** - Create all repository instances
 4. **Core Services** - User, economy, item, naming services
 5. **Feature Services** - Job, stats, progression, cooldown services
-6. **Game Services** - Crafting, lootbox, gamble services
+6. **Game Services** - Crafting, lootbox, gamble, harvest services
 7. **Background Systems** - Scheduler, gamble worker
 8. **Real-Time Systems** - SSE hub, Streamer.bot client
 9. **HTTP Server** - API routes and middleware
@@ -572,6 +592,7 @@ user.Service      ← stats, job, lootbox, naming, cooldown
 crafting.Service  ← job, stats, naming
 economy.Service   ← job
 gamble.Service    ← lootbox, stats, job, progression
+harvest.Service   ← user, job, progression
 progression.Service ← event bus
 job.Service       ← progression, stats, event bus
 ```
@@ -628,6 +649,9 @@ job.Service       ← progression, stats, event bus
 - `POST /api/v1/user/item/upgrade` - Upgrade item
 - `POST /api/v1/user/item/disassemble` - Disassemble item
 - `GET /api/v1/crafting/recipes` - Get unlocked recipes
+
+### Harvest
+- `POST /api/v1/harvest` - Harvest items
 
 ### Progression
 - `GET /api/v1/progression/tree` - Get progression tree

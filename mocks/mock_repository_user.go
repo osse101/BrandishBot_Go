@@ -591,6 +591,65 @@ func (_c *MockRepositoryUser_GetLastCooldown_Call) RunAndReturn(run func(context
 	return _c
 }
 
+// GetRecentlyActiveUsers provides a mock function with given fields: ctx, limit
+func (_m *MockRepositoryUser) GetRecentlyActiveUsers(ctx context.Context, limit int) ([]domain.User, error) {
+	ret := _m.Called(ctx, limit)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetRecentlyActiveUsers")
+	}
+
+	var r0 []domain.User
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, int) ([]domain.User, error)); ok {
+		return rf(ctx, limit)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, int) []domain.User); ok {
+		r0 = rf(ctx, limit)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]domain.User)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, int) error); ok {
+		r1 = rf(ctx, limit)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockRepositoryUser_GetRecentlyActiveUsers_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetRecentlyActiveUsers'
+type MockRepositoryUser_GetRecentlyActiveUsers_Call struct {
+	*mock.Call
+}
+
+// GetRecentlyActiveUsers is a helper method to define mock.On call
+//   - ctx context.Context
+//   - limit int
+func (_e *MockRepositoryUser_Expecter) GetRecentlyActiveUsers(ctx interface{}, limit interface{}) *MockRepositoryUser_GetRecentlyActiveUsers_Call {
+	return &MockRepositoryUser_GetRecentlyActiveUsers_Call{Call: _e.mock.On("GetRecentlyActiveUsers", ctx, limit)}
+}
+
+func (_c *MockRepositoryUser_GetRecentlyActiveUsers_Call) Run(run func(ctx context.Context, limit int)) *MockRepositoryUser_GetRecentlyActiveUsers_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int))
+	})
+	return _c
+}
+
+func (_c *MockRepositoryUser_GetRecentlyActiveUsers_Call) Return(_a0 []domain.User, _a1 error) *MockRepositoryUser_GetRecentlyActiveUsers_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockRepositoryUser_GetRecentlyActiveUsers_Call) RunAndReturn(run func(context.Context, int) ([]domain.User, error)) *MockRepositoryUser_GetRecentlyActiveUsers_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetUserByID provides a mock function with given fields: ctx, userID
 func (_m *MockRepositoryUser) GetUserByID(ctx context.Context, userID string) (*domain.User, error) {
 	ret := _m.Called(ctx, userID)

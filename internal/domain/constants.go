@@ -102,6 +102,13 @@ const (
 	DiscordBotID    = "BrandishBot#6125"
 )
 
+// VotingStatus constants
+const (
+	VotingStatusVoting    = "voting"
+	VotingStatusFrozen    = "frozen"
+	VotingStatusCompleted = "completed"
+)
+
 // Message constants
 const (
 	MsgSearchNothingFound    = "You have found nothing"
@@ -148,11 +155,6 @@ const (
 	FilterTypeUpgrade    = "upgrade"
 	FilterTypeSellable   = "sellable"
 	FilterTypeConsumable = "consumable"
-)
-
-// Error messages
-const (
-	ErrMsgTxClosed = "tx is closed"
 )
 
 // Economy constants

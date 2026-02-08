@@ -52,7 +52,7 @@ func main() {
 	httpServer.Start()
 	defer httpServer.Stop()
 
-	bot.StartDailyCommitChecker()
+	bot.StartDailyPatchNotesChecker()
 
 	// Register all commands
 	registerCommands(bot, getCommandFactories(bot))
@@ -152,6 +152,14 @@ func getCommandFactories(bot *discord.Bot) []CommandFactory {
 		discord.GambleStartCommand,
 		discord.GambleJoinCommand,
 
+		// Expedition commands
+		discord.ExploreCommand,
+		discord.ExpeditionJournalCommand,
+
+		// Quest commands
+		discord.QuestsCommand,
+		discord.ClaimQuestCommand,
+
 		// Progression commands
 		discord.VoteCommand,
 		discord.UnlockProgressCommand,
@@ -193,6 +201,10 @@ func getCommandFactories(bot *discord.Bot) []CommandFactory {
 		discord.AddItemCommand,
 		discord.RemoveItemCommand,
 		discord.AdminAwardXPCommand,
+
+		// Admin timeout commands
+		discord.AdminTimeoutClearCommand,
+		discord.AdminSetTimeoutCommand,
 
 		// Linking commands
 		discord.LinkCommand,

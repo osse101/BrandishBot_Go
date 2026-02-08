@@ -14,17 +14,24 @@ const (
 	NodeSizeLarge  NodeSize = "large"
 )
 
+const (
+	TierScalingFactor = 1.50
+	BaseCostSmall     = 50
+	BaseCostMedium    = 100
+	BaseCostLarge     = 200
+)
+
 // Base unlock costs by size
 var baseCosts = map[NodeSize]int{
-	NodeSizeSmall:  200,
-	NodeSizeMedium: 400,
-	NodeSizeLarge:  800,
+	NodeSizeSmall:  BaseCostSmall,
+	NodeSizeMedium: BaseCostMedium,
+	NodeSizeLarge:  BaseCostLarge,
 }
 
 // CalculateUnlockCost computes the unlock cost for a node based on tier and size
-// Formula: baseCost[size] * (1.30^tier)
+// Formula: baseCost[size] * (TierScalingFactor^tier)
 // Supports arbitrary tier numbers (tier >= 0) with exponential scaling
-// Tier 0 returns the base cost (1.30^0 = 1)
+// Tier 0 returns the base cost (TierScalingFactor^0 = 1)
 func CalculateUnlockCost(tier int, size NodeSize) (int, error) {
 	// Validate tier
 	if tier < 0 {
@@ -37,8 +44,8 @@ func CalculateUnlockCost(tier int, size NodeSize) (int, error) {
 		return 0, fmt.Errorf("invalid size %s: must be small, medium, or large", size)
 	}
 
-	// Calculate exponential tier multiplier: 1.30^tier
-	tierMultiplier := math.Pow(1.30, float64(tier))
+	// Calculate exponential tier multiplier: TierScalingFactor^tier
+	tierMultiplier := math.Pow(TierScalingFactor, float64(tier))
 
 	// Final cost = baseCost * tierMultiplier
 	cost := float64(baseCost) * tierMultiplier

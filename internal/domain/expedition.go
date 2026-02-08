@@ -17,6 +17,52 @@ const (
 	ExpeditionStateCompleted  ExpeditionState = "Completed"
 )
 
+// Expedition event constants
+const (
+	EventExpeditionStarted   = "ExpeditionStarted"
+	EventExpeditionCompleted = "ExpeditionCompleted"
+	EventExpeditionTurn      = "ExpeditionTurn"
+)
+
+// EncounterType represents the type of encounter in an expedition
+type EncounterType string
+
+const (
+	EncounterExplore       EncounterType = "explore"
+	EncounterTravel        EncounterType = "travel"
+	EncounterCombatSkirmsh EncounterType = "combat_skirmish"
+	EncounterCombatElite   EncounterType = "combat_elite"
+	EncounterCombatBoss    EncounterType = "combat_boss"
+	EncounterCamp          EncounterType = "camp"
+	EncounterHazard        EncounterType = "hazard"
+	EncounterDiscovery     EncounterType = "discovery"
+	EncounterEncounter     EncounterType = "encounter"
+	EncounterTreasure      EncounterType = "treasure"
+	EncounterMystic        EncounterType = "mystic"
+	EncounterDrama         EncounterType = "drama"
+)
+
+// OutcomeType represents the outcome category of an encounter
+type OutcomeType string
+
+const (
+	OutcomePositive OutcomeType = "positive"
+	OutcomeNeutral  OutcomeType = "neutral"
+	OutcomeNegative OutcomeType = "negative"
+)
+
+// ExpeditionSkill represents a skill used in expeditions, mapped 1:1 to jobs
+type ExpeditionSkill string
+
+const (
+	SkillFortitude  ExpeditionSkill = "fortitude"
+	SkillPerception ExpeditionSkill = "perception"
+	SkillSurvival   ExpeditionSkill = "survival"
+	SkillCunning    ExpeditionSkill = "cunning"
+	SkillPersuasion ExpeditionSkill = "persuasion"
+	SkillKnowledge  ExpeditionSkill = "knowledge"
+)
+
 // ExpeditionMetadata stores expedition configuration and results
 type ExpeditionMetadata struct {
 	Difficulty      string             `json:"difficulty,omitempty"`
@@ -29,9 +75,9 @@ type ExpeditionMetadata struct {
 
 // ExpeditionRewards represents rewards for a participant
 type ExpeditionRewards struct {
-	Items []Item `json:"items"`
-	XP    int    `json:"xp,omitempty"`
-	Money int    `json:"money,omitempty"`
+	Items []string `json:"items"`
+	XP    int      `json:"xp,omitempty"`
+	Money int      `json:"money,omitempty"`
 }
 
 // Expedition represents a group expedition/adventure
@@ -51,7 +97,13 @@ type Expedition struct {
 type ExpeditionParticipant struct {
 	ExpeditionID uuid.UUID          `json:"expedition_id"`
 	UserID       uuid.UUID          `json:"user_id"`
+	Username     string             `json:"username"`
 	JoinedAt     time.Time          `json:"joined_at"`
+	IsLeader     bool               `json:"is_leader"`
+	JobLevels    map[string]int     `json:"job_levels,omitempty"`
+	FinalMoney   int                `json:"final_money,omitempty"`
+	FinalXP      int                `json:"final_xp,omitempty"`
+	FinalItems   []string           `json:"final_items,omitempty"`
 	Rewards      *ExpeditionRewards `json:"rewards,omitempty"`
 }
 
@@ -59,6 +111,75 @@ type ExpeditionParticipant struct {
 type ExpeditionDetails struct {
 	Expedition   Expedition              `json:"expedition"`
 	Participants []ExpeditionParticipant `json:"participants"`
+}
+
+// PartyMemberState tracks runtime state during an expedition turn loop
+type PartyMemberState struct {
+	UserID      uuid.UUID
+	Username    string
+	JobLevels   map[string]int // All job levels: {"blacksmith": 5, "explorer": 12, ...}
+	IsConscious bool
+	IsDebuffed  bool
+	TempSkills  []ExpeditionSkill
+	PrizeMoney  int
+	PrizeItems  []string
+}
+
+// ExpeditionTurn records a single turn in the expedition
+type ExpeditionTurn struct {
+	TurnNumber    int             `json:"turn_number"`
+	EncounterType EncounterType   `json:"encounter_type"`
+	Outcome       OutcomeType     `json:"outcome"`
+	SkillChecked  ExpeditionSkill `json:"skill_checked"`
+	SkillPassed   bool            `json:"skill_passed"`
+	PrimaryMember string          `json:"primary_member"`
+	Narrative     string          `json:"narrative"`
+	Fatigue       int             `json:"fatigue"`
+	PurseAfter    int             `json:"purse_after"`
+}
+
+// ExpeditionResult captures the final outcome of an expedition
+type ExpeditionResult struct {
+	TotalTurns    int                 `json:"total_turns"`
+	Won           bool                `json:"won"`
+	AllKnockedOut bool                `json:"all_knocked_out"`
+	FinalFatigue  int                 `json:"final_fatigue"`
+	PartyRewards  []PartyMemberReward `json:"party_rewards"`
+	Journal       []ExpeditionTurn    `json:"journal"`
+}
+
+// PartyMemberReward captures rewards for a single party member
+type PartyMemberReward struct {
+	UserID   uuid.UUID `json:"user_id"`
+	Username string    `json:"username"`
+	Money    int       `json:"money"`
+	Items    []string  `json:"items"`
+	XP       int       `json:"xp"`
+	IsLeader bool      `json:"is_leader"`
+}
+
+// ExpeditionJournalEntry is the DB-persisted form of a journal entry
+type ExpeditionJournalEntry struct {
+	ID            int       `json:"id"`
+	ExpeditionID  uuid.UUID `json:"expedition_id"`
+	TurnNumber    int       `json:"turn_number"`
+	EncounterType string    `json:"encounter_type"`
+	Outcome       string    `json:"outcome"`
+	SkillChecked  string    `json:"skill_checked"`
+	SkillPassed   bool      `json:"skill_passed"`
+	PrimaryMember string    `json:"primary_member"`
+	Narrative     string    `json:"narrative"`
+	Fatigue       int       `json:"fatigue"`
+	Purse         int       `json:"purse"`
+	CreatedAt     time.Time `json:"created_at"`
+}
+
+// ExpeditionStatus represents the current state of the expedition system
+type ExpeditionStatus struct {
+	HasActive       bool               `json:"has_active"`
+	ActiveDetails   *ExpeditionDetails `json:"active_details,omitempty"`
+	CooldownExpires *time.Time         `json:"cooldown_expires,omitempty"`
+	OnCooldown      bool               `json:"on_cooldown"`
 }
 
 // MarshalExpeditionMetadata converts ExpeditionMetadata to JSONB

@@ -27,6 +27,21 @@ const (
 
 	// SSEEventTypeCycleCompleted is the event type for progression cycle completion
 	SSEEventTypeCycleCompleted = "progression.cycle_completed"
+
+	// SSEEventTypeAllUnlocked is the event type for all progression nodes unlocked
+	SSEEventTypeAllUnlocked = "progression.all_unlocked"
+
+	// SSEEventTypeGambleCompleted is the event type for gamble completion
+	SSEEventTypeGambleCompleted = "gamble.completed"
+
+	// SSEEventTypeExpeditionStarted is the event type for expedition start
+	SSEEventTypeExpeditionStarted = "expedition.started"
+
+	// SSEEventTypeExpeditionTurn is the event type for expedition turn updates
+	SSEEventTypeExpeditionTurn = "expedition.turn"
+
+	// SSEEventTypeExpeditionCompleted is the event type for expedition completion
+	SSEEventTypeExpeditionCompleted = "expedition.completed"
 )
 
 // SSE log messages

@@ -5,9 +5,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
 // =============================================================================
@@ -226,9 +227,9 @@ func TestGetDisplayName_ShineWithTheme(t *testing.T) {
 	}{
 		{domain.ShineLevel(""), "Cool Item"},
 		{domain.ShineCommon, "Cool Item"}, // COMMON doesn't show prefix
-		{domain.ShineRare, "RARE Cool Item"},
-		{domain.ShineEpic, "EPIC Cool Item"},
-		{domain.ShineLegendary, "LEGENDARY Cool Item"},
+		{domain.ShineRare, "Cool Item"},
+		{domain.ShineEpic, "Cool Item"},
+		{domain.ShineLegendary, "Cool Item👑"},
 	}
 
 	for _, tt := range tests {

@@ -180,6 +180,14 @@ func (m *MockRepo) GetAllItems(ctx context.Context) ([]domain.Item, error) {
 	return args.Get(0).([]domain.Item), args.Error(1)
 }
 
+func (m *MockRepo) GetRecentlyActiveUsers(ctx context.Context, limit int) ([]domain.User, error) {
+	args := m.Called(ctx, limit)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]domain.User), args.Error(1)
+}
+
 // MockLootboxService is a mock for lootbox.Service
 type MockLootboxService struct {
 	mock.Mock
@@ -196,6 +204,8 @@ func (m *MockLootboxService) OpenLootbox(ctx context.Context, lootboxName string
 // Helper to create a service with a mock repo and lootbox service
 func createTestService(repo *MockRepo, lootboxSvc *MockLootboxService) *service {
 	namingResolver := NewMockNamingResolver()
+	namingResolver.DisplayNames["money"] = "Shiny credit"
+	namingResolver.DisplayNames["lootbox_tier0"] = "junkbox"
 
 	return &service{
 		repo:           repo,
@@ -206,7 +216,7 @@ func createTestService(repo *MockRepo, lootboxSvc *MockLootboxService) *service 
 
 func TestProcessLootbox(t *testing.T) {
 	// Setup items
-	lootbox0 := &domain.Item{ID: 100, InternalName: domain.ItemLootbox0}
+	lootbox0 := &domain.Item{ID: 100, InternalName: domain.ItemLootbox0, PublicName: "junkbox"}
 
 	money := &domain.Item{ID: 1, InternalName: domain.ItemMoney}
 
@@ -236,8 +246,8 @@ func TestProcessLootbox(t *testing.T) {
 
 		// Verify
 		assert.NoError(t, err)
-		assert.Contains(t, msg, "Opened")
-		assert.Contains(t, msg, "money")
+		assert.Contains(t, msg, "Opened a junkbox")
+		assert.Contains(t, msg, "5 Shiny credits")
 
 		// Verify inventory changes
 		// Should have consumed lootbox0 and gained money

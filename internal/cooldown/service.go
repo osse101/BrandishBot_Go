@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"time"
+
+	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
 // ProgressionService defines the interface for progression system
@@ -46,6 +48,9 @@ func (e ErrOnCooldown) Error() string {
 
 // Is allows errors.Is() to work with ErrOnCooldown
 func (e ErrOnCooldown) Is(target error) bool {
+	if target == domain.ErrOnCooldown {
+		return true
+	}
 	_, ok := target.(ErrOnCooldown)
 	return ok
 }

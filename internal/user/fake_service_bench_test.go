@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/lootbox"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
@@ -180,6 +181,10 @@ func (f *fakeBenchRepository) GetAllItems(ctx context.Context) ([]domain.Item, e
 	return []domain.Item{}, nil // Bench mock doesn't store items
 }
 
+func (f *fakeBenchRepository) GetRecentlyActiveUsers(ctx context.Context, limit int) ([]domain.User, error) {
+	return []domain.User{}, nil
+}
+
 // Mock transaction
 type fakeBenchTx struct {
 	repo *fakeBenchRepository
@@ -297,7 +302,7 @@ func BenchmarkService_HandleIncomingMessage(b *testing.B) {
 	namingResolver := &fakeBenchNamingResolver{}
 	cooldownService := &fakeBenchCooldownService{}
 
-	service := NewService(repo, repo, statsService, jobService, lootboxService, namingResolver, cooldownService, false)
+	service := NewService(repo, repo, statsService, jobService, lootboxService, namingResolver, cooldownService, nil, nil, false)
 
 	ctx := context.Background()
 
@@ -321,7 +326,7 @@ func BenchmarkService_HandleIncomingMessage_WithMatches(b *testing.B) {
 	namingResolver := &fakeBenchNamingResolver{}
 	cooldownService := &fakeBenchCooldownService{}
 
-	service := NewService(repo, repo, statsService, jobService, lootboxService, namingResolver, cooldownService, false)
+	service := NewService(repo, repo, statsService, jobService, lootboxService, namingResolver, cooldownService, nil, nil, false)
 
 	ctx := context.Background()
 	message := "this is a longer message with multiple words to test string matching performance"
@@ -346,7 +351,7 @@ func BenchmarkService_AddItem(b *testing.B) {
 	namingResolver := &fakeBenchNamingResolver{}
 	cooldownService := &fakeBenchCooldownService{}
 
-	service := NewService(repo, repo, statsService, jobService, lootboxService, namingResolver, cooldownService, false)
+	service := NewService(repo, repo, statsService, jobService, lootboxService, namingResolver, cooldownService, nil, nil, false)
 
 	ctx := context.Background()
 
@@ -370,7 +375,7 @@ func BenchmarkService_AddItem_NewItem(b *testing.B) {
 	namingResolver := &fakeBenchNamingResolver{}
 	cooldownService := &fakeBenchCooldownService{}
 
-	service := NewService(repo, repo, statsService, jobService, lootboxService, namingResolver, cooldownService, false)
+	service := NewService(repo, repo, statsService, jobService, lootboxService, namingResolver, cooldownService, nil, nil, false)
 
 	ctx := context.Background()
 
@@ -394,7 +399,7 @@ func BenchmarkService_AddItem_Individual10(b *testing.B) {
 	namingResolver := &fakeBenchNamingResolver{}
 	cooldownService := &fakeBenchCooldownService{}
 
-	service := NewService(repo, repo, statsService, jobService, lootboxService, namingResolver, cooldownService, false)
+	service := NewService(repo, repo, statsService, jobService, lootboxService, namingResolver, cooldownService, nil, nil, false)
 
 	ctx := context.Background()
 

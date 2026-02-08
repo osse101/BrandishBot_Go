@@ -17,6 +17,7 @@ bin/
 /debug
 /reset
 /setup
+/devtool
 
 # Test binary, built with `go test -c`
 *.test
@@ -63,3 +64,7 @@ tmp/
 benchmarks/results/*.txt
 !benchmarks/results/baseline.txt
 benchmarks/profiles/*.prof
+
+# Admin dashboard build artifacts
+web/admin/node_modules/
+web/admin/dist/

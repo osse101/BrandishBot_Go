@@ -223,6 +223,6 @@ graph LR
 
 ## Additional Resources
 
-- [Deployment Workflow Guide](file:///home/osse1/projects/BrandishBot_Go/docs/deployment/DEPLOYMENT_WORKFLOW.md) - Complete deployment procedures
-- [Staging Tests](file:///home/osse1/projects/BrandishBot_Go/docs/development/STAGING_TESTS.md) - Integration test suite
-- [Migrations Guide](file:///home/osse1/projects/BrandishBot_Go/docs/MIGRATIONS.md) - Database migration procedures
+- [Deployment Workflow Guide](DEPLOYMENT_WORKFLOW.md) - Complete deployment procedures
+- [Staging Tests](../development/STAGING_TESTS.md) - Integration test suite
+- [Migrations Guide](../database/MIGRATIONS.md) - Database migration procedures

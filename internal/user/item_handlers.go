@@ -10,12 +10,18 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/lootbox"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
+)
+
+const (
+	// Error messages
+	ErrMsgInvalidQuantity = "invalid quantity"
 )
 
 // Item effect handlers
@@ -45,7 +51,7 @@ func (s *service) processLootbox(ctx context.Context, user *domain.User, invento
 }
 
 func (s *service) consumeLootboxFromInventory(inventory *domain.Inventory, item *domain.Item, quantity int) (domain.ShineLevel, error) {
-	itemSlotIndex, slotQuantity := utils.FindSlot(inventory, item.ID)
+	itemSlotIndex, slotQuantity := utils.FindRandomSlot(inventory, item.ID, s.rnd)
 	if itemSlotIndex == -1 {
 		return "", errors.New(ErrMsgItemNotFoundInInventory)
 	}
@@ -61,22 +67,28 @@ func (s *service) consumeLootboxFromInventory(inventory *domain.Inventory, item 
 
 func (s *service) processLootboxDrops(ctx context.Context, user *domain.User, inventory *domain.Inventory, lootboxItem *domain.Item, quantity int, drops []lootbox.DroppedItem) (string, error) {
 	var msgBuilder strings.Builder
+	// User Request: Use alias for the lootbox when opening
 	displayName := s.namingResolver.GetDisplayName(lootboxItem.InternalName, "")
 
 	msgBuilder.WriteString(MsgLootboxOpened)
 	msgBuilder.WriteString(" ")
-	msgBuilder.WriteString(strconv.Itoa(quantity))
-	msgBuilder.WriteString(" ")
-	msgBuilder.WriteString(displayName)
+	if quantity > 1 {
+		msgBuilder.WriteString(strconv.Itoa(quantity))
+		msgBuilder.WriteString(" ")
+		msgBuilder.WriteString(s.pluralize(displayName, quantity))
+	} else {
+		msgBuilder.WriteString(getIndefiniteArticle(displayName))
+		msgBuilder.WriteString(" ")
+		msgBuilder.WriteString(displayName)
+	}
 	msgBuilder.WriteString(MsgLootboxReceived)
 
 	stats := s.aggregateDropsAndUpdateInventory(inventory, drops, &msgBuilder)
 
-	// 4. Append "Juice" - Feedback based on results
+	// User Request: "All lootbox open messages were too verbose and should be at the level I gave as example"
+	// Example: "Opened Junkbox and received: 1 Shiny credit" or " ... 5 Shiny credits"
 	// LevelUp Philosophy: "If a number goes up, the player should feel it."
-	msgBuilder.WriteString(MsgLootboxValue)
-	msgBuilder.WriteString(strconv.Itoa(stats.totalValue))
-	msgBuilder.WriteString(MsgLootboxValueEnd)
+	// Removing explicit Value output as per user request to reduce verbosity
 
 	if stats.hasLegendary {
 		if s.statsService != nil && user != nil {
@@ -136,30 +148,25 @@ func (s *service) aggregateDropsAndUpdateInventory(inventory *domain.Inventory, 
 			stats.hasEpic = true
 		}
 
-		// Prepare item for batch add
+		// Prepare item for batch add - preserve shine level from loot table
 		itemsToAdd = append(itemsToAdd, domain.InventorySlot{
-			ItemID:   drop.ItemID,
-			Quantity: drop.Quantity,
+			ItemID:     drop.ItemID,
+			Quantity:   drop.Quantity,
+			ShineLevel: drop.ShineLevel,
 		})
 
 		if !first {
 			msgBuilder.WriteString(LootboxDropSeparator)
 		}
 
-		// Get display name with shine level
+		// Get display name (which might be "Shiny credit" for money or "Ray Gun" for blaster)
+		// We trust the resolver to give the base name, and we handle pluralization
 		itemDisplayName := s.namingResolver.GetDisplayName(drop.ItemName, drop.ShineLevel)
 
-		// Write drop info directly to builder to minimize allocations
+		// Simplify output: "Quantity Name"
 		msgBuilder.WriteString(strconv.Itoa(drop.Quantity))
-		msgBuilder.WriteString(LootboxDisplayQuantityPrefix)
-		msgBuilder.WriteString(itemDisplayName)
-
-		// Add shine annotation for visual impact
-		if drop.ShineLevel != "" && drop.ShineLevel != domain.ShineCommon {
-			msgBuilder.WriteString(LootboxShineAnnotationOpen)
-			msgBuilder.WriteString(string(drop.ShineLevel))
-			msgBuilder.WriteString(LootboxShineAnnotationClose)
-		}
+		msgBuilder.WriteString(" ")
+		msgBuilder.WriteString(s.pluralize(itemDisplayName, drop.Quantity))
 
 		first = false
 	}
@@ -198,8 +205,8 @@ func (s *service) handleWeapon(ctx context.Context, _ *service, _ *domain.User, 
 	username, _ := args[ArgsUsername].(string)
 	platform, _ := args[ArgsPlatform].(string)
 
-	// Find item slot first (before target selection)
-	itemSlotIndex, slotQuantity := utils.FindSlot(inventory, item.ID)
+	// Find item slot first (before target selection), randomly if multiple exist with different shines
+	itemSlotIndex, slotQuantity := utils.FindRandomSlot(inventory, item.ID, s.rnd)
 	if itemSlotIndex == -1 {
 		log.Warn(LogWarnWeaponNotInInventory, "item", item.InternalName)
 		return "", errors.New(ErrMsgItemNotFoundInInventory)
@@ -209,8 +216,9 @@ func (s *service) handleWeapon(ctx context.Context, _ *service, _ *domain.User, 
 		return "", errors.New(ErrMsgNotEnoughItemsInInventory)
 	}
 
-	timeout := getWeaponTimeout(item.InternalName)
-	displayName := s.namingResolver.GetDisplayName(item.InternalName, "")
+	shineLevel := inventory.Slots[itemSlotIndex].ShineLevel
+	timeout := getWeaponTimeout(item.InternalName) + shineLevel.GetTimeoutAdjustment()
+	displayName := s.namingResolver.GetDisplayName(item.InternalName, shineLevel)
 
 	// Special handling for TNT - multi-target (5-9 targets)
 	if item.InternalName == domain.ItemTNT {
@@ -344,8 +352,8 @@ func (s *service) handleRevive(ctx context.Context, _ *service, _ *domain.User, 
 	}
 	username, _ := args[ArgsUsername].(string)
 
-	// Find item slot
-	itemSlotIndex, slotQuantity := utils.FindSlot(inventory, item.ID)
+	// Find item slot (randomly if multiple exist with different shines)
+	itemSlotIndex, slotQuantity := utils.FindRandomSlot(inventory, item.ID, s.rnd)
 	if itemSlotIndex == -1 {
 		log.Warn(LogWarnReviveNotInInventory, "item", item.InternalName)
 		return "", errors.New(ErrMsgItemNotFoundInInventory)
@@ -357,7 +365,8 @@ func (s *service) handleRevive(ctx context.Context, _ *service, _ *domain.User, 
 	utils.RemoveFromSlot(inventory, itemSlotIndex, quantity)
 
 	// Get recovery time for this revive type
-	recovery := getReviveRecovery(item.InternalName)
+	shineLevel := inventory.Slots[itemSlotIndex].ShineLevel
+	recovery := getReviveRecovery(item.InternalName) + shineLevel.GetTimeoutAdjustment()
 	totalRecovery := time.Duration(quantity) * recovery
 
 	// Reduce timeout for target user
@@ -366,7 +375,7 @@ func (s *service) handleRevive(ctx context.Context, _ *service, _ *domain.User, 
 		// Continue anyway, as the item was used
 	}
 
-	displayName := s.namingResolver.GetDisplayName(item.InternalName, "")
+	displayName := s.namingResolver.GetDisplayName(item.InternalName, shineLevel)
 	log.Info(LogMsgReviveUsed, "target", targetUsername, "item", item.InternalName, "quantity", quantity)
 	return fmt.Sprintf("%s used %d %s on %s! Reduced timeout by %v.", username, quantity, displayName, targetUsername, totalRecovery), nil
 }
@@ -375,149 +384,252 @@ func (s *service) handleTrap(ctx context.Context, _ *service, user *domain.User,
 	log := logger.FromContext(ctx)
 	log.Info(LogMsgHandleTrapCalled, "item", item.InternalName, "quantity", quantity)
 
-	// 1. Validate quantity
-	if quantity != 1 {
-		return "", errors.New("can only use 1 trap at a time")
-	}
-
-	// 2. Extract target from args
-	targetUsername, ok := args[ArgsTargetUsername].(string)
-	if !ok || targetUsername == "" {
-		log.Warn(LogWarnTargetUsernameMissingTrap)
-		return "", errors.New(ErrMsgTargetUsernameRequired)
+	if quantity < 1 {
+		return "", errors.New(ErrMsgInvalidQuantity)
 	}
 
 	platform, _ := args[ArgsPlatform].(string)
 	if platform == "" {
-		platform = domain.PlatformTwitch // default
+		platform = domain.PlatformTwitch
 	}
 
-	// 3. Validate target exists
-	targetUser, err := s.repo.GetUserByPlatformUsername(ctx, platform, targetUsername)
-	if err != nil || targetUser == nil {
-		log.Warn("Target user not found", "username", targetUsername, "platform", platform, "error", err)
-		return "", errors.New("target user not found")
+	potentialTargets, isMine, err := s.getTrapTargets(ctx, item, quantity, user, platform, args)
+	if err != nil {
+		return "", err
 	}
 
-	// 4. Find item in inventory
-	itemSlotIndex, slotQuantity := utils.FindSlot(inventory, item.ID)
-	if itemSlotIndex == -1 {
-		log.Warn(LogWarnTrapNotInInventory, "item", item.InternalName)
-		return "", errors.New(ErrMsgItemNotFoundInInventory)
-	}
-	if slotQuantity < quantity {
-		log.Warn(LogWarnNotEnoughTraps, "item", item.InternalName)
-		return "", errors.New(ErrMsgNotEnoughItemsInInventory)
+	if err := s.validateTrapInventory(inventory, item, quantity, isMine); err != nil {
+		log.Warn("Trap inventory validation failed", "item", item.InternalName, "error", err)
+		return "", err
 	}
 
-	// 5. Atomic check-and-set: Check for existing trap, trigger if exists, place new trap
-	var existingTrap *domain.Trap
-	var selfTriggered bool
+	itemsConsumed, trapsPlaced, selfTriggered, badLuckSelf, err := s.executeTrapTransaction(ctx, user, item, quantity, platform, potentialTargets, isMine)
+	if err != nil {
+		return "", err
+	}
 
-	err = s.withTx(ctx, func(tx repository.UserTx) error {
-		// Check for existing trap on target
-		targetUserID, _ := uuid.Parse(targetUser.ID)
-		existingTrap, err = s.trapRepo.GetActiveTrapForUpdate(ctx, targetUserID)
+	return s.formatTrapResponse(user, item, potentialTargets, itemsConsumed, trapsPlaced, selfTriggered, badLuckSelf), nil
+}
+
+func (s *service) getTrapTargets(ctx context.Context, item *domain.Item, quantity int, user *domain.User, platform string, args map[string]interface{}) ([]string, bool, error) {
+	log := logger.FromContext(ctx)
+	if item.InternalName == domain.ItemMine {
+		log.Info("Mine used, selecting random targets", "count", quantity)
+		targets, err := s.activeChatterTracker.GetRandomTargets(platform, quantity)
 		if err != nil {
-			return fmt.Errorf("failed to check existing trap: %w", err)
+			return []string{user.Username}, true, nil
+		}
+		var potentialTargets []string
+		for _, t := range targets {
+			potentialTargets = append(potentialTargets, t.Username)
+		}
+		if len(potentialTargets) == 0 {
+			potentialTargets = []string{user.Username}
+		}
+		return potentialTargets, true, nil
+	}
+
+	if quantity != 1 {
+		return nil, false, errors.New("can only use 1 trap at a time")
+	}
+
+	targetUsername, ok := args[ArgsTargetUsername].(string)
+	if !ok || targetUsername == "" {
+		return nil, false, errors.New(ErrMsgTargetUsernameRequired)
+	}
+	return []string{targetUsername}, false, nil
+}
+
+func (s *service) validateTrapInventory(inventory *domain.Inventory, item *domain.Item, quantity int, isMine bool) error {
+	itemSlotIndex, slotQuantity := utils.FindRandomSlot(inventory, item.ID, s.rnd)
+	if itemSlotIndex == -1 {
+		return errors.New(ErrMsgItemNotFoundInInventory)
+	}
+	if slotQuantity < 1 {
+		return errors.New(ErrMsgNotEnoughItemsInInventory)
+	}
+	if !isMine && slotQuantity < quantity {
+		return errors.New(ErrMsgNotEnoughItemsInInventory)
+	}
+	return nil
+}
+
+func (s *service) executeTrapTransaction(ctx context.Context, user *domain.User, item *domain.Item, quantity int, platform string, potentialTargets []string, isMine bool) (int, int, bool, bool, error) {
+	itemsConsumed := 0
+	trapsPlaced := 0
+	selfTriggered := false
+	badLuckSelf := false
+
+	err := s.withTx(ctx, func(tx repository.UserTx) error {
+		txInventory, err := tx.GetInventory(ctx, user.ID)
+		if err != nil {
+			return fmt.Errorf("failed to get inventory: %w", err)
 		}
 
-		// If trap exists, trigger it on setter (self-trap logic)
+		txSlotIndex, txSlotQty := utils.FindRandomSlot(txInventory, item.ID, s.rnd)
+		if txSlotIndex == -1 || txSlotQty < 1 {
+			return fmt.Errorf("item no longer available")
+		}
+
+		maxPossible := quantity
+		if txSlotQty < maxPossible {
+			maxPossible = txSlotQty
+		}
+
+		if isMine && len(potentialTargets) == 1 && strings.EqualFold(potentialTargets[0], user.Username) {
+			// Special case: if we ONLY targeted ourselves (e.g. no other active chatters)
+			badLuckSelf = true
+			itemsConsumed = 1
+			trapsPlaced = 1
+			s.handleSelfTargetMine(ctx, user)
+		} else {
+			consumed, placed, triggered, badLuck, err := s.processTrapTargets(ctx, user, potentialTargets, platform, maxPossible, txInventory.Slots[txSlotIndex].ShineLevel, isMine)
+			if err != nil {
+				return err
+			}
+			itemsConsumed = consumed
+			trapsPlaced = placed
+			selfTriggered = triggered
+			badLuckSelf = badLuck
+		}
+
+		if itemsConsumed > 0 {
+			utils.RemoveFromSlot(txInventory, txSlotIndex, itemsConsumed)
+			if err := tx.UpdateInventory(ctx, user.ID, *txInventory); err != nil {
+				return fmt.Errorf("failed to update inventory: %w", err)
+			}
+		}
+		return nil
+	})
+
+	return itemsConsumed, trapsPlaced, selfTriggered, badLuckSelf, err
+}
+
+func (s *service) processTrapTargets(ctx context.Context, user *domain.User, potentialTargets []string, platform string, maxPossible int, shineLevel domain.ShineLevel, isMine bool) (int, int, bool, bool, error) {
+	log := logger.FromContext(ctx)
+	itemsConsumed := 0
+	trapsPlaced := 0
+	selfTriggered := false
+	badLuckSelf := false
+
+	if shineLevel == "" {
+		shineLevel = domain.ShineCommon
+	}
+
+	for _, targetName := range potentialTargets {
+		if itemsConsumed >= maxPossible {
+			break
+		}
+
+		if isMine && strings.EqualFold(targetName, user.Username) {
+			badLuckSelf = true
+			itemsConsumed++
+			trapsPlaced++
+			s.handleSelfTargetMine(ctx, user)
+			break
+		}
+
+		targetUser, err := s.repo.GetUserByPlatformUsername(ctx, platform, targetName)
+		if err != nil {
+			log.Warn("Target user not found, skipping", "username", targetName)
+			continue
+		}
+
+		targetUserID, _ := uuid.Parse(targetUser.ID)
+		existingTrap, err := s.trapRepo.GetActiveTrapForUpdate(ctx, targetUserID)
+		if err != nil {
+			return itemsConsumed, trapsPlaced, selfTriggered, false, fmt.Errorf("failed to check existing trap: %w", err)
+		}
+
 		if existingTrap != nil {
+			itemsConsumed++
 			selfTriggered = true
-			timeout := time.Duration(existingTrap.CalculateTimeout()) * time.Second
-
-			// Timeout the setter (not the target)
-			if err := s.TimeoutUser(ctx, user.Username, timeout,
-				fmt.Sprintf("stepped on %s's trap while placing one!", targetUsername)); err != nil {
-				return fmt.Errorf("failed to apply self-trap timeout: %w", err)
+			if err := s.handleExistingTrapTrigger(ctx, user, targetName, existingTrap); err != nil {
+				return itemsConsumed, trapsPlaced, true, false, err
 			}
-
-			// Mark existing trap as triggered
-			if err := s.trapRepo.TriggerTrap(ctx, existingTrap.ID); err != nil {
-				return fmt.Errorf("failed to trigger existing trap: %w", err)
-			}
-
-			// Publish self-trap event
-			if s.statsService != nil {
-				eventData := &domain.TrapTriggeredData{
-					TrapID:           existingTrap.ID,
-					SetterID:         existingTrap.SetterID,
-					SetterUsername:   targetUsername, // Original setter
-					TargetID:         existingTrap.TargetID,
-					TargetUsername:   user.Username,
-					ShineLevel:       existingTrap.ShineLevel,
-					TimeoutSeconds:   existingTrap.CalculateTimeout(),
-					WasSelfTriggered: true,
-				}
-				_ = s.statsService.RecordUserEvent(ctx, user.ID, domain.EventTrapSelfTriggered, eventData.ToMap())
-			}
+			break
 		}
 
-		// Consume item from inventory
-		utils.RemoveFromSlot(inventory, itemSlotIndex, quantity)
-		if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
-			return fmt.Errorf("failed to update inventory: %w", err)
-		}
-
-		// Get shine level from inventory slot
-		shineLevel := inventory.Slots[itemSlotIndex].ShineLevel
-		if shineLevel == "" {
-			shineLevel = domain.ShineCommon // default
-		}
-
-		// Create new trap
+		itemsConsumed++
+		trapsPlaced++
 		userID, _ := uuid.Parse(user.ID)
 		newTrap := &domain.Trap{
 			ID:             uuid.New(),
 			SetterID:       userID,
 			TargetID:       targetUserID,
 			ShineLevel:     shineLevel,
-			TimeoutSeconds: 60, // default timeout, will be modified by shine level on trigger
+			TimeoutSeconds: 60,
 			PlacedAt:       time.Now(),
 		}
-
 		if err := s.trapRepo.CreateTrap(ctx, newTrap); err != nil {
-			return fmt.Errorf("failed to create trap: %w", err)
+			return itemsConsumed, trapsPlaced, false, false, fmt.Errorf("failed to create trap: %w", err)
 		}
-
-		// Publish trap placed event
-		if s.statsService != nil {
-			eventData := &domain.TrapPlacedData{
-				TrapID:         newTrap.ID,
-				SetterID:       userID,
-				SetterUsername: user.Username,
-				TargetID:       targetUserID,
-				TargetUsername: targetUsername,
-				ShineLevel:     shineLevel,
-				TimeoutSeconds: newTrap.TimeoutSeconds,
-			}
-			_ = s.statsService.RecordUserEvent(ctx, user.ID, domain.EventTrapPlaced, eventData.ToMap())
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		log.Error("Failed to place trap", "error", err, "target", targetUsername)
-		return "", err
 	}
+	return itemsConsumed, trapsPlaced, selfTriggered, badLuckSelf, nil
+}
 
-	// 7. Build response message
-	log.Info(LogMsgTrapUsed, "target", targetUsername, "item", item.InternalName)
+func (s *service) formatTrapResponse(user *domain.User, item *domain.Item, potentialTargets []string, itemsConsumed, trapsPlaced int, selfTriggered, badLuckSelf bool) string {
 	if selfTriggered {
-		return fmt.Sprintf(MsgTrapSelfTriggered, targetUsername), nil
+		return fmt.Sprintf("%s tried to use %s but stepped on a trap!", user.Username, item.PublicName)
+	}
+	if badLuckSelf {
+		return fmt.Sprintf("%s dropped a mine straight on their own foot!", user.Username)
+	}
+	if trapsPlaced == 0 && itemsConsumed == 0 {
+		return "No targets found."
+	}
+	targetMsg := "someone"
+	if len(potentialTargets) == 1 {
+		targetMsg = potentialTargets[0]
+	} else if trapsPlaced > 0 {
+		targetMsg = fmt.Sprintf("%d people", trapsPlaced)
+	}
+	return fmt.Sprintf("%s set %d %s for %s!", user.Username, trapsPlaced, item.PublicName, targetMsg)
+}
+
+func (s *service) handleSelfTargetMine(ctx context.Context, user *domain.User) {
+	log := logger.FromContext(ctx)
+	if err := s.TimeoutUser(ctx, user.Username, 60*time.Second, "tripped on your own mine immediately!"); err != nil {
+		log.Error("Failed to timeout user for bad luck", "error", err)
+	}
+}
+
+func (s *service) handleExistingTrapTrigger(ctx context.Context, user *domain.User, targetName string, existingTrap *domain.Trap) error {
+	timeout := time.Duration(existingTrap.CalculateTimeout()) * time.Second
+	if err := s.TimeoutUser(ctx, user.Username, timeout, fmt.Sprintf("stepped on %s's trap entirely by accident!", targetName)); err != nil {
+		return fmt.Errorf("failed to apply self-trap timeout: %w", err)
+	}
+	if err := s.trapRepo.TriggerTrap(ctx, existingTrap.ID); err != nil {
+		return fmt.Errorf("failed to trigger existing trap: %w", err)
 	}
 
-	return fmt.Sprintf(MsgTrapSet, targetUsername), nil
+	s.recordTrapSelfTriggerStats(ctx, user, targetName, existingTrap)
+	return nil
+}
+
+func (s *service) recordTrapSelfTriggerStats(ctx context.Context, user *domain.User, targetName string, trap *domain.Trap) {
+	if s.statsService == nil {
+		return
+	}
+	eventData := &domain.TrapTriggeredData{
+		TrapID:           trap.ID,
+		SetterID:         trap.SetterID,
+		SetterUsername:   targetName,
+		TargetID:         trap.TargetID,
+		TargetUsername:   user.Username,
+		ShineLevel:       trap.ShineLevel,
+		TimeoutSeconds:   trap.CalculateTimeout(),
+		WasSelfTriggered: true,
+	}
+	_ = s.statsService.RecordUserEvent(ctx, user.ID, domain.EventTrapSelfTriggered, eventData.ToMap())
 }
 
 func (s *service) handleShield(ctx context.Context, _ *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, _ map[string]interface{}) (string, error) {
 	log := logger.FromContext(ctx)
 	log.Info(LogMsgHandleShieldCalled, "item", item.InternalName, "quantity", quantity)
 
-	// Find item slot
-	itemSlotIndex, slotQuantity := utils.FindSlot(inventory, item.ID)
+	// Find item slot (randomly if multiple exist with different shines)
+	itemSlotIndex, slotQuantity := utils.FindRandomSlot(inventory, item.ID, s.rnd)
 	if itemSlotIndex == -1 {
 		log.Warn(LogWarnShieldNotInInventory)
 		return "", errors.New(ErrMsgItemNotFoundInInventory)
@@ -559,8 +671,8 @@ func (s *service) handleRareCandy(ctx context.Context, _ *service, user *domain.
 		return "", errors.New(ErrMsgJobNameRequired)
 	}
 
-	// Find item slot
-	itemSlotIndex, slotQuantity := utils.FindSlot(inventory, item.ID)
+	// Find item slot (randomly if multiple exist with different shines)
+	itemSlotIndex, slotQuantity := utils.FindRandomSlot(inventory, item.ID, s.rnd)
 	if itemSlotIndex == -1 {
 		log.Warn(LogWarnRareCandyNotInInventory)
 		return "", errors.New(ErrMsgItemNotFoundInInventory)
@@ -594,8 +706,8 @@ func (s *service) handleResourceGenerator(ctx context.Context, _ *service, _ *do
 
 	username, _ := args[ArgsUsername].(string)
 
-	// Find item slot
-	itemSlotIndex, slotQuantity := utils.FindSlot(inventory, item.ID)
+	// Find item slot (randomly if multiple exist with different shines)
+	itemSlotIndex, slotQuantity := utils.FindRandomSlot(inventory, item.ID, s.rnd)
 	if itemSlotIndex == -1 {
 		return "", errors.New(ErrMsgItemNotFoundInInventory)
 	}
@@ -625,8 +737,8 @@ func (s *service) handleUtility(ctx context.Context, _ *service, _ *domain.User,
 
 	username, _ := args[ArgsUsername].(string)
 
-	// Find item slot
-	itemSlotIndex, slotQuantity := utils.FindSlot(inventory, item.ID)
+	// Find item slot (randomly if multiple exist with different shines)
+	itemSlotIndex, slotQuantity := utils.FindRandomSlot(inventory, item.ID, s.rnd)
 	if itemSlotIndex == -1 {
 		return "", errors.New(ErrMsgItemNotFoundInInventory)
 	}
@@ -636,4 +748,67 @@ func (s *service) handleUtility(ctx context.Context, _ *service, _ *domain.User,
 	utils.RemoveFromSlot(inventory, itemSlotIndex, quantity)
 
 	return username + MsgStickUsed, nil
+}
+
+// pluralize handles simple pluralization for game items and phrases
+func (s *service) pluralize(name string, quantity int) string {
+	if quantity <= 1 || name == "" {
+		return name
+	}
+
+	// Check for shine emojis at the end (Legendary/Cursed)
+	suffix := ""
+	baseName := name
+	// Emojis are multi-byte
+	if strings.HasSuffix(name, "👑") {
+		suffix = "👑"
+		baseName = strings.TrimSuffix(name, "👑")
+	} else if strings.HasSuffix(name, "👻") {
+		suffix = "👻"
+		baseName = strings.TrimSuffix(name, "👻")
+	}
+
+	// Handle "of" phrases: "pouch of coins" -> "pouches of coins"
+	if strings.Contains(baseName, " of ") {
+		parts := strings.SplitN(baseName, " of ", 2)
+		return s.pluralize(parts[0], quantity) + " of " + parts[1] + suffix
+	}
+
+	// Common uncountable or collective nouns in game context
+	lower := strings.ToLower(baseName)
+	switch lower {
+	case "money", "ghost-gold", "coins", "scrap", "junk", "credits":
+		return baseName + suffix
+	}
+	if strings.HasSuffix(lower, " coins") {
+		return baseName + suffix
+	}
+
+	// Basic pluralization rules
+	if strings.HasSuffix(baseName, "y") && len(baseName) > 1 {
+		vowels := "aeiouAEIOU"
+		if !strings.ContainsAny(string(baseName[len(baseName)-2]), vowels) {
+			return baseName[:len(baseName)-1] + "ies" + suffix
+		}
+	}
+
+	if strings.HasSuffix(baseName, "s") || strings.HasSuffix(baseName, "x") ||
+		strings.HasSuffix(baseName, "ch") || strings.HasSuffix(baseName, "sh") {
+		return baseName + "es" + suffix
+	}
+
+	return baseName + "s" + suffix
+}
+
+// getIndefiniteArticle returns "a" or "an" based on the first letter of the word
+func getIndefiniteArticle(word string) string {
+	if len(word) == 0 {
+		return "a"
+	}
+	// Simplified a/an logic logic
+	first := strings.ToLower(string(word[0]))
+	if strings.ContainsAny(first, "aeiou") {
+		return "an"
+	}
+	return "a"
 }

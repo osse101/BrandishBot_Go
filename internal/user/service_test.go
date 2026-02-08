@@ -40,7 +40,11 @@ func (m *MockNamingResolver) RegisterItem(internalName, publicName string) {}
 
 func NewMockNamingResolver() *MockNamingResolver {
 	return &MockNamingResolver{
-		DisplayNames: make(map[string]string),
+		DisplayNames: map[string]string{
+			"money":         "Shiny credit",
+			"lootbox_tier0": "junkbox",
+			"lootbox_tier1": "basic lootbox",
+		},
 	}
 }
 
@@ -79,14 +83,14 @@ func setupTestData(repo *FakeRepository) {
 	repo.items[domain.ItemMoney] = &domain.Item{
 		ID:           3,
 		InternalName: domain.ItemMoney,
-		PublicName:   domain.ItemMoney,
+		PublicName:   "money",
 		Description:  "Currency",
 		BaseValue:    1,
 	}
 	repo.items[domain.ItemLootbox0] = &domain.Item{
 		ID:           4,
 		InternalName: domain.ItemLootbox0,
-		PublicName:   domain.ItemLootbox0,
+		PublicName:   "junkbox",
 		Description:  "Empty Lootbox",
 		BaseValue:    10,
 	}
@@ -102,7 +106,7 @@ func setupTestData(repo *FakeRepository) {
 func TestAddItem(t *testing.T) {
 	repo := NewFakeRepository()
 	setupTestData(repo)
-	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, false)
+	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, nil, false)
 	ctx := context.Background()
 	alice := domain.User{
 		ID:       "user-alice",
@@ -161,7 +165,7 @@ func TestAddItem(t *testing.T) {
 func TestRemoveItem(t *testing.T) {
 	repo := NewFakeRepository()
 	setupTestData(repo)
-	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, false)
+	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, nil, false)
 	ctx := context.Background()
 	alice := domain.User{
 		ID:       "user-alice",
@@ -210,7 +214,7 @@ func TestRemoveItem(t *testing.T) {
 func TestGiveItem(t *testing.T) {
 	repo := NewFakeRepository()
 	setupTestData(repo)
-	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, false)
+	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, nil, false)
 	ctx := context.Background()
 	alice := domain.User{
 		ID:       "user-alice",
@@ -335,7 +339,7 @@ func TestGiveItem_Comprehensive(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := NewFakeRepository()
 			setupTestData(repo)
-			svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, false)
+			svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, nil, false)
 			ctx := context.Background()
 
 			// Setup owner with items
@@ -417,7 +421,7 @@ func TestGiveItem_Comprehensive(t *testing.T) {
 
 func TestGiveItem_CrossPlatform(t *testing.T) {
 	repo := NewFakeRepository()
-	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, false)
+	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, nil, false)
 	ctx := context.Background()
 
 	// Setup users on different platforms
@@ -468,7 +472,7 @@ func TestGiveItem_CrossPlatform(t *testing.T) {
 
 func TestRegisterUser(t *testing.T) {
 	repo := NewFakeRepository()
-	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, false)
+	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, nil, false)
 	ctx := context.Background()
 
 	user := domain.User{
@@ -497,7 +501,7 @@ func TestRegisterUser(t *testing.T) {
 
 func TestHandleIncomingMessage_NewUser(t *testing.T) {
 	repo := NewFakeRepository()
-	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, false)
+	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, nil, false)
 	ctx := context.Background()
 
 	result, err := svc.HandleIncomingMessage(ctx, domain.PlatformTwitch, "newuser123", "newuser", "hello")
@@ -519,7 +523,7 @@ func TestHandleIncomingMessage_NewUser(t *testing.T) {
 func TestHandleIncomingMessage_ExistingUser(t *testing.T) {
 	repo := NewFakeRepository()
 	setupTestData(repo)
-	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, false)
+	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, nil, false)
 	ctx := context.Background()
 
 	result, err := svc.HandleIncomingMessage(ctx, domain.PlatformTwitch, "alice123", "alice", "hello")
@@ -549,7 +553,7 @@ func TestUseItem(t *testing.T) {
 	}
 	lootboxSvc.On("OpenLootbox", mock.Anything, domain.ItemLootbox1, 1, mock.Anything).Return(drops, nil)
 
-	svc := NewService(repo, repo, nil, nil, lootboxSvc, NewMockNamingResolver(), nil, false).(*service)
+	svc := NewService(repo, repo, nil, nil, lootboxSvc, NewMockNamingResolver(), nil, nil, nil, false).(*service)
 
 	ctx := context.Background()
 
@@ -564,8 +568,8 @@ func TestUseItem(t *testing.T) {
 	}
 
 	// The message format changed in the new implementation
-	if !strings.Contains(message, "Opened") || !strings.Contains(message, domain.ItemLootbox0) {
-		t.Errorf("Expected message to contain 'Opened' and 'lootbox_tier0', got '%s'", message)
+	if !strings.Contains(message, "Opened") || !strings.Contains(message, "junkbox") {
+		t.Errorf("Expected message to contain 'Opened' and 'junkbox', got '%s'", message)
 	}
 
 	// Verify inventory
@@ -612,7 +616,7 @@ func TestUseItem(t *testing.T) {
 func TestUseItem_Blaster(t *testing.T) {
 	repo := NewFakeRepository()
 	setupTestData(repo)
-	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, false)
+	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, nil, false)
 	ctx := context.Background()
 	alice := domain.User{
 		ID:        "user-alice",
@@ -668,7 +672,7 @@ func TestUseItem_RareCandy(t *testing.T) {
 		BaseValue:    100,
 	}
 
-	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, false).(*service)
+	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, nil, false).(*service)
 	ctx := context.Background()
 	alice := domain.User{
 		ID:       "user-alice",
@@ -702,7 +706,7 @@ func TestUseItem_RareCandy(t *testing.T) {
 func TestGetInventory(t *testing.T) {
 	repo := NewFakeRepository()
 	setupTestData(repo)
-	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, false)
+	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, nil, false)
 	ctx := context.Background()
 	alice := domain.User{
 		ID:        "user-alice",
@@ -829,7 +833,7 @@ func TestUseItem_Lootbox0(t *testing.T) {
 	}
 	lootboxSvc.On("OpenLootbox", mock.Anything, domain.ItemLootbox0, 1, mock.Anything).Return(drops, nil)
 
-	svc := NewService(repo, repo, nil, nil, lootboxSvc, NewMockNamingResolver(), nil, false).(*service)
+	svc := NewService(repo, repo, nil, nil, lootboxSvc, NewMockNamingResolver(), nil, nil, nil, false).(*service)
 
 	ctx := context.Background()
 
@@ -843,14 +847,14 @@ func TestUseItem_Lootbox0(t *testing.T) {
 	}
 
 	// Message format changed
-	// "Opened 1 lootbox0 and received: 5x money"
+	// "Opened a junkbox and received: 5 Shiny credits"
 	// We check if it contains expected parts
-	if !strings.Contains(msg, "Opened") || !strings.Contains(msg, domain.ItemLootbox0) {
-		t.Errorf("Expected message to contain 'Opened' and '%s', got '%s'", domain.ItemLootbox0, msg)
+	if !strings.Contains(msg, "Opened") || !strings.Contains(msg, "junkbox") {
+		t.Errorf("Expected message to contain 'Opened' and 'junkbox', got '%s'", msg)
 	}
 
-	if !strings.Contains(msg, domain.ItemMoney) {
-		t.Errorf("Expected message to contain '%s', got '%s'", domain.ItemMoney, msg)
+	if !strings.Contains(msg, "Shiny credits") {
+		t.Errorf("Expected message to contain 'Shiny credits', got '%s'", msg)
 	}
 
 	// Verify inventory (should have money now)
@@ -880,7 +884,7 @@ func TestUseItem_Lootbox2(t *testing.T) {
 	}
 	lootboxSvc.On("OpenLootbox", mock.Anything, domain.ItemLootbox2, 1, mock.Anything).Return(drops, nil)
 
-	svc := NewService(repo, repo, nil, nil, lootboxSvc, NewMockNamingResolver(), nil, false).(*service)
+	svc := NewService(repo, repo, nil, nil, lootboxSvc, NewMockNamingResolver(), nil, nil, nil, false).(*service)
 
 	ctx := context.Background()
 
@@ -894,8 +898,8 @@ func TestUseItem_Lootbox2(t *testing.T) {
 	}
 
 	// Message format changed
-	if !strings.Contains(msg, "Opened") || !strings.Contains(msg, domain.ItemLootbox1) {
-		t.Errorf("Expected message to contain 'Opened' and '%s', got '%s'", domain.ItemLootbox1, msg)
+	if !strings.Contains(msg, "Opened") || !strings.Contains(msg, "basic lootbox") {
+		t.Errorf("Expected message to contain 'Opened' and 'basic lootbox', got '%s'", msg)
 	}
 
 	// Verify inventory: should have 1 lootbox1

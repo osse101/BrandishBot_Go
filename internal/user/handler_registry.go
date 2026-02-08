@@ -161,7 +161,8 @@ type TrapHandler struct{}
 
 // CanHandle returns true for trap items
 func (h *TrapHandler) CanHandle(itemName string) bool {
-	return itemName == domain.ItemTrap
+	return itemName == domain.ItemTrap ||
+		itemName == domain.ItemMine
 }
 
 // Handle processes trap placement

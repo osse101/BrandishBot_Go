@@ -76,6 +76,56 @@ func (_c *MockUserService_AddItemByUsername_Call) RunAndReturn(run func(context.
 	return _c
 }
 
+// AddTimeout provides a mock function with given fields: ctx, platform, username, duration, reason
+func (_m *MockUserService) AddTimeout(ctx context.Context, platform string, username string, duration time.Duration, reason string) error {
+	ret := _m.Called(ctx, platform, username, duration, reason)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AddTimeout")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, time.Duration, string) error); ok {
+		r0 = rf(ctx, platform, username, duration, reason)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockUserService_AddTimeout_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddTimeout'
+type MockUserService_AddTimeout_Call struct {
+	*mock.Call
+}
+
+// AddTimeout is a helper method to define mock.On call
+//   - ctx context.Context
+//   - platform string
+//   - username string
+//   - duration time.Duration
+//   - reason string
+func (_e *MockUserService_Expecter) AddTimeout(ctx interface{}, platform interface{}, username interface{}, duration interface{}, reason interface{}) *MockUserService_AddTimeout_Call {
+	return &MockUserService_AddTimeout_Call{Call: _e.mock.On("AddTimeout", ctx, platform, username, duration, reason)}
+}
+
+func (_c *MockUserService_AddTimeout_Call) Run(run func(ctx context.Context, platform string, username string, duration time.Duration, reason string)) *MockUserService_AddTimeout_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(time.Duration), args[4].(string))
+	})
+	return _c
+}
+
+func (_c *MockUserService_AddTimeout_Call) Return(_a0 error) *MockUserService_AddTimeout_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockUserService_AddTimeout_Call) RunAndReturn(run func(context.Context, string, string, time.Duration, string) error) *MockUserService_AddTimeout_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ApplyShield provides a mock function with given fields: ctx, _a1, quantity, isMirror
 func (_m *MockUserService) ApplyShield(ctx context.Context, _a1 *domain.User, quantity int, isMirror bool) error {
 	ret := _m.Called(ctx, _a1, quantity, isMirror)
@@ -121,6 +171,54 @@ func (_c *MockUserService_ApplyShield_Call) Return(_a0 error) *MockUserService_A
 }
 
 func (_c *MockUserService_ApplyShield_Call) RunAndReturn(run func(context.Context, *domain.User, int, bool) error) *MockUserService_ApplyShield_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ClearTimeout provides a mock function with given fields: ctx, platform, username
+func (_m *MockUserService) ClearTimeout(ctx context.Context, platform string, username string) error {
+	ret := _m.Called(ctx, platform, username)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ClearTimeout")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) error); ok {
+		r0 = rf(ctx, platform, username)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockUserService_ClearTimeout_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ClearTimeout'
+type MockUserService_ClearTimeout_Call struct {
+	*mock.Call
+}
+
+// ClearTimeout is a helper method to define mock.On call
+//   - ctx context.Context
+//   - platform string
+//   - username string
+func (_e *MockUserService_Expecter) ClearTimeout(ctx interface{}, platform interface{}, username interface{}) *MockUserService_ClearTimeout_Call {
+	return &MockUserService_ClearTimeout_Call{Call: _e.mock.On("ClearTimeout", ctx, platform, username)}
+}
+
+func (_c *MockUserService_ClearTimeout_Call) Run(run func(ctx context.Context, platform string, username string)) *MockUserService_ClearTimeout_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockUserService_ClearTimeout_Call) Return(_a0 error) *MockUserService_ClearTimeout_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockUserService_ClearTimeout_Call) RunAndReturn(run func(context.Context, string, string) error) *MockUserService_ClearTimeout_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -470,6 +568,64 @@ func (_c *MockUserService_GetTimeout_Call) RunAndReturn(run func(context.Context
 	return _c
 }
 
+// GetTimeoutPlatform provides a mock function with given fields: ctx, platform, username
+func (_m *MockUserService) GetTimeoutPlatform(ctx context.Context, platform string, username string) (time.Duration, error) {
+	ret := _m.Called(ctx, platform, username)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetTimeoutPlatform")
+	}
+
+	var r0 time.Duration
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) (time.Duration, error)); ok {
+		return rf(ctx, platform, username)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) time.Duration); ok {
+		r0 = rf(ctx, platform, username)
+	} else {
+		r0 = ret.Get(0).(time.Duration)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = rf(ctx, platform, username)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockUserService_GetTimeoutPlatform_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetTimeoutPlatform'
+type MockUserService_GetTimeoutPlatform_Call struct {
+	*mock.Call
+}
+
+// GetTimeoutPlatform is a helper method to define mock.On call
+//   - ctx context.Context
+//   - platform string
+//   - username string
+func (_e *MockUserService_Expecter) GetTimeoutPlatform(ctx interface{}, platform interface{}, username interface{}) *MockUserService_GetTimeoutPlatform_Call {
+	return &MockUserService_GetTimeoutPlatform_Call{Call: _e.mock.On("GetTimeoutPlatform", ctx, platform, username)}
+}
+
+func (_c *MockUserService_GetTimeoutPlatform_Call) Run(run func(ctx context.Context, platform string, username string)) *MockUserService_GetTimeoutPlatform_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockUserService_GetTimeoutPlatform_Call) Return(_a0 time.Duration, _a1 error) *MockUserService_GetTimeoutPlatform_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockUserService_GetTimeoutPlatform_Call) RunAndReturn(run func(context.Context, string, string) (time.Duration, error)) *MockUserService_GetTimeoutPlatform_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetUserByPlatformUsername provides a mock function with given fields: ctx, platform, username
 func (_m *MockUserService) GetUserByPlatformUsername(ctx context.Context, platform string, username string) (*domain.User, error) {
 	ret := _m.Called(ctx, platform, username)
@@ -796,6 +952,55 @@ func (_c *MockUserService_ReduceTimeout_Call) Return(_a0 error) *MockUserService
 }
 
 func (_c *MockUserService_ReduceTimeout_Call) RunAndReturn(run func(context.Context, string, time.Duration) error) *MockUserService_ReduceTimeout_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ReduceTimeoutPlatform provides a mock function with given fields: ctx, platform, username, reduction
+func (_m *MockUserService) ReduceTimeoutPlatform(ctx context.Context, platform string, username string, reduction time.Duration) error {
+	ret := _m.Called(ctx, platform, username, reduction)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReduceTimeoutPlatform")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, time.Duration) error); ok {
+		r0 = rf(ctx, platform, username, reduction)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockUserService_ReduceTimeoutPlatform_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReduceTimeoutPlatform'
+type MockUserService_ReduceTimeoutPlatform_Call struct {
+	*mock.Call
+}
+
+// ReduceTimeoutPlatform is a helper method to define mock.On call
+//   - ctx context.Context
+//   - platform string
+//   - username string
+//   - reduction time.Duration
+func (_e *MockUserService_Expecter) ReduceTimeoutPlatform(ctx interface{}, platform interface{}, username interface{}, reduction interface{}) *MockUserService_ReduceTimeoutPlatform_Call {
+	return &MockUserService_ReduceTimeoutPlatform_Call{Call: _e.mock.On("ReduceTimeoutPlatform", ctx, platform, username, reduction)}
+}
+
+func (_c *MockUserService_ReduceTimeoutPlatform_Call) Run(run func(ctx context.Context, platform string, username string, reduction time.Duration)) *MockUserService_ReduceTimeoutPlatform_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(time.Duration))
+	})
+	return _c
+}
+
+func (_c *MockUserService_ReduceTimeoutPlatform_Call) Return(_a0 error) *MockUserService_ReduceTimeoutPlatform_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockUserService_ReduceTimeoutPlatform_Call) RunAndReturn(run func(context.Context, string, string, time.Duration) error) *MockUserService_ReduceTimeoutPlatform_Call {
 	_c.Call.Return(run)
 	return _c
 }

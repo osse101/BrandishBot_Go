@@ -23,7 +23,7 @@ const (
 
 // HTTP header names
 const (
-	HeaderAPIKey         = "X-API-Key"
+	HeaderAPIKey         = "X-API-Key" // #nosec G101
 	HeaderAuthorization  = "Authorization"
 	HeaderForwardedFor   = "X-Forwarded-For"
 	HeaderContentType    = "X-Content-Type-Options"
@@ -46,6 +46,15 @@ var PublicPaths = []string{
 	"/healthz",
 	"/readyz",
 	"/metrics",
+	"/admin",
+	"/favicon.ico",
+}
+
+// QuietPaths are paths that should not be logged by the logging middleware
+// to avoid log noise from frequent polling.
+var QuietPaths = []string{
+	"/api/v1/admin/metrics",
+	"/version",
 }
 
 // Header redaction marker

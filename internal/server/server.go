@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -12,10 +13,13 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	httpSwagger "github.com/swaggo/http-swagger"
 
+	"github.com/osse101/BrandishBot_Go/internal/admin"
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
 	"github.com/osse101/BrandishBot_Go/internal/database"
 	"github.com/osse101/BrandishBot_Go/internal/economy"
 	"github.com/osse101/BrandishBot_Go/internal/event"
+	"github.com/osse101/BrandishBot_Go/internal/eventlog"
+	"github.com/osse101/BrandishBot_Go/internal/expedition"
 	"github.com/osse101/BrandishBot_Go/internal/features"
 	"github.com/osse101/BrandishBot_Go/internal/gamble"
 	"github.com/osse101/BrandishBot_Go/internal/handler"
@@ -25,8 +29,11 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/metrics"
 	"github.com/osse101/BrandishBot_Go/internal/naming"
+	"github.com/osse101/BrandishBot_Go/internal/prediction"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
+	"github.com/osse101/BrandishBot_Go/internal/quest"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
+	"github.com/osse101/BrandishBot_Go/internal/scenario"
 	"github.com/osse101/BrandishBot_Go/internal/sse"
 	"github.com/osse101/BrandishBot_Go/internal/stats"
 	"github.com/osse101/BrandishBot_Go/internal/user"
@@ -44,12 +51,17 @@ type Server struct {
 	jobService         job.Service
 	linkingService     linking.Service
 	harvestService     harvest.Service
+	predictionService  prediction.Service
+	expeditionService  expedition.Service
+	questService       quest.Service
 	namingResolver     naming.Resolver
 	sseHub             *sse.Hub
+	scenarioEngine     *scenario.Engine
+	eventlogService    eventlog.Service
 }
 
 // NewServer creates a new Server instance
-func NewServer(port int, apiKey string, trustedProxies []string, dbPool database.Pool, userService user.Service, economyService economy.Service, craftingService crafting.Service, statsService stats.Service, progressionService progression.Service, gambleService gamble.Service, jobService job.Service, linkingService linking.Service, harvestService harvest.Service, namingResolver naming.Resolver, eventBus event.Bus, sseHub *sse.Hub, userRepo repository.User) *Server {
+func NewServer(port int, apiKey string, trustedProxies []string, dbPool database.Pool, userService user.Service, economyService economy.Service, craftingService crafting.Service, statsService stats.Service, progressionService progression.Service, gambleService gamble.Service, jobService job.Service, linkingService linking.Service, harvestService harvest.Service, predictionService prediction.Service, expeditionService expedition.Service, questService quest.Service, namingResolver naming.Resolver, eventBus event.Bus, sseHub *sse.Hub, userRepo repository.User, scenarioEngine *scenario.Engine, eventlogService eventlog.Service) *Server {
 	r := chi.NewRouter()
 
 	// Middleware stack
@@ -83,6 +95,7 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 		r.Route("/user", func(r chi.Router) {
 			r.Post("/register", handler.HandleRegisterUser(userService))
 			r.Get("/timeout", handler.HandleGetTimeout(userService))
+			r.Put("/timeout", handler.HandleSetTimeout(userService))
 			r.Get("/inventory", handler.HandleGetInventory(userService, progressionService))
 			r.Get("/inventory-by-username", handler.HandleGetInventoryByUsername(userService))
 			r.Post("/search", handler.HandleSearch(userService, progressionService, eventBus))
@@ -120,6 +133,17 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 			r.Get("/active", gambleHandler.HandleGetActiveGamble)
 		})
 
+		// Expedition routes
+		expeditionHandler := handler.NewExpeditionHandler(expeditionService, progressionService)
+		r.Route("/expedition", func(r chi.Router) {
+			r.Post("/start", expeditionHandler.HandleStart)
+			r.Post("/join", expeditionHandler.HandleJoin)
+			r.Get("/get", expeditionHandler.HandleGet)
+			r.Get("/active", expeditionHandler.HandleGetActive)
+			r.Get("/journal", expeditionHandler.HandleGetJournal)
+			r.Get("/status", expeditionHandler.HandleGetStatus)
+		})
+
 		// Harvest routes
 		harvestHandler := handler.NewHarvestHandler(harvestService)
 		r.Post("/harvest", harvestHandler.Harvest)
@@ -138,6 +162,14 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 			r.Get("/user", statsHandler.HandleGetUserStats())
 			r.Get("/system", handler.HandleGetSystemStats(statsService))
 			r.Get("/leaderboard", handler.HandleGetLeaderboard(statsService))
+		})
+
+		// Quest routes
+		questHandler := handler.NewQuestHandler(questService, progressionService)
+		r.Route("/quests", func(r chi.Router) {
+			r.Get("/active", questHandler.GetActiveQuests)
+			r.Get("/progress", questHandler.GetUserQuestProgress)
+			r.Post("/claim", questHandler.ClaimQuestReward)
 		})
 
 		// Progression routes
@@ -176,6 +208,10 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 			r.Get("/status", linkingHandlers.HandleStatus())
 		})
 
+		// Prediction routes
+		predictionHandlers := handler.NewPredictionHandlers(predictionService)
+		r.Post("/prediction", predictionHandlers.HandleProcessOutcome())
+
 		// SSE events endpoint
 		if sseHub != nil {
 			r.Get("/events", sse.Handler(sseHub))
@@ -185,8 +221,30 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 		adminJobHandler := handler.NewAdminJobHandler(jobService, userService)
 		adminDailyResetHandler := handler.NewAdminDailyResetHandler(jobService)
 		adminCacheHandler := handler.NewAdminCacheHandler(userService)
+		adminMetricsHandler := handler.NewAdminMetricsHandler(sseHub)
+		adminUserHandler := handler.NewAdminUserHandler(userRepo)
+		adminEventsHandler := handler.NewAdminEventsHandler(eventlogService)
 		r.Route("/admin", func(r chi.Router) {
+			r.Get("/metrics", adminMetricsHandler.HandleGetMetrics)
+
+			// User management
+			r.Route("/users", func(r chi.Router) {
+				r.Get("/lookup", adminUserHandler.HandleUserLookup)
+				r.Get("/recent", adminUserHandler.HandleGetRecentUsers)
+			})
+
+			// Autocomplete lists
+			r.Get("/items", adminUserHandler.HandleGetItems)
+			r.Get("/jobs", adminUserHandler.HandleGetJobs)
+
+			// Event log
+			r.Get("/events", adminEventsHandler.HandleGetEvents)
 			r.Post("/reload-aliases", handler.HandleReloadAliases(namingResolver))
+
+			// Admin timeout routes
+			r.Route("/timeout", func(r chi.Router) {
+				r.Post("/clear", handler.HandleAdminClearTimeout(userService))
+			})
 
 			// Admin job routes
 			r.Route("/jobs", func(r chi.Router) {
@@ -204,8 +262,24 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 			r.Route("/cache", func(r chi.Router) {
 				r.Get("/stats", adminCacheHandler.HandleGetCacheStats)
 			})
+
+			// Admin scenario simulation routes
+			if scenarioEngine != nil {
+				scenarioHandler := handler.NewScenarioHandler(scenarioEngine)
+				r.Route("/simulate", func(r chi.Router) {
+					r.Get("/capabilities", scenarioHandler.HandleGetCapabilities())
+					r.Get("/scenarios", scenarioHandler.HandleGetScenarios())
+					r.Get("/scenario", scenarioHandler.HandleGetScenario())
+					r.Post("/run", scenarioHandler.HandleRunScenario())
+					r.Post("/run-custom", scenarioHandler.HandleRunCustomScenario())
+				})
+			}
 		})
 	})
+
+	// Admin dashboard (embedded SPA)
+	r.Handle("/admin", http.RedirectHandler("/admin/", http.StatusMovedPermanently))
+	r.Handle("/admin/*", http.StripPrefix("/admin", admin.Handler()))
 
 	// Swagger documentation
 	r.Get("/swagger/*", httpSwagger.WrapHandler)
@@ -226,16 +300,22 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 		jobService:         jobService,
 		linkingService:     linkingService,
 		harvestService:     harvestService,
+		predictionService:  predictionService,
+		expeditionService:  expeditionService,
+		questService:       questService,
 		namingResolver:     namingResolver,
 		sseHub:             sseHub,
+		scenarioEngine:     scenarioEngine,
+		eventlogService:    eventlogService,
 	}
 }
 
-// responseWriter wraps http.ResponseWriter to capture the status code
+// responseWriter wraps http.ResponseWriter to capture the status code and error message
 type responseWriter struct {
 	http.ResponseWriter
-	statusCode int
-	written    bool
+	statusCode   int
+	written      bool
+	errorMessage string
 }
 
 func newResponseWriter(w http.ResponseWriter) *responseWriter {
@@ -257,16 +337,38 @@ func (rw *responseWriter) Write(b []byte) (int, error) {
 	if !rw.written {
 		rw.WriteHeader(http.StatusOK)
 	}
+
+	// Capture error message from JSON error responses (status >= 400)
+	if rw.statusCode >= 400 && rw.errorMessage == "" && len(b) > 0 {
+		var errorResp struct {
+			Error string `json:"error"`
+		}
+		if err := json.Unmarshal(b, &errorResp); err == nil && errorResp.Error != "" {
+			rw.errorMessage = errorResp.Error
+		}
+	}
+
 	return rw.ResponseWriter.Write(b)
+}
+
+func (rw *responseWriter) Flush() {
+	if f, ok := rw.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
 }
 
 func loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
-		// Skip logging for health check endpoints and metrics
-		// Use HasPrefix to catch potential variations (e.g. /healthz/)
+		// Skip logging for health check endpoints, metrics, and quiet paths
 		for _, path := range PublicPaths {
+			if strings.HasPrefix(r.URL.Path, path) {
+				next.ServeHTTP(w, r)
+				return
+			}
+		}
+		for _, path := range QuietPaths {
 			if strings.HasPrefix(r.URL.Path, path) {
 				next.ServeHTTP(w, r)
 				return
@@ -310,12 +412,17 @@ func loggingMiddleware(next http.Handler) http.Handler {
 
 		// Log request completion with metrics
 		duration := time.Since(start)
-		log.Info(LogMsgRequestCompleted,
+		logFields := []any{
 			"method", r.Method,
 			"path", r.URL.Path,
 			"status", rw.statusCode,
 			"duration_ms", duration.Milliseconds(),
-			"duration", duration)
+			"duration", duration,
+		}
+		if rw.errorMessage != "" {
+			logFields = append(logFields, "error", rw.errorMessage)
+		}
+		log.Info(LogMsgRequestCompleted, logFields...)
 	})
 }
 
