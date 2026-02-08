@@ -1,7 +1,6 @@
 package discord
 
 import (
-	"fmt"
 	"log/slog"
 
 	"github.com/bwmarrin/discordgo"
@@ -11,107 +10,28 @@ import (
 
 // BuyCommand returns the buy command definition and handler
 func BuyCommand() (*discordgo.ApplicationCommand, CommandHandler) {
-	cmd := &discordgo.ApplicationCommand{
+	return CreateItemQuantityCommand(ItemCommandConfig{
 		Name:        "buy",
 		Description: "Purchase an item from the shop",
-		Options: []*discordgo.ApplicationCommandOption{
-			{
-				Type:         discordgo.ApplicationCommandOptionString,
-				Name:         "item",
-				Description:  "Item name to buy",
-				Required:     true,
-				Autocomplete: true,
-			},
-			{
-				Type:        discordgo.ApplicationCommandOptionInteger,
-				Name:        "quantity",
-				Description: "Quantity to buy (default: 1)",
-				Required:    false,
-			},
-		},
-	}
-
-	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		handleEmbedResponse(s, i, func() (string, error) {
-			user := getInteractionUser(i)
-			options := getOptions(i)
-			itemName := options[0].StringValue()
-			quantity := 1
-			if len(options) > 1 {
-				quantity = int(options[1].IntValue())
-			}
-
-			// Ensure user exists
-			_, err := client.RegisterUser(user.Username, user.ID)
-			if err != nil {
-				return "", fmt.Errorf("failed to register user: %w", err)
-			}
-
-			return client.BuyItem(domain.PlatformDiscord, user.ID, user.Username, itemName, quantity)
-		}, ResponseConfig{
-			Title: "💰 Purchase Complete",
-			Color: 0x2ecc71, // Green
-		}, true)
-	}
-
-	return cmd, handler
+		OptionName:  "item",
+		OptionDesc:  "Item name to buy",
+		ResultTitle: "💰 Purchase Complete",
+		ResultColor: 0x2ecc71,
+		Action:      func(c *APIClient) func(string, string, string, string, int) (string, error) { return c.BuyItem },
+	})
 }
 
 // SellCommand returns the sell command definition and handler
 func SellCommand() (*discordgo.ApplicationCommand, CommandHandler) {
-	cmd := &discordgo.ApplicationCommand{
+	return CreateItemQuantityCommand(ItemCommandConfig{
 		Name:        "sell",
 		Description: "Sell an item from your inventory",
-		Options: []*discordgo.ApplicationCommandOption{
-			{
-				Type:         discordgo.ApplicationCommandOptionString,
-				Name:         "item",
-				Description:  "Item name to sell",
-				Required:     true,
-				Autocomplete: true,
-			},
-			{
-				Type:        discordgo.ApplicationCommandOptionInteger,
-				Name:        "quantity",
-				Description: "Quantity to sell (default: 1)",
-				Required:    false,
-			},
-		},
-	}
-
-	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
-		if !deferResponse(s, i) {
-			return
-		}
-
-		user := getInteractionUser(i)
-		options := getOptions(i)
-		itemName := options[0].StringValue()
-		quantity := 1
-		if len(options) > 1 {
-			quantity = int(options[1].IntValue())
-		}
-
-		// Ensure user exists
-		_, err := client.RegisterUser(user.Username, user.ID)
-		if err != nil {
-			slog.Error("Failed to register user", "error", err)
-			respondError(s, i, "Error connecting to game server.")
-			return
-		}
-
-		msg, err := client.SellItem(domain.PlatformDiscord, user.ID, user.Username, itemName, quantity)
-		if err != nil {
-			slog.Error("Failed to sell item", "error", err)
-			respondFriendlyError(s, i, err.Error())
-			return
-		}
-
-		embed := createEmbed("💵 Sale Complete", msg, 0xf39c12, "")
-		sendEmbed(s, i, embed)
-	}
-
-	return cmd, handler
+		OptionName:  "item",
+		OptionDesc:  "Item name to sell",
+		ResultTitle: "💵 Sale Complete",
+		ResultColor: 0xf39c12,
+		Action:      func(c *APIClient) func(string, string, string, string, int) (string, error) { return c.SellItem },
+	})
 }
 
 // PricesCommand returns the prices command definition and handler (buy prices)
@@ -127,7 +47,7 @@ func PricesCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		}, ResponseConfig{
 			Title: "🏪 Buy Prices",
 			Color: 0x3498db, // Blue
-		}, true)
+		})
 	}
 
 	return cmd, handler
@@ -146,7 +66,7 @@ func SellPricesCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		}, ResponseConfig{
 			Title: "💰 Sell Prices",
 			Color: 0xf1c40f, // Yellow
-		}, true)
+		})
 	}
 
 	return cmd, handler

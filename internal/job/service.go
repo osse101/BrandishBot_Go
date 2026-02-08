@@ -116,11 +116,7 @@ func (s *service) GetUserJobs(ctx context.Context, userID string) ([]domain.User
 	}
 
 	// Get max level from progression system
-	maxLevel, err := s.getMaxJobLevel(ctx)
-	if err != nil {
-		log.Warn("Failed to get max job level, defaulting to default", "error", err)
-		maxLevel = DefaultMaxLevel
-	}
+	maxLevel := s.getMaxJobLevel(ctx)
 
 	// Combine job info with progress
 	result := make([]domain.UserJobInfo, 0, len(jobs))
@@ -310,11 +306,7 @@ func (s *service) checkDailyCap(ctx context.Context, userID, jobKey string, curr
 
 func (s *service) calculateNewLevel(ctx context.Context, newXP int64) int {
 	newLevel := s.CalculateLevel(newXP)
-	maxLevel, err := s.getMaxJobLevel(ctx)
-	if err != nil {
-		logger.FromContext(ctx).Warn("Failed to get max level, using default", "error", err)
-		maxLevel = DefaultMaxLevel
-	}
+	maxLevel := s.getMaxJobLevel(ctx)
 	if newLevel > maxLevel {
 		newLevel = maxLevel
 	}
@@ -522,16 +514,16 @@ func (s *service) getDailyCap(ctx context.Context) int {
 	return int(modified)
 }
 
-func (s *service) getMaxJobLevel(ctx context.Context) (int, error) {
+func (s *service) getMaxJobLevel(ctx context.Context) int {
 	// Apply progression modifier for job level cap (linear: +10 per level)
 	// Base cap is DefaultMaxLevel, upgrade_job_level_cap adds +10 per level (max +30 at level 3)
 	modified, err := s.progressionSvc.GetModifiedValue(ctx, "job_level_cap", float64(DefaultMaxLevel))
 	if err != nil {
 		log := logger.FromContext(ctx)
 		log.Warn("Failed to get job level cap modifier, using default", "error", err)
-		return DefaultMaxLevel, nil
+		return DefaultMaxLevel
 	}
-	return int(modified), nil
+	return int(modified)
 }
 
 // ResetDailyJobXP resets the daily XP counters for all users

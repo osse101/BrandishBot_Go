@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -8,7 +9,6 @@ import (
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/duel"
-	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 )
 
@@ -41,35 +41,24 @@ type ChallengeResponse struct {
 
 // HandleChallenge handles duel challenge requests
 func (h *DuelHandler) HandleChallenge(w http.ResponseWriter, r *http.Request) {
-	// Check if duel feature is unlocked
-	if CheckFeatureLocked(w, r, h.progressionSvc, progression.FeatureDuel) {
-		return
-	}
+	handleFeatureAction(w, r, h.progressionSvc, progression.FeatureDuel, "Challenge duel",
+		func(ctx context.Context, req ChallengeRequest) (*domain.Duel, error) {
+			duel, err := h.service.Challenge(ctx, req.Platform, req.PlatformID, req.OpponentUsername, req.Stakes)
+			if err == nil {
+				recordEngagement(r, h.progressionSvc, req.OpponentUsername, "duel_challenged", 1)
+			}
+			return duel, err
+		},
+		h.formatChallengeResponse,
+	)
+}
 
-	var req ChallengeRequest
-	if err := DecodeAndValidateRequest(r, w, &req, "Challenge duel"); err != nil {
-		return
-	}
-
-	duel, err := h.service.Challenge(r.Context(), req.Platform, req.PlatformID, req.OpponentUsername, req.Stakes)
-	if err != nil {
-		logger.FromContext(r.Context()).Error("Failed to create duel challenge", "error", err)
-		statusCode, userMsg := mapServiceErrorToUserMessage(err)
-		respondError(w, statusCode, userMsg)
-		return
-	}
-
-	// Record engagement
-	if err := h.progressionSvc.RecordEngagement(r.Context(), req.OpponentUsername, "duel_challenged", 1); err != nil {
-		logger.FromContext(r.Context()).Error("Failed to record duel engagement", "error", err)
-	}
-
-	response := ChallengeResponse{
+func (h *DuelHandler) formatChallengeResponse(d *domain.Duel) interface{} {
+	return ChallengeResponse{
 		Message:   "Duel challenge sent!",
-		DuelID:    duel.ID.String(),
-		ExpiresAt: duel.ExpiresAt.Format("2006-01-02 15:04:05"),
+		DuelID:    d.ID.String(),
+		ExpiresAt: d.ExpiresAt.Format("2006-01-02 15:04:05"),
 	}
-	respondJSON(w, http.StatusCreated, response)
 }
 
 // AcceptDuelRequest represents a duel accept request
@@ -104,9 +93,7 @@ func (h *DuelHandler) HandleAccept(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.service.Accept(r.Context(), req.Platform, req.PlatformID, duelID)
 	if err != nil {
-		logger.FromContext(r.Context()).Error("Failed to accept duel", "error", err)
-		statusCode, userMsg := mapServiceErrorToUserMessage(err)
-		respondError(w, statusCode, userMsg)
+		respondServiceError(w, r, "Failed to accept duel", err)
 		return
 	}
 
@@ -142,9 +129,7 @@ func (h *DuelHandler) HandleDecline(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.service.Decline(r.Context(), req.Platform, req.PlatformID, duelID); err != nil {
-		logger.FromContext(r.Context()).Error("Failed to decline duel", "error", err)
-		statusCode, userMsg := mapServiceErrorToUserMessage(err)
-		respondError(w, statusCode, userMsg)
+		respondServiceError(w, r, "Failed to decline duel", err)
 		return
 	}
 
@@ -160,9 +145,7 @@ func (h *DuelHandler) HandleGetPending(w http.ResponseWriter, r *http.Request) {
 
 	duels, err := h.service.GetPendingDuels(r.Context(), "twitch", username)
 	if err != nil {
-		logger.FromContext(r.Context()).Error("Failed to get pending duels", "error", err)
-		statusCode, userMsg := mapServiceErrorToUserMessage(err)
-		respondError(w, statusCode, userMsg)
+		respondServiceError(w, r, "Failed to get pending duels", err)
 		return
 	}
 
@@ -184,9 +167,7 @@ func (h *DuelHandler) HandleGetDuel(w http.ResponseWriter, r *http.Request) {
 
 	duel, err := h.service.GetDuel(r.Context(), duelID)
 	if err != nil {
-		logger.FromContext(r.Context()).Error("Failed to get duel", "error", err)
-		statusCode, userMsg := mapServiceErrorToUserMessage(err)
-		respondError(w, statusCode, userMsg)
+		respondServiceError(w, r, "Failed to get duel", err)
 		return
 	}
 

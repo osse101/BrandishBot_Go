@@ -338,60 +338,78 @@ func (t *treeLoader) arePrerequisitesMet(node NodeConfig, existingByKey map[stri
 }
 
 func (t *treeLoader) syncOneNode(ctx context.Context, repo repository.Progression, nodeConfig *NodeConfig, existingByKey map[string]*domain.ProgressionNode, insertedNodeIDs map[string]int, result *SyncResult) error {
+	if existing, ok := existingByKey[nodeConfig.Key]; ok {
+		return t.syncExistingNode(ctx, repo, nodeConfig, existing, existingByKey, insertedNodeIDs, result)
+	}
+	return t.syncNewNode(ctx, repo, nodeConfig, existingByKey, insertedNodeIDs, result)
+}
+
+func (t *treeLoader) syncExistingNode(ctx context.Context, repo repository.Progression, config *NodeConfig, existing *domain.ProgressionNode, existingByKey map[string]*domain.ProgressionNode, insertedNodeIDs map[string]int, result *SyncResult) error {
 	log := logger.FromContext(ctx)
 
-	if existing, ok := existingByKey[nodeConfig.Key]; ok {
-		needsUpdate := existing.DisplayName != nodeConfig.Name ||
-			existing.Description != nodeConfig.Description ||
-			existing.MaxLevel != nodeConfig.MaxLevel ||
-			existing.SortOrder != nodeConfig.SortOrder ||
-			existing.NodeType != nodeConfig.Type ||
-			existing.Tier != nodeConfig.Tier ||
-			existing.Size != nodeConfig.Size ||
-			existing.Category != nodeConfig.Category ||
-			!modifierConfigsEqual(existing.ModifierConfig, nodeConfig.ModifierConfig)
+	if !t.needsUpdate(existing, config) {
+		result.NodesSkipped++
+		return nil
+	}
 
-		if needsUpdate {
-			if err := updateNode(ctx, repo, existing.ID, nodeConfig); err != nil {
-				return fmt.Errorf("failed to update node '%s': %w", nodeConfig.Key, err)
-			}
-			if err := syncPrerequisites(ctx, repo, existing.ID, nodeConfig.Prerequisites, existingByKey, insertedNodeIDs); err != nil {
-				return fmt.Errorf("failed to sync prerequisites for '%s': %w", nodeConfig.Key, err)
-			}
-			if err := syncDynamicPrerequisites(ctx, repo, existing.ID, nodeConfig.Prerequisites); err != nil {
-				return fmt.Errorf("failed to sync dynamic prerequisites for '%s': %w", nodeConfig.Key, err)
-			}
-			result.NodesUpdated++
-			log.Debug("Updated progression node", "key", nodeConfig.Key)
+	if err := updateNode(ctx, repo, existing.ID, config); err != nil {
+		return fmt.Errorf("failed to update node '%s': %w", config.Key, err)
+	}
+
+	if err := t.syncPrerequisitesAndModifiers(ctx, repo, existing.ID, config, existingByKey, insertedNodeIDs); err != nil {
+		return err
+	}
+
+	result.NodesUpdated++
+	log.Debug("Updated progression node", "key", config.Key)
+	return nil
+}
+
+func (t *treeLoader) syncNewNode(ctx context.Context, repo repository.Progression, config *NodeConfig, existingByKey map[string]*domain.ProgressionNode, insertedNodeIDs map[string]int, result *SyncResult) error {
+	log := logger.FromContext(ctx)
+
+	nodeID, err := insertNode(ctx, repo, config)
+	if err != nil {
+		return fmt.Errorf("failed to insert node '%s': %w", config.Key, err)
+	}
+	insertedNodeIDs[config.Key] = nodeID
+
+	if err := t.syncPrerequisitesAndModifiers(ctx, repo, nodeID, config, existingByKey, insertedNodeIDs); err != nil {
+		return err
+	}
+
+	result.NodesInserted++
+	log.Debug("Inserted progression node", "key", config.Key, "id", nodeID)
+
+	if config.AutoUnlock {
+		if err := repo.UnlockNode(ctx, nodeID, 1, "auto", 0); err != nil {
+			log.Warn("Failed to auto-unlock node", "key", config.Key, "error", err)
 		} else {
-			result.NodesSkipped++
+			result.AutoUnlocked++
+			log.Debug("Auto-unlocked node", "key", config.Key)
 		}
-	} else {
-		nodeID, err := insertNode(ctx, repo, nodeConfig)
-		if err != nil {
-			return fmt.Errorf("failed to insert node '%s': %w", nodeConfig.Key, err)
-		}
-		insertedNodeIDs[nodeConfig.Key] = nodeID
+	}
+	return nil
+}
 
-		if err := syncPrerequisites(ctx, repo, nodeID, nodeConfig.Prerequisites, existingByKey, insertedNodeIDs); err != nil {
-			return fmt.Errorf("failed to sync prerequisites for '%s': %w", nodeConfig.Key, err)
-		}
+func (t *treeLoader) needsUpdate(existing *domain.ProgressionNode, config *NodeConfig) bool {
+	return existing.DisplayName != config.Name ||
+		existing.Description != config.Description ||
+		existing.MaxLevel != config.MaxLevel ||
+		existing.SortOrder != config.SortOrder ||
+		existing.NodeType != config.Type ||
+		existing.Tier != config.Tier ||
+		existing.Size != config.Size ||
+		existing.Category != config.Category ||
+		!modifierConfigsEqual(existing.ModifierConfig, config.ModifierConfig)
+}
 
-		if err := syncDynamicPrerequisites(ctx, repo, nodeID, nodeConfig.Prerequisites); err != nil {
-			return fmt.Errorf("failed to sync dynamic prerequisites for '%s': %w", nodeConfig.Key, err)
-		}
-
-		result.NodesInserted++
-		log.Debug("Inserted progression node", "key", nodeConfig.Key, "id", nodeID)
-
-		if nodeConfig.AutoUnlock {
-			if err := repo.UnlockNode(ctx, nodeID, 1, "auto", 0); err != nil {
-				log.Warn("Failed to auto-unlock node", "key", nodeConfig.Key, "error", err)
-			} else {
-				result.AutoUnlocked++
-				log.Debug("Auto-unlocked node", "key", nodeConfig.Key)
-			}
-		}
+func (t *treeLoader) syncPrerequisitesAndModifiers(ctx context.Context, repo repository.Progression, nodeID int, config *NodeConfig, existingByKey map[string]*domain.ProgressionNode, insertedNodeIDs map[string]int) error {
+	if err := syncPrerequisites(ctx, repo, nodeID, config.Prerequisites, existingByKey, insertedNodeIDs); err != nil {
+		return fmt.Errorf("failed to sync prerequisites for '%s': %w", config.Key, err)
+	}
+	if err := syncDynamicPrerequisites(ctx, repo, nodeID, config.Prerequisites); err != nil {
+		return fmt.Errorf("failed to sync dynamic prerequisites for '%s': %w", config.Key, err)
 	}
 	return nil
 }

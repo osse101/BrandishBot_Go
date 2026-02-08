@@ -1,10 +1,11 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/osse101/BrandishBot_Go/internal/compost"
-	"github.com/osse101/BrandishBot_Go/internal/logger"
+	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 )
 
@@ -37,35 +38,24 @@ type DepositResponse struct {
 
 // HandleDeposit handles compost deposit requests
 func (h *CompostHandler) HandleDeposit(w http.ResponseWriter, r *http.Request) {
-	// Check if compost feature is unlocked
-	if CheckFeatureLocked(w, r, h.progressionSvc, progression.FeatureCompost) {
-		return
-	}
+	handleFeatureAction(w, r, h.progressionSvc, progression.FeatureCompost, "Deposit compost",
+		func(ctx context.Context, req DepositRequest) (*domain.CompostDeposit, error) {
+			result, err := h.service.Deposit(ctx, req.Platform, req.PlatformID, req.ItemKey, req.Quantity)
+			if err == nil {
+				recordEngagement(r, h.progressionSvc, req.PlatformID, "compost_deposit", 1)
+			}
+			return result, err
+		},
+		h.formatDepositResponse,
+	)
+}
 
-	var req DepositRequest
-	if err := DecodeAndValidateRequest(r, w, &req, "Deposit compost"); err != nil {
-		return
-	}
-
-	deposit, err := h.service.Deposit(r.Context(), req.Platform, req.PlatformID, req.ItemKey, req.Quantity)
-	if err != nil {
-		logger.FromContext(r.Context()).Error("Failed to create compost deposit", "error", err)
-		statusCode, userMsg := mapServiceErrorToUserMessage(err)
-		respondError(w, statusCode, userMsg)
-		return
-	}
-
-	// Record engagement
-	if err := h.progressionSvc.RecordEngagement(r.Context(), req.PlatformID, "compost_deposit", 1); err != nil {
-		logger.FromContext(r.Context()).Error("Failed to record compost engagement", "error", err)
-	}
-
-	response := DepositResponse{
+func (h *CompostHandler) formatDepositResponse(res *domain.CompostDeposit) interface{} {
+	return DepositResponse{
 		Message:   "Items composting!",
-		DepositID: deposit.ID.String(),
-		ReadyAt:   deposit.ReadyAt.Format("2006-01-02 15:04:05"),
+		DepositID: res.ID.String(),
+		ReadyAt:   res.ReadyAt.Format("2006-01-02 15:04:05"),
 	}
-	respondJSON(w, http.StatusCreated, response)
 }
 
 // HandleGetStatus handles compost status requests
@@ -77,9 +67,7 @@ func (h *CompostHandler) HandleGetStatus(w http.ResponseWriter, r *http.Request)
 
 	status, err := h.service.GetStatus(r.Context(), "twitch", username)
 	if err != nil {
-		logger.FromContext(r.Context()).Error("Failed to get compost status", "error", err)
-		statusCode, userMsg := mapServiceErrorToUserMessage(err)
-		respondError(w, statusCode, userMsg)
+		respondServiceError(w, r, "Failed to get compost status", err)
 		return
 	}
 
@@ -100,27 +88,19 @@ type HarvestResponse struct {
 
 // HandleHarvest handles compost harvest requests
 func (h *CompostHandler) HandleHarvest(w http.ResponseWriter, r *http.Request) {
-	var req HarvestRequest
-	if err := DecodeAndValidateRequest(r, w, &req, "Harvest compost"); err != nil {
-		return
-	}
-
-	gemsAwarded, err := h.service.Harvest(r.Context(), req.Platform, req.PlatformID)
-	if err != nil {
-		logger.FromContext(r.Context()).Error("Failed to harvest compost", "error", err)
-		statusCode, userMsg := mapServiceErrorToUserMessage(err)
-		respondError(w, statusCode, userMsg)
-		return
-	}
-
-	// Record engagement
-	if err := h.progressionSvc.RecordEngagement(r.Context(), req.PlatformID, "compost_harvest", 1); err != nil {
-		logger.FromContext(r.Context()).Error("Failed to record harvest engagement", "error", err)
-	}
-
-	response := HarvestResponse{
-		Message:     "Compost harvested!",
-		GemsAwarded: gemsAwarded,
-	}
-	respondJSON(w, http.StatusOK, response)
+	handleFeatureAction(w, r, h.progressionSvc, progression.FeatureCompost, "Harvest compost",
+		func(ctx context.Context, req HarvestRequest) (int, error) {
+			gemsAwarded, err := h.service.Harvest(ctx, req.Platform, req.PlatformID)
+			if err == nil {
+				recordEngagement(r, h.progressionSvc, req.PlatformID, "compost_harvest", 1)
+			}
+			return gemsAwarded, err
+		},
+		func(gemsAwarded int) interface{} {
+			return HarvestResponse{
+				Message:     "Compost harvested!",
+				GemsAwarded: gemsAwarded,
+			}
+		},
+	)
 }

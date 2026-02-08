@@ -187,24 +187,15 @@ func handleEmbedResponse(
 	i *discordgo.InteractionCreate,
 	action func() (string, error),
 	config ResponseConfig,
-	shouldDefer bool,
 ) {
-	if shouldDefer {
-		if !deferResponse(s, i) {
-			return
-		}
+	if !deferResponse(s, i) {
+		return
 	}
 
 	msg, err := action()
 	if err != nil {
 		slog.Error("Action failed", "title", config.Title, "error", err)
-		if shouldDefer {
-			respondFriendlyError(s, i, err.Error())
-		} else {
-			// If not deferred, we might need a different error response type
-			// but for now most of our commands are deferred.
-			respondFriendlyError(s, i, err.Error())
-		}
+		respondFriendlyError(s, i, err.Error())
 		return
 	}
 
@@ -222,6 +213,77 @@ func handleEmbedResponse(
 	}); err != nil {
 		slog.Error("Failed to send response", "error", err)
 	}
+}
+
+// handleItemQuantityAction encapsulates the pattern of:
+// 1. Getting item name and quantity from options
+// 2. Registering/Ensuring user exists
+// 3. Performing an action with the client
+func handleItemQuantityAction(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient, title string, color int, action func(string, string, string, string, int) (string, error)) {
+	handleEmbedResponse(s, i, func() (string, error) {
+		user := getInteractionUser(i)
+		options := getOptions(i)
+		if len(options) == 0 {
+			return "", fmt.Errorf("missing required item argument")
+		}
+
+		itemName := options[0].StringValue()
+		quantity := 1
+		if len(options) > 1 {
+			quantity = int(options[1].IntValue())
+		}
+
+		// Ensure user exists
+		_, err := client.RegisterUser(user.Username, user.ID)
+		if err != nil {
+			return "", fmt.Errorf("failed to register user: %w", err)
+		}
+
+		return action(domain.PlatformDiscord, user.ID, user.Username, itemName, quantity)
+	}, ResponseConfig{
+		Title: title,
+		Color: color,
+	})
+}
+
+// ItemCommandConfig defines the configuration for a standard item+quantity command
+type ItemCommandConfig struct {
+	Name        string
+	Description string
+	OptionName  string // e.g. "item", "recipe"
+	OptionDesc  string
+	ResultTitle string
+	ResultColor int
+	Action      func(client *APIClient) func(string, string, string, string, int) (string, error)
+}
+
+// CreateItemQuantityCommand returns a standardized item+quantity command and handler
+func CreateItemQuantityCommand(cfg ItemCommandConfig) (*discordgo.ApplicationCommand, CommandHandler) {
+	cmd := &discordgo.ApplicationCommand{
+		Name:        cfg.Name,
+		Description: cfg.Description,
+		Options: []*discordgo.ApplicationCommandOption{
+			{
+				Type:         discordgo.ApplicationCommandOptionString,
+				Name:         cfg.OptionName,
+				Description:  cfg.OptionDesc,
+				Required:     true,
+				Autocomplete: true,
+			},
+			{
+				Type:        discordgo.ApplicationCommandOptionInteger,
+				Name:        "quantity",
+				Description: "Quantity (default: 1)",
+				Required:    false,
+			},
+		},
+	}
+
+	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
+		handleItemQuantityAction(s, i, client, cfg.ResultTitle, cfg.ResultColor, cfg.Action(client))
+	}
+
+	return cmd, handler
 }
 
 // deferResponse acknowledges an interaction with a deferred message.

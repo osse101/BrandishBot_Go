@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // This file contains test stubs for job upgrade node modifier application.
@@ -77,10 +76,9 @@ func TestUpgradeJobLevelCap_ModifierApplication(t *testing.T) {
 				Return(float64(tt.expectedMaxLevel), nil)
 
 			// Test getMaxJobLevel
-			result, err := svc.getMaxJobLevel(ctx)
+			result := svc.getMaxJobLevel(ctx)
 
 			// Verify
-			require.NoError(t, err)
 			assert.Equal(t, tt.expectedMaxLevel, result)
 			mockProgression.AssertExpectations(t)
 		})
@@ -102,9 +100,8 @@ func TestUpgradeJobLevelCap_LinearModifier(t *testing.T) {
 	mockProgression.On("GetModifiedValue", ctx, "job_level_cap", float64(DefaultMaxLevel)).
 		Return(float64(20), nil) // Linear: 10 + 10
 
-	result, err := svc.getMaxJobLevel(ctx)
+	result := svc.getMaxJobLevel(ctx)
 
-	require.NoError(t, err)
 	assert.Equal(t, 20, result, "Linear modifier should add, not multiply")
 	assert.NotEqual(t, 11, result, "Should not be multiplicative (10 * 1.1 = 11)")
 
@@ -117,9 +114,8 @@ func TestUpgradeJobLevelCap_LinearModifier(t *testing.T) {
 	mockProgression2.On("GetModifiedValue", ctx, "job_level_cap", float64(DefaultMaxLevel)).
 		Return(float64(40), nil) // Linear: 10 + 30
 
-	result2, err := svc2.getMaxJobLevel(ctx)
+	result2 := svc2.getMaxJobLevel(ctx)
 
-	require.NoError(t, err)
 	assert.Equal(t, 40, result2, "Level 3 should be 10 + 30 = 40")
 	assert.NotEqual(t, 13, result2, "Should not be multiplicative (10 * 1.3 = 13)")
 }
@@ -154,8 +150,7 @@ func TestJobUpgrades_FallbackBehavior(t *testing.T) {
 			Return(float64(DefaultMaxLevel), assert.AnError)
 
 		// Should fallback to DefaultMaxLevel
-		result, err := svc.getMaxJobLevel(ctx)
-		require.NoError(t, err, "Should not return error on fallback")
+		result := svc.getMaxJobLevel(ctx)
 		assert.Equal(t, DefaultMaxLevel, result, "Should fallback to default on error")
 	})
 }

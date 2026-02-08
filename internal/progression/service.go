@@ -199,82 +199,88 @@ func (s *service) GetProgressionTree(ctx context.Context) ([]*domain.Progression
 
 // GetAvailableUnlocks returns nodes available for voting (prerequisites met)
 func (s *service) GetAvailableUnlocks(ctx context.Context) ([]*domain.ProgressionNode, error) {
-	log := logger.FromContext(ctx)
-
-	// Get all nodes
 	nodes, err := s.repo.GetAllNodes(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get nodes: %w", err)
 	}
 
 	available := make([]*domain.ProgressionNode, 0)
-
 	for _, node := range nodes {
-		// Check if already unlocked at max level
-		isUnlocked, err := s.repo.IsNodeUnlocked(ctx, node.NodeKey, node.MaxLevel)
-		if err != nil {
-			log.Warn("Failed to check unlock status", "nodeKey", node.NodeKey, "error", err)
-			continue
-		}
-		if isUnlocked {
-			continue // Already maxed out
-		}
-
-		// Get prerequisites for this node
-		prerequisites, err := s.repo.GetPrerequisites(ctx, node.ID)
-		if err != nil {
-			log.Warn("Failed to get prerequisites", "nodeKey", node.NodeKey, "error", err)
-			continue
-		}
-
-		// Check if all static prerequisites are unlocked
-		allPrereqsMet := true
-		for _, prereq := range prerequisites {
-			prereqUnlocked, err := s.repo.IsNodeUnlocked(ctx, prereq.NodeKey, 1)
-			if err != nil || !prereqUnlocked {
-				allPrereqsMet = false
-				break
-			}
-		}
-
-		if !allPrereqsMet {
-			continue
-		}
-
-		// Check dynamic prerequisites
-		dynamicPrereqsJSON, err := s.repo.GetNodeDynamicPrerequisites(ctx, node.ID)
-		if err != nil {
-			log.Warn("Failed to get dynamic prerequisites", "nodeKey", node.NodeKey, "error", err)
-			continue
-		}
-
-		var dynamicPrereqs []domain.DynamicPrerequisite
-		if len(dynamicPrereqsJSON) > 0 && string(dynamicPrereqsJSON) != "[]" {
-			if err := json.Unmarshal(dynamicPrereqsJSON, &dynamicPrereqs); err != nil {
-				log.Warn("Failed to parse dynamic prerequisites", "nodeKey", node.NodeKey, "error", err)
-				continue
-			}
-
-			for _, dynPrereq := range dynamicPrereqs {
-				met, err := s.checkDynamicPrerequisite(ctx, dynPrereq)
-				if err != nil {
-					log.Warn("Failed to check dynamic prerequisite", "nodeKey", node.NodeKey, "error", err)
-					allPrereqsMet = false
-					break
-				}
-				if !met {
-					allPrereqsMet = false
-					break
-				}
-			}
-		}
-
-		if allPrereqsMet {
+		if s.isNodeAvailable(ctx, node) {
 			available = append(available, node)
 		}
 	}
 
 	return available, nil
+}
+
+func (s *service) isNodeAvailable(ctx context.Context, node *domain.ProgressionNode) bool {
+	log := logger.FromContext(ctx)
+
+	// 1. Check if already maxed out
+	unlocked, err := s.repo.IsNodeUnlocked(ctx, node.NodeKey, node.MaxLevel)
+	if err != nil {
+		log.Warn("Failed to check unlock status", "nodeKey", node.NodeKey, "error", err)
+		return false
+	}
+	if unlocked {
+		return false
+	}
+
+	// 2. Check static prerequisites
+	if met := s.checkStaticPrereqs(ctx, node); !met {
+		return false
+	}
+
+	// 3. Check dynamic prerequisites
+	if met := s.checkDynamicPrereqs(ctx, node); !met {
+		return false
+	}
+
+	return true
+}
+
+func (s *service) checkStaticPrereqs(ctx context.Context, node *domain.ProgressionNode) bool {
+	prerequisites, err := s.repo.GetPrerequisites(ctx, node.ID)
+	if err != nil {
+		logger.FromContext(ctx).Warn("Failed to get prerequisites", "nodeKey", node.NodeKey, "error", err)
+		return false
+	}
+
+	for _, prereq := range prerequisites {
+		unlocked, err := s.repo.IsNodeUnlocked(ctx, prereq.NodeKey, 1)
+		if err != nil || !unlocked {
+			return false
+		}
+	}
+	return true
+}
+
+func (s *service) checkDynamicPrereqs(ctx context.Context, node *domain.ProgressionNode) bool {
+	log := logger.FromContext(ctx)
+	dynamicPrereqsJSON, err := s.repo.GetNodeDynamicPrerequisites(ctx, node.ID)
+	if err != nil {
+		log.Warn("Failed to get dynamic prerequisites", "nodeKey", node.NodeKey, "error", err)
+		return false
+	}
+
+	if len(dynamicPrereqsJSON) == 0 || string(dynamicPrereqsJSON) == "[]" {
+		return true
+	}
+
+	var dynamicPrereqs []domain.DynamicPrerequisite
+	if err := json.Unmarshal(dynamicPrereqsJSON, &dynamicPrereqs); err != nil {
+		log.Warn("Failed to parse dynamic prerequisites", "nodeKey", node.NodeKey, "error", err)
+		return false
+	}
+
+	for _, dynPrereq := range dynamicPrereqs {
+		met, err := s.checkDynamicPrerequisite(ctx, dynPrereq)
+		if err != nil || !met {
+			return false
+		}
+	}
+	return true
 }
 
 // GetAvailableUnlocksWithFutureTarget returns nodes available for voting now, plus nodes that will become available
@@ -510,69 +516,85 @@ func (s *service) AreItemsUnlocked(ctx context.Context, itemNames []string) (map
 func (s *service) VoteForUnlock(ctx context.Context, platform, platformID, username string, optionIndex int) error {
 	log := logger.FromContext(ctx)
 
-	user, err := s.user.GetUserByPlatformID(ctx, platform, platformID)
-	if err != nil && !errors.Is(err, domain.ErrUserNotFound) {
-		return fmt.Errorf("failed to resolve user: %w", err)
-	}
-
-	if user == nil {
-		if username == "" {
-			return fmt.Errorf("user not found and no username provided for auto-registration")
-		}
-		log.Info("Auto-registering new user from vote", "platform", platform, "platformID", platformID, "username", username)
-		newUser := domain.User{Username: username}
-		switch platform {
-		case domain.PlatformTwitch:
-			newUser.TwitchID = platformID
-		case domain.PlatformYoutube:
-			newUser.YoutubeID = platformID
-		case domain.PlatformDiscord:
-			newUser.DiscordID = platformID
-		}
-		if err := s.user.UpsertUser(ctx, &newUser); err != nil {
-			return fmt.Errorf("failed to auto-register user: %w", err)
-		}
-		// Fetch the user again to get their ID if it was generated by the DB
-		user, err = s.user.GetUserByPlatformID(ctx, platform, platformID)
-		if err != nil {
-			return fmt.Errorf("failed to fetch newly registered user: %w", err)
-		}
-		if user == nil {
-			return fmt.Errorf("newly registered user not found")
-		}
-	}
-
-	userID := user.ID
-
-	session, err := s.repo.GetActiveSession(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get active session: %w", err)
-	}
-
-	if session == nil || session.Status != domain.VotingStatusVoting {
-		return fmt.Errorf("no active voting session")
-	}
-
-	// Validate option index (1-based)
-	if optionIndex < 1 || optionIndex > len(session.Options) {
-		return fmt.Errorf("invalid option index: %d (must be between 1 and %d)", optionIndex, len(session.Options))
-	}
-
-	selectedOption := &session.Options[optionIndex-1]
-
-	// Use atomic transaction to prevent race conditions in concurrent vote attempts
-	err = s.repo.CheckAndRecordVoteAtomic(ctx, userID, session.ID, selectedOption.ID, selectedOption.NodeID)
+	// 1. Resolve or auto-register user
+	user, err := s.resolveUserByPlatform(ctx, platform, platformID, username)
 	if err != nil {
 		return err
 	}
 
-	// Record engagement immediately to trigger contribution logs and accumulation
-	if err := s.RecordEngagement(ctx, userID, "vote_cast", 1); err != nil {
-		log.Warn("Failed to record vote engagement", "userID", userID, "error", err)
+	// 2. Validate session and option
+	session, selectedOption, err := s.validateVotingSession(ctx, optionIndex)
+	if err != nil {
+		return err
 	}
 
-	log.Info("Vote recorded", "userID", userID, "platform", platform, "platformID", platformID, "optionIndex", optionIndex, "nodeKey", selectedOption.NodeDetails.NodeKey, "sessionID", session.ID)
+	// 3. Record vote atomically
+	if err := s.repo.CheckAndRecordVoteAtomic(ctx, user.ID, session.ID, selectedOption.ID, selectedOption.NodeID); err != nil {
+		return err
+	}
+
+	// 4. Record engagement
+	if err := s.RecordEngagement(ctx, user.ID, "vote_cast", 1); err != nil {
+		log.Warn("Failed to record vote engagement", "userID", user.ID, "error", err)
+	}
+
+	log.Info("Vote recorded", "userID", user.ID, "platform", platform, "platformID", platformID, "optionIndex", optionIndex, "nodeKey", selectedOption.NodeDetails.NodeKey, "sessionID", session.ID)
 	return nil
+}
+
+func (s *service) resolveUserByPlatform(ctx context.Context, platform, platformID, username string) (*domain.User, error) {
+	log := logger.FromContext(ctx)
+	user, err := s.user.GetUserByPlatformID(ctx, platform, platformID)
+	if err != nil && !errors.Is(err, domain.ErrUserNotFound) {
+		return nil, fmt.Errorf("failed to resolve user: %w", err)
+	}
+
+	if user != nil {
+		return user, nil
+	}
+
+	// Auto-registration
+	if username == "" {
+		return nil, fmt.Errorf("user not found and no username provided for auto-registration")
+	}
+
+	log.Info("Auto-registering new user from vote", "platform", platform, "platformID", platformID, "username", username)
+	newUser := domain.User{Username: username}
+	switch platform {
+	case domain.PlatformTwitch:
+		newUser.TwitchID = platformID
+	case domain.PlatformYoutube:
+		newUser.YoutubeID = platformID
+	case domain.PlatformDiscord:
+		newUser.DiscordID = platformID
+	}
+
+	if err := s.user.UpsertUser(ctx, &newUser); err != nil {
+		return nil, fmt.Errorf("failed to auto-register user: %w", err)
+	}
+
+	user, err = s.user.GetUserByPlatformID(ctx, platform, platformID)
+	if err != nil || user == nil {
+		return nil, fmt.Errorf("failed to fetch newly registered user")
+	}
+	return user, nil
+}
+
+func (s *service) validateVotingSession(ctx context.Context, optionIndex int) (*domain.ProgressionVotingSession, *domain.ProgressionVotingOption, error) {
+	session, err := s.repo.GetActiveSession(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get active session: %w", err)
+	}
+
+	if session == nil || session.Status != domain.VotingStatusVoting {
+		return nil, nil, fmt.Errorf("no active voting session")
+	}
+
+	if optionIndex < 1 || optionIndex > len(session.Options) {
+		return nil, nil, fmt.Errorf("invalid option index: %d (must be between 1 and %d)", optionIndex, len(session.Options))
+	}
+
+	return session, &session.Options[optionIndex-1], nil
 }
 
 // enrichSessionWithEstimates adds unlock time estimates to session options

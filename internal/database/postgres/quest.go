@@ -255,98 +255,61 @@ func mapQuestRow(row generated.Quest) domain.Quest {
 
 // Helper to map SQLC quest progress row to domain model
 func mapQuestProgressRow(row generated.GetUserQuestProgressRow) domain.QuestProgress {
-	progress := domain.QuestProgress{
-		UserID:           row.UserID.String(),
-		QuestID:          int(row.QuestID),
-		ProgressCurrent:  int(row.ProgressCurrent),
-		ProgressRequired: int(row.ProgressRequired),
-		RewardMoney:      int(row.RewardMoney),
-		RewardXp:         int(row.RewardXp),
-		StartedAt:        row.StartedAt.Time,
-		CreatedAt:        row.CreatedAt.Time,
-		UpdatedAt:        row.UpdatedAt.Time,
-		QuestKey:         row.QuestKey,
-		QuestType:        row.QuestType,
-		Description:      row.Description,
-	}
-
-	if row.CompletedAt.Valid {
-		progress.CompletedAt = &row.CompletedAt.Time
-	}
-	if row.ClaimedAt.Valid {
-		progress.ClaimedAt = &row.ClaimedAt.Time
-	}
-	if row.TargetCategory.Valid {
-		progress.TargetCategory = &row.TargetCategory.String
-	}
-	if row.TargetRecipeKey.Valid {
-		progress.TargetRecipeKey = &row.TargetRecipeKey.String
-	}
-
-	return progress
+	return mapQuestProgressFields(
+		row.UserID, row.QuestID, row.ProgressCurrent, row.ProgressRequired,
+		row.RewardMoney, row.RewardXp, row.StartedAt, row.CreatedAt, row.UpdatedAt,
+		row.QuestKey, row.QuestType, row.Description, row.CompletedAt, row.ClaimedAt,
+		row.TargetCategory, row.TargetRecipeKey,
+	)
 }
 
 // Helper to map SQLC active quest progress row to domain model
 func mapQuestProgressRowActive(row generated.GetUserActiveQuestProgressRow) domain.QuestProgress {
-	progress := domain.QuestProgress{
-		UserID:           row.UserID.String(),
-		QuestID:          int(row.QuestID),
-		ProgressCurrent:  int(row.ProgressCurrent),
-		ProgressRequired: int(row.ProgressRequired),
-		RewardMoney:      int(row.RewardMoney),
-		RewardXp:         int(row.RewardXp),
-		StartedAt:        row.StartedAt.Time,
-		CreatedAt:        row.CreatedAt.Time,
-		UpdatedAt:        row.UpdatedAt.Time,
-		QuestKey:         row.QuestKey,
-		QuestType:        row.QuestType,
-		Description:      row.Description,
-	}
-
-	if row.CompletedAt.Valid {
-		progress.CompletedAt = &row.CompletedAt.Time
-	}
-	if row.ClaimedAt.Valid {
-		progress.ClaimedAt = &row.ClaimedAt.Time
-	}
-	if row.TargetCategory.Valid {
-		progress.TargetCategory = &row.TargetCategory.String
-	}
-	if row.TargetRecipeKey.Valid {
-		progress.TargetRecipeKey = &row.TargetRecipeKey.String
-	}
-
-	return progress
+	return mapQuestProgressFields(
+		row.UserID, row.QuestID, row.ProgressCurrent, row.ProgressRequired,
+		row.RewardMoney, row.RewardXp, row.StartedAt, row.CreatedAt, row.UpdatedAt,
+		row.QuestKey, row.QuestType, row.Description, row.CompletedAt, row.ClaimedAt,
+		row.TargetCategory, row.TargetRecipeKey,
+	)
 }
 
 // Helper to map SQLC unclaimed quest progress row to domain model
 func mapQuestProgressRowUnclaimed(row generated.GetUnclaimedCompletedQuestsRow) domain.QuestProgress {
+	return mapQuestProgressFields(
+		row.UserID, row.QuestID, row.ProgressCurrent, row.ProgressRequired,
+		row.RewardMoney, row.RewardXp, row.StartedAt, row.CreatedAt, row.UpdatedAt,
+		row.QuestKey, row.QuestType, row.Description, row.CompletedAt, row.ClaimedAt,
+		row.TargetCategory, row.TargetRecipeKey,
+	)
+}
+
+func mapQuestProgressFields(userID uuid.UUID, questID, progressCurrent, progressRequired, rewardMoney, rewardXp int32, startedAt, createdAt, updatedAt pgtype.Timestamptz, questKey, questType, description string, completedAt, claimedAt pgtype.Timestamptz, targetCategory, targetRecipeKey pgtype.Text) domain.QuestProgress {
 	progress := domain.QuestProgress{
-		UserID:           row.UserID.String(),
-		QuestID:          int(row.QuestID),
-		ProgressCurrent:  int(row.ProgressCurrent),
-		ProgressRequired: int(row.ProgressRequired),
-		RewardMoney:      int(row.RewardMoney),
-		RewardXp:         int(row.RewardXp),
-		StartedAt:        row.StartedAt.Time,
-		CreatedAt:        row.CreatedAt.Time,
-		UpdatedAt:        row.UpdatedAt.Time,
-		QuestKey:         row.QuestKey,
-		QuestType:        row.QuestType,
-		Description:      row.Description,
+		UserID:           userID.String(),
+		QuestID:          int(questID),
+		ProgressCurrent:  int(progressCurrent),
+		ProgressRequired: int(progressRequired),
+		RewardMoney:      int(rewardMoney),
+		RewardXp:         int(rewardXp),
+		StartedAt:        startedAt.Time,
+		CreatedAt:        createdAt.Time,
+		UpdatedAt:        updatedAt.Time,
+		QuestKey:         questKey,
+		QuestType:        questType,
+		Description:      description,
 	}
 
-	if row.CompletedAt.Valid {
-		progress.CompletedAt = &row.CompletedAt.Time
+	if completedAt.Valid {
+		progress.CompletedAt = &completedAt.Time
 	}
-	if row.ClaimedAt.Valid {
-		progress.ClaimedAt = &row.ClaimedAt.Time
+	if claimedAt.Valid {
+		progress.ClaimedAt = &claimedAt.Time
 	}
-	if row.TargetCategory.Valid {
-		progress.TargetCategory = &row.TargetCategory.String
+	if targetCategory.Valid {
+		progress.TargetCategory = &targetCategory.String
 	}
-	if row.TargetRecipeKey.Valid {
-		progress.TargetRecipeKey = &row.TargetRecipeKey.String
+	if targetRecipeKey.Valid {
+		progress.TargetRecipeKey = &targetRecipeKey.String
 	}
 
 	return progress

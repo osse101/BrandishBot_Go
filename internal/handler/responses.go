@@ -8,6 +8,8 @@ import (
 
 	"github.com/osse101/BrandishBot_Go/internal/cooldown"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/logger"
+	"github.com/osse101/BrandishBot_Go/internal/progression"
 )
 
 // Standard response types for consistent API responses
@@ -55,6 +57,21 @@ func respondJSON(w http.ResponseWriter, status int, payload interface{}) {
 // respondError sends a JSON error response
 func respondError(w http.ResponseWriter, status int, message string) {
 	respondJSON(w, status, ErrorResponse{Error: message})
+}
+
+// respondServiceError handles service-level errors by mapping them to user-friendly messages
+// and logging the internal error details.
+func respondServiceError(w http.ResponseWriter, r *http.Request, opName string, err error) {
+	logger.FromContext(r.Context()).Error(opName, "error", err)
+	statusCode, userMsg := mapServiceErrorToUserMessage(err)
+	respondError(w, statusCode, userMsg)
+}
+
+// recordEngagement helper for consistently recording engagement and logging errors
+func recordEngagement(r *http.Request, svc progression.Service, id, typeKey string, points int) {
+	if err := svc.RecordEngagement(r.Context(), id, typeKey, points); err != nil {
+		logger.FromContext(r.Context()).Error("Failed to record engagement", "error", err, "type", typeKey)
+	}
 }
 
 // User-facing error messages for service errors
@@ -138,8 +155,7 @@ func mapServiceErrorToUserMessage(err error) (int, string) {
 	}
 
 	// For wrapped errors with domain errors as the base, try unwrapping
-	unwrapped := errors.Unwrap(err)
-	if unwrapped != nil && unwrapped != err {
+	if unwrapped := errors.Unwrap(err); unwrapped != nil {
 		// Recursively check the unwrapped error
 		return mapServiceErrorToUserMessage(unwrapped)
 	}
@@ -186,7 +202,7 @@ func mapEconomyAndFeatureErrors(err error, errMsg string) (int, string, bool) {
 	switch {
 	case errors.Is(err, domain.ErrRecipeLocked):
 		if len(errMsg) > len("recipe locked") {
-			before, _, found := cutSuffix(errMsg, " | recipe locked")
+			before, found := cutSuffix(errMsg, " | recipe locked")
 			if found {
 				return http.StatusForbidden, before + ". Unlock it in the progression tree", true
 			}
@@ -204,7 +220,7 @@ func mapEconomyAndFeatureErrors(err error, errMsg string) (int, string, bool) {
 		return http.StatusTooManyRequests, ErrMsgOnCooldownError, true
 	case errors.Is(err, domain.ErrRecipeNotFound):
 		if len(errMsg) > len("recipe not found") {
-			before, _, found := cutSuffix(errMsg, " | recipe not found")
+			before, found := cutSuffix(errMsg, " | recipe not found")
 			if found {
 				return http.StatusBadRequest, before, true
 			}
@@ -250,12 +266,12 @@ func mapSystemErrors(err error) (int, string, bool) {
 
 // cutSuffix removes suffix from s and returns the result and true if it was found.
 // If suffix is not in s, returns s and false.
-func cutSuffix(s, suffix string) (before string, after string, found bool) {
+func cutSuffix(s, suffix string) (before string, found bool) {
 	if len(s) < len(suffix) {
-		return s, "", false
+		return s, false
 	}
 	if s[len(s)-len(suffix):] == suffix {
-		return s[:len(s)-len(suffix)], suffix, true
+		return s[:len(s)-len(suffix)], true
 	}
-	return s, "", false
+	return s, false
 }

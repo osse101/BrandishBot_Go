@@ -154,10 +154,9 @@ func TestCalculateRewards(t *testing.T) {
 			}
 
 			// Execute
-			rewards, err := svc.calculateRewards(context.Background(), tt.hoursElapsed)
+			rewards := svc.calculateRewards(context.Background(), tt.hoursElapsed)
 
 			// Assert
-			assert.NoError(t, err)
 			assert.Equal(t, tt.expectedReward, rewards)
 
 			mockProgressionSvc.AssertExpectations(t)

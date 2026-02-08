@@ -480,85 +480,45 @@ func (s *service) BuyItem(ctx context.Context, platform, platformID, username, i
 	log := logger.FromContext(ctx)
 	log.Info(LogMsgBuyItemCalled, "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity)
 
-	// Validate request
+	// 1. Validate request
 	if err := validateBuyRequest(quantity); err != nil {
 		return 0, err
 	}
 
-	// Get user and item
+	// 2. Get user and item
 	user, item, err := s.getBuyEntities(ctx, platform, platformID, itemName)
 	if err != nil {
 		return 0, err
 	}
 
+	// 3. Begin transaction
 	tx, err := s.repo.BeginTx(ctx)
 	if err != nil {
 		return 0, fmt.Errorf(ErrMsgBeginTransactionFailed, err)
 	}
 	defer repository.SafeRollback(ctx, tx)
 
-	// Check if item is buyable (use internal name from resolved item)
-	isBuyable, err := s.repo.IsItemBuyable(ctx, item.InternalName)
+	// 4. Check eligibility (buyable + progression)
+	if err := s.checkBuyEligibility(ctx, item); err != nil {
+		return 0, err
+	}
+
+	// 5. Check funds and inventory
+	moneySlotIndex, moneyBalance, err := s.getMoneyBalance(ctx, tx, user.ID)
 	if err != nil {
-		return 0, fmt.Errorf(ErrMsgCheckBuyableFailed, err)
-	}
-	if !isBuyable {
-		return 0, fmt.Errorf(ErrMsgItemNotBuyableFmt, item.InternalName, domain.ErrNotBuyable)
+		return 0, err
 	}
 
-	// Check if item is unlocked (progression)
-	if s.progressionService != nil {
-		unlocked, err := s.progressionService.IsItemUnlocked(ctx, item.InternalName)
-		if err != nil {
-			return 0, fmt.Errorf("failed to check unlock status: %w", err)
-		}
-		if !unlocked {
-			return 0, domain.ErrItemLocked
-		}
-	}
-
-	// Get money item after buyable check
-	moneyItem, err := s.repo.GetItemByName(ctx, domain.ItemMoney)
-	if err != nil {
-		return 0, fmt.Errorf(ErrMsgGetMoneyItemFailed, err)
-	}
-	if moneyItem == nil {
-		return 0, fmt.Errorf(ErrMsgItemNotFoundFmt, domain.ItemMoney, domain.ErrItemNotFound)
-	}
-
-	// Get inventory and check funds
-	inventory, err := tx.GetInventory(ctx, user.ID)
-	if err != nil {
-		return 0, fmt.Errorf(ErrMsgGetInventoryFailed, err)
-	}
-
-	// Use random selection in case multiple money slots exist with different quality levels
-	moneySlotIndex, moneyBalance := utils.FindRandomSlot(inventory, moneyItem.ID, s.rnd)
-	if moneyBalance <= 0 {
-		return 0, domain.ErrInsufficientFunds
-	}
-
-	// Apply weekly sale discount to item price if applicable
-	itemCategory := getItemCategory(item)
-	discountedPrice := s.applyWeeklySaleDiscount(ctx, item.BaseValue, itemCategory)
-	if discountedPrice < item.BaseValue {
-		log.Info("Weekly sale discount applied", "item", itemName, "category", itemCategory, "original_price", item.BaseValue, "discounted_price", discountedPrice)
-	}
-
-	// Calculate affordable quantity with discounted price
-	actualQuantity, cost := calculateAffordableQuantity(quantity, discountedPrice, moneyBalance)
+	// 6. Calculate price and quantity
+	actualQuantity, cost := s.calculatePurchaseDetails(ctx, item, quantity, moneyBalance)
 	if actualQuantity == 0 {
-		return 0, fmt.Errorf(ErrMsgInsufficientFundsToBuyOneFmt, itemName, discountedPrice, moneyBalance, domain.ErrInsufficientFunds)
+		return 0, fmt.Errorf(ErrMsgInsufficientFundsToBuyOneFmt, item.InternalName, item.BaseValue, moneyBalance, domain.ErrInsufficientFunds)
 	}
 
-	if quantity > actualQuantity {
-		log.Info(LogMsgAdjustedPurchaseQty, "requested", quantity, "actual", actualQuantity)
-	}
-
-	// Process the transaction
+	// 7. Process inventory updates
+	inventory, _ := tx.GetInventory(ctx, user.ID) // already fetched in getMoneyBalance
 	processBuyTransaction(inventory, item, moneySlotIndex, actualQuantity, cost)
 
-	// Save updated inventory
 	if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
 		return 0, fmt.Errorf(ErrMsgUpdateInventoryFailed, err)
 	}
@@ -567,10 +527,83 @@ func (s *service) BuyItem(ctx context.Context, platform, platformID, username, i
 		return 0, fmt.Errorf(ErrMsgCommitTransactionFailed, err)
 	}
 
+	// 8. Finalize (XP, quests)
+	s.finalizePurchase(ctx, user.ID, item, actualQuantity, cost)
+
+	log.Info(LogMsgItemPurchased, "username", username, "item", itemName, "quantity", actualQuantity)
+	return actualQuantity, nil
+}
+
+func (s *service) checkBuyEligibility(ctx context.Context, item *domain.Item) error {
+	// Check if item is buyable
+	isBuyable, err := s.repo.IsItemBuyable(ctx, item.InternalName)
+	if err != nil {
+		return fmt.Errorf(ErrMsgCheckBuyableFailed, err)
+	}
+	if !isBuyable {
+		return fmt.Errorf(ErrMsgItemNotBuyableFmt, item.InternalName, domain.ErrNotBuyable)
+	}
+
+	// Check if item is unlocked (progression)
+	if s.progressionService != nil {
+		unlocked, err := s.progressionService.IsItemUnlocked(ctx, item.InternalName)
+		if err != nil {
+			return fmt.Errorf("failed to check unlock status: %w", err)
+		}
+		if !unlocked {
+			return domain.ErrItemLocked
+		}
+	}
+	return nil
+}
+
+func (s *service) getMoneyBalance(ctx context.Context, tx repository.EconomyTx, userID string) (int, int, error) {
+	moneyItem, err := s.repo.GetItemByName(ctx, domain.ItemMoney)
+	if err != nil {
+		return 0, 0, fmt.Errorf(ErrMsgGetMoneyItemFailed, err)
+	}
+	if moneyItem == nil {
+		return 0, 0, fmt.Errorf(ErrMsgItemNotFoundFmt, domain.ItemMoney, domain.ErrItemNotFound)
+	}
+
+	inventory, err := tx.GetInventory(ctx, userID)
+	if err != nil {
+		return 0, 0, fmt.Errorf(ErrMsgGetInventoryFailed, err)
+	}
+
+	moneySlotIndex, moneyBalance := utils.FindRandomSlot(inventory, moneyItem.ID, s.rnd)
+	if moneyBalance <= 0 {
+		return 0, 0, domain.ErrInsufficientFunds
+	}
+
+	return moneySlotIndex, moneyBalance, nil
+}
+
+func (s *service) calculatePurchaseDetails(ctx context.Context, item *domain.Item, requestedQuantity, moneyBalance int) (int, int) {
+	log := logger.FromContext(ctx)
+	itemCategory := getItemCategory(item)
+	discountedPrice := s.applyWeeklySaleDiscount(ctx, item.BaseValue, itemCategory)
+
+	if discountedPrice < item.BaseValue {
+		log.Info("Weekly sale discount applied", "item", item.InternalName, "category", itemCategory, "original_price", item.BaseValue, "discounted_price", discountedPrice)
+	}
+
+	actualQuantity, cost := calculateAffordableQuantity(requestedQuantity, discountedPrice, moneyBalance)
+
+	if requestedQuantity > actualQuantity && actualQuantity > 0 {
+		log.Info(LogMsgAdjustedPurchaseQty, "requested", requestedQuantity, "actual", actualQuantity)
+	}
+
+	return actualQuantity, cost
+}
+
+func (s *service) finalizePurchase(ctx context.Context, userID string, item *domain.Item, quantity, cost int) {
+	log := logger.FromContext(ctx)
+
 	// Award Merchant XP based on transaction value (async)
 	xp := calculateMerchantXP(cost)
 	s.wg.Add(1)
-	go s.awardMerchantXP(context.Background(), user.ID, xp, ActionTypeBuy, itemName, cost)
+	go s.awardMerchantXP(context.Background(), userID, xp, ActionTypeBuy, item.InternalName, cost)
 
 	// Track quest progress (async, fire-and-forget)
 	if s.questService != nil {
@@ -578,14 +611,11 @@ func (s *service) BuyItem(ctx context.Context, platform, platformID, username, i
 		s.wg.Add(1)
 		go func() {
 			defer s.wg.Done()
-			if err := s.questService.OnItemBought(context.Background(), user.ID, itemCategory, actualQuantity); err != nil {
-				log.Warn("Failed to track quest progress for item purchase", "error", err, "item", itemName)
+			if err := s.questService.OnItemBought(context.Background(), userID, itemCategory, quantity); err != nil {
+				log.Warn("Failed to track quest progress for item purchase", "error", err, "item", item.InternalName)
 			}
 		}()
 	}
-
-	log.Info(LogMsgItemPurchased, "username", username, "item", itemName, "quantity", actualQuantity)
-	return actualQuantity, nil
 }
 
 // calculateAffordableQuantity determines how many items can be purchased with available money

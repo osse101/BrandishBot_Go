@@ -96,6 +96,7 @@ const (
 
 const (
 	// LogMsgDevModeBypass is logged when dev mode bypasses cooldown enforcement
+	//nolint:gosec // False positive: not a hardcoded credential
 	LogMsgDevModeBypass = "DEV_MODE: Bypassing cooldown enforcement"
 
 	// LogMsgRaceConditionDetected is logged when concurrent cooldown requests create a race condition

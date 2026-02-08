@@ -150,26 +150,7 @@ func (h *ProgressionHandlers) HandleGetStatus() http.HandlerFunc {
 // @Router /api/v1/progression/engagement [get]
 func (h *ProgressionHandlers) HandleGetEngagement() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log := logger.FromContext(r.Context())
-
-		platform, ok := GetQueryParam(r, w, "platform")
-		if !ok {
-			return
-		}
-		platformID, ok := GetQueryParam(r, w, "platform_id")
-		if !ok {
-			return
-		}
-
-		breakdown, err := h.service.GetUserEngagement(r.Context(), platform, platformID)
-		if err != nil {
-			log.Error("Get user engagement: service error", "error", err, "platform", platform, "platformID", platformID)
-			respondError(w, http.StatusInternalServerError, ErrMsgGetEngagementDataFailed)
-			return
-		}
-
-		log.Info("Get user engagement: success", "platform", platform, "platformID", platformID)
-		respondJSON(w, http.StatusOK, breakdown)
+		h.handleGetEngagementCommon(w, r, "platform_id", h.service.GetUserEngagement, "Get user engagement")
 	}
 }
 
@@ -186,26 +167,7 @@ func (h *ProgressionHandlers) HandleGetEngagement() http.HandlerFunc {
 // @Router /api/v1/progression/engagement-by-username [get]
 func (h *ProgressionHandlers) HandleGetEngagementByUsername() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log := logger.FromContext(r.Context())
-
-		platform, ok := GetQueryParam(r, w, "platform")
-		if !ok {
-			return
-		}
-		username, ok := GetQueryParam(r, w, "username")
-		if !ok {
-			return
-		}
-
-		breakdown, err := h.service.GetUserEngagementByUsername(r.Context(), platform, username)
-		if err != nil {
-			log.Error("Get user engagement by username: service error", "error", err, "platform", platform, "username", username)
-			respondError(w, http.StatusInternalServerError, ErrMsgGetEngagementDataFailed)
-			return
-		}
-
-		log.Info("Get user engagement by username: success", "platform", platform, "username", username)
-		respondJSON(w, http.StatusOK, breakdown)
+		h.handleGetEngagementCommon(w, r, "username", h.service.GetUserEngagementByUsername, "Get user engagement by username")
 	}
 }
 
@@ -220,17 +182,9 @@ func (h *ProgressionHandlers) HandleGetEngagementByUsername() http.HandlerFunc {
 // @Router /api/v1/progression/leaderboard [get]
 func (h *ProgressionHandlers) HandleGetContributionLeaderboard() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log := logger.FromContext(r.Context())
-
-		limit := getQueryInt(r, "limit", 10)
-		leaderboard, err := h.service.GetContributionLeaderboard(r.Context(), limit)
-		if err != nil {
-			log.Error("Get contribution leaderboard: service error", "error", err, "limit", limit)
-			respondError(w, http.StatusInternalServerError, ErrMsgGetLeaderboardFailed)
-			return
-		}
-		log.Info("Get contribution leaderboard: success", "limit", limit)
-		respondJSON(w, http.StatusOK, leaderboard)
+		h.handleGetSimpleMetric(w, r, "limit", 10, func(ctx context.Context, i int) (interface{}, error) {
+			return h.service.GetContributionLeaderboard(ctx, i)
+		}, "Get contribution leaderboard", ErrMsgGetLeaderboardFailed)
 	}
 }
 
@@ -245,17 +199,9 @@ func (h *ProgressionHandlers) HandleGetContributionLeaderboard() http.HandlerFun
 // @Router /progression/velocity [get]
 func (h *ProgressionHandlers) HandleGetVelocity() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log := logger.FromContext(r.Context())
-
-		days := getQueryInt(r, "days", 7)
-		velocity, err := h.service.GetEngagementVelocity(r.Context(), days)
-		if err != nil {
-			log.Error("Get engagement velocity: service error", "error", err, "days", days)
-			respondError(w, http.StatusInternalServerError, ErrMsgGetVelocityMetricsFailed)
-			return
-		}
-		log.Info("Get engagement velocity: success", "days", days)
-		respondJSON(w, http.StatusOK, velocity)
+		h.handleGetSimpleMetric(w, r, "days", 7, func(ctx context.Context, i int) (interface{}, error) {
+			return h.service.GetEngagementVelocity(ctx, i)
+		}, "Get engagement velocity", ErrMsgGetVelocityMetricsFailed)
 	}
 }
 
@@ -322,6 +268,43 @@ func (h *ProgressionHandlers) handleAdminNodeAction(action func(context.Context,
 		log.Info(logMsg, "nodeKey", req.NodeKey, "level", req.Level)
 		respondJSON(w, http.StatusOK, SuccessResponse{Message: successMsg})
 	}
+}
+
+func (h *ProgressionHandlers) handleGetEngagementCommon(w http.ResponseWriter, r *http.Request, paramName string, serviceFn func(context.Context, string, string) (*domain.ContributionBreakdown, error), logMsg string) {
+	log := logger.FromContext(r.Context())
+
+	platform, ok := GetQueryParam(r, w, "platform")
+	if !ok {
+		return
+	}
+	val, ok := GetQueryParam(r, w, paramName)
+	if !ok {
+		return
+	}
+
+	breakdown, err := serviceFn(r.Context(), platform, val)
+	if err != nil {
+		log.Error(logMsg+": service error", "error", err, "platform", platform, paramName, val)
+		respondError(w, http.StatusInternalServerError, ErrMsgGetEngagementDataFailed)
+		return
+	}
+
+	log.Info(logMsg+": success", "platform", platform, paramName, val)
+	respondJSON(w, http.StatusOK, breakdown)
+}
+
+func (h *ProgressionHandlers) handleGetSimpleMetric(w http.ResponseWriter, r *http.Request, paramName string, defaultVal int, serviceFn func(context.Context, int) (interface{}, error), logMsg, errMsg string) {
+	log := logger.FromContext(r.Context())
+
+	val := getQueryInt(r, paramName, defaultVal)
+	result, err := serviceFn(r.Context(), val)
+	if err != nil {
+		log.Error(logMsg+": service error", "error", err, paramName, val)
+		respondError(w, http.StatusInternalServerError, errMsg)
+		return
+	}
+	log.Info(logMsg+": success", paramName, val)
+	respondJSON(w, http.StatusOK, result)
 }
 
 func (h *ProgressionHandlers) handleAdminAction(w http.ResponseWriter, r *http.Request, action func(context.Context) (interface{}, error), errLogMsg, infoLogMsg string, responseFactory func(interface{}) interface{}) {

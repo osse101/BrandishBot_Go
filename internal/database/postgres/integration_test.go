@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -350,7 +351,7 @@ func TestUserRepository_Integration(t *testing.T) {
 
 	t.Run("GetUserByPlatformUsername - Not Found", func(t *testing.T) {
 		user, err := repo.GetUserByPlatformUsername(ctx, domain.PlatformTwitch, "nonexistent_user_xyz")
-		if err != nil && err != domain.ErrUserNotFound {
+		if err != nil && !errors.Is(err, domain.ErrUserNotFound) {
 			t.Fatalf("GetUserByPlatformUsername failed: %v", err)
 		}
 		if user != nil {

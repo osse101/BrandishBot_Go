@@ -222,7 +222,7 @@ func (s *service) GetStatus(ctx context.Context) (*domain.ExpeditionStatus, erro
 func (s *service) ExecuteExpedition(ctx context.Context, expeditionID uuid.UUID) error {
 	log := logger.FromContext(ctx)
 
-	// CAS: transition state from Recruiting to InProgress
+	// 1. CAS: transition state from Recruiting to InProgress
 	rowsAffected, err := s.repo.UpdateExpeditionStateIfMatches(ctx, expeditionID, domain.ExpeditionStateRecruiting, domain.ExpeditionStateInProgress)
 	if err != nil {
 		return fmt.Errorf("failed to update expedition state: %w", err)
@@ -232,7 +232,7 @@ func (s *service) ExecuteExpedition(ctx context.Context, expeditionID uuid.UUID)
 		return nil
 	}
 
-	// Load expedition and participants
+	// 2. Load expedition and participants
 	details, err := s.repo.GetExpedition(ctx, expeditionID)
 	if err != nil {
 		return fmt.Errorf("failed to get expedition: %w", err)
@@ -241,15 +241,31 @@ func (s *service) ExecuteExpedition(ctx context.Context, expeditionID uuid.UUID)
 		return fmt.Errorf("expedition not found: %s", expeditionID)
 	}
 
-	log.Info("Executing expedition",
-		"expeditionID", expeditionID,
-		"participants", len(details.Participants))
+	log.Info("Executing expedition", "expeditionID", expeditionID, "participants", len(details.Participants))
 
-	// Fetch each participant's job levels
-	partyMembers := make([]*domain.PartyMemberState, 0, len(details.Participants))
-	for _, p := range details.Participants {
+	// 3. Prepare party member state
+	partyMembers := s.preparePartyMembers(ctx, details.Participants)
+
+	// 4. Run the expedition engine
+	seed := time.Now().UnixNano()
+	engine := NewEngine(s.config, partyMembers, seed)
+	result := engine.Run()
+
+	log.Info("Expedition completed", "expeditionID", expeditionID, "turns", result.TotalTurns, "won", result.Won)
+
+	// 5. Process results
+	s.processJournalEntries(ctx, expeditionID, result.Journal)
+	s.distributeExpeditionRewards(ctx, expeditionID, result.PartyRewards, partyMembers)
+
+	// 6. Finalize execution
+	return s.finalizeExpedition(ctx, expeditionID, details.Participants, result)
+}
+
+func (s *service) preparePartyMembers(ctx context.Context, participants []domain.ExpeditionParticipant) []*domain.PartyMemberState {
+	log := logger.FromContext(ctx)
+	partyMembers := make([]*domain.PartyMemberState, 0, len(participants))
+	for _, p := range participants {
 		jobLevels := make(map[string]int)
-
 		if s.jobSvc != nil {
 			jobs, err := s.jobSvc.GetUserJobs(ctx, p.UserID.String())
 			if err != nil {
@@ -269,20 +285,12 @@ func (s *service) ExecuteExpedition(ctx context.Context, expeditionID uuid.UUID)
 			PrizeItems:  make([]string, 0),
 		})
 	}
+	return partyMembers
+}
 
-	// Run the expedition engine
-	seed := time.Now().UnixNano()
-	engine := NewEngine(s.config, partyMembers, seed)
-	result := engine.Run()
-
-	log.Info("Expedition completed",
-		"expeditionID", expeditionID,
-		"turns", result.TotalTurns,
-		"won", result.Won,
-		"allKO", result.AllKnockedOut)
-
-	// Save journal entries and publish SSE events for each turn
-	for _, turn := range result.Journal {
+func (s *service) processJournalEntries(ctx context.Context, expeditionID uuid.UUID, journal []domain.ExpeditionTurn) {
+	log := logger.FromContext(ctx)
+	for _, turn := range journal {
 		entry := &domain.ExpeditionJournalEntry{
 			ExpeditionID:  expeditionID,
 			TurnNumber:    turn.TurnNumber,
@@ -300,7 +308,6 @@ func (s *service) ExecuteExpedition(ctx context.Context, expeditionID uuid.UUID)
 			log.Error("Failed to save journal entry", "turn", turn.TurnNumber, "error", err)
 		}
 
-		// Publish per-turn SSE event
 		_ = s.eventBus.Publish(ctx, event.Event{
 			Version: "1.0",
 			Type:    event.Type(domain.EventExpeditionTurn),
@@ -313,41 +320,38 @@ func (s *service) ExecuteExpedition(ctx context.Context, expeditionID uuid.UUID)
 			},
 		})
 	}
+}
 
-	// Distribute rewards
-	for _, reward := range result.PartyRewards {
-		// Add items to user inventory (using twitch as default platform)
-		for _, itemKey := range reward.Items {
-			if s.userSvc != nil {
+func (s *service) distributeExpeditionRewards(ctx context.Context, expeditionID uuid.UUID, rewards []domain.PartyMemberReward, partyMembers []*domain.PartyMemberState) {
+	log := logger.FromContext(ctx)
+	for _, reward := range rewards {
+		// Add items
+		if s.userSvc != nil {
+			for _, itemKey := range reward.Items {
 				if err := s.userSvc.AddItemByUsername(ctx, "twitch", reward.Username, itemKey, 1); err != nil {
 					log.Error("Failed to add item to inventory", "username", reward.Username, "item", itemKey, "error", err)
 				}
 			}
 		}
 
-		// Award job XP to each job
+		// Award XP
 		if s.jobSvc != nil {
-			for jobKey := range SkillJobMap {
-				_, err := s.jobSvc.AwardXP(ctx, reward.UserID.String(), SkillJobMap[jobKey], reward.XP, "expedition", map[string]interface{}{
+			for _, jobKey := range SkillJobMap {
+				_, err := s.jobSvc.AwardXP(ctx, reward.UserID.String(), jobKey, reward.XP, "expedition", map[string]interface{}{
 					"expedition_id": expeditionID.String(),
 				})
 				if err != nil {
-					log.Error("Failed to award XP", "userID", reward.UserID, "job", SkillJobMap[jobKey], "error", err)
+					log.Error("Failed to award XP", "userID", reward.UserID, "job", jobKey, "error", err)
 				}
 			}
 		}
 
-		// Save participant rewards
-		expeditionRewards := &domain.ExpeditionRewards{
-			Items: reward.Items,
-			XP:    reward.XP,
-			Money: reward.Money,
-		}
+		// Save rewards and results
+		expeditionRewards := &domain.ExpeditionRewards{Items: reward.Items, XP: reward.XP, Money: reward.Money}
 		if err := s.repo.SaveParticipantRewards(ctx, expeditionID, reward.UserID, expeditionRewards); err != nil {
 			log.Error("Failed to save participant rewards", "userID", reward.UserID, "error", err)
 		}
 
-		// Find the member's job levels to save
 		var jobLevels map[string]int
 		for _, m := range partyMembers {
 			if m.UserID == reward.UserID {
@@ -356,25 +360,21 @@ func (s *service) ExecuteExpedition(ctx context.Context, expeditionID uuid.UUID)
 			}
 		}
 
-		// Update participant results in DB
 		if err := s.repo.UpdateParticipantResults(ctx, expeditionID, reward.UserID, reward.IsLeader, jobLevels, reward.Money, reward.XP, reward.Items); err != nil {
 			log.Error("Failed to update participant results", "userID", reward.UserID, "error", err)
 		}
 	}
+}
 
-	// Complete the expedition
+func (s *service) finalizeExpedition(ctx context.Context, expeditionID uuid.UUID, participants []domain.ExpeditionParticipant, result *domain.ExpeditionResult) error {
 	if err := s.repo.CompleteExpedition(ctx, expeditionID); err != nil {
 		return fmt.Errorf("failed to complete expedition: %w", err)
 	}
 
-	// Set cooldown using a global key
 	if s.cooldownSvc != nil {
-		_ = s.cooldownSvc.EnforceCooldown(ctx, "global", "expedition", func() error {
-			return nil // Just set the cooldown
-		})
+		_ = s.cooldownSvc.EnforceCooldown(ctx, "global", "expedition", func() error { return nil })
 	}
 
-	// Publish completion event
 	_ = s.eventBus.Publish(ctx, event.Event{
 		Version: "1.0",
 		Type:    event.Type(domain.EventExpeditionCompleted),
@@ -387,8 +387,7 @@ func (s *service) ExecuteExpedition(ctx context.Context, expeditionID uuid.UUID)
 		},
 	})
 
-	// Record engagement for all participants
-	for _, p := range details.Participants {
+	for _, p := range participants {
 		if s.progressionSvc != nil {
 			_ = s.progressionSvc.RecordEngagement(ctx, p.Username, "expedition_completed", 3)
 		}

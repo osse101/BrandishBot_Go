@@ -54,7 +54,7 @@ func main() {
 	}
 
 	// Write file
-	if err := os.WriteFile(*outputPath, formattedCode, 0644); err != nil {
+	if err := os.WriteFile(*outputPath, formattedCode, 0600); err != nil {
 		log.Fatalf("Failed to write output file: %v", err)
 	}
 

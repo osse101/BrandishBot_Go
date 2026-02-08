@@ -214,112 +214,114 @@ func (s *service) UpgradeItem(ctx context.Context, platform, platformID, usernam
 	log := logger.FromContext(ctx)
 	log.Info("UpgradeItem called", "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity)
 
-	// Validate inputs
-	if err := s.validateQuantity(quantity); err != nil {
+	// 1. Validate and resolve inputs
+	user, item, recipe, resolvedName, err := s.validateUpgradeInput(ctx, platform, platformID, itemName, quantity)
+	if err != nil {
 		return nil, err
+	}
+
+	// 2. Execute transaction
+	result, actualQuantity, err := s.executeUpgradeTx(ctx, user.ID, item.ID, recipe, quantity, resolvedName)
+	if err != nil {
+		return nil, err
+	}
+
+	// 3. Post-transaction tasks (XP, Quests)
+	s.handlePostUpgradeTasks(user.ID, actualQuantity, itemName, recipe)
+
+	log.Info("Items upgraded", "username", username, "item", itemName, "quantity", result.Quantity, "masterwork", result.IsMasterwork)
+	return result, nil
+}
+
+func (s *service) validateUpgradeInput(ctx context.Context, platform, platformID, itemName string, quantity int) (*domain.User, *domain.Item, *domain.Recipe, string, error) {
+	if err := s.validateQuantity(quantity); err != nil {
+		return nil, nil, nil, "", err
 	}
 	if err := s.validatePlatformInput(platform, platformID); err != nil {
-		return nil, err
+		return nil, nil, nil, "", err
 	}
 	if err := s.validateItemName(itemName); err != nil {
-		return nil, err
+		return nil, nil, nil, "", err
 	}
 
-	// Resolve public name to internal name
 	resolvedName, err := s.resolveItemName(ctx, itemName)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, "", err
 	}
 
-	// Validate user and item
 	user, err := s.validateUser(ctx, platform, platformID)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, "", err
 	}
 
 	item, err := s.validateItem(ctx, resolvedName)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, "", err
 	}
 
-	// Get and validate recipe
 	recipe, err := s.getAndValidateRecipe(ctx, item.ID, user.ID, resolvedName)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, "", err
 	}
 
-	// Begin transaction
+	return user, item, recipe, resolvedName, nil
+}
+
+func (s *service) executeUpgradeTx(ctx context.Context, userID string, itemID int, recipe *domain.Recipe, requestedQuantity int, resolvedName string) (*Result, int, error) {
 	tx, err := s.repo.BeginTx(ctx)
 	if err != nil {
-		log.Error("Failed to begin transaction", "error", err)
-		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+		return nil, 0, fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer repository.SafeRollback(ctx, tx)
 
-	// Get inventory and calculate actual quantity
-	inventory, err := tx.GetInventory(ctx, user.ID)
+	inventory, err := tx.GetInventory(ctx, userID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get inventory: %w", err)
+		return nil, 0, fmt.Errorf("failed to get inventory: %w", err)
 	}
 
-	maxPossible := calculateMaxPossibleCrafts(inventory, recipe, quantity)
-	if maxPossible == 0 {
-		return nil, fmt.Errorf("insufficient materials to craft %s | %w", itemName, domain.ErrInsufficientQuantity)
+	actualQuantity := calculateMaxPossibleCrafts(inventory, recipe, requestedQuantity)
+	if actualQuantity == 0 {
+		return nil, 0, fmt.Errorf("insufficient materials | %w", domain.ErrInsufficientQuantity)
 	}
 
-	actualQuantity := maxPossible
-	if actualQuantity > quantity {
-		actualQuantity = quantity
-	}
-
-	// Consume materials and track what was consumed for quality averaging
 	consumedMaterials, err := consumeRecipeMaterials(inventory, recipe, actualQuantity, s.rnd)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
-	// Calculate average quality from consumed materials
 	outputQuality := utils.CalculateAverageQuality(consumedMaterials)
+	result := s.calculateUpgradeOutput(ctx, userID, resolvedName, actualQuantity)
 
-	// Calculate output
-	result := s.calculateUpgradeOutput(ctx, user.ID, resolvedName, actualQuantity)
+	addItemToInventory(inventory, itemID, result.Quantity, outputQuality)
 
-	// Add crafted item with averaged quality level
-	addItemToInventory(inventory, item.ID, result.Quantity, outputQuality)
-
-	// Update inventory and commit
-	if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
-		return nil, fmt.Errorf("failed to update inventory: %w", err)
+	if err := tx.UpdateInventory(ctx, userID, *inventory); err != nil {
+		return nil, 0, fmt.Errorf("failed to update inventory: %w", err)
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+		return nil, 0, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	// Award Blacksmith XP (don't fail upgrade if XP award fails)
-	// Run async with detached context to prevent cancellation affecting XP award
-	s.wg.Add(1)
-	go s.awardBlacksmithXP(context.Background(), user.ID, actualQuantity, "upgrade", itemName)
+	return result, actualQuantity, nil
+}
 
-	// Track quest progress (async, fire-and-forget)
+func (s *service) handlePostUpgradeTasks(userID string, actualQuantity int, itemName string, recipe *domain.Recipe) {
+	s.wg.Add(1)
+	go s.awardBlacksmithXP(context.Background(), userID, actualQuantity, "upgrade", itemName)
+
 	if s.questService != nil {
 		s.wg.Add(1)
 		go func() {
 			defer s.wg.Done()
-			// Extract recipe key from the recipe
-			recipeKey := resolvedName // Use item name as fallback
+			recipeKey := itemName
 			if recipe != nil && recipe.RecipeKey != "" {
 				recipeKey = recipe.RecipeKey
 			}
-			if err := s.questService.OnRecipeCrafted(context.Background(), user.ID, recipeKey, actualQuantity); err != nil {
-				slog.Warn("Failed to track quest progress for crafting", "error", err, "item", itemName)
+			if err := s.questService.OnRecipeCrafted(context.Background(), userID, recipeKey, actualQuantity); err != nil {
+				slog.Warn("Failed to track quest progress", "error", err, "user_id", userID)
 			}
 		}()
 	}
-
-	log.Info("Items upgraded", "username", username, "item", itemName, "quantity", result.Quantity, "masterwork", result.IsMasterwork)
-
-	return result, nil
 }
 
 func (s *service) getAndValidateRecipe(ctx context.Context, itemID int, userID string, itemName string) (*domain.Recipe, error) {

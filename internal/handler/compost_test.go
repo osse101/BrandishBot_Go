@@ -221,19 +221,24 @@ func TestHandleHarvest(t *testing.T) {
 				PlatformID: "user123",
 			},
 			setupMocks: func(m *mocks.MockCompostService, pm *mocks.MockProgressionService) {
+				pm.On("IsFeatureUnlocked", mock.Anything, progression.FeatureCompost).
+					Return(true, nil)
 				m.On("Harvest", mock.Anything, "twitch", "user123").
 					Return(50, nil)
 
 				pm.On("RecordEngagement", mock.Anything, "user123", "compost_harvest", 1).
 					Return(nil)
 			},
-			expectedStatus: http.StatusOK,
+			expectedStatus: http.StatusCreated,
 			expectedBody:   `"gems_awarded":50`,
 		},
 		{
-			name:           "Invalid Request Body",
-			requestBody:    "invalid-json",
-			setupMocks:     func(m *mocks.MockCompostService, pm *mocks.MockProgressionService) {},
+			name:        "Invalid Request Body",
+			requestBody: "invalid-json",
+			setupMocks: func(m *mocks.MockCompostService, pm *mocks.MockProgressionService) {
+				pm.On("IsFeatureUnlocked", mock.Anything, progression.FeatureCompost).
+					Return(true, nil)
+			},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   "Invalid request body",
 		},
@@ -244,6 +249,8 @@ func TestHandleHarvest(t *testing.T) {
 				PlatformID: "user123",
 			},
 			setupMocks: func(m *mocks.MockCompostService, pm *mocks.MockProgressionService) {
+				pm.On("IsFeatureUnlocked", mock.Anything, progression.FeatureCompost).
+					Return(true, nil)
 				m.On("Harvest", mock.Anything, "twitch", "user123").
 					Return(0, errors.New("service error"))
 			},

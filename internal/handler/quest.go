@@ -31,12 +31,11 @@ func (h *QuestHandler) GetActiveQuests(w http.ResponseWriter, r *http.Request) {
 
 	quests, err := h.questService.GetActiveQuests(ctx)
 	if err != nil {
-		http.Error(w, "Failed to retrieve quests", http.StatusInternalServerError)
+		respondError(w, http.StatusInternalServerError, "Failed to retrieve quests")
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(quests)
+	respondJSON(w, http.StatusOK, quests)
 }
 
 // GetUserQuestProgress returns user's quest progress
@@ -50,19 +49,18 @@ func (h *QuestHandler) GetUserQuestProgress(w http.ResponseWriter, r *http.Reque
 
 	userID := r.URL.Query().Get("user_id")
 	if userID == "" {
-		http.Error(w, "user_id is required", http.StatusBadRequest)
+		respondError(w, http.StatusBadRequest, "user_id is required")
 		return
 	}
 
 	progress, err := h.questService.GetUserQuestProgress(ctx, userID)
 	if err != nil {
 		log.Error("Failed to get quest progress", "error", err)
-		http.Error(w, "Failed to retrieve quest progress", http.StatusInternalServerError)
+		respondError(w, http.StatusInternalServerError, "Failed to retrieve quest progress")
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(progress)
+	respondJSON(w, http.StatusOK, progress)
 }
 
 // ClaimQuestReward claims a completed quest's reward
@@ -80,14 +78,14 @@ func (h *QuestHandler) ClaimQuestReward(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		respondError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
 	money, xp, err := h.questService.ClaimQuestReward(ctx, req.UserID, req.QuestID)
 	if err != nil {
 		log.Error("Failed to claim quest reward", "error", err)
-		http.Error(w, "Failed to claim reward", http.StatusInternalServerError)
+		respondError(w, http.StatusInternalServerError, "Failed to claim reward")
 		return
 	}
 
@@ -97,6 +95,5 @@ func (h *QuestHandler) ClaimQuestReward(w http.ResponseWriter, r *http.Request) 
 		"message":      "Quest reward claimed successfully",
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	respondJSON(w, http.StatusOK, resp)
 }

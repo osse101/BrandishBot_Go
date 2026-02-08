@@ -77,7 +77,7 @@ func (s *service) ProcessOutcome(ctx context.Context, req *domain.PredictionOutc
 	}
 
 	// 3. Record engagement and add to progression
-	if err := s.recordTotalEngagement(ctx, req.TotalPointsSpent, finalContribution); err != nil {
+	if err := s.recordTotalEngagement(ctx, req.TotalPointsSpent); err != nil {
 		log.Error("Failed to record total engagement", "error", err)
 		return nil, fmt.Errorf("failed to record engagement: %w", err)
 	}
@@ -89,7 +89,7 @@ func (s *service) ProcessOutcome(ctx context.Context, req *domain.PredictionOutc
 	s.awardParticipantsXP(ctx, req.Platform, req.Participants)
 
 	// 6. Record stats for all participants
-	s.recordParticipantStats(ctx, req.Platform, req.Participants, req.TotalPointsSpent)
+	s.recordParticipantStats(ctx, req.Platform, req.Participants)
 
 	// 7. Publish event
 	s.publishPredictionEvent(ctx, req, finalContribution)
@@ -141,7 +141,7 @@ func (s *service) applyContributionModifier(ctx context.Context, baseContributio
 }
 
 // recordTotalEngagement records the total channel points and progression contribution
-func (s *service) recordTotalEngagement(ctx context.Context, totalPoints, contribution int) error {
+func (s *service) recordTotalEngagement(ctx context.Context, totalPoints int) error {
 	// Record the engagement metric using a system identifier for prediction totals
 	if err := s.progressionService.RecordEngagement(ctx, "prediction_system", TotalPointsMetricType, totalPoints); err != nil {
 		return fmt.Errorf("failed to record engagement: %w", err)
@@ -251,7 +251,7 @@ func (s *service) awardParticipantsXP(_ context.Context, platform string, partic
 }
 
 // recordParticipantStats records prediction participation stats for all participants
-func (s *service) recordParticipantStats(_ context.Context, platform string, participants []domain.PredictionParticipant, totalPoints int) {
+func (s *service) recordParticipantStats(_ context.Context, platform string, participants []domain.PredictionParticipant) {
 	for _, participant := range participants {
 		s.wg.Add(1)
 		go func(p domain.PredictionParticipant) {

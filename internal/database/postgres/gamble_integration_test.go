@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -22,12 +21,12 @@ import (
 
 // setupGambleIntegrationTest sets up the dependencies for gamble integration tests
 // It reuses setupIntegrationTest for the DB container but builds its own services
-func setupGambleIntegrationTest(t *testing.T) (*pgxpool.Pool, *UserRepository, gamble.Service, func()) {
+func setupGambleIntegrationTest(t *testing.T) (*UserRepository, gamble.Service) {
 	// 1. Setup DB using existing helper (returns pool, repo, and a user service we ignore)
 	pool, repo, _ := setupIntegrationTest(t)
 	if pool == nil {
 		// setupIntegrationTest skips if docker fails
-		return nil, nil, nil, nil
+		return nil, nil
 	}
 
 	// 2. Setup Lootbox Service with deterministic loot table
@@ -72,11 +71,7 @@ func setupGambleIntegrationTest(t *testing.T) (*pgxpool.Pool, *UserRepository, g
 		nil,
 	)
 
-	cleanup := func() {
-		// Pool is cleaned up by setupIntegrationTest t.Cleanup
-	}
-
-	return pool, repo, gambleSvc, cleanup
+	return repo, gambleSvc
 }
 
 type MockProgressionService struct{}
@@ -93,7 +88,7 @@ func (m *MockProgressionService) IsNodeUnlocked(ctx context.Context, nodeKey str
 }
 
 func TestGambleLifecycle_Integration(t *testing.T) {
-	_, repo, svc, _ := setupGambleIntegrationTest(t)
+	repo, svc := setupGambleIntegrationTest(t)
 	if svc == nil {
 		return // Skipped
 	}
@@ -214,7 +209,7 @@ func getQty(inv *domain.Inventory, itemID int) int {
 }
 
 func TestGamble_Concurrency_Join(t *testing.T) {
-	_, repo, svc, _ := setupGambleIntegrationTest(t)
+	repo, svc := setupGambleIntegrationTest(t)
 	if svc == nil {
 		return
 	}

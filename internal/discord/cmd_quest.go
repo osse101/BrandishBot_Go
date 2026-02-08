@@ -214,7 +214,10 @@ func buildProgressBar(current, required, length int) string {
 
 // editInteractionResponse sends a deferred response with an embed
 func editInteractionResponse(s *discordgo.Session, i *discordgo.InteractionCreate, embed *discordgo.MessageEmbed) {
-	s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+	_, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 		Embeds: &[]*discordgo.MessageEmbed{embed},
 	})
+	if err != nil {
+		slog.Error("Failed to edit interaction response", "error", err)
+	}
 }

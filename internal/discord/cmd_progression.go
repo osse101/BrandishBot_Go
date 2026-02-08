@@ -41,7 +41,7 @@ func VoteCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		}, ResponseConfig{
 			Title: "✅ Vote Recorded",
 			Color: 0x3498db, // Blue
-		}, true)
+		})
 	}
 
 	return cmd, handler
@@ -81,7 +81,7 @@ func AdminUnlockCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		}, ResponseConfig{
 			Title: "🔓 Admin Unlock",
 			Color: 0xe67e22, // Orange
-		}, true)
+		})
 	}
 
 	return cmd, handler
@@ -100,7 +100,7 @@ func AdminUnlockAllCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		}, ResponseConfig{
 			Title: "🔓 Admin Unlock All",
 			Color: 0xe74c3c, // Red (warning color for debug command)
-		}, true)
+		})
 	}
 
 	return cmd, handler

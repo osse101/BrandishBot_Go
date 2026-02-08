@@ -57,7 +57,11 @@ func (r *ExpeditionRepository) CreateExpedition(ctx context.Context, expedition 
 }
 
 func (r *ExpeditionRepository) GetExpedition(ctx context.Context, id uuid.UUID) (*domain.ExpeditionDetails, error) {
-	exp, err := r.q.GetExpedition(ctx, id)
+	return getExpeditionHelper(ctx, r.q, r, id)
+}
+
+func getExpeditionHelper(ctx context.Context, q *generated.Queries, pProvider participantProvider, id uuid.UUID) (*domain.ExpeditionDetails, error) {
+	exp, err := q.GetExpedition(ctx, id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
@@ -66,7 +70,7 @@ func (r *ExpeditionRepository) GetExpedition(ctx context.Context, id uuid.UUID) 
 	}
 
 	expedition := mapExpedition(exp)
-	participants, err := r.GetParticipants(ctx, id)
+	participants, err := pProvider.GetParticipants(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -75,6 +79,10 @@ func (r *ExpeditionRepository) GetExpedition(ctx context.Context, id uuid.UUID) 
 		Expedition:   *expedition,
 		Participants: participants,
 	}, nil
+}
+
+type participantProvider interface {
+	GetParticipants(ctx context.Context, expeditionID uuid.UUID) ([]domain.ExpeditionParticipant, error)
 }
 
 func (r *ExpeditionRepository) AddParticipant(ctx context.Context, participant *domain.ExpeditionParticipant) error {
@@ -193,6 +201,10 @@ func (r *ExpeditionRepository) SaveParticipantRewards(ctx context.Context, exped
 }
 
 func (r *ExpeditionRepository) UpdateParticipantResults(ctx context.Context, expeditionID uuid.UUID, userID uuid.UUID, isLeader bool, jobLevels map[string]int, money int, xp int, items []string) error {
+	return updateParticipantResultsHelper(ctx, r.q, expeditionID, userID, isLeader, jobLevels, money, xp, items)
+}
+
+func updateParticipantResultsHelper(ctx context.Context, q *generated.Queries, expeditionID uuid.UUID, userID uuid.UUID, isLeader bool, jobLevels map[string]int, money int, xp int, items []string) error {
 	jobLevelsBytes, err := json.Marshal(jobLevels)
 	if err != nil {
 		return fmt.Errorf("failed to marshal job levels: %w", err)
@@ -212,7 +224,7 @@ func (r *ExpeditionRepository) UpdateParticipantResults(ctx context.Context, exp
 		FinalXp:      pgtype.Int4{Int32: int32(xp), Valid: true},
 		FinalItems:   itemsBytes,
 	}
-	return r.q.UpdateExpeditionParticipantResults(ctx, params)
+	return q.UpdateExpeditionParticipantResults(ctx, params)
 }
 
 func (r *ExpeditionRepository) CompleteExpedition(ctx context.Context, expeditionID uuid.UUID) error {
@@ -231,6 +243,10 @@ func (r *ExpeditionRepository) GetLastCompletedExpedition(ctx context.Context) (
 }
 
 func (r *ExpeditionRepository) SaveJournalEntry(ctx context.Context, entry *domain.ExpeditionJournalEntry) error {
+	return saveJournalEntryHelper(ctx, r.q, entry)
+}
+
+func saveJournalEntryHelper(ctx context.Context, q *generated.Queries, entry *domain.ExpeditionJournalEntry) error {
 	params := generated.SaveExpeditionJournalEntryParams{
 		ExpeditionID:  entry.ExpeditionID,
 		TurnNumber:    int32(entry.TurnNumber),
@@ -243,7 +259,7 @@ func (r *ExpeditionRepository) SaveJournalEntry(ctx context.Context, entry *doma
 		Fatigue:       int32(entry.Fatigue),
 		Purse:         int32(entry.Purse),
 	}
-	return r.q.SaveExpeditionJournalEntry(ctx, params)
+	return q.SaveExpeditionJournalEntry(ctx, params)
 }
 
 func (r *ExpeditionRepository) GetJournalEntries(ctx context.Context, expeditionID uuid.UUID) ([]domain.ExpeditionJournalEntry, error) {
@@ -302,24 +318,7 @@ func (t *expeditionTx) Rollback(ctx context.Context) error {
 }
 
 func (t *expeditionTx) GetExpedition(ctx context.Context, id uuid.UUID) (*domain.ExpeditionDetails, error) {
-	exp, err := t.q.GetExpedition(ctx, id)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("failed to get expedition in tx: %w", err)
-	}
-
-	expedition := mapExpedition(exp)
-	participants, err := t.GetParticipants(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-
-	return &domain.ExpeditionDetails{
-		Expedition:   *expedition,
-		Participants: participants,
-	}, nil
+	return getExpeditionHelper(ctx, t.q, t, id)
 }
 
 func (t *expeditionTx) UpdateExpeditionState(ctx context.Context, id uuid.UUID, state domain.ExpeditionState) error {
@@ -387,42 +386,11 @@ func (t *expeditionTx) SaveParticipantRewards(ctx context.Context, expeditionID 
 }
 
 func (t *expeditionTx) UpdateParticipantResults(ctx context.Context, expeditionID uuid.UUID, userID uuid.UUID, isLeader bool, jobLevels map[string]int, money int, xp int, items []string) error {
-	jobLevelsBytes, err := json.Marshal(jobLevels)
-	if err != nil {
-		return fmt.Errorf("failed to marshal job levels: %w", err)
-	}
-
-	itemsBytes, err := json.Marshal(items)
-	if err != nil {
-		return fmt.Errorf("failed to marshal items: %w", err)
-	}
-
-	params := generated.UpdateExpeditionParticipantResultsParams{
-		ExpeditionID: expeditionID,
-		UserID:       userID,
-		IsLeader:     pgtype.Bool{Bool: isLeader, Valid: true},
-		JobLevels:    jobLevelsBytes,
-		FinalMoney:   pgtype.Int4{Int32: int32(money), Valid: true},
-		FinalXp:      pgtype.Int4{Int32: int32(xp), Valid: true},
-		FinalItems:   itemsBytes,
-	}
-	return t.q.UpdateExpeditionParticipantResults(ctx, params)
+	return updateParticipantResultsHelper(ctx, t.q, expeditionID, userID, isLeader, jobLevels, money, xp, items)
 }
 
 func (t *expeditionTx) SaveJournalEntry(ctx context.Context, entry *domain.ExpeditionJournalEntry) error {
-	params := generated.SaveExpeditionJournalEntryParams{
-		ExpeditionID:  entry.ExpeditionID,
-		TurnNumber:    int32(entry.TurnNumber),
-		EncounterType: entry.EncounterType,
-		Outcome:       entry.Outcome,
-		SkillChecked:  pgtype.Text{String: entry.SkillChecked, Valid: entry.SkillChecked != ""},
-		SkillPassed:   pgtype.Bool{Bool: entry.SkillPassed, Valid: true},
-		PrimaryMember: pgtype.Text{String: entry.PrimaryMember, Valid: entry.PrimaryMember != ""},
-		Narrative:     entry.Narrative,
-		Fatigue:       int32(entry.Fatigue),
-		Purse:         int32(entry.Purse),
-	}
-	return t.q.SaveExpeditionJournalEntry(ctx, params)
+	return saveJournalEntryHelper(ctx, t.q, entry)
 }
 
 func (t *expeditionTx) GetInventory(ctx context.Context, userID string) (*domain.Inventory, error) {
