@@ -75,8 +75,8 @@ func (c *CheckCoverageCommand) Run(args []string) error {
 	if coverage >= threshold {
 		PrintSuccess("Coverage meets threshold.")
 		return nil
-	} else {
-		PrintError("Coverage is below threshold.")
-		return fmt.Errorf("coverage below threshold")
 	}
+
+	PrintError("Coverage is below threshold.")
+	return fmt.Errorf("coverage below threshold")
 }

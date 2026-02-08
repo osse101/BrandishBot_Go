@@ -5,6 +5,8 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -21,38 +23,45 @@ func (c *PreCommitCommand) Description() string {
 func (c *PreCommitCommand) Run(args []string) error {
 	PrintHeader("Running pre-commit checks...")
 
-	// 1. Get staged files
+	// 1. Migration Protections
+	// Run this before checking stagedFiles count because deletions/renames
+	// might not be in the ACM filter but still need protection.
+	if err := checkMigrationProtections(); err != nil {
+		return err
+	}
+
+	// 2. Get staged files (Added, Copied, Modified)
 	stagedFiles, err := getStagedFiles()
 	if err != nil {
 		return fmt.Errorf("failed to get staged files: %w", err)
 	}
 
 	if len(stagedFiles) == 0 {
-		PrintInfo("No staged files found.")
+		PrintInfo("No other staged changes found.")
 		return nil
 	}
 
-	// 2. Secret Scanning
+	// 3. Secret Scanning
 	if err := checkSecrets(stagedFiles); err != nil {
 		return err
 	}
 
-	// 3. Go Format
+	// 4. Go Format
 	if err := runGoFmt(stagedFiles); err != nil {
 		return err
 	}
 
-	// 4. Generate Check
+	// 5. Generate Check
 	if err := checkGenerate(stagedFiles); err != nil {
 		return err
 	}
 
-	// 5. Linting
+	// 6. Linting
 	if err := runLinter(); err != nil {
 		return err
 	}
 
-	// 6. Unit Tests
+	// 7. Unit Tests
 	if err := runUnitTests(); err != nil {
 		return err
 	}
@@ -172,5 +181,167 @@ func runUnitTests() error {
 	if err := runCommandVerbose("make", "unit"); err != nil {
 		return fmt.Errorf("unit tests failed")
 	}
+	return nil
+}
+
+func checkMigrationProtections() error {
+	PrintInfo("Checking migration protections...")
+
+	_, newFiles, err := detectMigrationSquashAndChanges()
+	if err != nil {
+		return err
+	}
+
+	if len(newFiles) == 0 {
+		return nil
+	}
+
+	return verifyMigrationSequence(newFiles)
+}
+
+func detectMigrationSquashAndChanges() (bool, []string, error) {
+	out, err := getCommandOutput("git", "diff", "--cached", "--name-status")
+	if err != nil {
+		return false, nil, fmt.Errorf("failed to get git status: %w", err)
+	}
+
+	lines := strings.Split(out, "\n")
+	isSquash := os.Getenv("ALLOW_MIGRATION_SQUASH") == "1" || hasArchiveChanges(lines)
+
+	var newFiles []string
+	for _, line := range lines {
+		if line == "" {
+			continue
+		}
+		path, status, skip := parseGitStatusLine(line)
+		if skip {
+			continue
+		}
+
+		if strings.HasPrefix(status, "A") {
+			newFiles = append(newFiles, path)
+			continue
+		}
+
+		if isSquash && (strings.HasPrefix(status, "D") || strings.HasPrefix(status, "R")) {
+			continue
+		}
+
+		return false, nil, reportMigrationError(status, path, isSquash)
+	}
+
+	return isSquash, newFiles, nil
+}
+
+func hasArchiveChanges(lines []string) bool {
+	for _, line := range lines {
+		if line == "" {
+			continue
+		}
+		parts := strings.Fields(line)
+		// The last column is the path (or destination path for R)
+		if len(parts) >= 2 && strings.HasPrefix(parts[len(parts)-1], "migrations/archive/") {
+			return true
+		}
+	}
+	return false
+}
+
+func parseGitStatusLine(line string) (path string, status string, skip bool) {
+	parts := strings.Fields(line)
+	if len(parts) < 2 {
+		return "", "", true
+	}
+	status = parts[0]
+	path = parts[1]
+
+	if !strings.HasPrefix(path, "migrations/") || strings.HasPrefix(path, "migrations/archive/") || !strings.HasSuffix(path, ".sql") {
+		return "", "", true
+	}
+	return path, status, false
+}
+
+func reportMigrationError(status, path string, isSquash bool) error {
+	action := "edited"
+	if strings.HasPrefix(status, "D") {
+		action = "deleted"
+	} else if strings.HasPrefix(status, "R") {
+		action = "renamed"
+	}
+
+	PrintError("Migration files may only be added, not %s: %s (status: %s)", action, path, status)
+	if !isSquash {
+		PrintInfo("If you are purposefully squashing migrations, move the old files to 'migrations/archive/' or set ALLOW_MIGRATION_SQUASH=1")
+	}
+	return fmt.Errorf("migration file protection: restricted operation")
+}
+
+func verifyMigrationSequence(newMigrationFiles []string) error {
+	// 2. Check sequence for new migrations
+	files, err := os.ReadDir("migrations")
+	if err != nil {
+		return fmt.Errorf("failed to read migrations: %w", err)
+	}
+
+	var allPrefixes []int
+	re := regexp.MustCompile(`^(\d{4})_`)
+
+	for _, f := range files {
+		if f.IsDir() || !strings.HasSuffix(f.Name(), ".sql") {
+			continue
+		}
+		match := re.FindStringSubmatch(f.Name())
+		if len(match) == 2 {
+			num, _ := strconv.Atoi(match[1])
+			allPrefixes = append(allPrefixes, num)
+		}
+	}
+
+	if len(allPrefixes) == 0 {
+		return nil
+	}
+
+	sort.Ints(allPrefixes)
+
+	// Identify which prefixes belong to the newly added files
+	newPrefixes := make(map[int]bool)
+	for _, path := range newMigrationFiles {
+		filename := path[strings.LastIndex(path, "/")+1:]
+		match := re.FindStringSubmatch(filename)
+		if len(match) == 2 {
+			num, _ := strconv.Atoi(match[1])
+			newPrefixes[num] = true
+		} else {
+			PrintError("New migration file name must start with 4 digits: %s", filename)
+			return fmt.Errorf("invalid migration filename")
+		}
+	}
+
+	// Find the max prefix that is NOT one of the new migrations
+	maxExisting := 0
+	for _, p := range allPrefixes {
+		if !newPrefixes[p] {
+			if p > maxExisting {
+				maxExisting = p
+			}
+		}
+	}
+
+	// The new prefixes must be sequential and follow maxExisting
+	sortNewPrefixes := make([]int, 0, len(newPrefixes))
+	for p := range newPrefixes {
+		sortNewPrefixes = append(sortNewPrefixes, p)
+	}
+	sort.Ints(sortNewPrefixes)
+
+	for i, p := range sortNewPrefixes {
+		expected := maxExisting + i + 1
+		if p != expected {
+			PrintError("New migration %04d is out of sequence. Expected %04d based on current max %04d.", p, expected, maxExisting)
+			return fmt.Errorf("migration sequence gap or duplicate")
+		}
+	}
+
+	PrintSuccess("Migration sequence verified (%d new migrations).", len(sortNewPrefixes))
 	return nil
 }

@@ -126,11 +126,11 @@ func (c *TestSecurityCommand) runTestCase(testNum int, description, baseURL, api
 		fmt.Printf(" - Result: %d (OK)\n", statusCode)
 		fmt.Println()
 		return true
-	} else {
-		fmt.Printf(" - Result: %s%d (Expected %d)%s\n", colorRed, statusCode, expectedStatus, colorReset)
-		fmt.Println()
-		return false
 	}
+
+	fmt.Printf(" - Result: %s%d (Expected %d)%s\n", colorRed, statusCode, expectedStatus, colorReset)
+	fmt.Println()
+	return false
 }
 
 func (c *TestSecurityCommand) makeRequest(baseURL, apiKey string, payload interface{}) int {

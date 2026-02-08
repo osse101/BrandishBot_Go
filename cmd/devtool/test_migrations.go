@@ -20,80 +20,121 @@ func (c *TestMigrationsCommand) Description() string {
 func (c *TestMigrationsCommand) Run(args []string) error {
 	PrintHeader("Testing database migrations...")
 
-	// Configuration
+	config := getMigrationTestConfig()
+
+	if err := verifyGooseInstalled(); err != nil {
+		return err
+	}
+
+	defer cleanupTestDatabase(config)
+
+	if err := setupTestDatabase(config); err != nil {
+		return err
+	}
+
+	os.Setenv("GOOSE_DRIVER", "postgres")
+	os.Setenv("GOOSE_DBSTRING", config.dbURL)
+
+	versionUp, err := runMigrationUpTests()
+	if err != nil {
+		return err
+	}
+
+	if err := runMigrationDownTests(); err != nil {
+		return err
+	}
+
+	if err := runMigrationIdempotencyTests(versionUp); err != nil {
+		return err
+	}
+
+	PrintSuccess("All migration tests passed!")
+	return nil
+}
+
+type migrationTestConfig struct {
+	dbName string
+	dbHost string
+	dbPort string
+	dbUser string
+	dbURL  string
+}
+
+func getMigrationTestConfig() migrationTestConfig {
 	dbName := "brandish_test_migrations"
-	dbUser := os.Getenv("DB_USER")
-	if dbUser == "" {
-		dbUser = "postgres"
-	}
-	dbPass := os.Getenv("DB_PASSWORD")
-	if dbPass == "" {
-		dbPass = "postgres"
-	}
-	dbHost := os.Getenv("DB_HOST")
-	if dbHost == "" {
-		dbHost = "localhost"
-	}
-	dbPort := os.Getenv("DB_PORT")
-	if dbPort == "" {
-		dbPort = "5432"
-	}
+	dbUser := getEnv("DB_USER", "postgres")
+	dbPass := getEnv("DB_PASSWORD", "postgres")
+	dbHost := getEnv("DB_HOST", "localhost")
+	dbPort := getEnv("DB_PORT", "5432")
 
-	dbURL := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", dbUser, dbPass, dbHost, dbPort, dbName)
+	return migrationTestConfig{
+		dbName: dbName,
+		dbHost: dbHost,
+		dbPort: dbPort,
+		dbUser: dbUser,
+		dbURL:  fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", dbUser, dbPass, dbHost, dbPort, dbName),
+	}
+}
 
-	// Check if goose is installed
+func getEnv(key, fallback string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return fallback
+}
+
+func verifyGooseInstalled() error {
 	if _, err := exec.LookPath("goose"); err != nil {
 		PrintError("goose is not installed")
 		fmt.Println("Install with: go install github.com/pressly/goose/v3/cmd/goose@latest")
 		return fmt.Errorf("goose not installed")
 	}
+	return nil
+}
 
-	// Setup cleanup
-	defer func() {
-		PrintInfo("Cleaning up test database...")
-		_ = runCommand("psql", "-h", dbHost, "-p", dbPort, "-U", dbUser, "-c", fmt.Sprintf("DROP DATABASE IF EXISTS %s;", dbName))
-	}()
+func cleanupTestDatabase(config migrationTestConfig) {
+	PrintInfo("Cleaning up test database...")
+	_ = runCommand("psql", "-h", config.dbHost, "-p", config.dbPort, "-U", config.dbUser, "-c", fmt.Sprintf("DROP DATABASE IF EXISTS %s;", config.dbName))
+}
 
-	// Create test database
-	PrintInfo("Creating test database: %s", dbName)
-	_ = runCommand("psql", "-h", dbHost, "-p", dbPort, "-U", dbUser, "-c", fmt.Sprintf("DROP DATABASE IF EXISTS %s;", dbName))
+func setupTestDatabase(config migrationTestConfig) error {
+	PrintInfo("Creating test database: %s", config.dbName)
+	_ = runCommand("psql", "-h", config.dbHost, "-p", config.dbPort, "-U", config.dbUser, "-c", fmt.Sprintf("DROP DATABASE IF EXISTS %s;", config.dbName))
 
-	if err := runCommand("psql", "-h", dbHost, "-p", dbPort, "-U", dbUser, "-c", fmt.Sprintf("CREATE DATABASE %s;", dbName)); err != nil {
+	if err := runCommand("psql", "-h", config.dbHost, "-p", config.dbPort, "-U", config.dbUser, "-c", fmt.Sprintf("CREATE DATABASE %s;", config.dbName)); err != nil {
 		PrintError("Error creating database: %v", err)
 		return fmt.Errorf("database creation failed")
 	}
+	return nil
+}
 
-	// Set environment variables for goose to avoid passing secrets in arguments
-	os.Setenv("GOOSE_DRIVER", "postgres")
-	os.Setenv("GOOSE_DBSTRING", dbURL)
-
-	// Test UP migrations
+func runMigrationUpTests() (string, error) {
 	PrintInfo("Testing UP migrations...")
 	if err := runCommandVerbose("goose", "-dir", "migrations", "up"); err != nil {
 		PrintError("Error running UP migrations: %v", err)
-		return fmt.Errorf("migrations up failed")
+		return "", fmt.Errorf("migrations up failed")
 	}
 
-	// Verify UP
 	versionUp, err := getGooseVersion()
 	if err != nil {
 		PrintError("Error getting goose version: %v", err)
-		return fmt.Errorf("failed to get goose version")
+		return "", fmt.Errorf("failed to get goose version")
 	}
 	if strings.Contains(versionUp, "version 0") {
 		PrintError("UP migrations did not update version (version is 0)")
-		return fmt.Errorf("migrations up failed (version 0)")
+		return "", fmt.Errorf("migrations up failed (version 0)")
 	}
 	PrintSuccess("UP migrations completed (Version: %s)", versionUp)
+	return versionUp, nil
+}
 
-	// Test DOWN migrations (all the way)
+func runMigrationDownTests() error {
 	PrintInfo("Testing DOWN migrations (all)...")
 	if err := runCommandVerbose("goose", "-dir", "migrations", "down-to", "0"); err != nil {
 		PrintError("Error running DOWN migrations: %v", err)
 		return fmt.Errorf("migrations down failed")
 	}
 
-	// Verify DOWN
 	versionDown, err := getGooseVersion()
 	if err != nil {
 		PrintError("Error getting goose version: %v", err)
@@ -104,28 +145,26 @@ func (c *TestMigrationsCommand) Run(args []string) error {
 		return fmt.Errorf("migrations down failed (version != 0)")
 	}
 	PrintSuccess("DOWN migrations completed (Version: %s)", versionDown)
+	return nil
+}
 
-	// Test UP migrations again (idempotency)
+func runMigrationIdempotencyTests(expectedVersion string) error {
 	PrintInfo("Testing UP migrations again (idempotency)...")
 	if err := runCommandVerbose("goose", "-dir", "migrations", "up"); err != nil {
 		PrintError("Error running UP migrations again: %v", err)
 		return fmt.Errorf("migrations up (idempotency) failed")
 	}
 
-	// Verify Idempotency
 	versionReUp, err := getGooseVersion()
 	if err != nil {
 		PrintError("Error getting goose version: %v", err)
 		return fmt.Errorf("failed to get goose version")
 	}
-	if versionReUp != versionUp {
-		PrintError("Migration count/version mismatch (%s vs %s)", versionUp, versionReUp)
+	if versionReUp != expectedVersion {
+		PrintError("Migration count/version mismatch (%s vs %s)", expectedVersion, versionReUp)
 		return fmt.Errorf("idempotency check failed")
 	}
 	PrintSuccess("UP migrations completed again (Version: %s)", versionReUp)
-
-	// Final verification
-	PrintSuccess("All migration tests passed!")
 	return nil
 }
 
