@@ -62,20 +62,8 @@ func main() {
 }
 
 func generateKeysFile(tree ProgressionTree) string {
-	// Group keys by type
-	groups := make(map[string][]Node)
-	for _, node := range tree.Nodes {
-		groups[node.Type] = append(groups[node.Type], node)
-	}
+	groups := groupAndSortNodes(tree)
 
-	// Sort each group by key
-	for _, nodes := range groups {
-		sort.Slice(nodes, func(i, j int) bool {
-			return nodes[i].Key < nodes[j].Key
-		})
-	}
-
-	// Generate code
 	var sb strings.Builder
 	sb.WriteString(`package progression
 
@@ -86,9 +74,33 @@ func generateKeysFile(tree ProgressionTree) string {
 
 	sb.WriteString("\nconst (\n")
 
-	// System first
+	writeSystemKey(&sb, groups)
+	writeItemKeys(&sb, groups)
+	writeFeatureKeys(&sb, groups)
+	writeUpgradeKeys(&sb, groups)
+	writeJobKeys(&sb, groups)
+
+	sb.WriteString(")\n")
+
+	return sb.String()
+}
+
+func groupAndSortNodes(tree ProgressionTree) map[string][]Node {
+	groups := make(map[string][]Node)
+	for _, node := range tree.Nodes {
+		groups[node.Type] = append(groups[node.Type], node)
+	}
+
+	for _, nodes := range groups {
+		sort.Slice(nodes, func(i, j int) bool {
+			return nodes[i].Key < nodes[j].Key
+		})
+	}
+	return groups
+}
+
+func writeSystemKey(sb *strings.Builder, groups map[string][]Node) {
 	if nodes, ok := groups["feature"]; ok {
-		// Find progression_system
 		for _, node := range nodes {
 			if node.Key == "progression_system" {
 				sb.WriteString("\t// System\n")
@@ -97,16 +109,18 @@ func generateKeysFile(tree ProgressionTree) string {
 			}
 		}
 	}
+}
 
-	// Items
+func writeItemKeys(sb *strings.Builder, groups map[string][]Node) {
 	if nodes, ok := groups["item"]; ok {
 		sb.WriteString("\n\t// Items\n")
 		for _, node := range nodes {
 			sb.WriteString(fmt.Sprintf("\tItem%s = %q\n", pascalCase(stripPrefix(node.Key, "item_")), node.Key))
 		}
 	}
+}
 
-	// Features (excluding progression_system)
+func writeFeatureKeys(sb *strings.Builder, groups map[string][]Node) {
 	if nodes, ok := groups["feature"]; ok {
 		featureCount := 0
 		for _, node := range nodes {
@@ -119,26 +133,24 @@ func generateKeysFile(tree ProgressionTree) string {
 			}
 		}
 	}
+}
 
-	// Upgrades
+func writeUpgradeKeys(sb *strings.Builder, groups map[string][]Node) {
 	if nodes, ok := groups["upgrade"]; ok {
 		sb.WriteString("\n\t// Upgrades\n")
 		for _, node := range nodes {
 			sb.WriteString(fmt.Sprintf("\tUpgrade%s = %q\n", pascalCase(stripPrefix(node.Key, "upgrade_")), node.Key))
 		}
 	}
+}
 
-	// Jobs
+func writeJobKeys(sb *strings.Builder, groups map[string][]Node) {
 	if nodes, ok := groups["job"]; ok {
 		sb.WriteString("\n\t// Jobs\n")
 		for _, node := range nodes {
 			sb.WriteString(fmt.Sprintf("\tJob%s = %q\n", pascalCase(stripPrefix(node.Key, "job_")), node.Key))
 		}
 	}
-
-	sb.WriteString(")\n")
-
-	return sb.String()
 }
 
 // stripPrefix removes a prefix from a string if present

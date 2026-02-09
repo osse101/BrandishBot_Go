@@ -23,6 +23,7 @@ type Engine struct {
 
 // NewEngine creates a new expedition engine
 func NewEngine(config *EncounterConfig, party []*domain.PartyMemberState, seed int64) *Engine {
+	//nolint:gosec // G404: math/rand is acceptable for game mechanics, not for cryptographic purposes
 	return &Engine{
 		config:       config,
 		rng:          rand.New(rand.NewSource(seed)),

@@ -18,6 +18,7 @@ bin/
 /reset
 /setup
 /devtool
+/gen-progression-keys
 
 # Test binary, built with `go test -c`
 *.test

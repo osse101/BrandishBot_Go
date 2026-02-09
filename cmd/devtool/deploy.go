@@ -311,6 +311,7 @@ func runSmokeTests(port string) error {
 	}
 
 	for _, url := range urls {
+		//nolint:gosec // G107: URL is constructed from controlled localhost endpoints for smoke testing
 		resp, err := http.Get(url)
 		if err != nil {
 			PrintWarning("Smoke test failed for %s: %v", url, err)
@@ -327,9 +328,20 @@ func runSmokeTests(port string) error {
 }
 
 func cleanupOldImages(imageName string) {
+	// Validate imageName to prevent command injection
+	if imageName == "" {
+		PrintWarning("Image name is empty, skipping cleanup")
+		return
+	}
+	if strings.ContainsAny(imageName, ";|&$`\"'") {
+		PrintWarning("Invalid characters in image name, skipping cleanup")
+		return
+	}
+
 	// This is a bit complex to do cross-platform with just exec,
 	// simpler to shell out or use docker Go SDK.
 	// For now, mirroring the shell script logic roughly.
+	//nolint:gosec // G204: imageName is validated above
 	cmd := exec.Command("sh", "-c", fmt.Sprintf("docker images \"%s\" --format \"{{.Tag}}\" | grep -v \"latest\" | tail -n +6 | xargs -r -I {} docker rmi \"%s:{}\"", imageName, imageName))
 	_ = cmd.Run()
 }

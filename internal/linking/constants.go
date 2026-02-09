@@ -62,6 +62,7 @@ const (
 	ErrMsgTokenExpired = "token expired"
 
 	// ErrMsgLinkTokenExpired is returned when confirming an expired link
+	//nolint:gosec // G101: False positive - this is an error message, not a credential
 	ErrMsgLinkTokenExpired = "link token expired"
 
 	// ErrMsgCannotLinkSameAccount is returned when source and target are identical
@@ -116,6 +117,7 @@ const (
 	LogMsgFailedToInvalidateOldTokens = "Failed to invalidate old tokens"
 
 	// LogMsgLinkTokenCreated is logged when a new link token is generated
+	//nolint:gosec // G101: False positive - this is a log message, not a credential
 	LogMsgLinkTokenCreated = "Link token created"
 
 	// LogMsgFailedToExpireToken is logged when token expiration update fails

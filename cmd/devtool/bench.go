@@ -66,6 +66,17 @@ func (c *BenchCommand) runHot() error {
 }
 
 func (c *BenchCommand) runBenchOrWarn(dir, pattern string) {
+	// Validate inputs to prevent command injection
+	if dir == "" || pattern == "" {
+		fmt.Println("    (invalid benchmark parameters)")
+		return
+	}
+	if strings.ContainsAny(dir, ";|&$`") || strings.ContainsAny(pattern, ";|&$`") {
+		fmt.Println("    (invalid characters in benchmark parameters)")
+		return
+	}
+
+	//nolint:gosec // G204: pattern and dir are validated above
 	cmd := exec.Command("go", "test", "-bench="+pattern, "-benchmem", "-benchtime=2s", dir)
 	cmd.Stdout = os.Stdout
 	// Stderr is discarded to match Makefile's 2>/dev/null

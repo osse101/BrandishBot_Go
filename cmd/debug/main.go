@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 
 	"github.com/osse101/BrandishBot_Go/internal/database"
@@ -35,42 +36,54 @@ func main() {
 
 	ctx := context.Background()
 
-	// Dump Platforms
+	// Dump all database tables
+	dumpPlatforms(ctx, dbPool)
+	dumpUsers(ctx, dbPool)
+	dumpLinks(ctx, dbPool)
+	dumpInventory(ctx, dbPool)
+	dumpItems(ctx, dbPool)
+	dumpItemTypes(ctx, dbPool)
+	dumpItemAssignments(ctx, dbPool)
+}
+
+func dumpPlatforms(ctx context.Context, dbPool *pgxpool.Pool) {
 	fmt.Println("--- Platforms ---")
 	rows, err := dbPool.Query(ctx, "SELECT platform_id, platform_name FROM platforms")
 	if err != nil {
 		log.Printf("Failed to query platforms: %v", err)
-	} else {
-		defer rows.Close()
-		for rows.Next() {
-			var id int
-			var name string
-			if err := rows.Scan(&id, &name); err != nil {
-				log.Printf("Failed to scan platform: %v", err)
-			}
-			fmt.Printf("ID: %d, Name: %s\n", id, name)
-		}
+		return
 	}
+	defer rows.Close()
+	for rows.Next() {
+		var id int
+		var name string
+		if err := rows.Scan(&id, &name); err != nil {
+			log.Printf("Failed to scan platform: %v", err)
+		}
+		fmt.Printf("ID: %d, Name: %s\n", id, name)
+	}
+}
 
-	// Dump Users
+func dumpUsers(ctx context.Context, dbPool *pgxpool.Pool) {
 	fmt.Println("\n--- Users ---")
-	rows, err = dbPool.Query(ctx, "SELECT user_id, username, created_at FROM users")
+	rows, err := dbPool.Query(ctx, "SELECT user_id, username, created_at FROM users")
 	if err != nil {
 		log.Printf("Failed to query users: %v", err)
-	} else {
-		defer rows.Close()
-		for rows.Next() {
-			var id string
-			var username string
-			var createdAt interface{}
-			if err := rows.Scan(&id, &username, &createdAt); err != nil {
-				log.Printf("Failed to scan user: %v", err)
-			}
-			fmt.Printf("ID: %s, Username: %s, CreatedAt: %v\n", id, username, createdAt)
-		}
+		return
 	}
+	defer rows.Close()
+	for rows.Next() {
+		var id string
+		var username string
+		var createdAt interface{}
+		if err := rows.Scan(&id, &username, &createdAt); err != nil {
+			log.Printf("Failed to scan user: %v", err)
+		}
+		fmt.Printf("ID: %s, Username: %s, CreatedAt: %v\n", id, username, createdAt)
+	}
+}
 
-	// Dump Links
+func dumpLinks(ctx context.Context, dbPool *pgxpool.Pool) {
 	fmt.Println("\n--- User Platform Links ---")
 	query := `
 		SELECT upl.user_platform_link_id, u.username, p.platform_name, upl.external_id
@@ -78,91 +91,95 @@ func main() {
 		JOIN users u ON upl.user_id = u.user_id
 		JOIN platforms p ON upl.platform_id = p.platform_id
 	`
-	rows, err = dbPool.Query(ctx, query)
+	rows, err := dbPool.Query(ctx, query)
 	if err != nil {
 		log.Printf("Failed to query links: %v", err)
-	} else {
-		defer rows.Close()
-		for rows.Next() {
-			var id int
-			var username, platform, externalID string
-			if err := rows.Scan(&id, &username, &platform, &externalID); err != nil {
-				log.Printf("Failed to scan link: %v", err)
-			}
-			fmt.Printf("LinkID: %d, User: %s, Platform: %s, ExternalID: %s\n", id, username, platform, externalID)
-		}
+		return
 	}
+	defer rows.Close()
+	for rows.Next() {
+		var id int
+		var username, platform, externalID string
+		if err := rows.Scan(&id, &username, &platform, &externalID); err != nil {
+			log.Printf("Failed to scan link: %v", err)
+		}
+		fmt.Printf("LinkID: %d, User: %s, Platform: %s, ExternalID: %s\n", id, username, platform, externalID)
+	}
+}
 
-	// Dump Inventory
+func dumpInventory(ctx context.Context, dbPool *pgxpool.Pool) {
 	fmt.Println("\n--- User Inventory ---")
-	rows, err = dbPool.Query(ctx, "SELECT user_id, inventory_data FROM user_inventory")
+	rows, err := dbPool.Query(ctx, "SELECT user_id, inventory_data FROM user_inventory")
 	if err != nil {
 		log.Printf("Failed to query inventory: %v", err)
-	} else {
-		defer rows.Close()
-		for rows.Next() {
-			var userID string
-			var data interface{}
-			if err := rows.Scan(&userID, &data); err != nil {
-				log.Printf("Failed to scan inventory: %v", err)
-			}
-			fmt.Printf("UserID: %s, Data: %v\n", userID, data)
-		}
+		return
 	}
+	defer rows.Close()
+	for rows.Next() {
+		var userID string
+		var data interface{}
+		if err := rows.Scan(&userID, &data); err != nil {
+			log.Printf("Failed to scan inventory: %v", err)
+		}
+		fmt.Printf("UserID: %s, Data: %v\n", userID, data)
+	}
+}
 
-	// Dump Items
+func dumpItems(ctx context.Context, dbPool *pgxpool.Pool) {
 	fmt.Println("\n--- Items ---")
-	rows, err = dbPool.Query(ctx, "SELECT item_id, item_name FROM items")
+	rows, err := dbPool.Query(ctx, "SELECT item_id, item_name FROM items")
 	if err != nil {
 		log.Printf("Failed to query items: %v", err)
-	} else {
-		defer rows.Close()
-		for rows.Next() {
-			var id int
-			var name string
-			if err := rows.Scan(&id, &name); err != nil {
-				log.Printf("Failed to scan item: %v", err)
-			}
-			fmt.Printf("ID: %d, Name: %s\n", id, name)
-		}
+		return
 	}
+	defer rows.Close()
+	for rows.Next() {
+		var id int
+		var name string
+		if err := rows.Scan(&id, &name); err != nil {
+			log.Printf("Failed to scan item: %v", err)
+		}
+		fmt.Printf("ID: %d, Name: %s\n", id, name)
+	}
+}
 
-	// Dump Item Types
+func dumpItemTypes(ctx context.Context, dbPool *pgxpool.Pool) {
 	fmt.Println("\n--- Item Types ---")
-	rows, err = dbPool.Query(ctx, "SELECT item_type_id, type_name FROM item_types")
+	rows, err := dbPool.Query(ctx, "SELECT item_type_id, type_name FROM item_types")
 	if err != nil {
 		log.Printf("Failed to query item types: %v", err)
-	} else {
-		defer rows.Close()
-		for rows.Next() {
-			var id int
-			var name string
-			if err := rows.Scan(&id, &name); err != nil {
-				log.Printf("Failed to scan item type: %v", err)
-			}
-			fmt.Printf("ID: %d, Name: %s\n", id, name)
-		}
+		return
 	}
+	defer rows.Close()
+	for rows.Next() {
+		var id int
+		var name string
+		if err := rows.Scan(&id, &name); err != nil {
+			log.Printf("Failed to scan item type: %v", err)
+		}
+		fmt.Printf("ID: %d, Name: %s\n", id, name)
+	}
+}
 
-	// Dump Item Assignments
+func dumpItemAssignments(ctx context.Context, dbPool *pgxpool.Pool) {
 	fmt.Println("\n--- Item Assignments ---")
-	query = `
+	query := `
 		SELECT i.item_name, t.type_name
 		FROM item_type_assignments ita
 		JOIN items i ON ita.item_id = i.item_id
 		JOIN item_types t ON ita.item_type_id = t.item_type_id
 	`
-	rows, err = dbPool.Query(ctx, query)
+	rows, err := dbPool.Query(ctx, query)
 	if err != nil {
 		log.Printf("Failed to query assignments: %v", err)
-	} else {
-		defer rows.Close()
-		for rows.Next() {
-			var itemName, typeName string
-			if err := rows.Scan(&itemName, &typeName); err != nil {
-				log.Printf("Failed to scan assignment: %v", err)
-			}
-			fmt.Printf("Item: %s, Type: %s\n", itemName, typeName)
+		return
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var itemName, typeName string
+		if err := rows.Scan(&itemName, &typeName); err != nil {
+			log.Printf("Failed to scan assignment: %v", err)
 		}
+		fmt.Printf("Item: %s, Type: %s\n", itemName, typeName)
 	}
 }
