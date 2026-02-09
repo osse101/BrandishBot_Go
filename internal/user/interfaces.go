@@ -11,7 +11,6 @@ import (
 type InventoryItem struct {
 	InternalName string `json:"item_name"`
 	PublicName   string `json:"public_name"`
-	Name         string `json:"name"` // For backward compatibility
 	Quantity     int    `json:"quantity"`
 	QualityLevel string `json:"quality_level"`
 }
@@ -64,7 +63,6 @@ type GameplayService interface {
 }
 
 // Service is the full interface that composes all sub-interfaces.
-// Existing code can continue using this interface for backwards compatibility.
 // New code should depend on the smallest interface that meets its needs.
 type Service interface {
 	InventoryService

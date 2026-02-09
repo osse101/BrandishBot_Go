@@ -25,11 +25,8 @@ namespace BrandishBot.Client
 
     public class Item
     {
-        [JsonProperty("id")]
-        public string Id { get; set; }
-
-        [JsonProperty("name")]
-        public string Name { get; set; }
+        [JsonProperty("item_name")]
+        public string InternalName { get; set; }
 
         [JsonProperty("public_name")]
         public string PublicName { get; set; }
@@ -42,6 +39,9 @@ namespace BrandishBot.Client
 
         [JsonProperty("quantity")]
         public int Quantity { get; set; }
+
+        [JsonProperty("quality_level")]
+        public string QualityLevel { get; set; }
     }
 
     public class User
@@ -361,11 +361,11 @@ namespace BrandishBot.Client
 
     public class Recipe
     {
-        [JsonProperty("id")]
+        [JsonProperty("recipe_id")]
         public string Id { get; set; }
 
-        [JsonProperty("name")]
-        public string Name { get; set; }
+        [JsonProperty("item_name")]
+        public string InternalName { get; set; }
 
         [JsonProperty("public_name")]
         public string PublicName { get; set; }
@@ -382,8 +382,8 @@ namespace BrandishBot.Client
         [JsonProperty("item_id")]
         public string ItemId { get; set; }
 
-        [JsonProperty("name")]
-        public string Name { get; set; }
+        [JsonProperty("item_name")]
+        public string InternalName { get; set; }
 
         [JsonProperty("quantity")]
         public int Quantity { get; set; }

@@ -171,16 +171,15 @@ func getOwnedItemChoices(client *APIClient, user *discordgo.User, focusedValue s
 
 	var choices []*discordgo.ApplicationCommandOptionChoice
 	for _, item := range inventory {
-		itemNameLower := strings.ToLower(item.Name)
+		itemNameLower := strings.ToLower(item.PublicName)
 		if focusedValue == "" || strings.Contains(itemNameLower, focusedValue) {
-			if filterFunc != nil && !filterFunc(item.Name) {
+			if filterFunc != nil && !filterFunc(item.PublicName) {
 				continue
 			}
-
-			displayName := fmt.Sprintf("%s (x%d)", item.Name, item.Quantity)
+			displayName := fmt.Sprintf("%s (x%d)", item.PublicName, item.Quantity)
 			choices = append(choices, &discordgo.ApplicationCommandOptionChoice{
 				Name:  displayName,
-				Value: item.Name,
+				Value: item.PublicName,
 			})
 		}
 		if len(choices) >= 25 {

@@ -28,6 +28,21 @@ var valueToQuality = []domain.QualityLevel{
 	domain.QualityLegendary, // 7
 }
 
+// GetQualityValue returns the numeric value of a quality level (0-7).
+// Returns 3 (COMMON) for unknown quality levels.
+func GetQualityValue(q domain.QualityLevel) int {
+	if v, ok := qualityToValue[q]; ok {
+		return v
+	}
+	return qualityToValue[domain.QualityCommon]
+}
+
+// CompareQuality compares two quality levels.
+// Returns > 0 if q1 > q2, < 0 if q1 < q2, and 0 if they are equal.
+func CompareQuality(q1, q2 domain.QualityLevel) int {
+	return GetQualityValue(q1) - GetQualityValue(q2)
+}
+
 // CalculateAverageQuality calculates the weighted average quality level from consumed materials.
 // Each material contributes to the average based on its quantity.
 // Returns COMMON if no materials provided or if calculation fails.

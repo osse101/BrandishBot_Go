@@ -476,7 +476,6 @@ func (s *service) getInventoryInternal(ctx context.Context, user *domain.User, f
 		items = append(items, InventoryItem{
 			InternalName: item.InternalName,
 			PublicName:   item.PublicName,
-			Name:         item.PublicName,
 			Quantity:     itemsMap[key],
 			QualityLevel: quality,
 		})
@@ -979,7 +978,6 @@ func (s *service) ReduceTimeoutPlatform(ctx context.Context, platform, username 
 }
 
 // TimeoutUser times out a user for a specified duration.
-// Legacy method - defaults to Twitch platform for backward compatibility.
 // Note: This method REPLACES the existing timeout (does not accumulate).
 // For accumulating timeouts, use AddTimeout.
 func (s *service) TimeoutUser(ctx context.Context, username string, duration time.Duration, reason string) error {
@@ -990,13 +988,11 @@ func (s *service) TimeoutUser(ctx context.Context, username string, duration tim
 }
 
 // GetTimeout returns the remaining duration of a user's timeout.
-// Legacy method - defaults to Twitch platform for backward compatibility.
 func (s *service) GetTimeout(ctx context.Context, username string) (time.Duration, error) {
 	return s.GetTimeoutPlatform(ctx, domain.PlatformTwitch, username)
 }
 
 // ReduceTimeout reduces a user's timeout by the specified duration (used by revive items).
-// Legacy method - defaults to Twitch platform for backward compatibility.
 func (s *service) ReduceTimeout(ctx context.Context, username string, reduction time.Duration) error {
 	return s.ReduceTimeoutPlatform(ctx, domain.PlatformTwitch, username, reduction)
 }

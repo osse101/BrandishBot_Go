@@ -15,7 +15,7 @@ func ConvertToSimpleInventory(inventoryItems []user.InventoryItem) []SimpleInven
 	items := make([]SimpleInventoryItem, 0, len(inventoryItems))
 	for _, item := range inventoryItems {
 		items = append(items, SimpleInventoryItem{
-			Name:     item.Name,
+			Name:     item.PublicName,
 			Quantity: item.Quantity,
 		})
 	}

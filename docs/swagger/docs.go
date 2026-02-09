@@ -3980,10 +3980,6 @@ const docTemplate = `{
                 "item_name": {
                     "type": "string"
                 },
-                "name": {
-                    "description": "For backward compatibility",
-                    "type": "string"
-                },
                 "public_name": {
                     "type": "string"
                 },

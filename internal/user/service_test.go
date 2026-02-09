@@ -735,13 +735,13 @@ func TestGetInventory(t *testing.T) {
 		foundLootbox := false
 		foundMoney := false
 		for _, item := range items {
-			if item.Name == domain.ItemLootbox1 {
+			if item.PublicName == domain.ItemLootbox1 {
 				foundLootbox = true
 				if item.Quantity != 2 {
 					t.Errorf("Expected 2 lootbox1, got %d", item.Quantity)
 				}
 			}
-			if item.Name == domain.ItemMoney {
+			if item.PublicName == domain.ItemMoney {
 				foundMoney = true
 				if item.Quantity != 100 {
 					t.Errorf("Expected 100 money, got %d", item.Quantity)
@@ -769,7 +769,7 @@ func TestGetInventory(t *testing.T) {
 		for _, item := range items {
 			// In real implementation, check item.Types contains "upgrade"
 			// For now, just verify it doesn't error
-			if item.Name == "" {
+			if item.PublicName == "" {
 				t.Error("Item should have a name")
 			}
 		}
@@ -783,7 +783,7 @@ func TestGetInventory(t *testing.T) {
 
 		// All returned items should have "sellable" type
 		for _, item := range items {
-			if item.Name == "" {
+			if item.PublicName == "" {
 				t.Error("Item should have a name")
 			}
 		}
@@ -797,7 +797,7 @@ func TestGetInventory(t *testing.T) {
 
 		// All returned items should have "consumable" type
 		for _, item := range items {
-			if item.Name == "" {
+			if item.PublicName == "" {
 				t.Error("Item should have a name")
 			}
 		}
