@@ -320,6 +320,9 @@ func TestHarvest_Workflow(t *testing.T) {
 			// Execute
 			resp, err := svc.Harvest(context.Background(), "discord", "123456", "TestUser")
 
+			// Wait for async operations to complete
+			_ = svc.Shutdown(context.Background())
+
 			// Verify
 			if tt.expectedError {
 				assert.Error(t, err)
@@ -335,11 +338,8 @@ func TestHarvest_Workflow(t *testing.T) {
 					assert.Contains(t, resp.Message, "spoiled")
 				}
 				if tt.expectedXPAward {
-					if tt.xpAwardFail {
-						assert.NotContains(t, resp.Message, "You gained")
-					} else {
-						assert.Contains(t, resp.Message, "You gained")
-					}
+					// With optimistic messaging, the message always contains "You gained" even if async award fails
+					assert.Contains(t, resp.Message, "You gained")
 				}
 			}
 		})

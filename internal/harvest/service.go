@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
@@ -25,6 +26,8 @@ const (
 type Service interface {
 	// Harvest collects accumulated rewards for a user
 	Harvest(ctx context.Context, platform, platformID, username string) (*domain.HarvestResponse, error)
+	// Shutdown gracefully shuts down the service
+	Shutdown(ctx context.Context) error
 }
 
 type service struct {
@@ -32,6 +35,7 @@ type service struct {
 	userRepo       repository.User
 	progressionSvc progression.Service
 	jobSvc         job.Service
+	wg             sync.WaitGroup
 }
 
 // NewService creates a new harvest service
@@ -96,13 +100,7 @@ func (s *service) Harvest(ctx context.Context, platform, platformID, username st
 	// 8. Calculate rewards (handle spoiled)
 	rewards, message := s.calculateHarvestRewards(ctx, hoursElapsed)
 
-	// 9. Award Farmer XP
-	xpMsg := s.awardFarmerXP(ctx, user.ID, hoursElapsed)
-	if xpMsg != "" {
-		message += xpMsg
-	}
-
-	// 10. Update inventory and harvest state
+	// 9. Update inventory and harvest state
 	if len(rewards) == 0 {
 		return s.handleEmptyHarvest(ctx, tx, user.ID, now, hoursElapsed)
 	}
@@ -115,10 +113,24 @@ func (s *service) Harvest(ctx context.Context, platform, platformID, username st
 		return nil, fmt.Errorf("failed to update harvest state: %w", err)
 	}
 
-	// 11. Commit transaction
+	// 10. Commit transaction
 	if err := tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("failed to commit transaction: %w", err)
 	}
+
+	// 11. Award Farmer XP (Async)
+	xpMsg := s.calculateOptimisticXPMessage(hoursElapsed)
+	if xpMsg != "" {
+		message += xpMsg
+	}
+
+	s.wg.Add(1)
+	go func() {
+		defer s.wg.Done()
+		// Use a new context for async operation to avoid cancellation issues
+		asyncCtx := context.Background()
+		s.awardFarmerXP(asyncCtx, user.ID, hoursElapsed)
+	}()
 
 	log.Info("Harvest successful", "userID", user.ID, "rewards", rewards, "hours", hoursElapsed)
 
@@ -194,9 +206,17 @@ func (s *service) calculateHarvestRewards(ctx context.Context, hoursElapsed floa
 	return s.calculateRewards(ctx, hoursElapsed), "Harvest successful!"
 }
 
-func (s *service) awardFarmerXP(ctx context.Context, userID string, hoursElapsed float64) string {
+func (s *service) calculateOptimisticXPMessage(hoursElapsed float64) string {
 	if hoursElapsed < farmerXPThreshold {
 		return ""
+	}
+	xpAmount := int(hoursElapsed * farmerXPPerHour)
+	return fmt.Sprintf(" You gained %d Farmer XP.", xpAmount)
+}
+
+func (s *service) awardFarmerXP(ctx context.Context, userID string, hoursElapsed float64) {
+	if hoursElapsed < farmerXPThreshold {
+		return
 	}
 
 	xpAmount := int(hoursElapsed * farmerXPPerHour)
@@ -205,11 +225,25 @@ func (s *service) awardFarmerXP(ctx context.Context, userID string, hoursElapsed
 		"spoiled":      hoursElapsed > spoiledThreshold,
 	})
 	if err != nil {
-		logger.FromContext(ctx).Warn("Failed to award Farmer XP", "error", err)
-		return ""
+		// Just log the error, don't fail the operation (it's async)
+		logger.FromContext(ctx).Warn("Failed to award Farmer XP", "error", err, "userID", userID)
 	}
+}
 
-	return fmt.Sprintf(" You gained %d Farmer XP.", xpAmount)
+// Shutdown gracefully shuts down the service
+func (s *service) Shutdown(ctx context.Context) error {
+	done := make(chan struct{})
+	go func() {
+		s.wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 func (s *service) handleEmptyHarvest(ctx context.Context, tx repository.HarvestTx, userID string, now time.Time, hoursElapsed float64) (*domain.HarvestResponse, error) {
