@@ -241,8 +241,10 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 		adminMetricsHandler := handler.NewAdminMetricsHandler(sseHub)
 		adminUserHandler := handler.NewAdminUserHandler(userRepo)
 		adminEventsHandler := handler.NewAdminEventsHandler(eventlogService)
+		adminSSEHandler := handler.NewAdminSSEHandler(sseHub)
 		r.Route("/admin", func(r chi.Router) {
 			r.Get("/metrics", adminMetricsHandler.HandleGetMetrics)
+			r.Post("/sse/broadcast", adminSSEHandler.HandleBroadcast)
 
 			// User management
 			r.Route("/users", func(r chi.Router) {

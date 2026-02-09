@@ -25,6 +25,7 @@ func main() {
 	registry.Register(&RollbackCommand{})
 	registry.Register(&HealthCheckCommand{})
 	registry.Register(&PushCommand{})
+	registry.Register(&TestSSECommand{})
 
 	if len(os.Args) < 2 {
 		registry.PrintHelp()

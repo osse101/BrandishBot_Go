@@ -101,7 +101,7 @@ func (b *Bot) Start() error {
 
 	// Start SSE client for real-time notifications
 	if b.sseClient != nil && b.NotificationChannelID != "" {
-		b.sseNotifier = NewSSENotifier(b.Session, b.NotificationChannelID)
+		b.sseNotifier = NewSSENotifier(b.Session, b.NotificationChannelID, b.DevChannelID)
 		b.sseNotifier.RegisterHandlers(b.sseClient)
 
 		b.ctx, b.cancel = context.WithCancel(context.Background())

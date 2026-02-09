@@ -14,13 +14,15 @@ import (
 type SSENotifier struct {
 	session            *discordgo.Session
 	notificationChanID string
+	devChannelID       string
 }
 
 // NewSSENotifier creates a new SSE notifier
-func NewSSENotifier(session *discordgo.Session, notificationChanID string) *SSENotifier {
+func NewSSENotifier(session *discordgo.Session, notificationChanID, devChannelID string) *SSENotifier {
 	return &SSENotifier{
 		session:            session,
 		notificationChanID: notificationChanID,
+		devChannelID:       devChannelID,
 	}
 }
 
@@ -43,6 +45,7 @@ type JobLevelUpPayload struct {
 	OldLevel int    `json:"old_level"`
 	NewLevel int    `json:"new_level"`
 	Source   string `json:"source,omitempty"`
+	IsTest   bool   `json:"is_test,omitempty"`
 }
 
 // VotingStartedPayload is the payload for voting started events
@@ -53,6 +56,7 @@ type VotingStartedPayload struct {
 	AutoSelected   bool               `json:"auto_selected"`
 	Options        []VotingOptionInfo `json:"options,omitempty"`
 	PreviousUnlock string             `json:"previous_unlock"`
+	IsTest         bool               `json:"is_test,omitempty"`
 }
 
 // VotingOptionInfo contains voting option details
@@ -65,6 +69,7 @@ type VotingOptionInfo struct {
 type CycleCompletedPayload struct {
 	UnlockedNode  NodeInfo           `json:"unlocked_node"`
 	VotingSession *VotingSessionInfo `json:"voting_session,omitempty"`
+	IsTest        bool               `json:"is_test,omitempty"`
 }
 
 // NodeInfo contains node details
@@ -82,6 +87,7 @@ type VotingSessionInfo struct {
 // AllUnlockedPayload is the payload for all unlocked events
 type AllUnlockedPayload struct {
 	Message string `json:"message"`
+	IsTest  bool   `json:"is_test,omitempty"`
 }
 
 // GambleCompletedPayload is the payload for gamble completed events
@@ -90,13 +96,10 @@ type GambleCompletedPayload struct {
 	WinnerID         string `json:"winner_id"`
 	TotalValue       int64  `json:"total_value"`
 	ParticipantCount int    `json:"participant_count"`
+	IsTest           bool   `json:"is_test,omitempty"`
 }
 
 func (n *SSENotifier) handleJobLevelUp(event SSEEvent) error {
-	if n.notificationChanID == "" {
-		return nil // No notification channel configured
-	}
-
 	var payload JobLevelUpPayload
 	if err := json.Unmarshal(event.Payload, &payload); err != nil {
 		slog.Warn(sseLogMsgParseError, "error", err, "event_type", event.Type)
@@ -136,7 +139,17 @@ func (n *SSENotifier) handleJobLevelUp(event SSEEvent) error {
 		})
 	}
 
-	_, err := n.session.ChannelMessageSendEmbed(n.notificationChanID, embed)
+	targetChannelID := n.notificationChanID
+	if payload.IsTest && n.devChannelID != "" {
+		targetChannelID = n.devChannelID
+		embed.Title = "[TEST] " + embed.Title
+	}
+
+	if targetChannelID == "" {
+		return nil
+	}
+
+	_, err := n.session.ChannelMessageSendEmbed(targetChannelID, embed)
 	if err != nil {
 		slog.Error(sseLogMsgNotificationError, "error", err, "event_type", event.Type)
 		return err
@@ -190,7 +203,17 @@ func (n *SSENotifier) handleVotingStarted(event SSEEvent) error {
 		embed.Fields = nil // Clear options field
 	}
 
-	_, err := n.session.ChannelMessageSendEmbed(n.notificationChanID, embed)
+	targetChannelID := n.notificationChanID
+	if payload.IsTest && n.devChannelID != "" {
+		targetChannelID = n.devChannelID
+		embed.Title = "[TEST] " + embed.Title
+	}
+
+	if targetChannelID == "" {
+		return nil
+	}
+
+	_, err := n.session.ChannelMessageSendEmbed(targetChannelID, embed)
 	if err != nil {
 		slog.Error(sseLogMsgNotificationError, "error", err, "event_type", event.Type)
 		return err
@@ -247,7 +270,17 @@ func (n *SSENotifier) handleCycleCompleted(event SSEEvent) error {
 		embed.Description += "\n\nA new voting session has started! Use `/vote` to choose the next feature."
 	}
 
-	_, err := n.session.ChannelMessageSendEmbed(n.notificationChanID, embed)
+	targetChannelID := n.notificationChanID
+	if payload.IsTest && n.devChannelID != "" {
+		targetChannelID = n.devChannelID
+		embed.Title = "[TEST] " + embed.Title
+	}
+
+	if targetChannelID == "" {
+		return nil
+	}
+
+	_, err := n.session.ChannelMessageSendEmbed(targetChannelID, embed)
 	if err != nil {
 		slog.Error(sseLogMsgNotificationError, "error", err, "event_type", event.Type)
 		return err
@@ -282,7 +315,17 @@ func (n *SSENotifier) handleAllUnlocked(event SSEEvent) error {
 		embed.Description = "Congratulations! Every single feature and upgrade in BrandishBot has been unlocked by the community!"
 	}
 
-	_, err := n.session.ChannelMessageSendEmbed(n.notificationChanID, embed)
+	targetChannelID := n.notificationChanID
+	if payload.IsTest && n.devChannelID != "" {
+		targetChannelID = n.devChannelID
+		embed.Title = "[TEST] " + embed.Title
+	}
+
+	if targetChannelID == "" {
+		return nil
+	}
+
+	_, err := n.session.ChannelMessageSendEmbed(targetChannelID, embed)
 	if err != nil {
 		slog.Error(sseLogMsgNotificationError, "error", err, "event_type", event.Type)
 		return err
@@ -327,7 +370,17 @@ func (n *SSENotifier) handleGambleCompleted(event SSEEvent) error {
 		},
 	}
 
-	_, err := n.session.ChannelMessageSendEmbed(n.notificationChanID, embed)
+	targetChannelID := n.notificationChanID
+	if payload.IsTest && n.devChannelID != "" {
+		targetChannelID = n.devChannelID
+		embed.Title = "[TEST] " + embed.Title
+	}
+
+	if targetChannelID == "" {
+		return nil
+	}
+
+	_, err := n.session.ChannelMessageSendEmbed(targetChannelID, embed)
 	if err != nil {
 		slog.Error(sseLogMsgNotificationError, "error", err, "event_type", event.Type)
 		return err
@@ -341,6 +394,7 @@ func (n *SSENotifier) handleGambleCompleted(event SSEEvent) error {
 type ExpeditionStartedPayload struct {
 	ExpeditionID string `json:"expedition_id"`
 	JoinDeadline string `json:"join_deadline"`
+	IsTest       bool   `json:"is_test,omitempty"`
 }
 
 // ExpeditionTurnPayload is the payload for expedition turn events
@@ -350,6 +404,7 @@ type ExpeditionTurnPayload struct {
 	Narrative    string `json:"narrative"`
 	Fatigue      int    `json:"fatigue"`
 	Purse        int    `json:"purse"`
+	IsTest       bool   `json:"is_test,omitempty"`
 }
 
 // ExpeditionCompletedPayload is the payload for expedition completed events
@@ -358,6 +413,7 @@ type ExpeditionCompletedPayload struct {
 	TotalTurns   int    `json:"total_turns"`
 	Won          bool   `json:"won"`
 	AllKO        bool   `json:"all_ko"`
+	IsTest       bool   `json:"is_test,omitempty"`
 }
 
 func (n *SSENotifier) handleExpeditionStarted(event SSEEvent) error {
@@ -381,7 +437,17 @@ func (n *SSENotifier) handleExpeditionStarted(event SSEEvent) error {
 		},
 	}
 
-	_, err := n.session.ChannelMessageSendEmbed(n.notificationChanID, embed)
+	targetChannelID := n.notificationChanID
+	if payload.IsTest && n.devChannelID != "" {
+		targetChannelID = n.devChannelID
+		embed.Title = "[TEST] " + embed.Title
+	}
+
+	if targetChannelID == "" {
+		return nil
+	}
+
+	_, err := n.session.ChannelMessageSendEmbed(targetChannelID, embed)
 	if err != nil {
 		slog.Error(sseLogMsgNotificationError, "error", err, "event_type", event.Type)
 		return err
@@ -423,7 +489,17 @@ func (n *SSENotifier) handleExpeditionTurn(event SSEEvent) error {
 		},
 	}
 
-	_, err := n.session.ChannelMessageSendEmbed(n.notificationChanID, embed)
+	targetChannelID := n.notificationChanID
+	if payload.IsTest && n.devChannelID != "" {
+		targetChannelID = n.devChannelID
+		embed.Title = "[TEST] " + embed.Title
+	}
+
+	if targetChannelID == "" {
+		return nil
+	}
+
+	_, err := n.session.ChannelMessageSendEmbed(targetChannelID, embed)
 	if err != nil {
 		slog.Error(sseLogMsgNotificationError, "error", err, "event_type", event.Type)
 		return err
@@ -470,7 +546,17 @@ func (n *SSENotifier) handleExpeditionCompleted(event SSEEvent) error {
 		},
 	}
 
-	_, err := n.session.ChannelMessageSendEmbed(n.notificationChanID, embed)
+	targetChannelID := n.notificationChanID
+	if payload.IsTest && n.devChannelID != "" {
+		targetChannelID = n.devChannelID
+		embed.Title = "[TEST] " + embed.Title
+	}
+
+	if targetChannelID == "" {
+		return nil
+	}
+
+	_, err := n.session.ChannelMessageSendEmbed(targetChannelID, embed)
 	if err != nil {
 		slog.Error(sseLogMsgNotificationError, "error", err, "event_type", event.Type)
 		return err
