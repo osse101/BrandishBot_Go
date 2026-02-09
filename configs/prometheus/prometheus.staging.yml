@@ -1,0 +1,40 @@
+# Prometheus configuration for BrandishBot (Staging)
+# Staging environment with moderate retention and staging API port
+
+global:
+  scrape_interval: 20s
+  evaluation_interval: 20s
+  external_labels:
+    environment: 'staging'
+    cluster: 'brandishbot-staging'
+
+# Alertmanager configuration (optional)
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets: ['alertmanager:9093']
+
+# Load alert rules
+rule_files:
+  - /etc/prometheus/alerts/*.rules.yml
+
+# Scrape configurations
+scrape_configs:
+  # BrandishBot API Server (Staging port: 8081)
+  - job_name: 'brandishbot-api'
+    static_configs:
+      - targets: ['app:8081']
+        labels:
+          service: 'api'
+          component: 'backend'
+    metrics_path: '/metrics'
+    scrape_interval: 20s
+    scrape_timeout: 10s
+
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'prometheus'
+          component: 'monitoring'

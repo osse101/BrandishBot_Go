@@ -52,6 +52,14 @@ help:
 	@echo "  make docker-build-fast    - Build Docker images (with cache, faster for dev)"
 	@echo "  make docker-version       - Show version of local Docker image"
 	@echo ""
+	@echo "Monitoring Commands:"
+	@echo "  make monitoring-up        - Start Prometheus + Grafana"
+	@echo "  make monitoring-down      - Stop monitoring stack"
+	@echo "  make monitoring-restart   - Restart monitoring services"
+	@echo "  make monitoring-logs      - View monitoring logs"
+	@echo "  make monitoring-status    - Check monitoring health"
+	@echo "  make prometheus-reload    - Hot reload Prometheus config"
+	@echo ""
 	@echo "Test Database Commands:"
 	@echo "  make test-integration     - Run integration tests (uses testcontainers)"
 	@echo "  make test-staging         - Run staging integration tests"
@@ -445,3 +453,39 @@ clean-mocks:
 	@echo "Removing generated mocks..."
 	@rm -rf mocks/
 	@echo "✓ Removed mocks/ directory"
+
+# Monitoring Commands
+.PHONY: monitoring-up monitoring-down monitoring-restart monitoring-logs monitoring-status prometheus-reload
+
+monitoring-up:
+	@echo "Starting monitoring stack (Prometheus + Grafana)..."
+	@docker-compose up -d prometheus grafana
+	@echo "✓ Monitoring stack started"
+	@echo "  - Prometheus: http://localhost:9090"
+	@echo "  - Grafana:    http://localhost:3000 (admin/admin)"
+
+monitoring-down:
+	@echo "Stopping monitoring stack..."
+	@docker-compose stop prometheus grafana
+	@echo "✓ Monitoring stack stopped"
+
+monitoring-restart:
+	@echo "Restarting monitoring stack..."
+	@docker-compose restart prometheus grafana
+	@echo "✓ Monitoring stack restarted"
+
+monitoring-logs:
+	@echo "Showing monitoring logs (Ctrl+C to exit)..."
+	@docker-compose logs -f prometheus grafana
+
+monitoring-status:
+	@echo "Checking monitoring stack health..."
+	@echo -n "Prometheus: "
+	@curl -s http://localhost:9090/-/healthy || echo "NOT HEALTHY"
+	@echo -n "Grafana:    "
+	@curl -s http://localhost:3000/api/health | grep -q '"database":"ok"' && echo "Healthy" || echo "NOT HEALTHY"
+
+prometheus-reload:
+	@echo "Reloading Prometheus configuration..."
+	@curl -X POST http://localhost:9090/-/reload
+	@echo "✓ Prometheus configuration reloaded"
