@@ -295,7 +295,7 @@ func (p *QuestProvider) executeClaimReward(ctx context.Context, step scenario.St
 		}
 	}
 
-	money, xp, err := p.questSvc.ClaimQuestReward(ctx, state.User.UserID, questID)
+	money, err := p.questSvc.ClaimQuestReward(ctx, state.User.UserID, questID)
 	if err != nil {
 		result.AddOutput("error", err.Error())
 		return result, nil
@@ -303,7 +303,6 @@ func (p *QuestProvider) executeClaimReward(ctx context.Context, step scenario.St
 
 	result.AddOutput("quest_id", questID)
 	result.AddOutput("money_rewarded", money)
-	result.AddOutput("xp_rewarded", xp)
 	result.AddOutput("claimed", true)
 
 	return result, nil

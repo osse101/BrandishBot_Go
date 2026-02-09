@@ -82,7 +82,7 @@ func (h *QuestHandler) ClaimQuestReward(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	money, xp, err := h.questService.ClaimQuestReward(ctx, req.UserID, req.QuestID)
+	money, err := h.questService.ClaimQuestReward(ctx, req.UserID, req.QuestID)
 	if err != nil {
 		log.Error("Failed to claim quest reward", "error", err)
 		respondError(w, http.StatusInternalServerError, "Failed to claim reward")
@@ -91,7 +91,6 @@ func (h *QuestHandler) ClaimQuestReward(w http.ResponseWriter, r *http.Request) 
 
 	resp := map[string]interface{}{
 		"money_earned": money,
-		"xp_earned":    xp,
 		"message":      "Quest reward claimed successfully",
 	}
 

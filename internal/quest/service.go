@@ -22,7 +22,7 @@ type Service interface {
 	// Quest management
 	GetActiveQuests(ctx context.Context) ([]domain.Quest, error)
 	GetUserQuestProgress(ctx context.Context, userID string) ([]domain.QuestProgress, error)
-	ClaimQuestReward(ctx context.Context, userID string, questID int) (money, xp int, err error)
+	ClaimQuestReward(ctx context.Context, userID string, questID int) (money int, err error)
 
 	// Progress tracking (called by handlers/services)
 	OnItemBought(ctx context.Context, userID string, itemCategory string, quantity int) error
@@ -352,13 +352,13 @@ func (s *service) OnSearch(ctx context.Context, userID string) error {
 }
 
 // ClaimQuestReward claims completed quest reward
-func (s *service) ClaimQuestReward(ctx context.Context, userID string, questID int) (money, xp int, err error) {
+func (s *service) ClaimQuestReward(ctx context.Context, userID string, questID int) (money int, err error) {
 	log := logger.FromContext(ctx)
 
 	// Get quest progress
 	quests, err := s.repo.GetUnclaimedCompletedQuests(ctx, userID)
 	if err != nil {
-		return 0, 0, err
+		return 0, err
 	}
 
 	var targetQuest *domain.QuestProgress
@@ -370,12 +370,12 @@ func (s *service) ClaimQuestReward(ctx context.Context, userID string, questID i
 	}
 
 	if targetQuest == nil {
-		return 0, 0, fmt.Errorf("quest not found or not claimable")
+		return 0, fmt.Errorf("quest not found or not claimable")
 	}
 
 	// Mark as claimed
 	if err := s.repo.ClaimQuestReward(ctx, userID, questID); err != nil {
-		return 0, 0, err
+		return 0, err
 	}
 
 	// Award Merchant XP asynchronously
@@ -411,7 +411,7 @@ func (s *service) ClaimQuestReward(ctx context.Context, userID string, questID i
 		s.publisher.PublishWithRetry(ctx, evt)
 	}
 
-	return targetQuest.RewardMoney, targetQuest.RewardXp, nil
+	return targetQuest.RewardMoney, nil
 }
 
 func (s *service) Shutdown(ctx context.Context) error {
