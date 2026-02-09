@@ -124,21 +124,9 @@ watch:
 	fi
 
 test-coverage:
-	@echo "Generating coverage report..."
-	@if [ ! -f logs/coverage.out ]; then \
-		echo "Coverage profile not found. Running tests..."; \
-		$(MAKE) test; \
-	fi
-	@go tool cover -html=logs/coverage.out -o logs/coverage.html
-	@echo "Coverage report generated: logs/coverage.html"
-	@go run ./cmd/devtool check-coverage logs/coverage.out 0
+	@go run ./cmd/devtool check-coverage --html logs/coverage.out 0
 
 test-coverage-check:
-	@echo "Checking coverage threshold (80%)..."
-	@if [ ! -f logs/coverage.out ]; then \
-		echo "Coverage profile not found. Running tests..."; \
-		$(MAKE) test; \
-	fi
 	@go run ./cmd/devtool check-coverage logs/coverage.out 80
 
 lint:
