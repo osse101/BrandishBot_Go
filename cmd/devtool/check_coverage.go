@@ -1,8 +1,11 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -14,23 +17,54 @@ func (c *CheckCoverageCommand) Name() string {
 }
 
 func (c *CheckCoverageCommand) Description() string {
-	return "Check test coverage against a threshold"
+	return "Run tests with coverage and check against threshold"
 }
 
 func (c *CheckCoverageCommand) Run(args []string) error {
-	if len(args) < 2 {
-		return fmt.Errorf("usage: check-coverage <coverage_file> <threshold>")
+	fs := flag.NewFlagSet("check-coverage", flag.ContinueOnError)
+	runTests := fs.Bool("run", false, "Run tests before checking coverage")
+	htmlReport := fs.Bool("html", false, "Generate and open HTML coverage report")
+
+	if err := fs.Parse(args); err != nil {
+		return err
 	}
 
-	file := args[0]
-	thresholdStr := args[1]
+	positional := fs.Args()
+	file := "logs/coverage.out"
+	thresholdStr := "80"
+
+	if len(positional) > 0 {
+		file = positional[0]
+	}
+	if len(positional) > 1 {
+		thresholdStr = positional[1]
+	}
 
 	PrintHeader(fmt.Sprintf("Checking coverage threshold (%s%%)...", thresholdStr))
 
+	// Check if we need to run tests
+	shouldRun := *runTests
 	if _, err := os.Stat(file); os.IsNotExist(err) {
-		PrintError("Coverage file '%s' not found.", file)
-		PrintInfo("Run tests first to generate it.")
-		return fmt.Errorf("coverage file not found")
+		PrintInfo("Coverage file '%s' not found. Running tests...", file)
+		shouldRun = true
+	}
+
+	if shouldRun {
+		// Ensure directory exists
+		dir := filepath.Dir(file)
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return fmt.Errorf("failed to create coverage directory '%s': %w", dir, err)
+		}
+
+		PrintInfo("Running tests with coverage...")
+		// Note: mirroring 'make test' command
+		cmd := exec.Command("go", "test", "./...", "-coverprofile="+file, "-covermode=atomic", "-race")
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("tests failed: %w", err)
+		}
+		PrintSuccess("Tests passed and coverage profile generated.")
 	}
 
 	threshold, err := strconv.ParseFloat(thresholdStr, 64)
@@ -71,6 +105,17 @@ func (c *CheckCoverageCommand) Run(args []string) error {
 	}
 
 	PrintInfo("Total Coverage: %.1f%%", coverage)
+
+	if *htmlReport {
+		htmlFile := strings.TrimSuffix(file, ".out") + ".html"
+		PrintInfo("Generating HTML report: %s", htmlFile)
+		cmd := exec.Command("go", "tool", "cover", "-html="+file, "-o", htmlFile)
+		if err := cmd.Run(); err != nil {
+			PrintWarning("Failed to generate HTML report: %v", err)
+		} else {
+			PrintSuccess("HTML report generated: %s", htmlFile)
+		}
+	}
 
 	if coverage >= threshold {
 		PrintSuccess("Coverage meets threshold.")
