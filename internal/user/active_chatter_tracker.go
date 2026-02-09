@@ -204,3 +204,21 @@ func (t *ActiveChatterTracker) GetActiveCount(platform string) int {
 
 	return count
 }
+
+// GetActiveChatters returns all currently active chatters across all platforms
+func (t *ActiveChatterTracker) GetActiveChatters() []chatterInfo {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+
+	now := time.Now()
+	expiryThreshold := now.Add(-ChatterExpiryDuration)
+
+	var active []chatterInfo
+	for _, info := range t.chatters {
+		if info.LastMessageAt.After(expiryThreshold) {
+			active = append(active, *info)
+		}
+	}
+
+	return active
+}

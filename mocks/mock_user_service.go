@@ -283,6 +283,53 @@ func (_c *MockUserService_FindUserByPlatformID_Call) RunAndReturn(run func(conte
 	return _c
 }
 
+// GetActiveChatters provides a mock function with no fields
+func (_m *MockUserService) GetActiveChatters() []user.ActiveChatter {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetActiveChatters")
+	}
+
+	var r0 []user.ActiveChatter
+	if rf, ok := ret.Get(0).(func() []user.ActiveChatter); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]user.ActiveChatter)
+		}
+	}
+
+	return r0
+}
+
+// MockUserService_GetActiveChatters_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetActiveChatters'
+type MockUserService_GetActiveChatters_Call struct {
+	*mock.Call
+}
+
+// GetActiveChatters is a helper method to define mock.On call
+func (_e *MockUserService_Expecter) GetActiveChatters() *MockUserService_GetActiveChatters_Call {
+	return &MockUserService_GetActiveChatters_Call{Call: _e.mock.On("GetActiveChatters")}
+}
+
+func (_c *MockUserService_GetActiveChatters_Call) Run(run func()) *MockUserService_GetActiveChatters_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockUserService_GetActiveChatters_Call) Return(_a0 []user.ActiveChatter) *MockUserService_GetActiveChatters_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockUserService_GetActiveChatters_Call) RunAndReturn(run func() []user.ActiveChatter) *MockUserService_GetActiveChatters_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetCacheStats provides a mock function with no fields
 func (_m *MockUserService) GetCacheStats() user.CacheStats {
 	ret := _m.Called()

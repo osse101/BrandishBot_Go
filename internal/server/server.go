@@ -239,7 +239,7 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 		adminDailyResetHandler := handler.NewAdminDailyResetHandler(jobService)
 		adminCacheHandler := handler.NewAdminCacheHandler(userService)
 		adminMetricsHandler := handler.NewAdminMetricsHandler(sseHub)
-		adminUserHandler := handler.NewAdminUserHandler(userRepo)
+		adminUserHandler := handler.NewAdminUserHandler(userRepo, userService)
 		adminEventsHandler := handler.NewAdminEventsHandler(eventlogService)
 		adminSSEHandler := handler.NewAdminSSEHandler(sseHub)
 		r.Route("/admin", func(r chi.Router) {
@@ -250,6 +250,7 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 			r.Route("/users", func(r chi.Router) {
 				r.Get("/lookup", adminUserHandler.HandleUserLookup)
 				r.Get("/recent", adminUserHandler.HandleGetRecentUsers)
+				r.Get("/active", adminUserHandler.HandleGetActiveChatters)
 			})
 
 			// Autocomplete lists

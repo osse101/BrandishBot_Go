@@ -5,16 +5,21 @@ import (
 
 	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
+	"github.com/osse101/BrandishBot_Go/internal/user"
 )
 
 // AdminUserHandler handles admin user operations
 type AdminUserHandler struct {
-	userRepo repository.User
+	userRepo    repository.User
+	userService user.Service
 }
 
 // NewAdminUserHandler creates a new admin user handler
-func NewAdminUserHandler(userRepo repository.User) *AdminUserHandler {
-	return &AdminUserHandler{userRepo: userRepo}
+func NewAdminUserHandler(userRepo repository.User, userService user.Service) *AdminUserHandler {
+	return &AdminUserHandler{
+		userRepo:    userRepo,
+		userService: userService,
+	}
 }
 
 // UserLookupResponse contains user lookup result
@@ -97,4 +102,11 @@ func (h *AdminUserHandler) HandleGetItems(w http.ResponseWriter, r *http.Request
 // GET /api/v1/admin/jobs
 func (h *AdminUserHandler) HandleGetJobs(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, job.AllJobs)
+}
+
+// HandleGetActiveChatters returns a list of users who recently sent messages
+// GET /api/v1/admin/users/active
+func (h *AdminUserHandler) HandleGetActiveChatters(w http.ResponseWriter, r *http.Request) {
+	chatters := h.userService.GetActiveChatters()
+	respondJSON(w, http.StatusOK, chatters)
 }
