@@ -37,6 +37,22 @@ func (m *MockStatsService) GetLeaderboard(ctx context.Context, eventType domain.
 	return nil, nil
 }
 
+func (m *MockStatsService) GetUserSlotsStats(ctx context.Context, userID, period string) (*domain.SlotsStats, error) {
+	return nil, nil
+}
+
+func (m *MockStatsService) GetSlotsLeaderboardByProfit(ctx context.Context, period string, limit int) ([]domain.SlotsStats, error) {
+	return nil, nil
+}
+
+func (m *MockStatsService) GetSlotsLeaderboardByWinRate(ctx context.Context, period string, minSpins, limit int) ([]domain.SlotsStats, error) {
+	return nil, nil
+}
+
+func (m *MockStatsService) GetSlotsLeaderboardByMegaJackpots(ctx context.Context, period string, limit int) ([]domain.SlotsStats, error) {
+	return nil, nil
+}
+
 // MockRepository for crafting tests with thread-safety and row locking simulation
 type MockRepository struct {
 	sync.RWMutex

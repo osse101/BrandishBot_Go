@@ -112,6 +112,22 @@ func (m *mockStatsRepository) GetTotalEventCount(ctx context.Context, startTime,
 	return count, nil
 }
 
+func (m *mockStatsRepository) GetUserSlotsStats(ctx context.Context, userID string, startTime, endTime time.Time) (*domain.SlotsStats, error) {
+	return nil, nil
+}
+
+func (m *mockStatsRepository) GetSlotsLeaderboardByProfit(ctx context.Context, startTime, endTime time.Time, limit int) ([]domain.SlotsStats, error) {
+	return nil, nil
+}
+
+func (m *mockStatsRepository) GetSlotsLeaderboardByWinRate(ctx context.Context, startTime, endTime time.Time, minSpins, limit int) ([]domain.SlotsStats, error) {
+	return nil, nil
+}
+
+func (m *mockStatsRepository) GetSlotsLeaderboardByMegaJackpots(ctx context.Context, startTime, endTime time.Time, limit int) ([]domain.SlotsStats, error) {
+	return nil, nil
+}
+
 func TestRecordUserEvent(t *testing.T) {
 	repo := &mockStatsRepository{}
 	svc := NewService(repo)

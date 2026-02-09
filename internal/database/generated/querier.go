@@ -134,6 +134,12 @@ type Querier interface {
 	GetSessionByID(ctx context.Context, id int32) (GetSessionByIDRow, error)
 	GetSessionOptions(ctx context.Context, sessionID int32) ([]GetSessionOptionsRow, error)
 	GetSessionVoters(ctx context.Context, sessionID pgtype.Int4) ([]string, error)
+	// Get top users by mega jackpots hit for a time period
+	GetSlotsLeaderboardByMegaJackpots(ctx context.Context, arg GetSlotsLeaderboardByMegaJackpotsParams) ([]GetSlotsLeaderboardByMegaJackpotsRow, error)
+	// Get top users by net profit (total payout - total bet) for a time period
+	GetSlotsLeaderboardByProfit(ctx context.Context, arg GetSlotsLeaderboardByProfitParams) ([]GetSlotsLeaderboardByProfitRow, error)
+	// Get top users by win rate for a time period (minimum spins required)
+	GetSlotsLeaderboardByWinRate(ctx context.Context, arg GetSlotsLeaderboardByWinRateParams) ([]GetSlotsLeaderboardByWinRateRow, error)
 	GetSyncMetadata(ctx context.Context, configName string) (GetSyncMetadataRow, error)
 	GetTierByPlatformAndName(ctx context.Context, arg GetTierByPlatformAndNameParams) (SubscriptionTier, error)
 	GetToken(ctx context.Context, token string) (GetTokenRow, error)
@@ -158,6 +164,8 @@ type Querier interface {
 	GetUserPlatformLinks(ctx context.Context, userID uuid.UUID) ([]GetUserPlatformLinksRow, error)
 	GetUserProgressions(ctx context.Context, arg GetUserProgressionsParams) ([]UserProgression, error)
 	GetUserQuestProgress(ctx context.Context, userID uuid.UUID) ([]GetUserQuestProgressRow, error)
+	// Calculate aggregate slots statistics for a user within a time period
+	GetUserSlotsStats(ctx context.Context, arg GetUserSlotsStatsParams) (GetUserSlotsStatsRow, error)
 	GetUserSubscription(ctx context.Context, arg GetUserSubscriptionParams) (GetUserSubscriptionRow, error)
 	GetUserSubscriptionHistory(ctx context.Context, arg GetUserSubscriptionHistoryParams) ([]SubscriptionHistory, error)
 	GetUserSubscriptions(ctx context.Context, userID uuid.UUID) ([]GetUserSubscriptionsRow, error)

@@ -31,6 +31,10 @@ const (
 	// Lootbox events
 	EventLootboxJackpot EventType = "lootbox_jackpot"
 	EventLootboxBigWin  EventType = "lootbox_big_win"
+	// Slots events
+	EventSlotsSpin        EventType = "slots_spin"
+	EventSlotsWin         EventType = "slots_win"
+	EventSlotsMegaJackpot EventType = "slots_mega_jackpot"
 )
 
 // StatsEvent represents a single tracked event
@@ -87,4 +91,19 @@ type LeaderboardEntry struct {
 	Username  string `json:"username,omitempty"`
 	Count     int    `json:"count"`
 	EventType string `json:"event_type"`
+}
+
+// SlotsStats represents aggregated slots statistics for a user
+type SlotsStats struct {
+	UserID          string  `json:"user_id"`
+	Username        string  `json:"username,omitempty"`
+	TotalSpins      int     `json:"total_spins"`
+	TotalWins       int     `json:"total_wins"`
+	TotalBet        int     `json:"total_bet"`
+	TotalPayout     int     `json:"total_payout"`
+	NetProfit       int     `json:"net_profit"`
+	WinRate         float64 `json:"win_rate"` // Percentage
+	MegaJackpotsHit int     `json:"mega_jackpots_hit"`
+	BiggestWin      int     `json:"biggest_win"`
+	Period          string  `json:"period,omitempty"`
 }

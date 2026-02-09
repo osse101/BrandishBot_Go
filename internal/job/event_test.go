@@ -133,6 +133,18 @@ func (m *MockStats) GetSystemStats(ctx context.Context, period string) (*domain.
 func (m *MockStats) GetLeaderboard(ctx context.Context, eventType domain.EventType, period string, limit int) ([]domain.LeaderboardEntry, error) {
 	return nil, nil
 }
+func (m *MockStats) GetUserSlotsStats(ctx context.Context, userID, period string) (*domain.SlotsStats, error) {
+	return nil, nil
+}
+func (m *MockStats) GetSlotsLeaderboardByProfit(ctx context.Context, period string, limit int) ([]domain.SlotsStats, error) {
+	return nil, nil
+}
+func (m *MockStats) GetSlotsLeaderboardByWinRate(ctx context.Context, period string, minSpins, limit int) ([]domain.SlotsStats, error) {
+	return nil, nil
+}
+func (m *MockStats) GetSlotsLeaderboardByMegaJackpots(ctx context.Context, period string, limit int) ([]domain.SlotsStats, error) {
+	return nil, nil
+}
 
 func TestAwardXP_PublishesEventOnLevelUp(t *testing.T) {
 	// Setup

@@ -55,6 +55,38 @@ func (m *MockStatsServiceForLootboxTests) GetSystemStats(ctx context.Context, pe
 	return args.Get(0).(*domain.StatsSummary), args.Error(1)
 }
 
+func (m *MockStatsServiceForLootboxTests) GetUserSlotsStats(ctx context.Context, userID, period string) (*domain.SlotsStats, error) {
+	args := m.Called(ctx, userID, period)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.SlotsStats), args.Error(1)
+}
+
+func (m *MockStatsServiceForLootboxTests) GetSlotsLeaderboardByProfit(ctx context.Context, period string, limit int) ([]domain.SlotsStats, error) {
+	args := m.Called(ctx, period, limit)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]domain.SlotsStats), args.Error(1)
+}
+
+func (m *MockStatsServiceForLootboxTests) GetSlotsLeaderboardByWinRate(ctx context.Context, period string, minSpins, limit int) ([]domain.SlotsStats, error) {
+	args := m.Called(ctx, period, minSpins, limit)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]domain.SlotsStats), args.Error(1)
+}
+
+func (m *MockStatsServiceForLootboxTests) GetSlotsLeaderboardByMegaJackpots(ctx context.Context, period string, limit int) ([]domain.SlotsStats, error) {
+	args := m.Called(ctx, period, limit)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]domain.SlotsStats), args.Error(1)
+}
+
 // MockLootboxServiceForLootboxTests
 type MockLootboxServiceForLootboxTests struct {
 	mock.Mock

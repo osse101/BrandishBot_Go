@@ -1292,3 +1292,19 @@ func (c *APIClient) ClaimQuestReward(userID string, questID int) (map[string]int
 	}
 	return result, nil
 }
+
+// SpinSlots spins the slots machine with the specified bet
+func (c *APIClient) SpinSlots(platform, platformID, username string, betAmount int) (*domain.SlotsResult, error) {
+	req := map[string]interface{}{
+		"platform":    platform,
+		"platform_id": platformID,
+		"username":    username,
+		"bet_amount":  betAmount,
+	}
+
+	var result domain.SlotsResult
+	if err := c.doRequestAndParse(http.MethodPost, "/api/v1/slots/spin", req, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}

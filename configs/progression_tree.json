@@ -838,6 +838,21 @@
       ],
       "sort_order": 51,
       "auto_unlock": false
+    },
+    {
+      "key": "feature_slots",
+      "name": "Slots Minigame",
+      "type": "feature",
+      "description": "Unlock the slots machine - bet money for a chance to win big! 🎰",
+      "tier": 2,
+      "size": "medium",
+      "category": "gambling",
+      "max_level": 1,
+      "prerequisites": [
+        "feature_economy"
+      ],
+      "sort_order": 100,
+      "auto_unlock": false
     }
   ]
 }

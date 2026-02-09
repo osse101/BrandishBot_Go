@@ -56,4 +56,7 @@ const (
 
 	// Economy events
 	EventTypeWeeklySaleActive = "economy.weekly_sale_active"
+
+	// Slots events
+	EventSlotsCompleted = "slots.completed"
 )

@@ -33,6 +33,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/scenario/providers"
 	"github.com/osse101/BrandishBot_Go/internal/scheduler"
 	"github.com/osse101/BrandishBot_Go/internal/server"
+	"github.com/osse101/BrandishBot_Go/internal/slots"
 	"github.com/osse101/BrandishBot_Go/internal/sse"
 	"github.com/osse101/BrandishBot_Go/internal/stats"
 	"github.com/osse101/BrandishBot_Go/internal/streamerbot"
@@ -237,6 +238,19 @@ func main() {
 	expeditionWorker.Start()
 	slog.Info("Expedition service and worker initialized")
 
+	// Initialize Slots Service
+	slotsService := slots.NewService(
+		repos.User,
+		jobService,
+		progressionService,
+		cooldownSvc,
+		statsService,
+		eventBus,
+		resilientPublisher,
+		namingResolver,
+	)
+	slog.Info("Slots service initialized")
+
 	// Initialize Daily Reset Worker
 	dailyResetWorker := worker.NewDailyResetWorker(jobService, resilientPublisher)
 	dailyResetWorker.Start()
@@ -315,7 +329,7 @@ func main() {
 	scenarioEngine := scenario.NewEngine(scenarioRegistry)
 	slog.Info("Scenario engine initialized", "features", scenarioRegistry.Features())
 
-	srv := server.NewServer(cfg.Port, cfg.APIKey, cfg.TrustedProxies, dbPool, userService, economyService, craftingService, statsService, progressionService, gambleService, jobService, linkingService, harvestService, predictionService, expeditionService, questService, subscriptionService, namingResolver, eventBus, sseHub, repos.User, scenarioEngine, eventLogService)
+	srv := server.NewServer(cfg.Port, cfg.APIKey, cfg.TrustedProxies, dbPool, userService, economyService, craftingService, statsService, progressionService, gambleService, jobService, linkingService, harvestService, predictionService, expeditionService, questService, subscriptionService, slotsService, namingResolver, eventBus, sseHub, repos.User, scenarioEngine, eventLogService)
 
 	// Run server in a goroutine
 	go func() {
@@ -346,6 +360,7 @@ func main() {
 		PredictionService:   predictionService,
 		QuestService:        questService,
 		SubscriptionService: subscriptionService,
+		SlotsService:        slotsService,
 		GambleWorker:        gambleWorker,
 		ExpeditionWorker:    expeditionWorker,
 		DailyResetWorker:    dailyResetWorker,

@@ -685,6 +685,18 @@ func (m *mockStatsService) GetSystemStats(ctx context.Context, period string) (*
 func (m *mockStatsService) GetLeaderboard(ctx context.Context, eventType domain.EventType, period string, limit int) ([]domain.LeaderboardEntry, error) {
 	return nil, nil
 }
+func (m *mockStatsService) GetUserSlotsStats(ctx context.Context, userID, period string) (*domain.SlotsStats, error) {
+	return nil, nil
+}
+func (m *mockStatsService) GetSlotsLeaderboardByProfit(ctx context.Context, period string, limit int) ([]domain.SlotsStats, error) {
+	return nil, nil
+}
+func (m *mockStatsService) GetSlotsLeaderboardByWinRate(ctx context.Context, period string, minSpins, limit int) ([]domain.SlotsStats, error) {
+	return nil, nil
+}
+func (m *mockStatsService) GetSlotsLeaderboardByMegaJackpots(ctx context.Context, period string, limit int) ([]domain.SlotsStats, error) {
+	return nil, nil
+}
 
 func TestHandleSearch_CriticalSuccess(t *testing.T) {
 	// ARRANGE

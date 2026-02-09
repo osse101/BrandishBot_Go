@@ -42,6 +42,7 @@ const (
 	FeatureFarming        = "feature_farming"
 	FeatureGamble         = "feature_gamble"
 	FeatureSearch         = "feature_search"
+	FeatureSlots          = "feature_slots"
 	FeatureUpgrade        = "feature_upgrade"
 	FeatureWeeklyDiscount = "feature_weekly_discount"
 	FeatureWeeklyQuests   = "feature_weekly_quests"

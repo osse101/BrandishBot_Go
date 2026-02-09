@@ -12,6 +12,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 	"github.com/osse101/BrandishBot_Go/internal/quest"
 	"github.com/osse101/BrandishBot_Go/internal/server"
+	"github.com/osse101/BrandishBot_Go/internal/slots"
 	"github.com/osse101/BrandishBot_Go/internal/subscription"
 	"github.com/osse101/BrandishBot_Go/internal/user"
 	"github.com/osse101/BrandishBot_Go/internal/worker"
@@ -28,6 +29,7 @@ type ShutdownComponents struct {
 	PredictionService   prediction.Service
 	QuestService        quest.Service
 	SubscriptionService subscription.Service
+	SlotsService        slots.Service
 	GambleWorker        *worker.GambleWorker
 	ExpeditionWorker    *worker.ExpeditionWorker
 	DailyResetWorker    *worker.DailyResetWorker
@@ -91,6 +93,7 @@ func GracefulShutdown(ctx context.Context, components ShutdownComponents) {
 	shutdownService(ctx, "prediction", components.PredictionService)
 	shutdownService(ctx, "quest", components.QuestService)
 	shutdownService(ctx, "subscription", components.SubscriptionService)
+	shutdownService(ctx, "slots", components.SlotsService)
 
 	// Shutdown resilient publisher last to flush pending events
 	slog.Info(LogMsgShuttingDownEventPublisher)

@@ -250,3 +250,176 @@ func (r *StatsRepository) GetTotalEventCount(ctx context.Context, startTime, end
 
 	return int(count), nil
 }
+
+// GetUserSlotsStats retrieves aggregated slots statistics for a user
+func (r *StatsRepository) GetUserSlotsStats(ctx context.Context, userID string, startTime, endTime time.Time) (*domain.SlotsStats, error) {
+	userUUID, err := parseUserUUID(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	row, err := r.q.GetUserSlotsStats(ctx, generated.GetUserSlotsStatsParams{
+		UserID:    pgtype.UUID{Bytes: userUUID, Valid: true},
+		StartTime: pgtype.Timestamp{Time: startTime, Valid: true},
+		EndTime:   pgtype.Timestamp{Time: endTime, Valid: true},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user slots stats: %w", err)
+	}
+
+	totalSpins := int(row.TotalSpins)
+	totalWins := int(row.TotalWins)
+	totalBet := convertToInt(row.TotalBet)
+	totalPayout := convertToInt(row.TotalPayout)
+	megaJackpotsHit := int(row.MegaJackpotsHit)
+	biggestWin := convertToInt(row.BiggestWin)
+
+	netProfit := totalPayout - totalBet
+	winRate := 0.0
+	if totalSpins > 0 {
+		winRate = float64(totalWins) / float64(totalSpins) * 100
+	}
+
+	return &domain.SlotsStats{
+		UserID:          userID,
+		TotalSpins:      totalSpins,
+		TotalWins:       totalWins,
+		TotalBet:        totalBet,
+		TotalPayout:     totalPayout,
+		NetProfit:       netProfit,
+		WinRate:         winRate,
+		MegaJackpotsHit: megaJackpotsHit,
+		BiggestWin:      biggestWin,
+	}, nil
+}
+
+// GetSlotsLeaderboardByProfit retrieves top users by net profit
+func (r *StatsRepository) GetSlotsLeaderboardByProfit(ctx context.Context, startTime, endTime time.Time, limit int) ([]domain.SlotsStats, error) {
+	rows, err := r.q.GetSlotsLeaderboardByProfit(ctx, generated.GetSlotsLeaderboardByProfitParams{
+		StartTime:   pgtype.Timestamp{Time: startTime, Valid: true},
+		EndTime:     pgtype.Timestamp{Time: endTime, Valid: true},
+		ResultLimit: int32(limit),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get slots leaderboard by profit: %w", err)
+	}
+
+	stats := make([]domain.SlotsStats, 0, len(rows))
+	for _, row := range rows {
+		var uid uuid.UUID
+		if row.UserID.Valid {
+			uid = row.UserID.Bytes
+		}
+
+		netProfit := convertToInt(row.NetProfit)
+		totalSpins := int(row.TotalSpins)
+
+		stats = append(stats, domain.SlotsStats{
+			UserID:     uid.String(),
+			Username:   row.Username,
+			TotalSpins: totalSpins,
+			NetProfit:  netProfit,
+		})
+	}
+
+	return stats, nil
+}
+
+// GetSlotsLeaderboardByWinRate retrieves top users by win rate (minimum spins required)
+func (r *StatsRepository) GetSlotsLeaderboardByWinRate(ctx context.Context, startTime, endTime time.Time, minSpins, limit int) ([]domain.SlotsStats, error) {
+	rows, err := r.q.GetSlotsLeaderboardByWinRate(ctx, generated.GetSlotsLeaderboardByWinRateParams{
+		StartTime:   pgtype.Timestamp{Time: startTime, Valid: true},
+		EndTime:     pgtype.Timestamp{Time: endTime, Valid: true},
+		MinSpins:    int64(minSpins),
+		ResultLimit: int32(limit),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get slots leaderboard by win rate: %w", err)
+	}
+
+	stats := make([]domain.SlotsStats, 0, len(rows))
+	for _, row := range rows {
+		var uid uuid.UUID
+		if row.UserID.Valid {
+			uid = row.UserID.Bytes
+		}
+
+		totalSpins := int(row.TotalSpins)
+		totalWins := int(row.TotalWins)
+		winRate := convertToFloat(row.WinRate)
+
+		stats = append(stats, domain.SlotsStats{
+			UserID:     uid.String(),
+			Username:   row.Username,
+			TotalSpins: totalSpins,
+			TotalWins:  totalWins,
+			WinRate:    winRate,
+		})
+	}
+
+	return stats, nil
+}
+
+// GetSlotsLeaderboardByMegaJackpots retrieves top users by mega jackpots hit
+func (r *StatsRepository) GetSlotsLeaderboardByMegaJackpots(ctx context.Context, startTime, endTime time.Time, limit int) ([]domain.SlotsStats, error) {
+	rows, err := r.q.GetSlotsLeaderboardByMegaJackpots(ctx, generated.GetSlotsLeaderboardByMegaJackpotsParams{
+		StartTime:   pgtype.Timestamp{Time: startTime, Valid: true},
+		EndTime:     pgtype.Timestamp{Time: endTime, Valid: true},
+		ResultLimit: int32(limit),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get slots leaderboard by mega jackpots: %w", err)
+	}
+
+	stats := make([]domain.SlotsStats, 0, len(rows))
+	for _, row := range rows {
+		var uid uuid.UUID
+		if row.UserID.Valid {
+			uid = row.UserID.Bytes
+		}
+
+		megaJackpotsHit := int(row.MegaJackpotsHit)
+
+		stats = append(stats, domain.SlotsStats{
+			UserID:          uid.String(),
+			Username:        row.Username,
+			MegaJackpotsHit: megaJackpotsHit,
+		})
+	}
+
+	return stats, nil
+}
+
+// convertToInt converts interface{} to int, handling various numeric types
+func convertToInt(v interface{}) int {
+	switch val := v.(type) {
+	case int:
+		return val
+	case int32:
+		return int(val)
+	case int64:
+		return int(val)
+	case float64:
+		return int(val)
+	default:
+		return 0
+	}
+}
+
+// convertToFloat converts interface{} to float64, handling various numeric types
+func convertToFloat(v interface{}) float64 {
+	switch val := v.(type) {
+	case float64:
+		return val
+	case float32:
+		return float64(val)
+	case int:
+		return float64(val)
+	case int32:
+		return float64(val)
+	case int64:
+		return float64(val)
+	default:
+		return 0.0
+	}
+}

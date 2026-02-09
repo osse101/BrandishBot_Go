@@ -206,6 +206,190 @@ func (_c *MockRepository_GetEventsByUser_Call) RunAndReturn(run func(context.Con
 	return _c
 }
 
+// GetSlotsLeaderboardByMegaJackpots provides a mock function with given fields: ctx, startTime, endTime, limit
+func (_m *MockRepository) GetSlotsLeaderboardByMegaJackpots(ctx context.Context, startTime time.Time, endTime time.Time, limit int) ([]domain.SlotsStats, error) {
+	ret := _m.Called(ctx, startTime, endTime, limit)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetSlotsLeaderboardByMegaJackpots")
+	}
+
+	var r0 []domain.SlotsStats
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, time.Time, time.Time, int) ([]domain.SlotsStats, error)); ok {
+		return rf(ctx, startTime, endTime, limit)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, time.Time, time.Time, int) []domain.SlotsStats); ok {
+		r0 = rf(ctx, startTime, endTime, limit)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]domain.SlotsStats)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, time.Time, time.Time, int) error); ok {
+		r1 = rf(ctx, startTime, endTime, limit)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockRepository_GetSlotsLeaderboardByMegaJackpots_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetSlotsLeaderboardByMegaJackpots'
+type MockRepository_GetSlotsLeaderboardByMegaJackpots_Call struct {
+	*mock.Call
+}
+
+// GetSlotsLeaderboardByMegaJackpots is a helper method to define mock.On call
+//   - ctx context.Context
+//   - startTime time.Time
+//   - endTime time.Time
+//   - limit int
+func (_e *MockRepository_Expecter) GetSlotsLeaderboardByMegaJackpots(ctx interface{}, startTime interface{}, endTime interface{}, limit interface{}) *MockRepository_GetSlotsLeaderboardByMegaJackpots_Call {
+	return &MockRepository_GetSlotsLeaderboardByMegaJackpots_Call{Call: _e.mock.On("GetSlotsLeaderboardByMegaJackpots", ctx, startTime, endTime, limit)}
+}
+
+func (_c *MockRepository_GetSlotsLeaderboardByMegaJackpots_Call) Run(run func(ctx context.Context, startTime time.Time, endTime time.Time, limit int)) *MockRepository_GetSlotsLeaderboardByMegaJackpots_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(time.Time), args[2].(time.Time), args[3].(int))
+	})
+	return _c
+}
+
+func (_c *MockRepository_GetSlotsLeaderboardByMegaJackpots_Call) Return(_a0 []domain.SlotsStats, _a1 error) *MockRepository_GetSlotsLeaderboardByMegaJackpots_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockRepository_GetSlotsLeaderboardByMegaJackpots_Call) RunAndReturn(run func(context.Context, time.Time, time.Time, int) ([]domain.SlotsStats, error)) *MockRepository_GetSlotsLeaderboardByMegaJackpots_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetSlotsLeaderboardByProfit provides a mock function with given fields: ctx, startTime, endTime, limit
+func (_m *MockRepository) GetSlotsLeaderboardByProfit(ctx context.Context, startTime time.Time, endTime time.Time, limit int) ([]domain.SlotsStats, error) {
+	ret := _m.Called(ctx, startTime, endTime, limit)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetSlotsLeaderboardByProfit")
+	}
+
+	var r0 []domain.SlotsStats
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, time.Time, time.Time, int) ([]domain.SlotsStats, error)); ok {
+		return rf(ctx, startTime, endTime, limit)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, time.Time, time.Time, int) []domain.SlotsStats); ok {
+		r0 = rf(ctx, startTime, endTime, limit)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]domain.SlotsStats)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, time.Time, time.Time, int) error); ok {
+		r1 = rf(ctx, startTime, endTime, limit)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockRepository_GetSlotsLeaderboardByProfit_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetSlotsLeaderboardByProfit'
+type MockRepository_GetSlotsLeaderboardByProfit_Call struct {
+	*mock.Call
+}
+
+// GetSlotsLeaderboardByProfit is a helper method to define mock.On call
+//   - ctx context.Context
+//   - startTime time.Time
+//   - endTime time.Time
+//   - limit int
+func (_e *MockRepository_Expecter) GetSlotsLeaderboardByProfit(ctx interface{}, startTime interface{}, endTime interface{}, limit interface{}) *MockRepository_GetSlotsLeaderboardByProfit_Call {
+	return &MockRepository_GetSlotsLeaderboardByProfit_Call{Call: _e.mock.On("GetSlotsLeaderboardByProfit", ctx, startTime, endTime, limit)}
+}
+
+func (_c *MockRepository_GetSlotsLeaderboardByProfit_Call) Run(run func(ctx context.Context, startTime time.Time, endTime time.Time, limit int)) *MockRepository_GetSlotsLeaderboardByProfit_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(time.Time), args[2].(time.Time), args[3].(int))
+	})
+	return _c
+}
+
+func (_c *MockRepository_GetSlotsLeaderboardByProfit_Call) Return(_a0 []domain.SlotsStats, _a1 error) *MockRepository_GetSlotsLeaderboardByProfit_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockRepository_GetSlotsLeaderboardByProfit_Call) RunAndReturn(run func(context.Context, time.Time, time.Time, int) ([]domain.SlotsStats, error)) *MockRepository_GetSlotsLeaderboardByProfit_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetSlotsLeaderboardByWinRate provides a mock function with given fields: ctx, startTime, endTime, minSpins, limit
+func (_m *MockRepository) GetSlotsLeaderboardByWinRate(ctx context.Context, startTime time.Time, endTime time.Time, minSpins int, limit int) ([]domain.SlotsStats, error) {
+	ret := _m.Called(ctx, startTime, endTime, minSpins, limit)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetSlotsLeaderboardByWinRate")
+	}
+
+	var r0 []domain.SlotsStats
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, time.Time, time.Time, int, int) ([]domain.SlotsStats, error)); ok {
+		return rf(ctx, startTime, endTime, minSpins, limit)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, time.Time, time.Time, int, int) []domain.SlotsStats); ok {
+		r0 = rf(ctx, startTime, endTime, minSpins, limit)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]domain.SlotsStats)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, time.Time, time.Time, int, int) error); ok {
+		r1 = rf(ctx, startTime, endTime, minSpins, limit)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockRepository_GetSlotsLeaderboardByWinRate_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetSlotsLeaderboardByWinRate'
+type MockRepository_GetSlotsLeaderboardByWinRate_Call struct {
+	*mock.Call
+}
+
+// GetSlotsLeaderboardByWinRate is a helper method to define mock.On call
+//   - ctx context.Context
+//   - startTime time.Time
+//   - endTime time.Time
+//   - minSpins int
+//   - limit int
+func (_e *MockRepository_Expecter) GetSlotsLeaderboardByWinRate(ctx interface{}, startTime interface{}, endTime interface{}, minSpins interface{}, limit interface{}) *MockRepository_GetSlotsLeaderboardByWinRate_Call {
+	return &MockRepository_GetSlotsLeaderboardByWinRate_Call{Call: _e.mock.On("GetSlotsLeaderboardByWinRate", ctx, startTime, endTime, minSpins, limit)}
+}
+
+func (_c *MockRepository_GetSlotsLeaderboardByWinRate_Call) Run(run func(ctx context.Context, startTime time.Time, endTime time.Time, minSpins int, limit int)) *MockRepository_GetSlotsLeaderboardByWinRate_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(time.Time), args[2].(time.Time), args[3].(int), args[4].(int))
+	})
+	return _c
+}
+
+func (_c *MockRepository_GetSlotsLeaderboardByWinRate_Call) Return(_a0 []domain.SlotsStats, _a1 error) *MockRepository_GetSlotsLeaderboardByWinRate_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockRepository_GetSlotsLeaderboardByWinRate_Call) RunAndReturn(run func(context.Context, time.Time, time.Time, int, int) ([]domain.SlotsStats, error)) *MockRepository_GetSlotsLeaderboardByWinRate_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetTopUsers provides a mock function with given fields: ctx, eventType, startTime, endTime, limit
 func (_m *MockRepository) GetTopUsers(ctx context.Context, eventType domain.EventType, startTime time.Time, endTime time.Time, limit int) ([]domain.LeaderboardEntry, error) {
 	ret := _m.Called(ctx, eventType, startTime, endTime, limit)
@@ -444,6 +628,67 @@ func (_c *MockRepository_GetUserEventsByType_Call) Return(_a0 []domain.StatsEven
 }
 
 func (_c *MockRepository_GetUserEventsByType_Call) RunAndReturn(run func(context.Context, string, domain.EventType, int) ([]domain.StatsEvent, error)) *MockRepository_GetUserEventsByType_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetUserSlotsStats provides a mock function with given fields: ctx, userID, startTime, endTime
+func (_m *MockRepository) GetUserSlotsStats(ctx context.Context, userID string, startTime time.Time, endTime time.Time) (*domain.SlotsStats, error) {
+	ret := _m.Called(ctx, userID, startTime, endTime)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetUserSlotsStats")
+	}
+
+	var r0 *domain.SlotsStats
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, time.Time, time.Time) (*domain.SlotsStats, error)); ok {
+		return rf(ctx, userID, startTime, endTime)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, time.Time, time.Time) *domain.SlotsStats); ok {
+		r0 = rf(ctx, userID, startTime, endTime)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*domain.SlotsStats)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, time.Time, time.Time) error); ok {
+		r1 = rf(ctx, userID, startTime, endTime)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockRepository_GetUserSlotsStats_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetUserSlotsStats'
+type MockRepository_GetUserSlotsStats_Call struct {
+	*mock.Call
+}
+
+// GetUserSlotsStats is a helper method to define mock.On call
+//   - ctx context.Context
+//   - userID string
+//   - startTime time.Time
+//   - endTime time.Time
+func (_e *MockRepository_Expecter) GetUserSlotsStats(ctx interface{}, userID interface{}, startTime interface{}, endTime interface{}) *MockRepository_GetUserSlotsStats_Call {
+	return &MockRepository_GetUserSlotsStats_Call{Call: _e.mock.On("GetUserSlotsStats", ctx, userID, startTime, endTime)}
+}
+
+func (_c *MockRepository_GetUserSlotsStats_Call) Run(run func(ctx context.Context, userID string, startTime time.Time, endTime time.Time)) *MockRepository_GetUserSlotsStats_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(time.Time), args[3].(time.Time))
+	})
+	return _c
+}
+
+func (_c *MockRepository_GetUserSlotsStats_Call) Return(_a0 *domain.SlotsStats, _a1 error) *MockRepository_GetUserSlotsStats_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockRepository_GetUserSlotsStats_Call) RunAndReturn(run func(context.Context, string, time.Time, time.Time) (*domain.SlotsStats, error)) *MockRepository_GetUserSlotsStats_Call {
 	_c.Call.Return(run)
 	return _c
 }

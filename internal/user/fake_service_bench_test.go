@@ -229,6 +229,22 @@ func (f *fakeBenchStatsService) GetLeaderboard(ctx context.Context, eventType do
 	return nil, nil
 }
 
+func (f *fakeBenchStatsService) GetUserSlotsStats(ctx context.Context, userID, period string) (*domain.SlotsStats, error) {
+	return nil, nil
+}
+
+func (f *fakeBenchStatsService) GetSlotsLeaderboardByProfit(ctx context.Context, period string, limit int) ([]domain.SlotsStats, error) {
+	return nil, nil
+}
+
+func (f *fakeBenchStatsService) GetSlotsLeaderboardByWinRate(ctx context.Context, period string, minSpins, limit int) ([]domain.SlotsStats, error) {
+	return nil, nil
+}
+
+func (f *fakeBenchStatsService) GetSlotsLeaderboardByMegaJackpots(ctx context.Context, period string, limit int) ([]domain.SlotsStats, error) {
+	return nil, nil
+}
+
 // Mock job service
 type fakeBenchJobService struct{}
 

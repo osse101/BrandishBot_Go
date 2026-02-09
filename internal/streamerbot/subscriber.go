@@ -40,6 +40,9 @@ func (s *Subscriber) Subscribe() {
 	// Subscribe to gamble completed events
 	s.bus.Subscribe(event.Type(domain.EventGambleCompleted), s.handleGambleCompleted)
 
+	// Subscribe to slots completed events
+	s.bus.Subscribe(event.Type(domain.EventSlotsCompleted), s.handleSlotsCompleted)
+
 	// Subscribe to timeout events
 	s.bus.Subscribe(event.TimeoutApplied, s.handleTimeoutUpdate)
 	s.bus.Subscribe(event.TimeoutCleared, s.handleTimeoutUpdate)
@@ -59,6 +62,7 @@ func (s *Subscriber) Subscribe() {
 			string(event.ProgressionCycleCompleted),
 			string(event.ProgressionAllUnlocked),
 			string(domain.EventGambleCompleted),
+			string(domain.EventSlotsCompleted),
 			string(event.TimeoutApplied),
 			string(event.TimeoutCleared),
 			string(event.SubscriptionActivated),
@@ -252,6 +256,61 @@ func (s *Subscriber) handleGambleCompleted(_ context.Context, evt event.Event) e
 	return nil
 }
 
+// handleSlotsCompleted sends a DoAction when a slots spin completes
+func (s *Subscriber) handleSlotsCompleted(_ context.Context, evt event.Event) error {
+	payload, ok := evt.Payload.(domain.SlotsCompletedPayload)
+	if !ok {
+		// Fallback for untyped payload
+		payloadMap, ok := evt.Payload.(map[string]interface{})
+		if !ok {
+			slog.Warn("Invalid slots completed event payload type")
+			return nil
+		}
+
+		// Extract fields with type assertions
+		payoutMultiplier := 0.0
+		if pm, ok := payloadMap["payout_multiplier"].(float64); ok {
+			payoutMultiplier = pm
+		}
+
+		payload = domain.SlotsCompletedPayload{
+			UserID:           getStringFromMap(payloadMap, "user_id"),
+			Username:         getStringFromMap(payloadMap, "username"),
+			BetAmount:        getIntFromMap(payloadMap, "bet_amount"),
+			Reel1:            getStringFromMap(payloadMap, "reel1"),
+			Reel2:            getStringFromMap(payloadMap, "reel2"),
+			Reel3:            getStringFromMap(payloadMap, "reel3"),
+			PayoutAmount:     getIntFromMap(payloadMap, "payout_amount"),
+			PayoutMultiplier: payoutMultiplier,
+			TriggerType:      getStringFromMap(payloadMap, "trigger_type"),
+			IsWin:            getBoolFromMap(payloadMap, "is_win"),
+			IsNearMiss:       getBoolFromMap(payloadMap, "is_near_miss"),
+		}
+	}
+
+	args := map[string]string{
+		"user_id":           payload.UserID,
+		"username":          payload.Username,
+		"bet_amount":        fmt.Sprintf("%d", payload.BetAmount),
+		"reel1":             payload.Reel1,
+		"reel2":             payload.Reel2,
+		"reel3":             payload.Reel3,
+		"payout_amount":     fmt.Sprintf("%d", payload.PayoutAmount),
+		"payout_multiplier": fmt.Sprintf("%.2f", payload.PayoutMultiplier),
+		"trigger_type":      payload.TriggerType,
+		"is_win":            fmt.Sprintf("%t", payload.IsWin),
+		"is_near_miss":      fmt.Sprintf("%t", payload.IsNearMiss),
+	}
+
+	slog.Debug(LogMsgEventReceived, "event_type", domain.EventSlotsCompleted, "args", args)
+
+	if err := s.client.DoAction(ActionSlotsResult, args); err != nil {
+		slog.Debug("Failed to send slots result to Streamer.bot", "error", err)
+	}
+
+	return nil
+}
+
 // handleTimeoutUpdate sends a DoAction for timeout applied or cleared events
 func (s *Subscriber) handleTimeoutUpdate(_ context.Context, evt event.Event) error {
 	var payload event.TimeoutPayloadV1
@@ -352,6 +411,13 @@ func getIntFromMap(m map[string]interface{}, key string) int {
 	default:
 		return 0
 	}
+}
+
+func getBoolFromMap(m map[string]interface{}, key string) bool {
+	if v, ok := m[key].(bool); ok {
+		return v
+	}
+	return false
 }
 
 func getMapKeys(m map[string]interface{}) []string {

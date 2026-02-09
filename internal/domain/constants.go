@@ -82,6 +82,7 @@ const (
 // Action name constants for cooldown tracking
 const (
 	ActionSearch = "search"
+	ActionSlots  = "slots"
 	// Future actions can be added here
 	// ActionDaily  = "daily"
 	// ActionQuest  = "quest"
@@ -90,6 +91,7 @@ const (
 // Duration constants for cooldowns and timing
 const (
 	SearchCooldownDuration = 30 * time.Minute
+	SlotsCooldownDuration  = 10 * time.Minute
 	// Future durations can be added here
 	// DailyCooldownDuration  = 24 * time.Hour
 )

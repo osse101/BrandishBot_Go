@@ -165,6 +165,38 @@ func (m *MockStatsService) GetLeaderboard(ctx context.Context, eventType domain.
 	return args.Get(0).([]domain.LeaderboardEntry), args.Error(1)
 }
 
+func (m *MockStatsService) GetUserSlotsStats(ctx context.Context, userID, period string) (*domain.SlotsStats, error) {
+	args := m.Called(ctx, userID, period)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.SlotsStats), args.Error(1)
+}
+
+func (m *MockStatsService) GetSlotsLeaderboardByProfit(ctx context.Context, period string, limit int) ([]domain.SlotsStats, error) {
+	args := m.Called(ctx, period, limit)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]domain.SlotsStats), args.Error(1)
+}
+
+func (m *MockStatsService) GetSlotsLeaderboardByWinRate(ctx context.Context, period string, minSpins, limit int) ([]domain.SlotsStats, error) {
+	args := m.Called(ctx, period, minSpins, limit)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]domain.SlotsStats), args.Error(1)
+}
+
+func (m *MockStatsService) GetSlotsLeaderboardByMegaJackpots(ctx context.Context, period string, limit int) ([]domain.SlotsStats, error) {
+	args := m.Called(ctx, period, limit)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]domain.SlotsStats), args.Error(1)
+}
+
 // Tests
 
 func TestCalculateLevel(t *testing.T) {

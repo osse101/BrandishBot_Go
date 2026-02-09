@@ -47,6 +47,7 @@ const (
 	ActionCycleCompleted     = "BrandishBot_CycleCompleted"
 	ActionAllUnlocked        = "BrandishBot_AllUnlocked"
 	ActionGambleCompleted    = "BrandishBot_GambleCompleted"
+	ActionSlotsResult        = "BrandishBot_SlotsResult"
 	ActionTimeoutUpdate      = "BrandishBot_TimeoutUpdate"
 	ActionSubscriptionUpdate = "BrandishBot_SubscriptionUpdate"
 )
