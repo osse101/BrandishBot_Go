@@ -155,19 +155,12 @@ func ClaimQuestCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			return
 		}
 
-		// Extract money and XP from result
+		// Extract money from result
 		moneyEarned := int64(0)
-		xpEarned := int64(0)
 
 		if money, ok := result["money_earned"]; ok {
 			if m, okm := money.(float64); okm {
 				moneyEarned = int64(m)
-			}
-		}
-
-		if xp, ok := result["xp_earned"]; ok {
-			if x, okx := xp.(float64); okx {
-				xpEarned = int64(x)
 			}
 		}
 
@@ -180,11 +173,6 @@ func ClaimQuestCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 				{
 					Name:   "💰 Money Earned",
 					Value:  fmt.Sprintf("%d", moneyEarned),
-					Inline: true,
-				},
-				{
-					Name:   "⭐ Merchant XP Earned",
-					Value:  fmt.Sprintf("%d", xpEarned),
 					Inline: true,
 				},
 			},
