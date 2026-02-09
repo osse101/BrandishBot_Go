@@ -170,7 +170,7 @@ func TestOpenLootbox(t *testing.T) {
 	t.Run("Special Case: Money Scaling", func(t *testing.T) {
 		repo := &mockItemRepo{
 			items: map[string]*domain.Item{
-				"money": {ID: 10, InternalName: "money", BaseValue: 1},
+				"money": {ID: 10, InternalName: "money", BaseValue: 1, Types: []string{"currency"}},
 			},
 		}
 		lootTable := map[string][]LootItem{
@@ -196,10 +196,11 @@ func TestOpenLootbox(t *testing.T) {
 		require.NoError(t, err)
 		assert.Len(t, drops, 1)
 
-		// Cursed Quality (0.4) * 100 Quantity = 40 Quantity
+		// Currency special handling: Cursed Quality (0.4) * 100 Quantity = 40 Quantity, but forced to COMMON quality
 		assert.Equal(t, "money", drops[0].ItemName)
 		assert.Equal(t, 40, drops[0].Quantity)
 		assert.Equal(t, 1, drops[0].Value)
+		assert.Equal(t, domain.QualityCommon, drops[0].QualityLevel) // Currency is always COMMON
 	})
 
 	t.Run("Quality Shift Verification", func(t *testing.T) {

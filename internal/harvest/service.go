@@ -272,8 +272,9 @@ func (s *service) applyHarvestRewards(ctx context.Context, tx repository.Harvest
 			inventory.Slots[slotIndex].Quantity += qty
 		} else {
 			inventory.Slots = append(inventory.Slots, domain.InventorySlot{
-				ItemID:   id,
-				Quantity: qty,
+				ItemID:       id,
+				Quantity:     qty,
+				QualityLevel: domain.QualityCommon,
 			})
 		}
 	}

@@ -63,3 +63,13 @@ const (
 	MultJunk      = 0.6
 	MultCursed    = 0.4
 )
+
+// IsCurrency returns true if this item is a currency (should not have quality variations)
+func (i *Item) IsCurrency() bool {
+	for _, t := range i.Types {
+		if t == "currency" {
+			return true
+		}
+	}
+	return false
+}

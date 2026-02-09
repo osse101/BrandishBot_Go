@@ -244,13 +244,14 @@ func (s *service) convertToDroppedItems(ctx context.Context, dropCounts map[stri
 		quantity := info.Qty
 		boostedValue := int(float64(item.BaseValue) * mult)
 
-		// Money special logic: scale quantity instead of individual value
-		if itemName == "money" {
+		// Currency special logic: convert quality to quantity, force COMMON quality
+		if item.IsCurrency() {
 			quantity = int(float64(info.Qty) * mult)
 			if info.Qty > 0 && quantity == 0 {
 				quantity = 1
 			}
-			boostedValue = item.BaseValue // Keep base value (usually 1)
+			boostedValue = item.BaseValue  // Keep base value (usually 1)
+			quality = domain.QualityCommon // Force COMMON for all currency
 		} else {
 			// Normal item truncation protection
 			if item.BaseValue > 0 && boostedValue == 0 {

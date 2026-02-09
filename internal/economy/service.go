@@ -330,14 +330,18 @@ func (s *service) processSellTransaction(ctx context.Context, inventory *domain.
 	// Add money
 	moneyFound := false
 	for i, slot := range inventory.Slots {
-		if slot.ItemID == moneyItem.ID {
+		if slot.ItemID == moneyItem.ID && slot.QualityLevel == domain.QualityCommon {
 			inventory.Slots[i].Quantity += moneyGained
 			moneyFound = true
 			break
 		}
 	}
 	if !moneyFound {
-		inventory.Slots = append(inventory.Slots, domain.InventorySlot{ItemID: moneyItem.ID, Quantity: moneyGained})
+		inventory.Slots = append(inventory.Slots, domain.InventorySlot{
+			ItemID:       moneyItem.ID,
+			Quantity:     moneyGained,
+			QualityLevel: domain.QualityCommon,
+		})
 	}
 
 	return moneyGained

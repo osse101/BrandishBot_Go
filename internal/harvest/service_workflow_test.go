@@ -131,7 +131,7 @@ func TestHarvest_Workflow(t *testing.T) {
 			partialItemLookup: true, // Only return first item found (money), skip stick
 			// Expect inventory to update only with money
 			expectedInvSlots: []domain.InventorySlot{
-				{ItemID: 1, Quantity: 22}, // ID 1 = money
+				{ItemID: 1, Quantity: 22, QualityLevel: domain.QualityCommon}, // ID 1 = money
 			},
 		},
 		{
@@ -139,10 +139,10 @@ func TestHarvest_Workflow(t *testing.T) {
 			hoursElapsed:  2.0, // 2 money
 			expectedGains: map[string]int{"money": 2},
 			initialInventory: []domain.InventorySlot{
-				{ItemID: 1, Quantity: 10}, // User already has 10 money (ID 1)
+				{ItemID: 1, Quantity: 10, QualityLevel: domain.QualityCommon}, // User already has 10 money (ID 1)
 			},
 			expectedInvSlots: []domain.InventorySlot{
-				{ItemID: 1, Quantity: 12}, // Should stack to 12
+				{ItemID: 1, Quantity: 12, QualityLevel: domain.QualityCommon}, // Should stack to 12
 			},
 		},
 		{
@@ -150,11 +150,11 @@ func TestHarvest_Workflow(t *testing.T) {
 			hoursElapsed:  2.0, // 2 money (ID 1)
 			expectedGains: map[string]int{"money": 2},
 			initialInventory: []domain.InventorySlot{
-				{ItemID: 2, Quantity: 5}, // User has stick (ID 2)
+				{ItemID: 2, Quantity: 5, QualityLevel: domain.QualityCommon}, // User has stick (ID 2)
 			},
 			expectedInvSlots: []domain.InventorySlot{
-				{ItemID: 2, Quantity: 5},
-				{ItemID: 1, Quantity: 2}, // New slot for money
+				{ItemID: 2, Quantity: 5, QualityLevel: domain.QualityCommon},
+				{ItemID: 1, Quantity: 2, QualityLevel: domain.QualityCommon}, // New slot for money
 			},
 		},
 	}
