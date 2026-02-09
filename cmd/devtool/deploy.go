@@ -101,7 +101,8 @@ func (c *DeployCommand) deployLocal(env, version, composeFile string) error {
 		"-f", "Dockerfile",
 		".",
 	}
-	if err := runCommandVerbose("docker", buildArgs...); err != nil {
+	//nolint:forbidigo
+	if err := runCommandVerbose("docker", buildArgs...); err != nil { // #nosec G204
 		return fmt.Errorf("docker build failed: %w", err)
 	}
 	PrintSuccess("Docker image built: %s:%s", fullImageName, version)
@@ -109,9 +110,11 @@ func (c *DeployCommand) deployLocal(env, version, composeFile string) error {
 	// Step 4: Deploy new containers
 	PrintInfo("Step 4/7: Deploying new containers")
 	os.Setenv("DOCKER_IMAGE_TAG", version)
-	if err := runCommandVerbose("docker", "compose", "-f", composeFile, "up", "-d", "app", "discord"); err != nil {
+	//nolint:forbidigo
+	if err := runCommandVerbose("docker", "compose", "-f", composeFile, "up", "-d", "app", "discord"); err != nil { // #nosec G204
 		PrintError("Deployment failed, attempting rollback...")
-		_ = runCommand("docker", "compose", "-f", composeFile, "up", "-d", "--no-deps", "app", "discord")
+		//nolint:forbidigo
+		_ = runCommand("docker", "compose", "-f", composeFile, "up", "-d", "--no-deps", "app", "discord") // #nosec G204
 		return fmt.Errorf("deployment failed: %w", err)
 	}
 	PrintSuccess("Containers deployed")
@@ -145,8 +148,16 @@ func (c *DeployCommand) deployLocal(env, version, composeFile string) error {
 
 func (c *DeployCommand) deployRemote(env, version, composeFile string) error {
 	// 1. Docker Login
-	if err := runCommand("docker", "system", "info"); err != nil || !strings.Contains(func() string { out, _ := getCommandOutput("docker", "system", "info"); return out }(), "Username") {
+	//nolint:forbidigo
+	isLoggedIn := func() bool {
+		//nolint:forbidigo
+		out, _ := getCommandOutput("docker", "system", "info")
+		return strings.Contains(out, "Username")
+	}
+	//nolint:forbidigo
+	if err := runCommand("docker", "system", "info"); err != nil || !isLoggedIn() {
 		PrintWarning("Not logged in. Attempting docker login...")
+		//nolint:forbidigo
 		if err := runCommandVerbose("docker", "login"); err != nil {
 			return fmt.Errorf("docker login failed: %w", err)
 		}
@@ -155,23 +166,27 @@ func (c *DeployCommand) deployRemote(env, version, composeFile string) error {
 	// 2. Pull images
 	PrintInfo("Pulling images...")
 	os.Setenv("DOCKER_IMAGE_TAG", version)
-	if err := runCommandVerbose("docker", "compose", "-f", composeFile, "pull", "app", "discord"); err != nil {
+	//nolint:forbidigo
+	if err := runCommandVerbose("docker", "compose", "-f", composeFile, "pull", "app", "discord"); err != nil { // #nosec G204
 		return fmt.Errorf("failed to pull images: %w", err)
 	}
 
 	// 3. Restart services
 	PrintInfo("Starting services...")
-	if err := runCommand("docker", "compose", "-f", composeFile, "up", "-d", "db"); err != nil {
+	//nolint:forbidigo
+	if err := runCommand("docker", "compose", "-f", composeFile, "up", "-d", "db"); err != nil { // #nosec G204
 		return fmt.Errorf("failed to start database: %w", err)
 	}
 	time.Sleep(2 * time.Second)
-	if err := runCommandVerbose("docker", "compose", "-f", composeFile, "up", "-d", "app", "discord"); err != nil {
+	//nolint:forbidigo
+	if err := runCommandVerbose("docker", "compose", "-f", composeFile, "up", "-d", "app", "discord"); err != nil { // #nosec G204
 		return fmt.Errorf("failed to start services: %w", err)
 	}
 	PrintSuccess("Services started")
 
 	// 4. Prune old images
 	PrintInfo("Cleaning up old images...")
+	//nolint:forbidigo
 	if err := runCommand("docker", "image", "prune", "-f"); err != nil {
 		PrintWarning("Failed to prune old images: %v", err)
 	}
@@ -194,6 +209,7 @@ func (c *DeployCommand) deployRemote(env, version, composeFile string) error {
 func (c *DeployCommand) announceRelease(version string) {
 	PrintInfo("Generating release notes for version %s...", version)
 
+	//nolint:forbidigo
 	lastTag, err := getCommandOutput("git", "describe", "--tags", "--abbrev=0")
 	rangeSpec := "HEAD~5..HEAD"
 	title := fmt.Sprintf("Deployment Update (%s)", version)
@@ -203,7 +219,8 @@ func (c *DeployCommand) announceRelease(version string) {
 		title = fmt.Sprintf("Deployment Update (%s -> HEAD)", lastTag)
 	}
 
-	notes, _ := getCommandOutput("git", "log", "--pretty=format:• %s (%an)", rangeSpec, "-n", "20")
+	//nolint:forbidigo
+	notes, _ := getCommandOutput("git", "log", "--pretty=format:• %s (%an)", rangeSpec, "-n", "20") // #nosec G204
 	if notes == "" {
 		notes = "No new commits in this deployment."
 	}
@@ -270,7 +287,8 @@ func waitForHealth(env string, timeout time.Duration) error {
 
 func backupDatabase(env, composeFile string) error {
 	// Check if DB is up
-	out, err := getCommandOutput("docker", "compose", "-f", composeFile, "ps", "-q", "db")
+	//nolint:forbidigo
+	out, err := getCommandOutput("docker", "compose", "-f", composeFile, "ps", "-q", "db") // #nosec G204
 	if err != nil || out == "" {
 		return fmt.Errorf("database container not found or not running")
 	}

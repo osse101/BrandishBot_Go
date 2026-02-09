@@ -6,78 +6,97 @@ linters:
   # Enable essential and recommended linters
   enable:
     # Essential - Bug Detection & Best Practices
-    - govet           # Official Go vet tool
-    - errcheck        # Checks for unchecked errors  
-    - staticcheck     # Comprehensive static analysis
-    - unused          # Finds unused code
-    - ineffassign     # Detects ineffectual assignments
-    - gosec           # Security auditing
-    
+    - govet # Official Go vet tool
+    - errcheck # Checks for unchecked errors
+    - staticcheck # Comprehensive static analysis
+    - unused # Finds unused code
+    - ineffassign # Detects ineffectual assignments
+    - gosec # Security auditing
+    - forbidigo # Forbids specific identifiers
+
     # Code Quality
-    - goconst         # Repeated strings that should be constants
-    - gocyclo         # Cyclomatic complexity
-    - dupl            # Code duplication
-    - misspell        # Spelling mistakes
-    - revive          # Fast, configurable linter (golint replacement)
-    - unconvert       # Unnecessary type conversions
-    - unparam         # Unused function parameters
-    
-    # Style & Maintainability  
-    - gofmt           # Code formatting
-    - goimports       # Import organization
-    - gci             # Import ordering/grouping
-    - whitespace      # Unnecessary blank lines
-    - nakedret        # Naked returns in long functions
-    - nolintlint      # Validates //nolint directives
-    
+    - goconst # Repeated strings that should be constants
+    - gocyclo # Cyclomatic complexity
+    - dupl # Code duplication
+    - misspell # Spelling mistakes
+    - revive # Fast, configurable linter (golint replacement)
+    - unconvert # Unnecessary type conversions
+    - unparam # Unused function parameters
+
+    # Style & Maintainability
+    - gofmt # Code formatting
+    - goimports # Import organization
+    - gci # Import ordering/grouping
+    - whitespace # Unnecessary blank lines
+    - nakedret # Naked returns in long functions
+    - nolintlint # Validates //nolint directives
+
     # Performance & Best Practices
-    - prealloc        # Slice preallocation opportunities
-    - errorlint       # Error wrapping (Go 1.13+)
+    - prealloc # Slice preallocation opportunities
+    - errorlint # Error wrapping (Go 1.13+)
 
 linters-settings:
   # Duplication detection
   dupl:
     threshold: 100
-  
+
   # Error checking configuration
   errcheck:
-    check-type-assertions: false  # Allow unchecked type assertions where appropriate
-    check-blank: false            # Allow assigning errors to blank identifier when intentional
-  
+    check-type-assertions: false # Allow unchecked type assertions where appropriate
+    check-blank: false # Allow assigning errors to blank identifier when intentional
+
   # Magic constants/strings
   goconst:
     min-len: 3
     min-occurrences: 3
     ignore-tests: true
-  
+
   # Cyclomatic complexity
   gocyclo:
     min-complexity: 15
-  
+
   # Security
   gosec:
     excludes:
-      - G104  # We handle error checking explicitly with errcheck
-  
+      - G104 # We handle error checking explicitly with errcheck
+    config:
+      G204:
+        # Treat these custom wrappers as os/exec calls for security auditing
+        # Some versions of gosec use CustomExec, others use audit_custom_functions
+        CustomExec:
+          - "runCommand"
+          - "runCommandVerbose"
+          - "getCommandOutput"
+        audit_custom_functions:
+          - "runCommand"
+          - "runCommandVerbose"
+          - "getCommandOutput"
+
   # Naked returns
   nakedret:
     max-func-lines: 20
-  
+
+  # Forbid specific identifiers
+  forbidigo:
+    forbid:
+      - p: ^(runCommand|runCommandVerbose|getCommandOutput)$
+        msg: "Use of generic command wrappers is discouraged. If used, ensure input is validated and add // #nosec G204"
+
   # Import organization
   gci:
     sections:
-      - standard                    # Go standard library
-      - default                     # Third-party packages
-      - prefix(github.com/osse101/BrandishBot_Go)  # Project imports
+      - standard # Go standard library
+      - default # Third-party packages
+      - prefix(github.com/osse101/BrandishBot_Go) # Project imports
     skip-generated: true
-  
+
   # Revive configuration (golint replacement)
   revive:
     rules:
       - name: exported
         disabled: false
       - name: package-comments
-        disabled: true  # Not enforcing package comments for internal packages
+        disabled: true # Not enforcing package comments for internal packages
       - name: blank-imports
       - name: context-as-argument
       - name: dot-imports
@@ -100,10 +119,10 @@ issues:
   # Show all issues
   max-issues-per-linter: 0
   max-same-issues: 0
-  
+
   # Don't hide new issues in existing code
   new: false
-  
+
   exclude-rules:
     # Relax linters for test files
     - path: _test\.go
@@ -114,33 +133,33 @@ issues:
         - gocyclo
         - funlen
         - goconst
-    
+
     # Exclude all linters from migrations (schema-only SQL)
     - path: migrations/
       linters:
         - all
-    
+
     # Exclude all linters from generated code
     - path: internal/database/generated/
       linters:
         - all
-    
+
     # Exclude all linters from mocks
     - path: mocks/
       linters:
         - all
-    
+
     # G115: Integer overflow conversion - acceptable in database context where IDs fit in int32
     - linters:
         - gosec
       text: "G115"
       path: internal/database/postgres/
-    
+
     - linters:
         - gosec
       text: "G115"
       path: internal/cooldown/postgres.go
-    
+
     # Allow long lines in generated files
     - path: _generated\.go
       linters:

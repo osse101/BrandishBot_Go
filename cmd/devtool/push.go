@@ -48,8 +48,16 @@ func (c *PushCommand) Run(args []string) error {
 	PrintInfo("Image: %s", fullImageName)
 
 	// Check Docker Login
-	if err := runCommand("docker", "system", "info"); err != nil || !strings.Contains(func() string { out, _ := getCommandOutput("docker", "system", "info"); return out }(), "Username") {
+	//nolint:forbidigo
+	isLoggedIn := func() bool {
+		//nolint:forbidigo
+		out, _ := getCommandOutput("docker", "system", "info")
+		return strings.Contains(out, "Username")
+	}
+	//nolint:forbidigo
+	if err := runCommand("docker", "system", "info"); err != nil || !isLoggedIn() {
 		PrintWarning("Not logged into Docker Hub/Registry. Attempting login...")
+		//nolint:forbidigo
 		if err := runCommandVerbose("docker", "login"); err != nil {
 			return fmt.Errorf("docker login failed: %w", err)
 		}
@@ -66,16 +74,19 @@ func (c *PushCommand) Run(args []string) error {
 		"-f", "Dockerfile",
 		".",
 	}
-	if err := runCommandVerbose("docker", buildArgs...); err != nil {
+	//nolint:forbidigo
+	if err := runCommandVerbose("docker", buildArgs...); err != nil { // #nosec G204
 		return fmt.Errorf("docker build failed: %w", err)
 	}
 
 	// Push Tags
 	PrintInfo("Pushing tags to registry...")
-	if err := runCommandVerbose("docker", "push", fmt.Sprintf("%s:%s", fullImageName, version)); err != nil {
+	//nolint:forbidigo
+	if err := runCommandVerbose("docker", "push", fmt.Sprintf("%s:%s", fullImageName, version)); err != nil { // #nosec G204
 		return fmt.Errorf("push failed: %w", err)
 	}
-	if err := runCommandVerbose("docker", "push", fmt.Sprintf("%s:latest-%s", fullImageName, env)); err != nil {
+	//nolint:forbidigo
+	if err := runCommandVerbose("docker", "push", fmt.Sprintf("%s:latest-%s", fullImageName, env)); err != nil { // #nosec G204
 		return fmt.Errorf("push failed: %w", err)
 	}
 

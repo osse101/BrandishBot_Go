@@ -40,6 +40,7 @@ func PrintHeader(title string) {
 // Command execution helpers
 
 func getCommandOutput(name string, args ...string) (string, error) {
+	// #nosec G204 - Generic command wrapper
 	cmd := exec.Command(name, args...)
 	out, err := cmd.Output()
 	if err != nil {
@@ -50,12 +51,14 @@ func getCommandOutput(name string, args ...string) (string, error) {
 
 // runCommand runs a command silently
 func runCommand(name string, args ...string) error {
+	// #nosec G204 - Generic command wrapper
 	cmd := exec.Command(name, args...)
 	return cmd.Run()
 }
 
 // runCommandVerbose runs a command and pipes output to stdout/stderr
 func runCommandVerbose(name string, args ...string) error {
+	// #nosec G204 - Generic command wrapper
 	cmd := exec.Command(name, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

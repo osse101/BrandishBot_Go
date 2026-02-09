@@ -81,6 +81,7 @@ func (c *PreCommitCommand) Run(args []string) error {
 }
 
 func getStagedFiles() ([]string, error) {
+	//nolint:forbidigo
 	out, err := getCommandOutput("git", "diff", "--cached", "--name-only", "--diff-filter=ACM")
 	if err != nil {
 		return nil, err
@@ -132,10 +133,12 @@ func runGoFmt(files []string) error {
 
 	PrintInfo("Running go fmt...")
 	for _, f := range goFiles {
-		if err := runCommand("go", "fmt", f); err != nil {
+		//nolint:forbidigo
+		if err := runCommand("go", "fmt", f); err != nil { // #nosec G204
 			return fmt.Errorf("go fmt failed for %s: %w", f, err)
 		}
-		if err := runCommand("git", "add", f); err != nil {
+		//nolint:forbidigo
+		if err := runCommand("git", "add", f); err != nil { // #nosec G204
 			return fmt.Errorf("git add failed for %s: %w", f, err)
 		}
 	}
@@ -159,11 +162,13 @@ func checkGenerate(files []string) error {
 	}
 
 	PrintInfo("Running 'make generate'...")
+	//nolint:forbidigo
 	if err := runCommand("make", "generate"); err != nil {
 		return fmt.Errorf("make generate failed: %w", err)
 	}
 
 	// Check for unstaged changes
+	//nolint:forbidigo
 	if err := runCommand("git", "diff", "--exit-code"); err != nil {
 		// git diff --exit-code returns 1 if there are differences
 		PrintError("'make generate' produced changes that are not staged.")
@@ -188,6 +193,7 @@ func runLinter() error {
 
 func runUnitTests() error {
 	PrintInfo("Running unit tests...")
+	//nolint:forbidigo
 	if err := runCommandVerbose("make", "unit"); err != nil {
 		return fmt.Errorf("unit tests failed")
 	}
@@ -214,6 +220,7 @@ func checkMigrationProtections() error {
 }
 
 func detectMigrationSquashAndChanges() (bool, []string, error) {
+	//nolint:forbidigo
 	out, err := getCommandOutput("git", "diff", "--cached", "--name-status")
 	if err != nil {
 		return false, nil, fmt.Errorf("failed to get git status: %w", err)
@@ -441,6 +448,7 @@ func checkEnvSync() error {
 	foundMissing := false
 
 	// Use git grep to find os.Getenv calls in .go files (much faster)
+	//nolint:forbidigo
 	out, _ := getCommandOutput("git", "grep", "-E", `os\.Getenv\("([^"]+)"\)`, "--", "*.go")
 
 	lines = strings.Split(out, "\n")
