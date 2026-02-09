@@ -100,7 +100,17 @@ func (s *service) Harvest(ctx context.Context, platform, platformID, username st
 	// 8. Calculate rewards (handle spoiled)
 	rewards, message := s.calculateHarvestRewards(ctx, hoursElapsed)
 
-	// 9. Update inventory and harvest state
+	// 9. Award Farmer XP (Async)
+	// Must be done before potential early return in handleEmptyHarvest
+	s.wg.Add(1)
+	go func() {
+		defer s.wg.Done()
+		// Use WithoutCancel to preserve logger/values but detach cancellation
+		asyncCtx := context.WithoutCancel(ctx)
+		s.awardFarmerXP(asyncCtx, user.ID, hoursElapsed)
+	}()
+
+	// 10. Update inventory and harvest state
 	if len(rewards) == 0 {
 		return s.handleEmptyHarvest(ctx, tx, user.ID, now, hoursElapsed)
 	}
@@ -113,24 +123,10 @@ func (s *service) Harvest(ctx context.Context, platform, platformID, username st
 		return nil, fmt.Errorf("failed to update harvest state: %w", err)
 	}
 
-	// 10. Commit transaction
+	// 11. Commit transaction
 	if err := tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("failed to commit transaction: %w", err)
 	}
-
-	// 11. Award Farmer XP (Async)
-	xpMsg := s.calculateOptimisticXPMessage(hoursElapsed)
-	if xpMsg != "" {
-		message += xpMsg
-	}
-
-	s.wg.Add(1)
-	go func() {
-		defer s.wg.Done()
-		// Use a new context for async operation to avoid cancellation issues
-		asyncCtx := context.Background()
-		s.awardFarmerXP(asyncCtx, user.ID, hoursElapsed)
-	}()
 
 	log.Info("Harvest successful", "userID", user.ID, "rewards", rewards, "hours", hoursElapsed)
 
@@ -204,14 +200,6 @@ func (s *service) calculateHarvestRewards(ctx context.Context, hoursElapsed floa
 		}, "Your crops spoiled! You salvaged 1 Decent Lootbox and 3 Sticks."
 	}
 	return s.calculateRewards(ctx, hoursElapsed), "Harvest successful!"
-}
-
-func (s *service) calculateOptimisticXPMessage(hoursElapsed float64) string {
-	if hoursElapsed < farmerXPThreshold {
-		return ""
-	}
-	xpAmount := int(hoursElapsed * farmerXPPerHour)
-	return fmt.Sprintf(" You gained %d Farmer XP.", xpAmount)
 }
 
 func (s *service) awardFarmerXP(ctx context.Context, userID string, hoursElapsed float64) {

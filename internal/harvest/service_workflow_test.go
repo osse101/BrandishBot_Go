@@ -338,8 +338,8 @@ func TestHarvest_Workflow(t *testing.T) {
 					assert.Contains(t, resp.Message, "spoiled")
 				}
 				if tt.expectedXPAward {
-					// With optimistic messaging, the message always contains "You gained" even if async award fails
-					assert.Contains(t, resp.Message, "You gained")
+					// XP message has been removed from response per user request
+					assert.NotContains(t, resp.Message, "You gained")
 				}
 			}
 		})
