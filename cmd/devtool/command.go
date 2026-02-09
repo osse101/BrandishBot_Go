@@ -5,6 +5,14 @@ import (
 	"sort"
 )
 
+const (
+	envDev        = "dev"
+	envStaging    = "staging"
+	envProduction = "production"
+	appName       = "brandishbot"
+	confirmYes    = "yes"
+)
+
 // Command interface that all devtool commands must implement
 type Command interface {
 	Name() string

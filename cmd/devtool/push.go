@@ -24,8 +24,8 @@ func (c *PushCommand) Run(args []string) error {
 	env := args[0]
 	version := args[1]
 
-	if env != "staging" && env != "production" {
-		return fmt.Errorf("environment must be 'staging' or 'production'")
+	if env != envStaging && env != envProduction {
+		return fmt.Errorf("environment must be '%s' or '%s'", envStaging, envProduction)
 	}
 
 	PrintHeader(fmt.Sprintf("Docker Image Push (%s)", env))
@@ -41,7 +41,7 @@ func (c *PushCommand) Run(args []string) error {
 
 	imageName := os.Getenv("DOCKER_IMAGE_NAME")
 	if imageName == "" {
-		imageName = "brandishbot"
+		imageName = appName
 	}
 	fullImageName := fmt.Sprintf("%s/%s", dockerUser, imageName)
 
@@ -50,7 +50,9 @@ func (c *PushCommand) Run(args []string) error {
 	// Check Docker Login
 	if err := runCommand("docker", "system", "info"); err != nil || !strings.Contains(func() string { out, _ := getCommandOutput("docker", "system", "info"); return out }(), "Username") {
 		PrintWarning("Not logged into Docker Hub/Registry. Attempting login...")
-		runCommandVerbose("docker", "login")
+		if err := runCommandVerbose("docker", "login"); err != nil {
+			return fmt.Errorf("docker login failed: %w", err)
+		}
 	}
 
 	// Build Image
@@ -60,7 +62,7 @@ func (c *PushCommand) Run(args []string) error {
 		"--build-arg", fmt.Sprintf("VERSION=%s", version),
 		"-t", fmt.Sprintf("%s:%s", fullImageName, version),
 		"-t", fmt.Sprintf("%s:latest-%s", fullImageName, env),
-		"-t", fmt.Sprintf("brandishbot:%s", version),
+		"-t", fmt.Sprintf("%s:%s", appName, version),
 		"-f", "Dockerfile",
 		".",
 	}

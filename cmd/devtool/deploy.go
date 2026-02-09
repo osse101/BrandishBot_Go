@@ -34,8 +34,8 @@ func (c *DeployCommand) Run(args []string) error {
 		remote = true
 	}
 
-	if env != "staging" && env != "production" {
-		return fmt.Errorf("environment must be 'staging' or 'production'")
+	if env != envStaging && env != envProduction {
+		return fmt.Errorf("environment must be '%s' or '%s'", envStaging, envProduction)
 	}
 
 	PrintHeader(fmt.Sprintf("BrandishBot Deployment (%s)", env))
@@ -43,18 +43,20 @@ func (c *DeployCommand) Run(args []string) error {
 	PrintInfo("Version: %s", version)
 	PrintInfo("Mode: %s", map[bool]string{true: "Remote (Pull)", false: "Local (Build)"}[remote])
 
-	if env == "production" {
+	if env == envProduction {
 		PrintWarning("You are about to deploy to PRODUCTION")
 		fmt.Print("Type 'yes' to continue: ")
 		var confirm string
-		fmt.Scanln(&confirm)
-		if confirm != "yes" {
+		if _, err := fmt.Scanln(&confirm); err != nil {
+			return fmt.Errorf("failed to read confirmation: %w", err)
+		}
+		if confirm != confirmYes {
 			return fmt.Errorf("deployment cancelled")
 		}
 	}
 
 	composeFile := "docker-compose.staging.yml"
-	if env == "production" {
+	if env == envProduction {
 		composeFile = "docker-compose.production.yml"
 	}
 
@@ -83,7 +85,7 @@ func (c *DeployCommand) deployLocal(env, version, composeFile string) error {
 	PrintInfo("Step 3/7: Building Docker image")
 	imageName := os.Getenv("DOCKER_IMAGE_NAME")
 	if imageName == "" {
-		imageName = "brandishbot"
+		imageName = appName
 	}
 	dockerUser := os.Getenv("DOCKER_USER")
 	fullImageName := imageName
@@ -135,7 +137,7 @@ func (c *DeployCommand) deployLocal(env, version, composeFile string) error {
 
 	// Step 7: Cleanup old images
 	PrintInfo("Step 7/7: Cleaning up old Docker images")
-	cleanupOldImages("brandishbot")
+	cleanupOldImages(appName)
 
 	PrintSuccess("=== Deployment Complete ===")
 	return nil
@@ -145,7 +147,9 @@ func (c *DeployCommand) deployRemote(env, version, composeFile string) error {
 	// 1. Docker Login
 	if err := runCommand("docker", "system", "info"); err != nil || !strings.Contains(func() string { out, _ := getCommandOutput("docker", "system", "info"); return out }(), "Username") {
 		PrintWarning("Not logged in. Attempting docker login...")
-		runCommandVerbose("docker", "login")
+		if err := runCommandVerbose("docker", "login"); err != nil {
+			return fmt.Errorf("docker login failed: %w", err)
+		}
 	}
 
 	// 2. Pull images
@@ -157,7 +161,9 @@ func (c *DeployCommand) deployRemote(env, version, composeFile string) error {
 
 	// 3. Restart services
 	PrintInfo("Starting services...")
-	runCommand("docker", "compose", "-f", composeFile, "up", "-d", "db")
+	if err := runCommand("docker", "compose", "-f", composeFile, "up", "-d", "db"); err != nil {
+		return fmt.Errorf("failed to start database: %w", err)
+	}
 	time.Sleep(2 * time.Second)
 	if err := runCommandVerbose("docker", "compose", "-f", composeFile, "up", "-d", "app", "discord"); err != nil {
 		return fmt.Errorf("failed to start services: %w", err)
@@ -166,7 +172,9 @@ func (c *DeployCommand) deployRemote(env, version, composeFile string) error {
 
 	// 4. Prune old images
 	PrintInfo("Cleaning up old images...")
-	runCommand("docker", "image", "prune", "-f")
+	if err := runCommand("docker", "image", "prune", "-f"); err != nil {
+		PrintWarning("Failed to prune old images: %v", err)
+	}
 
 	// 5. Health Check
 	PrintInfo("Running health checks...")
@@ -184,11 +192,11 @@ func (c *DeployCommand) deployRemote(env, version, composeFile string) error {
 }
 
 func (c *DeployCommand) announceRelease(version string) {
-	PrintInfo("Generating release notes...")
+	PrintInfo("Generating release notes for version %s...", version)
 
 	lastTag, err := getCommandOutput("git", "describe", "--tags", "--abbrev=0")
 	rangeSpec := "HEAD~5..HEAD"
-	title := "Deployment Update"
+	title := fmt.Sprintf("Deployment Update (%s)", version)
 
 	if err == nil && lastTag != "" {
 		rangeSpec = fmt.Sprintf("%s..HEAD", lastTag)
@@ -224,7 +232,7 @@ func (c *DeployCommand) announceRelease(version string) {
 
 func checkHealth(env string) error {
 	port := "8080"
-	if env == "staging" {
+	if env == envStaging {
 		port = "8081"
 	}
 	url := fmt.Sprintf("http://localhost:%s/healthz", port)
@@ -274,11 +282,11 @@ func backupDatabase(env, composeFile string) error {
 	filename := fmt.Sprintf("backups/backup_%s_%s.sql", env, time.Now().Format("20060102_150405"))
 	dbUser := os.Getenv("DB_USER")
 	if dbUser == "" {
-		dbUser = "brandishbot"
+		dbUser = appName
 	}
 	dbName := os.Getenv("DB_NAME")
 	if dbName == "" {
-		dbName = "brandishbot"
+		dbName = appName
 	}
 
 	cmd := exec.Command("docker", "exec", out, "pg_dump", "-U", dbUser, "-d", dbName)

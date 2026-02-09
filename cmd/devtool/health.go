@@ -21,12 +21,6 @@ func (c *HealthCheckCommand) Run(args []string) error {
 		env = args[0]
 	}
 
-	if env != "staging" && env != "production" {
-		// Try to see if env is actually just "health-check" called without args
-		// But args passed to Run() are skipping the command name itself.
-		// So if args is empty, default to production.
-	}
-
 	PrintHeader(fmt.Sprintf("Health Check (%s)", env))
 
 	if err := checkHealth(env); err != nil {

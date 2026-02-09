@@ -30,12 +30,12 @@ func (c *RollbackCommand) Run(args []string) error {
 		version = args[1]
 	}
 
-	if env != "staging" && env != "production" {
-		return fmt.Errorf("environment must be 'staging' or 'production'")
+	if env != envStaging && env != envProduction {
+		return fmt.Errorf("environment must be '%s' or '%s'", envStaging, envProduction)
 	}
 
 	composeFile := "docker-compose.staging.yml"
-	if env == "production" {
+	if env == envProduction {
 		composeFile = "docker-compose.production.yml"
 	}
 
@@ -44,10 +44,12 @@ func (c *RollbackCommand) Run(args []string) error {
 	if version == "" {
 		PrintInfo("Available Docker images (last 10):")
 		// Need to execute sh -c for pipe
-		cmd := exec.Command("sh", "-c", "docker images brandishbot --format \"table {{.Tag}}\t{{.CreatedAt}}\" | head -n 11")
+		cmd := exec.Command("sh", "-c", fmt.Sprintf("docker images %s --format \"table {{.Tag}}\t{{.CreatedAt}}\" | head -n 11", appName))
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
-		_ = cmd.Run()
+		if err := cmd.Run(); err != nil {
+			PrintWarning("Failed to list images: %v", err)
+		}
 
 		fmt.Println()
 		fmt.Print("Enter version to rollback to (or 'cancel' to abort): ")
@@ -55,31 +57,38 @@ func (c *RollbackCommand) Run(args []string) error {
 		if scanner.Scan() {
 			version = strings.TrimSpace(scanner.Text())
 		}
+		if err := scanner.Err(); err != nil {
+			return fmt.Errorf("failed to read input: %w", err)
+		}
 		if version == "" || version == "cancel" {
 			return fmt.Errorf("rollback cancelled")
 		}
 	}
 
 	// Verify image exists
-	out, err := getCommandOutput("docker", "images", fmt.Sprintf("brandishbot:%s", version), "--format", "{{.Tag}}")
+	out, err := getCommandOutput("docker", "images", fmt.Sprintf("%s:%s", appName, version), "--format", "{{.Tag}}")
 	if err != nil || out == "" {
-		PrintError("Docker image brandishbot:%s not found", version)
+		PrintError("Docker image %s:%s not found", appName, version)
 		return fmt.Errorf("image not found")
 	}
 
-	if env == "production" {
+	if env == envProduction {
 		PrintWarning("You are about to rollback PRODUCTION to version %s", version)
 		fmt.Print("Type 'yes' to continue: ")
 		var confirm string
-		fmt.Scanln(&confirm)
-		if confirm != "yes" {
+		if _, err := fmt.Scanln(&confirm); err != nil {
+			return fmt.Errorf("failed to read confirmation: %w", err)
+		}
+		if confirm != confirmYes {
 			return fmt.Errorf("rollback cancelled")
 		}
 	}
 
 	// Step 1: Stop current containers
 	PrintInfo("Step 1/4: Stopping current containers")
-	runCommandVerbose("docker", "compose", "-f", composeFile, "stop", "app", "discord")
+	if err := runCommandVerbose("docker", "compose", "-f", composeFile, "stop", "app", "discord"); err != nil {
+		PrintWarning("Failed to stop containers cleanly: %v", err)
+	}
 
 	// Step 2: Rollback
 	PrintInfo("Step 2/4: Rolling back to version %s", version)
@@ -103,7 +112,9 @@ func (c *RollbackCommand) Run(args []string) error {
 	PrintInfo("Available backups:")
 	cmd := exec.Command("sh", "-c", fmt.Sprintf("ls -lth backups/backup_%s_*.sql 2>/dev/null | head -n 5 || echo 'No backups found'", env))
 	cmd.Stdout = os.Stdout
-	_ = cmd.Run()
+	if err := cmd.Run(); err != nil {
+		PrintWarning("Failed to list backups: %v", err)
+	}
 
 	fmt.Println()
 	fmt.Print("Enter backup filename to restore (or press Enter to skip): ")
@@ -111,6 +122,9 @@ func (c *RollbackCommand) Run(args []string) error {
 	backupFile := ""
 	if scanner.Scan() {
 		backupFile = strings.TrimSpace(scanner.Text())
+	}
+	if err := scanner.Err(); err != nil {
+		PrintWarning("Failed to read backup filename: %v", err)
 	}
 
 	if backupFile != "" {
@@ -120,15 +134,18 @@ func (c *RollbackCommand) Run(args []string) error {
 			PrintWarning("This will overwrite the current database!")
 			fmt.Printf("Type 'yes' to restore database from %s: ", backupFile)
 			var confirmDB string
-			fmt.Scanln(&confirmDB)
-			if confirmDB == "yes" {
+			if _, err := fmt.Scanln(&confirmDB); err != nil {
+				PrintWarning("Failed to read confirmation: %v", err)
+				confirmDB = "no"
+			}
+			if confirmDB == confirmYes {
 				PrintInfo("Restoring database from %s...", backupFile)
 				dbContainerID, _ := getCommandOutput("docker", "compose", "-f", composeFile, "ps", "-q", "db")
 				if dbContainerID == "" {
 					PrintError("Database container not running")
 				} else {
 					// Use sh -c to pipe input file
-					restoreCmd := exec.Command("sh", "-c", fmt.Sprintf("docker exec -i %s psql -U brandishbot -d brandishbot < %s", dbContainerID, backupFile))
+					restoreCmd := exec.Command("sh", "-c", fmt.Sprintf("docker exec -i %s psql -U %s -d %s < %s", dbContainerID, appName, appName, backupFile))
 					restoreCmd.Stdout = os.Stdout
 					restoreCmd.Stderr = os.Stderr
 					if err := restoreCmd.Run(); err != nil {
