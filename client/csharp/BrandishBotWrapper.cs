@@ -242,6 +242,31 @@ public class CPHInline
         }
     }
 
+    /// <summary>
+    /// Register a new user
+    /// Uses: userType, userId, userName (from streamer.bot context)
+    /// Note: auto-called on first interaction
+    /// </summary>
+    public bool RegisterUser()
+    {
+        EnsureInitialized();
+        if (!CPH.TryGetArg("userType", out string platform)) return false;
+        if (!CPH.TryGetArg("userId", out string platformId)) return false;
+        if (!CPH.TryGetArg("userName", out string username)) return false;
+
+        try
+        {
+            client.RegisterUser(platform, platformId, username).Wait();
+            CPH.SetArgument("response", "Registration successful!");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            LogException("RegisterUser", ex);
+            return false;
+        }
+    }
+
     #endregion
 
     #region Info
@@ -295,34 +320,6 @@ public class CPHInline
                 CPH.SetArgument("response", $"Error: {StripStatusCode(message)}");
             }
             return true;
-        }
-    }
-
-    #endregion
-
-
-    /// <summary>
-    /// Register a new user
-    /// Uses: userType, userId, userName (from streamer.bot context)
-    /// Note: auto-called on first interaction
-    /// </summary>
-    public bool RegisterUser()
-    {
-        EnsureInitialized();
-        if (!CPH.TryGetArg("userType", out string platform)) return false;
-        if (!CPH.TryGetArg("userId", out string platformId)) return false;
-        if (!CPH.TryGetArg("userName", out string username)) return false;
-
-        try
-        {
-            client.RegisterUser(platform, platformId, username).Wait();
-            CPH.SetArgument("response", "Registration successful!");
-            return true;
-        }
-        catch (Exception ex)
-        {
-            LogException("RegisterUser", ex);
-            return false;
         }
     }
 
