@@ -35,6 +35,8 @@ Feeling lucky? Use `/gamble start lootbox1 1` to risk it all for GLORY!
 | `/sell <item> [qty]` | Sell items for cash. | **Item** |
 | `/give <target> <item> [qty]` | Transfer items to another player. | **Item** |
 | `/use <item> [qty] [target]` | Use an item (e.g., blaster, trap). | **Item** |
+| `/use trap <target>` | Place a hidden trap on a user. | **Trap** |
+| `/use mine` | Plant a mine on a random active user. | **Mine** |
 | `/inventory` | View your item collection. | None |
 | `/recipes` | View crafting recipes. | None |
 | `/upgrade <recipe-id>` | Craft an item upgrade. | **Materials** |
@@ -45,6 +47,8 @@ Need cash? `/search` for loot or `/sell` your junk!
 Silence the haters! `/use blaster @troll` to timeout them for 60s!
 
 ### 3. The Helper
+See [docs/features/TRAPS.md](../features/TRAPS.md) for full details on item interactions.
+
 *   **Lootbox0** (Cost: 10): Common. Contains **Money** (1-10).
 *   **Lootbox1** (Cost: 50): Basic. Contains **Money** (10-100) or **Lootbox0** (50%).
 *   **Lootbox2** (Cost: 100): Rare. Contains **Money** (100-500) or **Lootbox1** (50%). Has a 10% chance for a **Blaster**.
@@ -55,6 +59,8 @@ Silence the haters! `/use blaster @troll` to timeout them for 60s!
 ---
 
 ## # Expeditions
+
+See [docs/features/EXPEDITIONS.md](../features/EXPEDITIONS.md).
 
 ### 1. The Gist Entry (The Manual)
 
@@ -76,21 +82,24 @@ Gather your party! Use `/explore` to venture into the unknown and earn rare rewa
 
 ## # Quests & Farming
 
+See [docs/features/FARMING.md](../features/FARMING.md) and [docs/features/WEEKLY_QUESTS.md](../features/WEEKLY_QUESTS.md).
+
 ### 1. The Gist Entry (The Manual)
 
 | Command | Description | Cost/Cooldown |
 | :--- | :--- | :--- |
 | `/quests` | View your weekly quests. | None |
 | `/claimquest <id>` | Claim rewards for a completed quest. | None |
-| `/harvest` | Harvest accumulated rewards from your farm/compost. | 1h Minimum |
+| `/harvest` | Harvest accumulated rewards from your farm. | 1h Minimum |
 
 ### 2. The Shout
 Check `/quests` every week for big payouts! Don't forget to `/harvest` your crops!
 
 ### 3. The Helper
 *   **Weekly Quests**: Reset every week. Complete them for Money and Merchant XP.
-*   **Farming**: Your farm accumulates rewards over time (Compost system).
-*   **Harvest**: The longer you wait, the better the rewards (up to a limit). Wait too long (> 1 week) and your crops might spoil!
+*   **Farming**: Your farm accumulates rewards passively over time.
+*   **Harvest**: Rewards improve the longer you wait (up to 1 week).
+*   **Spoilage**: If you wait longer than **2 weeks (336 hours)**, your crops spoil and you lose the main rewards!
 
 ---
 
