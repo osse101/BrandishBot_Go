@@ -205,6 +205,10 @@ All services follow this pattern. Discord commands mirror this via API client ca
 | `internal/cooldown/` | Cooldown service for rate limiting |
 | `internal/features/` | Feature flags and toggles |
 | `internal/harvest/` | Passive resource accumulation (farming) |
+| `internal/compost/` | Item recycling (in development) |
+| `internal/duel/` | PVP system (in development) |
+| `internal/lootbox/` | Lootbox & Quality system |
+| `internal/slots/` | Slots minigame |
 | `internal/logger/` | Structured logging with Zap |
 | `internal/metrics/` | Prometheus metrics collection |
 | `internal/middleware/` | HTTP middleware (CORS, logging, recovery) |
@@ -361,6 +365,26 @@ Node unlock costs scale by tier and size:
 **Key methods:** `StartGamble`, `JoinGamble`, `ExecuteGamble`, `OpenLootbox`
 **Quality levels:** COMMON(1.0x), UNCOMMON(1.1x), RARE(1.25x), EPIC(1.5x), LEGENDARY(2.0x)
 **Near-miss threshold:** 95%
+
+### Lootbox & Quality System
+| Layer | Location |
+|-------|----------|
+| Service | `internal/lootbox/service.go` |
+| Quality | `internal/utils/quality.go` |
+| Domain | `internal/domain/item.go` |
+| Config | `configs/loot_tables.json` |
+
+**Key concepts:** Tiers (0-3), Quality (Common-Legendary), Guaranteed vs Chance drops.
+
+### Slots Minigame
+| Layer | Location |
+|-------|----------|
+| Service | `internal/slots/service.go` |
+| Handler | `internal/handler/slots.go` |
+| Discord | `internal/discord/cmd_slots.go` |
+
+**Key methods:** `Spin`
+**Mechanics:** 3 reels, weighted symbols, RTP ~92%, Jackpots.
 
 ### Job/XP System
 | Layer | Location |

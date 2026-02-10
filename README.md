@@ -9,10 +9,14 @@ A high-performance game engine API for BrandishBot, built with Go. Provides inve
 - **Economy**: Buy/sell items with dynamic pricing
 - **Expeditions**: Cooperative multiplayer adventures with procedural encounters
 - **Quests**: Weekly challenges for rewards and XP
-- **Farming**: Harvest resources over time with the Compost system
+- **Farming**: Harvest resources over time
+- **Lootboxes & Quality**: Open tiered lootboxes with item quality levels (Common, Rare, Legendary, etc.)
+- **Slots Minigame**: Play slots for money and XP
 - **Jobs**: RPG-style job progression (Blacksmith, Merchant, etc.)
 - **Subscriptions**: Integration with Twitch/YouTube subscriptions
+- **Traps**: Place hidden traps and mines on other users
 - **Statistics**: User and system stats with leaderboards
+- **In Development**: Duels (PVP challenges) and Composting (Item recycling)
 - **Discord Bot**: Full-featured Discord integration with slash commands
 - **Admin Dashboard**: Web-based GUI for system monitoring and admin commands
 - **Health Checks**: Production-ready liveness and readiness endpoints

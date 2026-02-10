@@ -29,3 +29,8 @@ Commands for the newly implemented expedition system have not been added to the 
 ## Status Update (2026-01-30)
 
 Verified that `cmd/discord/main.go` does not register any commands for Duel or Expedition systems. The issue persists.
+
+## Status Update (2026-02-06)
+
+- **Expeditions**: `ExploreCommand` and `ExpeditionJournalCommand` are registered. Issue resolved for Expeditions.
+- **Duels**: Commands are still missing.
