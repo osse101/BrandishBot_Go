@@ -265,24 +265,22 @@ func VotingSessionCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		}
 
 		var optionsList string
-		for _, opt := range session.Options {
+		for i, opt := range session.Options {
 			name := "Unknown Node"
 			duration := ""
-			nodeKey := ""
 			if opt.NodeDetails != nil {
 				name = opt.NodeDetails.DisplayName
-				nodeKey = opt.NodeDetails.NodeKey
 				duration = progression.FormatUnlockDuration(opt.NodeDetails.Size)
 			}
-			optionsList += fmt.Sprintf("**%s** (Level %d) - %d votes\n  └ %s • ID: `%s`\n", name, opt.TargetLevel, opt.VoteCount, duration, nodeKey)
+			optionsList += fmt.Sprintf("**%d.** **%s** (Level %d) - %d votes\n  └ %s\n", i+1, name, opt.TargetLevel, opt.VoteCount, duration)
 		}
 
 		embed := &discordgo.MessageEmbed{
 			Title:       "🗳️ Active Voting Session",
-			Description: fmt.Sprintf("Voting ends: <t:%d:R>\n\n%s", session.VotingDeadline.Unix(), optionsList),
+			Description: optionsList,
 			Color:       0x3498db, // Blue
 			Footer: &discordgo.MessageEmbedFooter{
-				Text: "Use /vote <node_key> to vote!",
+				Text: "Use /vote <number> to vote!",
 			},
 		}
 		sendEmbed(s, i, embed)

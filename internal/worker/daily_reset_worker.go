@@ -38,7 +38,6 @@ func (w *DailyResetWorker) Start() {
 // scheduleNext calculates the time until next reset (00:00 UTC+7) and schedules the reset
 func (w *DailyResetWorker) scheduleNext() {
 	duration := timeUntilNextReset()
-
 	log := logger.FromContext(context.Background())
 
 	w.mu.Lock()
@@ -46,19 +45,44 @@ func (w *DailyResetWorker) scheduleNext() {
 		w.timer.Stop()
 	}
 
+	// Two-stage scheduling to prevent "tight loop" rescheduling caused by early triggers
+	if duration > 1*time.Hour {
+		// Stage 1: Long-range (Standby). Wake up 45 minutes before reset.
+		waitDuration := duration - 45*time.Minute
+		w.timer = time.AfterFunc(waitDuration, func() {
+			w.scheduleNext()
+		})
+		w.mu.Unlock()
+
+		nextCheck := time.Now().UTC().Add(waitDuration)
+		log.Info(LogMsgDailyResetStandby, "next_check_at", nextCheck)
+		return
+	}
+
+	// Stage 2: Final approach. Schedule the actual reset.
 	w.timer = time.AfterFunc(duration, func() {
 		select {
 		case <-w.shutdown:
 			return
 		default:
 		}
+
+		// Jitter protection: if the timer triggered early (jitter > 10s),
+		// simply reschedule for the remaining time.
+		// If duration is > 23h, it means we are actually on time or slightly LATE.
+		rem := timeUntilNextReset()
+		if rem > 10*time.Second && rem < 23*time.Hour {
+			w.scheduleNext()
+			return
+		}
+
 		w.executeReset()
-		w.scheduleNext() // Reschedule for next midnight
+		w.scheduleNext() // This will now calculate ~24h and jump back to Stage 1
 	})
 	w.mu.Unlock()
 
 	nextReset := time.Now().UTC().Add(duration)
-	log.Info(LogMsgDailyResetScheduled, "next_reset", nextReset)
+	log.Info(LogMsgDailyResetApproach, "next_reset_at", nextReset)
 }
 
 // executeReset performs the daily reset in a tracked goroutine
