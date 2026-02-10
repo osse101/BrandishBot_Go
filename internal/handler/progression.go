@@ -251,7 +251,7 @@ func (h *ProgressionHandlers) handleAdminNodeAction(action func(context.Context,
 		// We use a shared struct for validation since both use same fields
 		var req struct {
 			NodeKey string `json:"node_key" validate:"required,max=50"`
-			Level   int    `json:"level" validate:"min=1"`
+			Level   int    `json:"level" validate:"min=0"`
 		}
 		if err := DecodeAndValidateRequest(r, w, &req, "Admin node action"); err != nil {
 			return
@@ -677,12 +677,12 @@ type VoteRequest struct {
 
 type AdminUnlockRequest struct {
 	NodeKey string `json:"node_key" validate:"required,max=50"`
-	Level   int    `json:"level" validate:"min=1"`
+	Level   int    `json:"level" validate:"min=0"`
 }
 
 type AdminRelockRequest struct {
 	NodeKey string `json:"node_key" validate:"required,max=50"`
-	Level   int    `json:"level" validate:"min=1"`
+	Level   int    `json:"level" validate:"min=0"`
 }
 
 type AdminInstantUnlockResponse struct {

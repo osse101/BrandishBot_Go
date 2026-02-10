@@ -51,7 +51,7 @@ VALUES ($1, $2, $3, $4)
 ON CONFLICT (node_id, current_level) DO NOTHING;
 
 -- name: RelockNode :exec
-DELETE FROM progression_unlocks WHERE node_id = $1 AND current_level = $2;
+DELETE FROM progression_unlocks WHERE node_id = $1 AND (current_level = $2 OR $2 = 0);
 
 -- name: GetActiveVoting :one
 SELECT id, node_id, target_level, vote_count, voting_started_at, voting_ends_at, is_active

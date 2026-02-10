@@ -1477,7 +1477,7 @@ func (q *Queries) RecordUserVote(ctx context.Context, arg RecordUserVoteParams) 
 }
 
 const relockNode = `-- name: RelockNode :exec
-DELETE FROM progression_unlocks WHERE node_id = $1 AND current_level = $2
+DELETE FROM progression_unlocks WHERE node_id = $1 AND (current_level = $2 OR $2 = 0)
 `
 
 type RelockNodeParams struct {
