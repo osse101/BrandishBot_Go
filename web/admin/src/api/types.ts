@@ -41,6 +41,13 @@ export interface User {
   created_at: string;
 }
 
+export interface ActiveChatter {
+  user_id: string;
+  username: string;
+  platform: string;
+  last_message_at: string;
+}
+
 export interface InventoryItem {
   item_name: string;
   public_name?: string;

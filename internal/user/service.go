@@ -1398,3 +1398,11 @@ func (s *service) Shutdown(ctx context.Context) error {
 func (s *service) GetCacheStats() CacheStats {
 	return s.userCache.GetStats()
 }
+func (s *service) GetActiveChatters() []ActiveChatter {
+	chatters := s.activeChatterTracker.GetActiveChatters()
+	result := make([]ActiveChatter, len(chatters))
+	for i, c := range chatters {
+		result[i] = ActiveChatter(c)
+	}
+	return result
+}

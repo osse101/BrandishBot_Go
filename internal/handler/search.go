@@ -1,8 +1,10 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 
+	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/middleware"
@@ -47,7 +49,12 @@ func HandleSearch(svc user.Service, progressionSvc progression.Service, eventBus
 		// Perform search through user service
 		resultMessage, err := svc.HandleSearch(r.Context(), req.Platform, req.PlatformID, req.Username)
 		if err != nil {
-			logger.FromContext(r.Context()).Error("Search failed", "error", err, "username", req.Username)
+			log := logger.FromContext(r.Context())
+			if errors.Is(err, domain.ErrOnCooldown) {
+				log.Debug("Search attempted while on cooldown", "username", req.Username, "error", err)
+			} else {
+				log.Error("Search failed", "error", err, "username", req.Username)
+			}
 			statusCode, userMsg := mapServiceErrorToUserMessage(err)
 			respondError(w, statusCode, userMsg)
 			return

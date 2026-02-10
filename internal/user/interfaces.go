@@ -62,6 +62,14 @@ type GameplayService interface {
 	ApplyShield(ctx context.Context, user *domain.User, quantity int, isMirror bool) error
 }
 
+// ActiveChatter represents a user who recently sent a message
+type ActiveChatter struct {
+	UserID        string    `json:"user_id"`
+	Username      string    `json:"username"`
+	Platform      string    `json:"platform"`
+	LastMessageAt time.Time `json:"last_message_at"`
+}
+
 // Service is the full interface that composes all sub-interfaces.
 // New code should depend on the smallest interface that meets its needs.
 type Service interface {
@@ -73,4 +81,7 @@ type Service interface {
 	// Service lifecycle
 	GetCacheStats() CacheStats
 	Shutdown(ctx context.Context) error
+
+	// Admin operations
+	GetActiveChatters() []ActiveChatter
 }
