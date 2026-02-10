@@ -175,18 +175,7 @@ bench-profile:
 
 # Build targets
 build:
-	@echo "Building all binaries to bin/..."
-	@mkdir -p bin
-	@VERSION=$$(git describe --tags --always --dirty 2>/dev/null || echo "dev"); \
-	BUILD_TIME=$$(date -u '+%Y-%m-%d_%H:%M'); \
-	GIT_COMMIT=$$(git rev-parse --short HEAD 2>/dev/null || echo "unknown"); \
-	LDFLAGS="-X github.com/osse101/BrandishBot_Go/internal/handler.Version=$$VERSION \
-	         -X github.com/osse101/BrandishBot_Go/internal/handler.BuildTime=$$BUILD_TIME \
-	         -X github.com/osse101/BrandishBot_Go/internal/handler.GitCommit=$$GIT_COMMIT"; \
-	go build -ldflags "$$LDFLAGS" -o bin/app ./cmd/app; \
-	go build -ldflags "$$LDFLAGS" -o bin/discord_bot ./cmd/discord
-	@echo "✓ Built: bin/app"
-	@echo "✓ Built: bin/discord_bot"
+	@go run ./cmd/devtool build
 
 # Discord bot - Run locally
 .PHONY: discord-run
