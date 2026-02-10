@@ -524,3 +524,23 @@ A comprehensive audit of the repository memories and state was conducted to cons
 - **Database**: Migrations managed exclusively via `goose`.
 
 *Last updated: January 2026*
+
+---
+
+## 2026-01-25: Job System Initialization
+
+### Context
+The Job System infrastructure (tables, service logic) was in place, but the database lacked the initial seed data for jobs and bonuses. This meant the feature was technically "deployed" but functionally empty.
+
+### Solution
+Created migration `migrations/0022_seed_job_data.sql` to seed:
+1.  **Jobs**: Blacksmith, Explorer, Merchant, Gambler, Farmer, Scholar.
+2.  **Bonuses**: Initial level-based bonuses for Explorer (money chance) and Gambler (prize increase).
+
+### Key Learnings
+- **Idempotent Seeding**: Used `INSERT ... ON CONFLICT DO UPDATE` to ensure the migration can be re-run safely without duplicating data or failing.
+- **Data Dependency**: Features like `GetJobBonus` return empty results without this seed data, making them untestable in integration scenarios.
+
+### Impact
+- The Job System is now fully initialized upon migration.
+- `GetJobBonus` will now return actual values for Explorer and Gambler jobs.
