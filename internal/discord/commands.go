@@ -117,9 +117,18 @@ func commandsEqual(existing, desired []*discordgo.ApplicationCommand) bool {
 
 // commandEqual checks if two commands are equivalent
 func commandEqual(a, b *discordgo.ApplicationCommand) bool {
-	// Compare basic fields
 	if a.Name != b.Name || a.Description != b.Description {
 		return false
+	}
+
+	// Compare permissions
+	if (a.DefaultMemberPermissions == nil) != (b.DefaultMemberPermissions == nil) {
+		return false
+	}
+	if a.DefaultMemberPermissions != nil && b.DefaultMemberPermissions != nil {
+		if *a.DefaultMemberPermissions != *b.DefaultMemberPermissions {
+			return false
+		}
 	}
 
 	// Compare options length

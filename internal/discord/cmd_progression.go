@@ -66,6 +66,7 @@ func AdminUnlockCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 				Required:    false,
 			},
 		},
+		DefaultMemberPermissions: &[]int64{discordgo.PermissionAdministrator}[0],
 	}
 
 	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
@@ -90,8 +91,9 @@ func AdminUnlockCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 // AdminUnlockAllCommand returns the admin unlock all command definition and handler
 func AdminUnlockAllCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	cmd := &discordgo.ApplicationCommand{
-		Name:        "admin-unlock-all",
-		Description: "[Admin] Force unlock ALL progression nodes (DEBUG ONLY)",
+		Name:                     "admin-unlock-all",
+		Description:              "[Admin] Force unlock ALL progression nodes (DEBUG ONLY)",
+		DefaultMemberPermissions: &[]int64{discordgo.PermissionAdministrator}[0],
 	}
 
 	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
