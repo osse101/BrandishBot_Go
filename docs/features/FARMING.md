@@ -43,3 +43,14 @@ The system is implemented in `internal/harvest/`.
 - **Service**: `internal/harvest/service.go`
 - **Tiers**: `internal/harvest/reward_tiers.go`
 - **Persistence**: Harvest state is stored in the database, tracking `last_harvested_at`.
+
+## Compost System (In Development)
+
+The Compost system is designed to allow players to recycle items into resources.
+
+### Intended Mechanics
+- **Deposit**: Players can deposit organic and other items into a compost bin.
+- **Processing**: Items take time to break down.
+- **Harvest**: Once processed, players can harvest the compost for rewards (e.g., Gems).
+
+*Note: This feature is currently in development. The service structure exists in `internal/compost/service.go`, but core logic is not yet fully active.*
