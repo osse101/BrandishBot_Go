@@ -577,7 +577,8 @@ type MockJobService struct {
 		Source   string
 		Metadata map[string]interface{}
 	}
-	blockChan chan struct{} // If set, AwardXP waits for this channel to close
+	blockChan   chan struct{} // If set, AwardXP waits for this channel to close
+	returnError error         // Error to return from AwardXP
 }
 
 func (m *MockJobService) AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error) {
@@ -593,11 +594,16 @@ func (m *MockJobService) AwardXP(ctx context.Context, userID, jobKey string, bas
 		Source   string
 		Metadata map[string]interface{}
 	}{UserID: userID, JobKey: jobKey, Amount: baseAmount, Source: source, Metadata: metadata})
+
+	if m.returnError != nil {
+		return nil, m.returnError
+	}
 	return &domain.XPAwardResult{LeveledUp: false}, nil
 }
 
 // MockProgressionService for testing modifiers
 type MockProgressionService struct {
+	mu          sync.Mutex
 	modifiers   map[string]float64
 	returnValue float64 // Generic fallback
 	returnError error
@@ -609,11 +615,13 @@ type MockProgressionService struct {
 }
 
 func (m *MockProgressionService) GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error) {
+	m.mu.Lock()
 	m.calls = append(m.calls, struct {
 		ctx        context.Context
 		featureKey string
 		baseValue  float64
 	}{ctx, featureKey, baseValue})
+	m.mu.Unlock()
 
 	if m.returnError != nil {
 		return 0, m.returnError
