@@ -187,6 +187,20 @@ func TestGetDBConnString(t *testing.T) {
 		assert.Contains(t, connStr, "sslmode=disable",
 			"Should disable SSL for local development")
 	})
+
+	t.Run("prioritizes DBURL if set", func(t *testing.T) {
+		cfg := &Config{
+			DBUser:     "ignored",
+			DBPassword: "ignored",
+			DBHost:     "ignored",
+			DBPort:     "5432",
+			DBName:     "ignored",
+			DBURL:      "postgres://real:one@remote:5432/db",
+		}
+
+		connStr := cfg.GetDBConnString()
+		assert.Equal(t, "postgres://real:one@remote:5432/db", connStr)
+	})
 }
 
 // TestConfig_RealWorldScenarios tests realistic configuration scenarios
@@ -226,6 +240,7 @@ func TestConfig_RealWorldScenarios(t *testing.T) {
 	t.Run("docker compose environment", func(t *testing.T) {
 		clearEnvVars(t)
 		t.Setenv("API_KEY", "docker-key")
+		t.Setenv("DB_URL", "")    // Ensure DB_URL doesn't override individual parts
 		t.Setenv("DB_HOST", "db") // Docker service name
 		t.Setenv("DB_USER", "postgres")
 		t.Setenv("DB_PASSWORD", "postgres")
@@ -252,4 +267,6 @@ func clearEnvVars(t *testing.T) {
 	for _, key := range envVars {
 		os.Unsetenv(key)
 	}
+	// Specifically unset DB_URL as it overrides everything else
+	os.Unsetenv("DB_URL")
 }

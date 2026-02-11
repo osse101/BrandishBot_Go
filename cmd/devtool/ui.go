@@ -39,7 +39,38 @@ func PrintHeader(title string) {
 
 // Command execution helpers
 
+// checkHostile checks for potentially dangerous strings in command arguments.
+// It focuses on common shell injection patterns while being permissive enough
+// for valid data like URLs (containing '&') and SQL (containing ';').
+func checkHostile(inputs ...string) error {
+	for _, s := range inputs {
+		// Newlines/CR are always suspicious in command args as they can split commands
+		if strings.ContainsAny(s, "\n\r") {
+			return fmt.Errorf("hostile input detected: newlines or carriage returns")
+		}
+
+		// Null bytes are often used in exploit payloads
+		if strings.Contains(s, "\x00") {
+			return fmt.Errorf("hostile input detected: null byte")
+		}
+
+		// Shell redirection, pipes, and command substitution patterns.
+		// These are blocked because even if exec.Command is generally safe,
+		// these arguments might eventually be passed to a shell-executing process.
+		dangerousPats := []string{"|", "`", "$(", "&&", "||", ">", "<"}
+		for _, p := range dangerousPats {
+			if strings.Contains(s, p) {
+				return fmt.Errorf("hostile input detected: pattern %q in %q", p, s)
+			}
+		}
+	}
+	return nil
+}
+
 func getCommandOutput(name string, args ...string) (string, error) {
+	if err := checkHostile(append([]string{name}, args...)...); err != nil {
+		return "", err
+	}
 	// #nosec G204 - Generic command wrapper
 	cmd := exec.Command(name, args...)
 	out, err := cmd.Output()
@@ -51,6 +82,9 @@ func getCommandOutput(name string, args ...string) (string, error) {
 
 // runCommand runs a command silently
 func runCommand(name string, args ...string) error {
+	if err := checkHostile(append([]string{name}, args...)...); err != nil {
+		return err
+	}
 	// #nosec G204 - Generic command wrapper
 	cmd := exec.Command(name, args...)
 	return cmd.Run()
@@ -58,6 +92,9 @@ func runCommand(name string, args ...string) error {
 
 // runCommandVerbose runs a command and pipes output to stdout/stderr
 func runCommandVerbose(name string, args ...string) error {
+	if err := checkHostile(append([]string{name}, args...)...); err != nil {
+		return err
+	}
 	// #nosec G204 - Generic command wrapper
 	cmd := exec.Command(name, args...)
 	cmd.Stdout = os.Stdout

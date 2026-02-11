@@ -179,12 +179,33 @@ func mapServiceErrorToUserMessage(err error) (int, string) {
 }
 
 func mapUserAndItemErrors(err error, errMsg string) (int, string, bool) {
+	if code, msg, ok := mapUserErrors(err, errMsg); ok {
+		return code, msg, true
+	}
+	if code, msg, ok := mapItemErrors(err); ok {
+		return code, msg, true
+	}
+	if code, msg, ok := mapCompostErrors(err); ok {
+		return code, msg, true
+	}
+	return 0, "", false
+}
+
+func mapUserErrors(err error, errMsg string) (int, string, bool) {
 	switch {
 	case errors.Is(err, domain.ErrUserNotFound):
 		if len(errMsg) > len(ErrMsgUserNotFoundHTTP) {
 			return http.StatusBadRequest, errMsg, true
 		}
 		return http.StatusBadRequest, ErrMsgUserNotFoundError, true
+	case errors.Is(err, domain.ErrInvalidPlatform):
+		return http.StatusBadRequest, ErrMsgInvalidPlatformError, true
+	}
+	return 0, "", false
+}
+
+func mapItemErrors(err error) (int, string, bool) {
+	switch {
 	case errors.Is(err, domain.ErrItemNotFound):
 		return http.StatusBadRequest, ErrMsgItemNotFoundError, true
 	case errors.Is(err, domain.ErrInsufficientFunds):
@@ -199,12 +220,12 @@ func mapUserAndItemErrors(err error, errMsg string) (int, string, bool) {
 		return http.StatusBadRequest, ErrMsgNotSellableError, true
 	case errors.Is(err, domain.ErrNotBuyable):
 		return http.StatusBadRequest, ErrMsgNotBuyableError, true
-	case errors.Is(err, domain.ErrInvalidPlatform):
-		return http.StatusBadRequest, ErrMsgInvalidPlatformError, true
-	case errors.Is(err, domain.ErrInventoryFull):
-		return http.StatusBadRequest, ErrMsgInventoryFullError, true
-	case errors.Is(err, domain.ErrNotInInventory):
-		return http.StatusBadRequest, ErrMsgItemNotFoundError, true
+	}
+	return 0, "", false
+}
+
+func mapCompostErrors(err error) (int, string, bool) {
+	switch {
 	case errors.Is(err, domain.ErrCompostBinFull):
 		return http.StatusBadRequest, ErrMsgCompostBinFull, true
 	case errors.Is(err, domain.ErrCompostNotCompostable):
@@ -237,10 +258,6 @@ func mapEconomyAndFeatureErrors(err error, errMsg string) (int, string, bool) {
 			return http.StatusTooManyRequests, cooldownErr.Error(), true
 		}
 		return http.StatusTooManyRequests, ErrMsgOnCooldownError, true
-	case errors.Is(err, domain.ErrInsufficientFunds):
-		return http.StatusBadRequest, ErrMsgNotEnoughMoneyError, true
-	case errors.Is(err, domain.ErrNotSellable):
-		return http.StatusBadRequest, ErrMsgNotSellableError, true
 	case errors.Is(err, domain.ErrRecipeNotFound):
 		if len(errMsg) > len(errMsgRecipeNotFoundBase) {
 			before, found := cutSuffix(errMsg, suffixRecipeNotFound)

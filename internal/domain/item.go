@@ -17,7 +17,6 @@ type Item struct {
 	Handler        *string  `json:"handler,omitempty" db:"handler"` // Nullable: some items have no handler
 }
 
-
 // IsCurrency returns true if this item is a currency (should not have quality variations)
 func (i *Item) IsCurrency() bool {
 	for _, t := range i.Types {

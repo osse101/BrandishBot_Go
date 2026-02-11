@@ -6,7 +6,6 @@ import (
 	"github.com/google/uuid"
 )
 
-
 // Gamble represents a multiplayer lootbox gamble session
 type Gamble struct {
 	ID           uuid.UUID     `json:"id"`

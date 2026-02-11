@@ -73,4 +73,3 @@ type QuestPoolConfig struct {
 	Version   string          `json:"version"`
 	QuestPool []QuestTemplate `json:"quest_pool"`
 }
-

@@ -135,10 +135,10 @@ func TestHarvestHandler_Harvest(t *testing.T) {
 			expectedError:  "method not allowed",
 		},
 		{
-			name:        "Invalid Body (Malformed JSON)",
-			method:      http.MethodPost,
-			requestBody: "invalid-json", // passing string which will be written as raw body
-			setupMock:   func(m *mocks.MockHarvestService) {},
+			name:           "Invalid Body (Malformed JSON)",
+			method:         http.MethodPost,
+			requestBody:    "invalid-json", // passing string which will be written as raw body
+			setupMock:      func(m *mocks.MockHarvestService) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedError:  "invalid request body",
 		},

@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"os"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type MigrateCommand struct{}
@@ -47,6 +49,7 @@ func (c *MigrateCommand) Run(args []string) error {
 		}
 		gooseArgs = append(gooseArgs, migrationType)
 
+		//nolint:forbidigo // #nosec G204
 		return runCommandVerbose(gooseCmd, gooseArgs...)
 	}
 
@@ -63,6 +66,11 @@ func (c *MigrateCommand) Run(args []string) error {
 		dbURL = fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", dbUser, dbPass, dbHost, dbPort, dbName)
 	}
 
+	// Validate dbURL to ensure it's a valid connection string
+	if _, err := pgxpool.ParseConfig(dbURL); err != nil {
+		return fmt.Errorf("invalid DB_URL: %w", err)
+	}
+
 	// Add driver and dbstring
 	gooseArgs = append(gooseArgs, "postgres", dbURL)
 
@@ -74,5 +82,6 @@ func (c *MigrateCommand) Run(args []string) error {
 		gooseArgs = append(gooseArgs, args[1:]...)
 	}
 
+	//nolint:forbidigo // #nosec G204
 	return runCommandVerbose(gooseCmd, gooseArgs...)
 }

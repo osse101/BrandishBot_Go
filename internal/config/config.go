@@ -42,6 +42,7 @@ type Config struct {
 	DBHost     string
 	DBPort     string
 	DBName     string
+	DBURL      string // Database connection URL (optional, overrides individual components)
 
 	// Database Pool
 	DBMaxConns        int
@@ -89,6 +90,7 @@ func Load() (*Config, error) {
 		DBHost:     getEnv("DB_HOST", "localhost"),
 		DBPort:     getEnv("DB_PORT", "5432"),
 		DBName:     getEnv("DB_NAME", "brandishbot"),
+		DBURL:      getEnv("DB_URL", ""),
 
 		// Database pool defaults
 		DBMaxConns:        getEnvAsInt("DB_MAX_CONNS", 20),
@@ -174,8 +176,13 @@ func getEnv(key, defaultValue string) string {
 	return defaultValue
 }
 
-// GetDBConnString returns the PostgreSQL connection string
+// GetDBConnString returns the PostgreSQL connection string.
+// If DBURL is set, it returns it directly. Otherwise, it constructs it from
+// individual components.
 func (c *Config) GetDBConnString() string {
+	if c.DBURL != "" {
+		return c.DBURL
+	}
 	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
 		c.DBUser,
 		c.DBPassword,

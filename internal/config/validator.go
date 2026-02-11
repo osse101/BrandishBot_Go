@@ -9,14 +9,9 @@ import (
 // ExpectedEnvSchemaVersion is the schema version that the application expects
 const ExpectedEnvSchemaVersion = "1.0"
 
-// RequiredEnvVars lists all environment variables that must be set
+// RequiredEnvVars lists all environment variables that must be set (excluding database vars verified separately)
 var RequiredEnvVars = []string{
 	"ENV_SCHEMA_VERSION",
-	"DB_USER",
-	"DB_PASSWORD",
-	"DB_HOST",
-	"DB_PORT",
-	"DB_NAME",
 	"API_KEY",
 	"DISCORD_TOKEN",
 	"DISCORD_APP_ID",
@@ -44,8 +39,22 @@ func ValidateEnv() error {
 		}
 	}
 
+	// Check database configuration: either DB_URL OR (DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME)
+	if os.Getenv("DB_URL") == "" {
+		dbParts := []string{"DB_USER", "DB_PASSWORD", "DB_HOST", "DB_PORT", "DB_NAME"}
+		var missingParts []string
+		for _, part := range dbParts {
+			if os.Getenv(part) == "" {
+				missingParts = append(missingParts, part)
+			}
+		}
+		if len(missingParts) > 0 {
+			missing = append(missing, missingParts...)
+		}
+	}
+
 	if len(missing) > 0 {
-		return fmt.Errorf("missing required environment variables: %s", strings.Join(missing, ", "))
+		return fmt.Errorf("missing required environment variables: %s (need DB_URL or all individual DB_* vars)", strings.Join(missing, ", "))
 	}
 
 	return nil
