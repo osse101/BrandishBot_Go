@@ -30,3 +30,10 @@ The Compost system, intended for recycling items into gems/resources, is current
 - [ ] Implement `Harvest` logic (reward calculation, database update).
 - [ ] Implement dynamic composting times (if required).
 - [ ] Verify `GetStatus` accuracy.
+
+## Status Update (2026-02-14)
+
+**Implementation Status: No Change**
+
+- Confirmed `Deposit` method in `internal/compost/service.go` still contains TODOs for inventory operations.
+- Confirmed `Harvest` method returns `not implemented`.
