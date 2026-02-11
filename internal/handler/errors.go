@@ -36,6 +36,7 @@ const (
 	ErrMsgGetVelocityMetricsFailed   = "Failed to retrieve velocity metrics"
 	ErrMsgGetVotingSessionFailed     = "Failed to retrieve voting session"
 	ErrMsgGetUnlockProgressFailed    = "Failed to retrieve unlock progress"
+	ErrMsgGetUnlockEstimateFailed    = "Failed to get unlock estimate"
 
 	// Crafting/upgrade error messages
 	ErrMsgDisassembleItemFailed = "Failed to disassemble item"

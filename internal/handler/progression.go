@@ -5,6 +5,8 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
@@ -202,6 +204,43 @@ func (h *ProgressionHandlers) HandleGetVelocity() http.HandlerFunc {
 		h.handleGetSimpleMetric(w, r, "days", 7, func(ctx context.Context, i int) (interface{}, error) {
 			return h.service.GetEngagementVelocity(ctx, i)
 		}, "Get engagement velocity", ErrMsgGetVelocityMetricsFailed)
+	}
+}
+
+// HandleGetEstimate returns unlock estimate for a node
+// @Summary Get unlock estimate
+// @Description Returns estimated unlock time and requirements for a specific node
+// @Tags progression
+// @Produce json
+// @Param nodeKey path string true "Node Key"
+// @Success 200 {object} domain.UnlockEstimate
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /progression/estimate/{nodeKey} [get]
+func (h *ProgressionHandlers) HandleGetEstimate() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromContext(r.Context())
+		nodeKey := chi.URLParam(r, "nodeKey")
+
+		if nodeKey == "" {
+			respondError(w, http.StatusBadRequest, "Node key is required")
+			return
+		}
+
+		estimate, err := h.service.EstimateUnlockTime(r.Context(), nodeKey)
+		if err != nil {
+			log.Error("Get unlock estimate: service error", "error", err, "nodeKey", nodeKey)
+			respondError(w, http.StatusInternalServerError, ErrMsgGetUnlockEstimateFailed)
+			return
+		}
+
+		if estimate == nil {
+			respondError(w, http.StatusNotFound, "Node not found")
+			return
+		}
+
+		log.Info("Get unlock estimate: success", "nodeKey", nodeKey)
+		respondJSON(w, http.StatusOK, estimate)
 	}
 }
 

@@ -204,6 +204,7 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 			r.Get("/leaderboard", progressionHandlers.HandleGetContributionLeaderboard())
 			r.Get("/session", progressionHandlers.HandleGetVotingSession())
 			r.Get("/unlock-progress", progressionHandlers.HandleGetUnlockProgress())
+			r.Get("/estimate/{nodeKey}", progressionHandlers.HandleGetEstimate())
 
 			r.Route("/admin", func(r chi.Router) {
 				r.Post("/unlock", progressionHandlers.HandleAdminUnlock())

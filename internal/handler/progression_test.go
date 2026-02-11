@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -169,6 +170,68 @@ func TestProgressionHandlers_HandleAdminUnlock(t *testing.T) {
 			rec := httptest.NewRecorder()
 
 			handler.HandleAdminUnlock()(rec, req)
+
+			assert.Equal(t, tt.expectedStatus, rec.Code)
+		})
+	}
+}
+
+func TestProgressionHandlers_HandleGetEstimate(t *testing.T) {
+	tests := []struct {
+		name           string
+		nodeKey        string
+		setupMock      func(*mocks.MockProgressionService)
+		expectedStatus int
+	}{
+		{
+			name:    "Success",
+			nodeKey: "node_1",
+			setupMock: func(m *mocks.MockProgressionService) {
+				m.On("EstimateUnlockTime", mock.Anything, "node_1").Return(&domain.UnlockEstimate{
+					NodeKey: "node_1",
+				}, nil)
+			},
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:    "Node Not Found",
+			nodeKey: "unknown",
+			setupMock: func(m *mocks.MockProgressionService) {
+				m.On("EstimateUnlockTime", mock.Anything, "unknown").Return(nil, nil)
+			},
+			expectedStatus: http.StatusNotFound,
+		},
+		{
+			name:    "Service Error",
+			nodeKey: "node_error",
+			setupMock: func(m *mocks.MockProgressionService) {
+				m.On("EstimateUnlockTime", mock.Anything, "node_error").Return(nil, errors.New("service error"))
+			},
+			expectedStatus: http.StatusInternalServerError,
+		},
+		{
+			name:           "Missing Node Key",
+			nodeKey:        "",
+			setupMock:      func(m *mocks.MockProgressionService) {},
+			expectedStatus: http.StatusNotFound,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockSvc := mocks.NewMockProgressionService(t)
+			tt.setupMock(mockSvc)
+
+			handler := NewProgressionHandlers(mockSvc)
+
+			// Setup request using Chi context to simulate URL params
+			req := httptest.NewRequest("GET", "/progression/estimate/"+tt.nodeKey, nil)
+
+			r := chi.NewRouter()
+			r.Get("/progression/estimate/{nodeKey}", handler.HandleGetEstimate())
+
+			rec := httptest.NewRecorder()
+			r.ServeHTTP(rec, req)
 
 			assert.Equal(t, tt.expectedStatus, rec.Code)
 		})
