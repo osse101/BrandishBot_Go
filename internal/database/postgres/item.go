@@ -46,6 +46,7 @@ func (r *ItemRepository) GetAllItems(ctx context.Context) ([]domain.Item, error)
 			BaseValue:      int(row.BaseValue.Int32),
 			Handler:        textToPtr(row.Handler),
 			Types:          row.Types,
+			ContentType:    row.ContentType,
 		}
 	}
 
@@ -71,6 +72,7 @@ func (r *ItemRepository) GetItemByID(ctx context.Context, id int) (*domain.Item,
 		BaseValue:      int(row.BaseValue.Int32),
 		Handler:        textToPtr(row.Handler),
 		Types:          row.Types,
+		ContentType:    row.ContentType,
 	}, nil
 }
 
@@ -93,6 +95,7 @@ func (r *ItemRepository) GetItemByInternalName(ctx context.Context, internalName
 		BaseValue:      int(row.BaseValue.Int32),
 		Handler:        textToPtr(row.Handler),
 		Types:          row.Types,
+		ContentType:    row.ContentType,
 	}, nil
 }
 
@@ -105,6 +108,7 @@ func (r *ItemRepository) InsertItem(ctx context.Context, item *domain.Item) (int
 		ItemDescription: strToText(item.Description),
 		BaseValue:       intToInt4(item.BaseValue),
 		Handler:         ptrToText(item.Handler),
+		ContentType:     item.ContentType,
 	}
 
 	itemID, err := r.q.InsertItem(ctx, params)
@@ -123,6 +127,7 @@ func (r *ItemRepository) UpdateItem(ctx context.Context, itemID int, item *domai
 		ItemDescription: strToText(item.Description),
 		BaseValue:       intToInt4(item.BaseValue),
 		Handler:         ptrToText(item.Handler),
+		ContentType:     item.ContentType,
 		ItemID:          int32(itemID),
 	}
 

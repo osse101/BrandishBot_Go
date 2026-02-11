@@ -43,6 +43,29 @@ func CompareQuality(q1, q2 domain.QualityLevel) int {
 	return GetQualityValue(q1) - GetQualityValue(q2)
 }
 
+// GetQualityMultiplier returns the value multiplier for a quality level.
+// Uses the Mult* constants from the domain package.
+func GetQualityMultiplier(q domain.QualityLevel) float64 {
+	switch q {
+	case domain.QualityLegendary:
+		return domain.MultLegendary
+	case domain.QualityEpic:
+		return domain.MultEpic
+	case domain.QualityRare:
+		return domain.MultRare
+	case domain.QualityUncommon:
+		return domain.MultUncommon
+	case domain.QualityPoor:
+		return domain.MultPoor
+	case domain.QualityJunk:
+		return domain.MultJunk
+	case domain.QualityCursed:
+		return domain.MultCursed
+	default:
+		return domain.MultCommon
+	}
+}
+
 // CalculateAverageQuality calculates the weighted average quality level from consumed materials.
 // Each material contributes to the average based on its quantity.
 // Returns COMMON if no materials provided or if calculation fails.

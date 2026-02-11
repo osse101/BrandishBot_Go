@@ -41,10 +41,11 @@ type Def struct {
 	InternalName   string   `json:"internal_name"`
 	PublicName     string   `json:"public_name"`
 	Description    string   `json:"description"`
-	Tier           int      `json:"tier"`
+	Tier           int      `json:"tier,omitempty"`
 	MaxStack       int      `json:"max_stack"`
 	BaseValue      int      `json:"base_value"`
 	Tags           []string `json:"tags"`
+	Type           []string `json:"type"` // Content type categorization
 	Handler        *string  `json:"handler,omitempty"`
 	DefaultDisplay string   `json:"default_display"`
 }
@@ -226,6 +227,7 @@ func (l *itemLoader) syncOneItem(ctx context.Context, repo repository.Item, item
 			existing.Description != itemDef.Description ||
 			existing.BaseValue != itemDef.BaseValue ||
 			existing.DefaultDisplay != itemDef.DefaultDisplay ||
+			!stringSlicesEqual(existing.ContentType, itemDef.Type) ||
 			(itemDef.Handler != nil && (existing.Handler == nil || *existing.Handler != *itemDef.Handler))
 
 		if needsUpdate {
@@ -237,6 +239,7 @@ func (l *itemLoader) syncOneItem(ctx context.Context, repo repository.Item, item
 				BaseValue:      itemDef.BaseValue,
 				Handler:        itemDef.Handler,
 				DefaultDisplay: itemDef.DefaultDisplay,
+				ContentType:    itemDef.Type,
 			}); err != nil {
 				return fmt.Errorf(ErrMsgUpdateItemFailed, itemDef.InternalName, err)
 			}
@@ -259,6 +262,7 @@ func (l *itemLoader) syncOneItem(ctx context.Context, repo repository.Item, item
 			BaseValue:      itemDef.BaseValue,
 			Handler:        itemDef.Handler,
 			DefaultDisplay: itemDef.DefaultDisplay,
+			ContentType:    itemDef.Type,
 		}
 
 		itemID, err := repo.InsertItem(ctx, newItem)
@@ -364,4 +368,16 @@ func syncItemTags(ctx context.Context, repo repository.Item, itemID int, tags []
 	}
 
 	return nil
+}
+
+func stringSlicesEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }

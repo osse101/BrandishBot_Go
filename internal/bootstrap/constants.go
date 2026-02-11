@@ -125,14 +125,27 @@ const (
 	LogMsgResilientPublisherFailed   = "Resilient publisher shutdown failed"
 
 	// Service names for shutdown logging
-	ServiceNameProgression = "progression"
-	ServiceNameUser        = "user"
-	ServiceNameEconomy     = "economy"
-	ServiceNameCrafting    = "crafting"
-	ServiceNameGamble      = "gamble"
+	ServiceNameProgression  = "progression"
+	ServiceNameUser         = "user"
+	ServiceNameEconomy      = "economy"
+	ServiceNameCrafting     = "crafting"
+	ServiceNameGamble       = "gamble"
+	ServiceNamePrediction   = "prediction"
+	ServiceNameQuest        = "quest"
+	ServiceNameSubscription = "subscription"
+	ServiceNameSlots        = "slots"
+	ServiceNameCompost      = "compost"
+
+	// Worker names for shutdown logging
+	WorkerNameGamble       = "Gamble"
+	WorkerNameExpedition   = "Expedition"
+	WorkerNameDailyReset   = "Daily reset"
+	WorkerNameWeeklyReset  = "Weekly reset"
+	WorkerNameSubscription = "Subscription"
 )
 
 // Shutdown log message format (service name will be prepended)
 const (
 	LogMsgServiceShutdownFailed = " service shutdown failed"
+	LogMsgWorkerShutdownFailed  = " worker shutdown failed"
 )

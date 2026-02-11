@@ -78,6 +78,7 @@ func (q *Queries) EnsureInventoryRow(ctx context.Context, arg EnsureInventoryRow
 const getAllItems = `-- name: GetAllItems :many
 SELECT 
     i.item_id, i.internal_name, i.public_name, i.default_display, i.item_description, i.base_value, i.handler,
+    i.content_type,
     COALESCE(array_agg(t.type_name) FILTER (WHERE t.type_name IS NOT NULL), '{}')::text[] as types
 FROM items i
 LEFT JOIN item_type_assignments ita ON i.item_id = ita.item_id
@@ -94,6 +95,7 @@ type GetAllItemsRow struct {
 	ItemDescription pgtype.Text `json:"item_description"`
 	BaseValue       pgtype.Int4 `json:"base_value"`
 	Handler         pgtype.Text `json:"handler"`
+	ContentType     []string    `json:"content_type"`
 	Types           []string    `json:"types"`
 }
 
@@ -114,6 +116,7 @@ func (q *Queries) GetAllItems(ctx context.Context) ([]GetAllItemsRow, error) {
 			&i.ItemDescription,
 			&i.BaseValue,
 			&i.Handler,
+			&i.ContentType,
 			&i.Types,
 		); err != nil {
 			return nil, err
@@ -289,6 +292,7 @@ func (q *Queries) GetInventoryForUpdate(ctx context.Context, userID uuid.UUID) (
 const getItemByID = `-- name: GetItemByID :one
 SELECT 
     i.item_id, i.internal_name, i.public_name, i.default_display, i.item_description, i.base_value, i.handler,
+    i.content_type,
     COALESCE(array_agg(t.type_name) FILTER (WHERE t.type_name IS NOT NULL), '{}')::text[] as types
 FROM items i
 LEFT JOIN item_type_assignments ita ON i.item_id = ita.item_id
@@ -305,6 +309,7 @@ type GetItemByIDRow struct {
 	ItemDescription pgtype.Text `json:"item_description"`
 	BaseValue       pgtype.Int4 `json:"base_value"`
 	Handler         pgtype.Text `json:"handler"`
+	ContentType     []string    `json:"content_type"`
 	Types           []string    `json:"types"`
 }
 
@@ -319,6 +324,7 @@ func (q *Queries) GetItemByID(ctx context.Context, itemID int32) (GetItemByIDRow
 		&i.ItemDescription,
 		&i.BaseValue,
 		&i.Handler,
+		&i.ContentType,
 		&i.Types,
 	)
 	return i, err
@@ -327,6 +333,7 @@ func (q *Queries) GetItemByID(ctx context.Context, itemID int32) (GetItemByIDRow
 const getItemByName = `-- name: GetItemByName :one
 SELECT 
     i.item_id, i.internal_name, i.public_name, i.default_display, i.item_description, i.base_value, i.handler,
+    i.content_type,
     COALESCE(array_agg(t.type_name) FILTER (WHERE t.type_name IS NOT NULL), '{}')::text[] as types
 FROM items i
 LEFT JOIN item_type_assignments ita ON i.item_id = ita.item_id
@@ -343,6 +350,7 @@ type GetItemByNameRow struct {
 	ItemDescription pgtype.Text `json:"item_description"`
 	BaseValue       pgtype.Int4 `json:"base_value"`
 	Handler         pgtype.Text `json:"handler"`
+	ContentType     []string    `json:"content_type"`
 	Types           []string    `json:"types"`
 }
 
@@ -357,6 +365,7 @@ func (q *Queries) GetItemByName(ctx context.Context, internalName string) (GetIt
 		&i.ItemDescription,
 		&i.BaseValue,
 		&i.Handler,
+		&i.ContentType,
 		&i.Types,
 	)
 	return i, err
@@ -365,6 +374,7 @@ func (q *Queries) GetItemByName(ctx context.Context, internalName string) (GetIt
 const getItemByPublicName = `-- name: GetItemByPublicName :one
 SELECT 
     i.item_id, i.internal_name, i.public_name, i.default_display, i.item_description, i.base_value, i.handler,
+    i.content_type,
     COALESCE(array_agg(t.type_name) FILTER (WHERE t.type_name IS NOT NULL), '{}')::text[] as types
 FROM items i
 LEFT JOIN item_type_assignments ita ON i.item_id = ita.item_id
@@ -381,6 +391,7 @@ type GetItemByPublicNameRow struct {
 	ItemDescription pgtype.Text `json:"item_description"`
 	BaseValue       pgtype.Int4 `json:"base_value"`
 	Handler         pgtype.Text `json:"handler"`
+	ContentType     []string    `json:"content_type"`
 	Types           []string    `json:"types"`
 }
 
@@ -395,6 +406,7 @@ func (q *Queries) GetItemByPublicName(ctx context.Context, publicName pgtype.Tex
 		&i.ItemDescription,
 		&i.BaseValue,
 		&i.Handler,
+		&i.ContentType,
 		&i.Types,
 	)
 	return i, err
@@ -403,6 +415,7 @@ func (q *Queries) GetItemByPublicName(ctx context.Context, publicName pgtype.Tex
 const getItemsByIDs = `-- name: GetItemsByIDs :many
 SELECT 
     i.item_id, i.internal_name, i.public_name, i.default_display, i.item_description, i.base_value, i.handler,
+    i.content_type,
     COALESCE(array_agg(t.type_name) FILTER (WHERE t.type_name IS NOT NULL), '{}')::text[] as types
 FROM items i
 LEFT JOIN item_type_assignments ita ON i.item_id = ita.item_id
@@ -419,6 +432,7 @@ type GetItemsByIDsRow struct {
 	ItemDescription pgtype.Text `json:"item_description"`
 	BaseValue       pgtype.Int4 `json:"base_value"`
 	Handler         pgtype.Text `json:"handler"`
+	ContentType     []string    `json:"content_type"`
 	Types           []string    `json:"types"`
 }
 
@@ -439,6 +453,7 @@ func (q *Queries) GetItemsByIDs(ctx context.Context, dollar_1 []int32) ([]GetIte
 			&i.ItemDescription,
 			&i.BaseValue,
 			&i.Handler,
+			&i.ContentType,
 			&i.Types,
 		); err != nil {
 			return nil, err
@@ -454,6 +469,7 @@ func (q *Queries) GetItemsByIDs(ctx context.Context, dollar_1 []int32) ([]GetIte
 const getItemsByNames = `-- name: GetItemsByNames :many
 SELECT 
     i.item_id, i.internal_name, i.public_name, i.default_display, i.item_description, i.base_value, i.handler,
+    i.content_type,
     COALESCE(array_agg(t.type_name) FILTER (WHERE t.type_name IS NOT NULL), '{}')::text[] as types
 FROM items i
 LEFT JOIN item_type_assignments ita ON i.item_id = ita.item_id
@@ -470,6 +486,7 @@ type GetItemsByNamesRow struct {
 	ItemDescription pgtype.Text `json:"item_description"`
 	BaseValue       pgtype.Int4 `json:"base_value"`
 	Handler         pgtype.Text `json:"handler"`
+	ContentType     []string    `json:"content_type"`
 	Types           []string    `json:"types"`
 }
 
@@ -490,6 +507,7 @@ func (q *Queries) GetItemsByNames(ctx context.Context, dollar_1 []string) ([]Get
 			&i.ItemDescription,
 			&i.BaseValue,
 			&i.Handler,
+			&i.ContentType,
 			&i.Types,
 		); err != nil {
 			return nil, err

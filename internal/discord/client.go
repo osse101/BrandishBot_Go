@@ -1293,6 +1293,68 @@ func (c *APIClient) ClaimQuestReward(userID string, questID int) (map[string]int
 	return result, nil
 }
 
+// CompostDeposit deposits items into the user's compost bin
+func (c *APIClient) CompostDeposit(platform, platformID string, items []map[string]interface{}) (*CompostDepositResult, error) {
+	req := map[string]interface{}{
+		"platform":    platform,
+		"platform_id": platformID,
+		"items":       items,
+	}
+
+	var result CompostDepositResult
+	if err := c.doRequestAndParse(http.MethodPost, "/api/v1/compost/deposit", req, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// CompostDepositResult represents the deposit response from the API
+type CompostDepositResult struct {
+	Message   string `json:"message"`
+	Status    string `json:"status"`
+	ItemCount int    `json:"item_count"`
+	Capacity  int    `json:"capacity"`
+	ReadyAt   string `json:"ready_at,omitempty"`
+}
+
+// CompostHarvest harvests from the user's compost bin
+func (c *APIClient) CompostHarvest(platform, platformID, username string) (*CompostHarvestResult, error) {
+	req := map[string]string{
+		"platform":    platform,
+		"platform_id": platformID,
+		"username":    username,
+	}
+
+	var result CompostHarvestResult
+	if err := c.doRequestAndParse(http.MethodPost, "/api/v1/compost/harvest", req, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// CompostHarvestResult represents the harvest response from the API
+type CompostHarvestResult struct {
+	Message   string         `json:"message"`
+	Harvested bool           `json:"harvested"`
+	Items     map[string]int `json:"items,omitempty"`
+	TimeLeft  string         `json:"time_left,omitempty"`
+	Status    string         `json:"status,omitempty"`
+}
+
+// CompostStatus checks the compost bin status
+func (c *APIClient) CompostStatus(platform, platformID string) (*domain.HarvestResult, error) {
+	params := url.Values{}
+	params.Set("platform", platform)
+	params.Set("platform_id", platformID)
+
+	path := fmt.Sprintf("/api/v1/compost/status?%s", params.Encode())
+	var result domain.HarvestResult
+	if err := c.doRequestAndParse(http.MethodGet, path, nil, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
 // SpinSlots spins the slots machine with the specified bet
 func (c *APIClient) SpinSlots(platform, platformID, username string, betAmount int) (*domain.SlotsResult, error) {
 	req := map[string]interface{}{

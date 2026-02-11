@@ -2396,6 +2396,13 @@ const docTemplate = `{
                     "description": "Buy price",
                     "type": "integer"
                 },
+                "content_type": {
+                    "description": "Content type categorization (weapon, material, etc.)",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "default_display": {
                     "type": "string"
                 },

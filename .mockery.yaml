@@ -189,6 +189,8 @@ packages:
       User:
       HarvestRepository:
       HarvestTx:
+      CompostRepository:
+      CompostTx:
   github.com/osse101/BrandishBot_Go/internal/harvest:
     config:
       filename: "mock_harvest_{{.InterfaceName | snakecase}}.go"

@@ -5,8 +5,9 @@ package handler
 // Both handlers and tests should reference these constants to maintain consistency.
 const (
 	// HTTP status messages
-	ErrMsgMethodNotAllowed = "Method not allowed"
-	ErrMsgInvalidRequest   = "Invalid request body"
+	ErrMsgMethodNotAllowed      = "Method not allowed"
+	ErrMsgInvalidRequest        = "Invalid request body"
+	ErrMsgInvalidRequestSummary = "Invalid request"
 
 	// Query parameter error messages
 	ErrMsgMissingQueryParam = "Missing %s query parameter"
@@ -70,6 +71,16 @@ const (
 
 	// Parameter validation error messages
 	ErrMsgInvalidLimit = "Invalid limit parameter"
+
+	// Feature lock reason constants
+	FeatureLockReasonProgression = "progression_locked"
+	MsgLockedNodesFormat         = "LOCKED_NODES: %s"
+
+	// Compost error messages
+	ErrMsgCompostBinFull          = "Compost bin is full"
+	ErrMsgCompostNotCompostable   = "That item cannot be composted"
+	ErrMsgCompostMustHarvest      = "Bin is ready - harvest before depositing more"
+	ErrMsgCompostNothingToHarvest = "Nothing to harvest"
 )
 
 // Success messages for API responses
@@ -108,4 +119,8 @@ const (
 
 	// Admin success messages
 	MsgConfigReloadedSuccess = "Alias configuration reloaded successfully"
+
+	// Compost success messages
+	MsgCompostDepositSuccess = "Items deposited into compost bin!"
+	MsgCompostBinEmpty       = "Bin is empty"
 )

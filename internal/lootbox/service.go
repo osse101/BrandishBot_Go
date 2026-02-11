@@ -299,7 +299,7 @@ func (s *service) calculateQuality(roll float64, boxQuality domain.QualityLevel,
 		quality = s.getNextQualityLevel(quality)
 	}
 
-	return quality, s.getQualityMultiplier(quality)
+	return quality, utils.GetQualityMultiplier(quality)
 }
 
 func (s *service) getNextQualityLevel(q domain.QualityLevel) domain.QualityLevel {
@@ -343,26 +343,5 @@ func (s *service) getQualityDistance(quality domain.QualityLevel) int {
 		return -3
 	default:
 		return 0
-	}
-}
-
-func (s *service) getQualityMultiplier(quality domain.QualityLevel) float64 {
-	switch quality {
-	case domain.QualityLegendary:
-		return domain.MultLegendary
-	case domain.QualityEpic:
-		return domain.MultEpic
-	case domain.QualityRare:
-		return domain.MultRare
-	case domain.QualityUncommon:
-		return domain.MultUncommon
-	case domain.QualityPoor:
-		return domain.MultPoor
-	case domain.QualityJunk:
-		return domain.MultJunk
-	case domain.QualityCursed:
-		return domain.MultCursed
-	default:
-		return domain.MultCommon
 	}
 }

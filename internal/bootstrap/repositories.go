@@ -28,6 +28,7 @@ type Repositories struct {
 	Expedition   repository.Expedition
 	Quest        repository.QuestRepository
 	Subscription repository.Subscription
+	Compost      repository.CompostRepository
 }
 
 // InitializeRepositories creates all repository implementations.
@@ -50,5 +51,6 @@ func InitializeRepositories(dbPool *pgxpool.Pool, eventBus event.Bus) *Repositor
 		Expedition:   postgres.NewExpeditionRepository(dbPool),
 		Quest:        postgres.NewQuestRepository(dbPool),
 		Subscription: postgres.NewSubscriptionRepository(dbPool),
+		Compost:      postgres.NewCompostRepository(dbPool),
 	}
 }

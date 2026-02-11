@@ -3,17 +3,20 @@ package handler
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/compost"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 )
 
+// CompostHandler handles compost HTTP endpoints
 type CompostHandler struct {
 	service        compost.Service
 	progressionSvc progression.Service
 }
 
+// NewCompostHandler creates a new compost handler
 func NewCompostHandler(service compost.Service, progressionSvc progression.Service) *CompostHandler {
 	return &CompostHandler{
 		service:        service,
@@ -21,86 +24,113 @@ func NewCompostHandler(service compost.Service, progressionSvc progression.Servi
 	}
 }
 
-// DepositRequest represents a compost deposit request
-type DepositRequest struct {
-	Platform   string `json:"platform"`
-	PlatformID string `json:"platform_id"`
-	ItemKey    string `json:"item_key"`
-	Quantity   int    `json:"quantity"`
+// CompostDepositRequest is the request body for depositing items
+type CompostDepositRequest struct {
+	Platform   string                `json:"platform" validate:"required"`
+	PlatformID string                `json:"platform_id" validate:"required"`
+	Items      []compost.DepositItem `json:"items" validate:"required,min=1"`
 }
 
-// DepositResponse represents a compost deposit response
-type DepositResponse struct {
+// CompostHarvestRequest is the request body for harvesting
+type CompostHarvestRequest struct {
+	Platform   string `json:"platform" validate:"required"`
+	PlatformID string `json:"platform_id" validate:"required"`
+	Username   string `json:"username" validate:"required"`
+}
+
+// CompostDepositResponse is the response for a successful deposit
+type CompostDepositResponse struct {
 	Message   string `json:"message"`
-	DepositID string `json:"deposit_id"`
-	ReadyAt   string `json:"ready_at"`
+	Status    string `json:"status"`
+	ItemCount int    `json:"item_count"`
+	Capacity  int    `json:"capacity"`
+	ReadyAt   string `json:"ready_at,omitempty"`
+}
+
+// CompostHarvestResponse is the response for harvest (either status or output)
+type CompostHarvestResponse struct {
+	Message   string         `json:"message"`
+	Harvested bool           `json:"harvested"`
+	Items     map[string]int `json:"items,omitempty"`
+	TimeLeft  string         `json:"time_left,omitempty"`
+	Status    string         `json:"status,omitempty"`
 }
 
 // HandleDeposit handles compost deposit requests
 func (h *CompostHandler) HandleDeposit(w http.ResponseWriter, r *http.Request) {
-	handleFeatureAction(w, r, h.progressionSvc, progression.FeatureCompost, "Deposit compost",
-		func(ctx context.Context, req DepositRequest) (*domain.CompostDeposit, error) {
-			result, err := h.service.Deposit(ctx, req.Platform, req.PlatformID, req.ItemKey, req.Quantity)
+	handleFeatureAction(w, r, h.progressionSvc, progression.FeatureCompost, "Compost deposit",
+		func(ctx context.Context, req CompostDepositRequest) (*domain.CompostBin, error) {
+			result, err := h.service.Deposit(ctx, req.Platform, req.PlatformID, req.Items)
 			if err == nil {
 				recordEngagement(r, h.progressionSvc, req.PlatformID, "compost_deposit", 1)
 			}
 			return result, err
 		},
-		h.formatDepositResponse,
+		func(bin *domain.CompostBin) interface{} {
+			resp := CompostDepositResponse{
+				Message:   MsgCompostDepositSuccess,
+				Status:    string(bin.Status),
+				ItemCount: bin.ItemCount,
+				Capacity:  bin.Capacity,
+			}
+			if bin.ReadyAt != nil {
+				resp.ReadyAt = bin.ReadyAt.Format(time.RFC3339)
+			}
+			return resp
+		},
 	)
-}
-
-func (h *CompostHandler) formatDepositResponse(res *domain.CompostDeposit) interface{} {
-	return DepositResponse{
-		Message:   "Items composting!",
-		DepositID: res.ID.String(),
-		ReadyAt:   res.ReadyAt.Format("2006-01-02 15:04:05"),
-	}
-}
-
-// HandleGetStatus handles compost status requests
-func (h *CompostHandler) HandleGetStatus(w http.ResponseWriter, r *http.Request) {
-	username, ok := GetQueryParam(r, w, "username")
-	if !ok {
-		return
-	}
-
-	status, err := h.service.GetStatus(r.Context(), "twitch", username)
-	if err != nil {
-		respondServiceError(w, r, "Failed to get compost status", err)
-		return
-	}
-
-	respondJSON(w, http.StatusOK, status)
-}
-
-// HarvestRequest represents a compost harvest request
-type HarvestRequest struct {
-	Platform   string `json:"platform"`
-	PlatformID string `json:"platform_id"`
-}
-
-// HarvestResponse represents a compost harvest response
-type HarvestResponse struct {
-	Message     string `json:"message"`
-	GemsAwarded int    `json:"gems_awarded"`
 }
 
 // HandleHarvest handles compost harvest requests
 func (h *CompostHandler) HandleHarvest(w http.ResponseWriter, r *http.Request) {
-	handleFeatureAction(w, r, h.progressionSvc, progression.FeatureCompost, "Harvest compost",
-		func(ctx context.Context, req HarvestRequest) (int, error) {
-			gemsAwarded, err := h.service.Harvest(ctx, req.Platform, req.PlatformID)
-			if err == nil {
-				recordEngagement(r, h.progressionSvc, req.PlatformID, "compost_harvest", 1)
+	handleFeatureAction(w, r, h.progressionSvc, progression.FeatureCompost, "Compost harvest",
+		func(ctx context.Context, req CompostHarvestRequest) (*domain.HarvestResult, error) {
+			result, err := h.service.Harvest(ctx, req.Platform, req.PlatformID, req.Username)
+			if err == nil && result.Harvested {
+				recordEngagement(r, h.progressionSvc, req.PlatformID, "compost_harvest", 5)
 			}
-			return gemsAwarded, err
+			return result, err
 		},
-		func(gemsAwarded int) interface{} {
-			return HarvestResponse{
-				Message:     "Compost harvested!",
-				GemsAwarded: gemsAwarded,
+		func(result *domain.HarvestResult) interface{} {
+			if result.Harvested {
+				return CompostHarvestResponse{
+					Message:   result.Output.Message,
+					Harvested: true,
+					Items:     result.Output.Items,
+				}
 			}
+			resp := CompostHarvestResponse{
+				Harvested: false,
+				Status:    string(result.Status.Status),
+			}
+			if result.Status.TimeLeft != "" {
+				resp.Message = result.Status.TimeLeft
+				resp.TimeLeft = result.Status.TimeLeft
+			} else {
+				resp.Message = MsgCompostBinEmpty
+			}
+			return resp
 		},
 	)
+}
+
+// HandleStatus is a GET convenience endpoint for checking bin status
+func (h *CompostHandler) HandleStatus(w http.ResponseWriter, r *http.Request) {
+	platform, ok := GetQueryParam(r, w, "platform")
+	if !ok {
+		return
+	}
+	platformID, ok := GetQueryParam(r, w, "platform_id")
+	if !ok {
+		return
+	}
+	username := GetOptionalQueryParam(r, "username", "")
+
+	result, err := h.service.Harvest(r.Context(), platform, platformID, username)
+	if err != nil {
+		respondServiceError(w, r, "Compost status", err)
+		return
+	}
+
+	respondJSON(w, http.StatusOK, result)
 }

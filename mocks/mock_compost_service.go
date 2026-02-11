@@ -5,7 +5,10 @@ package mocks
 import (
 	context "context"
 
+	compost "github.com/osse101/BrandishBot_Go/internal/compost"
+
 	domain "github.com/osse101/BrandishBot_Go/internal/domain"
+
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -22,29 +25,29 @@ func (_m *MockCompostService) EXPECT() *MockCompostService_Expecter {
 	return &MockCompostService_Expecter{mock: &_m.Mock}
 }
 
-// Deposit provides a mock function with given fields: ctx, platform, platformID, itemKey, quantity
-func (_m *MockCompostService) Deposit(ctx context.Context, platform string, platformID string, itemKey string, quantity int) (*domain.CompostDeposit, error) {
-	ret := _m.Called(ctx, platform, platformID, itemKey, quantity)
+// Deposit provides a mock function with given fields: ctx, platform, platformID, items
+func (_m *MockCompostService) Deposit(ctx context.Context, platform string, platformID string, items []compost.DepositItem) (*domain.CompostBin, error) {
+	ret := _m.Called(ctx, platform, platformID, items)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Deposit")
 	}
 
-	var r0 *domain.CompostDeposit
+	var r0 *domain.CompostBin
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, int) (*domain.CompostDeposit, error)); ok {
-		return rf(ctx, platform, platformID, itemKey, quantity)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, []compost.DepositItem) (*domain.CompostBin, error)); ok {
+		return rf(ctx, platform, platformID, items)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, int) *domain.CompostDeposit); ok {
-		r0 = rf(ctx, platform, platformID, itemKey, quantity)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, []compost.DepositItem) *domain.CompostBin); ok {
+		r0 = rf(ctx, platform, platformID, items)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*domain.CompostDeposit)
+			r0 = ret.Get(0).(*domain.CompostBin)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, string, string, int) error); ok {
-		r1 = rf(ctx, platform, platformID, itemKey, quantity)
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, []compost.DepositItem) error); ok {
+		r1 = rf(ctx, platform, platformID, items)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -61,110 +64,51 @@ type MockCompostService_Deposit_Call struct {
 //   - ctx context.Context
 //   - platform string
 //   - platformID string
-//   - itemKey string
-//   - quantity int
-func (_e *MockCompostService_Expecter) Deposit(ctx interface{}, platform interface{}, platformID interface{}, itemKey interface{}, quantity interface{}) *MockCompostService_Deposit_Call {
-	return &MockCompostService_Deposit_Call{Call: _e.mock.On("Deposit", ctx, platform, platformID, itemKey, quantity)}
+//   - items []compost.DepositItem
+func (_e *MockCompostService_Expecter) Deposit(ctx interface{}, platform interface{}, platformID interface{}, items interface{}) *MockCompostService_Deposit_Call {
+	return &MockCompostService_Deposit_Call{Call: _e.mock.On("Deposit", ctx, platform, platformID, items)}
 }
 
-func (_c *MockCompostService_Deposit_Call) Run(run func(ctx context.Context, platform string, platformID string, itemKey string, quantity int)) *MockCompostService_Deposit_Call {
+func (_c *MockCompostService_Deposit_Call) Run(run func(ctx context.Context, platform string, platformID string, items []compost.DepositItem)) *MockCompostService_Deposit_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(string), args[4].(int))
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].([]compost.DepositItem))
 	})
 	return _c
 }
 
-func (_c *MockCompostService_Deposit_Call) Return(_a0 *domain.CompostDeposit, _a1 error) *MockCompostService_Deposit_Call {
+func (_c *MockCompostService_Deposit_Call) Return(_a0 *domain.CompostBin, _a1 error) *MockCompostService_Deposit_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockCompostService_Deposit_Call) RunAndReturn(run func(context.Context, string, string, string, int) (*domain.CompostDeposit, error)) *MockCompostService_Deposit_Call {
+func (_c *MockCompostService_Deposit_Call) RunAndReturn(run func(context.Context, string, string, []compost.DepositItem) (*domain.CompostBin, error)) *MockCompostService_Deposit_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// GetStatus provides a mock function with given fields: ctx, platform, platformID
-func (_m *MockCompostService) GetStatus(ctx context.Context, platform string, platformID string) (*domain.CompostStatus, error) {
-	ret := _m.Called(ctx, platform, platformID)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetStatus")
-	}
-
-	var r0 *domain.CompostStatus
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string) (*domain.CompostStatus, error)); ok {
-		return rf(ctx, platform, platformID)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, string) *domain.CompostStatus); ok {
-		r0 = rf(ctx, platform, platformID)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*domain.CompostStatus)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
-		r1 = rf(ctx, platform, platformID)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockCompostService_GetStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetStatus'
-type MockCompostService_GetStatus_Call struct {
-	*mock.Call
-}
-
-// GetStatus is a helper method to define mock.On call
-//   - ctx context.Context
-//   - platform string
-//   - platformID string
-func (_e *MockCompostService_Expecter) GetStatus(ctx interface{}, platform interface{}, platformID interface{}) *MockCompostService_GetStatus_Call {
-	return &MockCompostService_GetStatus_Call{Call: _e.mock.On("GetStatus", ctx, platform, platformID)}
-}
-
-func (_c *MockCompostService_GetStatus_Call) Run(run func(ctx context.Context, platform string, platformID string)) *MockCompostService_GetStatus_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(string))
-	})
-	return _c
-}
-
-func (_c *MockCompostService_GetStatus_Call) Return(_a0 *domain.CompostStatus, _a1 error) *MockCompostService_GetStatus_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockCompostService_GetStatus_Call) RunAndReturn(run func(context.Context, string, string) (*domain.CompostStatus, error)) *MockCompostService_GetStatus_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// Harvest provides a mock function with given fields: ctx, platform, platformID
-func (_m *MockCompostService) Harvest(ctx context.Context, platform string, platformID string) (int, error) {
-	ret := _m.Called(ctx, platform, platformID)
+// Harvest provides a mock function with given fields: ctx, platform, platformID, username
+func (_m *MockCompostService) Harvest(ctx context.Context, platform string, platformID string, username string) (*domain.HarvestResult, error) {
+	ret := _m.Called(ctx, platform, platformID, username)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Harvest")
 	}
 
-	var r0 int
+	var r0 *domain.HarvestResult
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string) (int, error)); ok {
-		return rf(ctx, platform, platformID)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string) (*domain.HarvestResult, error)); ok {
+		return rf(ctx, platform, platformID, username)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, string) int); ok {
-		r0 = rf(ctx, platform, platformID)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string) *domain.HarvestResult); ok {
+		r0 = rf(ctx, platform, platformID, username)
 	} else {
-		r0 = ret.Get(0).(int)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*domain.HarvestResult)
+		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
-		r1 = rf(ctx, platform, platformID)
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, string) error); ok {
+		r1 = rf(ctx, platform, platformID, username)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -181,23 +125,70 @@ type MockCompostService_Harvest_Call struct {
 //   - ctx context.Context
 //   - platform string
 //   - platformID string
-func (_e *MockCompostService_Expecter) Harvest(ctx interface{}, platform interface{}, platformID interface{}) *MockCompostService_Harvest_Call {
-	return &MockCompostService_Harvest_Call{Call: _e.mock.On("Harvest", ctx, platform, platformID)}
+//   - username string
+func (_e *MockCompostService_Expecter) Harvest(ctx interface{}, platform interface{}, platformID interface{}, username interface{}) *MockCompostService_Harvest_Call {
+	return &MockCompostService_Harvest_Call{Call: _e.mock.On("Harvest", ctx, platform, platformID, username)}
 }
 
-func (_c *MockCompostService_Harvest_Call) Run(run func(ctx context.Context, platform string, platformID string)) *MockCompostService_Harvest_Call {
+func (_c *MockCompostService_Harvest_Call) Run(run func(ctx context.Context, platform string, platformID string, username string)) *MockCompostService_Harvest_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(string))
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(string))
 	})
 	return _c
 }
 
-func (_c *MockCompostService_Harvest_Call) Return(_a0 int, _a1 error) *MockCompostService_Harvest_Call {
+func (_c *MockCompostService_Harvest_Call) Return(_a0 *domain.HarvestResult, _a1 error) *MockCompostService_Harvest_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockCompostService_Harvest_Call) RunAndReturn(run func(context.Context, string, string) (int, error)) *MockCompostService_Harvest_Call {
+func (_c *MockCompostService_Harvest_Call) RunAndReturn(run func(context.Context, string, string, string) (*domain.HarvestResult, error)) *MockCompostService_Harvest_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Shutdown provides a mock function with given fields: ctx
+func (_m *MockCompostService) Shutdown(ctx context.Context) error {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Shutdown")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockCompostService_Shutdown_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Shutdown'
+type MockCompostService_Shutdown_Call struct {
+	*mock.Call
+}
+
+// Shutdown is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockCompostService_Expecter) Shutdown(ctx interface{}) *MockCompostService_Shutdown_Call {
+	return &MockCompostService_Shutdown_Call{Call: _e.mock.On("Shutdown", ctx)}
+}
+
+func (_c *MockCompostService_Shutdown_Call) Run(run func(ctx context.Context)) *MockCompostService_Shutdown_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockCompostService_Shutdown_Call) Return(_a0 error) *MockCompostService_Shutdown_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockCompostService_Shutdown_Call) RunAndReturn(run func(context.Context) error) *MockCompostService_Shutdown_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -156,6 +156,10 @@ func getCommandFactories(bot *discord.Bot, infoLoader *info.Loader) []CommandFac
 		discord.GambleStartCommand,
 		discord.GambleJoinCommand,
 
+		// Compost commands
+		discord.CompostDepositCommand,
+		discord.CompostHarvestCommand,
+
 		// Slots commands
 		discord.SlotsCommand,
 

@@ -199,7 +199,7 @@ func (r *UserRepository) GetItemByPublicName(ctx context.Context, publicName str
 		return nil, fmt.Errorf("failed to get item by public name: %w", err)
 	}
 
-	return mapItemFields(row.ItemID, row.InternalName, row.PublicName, row.DefaultDisplay, row.ItemDescription, row.BaseValue, row.Handler, row.Types), nil
+	return mapItemFields(row.ItemID, row.InternalName, row.PublicName, row.DefaultDisplay, row.ItemDescription, row.BaseValue, row.Handler, row.ContentType, row.Types), nil
 }
 
 // GetItemsByIDs retrieves multiple items by their IDs
@@ -220,7 +220,7 @@ func (r *UserRepository) GetItemsByNames(ctx context.Context, names []string) ([
 
 	items := make([]domain.Item, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, *mapItemFields(row.ItemID, row.InternalName, row.PublicName, row.DefaultDisplay, row.ItemDescription, row.BaseValue, row.Handler, row.Types))
+		items = append(items, *mapItemFields(row.ItemID, row.InternalName, row.PublicName, row.DefaultDisplay, row.ItemDescription, row.BaseValue, row.Handler, row.ContentType, row.Types))
 	}
 	return items, nil
 }
@@ -234,7 +234,7 @@ func (r *UserRepository) GetAllItems(ctx context.Context) ([]domain.Item, error)
 
 	items := make([]domain.Item, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, *mapItemFields(row.ItemID, row.InternalName, row.PublicName, row.DefaultDisplay, row.ItemDescription, row.BaseValue, row.Handler, row.Types))
+		items = append(items, *mapItemFields(row.ItemID, row.InternalName, row.PublicName, row.DefaultDisplay, row.ItemDescription, row.BaseValue, row.Handler, row.ContentType, row.Types))
 	}
 	return items, nil
 }

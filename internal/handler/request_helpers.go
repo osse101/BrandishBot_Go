@@ -46,10 +46,9 @@ func DecodeAndValidateRequest(r *http.Request, w http.ResponseWriter, req interf
 
 	// Validate the request struct
 	if err := GetValidator().ValidateStruct(req); err != nil {
-		log.Warn("Invalid request", "error", err)
 		validationErrs := FormatValidationError(err)
 		respondJSON(w, http.StatusBadRequest, map[string]interface{}{
-			"error":  "Invalid request",
+			"error":  ErrMsgInvalidRequestSummary,
 			"fields": validationErrs,
 		})
 		return err

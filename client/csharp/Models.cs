@@ -543,6 +543,108 @@ namespace BrandishBot.Client
         public int Purse { get; set; }
     }
 
+    // --- Compost Models ---
+
+    public class CompostDepositItem
+    {
+        [JsonProperty("item_name")]
+        public string ItemName { get; set; }
+
+        [JsonProperty("quantity")]
+        public int Quantity { get; set; }
+    }
+
+    public class CompostDepositResponse
+    {
+        [JsonProperty("message")]
+        public string Message { get; set; }
+
+        /// <summary>Status of the bin: "idle", "composting", "ready", "sludge"</summary>
+        [JsonProperty("status")]
+        public string Status { get; set; }
+
+        [JsonProperty("item_count")]
+        public int ItemCount { get; set; }
+
+        [JsonProperty("capacity")]
+        public int Capacity { get; set; }
+
+        /// <summary>RFC3339 timestamp when the bin will be ready to harvest</summary>
+        [JsonProperty("ready_at")]
+        public string ReadyAt { get; set; }
+    }
+
+    public class CompostHarvestResponse
+    {
+        [JsonProperty("message")]
+        public string Message { get; set; }
+
+        /// <summary>True if items were harvested; false if bin is not ready (check TimeLeft/Status)</summary>
+        [JsonProperty("harvested")]
+        public bool Harvested { get; set; }
+
+        /// <summary>Items received from harvest: internal_name -> quantity</summary>
+        [JsonProperty("items")]
+        public Dictionary<string, int> Items { get; set; }
+
+        /// <summary>Human-readable time remaining (e.g. "1h 30m"). Set when not harvested.</summary>
+        [JsonProperty("time_left")]
+        public string TimeLeft { get; set; }
+
+        /// <summary>Bin status: "idle", "composting", "ready", "sludge". Set when not harvested.</summary>
+        [JsonProperty("status")]
+        public string Status { get; set; }
+    }
+
+    public class CompostStatusResponse
+    {
+        [JsonProperty("harvested")]
+        public bool Harvested { get; set; }
+
+        [JsonProperty("status")]
+        public CompostBinStatus Status { get; set; }
+    }
+
+    public class CompostBinStatus
+    {
+        /// <summary>Bin status: "idle", "composting", "ready", "sludge"</summary>
+        [JsonProperty("status")]
+        public string Status { get; set; }
+
+        [JsonProperty("capacity")]
+        public int Capacity { get; set; }
+
+        [JsonProperty("item_count")]
+        public int ItemCount { get; set; }
+
+        [JsonProperty("time_left")]
+        public string TimeLeft { get; set; }
+
+        [JsonProperty("ready_at")]
+        public string ReadyAt { get; set; }
+
+        [JsonProperty("sludge_at")]
+        public string SludgeAt { get; set; }
+
+        [JsonProperty("items")]
+        public List<CompostBinItem> Items { get; set; }
+    }
+
+    public class CompostBinItem
+    {
+        [JsonProperty("item_name")]
+        public string ItemName { get; set; }
+
+        [JsonProperty("quantity")]
+        public int Quantity { get; set; }
+
+        [JsonProperty("quality_level")]
+        public string QualityLevel { get; set; }
+
+        [JsonProperty("base_value")]
+        public int BaseValue { get; set; }
+    }
+
     // --- Subscription Models ---
 
     public class SubscriptionEvent

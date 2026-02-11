@@ -128,6 +128,13 @@ const (
 
 	// Platform messages
 	ErrMsgInvalidPlatformError = "Invalid platform"
+
+	// Internal markers and suffixes for error mapping
+	suffixRecipeLocked       = " | recipe locked"
+	suffixRecipeNotFound     = " | recipe not found"
+	errMsgRecipeLockedBase   = "recipe locked"
+	errMsgRecipeNotFoundBase = "recipe not found"
+	msgProgressionUnlockHint = ". Unlock it in the progression tree"
 )
 
 // mapServiceErrorToUserMessage maps domain errors to user-friendly HTTP responses
@@ -174,7 +181,7 @@ func mapServiceErrorToUserMessage(err error) (int, string) {
 func mapUserAndItemErrors(err error, errMsg string) (int, string, bool) {
 	switch {
 	case errors.Is(err, domain.ErrUserNotFound):
-		if len(errMsg) > len("user not found") {
+		if len(errMsg) > len(ErrMsgUserNotFoundHTTP) {
 			return http.StatusBadRequest, errMsg, true
 		}
 		return http.StatusBadRequest, ErrMsgUserNotFoundError, true
@@ -194,6 +201,18 @@ func mapUserAndItemErrors(err error, errMsg string) (int, string, bool) {
 		return http.StatusBadRequest, ErrMsgNotBuyableError, true
 	case errors.Is(err, domain.ErrInvalidPlatform):
 		return http.StatusBadRequest, ErrMsgInvalidPlatformError, true
+	case errors.Is(err, domain.ErrInventoryFull):
+		return http.StatusBadRequest, ErrMsgInventoryFullError, true
+	case errors.Is(err, domain.ErrNotInInventory):
+		return http.StatusBadRequest, ErrMsgItemNotFoundError, true
+	case errors.Is(err, domain.ErrCompostBinFull):
+		return http.StatusBadRequest, ErrMsgCompostBinFull, true
+	case errors.Is(err, domain.ErrCompostNotCompostable):
+		return http.StatusBadRequest, ErrMsgCompostNotCompostable, true
+	case errors.Is(err, domain.ErrCompostMustHarvest):
+		return http.StatusBadRequest, ErrMsgCompostMustHarvest, true
+	case errors.Is(err, domain.ErrCompostNothingToHarvest):
+		return http.StatusBadRequest, ErrMsgCompostNothingToHarvest, true
 	}
 	return 0, "", false
 }
@@ -201,10 +220,10 @@ func mapUserAndItemErrors(err error, errMsg string) (int, string, bool) {
 func mapEconomyAndFeatureErrors(err error, errMsg string) (int, string, bool) {
 	switch {
 	case errors.Is(err, domain.ErrRecipeLocked):
-		if len(errMsg) > len("recipe locked") {
-			before, found := cutSuffix(errMsg, " | recipe locked")
+		if len(errMsg) > len(errMsgRecipeLockedBase) {
+			before, found := cutSuffix(errMsg, suffixRecipeLocked)
 			if found {
-				return http.StatusForbidden, before + ". Unlock it in the progression tree", true
+				return http.StatusForbidden, before + msgProgressionUnlockHint, true
 			}
 		}
 		return http.StatusForbidden, ErrMsgRecipeLockedError, true
@@ -218,9 +237,13 @@ func mapEconomyAndFeatureErrors(err error, errMsg string) (int, string, bool) {
 			return http.StatusTooManyRequests, cooldownErr.Error(), true
 		}
 		return http.StatusTooManyRequests, ErrMsgOnCooldownError, true
+	case errors.Is(err, domain.ErrInsufficientFunds):
+		return http.StatusBadRequest, ErrMsgNotEnoughMoneyError, true
+	case errors.Is(err, domain.ErrNotSellable):
+		return http.StatusBadRequest, ErrMsgNotSellableError, true
 	case errors.Is(err, domain.ErrRecipeNotFound):
-		if len(errMsg) > len("recipe not found") {
-			before, found := cutSuffix(errMsg, " | recipe not found")
+		if len(errMsg) > len(errMsgRecipeNotFoundBase) {
+			before, found := cutSuffix(errMsg, suffixRecipeNotFound)
 			if found {
 				return http.StatusBadRequest, before, true
 			}

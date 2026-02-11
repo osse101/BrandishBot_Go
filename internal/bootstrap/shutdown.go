@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/osse101/BrandishBot_Go/internal/compost"
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
 	"github.com/osse101/BrandishBot_Go/internal/economy"
 	"github.com/osse101/BrandishBot_Go/internal/event"
@@ -30,6 +31,7 @@ type ShutdownComponents struct {
 	QuestService        quest.Service
 	SubscriptionService subscription.Service
 	SlotsService        slots.Service
+	CompostService      compost.Service
 	GambleWorker        *worker.GambleWorker
 	ExpeditionWorker    *worker.ExpeditionWorker
 	DailyResetWorker    *worker.DailyResetWorker
@@ -56,31 +58,31 @@ func GracefulShutdown(ctx context.Context, components ShutdownComponents) {
 	// Shutdown workers first to cancel pending timers
 	if components.GambleWorker != nil {
 		if err := components.GambleWorker.Shutdown(ctx); err != nil {
-			slog.Error("Gamble worker shutdown failed", "error", err)
+			slog.Error(WorkerNameGamble+LogMsgWorkerShutdownFailed, "error", err)
 		}
 	}
 
 	if components.ExpeditionWorker != nil {
 		if err := components.ExpeditionWorker.Shutdown(ctx); err != nil {
-			slog.Error("Expedition worker shutdown failed", "error", err)
+			slog.Error(WorkerNameExpedition+LogMsgWorkerShutdownFailed, "error", err)
 		}
 	}
 
 	if components.DailyResetWorker != nil {
 		if err := components.DailyResetWorker.Shutdown(ctx); err != nil {
-			slog.Error("Daily reset worker shutdown failed", "error", err)
+			slog.Error(WorkerNameDailyReset+LogMsgWorkerShutdownFailed, "error", err)
 		}
 	}
 
 	if components.WeeklyResetWorker != nil {
 		if err := components.WeeklyResetWorker.Shutdown(ctx); err != nil {
-			slog.Error("Weekly reset worker shutdown failed", "error", err)
+			slog.Error(WorkerNameWeeklyReset+LogMsgWorkerShutdownFailed, "error", err)
 		}
 	}
 
 	if components.SubscriptionWorker != nil {
 		if err := components.SubscriptionWorker.Shutdown(ctx); err != nil {
-			slog.Error("Subscription worker shutdown failed", "error", err)
+			slog.Error(WorkerNameSubscription+LogMsgWorkerShutdownFailed, "error", err)
 		}
 	}
 
@@ -90,10 +92,11 @@ func GracefulShutdown(ctx context.Context, components ShutdownComponents) {
 	shutdownService(ctx, ServiceNameEconomy, components.EconomyService)
 	shutdownService(ctx, ServiceNameCrafting, components.CraftingService)
 	shutdownService(ctx, ServiceNameGamble, components.GambleService)
-	shutdownService(ctx, "prediction", components.PredictionService)
-	shutdownService(ctx, "quest", components.QuestService)
-	shutdownService(ctx, "subscription", components.SubscriptionService)
-	shutdownService(ctx, "slots", components.SlotsService)
+	shutdownService(ctx, ServiceNamePrediction, components.PredictionService)
+	shutdownService(ctx, ServiceNameQuest, components.QuestService)
+	shutdownService(ctx, ServiceNameSubscription, components.SubscriptionService)
+	shutdownService(ctx, ServiceNameSlots, components.SlotsService)
+	shutdownService(ctx, ServiceNameCompost, components.CompostService)
 
 	// Shutdown resilient publisher last to flush pending events
 	slog.Info(LogMsgShuttingDownEventPublisher)

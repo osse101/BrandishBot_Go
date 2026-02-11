@@ -13,6 +13,7 @@ import (
 
 	_ "github.com/osse101/BrandishBot_Go/docs/swagger"
 	"github.com/osse101/BrandishBot_Go/internal/bootstrap"
+	"github.com/osse101/BrandishBot_Go/internal/compost"
 	"github.com/osse101/BrandishBot_Go/internal/config"
 	"github.com/osse101/BrandishBot_Go/internal/cooldown"
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
@@ -211,6 +212,10 @@ func main() {
 	harvestService := harvest.NewService(repos.Harvest, repos.User, progressionService, jobService)
 	slog.Info("Harvest service initialized")
 
+	// Initialize Compost Service
+	compostService := compost.NewService(repos.Compost, repos.User, progressionService, jobService)
+	slog.Info("Compost service initialized")
+
 	// Initialize Gamble Worker
 	gambleWorker := worker.NewGambleWorker(gambleService)
 	gambleWorker.Subscribe(eventBus)
@@ -329,7 +334,7 @@ func main() {
 	scenarioEngine := scenario.NewEngine(scenarioRegistry)
 	slog.Info("Scenario engine initialized", "features", scenarioRegistry.Features())
 
-	srv := server.NewServer(cfg.Port, cfg.APIKey, cfg.TrustedProxies, dbPool, userService, economyService, craftingService, statsService, progressionService, gambleService, jobService, linkingService, harvestService, predictionService, expeditionService, questService, subscriptionService, slotsService, namingResolver, eventBus, sseHub, repos.User, scenarioEngine, eventLogService)
+	srv := server.NewServer(cfg.Port, cfg.APIKey, cfg.TrustedProxies, dbPool, userService, economyService, craftingService, statsService, progressionService, gambleService, jobService, linkingService, harvestService, predictionService, expeditionService, questService, subscriptionService, slotsService, compostService, namingResolver, eventBus, sseHub, repos.User, scenarioEngine, eventLogService)
 
 	// Run server in a goroutine
 	go func() {
@@ -361,6 +366,7 @@ func main() {
 		QuestService:        questService,
 		SubscriptionService: subscriptionService,
 		SlotsService:        slotsService,
+		CompostService:      compostService,
 		GambleWorker:        gambleWorker,
 		ExpeditionWorker:    expeditionWorker,
 		DailyResetWorker:    dailyResetWorker,

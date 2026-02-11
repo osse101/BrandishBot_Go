@@ -38,6 +38,7 @@ type Querier interface {
 	CountTotalUnlockedNodes(ctx context.Context) (int32, error)
 	CountUnlockedNodesBelowTier(ctx context.Context, tier int32) (int32, error)
 	CountUnlocks(ctx context.Context) (int64, error)
+	CreateCompostBin(ctx context.Context, userID uuid.UUID) (CompostBin, error)
 	CreateExpedition(ctx context.Context, arg CreateExpeditionParams) error
 	CreateGamble(ctx context.Context, arg CreateGambleParams) error
 	CreateHarvestState(ctx context.Context, dollar_1 uuid.UUID) (HarvestState, error)
@@ -82,6 +83,9 @@ type Querier interface {
 	GetAssociatedUpgradeRecipeID(ctx context.Context, disassembleRecipeID int32) (int32, error)
 	GetBuyablePrices(ctx context.Context) ([]GetBuyablePricesRow, error)
 	GetClaimedTokenForSource(ctx context.Context, arg GetClaimedTokenForSourceParams) (GetClaimedTokenForSourceRow, error)
+	// Compost Bin Queries
+	GetCompostBin(ctx context.Context, userID uuid.UUID) (CompostBin, error)
+	GetCompostBinForUpdate(ctx context.Context, userID uuid.UUID) (CompostBin, error)
 	GetContributionLeaderboard(ctx context.Context, limit int32) ([]GetContributionLeaderboardRow, error)
 	GetCraftingRecipeByKey(ctx context.Context, recipeKey string) (GetCraftingRecipeByKeyRow, error)
 	GetDailyEngagementTotals(ctx context.Context, recordedAt pgtype.Timestamp) ([]GetDailyEngagementTotalsRow, error)
@@ -208,6 +212,7 @@ type Querier interface {
 	RecordUserSessionVote(ctx context.Context, arg RecordUserSessionVoteParams) error
 	RecordUserVote(ctx context.Context, arg RecordUserVoteParams) error
 	RelockNode(ctx context.Context, arg RelockNodeParams) error
+	ResetCompostBin(ctx context.Context, userID uuid.UUID) error
 	ResetDailyJobXP(ctx context.Context) (pgconn.CommandTag, error)
 	ResetInactiveQuestProgress(ctx context.Context) (pgconn.CommandTag, error)
 	ResumeVotingSession(ctx context.Context, id int32) error
@@ -220,6 +225,7 @@ type Querier interface {
 	UnlockNode(ctx context.Context, arg UnlockNodeParams) error
 	UnlockRecipe(ctx context.Context, arg UnlockRecipeParams) error
 	UnlockUserProgression(ctx context.Context, arg UnlockUserProgressionParams) error
+	UpdateCompostBin(ctx context.Context, arg UpdateCompostBinParams) error
 	UpdateCooldown(ctx context.Context, arg UpdateCooldownParams) error
 	UpdateCraftingRecipe(ctx context.Context, arg UpdateCraftingRecipeParams) error
 	UpdateDailyResetTime(ctx context.Context, arg UpdateDailyResetTimeParams) error

@@ -60,6 +60,11 @@ definitions:
       base_value:
         description: Buy price
         type: integer
+      content_type:
+        description: Content type categorization (weapon, material, etc.)
+        items:
+          type: string
+        type: array
       default_display:
         type: string
       description:

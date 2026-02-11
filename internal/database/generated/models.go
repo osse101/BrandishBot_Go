@@ -9,16 +9,20 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type CompostDeposit struct {
-	ID          uuid.UUID          `json:"id"`
-	UserID      uuid.UUID          `json:"user_id"`
-	ItemKey     string             `json:"item_key"`
-	Quantity    int32              `json:"quantity"`
-	DepositedAt pgtype.Timestamptz `json:"deposited_at"`
-	ReadyAt     pgtype.Timestamptz `json:"ready_at"`
-	HarvestedAt pgtype.Timestamptz `json:"harvested_at"`
-	GemsAwarded pgtype.Int4        `json:"gems_awarded"`
-	Metadata    []byte             `json:"metadata"`
+type CompostBin struct {
+	ID           uuid.UUID          `json:"id"`
+	UserID       uuid.UUID          `json:"user_id"`
+	Status       string             `json:"status"`
+	Capacity     int32              `json:"capacity"`
+	Items        []byte             `json:"items"`
+	ItemCount    int32              `json:"item_count"`
+	StartedAt    pgtype.Timestamptz `json:"started_at"`
+	ReadyAt      pgtype.Timestamptz `json:"ready_at"`
+	SludgeAt     pgtype.Timestamptz `json:"sludge_at"`
+	InputValue   int32              `json:"input_value"`
+	DominantType string             `json:"dominant_type"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
 }
 
 type ConfigSyncMetadatum struct {
@@ -174,6 +178,7 @@ type Item struct {
 	PublicName      pgtype.Text `json:"public_name"`
 	Handler         pgtype.Text `json:"handler"`
 	DefaultDisplay  pgtype.Text `json:"default_display"`
+	ContentType     []string    `json:"content_type"`
 }
 
 type ItemType struct {

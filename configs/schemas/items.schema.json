@@ -32,7 +32,6 @@
                 "internal_name",
                 "public_name",
                 "description",
-                "tier",
                 "max_stack",
                 "base_value",
                 "tags"
@@ -55,7 +54,7 @@
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 10,
-                    "description": "Item tier/rarity level"
+                    "description": "Deprecated - Item tier/rarity level"
                 },
                 "max_stack": {
                     "type": "integer",
@@ -80,10 +79,29 @@
                             "disassembleable",
                             "sellable",
                             "buyable",
-                            "currency"
+                            "currency",
+                            "compostable",
+                            "no-use"
                         ]
                     },
                     "description": "Item behavior tags"
+                },
+                "type": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "enum": [
+                            "weapon",
+                            "explosive",
+                            "defense",
+                            "healing",
+                            "material",
+                            "container",
+                            "utility",
+                            "magical"
+                        ]
+                    },
+                    "description": "Content type categorization for compost and other systems"
                 },
                 "handler": {
                     "type": "string",
