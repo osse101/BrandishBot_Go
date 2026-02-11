@@ -74,12 +74,3 @@ type QuestPoolConfig struct {
 	QuestPool []QuestTemplate `json:"quest_pool"`
 }
 
-// Quest type constants
-const (
-	QuestTypeBuyItems        = "buy_items"        // Buy X items of target category
-	QuestTypeSellItems       = "sell_items"       // Sell X items
-	QuestTypeEarnMoney       = "earn_money"       // Earn X money from sales
-	QuestTypeCraftRecipe     = "craft_recipe"     // Perform recipe (upgrade/disassemble) X times
-	QuestTypePerformSearches = "perform_searches" // Perform X searches
-	// Extensible: add new quest types as needed
-)

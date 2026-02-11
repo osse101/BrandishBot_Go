@@ -1,7 +1,5 @@
 package domain
 
-import "time"
-
 // Item represents an item in the system with three-layer naming:
 // - InternalName: stable code identifier (e.g., "weapon_blaster")
 // - PublicName: user-facing command name (e.g., "missile")
@@ -19,51 +17,6 @@ type Item struct {
 	Handler        *string  `json:"handler,omitempty" db:"handler"` // Nullable: some items have no handler
 }
 
-// QualityLevel represents the visual rarity and quality of an item
-type QualityLevel string
-
-const (
-	QualityCommon    QualityLevel = "COMMON"
-	QualityUncommon  QualityLevel = "UNCOMMON"
-	QualityRare      QualityLevel = "RARE"
-	QualityEpic      QualityLevel = "EPIC"
-	QualityLegendary QualityLevel = "LEGENDARY"
-	QualityPoor      QualityLevel = "POOR"
-	QualityJunk      QualityLevel = "JUNK"
-	QualityCursed    QualityLevel = "CURSED"
-)
-
-// GetTimeoutAdjustment returns the timeout adjustment in seconds based on quality level
-// Distance from common * 10s
-func (s QualityLevel) GetTimeoutAdjustment() time.Duration {
-	qualityModifier := map[QualityLevel]time.Duration{
-		QualityCursed:    -30 * time.Second,
-		QualityJunk:      -20 * time.Second,
-		QualityPoor:      -10 * time.Second,
-		QualityCommon:    0 * time.Second,
-		QualityUncommon:  10 * time.Second,
-		QualityRare:      20 * time.Second,
-		QualityEpic:      30 * time.Second,
-		QualityLegendary: 40 * time.Second,
-	}
-
-	if modifier, ok := qualityModifier[s]; ok {
-		return modifier
-	}
-	return 0
-}
-
-// Quality multipliers (Boosts item value and Gamble Score)
-const (
-	MultCommon    = 1.0
-	MultUncommon  = 1.1
-	MultRare      = 1.25
-	MultEpic      = 1.5
-	MultLegendary = 2.0
-	MultPoor      = 0.8
-	MultJunk      = 0.6
-	MultCursed    = 0.4
-)
 
 // IsCurrency returns true if this item is a currency (should not have quality variations)
 func (i *Item) IsCurrency() bool {
