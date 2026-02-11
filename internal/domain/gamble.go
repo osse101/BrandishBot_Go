@@ -6,22 +6,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// GambleState represents the current state of a gamble
-type GambleState string
-
-const (
-	GambleStateCreated   GambleState = "Created"
-	GambleStateJoining   GambleState = "Joining"
-	GambleStateOpening   GambleState = "Opening"
-	GambleStateCompleted GambleState = "Completed"
-	GambleStateRefunded  GambleState = "Refunded"
-)
-
-// Event types
-const (
-	EventGambleStarted   = "GambleStarted"
-	EventGambleCompleted = "GambleCompleted"
-)
 
 // Gamble represents a multiplayer lootbox gamble session
 type Gamble struct {
