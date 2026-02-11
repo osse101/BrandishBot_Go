@@ -216,3 +216,10 @@ CREATE TABLE duels (
 - **Service**: `internal/duel/service.go` defines the interface and `Challenge`/`Decline` methods, but `Accept` is still unimplemented.
 - **Game Logic**: Core duel mechanics (odds, self-duel, Joey duel) are not yet ported.
 - **Discord**: Commands are not yet registered.
+
+## Status Update (2026-02-14)
+
+**Implementation Status: No Change**
+
+- Confirmed `Accept` method in `internal/duel/service.go` remains unimplemented.
+- Confirmed Discord commands are not registered.

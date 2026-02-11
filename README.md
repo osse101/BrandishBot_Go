@@ -6,19 +6,21 @@ A high-performance game engine API for BrandishBot, built with Go. Provides inve
 
 - **Inventory Management**: Add, remove, trade, and track items
 - **Crafting System**: Recipe-based item crafting and upgrading
-- **Economy**: Buy/sell items with dynamic pricing
-- **Expeditions**: Cooperative multiplayer adventures with procedural encounters
-- **Quests**: Weekly challenges for rewards and XP
-- **Farming**: Harvest resources over time
-- **Lootboxes & Quality**: Open tiered lootboxes with item quality levels (Common, Rare, Legendary, etc.)
-- **Slots Minigame**: Play slots for money and XP
-- **Jobs**: RPG-style job progression (Blacksmith, Merchant, etc.)
-- **Subscriptions**: Integration with Twitch/YouTube subscriptions
-- **Traps**: Place hidden traps and mines on other users
+- **Economy**: [Buy/sell items](docs/features/ECONOMY.md) with dynamic pricing
+- **Expeditions**: [Cooperative multiplayer adventures](docs/features/EXPEDITIONS.md) with procedural encounters
+- **Quests**: [Weekly challenges](docs/features/WEEKLY_QUESTS.md) for rewards and XP
+- **Farming**: [Harvest resources](docs/features/FARMING.md) over time
+- **Lootboxes & Quality**: [Open tiered lootboxes](docs/features/LOOTBOXES.md) with item quality levels
+- **Slots Minigame**: [Play slots](docs/features/SLOTS.md) for money and XP
+- **Gamble**: [Wager lootboxes](docs/features/GAMBLE.md) in winner-takes-all pools
+- **Jobs**: [RPG-style job progression](docs/features/JOBS.md) (Blacksmith, Merchant, etc.)
+- **Daily Reset**: [Scheduled daily tasks](docs/features/DAILY_RESET.md) and limit resets
+- **Subscriptions**: [Integration with Twitch/YouTube subscriptions](docs/SUBSCRIPTION_SYSTEM.md)
+- **Traps**: [Place hidden traps](docs/features/TRAPS.md) and mines on other users
 - **Statistics**: User and system stats with leaderboards
 - **In Development**: Duels (PVP challenges) and Composting (Item recycling)
 - **Discord Bot**: Full-featured Discord integration with slash commands
-- **Admin Dashboard**: Web-based GUI for system monitoring and admin commands
+- **Admin Dashboard**: [Web-based GUI](docs/ADMIN_DASHBOARD.md) for system monitoring and admin commands
 - **Health Checks**: Production-ready liveness and readiness endpoints
 - **API Documentation**: Interactive Swagger UI at `/swagger/`
 
