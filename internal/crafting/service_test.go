@@ -15,7 +15,10 @@ import (
 // ==================== Tests ====================
 
 func TestDisassembleItem(t *testing.T) {
+	t.Parallel()
+
 	t.Run("Best Case: Success", func(t *testing.T) {
+		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
 		svc := NewService(repo, nil, nil, nil, nil, nil).(*service)
@@ -41,6 +44,7 @@ func TestDisassembleItem(t *testing.T) {
 	})
 
 	t.Run("Best Case: Perfect Salvage", func(t *testing.T) {
+		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
 		mockStats := &MockStatsService{}
@@ -72,7 +76,10 @@ func TestDisassembleItem(t *testing.T) {
 
 		// Verify event
 		foundEvent := false
-		for _, e := range mockStats.events {
+		mockStats.mu.Lock()
+		events := mockStats.events
+		mockStats.mu.Unlock()
+		for _, e := range events {
 			if e == domain.EventCraftingPerfectSalvage {
 				foundEvent = true
 				break
@@ -82,6 +89,7 @@ func TestDisassembleItem(t *testing.T) {
 	})
 
 	t.Run("Boundary Case: Exact Items", func(t *testing.T) {
+		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
 		svc := NewService(repo, nil, nil, nil, nil, nil).(*service)
@@ -112,6 +120,7 @@ func TestDisassembleItem(t *testing.T) {
 	})
 
 	t.Run("Error Case: Insufficient Items", func(t *testing.T) {
+		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
 		svc := NewService(repo, nil, nil, nil, nil, nil)
@@ -132,6 +141,7 @@ func TestDisassembleItem(t *testing.T) {
 	})
 
 	t.Run("Error Case: Recipe Not Unlocked", func(t *testing.T) {
+		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
 		svc := NewService(repo, nil, nil, nil, nil, nil)
@@ -150,6 +160,7 @@ func TestDisassembleItem(t *testing.T) {
 	})
 
 	t.Run("Error Case: No Recipe Exists", func(t *testing.T) {
+		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
 		svc := NewService(repo, nil, nil, nil, nil, nil)
@@ -164,6 +175,7 @@ func TestDisassembleItem(t *testing.T) {
 	})
 
 	t.Run("Nil/Empty Case: Empty User", func(t *testing.T) {
+		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo) // Need to setup items so item validation passes
 		svc := NewService(repo, nil, nil, nil, nil, nil)
@@ -175,6 +187,7 @@ func TestDisassembleItem(t *testing.T) {
 	})
 
 	t.Run("Concurrent Case: Parallel Disassemble", func(t *testing.T) {
+		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
 		svc := NewService(repo, nil, nil, nil, nil, nil).(*service)
@@ -225,6 +238,7 @@ func TestDisassembleItem(t *testing.T) {
 	})
 
 	t.Run("Split Stack Case: Disassemble", func(t *testing.T) {
+		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
 		svc := NewService(repo, nil, nil, nil, nil, nil).(*service)
@@ -255,7 +269,10 @@ func TestDisassembleItem(t *testing.T) {
 }
 
 func TestUpgradeItem(t *testing.T) {
+	t.Parallel()
+
 	t.Run("Best Case: Success", func(t *testing.T) {
+		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
 		svc := NewService(repo, nil, nil, nil, nil, nil).(*service)
@@ -288,6 +305,7 @@ func TestUpgradeItem(t *testing.T) {
 	})
 
 	t.Run("Best Case: Masterwork", func(t *testing.T) {
+		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
 		mockStats := &MockStatsService{}
@@ -309,7 +327,10 @@ func TestUpgradeItem(t *testing.T) {
 		assert.True(t, result.IsMasterwork)
 
 		foundEvent := false
-		for _, e := range mockStats.events {
+		mockStats.mu.Lock()
+		events := mockStats.events
+		mockStats.mu.Unlock()
+		for _, e := range events {
 			if e == domain.EventCraftingCriticalSuccess {
 				foundEvent = true
 				break
@@ -319,6 +340,7 @@ func TestUpgradeItem(t *testing.T) {
 	})
 
 	t.Run("Error Case: Insufficient Materials", func(t *testing.T) {
+		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
 		svc := NewService(repo, nil, nil, nil, nil, nil).(*service)
@@ -340,6 +362,7 @@ func TestUpgradeItem(t *testing.T) {
 	})
 
 	t.Run("Error Case: Recipe Not Unlocked", func(t *testing.T) {
+		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
 		svc := NewService(repo, nil, nil, nil, nil, nil)
@@ -355,6 +378,7 @@ func TestUpgradeItem(t *testing.T) {
 	})
 
 	t.Run("Concurrent Case: Parallel Upgrades", func(t *testing.T) {
+		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
 		svc := NewService(repo, nil, nil, nil, nil, nil).(*service)
@@ -402,6 +426,7 @@ func TestUpgradeItem(t *testing.T) {
 	})
 
 	t.Run("Split Stack Case: Upgrade", func(t *testing.T) {
+		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
 		svc := NewService(repo, nil, nil, nil, nil, nil).(*service)
@@ -432,10 +457,102 @@ func TestUpgradeItem(t *testing.T) {
 		}
 		assert.Equal(t, 0, totalRemaining, "All materials should be consumed")
 	})
+
+	t.Run("Quality Inheritance: Mixed Quality", func(t *testing.T) {
+		t.Parallel()
+		repo := NewMockRepository()
+		setupTestData(repo)
+		svc := NewService(repo, nil, nil, nil, nil, nil).(*service)
+		svc.rnd = func() float64 { return 1.0 } // Prevent masterwork
+		ctx := context.Background()
+
+		// Setup: Create a recipe requiring 2 materials: 2x lootbox0 + 1x lootbox1 -> lootbox2
+		// This consumes 3 items per craft.
+		// We will test mixing qualities to verify average calculation.
+		repo.Lock()
+		repo.recipes[99] = &domain.Recipe{
+			ID:           99,
+			TargetItemID: 3, // lootbox_tier2
+			BaseCost: []domain.RecipeCost{
+				{ItemID: 1, Quantity: 2}, // 2x lootbox_tier0
+				{ItemID: 2, Quantity: 1}, // 1x lootbox_tier1
+			},
+		}
+		repo.Unlock()
+		repo.UnlockRecipe(ctx, "user-alice", 99)
+
+		// Scenario:
+		// We want to craft 1 item.
+		// Needs 2x lootbox0 and 1x lootbox1.
+		// We provide:
+		// - 2x lootbox0 of Quality COMMON (value 3)
+		// - 1x lootbox1 of Quality RARE (value 5)
+		// Total Value: (2*3) + (1*5) = 6 + 5 = 11
+		// Total Count: 3
+		// Average: (11 + 3/2) / 3 = 12 / 3 = 4 -> UNCOMMON
+		// Output should be UNCOMMON.
+
+		repo.UpdateInventory(ctx, "user-alice", domain.Inventory{Slots: []domain.InventorySlot{
+			{ItemID: 1, Quantity: 2, QualityLevel: domain.QualityCommon},
+			{ItemID: 2, Quantity: 1, QualityLevel: domain.QualityRare},
+		}})
+
+		// Act
+		_, err := svc.UpgradeItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox2, 1)
+		assert.NoError(t, err)
+
+		// Assert
+		inv, _ := repo.GetInventory(ctx, "user-alice")
+		found := false
+		for _, slot := range inv.Slots {
+			if slot.ItemID == 3 {
+				found = true
+				assert.Equal(t, domain.QualityUncommon, slot.QualityLevel, "Output should average to UNCOMMON")
+			}
+		}
+		assert.True(t, found, "Should have crafted lootbox2")
+	})
+
+	t.Run("XP Failure Ignored", func(t *testing.T) {
+		t.Parallel()
+		repo := NewMockRepository()
+		setupTestData(repo)
+
+		// Setup mock job service to return error
+		mockJob := &MockJobService{
+			calls: []struct {
+				UserID   string
+				JobKey   string
+				Amount   int
+				Source   string
+				Metadata map[string]interface{}
+			}{},
+			returnError: fmt.Errorf("XP service unavailable"),
+		}
+
+		svc := NewService(repo, mockJob, nil, nil, nil, nil).(*service)
+		svc.rnd = func() float64 { return 1.0 }
+		ctx := context.Background()
+
+		repo.UpdateInventory(ctx, "user-alice", domain.Inventory{Slots: []domain.InventorySlot{
+			{ItemID: 1, Quantity: 1},
+		}})
+		repo.UnlockRecipe(ctx, "user-alice", 1)
+
+		// Act
+		result, err := svc.UpgradeItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox1, 1)
+
+		// Assert
+		assert.NoError(t, err, "Should succeed even if XP award fails")
+		assert.Equal(t, 1, result.Quantity)
+	})
 }
 
 func TestGetRecipe(t *testing.T) {
+	t.Parallel()
+
 	t.Run("Best Case: Unlocked", func(t *testing.T) {
+		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
 		svc := NewService(repo, nil, nil, nil, nil, nil)
@@ -448,6 +565,7 @@ func TestGetRecipe(t *testing.T) {
 	})
 
 	t.Run("Best Case: No User Context", func(t *testing.T) {
+		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
 		svc := NewService(repo, nil, nil, nil, nil, nil)
@@ -459,6 +577,7 @@ func TestGetRecipe(t *testing.T) {
 	})
 
 	t.Run("Boundary Case: Locked", func(t *testing.T) {
+		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
 		svc := NewService(repo, nil, nil, nil, nil, nil)
@@ -470,6 +589,7 @@ func TestGetRecipe(t *testing.T) {
 	})
 
 	t.Run("Error Case: Item Not Found", func(t *testing.T) {
+		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
 		svc := NewService(repo, nil, nil, nil, nil, nil)
@@ -482,7 +602,10 @@ func TestGetRecipe(t *testing.T) {
 }
 
 func TestGetAllRecipes(t *testing.T) {
+	t.Parallel()
+
 	t.Run("Best Case: Returns Recipes", func(t *testing.T) {
+		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
 		svc := NewService(repo, nil, nil, nil, nil, nil)
@@ -495,6 +618,7 @@ func TestGetAllRecipes(t *testing.T) {
 }
 
 func TestShutdown(t *testing.T) {
+	t.Parallel()
 	repo := NewMockRepository()
 	svc := NewService(repo, nil, nil, nil, nil, nil)
 	assert.NoError(t, svc.Shutdown(context.Background()))
@@ -502,7 +626,10 @@ func TestShutdown(t *testing.T) {
 
 // Additional test for GetUnlockedRecipes
 func TestGetUnlockedRecipes(t *testing.T) {
+	t.Parallel()
+
 	t.Run("Best Case: Returns Unlocked", func(t *testing.T) {
+		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
 		svc := NewService(repo, nil, nil, nil, nil, nil)
@@ -515,6 +642,7 @@ func TestGetUnlockedRecipes(t *testing.T) {
 	})
 
 	t.Run("Nil/Empty Case: No Unlocked", func(t *testing.T) {
+		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
 		svc := NewService(repo, nil, nil, nil, nil, nil)
@@ -528,6 +656,7 @@ func TestGetUnlockedRecipes(t *testing.T) {
 
 // Example: Concurrent access to GetRecipe is read-only, but let's verify it doesn't race
 func TestGetRecipe_Concurrent(t *testing.T) {
+	t.Parallel()
 	repo := NewMockRepository()
 	setupTestData(repo)
 	svc := NewService(repo, nil, nil, nil, nil, nil)
@@ -550,6 +679,7 @@ func TestGetRecipe_Concurrent(t *testing.T) {
 // Phase 3: Input Validation Tests
 
 func TestUpgradeItem_InputValidation(t *testing.T) {
+	t.Parallel()
 	repo := NewMockRepository()
 	setupTestData(repo)
 	svc := NewService(repo, nil, nil, nil, nil, nil)
@@ -621,7 +751,9 @@ func TestUpgradeItem_InputValidation(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt // capture loop var
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			_, err := svc.UpgradeItem(ctx, tt.platform, tt.platformID, "alice", tt.itemName, tt.quantity)
 			assert.Error(t, err)
 			assert.ErrorIs(t, err, tt.expected)
@@ -631,6 +763,7 @@ func TestUpgradeItem_InputValidation(t *testing.T) {
 }
 
 func TestDisassembleItem_InputValidation(t *testing.T) {
+	t.Parallel()
 	repo := NewMockRepository()
 	setupTestData(repo)
 	svc := NewService(repo, nil, nil, nil, nil, nil)
@@ -702,7 +835,9 @@ func TestDisassembleItem_InputValidation(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt // capture loop var
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			_, err := svc.DisassembleItem(ctx, tt.platform, tt.platformID, "alice", tt.itemName, tt.quantity)
 			assert.Error(t, err)
 			assert.ErrorIs(t, err, tt.expected)
@@ -712,6 +847,7 @@ func TestDisassembleItem_InputValidation(t *testing.T) {
 }
 
 func TestGetRecipe_InputValidation(t *testing.T) {
+	t.Parallel()
 	repo := NewMockRepository()
 	setupTestData(repo)
 	svc := NewService(repo, nil, nil, nil, nil, nil)
@@ -732,7 +868,9 @@ func TestGetRecipe_InputValidation(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt // capture loop var
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			_, err := svc.GetRecipe(ctx, tt.itemName, domain.PlatformTwitch, "twitch-alice", "alice")
 			assert.Error(t, err)
 			assert.ErrorIs(t, err, tt.expected)
@@ -742,6 +880,7 @@ func TestGetRecipe_InputValidation(t *testing.T) {
 }
 
 func TestGetUnlockedRecipes_InputValidation(t *testing.T) {
+	t.Parallel()
 	repo := NewMockRepository()
 	setupTestData(repo)
 	svc := NewService(repo, nil, nil, nil, nil, nil)
@@ -778,7 +917,9 @@ func TestGetUnlockedRecipes_InputValidation(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt // capture loop var
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			_, err := svc.GetUnlockedRecipes(ctx, tt.platform, tt.platformID, "alice")
 			assert.Error(t, err)
 			assert.ErrorIs(t, err, tt.expected)
@@ -790,7 +931,10 @@ func TestGetUnlockedRecipes_InputValidation(t *testing.T) {
 // Phase 4: Transaction Failure Tests
 
 func TestUpgradeItem_TransactionFailures(t *testing.T) {
+	t.Parallel()
+
 	t.Run("BeginTx Failure", func(t *testing.T) {
+		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
 		svc := NewService(repo, nil, nil, nil, nil, nil).(*service)
@@ -826,6 +970,7 @@ func TestUpgradeItem_TransactionFailures(t *testing.T) {
 	})
 
 	t.Run("GetInventory Failure", func(t *testing.T) {
+		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
 		svc := NewService(repo, nil, nil, nil, nil, nil).(*service)
@@ -859,6 +1004,7 @@ func TestUpgradeItem_TransactionFailures(t *testing.T) {
 	})
 
 	t.Run("UpdateInventory Failure", func(t *testing.T) {
+		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
 		svc := NewService(repo, nil, nil, nil, nil, nil).(*service)
@@ -892,6 +1038,7 @@ func TestUpgradeItem_TransactionFailures(t *testing.T) {
 	})
 
 	t.Run("Commit Failure", func(t *testing.T) {
+		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
 		svc := NewService(repo, nil, nil, nil, nil, nil).(*service)
@@ -924,7 +1071,10 @@ func TestUpgradeItem_TransactionFailures(t *testing.T) {
 }
 
 func TestDisassembleItem_TransactionFailures(t *testing.T) {
+	t.Parallel()
+
 	t.Run("BeginTx Failure", func(t *testing.T) {
+		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
 		svc := NewService(repo, nil, nil, nil, nil, nil).(*service)
@@ -958,6 +1108,7 @@ func TestDisassembleItem_TransactionFailures(t *testing.T) {
 	})
 
 	t.Run("GetInventory Failure", func(t *testing.T) {
+		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
 		svc := NewService(repo, nil, nil, nil, nil, nil).(*service)
@@ -991,6 +1142,7 @@ func TestDisassembleItem_TransactionFailures(t *testing.T) {
 	})
 
 	t.Run("UpdateInventory Failure", func(t *testing.T) {
+		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
 		svc := NewService(repo, nil, nil, nil, nil, nil).(*service)
@@ -1024,6 +1176,7 @@ func TestDisassembleItem_TransactionFailures(t *testing.T) {
 	})
 
 	t.Run("Commit Failure", func(t *testing.T) {
+		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
 		svc := NewService(repo, nil, nil, nil, nil, nil).(*service)
@@ -1058,7 +1211,10 @@ func TestDisassembleItem_TransactionFailures(t *testing.T) {
 // Phase 6: Multi-Material Recipe Tests
 
 func TestUpgradeItem_MultiMaterialRecipe(t *testing.T) {
+	t.Parallel()
+
 	t.Run("Both Materials Available", func(t *testing.T) {
+		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
 		svc := NewService(repo, nil, nil, nil, nil, nil).(*service)
@@ -1066,6 +1222,7 @@ func TestUpgradeItem_MultiMaterialRecipe(t *testing.T) {
 		ctx := context.Background()
 
 		// Create a recipe requiring 2 materials: 2x lootbox0 + 1x lootbox1 -> lootbox2
+		repo.Lock()
 		repo.recipes[99] = &domain.Recipe{
 			ID:           99,
 			TargetItemID: 3, // lootbox_tier2
@@ -1074,6 +1231,7 @@ func TestUpgradeItem_MultiMaterialRecipe(t *testing.T) {
 				{ItemID: 2, Quantity: 1}, // 1x lootbox_tier1
 			},
 		}
+		repo.Unlock()
 
 		// Unlock the recipe
 		repo.UnlockRecipe(ctx, "user-alice", 99)
@@ -1112,6 +1270,7 @@ func TestUpgradeItem_MultiMaterialRecipe(t *testing.T) {
 	})
 
 	t.Run("Limited By Scarcest Material", func(t *testing.T) {
+		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
 		svc := NewService(repo, nil, nil, nil, nil, nil).(*service)
@@ -1119,6 +1278,7 @@ func TestUpgradeItem_MultiMaterialRecipe(t *testing.T) {
 		ctx := context.Background()
 
 		// Create a recipe requiring 2 materials
+		repo.Lock()
 		repo.recipes[99] = &domain.Recipe{
 			ID:           99,
 			TargetItemID: 3,
@@ -1127,6 +1287,7 @@ func TestUpgradeItem_MultiMaterialRecipe(t *testing.T) {
 				{ItemID: 2, Quantity: 1}, // 1x lootbox_tier1
 			},
 		}
+		repo.Unlock()
 		repo.UnlockRecipe(ctx, "user-alice", 99)
 
 		// Give user materials where lootbox1 is the bottleneck
@@ -1144,6 +1305,7 @@ func TestUpgradeItem_MultiMaterialRecipe(t *testing.T) {
 	})
 
 	t.Run("One Material Missing", func(t *testing.T) {
+		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
 		svc := NewService(repo, nil, nil, nil, nil, nil).(*service)
@@ -1151,6 +1313,7 @@ func TestUpgradeItem_MultiMaterialRecipe(t *testing.T) {
 		ctx := context.Background()
 
 		// Create a recipe requiring 2 materials
+		repo.Lock()
 		repo.recipes[99] = &domain.Recipe{
 			ID:           99,
 			TargetItemID: 3,
@@ -1159,6 +1322,7 @@ func TestUpgradeItem_MultiMaterialRecipe(t *testing.T) {
 				{ItemID: 2, Quantity: 1}, // 1x lootbox_tier1
 			},
 		}
+		repo.Unlock()
 		repo.UnlockRecipe(ctx, "user-alice", 99)
 
 		// Give user only one material
@@ -1179,7 +1343,10 @@ func TestUpgradeItem_MultiMaterialRecipe(t *testing.T) {
 // Phase 7: Multi-Output Disassemble Tests
 
 func TestDisassembleItem_MultipleOutputs(t *testing.T) {
+	t.Parallel()
+
 	t.Run("Multiple Outputs Added Correctly", func(t *testing.T) {
+		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
 		svc := NewService(repo, nil, nil, nil, nil, nil).(*service)
@@ -1187,6 +1354,7 @@ func TestDisassembleItem_MultipleOutputs(t *testing.T) {
 		ctx := context.Background()
 
 		// Create disassemble recipe with multiple outputs: lootbox2 -> 2x lootbox0 + 1x lootbox1
+		repo.Lock()
 		repo.disassembleRecipes[99] = &domain.DisassembleRecipe{
 			ID:               99,
 			SourceItemID:     3, // lootbox_tier2
@@ -1197,6 +1365,7 @@ func TestDisassembleItem_MultipleOutputs(t *testing.T) {
 			},
 		}
 		repo.recipeAssociations[99] = 1 // Associate with upgrade recipe 1
+		repo.Unlock()
 		repo.UnlockRecipe(ctx, "user-alice", 1)
 
 		// Give user the item to disassemble
@@ -1221,6 +1390,7 @@ func TestDisassembleItem_MultipleOutputs(t *testing.T) {
 	})
 
 	t.Run("Perfect Salvage Applied To All Outputs", func(t *testing.T) {
+		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
 		svc := NewService(repo, nil, nil, nil, nil, nil).(*service)
@@ -1228,6 +1398,7 @@ func TestDisassembleItem_MultipleOutputs(t *testing.T) {
 		ctx := context.Background()
 
 		// Create disassemble recipe with multiple outputs
+		repo.Lock()
 		repo.disassembleRecipes[99] = &domain.DisassembleRecipe{
 			ID:               99,
 			SourceItemID:     3,
@@ -1238,6 +1409,7 @@ func TestDisassembleItem_MultipleOutputs(t *testing.T) {
 			},
 		}
 		repo.recipeAssociations[99] = 1
+		repo.Unlock()
 		repo.UnlockRecipe(ctx, "user-alice", 1)
 
 		repo.inventories["user-alice"] = &domain.Inventory{
@@ -1262,7 +1434,10 @@ func TestDisassembleItem_MultipleOutputs(t *testing.T) {
 // Phase 8: Integration with other services
 
 func TestUpgradeItem_WithXP(t *testing.T) {
+	t.Parallel()
+
 	t.Run("Awards XP on Success", func(t *testing.T) {
+		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
 
@@ -1302,7 +1477,10 @@ func TestUpgradeItem_WithXP(t *testing.T) {
 }
 
 func TestUpgradeItem_WithProgression(t *testing.T) {
+	t.Parallel()
+
 	t.Run("Applies Masterwork Modifier", func(t *testing.T) {
+		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
 
@@ -1328,7 +1506,10 @@ func TestUpgradeItem_WithProgression(t *testing.T) {
 }
 
 func TestUpgradeItem_WithNamingResolution(t *testing.T) {
+	t.Parallel()
+
 	t.Run("Resolves Public Name", func(t *testing.T) {
+		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
 
@@ -1355,6 +1536,7 @@ func TestUpgradeItem_WithNamingResolution(t *testing.T) {
 }
 
 func TestShutdown_WaitsForAsync(t *testing.T) {
+	t.Parallel()
 	repo := NewMockRepository()
 	setupTestData(repo)
 
