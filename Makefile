@@ -1,7 +1,6 @@
 .PHONY: help migrate-up migrate-down migrate-status migrate-create test build run clean docker-build docker-up docker-down deploy-staging deploy-production rollback-staging rollback-production health-check-staging health-check-prod install-hooks reset-staging seed-staging validate-staging admin-install admin-dev admin-build admin-clean
 
 # Tool paths
-GOOSE   := go run github.com/pressly/goose/v3/cmd/goose
 SWAG    := go run github.com/swaggo/swag/cmd/swag
 LINT    := go run github.com/golangci/golangci-lint/cmd/golangci-lint
 MOCKERY := go run github.com/vektra/mockery/v2
@@ -94,15 +93,15 @@ DB_URL ?= postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?
 # Migration commands
 migrate-up:
 	@echo "Running migrations..."
-	@$(GOOSE) -dir migrations postgres "$(DB_URL)" up
+	@go run ./cmd/devtool migrate up
 
 migrate-down:
 	@echo "Rolling back migration..."
-	@$(GOOSE) -dir migrations postgres "$(DB_URL)" down
+	@go run ./cmd/devtool migrate down
 
 migrate-status:
 	@echo "Migration status:"
-	@$(GOOSE) -dir migrations postgres "$(DB_URL)" status
+	@go run ./cmd/devtool migrate status
 
 migrate-create:
 	@if [ -z "$(NAME)" ]; then \
@@ -110,7 +109,7 @@ migrate-create:
 		exit 1; \
 	fi
 	@echo "Creating migration: $(NAME)"
-	@$(GOOSE) -dir migrations create $(NAME) sql
+	@go run ./cmd/devtool migrate create $(NAME)
 
 # Development commands
 test:
@@ -318,15 +317,15 @@ db-test-down:
 
 migrate-up-test:
 	@echo "Running migrations on test database..."
-	@goose -dir migrations postgres "postgres://testuser:testpass@localhost:5433/testdb?sslmode=disable" up
+	@DB_URL="postgres://testuser:testpass@localhost:5433/testdb?sslmode=disable" go run ./cmd/devtool migrate up
 
 migrate-down-test:
 	@echo "Rolling back test database migration..."
-	@goose -dir migrations postgres "postgres://testuser:testpass@localhost:5433/testdb?sslmode=disable" down
+	@DB_URL="postgres://testuser:testpass@localhost:5433/testdb?sslmode=disable" go run ./cmd/devtool migrate down
 
 migrate-status-test:
 	@echo "Test database migration status:"
-	@goose -dir migrations postgres "postgres://testuser:testpass@localhost:5433/testdb?sslmode=disable" status
+	@DB_URL="postgres://testuser:testpass@localhost:5433/testdb?sslmode=disable" go run ./cmd/devtool migrate status
 
 db-seed-test:
 	@echo "Seeding test database..."

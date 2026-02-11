@@ -17,6 +17,7 @@ func main() {
 	registry.Register(&CheckCoverageCommand{})
 	registry.Register(&TestSecurityCommand{})
 	registry.Register(&TestMigrationsCommand{})
+	registry.Register(&MigrateCommand{})
 	registry.Register(&DoctorCommand{})
 	registry.Register(&SetupCommand{})
 	registry.Register(&BenchCommand{})

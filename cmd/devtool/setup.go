@@ -50,10 +50,7 @@ func (c *SetupCommand) Run(args []string) error {
 
 	// 4. Run Migrations
 	PrintInfo("Step 4/5: Running migrations...")
-	// We rely on 'make migrate-up' for simplicity, or call goose directly.
-	// Since we checked 'make' exists, we can use it.
-	//nolint:forbidigo
-	if err := runCommandVerbose("make", "migrate-up"); err != nil {
+	if err := (&MigrateCommand{}).Run([]string{"up"}); err != nil {
 		return fmt.Errorf("migrations failed: %w", err)
 	}
 

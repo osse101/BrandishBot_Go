@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"strings"
 )
 
@@ -21,10 +20,6 @@ func (c *TestMigrationsCommand) Run(args []string) error {
 	PrintHeader("Testing database migrations...")
 
 	config := getMigrationTestConfig()
-
-	if err := verifyGooseInstalled(); err != nil {
-		return err
-	}
 
 	defer cleanupTestDatabase(config)
 
@@ -83,15 +78,6 @@ func getEnv(key, fallback string) string {
 	return fallback
 }
 
-func verifyGooseInstalled() error {
-	if _, err := exec.LookPath("goose"); err != nil {
-		PrintError("goose is not installed")
-		fmt.Println("Install with: go install github.com/pressly/goose/v3/cmd/goose@latest")
-		return fmt.Errorf("goose not installed")
-	}
-	return nil
-}
-
 func cleanupTestDatabase(config migrationTestConfig) {
 	PrintInfo("Cleaning up test database...")
 	//nolint:forbidigo
@@ -114,7 +100,7 @@ func setupTestDatabase(config migrationTestConfig) error {
 func runMigrationUpTests() (string, error) {
 	PrintInfo("Testing UP migrations...")
 	//nolint:forbidigo
-	if err := runCommandVerbose("goose", "-dir", "migrations", "up"); err != nil {
+	if err := runCommandVerbose("go", "run", "github.com/pressly/goose/v3/cmd/goose", "-dir", "migrations", "up"); err != nil {
 		PrintError("Error running UP migrations: %v", err)
 		return "", fmt.Errorf("migrations up failed")
 	}
@@ -135,7 +121,7 @@ func runMigrationUpTests() (string, error) {
 func runMigrationDownTests() error {
 	PrintInfo("Testing DOWN migrations (all)...")
 	//nolint:forbidigo
-	if err := runCommandVerbose("goose", "-dir", "migrations", "down-to", "0"); err != nil {
+	if err := runCommandVerbose("go", "run", "github.com/pressly/goose/v3/cmd/goose", "-dir", "migrations", "down-to", "0"); err != nil {
 		PrintError("Error running DOWN migrations: %v", err)
 		return fmt.Errorf("migrations down failed")
 	}
@@ -156,7 +142,7 @@ func runMigrationDownTests() error {
 func runMigrationIdempotencyTests(expectedVersion string) error {
 	PrintInfo("Testing UP migrations again (idempotency)...")
 	//nolint:forbidigo
-	if err := runCommandVerbose("goose", "-dir", "migrations", "up"); err != nil {
+	if err := runCommandVerbose("go", "run", "github.com/pressly/goose/v3/cmd/goose", "-dir", "migrations", "up"); err != nil {
 		PrintError("Error running UP migrations again: %v", err)
 		return fmt.Errorf("migrations up (idempotency) failed")
 	}
@@ -177,7 +163,7 @@ func runMigrationIdempotencyTests(expectedVersion string) error {
 func getGooseVersion() (string, error) {
 	// getCommandOutput uses exec.Command which inherits env vars
 	//nolint:forbidigo
-	out, err := getCommandOutput("goose", "-dir", "migrations", "version")
+	out, err := getCommandOutput("go", "run", "github.com/pressly/goose/v3/cmd/goose", "-dir", "migrations", "version")
 	if err != nil {
 		return "", err
 	}
