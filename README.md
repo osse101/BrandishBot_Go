@@ -15,12 +15,12 @@ A high-performance game engine API for BrandishBot, built with Go. Provides inve
 - **Gamble**: [Wager lootboxes](docs/features/GAMBLE.md) in winner-takes-all pools
 - **Jobs**: [RPG-style job progression](docs/features/JOBS.md) (Blacksmith, Merchant, etc.)
 - **Daily Reset**: [Scheduled daily tasks](docs/features/DAILY_RESET.md) and limit resets
-- **Subscriptions**: [Integration with Twitch/YouTube subscriptions](docs/SUBSCRIPTION_SYSTEM.md)
+- **Subscriptions**: [Integration with Twitch/YouTube subscriptions](docs/features/SUBSCRIPTIONS.md)
 - **Traps**: [Place hidden traps](docs/features/TRAPS.md) and mines on other users
 - **Statistics**: User and system stats with leaderboards
 - **In Development**: Duels (PVP challenges) and Composting (Item recycling)
 - **Discord Bot**: Full-featured Discord integration with slash commands
-- **Admin Dashboard**: [Web-based GUI](docs/ADMIN_DASHBOARD.md) for system monitoring and admin commands
+- **Admin Dashboard**: [Web-based GUI](docs/features/ADMIN_DASHBOARD.md) for system monitoring and admin commands
 - **Health Checks**: Production-ready liveness and readiness endpoints
 - **API Documentation**: Interactive Swagger UI at `/swagger/`
 
@@ -100,7 +100,7 @@ make build          # Build Go binary with embedded dashboard
 
 3. **Login**: Use your `API_KEY` from `.env`
 
-📖 **Full Documentation**: See [docs/ADMIN_DASHBOARD_USAGE.md](docs/ADMIN_DASHBOARD_USAGE.md) for detailed usage, configuration, and extensibility guide.
+📖 **Full Documentation**: See [docs/features/ADMIN_DASHBOARD_USAGE.md](docs/features/ADMIN_DASHBOARD_USAGE.md) for detailed usage, configuration, and extensibility guide.
 
 ## Quick Start
 

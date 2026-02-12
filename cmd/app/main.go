@@ -130,11 +130,22 @@ func main() {
 	// Initialize Event Logger (needed by event handlers)
 	eventLogService := eventlog.NewService(repos.EventLog)
 
+	// Initialize Quest Service (needed by economy service)
+	questService, err := quest.NewService(repos.Quest, jobService, resilientPublisher)
+	if err != nil {
+		slog.Error("Failed to initialize quest service", "error", err)
+		os.Exit(1)
+	}
+	slog.Info("Quest service initialized")
+
 	// Register all event handlers
 	if err := bootstrap.RegisterEventHandlers(bootstrap.EventHandlerDependencies{
 		EventBus:           eventBus,
 		ProgressionService: progressionService,
 		EventLogService:    eventLogService,
+		JobService:         jobService,
+		QuestService:       questService,
+		StatsService:       statsService,
 		Config:             cfg,
 	}); err != nil {
 		slog.Error("Failed to register event handlers", "error", err)
@@ -192,18 +203,11 @@ func main() {
 	}, progressionService)
 	slog.Info("Cooldown service initialized", "dev_mode", cfg.DevMode)
 
-	// Initialize Quest Service (needed by economy service)
-	questService, err := quest.NewService(repos.Quest, jobService, resilientPublisher)
-	if err != nil {
-		slog.Error("Failed to initialize quest service", "error", err)
-		os.Exit(1)
-	}
-	slog.Info("Quest service initialized")
-
 	// Initialize services that depend on naming resolver
 	economyService := economy.NewService(repos.Economy, jobService, namingResolver, progressionService, questService)
 	gambleService := gamble.NewService(repos.Gamble, eventBus, resilientPublisher, lootboxSvc, statsService, cfg.GambleJoinDuration, jobService, progressionService, namingResolver, nil)
-	craftingService := crafting.NewService(repos.Crafting, jobService, statsService, namingResolver, progressionService, questService)
+	// Refactored Crafting Service (event-driven)
+	craftingService := crafting.NewService(repos.Crafting, resilientPublisher, namingResolver, progressionService)
 
 	// Initialize services that depend on job service and naming resolver
 	userService := user.NewService(repos.User, repos.Trap, statsService, jobService, lootboxSvc, namingResolver, cooldownSvc, eventBus, questService, cfg.DevMode)

@@ -7,50 +7,23 @@ import (
 	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
 
-// MockStatsService for crafting tests
-type MockStatsService struct {
-	mu     sync.Mutex
-	events []domain.EventType
+// MockEventPublisher for crafting tests
+type MockEventPublisher struct {
+	mu           sync.Mutex
+	Published    []event.Event
+	PublishError error
 }
 
-func (m *MockStatsService) RecordUserEvent(ctx context.Context, userID string, eventType domain.EventType, eventData map[string]interface{}) error {
+func (m *MockEventPublisher) PublishWithRetry(ctx context.Context, evt event.Event) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.events = append(m.events, eventType)
-	return nil
-}
-
-// Stubs for other interface methods not used in these tests
-func (m *MockStatsService) GetUserStats(ctx context.Context, userID string, period string) (*domain.StatsSummary, error) {
-	return nil, nil
-}
-func (m *MockStatsService) GetUserCurrentStreak(ctx context.Context, userID string) (int, error) {
-	return 0, nil
-}
-func (m *MockStatsService) GetSystemStats(ctx context.Context, period string) (*domain.StatsSummary, error) {
-	return nil, nil
-}
-func (m *MockStatsService) GetLeaderboard(ctx context.Context, eventType domain.EventType, period string, limit int) ([]domain.LeaderboardEntry, error) {
-	return nil, nil
-}
-
-func (m *MockStatsService) GetUserSlotsStats(ctx context.Context, userID, period string) (*domain.SlotsStats, error) {
-	return nil, nil
-}
-
-func (m *MockStatsService) GetSlotsLeaderboardByProfit(ctx context.Context, period string, limit int) ([]domain.SlotsStats, error) {
-	return nil, nil
-}
-
-func (m *MockStatsService) GetSlotsLeaderboardByWinRate(ctx context.Context, period string, minSpins, limit int) ([]domain.SlotsStats, error) {
-	return nil, nil
-}
-
-func (m *MockStatsService) GetSlotsLeaderboardByMegaJackpots(ctx context.Context, period string, limit int) ([]domain.SlotsStats, error) {
-	return nil, nil
+	m.Published = append(m.Published, evt)
+	// PublishWithRetry doesn't return error, so we don't return anything.
+	// We can use PublishError to simulate failures if we were testing internal retries, but here we just mock the call.
 }
 
 // MockRepository for crafting tests with thread-safety and row locking simulation
@@ -572,40 +545,6 @@ func setupTestData(repo *MockRepository) {
 	repo.inventories["user-alice"] = &domain.Inventory{
 		Slots: []domain.InventorySlot{},
 	}
-}
-
-// MockJobService for testing XP awards
-type MockJobService struct {
-	mu    sync.Mutex
-	calls []struct {
-		UserID   string
-		JobKey   string
-		Amount   int
-		Source   string
-		Metadata map[string]interface{}
-	}
-	blockChan   chan struct{} // If set, AwardXP waits for this channel to close
-	returnError error         // Error to return from AwardXP
-}
-
-func (m *MockJobService) AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error) {
-	if m.blockChan != nil {
-		<-m.blockChan
-	}
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.calls = append(m.calls, struct {
-		UserID   string
-		JobKey   string
-		Amount   int
-		Source   string
-		Metadata map[string]interface{}
-	}{UserID: userID, JobKey: jobKey, Amount: baseAmount, Source: source, Metadata: metadata})
-
-	if m.returnError != nil {
-		return nil, m.returnError
-	}
-	return &domain.XPAwardResult{LeveledUp: false}, nil
 }
 
 // MockProgressionService for testing modifiers

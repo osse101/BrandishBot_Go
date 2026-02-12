@@ -94,9 +94,11 @@ web/admin/src/
 
 ### Documentation
 ```
-docs/
+docs/features/
 ├── ADMIN_DASHBOARD.md                  # Technical architecture & API reference
-├── ADMIN_DASHBOARD_USAGE.md            # Usage guide with configuration & extensibility
+└── ADMIN_DASHBOARD_USAGE.md            # Usage guide with configuration & extensibility
+
+docs/architecture/
 └── ADMIN_DASHBOARD_IMPLEMENTATION.md   # This file
 ```
 
@@ -496,7 +498,7 @@ Manual tests:
 
 ### Support Channels
 - GitHub Issues: Bug reports, feature requests
-- Documentation: `docs/ADMIN_DASHBOARD*.md`
+- Documentation: `docs/features/ADMIN_DASHBOARD*.md` and `docs/architecture/ADMIN_DASHBOARD_IMPLEMENTATION.md`
 - Code comments: In-line explanations for complex logic
 
 ---
