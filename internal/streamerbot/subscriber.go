@@ -223,28 +223,33 @@ func (s *Subscriber) handleAllUnlocked(_ context.Context, evt event.Event) error
 
 // handleGambleCompleted sends a DoAction when a gamble completes
 func (s *Subscriber) handleGambleCompleted(_ context.Context, evt event.Event) error {
-	payload, ok := evt.Payload.(event.GambleCompletedPayloadV1)
-	if !ok {
-		// Fallback for untyped payload
+	var gambleID, winnerID string
+	var totalValue int64
+	var participantCount int
+
+	switch p := evt.Payload.(type) {
+	case domain.GambleCompletedPayloadV2:
+		gambleID, winnerID, totalValue, participantCount = p.GambleID, p.WinnerID, p.TotalValue, p.ParticipantCount
+	case event.GambleCompletedPayloadV1:
+		gambleID, winnerID, totalValue, participantCount = p.GambleID, p.WinnerID, p.TotalValue, p.ParticipantCount
+	default:
 		payloadMap, ok := evt.Payload.(map[string]interface{})
 		if !ok {
 			slog.Warn("Invalid gamble completed event payload type")
 			return nil
 		}
-		payload = event.GambleCompletedPayloadV1{
-			GambleID:         getStringFromMap(payloadMap, "gamble_id"),
-			WinnerID:         getStringFromMap(payloadMap, "winner_id"),
-			TotalValue:       int64(getIntFromMap(payloadMap, "total_value")),
-			ParticipantCount: getIntFromMap(payloadMap, "participant_count"),
-		}
+		gambleID = getStringFromMap(payloadMap, "gamble_id")
+		winnerID = getStringFromMap(payloadMap, "winner_id")
+		totalValue = int64(getIntFromMap(payloadMap, "total_value"))
+		participantCount = getIntFromMap(payloadMap, "participant_count")
 	}
 
 	args := map[string]string{
-		"gamble_id":         payload.GambleID,
-		"winner_id":         payload.WinnerID,
-		"total_value":       fmt.Sprintf("%d", payload.TotalValue),
-		"participant_count": fmt.Sprintf("%d", payload.ParticipantCount),
-		"has_winner":        fmt.Sprintf("%t", payload.WinnerID != ""),
+		"gamble_id":         gambleID,
+		"winner_id":         winnerID,
+		"total_value":       fmt.Sprintf("%d", totalValue),
+		"participant_count": fmt.Sprintf("%d", participantCount),
+		"has_winner":        fmt.Sprintf("%t", winnerID != ""),
 	}
 
 	slog.Debug(LogMsgEventReceived, "event_type", domain.EventGambleCompleted, "args", args)

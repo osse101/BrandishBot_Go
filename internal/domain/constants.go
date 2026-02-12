@@ -293,6 +293,22 @@ const (
 
 	// Slots events
 	EventSlotsCompleted = "slots.completed"
+
+	// Gamble events (new)
+	EventTypeGambleParticipated = "gamble.participated"
+
+	// Harvest/Compost events
+	EventTypeHarvestCompleted = "harvest.completed"
+	EventTypeCompostHarvested = "compost.harvested"
+
+	// Expedition events
+	EventTypeExpeditionRewarded = "expedition.rewarded"
+
+	// Prediction events
+	EventTypePredictionParticipated = "prediction.participated"
+
+	// Job XP critical (Epiphany bonus)
+	EventTypeJobXPCritical = "job.xp_critical"
 )
 
 // ============================================================================

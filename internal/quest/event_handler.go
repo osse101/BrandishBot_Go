@@ -2,7 +2,6 @@ package quest
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
@@ -25,78 +24,101 @@ func NewEventHandler(service Service) *EventHandler {
 
 // Register subscribes the handler to relevant events
 func (h *EventHandler) Register(bus event.Bus) {
+	// Crafting events
 	bus.Subscribe(event.Type(domain.EventTypeItemUpgraded), h.HandleItemUpgraded)
 	bus.Subscribe(event.Type(domain.EventTypeItemDisassembled), h.HandleItemDisassembled)
+
+	// Economy events (moved from economy service)
+	bus.Subscribe(event.Type(domain.EventTypeItemSold), h.HandleItemSold)
+	bus.Subscribe(event.Type(domain.EventTypeItemBought), h.HandleItemBought)
+
+	// Search events (moved from user service)
+	bus.Subscribe(event.Type(domain.EventTypeSearchPerformed), h.HandleSearchPerformed)
 }
 
 // HandleItemUpgraded handles item upgrade events to update quest progress
 func (h *EventHandler) HandleItemUpgraded(ctx context.Context, evt event.Event) error {
-	log := logger.FromContext(ctx)
-
-	// Decode payload
-	var payload crafting.ItemUpgradedPayload
-	if err := mapToStruct(evt.Payload, &payload); err != nil {
+	payload, err := event.DecodePayload[crafting.ItemUpgradedPayload](evt.Payload)
+	if err != nil {
 		return fmt.Errorf("failed to decode item upgraded payload: %w", err)
 	}
 
-	// Update quest progress
-	// Use RecipeKey if available, otherwise fallback to ItemName (handled by service logic usually,
-	// but service expects a key. crafting service passed item name as fallback if recipe key empty)
-	key := payload.RecipeKey
-	if key == "" {
-		key = payload.ItemName
-	}
-
-	if err := h.service.OnRecipeCrafted(ctx, payload.UserID, key, payload.Quantity); err != nil {
-		log.Warn("Failed to update quest progress for upgrade", "error", err, "user_id", payload.UserID)
-		return nil
-	}
-
-	return nil
+	return h.handleRecipeCrafted(ctx, payload.UserID, payload.RecipeKey, payload.ItemName, payload.Quantity, "upgrade")
 }
 
 // HandleItemDisassembled handles item disassemble events to update quest progress
 func (h *EventHandler) HandleItemDisassembled(ctx context.Context, evt event.Event) error {
-	log := logger.FromContext(ctx)
-
-	// Decode payload
-	var payload crafting.ItemDisassembledPayload
-	if err := mapToStruct(evt.Payload, &payload); err != nil {
+	payload, err := event.DecodePayload[crafting.ItemDisassembledPayload](evt.Payload)
+	if err != nil {
 		return fmt.Errorf("failed to decode item disassembled payload: %w", err)
 	}
 
-	// Update quest progress
-	key := payload.RecipeKey
+	return h.handleRecipeCrafted(ctx, payload.UserID, payload.RecipeKey, payload.ItemName, payload.Quantity, "disassemble")
+}
+
+func (h *EventHandler) handleRecipeCrafted(ctx context.Context, userID, recipeKey, itemName string, quantity int, action string) error {
+	log := logger.FromContext(ctx)
+
+	key := recipeKey
 	if key == "" {
-		key = payload.ItemName
+		key = itemName
 	}
 
-	if err := h.service.OnRecipeCrafted(ctx, payload.UserID, key, payload.Quantity); err != nil {
-		log.Warn("Failed to update quest progress for disassemble", "error", err, "user_id", payload.UserID)
+	if err := h.service.OnRecipeCrafted(ctx, userID, key, quantity); err != nil {
+		log.Warn(fmt.Sprintf("Failed to update quest progress for %s", action), "error", err, "user_id", userID)
 		return nil
 	}
 
 	return nil
 }
 
-// mapToStruct converts a map payload to a struct
-func mapToStruct(input interface{}, output interface{}) error {
-	switch v := input.(type) {
-	case crafting.ItemUpgradedPayload:
-		if out, ok := output.(*crafting.ItemUpgradedPayload); ok {
-			*out = v
-			return nil
-		}
-	case crafting.ItemDisassembledPayload:
-		if out, ok := output.(*crafting.ItemDisassembledPayload); ok {
-			*out = v
-			return nil
-		}
+// HandleItemSold handles item sold events to update quest progress
+func (h *EventHandler) HandleItemSold(ctx context.Context, evt event.Event) error {
+	log := logger.FromContext(ctx)
+
+	payload, err := event.DecodePayload[domain.ItemSoldPayload](evt.Payload)
+	if err != nil {
+		return fmt.Errorf("failed to decode item sold payload: %w", err)
 	}
 
-	data, err := json.Marshal(input)
-	if err != nil {
-		return err
+	if err := h.service.OnItemSold(ctx, payload.UserID, payload.ItemCategory, payload.Quantity, payload.TotalValue); err != nil {
+		log.Warn("Failed to update quest progress for item sold", "error", err, "user_id", payload.UserID)
+		return nil
 	}
-	return json.Unmarshal(data, output)
+
+	return nil
+}
+
+// HandleItemBought handles item bought events to update quest progress
+func (h *EventHandler) HandleItemBought(ctx context.Context, evt event.Event) error {
+	log := logger.FromContext(ctx)
+
+	payload, err := event.DecodePayload[domain.ItemBoughtPayload](evt.Payload)
+	if err != nil {
+		return fmt.Errorf("failed to decode item bought payload: %w", err)
+	}
+
+	if err := h.service.OnItemBought(ctx, payload.UserID, payload.ItemCategory, payload.Quantity); err != nil {
+		log.Warn("Failed to update quest progress for item bought", "error", err, "user_id", payload.UserID)
+		return nil
+	}
+
+	return nil
+}
+
+// HandleSearchPerformed handles search performed events to update quest progress
+func (h *EventHandler) HandleSearchPerformed(ctx context.Context, evt event.Event) error {
+	log := logger.FromContext(ctx)
+
+	payload, err := event.DecodePayload[domain.SearchPerformedPayload](evt.Payload)
+	if err != nil {
+		return fmt.Errorf("failed to decode search performed payload: %w", err)
+	}
+
+	if err := h.service.OnSearch(ctx, payload.UserID); err != nil {
+		log.Warn("Failed to update quest progress for search", "error", err, "user_id", payload.UserID)
+		return nil
+	}
+
+	return nil
 }

@@ -11,7 +11,7 @@ import (
 func TestTimeoutUser(t *testing.T) {
 	repo := NewFakeRepository()
 	setupTestData(repo)
-	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, nil, false)
+	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, false)
 	ctx := context.Background()
 
 	// Test setting a timeout
@@ -19,12 +19,6 @@ func TestTimeoutUser(t *testing.T) {
 	if err != nil {
 		t.Fatalf("TimeoutUser failed: %v", err)
 	}
-
-	// Verify timeout is set (internal implementation detail, but we can check via side effects or reflection if needed,
-	// but for now we trust the method returns nil and logs.
-	// Ideally we'd have a method to check if a user is timed out, but that wasn't in the requirements yet.
-	// We can check if the timer exists in the map by casting to concrete type if we really wanted to,
-	// but that's brittle. For now, we assume success if no error.)
 
 	// Let's at least verify it doesn't crash on overwrite
 	err = svc.TimeoutUser(ctx, "alice", 200*time.Millisecond, "Overwrite reason")
@@ -36,7 +30,7 @@ func TestTimeoutUser(t *testing.T) {
 func TestHandleBlaster_Timeout(t *testing.T) {
 	repo := NewFakeRepository()
 	setupTestData(repo)
-	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, nil, false)
+	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, false)
 	ctx := context.Background()
 	item := domain.ItemBlaster
 

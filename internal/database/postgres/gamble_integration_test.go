@@ -50,8 +50,6 @@ func setupGambleIntegrationTest(t *testing.T) (*UserRepository, gamble.Service) 
 	// 3. Setup Gamble Service
 	gambleRepo := NewGambleRepository(pool)
 	eventBus := event.NewMemoryBus()
-	statsSvc := &MockStatsService{}
-	jobSvc := &MockJobService{}
 	progressionSvc := &MockProgressionService{}
 
 	// Use deterministic RNG for lootboxes: 0.5 always rolls Common (1.0x)
@@ -63,9 +61,7 @@ func setupGambleIntegrationTest(t *testing.T) (*UserRepository, gamble.Service) 
 		eventBus,
 		nil, // resilientPublisher
 		lootSvc,
-		statsSvc,
 		time.Second, // Short join duration for testing
-		jobSvc,
 		progressionSvc,
 		nil,
 		nil,

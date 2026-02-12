@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
-	"github.com/osse101/BrandishBot_Go/internal/job"
+	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
@@ -34,7 +34,7 @@ type service struct {
 	harvestRepo    repository.HarvestRepository
 	userRepo       repository.User
 	progressionSvc progression.Service
-	jobSvc         job.Service
+	publisher      *event.ResilientPublisher
 	wg             sync.WaitGroup
 }
 
@@ -43,13 +43,13 @@ func NewService(
 	harvestRepo repository.HarvestRepository,
 	userRepo repository.User,
 	progressionSvc progression.Service,
-	jobSvc job.Service,
+	publisher *event.ResilientPublisher,
 ) Service {
 	return &service{
 		harvestRepo:    harvestRepo,
 		userRepo:       userRepo,
 		progressionSvc: progressionSvc,
-		jobSvc:         jobSvc,
+		publisher:      publisher,
 	}
 }
 
@@ -208,13 +208,20 @@ func (s *service) awardFarmerXP(ctx context.Context, userID string, hoursElapsed
 	}
 
 	xpAmount := int(hoursElapsed * farmerXPPerHour)
-	_, err := s.jobSvc.AwardXP(ctx, userID, job.JobKeyFarmer, xpAmount, job.SourceHarvest, map[string]interface{}{
-		"hours_waited": hoursElapsed,
-		"spoiled":      hoursElapsed > spoiledThreshold,
-	})
-	if err != nil {
-		// Just log the error, don't fail the operation (it's async)
-		logger.FromContext(ctx).Warn("Failed to award Farmer XP", "error", err, "userID", userID)
+	spoiled := hoursElapsed > spoiledThreshold
+
+	if s.publisher != nil {
+		s.publisher.PublishWithRetry(ctx, event.Event{
+			Version: "1.0",
+			Type:    event.Type(domain.EventTypeHarvestCompleted),
+			Payload: domain.HarvestCompletedPayload{
+				UserID:       userID,
+				HoursElapsed: hoursElapsed,
+				XPAmount:     xpAmount,
+				Spoiled:      spoiled,
+				Timestamp:    time.Now().Unix(),
+			},
+		})
 	}
 }
 

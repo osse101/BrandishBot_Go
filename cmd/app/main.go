@@ -119,7 +119,7 @@ func main() {
 	}
 
 	// Initialize Job service (needed by user, economy, crafting, gamble)
-	jobService := job.NewService(repos.Job, progressionService, statsService, eventBus, resilientPublisher)
+	jobService := job.NewService(repos.Job, progressionService, eventBus, resilientPublisher)
 
 	// Initialize Worker Pool
 	// Start with 5 workers as per plan
@@ -131,7 +131,7 @@ func main() {
 	eventLogService := eventlog.NewService(repos.EventLog)
 
 	// Initialize Quest Service (needed by economy service)
-	questService, err := quest.NewService(repos.Quest, jobService, resilientPublisher)
+	questService, err := quest.NewService(repos.Quest, resilientPublisher)
 	if err != nil {
 		slog.Error("Failed to initialize quest service", "error", err)
 		os.Exit(1)
@@ -204,20 +204,20 @@ func main() {
 	slog.Info("Cooldown service initialized", "dev_mode", cfg.DevMode)
 
 	// Initialize services that depend on naming resolver
-	economyService := economy.NewService(repos.Economy, jobService, namingResolver, progressionService, questService)
-	gambleService := gamble.NewService(repos.Gamble, eventBus, resilientPublisher, lootboxSvc, statsService, cfg.GambleJoinDuration, jobService, progressionService, namingResolver, nil)
+	economyService := economy.NewService(repos.Economy, resilientPublisher, namingResolver, progressionService)
+	gambleService := gamble.NewService(repos.Gamble, eventBus, resilientPublisher, lootboxSvc, cfg.GambleJoinDuration, progressionService, namingResolver, nil)
 	// Refactored Crafting Service (event-driven)
 	craftingService := crafting.NewService(repos.Crafting, resilientPublisher, namingResolver, progressionService)
 
 	// Initialize services that depend on job service and naming resolver
-	userService := user.NewService(repos.User, repos.Trap, statsService, jobService, lootboxSvc, namingResolver, cooldownSvc, eventBus, questService, cfg.DevMode)
+	userService := user.NewService(repos.User, repos.Trap, statsService, resilientPublisher, lootboxSvc, namingResolver, cooldownSvc, eventBus, cfg.DevMode)
 
 	// Initialize Harvest Service
-	harvestService := harvest.NewService(repos.Harvest, repos.User, progressionService, jobService)
+	harvestService := harvest.NewService(repos.Harvest, repos.User, progressionService, resilientPublisher)
 	slog.Info("Harvest service initialized")
 
 	// Initialize Compost Service
-	compostService := compost.NewService(repos.Compost, repos.User, progressionService, jobService)
+	compostService := compost.NewService(repos.Compost, repos.User, progressionService, resilientPublisher)
 	slog.Info("Compost service initialized")
 
 	// Initialize Gamble Worker
@@ -236,6 +236,7 @@ func main() {
 		eventBus,
 		progressionService,
 		jobService,
+		resilientPublisher,
 		userService,
 		cooldownSvc,
 		expeditionConfig,
@@ -250,10 +251,8 @@ func main() {
 	// Initialize Slots Service
 	slotsService := slots.NewService(
 		repos.User,
-		jobService,
 		progressionService,
 		cooldownSvc,
-		statsService,
 		eventBus,
 		resilientPublisher,
 		namingResolver,
@@ -276,9 +275,7 @@ func main() {
 	// Initialize Prediction service
 	predictionService := prediction.NewService(
 		progressionService,
-		jobService,
 		userService,
-		statsService,
 		eventBus,
 		resilientPublisher,
 	)

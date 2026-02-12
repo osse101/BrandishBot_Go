@@ -60,7 +60,7 @@ func TestSellItem_Success(t *testing.T) {
 	// ARRANGE
 	mockRepo := &MockRepository{}
 	mockTx := &MockTx{}
-	service := NewService(mockRepo, nil, nil, nil, nil)
+	service := NewService(mockRepo, nil, nil, nil)
 	ctx := context.Background()
 
 	user := createTestUser()
@@ -97,7 +97,7 @@ func TestSellItem_Success(t *testing.T) {
 func TestSellItem_SellAllItems(t *testing.T) {
 	// ARRANGE - User sells every last item they have
 	mockRepo := &MockRepository{}
-	service := NewService(mockRepo, nil, nil, nil, nil)
+	service := NewService(mockRepo, nil, nil, nil)
 	ctx := context.Background()
 
 	user := createTestUser()
@@ -135,7 +135,7 @@ func TestSellItem_SellAllItems(t *testing.T) {
 func TestSellItem_PartialQuantity(t *testing.T) {
 	// ARRANGE - User requests 100 but only has 30
 	mockRepo := &MockRepository{}
-	service := NewService(mockRepo, nil, nil, nil, nil)
+	service := NewService(mockRepo, nil, nil, nil)
 	ctx := context.Background()
 
 	user := createTestUser()
@@ -232,7 +232,7 @@ func TestSellItem_InvalidInputs(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// ARRANGE
 			mockRepo := &MockRepository{}
-			service := NewService(mockRepo, nil, nil, nil, nil)
+			service := NewService(mockRepo, nil, nil, nil)
 			ctx := context.Background()
 			tt.setup(mockRepo)
 
@@ -273,7 +273,7 @@ func TestSellItem_QuantityBoundaries(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// ARRANGE
 			mockRepo := &MockRepository{}
-			service := NewService(mockRepo, nil, nil, nil, nil)
+			service := NewService(mockRepo, nil, nil, nil)
 			ctx := context.Background()
 
 			user := createTestUser()
@@ -370,7 +370,7 @@ func TestSellItem_DatabaseErrors(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// ARRANGE
 			mockRepo := &MockRepository{}
-			service := NewService(mockRepo, nil, nil, nil, nil)
+			service := NewService(mockRepo, nil, nil, nil)
 			ctx := context.Background()
 			tt.setup(mockRepo, ctx)
 
@@ -395,7 +395,7 @@ func TestSellItem_DatabaseErrors(t *testing.T) {
 func TestGetSellablePrices_Success(t *testing.T) {
 	// ARRANGE
 	mockRepo := &MockRepository{}
-	service := NewService(mockRepo, nil, nil, nil, nil)
+	service := NewService(mockRepo, nil, nil, nil)
 	ctx := context.Background()
 
 	expectedItems := []domain.Item{
@@ -423,7 +423,7 @@ func TestGetSellablePrices_Success(t *testing.T) {
 func TestGetSellablePrices_DatabaseError(t *testing.T) {
 	// ARRANGE
 	mockRepo := &MockRepository{}
-	service := NewService(mockRepo, nil, nil, nil, nil)
+	service := NewService(mockRepo, nil, nil, nil)
 	ctx := context.Background()
 
 	mockRepo.On("GetSellablePrices", ctx).
@@ -446,7 +446,7 @@ func TestGetSellablePrices_DatabaseError(t *testing.T) {
 func TestBuyItem_Success(t *testing.T) {
 	// ARRANGE
 	mockRepo := &MockRepository{}
-	service := NewService(mockRepo, nil, nil, nil, nil)
+	service := NewService(mockRepo, nil, nil, nil)
 	ctx := context.Background()
 
 	user := createTestUser()
@@ -566,7 +566,7 @@ func TestBuyItem_MoneyBoundaries(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// ARRANGE
 			mockRepo := &MockRepository{}
-			service := NewService(mockRepo, nil, nil, nil, nil)
+			service := NewService(mockRepo, nil, nil, nil)
 			ctx := context.Background()
 
 			user := createTestUser()
@@ -633,7 +633,7 @@ func TestBuyItem_QuantityBoundaries(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// ARRANGE
 			mockRepo := &MockRepository{}
-			service := NewService(mockRepo, nil, nil, nil, nil)
+			service := NewService(mockRepo, nil, nil, nil)
 			ctx := context.Background()
 
 			user := createTestUser()
@@ -727,7 +727,7 @@ func TestBuyItem_InvalidInputs(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// ARRANGE
 			mockRepo := &MockRepository{}
-			service := NewService(mockRepo, nil, nil, nil, nil)
+			service := NewService(mockRepo, nil, nil, nil)
 			ctx := context.Background()
 			tt.setup(mockRepo, ctx)
 
@@ -783,7 +783,7 @@ func TestBuyItem_DatabaseErrors(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// ARRANGE
 			mockRepo := &MockRepository{}
-			service := NewService(mockRepo, nil, nil, nil, nil)
+			service := NewService(mockRepo, nil, nil, nil)
 			ctx := context.Background()
 			tt.setup(mockRepo, ctx)
 
@@ -809,7 +809,7 @@ func TestGetSellablePrices_ProgressionFilter(t *testing.T) {
 	// ARRANGE
 	mockRepo := &MockRepository{}
 	mockProgression := &MockProgressionService{}
-	service := NewService(mockRepo, nil, nil, mockProgression, nil)
+	service := NewService(mockRepo, nil, nil, mockProgression)
 	ctx := context.Background()
 
 	allItems := []domain.Item{
@@ -838,7 +838,7 @@ func TestGetBuyablePrices_ProgressionFilter(t *testing.T) {
 	// ARRANGE
 	mockRepo := &MockRepository{}
 	mockProgression := &MockProgressionService{}
-	service := NewService(mockRepo, nil, nil, mockProgression, nil)
+	service := NewService(mockRepo, nil, nil, mockProgression)
 	ctx := context.Background()
 
 	allItems := []domain.Item{
@@ -865,7 +865,7 @@ func TestBuyItem_ProgressionLocked(t *testing.T) {
 	// ARRANGE
 	mockRepo := &MockRepository{}
 	mockProgression := &MockProgressionService{}
-	service := NewService(mockRepo, nil, nil, mockProgression, nil)
+	service := NewService(mockRepo, nil, nil, mockProgression)
 	ctx := context.Background()
 
 	user := createTestUser()
@@ -899,7 +899,7 @@ func TestBuyItem_NamingResolution(t *testing.T) {
 	// ARRANGE
 	mockRepo := &MockRepository{}
 	mockResolver := &MockNamingResolver{}
-	service := NewService(mockRepo, nil, mockResolver, nil, nil)
+	service := NewService(mockRepo, nil, mockResolver, nil)
 	ctx := context.Background()
 
 	user := createTestUser()
@@ -940,7 +940,7 @@ func TestSellItem_NamingResolution(t *testing.T) {
 	// ARRANGE
 	mockRepo := &MockRepository{}
 	mockResolver := &MockNamingResolver{}
-	service := NewService(mockRepo, nil, mockResolver, nil, nil)
+	service := NewService(mockRepo, nil, mockResolver, nil)
 	ctx := context.Background()
 
 	user := createTestUser()

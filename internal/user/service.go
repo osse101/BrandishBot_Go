@@ -19,7 +19,6 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/lootbox"
 	"github.com/osse101/BrandishBot_Go/internal/naming"
-	"github.com/osse101/BrandishBot_Go/internal/quest"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/osse101/BrandishBot_Go/internal/stats"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
@@ -30,11 +29,6 @@ var validPlatforms = map[string]bool{
 	domain.PlatformTwitch:  true,
 	domain.PlatformYoutube: true,
 	domain.PlatformDiscord: true,
-}
-
-// JobService defines the interface for job operations
-type JobService interface {
-	AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error)
 }
 
 // timeoutInfo tracks active timeouts
@@ -51,14 +45,13 @@ type service struct {
 	timeoutMu       sync.Mutex
 	timeouts        map[string]*timeoutInfo // Keyed by "platform:username"
 	lootboxService  lootbox.Service
-	jobService      JobService
+	publisher       *event.ResilientPublisher
 	statsService    stats.Service
 	stringFinder    *StringFinder
 	namingResolver  naming.Resolver
 	cooldownService cooldown.Service
-	eventBus        event.Bus // Event bus for publishing timeout events
-	devMode         bool      // When true, bypasses cooldowns
-	wg              sync.WaitGroup
+	eventBus        event.Bus  // Event bus for publishing timeout events
+	devMode         bool       // When true, bypasses cooldowns
 	userCache       *userCache // In-memory cache for user lookups
 
 	// Item cache: in-memory cache for item metadata (name, description, value, etc.)
@@ -73,9 +66,9 @@ type service struct {
 
 	activeChatterTracker *ActiveChatterTracker // Tracks users eligible for random targeting
 
-	questService quest.Service
-
 	rnd func() float64 // For RNG - allows deterministic testing
+
+	wg sync.WaitGroup // Track background tasks for graceful shutdown
 }
 
 // Compile-time interface checks
@@ -116,14 +109,14 @@ func loadCacheConfig() CacheConfig {
 }
 
 // NewService creates a new user service
-func NewService(repo repository.User, trapRepo repository.TrapRepository, statsService stats.Service, jobService JobService, lootboxService lootbox.Service, namingResolver naming.Resolver, cooldownService cooldown.Service, eventBus event.Bus, questService quest.Service, devMode bool) Service {
+func NewService(repo repository.User, trapRepo repository.TrapRepository, statsService stats.Service, publisher *event.ResilientPublisher, lootboxService lootbox.Service, namingResolver naming.Resolver, cooldownService cooldown.Service, eventBus event.Bus, devMode bool) Service {
 	return &service{
 		repo:                 repo,
 		trapRepo:             trapRepo,
 		handlerRegistry:      NewHandlerRegistry(),
 		timeouts:             make(map[string]*timeoutInfo),
 		lootboxService:       lootboxService,
-		jobService:           jobService,
+		publisher:            publisher,
 		statsService:         statsService,
 		stringFinder:         NewStringFinder(),
 		namingResolver:       namingResolver,
@@ -134,7 +127,6 @@ func NewService(repo repository.User, trapRepo repository.TrapRepository, statsS
 		itemIDToName:         make(map[int]string),
 		userCache:            newUserCache(loadCacheConfig()),
 		activeChatterTracker: NewActiveChatterTracker(),
-		questService:         questService,
 		rnd:                  utils.RandomFloat,
 	}
 }
@@ -226,7 +218,9 @@ func (s *service) HandleIncomingMessage(ctx context.Context, platform, platformI
 			log.Warn("Failed to check for trap", "user_id", user.ID, "error", err)
 		} else if trap != nil {
 			// Trigger trap asynchronously (don't block message processing)
+			s.wg.Add(1)
 			go func() {
+				defer s.wg.Done()
 				asyncCtx := context.Background() // New context for async operation
 				if err := s.triggerTrap(asyncCtx, trap, user); err != nil {
 					log.Error(LogMsgTrapTriggered, "trap_id", trap.ID, "error", err)
@@ -1056,16 +1050,6 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 		return "", err
 	}
 
-	// Track quest progress for search (async, fire-and-forget)
-	if s.questService != nil {
-		go func() {
-			// Use background context for async task to outlive request
-			if err := s.questService.OnSearch(context.Background(), user.ID); err != nil {
-				slog.Warn("Failed to track quest progress for search", "error", err, "user_id", user.ID)
-			}
-		}()
-	}
-
 	log.Info("Search completed", "username", username, "result", resultMessage)
 	return resultMessage, nil
 }
@@ -1087,22 +1071,50 @@ func (s *service) executeSearch(ctx context.Context, user *domain.User) (string,
 	roll := s.rnd()
 
 	var resultMessage string
+	isSuccess := roll <= params.successThreshold
+	var isCritical, isNearMiss, isCritFail bool
+	var itemName string
+	var quantity int
 
-	if roll <= params.successThreshold {
+	if isSuccess {
 		var err error
 		resultMessage, err = s.processSearchSuccess(ctx, user, roll, params)
 		if err != nil {
 			return "", err
 		}
+		isCritical = roll <= SearchCriticalRate
+		quantity = 1
+		if isCritical {
+			quantity = 2
+		}
+		itemName = domain.ItemLootbox0
 	} else {
-		resultMessage = s.processSearchFailure(ctx, user, roll, params.successThreshold, params)
+		failureType := determineSearchFailureType(roll, params.successThreshold)
+		isNearMiss = failureType == searchFailureNearMiss
+		isCritFail = failureType == searchFailureCritical
+		resultMessage = s.processSearchFailure(roll, params.successThreshold, params)
 	}
 
-	// Record search attempt (to track daily count)
-	if s.statsService != nil {
-		_ = s.statsService.RecordUserEvent(ctx, user.ID, domain.EventSearch, map[string]interface{}{
-			"success":     roll <= params.successThreshold,
-			"daily_count": params.dailyCount + 1,
+	xpAmount := int(float64(job.ExplorerXPPerItem) * params.xpMultiplier)
+	if xpAmount < 1 {
+		xpAmount = 1
+	}
+
+	if s.publisher != nil {
+		s.publisher.PublishWithRetry(ctx, event.Event{
+			Version: "1.0",
+			Type:    event.Type(domain.EventTypeSearchPerformed),
+			Payload: domain.SearchPerformedPayload{
+				UserID:         user.ID,
+				Success:        isSuccess,
+				IsCritical:     isCritical,
+				IsNearMiss:     isNearMiss,
+				IsCriticalFail: isCritFail,
+				XPAmount:       xpAmount,
+				ItemName:       itemName,
+				Quantity:       quantity,
+				Timestamp:      time.Now().Unix(),
+			},
 		})
 	}
 
@@ -1166,13 +1178,6 @@ func (s *service) processSearchSuccess(ctx context.Context, user *domain.User, r
 		return "", fmt.Errorf("failed to get reward item: %w", err)
 	}
 
-	// Award Explorer XP for finding item (async, don't block)
-	s.wg.Add(1)
-	go s.awardExplorerXP(context.Background(), user.ID, item.InternalName, params.xpMultiplier)
-
-	// Record success events
-	s.recordSearchSuccessEvents(ctx, user, item, quantity, roll, isCritical)
-
 	// Format and return result message
 	return s.formatSearchSuccessMessage(ctx, item, quantity, isCritical, params), nil
 }
@@ -1204,33 +1209,12 @@ func (s *service) addItemToTx(ctx context.Context, tx repository.UserTx, userID 
 	return nil
 }
 
-func (s *service) processSearchFailure(ctx context.Context, user *domain.User, roll float64, successThreshold float64, params searchParams) string {
+func (s *service) processSearchFailure(roll float64, successThreshold float64, params searchParams) string {
 	// Determine failure type
 	failureType := determineSearchFailureType(roll, successThreshold)
 
-	// Record failure events
-	s.recordSearchFailureEvents(ctx, user, roll, successThreshold, failureType)
-
 	// Format failure message
 	resultMessage := formatSearchFailureMessage(failureType)
-
-	// Award Explorer XP for searching (even on failure)
-	s.wg.Add(1)
-	go func() {
-		defer s.wg.Done()
-		if err := s.awardExplorerXPSimple(context.Background(), user.ID, params.xpMultiplier); err != nil {
-			logger.FromContext(ctx).Warn("Failed to award Explorer XP on search failure",
-				"error", err, "user_id", user.ID)
-		}
-	}()
-
-	// Record search attempt (to track daily count)
-	if s.statsService != nil {
-		_ = s.statsService.RecordUserEvent(ctx, user.ID, domain.EventSearch, map[string]interface{}{
-			"success":     roll <= successThreshold,
-			"daily_count": params.dailyCount + 1, // +1 because we just did one
-		})
-	}
 
 	// Append streak and exhausted status if applicable
 	return s.formatSearchFailureMessageWithMeta(resultMessage, params)
@@ -1277,59 +1261,6 @@ func (s *service) getUserOrRegister(ctx context.Context, platform, platformID, u
 
 	log.Info("User auto-registered", "userID", registered.ID)
 	return &registered, nil
-}
-
-// awardExplorerXP awards Explorer job XP for finding items during search
-func (s *service) awardExplorerXP(ctx context.Context, userID, itemName string, xpMultiplier float64) {
-	defer s.wg.Done()
-
-	if s.jobService == nil {
-		return // Job system not enabled
-	}
-
-	xp := int(float64(job.ExplorerXPPerItem) * xpMultiplier)
-	if xp < 1 {
-		xp = 1
-	}
-
-	metadata := map[string]interface{}{
-		"item_name":  itemName,
-		"multiplier": xpMultiplier,
-	}
-
-	result, err := s.jobService.AwardXP(ctx, userID, job.JobKeyExplorer, xp, "search", metadata)
-	if err != nil {
-		logger.FromContext(ctx).Warn("Failed to award Explorer XP", "error", err, "user_id", userID)
-	} else if result != nil && result.LeveledUp {
-		logger.FromContext(ctx).Info("Explorer leveled up!", "user_id", userID, "new_level", result.NewLevel)
-	}
-}
-
-// awardExplorerXPSimple awards Explorer job XP for a search attempt (success or failure)
-func (s *service) awardExplorerXPSimple(ctx context.Context, userID string, xpMultiplier float64) error {
-	if s.jobService == nil {
-		return nil // Job system not enabled
-	}
-
-	xp := int(float64(job.ExplorerXPPerItem) * xpMultiplier)
-	if xp < 1 {
-		xp = 1
-	}
-
-	metadata := map[string]interface{}{
-		"multiplier": xpMultiplier,
-	}
-
-	result, err := s.jobService.AwardXP(ctx, userID, job.JobKeyExplorer, xp, "search", metadata)
-	if err != nil {
-		return err
-	}
-
-	if result != nil && result.LeveledUp {
-		logger.FromContext(ctx).Info("Explorer leveled up!", "user_id", userID, "new_level", result.NewLevel)
-	}
-
-	return nil
 }
 
 // triggerTrap executes trap trigger logic when a user sends a message
@@ -1380,19 +1311,26 @@ func (s *service) triggerTrap(ctx context.Context, trap *domain.Trap, victim *do
 }
 
 func (s *service) Shutdown(ctx context.Context) error {
-	logger.FromContext(ctx).Info("User service shutting down, waiting for background tasks...")
-	done := make(chan struct{})
-	go func() {
-		s.wg.Wait()
-		close(done)
-	}()
+	log := logger.FromContext(ctx)
+	log.Info(LogMsgUserServiceShuttingDown)
 
-	select {
-	case <-done:
-		return nil
-	case <-ctx.Done():
-		return fmt.Errorf("shutdown timed out: %w", ctx.Err())
+	// 1. Stop the chatter tracker (stops cleanup loop)
+	if s.activeChatterTracker != nil {
+		s.activeChatterTracker.Stop()
 	}
+
+	// 2. Wait for local async tasks (like trap triggers)
+	s.wg.Wait()
+
+	// 3. Shut down the publisher (waits for pending events)
+	if s.publisher != nil {
+		if err := s.publisher.Shutdown(ctx); err != nil {
+			log.Error("Failed to shut down publisher", "error", err)
+		}
+	}
+
+	log.Info("User service shutdown complete")
+	return nil
 }
 
 func (s *service) GetCacheStats() CacheStats {

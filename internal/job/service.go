@@ -13,7 +13,6 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
-	"github.com/osse101/BrandishBot_Go/internal/stats"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
@@ -47,12 +46,12 @@ type Service interface {
 	CalculateLevel(totalXP int64) int
 	GetXPForLevel(level int) int64
 	GetXPProgress(currentXP int64) (currentLevel int, xpToNext int64)
+	Shutdown(ctx context.Context) error
 }
 
 type service struct {
 	repo           repository.Job
 	progressionSvc ProgressionService
-	statsSvc       stats.Service
 	eventBus       event.Bus
 	publisher      *event.ResilientPublisher
 	rnd            func() float64 // For RNG
@@ -63,11 +62,10 @@ type service struct {
 }
 
 // NewService creates a new job service
-func NewService(repo repository.Job, progressionSvc ProgressionService, statsSvc stats.Service, eventBus event.Bus, publisher *event.ResilientPublisher) Service {
+func NewService(repo repository.Job, progressionSvc ProgressionService, eventBus event.Bus, publisher *event.ResilientPublisher) Service {
 	return &service{
 		repo:           repo,
 		progressionSvc: progressionSvc,
-		statsSvc:       statsSvc,
 		eventBus:       eventBus,
 		publisher:      publisher,
 		rnd:            utils.RandomFloat,
@@ -271,13 +269,18 @@ func (s *service) calculateActualXP(ctx context.Context, userID, jobKey string, 
 	if s.rnd() < EpiphanyChance {
 		actualAmount = int(float64(actualAmount) * EpiphanyMultiplier)
 		logger.FromContext(ctx).Info("Job Epiphany triggered!", "user_id", userID, "job", jobKey, "base_amount", baseAmount, "bonus_amount", actualAmount-baseAmount)
-		if s.statsSvc != nil {
-			_ = s.statsSvc.RecordUserEvent(ctx, userID, domain.EventJobXPCritical, map[string]interface{}{
-				"job":        jobKey,
-				"base_xp":    baseAmount,
-				"bonus_xp":   actualAmount - baseAmount,
-				"multiplier": EpiphanyMultiplier,
-				"source":     source,
+		if s.publisher != nil {
+			s.publisher.PublishWithRetry(ctx, event.Event{
+				Version: "1.0",
+				Type:    event.Type(domain.EventTypeJobXPCritical),
+				Payload: map[string]interface{}{
+					"user_id":    userID,
+					"job":        jobKey,
+					"base_xp":    baseAmount,
+					"bonus_xp":   actualAmount - baseAmount,
+					"multiplier": EpiphanyMultiplier,
+					"source":     source,
+				},
 			})
 		}
 	}
@@ -379,14 +382,6 @@ func (s *service) recordXPAndLevelUpEvents(ctx context.Context, userID, jobKey s
 }
 
 func (s *service) handleLevelUp(ctx context.Context, userID, jobKey string, oldLevel, newLevel int, source string) {
-	if s.statsSvc != nil {
-		_ = s.statsSvc.RecordUserEvent(ctx, userID, domain.EventJobLevelUp, map[string]interface{}{
-			"job":       jobKey,
-			"level":     newLevel,
-			"old_level": oldLevel,
-		})
-	}
-
 	if s.publisher != nil {
 		s.publisher.PublishWithRetry(ctx, event.Event{
 			Version: "1.0",
@@ -612,4 +607,20 @@ func (s *service) GetDailyResetStatus(ctx context.Context) (*domain.DailyResetSt
 		NextResetTime:   nextReset.UTC(),
 		RecordsAffected: recordsAffected,
 	}, nil
+}
+
+// Shutdown gracefully shuts down the job service
+func (s *service) Shutdown(ctx context.Context) error {
+	log := logger.FromContext(ctx)
+	log.Info("Job service shutting down...")
+
+	if s.publisher != nil {
+		if err := s.publisher.Shutdown(ctx); err != nil {
+			log.Error("Failed to shut down job publisher", "error", err)
+			return err
+		}
+	}
+
+	log.Info("Job service shutdown complete")
+	return nil
 }

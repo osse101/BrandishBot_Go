@@ -13,7 +13,6 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/config"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/event"
-	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
@@ -39,23 +38,19 @@ type Service interface {
 }
 
 type service struct {
-	repo       repository.QuestRepository
-	jobService job.Service
-	publisher  *event.ResilientPublisher
-	questPool  []domain.QuestTemplate
-	wg         sync.WaitGroup
-	mu         sync.RWMutex
+	repo      repository.QuestRepository
+	publisher *event.ResilientPublisher
+	questPool []domain.QuestTemplate
+	mu        sync.RWMutex
 }
 
 func NewService(
 	repo repository.QuestRepository,
-	jobService job.Service,
 	publisher *event.ResilientPublisher,
 ) (Service, error) {
 	s := &service{
-		repo:       repo,
-		jobService: jobService,
-		publisher:  publisher,
+		repo:      repo,
+		publisher: publisher,
 	}
 
 	// Load quest pool from config
@@ -378,53 +373,27 @@ func (s *service) ClaimQuestReward(ctx context.Context, userID string, questID i
 		return 0, err
 	}
 
-	// Award Merchant XP asynchronously
-	s.wg.Add(1)
-	go func() {
-		defer s.wg.Done()
-
-		bgCtx := context.Background()
-		metadata := map[string]interface{}{
-			"quest_id":  questID,
-			"quest_key": targetQuest.QuestKey,
-		}
-
-		if _, err := s.jobService.AwardXP(bgCtx, userID, job.JobKeyMerchant, targetQuest.RewardXp, "quest_reward", metadata); err != nil {
-			log.Error("Failed to award quest XP", "user_id", userID, "error", err)
-		}
-	}()
-
 	log.Info("Quest reward claimed", "user_id", userID, "quest_id", questID, "money", targetQuest.RewardMoney, "xp", targetQuest.RewardXp)
 
-	// Publish claim event
+	// Publish claim event (job handler subscribes and awards Merchant XP)
 	if s.publisher != nil {
-		evt := event.Event{
+		s.publisher.PublishWithRetry(ctx, event.Event{
 			Version: "1.0",
 			Type:    event.Type(domain.EventTypeQuestClaimed),
-			Payload: map[string]interface{}{
-				"user_id":      userID,
-				"quest_id":     questID,
-				"reward_money": targetQuest.RewardMoney,
-				"reward_xp":    targetQuest.RewardXp,
+			Payload: domain.QuestClaimedPayloadV1{
+				UserID:      userID,
+				QuestKey:    targetQuest.QuestKey,
+				QuestID:     int64(questID),
+				RewardMoney: targetQuest.RewardMoney,
+				RewardXP:    targetQuest.RewardXp,
+				Timestamp:   time.Now().Unix(),
 			},
-		}
-		s.publisher.PublishWithRetry(ctx, evt)
+		})
 	}
 
 	return targetQuest.RewardMoney, nil
 }
 
-func (s *service) Shutdown(ctx context.Context) error {
-	done := make(chan struct{})
-	go func() {
-		s.wg.Wait()
-		close(done)
-	}()
-
-	select {
-	case <-done:
-		return nil
-	case <-ctx.Done():
-		return ctx.Err()
-	}
+func (s *service) Shutdown(_ context.Context) error {
+	return nil
 }

@@ -106,7 +106,7 @@ func setupTestData(repo *FakeRepository) {
 func TestAddItem(t *testing.T) {
 	repo := NewFakeRepository()
 	setupTestData(repo)
-	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, nil, false)
+	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, false)
 	ctx := context.Background()
 	alice := domain.User{
 		ID:       "user-alice",
@@ -165,7 +165,7 @@ func TestAddItem(t *testing.T) {
 func TestRemoveItem(t *testing.T) {
 	repo := NewFakeRepository()
 	setupTestData(repo)
-	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, nil, false)
+	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, false)
 	ctx := context.Background()
 	alice := domain.User{
 		ID:       "user-alice",
@@ -214,7 +214,7 @@ func TestRemoveItem(t *testing.T) {
 func TestGiveItem(t *testing.T) {
 	repo := NewFakeRepository()
 	setupTestData(repo)
-	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, nil, false)
+	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, false)
 	ctx := context.Background()
 	alice := domain.User{
 		ID:       "user-alice",
@@ -339,7 +339,7 @@ func TestGiveItem_Comprehensive(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := NewFakeRepository()
 			setupTestData(repo)
-			svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, nil, false)
+			svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, false)
 			ctx := context.Background()
 
 			// Setup owner with items
@@ -421,7 +421,7 @@ func TestGiveItem_Comprehensive(t *testing.T) {
 
 func TestGiveItem_CrossPlatform(t *testing.T) {
 	repo := NewFakeRepository()
-	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, nil, false)
+	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, false)
 	ctx := context.Background()
 
 	// Setup users on different platforms
@@ -472,7 +472,7 @@ func TestGiveItem_CrossPlatform(t *testing.T) {
 
 func TestRegisterUser(t *testing.T) {
 	repo := NewFakeRepository()
-	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, nil, false)
+	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, false)
 	ctx := context.Background()
 
 	user := domain.User{
@@ -501,7 +501,7 @@ func TestRegisterUser(t *testing.T) {
 
 func TestHandleIncomingMessage_NewUser(t *testing.T) {
 	repo := NewFakeRepository()
-	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, nil, false)
+	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, false)
 	ctx := context.Background()
 
 	result, err := svc.HandleIncomingMessage(ctx, domain.PlatformTwitch, "newuser123", "newuser", "hello")
@@ -523,7 +523,7 @@ func TestHandleIncomingMessage_NewUser(t *testing.T) {
 func TestHandleIncomingMessage_ExistingUser(t *testing.T) {
 	repo := NewFakeRepository()
 	setupTestData(repo)
-	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, nil, false)
+	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, false)
 	ctx := context.Background()
 
 	result, err := svc.HandleIncomingMessage(ctx, domain.PlatformTwitch, "alice123", "alice", "hello")
@@ -553,7 +553,7 @@ func TestUseItem(t *testing.T) {
 	}
 	lootboxSvc.On("OpenLootbox", mock.Anything, domain.ItemLootbox1, 1, mock.Anything).Return(drops, nil)
 
-	svc := NewService(repo, repo, nil, nil, lootboxSvc, NewMockNamingResolver(), nil, nil, nil, false).(*service)
+	svc := NewService(repo, repo, nil, nil, lootboxSvc, NewMockNamingResolver(), nil, nil, false).(*service)
 
 	ctx := context.Background()
 
@@ -616,7 +616,7 @@ func TestUseItem(t *testing.T) {
 func TestUseItem_Blaster(t *testing.T) {
 	repo := NewFakeRepository()
 	setupTestData(repo)
-	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, nil, false)
+	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, false)
 	ctx := context.Background()
 	alice := domain.User{
 		ID:        "user-alice",
@@ -672,7 +672,7 @@ func TestUseItem_RareCandy(t *testing.T) {
 		BaseValue:    100,
 	}
 
-	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, nil, false).(*service)
+	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, false).(*service)
 	ctx := context.Background()
 	alice := domain.User{
 		ID:       "user-alice",
@@ -706,7 +706,7 @@ func TestUseItem_RareCandy(t *testing.T) {
 func TestGetInventory(t *testing.T) {
 	repo := NewFakeRepository()
 	setupTestData(repo)
-	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, nil, false)
+	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, false)
 	ctx := context.Background()
 	alice := domain.User{
 		ID:        "user-alice",
@@ -833,7 +833,7 @@ func TestUseItem_Lootbox0(t *testing.T) {
 	}
 	lootboxSvc.On("OpenLootbox", mock.Anything, domain.ItemLootbox0, 1, mock.Anything).Return(drops, nil)
 
-	svc := NewService(repo, repo, nil, nil, lootboxSvc, NewMockNamingResolver(), nil, nil, nil, false).(*service)
+	svc := NewService(repo, repo, nil, nil, lootboxSvc, NewMockNamingResolver(), nil, nil, false).(*service)
 
 	ctx := context.Background()
 
@@ -884,7 +884,7 @@ func TestUseItem_Lootbox2(t *testing.T) {
 	}
 	lootboxSvc.On("OpenLootbox", mock.Anything, domain.ItemLootbox2, 1, mock.Anything).Return(drops, nil)
 
-	svc := NewService(repo, repo, nil, nil, lootboxSvc, NewMockNamingResolver(), nil, nil, nil, false).(*service)
+	svc := NewService(repo, repo, nil, nil, lootboxSvc, NewMockNamingResolver(), nil, nil, false).(*service)
 
 	ctx := context.Background()
 

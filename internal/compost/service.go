@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
-	"github.com/osse101/BrandishBot_Go/internal/job"
+	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
@@ -31,7 +31,7 @@ type service struct {
 	repo           repository.CompostRepository
 	userRepo       repository.User
 	progressionSvc progression.Service
-	jobSvc         job.Service
+	publisher      *event.ResilientPublisher
 	engine         *Engine
 	wg             sync.WaitGroup
 }
@@ -41,13 +41,13 @@ func NewService(
 	repo repository.CompostRepository,
 	userRepo repository.User,
 	progressionSvc progression.Service,
-	jobSvc job.Service,
+	publisher *event.ResilientPublisher,
 ) Service {
 	return &service{
 		repo:           repo,
 		userRepo:       userRepo,
 		progressionSvc: progressionSvc,
-		jobSvc:         jobSvc,
+		publisher:      publisher,
 		engine:         NewEngine(),
 	}
 }
@@ -408,21 +408,24 @@ func (s *service) processHarvestItems(ctx context.Context, tx repository.Compost
 }
 
 func (s *service) awardHarvestXP(ctx context.Context, userID string, inputValue int, isSludge bool) {
-	s.wg.Add(1)
-	go func() {
-		defer s.wg.Done()
-		asyncCtx := context.WithoutCancel(ctx)
-		xpAmount := inputValue / 10
-		if xpAmount < 1 {
-			xpAmount = 1
-		}
-		if _, err := s.jobSvc.AwardXP(asyncCtx, userID, job.JobKeyFarmer, xpAmount, "compost_harvest", map[string]interface{}{
-			"input_value": inputValue,
-			"is_sludge":   isSludge,
-		}); err != nil {
-			logger.FromContext(ctx).Warn("Failed to award compost XP", "error", err)
-		}
-	}()
+	xpAmount := inputValue / 10
+	if xpAmount < 1 {
+		xpAmount = 1
+	}
+
+	if s.publisher != nil {
+		s.publisher.PublishWithRetry(ctx, event.Event{
+			Version: "1.0",
+			Type:    event.Type(domain.EventTypeCompostHarvested),
+			Payload: domain.CompostHarvestedPayload{
+				UserID:     userID,
+				InputValue: inputValue,
+				XPAmount:   xpAmount,
+				IsSludge:   isSludge,
+				Timestamp:  time.Now().Unix(),
+			},
+		})
+	}
 }
 
 // Shutdown waits for async goroutines to complete

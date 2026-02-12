@@ -15,9 +15,8 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
 
-// JobService defines the interface for the job system
+// JobService defines the interface for the job system (read-only operations)
 type JobService interface {
-	AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error)
 	GetJobLevel(ctx context.Context, userID, jobKey string) (int, error)
 }
 
@@ -705,9 +704,6 @@ func (s *service) RecordEngagement(ctx context.Context, userID string, metricTyp
 		if score > 0 {
 			if err := s.AddContribution(ctx, score); err != nil {
 				logger.FromContext(ctx).Warn("Failed to add contribution from engagement", "error", err)
-			} else {
-				// Award Scholar XP asynchronously (don't block engagement recording)
-				s.awardScholarXP(ctx, userID, metricType, value)
 			}
 		}
 	}
@@ -743,34 +739,6 @@ func (s *service) calculateScholarBonus(ctx context.Context, userID string) floa
 	// 10% bonus per level
 	multiplier := 1.0 + (float64(level) * job.ScholarBonusPerLevel / 100.0)
 	return multiplier
-}
-
-// awardScholarXP awards XP to Scholar job for any engagement action
-// Runs asynchronously to avoid blocking engagement recording
-func (s *service) awardScholarXP(ctx context.Context, userID, metricType string, value int) {
-	if s.jobService == nil {
-		return
-	}
-
-	log := logger.FromContext(ctx)
-
-	// Award XP asynchronously (don't block engagement recording)
-	s.wg.Add(1)
-	go func() {
-		defer s.wg.Done()
-
-		metadata := map[string]interface{}{
-			"metric_type": metricType,
-			"value":       value,
-		}
-
-		result, err := s.jobService.AwardXP(ctx, userID, job.JobKeyScholar, job.ScholarXPPerEngagement, "engagement", metadata)
-		if err != nil {
-			log.Warn("Failed to award Scholar XP", "error", err, "user_id", userID)
-		} else if result != nil && result.LeveledUp {
-			log.Info("Scholar leveled up!", "user_id", userID, "new_level", result.NewLevel)
-		}
-	}()
 }
 
 // GetUserEngagement returns user's contribution breakdown

@@ -32,9 +32,14 @@ type ProgressionService interface {
 }
 
 // JobService defines the interface for job operations
+// Kept for GetUserJobs (read-only) used during expedition skill checks
 type JobService interface {
-	AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error)
 	GetUserJobs(ctx context.Context, userID string) ([]domain.UserJobInfo, error)
+}
+
+// EventPublisher defines the interface for publishing events with retry
+type EventPublisher interface {
+	PublishWithRetry(ctx context.Context, evt event.Event)
 }
 
 // UserService defines the interface for user operations needed by expedition
@@ -53,6 +58,7 @@ type service struct {
 	eventBus       event.Bus
 	progressionSvc ProgressionService
 	jobSvc         JobService
+	publisher      EventPublisher
 	userSvc        UserService
 	cooldownSvc    CooldownService
 	config         *EncounterConfig
@@ -67,6 +73,7 @@ func NewService(
 	eventBus event.Bus,
 	progressionSvc ProgressionService,
 	jobSvc JobService,
+	publisher EventPublisher,
 	userSvc UserService,
 	cooldownSvc CooldownService,
 	config *EncounterConfig,
@@ -78,6 +85,7 @@ func NewService(
 		eventBus:       eventBus,
 		progressionSvc: progressionSvc,
 		jobSvc:         jobSvc,
+		publisher:      publisher,
 		userSvc:        userSvc,
 		cooldownSvc:    cooldownSvc,
 		config:         config,
@@ -334,16 +342,22 @@ func (s *service) distributeExpeditionRewards(ctx context.Context, expeditionID 
 			}
 		}
 
-		// Award XP
-		if s.jobSvc != nil {
+		// Award XP via event (publisher handles job XP for all jobs)
+		if s.publisher != nil && reward.XP > 0 {
+			jobXP := make(map[string]int, len(SkillJobMap))
 			for _, jobKey := range SkillJobMap {
-				_, err := s.jobSvc.AwardXP(ctx, reward.UserID.String(), jobKey, reward.XP, "expedition", map[string]interface{}{
-					"expedition_id": expeditionID.String(),
-				})
-				if err != nil {
-					log.Error("Failed to award XP", "userID", reward.UserID, "job", jobKey, "error", err)
-				}
+				jobXP[jobKey] = reward.XP
 			}
+			s.publisher.PublishWithRetry(ctx, event.Event{
+				Version: "1.0",
+				Type:    event.Type(domain.EventTypeExpeditionRewarded),
+				Payload: domain.ExpeditionRewardedPayload{
+					ExpeditionID: expeditionID.String(),
+					UserID:       reward.UserID.String(),
+					JobXP:        jobXP,
+					Timestamp:    time.Now().Unix(),
+				},
+			})
 		}
 
 		// Save rewards and results

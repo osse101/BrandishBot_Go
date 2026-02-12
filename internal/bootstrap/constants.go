@@ -130,6 +130,7 @@ const (
 	ServiceNameEconomy      = "economy"
 	ServiceNameCrafting     = "crafting"
 	ServiceNameGamble       = "gamble"
+	ServiceNameJob          = "job"
 	ServiceNamePrediction   = "prediction"
 	ServiceNameQuest        = "quest"
 	ServiceNameSubscription = "subscription"

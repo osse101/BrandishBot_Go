@@ -123,21 +123,6 @@ func (s *service) formatSearchSuccessMessage(ctx context.Context, item *domain.I
 	return resultMessage
 }
 
-// recordSearchSuccessEvents records statistics for successful searches
-func (s *service) recordSearchSuccessEvents(ctx context.Context, user *domain.User, item *domain.Item, quantity int, roll float64, isCritical bool) {
-	if s.statsService == nil {
-		return
-	}
-
-	if isCritical {
-		_ = s.statsService.RecordUserEvent(ctx, user.ID, domain.EventSearchCriticalSuccess, map[string]interface{}{
-			"item":     item.InternalName,
-			"quantity": quantity,
-			"roll":     roll,
-		})
-	}
-}
-
 // determineSearchFailureType categorizes the type of search failure based on roll
 func determineSearchFailureType(roll, successThreshold float64) searchFailureType {
 	if roll <= successThreshold+SearchNearMissRate {
@@ -172,33 +157,6 @@ func formatSearchFailureMessage(failureType searchFailureType) string {
 
 	default:
 		return domain.MsgSearchNothingFound
-	}
-}
-
-// recordSearchFailureEvents records statistics for failed searches
-func (s *service) recordSearchFailureEvents(ctx context.Context, user *domain.User, roll, successThreshold float64, failureType searchFailureType) {
-	log := logger.FromContext(ctx)
-
-	if s.statsService == nil {
-		return
-	}
-
-	switch failureType {
-	case searchFailureNearMiss:
-		_ = s.statsService.RecordUserEvent(ctx, user.ID, domain.EventSearchNearMiss, map[string]interface{}{
-			"roll":      roll,
-			"threshold": successThreshold,
-		})
-		log.Info("Search NEAR MISS", "username", user.Username, "roll", roll)
-
-	case searchFailureCritical:
-		_ = s.statsService.RecordUserEvent(ctx, user.ID, domain.EventSearchCriticalFail, map[string]interface{}{
-			"roll": roll,
-		})
-		log.Info("Search CRITICAL FAIL", "username", user.Username, "roll", roll)
-
-	case searchFailureNormal:
-		log.Info("Search successful - nothing found", "username", user.Username)
 	}
 }
 

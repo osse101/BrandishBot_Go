@@ -289,7 +289,7 @@ func (m *mockCooldownService) GetLastUsed(ctx context.Context, userID, action st
 func createSearchTestService() (*service, *mockSearchRepo) {
 	repo := newMockSearchRepo()
 	statsSvc := &mockStatsService{mockCounts: make(map[domain.EventType]int)}
-	svc := NewService(repo, repo, statsSvc, nil, nil, NewMockNamingResolver(), &mockCooldownService{repo: repo}, nil, nil, false).(*service)
+	svc := NewService(repo, repo, statsSvc, nil, nil, NewMockNamingResolver(), &mockCooldownService{repo: repo}, nil, false).(*service)
 
 	// Add standard test items
 	repo.items[domain.ItemLootbox0] = &domain.Item{
@@ -703,8 +703,6 @@ func TestHandleSearch_CriticalSuccess(t *testing.T) {
 	svc, repo := createSearchTestService()
 	user := createTestUser()
 	repo.users[TestUsername] = user
-	statsSvc := &mockStatsService{mockCounts: make(map[domain.EventType]int)}
-	svc.statsService = statsSvc
 
 	// Force critical success: roll <= SearchCriticalRate (0.05)
 	svc.rnd = func() float64 { return 0.01 }
@@ -726,17 +724,6 @@ func TestHandleSearch_CriticalSuccess(t *testing.T) {
 		}
 	}
 	assert.True(t, found, "Should receive 2x lootbox on critical success")
-
-	// Verify event recorded
-	foundEvent := false
-	for _, evt := range statsSvc.recordedEvents {
-		if evt.EventType == domain.EventSearchCriticalSuccess {
-			foundEvent = true
-			assert.Equal(t, domain.ItemLootbox0, evt.EventData["item"])
-			assert.Equal(t, 2, evt.EventData["quantity"])
-		}
-	}
-	assert.True(t, foundEvent, "Should record EventSearchCriticalSuccess")
 }
 
 func TestHandleSearch_NormalSuccess(t *testing.T) {
@@ -772,7 +759,6 @@ func TestHandleSearch_CriticalSuccess_Event(t *testing.T) {
 	svc, repo := createSearchTestService()
 	user := createTestUser()
 	repo.users[TestUsername] = user
-	statsSvc := svc.statsService.(*mockStatsService)
 
 	// Force critical success: roll <= SearchCriticalRate (0.05)
 	svc.rnd = func() float64 { return 0.05 }
@@ -786,17 +772,15 @@ func TestHandleSearch_CriticalSuccess_Event(t *testing.T) {
 	// ASSERT
 	assert.Contains(t, msg, domain.MsgSearchCriticalSuccess, "Should be a critical success")
 
-	// Verify event recorded
+	// Verify inventory received 2x item (stats recording now via events, not direct calls)
+	inv, _ := repo.GetInventory(ctx, user.ID)
 	found := false
-	for _, evt := range statsSvc.recordedEvents {
-		if evt.EventType == domain.EventSearchCriticalSuccess {
+	for _, slot := range inv.Slots {
+		if slot.Quantity == 2 {
 			found = true
-			assert.Equal(t, domain.ItemLootbox0, evt.EventData["item"])
-			assert.Equal(t, 2, evt.EventData["quantity"]) // Critical gives double
-			break
 		}
 	}
-	assert.True(t, found, "Should record EventSearchCriticalSuccess")
+	assert.True(t, found, "Should receive 2x lootbox on critical success")
 }
 
 func TestHandleSearch_NearMiss(t *testing.T) {
@@ -804,8 +788,6 @@ func TestHandleSearch_NearMiss(t *testing.T) {
 	svc, repo := createSearchTestService()
 	user := createTestUser()
 	repo.users[TestUsername] = user
-	statsSvc := &mockStatsService{mockCounts: make(map[domain.EventType]int)}
-	svc.statsService = statsSvc
 
 	// Force near miss: successThreshold < roll <= successThreshold + NearMissRate
 	svc.rnd = func() float64 { return 0.81 }
@@ -816,16 +798,8 @@ func TestHandleSearch_NearMiss(t *testing.T) {
 	// ASSERT
 	require.NoError(t, err)
 	assert.Equal(t, domain.MsgSearchNearMiss, msg)
-
-	// Verify event was recorded
-	found := false
-	for _, evt := range statsSvc.recordedEvents {
-		if evt.EventType == domain.EventSearchNearMiss {
-			found = true
-			assert.Equal(t, 0.81, evt.EventData["roll"])
-		}
-	}
-	assert.True(t, found, "Should record near miss event")
+	// Near miss event is now published via ResilientPublisher and handled by stats event handler
+	_ = repo // repo still valid for other assertions
 }
 
 func TestHandleSearch_DiminishingReturns(t *testing.T) {
@@ -857,13 +831,7 @@ func TestHandleSearch_DiminishingReturns(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Contains(t, msg, "(Exhausted)")
-
-	// Verify RecordUserEvent called with correct daily_count
-	require.Greater(t, len(statsSvc.recordedEvents), 0)
-	lastEvent := statsSvc.recordedEvents[len(statsSvc.recordedEvents)-1]
-	assert.Equal(t, domain.EventSearch, lastEvent.EventType)
-	// 6 existing + 1 new = 7
-	assert.Equal(t, 7, lastEvent.EventData["daily_count"])
+	// Stats events are now published via ResilientPublisher and handled by stats event handler
 }
 
 func TestHandleSearch_CriticalFail(t *testing.T) {
@@ -871,8 +839,6 @@ func TestHandleSearch_CriticalFail(t *testing.T) {
 	svc, repo := createSearchTestService()
 	user := createTestUser()
 	repo.users[TestUsername] = user
-	statsSvc := &mockStatsService{mockCounts: make(map[domain.EventType]int)}
-	svc.statsService = statsSvc
 
 	// Force critical fail: roll > 1.0 - SearchCriticalFailRate
 	svc.rnd = func() float64 { return 0.96 }
@@ -883,16 +849,8 @@ func TestHandleSearch_CriticalFail(t *testing.T) {
 	// ASSERT
 	require.NoError(t, err)
 	assert.True(t, strings.HasPrefix(msg, domain.MsgSearchCriticalFail))
-
-	// Verify event was recorded
-	found := false
-	for _, evt := range statsSvc.recordedEvents {
-		if evt.EventType == domain.EventSearchCriticalFail {
-			found = true
-			assert.Equal(t, 0.96, evt.EventData["roll"])
-		}
-	}
-	assert.True(t, found, "Should record critical fail event")
+	// Critical fail event is now published via ResilientPublisher and handled by stats event handler
+	_ = repo
 }
 
 func TestHandleSearch_NormalFailure(t *testing.T) {

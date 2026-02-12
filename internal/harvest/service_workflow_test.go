@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
-	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/mocks"
 )
 
@@ -165,10 +164,9 @@ func TestHarvest_Workflow(t *testing.T) {
 			mockHarvestRepo := mocks.NewMockRepositoryHarvestRepository(t)
 			mockUserRepo := new(mocks.MockRepositoryUser)
 			mockProgressionSvc := new(mocks.MockProgressionService)
-			mockJobSvc := mocks.NewMockJobService(t)
 			mockTx := mocks.NewMockRepositoryHarvestTx(t)
 
-			svc := NewService(mockHarvestRepo, mockUserRepo, mockProgressionSvc, mockJobSvc)
+			svc := NewService(mockHarvestRepo, mockUserRepo, mockProgressionSvc, nil)
 
 			// --- User Registration Workflow ---
 			if tt.userNotFound {
@@ -243,14 +241,7 @@ func TestHarvest_Workflow(t *testing.T) {
 				}
 			}
 
-			// --- Award XP ---
-			if tt.expectedXPAward {
-				if tt.xpAwardFail {
-					mockJobSvc.On("AwardXP", mock.Anything, defaultUser.ID, job.JobKeyFarmer, tt.expectedXP, job.SourceHarvest, mock.Anything).Return(nil, errors.New("xp error"))
-				} else {
-					mockJobSvc.On("AwardXP", mock.Anything, defaultUser.ID, job.JobKeyFarmer, tt.expectedXP, job.SourceHarvest, mock.Anything).Return(&domain.XPAwardResult{XPGained: tt.expectedXP}, nil)
-				}
-			}
+			// XP is now awarded via HarvestCompletedPayload event (no direct job service call)
 
 			// --- Empty Rewards Warning Path ---
 			if tt.allRewardsLocked && !tt.expectedSpoiled {

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"math"
 	"os"
 	"strings"
 	"sync"
@@ -13,11 +12,10 @@ import (
 
 	"github.com/osse101/BrandishBot_Go/internal/config"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
-	"github.com/osse101/BrandishBot_Go/internal/job"
+	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/naming"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
-	"github.com/osse101/BrandishBot_Go/internal/quest"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
@@ -31,11 +29,6 @@ type Service interface {
 	Shutdown(ctx context.Context) error
 }
 
-// JobService defines the interface for job operations
-type JobService interface {
-	AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error)
-}
-
 // ProgressionService defines the interface for progression operations
 type ProgressionService interface {
 	IsItemUnlocked(ctx context.Context, itemName string) (bool, error)
@@ -46,24 +39,21 @@ type ProgressionService interface {
 
 type service struct {
 	repo               repository.Economy
-	jobService         JobService
+	publisher          *event.ResilientPublisher
 	namingResolver     naming.Resolver
 	progressionService ProgressionService
-	questService       quest.Service
 	rnd                func() float64 // For RNG - allows deterministic testing
-	wg                 sync.WaitGroup
 	weeklySales        []domain.WeeklySale
 	weeklySalesMu      sync.RWMutex
 }
 
 // NewService creates a new economy service
-func NewService(repo repository.Economy, jobService JobService, namingResolver naming.Resolver, progressionService ProgressionService, questService quest.Service) Service {
+func NewService(repo repository.Economy, publisher *event.ResilientPublisher, namingResolver naming.Resolver, progressionService ProgressionService) Service {
 	s := &service{
 		repo:               repo,
-		jobService:         jobService,
+		publisher:          publisher,
 		namingResolver:     namingResolver,
 		progressionService: progressionService,
-		questService:       questService,
 		rnd:                utils.RandomFloat,
 	}
 
@@ -398,21 +388,20 @@ func (s *service) SellItem(ctx context.Context, platform, platformID, username, 
 		return 0, 0, fmt.Errorf(ErrMsgCommitTransactionFailed, err)
 	}
 
-	// Award Merchant XP based on transaction value (async)
-	xp := calculateMerchantXP(moneyGained)
-	s.wg.Add(1)
-	go s.awardMerchantXP(context.Background(), user.ID, xp, ActionTypeSell, itemName, moneyGained)
-
-	// Track quest progress (async, fire-and-forget)
-	if s.questService != nil {
-		itemCategory := getItemCategory(item)
-		s.wg.Add(1)
-		go func() {
-			defer s.wg.Done()
-			if err := s.questService.OnItemSold(context.Background(), user.ID, itemCategory, actualSellQuantity, moneyGained); err != nil {
-				log.Warn("Failed to track quest progress for item sale", "error", err, "item", itemName)
-			}
-		}()
+	// Publish item.sold event (job handler awards Merchant XP, quest handler tracks progress)
+	if s.publisher != nil {
+		s.publisher.PublishWithRetry(ctx, event.Event{
+			Version: "1.0",
+			Type:    event.Type(domain.EventTypeItemSold),
+			Payload: domain.ItemSoldPayload{
+				UserID:       user.ID,
+				ItemName:     item.InternalName,
+				ItemCategory: getItemCategory(item),
+				Quantity:     actualSellQuantity,
+				TotalValue:   moneyGained,
+				Timestamp:    time.Now().Unix(),
+			},
+		})
 	}
 
 	log.Info(LogMsgItemSold, "username", username, "item", itemName, "quantity", actualSellQuantity, "moneyGained", moneyGained)
@@ -602,23 +591,20 @@ func (s *service) calculatePurchaseDetails(ctx context.Context, item *domain.Ite
 }
 
 func (s *service) finalizePurchase(ctx context.Context, userID string, item *domain.Item, quantity, cost int) {
-	log := logger.FromContext(ctx)
-
-	// Award Merchant XP based on transaction value (async)
-	xp := calculateMerchantXP(cost)
-	s.wg.Add(1)
-	go s.awardMerchantXP(context.Background(), userID, xp, ActionTypeBuy, item.InternalName, cost)
-
-	// Track quest progress (async, fire-and-forget)
-	if s.questService != nil {
-		itemCategory := getItemCategory(item)
-		s.wg.Add(1)
-		go func() {
-			defer s.wg.Done()
-			if err := s.questService.OnItemBought(context.Background(), userID, itemCategory, quantity); err != nil {
-				log.Warn("Failed to track quest progress for item purchase", "error", err, "item", item.InternalName)
-			}
-		}()
+	// Publish item.bought event (job handler awards Merchant XP, quest handler tracks progress)
+	if s.publisher != nil {
+		s.publisher.PublishWithRetry(ctx, event.Event{
+			Version: "1.0",
+			Type:    event.Type(domain.EventTypeItemBought),
+			Payload: domain.ItemBoughtPayload{
+				UserID:       userID,
+				ItemName:     item.InternalName,
+				ItemCategory: getItemCategory(item),
+				Quantity:     quantity,
+				TotalValue:   cost,
+				Timestamp:    time.Now().Unix(),
+			},
+		})
 	}
 }
 
@@ -637,35 +623,6 @@ func calculateAffordableQuantity(desired, unitPrice, balance int) (quantity, cos
 	return maxAffordable, maxAffordable * unitPrice
 }
 
-// calculateMerchantXP calculates XP based on transaction value
-// Formula: XP = ceil(transactionValue / 10)
-func calculateMerchantXP(transactionValue int) int {
-	return int(math.Ceil(float64(transactionValue) / job.MerchantXPValueDivisor))
-}
-
-// awardMerchantXP awards Merchant job XP for buy/sell transactions
-// NOTE: Caller must call s.wg.Add(1) before launching this in a goroutine
-func (s *service) awardMerchantXP(ctx context.Context, userID string, xp int, action, itemName string, value int) {
-	defer s.wg.Done()
-
-	if s.jobService == nil || xp <= 0 {
-		return
-	}
-
-	metadata := map[string]interface{}{
-		MetadataKeyAction:   action,
-		MetadataKeyItemName: itemName,
-		MetadataKeyValue:    value,
-	}
-
-	result, err := s.jobService.AwardXP(ctx, userID, job.JobKeyMerchant, xp, action, metadata)
-	if err != nil {
-		logger.FromContext(ctx).Error(ErrMsgAwardMerchantXPFailed, userID, err)
-	} else if result != nil && result.LeveledUp {
-		logger.FromContext(ctx).Info(LogMsgMerchantLeveledUp, "user_id", userID, "new_level", result.NewLevel)
-	}
-}
-
 // getItemCategory extracts the category from an item's types
 // Uses the first type if available, otherwise returns generic "Item"
 func getItemCategory(item *domain.Item) string {
@@ -677,16 +634,5 @@ func getItemCategory(item *domain.Item) string {
 
 func (s *service) Shutdown(ctx context.Context) error {
 	logger.FromContext(ctx).Info(LogMsgEconomyShuttingDown)
-	done := make(chan struct{})
-	go func() {
-		s.wg.Wait()
-		close(done)
-	}()
-
-	select {
-	case <-done:
-		return nil
-	case <-ctx.Done():
-		return fmt.Errorf(ErrMsgShutdownTimedOut, ctx.Err())
-	}
+	return nil
 }

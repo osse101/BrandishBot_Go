@@ -2,7 +2,6 @@ package prediction
 
 import (
 	"github.com/osse101/BrandishBot_Go/internal/domain"
-	"github.com/osse101/BrandishBot_Go/internal/job"
 )
 
 const (
@@ -23,7 +22,7 @@ const (
 	BonusContribution  = 10.0   // Bonus contribution added to formula
 
 	// Job and stat identifiers
-	GamblerJobKey         = job.JobKeyGambler
+	GamblerJobKey         = "gambler"
 	PredictionStatType    = "prediction_participation"
 	TotalPointsMetricType = "prediction_total_points"
 )

@@ -454,29 +454,35 @@ func (s *Subscriber) handleExpeditionCompleted(_ context.Context, evt event.Even
 
 // handleGambleCompleted processes gamble completion events
 func (s *Subscriber) handleGambleCompleted(_ context.Context, evt event.Event) error {
-	payload, ok := evt.Payload.(event.GambleCompletedPayloadV1)
-	if !ok {
-		// Fallback for untyped payload
+	var gambleID, winnerID string
+	var totalValue int64
+	var participantCount int
+	var timestamp int64
+
+	switch p := evt.Payload.(type) {
+	case domain.GambleCompletedPayloadV2:
+		gambleID, winnerID, totalValue, participantCount, timestamp = p.GambleID, p.WinnerID, p.TotalValue, p.ParticipantCount, p.Timestamp
+	case event.GambleCompletedPayloadV1:
+		gambleID, winnerID, totalValue, participantCount, timestamp = p.GambleID, p.WinnerID, p.TotalValue, p.ParticipantCount, p.Timestamp
+	default:
 		payloadMap, ok := evt.Payload.(map[string]interface{})
 		if !ok {
 			slog.Warn("Invalid gamble completed event payload type")
 			return nil
 		}
-		payload = event.GambleCompletedPayloadV1{
-			GambleID:         getStringFromMap(payloadMap, "gamble_id"),
-			WinnerID:         getStringFromMap(payloadMap, "winner_id"),
-			TotalValue:       int64(getIntFromMap(payloadMap, "total_value")),
-			ParticipantCount: getIntFromMap(payloadMap, "participant_count"),
-			Timestamp:        int64(getIntFromMap(payloadMap, "timestamp")),
-		}
+		gambleID = getStringFromMap(payloadMap, "gamble_id")
+		winnerID = getStringFromMap(payloadMap, "winner_id")
+		totalValue = int64(getIntFromMap(payloadMap, "total_value"))
+		participantCount = getIntFromMap(payloadMap, "participant_count")
+		timestamp = int64(getIntFromMap(payloadMap, "timestamp"))
 	}
 
 	ssePayload := GambleCompletedPayload{
-		GambleID:         payload.GambleID,
-		WinnerID:         payload.WinnerID,
-		TotalValue:       payload.TotalValue,
-		ParticipantCount: payload.ParticipantCount,
-		Timestamp:        payload.Timestamp,
+		GambleID:         gambleID,
+		WinnerID:         winnerID,
+		TotalValue:       totalValue,
+		ParticipantCount: participantCount,
+		Timestamp:        timestamp,
 	}
 
 	s.hub.Broadcast(EventTypeGambleCompleted, ssePayload)

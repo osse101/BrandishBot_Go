@@ -6,13 +6,12 @@ import (
 	"log/slog"
 	"math"
 	"sync"
+	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/event"
-	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
-	"github.com/osse101/BrandishBot_Go/internal/stats"
 	"github.com/osse101/BrandishBot_Go/internal/user"
 )
 
@@ -24,9 +23,7 @@ type Service interface {
 
 type service struct {
 	progressionService progression.Service
-	jobService         job.Service
 	userService        user.Service
-	statsService       stats.Service
 	eventBus           event.Bus
 	resilientPublisher *event.ResilientPublisher
 	wg                 sync.WaitGroup
@@ -35,17 +32,13 @@ type service struct {
 // NewService creates a new prediction service
 func NewService(
 	progressionService progression.Service,
-	jobService job.Service,
 	userService user.Service,
-	statsService stats.Service,
 	eventBus event.Bus,
 	resilientPublisher *event.ResilientPublisher,
 ) Service {
 	return &service{
 		progressionService: progressionService,
-		jobService:         jobService,
 		userService:        userService,
-		statsService:       statsService,
 		eventBus:           eventBus,
 		resilientPublisher: resilientPublisher,
 	}
@@ -82,16 +75,13 @@ func (s *service) ProcessOutcome(ctx context.Context, req *domain.PredictionOutc
 		return nil, fmt.Errorf("failed to record engagement: %w", err)
 	}
 
-	// 4. Award winner XP and grenade (async, 100 XP to Gambler + 1 grenade if unlocked)
+	// 4. Award winner XP and grenade (publishes event for XP; async goroutine for grenade item)
 	winnerXP := s.awardWinnerRewards(ctx, req.Platform, req.Winner)
 
-	// 5. Award participants XP (async, 10 each to Gambler)
+	// 5. Award participants XP via events (10 each to Gambler)
 	s.awardParticipantsXP(ctx, req.Platform, req.Participants)
 
-	// 6. Record stats for all participants
-	s.recordParticipantStats(ctx, req.Platform, req.Participants)
-
-	// 7. Publish event
+	// 6. Publish event
 	s.publishPredictionEvent(ctx, req, finalContribution)
 
 	result := &domain.PredictionResult{
@@ -150,42 +140,38 @@ func (s *service) recordTotalEngagement(ctx context.Context, totalPoints int) er
 	return nil
 }
 
-// awardWinnerRewards awards XP and grenade to the prediction winner (async, graceful degradation)
+// awardWinnerRewards publishes XP event for the prediction winner and awards grenade async
 func (s *service) awardWinnerRewards(_ context.Context, platform string, winner domain.PredictionWinner) int {
+	// Publish XP + stats event (handled by job and stats event handlers)
+	if s.resilientPublisher != nil {
+		s.resilientPublisher.PublishWithRetry(context.Background(), event.Event{
+			Version: "1.0",
+			Type:    event.Type(domain.EventTypePredictionParticipated),
+			Payload: domain.PredictionParticipantPayload{
+				Username:   winner.Username,
+				Platform:   platform,
+				PlatformID: winner.PlatformID,
+				XP:         WinnerXP,
+				IsWinner:   true,
+				Timestamp:  time.Now().Unix(),
+			},
+		})
+	}
+
+	// Award grenade if unlocked (async, needs direct service calls)
 	s.wg.Add(1)
 	go func() {
 		defer s.wg.Done()
 
-		// Use background context to avoid cancellation
 		bgCtx := context.Background()
 		log := logger.FromContext(bgCtx)
 
-		// Auto-register user if needed
+		// Auto-register user if needed before item award
 		if err := s.ensureUserRegistered(bgCtx, winner.Username, platform, winner.PlatformID); err != nil {
 			log.Error("Failed to register winner", "username", winner.Username, "error", err)
 			return
 		}
 
-		// Award XP to Gambler job
-		metadata := map[string]interface{}{
-			"platform": platform,
-			"source":   "prediction_winner",
-		}
-		_, err := s.jobService.AwardXP(bgCtx, winner.Username, GamblerJobKey, WinnerXP, "prediction", metadata)
-		if err != nil {
-			log.Error("Failed to award winner XP",
-				"username", winner.Username,
-				"xp", WinnerXP,
-				"error", err)
-			return
-		}
-
-		log.Info("Awarded winner XP",
-			"username", winner.Username,
-			"xp", WinnerXP,
-			"job", GamblerJobKey)
-
-		// Award grenade if unlocked
 		grenadeUnlocked, err := s.progressionService.IsItemUnlocked(bgCtx, GrenadeItemName)
 		if err != nil {
 			log.Warn("Failed to check grenade unlock status", "error", err)
@@ -210,80 +196,24 @@ func (s *service) awardWinnerRewards(_ context.Context, platform string, winner 
 	return WinnerXP
 }
 
-// awardParticipantsXP awards XP to all participants (async, graceful degradation)
+// awardParticipantsXP publishes XP + stats events for all participants
 func (s *service) awardParticipantsXP(_ context.Context, platform string, participants []domain.PredictionParticipant) {
-	for _, participant := range participants {
-		s.wg.Add(1)
-		go func(p domain.PredictionParticipant) {
-			defer s.wg.Done()
-
-			// Use background context to avoid cancellation
-			bgCtx := context.Background()
-			log := logger.FromContext(bgCtx)
-
-			// Auto-register user if needed
-			if err := s.ensureUserRegistered(bgCtx, p.Username, platform, p.PlatformID); err != nil {
-				log.Error("Failed to register participant", "username", p.Username, "error", err)
-				return
-			}
-
-			// Award XP to Gambler job
-			metadata := map[string]interface{}{
-				"platform":     platform,
-				"source":       "prediction_participant",
-				"points_spent": p.PointsSpent,
-			}
-			_, err := s.jobService.AwardXP(bgCtx, p.Username, GamblerJobKey, ParticipantXP, "prediction", metadata)
-			if err != nil {
-				log.Error("Failed to award participant XP",
-					"username", p.Username,
-					"xp", ParticipantXP,
-					"error", err)
-				return
-			}
-
-			log.Debug("Awarded participant XP",
-				"username", p.Username,
-				"xp", ParticipantXP,
-				"job", GamblerJobKey)
-		}(participant)
+	if s.resilientPublisher == nil {
+		return
 	}
-}
-
-// recordParticipantStats records prediction participation stats for all participants
-func (s *service) recordParticipantStats(_ context.Context, platform string, participants []domain.PredictionParticipant) {
-	for _, participant := range participants {
-		s.wg.Add(1)
-		go func(p domain.PredictionParticipant) {
-			defer s.wg.Done()
-
-			// Use background context to avoid cancellation
-			bgCtx := context.Background()
-			log := logger.FromContext(bgCtx)
-
-			// Auto-register user if needed
-			if err := s.ensureUserRegistered(bgCtx, p.Username, platform, p.PlatformID); err != nil {
-				log.Error("Failed to register participant for stats", "username", p.Username, "error", err)
-				return
-			}
-
-			// Record participation stat
-			metadata := map[string]interface{}{
-				"platform":     platform,
-				"points_spent": p.PointsSpent,
-			}
-			if err := s.statsService.RecordUserEvent(bgCtx, p.Username, PredictionStatType, metadata); err != nil {
-				log.Error("Failed to record participant stat",
-					"username", p.Username,
-					"error", err)
-				return
-			}
-
-			log.Debug("Recorded participant stat",
-				"username", p.Username,
-				"stat_type", PredictionStatType,
-				"points", p.PointsSpent)
-		}(participant)
+	for _, p := range participants {
+		s.resilientPublisher.PublishWithRetry(context.Background(), event.Event{
+			Version: "1.0",
+			Type:    event.Type(domain.EventTypePredictionParticipated),
+			Payload: domain.PredictionParticipantPayload{
+				Username:   p.Username,
+				Platform:   platform,
+				PlatformID: p.PlatformID,
+				XP:         ParticipantXP,
+				IsWinner:   false,
+				Timestamp:  time.Now().Unix(),
+			},
+		})
 	}
 }
 

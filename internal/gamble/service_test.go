@@ -3,7 +3,6 @@ package gamble
 import (
 	"context"
 	"errors"
-	"sync"
 	"testing"
 	"time"
 
@@ -327,7 +326,7 @@ func setupService(rng func(int) int) *testService {
 	jobSvc := new(MockJobService)
 	namingResolver := new(MockNamingResolver)
 
-	svc := NewService(repo, eventBus, resilientPub, lootboxSvc, statsSvc, time.Minute, jobSvc, nil, namingResolver, rng)
+	svc := NewService(repo, eventBus, resilientPub, lootboxSvc, time.Minute, nil, namingResolver, rng)
 
 	return &testService{
 		svc:            svc,
@@ -376,8 +375,8 @@ func TestStartGamble_Success(t *testing.T) {
 		return e.Type == domain.EventGambleStarted
 	})).Return(nil)
 
-	// Job Service Verification (Async)
-	ts.jobSvc.On("AwardXP", mock.Anything, "user1", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil).Maybe()
+	// Resilient publisher for gamble.participated event (async)
+	ts.resilientPub.On("PublishWithRetry", mock.Anything, mock.Anything).Maybe()
 
 	gamble, err := ts.svc.StartGamble(ctx, domain.PlatformTwitch, "123", "testuser", bets)
 
@@ -545,7 +544,8 @@ func TestJoinGamble_Success(t *testing.T) {
 	tx.On("Rollback", ctx).Return(nil).Maybe()
 	ts.repo.On("JoinGamble", ctx, mock.Anything).Return(nil)
 
-	ts.jobSvc.On("AwardXP", mock.Anything, "user2", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil).Maybe()
+	// Resilient publisher for gamble.participated event (async)
+	ts.resilientPub.On("PublishWithRetry", mock.Anything, mock.Anything).Maybe()
 
 	err := ts.svc.JoinGamble(ctx, gambleID, domain.PlatformTwitch, "456", "joiner")
 
@@ -692,13 +692,11 @@ func TestExecuteGamble_Success(t *testing.T) {
 	tx.On("Commit", ctx).Return(nil)
 	tx.On("Rollback", ctx).Return(nil).Maybe()
 
-	// Resilient Publisher verification
+	// Resilient Publisher verification (GambleCompleted event with V2 payload)
 	ts.resilientPub.On("PublishWithRetry", ctx, mock.MatchedBy(func(e event.Event) bool {
-		return e.Type == "GambleCompleted" && e.Payload.(event.GambleCompletedPayloadV1).GambleID == gambleID.String()
+		p, ok := e.Payload.(domain.GambleCompletedPayloadV2)
+		return e.Type == "GambleCompleted" && ok && p.GambleID == gambleID.String()
 	})).Return()
-
-	// Async XP award for winner
-	ts.jobSvc.On("AwardXP", mock.Anything, "user1", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil).Maybe()
 
 	result, err := ts.svc.ExecuteGamble(ctx, gambleID)
 
@@ -990,15 +988,10 @@ func TestExecuteGamble_NearMiss(t *testing.T) {
 	tx.On("Commit", ctx).Return(nil)
 	tx.On("Rollback", ctx).Return(nil).Maybe()
 
-	// Expect NearMiss event for User2
-	ts.statsSvc.On("RecordUserEvent", ctx, "user2", domain.EventGambleNearMiss, mock.MatchedBy(func(m map[string]interface{}) bool {
-		return m["winner_score"] == int64(100) && m["score"] == int64(95)
-	})).Return(nil)
-
 	// Should NOT expect NearMiss for User3 (50 is < 95)
+	// NearMiss stats now recorded by stats event handler via GambleCompleted event
 
 	ts.resilientPub.On("PublishWithRetry", ctx, mock.Anything).Return()
-	ts.jobSvc.On("AwardXP", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil).Maybe()
 
 	result, err := ts.svc.ExecuteGamble(ctx, gambleID)
 
@@ -1008,7 +1001,7 @@ func TestExecuteGamble_NearMiss(t *testing.T) {
 
 	ts.repo.AssertExpectations(t)
 	ts.lootboxSvc.AssertExpectations(t)
-	ts.statsSvc.AssertExpectations(t)
+	ts.resilientPub.AssertExpectations(t)
 }
 
 func TestExecuteGamble_CriticalFailure(t *testing.T) {
@@ -1068,20 +1061,9 @@ func TestExecuteGamble_CriticalFailure(t *testing.T) {
 	tx.On("Commit", ctx).Return(nil)
 	tx.On("Rollback", ctx).Return(nil).Maybe()
 
-	// Expect Critical Fail for User3
-	ts.statsSvc.On("RecordUserEvent", ctx, "user3", domain.EventGambleCriticalFail, mock.MatchedBy(func(m map[string]interface{}) bool {
-		avg := m["average_score"].(float64)
-		threshold := m["threshold"].(int64)
-		score := m["score"].(int64)
-		return score == 10 && threshold == 14 && avg == 70.0
-	})).Return(nil)
-
-	// We might also get TieBreakLost event for the loser of the tie break (User1 or User2).
-	// We should allow it.
-	ts.statsSvc.On("RecordUserEvent", ctx, mock.Anything, domain.EventGambleTieBreakLost, mock.Anything).Return(nil).Maybe()
+	// Critical Fail and TieBreak stats now recorded by stats event handler via GambleCompleted event
 
 	ts.resilientPub.On("PublishWithRetry", ctx, mock.Anything).Return()
-	ts.jobSvc.On("AwardXP", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil).Maybe()
 
 	result, err := ts.svc.ExecuteGamble(ctx, gambleID)
 
@@ -1090,7 +1072,7 @@ func TestExecuteGamble_CriticalFailure(t *testing.T) {
 
 	ts.repo.AssertExpectations(t)
 	ts.lootboxSvc.AssertExpectations(t)
-	ts.statsSvc.AssertExpectations(t)
+	ts.resilientPub.AssertExpectations(t)
 }
 
 func TestExecuteGamble_TieBreak(t *testing.T) {
@@ -1135,13 +1117,9 @@ func TestExecuteGamble_TieBreak(t *testing.T) {
 	tx.On("Commit", ctx).Return(nil)
 	tx.On("Rollback", ctx).Return(nil).Maybe()
 
-	// Expect TieBreakLost for userA (loser)
-	ts.statsSvc.On("RecordUserEvent", ctx, "userA", domain.EventGambleTieBreakLost, mock.MatchedBy(func(m map[string]interface{}) bool {
-		return m["score"] == int64(100)
-	})).Return(nil)
+	// TieBreakLost stats now recorded by stats event handler via GambleCompleted event
 
 	ts.resilientPub.On("PublishWithRetry", ctx, mock.Anything).Return()
-	ts.jobSvc.On("AwardXP", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil).Maybe()
 
 	result, err := ts.svc.ExecuteGamble(ctx, gambleID)
 
@@ -1149,7 +1127,7 @@ func TestExecuteGamble_TieBreak(t *testing.T) {
 	assert.Equal(t, "userB", result.WinnerID)
 
 	ts.repo.AssertExpectations(t)
-	ts.statsSvc.AssertExpectations(t)
+	ts.resilientPub.AssertExpectations(t)
 }
 
 func TestResolveItemName(t *testing.T) {
@@ -1180,6 +1158,7 @@ func TestResolveItemName(t *testing.T) {
 }
 
 func TestAsyncXPAward(t *testing.T) {
+	// XP is now awarded via gamble.participated event (via resilient publisher) rather than a direct AwardXP call.
 	ts := setupService(nil)
 	ctx := context.Background()
 	user := &domain.User{ID: "user1"}
@@ -1205,33 +1184,19 @@ func TestAsyncXPAward(t *testing.T) {
 
 	ts.eventBus.On("Publish", ctx, mock.Anything).Return(nil)
 
-	// Use WaitGroup to verify async call
-	var wg sync.WaitGroup
-	wg.Add(1)
-
-	ts.jobSvc.On("AwardXP", mock.Anything, "user1", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
-		wg.Done()
-	}).Return(nil, nil)
+	// Verify gamble.participated event is published via resilient publisher
+	ts.resilientPub.On("PublishWithRetry", ctx, mock.MatchedBy(func(e event.Event) bool {
+		return string(e.Type) == string(domain.EventTypeGambleParticipated)
+	})).Once()
 
 	_, err := ts.svc.StartGamble(ctx, domain.PlatformTwitch, "123", "testuser", bets)
 	assert.NoError(t, err)
 
-	// Wait for async goroutine to finish (with timeout)
-	done := make(chan struct{})
-	go func() {
-		wg.Wait()
-		close(done)
-	}()
-
-	select {
-	case <-done:
-		// Success
-	case <-time.After(time.Second):
-		t.Fatal("Timeout waiting for async AwardXP call")
-	}
+	ts.resilientPub.AssertExpectations(t)
 }
 
 func TestShutdown_WaitsForAsync(t *testing.T) {
+	// XP is now published via resilient publisher (event-based); no async goroutines remain in the gamble service.
 	ts := setupService(nil)
 	ctx := context.Background()
 	user := &domain.User{ID: "user1"}
@@ -1255,47 +1220,24 @@ func TestShutdown_WaitsForAsync(t *testing.T) {
 	ts.repo.On("CreateGamble", ctx, mock.Anything).Return(nil)
 	ts.repo.On("JoinGamble", ctx, mock.Anything).Return(nil)
 	ts.eventBus.On("Publish", ctx, mock.Anything).Return(nil)
+	ts.resilientPub.On("PublishWithRetry", mock.Anything, mock.Anything).Maybe()
 
-	// Make AwardXP block
-	blockCh := make(chan struct{})
-	ts.jobSvc.On("AwardXP", mock.Anything, "user1", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-		Run(func(args mock.Arguments) {
-			<-blockCh // Block until we signal
-		}).
-		Return(nil, nil)
-
-	// Start Gamble (triggers async XP)
 	_, err := ts.svc.StartGamble(ctx, domain.PlatformTwitch, "123", "testuser", bets)
 	assert.NoError(t, err)
 
-	// Call Shutdown in a separate goroutine so we can measure it
+	// Shutdown should complete immediately (no async goroutines in gamble service)
 	shutdownDone := make(chan struct{})
-	start := time.Now()
 	go func() {
 		_ = ts.svc.Shutdown(ctx)
 		close(shutdownDone)
 	}()
 
-	// Ensure Shutdown is blocked (give it a bit of time to start waiting)
 	select {
 	case <-shutdownDone:
-		t.Fatal("Shutdown returned immediately, should be waiting")
-	case <-time.After(10 * time.Millisecond):
-		// Good, it's blocked
-	}
-
-	// Unblock XP
-	close(blockCh)
-
-	// Wait for Shutdown to finish
-	select {
-	case <-shutdownDone:
-		// Success
-		assert.True(t, time.Since(start) >= 10*time.Millisecond)
+		// Success — Shutdown completed
 	case <-time.After(1 * time.Second):
 		t.Fatal("Shutdown timed out")
 	}
 
 	ts.repo.AssertExpectations(t)
-	ts.jobSvc.AssertExpectations(t)
 }

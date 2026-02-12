@@ -79,6 +79,10 @@ func (m *MockJobService) GetXPProgress(currentXP int64) (currentLevel int, xpToN
 	return 0, 0
 }
 
+func (m *MockJobService) Shutdown(ctx context.Context) error {
+	return nil
+}
+
 // MockBus for testing
 type MockBus struct {
 	mock.Mock

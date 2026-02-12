@@ -245,19 +245,6 @@ func (f *fakeBenchStatsService) GetSlotsLeaderboardByMegaJackpots(ctx context.Co
 	return nil, nil
 }
 
-// Mock job service
-type fakeBenchJobService struct{}
-
-func (f *fakeBenchJobService) AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error) {
-	return &domain.XPAwardResult{
-		JobKey:    jobKey,
-		XPGained:  baseAmount,
-		NewXP:     int64(baseAmount),
-		NewLevel:  1,
-		LeveledUp: false,
-	}, nil
-}
-
 // Mock lootbox service
 type fakeBenchLootboxService struct{}
 
@@ -313,12 +300,11 @@ func (f *fakeBenchCooldownService) GetLastUsed(ctx context.Context, userID, acti
 func BenchmarkService_HandleIncomingMessage(b *testing.B) {
 	repo := &fakeBenchRepository{}
 	statsService := &fakeBenchStatsService{}
-	jobService := &fakeBenchJobService{}
 	lootboxService := &fakeBenchLootboxService{}
 	namingResolver := &fakeBenchNamingResolver{}
 	cooldownService := &fakeBenchCooldownService{}
 
-	service := NewService(repo, repo, statsService, jobService, lootboxService, namingResolver, cooldownService, nil, nil, false)
+	service := NewService(repo, repo, statsService, nil, lootboxService, namingResolver, cooldownService, nil, false)
 
 	ctx := context.Background()
 
@@ -337,12 +323,11 @@ func BenchmarkService_HandleIncomingMessage(b *testing.B) {
 func BenchmarkService_HandleIncomingMessage_WithMatches(b *testing.B) {
 	repo := &fakeBenchRepository{}
 	statsService := &fakeBenchStatsService{}
-	jobService := &fakeBenchJobService{}
 	lootboxService := &fakeBenchLootboxService{}
 	namingResolver := &fakeBenchNamingResolver{}
 	cooldownService := &fakeBenchCooldownService{}
 
-	service := NewService(repo, repo, statsService, jobService, lootboxService, namingResolver, cooldownService, nil, nil, false)
+	service := NewService(repo, repo, statsService, nil, lootboxService, namingResolver, cooldownService, nil, false)
 
 	ctx := context.Background()
 	message := "this is a longer message with multiple words to test string matching performance"
@@ -362,12 +347,11 @@ func BenchmarkService_HandleIncomingMessage_WithMatches(b *testing.B) {
 func BenchmarkService_AddItem(b *testing.B) {
 	repo := &fakeBenchRepository{}
 	statsService := &fakeBenchStatsService{}
-	jobService := &fakeBenchJobService{}
 	lootboxService := &fakeBenchLootboxService{}
 	namingResolver := &fakeBenchNamingResolver{}
 	cooldownService := &fakeBenchCooldownService{}
 
-	service := NewService(repo, repo, statsService, jobService, lootboxService, namingResolver, cooldownService, nil, nil, false)
+	service := NewService(repo, repo, statsService, nil, lootboxService, namingResolver, cooldownService, nil, false)
 
 	ctx := context.Background()
 
@@ -386,12 +370,11 @@ func BenchmarkService_AddItem(b *testing.B) {
 func BenchmarkService_AddItem_NewItem(b *testing.B) {
 	repo := &fakeBenchRepository{}
 	statsService := &fakeBenchStatsService{}
-	jobService := &fakeBenchJobService{}
 	lootboxService := &fakeBenchLootboxService{}
 	namingResolver := &fakeBenchNamingResolver{}
 	cooldownService := &fakeBenchCooldownService{}
 
-	service := NewService(repo, repo, statsService, jobService, lootboxService, namingResolver, cooldownService, nil, nil, false)
+	service := NewService(repo, repo, statsService, nil, lootboxService, namingResolver, cooldownService, nil, false)
 
 	ctx := context.Background()
 
@@ -410,12 +393,11 @@ func BenchmarkService_AddItem_NewItem(b *testing.B) {
 func BenchmarkService_AddItem_Individual10(b *testing.B) {
 	repo := &fakeBenchRepository{}
 	statsService := &fakeBenchStatsService{}
-	jobService := &fakeBenchJobService{}
 	lootboxService := &fakeBenchLootboxService{}
 	namingResolver := &fakeBenchNamingResolver{}
 	cooldownService := &fakeBenchCooldownService{}
 
-	service := NewService(repo, repo, statsService, jobService, lootboxService, namingResolver, cooldownService, nil, nil, false)
+	service := NewService(repo, repo, statsService, nil, lootboxService, namingResolver, cooldownService, nil, false)
 
 	ctx := context.Background()
 

@@ -33,7 +33,7 @@ func TestResilientEvents_Integration(t *testing.T) {
 	defer publisher.Shutdown(context.Background())
 
 	// Create Service
-	svc := NewService(repo, prog, statsSvc, mockBus, publisher)
+	svc := NewService(repo, prog, mockBus, publisher)
 	ctx := context.Background()
 
 	// Test case: XP award triggers level up, event publish initially fails but retries succeed

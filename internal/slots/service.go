@@ -7,7 +7,6 @@ import (
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/event"
-	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/naming"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
@@ -20,11 +19,6 @@ type CooldownService interface {
 	EnforceCooldown(ctx context.Context, userID, action string, fn func() error) error
 }
 
-// StatsService defines the interface for stats operations
-type StatsService interface {
-	RecordUserEvent(ctx context.Context, userID string, eventType domain.EventType, metadata map[string]interface{}) error
-}
-
 // Service defines the interface for slots operations
 type Service interface {
 	SpinSlots(ctx context.Context, platform, platformID, username string, betAmount int) (*domain.SlotsResult, error)
@@ -33,10 +27,8 @@ type Service interface {
 
 type service struct {
 	userRepo           repository.User
-	jobService         job.Service
 	progressionService progression.Service
 	cooldownSvc        CooldownService
-	statsService       StatsService
 	eventBus           event.Bus
 	resilientPublisher *event.ResilientPublisher
 	namingResolver     naming.Resolver
@@ -48,20 +40,16 @@ type service struct {
 // NewService creates a new slots service
 func NewService(
 	userRepo repository.User,
-	jobService job.Service,
 	progressionService progression.Service,
 	cooldownSvc CooldownService,
-	statsService StatsService,
 	eventBus event.Bus,
 	resilientPublisher *event.ResilientPublisher,
 	namingResolver naming.Resolver,
 ) Service {
 	return &service{
 		userRepo:           userRepo,
-		jobService:         jobService,
 		progressionService: progressionService,
 		cooldownSvc:        cooldownSvc,
-		statsService:       statsService,
 		eventBus:           eventBus,
 		resilientPublisher: resilientPublisher,
 		namingResolver:     namingResolver,
@@ -204,15 +192,7 @@ func (s *service) executeSpin(ctx context.Context, user *domain.User, username s
 	s.wg.Add(1)
 	go s.recordAllEngagement(ctx, user.ID, result)
 
-	// Record stats (async, non-blocking)
-	s.wg.Add(1)
-	go s.recordSlotsStats(ctx, user.ID, result)
-
-	// Award Gambler XP (async, non-blocking)
-	s.wg.Add(1)
-	go s.awardGamblerXP(ctx, user.ID, betAmount, payoutAmount, triggerType)
-
-	// Publish event (async with retry)
+	// Publish event (async with retry) — stats and XP are handled by event handlers
 	payload := domain.SlotsCompletedPayload{
 		UserID:           user.ID,
 		Username:         username,
@@ -353,85 +333,6 @@ func (s *service) recordAllEngagement(ctx context.Context, userID string, result
 		if err := s.progressionService.RecordEngagement(ctx, userID, MetricSlotsJackpot, 1); err != nil {
 			log.Warn("Failed to record slots jackpot engagement", "error", err)
 		}
-	}
-}
-
-// recordSlotsStats records statistics for slots spins
-func (s *service) recordSlotsStats(ctx context.Context, userID string, result *domain.SlotsResult) {
-	defer s.wg.Done()
-
-	if s.statsService == nil {
-		return
-	}
-
-	log := logger.FromContext(ctx)
-
-	// Record every spin
-	metadata := map[string]interface{}{
-		"bet_amount":        result.BetAmount,
-		"payout_amount":     result.PayoutAmount,
-		"payout_multiplier": result.PayoutMultiplier,
-		"net_profit":        result.PayoutAmount - result.BetAmount,
-		"is_win":            result.IsWin,
-		"is_near_miss":      result.IsNearMiss,
-		"trigger_type":      result.TriggerType,
-		"reel1":             result.Reel1,
-		"reel2":             result.Reel2,
-		"reel3":             result.Reel3,
-	}
-
-	if err := s.statsService.RecordUserEvent(ctx, userID, domain.EventSlotsSpin, metadata); err != nil {
-		log.Warn("Failed to record slots spin stats", "error", err)
-	}
-
-	// Record wins separately for easier querying
-	if result.IsWin {
-		if err := s.statsService.RecordUserEvent(ctx, userID, domain.EventSlotsWin, metadata); err != nil {
-			log.Warn("Failed to record slots win stats", "error", err)
-		}
-	}
-
-	// Record mega jackpots
-	if result.TriggerType == TriggerMegaJackpot {
-		if err := s.statsService.RecordUserEvent(ctx, userID, domain.EventSlotsMegaJackpot, metadata); err != nil {
-			log.Warn("Failed to record slots mega jackpot stats", "error", err)
-		}
-	}
-}
-
-// awardGamblerXP awards XP to the Gambler job based on spin results
-func (s *service) awardGamblerXP(ctx context.Context, userID string, betAmount, payoutAmount int, triggerType string) {
-	defer s.wg.Done()
-
-	if s.jobService == nil {
-		return
-	}
-
-	log := logger.FromContext(ctx)
-
-	// Base XP: bet amount / 10
-	xp := betAmount / 10
-
-	// Bonuses
-	if payoutAmount > betAmount {
-		xp += 20 // Win bonus
-	}
-	if triggerType == TriggerJackpot || triggerType == TriggerMegaJackpot {
-		xp += 100
-	}
-
-	metadata := map[string]interface{}{
-		"source":        "slots",
-		"bet_amount":    betAmount,
-		"payout_amount": payoutAmount,
-		"trigger_type":  triggerType,
-	}
-
-	result, err := s.jobService.AwardXP(ctx, userID, job.JobKeyGambler, xp, "slots", metadata)
-	if err != nil {
-		log.Warn("Failed to award Gambler XP", "error", err)
-	} else if result != nil && result.LeveledUp {
-		log.Info("Gambler leveled up", "user_id", userID, "new_level", result.NewLevel)
 	}
 }
 

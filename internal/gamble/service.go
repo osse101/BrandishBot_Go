@@ -12,12 +12,10 @@ import (
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/event"
-	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/lootbox"
 	"github.com/osse101/BrandishBot_Go/internal/naming"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
-	"github.com/osse101/BrandishBot_Go/internal/stats"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
@@ -29,11 +27,6 @@ type Service interface {
 	ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.GambleResult, error)
 	GetActiveGamble(ctx context.Context) (*domain.Gamble, error)
 	Shutdown(ctx context.Context) error
-}
-
-// JobService defines the interface for job operations
-type JobService interface {
-	AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error)
 }
 
 // ProgressionService defines the interface for progression system
@@ -51,9 +44,7 @@ type service struct {
 	eventBus           event.Bus
 	resilientPublisher ResilientPublisher
 	lootboxSvc         lootbox.Service
-	jobService         JobService
 	progressionSvc     ProgressionService
-	statsSvc           stats.Service
 	namingResolver     naming.Resolver
 	joinDuration       time.Duration
 	rng                func(int) int
@@ -61,7 +52,7 @@ type service struct {
 }
 
 // NewService creates a new gamble service
-func NewService(repo repository.Gamble, eventBus event.Bus, resilientPublisher ResilientPublisher, lootboxSvc lootbox.Service, statsSvc stats.Service, joinDuration time.Duration, jobService JobService, progressionSvc ProgressionService, namingResolver naming.Resolver, rng func(int) int) Service {
+func NewService(repo repository.Gamble, eventBus event.Bus, resilientPublisher ResilientPublisher, lootboxSvc lootbox.Service, joinDuration time.Duration, progressionSvc ProgressionService, namingResolver naming.Resolver, rng func(int) int) Service {
 	if rng == nil {
 		rng = utils.SecureRandomInt
 	}
@@ -70,9 +61,7 @@ func NewService(repo repository.Gamble, eventBus event.Bus, resilientPublisher R
 		eventBus:           eventBus,
 		resilientPublisher: resilientPublisher,
 		lootboxSvc:         lootboxSvc,
-		jobService:         jobService,
 		progressionSvc:     progressionSvc,
-		statsSvc:           statsSvc,
 		namingResolver:     namingResolver,
 		joinDuration:       joinDuration,
 		rng:                rng,
@@ -186,9 +175,7 @@ func (s *service) StartGamble(ctx context.Context, platform, platformID, usernam
 	}
 
 	s.publishGambleStartedEvent(ctx, gamble)
-
-	s.wg.Add(1)
-	go s.awardGamblerXP(context.Background(), user.ID, calculateTotalLootboxes(gambleBets), "start", false)
+	s.publishGambleParticipatedEvent(ctx, gamble.ID.String(), user.ID, calculateTotalLootboxes(gambleBets), "start")
 
 	return gamble, nil
 }
@@ -241,10 +228,8 @@ func (s *service) JoinGamble(ctx context.Context, gambleID uuid.UUID, platform, 
 		return err
 	}
 
-	// Award Gambler XP for joining (async, don't block)
-	// Run async with detached context to prevent cancellation affecting XP award
-	s.wg.Add(1)
-	go s.awardGamblerXP(context.Background(), user.ID, calculateTotalLootboxes(bets), "join", false)
+	// Publish gamble participated event (job handler awards XP)
+	s.publishGambleParticipatedEvent(ctx, gambleID.String(), user.ID, calculateTotalLootboxes(bets), "join")
 
 	return nil
 }
@@ -328,14 +313,16 @@ func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.Gamb
 	}
 
 	userValues, allOpenedItems, totalGambleValue := s.openParticipantsLootboxes(ctx, gamble)
-	s.trackCriticalFailures(ctx, id, userValues, totalGambleValue)
+
+	// Determine critical failures (before determining winner)
+	critFailUsers := s.determineCriticalFailures(userValues, totalGambleValue)
 
 	if err := tx.SaveOpenedItems(ctx, allOpenedItems); err != nil {
 		return nil, fmt.Errorf("failed to save opened items: %w", err)
 	}
 
-	winnerID, highestValue := s.determineGambleWinners(ctx, id, userValues)
-	s.trackNearMisses(ctx, id, winnerID, highestValue, userValues)
+	winnerID, highestValue, tieBreakLostUsers := s.determineGambleWinners(userValues)
+	nearMissUsers := s.determineNearMisses(winnerID, highestValue, userValues)
 
 	if winnerID != "" {
 		if err := s.awardItemsToWinner(ctx, tx, winnerID, allOpenedItems); err != nil {
@@ -358,13 +345,9 @@ func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.Gamb
 		return nil, fmt.Errorf("%s: %w", ErrContextFailedToCommitTx, err)
 	}
 
-	// Publish gamble completion event (async with retry)
-	s.publishGambleCompletedEvent(ctx, result, len(gamble.Participants))
-
-	if winnerID != "" {
-		s.wg.Add(1)
-		go s.awardGamblerXP(context.Background(), winnerID, 0, "win", true)
-	}
+	// Publish gamble completion event with per-participant outcomes
+	participants := s.buildParticipantOutcomes(gamble, userValues, winnerID, critFailUsers, tieBreakLostUsers, nearMissUsers)
+	s.publishGambleCompletedEvent(ctx, result, len(gamble.Participants), participants)
 
 	return result, nil
 }
@@ -458,25 +441,24 @@ func (s *service) openParticipantsLootboxes(ctx context.Context, gamble *domain.
 	return userValues, allOpenedItems, totalGambleValue
 }
 
-func (s *service) trackCriticalFailures(ctx context.Context, id uuid.UUID, userValues map[string]int64, totalGambleValue int64) {
-	if len(userValues) <= 1 || totalGambleValue <= 0 || s.statsSvc == nil {
-		return
+// determineCriticalFailures returns the set of user IDs who had critical fail scores
+func (s *service) determineCriticalFailures(userValues map[string]int64, totalGambleValue int64) map[string]bool {
+	critFails := make(map[string]bool)
+	if len(userValues) <= 1 || totalGambleValue <= 0 {
+		return critFails
 	}
 	averageScore := float64(totalGambleValue) / float64(len(userValues))
-	criticalFailThreshold := int64(averageScore * CriticalFailThreshold)
+	threshold := int64(averageScore * CriticalFailThreshold)
 	for userID, val := range userValues {
-		if val <= criticalFailThreshold {
-			_ = s.statsSvc.RecordUserEvent(ctx, userID, domain.EventGambleCriticalFail, map[string]interface{}{
-				"gamble_id":     id,
-				"score":         val,
-				"average_score": averageScore,
-				"threshold":     criticalFailThreshold,
-			})
+		if val <= threshold {
+			critFails[userID] = true
 		}
 	}
+	return critFails
 }
 
-func (s *service) determineGambleWinners(ctx context.Context, id uuid.UUID, userValues map[string]int64) (string, int64) {
+// determineGambleWinners returns the winner ID, highest score, and set of users who lost a tie-break
+func (s *service) determineGambleWinners(userValues map[string]int64) (string, int64, map[string]bool) {
 	var highestValue int64 = InitialHighestValue
 	var winners []string
 
@@ -489,32 +471,31 @@ func (s *service) determineGambleWinners(ctx context.Context, id uuid.UUID, user
 		}
 	}
 
+	tieBreakLost := make(map[string]bool)
+
 	if len(winners) == 0 {
-		return "", 0
+		return "", 0, tieBreakLost
 	}
 
 	if len(winners) > 1 {
 		sort.Strings(winners)
 		idx := s.rng(len(winners))
 		winnerID := winners[idx]
-		if s.statsSvc != nil {
-			for _, uid := range winners {
-				if uid != winnerID {
-					_ = s.statsSvc.RecordUserEvent(ctx, uid, domain.EventGambleTieBreakLost, map[string]interface{}{
-						"gamble_id": id,
-						"score":     highestValue,
-					})
-				}
+		for _, uid := range winners {
+			if uid != winnerID {
+				tieBreakLost[uid] = true
 			}
 		}
-		return winnerID, highestValue
+		return winnerID, highestValue, tieBreakLost
 	}
-	return winners[0], highestValue
+	return winners[0], highestValue, tieBreakLost
 }
 
-func (s *service) trackNearMisses(ctx context.Context, id uuid.UUID, winnerID string, highestValue int64, userValues map[string]int64) {
-	if winnerID == "" || highestValue <= 0 || s.statsSvc == nil {
-		return
+// determineNearMisses returns the set of user IDs who had near-miss scores (not the winner)
+func (s *service) determineNearMisses(winnerID string, highestValue int64, userValues map[string]int64) map[string]bool {
+	nearMiss := make(map[string]bool)
+	if winnerID == "" || highestValue <= 0 {
+		return nearMiss
 	}
 	threshold := int64(float64(highestValue) * NearMissThreshold)
 	for userID, val := range userValues {
@@ -522,14 +503,45 @@ func (s *service) trackNearMisses(ctx context.Context, id uuid.UUID, winnerID st
 			continue
 		}
 		if val >= threshold {
-			_ = s.statsSvc.RecordUserEvent(ctx, userID, domain.EventGambleNearMiss, map[string]interface{}{
-				"gamble_id":    id,
-				"score":        val,
-				"winner_score": highestValue,
-				"diff":         highestValue - val,
-			})
+			nearMiss[userID] = true
 		}
 	}
+	return nearMiss
+}
+
+// buildParticipantOutcomes constructs per-participant outcome data for the GambleCompletedPayloadV2
+func (s *service) buildParticipantOutcomes(gamble *domain.Gamble, userValues map[string]int64, winnerID string, critFailUsers, tieBreakLostUsers, nearMissUsers map[string]bool) []domain.GambleParticipantOutcome {
+	outcomes := make([]domain.GambleParticipantOutcome, 0, len(gamble.Participants))
+	for _, p := range gamble.Participants {
+		outcomes = append(outcomes, domain.GambleParticipantOutcome{
+			UserID:         p.UserID,
+			Score:          userValues[p.UserID],
+			LootboxCount:   calculateTotalLootboxes(p.LootboxBets),
+			IsWinner:       p.UserID == winnerID,
+			IsNearMiss:     nearMissUsers[p.UserID],
+			IsCritFail:     critFailUsers[p.UserID],
+			IsTieBreakLost: tieBreakLostUsers[p.UserID],
+		})
+	}
+	return outcomes
+}
+
+// publishGambleParticipatedEvent publishes a gamble.participated event for XP tracking
+func (s *service) publishGambleParticipatedEvent(ctx context.Context, gambleID, userID string, lootboxCount int, source string) {
+	if s.resilientPublisher == nil {
+		return
+	}
+	s.resilientPublisher.PublishWithRetry(ctx, event.Event{
+		Version: EventSchemaVersion,
+		Type:    event.Type(domain.EventTypeGambleParticipated),
+		Payload: domain.GambleParticipatedPayload{
+			GambleID:     gambleID,
+			UserID:       userID,
+			LootboxCount: lootboxCount,
+			Source:       source,
+			Timestamp:    time.Now().Unix(),
+		},
+	})
 }
 
 func (s *service) awardItemsToWinner(ctx context.Context, tx repository.GambleTx, winnerID string, allOpenedItems []domain.GambleOpenedItem) error {
@@ -607,38 +619,6 @@ func calculateTotalLootboxes(bets []domain.LootboxBet) int {
 		total += bet.Quantity
 	}
 	return total
-}
-
-// awardGamblerXP awards  Gambler job XP for gambling operations
-func (s *service) awardGamblerXP(ctx context.Context, userID string, lootboxCount int, source string, isWin bool) {
-	defer s.wg.Done() // Signal completion when goroutine ends
-
-	if s.jobService == nil {
-		return // Job system not enabled
-	}
-
-	// Use exported constants for XP amounts
-	xp := lootboxCount * job.GamblerXPPerLootbox
-	if isWin {
-		xp += job.GamblerWinBonus
-	}
-
-	if xp <= 0 {
-		return
-	}
-
-	metadata := map[string]interface{}{
-		MetadataKeySource:       source,
-		MetadataKeyLootboxCount: lootboxCount,
-		MetadataKeyIsWin:        isWin,
-	}
-
-	result, err := s.jobService.AwardXP(ctx, userID, job.JobKeyGambler, xp, source, metadata)
-	if err != nil {
-		logger.FromContext(ctx).Warn(LogMsgFailedToAwardGamblerXP, "error", err, "user_id", userID)
-	} else if result != nil && result.LeveledUp {
-		logger.FromContext(ctx).Info(LogMsgGamblerLeveledUp, "user_id", userID, "new_level", result.NewLevel)
-	}
 }
 
 // Shutdown gracefully shuts down the gamble service by waiting for all async operations to complete
@@ -767,7 +747,7 @@ func (s *service) publishGambleStartedEvent(ctx context.Context, gamble *domain.
 	}
 }
 
-func (s *service) publishGambleCompletedEvent(ctx context.Context, result *domain.GambleResult, participantCount int) {
+func (s *service) publishGambleCompletedEvent(ctx context.Context, result *domain.GambleResult, participantCount int, participants []domain.GambleParticipantOutcome) {
 	log := logger.FromContext(ctx)
 
 	if s.resilientPublisher == nil {
@@ -775,6 +755,6 @@ func (s *service) publishGambleCompletedEvent(ctx context.Context, result *domai
 		return
 	}
 
-	evt := event.NewGambleCompletedEvent(result.GambleID.String(), result.WinnerID, result.TotalValue, participantCount)
+	evt := event.NewGambleCompletedEvent(result.GambleID.String(), result.WinnerID, result.TotalValue, participantCount, participants)
 	s.resilientPublisher.PublishWithRetry(ctx, evt)
 }

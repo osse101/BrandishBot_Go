@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"errors"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/osse101/BrandishBot_Go/internal/cooldown"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/lootbox"
 	"github.com/osse101/BrandishBot_Go/internal/user"
 )
@@ -93,6 +95,17 @@ func (m *MockNamingResolver) RegisterItem(internalName, publicName string) {
 	// No-op
 }
 
+type MockBus struct {
+	delay time.Duration
+}
+
+func (m *MockBus) Publish(ctx context.Context, evt event.Event) error {
+	time.Sleep(m.delay)
+	return nil
+}
+
+func (m *MockBus) Subscribe(eventType event.Type, handler event.Handler) {}
+
 func setupIntegrationTest(t *testing.T) (*pgxpool.Pool, *UserRepository, user.Service) {
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
@@ -113,12 +126,11 @@ func setupIntegrationTest(t *testing.T) (*pgxpool.Pool, *UserRepository, user.Se
 		repo,
 		trapRepo,
 		&MockStatsService{},
-		&MockJobService{},
+		nil, // publisher
 		&MockLootboxService{},
 		&MockNamingResolver{},
 		cooldownSvc,
 		nil,  // No event bus for tests
-		nil,  // No quest service for tests
 		true, // Dev mode to bypass cooldowns
 	)
 
@@ -258,21 +270,24 @@ func TestUserService_AsyncXPAward_Integration(t *testing.T) {
 		return // Skipped
 	}
 
-	slowJobSvc := &SlowJobService{delay: 200 * time.Millisecond}
 	cooldownConfig := cooldown.Config{DevMode: true}
 	cooldownSvc := cooldown.NewPostgresService(pool, cooldownConfig, nil)
 	trapRepo := NewTrapRepository(pool)
+
+	// Create a real publisher with a mock bus for testing async wait
+	mockBus := &MockBus{delay: 200 * time.Millisecond}
+	publisher, _ := event.NewResilientPublisher(mockBus, 3, 10*time.Millisecond, "test_deadletter.jsonl")
+	defer os.Remove("test_deadletter.jsonl")
 
 	svc := user.NewService(
 		repo,
 		trapRepo,
 		&MockStatsService{},
-		slowJobSvc,
+		publisher,
 		&MockLootboxService{},
 		&MockNamingResolver{},
 		cooldownSvc,
 		nil, // No event bus for tests
-		nil, // No quests for tests
 		true,
 	)
 

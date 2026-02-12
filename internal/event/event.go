@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"sync"
 	"time"
+
+	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
 // Type represents the type of an event
@@ -46,6 +48,7 @@ const (
 // EngagementPayloadV1 is the typed payload for engagement events
 type EngagementPayloadV1 struct {
 	UserID       int64  `json:"user_id"`
+	UserIDStr    string `json:"user_id_str,omitempty"` // UUID string form, used for Scholar XP
 	PlatformID   int64  `json:"platform_id"`
 	ActivityType string `json:"activity_type"`
 	Timestamp    int64  `json:"timestamp"`
@@ -67,12 +70,13 @@ type ProgressionTargetPayloadV1 struct {
 // Type-safe event constructors
 
 // NewEngagementEvent creates a new engagement event with type-safe payload
-func NewEngagementEvent(userID, platformID int64, activityType string) Event {
+func NewEngagementEvent(userID, platformID int64, activityType string, userIDStr string) Event {
 	return Event{
 		Version: EventSchemaVersion,
 		Type:    EventTypeEngagement,
 		Payload: EngagementPayloadV1{
 			UserID:       userID,
+			UserIDStr:    userIDStr,
 			PlatformID:   platformID,
 			ActivityType: activityType,
 			Timestamp:    time.Now().Unix(),
@@ -169,15 +173,16 @@ func NewTimeoutClearedEvent(platform, username string) Event {
 }
 
 // NewGambleCompletedEvent creates a new gamble completed event with type-safe payload
-func NewGambleCompletedEvent(gambleID, winnerID string, totalValue int64, participantCount int) Event {
+func NewGambleCompletedEvent(gambleID, winnerID string, totalValue int64, participantCount int, participants []domain.GambleParticipantOutcome) Event {
 	return Event{
 		Version: EventSchemaVersion,
 		Type:    "GambleCompleted",
-		Payload: GambleCompletedPayloadV1{
+		Payload: domain.GambleCompletedPayloadV2{
 			GambleID:         gambleID,
 			WinnerID:         winnerID,
 			TotalValue:       totalValue,
 			ParticipantCount: participantCount,
+			Participants:     participants,
 			Timestamp:        time.Now().Unix(),
 		},
 		Metadata: make(map[string]interface{}),
