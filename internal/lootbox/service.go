@@ -241,107 +241,37 @@ func (s *service) convertToDroppedItems(ctx context.Context, dropCounts map[stri
 		// Use a random roll for quality.
 		quality, mult := s.calculateQuality(s.rnd(), boxQuality, canUpgrade)
 
-		quantity := info.Qty
-		boostedValue := int(float64(item.BaseValue) * mult)
-
-		// Currency special logic: convert quality to quantity, force COMMON quality
-		if item.IsCurrency() {
-			quantity = int(float64(info.Qty) * mult)
-			if info.Qty > 0 && quantity == 0 {
-				quantity = 1
-			}
-			boostedValue = item.BaseValue  // Keep base value (usually 1)
-			quality = domain.QualityCommon // Force COMMON for all currency
-		} else {
-			// Normal item truncation protection
-			if item.BaseValue > 0 && boostedValue == 0 {
-				boostedValue = 1
-			}
-		}
-
-		drops = append(drops, DroppedItem{
-			ItemID:       item.ID,
-			ItemName:     item.InternalName,
-			Quantity:     quantity,
-			Value:        boostedValue,
-			QualityLevel: quality,
-		})
+		droppedItem := s.constructDroppedItem(item, info, quality, mult)
+		drops = append(drops, droppedItem)
 	}
 
 	return drops, nil
 }
 
-// calculateQuality determines the visual rarity "quality" and value multiplier of a drop based on a roll.
-// The boxQuality level shifts the constraints: a more rare box makes it easier to get rare item quality levels.
-func (s *service) calculateQuality(roll float64, boxQuality domain.QualityLevel, canUpgrade bool) (domain.QualityLevel, float64) {
-	dist := s.getQualityDistance(boxQuality)
-	bonus := 0.03 * float64(dist)
+func (s *service) constructDroppedItem(item *domain.Item, info dropInfo, quality domain.QualityLevel, mult float64) DroppedItem {
+	quantity := info.Qty
+	boostedValue := int(float64(item.BaseValue) * mult)
 
-	quality := domain.QualityCursed
-	if roll <= QualityLegendaryThreshold+bonus {
-		quality = domain.QualityLegendary
-	} else if roll <= QualityEpicThreshold+bonus {
-		quality = domain.QualityEpic
-	} else if roll <= QualityRareThreshold+bonus {
-		quality = domain.QualityRare
-	} else if roll <= QualityUncommonThreshold+bonus {
-		quality = domain.QualityUncommon
-	} else if roll <= QualityCommonThreshold+bonus {
-		quality = domain.QualityCommon
-	} else if roll <= QualityPoorThreshold+bonus {
-		quality = domain.QualityPoor
-	} else if roll <= QualityJunkThreshold+bonus {
-		quality = domain.QualityJunk
+	// Currency special logic: convert quality to quantity, force COMMON quality
+	if item.IsCurrency() {
+		quantity = int(float64(info.Qty) * mult)
+		if info.Qty > 0 && quantity == 0 {
+			quantity = 1
+		}
+		boostedValue = item.BaseValue  // Keep base value (usually 1)
+		quality = domain.QualityCommon // Force COMMON for all currency
+	} else {
+		// Normal item truncation protection
+		if item.BaseValue > 0 && boostedValue == 0 {
+			boostedValue = 1
+		}
 	}
 
-	// Critical Quality Upgrade: 1% chance to upgrade the quality level (locked by progression)
-	if canUpgrade && s.rnd() < CriticalQualityUpgradeChance {
-		quality = s.getNextQualityLevel(quality)
-	}
-
-	return quality, utils.GetQualityMultiplier(quality)
-}
-
-func (s *service) getNextQualityLevel(q domain.QualityLevel) domain.QualityLevel {
-	switch q {
-	case domain.QualityCursed:
-		return domain.QualityJunk
-	case domain.QualityJunk:
-		return domain.QualityPoor
-	case domain.QualityPoor:
-		return domain.QualityCommon
-	case domain.QualityCommon:
-		return domain.QualityUncommon
-	case domain.QualityUncommon:
-		return domain.QualityRare
-	case domain.QualityRare:
-		return domain.QualityEpic
-	case domain.QualityEpic:
-		return domain.QualityLegendary
-	default:
-		return q
-	}
-}
-
-func (s *service) getQualityDistance(quality domain.QualityLevel) int {
-	switch quality {
-	case domain.QualityLegendary:
-		return 4
-	case domain.QualityEpic:
-		return 3
-	case domain.QualityRare:
-		return 2
-	case domain.QualityUncommon:
-		return 1
-	case domain.QualityCommon:
-		return 0
-	case domain.QualityPoor:
-		return -1
-	case domain.QualityJunk:
-		return -2
-	case domain.QualityCursed:
-		return -3
-	default:
-		return 0
+	return DroppedItem{
+		ItemID:       item.ID,
+		ItemName:     item.InternalName,
+		Quantity:     quantity,
+		Value:        boostedValue,
+		QualityLevel: quality,
 	}
 }
