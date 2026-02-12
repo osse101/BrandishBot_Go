@@ -3,17 +3,13 @@ package crafting
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"math"
-	"sync"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
-	"github.com/osse101/BrandishBot_Go/internal/job"
+	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/naming"
-	"github.com/osse101/BrandishBot_Go/internal/quest"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
-	"github.com/osse101/BrandishBot_Go/internal/stats"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
@@ -40,6 +36,11 @@ type DisassembleResult struct {
 	Multiplier        float64        `json:"multiplier"`
 }
 
+// EventPublisher defines the interface for publishing events
+type EventPublisher interface {
+	PublishWithRetry(ctx context.Context, event event.Event)
+}
+
 // Service defines the interface for crafting operations
 type Service interface {
 	UpgradeItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (*Result, error)
@@ -48,11 +49,6 @@ type Service interface {
 	GetAllRecipes(ctx context.Context) ([]repository.RecipeListItem, error)
 	DisassembleItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (*DisassembleResult, error)
 	Shutdown(ctx context.Context) error
-}
-
-// JobService defines the interface for job operations
-type JobService interface {
-	AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error)
 }
 
 // ProgressionService defines the interface for progression operations
@@ -64,24 +60,19 @@ type ProgressionService interface {
 
 type service struct {
 	repo           repository.Crafting
-	jobService     JobService
+	eventPublisher EventPublisher
 	progressionSvc ProgressionService
-	statsSvc       stats.Service
 	namingResolver naming.Resolver // For resolving public names to internal names
-	questService   quest.Service
-	rnd            func() float64 // For rolling RNG (does not need to be cryptographically secure)
-	wg             sync.WaitGroup // Tracks async goroutines for graceful shutdown
+	rnd            func() float64  // For rolling RNG (does not need to be cryptographically secure)
 }
 
 // NewService creates a new crafting service
-func NewService(repo repository.Crafting, jobService JobService, statsSvc stats.Service, namingResolver naming.Resolver, progressionSvc ProgressionService, questService quest.Service) Service {
+func NewService(repo repository.Crafting, eventPublisher EventPublisher, namingResolver naming.Resolver, progressionSvc ProgressionService) Service {
 	return &service{
 		repo:           repo,
-		jobService:     jobService,
+		eventPublisher: eventPublisher,
 		progressionSvc: progressionSvc,
-		statsSvc:       statsSvc,
 		namingResolver: namingResolver,
-		questService:   questService,
 		rnd:            utils.RandomFloat,
 	}
 }
@@ -226,8 +217,13 @@ func (s *service) UpgradeItem(ctx context.Context, platform, platformID, usernam
 		return nil, err
 	}
 
-	// 3. Post-transaction tasks (XP, Quests)
-	s.handlePostUpgradeTasks(user.ID, actualQuantity, itemName, recipe)
+	// 3. Publish event
+	recipeKey := itemName
+	if recipe != nil && recipe.RecipeKey != "" {
+		recipeKey = recipe.RecipeKey
+	}
+	evt := NewItemUpgradedEvent(user.ID, itemName, actualQuantity, recipeKey, result.IsMasterwork, result.BonusQuantity)
+	s.eventPublisher.PublishWithRetry(ctx, evt)
 
 	log.Info("Items upgraded", "username", username, "item", itemName, "quantity", result.Quantity, "masterwork", result.IsMasterwork)
 	return result, nil
@@ -305,25 +301,6 @@ func (s *service) executeUpgradeTx(ctx context.Context, userID string, itemID in
 	return result, actualQuantity, nil
 }
 
-func (s *service) handlePostUpgradeTasks(userID string, actualQuantity int, itemName string, recipe *domain.Recipe) {
-	s.wg.Add(1)
-	go s.awardBlacksmithXP(context.Background(), userID, actualQuantity, "upgrade", itemName)
-
-	if s.questService != nil {
-		s.wg.Add(1)
-		go func() {
-			defer s.wg.Done()
-			recipeKey := itemName
-			if recipe != nil && recipe.RecipeKey != "" {
-				recipeKey = recipe.RecipeKey
-			}
-			if err := s.questService.OnRecipeCrafted(context.Background(), userID, recipeKey, actualQuantity); err != nil {
-				slog.Warn("Failed to track quest progress", "error", err, "user_id", userID)
-			}
-		}()
-	}
-}
-
 func (s *service) getAndValidateRecipe(ctx context.Context, itemID int, userID string, itemName string) (*domain.Recipe, error) {
 	recipe, err := s.repo.GetRecipeByTargetItemID(ctx, itemID)
 	if err != nil {
@@ -372,15 +349,7 @@ func (s *service) calculateUpgradeOutput(ctx context.Context, userID string, ite
 	masterworkTriggered := masterworkCount > 0
 	if masterworkTriggered {
 		log.Info("Masterwork craft triggered!", "user_id", userID, "item", itemName, "count", masterworkCount, "bonus", outputQuantity-actualQuantity)
-
-		if s.statsSvc != nil {
-			_ = s.statsSvc.RecordUserEvent(ctx, userID, domain.EventCraftingCriticalSuccess, map[string]interface{}{
-				"item_name":         itemName,
-				"original_quantity": actualQuantity,
-				"masterwork_count":  masterworkCount,
-				"bonus_quantity":    outputQuantity - actualQuantity,
-			})
-		}
+		// Stats event is now handled by event subscriber
 	}
 
 	return &Result{
@@ -572,27 +541,17 @@ func (s *service) DisassembleItem(ctx context.Context, platform, platformID, use
 
 	perfectSalvageTriggered := perfectSalvageCount > 0
 	if perfectSalvageTriggered {
-		s.recordPerfectSalvageEvent(ctx, user.ID, itemName, actualQuantity, perfectSalvageCount)
+		log.Info("Perfect Salvage triggered!", "user_id", user.ID, "item", itemName, "quantity", actualQuantity, "perfect_count", perfectSalvageCount)
+		// Stats event is now handled by event subscriber
 	}
 
-	// Award Blacksmith XP (don't fail disassemble if XP award fails)
-	s.wg.Add(1)
-	go s.awardBlacksmithXP(context.Background(), user.ID, actualQuantity, "disassemble", itemName)
-
-	// Track quest progress (async, fire-and-forget)
-	if s.questService != nil {
-		s.wg.Add(1)
-		go func() {
-			defer s.wg.Done()
-			recipeKey := itemName // Use item name as fallback
-			if recipe != nil && recipe.RecipeKey != "" {
-				recipeKey = recipe.RecipeKey
-			}
-			if err := s.questService.OnRecipeCrafted(context.Background(), user.ID, recipeKey, actualQuantity); err != nil {
-				slog.Warn("Failed to track quest progress for disassemble", "error", err, "item", itemName)
-			}
-		}()
+	// Publish event
+	recipeKey := itemName // Use item name as fallback
+	if recipe != nil && recipe.RecipeKey != "" {
+		recipeKey = recipe.RecipeKey
 	}
+	evt := NewItemDisassembledEvent(user.ID, itemName, actualQuantity, recipeKey, perfectSalvageTriggered, perfectSalvageCount, PerfectSalvageMultiplier, outputMap)
+	s.eventPublisher.PublishWithRetry(ctx, evt)
 
 	log.Info("Items disassembled", "username", username, "item", itemName, "quantity", actualQuantity, "outputs", outputMap, "perfect_salvage", perfectSalvageTriggered)
 	return &DisassembleResult{
@@ -645,53 +604,10 @@ func (s *service) calculateDisassembleQuantity(inventory *domain.Inventory, item
 	return actualQuantity, nil
 }
 
-// awardBlacksmithXP awards Blacksmith job XP for crafting operations
-// NOTE: Caller must call s.wg.Add(1) before launching this in a goroutine
-func (s *service) awardBlacksmithXP(ctx context.Context, userID string, quantity int, source, itemName string) {
-	defer s.wg.Done()
-
-	if s.jobService == nil {
-		return // Job system not enabled
-	}
-
-	// Use exported constant for XP per item
-	totalXP := job.BlacksmithXPPerItem * quantity
-
-	metadata := map[string]interface{}{
-		"source":    source,
-		"item_name": itemName,
-		"quantity":  quantity,
-	}
-
-	result, err := s.jobService.AwardXP(ctx, userID, job.JobKeyBlacksmith, totalXP, source, metadata)
-	if err != nil {
-		// Log but don't fail the operation
-		logger.FromContext(ctx).Warn("Failed to award Blacksmith XP", "error", err, "user_id", userID)
-	} else if result != nil && result.LeveledUp {
-		logger.FromContext(ctx).Info("Blacksmith leveled up!", "user_id", userID, "new_level", result.NewLevel)
-	}
-}
-
 // Shutdown gracefully shuts down the crafting service by waiting for all async operations to complete
 func (s *service) Shutdown(ctx context.Context) error {
-	log := logger.FromContext(ctx)
-	log.Info("Shutting down crafting service, waiting for async operations...")
-
-	// Wait for all async XP awards to complete
-	done := make(chan struct{})
-	go func() {
-		s.wg.Wait()
-		close(done)
-	}()
-
-	select {
-	case <-done:
-		log.Info("Crafting service shutdown complete")
-		return nil
-	case <-ctx.Done():
-		log.Warn("Crafting service shutdown forced by context cancellation")
-		return ctx.Err()
-	}
+	// No more async operations to wait for
+	return nil
 }
 
 func (s *service) validateDisassembleInput(ctx context.Context, platform, platformID, itemName string) (*domain.User, *domain.Item, *domain.DisassembleRecipe, error) {
@@ -785,17 +701,4 @@ func (s *service) calculatePerfectSalvage(quantity int) int {
 		}
 	}
 	return count
-}
-
-func (s *service) recordPerfectSalvageEvent(ctx context.Context, userID, itemName string, actualQuantity, perfectCount int) {
-	logger.FromContext(ctx).Info("Perfect Salvage triggered!", "user_id", userID, "item", itemName, "quantity", actualQuantity, "perfect_count", perfectCount)
-
-	if s.statsSvc != nil {
-		_ = s.statsSvc.RecordUserEvent(ctx, userID, domain.EventCraftingPerfectSalvage, map[string]interface{}{
-			"item_name":     itemName,
-			"quantity":      actualQuantity,
-			"perfect_count": perfectCount,
-			"multiplier":    PerfectSalvageMultiplier,
-		})
-	}
 }
