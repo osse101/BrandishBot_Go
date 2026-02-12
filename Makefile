@@ -335,7 +335,7 @@ db-seed-test:
 
 db-export:
 	@echo "Exporting production database..."
-	@docker exec brandishbot_go-db-1 pg_dump -U $(DB_USER) -d $(DB_NAME) > backup.sql
+	@docker compose exec -T db pg_dump -U $(DB_USER) -d $(DB_NAME) > backup.sql
 	@echo "Database exported to backup.sql"
 
 db-import:

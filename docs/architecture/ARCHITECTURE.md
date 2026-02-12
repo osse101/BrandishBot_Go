@@ -558,7 +558,7 @@ cooldowns
 - `GET /api/v1/user/inventory` - Get user inventory
 - `GET /api/v1/user/inventory/:username` - Get inventory by username
 - `PUT /api/v1/user/timeout` - Set user timeout
-- `GET /api/v1/user/search` - Search users
+- `POST /api/v1/user/search` - Search users
 - `POST /api/v1/user/item/add` - Add item to inventory
 - `POST /api/v1/user/item/remove` - Remove item from inventory
 - `POST /api/v1/user/item/use` - Use consumable item
