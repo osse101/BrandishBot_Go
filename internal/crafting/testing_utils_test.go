@@ -495,6 +495,13 @@ func (t *MockTx) GetUserByPlatformID(ctx context.Context, platform, platformID s
 	return t.repo.GetUserByPlatformID(ctx, platform, platformID)
 }
 
+// Constants for test data
+const (
+	TestItemID1 = 1
+	TestItemID2 = 2
+	TestItemID3 = 3
+)
+
 // Test helper to setup test data
 func setupTestData(repo *MockRepository) {
 	repo.Lock()
@@ -504,30 +511,30 @@ func setupTestData(repo *MockRepository) {
 	repo.users["bob"] = &domain.User{ID: "user-bob", Username: "bob", TwitchID: "twitch-bob"}
 
 	// Setup items
-	repo.items[domain.ItemLootbox0] = &domain.Item{ID: 1, InternalName: domain.ItemLootbox0, Description: "Basic lootbox"}
-	repo.items[domain.ItemLootbox1] = &domain.Item{ID: 2, InternalName: domain.ItemLootbox1, Description: "Advanced lootbox"}
-	repo.items[domain.ItemLootbox2] = &domain.Item{ID: 3, InternalName: domain.ItemLootbox2, Description: "Premium lootbox"}
+	repo.items[domain.ItemLootbox0] = &domain.Item{ID: TestItemID1, InternalName: domain.ItemLootbox0, Description: "Basic lootbox"}
+	repo.items[domain.ItemLootbox1] = &domain.Item{ID: TestItemID2, InternalName: domain.ItemLootbox1, Description: "Advanced lootbox"}
+	repo.items[domain.ItemLootbox2] = &domain.Item{ID: TestItemID3, InternalName: domain.ItemLootbox2, Description: "Premium lootbox"}
 
-	repo.itemsByID[1] = repo.items[domain.ItemLootbox0]
-	repo.itemsByID[2] = repo.items[domain.ItemLootbox1]
-	repo.itemsByID[3] = repo.items[domain.ItemLootbox2]
+	repo.itemsByID[TestItemID1] = repo.items[domain.ItemLootbox0]
+	repo.itemsByID[TestItemID2] = repo.items[domain.ItemLootbox1]
+	repo.itemsByID[TestItemID3] = repo.items[domain.ItemLootbox2]
 
 	// Setup upgrade recipe: lootbox0 -> lootbox1
 	repo.recipes[1] = &domain.Recipe{
 		ID:           1,
-		TargetItemID: 2, // lootbox1
+		TargetItemID: TestItemID2, // lootbox1
 		BaseCost: []domain.RecipeCost{
-			{ItemID: 1, Quantity: 1}, // 1 lootbox0
+			{ItemID: TestItemID1, Quantity: 1}, // 1 lootbox0
 		},
 	}
 
 	// Setup disassemble recipe: lootbox1 -> lootbox0
 	repo.disassembleRecipes[1] = &domain.DisassembleRecipe{
 		ID:               1,
-		SourceItemID:     2, // lootbox1
+		SourceItemID:     TestItemID2, // lootbox1
 		QuantityConsumed: 1,
 		Outputs: []domain.RecipeOutput{
-			{ItemID: 1, Quantity: 1}, // 1 lootbox0
+			{ItemID: TestItemID1, Quantity: 1}, // 1 lootbox0
 		},
 	}
 

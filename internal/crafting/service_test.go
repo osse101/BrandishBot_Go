@@ -27,7 +27,7 @@ func TestDisassembleItem(t *testing.T) {
 
 		// Arrange: Give alice 3 lootbox1 and unlock recipe
 		repo.UpdateInventory(ctx, "user-alice", domain.Inventory{Slots: []domain.InventorySlot{
-			{ItemID: 2, Quantity: 3},
+			{ItemID: TestItemID2, Quantity: 3},
 		}})
 		repo.UnlockRecipe(ctx, "user-alice", 1)
 
@@ -58,7 +58,7 @@ func TestDisassembleItem(t *testing.T) {
 
 		// Arrange: Give alice 1 lootbox1
 		repo.UpdateInventory(ctx, "user-alice", domain.Inventory{Slots: []domain.InventorySlot{
-			{ItemID: 2, Quantity: 1},
+			{ItemID: TestItemID2, Quantity: 1},
 		}})
 		repo.UnlockRecipe(ctx, "user-alice", 1)
 
@@ -98,7 +98,7 @@ func TestDisassembleItem(t *testing.T) {
 
 		// Arrange: Give alice exactly 2 lootbox1
 		repo.UpdateInventory(ctx, "user-alice", domain.Inventory{Slots: []domain.InventorySlot{
-			{ItemID: 2, Quantity: 2},
+			{ItemID: TestItemID2, Quantity: 2},
 		}})
 		repo.UnlockRecipe(ctx, "user-alice", 1)
 
@@ -112,7 +112,7 @@ func TestDisassembleItem(t *testing.T) {
 		inv, _ := repo.GetInventory(ctx, "user-alice")
 		foundLootbox1 := false
 		for _, slot := range inv.Slots {
-			if slot.ItemID == 2 {
+			if slot.ItemID == TestItemID2 {
 				foundLootbox1 = true
 			}
 		}
@@ -129,7 +129,7 @@ func TestDisassembleItem(t *testing.T) {
 
 		// Arrange: Alice has 1 lootbox1, wants to disassemble 2
 		repo.UpdateInventory(ctx, "user-alice", domain.Inventory{Slots: []domain.InventorySlot{
-			{ItemID: 2, Quantity: 1},
+			{ItemID: TestItemID2, Quantity: 1},
 		}})
 		repo.UnlockRecipe(ctx, "user-alice", 1)
 
@@ -149,7 +149,7 @@ func TestDisassembleItem(t *testing.T) {
 		ctx := context.Background()
 
 		repo.UpdateInventory(ctx, "user-alice", domain.Inventory{Slots: []domain.InventorySlot{
-			{ItemID: 2, Quantity: 1},
+			{ItemID: TestItemID2, Quantity: 1},
 		}})
 
 		// Act
@@ -198,7 +198,7 @@ func TestDisassembleItem(t *testing.T) {
 
 		// Arrange: Give alice 100 items
 		repo.UpdateInventory(ctx, "user-alice", domain.Inventory{Slots: []domain.InventorySlot{
-			{ItemID: 2, Quantity: 100},
+			{ItemID: TestItemID2, Quantity: 100},
 		}})
 		repo.UnlockRecipe(ctx, "user-alice", 1)
 
@@ -229,11 +229,7 @@ func TestDisassembleItem(t *testing.T) {
 
 		inv, _ := repo.GetInventory(ctx, "user-alice")
 		for _, slot := range inv.Slots {
-			if slot.ItemID == 2 {
-				// Debug log if fails
-				if slot.Quantity != 90 {
-					fmt.Printf("FAIL: Expected 90, got %d\n", slot.Quantity)
-				}
+			if slot.ItemID == TestItemID2 {
 				assert.Equal(t, 90, slot.Quantity, "Should have 90 items left")
 			}
 		}
@@ -249,8 +245,8 @@ func TestDisassembleItem(t *testing.T) {
 
 		// Arrange: Split stack of 10 items (5 + 5)
 		repo.UpdateInventory(ctx, "user-alice", domain.Inventory{Slots: []domain.InventorySlot{
-			{ItemID: 2, Quantity: 5},
-			{ItemID: 2, Quantity: 5},
+			{ItemID: TestItemID2, Quantity: 5},
+			{ItemID: TestItemID2, Quantity: 5},
 		}})
 		repo.UnlockRecipe(ctx, "user-alice", 1) // recipe for disassemble item 2 (lootbox1)
 
@@ -263,7 +259,7 @@ func TestDisassembleItem(t *testing.T) {
 
 		inv, _ := repo.GetInventory(ctx, "user-alice")
 		for _, slot := range inv.Slots {
-			if slot.ItemID == 2 {
+			if slot.ItemID == TestItemID2 {
 				assert.Equal(t, 0, slot.Quantity)
 			}
 		}
@@ -283,7 +279,7 @@ func TestUpgradeItem(t *testing.T) {
 		ctx := context.Background()
 
 		repo.UpdateInventory(ctx, "user-alice", domain.Inventory{Slots: []domain.InventorySlot{
-			{ItemID: 1, Quantity: 2}, // 2 lootbox0
+			{ItemID: TestItemID1, Quantity: 2}, // 2 lootbox0
 		}})
 		repo.UnlockRecipe(ctx, "user-alice", 1)
 
@@ -298,10 +294,10 @@ func TestUpgradeItem(t *testing.T) {
 		inv, _ := repo.GetInventory(ctx, "user-alice")
 		// Should have 0 lootbox0 and 2 lootbox1
 		for _, slot := range inv.Slots {
-			if slot.ItemID == 1 {
+			if slot.ItemID == TestItemID1 {
 				assert.Equal(t, 0, slot.Quantity)
 			}
-			if slot.ItemID == 2 {
+			if slot.ItemID == TestItemID2 {
 				assert.Equal(t, 2, slot.Quantity)
 			}
 		}
@@ -321,7 +317,7 @@ func TestUpgradeItem(t *testing.T) {
 		ctx := context.Background()
 
 		repo.UpdateInventory(ctx, "user-alice", domain.Inventory{Slots: []domain.InventorySlot{
-			{ItemID: 1, Quantity: 2},
+			{ItemID: TestItemID1, Quantity: 2},
 		}})
 		repo.UnlockRecipe(ctx, "user-alice", 1)
 
@@ -349,7 +345,7 @@ func TestUpgradeItem(t *testing.T) {
 
 		// Have 1, want 2
 		repo.UpdateInventory(ctx, "user-alice", domain.Inventory{Slots: []domain.InventorySlot{
-			{ItemID: 1, Quantity: 1},
+			{ItemID: TestItemID1, Quantity: 1},
 		}})
 		repo.UnlockRecipe(ctx, "user-alice", 1)
 
@@ -369,7 +365,7 @@ func TestUpgradeItem(t *testing.T) {
 		ctx := context.Background()
 
 		repo.UpdateInventory(ctx, "user-alice", domain.Inventory{Slots: []domain.InventorySlot{
-			{ItemID: 2, Quantity: 2},
+			{ItemID: TestItemID2, Quantity: 2},
 		}})
 
 		_, err := svc.UpgradeItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox1, 1)
@@ -387,7 +383,7 @@ func TestUpgradeItem(t *testing.T) {
 
 		// 100 items
 		repo.UpdateInventory(ctx, "user-alice", domain.Inventory{Slots: []domain.InventorySlot{
-			{ItemID: 1, Quantity: 100},
+			{ItemID: TestItemID1, Quantity: 100},
 		}})
 		repo.UnlockRecipe(ctx, "user-alice", 1)
 
@@ -416,10 +412,10 @@ func TestUpgradeItem(t *testing.T) {
 
 		inv, _ := repo.GetInventory(ctx, "user-alice")
 		for _, slot := range inv.Slots {
-			if slot.ItemID == 1 {
+			if slot.ItemID == TestItemID1 {
 				assert.Equal(t, 90, slot.Quantity)
 			}
-			if slot.ItemID == 2 {
+			if slot.ItemID == TestItemID2 {
 				assert.Equal(t, 10, slot.Quantity)
 			}
 		}
@@ -436,8 +432,8 @@ func TestUpgradeItem(t *testing.T) {
 		// Arrange: Split stack of 10 items (5 + 5)
 		// Recipe needs 1 item per craft. Requesting 10 crafts.
 		repo.UpdateInventory(ctx, "user-alice", domain.Inventory{Slots: []domain.InventorySlot{
-			{ItemID: 1, Quantity: 5},
-			{ItemID: 1, Quantity: 5},
+			{ItemID: TestItemID1, Quantity: 5},
+			{ItemID: TestItemID1, Quantity: 5},
 		}})
 		repo.UnlockRecipe(ctx, "user-alice", 1)
 
@@ -451,7 +447,7 @@ func TestUpgradeItem(t *testing.T) {
 		inv, _ := repo.GetInventory(ctx, "user-alice")
 		totalRemaining := 0
 		for _, slot := range inv.Slots {
-			if slot.ItemID == 1 {
+			if slot.ItemID == TestItemID1 {
 				totalRemaining += slot.Quantity
 			}
 		}
@@ -472,10 +468,10 @@ func TestUpgradeItem(t *testing.T) {
 		repo.Lock()
 		repo.recipes[99] = &domain.Recipe{
 			ID:           99,
-			TargetItemID: 3, // lootbox_tier2
+			TargetItemID: TestItemID3, // lootbox_tier2
 			BaseCost: []domain.RecipeCost{
-				{ItemID: 1, Quantity: 2}, // 2x lootbox_tier0
-				{ItemID: 2, Quantity: 1}, // 1x lootbox_tier1
+				{ItemID: TestItemID1, Quantity: 2}, // 2x lootbox_tier0
+				{ItemID: TestItemID2, Quantity: 1}, // 1x lootbox_tier1
 			},
 		}
 		repo.Unlock()
@@ -493,8 +489,8 @@ func TestUpgradeItem(t *testing.T) {
 		// Output should be UNCOMMON.
 
 		repo.UpdateInventory(ctx, "user-alice", domain.Inventory{Slots: []domain.InventorySlot{
-			{ItemID: 1, Quantity: 2, QualityLevel: domain.QualityCommon},
-			{ItemID: 2, Quantity: 1, QualityLevel: domain.QualityRare},
+			{ItemID: TestItemID1, Quantity: 2, QualityLevel: domain.QualityCommon},
+			{ItemID: TestItemID2, Quantity: 1, QualityLevel: domain.QualityRare},
 		}})
 
 		// Act
@@ -505,7 +501,7 @@ func TestUpgradeItem(t *testing.T) {
 		inv, _ := repo.GetInventory(ctx, "user-alice")
 		found := false
 		for _, slot := range inv.Slots {
-			if slot.ItemID == 3 {
+			if slot.ItemID == TestItemID3 {
 				found = true
 				assert.Equal(t, domain.QualityUncommon, slot.QualityLevel, "Output should average to UNCOMMON")
 			}
@@ -528,7 +524,7 @@ func TestUpgradeItem(t *testing.T) {
 		ctx := context.Background()
 
 		repo.UpdateInventory(ctx, "user-alice", domain.Inventory{Slots: []domain.InventorySlot{
-			{ItemID: 1, Quantity: 1},
+			{ItemID: TestItemID1, Quantity: 1},
 		}})
 		repo.UnlockRecipe(ctx, "user-alice", 1)
 
@@ -938,7 +934,7 @@ func TestUpgradeItem_TransactionFailures(t *testing.T) {
 		repo.UnlockRecipe(ctx, "user-alice", 1)
 		repo.inventories["user-alice"] = &domain.Inventory{
 			Slots: []domain.InventorySlot{
-				{ItemID: 1, Quantity: 10}, // lootbox_tier0
+				{ItemID: TestItemID1, Quantity: 10}, // lootbox_tier0
 			},
 		}
 
@@ -974,7 +970,7 @@ func TestUpgradeItem_TransactionFailures(t *testing.T) {
 		repo.UnlockRecipe(ctx, "user-alice", 1)
 		repo.inventories["user-alice"] = &domain.Inventory{
 			Slots: []domain.InventorySlot{
-				{ItemID: 1, Quantity: 10},
+				{ItemID: TestItemID1, Quantity: 10},
 			},
 		}
 
@@ -1008,7 +1004,7 @@ func TestUpgradeItem_TransactionFailures(t *testing.T) {
 		repo.UnlockRecipe(ctx, "user-alice", 1)
 		repo.inventories["user-alice"] = &domain.Inventory{
 			Slots: []domain.InventorySlot{
-				{ItemID: 1, Quantity: 10},
+				{ItemID: TestItemID1, Quantity: 10},
 			},
 		}
 
@@ -1042,7 +1038,7 @@ func TestUpgradeItem_TransactionFailures(t *testing.T) {
 		repo.UnlockRecipe(ctx, "user-alice", 1)
 		repo.inventories["user-alice"] = &domain.Inventory{
 			Slots: []domain.InventorySlot{
-				{ItemID: 1, Quantity: 10},
+				{ItemID: TestItemID1, Quantity: 10},
 			},
 		}
 
@@ -1078,7 +1074,7 @@ func TestDisassembleItem_TransactionFailures(t *testing.T) {
 		repo.UnlockRecipe(ctx, "user-alice", 1)
 		repo.inventories["user-alice"] = &domain.Inventory{
 			Slots: []domain.InventorySlot{
-				{ItemID: 2, Quantity: 5}, // lootbox_tier1
+				{ItemID: TestItemID2, Quantity: 5}, // lootbox_tier1
 			},
 		}
 
@@ -1112,7 +1108,7 @@ func TestDisassembleItem_TransactionFailures(t *testing.T) {
 		repo.UnlockRecipe(ctx, "user-alice", 1)
 		repo.inventories["user-alice"] = &domain.Inventory{
 			Slots: []domain.InventorySlot{
-				{ItemID: 2, Quantity: 5},
+				{ItemID: TestItemID2, Quantity: 5},
 			},
 		}
 
@@ -1146,7 +1142,7 @@ func TestDisassembleItem_TransactionFailures(t *testing.T) {
 		repo.UnlockRecipe(ctx, "user-alice", 1)
 		repo.inventories["user-alice"] = &domain.Inventory{
 			Slots: []domain.InventorySlot{
-				{ItemID: 2, Quantity: 5},
+				{ItemID: TestItemID2, Quantity: 5},
 			},
 		}
 
@@ -1180,7 +1176,7 @@ func TestDisassembleItem_TransactionFailures(t *testing.T) {
 		repo.UnlockRecipe(ctx, "user-alice", 1)
 		repo.inventories["user-alice"] = &domain.Inventory{
 			Slots: []domain.InventorySlot{
-				{ItemID: 2, Quantity: 5},
+				{ItemID: TestItemID2, Quantity: 5},
 			},
 		}
 
@@ -1218,10 +1214,10 @@ func TestUpgradeItem_MultiMaterialRecipe(t *testing.T) {
 		repo.Lock()
 		repo.recipes[99] = &domain.Recipe{
 			ID:           99,
-			TargetItemID: 3, // lootbox_tier2
+			TargetItemID: TestItemID3, // lootbox_tier2
 			BaseCost: []domain.RecipeCost{
-				{ItemID: 1, Quantity: 2}, // 2x lootbox_tier0
-				{ItemID: 2, Quantity: 1}, // 1x lootbox_tier1
+				{ItemID: TestItemID1, Quantity: 2}, // 2x lootbox_tier0
+				{ItemID: TestItemID2, Quantity: 1}, // 1x lootbox_tier1
 			},
 		}
 		repo.Unlock()
@@ -1232,8 +1228,8 @@ func TestUpgradeItem_MultiMaterialRecipe(t *testing.T) {
 		// Give user both materials
 		repo.inventories["user-alice"] = &domain.Inventory{
 			Slots: []domain.InventorySlot{
-				{ItemID: 1, Quantity: 10}, // lootbox_tier0
-				{ItemID: 2, Quantity: 5},  // lootbox_tier1
+				{ItemID: TestItemID1, Quantity: 10}, // lootbox_tier0
+				{ItemID: TestItemID2, Quantity: 5},  // lootbox_tier1
 			},
 		}
 
@@ -1248,11 +1244,11 @@ func TestUpgradeItem_MultiMaterialRecipe(t *testing.T) {
 		lootbox1Slot := -1
 		lootbox2Slot := -1
 		for i, slot := range inv.Slots {
-			if slot.ItemID == 1 {
+			if slot.ItemID == TestItemID1 {
 				lootbox0Slot = i
-			} else if slot.ItemID == 2 {
+			} else if slot.ItemID == TestItemID2 {
 				lootbox1Slot = i
-			} else if slot.ItemID == 3 {
+			} else if slot.ItemID == TestItemID3 {
 				lootbox2Slot = i
 			}
 		}
@@ -1274,10 +1270,10 @@ func TestUpgradeItem_MultiMaterialRecipe(t *testing.T) {
 		repo.Lock()
 		repo.recipes[99] = &domain.Recipe{
 			ID:           99,
-			TargetItemID: 3,
+			TargetItemID: TestItemID3,
 			BaseCost: []domain.RecipeCost{
-				{ItemID: 1, Quantity: 2}, // 2x lootbox_tier0
-				{ItemID: 2, Quantity: 1}, // 1x lootbox_tier1
+				{ItemID: TestItemID1, Quantity: 2}, // 2x lootbox_tier0
+				{ItemID: TestItemID2, Quantity: 1}, // 1x lootbox_tier1
 			},
 		}
 		repo.Unlock()
@@ -1286,8 +1282,8 @@ func TestUpgradeItem_MultiMaterialRecipe(t *testing.T) {
 		// Give user materials where lootbox1 is the bottleneck
 		repo.inventories["user-alice"] = &domain.Inventory{
 			Slots: []domain.InventorySlot{
-				{ItemID: 1, Quantity: 100}, // Plenty of lootbox0
-				{ItemID: 2, Quantity: 2},   // Only 2 lootbox1 (bottleneck)
+				{ItemID: TestItemID1, Quantity: 100}, // Plenty of lootbox0
+				{ItemID: TestItemID2, Quantity: 2},   // Only 2 lootbox1 (bottleneck)
 			},
 		}
 
@@ -1309,10 +1305,10 @@ func TestUpgradeItem_MultiMaterialRecipe(t *testing.T) {
 		repo.Lock()
 		repo.recipes[99] = &domain.Recipe{
 			ID:           99,
-			TargetItemID: 3,
+			TargetItemID: TestItemID3,
 			BaseCost: []domain.RecipeCost{
-				{ItemID: 1, Quantity: 2}, // 2x lootbox_tier0
-				{ItemID: 2, Quantity: 1}, // 1x lootbox_tier1
+				{ItemID: TestItemID1, Quantity: 2}, // 2x lootbox_tier0
+				{ItemID: TestItemID2, Quantity: 1}, // 1x lootbox_tier1
 			},
 		}
 		repo.Unlock()
@@ -1321,7 +1317,7 @@ func TestUpgradeItem_MultiMaterialRecipe(t *testing.T) {
 		// Give user only one material
 		repo.inventories["user-alice"] = &domain.Inventory{
 			Slots: []domain.InventorySlot{
-				{ItemID: 1, Quantity: 10}, // Has lootbox0
+				{ItemID: TestItemID1, Quantity: 10}, // Has lootbox0
 				// Missing lootbox1
 			},
 		}
@@ -1350,11 +1346,11 @@ func TestDisassembleItem_MultipleOutputs(t *testing.T) {
 		repo.Lock()
 		repo.disassembleRecipes[99] = &domain.DisassembleRecipe{
 			ID:               99,
-			SourceItemID:     3, // lootbox_tier2
+			SourceItemID:     TestItemID3, // lootbox_tier2
 			QuantityConsumed: 1,
 			Outputs: []domain.RecipeOutput{
-				{ItemID: 1, Quantity: 2}, // 2x lootbox_tier0
-				{ItemID: 2, Quantity: 1}, // 1x lootbox_tier1
+				{ItemID: TestItemID1, Quantity: 2}, // 2x lootbox_tier0
+				{ItemID: TestItemID2, Quantity: 1}, // 1x lootbox_tier1
 			},
 		}
 		repo.recipeAssociations[99] = 1 // Associate with upgrade recipe 1
@@ -1364,7 +1360,7 @@ func TestDisassembleItem_MultipleOutputs(t *testing.T) {
 		// Give user the item to disassemble
 		repo.inventories["user-alice"] = &domain.Inventory{
 			Slots: []domain.InventorySlot{
-				{ItemID: 3, Quantity: 2}, // 2x lootbox_tier2
+				{ItemID: TestItemID3, Quantity: 2}, // 2x lootbox_tier2
 			},
 		}
 
@@ -1394,11 +1390,11 @@ func TestDisassembleItem_MultipleOutputs(t *testing.T) {
 		repo.Lock()
 		repo.disassembleRecipes[99] = &domain.DisassembleRecipe{
 			ID:               99,
-			SourceItemID:     3,
+			SourceItemID:     TestItemID3,
 			QuantityConsumed: 1,
 			Outputs: []domain.RecipeOutput{
-				{ItemID: 1, Quantity: 2}, // 2x lootbox_tier0
-				{ItemID: 2, Quantity: 1}, // 1x lootbox_tier1
+				{ItemID: TestItemID1, Quantity: 2}, // 2x lootbox_tier0
+				{ItemID: TestItemID2, Quantity: 1}, // 1x lootbox_tier1
 			},
 		}
 		repo.recipeAssociations[99] = 1
@@ -1407,7 +1403,7 @@ func TestDisassembleItem_MultipleOutputs(t *testing.T) {
 
 		repo.inventories["user-alice"] = &domain.Inventory{
 			Slots: []domain.InventorySlot{
-				{ItemID: 3, Quantity: 1},
+				{ItemID: TestItemID3, Quantity: 1},
 			},
 		}
 
@@ -1440,7 +1436,7 @@ func TestUpgradeItem_WithXP(t *testing.T) {
 		ctx := context.Background()
 
 		repo.UpdateInventory(ctx, "user-alice", domain.Inventory{Slots: []domain.InventorySlot{
-			{ItemID: 1, Quantity: 2},
+			{ItemID: TestItemID1, Quantity: 2},
 		}})
 		repo.UnlockRecipe(ctx, "user-alice", 1)
 
@@ -1473,7 +1469,7 @@ func TestUpgradeItem_WithProgression(t *testing.T) {
 		ctx := context.Background()
 
 		repo.UpdateInventory(ctx, "user-alice", domain.Inventory{Slots: []domain.InventorySlot{
-			{ItemID: 1, Quantity: 1},
+			{ItemID: TestItemID1, Quantity: 1},
 		}})
 		repo.UnlockRecipe(ctx, "user-alice", 1)
 
@@ -1502,7 +1498,7 @@ func TestUpgradeItem_WithNamingResolution(t *testing.T) {
 
 		// We need 1 lootbox0 to make 1 lootbox1
 		repo.UpdateInventory(ctx, "user-alice", domain.Inventory{Slots: []domain.InventorySlot{
-			{ItemID: 1, Quantity: 1},
+			{ItemID: TestItemID1, Quantity: 1},
 		}})
 		repo.UnlockRecipe(ctx, "user-alice", 1)
 
@@ -1520,4 +1516,79 @@ func TestShutdown_WaitsForAsync(t *testing.T) {
 	// Shutdown is now a no-op, so we just check it doesn't error
 	svc := NewService(repo, &MockEventPublisher{}, nil, nil)
 	assert.NoError(t, svc.Shutdown(context.Background()))
+}
+
+func TestDisassembleItem_QualityInheritance(t *testing.T) {
+	t.Parallel()
+
+	t.Run("Inherits Average Quality From Consumed Items", func(t *testing.T) {
+		t.Parallel()
+		repo := NewMockRepository()
+		setupTestData(repo)
+		svc := NewService(repo, nil, nil, nil, nil, nil).(*service)
+		svc.rnd = func() float64 { return 1.0 } // No perfect salvage
+		ctx := context.Background()
+
+		// Setup: Disassemble Lootbox1 -> Lootbox0
+		// We have 2 Lootbox1 items to disassemble (requires 1 per disassemble).
+		// Item 1: Quality Common (3)
+		// Item 2: Quality Rare (5)
+		// Average Quality = (3 + 5) / 2 = 4 (Uncommon)
+		repo.UpdateInventory(ctx, "user-alice", domain.Inventory{Slots: []domain.InventorySlot{
+			{ItemID: TestItemID2, Quantity: 1, QualityLevel: domain.QualityCommon},
+			{ItemID: TestItemID2, Quantity: 1, QualityLevel: domain.QualityRare},
+		}})
+		repo.UnlockRecipe(ctx, "user-alice", 1)
+
+		// Act: Disassemble 2 items
+		result, err := svc.DisassembleItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox1, 2)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, result.QuantityProcessed)
+
+		// Assert: Output items should be Uncommon
+		inv, _ := repo.GetInventory(ctx, "user-alice")
+		found := false
+		for _, slot := range inv.Slots {
+			if slot.ItemID == TestItemID1 {
+				found = true
+				assert.Equal(t, domain.QualityUncommon, slot.QualityLevel, "Output should average to UNCOMMON")
+			}
+		}
+		assert.True(t, found, "Should have disassembled into lootbox0")
+	})
+}
+
+func TestDisassembleItem_WithProgression(t *testing.T) {
+	t.Parallel()
+
+	t.Run("Applies Perfect Salvage Modifier", func(t *testing.T) {
+		t.Parallel()
+		repo := NewMockRepository()
+		setupTestData(repo)
+
+		mockProg := &MockProgressionService{
+			modifiers: map[string]float64{
+				"crafting_success_rate": 1.0, // 100% chance
+			},
+		}
+
+		svc := NewService(repo, nil, nil, nil, mockProg, nil).(*service)
+		svc.rnd = func() float64 { return 0.5 } // Would fail base 10%, but passes 100%
+		ctx := context.Background()
+
+		repo.UpdateInventory(ctx, "user-alice", domain.Inventory{Slots: []domain.InventorySlot{
+			{ItemID: TestItemID2, Quantity: 1},
+		}})
+		repo.UnlockRecipe(ctx, "user-alice", 1)
+
+		result, err := svc.DisassembleItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox1, 1)
+		assert.NoError(t, err)
+		assert.True(t, result.IsPerfectSalvage)
+
+		// Verify progression service was called
+		mockProg.mu.Lock()
+		defer mockProg.mu.Unlock()
+		assert.NotEmpty(t, mockProg.calls)
+		assert.Equal(t, "crafting_success_rate", mockProg.calls[0].featureKey)
+	})
 }

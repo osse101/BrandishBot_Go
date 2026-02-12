@@ -662,7 +662,7 @@ func (s *service) executeDisassembleTx(ctx context.Context, userID string, itemI
 	outputQuality := utils.CalculateAverageQuality(consumedItems)
 
 	// Calculate perfect salvage
-	perfectSalvageCount := s.calculatePerfectSalvage(actualQuantity)
+	perfectSalvageCount := s.calculatePerfectSalvage(ctx, actualQuantity)
 
 	// Process outputs with averaged quality from source materials
 	outputMap, err := s.processDisassembleOutputs(ctx, inventory, recipe.Outputs, actualQuantity, perfectSalvageCount, outputQuality)
@@ -681,13 +681,11 @@ func (s *service) executeDisassembleTx(ctx context.Context, userID string, itemI
 	return actualQuantity, perfectSalvageCount, outputMap, nil
 }
 
-func (s *service) calculatePerfectSalvage(quantity int) int {
+func (s *service) calculatePerfectSalvage(ctx context.Context, quantity int) int {
 	// Get modified perfect salvage chance (base 0.10 = 10%)
 	// Note: Using same modifier key as masterwork since they're both "crafting success"
 	salvageChance := PerfectSalvageChance
 	if s.progressionSvc != nil {
-		// Use background context since we don't have ctx in this helper
-		ctx := context.Background()
 		if modifiedChance, err := s.progressionSvc.GetModifiedValue(ctx, "crafting_success_rate", PerfectSalvageChance); err == nil {
 			salvageChance = modifiedChance
 		}
