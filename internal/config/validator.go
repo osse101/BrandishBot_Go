@@ -39,22 +39,20 @@ func ValidateEnv() error {
 		}
 	}
 
-	// Check database configuration: either DB_URL OR (DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME)
-	if os.Getenv("DB_URL") == "" {
-		dbParts := []string{"DB_USER", "DB_PASSWORD", "DB_HOST", "DB_PORT", "DB_NAME"}
-		var missingParts []string
-		for _, part := range dbParts {
-			if os.Getenv(part) == "" {
-				missingParts = append(missingParts, part)
-			}
+	// Check database configuration: individual DB_* vars
+	dbParts := []string{"DB_USER", "DB_PASSWORD", "DB_HOST", "DB_PORT", "DB_NAME"}
+	var missingParts []string
+	for _, part := range dbParts {
+		if os.Getenv(part) == "" {
+			missingParts = append(missingParts, part)
 		}
-		if len(missingParts) > 0 {
-			missing = append(missing, missingParts...)
-		}
+	}
+	if len(missingParts) > 0 {
+		missing = append(missing, missingParts...)
 	}
 
 	if len(missing) > 0 {
-		return fmt.Errorf("missing required environment variables: %s (need DB_URL or all individual DB_* vars)", strings.Join(missing, ", "))
+		return fmt.Errorf("missing required environment variables: %s", strings.Join(missing, ", "))
 	}
 
 	return nil

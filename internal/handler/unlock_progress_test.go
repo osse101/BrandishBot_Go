@@ -40,6 +40,7 @@ func TestHandleGetUnlockProgress_WithPercentage(t *testing.T) {
 	mockService.On("GetUnlockProgress", mock.Anything).Return(mockProgress, nil)
 	mockService.On("GetNode", mock.Anything, nodeID).Return(mockNode, nil)
 	mockService.On("IsNodeUnlocked", mock.Anything, mockNode.NodeKey, targetLevel).Return(false, nil)
+	mockService.On("EstimateUnlockTime", mock.Anything, mockNode.NodeKey).Return(&domain.UnlockEstimate{}, nil)
 
 	req, _ := http.NewRequest("GET", "/progression/unlock-progress", nil)
 	rr := httptest.NewRecorder()

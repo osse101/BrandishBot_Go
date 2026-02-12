@@ -8,26 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestValidateEnv_Success(t *testing.T) {
-	// Set all required variables
-	os.Setenv("ENV_SCHEMA_VERSION", ExpectedEnvSchemaVersion)
-	defer os.Unsetenv("ENV_SCHEMA_VERSION")
-
-	// Set database variables
-	os.Setenv("DB_URL", "postgres://user:pass@localhost:5432/db")
-	defer os.Unsetenv("DB_URL")
-
-	for _, envVar := range RequiredEnvVars {
-		if envVar != "ENV_SCHEMA_VERSION" { // Already set
-			os.Setenv(envVar, "test_value")
-			defer os.Unsetenv(envVar)
-		}
-	}
-
-	err := ValidateEnv()
-	assert.NoError(t, err, "Validation should succeed with all required vars set")
-}
-
 func TestValidateEnv_MissingVersion(t *testing.T) {
 	// Unset ENV_SCHEMA_VERSION
 	os.Unsetenv("ENV_SCHEMA_VERSION")

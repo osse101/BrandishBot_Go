@@ -451,12 +451,23 @@ func checkEnvSync() error {
 	//nolint:forbidigo
 	out, _ := getCommandOutput("git", "grep", "-E", `os\.Getenv\("([^"]+)"\)`, "--", "*.go")
 
+	// Environment variables that are optional and don't need to be in .env.example
+	// These are typically runtime overrides or container-specific variables
+	optionalEnvVars := map[string]bool{
+		"DB_URL":                 true, // Optional database connection string (overrides individual DB_* vars)
+		"ALLOW_MIGRATION_SQUASH": true, // Development-only flag for migration squashing
+	}
+
 	lines = strings.Split(out, "\n")
 	for _, line := range lines {
 		matches := envRegex.FindAllStringSubmatch(line, -1)
 		for _, m := range matches {
 			if len(m) == 2 {
 				key := m[1]
+				// Skip optional environment variables
+				if optionalEnvVars[key] {
+					continue
+				}
 				if !exampleKeys[key] {
 					PrintError("Environment variable '%s' used in code but missing from .env.example", key)
 					foundMissing = true

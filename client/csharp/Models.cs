@@ -184,6 +184,9 @@ namespace BrandishBot.Client
         [JsonProperty("completion_percentage")]
         public double CompletionPercentage { get; set; }
 
+        [JsonProperty("estimated_unlock_date")]
+        public DateTime? EstimatedUnlockDate { get; set; }
+
         [JsonProperty("started_at")]
         public DateTime StartedAt { get; set; }
     }

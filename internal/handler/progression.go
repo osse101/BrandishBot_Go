@@ -513,6 +513,7 @@ func (h *ProgressionHandlers) enrichUnlockProgress(ctx context.Context, progress
 		"target_unlock_cost":        0,
 		"target_node_name":          "",
 		"is_already_unlocked":       false,
+		"estimated_unlock_date":     nil,
 	}
 
 	if progress.NodeID != nil {
@@ -520,6 +521,12 @@ func (h *ProgressionHandlers) enrichUnlockProgress(ctx context.Context, progress
 		if err == nil && node != nil {
 			response["target_unlock_cost"] = node.UnlockCost
 			response["target_node_name"] = node.DisplayName
+
+			// Add estimate
+			estimate, err := h.service.EstimateUnlockTime(ctx, node.NodeKey)
+			if err == nil && estimate != nil {
+				response["estimated_unlock_date"] = estimate.EstimatedUnlockDate
+			}
 
 			if progress.TargetLevel != nil {
 				isUnlocked, _ := h.service.IsNodeUnlocked(ctx, node.NodeKey, *progress.TargetLevel)

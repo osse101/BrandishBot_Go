@@ -1973,6 +1973,47 @@ const docTemplate = `{
                 }
             }
         },
+        "/progression/estimate/{nodeKey}": {
+            "get": {
+                "description": "Returns estimated unlock time and requirements for a specific node",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "progression"
+                ],
+                "summary": "Get unlock estimate",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Node Key",
+                        "name": "nodeKey",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.UnlockEstimate"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/progression/session": {
             "get": {
                 "description": "Returns the current voting session with all available options",
@@ -2886,6 +2927,33 @@ const docTemplate = `{
                 },
                 "user_id": {
                     "type": "string"
+                }
+            }
+        },
+        "domain.UnlockEstimate": {
+            "type": "object",
+            "properties": {
+                "confidence": {
+                    "description": "\"high\", \"medium\", \"low\"",
+                    "type": "string"
+                },
+                "current_progress": {
+                    "type": "integer"
+                },
+                "current_velocity": {
+                    "type": "number"
+                },
+                "estimated_days": {
+                    "type": "number"
+                },
+                "estimated_unlock_date": {
+                    "type": "string"
+                },
+                "node_key": {
+                    "type": "string"
+                },
+                "required_points": {
+                    "type": "integer"
                 }
             }
         },

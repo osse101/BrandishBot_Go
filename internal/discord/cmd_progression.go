@@ -143,6 +143,7 @@ func UnlockProgressCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		contribAcc, _ := p["contributions_accumulated"].(float64)
 		targetCost, _ := p["target_unlock_cost"].(float64)
 		percent, _ := p["completion_percentage"].(float64)
+		estimatedUnlock, _ := p["estimated_unlock_date"].(string)
 
 		description := "Current community contribution progress:"
 		if nodeName != "" {
@@ -151,22 +152,33 @@ func UnlockProgressCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 
 		progressBar := createProgressBar(percent)
 
+		fields := []*discordgo.MessageEmbedField{
+			{
+				Name:   "Progress",
+				Value:  fmt.Sprintf("%s %.1f%%", progressBar, percent),
+				Inline: false,
+			},
+			{
+				Name:   "Contributions",
+				Value:  fmt.Sprintf("%.0f / %.0f", contribAcc, targetCost),
+				Inline: true,
+			},
+		}
+
+		// Add estimated completion date if available
+		if estimatedUnlock != "" {
+			fields = append(fields, &discordgo.MessageEmbedField{
+				Name:   "Estimated Completion",
+				Value:  fmt.Sprintf("<t:%s:R>", estimatedUnlock), // Discord relative timestamp
+				Inline: true,
+			})
+		}
+
 		embed := &discordgo.MessageEmbed{
 			Title:       "🔓 Unlock Progress",
 			Description: description,
 			Color:       0x9b59b6, // Purple
-			Fields: []*discordgo.MessageEmbedField{
-				{
-					Name:   "Progress",
-					Value:  fmt.Sprintf("%s %.1f%%", progressBar, percent),
-					Inline: false,
-				},
-				{
-					Name:   "Contributions",
-					Value:  fmt.Sprintf("%.0f / %.0f", contribAcc, targetCost),
-					Inline: true,
-				},
-			},
+			Fields:      fields,
 			Footer: &discordgo.MessageEmbedFooter{
 				Text: "BrandishBot Progression",
 			},
