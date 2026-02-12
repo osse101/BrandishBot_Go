@@ -8,7 +8,7 @@ The project includes `Makefile` commands to help with database backup and restor
 
 ### Creating a Backup
 
-To export the current production database (from the `brandishbot_go-db-1` container), run:
+To export the current production database (from the database container), run:
 
 ```bash
 make db-export
