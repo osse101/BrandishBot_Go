@@ -1,10 +1,12 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"os"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/pressly/goose/v3"
 )
 
 type MigrateCommand struct{}
@@ -23,9 +25,11 @@ func (c *MigrateCommand) Run(args []string) error {
 	}
 	subcmd := args[0]
 
-	// Goose command and arguments
-	gooseCmd := "go"
-	gooseArgs := []string{"run", "github.com/pressly/goose/v3/cmd/goose", "-dir", "migrations"}
+	// Set the migration directory
+	migrationDir := "migrations"
+	if err := goose.SetDialect("postgres"); err != nil {
+		return fmt.Errorf("failed to set dialect: %w", err)
+	}
 
 	// Handle create command (no DB connection needed)
 	if subcmd == "create" {
@@ -33,24 +37,13 @@ func (c *MigrateCommand) Run(args []string) error {
 			return fmt.Errorf("migration name required for create")
 		}
 
-		// Add create subcommand
-		gooseArgs = append(gooseArgs, "create")
-
-		// Add name
-		gooseArgs = append(gooseArgs, args[1])
-
-		// Add type (default to sql if not provided, though devtool args[2] might be type if passed)
-		// But usually we just pass name.
-		// Makefile: @$(GOOSE) -dir migrations create $(NAME) sql
-		// So we default to sql.
+		migrationName := args[1]
 		migrationType := "sql"
 		if len(args) > 2 {
 			migrationType = args[2]
 		}
-		gooseArgs = append(gooseArgs, migrationType)
 
-		//nolint:forbidigo // #nosec G204
-		return runCommandVerbose(gooseCmd, gooseArgs...)
+		return goose.Create(nil, migrationDir, migrationName, migrationType)
 	}
 
 	// For other commands, we need DB connection
@@ -66,22 +59,27 @@ func (c *MigrateCommand) Run(args []string) error {
 		dbURL = fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", dbUser, dbPass, dbHost, dbPort, dbName)
 	}
 
-	// Validate dbURL to ensure it's a valid connection string
-	if _, err := pgxpool.ParseConfig(dbURL); err != nil {
-		return fmt.Errorf("invalid DB_URL: %w", err)
+	// Open connection to DB
+	// We use "pgx" driver name which is registered by pgx/v5/stdlib
+	db, err := sql.Open("pgx", dbURL)
+	if err != nil {
+		return fmt.Errorf("failed to connect to database: %w", err)
+	}
+	defer db.Close()
+
+	if err := db.Ping(); err != nil {
+		return fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	// Add driver and dbstring
-	gooseArgs = append(gooseArgs, "postgres", dbURL)
-
-	// Add subcommand
-	gooseArgs = append(gooseArgs, subcmd)
-
-	// Add any extra args (e.g. version for up-to/down-to)
-	if len(args) > 1 {
-		gooseArgs = append(gooseArgs, args[1:]...)
+	// Execute command
+	switch subcmd {
+	case "up":
+		return goose.Up(db, migrationDir)
+	case "down":
+		return goose.Down(db, migrationDir)
+	case "status":
+		return goose.Status(db, migrationDir)
+	default:
+		return fmt.Errorf("unknown subcommand: %s", subcmd)
 	}
-
-	//nolint:forbidigo // #nosec G204
-	return runCommandVerbose(gooseCmd, gooseArgs...)
 }

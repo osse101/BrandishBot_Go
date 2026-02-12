@@ -34,12 +34,12 @@ COPY . .
 # Copy frontend build output into the embed directory
 COPY --from=frontend-builder /frontend/dist ./internal/admin/dist
 
-# Build goose and the application with optimizations and version information
+# Build devtool and the application with optimizations and version information
 # -ldflags="-w -s" strips debug info and symbol table
 # Embed version, build time, and git commit in the binary
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    go build -o /go/bin/goose github.com/pressly/goose/v3/cmd/goose && \
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o /go/bin/devtool ./cmd/devtool && \
     CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -ldflags="-w -s \
       -X github.com/osse101/BrandishBot_Go/internal/handler.Version=${VERSION} \
@@ -80,13 +80,11 @@ RUN apk add --no-cache ca-certificates tzdata postgresql-client wget && \
 
 # Copy binaries from builder
 COPY --from=builder --chown=appuser:appuser /app/brandishbot .
-COPY --from=builder --chown=appuser:appuser /go/bin/goose /usr/local/bin/goose
+COPY --from=builder --chown=appuser:appuser /go/bin/devtool .
 
-# Copy migrations and entrypoint
+# Copy migrations and configs
 COPY --chown=appuser:appuser migrations ./migrations
 COPY --chown=appuser:appuser configs ./configs
-COPY --chown=appuser:appuser scripts/docker-entrypoint.sh .
-RUN chmod +x docker-entrypoint.sh
 
 # Switch to non-root user
 USER appuser
@@ -101,4 +99,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
         (wget --quiet --tries=1 --server-response -O- http://127.0.0.1:8081/healthz 2>&1 | grep -q "HTTP/1.1 200") || exit 1
 
 # Command to run
-ENTRYPOINT ["./docker-entrypoint.sh"]
+ENTRYPOINT ["./devtool", "entrypoint", "--", "./brandishbot"]
