@@ -456,6 +456,7 @@ func checkEnvSync() error {
 	optionalEnvVars := map[string]bool{
 		"DB_URL":                 true, // Optional database connection string (overrides individual DB_* vars)
 		"ALLOW_MIGRATION_SQUASH": true, // Development-only flag for migration squashing
+		"CREATE_BACKUP":          true, // Optional backup creation flag
 	}
 
 	lines = strings.Split(out, "\n")

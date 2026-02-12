@@ -1525,7 +1525,7 @@ func TestDisassembleItem_QualityInheritance(t *testing.T) {
 		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, nil, nil, nil, nil, nil).(*service)
+		svc := NewService(repo, &MockEventPublisher{}, nil, nil).(*service)
 		svc.rnd = func() float64 { return 1.0 } // No perfect salvage
 		ctx := context.Background()
 
@@ -1572,7 +1572,7 @@ func TestDisassembleItem_WithProgression(t *testing.T) {
 			},
 		}
 
-		svc := NewService(repo, nil, nil, nil, mockProg, nil).(*service)
+		svc := NewService(repo, &MockEventPublisher{}, nil, mockProg).(*service)
 		svc.rnd = func() float64 { return 0.5 } // Would fail base 10%, but passes 100%
 		ctx := context.Background()
 
