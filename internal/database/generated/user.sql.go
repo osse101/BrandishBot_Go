@@ -130,16 +130,17 @@ func (q *Queries) GetAllItems(ctx context.Context) ([]GetAllItemsRow, error) {
 }
 
 const getAllRecipes = `-- name: GetAllRecipes :many
-SELECT i.internal_name AS item_name, r.target_item_id AS item_id, i.item_description
+SELECT i.internal_name AS item_name, r.target_item_id AS item_id, i.item_description, r.required_job_level
 FROM crafting_recipes r
 JOIN items i ON r.target_item_id = i.item_id
 ORDER BY i.internal_name
 `
 
 type GetAllRecipesRow struct {
-	ItemName        string      `json:"item_name"`
-	ItemID          int32       `json:"item_id"`
-	ItemDescription pgtype.Text `json:"item_description"`
+	ItemName         string      `json:"item_name"`
+	ItemID           int32       `json:"item_id"`
+	ItemDescription  pgtype.Text `json:"item_description"`
+	RequiredJobLevel int32       `json:"required_job_level"`
 }
 
 func (q *Queries) GetAllRecipes(ctx context.Context) ([]GetAllRecipesRow, error) {
@@ -151,7 +152,12 @@ func (q *Queries) GetAllRecipes(ctx context.Context) ([]GetAllRecipesRow, error)
 	var items []GetAllRecipesRow
 	for rows.Next() {
 		var i GetAllRecipesRow
-		if err := rows.Scan(&i.ItemName, &i.ItemID, &i.ItemDescription); err != nil {
+		if err := rows.Scan(
+			&i.ItemName,
+			&i.ItemID,
+			&i.ItemDescription,
+			&i.RequiredJobLevel,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

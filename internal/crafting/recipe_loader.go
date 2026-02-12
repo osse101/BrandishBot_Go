@@ -45,9 +45,10 @@ type DisassembleConfig struct {
 
 // RecipeDef represents a single crafting recipe in the JSON
 type RecipeDef struct {
-	RecipeKey  string       `json:"recipe_key"`
-	TargetItem string       `json:"target_item"`
-	Costs      []RecipeCost `json:"costs"`
+	RecipeKey        string       `json:"recipe_key"`
+	TargetItem       string       `json:"target_item"`
+	Costs            []RecipeCost `json:"costs"`
+	RequiredJobLevel int          `json:"required_job_level,omitempty"`
 }
 
 // DisassembleRecipeDef represents a single disassemble recipe in the JSON
@@ -285,14 +286,17 @@ func (l *recipeLoader) syncCraftingRecipes(ctx context.Context, config *UpgradeC
 
 		if existingRecipe, ok := existingByKey[recipeDef.RecipeKey]; ok {
 			// Recipe exists - check if update needed
-			needsUpdate := existingRecipe.TargetItemID != targetItemID || !costsEqual(existingRecipe.BaseCost, costs)
+			needsUpdate := existingRecipe.TargetItemID != targetItemID ||
+				!costsEqual(existingRecipe.BaseCost, costs) ||
+				existingRecipe.RequiredJobLevel != recipeDef.RequiredJobLevel
 
 			if needsUpdate {
 				// Update existing recipe
 				if err := repo.UpdateCraftingRecipe(ctx, existingRecipe.ID, &domain.Recipe{
-					RecipeKey:    recipeDef.RecipeKey,
-					TargetItemID: targetItemID,
-					BaseCost:     costs,
+					RecipeKey:        recipeDef.RecipeKey,
+					TargetItemID:     targetItemID,
+					BaseCost:         costs,
+					RequiredJobLevel: recipeDef.RequiredJobLevel,
 				}); err != nil {
 					return nil, fmt.Errorf("failed to update crafting recipe '%s': %w", recipeDef.RecipeKey, err)
 				}
@@ -304,9 +308,10 @@ func (l *recipeLoader) syncCraftingRecipes(ctx context.Context, config *UpgradeC
 		} else {
 			// Insert new recipe
 			recipeID, err := repo.InsertCraftingRecipe(ctx, &domain.Recipe{
-				RecipeKey:    recipeDef.RecipeKey,
-				TargetItemID: targetItemID,
-				BaseCost:     costs,
+				RecipeKey:        recipeDef.RecipeKey,
+				TargetItemID:     targetItemID,
+				BaseCost:         costs,
+				RequiredJobLevel: recipeDef.RequiredJobLevel,
 			})
 			if err != nil {
 				return nil, fmt.Errorf("failed to insert crafting recipe '%s': %w", recipeDef.RecipeKey, err)

@@ -610,3 +610,40 @@ func (m *MockNamingResolver) RegisterItem(internalName, publicName string) {
 	}
 	m.publicToInternal[publicName] = internalName
 }
+
+// MockJobService for testing job level requirements
+type MockJobService struct {
+	mu          sync.Mutex
+	levels      map[string]map[string]int // userID -> jobKey -> level
+	returnError error
+}
+
+func NewMockJobService() *MockJobService {
+	return &MockJobService{
+		levels: make(map[string]map[string]int),
+	}
+}
+
+func (m *MockJobService) GetJobLevel(ctx context.Context, userID, jobKey string) (int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.returnError != nil {
+		return 0, m.returnError
+	}
+
+	if userLevels, ok := m.levels[userID]; ok {
+		return userLevels[jobKey], nil
+	}
+	return 0, nil
+}
+
+func (m *MockJobService) SetJobLevel(userID, jobKey string, level int) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.levels[userID] == nil {
+		m.levels[userID] = make(map[string]int)
+	}
+	m.levels[userID][jobKey] = level
+}

@@ -56,22 +56,29 @@ type ProgressionService interface {
 	GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error)
 }
 
+// JobService defines the interface for checking job levels
+type JobService interface {
+	GetJobLevel(ctx context.Context, userID, jobKey string) (int, error)
+}
+
 // Crafting balance constants are defined in constants.go
 
 type service struct {
 	repo           repository.Crafting
 	eventPublisher EventPublisher
 	progressionSvc ProgressionService
+	jobService     JobService      // For checking job level requirements
 	namingResolver naming.Resolver // For resolving public names to internal names
 	rnd            func() float64  // For rolling RNG (does not need to be cryptographically secure)
 }
 
 // NewService creates a new crafting service
-func NewService(repo repository.Crafting, eventPublisher EventPublisher, namingResolver naming.Resolver, progressionSvc ProgressionService) Service {
+func NewService(repo repository.Crafting, eventPublisher EventPublisher, namingResolver naming.Resolver, progressionSvc ProgressionService, jobService JobService) Service {
 	return &service{
 		repo:           repo,
 		eventPublisher: eventPublisher,
 		progressionSvc: progressionSvc,
+		jobService:     jobService,
 		namingResolver: namingResolver,
 		rnd:            utils.RandomFloat,
 	}
@@ -209,6 +216,26 @@ func (s *service) UpgradeItem(ctx context.Context, platform, platformID, usernam
 	user, item, recipe, resolvedName, err := s.validateUpgradeInput(ctx, platform, platformID, itemName, quantity)
 	if err != nil {
 		return nil, err
+	}
+
+	// 1b. Check job level requirements (if any)
+	if recipe.RequiredJobLevel > 0 {
+		if s.jobService != nil {
+			// Get user's Blacksmith level
+			currentLevel, err := s.jobService.GetJobLevel(ctx, user.ID, "blacksmith")
+			if err != nil {
+				log.Error("Failed to check job level", "error", err, "userID", user.ID)
+				// Fail safe: if we can't check level, don't allow crafting high-tier items
+				return nil, fmt.Errorf("failed to verify job level requirements")
+			}
+
+			if currentLevel < recipe.RequiredJobLevel {
+				return nil, fmt.Errorf("requires Blacksmith Level %d (you are Level %d)", recipe.RequiredJobLevel, currentLevel)
+			}
+		} else {
+			// Should not happen in production if initialized correctly
+			log.Warn("Job service not initialized in crafting service, skipping level check")
+		}
 	}
 
 	// 2. Execute transaction

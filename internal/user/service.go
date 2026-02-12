@@ -50,9 +50,10 @@ type service struct {
 	stringFinder    *StringFinder
 	namingResolver  naming.Resolver
 	cooldownService cooldown.Service
-	eventBus        event.Bus  // Event bus for publishing timeout events
-	devMode         bool       // When true, bypasses cooldowns
-	userCache       *userCache // In-memory cache for user lookups
+	jobService      job.Service // Job service for retrieving job levels
+	eventBus        event.Bus   // Event bus for publishing timeout events
+	devMode         bool        // When true, bypasses cooldowns
+	userCache       *userCache  // In-memory cache for user lookups
 
 	// Item cache: in-memory cache for item metadata (name, description, value, etc.)
 	// Purpose: Reduce database queries for frequently accessed item data
@@ -109,7 +110,7 @@ func loadCacheConfig() CacheConfig {
 }
 
 // NewService creates a new user service
-func NewService(repo repository.User, trapRepo repository.TrapRepository, statsService stats.Service, publisher *event.ResilientPublisher, lootboxService lootbox.Service, namingResolver naming.Resolver, cooldownService cooldown.Service, eventBus event.Bus, devMode bool) Service {
+func NewService(repo repository.User, trapRepo repository.TrapRepository, statsService stats.Service, publisher *event.ResilientPublisher, lootboxService lootbox.Service, namingResolver naming.Resolver, cooldownService cooldown.Service, jobService job.Service, eventBus event.Bus, devMode bool) Service {
 	return &service{
 		repo:                 repo,
 		trapRepo:             trapRepo,
@@ -121,6 +122,7 @@ func NewService(repo repository.User, trapRepo repository.TrapRepository, statsS
 		stringFinder:         NewStringFinder(),
 		namingResolver:       namingResolver,
 		cooldownService:      cooldownService,
+		jobService:           jobService,
 		eventBus:             eventBus,
 		devMode:              devMode,
 		itemCacheByName:      make(map[string]domain.Item),
@@ -1167,7 +1169,7 @@ func (s *service) processSearchSuccess(ctx context.Context, user *domain.User, r
 	}
 
 	// Grant reward
-	qualityLevel := s.calculateSearchQuality(isCritical, params)
+	qualityLevel := s.calculateSearchQuality(ctx, user.ID, isCritical, params)
 	if err := s.grantSearchReward(ctx, user, quantity, qualityLevel); err != nil {
 		return "", err
 	}
@@ -1179,7 +1181,7 @@ func (s *service) processSearchSuccess(ctx context.Context, user *domain.User, r
 	}
 
 	// Format and return result message
-	return s.formatSearchSuccessMessage(ctx, item, quantity, isCritical, params), nil
+	return s.formatSearchSuccessMessage(ctx, user, item, quantity, isCritical, params), nil
 }
 
 func (s *service) addItemToTx(ctx context.Context, tx repository.UserTx, userID string, itemID int, quantity int, qualityLevel domain.QualityLevel) error {

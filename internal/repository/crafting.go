@@ -53,7 +53,8 @@ type UnlockedRecipeInfo struct {
 }
 
 type RecipeListItem struct {
-	ItemID      int    `json:"item_id"`
-	ItemName    string `json:"item_name"`
-	Description string `json:"description"`
+	ItemID           int    `json:"item_id"`
+	ItemName         string `json:"item_name"`
+	Description      string `json:"description"`
+	RequiredJobLevel int    `json:"required_job_level,omitempty"`
 }

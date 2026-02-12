@@ -165,8 +165,12 @@ func TestHarvest_Workflow(t *testing.T) {
 			mockUserRepo := new(mocks.MockRepositoryUser)
 			mockProgressionSvc := new(mocks.MockProgressionService)
 			mockTx := mocks.NewMockRepositoryHarvestTx(t)
+			mockJobSvc := new(mocks.MockJobService)
 
-			svc := NewService(mockHarvestRepo, mockUserRepo, mockProgressionSvc, nil)
+			// Default job bonus expectations (0 bonus)
+			mockJobSvc.On("GetJobBonus", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(0.0, nil).Maybe()
+
+			svc := NewService(mockHarvestRepo, mockUserRepo, mockProgressionSvc, mockJobSvc, nil)
 
 			// --- User Registration Workflow ---
 			if tt.userNotFound {

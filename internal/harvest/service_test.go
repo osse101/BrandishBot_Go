@@ -12,10 +12,11 @@ import (
 
 func TestCalculateRewards(t *testing.T) {
 	tests := []struct {
-		name           string
-		hoursElapsed   float64
-		unlockedItems  map[string]bool
-		expectedReward map[string]int
+		name            string
+		hoursElapsed    float64
+		unlockedItems   map[string]bool
+		expectedReward  map[string]int
+		yieldMultiplier float64
 	}{
 		{
 			name:         "Less than 2 hours - no tier reached",
@@ -136,6 +137,19 @@ func TestCalculateRewards(t *testing.T) {
 				"lootbox2": 1,
 			},
 		},
+		{
+			name:         "Yield Bonus - 1.5x multiplier",
+			hoursElapsed: 5.0, // Tier 1 + 2 (12 money)
+			unlockedItems: map[string]bool{
+				"stick":    true,
+				"lootbox1": true,
+				"lootbox2": true,
+			},
+			expectedReward: map[string]int{
+				"money": 18, // 12 * 1.5 = 18
+			},
+			yieldMultiplier: 1.5,
+		},
 	}
 
 	for _, tt := range tests {
@@ -154,7 +168,11 @@ func TestCalculateRewards(t *testing.T) {
 			}
 
 			// Execute
-			rewards := svc.calculateRewards(context.Background(), tt.hoursElapsed)
+			multiplier := 1.0
+			if tt.yieldMultiplier > 0 {
+				multiplier = tt.yieldMultiplier
+			}
+			rewards := svc.calculateRewards(context.Background(), tt.hoursElapsed, multiplier)
 
 			// Assert
 			assert.Equal(t, tt.expectedReward, rewards)

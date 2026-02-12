@@ -5,8 +5,6 @@ package mocks
 import (
 	context "context"
 
-	domain "github.com/osse101/BrandishBot_Go/internal/domain"
-
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -23,29 +21,27 @@ func (_m *MockCraftingJobService) EXPECT() *MockCraftingJobService_Expecter {
 	return &MockCraftingJobService_Expecter{mock: &_m.Mock}
 }
 
-// AwardXP provides a mock function with given fields: ctx, userID, jobKey, baseAmount, source, metadata
-func (_m *MockCraftingJobService) AwardXP(ctx context.Context, userID string, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error) {
-	ret := _m.Called(ctx, userID, jobKey, baseAmount, source, metadata)
+// GetJobLevel provides a mock function with given fields: ctx, userID, jobKey
+func (_m *MockCraftingJobService) GetJobLevel(ctx context.Context, userID string, jobKey string) (int, error) {
+	ret := _m.Called(ctx, userID, jobKey)
 
 	if len(ret) == 0 {
-		panic("no return value specified for AwardXP")
+		panic("no return value specified for GetJobLevel")
 	}
 
-	var r0 *domain.XPAwardResult
+	var r0 int
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, int, string, map[string]interface{}) (*domain.XPAwardResult, error)); ok {
-		return rf(ctx, userID, jobKey, baseAmount, source, metadata)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) (int, error)); ok {
+		return rf(ctx, userID, jobKey)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, int, string, map[string]interface{}) *domain.XPAwardResult); ok {
-		r0 = rf(ctx, userID, jobKey, baseAmount, source, metadata)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) int); ok {
+		r0 = rf(ctx, userID, jobKey)
 	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*domain.XPAwardResult)
-		}
+		r0 = ret.Get(0).(int)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, string, int, string, map[string]interface{}) error); ok {
-		r1 = rf(ctx, userID, jobKey, baseAmount, source, metadata)
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = rf(ctx, userID, jobKey)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -53,35 +49,32 @@ func (_m *MockCraftingJobService) AwardXP(ctx context.Context, userID string, jo
 	return r0, r1
 }
 
-// MockCraftingJobService_AwardXP_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AwardXP'
-type MockCraftingJobService_AwardXP_Call struct {
+// MockCraftingJobService_GetJobLevel_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetJobLevel'
+type MockCraftingJobService_GetJobLevel_Call struct {
 	*mock.Call
 }
 
-// AwardXP is a helper method to define mock.On call
+// GetJobLevel is a helper method to define mock.On call
 //   - ctx context.Context
 //   - userID string
 //   - jobKey string
-//   - baseAmount int
-//   - source string
-//   - metadata map[string]interface{}
-func (_e *MockCraftingJobService_Expecter) AwardXP(ctx interface{}, userID interface{}, jobKey interface{}, baseAmount interface{}, source interface{}, metadata interface{}) *MockCraftingJobService_AwardXP_Call {
-	return &MockCraftingJobService_AwardXP_Call{Call: _e.mock.On("AwardXP", ctx, userID, jobKey, baseAmount, source, metadata)}
+func (_e *MockCraftingJobService_Expecter) GetJobLevel(ctx interface{}, userID interface{}, jobKey interface{}) *MockCraftingJobService_GetJobLevel_Call {
+	return &MockCraftingJobService_GetJobLevel_Call{Call: _e.mock.On("GetJobLevel", ctx, userID, jobKey)}
 }
 
-func (_c *MockCraftingJobService_AwardXP_Call) Run(run func(ctx context.Context, userID string, jobKey string, baseAmount int, source string, metadata map[string]interface{})) *MockCraftingJobService_AwardXP_Call {
+func (_c *MockCraftingJobService_GetJobLevel_Call) Run(run func(ctx context.Context, userID string, jobKey string)) *MockCraftingJobService_GetJobLevel_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(int), args[4].(string), args[5].(map[string]interface{}))
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
 	})
 	return _c
 }
 
-func (_c *MockCraftingJobService_AwardXP_Call) Return(_a0 *domain.XPAwardResult, _a1 error) *MockCraftingJobService_AwardXP_Call {
+func (_c *MockCraftingJobService_GetJobLevel_Call) Return(_a0 int, _a1 error) *MockCraftingJobService_GetJobLevel_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockCraftingJobService_AwardXP_Call) RunAndReturn(run func(context.Context, string, string, int, string, map[string]interface{}) (*domain.XPAwardResult, error)) *MockCraftingJobService_AwardXP_Call {
+func (_c *MockCraftingJobService_GetJobLevel_Call) RunAndReturn(run func(context.Context, string, string) (int, error)) *MockCraftingJobService_GetJobLevel_Call {
 	_c.Call.Return(run)
 	return _c
 }

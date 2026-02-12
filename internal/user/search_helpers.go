@@ -53,22 +53,12 @@ var searchQualityLevels = []domain.QualityLevel{
 }
 
 // calculateSearchQuality determines the quality level for search results based on a point system
-func (s *service) calculateSearchQuality(isCritical bool, params searchParams) domain.QualityLevel {
+func (s *service) calculateSearchQuality(ctx context.Context, userID string, isCritical bool, params searchParams) domain.QualityLevel {
+	log := logger.FromContext(ctx)
 	// 1. Determine base index based on daily count (current count includes the one we just did)
 	// Bracket mapping: 1=uncommon, 2-5=common, 6-9=poor, 10-14=junk, 15+=cursed
-	baseIndex := 0
-	switch {
-	case params.dailyCount == 0:
-		baseIndex = 4 // 1st search: UNCOMMON
-	case params.dailyCount >= 1 && params.dailyCount <= 4:
-		baseIndex = 3 // 2nd-5th search: COMMON
-	case params.dailyCount >= 5 && params.dailyCount <= 8:
-		baseIndex = 2 // 6th-9th search: POOR
-	case params.dailyCount >= 9 && params.dailyCount <= 13:
-		baseIndex = 1 // 10th-14th search: JUNK
-	default:
-		baseIndex = 0 // 15th+ search: CURSED
-	}
+	// 1. Determine base index based on daily count
+	baseIndex := s.calculateBaseQualityIndex(params.dailyCount)
 
 	// 2. Add points for bonuses
 	points := 0
@@ -80,7 +70,19 @@ func (s *service) calculateSearchQuality(isCritical bool, params searchParams) d
 		points += 1
 	}
 
-	// 3. Calculate final index and clamp
+	// 3. Add Explorer job level bonus (+1 point per 5 levels)
+	if s.jobService != nil {
+		explorerLevel, err := s.jobService.GetJobLevel(ctx, userID, "job_explorer")
+		if err != nil {
+			log.Warn("Failed to get Explorer job level for search quality", "error", err)
+		} else if explorerLevel > 0 {
+			explorerBonus := explorerLevel / 5
+			points += explorerBonus
+			log.Debug("Explorer bonus applied to search quality", "level", explorerLevel, "bonus", explorerBonus)
+		}
+	}
+
+	// 4. Calculate final index and clamp
 	finalIndex := baseIndex + points
 	if finalIndex >= len(searchQualityLevels) {
 		finalIndex = len(searchQualityLevels) - 1
@@ -93,10 +95,10 @@ func (s *service) calculateSearchQuality(isCritical bool, params searchParams) d
 }
 
 // formatSearchSuccessMessage builds the success message with appropriate formatting
-func (s *service) formatSearchSuccessMessage(ctx context.Context, item *domain.Item, quantity int, isCritical bool, params searchParams) string {
+func (s *service) formatSearchSuccessMessage(ctx context.Context, user *domain.User, item *domain.Item, quantity int, isCritical bool, params searchParams) string {
 	log := logger.FromContext(ctx)
 
-	actualQuality := s.calculateSearchQuality(isCritical, params)
+	actualQuality := s.calculateSearchQuality(ctx, user.ID, isCritical, params)
 
 	// User Request: "Search should use the item's public name"
 	displayName := cases.Title(language.English).String(item.PublicName)
@@ -175,4 +177,21 @@ func (s *service) formatSearchFailureMessageWithMeta(message string, params sear
 	}
 
 	return result
+}
+
+// calculateBaseQualityIndex determines the base quality index based on daily search count
+func (s *service) calculateBaseQualityIndex(dailyCount int) int {
+	// Bracket mapping: 1=uncommon, 2-5=common, 6-9=poor, 10-14=junk, 15+=cursed
+	switch {
+	case dailyCount == 0:
+		return 4 // 1st search: UNCOMMON
+	case dailyCount >= 1 && dailyCount <= 4:
+		return 3 // 2nd-5th search: COMMON
+	case dailyCount >= 5 && dailyCount <= 8:
+		return 2 // 6th-9th search: POOR
+	case dailyCount >= 9 && dailyCount <= 13:
+		return 1 // 10th-14th search: JUNK
+	default:
+		return 0 // 15th+ search: CURSED
+	}
 }

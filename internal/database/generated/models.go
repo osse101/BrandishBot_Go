@@ -34,11 +34,12 @@ type ConfigSyncMetadatum struct {
 }
 
 type CraftingRecipe struct {
-	RecipeID     int32            `json:"recipe_id"`
-	TargetItemID int32            `json:"target_item_id"`
-	BaseCost     []byte           `json:"base_cost"`
-	CreatedAt    pgtype.Timestamp `json:"created_at"`
-	RecipeKey    string           `json:"recipe_key"`
+	RecipeID         int32            `json:"recipe_id"`
+	TargetItemID     int32            `json:"target_item_id"`
+	BaseCost         []byte           `json:"base_cost"`
+	CreatedAt        pgtype.Timestamp `json:"created_at"`
+	RecipeKey        string           `json:"recipe_key"`
+	RequiredJobLevel int32            `json:"required_job_level"`
 }
 
 type DailyResetState struct {

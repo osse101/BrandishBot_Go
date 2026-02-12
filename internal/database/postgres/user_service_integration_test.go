@@ -21,8 +21,64 @@ import (
 // Mock services for dependencies we don't need to test in this integration test
 type MockJobService struct{}
 
+func (m *MockJobService) GetUserJobs(ctx context.Context, userID string) ([]domain.UserJobInfo, error) {
+	return []domain.UserJobInfo{}, nil
+}
+
+func (m *MockJobService) GetUserJobsByPlatform(ctx context.Context, platform, platformID string) ([]domain.UserJobInfo, error) {
+	return []domain.UserJobInfo{}, nil
+}
+
+func (m *MockJobService) GetPrimaryJob(ctx context.Context, platform, platformID string) (*domain.UserJobInfo, error) {
+	return &domain.UserJobInfo{JobKey: "explorer"}, nil
+}
+
+func (m *MockJobService) GetJobBonus(ctx context.Context, userID, jobKey string, bonusType string) (float64, error) {
+	return 0, nil
+}
+
 func (m *MockJobService) AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error) {
-	return &domain.XPAwardResult{LeveledUp: false, NewLevel: 1, NewXP: 100}, nil
+	return &domain.XPAwardResult{}, nil
+}
+
+func (m *MockJobService) AwardXPByPlatform(ctx context.Context, platform, platformID, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error) {
+	return &domain.XPAwardResult{}, nil
+}
+
+func (m *MockJobService) GetJobLevel(ctx context.Context, userID, jobKey string) (int, error) {
+	return 1, nil
+}
+
+func (m *MockJobService) ResetDailyJobXP(ctx context.Context) (int64, error) {
+	return 0, nil
+}
+
+func (m *MockJobService) GetDailyResetStatus(ctx context.Context) (*domain.DailyResetStatus, error) {
+	return &domain.DailyResetStatus{}, nil
+}
+
+func (m *MockJobService) GetAllJobs(ctx context.Context) ([]domain.Job, error) {
+	return []domain.Job{}, nil
+}
+
+func (m *MockJobService) GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error) {
+	return &domain.User{}, nil
+}
+
+func (m *MockJobService) CalculateLevel(totalXP int64) int {
+	return 1
+}
+
+func (m *MockJobService) GetXPForLevel(level int) int64 {
+	return 1000
+}
+
+func (m *MockJobService) GetXPProgress(currentXP int64) (currentLevel int, xpToNext int64) {
+	return 1, 1000
+}
+
+func (m *MockJobService) Shutdown(ctx context.Context) error {
+	return nil
 }
 
 type MockLootboxService struct{}
@@ -130,6 +186,7 @@ func setupIntegrationTest(t *testing.T) (*pgxpool.Pool, *UserRepository, user.Se
 		&MockLootboxService{},
 		&MockNamingResolver{},
 		cooldownSvc,
+		nil,  // jobService
 		nil,  // No event bus for tests
 		true, // Dev mode to bypass cooldowns
 	)
@@ -287,6 +344,7 @@ func TestUserService_AsyncXPAward_Integration(t *testing.T) {
 		&MockLootboxService{},
 		&MockNamingResolver{},
 		cooldownSvc,
+		&MockJobService{},
 		nil, // No event bus for tests
 		true,
 	)

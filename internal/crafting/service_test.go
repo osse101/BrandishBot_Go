@@ -13,6 +13,62 @@ import (
 
 // ==================== Tests ====================
 
+func TestUpgradeItem_LevelRequirements(t *testing.T) {
+	t.Parallel()
+
+	t.Run("Best Case: Meets Level Requirement", func(t *testing.T) {
+		t.Parallel()
+		repo := NewMockRepository()
+		setupTestData(repo) // Sets up recipe 1 (tier0->tier1)
+		mockJob := NewMockJobService()
+		svc := NewService(repo, &MockEventPublisher{}, nil, nil, mockJob).(*service)
+		ctx := context.Background()
+
+		// Update recipe to require level 5
+		repo.Lock()
+		repo.recipes[1].RequiredJobLevel = 5
+		repo.Unlock()
+
+		// Set user's level to 5
+		mockJob.SetJobLevel("user-alice", "blacksmith", 5)
+
+		repo.UpdateInventory(ctx, "user-alice", domain.Inventory{Slots: []domain.InventorySlot{
+			{ItemID: TestItemID1, Quantity: 1},
+		}})
+		repo.UnlockRecipe(ctx, "user-alice", 1)
+
+		result, err := svc.UpgradeItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox1, 1)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, result.Quantity)
+	})
+
+	t.Run("Error Case: Insufficient Level", func(t *testing.T) {
+		t.Parallel()
+		repo := NewMockRepository()
+		setupTestData(repo)
+		mockJob := NewMockJobService()
+		svc := NewService(repo, &MockEventPublisher{}, nil, nil, mockJob).(*service)
+		ctx := context.Background()
+
+		// Update recipe to require level 5
+		repo.Lock()
+		repo.recipes[1].RequiredJobLevel = 5
+		repo.Unlock()
+
+		// Set user's level to 4
+		mockJob.SetJobLevel("user-alice", "blacksmith", 4)
+
+		repo.UpdateInventory(ctx, "user-alice", domain.Inventory{Slots: []domain.InventorySlot{
+			{ItemID: TestItemID1, Quantity: 1},
+		}})
+		repo.UnlockRecipe(ctx, "user-alice", 1)
+
+		_, err := svc.UpgradeItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.ItemLootbox1, 1)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "requires Blacksmith Level 5")
+	})
+}
+
 func TestDisassembleItem(t *testing.T) {
 	t.Parallel()
 
@@ -21,7 +77,7 @@ func TestDisassembleItem(t *testing.T) {
 		repo := NewMockRepository()
 		setupTestData(repo)
 		mockEvent := &MockEventPublisher{}
-		svc := NewService(repo, mockEvent, nil, nil).(*service)
+		svc := NewService(repo, mockEvent, nil, nil, NewMockJobService()).(*service)
 		svc.rnd = func() float64 { return 1.0 } // No perfect salvage
 		ctx := context.Background()
 
@@ -52,7 +108,7 @@ func TestDisassembleItem(t *testing.T) {
 		repo := NewMockRepository()
 		setupTestData(repo)
 		mockEvent := &MockEventPublisher{}
-		svc := NewService(repo, mockEvent, nil, nil).(*service)
+		svc := NewService(repo, mockEvent, nil, nil, NewMockJobService()).(*service)
 		svc.rnd = func() float64 { return 0.0 } // Trigger perfect salvage
 		ctx := context.Background()
 
@@ -92,7 +148,7 @@ func TestDisassembleItem(t *testing.T) {
 		repo := NewMockRepository()
 		setupTestData(repo)
 		mockEvent := &MockEventPublisher{}
-		svc := NewService(repo, mockEvent, nil, nil).(*service)
+		svc := NewService(repo, mockEvent, nil, nil, NewMockJobService()).(*service)
 		svc.rnd = func() float64 { return 1.0 }
 		ctx := context.Background()
 
@@ -124,7 +180,7 @@ func TestDisassembleItem(t *testing.T) {
 		repo := NewMockRepository()
 		setupTestData(repo)
 		mockEvent := &MockEventPublisher{}
-		svc := NewService(repo, mockEvent, nil, nil)
+		svc := NewService(repo, mockEvent, nil, nil, NewMockJobService())
 		ctx := context.Background()
 
 		// Arrange: Alice has 1 lootbox1, wants to disassemble 2
@@ -145,7 +201,7 @@ func TestDisassembleItem(t *testing.T) {
 		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, &MockEventPublisher{}, nil, nil)
+		svc := NewService(repo, &MockEventPublisher{}, nil, nil, NewMockJobService())
 		ctx := context.Background()
 
 		repo.UpdateInventory(ctx, "user-alice", domain.Inventory{Slots: []domain.InventorySlot{
@@ -164,7 +220,7 @@ func TestDisassembleItem(t *testing.T) {
 		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, &MockEventPublisher{}, nil, nil)
+		svc := NewService(repo, &MockEventPublisher{}, nil, nil, NewMockJobService())
 		ctx := context.Background()
 
 		// Act
@@ -179,7 +235,7 @@ func TestDisassembleItem(t *testing.T) {
 		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo) // Need to setup items so item validation passes
-		svc := NewService(repo, &MockEventPublisher{}, nil, nil)
+		svc := NewService(repo, &MockEventPublisher{}, nil, nil, NewMockJobService())
 		ctx := context.Background()
 
 		_, err := svc.DisassembleItem(ctx, domain.PlatformTwitch, "nonexistent", "", domain.ItemLootbox1, 1)
@@ -192,7 +248,7 @@ func TestDisassembleItem(t *testing.T) {
 		repo := NewMockRepository()
 		setupTestData(repo)
 		mockEvent := &MockEventPublisher{}
-		svc := NewService(repo, mockEvent, nil, nil).(*service)
+		svc := NewService(repo, mockEvent, nil, nil, NewMockJobService()).(*service)
 		svc.rnd = func() float64 { return 1.0 }
 		ctx := context.Background()
 
@@ -239,7 +295,7 @@ func TestDisassembleItem(t *testing.T) {
 		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, &MockEventPublisher{}, nil, nil).(*service)
+		svc := NewService(repo, &MockEventPublisher{}, nil, nil, NewMockJobService()).(*service)
 		svc.rnd = func() float64 { return 0.5 }
 		ctx := context.Background()
 
@@ -274,7 +330,7 @@ func TestUpgradeItem(t *testing.T) {
 		repo := NewMockRepository()
 		setupTestData(repo)
 		mockEvent := &MockEventPublisher{}
-		svc := NewService(repo, mockEvent, nil, nil).(*service)
+		svc := NewService(repo, mockEvent, nil, nil, NewMockJobService()).(*service)
 		svc.rnd = func() float64 { return 1.0 } // Fail masterwork
 		ctx := context.Background()
 
@@ -312,7 +368,7 @@ func TestUpgradeItem(t *testing.T) {
 		repo := NewMockRepository()
 		setupTestData(repo)
 		mockEvent := &MockEventPublisher{}
-		svc := NewService(repo, mockEvent, nil, nil).(*service)
+		svc := NewService(repo, mockEvent, nil, nil, NewMockJobService()).(*service)
 		svc.rnd = func() float64 { return 0.0 } // Trigger masterwork
 		ctx := context.Background()
 
@@ -339,7 +395,7 @@ func TestUpgradeItem(t *testing.T) {
 		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, &MockEventPublisher{}, nil, nil).(*service)
+		svc := NewService(repo, &MockEventPublisher{}, nil, nil, NewMockJobService()).(*service)
 		svc.rnd = func() float64 { return 1.0 }
 		ctx := context.Background()
 
@@ -361,7 +417,7 @@ func TestUpgradeItem(t *testing.T) {
 		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, &MockEventPublisher{}, nil, nil)
+		svc := NewService(repo, &MockEventPublisher{}, nil, nil, NewMockJobService())
 		ctx := context.Background()
 
 		repo.UpdateInventory(ctx, "user-alice", domain.Inventory{Slots: []domain.InventorySlot{
@@ -377,7 +433,7 @@ func TestUpgradeItem(t *testing.T) {
 		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, &MockEventPublisher{}, nil, nil).(*service)
+		svc := NewService(repo, &MockEventPublisher{}, nil, nil, NewMockJobService()).(*service)
 		svc.rnd = func() float64 { return 1.0 }
 		ctx := context.Background()
 
@@ -425,7 +481,7 @@ func TestUpgradeItem(t *testing.T) {
 		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, &MockEventPublisher{}, nil, nil).(*service)
+		svc := NewService(repo, &MockEventPublisher{}, nil, nil, NewMockJobService()).(*service)
 		svc.rnd = func() float64 { return 0.5 }
 		ctx := context.Background()
 
@@ -458,7 +514,7 @@ func TestUpgradeItem(t *testing.T) {
 		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, &MockEventPublisher{}, nil, nil).(*service)
+		svc := NewService(repo, &MockEventPublisher{}, nil, nil, NewMockJobService()).(*service)
 		svc.rnd = func() float64 { return 1.0 } // Prevent masterwork
 		ctx := context.Background()
 
@@ -519,7 +575,7 @@ func TestUpgradeItem(t *testing.T) {
 			PublishError: fmt.Errorf("Event bus unavailable"),
 		}
 
-		svc := NewService(repo, mockEvent, nil, nil).(*service)
+		svc := NewService(repo, mockEvent, nil, nil, NewMockJobService()).(*service)
 		svc.rnd = func() float64 { return 1.0 }
 		ctx := context.Background()
 
@@ -544,7 +600,7 @@ func TestGetRecipe(t *testing.T) {
 		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, &MockEventPublisher{}, nil, nil)
+		svc := NewService(repo, &MockEventPublisher{}, nil, nil, NewMockJobService())
 		ctx := context.Background()
 
 		repo.UnlockRecipe(ctx, "user-alice", 1)
@@ -557,7 +613,7 @@ func TestGetRecipe(t *testing.T) {
 		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, &MockEventPublisher{}, nil, nil)
+		svc := NewService(repo, &MockEventPublisher{}, nil, nil, NewMockJobService())
 		ctx := context.Background()
 
 		recipe, err := svc.GetRecipe(ctx, domain.ItemLootbox1, "", "", "")
@@ -569,7 +625,7 @@ func TestGetRecipe(t *testing.T) {
 		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, &MockEventPublisher{}, nil, nil)
+		svc := NewService(repo, &MockEventPublisher{}, nil, nil, NewMockJobService())
 		ctx := context.Background()
 
 		recipe, err := svc.GetRecipe(ctx, domain.ItemLootbox1, domain.PlatformTwitch, "twitch-alice", "alice")
@@ -581,7 +637,7 @@ func TestGetRecipe(t *testing.T) {
 		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, &MockEventPublisher{}, nil, nil)
+		svc := NewService(repo, &MockEventPublisher{}, nil, nil, NewMockJobService())
 		ctx := context.Background()
 
 		_, err := svc.GetRecipe(ctx, "invalid-item", "", "", "")
@@ -597,7 +653,7 @@ func TestGetAllRecipes(t *testing.T) {
 		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, &MockEventPublisher{}, nil, nil)
+		svc := NewService(repo, &MockEventPublisher{}, nil, nil, NewMockJobService())
 		ctx := context.Background()
 
 		recipes, err := svc.GetAllRecipes(ctx)
@@ -609,7 +665,7 @@ func TestGetAllRecipes(t *testing.T) {
 func TestShutdown(t *testing.T) {
 	t.Parallel()
 	repo := NewMockRepository()
-	svc := NewService(repo, &MockEventPublisher{}, nil, nil)
+	svc := NewService(repo, &MockEventPublisher{}, nil, nil, NewMockJobService())
 	assert.NoError(t, svc.Shutdown(context.Background()))
 }
 
@@ -621,7 +677,7 @@ func TestGetUnlockedRecipes(t *testing.T) {
 		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, &MockEventPublisher{}, nil, nil)
+		svc := NewService(repo, &MockEventPublisher{}, nil, nil, NewMockJobService())
 		ctx := context.Background()
 
 		repo.UnlockRecipe(ctx, "user-alice", 1)
@@ -634,7 +690,7 @@ func TestGetUnlockedRecipes(t *testing.T) {
 		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, &MockEventPublisher{}, nil, nil)
+		svc := NewService(repo, &MockEventPublisher{}, nil, nil, NewMockJobService())
 		ctx := context.Background()
 
 		recipes, err := svc.GetUnlockedRecipes(ctx, domain.PlatformTwitch, "twitch-alice", "alice")
@@ -648,7 +704,7 @@ func TestGetRecipe_Concurrent(t *testing.T) {
 	t.Parallel()
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, &MockEventPublisher{}, nil, nil)
+	svc := NewService(repo, &MockEventPublisher{}, nil, nil, NewMockJobService())
 	ctx := context.Background()
 
 	var wg sync.WaitGroup
@@ -671,7 +727,7 @@ func TestUpgradeItem_InputValidation(t *testing.T) {
 	t.Parallel()
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, &MockEventPublisher{}, nil, nil)
+	svc := NewService(repo, &MockEventPublisher{}, nil, nil, NewMockJobService())
 	ctx := context.Background()
 
 	tests := []struct {
@@ -755,7 +811,7 @@ func TestDisassembleItem_InputValidation(t *testing.T) {
 	t.Parallel()
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, &MockEventPublisher{}, nil, nil)
+	svc := NewService(repo, &MockEventPublisher{}, nil, nil, NewMockJobService())
 	ctx := context.Background()
 
 	tests := []struct {
@@ -839,7 +895,7 @@ func TestGetRecipe_InputValidation(t *testing.T) {
 	t.Parallel()
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, &MockEventPublisher{}, nil, nil)
+	svc := NewService(repo, &MockEventPublisher{}, nil, nil, NewMockJobService())
 	ctx := context.Background()
 
 	tests := []struct {
@@ -872,7 +928,7 @@ func TestGetUnlockedRecipes_InputValidation(t *testing.T) {
 	t.Parallel()
 	repo := NewMockRepository()
 	setupTestData(repo)
-	svc := NewService(repo, &MockEventPublisher{}, nil, nil)
+	svc := NewService(repo, &MockEventPublisher{}, nil, nil, NewMockJobService())
 	ctx := context.Background()
 
 	tests := []struct {
@@ -926,7 +982,7 @@ func TestUpgradeItem_TransactionFailures(t *testing.T) {
 		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, &MockEventPublisher{}, nil, nil).(*service)
+		svc := NewService(repo, &MockEventPublisher{}, nil, nil, NewMockJobService()).(*service)
 		svc.rnd = func() float64 { return 1.0 }
 		ctx := context.Background()
 
@@ -962,7 +1018,7 @@ func TestUpgradeItem_TransactionFailures(t *testing.T) {
 		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, &MockEventPublisher{}, nil, nil).(*service)
+		svc := NewService(repo, &MockEventPublisher{}, nil, nil, NewMockJobService()).(*service)
 		svc.rnd = func() float64 { return 1.0 }
 		ctx := context.Background()
 
@@ -996,7 +1052,7 @@ func TestUpgradeItem_TransactionFailures(t *testing.T) {
 		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, &MockEventPublisher{}, nil, nil).(*service)
+		svc := NewService(repo, &MockEventPublisher{}, nil, nil, NewMockJobService()).(*service)
 		svc.rnd = func() float64 { return 1.0 }
 		ctx := context.Background()
 
@@ -1030,7 +1086,7 @@ func TestUpgradeItem_TransactionFailures(t *testing.T) {
 		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, &MockEventPublisher{}, nil, nil).(*service)
+		svc := NewService(repo, &MockEventPublisher{}, nil, nil, NewMockJobService()).(*service)
 		svc.rnd = func() float64 { return 1.0 }
 		ctx := context.Background()
 
@@ -1066,7 +1122,7 @@ func TestDisassembleItem_TransactionFailures(t *testing.T) {
 		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, &MockEventPublisher{}, nil, nil).(*service)
+		svc := NewService(repo, &MockEventPublisher{}, nil, nil, NewMockJobService()).(*service)
 		svc.rnd = func() float64 { return 1.0 }
 		ctx := context.Background()
 
@@ -1100,7 +1156,7 @@ func TestDisassembleItem_TransactionFailures(t *testing.T) {
 		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, &MockEventPublisher{}, nil, nil).(*service)
+		svc := NewService(repo, &MockEventPublisher{}, nil, nil, NewMockJobService()).(*service)
 		svc.rnd = func() float64 { return 1.0 }
 		ctx := context.Background()
 
@@ -1134,7 +1190,7 @@ func TestDisassembleItem_TransactionFailures(t *testing.T) {
 		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, &MockEventPublisher{}, nil, nil).(*service)
+		svc := NewService(repo, &MockEventPublisher{}, nil, nil, NewMockJobService()).(*service)
 		svc.rnd = func() float64 { return 1.0 }
 		ctx := context.Background()
 
@@ -1168,7 +1224,7 @@ func TestDisassembleItem_TransactionFailures(t *testing.T) {
 		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, &MockEventPublisher{}, nil, nil).(*service)
+		svc := NewService(repo, &MockEventPublisher{}, nil, nil, NewMockJobService()).(*service)
 		svc.rnd = func() float64 { return 1.0 }
 		ctx := context.Background()
 
@@ -1206,7 +1262,7 @@ func TestUpgradeItem_MultiMaterialRecipe(t *testing.T) {
 		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, &MockEventPublisher{}, nil, nil).(*service)
+		svc := NewService(repo, &MockEventPublisher{}, nil, nil, NewMockJobService()).(*service)
 		svc.rnd = func() float64 { return 1.0 } // Prevent masterwork
 		ctx := context.Background()
 
@@ -1262,7 +1318,7 @@ func TestUpgradeItem_MultiMaterialRecipe(t *testing.T) {
 		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, &MockEventPublisher{}, nil, nil).(*service)
+		svc := NewService(repo, &MockEventPublisher{}, nil, nil, NewMockJobService()).(*service)
 		svc.rnd = func() float64 { return 1.0 } // Prevent masterwork
 		ctx := context.Background()
 
@@ -1297,7 +1353,7 @@ func TestUpgradeItem_MultiMaterialRecipe(t *testing.T) {
 		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, &MockEventPublisher{}, nil, nil).(*service)
+		svc := NewService(repo, &MockEventPublisher{}, nil, nil, NewMockJobService()).(*service)
 		svc.rnd = func() float64 { return 1.0 } // Prevent masterwork
 		ctx := context.Background()
 
@@ -1338,7 +1394,7 @@ func TestDisassembleItem_MultipleOutputs(t *testing.T) {
 		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, &MockEventPublisher{}, nil, nil).(*service)
+		svc := NewService(repo, &MockEventPublisher{}, nil, nil, NewMockJobService()).(*service)
 		svc.rnd = func() float64 { return 1.0 } // No perfect salvage
 		ctx := context.Background()
 
@@ -1382,7 +1438,7 @@ func TestDisassembleItem_MultipleOutputs(t *testing.T) {
 		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, &MockEventPublisher{}, nil, nil).(*service)
+		svc := NewService(repo, &MockEventPublisher{}, nil, nil, NewMockJobService()).(*service)
 		svc.rnd = func() float64 { return 0.0 } // Always perfect salvage
 		ctx := context.Background()
 
@@ -1431,7 +1487,7 @@ func TestUpgradeItem_WithXP(t *testing.T) {
 		setupTestData(repo)
 
 		mockEvent := &MockEventPublisher{}
-		svc := NewService(repo, mockEvent, nil, nil).(*service)
+		svc := NewService(repo, mockEvent, nil, nil, NewMockJobService()).(*service)
 		svc.rnd = func() float64 { return 1.0 } // No masterwork
 		ctx := context.Background()
 
@@ -1464,7 +1520,7 @@ func TestUpgradeItem_WithProgression(t *testing.T) {
 			},
 		}
 
-		svc := NewService(repo, &MockEventPublisher{}, nil, mockProg).(*service)
+		svc := NewService(repo, &MockEventPublisher{}, nil, mockProg, NewMockJobService()).(*service)
 		svc.rnd = func() float64 { return 0.5 } // Would fail base 10%, but passes 100%
 		ctx := context.Background()
 
@@ -1493,7 +1549,7 @@ func TestUpgradeItem_WithNamingResolution(t *testing.T) {
 			},
 		}
 
-		svc := NewService(repo, &MockEventPublisher{}, mockNaming, nil)
+		svc := NewService(repo, &MockEventPublisher{}, mockNaming, nil, NewMockJobService())
 		ctx := context.Background()
 
 		// We need 1 lootbox0 to make 1 lootbox1
@@ -1514,7 +1570,7 @@ func TestShutdown_WaitsForAsync(t *testing.T) {
 	repo := NewMockRepository()
 	setupTestData(repo)
 	// Shutdown is now a no-op, so we just check it doesn't error
-	svc := NewService(repo, &MockEventPublisher{}, nil, nil)
+	svc := NewService(repo, &MockEventPublisher{}, nil, nil, NewMockJobService())
 	assert.NoError(t, svc.Shutdown(context.Background()))
 }
 
@@ -1525,7 +1581,7 @@ func TestDisassembleItem_QualityInheritance(t *testing.T) {
 		t.Parallel()
 		repo := NewMockRepository()
 		setupTestData(repo)
-		svc := NewService(repo, &MockEventPublisher{}, nil, nil).(*service)
+		svc := NewService(repo, &MockEventPublisher{}, nil, nil, NewMockJobService()).(*service)
 		svc.rnd = func() float64 { return 1.0 } // No perfect salvage
 		ctx := context.Background()
 
@@ -1572,7 +1628,7 @@ func TestDisassembleItem_WithProgression(t *testing.T) {
 			},
 		}
 
-		svc := NewService(repo, &MockEventPublisher{}, nil, mockProg).(*service)
+		svc := NewService(repo, &MockEventPublisher{}, nil, mockProg, NewMockJobService()).(*service)
 		svc.rnd = func() float64 { return 0.5 } // Would fail base 10%, but passes 100%
 		ctx := context.Background()
 

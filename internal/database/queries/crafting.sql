@@ -1,24 +1,24 @@
 -- Crafting Recipe Repository Queries
 
 -- name: GetAllCraftingRecipes :many
-SELECT recipe_id, recipe_key, target_item_id, base_cost, created_at
+SELECT recipe_id, recipe_key, target_item_id, base_cost, created_at, required_job_level
 FROM crafting_recipes
 ORDER BY recipe_id;
 
 -- name: GetCraftingRecipeByKey :one
-SELECT recipe_id, recipe_key, target_item_id, base_cost, created_at
+SELECT recipe_id, recipe_key, target_item_id, base_cost, created_at, required_job_level
 FROM crafting_recipes
 WHERE recipe_key = $1;
 
 -- name: InsertCraftingRecipe :one
-INSERT INTO crafting_recipes (recipe_key, target_item_id, base_cost)
-VALUES ($1, $2, $3)
+INSERT INTO crafting_recipes (recipe_key, target_item_id, base_cost, required_job_level)
+VALUES ($1, $2, $3, $4)
 RETURNING recipe_id;
 
 -- name: UpdateCraftingRecipe :exec
 UPDATE crafting_recipes
-SET recipe_key = $1, target_item_id = $2, base_cost = $3
-WHERE recipe_id = $4;
+SET recipe_key = $1, target_item_id = $2, base_cost = $3, required_job_level = $4
+WHERE recipe_id = $5;
 
 -- name: GetAllDisassembleRecipes :many
 SELECT recipe_id, recipe_key, source_item_id, quantity_consumed, created_at

@@ -552,8 +552,9 @@ func (c *APIClient) DisassembleItem(platform, platformID, username, itemName str
 
 // Recipe represents a recipe returned by the API
 type Recipe struct {
-	ItemName string `json:"item_name"`
-	ItemID   int    `json:"item_id"`
+	ItemName         string `json:"item_name"`
+	ItemID           int    `json:"item_id"`
+	RequiredJobLevel int    `json:"required_job_level,omitempty"`
 }
 
 // GetRecipes retrieves all crafting recipes
@@ -938,13 +939,10 @@ func (c *APIClient) GetAllJobs() ([]domain.Job, error) {
 }
 
 // GetUserJobs retrieves job progress for a user
-func (c *APIClient) GetUserJobs(platform, platformID string) (map[string]interface{}, error) {
+func (c *APIClient) GetUserJobs(platform, platformID string) (*UserJobsResponse, error) {
 	params := url.Values{}
 	params.Set("platform", platform)
 	params.Set("platform_id", platformID)
-
-	userID := fmt.Sprintf("%s:%s", platform, platformID)
-	params.Set("user_id", userID)
 
 	path := fmt.Sprintf("/api/v1/jobs/user?%s", params.Encode())
 	resp, err := c.doRequest(http.MethodGet, path, nil)
@@ -954,15 +952,21 @@ func (c *APIClient) GetUserJobs(platform, platformID string) (map[string]interfa
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		var errResp struct {
+			Error string `json:"error"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil && errResp.Error != "" {
+			return nil, fmt.Errorf("API error: %s", errResp.Error)
+		}
 		return nil, fmt.Errorf("API returned status: %d", resp.StatusCode)
 	}
 
-	var result map[string]interface{}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	var jobsResp UserJobsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&jobsResp); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	return result, nil
+	return &jobsResp, nil
 }
 
 // AwardJobXP awards XP (Standard/Bot method)
@@ -1369,4 +1373,23 @@ func (c *APIClient) SpinSlots(platform, platformID, username string, betAmount i
 		return nil, err
 	}
 	return &result, nil
+}
+
+// JobProgress represents a user's progress in a job
+type JobProgress struct {
+	JobKey       string    `json:"job_key"`
+	Level        int       `json:"level"`
+	XP           int       `json:"xp"`
+	XPForNext    int       `json:"xp_for_next"`
+	TotalXP      int       `json:"total_xp,omitempty"`
+	DateUnlocked time.Time `json:"date_unlocked"`
+	LastUpdated  time.Time `json:"last_updated"`
+}
+
+// UserJobsResponse represents the response from GetUserJobs
+type UserJobsResponse struct {
+	Platform   string        `json:"platform"`
+	PlatformID string        `json:"platform_id"`
+	PrimaryJob string        `json:"primary_job"`
+	Jobs       []JobProgress `json:"jobs"`
 }

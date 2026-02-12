@@ -9,6 +9,7 @@ import (
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/event"
+	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
@@ -20,6 +21,10 @@ const (
 	farmerXPThreshold  = 5.0   // Minimum 5 hours for Farmer XP
 	farmerXPPerHour    = 8     // Base XP per hour of waiting
 	spoiledThreshold   = 336.0 // 168h (max tier) + 168h (1 week)
+
+	// Bonus types
+	BonusTypeHarvestYield = "harvest_yield"
+	BonusTypeGrowthSpeed  = "growth_speed"
 )
 
 // Service defines the harvest system business logic
@@ -34,6 +39,7 @@ type service struct {
 	harvestRepo    repository.HarvestRepository
 	userRepo       repository.User
 	progressionSvc progression.Service
+	jobSvc         job.Service
 	publisher      *event.ResilientPublisher
 	wg             sync.WaitGroup
 }
@@ -43,12 +49,14 @@ func NewService(
 	harvestRepo repository.HarvestRepository,
 	userRepo repository.User,
 	progressionSvc progression.Service,
+	jobSvc job.Service,
 	publisher *event.ResilientPublisher,
 ) Service {
 	return &service{
 		harvestRepo:    harvestRepo,
 		userRepo:       userRepo,
 		progressionSvc: progressionSvc,
+		jobSvc:         jobSvc,
 		publisher:      publisher,
 	}
 }
@@ -97,8 +105,28 @@ func (s *service) Harvest(ctx context.Context, platform, platformID, username st
 		return nil, fmt.Errorf("%w: next harvest available at %s", domain.ErrHarvestTooSoon, nextHarvest.Format(time.RFC3339))
 	}
 
-	// 8. Calculate rewards (handle spoiled)
-	rewards, message := s.calculateHarvestRewards(ctx, hoursElapsed)
+	// 8. Calculate bonuses
+	yieldMultiplier := 1.0
+	growthMultiplier := 1.0
+
+	// Safe call to get bonuses (don't fail harvest if job system errors)
+	if yieldBonus, err := s.jobSvc.GetJobBonus(ctx, user.ID, "farmer", BonusTypeHarvestYield); err == nil {
+		yieldMultiplier += yieldBonus
+	} else {
+		log.Warn("Failed to get yield bonus", "error", err)
+	}
+
+	if growthBonus, err := s.jobSvc.GetJobBonus(ctx, user.ID, "farmer", BonusTypeGrowthSpeed); err == nil {
+		growthMultiplier += growthBonus
+	} else {
+		log.Warn("Failed to get growth bonus", "error", err)
+	}
+
+	// Apply growth speed bonus to effective hours
+	effectiveHours := hoursElapsed * growthMultiplier
+
+	// 9. Calculate rewards (handle spoiled)
+	rewards, message := s.calculateHarvestRewards(ctx, effectiveHours, yieldMultiplier)
 
 	// 9. Award Farmer XP (Async)
 	// Must be done before potential early return in handleEmptyHarvest
@@ -191,7 +219,7 @@ func (s *service) initializeHarvestStateIfNeeded(ctx context.Context, userID str
 	return nil, nil
 }
 
-func (s *service) calculateHarvestRewards(ctx context.Context, hoursElapsed float64) (map[string]int, string) {
+func (s *service) calculateHarvestRewards(ctx context.Context, hoursElapsed float64, yieldMultiplier float64) (map[string]int, string) {
 	if hoursElapsed > spoiledThreshold {
 		logger.FromContext(ctx).Info("Harvest spoiled", "hours", hoursElapsed)
 		return map[string]int{
@@ -199,7 +227,7 @@ func (s *service) calculateHarvestRewards(ctx context.Context, hoursElapsed floa
 			"stick":    3,
 		}, "Your crops spoiled! You salvaged 1 Decent Lootbox and 3 Sticks."
 	}
-	return s.calculateRewards(ctx, hoursElapsed), "Harvest successful!"
+	return s.calculateRewards(ctx, hoursElapsed, yieldMultiplier), "Harvest successful!"
 }
 
 func (s *service) awardFarmerXP(ctx context.Context, userID string, hoursElapsed float64) {
@@ -318,7 +346,7 @@ func (s *service) applyHarvestRewards(ctx context.Context, tx repository.Harvest
 
 // calculateRewards calculates the total rewards for a given elapsed time
 // Accumulates ALL items from all tiers up to and including the current tier
-func (s *service) calculateRewards(ctx context.Context, hoursElapsed float64) map[string]int {
+func (s *service) calculateRewards(ctx context.Context, hoursElapsed float64, yieldMultiplier float64) map[string]int {
 	log := logger.FromContext(ctx)
 	rewards := make(map[string]int)
 	tiers := getRewardTiers()
@@ -360,7 +388,12 @@ func (s *service) calculateRewards(ctx context.Context, hoursElapsed float64) ma
 			}
 
 			// SUM all items (accumulate)
-			rewards[itemName] += quantity
+			baseQty := quantity
+			bonusQty := int(float64(baseQty) * yieldMultiplier)
+			if bonusQty < baseQty {
+				bonusQty = baseQty
+			}
+			rewards[itemName] += bonusQty
 		}
 	}
 

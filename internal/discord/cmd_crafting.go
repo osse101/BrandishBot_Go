@@ -52,7 +52,11 @@ func RecipesCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 				sb = "No recipes available."
 			} else {
 				for _, r := range recipes {
-					sb += fmt.Sprintf("• **%s**\n", r.ItemName)
+					reqStr := ""
+					if r.RequiredJobLevel > 0 {
+						reqStr = fmt.Sprintf(" (Requires Blacksmith Level %d)", r.RequiredJobLevel)
+					}
+					sb += fmt.Sprintf("• **%s**%s\n", r.ItemName, reqStr)
 				}
 			}
 			return sb, nil

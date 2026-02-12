@@ -207,13 +207,13 @@ func main() {
 	economyService := economy.NewService(repos.Economy, resilientPublisher, namingResolver, progressionService)
 	gambleService := gamble.NewService(repos.Gamble, eventBus, resilientPublisher, lootboxSvc, cfg.GambleJoinDuration, progressionService, namingResolver, nil)
 	// Refactored Crafting Service (event-driven)
-	craftingService := crafting.NewService(repos.Crafting, resilientPublisher, namingResolver, progressionService)
+	craftingService := crafting.NewService(repos.Crafting, resilientPublisher, namingResolver, progressionService, jobService)
 
 	// Initialize services that depend on job service and naming resolver
-	userService := user.NewService(repos.User, repos.Trap, statsService, resilientPublisher, lootboxSvc, namingResolver, cooldownSvc, eventBus, cfg.DevMode)
+	userService := user.NewService(repos.User, repos.Trap, statsService, resilientPublisher, lootboxSvc, namingResolver, cooldownSvc, jobService, eventBus, cfg.DevMode)
 
 	// Initialize Harvest Service
-	harvestService := harvest.NewService(repos.Harvest, repos.User, progressionService, resilientPublisher)
+	harvestService := harvest.NewService(repos.Harvest, repos.User, progressionService, jobService, resilientPublisher)
 	slog.Info("Harvest service initialized")
 
 	// Initialize Compost Service
