@@ -10,6 +10,8 @@ The BrandishBot admin dashboard is an embedded React SPA providing GUI access to
 - **Real-time**: SSE connection for live event streaming
 - **URL**: `http://localhost:8080/admin/`
 
+For detailed usage instructions, see the [Usage Guide](ADMIN_DASHBOARD_USAGE.md).
+
 ## Features
 
 ### 1. Health Dashboard (`/admin/`)
