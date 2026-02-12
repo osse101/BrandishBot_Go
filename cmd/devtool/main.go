@@ -28,6 +28,8 @@ func main() {
 	registry.Register(&PushCommand{})
 	registry.Register(&TestSSECommand{})
 	registry.Register(&BuildCommand{})
+	registry.Register(&WaitForDBCommand{})
+	registry.Register(&EntrypointCommand{})
 
 	if len(os.Args) < 2 {
 		registry.PrintHelp()
