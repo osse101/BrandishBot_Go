@@ -194,7 +194,7 @@ func (r *UserRepository) GetItemByPublicName(ctx context.Context, publicName str
 	row, err := r.q.GetItemByPublicName(ctx, pgtype.Text{String: publicName, Valid: true})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
+			return nil, domain.ErrItemNotFound
 		}
 		return nil, fmt.Errorf("failed to get item by public name: %w", err)
 	}

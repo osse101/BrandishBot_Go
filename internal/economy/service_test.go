@@ -195,7 +195,7 @@ func TestSellItem_InvalidInputs(t *testing.T) {
 			setup: func(m *MockRepository) {
 				user := createTestUser()
 				m.On("GetUserByPlatformID", mock.Anything, domain.PlatformTwitch, "").Return(user, nil)
-				m.On("GetItemByName", mock.Anything, "InvalidItem").Return(nil, nil)
+				m.On("GetItemByName", mock.Anything, "InvalidItem").Return(nil, domain.ErrItemNotFound)
 			},
 			username:      "testuser",
 			itemName:      "InvalidItem",
@@ -698,7 +698,7 @@ func TestBuyItem_InvalidInputs(t *testing.T) {
 			setup: func(m *MockRepository, ctx context.Context) {
 				user := createTestUser()
 				m.On("GetUserByPlatformID", mock.Anything, domain.PlatformTwitch, "").Return(user, nil)
-				m.On("GetItemByName", mock.Anything, "InvalidItem").Return(nil, nil)
+				m.On("GetItemByName", mock.Anything, "InvalidItem").Return(nil, domain.ErrItemNotFound)
 			},
 			expectErr:     true,
 			expectedError: domain.ErrItemNotFound,
