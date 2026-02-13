@@ -454,40 +454,11 @@ lint-fix:
 
 **Issue**: No automated migration testing documented.
 
-**Recommendation**: Add migration testing script:
+**Recommendation**: Use the built-in migration testing tool:
 
-**File**: `scripts/test_migrations.sh`
-```bash
-#!/bin/bash
-set -e
+**Command**: `go run ./cmd/devtool test-migrations`
 
-echo "Testing database migrations..."
-
-# Use test database
-export DATABASE_NAME="brandish_test_migrations"
-export DATABASE_URL="postgres://localhost:5432/${DATABASE_NAME}?sslmode=disable"
-
-# Reset test database
-psql -c "DROP DATABASE IF EXISTS ${DATABASE_NAME};" || true
-psql -c "CREATE DATABASE ${DATABASE_NAME};"
-
-# Run migrations up
-echo "Testing UP migrations..."
-goose -dir migrations postgres "${DATABASE_URL}" up
-
-# Run migrations down
-echo "Testing DOWN migrations..."
-goose -dir migrations postgres "${DATABASE_URL}" down
-
-# Run migrations up again
-echo "Testing UP migrations again..."
-goose -dir migrations postgres "${DATABASE_URL}" up
-
-echo "✅ All migrations passed!"
-
-# Cleanup
-psql -c "DROP DATABASE ${DATABASE_NAME};"
-```
+This command runs UP, DOWN, and IDEMPOTENCY tests on a temporary test database to ensure migrations are reversible and safe.
 
 **Benefits:**
 - Ensures migrations are reversible

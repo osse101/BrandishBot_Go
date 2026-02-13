@@ -167,12 +167,12 @@ make db-import  # Loads backup.sql into test DB
 
 ## Seed Data Files
 
-Test seed data is located in `scripts/`:
+Test seed data is located in `internal/database/seeds/`:
 
-- `setup_test_user.sql` - Creates test users
-- `seed_test_recipe.sql` - Adds test recipes
+- `test_user.sql` - Creates test users
+- `test_recipe.sql` - Adds test recipes
 
-To add more seed data, create SQL files in `scripts/` and update `db-seed-test` target in Makefile.
+To add more seed data, create SQL files in `internal/database/seeds/` and update `cmd/devtool/seed.go`.
 
 ---
 

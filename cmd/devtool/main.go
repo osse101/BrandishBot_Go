@@ -30,6 +30,7 @@ func main() {
 	registry.Register(&BuildCommand{})
 	registry.Register(&WaitForDBCommand{})
 	registry.Register(&EntrypointCommand{})
+	registry.Register(&SeedCommand{})
 
 	if len(os.Args) < 2 {
 		registry.PrintHelp()

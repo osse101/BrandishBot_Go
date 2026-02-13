@@ -187,7 +187,7 @@ volumes:
 
 Migrations run independently in each environment:
 
-- **Entrypoint script** (`scripts/docker-entrypoint.sh`) runs migrations on container startup
+- **Entrypoint command** (`devtool entrypoint`) runs migrations on container startup
 - Each environment's database has its own migration state
 - No risk of staging migrations affecting production
 
