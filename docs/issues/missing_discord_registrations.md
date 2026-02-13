@@ -34,3 +34,8 @@ Verified that `cmd/discord/main.go` does not register any commands for Duel or E
 
 - **Expeditions**: `ExploreCommand` and `ExpeditionJournalCommand` are registered. Issue resolved for Expeditions.
 - **Duels**: Commands are still missing.
+
+## Status Update (2026-02-14)
+
+- **Expeditions**: Fully operational.
+- **Duels**: `internal/duel/service.go` still has unimplemented `Accept` method, and commands are not registered. This issue remains open for Duels only.
