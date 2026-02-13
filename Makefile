@@ -329,8 +329,7 @@ migrate-status-test:
 
 db-seed-test:
 	@echo "Seeding test database..."
-	@docker exec -i brandishbot_test_db psql -U testuser -d testdb < scripts/setup_test_user.sql
-	@docker exec -i brandishbot_test_db psql -U testuser -d testdb < scripts/seed_test_recipe.sql
+	@DB_URL="postgres://testuser:testpass@localhost:5433/testdb?sslmode=disable" go run ./cmd/devtool seed test
 	@echo "Test database seeded successfully"
 
 db-export:
@@ -386,8 +385,8 @@ reset-staging:
 
 seed-staging:
 	@echo "🌱 Seeding staging database..."
-	@docker compose -f docker-compose.staging.yml exec -T db psql -U $(DB_USER) -d $(DB_NAME) < scripts/setup_test_user.sql || echo "Note: Seed script may not exist"
-	@echo "✅ Staging seeded (if seed scripts exist)"
+	@DB_URL="postgres://$(DB_USER):$(DB_PASSWORD)@localhost:5433/$(DB_NAME)?sslmode=disable" go run ./cmd/devtool seed staging
+	@echo "✅ Staging seeded"
 
 validate-staging:
 	@echo "🔍 Validating staging environment..."

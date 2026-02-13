@@ -7,7 +7,7 @@ This guide explains how to run BrandishBot in different environments and the key
 **Purpose**: Coding, testing, debugging, and running migrations manually.
 
 ### Prerequisites
-Run `./scripts/check_deps.sh` to verify:
+Run `make check-deps` to verify:
 - Go 1.25+
 - Docker & Docker Compose (for database)
 - Make
@@ -21,7 +21,7 @@ Run `./scripts/check_deps.sh` to verify:
 
 2. **Run Migrations**:
    ```bash
-   ./scripts/goose.sh up
+   make migrate-up
    ```
 
 3. **Run Application**:
@@ -60,7 +60,7 @@ Run `./scripts/check_deps.sh` to verify:
 
 ### How It Works
 - **Containerized App**: The app runs inside a lightweight Alpine Linux container.
-- **Auto-Migrations**: The container entrypoint (`scripts/docker-entrypoint.sh`) automatically runs migrations before starting the app.
+- **Auto-Migrations**: The container entrypoint (`devtool entrypoint`) automatically runs migrations before starting the app.
 - **Internal Networking**: App talks to DB via internal Docker network (`db:5432`).
 - **Security**: Database port `5432` can be closed to the outside world (remove `ports` mapping in `docker compose.yml` for production).
 
@@ -103,7 +103,7 @@ git checkout staging
 make deploy-staging
 
 # OR manually
-./scripts/deploy.sh staging v1.2.0-rc1
+go run ./cmd/devtool deploy staging v1.2.0-rc1
 ```
 
 ### Configuration
@@ -148,7 +148,7 @@ git checkout production
 make deploy-production
 
 # OR manually
-./scripts/deploy.sh production v1.2.0
+go run ./cmd/devtool deploy production v1.2.0
 ```
 
 ### Configuration
@@ -177,7 +177,7 @@ docker stats
 make rollback-production
 
 # OR manually
-./scripts/rollback.sh production v1.1.0
+go run ./cmd/devtool rollback production
 ```
 
 ### Key Features

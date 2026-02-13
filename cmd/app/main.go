@@ -81,7 +81,7 @@ func main() {
 			"database", cfg.DBName,
 			"user", cfg.DBUser)
 		slog.Info("💡 Hint: If using Docker, ensure the database is running:")
-		slog.Info("   Run: ./scripts/check_db.sh")
+		slog.Info("   Run: make check-db")
 		slog.Info("   Or: docker-compose up -d db")
 		os.Exit(1)
 	}

@@ -91,30 +91,20 @@ The server only needs **Docker** and these specific files:
 | File | Purpose |
 |------|---------|
 | `.env` | Environment secrets and config |
-| `scripts/deploy_remote.sh` | Main control script |
-| `scripts/health-check.sh` | Used for validation (optional) |
-| `docker compose.staging.yml` | Config for staging |
-| `docker compose.production.yml` | Config for production |
+| `bin/devtool` | CLI tool for deployment |
+| `docker-compose.staging.yml` | Config for staging |
+| `docker-compose.production.yml` | Config for production |
 
-**You do NOT need:** Source code, Go compiler, `Makefile`, or migrating tools (built into the image).
+**You do NOT need:** Source code, Go compiler (if using pre-built binary), `Makefile`, or migrating tools (built into the image).
 
 ### 2. Usage
 
-Use `deploy_remote.sh` to manage the lifecycle:
+Use `devtool` to manage the lifecycle:
 
 ```bash
 # 1. FULL DEPLOY (Pull -> Restart -> Prune -> Health Check)
-./scripts/deploy_remote.sh staging
-./scripts/deploy_remote.sh production v1.2.0
-
-# 2. STARTUP (Just start containers)
-./scripts/deploy_remote.sh staging latest start
-
-# 3. TEARDOWN (Stop containers)
-./scripts/deploy_remote.sh staging latest stop
-
-# 4. PULL ONLY (Pre-fetch images)
-./scripts/deploy_remote.sh production v1.3.0 pull
+./bin/devtool deploy staging --remote
+./bin/devtool deploy production v1.2.0 --remote
 ```
 
 ### Branch Protection Rules
@@ -186,8 +176,8 @@ git push origin staging --tags
 # Option 1: Using Makefile
 make deploy-staging
 
-# Option 2: Using script directly
-./scripts/deploy.sh staging v1.2.0-rc1
+# Option 2: Using devtool directly
+go run ./cmd/devtool deploy staging v1.2.0-rc1
 ```
 
 **What happens during deployment:**
@@ -254,8 +244,8 @@ git push origin production --tags
 # Option 1: Using Makefile
 make deploy-production
 
-# Option 2: Using script directly
-./scripts/deploy.sh production v1.2.0
+# Option 2: Using devtool directly
+go run ./cmd/devtool deploy production v1.2.0
 ```
 
 **Deployment flow:**
@@ -311,11 +301,8 @@ Rollback immediately if:
 # Option 1: Using Makefile
 make rollback-staging
 
-# Option 2: Using script directly (interactive)
-./scripts/rollback.sh staging
-
-# Option 3: Specify version directly
-./scripts/rollback.sh staging v1.1.0
+# Option 2: Using devtool directly
+go run ./cmd/devtool rollback staging
 ```
 
 ### Rollback Production
@@ -324,8 +311,8 @@ make rollback-staging
 # Option 1: Using Makefile (interactive)
 make rollback-production
 
-# Option 2: Using script directly
-./scripts/rollback.sh production v1.1.0
+# Option 2: Using devtool directly
+go run ./cmd/devtool rollback production
 ```
 
 **Rollback process:**
@@ -503,11 +490,11 @@ API_URL=http://localhost:8081 make test-staging
 
 ### File Locations
 
-- Deployment script: [scripts/deploy.sh](../../scripts/deploy.sh)
-- Rollback script: [scripts/rollback.sh](../../scripts/rollback.sh)
-- Health check: [scripts/health-check.sh](../../scripts/health-check.sh)
-- Staging config: [docker compose.staging.yml](../../docker compose.staging.yml)
-- Production config: [docker compose.production.yml](../../docker compose.production.yml)
+- Deployment command: `devtool deploy`
+- Rollback command: `devtool rollback`
+- Health check command: `devtool health-check`
+- Staging config: [docker-compose.staging.yml](../../docker-compose.staging.yml)
+- Production config: [docker-compose.production.yml](../../docker-compose.production.yml)
 - Database backups: `backup_<env>_<timestamp>.sql` (project root)
 
 ---
