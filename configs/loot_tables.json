@@ -1,9 +1,6 @@
 {
   "version": "2.0",
   "pools": {
-    "pool_empty": {
-      "items": []
-    },
     "pool_money": {
       "items": [
         {
