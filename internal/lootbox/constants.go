@@ -31,27 +31,18 @@ const QualityJunkThreshold = 0.95
 // ============================================================================
 
 // CriticalQualityUpgradeChance is the probability (1%) that a dropped item will
-// have its quality level upgraded by one tier. This creates exciting "Lucky!"
-// moments where a common drop becomes uncommon, rare becomes epic, etc.
+// have its quality level upgraded by one tier.
 const CriticalQualityUpgradeChance = 0.01
 
-// GuaranteedDropThreshold defines the chance value (>=1.0) that ensures an
-// item will always drop from the loot table. Used to distinguish between
-// guaranteed drops and chance-based drops.
-const GuaranteedDropThreshold = 1.0
-
-// ZeroChanceThreshold defines the minimum chance value (<=0) for which a
-// loot item will be skipped entirely during processing. Items with 0 or
-// negative chance never drop.
-const ZeroChanceThreshold = 0
-
 // ============================================================================
-// Configuration Keys
+// Configuration
 // ============================================================================
 
-// ConfigKeyTables is the top-level JSON key used in loot tables configuration
-// file to access the map of loot box name -> loot items.
-const ConfigKeyTables = "tables"
+// LootTablesSchemaPath is the path (relative to project root) for the v2 schema.
+const LootTablesSchemaPath = "configs/schemas/loot_tables.schema.json"
+
+// ConfigVersion2 is the expected version string for v2 loot table configs.
+const ConfigVersion2 = "2.0"
 
 // ============================================================================
 // Error Messages
@@ -77,6 +68,7 @@ const (
 const (
 	LogMsgNoLootTableFound   = "No loot table found for lootbox"
 	LogMsgDroppedItemNotInDB = "Dropped item not found in DB"
+	LogMsgOrphanedItem       = "Item not referenced in any pool (orphaned)"
 )
 
 // Log field keys for structured logging

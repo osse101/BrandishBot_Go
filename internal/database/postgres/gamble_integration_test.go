@@ -29,16 +29,27 @@ func setupGambleIntegrationTest(t *testing.T) (*UserRepository, gamble.Service) 
 		return nil, nil
 	}
 
-	// 2. Setup Lootbox Service with deterministic loot table
-	lootTable := map[string][]lootbox.LootItem{
-		"lootbox_tier1": {
-			{ItemName: domain.ItemMoney, Min: 100, Max: 100, Chance: 1.0},
+	// 2. Setup Lootbox Service with deterministic loot table (v2 format).
+	// ItemDropRate=0.0 → gatekeeper always fails → consolation path always fires.
+	// With rnd=0.5: base=0.5*(100-100)+100=100, jitter=1+(0.5-0.5)*1=1, amount=100.
+	lootConfig := lootbox.LootTableConfig{
+		Version: "2.0",
+		Pools: map[string]lootbox.PoolDef{
+			"pool_money": {Items: []lootbox.PoolItemDef{
+				{ItemName: domain.ItemMoney, Weight: 1},
+			}},
+		},
+		Lootboxes: map[string]lootbox.Def{
+			"lootbox_tier1": {
+				ItemDropRate: 0.0, // always consolation
+				FixedMoney:   lootbox.MoneyRange{Min: 100, Max: 100},
+				Pools: []lootbox.PoolRef{
+					{PoolName: "pool_money", Weight: 1},
+				},
+			},
 		},
 	}
-	lootTableData, err := json.Marshal(map[string]interface{}{
-		"version": "1.0",
-		"tables":  lootTable,
-	})
+	lootTableData, err := json.Marshal(lootConfig)
 	require.NoError(t, err)
 
 	tmpDir := t.TempDir()
