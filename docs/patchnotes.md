@@ -4,7 +4,6 @@
 *   **Admin Dashboard**: Manage users, view system health, and execute commands via a new web interface.
 *   **Slots Minigame**: Test your luck with the new Slots minigame! Spin to win big rewards.
 *   **Subscriptions**: Added support for Twitch and YouTube memberships with exclusive benefits.
-*   **User Search**: Finding other players is now faster and more accurate.
 
 ## System Updates
 *   **Item Quality**: The "Shine" system has been officially renamed to "Quality" for clarity.
