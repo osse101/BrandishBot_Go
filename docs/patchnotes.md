@@ -1,3 +1,15 @@
+# Patch Notes (Week of Feb 13, 2026)
+
+## New Features
+*   **Admin Dashboard**: Manage users, view system health, and execute commands via a new web interface.
+*   **Slots Minigame**: Test your luck with the new Slots minigame! Spin to win big rewards.
+*   **Subscriptions**: Added support for Twitch and YouTube memberships with exclusive benefits.
+
+## System Updates
+*   **Item Quality**: The "Shine" system has been officially renamed to "Quality" for clarity.
+*   **Database Optimization**: Major backend updates to improve stability and performance.
+*   **Inventory Stacking**: Improved how items stack in your inventory.
+
 # Patch Notes (Week of Feb 6, 2026)
 
 ## New Features
