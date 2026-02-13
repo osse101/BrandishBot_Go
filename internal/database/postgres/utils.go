@@ -230,7 +230,7 @@ func getItemByName(ctx context.Context, q *generated.Queries, itemName string) (
 	row, err := q.GetItemByName(ctx, itemName)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil // Return nil if item not found
+			return nil, domain.ErrItemNotFound
 		}
 		return nil, fmt.Errorf("failed to get item by name: %w", err)
 	}
@@ -242,7 +242,7 @@ func getItemByID(ctx context.Context, q *generated.Queries, id int) (*domain.Ite
 	row, err := q.GetItemByID(ctx, int32(id))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
+			return nil, domain.ErrItemNotFound
 		}
 		return nil, fmt.Errorf("failed to get item by id: %w", err)
 	}

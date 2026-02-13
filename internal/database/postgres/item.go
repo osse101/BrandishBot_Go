@@ -2,10 +2,10 @@ package postgres
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -56,10 +56,10 @@ func (r *ItemRepository) GetAllItems(ctx context.Context) ([]domain.Item, error)
 // GetItemByID retrieves an item by ID
 func (r *ItemRepository) GetItemByID(ctx context.Context, id int) (*domain.Item, error) {
 	row, err := r.q.GetItemByID(ctx, int32(id))
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, domain.ErrItemNotFound
-	}
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrItemNotFound
+		}
 		return nil, fmt.Errorf("failed to get item: %w", err)
 	}
 
@@ -79,10 +79,10 @@ func (r *ItemRepository) GetItemByID(ctx context.Context, id int) (*domain.Item,
 // GetItemByInternalName retrieves an item by internal name
 func (r *ItemRepository) GetItemByInternalName(ctx context.Context, internalName string) (*domain.Item, error) {
 	row, err := r.q.GetItemByInternalName(ctx, internalName)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, domain.ErrItemNotFound
-	}
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrItemNotFound
+		}
 		return nil, fmt.Errorf("failed to get item: %w", err)
 	}
 
@@ -192,10 +192,10 @@ func (r *ItemRepository) AssignItemTag(ctx context.Context, itemID, typeID int) 
 // GetSyncMetadata retrieves sync metadata for a config file
 func (r *ItemRepository) GetSyncMetadata(ctx context.Context, configName string) (*domain.SyncMetadata, error) {
 	row, err := r.q.GetSyncMetadata(ctx, configName)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, errors.New(ErrMsgSyncMetadataNotFound)
-	}
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, errors.New(ErrMsgSyncMetadataNotFound)
+		}
 		return nil, fmt.Errorf("failed to get sync metadata: %w", err)
 	}
 

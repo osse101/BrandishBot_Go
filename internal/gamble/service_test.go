@@ -1150,7 +1150,7 @@ func TestResolveItemName(t *testing.T) {
 
 	// Test Case 3: Invalid name (not public alias, not internal name)
 	ts.namingResolver.On("ResolvePublicName", "invalid_box").Return("", false)
-	ts.repo.On("GetItemByName", ctx, "invalid_box").Return(nil, nil) // Not found
+	ts.repo.On("GetItemByName", ctx, "invalid_box").Return(nil, domain.ErrItemNotFound) // Not found
 	name, err = ts.svc.(*service).resolveItemName(ctx, "invalid_box")
 	assert.Error(t, err)
 	assert.Empty(t, name)
