@@ -138,6 +138,9 @@ Visit http://localhost:8080/swagger/index.html
 
 ## Development
 
+The project uses a centralized `cmd/devtool` utility for development tasks. Most `make` commands delegate to this tool.
+See **[Devtool Documentation](docs/tools/DEVTOOL.md)** for detailed usage.
+
 ### Makefile Commands
 
 **Migrations**:

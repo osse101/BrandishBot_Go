@@ -144,6 +144,7 @@ Environment-based configuration management:
 
 Core business entities and types:
 
+- **Constants**: `internal/domain/constants.go` acts as the centralized registry for domain-wide constants (QualityLevels, JobKeys, GambleState, etc.), superseding scattered definitions.
 - **User**: Multi-platform user accounts
 - **Item**: In-game items with quality, type
 - **Inventory**: JSONB-stored user inventories

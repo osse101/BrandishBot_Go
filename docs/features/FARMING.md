@@ -44,6 +44,14 @@ The system is implemented in `internal/harvest/`.
 - **Tiers**: `internal/harvest/reward_tiers.go`
 - **Persistence**: Harvest state is stored in the database, tracking `last_harvested_at`.
 
+### Technical Implementation
+
+The harvest service employs robust concurrency patterns to ensure reliability:
+- **Graceful Shutdown**: The service exposes a `Shutdown(ctx)` method and uses a `sync.WaitGroup` to ensure all background operations (like XP awarding) complete before the application stops.
+- **Asynchronous XP Awarding**: Farmer XP is awarded asynchronously to prevent blocking the harvest transaction.
+- **Context Management**: The asynchronous XP task uses `context.WithoutCancel` (Go 1.21+) to detach from the request context, ensuring the award process completes even if the user cancels the HTTP request immediately after the transaction commits.
+- **Transaction Safety**: The harvest operation runs within a database transaction, ensuring the harvest timestamp is only updated if the rewards are successfully added to the inventory.
+
 ## Compost System (In Development)
 
 The Compost system is designed to allow players to recycle items into resources.
