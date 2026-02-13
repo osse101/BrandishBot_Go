@@ -22,6 +22,7 @@ func TestUpgradeItem_LevelRequirements(t *testing.T) {
 		setupTestData(repo) // Sets up recipe 1 (tier0->tier1)
 		mockJob := NewMockJobService()
 		svc := NewService(repo, &MockEventPublisher{}, nil, nil, mockJob).(*service)
+		svc.rnd = func() float64 { return 1.0 } // Prevent masterwork
 		ctx := context.Background()
 
 		// Update recipe to require level 5
@@ -48,6 +49,7 @@ func TestUpgradeItem_LevelRequirements(t *testing.T) {
 		setupTestData(repo)
 		mockJob := NewMockJobService()
 		svc := NewService(repo, &MockEventPublisher{}, nil, nil, mockJob).(*service)
+		svc.rnd = func() float64 { return 1.0 } // Prevent masterwork
 		ctx := context.Background()
 
 		// Update recipe to require level 5
@@ -1549,7 +1551,8 @@ func TestUpgradeItem_WithNamingResolution(t *testing.T) {
 			},
 		}
 
-		svc := NewService(repo, &MockEventPublisher{}, mockNaming, nil, NewMockJobService())
+		svc := NewService(repo, &MockEventPublisher{}, mockNaming, nil, NewMockJobService()).(*service)
+		svc.rnd = func() float64 { return 1.0 } // Prevent masterwork
 		ctx := context.Background()
 
 		// We need 1 lootbox0 to make 1 lootbox1
