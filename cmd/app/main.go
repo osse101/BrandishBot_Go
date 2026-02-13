@@ -171,7 +171,7 @@ func main() {
 	}
 
 	// Initialize Lootbox Service
-	lootboxSvc, err := lootbox.NewService(repos.User, progressionService, config.ConfigPathLootTables)
+	lootboxSvc, err := lootbox.NewService(repos.User, progressionService, eventBus, config.ConfigPathLootTables)
 	if err != nil {
 		slog.Error("Failed to initialize lootbox service", "error", err)
 		os.Exit(1)

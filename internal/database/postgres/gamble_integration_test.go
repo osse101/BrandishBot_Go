@@ -64,7 +64,7 @@ func setupGambleIntegrationTest(t *testing.T) (*UserRepository, gamble.Service) 
 	progressionSvc := &MockProgressionService{}
 
 	// Use deterministic RNG for lootboxes: 0.5 always rolls Common (1.0x)
-	lootSvc, err := lootbox.NewService(lootRepo, progressionSvc, lootTablePath, lootbox.WithRnd(func() float64 { return 0.5 }))
+	lootSvc, err := lootbox.NewService(lootRepo, progressionSvc, nil, lootTablePath, lootbox.WithRnd(func() float64 { return 0.5 }))
 	require.NoError(t, err)
 
 	gambleSvc := gamble.NewService(

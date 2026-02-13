@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
 	"github.com/osse101/BrandishBot_Go/internal/validation"
@@ -106,17 +107,21 @@ type service struct {
 	cache           map[string]*FlattenedLootbox // read-only after NewService
 	rnd             func() float64
 	schemaValidator validation.SchemaValidator
+	bus             event.Bus
+	lootTablesPath  string // Stored for cache rebuilding
 }
 
 // NewService creates a new lootbox service and builds the item drop cache.
 // signature is unchanged — context.Background() is used internally for GetAllItems.
-func NewService(repo ItemRepository, progressionSvc ProgressionService, lootTablesPath string, opts ...Option) (Service, error) {
+func NewService(repo ItemRepository, progressionSvc ProgressionService, bus event.Bus, lootTablesPath string, opts ...Option) (Service, error) {
 	svc := &service{
 		repo:            repo,
 		progressionSvc:  progressionSvc,
 		cache:           make(map[string]*FlattenedLootbox),
 		rnd:             utils.RandomFloat,
 		schemaValidator: validation.NewSchemaValidator(),
+		bus:             bus,
+		lootTablesPath:  lootTablesPath,
 	}
 
 	for _, opt := range opts {
@@ -127,7 +132,48 @@ func NewService(repo ItemRepository, progressionSvc ProgressionService, lootTabl
 		return nil, fmt.Errorf("%s: %w", ErrContextFailedToLoadLootTables, err)
 	}
 
+	// Subscribe to progression node unlocked events for cache invalidation
+	if bus != nil {
+		bus.Subscribe(event.ProgressionNodeUnlocked, svc.handleNodeUnlocked)
+	}
+
 	return svc, nil
+}
+
+// handleNodeUnlocked rebuilds the lootbox cache when an item node is unlocked.
+// Only rebuilds if the unlocked node is an item node (starts with "item_").
+func (s *service) handleNodeUnlocked(ctx context.Context, e event.Event) error {
+	log := logger.FromContext(ctx)
+
+	payload, ok := e.Payload.(map[string]interface{})
+	if !ok {
+		log.Warn("Invalid payload for ProgressionNodeUnlocked event")
+		return nil
+	}
+
+	nodeKey, ok := payload["node_key"].(string)
+	if !ok {
+		log.Warn("Missing or invalid node_key in ProgressionNodeUnlocked event")
+		return nil
+	}
+
+	// Only rebuild cache if an item node was unlocked
+	// Item nodes follow the pattern "item_{internal_name}"
+	if len(nodeKey) < 5 || nodeKey[:5] != "item_" {
+		log.Debug("Ignoring non-item node unlock", "node_key", nodeKey)
+		return nil
+	}
+
+	log.Info("Item node unlocked, rebuilding lootbox cache", "node_key", nodeKey)
+
+	// Rebuild the cache
+	if err := s.buildCache(s.lootTablesPath); err != nil {
+		log.Error("Failed to rebuild lootbox cache after item unlock", "error", err, "node_key", nodeKey)
+		return fmt.Errorf("failed to rebuild lootbox cache: %w", err)
+	}
+
+	log.Info("Lootbox cache successfully rebuilt", "node_key", nodeKey)
+	return nil
 }
 
 // OpenLootbox simulates opening lootboxes and returns the dropped items.

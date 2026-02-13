@@ -95,10 +95,11 @@ func (s *service) buildCache(path string) error {
 	// Orphan tracking — warn about items not referenced by any pool entry.
 	s.checkOrphans(allItems, config.Pools)
 
-	// Build flattened pools.
+	// Build flattened pools (filtering by progression unlock status).
+	ctx := context.Background()
 	flatPools := make(map[string]*FlatPool, len(config.Pools))
 	for poolName, poolDef := range config.Pools {
-		fp, err := buildFlatPool(poolDef, itemByName, itemsByType)
+		fp, err := buildFlatPool(ctx, poolDef, itemByName, itemsByType, s.progressionSvc)
 		if err != nil {
 			return fmt.Errorf("pool %q: %w", poolName, err)
 		}
@@ -160,7 +161,8 @@ func (s *service) checkOrphans(allItems []domain.Item, pools map[string]PoolDef)
 }
 
 // buildFlatPool resolves a PoolDef into a FlatPool with cumulative weights.
-func buildFlatPool(def PoolDef, itemByName map[string]*domain.Item, itemsByType map[string][]*domain.Item) (*FlatPool, error) {
+// Items that are locked via progression are excluded, and weights are adjusted accordingly.
+func buildFlatPool(ctx context.Context, def PoolDef, itemByName map[string]*domain.Item, itemsByType map[string][]*domain.Item, progressionSvc ProgressionService) (*FlatPool, error) {
 	fp := &FlatPool{}
 
 	for _, entry := range def.Items {
@@ -170,6 +172,13 @@ func buildFlatPool(def PoolDef, itemByName map[string]*domain.Item, itemsByType 
 			if !ok {
 				return nil, fmt.Errorf("item %q not found in database", entry.ItemName)
 			}
+
+			// Check if item is unlocked via progression
+			if !isItemUnlocked(ctx, item.InternalName, progressionSvc) {
+				logger.Debug("Excluding locked item from pool", "item", item.InternalName)
+				continue
+			}
+
 			fp.TotalWeight += entry.Weight
 			fp.Entries = append(fp.Entries, FlatPoolEntry{
 				ItemName:    entry.ItemName,
@@ -183,6 +192,12 @@ func buildFlatPool(def PoolDef, itemByName map[string]*domain.Item, itemsByType 
 				return nil, fmt.Errorf("item_type %q has no matching items in database", entry.ItemType)
 			}
 			for _, item := range items {
+				// Check if item is unlocked via progression
+				if !isItemUnlocked(ctx, item.InternalName, progressionSvc) {
+					logger.Debug("Excluding locked item from pool", "item", item.InternalName)
+					continue
+				}
+
 				fp.TotalWeight += entry.Weight
 				fp.Entries = append(fp.Entries, FlatPoolEntry{
 					ItemName:    item.InternalName,
@@ -193,11 +208,27 @@ func buildFlatPool(def PoolDef, itemByName map[string]*domain.Item, itemsByType 
 		}
 	}
 
-	if len(fp.Entries) == 0 || fp.TotalWeight == 0 {
-		return nil, fmt.Errorf("pool is empty after expansion")
+	// Empty pools are valid (all items may be locked via progression)
+	return fp, nil
+}
+
+// isItemUnlocked checks if an item is unlocked via the progression system.
+// Returns true if progressionSvc is nil (no progression checks) or if the item is unlocked.
+func isItemUnlocked(ctx context.Context, itemInternalName string, progressionSvc ProgressionService) bool {
+	if progressionSvc == nil {
+		return true // No progression service = all items unlocked
 	}
 
-	return fp, nil
+	// Item progression nodes follow the pattern "item_{internal_name}"
+	nodeKey := fmt.Sprintf("item_%s", itemInternalName)
+	unlocked, err := progressionSvc.IsNodeUnlocked(ctx, nodeKey, 1)
+	if err != nil {
+		// On error, default to unlocked to avoid breaking loot system
+		logger.Warn("Failed to check item unlock status, defaulting to unlocked", "item", itemInternalName, "error", err)
+		return true
+	}
+
+	return unlocked
 }
 
 // buildFlattenedLootbox resolves a Def into a FlattenedLootbox.
@@ -262,6 +293,18 @@ func (s *service) processLootTable(flat *FlattenedLootbox, quantity int) (map[st
 		// Stage 2 — Pool selection (weighted).
 		poolName := selectPool(flat, s.rnd())
 		pool := flat.Pools[poolName]
+
+		// If pool is empty (all items locked), treat as gatekeeper failure.
+		if len(pool.Entries) == 0 {
+			base := s.rnd()*float64(flat.MoneyMax-flat.MoneyMin) + float64(flat.MoneyMin)
+			jitter := 1.0 + (s.rnd()-0.5)*(1.0-flat.ItemDropRate)
+			amount := int(math.Round(base * jitter))
+			if amount < 1 {
+				amount = 1
+			}
+			consolationMoney += amount
+			continue
+		}
 
 		// Stage 3 — Item selection (weighted).
 		entry := selectItem(pool, s.rnd())

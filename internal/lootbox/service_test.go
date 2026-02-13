@@ -109,7 +109,7 @@ func buildSimpleService(t *testing.T, repo *mockItemRepo, itemDropRate float64, 
 		},
 	}
 	path := createTempConfigV2(t, pools, lootboxes)
-	svc, err := NewService(repo, &mockProgression{unlocked: false}, path)
+	svc, err := NewService(repo, &mockProgression{unlocked: true}, nil, path)
 	if err != nil {
 		return nil, err
 	}
@@ -271,7 +271,7 @@ func TestSameItem_QuantitySummed(t *testing.T) {
 		},
 	}
 	path := createTempConfigV2(t, pools, lootboxes)
-	svc, err := NewService(repo, &mockProgression{}, path)
+	svc, err := NewService(repo, &mockProgression{unlocked: true}, nil, path)
 	require.NoError(t, err)
 
 	drops, err := svc.OpenLootbox(context.Background(), "box", 3, domain.QualityCommon)
@@ -310,7 +310,7 @@ func TestPoolSelection_WeightedRoll(t *testing.T) {
 		},
 	}
 	path := createTempConfigV2(t, pools, lootboxes)
-	svc, err := NewService(repo, &mockProgression{}, path)
+	svc, err := NewService(repo, &mockProgression{unlocked: true}, nil, path)
 	require.NoError(t, err)
 	s := svc.(*service)
 
@@ -360,7 +360,7 @@ func TestItemSelection_WeightedRoll(t *testing.T) {
 		},
 	}
 	path := createTempConfigV2(t, pools, lootboxes)
-	svc, err := NewService(repo, &mockProgression{}, path)
+	svc, err := NewService(repo, &mockProgression{unlocked: true}, nil, path)
 	require.NoError(t, err)
 	s := svc.(*service)
 
@@ -410,7 +410,7 @@ func TestTypeExpansion_Explosive(t *testing.T) {
 		},
 	}
 	path := createTempConfigV2(t, pools, lootboxes)
-	svc, err := NewService(repo, &mockProgression{}, path)
+	svc, err := NewService(repo, &mockProgression{unlocked: true}, nil, path)
 	require.NoError(t, err)
 
 	// Verify cache: pool_a should have 4 entries with TotalWeight=100.
@@ -441,7 +441,7 @@ func TestTypeExpansion_Unknown_Error(t *testing.T) {
 		},
 	}
 	path := createTempConfigV2(t, pools, lootboxes)
-	_, err := NewService(repo, &mockProgression{}, path)
+	_, err := NewService(repo, &mockProgression{unlocked: true}, nil, path)
 	require.Error(t, err)
 }
 
@@ -465,7 +465,7 @@ func TestUnknownPool_Error(t *testing.T) {
 		},
 	}
 	path := createTempConfigV2(t, pools, lootboxes)
-	_, err := NewService(repo, &mockProgression{}, path)
+	_, err := NewService(repo, &mockProgression{unlocked: true}, nil, path)
 	require.Error(t, err)
 }
 
@@ -485,7 +485,7 @@ func TestUnknownItem_Error(t *testing.T) {
 		},
 	}
 	path := createTempConfigV2(t, pools, lootboxes)
-	_, err := NewService(repo, &mockProgression{}, path)
+	_, err := NewService(repo, &mockProgression{unlocked: true}, nil, path)
 	require.Error(t, err)
 }
 
@@ -523,7 +523,7 @@ func TestZeroQuantity_NilNoError(t *testing.T) {
 
 func TestInvalidConfig_Error(t *testing.T) {
 	repo := &mockItemRepo{}
-	_, err := NewService(repo, &mockProgression{}, "nonexistent_path.json")
+	_, err := NewService(repo, &mockProgression{unlocked: true}, nil, "nonexistent_path.json")
 	require.Error(t, err)
 }
 
