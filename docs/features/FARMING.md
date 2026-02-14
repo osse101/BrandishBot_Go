@@ -52,13 +52,52 @@ The harvest service employs robust concurrency patterns to ensure reliability:
 - **Context Management**: The asynchronous XP task uses `context.WithoutCancel` (Go 1.21+) to detach from the request context, ensuring the award process completes even if the user cancels the HTTP request immediately after the transaction commits.
 - **Transaction Safety**: The harvest operation runs within a database transaction, ensuring the harvest timestamp is only updated if the rewards are successfully added to the inventory.
 
-## Compost System (In Development)
+## Compost System
 
-The Compost system is designed to allow players to recycle items into resources.
+The Compost system allows players to recycle unwanted items into useful resources.
 
-### Intended Mechanics
-- **Deposit**: Players can deposit organic and other items into a compost bin.
-- **Processing**: Items take time to break down.
-- **Harvest**: Once processed, players can harvest the compost for rewards (e.g., Gems).
+### Core Mechanics
 
-*Note: This feature is currently in development. The service structure exists in `internal/compost/service.go`, but core logic is not yet fully active.*
+- **Unlock**: Requires the `feature_compost` progression node.
+- **Capacity**: Default bin holds **5 items**.
+- **Efficiency**: Converts items at **50% value efficiency** (Default).
+- **Output**: Produces the highest-value item possible of the **dominant input type**.
+
+### How It Works
+
+1.  **Deposit**: Add items with the `compostable` tag to your bin.
+    -   *Command*: `/use compost <item> <amount>` (or via UI)
+2.  **Process**: The bin processes items over time.
+    -   **Warmup**: 1 Hour fixed time.
+    -   **Per Item**: +30 Minutes per item.
+    -   *Example*: 5 items take 1h + (5 * 30m) = 3.5 Hours.
+3.  **Harvest**: Collect the result once ready.
+    -   *Command*: `/harvest compost` (or via UI)
+    -   *XP*: Awards XP equal to 10% of input value.
+
+### Output Calculation
+
+The system calculates the **Total Input Value** based on item base values and quality.
+The **Output Value** is 50% of the Input Value.
+
+The system determines the **Dominant Type** (e.g., Organic, Gem, Metal) based on what you deposited. It then rewards you with the most valuable item of that type that fits within the Output Value.
+
+> **Example**:
+> You deposit 10 Common Herbs (Value 100 each, Type: Organic).
+> Total Input: 1000. Output Value: 500.
+> Dominant Type: Organic.
+> The system looks for Organic items worth <= 500.
+> If "Premium Fertilizer" is worth 250, you receive 2 of them.
+
+### Sludge (Spoilage)
+
+If you leave your finished compost in the bin for too long (**1 Week** after finishing), it turns into **Sludge**.
+-   **Reward**: `compost_sludge` (Quantity = Input Value / 10).
+-   **Value**: Significantly less than a proper harvest.
+
+## Implementation Details
+
+The compost system uses a "Garbage In, Value Out" engine in `internal/compost/engine.go`.
+-   **Service**: `internal/compost/service.go` handles transactions and validation.
+-   **Engine**: Pure logic for calculating ready times and outputs.
+-   **Events**: Publishes `compost.harvested` for stats and notifications.
