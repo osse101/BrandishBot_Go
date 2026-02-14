@@ -270,18 +270,7 @@ func (s *service) calculateActualXP(ctx context.Context, userID, jobKey string, 
 		actualAmount = int(float64(actualAmount) * EpiphanyMultiplier)
 		logger.FromContext(ctx).Info("Job Epiphany triggered!", "user_id", userID, "job", jobKey, "base_amount", baseAmount, "bonus_amount", actualAmount-baseAmount)
 		if s.publisher != nil {
-			s.publisher.PublishWithRetry(ctx, event.Event{
-				Version: "1.0",
-				Type:    event.Type(domain.EventTypeJobXPCritical),
-				Payload: map[string]interface{}{
-					"user_id":    userID,
-					"job":        jobKey,
-					"base_xp":    baseAmount,
-					"bonus_xp":   actualAmount - baseAmount,
-					"multiplier": EpiphanyMultiplier,
-					"source":     source,
-				},
-			})
+			s.publisher.PublishWithRetry(ctx, event.NewJobXPCriticalEvent(userID, jobKey, baseAmount, actualAmount-baseAmount, EpiphanyMultiplier, source))
 		}
 	}
 	return actualAmount
@@ -383,19 +372,7 @@ func (s *service) recordXPAndLevelUpEvents(ctx context.Context, userID, jobKey s
 
 func (s *service) handleLevelUp(ctx context.Context, userID, jobKey string, oldLevel, newLevel int, source string) {
 	if s.publisher != nil {
-		s.publisher.PublishWithRetry(ctx, event.Event{
-			Version: "1.0",
-			Type:    event.Type(domain.EventJobLevelUp),
-			Payload: map[string]interface{}{
-				"user_id":   userID,
-				"job_key":   jobKey,
-				"new_level": newLevel,
-				"old_level": oldLevel,
-			},
-			Metadata: map[string]interface{}{
-				"source": source,
-			},
-		})
+		s.publisher.PublishWithRetry(ctx, event.NewJobLevelUpEvent(userID, jobKey, oldLevel, newLevel, source))
 	}
 }
 
@@ -552,14 +529,7 @@ func (s *service) ResetDailyJobXP(ctx context.Context) (int64, error) {
 
 	// Publish event
 	if s.publisher != nil {
-		s.publisher.PublishWithRetry(ctx, event.Event{
-			Version: "1.0",
-			Type:    event.Type(domain.EventTypeDailyResetComplete),
-			Payload: map[string]interface{}{
-				"reset_time":       time.Now().UTC(),
-				"records_affected": recordsAffected,
-			},
-		})
+		s.publisher.PublishWithRetry(ctx, event.NewDailyResetCompleteEvent(time.Now().UTC(), recordsAffected))
 	}
 
 	return recordsAffected, nil

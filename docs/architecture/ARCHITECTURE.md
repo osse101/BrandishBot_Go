@@ -99,6 +99,7 @@ BrandishBot_Go/
 │   ├── worker/                   # Background workers
 │   ├── streamerbot/              # Streamer.bot WebSocket client
 │   ├── discord/                  # Discord bot commands
+│   ├── compost/                  # Compost system
 │   ├── repository/               # Repository interfaces
 │   ├── logger/                   # Structured logging (Zap)
 │   ├── metrics/                  # Prometheus metrics
@@ -110,6 +111,8 @@ BrandishBot_Go/
 │   ├── loot_tables.json          # Loot table configuration
 │   └── progression_tree.json     # Progression tree definition
 ├── migrations/                   # Goose SQL migrations
+├── web/
+│   └── admin/                    # Admin Dashboard (React SPA)
 ├── client/
 │   └── csharp/                   # C# Streamer.bot client
 ├── docs/                         # Documentation
@@ -243,6 +246,13 @@ Business logic with event publishing:
 - Recipe unlocking and management
 - Job XP rewards for crafting actions
 
+#### Compost System (`internal/compost/`)
+
+- Recycling mechanic with "Garbage In, Value Out" logic
+- Time-based processing (1h warmup + 30m/item)
+- Sludge penalty for neglected bins (1 week timeout)
+- Dominant type calculation for output rewards
+
 #### Progression System (`internal/progression/`)
 
 - **Tree Management**: Load progression tree from JSON
@@ -353,6 +363,16 @@ HTTP middleware stack:
 - Request logging with duration
 - Panic recovery
 - Request ID injection
+
+### 13. Admin Dashboard (`web/admin/`)
+
+Embedded React SPA for system management:
+
+- **Frontend Stack**: React 19, TypeScript, Tailwind, Vite
+- **Deployment**: Embedded in Go binary via `//go:embed`
+- **Authentication**: API Key via `sessionStorage`
+- **Live Updates**: Connects to SSE stream for real-time events
+- **Features**: User management, server health, admin commands
 
 ## Database Schema
 

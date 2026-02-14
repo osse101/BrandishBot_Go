@@ -4,17 +4,14 @@
 
 8 out of 11 total features already have gates implemented. These are the remaining 3.
 
-## Current Status (2026-02-01)
+## Current Status (2026-02-02)
 
-**Structural implementation completed** for all three features:
-- ✅ Database migrations created (duels, compost, expeditions)
-- ✅ Domain types defined with JSONB marshaling
-- ✅ Repository interfaces with transaction support
-- ✅ Service layer with placeholder logic
-- ✅ HTTP handlers with progression unlock checks
-- ✅ Builds successfully with no errors
+**Implementation Progress**:
+- ✅ **Compost**: Fully implemented (Service, Repository, Engine, Handlers, Discord Commands).
+- ✅ **Expeditions**: Fully implemented (Service, Repository, Engine, Handlers, Discord Commands, Worker).
+- 🚧 **Duels**: Structurally implemented but missing business logic (`Accept` method), Repository implementation, and Discord commands.
 
-**Next phase**: Implement business logic, route registration, and Discord commands.
+**Next phase**: Complete Duels implementation and verify integration tests.
 
 ---
 
@@ -135,27 +132,28 @@ func (s *Service) AcceptDuel(ctx context.Context, duelID string, accepterID stri
 - [x] Create repository interface (✅ `internal/repository/compost.go`)
 - [x] Create database migration (✅ `migrations/0011_add_compost.sql`)
 - [x] Create HTTP handlers (✅ `internal/handler/compost.go`)
-- [ ] Implement conversion rate logic (item rarity → gems calculation)
-- [ ] Implement harvest logic with inventory updates
-- [ ] Implement repository (Postgres implementation)
-- [ ] Register routes in `internal/server/server.go`
+- [x] Implement conversion rate logic (✅ `internal/compost/engine.go`)
+- [x] Implement harvest logic with inventory updates (✅ `internal/compost/service.go`)
+- [x] Implement repository (✅ `internal/database/postgres/compost.go`)
+- [x] Register routes in `internal/server/server.go`
 - [ ] Add tests for compost when locked/unlocked
 - [ ] Verify with admin unlock: `curl -X POST .../admin/unlock -d '{"node_key": "feature_compost", "level": 1}'`
 - [ ] Test locked behavior (compost feature unavailable)
 - [ ] Test unlocked behavior (can convert junk to gems over time)
-- [ ] Create Discord commands (`/compost deposit`, `/compost status`, `/compost harvest`)
+- [x] Create Discord commands (✅ `internal/discord/cmd_compost.go`)
 - [ ] Update API client wrappers (Go Discord, C# Streamer.bot)
 
 **Files Created**:
 
 - ✅ `internal/handler/compost.go` - 3 endpoints (deposit, status, harvest)
-- ✅ `internal/compost/service.go` - Service with placeholder logic
+- ✅ `internal/compost/service.go` - Service with core logic
+- ✅ `internal/compost/engine.go` - Engine for conversion logic
 - ✅ `internal/domain/compost.go` - Domain types (CompostDeposit, CompostStatus, CompostMetadata)
 - ✅ `internal/repository/compost.go` - Repository interface with transaction support
 - ✅ `migrations/0011_add_compost.sql` - Database schema
 - ⏳ `internal/compost/service_test.go` - Not yet created
-- ⏳ `internal/database/postgres/compost.go` - Not yet created
-- ⏳ `internal/discord/cmd_compost.go` - Not yet created
+- ✅ `internal/database/postgres/compost.go` - Postgres implementation
+- ✅ `internal/discord/cmd_compost.go` - Discord commands
 
 **Acceptance Criteria**:
 
@@ -375,29 +373,30 @@ This can be enhanced later to add time-based conversion for better gem rates.
 - [x] Create repository interface (✅ `internal/repository/expedition.go`)
 - [x] Create database migration (✅ `migrations/0012_add_expeditions.sql`)
 - [x] Create HTTP handlers (✅ `internal/handler/expedition.go`)
-- [ ] Implement expedition execution logic (reward generation in `ExecuteExpedition()`)
-- [ ] Implement repository (Postgres implementation)
-- [ ] Create expedition worker (follows gamble worker pattern)
-- [ ] Integrate worker with scheduler
-- [ ] Register routes in `internal/server/server.go`
+- [x] Implement expedition execution logic (✅ `internal/expedition/engine.go`)
+- [x] Implement repository (✅ `internal/database/postgres/expedition.go`)
+- [x] Create expedition worker (✅ `internal/worker/expedition_worker.go`)
+- [x] Integrate worker with scheduler
+- [x] Register routes in `internal/server/server.go`
 - [ ] Add tests for expedition when locked/unlocked
 - [ ] Verify with admin unlock: `curl -X POST .../admin/unlock -d '{"node_key": "feature_expedition", "level": 1}'`
 - [ ] Test locked behavior (expedition feature unavailable)
 - [ ] Test unlocked behavior (can start expeditions)
-- [ ] Create Discord commands (`/expedition start`, `/expedition join`, `/expedition status`)
+- [x] Create Discord commands (✅ `internal/discord/cmd_expedition.go`)
 - [ ] Update API client wrappers (Go Discord, C# Streamer.bot)
 
 **Files Created**:
 
 - ✅ `internal/handler/expedition.go` - 4 endpoints (start, join, get, get active)
-- ✅ `internal/expedition/service.go` - Service with placeholder logic
+- ✅ `internal/expedition/service.go` - Service with core logic
+- ✅ `internal/expedition/engine.go` - Engine for encounter logic
 - ✅ `internal/domain/expedition.go` - Domain types (ExpeditionState, ExpeditionMetadata, ExpeditionRewards)
 - ✅ `internal/repository/expedition.go` - Repository interface with transaction support
 - ✅ `migrations/0012_add_expeditions.sql` - Database schema (expeditions + participants)
 - ⏳ `internal/expedition/service_test.go` - Not yet created
-- ⏳ `internal/database/postgres/expedition.go` - Not yet created
-- ⏳ `internal/worker/expedition_worker.go` - Not yet created
-- ⏳ `internal/discord/cmd_expedition.go` - Not yet created
+- ✅ `internal/database/postgres/expedition.go` - Postgres implementation
+- ✅ `internal/worker/expedition_worker.go` - Background worker
+- ✅ `internal/discord/cmd_expedition.go` - Discord commands
 
 **Acceptance Criteria**:
 
@@ -574,17 +573,17 @@ All three features have the following **structural foundation** implemented:
 
 **Total**: 12 new API endpoints ready for implementation
 
-### Phase 2: Business Logic & Implementation ⏳ PENDING
+### Phase 2: Business Logic & Implementation 🚧 IN PROGRESS
 
 The following components need to be implemented for each feature:
 
 | Task | Duels | Compost | Expeditions |
 |------|-------|---------|-------------|
-| Postgres Repository | ⏳ | ⏳ | ⏳ |
-| Business Logic | ⏳ Accept() | ⏳ Harvest() | ⏳ ExecuteExpedition() |
-| Route Registration | ⏳ | ⏳ | ⏳ |
-| Worker Integration | N/A | N/A | ⏳ Required |
-| Discord Commands | ⏳ | ⏳ | ⏳ |
+| Postgres Repository | ⏳ | ✅ | ✅ |
+| Business Logic | ⏳ Accept() | ✅ | ✅ |
+| Route Registration | ⏳ | ✅ | ✅ |
+| Worker Integration | N/A | N/A | ✅ |
+| Discord Commands | ⏳ | ✅ | ✅ |
 | Client Wrappers | ⏳ | ⏳ | ⏳ |
 | Unit Tests | ⏳ | ⏳ | ⏳ |
 | Integration Tests | ⏳ | ⏳ | ⏳ |
