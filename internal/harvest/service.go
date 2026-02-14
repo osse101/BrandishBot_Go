@@ -16,17 +16,6 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
-const (
-	minHarvestInterval = 1.0   // Minimum 1 hour between harvests
-	farmerXPThreshold  = 5.0   // Minimum 5 hours for Farmer XP
-	farmerXPPerHour    = 8     // Base XP per hour of waiting
-	spoiledThreshold   = 336.0 // 168h (max tier) + 168h (1 week)
-
-	// Bonus types
-	BonusTypeHarvestYield = "harvest_yield"
-	BonusTypeGrowthSpeed  = "growth_speed"
-)
-
 // Service defines the harvest system business logic
 type Service interface {
 	// Harvest collects accumulated rewards for a user
@@ -66,79 +55,49 @@ func (s *service) Harvest(ctx context.Context, platform, platformID, username st
 	log := logger.FromContext(ctx)
 	log.Info("Harvest called", "platform", platform, "platformID", platformID, "username", username)
 
-	// 1. Get or register user
 	user, err := s.ensureUser(ctx, platform, platformID, username)
 	if err != nil {
 		return nil, err
 	}
 
-	// 2. Check if harvest feature (farming) is unlocked
 	if err := s.checkFarmingUnlocked(ctx); err != nil {
 		return nil, err
 	}
 
-	// 3. Initialize harvest state if first time
 	if initialResp, err := s.initializeHarvestStateIfNeeded(ctx, user.ID); err != nil || initialResp != nil {
 		return initialResp, err
 	}
 
-	// 4. Begin transaction
+	return s.performHarvestTransaction(ctx, user)
+}
+
+func (s *service) performHarvestTransaction(ctx context.Context, user *domain.User) (*domain.HarvestResponse, error) {
 	tx, err := s.harvestRepo.BeginTx(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer repository.SafeRollback(ctx, tx)
 
-	// 5. Get harvest state with lock (FOR UPDATE)
 	harvestState, err := tx.GetHarvestStateWithLock(ctx, user.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get harvest state with lock: %w", err)
 	}
 
-	// 6. Calculate elapsed hours
 	now := time.Now()
 	hoursElapsed := now.Sub(harvestState.LastHarvestedAt).Hours()
 
-	// 7. Validate minimum time (1 hour)
 	if hoursElapsed < minHarvestInterval {
 		nextHarvest := harvestState.LastHarvestedAt.Add(time.Hour)
 		return nil, fmt.Errorf("%w: next harvest available at %s", domain.ErrHarvestTooSoon, nextHarvest.Format(time.RFC3339))
 	}
 
-	// 8. Calculate bonuses
-	yieldMultiplier := 1.0
-	growthMultiplier := 1.0
-
-	// Safe call to get bonuses (don't fail harvest if job system errors)
-	if yieldBonus, err := s.jobSvc.GetJobBonus(ctx, user.ID, "farmer", BonusTypeHarvestYield); err == nil {
-		yieldMultiplier += yieldBonus
-	} else {
-		log.Warn("Failed to get yield bonus", "error", err)
-	}
-
-	if growthBonus, err := s.jobSvc.GetJobBonus(ctx, user.ID, "farmer", BonusTypeGrowthSpeed); err == nil {
-		growthMultiplier += growthBonus
-	} else {
-		log.Warn("Failed to get growth bonus", "error", err)
-	}
-
-	// Apply growth speed bonus to effective hours
+	yieldMultiplier, growthMultiplier := s.calculateBonuses(ctx, user.ID)
 	effectiveHours := hoursElapsed * growthMultiplier
 
-	// 9. Calculate rewards (handle spoiled)
 	rewards, message := s.calculateHarvestRewards(ctx, effectiveHours, yieldMultiplier)
 
-	// 9. Award Farmer XP (Async)
-	// Must be done before potential early return in handleEmptyHarvest
-	s.wg.Add(1)
-	go func() {
-		defer s.wg.Done()
-		// Use WithoutCancel to preserve logger/values but detach cancellation
-		asyncCtx := context.WithoutCancel(ctx)
-		s.awardFarmerXP(asyncCtx, user.ID, hoursElapsed)
-	}()
+	s.fireAsyncEvents(ctx, user.ID, hoursElapsed)
 
-	// 10. Update inventory and harvest state
 	if len(rewards) == 0 {
 		return s.handleEmptyHarvest(ctx, tx, user.ID, now, hoursElapsed)
 	}
@@ -151,12 +110,11 @@ func (s *service) Harvest(ctx context.Context, platform, platformID, username st
 		return nil, fmt.Errorf("failed to update harvest state: %w", err)
 	}
 
-	// 11. Commit transaction
 	if err := tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	log.Info("Harvest successful", "userID", user.ID, "rewards", rewards, "hours", hoursElapsed)
+	logger.FromContext(ctx).Info("Harvest successful", "userID", user.ID, "rewards", rewards, "hours", hoursElapsed)
 
 	return &domain.HarvestResponse{
 		ItemsGained:       rewards,
@@ -219,15 +177,43 @@ func (s *service) initializeHarvestStateIfNeeded(ctx context.Context, userID str
 	return nil, nil
 }
 
+func (s *service) calculateBonuses(ctx context.Context, userID string) (float64, float64) {
+	log := logger.FromContext(ctx)
+	yieldMultiplier := 1.0
+	growthMultiplier := 1.0
+
+	if yieldBonus, err := s.jobSvc.GetJobBonus(ctx, userID, "farmer", bonusTypeHarvestYield); err == nil {
+		yieldMultiplier += yieldBonus
+	} else {
+		log.Warn("Failed to get yield bonus", "error", err)
+	}
+
+	if growthBonus, err := s.jobSvc.GetJobBonus(ctx, userID, "farmer", bonusTypeGrowthSpeed); err == nil {
+		growthMultiplier += growthBonus
+	} else {
+		log.Warn("Failed to get growth bonus", "error", err)
+	}
+	return yieldMultiplier, growthMultiplier
+}
+
 func (s *service) calculateHarvestRewards(ctx context.Context, hoursElapsed float64, yieldMultiplier float64) (map[string]int, string) {
 	if hoursElapsed > spoiledThreshold {
 		logger.FromContext(ctx).Info("Harvest spoiled", "hours", hoursElapsed)
 		return map[string]int{
-			"lootbox1": 1,
-			"stick":    3,
+			itemLootbox1: 1,
+			itemStick:    3,
 		}, "Your crops spoiled! You salvaged 1 Decent Lootbox and 3 Sticks."
 	}
 	return s.calculateRewards(ctx, hoursElapsed, yieldMultiplier), "Harvest successful!"
+}
+
+func (s *service) fireAsyncEvents(ctx context.Context, userID string, hoursElapsed float64) {
+	s.wg.Add(1)
+	go func() {
+		defer s.wg.Done()
+		asyncCtx := context.WithoutCancel(ctx)
+		s.awardFarmerXP(asyncCtx, userID, hoursElapsed)
+	}()
 }
 
 func (s *service) awardFarmerXP(ctx context.Context, userID string, hoursElapsed float64) {

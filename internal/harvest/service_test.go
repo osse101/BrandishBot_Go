@@ -22,9 +22,9 @@ func TestCalculateRewards(t *testing.T) {
 			name:         "Less than 2 hours - no tier reached",
 			hoursElapsed: 1.5,
 			unlockedItems: map[string]bool{
-				"stick":    true,
-				"lootbox1": true,
-				"lootbox2": true,
+				itemStick:    true,
+				itemLootbox1: true,
+				itemLootbox2: true,
 			},
 			expectedReward: map[string]int{}, // No tier reached
 		},
@@ -32,121 +32,121 @@ func TestCalculateRewards(t *testing.T) {
 			name:         "Exactly 2 hours - Tier 1",
 			hoursElapsed: 2.0,
 			unlockedItems: map[string]bool{
-				"stick":    true,
-				"lootbox1": true,
-				"lootbox2": true,
+				itemStick:    true,
+				itemLootbox1: true,
+				itemLootbox2: true,
 			},
 			expectedReward: map[string]int{
-				"money": 2,
+				itemMoney: 2,
 			},
 		},
 		{
 			name:         "5 hours - Tier 1 + 2",
 			hoursElapsed: 5.0,
 			unlockedItems: map[string]bool{
-				"stick":    true,
-				"lootbox1": true,
-				"lootbox2": true,
+				itemStick:    true,
+				itemLootbox1: true,
+				itemLootbox2: true,
 			},
 			expectedReward: map[string]int{
-				"money": 12, // 2 + 10
+				itemMoney: 12, // 2 + 10
 			},
 		},
 		{
 			name:         "24 hours - All stick tiers, stick unlocked",
 			hoursElapsed: 24.0,
 			unlockedItems: map[string]bool{
-				"stick":    true,
-				"lootbox1": false,
-				"lootbox2": false,
+				itemStick:    true,
+				itemLootbox1: false,
+				itemLootbox2: false,
 			},
 			expectedReward: map[string]int{
-				"money": 22, // 2 + 10 + 5 + 5
-				"stick": 3,  // 1 + 2
+				itemMoney: 22, // 2 + 10 + 5 + 5
+				itemStick: 3,  // 1 + 2
 			},
 		},
 		{
 			name:         "24 hours - stick NOT unlocked",
 			hoursElapsed: 24.0,
 			unlockedItems: map[string]bool{
-				"stick":    false,
-				"lootbox1": false,
-				"lootbox2": false,
+				itemStick:    false,
+				itemLootbox1: false,
+				itemLootbox2: false,
 			},
 			expectedReward: map[string]int{
-				"money": 22, // 2 + 10 + 5 + 5 (money from stick tiers still counts)
+				itemMoney: 22, // 2 + 10 + 5 + 5 (money from stick tiers still counts)
 			},
 		},
 		{
 			name:         "48 hours - includes lootbox0",
 			hoursElapsed: 48.0,
 			unlockedItems: map[string]bool{
-				"stick":    true,
-				"lootbox1": false,
-				"lootbox2": false,
+				itemStick:    true,
+				itemLootbox1: false,
+				itemLootbox2: false,
 			},
 			expectedReward: map[string]int{
-				"money":    32, // 2 + 10 + 5 + 5 + 10
-				"stick":    3,  // 1 + 2
-				"lootbox0": 1,  // lootbox0 doesn't require unlock
+				itemMoney:    32, // 2 + 10 + 5 + 5 + 10
+				itemStick:    3,  // 1 + 2
+				itemLootbox0: 1,  // lootbox0 doesn't require unlock
 			},
 		},
 		{
 			name:         "168 hours - max tier, all unlocked",
 			hoursElapsed: 168.0,
 			unlockedItems: map[string]bool{
-				"stick":    true,
-				"lootbox1": true,
-				"lootbox2": true,
+				itemStick:    true,
+				itemLootbox1: true,
+				itemLootbox2: true,
 			},
 			expectedReward: map[string]int{
-				"money":    97, // 2 + 10 + 5 + 5 + 10 + 10 + 5 + 15 + 15 + 20
-				"stick":    8,  // 1 + 2 + 5
-				"lootbox0": 3,  // 1 + 2
-				"lootbox1": 2,  // 1 + 1
-				"lootbox2": 1,  // 1
+				itemMoney:    97, // 2 + 10 + 5 + 5 + 10 + 10 + 5 + 15 + 15 + 20
+				itemStick:    8,  // 1 + 2 + 5
+				itemLootbox0: 3,  // 1 + 2
+				itemLootbox1: 2,  // 1 + 1
+				itemLootbox2: 1,  // 1
 			},
 		},
 		{
 			name:         "168 hours - max tier, lootboxes NOT unlocked",
 			hoursElapsed: 168.0,
 			unlockedItems: map[string]bool{
-				"stick":    true,
-				"lootbox1": false,
-				"lootbox2": false,
+				itemStick:    true,
+				itemLootbox1: false,
+				itemLootbox2: false,
 			},
 			expectedReward: map[string]int{
-				"money":    97, // 2 + 10 + 5 + 5 + 10 + 10 + 5 + 15 + 15 + 20 (all money counts)
-				"stick":    8,  // 1 + 2 + 5
-				"lootbox0": 3,  // 1 + 2 (lootbox0 doesn't require unlock)
+				itemMoney:    97, // 2 + 10 + 5 + 5 + 10 + 10 + 5 + 15 + 15 + 20 (all money counts)
+				itemStick:    8,  // 1 + 2 + 5
+				itemLootbox0: 3,  // 1 + 2 (lootbox0 doesn't require unlock)
 			},
 		},
 		{
 			name:         "200 hours - beyond max tier",
 			hoursElapsed: 200.0,
 			unlockedItems: map[string]bool{
-				"stick":    true,
-				"lootbox1": true,
-				"lootbox2": true,
+				itemStick:    true,
+				itemLootbox1: true,
+				itemLootbox2: true,
 			},
 			expectedReward: map[string]int{
-				"money":    97, // Same as 168h tier
-				"stick":    8,
-				"lootbox0": 3,
-				"lootbox1": 2,
-				"lootbox2": 1,
+				itemMoney:    97, // Same as 168h tier
+				itemStick:    8,
+				itemLootbox0: 3,
+				itemLootbox1: 2,
+				itemLootbox2: 1,
 			},
 		},
 		{
 			name:         "Yield Bonus - 1.5x multiplier",
 			hoursElapsed: 5.0, // Tier 1 + 2 (12 money)
 			unlockedItems: map[string]bool{
-				"stick":    true,
-				"lootbox1": true,
-				"lootbox2": true,
+				itemStick:    true,
+				itemLootbox1: true,
+				itemLootbox2: true,
 			},
 			expectedReward: map[string]int{
-				"money": 18, // 12 * 1.5 = 18
+				itemMoney: 18, // 12 * 1.5 = 18
 			},
 			yieldMultiplier: 1.5,
 		},
@@ -196,14 +196,14 @@ func TestRewardTiers(t *testing.T) {
 
 	// Verify first tier
 	assert.Equal(t, 2.0, tiers[0].MaxHours)
-	assert.Equal(t, 2, tiers[0].Items["money"])
+	assert.Equal(t, 2, tiers[0].Items[itemMoney])
 	assert.Empty(t, tiers[0].RequiresUnlock)
 
 	// Verify last tier
 	assert.Equal(t, 168.0, tiers[9].MaxHours)
-	assert.Equal(t, 20, tiers[9].Items["money"])
-	assert.Equal(t, 1, tiers[9].Items["lootbox2"])
-	assert.True(t, tiers[9].RequiresUnlock["lootbox2"])
+	assert.Equal(t, 20, tiers[9].Items[itemMoney])
+	assert.Equal(t, 1, tiers[9].Items[itemLootbox2])
+	assert.True(t, tiers[9].RequiresUnlock[itemLootbox2])
 }
 
 func TestMinHarvestInterval(t *testing.T) {
