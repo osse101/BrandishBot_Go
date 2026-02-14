@@ -92,6 +92,7 @@ type ExpeditionRewardedPayload struct {
 
 // PredictionParticipantPayload is the event payload for prediction.participated events
 type PredictionParticipantPayload struct {
+	UserID     string `json:"user_id"`
 	Username   string `json:"username"`
 	Platform   string `json:"platform"`
 	PlatformID string `json:"platform_id"`

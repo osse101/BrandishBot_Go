@@ -14,6 +14,11 @@ import (
 const (
 	// MaxVotingOptions is the maximum number of options shown in a voting session
 	MaxVotingOptions = 4
+
+	// MaxRolloverPoints is the maximum number of contribution points that can rollover
+	// to the next node after an unlock. This prevents a single massive contribution
+	// from clearing multiple nodes in the tree at once.
+	MaxRolloverPoints = 200
 )
 
 // StartVotingSession creates a new voting session with 4 random options from available nodes
@@ -468,6 +473,12 @@ func (s *service) performNodeUnlock(ctx context.Context, progress *domain.Unlock
 	}
 
 	s.cleanupVotingSessionOnUnlock(ctx, progress)
+
+	// Cap rollover to prevent chain-unlocking the entire tree
+	if rollover > MaxRolloverPoints {
+		log.Info("Capping contribution rollover", "original", rollover, "capped", MaxRolloverPoints)
+		rollover = MaxRolloverPoints
+	}
 
 	newProgressID, err := s.repo.CompleteUnlock(ctx, progress.ID, rollover)
 	if err != nil {

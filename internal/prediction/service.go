@@ -69,8 +69,8 @@ func (s *service) ProcessOutcome(ctx context.Context, req *domain.PredictionOutc
 		finalContribution = baseContribution
 	}
 
-	// 3. Record engagement and add to progression
-	if err := s.recordTotalEngagement(ctx, req.TotalPointsSpent); err != nil {
+	// 3. Record engagement and add to progression (using the final scaled contribution)
+	if err := s.recordTotalEngagement(ctx, finalContribution); err != nil {
 		log.Error("Failed to record total engagement", "error", err)
 		return nil, fmt.Errorf("failed to record engagement: %w", err)
 	}
@@ -108,15 +108,18 @@ func (s *service) calculateContribution(points int) int {
 		return 0
 	}
 
-	// Scale points to thousands
+	// Scale points relative to divisor (e.g. 10k)
 	scaledPoints := float64(points) / PointsScaleDivisor
-	if scaledPoints < 1.0 {
-		scaledPoints = 1.0
-	}
 
 	// Apply logarithmic formula
+	// Goal: 10,000 points = 1 contribution, 1,000,000 points = 50 contribution
 	logComponent := math.Log10(scaledPoints) / LogDivisor
 	contribution := BaseContribution + (logComponent * ScaleMultiplier) + BonusContribution
+
+	// Clamp to 0 minimum
+	if contribution < 0 {
+		contribution = 0
+	}
 
 	return int(math.Round(contribution))
 }
@@ -131,9 +134,10 @@ func (s *service) applyContributionModifier(ctx context.Context, baseContributio
 }
 
 // recordTotalEngagement records the total channel points and progression contribution
-func (s *service) recordTotalEngagement(ctx context.Context, totalPoints int) error {
+func (s *service) recordTotalEngagement(ctx context.Context, contribution int) error {
 	// Record the engagement metric using a system identifier for prediction totals
-	if err := s.progressionService.RecordEngagement(ctx, "prediction_system", TotalPointsMetricType, totalPoints); err != nil {
+	// We use PredictionContributionMetricType to indicate this value is already scaled
+	if err := s.progressionService.RecordEngagement(ctx, "prediction_system", PredictionContributionMetricType, contribution); err != nil {
 		return fmt.Errorf("failed to record engagement: %w", err)
 	}
 
@@ -141,13 +145,21 @@ func (s *service) recordTotalEngagement(ctx context.Context, totalPoints int) er
 }
 
 // awardWinnerRewards publishes XP event for the prediction winner and awards grenade async
-func (s *service) awardWinnerRewards(_ context.Context, platform string, winner domain.PredictionWinner) int {
+func (s *service) awardWinnerRewards(ctx context.Context, platform string, winner domain.PredictionWinner) int {
+	// Resolve UUID for the winner
+	var userID string
+	user, err := s.ensureUserRegistered(ctx, winner.Username, platform, winner.PlatformID)
+	if err == nil && user != nil {
+		userID = user.ID
+	}
+
 	// Publish XP + stats event (handled by job and stats event handlers)
 	if s.resilientPublisher != nil {
 		s.resilientPublisher.PublishWithRetry(context.Background(), event.Event{
 			Version: "1.0",
 			Type:    event.Type(domain.EventTypePredictionParticipated),
 			Payload: domain.PredictionParticipantPayload{
+				UserID:     userID,
 				Username:   winner.Username,
 				Platform:   platform,
 				PlatformID: winner.PlatformID,
@@ -167,7 +179,8 @@ func (s *service) awardWinnerRewards(_ context.Context, platform string, winner 
 		log := logger.FromContext(bgCtx)
 
 		// Auto-register user if needed before item award
-		if err := s.ensureUserRegistered(bgCtx, winner.Username, platform, winner.PlatformID); err != nil {
+		_, err = s.ensureUserRegistered(bgCtx, winner.Username, platform, winner.PlatformID)
+		if err != nil {
 			log.Error("Failed to register winner", "username", winner.Username, "error", err)
 			return
 		}
@@ -197,15 +210,23 @@ func (s *service) awardWinnerRewards(_ context.Context, platform string, winner 
 }
 
 // awardParticipantsXP publishes XP + stats events for all participants
-func (s *service) awardParticipantsXP(_ context.Context, platform string, participants []domain.PredictionParticipant) {
+func (s *service) awardParticipantsXP(ctx context.Context, platform string, participants []domain.PredictionParticipant) {
 	if s.resilientPublisher == nil {
 		return
 	}
 	for _, p := range participants {
+		// Resolve UUID for each participant
+		var userID string
+		user, err := s.ensureUserRegistered(ctx, p.Username, platform, p.PlatformID)
+		if err == nil && user != nil {
+			userID = user.ID
+		}
+
 		s.resilientPublisher.PublishWithRetry(context.Background(), event.Event{
 			Version: "1.0",
 			Type:    event.Type(domain.EventTypePredictionParticipated),
 			Payload: domain.PredictionParticipantPayload{
+				UserID:     userID,
 				Username:   p.Username,
 				Platform:   platform,
 				PlatformID: p.PlatformID,
@@ -218,13 +239,19 @@ func (s *service) awardParticipantsXP(_ context.Context, platform string, partic
 }
 
 // ensureUserRegistered checks if a user exists and registers them if not
-func (s *service) ensureUserRegistered(ctx context.Context, username, platform, platformID string) error {
+func (s *service) ensureUserRegistered(ctx context.Context, username, platform, platformID string) (*domain.User, error) {
 	log := logger.FromContext(ctx)
 
 	// Try to get user first
-	_, err := s.userService.GetUserByPlatformUsername(ctx, platform, username)
+	user, err := s.userService.GetUserByPlatformUsername(ctx, platform, username)
 	if err == nil {
-		return nil // User exists
+		return user, nil // User exists
+	}
+
+	// Try searching by platform ID as well to be safe
+	user, err = s.userService.FindUserByPlatformID(ctx, platform, platformID)
+	if err == nil && user != nil {
+		return user, nil
 	}
 
 	// User doesn't exist, register them
@@ -232,26 +259,26 @@ func (s *service) ensureUserRegistered(ctx context.Context, username, platform, 
 		"username", username,
 		"platform", platform)
 
-	user := domain.User{
+	newUser := domain.User{
 		Username: username,
 	}
 
 	// Set platform-specific ID
 	switch platform {
 	case "twitch":
-		user.TwitchID = platformID
+		newUser.TwitchID = platformID
 	case "youtube":
-		user.YoutubeID = platformID
+		newUser.YoutubeID = platformID
 	case "discord":
-		user.DiscordID = platformID
+		newUser.DiscordID = platformID
 	}
 
-	_, err = s.userService.RegisterUser(ctx, user)
+	registeredUser, err := s.userService.RegisterUser(ctx, newUser)
 	if err != nil {
-		return fmt.Errorf("failed to auto-register user: %w", err)
+		return nil, fmt.Errorf("failed to auto-register user: %w", err)
 	}
 
-	return nil
+	return &registeredUser, nil
 }
 
 // publishPredictionEvent publishes a prediction processed event to the event bus

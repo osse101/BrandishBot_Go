@@ -271,8 +271,13 @@ func (h *EventHandler) HandlePredictionParticipated(ctx context.Context, evt eve
 		"xp":        payload.XP,
 	}
 
-	if err := h.service.RecordUserEvent(ctx, payload.Username, domain.EventType("prediction_participation"), metadata); err != nil {
-		log.Warn("Failed to record prediction participated stat", "error", err, "username", payload.Username)
+	userID := payload.UserID
+	if userID == "" {
+		userID = payload.Username
+	}
+
+	if err := h.service.RecordUserEvent(ctx, userID, domain.EventType("prediction_participation"), metadata); err != nil {
+		log.Warn("Failed to record prediction participated stat", "error", err, "user_id", userID)
 	}
 
 	return nil

@@ -2,6 +2,7 @@ package job
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 
@@ -49,7 +50,7 @@ func (h *EventHandler) Register(bus event.Bus) {
 	bus.Subscribe(event.Type(domain.EventTypeSearchPerformed), h.HandleSearchPerformed)
 
 	// Engagement events (Scholar XP)
-	bus.Subscribe(event.Type("engagement"), h.HandleEngagement)
+	bus.Subscribe(event.Type(domain.EventTypeEngagement), h.HandleEngagement)
 
 	// Quest events
 	bus.Subscribe(event.Type(domain.EventTypeQuestClaimed), h.HandleQuestClaimed)
@@ -69,13 +70,13 @@ func (h *EventHandler) HandleItemUpgraded(ctx context.Context, evt event.Event) 
 	}
 
 	metadata := map[string]interface{}{
-		"source":        "upgrade",
-		"item_name":     payload.ItemName,
-		"quantity":      payload.Quantity,
-		"is_masterwork": payload.IsMasterwork,
+		domain.MetadataKeySource:   SourceUpgrade,
+		domain.MetadataKeyItemName: payload.ItemName,
+		domain.MetadataKeyQuantity: payload.Quantity,
+		"is_masterwork":            payload.IsMasterwork,
 	}
 
-	return h.handleBlacksmithXP(ctx, payload.UserID, payload.Quantity, "upgrade", metadata)
+	return h.handleBlacksmithXP(ctx, payload.UserID, payload.Quantity, SourceUpgrade, metadata)
 }
 
 // HandleItemDisassembled handles item disassemble events to award Blacksmith XP
@@ -86,13 +87,13 @@ func (h *EventHandler) HandleItemDisassembled(ctx context.Context, evt event.Eve
 	}
 
 	metadata := map[string]interface{}{
-		"source":             "disassemble",
-		"item_name":          payload.ItemName,
-		"quantity":           payload.Quantity,
-		"is_perfect_salvage": payload.IsPerfectSalvage,
+		domain.MetadataKeySource:   SourceDisassemble,
+		domain.MetadataKeyItemName: payload.ItemName,
+		domain.MetadataKeyQuantity: payload.Quantity,
+		"is_perfect_salvage":       payload.IsPerfectSalvage,
 	}
 
-	return h.handleBlacksmithXP(ctx, payload.UserID, payload.Quantity, "disassemble", metadata)
+	return h.handleBlacksmithXP(ctx, payload.UserID, payload.Quantity, SourceDisassemble, metadata)
 }
 
 func (h *EventHandler) handleBlacksmithXP(ctx context.Context, userID string, quantity int, source string, metadata map[string]interface{}) error {
@@ -121,14 +122,21 @@ func (h *EventHandler) HandleSlotsCompleted(ctx context.Context, evt event.Event
 		return fmt.Errorf("failed to decode slots completed payload: %w", err)
 	}
 
+	metadata := map[string]interface{}{
+		domain.MetadataKeySource: SourceSlots,
+		"bet_amount":             payload.BetAmount,
+		"payout_amount":          payload.PayoutAmount,
+		"trigger_type":           payload.TriggerType,
+	}
+
 	// Base XP: betAmount / 10
-	xp := payload.BetAmount / 10
+	xp := metadata["bet_amount"].(int) / 10
 	// Win bonus
-	if payload.PayoutAmount > payload.BetAmount {
+	if metadata["payout_amount"].(int) > metadata["bet_amount"].(int) {
 		xp += GamblerWinBonus
 	}
 	// Jackpot bonus
-	if payload.TriggerType == "jackpot" || payload.TriggerType == "mega_jackpot" {
+	if metadata["trigger_type"].(string) == "jackpot" || metadata["trigger_type"].(string) == "mega_jackpot" {
 		xp += 100
 	}
 
@@ -136,14 +144,7 @@ func (h *EventHandler) HandleSlotsCompleted(ctx context.Context, evt event.Event
 		return nil
 	}
 
-	metadata := map[string]interface{}{
-		"source":        "slots",
-		"bet_amount":    payload.BetAmount,
-		"payout_amount": payload.PayoutAmount,
-		"trigger_type":  payload.TriggerType,
-	}
-
-	result, err := h.service.AwardXP(ctx, payload.UserID, JobKeyGambler, xp, "slots", metadata)
+	result, err := h.service.AwardXP(ctx, payload.UserID, JobKeyGambler, xp, SourceSlots, metadata)
 	if err != nil {
 		log.Warn("Failed to award Gambler XP for slots", "error", err, "user_id", payload.UserID)
 		return nil
@@ -199,11 +200,12 @@ func (h *EventHandler) HandleCompostHarvested(ctx context.Context, evt event.Eve
 	}
 
 	metadata := map[string]interface{}{
-		"input_value": payload.InputValue,
-		"is_sludge":   payload.IsSludge,
+		domain.MetadataKeySource: SourceCompostHarvest,
+		"input_value":            payload.InputValue,
+		"is_sludge":              payload.IsSludge,
 	}
 
-	return h.awardXPAndLog(ctx, payload.UserID, JobKeyFarmer, payload.XPAmount, "compost_harvest", metadata, "compost")
+	return h.awardXPAndLog(ctx, payload.UserID, JobKeyFarmer, payload.XPAmount, SourceCompostHarvest, metadata, LogSourceCompost)
 }
 
 // HandleExpeditionRewarded handles expedition reward events to award job XP
@@ -221,10 +223,11 @@ func (h *EventHandler) HandleExpeditionRewarded(ctx context.Context, evt event.E
 		}
 
 		metadata := map[string]interface{}{
-			"expedition_id": payload.ExpeditionID,
+			domain.MetadataKeySource: SourceExpedition,
+			"expedition_id":          payload.ExpeditionID,
 		}
 
-		result, err := h.service.AwardXP(ctx, payload.UserID, jobKey, xpAmount, "expedition", metadata)
+		result, err := h.service.AwardXP(ctx, payload.UserID, jobKey, xpAmount, SourceExpedition, metadata)
 		if err != nil {
 			log.Warn("Failed to award XP for expedition", "error", err, "user_id", payload.UserID, "job", jobKey)
 			continue
@@ -287,11 +290,11 @@ func (h *EventHandler) HandleGambleCompleted(ctx context.Context, evt event.Even
 
 		xp := GamblerWinBonus
 		metadata := map[string]interface{}{
-			"gamble_id": payload.GambleID,
-			"source":    "win",
+			domain.MetadataKeySource: SourceGambleWin,
+			"gamble_id":              payload.GambleID,
 		}
 
-		result, err := h.service.AwardXP(ctx, participant.UserID, JobKeyGambler, xp, "win", metadata)
+		result, err := h.service.AwardXP(ctx, participant.UserID, JobKeyGambler, xp, SourceGambleWin, metadata)
 		if err != nil {
 			log.Warn("Failed to award Gambler win XP", "error", err, "user_id", participant.UserID)
 			continue
@@ -312,7 +315,7 @@ func (h *EventHandler) HandleItemSold(ctx context.Context, evt event.Event) erro
 		return fmt.Errorf("failed to decode item sold payload: %w", err)
 	}
 
-	return h.handleMerchantXP(ctx, payload.UserID, payload.ItemName, payload.TotalValue, "sell")
+	return h.handleMerchantXP(ctx, payload.UserID, payload.ItemName, payload.TotalValue, SourceSell)
 }
 
 // HandleItemBought handles item bought events to award Merchant XP
@@ -322,7 +325,7 @@ func (h *EventHandler) HandleItemBought(ctx context.Context, evt event.Event) er
 		return fmt.Errorf("failed to decode item bought payload: %w", err)
 	}
 
-	return h.handleMerchantXP(ctx, payload.UserID, payload.ItemName, payload.TotalValue, "buy")
+	return h.handleMerchantXP(ctx, payload.UserID, payload.ItemName, payload.TotalValue, SourceBuy)
 }
 
 func (h *EventHandler) handleMerchantXP(ctx context.Context, userID, itemName string, totalValue int, action string) error {
@@ -334,9 +337,9 @@ func (h *EventHandler) handleMerchantXP(ctx context.Context, userID, itemName st
 	}
 
 	metadata := map[string]interface{}{
-		"action":    action,
-		"item_name": itemName,
-		"value":     totalValue,
+		domain.MetadataKeySource:   action,
+		domain.MetadataKeyItemName: itemName,
+		"value":                    totalValue,
 	}
 
 	result, err := h.service.AwardXP(ctx, userID, JobKeyMerchant, xp, action, metadata)
@@ -366,13 +369,13 @@ func (h *EventHandler) HandleSearchPerformed(ctx context.Context, evt event.Even
 	}
 
 	metadata := map[string]interface{}{
-		"source":         "search",
-		"is_critical":    payload.IsCritical,
-		"is_near_miss":   payload.IsNearMiss,
-		"is_first_daily": payload.IsFirstDaily,
+		domain.MetadataKeySource: SourceSearch,
+		"is_critical":            payload.IsCritical,
+		"is_near_miss":           payload.IsNearMiss,
+		"is_first_daily":         payload.IsFirstDaily,
 	}
 
-	result, err := h.service.AwardXP(ctx, payload.UserID, JobKeyExplorer, payload.XPAmount, "search", metadata)
+	result, err := h.service.AwardXP(ctx, payload.UserID, JobKeyExplorer, payload.XPAmount, SourceSearch, metadata)
 	if err != nil {
 		log.Warn("Failed to award Explorer XP for search", "error", err, "user_id", payload.UserID)
 		return nil
@@ -390,24 +393,23 @@ func (h *EventHandler) HandleEngagement(ctx context.Context, evt event.Event) er
 	log := logger.FromContext(ctx)
 
 	// Engagement events use *domain.EngagementMetric payload
-	metric, ok := evt.Payload.(*domain.EngagementMetric)
-	if !ok {
-		// Fallback: try JSON decode if it came over the wire
-		m, err := event.DecodePayload[domain.EngagementMetric](evt.Payload)
-		if err != nil {
-			return nil // Don't fail on decode issues for engagement
-		}
-		metric = &m
+	metric, err := event.DecodePayload[domain.EngagementMetric](evt.Payload)
+	if err != nil {
+		// Log error if needed, but per previous logic we ignore it if it's strictly a decode issue
+		return nil
 	}
 
 	if metric.UserID == "" {
 		return nil
 	}
 
-	result, err := h.service.AwardXP(ctx, metric.UserID, JobKeyScholar, ScholarXPPerEngagement, "engagement", map[string]interface{}{
+	result, err := h.service.AwardXP(ctx, metric.UserID, JobKeyScholar, ScholarXPPerEngagement, SourceEngagement, map[string]interface{}{
 		"metric_type": metric.MetricType,
 	})
 	if err != nil {
+		if errors.Is(err, domain.ErrFeatureLocked) {
+			return nil // Silently ignore if Scholar is not unlocked
+		}
 		log.Warn("Failed to award Scholar XP for engagement", "error", err, "user_id", metric.UserID)
 		return nil
 	}
@@ -435,7 +437,7 @@ func (h *EventHandler) HandleQuestClaimed(ctx context.Context, evt event.Event) 
 		"quest_id":  payload.QuestID,
 	}
 
-	return h.awardXPAndLog(ctx, payload.UserID, JobKeyMerchant, payload.RewardXP, "quest_reward", metadata, "quest")
+	return h.awardXPAndLog(ctx, payload.UserID, JobKeyMerchant, payload.RewardXP, SourceQuest, metadata, LogSourceQuest)
 }
 
 func (h *EventHandler) awardXPAndLog(ctx context.Context, userID, jobKey string, xp int, source string, metadata map[string]interface{}, logSource string) error {
@@ -473,14 +475,22 @@ func (h *EventHandler) HandlePredictionParticipated(ctx context.Context, evt eve
 		"platform":  payload.Platform,
 	}
 
-	result, err := h.service.AwardXP(ctx, payload.Username, JobKeyGambler, payload.XP, "prediction", metadata)
+	userID := payload.UserID
+	if userID == "" {
+		userID = payload.Username
+	}
+
+	result, err := h.service.AwardXP(ctx, userID, JobKeyGambler, payload.XP, SourcePrediction, metadata)
 	if err != nil {
-		log.Warn("Failed to award Gambler XP for prediction", "error", err, "user_id", payload.Username)
+		if errors.Is(err, domain.ErrFeatureLocked) {
+			return nil // Silently ignore if Gambler is not unlocked
+		}
+		log.Warn("Failed to award Gambler XP for prediction", "error", err, "user_id", userID)
 		return nil
 	}
 
 	if result != nil && result.LeveledUp {
-		log.Info("Gambler leveled up from prediction!", "user_id", payload.Username, "new_level", result.NewLevel)
+		log.Info("Gambler leveled up from prediction!", "user_id", userID, "new_level", result.NewLevel)
 	}
 
 	return nil
@@ -498,7 +508,10 @@ func (h *EventHandler) HandleItemUsed(ctx context.Context, evt event.Event) erro
 	// Currently handles Rare Candy XP awards
 	if payload.ItemName == domain.ItemRareCandy {
 		jobName, _ := payload.Metadata["job_name"].(string)
-		source, _ := payload.Metadata["source"].(string)
+		source, ok := payload.Metadata[domain.MetadataKeySource].(string)
+		if !ok {
+			source = SourceRareCandy
+		}
 
 		// Extract XP amount safely from metadata (JSON numbers are float64)
 		var xpTotal int

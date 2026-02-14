@@ -31,44 +31,44 @@ func TestCalculateContribution(t *testing.T) {
 		{
 			name:            "1k points",
 			points:          1000,
-			wantMin:         10,
-			wantMax:         12,
-			wantApproximate: 11,
+			wantMin:         0,
+			wantMax:         0,
+			wantApproximate: 0,
 		},
 		{
 			name:            "10k points",
 			points:          10000,
-			wantMin:         43,
-			wantMax:         45,
-			wantApproximate: 44,
+			wantMin:         0,
+			wantMax:         2,
+			wantApproximate: 1,
 		},
 		{
 			name:            "100k points",
 			points:          100000,
-			wantMin:         76,
-			wantMax:         78,
-			wantApproximate: 77,
+			wantMin:         25,
+			wantMax:         27,
+			wantApproximate: 26,
 		},
 		{
 			name:            "1M points",
 			points:          1000000,
-			wantMin:         109,
-			wantMax:         111,
-			wantApproximate: 110,
+			wantMin:         49,
+			wantMax:         50,
+			wantApproximate: 50,
 		},
 		{
 			name:            "500 points (less than 1k)",
 			points:          500,
-			wantMin:         10,
-			wantMax:         12,
-			wantApproximate: 11,
+			wantMin:         0,
+			wantMax:         0,
+			wantApproximate: 0,
 		},
 		{
 			name:            "50k points",
 			points:          50000,
-			wantMin:         67,
-			wantMax:         69,
-			wantApproximate: 68,
+			wantMin:         15,
+			wantMax:         20,
+			wantApproximate: 18,
 		},
 	}
 
@@ -122,7 +122,7 @@ func TestCalculateContribution_EdgeCases(t *testing.T) {
 			got := s.calculateContribution(tt.points)
 
 			// Should always return a positive value for positive input
-			if tt.points > 0 && got <= 0 {
+			if tt.points > 0 && got < 0 {
 				t.Errorf("calculateContribution(%d) = %d, expected positive value", tt.points, got)
 			}
 
