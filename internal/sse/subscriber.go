@@ -81,15 +81,15 @@ func (s *Subscriber) Subscribe() {
 
 // handleJobLevelUp processes job level up events and broadcasts to SSE clients
 func (s *Subscriber) handleJobLevelUp(_ context.Context, evt event.Event) error {
-	payload, ok := evt.Payload.(map[string]interface{})
-	if !ok {
-		slog.Warn("Invalid job level up event payload type")
+	payload, err := event.DecodePayload[event.JobLevelUpPayloadV1](evt.Payload)
+	if err != nil {
+		slog.Warn("Invalid job level up event payload type", "error", err)
 		return nil
 	}
 
-	// Extract source from metadata if available
-	source := ""
-	if evt.Metadata != nil {
+	// Extract source from payload or metadata
+	source := payload.Source
+	if source == "" && evt.Metadata != nil {
 		if src, ok := evt.Metadata["source"].(string); ok {
 			source = src
 		}
@@ -97,10 +97,10 @@ func (s *Subscriber) handleJobLevelUp(_ context.Context, evt event.Event) error 
 
 	// Build SSE payload
 	ssePayload := JobLevelUpPayload{
-		UserID:   getStringFromMap(payload, "user_id"),
-		JobKey:   getStringFromMap(payload, "job_key"),
-		OldLevel: getIntFromMap(payload, "old_level"),
-		NewLevel: getIntFromMap(payload, "new_level"),
+		UserID:   payload.UserID,
+		JobKey:   payload.JobKey,
+		OldLevel: payload.OldLevel,
+		NewLevel: payload.NewLevel,
 		Source:   source,
 	}
 

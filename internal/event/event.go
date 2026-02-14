@@ -67,6 +67,62 @@ type ProgressionTargetPayloadV1 struct {
 	Timestamp int64  `json:"timestamp"`
 }
 
+// JobLevelUpPayloadV1 is the typed payload for job level up events
+type JobLevelUpPayloadV1 struct {
+	UserID   string `json:"user_id"`
+	JobKey   string `json:"job_key"`
+	OldLevel int    `json:"old_level"`
+	NewLevel int    `json:"new_level"`
+	Source   string `json:"source,omitempty"`
+}
+
+// ToMap converts the payload to a map
+func (p JobLevelUpPayloadV1) ToMap() map[string]interface{} {
+	return map[string]interface{}{
+		"user_id":   p.UserID,
+		"job_key":   p.JobKey,
+		"old_level": p.OldLevel,
+		"new_level": p.NewLevel,
+		"source":    p.Source,
+	}
+}
+
+// JobXPCriticalPayloadV1 is the typed payload for job XP critical (Epiphany) events
+type JobXPCriticalPayloadV1 struct {
+	UserID     string  `json:"user_id"`
+	JobKey     string  `json:"job_key"`
+	BaseXP     int     `json:"base_xp"`
+	BonusXP    int     `json:"bonus_xp"`
+	Multiplier float64 `json:"multiplier"`
+	Source     string  `json:"source,omitempty"`
+}
+
+// ToMap converts the payload to a map
+func (p JobXPCriticalPayloadV1) ToMap() map[string]interface{} {
+	return map[string]interface{}{
+		"user_id":    p.UserID,
+		"job_key":    p.JobKey,
+		"base_xp":    p.BaseXP,
+		"bonus_xp":   p.BonusXP,
+		"multiplier": p.Multiplier,
+		"source":     p.Source,
+	}
+}
+
+// DailyResetCompletePayloadV1 is the typed payload for daily reset complete events
+type DailyResetCompletePayloadV1 struct {
+	ResetTime       time.Time `json:"reset_time"`
+	RecordsAffected int64     `json:"records_affected"`
+}
+
+// ToMap converts the payload to a map
+func (p DailyResetCompletePayloadV1) ToMap() map[string]interface{} {
+	return map[string]interface{}{
+		"reset_time":       p.ResetTime,
+		"records_affected": p.RecordsAffected,
+	}
+}
+
 // Type-safe event constructors
 
 // NewEngagementEvent creates a new engagement event with type-safe payload
@@ -107,6 +163,56 @@ func NewProgressionTargetEvent(nodeKey string) Event {
 		Payload: ProgressionTargetPayloadV1{
 			NodeKey:   nodeKey,
 			Timestamp: time.Now().Unix(),
+		},
+		Metadata: make(map[string]interface{}),
+	}
+}
+
+// NewJobLevelUpEvent creates a new job level up event
+func NewJobLevelUpEvent(userID, jobKey string, oldLevel, newLevel int, source string) Event {
+	return Event{
+		Version: EventSchemaVersion,
+		Type:    Type(domain.EventJobLevelUp),
+		Payload: JobLevelUpPayloadV1{
+			UserID:   userID,
+			JobKey:   jobKey,
+			OldLevel: oldLevel,
+			NewLevel: newLevel,
+			Source:   source,
+		},
+		Metadata: map[string]interface{}{
+			"source": source,
+		},
+	}
+}
+
+// NewJobXPCriticalEvent creates a new job XP critical event
+func NewJobXPCriticalEvent(userID, jobKey string, baseXP, bonusXP int, multiplier float64, source string) Event {
+	return Event{
+		Version: EventSchemaVersion,
+		Type:    Type(domain.EventTypeJobXPCritical),
+		Payload: JobXPCriticalPayloadV1{
+			UserID:     userID,
+			JobKey:     jobKey,
+			BaseXP:     baseXP,
+			BonusXP:    bonusXP,
+			Multiplier: multiplier,
+			Source:     source,
+		},
+		Metadata: map[string]interface{}{
+			"source": source,
+		},
+	}
+}
+
+// NewDailyResetCompleteEvent creates a new daily reset complete event
+func NewDailyResetCompleteEvent(resetTime time.Time, recordsAffected int64) Event {
+	return Event{
+		Version: EventSchemaVersion,
+		Type:    Type(domain.EventTypeDailyResetComplete),
+		Payload: DailyResetCompletePayloadV1{
+			ResetTime:       resetTime,
+			RecordsAffected: recordsAffected,
 		},
 		Metadata: make(map[string]interface{}),
 	}

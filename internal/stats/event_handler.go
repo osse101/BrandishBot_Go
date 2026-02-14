@@ -216,18 +216,17 @@ func (h *EventHandler) HandleSearchPerformed(ctx context.Context, evt event.Even
 func (h *EventHandler) HandleJobLevelUp(ctx context.Context, evt event.Event) error {
 	log := logger.FromContext(ctx)
 
-	metadata, ok := evt.Payload.(map[string]interface{})
-	if !ok {
+	payload, err := event.DecodePayload[event.JobLevelUpPayloadV1](evt.Payload)
+	if err != nil {
 		return nil // Don't fail on type mismatch
 	}
 
-	userID, _ := metadata["user_id"].(string)
-	if userID == "" {
+	if payload.UserID == "" {
 		return nil
 	}
 
-	if err := h.service.RecordUserEvent(ctx, userID, domain.EventJobLevelUp, metadata); err != nil {
-		log.Warn("Failed to record job level-up stat", "error", err, "user_id", userID)
+	if err := h.service.RecordUserEvent(ctx, payload.UserID, domain.EventJobLevelUp, payload.ToMap()); err != nil {
+		log.Warn("Failed to record job level-up stat", "error", err, "user_id", payload.UserID)
 	}
 
 	return nil
@@ -237,19 +236,17 @@ func (h *EventHandler) HandleJobLevelUp(ctx context.Context, evt event.Event) er
 func (h *EventHandler) HandleJobXPCritical(ctx context.Context, evt event.Event) error {
 	log := logger.FromContext(ctx)
 
-	// Epiphany events use a map payload
-	metadata, ok := evt.Payload.(map[string]interface{})
-	if !ok {
+	payload, err := event.DecodePayload[event.JobXPCriticalPayloadV1](evt.Payload)
+	if err != nil {
 		return nil // Don't fail on type mismatch
 	}
 
-	userID, _ := metadata["user_id"].(string)
-	if userID == "" {
+	if payload.UserID == "" {
 		return nil
 	}
 
-	if err := h.service.RecordUserEvent(ctx, userID, domain.EventJobXPCritical, metadata); err != nil {
-		log.Warn("Failed to record job XP critical stat", "error", err, "user_id", userID)
+	if err := h.service.RecordUserEvent(ctx, payload.UserID, domain.EventJobXPCritical, payload.ToMap()); err != nil {
+		log.Warn("Failed to record job XP critical stat", "error", err, "user_id", payload.UserID)
 	}
 
 	return nil
