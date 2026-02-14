@@ -16,32 +16,30 @@ import (
 
 func TestStartGamble_Concurrent_RaceCondition(t *testing.T) {
 	// Logic: We simulate the DB constraint by making the second CreateGamble call fail.
-	repo := new(MockRepository)
-	s := NewService(repo, nil, nil, new(MockLootboxService), time.Minute, nil, nil, nil)
-
+	ts := setupService(nil, false)
 	ctx := context.Background()
 	user1 := &domain.User{ID: "user1"}
 	user2 := &domain.User{ID: "user2"}
 	bets := []domain.LootboxBet{{ItemName: "lootbox_tier1", Quantity: 1}}
 
 	// Both see no active gamble
-	repo.On("GetActiveGamble", ctx).Return(nil, nil)
+	ts.repo.On("GetActiveGamble", ctx).Return(nil, nil)
 
-	repo.On("GetUserByPlatformID", ctx, "twitch", "123").Return(user1, nil)
-	repo.On("GetUserByPlatformID", ctx, "twitch", "456").Return(user2, nil)
+	ts.repo.On("GetUserByPlatformID", ctx, "twitch", "123").Return(user1, nil)
+	ts.repo.On("GetUserByPlatformID", ctx, "twitch", "456").Return(user2, nil)
 
 	lootboxItem := &domain.Item{ID: 1, InternalName: domain.ItemLootbox1}
-	repo.On("GetItemByName", ctx, "lootbox_tier1").Return(lootboxItem, nil)
-	repo.On("GetItemByID", ctx, 1).Return(lootboxItem, nil)
+	ts.repo.On("GetItemByName", ctx, "lootbox_tier1").Return(lootboxItem, nil)
+	ts.repo.On("GetItemByID", ctx, 1).Return(lootboxItem, nil)
 
 	tx := new(MockTx)
 	inv1 := &domain.Inventory{Slots: []domain.InventorySlot{{ItemID: 1, Quantity: 5}}}
 	inv2 := &domain.Inventory{Slots: []domain.InventorySlot{{ItemID: 1, Quantity: 5}}}
 
-	repo.On("GetInventory", ctx, "user1").Return(inv1, nil).Maybe()
-	repo.On("GetInventory", ctx, "user2").Return(inv2, nil).Maybe()
+	ts.repo.On("GetInventory", ctx, "user1").Return(inv1, nil).Maybe()
+	ts.repo.On("GetInventory", ctx, "user2").Return(inv2, nil).Maybe()
 
-	repo.On("BeginGambleTx", ctx).Return(tx, nil).Twice()
+	ts.repo.On("BeginGambleTx", ctx).Return(tx, nil).Twice()
 
 	tx.On("GetInventory", ctx, "user1").Return(inv1, nil)
 	tx.On("GetInventory", ctx, "user2").Return(inv2, nil)
@@ -52,10 +50,15 @@ func TestStartGamble_Concurrent_RaceCondition(t *testing.T) {
 	tx.On("Rollback", ctx).Return(nil).Maybe()
 
 	// Simulate one success and one failure due to constraint
-	repo.On("CreateGamble", ctx, mock.Anything).Return(nil).Once()
-	repo.On("CreateGamble", ctx, mock.Anything).Return(domain.ErrGambleAlreadyActive).Once()
+	ts.repo.On("CreateGamble", ctx, mock.Anything).Return(nil).Once()
+	ts.repo.On("CreateGamble", ctx, mock.Anything).Return(domain.ErrGambleAlreadyActive).Once()
 
-	repo.On("JoinGamble", ctx, mock.Anything).Return(nil).Maybe()
+	ts.repo.On("JoinGamble", ctx, mock.Anything).Return(nil).Maybe()
+	ts.namingResolver.On("ResolvePublicName", "lootbox_tier1").Return("", false)
+
+	// Add event bus mock for successful gamble start
+	ts.eventBus.On("Publish", ctx, mock.MatchedBy(func(e any) bool { return true })).Return(nil).Maybe()
+	ts.resilientPub.On("PublishWithRetry", mock.Anything, mock.Anything).Maybe()
 
 	var wg sync.WaitGroup
 	results := make(chan error, 2)
@@ -63,12 +66,12 @@ func TestStartGamble_Concurrent_RaceCondition(t *testing.T) {
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
-		_, err := s.StartGamble(ctx, "twitch", "123", "user1", bets)
+		_, err := ts.svc.StartGamble(ctx, "twitch", "123", "user1", bets)
 		results <- err
 	}()
 	go func() {
 		defer wg.Done()
-		_, err := s.StartGamble(ctx, "twitch", "456", "user2", bets)
+		_, err := ts.svc.StartGamble(ctx, "twitch", "456", "user2", bets)
 		results <- err
 	}()
 
@@ -90,9 +93,7 @@ func TestStartGamble_Concurrent_RaceCondition(t *testing.T) {
 }
 
 func TestJoinGamble_SameUserTwice_ShouldReject(t *testing.T) {
-	repo := new(MockRepository)
-	s := NewService(repo, nil, nil, new(MockLootboxService), time.Minute, nil, nil, nil)
-
+	ts := setupService(nil, false)
 	ctx := context.Background()
 	gambleID := uuid.New()
 	user := &domain.User{ID: "user1"}
@@ -108,34 +109,32 @@ func TestJoinGamble_SameUserTwice_ShouldReject(t *testing.T) {
 	}
 
 	lootboxItem := &domain.Item{ID: 1, InternalName: domain.ItemLootbox1}
-	repo.On("GetItemByName", ctx, domain.ItemLootbox1).Return(lootboxItem, nil)
-	repo.On("GetItemByID", ctx, 1).Return(lootboxItem, nil)
+	ts.repo.On("GetItemByName", ctx, domain.ItemLootbox1).Return(lootboxItem, nil)
+	ts.repo.On("GetItemByID", ctx, 1).Return(lootboxItem, nil)
 
-	repo.On("GetUserByPlatformID", ctx, "twitch", "123").Return(user, nil)
-	repo.On("GetGamble", ctx, gambleID).Return(gamble, nil)
+	ts.repo.On("GetUserByPlatformID", ctx, "twitch", "123").Return(user, nil)
+	ts.repo.On("GetGamble", ctx, gambleID).Return(gamble, nil)
 
 	tx := new(MockTx)
 	inventory := &domain.Inventory{Slots: []domain.InventorySlot{{ItemID: 1, Quantity: 5}}}
-	repo.On("GetInventory", ctx, "user1").Return(inventory, nil).Maybe()
-	repo.On("BeginGambleTx", ctx).Return(tx, nil)
+	ts.repo.On("GetInventory", ctx, "user1").Return(inventory, nil).Maybe()
+	ts.repo.On("BeginGambleTx", ctx).Return(tx, nil)
 	tx.On("GetInventory", ctx, "user1").Return(inventory, nil)
 	tx.On("UpdateInventory", ctx, "user1", mock.Anything).Return(nil)
 	tx.On("Rollback", ctx).Return(nil)
 
 	// Simulate DB Constraint Violation
-	repo.On("JoinGamble", ctx, mock.Anything).Return(domain.ErrUserAlreadyJoined)
+	ts.repo.On("JoinGamble", ctx, mock.Anything).Return(domain.ErrUserAlreadyJoined)
+	ts.namingResolver.On("ResolvePublicName", domain.ItemLootbox1).Return("", false)
 
-	err := s.JoinGamble(ctx, gambleID, domain.PlatformTwitch, "123", "user1")
+	err := ts.svc.JoinGamble(ctx, gambleID, domain.PlatformTwitch, "123", "user1")
 
 	assert.Error(t, err)
 	assert.ErrorIs(t, err, domain.ErrUserAlreadyJoined)
 }
 
 func TestExecuteGamble_Concurrent_Idempotent(t *testing.T) {
-	repo := new(MockRepository)
-	lootboxSvc := new(MockLootboxService)
-	s := NewService(repo, nil, nil, lootboxSvc, time.Minute, nil, nil, nil)
-
+	ts := setupService(nil, false)
 	ctx := context.Background()
 	gambleID := uuid.New()
 
@@ -148,11 +147,11 @@ func TestExecuteGamble_Concurrent_Idempotent(t *testing.T) {
 		JoinDeadline: time.Now().Add(-time.Minute), // Deadline PASSED, ready to execute
 	}
 
-	repo.On("GetGamble", ctx, gambleID).Return(gamble, nil)
+	ts.repo.On("GetGamble", ctx, gambleID).Return(gamble, nil)
 
 	tx1, tx2 := new(MockTx), new(MockTx)
-	repo.On("BeginGambleTx", ctx).Return(tx1, nil).Once()
-	repo.On("BeginGambleTx", ctx).Return(tx2, nil).Once()
+	ts.repo.On("BeginGambleTx", ctx).Return(tx1, nil).Once()
+	ts.repo.On("BeginGambleTx", ctx).Return(tx2, nil).Once()
 
 	// One succeeds, one fails
 	tx1.On("UpdateGambleStateIfMatches", ctx, gambleID, domain.GambleStateJoining, domain.GambleStateOpening).Return(int64(1), nil)
@@ -163,9 +162,9 @@ func TestExecuteGamble_Concurrent_Idempotent(t *testing.T) {
 
 	lootboxItem := &domain.Item{ID: 1, InternalName: domain.ItemLootbox1}
 	drops := []lootbox.DroppedItem{{ItemID: 10, Quantity: 5, Value: 100}}
-	repo.On("GetItemByName", ctx, domain.ItemLootbox1).Return(lootboxItem, nil)
-	repo.On("GetItemByID", ctx, 1).Return(lootboxItem, nil)
-	lootboxSvc.On("OpenLootbox", ctx, domain.ItemLootbox1, 1, mock.Anything).Return(drops, nil)
+	ts.repo.On("GetItemByName", ctx, domain.ItemLootbox1).Return(lootboxItem, nil)
+	ts.repo.On("GetItemByID", ctx, 1).Return(lootboxItem, nil)
+	ts.lootboxSvc.On("OpenLootbox", ctx, domain.ItemLootbox1, 1, mock.Anything).Return(drops, nil)
 	tx1.On("SaveOpenedItems", ctx, mock.Anything).Return(nil)
 
 	tx1.On("GetInventory", ctx, "user1").Return(&domain.Inventory{}, nil)
@@ -173,6 +172,8 @@ func TestExecuteGamble_Concurrent_Idempotent(t *testing.T) {
 	tx1.On("CompleteGamble", ctx, mock.Anything).Return(nil)
 	tx1.On("Commit", ctx).Return(nil)
 	tx1.On("Rollback", ctx).Return(nil).Maybe()
+	ts.namingResolver.On("ResolvePublicName", domain.ItemLootbox1).Return("", false)
+	ts.resilientPub.On("PublishWithRetry", ctx, mock.Anything).Return()
 
 	var wg sync.WaitGroup
 	results := make(chan error, 2)
@@ -180,12 +181,12 @@ func TestExecuteGamble_Concurrent_Idempotent(t *testing.T) {
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
-		_, err := s.ExecuteGamble(ctx, gambleID)
+		_, err := ts.svc.ExecuteGamble(ctx, gambleID)
 		results <- err
 	}()
 	go func() {
 		defer wg.Done()
-		_, err := s.ExecuteGamble(ctx, gambleID)
+		_, err := ts.svc.ExecuteGamble(ctx, gambleID)
 		results <- err
 	}()
 
