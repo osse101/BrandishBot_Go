@@ -74,25 +74,25 @@ func (s *Subscriber) Subscribe() {
 
 // handleJobLevelUp sends a DoAction for job level up events
 func (s *Subscriber) handleJobLevelUp(_ context.Context, evt event.Event) error {
-	payload, ok := evt.Payload.(map[string]interface{})
-	if !ok {
-		slog.Warn("Invalid job level up event payload type")
+	payload, err := event.DecodePayload[event.JobLevelUpPayloadV1](evt.Payload)
+	if err != nil {
+		slog.Warn("Invalid job level up event payload type", "error", err)
 		return nil
 	}
 
-	// Extract source from metadata if available
-	source := ""
-	if evt.Metadata != nil {
+	// Extract source from payload or metadata
+	source := payload.Source
+	if source == "" && evt.Metadata != nil {
 		if src, ok := evt.Metadata["source"].(string); ok {
 			source = src
 		}
 	}
 
 	args := map[string]string{
-		"user_id":   getStringFromMap(payload, "user_id"),
-		"job_key":   getStringFromMap(payload, "job_key"),
-		"old_level": fmt.Sprintf("%d", getIntFromMap(payload, "old_level")),
-		"new_level": fmt.Sprintf("%d", getIntFromMap(payload, "new_level")),
+		"user_id":   payload.UserID,
+		"job_key":   payload.JobKey,
+		"old_level": fmt.Sprintf("%d", payload.OldLevel),
+		"new_level": fmt.Sprintf("%d", payload.NewLevel),
 		"source":    source,
 	}
 
