@@ -28,6 +28,7 @@ const (
 	ItemMine = "explosive_mine" // mine - basic trap
 	ItemTrap = "explosive_trap" // trap - upgraded trap
 	ItemTNT  = "explosive_tnt"  // tnt - ultimate trap
+	ItemBomb = "explosive_bomb" // large explosive
 
 	// Utility items
 	ItemStick        = "item_stick"        // basic crafting material
@@ -40,6 +41,9 @@ const (
 
 	// Progression items
 	ItemRareCandy = "xp_rarecandy" // instant job XP
+
+	// Junk items
+	ItemSludge = "compost_sludge" // compost byproduct
 )
 
 // Public item name constants - what clients use in commands (PublicName field)

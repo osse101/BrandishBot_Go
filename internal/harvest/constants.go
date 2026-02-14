@@ -14,13 +14,10 @@ const (
 )
 
 // Item internal names used in harvest system.
-// Note: Some of these differ from domain constants (e.g. "stick" vs "item_stick").
-// We keep the local string literals to preserve backward compatibility with existing DB data
-// until a migration unifies them.
 const (
 	itemMoney    = domain.ItemMoney
-	itemStick    = "stick"
-	itemLootbox0 = "lootbox0"
-	itemLootbox1 = "lootbox1"
-	itemLootbox2 = "lootbox2"
+	itemStick    = domain.ItemStick
+	itemLootbox0 = domain.ItemLootbox0
+	itemLootbox1 = domain.ItemLootbox1
+	itemLootbox2 = domain.ItemLootbox2
 )
