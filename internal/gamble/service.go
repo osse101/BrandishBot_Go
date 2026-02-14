@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"sort"
-	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -26,7 +25,6 @@ type Service interface {
 	GetGamble(ctx context.Context, id uuid.UUID) (*domain.Gamble, error)
 	ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.GambleResult, error)
 	GetActiveGamble(ctx context.Context) (*domain.Gamble, error)
-	Shutdown(ctx context.Context) error
 }
 
 // ProgressionService defines the interface for progression system
@@ -48,7 +46,6 @@ type service struct {
 	namingResolver     naming.Resolver
 	joinDuration       time.Duration
 	rng                func(int) int
-	wg                 sync.WaitGroup // Tracks async goroutines for graceful shutdown
 }
 
 // NewService creates a new gamble service
@@ -619,28 +616,6 @@ func calculateTotalLootboxes(bets []domain.LootboxBet) int {
 		total += bet.Quantity
 	}
 	return total
-}
-
-// Shutdown gracefully shuts down the gamble service by waiting for all async operations to complete
-func (s *service) Shutdown(ctx context.Context) error {
-	log := logger.FromContext(ctx)
-	log.Info(LogMsgShuttingDownGambleService)
-
-	// Wait for all async XP awards to complete
-	done := make(chan struct{})
-	go func() {
-		s.wg.Wait()
-		close(done)
-	}()
-
-	select {
-	case <-done:
-		log.Info(LogMsgGambleServiceShutdownDone)
-		return nil
-	case <-ctx.Done():
-		log.Warn(LogMsgGambleServiceShutdownForced)
-		return ctx.Err()
-	}
 }
 
 func (s *service) getAndValidateGambleUser(ctx context.Context, platform, platformID string) (*domain.User, error) {
