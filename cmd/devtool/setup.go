@@ -20,13 +20,13 @@ func (c *SetupCommand) Run(args []string) error {
 	PrintHeader("Starting Environment Setup")
 
 	// 1. Check Dependencies
-	PrintInfo("Step 1/5: Checking dependencies...")
+	PrintInfo("Step 1/6: Checking dependencies...")
 	if err := (&CheckDepsCommand{}).Run(nil); err != nil {
 		return err
 	}
 
 	// 2. Setup .env
-	PrintInfo("Step 2/5: Configuring environment...")
+	PrintInfo("Step 2/6: Configuring environment...")
 	if _, err := os.Stat(".env"); os.IsNotExist(err) {
 		PrintInfo("Creating .env from .env.example...")
 		if err := copyFile(".env.example", ".env"); err != nil {
@@ -43,22 +43,28 @@ func (c *SetupCommand) Run(args []string) error {
 	}
 
 	// 3. Start Docker & DB
-	PrintInfo("Step 3/5: Starting database...")
+	PrintInfo("Step 3/6: Starting database...")
 	if err := (&CheckDBCommand{}).Run(nil); err != nil {
 		return err
 	}
 
 	// 4. Run Migrations
-	PrintInfo("Step 4/5: Running migrations...")
+	PrintInfo("Step 4/6: Running migrations...")
 	if err := (&MigrateCommand{}).Run([]string{"up"}); err != nil {
 		return fmt.Errorf("migrations failed: %w", err)
 	}
 
 	// 5. Generate Code
-	PrintInfo("Step 5/5: Generating code...")
+	PrintInfo("Step 5/6: Generating code...")
 	//nolint:forbidigo
 	if err := runCommandVerbose("make", "generate"); err != nil {
 		return fmt.Errorf("code generation failed: %w", err)
+	}
+
+	// 6. Install Hooks
+	PrintInfo("Step 6/6: Installing git hooks...")
+	if err := (&InstallHooksCommand{}).Run(nil); err != nil {
+		return fmt.Errorf("failed to install hooks: %w", err)
 	}
 
 	PrintSuccess("Setup complete! You can now run 'make run' or 'devtool run'.")

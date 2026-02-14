@@ -22,6 +22,7 @@ func main() {
 	registry.Register(&SetupCommand{})
 	registry.Register(&BenchCommand{})
 	registry.Register(&PreCommitCommand{})
+	registry.Register(&InstallHooksCommand{})
 	registry.Register(&DeployCommand{})
 	registry.Register(&RollbackCommand{})
 	registry.Register(&HealthCheckCommand{})

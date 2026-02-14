@@ -146,10 +146,7 @@ lint-fix:
 
 install-hooks:
 	@echo "Installing git hooks..."
-	@echo "#!/bin/sh" > .git/hooks/pre-commit
-	@echo "go run ./cmd/devtool pre-commit" >> .git/hooks/pre-commit
-	@chmod +x .git/hooks/pre-commit
-	@echo "✓ Git hooks installed"
+	@go run ./cmd/devtool install-hooks
 
 # Benchmark commands
 .PHONY: bench bench-hot bench-save bench-baseline bench-compare bench-profile
