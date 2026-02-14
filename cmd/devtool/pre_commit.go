@@ -194,7 +194,7 @@ func runLinter() error {
 func runUnitTests() error {
 	PrintInfo("Running unit tests...")
 	//nolint:forbidigo
-	if err := runCommandVerbose("make", "unit"); err != nil {
+	if err := runCommandVerbose("go", "test", "-short", "./..."); err != nil {
 		return fmt.Errorf("unit tests failed")
 	}
 	return nil
