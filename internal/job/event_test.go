@@ -192,7 +192,7 @@ func TestAwardXP_PublishesEventOnLevelUp(t *testing.T) {
 
 	// Execute - Award XP (capped at daily limit of 250)
 	// Starting at level 1 with 0 XP, +250 brings to 250 total (still level 1)
-	result, err := svc.AwardXP(ctx, "user123", "explorer", 500, "test", nil)
+	result, err := svc.AwardXP(ctx, "user123", "explorer", 500, "test", domain.JobXPMetadata{})
 
 	// Assert - No level-up since capped at 250 XP (level 2 needs ~330 total)
 	assert.NoError(t, err)
@@ -258,7 +258,7 @@ func TestAwardXP_GuaranteedCriticalSuccess(t *testing.T) {
 	// Act
 	// baseAmount = 100
 	// EpiphanyMultiplier is 2.0
-	result, err := svc.AwardXP(ctx, "user_crit", "warrior", 100, "test", nil)
+	result, err := svc.AwardXP(ctx, "user_crit", "warrior", 100, "test", domain.JobXPMetadata{})
 
 	// Assert
 	assert.NoError(t, err)
@@ -311,7 +311,7 @@ func TestAwardXP_GuaranteedNoCriticalSuccess(t *testing.T) {
 	// No level-up expected (100 awarded stays within daily cap, total is still level 1)
 
 	// Act
-	result, err := svc.AwardXP(ctx, "user_nocrit", "mage", 100, "test", nil)
+	result, err := svc.AwardXP(ctx, "user_nocrit", "mage", 100, "test", domain.JobXPMetadata{})
 
 	// Assert
 	assert.NoError(t, err)

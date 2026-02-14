@@ -24,7 +24,7 @@ func (_m *MockJobService) EXPECT() *MockJobService_Expecter {
 }
 
 // AwardXP provides a mock function with given fields: ctx, userID, jobKey, baseAmount, source, metadata
-func (_m *MockJobService) AwardXP(ctx context.Context, userID string, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error) {
+func (_m *MockJobService) AwardXP(ctx context.Context, userID string, jobKey string, baseAmount int, source string, metadata domain.JobXPMetadata) (*domain.XPAwardResult, error) {
 	ret := _m.Called(ctx, userID, jobKey, baseAmount, source, metadata)
 
 	if len(ret) == 0 {
@@ -33,10 +33,10 @@ func (_m *MockJobService) AwardXP(ctx context.Context, userID string, jobKey str
 
 	var r0 *domain.XPAwardResult
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, int, string, map[string]interface{}) (*domain.XPAwardResult, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, int, string, domain.JobXPMetadata) (*domain.XPAwardResult, error)); ok {
 		return rf(ctx, userID, jobKey, baseAmount, source, metadata)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, int, string, map[string]interface{}) *domain.XPAwardResult); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, int, string, domain.JobXPMetadata) *domain.XPAwardResult); ok {
 		r0 = rf(ctx, userID, jobKey, baseAmount, source, metadata)
 	} else {
 		if ret.Get(0) != nil {
@@ -44,7 +44,7 @@ func (_m *MockJobService) AwardXP(ctx context.Context, userID string, jobKey str
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, string, int, string, map[string]interface{}) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, int, string, domain.JobXPMetadata) error); ok {
 		r1 = rf(ctx, userID, jobKey, baseAmount, source, metadata)
 	} else {
 		r1 = ret.Error(1)
@@ -64,14 +64,14 @@ type MockJobService_AwardXP_Call struct {
 //   - jobKey string
 //   - baseAmount int
 //   - source string
-//   - metadata map[string]interface{}
+//   - metadata domain.JobXPMetadata
 func (_e *MockJobService_Expecter) AwardXP(ctx interface{}, userID interface{}, jobKey interface{}, baseAmount interface{}, source interface{}, metadata interface{}) *MockJobService_AwardXP_Call {
 	return &MockJobService_AwardXP_Call{Call: _e.mock.On("AwardXP", ctx, userID, jobKey, baseAmount, source, metadata)}
 }
 
-func (_c *MockJobService_AwardXP_Call) Run(run func(ctx context.Context, userID string, jobKey string, baseAmount int, source string, metadata map[string]interface{})) *MockJobService_AwardXP_Call {
+func (_c *MockJobService_AwardXP_Call) Run(run func(ctx context.Context, userID string, jobKey string, baseAmount int, source string, metadata domain.JobXPMetadata)) *MockJobService_AwardXP_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(int), args[4].(string), args[5].(map[string]interface{}))
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(int), args[4].(string), args[5].(domain.JobXPMetadata))
 	})
 	return _c
 }
@@ -81,13 +81,13 @@ func (_c *MockJobService_AwardXP_Call) Return(_a0 *domain.XPAwardResult, _a1 err
 	return _c
 }
 
-func (_c *MockJobService_AwardXP_Call) RunAndReturn(run func(context.Context, string, string, int, string, map[string]interface{}) (*domain.XPAwardResult, error)) *MockJobService_AwardXP_Call {
+func (_c *MockJobService_AwardXP_Call) RunAndReturn(run func(context.Context, string, string, int, string, domain.JobXPMetadata) (*domain.XPAwardResult, error)) *MockJobService_AwardXP_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // AwardXPByPlatform provides a mock function with given fields: ctx, platform, platformID, jobKey, baseAmount, source, metadata
-func (_m *MockJobService) AwardXPByPlatform(ctx context.Context, platform string, platformID string, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error) {
+func (_m *MockJobService) AwardXPByPlatform(ctx context.Context, platform string, platformID string, jobKey string, baseAmount int, source string, metadata domain.JobXPMetadata) (*domain.XPAwardResult, error) {
 	ret := _m.Called(ctx, platform, platformID, jobKey, baseAmount, source, metadata)
 
 	if len(ret) == 0 {
@@ -96,10 +96,10 @@ func (_m *MockJobService) AwardXPByPlatform(ctx context.Context, platform string
 
 	var r0 *domain.XPAwardResult
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, int, string, map[string]interface{}) (*domain.XPAwardResult, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, int, string, domain.JobXPMetadata) (*domain.XPAwardResult, error)); ok {
 		return rf(ctx, platform, platformID, jobKey, baseAmount, source, metadata)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, int, string, map[string]interface{}) *domain.XPAwardResult); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, int, string, domain.JobXPMetadata) *domain.XPAwardResult); ok {
 		r0 = rf(ctx, platform, platformID, jobKey, baseAmount, source, metadata)
 	} else {
 		if ret.Get(0) != nil {
@@ -107,7 +107,7 @@ func (_m *MockJobService) AwardXPByPlatform(ctx context.Context, platform string
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, string, string, int, string, map[string]interface{}) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, string, int, string, domain.JobXPMetadata) error); ok {
 		r1 = rf(ctx, platform, platformID, jobKey, baseAmount, source, metadata)
 	} else {
 		r1 = ret.Error(1)
@@ -128,14 +128,14 @@ type MockJobService_AwardXPByPlatform_Call struct {
 //   - jobKey string
 //   - baseAmount int
 //   - source string
-//   - metadata map[string]interface{}
+//   - metadata domain.JobXPMetadata
 func (_e *MockJobService_Expecter) AwardXPByPlatform(ctx interface{}, platform interface{}, platformID interface{}, jobKey interface{}, baseAmount interface{}, source interface{}, metadata interface{}) *MockJobService_AwardXPByPlatform_Call {
 	return &MockJobService_AwardXPByPlatform_Call{Call: _e.mock.On("AwardXPByPlatform", ctx, platform, platformID, jobKey, baseAmount, source, metadata)}
 }
 
-func (_c *MockJobService_AwardXPByPlatform_Call) Run(run func(ctx context.Context, platform string, platformID string, jobKey string, baseAmount int, source string, metadata map[string]interface{})) *MockJobService_AwardXPByPlatform_Call {
+func (_c *MockJobService_AwardXPByPlatform_Call) Run(run func(ctx context.Context, platform string, platformID string, jobKey string, baseAmount int, source string, metadata domain.JobXPMetadata)) *MockJobService_AwardXPByPlatform_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(string), args[4].(int), args[5].(string), args[6].(map[string]interface{}))
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(string), args[4].(int), args[5].(string), args[6].(domain.JobXPMetadata))
 	})
 	return _c
 }
@@ -145,7 +145,7 @@ func (_c *MockJobService_AwardXPByPlatform_Call) Return(_a0 *domain.XPAwardResul
 	return _c
 }
 
-func (_c *MockJobService_AwardXPByPlatform_Call) RunAndReturn(run func(context.Context, string, string, string, int, string, map[string]interface{}) (*domain.XPAwardResult, error)) *MockJobService_AwardXPByPlatform_Call {
+func (_c *MockJobService_AwardXPByPlatform_Call) RunAndReturn(run func(context.Context, string, string, string, int, string, domain.JobXPMetadata) (*domain.XPAwardResult, error)) *MockJobService_AwardXPByPlatform_Call {
 	_c.Call.Return(run)
 	return _c
 }

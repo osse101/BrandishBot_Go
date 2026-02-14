@@ -76,7 +76,7 @@ func TestResilientEvents_Integration(t *testing.T) {
 		})).Return(nil).Once()
 
 		// Execute AwardXP
-		result, err := svc.AwardXP(ctx, userID, jobKey, baseXP, "test", nil)
+		result, err := svc.AwardXP(ctx, userID, jobKey, baseXP, "test", domain.JobXPMetadata{})
 
 		// Verification
 		assert.NoError(t, err)
@@ -122,7 +122,7 @@ func TestResilientEvents_Integration(t *testing.T) {
 		})).Return(errors.New("permanent failure")).Times(4)
 
 		// Execute AwardXP
-		result, err := svc.AwardXP(ctx, userID, jobKey, baseXP, "test", nil)
+		result, err := svc.AwardXP(ctx, userID, jobKey, baseXP, "test", domain.JobXPMetadata{})
 
 		// Verification - should still succeed from user perspective
 		assert.NoError(t, err)

@@ -32,8 +32,8 @@ type Service interface {
 	GetJobBonus(ctx context.Context, userID, jobKey string, bonusType string) (float64, error)
 
 	// XP operations
-	AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error)
-	AwardXPByPlatform(ctx context.Context, platform, platformID, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error)
+	AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata domain.JobXPMetadata) (*domain.XPAwardResult, error)
+	AwardXPByPlatform(ctx context.Context, platform, platformID, jobKey string, baseAmount int, source string, metadata domain.JobXPMetadata) (*domain.XPAwardResult, error)
 	GetJobLevel(ctx context.Context, userID, jobKey string) (int, error)
 
 	// Daily reset operations
@@ -190,7 +190,7 @@ func (s *service) GetPrimaryJob(ctx context.Context, platform string, platformID
 }
 
 // AwardXP awards XP to a user for a specific job
-func (s *service) AwardXP(ctx context.Context, userID string, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error) {
+func (s *service) AwardXP(ctx context.Context, userID string, jobKey string, baseAmount int, source string, metadata domain.JobXPMetadata) (*domain.XPAwardResult, error) {
 	// Check if specific job is unlocked
 	jobUnlocked, err := s.progressionSvc.IsNodeUnlocked(ctx, jobKey, 1)
 	if err != nil {
@@ -236,7 +236,7 @@ func (s *service) AwardXP(ctx context.Context, userID string, jobKey string, bas
 	}, nil
 }
 
-func (s *service) AwardXPByPlatform(ctx context.Context, platform string, platformID string, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error) {
+func (s *service) AwardXPByPlatform(ctx context.Context, platform string, platformID string, jobKey string, baseAmount int, source string, metadata domain.JobXPMetadata) (*domain.XPAwardResult, error) {
 	user, err := s.repo.GetUserByPlatformID(ctx, platform, platformID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user: %w", err)
@@ -346,7 +346,7 @@ func (s *service) GetJobBonus(ctx context.Context, userID, jobKey, bonusType str
 	return bestBonus, nil
 }
 
-func (s *service) recordXPAndLevelUpEvents(ctx context.Context, userID, jobKey string, jobID int, actualAmount int, oldLevel, newLevel int, source string, metadata map[string]interface{}, now *time.Time) {
+func (s *service) recordXPAndLevelUpEvents(ctx context.Context, userID, jobKey string, jobID int, actualAmount int, oldLevel, newLevel int, source string, metadata domain.JobXPMetadata, now *time.Time) {
 	log := logger.FromContext(ctx)
 
 	// Record XP event

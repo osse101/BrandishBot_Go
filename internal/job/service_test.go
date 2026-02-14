@@ -282,7 +282,7 @@ func TestAwardXP_Success(t *testing.T) {
 	prog.On("GetModifiedValue", ctx, "job_level_cap", mock.Anything).Return(float64(DefaultMaxLevel), nil)
 	prog.On("GetModifiedValue", ctx, "job_daily_cap", float64(DefaultDailyCap)).Return(float64(DefaultDailyCap), nil)
 
-	result, err := svc.AwardXP(ctx, userID, jobKey, baseXP, "test", nil)
+	result, err := svc.AwardXP(ctx, userID, jobKey, baseXP, "test", domain.JobXPMetadata{})
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -329,7 +329,7 @@ func TestAwardXP_Epiphany(t *testing.T) {
 
 	// Epiphany and level-up events now published via event bus/publisher (nil in this test → no-op)
 
-	result, err := svc.AwardXP(ctx, userID, jobKey, baseXP, "test", nil)
+	result, err := svc.AwardXP(ctx, userID, jobKey, baseXP, "test", domain.JobXPMetadata{})
 
 	assert.NoError(t, err)
 	assert.Equal(t, expectedXP, result.XPGained)
@@ -372,7 +372,7 @@ func TestAwardXP_LevelUp(t *testing.T) {
 
 	// Level-up event now published via event bus (nil in this test → no-op)
 
-	result, err := svc.AwardXP(ctx, userID, jobKey, baseXP, "test", nil)
+	result, err := svc.AwardXP(ctx, userID, jobKey, baseXP, "test", domain.JobXPMetadata{})
 
 	assert.NoError(t, err)
 	assert.Equal(t, 1, result.NewLevel)
@@ -389,7 +389,7 @@ func TestAwardXP_Locked_Job(t *testing.T) {
 
 	prog.On("IsNodeUnlocked", ctx, "j1", 1).Return(false, nil)
 
-	_, err := svc.AwardXP(ctx, "u1", "j1", 10, "t", nil)
+	_, err := svc.AwardXP(ctx, "u1", "j1", 10, "t", domain.JobXPMetadata{})
 	assert.ErrorIs(t, err, domain.ErrFeatureLocked)
 }
 
@@ -428,7 +428,7 @@ func TestAwardXP_DailyCap(t *testing.T) {
 	prog.On("GetModifiedValue", ctx, "job_level_cap", mock.Anything).Return(float64(DefaultMaxLevel), nil)
 	prog.On("GetModifiedValue", ctx, "job_daily_cap", float64(DefaultDailyCap)).Return(float64(DefaultDailyCap), nil)
 
-	result, err := svc.AwardXP(ctx, userID, jobKey, amount, "test", nil)
+	result, err := svc.AwardXP(ctx, userID, jobKey, amount, "test", domain.JobXPMetadata{})
 
 	assert.NoError(t, err)
 	// mock matcher verifies XPGainedToday
@@ -460,7 +460,7 @@ func TestAwardXP_DailyCap_Reached(t *testing.T) {
 	prog.On("GetModifiedValue", ctx, "job_level_cap", mock.Anything).Return(float64(DefaultMaxLevel), nil)
 	prog.On("GetModifiedValue", ctx, "job_daily_cap", float64(DefaultDailyCap)).Return(float64(DefaultDailyCap), nil)
 
-	_, err := svc.AwardXP(ctx, userID, jobKey, 10, "test", nil)
+	_, err := svc.AwardXP(ctx, userID, jobKey, 10, "test", domain.JobXPMetadata{})
 
 	assert.ErrorIs(t, err, domain.ErrDailyCapReached)
 }
@@ -501,7 +501,7 @@ func TestAwardXP_RareCandy_BypassesDailyCap(t *testing.T) {
 		return e.XPAmount == rarecandyXP && e.SourceType == SourceRareCandy
 	})).Return(nil)
 
-	result, err := svc.AwardXP(ctx, userID, jobKey, rarecandyXP, SourceRareCandy, nil)
+	result, err := svc.AwardXP(ctx, userID, jobKey, rarecandyXP, SourceRareCandy, domain.JobXPMetadata{})
 
 	assert.NoError(t, err)
 	assert.Equal(t, rarecandyXP, result.XPGained)
@@ -544,7 +544,7 @@ func TestAwardXP_RareCandy_ExceedsNormalCap(t *testing.T) {
 		return e.XPAmount == rarecandyXP && e.SourceType == SourceRareCandy
 	})).Return(nil)
 
-	result, err := svc.AwardXP(ctx, userID, jobKey, rarecandyXP, SourceRareCandy, nil)
+	result, err := svc.AwardXP(ctx, userID, jobKey, rarecandyXP, SourceRareCandy, domain.JobXPMetadata{})
 
 	assert.NoError(t, err)
 	assert.Equal(t, rarecandyXP, result.XPGained)
@@ -589,7 +589,7 @@ func TestAwardXP_MaxLevel(t *testing.T) {
 	prog.On("GetModifiedValue", ctx, "job_level_cap", mock.Anything).Return(float64(DefaultMaxLevel), nil)
 	prog.On("GetModifiedValue", ctx, "job_daily_cap", float64(DefaultDailyCap)).Return(float64(DefaultDailyCap), nil)
 
-	result, err := svc.AwardXP(ctx, userID, jobKey, awardAmount, "test", nil)
+	result, err := svc.AwardXP(ctx, userID, jobKey, awardAmount, "test", domain.JobXPMetadata{})
 
 	assert.NoError(t, err)
 	assert.Equal(t, DefaultMaxLevel, result.NewLevel)
@@ -946,7 +946,7 @@ func TestAwardXP_RepositoryFailure_GetJob(t *testing.T) {
 	prog.On("IsNodeUnlocked", ctx, JobKeyBlacksmith, 1).Return(true, nil)
 	repo.On("GetJobByKey", ctx, JobKeyBlacksmith).Return(nil, assert.AnError)
 
-	result, err := svc.AwardXP(ctx, "u1", JobKeyBlacksmith, 10, "test", nil)
+	result, err := svc.AwardXP(ctx, "u1", JobKeyBlacksmith, 10, "test", domain.JobXPMetadata{})
 	assert.Error(t, err)
 	assert.Nil(t, result)
 }
@@ -968,7 +968,7 @@ func TestAwardXP_RepositoryFailure_Upsert(t *testing.T) {
 	prog.On("GetModifiedValue", ctx, "job_level_cap", mock.Anything).Return(float64(DefaultMaxLevel), nil)
 	prog.On("GetModifiedValue", ctx, "job_daily_cap", float64(DefaultDailyCap)).Return(float64(DefaultDailyCap), nil)
 
-	result, err := svc.AwardXP(ctx, "u1", JobKeyBlacksmith, 10, "test", nil)
+	result, err := svc.AwardXP(ctx, "u1", JobKeyBlacksmith, 10, "test", domain.JobXPMetadata{})
 	assert.Error(t, err)
 	assert.Nil(t, result)
 }
@@ -1007,7 +1007,7 @@ func TestAwardXP_PartialDailyCapRemaining(t *testing.T) {
 		return e.XPAmount == 50
 	})).Return(nil)
 
-	result, err := svc.AwardXP(ctx, "u1", JobKeyBlacksmith, 100, "test", nil)
+	result, err := svc.AwardXP(ctx, "u1", JobKeyBlacksmith, 100, "test", domain.JobXPMetadata{})
 	assert.NoError(t, err)
 	assert.Equal(t, 50, result.XPGained) // Only 50 awarded
 }

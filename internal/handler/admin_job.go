@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 
+	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/user"
@@ -80,9 +81,9 @@ func (h *AdminJobHandler) HandleAdminAwardXP(w http.ResponseWriter, r *http.Requ
 		req.JobKey,
 		req.Amount,
 		"admin_award",
-		map[string]interface{}{
-			"platform": req.Platform,
-			"username": req.Username,
+		domain.JobXPMetadata{
+			Platform: req.Platform,
+			Username: req.Username,
 		},
 	)
 

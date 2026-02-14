@@ -258,7 +258,9 @@ func TestUpgradeGambleWinBonus_NearMissInteraction(t *testing.T) {
 
 	ts.resilientPub.On("PublishWithRetry", ctx, mock.MatchedBy(func(e event.Event) bool {
 		payload, ok := e.Payload.(domain.GambleCompletedPayloadV2)
-		if !ok { return false }
+		if !ok {
+			return false
+		}
 		for _, p := range payload.Participants {
 			if p.UserID == "loser" {
 				return p.IsNearMiss

@@ -93,7 +93,6 @@ func GracefulShutdown(ctx context.Context, components ShutdownComponents) {
 	shutdownService(ctx, ServiceNameUser, components.UserService)
 	shutdownService(ctx, ServiceNameEconomy, components.EconomyService)
 	shutdownService(ctx, ServiceNameCrafting, components.CraftingService)
-	shutdownService(ctx, ServiceNameGamble, components.GambleService)
 	shutdownService(ctx, ServiceNameJob, components.JobService)
 	shutdownService(ctx, ServiceNamePrediction, components.PredictionService)
 	shutdownService(ctx, ServiceNameQuest, components.QuestService)

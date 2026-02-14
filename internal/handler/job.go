@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 
+	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
@@ -77,12 +78,12 @@ func (h *JobHandler) HandleGetUserJobs(w http.ResponseWriter, r *http.Request) {
 
 // AwardXPRequest is the request body for awarding XP
 type AwardXPRequest struct {
-	Platform   string                 `json:"platform"`
-	PlatformID string                 `json:"platform_id"`
-	JobKey     string                 `json:"job_key"`
-	XPAmount   int                    `json:"xp_amount"`
-	Source     string                 `json:"source"`
-	Metadata   map[string]interface{} `json:"metadata,omitempty"`
+	Platform   string               `json:"platform"`
+	PlatformID string               `json:"platform_id"`
+	JobKey     string               `json:"job_key"`
+	XPAmount   int                  `json:"xp_amount"`
+	Source     string               `json:"source"`
+	Metadata   domain.JobXPMetadata `json:"metadata,omitempty"`
 }
 
 // HandleAwardXP awards XP to a user's job (internal/bot use)
