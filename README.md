@@ -18,7 +18,8 @@ A high-performance game engine API for BrandishBot, built with Go. Provides inve
 - **Subscriptions**: [Integration with Twitch/YouTube subscriptions](docs/features/SUBSCRIPTIONS.md)
 - **Traps**: [Place hidden traps](docs/features/TRAPS.md) and mines on other users
 - **Statistics**: User and system stats with leaderboards
-- **In Development**: Duels (PVP challenges) and Composting (Item recycling)
+- **Composting**: [Recycle items for rewards](docs/features/FARMING.md)
+- **In Development**: Duels (PVP challenges)
 - **Discord Bot**: Full-featured Discord integration with slash commands
 - **Admin Dashboard**: [Web-based GUI](docs/features/ADMIN_DASHBOARD.md) for system monitoring and admin commands
 - **Health Checks**: Production-ready liveness and readiness endpoints
@@ -193,6 +194,9 @@ See **[Devtool Documentation](docs/tools/DEVTOOL.md)** for detailed usage.
 │   ├── discord/     # Discord bot implementation
 │   └── cooldown/    # Cooldown service
 ├── migrations/      # SQL migrations
+│   └── archive/     # Pre-v1 development migrations
+├── web/
+│   └── admin/       # Admin Dashboard (React)
 └── docs/            # Documentation & Swagger
 ```
 
