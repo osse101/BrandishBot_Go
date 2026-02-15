@@ -29,7 +29,7 @@ import (
 //	}); err != nil {
 //	    // Error is already logged, handler can continue or return based on requirements
 //	}
-func PublishEvent(ctx context.Context, eventBus event.Bus, eventType event.Type, payload map[string]interface{}) error {
+func PublishEvent(ctx context.Context, eventBus event.Bus, eventType event.Type, payload interface{}) error {
 	log := logger.FromContext(ctx)
 
 	if err := eventBus.Publish(ctx, event.Event{

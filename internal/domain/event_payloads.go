@@ -113,9 +113,9 @@ type QuestClaimedPayloadV1 struct {
 
 // ItemUsedPayload is the event payload for item.used events
 type ItemUsedPayload struct {
-	UserID    string                 `json:"user_id"`
-	ItemName  string                 `json:"item_name"`
-	Quantity  int                    `json:"quantity"`
-	Metadata  map[string]interface{} `json:"metadata"`
-	Timestamp int64                  `json:"timestamp"`
+	UserID    string      `json:"user_id"`
+	ItemName  string      `json:"item_name"`
+	Quantity  int         `json:"quantity"`
+	Metadata  interface{} `json:"metadata"`
+	Timestamp int64       `json:"timestamp"`
 }

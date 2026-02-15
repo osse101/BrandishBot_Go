@@ -55,11 +55,11 @@ func (h *EventHandler) HandleItemUpgraded(ctx context.Context, evt event.Event) 
 	}
 
 	if payload.IsMasterwork {
-		err := h.service.RecordUserEvent(ctx, payload.UserID, domain.EventCraftingCriticalSuccess, map[string]interface{}{
-			"item_name":         payload.ItemName,
-			"original_quantity": payload.Quantity,
-			"masterwork_count":  1,
-			"bonus_quantity":    payload.BonusQuantity,
+		err := h.service.RecordUserEvent(ctx, payload.UserID, domain.EventCraftingCriticalSuccess, domain.CraftingMetadata{
+			ItemName:         payload.ItemName,
+			OriginalQuantity: payload.Quantity,
+			MasterworkCount:  1,
+			BonusQuantity:    payload.BonusQuantity,
 		})
 		if err != nil {
 			log.Warn("Failed to record crafting critical success stat", "error", err, "user_id", payload.UserID)
@@ -79,11 +79,11 @@ func (h *EventHandler) HandleItemDisassembled(ctx context.Context, evt event.Eve
 	}
 
 	if payload.IsPerfectSalvage {
-		err := h.service.RecordUserEvent(ctx, payload.UserID, domain.EventCraftingPerfectSalvage, map[string]interface{}{
-			"item_name":     payload.ItemName,
-			"quantity":      payload.Quantity,
-			"perfect_count": payload.PerfectSalvageCount,
-			"multiplier":    payload.Multiplier,
+		err := h.service.RecordUserEvent(ctx, payload.UserID, domain.EventCraftingPerfectSalvage, domain.CraftingMetadata{
+			ItemName:     payload.ItemName,
+			Quantity:     payload.Quantity,
+			PerfectCount: payload.PerfectSalvageCount,
+			Multiplier:   payload.Multiplier,
 		})
 		if err != nil {
 			log.Warn("Failed to record crafting perfect salvage stat", "error", err, "user_id", payload.UserID)
@@ -102,17 +102,17 @@ func (h *EventHandler) HandleSlotsCompleted(ctx context.Context, evt event.Event
 		return fmt.Errorf("failed to decode slots completed payload: %w", err)
 	}
 
-	metadata := map[string]interface{}{
-		"bet_amount":        payload.BetAmount,
-		"payout_amount":     payload.PayoutAmount,
-		"payout_multiplier": payload.PayoutMultiplier,
-		"net_profit":        payload.PayoutAmount - payload.BetAmount,
-		"is_win":            payload.IsWin,
-		"is_near_miss":      payload.IsNearMiss,
-		"trigger_type":      payload.TriggerType,
-		"reel1":             payload.Reel1,
-		"reel2":             payload.Reel2,
-		"reel3":             payload.Reel3,
+	metadata := domain.SlotsMetadata{
+		BetAmount:        payload.BetAmount,
+		PayoutAmount:     payload.PayoutAmount,
+		PayoutMultiplier: payload.PayoutMultiplier,
+		NetProfit:        payload.PayoutAmount - payload.BetAmount,
+		IsWin:            payload.IsWin,
+		IsNearMiss:       payload.IsNearMiss,
+		TriggerType:      payload.TriggerType,
+		Reel1:            payload.Reel1,
+		Reel2:            payload.Reel2,
+		Reel3:            payload.Reel3,
 	}
 
 	if err := h.service.RecordUserEvent(ctx, payload.UserID, domain.EventSlotsSpin, metadata); err != nil {
@@ -145,22 +145,22 @@ func (h *EventHandler) HandleGambleCompleted(ctx context.Context, evt event.Even
 
 	for _, p := range payload.Participants {
 		if p.IsCritFail {
-			_ = h.service.RecordUserEvent(ctx, p.UserID, domain.EventGambleCriticalFail, map[string]interface{}{
-				"gamble_id": payload.GambleID,
-				"score":     p.Score,
+			_ = h.service.RecordUserEvent(ctx, p.UserID, domain.EventGambleCriticalFail, domain.GambleMetadata{
+				GambleID: payload.GambleID,
+				Score:    p.Score,
 			})
 		}
 		if p.IsTieBreakLost {
-			_ = h.service.RecordUserEvent(ctx, p.UserID, domain.EventGambleTieBreakLost, map[string]interface{}{
-				"gamble_id": payload.GambleID,
-				"score":     p.Score,
+			_ = h.service.RecordUserEvent(ctx, p.UserID, domain.EventGambleTieBreakLost, domain.GambleMetadata{
+				GambleID: payload.GambleID,
+				Score:    p.Score,
 			})
 		}
 		if p.IsNearMiss {
-			if err := h.service.RecordUserEvent(ctx, p.UserID, domain.EventGambleNearMiss, map[string]interface{}{
-				"gamble_id":    payload.GambleID,
-				"score":        p.Score,
-				"winner_score": payload.TotalValue,
+			if err := h.service.RecordUserEvent(ctx, p.UserID, domain.EventGambleNearMiss, domain.GambleMetadata{
+				GambleID:    payload.GambleID,
+				Score:       p.Score,
+				WinnerScore: payload.TotalValue,
 			}); err != nil {
 				log.Warn("Failed to record gamble near miss stat", "error", err, "user_id", p.UserID)
 			}
@@ -179,12 +179,12 @@ func (h *EventHandler) HandleSearchPerformed(ctx context.Context, evt event.Even
 		return fmt.Errorf("failed to decode search performed payload: %w", err)
 	}
 
-	metadata := map[string]interface{}{
-		"is_critical":    payload.IsCritical,
-		"is_near_miss":   payload.IsNearMiss,
-		"is_crit_fail":   payload.IsCriticalFail,
-		"is_first_daily": payload.IsFirstDaily,
-		"xp_amount":      payload.XPAmount,
+	metadata := domain.SearchMetadata{
+		IsCritical:   payload.IsCritical,
+		IsNearMiss:   payload.IsNearMiss,
+		IsCritFail:   payload.IsCriticalFail,
+		IsFirstDaily: payload.IsFirstDaily,
+		XPAmount:     payload.XPAmount,
 	}
 
 	if err := h.service.RecordUserEvent(ctx, payload.UserID, domain.EventSearch, metadata); err != nil {
@@ -225,7 +225,7 @@ func (h *EventHandler) HandleJobLevelUp(ctx context.Context, evt event.Event) er
 		return nil
 	}
 
-	if err := h.service.RecordUserEvent(ctx, payload.UserID, domain.EventJobLevelUp, payload.ToMap()); err != nil {
+	if err := h.service.RecordUserEvent(ctx, payload.UserID, domain.EventJobLevelUp, payload); err != nil {
 		log.Warn("Failed to record job level-up stat", "error", err, "user_id", payload.UserID)
 	}
 
@@ -245,7 +245,7 @@ func (h *EventHandler) HandleJobXPCritical(ctx context.Context, evt event.Event)
 		return nil
 	}
 
-	if err := h.service.RecordUserEvent(ctx, payload.UserID, domain.EventJobXPCritical, payload.ToMap()); err != nil {
+	if err := h.service.RecordUserEvent(ctx, payload.UserID, domain.EventJobXPCritical, payload); err != nil {
 		log.Warn("Failed to record job XP critical stat", "error", err, "user_id", payload.UserID)
 	}
 
@@ -261,11 +261,11 @@ func (h *EventHandler) HandlePredictionParticipated(ctx context.Context, evt eve
 		return fmt.Errorf("failed to decode prediction participated payload: %w", err)
 	}
 
-	metadata := map[string]interface{}{
-		"username":  payload.Username,
-		"is_winner": payload.IsWinner,
-		"platform":  payload.Platform,
-		"xp":        payload.XP,
+	metadata := domain.PredictionMetadata{
+		Username: payload.Username,
+		IsWinner: payload.IsWinner,
+		Platform: payload.Platform,
+		XP:       payload.XP,
 	}
 
 	userID := payload.UserID

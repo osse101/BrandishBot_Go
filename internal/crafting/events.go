@@ -45,10 +45,17 @@ func NewItemUpgradedEvent(userID, itemName string, quantity int, recipeKey strin
 			BonusQuantity: bonusQuantity,
 			Timestamp:     time.Now().Unix(),
 		},
-		Metadata: map[string]interface{}{
-			domain.MetadataKeyItemName: itemName,
-			domain.MetadataKeyQuantity: quantity,
-			domain.MetadataKeySource:   "crafting",
+		Metadata: domain.CraftingMetadata{
+			ItemName:         itemName,
+			OriginalQuantity: quantity,
+			Quantity:         quantity,
+			MasterworkCount: func() int {
+				if isMasterwork {
+					return 1
+				}
+				return 0
+			}(),
+			BonusQuantity: bonusQuantity,
 		},
 	}
 }
@@ -69,10 +76,11 @@ func NewItemDisassembledEvent(userID, itemName string, quantity int, recipeKey s
 			Outputs:             outputs,
 			Timestamp:           time.Now().Unix(),
 		},
-		Metadata: map[string]interface{}{
-			domain.MetadataKeyItemName: itemName,
-			domain.MetadataKeyQuantity: quantity,
-			domain.MetadataKeySource:   "crafting",
+		Metadata: domain.CraftingMetadata{
+			ItemName:     itemName,
+			Quantity:     quantity,
+			PerfectCount: perfectSalvageCount,
+			Multiplier:   multiplier,
 		},
 	}
 }

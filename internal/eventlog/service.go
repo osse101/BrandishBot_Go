@@ -53,21 +53,16 @@ func (s *service) Subscribe(bus event.Bus) error {
 func (s *service) handleEvent(ctx context.Context, evt event.Event) error {
 	log := logger.FromContext(ctx)
 
-	// Extract payload as map
-	payload, ok := evt.Payload.(map[string]interface{})
-	if !ok {
-		log.Debug(LogMsgEventPayloadNotMap, LogFieldType, evt.Type)
-		return nil
-	}
-
-	// Extract user_id if present
+	// Extract user_id if present for indexing, but log the original payload
 	var userID *string
-	if uid, ok := payload[PayloadKeyUserID].(string); ok {
-		userID = &uid
+	if payloadMap, ok := evt.Payload.(map[string]interface{}); ok {
+		if uid, ok := payloadMap[PayloadKeyUserID].(string); ok {
+			userID = &uid
+		}
 	}
 
 	// Log event to database
-	if err := s.repo.LogEvent(ctx, string(evt.Type), userID, payload, evt.Metadata); err != nil {
+	if err := s.repo.LogEvent(ctx, string(evt.Type), userID, evt.Payload, evt.Metadata); err != nil {
 		log.Error(LogMsgFailedToLogEvent, LogFieldError, err, LogFieldType, evt.Type)
 		return err
 	}

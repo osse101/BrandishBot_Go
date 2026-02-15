@@ -39,11 +39,70 @@ const (
 
 // StatsEvent represents a single tracked event
 type StatsEvent struct {
-	EventID   int64                  `json:"event_id"`
-	UserID    string                 `json:"user_id"`
-	EventType EventType              `json:"event_type"`
-	EventData map[string]interface{} `json:"event_data,omitempty"`
-	CreatedAt time.Time              `json:"created_at"`
+	EventID   int64       `json:"event_id"`
+	UserID    string      `json:"user_id"`
+	EventType EventType   `json:"event_type"`
+	EventData interface{} `json:"event_data,omitempty"`
+	CreatedAt time.Time   `json:"created_at"`
+}
+
+// CraftingMetadata represents metadata for crafting events
+type CraftingMetadata struct {
+	ItemName         string  `json:"item_name"`
+	OriginalQuantity int     `json:"original_quantity,omitempty"`
+	Quantity         int     `json:"quantity,omitempty"`
+	MasterworkCount  int     `json:"masterwork_count,omitempty"`
+	BonusQuantity    int     `json:"bonus_quantity,omitempty"`
+	PerfectCount     int     `json:"perfect_count,omitempty"`
+	Multiplier       float64 `json:"multiplier,omitempty"`
+}
+
+// SlotsMetadata represents metadata for slots events
+type SlotsMetadata struct {
+	BetAmount        int     `json:"bet_amount"`
+	PayoutAmount     int     `json:"payout_amount"`
+	PayoutMultiplier float64 `json:"payout_multiplier"`
+	NetProfit        int     `json:"net_profit"`
+	IsWin            bool    `json:"is_win"`
+	IsNearMiss       bool    `json:"is_near_miss"`
+	TriggerType      string  `json:"trigger_type"`
+	Reel1            string  `json:"reel1"`
+	Reel2            string  `json:"reel2"`
+	Reel3            string  `json:"reel3"`
+}
+
+// GambleMetadata represents metadata for gamble events
+type GambleMetadata struct {
+	GambleID    string `json:"gamble_id"`
+	Score       int64  `json:"score"`
+	WinnerScore int64  `json:"winner_score,omitempty"`
+}
+
+// SearchMetadata represents metadata for search events
+type SearchMetadata struct {
+	IsCritical   bool `json:"is_critical"`
+	IsNearMiss   bool `json:"is_near_miss"`
+	IsCritFail   bool `json:"is_crit_fail"`
+	IsFirstDaily bool `json:"is_first_daily"`
+	XPAmount     int  `json:"xp_amount"`
+}
+
+// PredictionMetadata represents metadata for prediction events
+type PredictionMetadata struct {
+	Username string `json:"username"`
+	IsWinner bool   `json:"is_winner"`
+	Platform string `json:"platform"`
+	XP       int    `json:"xp"`
+}
+
+// JobMetadata represents metadata for job events
+type JobMetadata struct {
+	Source string `json:"source"`
+}
+
+// StreakMetadata represents metadata for streak events
+type StreakMetadata struct {
+	Streak int `json:"streak"`
 }
 
 // LootboxEventData represents data for lootbox jackpot/big-win events
@@ -55,14 +114,7 @@ type LootboxEventData struct {
 }
 
 // ToMap converts LootboxEventData to map for compatibility with existing event recording
-func (d *LootboxEventData) ToMap() map[string]interface{} {
-	return map[string]interface{}{
-		"item":   d.Item,
-		"drops":  d.Drops,
-		"value":  d.Value,
-		"source": d.Source,
-	}
-}
+// ToMap converts LootboxEventData to map - REMOVED
 
 // StatsAggregate represents pre-calculated statistics for a time period
 type StatsAggregate struct {

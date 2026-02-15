@@ -117,7 +117,7 @@ type MockStats struct {
 	mock.Mock
 }
 
-func (m *MockStats) RecordUserEvent(ctx context.Context, userID string, eventType domain.EventType, metadata map[string]interface{}) error {
+func (m *MockStats) RecordUserEvent(ctx context.Context, userID string, eventType domain.EventType, metadata interface{}) error {
 	args := m.Called(ctx, userID, eventType, metadata)
 	return args.Error(0)
 }

@@ -259,7 +259,7 @@ func (_c *MockRepository_GetEventsByUser_Call) RunAndReturn(run func(context.Con
 }
 
 // LogEvent provides a mock function with given fields: ctx, eventType, userID, payload, metadata
-func (_m *MockRepository) LogEvent(ctx context.Context, eventType string, userID *string, payload map[string]interface{}, metadata map[string]interface{}) error {
+func (_m *MockRepository) LogEvent(ctx context.Context, eventType string, userID *string, payload interface{}, metadata interface{}) error {
 	ret := _m.Called(ctx, eventType, userID, payload, metadata)
 
 	if len(ret) == 0 {
@@ -267,7 +267,7 @@ func (_m *MockRepository) LogEvent(ctx context.Context, eventType string, userID
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, *string, map[string]interface{}, map[string]interface{}) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, *string, interface{}, interface{}) error); ok {
 		r0 = rf(ctx, eventType, userID, payload, metadata)
 	} else {
 		r0 = ret.Error(0)
@@ -285,15 +285,15 @@ type MockRepository_LogEvent_Call struct {
 //   - ctx context.Context
 //   - eventType string
 //   - userID *string
-//   - payload map[string]interface{}
-//   - metadata map[string]interface{}
+//   - payload interface{}
+//   - metadata interface{}
 func (_e *MockRepository_Expecter) LogEvent(ctx interface{}, eventType interface{}, userID interface{}, payload interface{}, metadata interface{}) *MockRepository_LogEvent_Call {
 	return &MockRepository_LogEvent_Call{Call: _e.mock.On("LogEvent", ctx, eventType, userID, payload, metadata)}
 }
 
-func (_c *MockRepository_LogEvent_Call) Run(run func(ctx context.Context, eventType string, userID *string, payload map[string]interface{}, metadata map[string]interface{})) *MockRepository_LogEvent_Call {
+func (_c *MockRepository_LogEvent_Call) Run(run func(ctx context.Context, eventType string, userID *string, payload interface{}, metadata interface{})) *MockRepository_LogEvent_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(*string), args[3].(map[string]interface{}), args[4].(map[string]interface{}))
+		run(args[0].(context.Context), args[1].(string), args[2].(*string), args[3].(interface{}), args[4].(interface{}))
 	})
 	return _c
 }
@@ -303,7 +303,7 @@ func (_c *MockRepository_LogEvent_Call) Return(_a0 error) *MockRepository_LogEve
 	return _c
 }
 
-func (_c *MockRepository_LogEvent_Call) RunAndReturn(run func(context.Context, string, *string, map[string]interface{}, map[string]interface{}) error) *MockRepository_LogEvent_Call {
+func (_c *MockRepository_LogEvent_Call) RunAndReturn(run func(context.Context, string, *string, interface{}, interface{}) error) *MockRepository_LogEvent_Call {
 	_c.Call.Return(run)
 	return _c
 }

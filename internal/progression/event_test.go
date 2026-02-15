@@ -73,19 +73,19 @@ func TestStartVotingSession_AutoSelect_PublishesEvent(t *testing.T) {
 			return false
 		}
 
-		payload, ok := evt.Payload.(map[string]interface{})
+		payload, ok := evt.Payload.(event.ProgressionTargetSetPayloadV1)
 		if !ok {
 			return false
 		}
 
 		// Verify payload content
-		if payload["node_key"] != "child_node" {
+		if payload.NodeKey != "child_node" {
 			return false
 		}
-		if payload["target_level"] != 1 {
+		if payload.TargetLevel != 1 {
 			return false
 		}
-		if payload["auto_selected"] != true {
+		if payload.AutoSelected != true {
 			return false
 		}
 

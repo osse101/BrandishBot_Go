@@ -258,14 +258,16 @@ func TestProgressionHandlers_HandleGetUnlockProgress(t *testing.T) {
 		ContributionsAccumulated: 100,
 	}
 
+	now := time.Now()
 	// Mock estimate
 	estimate := &domain.UnlockEstimate{
-		NodeKey:         "node_1",
-		EstimatedDays:   5.0,
-		Confidence:      "high",
-		RequiredPoints:  900,
-		CurrentProgress: 100,
-		CurrentVelocity: 180,
+		NodeKey:             "node_1",
+		EstimatedDays:       5.0,
+		Confidence:          "high",
+		RequiredPoints:      900,
+		CurrentProgress:     100,
+		CurrentVelocity:     180,
+		EstimatedUnlockDate: &now,
 	}
 
 	mockSvc.On("GetUnlockProgress", mock.Anything).Return(progress, nil)
@@ -315,11 +317,12 @@ func TestProgressionHandlers_HandleGetVotingSession_WithEstimates(t *testing.T) 
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 
-	var resp domain.ProgressionVotingSession
+	var resp VotingSessionResponse
 	err := json.Unmarshal(rec.Body.Bytes(), &resp)
 	require.NoError(t, err)
 
-	assert.Equal(t, 1, resp.ID)
-	assert.Len(t, resp.Options, 1)
-	assert.NotNil(t, resp.Options[0].EstimatedUnlockDate)
+	assert.NotNil(t, resp.Session)
+	assert.Equal(t, 1, resp.Session.ID)
+	assert.Len(t, resp.Session.Options, 1)
+	assert.NotNil(t, resp.Session.Options[0].EstimatedUnlockDate)
 }

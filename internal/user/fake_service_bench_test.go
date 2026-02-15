@@ -209,7 +209,7 @@ func (f *fakeBenchTx) Rollback(ctx context.Context) error {
 // Mock stats service
 type fakeBenchStatsService struct{}
 
-func (f *fakeBenchStatsService) RecordUserEvent(ctx context.Context, userID string, eventType domain.EventType, metadata map[string]interface{}) error {
+func (f *fakeBenchStatsService) RecordUserEvent(ctx context.Context, userID string, eventType domain.EventType, metadata interface{}) error {
 	return nil
 }
 

@@ -452,23 +452,34 @@ func (h *EventHandler) HandleItemUsed(ctx context.Context, evt event.Event) erro
 
 	// Currently handles Rare Candy XP awards
 	if payload.ItemName == domain.ItemRareCandy {
-		jobName, _ := payload.Metadata["job_name"].(string)
-		source, ok := payload.Metadata[domain.MetadataKeySource].(string)
-		if !ok {
-			source = SourceRareCandy
-		}
-
-		// Extract XP amount safely from metadata (JSON numbers are float64)
+		var jobName, source string
 		var xpTotal int
-		if val, ok := payload.Metadata["xp_total"]; ok {
-			switch v := val.(type) {
-			case float64:
-				xpTotal = int(v)
-			case int:
-				xpTotal = v
-			case int64:
-				xpTotal = int(v)
+
+		// Metadata can be map[string]interface{} when unmarshaled from JSON
+		if metaMap, ok := payload.Metadata.(map[string]interface{}); ok {
+			if v, ok := metaMap["job_name"].(string); ok {
+				jobName = v
 			}
+			if v, ok := metaMap[domain.MetadataKeySource].(string); ok {
+				source = v
+			} else {
+				source = SourceRareCandy
+			}
+
+			if val, ok := metaMap["xp_total"]; ok {
+				switch v := val.(type) {
+				case float64:
+					xpTotal = int(v)
+				case int:
+					xpTotal = v
+				case int64:
+					xpTotal = int(v)
+				}
+			}
+		} else {
+			// If it's not a map, we can't do anything (or handle if it's a struct?)
+			// For ItemUsedPayload, we usually expect a map
+			return nil
 		}
 
 		metadata := domain.JobXPMetadata{

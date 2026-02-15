@@ -7,13 +7,14 @@ import (
 	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
 
 // Service defines the interface for stats operations
 type Service interface {
-	RecordUserEvent(ctx context.Context, userID string, eventType domain.EventType, metadata map[string]interface{}) error
+	RecordUserEvent(ctx context.Context, userID string, eventType domain.EventType, metadata interface{}) error
 	GetUserStats(ctx context.Context, userID string, period string) (*domain.StatsSummary, error)
 	GetUserCurrentStreak(ctx context.Context, userID string) (int, error)
 	GetSystemStats(ctx context.Context, period string) (*domain.StatsSummary, error)
@@ -38,7 +39,7 @@ func NewService(repo repository.Stats) Service {
 }
 
 // RecordUserEvent records a user event with the provided metadata
-func (s *service) RecordUserEvent(ctx context.Context, userID string, eventType domain.EventType, metadata map[string]interface{}) error {
+func (s *service) RecordUserEvent(ctx context.Context, userID string, eventType domain.EventType, metadata interface{}) error {
 	log := logger.FromContext(ctx)
 
 	if userID == "" {
@@ -82,17 +83,9 @@ func (s *service) checkDailyStreak(ctx context.Context, userID string) error {
 
 	if len(events) > 0 {
 		lastStreakTime = events[0].CreatedAt
-		// Extract streak from metadata
-		if streakVal, ok := events[0].EventData[MetadataKeyStreak]; ok {
-			// Handle float64 (JSON default) or int
-			switch v := streakVal.(type) {
-			case float64:
-				lastStreak = int(v)
-			case int:
-				lastStreak = v
-			case int64:
-				lastStreak = int(v)
-			}
+		// Extract streak from metadata using typed decoder
+		if meta, err := event.DecodePayload[domain.StreakMetadata](events[0].EventData); err == nil {
+			lastStreak = meta.Streak
 		}
 	}
 
@@ -117,8 +110,8 @@ func (s *service) checkDailyStreak(ctx context.Context, userID string) error {
 	}
 
 	// Record new streak
-	meta := map[string]interface{}{
-		MetadataKeyStreak: newStreak,
+	meta := domain.StreakMetadata{
+		Streak: newStreak,
 	}
 
 	// Use RecordUserEvent but with EventDailyStreak type (which will be skipped by the check above)
@@ -146,16 +139,9 @@ func (s *service) GetUserCurrentStreak(ctx context.Context, userID string) (int,
 	lastStreakTime := lastEvent.CreatedAt
 	var streak int
 
-	// Extract streak from metadata
-	if streakVal, ok := lastEvent.EventData[MetadataKeyStreak]; ok {
-		switch v := streakVal.(type) {
-		case float64:
-			streak = int(v)
-		case int:
-			streak = v
-		case int64:
-			streak = int(v)
-		}
+	// Extract streak from metadata using typed decoder
+	if meta, err := event.DecodePayload[domain.StreakMetadata](lastEvent.EventData); err == nil {
+		streak = meta.Streak
 	}
 
 	now := time.Now()

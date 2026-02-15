@@ -171,16 +171,7 @@ func (s *service) handleSingleOptionAutoSelect(ctx context.Context, progress *do
 	s.mu.Unlock()
 
 	if s.bus != nil {
-		if err := s.bus.Publish(ctx, event.Event{
-			Version: "1.0",
-			Type:    event.ProgressionTargetSet,
-			Payload: map[string]interface{}{
-				"node_key":      node.NodeKey,
-				"target_level":  targetLevel,
-				"auto_selected": true,
-				"session_id":    sessionID,
-			},
-		}); err != nil {
+		if err := s.bus.Publish(ctx, event.NewProgressionTargetEvent(node.NodeKey, targetLevel, true, sessionID)); err != nil {
 			log.Error("Failed to publish progression target set event", "error", err)
 		}
 	}
@@ -220,17 +211,7 @@ func (s *service) publishCycleCompletedEvent(ctx context.Context, unlockedNodeID
 	}
 
 	if s.bus != nil {
-		if err := s.bus.Publish(ctx, event.Event{
-			Version: "1.0",
-			Type:    event.ProgressionCycleCompleted,
-			Payload: map[string]interface{}{
-				"unlocked_node": map[string]interface{}{
-					"node_key":     unlockedNode.NodeKey,
-					"display_name": unlockedNode.DisplayName,
-					"description":  unlockedNode.Description,
-				},
-			},
-		}); err != nil {
+		if err := s.bus.Publish(ctx, event.NewProgressionCycleEvent(unlockedNode.NodeKey, unlockedNode.DisplayName, unlockedNode.Description)); err != nil {
 			log.Error("Failed to publish progression cycle completed event", "error", err)
 		} else {
 			log.Info("Published progression cycle completed event", "unlockedNode", unlockedNode.NodeKey)
@@ -246,26 +227,19 @@ func (s *service) publishVotingStartedEvent(ctx context.Context, sessionID int, 
 	}
 
 	// Build options list for event payload
-	optionsList := make([]interface{}, 0, len(options))
+	optionsList := make([]event.ProgressionVotingOptionV1, 0, len(options))
 	for _, node := range options {
 		unlockDuration := FormatUnlockDuration(node.Size)
 
-		optionsList = append(optionsList, map[string]interface{}{
-			"node_key":        node.NodeKey,
-			"display_name":    node.DisplayName,
-			"description":     node.Description,
-			"unlock_duration": unlockDuration,
+		optionsList = append(optionsList, event.ProgressionVotingOptionV1{
+			NodeKey:        node.NodeKey,
+			DisplayName:    node.DisplayName,
+			Description:    node.Description,
+			UnlockDuration: unlockDuration,
 		})
 	}
 
-	if err := s.bus.Publish(ctx, event.Event{
-		Version: "1.0",
-		Type:    event.ProgressionVotingStarted,
-		Payload: map[string]interface{}{
-			"options":         optionsList,
-			"previous_unlock": previousUnlock,
-		},
-	}); err != nil {
+	if err := s.bus.Publish(ctx, event.NewProgressionVotingStartedEvent(optionsList, previousUnlock, sessionID)); err != nil {
 		log.Error("Failed to publish voting started event", "error", err)
 	} else {
 		log.Info("Published voting started event", "sessionID", sessionID, "options", len(options))
@@ -792,20 +766,10 @@ func (s *service) setInitialTarget(ctx context.Context, available []*domain.Prog
 }
 
 func (s *service) publishTargetSetEvent(ctx context.Context, node *domain.ProgressionNode, level, sessionID int) {
-	if s.bus == nil {
-		return
-	}
-	if err := s.bus.Publish(ctx, event.Event{
-		Version: "1.0",
-		Type:    event.ProgressionTargetSet,
-		Payload: map[string]interface{}{
-			"node_key":      node.NodeKey,
-			"target_level":  level,
-			"auto_selected": true,
-			"session_id":    sessionID,
-		},
-	}); err != nil {
-		logger.FromContext(ctx).Error("Failed to publish progression target set event", "error", err)
+	if s.bus != nil {
+		if err := s.bus.Publish(ctx, event.NewProgressionTargetEvent(node.NodeKey, level, true, sessionID)); err != nil {
+			logger.FromContext(ctx).Error("Failed to publish progression target set event", "error", err)
+		}
 	}
 }
 
@@ -980,19 +944,11 @@ func (s *service) startNextCycleVoting(ctx context.Context, progress *domain.Unl
 func (s *service) publishAllUnlockedEvent(ctx context.Context) {
 	log := logger.FromContext(ctx)
 
-	if s.bus == nil {
-		return
-	}
-
-	if err := s.bus.Publish(ctx, event.Event{
-		Version: "1.0",
-		Type:    event.ProgressionAllUnlocked,
-		Payload: map[string]interface{}{
-			"message": "All progression nodes have been unlocked! Waiting for new content.",
-		},
-	}); err != nil {
-		log.Error("Failed to publish all unlocked event", "error", err)
-	} else {
-		log.Info("Published progression all unlocked event")
+	if s.bus != nil {
+		if err := s.bus.Publish(ctx, event.NewProgressionAllUnlockedEvent("All progression nodes have been unlocked! Waiting for new content.")); err != nil {
+			log.Error("Failed to publish all unlocked event", "error", err)
+		} else {
+			log.Info("Published progression all unlocked event")
+		}
 	}
 }

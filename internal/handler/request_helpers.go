@@ -47,14 +47,20 @@ func DecodeAndValidateRequest(r *http.Request, w http.ResponseWriter, req interf
 	// Validate the request struct
 	if err := GetValidator().ValidateStruct(req); err != nil {
 		validationErrs := FormatValidationError(err)
-		respondJSON(w, http.StatusBadRequest, map[string]interface{}{
-			"error":  ErrMsgInvalidRequestSummary,
-			"fields": validationErrs,
+		respondJSON(w, http.StatusBadRequest, ValidationErrorResponse{
+			Error:  ErrMsgInvalidRequestSummary,
+			Fields: validationErrs,
 		})
 		return err
 	}
 
 	return nil
+}
+
+// ValidationErrorResponse defines the response structure for validation errors
+type ValidationErrorResponse struct {
+	Error  string            `json:"error"`
+	Fields map[string]string `json:"fields"`
 }
 
 // GetQueryParam retrieves and validates a required query parameter from the request.

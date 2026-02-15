@@ -82,8 +82,8 @@ func (s *Subscriber) handleJobLevelUp(_ context.Context, evt event.Event) error 
 
 	// Extract source from payload or metadata
 	source := payload.Source
-	if source == "" && evt.Metadata != nil {
-		if src, ok := evt.Metadata["source"].(string); ok {
+	if source == "" {
+		if src, ok := evt.GetMetadataValue("source").(string); ok {
 			source = src
 		}
 	}
@@ -108,45 +108,27 @@ func (s *Subscriber) handleJobLevelUp(_ context.Context, evt event.Event) error 
 
 // handleVotingStarted sends a DoAction for voting session start events
 func (s *Subscriber) handleVotingStarted(_ context.Context, evt event.Event) error {
-	payload, ok := evt.Payload.(map[string]interface{})
-	if !ok {
-		slog.Warn("Invalid voting started event payload type")
+	payload, err := event.DecodePayload[event.ProgressionVotingStartedPayloadV1](evt.Payload)
+	if err != nil {
+		slog.Warn("Invalid voting started event payload type", "error", err)
 		return nil
 	}
 
 	args := map[string]string{
-		"previous_unlock": getStringFromMap(payload, "previous_unlock"),
+		"previous_unlock": payload.PreviousUnlock,
+		"options_count":   fmt.Sprintf("%d", len(payload.Options)),
 	}
 
-	// Extract options - handle both []map[string]interface{} and []interface{}
-	var optsRaw interface{}
-	if optsRaw, ok = payload["options"]; !ok {
-		slog.Warn("Voting started event missing options field", "sessionID", evt.Metadata["session_id"])
-	}
-
-	extractedOptions := false
-	if opts, ok := optsRaw.([]map[string]interface{}); ok {
-		args["options_count"] = fmt.Sprintf("%d", len(opts))
-		for i, optMap := range opts {
-			s.populateOptionArgs(args, i+1, optMap)
+	for i, opt := range payload.Options {
+		idx := i + 1
+		displayName := opt.DisplayName
+		if displayName == "" {
+			displayName = opt.NodeKey
 		}
-		extractedOptions = true
-	} else if opts, ok := optsRaw.([]interface{}); ok {
-		args["options_count"] = fmt.Sprintf("%d", len(opts))
-		for i, opt := range opts {
-			if optMap, ok := opt.(map[string]interface{}); ok {
-				s.populateOptionArgs(args, i+1, optMap)
-			} else {
-				slog.Warn("Individual option is not a map", "index", i, "type", fmt.Sprintf("%T", opt))
-			}
-		}
-		extractedOptions = true
-	} else if optsRaw != nil {
-		slog.Warn("Invalid options type in voting started event", "type", fmt.Sprintf("%T", optsRaw))
-	}
-
-	if !extractedOptions {
-		slog.Warn("Failed to extract options for Streamer.bot", "payload_keys", getMapKeys(payload))
+		args[fmt.Sprintf("option_%d", idx)] = displayName
+		args[fmt.Sprintf("option_%d_key", idx)] = opt.NodeKey
+		args[fmt.Sprintf("option_%d_description", idx)] = opt.Description
+		args[fmt.Sprintf("option_%d_duration", idx)] = opt.UnlockDuration
 	}
 
 	slog.Debug(LogMsgEventReceived, "event_type", event.ProgressionVotingStarted, "args", args)
@@ -159,34 +141,18 @@ func (s *Subscriber) handleVotingStarted(_ context.Context, evt event.Event) err
 	return nil
 }
 
-func (s *Subscriber) populateOptionArgs(args map[string]string, index int, optMap map[string]interface{}) {
-	displayName := getStringFromMap(optMap, "display_name")
-	if displayName == "" {
-		displayName = getStringFromMap(optMap, "node_key")
-	}
-	args[fmt.Sprintf("option_%d", index)] = displayName
-	args[fmt.Sprintf("option_%d_key", index)] = getStringFromMap(optMap, "node_key")
-	args[fmt.Sprintf("option_%d_description", index)] = getStringFromMap(optMap, "description")
-	args[fmt.Sprintf("option_%d_duration", index)] = getStringFromMap(optMap, "unlock_duration")
-}
-
 // handleCycleCompleted sends a DoAction for progression cycle completion events
 func (s *Subscriber) handleCycleCompleted(_ context.Context, evt event.Event) error {
-	payload, ok := evt.Payload.(map[string]interface{})
-	if !ok {
-		slog.Warn("Invalid cycle completed event payload type")
+	payload, err := event.DecodePayload[event.ProgressionCycleCompletedPayloadV1](evt.Payload)
+	if err != nil {
+		slog.Warn("Invalid cycle completed event payload type", "error", err)
 		return nil
 	}
 
-	args := map[string]string{}
-
-	// Extract unlocked node info
-	if unlockedNode := payload["unlocked_node"]; unlockedNode != nil {
-		if node, ok := unlockedNode.(map[string]interface{}); ok {
-			args["node_key"] = getStringFromMap(node, "node_key")
-			args["display_name"] = getStringFromMap(node, "display_name")
-			args["description"] = getStringFromMap(node, "description")
-		}
+	args := map[string]string{
+		"node_key":     payload.UnlockedNode.NodeKey,
+		"display_name": payload.UnlockedNode.DisplayName,
+		"description":  payload.UnlockedNode.Description,
 	}
 
 	slog.Debug(LogMsgEventReceived, "event_type", event.ProgressionCycleCompleted, "args", args)
@@ -201,14 +167,14 @@ func (s *Subscriber) handleCycleCompleted(_ context.Context, evt event.Event) er
 
 // handleAllUnlocked sends a DoAction when all progression nodes are unlocked
 func (s *Subscriber) handleAllUnlocked(_ context.Context, evt event.Event) error {
-	payload, ok := evt.Payload.(map[string]interface{})
-	if !ok {
-		slog.Warn("Invalid all unlocked event payload type")
+	payload, err := event.DecodePayload[event.ProgressionAllUnlockedPayloadV1](evt.Payload)
+	if err != nil {
+		slog.Warn("Invalid all unlocked event payload type", "error", err)
 		return nil
 	}
 
 	args := map[string]string{
-		"message": getStringFromMap(payload, "message"),
+		"message": payload.Message,
 	}
 
 	slog.Debug(LogMsgEventReceived, "event_type", event.ProgressionAllUnlocked, "args", args)
@@ -423,12 +389,4 @@ func getBoolFromMap(m map[string]interface{}, key string) bool {
 		return v
 	}
 	return false
-}
-
-func getMapKeys(m map[string]interface{}) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	return keys
 }

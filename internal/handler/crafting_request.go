@@ -31,9 +31,3 @@ func decodeCraftingRequest(r *http.Request, w http.ResponseWriter, actionName st
 func trackCraftingEngagement(ctx context.Context, eventBus event.Bus, username, eventType string, quantity int) {
 	TrackEngagement(ctx, eventBus, username, eventType, quantity)
 }
-
-// publishCraftingEvent publishes a crafting event to the event bus
-// Deprecated: Use PublishEvent from event_helpers.go instead
-func publishCraftingEvent(ctx context.Context, eventBus event.Bus, eventType event.Type, payload map[string]interface{}) error {
-	return PublishEvent(ctx, eventBus, eventType, payload)
-}

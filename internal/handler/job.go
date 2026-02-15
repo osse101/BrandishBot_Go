@@ -68,12 +68,20 @@ func (h *JobHandler) HandleGetUserJobs(w http.ResponseWriter, r *http.Request) {
 
 	primaryJob, _ := h.service.GetPrimaryJob(r.Context(), platform, platformID)
 
-	respondJSON(w, http.StatusOK, map[string]interface{}{
-		"platform":    platform,
-		"platform_id": platformID,
-		"primary_job": primaryJob,
-		"jobs":        userJobs,
+	respondJSON(w, http.StatusOK, GetUserJobsResponse{
+		Platform:   platform,
+		PlatformID: platformID,
+		PrimaryJob: primaryJob,
+		Jobs:       userJobs,
 	})
+}
+
+// GetUserJobsResponse defines the response structure for GetUserJobs
+type GetUserJobsResponse struct {
+	Platform   string               `json:"platform"`
+	PlatformID string               `json:"platform_id"`
+	PrimaryJob *domain.UserJobInfo  `json:"primary_job"`
+	Jobs       []domain.UserJobInfo `json:"jobs"`
 }
 
 // AwardXPRequest is the request body for awarding XP

@@ -89,8 +89,8 @@ func (s *Subscriber) handleJobLevelUp(_ context.Context, evt event.Event) error 
 
 	// Extract source from payload or metadata
 	source := payload.Source
-	if source == "" && evt.Metadata != nil {
-		if src, ok := evt.Metadata["source"].(string); ok {
+	if source == "" {
+		if src, ok := evt.GetMetadataValue("source").(string); ok {
 			source = src
 		}
 	}
@@ -117,15 +117,19 @@ func (s *Subscriber) handleJobLevelUp(_ context.Context, evt event.Event) error 
 
 // handleCycleCompleted processes progression cycle completed events
 func (s *Subscriber) handleCycleCompleted(_ context.Context, evt event.Event) error {
-	payload, ok := evt.Payload.(map[string]interface{})
-	if !ok {
-		slog.Warn("Invalid cycle completed event payload type")
+	payload, err := event.DecodePayload[event.ProgressionCycleCompletedPayloadV1](evt.Payload)
+	if err != nil {
+		slog.Warn("Invalid cycle completed event payload type", "error", err)
 		return nil
 	}
 
 	// Build SSE payload
 	ssePayload := CycleCompletedPayload{
-		UnlockedNode: extractNodeInfo(payload["unlocked_node"]),
+		UnlockedNode: NodeInfo{
+			NodeKey:     payload.UnlockedNode.NodeKey,
+			DisplayName: payload.UnlockedNode.DisplayName,
+			Description: payload.UnlockedNode.Description,
+		},
 	}
 
 	s.hub.Broadcast(EventTypeCycleCompleted, ssePayload)
@@ -139,66 +143,50 @@ func (s *Subscriber) handleCycleCompleted(_ context.Context, evt event.Event) er
 
 // handleVotingStarted processes voting session started events
 func (s *Subscriber) handleVotingStarted(_ context.Context, evt event.Event) error {
-	payload, ok := evt.Payload.(map[string]interface{})
-	if !ok {
-		slog.Warn("Invalid voting started event payload type")
+	payload, err := event.DecodePayload[event.ProgressionVotingStartedPayloadV1](evt.Payload)
+	if err != nil {
+		slog.Warn("Invalid voting started event payload type", "error", err)
 		return nil
 	}
 
 	// Build SSE payload
 	ssePayload := VotingStartedPayload{
-		PreviousUnlock: getStringFromMap(payload, "previous_unlock"),
+		PreviousUnlock: payload.PreviousUnlock,
 		AutoSelected:   false,
+		Options:        make([]VotingOptionInfo, 0, len(payload.Options)),
 	}
 
-	// Extract options from payload
-	if opts, ok := payload["options"].([]map[string]interface{}); ok {
-		ssePayload.Options = make([]VotingOptionInfo, 0, len(opts))
-		for _, opt := range opts {
-			ssePayload.Options = append(ssePayload.Options, VotingOptionInfo{
-				NodeKey:        getStringFromMap(opt, "node_key"),
-				DisplayName:    getStringFromMap(opt, "display_name"),
-				Description:    getStringFromMap(opt, "description"),
-				UnlockDuration: getStringFromMap(opt, "unlock_duration"),
-			})
-		}
-	} else if opts, ok := payload["options"].([]interface{}); ok {
-		ssePayload.Options = make([]VotingOptionInfo, 0, len(opts))
-		for _, opt := range opts {
-			if optMap, ok := opt.(map[string]interface{}); ok {
-				ssePayload.Options = append(ssePayload.Options, VotingOptionInfo{
-					NodeKey:        getStringFromMap(optMap, "node_key"),
-					DisplayName:    getStringFromMap(optMap, "display_name"),
-					Description:    getStringFromMap(optMap, "description"),
-					UnlockDuration: getStringFromMap(optMap, "unlock_duration"),
-				})
-			}
-		}
+	for _, opt := range payload.Options {
+		ssePayload.Options = append(ssePayload.Options, VotingOptionInfo{
+			NodeKey:        opt.NodeKey,
+			DisplayName:    opt.DisplayName,
+			Description:    opt.Description,
+			UnlockDuration: opt.UnlockDuration,
+		})
 	}
 
 	s.hub.Broadcast(EventTypeVotingStarted, ssePayload)
 
 	slog.Debug(LogMsgEventBroadcast,
 		"event_type", EventTypeVotingStarted,
-		"options_count", len(ssePayload.Options))
+		"option_count", len(ssePayload.Options))
 
 	return nil
 }
 
 // handleTargetSet processes progression target set events (voting started)
 func (s *Subscriber) handleTargetSet(_ context.Context, evt event.Event) error {
-	payload, ok := evt.Payload.(map[string]interface{})
-	if !ok {
-		slog.Warn("Invalid target set event payload type")
+	payload, err := event.DecodePayload[event.ProgressionTargetSetPayloadV1](evt.Payload)
+	if err != nil {
+		slog.Warn("Invalid target set event payload type", "error", err)
 		return nil
 	}
 
 	// Only broadcast if this was auto-selected (voting not required)
-	// Normal voting start is handled by cycle_completed
-	if autoSelected, ok := payload["auto_selected"].(bool); ok && autoSelected {
+	if payload.AutoSelected {
 		ssePayload := VotingStartedPayload{
-			NodeKey:        getStringFromMap(payload, "node_key"),
-			TargetLevel:    getIntFromMap(payload, "target_level"),
+			NodeKey:        payload.NodeKey,
+			TargetLevel:    payload.TargetLevel,
 			AutoSelected:   true,
 			PreviousUnlock: "",
 		}
@@ -216,14 +204,14 @@ func (s *Subscriber) handleTargetSet(_ context.Context, evt event.Event) error {
 
 // handleAllUnlocked processes progression all unlocked events
 func (s *Subscriber) handleAllUnlocked(_ context.Context, evt event.Event) error {
-	payload, ok := evt.Payload.(map[string]interface{})
-	if !ok {
-		slog.Warn("Invalid all unlocked event payload type")
+	payload, err := event.DecodePayload[event.ProgressionAllUnlockedPayloadV1](evt.Payload)
+	if err != nil {
+		slog.Warn("Invalid all unlocked event payload type", "error", err)
 		return nil
 	}
 
 	ssePayload := AllUnlockedPayload{
-		Message: getStringFromMap(payload, "message"),
+		Message: payload.Message,
 	}
 
 	s.hub.Broadcast(EventTypeAllUnlocked, ssePayload)
@@ -261,36 +249,6 @@ func getIntFromMap(m map[string]interface{}, key string) int {
 	default:
 		return 0
 	}
-}
-
-func extractNodeInfo(v interface{}) NodeInfo {
-	if v == nil {
-		return NodeInfo{}
-	}
-
-	// Check if it's already a domain.ProgressionNode
-	switch node := v.(type) {
-	case *domain.ProgressionNode:
-		return NodeInfo{
-			NodeKey:     node.NodeKey,
-			DisplayName: node.DisplayName,
-			Description: node.Description,
-		}
-	case domain.ProgressionNode:
-		return NodeInfo{
-			NodeKey:     node.NodeKey,
-			DisplayName: node.DisplayName,
-			Description: node.Description,
-		}
-	case map[string]interface{}:
-		return NodeInfo{
-			NodeKey:     getStringFromMap(node, "node_key"),
-			DisplayName: getStringFromMap(node, "display_name"),
-			Description: getStringFromMap(node, "description"),
-		}
-	}
-
-	return NodeInfo{}
 }
 
 // handleTimeoutApplied processes timeout applied events

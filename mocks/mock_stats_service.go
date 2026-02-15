@@ -501,7 +501,7 @@ func (_c *MockStatsService_GetUserStats_Call) RunAndReturn(run func(context.Cont
 }
 
 // RecordUserEvent provides a mock function with given fields: ctx, userID, eventType, metadata
-func (_m *MockStatsService) RecordUserEvent(ctx context.Context, userID string, eventType domain.EventType, metadata map[string]interface{}) error {
+func (_m *MockStatsService) RecordUserEvent(ctx context.Context, userID string, eventType domain.EventType, metadata interface{}) error {
 	ret := _m.Called(ctx, userID, eventType, metadata)
 
 	if len(ret) == 0 {
@@ -509,7 +509,7 @@ func (_m *MockStatsService) RecordUserEvent(ctx context.Context, userID string, 
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, domain.EventType, map[string]interface{}) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, domain.EventType, interface{}) error); ok {
 		r0 = rf(ctx, userID, eventType, metadata)
 	} else {
 		r0 = ret.Error(0)
@@ -527,14 +527,14 @@ type MockStatsService_RecordUserEvent_Call struct {
 //   - ctx context.Context
 //   - userID string
 //   - eventType domain.EventType
-//   - metadata map[string]interface{}
+//   - metadata interface{}
 func (_e *MockStatsService_Expecter) RecordUserEvent(ctx interface{}, userID interface{}, eventType interface{}, metadata interface{}) *MockStatsService_RecordUserEvent_Call {
 	return &MockStatsService_RecordUserEvent_Call{Call: _e.mock.On("RecordUserEvent", ctx, userID, eventType, metadata)}
 }
 
-func (_c *MockStatsService_RecordUserEvent_Call) Run(run func(ctx context.Context, userID string, eventType domain.EventType, metadata map[string]interface{})) *MockStatsService_RecordUserEvent_Call {
+func (_c *MockStatsService_RecordUserEvent_Call) Run(run func(ctx context.Context, userID string, eventType domain.EventType, metadata interface{})) *MockStatsService_RecordUserEvent_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(domain.EventType), args[3].(map[string]interface{}))
+		run(args[0].(context.Context), args[1].(string), args[2].(domain.EventType), args[3].(interface{}))
 	})
 	return _c
 }
@@ -544,7 +544,7 @@ func (_c *MockStatsService_RecordUserEvent_Call) Return(_a0 error) *MockStatsSer
 	return _c
 }
 
-func (_c *MockStatsService_RecordUserEvent_Call) RunAndReturn(run func(context.Context, string, domain.EventType, map[string]interface{}) error) *MockStatsService_RecordUserEvent_Call {
+func (_c *MockStatsService_RecordUserEvent_Call) RunAndReturn(run func(context.Context, string, domain.EventType, interface{}) error) *MockStatsService_RecordUserEvent_Call {
 	_c.Call.Return(run)
 	return _c
 }

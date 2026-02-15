@@ -89,7 +89,7 @@ func (m *MockLootboxService) OpenLootbox(ctx context.Context, lootboxName string
 
 type MockStatsService struct{}
 
-func (m *MockStatsService) RecordUserEvent(ctx context.Context, userID string, eventType domain.EventType, metadata map[string]interface{}) error {
+func (m *MockStatsService) RecordUserEvent(ctx context.Context, userID string, eventType domain.EventType, metadata interface{}) error {
 	return nil
 }
 

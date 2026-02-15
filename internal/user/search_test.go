@@ -654,7 +654,7 @@ type mockStatsService struct {
 	mockStreak     int
 }
 
-func (m *mockStatsService) RecordUserEvent(ctx context.Context, userID string, eventType domain.EventType, metadata map[string]interface{}) error {
+func (m *mockStatsService) RecordUserEvent(ctx context.Context, userID string, eventType domain.EventType, metadata interface{}) error {
 	m.recordedEvents = append(m.recordedEvents, domain.StatsEvent{
 		UserID:    userID,
 		EventType: eventType,

@@ -383,15 +383,16 @@ func (s *service) useItemInternal(ctx context.Context, user *domain.User, platfo
 			log.Warn("No handler for item", "itemName", itemName)
 			return domain.ErrItemNotHandled
 		}
-		args := map[string]interface{}{
-			ArgsUsername: user.Username,
-			ArgsPlatform: platform,
+
+		handlerArgs := ItemHandlerArgs{
+			Username: user.Username,
+			Platform: platform,
 		}
 		if targetName != "" {
-			args[ArgsTargetUsername] = targetName
-			args[ArgsJobName] = targetName
+			handlerArgs.TargetUsername = targetName
+			handlerArgs.JobName = targetName
 		}
-		message, err = handler.Handle(ctx, s, user, inventory, itemToUse, quantity, args)
+		message, err = handler.Handle(ctx, s, user, inventory, itemToUse, quantity, handlerArgs)
 		if err != nil {
 			log.Error("Handler error", "error", err, "itemName", itemName)
 			return err

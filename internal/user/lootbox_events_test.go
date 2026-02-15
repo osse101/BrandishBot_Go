@@ -16,7 +16,7 @@ type MockStatsServiceForLootboxTests struct {
 	mock.Mock
 }
 
-func (m *MockStatsServiceForLootboxTests) RecordUserEvent(ctx context.Context, userID string, eventType domain.EventType, data map[string]interface{}) error {
+func (m *MockStatsServiceForLootboxTests) RecordUserEvent(ctx context.Context, userID string, eventType domain.EventType, data interface{}) error {
 	args := m.Called(ctx, userID, eventType, data)
 	return args.Error(0)
 }
@@ -173,8 +173,8 @@ func TestProcessLootboxDrops_JackpotEvents(t *testing.T) {
 			mock.Anything,
 			user.ID,
 			domain.EventLootboxJackpot,
-			mock.MatchedBy(func(data map[string]interface{}) bool {
-				return data["source"] == "lootbox" && data["item"] == "lootbox_tier1"
+			mock.MatchedBy(func(data *domain.LootboxEventData) bool {
+				return data.Source == "lootbox" && data.Item == "lootbox_tier1"
 			}),
 		).Return(nil).Once()
 
@@ -217,8 +217,8 @@ func TestProcessLootboxDrops_JackpotEvents(t *testing.T) {
 			mock.Anything,
 			user.ID,
 			domain.EventLootboxBigWin,
-			mock.MatchedBy(func(data map[string]interface{}) bool {
-				return data["source"] == "lootbox" && data["item"] == "lootbox_tier1"
+			mock.MatchedBy(func(data *domain.LootboxEventData) bool {
+				return data.Source == "lootbox" && data.Item == "lootbox_tier1"
 			}),
 		).Return(nil).Once()
 

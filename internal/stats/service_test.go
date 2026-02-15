@@ -176,8 +176,17 @@ func TestRecordUserEvent_DailyStreak(t *testing.T) {
 	if streakEvent.EventType != domain.EventDailyStreak {
 		t.Errorf("Expected daily_streak event, got %s", streakEvent.EventType)
 	}
-	if s, ok := streakEvent.EventData["streak"].(int); !ok || s != 1 {
-		t.Errorf("Expected streak 1, got %v", streakEvent.EventData["streak"])
+	var streak int
+	if s, ok := streakEvent.EventData.(domain.StreakMetadata); ok {
+		streak = s.Streak
+	} else if dataMap, ok := streakEvent.EventData.(map[string]interface{}); ok {
+		// Handle map case if it falls back
+		if s, ok := dataMap["streak"].(int); ok {
+			streak = s
+		}
+	}
+	if streak != 1 {
+		t.Errorf("Expected streak 1, got %v", streak)
 	}
 
 	// 2. Second event same day - should NOT trigger new streak event
@@ -210,8 +219,14 @@ func TestRecordUserEvent_DailyStreak(t *testing.T) {
 	if lastEvent.EventType != domain.EventDailyStreak {
 		t.Errorf("Expected streak event")
 	}
-	if s, ok := lastEvent.EventData["streak"].(int); !ok || s != 6 {
-		t.Errorf("Expected streak 6, got %v", lastEvent.EventData["streak"])
+	// It's a bit complicated because RecordUserEvent appends the struct, but we manually inserted maps earlier
+	// The `lastEvent` (index len-1) is the one we just triggered, so it should have struct metadata
+	var lastStreak int
+	if s, ok := lastEvent.EventData.(domain.StreakMetadata); ok {
+		lastStreak = s.Streak
+	}
+	if lastStreak != 6 {
+		t.Errorf("Expected streak 6, got %v", lastStreak)
 	}
 
 	// 4. Simulate break in streak (2 days ago)
@@ -230,8 +245,12 @@ func TestRecordUserEvent_DailyStreak(t *testing.T) {
 	svc.RecordUserEvent(ctx, userID, domain.EventItemAdded, nil)
 
 	lastEvent = repo.events[len(repo.events)-1]
-	if s, ok := lastEvent.EventData["streak"].(int); !ok || s != 1 {
-		t.Errorf("Expected streak 1 (reset), got %v", lastEvent.EventData["streak"])
+	var resetStreak int
+	if s, ok := lastEvent.EventData.(domain.StreakMetadata); ok {
+		resetStreak = s.Streak
+	}
+	if resetStreak != 1 {
+		t.Errorf("Expected streak 1 (reset), got %v", resetStreak)
 	}
 }
 

@@ -445,24 +445,26 @@ func (h *ProgressionHandlers) HandleGetVotingSession() http.HandlerFunc {
 
 			if recentSession != nil && recentSession.Status == "completed" {
 				log.Info("Get voting session: returning completed session", "sessionID", recentSession.ID)
-				respondJSON(w, http.StatusOK, map[string]interface{}{
-					"session":      recentSession,
-					"message":      "Voting has ended. Results are shown below.",
-					"is_completed": true,
+				respondJSON(w, http.StatusOK, VotingSessionResponse{
+					Session:     recentSession,
+					Message:     "Voting has ended. Results are shown below.",
+					IsCompleted: true,
 				})
 				return
 			}
 
 			log.Info("Get voting session: no active session")
-			respondJSON(w, http.StatusOK, map[string]interface{}{
-				"session": nil,
-				"message": MsgNoActiveVotingSession,
+			respondJSON(w, http.StatusOK, VotingSessionResponse{
+				Session: nil,
+				Message: MsgNoActiveVotingSession,
 			})
 			return
 		}
 
 		log.Info("Get voting session: success")
-		respondJSON(w, http.StatusOK, session)
+		respondJSON(w, http.StatusOK, VotingSessionResponse{
+			Session: session,
+		})
 	}
 }
 
@@ -487,9 +489,8 @@ func (h *ProgressionHandlers) HandleGetUnlockProgress() http.HandlerFunc {
 
 		if progress == nil {
 			log.Info("Get unlock progress: no active progress")
-			respondJSON(w, http.StatusOK, map[string]interface{}{
-				"progress": nil,
-				"message":  MsgNoActiveUnlockProgress,
+			respondJSON(w, http.StatusOK, UnlockProgressResponse{
+				Message: MsgNoActiveUnlockProgress,
 			})
 			return
 		}
@@ -500,39 +501,30 @@ func (h *ProgressionHandlers) HandleGetUnlockProgress() http.HandlerFunc {
 	}
 }
 
-func (h *ProgressionHandlers) enrichUnlockProgress(ctx context.Context, progress *domain.UnlockProgress) map[string]interface{} {
-	response := map[string]interface{}{
-		"id":                        progress.ID,
-		"node_id":                   progress.NodeID,
-		"target_level":              progress.TargetLevel,
-		"contributions_accumulated": progress.ContributionsAccumulated,
-		"started_at":                progress.StartedAt,
-		"unlocked_at":               progress.UnlockedAt,
-		"voting_session_id":         progress.VotingSessionID,
-		"completion_percentage":     0.0,
-		"target_unlock_cost":        0,
-		"target_node_name":          "",
-		"is_already_unlocked":       false,
-		"estimated_unlock_date":     nil,
+func (h *ProgressionHandlers) enrichUnlockProgress(ctx context.Context, progress *domain.UnlockProgress) UnlockProgressResponse {
+	response := UnlockProgressResponse{
+		UnlockProgress: *progress,
 	}
 
 	if progress.NodeID != nil {
 		node, err := h.service.GetNode(ctx, *progress.NodeID)
 		if err == nil && node != nil {
-			response["target_unlock_cost"] = node.UnlockCost
-			response["target_node_name"] = node.DisplayName
+			response.TargetUnlockCost = node.UnlockCost
+			response.TargetNodeName = node.DisplayName
 
-			// Add estimate
-			estimate, err := h.service.EstimateUnlockTime(ctx, node.NodeKey)
-			if err == nil && estimate != nil {
-				response["estimated_unlock_date"] = estimate.EstimatedUnlockDate
+			// Add estimate if not already present
+			if response.EstimatedUnlockDate == nil {
+				estimate, err := h.service.EstimateUnlockTime(ctx, node.NodeKey)
+				if err == nil && estimate != nil {
+					response.EstimatedUnlockDate = estimate.EstimatedUnlockDate
+				}
 			}
 
 			if progress.TargetLevel != nil {
 				isUnlocked, _ := h.service.IsNodeUnlocked(ctx, node.NodeKey, *progress.TargetLevel)
 				if isUnlocked {
-					response["is_already_unlocked"] = true
-					response["completion_percentage"] = 100.0
+					response.IsAlreadyUnlocked = true
+					response.CompletionPercentage = 100.0
 					return response
 				}
 			}
@@ -542,9 +534,9 @@ func (h *ProgressionHandlers) enrichUnlockProgress(ctx context.Context, progress
 				if percent > 100 {
 					percent = 100
 				}
-				response["completion_percentage"] = percent
+				response.CompletionPercentage = percent
 			} else {
-				response["completion_percentage"] = 100.0
+				response.CompletionPercentage = 100.0
 			}
 		}
 	}
@@ -749,4 +741,19 @@ type AdminResetRequest struct {
 
 type AdminAddContributionRequest struct {
 	Amount int `json:"amount"`
+}
+
+type VotingSessionResponse struct {
+	Session     *domain.ProgressionVotingSession `json:"session"`
+	Message     string                           `json:"message,omitempty"`
+	IsCompleted bool                             `json:"is_completed"`
+}
+
+type UnlockProgressResponse struct {
+	domain.UnlockProgress
+	Message              string  `json:"message,omitempty"`
+	CompletionPercentage float64 `json:"completion_percentage"`
+	TargetUnlockCost     int     `json:"target_unlock_cost"`
+	TargetNodeName       string  `json:"target_node_name"`
+	IsAlreadyUnlocked    bool    `json:"is_already_unlocked"`
 }

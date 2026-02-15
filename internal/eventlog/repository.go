@@ -7,12 +7,12 @@ import (
 
 // Event represents a logged event
 type Event struct {
-	ID        int64                  `json:"id"`
-	EventType string                 `json:"event_type"`
-	UserID    *string                `json:"user_id,omitempty"`
-	Payload   map[string]interface{} `json:"payload"`
-	Metadata  map[string]interface{} `json:"metadata,omitempty"`
-	CreatedAt time.Time              `json:"created_at"`
+	ID        int64       `json:"id"`
+	EventType string      `json:"event_type"`
+	UserID    *string     `json:"user_id,omitempty"`
+	Payload   interface{} `json:"payload"`
+	Metadata  interface{} `json:"metadata,omitempty"`
+	CreatedAt time.Time   `json:"created_at"`
 }
 
 // EventFilter filters events for queries
@@ -27,7 +27,7 @@ type EventFilter struct {
 // Repository defines the interface for event logging storage
 type Repository interface {
 	// LogEvent stores an event in the database
-	LogEvent(ctx context.Context, eventType string, userID *string, payload, metadata map[string]interface{}) error
+	LogEvent(ctx context.Context, eventType string, userID *string, payload, metadata interface{}) error
 
 	// GetEvents retrieves events based on filter criteria
 	GetEvents(ctx context.Context, filter EventFilter) ([]Event, error)

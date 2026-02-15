@@ -149,13 +149,19 @@ func HandleGetTimeout(svc user.Service) http.HandlerFunc {
 			return
 		}
 
-		response := map[string]interface{}{
-			"platform":          platform,
-			"username":          username,
-			"is_timed_out":      duration > 0,
-			"remaining_seconds": duration.Seconds(),
-		}
-
-		respondJSON(w, http.StatusOK, response)
+		respondJSON(w, http.StatusOK, GetUserTimeoutResponse{
+			Platform:         platform,
+			Username:         username,
+			IsTimedOut:       duration > 0,
+			RemainingSeconds: duration.Seconds(),
+		})
 	}
+}
+
+// GetUserTimeoutResponse defines the response structure for GetUserTimeout
+type GetUserTimeoutResponse struct {
+	Platform         string  `json:"platform"`
+	Username         string  `json:"username"`
+	IsTimedOut       bool    `json:"is_timed_out"`
+	RemainingSeconds float64 `json:"remaining_seconds"`
 }
