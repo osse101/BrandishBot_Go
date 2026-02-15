@@ -65,7 +65,7 @@ func getChangedPackages(stagedOnly bool) ([]string, error) {
 		return []string{"./..."}, nil
 	}
 
-	var packages []string
+	packages := make([]string, 0, len(packageSet))
 	for pkg := range packageSet {
 		packages = append(packages, pkg)
 	}

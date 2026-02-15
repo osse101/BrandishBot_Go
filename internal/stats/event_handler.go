@@ -51,44 +51,36 @@ func (h *EventHandler) Register(bus event.Bus) {
 
 // HandleItemSold handles item sold events to record stats
 func (h *EventHandler) HandleItemSold(ctx context.Context, evt event.Event) error {
-	log := logger.FromContext(ctx)
-
 	payload, err := event.DecodePayload[domain.ItemSoldPayload](evt.Payload)
 	if err != nil {
 		return fmt.Errorf("failed to decode item sold payload: %w", err)
 	}
 
-	metadata := map[string]interface{}{
-		domain.MetadataKeyItemName: payload.ItemName,
-		domain.MetadataKeyQuantity: payload.Quantity,
-		"total_value":              payload.TotalValue,
-		"category":                 payload.ItemCategory,
-	}
-
-	if err := h.service.RecordUserEvent(ctx, payload.UserID, domain.StatsEventItemSold, metadata); err != nil {
-		log.Warn("Failed to record item sold stat", "error", err, "user_id", payload.UserID)
-	}
-	return nil
+	return h.recordItemTransaction(ctx, payload.UserID, domain.StatsEventItemSold, payload.ItemName, payload.ItemCategory, payload.Quantity, payload.TotalValue)
 }
 
 // HandleItemBought handles item bought events to record stats
 func (h *EventHandler) HandleItemBought(ctx context.Context, evt event.Event) error {
-	log := logger.FromContext(ctx)
-
 	payload, err := event.DecodePayload[domain.ItemBoughtPayload](evt.Payload)
 	if err != nil {
 		return fmt.Errorf("failed to decode item bought payload: %w", err)
 	}
 
+	return h.recordItemTransaction(ctx, payload.UserID, domain.StatsEventItemBought, payload.ItemName, payload.ItemCategory, payload.Quantity, payload.TotalValue)
+}
+
+func (h *EventHandler) recordItemTransaction(ctx context.Context, userID string, eventType domain.EventType, itemName, category string, quantity, totalValue int) error {
+	log := logger.FromContext(ctx)
+
 	metadata := map[string]interface{}{
-		domain.MetadataKeyItemName: payload.ItemName,
-		domain.MetadataKeyQuantity: payload.Quantity,
-		"total_value":              payload.TotalValue,
-		"category":                 payload.ItemCategory,
+		domain.MetadataKeyItemName: itemName,
+		domain.MetadataKeyQuantity: quantity,
+		"total_value":              totalValue,
+		"category":                 category,
 	}
 
-	if err := h.service.RecordUserEvent(ctx, payload.UserID, domain.StatsEventItemBought, metadata); err != nil {
-		log.Warn("Failed to record item bought stat", "error", err, "user_id", payload.UserID)
+	if err := h.service.RecordUserEvent(ctx, userID, eventType, metadata); err != nil {
+		log.Warn("Failed to record item transaction stat", "error", err, "user_id", userID, "event_type", eventType)
 	}
 	return nil
 }

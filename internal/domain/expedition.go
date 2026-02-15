@@ -7,7 +7,6 @@ import (
 	"github.com/google/uuid"
 )
 
-
 // ExpeditionMetadata stores expedition configuration and results
 type ExpeditionMetadata struct {
 	Difficulty      string             `json:"difficulty,omitempty"`

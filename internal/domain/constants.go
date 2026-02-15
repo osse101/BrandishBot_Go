@@ -493,17 +493,17 @@ const (
 	StatsEventDailyStreak        EventType = "daily_streak"
 
 	// Search events
-	StatsEventSearch                  EventType = "search"
-	StatsEventSearchNearMiss          EventType = "search_near_miss"
-	StatsEventSearchCriticalFail      EventType = "search_critical_fail"
-	StatsEventSearchCriticalSuccess   EventType = "search_critical_success"
+	StatsEventSearch                EventType = "search"
+	StatsEventSearchNearMiss        EventType = "search_near_miss"
+	StatsEventSearchCriticalFail    EventType = "search_critical_fail"
+	StatsEventSearchCriticalSuccess EventType = "search_critical_success"
 
 	// Crafting events
 	EventTypeCraftingCriticalSuccess EventType = "crafting_critical_success"
 	EventTypeCraftingPerfectSalvage  EventType = "crafting_perfect_salvage"
 
 	// Job events
-	EventTypeJobLevelUp              EventType = "job_level_up"
+	EventTypeJobLevelUp EventType = "job_level_up"
 
 	// Lootbox events
 	EventTypeLootboxJackpot EventType = "lootbox_jackpot"

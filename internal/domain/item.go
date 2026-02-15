@@ -27,7 +27,6 @@ func (i *Item) IsCurrency() bool {
 	return false
 }
 
-
 // HasTag checks if a tags slice contains the specified tag.
 func HasTag(tags []string, tag string) bool {
 	for _, t := range tags {

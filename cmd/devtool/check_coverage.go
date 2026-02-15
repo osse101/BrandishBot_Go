@@ -26,42 +26,9 @@ func (c *CheckCoverageCommand) Run(args []string) error {
 		return err
 	}
 
-	packages := explicitPkgs
-
-	if smart {
-		changed, err := getChangedPackages(false) // false = check local changes (staged + unstaged)
-		if err != nil {
-			return fmt.Errorf("failed to get changed packages: %w", err)
-		}
-		if len(changed) == 0 {
-			PrintInfo("Smart mode: No changes detected.")
-		} else {
-			PrintInfo("Smart mode: Testing changed packages: %v", changed)
-			packages = append(packages, changed...)
-		}
-	}
-
-	if pkgs != "" {
-		pList := strings.Split(pkgs, ",")
-		for _, p := range pList {
-			p = strings.TrimSpace(p)
-			if p != "" {
-				packages = append(packages, p)
-			}
-		}
-	}
-
-	// Remove duplicates from packages
-	if len(packages) > 0 {
-		unique := make(map[string]bool)
-		var deduped []string
-		for _, p := range packages {
-			if !unique[p] {
-				unique[p] = true
-				deduped = append(deduped, p)
-			}
-		}
-		packages = deduped
+	packages, err := c.resolvePackages(smart, pkgs, explicitPkgs)
+	if err != nil {
+		return err
 	}
 
 	if len(packages) == 0 && smart {
@@ -97,6 +64,47 @@ func (c *CheckCoverageCommand) Run(args []string) error {
 
 	PrintSuccess("Coverage meets threshold.")
 	return nil
+}
+func (c *CheckCoverageCommand) resolvePackages(smart bool, pkgs string, explicitPkgs []string) ([]string, error) {
+	packages := explicitPkgs
+
+	if smart {
+		changed, err := getChangedPackages(false) // false = check local changes (staged + unstaged)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get changed packages: %w", err)
+		}
+		if len(changed) == 0 {
+			PrintInfo("Smart mode: No changes detected.")
+		} else {
+			PrintInfo("Smart mode: Testing changed packages: %v", changed)
+			packages = append(packages, changed...)
+		}
+	}
+
+	if pkgs != "" {
+		pList := strings.Split(pkgs, ",")
+		for _, p := range pList {
+			p = strings.TrimSpace(p)
+			if p != "" {
+				packages = append(packages, p)
+			}
+		}
+	}
+
+	// Remove duplicates from packages
+	if len(packages) > 0 {
+		unique := make(map[string]bool)
+		var deduped []string
+		for _, p := range packages {
+			if !unique[p] {
+				unique[p] = true
+				deduped = append(deduped, p)
+			}
+		}
+		packages = deduped
+	}
+
+	return packages, nil
 }
 
 func (c *CheckCoverageCommand) parseConfig(args []string) (file string, threshold float64, runTests, htmlReport, smart bool, pkgs string, explicitPkgs []string, err error) {

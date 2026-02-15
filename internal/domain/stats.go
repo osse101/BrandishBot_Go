@@ -2,7 +2,6 @@ package domain
 
 import "time"
 
-
 // StatsEvent represents a single tracked event
 type StatsEvent struct {
 	EventID   int64       `json:"event_id"`

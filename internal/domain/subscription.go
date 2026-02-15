@@ -5,7 +5,6 @@ import (
 	"time"
 )
 
-
 // SubscriptionTier represents a subscription tier configuration
 type SubscriptionTier struct {
 	TierID      int       `json:"tier_id" db:"tier_id"`
