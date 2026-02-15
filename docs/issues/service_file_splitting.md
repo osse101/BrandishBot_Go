@@ -16,26 +16,26 @@
 
 ## 🔴 Priority 1 — High Impact (>1000 lines, clear domain splits)
 
-### 1. `internal/progression/service.go` — 1,427 lines
+### 1. `internal/progression/service.go` — ~~1,427 lines~~ ✅ DONE (168 lines remaining)
 
-**The single largest file in the codebase.** Already has some splitting (`voting_sessions.go`, `cache.go`, `unlock_cache.go`, etc.) but the main `service.go` is still enormous.
+**The single largest file in the codebase.** Split completed — all methods moved to domain-specific files.
 
-| Proposed File              | Functions to Move                                                                                                                                                                                                                                              | Lines (est.) |
-| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
-| `tree.go`                  | `GetProgressionTree`, `GetAvailableUnlocks`, `isNodeAvailable`, `checkStaticPrereqs`, `checkDynamicPrereqs`, `GetAvailableUnlocksWithFutureTarget`, `getNodesDependentOn`, `checkDynamicPrerequisite`, `GetNode`, `GetRequiredNodes`, `checkAllNodesUnlocked`  | ~300         |
-| `unlock.go`                | `IsFeatureUnlocked`, `IsItemUnlocked`, `IsNodeUnlocked`, `AreItemsUnlocked`                                                                                                                                                                                    | ~100         |
-| `engagement.go`            | `RecordEngagement`, `GetEngagementScore`, `calculateScholarBonus`, `GetUserEngagement`, `GetUserEngagementByUsername`, `GetContributionLeaderboard`, `GetEngagementVelocity`, `EstimateUnlockTime`, `getCachedWeight`, `cacheWeights`, `InvalidateWeightCache` | ~350         |
-| `admin.go`                 | `AdminUnlock`, `AdminUnlockAll`, `AdminRelock`, `AdminFreezeVoting`, `AdminStartVoting`, `ResetProgressionTree`, `ForceInstantUnlock`, `CheckAndUnlockCriteria`                                                                                                | ~200         |
-| `voting.go`                | `VoteForUnlock`, `resolveUserByPlatform`, `validateVotingSession`, `enrichSessionWithEstimates`, `GetActiveVotingSession`, `GetMostRecentVotingSession`                                                                                                        | ~120         |
-| `modifiers.go`             | `GetModifiedValue`, `GetModifierForFeature`, `GetAllModifiersForFeature`                                                                                                                                                                                       | ~90          |
-| `events.go`                | `handleNodeUnlocked`, `handleNodeRelocked`                                                                                                                                                                                                                     | ~40          |
-| `status.go`                | `GetProgressionStatus`                                                                                                                                                                                                                                         | ~50          |
-| `service.go` _(remaining)_ | Interface, struct, `NewService`, `Shutdown`, `InvalidateUnlockCacheForTest`                                                                                                                                                                                    | ~170         |
+| File                       | Functions Moved                                                                                                                                                                                                                                                | Lines       |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| `tree.go`                  | `GetProgressionTree`, `GetAvailableUnlocks`, `isNodeAvailable`, `checkStaticPrereqs`, `checkDynamicPrereqs`, `GetAvailableUnlocksWithFutureTarget`, `getNodesDependentOn`, `checkDynamicPrerequisite`, `GetNode`, `GetRequiredNodes`, `checkAllNodesUnlocked`  | 352         |
+| `unlock.go`                | `IsFeatureUnlocked`, `IsItemUnlocked`, `IsNodeUnlocked`, `AreItemsUnlocked`                                                                                                                                                                                    | 106         |
+| `engagement.go`            | `RecordEngagement`, `GetEngagementScore`, `calculateScholarBonus`, `GetUserEngagement`, `GetUserEngagementByUsername`, `GetContributionLeaderboard`, `GetEngagementVelocity`, `EstimateUnlockTime`, `getCachedWeight`, `cacheWeights`, `InvalidateWeightCache` | 343         |
+| `admin.go`                 | `AdminUnlock`, `AdminUnlockAll`, `AdminRelock`, `ResetProgressionTree`, `CheckAndUnlockCriteria`, `ForceInstantUnlock`                                                                                                                                         | 202         |
+| `voting.go`                | `VoteForUnlock`, `resolveUserByPlatform`, `validateVotingSession`, `enrichSessionWithEstimates`, `GetActiveVotingSession`, `GetMostRecentVotingSession`                                                                                                        | 128         |
+| `modifiers.go`             | `GetModifiedValue`, `GetModifierForFeature`, `GetAllModifiersForFeature` (added to existing types file)                                                                                                                                                        | 135 (total) |
+| `events.go`                | `handleNodeUnlocked`, `handleNodeRelocked`                                                                                                                                                                                                                     | 42          |
+| `status.go`                | `GetProgressionStatus`                                                                                                                                                                                                                                         | 59          |
+| `service.go` _(remaining)_ | Interface, struct, `NewService`, `Shutdown`, `InvalidateUnlockCacheForTest`                                                                                                                                                                                    | 168         |
 
 **Notes:**
 
 - `voting_sessions.go` (954 lines) already exists and handles the session lifecycle — the `voting.go` proposed above contains only the service-layer voting methods that call into it. Consider whether to merge or keep them separate.
-- The existing `modifiers.go` (44 lines) contains types; the proposed move adds the service methods that use those types.
+- The existing `modifiers.go` (44 lines) contained types; the service methods that use those types were added to it.
 
 ---
 
