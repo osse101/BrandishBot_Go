@@ -40,9 +40,20 @@ func (s *Subscriber) Subscribe() {
 	// Subscribe to gamble completed events
 	s.bus.Subscribe(event.Type(domain.EventGambleCompleted), s.handleGambleCompleted)
 
+	// Subscribe to slots completed events
+	s.bus.Subscribe(event.Type(domain.EventSlotsCompleted), s.handleSlotsCompleted)
+
 	// Subscribe to timeout events
 	s.bus.Subscribe(event.TimeoutApplied, s.handleTimeoutUpdate)
 	s.bus.Subscribe(event.TimeoutCleared, s.handleTimeoutUpdate)
+
+	// Subscribe to subscription events
+	s.bus.Subscribe(event.SubscriptionActivated, s.handleSubscriptionUpdate)
+	s.bus.Subscribe(event.SubscriptionRenewed, s.handleSubscriptionUpdate)
+	s.bus.Subscribe(event.SubscriptionUpgraded, s.handleSubscriptionUpdate)
+	s.bus.Subscribe(event.SubscriptionDowngraded, s.handleSubscriptionUpdate)
+	s.bus.Subscribe(event.SubscriptionExpired, s.handleSubscriptionUpdate)
+	s.bus.Subscribe(event.SubscriptionCancelled, s.handleSubscriptionUpdate)
 
 	slog.Info("Streamer.bot subscriber registered for event types",
 		"types", []string{
@@ -51,32 +62,37 @@ func (s *Subscriber) Subscribe() {
 			string(event.ProgressionCycleCompleted),
 			string(event.ProgressionAllUnlocked),
 			string(domain.EventGambleCompleted),
+			string(domain.EventSlotsCompleted),
 			string(event.TimeoutApplied),
 			string(event.TimeoutCleared),
+			string(event.SubscriptionActivated),
+			string(event.SubscriptionRenewed),
+			string(event.SubscriptionExpired),
+			string(event.SubscriptionCancelled),
 		})
 }
 
 // handleJobLevelUp sends a DoAction for job level up events
 func (s *Subscriber) handleJobLevelUp(_ context.Context, evt event.Event) error {
-	payload, ok := evt.Payload.(map[string]interface{})
-	if !ok {
-		slog.Warn("Invalid job level up event payload type")
+	payload, err := event.DecodePayload[event.JobLevelUpPayloadV1](evt.Payload)
+	if err != nil {
+		slog.Warn("Invalid job level up event payload type", "error", err)
 		return nil
 	}
 
-	// Extract source from metadata if available
-	source := ""
-	if evt.Metadata != nil {
-		if src, ok := evt.Metadata["source"].(string); ok {
+	// Extract source from payload or metadata
+	source := payload.Source
+	if source == "" {
+		if src, ok := evt.GetMetadataValue("source").(string); ok {
 			source = src
 		}
 	}
 
 	args := map[string]string{
-		"user_id":   getStringFromMap(payload, "user_id"),
-		"job_key":   getStringFromMap(payload, "job_key"),
-		"old_level": fmt.Sprintf("%d", getIntFromMap(payload, "old_level")),
-		"new_level": fmt.Sprintf("%d", getIntFromMap(payload, "new_level")),
+		"user_id":   payload.UserID,
+		"job_key":   payload.JobKey,
+		"old_level": fmt.Sprintf("%d", payload.OldLevel),
+		"new_level": fmt.Sprintf("%d", payload.NewLevel),
 		"source":    source,
 	}
 
@@ -92,45 +108,27 @@ func (s *Subscriber) handleJobLevelUp(_ context.Context, evt event.Event) error 
 
 // handleVotingStarted sends a DoAction for voting session start events
 func (s *Subscriber) handleVotingStarted(_ context.Context, evt event.Event) error {
-	payload, ok := evt.Payload.(map[string]interface{})
-	if !ok {
-		slog.Warn("Invalid voting started event payload type")
+	payload, err := event.DecodePayload[event.ProgressionVotingStartedPayloadV1](evt.Payload)
+	if err != nil {
+		slog.Warn("Invalid voting started event payload type", "error", err)
 		return nil
 	}
 
 	args := map[string]string{
-		"previous_unlock": getStringFromMap(payload, "previous_unlock"),
+		"previous_unlock": payload.PreviousUnlock,
+		"options_count":   fmt.Sprintf("%d", len(payload.Options)),
 	}
 
-	// Extract options - handle both []map[string]interface{} and []interface{}
-	var optsRaw interface{}
-	if optsRaw, ok = payload["options"]; !ok {
-		slog.Warn("Voting started event missing options field", "sessionID", evt.Metadata["session_id"])
-	}
-
-	extractedOptions := false
-	if opts, ok := optsRaw.([]map[string]interface{}); ok {
-		args["options_count"] = fmt.Sprintf("%d", len(opts))
-		for i, optMap := range opts {
-			s.populateOptionArgs(args, i+1, optMap)
+	for i, opt := range payload.Options {
+		idx := i + 1
+		displayName := opt.DisplayName
+		if displayName == "" {
+			displayName = opt.NodeKey
 		}
-		extractedOptions = true
-	} else if opts, ok := optsRaw.([]interface{}); ok {
-		args["options_count"] = fmt.Sprintf("%d", len(opts))
-		for i, opt := range opts {
-			if optMap, ok := opt.(map[string]interface{}); ok {
-				s.populateOptionArgs(args, i+1, optMap)
-			} else {
-				slog.Warn("Individual option is not a map", "index", i, "type", fmt.Sprintf("%T", opt))
-			}
-		}
-		extractedOptions = true
-	} else if optsRaw != nil {
-		slog.Warn("Invalid options type in voting started event", "type", fmt.Sprintf("%T", optsRaw))
-	}
-
-	if !extractedOptions {
-		slog.Warn("Failed to extract options for Streamer.bot", "payload_keys", getMapKeys(payload))
+		args[fmt.Sprintf("option_%d", idx)] = displayName
+		args[fmt.Sprintf("option_%d_key", idx)] = opt.NodeKey
+		args[fmt.Sprintf("option_%d_description", idx)] = opt.Description
+		args[fmt.Sprintf("option_%d_duration", idx)] = opt.UnlockDuration
 	}
 
 	slog.Debug(LogMsgEventReceived, "event_type", event.ProgressionVotingStarted, "args", args)
@@ -143,34 +141,18 @@ func (s *Subscriber) handleVotingStarted(_ context.Context, evt event.Event) err
 	return nil
 }
 
-func (s *Subscriber) populateOptionArgs(args map[string]string, index int, optMap map[string]interface{}) {
-	displayName := getStringFromMap(optMap, "display_name")
-	if displayName == "" {
-		displayName = getStringFromMap(optMap, "node_key")
-	}
-	args[fmt.Sprintf("option_%d", index)] = displayName
-	args[fmt.Sprintf("option_%d_key", index)] = getStringFromMap(optMap, "node_key")
-	args[fmt.Sprintf("option_%d_description", index)] = getStringFromMap(optMap, "description")
-	args[fmt.Sprintf("option_%d_duration", index)] = getStringFromMap(optMap, "unlock_duration")
-}
-
 // handleCycleCompleted sends a DoAction for progression cycle completion events
 func (s *Subscriber) handleCycleCompleted(_ context.Context, evt event.Event) error {
-	payload, ok := evt.Payload.(map[string]interface{})
-	if !ok {
-		slog.Warn("Invalid cycle completed event payload type")
+	payload, err := event.DecodePayload[event.ProgressionCycleCompletedPayloadV1](evt.Payload)
+	if err != nil {
+		slog.Warn("Invalid cycle completed event payload type", "error", err)
 		return nil
 	}
 
-	args := map[string]string{}
-
-	// Extract unlocked node info
-	if unlockedNode := payload["unlocked_node"]; unlockedNode != nil {
-		if node, ok := unlockedNode.(map[string]interface{}); ok {
-			args["node_key"] = getStringFromMap(node, "node_key")
-			args["display_name"] = getStringFromMap(node, "display_name")
-			args["description"] = getStringFromMap(node, "description")
-		}
+	args := map[string]string{
+		"node_key":     payload.UnlockedNode.NodeKey,
+		"display_name": payload.UnlockedNode.DisplayName,
+		"description":  payload.UnlockedNode.Description,
 	}
 
 	slog.Debug(LogMsgEventReceived, "event_type", event.ProgressionCycleCompleted, "args", args)
@@ -185,14 +167,14 @@ func (s *Subscriber) handleCycleCompleted(_ context.Context, evt event.Event) er
 
 // handleAllUnlocked sends a DoAction when all progression nodes are unlocked
 func (s *Subscriber) handleAllUnlocked(_ context.Context, evt event.Event) error {
-	payload, ok := evt.Payload.(map[string]interface{})
-	if !ok {
-		slog.Warn("Invalid all unlocked event payload type")
+	payload, err := event.DecodePayload[event.ProgressionAllUnlockedPayloadV1](evt.Payload)
+	if err != nil {
+		slog.Warn("Invalid all unlocked event payload type", "error", err)
 		return nil
 	}
 
 	args := map[string]string{
-		"message": getStringFromMap(payload, "message"),
+		"message": payload.Message,
 	}
 
 	slog.Debug(LogMsgEventReceived, "event_type", event.ProgressionAllUnlocked, "args", args)
@@ -207,34 +189,94 @@ func (s *Subscriber) handleAllUnlocked(_ context.Context, evt event.Event) error
 
 // handleGambleCompleted sends a DoAction when a gamble completes
 func (s *Subscriber) handleGambleCompleted(_ context.Context, evt event.Event) error {
-	payload, ok := evt.Payload.(event.GambleCompletedPayloadV1)
-	if !ok {
-		// Fallback for untyped payload
+	var gambleID, winnerID string
+	var totalValue int64
+	var participantCount int
+
+	switch p := evt.Payload.(type) {
+	case domain.GambleCompletedPayloadV2:
+		gambleID, winnerID, totalValue, participantCount = p.GambleID, p.WinnerID, p.TotalValue, p.ParticipantCount
+	case event.GambleCompletedPayloadV1:
+		gambleID, winnerID, totalValue, participantCount = p.GambleID, p.WinnerID, p.TotalValue, p.ParticipantCount
+	default:
 		payloadMap, ok := evt.Payload.(map[string]interface{})
 		if !ok {
 			slog.Warn("Invalid gamble completed event payload type")
 			return nil
 		}
-		payload = event.GambleCompletedPayloadV1{
-			GambleID:         getStringFromMap(payloadMap, "gamble_id"),
-			WinnerID:         getStringFromMap(payloadMap, "winner_id"),
-			TotalValue:       int64(getIntFromMap(payloadMap, "total_value")),
-			ParticipantCount: getIntFromMap(payloadMap, "participant_count"),
-		}
+		gambleID = getStringFromMap(payloadMap, "gamble_id")
+		winnerID = getStringFromMap(payloadMap, "winner_id")
+		totalValue = int64(getIntFromMap(payloadMap, "total_value"))
+		participantCount = getIntFromMap(payloadMap, "participant_count")
 	}
 
 	args := map[string]string{
-		"gamble_id":         payload.GambleID,
-		"winner_id":         payload.WinnerID,
-		"total_value":       fmt.Sprintf("%d", payload.TotalValue),
-		"participant_count": fmt.Sprintf("%d", payload.ParticipantCount),
-		"has_winner":        fmt.Sprintf("%t", payload.WinnerID != ""),
+		"gamble_id":         gambleID,
+		"winner_id":         winnerID,
+		"total_value":       fmt.Sprintf("%d", totalValue),
+		"participant_count": fmt.Sprintf("%d", participantCount),
+		"has_winner":        fmt.Sprintf("%t", winnerID != ""),
 	}
 
 	slog.Debug(LogMsgEventReceived, "event_type", domain.EventGambleCompleted, "args", args)
 
 	if err := s.client.DoAction(ActionGambleCompleted, args); err != nil {
 		slog.Debug("Failed to send gamble completed to Streamer.bot", "error", err)
+	}
+
+	return nil
+}
+
+// handleSlotsCompleted sends a DoAction when a slots spin completes
+func (s *Subscriber) handleSlotsCompleted(_ context.Context, evt event.Event) error {
+	payload, ok := evt.Payload.(domain.SlotsCompletedPayload)
+	if !ok {
+		// Fallback for untyped payload
+		payloadMap, ok := evt.Payload.(map[string]interface{})
+		if !ok {
+			slog.Warn("Invalid slots completed event payload type")
+			return nil
+		}
+
+		// Extract fields with type assertions
+		payoutMultiplier := 0.0
+		if pm, ok := payloadMap["payout_multiplier"].(float64); ok {
+			payoutMultiplier = pm
+		}
+
+		payload = domain.SlotsCompletedPayload{
+			UserID:           getStringFromMap(payloadMap, "user_id"),
+			Username:         getStringFromMap(payloadMap, "username"),
+			BetAmount:        getIntFromMap(payloadMap, "bet_amount"),
+			Reel1:            getStringFromMap(payloadMap, "reel1"),
+			Reel2:            getStringFromMap(payloadMap, "reel2"),
+			Reel3:            getStringFromMap(payloadMap, "reel3"),
+			PayoutAmount:     getIntFromMap(payloadMap, "payout_amount"),
+			PayoutMultiplier: payoutMultiplier,
+			TriggerType:      getStringFromMap(payloadMap, "trigger_type"),
+			IsWin:            getBoolFromMap(payloadMap, "is_win"),
+			IsNearMiss:       getBoolFromMap(payloadMap, "is_near_miss"),
+		}
+	}
+
+	args := map[string]string{
+		"user_id":           payload.UserID,
+		"username":          payload.Username,
+		"bet_amount":        fmt.Sprintf("%d", payload.BetAmount),
+		"reel1":             payload.Reel1,
+		"reel2":             payload.Reel2,
+		"reel3":             payload.Reel3,
+		"payout_amount":     fmt.Sprintf("%d", payload.PayoutAmount),
+		"payout_multiplier": fmt.Sprintf("%.2f", payload.PayoutMultiplier),
+		"trigger_type":      payload.TriggerType,
+		"is_win":            fmt.Sprintf("%t", payload.IsWin),
+		"is_near_miss":      fmt.Sprintf("%t", payload.IsNearMiss),
+	}
+
+	slog.Debug(LogMsgEventReceived, "event_type", domain.EventSlotsCompleted, "args", args)
+
+	if err := s.client.DoAction(ActionSlotsResult, args); err != nil {
+		slog.Debug("Failed to send slots result to Streamer.bot", "error", err)
 	}
 
 	return nil
@@ -281,6 +323,45 @@ func (s *Subscriber) handleTimeoutUpdate(_ context.Context, evt event.Event) err
 	return nil
 }
 
+// handleSubscriptionUpdate sends a DoAction for subscription lifecycle events
+func (s *Subscriber) handleSubscriptionUpdate(_ context.Context, evt event.Event) error {
+	// Try typed payload first
+	var payload event.SubscriptionPayloadV1
+	if p, ok := evt.Payload.(event.SubscriptionPayloadV1); ok {
+		payload = p
+	} else {
+		// Fall back to map parsing
+		pMap, ok := evt.Payload.(map[string]interface{})
+		if !ok {
+			slog.Warn("Invalid subscription event payload type")
+			return nil
+		}
+		payload = event.SubscriptionPayloadV1{
+			UserID:    getStringFromMap(pMap, "user_id"),
+			Platform:  getStringFromMap(pMap, "platform"),
+			TierName:  getStringFromMap(pMap, "tier_name"),
+			Timestamp: int64(getIntFromMap(pMap, "timestamp")),
+		}
+	}
+
+	args := map[string]string{
+		"user_id":    payload.UserID,
+		"platform":   payload.Platform,
+		"tier_name":  payload.TierName,
+		"event_type": string(evt.Type),
+		"timestamp":  fmt.Sprintf("%d", payload.Timestamp),
+	}
+
+	slog.Debug(LogMsgEventReceived, "event_type", evt.Type, "args", args)
+
+	if err := s.client.DoAction(ActionSubscriptionUpdate, args); err != nil {
+		// Streamer.bot being offline is expected, use debug level
+		slog.Debug("Failed to send subscription update to Streamer.bot", "error", err)
+	}
+
+	return nil
+}
+
 // Helper functions for type conversion
 
 func getStringFromMap(m map[string]interface{}, key string) string {
@@ -303,10 +384,9 @@ func getIntFromMap(m map[string]interface{}, key string) int {
 	}
 }
 
-func getMapKeys(m map[string]interface{}) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
+func getBoolFromMap(m map[string]interface{}, key string) bool {
+	if v, ok := m[key].(bool); ok {
+		return v
 	}
-	return keys
+	return false
 }

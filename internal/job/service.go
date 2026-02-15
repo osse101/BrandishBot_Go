@@ -13,7 +13,6 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
-	"github.com/osse101/BrandishBot_Go/internal/stats"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
@@ -33,8 +32,8 @@ type Service interface {
 	GetJobBonus(ctx context.Context, userID, jobKey string, bonusType string) (float64, error)
 
 	// XP operations
-	AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error)
-	AwardXPByPlatform(ctx context.Context, platform, platformID, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error)
+	AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata domain.JobXPMetadata) (*domain.XPAwardResult, error)
+	AwardXPByPlatform(ctx context.Context, platform, platformID, jobKey string, baseAmount int, source string, metadata domain.JobXPMetadata) (*domain.XPAwardResult, error)
 	GetJobLevel(ctx context.Context, userID, jobKey string) (int, error)
 
 	// Daily reset operations
@@ -47,12 +46,12 @@ type Service interface {
 	CalculateLevel(totalXP int64) int
 	GetXPForLevel(level int) int64
 	GetXPProgress(currentXP int64) (currentLevel int, xpToNext int64)
+	Shutdown(ctx context.Context) error
 }
 
 type service struct {
 	repo           repository.Job
 	progressionSvc ProgressionService
-	statsSvc       stats.Service
 	eventBus       event.Bus
 	publisher      *event.ResilientPublisher
 	rnd            func() float64 // For RNG
@@ -63,11 +62,10 @@ type service struct {
 }
 
 // NewService creates a new job service
-func NewService(repo repository.Job, progressionSvc ProgressionService, statsSvc stats.Service, eventBus event.Bus, publisher *event.ResilientPublisher) Service {
+func NewService(repo repository.Job, progressionSvc ProgressionService, eventBus event.Bus, publisher *event.ResilientPublisher) Service {
 	return &service{
 		repo:           repo,
 		progressionSvc: progressionSvc,
-		statsSvc:       statsSvc,
 		eventBus:       eventBus,
 		publisher:      publisher,
 		rnd:            utils.RandomFloat,
@@ -116,11 +114,7 @@ func (s *service) GetUserJobs(ctx context.Context, userID string) ([]domain.User
 	}
 
 	// Get max level from progression system
-	maxLevel, err := s.getMaxJobLevel(ctx)
-	if err != nil {
-		log.Warn("Failed to get max job level, defaulting to default", "error", err)
-		maxLevel = DefaultMaxLevel
-	}
+	maxLevel := s.getMaxJobLevel(ctx)
 
 	// Combine job info with progress
 	result := make([]domain.UserJobInfo, 0, len(jobs))
@@ -196,7 +190,7 @@ func (s *service) GetPrimaryJob(ctx context.Context, platform string, platformID
 }
 
 // AwardXP awards XP to a user for a specific job
-func (s *service) AwardXP(ctx context.Context, userID string, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error) {
+func (s *service) AwardXP(ctx context.Context, userID string, jobKey string, baseAmount int, source string, metadata domain.JobXPMetadata) (*domain.XPAwardResult, error) {
 	// Check if specific job is unlocked
 	jobUnlocked, err := s.progressionSvc.IsNodeUnlocked(ctx, jobKey, 1)
 	if err != nil {
@@ -242,7 +236,7 @@ func (s *service) AwardXP(ctx context.Context, userID string, jobKey string, bas
 	}, nil
 }
 
-func (s *service) AwardXPByPlatform(ctx context.Context, platform string, platformID string, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error) {
+func (s *service) AwardXPByPlatform(ctx context.Context, platform string, platformID string, jobKey string, baseAmount int, source string, metadata domain.JobXPMetadata) (*domain.XPAwardResult, error) {
 	user, err := s.repo.GetUserByPlatformID(ctx, platform, platformID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user: %w", err)
@@ -275,14 +269,8 @@ func (s *service) calculateActualXP(ctx context.Context, userID, jobKey string, 
 	if s.rnd() < EpiphanyChance {
 		actualAmount = int(float64(actualAmount) * EpiphanyMultiplier)
 		logger.FromContext(ctx).Info("Job Epiphany triggered!", "user_id", userID, "job", jobKey, "base_amount", baseAmount, "bonus_amount", actualAmount-baseAmount)
-		if s.statsSvc != nil {
-			_ = s.statsSvc.RecordUserEvent(ctx, userID, domain.EventJobXPCritical, map[string]interface{}{
-				"job":        jobKey,
-				"base_xp":    baseAmount,
-				"bonus_xp":   actualAmount - baseAmount,
-				"multiplier": EpiphanyMultiplier,
-				"source":     source,
-			})
+		if s.publisher != nil {
+			s.publisher.PublishWithRetry(ctx, event.NewJobXPCriticalEvent(userID, jobKey, baseAmount, actualAmount-baseAmount, EpiphanyMultiplier, source))
 		}
 	}
 	return actualAmount
@@ -310,11 +298,7 @@ func (s *service) checkDailyCap(ctx context.Context, userID, jobKey string, curr
 
 func (s *service) calculateNewLevel(ctx context.Context, newXP int64) int {
 	newLevel := s.CalculateLevel(newXP)
-	maxLevel, err := s.getMaxJobLevel(ctx)
-	if err != nil {
-		logger.FromContext(ctx).Warn("Failed to get max level, using default", "error", err)
-		maxLevel = DefaultMaxLevel
-	}
+	maxLevel := s.getMaxJobLevel(ctx)
 	if newLevel > maxLevel {
 		newLevel = maxLevel
 	}
@@ -362,7 +346,7 @@ func (s *service) GetJobBonus(ctx context.Context, userID, jobKey, bonusType str
 	return bestBonus, nil
 }
 
-func (s *service) recordXPAndLevelUpEvents(ctx context.Context, userID, jobKey string, jobID int, actualAmount int, oldLevel, newLevel int, source string, metadata map[string]interface{}, now *time.Time) {
+func (s *service) recordXPAndLevelUpEvents(ctx context.Context, userID, jobKey string, jobID int, actualAmount int, oldLevel, newLevel int, source string, metadata domain.JobXPMetadata, now *time.Time) {
 	log := logger.FromContext(ctx)
 
 	// Record XP event
@@ -387,28 +371,8 @@ func (s *service) recordXPAndLevelUpEvents(ctx context.Context, userID, jobKey s
 }
 
 func (s *service) handleLevelUp(ctx context.Context, userID, jobKey string, oldLevel, newLevel int, source string) {
-	if s.statsSvc != nil {
-		_ = s.statsSvc.RecordUserEvent(ctx, userID, domain.EventJobLevelUp, map[string]interface{}{
-			"job":       jobKey,
-			"level":     newLevel,
-			"old_level": oldLevel,
-		})
-	}
-
 	if s.publisher != nil {
-		s.publisher.PublishWithRetry(ctx, event.Event{
-			Version: "1.0",
-			Type:    event.Type(domain.EventJobLevelUp),
-			Payload: map[string]interface{}{
-				"user_id":   userID,
-				"job_key":   jobKey,
-				"new_level": newLevel,
-				"old_level": oldLevel,
-			},
-			Metadata: map[string]interface{}{
-				"source": source,
-			},
-		})
+		s.publisher.PublishWithRetry(ctx, event.NewJobLevelUpEvent(userID, jobKey, oldLevel, newLevel, source))
 	}
 }
 
@@ -522,16 +486,16 @@ func (s *service) getDailyCap(ctx context.Context) int {
 	return int(modified)
 }
 
-func (s *service) getMaxJobLevel(ctx context.Context) (int, error) {
+func (s *service) getMaxJobLevel(ctx context.Context) int {
 	// Apply progression modifier for job level cap (linear: +10 per level)
 	// Base cap is DefaultMaxLevel, upgrade_job_level_cap adds +10 per level (max +30 at level 3)
 	modified, err := s.progressionSvc.GetModifiedValue(ctx, "job_level_cap", float64(DefaultMaxLevel))
 	if err != nil {
 		log := logger.FromContext(ctx)
 		log.Warn("Failed to get job level cap modifier, using default", "error", err)
-		return DefaultMaxLevel, nil
+		return DefaultMaxLevel
 	}
-	return int(modified), nil
+	return int(modified)
 }
 
 // ResetDailyJobXP resets the daily XP counters for all users
@@ -565,14 +529,7 @@ func (s *service) ResetDailyJobXP(ctx context.Context) (int64, error) {
 
 	// Publish event
 	if s.publisher != nil {
-		s.publisher.PublishWithRetry(ctx, event.Event{
-			Version: "1.0",
-			Type:    event.Type(domain.EventTypeDailyResetComplete),
-			Payload: map[string]interface{}{
-				"reset_time":       time.Now().UTC(),
-				"records_affected": recordsAffected,
-			},
-		})
+		s.publisher.PublishWithRetry(ctx, event.NewDailyResetCompleteEvent(time.Now().UTC(), recordsAffected))
 	}
 
 	return recordsAffected, nil
@@ -620,4 +577,20 @@ func (s *service) GetDailyResetStatus(ctx context.Context) (*domain.DailyResetSt
 		NextResetTime:   nextReset.UTC(),
 		RecordsAffected: recordsAffected,
 	}, nil
+}
+
+// Shutdown gracefully shuts down the job service
+func (s *service) Shutdown(ctx context.Context) error {
+	log := logger.FromContext(ctx)
+	log.Info("Job service shutting down...")
+
+	if s.publisher != nil {
+		if err := s.publisher.Shutdown(ctx); err != nil {
+			log.Error("Failed to shut down job publisher", "error", err)
+			return err
+		}
+	}
+
+	log.Info("Job service shutdown complete")
+	return nil
 }

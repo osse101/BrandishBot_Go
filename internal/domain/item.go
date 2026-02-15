@@ -1,7 +1,5 @@
 package domain
 
-import "time"
-
 // Item represents an item in the system with three-layer naming:
 // - InternalName: stable code identifier (e.g., "weapon_blaster")
 // - PublicName: user-facing command name (e.g., "missile")
@@ -15,51 +13,54 @@ type Item struct {
 	BaseValue      int      `json:"base_value" db:"base_value"`     // Buy price
 	SellPrice      *int     `json:"sell_price,omitempty"`           // Calculated sell price (only set for sellable items)
 	Types          []string `json:"types" db:"types"`               // Populated from join/separate query
+	ContentType    []string `json:"content_type" db:"content_type"` // Content type categorization (weapon, material, etc.)
 	Handler        *string  `json:"handler,omitempty" db:"handler"` // Nullable: some items have no handler
 }
 
-// ShineLevel represents the visual rarity and quality of an item
-type ShineLevel string
-
-const (
-	ShineCommon    ShineLevel = "COMMON"
-	ShineUncommon  ShineLevel = "UNCOMMON"
-	ShineRare      ShineLevel = "RARE"
-	ShineEpic      ShineLevel = "EPIC"
-	ShineLegendary ShineLevel = "LEGENDARY"
-	ShinePoor      ShineLevel = "POOR"
-	ShineJunk      ShineLevel = "JUNK"
-	ShineCursed    ShineLevel = "CURSED"
-)
-
-// GetTimeoutAdjustment returns the timeout adjustment in seconds based on shine level
-// Distance from common * 10s
-func (s ShineLevel) GetTimeoutAdjustment() time.Duration {
-	shineModifier := map[ShineLevel]time.Duration{
-		ShineCursed:    -30 * time.Second,
-		ShineJunk:      -20 * time.Second,
-		ShinePoor:      -10 * time.Second,
-		ShineCommon:    0 * time.Second,
-		ShineUncommon:  10 * time.Second,
-		ShineRare:      20 * time.Second,
-		ShineEpic:      30 * time.Second,
-		ShineLegendary: 40 * time.Second,
+// IsCurrency returns true if this item is a currency (should not have quality variations)
+func (i *Item) IsCurrency() bool {
+	for _, t := range i.Types {
+		if t == "currency" {
+			return true
+		}
 	}
-
-	if modifier, ok := shineModifier[s]; ok {
-		return modifier
-	}
-	return 0
+	return false
 }
 
-// Shine multipliers (Boosts item value and Gamble Score)
+// Item tag constants (from item_types / tags in items.json)
 const (
-	MultCommon    = 1.0
-	MultUncommon  = 1.1
-	MultRare      = 1.25
-	MultEpic      = 1.5
-	MultLegendary = 2.0
-	MultPoor      = 0.8
-	MultJunk      = 0.6
-	MultCursed    = 0.4
+	CompostableTag = "compostable"
+	NoUseTag       = "no-use"
 )
+
+// Content type constants (from "type" field in items.json)
+const (
+	ContentTypeWeapon    = "weapon"
+	ContentTypeExplosive = "explosive"
+	ContentTypeDefense   = "defense"
+	ContentTypeHealing   = "healing"
+	ContentTypeMaterial  = "material"
+	ContentTypeContainer = "container"
+	ContentTypeUtility   = "utility"
+	ContentTypeMagical   = "magical"
+)
+
+// HasTag checks if a tags slice contains the specified tag.
+func HasTag(tags []string, tag string) bool {
+	for _, t := range tags {
+		if t == tag {
+			return true
+		}
+	}
+	return false
+}
+
+// HasType checks if a content types slice contains the specified type.
+func HasType(contentTypes []string, t string) bool {
+	for _, ct := range contentTypes {
+		if ct == t {
+			return true
+		}
+	}
+	return false
+}

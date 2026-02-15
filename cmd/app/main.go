@@ -13,6 +13,7 @@ import (
 
 	_ "github.com/osse101/BrandishBot_Go/docs/swagger"
 	"github.com/osse101/BrandishBot_Go/internal/bootstrap"
+	"github.com/osse101/BrandishBot_Go/internal/compost"
 	"github.com/osse101/BrandishBot_Go/internal/config"
 	"github.com/osse101/BrandishBot_Go/internal/cooldown"
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
@@ -33,9 +34,11 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/scenario/providers"
 	"github.com/osse101/BrandishBot_Go/internal/scheduler"
 	"github.com/osse101/BrandishBot_Go/internal/server"
+	"github.com/osse101/BrandishBot_Go/internal/slots"
 	"github.com/osse101/BrandishBot_Go/internal/sse"
 	"github.com/osse101/BrandishBot_Go/internal/stats"
 	"github.com/osse101/BrandishBot_Go/internal/streamerbot"
+	"github.com/osse101/BrandishBot_Go/internal/subscription"
 	"github.com/osse101/BrandishBot_Go/internal/user"
 	"github.com/osse101/BrandishBot_Go/internal/worker"
 )
@@ -78,7 +81,7 @@ func main() {
 			"database", cfg.DBName,
 			"user", cfg.DBUser)
 		slog.Info("💡 Hint: If using Docker, ensure the database is running:")
-		slog.Info("   Run: ./scripts/check_db.sh")
+		slog.Info("   Run: make check-db")
 		slog.Info("   Or: docker-compose up -d db")
 		os.Exit(1)
 	}
@@ -116,7 +119,7 @@ func main() {
 	}
 
 	// Initialize Job service (needed by user, economy, crafting, gamble)
-	jobService := job.NewService(repos.Job, progressionService, statsService, eventBus, resilientPublisher)
+	jobService := job.NewService(repos.Job, progressionService, eventBus, resilientPublisher)
 
 	// Initialize Worker Pool
 	// Start with 5 workers as per plan
@@ -127,11 +130,22 @@ func main() {
 	// Initialize Event Logger (needed by event handlers)
 	eventLogService := eventlog.NewService(repos.EventLog)
 
+	// Initialize Quest Service (needed by economy service)
+	questService, err := quest.NewService(repos.Quest, resilientPublisher)
+	if err != nil {
+		slog.Error("Failed to initialize quest service", "error", err)
+		os.Exit(1)
+	}
+	slog.Info("Quest service initialized")
+
 	// Register all event handlers
 	if err := bootstrap.RegisterEventHandlers(bootstrap.EventHandlerDependencies{
 		EventBus:           eventBus,
 		ProgressionService: progressionService,
 		EventLogService:    eventLogService,
+		JobService:         jobService,
+		QuestService:       questService,
+		StatsService:       statsService,
 		Config:             cfg,
 	}); err != nil {
 		slog.Error("Failed to register event handlers", "error", err)
@@ -157,7 +171,7 @@ func main() {
 	}
 
 	// Initialize Lootbox Service
-	lootboxSvc, err := lootbox.NewService(repos.User, progressionService, config.ConfigPathLootTables)
+	lootboxSvc, err := lootbox.NewService(repos.User, progressionService, eventBus, config.ConfigPathLootTables)
 	if err != nil {
 		slog.Error("Failed to initialize lootbox service", "error", err)
 		os.Exit(1)
@@ -189,25 +203,22 @@ func main() {
 	}, progressionService)
 	slog.Info("Cooldown service initialized", "dev_mode", cfg.DevMode)
 
-	// Initialize Quest Service (needed by economy service)
-	questService, err := quest.NewService(repos.Quest, jobService, resilientPublisher)
-	if err != nil {
-		slog.Error("Failed to initialize quest service", "error", err)
-		os.Exit(1)
-	}
-	slog.Info("Quest service initialized")
-
 	// Initialize services that depend on naming resolver
-	economyService := economy.NewService(repos.Economy, jobService, namingResolver, progressionService, questService)
-	gambleService := gamble.NewService(repos.Gamble, eventBus, resilientPublisher, lootboxSvc, statsService, cfg.GambleJoinDuration, jobService, progressionService, namingResolver, nil)
-	craftingService := crafting.NewService(repos.Crafting, jobService, statsService, namingResolver, progressionService, questService)
+	economyService := economy.NewService(repos.Economy, resilientPublisher, namingResolver, progressionService)
+	gambleService := gamble.NewService(repos.Gamble, eventBus, resilientPublisher, lootboxSvc, cfg.GambleJoinDuration, progressionService, namingResolver, nil)
+	// Refactored Crafting Service (event-driven)
+	craftingService := crafting.NewService(repos.Crafting, resilientPublisher, namingResolver, progressionService, jobService)
 
 	// Initialize services that depend on job service and naming resolver
-	userService := user.NewService(repos.User, repos.Trap, statsService, jobService, lootboxSvc, namingResolver, cooldownSvc, eventBus, questService, cfg.DevMode)
+	userService := user.NewService(repos.User, repos.Trap, statsService, resilientPublisher, lootboxSvc, namingResolver, cooldownSvc, jobService, eventBus, cfg.DevMode)
 
 	// Initialize Harvest Service
-	harvestService := harvest.NewService(repos.Harvest, repos.User, progressionService, jobService)
+	harvestService := harvest.NewService(repos.Harvest, repos.User, progressionService, jobService, resilientPublisher)
 	slog.Info("Harvest service initialized")
+
+	// Initialize Compost Service
+	compostService := compost.NewService(repos.Compost, repos.User, progressionService, resilientPublisher)
+	slog.Info("Compost service initialized")
 
 	// Initialize Gamble Worker
 	gambleWorker := worker.NewGambleWorker(gambleService)
@@ -225,6 +236,7 @@ func main() {
 		eventBus,
 		progressionService,
 		jobService,
+		resilientPublisher,
 		userService,
 		cooldownSvc,
 		expeditionConfig,
@@ -235,6 +247,17 @@ func main() {
 	expeditionWorker.Subscribe(eventBus)
 	expeditionWorker.Start()
 	slog.Info("Expedition service and worker initialized")
+
+	// Initialize Slots Service
+	slotsService := slots.NewService(
+		repos.User,
+		progressionService,
+		cooldownSvc,
+		eventBus,
+		resilientPublisher,
+		namingResolver,
+	)
+	slog.Info("Slots service initialized")
 
 	// Initialize Daily Reset Worker
 	dailyResetWorker := worker.NewDailyResetWorker(jobService, resilientPublisher)
@@ -252,9 +275,7 @@ func main() {
 	// Initialize Prediction service
 	predictionService := prediction.NewService(
 		progressionService,
-		jobService,
 		userService,
-		statsService,
 		eventBus,
 		resilientPublisher,
 	)
@@ -283,6 +304,24 @@ func main() {
 		slog.Info("Streamer.bot WebSocket client initialized", "url", cfg.StreamerbotWebhookURL)
 	}
 
+	// Initialize Subscription service (needs sbClient, so must come after Streamer.bot init)
+	subscriptionService := subscription.NewService(
+		repos.Subscription,
+		repos.User,
+		sbClient, // May be nil if Streamer.bot is disabled
+		resilientPublisher,
+	)
+	slog.Info("Subscription service initialized")
+
+	// Initialize Subscription worker
+	subscriptionWorker := worker.NewSubscriptionWorker(
+		subscriptionService,
+		repos.Subscription,
+		cfg.SubscriptionCheckInterval,
+	)
+	subscriptionWorker.Start()
+	slog.Info("Subscription worker started", "interval", cfg.SubscriptionCheckInterval)
+
 	// Initialize Scenario Engine for admin testing
 	scenarioRegistry := scenario.NewRegistry()
 
@@ -296,7 +335,7 @@ func main() {
 	scenarioEngine := scenario.NewEngine(scenarioRegistry)
 	slog.Info("Scenario engine initialized", "features", scenarioRegistry.Features())
 
-	srv := server.NewServer(cfg.Port, cfg.APIKey, cfg.TrustedProxies, dbPool, userService, economyService, craftingService, statsService, progressionService, gambleService, jobService, linkingService, harvestService, predictionService, expeditionService, questService, namingResolver, eventBus, sseHub, repos.User, scenarioEngine, eventLogService)
+	srv := server.NewServer(cfg.Port, cfg.APIKey, cfg.TrustedProxies, dbPool, userService, economyService, craftingService, statsService, progressionService, gambleService, jobService, linkingService, harvestService, predictionService, expeditionService, questService, subscriptionService, slotsService, compostService, namingResolver, eventBus, sseHub, repos.User, scenarioEngine, eventLogService)
 
 	// Run server in a goroutine
 	go func() {
@@ -318,18 +357,22 @@ func main() {
 
 	// Perform graceful shutdown
 	bootstrap.GracefulShutdown(shutdownCtx, bootstrap.ShutdownComponents{
-		Server:             srv,
-		ProgressionService: progressionService,
-		UserService:        userService,
-		EconomyService:     economyService,
-		CraftingService:    craftingService,
-		GambleService:      gambleService,
-		PredictionService:  predictionService,
-		QuestService:       questService,
-		GambleWorker:       gambleWorker,
-		ExpeditionWorker:   expeditionWorker,
-		DailyResetWorker:   dailyResetWorker,
-		WeeklyResetWorker:  weeklyResetWorker,
-		ResilientPublisher: resilientPublisher,
+		Server:              srv,
+		ProgressionService:  progressionService,
+		UserService:         userService,
+		EconomyService:      economyService,
+		CraftingService:     craftingService,
+		GambleService:       gambleService,
+		PredictionService:   predictionService,
+		QuestService:        questService,
+		SubscriptionService: subscriptionService,
+		SlotsService:        slotsService,
+		CompostService:      compostService,
+		GambleWorker:        gambleWorker,
+		ExpeditionWorker:    expeditionWorker,
+		DailyResetWorker:    dailyResetWorker,
+		WeeklyResetWorker:   weeklyResetWorker,
+		SubscriptionWorker:  subscriptionWorker,
+		ResilientPublisher:  resilientPublisher,
 	})
 }

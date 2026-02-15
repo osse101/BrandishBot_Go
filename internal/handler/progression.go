@@ -5,6 +5,8 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
@@ -150,26 +152,7 @@ func (h *ProgressionHandlers) HandleGetStatus() http.HandlerFunc {
 // @Router /api/v1/progression/engagement [get]
 func (h *ProgressionHandlers) HandleGetEngagement() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log := logger.FromContext(r.Context())
-
-		platform, ok := GetQueryParam(r, w, "platform")
-		if !ok {
-			return
-		}
-		platformID, ok := GetQueryParam(r, w, "platform_id")
-		if !ok {
-			return
-		}
-
-		breakdown, err := h.service.GetUserEngagement(r.Context(), platform, platformID)
-		if err != nil {
-			log.Error("Get user engagement: service error", "error", err, "platform", platform, "platformID", platformID)
-			respondError(w, http.StatusInternalServerError, ErrMsgGetEngagementDataFailed)
-			return
-		}
-
-		log.Info("Get user engagement: success", "platform", platform, "platformID", platformID)
-		respondJSON(w, http.StatusOK, breakdown)
+		h.handleGetEngagementCommon(w, r, "platform_id", h.service.GetUserEngagement, "Get user engagement")
 	}
 }
 
@@ -186,26 +169,7 @@ func (h *ProgressionHandlers) HandleGetEngagement() http.HandlerFunc {
 // @Router /api/v1/progression/engagement-by-username [get]
 func (h *ProgressionHandlers) HandleGetEngagementByUsername() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log := logger.FromContext(r.Context())
-
-		platform, ok := GetQueryParam(r, w, "platform")
-		if !ok {
-			return
-		}
-		username, ok := GetQueryParam(r, w, "username")
-		if !ok {
-			return
-		}
-
-		breakdown, err := h.service.GetUserEngagementByUsername(r.Context(), platform, username)
-		if err != nil {
-			log.Error("Get user engagement by username: service error", "error", err, "platform", platform, "username", username)
-			respondError(w, http.StatusInternalServerError, ErrMsgGetEngagementDataFailed)
-			return
-		}
-
-		log.Info("Get user engagement by username: success", "platform", platform, "username", username)
-		respondJSON(w, http.StatusOK, breakdown)
+		h.handleGetEngagementCommon(w, r, "username", h.service.GetUserEngagementByUsername, "Get user engagement by username")
 	}
 }
 
@@ -220,17 +184,9 @@ func (h *ProgressionHandlers) HandleGetEngagementByUsername() http.HandlerFunc {
 // @Router /api/v1/progression/leaderboard [get]
 func (h *ProgressionHandlers) HandleGetContributionLeaderboard() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log := logger.FromContext(r.Context())
-
-		limit := getQueryInt(r, "limit", 10)
-		leaderboard, err := h.service.GetContributionLeaderboard(r.Context(), limit)
-		if err != nil {
-			log.Error("Get contribution leaderboard: service error", "error", err, "limit", limit)
-			respondError(w, http.StatusInternalServerError, ErrMsgGetLeaderboardFailed)
-			return
-		}
-		log.Info("Get contribution leaderboard: success", "limit", limit)
-		respondJSON(w, http.StatusOK, leaderboard)
+		h.handleGetSimpleMetric(w, r, "limit", 10, func(ctx context.Context, i int) (interface{}, error) {
+			return h.service.GetContributionLeaderboard(ctx, i)
+		}, "Get contribution leaderboard", ErrMsgGetLeaderboardFailed)
 	}
 }
 
@@ -245,17 +201,46 @@ func (h *ProgressionHandlers) HandleGetContributionLeaderboard() http.HandlerFun
 // @Router /progression/velocity [get]
 func (h *ProgressionHandlers) HandleGetVelocity() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log := logger.FromContext(r.Context())
+		h.handleGetSimpleMetric(w, r, "days", 7, func(ctx context.Context, i int) (interface{}, error) {
+			return h.service.GetEngagementVelocity(ctx, i)
+		}, "Get engagement velocity", ErrMsgGetVelocityMetricsFailed)
+	}
+}
 
-		days := getQueryInt(r, "days", 7)
-		velocity, err := h.service.GetEngagementVelocity(r.Context(), days)
-		if err != nil {
-			log.Error("Get engagement velocity: service error", "error", err, "days", days)
-			respondError(w, http.StatusInternalServerError, ErrMsgGetVelocityMetricsFailed)
+// HandleGetEstimate returns unlock estimate for a node
+// @Summary Get unlock estimate
+// @Description Returns estimated unlock time and requirements for a specific node
+// @Tags progression
+// @Produce json
+// @Param nodeKey path string true "Node Key"
+// @Success 200 {object} domain.UnlockEstimate
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /progression/estimate/{nodeKey} [get]
+func (h *ProgressionHandlers) HandleGetEstimate() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromContext(r.Context())
+		nodeKey := chi.URLParam(r, "nodeKey")
+
+		if nodeKey == "" {
+			respondError(w, http.StatusBadRequest, "Node key is required")
 			return
 		}
-		log.Info("Get engagement velocity: success", "days", days)
-		respondJSON(w, http.StatusOK, velocity)
+
+		estimate, err := h.service.EstimateUnlockTime(r.Context(), nodeKey)
+		if err != nil {
+			log.Error("Get unlock estimate: service error", "error", err, "nodeKey", nodeKey)
+			respondError(w, http.StatusInternalServerError, ErrMsgGetUnlockEstimateFailed)
+			return
+		}
+
+		if estimate == nil {
+			respondError(w, http.StatusNotFound, "Node not found")
+			return
+		}
+
+		log.Info("Get unlock estimate: success", "nodeKey", nodeKey)
+		respondJSON(w, http.StatusOK, estimate)
 	}
 }
 
@@ -305,7 +290,7 @@ func (h *ProgressionHandlers) handleAdminNodeAction(action func(context.Context,
 		// We use a shared struct for validation since both use same fields
 		var req struct {
 			NodeKey string `json:"node_key" validate:"required,max=50"`
-			Level   int    `json:"level" validate:"min=1"`
+			Level   int    `json:"level" validate:"min=0"`
 		}
 		if err := DecodeAndValidateRequest(r, w, &req, "Admin node action"); err != nil {
 			return
@@ -322,6 +307,43 @@ func (h *ProgressionHandlers) handleAdminNodeAction(action func(context.Context,
 		log.Info(logMsg, "nodeKey", req.NodeKey, "level", req.Level)
 		respondJSON(w, http.StatusOK, SuccessResponse{Message: successMsg})
 	}
+}
+
+func (h *ProgressionHandlers) handleGetEngagementCommon(w http.ResponseWriter, r *http.Request, paramName string, serviceFn func(context.Context, string, string) (*domain.ContributionBreakdown, error), logMsg string) {
+	log := logger.FromContext(r.Context())
+
+	platform, ok := GetQueryParam(r, w, "platform")
+	if !ok {
+		return
+	}
+	val, ok := GetQueryParam(r, w, paramName)
+	if !ok {
+		return
+	}
+
+	breakdown, err := serviceFn(r.Context(), platform, val)
+	if err != nil {
+		log.Error(logMsg+": service error", "error", err, "platform", platform, paramName, val)
+		respondError(w, http.StatusInternalServerError, ErrMsgGetEngagementDataFailed)
+		return
+	}
+
+	log.Info(logMsg+": success", "platform", platform, paramName, val)
+	respondJSON(w, http.StatusOK, breakdown)
+}
+
+func (h *ProgressionHandlers) handleGetSimpleMetric(w http.ResponseWriter, r *http.Request, paramName string, defaultVal int, serviceFn func(context.Context, int) (interface{}, error), logMsg, errMsg string) {
+	log := logger.FromContext(r.Context())
+
+	val := getQueryInt(r, paramName, defaultVal)
+	result, err := serviceFn(r.Context(), val)
+	if err != nil {
+		log.Error(logMsg+": service error", "error", err, paramName, val)
+		respondError(w, http.StatusInternalServerError, errMsg)
+		return
+	}
+	log.Info(logMsg+": success", paramName, val)
+	respondJSON(w, http.StatusOK, result)
 }
 
 func (h *ProgressionHandlers) handleAdminAction(w http.ResponseWriter, r *http.Request, action func(context.Context) (interface{}, error), errLogMsg, infoLogMsg string, responseFactory func(interface{}) interface{}) {
@@ -423,24 +445,26 @@ func (h *ProgressionHandlers) HandleGetVotingSession() http.HandlerFunc {
 
 			if recentSession != nil && recentSession.Status == "completed" {
 				log.Info("Get voting session: returning completed session", "sessionID", recentSession.ID)
-				respondJSON(w, http.StatusOK, map[string]interface{}{
-					"session":      recentSession,
-					"message":      "Voting has ended. Results are shown below.",
-					"is_completed": true,
+				respondJSON(w, http.StatusOK, VotingSessionResponse{
+					Session:     recentSession,
+					Message:     "Voting has ended. Results are shown below.",
+					IsCompleted: true,
 				})
 				return
 			}
 
 			log.Info("Get voting session: no active session")
-			respondJSON(w, http.StatusOK, map[string]interface{}{
-				"session": nil,
-				"message": MsgNoActiveVotingSession,
+			respondJSON(w, http.StatusOK, VotingSessionResponse{
+				Session: nil,
+				Message: MsgNoActiveVotingSession,
 			})
 			return
 		}
 
 		log.Info("Get voting session: success")
-		respondJSON(w, http.StatusOK, session)
+		respondJSON(w, http.StatusOK, VotingSessionResponse{
+			Session: session,
+		})
 	}
 }
 
@@ -465,9 +489,8 @@ func (h *ProgressionHandlers) HandleGetUnlockProgress() http.HandlerFunc {
 
 		if progress == nil {
 			log.Info("Get unlock progress: no active progress")
-			respondJSON(w, http.StatusOK, map[string]interface{}{
-				"progress": nil,
-				"message":  MsgNoActiveUnlockProgress,
+			respondJSON(w, http.StatusOK, UnlockProgressResponse{
+				Message: MsgNoActiveUnlockProgress,
 			})
 			return
 		}
@@ -478,32 +501,30 @@ func (h *ProgressionHandlers) HandleGetUnlockProgress() http.HandlerFunc {
 	}
 }
 
-func (h *ProgressionHandlers) enrichUnlockProgress(ctx context.Context, progress *domain.UnlockProgress) map[string]interface{} {
-	response := map[string]interface{}{
-		"id":                        progress.ID,
-		"node_id":                   progress.NodeID,
-		"target_level":              progress.TargetLevel,
-		"contributions_accumulated": progress.ContributionsAccumulated,
-		"started_at":                progress.StartedAt,
-		"unlocked_at":               progress.UnlockedAt,
-		"voting_session_id":         progress.VotingSessionID,
-		"completion_percentage":     0.0,
-		"target_unlock_cost":        0,
-		"target_node_name":          "",
-		"is_already_unlocked":       false,
+func (h *ProgressionHandlers) enrichUnlockProgress(ctx context.Context, progress *domain.UnlockProgress) UnlockProgressResponse {
+	response := UnlockProgressResponse{
+		UnlockProgress: *progress,
 	}
 
 	if progress.NodeID != nil {
 		node, err := h.service.GetNode(ctx, *progress.NodeID)
 		if err == nil && node != nil {
-			response["target_unlock_cost"] = node.UnlockCost
-			response["target_node_name"] = node.DisplayName
+			response.TargetUnlockCost = node.UnlockCost
+			response.TargetNodeName = node.DisplayName
+
+			// Add estimate if not already present
+			if response.EstimatedUnlockDate == nil {
+				estimate, err := h.service.EstimateUnlockTime(ctx, node.NodeKey)
+				if err == nil && estimate != nil {
+					response.EstimatedUnlockDate = estimate.EstimatedUnlockDate
+				}
+			}
 
 			if progress.TargetLevel != nil {
 				isUnlocked, _ := h.service.IsNodeUnlocked(ctx, node.NodeKey, *progress.TargetLevel)
 				if isUnlocked {
-					response["is_already_unlocked"] = true
-					response["completion_percentage"] = 100.0
+					response.IsAlreadyUnlocked = true
+					response.CompletionPercentage = 100.0
 					return response
 				}
 			}
@@ -513,9 +534,9 @@ func (h *ProgressionHandlers) enrichUnlockProgress(ctx context.Context, progress
 				if percent > 100 {
 					percent = 100
 				}
-				response["completion_percentage"] = percent
+				response.CompletionPercentage = percent
 			} else {
-				response["completion_percentage"] = 100.0
+				response.CompletionPercentage = 100.0
 			}
 		}
 	}
@@ -694,12 +715,12 @@ type VoteRequest struct {
 
 type AdminUnlockRequest struct {
 	NodeKey string `json:"node_key" validate:"required,max=50"`
-	Level   int    `json:"level" validate:"min=1"`
+	Level   int    `json:"level" validate:"min=0"`
 }
 
 type AdminRelockRequest struct {
 	NodeKey string `json:"node_key" validate:"required,max=50"`
-	Level   int    `json:"level" validate:"min=1"`
+	Level   int    `json:"level" validate:"min=0"`
 }
 
 type AdminInstantUnlockResponse struct {
@@ -720,4 +741,19 @@ type AdminResetRequest struct {
 
 type AdminAddContributionRequest struct {
 	Amount int `json:"amount"`
+}
+
+type VotingSessionResponse struct {
+	Session     *domain.ProgressionVotingSession `json:"session"`
+	Message     string                           `json:"message,omitempty"`
+	IsCompleted bool                             `json:"is_completed"`
+}
+
+type UnlockProgressResponse struct {
+	domain.UnlockProgress
+	Message              string  `json:"message,omitempty"`
+	CompletionPercentage float64 `json:"completion_percentage"`
+	TargetUnlockCost     int     `json:"target_unlock_cost"`
+	TargetNodeName       string  `json:"target_node_name"`
+	IsAlreadyUnlocked    bool    `json:"is_already_unlocked"`
 }

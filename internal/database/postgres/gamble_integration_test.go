@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -22,24 +21,35 @@ import (
 
 // setupGambleIntegrationTest sets up the dependencies for gamble integration tests
 // It reuses setupIntegrationTest for the DB container but builds its own services
-func setupGambleIntegrationTest(t *testing.T) (*pgxpool.Pool, *UserRepository, gamble.Service, func()) {
+func setupGambleIntegrationTest(t *testing.T) (*UserRepository, gamble.Service) {
 	// 1. Setup DB using existing helper (returns pool, repo, and a user service we ignore)
 	pool, repo, _ := setupIntegrationTest(t)
 	if pool == nil {
 		// setupIntegrationTest skips if docker fails
-		return nil, nil, nil, nil
+		return nil, nil
 	}
 
-	// 2. Setup Lootbox Service with deterministic loot table
-	lootTable := map[string][]lootbox.LootItem{
-		"lootbox_tier1": {
-			{ItemName: domain.ItemMoney, Min: 100, Max: 100, Chance: 1.0},
+	// 2. Setup Lootbox Service with deterministic loot table (v2 format).
+	// ItemDropRate=0.0 → gatekeeper always fails → consolation path always fires.
+	// With rnd=0.5: base=0.5*(100-100)+100=100, jitter=1+(0.5-0.5)*1=1, amount=100.
+	lootConfig := lootbox.LootTableConfig{
+		Version: "2.0",
+		Pools: map[string]lootbox.PoolDef{
+			"pool_money": {Items: []lootbox.PoolItemDef{
+				{ItemName: domain.ItemMoney, Weight: 1},
+			}},
+		},
+		Lootboxes: map[string]lootbox.Def{
+			"lootbox_tier1": {
+				ItemDropRate: 0.0, // always consolation
+				FixedMoney:   lootbox.MoneyRange{Min: 100, Max: 100},
+				Pools: []lootbox.PoolRef{
+					{PoolName: "pool_money", Weight: 1},
+				},
+			},
 		},
 	}
-	lootTableData, err := json.Marshal(map[string]interface{}{
-		"version": "1.0",
-		"tables":  lootTable,
-	})
+	lootTableData, err := json.Marshal(lootConfig)
 	require.NoError(t, err)
 
 	tmpDir := t.TempDir()
@@ -51,12 +61,10 @@ func setupGambleIntegrationTest(t *testing.T) (*pgxpool.Pool, *UserRepository, g
 	// 3. Setup Gamble Service
 	gambleRepo := NewGambleRepository(pool)
 	eventBus := event.NewMemoryBus()
-	statsSvc := &MockStatsService{}
-	jobSvc := &MockJobService{}
 	progressionSvc := &MockProgressionService{}
 
 	// Use deterministic RNG for lootboxes: 0.5 always rolls Common (1.0x)
-	lootSvc, err := lootbox.NewService(lootRepo, progressionSvc, lootTablePath, lootbox.WithRnd(func() float64 { return 0.5 }))
+	lootSvc, err := lootbox.NewService(lootRepo, progressionSvc, nil, lootTablePath, lootbox.WithRnd(func() float64 { return 0.5 }))
 	require.NoError(t, err)
 
 	gambleSvc := gamble.NewService(
@@ -64,19 +72,13 @@ func setupGambleIntegrationTest(t *testing.T) (*pgxpool.Pool, *UserRepository, g
 		eventBus,
 		nil, // resilientPublisher
 		lootSvc,
-		statsSvc,
 		time.Second, // Short join duration for testing
-		jobSvc,
 		progressionSvc,
 		nil,
 		nil,
 	)
 
-	cleanup := func() {
-		// Pool is cleaned up by setupIntegrationTest t.Cleanup
-	}
-
-	return pool, repo, gambleSvc, cleanup
+	return repo, gambleSvc
 }
 
 type MockProgressionService struct{}
@@ -93,7 +95,7 @@ func (m *MockProgressionService) IsNodeUnlocked(ctx context.Context, nodeKey str
 }
 
 func TestGambleLifecycle_Integration(t *testing.T) {
-	_, repo, svc, _ := setupGambleIntegrationTest(t)
+	repo, svc := setupGambleIntegrationTest(t)
 	if svc == nil {
 		return // Skipped
 	}
@@ -214,7 +216,7 @@ func getQty(inv *domain.Inventory, itemID int) int {
 }
 
 func TestGamble_Concurrency_Join(t *testing.T) {
-	_, repo, svc, _ := setupGambleIntegrationTest(t)
+	repo, svc := setupGambleIntegrationTest(t)
 	if svc == nil {
 		return
 	}

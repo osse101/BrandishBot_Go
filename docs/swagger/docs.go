@@ -1030,6 +1030,106 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/subscriptions/event": {
+            "post": {
+                "description": "Processes subscription lifecycle events (subscribed, renewed, upgraded, downgraded, cancelled)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "subscriptions"
+                ],
+                "summary": "Receive subscription event from Streamer.bot",
+                "parameters": [
+                    {
+                        "description": "Subscription event",
+                        "name": "event",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain.SubscriptionEvent"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/subscriptions/user": {
+            "get": {
+                "description": "Retrieves subscription information for a user on a specific platform",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "subscriptions"
+                ],
+                "summary": "Get user subscription status",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Platform (twitch or youtube)",
+                        "name": "platform",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Platform user ID",
+                        "name": "platform_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.SubscriptionWithTier"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/user/inventory": {
             "get": {
                 "description": "Get the user's inventory",
@@ -1873,6 +1973,47 @@ const docTemplate = `{
                 }
             }
         },
+        "/progression/estimate/{nodeKey}": {
+            "get": {
+                "description": "Returns estimated unlock time and requirements for a specific node",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "progression"
+                ],
+                "summary": "Get unlock estimate",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Node Key",
+                        "name": "nodeKey",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.UnlockEstimate"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/progression/session": {
             "get": {
                 "description": "Returns the current voting session with all available options",
@@ -2296,6 +2437,13 @@ const docTemplate = `{
                     "description": "Buy price",
                     "type": "integer"
                 },
+                "content_type": {
+                    "description": "Content type categorization (weapon, material, etc.)",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "default_display": {
                     "type": "string"
                 },
@@ -2701,6 +2849,110 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "total_events": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.SubscriptionEvent": {
+            "type": "object",
+            "required": [
+                "event_type",
+                "platform",
+                "platform_user_id",
+                "tier_name",
+                "timestamp",
+                "username"
+            ],
+            "properties": {
+                "event_type": {
+                    "description": "Use HistoryEventType constants",
+                    "type": "string"
+                },
+                "platform": {
+                    "type": "string",
+                    "enum": [
+                        "twitch",
+                        "youtube"
+                    ]
+                },
+                "platform_user_id": {
+                    "type": "string"
+                },
+                "tier_name": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "integer"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.SubscriptionWithTier": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "display_name": {
+                    "type": "string"
+                },
+                "expires_at": {
+                    "type": "string"
+                },
+                "last_verified_at": {
+                    "type": "string"
+                },
+                "platform": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "subscribed_at": {
+                    "type": "string"
+                },
+                "tier_id": {
+                    "type": "integer"
+                },
+                "tier_level": {
+                    "type": "integer"
+                },
+                "tier_name": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.UnlockEstimate": {
+            "type": "object",
+            "properties": {
+                "confidence": {
+                    "description": "\"high\", \"medium\", \"low\"",
+                    "type": "string"
+                },
+                "current_progress": {
+                    "type": "integer"
+                },
+                "current_velocity": {
+                    "type": "number"
+                },
+                "estimated_days": {
+                    "type": "number"
+                },
+                "estimated_unlock_date": {
+                    "type": "string"
+                },
+                "node_key": {
+                    "type": "string"
+                },
+                "required_points": {
                     "type": "integer"
                 }
             }
@@ -3803,18 +4055,14 @@ const docTemplate = `{
                 "item_name": {
                     "type": "string"
                 },
-                "name": {
-                    "description": "For backward compatibility",
+                "public_name": {
                     "type": "string"
                 },
-                "public_name": {
+                "quality_level": {
                     "type": "string"
                 },
                 "quantity": {
                     "type": "integer"
-                },
-                "shine_level": {
-                    "type": "string"
                 }
             }
         }

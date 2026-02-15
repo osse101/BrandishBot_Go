@@ -65,17 +65,17 @@ func (_c *MockNamingResolver_GetActiveTheme_Call) RunAndReturn(run func() string
 	return _c
 }
 
-// GetDisplayName provides a mock function with given fields: internalName, shineLevel
-func (_m *MockNamingResolver) GetDisplayName(internalName string, shineLevel domain.ShineLevel) string {
-	ret := _m.Called(internalName, shineLevel)
+// GetDisplayName provides a mock function with given fields: internalName, qualityLevel
+func (_m *MockNamingResolver) GetDisplayName(internalName string, qualityLevel domain.QualityLevel) string {
+	ret := _m.Called(internalName, qualityLevel)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetDisplayName")
 	}
 
 	var r0 string
-	if rf, ok := ret.Get(0).(func(string, domain.ShineLevel) string); ok {
-		r0 = rf(internalName, shineLevel)
+	if rf, ok := ret.Get(0).(func(string, domain.QualityLevel) string); ok {
+		r0 = rf(internalName, qualityLevel)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
@@ -90,14 +90,14 @@ type MockNamingResolver_GetDisplayName_Call struct {
 
 // GetDisplayName is a helper method to define mock.On call
 //   - internalName string
-//   - shineLevel domain.ShineLevel
-func (_e *MockNamingResolver_Expecter) GetDisplayName(internalName interface{}, shineLevel interface{}) *MockNamingResolver_GetDisplayName_Call {
-	return &MockNamingResolver_GetDisplayName_Call{Call: _e.mock.On("GetDisplayName", internalName, shineLevel)}
+//   - qualityLevel domain.QualityLevel
+func (_e *MockNamingResolver_Expecter) GetDisplayName(internalName interface{}, qualityLevel interface{}) *MockNamingResolver_GetDisplayName_Call {
+	return &MockNamingResolver_GetDisplayName_Call{Call: _e.mock.On("GetDisplayName", internalName, qualityLevel)}
 }
 
-func (_c *MockNamingResolver_GetDisplayName_Call) Run(run func(internalName string, shineLevel domain.ShineLevel)) *MockNamingResolver_GetDisplayName_Call {
+func (_c *MockNamingResolver_GetDisplayName_Call) Run(run func(internalName string, qualityLevel domain.QualityLevel)) *MockNamingResolver_GetDisplayName_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(domain.ShineLevel))
+		run(args[0].(string), args[1].(domain.QualityLevel))
 	})
 	return _c
 }
@@ -107,7 +107,7 @@ func (_c *MockNamingResolver_GetDisplayName_Call) Return(_a0 string) *MockNaming
 	return _c
 }
 
-func (_c *MockNamingResolver_GetDisplayName_Call) RunAndReturn(run func(string, domain.ShineLevel) string) *MockNamingResolver_GetDisplayName_Call {
+func (_c *MockNamingResolver_GetDisplayName_Call) RunAndReturn(run func(string, domain.QualityLevel) string) *MockNamingResolver_GetDisplayName_Call {
 	_c.Call.Return(run)
 	return _c
 }

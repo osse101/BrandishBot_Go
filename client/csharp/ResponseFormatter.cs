@@ -62,7 +62,7 @@ namespace BrandishBot.Client
             if (recipes == null || recipes.Count == 0)
                 return "No recipes available";
 
-            var formatted = recipes.ConvertAll(r => r.PublicName ?? r.Name);
+            var formatted = recipes.ConvertAll(r => !string.IsNullOrEmpty(r.PublicName) ? r.PublicName : r.InternalName);
             return "Available recipes: " + string.Join(", ", formatted);
         }
 
@@ -74,23 +74,41 @@ namespace BrandishBot.Client
             if (inventory?.Items == null || inventory.Items.Count == 0)
                 return "Empty inventory";
 
-            var formattedItems = new List<string>();
+            var mergedItems = new Dictionary<string, int>();
+            int money = 0;
+
             foreach (var item in inventory.Items)
             {
-                if (item.Name == "money")
-                    formattedItems.Insert(0, $"💰 {item.Quantity}");
+                // Group by public name for display
+                // Money is handled specially with an emoji
+                if (item.InternalName == "item_money" || item.PublicName?.ToLower() == "money")
+                {
+                    money += item.Quantity;
+                }
                 else
-                    formattedItems.Add($"{item.Quantity}x {item.Name}");
+                {
+                    string displayName = !string.IsNullOrEmpty(item.PublicName) ? item.PublicName : item.InternalName;
+                    if (string.IsNullOrEmpty(displayName)) displayName = "Unknown Item";
+
+                    if (mergedItems.ContainsKey(displayName))
+                        mergedItems[displayName] += item.Quantity;
+                    else
+                        mergedItems[displayName] = item.Quantity;
+                }
+            }
+
+            var formattedItems = new List<string>();
+            if (money > 0)
+            {
+                formattedItems.Add($"💰 {money}");
+            }
+
+            foreach (var kvp in mergedItems)
+            {
+                formattedItems.Add($"{kvp.Value}x {kvp.Key}");
             }
 
             return string.Join(" ", formattedItems);
-        }
-
-        // Keep legacy for backward compatibility if needed, but mark as obsolete
-        [Obsolete("Use FormatInventory(GetInventoryResponse) instead")]
-        public static string FormatInventory(string jsonResponse)
-        {
-             return FormatInventory(Newtonsoft.Json.JsonConvert.DeserializeObject<GetInventoryResponse>(jsonResponse));
         }
 
         /// <summary>
@@ -337,6 +355,14 @@ namespace BrandishBot.Client
             }
 
             return string.Join(" | ", parts);
+        }
+
+        /// <summary>
+        /// Format info response - just returns the description field
+        /// </summary>
+        public static string FormatInfo(InfoResponse info)
+        {
+            return info?.Description ?? "(no info available)";
         }
     }
 }

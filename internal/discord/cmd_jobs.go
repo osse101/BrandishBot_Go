@@ -3,8 +3,11 @@ package discord
 import (
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/bwmarrin/discordgo"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
@@ -51,28 +54,25 @@ func JobProgressCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		}
 
 		// Extract jobs list from response
-		jobsList, ok := jobsData["jobs"].([]interface{})
-		if !ok || len(jobsList) == 0 {
+		jobsList := jobsData.Jobs
+		if len(jobsList) == 0 {
 			embed := createEmbed("📋 Job Progress", fmt.Sprintf("%s has no job progress yet.", targetUser.Username), 0x95A5A6, "")
 			sendEmbed(s, i, embed)
 			return
 		}
 
-		primaryJob, _ := jobsData["primary_job"].(string)
+		primaryJob := jobsData.PrimaryJob
 
 		// Build embed with job progress
 		var fields []*discordgo.MessageEmbedField
 		for _, job := range jobsList {
-			jobData, ok := job.(map[string]interface{})
-			if !ok {
-				continue
-			}
+			jobKey := job.JobKey
+			// Let's Capitalize JobKey for display
+			displayName := cases.Title(language.English).String(strings.ReplaceAll(jobKey, "_", " "))
 
-			jobKey, _ := jobData["job_key"].(string)
-			displayName, _ := jobData["display_name"].(string)
-			level, _ := jobData["level"].(float64)
-			currentXP, _ := jobData["current_xp"].(float64)
-			xpToNext, _ := jobData["xp_to_next_level"].(float64)
+			level := float64(job.Level)
+			currentXP := float64(job.XP)
+			xpToNext := float64(job.XPForNext)
 
 			// Calculate progress percentage
 			progressPct := 0.0

@@ -64,20 +64,20 @@ func TestGetDisplayName(t *testing.T) {
 		themes: make(map[string]ThemePeriod),
 	}
 
-	// Test without shine
-	name := r.GetDisplayName("lootbox_tier0", domain.ShineLevel(""))
+	// Test without quality
+	name := r.GetDisplayName("lootbox_tier0", domain.QualityLevel(""))
 	if name != "dingy box" && name != "worn box" {
 		t.Errorf("GetDisplayName() = %v, want one of default aliases", name)
 	}
 
-	// Test with shine
-	name = r.GetDisplayName("lootbox_tier0", domain.ShineLevel("RARE"))
+	// Test with quality
+	name = r.GetDisplayName("lootbox_tier0", domain.QualityLevel("RARE"))
 	if name != "dingy box" && name != "worn box" {
-		t.Errorf("GetDisplayName() with shine = %v, want RARE prefix", name)
+		t.Errorf("GetDisplayName() with quality = %v, want RARE prefix", name)
 	}
 
 	// Test unknown item (should return internal name)
-	name = r.GetDisplayName("unknown_item", domain.ShineLevel(""))
+	name = r.GetDisplayName("unknown_item", domain.QualityLevel(""))
 	if name != "unknown_item" {
 		t.Errorf("GetDisplayName() for unknown = %v, want unknown_item", name)
 	}

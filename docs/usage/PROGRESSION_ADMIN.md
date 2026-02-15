@@ -148,7 +148,7 @@ When setting up a test environment, unlock all features:
 #!/bin/bash
 # unlock_all_features.sh
 
-BASE_URL="http://localhost:8080/progression/admin"
+API_URL="http://localhost:8080/progression/admin"
 
 # Unlock in dependency order
 features=(
@@ -164,7 +164,7 @@ features=(
 
 for feature in "${features[@]}"; do
   echo "Unlocking $feature..."
-  curl -X POST "$BASE_URL/unlock" \
+  curl -X POST "$API_URL/unlock" \
     -H "Content-Type: application/json" \
     -d "{\"node_key\": \"$feature\", \"level\": 1}"
   echo ""
@@ -404,7 +404,7 @@ Always test admin commands in a staging environment first:
 createdb brandish_bot_test
 
 # Run migrations
-DATABASE_URL=postgres://localhost/brandish_bot_test make migrate-up
+DATAAPI_URL=postgres://localhost/brandish_bot_test make migrate-up
 
 # Test admin commands
 curl -X POST http://localhost:8081/progression/admin/unlock ...

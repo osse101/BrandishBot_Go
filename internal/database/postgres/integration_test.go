@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -23,17 +24,26 @@ func TestMain(m *testing.M) {
 	var terminate func()
 
 	if !testing.Short() {
-		ctx := context.Background()
-		var connStr string
-		connStr, terminate = setupContainer(ctx)
-		testDBConnString = connStr
-
-		// Create shared pool if container started successfully
-		if connStr != "" {
+		if conn := os.Getenv("TEST_DB_CONN"); conn != "" {
+			testDBConnString = conn
 			var err error
-			testPool, err = database.NewPool(connStr, 20, 30*time.Minute, time.Hour)
+			testPool, err = database.NewPool(conn, 20, 30*time.Minute, time.Hour)
 			if err != nil {
-				fmt.Printf("WARNING: Failed to create test pool: %v\n", err)
+				fmt.Printf("WARNING: Failed to create test pool from env: %v\n", err)
+			}
+		} else {
+			ctx := context.Background()
+			var connStr string
+			connStr, terminate = setupContainer(ctx)
+			testDBConnString = connStr
+
+			// Create shared pool if container started successfully
+			if connStr != "" {
+				var err error
+				testPool, err = database.NewPool(connStr, 20, 30*time.Minute, time.Hour)
+				if err != nil {
+					fmt.Printf("WARNING: Failed to create test pool: %v\n", err)
+				}
 			}
 		}
 	}
@@ -340,8 +350,8 @@ func TestUserRepository_Integration(t *testing.T) {
 
 		// Test with non-existent ID
 		item, err = craftingRepo.GetItemByID(ctx, 999999)
-		if err != nil {
-			t.Fatalf("GetItemByID failed for non-existent item: %v", err)
+		if !errors.Is(err, domain.ErrItemNotFound) {
+			t.Fatalf("Expected domain.ErrItemNotFound, got: %v", err)
 		}
 		if item != nil {
 			t.Error("expected nil for non-existent item")
@@ -350,7 +360,7 @@ func TestUserRepository_Integration(t *testing.T) {
 
 	t.Run("GetUserByPlatformUsername - Not Found", func(t *testing.T) {
 		user, err := repo.GetUserByPlatformUsername(ctx, domain.PlatformTwitch, "nonexistent_user_xyz")
-		if err != nil && err != domain.ErrUserNotFound {
+		if err != nil && !errors.Is(err, domain.ErrUserNotFound) {
 			t.Fatalf("GetUserByPlatformUsername failed: %v", err)
 		}
 		if user != nil {

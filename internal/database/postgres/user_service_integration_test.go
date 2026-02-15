@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"errors"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/osse101/BrandishBot_Go/internal/cooldown"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/lootbox"
 	"github.com/osse101/BrandishBot_Go/internal/user"
 )
@@ -19,19 +21,75 @@ import (
 // Mock services for dependencies we don't need to test in this integration test
 type MockJobService struct{}
 
-func (m *MockJobService) AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error) {
-	return &domain.XPAwardResult{LeveledUp: false, NewLevel: 1, NewXP: 100}, nil
+func (m *MockJobService) GetUserJobs(ctx context.Context, userID string) ([]domain.UserJobInfo, error) {
+	return []domain.UserJobInfo{}, nil
+}
+
+func (m *MockJobService) GetUserJobsByPlatform(ctx context.Context, platform, platformID string) ([]domain.UserJobInfo, error) {
+	return []domain.UserJobInfo{}, nil
+}
+
+func (m *MockJobService) GetPrimaryJob(ctx context.Context, platform, platformID string) (*domain.UserJobInfo, error) {
+	return &domain.UserJobInfo{JobKey: "explorer"}, nil
+}
+
+func (m *MockJobService) GetJobBonus(ctx context.Context, userID, jobKey string, bonusType string) (float64, error) {
+	return 0, nil
+}
+
+func (m *MockJobService) AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata domain.JobXPMetadata) (*domain.XPAwardResult, error) {
+	return &domain.XPAwardResult{}, nil
+}
+
+func (m *MockJobService) AwardXPByPlatform(ctx context.Context, platform, platformID, jobKey string, baseAmount int, source string, metadata domain.JobXPMetadata) (*domain.XPAwardResult, error) {
+	return &domain.XPAwardResult{}, nil
+}
+
+func (m *MockJobService) GetJobLevel(ctx context.Context, userID, jobKey string) (int, error) {
+	return 1, nil
+}
+
+func (m *MockJobService) ResetDailyJobXP(ctx context.Context) (int64, error) {
+	return 0, nil
+}
+
+func (m *MockJobService) GetDailyResetStatus(ctx context.Context) (*domain.DailyResetStatus, error) {
+	return &domain.DailyResetStatus{}, nil
+}
+
+func (m *MockJobService) GetAllJobs(ctx context.Context) ([]domain.Job, error) {
+	return []domain.Job{}, nil
+}
+
+func (m *MockJobService) GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error) {
+	return &domain.User{}, nil
+}
+
+func (m *MockJobService) CalculateLevel(totalXP int64) int {
+	return 1
+}
+
+func (m *MockJobService) GetXPForLevel(level int) int64 {
+	return 1000
+}
+
+func (m *MockJobService) GetXPProgress(currentXP int64) (currentLevel int, xpToNext int64) {
+	return 1, 1000
+}
+
+func (m *MockJobService) Shutdown(ctx context.Context) error {
+	return nil
 }
 
 type MockLootboxService struct{}
 
-func (m *MockLootboxService) OpenLootbox(ctx context.Context, lootboxName string, quantity int, boxShine domain.ShineLevel) ([]lootbox.DroppedItem, error) {
+func (m *MockLootboxService) OpenLootbox(ctx context.Context, lootboxName string, quantity int, boxQuality domain.QualityLevel) ([]lootbox.DroppedItem, error) {
 	return []lootbox.DroppedItem{}, nil
 }
 
 type MockStatsService struct{}
 
-func (m *MockStatsService) RecordUserEvent(ctx context.Context, userID string, eventType domain.EventType, metadata map[string]interface{}) error {
+func (m *MockStatsService) RecordUserEvent(ctx context.Context, userID string, eventType domain.EventType, metadata interface{}) error {
 	return nil
 }
 
@@ -51,9 +109,25 @@ func (m *MockStatsService) GetLeaderboard(ctx context.Context, eventType domain.
 	return []domain.LeaderboardEntry{}, nil
 }
 
+func (m *MockStatsService) GetUserSlotsStats(ctx context.Context, userID, period string) (*domain.SlotsStats, error) {
+	return nil, nil
+}
+
+func (m *MockStatsService) GetSlotsLeaderboardByProfit(ctx context.Context, period string, limit int) ([]domain.SlotsStats, error) {
+	return nil, nil
+}
+
+func (m *MockStatsService) GetSlotsLeaderboardByWinRate(ctx context.Context, period string, minSpins, limit int) ([]domain.SlotsStats, error) {
+	return nil, nil
+}
+
+func (m *MockStatsService) GetSlotsLeaderboardByMegaJackpots(ctx context.Context, period string, limit int) ([]domain.SlotsStats, error) {
+	return nil, nil
+}
+
 type MockNamingResolver struct{}
 
-func (m *MockNamingResolver) GetDisplayName(internalName string, shineLevel domain.ShineLevel) string {
+func (m *MockNamingResolver) GetDisplayName(internalName string, qualityLevel domain.QualityLevel) string {
 	return internalName
 }
 
@@ -77,6 +151,17 @@ func (m *MockNamingResolver) RegisterItem(internalName, publicName string) {
 	// No-op
 }
 
+type MockBus struct {
+	delay time.Duration
+}
+
+func (m *MockBus) Publish(ctx context.Context, evt event.Event) error {
+	time.Sleep(m.delay)
+	return nil
+}
+
+func (m *MockBus) Subscribe(eventType event.Type, handler event.Handler) {}
+
 func setupIntegrationTest(t *testing.T) (*pgxpool.Pool, *UserRepository, user.Service) {
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
@@ -97,12 +182,12 @@ func setupIntegrationTest(t *testing.T) (*pgxpool.Pool, *UserRepository, user.Se
 		repo,
 		trapRepo,
 		&MockStatsService{},
-		&MockJobService{},
+		nil, // publisher
 		&MockLootboxService{},
 		&MockNamingResolver{},
 		cooldownSvc,
+		nil,  // jobService
 		nil,  // No event bus for tests
-		nil,  // No quest service for tests
 		true, // Dev mode to bypass cooldowns
 	)
 
@@ -242,21 +327,25 @@ func TestUserService_AsyncXPAward_Integration(t *testing.T) {
 		return // Skipped
 	}
 
-	slowJobSvc := &SlowJobService{delay: 200 * time.Millisecond}
 	cooldownConfig := cooldown.Config{DevMode: true}
 	cooldownSvc := cooldown.NewPostgresService(pool, cooldownConfig, nil)
 	trapRepo := NewTrapRepository(pool)
+
+	// Create a real publisher with a mock bus for testing async wait
+	mockBus := &MockBus{delay: 200 * time.Millisecond}
+	publisher, _ := event.NewResilientPublisher(mockBus, 3, 10*time.Millisecond, "test_deadletter.jsonl")
+	defer os.Remove("test_deadletter.jsonl")
 
 	svc := user.NewService(
 		repo,
 		trapRepo,
 		&MockStatsService{},
-		slowJobSvc,
+		publisher,
 		&MockLootboxService{},
 		&MockNamingResolver{},
 		cooldownSvc,
+		&MockJobService{},
 		nil, // No event bus for tests
-		nil, // No quests for tests
 		true,
 	)
 

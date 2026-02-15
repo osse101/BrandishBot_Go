@@ -19,8 +19,8 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	// Get staging URL from environment or default to localhost
-	stagingURL = os.Getenv("STAGING_URL")
+	// Get API URL from environment or default to localhost
+	stagingURL = os.Getenv("API_URL")
 	if stagingURL == "" {
 		stagingURL = "http://localhost:8080"
 	}

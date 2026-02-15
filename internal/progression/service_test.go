@@ -252,7 +252,9 @@ func (m *MockRepository) UnlockNode(ctx context.Context, nodeID int, level int, 
 func (m *MockRepository) RelockNode(ctx context.Context, nodeID int, level int) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if levels, ok := m.unlocks[nodeID]; ok {
+	if level == 0 {
+		delete(m.unlocks, nodeID)
+	} else if levels, ok := m.unlocks[nodeID]; ok {
 		delete(levels, level)
 	}
 	return nil
@@ -1241,6 +1243,43 @@ func TestAdminRelock(t *testing.T) {
 	}
 	if unlocked {
 		t.Error("Money should be locked after admin relock")
+	}
+}
+
+func TestAdminRelockFull(t *testing.T) {
+	repo := NewMockRepository()
+	setupTestTree(repo)
+	service := NewService(repo, NewMockUser(), nil, nil, nil)
+	ctx := context.Background()
+
+	// Multi-level node
+	node := &domain.ProgressionNode{
+		ID:       99,
+		NodeKey:  "multi_level",
+		MaxLevel: 3,
+	}
+	repo.InsertNode(ctx, node)
+
+	// Unlock all levels
+	service.AdminUnlock(ctx, "multi_level", 1)
+	service.AdminUnlock(ctx, "multi_level", 2)
+	service.AdminUnlock(ctx, "multi_level", 3)
+
+	// Relock level 0 (Full Relock)
+	err := service.AdminRelock(ctx, "multi_level", 0)
+	if err != nil {
+		t.Fatalf("AdminRelock failed: %v", err)
+	}
+
+	// Verify all levels are locked
+	for i := 1; i <= 3; i++ {
+		unlocked, err := service.IsNodeUnlocked(ctx, "multi_level", i)
+		if err != nil {
+			t.Fatalf("IsNodeUnlocked failed for level %d: %v", i, err)
+		}
+		if unlocked {
+			t.Errorf("Level %d should be locked after full relock", i)
+		}
 	}
 }
 

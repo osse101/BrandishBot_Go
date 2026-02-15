@@ -67,9 +67,9 @@ func (h *LinkingHandlers) HandleInitiate() http.HandlerFunc {
 			return
 		}
 
-		respondJSON(w, http.StatusOK, map[string]interface{}{
-			"token":      token.Token,
-			"expires_in": int(token.ExpiresAt.Sub(token.CreatedAt).Seconds()),
+		respondJSON(w, http.StatusOK, InitiateResponse{
+			Token:     token.Token,
+			ExpiresIn: int(token.ExpiresAt.Sub(token.CreatedAt).Seconds()),
 		})
 	}
 }
@@ -96,9 +96,9 @@ func (h *LinkingHandlers) HandleClaim() http.HandlerFunc {
 			return
 		}
 
-		respondJSON(w, http.StatusOK, map[string]interface{}{
-			"source_platform":       token.SourcePlatform,
-			"awaiting_confirmation": true,
+		respondJSON(w, http.StatusOK, ClaimResponse{
+			SourcePlatform:       token.SourcePlatform,
+			AwaitingConfirmation: true,
 		})
 	}
 }
@@ -153,9 +153,9 @@ func (h *LinkingHandlers) HandleUnlink() http.HandlerFunc {
 				return
 			}
 
-			respondJSON(w, http.StatusOK, map[string]interface{}{
-				"awaiting_confirmation": true,
-				"message":               MsgConfirmWithinSeconds,
+			respondJSON(w, http.StatusOK, UnlinkInitiateResponse{
+				AwaitingConfirmation: true,
+				Message:              MsgConfirmWithinSeconds,
 			})
 			return
 		}
@@ -167,11 +167,37 @@ func (h *LinkingHandlers) HandleUnlink() http.HandlerFunc {
 			return
 		}
 
-		respondJSON(w, http.StatusOK, map[string]interface{}{
-			"success": true,
-			"message": MsgPlatformUnlinked,
+		respondJSON(w, http.StatusOK, UnlinkConfirmResponse{
+			Success: true,
+			Message: MsgPlatformUnlinked,
 		})
 	}
+}
+
+// Response structs
+
+// InitiateResponse is the response body for initiating a link
+type InitiateResponse struct {
+	Token     string `json:"token"`
+	ExpiresIn int    `json:"expires_in"`
+}
+
+// ClaimResponse is the response body for claiming a link
+type ClaimResponse struct {
+	SourcePlatform       string `json:"source_platform"`
+	AwaitingConfirmation bool   `json:"awaiting_confirmation"`
+}
+
+// UnlinkInitiateResponse is the response body for initiating an unlink
+type UnlinkInitiateResponse struct {
+	AwaitingConfirmation bool   `json:"awaiting_confirmation"`
+	Message              string `json:"message"`
+}
+
+// UnlinkConfirmResponse is the response body for confirming an unlink
+type UnlinkConfirmResponse struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
 }
 
 // HandleStatus handles GET /link/status

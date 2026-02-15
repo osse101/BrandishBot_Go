@@ -16,20 +16,20 @@ This directory contains integration tests designed to run against a deployed sta
 make test-staging
 
 # Run against specific URL with API Key
-STAGING_URL=http://staging.brandishbot.com:8080 API_KEY=my-secret-key make test-staging
+API_URL=http://staging.brandishbot.com:8080 API_KEY=my-secret-key make test-staging
 ```
 
 ### Manual Execution
 
 ```bash
-export STAGING_URL=http://staging.brandishbot.com:8080
+export API_URL=http://staging.brandishbot.com:8080
 export API_KEY=my-secret-key
 go test -tags=staging -v ./tests/staging
 ```
 
 ## Test Structure
 
-- **`main_test.go`**: Setup and configuration. Reads `STAGING_URL` and `API_KEY`.
+- **`main_test.go`**: Setup and configuration. Reads `API_URL` and `API_KEY`.
 - **`health_test.go`**: Basic health check (`/healthz`).
 - **`smoke_test.go`**: Verifies core functionality (progression tree availability).
 - **`progression_test.go`**: Comprehensive progression endpoint tests (tree, voting, engagement).

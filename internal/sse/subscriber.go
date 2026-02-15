@@ -51,6 +51,14 @@ func (s *Subscriber) Subscribe() {
 	s.bus.Subscribe(event.Type(domain.EventExpeditionTurn), s.handleExpeditionTurn)
 	s.bus.Subscribe(event.Type(domain.EventExpeditionCompleted), s.handleExpeditionCompleted)
 
+	// Subscribe to subscription events
+	s.bus.Subscribe(event.SubscriptionActivated, s.handleSubscriptionEvent)
+	s.bus.Subscribe(event.SubscriptionRenewed, s.handleSubscriptionEvent)
+	s.bus.Subscribe(event.SubscriptionUpgraded, s.handleSubscriptionEvent)
+	s.bus.Subscribe(event.SubscriptionDowngraded, s.handleSubscriptionEvent)
+	s.bus.Subscribe(event.SubscriptionExpired, s.handleSubscriptionEvent)
+	s.bus.Subscribe(event.SubscriptionCancelled, s.handleSubscriptionEvent)
+
 	slog.Info("SSE subscriber registered for event types",
 		"types", []string{
 			string(domain.EventJobLevelUp),
@@ -64,31 +72,35 @@ func (s *Subscriber) Subscribe() {
 			string(domain.EventExpeditionStarted),
 			string(domain.EventExpeditionTurn),
 			string(domain.EventExpeditionCompleted),
+			string(event.SubscriptionActivated),
+			string(event.SubscriptionRenewed),
+			string(event.SubscriptionExpired),
+			string(event.SubscriptionCancelled),
 		})
 }
 
 // handleJobLevelUp processes job level up events and broadcasts to SSE clients
 func (s *Subscriber) handleJobLevelUp(_ context.Context, evt event.Event) error {
-	payload, ok := evt.Payload.(map[string]interface{})
-	if !ok {
-		slog.Warn("Invalid job level up event payload type")
+	payload, err := event.DecodePayload[event.JobLevelUpPayloadV1](evt.Payload)
+	if err != nil {
+		slog.Warn("Invalid job level up event payload type", "error", err)
 		return nil
 	}
 
-	// Extract source from metadata if available
-	source := ""
-	if evt.Metadata != nil {
-		if src, ok := evt.Metadata["source"].(string); ok {
+	// Extract source from payload or metadata
+	source := payload.Source
+	if source == "" {
+		if src, ok := evt.GetMetadataValue("source").(string); ok {
 			source = src
 		}
 	}
 
 	// Build SSE payload
 	ssePayload := JobLevelUpPayload{
-		UserID:   getStringFromMap(payload, "user_id"),
-		JobKey:   getStringFromMap(payload, "job_key"),
-		OldLevel: getIntFromMap(payload, "old_level"),
-		NewLevel: getIntFromMap(payload, "new_level"),
+		UserID:   payload.UserID,
+		JobKey:   payload.JobKey,
+		OldLevel: payload.OldLevel,
+		NewLevel: payload.NewLevel,
 		Source:   source,
 	}
 
@@ -105,15 +117,19 @@ func (s *Subscriber) handleJobLevelUp(_ context.Context, evt event.Event) error 
 
 // handleCycleCompleted processes progression cycle completed events
 func (s *Subscriber) handleCycleCompleted(_ context.Context, evt event.Event) error {
-	payload, ok := evt.Payload.(map[string]interface{})
-	if !ok {
-		slog.Warn("Invalid cycle completed event payload type")
+	payload, err := event.DecodePayload[event.ProgressionCycleCompletedPayloadV1](evt.Payload)
+	if err != nil {
+		slog.Warn("Invalid cycle completed event payload type", "error", err)
 		return nil
 	}
 
 	// Build SSE payload
 	ssePayload := CycleCompletedPayload{
-		UnlockedNode: extractNodeInfo(payload["unlocked_node"]),
+		UnlockedNode: NodeInfo{
+			NodeKey:     payload.UnlockedNode.NodeKey,
+			DisplayName: payload.UnlockedNode.DisplayName,
+			Description: payload.UnlockedNode.Description,
+		},
 	}
 
 	s.hub.Broadcast(EventTypeCycleCompleted, ssePayload)
@@ -127,66 +143,50 @@ func (s *Subscriber) handleCycleCompleted(_ context.Context, evt event.Event) er
 
 // handleVotingStarted processes voting session started events
 func (s *Subscriber) handleVotingStarted(_ context.Context, evt event.Event) error {
-	payload, ok := evt.Payload.(map[string]interface{})
-	if !ok {
-		slog.Warn("Invalid voting started event payload type")
+	payload, err := event.DecodePayload[event.ProgressionVotingStartedPayloadV1](evt.Payload)
+	if err != nil {
+		slog.Warn("Invalid voting started event payload type", "error", err)
 		return nil
 	}
 
 	// Build SSE payload
 	ssePayload := VotingStartedPayload{
-		PreviousUnlock: getStringFromMap(payload, "previous_unlock"),
+		PreviousUnlock: payload.PreviousUnlock,
 		AutoSelected:   false,
+		Options:        make([]VotingOptionInfo, 0, len(payload.Options)),
 	}
 
-	// Extract options from payload
-	if opts, ok := payload["options"].([]map[string]interface{}); ok {
-		ssePayload.Options = make([]VotingOptionInfo, 0, len(opts))
-		for _, opt := range opts {
-			ssePayload.Options = append(ssePayload.Options, VotingOptionInfo{
-				NodeKey:        getStringFromMap(opt, "node_key"),
-				DisplayName:    getStringFromMap(opt, "display_name"),
-				Description:    getStringFromMap(opt, "description"),
-				UnlockDuration: getStringFromMap(opt, "unlock_duration"),
-			})
-		}
-	} else if opts, ok := payload["options"].([]interface{}); ok {
-		ssePayload.Options = make([]VotingOptionInfo, 0, len(opts))
-		for _, opt := range opts {
-			if optMap, ok := opt.(map[string]interface{}); ok {
-				ssePayload.Options = append(ssePayload.Options, VotingOptionInfo{
-					NodeKey:        getStringFromMap(optMap, "node_key"),
-					DisplayName:    getStringFromMap(optMap, "display_name"),
-					Description:    getStringFromMap(optMap, "description"),
-					UnlockDuration: getStringFromMap(optMap, "unlock_duration"),
-				})
-			}
-		}
+	for _, opt := range payload.Options {
+		ssePayload.Options = append(ssePayload.Options, VotingOptionInfo{
+			NodeKey:        opt.NodeKey,
+			DisplayName:    opt.DisplayName,
+			Description:    opt.Description,
+			UnlockDuration: opt.UnlockDuration,
+		})
 	}
 
 	s.hub.Broadcast(EventTypeVotingStarted, ssePayload)
 
 	slog.Debug(LogMsgEventBroadcast,
 		"event_type", EventTypeVotingStarted,
-		"options_count", len(ssePayload.Options))
+		"option_count", len(ssePayload.Options))
 
 	return nil
 }
 
 // handleTargetSet processes progression target set events (voting started)
 func (s *Subscriber) handleTargetSet(_ context.Context, evt event.Event) error {
-	payload, ok := evt.Payload.(map[string]interface{})
-	if !ok {
-		slog.Warn("Invalid target set event payload type")
+	payload, err := event.DecodePayload[event.ProgressionTargetSetPayloadV1](evt.Payload)
+	if err != nil {
+		slog.Warn("Invalid target set event payload type", "error", err)
 		return nil
 	}
 
 	// Only broadcast if this was auto-selected (voting not required)
-	// Normal voting start is handled by cycle_completed
-	if autoSelected, ok := payload["auto_selected"].(bool); ok && autoSelected {
+	if payload.AutoSelected {
 		ssePayload := VotingStartedPayload{
-			NodeKey:        getStringFromMap(payload, "node_key"),
-			TargetLevel:    getIntFromMap(payload, "target_level"),
+			NodeKey:        payload.NodeKey,
+			TargetLevel:    payload.TargetLevel,
 			AutoSelected:   true,
 			PreviousUnlock: "",
 		}
@@ -204,14 +204,14 @@ func (s *Subscriber) handleTargetSet(_ context.Context, evt event.Event) error {
 
 // handleAllUnlocked processes progression all unlocked events
 func (s *Subscriber) handleAllUnlocked(_ context.Context, evt event.Event) error {
-	payload, ok := evt.Payload.(map[string]interface{})
-	if !ok {
-		slog.Warn("Invalid all unlocked event payload type")
+	payload, err := event.DecodePayload[event.ProgressionAllUnlockedPayloadV1](evt.Payload)
+	if err != nil {
+		slog.Warn("Invalid all unlocked event payload type", "error", err)
 		return nil
 	}
 
 	ssePayload := AllUnlockedPayload{
-		Message: getStringFromMap(payload, "message"),
+		Message: payload.Message,
 	}
 
 	s.hub.Broadcast(EventTypeAllUnlocked, ssePayload)
@@ -249,36 +249,6 @@ func getIntFromMap(m map[string]interface{}, key string) int {
 	default:
 		return 0
 	}
-}
-
-func extractNodeInfo(v interface{}) NodeInfo {
-	if v == nil {
-		return NodeInfo{}
-	}
-
-	// Check if it's already a domain.ProgressionNode
-	switch node := v.(type) {
-	case *domain.ProgressionNode:
-		return NodeInfo{
-			NodeKey:     node.NodeKey,
-			DisplayName: node.DisplayName,
-			Description: node.Description,
-		}
-	case domain.ProgressionNode:
-		return NodeInfo{
-			NodeKey:     node.NodeKey,
-			DisplayName: node.DisplayName,
-			Description: node.Description,
-		}
-	case map[string]interface{}:
-		return NodeInfo{
-			NodeKey:     getStringFromMap(node, "node_key"),
-			DisplayName: getStringFromMap(node, "display_name"),
-			Description: getStringFromMap(node, "description"),
-		}
-	}
-
-	return NodeInfo{}
 }
 
 // handleTimeoutApplied processes timeout applied events
@@ -442,29 +412,35 @@ func (s *Subscriber) handleExpeditionCompleted(_ context.Context, evt event.Even
 
 // handleGambleCompleted processes gamble completion events
 func (s *Subscriber) handleGambleCompleted(_ context.Context, evt event.Event) error {
-	payload, ok := evt.Payload.(event.GambleCompletedPayloadV1)
-	if !ok {
-		// Fallback for untyped payload
+	var gambleID, winnerID string
+	var totalValue int64
+	var participantCount int
+	var timestamp int64
+
+	switch p := evt.Payload.(type) {
+	case domain.GambleCompletedPayloadV2:
+		gambleID, winnerID, totalValue, participantCount, timestamp = p.GambleID, p.WinnerID, p.TotalValue, p.ParticipantCount, p.Timestamp
+	case event.GambleCompletedPayloadV1:
+		gambleID, winnerID, totalValue, participantCount, timestamp = p.GambleID, p.WinnerID, p.TotalValue, p.ParticipantCount, p.Timestamp
+	default:
 		payloadMap, ok := evt.Payload.(map[string]interface{})
 		if !ok {
 			slog.Warn("Invalid gamble completed event payload type")
 			return nil
 		}
-		payload = event.GambleCompletedPayloadV1{
-			GambleID:         getStringFromMap(payloadMap, "gamble_id"),
-			WinnerID:         getStringFromMap(payloadMap, "winner_id"),
-			TotalValue:       int64(getIntFromMap(payloadMap, "total_value")),
-			ParticipantCount: getIntFromMap(payloadMap, "participant_count"),
-			Timestamp:        int64(getIntFromMap(payloadMap, "timestamp")),
-		}
+		gambleID = getStringFromMap(payloadMap, "gamble_id")
+		winnerID = getStringFromMap(payloadMap, "winner_id")
+		totalValue = int64(getIntFromMap(payloadMap, "total_value"))
+		participantCount = getIntFromMap(payloadMap, "participant_count")
+		timestamp = int64(getIntFromMap(payloadMap, "timestamp"))
 	}
 
 	ssePayload := GambleCompletedPayload{
-		GambleID:         payload.GambleID,
-		WinnerID:         payload.WinnerID,
-		TotalValue:       payload.TotalValue,
-		ParticipantCount: payload.ParticipantCount,
-		Timestamp:        payload.Timestamp,
+		GambleID:         gambleID,
+		WinnerID:         winnerID,
+		TotalValue:       totalValue,
+		ParticipantCount: participantCount,
+		Timestamp:        timestamp,
 	}
 
 	s.hub.Broadcast(EventTypeGambleCompleted, ssePayload)
@@ -473,6 +449,56 @@ func (s *Subscriber) handleGambleCompleted(_ context.Context, evt event.Event) e
 		"event_type", EventTypeGambleCompleted,
 		"gamble_id", ssePayload.GambleID,
 		"winner_id", ssePayload.WinnerID)
+
+	return nil
+}
+
+// handleSubscriptionEvent processes subscription lifecycle events
+func (s *Subscriber) handleSubscriptionEvent(_ context.Context, evt event.Event) error {
+	// Try typed payload first
+	if payload, ok := evt.Payload.(event.SubscriptionPayloadV1); ok {
+		ssePayload := SubscriptionPayload{
+			UserID:    payload.UserID,
+			Platform:  payload.Platform,
+			TierName:  payload.TierName,
+			EventType: string(evt.Type),
+			Timestamp: payload.Timestamp,
+		}
+
+		s.hub.Broadcast(EventTypeSubscription, ssePayload)
+
+		slog.Debug(LogMsgEventBroadcast,
+			"event_type", EventTypeSubscription,
+			"sub_event", evt.Type,
+			"user_id", payload.UserID,
+			"platform", payload.Platform,
+			"tier", payload.TierName)
+
+		return nil
+	}
+
+	// Fall back to map parsing
+	payload, ok := evt.Payload.(map[string]interface{})
+	if !ok {
+		slog.Warn("Invalid subscription event payload type")
+		return nil
+	}
+
+	ssePayload := SubscriptionPayload{
+		UserID:    getStringFromMap(payload, "user_id"),
+		Platform:  getStringFromMap(payload, "platform"),
+		TierName:  getStringFromMap(payload, "tier_name"),
+		EventType: string(evt.Type),
+		Timestamp: int64(getIntFromMap(payload, "timestamp")),
+	}
+
+	s.hub.Broadcast(EventTypeSubscription, ssePayload)
+
+	slog.Debug(LogMsgEventBroadcast,
+		"event_type", EventTypeSubscription,
+		"sub_event", evt.Type,
+		"user_id", ssePayload.UserID,
+		"platform", ssePayload.Platform)
 
 	return nil
 }

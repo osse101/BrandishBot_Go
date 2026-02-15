@@ -375,7 +375,7 @@ make deploy-staging
 
 # 2. Validate
 make health-check-staging
-STAGING_URL=http://localhost:8081 make test-staging
+API_URL=http://localhost:8081 make test-staging
 
 # 3. Manual QA (see checklist above)
 

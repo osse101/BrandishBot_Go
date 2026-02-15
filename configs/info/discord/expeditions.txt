@@ -1,0 +1,21 @@
+**Cooperative Multiplayer Adventures** 🗺️
+
+Join forces with other players to explore dangerous lands and find rare loot!
+
+## 🚀 How to Play
+
+1. **Start an Expedition**: Use `/explore` to begin.
+2. **Join**: Other players have 3 minutes to join via `/explore`.
+3. **Survive**: The team faces 50 turns of random encounters.
+4. **Win**: Reach turn 50 without everyone getting knocked out!
+
+## ⚔️ Mechanics
+
+*   **Skills**: Your job levels (Blacksmith, Explorer, etc.) determine success in encounters.
+*   **Encounters**: Face battles, solve puzzles, and find treasure.
+*   **Rewards**: Earn Money, XP, and exclusive Lootboxes.
+*   **Cooldown**: Expeditions have a global 15-minute cooldown.
+
+## 📜 Journal
+
+Use `/expedition-journal [id]` to read the story of a completed expedition!

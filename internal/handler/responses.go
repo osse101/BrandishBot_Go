@@ -8,6 +8,8 @@ import (
 
 	"github.com/osse101/BrandishBot_Go/internal/cooldown"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/logger"
+	"github.com/osse101/BrandishBot_Go/internal/progression"
 )
 
 // Standard response types for consistent API responses
@@ -55,6 +57,21 @@ func respondJSON(w http.ResponseWriter, status int, payload interface{}) {
 // respondError sends a JSON error response
 func respondError(w http.ResponseWriter, status int, message string) {
 	respondJSON(w, status, ErrorResponse{Error: message})
+}
+
+// respondServiceError handles service-level errors by mapping them to user-friendly messages
+// and logging the internal error details.
+func respondServiceError(w http.ResponseWriter, r *http.Request, opName string, err error) {
+	logger.FromContext(r.Context()).Error(opName, "error", err)
+	statusCode, userMsg := mapServiceErrorToUserMessage(err)
+	respondError(w, statusCode, userMsg)
+}
+
+// recordEngagement helper for consistently recording engagement and logging errors
+func recordEngagement(r *http.Request, svc progression.Service, id, typeKey string, points int) {
+	if err := svc.RecordEngagement(r.Context(), id, typeKey, points); err != nil {
+		logger.FromContext(r.Context()).Error("Failed to record engagement", "error", err, "type", typeKey)
+	}
 }
 
 // User-facing error messages for service errors
@@ -111,6 +128,13 @@ const (
 
 	// Platform messages
 	ErrMsgInvalidPlatformError = "Invalid platform"
+
+	// Internal markers and suffixes for error mapping
+	suffixRecipeLocked       = " | recipe locked"
+	suffixRecipeNotFound     = " | recipe not found"
+	errMsgRecipeLockedBase   = "recipe locked"
+	errMsgRecipeNotFoundBase = "recipe not found"
+	msgProgressionUnlockHint = ". Unlock it in the progression tree"
 )
 
 // mapServiceErrorToUserMessage maps domain errors to user-friendly HTTP responses
@@ -138,8 +162,7 @@ func mapServiceErrorToUserMessage(err error) (int, string) {
 	}
 
 	// For wrapped errors with domain errors as the base, try unwrapping
-	unwrapped := errors.Unwrap(err)
-	if unwrapped != nil && unwrapped != err {
+	if unwrapped := errors.Unwrap(err); unwrapped != nil {
 		// Recursively check the unwrapped error
 		return mapServiceErrorToUserMessage(unwrapped)
 	}
@@ -156,12 +179,33 @@ func mapServiceErrorToUserMessage(err error) (int, string) {
 }
 
 func mapUserAndItemErrors(err error, errMsg string) (int, string, bool) {
+	if code, msg, ok := mapUserErrors(err, errMsg); ok {
+		return code, msg, true
+	}
+	if code, msg, ok := mapItemErrors(err); ok {
+		return code, msg, true
+	}
+	if code, msg, ok := mapCompostErrors(err); ok {
+		return code, msg, true
+	}
+	return 0, "", false
+}
+
+func mapUserErrors(err error, errMsg string) (int, string, bool) {
 	switch {
 	case errors.Is(err, domain.ErrUserNotFound):
-		if len(errMsg) > len("user not found") {
+		if len(errMsg) > len(ErrMsgUserNotFoundHTTP) {
 			return http.StatusBadRequest, errMsg, true
 		}
 		return http.StatusBadRequest, ErrMsgUserNotFoundError, true
+	case errors.Is(err, domain.ErrInvalidPlatform):
+		return http.StatusBadRequest, ErrMsgInvalidPlatformError, true
+	}
+	return 0, "", false
+}
+
+func mapItemErrors(err error) (int, string, bool) {
+	switch {
 	case errors.Is(err, domain.ErrItemNotFound):
 		return http.StatusBadRequest, ErrMsgItemNotFoundError, true
 	case errors.Is(err, domain.ErrInsufficientFunds):
@@ -176,8 +220,20 @@ func mapUserAndItemErrors(err error, errMsg string) (int, string, bool) {
 		return http.StatusBadRequest, ErrMsgNotSellableError, true
 	case errors.Is(err, domain.ErrNotBuyable):
 		return http.StatusBadRequest, ErrMsgNotBuyableError, true
-	case errors.Is(err, domain.ErrInvalidPlatform):
-		return http.StatusBadRequest, ErrMsgInvalidPlatformError, true
+	}
+	return 0, "", false
+}
+
+func mapCompostErrors(err error) (int, string, bool) {
+	switch {
+	case errors.Is(err, domain.ErrCompostBinFull):
+		return http.StatusBadRequest, ErrMsgCompostBinFull, true
+	case errors.Is(err, domain.ErrCompostNotCompostable):
+		return http.StatusBadRequest, ErrMsgCompostNotCompostable, true
+	case errors.Is(err, domain.ErrCompostMustHarvest):
+		return http.StatusBadRequest, ErrMsgCompostMustHarvest, true
+	case errors.Is(err, domain.ErrCompostNothingToHarvest):
+		return http.StatusBadRequest, ErrMsgCompostNothingToHarvest, true
 	}
 	return 0, "", false
 }
@@ -185,10 +241,10 @@ func mapUserAndItemErrors(err error, errMsg string) (int, string, bool) {
 func mapEconomyAndFeatureErrors(err error, errMsg string) (int, string, bool) {
 	switch {
 	case errors.Is(err, domain.ErrRecipeLocked):
-		if len(errMsg) > len("recipe locked") {
-			before, _, found := cutSuffix(errMsg, " | recipe locked")
+		if len(errMsg) > len(errMsgRecipeLockedBase) {
+			before, found := cutSuffix(errMsg, suffixRecipeLocked)
 			if found {
-				return http.StatusForbidden, before + ". Unlock it in the progression tree", true
+				return http.StatusForbidden, before + msgProgressionUnlockHint, true
 			}
 		}
 		return http.StatusForbidden, ErrMsgRecipeLockedError, true
@@ -203,8 +259,8 @@ func mapEconomyAndFeatureErrors(err error, errMsg string) (int, string, bool) {
 		}
 		return http.StatusTooManyRequests, ErrMsgOnCooldownError, true
 	case errors.Is(err, domain.ErrRecipeNotFound):
-		if len(errMsg) > len("recipe not found") {
-			before, _, found := cutSuffix(errMsg, " | recipe not found")
+		if len(errMsg) > len(errMsgRecipeNotFoundBase) {
+			before, found := cutSuffix(errMsg, suffixRecipeNotFound)
 			if found {
 				return http.StatusBadRequest, before, true
 			}
@@ -250,12 +306,12 @@ func mapSystemErrors(err error) (int, string, bool) {
 
 // cutSuffix removes suffix from s and returns the result and true if it was found.
 // If suffix is not in s, returns s and false.
-func cutSuffix(s, suffix string) (before string, after string, found bool) {
+func cutSuffix(s, suffix string) (before string, found bool) {
 	if len(s) < len(suffix) {
-		return s, "", false
+		return s, false
 	}
 	if s[len(s)-len(suffix):] == suffix {
-		return s[:len(s)-len(suffix)], suffix, true
+		return s[:len(s)-len(suffix)], true
 	}
-	return s, "", false
+	return s, false
 }

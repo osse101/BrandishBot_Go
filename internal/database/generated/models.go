@@ -9,16 +9,20 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type CompostDeposit struct {
-	ID          uuid.UUID          `json:"id"`
-	UserID      uuid.UUID          `json:"user_id"`
-	ItemKey     string             `json:"item_key"`
-	Quantity    int32              `json:"quantity"`
-	DepositedAt pgtype.Timestamptz `json:"deposited_at"`
-	ReadyAt     pgtype.Timestamptz `json:"ready_at"`
-	HarvestedAt pgtype.Timestamptz `json:"harvested_at"`
-	GemsAwarded pgtype.Int4        `json:"gems_awarded"`
-	Metadata    []byte             `json:"metadata"`
+type CompostBin struct {
+	ID           uuid.UUID          `json:"id"`
+	UserID       uuid.UUID          `json:"user_id"`
+	Status       string             `json:"status"`
+	Capacity     int32              `json:"capacity"`
+	Items        []byte             `json:"items"`
+	ItemCount    int32              `json:"item_count"`
+	StartedAt    pgtype.Timestamptz `json:"started_at"`
+	ReadyAt      pgtype.Timestamptz `json:"ready_at"`
+	SludgeAt     pgtype.Timestamptz `json:"sludge_at"`
+	InputValue   int32              `json:"input_value"`
+	DominantType string             `json:"dominant_type"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
 }
 
 type ConfigSyncMetadatum struct {
@@ -30,11 +34,12 @@ type ConfigSyncMetadatum struct {
 }
 
 type CraftingRecipe struct {
-	RecipeID     int32            `json:"recipe_id"`
-	TargetItemID int32            `json:"target_item_id"`
-	BaseCost     []byte           `json:"base_cost"`
-	CreatedAt    pgtype.Timestamp `json:"created_at"`
-	RecipeKey    string           `json:"recipe_key"`
+	RecipeID         int32            `json:"recipe_id"`
+	TargetItemID     int32            `json:"target_item_id"`
+	BaseCost         []byte           `json:"base_cost"`
+	CreatedAt        pgtype.Timestamp `json:"created_at"`
+	RecipeKey        string           `json:"recipe_key"`
+	RequiredJobLevel int32            `json:"required_job_level"`
 }
 
 type DailyResetState struct {
@@ -174,6 +179,7 @@ type Item struct {
 	PublicName      pgtype.Text `json:"public_name"`
 	Handler         pgtype.Text `json:"handler"`
 	DefaultDisplay  pgtype.Text `json:"default_display"`
+	ContentType     []string    `json:"content_type"`
 }
 
 type ItemType struct {
@@ -379,6 +385,27 @@ type StatsEvent struct {
 	CreatedAt pgtype.Timestamp `json:"created_at"`
 }
 
+type SubscriptionHistory struct {
+	HistoryID    int64              `json:"history_id"`
+	UserID       uuid.UUID          `json:"user_id"`
+	Platform     string             `json:"platform"`
+	TierID       int32              `json:"tier_id"`
+	EventType    string             `json:"event_type"`
+	SubscribedAt pgtype.Timestamptz `json:"subscribed_at"`
+	ExpiresAt    pgtype.Timestamptz `json:"expires_at"`
+	Metadata     []byte             `json:"metadata"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+}
+
+type SubscriptionTier struct {
+	TierID      int32              `json:"tier_id"`
+	Platform    string             `json:"platform"`
+	TierName    string             `json:"tier_name"`
+	DisplayName string             `json:"display_name"`
+	TierLevel   int32              `json:"tier_level"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+}
+
 type User struct {
 	UserID    uuid.UUID        `json:"user_id"`
 	Username  string           `json:"username"`
@@ -420,12 +447,24 @@ type UserProgression struct {
 	Metadata        []byte           `json:"metadata"`
 }
 
+type UserSubscription struct {
+	UserID         uuid.UUID          `json:"user_id"`
+	Platform       string             `json:"platform"`
+	TierID         int32              `json:"tier_id"`
+	Status         string             `json:"status"`
+	SubscribedAt   pgtype.Timestamptz `json:"subscribed_at"`
+	ExpiresAt      pgtype.Timestamptz `json:"expires_at"`
+	LastVerifiedAt pgtype.Timestamptz `json:"last_verified_at"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+}
+
 // Stores active and historical trap placements
 type UserTrap struct {
 	ID             uuid.UUID          `json:"id"`
 	SetterID       uuid.UUID          `json:"setter_id"`
 	TargetID       uuid.UUID          `json:"target_id"`
-	ShineLevel     string             `json:"shine_level"`
+	QualityLevel   string             `json:"quality_level"`
 	TimeoutSeconds int32              `json:"timeout_seconds"`
 	PlacedAt       pgtype.Timestamptz `json:"placed_at"`
 	TriggeredAt    pgtype.Timestamptz `json:"triggered_at"`

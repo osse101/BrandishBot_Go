@@ -58,6 +58,7 @@ AND p.name = $2;
 -- name: GetItemByName :one
 SELECT 
     i.item_id, i.internal_name, i.public_name, i.default_display, i.item_description, i.base_value, i.handler,
+    i.content_type,
     COALESCE(array_agg(t.type_name) FILTER (WHERE t.type_name IS NOT NULL), '{}')::text[] as types
 FROM items i
 LEFT JOIN item_type_assignments ita ON i.item_id = ita.item_id
@@ -68,6 +69,7 @@ GROUP BY i.item_id;
 -- name: GetItemByPublicName :one
 SELECT 
     i.item_id, i.internal_name, i.public_name, i.default_display, i.item_description, i.base_value, i.handler,
+    i.content_type,
     COALESCE(array_agg(t.type_name) FILTER (WHERE t.type_name IS NOT NULL), '{}')::text[] as types
 FROM items i
 LEFT JOIN item_type_assignments ita ON i.item_id = ita.item_id
@@ -78,6 +80,7 @@ GROUP BY i.item_id;
 -- name: GetItemsByIDs :many
 SELECT 
     i.item_id, i.internal_name, i.public_name, i.default_display, i.item_description, i.base_value, i.handler,
+    i.content_type,
     COALESCE(array_agg(t.type_name) FILTER (WHERE t.type_name IS NOT NULL), '{}')::text[] as types
 FROM items i
 LEFT JOIN item_type_assignments ita ON i.item_id = ita.item_id
@@ -88,6 +91,7 @@ GROUP BY i.item_id;
 -- name: GetItemsByNames :many
 SELECT 
     i.item_id, i.internal_name, i.public_name, i.default_display, i.item_description, i.base_value, i.handler,
+    i.content_type,
     COALESCE(array_agg(t.type_name) FILTER (WHERE t.type_name IS NOT NULL), '{}')::text[] as types
 FROM items i
 LEFT JOIN item_type_assignments ita ON i.item_id = ita.item_id
@@ -98,6 +102,7 @@ GROUP BY i.item_id;
 -- name: GetItemByID :one
 SELECT 
     i.item_id, i.internal_name, i.public_name, i.default_display, i.item_description, i.base_value, i.handler,
+    i.content_type,
     COALESCE(array_agg(t.type_name) FILTER (WHERE t.type_name IS NOT NULL), '{}')::text[] as types
 FROM items i
 LEFT JOIN item_type_assignments ita ON i.item_id = ita.item_id
@@ -108,6 +113,7 @@ GROUP BY i.item_id;
 -- name: GetAllItems :many
 SELECT 
     i.item_id, i.internal_name, i.public_name, i.default_display, i.item_description, i.base_value, i.handler,
+    i.content_type,
     COALESCE(array_agg(t.type_name) FILTER (WHERE t.type_name IS NOT NULL), '{}')::text[] as types
 FROM items i
 LEFT JOIN item_type_assignments ita ON i.item_id = ita.item_id
@@ -152,7 +158,7 @@ WHERE ru.user_id = $1
 ORDER BY i.internal_name;
 
 -- name: GetAllRecipes :many
-SELECT i.internal_name AS item_name, r.target_item_id AS item_id, i.item_description
+SELECT i.internal_name AS item_name, r.target_item_id AS item_id, i.item_description, r.required_job_level
 FROM crafting_recipes r
 JOIN items i ON r.target_item_id = i.item_id
 ORDER BY i.internal_name;

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -17,9 +18,14 @@ import (
 	"github.com/osse101/BrandishBot_Go/mocks"
 )
 
-func TestHarvestHandler_Harvest(t *testing.T) {
-	// Initialize validator once for all tests
+func TestMain(m *testing.M) {
+	// Initialize validator once for all tests in this package to avoid race conditions
 	handler.InitValidator()
+	os.Exit(m.Run())
+}
+
+func TestHarvestHandler_Harvest(t *testing.T) {
+	t.Parallel()
 
 	// Define test cases
 	tests := []struct {
@@ -163,7 +169,9 @@ func TestHarvestHandler_Harvest(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt // Capture range variable
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			// Arrange
 			mockSvc := mocks.NewMockHarvestService(t)
 			if tt.setupMock != nil {
@@ -174,7 +182,7 @@ func TestHarvestHandler_Harvest(t *testing.T) {
 
 			var body []byte
 			var err error
-			if s, ok := tt.requestBody.(string); ok && tt.name == "Invalid Body (Malformed JSON)" {
+			if s, ok := tt.requestBody.(string); ok {
 				body = []byte(s)
 			} else {
 				body, err = json.Marshal(tt.requestBody)
@@ -193,11 +201,27 @@ func TestHarvestHandler_Harvest(t *testing.T) {
 			assert.Equal(t, tt.expectedStatus, w.Code)
 
 			if tt.expectedError != "" {
-				// Use lower case for contains check as error messages are often lowercased
-				assert.Contains(t, strings.ToLower(w.Body.String()), strings.ToLower(tt.expectedError))
+				// Parse JSON error response if possible
+				var errResp map[string]interface{}
+				if err := json.Unmarshal(w.Body.Bytes(), &errResp); err == nil {
+					// Check 'error' field first
+					if msg, ok := errResp["error"].(string); ok {
+						assert.Contains(t, strings.ToLower(msg), strings.ToLower(tt.expectedError))
+					} else {
+						// Validation errors might be in "fields" or elsewhere, but title might match
+						// If struct of error is different, fall back to string check of the whole body
+						assert.Contains(t, strings.ToLower(w.Body.String()), strings.ToLower(tt.expectedError))
+					}
+				} else {
+					// Fallback if not valid JSON
+					assert.Contains(t, strings.ToLower(w.Body.String()), strings.ToLower(tt.expectedError))
+				}
 			}
 
 			if tt.expectedBody != nil {
+				// Verify Content-Type
+				assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
+
 				var response domain.HarvestResponse
 				err := json.Unmarshal(w.Body.Bytes(), &response)
 				assert.NoError(t, err)

@@ -418,8 +418,8 @@ const (
 // ============================================================================
 
 const (
-	LootboxDisplayQuantityPrefix = "x "
-	LootboxShineAnnotationOpen   = " ["
-	LootboxShineAnnotationClose  = "!]"
-	LootboxDropSeparator         = ", "
+	LootboxDisplayQuantityPrefix  = "x "
+	LootboxQualityAnnotationOpen  = " ["
+	LootboxQualityAnnotationClose = "!]"
+	LootboxDropSeparator          = ", "
 )

@@ -1,12 +1,14 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
 
 	"github.com/osse101/BrandishBot_Go/internal/logger"
+	"github.com/osse101/BrandishBot_Go/internal/progression"
 )
 
 // DecodeAndValidateRequest decodes a JSON request body, validates it, and returns appropriate errors.
@@ -44,16 +46,21 @@ func DecodeAndValidateRequest(r *http.Request, w http.ResponseWriter, req interf
 
 	// Validate the request struct
 	if err := GetValidator().ValidateStruct(req); err != nil {
-		log.Warn("Invalid request", "error", err)
 		validationErrs := FormatValidationError(err)
-		respondJSON(w, http.StatusBadRequest, map[string]interface{}{
-			"error":  "Invalid request",
-			"fields": validationErrs,
+		respondJSON(w, http.StatusBadRequest, ValidationErrorResponse{
+			Error:  ErrMsgInvalidRequestSummary,
+			Fields: validationErrs,
 		})
 		return err
 	}
 
 	return nil
+}
+
+// ValidationErrorResponse defines the response structure for validation errors
+type ValidationErrorResponse struct {
+	Error  string            `json:"error"`
+	Fields map[string]string `json:"fields"`
 }
 
 // GetQueryParam retrieves and validates a required query parameter from the request.
@@ -121,4 +128,33 @@ func LogRequestFields(log *slog.Logger, keyvals ...interface{}) {
 		return
 	}
 	log.Debug("Request details", keyvals...)
+}
+
+// handleFeatureAction is a generic helper for handlers that perform an action protected by a feature flag.
+// It handles feature checking, request decoding/validation, service call, error handling, and JSON response.
+func handleFeatureAction[REQ any, RES any](
+	w http.ResponseWriter,
+	r *http.Request,
+	progSvc progression.Service,
+	featureKey string,
+	opName string,
+	action func(context.Context, REQ) (RES, error),
+	responseFactory func(RES) interface{},
+) {
+	if CheckFeatureLocked(w, r, progSvc, featureKey) {
+		return
+	}
+
+	var req REQ
+	if err := DecodeAndValidateRequest(r, w, &req, opName); err != nil {
+		return
+	}
+
+	res, err := action(r.Context(), req)
+	if err != nil {
+		respondServiceError(w, r, opName, err)
+		return
+	}
+
+	respondJSON(w, http.StatusCreated, responseFactory(res))
 }

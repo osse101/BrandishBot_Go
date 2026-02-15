@@ -42,6 +42,7 @@ type Config struct {
 	DBHost     string
 	DBPort     string
 	DBName     string
+	DBURL      string // Database connection URL (optional, overrides individual components)
 
 	// Database Pool
 	DBMaxConns        int
@@ -62,6 +63,11 @@ type Config struct {
 	EventMaxRetries     int           // Max retries for event publishing (default: 5)
 	EventRetryDelay     time.Duration // Base delay for exponential backoff (default: 2s)
 	EventDeadLetterPath string        // Path to dead-letter log file (default: logs/event_deadletter.jsonl)
+
+	// Subscription settings
+	SubscriptionCheckInterval   time.Duration // How often to check for expiring subscriptions (default: 6h)
+	SubscriptionDefaultDuration time.Duration // Default subscription length (default: 720h / 30 days)
+	SubscriptionGracePeriod     time.Duration // Grace period before marking expired (default: 24h)
 }
 
 // Load loads the configuration from environment variables
@@ -84,6 +90,7 @@ func Load() (*Config, error) {
 		DBHost:     getEnv("DB_HOST", "localhost"),
 		DBPort:     getEnv("DB_PORT", "5432"),
 		DBName:     getEnv("DB_NAME", "brandishbot"),
+		DBURL:      getEnv("DB_URL", ""),
 
 		// Database pool defaults
 		DBMaxConns:        getEnvAsInt("DB_MAX_CONNS", 20),
@@ -148,6 +155,11 @@ func Load() (*Config, error) {
 		}
 	}
 
+	// Subscription settings
+	cfg.SubscriptionCheckInterval = getEnvAsDuration("SUBSCRIPTION_CHECK_INTERVAL", 6*time.Hour)
+	cfg.SubscriptionDefaultDuration = getEnvAsDuration("SUBSCRIPTION_DEFAULT_DURATION", 720*time.Hour) // 30 days
+	cfg.SubscriptionGracePeriod = getEnvAsDuration("SUBSCRIPTION_GRACE_PERIOD", 24*time.Hour)
+
 	// Validate API key is set
 	if cfg.APIKey == "" {
 		return nil, fmt.Errorf("API_KEY environment variable must be set for security")
@@ -164,8 +176,13 @@ func getEnv(key, defaultValue string) string {
 	return defaultValue
 }
 
-// GetDBConnString returns the PostgreSQL connection string
+// GetDBConnString returns the PostgreSQL connection string.
+// If DBURL is set, it returns it directly. Otherwise, it constructs it from
+// individual components.
 func (c *Config) GetDBConnString() string {
+	if c.DBURL != "" {
+		return c.DBURL
+	}
 	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
 		c.DBUser,
 		c.DBPassword,

@@ -11,12 +11,12 @@ import (
 // and are eligible to be targeted by random weapons like grenades and TNT.
 type ActiveChatterTracker struct {
 	mu       sync.RWMutex
-	chatters map[string]*chatterInfo
+	chatters map[string]*ChatterInfo
 	stopCh   chan struct{}
 }
 
-// chatterInfo holds information about an active chatter
-type chatterInfo struct {
+// ChatterInfo holds information about an active chatter
+type ChatterInfo struct {
 	UserID        string
 	Username      string
 	Platform      string
@@ -33,7 +33,7 @@ const (
 // NewActiveChatterTracker creates a new tracker and starts the cleanup goroutine
 func NewActiveChatterTracker() *ActiveChatterTracker {
 	tracker := &ActiveChatterTracker{
-		chatters: make(map[string]*chatterInfo),
+		chatters: make(map[string]*ChatterInfo),
 		stopCh:   make(chan struct{}),
 	}
 	go tracker.cleanupLoop()
@@ -47,7 +47,7 @@ func (t *ActiveChatterTracker) Track(platform, userID, username string) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	t.chatters[key] = &chatterInfo{
+	t.chatters[key] = &ChatterInfo{
 		UserID:        userID,
 		Username:      username,
 		Platform:      platform,
@@ -65,7 +65,7 @@ func (t *ActiveChatterTracker) GetRandomTarget(platform string) (username string
 	expiryThreshold := now.Add(-ChatterExpiryDuration)
 
 	// Collect all active (non-expired) chatters for this platform
-	var activeChatters []*chatterInfo
+	var activeChatters []*ChatterInfo
 	for _, info := range t.chatters {
 		if info.Platform == platform && info.LastMessageAt.After(expiryThreshold) {
 			activeChatters = append(activeChatters, info)
@@ -98,7 +98,7 @@ func (t *ActiveChatterTracker) GetRandomTargets(platform string, count int) ([]T
 	expiryThreshold := now.Add(-ChatterExpiryDuration)
 
 	// Collect all active (non-expired) chatters for this platform
-	var activeChatters []*chatterInfo
+	var activeChatters []*ChatterInfo
 	for _, info := range t.chatters {
 		if info.Platform == platform && info.LastMessageAt.After(expiryThreshold) {
 			activeChatters = append(activeChatters, info)
@@ -203,4 +203,22 @@ func (t *ActiveChatterTracker) GetActiveCount(platform string) int {
 	}
 
 	return count
+}
+
+// GetActiveChatters returns all currently active chatters across all platforms
+func (t *ActiveChatterTracker) GetActiveChatters() []ChatterInfo {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+
+	now := time.Now()
+	expiryThreshold := now.Add(-ChatterExpiryDuration)
+
+	var active []ChatterInfo
+	for _, info := range t.chatters {
+		if info.LastMessageAt.After(expiryThreshold) {
+			active = append(active, *info)
+		}
+	}
+
+	return active
 }

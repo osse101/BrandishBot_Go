@@ -41,7 +41,7 @@ func TestIntegration_ActualConfigFiles(t *testing.T) {
 
 	// Test that it can resolve at least one item
 	// (Assumes production has lootbox_tier0)
-	displayName := resolver.GetDisplayName("lootbox_tier0", domain.ShineLevel(""))
+	displayName := resolver.GetDisplayName("lootbox_tier0", domain.QualityLevel(""))
 	assert.NotEmpty(t, displayName, "Should generate display name for lootbox_tier0")
 	t.Logf("Generated display name: %s", displayName)
 
@@ -145,7 +145,7 @@ func TestGetDisplayName_ThemeSelection(t *testing.T) {
 			// Mock active theme by temporarily setting it
 			// Note: This test shows the display name selection works
 			// The actual theme detection is tested separately
-			_ = r.GetDisplayName(tt.item, domain.ShineLevel(""))
+			_ = r.GetDisplayName(tt.item, domain.QualityLevel(""))
 
 			// Since we can't control time in GetDisplayName,
 			// we verify the mechanism works with direct alias pool access
@@ -205,13 +205,13 @@ func TestGetDisplayName_FallbackBehavior(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := tt.resolver.GetDisplayName(tt.itemName, domain.ShineLevel(""))
+			got := tt.resolver.GetDisplayName(tt.itemName, domain.QualityLevel(""))
 			assert.Equal(t, tt.want, got)
 		})
 	}
 }
 
-func TestGetDisplayName_ShineWithTheme(t *testing.T) {
+func TestGetDisplayName_QualityWithTheme(t *testing.T) {
 	r := &resolver{
 		aliases: map[string]AliasPool{
 			"item": {
@@ -222,19 +222,19 @@ func TestGetDisplayName_ShineWithTheme(t *testing.T) {
 	}
 
 	tests := []struct {
-		shine domain.ShineLevel
-		want  string
+		quality domain.QualityLevel
+		want    string
 	}{
-		{domain.ShineLevel(""), "Cool Item"},
-		{domain.ShineCommon, "Cool Item"}, // COMMON doesn't show prefix
-		{domain.ShineRare, "Cool Item"},
-		{domain.ShineEpic, "Cool Item"},
-		{domain.ShineLegendary, "Cool Item👑"},
+		{domain.QualityLevel(""), "Cool Item"},
+		{domain.QualityCommon, "Cool Item"}, // COMMON doesn't show prefix
+		{domain.QualityRare, "Cool Item"},
+		{domain.QualityEpic, "Cool Item"},
+		{domain.QualityLegendary, "Cool Item👑"},
 	}
 
 	for _, tt := range tests {
-		t.Run("shine_"+string(tt.shine), func(t *testing.T) {
-			got := r.GetDisplayName("item", tt.shine)
+		t.Run("quality_"+string(tt.quality), func(t *testing.T) {
+			got := r.GetDisplayName("item", tt.quality)
 			assert.Equal(t, tt.want, got)
 		})
 	}
@@ -279,7 +279,7 @@ func TestConcurrentAccess_ReloadDuringGetDisplayName(t *testing.T) {
 	// Goroutine 1: Keep getting display names
 	go func() {
 		for i := 0; i < 100; i++ {
-			_ = resolver.GetDisplayName("item", domain.ShineLevel(""))
+			_ = resolver.GetDisplayName("item", domain.QualityLevel(""))
 		}
 		done <- true
 	}()

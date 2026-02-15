@@ -524,3 +524,30 @@ A comprehensive audit of the repository memories and state was conducted to cons
 - **Database**: Migrations managed exclusively via `goose`.
 
 *Last updated: January 2026*
+
+---
+
+## 2026-02-06: Admin Dashboard & Subscription System
+
+### Context
+Major feature rollout including a React-based Admin Dashboard and a Subscription System integrated with Twitch/YouTube.
+
+### Implementation Details
+- **Admin Dashboard**:
+    - Embedded React SPA (`web/admin/`) served via `//go:embed`.
+    - Features: Health checks, Admin commands, Live SSE events, User management.
+    - Auth: API Key based.
+    - Architecture: `internal/admin` handles serving, `internal/handler/admin_*.go` provides API.
+- **Subscription System**:
+    - Tracks Tier 1/2/3 subscriptions and YouTube memberships.
+    - Background worker checks expirations and requests verification.
+    - Event-driven: Publishes `subscription.activated`, `subscription.renewed`, etc.
+
+### Documentation Updates
+- Consolidated documentation into `docs/features/`.
+- Moved `ADMIN_DASHBOARD.md`, `ADMIN_DASHBOARD_USAGE.md`, `SUBSCRIPTION_SYSTEM.md` to `docs/features/`.
+- Moved implementation details to `docs/architecture/ADMIN_DASHBOARD_IMPLEMENTATION.md`.
+
+### Key Learnings
+- **Embedded SPA**: Using `//go:embed` simplifies deployment but requires a rebuild for frontend changes.
+- **SSE**: Using `fetch` with `ReadableStream` allows custom headers (API Key) unlike `EventSource`.

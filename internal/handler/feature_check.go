@@ -34,7 +34,7 @@ func CheckFeatureLocked(w http.ResponseWriter, r *http.Request, svc progression.
 
 		log.Warn("Feature is locked",
 			"feature", key,
-			"reason", "progression_locked")
+			"reason", FeatureLockReasonProgression)
 
 		nodes, err := svc.GetRequiredNodes(r.Context(), key)
 		if err != nil {
@@ -50,7 +50,7 @@ func CheckFeatureLocked(w http.ResponseWriter, r *http.Request, svc progression.
 
 		msg := ErrMsgFeatureLocked
 		if len(names) > 0 {
-			msg = fmt.Sprintf("LOCKED_NODES: %s", strings.Join(names, ", "))
+			msg = fmt.Sprintf(MsgLockedNodesFormat, strings.Join(names, ", "))
 		}
 
 		respondError(w, http.StatusForbidden, msg)

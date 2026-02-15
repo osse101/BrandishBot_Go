@@ -9,14 +9,9 @@ import (
 // ExpectedEnvSchemaVersion is the schema version that the application expects
 const ExpectedEnvSchemaVersion = "1.0"
 
-// RequiredEnvVars lists all environment variables that must be set
+// RequiredEnvVars lists all environment variables that must be set (excluding database vars verified separately)
 var RequiredEnvVars = []string{
 	"ENV_SCHEMA_VERSION",
-	"DB_USER",
-	"DB_PASSWORD",
-	"DB_HOST",
-	"DB_PORT",
-	"DB_NAME",
 	"API_KEY",
 	"DISCORD_TOKEN",
 	"DISCORD_APP_ID",
@@ -42,6 +37,18 @@ func ValidateEnv() error {
 		if os.Getenv(envVar) == "" {
 			missing = append(missing, envVar)
 		}
+	}
+
+	// Check database configuration: individual DB_* vars
+	dbParts := []string{"DB_USER", "DB_PASSWORD", "DB_HOST", "DB_PORT", "DB_NAME"}
+	var missingParts []string
+	for _, part := range dbParts {
+		if os.Getenv(part) == "" {
+			missingParts = append(missingParts, part)
+		}
+	}
+	if len(missingParts) > 0 {
+		missing = append(missing, missingParts...)
 	}
 
 	if len(missing) > 0 {

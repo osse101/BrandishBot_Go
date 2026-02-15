@@ -28,7 +28,7 @@
         "progression_system"
       ],
       "sort_order": 1,
-      "auto_unlock": false
+      "auto_unlock": true
     },
     {
       "key": "item_lootbox0",
@@ -43,7 +43,7 @@
         "progression_system"
       ],
       "sort_order": 2,
-      "auto_unlock": false
+      "auto_unlock": true
     },
     {
       "key": "feature_economy",
@@ -73,7 +73,7 @@
         "item_lootbox0"
       ],
       "sort_order": 23,
-      "auto_unlock": false
+      "auto_unlock": true
     },
     {
       "key": "item_shovel",
@@ -353,14 +353,14 @@
       "type": "item",
       "description": "Target a player and time them out",
       "tier": 1,
-      "size": "medium",
+      "size": "small",
       "category": "weapon",
       "max_level": 1,
       "prerequisites": [
         "item_money"
       ],
       "sort_order": 110,
-      "auto_unlock": false
+      "auto_unlock": true
     },
     {
       "key": "item_mine",
@@ -530,7 +530,7 @@
       "modifier_config": {
         "feature_key": "farming_yield",
         "modifier_type": "multiplicative",
-        "base_value": 1.0,
+        "base_value": 1,
         "per_level_value": 0.1
       }
     },
@@ -567,7 +567,7 @@
       "modifier_config": {
         "feature_key": "progression_rate",
         "modifier_type": "multiplicative",
-        "base_value": 1.0,
+        "base_value": 1,
         "per_level_value": 0.1
       }
     },
@@ -603,7 +603,7 @@
       "modifier_config": {
         "feature_key": "progression_rate",
         "modifier_type": "multiplicative",
-        "base_value": 1.0,
+        "base_value": 1,
         "per_level_value": 0.1
       }
     },
@@ -624,7 +624,7 @@
       "modifier_config": {
         "feature_key": "progression_rate",
         "modifier_type": "multiplicative",
-        "base_value": 1.0,
+        "base_value": 1,
         "per_level_value": 0.1
       }
     },
@@ -666,7 +666,7 @@
       "modifier_config": {
         "feature_key": "search_quality",
         "modifier_type": "multiplicative",
-        "base_value": 1.0,
+        "base_value": 1,
         "per_level_value": 0.1
       }
     },
@@ -702,7 +702,7 @@
       "modifier_config": {
         "feature_key": "crafting_success_rate",
         "modifier_type": "multiplicative",
-        "base_value": 1.0,
+        "base_value": 1,
         "per_level_value": 0.1
       }
     },
@@ -723,7 +723,7 @@
       "modifier_config": {
         "feature_key": "farming_yield",
         "modifier_type": "multiplicative",
-        "base_value": 1.0,
+        "base_value": 1,
         "per_level_value": 0.1
       }
     },
@@ -789,7 +789,7 @@
       "modifier_config": {
         "feature_key": "economy_bonus",
         "modifier_type": "multiplicative",
-        "base_value": 1.0,
+        "base_value": 1,
         "per_level_value": 0.05
       }
     },
@@ -837,6 +837,21 @@
         "feature_economy"
       ],
       "sort_order": 51,
+      "auto_unlock": false
+    },
+    {
+      "key": "feature_slots",
+      "name": "Slots Minigame",
+      "type": "feature",
+      "description": "Unlock the slots machine - bet money for a chance to win big! 🎰",
+      "tier": 2,
+      "size": "medium",
+      "category": "gambling",
+      "max_level": 1,
+      "prerequisites": [
+        "feature_economy"
+      ],
+      "sort_order": 100,
       "auto_unlock": false
     }
   ]

@@ -2,7 +2,6 @@ package prediction
 
 import (
 	"github.com/osse101/BrandishBot_Go/internal/domain"
-	"github.com/osse101/BrandishBot_Go/internal/job"
 )
 
 const (
@@ -15,15 +14,17 @@ const (
 	GrenadeQuantity = 1                  // Number of grenades awarded to winner
 
 	// Logarithmic conversion formula parameters
-	// Formula: 1 + (log10(points/1000) / 3) * 99 + 10
-	PointsScaleDivisor = 1000.0 // Scale points to thousands
-	LogDivisor         = 3.0    // Divisor for log component
-	ScaleMultiplier    = 99.0   // Multiplier for scaling range
-	BaseContribution   = 1.0    // Base contribution value
-	BonusContribution  = 10.0   // Bonus contribution added to formula
+	// Formula: BaseContribution + (log10(points/PointsScaleDivisor) / LogDivisor) * ScaleMultiplier + BonusContribution
+	// Goal: 10,000 points = 1 contribution, 1,000,000 points = 50 contribution
+	PointsScaleDivisor = 10000.0 // Scale points starting at 10k
+	LogDivisor         = 2.0     // divisor such that log10(1,000,000/10,000) = 2.0
+	ScaleMultiplier    = 49.0    // Multiplier to span 1 to 50
+	BaseContribution   = 1.0     // Base contribution value at 10k points
+	BonusContribution  = 0.0     // No extra bonus needed for this scale
 
 	// Job and stat identifiers
-	GamblerJobKey         = job.JobKeyGambler
-	PredictionStatType    = "prediction_participation"
-	TotalPointsMetricType = "prediction_total_points"
+	GamblerJobKey                    = "gambler"
+	PredictionStatType               = "prediction_participation"
+	TotalPointsMetricType            = "prediction_total_points"
+	PredictionContributionMetricType = "prediction_contribution"
 )

@@ -30,8 +30,8 @@ type Resolver interface {
 	// ResolvePublicName converts a public name to internal name
 	ResolvePublicName(publicName string) (internalName string, ok bool)
 
-	// GetDisplayName generates a display name with optional shine prefix
-	GetDisplayName(internalName string, shineLevel domain.ShineLevel) string
+	// GetDisplayName generates a display name with optional quality prefix
+	GetDisplayName(internalName string, qualityLevel domain.QualityLevel) string
 
 	// GetActiveTheme returns the currently active theme based on date
 	GetActiveTheme() string
@@ -101,16 +101,16 @@ func (r *resolver) ResolvePublicName(publicName string) (string, bool) {
 	return internal, ok
 }
 
-// GetDisplayName generates a display name with optional shine prefix
-func (r *resolver) GetDisplayName(internalName string, shineLevel domain.ShineLevel) string {
+// GetDisplayName generates a display name with optional quality prefix
+func (r *resolver) GetDisplayName(internalName string, qualityLevel domain.QualityLevel) string {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
 	// Get alias pool for this item
 	pool, ok := r.aliases[internalName]
 	if !ok || (len(pool.Default) == 0 && len(pool.Themes) == 0) {
-		// No alias pool, return internal name with shine
-		return r.formatWithShine(internalName, shineLevel)
+		// No alias pool, return internal name with quality
+		return r.formatWithQuality(internalName, qualityLevel)
 	}
 
 	// Check for active theme
@@ -129,25 +129,25 @@ func (r *resolver) GetDisplayName(internalName string, shineLevel domain.ShineLe
 	}
 
 	if len(aliases) == 0 {
-		return r.formatWithShine(internalName, shineLevel)
+		return r.formatWithQuality(internalName, qualityLevel)
 	}
 
 	// Random selection from alias pool
 	alias := aliases[utils.RandomInt(0, len(aliases)-1)]
-	return r.formatWithShine(alias, shineLevel)
+	return r.formatWithQuality(alias, qualityLevel)
 }
 
-// formatWithShine adds shine level prefix if not COMMON
-func (r *resolver) formatWithShine(name string, shineLevel domain.ShineLevel) string {
-	shineLevelStr := string("")
-	switch shineLevel {
-	case domain.ShineCursed:
-		shineLevelStr = "👻"
-	case domain.ShineLegendary:
-		shineLevelStr = "👑"
+// formatWithQuality adds quality level prefix if not COMMON
+func (r *resolver) formatWithQuality(name string, qualityLevel domain.QualityLevel) string {
+	qualityLevelStr := string("")
+	switch qualityLevel {
+	case domain.QualityCursed:
+		qualityLevelStr = "👻"
+	case domain.QualityLegendary:
+		qualityLevelStr = "👑"
 	default:
 	}
-	return fmt.Sprintf(ShineFormatTemplate, name, shineLevelStr)
+	return fmt.Sprintf(QualityFormatTemplate, name, qualityLevelStr)
 }
 
 // GetActiveTheme returns the currently active theme

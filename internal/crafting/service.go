@@ -3,17 +3,13 @@ package crafting
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"math"
-	"sync"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
-	"github.com/osse101/BrandishBot_Go/internal/job"
+	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/naming"
-	"github.com/osse101/BrandishBot_Go/internal/quest"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
-	"github.com/osse101/BrandishBot_Go/internal/stats"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
@@ -40,6 +36,11 @@ type DisassembleResult struct {
 	Multiplier        float64        `json:"multiplier"`
 }
 
+// EventPublisher defines the interface for publishing events
+type EventPublisher interface {
+	PublishWithRetry(ctx context.Context, event event.Event)
+}
+
 // Service defines the interface for crafting operations
 type Service interface {
 	UpgradeItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (*Result, error)
@@ -50,38 +51,35 @@ type Service interface {
 	Shutdown(ctx context.Context) error
 }
 
-// JobService defines the interface for job operations
-type JobService interface {
-	AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error)
-}
-
 // ProgressionService defines the interface for progression operations
 type ProgressionService interface {
 	GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error)
+}
+
+// JobService defines the interface for checking job levels
+type JobService interface {
+	GetJobLevel(ctx context.Context, userID, jobKey string) (int, error)
 }
 
 // Crafting balance constants are defined in constants.go
 
 type service struct {
 	repo           repository.Crafting
-	jobService     JobService
+	eventPublisher EventPublisher
 	progressionSvc ProgressionService
-	statsSvc       stats.Service
+	jobService     JobService      // For checking job level requirements
 	namingResolver naming.Resolver // For resolving public names to internal names
-	questService   quest.Service
-	rnd            func() float64 // For rolling RNG (does not need to be cryptographically secure)
-	wg             sync.WaitGroup // Tracks async goroutines for graceful shutdown
+	rnd            func() float64  // For rolling RNG (does not need to be cryptographically secure)
 }
 
 // NewService creates a new crafting service
-func NewService(repo repository.Crafting, jobService JobService, statsSvc stats.Service, namingResolver naming.Resolver, progressionSvc ProgressionService, questService quest.Service) Service {
+func NewService(repo repository.Crafting, eventPublisher EventPublisher, namingResolver naming.Resolver, progressionSvc ProgressionService, jobService JobService) Service {
 	return &service{
 		repo:           repo,
-		jobService:     jobService,
+		eventPublisher: eventPublisher,
 		progressionSvc: progressionSvc,
-		statsSvc:       statsSvc,
+		jobService:     jobService,
 		namingResolver: namingResolver,
-		questService:   questService,
 		rnd:            utils.RandomFloat,
 	}
 }
@@ -175,7 +173,7 @@ func calculateMaxPossibleCrafts(inventory *domain.Inventory, recipe *domain.Reci
 }
 
 // consumeRecipeMaterials removes the required materials from inventory for crafting.
-// Returns the consumed materials with their shine levels for calculating output shine.
+// Returns the consumed materials with their quality levels for calculating output quality.
 func consumeRecipeMaterials(inventory *domain.Inventory, recipe *domain.Recipe, actualQuantity int, rnd func() float64) ([]domain.InventorySlot, error) {
 	allConsumed := make([]domain.InventorySlot, 0)
 
@@ -191,21 +189,21 @@ func consumeRecipeMaterials(inventory *domain.Inventory, recipe *domain.Recipe, 
 	return allConsumed, nil
 }
 
-// addItemToInventory adds items to the inventory with specified shine level.
-// Only stacks with slots that have matching ItemID AND ShineLevel.
-func addItemToInventory(inventory *domain.Inventory, itemID, quantity int, shineLevel domain.ShineLevel) {
-	// Find slot with matching ItemID and ShineLevel
+// addItemToInventory adds items to the inventory with specified quality level.
+// Only stacks with slots that have matching ItemID AND QualityLevel.
+func addItemToInventory(inventory *domain.Inventory, itemID, quantity int, qualityLevel domain.QualityLevel) {
+	// Find slot with matching ItemID and QualityLevel
 	for i, slot := range inventory.Slots {
-		if slot.ItemID == itemID && slot.ShineLevel == shineLevel {
+		if slot.ItemID == itemID && slot.QualityLevel == qualityLevel {
 			inventory.Slots[i].Quantity += quantity
 			return
 		}
 	}
-	// Item not found with matching shine, add new slot
+	// Item not found with matching quality, add new slot
 	inventory.Slots = append(inventory.Slots, domain.InventorySlot{
-		ItemID:     itemID,
-		Quantity:   quantity,
-		ShineLevel: shineLevel,
+		ItemID:       itemID,
+		Quantity:     quantity,
+		QualityLevel: qualityLevel,
 	})
 }
 
@@ -214,112 +212,120 @@ func (s *service) UpgradeItem(ctx context.Context, platform, platformID, usernam
 	log := logger.FromContext(ctx)
 	log.Info("UpgradeItem called", "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity)
 
-	// Validate inputs
-	if err := s.validateQuantity(quantity); err != nil {
+	// 1. Validate and resolve inputs
+	user, item, recipe, resolvedName, err := s.validateUpgradeInput(ctx, platform, platformID, itemName, quantity)
+	if err != nil {
 		return nil, err
+	}
+
+	// 1b. Check job level requirements (if any)
+	if recipe.RequiredJobLevel > 0 {
+		if s.jobService != nil {
+			// Get user's Blacksmith level
+			currentLevel, err := s.jobService.GetJobLevel(ctx, user.ID, "blacksmith")
+			if err != nil {
+				log.Error("Failed to check job level", "error", err, "userID", user.ID)
+				// Fail safe: if we can't check level, don't allow crafting high-tier items
+				return nil, fmt.Errorf("failed to verify job level requirements")
+			}
+
+			if currentLevel < recipe.RequiredJobLevel {
+				return nil, fmt.Errorf("requires Blacksmith Level %d (you are Level %d)", recipe.RequiredJobLevel, currentLevel)
+			}
+		} else {
+			// Should not happen in production if initialized correctly
+			log.Warn("Job service not initialized in crafting service, skipping level check")
+		}
+	}
+
+	// 2. Execute transaction
+	result, actualQuantity, err := s.executeUpgradeTx(ctx, user.ID, item.ID, recipe, quantity, resolvedName)
+	if err != nil {
+		return nil, err
+	}
+
+	// 3. Publish event
+	recipeKey := itemName
+	if recipe != nil && recipe.RecipeKey != "" {
+		recipeKey = recipe.RecipeKey
+	}
+	evt := NewItemUpgradedEvent(user.ID, itemName, actualQuantity, recipeKey, result.IsMasterwork, result.BonusQuantity)
+	s.eventPublisher.PublishWithRetry(ctx, evt)
+
+	log.Info("Items upgraded", "username", username, "item", itemName, "quantity", result.Quantity, "masterwork", result.IsMasterwork)
+	return result, nil
+}
+
+func (s *service) validateUpgradeInput(ctx context.Context, platform, platformID, itemName string, quantity int) (*domain.User, *domain.Item, *domain.Recipe, string, error) {
+	if err := s.validateQuantity(quantity); err != nil {
+		return nil, nil, nil, "", err
 	}
 	if err := s.validatePlatformInput(platform, platformID); err != nil {
-		return nil, err
+		return nil, nil, nil, "", err
 	}
 	if err := s.validateItemName(itemName); err != nil {
-		return nil, err
+		return nil, nil, nil, "", err
 	}
 
-	// Resolve public name to internal name
 	resolvedName, err := s.resolveItemName(ctx, itemName)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, "", err
 	}
 
-	// Validate user and item
 	user, err := s.validateUser(ctx, platform, platformID)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, "", err
 	}
 
 	item, err := s.validateItem(ctx, resolvedName)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, "", err
 	}
 
-	// Get and validate recipe
 	recipe, err := s.getAndValidateRecipe(ctx, item.ID, user.ID, resolvedName)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, "", err
 	}
 
-	// Begin transaction
+	return user, item, recipe, resolvedName, nil
+}
+
+func (s *service) executeUpgradeTx(ctx context.Context, userID string, itemID int, recipe *domain.Recipe, requestedQuantity int, resolvedName string) (*Result, int, error) {
 	tx, err := s.repo.BeginTx(ctx)
 	if err != nil {
-		log.Error("Failed to begin transaction", "error", err)
-		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+		return nil, 0, fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer repository.SafeRollback(ctx, tx)
 
-	// Get inventory and calculate actual quantity
-	inventory, err := tx.GetInventory(ctx, user.ID)
+	inventory, err := tx.GetInventory(ctx, userID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get inventory: %w", err)
+		return nil, 0, fmt.Errorf("failed to get inventory: %w", err)
 	}
 
-	maxPossible := calculateMaxPossibleCrafts(inventory, recipe, quantity)
-	if maxPossible == 0 {
-		return nil, fmt.Errorf("insufficient materials to craft %s | %w", itemName, domain.ErrInsufficientQuantity)
+	actualQuantity := calculateMaxPossibleCrafts(inventory, recipe, requestedQuantity)
+	if actualQuantity == 0 {
+		return nil, 0, fmt.Errorf("insufficient materials | %w", domain.ErrInsufficientQuantity)
 	}
 
-	actualQuantity := maxPossible
-	if actualQuantity > quantity {
-		actualQuantity = quantity
-	}
-
-	// Consume materials and track what was consumed for shine averaging
 	consumedMaterials, err := consumeRecipeMaterials(inventory, recipe, actualQuantity, s.rnd)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
-	// Calculate average shine from consumed materials
-	outputShine := utils.CalculateAverageShine(consumedMaterials)
+	outputQuality := utils.CalculateAverageQuality(consumedMaterials)
+	result := s.calculateUpgradeOutput(ctx, userID, resolvedName, actualQuantity)
 
-	// Calculate output
-	result := s.calculateUpgradeOutput(ctx, user.ID, resolvedName, actualQuantity)
+	addItemToInventory(inventory, itemID, result.Quantity, outputQuality)
 
-	// Add crafted item with averaged shine level
-	addItemToInventory(inventory, item.ID, result.Quantity, outputShine)
-
-	// Update inventory and commit
-	if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
-		return nil, fmt.Errorf("failed to update inventory: %w", err)
+	if err := tx.UpdateInventory(ctx, userID, *inventory); err != nil {
+		return nil, 0, fmt.Errorf("failed to update inventory: %w", err)
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+		return nil, 0, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	// Award Blacksmith XP (don't fail upgrade if XP award fails)
-	// Run async with detached context to prevent cancellation affecting XP award
-	s.wg.Add(1)
-	go s.awardBlacksmithXP(context.Background(), user.ID, actualQuantity, "upgrade", itemName)
-
-	// Track quest progress (async, fire-and-forget)
-	if s.questService != nil {
-		s.wg.Add(1)
-		go func() {
-			defer s.wg.Done()
-			// Extract recipe key from the recipe
-			recipeKey := resolvedName // Use item name as fallback
-			if recipe != nil && recipe.RecipeKey != "" {
-				recipeKey = recipe.RecipeKey
-			}
-			if err := s.questService.OnRecipeCrafted(context.Background(), user.ID, recipeKey, actualQuantity); err != nil {
-				slog.Warn("Failed to track quest progress for crafting", "error", err, "item", itemName)
-			}
-		}()
-	}
-
-	log.Info("Items upgraded", "username", username, "item", itemName, "quantity", result.Quantity, "masterwork", result.IsMasterwork)
-
-	return result, nil
+	return result, actualQuantity, nil
 }
 
 func (s *service) getAndValidateRecipe(ctx context.Context, itemID int, userID string, itemName string) (*domain.Recipe, error) {
@@ -370,15 +376,7 @@ func (s *service) calculateUpgradeOutput(ctx context.Context, userID string, ite
 	masterworkTriggered := masterworkCount > 0
 	if masterworkTriggered {
 		log.Info("Masterwork craft triggered!", "user_id", userID, "item", itemName, "count", masterworkCount, "bonus", outputQuantity-actualQuantity)
-
-		if s.statsSvc != nil {
-			_ = s.statsSvc.RecordUserEvent(ctx, userID, domain.EventCraftingCriticalSuccess, map[string]interface{}{
-				"item_name":         itemName,
-				"original_quantity": actualQuantity,
-				"masterwork_count":  masterworkCount,
-				"bonus_quantity":    outputQuantity - actualQuantity,
-			})
-		}
+		// Stats event is now handled by event subscriber
 	}
 
 	return &Result{
@@ -480,8 +478,8 @@ func (s *service) GetAllRecipes(ctx context.Context) ([]repository.RecipeListIte
 }
 
 // processDisassembleOutputs adds disassemble outputs to inventory and builds result map.
-// Outputs inherit the averaged shine level from the consumed source items.
-func (s *service) processDisassembleOutputs(ctx context.Context, inventory *domain.Inventory, outputs []domain.RecipeOutput, actualQuantity int, perfectSalvageCount int, outputShine domain.ShineLevel) (map[string]int, error) {
+// Outputs inherit the averaged quality level from the consumed source items.
+func (s *service) processDisassembleOutputs(ctx context.Context, inventory *domain.Inventory, outputs []domain.RecipeOutput, actualQuantity int, perfectSalvageCount int, outputQuality domain.QualityLevel) (map[string]int, error) {
 	outputMap := make(map[string]int)
 
 	// Collect IDs
@@ -527,11 +525,11 @@ func (s *service) processDisassembleOutputs(ctx context.Context, inventory *doma
 		}
 		outputMap[outputItem.InternalName] = totalOutput
 
-		// Prepare for batch add - outputs inherit averaged shine from source items
+		// Prepare for batch add - outputs inherit averaged quality from source items
 		itemsToAdd = append(itemsToAdd, domain.InventorySlot{
-			ItemID:     output.ItemID,
-			Quantity:   totalOutput,
-			ShineLevel: outputShine,
+			ItemID:       output.ItemID,
+			Quantity:     totalOutput,
+			QualityLevel: outputQuality,
 		})
 	}
 
@@ -570,27 +568,17 @@ func (s *service) DisassembleItem(ctx context.Context, platform, platformID, use
 
 	perfectSalvageTriggered := perfectSalvageCount > 0
 	if perfectSalvageTriggered {
-		s.recordPerfectSalvageEvent(ctx, user.ID, itemName, actualQuantity, perfectSalvageCount)
+		log.Info("Perfect Salvage triggered!", "user_id", user.ID, "item", itemName, "quantity", actualQuantity, "perfect_count", perfectSalvageCount)
+		// Stats event is now handled by event subscriber
 	}
 
-	// Award Blacksmith XP (don't fail disassemble if XP award fails)
-	s.wg.Add(1)
-	go s.awardBlacksmithXP(context.Background(), user.ID, actualQuantity, "disassemble", itemName)
-
-	// Track quest progress (async, fire-and-forget)
-	if s.questService != nil {
-		s.wg.Add(1)
-		go func() {
-			defer s.wg.Done()
-			recipeKey := itemName // Use item name as fallback
-			if recipe != nil && recipe.RecipeKey != "" {
-				recipeKey = recipe.RecipeKey
-			}
-			if err := s.questService.OnRecipeCrafted(context.Background(), user.ID, recipeKey, actualQuantity); err != nil {
-				slog.Warn("Failed to track quest progress for disassemble", "error", err, "item", itemName)
-			}
-		}()
+	// Publish event
+	recipeKey := itemName // Use item name as fallback
+	if recipe != nil && recipe.RecipeKey != "" {
+		recipeKey = recipe.RecipeKey
 	}
+	evt := NewItemDisassembledEvent(user.ID, itemName, actualQuantity, recipeKey, perfectSalvageTriggered, perfectSalvageCount, PerfectSalvageMultiplier, outputMap)
+	s.eventPublisher.PublishWithRetry(ctx, evt)
 
 	log.Info("Items disassembled", "username", username, "item", itemName, "quantity", actualQuantity, "outputs", outputMap, "perfect_salvage", perfectSalvageTriggered)
 	return &DisassembleResult{
@@ -643,53 +631,10 @@ func (s *service) calculateDisassembleQuantity(inventory *domain.Inventory, item
 	return actualQuantity, nil
 }
 
-// awardBlacksmithXP awards Blacksmith job XP for crafting operations
-// NOTE: Caller must call s.wg.Add(1) before launching this in a goroutine
-func (s *service) awardBlacksmithXP(ctx context.Context, userID string, quantity int, source, itemName string) {
-	defer s.wg.Done()
-
-	if s.jobService == nil {
-		return // Job system not enabled
-	}
-
-	// Use exported constant for XP per item
-	totalXP := job.BlacksmithXPPerItem * quantity
-
-	metadata := map[string]interface{}{
-		"source":    source,
-		"item_name": itemName,
-		"quantity":  quantity,
-	}
-
-	result, err := s.jobService.AwardXP(ctx, userID, job.JobKeyBlacksmith, totalXP, source, metadata)
-	if err != nil {
-		// Log but don't fail the operation
-		logger.FromContext(ctx).Warn("Failed to award Blacksmith XP", "error", err, "user_id", userID)
-	} else if result != nil && result.LeveledUp {
-		logger.FromContext(ctx).Info("Blacksmith leveled up!", "user_id", userID, "new_level", result.NewLevel)
-	}
-}
-
 // Shutdown gracefully shuts down the crafting service by waiting for all async operations to complete
 func (s *service) Shutdown(ctx context.Context) error {
-	log := logger.FromContext(ctx)
-	log.Info("Shutting down crafting service, waiting for async operations...")
-
-	// Wait for all async XP awards to complete
-	done := make(chan struct{})
-	go func() {
-		s.wg.Wait()
-		close(done)
-	}()
-
-	select {
-	case <-done:
-		log.Info("Crafting service shutdown complete")
-		return nil
-	case <-ctx.Done():
-		log.Warn("Crafting service shutdown forced by context cancellation")
-		return ctx.Err()
-	}
+	// No more async operations to wait for
+	return nil
 }
 
 func (s *service) validateDisassembleInput(ctx context.Context, platform, platformID, itemName string) (*domain.User, *domain.Item, *domain.DisassembleRecipe, error) {
@@ -733,21 +678,21 @@ func (s *service) executeDisassembleTx(ctx context.Context, userID string, itemI
 		return 0, 0, nil, err
 	}
 
-	// Remove source items and track what was consumed for shine averaging
+	// Remove source items and track what was consumed for quality averaging
 	totalConsumed := recipe.QuantityConsumed * actualQuantity
 	consumedItems, err := utils.ConsumeItemsWithTracking(inventory, itemID, totalConsumed, s.rnd)
 	if err != nil {
 		return 0, 0, nil, fmt.Errorf("failed to consume disassemble items: %w", err)
 	}
 
-	// Calculate average shine from consumed source items
-	outputShine := utils.CalculateAverageShine(consumedItems)
+	// Calculate average quality from consumed source items
+	outputQuality := utils.CalculateAverageQuality(consumedItems)
 
 	// Calculate perfect salvage
-	perfectSalvageCount := s.calculatePerfectSalvage(actualQuantity)
+	perfectSalvageCount := s.calculatePerfectSalvage(ctx, actualQuantity)
 
-	// Process outputs with averaged shine from source materials
-	outputMap, err := s.processDisassembleOutputs(ctx, inventory, recipe.Outputs, actualQuantity, perfectSalvageCount, outputShine)
+	// Process outputs with averaged quality from source materials
+	outputMap, err := s.processDisassembleOutputs(ctx, inventory, recipe.Outputs, actualQuantity, perfectSalvageCount, outputQuality)
 	if err != nil {
 		return 0, 0, nil, err
 	}
@@ -763,13 +708,11 @@ func (s *service) executeDisassembleTx(ctx context.Context, userID string, itemI
 	return actualQuantity, perfectSalvageCount, outputMap, nil
 }
 
-func (s *service) calculatePerfectSalvage(quantity int) int {
+func (s *service) calculatePerfectSalvage(ctx context.Context, quantity int) int {
 	// Get modified perfect salvage chance (base 0.10 = 10%)
 	// Note: Using same modifier key as masterwork since they're both "crafting success"
 	salvageChance := PerfectSalvageChance
 	if s.progressionSvc != nil {
-		// Use background context since we don't have ctx in this helper
-		ctx := context.Background()
 		if modifiedChance, err := s.progressionSvc.GetModifiedValue(ctx, "crafting_success_rate", PerfectSalvageChance); err == nil {
 			salvageChance = modifiedChance
 		}
@@ -783,17 +726,4 @@ func (s *service) calculatePerfectSalvage(quantity int) int {
 		}
 	}
 	return count
-}
-
-func (s *service) recordPerfectSalvageEvent(ctx context.Context, userID, itemName string, actualQuantity, perfectCount int) {
-	logger.FromContext(ctx).Info("Perfect Salvage triggered!", "user_id", userID, "item", itemName, "quantity", actualQuantity, "perfect_count", perfectCount)
-
-	if s.statsSvc != nil {
-		_ = s.statsSvc.RecordUserEvent(ctx, userID, domain.EventCraftingPerfectSalvage, map[string]interface{}{
-			"item_name":     itemName,
-			"quantity":      actualQuantity,
-			"perfect_count": perfectCount,
-			"multiplier":    PerfectSalvageMultiplier,
-		})
-	}
 }

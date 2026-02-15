@@ -83,6 +83,187 @@ func (_c *MockStatsService_GetLeaderboard_Call) RunAndReturn(run func(context.Co
 	return _c
 }
 
+// GetSlotsLeaderboardByMegaJackpots provides a mock function with given fields: ctx, period, limit
+func (_m *MockStatsService) GetSlotsLeaderboardByMegaJackpots(ctx context.Context, period string, limit int) ([]domain.SlotsStats, error) {
+	ret := _m.Called(ctx, period, limit)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetSlotsLeaderboardByMegaJackpots")
+	}
+
+	var r0 []domain.SlotsStats
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, int) ([]domain.SlotsStats, error)); ok {
+		return rf(ctx, period, limit)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, int) []domain.SlotsStats); ok {
+		r0 = rf(ctx, period, limit)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]domain.SlotsStats)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, int) error); ok {
+		r1 = rf(ctx, period, limit)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockStatsService_GetSlotsLeaderboardByMegaJackpots_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetSlotsLeaderboardByMegaJackpots'
+type MockStatsService_GetSlotsLeaderboardByMegaJackpots_Call struct {
+	*mock.Call
+}
+
+// GetSlotsLeaderboardByMegaJackpots is a helper method to define mock.On call
+//   - ctx context.Context
+//   - period string
+//   - limit int
+func (_e *MockStatsService_Expecter) GetSlotsLeaderboardByMegaJackpots(ctx interface{}, period interface{}, limit interface{}) *MockStatsService_GetSlotsLeaderboardByMegaJackpots_Call {
+	return &MockStatsService_GetSlotsLeaderboardByMegaJackpots_Call{Call: _e.mock.On("GetSlotsLeaderboardByMegaJackpots", ctx, period, limit)}
+}
+
+func (_c *MockStatsService_GetSlotsLeaderboardByMegaJackpots_Call) Run(run func(ctx context.Context, period string, limit int)) *MockStatsService_GetSlotsLeaderboardByMegaJackpots_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(int))
+	})
+	return _c
+}
+
+func (_c *MockStatsService_GetSlotsLeaderboardByMegaJackpots_Call) Return(_a0 []domain.SlotsStats, _a1 error) *MockStatsService_GetSlotsLeaderboardByMegaJackpots_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockStatsService_GetSlotsLeaderboardByMegaJackpots_Call) RunAndReturn(run func(context.Context, string, int) ([]domain.SlotsStats, error)) *MockStatsService_GetSlotsLeaderboardByMegaJackpots_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetSlotsLeaderboardByProfit provides a mock function with given fields: ctx, period, limit
+func (_m *MockStatsService) GetSlotsLeaderboardByProfit(ctx context.Context, period string, limit int) ([]domain.SlotsStats, error) {
+	ret := _m.Called(ctx, period, limit)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetSlotsLeaderboardByProfit")
+	}
+
+	var r0 []domain.SlotsStats
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, int) ([]domain.SlotsStats, error)); ok {
+		return rf(ctx, period, limit)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, int) []domain.SlotsStats); ok {
+		r0 = rf(ctx, period, limit)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]domain.SlotsStats)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, int) error); ok {
+		r1 = rf(ctx, period, limit)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockStatsService_GetSlotsLeaderboardByProfit_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetSlotsLeaderboardByProfit'
+type MockStatsService_GetSlotsLeaderboardByProfit_Call struct {
+	*mock.Call
+}
+
+// GetSlotsLeaderboardByProfit is a helper method to define mock.On call
+//   - ctx context.Context
+//   - period string
+//   - limit int
+func (_e *MockStatsService_Expecter) GetSlotsLeaderboardByProfit(ctx interface{}, period interface{}, limit interface{}) *MockStatsService_GetSlotsLeaderboardByProfit_Call {
+	return &MockStatsService_GetSlotsLeaderboardByProfit_Call{Call: _e.mock.On("GetSlotsLeaderboardByProfit", ctx, period, limit)}
+}
+
+func (_c *MockStatsService_GetSlotsLeaderboardByProfit_Call) Run(run func(ctx context.Context, period string, limit int)) *MockStatsService_GetSlotsLeaderboardByProfit_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(int))
+	})
+	return _c
+}
+
+func (_c *MockStatsService_GetSlotsLeaderboardByProfit_Call) Return(_a0 []domain.SlotsStats, _a1 error) *MockStatsService_GetSlotsLeaderboardByProfit_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockStatsService_GetSlotsLeaderboardByProfit_Call) RunAndReturn(run func(context.Context, string, int) ([]domain.SlotsStats, error)) *MockStatsService_GetSlotsLeaderboardByProfit_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetSlotsLeaderboardByWinRate provides a mock function with given fields: ctx, period, minSpins, limit
+func (_m *MockStatsService) GetSlotsLeaderboardByWinRate(ctx context.Context, period string, minSpins int, limit int) ([]domain.SlotsStats, error) {
+	ret := _m.Called(ctx, period, minSpins, limit)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetSlotsLeaderboardByWinRate")
+	}
+
+	var r0 []domain.SlotsStats
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, int, int) ([]domain.SlotsStats, error)); ok {
+		return rf(ctx, period, minSpins, limit)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, int, int) []domain.SlotsStats); ok {
+		r0 = rf(ctx, period, minSpins, limit)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]domain.SlotsStats)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, int, int) error); ok {
+		r1 = rf(ctx, period, minSpins, limit)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockStatsService_GetSlotsLeaderboardByWinRate_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetSlotsLeaderboardByWinRate'
+type MockStatsService_GetSlotsLeaderboardByWinRate_Call struct {
+	*mock.Call
+}
+
+// GetSlotsLeaderboardByWinRate is a helper method to define mock.On call
+//   - ctx context.Context
+//   - period string
+//   - minSpins int
+//   - limit int
+func (_e *MockStatsService_Expecter) GetSlotsLeaderboardByWinRate(ctx interface{}, period interface{}, minSpins interface{}, limit interface{}) *MockStatsService_GetSlotsLeaderboardByWinRate_Call {
+	return &MockStatsService_GetSlotsLeaderboardByWinRate_Call{Call: _e.mock.On("GetSlotsLeaderboardByWinRate", ctx, period, minSpins, limit)}
+}
+
+func (_c *MockStatsService_GetSlotsLeaderboardByWinRate_Call) Run(run func(ctx context.Context, period string, minSpins int, limit int)) *MockStatsService_GetSlotsLeaderboardByWinRate_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(int), args[3].(int))
+	})
+	return _c
+}
+
+func (_c *MockStatsService_GetSlotsLeaderboardByWinRate_Call) Return(_a0 []domain.SlotsStats, _a1 error) *MockStatsService_GetSlotsLeaderboardByWinRate_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockStatsService_GetSlotsLeaderboardByWinRate_Call) RunAndReturn(run func(context.Context, string, int, int) ([]domain.SlotsStats, error)) *MockStatsService_GetSlotsLeaderboardByWinRate_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetSystemStats provides a mock function with given fields: ctx, period
 func (_m *MockStatsService) GetSystemStats(ctx context.Context, period string) (*domain.StatsSummary, error) {
 	ret := _m.Called(ctx, period)
@@ -199,6 +380,66 @@ func (_c *MockStatsService_GetUserCurrentStreak_Call) RunAndReturn(run func(cont
 	return _c
 }
 
+// GetUserSlotsStats provides a mock function with given fields: ctx, userID, period
+func (_m *MockStatsService) GetUserSlotsStats(ctx context.Context, userID string, period string) (*domain.SlotsStats, error) {
+	ret := _m.Called(ctx, userID, period)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetUserSlotsStats")
+	}
+
+	var r0 *domain.SlotsStats
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) (*domain.SlotsStats, error)); ok {
+		return rf(ctx, userID, period)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) *domain.SlotsStats); ok {
+		r0 = rf(ctx, userID, period)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*domain.SlotsStats)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = rf(ctx, userID, period)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockStatsService_GetUserSlotsStats_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetUserSlotsStats'
+type MockStatsService_GetUserSlotsStats_Call struct {
+	*mock.Call
+}
+
+// GetUserSlotsStats is a helper method to define mock.On call
+//   - ctx context.Context
+//   - userID string
+//   - period string
+func (_e *MockStatsService_Expecter) GetUserSlotsStats(ctx interface{}, userID interface{}, period interface{}) *MockStatsService_GetUserSlotsStats_Call {
+	return &MockStatsService_GetUserSlotsStats_Call{Call: _e.mock.On("GetUserSlotsStats", ctx, userID, period)}
+}
+
+func (_c *MockStatsService_GetUserSlotsStats_Call) Run(run func(ctx context.Context, userID string, period string)) *MockStatsService_GetUserSlotsStats_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockStatsService_GetUserSlotsStats_Call) Return(_a0 *domain.SlotsStats, _a1 error) *MockStatsService_GetUserSlotsStats_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockStatsService_GetUserSlotsStats_Call) RunAndReturn(run func(context.Context, string, string) (*domain.SlotsStats, error)) *MockStatsService_GetUserSlotsStats_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetUserStats provides a mock function with given fields: ctx, userID, period
 func (_m *MockStatsService) GetUserStats(ctx context.Context, userID string, period string) (*domain.StatsSummary, error) {
 	ret := _m.Called(ctx, userID, period)
@@ -260,7 +501,7 @@ func (_c *MockStatsService_GetUserStats_Call) RunAndReturn(run func(context.Cont
 }
 
 // RecordUserEvent provides a mock function with given fields: ctx, userID, eventType, metadata
-func (_m *MockStatsService) RecordUserEvent(ctx context.Context, userID string, eventType domain.EventType, metadata map[string]interface{}) error {
+func (_m *MockStatsService) RecordUserEvent(ctx context.Context, userID string, eventType domain.EventType, metadata interface{}) error {
 	ret := _m.Called(ctx, userID, eventType, metadata)
 
 	if len(ret) == 0 {
@@ -268,7 +509,7 @@ func (_m *MockStatsService) RecordUserEvent(ctx context.Context, userID string, 
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, domain.EventType, map[string]interface{}) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, domain.EventType, interface{}) error); ok {
 		r0 = rf(ctx, userID, eventType, metadata)
 	} else {
 		r0 = ret.Error(0)
@@ -286,14 +527,14 @@ type MockStatsService_RecordUserEvent_Call struct {
 //   - ctx context.Context
 //   - userID string
 //   - eventType domain.EventType
-//   - metadata map[string]interface{}
+//   - metadata interface{}
 func (_e *MockStatsService_Expecter) RecordUserEvent(ctx interface{}, userID interface{}, eventType interface{}, metadata interface{}) *MockStatsService_RecordUserEvent_Call {
 	return &MockStatsService_RecordUserEvent_Call{Call: _e.mock.On("RecordUserEvent", ctx, userID, eventType, metadata)}
 }
 
-func (_c *MockStatsService_RecordUserEvent_Call) Run(run func(ctx context.Context, userID string, eventType domain.EventType, metadata map[string]interface{})) *MockStatsService_RecordUserEvent_Call {
+func (_c *MockStatsService_RecordUserEvent_Call) Run(run func(ctx context.Context, userID string, eventType domain.EventType, metadata interface{})) *MockStatsService_RecordUserEvent_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(domain.EventType), args[3].(map[string]interface{}))
+		run(args[0].(context.Context), args[1].(string), args[2].(domain.EventType), args[3].(interface{}))
 	})
 	return _c
 }
@@ -303,7 +544,7 @@ func (_c *MockStatsService_RecordUserEvent_Call) Return(_a0 error) *MockStatsSer
 	return _c
 }
 
-func (_c *MockStatsService_RecordUserEvent_Call) RunAndReturn(run func(context.Context, string, domain.EventType, map[string]interface{}) error) *MockStatsService_RecordUserEvent_Call {
+func (_c *MockStatsService_RecordUserEvent_Call) RunAndReturn(run func(context.Context, string, domain.EventType, interface{}) error) *MockStatsService_RecordUserEvent_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -3,42 +3,24 @@ package repository
 import (
 	"context"
 
-	"github.com/google/uuid"
-
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
-// Compost defines the interface for compost data access
-type Compost interface {
-	CreateDeposit(ctx context.Context, deposit *domain.CompostDeposit) error
-	GetDeposit(ctx context.Context, id uuid.UUID) (*domain.CompostDeposit, error)
-	GetActiveDepositsForUser(ctx context.Context, userID uuid.UUID) ([]domain.CompostDeposit, error)
-	GetReadyDepositsForUser(ctx context.Context, userID uuid.UUID) ([]domain.CompostDeposit, error)
-	HarvestDeposit(ctx context.Context, id uuid.UUID, gemsAwarded int) error
-	HarvestAllReady(ctx context.Context, userID uuid.UUID) (int, error) // Returns total gems awarded
-
-	// Transaction support
-	BeginTx(ctx context.Context) (Tx, error)
-	BeginCompostTx(ctx context.Context) (CompostTx, error)
-
-	// User operations
+// CompostRepository defines the interface for compost data access
+type CompostRepository interface {
+	GetBin(ctx context.Context, userID string) (*domain.CompostBin, error)
+	CreateBin(ctx context.Context, userID string) (*domain.CompostBin, error)
+	GetAllItems(ctx context.Context) ([]domain.Item, error)
 	GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error)
-
-	// Inventory operations
-	GetInventory(ctx context.Context, userID string) (*domain.Inventory, error)
-	UpdateInventory(ctx context.Context, userID string, inventory domain.Inventory) error
+	BeginTx(ctx context.Context) (CompostTx, error)
 }
 
-// CompostTx extends Tx with compost-specific transactional operations
+// CompostTx defines transactional compost operations
 type CompostTx interface {
 	Tx // Commit, Rollback
-
-	// Compost operations within transaction
-	CreateDeposit(ctx context.Context, deposit *domain.CompostDeposit) error
-	GetReadyDepositsForUser(ctx context.Context, userID uuid.UUID) ([]domain.CompostDeposit, error)
-	HarvestDeposit(ctx context.Context, id uuid.UUID, gemsAwarded int) error
-
-	// Inventory operations within transaction
+	GetBinForUpdate(ctx context.Context, userID string) (*domain.CompostBin, error)
+	UpdateBin(ctx context.Context, bin *domain.CompostBin) error
+	ResetBin(ctx context.Context, userID string) error
 	GetInventory(ctx context.Context, userID string) (*domain.Inventory, error)
-	UpdateInventory(ctx context.Context, userID string, inventory domain.Inventory) error
+	UpdateInventory(ctx context.Context, userID string, inv domain.Inventory) error
 }

@@ -7,13 +7,21 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
+// ItemHandlerArgs contains arguments for item handlers
+type ItemHandlerArgs struct {
+	Username       string
+	Platform       string
+	TargetUsername string
+	JobName        string
+}
+
 // ItemHandler defines the interface for handling item effects
 type ItemHandler interface {
 	// CanHandle returns true if this handler can process the given item
 	CanHandle(itemName string) bool
 
 	// Handle processes the item effect and returns a result message
-	Handle(ctx context.Context, s *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args map[string]interface{}) (string, error)
+	Handle(ctx context.Context, s *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args ItemHandlerArgs) (string, error)
 }
 
 // HandlerRegistry manages item effect handlers
@@ -60,7 +68,7 @@ func (h *LootboxHandler) CanHandle(itemName string) bool {
 }
 
 // Handle processes lootbox opening
-func (h *LootboxHandler) Handle(ctx context.Context, s *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args map[string]interface{}) (string, error) {
+func (h *LootboxHandler) Handle(ctx context.Context, s *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args ItemHandlerArgs) (string, error) {
 	return s.processLootbox(ctx, user, inventory, item, quantity)
 }
 
@@ -82,7 +90,7 @@ func (h *WeaponHandler) CanHandle(itemName string) bool {
 }
 
 // Handle processes weapon usage
-func (h *WeaponHandler) Handle(ctx context.Context, s *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args map[string]interface{}) (string, error) {
+func (h *WeaponHandler) Handle(ctx context.Context, s *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args ItemHandlerArgs) (string, error) {
 	return s.handleWeapon(ctx, s, user, inventory, item, quantity, args)
 }
 
@@ -98,7 +106,7 @@ func (h *ReviveHandler) CanHandle(itemName string) bool {
 }
 
 // Handle processes revive usage
-func (h *ReviveHandler) Handle(ctx context.Context, s *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args map[string]interface{}) (string, error) {
+func (h *ReviveHandler) Handle(ctx context.Context, s *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args ItemHandlerArgs) (string, error) {
 	return s.handleRevive(ctx, s, user, inventory, item, quantity, args)
 }
 
@@ -112,7 +120,7 @@ func (h *ShieldHandler) CanHandle(itemName string) bool {
 }
 
 // Handle processes shield activation
-func (h *ShieldHandler) Handle(ctx context.Context, s *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args map[string]interface{}) (string, error) {
+func (h *ShieldHandler) Handle(ctx context.Context, s *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args ItemHandlerArgs) (string, error) {
 	return s.handleShield(ctx, s, user, inventory, item, quantity, args)
 }
 
@@ -126,7 +134,7 @@ func (h *RareCandyHandler) CanHandle(itemName string) bool {
 }
 
 // Handle processes rare candy usage
-func (h *RareCandyHandler) Handle(ctx context.Context, s *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args map[string]interface{}) (string, error) {
+func (h *RareCandyHandler) Handle(ctx context.Context, s *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args ItemHandlerArgs) (string, error) {
 	return s.handleRareCandy(ctx, s, user, inventory, item, quantity, args)
 }
 
@@ -139,7 +147,7 @@ func (h *ResourceGeneratorHandler) CanHandle(itemName string) bool {
 }
 
 // Handle processes resource generation
-func (h *ResourceGeneratorHandler) Handle(ctx context.Context, s *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args map[string]interface{}) (string, error) {
+func (h *ResourceGeneratorHandler) Handle(ctx context.Context, s *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args ItemHandlerArgs) (string, error) {
 	return s.handleResourceGenerator(ctx, s, user, inventory, item, quantity, args)
 }
 
@@ -152,7 +160,7 @@ func (h *UtilityHandler) CanHandle(itemName string) bool {
 }
 
 // Handle processes utility item usage
-func (h *UtilityHandler) Handle(ctx context.Context, s *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args map[string]interface{}) (string, error) {
+func (h *UtilityHandler) Handle(ctx context.Context, s *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args ItemHandlerArgs) (string, error) {
 	return s.handleUtility(ctx, s, user, inventory, item, quantity, args)
 }
 
@@ -166,6 +174,6 @@ func (h *TrapHandler) CanHandle(itemName string) bool {
 }
 
 // Handle processes trap placement
-func (h *TrapHandler) Handle(ctx context.Context, s *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args map[string]interface{}) (string, error) {
+func (h *TrapHandler) Handle(ctx context.Context, s *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args ItemHandlerArgs) (string, error) {
 	return s.handleTrap(ctx, s, user, inventory, item, quantity, args)
 }

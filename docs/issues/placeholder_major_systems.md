@@ -2,7 +2,7 @@
 
 ## Description
 
-The Duel and Expedition systems are currently functionally blocked by "not implemented" placeholders in core service methods. While the infrastructure (migrations, routes, basic service structure) is present, the actual game logic for resolving these events is missing.
+The Duel and Compost systems are currently functionally blocked by "not implemented" placeholders in core service methods.
 
 ### 1. Duel System Incomplete
 
@@ -12,20 +12,30 @@ The `internal/duel/service.go` method `Accept` is a placeholder.
 - **Root Cause**: Missing coin-flip/dice-roll logic and winner awarding logic.
 - **Location**: `internal/duel/service.go:90`.
 
-### 2. Expedition System Incomplete
+### 2. Compost System Incomplete
 
-The `internal/expedition/service.go` method `ExecuteExpedition` is a placeholder.
+The `internal/compost/service.go` method `Harvest` and parts of `Deposit` are placeholders.
 
-- **Impact**: Campaigns/Expeditions can be started and joined, but they can never complete or award rewards.
-- **Root Cause**: Missing loot table resolution and participant reward distribution logic.
-- **Location**: `internal/expedition/service.go:153`.
+- **Impact**: Users cannot recycle items or claim rewards.
+- **Root Cause**: Missing implementation logic.
+- **Location**: `internal/compost/service.go`.
+
+### 3. Expedition System (Resolved)
+
+Previously incomplete, the Expedition system (`internal/expedition/service.go`) is now fully implemented with `ExecuteExpedition` logic and background workers.
 
 ## Proposed Solution
 
 - Implement the resolution logic for Duels including random winner selection and reward distribution.
-- Implement the Expedition execution logic, integrating with the `LootboxService` and handling multi-participant reward splits.
-- Add background workers or scheduler jobs to handle timeouts/expirations for both systems (ref: `gamble_worker.go`).
+- Implement the Compost system for item recycling.
+- Add background workers or scheduler jobs to handle timeouts/expirations for Duels.
 
 ## Status Update (2026-01-30)
 
 Verified that `internal/duel/service.go` (`Accept`) and `internal/expedition/service.go` (`ExecuteExpedition`) still return "not implemented" errors. The issue persists.
+
+## Status Update (2026-02-06)
+
+- **Expeditions**: `ExecuteExpedition` is now implemented. Issue resolved for Expeditions.
+- **Duels**: Still incomplete.
+- **Compost**: Identified as incomplete. Added to this tracking issue.

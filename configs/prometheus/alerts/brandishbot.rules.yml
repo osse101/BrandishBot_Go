@@ -1,0 +1,90 @@
+# BrandishBot Alert Rules
+# These alerts monitor API health, performance, and event system
+
+groups:
+  - name: brandishbot_api_alerts
+    interval: 30s
+    rules:
+      # High HTTP Error Rate
+      - alert: HighHTTPErrorRate
+        expr: |
+          sum(rate(http_requests_total{status=~"5.."}[5m])) by (job)
+          /
+          sum(rate(http_requests_total[5m])) by (job)
+          > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "High HTTP error rate on {{ $labels.job }}"
+          description: "Error rate is {{ $value | humanizePercentage }} (threshold: 5%)"
+
+      # High API Latency
+      - alert: HighAPILatency
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (le, job)
+          ) > 1.0
+        for: 5m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "High API latency on {{ $labels.job }}"
+          description: "95th percentile latency is {{ $value }}s (threshold: 1s)"
+
+      # Event Handler Errors
+      - alert: EventHandlerErrors
+        expr: |
+          rate(events_handler_errors_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: events
+        annotations:
+          summary: "Event handler errors detected"
+          description: "Error rate: {{ $value }} errors/sec for event type {{ $labels.type }}"
+
+      # High In-Flight Requests
+      - alert: HighInFlightRequests
+        expr: |
+          http_requests_in_flight > 100
+        for: 5m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "High number of concurrent requests"
+          description: "{{ $value }} requests in flight (threshold: 100)"
+
+  - name: brandishbot_business_alerts
+    interval: 60s
+    rules:
+      # Unusual Item Activity
+      - alert: UnusualItemActivity
+        expr: |
+          rate(items_sold_total[1h]) > 100
+          or
+          rate(items_bought_total[1h]) > 100
+        for: 15m
+        labels:
+          severity: info
+          component: economy
+        annotations:
+          summary: "Unusual item trading activity"
+          description: "High item trading rate detected: {{ $value }} items/sec"
+
+      # Money Flow Imbalance
+      - alert: MoneyFlowImbalance
+        expr: |
+          abs(
+            rate(money_earned_total[1h]) - rate(money_spent_total[1h])
+          ) > 10000
+        for: 30m
+        labels:
+          severity: info
+          component: economy
+        annotations:
+          summary: "Economy imbalance detected"
+          description: "Money flow imbalance: {{ $value }} units/sec difference"

@@ -114,7 +114,7 @@ func TestConcurrentAddItem_Integration(t *testing.T) {
 // mockNamingResolver is a minimal implementation for testing
 type mockNamingResolver struct{}
 
-func (m *mockNamingResolver) GetDisplayName(internalName string, shineLevel domain.ShineLevel) string {
+func (m *mockNamingResolver) GetDisplayName(internalName string, qualityLevel domain.QualityLevel) string {
 	return internalName
 }
 

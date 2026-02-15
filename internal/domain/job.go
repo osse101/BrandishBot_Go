@@ -26,15 +26,47 @@ type UserJob struct {
 	LastXPGain    *time.Time `json:"last_xp_gain,omitempty"`
 }
 
+// JobXPMetadata represents structured metadata for XP gain events
+type JobXPMetadata struct {
+	Source           string                 `json:"source,omitempty"`
+	ItemName         string                 `json:"item_name,omitempty"`
+	Quantity         int                    `json:"quantity,omitempty"`
+	IsMasterwork     bool                   `json:"is_masterwork,omitempty"`
+	IsPerfectSalvage bool                   `json:"is_perfect_salvage,omitempty"`
+	BetAmount        int                    `json:"bet_amount,omitempty"`
+	PayoutAmount     int                    `json:"payout_amount,omitempty"`
+	TriggerType      string                 `json:"trigger_type,omitempty"`
+	HoursElapsed     float64                `json:"hours_elapsed,omitempty"`
+	HoursWaited      float64                `json:"hours_waited,omitempty"`
+	Spoiled          bool                   `json:"spoiled,omitempty"`
+	InputValue       int                    `json:"input_value,omitempty"`
+	IsSludge         bool                   `json:"is_sludge,omitempty"`
+	ExpeditionID     string                 `json:"expedition_id,omitempty"`
+	GambleID         string                 `json:"gamble_id,omitempty"`
+	Value            int                    `json:"value,omitempty"`
+	IsCritical       bool                   `json:"is_critical,omitempty"`
+	IsNearMiss       bool                   `json:"is_near_miss,omitempty"`
+	IsFirstDaily     bool                   `json:"is_first_daily,omitempty"`
+	MetricType       string                 `json:"metric_type,omitempty"`
+	QuestKey         string                 `json:"quest_key,omitempty"`
+	QuestID          int64                  `json:"quest_id,omitempty"`
+	Username         string                 `json:"username,omitempty"`
+	IsWinner         bool                   `json:"is_winner,omitempty"`
+	Platform         string                 `json:"platform,omitempty"`
+	JobName          string                 `json:"job_name,omitempty"`
+	XPTotal          int                    `json:"xp_total,omitempty"`
+	Extras           map[string]interface{} `json:"extras,omitempty"` // For remaining unstructured data
+}
+
 // JobXPEvent records an XP gain event for auditing
 type JobXPEvent struct {
-	ID             uuid.UUID              `json:"id"`
-	UserID         string                 `json:"user_id"`
-	JobID          int                    `json:"job_id"`
-	XPAmount       int                    `json:"xp_amount"`
-	SourceType     string                 `json:"source_type"`     // "upgrade", "search", "gamble"
-	SourceMetadata map[string]interface{} `json:"source_metadata"` // flexible metadata
-	RecordedAt     time.Time              `json:"recorded_at"`
+	ID             uuid.UUID     `json:"id"`
+	UserID         string        `json:"user_id"`
+	JobID          int           `json:"job_id"`
+	XPAmount       int           `json:"xp_amount"`
+	SourceType     string        `json:"source_type"`     // "upgrade", "search", "gamble"
+	SourceMetadata JobXPMetadata `json:"source_metadata"` // structured metadata
+	RecordedAt     time.Time     `json:"recorded_at"`
 }
 
 // JobLevelBonus defines bonuses available at certain job levels

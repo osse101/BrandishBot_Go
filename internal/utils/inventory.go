@@ -11,8 +11,8 @@ import (
 // Map overhead ~30µs vs Linear ~2µs for M=5, N=1000
 const InventoryLookupLinearScanThreshold = 10
 
-// FindSlot finds a slot with the given item ID in an inventory (ignores ShineLevel).
-// Use FindSlotWithShine when ShineLevel matters for stacking.
+// FindSlot finds a slot with the given item ID in an inventory (ignores QualityLevel).
+// Use FindSlotWithQuality when QualityLevel matters for stacking.
 // Returns the index of the slot and the quantity found.
 // Returns -1, 0 if not found.
 func FindSlot(inventory *domain.Inventory, itemID int) (int, int) {
@@ -24,13 +24,13 @@ func FindSlot(inventory *domain.Inventory, itemID int) (int, int) {
 	return -1, 0
 }
 
-// FindSlotWithShine finds a slot with matching ItemID AND ShineLevel.
-// This should be used when adding items to prevent shine-level corruption.
+// FindSlotWithQuality finds a slot with matching ItemID AND QualityLevel.
+// This should be used when adding items to prevent quality-level corruption.
 // Returns the index of the slot and the quantity found.
 // Returns -1, 0 if not found.
-func FindSlotWithShine(inventory *domain.Inventory, itemID int, shineLevel domain.ShineLevel) (int, int) {
+func FindSlotWithQuality(inventory *domain.Inventory, itemID int, qualityLevel domain.QualityLevel) (int, int) {
 	for i, slot := range inventory.Slots {
-		if slot.ItemID == itemID && slot.ShineLevel == shineLevel {
+		if slot.ItemID == itemID && slot.QualityLevel == qualityLevel {
 			return i, slot.Quantity
 		}
 	}
@@ -65,20 +65,20 @@ func FindRandomSlot(inventory *domain.Inventory, itemID int, rnd func() float64)
 	return slotIdx, inventory.Slots[slotIdx].Quantity
 }
 
-// SlotKey is a composite key for inventory slot lookups that respects ShineLevel.
-// Items should only stack if both ItemID and ShineLevel match.
+// SlotKey is a composite key for inventory slot lookups that respects QualityLevel.
+// Items should only stack if both ItemID and QualityLevel match.
 type SlotKey struct {
-	ItemID     int
-	ShineLevel domain.ShineLevel
+	ItemID       int
+	QualityLevel domain.QualityLevel
 }
 
-// BuildSlotMap creates a map of (ItemID, ShineLevel) to slot index for O(1) lookups.
+// BuildSlotMap creates a map of (ItemID, QualityLevel) to slot index for O(1) lookups.
 // This is useful when adding many items to an inventory to avoid repeated linear scans.
-// Items only stack if both ItemID and ShineLevel match.
+// Items only stack if both ItemID and QualityLevel match.
 func BuildSlotMap(inventory *domain.Inventory) map[SlotKey]int {
 	slotMap := make(map[SlotKey]int, len(inventory.Slots))
 	for i, slot := range inventory.Slots {
-		key := SlotKey{ItemID: slot.ItemID, ShineLevel: slot.ShineLevel}
+		key := SlotKey{ItemID: slot.ItemID, QualityLevel: slot.QualityLevel}
 		slotMap[key] = i
 	}
 	return slotMap
@@ -101,7 +101,7 @@ func RemoveFromSlot(inventory *domain.Inventory, slotIndex, quantity int) {
 // AddItemsToInventory adds multiple items to inventory using a hybrid lookup strategy.
 // For small batches (< InventoryLookupLinearScanThreshold), uses linear scan to avoid map allocation overhead.
 // For larger batches, uses map-based lookup for O(N+M) complexity.
-// Items only stack if BOTH ItemID and ShineLevel match - this prevents shine corruption.
+// Items only stack if BOTH ItemID and QualityLevel match - this prevents quality corruption.
 // The slotMap parameter is optional and will be created if nil and needed.
 func AddItemsToInventory(inventory *domain.Inventory, items []domain.InventorySlot, slotMap map[SlotKey]int) {
 	if len(items) == 0 {
@@ -117,23 +117,23 @@ func AddItemsToInventory(inventory *domain.Inventory, items []domain.InventorySl
 
 	for _, item := range items {
 		if useMap {
-			// Map-based lookup with composite key (ItemID + ShineLevel)
-			key := SlotKey{ItemID: item.ItemID, ShineLevel: item.ShineLevel}
+			// Map-based lookup with composite key (ItemID + QualityLevel)
+			key := SlotKey{ItemID: item.ItemID, QualityLevel: item.QualityLevel}
 			if idx, exists := slotMap[key]; exists {
 				inventory.Slots[idx].Quantity += item.Quantity
 			} else {
 				inventory.Slots = append(inventory.Slots, domain.InventorySlot{
-					ItemID:     item.ItemID,
-					Quantity:   item.Quantity,
-					ShineLevel: item.ShineLevel,
+					ItemID:       item.ItemID,
+					Quantity:     item.Quantity,
+					QualityLevel: item.QualityLevel,
 				})
 				slotMap[key] = len(inventory.Slots) - 1
 			}
 		} else {
-			// Linear scan - match both ItemID and ShineLevel
+			// Linear scan - match both ItemID and QualityLevel
 			found := false
 			for i := range inventory.Slots {
-				if inventory.Slots[i].ItemID == item.ItemID && inventory.Slots[i].ShineLevel == item.ShineLevel {
+				if inventory.Slots[i].ItemID == item.ItemID && inventory.Slots[i].QualityLevel == item.QualityLevel {
 					inventory.Slots[i].Quantity += item.Quantity
 					found = true
 					break
@@ -141,9 +141,9 @@ func AddItemsToInventory(inventory *domain.Inventory, items []domain.InventorySl
 			}
 			if !found {
 				inventory.Slots = append(inventory.Slots, domain.InventorySlot{
-					ItemID:     item.ItemID,
-					Quantity:   item.Quantity,
-					ShineLevel: item.ShineLevel,
+					ItemID:       item.ItemID,
+					Quantity:     item.Quantity,
+					QualityLevel: item.QualityLevel,
 				})
 			}
 		}
@@ -161,8 +161,8 @@ func GetTotalQuantity(inventory *domain.Inventory, itemID int) int {
 	return total
 }
 
-// ConsumeItemsWithTracking removes items and returns what was consumed with shine levels.
-// Useful for crafting to calculate average shine of output from consumed materials.
+// ConsumeItemsWithTracking removes items and returns what was consumed with quality levels.
+// Useful for crafting to calculate average quality of output from consumed materials.
 // Returns the consumed slots and any error.
 func ConsumeItemsWithTracking(inventory *domain.Inventory, itemID int, quantity int, rnd func() float64) ([]domain.InventorySlot, error) {
 	totalAvailable := GetTotalQuantity(inventory, itemID)
@@ -204,11 +204,11 @@ func ConsumeItemsWithTracking(inventory *domain.Inventory, itemID int, quantity 
 		reductions[idx] = take
 		remaining -= take
 
-		// Track what was consumed with shine level
+		// Track what was consumed with quality level
 		consumed = append(consumed, domain.InventorySlot{
-			ItemID:     inventory.Slots[idx].ItemID,
-			Quantity:   take,
-			ShineLevel: inventory.Slots[idx].ShineLevel,
+			ItemID:       inventory.Slots[idx].ItemID,
+			Quantity:     take,
+			QualityLevel: inventory.Slots[idx].QualityLevel,
 		})
 	}
 

@@ -29,6 +29,8 @@ func (c *Config) GetCooldownDuration(action string) time.Duration {
 	switch action {
 	case domain.ActionSearch:
 		return domain.SearchCooldownDuration
+	case domain.ActionSlots:
+		return domain.SlotsCooldownDuration
 	default:
 		// Unknown action - use default
 		return DefaultCooldownDuration

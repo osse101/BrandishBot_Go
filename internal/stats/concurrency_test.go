@@ -138,6 +138,22 @@ func (m *ThreadSafeMockRepository) GetTotalEventCount(ctx context.Context, start
 	return count, nil
 }
 
+func (m *ThreadSafeMockRepository) GetUserSlotsStats(ctx context.Context, userID string, startTime, endTime time.Time) (*domain.SlotsStats, error) {
+	return nil, nil
+}
+
+func (m *ThreadSafeMockRepository) GetSlotsLeaderboardByProfit(ctx context.Context, startTime, endTime time.Time, limit int) ([]domain.SlotsStats, error) {
+	return nil, nil
+}
+
+func (m *ThreadSafeMockRepository) GetSlotsLeaderboardByWinRate(ctx context.Context, startTime, endTime time.Time, minSpins, limit int) ([]domain.SlotsStats, error) {
+	return nil, nil
+}
+
+func (m *ThreadSafeMockRepository) GetSlotsLeaderboardByMegaJackpots(ctx context.Context, startTime, endTime time.Time, limit int) ([]domain.SlotsStats, error) {
+	return nil, nil
+}
+
 func TestConcurrency_RecordUserEvent(t *testing.T) {
 	// Use a thread-safe mock repo because we want to test the SERVICE concurrency,
 	// not the mock repo's lack of thread safety.

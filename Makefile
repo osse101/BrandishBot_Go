@@ -1,7 +1,6 @@
 .PHONY: help migrate-up migrate-down migrate-status migrate-create test build run clean docker-build docker-up docker-down deploy-staging deploy-production rollback-staging rollback-production health-check-staging health-check-prod install-hooks reset-staging seed-staging validate-staging admin-install admin-dev admin-build admin-clean
 
 # Tool paths
-GOOSE   := go run github.com/pressly/goose/v3/cmd/goose
 SWAG    := go run github.com/swaggo/swag/cmd/swag
 LINT    := go run github.com/golangci/golangci-lint/cmd/golangci-lint
 MOCKERY := go run github.com/vektra/mockery/v2
@@ -52,6 +51,14 @@ help:
 	@echo "  make docker-build-fast    - Build Docker images (with cache, faster for dev)"
 	@echo "  make docker-version       - Show version of local Docker image"
 	@echo ""
+	@echo "Monitoring Commands:"
+	@echo "  make monitoring-up        - Start Prometheus + Grafana"
+	@echo "  make monitoring-down      - Stop monitoring stack"
+	@echo "  make monitoring-restart   - Restart monitoring services"
+	@echo "  make monitoring-logs      - View monitoring logs"
+	@echo "  make monitoring-status    - Check monitoring health"
+	@echo "  make prometheus-reload    - Hot reload Prometheus config"
+	@echo ""
 	@echo "Test Database Commands:"
 	@echo "  make test-integration     - Run integration tests (uses testcontainers)"
 	@echo "  make test-staging         - Run staging integration tests"
@@ -86,15 +93,15 @@ DB_URL ?= postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?
 # Migration commands
 migrate-up:
 	@echo "Running migrations..."
-	@$(GOOSE) -dir migrations postgres "$(DB_URL)" up
+	@go run ./cmd/devtool migrate up
 
 migrate-down:
 	@echo "Rolling back migration..."
-	@$(GOOSE) -dir migrations postgres "$(DB_URL)" down
+	@go run ./cmd/devtool migrate down
 
 migrate-status:
 	@echo "Migration status:"
-	@$(GOOSE) -dir migrations postgres "$(DB_URL)" status
+	@go run ./cmd/devtool migrate status
 
 migrate-create:
 	@if [ -z "$(NAME)" ]; then \
@@ -102,7 +109,7 @@ migrate-create:
 		exit 1; \
 	fi
 	@echo "Creating migration: $(NAME)"
-	@$(GOOSE) -dir migrations create $(NAME) sql
+	@go run ./cmd/devtool migrate create $(NAME)
 
 # Development commands
 test:
@@ -124,21 +131,9 @@ watch:
 	fi
 
 test-coverage:
-	@echo "Generating coverage report..."
-	@if [ ! -f logs/coverage.out ]; then \
-		echo "Coverage profile not found. Running tests..."; \
-		$(MAKE) test; \
-	fi
-	@go tool cover -html=logs/coverage.out -o logs/coverage.html
-	@echo "Coverage report generated: logs/coverage.html"
-	@go run ./cmd/devtool check-coverage logs/coverage.out 0
+	@go run ./cmd/devtool check-coverage --html logs/coverage.out 0
 
 test-coverage-check:
-	@echo "Checking coverage threshold (80%)..."
-	@if [ ! -f logs/coverage.out ]; then \
-		echo "Coverage profile not found. Running tests..."; \
-		$(MAKE) test; \
-	fi
 	@go run ./cmd/devtool check-coverage logs/coverage.out 80
 
 lint:
@@ -151,10 +146,7 @@ lint-fix:
 
 install-hooks:
 	@echo "Installing git hooks..."
-	@echo "#!/bin/sh" > .git/hooks/pre-commit
-	@echo "go run ./cmd/devtool pre-commit" >> .git/hooks/pre-commit
-	@chmod +x .git/hooks/pre-commit
-	@echo "✓ Git hooks installed"
+	@go run ./cmd/devtool install-hooks
 
 # Benchmark commands
 .PHONY: bench bench-hot bench-save bench-baseline bench-compare bench-profile
@@ -179,18 +171,7 @@ bench-profile:
 
 # Build targets
 build:
-	@echo "Building all binaries to bin/..."
-	@mkdir -p bin
-	@VERSION=$$(git describe --tags --always --dirty 2>/dev/null || echo "dev"); \
-	BUILD_TIME=$$(date -u '+%Y-%m-%d_%H:%M'); \
-	GIT_COMMIT=$$(git rev-parse --short HEAD 2>/dev/null || echo "unknown"); \
-	LDFLAGS="-X github.com/osse101/BrandishBot_Go/internal/handler.Version=$$VERSION \
-	         -X github.com/osse101/BrandishBot_Go/internal/handler.BuildTime=$$BUILD_TIME \
-	         -X github.com/osse101/BrandishBot_Go/internal/handler.GitCommit=$$GIT_COMMIT"; \
-	go build -ldflags "$$LDFLAGS" -o bin/app ./cmd/app; \
-	go build -ldflags "$$LDFLAGS" -o bin/discord_bot ./cmd/discord
-	@echo "✓ Built: bin/app"
-	@echo "✓ Built: bin/discord_bot"
+	@go run ./cmd/devtool build
 
 # Discord bot - Run locally
 .PHONY: discord-run
@@ -305,11 +286,11 @@ docker-logs:
 
 push-staging:
 	@echo "Pushing staging image..."
-	@./scripts/push_image.sh staging $$(git describe --tags --always --dirty)
+	@go run ./cmd/devtool push staging $$(git describe --tags --always --dirty)
 
 push-production:
 	@echo "Pushing production image..."
-	@./scripts/push_image.sh production $$(git describe --tags --always --dirty)
+	@go run ./cmd/devtool push production $$(git describe --tags --always --dirty)
 
 # Test database commands
 test-integration:
@@ -318,8 +299,8 @@ test-integration:
 
 test-staging:
 	@echo "Running staging integration tests..."
-	@echo "Target: $${STAGING_URL:-http://localhost:8081}"
-	@STAGING_URL=$${STAGING_URL:-http://localhost:8081} go test -tags=staging -v ./tests/staging
+	@echo "Target: $${API_URL:-http://localhost:8081}"
+	@API_URL=$${API_URL:-http://localhost:8081} go test -tags=staging -v ./tests/staging
 
 db-test-up:
 	@echo "Starting test database..."
@@ -333,25 +314,24 @@ db-test-down:
 
 migrate-up-test:
 	@echo "Running migrations on test database..."
-	@goose -dir migrations postgres "postgres://testuser:testpass@localhost:5433/testdb?sslmode=disable" up
+	@DB_URL="postgres://testuser:testpass@localhost:5433/testdb?sslmode=disable" go run ./cmd/devtool migrate up
 
 migrate-down-test:
 	@echo "Rolling back test database migration..."
-	@goose -dir migrations postgres "postgres://testuser:testpass@localhost:5433/testdb?sslmode=disable" down
+	@DB_URL="postgres://testuser:testpass@localhost:5433/testdb?sslmode=disable" go run ./cmd/devtool migrate down
 
 migrate-status-test:
 	@echo "Test database migration status:"
-	@goose -dir migrations postgres "postgres://testuser:testpass@localhost:5433/testdb?sslmode=disable" status
+	@DB_URL="postgres://testuser:testpass@localhost:5433/testdb?sslmode=disable" go run ./cmd/devtool migrate status
 
 db-seed-test:
 	@echo "Seeding test database..."
-	@docker exec -i brandishbot_test_db psql -U testuser -d testdb < scripts/setup_test_user.sql
-	@docker exec -i brandishbot_test_db psql -U testuser -d testdb < scripts/seed_test_recipe.sql
+	@DB_URL="postgres://testuser:testpass@localhost:5433/testdb?sslmode=disable" go run ./cmd/devtool seed test
 	@echo "Test database seeded successfully"
 
 db-export:
 	@echo "Exporting production database..."
-	@docker exec brandishbot_go-db-1 pg_dump -U $(DB_USER) -d $(DB_NAME) > backup.sql
+	@docker compose exec -T db pg_dump -U $(DB_USER) -d $(DB_NAME) > backup.sql
 	@echo "Database exported to backup.sql"
 
 db-import:
@@ -368,25 +348,25 @@ db-clean-test:
 # Deployment commands
 deploy-staging:
 	@echo "Deploying to staging..."
-	@./scripts/deploy.sh staging $$(git describe --tags --always)
+	@go run ./cmd/devtool deploy staging $$(git describe --tags --always)
 
 deploy-production:
 	@echo "Deploying to production..."
-	@./scripts/deploy.sh production $$(git describe --tags --always)
+	@go run ./cmd/devtool deploy production $$(git describe --tags --always)
 
 rollback-staging:
 	@echo "Rolling back staging..."
-	@./scripts/rollback.sh staging
+	@go run ./cmd/devtool rollback staging
 
 rollback-production:
 	@echo "Rolling back production..."
-	@./scripts/rollback.sh production
+	@go run ./cmd/devtool rollback production
 
 health-check-staging:
-	@./scripts/health-check.sh staging
+	@go run ./cmd/devtool health-check staging
 
 health-check-prod:
-	@./scripts/health-check.sh production
+	@go run ./cmd/devtool health-check production
 
 # Staging reset and validation targets
 reset-staging:
@@ -402,12 +382,12 @@ reset-staging:
 
 seed-staging:
 	@echo "🌱 Seeding staging database..."
-	@docker compose -f docker-compose.staging.yml exec -T db psql -U $(DB_USER) -d $(DB_NAME) < scripts/setup_test_user.sql || echo "Note: Seed script may not exist"
-	@echo "✅ Staging seeded (if seed scripts exist)"
+	@DB_URL="postgres://$(DB_USER):$(DB_PASSWORD)@localhost:5433/$(DB_NAME)?sslmode=disable" go run ./cmd/devtool seed staging
+	@echo "✅ Staging seeded"
 
 validate-staging:
 	@echo "🔍 Validating staging environment..."
-	@STAGING_URL=http://localhost:8081 $(MAKE) test-staging
+	@API_URL=http://localhost:8081 $(MAKE) test-staging
 	@echo "✅ Staging validation complete"
 
 # Audit & Security targets
@@ -457,3 +437,39 @@ clean-mocks:
 	@echo "Removing generated mocks..."
 	@rm -rf mocks/
 	@echo "✓ Removed mocks/ directory"
+
+# Monitoring Commands
+.PHONY: monitoring-up monitoring-down monitoring-restart monitoring-logs monitoring-status prometheus-reload
+
+monitoring-up:
+	@echo "Starting monitoring stack (Prometheus + Grafana)..."
+	@docker-compose up -d prometheus grafana
+	@echo "✓ Monitoring stack started"
+	@echo "  - Prometheus: http://localhost:9090"
+	@echo "  - Grafana:    http://localhost:3000 (admin/admin)"
+
+monitoring-down:
+	@echo "Stopping monitoring stack..."
+	@docker-compose stop prometheus grafana
+	@echo "✓ Monitoring stack stopped"
+
+monitoring-restart:
+	@echo "Restarting monitoring stack..."
+	@docker-compose restart prometheus grafana
+	@echo "✓ Monitoring stack restarted"
+
+monitoring-logs:
+	@echo "Showing monitoring logs (Ctrl+C to exit)..."
+	@docker-compose logs -f prometheus grafana
+
+monitoring-status:
+	@echo "Checking monitoring stack health..."
+	@echo -n "Prometheus: "
+	@curl -s http://localhost:9090/-/healthy || echo "NOT HEALTHY"
+	@echo -n "Grafana:    "
+	@curl -s http://localhost:3000/api/health | grep -q '"database":"ok"' && echo "Healthy" || echo "NOT HEALTHY"
+
+prometheus-reload:
+	@echo "Reloading Prometheus configuration..."
+	@curl -X POST http://localhost:9090/-/reload
+	@echo "✓ Prometheus configuration reloaded"

@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
-	"github.com/osse101/BrandishBot_Go/internal/features"
+	"github.com/osse101/BrandishBot_Go/internal/info"
 )
 
 func TestHandleGetInfo(t *testing.T) {
@@ -19,16 +19,15 @@ func TestHandleGetInfo(t *testing.T) {
 		t.Fatalf("Config directory not found at %s. Ensure you are running tests from project root or correct relative path.", configDir)
 	}
 
-	loader := features.NewLoader(configDir)
+	loader := info.NewLoader(configDir)
 	handler := HandleGetInfo(loader)
 
 	tests := []struct {
-		name           string
-		queryPlatform  string
-		queryFeature   string
-		expectedStatus int
-		// We verify the FORMATTING added by the code, not the file content
-		expectedPrefix     string
+		name               string
+		queryPlatform      string
+		queryFeature       string
+		queryTopic         string
+		expectedStatus     int
 		expectedSubstrings []string
 		expectLink         bool
 		expectError        bool
@@ -43,34 +42,40 @@ func TestHandleGetInfo(t *testing.T) {
 			name:           "Twitch - General",
 			queryPlatform:  domain.PlatformTwitch,
 			expectedStatus: http.StatusOK,
-			expectedPrefix: "BrandishBot Features",
 			expectLink:     true,
+			expectedSubstrings: []string{
+				"BrandishBot Features",
+			},
 		},
 		{
 			name:           "Twitch - Specific Feature",
 			queryPlatform:  domain.PlatformTwitch,
 			queryFeature:   "crafting",
 			expectedStatus: http.StatusOK,
-			expectedPrefix: "[CRAFTING]", // Code adds [NAME]
-			expectLink:     false,
+			expectedSubstrings: []string{
+				"!upgrade",
+				"!disassemble",
+				"!recipes",
+			},
+			expectLink: false,
 		},
 		{
 			name:           "Discord - General",
 			queryPlatform:  domain.PlatformDiscord,
 			expectedStatus: http.StatusOK,
-			expectedPrefix: "**BrandishBot Features**", // Code adds bold title
 			expectLink:     true,
+			expectedSubstrings: []string{
+				"**BrandishBot Features**",
+			},
 		},
 		{
 			name:           "Discord - Specific Feature",
 			queryPlatform:  domain.PlatformDiscord,
 			queryFeature:   "crafting",
 			expectedStatus: http.StatusOK,
-			expectedPrefix: "# CRAFTING", // Code adds Header 1
 			expectedSubstrings: []string{
-				"> ",           // Code adds blockquote for description
-				"**Commands**", // Code adds Commands header
-				"• `",          // Code adds bullet points for commands
+				"Crafting",
+				"**",
 			},
 			expectLink: false,
 		},
@@ -89,6 +94,9 @@ func TestHandleGetInfo(t *testing.T) {
 			if tt.queryFeature != "" {
 				url += "&feature=" + tt.queryFeature
 			}
+			if tt.queryTopic != "" {
+				url += "&topic=" + tt.queryTopic
+			}
 
 			req, err := http.NewRequest("GET", url, nil)
 			assert.NoError(t, err)
@@ -99,7 +107,7 @@ func TestHandleGetInfo(t *testing.T) {
 			assert.Equal(t, tt.expectedStatus, rr.Code)
 
 			if tt.expectError {
-				// Verify we got an error response (could be various error types)
+				// Verify we got an error response
 				body := rr.Body.String()
 				assert.NotEmpty(t, body)
 				// If platform is missing, check for specific error message
@@ -111,12 +119,8 @@ func TestHandleGetInfo(t *testing.T) {
 				err = json.Unmarshal(rr.Body.Bytes(), &resp)
 				assert.NoError(t, err)
 
-				if tt.expectedPrefix != "" {
-					assert.Contains(t, resp.Description, tt.expectedPrefix, "Description should start with/contain expected prefix/header")
-				}
-
 				for _, sub := range tt.expectedSubstrings {
-					assert.Contains(t, resp.Description, sub, "Description should contain formatting element")
+					assert.Contains(t, resp.Description, sub, "Description should contain expected substring")
 				}
 
 				if tt.expectLink {

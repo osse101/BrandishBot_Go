@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
-	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/mocks"
 )
 
@@ -31,10 +30,10 @@ func TestHarvest_Workflow(t *testing.T) {
 		tooSoon           bool                   // If true, override hoursElapsed to be small
 		allRewardsLocked  bool                   // If true, lock all items
 		commitFail        bool                   // If true, simulate commit failure
-		xpAwardFail       bool                   // NEW: Simulate failure in AwardXP
-		partialItemLookup bool                   // NEW: Simulate missing items in DB
-		initialInventory  []domain.InventorySlot // NEW: Setup initial inventory state
-		expectedInvSlots  []domain.InventorySlot // NEW: Expected final inventory state (nil = default check)
+		xpAwardFail       bool                   // Simulate failure in AwardXP
+		partialItemLookup bool                   // Simulate missing items in DB
+		initialInventory  []domain.InventorySlot // Setup initial inventory state
+		expectedInvSlots  []domain.InventorySlot // Expected final inventory state (nil = default check)
 		expectedGains     map[string]int
 		expectedXPAward   bool
 		expectedXP        int
@@ -46,7 +45,7 @@ func TestHarvest_Workflow(t *testing.T) {
 			name:         "Normal Harvest - No XP (less than 5h)",
 			hoursElapsed: 2.0, // Tier 1 (2 money)
 			expectedGains: map[string]int{
-				"money": 2,
+				itemMoney: 2,
 			},
 			expectedXPAward: false,
 			expectedSpoiled: false,
@@ -62,7 +61,7 @@ func TestHarvest_Workflow(t *testing.T) {
 			name:         "Farmer XP Harvest - 6 hours",
 			hoursElapsed: 6.0, // Tier 2 (12 money)
 			expectedGains: map[string]int{
-				"money": 12,
+				itemMoney: 12,
 			},
 			expectedXPAward: true,
 			expectedXP:      48,
@@ -72,8 +71,8 @@ func TestHarvest_Workflow(t *testing.T) {
 			name:         "Spoiled Harvest - > 336 hours",
 			hoursElapsed: 340.0,
 			expectedGains: map[string]int{
-				"lootbox1": 1,
-				"stick":    3,
+				itemLootbox1: 1,
+				itemStick:    3,
 			},
 			expectedXPAward: true,
 			expectedXP:      2720,
@@ -83,7 +82,7 @@ func TestHarvest_Workflow(t *testing.T) {
 			name:          "User Registration",
 			hoursElapsed:  2.0,
 			userNotFound:  true,
-			expectedGains: map[string]int{"money": 2},
+			expectedGains: map[string]int{itemMoney: 2},
 		},
 		{
 			name:             "First Time Harvest",
@@ -108,7 +107,7 @@ func TestHarvest_Workflow(t *testing.T) {
 			name:              "Transaction Commit Error",
 			hoursElapsed:      2.0,
 			commitFail:        true,
-			expectedGains:     map[string]int{"money": 2}, // Needs gains to reach commit
+			expectedGains:     map[string]int{itemMoney: 2}, // Needs gains to reach commit
 			expectedError:     true,
 			expectedErrorText: "failed to commit transaction",
 		},
@@ -116,7 +115,7 @@ func TestHarvest_Workflow(t *testing.T) {
 		{
 			name:            "Farmer XP Award Failure - Continues Gracefully",
 			hoursElapsed:    6.0,
-			expectedGains:   map[string]int{"money": 12},
+			expectedGains:   map[string]int{itemMoney: 12},
 			expectedXPAward: true,
 			expectedXP:      48,
 			xpAwardFail:     true, // Simulate error
@@ -125,36 +124,36 @@ func TestHarvest_Workflow(t *testing.T) {
 		{
 			name:              "Item Lookup Partial Failure - Skips Missing Items",
 			hoursElapsed:      24.0, // Should get money and stick
-			expectedGains:     map[string]int{"money": 22, "stick": 3},
+			expectedGains:     map[string]int{itemMoney: 22, itemStick: 3},
 			expectedXPAward:   true,
 			expectedXP:        192,
 			partialItemLookup: true, // Only return first item found (money), skip stick
 			// Expect inventory to update only with money
 			expectedInvSlots: []domain.InventorySlot{
-				{ItemID: 1, Quantity: 22}, // ID 1 = money
+				{ItemID: 1, Quantity: 3, QualityLevel: domain.QualityCommon}, // ID 1 = item_stick (first in alphabetical order)
 			},
 		},
 		{
 			name:          "Inventory Slot Stacking - Existing Item",
 			hoursElapsed:  2.0, // 2 money
-			expectedGains: map[string]int{"money": 2},
+			expectedGains: map[string]int{itemMoney: 2},
 			initialInventory: []domain.InventorySlot{
-				{ItemID: 1, Quantity: 10}, // User already has 10 money (ID 1)
+				{ItemID: 1, Quantity: 10, QualityLevel: domain.QualityCommon}, // User already has 10 money (ID 1)
 			},
 			expectedInvSlots: []domain.InventorySlot{
-				{ItemID: 1, Quantity: 12}, // Should stack to 12
+				{ItemID: 1, Quantity: 12, QualityLevel: domain.QualityCommon}, // Should stack to 12
 			},
 		},
 		{
 			name:          "Inventory New Slot - Different Item",
 			hoursElapsed:  2.0, // 2 money (ID 1)
-			expectedGains: map[string]int{"money": 2},
+			expectedGains: map[string]int{itemMoney: 2},
 			initialInventory: []domain.InventorySlot{
-				{ItemID: 2, Quantity: 5}, // User has stick (ID 2)
+				{ItemID: 2, Quantity: 5, QualityLevel: domain.QualityCommon}, // User has stick (ID 2)
 			},
 			expectedInvSlots: []domain.InventorySlot{
-				{ItemID: 2, Quantity: 5},
-				{ItemID: 1, Quantity: 2}, // New slot for money
+				{ItemID: 2, Quantity: 5, QualityLevel: domain.QualityCommon},
+				{ItemID: 1, Quantity: 2, QualityLevel: domain.QualityCommon}, // New slot for money
 			},
 		},
 	}
@@ -165,10 +164,13 @@ func TestHarvest_Workflow(t *testing.T) {
 			mockHarvestRepo := mocks.NewMockRepositoryHarvestRepository(t)
 			mockUserRepo := new(mocks.MockRepositoryUser)
 			mockProgressionSvc := new(mocks.MockProgressionService)
-			mockJobSvc := mocks.NewMockJobService(t)
 			mockTx := mocks.NewMockRepositoryHarvestTx(t)
+			mockJobSvc := new(mocks.MockJobService)
 
-			svc := NewService(mockHarvestRepo, mockUserRepo, mockProgressionSvc, mockJobSvc)
+			// Default job bonus expectations (0 bonus)
+			mockJobSvc.On("GetJobBonus", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(0.0, nil).Maybe()
+
+			svc := NewService(mockHarvestRepo, mockUserRepo, mockProgressionSvc, mockJobSvc, nil)
 
 			// --- User Registration Workflow ---
 			if tt.userNotFound {
@@ -243,14 +245,7 @@ func TestHarvest_Workflow(t *testing.T) {
 				}
 			}
 
-			// --- Award XP ---
-			if tt.expectedXPAward {
-				if tt.xpAwardFail {
-					mockJobSvc.On("AwardXP", mock.Anything, defaultUser.ID, job.JobKeyFarmer, tt.expectedXP, job.SourceHarvest, mock.Anything).Return(nil, errors.New("xp error"))
-				} else {
-					mockJobSvc.On("AwardXP", mock.Anything, defaultUser.ID, job.JobKeyFarmer, tt.expectedXP, job.SourceHarvest, mock.Anything).Return(&domain.XPAwardResult{XPGained: tt.expectedXP}, nil)
-				}
-			}
+			// XP is now awarded via HarvestCompletedPayload event (no direct job service call)
 
 			// --- Empty Rewards Warning Path ---
 			if tt.allRewardsLocked && !tt.expectedSpoiled {
@@ -320,6 +315,9 @@ func TestHarvest_Workflow(t *testing.T) {
 			// Execute
 			resp, err := svc.Harvest(context.Background(), "discord", "123456", "TestUser")
 
+			// Wait for async operations to complete
+			_ = svc.Shutdown(context.Background())
+
 			// Verify
 			if tt.expectedError {
 				assert.Error(t, err)
@@ -335,11 +333,8 @@ func TestHarvest_Workflow(t *testing.T) {
 					assert.Contains(t, resp.Message, "spoiled")
 				}
 				if tt.expectedXPAward {
-					if tt.xpAwardFail {
-						assert.NotContains(t, resp.Message, "You gained")
-					} else {
-						assert.Contains(t, resp.Message, "You gained")
-					}
+					// XP message has been removed from response per user request
+					assert.NotContains(t, resp.Message, "You gained")
 				}
 			}
 		})

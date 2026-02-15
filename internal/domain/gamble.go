@@ -6,23 +6,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// GambleState represents the current state of a gamble
-type GambleState string
-
-const (
-	GambleStateCreated   GambleState = "Created"
-	GambleStateJoining   GambleState = "Joining"
-	GambleStateOpening   GambleState = "Opening"
-	GambleStateCompleted GambleState = "Completed"
-	GambleStateRefunded  GambleState = "Refunded"
-)
-
-// Event types
-const (
-	EventGambleStarted   = "GambleStarted"
-	EventGambleCompleted = "GambleCompleted"
-)
-
 // Gamble represents a multiplayer lootbox gamble session
 type Gamble struct {
 	ID           uuid.UUID     `json:"id"`
@@ -37,9 +20,9 @@ type Gamble struct {
 
 // LootboxBet represents a wager of a specific lootbox item
 type LootboxBet struct {
-	ItemName   string     `json:"item_name"`
-	Quantity   int        `json:"quantity"`
-	ShineLevel ShineLevel `json:"shine_level,omitempty"`
+	ItemName     string       `json:"item_name"`
+	Quantity     int          `json:"quantity"`
+	QualityLevel QualityLevel `json:"quality_level,omitempty"`
 }
 
 // Participant represents a user who has joined the gamble
@@ -52,12 +35,12 @@ type Participant struct {
 
 // GambleOpenedItem represents an item opened during the gamble
 type GambleOpenedItem struct {
-	GambleID   uuid.UUID  `json:"gamble_id"`
-	UserID     string     `json:"user_id"`
-	ItemID     int        `json:"item_id"`
-	Quantity   int        `json:"quantity"`
-	Value      int64      `json:"value"`
-	ShineLevel ShineLevel `json:"shine_level,omitempty"`
+	GambleID     uuid.UUID    `json:"gamble_id"`
+	UserID       string       `json:"user_id"`
+	ItemID       int          `json:"item_id"`
+	Quantity     int          `json:"quantity"`
+	Value        int64        `json:"value"`
+	QualityLevel QualityLevel `json:"quality_level,omitempty"`
 }
 
 // GambleResult contains the outcome of a completed gamble

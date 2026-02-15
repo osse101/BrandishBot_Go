@@ -28,6 +28,7 @@ const (
 	ItemMine = "explosive_mine" // mine - basic trap
 	ItemTrap = "explosive_trap" // trap - upgraded trap
 	ItemTNT  = "explosive_tnt"  // tnt - ultimate trap
+	ItemBomb = "explosive_bomb" // large explosive
 
 	// Utility items
 	ItemStick        = "item_stick"        // basic crafting material
@@ -40,6 +41,9 @@ const (
 
 	// Progression items
 	ItemRareCandy = "xp_rarecandy" // instant job XP
+
+	// Junk items
+	ItemSludge = "compost_sludge" // compost byproduct
 )
 
 // Public item name constants - what clients use in commands (PublicName field)
@@ -82,6 +86,7 @@ const (
 // Action name constants for cooldown tracking
 const (
 	ActionSearch = "search"
+	ActionSlots  = "slots"
 	// Future actions can be added here
 	// ActionDaily  = "daily"
 	// ActionQuest  = "quest"
@@ -90,6 +95,7 @@ const (
 // Duration constants for cooldowns and timing
 const (
 	SearchCooldownDuration = 30 * time.Minute
+	SlotsCooldownDuration  = 10 * time.Minute
 	// Future durations can be added here
 	// DailyCooldownDuration  = 24 * time.Hour
 )
@@ -176,4 +182,170 @@ const (
 
 	// MetadataKeySource is used to store the source/origin in event metadata
 	MetadataKeySource = "source"
+)
+
+// ============================================================================
+// Item Quality Constants (Moved from item.go)
+// ============================================================================
+
+// QualityLevel represents the visual rarity and quality of an item
+type QualityLevel string
+
+const (
+	QualityCommon    QualityLevel = "COMMON"
+	QualityUncommon  QualityLevel = "UNCOMMON"
+	QualityRare      QualityLevel = "RARE"
+	QualityEpic      QualityLevel = "EPIC"
+	QualityLegendary QualityLevel = "LEGENDARY"
+	QualityPoor      QualityLevel = "POOR"
+	QualityJunk      QualityLevel = "JUNK"
+	QualityCursed    QualityLevel = "CURSED"
+)
+
+// GetTimeoutAdjustment returns the timeout adjustment in seconds based on quality level
+// Distance from common * 10s
+func (s QualityLevel) GetTimeoutAdjustment() time.Duration {
+	qualityModifier := map[QualityLevel]time.Duration{
+		QualityCursed:    -30 * time.Second,
+		QualityJunk:      -20 * time.Second,
+		QualityPoor:      -10 * time.Second,
+		QualityCommon:    0 * time.Second,
+		QualityUncommon:  10 * time.Second,
+		QualityRare:      20 * time.Second,
+		QualityEpic:      30 * time.Second,
+		QualityLegendary: 40 * time.Second,
+	}
+
+	if modifier, ok := qualityModifier[s]; ok {
+		return modifier
+	}
+	return 0
+}
+
+// Quality multipliers (Boosts item value and Gamble Score)
+const (
+	MultCommon    = 1.0
+	MultUncommon  = 1.1
+	MultRare      = 1.25
+	MultEpic      = 1.5
+	MultLegendary = 2.0
+	MultPoor      = 0.8
+	MultJunk      = 0.6
+	MultCursed    = 0.4
+)
+
+// ============================================================================
+// Event Type Constants (Moved from events.go)
+// ============================================================================
+
+// Event type constants used across the application for event bus subscriptions
+// and metrics tracking. These represent domain events that can be published
+// and consumed by multiple modules.
+//
+// Event types follow the pattern: <entity>.<action> (e.g., "item.sold")
+const (
+	// EventTypeItemSold is published when an item is sold through the economy system
+	EventTypeItemSold = "item.sold"
+
+	// EventTypeItemBought is published when an item is bought through the economy system
+	EventTypeItemBought = "item.bought"
+
+	// EventTypeItemUpgraded is published when an item is upgraded through crafting
+	EventTypeItemUpgraded = "item.upgraded"
+
+	// EventTypeItemDisassembled is published when an item is disassembled through crafting
+	EventTypeItemDisassembled = "item.disassembled"
+
+	// EventTypeItemUsed is published when a consumable item is used
+	EventTypeItemUsed = "item.used"
+
+	// EventTypeSearchPerformed is published when a user performs a search action
+	EventTypeSearchPerformed = "search.performed"
+
+	// EventTypeEngagement is published when a user interaction occurs (commands, messages, etc.)
+	EventTypeEngagement = "engagement"
+
+	// EventTypeDailyResetComplete is published when the daily job XP reset completes
+	EventTypeDailyResetComplete = "daily_reset.complete"
+
+	// EventTrapPlaced is published when a trap is placed on a user
+	EventTrapPlaced = "trap.placed"
+
+	// EventTrapTriggered is published when a trap is triggered
+	EventTrapTriggered = "trap.triggered"
+
+	// EventTrapSelfTriggered is published when a user triggers their own trap
+	EventTrapSelfTriggered = "trap.self_triggered"
+
+	// EventTypeTimeoutApplied is published when a timeout is applied to a user
+	EventTypeTimeoutApplied = "timeout.applied"
+
+	// EventTypeTimeoutCleared is published when a timeout is cleared for a user
+	EventTypeTimeoutCleared = "timeout.cleared"
+
+	// EventTypePredictionProcessed is published when a prediction outcome is processed
+	EventTypePredictionProcessed = "prediction.processed"
+
+	// Quest events
+	EventTypeWeeklyQuestReset     = "quest.weekly_reset"
+	EventTypeQuestProgressUpdated = "quest.progress_updated"
+	EventTypeQuestCompleted       = "quest.completed"
+	EventTypeQuestClaimed         = "quest.claimed"
+
+	// Economy events
+	EventTypeWeeklySaleActive = "economy.weekly_sale_active"
+
+	// Slots events
+	EventSlotsCompleted = "slots.completed"
+
+	// Gamble events (new)
+	EventTypeGambleParticipated = "gamble.participated"
+
+	// Harvest/Compost events
+	EventTypeHarvestCompleted = "harvest.completed"
+	EventTypeCompostHarvested = "compost.harvested"
+
+	// Expedition events
+	EventTypeExpeditionRewarded = "expedition.rewarded"
+
+	// Prediction events
+	EventTypePredictionParticipated = "prediction.participated"
+
+	// Job XP critical (Epiphany bonus)
+	EventTypeJobXPCritical = "job.xp_critical"
+)
+
+// ============================================================================
+// Gamble Constants (Moved from gamble.go)
+// ============================================================================
+
+// GambleState represents the current state of a gamble
+type GambleState string
+
+const (
+	GambleStateCreated   GambleState = "Created"
+	GambleStateJoining   GambleState = "Joining"
+	GambleStateOpening   GambleState = "Opening"
+	GambleStateCompleted GambleState = "Completed"
+	GambleStateRefunded  GambleState = "Refunded"
+)
+
+// Event types for Gamble
+const (
+	EventGambleStarted   = "GambleStarted"
+	EventGambleCompleted = "GambleCompleted"
+)
+
+// ============================================================================
+// Quest Constants (Moved from quest.go)
+// ============================================================================
+
+// Quest type constants
+const (
+	QuestTypeBuyItems        = "buy_items"        // Buy X items of target category
+	QuestTypeSellItems       = "sell_items"       // Sell X items
+	QuestTypeEarnMoney       = "earn_money"       // Earn X money from sales
+	QuestTypeCraftRecipe     = "craft_recipe"     // Perform recipe (upgrade/disassemble) X times
+	QuestTypePerformSearches = "perform_searches" // Perform X searches
+	// Extensible: add new quest types as needed
 )

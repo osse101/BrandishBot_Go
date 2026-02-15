@@ -83,3 +83,12 @@ type TimeoutPayload struct {
 	DurationSeconds int    `json:"duration_seconds"`
 	Reason          string `json:"reason,omitempty"`
 }
+
+// SubscriptionPayload represents the SSE payload for subscription events
+type SubscriptionPayload struct {
+	UserID    string `json:"user_id"`
+	Platform  string `json:"platform"`
+	TierName  string `json:"tier_name"`
+	EventType string `json:"event_type"` // "subscription.activated", "subscription.renewed", etc.
+	Timestamp int64  `json:"timestamp"`
+}

@@ -1,0 +1,148 @@
+name: gamble
+title: Gambling System
+icon: 🎲
+color: "#E74C3C"
+
+discord:
+  description: |
+    **🎲 Gambling System**
+
+    Welcome to the underworld of BrandishBot! Here you can risk your hard-earned items and currency for a chance at massive rewards.
+
+    ## 📈 The Path of the Gambler
+    Every time you take a risk—whether it's spinning slots or betting lootboxes—you earn **Gambler XP**. Level up your job to unlock better luck and special perks!
+
+    ## 🎮 Ways to Gamble
+    1. **Gambler Job**: Track your progress and unlock perks.
+    2. **Lootbox Gambling**: Bet boxes against others.
+    3. **Slot Machine**: Spin for multipliers and jackpots.
+    4. **Duels**: Challenge other players to 1v1 combat.
+
+    Use `/info topic:[topic]` to learn more about each system!
+
+streamerbot:
+  description: "Gambling System: Risk items/currency to win big! Earn Gambler XP from all activities. Topics: gambler-job, gamble-lootboxes, slots, duel."
+
+topics:
+  gambler-job:
+    command: "/job-progress"
+    discord:
+      description: |
+        **Gambler Job** 🎲
+
+        Level up your Gambler job by playing slots, gambling lootboxes, and taking risks!
+
+        **XP Sources:**
+        - **Slots**: Earn XP based on bet size + win bonuses
+        - **Lootbox Gambling**: Earn XP for participating
+        - **Duels**: Win or lose, you gain experience in the arena
+        - **Big Wins**: Massive XP bonuses for jackpots!
+
+        **Benefits:**
+        - Higher levels improve your luck
+        - Unlock gambling-related perks
+        - Show off your gambling prowess
+
+        Check your progress: `/job-progress`
+    streamerbot:
+      description: "Gambler Job: Level up via gambling activities. XP from bets + win bonuses. Check !job-progress."
+
+  gamble-lootboxes:
+    discord:
+      description: |
+        **📦 Lootbox Gambling**
+
+        Bet lootboxes against other players - winner takes all!
+
+        ## 🎰 How It Works
+        1. Someone starts a gamble with `/gamble`
+        2. Others join with `/join-gamble`
+        3. After the timer, all lootboxes are opened
+        4. Highest total value wins ALL the loot!
+
+        ## � Start a Gamble
+        ```
+        /gamble [lootbox-type] [quantity]
+        ```
+        **Example:** `/gamble lootbox1 2` (Starts a gamble betting 2x lootbox1)
+
+        **What happens:**
+        - Creates a new gamble session
+        - Other players have ~2 minutes to join
+        - Your lootboxes are reserved (can't use them)
+        - Timer starts automatically
+
+        ## 🤝 Join a Gamble
+        ```
+        /join-gamble [gamble-id] [lootbox-type] [quantity]
+        ```
+        Join an active gamble! You can bet:
+        - Same lootbox type
+        - Different lootbox types
+        - Different quantities
+
+        ## 🏆 Winning
+        - Player with highest total value wins everything.
+        - Tie-breaker: Random selection among tied players.
+    streamerbot:
+      description: "Lootbox Gambling: Bet boxes against others. Winner takes all! !gamble !join-gamble. Highest value wins."
+
+  slots:
+    discord:
+      description: |
+        **Slots Minigame** 🎰
+
+        Bet money on a 3-reel slot machine and win big!
+
+        ## 🚀 How to Play
+        1. **Bet**: Choose an amount (10-10,000 money)
+        2. **Spin**: Use `/slots bet:<amount>` to spin the reels
+        3. **Win**: Match symbols to multiply your bet!
+
+        ## 🎲 Symbols & Payouts
+        Match 3 symbols to win:
+        - 🍋 **LEMON** (40%) - 0.5x payout
+        - 🍒 **CHERRY** (25%) - 2x payout
+        - 🔔 **BELL** (15%) - 5x payout
+        - 💰 **BAR** (10%) - 10x payout
+        - 7️⃣ **SEVEN** (7%) - 25x payout
+        - 💎 **DIAMOND** (2.5%) - 100x **JACKPOT!**
+        - ⭐ **STAR** (0.5%) - 500x **MEGA JACKPOT!**
+
+        **2-Match Bonus**: Get 2 matching symbols? Win 10% of your bet back!
+
+        ## 📊 Tips
+        - **House Edge**: 92% RTP means the house has a slight advantage.
+        - **Gambler XP**: Earn XP with every spin based on bet size.
+    streamerbot:
+      description: "Slots: Bet money (10-10k). Match symbols to win! 🍋🍒🔔💰7️⃣💎⭐ 92% RTP. Earn Gambler XP."
+
+  duel:
+    discord:
+      description: |
+        **⚔️ 1v1 Duels**
+
+        Challenge another player to a high-stakes duel!
+
+        ## � The Challenge
+        ```
+        /duel target:<user> wager:<amount>
+        ```
+        **Requirements:**
+        - You must own 1 **stick** item (consumed)
+        - You must have the wagered **money** amount
+
+        ## 🤝 Acceptance
+        - The target has 2 minutes to `/accept` or `/decline`.
+        - Target must also have a **stick** and sufficient **money**.
+
+        ## 🏆 Resolution
+        - **Odds**: 50/50 coin flip.
+        - **Winner**: Takes the total prize pool (2x wager).
+        - **Loser**: Gets a 60-second timeout.
+
+        ## ⚠️ Special Cases
+        - **Self-Duel**: You lose your stick and get a timeout for shame.
+        - **Joey (NPC)**: Dueling the local legend is suicide. He always wins.
+    streamerbot:
+      description: "Duel: Challenge players to 1v1! Costs 1 stick + wager. 50/50 odds. Winner takes all. Loser gets timed out."

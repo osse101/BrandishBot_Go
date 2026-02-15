@@ -7,17 +7,23 @@ import (
 	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
 
 // Service defines the interface for stats operations
 type Service interface {
-	RecordUserEvent(ctx context.Context, userID string, eventType domain.EventType, metadata map[string]interface{}) error
+	RecordUserEvent(ctx context.Context, userID string, eventType domain.EventType, metadata interface{}) error
 	GetUserStats(ctx context.Context, userID string, period string) (*domain.StatsSummary, error)
 	GetUserCurrentStreak(ctx context.Context, userID string) (int, error)
 	GetSystemStats(ctx context.Context, period string) (*domain.StatsSummary, error)
 	GetLeaderboard(ctx context.Context, eventType domain.EventType, period string, limit int) ([]domain.LeaderboardEntry, error)
+	// Slots-specific stats
+	GetUserSlotsStats(ctx context.Context, userID string, period string) (*domain.SlotsStats, error)
+	GetSlotsLeaderboardByProfit(ctx context.Context, period string, limit int) ([]domain.SlotsStats, error)
+	GetSlotsLeaderboardByWinRate(ctx context.Context, period string, minSpins, limit int) ([]domain.SlotsStats, error)
+	GetSlotsLeaderboardByMegaJackpots(ctx context.Context, period string, limit int) ([]domain.SlotsStats, error)
 }
 
 // service implements the Service interface
@@ -33,7 +39,7 @@ func NewService(repo repository.Stats) Service {
 }
 
 // RecordUserEvent records a user event with the provided metadata
-func (s *service) RecordUserEvent(ctx context.Context, userID string, eventType domain.EventType, metadata map[string]interface{}) error {
+func (s *service) RecordUserEvent(ctx context.Context, userID string, eventType domain.EventType, metadata interface{}) error {
 	log := logger.FromContext(ctx)
 
 	if userID == "" {
@@ -77,17 +83,9 @@ func (s *service) checkDailyStreak(ctx context.Context, userID string) error {
 
 	if len(events) > 0 {
 		lastStreakTime = events[0].CreatedAt
-		// Extract streak from metadata
-		if streakVal, ok := events[0].EventData[MetadataKeyStreak]; ok {
-			// Handle float64 (JSON default) or int
-			switch v := streakVal.(type) {
-			case float64:
-				lastStreak = int(v)
-			case int:
-				lastStreak = v
-			case int64:
-				lastStreak = int(v)
-			}
+		// Extract streak from metadata using typed decoder
+		if meta, err := event.DecodePayload[domain.StreakMetadata](events[0].EventData); err == nil {
+			lastStreak = meta.Streak
 		}
 	}
 
@@ -112,8 +110,8 @@ func (s *service) checkDailyStreak(ctx context.Context, userID string) error {
 	}
 
 	// Record new streak
-	meta := map[string]interface{}{
-		MetadataKeyStreak: newStreak,
+	meta := domain.StreakMetadata{
+		Streak: newStreak,
 	}
 
 	// Use RecordUserEvent but with EventDailyStreak type (which will be skipped by the check above)
@@ -141,16 +139,9 @@ func (s *service) GetUserCurrentStreak(ctx context.Context, userID string) (int,
 	lastStreakTime := lastEvent.CreatedAt
 	var streak int
 
-	// Extract streak from metadata
-	if streakVal, ok := lastEvent.EventData[MetadataKeyStreak]; ok {
-		switch v := streakVal.(type) {
-		case float64:
-			streak = int(v)
-		case int:
-			streak = v
-		case int64:
-			streak = int(v)
-		}
+	// Extract streak from metadata using typed decoder
+	if meta, err := event.DecodePayload[domain.StreakMetadata](lastEvent.EventData); err == nil {
+		streak = meta.Streak
 	}
 
 	now := time.Now()
@@ -282,4 +273,94 @@ func getPeriodRange(period string) (startTime, endTime time.Time) {
 	}
 
 	return startTime, endTime
+}
+
+// GetUserSlotsStats retrieves slots statistics for a specific user
+func (s *service) GetUserSlotsStats(ctx context.Context, userID string, period string) (*domain.SlotsStats, error) {
+	log := logger.FromContext(ctx)
+
+	if userID == "" {
+		return nil, errors.New(ErrMsgUserIDRequired)
+	}
+
+	startTime, endTime := getPeriodRange(period)
+
+	stats, err := s.repo.GetUserSlotsStats(ctx, userID, startTime, endTime)
+	if err != nil {
+		log.Error("Failed to get user slots stats", "error", err, "user_id", userID)
+		return nil, fmt.Errorf("failed to get user slots stats: %w", err)
+	}
+
+	stats.Period = period
+	log.Debug("Retrieved user slots stats", "user_id", userID, "period", period, "total_spins", stats.TotalSpins)
+	return stats, nil
+}
+
+// GetSlotsLeaderboardByProfit retrieves the slots leaderboard ranked by net profit
+func (s *service) GetSlotsLeaderboardByProfit(ctx context.Context, period string, limit int) ([]domain.SlotsStats, error) {
+	return s.getSlotsLeaderboard(ctx, period, limit, s.repo.GetSlotsLeaderboardByProfit, "profit")
+}
+
+// GetSlotsLeaderboardByWinRate retrieves the slots leaderboard ranked by win rate
+func (s *service) GetSlotsLeaderboardByWinRate(ctx context.Context, period string, minSpins, limit int) ([]domain.SlotsStats, error) {
+	log := logger.FromContext(ctx)
+
+	if limit <= 0 {
+		limit = DefaultLeaderboardLimit
+	}
+
+	if minSpins <= 0 {
+		minSpins = 10 // Default minimum spins to qualify
+	}
+
+	startTime, endTime := getPeriodRange(period)
+
+	stats, err := s.repo.GetSlotsLeaderboardByWinRate(ctx, startTime, endTime, minSpins, limit)
+	if err != nil {
+		log.Error("Failed to get slots leaderboard by win rate", "error", err)
+		return nil, fmt.Errorf("failed to get slots leaderboard by win rate: %w", err)
+	}
+
+	// Set period on all entries
+	for i := range stats {
+		stats[i].Period = period
+	}
+
+	log.Debug("Retrieved slots leaderboard by win rate", "period", period, "entries", len(stats))
+	return stats, nil
+}
+
+// GetSlotsLeaderboardByMegaJackpots retrieves the slots leaderboard ranked by mega jackpots hit
+func (s *service) GetSlotsLeaderboardByMegaJackpots(ctx context.Context, period string, limit int) ([]domain.SlotsStats, error) {
+	return s.getSlotsLeaderboard(ctx, period, limit, s.repo.GetSlotsLeaderboardByMegaJackpots, "mega jackpots")
+}
+
+func (s *service) getSlotsLeaderboard(
+	ctx context.Context,
+	period string,
+	limit int,
+	fetchFn func(context.Context, time.Time, time.Time, int) ([]domain.SlotsStats, error),
+	metricName string,
+) ([]domain.SlotsStats, error) {
+	log := logger.FromContext(ctx)
+
+	if limit <= 0 {
+		limit = DefaultLeaderboardLimit
+	}
+
+	startTime, endTime := getPeriodRange(period)
+
+	stats, err := fetchFn(ctx, startTime, endTime, limit)
+	if err != nil {
+		log.Error("Failed to get slots leaderboard", "metric", metricName, "error", err)
+		return nil, fmt.Errorf("failed to get slots leaderboard by %s: %w", metricName, err)
+	}
+
+	// Set period on all entries
+	for i := range stats {
+		stats[i].Period = period
+	}
+
+	log.Debug("Retrieved slots leaderboard", "metric", metricName, "period", period, "entries", len(stats))
+	return stats, nil
 }

@@ -7,7 +7,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -173,4 +175,154 @@ func TestProgressionHandlers_HandleAdminUnlock(t *testing.T) {
 			assert.Equal(t, tt.expectedStatus, rec.Code)
 		})
 	}
+}
+
+func TestProgressionHandlers_HandleGetEstimate(t *testing.T) {
+	tests := []struct {
+		name           string
+		nodeKey        string
+		setupMock      func(*mocks.MockProgressionService)
+		expectedStatus int
+	}{
+		{
+			name:    "Success",
+			nodeKey: "node_1",
+			setupMock: func(m *mocks.MockProgressionService) {
+				m.On("EstimateUnlockTime", mock.Anything, "node_1").Return(&domain.UnlockEstimate{
+					NodeKey: "node_1",
+				}, nil)
+			},
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:    "Node Not Found",
+			nodeKey: "unknown",
+			setupMock: func(m *mocks.MockProgressionService) {
+				m.On("EstimateUnlockTime", mock.Anything, "unknown").Return(nil, nil)
+			},
+			expectedStatus: http.StatusNotFound,
+		},
+		{
+			name:    "Service Error",
+			nodeKey: "node_error",
+			setupMock: func(m *mocks.MockProgressionService) {
+				m.On("EstimateUnlockTime", mock.Anything, "node_error").Return(nil, errors.New("service error"))
+			},
+			expectedStatus: http.StatusInternalServerError,
+		},
+		{
+			name:           "Missing Node Key",
+			nodeKey:        "",
+			setupMock:      func(m *mocks.MockProgressionService) {},
+			expectedStatus: http.StatusNotFound,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockSvc := mocks.NewMockProgressionService(t)
+			tt.setupMock(mockSvc)
+
+			handler := NewProgressionHandlers(mockSvc)
+
+			// Setup request using Chi context to simulate URL params
+			req := httptest.NewRequest("GET", "/progression/estimate/"+tt.nodeKey, nil)
+
+			r := chi.NewRouter()
+			r.Get("/progression/estimate/{nodeKey}", handler.HandleGetEstimate())
+
+			rec := httptest.NewRecorder()
+			r.ServeHTTP(rec, req)
+
+			assert.Equal(t, tt.expectedStatus, rec.Code)
+		})
+	}
+}
+
+func TestProgressionHandlers_HandleGetUnlockProgress(t *testing.T) {
+	mockSvc := mocks.NewMockProgressionService(t)
+	handler := NewProgressionHandlers(mockSvc)
+
+	// Mock node
+	node := &domain.ProgressionNode{
+		ID:          1,
+		NodeKey:     "node_1",
+		UnlockCost:  1000,
+		DisplayName: "Node 1",
+	}
+
+	// Mock progress
+	progress := &domain.UnlockProgress{
+		ID:                       1,
+		NodeID:                   &node.ID,
+		ContributionsAccumulated: 100,
+	}
+
+	now := time.Now()
+	// Mock estimate
+	estimate := &domain.UnlockEstimate{
+		NodeKey:             "node_1",
+		EstimatedDays:       5.0,
+		Confidence:          "high",
+		RequiredPoints:      900,
+		CurrentProgress:     100,
+		CurrentVelocity:     180,
+		EstimatedUnlockDate: &now,
+	}
+
+	mockSvc.On("GetUnlockProgress", mock.Anything).Return(progress, nil)
+	mockSvc.On("GetNode", mock.Anything, 1).Return(node, nil)
+	mockSvc.On("EstimateUnlockTime", mock.Anything, "node_1").Return(estimate, nil)
+
+	req := httptest.NewRequest("GET", "/progression/unlock-progress", nil)
+	rec := httptest.NewRecorder()
+
+	handler.HandleGetUnlockProgress()(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	var resp map[string]interface{}
+	err := json.Unmarshal(rec.Body.Bytes(), &resp)
+	require.NoError(t, err)
+
+	// Verify enriched fields
+	assert.Equal(t, 100.0, resp["contributions_accumulated"])
+	assert.Equal(t, "Node 1", resp["target_node_name"])
+	assert.Equal(t, 10.0, resp["completion_percentage"])
+
+	// Verify estimate is present
+	_, hasEstimate := resp["estimated_unlock_date"]
+	assert.True(t, hasEstimate, "response should contain estimated_unlock_date")
+}
+
+func TestProgressionHandlers_HandleGetVotingSession_WithEstimates(t *testing.T) {
+	mockSvc := mocks.NewMockProgressionService(t)
+	handler := NewProgressionHandlers(mockSvc)
+
+	now := time.Now()
+	sessionWithEst := &domain.ProgressionVotingSession{
+		ID:     1,
+		Status: "active",
+		Options: []domain.ProgressionVotingOption{
+			{NodeID: 1, VoteCount: 10, EstimatedUnlockDate: &now},
+		},
+	}
+
+	mockSvc.On("GetActiveVotingSession", mock.Anything).Return(sessionWithEst, nil)
+
+	req := httptest.NewRequest("GET", "/progression/session", nil)
+	rec := httptest.NewRecorder()
+
+	handler.HandleGetVotingSession()(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	var resp VotingSessionResponse
+	err := json.Unmarshal(rec.Body.Bytes(), &resp)
+	require.NoError(t, err)
+
+	assert.NotNil(t, resp.Session)
+	assert.Equal(t, 1, resp.Session.ID)
+	assert.Len(t, resp.Session.Options, 1)
+	assert.NotNil(t, resp.Session.Options[0].EstimatedUnlockDate)
 }

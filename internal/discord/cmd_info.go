@@ -2,160 +2,172 @@ package discord
 
 import (
 	"fmt"
-	"log/slog"
-	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
+
+	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/info"
 )
 
 // InfoCommand returns the info command definition and handler
-func InfoCommand() (*discordgo.ApplicationCommand, CommandHandler) {
+func InfoCommand(loader *info.Loader) (*discordgo.ApplicationCommand, CommandHandler) {
 	cmd := &discordgo.ApplicationCommand{
 		Name:        "info",
 		Description: "Get information about BrandishBot features",
 		Options: []*discordgo.ApplicationCommandOption{
 			{
-				Type:        discordgo.ApplicationCommandOptionString,
-				Name:        "feature",
-				Description: "Specific feature to learn about (optional)",
-				Required:    false,
-				Choices: []*discordgo.ApplicationCommandOptionChoice{
-					{Name: "Overview", Value: "overview"},
-					{Name: "Economy", Value: "economy"},
-					{Name: "Inventory", Value: "inventory"},
-					{Name: "Crafting", Value: "crafting"},
-					{Name: "Gamble", Value: "gamble"},
-					{Name: "Progression", Value: "progression"},
-					{Name: "Stats", Value: "stats"},
-					{Name: "Commands", Value: "commands"},
-				},
+				Type:         discordgo.ApplicationCommandOptionString,
+				Name:         "feature",
+				Description:  "Specific feature or topic to learn about (optional)",
+				Required:     false,
+				Autocomplete: true, // Enable autocomplete for better UX
 			},
 		},
 	}
 
 	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
+		// Handle autocomplete requests
+		if i.Type == discordgo.InteractionApplicationCommandAutocomplete {
+			data := i.ApplicationCommandData()
+			var query string
+			for _, opt := range data.Options {
+				if opt.Focused {
+					query = strings.ToLower(opt.StringValue())
+					break
+				}
+			}
+
+			choices := make([]*discordgo.ApplicationCommandOptionChoice, 0)
+
+			// Get all features available
+			features := loader.GetAllFeatures()
+
+			// Filter features matching query
+			for name := range features {
+				if strings.Contains(strings.ToLower(name), query) {
+					choices = append(choices, &discordgo.ApplicationCommandOptionChoice{
+						Name:  cases.Title(language.English).String(name), // Simple title case
+						Value: name,
+					})
+				}
+			}
+
+			// Send choices (limit to 25 Discord max)
+			if len(choices) > 25 {
+				choices = choices[:25]
+			}
+
+			_ = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionApplicationCommandAutocompleteResult,
+				Data: &discordgo.InteractionResponseData{
+					Choices: choices,
+				},
+			})
+			return
+		}
+
 		if !deferResponse(s, i) {
 			return
 		}
 
-		// Get feature name from options, default to "overview"
-		featureName := "overview"
+		// Get feature/topic name from options
 		options := getOptions(i)
+		targetName := ""
 		if len(options) > 0 {
-			featureName = options[0].StringValue()
+			targetName = strings.ToLower(strings.TrimSpace(options[0].StringValue()))
 		}
 
-		// Load info text from file
-		infoText, err := loadInfoText(featureName)
-		if err != nil {
-			slog.Error("Failed to load info text", "feature", featureName, "error", err)
-			errorMsg := fmt.Sprintf("Error loading information for: %s", featureName)
-			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-				Content: &errorMsg,
-			}); err != nil {
-				slog.Error("Failed to edit interaction response", "error", err)
-			}
+		formatter := info.NewFormatter()
+
+		// Case 1: Overview (no argument)
+		if targetName == "" || targetName == "overview" {
+			features := loader.GetAllFeatures()
+			content := formatter.FormatFeatureList(features, domain.PlatformDiscord, "https://github.com/osse101/BrandishBot_Go") // Use repo link for now
+
+			embed := createInfoEmbed("overview", "BrandishBot Overview", content, 0x9B59B6, "ℹ️")
+			sendEmbed(s, i, embed)
 			return
 		}
 
-		// Create appropriate embed based on feature
-		embed := createInfoEmbed(featureName, infoText)
+		// Case 2: Specific Feature
+		if feature, ok := loader.GetFeature(targetName); ok {
+			content := formatter.FormatFeature(feature, domain.PlatformDiscord)
+			title := feature.Title
+			if title == "" {
+				title = cases.Title(language.English).String(feature.Name)
+			}
 
-		sendEmbed(s, i, embed)
+			// Resolve color/icon from known map or defaults
+			// For now, reuse existing map logic or default
+			embed := createInfoEmbed(feature.Name, title, content, 0, "")
+			sendEmbed(s, i, embed)
+			return
+		}
+
+		// Case 3: Specific Topic (Search)
+		if topic, featureName, found := loader.SearchTopic(targetName); found {
+			content := formatter.FormatTopic(topic, domain.PlatformDiscord)
+			title := cases.Title(language.English).String(targetName)
+
+			// Use feature name to derive color/icon style
+			embed := createInfoEmbed(featureName, title, content, 0, "")
+			sendEmbed(s, i, embed)
+			return
+		}
+
+		// Not found
+		respondFriendlyError(s, i, fmt.Sprintf("Info not found for: '%s'", targetName))
 	}
 
 	return cmd, handler
 }
 
-// InfoDir is the directory containing info text files (can be changed for testing)
-var InfoDir = "configs/discord/info"
-
-// loadInfoText loads the info text from a file
-func loadInfoText(featureName string) (string, error) {
-	// Sanitize feature name to prevent directory traversal
-	featureName = strings.ToLower(strings.TrimSpace(featureName))
-
-	// Prevent directory traversal
-	if strings.Contains(featureName, "..") || strings.Contains(featureName, "/") || strings.Contains(featureName, "\\") {
-		return "", fmt.Errorf("invalid feature name: %s", featureName)
-	}
-
-	// Resolve the base info directory
-	baseDir := resolveInfoDir()
-
-	// Use Clean to ensure path is normalized
-	filename := filepath.Clean(filepath.Join(baseDir, featureName+".txt"))
-
-	// Verify the resolved path is still within baseDir
-	absInfoDir, err := filepath.Abs(baseDir)
-	if err != nil {
-		return "", fmt.Errorf("failed to resolve absolute info directory: %w", err)
-	}
-
-	absFilename, err := filepath.Abs(filename)
-	if err != nil {
-		return "", fmt.Errorf("failed to resolve absolute filename: %w", err)
-	}
-
-	if !strings.HasPrefix(absFilename, absInfoDir) {
-		return "", fmt.Errorf("access denied: path traversal attempt detected")
-	}
-
-	// Read file
-	data, err := os.ReadFile(filename)
-	if err != nil {
-		return "", fmt.Errorf("failed to read info file: %w", err)
-	}
-
-	return string(data), nil
-}
-
-// resolveInfoDir attempts to find the info directory by checking relative paths
-func resolveInfoDir() string {
-	// Check if configured directory exists
-	if _, err := os.Stat(InfoDir); err == nil {
-		return InfoDir
-	}
-
-	// Try checking one level up (useful if running from bin/)
-	parentDir := filepath.Join("..", InfoDir)
-	if _, err := os.Stat(parentDir); err == nil {
-		return parentDir
-	}
-
-	// Default to configured directory if nothing else found
-	return InfoDir
-}
-
-// createInfoEmbed creates an embed based on the feature name
-func createInfoEmbed(featureName, content string) *discordgo.MessageEmbed {
-	// Map feature names to titles and colors
+// createInfoEmbed creates an embed based on the feature/topic data
+func createInfoEmbed(featureName, title, content string, overrideColor int, overrideIcon string) *discordgo.MessageEmbed {
+	// Map feature names to default colors/icons
 	featureConfig := map[string]struct {
-		title string
 		color int
 		icon  string
 	}{
-		"overview":    {"BrandishBot Overview", 0x9B59B6, "ℹ️"},
-		"economy":     {"Economy System", 0xF1C40F, "💰"},
-		"inventory":   {"Inventory Management", 0x3498DB, "🎒"},
-		"crafting":    {"Crafting & Upgrades", 0xE67E22, "🔨"},
-		"gamble":      {"Gambling System", 0xE74C3C, "🎲"},
-		"progression": {"Progression Tree", 0x2ECC71, "🌳"},
-		"stats":       {"Stats & Leaderboards", 0x1ABC9C, "📊"},
-		"commands":    {"Available Commands", 0x95A5A6, "⚙️"},
+		"overview":    {0x9B59B6, "ℹ️"},
+		"economy":     {0xF1C40F, "💰"},
+		"inventory":   {0x3498DB, "🎒"},
+		"crafting":    {0xE67E22, "🔨"},
+		"gamble":      {0xE74C3C, "🎲"},
+		"expeditions": {0x9B59B6, "🗺️"},
+		"quests":      {0x3498DB, "📜"},
+		"farming":     {0x2ECC71, "🌾"},
+		"jobs":        {0xE67E22, "🛠️"},
+		"progression": {0x2ECC71, "🌳"},
+		"stats":       {0x1ABC9C, "📊"},
+		"commands":    {0x95A5A6, "⚙️"},
 	}
 
-	config, ok := featureConfig[featureName]
-	if !ok {
-		config = featureConfig["overview"]
+	color := 0x9B59B6 // Default purple
+	icon := "ℹ️"
+
+	// Look up config by feature name (or fallback to passed overrides)
+	if config, ok := featureConfig[featureName]; ok {
+		color = config.color
+		icon = config.icon
 	}
+
+	if overrideColor != 0 {
+		color = overrideColor
+	}
+	if overrideIcon != "" {
+		icon = overrideIcon
+	}
+
+	fullTitle := fmt.Sprintf("%s %s", icon, title)
 
 	return &discordgo.MessageEmbed{
-		Title:       config.icon + " " + config.title,
+		Title:       fullTitle,
 		Description: content,
-		Color:       config.color,
+		Color:       color,
 		Footer: &discordgo.MessageEmbedFooter{
 			Text: "BrandishBot • Use /info [feature] for specific topics",
 		},

@@ -9,7 +9,7 @@ type TrapPlacedData struct {
 	SetterUsername string
 	TargetID       uuid.UUID
 	TargetUsername string
-	ShineLevel     ShineLevel // COMMON, UNCOMMON, RARE, EPIC, LEGENDARY, etc.
+	QualityLevel   QualityLevel // COMMON, UNCOMMON, RARE, EPIC, LEGENDARY, etc.
 	TimeoutSeconds int
 }
 
@@ -20,7 +20,7 @@ type TrapTriggeredData struct {
 	SetterUsername   string
 	TargetID         uuid.UUID
 	TargetUsername   string
-	ShineLevel       ShineLevel // COMMON, UNCOMMON, RARE, EPIC, LEGENDARY, etc.
+	QualityLevel     QualityLevel // COMMON, UNCOMMON, RARE, EPIC, LEGENDARY, etc.
 	TimeoutSeconds   int
 	WasSelfTriggered bool
 }
@@ -33,7 +33,7 @@ func (d *TrapPlacedData) ToMap() map[string]interface{} {
 		"setter_username": d.SetterUsername,
 		"target_id":       d.TargetID.String(),
 		"target_username": d.TargetUsername,
-		"shine_level":     d.ShineLevel,
+		"quality_level":   d.QualityLevel,
 		"timeout_seconds": d.TimeoutSeconds,
 	}
 }
@@ -46,7 +46,7 @@ func (d *TrapTriggeredData) ToMap() map[string]interface{} {
 		"setter_username":    d.SetterUsername,
 		"target_id":          d.TargetID.String(),
 		"target_username":    d.TargetUsername,
-		"shine_level":        d.ShineLevel,
+		"quality_level":      d.QualityLevel,
 		"timeout_seconds":    d.TimeoutSeconds,
 		"was_self_triggered": d.WasSelfTriggered,
 	}

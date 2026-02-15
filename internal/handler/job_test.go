@@ -81,7 +81,7 @@ func TestHandleAwardXP(t *testing.T) {
 		NewLevel: 1,
 	}
 
-	svc.On("AwardXPByPlatform", mock.Anything, domain.PlatformTwitch, "u1", job.JobKeyBlacksmith, 100, "test", mock.Anything).Return(awardResult, nil)
+	svc.On("AwardXPByPlatform", mock.Anything, domain.PlatformTwitch, "u1", job.JobKeyBlacksmith, 100, "test", domain.JobXPMetadata{}).Return(awardResult, nil)
 
 	req := httptest.NewRequest("POST", "/jobs/award-xp", bytes.NewReader(body))
 	w := httptest.NewRecorder()
@@ -167,7 +167,7 @@ func TestHandleAwardXP_ServiceError_DailyCap(t *testing.T) {
 	}
 	body, _ := json.Marshal(reqBody)
 
-	svc.On("AwardXPByPlatform", mock.Anything, domain.PlatformTwitch, "u1", job.JobKeyBlacksmith, 100, "test", mock.Anything).Return(nil, errors.New("daily XP cap reached for blacksmith"))
+	svc.On("AwardXPByPlatform", mock.Anything, domain.PlatformTwitch, "u1", job.JobKeyBlacksmith, 100, "test", domain.JobXPMetadata{}).Return(nil, errors.New("daily XP cap reached for blacksmith"))
 
 	req := httptest.NewRequest("POST", "/jobs/award-xp", bytes.NewReader(body))
 	w := httptest.NewRecorder()
@@ -294,7 +294,7 @@ func TestHandleAwardXP_ServiceError_JobNotFound(t *testing.T) {
 	}
 	body, _ := json.Marshal(reqBody)
 
-	svc.On("AwardXPByPlatform", mock.Anything, domain.PlatformTwitch, "u1", "invalid_job", 100, "test", mock.Anything).Return(nil, errors.New("job not found: invalid_job"))
+	svc.On("AwardXPByPlatform", mock.Anything, domain.PlatformTwitch, "u1", "invalid_job", 100, "test", domain.JobXPMetadata{}).Return(nil, errors.New("job not found: invalid_job"))
 
 	req := httptest.NewRequest("POST", "/jobs/award-xp", bytes.NewReader(body))
 	w := httptest.NewRecorder()
@@ -319,7 +319,7 @@ func TestHandleAwardXP_ServiceError_FeatureLocked(t *testing.T) {
 	}
 	body, _ := json.Marshal(reqBody)
 
-	svc.On("AwardXPByPlatform", mock.Anything, domain.PlatformTwitch, "u1", job.JobKeyBlacksmith, 100, "test", mock.Anything).Return(nil, errors.New("jobs XP system not unlocked"))
+	svc.On("AwardXPByPlatform", mock.Anything, domain.PlatformTwitch, "u1", job.JobKeyBlacksmith, 100, "test", domain.JobXPMetadata{}).Return(nil, errors.New("jobs XP system not unlocked"))
 
 	req := httptest.NewRequest("POST", "/jobs/award-xp", bytes.NewReader(body))
 	w := httptest.NewRecorder()
@@ -341,9 +341,11 @@ func TestHandleAwardXP_WithMetadata(t *testing.T) {
 		JobKey:     job.JobKeyBlacksmith,
 		XPAmount:   50,
 		Source:     "upgrade",
-		Metadata: map[string]interface{}{
-			"item_quality": "rare",
-			"recipe_id":    123,
+		Metadata: domain.JobXPMetadata{
+			Extras: map[string]interface{}{
+				"item_quality": "rare",
+				"recipe_id":    123.0,
+			},
 		},
 	}
 	body, _ := json.Marshal(reqBody)
@@ -354,8 +356,8 @@ func TestHandleAwardXP_WithMetadata(t *testing.T) {
 		NewLevel: 2,
 	}
 
-	svc.On("AwardXPByPlatform", mock.Anything, domain.PlatformTwitch, "u1", job.JobKeyBlacksmith, 50, "upgrade", mock.MatchedBy(func(m map[string]interface{}) bool {
-		return m["item_quality"] == "rare"
+	svc.On("AwardXPByPlatform", mock.Anything, domain.PlatformTwitch, "u1", job.JobKeyBlacksmith, 50, "upgrade", mock.MatchedBy(func(m domain.JobXPMetadata) bool {
+		return m.Extras["item_quality"] == "rare"
 	})).Return(awardResult, nil)
 
 	req := httptest.NewRequest("POST", "/jobs/award-xp", bytes.NewReader(body))

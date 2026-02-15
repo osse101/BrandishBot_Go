@@ -3,8 +3,11 @@ package discord
 import (
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/bwmarrin/discordgo"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 // ProfileCommand returns the profile command definition and handler
@@ -56,6 +59,17 @@ func ProfileCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			Footer: &discordgo.MessageEmbedFooter{
 				Text: "Use /stats for detailed statistics",
 			},
+		}
+
+		// Fetch job info to add primary job
+		jobsResp, err := client.GetUserJobs("discord", user.ID)
+		if err == nil && jobsResp.PrimaryJob != "" {
+			primaryJobName := cases.Title(language.English).String(strings.ReplaceAll(jobsResp.PrimaryJob, "_", " "))
+			embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
+				Name:   "Primary Job",
+				Value:  primaryJobName,
+				Inline: true,
+			})
 		}
 
 		sendEmbed(s, i, embed)

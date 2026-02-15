@@ -11,7 +11,7 @@ type Trap struct {
 	ID             uuid.UUID
 	SetterID       uuid.UUID
 	TargetID       uuid.UUID
-	ShineLevel     ShineLevel // COMMON, UNCOMMON, RARE, EPIC, LEGENDARY, JUNK, etc.
+	QualityLevel   QualityLevel // COMMON, UNCOMMON, RARE, EPIC, LEGENDARY, JUNK, etc.
 	TimeoutSeconds int
 	PlacedAt       time.Time
 	TriggeredAt    *time.Time
@@ -22,11 +22,11 @@ func (t *Trap) IsTriggered() bool {
 	return t.TriggeredAt != nil
 }
 
-// CalculateTimeout returns the timeout duration in seconds based on shine level
-// Base: 60s, with adjustments per shine level
+// CalculateTimeout returns the timeout duration in seconds based on quality level
+// Base: 60s, with adjustments per quality level
 // Junk: 40s, Common: 60s, Uncommon: 70s, Rare: 80s, Epic: 90s, Legendary: 100s
 func (t *Trap) CalculateTimeout() int {
 	baseTimeout := 60
-	adjustment := int(t.ShineLevel.GetTimeoutAdjustment().Seconds())
+	adjustment := int(t.QualityLevel.GetTimeoutAdjustment().Seconds())
 	return baseTimeout + adjustment
 }

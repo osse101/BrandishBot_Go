@@ -1,0 +1,90 @@
+**⚙️ Available Commands**
+
+Complete command reference for BrandishBot!
+
+## 📱 General Commands
+
+`/ping` - Check if bot is online
+`/profile` - View your profile  
+`/info [feature]` - Get help on features
+
+## 🎒 Inventory & Items
+
+`/inventory` - View your items
+`/search` - Search for loot
+`/use [item] [quantity]` - Use an item
+
+## 💰 Economy
+
+`/buy [item] [quantity]` - Purchase items
+`/sell [item] [quantity]` - Sell items
+`/prices` - View market prices
+`/give @user [item] [quantity]` - Gift items
+
+## 🗺️ Expeditions
+
+`/explore` - Start or join an expedition
+`/expedition-journal [id]` - Read completed journals
+
+## 📜 Quests
+
+`/quests` - View weekly quests
+`/claimquest [id]` - Claim rewards
+
+## 🌾 Farming
+
+`/harvest` - Collect accumulated rewards
+
+## 🔨 Crafting
+
+`/recipes` - View crafting recipes
+`/upgrade [recipe-id]` - Craft an upgrade
+`/disassemble [item] [quantity]` - Break down items
+
+## 🎲 Gambling
+
+`/gamble [lootbox] [quantity]` - Start a gamble
+`/join-gamble [id] [lootbox] [quantity]` - Join gamble
+
+## 📊 Stats & Rankings
+
+`/stats [@user]` - View statistics
+`/leaderboard [metric] [limit]` - Top players
+`/job-progress` - View job levels
+
+## 🌳 Progression
+
+`/vote [feature-key]` - Vote for feature unlocks
+
+## 🔗 Account Linking
+
+`/link` - Link Discord to Twitch/YouTube
+`/unlink` - Unlink accounts
+
+## 🛡️ Admin Commands
+
+`/add-item @user [item] [qty]` - Admin: Add items
+`/remove-item @user [item] [qty]` - Admin: Remove items
+`/admin-unlock [feature] [level]` - Admin: Force unlock
+
+---
+
+## 🎯 Quick Start Guide
+
+**New players:**
+1. `/profile` - See your profile
+2. `/search` - Find your first items
+3. `/inventory` - Check what you got
+4. `/use lootbox0 1` - Open a lootbox!
+
+**Earning money:**
+1. `/search` regularly
+2. `/sell` unwanted items
+3. Join `/gamble` (risky!)
+
+**Progression:**
+1. `/stats` - Track your progress
+2. `/leaderboard` - See rankings
+3. `/vote` - Unlock features
+
+Need more help? Use `/info` with a specific feature name!

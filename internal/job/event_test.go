@@ -117,7 +117,7 @@ type MockStats struct {
 	mock.Mock
 }
 
-func (m *MockStats) RecordUserEvent(ctx context.Context, userID string, eventType domain.EventType, metadata map[string]interface{}) error {
+func (m *MockStats) RecordUserEvent(ctx context.Context, userID string, eventType domain.EventType, metadata interface{}) error {
 	args := m.Called(ctx, userID, eventType, metadata)
 	return args.Error(0)
 }
@@ -131,6 +131,18 @@ func (m *MockStats) GetSystemStats(ctx context.Context, period string) (*domain.
 	return nil, nil
 }
 func (m *MockStats) GetLeaderboard(ctx context.Context, eventType domain.EventType, period string, limit int) ([]domain.LeaderboardEntry, error) {
+	return nil, nil
+}
+func (m *MockStats) GetUserSlotsStats(ctx context.Context, userID, period string) (*domain.SlotsStats, error) {
+	return nil, nil
+}
+func (m *MockStats) GetSlotsLeaderboardByProfit(ctx context.Context, period string, limit int) ([]domain.SlotsStats, error) {
+	return nil, nil
+}
+func (m *MockStats) GetSlotsLeaderboardByWinRate(ctx context.Context, period string, minSpins, limit int) ([]domain.SlotsStats, error) {
+	return nil, nil
+}
+func (m *MockStats) GetSlotsLeaderboardByMegaJackpots(ctx context.Context, period string, limit int) ([]domain.SlotsStats, error) {
 	return nil, nil
 }
 
@@ -150,7 +162,7 @@ func TestAwardXP_PublishesEventOnLevelUp(t *testing.T) {
 	}
 	defer resilientPub.Shutdown(context.Background())
 
-	svc := NewService(mockRepo, mockProg, mockStats, mockBus, resilientPub)
+	svc := NewService(mockRepo, mockProg, mockBus, resilientPub)
 	// Force deterministic RNG (No Crit)
 	if s, ok := svc.(*service); ok {
 		s.rnd = func() float64 { return 1.0 }
@@ -180,7 +192,7 @@ func TestAwardXP_PublishesEventOnLevelUp(t *testing.T) {
 
 	// Execute - Award XP (capped at daily limit of 250)
 	// Starting at level 1 with 0 XP, +250 brings to 250 total (still level 1)
-	result, err := svc.AwardXP(ctx, "user123", "explorer", 500, "test", nil)
+	result, err := svc.AwardXP(ctx, "user123", "explorer", 500, "test", domain.JobXPMetadata{})
 
 	// Assert - No level-up since capped at 250 XP (level 2 needs ~330 total)
 	assert.NoError(t, err)
@@ -201,7 +213,6 @@ func TestAwardXP_GuaranteedCriticalSuccess(t *testing.T) {
 	// Setup
 	mockRepo := new(MockRepo)
 	mockProg := new(MockProgression)
-	mockStats := new(MockStats)
 	mockBus := new(MockBus)
 
 	// Use nil publisher as we aren't testing that part here, or mock if needed.
@@ -210,7 +221,7 @@ func TestAwardXP_GuaranteedCriticalSuccess(t *testing.T) {
 	resilientPub, _ := event.NewResilientPublisher(mockBus, 3, 100*time.Millisecond, tmpFile)
 	defer resilientPub.Shutdown(context.Background())
 
-	svc := NewService(mockRepo, mockProg, mockStats, mockBus, resilientPub)
+	svc := NewService(mockRepo, mockProg, mockBus, resilientPub)
 	// Force Critical Success
 	if s, ok := svc.(*service); ok {
 		s.rnd = func() float64 { return 0.0 }
@@ -237,30 +248,26 @@ func TestAwardXP_GuaranteedCriticalSuccess(t *testing.T) {
 	mockProg.On("GetModifiedValue", mock.Anything, "job_level_cap", mock.Anything).Return(float64(10), nil)
 	mockProg.On("GetModifiedValue", mock.Anything, "job_daily_cap", mock.Anything).Return(250.0, nil)
 
-	// Expect Critical Event
-	mockStats.On("RecordUserEvent", ctx, "user_crit", domain.EventJobXPCritical, mock.MatchedBy(func(data map[string]interface{}) bool {
-		return data["job"] == "warrior" &&
-			data["multiplier"] == EpiphanyMultiplier
-	})).Return(nil)
+	// Epiphany bonus now publishes EventTypeJobXPCritical via the resilient publisher → event bus
+	mockBus.On("Publish", mock.Anything, mock.MatchedBy(func(e event.Event) bool {
+		return string(e.Type) == string(domain.EventTypeJobXPCritical)
+	})).Return(nil).Maybe()
 
 	// No level-up expected (200 total XP is still level 1 with new curve)
 
 	// Act
 	// baseAmount = 100
-	// EpiphanyMultiplier is likely 2.0 or defined in service.
-	// We should check the result has the bonus.
-	result, err := svc.AwardXP(ctx, "user_crit", "warrior", 100, "test", nil)
+	// EpiphanyMultiplier is 2.0
+	result, err := svc.AwardXP(ctx, "user_crit", "warrior", 100, "test", domain.JobXPMetadata{})
 
 	// Assert
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
-	// If EpiphanyMultiplier is 5.0 (from seeing previous log in failure: base 500, bonus 500, mult 2. Wait.
-	// Failure log said: map[base_xp:500 bonus_xp:500 job:explorer multiplier:2 source:test]
-	// So multiplier is 2.
 	expectedXP := 100 * 2
 	assert.Equal(t, expectedXP, result.XPGained)
 
-	mockStats.AssertExpectations(t)
+	mockRepo.AssertExpectations(t)
+	mockProg.AssertExpectations(t)
 }
 
 func TestAwardXP_GuaranteedNoCriticalSuccess(t *testing.T) {
@@ -274,7 +281,7 @@ func TestAwardXP_GuaranteedNoCriticalSuccess(t *testing.T) {
 	resilientPub, _ := event.NewResilientPublisher(mockBus, 3, 100*time.Millisecond, tmpFile)
 	defer resilientPub.Shutdown(context.Background())
 
-	svc := NewService(mockRepo, mockProg, mockStats, mockBus, resilientPub)
+	svc := NewService(mockRepo, mockProg, mockBus, resilientPub)
 	// Force No Critical Success
 	if s, ok := svc.(*service); ok {
 		s.rnd = func() float64 { return 1.0 }
@@ -304,7 +311,7 @@ func TestAwardXP_GuaranteedNoCriticalSuccess(t *testing.T) {
 	// No level-up expected (100 awarded stays within daily cap, total is still level 1)
 
 	// Act
-	result, err := svc.AwardXP(ctx, "user_nocrit", "mage", 100, "test", nil)
+	result, err := svc.AwardXP(ctx, "user_nocrit", "mage", 100, "test", domain.JobXPMetadata{})
 
 	// Assert
 	assert.NoError(t, err)

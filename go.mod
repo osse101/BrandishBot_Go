@@ -25,6 +25,7 @@ require (
 	github.com/vektra/mockery/v2 v2.53.5
 	golang.org/x/perf v0.0.0-20251208221838-04cf7a2dca90
 	golang.org/x/text v0.32.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -324,7 +325,6 @@ require (
 	google.golang.org/protobuf v1.36.10 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 	honnef.co/go/tools v0.6.1 // indirect
 	howett.net/plist v1.0.1 // indirect
 	modernc.org/libc v1.66.3 // indirect

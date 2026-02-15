@@ -25,11 +25,8 @@ namespace BrandishBot.Client
 
     public class Item
     {
-        [JsonProperty("id")]
-        public string Id { get; set; }
-
-        [JsonProperty("name")]
-        public string Name { get; set; }
+        [JsonProperty("item_name")]
+        public string InternalName { get; set; }
 
         [JsonProperty("public_name")]
         public string PublicName { get; set; }
@@ -42,6 +39,9 @@ namespace BrandishBot.Client
 
         [JsonProperty("quantity")]
         public int Quantity { get; set; }
+
+        [JsonProperty("quality_level")]
+        public string QualityLevel { get; set; }
     }
 
     public class User
@@ -183,6 +183,9 @@ namespace BrandishBot.Client
 
         [JsonProperty("completion_percentage")]
         public double CompletionPercentage { get; set; }
+
+        [JsonProperty("estimated_unlock_date")]
+        public DateTime? EstimatedUnlockDate { get; set; }
 
         [JsonProperty("started_at")]
         public DateTime StartedAt { get; set; }
@@ -361,11 +364,11 @@ namespace BrandishBot.Client
 
     public class Recipe
     {
-        [JsonProperty("id")]
+        [JsonProperty("recipe_id")]
         public string Id { get; set; }
 
-        [JsonProperty("name")]
-        public string Name { get; set; }
+        [JsonProperty("item_name")]
+        public string InternalName { get; set; }
 
         [JsonProperty("public_name")]
         public string PublicName { get; set; }
@@ -382,8 +385,8 @@ namespace BrandishBot.Client
         [JsonProperty("item_id")]
         public string ItemId { get; set; }
 
-        [JsonProperty("name")]
-        public string Name { get; set; }
+        [JsonProperty("item_name")]
+        public string InternalName { get; set; }
 
         [JsonProperty("quantity")]
         public int Quantity { get; set; }
@@ -414,6 +417,27 @@ namespace BrandishBot.Client
         [JsonProperty("git_commit")]
         public string GitCommit { get; set; }
     }
+
+    // --- Info Models ---
+
+    public class InfoResponse
+    {
+        [JsonProperty("platform")]
+        public string Platform { get; set; }
+
+        [JsonProperty("feature")]
+        public string Feature { get; set; }
+
+        [JsonProperty("topic")]
+        public string Topic { get; set; }
+
+        [JsonProperty("description")]
+        public string Description { get; set; }
+
+        [JsonProperty("link")]
+        public string Link { get; set; }
+    }
+
 
     public class RecipeListResponse
     {
@@ -520,5 +544,220 @@ namespace BrandishBot.Client
 
         [JsonProperty("purse")]
         public int Purse { get; set; }
+    }
+
+    // --- Compost Models ---
+
+    public class CompostDepositItem
+    {
+        [JsonProperty("item_name")]
+        public string ItemName { get; set; }
+
+        [JsonProperty("quantity")]
+        public int Quantity { get; set; }
+    }
+
+    public class CompostDepositResponse
+    {
+        [JsonProperty("message")]
+        public string Message { get; set; }
+
+        /// <summary>Status of the bin: "idle", "composting", "ready", "sludge"</summary>
+        [JsonProperty("status")]
+        public string Status { get; set; }
+
+        [JsonProperty("item_count")]
+        public int ItemCount { get; set; }
+
+        [JsonProperty("capacity")]
+        public int Capacity { get; set; }
+
+        /// <summary>RFC3339 timestamp when the bin will be ready to harvest</summary>
+        [JsonProperty("ready_at")]
+        public string ReadyAt { get; set; }
+    }
+
+    public class CompostHarvestResponse
+    {
+        [JsonProperty("message")]
+        public string Message { get; set; }
+
+        /// <summary>True if items were harvested; false if bin is not ready (check TimeLeft/Status)</summary>
+        [JsonProperty("harvested")]
+        public bool Harvested { get; set; }
+
+        /// <summary>Items received from harvest: internal_name -> quantity</summary>
+        [JsonProperty("items")]
+        public Dictionary<string, int> Items { get; set; }
+
+        /// <summary>Human-readable time remaining (e.g. "1h 30m"). Set when not harvested.</summary>
+        [JsonProperty("time_left")]
+        public string TimeLeft { get; set; }
+
+        /// <summary>Bin status: "idle", "composting", "ready", "sludge". Set when not harvested.</summary>
+        [JsonProperty("status")]
+        public string Status { get; set; }
+    }
+
+    public class CompostStatusResponse
+    {
+        [JsonProperty("harvested")]
+        public bool Harvested { get; set; }
+
+        [JsonProperty("status")]
+        public CompostBinStatus Status { get; set; }
+    }
+
+    public class CompostBinStatus
+    {
+        /// <summary>Bin status: "idle", "composting", "ready", "sludge"</summary>
+        [JsonProperty("status")]
+        public string Status { get; set; }
+
+        [JsonProperty("capacity")]
+        public int Capacity { get; set; }
+
+        [JsonProperty("item_count")]
+        public int ItemCount { get; set; }
+
+        [JsonProperty("time_left")]
+        public string TimeLeft { get; set; }
+
+        [JsonProperty("ready_at")]
+        public string ReadyAt { get; set; }
+
+        [JsonProperty("sludge_at")]
+        public string SludgeAt { get; set; }
+
+        [JsonProperty("items")]
+        public List<CompostBinItem> Items { get; set; }
+    }
+
+    public class CompostBinItem
+    {
+        [JsonProperty("item_name")]
+        public string ItemName { get; set; }
+
+        [JsonProperty("quantity")]
+        public int Quantity { get; set; }
+
+        [JsonProperty("quality_level")]
+        public string QualityLevel { get; set; }
+
+        [JsonProperty("base_value")]
+        public int BaseValue { get; set; }
+    }
+
+    // --- Subscription Models ---
+
+    public class SubscriptionEvent
+    {
+        [JsonProperty("platform")]
+        public string Platform { get; set; }
+
+        [JsonProperty("platform_user_id")]
+        public string PlatformUserId { get; set; }
+
+        [JsonProperty("username")]
+        public string Username { get; set; }
+
+        [JsonProperty("tier_name")]
+        public string TierName { get; set; }
+
+        [JsonProperty("event_type")]
+        public string EventType { get; set; }
+
+        [JsonProperty("timestamp")]
+        public long Timestamp { get; set; }
+    }
+
+    public class SubscriptionTier
+    {
+        [JsonProperty("tier_id")]
+        public int TierId { get; set; }
+
+        [JsonProperty("platform")]
+        public string Platform { get; set; }
+
+        [JsonProperty("tier_name")]
+        public string TierName { get; set; }
+
+        [JsonProperty("display_name")]
+        public string DisplayName { get; set; }
+
+        [JsonProperty("tier_level")]
+        public int TierLevel { get; set; }
+
+        [JsonProperty("created_at")]
+        public DateTime CreatedAt { get; set; }
+    }
+
+    public class Subscription
+    {
+        [JsonProperty("user_id")]
+        public string UserId { get; set; }
+
+        [JsonProperty("platform")]
+        public string Platform { get; set; }
+
+        [JsonProperty("tier_id")]
+        public int TierId { get; set; }
+
+        [JsonProperty("status")]
+        public string Status { get; set; }
+
+        [JsonProperty("subscribed_at")]
+        public DateTime SubscribedAt { get; set; }
+
+        [JsonProperty("expires_at")]
+        public DateTime ExpiresAt { get; set; }
+
+        [JsonProperty("last_verified_at")]
+        public DateTime? LastVerifiedAt { get; set; }
+
+        [JsonProperty("created_at")]
+        public DateTime CreatedAt { get; set; }
+
+        [JsonProperty("updated_at")]
+        public DateTime UpdatedAt { get; set; }
+    }
+
+    public class SubscriptionWithTier
+    {
+        [JsonProperty("user_id")]
+        public string UserId { get; set; }
+
+        [JsonProperty("platform")]
+        public string Platform { get; set; }
+
+        [JsonProperty("tier_id")]
+        public int TierId { get; set; }
+
+        [JsonProperty("status")]
+        public string Status { get; set; }
+
+        [JsonProperty("subscribed_at")]
+        public DateTime SubscribedAt { get; set; }
+
+        [JsonProperty("expires_at")]
+        public DateTime ExpiresAt { get; set; }
+
+        [JsonProperty("last_verified_at")]
+        public DateTime? LastVerifiedAt { get; set; }
+
+        [JsonProperty("created_at")]
+        public DateTime CreatedAt { get; set; }
+
+        [JsonProperty("updated_at")]
+        public DateTime UpdatedAt { get; set; }
+
+        [JsonProperty("tier_name")]
+        public string TierName { get; set; }
+
+        [JsonProperty("display_name")]
+        public string DisplayName { get; set; }
+
+        [JsonProperty("tier_level")]
+        public int TierLevel { get; set; }
     }
 }

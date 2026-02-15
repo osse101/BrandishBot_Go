@@ -60,8 +60,7 @@ func (h *ScenarioHandler) HandleGetCapabilities() http.HandlerFunc {
 			Features:     registry.Features(),
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
+		respondJSON(w, http.StatusOK, response)
 	}
 }
 
@@ -82,8 +81,7 @@ func (h *ScenarioHandler) HandleGetScenarios() http.HandlerFunc {
 			Total:     len(summaries),
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
+		respondJSON(w, http.StatusOK, response)
 	}
 }
 
@@ -115,8 +113,7 @@ func (h *ScenarioHandler) HandleGetScenario() http.HandlerFunc {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(s)
+		respondJSON(w, http.StatusOK, s)
 	}
 }
 
@@ -155,8 +152,7 @@ func (h *ScenarioHandler) HandleRunScenario() http.HandlerFunc {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(result)
+		respondJSON(w, http.StatusOK, result)
 	}
 }
 
@@ -200,7 +196,6 @@ func (h *ScenarioHandler) HandleRunCustomScenario() http.HandlerFunc {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(result)
+		respondJSON(w, http.StatusOK, result)
 	}
 }

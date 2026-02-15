@@ -5,6 +5,14 @@ import (
 	"sort"
 )
 
+const (
+	envDev        = "dev"
+	envStaging    = "staging"
+	envProduction = "production"
+	appName       = "brandishbot"
+	confirmYes    = "yes"
+)
+
 // Command interface that all devtool commands must implement
 type Command interface {
 	Name() string
@@ -37,7 +45,7 @@ func (r *Registry) Get(name string) (Command, bool) {
 
 // List returns a sorted list of all registered commands
 func (r *Registry) List() []Command {
-	var cmds []Command
+	cmds := make([]Command, 0, len(r.commands))
 	for _, cmd := range r.commands {
 		cmds = append(cmds, cmd)
 	}

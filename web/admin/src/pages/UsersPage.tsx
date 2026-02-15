@@ -5,6 +5,7 @@ import { JsonViewer } from "../components/shared/JsonViewer";
 import { DataTable } from "../components/shared/DataTable";
 import type {
   User,
+  ActiveChatter,
   InventoryItem,
   UserJob,
   EventLogEntry,
@@ -172,7 +173,27 @@ export function UsersPage() {
         </button>
       </form>
 
-      {/* Recently Active Users */}
+      {/* Real-time Active Chatters */}
+      {!user && !searching && (
+        <ActiveChattersList
+          onSelectChatter={(c) => {
+            setPlatform(c.platform);
+            setUsername(c.username);
+            // We need a full user object, so we'll trigger a search
+            setSearching(true);
+            apiGet<User>(
+              `/api/v1/admin/users/lookup?platform=${c.platform}&username=${encodeURIComponent(c.username)}`,
+            )
+              .then((u) => {
+                setUser(u);
+                loadTabData("inventory", c.platform, c.username);
+              })
+              .finally(() => setSearching(false));
+          }}
+        />
+      )}
+
+      {/* Recently Active Users (Historical) */}
       {!user && !searching && (
         <RecentUsersList
           onSelectUser={(u) => {
@@ -227,7 +248,7 @@ export function UsersPage() {
                   { key: "item_name", header: "Item" },
                   { key: "public_name", header: "Display Name" },
                   { key: "quantity", header: "Qty" },
-                  { key: "shine_level", header: "Shine" },
+                  { key: "quality_level", header: "Quality" },
                 ]}
                 data={inventory as unknown as Record<string, unknown>[]}
                 keyField="item_name"
@@ -554,6 +575,68 @@ function RecentUsersList({
               {u.username}
             </div>
             <div className="text-xs text-gray-500">{u.platform}</div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+function ActiveChattersList({
+  onSelectChatter,
+}: {
+  onSelectChatter: (c: ActiveChatter) => void;
+}) {
+  const [chatters, setChatters] = useState<ActiveChatter[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchActive = async () => {
+    try {
+      const data = await apiGet<ActiveChatter[]>("/api/v1/admin/users/active");
+      setChatters(data ?? []);
+    } catch {
+      // Handle error
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchActive();
+    const interval = setInterval(fetchActive, 10000); // Refresh every 10s
+    return () => clearInterval(interval);
+  }, []);
+
+  if (loading && chatters.length === 0)
+    return <p className="text-sm text-gray-500">Loading active chatters...</p>;
+  if (chatters.length === 0) return null;
+
+  return (
+    <div className="bg-gray-900 rounded-lg border border-gray-800 p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-medium text-gray-300">
+          Currently Active Chatters (Last 30m)
+        </h3>
+        <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+        {chatters.map((c) => (
+          <button
+            key={`${c.platform}:${c.user_id}`}
+            onClick={() => onSelectChatter(c)}
+            className="text-left p-2 rounded-md bg-gray-800/50 border border-gray-700 hover:border-blue-500 transition-colors group"
+          >
+            <div className="text-sm font-medium text-gray-200 group-hover:text-blue-400 truncate">
+              {c.username}
+            </div>
+            <div className="flex justify-between items-center text-[10px] text-gray-500 uppercase tracking-wider">
+              <span>{c.platform}</span>
+              <span>
+                {new Date(c.last_message_at).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+            </div>
           </button>
         ))}
       </div>

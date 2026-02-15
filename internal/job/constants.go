@@ -57,8 +57,26 @@ const (
 
 // XP source types for tracking and special behavior
 const (
-	SourceRareCandy = "rarecandy" // Rare candy usage - bypasses daily cap
-	SourceHarvest   = "harvest"   // Harvest XP - bypasses daily cap
+	SourceEngagement     = "engagement"      // Engagement XP
+	SourceSearch         = "search"          // Search XP
+	SourceRareCandy      = "rarecandy"       // Rare candy usage - bypasses daily cap
+	SourceHarvest        = "harvest"         // Harvest XP - bypasses daily cap
+	SourcePrediction     = "prediction"      // Prediction XP
+	SourceQuest          = "quest"           // Quest XP
+	SourceUpgrade        = "upgrade"         // Item upgrade XP
+	SourceDisassemble    = "disassemble"     // Item disassemble XP
+	SourceSlots          = "slots"           // Slots XP
+	SourceCompostHarvest = "compost_harvest" // Compost harvest XP
+	SourceExpedition     = "expedition"      // Expedition XP
+	SourceGambleWin      = "win"             // Gamble win XP
+	SourceSell           = "sell"            // Item sell XP
+	SourceBuy            = "buy"             // Item buy XP
+)
+
+// Log source constants for better tracking in logs
+const (
+	LogSourceCompost = "compost"
+	LogSourceQuest   = "quest"
 )
 
 // Job Epiphany constants
@@ -76,9 +94,9 @@ type Info struct {
 // AllJobs is a list of all available jobs in the system
 var AllJobs = []Info{
 	{Key: JobKeyBlacksmith, DisplayName: "Blacksmith (Crafting)"},
-	{Key: JobKeyExplorer, DisplayName: "Explorer (Digging)"},
+	{Key: JobKeyExplorer, DisplayName: "Explorer (Exploration)"},
 	{Key: JobKeyMerchant, DisplayName: "Merchant (Economy)"},
 	{Key: JobKeyGambler, DisplayName: "Gambler (Gambling)"},
-	{Key: JobKeyFarmer, DisplayName: "Farmer (TBD)"},
+	{Key: JobKeyFarmer, DisplayName: "Farmer (Farming)"},
 	{Key: JobKeyScholar, DisplayName: "Scholar (Community)"},
 }

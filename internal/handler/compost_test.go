@@ -9,11 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/osse101/BrandishBot_Go/internal/compost"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 	"github.com/osse101/BrandishBot_Go/mocks"
@@ -29,35 +29,44 @@ func TestHandleDeposit(t *testing.T) {
 	}{
 		{
 			name: "Success",
-			requestBody: DepositRequest{
-				Platform:   "twitch",
+			requestBody: CompostDepositRequest{
+				Platform:   domain.PlatformTwitch,
 				PlatformID: "user123",
-				ItemKey:    "item1",
-				Quantity:   5,
+				Items: []compost.DepositItem{
+					{ItemName: "herb", Quantity: 3},
+				},
 			},
 			setupMocks: func(m *mocks.MockCompostService, pm *mocks.MockProgressionService) {
 				pm.On("IsFeatureUnlocked", mock.Anything, progression.FeatureCompost).
 					Return(true, nil)
 
-				deposit := &domain.CompostDeposit{
-					ID:          uuid.New(),
-					ReadyAt:     time.Now().Add(24 * time.Hour),
-					DepositedAt: time.Now(),
+				readyAt := time.Now().Add(2 * time.Hour)
+				bin := &domain.CompostBin{
+					ID:        "bin-1",
+					UserID:    "user123",
+					Status:    domain.CompostBinStatusComposting,
+					Capacity:  5,
+					ItemCount: 3,
+					ReadyAt:   &readyAt,
 				}
-				m.On("Deposit", mock.Anything, "twitch", "user123", "item1", 5).
-					Return(deposit, nil)
+				m.On("Deposit", mock.Anything, domain.PlatformTwitch, "user123", []compost.DepositItem{
+					{ItemName: "herb", Quantity: 3},
+				}).Return(bin, nil)
 
 				pm.On("RecordEngagement", mock.Anything, "user123", "compost_deposit", 1).
 					Return(nil)
 			},
 			expectedStatus: http.StatusCreated,
-			expectedBody:   "Items composting!",
+			expectedBody:   MsgCompostDepositSuccess,
 		},
 		{
 			name: "Feature Locked",
-			requestBody: DepositRequest{
-				Platform:   "twitch",
+			requestBody: CompostDepositRequest{
+				Platform:   domain.PlatformTwitch,
 				PlatformID: "user123",
+				Items: []compost.DepositItem{
+					{ItemName: "herb", Quantity: 1},
+				},
 			},
 			setupMocks: func(m *mocks.MockCompostService, pm *mocks.MockProgressionService) {
 				pm.On("IsFeatureUnlocked", mock.Anything, progression.FeatureCompost).
@@ -66,7 +75,7 @@ func TestHandleDeposit(t *testing.T) {
 					Return([]*domain.ProgressionNode{}, nil)
 			},
 			expectedStatus: http.StatusForbidden,
-			expectedBody:   "Feature locked",
+			expectedBody:   ErrMsgFeatureLocked,
 		},
 		{
 			name:        "Invalid Request Body",
@@ -76,22 +85,23 @@ func TestHandleDeposit(t *testing.T) {
 					Return(true, nil)
 			},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Invalid request body",
 		},
 		{
 			name: "Service Error",
-			requestBody: DepositRequest{
-				Platform:   "twitch",
+			requestBody: CompostDepositRequest{
+				Platform:   domain.PlatformTwitch,
 				PlatformID: "user123",
-				ItemKey:    "item1",
-				Quantity:   5,
+				Items: []compost.DepositItem{
+					{ItemName: "herb", Quantity: 1},
+				},
 			},
 			setupMocks: func(m *mocks.MockCompostService, pm *mocks.MockProgressionService) {
 				pm.On("IsFeatureUnlocked", mock.Anything, progression.FeatureCompost).
 					Return(true, nil)
 
-				m.On("Deposit", mock.Anything, "twitch", "user123", "item1", 5).
-					Return(nil, errors.New("service error"))
+				m.On("Deposit", mock.Anything, domain.PlatformTwitch, "user123", []compost.DepositItem{
+					{ItemName: "herb", Quantity: 1},
+				}).Return(nil, errors.New("service error"))
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   "service error",
@@ -131,7 +141,7 @@ func TestHandleDeposit(t *testing.T) {
 	}
 }
 
-func TestHandleGetStatus(t *testing.T) {
+func TestHandleStatus(t *testing.T) {
 	tests := []struct {
 		name           string
 		queryParams    map[string]string
@@ -140,35 +150,54 @@ func TestHandleGetStatus(t *testing.T) {
 		expectedBody   string
 	}{
 		{
-			name: "Success",
+			name: "Success - Idle Bin",
 			queryParams: map[string]string{
-				"username": "user123",
+				"platform":    domain.PlatformTwitch,
+				"platform_id": "user123",
 			},
 			setupMocks: func(m *mocks.MockCompostService) {
-				status := &domain.CompostStatus{
-					ReadyCount:       2,
-					TotalGemsPending: 100,
+				result := &domain.HarvestResult{
+					Harvested: false,
+					Status: &domain.CompostStatusResponse{
+						Status:    domain.CompostBinStatusIdle,
+						Capacity:  5,
+						ItemCount: 0,
+						Items:     []domain.CompostBinItem{},
+						TimeLeft:  compost.MsgBinEmpty,
+					},
 				}
-				m.On("GetStatus", mock.Anything, "twitch", "user123").
-					Return(status, nil)
+				m.On("Harvest", mock.Anything, domain.PlatformTwitch, "user123", "").
+					Return(result, nil)
 			},
 			expectedStatus: http.StatusOK,
-			expectedBody:   `"ready_count":2`,
+			expectedBody:   `"status":"idle"`,
 		},
 		{
-			name:           "Missing Username",
-			queryParams:    map[string]string{},
+			name: "Missing platform",
+			queryParams: map[string]string{
+				"platform_id": "user123",
+			},
 			setupMocks:     func(m *mocks.MockCompostService) {},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Missing username query parameter",
+			expectedBody:   "platform",
+		},
+		{
+			name: "Missing platform_id",
+			queryParams: map[string]string{
+				"platform": domain.PlatformTwitch,
+			},
+			setupMocks:     func(m *mocks.MockCompostService) {},
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "platform_id",
 		},
 		{
 			name: "Service Error",
 			queryParams: map[string]string{
-				"username": "user123",
+				"platform":    domain.PlatformTwitch,
+				"platform_id": "user123",
 			},
 			setupMocks: func(m *mocks.MockCompostService) {
-				m.On("GetStatus", mock.Anything, "twitch", "user123").
+				m.On("Harvest", mock.Anything, domain.PlatformTwitch, "user123", "").
 					Return(nil, errors.New("service error"))
 			},
 			expectedStatus: http.StatusInternalServerError,
@@ -196,7 +225,7 @@ func TestHandleGetStatus(t *testing.T) {
 
 			rec := httptest.NewRecorder()
 
-			h.HandleGetStatus(rec, req)
+			h.HandleStatus(rec, req)
 
 			assert.Equal(t, tt.expectedStatus, rec.Code)
 			if tt.expectedBody != "" {
@@ -215,37 +244,81 @@ func TestHandleHarvest(t *testing.T) {
 		expectedBody   string
 	}{
 		{
-			name: "Success",
-			requestBody: HarvestRequest{
-				Platform:   "twitch",
+			name: "Success - Harvest Ready",
+			requestBody: CompostHarvestRequest{
+				Platform:   domain.PlatformTwitch,
 				PlatformID: "user123",
+				Username:   "testuser",
 			},
 			setupMocks: func(m *mocks.MockCompostService, pm *mocks.MockProgressionService) {
-				m.On("Harvest", mock.Anything, "twitch", "user123").
-					Return(50, nil)
+				pm.On("IsFeatureUnlocked", mock.Anything, progression.FeatureCompost).
+					Return(true, nil)
 
-				pm.On("RecordEngagement", mock.Anything, "user123", "compost_harvest", 1).
+				result := &domain.HarvestResult{
+					Harvested: true,
+					Output: &domain.CompostOutput{
+						Items:      map[string]int{"iron_ore": 2},
+						IsSludge:   false,
+						TotalValue: 20,
+						Message:    compost.MsgHarvestComplete,
+					},
+				}
+				m.On("Harvest", mock.Anything, domain.PlatformTwitch, "user123", "testuser").
+					Return(result, nil)
+
+				pm.On("RecordEngagement", mock.Anything, "user123", "compost_harvest", 5).
 					Return(nil)
 			},
-			expectedStatus: http.StatusOK,
-			expectedBody:   `"gems_awarded":50`,
+			expectedStatus: http.StatusCreated,
+			expectedBody:   compost.MsgHarvestComplete,
 		},
 		{
-			name:           "Invalid Request Body",
-			requestBody:    "invalid-json",
-			setupMocks:     func(m *mocks.MockCompostService, pm *mocks.MockProgressionService) {},
+			name: "Not Ready - Returns Status",
+			requestBody: CompostHarvestRequest{
+				Platform:   domain.PlatformTwitch,
+				PlatformID: "user123",
+				Username:   "testuser",
+			},
+			setupMocks: func(m *mocks.MockCompostService, pm *mocks.MockProgressionService) {
+				pm.On("IsFeatureUnlocked", mock.Anything, progression.FeatureCompost).
+					Return(true, nil)
+
+				result := &domain.HarvestResult{
+					Harvested: false,
+					Status: &domain.CompostStatusResponse{
+						Status:    domain.CompostBinStatusComposting,
+						Capacity:  5,
+						ItemCount: 3,
+						TimeLeft:  "1h 30m",
+					},
+				}
+				m.On("Harvest", mock.Anything, domain.PlatformTwitch, "user123", "testuser").
+					Return(result, nil)
+			},
+			expectedStatus: http.StatusCreated,
+			expectedBody:   "1h 30m",
+		},
+		{
+			name:        "Invalid Request Body",
+			requestBody: "invalid-json",
+			setupMocks: func(m *mocks.MockCompostService, pm *mocks.MockProgressionService) {
+				pm.On("IsFeatureUnlocked", mock.Anything, progression.FeatureCompost).
+					Return(true, nil)
+			},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Invalid request body",
 		},
 		{
 			name: "Service Error",
-			requestBody: HarvestRequest{
-				Platform:   "twitch",
+			requestBody: CompostHarvestRequest{
+				Platform:   domain.PlatformTwitch,
 				PlatformID: "user123",
+				Username:   "testuser",
 			},
 			setupMocks: func(m *mocks.MockCompostService, pm *mocks.MockProgressionService) {
-				m.On("Harvest", mock.Anything, "twitch", "user123").
-					Return(0, errors.New("service error"))
+				pm.On("IsFeatureUnlocked", mock.Anything, progression.FeatureCompost).
+					Return(true, nil)
+				m.On("Harvest", mock.Anything, domain.PlatformTwitch, "user123", "testuser").
+					Return(nil, errors.New("service error"))
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   "service error",

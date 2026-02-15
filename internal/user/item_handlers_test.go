@@ -61,8 +61,8 @@ func TestUtilityHandler(t *testing.T) {
 			}
 
 			// Execute
-			args := map[string]interface{}{
-				ArgsUsername: "testuser",
+			args := ItemHandlerArgs{
+				Username: "testuser",
 			}
 			handler := &UtilityHandler{}
 			result, err := handler.Handle(ctx, svc, &domain.User{ID: "user1"}, inventory, stickItem, tt.quantity, args)

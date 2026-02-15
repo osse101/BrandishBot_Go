@@ -19,7 +19,6 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/lootbox"
 	"github.com/osse101/BrandishBot_Go/internal/naming"
-	"github.com/osse101/BrandishBot_Go/internal/quest"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/osse101/BrandishBot_Go/internal/stats"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
@@ -30,11 +29,6 @@ var validPlatforms = map[string]bool{
 	domain.PlatformTwitch:  true,
 	domain.PlatformYoutube: true,
 	domain.PlatformDiscord: true,
-}
-
-// JobService defines the interface for job operations
-type JobService interface {
-	AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error)
 }
 
 // timeoutInfo tracks active timeouts
@@ -51,15 +45,15 @@ type service struct {
 	timeoutMu       sync.Mutex
 	timeouts        map[string]*timeoutInfo // Keyed by "platform:username"
 	lootboxService  lootbox.Service
-	jobService      JobService
+	publisher       *event.ResilientPublisher
 	statsService    stats.Service
 	stringFinder    *StringFinder
 	namingResolver  naming.Resolver
 	cooldownService cooldown.Service
-	eventBus        event.Bus // Event bus for publishing timeout events
-	devMode         bool      // When true, bypasses cooldowns
-	wg              sync.WaitGroup
-	userCache       *userCache // In-memory cache for user lookups
+	jobService      job.Service // Job service for retrieving job levels
+	eventBus        event.Bus   // Event bus for publishing timeout events
+	devMode         bool        // When true, bypasses cooldowns
+	userCache       *userCache  // In-memory cache for user lookups
 
 	// Item cache: in-memory cache for item metadata (name, description, value, etc.)
 	// Purpose: Reduce database queries for frequently accessed item data
@@ -73,9 +67,9 @@ type service struct {
 
 	activeChatterTracker *ActiveChatterTracker // Tracks users eligible for random targeting
 
-	questService quest.Service
-
 	rnd func() float64 // For RNG - allows deterministic testing
+
+	wg sync.WaitGroup // Track background tasks for graceful shutdown
 }
 
 // Compile-time interface checks
@@ -116,25 +110,25 @@ func loadCacheConfig() CacheConfig {
 }
 
 // NewService creates a new user service
-func NewService(repo repository.User, trapRepo repository.TrapRepository, statsService stats.Service, jobService JobService, lootboxService lootbox.Service, namingResolver naming.Resolver, cooldownService cooldown.Service, eventBus event.Bus, questService quest.Service, devMode bool) Service {
+func NewService(repo repository.User, trapRepo repository.TrapRepository, statsService stats.Service, publisher *event.ResilientPublisher, lootboxService lootbox.Service, namingResolver naming.Resolver, cooldownService cooldown.Service, jobService job.Service, eventBus event.Bus, devMode bool) Service {
 	return &service{
 		repo:                 repo,
 		trapRepo:             trapRepo,
 		handlerRegistry:      NewHandlerRegistry(),
 		timeouts:             make(map[string]*timeoutInfo),
 		lootboxService:       lootboxService,
-		jobService:           jobService,
+		publisher:            publisher,
 		statsService:         statsService,
 		stringFinder:         NewStringFinder(),
 		namingResolver:       namingResolver,
 		cooldownService:      cooldownService,
+		jobService:           jobService,
 		eventBus:             eventBus,
 		devMode:              devMode,
 		itemCacheByName:      make(map[string]domain.Item),
 		itemIDToName:         make(map[int]string),
 		userCache:            newUserCache(loadCacheConfig()),
 		activeChatterTracker: NewActiveChatterTracker(),
-		questService:         questService,
 		rnd:                  utils.RandomFloat,
 	}
 }
@@ -226,7 +220,9 @@ func (s *service) HandleIncomingMessage(ctx context.Context, platform, platformI
 			log.Warn("Failed to check for trap", "user_id", user.ID, "error", err)
 		} else if trap != nil {
 			// Trigger trap asynchronously (don't block message processing)
+			s.wg.Add(1)
 			go func() {
+				defer s.wg.Done()
 				asyncCtx := context.Background() // New context for async operation
 				if err := s.triggerTrap(asyncCtx, trap, user); err != nil {
 					log.Error(LogMsgTrapTriggered, "trap_id", trap.ID, "error", err)
@@ -255,7 +251,7 @@ func (s *service) HandleIncomingMessage(ctx context.Context, platform, platformI
 // to these helpers for the actual inventory modification.
 
 // addItemToUserInternal adds an item to a user's inventory within a transaction.
-// Used for admin adds - defaults to COMMON shine level.
+// Used for admin adds - defaults to COMMON quality level.
 func (s *service) addItemToUserInternal(ctx context.Context, user *domain.User, itemName string, quantity int) error {
 	log := logger.FromContext(ctx)
 
@@ -276,18 +272,18 @@ func (s *service) addItemToUserInternal(ctx context.Context, user *domain.User, 
 			return domain.ErrFailedToGetInventory
 		}
 
-		// Admin adds default to COMMON shine
-		shineLevel := domain.ShineCommon
+		// Admin adds default to COMMON quality
+		qualityLevel := domain.QualityCommon
 
-		// Find slot with matching ItemID AND ShineLevel
-		i, _ := utils.FindSlotWithShine(inventory, item.ID, shineLevel)
+		// Find slot with matching ItemID AND QualityLevel
+		i, _ := utils.FindSlotWithQuality(inventory, item.ID, qualityLevel)
 		if i != -1 {
 			inventory.Slots[i].Quantity += quantity
 		} else {
 			inventory.Slots = append(inventory.Slots, domain.InventorySlot{
-				ItemID:     item.ID,
-				Quantity:   quantity,
-				ShineLevel: shineLevel,
+				ItemID:       item.ID,
+				Quantity:     quantity,
+				QualityLevel: qualityLevel,
 			})
 		}
 
@@ -321,7 +317,7 @@ func (s *service) removeItemFromUserInternal(ctx context.Context, user *domain.U
 			return domain.ErrFailedToGetInventory
 		}
 
-		// Remove item from inventory using random selection (in case multiple slots with different shine levels exist)
+		// Remove item from inventory using random selection (in case multiple slots with different quality levels exist)
 		i, slotQty := utils.FindRandomSlot(inventory, item.ID, s.rnd)
 		if i == -1 {
 			log.Warn("Item not in inventory", "itemName", itemName)
@@ -372,7 +368,7 @@ func (s *service) useItemInternal(ctx context.Context, user *domain.User, platfo
 			return domain.ErrFailedToGetInventory
 		}
 
-		// Find item in inventory using random selection (in case multiple slots exist with different shine levels)
+		// Find item in inventory using random selection (in case multiple slots exist with different quality levels)
 		itemSlotIndex, slotQty := utils.FindRandomSlot(inventory, itemToUse.ID, s.rnd)
 		if itemSlotIndex == -1 {
 			return domain.ErrNotInInventory
@@ -387,15 +383,16 @@ func (s *service) useItemInternal(ctx context.Context, user *domain.User, platfo
 			log.Warn("No handler for item", "itemName", itemName)
 			return domain.ErrItemNotHandled
 		}
-		args := map[string]interface{}{
-			ArgsUsername: user.Username,
-			ArgsPlatform: platform,
+
+		handlerArgs := ItemHandlerArgs{
+			Username: user.Username,
+			Platform: platform,
 		}
 		if targetName != "" {
-			args[ArgsTargetUsername] = targetName
-			args[ArgsJobName] = targetName
+			handlerArgs.TargetUsername = targetName
+			handlerArgs.JobName = targetName
 		}
-		message, err = handler.Handle(ctx, s, user, inventory, itemToUse, quantity, args)
+		message, err = handler.Handle(ctx, s, user, inventory, itemToUse, quantity, handlerArgs)
 		if err != nil {
 			log.Error("Handler error", "error", err, "itemName", itemName)
 			return err
@@ -428,10 +425,10 @@ func (s *service) getInventoryInternal(ctx context.Context, user *domain.User, f
 		return nil, err
 	}
 
-	// Group items to merge identical items (same ID and shine)
+	// Group items to merge identical items (same ID and quality)
 	type itemKey struct {
-		ItemID int
-		Shine  domain.ShineLevel
+		ItemID  int
+		Quality domain.QualityLevel
 	}
 	itemsMap := make(map[itemKey]int)
 	itemOrder := make([]itemKey, 0)
@@ -457,7 +454,7 @@ func (s *service) getInventoryInternal(ctx context.Context, user *domain.User, f
 			}
 		}
 
-		key := itemKey{ItemID: slot.ItemID, Shine: slot.ShineLevel}
+		key := itemKey{ItemID: slot.ItemID, Quality: slot.QualityLevel}
 		if _, exists := itemsMap[key]; !exists {
 			itemOrder = append(itemOrder, key)
 		}
@@ -468,17 +465,16 @@ func (s *service) getInventoryInternal(ctx context.Context, user *domain.User, f
 	items := make([]InventoryItem, 0, len(itemsMap))
 	for _, key := range itemOrder {
 		item := itemMap[key.ItemID]
-		shine := string(key.Shine)
-		if shine == "" {
-			shine = string(domain.ShineCommon)
+		quality := string(key.Quality)
+		if quality == "" {
+			quality = string(domain.QualityCommon)
 		}
 
 		items = append(items, InventoryItem{
 			InternalName: item.InternalName,
 			PublicName:   item.PublicName,
-			Name:         item.PublicName,
 			Quantity:     itemsMap[key],
-			ShineLevel:   shine,
+			QualityLevel: quality,
 		})
 	}
 
@@ -535,7 +531,7 @@ func (s *service) AddItemByUsername(ctx context.Context, platform, username, ite
 
 // AddItems adds multiple items to a user's inventory in a single transaction.
 // This is more efficient than calling AddItem multiple times as it reduces transaction overhead.
-// Items added via this method default to COMMON shine level.
+// Items added via this method default to COMMON quality level.
 // Useful for bulk operations like lootbox opening.
 func (s *service) AddItems(ctx context.Context, platform, platformID, username string, items map[string]int) error {
 	log := logger.FromContext(ctx)
@@ -586,7 +582,7 @@ func (s *service) AddItems(ctx context.Context, platform, platformID, username s
 
 	// Convert items to InventorySlots for the helper
 	// Also verifies that all items were found
-	// Items default to COMMON shine level
+	// Items default to COMMON quality level
 	slotsToAdd := make([]domain.InventorySlot, 0, len(items))
 	for itemName, quantity := range items {
 		itemID, ok := itemIDMap[itemName]
@@ -595,9 +591,9 @@ func (s *service) AddItems(ctx context.Context, platform, platformID, username s
 			return domain.ErrItemNotFound
 		}
 		slotsToAdd = append(slotsToAdd, domain.InventorySlot{
-			ItemID:     itemID,
-			Quantity:   quantity,
-			ShineLevel: domain.ShineCommon,
+			ItemID:       itemID,
+			Quantity:     quantity,
+			QualityLevel: domain.QualityCommon,
 		})
 	}
 
@@ -686,7 +682,7 @@ func (s *service) executeGiveItemTx(ctx context.Context, owner, receiver *domain
 			return domain.ErrFailedToGetInventory
 		}
 
-		// Find item in owner's inventory using random selection (in case multiple slots with different shine levels exist)
+		// Find item in owner's inventory using random selection (in case multiple slots with different quality levels exist)
 		ownerSlotIndex, ownerSlotQty := utils.FindRandomSlot(ownerInventory, item.ID, s.rnd)
 		if ownerSlotIndex == -1 {
 			log.Warn("Item not found in owner's inventory", "item", item.InternalName)
@@ -697,8 +693,8 @@ func (s *service) executeGiveItemTx(ctx context.Context, owner, receiver *domain
 			return domain.ErrInsufficientQuantity
 		}
 
-		// Capture the shine level being transferred
-		transferredShine := ownerInventory.Slots[ownerSlotIndex].ShineLevel
+		// Capture the quality level being transferred
+		transferredQuality := ownerInventory.Slots[ownerSlotIndex].QualityLevel
 
 		receiverInventory, err := tx.GetInventory(ctx, receiver.ID)
 		if err != nil {
@@ -713,15 +709,15 @@ func (s *service) executeGiveItemTx(ctx context.Context, owner, receiver *domain
 			ownerInventory.Slots[ownerSlotIndex].Quantity -= quantity
 		}
 
-		// Add to receiver - must match BOTH ItemID and ShineLevel to preserve exact item quality
-		receiverSlotIndex, _ := utils.FindSlotWithShine(receiverInventory, item.ID, transferredShine)
+		// Add to receiver - must match BOTH ItemID and QualityLevel to preserve exact item quality
+		receiverSlotIndex, _ := utils.FindSlotWithQuality(receiverInventory, item.ID, transferredQuality)
 		if receiverSlotIndex != -1 {
 			receiverInventory.Slots[receiverSlotIndex].Quantity += quantity
 		} else {
 			receiverInventory.Slots = append(receiverInventory.Slots, domain.InventorySlot{
-				ItemID:     item.ID,
-				Quantity:   quantity,
-				ShineLevel: transferredShine,
+				ItemID:       item.ID,
+				Quantity:     quantity,
+				QualityLevel: transferredQuality,
 			})
 		}
 
@@ -979,7 +975,6 @@ func (s *service) ReduceTimeoutPlatform(ctx context.Context, platform, username 
 }
 
 // TimeoutUser times out a user for a specified duration.
-// Legacy method - defaults to Twitch platform for backward compatibility.
 // Note: This method REPLACES the existing timeout (does not accumulate).
 // For accumulating timeouts, use AddTimeout.
 func (s *service) TimeoutUser(ctx context.Context, username string, duration time.Duration, reason string) error {
@@ -990,13 +985,11 @@ func (s *service) TimeoutUser(ctx context.Context, username string, duration tim
 }
 
 // GetTimeout returns the remaining duration of a user's timeout.
-// Legacy method - defaults to Twitch platform for backward compatibility.
 func (s *service) GetTimeout(ctx context.Context, username string) (time.Duration, error) {
 	return s.GetTimeoutPlatform(ctx, domain.PlatformTwitch, username)
 }
 
 // ReduceTimeout reduces a user's timeout by the specified duration (used by revive items).
-// Legacy method - defaults to Twitch platform for backward compatibility.
 func (s *service) ReduceTimeout(ctx context.Context, username string, reduction time.Duration) error {
 	return s.ReduceTimeoutPlatform(ctx, domain.PlatformTwitch, username, reduction)
 }
@@ -1060,16 +1053,6 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 		return "", err
 	}
 
-	// Track quest progress for search (async, fire-and-forget)
-	if s.questService != nil {
-		go func() {
-			// Use background context for async task to outlive request
-			if err := s.questService.OnSearch(context.Background(), user.ID); err != nil {
-				slog.Warn("Failed to track quest progress for search", "error", err, "user_id", user.ID)
-			}
-		}()
-	}
-
 	log.Info("Search completed", "username", username, "result", resultMessage)
 	return resultMessage, nil
 }
@@ -1091,22 +1074,50 @@ func (s *service) executeSearch(ctx context.Context, user *domain.User) (string,
 	roll := s.rnd()
 
 	var resultMessage string
+	isSuccess := roll <= params.successThreshold
+	var isCritical, isNearMiss, isCritFail bool
+	var itemName string
+	var quantity int
 
-	if roll <= params.successThreshold {
+	if isSuccess {
 		var err error
 		resultMessage, err = s.processSearchSuccess(ctx, user, roll, params)
 		if err != nil {
 			return "", err
 		}
+		isCritical = roll <= SearchCriticalRate
+		quantity = 1
+		if isCritical {
+			quantity = 2
+		}
+		itemName = domain.ItemLootbox0
 	} else {
-		resultMessage = s.processSearchFailure(ctx, user, roll, params.successThreshold, params)
+		failureType := determineSearchFailureType(roll, params.successThreshold)
+		isNearMiss = failureType == searchFailureNearMiss
+		isCritFail = failureType == searchFailureCritical
+		resultMessage = s.processSearchFailure(roll, params.successThreshold, params)
 	}
 
-	// Record search attempt (to track daily count)
-	if s.statsService != nil {
-		_ = s.statsService.RecordUserEvent(ctx, user.ID, domain.EventSearch, map[string]interface{}{
-			"success":     roll <= params.successThreshold,
-			"daily_count": params.dailyCount + 1,
+	xpAmount := int(float64(job.ExplorerXPPerItem) * params.xpMultiplier)
+	if xpAmount < 1 {
+		xpAmount = 1
+	}
+
+	if s.publisher != nil {
+		s.publisher.PublishWithRetry(ctx, event.Event{
+			Version: "1.0",
+			Type:    event.Type(domain.EventTypeSearchPerformed),
+			Payload: domain.SearchPerformedPayload{
+				UserID:         user.ID,
+				Success:        isSuccess,
+				IsCritical:     isCritical,
+				IsNearMiss:     isNearMiss,
+				IsCriticalFail: isCritFail,
+				XPAmount:       xpAmount,
+				ItemName:       itemName,
+				Quantity:       quantity,
+				Timestamp:      time.Now().Unix(),
+			},
 		})
 	}
 
@@ -1159,8 +1170,8 @@ func (s *service) processSearchSuccess(ctx context.Context, user *domain.User, r
 	}
 
 	// Grant reward
-	shineLevel := s.calculateSearchShine(isCritical, params)
-	if err := s.grantSearchReward(ctx, user, quantity, shineLevel); err != nil {
+	qualityLevel := s.calculateSearchQuality(ctx, user.ID, isCritical, params)
+	if err := s.grantSearchReward(ctx, user, quantity, qualityLevel); err != nil {
 		return "", err
 	}
 
@@ -1170,18 +1181,11 @@ func (s *service) processSearchSuccess(ctx context.Context, user *domain.User, r
 		return "", fmt.Errorf("failed to get reward item: %w", err)
 	}
 
-	// Award Explorer XP for finding item (async, don't block)
-	s.wg.Add(1)
-	go s.awardExplorerXP(context.Background(), user.ID, item.InternalName, params.xpMultiplier)
-
-	// Record success events
-	s.recordSearchSuccessEvents(ctx, user, item, quantity, roll, isCritical)
-
 	// Format and return result message
-	return s.formatSearchSuccessMessage(ctx, item, quantity, isCritical, params), nil
+	return s.formatSearchSuccessMessage(ctx, user, item, quantity, isCritical, params), nil
 }
 
-func (s *service) addItemToTx(ctx context.Context, tx repository.UserTx, userID string, itemID int, quantity int, shineLevel domain.ShineLevel) error {
+func (s *service) addItemToTx(ctx context.Context, tx repository.UserTx, userID string, itemID int, quantity int, qualityLevel domain.QualityLevel) error {
 	log := logger.FromContext(ctx)
 	inventory, err := tx.GetInventory(ctx, userID)
 	if err != nil {
@@ -1189,15 +1193,15 @@ func (s *service) addItemToTx(ctx context.Context, tx repository.UserTx, userID 
 		return fmt.Errorf("failed to get inventory: %w", err)
 	}
 
-	// Find slot with matching ItemID AND ShineLevel to prevent shine corruption
-	i, _ := utils.FindSlotWithShine(inventory, itemID, shineLevel)
+	// Find slot with matching ItemID AND QualityLevel to prevent quality corruption
+	i, _ := utils.FindSlotWithQuality(inventory, itemID, qualityLevel)
 	if i != -1 {
 		inventory.Slots[i].Quantity += quantity
 	} else {
 		inventory.Slots = append(inventory.Slots, domain.InventorySlot{
-			ItemID:     itemID,
-			Quantity:   quantity,
-			ShineLevel: shineLevel,
+			ItemID:       itemID,
+			Quantity:     quantity,
+			QualityLevel: qualityLevel,
 		})
 	}
 
@@ -1208,33 +1212,12 @@ func (s *service) addItemToTx(ctx context.Context, tx repository.UserTx, userID 
 	return nil
 }
 
-func (s *service) processSearchFailure(ctx context.Context, user *domain.User, roll float64, successThreshold float64, params searchParams) string {
+func (s *service) processSearchFailure(roll float64, successThreshold float64, params searchParams) string {
 	// Determine failure type
 	failureType := determineSearchFailureType(roll, successThreshold)
 
-	// Record failure events
-	s.recordSearchFailureEvents(ctx, user, roll, successThreshold, failureType)
-
 	// Format failure message
 	resultMessage := formatSearchFailureMessage(failureType)
-
-	// Award Explorer XP for searching (even on failure)
-	s.wg.Add(1)
-	go func() {
-		defer s.wg.Done()
-		if err := s.awardExplorerXPSimple(context.Background(), user.ID, params.xpMultiplier); err != nil {
-			logger.FromContext(ctx).Warn("Failed to award Explorer XP on search failure",
-				"error", err, "user_id", user.ID)
-		}
-	}()
-
-	// Record search attempt (to track daily count)
-	if s.statsService != nil {
-		_ = s.statsService.RecordUserEvent(ctx, user.ID, domain.EventSearch, map[string]interface{}{
-			"success":     roll <= successThreshold,
-			"daily_count": params.dailyCount + 1, // +1 because we just did one
-		})
-	}
 
 	// Append streak and exhausted status if applicable
 	return s.formatSearchFailureMessageWithMeta(resultMessage, params)
@@ -1283,59 +1266,6 @@ func (s *service) getUserOrRegister(ctx context.Context, platform, platformID, u
 	return &registered, nil
 }
 
-// awardExplorerXP awards Explorer job XP for finding items during search
-func (s *service) awardExplorerXP(ctx context.Context, userID, itemName string, xpMultiplier float64) {
-	defer s.wg.Done()
-
-	if s.jobService == nil {
-		return // Job system not enabled
-	}
-
-	xp := int(float64(job.ExplorerXPPerItem) * xpMultiplier)
-	if xp < 1 {
-		xp = 1
-	}
-
-	metadata := map[string]interface{}{
-		"item_name":  itemName,
-		"multiplier": xpMultiplier,
-	}
-
-	result, err := s.jobService.AwardXP(ctx, userID, job.JobKeyExplorer, xp, "search", metadata)
-	if err != nil {
-		logger.FromContext(ctx).Warn("Failed to award Explorer XP", "error", err, "user_id", userID)
-	} else if result != nil && result.LeveledUp {
-		logger.FromContext(ctx).Info("Explorer leveled up!", "user_id", userID, "new_level", result.NewLevel)
-	}
-}
-
-// awardExplorerXPSimple awards Explorer job XP for a search attempt (success or failure)
-func (s *service) awardExplorerXPSimple(ctx context.Context, userID string, xpMultiplier float64) error {
-	if s.jobService == nil {
-		return nil // Job system not enabled
-	}
-
-	xp := int(float64(job.ExplorerXPPerItem) * xpMultiplier)
-	if xp < 1 {
-		xp = 1
-	}
-
-	metadata := map[string]interface{}{
-		"multiplier": xpMultiplier,
-	}
-
-	result, err := s.jobService.AwardXP(ctx, userID, job.JobKeyExplorer, xp, "search", metadata)
-	if err != nil {
-		return err
-	}
-
-	if result != nil && result.LeveledUp {
-		logger.FromContext(ctx).Info("Explorer leveled up!", "user_id", userID, "new_level", result.NewLevel)
-	}
-
-	return nil
-}
-
 // triggerTrap executes trap trigger logic when a user sends a message
 func (s *service) triggerTrap(ctx context.Context, trap *domain.Trap, victim *domain.User) error {
 	log := logger.FromContext(ctx)
@@ -1367,7 +1297,7 @@ func (s *service) triggerTrap(ctx context.Context, trap *domain.Trap, victim *do
 				SetterUsername:   setter.Username,
 				TargetID:         trap.TargetID,
 				TargetUsername:   victim.Username,
-				ShineLevel:       trap.ShineLevel,
+				QualityLevel:     trap.QualityLevel,
 				TimeoutSeconds:   trap.CalculateTimeout(),
 				WasSelfTriggered: false,
 			}
@@ -1384,21 +1314,36 @@ func (s *service) triggerTrap(ctx context.Context, trap *domain.Trap, victim *do
 }
 
 func (s *service) Shutdown(ctx context.Context) error {
-	logger.FromContext(ctx).Info("User service shutting down, waiting for background tasks...")
-	done := make(chan struct{})
-	go func() {
-		s.wg.Wait()
-		close(done)
-	}()
+	log := logger.FromContext(ctx)
+	log.Info(LogMsgUserServiceShuttingDown)
 
-	select {
-	case <-done:
-		return nil
-	case <-ctx.Done():
-		return fmt.Errorf("shutdown timed out: %w", ctx.Err())
+	// 1. Stop the chatter tracker (stops cleanup loop)
+	if s.activeChatterTracker != nil {
+		s.activeChatterTracker.Stop()
 	}
+
+	// 2. Wait for local async tasks (like trap triggers)
+	s.wg.Wait()
+
+	// 3. Shut down the publisher (waits for pending events)
+	if s.publisher != nil {
+		if err := s.publisher.Shutdown(ctx); err != nil {
+			log.Error("Failed to shut down publisher", "error", err)
+		}
+	}
+
+	log.Info("User service shutdown complete")
+	return nil
 }
 
 func (s *service) GetCacheStats() CacheStats {
 	return s.userCache.GetStats()
+}
+func (s *service) GetActiveChatters() []ActiveChatter {
+	chatters := s.activeChatterTracker.GetActiveChatters()
+	result := make([]ActiveChatter, len(chatters))
+	for i, c := range chatters {
+		result[i] = ActiveChatter(c)
+	}
+	return result
 }

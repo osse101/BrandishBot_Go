@@ -21,7 +21,7 @@ func (m *MockNamingResolver) ResolvePublicName(publicName string) (string, bool)
 	return publicName, true
 }
 
-func (m *MockNamingResolver) GetDisplayName(internalName string, shineLevel domain.ShineLevel) string {
+func (m *MockNamingResolver) GetDisplayName(internalName string, qualityLevel domain.QualityLevel) string {
 	if name, ok := m.DisplayNames[internalName]; ok {
 		return name
 	}
@@ -549,7 +549,7 @@ func TestUseItem(t *testing.T) {
 	// Create a mock lootbox service
 	lootboxSvc := new(MockLootboxService)
 	drops := []lootbox.DroppedItem{
-		{ItemID: 4, ItemName: domain.ItemLootbox0, Quantity: 1, Value: 10, ShineLevel: domain.ShineCommon},
+		{ItemID: 4, ItemName: domain.ItemLootbox0, Quantity: 1, Value: 10, QualityLevel: domain.QualityCommon},
 	}
 	lootboxSvc.On("OpenLootbox", mock.Anything, domain.ItemLootbox1, 1, mock.Anything).Return(drops, nil)
 
@@ -735,13 +735,13 @@ func TestGetInventory(t *testing.T) {
 		foundLootbox := false
 		foundMoney := false
 		for _, item := range items {
-			if item.Name == domain.ItemLootbox1 {
+			if item.PublicName == domain.ItemLootbox1 {
 				foundLootbox = true
 				if item.Quantity != 2 {
 					t.Errorf("Expected 2 lootbox1, got %d", item.Quantity)
 				}
 			}
-			if item.Name == domain.ItemMoney {
+			if item.PublicName == domain.ItemMoney {
 				foundMoney = true
 				if item.Quantity != 100 {
 					t.Errorf("Expected 100 money, got %d", item.Quantity)
@@ -769,7 +769,7 @@ func TestGetInventory(t *testing.T) {
 		for _, item := range items {
 			// In real implementation, check item.Types contains "upgrade"
 			// For now, just verify it doesn't error
-			if item.Name == "" {
+			if item.PublicName == "" {
 				t.Error("Item should have a name")
 			}
 		}
@@ -783,7 +783,7 @@ func TestGetInventory(t *testing.T) {
 
 		// All returned items should have "sellable" type
 		for _, item := range items {
-			if item.Name == "" {
+			if item.PublicName == "" {
 				t.Error("Item should have a name")
 			}
 		}
@@ -797,7 +797,7 @@ func TestGetInventory(t *testing.T) {
 
 		// All returned items should have "consumable" type
 		for _, item := range items {
-			if item.Name == "" {
+			if item.PublicName == "" {
 				t.Error("Item should have a name")
 			}
 		}
@@ -829,7 +829,7 @@ func TestUseItem_Lootbox0(t *testing.T) {
 	// Create a mock lootbox service
 	lootboxSvc := new(MockLootboxService)
 	drops := []lootbox.DroppedItem{
-		{ItemID: 3, ItemName: domain.ItemMoney, Quantity: 5, Value: 5, ShineLevel: "COMMON"},
+		{ItemID: 3, ItemName: domain.ItemMoney, Quantity: 5, Value: 5, QualityLevel: "COMMON"},
 	}
 	lootboxSvc.On("OpenLootbox", mock.Anything, domain.ItemLootbox0, 1, mock.Anything).Return(drops, nil)
 
@@ -880,7 +880,7 @@ func TestUseItem_Lootbox2(t *testing.T) {
 	// Create a mock lootbox service
 	lootboxSvc := new(MockLootboxService)
 	drops := []lootbox.DroppedItem{
-		{ItemID: 1, ItemName: domain.ItemLootbox1, Quantity: 1, Value: 50, ShineLevel: "COMMON"},
+		{ItemID: 1, ItemName: domain.ItemLootbox1, Quantity: 1, Value: 50, QualityLevel: "COMMON"},
 	}
 	lootboxSvc.On("OpenLootbox", mock.Anything, domain.ItemLootbox2, 1, mock.Anything).Return(drops, nil)
 

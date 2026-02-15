@@ -209,7 +209,7 @@ func (f *fakeBenchTx) Rollback(ctx context.Context) error {
 // Mock stats service
 type fakeBenchStatsService struct{}
 
-func (f *fakeBenchStatsService) RecordUserEvent(ctx context.Context, userID string, eventType domain.EventType, metadata map[string]interface{}) error {
+func (f *fakeBenchStatsService) RecordUserEvent(ctx context.Context, userID string, eventType domain.EventType, metadata interface{}) error {
 	return nil
 }
 
@@ -229,25 +229,28 @@ func (f *fakeBenchStatsService) GetLeaderboard(ctx context.Context, eventType do
 	return nil, nil
 }
 
-// Mock job service
-type fakeBenchJobService struct{}
+func (f *fakeBenchStatsService) GetUserSlotsStats(ctx context.Context, userID, period string) (*domain.SlotsStats, error) {
+	return nil, nil
+}
 
-func (f *fakeBenchJobService) AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error) {
-	return &domain.XPAwardResult{
-		JobKey:    jobKey,
-		XPGained:  baseAmount,
-		NewXP:     int64(baseAmount),
-		NewLevel:  1,
-		LeveledUp: false,
-	}, nil
+func (f *fakeBenchStatsService) GetSlotsLeaderboardByProfit(ctx context.Context, period string, limit int) ([]domain.SlotsStats, error) {
+	return nil, nil
+}
+
+func (f *fakeBenchStatsService) GetSlotsLeaderboardByWinRate(ctx context.Context, period string, minSpins, limit int) ([]domain.SlotsStats, error) {
+	return nil, nil
+}
+
+func (f *fakeBenchStatsService) GetSlotsLeaderboardByMegaJackpots(ctx context.Context, period string, limit int) ([]domain.SlotsStats, error) {
+	return nil, nil
 }
 
 // Mock lootbox service
 type fakeBenchLootboxService struct{}
 
-func (f *fakeBenchLootboxService) OpenLootbox(ctx context.Context, lootboxName string, quantity int, boxShine domain.ShineLevel) ([]lootbox.DroppedItem, error) {
+func (f *fakeBenchLootboxService) OpenLootbox(ctx context.Context, lootboxName string, quantity int, boxQuality domain.QualityLevel) ([]lootbox.DroppedItem, error) {
 	return []lootbox.DroppedItem{
-		{ItemID: 1, ItemName: "money", Quantity: 10, Value: 10, ShineLevel: domain.ShineCommon},
+		{ItemID: 1, ItemName: "money", Quantity: 10, Value: 10, QualityLevel: domain.QualityCommon},
 	}, nil
 }
 
@@ -258,7 +261,7 @@ func (f *fakeBenchNamingResolver) ResolvePublicName(publicName string) (string, 
 	return publicName, true
 }
 
-func (f *fakeBenchNamingResolver) GetDisplayName(internalName string, shineLevel domain.ShineLevel) string {
+func (f *fakeBenchNamingResolver) GetDisplayName(internalName string, qualityLevel domain.QualityLevel) string {
 	return internalName
 }
 
@@ -297,12 +300,11 @@ func (f *fakeBenchCooldownService) GetLastUsed(ctx context.Context, userID, acti
 func BenchmarkService_HandleIncomingMessage(b *testing.B) {
 	repo := &fakeBenchRepository{}
 	statsService := &fakeBenchStatsService{}
-	jobService := &fakeBenchJobService{}
 	lootboxService := &fakeBenchLootboxService{}
 	namingResolver := &fakeBenchNamingResolver{}
 	cooldownService := &fakeBenchCooldownService{}
 
-	service := NewService(repo, repo, statsService, jobService, lootboxService, namingResolver, cooldownService, nil, nil, false)
+	service := NewService(repo, repo, statsService, nil, lootboxService, namingResolver, cooldownService, nil, nil, false)
 
 	ctx := context.Background()
 
@@ -321,12 +323,11 @@ func BenchmarkService_HandleIncomingMessage(b *testing.B) {
 func BenchmarkService_HandleIncomingMessage_WithMatches(b *testing.B) {
 	repo := &fakeBenchRepository{}
 	statsService := &fakeBenchStatsService{}
-	jobService := &fakeBenchJobService{}
 	lootboxService := &fakeBenchLootboxService{}
 	namingResolver := &fakeBenchNamingResolver{}
 	cooldownService := &fakeBenchCooldownService{}
 
-	service := NewService(repo, repo, statsService, jobService, lootboxService, namingResolver, cooldownService, nil, nil, false)
+	service := NewService(repo, repo, statsService, nil, lootboxService, namingResolver, cooldownService, nil, nil, false)
 
 	ctx := context.Background()
 	message := "this is a longer message with multiple words to test string matching performance"
@@ -346,12 +347,11 @@ func BenchmarkService_HandleIncomingMessage_WithMatches(b *testing.B) {
 func BenchmarkService_AddItem(b *testing.B) {
 	repo := &fakeBenchRepository{}
 	statsService := &fakeBenchStatsService{}
-	jobService := &fakeBenchJobService{}
 	lootboxService := &fakeBenchLootboxService{}
 	namingResolver := &fakeBenchNamingResolver{}
 	cooldownService := &fakeBenchCooldownService{}
 
-	service := NewService(repo, repo, statsService, jobService, lootboxService, namingResolver, cooldownService, nil, nil, false)
+	service := NewService(repo, repo, statsService, nil, lootboxService, namingResolver, cooldownService, nil, nil, false)
 
 	ctx := context.Background()
 
@@ -370,12 +370,11 @@ func BenchmarkService_AddItem(b *testing.B) {
 func BenchmarkService_AddItem_NewItem(b *testing.B) {
 	repo := &fakeBenchRepository{}
 	statsService := &fakeBenchStatsService{}
-	jobService := &fakeBenchJobService{}
 	lootboxService := &fakeBenchLootboxService{}
 	namingResolver := &fakeBenchNamingResolver{}
 	cooldownService := &fakeBenchCooldownService{}
 
-	service := NewService(repo, repo, statsService, jobService, lootboxService, namingResolver, cooldownService, nil, nil, false)
+	service := NewService(repo, repo, statsService, nil, lootboxService, namingResolver, cooldownService, nil, nil, false)
 
 	ctx := context.Background()
 
@@ -394,12 +393,11 @@ func BenchmarkService_AddItem_NewItem(b *testing.B) {
 func BenchmarkService_AddItem_Individual10(b *testing.B) {
 	repo := &fakeBenchRepository{}
 	statsService := &fakeBenchStatsService{}
-	jobService := &fakeBenchJobService{}
 	lootboxService := &fakeBenchLootboxService{}
 	namingResolver := &fakeBenchNamingResolver{}
 	cooldownService := &fakeBenchCooldownService{}
 
-	service := NewService(repo, repo, statsService, jobService, lootboxService, namingResolver, cooldownService, nil, nil, false)
+	service := NewService(repo, repo, statsService, nil, lootboxService, namingResolver, cooldownService, nil, nil, false)
 
 	ctx := context.Background()
 

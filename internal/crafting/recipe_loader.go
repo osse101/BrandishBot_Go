@@ -45,9 +45,10 @@ type DisassembleConfig struct {
 
 // RecipeDef represents a single crafting recipe in the JSON
 type RecipeDef struct {
-	RecipeKey  string       `json:"recipe_key"`
-	TargetItem string       `json:"target_item"`
-	Costs      []RecipeCost `json:"costs"`
+	RecipeKey        string       `json:"recipe_key"`
+	TargetItem       string       `json:"target_item"`
+	Costs            []RecipeCost `json:"costs"`
+	RequiredJobLevel int          `json:"required_job_level,omitempty"`
 }
 
 // DisassembleRecipeDef represents a single disassemble recipe in the JSON
@@ -285,14 +286,17 @@ func (l *recipeLoader) syncCraftingRecipes(ctx context.Context, config *UpgradeC
 
 		if existingRecipe, ok := existingByKey[recipeDef.RecipeKey]; ok {
 			// Recipe exists - check if update needed
-			needsUpdate := existingRecipe.TargetItemID != targetItemID || !costsEqual(existingRecipe.BaseCost, costs)
+			needsUpdate := existingRecipe.TargetItemID != targetItemID ||
+				!costsEqual(existingRecipe.BaseCost, costs) ||
+				existingRecipe.RequiredJobLevel != recipeDef.RequiredJobLevel
 
 			if needsUpdate {
 				// Update existing recipe
 				if err := repo.UpdateCraftingRecipe(ctx, existingRecipe.ID, &domain.Recipe{
-					RecipeKey:    recipeDef.RecipeKey,
-					TargetItemID: targetItemID,
-					BaseCost:     costs,
+					RecipeKey:        recipeDef.RecipeKey,
+					TargetItemID:     targetItemID,
+					BaseCost:         costs,
+					RequiredJobLevel: recipeDef.RequiredJobLevel,
 				}); err != nil {
 					return nil, fmt.Errorf("failed to update crafting recipe '%s': %w", recipeDef.RecipeKey, err)
 				}
@@ -304,9 +308,10 @@ func (l *recipeLoader) syncCraftingRecipes(ctx context.Context, config *UpgradeC
 		} else {
 			// Insert new recipe
 			recipeID, err := repo.InsertCraftingRecipe(ctx, &domain.Recipe{
-				RecipeKey:    recipeDef.RecipeKey,
-				TargetItemID: targetItemID,
-				BaseCost:     costs,
+				RecipeKey:        recipeDef.RecipeKey,
+				TargetItemID:     targetItemID,
+				BaseCost:         costs,
+				RequiredJobLevel: recipeDef.RequiredJobLevel,
 			})
 			if err != nil {
 				return nil, fmt.Errorf("failed to insert crafting recipe '%s': %w", recipeDef.RecipeKey, err)
@@ -328,12 +333,10 @@ func (l *recipeLoader) syncCraftingRecipes(ctx context.Context, config *UpgradeC
 
 // syncDisassembleRecipes syncs disassemble recipes to the database
 func (l *recipeLoader) syncDisassembleRecipes(ctx context.Context, config *Config, repo repository.Crafting, itemIDs map[string]int) (*recipeSyncResult, error) {
-	log := logger.FromContext(ctx)
 	result := &recipeSyncResult{
 		Orphaned: make([]string, 0),
 	}
 
-	// Get existing recipes
 	existing, err := repo.GetAllDisassembleRecipes(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get existing disassemble recipes: %w", err)
@@ -344,7 +347,24 @@ func (l *recipeLoader) syncDisassembleRecipes(ctx context.Context, config *Confi
 		existingByKey[existing[i].RecipeKey] = &existing[i]
 	}
 
-	// Get all crafting recipes for association lookup
+	craftingIDsByKey, err := l.getCraftingIDsByKey(ctx, repo)
+	if err != nil {
+		return nil, err
+	}
+
+	seenKeys := make(map[string]bool)
+	for _, recipeDef := range config.DisassembleConfig.Recipes {
+		seenKeys[recipeDef.RecipeKey] = true
+		if err := l.syncOneDisassembleRecipe(ctx, repo, recipeDef, existingByKey, craftingIDsByKey, itemIDs, result); err != nil {
+			return nil, err
+		}
+	}
+
+	l.findOrphanedDisassembleRecipes(existingByKey, seenKeys, result)
+	return result, nil
+}
+
+func (l *recipeLoader) getCraftingIDsByKey(ctx context.Context, repo repository.Crafting) (map[string]int, error) {
 	craftingRecipes, err := repo.GetAllCraftingRecipes(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get crafting recipes for associations: %w", err)
@@ -354,106 +374,118 @@ func (l *recipeLoader) syncDisassembleRecipes(ctx context.Context, config *Confi
 	for _, recipe := range craftingRecipes {
 		craftingIDsByKey[recipe.RecipeKey] = recipe.ID
 	}
+	return craftingIDsByKey, nil
+}
 
-	// Track which keys we've seen from config
-	seenKeys := make(map[string]bool)
+func (l *recipeLoader) syncOneDisassembleRecipe(ctx context.Context, repo repository.Crafting, recipeDef DisassembleRecipeDef, existingByKey map[string]*domain.DisassembleRecipe, craftingIDsByKey map[string]int, itemIDs map[string]int, result *recipeSyncResult) error {
+	log := logger.FromContext(ctx)
+	sourceItemID := itemIDs[recipeDef.RecipeKey]
+	outputs := l.convertToDomainOutputs(recipeDef.Outputs, itemIDs)
 
-	// Process each recipe from config
-	for _, recipeDef := range config.DisassembleConfig.Recipes {
-		seenKeys[recipeDef.RecipeKey] = true
-
-		sourceItemID := itemIDs[recipeDef.RecipeKey]
-
-		// Convert outputs to domain format
-		outputs := make([]domain.RecipeOutput, len(recipeDef.Outputs))
-		for i, output := range recipeDef.Outputs {
-			outputs[i] = domain.RecipeOutput{
-				ItemID:   itemIDs[output.Item],
-				Quantity: output.Quantity,
-			}
+	var recipeID int
+	if existingRecipe, ok := existingByKey[recipeDef.RecipeKey]; ok {
+		recipeID = existingRecipe.ID
+		updated, err := l.updateIfNeeded(ctx, repo, recipeDef, existingRecipe, sourceItemID, outputs)
+		if err != nil {
+			return err
 		}
-
-		if existingRecipe, ok := existingByKey[recipeDef.RecipeKey]; ok {
-			// Recipe exists - check if update needed
-			needsUpdate := existingRecipe.SourceItemID != sourceItemID ||
-				existingRecipe.QuantityConsumed != recipeDef.QuantityConsumed ||
-				!outputsEqual(existingRecipe.Outputs, outputs)
-
-			if needsUpdate {
-				// Update existing recipe
-				if err := repo.UpdateDisassembleRecipe(ctx, existingRecipe.ID, &domain.DisassembleRecipe{
-					RecipeKey:        recipeDef.RecipeKey,
-					SourceItemID:     sourceItemID,
-					QuantityConsumed: recipeDef.QuantityConsumed,
-				}); err != nil {
-					return nil, fmt.Errorf("failed to update disassemble recipe '%s': %w", recipeDef.RecipeKey, err)
-				}
-
-				// Update outputs
-				if err := repo.ClearDisassembleOutputs(ctx, existingRecipe.ID); err != nil {
-					return nil, fmt.Errorf("failed to clear outputs for recipe '%s': %w", recipeDef.RecipeKey, err)
-				}
-
-				for _, output := range outputs {
-					if err := repo.InsertDisassembleOutput(ctx, existingRecipe.ID, output); err != nil {
-						return nil, fmt.Errorf("failed to insert output for recipe '%s': %w", recipeDef.RecipeKey, err)
-					}
-				}
-
-				result.Updated++
-				log.Info("Updated disassemble recipe", "recipe_key", recipeDef.RecipeKey)
-			} else {
-				result.Skipped++
-			}
-
-			// Handle association
-			if recipeDef.AssociatedUpgrade != "" {
-				if upgradeID, ok := craftingIDsByKey[recipeDef.AssociatedUpgrade]; ok {
-					if err := repo.UpsertRecipeAssociation(ctx, upgradeID, existingRecipe.ID); err != nil {
-						return nil, fmt.Errorf("failed to upsert association for '%s': %w", recipeDef.RecipeKey, err)
-					}
-				}
-			}
+		if updated {
+			result.Updated++
+			log.Info("Updated disassemble recipe", "recipe_key", recipeDef.RecipeKey)
 		} else {
-			// Insert new recipe
-			recipeID, err := repo.InsertDisassembleRecipe(ctx, &domain.DisassembleRecipe{
-				RecipeKey:        recipeDef.RecipeKey,
-				SourceItemID:     sourceItemID,
-				QuantityConsumed: recipeDef.QuantityConsumed,
-			})
-			if err != nil {
-				return nil, fmt.Errorf("failed to insert disassemble recipe '%s': %w", recipeDef.RecipeKey, err)
-			}
+			result.Skipped++
+		}
+	} else {
+		var err error
+		recipeID, err = l.insertNewDisassembleRecipe(ctx, repo, recipeDef, sourceItemID, outputs)
+		if err != nil {
+			return err
+		}
+		result.Inserted++
+		log.Info("Inserted disassemble recipe", "recipe_key", recipeDef.RecipeKey, "id", recipeID)
+	}
 
-			// Insert outputs
-			for _, output := range outputs {
-				if err := repo.InsertDisassembleOutput(ctx, recipeID, output); err != nil {
-					return nil, fmt.Errorf("failed to insert output for recipe '%s': %w", recipeDef.RecipeKey, err)
-				}
-			}
+	return l.upsertAssociation(ctx, repo, recipeDef, recipeID, craftingIDsByKey)
+}
 
-			// Handle association
-			if recipeDef.AssociatedUpgrade != "" {
-				if upgradeID, ok := craftingIDsByKey[recipeDef.AssociatedUpgrade]; ok {
-					if err := repo.UpsertRecipeAssociation(ctx, upgradeID, recipeID); err != nil {
-						return nil, fmt.Errorf("failed to upsert association for '%s': %w", recipeDef.RecipeKey, err)
-					}
-				}
-			}
+func (l *recipeLoader) convertToDomainOutputs(outputs []RecipeOutput, itemIDs map[string]int) []domain.RecipeOutput {
+	domainOutputs := make([]domain.RecipeOutput, len(outputs))
+	for i, output := range outputs {
+		domainOutputs[i] = domain.RecipeOutput{
+			ItemID:   itemIDs[output.Item],
+			Quantity: output.Quantity,
+		}
+	}
+	return domainOutputs
+}
 
-			result.Inserted++
-			log.Info("Inserted disassemble recipe", "recipe_key", recipeDef.RecipeKey, "id", recipeID)
+func (l *recipeLoader) updateIfNeeded(ctx context.Context, repo repository.Crafting, recipeDef DisassembleRecipeDef, existing *domain.DisassembleRecipe, sourceItemID int, outputs []domain.RecipeOutput) (bool, error) {
+	needsUpdate := existing.SourceItemID != sourceItemID ||
+		existing.QuantityConsumed != recipeDef.QuantityConsumed ||
+		!outputsEqual(existing.Outputs, outputs)
+
+	if !needsUpdate {
+		return false, nil
+	}
+
+	if err := repo.UpdateDisassembleRecipe(ctx, existing.ID, &domain.DisassembleRecipe{
+		RecipeKey:        recipeDef.RecipeKey,
+		SourceItemID:     sourceItemID,
+		QuantityConsumed: recipeDef.QuantityConsumed,
+	}); err != nil {
+		return false, fmt.Errorf("failed to update disassemble recipe '%s': %w", recipeDef.RecipeKey, err)
+	}
+
+	if err := repo.ClearDisassembleOutputs(ctx, existing.ID); err != nil {
+		return false, fmt.Errorf("failed to clear outputs for recipe '%s': %w", recipeDef.RecipeKey, err)
+	}
+
+	for _, output := range outputs {
+		if err := repo.InsertDisassembleOutput(ctx, existing.ID, output); err != nil {
+			return false, fmt.Errorf("failed to insert output for recipe '%s': %w", recipeDef.RecipeKey, err)
 		}
 	}
 
-	// Find orphaned recipes
+	return true, nil
+}
+
+func (l *recipeLoader) insertNewDisassembleRecipe(ctx context.Context, repo repository.Crafting, recipeDef DisassembleRecipeDef, sourceItemID int, outputs []domain.RecipeOutput) (int, error) {
+	recipeID, err := repo.InsertDisassembleRecipe(ctx, &domain.DisassembleRecipe{
+		RecipeKey:        recipeDef.RecipeKey,
+		SourceItemID:     sourceItemID,
+		QuantityConsumed: recipeDef.QuantityConsumed,
+	})
+	if err != nil {
+		return 0, fmt.Errorf("failed to insert disassemble recipe '%s': %w", recipeDef.RecipeKey, err)
+	}
+
+	for _, output := range outputs {
+		if err := repo.InsertDisassembleOutput(ctx, recipeID, output); err != nil {
+			return 0, fmt.Errorf("failed to insert output for recipe '%s': %w", recipeDef.RecipeKey, err)
+		}
+	}
+	return recipeID, nil
+}
+
+func (l *recipeLoader) upsertAssociation(ctx context.Context, repo repository.Crafting, recipeDef DisassembleRecipeDef, recipeID int, craftingIDsByKey map[string]int) error {
+	if recipeDef.AssociatedUpgrade == "" {
+		return nil
+	}
+
+	if upgradeID, ok := craftingIDsByKey[recipeDef.AssociatedUpgrade]; ok {
+		if err := repo.UpsertRecipeAssociation(ctx, upgradeID, recipeID); err != nil {
+			return fmt.Errorf("failed to upsert association for '%s': %w", recipeDef.RecipeKey, err)
+		}
+	}
+	return nil
+}
+
+func (l *recipeLoader) findOrphanedDisassembleRecipes(existingByKey map[string]*domain.DisassembleRecipe, seenKeys map[string]bool, result *recipeSyncResult) {
 	for key := range existingByKey {
 		if !seenKeys[key] {
 			result.Orphaned = append(result.Orphaned, "disassemble:"+key)
 		}
 	}
-
-	return result, nil
 }
 
 // Helper functions

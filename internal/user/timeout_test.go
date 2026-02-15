@@ -20,12 +20,6 @@ func TestTimeoutUser(t *testing.T) {
 		t.Fatalf("TimeoutUser failed: %v", err)
 	}
 
-	// Verify timeout is set (internal implementation detail, but we can check via side effects or reflection if needed,
-	// but for now we trust the method returns nil and logs.
-	// Ideally we'd have a method to check if a user is timed out, but that wasn't in the requirements yet.
-	// We can check if the timer exists in the map by casting to concrete type if we really wanted to,
-	// but that's brittle. For now, we assume success if no error.)
-
 	// Let's at least verify it doesn't crash on overwrite
 	err = svc.TimeoutUser(ctx, "alice", 200*time.Millisecond, "Overwrite reason")
 	if err != nil {

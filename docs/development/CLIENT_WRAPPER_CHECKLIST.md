@@ -173,7 +173,31 @@ Complete checklist for implementing client wrappers (C#, TypeScript, Python, etc
 
 ---
 
-## 9. Account Linking
+## 9. Compost System
+
+| Endpoint | Method | C# Status | Binding Name | Description |
+|----------|--------|-----------|--------------|-------------|
+| `/compost/deposit` | POST | ✅ | `CompostDeposit` | Deposit compostable items into bin |
+| `/compost/harvest` | POST | ✅ | `CompostHarvest` | Harvest output or check status |
+| `/compost/status` | GET | ✅ | `CompostStatus` | Check bin status (read-only) |
+
+### Parameters
+- **CompostDeposit**: `platform`, `platform_id`, `items` (array of `{item_name, quantity}`)
+- **CompostHarvest**: `platform`, `platform_id`, `username`
+- **CompostStatus**: `platform`, `platform_id` (query params)
+
+### Notes
+- Bin states: `idle` → `composting` → `ready` → (1 week) → `sludge`
+- First deposit auto-starts composting (1h warmup + 30min/item)
+- Additional deposits while composting extend the `ready_at` timer
+- Must harvest before depositing when bin is `ready` or `sludge`
+- Only items with the `compostable` tag can be deposited
+- `CompostHarvest` returns `harvested: false` + status when not ready
+- `compost_sludge` item has the `no-use` tag (cannot be sold, traded, or composted)
+
+---
+
+## 10. Account Linking
 
 | Endpoint | Method | C# Status | Binding Name | Description |
 |----------|--------|-----------|--------------|-------------|
@@ -191,7 +215,7 @@ Complete checklist for implementing client wrappers (C#, TypeScript, Python, etc
 
 ---
 
-## 10. Message Handler (Convenience)
+## 11. Message Handler (Convenience)
 
 | Endpoint | Method | C# Status | Binding Name | Description |
 |----------|--------|-----------|--------------|-------------|
@@ -208,7 +232,7 @@ Complete checklist for implementing client wrappers (C#, TypeScript, Python, etc
 
 ---
 
-## 11. Admin Utilities
+## 12. Admin Utilities
 
 | Endpoint | Method | C# Status | Binding Name | Description |
 |----------|--------|-----------|--------------|-------------|
@@ -217,7 +241,7 @@ Complete checklist for implementing client wrappers (C#, TypeScript, Python, etc
 
 ---
 
-## 12. Health Checks
+## 13. Health Checks
 
 | Endpoint | Method | C# Status | Binding Name | Description |
 |----------|--------|-----------|--------------|-------------|
@@ -226,7 +250,7 @@ Complete checklist for implementing client wrappers (C#, TypeScript, Python, etc
 
 ---
 
-## 13. Real-time Events
+## 14. Real-time Events
 
 ### SSE (Server-Sent Events) - For Go/Discord Bot
 
@@ -481,12 +505,13 @@ var voteResult = await client.VoteForNode(
 | Progression (User) | 8 | 8 (100%) | 0 |
 | Progression (Admin) | 7 | 7 (100%) | 0 |
 | Jobs | 4 | 4 (100%) | 0 |
+| Compost | 3 | 3 (100%) | 0 |
 | Account Linking | 5 | 5 (100%) | 0 |
 | Message Handler | 1 | 1 (100%) | 0 |
 | Admin Utils | 2 | 2 (100%) | 0 |
 | Health Checks | 2 | 2 (100%) | 0 |
 | Real-time Events | 1 | N/A | N/A |
-| **TOTAL** | **52** | **51 (98%)** | **1** |
+| **TOTAL** | **55** | **54 (98%)** | **1** |
 
 > **Note**: Real-time events use SSE for Go/Discord and Streamer.bot WebSocket (server-initiated) for Twitch integration. No C# client code needed for Streamer.bot - the Go server pushes events directly.
 

@@ -9,12 +9,12 @@ This directory contains integration tests for running against a deployed staging
 make test-staging
 
 # Against staging server
-STAGING_URL=https://staging.example.com:8080 API_KEY=your-key make test-staging
+API_URL=https://staging.example.com:8080 API_KEY=your-key make test-staging
 ```
 
 ## Environment Variables
 
-- **`STAGING_URL`**: Target server URL (default: `http://localhost:8080`)
+- **`API_URL`**: Target server URL (default: `http://localhost:8080`)
 - **`API_KEY`**: API key for authentication (default: `test-api-key`)
 
 ## Test Files

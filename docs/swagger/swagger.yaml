@@ -60,6 +60,11 @@ definitions:
       base_value:
         description: Buy price
         type: integer
+      content_type:
+        description: Content type categorization (weapon, material, etc.)
+        items:
+          type: string
+        type: array
       default_display:
         type: string
       description:
@@ -333,6 +338,77 @@ definitions:
       start_time:
         type: string
       total_events:
+        type: integer
+    type: object
+  domain.SubscriptionEvent:
+    properties:
+      event_type:
+        description: Use HistoryEventType constants
+        type: string
+      platform:
+        enum:
+        - twitch
+        - youtube
+        type: string
+      platform_user_id:
+        type: string
+      tier_name:
+        type: string
+      timestamp:
+        type: integer
+      username:
+        type: string
+    required:
+    - event_type
+    - platform
+    - platform_user_id
+    - tier_name
+    - timestamp
+    - username
+    type: object
+  domain.SubscriptionWithTier:
+    properties:
+      created_at:
+        type: string
+      display_name:
+        type: string
+      expires_at:
+        type: string
+      last_verified_at:
+        type: string
+      platform:
+        type: string
+      status:
+        type: string
+      subscribed_at:
+        type: string
+      tier_id:
+        type: integer
+      tier_level:
+        type: integer
+      tier_name:
+        type: string
+      updated_at:
+        type: string
+      user_id:
+        type: string
+    type: object
+  domain.UnlockEstimate:
+    properties:
+      confidence:
+        description: '"high", "medium", "low"'
+        type: string
+      current_progress:
+        type: integer
+      current_velocity:
+        type: number
+      estimated_days:
+        type: number
+      estimated_unlock_date:
+        type: string
+      node_key:
+        type: string
+      required_points:
         type: integer
     type: object
   domain.UnlockProgress:
@@ -1097,15 +1173,12 @@ definitions:
     properties:
       item_name:
         type: string
-      name:
-        description: For backward compatibility
-        type: string
       public_name:
+        type: string
+      quality_level:
         type: string
       quantity:
         type: integer
-      shine_level:
-        type: string
     type: object
 host: localhost:8080
 info:
@@ -1789,6 +1862,73 @@ paths:
       summary: Get user stats
       tags:
       - stats
+  /api/v1/subscriptions/event:
+    post:
+      consumes:
+      - application/json
+      description: Processes subscription lifecycle events (subscribed, renewed, upgraded,
+        downgraded, cancelled)
+      parameters:
+      - description: Subscription event
+        in: body
+        name: event
+        required: true
+        schema:
+          $ref: '#/definitions/domain.SubscriptionEvent'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Receive subscription event from Streamer.bot
+      tags:
+      - subscriptions
+  /api/v1/subscriptions/user:
+    get:
+      description: Retrieves subscription information for a user on a specific platform
+      parameters:
+      - description: Platform (twitch or youtube)
+        in: query
+        name: platform
+        required: true
+        type: string
+      - description: Platform user ID
+        in: query
+        name: platform_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.SubscriptionWithTier'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Get user subscription status
+      tags:
+      - subscriptions
   /api/v1/user/inventory:
     get:
       consumes:
@@ -2352,6 +2492,33 @@ paths:
       tags:
       - progression
       - admin
+  /progression/estimate/{nodeKey}:
+    get:
+      description: Returns estimated unlock time and requirements for a specific node
+      parameters:
+      - description: Node Key
+        in: path
+        name: nodeKey
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.UnlockEstimate'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Get unlock estimate
+      tags:
+      - progression
   /progression/session:
     get:
       description: Returns the current voting session with all available options

@@ -158,14 +158,14 @@ func TestActiveChatterTracker_ExpiryFiltering(t *testing.T) {
 	// Test with very short expiry for faster testing
 	// Note: This test directly manipulates the internal state for testing purposes
 	tracker := &ActiveChatterTracker{
-		chatters: make(map[string]*chatterInfo),
+		chatters: make(map[string]*ChatterInfo),
 		stopCh:   make(chan struct{}),
 	}
 	defer tracker.Stop()
 
 	// Add a user with old timestamp
 	oldTime := time.Now().Add(-31 * time.Minute)
-	tracker.chatters[makeKey(domain.PlatformDiscord, "user1")] = &chatterInfo{
+	tracker.chatters[makeKey(domain.PlatformDiscord, "user1")] = &ChatterInfo{
 		UserID:        "user1",
 		Username:      "Alice",
 		Platform:      domain.PlatformDiscord,
@@ -193,20 +193,20 @@ func TestActiveChatterTracker_ExpiryFiltering(t *testing.T) {
 
 func TestActiveChatterTracker_Cleanup(t *testing.T) {
 	tracker := &ActiveChatterTracker{
-		chatters: make(map[string]*chatterInfo),
+		chatters: make(map[string]*ChatterInfo),
 		stopCh:   make(chan struct{}),
 	}
 	defer tracker.Stop()
 
 	// Add expired entries
 	oldTime := time.Now().Add(-31 * time.Minute)
-	tracker.chatters[makeKey(domain.PlatformDiscord, "user1")] = &chatterInfo{
+	tracker.chatters[makeKey(domain.PlatformDiscord, "user1")] = &ChatterInfo{
 		UserID:        "user1",
 		Username:      "Alice",
 		Platform:      domain.PlatformDiscord,
 		LastMessageAt: oldTime,
 	}
-	tracker.chatters[makeKey(domain.PlatformDiscord, "user2")] = &chatterInfo{
+	tracker.chatters[makeKey(domain.PlatformDiscord, "user2")] = &ChatterInfo{
 		UserID:        "user2",
 		Username:      "Bob",
 		Platform:      domain.PlatformDiscord,

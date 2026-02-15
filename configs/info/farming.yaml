@@ -1,0 +1,72 @@
+name: farming
+title: Farming & Harvest
+icon: 🌾
+color: "#2ECC71"
+
+# Platform-specific descriptions for feature-level
+discord:
+  description: |
+    **Farming & Compost** 🌾
+
+    Grow your wealth over time with the Farming system!
+
+    ## 🚀 How to Play
+
+    1. **Wait**: Your farm accumulates rewards passively.
+    2. **Harvest**: Use `/harvest` to collect your items.
+    3. **Repeat**: The longer you wait (up to 1 week), the better the rewards!
+
+    ## ⚠️ Warning
+
+    *   **Spoilage**: Don't wait *too* long! Crops spoil after 2 weeks of neglect.
+    *   **Minimum**: Wait at least 1 hour between harvests.
+    *   **XP**: Farming awards **Farmer XP** (after 5 hours).
+
+    ## 🎁 Rewards
+
+    *   **Compost**: Find lootboxes, items, and crafting materials.
+    *   **Unlock**: Upgrade the Compost Bin in the Progression Tree to get better loot!
+
+streamerbot:
+  description: "Farming: Passive rewards! Wait (1hr-1wk) then !harvest. Rewards increase with time. Spoilage > 2wks! 5hr+ wait = Farmer XP. More: !info harvest, !info compost"
+
+# Sub-topics
+topics:
+  harvest:
+    command: "!harvest"
+    discord:
+      description: |
+        Use the harvest command to collect your accumulated farming rewards.
+
+        **Timing:**
+        - Min wait: 1 hour
+        - Max rewards: ~1 week
+        - Spoilage: > 2 weeks
+
+        **Rewards:**
+        - Harvests > 5hrs yield Farmer XP
+    streamerbot:
+      description: "Harvest: Use !harvest to collect. Min wait 1hr. Max rewards ~1wk. >2wks = Spoiled. >5hrs wait yields Farmer XP."
+
+  farmer:
+    command: "!job-progress"
+    discord:
+      description: |
+        **Farmer Job** 🌾
+
+        Earn XP by harvesting crops that are at least 5 hours old.
+        Level up to improve your yield and unlock perks.
+
+        Check your progress with `/job-progress`
+    streamerbot:
+      description: "Farmer Job: Earn XP by harvesting crops >5hrs old. Level up to improve yield/perks. Check !job-progress."
+
+  compost:
+    discord:
+      description: |
+        **Compost Rewards**
+
+        - Find lootboxes, items, and crafting materials
+        - Upgrade the Compost Bin in the Progression Tree for better loot!
+    streamerbot:
+      description: "Compost: Rare drops from harvesting. Contains loot/mats. Upgrade Compost Bin in Progression Tree for better results."

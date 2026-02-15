@@ -11,25 +11,48 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/osse101/BrandishBot_Go/internal/info"
 )
+
+func createTestLoader(t *testing.T) (*info.Loader, func()) {
+	tmpDir, err := os.MkdirTemp("", "info_test")
+	assert.NoError(t, err)
+
+	// Create overview feature
+	overviewYaml := `
+name: overview
+title: BrandishBot Overview
+discord:
+  description: "Welcome to BrandishBot!"
+streamerbot:
+  description: "Welcome"
+`
+	err = os.WriteFile(filepath.Join(tmpDir, "overview.yaml"), []byte(overviewYaml), 0644)
+	assert.NoError(t, err)
+
+	// Create economy feature
+	economyYaml := `
+name: economy
+title: Economy System
+discord:
+  description: "Money stuff"
+streamerbot:
+  description: "Money"
+`
+	err = os.WriteFile(filepath.Join(tmpDir, "economy.yaml"), []byte(economyYaml), 0644)
+	assert.NoError(t, err)
+
+	loader := info.NewLoader(tmpDir)
+	return loader, func() { os.RemoveAll(tmpDir) }
+}
 
 func TestInfoCommand_Overview(t *testing.T) {
 	ctx := SetupTestContext(t)
-	cmd, handler := InfoCommand()
+	loader, cleanup := createTestLoader(t)
+	defer cleanup()
 
-	// Setup Test Info Dir
-	tmpDir, err := os.MkdirTemp("", "info_test")
-	assert.NoError(t, err)
-	defer os.RemoveAll(tmpDir)
-
-	// Create overview.txt
-	err = os.WriteFile(filepath.Join(tmpDir, "overview.txt"), []byte("Welcome to BrandishBot!"), 0644)
-	assert.NoError(t, err)
-
-	// Override InfoDir
-	oldInfoDir := InfoDir
-	InfoDir = tmpDir
-	defer func() { InfoDir = oldInfoDir }()
+	cmd, handler := InfoCommand(loader)
 
 	// Request
 	interaction := &discordgo.InteractionCreate{
@@ -66,22 +89,20 @@ func TestInfoCommand_Overview(t *testing.T) {
 	// Verify
 	assert.NotNil(t, sentEmbed)
 	if sentEmbed != nil {
-		assert.Contains(t, sentEmbed.Description, "Welcome to BrandishBot!")
+		// New behavior: returns list of features
+		assert.Contains(t, sentEmbed.Description, "Available:")
+		assert.Contains(t, sentEmbed.Description, "economy")
+		assert.Contains(t, sentEmbed.Description, "overview")
 		assert.Contains(t, sentEmbed.Title, "Overview")
 	}
 }
 
 func TestInfoCommand_SpecificFeature(t *testing.T) {
 	ctx := SetupTestContext(t)
-	cmd, handler := InfoCommand()
+	loader, cleanup := createTestLoader(t)
+	defer cleanup()
 
-	tmpDir, _ := os.MkdirTemp("", "info_test")
-	defer os.RemoveAll(tmpDir)
-	os.WriteFile(filepath.Join(tmpDir, "economy.txt"), []byte("Money stuff"), 0644)
-
-	oldInfoDir := InfoDir
-	InfoDir = tmpDir
-	defer func() { InfoDir = oldInfoDir }()
+	cmd, handler := InfoCommand(loader)
 
 	interaction := &discordgo.InteractionCreate{
 		Interaction: &discordgo.Interaction{
@@ -120,17 +141,12 @@ func TestInfoCommand_SpecificFeature(t *testing.T) {
 	}
 }
 
-func TestInfoCommand_FileNotFound(t *testing.T) {
+func TestInfoCommand_NotFound(t *testing.T) {
 	ctx := SetupTestContext(t)
-	cmd, handler := InfoCommand()
+	loader, cleanup := createTestLoader(t)
+	defer cleanup()
 
-	tmpDir, _ := os.MkdirTemp("", "info_test")
-	defer os.RemoveAll(tmpDir)
-	// No files created
-
-	oldInfoDir := InfoDir
-	InfoDir = tmpDir
-	defer func() { InfoDir = oldInfoDir }()
+	cmd, handler := InfoCommand(loader)
 
 	interaction := &discordgo.InteractionCreate{
 		Interaction: &discordgo.Interaction{
@@ -162,5 +178,9 @@ func TestInfoCommand_FileNotFound(t *testing.T) {
 
 	handler(ctx.Session, interaction, ctx.APIClient)
 
-	assert.Contains(t, sentContent, "Error loading information")
+	// The friendly error message (from respondFriendlyError -> formatFriendlyError)
+	// typically prefixes "❌ " for unknown errors or returns specific messages.
+	// Since "Info not found" is not a specific mapped error in formatFriendlyError,
+	// it will be returned as "❌ Info not found..."
+	assert.Contains(t, sentContent, "Info not found")
 }

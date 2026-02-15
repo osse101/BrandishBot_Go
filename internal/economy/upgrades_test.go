@@ -20,7 +20,7 @@ func TestUpgradeEconomy1_SellPriceModifier_Level1(t *testing.T) {
 	// ARRANGE
 	mockRepo := &MockRepository{}
 	mockProgression := &MockProgressionService{}
-	service := NewService(mockRepo, nil, nil, mockProgression, nil)
+	service := NewService(mockRepo, nil, nil, mockProgression)
 	ctx := context.Background()
 
 	// Item with base value 100, base sell price = 100 * 0.40 = 40
@@ -53,7 +53,7 @@ func TestUpgradeEconomy1_SellPriceModifier_Level5(t *testing.T) {
 	// ARRANGE
 	mockRepo := &MockRepository{}
 	mockProgression := &MockProgressionService{}
-	service := NewService(mockRepo, nil, nil, mockProgression, nil)
+	service := NewService(mockRepo, nil, nil, mockProgression)
 	ctx := context.Background()
 
 	// Item with base value 100, base sell price = 100 * 0.40 = 40
@@ -86,7 +86,7 @@ func TestUpgradeEconomy1_SellPriceModifier_MultipleItems(t *testing.T) {
 	// ARRANGE
 	mockRepo := &MockRepository{}
 	mockProgression := &MockProgressionService{}
-	service := NewService(mockRepo, nil, nil, mockProgression, nil)
+	service := NewService(mockRepo, nil, nil, mockProgression)
 	ctx := context.Background()
 
 	allItems := []domain.Item{
@@ -119,7 +119,7 @@ func TestUpgradeEconomy1_ModifierFailureFallback(t *testing.T) {
 	// ARRANGE
 	mockRepo := &MockRepository{}
 	mockProgression := &MockProgressionService{}
-	service := NewService(mockRepo, nil, nil, mockProgression, nil)
+	service := NewService(mockRepo, nil, nil, mockProgression)
 	ctx := context.Background()
 
 	allItems := []domain.Item{
@@ -149,7 +149,7 @@ func TestUpgradeEconomy1_ModifierFailureFallback(t *testing.T) {
 func TestUpgradeEconomy1_NilProgressionService(t *testing.T) {
 	// ARRANGE
 	mockRepo := &MockRepository{}
-	service := NewService(mockRepo, nil, nil, nil, nil) // nil progression service
+	service := NewService(mockRepo, nil, nil, nil) // nil progression service
 	ctx := context.Background()
 
 	allItems := []domain.Item{
@@ -174,7 +174,7 @@ func TestUpgradeEconomy1_IntegrationWithSellItem(t *testing.T) {
 	mockRepo := &MockRepository{}
 	mockTx := &MockTx{}
 	mockProgression := &MockProgressionService{}
-	service := NewService(mockRepo, nil, nil, mockProgression, nil)
+	service := NewService(mockRepo, nil, nil, mockProgression)
 	ctx := context.Background()
 
 	user := createTestUser()
@@ -220,7 +220,7 @@ func TestUpgradeEconomy1_RoundingBehavior(t *testing.T) {
 	// ARRANGE
 	mockRepo := &MockRepository{}
 	mockProgression := &MockProgressionService{}
-	service := NewService(mockRepo, nil, nil, mockProgression, nil)
+	service := NewService(mockRepo, nil, nil, mockProgression)
 	ctx := context.Background()
 
 	// Item that produces fractional result: base value 15
@@ -254,7 +254,7 @@ func TestUpgradeEconomy1_BuyPriceNotAffected(t *testing.T) {
 	// ARRANGE
 	mockRepo := &MockRepository{}
 	mockProgression := &MockProgressionService{}
-	service := NewService(mockRepo, nil, nil, mockProgression, nil)
+	service := NewService(mockRepo, nil, nil, mockProgression)
 	ctx := context.Background()
 
 	allItems := []domain.Item{

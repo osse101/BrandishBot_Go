@@ -64,17 +64,6 @@ func HandleDisassembleItem(svc crafting.Service, progressionSvc progression.Serv
 		// Track engagement for disassembling
 		trackCraftingEngagement(r.Context(), eventBus, req.Username, "item_disassembled", result.QuantityProcessed)
 
-		// Publish item.disassembled event
-		if err := publishCraftingEvent(r.Context(), eventBus, "item.disassembled", map[string]interface{}{
-			"user_id":            req.Username,
-			"item":               req.Item,
-			"quantity_processed": result.QuantityProcessed,
-			"materials_gained":   result.Outputs,
-			"is_perfect_salvage": result.IsPerfectSalvage,
-		}); err != nil {
-			_ = err // Error already logged in publishCraftingEvent
-		}
-
 		// Construct user message
 		// Optimization: Use strings.Builder and avoid fmt.Sprintf in loop
 		var sb strings.Builder

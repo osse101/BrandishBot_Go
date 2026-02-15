@@ -25,12 +25,12 @@ type EventsResponse struct {
 
 // EventLogEntry represents a single event log entry
 type EventLogEntry struct {
-	ID        int64                  `json:"id"`
-	EventType string                 `json:"event_type"`
-	UserID    *string                `json:"user_id,omitempty"`
-	Payload   map[string]interface{} `json:"payload"`
-	Metadata  map[string]interface{} `json:"metadata,omitempty"`
-	CreatedAt string                 `json:"created_at"`
+	ID        int64       `json:"id"`
+	EventType string      `json:"event_type"`
+	UserID    *string     `json:"user_id,omitempty"`
+	Payload   interface{} `json:"payload"`
+	Metadata  interface{} `json:"metadata,omitempty"`
+	CreatedAt string      `json:"created_at"`
 }
 
 // HandleGetEvents retrieves events based on query parameters

@@ -230,24 +230,24 @@ func getItemByName(ctx context.Context, q *generated.Queries, itemName string) (
 	row, err := q.GetItemByName(ctx, itemName)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil // Return nil if item not found
+			return nil, domain.ErrItemNotFound
 		}
 		return nil, fmt.Errorf("failed to get item by name: %w", err)
 	}
 
-	return mapItemFields(row.ItemID, row.InternalName, row.PublicName, row.DefaultDisplay, row.ItemDescription, row.BaseValue, row.Handler, row.Types), nil
+	return mapItemFields(row.ItemID, row.InternalName, row.PublicName, row.DefaultDisplay, row.ItemDescription, row.BaseValue, row.Handler, row.ContentType, row.Types), nil
 }
 
 func getItemByID(ctx context.Context, q *generated.Queries, id int) (*domain.Item, error) {
 	row, err := q.GetItemByID(ctx, int32(id))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
+			return nil, domain.ErrItemNotFound
 		}
 		return nil, fmt.Errorf("failed to get item by id: %w", err)
 	}
 
-	return mapItemFields(row.ItemID, row.InternalName, row.PublicName, row.DefaultDisplay, row.ItemDescription, row.BaseValue, row.Handler, row.Types), nil
+	return mapItemFields(row.ItemID, row.InternalName, row.PublicName, row.DefaultDisplay, row.ItemDescription, row.BaseValue, row.Handler, row.ContentType, row.Types), nil
 }
 
 func getItemsByIDs(ctx context.Context, q *generated.Queries, itemIDs []int) ([]domain.Item, error) {
@@ -267,12 +267,12 @@ func getItemsByIDs(ctx context.Context, q *generated.Queries, itemIDs []int) ([]
 
 	items := make([]domain.Item, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, *mapItemFields(row.ItemID, row.InternalName, row.PublicName, row.DefaultDisplay, row.ItemDescription, row.BaseValue, row.Handler, row.Types))
+		items = append(items, *mapItemFields(row.ItemID, row.InternalName, row.PublicName, row.DefaultDisplay, row.ItemDescription, row.BaseValue, row.Handler, row.ContentType, row.Types))
 	}
 	return items, nil
 }
 
-func mapItemFields(itemID int32, internalName string, publicName, defaultDisplay, itemDescription pgtype.Text, baseValue pgtype.Int4, handler pgtype.Text, types []string) *domain.Item {
+func mapItemFields(itemID int32, internalName string, publicName, defaultDisplay, itemDescription pgtype.Text, baseValue pgtype.Int4, handler pgtype.Text, contentType []string, types []string) *domain.Item {
 	return &domain.Item{
 		ID:             int(itemID),
 		InternalName:   internalName,
@@ -281,6 +281,7 @@ func mapItemFields(itemID int32, internalName string, publicName, defaultDisplay
 		Description:    itemDescription.String,
 		BaseValue:      int(baseValue.Int32),
 		Handler:        textToPtr(handler),
+		ContentType:    contentType,
 		Types:          types,
 	}
 }

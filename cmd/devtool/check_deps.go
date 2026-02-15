@@ -27,6 +27,7 @@ func (c *CheckDepsCommand) Run(args []string) error {
 	hasError := false
 
 	// Check Go
+	//nolint:forbidigo
 	if version, err := getCommandOutput("go", "version"); err == nil {
 		parts := strings.Fields(version)
 		if len(parts) >= 3 {
@@ -41,6 +42,7 @@ func (c *CheckDepsCommand) Run(args []string) error {
 	}
 
 	// Check Docker
+	//nolint:forbidigo
 	if version, err := getCommandOutput("docker", "--version"); err == nil {
 		parts := strings.Fields(version)
 		if len(parts) >= 3 {
@@ -56,6 +58,7 @@ func (c *CheckDepsCommand) Run(args []string) error {
 	}
 
 	// Check Docker Compose
+	//nolint:forbidigo
 	if version, err := getCommandOutput("docker", "compose", "version"); err == nil {
 		parts := strings.Fields(version)
 		if len(parts) >= 4 {
@@ -68,6 +71,7 @@ func (c *CheckDepsCommand) Run(args []string) error {
 	}
 
 	// Check Make
+	//nolint:forbidigo
 	if version, err := getCommandOutput("make", "--version"); err == nil {
 		lines := strings.Split(version, "\n")
 		if len(lines) > 0 {
@@ -99,7 +103,8 @@ func (c *CheckDepsCommand) Run(args []string) error {
 		// Use go run to check if the tool is runnable/installable
 		// We ignore the output content mostly, just care about exit code 0
 		cmd := []string{"run", t.Package, t.CmdArg}
-		if err := runCommand("go", cmd...); err == nil {
+		//nolint:forbidigo
+		if err := runCommand("go", cmd...); err == nil { // #nosec G204
 			PrintSuccess("%s ready", t.Name)
 		} else {
 			PrintError("%s check failed", t.Name)

@@ -40,7 +40,7 @@ func TestBuyItem_NoGoroutineLeak(t *testing.T) {
 	mockJob.On("AwardXP", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 		Return(&domain.XPAwardResult{}, nil).Maybe()
 
-	svc := NewService(repo, mockJob, nil, nil, nil)
+	svc := NewService(repo, nil, nil, nil)
 	checker := leaktest.NewGoroutineChecker(t)
 
 	// Perform buy operation
@@ -62,9 +62,8 @@ func TestBuyItem_NoGoroutineLeak(t *testing.T) {
 // TestService_Shutdown_NoGoroutineLeak verifies shutdown properly waits for goroutines
 func TestService_Shutdown_NoGoroutineLeak(t *testing.T) {
 	repo := new(MockRepository)
-	mockJob := new(MockJobService)
 
-	svc := NewService(repo, mockJob, nil, nil, nil)
+	svc := NewService(repo, nil, nil, nil)
 	checker := leaktest.NewGoroutineChecker(t)
 
 	// Call shutdown (no-op if nothing running)

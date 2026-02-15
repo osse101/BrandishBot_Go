@@ -3,6 +3,7 @@
 ## Overview
 
 BrandishBot_Go is a comprehensive backend gaming engine API that powers live chatroom gaming experiences across multiple streaming platforms (Twitch, YouTube, Discord). The system includes:
+
 - **HTTP API Server** (port 8080) - RESTful API for game mechanics
 - **Discord Bot** (port 8082) - Discord integration with slash commands
 - **Real-time Events** - Server-Sent Events (SSE) for live updates
@@ -48,6 +49,7 @@ The application follows a **layered event-driven architecture** with clear separ
 ### Request Flow Pattern
 
 Standard flow for all features:
+
 ```
 Handler (internal/handler/)
   → Service (internal/*/service.go)
@@ -97,6 +99,7 @@ BrandishBot_Go/
 │   ├── worker/                   # Background workers
 │   ├── streamerbot/              # Streamer.bot WebSocket client
 │   ├── discord/                  # Discord bot commands
+│   ├── compost/                  # Compost system
 │   ├── repository/               # Repository interfaces
 │   ├── logger/                   # Structured logging (Zap)
 │   ├── metrics/                  # Prometheus metrics
@@ -108,6 +111,8 @@ BrandishBot_Go/
 │   ├── loot_tables.json          # Loot table configuration
 │   └── progression_tree.json     # Progression tree definition
 ├── migrations/                   # Goose SQL migrations
+├── web/
+│   └── admin/                    # Admin Dashboard (React SPA)
 ├── client/
 │   └── csharp/                   # C# Streamer.bot client
 ├── docs/                         # Documentation
@@ -122,6 +127,7 @@ BrandishBot_Go/
 ### 1. Application Bootstrap (`internal/bootstrap/`)
 
 Handles application initialization and dependency injection:
+
 - Database connection management
 - Service initialization order
 - Event bus setup
@@ -131,6 +137,7 @@ Handles application initialization and dependency injection:
 ### 2. Configuration (`internal/config/`)
 
 Environment-based configuration management:
+
 - Database connection strings
 - Server ports (API: 8080, Discord: 8082)
 - Feature flags
@@ -140,8 +147,9 @@ Environment-based configuration management:
 
 Core business entities and types:
 
+- **Constants**: `internal/domain/constants.go` acts as the centralized registry for domain-wide constants (QualityLevels, JobKeys, GambleState, etc.), superseding scattered definitions.
 - **User**: Multi-platform user accounts
-- **Item**: In-game items with rarity, shine, type
+- **Item**: In-game items with quality, type
 - **Inventory**: JSONB-stored user inventories
 - **Job**: Job definitions with XP requirements
 - **ProgressionNode**: Tree nodes with costs, prerequisites, modifiers
@@ -151,11 +159,13 @@ Core business entities and types:
 ### 4. Event System (`internal/event/`)
 
 **Event Bus** - Central pub/sub message broker:
+
 - Topic-based subscription
 - Resilient publishing with retry (exponential backoff)
 - Event types: Engagement, Gamble, JobLevelUp, ProgressionCycle
 
 **Key Event Types:**
+
 - `EventTypeEngagement` - User engagement tracking
 - `EventGambleStarted`, `EventGambleComplete` - Gamble lifecycle
 - `EventTypeJobLevelUp` - Job progression
@@ -165,6 +175,7 @@ Core business entities and types:
 - `EventTypeProgressionAllUnlocked` - All nodes unlocked
 
 **Resilient Publisher** (`internal/event/resilient_publisher.go`):
+
 - Retry pattern: 2s → 4s → 8s → 16s → 32s
 - Circuit breaker for failed handlers
 - Metrics tracking
@@ -174,12 +185,14 @@ Core business entities and types:
 #### SSE Hub (`internal/sse/`)
 
 Server-Sent Events for real-time browser updates:
+
 - 100-message buffer per client
 - 30-second keepalive
 - Automatic cleanup on disconnect
-- Event types: job.level_up, progression.*, gamble.complete
+- Event types: job.level_up, progression.\*, gamble.complete
 
 **Event Integration** (`internal/sse/event_integration.go`):
+
 - Subscribes to event bus
 - Transforms events to SSE format
 - Broadcasts to all connected clients
@@ -187,6 +200,7 @@ Server-Sent Events for real-time browser updates:
 #### Streamer.bot Integration (`internal/streamerbot/`)
 
 WebSocket client for Streamer.bot integration:
+
 - Real-time event forwarding
 - Automatic reconnection
 - Event filtering and transformation
@@ -213,23 +227,34 @@ Data access interfaces with implementations in `internal/database/postgres/`:
 Business logic with event publishing:
 
 #### User System (`internal/user/`)
+
 - User registration and platform linking
 - Inventory management (add, remove, use items)
 - Timeout enforcement
 - User search
 
 #### Economy System (`internal/economy/`)
+
 - Dynamic pricing with job bonuses
 - Buy/sell item transactions
 - Price calculation based on base values
 
 #### Crafting System (`internal/crafting/`)
+
 - Item upgrades with masterwork chance (10%, 2x output)
 - Item disassembly with perfect salvage (10%, 1.5x output)
 - Recipe unlocking and management
 - Job XP rewards for crafting actions
 
+#### Compost System (`internal/compost/`)
+
+- Recycling mechanic with "Garbage In, Value Out" logic
+- Time-based processing (1h warmup + 30m/item)
+- Sludge penalty for neglected bins (1 week timeout)
+- Dominant type calculation for output rewards
+
 #### Progression System (`internal/progression/`)
+
 - **Tree Management**: Load progression tree from JSON
 - **Voting Sessions**: Parallel voting on multiple nodes
 - **Vote Accumulation**: Unlock nodes during voting period
@@ -241,31 +266,36 @@ Business logic with event publishing:
 - **Admin Controls**: Freeze voting, force-end sessions
 
 #### Gamble System (`internal/gamble/`)
+
 - Gamble session creation and joining
 - Worker-based async execution
-- Shine-level multipliers (COMMON 1.0x to LEGENDARY 2.0x)
+- Quality-level multipliers (COMMON 1.0x to LEGENDARY 2.0x)
 - Near-miss threshold (95%)
 - Lootbox integration
 
 #### Lootbox System (`internal/lootbox/`)
+
 - Weighted random item selection
 - Loot table configuration from JSON
-- Shine level determination
+- Quality level determination
 - Item drop tracking
 
 #### Job/XP System (`internal/job/`)
+
 - Job definitions with XP curves
 - XP awarding and level calculation
 - Job bonus multipliers
 - Level-up event publishing
 
 #### Stats System (`internal/stats/`)
+
 - User event tracking
 - Streak calculation (daily engagement)
 - Leaderboard generation
 - System-wide statistics
 
 #### Cooldown System (`internal/cooldown/`)
+
 - Check-then-lock pattern (race-free)
 - Configurable per-action cooldowns
 - Transaction-based enforcement
@@ -274,6 +304,7 @@ Business logic with event publishing:
 ### 8. Handler Layer (`internal/handler/`)
 
 HTTP request handlers organized by feature:
+
 - **user.go**: Registration, inventory, timeout, search
 - **economy.go**: Prices, buy, sell
 - **crafting.go**: Upgrade, disassemble, recipes
@@ -287,8 +318,9 @@ HTTP request handlers organized by feature:
 ### 9. Discord Bot (`internal/discord/`)
 
 Discord integration with slash commands:
+
 - **Bot Core**: Command registration, event handling
-- **Commands**: Mirror API functionality (cmd_*.go files)
+- **Commands**: Mirror API functionality (cmd\_\*.go files)
 - **API Client**: HTTP client for API calls
 - **Autocomplete**: Dynamic option completion
 - **SSE Client**: Real-time event subscription
@@ -296,6 +328,7 @@ Discord integration with slash commands:
 ### 10. Scheduler & Workers (`internal/scheduler/`, `internal/worker/`)
 
 Background job processing:
+
 - **Scheduler**: Cron-based job scheduling
 - **Gamble Worker**: Async gamble execution with queue
 - **Jobs**: Progression cycle management, cleanup tasks
@@ -303,18 +336,21 @@ Background job processing:
 ### 11. Observability
 
 #### Logging (`internal/logger/`)
+
 - Structured logging with Zap
 - Correlation IDs for request tracing
 - Log levels: DEBUG, INFO, WARN, ERROR
 - JSON output for log aggregation
 
 #### Metrics (`internal/metrics/`)
+
 - Prometheus metric collection
 - Application metrics (request counts, durations)
 - Custom business metrics (gambles, crafts, votes)
 - Endpoint: `/metrics`
 
 #### Event Logging (`internal/eventlog/`)
+
 - Event storage for audit trail
 - Event replay capability
 - Integration with event bus
@@ -322,10 +358,21 @@ Background job processing:
 ### 12. Middleware (`internal/middleware/`)
 
 HTTP middleware stack:
+
 - CORS handling
 - Request logging with duration
 - Panic recovery
 - Request ID injection
+
+### 13. Admin Dashboard (`web/admin/`)
+
+Embedded React SPA for system management:
+
+- **Frontend Stack**: React 19, TypeScript, Tailwind, Vite
+- **Deployment**: Embedded in Go binary via `//go:embed`
+- **Authentication**: API Key via `sessionStorage`
+- **Live Updates**: Connects to SSE stream for real-time events
+- **Features**: User management, server health, admin commands
 
 ## Database Schema
 
@@ -361,7 +408,7 @@ items                  item_types            item_type_assignments
 │description│  │   │  └──────────┘  ├──┘  └──┘
 │base_value │  │   │                │
 │rarity     │  │   │                │
-│shine_level│  │   │                │
+│quality_level│  │   │                │
 └──────────┘  └───┼────────────────┘
                   └─(many-to-many)
 ```
@@ -449,7 +496,7 @@ gambles                        gamble_participants
                               │gamble_id       │
                               │item_id         │
                               │quantity        │
-                              │shine_level     │
+                              │quality_level     │
                               │opened_at       │
                               └────────────────┘
 ```
@@ -520,33 +567,38 @@ cooldowns
 ## API Endpoints
 
 ### Health & Monitoring
+
 - `GET /healthz` - Health check
 - `GET /readyz` - Readiness check
 - `GET /version` - Version information
 - `GET /metrics` - Prometheus metrics
 
 ### User Management
+
 - `POST /api/v1/user/register` - Register new user or link platform
 - `GET /api/v1/user/inventory` - Get user inventory
 - `GET /api/v1/user/inventory/:username` - Get inventory by username
 - `PUT /api/v1/user/timeout` - Set user timeout
-- `GET /api/v1/user/search` - Search users
+- `POST /api/v1/user/search` - Search users
 - `POST /api/v1/user/item/add` - Add item to inventory
 - `POST /api/v1/user/item/remove` - Remove item from inventory
 - `POST /api/v1/user/item/use` - Use consumable item
 
 ### Economy
+
 - `GET /api/v1/prices` - Get sellable item prices
 - `GET /api/v1/prices/buy` - Get buyable item prices
 - `POST /api/v1/economy/buy` - Buy item
 - `POST /api/v1/economy/sell` - Sell item
 
 ### Crafting
+
 - `POST /api/v1/user/item/upgrade` - Upgrade item (10% masterwork chance)
 - `POST /api/v1/user/item/disassemble` - Disassemble item (10% perfect salvage)
 - `GET /api/v1/crafting/recipes` - Get unlocked recipes
 
 ### Progression System
+
 - `GET /api/v1/progression/tree` - Get full progression tree
 - `GET /api/v1/progression/available` - Get available nodes to vote on
 - `POST /api/v1/progression/vote` - Vote for node unlock
@@ -557,17 +609,20 @@ cooldowns
 - `GET /api/v1/progression/session` - Get current voting session
 
 **Admin Endpoints:**
+
 - `POST /api/v1/progression/admin/freeze` - Freeze voting (prevents new votes)
 - `POST /api/v1/progression/admin/force-end` - Force end session and publish unlocks
 - `POST /api/v1/progression/admin/start` - Start new voting session
 - `PUT /api/v1/progression/admin/weights` - Update user voting weights
 
 ### Gamble System
+
 - `POST /api/v1/gamble/start` - Start gamble session
 - `POST /api/v1/gamble/join` - Join gamble session
 - `GET /api/v1/gamble/get` - Get gamble session details
 
 ### Jobs & XP
+
 - `GET /api/v1/jobs` - Get all jobs
 - `GET /api/v1/jobs/user` - Get user jobs with levels
 - `POST /api/v1/jobs/award-xp` - Award XP to user
@@ -575,23 +630,28 @@ cooldowns
 - `POST /api/v1/admin/jobs/xp` - Award XP (admin endpoint)
 
 ### Stats & Leaderboards
+
 - `POST /api/v1/stats/event` - Record user event
 - `GET /api/v1/stats/user` - Get user stats
 - `GET /api/v1/stats/system` - Get system-wide stats
 - `GET /api/v1/stats/leaderboard` - Get leaderboard
 
 ### Message Handling
+
 - `POST /api/v1/message/handle` - Handle chat message
 - `POST /api/v1/message/test` - Test message handling
 
 ### Admin
+
 - `POST /api/v1/admin/reload-aliases` - Reload item aliases from config
 - `GET /api/v1/admin/cache/stats` - Get cache statistics
 
 ### Real-Time Events
+
 - `GET /api/v1/events` - Server-Sent Events stream
 
 **SSE Event Types:**
+
 - `job.level_up` - User leveled up in a job
 - `progression.cycle.completed` - Voting cycle completed
 - `progression.target.set` - New unlock target set
@@ -600,6 +660,7 @@ cooldowns
 - `gamble.complete` - Gamble session completed
 
 ### Documentation
+
 - `/swagger/` - Swagger UI for API documentation
 
 ## Data Flow Examples
@@ -663,10 +724,10 @@ cooldowns
 4. Background Worker picks up gamble
 5. GambleWorker.ExecuteGamble()
    ├─→ LootboxService.OpenLootbox() [for each participant]
-   │   ├─→ Roll shine level
+   │   ├─→ Roll quality level
    │   ├─→ Select items from loot table
    │   └─→ Calculate multipliers
-   ├─→ Determine winner (highest shine × near-miss logic)
+   ├─→ Determine winner (highest quality × near-miss logic)
    ├─→ Transaction: Distribute winnings
    ├─→ Repository.UpdateGambleStatus(completed)
    ├─→ EventBus.Publish(GambleComplete)
@@ -705,6 +766,7 @@ cooldowns
 Environment variables (`.env`):
 
 **Database:**
+
 - `DB_USER`: PostgreSQL username
 - `DB_PASSWORD`: PostgreSQL password
 - `DB_HOST`: Database host
@@ -712,17 +774,21 @@ Environment variables (`.env`):
 - `DB_NAME`: Database name (brandishbot)
 
 **Server:**
+
 - `PORT`: HTTP API server port (default: 8080)
 - `DISCORD_PORT`: Discord bot port (default: 8082)
 
 **Discord:**
+
 - `DISCORD_TOKEN`: Discord bot token
 - `DISCORD_GUILD_ID`: Discord server ID for slash commands
 
 **Streamer.bot:**
+
 - `STREAMERBOT_WS_URL`: WebSocket URL for Streamer.bot integration
 
 **Feature Flags:**
+
 - Various flags in `internal/features/` for enabling/disabling features
 
 ## Observability
@@ -730,17 +796,20 @@ Environment variables (`.env`):
 ### Logging (`internal/logger/`)
 
 **Structured Logging with Zap:**
+
 - JSON output for log aggregation
 - Log levels: DEBUG, INFO, WARN, ERROR
 - Correlation IDs for request tracing
 - Context-aware logging
 
 **Log Locations:**
+
 - Console: Stdout for development
 - File: `app.log` for persistent logs
 - Request logging: HTTP middleware logs all requests with duration
 
 **Log Fields:**
+
 - `timestamp`: ISO8601 timestamp
 - `level`: Log level
 - `msg`: Log message
@@ -751,6 +820,7 @@ Environment variables (`.env`):
 ### Metrics (`internal/metrics/`)
 
 **Prometheus Integration:**
+
 - Endpoint: `GET /metrics`
 - Request counts by endpoint and status code
 - Request duration histograms
@@ -764,6 +834,7 @@ Environment variables (`.env`):
 ### Event Logging (`internal/eventlog/`)
 
 **Event Audit Trail:**
+
 - All events stored in `events` table
 - JSONB payload storage
 - Queryable by event type, user, time range
@@ -772,11 +843,15 @@ Environment variables (`.env`):
 ## Utilities
 
 ### Setup (`cmd/setup/`)
+
 ### Setup (`cmd/setup/`)
+
 Initializes database schema using SQL migrations from `migrations/`.
 
 ### Debug (`cmd/debug/`)
+
 Dumps database contents for inspection:
+
 - Platforms
 - Users
 - User-Platform Links
@@ -796,6 +871,7 @@ Dumps database contents for inspection:
 ## Future Considerations
 
 Based on `AGENTS.md`:
+
 - **Event-Driven Architecture**: Planned integration with event broker
 - **Stats Service**: Will consume inventory events
 - **Class Service**: Will handle XP and ability calculations

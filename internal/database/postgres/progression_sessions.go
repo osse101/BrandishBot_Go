@@ -38,7 +38,6 @@ func (r *progressionRepository) AddVotingOption(ctx context.Context, sessionID, 
 }
 
 func (r *progressionRepository) GetActiveSession(ctx context.Context) (*domain.ProgressionVotingSession, error) {
-	// Status 'voting' is handled in query
 	row, err := r.q.GetActiveSession(ctx)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -47,22 +46,7 @@ func (r *progressionRepository) GetActiveSession(ctx context.Context) (*domain.P
 		return nil, fmt.Errorf("failed to get active session: %w", err)
 	}
 
-	session := &domain.ProgressionVotingSession{
-		ID:              int(row.ID),
-		StartedAt:       row.StartedAt.Time,
-		Status:          row.Status,
-		EndedAt:         ptrTime(row.EndedAt),
-		VotingDeadline:  row.VotingDeadline.Time,
-		WinningOptionID: ptrInt(row.WinningOptionID),
-	}
-
-	// Get options
-	session.Options, err = r.getSessionOptions(ctx, session.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	return session, nil
+	return r.mapSessionHelper(ctx, row.ID, row.StartedAt, row.Status, row.EndedAt, row.VotingDeadline, row.WinningOptionID)
 }
 
 // GetMostRecentSession returns the most recent voting session regardless of status
@@ -75,22 +59,7 @@ func (r *progressionRepository) GetMostRecentSession(ctx context.Context) (*doma
 		return nil, fmt.Errorf("failed to get most recent session: %w", err)
 	}
 
-	session := &domain.ProgressionVotingSession{
-		ID:              int(row.ID),
-		StartedAt:       row.StartedAt.Time,
-		Status:          row.Status,
-		EndedAt:         ptrTime(row.EndedAt),
-		VotingDeadline:  row.VotingDeadline.Time,
-		WinningOptionID: ptrInt(row.WinningOptionID),
-	}
-
-	// Get options
-	session.Options, err = r.getSessionOptions(ctx, session.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	return session, nil
+	return r.mapSessionHelper(ctx, row.ID, row.StartedAt, row.Status, row.EndedAt, row.VotingDeadline, row.WinningOptionID)
 }
 
 func (r *progressionRepository) GetSessionByID(ctx context.Context, sessionID int) (*domain.ProgressionVotingSession, error) {
@@ -102,15 +71,20 @@ func (r *progressionRepository) GetSessionByID(ctx context.Context, sessionID in
 		return nil, fmt.Errorf("failed to get session: %w", err)
 	}
 
+	return r.mapSessionHelper(ctx, row.ID, row.StartedAt, row.Status, row.EndedAt, row.VotingDeadline, row.WinningOptionID)
+}
+
+func (r *progressionRepository) mapSessionHelper(ctx context.Context, id int32, startedAt pgtype.Timestamp, status string, endedAt pgtype.Timestamp, votingDeadline pgtype.Timestamp, winningOptionID pgtype.Int4) (*domain.ProgressionVotingSession, error) {
 	session := &domain.ProgressionVotingSession{
-		ID:              int(row.ID),
-		StartedAt:       row.StartedAt.Time,
-		Status:          row.Status,
-		EndedAt:         ptrTime(row.EndedAt),
-		VotingDeadline:  row.VotingDeadline.Time,
-		WinningOptionID: ptrInt(row.WinningOptionID),
+		ID:              int(id),
+		StartedAt:       startedAt.Time,
+		Status:          status,
+		EndedAt:         ptrTime(endedAt),
+		VotingDeadline:  votingDeadline.Time,
+		WinningOptionID: ptrInt(winningOptionID),
 	}
 
+	var err error
 	session.Options, err = r.getSessionOptions(ctx, session.ID)
 	if err != nil {
 		return nil, err
@@ -202,22 +176,7 @@ func (r *progressionRepository) GetActiveOrFrozenSession(ctx context.Context) (*
 		return nil, fmt.Errorf("failed to get active or frozen session: %w", err)
 	}
 
-	session := &domain.ProgressionVotingSession{
-		ID:              int(row.ID),
-		StartedAt:       row.StartedAt.Time,
-		Status:          row.Status,
-		EndedAt:         ptrTime(row.EndedAt),
-		VotingDeadline:  row.VotingDeadline.Time,
-		WinningOptionID: ptrInt(row.WinningOptionID),
-	}
-
-	// Get options
-	session.Options, err = r.getSessionOptions(ctx, session.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	return session, nil
+	return r.mapSessionHelper(ctx, row.ID, row.StartedAt, row.Status, row.EndedAt, row.VotingDeadline, row.WinningOptionID)
 }
 
 func (r *progressionRepository) GetSessionVoters(ctx context.Context, sessionID int) ([]string, error) {

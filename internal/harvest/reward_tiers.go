@@ -10,7 +10,7 @@ func getRewardTiers() []domain.HarvestReward {
 		{
 			MaxHours: 2.0,
 			Items: map[string]int{
-				"money": 2,
+				itemMoney: 2,
 			},
 			RequiresUnlock: map[string]bool{},
 		},
@@ -18,7 +18,7 @@ func getRewardTiers() []domain.HarvestReward {
 		{
 			MaxHours: 5.0,
 			Items: map[string]int{
-				"money": 10,
+				itemMoney: 10,
 			},
 			RequiresUnlock: map[string]bool{},
 		},
@@ -26,30 +26,30 @@ func getRewardTiers() []domain.HarvestReward {
 		{
 			MaxHours: 12.0,
 			Items: map[string]int{
-				"stick": 1,
-				"money": 5,
+				itemStick: 1,
+				itemMoney: 5,
 			},
 			RequiresUnlock: map[string]bool{
-				"stick": true,
+				itemStick: true,
 			},
 		},
 		// Tier 4: 24 hours - +2 stick, +5 money (total: 22 money, 3 stick if unlocked)
 		{
 			MaxHours: 24.0,
 			Items: map[string]int{
-				"stick": 2,
-				"money": 5,
+				itemStick: 2,
+				itemMoney: 5,
 			},
 			RequiresUnlock: map[string]bool{
-				"stick": true,
+				itemStick: true,
 			},
 		},
 		// Tier 5: 48 hours - +1 lootbox0, +10 money (total: 32 money, 3 stick, 1 lootbox0)
 		{
 			MaxHours: 48.0,
 			Items: map[string]int{
-				"lootbox0": 1,
-				"money":    10,
+				itemLootbox0: 1,
+				itemMoney:    10,
 			},
 			RequiresUnlock: map[string]bool{},
 		},
@@ -57,8 +57,8 @@ func getRewardTiers() []domain.HarvestReward {
 		{
 			MaxHours: 72.0,
 			Items: map[string]int{
-				"lootbox0": 2,
-				"money":    10,
+				itemLootbox0: 2,
+				itemMoney:    10,
 			},
 			RequiresUnlock: map[string]bool{},
 		},
@@ -66,44 +66,44 @@ func getRewardTiers() []domain.HarvestReward {
 		{
 			MaxHours: 90.0,
 			Items: map[string]int{
-				"stick": 5,
-				"money": 5,
+				itemStick: 5,
+				itemMoney: 5,
 			},
 			RequiresUnlock: map[string]bool{
-				"stick": true,
+				itemStick: true,
 			},
 		},
 		// Tier 8: 110 hours - +1 lootbox1, +15 money (total: 62 money, 8 stick, 3 lootbox0, 1 lootbox1 if unlocked)
 		{
 			MaxHours: 110.0,
 			Items: map[string]int{
-				"lootbox1": 1,
-				"money":    15,
+				itemLootbox1: 1,
+				itemMoney:    15,
 			},
 			RequiresUnlock: map[string]bool{
-				"lootbox1": true,
+				itemLootbox1: true,
 			},
 		},
 		// Tier 9: 130 hours - +1 lootbox1, +15 money (total: 77 money, 8 stick, 3 lootbox0, 2 lootbox1 if unlocked)
 		{
 			MaxHours: 130.0,
 			Items: map[string]int{
-				"lootbox1": 1,
-				"money":    15,
+				itemLootbox1: 1,
+				itemMoney:    15,
 			},
 			RequiresUnlock: map[string]bool{
-				"lootbox1": true,
+				itemLootbox1: true,
 			},
 		},
 		// Tier 10: 168 hours (1 week) - +1 lootbox2, +20 money (total: 97 money, 8 stick, 3 lootbox0, 2 lootbox1, 1 lootbox2 if unlocked)
 		{
 			MaxHours: 168.0,
 			Items: map[string]int{
-				"lootbox2": 1,
-				"money":    20,
+				itemLootbox2: 1,
+				itemMoney:    20,
 			},
 			RequiresUnlock: map[string]bool{
-				"lootbox2": true,
+				itemLootbox2: true,
 			},
 		},
 	}

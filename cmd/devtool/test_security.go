@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"os"
 	"strings"
+
+	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
 type TestSecurityCommand struct{}
@@ -26,9 +28,9 @@ func (c *TestSecurityCommand) Run(args []string) error {
 		return fmt.Errorf("API_KEY not found")
 	}
 
-	baseURL := os.Getenv("BASE_URL")
-	if baseURL == "" {
-		baseURL = "http://localhost:8080"
+	apiURL := os.Getenv("API_URL")
+	if apiURL == "" {
+		apiURL = "http://localhost:8080"
 	}
 
 	PrintHeader("Security Feature Tests")
@@ -36,34 +38,34 @@ func (c *TestSecurityCommand) Run(args []string) error {
 	failures := 0
 
 	// Test 1: Request without API key
-	if !c.runTestCase(1, "Request without API key (should fail with 401)", baseURL, "", 401, map[string]interface{}{
+	if !c.runTestCase(1, "Request without API key (should fail with 401)", apiURL, "", 401, map[string]interface{}{
 		"username":    "testuser",
-		"platform":    "twitch",
+		"platform":    domain.PlatformTwitch,
 		"platform_id": "12345",
 	}) {
 		failures++
 	}
 
 	// Test 2: Request with wrong API key
-	if !c.runTestCase(2, "Request with wrong API key (should fail with 401)", baseURL, "wrong_key", 401, map[string]interface{}{
+	if !c.runTestCase(2, "Request with wrong API key (should fail with 401)", apiURL, "wrong_key", 401, map[string]interface{}{
 		"username":    "testuser",
-		"platform":    "twitch",
+		"platform":    domain.PlatformTwitch,
 		"platform_id": "12345",
 	}) {
 		failures++
 	}
 
 	// Test 3: Request with valid API key
-	if !c.runTestCase(3, "Request with valid API key (should succeed with 200/201)", baseURL, apiKey, 200, map[string]interface{}{
+	if !c.runTestCase(3, "Request with valid API key (should succeed with 200/201)", apiURL, apiKey, 200, map[string]interface{}{
 		"username":    "testuser",
-		"platform":    "twitch",
+		"platform":    domain.PlatformTwitch,
 		"platform_id": "12345",
 	}) {
 		failures++
 	}
 
 	// Test 4: Invalid platform
-	if !c.runTestCase(4, "Invalid platform (should fail with 400)", baseURL, apiKey, 400, map[string]interface{}{
+	if !c.runTestCase(4, "Invalid platform (should fail with 400)", apiURL, apiKey, 400, map[string]interface{}{
 		"username":    "testuser",
 		"platform":    "invalid_platform",
 		"platform_id": "12345",
@@ -73,18 +75,18 @@ func (c *TestSecurityCommand) Run(args []string) error {
 
 	// Test 5: Username too long
 	longUsername := strings.Repeat("A", 200)
-	if !c.runTestCase(5, "Username too long (should fail with 400)", baseURL, apiKey, 400, map[string]interface{}{
+	if !c.runTestCase(5, "Username too long (should fail with 400)", apiURL, apiKey, 400, map[string]interface{}{
 		"username":    longUsername,
-		"platform":    "twitch",
+		"platform":    domain.PlatformTwitch,
 		"platform_id": "12345",
 	}) {
 		failures++
 	}
 
 	// Test 6: Username with control characters
-	if !c.runTestCase(6, "Username with control characters (should fail with 400)", baseURL, apiKey, 400, map[string]interface{}{
+	if !c.runTestCase(6, "Username with control characters (should fail with 400)", apiURL, apiKey, 400, map[string]interface{}{
 		"username":    "test\nuser",
-		"platform":    "twitch",
+		"platform":    domain.PlatformTwitch,
 		"platform_id": "12345",
 	}) {
 		failures++
@@ -92,14 +94,14 @@ func (c *TestSecurityCommand) Run(args []string) error {
 
 	// Test 7: Valid platforms
 	fmt.Println("Test 7: Valid platforms (should all succeed)")
-	platforms := []string{"twitch", "youtube", "discord"}
+	platforms := []string{domain.PlatformTwitch, domain.PlatformYoutube, domain.PlatformDiscord}
 	for _, p := range platforms {
 		payload := map[string]interface{}{
 			"username":    "user_" + p,
 			"platform":    p,
 			"platform_id": "12345",
 		}
-		statusCode := c.makeRequest(baseURL, apiKey, payload)
+		statusCode := c.makeRequest(apiURL, apiKey, payload)
 		if statusCode == 200 || statusCode == 201 {
 			fmt.Printf("  - %s: %d\n", p, statusCode)
 		} else {
@@ -126,11 +128,11 @@ func (c *TestSecurityCommand) runTestCase(testNum int, description, baseURL, api
 		fmt.Printf(" - Result: %d (OK)\n", statusCode)
 		fmt.Println()
 		return true
-	} else {
-		fmt.Printf(" - Result: %s%d (Expected %d)%s\n", colorRed, statusCode, expectedStatus, colorReset)
-		fmt.Println()
-		return false
 	}
+
+	fmt.Printf(" - Result: %s%d (Expected %d)%s\n", colorRed, statusCode, expectedStatus, colorReset)
+	fmt.Println()
+	return false
 }
 
 func (c *TestSecurityCommand) makeRequest(baseURL, apiKey string, payload interface{}) int {

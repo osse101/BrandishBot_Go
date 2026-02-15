@@ -14,7 +14,8 @@
           "item": "money",
           "quantity": 100
         }
-      ]
+      ],
+      "required_job_level": 1
     },
     {
       "recipe_key": "lootbox_tier1",
@@ -28,7 +29,8 @@
           "item": "money",
           "quantity": 500
         }
-      ]
+      ],
+      "required_job_level": 5
     },
     {
       "recipe_key": "lootbox_tier2",
@@ -42,7 +44,8 @@
           "item": "money",
           "quantity": 2500
         }
-      ]
+      ],
+      "required_job_level": 10
     },
     {
       "recipe_key": "weapon_this",
@@ -56,7 +59,8 @@
           "item": "money",
           "quantity": 500
         }
-      ]
+      ],
+      "required_job_level": 10
     },
     {
       "recipe_key": "explosive_mine",
@@ -70,7 +74,8 @@
           "item": "money",
           "quantity": 250
         }
-      ]
+      ],
+      "required_job_level": 5
     },
     {
       "recipe_key": "explosive_trap",
@@ -84,7 +89,8 @@
           "item": "money",
           "quantity": 2500
         }
-      ]
+      ],
+      "required_job_level": 15
     },
     {
       "recipe_key": "item_stick",
@@ -98,7 +104,8 @@
           "item": "money",
           "quantity": 500
         }
-      ]
+      ],
+      "required_job_level": 10
     }
   ]
 }

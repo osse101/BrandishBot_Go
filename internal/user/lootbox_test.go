@@ -193,8 +193,8 @@ type MockLootboxService struct {
 	mock.Mock
 }
 
-func (m *MockLootboxService) OpenLootbox(ctx context.Context, lootboxName string, quantity int, boxShine domain.ShineLevel) ([]lootbox.DroppedItem, error) {
-	args := m.Called(ctx, lootboxName, quantity, boxShine)
+func (m *MockLootboxService) OpenLootbox(ctx context.Context, lootboxName string, quantity int, boxQuality domain.QualityLevel) ([]lootbox.DroppedItem, error) {
+	args := m.Called(ctx, lootboxName, quantity, boxQuality)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -229,9 +229,9 @@ func TestProcessLootbox(t *testing.T) {
 
 		// Mock lootbox service response
 		drops := []lootbox.DroppedItem{
-			{ItemID: money.ID, ItemName: domain.ItemMoney, Quantity: 5, Value: 50, ShineLevel: domain.ShineCommon},
+			{ItemID: money.ID, ItemName: domain.ItemMoney, Quantity: 5, Value: 50, QualityLevel: domain.QualityCommon},
 		}
-		lootboxSvc.On("OpenLootbox", ctx, domain.ItemLootbox0, 1, domain.ShineLevel("")).Return(drops, nil)
+		lootboxSvc.On("OpenLootbox", ctx, domain.ItemLootbox0, 1, domain.QualityLevel("")).Return(drops, nil)
 
 		// Setup inventory with lootbox0
 		inventory := &domain.Inventory{

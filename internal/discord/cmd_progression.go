@@ -41,7 +41,7 @@ func VoteCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		}, ResponseConfig{
 			Title: "✅ Vote Recorded",
 			Color: 0x3498db, // Blue
-		}, true)
+		})
 	}
 
 	return cmd, handler
@@ -66,6 +66,7 @@ func AdminUnlockCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 				Required:    false,
 			},
 		},
+		DefaultMemberPermissions: &[]int64{discordgo.PermissionAdministrator}[0],
 	}
 
 	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
@@ -81,7 +82,7 @@ func AdminUnlockCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		}, ResponseConfig{
 			Title: "🔓 Admin Unlock",
 			Color: 0xe67e22, // Orange
-		}, true)
+		})
 	}
 
 	return cmd, handler
@@ -90,8 +91,9 @@ func AdminUnlockCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 // AdminUnlockAllCommand returns the admin unlock all command definition and handler
 func AdminUnlockAllCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	cmd := &discordgo.ApplicationCommand{
-		Name:        "admin-unlock-all",
-		Description: "[Admin] Force unlock ALL progression nodes (DEBUG ONLY)",
+		Name:                     "admin-unlock-all",
+		Description:              "[Admin] Force unlock ALL progression nodes (DEBUG ONLY)",
+		DefaultMemberPermissions: &[]int64{discordgo.PermissionAdministrator}[0],
 	}
 
 	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
@@ -100,7 +102,7 @@ func AdminUnlockAllCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		}, ResponseConfig{
 			Title: "🔓 Admin Unlock All",
 			Color: 0xe74c3c, // Red (warning color for debug command)
-		}, true)
+		})
 	}
 
 	return cmd, handler
@@ -141,6 +143,7 @@ func UnlockProgressCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		contribAcc, _ := p["contributions_accumulated"].(float64)
 		targetCost, _ := p["target_unlock_cost"].(float64)
 		percent, _ := p["completion_percentage"].(float64)
+		estimatedUnlock, _ := p["estimated_unlock_date"].(string)
 
 		description := "Current community contribution progress:"
 		if nodeName != "" {
@@ -149,22 +152,33 @@ func UnlockProgressCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 
 		progressBar := createProgressBar(percent)
 
+		fields := []*discordgo.MessageEmbedField{
+			{
+				Name:   "Progress",
+				Value:  fmt.Sprintf("%s %.1f%%", progressBar, percent),
+				Inline: false,
+			},
+			{
+				Name:   "Contributions",
+				Value:  fmt.Sprintf("%.0f / %.0f", contribAcc, targetCost),
+				Inline: true,
+			},
+		}
+
+		// Add estimated completion date if available
+		if estimatedUnlock != "" {
+			fields = append(fields, &discordgo.MessageEmbedField{
+				Name:   "Estimated Completion",
+				Value:  fmt.Sprintf("<t:%s:R>", estimatedUnlock), // Discord relative timestamp
+				Inline: true,
+			})
+		}
+
 		embed := &discordgo.MessageEmbed{
 			Title:       "🔓 Unlock Progress",
 			Description: description,
 			Color:       0x9b59b6, // Purple
-			Fields: []*discordgo.MessageEmbedField{
-				{
-					Name:   "Progress",
-					Value:  fmt.Sprintf("%s %.1f%%", progressBar, percent),
-					Inline: false,
-				},
-				{
-					Name:   "Contributions",
-					Value:  fmt.Sprintf("%.0f / %.0f", contribAcc, targetCost),
-					Inline: true,
-				},
-			},
+			Fields:      fields,
 			Footer: &discordgo.MessageEmbedFooter{
 				Text: "BrandishBot Progression",
 			},
@@ -263,24 +277,22 @@ func VotingSessionCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		}
 
 		var optionsList string
-		for _, opt := range session.Options {
+		for i, opt := range session.Options {
 			name := "Unknown Node"
 			duration := ""
-			nodeKey := ""
 			if opt.NodeDetails != nil {
 				name = opt.NodeDetails.DisplayName
-				nodeKey = opt.NodeDetails.NodeKey
 				duration = progression.FormatUnlockDuration(opt.NodeDetails.Size)
 			}
-			optionsList += fmt.Sprintf("**%s** (Level %d) - %d votes\n  └ %s • ID: `%s`\n", name, opt.TargetLevel, opt.VoteCount, duration, nodeKey)
+			optionsList += fmt.Sprintf("**%d.** **%s** (Level %d) - %d votes\n  └ %s\n", i+1, name, opt.TargetLevel, opt.VoteCount, duration)
 		}
 
 		embed := &discordgo.MessageEmbed{
 			Title:       "🗳️ Active Voting Session",
-			Description: fmt.Sprintf("Voting ends: <t:%d:R>\n\n%s", session.VotingDeadline.Unix(), optionsList),
+			Description: optionsList,
 			Color:       0x3498db, // Blue
 			Footer: &discordgo.MessageEmbedFooter{
-				Text: "Use /vote <node_key> to vote!",
+				Text: "Use /vote <number> to vote!",
 			},
 		}
 		sendEmbed(s, i, embed)

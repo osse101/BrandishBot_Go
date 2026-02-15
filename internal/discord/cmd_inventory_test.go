@@ -76,8 +76,8 @@ func TestInventoryCommand_WithItems(t *testing.T) {
 	ctx.Mux.HandleFunc("/api/v1/user/inventory", func(w http.ResponseWriter, r *http.Request) {
 		WriteJSON(w, map[string]interface{}{
 			"items": []user.InventoryItem{
-				{Name: "sword", Quantity: 1},
-				{Name: "potion", Quantity: 5},
+				{PublicName: "sword", Quantity: 1},
+				{PublicName: "potion", Quantity: 5},
 			},
 		})
 	})

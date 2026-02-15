@@ -41,11 +41,18 @@ export interface User {
   created_at: string;
 }
 
+export interface ActiveChatter {
+  user_id: string;
+  username: string;
+  platform: string;
+  last_message_at: string;
+}
+
 export interface InventoryItem {
   item_name: string;
   public_name?: string;
   quantity: number;
-  shine_level?: string;
+  quality_level?: string;
 }
 
 // Jobs
@@ -139,4 +146,12 @@ export interface QuestProgress {
   progress: number;
   target: number;
   completed: boolean;
+}
+
+export interface VelocityMetrics {
+  points_per_day: number;
+  trend: "increasing" | "stable" | "decreasing";
+  period_days: number;
+  sample_size: number;
+  total_points: number;
 }

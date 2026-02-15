@@ -17,4 +17,9 @@ type Stats interface {
 	GetEventCounts(ctx context.Context, startTime, endTime time.Time) (map[domain.EventType]int, error)
 	GetUserEventCounts(ctx context.Context, userID string, startTime, endTime time.Time) (map[domain.EventType]int, error)
 	GetTotalEventCount(ctx context.Context, startTime, endTime time.Time) (int, error)
+	// Slots-specific stats
+	GetUserSlotsStats(ctx context.Context, userID string, startTime, endTime time.Time) (*domain.SlotsStats, error)
+	GetSlotsLeaderboardByProfit(ctx context.Context, startTime, endTime time.Time, limit int) ([]domain.SlotsStats, error)
+	GetSlotsLeaderboardByWinRate(ctx context.Context, startTime, endTime time.Time, minSpins, limit int) ([]domain.SlotsStats, error)
+	GetSlotsLeaderboardByMegaJackpots(ctx context.Context, startTime, endTime time.Time, limit int) ([]domain.SlotsStats, error)
 }

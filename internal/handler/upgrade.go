@@ -82,17 +82,6 @@ func HandleUpgradeItem(svc crafting.Service, progressionSvc progression.Service,
 			// Don't fail the request
 		}
 
-		// Publish item.upgraded event
-		if err := publishCraftingEvent(r.Context(), eventBus, "item.upgraded", map[string]interface{}{
-			"user_id":           req.Username,
-			"source_item":       req.Item,
-			"result_item":       result.ItemName,
-			"quantity_upgraded": result.Quantity,
-			"is_masterwork":     result.IsMasterwork,
-		}); err != nil {
-			_ = err // Error already logged in publishCraftingEvent
-		}
-
 		// Construct user message
 		message := fmt.Sprintf("Successfully upgraded to %dx %s", result.Quantity, result.ItemName)
 		if result.IsMasterwork {
@@ -168,8 +157,8 @@ func (h *CraftingHandler) HandleGetRecipes() http.HandlerFunc {
 
 			log.Info("Unlocked recipes retrieved", "username", username, "count", len(recipes))
 
-			respondJSON(w, http.StatusOK, map[string]interface{}{
-				"recipes": recipes,
+			respondJSON(w, http.StatusOK, UnlockedRecipesResponse{
+				Recipes: recipes,
 			})
 			return
 		}
@@ -201,8 +190,18 @@ func (h *CraftingHandler) HandleGetRecipes() http.HandlerFunc {
 			return
 		}
 
-		respondJSON(w, http.StatusOK, map[string]interface{}{
-			"recipes": recipes,
+		respondJSON(w, http.StatusOK, AllRecipesResponse{
+			Recipes: recipes,
 		})
 	}
+}
+
+// UnlockedRecipesResponse defines response for unlocked recipes
+type UnlockedRecipesResponse struct {
+	Recipes []repository.UnlockedRecipeInfo `json:"recipes"`
+}
+
+// AllRecipesResponse defines response for all recipes
+type AllRecipesResponse struct {
+	Recipes []repository.RecipeListItem `json:"recipes"`
 }

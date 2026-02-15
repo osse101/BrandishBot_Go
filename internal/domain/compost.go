@@ -1,49 +1,66 @@
 package domain
 
-import (
-	"encoding/json"
-	"time"
+import "time"
 
-	"github.com/google/uuid"
+// CompostBinStatus represents the state of a compost bin
+type CompostBinStatus string
+
+const (
+	CompostBinStatusIdle       CompostBinStatus = "idle"
+	CompostBinStatusComposting CompostBinStatus = "composting"
+	CompostBinStatusReady      CompostBinStatus = "ready"
+	CompostBinStatusSludge     CompostBinStatus = "sludge"
 )
 
-// CompostDeposit represents a composting deposit
-type CompostDeposit struct {
-	ID          uuid.UUID        `json:"id"`
-	UserID      uuid.UUID        `json:"user_id"`
-	ItemKey     string           `json:"item_key"`
-	Quantity    int              `json:"quantity"`
-	DepositedAt time.Time        `json:"deposited_at"`
-	ReadyAt     time.Time        `json:"ready_at"`
-	HarvestedAt *time.Time       `json:"harvested_at,omitempty"`
-	GemsAwarded *int             `json:"gems_awarded,omitempty"`
-	Metadata    *CompostMetadata `json:"metadata,omitempty"`
+// CompostBin represents a user's compost bin
+type CompostBin struct {
+	ID           string           `json:"id"`
+	UserID       string           `json:"user_id"`
+	Status       CompostBinStatus `json:"status"`
+	Capacity     int              `json:"capacity"`
+	Items        []CompostBinItem `json:"items"`
+	ItemCount    int              `json:"item_count"`
+	StartedAt    *time.Time       `json:"started_at,omitempty"`
+	ReadyAt      *time.Time       `json:"ready_at,omitempty"`
+	SludgeAt     *time.Time       `json:"sludge_at,omitempty"`
+	InputValue   int              `json:"input_value"`
+	DominantType string           `json:"dominant_type"`
+	CreatedAt    time.Time        `json:"created_at"`
+	UpdatedAt    time.Time        `json:"updated_at"`
 }
 
-// CompostMetadata stores additional deposit information
-type CompostMetadata struct {
-	ItemRarity     string `json:"item_rarity,omitempty"`
-	ConversionRate int    `json:"conversion_rate,omitempty"` // Gems per item
-	BonusApplied   bool   `json:"bonus_applied,omitempty"`
+// CompostBinItem is a snapshot of an item deposited into the bin
+type CompostBinItem struct {
+	ItemID       int          `json:"item_id"`
+	ItemName     string       `json:"item_name"`
+	Quantity     int          `json:"quantity"`
+	QualityLevel QualityLevel `json:"quality_level"`
+	BaseValue    int          `json:"base_value"`
+	ContentTypes []string     `json:"content_types"`
 }
 
-// CompostStatus represents a user's compost status
-type CompostStatus struct {
-	ActiveDeposits   []CompostDeposit `json:"active_deposits"`
-	ReadyCount       int              `json:"ready_count"`
-	TotalGemsPending int              `json:"total_gems_pending"`
+// CompostOutput holds the result of a harvest
+type CompostOutput struct {
+	Items      map[string]int `json:"items"`
+	IsSludge   bool           `json:"is_sludge"`
+	TotalValue int            `json:"total_value"`
+	Message    string         `json:"message"`
 }
 
-// MarshalCompostMetadata converts CompostMetadata to JSONB
-func MarshalCompostMetadata(metadata CompostMetadata) ([]byte, error) {
-	return json.Marshal(metadata)
+// CompostStatusResponse is returned when bin is not ready to harvest
+type CompostStatusResponse struct {
+	Status    CompostBinStatus `json:"status"`
+	Capacity  int              `json:"capacity"`
+	ItemCount int              `json:"item_count"`
+	Items     []CompostBinItem `json:"items"`
+	ReadyAt   *time.Time       `json:"ready_at,omitempty"`
+	SludgeAt  *time.Time       `json:"sludge_at,omitempty"`
+	TimeLeft  string           `json:"time_left,omitempty"`
 }
 
-// UnmarshalCompostMetadata converts JSONB to CompostMetadata
-func UnmarshalCompostMetadata(data []byte) (*CompostMetadata, error) {
-	var metadata CompostMetadata
-	if err := json.Unmarshal(data, &metadata); err != nil {
-		return nil, err
-	}
-	return &metadata, nil
+// HarvestResult is returned by Service.Harvest - either status info or actual output
+type HarvestResult struct {
+	Harvested bool                   `json:"harvested"`
+	Output    *CompostOutput         `json:"output,omitempty"`
+	Status    *CompostStatusResponse `json:"status,omitempty"`
 }

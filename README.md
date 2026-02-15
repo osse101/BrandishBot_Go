@@ -6,10 +6,22 @@ A high-performance game engine API for BrandishBot, built with Go. Provides inve
 
 - **Inventory Management**: Add, remove, trade, and track items
 - **Crafting System**: Recipe-based item crafting and upgrading
-- **Economy**: Buy/sell items with dynamic pricing
+- **Economy**: [Buy/sell items](docs/features/ECONOMY.md) with dynamic pricing
+- **Expeditions**: [Cooperative multiplayer adventures](docs/features/EXPEDITIONS.md) with procedural encounters
+- **Quests**: [Weekly challenges](docs/features/WEEKLY_QUESTS.md) for rewards and XP
+- **Farming**: [Harvest resources](docs/features/FARMING.md) over time
+- **Lootboxes & Quality**: [Open tiered lootboxes](docs/features/LOOTBOXES.md) with item quality levels
+- **Slots Minigame**: [Play slots](docs/features/SLOTS.md) for money and XP
+- **Gamble**: [Wager lootboxes](docs/features/GAMBLE.md) in winner-takes-all pools
+- **Jobs**: [RPG-style job progression](docs/features/JOBS.md) (Blacksmith, Merchant, etc.)
+- **Daily Reset**: [Scheduled daily tasks](docs/features/DAILY_RESET.md) and limit resets
+- **Subscriptions**: [Integration with Twitch/YouTube subscriptions](docs/features/SUBSCRIPTIONS.md)
+- **Traps**: [Place hidden traps](docs/features/TRAPS.md) and mines on other users
 - **Statistics**: User and system stats with leaderboards
+- **Composting**: [Recycle items for rewards](docs/features/FARMING.md)
+- **In Development**: Duels (PVP challenges)
 - **Discord Bot**: Full-featured Discord integration with slash commands
-- **Admin Dashboard**: Web-based GUI for system monitoring and admin commands
+- **Admin Dashboard**: [Web-based GUI](docs/features/ADMIN_DASHBOARD.md) for system monitoring and admin commands
 - **Health Checks**: Production-ready liveness and readiness endpoints
 - **API Documentation**: Interactive Swagger UI at `/swagger/`
 
@@ -48,6 +60,11 @@ make docker-up
 **Economy**: `/buy`, `/sell`, `/prices`, `/give`  
 **Inventory**: `/inventory`, `/search`, `/use`  
 **Crafting**: `/upgrade`, `/disassemble`, `/recipes`  
+**Expeditions**: `/explore`, `/expedition-journal`
+**Quests**: `/quests`, `/claimquest`
+**Farming**: `/harvest`
+**Jobs**: `/job-progress`
+**Linking**: `/link`, `/unlink`
 **Gambling**: `/gamble`, `/join-gamble`  
 **Stats**: `/stats`, `/leaderboard`  
 **Progression**: `/vote`  
@@ -84,7 +101,7 @@ make build          # Build Go binary with embedded dashboard
 
 3. **Login**: Use your `API_KEY` from `.env`
 
-📖 **Full Documentation**: See [docs/ADMIN_DASHBOARD_USAGE.md](docs/ADMIN_DASHBOARD_USAGE.md) for detailed usage, configuration, and extensibility guide.
+📖 **Full Documentation**: See [docs/features/ADMIN_DASHBOARD_USAGE.md](docs/features/ADMIN_DASHBOARD_USAGE.md) for detailed usage, configuration, and extensibility guide.
 
 ## Quick Start
 
@@ -121,6 +138,9 @@ make run
 Visit http://localhost:8080/swagger/index.html
 
 ## Development
+
+The project uses a centralized `cmd/devtool` utility for development tasks. Most `make` commands delegate to this tool.
+See **[Devtool Documentation](docs/tools/DEVTOOL.md)** for detailed usage.
 
 ### Makefile Commands
 
@@ -174,6 +194,9 @@ Visit http://localhost:8080/swagger/index.html
 │   ├── discord/     # Discord bot implementation
 │   └── cooldown/    # Cooldown service
 ├── migrations/      # SQL migrations
+│   └── archive/     # Pre-v1 development migrations
+├── web/
+│   └── admin/       # Admin Dashboard (React)
 └── docs/            # Documentation & Swagger
 ```
 

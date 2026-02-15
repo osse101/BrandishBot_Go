@@ -199,9 +199,10 @@ func (r *CraftingRepository) GetAllRecipes(ctx context.Context) ([]repository.Re
 	recipes := make([]repository.RecipeListItem, 0, len(rows))
 	for _, row := range rows {
 		recipes = append(recipes, repository.RecipeListItem{
-			ItemName:    row.ItemName,
-			ItemID:      int(row.ItemID),
-			Description: row.ItemDescription.String,
+			ItemName:         row.ItemName,
+			ItemID:           int(row.ItemID),
+			Description:      row.ItemDescription.String,
+			RequiredJobLevel: int(row.RequiredJobLevel),
 		})
 	}
 	return recipes, nil
@@ -261,10 +262,11 @@ func (r *CraftingRepository) GetAllCraftingRecipes(ctx context.Context) ([]domai
 	recipes := make([]domain.Recipe, 0, len(rows))
 	for _, row := range rows {
 		recipe := domain.Recipe{
-			ID:           int(row.RecipeID),
-			RecipeKey:    row.RecipeKey,
-			TargetItemID: int(row.TargetItemID),
-			CreatedAt:    row.CreatedAt.Time,
+			ID:               int(row.RecipeID),
+			RecipeKey:        row.RecipeKey,
+			TargetItemID:     int(row.TargetItemID),
+			RequiredJobLevel: int(row.RequiredJobLevel),
+			CreatedAt:        row.CreatedAt.Time,
 		}
 
 		if len(row.BaseCost) > 0 {
@@ -328,10 +330,11 @@ func (r *CraftingRepository) GetCraftingRecipeByKey(ctx context.Context, recipeK
 	}
 
 	recipe := domain.Recipe{
-		ID:           int(row.RecipeID),
-		RecipeKey:    row.RecipeKey,
-		TargetItemID: int(row.TargetItemID),
-		CreatedAt:    row.CreatedAt.Time,
+		ID:               int(row.RecipeID),
+		RecipeKey:        row.RecipeKey,
+		TargetItemID:     int(row.TargetItemID),
+		RequiredJobLevel: int(row.RequiredJobLevel),
+		CreatedAt:        row.CreatedAt.Time,
 	}
 
 	if len(row.BaseCost) > 0 {
@@ -387,9 +390,10 @@ func (r *CraftingRepository) InsertCraftingRecipe(ctx context.Context, recipe *d
 	}
 
 	recipeID, err := r.q.InsertCraftingRecipe(ctx, generated.InsertCraftingRecipeParams{
-		RecipeKey:    recipe.RecipeKey,
-		TargetItemID: int32(recipe.TargetItemID),
-		BaseCost:     baseCostJSON,
+		RecipeKey:        recipe.RecipeKey,
+		TargetItemID:     int32(recipe.TargetItemID),
+		BaseCost:         baseCostJSON,
+		RequiredJobLevel: int32(recipe.RequiredJobLevel),
 	})
 	if err != nil {
 		return 0, fmt.Errorf("failed to insert crafting recipe: %w", err)
@@ -420,10 +424,11 @@ func (r *CraftingRepository) UpdateCraftingRecipe(ctx context.Context, recipeID 
 	}
 
 	err = r.q.UpdateCraftingRecipe(ctx, generated.UpdateCraftingRecipeParams{
-		RecipeKey:    recipe.RecipeKey,
-		TargetItemID: int32(recipe.TargetItemID),
-		BaseCost:     baseCostJSON,
-		RecipeID:     int32(recipeID),
+		RecipeKey:        recipe.RecipeKey,
+		TargetItemID:     int32(recipe.TargetItemID),
+		BaseCost:         baseCostJSON,
+		RequiredJobLevel: int32(recipe.RequiredJobLevel),
+		RecipeID:         int32(recipeID),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to update crafting recipe: %w", err)

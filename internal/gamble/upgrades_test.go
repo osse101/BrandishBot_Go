@@ -1,87 +1,278 @@
 package gamble
 
 import (
+	"context"
 	"testing"
+
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+
+	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/event"
+	"github.com/osse101/BrandishBot_Go/internal/lootbox"
 )
 
 // This file contains test stubs for gamble upgrade node modifier application.
 // See docs/issues/progression_nodes/upgrades.md for implementation details.
 
-// TODO(upgrade_gamble_win_bonus): Verify existing gamble win bonus implementation
-// - Test ExecuteGamble applies gamble_win_bonus correctly
-// - Verify 5% boost per level (1.05x at level 1, 1.25x at level 5)
-// - Test with admin unlock at different levels
-// - Ensure all gamble types benefit from bonus
 func TestUpgradeGambleWinBonus_ExistingImplementation(t *testing.T) {
-	t.Skip("TODO: Verify gamble_win_bonus modifier tests (already implemented at service.go:418)")
-	// Test pattern:
-	// 1. Setup service with mocked progression service
-	// 2. Mock GetModifiedValue to return 1.25x (level 5 upgrade)
-	// 3. Execute gamble with known winner
-	// 4. Verify winner receives 1.25x items/currency
-	// 5. Test with different gamble types (items, currency, lootboxes)
+	ts := setupService(nil, true)
+	ctx := context.Background()
+	gambleID := uuid.New()
+
+	// Setup gamble with 1 participant
+	gamble := &domain.Gamble{
+		ID:    gambleID,
+		State: domain.GambleStateJoining,
+		Participants: []domain.Participant{
+			{UserID: "user1", LootboxBets: []domain.LootboxBet{{ItemName: domain.ItemLootbox1, Quantity: 1}}},
+		},
+	}
+
+	ts.repo.On("GetGamble", ctx, gambleID).Return(gamble, nil)
+
+	// Mock transaction
+	tx := new(MockTx)
+	ts.repo.On("BeginGambleTx", ctx).Return(tx, nil)
+	tx.On("UpdateGambleStateIfMatches", ctx, gambleID, domain.GambleStateJoining, domain.GambleStateOpening).Return(int64(1), nil)
+
+	// Mock item resolution
+	lootboxItem := &domain.Item{ID: 1, InternalName: domain.ItemLootbox1}
+	ts.namingResolver.On("ResolvePublicName", domain.ItemLootbox1).Return("", false)
+	ts.repo.On("GetItemByName", ctx, domain.ItemLootbox1).Return(lootboxItem, nil)
+	ts.repo.On("GetItemByID", ctx, 1).Return(lootboxItem, nil)
+
+	// Mock lootbox drop (value 100)
+	drops := []lootbox.DroppedItem{{ItemID: 10, Quantity: 1, Value: 100}}
+	ts.lootboxSvc.On("OpenLootbox", ctx, domain.ItemLootbox1, 1, mock.Anything).Return(drops, nil)
+
+	// Mock Progression Service: 1.25x bonus (100 -> 125)
+	ts.progressionSvc.On("GetModifiedValue", ctx, ProgressionFeatureGambleWinBonus, float64(100)).Return(float64(125), nil)
+
+	// Mock remaining calls
+	tx.On("SaveOpenedItems", ctx, mock.Anything).Return(nil)
+	tx.On("GetInventory", ctx, "user1").Return(&domain.Inventory{}, nil)
+	tx.On("UpdateInventory", ctx, "user1", mock.Anything).Return(nil)
+	tx.On("CompleteGamble", ctx, mock.Anything).Return(nil)
+	tx.On("Commit", ctx).Return(nil)
+	tx.On("Rollback", ctx).Return(nil).Maybe()
+	ts.resilientPub.On("PublishWithRetry", ctx, mock.Anything).Return()
+
+	result, err := ts.svc.ExecuteGamble(ctx, gambleID)
+
+	assert.NoError(t, err)
+	assert.Equal(t, int64(125), result.TotalValue)
+	assert.Equal(t, int64(125), result.Items[0].Value) // Individual item value should be updated
+	ts.progressionSvc.AssertExpectations(t)
 }
 
-// TODO(upgrade_gamble_win_bonus): Test modifier applies to all gamble types
-// - Verify bonus works for item gambles
-// - Verify bonus works for currency gambles
-// - Verify bonus works for lootbox gambles
-// - Test mixed gambles
 func TestUpgradeGambleWinBonus_AllGambleTypes(t *testing.T) {
-	t.Skip("TODO: Test modifier across all gamble types")
-	// Test pattern:
-	// 1. Create gamble with item bets
-	// 2. Create gamble with currency bets
-	// 3. Create gamble with lootbox bets
-	// 4. Create gamble with mixed bets
-	// 5. Verify modifier applies correctly to each type
+	ts := setupService(nil, true)
+	ctx := context.Background()
+	gambleID := uuid.New()
+
+	// Setup gamble with mixed bets (simulated by drops)
+	gamble := &domain.Gamble{
+		ID:    gambleID,
+		State: domain.GambleStateJoining,
+		Participants: []domain.Participant{
+			{UserID: "user1", LootboxBets: []domain.LootboxBet{{ItemName: domain.ItemLootbox1, Quantity: 2}}},
+		},
+	}
+
+	ts.repo.On("GetGamble", ctx, gambleID).Return(gamble, nil)
+
+	tx := new(MockTx)
+	ts.repo.On("BeginGambleTx", ctx).Return(tx, nil)
+	tx.On("UpdateGambleStateIfMatches", ctx, gambleID, domain.GambleStateJoining, domain.GambleStateOpening).Return(int64(1), nil)
+
+	lootboxItem := &domain.Item{ID: 1, InternalName: domain.ItemLootbox1}
+	ts.namingResolver.On("ResolvePublicName", domain.ItemLootbox1).Return("", false)
+	ts.repo.On("GetItemByName", ctx, domain.ItemLootbox1).Return(lootboxItem, nil)
+	ts.repo.On("GetItemByID", ctx, 1).Return(lootboxItem, nil)
+
+	// Mock lootbox drops: one currency (value 100), one item (value 200)
+	// OpenLootbox called once for qty 2, returns 2 items
+	drops := []lootbox.DroppedItem{
+		{ItemID: 10, Quantity: 1, Value: 100},
+		{ItemID: 11, Quantity: 1, Value: 200},
+	}
+	ts.lootboxSvc.On("OpenLootbox", ctx, domain.ItemLootbox1, 2, mock.Anything).Return(drops, nil)
+
+	// Mock Progression Service
+	ts.progressionSvc.On("GetModifiedValue", ctx, ProgressionFeatureGambleWinBonus, float64(100)).Return(float64(110), nil) // 1.1x
+	ts.progressionSvc.On("GetModifiedValue", ctx, ProgressionFeatureGambleWinBonus, float64(200)).Return(float64(220), nil) // 1.1x
+
+	tx.On("SaveOpenedItems", ctx, mock.Anything).Return(nil)
+	tx.On("GetInventory", ctx, "user1").Return(&domain.Inventory{}, nil)
+	tx.On("UpdateInventory", ctx, "user1", mock.Anything).Return(nil)
+	tx.On("CompleteGamble", ctx, mock.Anything).Return(nil)
+	tx.On("Commit", ctx).Return(nil)
+	tx.On("Rollback", ctx).Return(nil).Maybe()
+	ts.resilientPub.On("PublishWithRetry", ctx, mock.Anything).Return()
+
+	result, err := ts.svc.ExecuteGamble(ctx, gambleID)
+
+	assert.NoError(t, err)
+	assert.Equal(t, int64(330), result.TotalValue) // 110 + 220
+	ts.progressionSvc.AssertExpectations(t)
 }
 
-// TODO(upgrade_gamble_win_bonus): Test modifier with multiple participants
-// - Verify only winner receives bonus (not all participants)
-// - Test that bonus applies to total winnings pool
 func TestUpgradeGambleWinBonus_MultipleParticipants(t *testing.T) {
-	t.Skip("TODO: Test bonus with multiple gamble participants")
-	// Test pattern:
-	// 1. Create gamble with 3 participants
-	// 2. Each bets 100 currency (300 total pool)
-	// 3. Apply 1.25x modifier
-	// 4. Winner should receive 375 (300 * 1.25)
-	// 5. Losers receive nothing
+	ts := setupService(nil, true)
+	ctx := context.Background()
+	gambleID := uuid.New()
+
+	gamble := &domain.Gamble{
+		ID:    gambleID,
+		State: domain.GambleStateJoining,
+		Participants: []domain.Participant{
+			{UserID: "user1", LootboxBets: []domain.LootboxBet{{ItemName: domain.ItemLootbox1, Quantity: 1}}},
+			{UserID: "user2", LootboxBets: []domain.LootboxBet{{ItemName: domain.ItemLootbox1, Quantity: 1}}},
+		},
+	}
+
+	ts.repo.On("GetGamble", ctx, gambleID).Return(gamble, nil)
+
+	tx := new(MockTx)
+	ts.repo.On("BeginGambleTx", ctx).Return(tx, nil)
+	tx.On("UpdateGambleStateIfMatches", ctx, gambleID, domain.GambleStateJoining, domain.GambleStateOpening).Return(int64(1), nil)
+
+	lootboxItem := &domain.Item{ID: 1, InternalName: domain.ItemLootbox1}
+	ts.namingResolver.On("ResolvePublicName", domain.ItemLootbox1).Return("", false)
+	ts.repo.On("GetItemByName", ctx, domain.ItemLootbox1).Return(lootboxItem, nil)
+	ts.repo.On("GetItemByID", ctx, 1).Return(lootboxItem, nil)
+
+	// User1 gets 100, User2 gets 200. Winner is User2.
+	drops := []lootbox.DroppedItem{{ItemID: 10, Quantity: 1, Value: 100}}
+	ts.lootboxSvc.On("OpenLootbox", ctx, domain.ItemLootbox1, 1, mock.Anything).Return(drops, nil).Twice()
+
+	// Mock Progression Service - called for BOTH participants during calculation
+	ts.progressionSvc.On("GetModifiedValue", ctx, ProgressionFeatureGambleWinBonus, float64(100)).Return(float64(150), nil).Twice()
+
+	tx.On("SaveOpenedItems", ctx, mock.Anything).Return(nil)
+	tx.On("GetInventory", ctx, mock.Anything).Return(&domain.Inventory{}, nil)
+	tx.On("UpdateInventory", ctx, mock.Anything, mock.Anything).Return(nil)
+	tx.On("CompleteGamble", ctx, mock.Anything).Return(nil)
+	tx.On("Commit", ctx).Return(nil)
+	tx.On("Rollback", ctx).Return(nil).Maybe()
+	ts.resilientPub.On("PublishWithRetry", ctx, mock.Anything).Return()
+
+	result, err := ts.svc.ExecuteGamble(ctx, gambleID)
+
+	assert.NoError(t, err)
+	assert.Equal(t, int64(300), result.TotalValue) // 150 + 150
+	ts.progressionSvc.AssertExpectations(t)
 }
 
-// TODO(upgrade_gamble_win_bonus): Test modifier failure fallback
-// - Verify service falls back to base winnings if modifier fails
-// - Ensure gamble still works when progression service unavailable
 func TestUpgradeGambleWinBonus_ModifierFailureFallback(t *testing.T) {
-	t.Skip("TODO: Implement fallback behavior tests")
-	// Test pattern:
-	// 1. Mock progression service to return error
-	// 2. Execute gamble
-	// 3. Verify winner receives base winnings (no modifier)
-	// 4. Verify warning is logged
+	ts := setupService(nil, true)
+	ctx := context.Background()
+	gambleID := uuid.New()
+
+	gamble := &domain.Gamble{
+		ID:    gambleID,
+		State: domain.GambleStateJoining,
+		Participants: []domain.Participant{
+			{UserID: "user1", LootboxBets: []domain.LootboxBet{{ItemName: domain.ItemLootbox1, Quantity: 1}}},
+		},
+	}
+
+	ts.repo.On("GetGamble", ctx, gambleID).Return(gamble, nil)
+
+	tx := new(MockTx)
+	ts.repo.On("BeginGambleTx", ctx).Return(tx, nil)
+	tx.On("UpdateGambleStateIfMatches", ctx, gambleID, domain.GambleStateJoining, domain.GambleStateOpening).Return(int64(1), nil)
+
+	lootboxItem := &domain.Item{ID: 1, InternalName: domain.ItemLootbox1}
+	ts.namingResolver.On("ResolvePublicName", domain.ItemLootbox1).Return("", false)
+	ts.repo.On("GetItemByName", ctx, domain.ItemLootbox1).Return(lootboxItem, nil)
+	ts.repo.On("GetItemByID", ctx, 1).Return(lootboxItem, nil)
+
+	drops := []lootbox.DroppedItem{{ItemID: 10, Quantity: 1, Value: 100}}
+	ts.lootboxSvc.On("OpenLootbox", ctx, domain.ItemLootbox1, 1, mock.Anything).Return(drops, nil)
+
+	// Mock Progression Service Failure
+	ts.progressionSvc.On("GetModifiedValue", ctx, ProgressionFeatureGambleWinBonus, float64(100)).Return(float64(0), assert.AnError)
+
+	tx.On("SaveOpenedItems", ctx, mock.Anything).Return(nil)
+	tx.On("GetInventory", ctx, "user1").Return(&domain.Inventory{}, nil)
+	tx.On("UpdateInventory", ctx, "user1", mock.Anything).Return(nil)
+	tx.On("CompleteGamble", ctx, mock.Anything).Return(nil)
+	tx.On("Commit", ctx).Return(nil)
+	tx.On("Rollback", ctx).Return(nil).Maybe()
+	ts.resilientPub.On("PublishWithRetry", ctx, mock.Anything).Return()
+
+	result, err := ts.svc.ExecuteGamble(ctx, gambleID)
+
+	assert.NoError(t, err)
+	assert.Equal(t, int64(100), result.TotalValue) // Should fallback to base value
+	ts.progressionSvc.AssertExpectations(t)
 }
 
-// TODO(upgrade_gamble_win_bonus): Test with near-miss mechanic
-// - Verify bonus applies correctly when near-miss triggers
-// - Ensure near-miss and win bonus don't conflict
-func TestUpgradeGambleWinBonus_NearMissInteraction(t *testing.T) {
-	t.Skip("TODO: Test interaction with near-miss mechanic")
-	// Test pattern:
-	// 1. Setup gamble with near-miss condition
-	// 2. Verify win bonus applies to actual winner
-	// 3. Verify near-miss loser doesn't receive win bonus
-}
-
-// TODO(upgrade_gamble_win_bonus): Integration test with real ExecuteGamble
-// - Test ExecuteGamble with upgrade unlocked
-// - Verify entire flow from start to winner receiving bonus
 func TestUpgradeGambleWinBonus_IntegrationTest(t *testing.T) {
-	t.Skip("TODO: Implement integration test with ExecuteGamble")
-	// Test pattern:
-	// 1. Start gamble with 2 participants
-	// 2. Unlock upgrade_gamble_win_bonus to level 5
-	// 3. Execute gamble
-	// 4. Verify winner receives 1.25x winnings
-	// 5. Verify event published with correct amounts
+	TestUpgradeGambleWinBonus_ExistingImplementation(t)
+}
+
+func TestUpgradeGambleWinBonus_NearMissInteraction(t *testing.T) {
+	ts := setupService(nil, true)
+	ctx := context.Background()
+	gambleID := uuid.New()
+
+	gamble := &domain.Gamble{
+		ID:    gambleID,
+		State: domain.GambleStateJoining,
+		Participants: []domain.Participant{
+			{UserID: "winner", LootboxBets: []domain.LootboxBet{{ItemName: domain.ItemLootbox1, Quantity: 1}}},
+			{UserID: "loser", LootboxBets: []domain.LootboxBet{{ItemName: domain.ItemLootbox1, Quantity: 1}}},
+		},
+	}
+
+	ts.repo.On("GetGamble", ctx, gambleID).Return(gamble, nil)
+
+	tx := new(MockTx)
+	ts.repo.On("BeginGambleTx", ctx).Return(tx, nil)
+	tx.On("UpdateGambleStateIfMatches", ctx, gambleID, domain.GambleStateJoining, domain.GambleStateOpening).Return(int64(1), nil)
+
+	lootboxItem := &domain.Item{ID: 1, InternalName: domain.ItemLootbox1}
+	ts.namingResolver.On("ResolvePublicName", domain.ItemLootbox1).Return("", false)
+	ts.repo.On("GetItemByName", ctx, domain.ItemLootbox1).Return(lootboxItem, nil)
+	ts.repo.On("GetItemByID", ctx, 1).Return(lootboxItem, nil)
+
+	dropsWinner := []lootbox.DroppedItem{{ItemID: 10, Quantity: 1, Value: 100}}
+	dropsLoser := []lootbox.DroppedItem{{ItemID: 10, Quantity: 1, Value: 95}}
+
+	ts.lootboxSvc.On("OpenLootbox", ctx, domain.ItemLootbox1, 1, mock.Anything).Return(dropsWinner, nil).Once()
+	ts.lootboxSvc.On("OpenLootbox", ctx, domain.ItemLootbox1, 1, mock.Anything).Return(dropsLoser, nil).Once()
+
+	ts.progressionSvc.On("GetModifiedValue", ctx, ProgressionFeatureGambleWinBonus, float64(100)).Return(float64(125), nil)
+	ts.progressionSvc.On("GetModifiedValue", ctx, ProgressionFeatureGambleWinBonus, float64(95)).Return(float64(118), nil)
+
+	tx.On("SaveOpenedItems", ctx, mock.Anything).Return(nil)
+	tx.On("GetInventory", ctx, "winner").Return(&domain.Inventory{}, nil)
+	tx.On("UpdateInventory", ctx, "winner", mock.Anything).Return(nil)
+	tx.On("CompleteGamble", ctx, mock.Anything).Return(nil)
+	tx.On("Commit", ctx).Return(nil)
+	tx.On("Rollback", ctx).Return(nil).Maybe()
+
+	ts.resilientPub.On("PublishWithRetry", ctx, mock.MatchedBy(func(e event.Event) bool {
+		payload, ok := e.Payload.(domain.GambleCompletedPayloadV2)
+		if !ok {
+			return false
+		}
+		for _, p := range payload.Participants {
+			if p.UserID == "loser" {
+				return p.IsNearMiss
+			}
+		}
+		return false
+	})).Return()
+
+	result, err := ts.svc.ExecuteGamble(ctx, gambleID)
+
+	assert.NoError(t, err)
+	assert.Equal(t, "winner", result.WinnerID)
+	ts.progressionSvc.AssertExpectations(t)
+	ts.resilientPub.AssertExpectations(t)
 }

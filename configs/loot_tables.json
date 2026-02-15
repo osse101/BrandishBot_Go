@@ -1,93 +1,251 @@
 {
-  "version": "1.0",
-  "schema": "loot-tables",
-  "last_updated": "2026-01-21",
-  "tables": {
-    "lootbox_tier0": [
-      {
-        "item_name": "money",
+  "version": "2.0",
+  "pools": {
+    "pool_money": {
+      "items": [
+        {
+          "item_name": "money",
+          "weight": 100
+        }
+      ]
+    },
+    "pool_utility": {
+      "items": [
+        {
+          "item_name": "item_shovel",
+          "weight": 40
+        },
+        {
+          "item_name": "item_video_filter",
+          "weight": 30
+        },
+        {
+          "item_name": "item_stick",
+          "weight": 20
+        },
+        {
+          "item_name": "item_scrap",
+          "weight": 10
+        }
+      ]
+    },
+    "pool_weapons_basic": {
+      "items": [
+        {
+          "item_name": "weapon_this",
+          "weight": 30
+        },
+        {
+          "item_name": "item_grenade",
+          "weight": 25
+        },
+        {
+          "item_name": "weapon_blaster",
+          "weight": 15
+        }
+      ]
+    },
+    "pool_weapons_premium": {
+      "items": [
+        {
+          "item_name": "weapon_deez",
+          "weight": 20
+        },
+        {
+          "item_name": "weapon_mirror",
+          "weight": 10
+        },
+        {
+          "item_name": "weapon_hugeblaster",
+          "weight": 5
+        }
+      ]
+    },
+    "pool_explosives": {
+      "items": [
+        {
+          "item_type": "explosive",
+          "weight": 25
+        }
+      ]
+    },
+    "pool_defense": {
+      "items": [
+        {
+          "item_name": "item_shield",
+          "weight": 20
+        },
+        {
+          "item_name": "weapon_mirror",
+          "weight": 5
+        }
+      ]
+    },
+    "pool_healing": {
+      "items": [
+        {
+          "item_name": "revive_small",
+          "weight": 40
+        }
+      ]
+    },
+    "pool_magical": {
+      "items": [
+        {
+          "item_name": "xp_rarecandy",
+          "weight": 20
+        }
+      ]
+    },
+    "pool_containers_t0": {
+      "items": [
+        {
+          "item_name": "lootbox_tier0",
+          "weight": 50
+        }
+      ]
+    },
+    "pool_containers_t1": {
+      "items": [
+        {
+          "item_name": "lootbox_tier1",
+          "weight": 50
+        }
+      ]
+    },
+    "pool_containers_t2": {
+      "items": [
+        {
+          "item_name": "lootbox_tier2",
+          "weight": 50
+        }
+      ]
+    }
+  },
+  "lootboxes": {
+    "lootbox_tier0": {
+      "item_drop_rate": 0.30,
+      "fixed_money": {
         "min": 1,
-        "max": 10,
-        "chance": 1.0
-      }
-    ],
-    "lootbox_tier1": [
-      {
-        "item_name": "money",
+        "max": 10
+      },
+      "pools": [
+        {
+          "pool_name": "pool_money",
+          "weight": 10
+        },
+        {
+          "pool_name": "pool_utility",
+          "weight": 50
+        },
+        {
+          "pool_name": "pool_weapons_basic",
+          "weight": 30
+        },
+        {
+          "pool_name": "pool_explosives",
+          "weight": 10
+        }
+      ]
+    },
+    "lootbox_tier1": {
+      "item_drop_rate": 0.50,
+      "fixed_money": {
         "min": 10,
-        "max": 100,
-        "chance": 1.0
+        "max": 100
       },
-      {
-        "item_name": "lootbox_tier0",
-        "min": 1,
-        "max": 1,
-        "chance": 0.5
-      },
-      {
-        "item_name": "item_shovel",
-        "min": 1,
-        "max": 1,
-        "chance": 0.1
-      }
-    ],
-    "lootbox_tier2": [
-      {
-        "item_name": "money",
+      "pools": [
+        {
+          "pool_name": "pool_utility",
+          "weight": 30
+        },
+        {
+          "pool_name": "pool_weapons_basic",
+          "weight": 35
+        },
+        {
+          "pool_name": "pool_explosives",
+          "weight": 20
+        },
+        {
+          "pool_name": "pool_healing",
+          "weight": 10
+        },
+        {
+          "pool_name": "pool_containers_t0",
+          "weight": 5
+        }
+      ]
+    },
+    "lootbox_tier2": {
+      "item_drop_rate": 0.65,
+      "fixed_money": {
         "min": 100,
-        "max": 500,
-        "chance": 1.0
+        "max": 500
       },
-      {
-        "item_name": "lootbox_tier1",
-        "min": 1,
-        "max": 1,
-        "chance": 0.5
-      },
-      {
-        "item_name": "weapon_blaster",
-        "min": 1,
-        "max": 1,
-        "chance": 0.1
-      }
-    ],
-    "lootbox_tier3": [
-      {
-        "item_name": "money",
+      "pools": [
+        {
+          "pool_name": "pool_weapons_basic",
+          "weight": 25
+        },
+        {
+          "pool_name": "pool_weapons_premium",
+          "weight": 20
+        },
+        {
+          "pool_name": "pool_explosives",
+          "weight": 20
+        },
+        {
+          "pool_name": "pool_defense",
+          "weight": 15
+        },
+        {
+          "pool_name": "pool_healing",
+          "weight": 10
+        },
+        {
+          "pool_name": "pool_magical",
+          "weight": 5
+        },
+        {
+          "pool_name": "pool_containers_t1",
+          "weight": 5
+        }
+      ]
+    },
+    "lootbox_tier3": {
+      "item_drop_rate": 0.80,
+      "fixed_money": {
         "min": 500,
-        "max": 2500,
-        "chance": 1.0
+        "max": 2500
       },
-      {
-        "item_name": "lootbox_tier2",
-        "min": 1,
-        "max": 2,
-        "chance": 0.5
-      },
-      {
-        "item_name": "weapon_bigblaster",
-        "min": 1,
-        "max": 1,
-        "chance": 0.15
-      },
-      {
-        "item_name": "revive_medium",
-        "min": 1,
-        "max": 1,
-        "chance": 0.1
-      },
-      {
-        "item_name": "item_shield",
-        "min": 1,
-        "max": 1,
-        "chance": 0.1
-      },
-      {
-        "item_name": "xp_rarecandy",
-        "min": 1,
-        "max": 1,
-        "chance": 0.05
-      }
-    ]
+      "pools": [
+        {
+          "pool_name": "pool_weapons_premium",
+          "weight": 30
+        },
+        {
+          "pool_name": "pool_explosives",
+          "weight": 20
+        },
+        {
+          "pool_name": "pool_defense",
+          "weight": 15
+        },
+        {
+          "pool_name": "pool_healing",
+          "weight": 10
+        },
+        {
+          "pool_name": "pool_magical",
+          "weight": 15
+        },
+        {
+          "pool_name": "pool_containers_t2",
+          "weight": 10
+        }
+      ]
+    }
   }
 }

@@ -25,7 +25,7 @@ func NewEventLogRepository(pool *pgxpool.Pool) eventlog.Repository {
 }
 
 // LogEvent stores an event in the database
-func (r *eventLogRepository) LogEvent(ctx context.Context, eventType string, userID *string, payload, metadata map[string]interface{}) error {
+func (r *eventLogRepository) LogEvent(ctx context.Context, eventType string, userID *string, payload, metadata interface{}) error {
 	payloadJSON, err := json.Marshal(payload)
 	if err != nil {
 		return err

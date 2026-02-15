@@ -7,34 +7,23 @@ import (
 	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
 
-// MockStatsService for crafting tests
-type MockStatsService struct {
-	mu     sync.Mutex
-	events []domain.EventType
+// MockEventPublisher for crafting tests
+type MockEventPublisher struct {
+	mu           sync.Mutex
+	Published    []event.Event
+	PublishError error
 }
 
-func (m *MockStatsService) RecordUserEvent(ctx context.Context, userID string, eventType domain.EventType, eventData map[string]interface{}) error {
+func (m *MockEventPublisher) PublishWithRetry(ctx context.Context, evt event.Event) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.events = append(m.events, eventType)
-	return nil
-}
-
-// Stubs for other interface methods not used in these tests
-func (m *MockStatsService) GetUserStats(ctx context.Context, userID string, period string) (*domain.StatsSummary, error) {
-	return nil, nil
-}
-func (m *MockStatsService) GetUserCurrentStreak(ctx context.Context, userID string) (int, error) {
-	return 0, nil
-}
-func (m *MockStatsService) GetSystemStats(ctx context.Context, period string) (*domain.StatsSummary, error) {
-	return nil, nil
-}
-func (m *MockStatsService) GetLeaderboard(ctx context.Context, eventType domain.EventType, period string, limit int) ([]domain.LeaderboardEntry, error) {
-	return nil, nil
+	m.Published = append(m.Published, evt)
+	// PublishWithRetry doesn't return error, so we don't return anything.
+	// We can use PublishError to simulate failures if we were testing internal retries, but here we just mock the call.
 }
 
 // MockRepository for crafting tests with thread-safety and row locking simulation
@@ -506,6 +495,13 @@ func (t *MockTx) GetUserByPlatformID(ctx context.Context, platform, platformID s
 	return t.repo.GetUserByPlatformID(ctx, platform, platformID)
 }
 
+// Constants for test data
+const (
+	TestItemID1 = 1
+	TestItemID2 = 2
+	TestItemID3 = 3
+)
+
 // Test helper to setup test data
 func setupTestData(repo *MockRepository) {
 	repo.Lock()
@@ -515,30 +511,30 @@ func setupTestData(repo *MockRepository) {
 	repo.users["bob"] = &domain.User{ID: "user-bob", Username: "bob", TwitchID: "twitch-bob"}
 
 	// Setup items
-	repo.items[domain.ItemLootbox0] = &domain.Item{ID: 1, InternalName: domain.ItemLootbox0, Description: "Basic lootbox"}
-	repo.items[domain.ItemLootbox1] = &domain.Item{ID: 2, InternalName: domain.ItemLootbox1, Description: "Advanced lootbox"}
-	repo.items[domain.ItemLootbox2] = &domain.Item{ID: 3, InternalName: domain.ItemLootbox2, Description: "Premium lootbox"}
+	repo.items[domain.ItemLootbox0] = &domain.Item{ID: TestItemID1, InternalName: domain.ItemLootbox0, Description: "Basic lootbox"}
+	repo.items[domain.ItemLootbox1] = &domain.Item{ID: TestItemID2, InternalName: domain.ItemLootbox1, Description: "Advanced lootbox"}
+	repo.items[domain.ItemLootbox2] = &domain.Item{ID: TestItemID3, InternalName: domain.ItemLootbox2, Description: "Premium lootbox"}
 
-	repo.itemsByID[1] = repo.items[domain.ItemLootbox0]
-	repo.itemsByID[2] = repo.items[domain.ItemLootbox1]
-	repo.itemsByID[3] = repo.items[domain.ItemLootbox2]
+	repo.itemsByID[TestItemID1] = repo.items[domain.ItemLootbox0]
+	repo.itemsByID[TestItemID2] = repo.items[domain.ItemLootbox1]
+	repo.itemsByID[TestItemID3] = repo.items[domain.ItemLootbox2]
 
 	// Setup upgrade recipe: lootbox0 -> lootbox1
 	repo.recipes[1] = &domain.Recipe{
 		ID:           1,
-		TargetItemID: 2, // lootbox1
+		TargetItemID: TestItemID2, // lootbox1
 		BaseCost: []domain.RecipeCost{
-			{ItemID: 1, Quantity: 1}, // 1 lootbox0
+			{ItemID: TestItemID1, Quantity: 1}, // 1 lootbox0
 		},
 	}
 
 	// Setup disassemble recipe: lootbox1 -> lootbox0
 	repo.disassembleRecipes[1] = &domain.DisassembleRecipe{
 		ID:               1,
-		SourceItemID:     2, // lootbox1
+		SourceItemID:     TestItemID2, // lootbox1
 		QuantityConsumed: 1,
 		Outputs: []domain.RecipeOutput{
-			{ItemID: 1, Quantity: 1}, // 1 lootbox0
+			{ItemID: TestItemID1, Quantity: 1}, // 1 lootbox0
 		},
 	}
 
@@ -551,37 +547,9 @@ func setupTestData(repo *MockRepository) {
 	}
 }
 
-// MockJobService for testing XP awards
-type MockJobService struct {
-	mu    sync.Mutex
-	calls []struct {
-		UserID   string
-		JobKey   string
-		Amount   int
-		Source   string
-		Metadata map[string]interface{}
-	}
-	blockChan chan struct{} // If set, AwardXP waits for this channel to close
-}
-
-func (m *MockJobService) AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error) {
-	if m.blockChan != nil {
-		<-m.blockChan
-	}
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.calls = append(m.calls, struct {
-		UserID   string
-		JobKey   string
-		Amount   int
-		Source   string
-		Metadata map[string]interface{}
-	}{UserID: userID, JobKey: jobKey, Amount: baseAmount, Source: source, Metadata: metadata})
-	return &domain.XPAwardResult{LeveledUp: false}, nil
-}
-
 // MockProgressionService for testing modifiers
 type MockProgressionService struct {
+	mu          sync.Mutex
 	modifiers   map[string]float64
 	returnValue float64 // Generic fallback
 	returnError error
@@ -593,11 +561,13 @@ type MockProgressionService struct {
 }
 
 func (m *MockProgressionService) GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error) {
+	m.mu.Lock()
 	m.calls = append(m.calls, struct {
 		ctx        context.Context
 		featureKey string
 		baseValue  float64
 	}{ctx, featureKey, baseValue})
+	m.mu.Unlock()
 
 	if m.returnError != nil {
 		return 0, m.returnError
@@ -629,7 +599,7 @@ func (m *MockNamingResolver) ResolvePublicName(publicName string) (internalName 
 }
 
 // Stubs for other naming.Resolver methods
-func (m *MockNamingResolver) GetDisplayName(internalName string, shineLevel domain.ShineLevel) string {
+func (m *MockNamingResolver) GetDisplayName(internalName string, qualityLevel domain.QualityLevel) string {
 	return internalName
 }
 func (m *MockNamingResolver) GetActiveTheme() string { return "" }
@@ -639,4 +609,41 @@ func (m *MockNamingResolver) RegisterItem(internalName, publicName string) {
 		m.publicToInternal = make(map[string]string)
 	}
 	m.publicToInternal[publicName] = internalName
+}
+
+// MockJobService for testing job level requirements
+type MockJobService struct {
+	mu          sync.Mutex
+	levels      map[string]map[string]int // userID -> jobKey -> level
+	returnError error
+}
+
+func NewMockJobService() *MockJobService {
+	return &MockJobService{
+		levels: make(map[string]map[string]int),
+	}
+}
+
+func (m *MockJobService) GetJobLevel(ctx context.Context, userID, jobKey string) (int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.returnError != nil {
+		return 0, m.returnError
+	}
+
+	if userLevels, ok := m.levels[userID]; ok {
+		return userLevels[jobKey], nil
+	}
+	return 0, nil
+}
+
+func (m *MockJobService) SetJobLevel(userID, jobKey string, level int) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.levels[userID] == nil {
+		m.levels[userID] = make(map[string]int)
+	}
+	m.levels[userID][jobKey] = level
 }

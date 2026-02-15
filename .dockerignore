@@ -34,10 +34,6 @@ logs/
 docker-compose*.yml
 Dockerfile*
 
-# Scripts (only docker-entrypoint.sh is needed)
-scripts/test_*.sh
-scripts/setup_env.sh
-
 # Documentation (but keep swagger docs needed for build)
 *.md
 docs/

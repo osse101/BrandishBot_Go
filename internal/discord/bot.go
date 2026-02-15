@@ -101,7 +101,7 @@ func (b *Bot) Start() error {
 
 	// Start SSE client for real-time notifications
 	if b.sseClient != nil && b.NotificationChannelID != "" {
-		b.sseNotifier = NewSSENotifier(b.Session, b.NotificationChannelID)
+		b.sseNotifier = NewSSENotifier(b.Session, b.NotificationChannelID, b.DevChannelID)
 		b.sseNotifier.RegisterHandlers(b.sseClient)
 
 		b.ctx, b.cancel = context.WithCancel(context.Background())
@@ -111,6 +111,9 @@ func (b *Bot) Start() error {
 	} else {
 		b.ctx, b.cancel = context.WithCancel(context.Background())
 	}
+
+	// Start background tasks
+	b.StartDailyPatchNotesChecker()
 
 	slog.Info("Discord bot is now running. Press CTRL-C to exit.")
 	return nil

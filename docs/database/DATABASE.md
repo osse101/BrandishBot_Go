@@ -8,8 +8,8 @@ The database is configured for **easy local development** with **security**:
 # Start database
 docker compose up -d db
 
-# Or use the helper script
-./scripts/check_db.sh
+# Or use the helper command
+make check-db
 ```
 
 ### How It Works
@@ -62,4 +62,4 @@ If you see "failed to connect to database":
 1. Check if database is running: `docker compose ps db`
 2. View database logs: `docker compose logs db`
 3. Restart database: `docker compose restart db`
-4. Or use the helper script: `./scripts/check_db.sh`
+4. Or use the helper command: `make check-db`

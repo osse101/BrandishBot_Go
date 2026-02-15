@@ -155,19 +155,12 @@ func ClaimQuestCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			return
 		}
 
-		// Extract money and XP from result
+		// Extract money from result
 		moneyEarned := int64(0)
-		xpEarned := int64(0)
 
 		if money, ok := result["money_earned"]; ok {
 			if m, okm := money.(float64); okm {
 				moneyEarned = int64(m)
-			}
-		}
-
-		if xp, ok := result["xp_earned"]; ok {
-			if x, okx := xp.(float64); okx {
-				xpEarned = int64(x)
 			}
 		}
 
@@ -180,11 +173,6 @@ func ClaimQuestCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 				{
 					Name:   "💰 Money Earned",
 					Value:  fmt.Sprintf("%d", moneyEarned),
-					Inline: true,
-				},
-				{
-					Name:   "⭐ Merchant XP Earned",
-					Value:  fmt.Sprintf("%d", xpEarned),
 					Inline: true,
 				},
 			},
@@ -214,7 +202,10 @@ func buildProgressBar(current, required, length int) string {
 
 // editInteractionResponse sends a deferred response with an embed
 func editInteractionResponse(s *discordgo.Session, i *discordgo.InteractionCreate, embed *discordgo.MessageEmbed) {
-	s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+	_, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 		Embeds: &[]*discordgo.MessageEmbed{embed},
 	})
+	if err != nil {
+		slog.Error("Failed to edit interaction response", "error", err)
+	}
 }

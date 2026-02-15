@@ -45,6 +45,7 @@ func (c *BenchCommand) Run(args []string) error {
 
 func (c *BenchCommand) runAll() error {
 	PrintHeader("Running all benchmarks...")
+	//nolint:forbidigo
 	return runCommandVerbose("go", "test", "-bench=.", "-benchmem", "-benchtime=2s", "./...")
 }
 
@@ -62,10 +63,22 @@ func (c *BenchCommand) runHot() error {
 
 	fmt.Println("  → Utils: Inventory operations (existing)")
 	// This one shouldn't fail silently as it catches all in utils
+	//nolint:forbidigo
 	return runCommandVerbose("go", "test", "-bench=.", "-benchmem", "-benchtime=2s", "./internal/utils")
 }
 
 func (c *BenchCommand) runBenchOrWarn(dir, pattern string) {
+	// Validate inputs to prevent command injection
+	if dir == "" || pattern == "" {
+		fmt.Println("    (invalid benchmark parameters)")
+		return
+	}
+	if strings.ContainsAny(dir, ";|&$`") || strings.ContainsAny(pattern, ";|&$`") {
+		fmt.Println("    (invalid characters in benchmark parameters)")
+		return
+	}
+
+	//nolint:gosec // G204: pattern and dir are validated above
 	cmd := exec.Command("go", "test", "-bench="+pattern, "-benchmem", "-benchtime=2s", dir)
 	cmd.Stdout = os.Stdout
 	// Stderr is discarded to match Makefile's 2>/dev/null

@@ -62,8 +62,9 @@ func (q *Queries) GetAllItemTypes(ctx context.Context) ([]ItemType, error) {
 
 const getItemByInternalName = `-- name: GetItemByInternalName :one
 
-SELECT 
+SELECT
     i.item_id, i.internal_name, i.public_name, i.default_display, i.item_description, i.base_value, i.handler,
+    i.content_type,
     COALESCE(array_agg(t.type_name) FILTER (WHERE t.type_name IS NOT NULL), '{}')::text[] as types
 FROM items i
 LEFT JOIN item_type_assignments ita ON i.item_id = ita.item_id
@@ -80,6 +81,7 @@ type GetItemByInternalNameRow struct {
 	ItemDescription pgtype.Text `json:"item_description"`
 	BaseValue       pgtype.Int4 `json:"base_value"`
 	Handler         pgtype.Text `json:"handler"`
+	ContentType     []string    `json:"content_type"`
 	Types           []string    `json:"types"`
 }
 
@@ -95,6 +97,7 @@ func (q *Queries) GetItemByInternalName(ctx context.Context, internalName string
 		&i.ItemDescription,
 		&i.BaseValue,
 		&i.Handler,
+		&i.ContentType,
 		&i.Types,
 	)
 	return i, err
@@ -126,8 +129,8 @@ func (q *Queries) GetSyncMetadata(ctx context.Context, configName string) (GetSy
 }
 
 const insertItem = `-- name: InsertItem :one
-INSERT INTO items (internal_name, public_name, default_display, item_description, base_value, handler)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO items (internal_name, public_name, default_display, item_description, base_value, handler, content_type)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING item_id
 `
 
@@ -138,6 +141,7 @@ type InsertItemParams struct {
 	ItemDescription pgtype.Text `json:"item_description"`
 	BaseValue       pgtype.Int4 `json:"base_value"`
 	Handler         pgtype.Text `json:"handler"`
+	ContentType     []string    `json:"content_type"`
 }
 
 func (q *Queries) InsertItem(ctx context.Context, arg InsertItemParams) (int32, error) {
@@ -148,6 +152,7 @@ func (q *Queries) InsertItem(ctx context.Context, arg InsertItemParams) (int32, 
 		arg.ItemDescription,
 		arg.BaseValue,
 		arg.Handler,
+		arg.ContentType,
 	)
 	var item_id int32
 	err := row.Scan(&item_id)
@@ -170,8 +175,8 @@ func (q *Queries) InsertItemType(ctx context.Context, typeName string) (int32, e
 
 const updateItem = `-- name: UpdateItem :exec
 UPDATE items
-SET public_name = $1, default_display = $2, item_description = $3, base_value = $4, handler = $5
-WHERE item_id = $6
+SET public_name = $1, default_display = $2, item_description = $3, base_value = $4, handler = $5, content_type = $6
+WHERE item_id = $7
 `
 
 type UpdateItemParams struct {
@@ -180,6 +185,7 @@ type UpdateItemParams struct {
 	ItemDescription pgtype.Text `json:"item_description"`
 	BaseValue       pgtype.Int4 `json:"base_value"`
 	Handler         pgtype.Text `json:"handler"`
+	ContentType     []string    `json:"content_type"`
 	ItemID          int32       `json:"item_id"`
 }
 
@@ -190,6 +196,7 @@ func (q *Queries) UpdateItem(ctx context.Context, arg UpdateItemParams) error {
 		arg.ItemDescription,
 		arg.BaseValue,
 		arg.Handler,
+		arg.ContentType,
 		arg.ItemID,
 	)
 	return err

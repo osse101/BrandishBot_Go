@@ -85,6 +85,12 @@ const (
 	// Harvest errors
 	ErrMsgHarvestStateNotFound = "harvest state not found"
 	ErrMsgHarvestTooSoon       = "harvest too soon (minimum 1 hour)"
+
+	// Compost errors
+	ErrMsgCompostBinFull          = "compost bin is full"
+	ErrMsgCompostNotCompostable   = "item is not compostable"
+	ErrMsgCompostMustHarvest      = "bin is ready, harvest before depositing"
+	ErrMsgCompostNothingToHarvest = "nothing to harvest"
 )
 
 // Common domain errors
@@ -169,4 +175,10 @@ var (
 	// Harvest errors
 	ErrHarvestStateNotFound = errors.New(ErrMsgHarvestStateNotFound)
 	ErrHarvestTooSoon       = errors.New(ErrMsgHarvestTooSoon)
+
+	// Compost errors
+	ErrCompostBinFull          = errors.New(ErrMsgCompostBinFull)
+	ErrCompostNotCompostable   = errors.New(ErrMsgCompostNotCompostable)
+	ErrCompostMustHarvest      = errors.New(ErrMsgCompostMustHarvest)
+	ErrCompostNothingToHarvest = errors.New(ErrMsgCompostNothingToHarvest)
 )

@@ -60,7 +60,6 @@ func HandleMessageHandler(userService user.Service, progressionSvc progression.S
 
 		// Inject user context into logger for downstream operations
 		ctx := logger.WithUser(r.Context(), result.User.ID, result.User.Username)
-		r = r.WithContext(ctx)
 
 		// Track engagement for message
 		middleware.TrackEngagementFromContext(

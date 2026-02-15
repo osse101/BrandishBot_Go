@@ -85,62 +85,66 @@ func gatherMetrics() (*AdminMetricsResponse, error) {
 
 	for _, mf := range metricFamilies {
 		switch mf.GetName() {
-		case "http_requests_total":
-			for _, m := range mf.GetMetric() {
-				status := getLabelValue(m, "status")
-				if status != "" {
-					resp.HTTP.RequestsTotalByStatus[status] += m.GetCounter().GetValue()
-				}
-			}
-		case "http_request_duration_seconds":
-			// Calculate avg and p95 from histogram
-			for _, m := range mf.GetMetric() {
-				hist := m.GetHistogram()
-				if hist != nil {
-					// Average latency
-					if hist.GetSampleCount() > 0 {
-						resp.HTTP.AvgLatencyMs = (hist.GetSampleSum() / float64(hist.GetSampleCount())) * 1000
-					}
-					// P95 approximation from buckets
-					resp.HTTP.P95LatencyMs = estimateQuantile(hist, 0.95) * 1000
-				}
-			}
-		case "http_requests_in_flight":
-			for _, m := range mf.GetMetric() {
-				resp.HTTP.InFlight += m.GetGauge().GetValue()
-			}
-		case "events_published_total":
-			for _, m := range mf.GetMetric() {
-				eventType := getLabelValue(m, "type")
-				if eventType != "" {
-					resp.Events.PublishedTotalByType[eventType] += m.GetCounter().GetValue()
-				}
-			}
-		case "event_handler_errors_total":
-			for _, m := range mf.GetMetric() {
-				eventType := getLabelValue(m, "type")
-				if eventType != "" {
-					resp.Events.HandlerErrorsByType[eventType] += m.GetCounter().GetValue()
-				}
-			}
-		case "items_sold_total":
-			for _, m := range mf.GetMetric() {
-				item := getLabelValue(m, "item")
-				if item != "" {
-					resp.Business.ItemsSold[item] += m.GetCounter().GetValue()
-				}
-			}
-		case "items_bought_total":
-			for _, m := range mf.GetMetric() {
-				item := getLabelValue(m, "item")
-				if item != "" {
-					resp.Business.ItemsBought[item] += m.GetCounter().GetValue()
-				}
-			}
+		case "http_requests_total", "http_request_duration_seconds", "http_requests_in_flight":
+			processHTTPMetric(mf, resp)
+		case "events_published_total", "event_handler_errors_total":
+			processEventMetric(mf, resp)
+		case "items_sold_total", "items_bought_total":
+			processBusinessMetric(mf, resp)
 		}
 	}
 
 	return resp, nil
+}
+
+func processHTTPMetric(mf *dto.MetricFamily, resp *AdminMetricsResponse) {
+	for _, m := range mf.GetMetric() {
+		switch mf.GetName() {
+		case "http_requests_total":
+			if status := getLabelValue(m, "status"); status != "" {
+				resp.HTTP.RequestsTotalByStatus[status] += m.GetCounter().GetValue()
+			}
+		case "http_request_duration_seconds":
+			if hist := m.GetHistogram(); hist != nil {
+				if hist.GetSampleCount() > 0 {
+					resp.HTTP.AvgLatencyMs = (hist.GetSampleSum() / float64(hist.GetSampleCount())) * 1000
+				}
+				resp.HTTP.P95LatencyMs = estimateQuantile(hist, 0.95) * 1000
+			}
+		case "http_requests_in_flight":
+			resp.HTTP.InFlight += m.GetGauge().GetValue()
+		}
+	}
+}
+
+func processEventMetric(mf *dto.MetricFamily, resp *AdminMetricsResponse) {
+	for _, m := range mf.GetMetric() {
+		eventType := getLabelValue(m, "type")
+		if eventType == "" {
+			continue
+		}
+		switch mf.GetName() {
+		case "events_published_total":
+			resp.Events.PublishedTotalByType[eventType] += m.GetCounter().GetValue()
+		case "event_handler_errors_total":
+			resp.Events.HandlerErrorsByType[eventType] += m.GetCounter().GetValue()
+		}
+	}
+}
+
+func processBusinessMetric(mf *dto.MetricFamily, resp *AdminMetricsResponse) {
+	for _, m := range mf.GetMetric() {
+		item := getLabelValue(m, "item")
+		if item == "" {
+			continue
+		}
+		switch mf.GetName() {
+		case "items_sold_total":
+			resp.Business.ItemsSold[item] += m.GetCounter().GetValue()
+		case "items_bought_total":
+			resp.Business.ItemsBought[item] += m.GetCounter().GetValue()
+		}
+	}
 }
 
 func getLabelValue(m *dto.Metric, labelName string) string {

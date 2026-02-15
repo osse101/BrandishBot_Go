@@ -1,0 +1,16 @@
+**Weekly Quests** 📜
+
+Complete new challenges every week for Money and XP!
+
+## 🚀 How to Play
+
+1. **Check Quests**: Use `/quests` to see your active challenges.
+2. **Complete**: Perform actions like searching, crafting, or gambling.
+3. **Claim**: Use `/claimquest [id]` to get your rewards!
+
+## 🎁 Rewards
+
+*   **Money**: Earn cash to buy items and upgrades.
+*   **Merchant XP**: Level up your Merchant job to get better shop prices!
+
+Quests reset every Monday. Don't miss out!

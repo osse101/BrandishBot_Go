@@ -108,8 +108,16 @@ type MockJobService struct {
 	mock.Mock
 }
 
-func (m *MockJobService) AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata map[string]interface{}) (*domain.XPAwardResult, error) {
+func (m *MockJobService) AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata domain.JobXPMetadata) (*domain.XPAwardResult, error) {
 	args := m.Called(ctx, userID, jobKey, baseAmount, source, metadata)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.XPAwardResult), args.Error(1)
+}
+
+func (m *MockJobService) AwardXPByPlatform(ctx context.Context, platform, platformID, jobKey string, baseAmount int, source string, metadata domain.JobXPMetadata) (*domain.XPAwardResult, error) {
+	args := m.Called(ctx, platform, platformID, jobKey, baseAmount, source, metadata)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -154,8 +162,8 @@ func (m *MockNamingResolver) ResolvePublicName(publicName string) (string, bool)
 	return args.String(0), args.Bool(1)
 }
 
-func (m *MockNamingResolver) GetDisplayName(internalName string, shineLevel domain.ShineLevel) string {
-	args := m.Called(internalName, shineLevel)
+func (m *MockNamingResolver) GetDisplayName(internalName string, qualityLevel domain.QualityLevel) string {
+	args := m.Called(internalName, qualityLevel)
 	return args.String(0)
 }
 
