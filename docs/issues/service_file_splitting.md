@@ -39,25 +39,25 @@
 
 ---
 
-### 2. `internal/user/service.go` — 1,349 lines
+### 2. `internal/user/service.go` — ~~1,349 lines~~ ✅ DONE (179 lines remaining)
 
-Already has some splitting (`item_handlers.go`, `linking.go`, `search_helpers.go`, `cache.go`, etc.) but `service.go` is still very large.
+**Split completed** — all methods moved to domain-specific files.
 
-| Proposed File              | Functions to Move                                                                                                                                                                                                                                      | Lines (est.) |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------ |
-| `inventory.go`             | `addItemToUserInternal`, `removeItemFromUserInternal`, `AddItemByUsername`, `RemoveItemByUsername`, `AddItems`, `GiveItem`, `executeGiveItemTx`, `GetInventory`, `GetInventoryByUsername`, `getInventoryInternal`, `ensureItemsInCache`, `addItemToTx` | ~450         |
-| `use_item.go`              | `useItemInternal`, `UseItem`, `validateItem`, `resolveItemName`                                                                                                                                                                                        | ~120         |
-| `timeout.go`               | `AddTimeout`, `ClearTimeout`, `GetTimeoutPlatform`, `ReduceTimeoutPlatform`, `TimeoutUser`, `GetTimeout`, `ReduceTimeout`, `timeoutKey`                                                                                                                | ~200         |
-| `search.go`                | `HandleSearch`, `executeSearch`, `calculateSearchParameters`, `processSearchSuccess`, `processSearchFailure`                                                                                                                                           | ~150         |
-| `registration.go`          | `RegisterUser`, `UpdateUser`, `FindUserByPlatformID`, `HandleIncomingMessage`, `getUserOrRegister`, `setPlatformID`, `getPlatformKeysFromUser`                                                                                                         | ~150         |
-| `shield.go`                | `ApplyShield`                                                                                                                                                                                                                                          | ~20          |
-| `trap.go`                  | `triggerTrap`                                                                                                                                                                                                                                          | ~50          |
-| `service.go` _(remaining)_ | Interface, struct, `NewService`, `Shutdown`, `GetCacheStats`, `GetActiveChatters`, `loadCacheConfig`                                                                                                                                                   | ~200         |
+| File                       | Functions Moved                                                                                                                                                                                                                                        | Lines |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----- |
+| `inventory.go`             | `addItemToUserInternal`, `removeItemFromUserInternal`, `AddItemByUsername`, `RemoveItemByUsername`, `AddItems`, `GiveItem`, `executeGiveItemTx`, `GetInventory`, `GetInventoryByUsername`, `getInventoryInternal`, `ensureItemsInCache`, `addItemToTx` | 497   |
+| `timeout.go`               | `AddTimeout`, `ClearTimeout`, `GetTimeoutPlatform`, `ReduceTimeoutPlatform`, `TimeoutUser`, `GetTimeout`, `ReduceTimeout`, `timeoutKey`                                                                                                                | 190   |
+| `search.go`                | `HandleSearch`, `executeSearch`, `calculateSearchParameters`, `processSearchSuccess`, `processSearchFailure`                                                                                                                                           | 179   |
+| `registration.go`          | `RegisterUser`, `UpdateUser`, `FindUserByPlatformID`, `HandleIncomingMessage`, `getUserOrRegister`, `GetUserByPlatformUsername`                                                                                                                        | 154   |
+| `use_item.go`              | `useItemInternal`, `UseItem`, `validateItem`, `resolveItemName`                                                                                                                                                                                        | 137   |
+| `trap.go`                  | `triggerTrap`                                                                                                                                                                                                                                          | 57    |
+| `shield.go`                | `ApplyShield`                                                                                                                                                                                                                                          | 28    |
+| `service.go` _(remaining)_ | Interface checks, struct, `NewService`, `Shutdown`, `GetCacheStats`, `GetActiveChatters`, `loadCacheConfig`, `setPlatformID`, `getPlatformKeysFromUser`                                                                                                | 179   |
 
 **Notes:**
 
-- `search_helpers.go` (197 lines) already exists with search loot tables — `search.go` would contain the service-layer search orchestration. Consider whether to merge them.
-- `item_handlers.go` (822 lines) handles use-item dispatch and is already separate, which is good.
+- `search_helpers.go` (197 lines) already exists with search loot tables — `search.go` contains only the service-layer search orchestration.
+- `item_handlers.go` (822 lines) handles use-item dispatch and is already separate.
 
 ---
 
