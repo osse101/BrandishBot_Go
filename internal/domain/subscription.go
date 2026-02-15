@@ -5,38 +5,6 @@ import (
 	"time"
 )
 
-// Subscription status constants
-const (
-	SubscriptionStatusActive    = "active"
-	SubscriptionStatusExpired   = "expired"
-	SubscriptionStatusCancelled = "cancelled"
-)
-
-// Subscription event types (for event bus)
-const (
-	EventTypeSubscriptionActivated  = "subscription.activated"
-	EventTypeSubscriptionRenewed    = "subscription.renewed"
-	EventTypeSubscriptionUpgraded   = "subscription.upgraded"
-	EventTypeSubscriptionDowngraded = "subscription.downgraded"
-	EventTypeSubscriptionExpired    = "subscription.expired"
-	EventTypeSubscriptionCancelled  = "subscription.cancelled"
-)
-
-// History event types
-const (
-	HistoryEventTypeSubscribed = "subscribed"
-	HistoryEventTypeRenewed    = "renewed"
-	HistoryEventTypeUpgraded   = "upgraded"
-	HistoryEventTypeDowngraded = "downgraded"
-	HistoryEventTypeCancelled  = "cancelled"
-	HistoryEventTypeExpired    = "expired"
-)
-
-// Configuration constants
-const (
-	DefaultSubscriptionDuration = 30 * 24 * time.Hour // 30 days
-	SubscriptionGracePeriod     = 24 * time.Hour      // 24-hour grace before expiration
-)
 
 // SubscriptionTier represents a subscription tier configuration
 type SubscriptionTier struct {

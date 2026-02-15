@@ -2,40 +2,6 @@ package domain
 
 import "time"
 
-// EventType represents the type of event being tracked
-type EventType string
-
-const (
-	EventUserRegistered  EventType = "user_registered"
-	EventItemAdded       EventType = "item_added"
-	EventItemRemoved     EventType = "item_removed"
-	EventItemUsed        EventType = "item_used"
-	EventItemSold        EventType = "item_sold"
-	EventItemBought      EventType = "item_bought"
-	EventItemTransferred EventType = "item_transferred"
-	EventMessageReceived EventType = "message_received"
-	// Gamble events
-	EventGambleNearMiss     EventType = "gamble_near_miss"
-	EventGambleTieBreakLost EventType = "gamble_tie_break_lost"
-	EventGambleCriticalFail EventType = "gamble_critical_fail"
-	EventDailyStreak        EventType = "daily_streak"
-	// Search events
-	EventSearch                  EventType = "search"
-	EventSearchNearMiss          EventType = "search_near_miss"
-	EventSearchCriticalFail      EventType = "search_critical_fail"
-	EventSearchCriticalSuccess   EventType = "search_critical_success"
-	EventCraftingCriticalSuccess EventType = "crafting_critical_success"
-	EventCraftingPerfectSalvage  EventType = "crafting_perfect_salvage"
-	EventJobLevelUp              EventType = "job_level_up"
-	EventJobXPCritical           EventType = "job_xp_critical"
-	// Lootbox events
-	EventLootboxJackpot EventType = "lootbox_jackpot"
-	EventLootboxBigWin  EventType = "lootbox_big_win"
-	// Slots events
-	EventSlotsSpin        EventType = "slots_spin"
-	EventSlotsWin         EventType = "slots_win"
-	EventSlotsMegaJackpot EventType = "slots_mega_jackpot"
-)
 
 // StatsEvent represents a single tracked event
 type StatsEvent struct {

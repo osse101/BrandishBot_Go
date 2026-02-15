@@ -99,7 +99,7 @@ func (s *service) processLootboxDrops(ctx context.Context, user *domain.User, in
 				Value:  stats.totalValue,
 				Source: "lootbox",
 			}
-			if err := s.statsService.RecordUserEvent(ctx, user.ID, domain.EventLootboxJackpot, eventData); err != nil {
+			if err := s.statsService.RecordUserEvent(ctx, user.ID, domain.EventTypeLootboxJackpot, eventData); err != nil {
 				log := logger.FromContext(ctx)
 				log.Warn(LogWarnFailedToRecordLootboxJackpot, "error", err, "user_id", user.ID)
 			}
@@ -113,7 +113,7 @@ func (s *service) processLootboxDrops(ctx context.Context, user *domain.User, in
 				Value:  stats.totalValue,
 				Source: "lootbox",
 			}
-			if err := s.statsService.RecordUserEvent(ctx, user.ID, domain.EventLootboxBigWin, eventData); err != nil {
+			if err := s.statsService.RecordUserEvent(ctx, user.ID, domain.EventTypeLootboxBigWin, eventData); err != nil {
 				log := logger.FromContext(ctx)
 				log.Warn(LogWarnFailedToRecordLootboxBigWin, "error", err, "user_id", user.ID)
 			}

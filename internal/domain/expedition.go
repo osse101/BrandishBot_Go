@@ -7,61 +7,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// ExpeditionState represents the state of an expedition
-type ExpeditionState string
-
-const (
-	ExpeditionStateCreated    ExpeditionState = "Created"
-	ExpeditionStateRecruiting ExpeditionState = "Recruiting"
-	ExpeditionStateInProgress ExpeditionState = "InProgress"
-	ExpeditionStateCompleted  ExpeditionState = "Completed"
-)
-
-// Expedition event constants
-const (
-	EventExpeditionStarted   = "ExpeditionStarted"
-	EventExpeditionCompleted = "ExpeditionCompleted"
-	EventExpeditionTurn      = "ExpeditionTurn"
-)
-
-// EncounterType represents the type of encounter in an expedition
-type EncounterType string
-
-const (
-	EncounterExplore       EncounterType = "explore"
-	EncounterTravel        EncounterType = "travel"
-	EncounterCombatSkirmsh EncounterType = "combat_skirmish"
-	EncounterCombatElite   EncounterType = "combat_elite"
-	EncounterCombatBoss    EncounterType = "combat_boss"
-	EncounterCamp          EncounterType = "camp"
-	EncounterHazard        EncounterType = "hazard"
-	EncounterDiscovery     EncounterType = "discovery"
-	EncounterEncounter     EncounterType = "encounter"
-	EncounterTreasure      EncounterType = "treasure"
-	EncounterMystic        EncounterType = "mystic"
-	EncounterDrama         EncounterType = "drama"
-)
-
-// OutcomeType represents the outcome category of an encounter
-type OutcomeType string
-
-const (
-	OutcomePositive OutcomeType = "positive"
-	OutcomeNeutral  OutcomeType = "neutral"
-	OutcomeNegative OutcomeType = "negative"
-)
-
-// ExpeditionSkill represents a skill used in expeditions, mapped 1:1 to jobs
-type ExpeditionSkill string
-
-const (
-	SkillFortitude  ExpeditionSkill = "fortitude"
-	SkillPerception ExpeditionSkill = "perception"
-	SkillSurvival   ExpeditionSkill = "survival"
-	SkillCunning    ExpeditionSkill = "cunning"
-	SkillPersuasion ExpeditionSkill = "persuasion"
-	SkillKnowledge  ExpeditionSkill = "knowledge"
-)
 
 // ExpeditionMetadata stores expedition configuration and results
 type ExpeditionMetadata struct {

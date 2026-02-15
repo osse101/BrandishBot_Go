@@ -134,7 +134,7 @@ func TestRecordUserEvent(t *testing.T) {
 
 	ctx := context.Background()
 	userID := "test-user-123"
-	eventType := domain.EventItemAdded
+	eventType := domain.StatsEventItemAdded
 	metadata := map[string]interface{}{
 		"item":     "sword",
 		"quantity": 5,
@@ -166,14 +166,14 @@ func TestRecordUserEvent_DailyStreak(t *testing.T) {
 	userID := "user-streak"
 
 	// 1. First event - should trigger streak 1
-	svc.RecordUserEvent(ctx, userID, domain.EventItemAdded, nil)
+	svc.RecordUserEvent(ctx, userID, domain.StatsEventItemAdded, nil)
 
 	// Check if streak event was recorded
 	if len(repo.events) != 2 { // 1 item_added, 1 daily_streak
 		t.Errorf("Expected 2 events, got %d", len(repo.events))
 	}
 	streakEvent := repo.events[1]
-	if streakEvent.EventType != domain.EventDailyStreak {
+	if streakEvent.EventType != domain.StatsEventDailyStreak {
 		t.Errorf("Expected daily_streak event, got %s", streakEvent.EventType)
 	}
 	var streak int
@@ -190,7 +190,7 @@ func TestRecordUserEvent_DailyStreak(t *testing.T) {
 	}
 
 	// 2. Second event same day - should NOT trigger new streak event
-	svc.RecordUserEvent(ctx, userID, domain.EventItemAdded, nil)
+	svc.RecordUserEvent(ctx, userID, domain.StatsEventItemAdded, nil)
 	if len(repo.events) != 3 { // previous 2 + 1 new item_added. No new streak.
 		t.Errorf("Expected 3 events (no new streak), got %d", len(repo.events))
 	}
@@ -202,21 +202,21 @@ func TestRecordUserEvent_DailyStreak(t *testing.T) {
 		{
 			EventID:   10,
 			UserID:    userID,
-			EventType: domain.EventDailyStreak,
+			EventType: domain.StatsEventDailyStreak,
 			EventData: map[string]interface{}{"streak": 5},
 			CreatedAt: yesterday,
 		},
 	}
 
 	// Record event today - should increment streak to 6
-	svc.RecordUserEvent(ctx, userID, domain.EventItemAdded, nil)
+	svc.RecordUserEvent(ctx, userID, domain.StatsEventItemAdded, nil)
 
 	// repo.events should have: yesterday streak (preserved), today item_added, today streak
 	// Note: `RecordUserEvent` appends.
 
 	// Check the last event
 	lastEvent := repo.events[len(repo.events)-1]
-	if lastEvent.EventType != domain.EventDailyStreak {
+	if lastEvent.EventType != domain.StatsEventDailyStreak {
 		t.Errorf("Expected streak event")
 	}
 	// It's a bit complicated because RecordUserEvent appends the struct, but we manually inserted maps earlier
@@ -235,14 +235,14 @@ func TestRecordUserEvent_DailyStreak(t *testing.T) {
 		{
 			EventID:   20,
 			UserID:    userID,
-			EventType: domain.EventDailyStreak,
+			EventType: domain.StatsEventDailyStreak,
 			EventData: map[string]interface{}{"streak": 10},
 			CreatedAt: twoDaysAgo,
 		},
 	}
 
 	// Record event today - should reset streak to 1
-	svc.RecordUserEvent(ctx, userID, domain.EventItemAdded, nil)
+	svc.RecordUserEvent(ctx, userID, domain.StatsEventItemAdded, nil)
 
 	lastEvent = repo.events[len(repo.events)-1]
 	var resetStreak int
@@ -259,7 +259,7 @@ func TestRecordUserEventEmptyUserID(t *testing.T) {
 	svc := NewService(repo)
 
 	ctx := context.Background()
-	err := svc.RecordUserEvent(ctx, "", domain.EventItemAdded, nil)
+	err := svc.RecordUserEvent(ctx, "", domain.StatsEventItemAdded, nil)
 	if err == nil {
 		t.Fatal("Expected error for empty user ID, got nil")
 	}
@@ -271,19 +271,19 @@ func TestGetUserStats(t *testing.T) {
 			{
 				EventID:   1,
 				UserID:    "user-123",
-				EventType: domain.EventItemAdded,
+				EventType: domain.StatsEventItemAdded,
 				CreatedAt: time.Now().Add(-1 * time.Hour),
 			},
 			{
 				EventID:   2,
 				UserID:    "user-123",
-				EventType: domain.EventItemSold,
+				EventType: domain.StatsEventItemSold,
 				CreatedAt: time.Now().Add(-30 * time.Minute),
 			},
 			{
 				EventID:   3,
 				UserID:    "user-456",
-				EventType: domain.EventItemAdded,
+				EventType: domain.StatsEventItemAdded,
 				CreatedAt: time.Now().Add(-20 * time.Minute),
 			},
 		},
@@ -305,9 +305,9 @@ func TestGetUserStats(t *testing.T) {
 func TestGetSystemStats(t *testing.T) {
 	repo := &mockStatsRepository{
 		events: []domain.StatsEvent{
-			{EventID: 1, UserID: "user-1", EventType: domain.EventItemAdded, CreatedAt: time.Now().Add(-1 * time.Hour)},
-			{EventID: 2, UserID: "user-2", EventType: domain.EventItemSold, CreatedAt: time.Now().Add(-30 * time.Minute)},
-			{EventID: 3, UserID: "user-3", EventType: domain.EventItemAdded, CreatedAt: time.Now().Add(-20 * time.Minute)},
+			{EventID: 1, UserID: "user-1", EventType: domain.StatsEventItemAdded, CreatedAt: time.Now().Add(-1 * time.Hour)},
+			{EventID: 2, UserID: "user-2", EventType: domain.StatsEventItemSold, CreatedAt: time.Now().Add(-30 * time.Minute)},
+			{EventID: 3, UserID: "user-3", EventType: domain.StatsEventItemAdded, CreatedAt: time.Now().Add(-20 * time.Minute)},
 		},
 	}
 
@@ -323,24 +323,24 @@ func TestGetSystemStats(t *testing.T) {
 		t.Errorf("Expected 3 events, got %d", summary.TotalEvents)
 	}
 
-	if summary.EventCounts[domain.EventItemAdded] != 2 {
-		t.Errorf("Expected 2 item_added events, got %d", summary.EventCounts[domain.EventItemAdded])
+	if summary.EventCounts[domain.StatsEventItemAdded] != 2 {
+		t.Errorf("Expected 2 item_added events, got %d", summary.EventCounts[domain.StatsEventItemAdded])
 	}
 }
 
 func TestGetLeaderboard(t *testing.T) {
 	repo := &mockStatsRepository{
 		events: []domain.StatsEvent{
-			{EventID: 1, UserID: "user-1", EventType: domain.EventItemSold, CreatedAt: time.Now().Add(-1 * time.Hour)},
-			{EventID: 2, UserID: "user-1", EventType: domain.EventItemSold, CreatedAt: time.Now().Add(-50 * time.Minute)},
-			{EventID: 3, UserID: "user-2", EventType: domain.EventItemSold, CreatedAt: time.Now().Add(-30 * time.Minute)},
+			{EventID: 1, UserID: "user-1", EventType: domain.StatsEventItemSold, CreatedAt: time.Now().Add(-1 * time.Hour)},
+			{EventID: 2, UserID: "user-1", EventType: domain.StatsEventItemSold, CreatedAt: time.Now().Add(-50 * time.Minute)},
+			{EventID: 3, UserID: "user-2", EventType: domain.StatsEventItemSold, CreatedAt: time.Now().Add(-30 * time.Minute)},
 		},
 	}
 
 	svc := NewService(repo)
 	ctx := context.Background()
 
-	leaderboard, err := svc.GetLeaderboard(ctx, domain.EventItemSold, "daily", 10)
+	leaderboard, err := svc.GetLeaderboard(ctx, domain.StatsEventItemSold, "daily", 10)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
