@@ -58,7 +58,6 @@ tmp/
 .mcp.json
 .agent/*
 .claude/*
-.jules/*
 .Jules/*
 
 # Benchmark results (keep baseline.txt, ignore temporary files)
