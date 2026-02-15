@@ -14,6 +14,7 @@ coverage.html
 
 # Dependencies
 vendor/
+**/node_modules/
 
 # Logs
 logs/
@@ -48,5 +49,9 @@ tmp/
 temp/
 *.tmp
 
+# C# Client (not needed for docker build)
+client/
+
 # Artifacts (agent brain data)
 .gemini/
+.jules/
