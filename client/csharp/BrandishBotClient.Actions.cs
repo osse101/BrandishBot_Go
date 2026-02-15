@@ -98,7 +98,7 @@ namespace BrandishBot.Client
         /// <param name="username">The user's username</param>
         public async Task<List<Recipe>> GetUnlockedRecipes(string platform, string platformId, string username)
         {
-            var query = BuildQuery("platform=" + platform, "platform_id=" + platformId, "user=" + username);
+            var query = BuildQuery("platform=" + System.Uri.EscapeDataString(platform), "platform_id=" + System.Uri.EscapeDataString(platformId), "user=" + System.Uri.EscapeDataString(username));
             var response = await GetAsync<RecipeListResponse>("/api/v1/recipes" + query);
             return response?.Recipes ?? new List<Recipe>();
         }
@@ -110,7 +110,7 @@ namespace BrandishBot.Client
         /// <param name="username">The user's username</param>
         public async Task<List<Recipe>> GetUnlockedRecipesByUsername(string platform, string username)
         {
-            var query = BuildQuery("platform=" + platform, "user=" + username);
+            var query = BuildQuery("platform=" + System.Uri.EscapeDataString(platform), "user=" + System.Uri.EscapeDataString(username));
             var response = await GetAsync<RecipeListResponse>("/api/v1/recipes" + query);
             return response?.Recipes ?? new List<Recipe>();
         }
