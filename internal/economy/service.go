@@ -43,6 +43,7 @@ type service struct {
 	namingResolver     naming.Resolver
 	progressionService ProgressionService
 	rnd                func() float64 // For RNG - allows deterministic testing
+	now                func() time.Time
 	weeklySales        []domain.WeeklySale
 	weeklySalesMu      sync.RWMutex
 }
@@ -55,6 +56,7 @@ func NewService(repo repository.Economy, publisher *event.ResilientPublisher, na
 		namingResolver:     namingResolver,
 		progressionService: progressionService,
 		rnd:                utils.RandomFloat,
+		now:                time.Now,
 	}
 
 	// Load weekly sales configuration (log errors but don't fail startup)
@@ -179,7 +181,7 @@ func (s *service) getCurrentWeeklySale() *domain.WeeklySale {
 	}
 
 	// Calculate which week we're in (0-3 for 4-week rotation)
-	_, weekNum := time.Now().ISOWeek()
+	_, weekNum := s.now().ISOWeek()
 	weekOffset := (weekNum - 1) % 4 // 0, 1, 2, 3
 
 	// Find the sale for this week's offset
@@ -399,7 +401,7 @@ func (s *service) SellItem(ctx context.Context, platform, platformID, username, 
 				ItemCategory: getItemCategory(item),
 				Quantity:     actualSellQuantity,
 				TotalValue:   moneyGained,
-				Timestamp:    time.Now().Unix(),
+				Timestamp:    s.now().Unix(),
 			},
 		})
 	}
@@ -602,7 +604,7 @@ func (s *service) finalizePurchase(ctx context.Context, userID string, item *dom
 				ItemCategory: getItemCategory(item),
 				Quantity:     quantity,
 				TotalValue:   cost,
-				Timestamp:    time.Now().Unix(),
+				Timestamp:    s.now().Unix(),
 			},
 		})
 	}

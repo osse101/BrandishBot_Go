@@ -5,12 +5,14 @@ import (
 	"errors"
 	"math"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/progression"
 )
 
 // Test fixtures
@@ -26,6 +28,7 @@ func createTestItem(id int, name string, value int) *domain.Item {
 		ID:           id,
 		InternalName: name,
 		BaseValue:    value,
+		Types:        []string{"Consumable"}, // Default category
 	}
 }
 
@@ -51,12 +54,20 @@ const (
 	BaseItemPrice = 100
 )
 
+// Helper to inject mock time and sales into service
+func setupServiceWithTime(s Service, t time.Time) *service {
+	svc := s.(*service)
+	svc.now = func() time.Time { return t }
+	return svc
+}
+
 // =============================================================================
 // SellItem Tests - Demonstrating 5-Case Testing Model
 // =============================================================================
 
 // CASE 1: BEST CASE - Happy path
 func TestSellItem_Success(t *testing.T) {
+	t.Parallel()
 	// ARRANGE
 	mockRepo := &MockRepository{}
 	mockTx := &MockTx{}
@@ -95,6 +106,7 @@ func TestSellItem_Success(t *testing.T) {
 
 // CASE 2: WORST CASE - Boundary conditions
 func TestSellItem_SellAllItems(t *testing.T) {
+	t.Parallel()
 	// ARRANGE - User sells every last item they have
 	mockRepo := &MockRepository{}
 	service := NewService(mockRepo, nil, nil, nil)
@@ -133,6 +145,7 @@ func TestSellItem_SellAllItems(t *testing.T) {
 
 // CASE 3: EDGE CASE - Partial quantity available
 func TestSellItem_PartialQuantity(t *testing.T) {
+	t.Parallel()
 	// ARRANGE - User requests 100 but only has 30
 	mockRepo := &MockRepository{}
 	service := NewService(mockRepo, nil, nil, nil)
@@ -169,6 +182,7 @@ func TestSellItem_PartialQuantity(t *testing.T) {
 
 // CASE 4: INVALID CASE - Bad inputs
 func TestSellItem_InvalidInputs(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		setup         func(*MockRepository)
@@ -229,7 +243,9 @@ func TestSellItem_InvalidInputs(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt // capture range variable
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			// ARRANGE
 			mockRepo := &MockRepository{}
 			service := NewService(mockRepo, nil, nil, nil)
@@ -252,6 +268,7 @@ func TestSellItem_InvalidInputs(t *testing.T) {
 
 // Quantity Boundary Tests - Critical for validating input constraints
 func TestSellItem_QuantityBoundaries(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		quantity    int
@@ -270,7 +287,9 @@ func TestSellItem_QuantityBoundaries(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			// ARRANGE
 			mockRepo := &MockRepository{}
 			service := NewService(mockRepo, nil, nil, nil)
@@ -288,14 +307,6 @@ func TestSellItem_QuantityBoundaries(t *testing.T) {
 			mockTx := &MockTx{}
 			// Only expect Tx if validation passes
 			if !tt.expectErr || (tt.name != "negative quantity" && tt.name != "zero quantity" && tt.name != "over max boundary") {
-				// Actually validation happens BEFORE everything.
-				// Wait, validateBuyRequest is called first. If fails, NO calls.
-				// But mock setup above sets expectations.
-
-				// Logic:
-				// If validation fails (quantity <= 0 or > max), we return error. Tx NOT called.
-				// The test setups generic expectations.
-				// But we need conditional expectations for Tx.
 				if !tt.expectErr {
 					mockRepo.On("BeginTx", ctx).Return(mockTx, nil)
 					mockTx.On("GetInventory", ctx, user.ID).Return(inventory, nil)
@@ -325,6 +336,7 @@ func TestSellItem_QuantityBoundaries(t *testing.T) {
 
 // CASE 5: HOSTILE CASE - Database errors and malicious scenarios
 func TestSellItem_DatabaseErrors(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		setup         func(*MockRepository, context.Context)
@@ -367,7 +379,9 @@ func TestSellItem_DatabaseErrors(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			// ARRANGE
 			mockRepo := &MockRepository{}
 			service := NewService(mockRepo, nil, nil, nil)
@@ -393,6 +407,7 @@ func TestSellItem_DatabaseErrors(t *testing.T) {
 // =============================================================================
 
 func TestGetSellablePrices_Success(t *testing.T) {
+	t.Parallel()
 	// ARRANGE
 	mockRepo := &MockRepository{}
 	service := NewService(mockRepo, nil, nil, nil)
@@ -421,6 +436,7 @@ func TestGetSellablePrices_Success(t *testing.T) {
 }
 
 func TestGetSellablePrices_DatabaseError(t *testing.T) {
+	t.Parallel()
 	// ARRANGE
 	mockRepo := &MockRepository{}
 	service := NewService(mockRepo, nil, nil, nil)
@@ -444,6 +460,7 @@ func TestGetSellablePrices_DatabaseError(t *testing.T) {
 
 // CASE 1: BEST CASE
 func TestBuyItem_Success(t *testing.T) {
+	t.Parallel()
 	// ARRANGE
 	mockRepo := &MockRepository{}
 	service := NewService(mockRepo, nil, nil, nil)
@@ -483,6 +500,7 @@ func TestBuyItem_Success(t *testing.T) {
 
 // CASE 2: BOUNDARY CASE - Money boundaries
 func TestBuyItem_MoneyBoundaries(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name           string
 		moneyBalance   int
@@ -563,7 +581,9 @@ func TestBuyItem_MoneyBoundaries(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			// ARRANGE
 			mockRepo := &MockRepository{}
 			service := NewService(mockRepo, nil, nil, nil)
@@ -580,11 +600,6 @@ func TestBuyItem_MoneyBoundaries(t *testing.T) {
 			mockRepo.On("GetItemByName", ctx, domain.ItemMoney).Return(moneyItem, nil)
 
 			mockTx := &MockTx{}
-
-			// Determine if Tx is reached
-			// Validation happens first. Boundaries check validation.
-			// "no money" fails domain.ErrMsgInsufficientFunds INSIDE GetInventory logic -> so reached Tx.
-			// "not enough for one" -> reached Tx.
 
 			mockRepo.On("BeginTx", ctx).Return(mockTx, nil)
 			mockTx.On("GetInventory", ctx, user.ID).Return(inventory, nil)
@@ -612,6 +627,7 @@ func TestBuyItem_MoneyBoundaries(t *testing.T) {
 
 // CASE 2: BOUNDARY CASE - Quantity boundaries
 func TestBuyItem_QuantityBoundaries(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		quantity    int
@@ -630,7 +646,9 @@ func TestBuyItem_QuantityBoundaries(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			// ARRANGE
 			mockRepo := &MockRepository{}
 			service := NewService(mockRepo, nil, nil, nil)
@@ -677,6 +695,7 @@ func TestBuyItem_QuantityBoundaries(t *testing.T) {
 
 // CASE 4: INVALID CASE
 func TestBuyItem_InvalidInputs(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		setup         func(*MockRepository, context.Context)
@@ -724,7 +743,9 @@ func TestBuyItem_InvalidInputs(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			// ARRANGE
 			mockRepo := &MockRepository{}
 			service := NewService(mockRepo, nil, nil, nil)
@@ -747,6 +768,7 @@ func TestBuyItem_InvalidInputs(t *testing.T) {
 
 // CASE 5: HOSTILE CASE - Database errors
 func TestBuyItem_DatabaseErrors(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		setup         func(*MockRepository, context.Context)
@@ -780,7 +802,9 @@ func TestBuyItem_DatabaseErrors(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			// ARRANGE
 			mockRepo := &MockRepository{}
 			service := NewService(mockRepo, nil, nil, nil)
@@ -806,6 +830,7 @@ func TestBuyItem_DatabaseErrors(t *testing.T) {
 // =============================================================================
 
 func TestGetSellablePrices_ProgressionFilter(t *testing.T) {
+	t.Parallel()
 	// ARRANGE
 	mockRepo := &MockRepository{}
 	mockProgression := &MockProgressionService{}
@@ -835,6 +860,7 @@ func TestGetSellablePrices_ProgressionFilter(t *testing.T) {
 }
 
 func TestGetBuyablePrices_ProgressionFilter(t *testing.T) {
+	t.Parallel()
 	// ARRANGE
 	mockRepo := &MockRepository{}
 	mockProgression := &MockProgressionService{}
@@ -862,6 +888,7 @@ func TestGetBuyablePrices_ProgressionFilter(t *testing.T) {
 }
 
 func TestBuyItem_ProgressionLocked(t *testing.T) {
+	t.Parallel()
 	// ARRANGE
 	mockRepo := &MockRepository{}
 	mockProgression := &MockProgressionService{}
@@ -896,6 +923,7 @@ func TestBuyItem_ProgressionLocked(t *testing.T) {
 // =============================================================================
 
 func TestBuyItem_NamingResolution(t *testing.T) {
+	t.Parallel()
 	// ARRANGE
 	mockRepo := &MockRepository{}
 	mockResolver := &MockNamingResolver{}
@@ -937,6 +965,7 @@ func TestBuyItem_NamingResolution(t *testing.T) {
 }
 
 func TestSellItem_NamingResolution(t *testing.T) {
+	t.Parallel()
 	// ARRANGE
 	mockRepo := &MockRepository{}
 	mockResolver := &MockNamingResolver{}
@@ -975,4 +1004,135 @@ func TestSellItem_NamingResolution(t *testing.T) {
 	assert.Equal(t, expectedResult, moneyGained)
 	mockRepo.AssertExpectations(t)
 	mockResolver.AssertExpectations(t)
+}
+
+// =============================================================================
+// Weekly Sale Tests
+// =============================================================================
+
+func TestBuyItem_WeeklySale(t *testing.T) {
+	t.Parallel()
+
+	// Define fixed time for test
+	// Week 1 of 2024 is Jan 1 - Jan 7.
+	// ISOWeek returns year, week.
+	// Let's use a fixed time.
+	fixedTime := time.Date(2024, 1, 3, 12, 0, 0, 0, time.UTC) // Wed, Jan 3 2024. ISO Week 1.
+	_, weekNum := fixedTime.ISOWeek()
+	weekOffset := (weekNum - 1) % 4
+
+	category := "Consumable"
+	discountPercent := 25.0
+	itemPrice := 100
+	discountedPrice := 75 // 100 - 25%
+
+	sale := domain.WeeklySale{
+		WeekOffset:      weekOffset,
+		TargetCategory:  &category,
+		DiscountPercent: discountPercent,
+	}
+
+	tests := []struct {
+		name              string
+		isFeatureUnlocked bool
+		featureError      error
+		itemCategory      string
+		expectedCost      int
+	}{
+		{
+			name:              "Discount Applied",
+			isFeatureUnlocked: true,
+			itemCategory:      category,
+			expectedCost:      discountedPrice,
+		},
+		{
+			name:              "Feature Locked",
+			isFeatureUnlocked: false,
+			itemCategory:      category,
+			expectedCost:      itemPrice,
+		},
+		{
+			name:              "Category Mismatch",
+			isFeatureUnlocked: true,
+			itemCategory:      "Weapon",
+			expectedCost:      itemPrice,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			// ARRANGE
+			mockRepo := &MockRepository{}
+			mockProgression := &MockProgressionService{}
+			s := NewService(mockRepo, nil, nil, mockProgression)
+			ctx := context.Background()
+
+			// Inject time and sales
+			svc := setupServiceWithTime(s, fixedTime)
+			svc.weeklySales = []domain.WeeklySale{sale}
+
+			user := createTestUser()
+			item := createTestItem(10, "sale_item", itemPrice)
+			item.Types = []string{tt.itemCategory}
+			moneyItem := createMoneyItem()
+			inventory := createInventoryWithMoney(500)
+
+			mockRepo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "").Return(user, nil)
+			mockRepo.On("GetItemByName", ctx, "sale_item").Return(item, nil)
+			mockRepo.On("IsItemBuyable", ctx, "sale_item").Return(true, nil)
+			mockRepo.On("GetItemByName", ctx, domain.ItemMoney).Return(moneyItem, nil)
+
+			// Expect Feature Check
+			if tt.featureError != nil {
+				mockProgression.On("IsFeatureUnlocked", ctx, progression.FeatureWeeklyDiscount).Return(false, tt.featureError)
+			} else {
+				mockProgression.On("IsFeatureUnlocked", ctx, progression.FeatureWeeklyDiscount).Return(tt.isFeatureUnlocked, nil)
+			}
+
+			// Expect Item Unlock Check
+			mockProgression.On("IsItemUnlocked", ctx, "sale_item").Return(true, nil)
+
+			mockTx := &MockTx{}
+			mockRepo.On("BeginTx", ctx).Return(mockTx, nil)
+			mockTx.On("GetInventory", ctx, user.ID).Return(inventory, nil)
+			mockTx.On("UpdateInventory", ctx, user.ID, mock.Anything).Return(nil)
+			mockTx.On("Commit", ctx).Return(nil)
+			mockTx.On("Rollback", ctx).Return(nil)
+
+			// ACT
+			qty, err := s.BuyItem(ctx, domain.PlatformTwitch, "", "testuser", "sale_item", 1)
+
+			// ASSERT
+			require.NoError(t, err)
+			assert.Equal(t, 1, qty)
+
+			// Verify cost by checking inventory update (since BuyItem doesn't return cost)
+			// We can inspect the calls to UpdateInventory or check the calculation logic implicitly by ensuring success
+			// But to be sure about the COST, we should inspect the inventory passed to UpdateInventory
+			// However, since we are mocking, we can't easily see the resulting inventory state without capturing arguments.
+
+			// Let's capture the argument to UpdateInventory
+			// Calls: 0=GetInventory (check funds), 1=GetInventory (process), 2=UpdateInventory
+			call := mockTx.Calls[2]
+			require.Equal(t, "UpdateInventory", call.Method)
+			updatedInv := call.Arguments.Get(2).(domain.Inventory)
+
+			// Find money slot
+			var finalMoney int
+			for _, slot := range updatedInv.Slots {
+				if slot.ItemID == moneyItem.ID {
+					finalMoney = slot.Quantity
+				}
+			}
+
+			expectedMoney := 500 - tt.expectedCost
+			assert.Equal(t, expectedMoney, finalMoney, "Money should be deducted correctly")
+
+			mockRepo.AssertExpectations(t)
+			mockProgression.AssertExpectations(t)
+		})
+	}
 }
