@@ -26,7 +26,7 @@ func NewSubscriber(client *Client, bus event.Bus) *Subscriber {
 // Subscribe registers handlers for relevant event types
 func (s *Subscriber) Subscribe() {
 	// Subscribe to job level up events
-	s.bus.Subscribe(event.Type(domain.EventJobLevelUp), s.handleJobLevelUp)
+	s.bus.Subscribe(event.Type(domain.EventTypeJobLevelUp), s.handleJobLevelUp)
 
 	// Subscribe to progression voting started events
 	s.bus.Subscribe(event.ProgressionVotingStarted, s.handleVotingStarted)
@@ -57,7 +57,7 @@ func (s *Subscriber) Subscribe() {
 
 	slog.Info("Streamer.bot subscriber registered for event types",
 		"types", []string{
-			string(domain.EventJobLevelUp),
+			string(domain.EventTypeJobLevelUp),
 			string(event.ProgressionVotingStarted),
 			string(event.ProgressionCycleCompleted),
 			string(event.ProgressionAllUnlocked),
@@ -96,7 +96,7 @@ func (s *Subscriber) handleJobLevelUp(_ context.Context, evt event.Event) error 
 		"source":    source,
 	}
 
-	slog.Debug(LogMsgEventReceived, "event_type", domain.EventJobLevelUp, "args", args)
+	slog.Debug(LogMsgEventReceived, "event_type", domain.EventTypeJobLevelUp, "args", args)
 
 	if err := s.client.DoAction(ActionJobLevelUp, args); err != nil {
 		// Use Debug level - Streamer.bot being unavailable is expected

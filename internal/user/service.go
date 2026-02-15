@@ -1132,7 +1132,7 @@ func (s *service) calculateSearchParameters(ctx context.Context, user *domain.Us
 		if err != nil {
 			log.Warn("Failed to get search counts", "error", err)
 		} else if stats != nil && stats.EventCounts != nil {
-			dailyCount = stats.EventCounts[domain.EventSearch]
+			dailyCount = stats.EventCounts[domain.StatsEventSearch]
 		}
 	}
 

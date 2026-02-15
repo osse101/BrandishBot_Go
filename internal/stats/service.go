@@ -61,7 +61,7 @@ func (s *service) RecordUserEvent(ctx context.Context, userID string, eventType 
 	log.Debug(LogMsgEventRecorded, "event_id", event.EventID, "user_id", userID, "event_type", eventType)
 
 	// Check for daily streak
-	if eventType != domain.EventDailyStreak {
+	if eventType != domain.StatsEventDailyStreak {
 		if err := s.checkDailyStreak(ctx, userID); err != nil {
 			log.Warn(LogMsgFailedToCheckDailyStreak, "error", err, "user_id", userID)
 		}
@@ -73,7 +73,7 @@ func (s *service) RecordUserEvent(ctx context.Context, userID string, eventType 
 // checkDailyStreak calculates and records daily login streak
 func (s *service) checkDailyStreak(ctx context.Context, userID string) error {
 	// Get the last streak event
-	events, err := s.repo.GetUserEventsByType(ctx, userID, domain.EventDailyStreak, StreakEventQueryLimit)
+	events, err := s.repo.GetUserEventsByType(ctx, userID, domain.StatsEventDailyStreak, StreakEventQueryLimit)
 	if err != nil {
 		return fmt.Errorf(ErrMsgGetStreakEventsFailed, err)
 	}
@@ -116,7 +116,7 @@ func (s *service) checkDailyStreak(ctx context.Context, userID string) error {
 
 	// Use RecordUserEvent but with EventDailyStreak type (which will be skipped by the check above)
 	// Triggers "STREAK_INCREASED" if streak > 1? The client can handle that based on event.
-	if err := s.RecordUserEvent(ctx, userID, domain.EventDailyStreak, meta); err != nil {
+	if err := s.RecordUserEvent(ctx, userID, domain.StatsEventDailyStreak, meta); err != nil {
 		return fmt.Errorf(ErrMsgRecordStreakEventFailed, err)
 	}
 
@@ -126,7 +126,7 @@ func (s *service) checkDailyStreak(ctx context.Context, userID string) error {
 // GetUserCurrentStreak retrieves the current daily login streak for a user
 func (s *service) GetUserCurrentStreak(ctx context.Context, userID string) (int, error) {
 	// Get the last streak event
-	events, err := s.repo.GetUserEventsByType(ctx, userID, domain.EventDailyStreak, StreakEventQueryLimit)
+	events, err := s.repo.GetUserEventsByType(ctx, userID, domain.StatsEventDailyStreak, StreakEventQueryLimit)
 	if err != nil {
 		return 0, fmt.Errorf(ErrMsgGetStreakEventsFailed, err)
 	}

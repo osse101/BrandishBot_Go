@@ -168,7 +168,7 @@ func TestConcurrency_RecordUserEvent(t *testing.T) {
 	for i := 0; i < concurrency; i++ {
 		go func() {
 			defer wg.Done()
-			err := svc.RecordUserEvent(ctx, "user-concurrent", domain.EventItemAdded, nil)
+			err := svc.RecordUserEvent(ctx, "user-concurrent", domain.StatsEventItemAdded, nil)
 			if err != nil {
 				t.Errorf("RecordUserEvent failed: %v", err)
 			}
@@ -183,8 +183,8 @@ func TestConcurrency_RecordUserEvent(t *testing.T) {
 		t.Fatalf("Failed to get counts: %v", err)
 	}
 
-	if counts[domain.EventItemAdded] != concurrency {
-		t.Errorf("Expected %d item_added events, got %d", concurrency, counts[domain.EventItemAdded])
+	if counts[domain.StatsEventItemAdded] != concurrency {
+		t.Errorf("Expected %d item_added events, got %d", concurrency, counts[domain.StatsEventItemAdded])
 	}
 
 	// We expect at least 'concurrency' events (activity events)

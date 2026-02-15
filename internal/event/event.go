@@ -230,7 +230,7 @@ func NewProgressionAllUnlockedEvent(message string) Event {
 func NewJobLevelUpEvent(userID, jobKey string, oldLevel, newLevel int, source string) Event {
 	return Event{
 		Version: EventSchemaVersion,
-		Type:    Type(domain.EventJobLevelUp),
+		Type:    Type(domain.EventTypeJobLevelUp),
 		Payload: JobLevelUpPayloadV1{
 			UserID:   userID,
 			JobKey:   jobKey,

@@ -38,11 +38,59 @@ func (h *EventHandler) Register(bus event.Bus) {
 	bus.Subscribe(event.Type(domain.EventTypeSearchPerformed), h.HandleSearchPerformed)
 
 	// Job events (stats recording for level-up and epiphany)
-	bus.Subscribe(event.Type(domain.EventJobLevelUp), h.HandleJobLevelUp)
+	bus.Subscribe(event.Type(domain.EventTypeJobLevelUp), h.HandleJobLevelUp)
 	bus.Subscribe(event.Type(domain.EventTypeJobXPCritical), h.HandleJobXPCritical)
 
 	// Prediction events
 	bus.Subscribe(event.Type(domain.EventTypePredictionParticipated), h.HandlePredictionParticipated)
+
+	// Economy events
+	bus.Subscribe(event.Type(domain.EventTypeItemSold), h.HandleItemSold)
+	bus.Subscribe(event.Type(domain.EventTypeItemBought), h.HandleItemBought)
+}
+
+// HandleItemSold handles item sold events to record stats
+func (h *EventHandler) HandleItemSold(ctx context.Context, evt event.Event) error {
+	log := logger.FromContext(ctx)
+
+	payload, err := event.DecodePayload[domain.ItemSoldPayload](evt.Payload)
+	if err != nil {
+		return fmt.Errorf("failed to decode item sold payload: %w", err)
+	}
+
+	metadata := map[string]interface{}{
+		domain.MetadataKeyItemName: payload.ItemName,
+		domain.MetadataKeyQuantity: payload.Quantity,
+		"total_value":              payload.TotalValue,
+		"category":                 payload.ItemCategory,
+	}
+
+	if err := h.service.RecordUserEvent(ctx, payload.UserID, domain.StatsEventItemSold, metadata); err != nil {
+		log.Warn("Failed to record item sold stat", "error", err, "user_id", payload.UserID)
+	}
+	return nil
+}
+
+// HandleItemBought handles item bought events to record stats
+func (h *EventHandler) HandleItemBought(ctx context.Context, evt event.Event) error {
+	log := logger.FromContext(ctx)
+
+	payload, err := event.DecodePayload[domain.ItemBoughtPayload](evt.Payload)
+	if err != nil {
+		return fmt.Errorf("failed to decode item bought payload: %w", err)
+	}
+
+	metadata := map[string]interface{}{
+		domain.MetadataKeyItemName: payload.ItemName,
+		domain.MetadataKeyQuantity: payload.Quantity,
+		"total_value":              payload.TotalValue,
+		"category":                 payload.ItemCategory,
+	}
+
+	if err := h.service.RecordUserEvent(ctx, payload.UserID, domain.StatsEventItemBought, metadata); err != nil {
+		log.Warn("Failed to record item bought stat", "error", err, "user_id", payload.UserID)
+	}
+	return nil
 }
 
 // HandleItemUpgraded handles item upgrade events to record stats
@@ -55,7 +103,7 @@ func (h *EventHandler) HandleItemUpgraded(ctx context.Context, evt event.Event) 
 	}
 
 	if payload.IsMasterwork {
-		err := h.service.RecordUserEvent(ctx, payload.UserID, domain.EventCraftingCriticalSuccess, domain.CraftingMetadata{
+		err := h.service.RecordUserEvent(ctx, payload.UserID, domain.EventTypeCraftingCriticalSuccess, domain.CraftingMetadata{
 			ItemName:         payload.ItemName,
 			OriginalQuantity: payload.Quantity,
 			MasterworkCount:  1,
@@ -79,7 +127,7 @@ func (h *EventHandler) HandleItemDisassembled(ctx context.Context, evt event.Eve
 	}
 
 	if payload.IsPerfectSalvage {
-		err := h.service.RecordUserEvent(ctx, payload.UserID, domain.EventCraftingPerfectSalvage, domain.CraftingMetadata{
+		err := h.service.RecordUserEvent(ctx, payload.UserID, domain.EventTypeCraftingPerfectSalvage, domain.CraftingMetadata{
 			ItemName:     payload.ItemName,
 			Quantity:     payload.Quantity,
 			PerfectCount: payload.PerfectSalvageCount,
@@ -115,18 +163,18 @@ func (h *EventHandler) HandleSlotsCompleted(ctx context.Context, evt event.Event
 		Reel3:            payload.Reel3,
 	}
 
-	if err := h.service.RecordUserEvent(ctx, payload.UserID, domain.EventSlotsSpin, metadata); err != nil {
+	if err := h.service.RecordUserEvent(ctx, payload.UserID, domain.EventTypeSlotsSpin, metadata); err != nil {
 		log.Warn("Failed to record slots spin stats", "error", err)
 	}
 
 	if payload.IsWin {
-		if err := h.service.RecordUserEvent(ctx, payload.UserID, domain.EventSlotsWin, metadata); err != nil {
+		if err := h.service.RecordUserEvent(ctx, payload.UserID, domain.EventTypeSlotsWin, metadata); err != nil {
 			log.Warn("Failed to record slots win stats", "error", err)
 		}
 	}
 
 	if payload.TriggerType == "mega_jackpot" {
-		if err := h.service.RecordUserEvent(ctx, payload.UserID, domain.EventSlotsMegaJackpot, metadata); err != nil {
+		if err := h.service.RecordUserEvent(ctx, payload.UserID, domain.EventTypeSlotsMegaJackpot, metadata); err != nil {
 			log.Warn("Failed to record slots mega jackpot stats", "error", err)
 		}
 	}
@@ -145,19 +193,19 @@ func (h *EventHandler) HandleGambleCompleted(ctx context.Context, evt event.Even
 
 	for _, p := range payload.Participants {
 		if p.IsCritFail {
-			_ = h.service.RecordUserEvent(ctx, p.UserID, domain.EventGambleCriticalFail, domain.GambleMetadata{
+			_ = h.service.RecordUserEvent(ctx, p.UserID, domain.StatsEventGambleCriticalFail, domain.GambleMetadata{
 				GambleID: payload.GambleID,
 				Score:    p.Score,
 			})
 		}
 		if p.IsTieBreakLost {
-			_ = h.service.RecordUserEvent(ctx, p.UserID, domain.EventGambleTieBreakLost, domain.GambleMetadata{
+			_ = h.service.RecordUserEvent(ctx, p.UserID, domain.StatsEventGambleTieBreakLost, domain.GambleMetadata{
 				GambleID: payload.GambleID,
 				Score:    p.Score,
 			})
 		}
 		if p.IsNearMiss {
-			if err := h.service.RecordUserEvent(ctx, p.UserID, domain.EventGambleNearMiss, domain.GambleMetadata{
+			if err := h.service.RecordUserEvent(ctx, p.UserID, domain.StatsEventGambleNearMiss, domain.GambleMetadata{
 				GambleID:    payload.GambleID,
 				Score:       p.Score,
 				WinnerScore: payload.TotalValue,
@@ -187,24 +235,24 @@ func (h *EventHandler) HandleSearchPerformed(ctx context.Context, evt event.Even
 		XPAmount:     payload.XPAmount,
 	}
 
-	if err := h.service.RecordUserEvent(ctx, payload.UserID, domain.EventSearch, metadata); err != nil {
+	if err := h.service.RecordUserEvent(ctx, payload.UserID, domain.StatsEventSearch, metadata); err != nil {
 		log.Warn("Failed to record search stat", "error", err, "user_id", payload.UserID)
 	}
 
 	if payload.IsCritical {
-		if err := h.service.RecordUserEvent(ctx, payload.UserID, domain.EventSearchCriticalSuccess, metadata); err != nil {
+		if err := h.service.RecordUserEvent(ctx, payload.UserID, domain.StatsEventSearchCriticalSuccess, metadata); err != nil {
 			log.Warn("Failed to record search critical success stat", "error", err, "user_id", payload.UserID)
 		}
 	}
 
 	if payload.IsNearMiss {
-		if err := h.service.RecordUserEvent(ctx, payload.UserID, domain.EventSearchNearMiss, metadata); err != nil {
+		if err := h.service.RecordUserEvent(ctx, payload.UserID, domain.StatsEventSearchNearMiss, metadata); err != nil {
 			log.Warn("Failed to record search near miss stat", "error", err, "user_id", payload.UserID)
 		}
 	}
 
 	if payload.IsCriticalFail {
-		if err := h.service.RecordUserEvent(ctx, payload.UserID, domain.EventSearchCriticalFail, metadata); err != nil {
+		if err := h.service.RecordUserEvent(ctx, payload.UserID, domain.StatsEventSearchCriticalFail, metadata); err != nil {
 			log.Warn("Failed to record search critical fail stat", "error", err, "user_id", payload.UserID)
 		}
 	}
@@ -225,7 +273,7 @@ func (h *EventHandler) HandleJobLevelUp(ctx context.Context, evt event.Event) er
 		return nil
 	}
 
-	if err := h.service.RecordUserEvent(ctx, payload.UserID, domain.EventJobLevelUp, payload); err != nil {
+	if err := h.service.RecordUserEvent(ctx, payload.UserID, domain.EventTypeJobLevelUp, payload); err != nil {
 		log.Warn("Failed to record job level-up stat", "error", err, "user_id", payload.UserID)
 	}
 
@@ -245,7 +293,7 @@ func (h *EventHandler) HandleJobXPCritical(ctx context.Context, evt event.Event)
 		return nil
 	}
 
-	if err := h.service.RecordUserEvent(ctx, payload.UserID, domain.EventJobXPCritical, payload); err != nil {
+	if err := h.service.RecordUserEvent(ctx, payload.UserID, domain.EventTypeJobXPCritical, payload); err != nil {
 		log.Warn("Failed to record job XP critical stat", "error", err, "user_id", payload.UserID)
 	}
 

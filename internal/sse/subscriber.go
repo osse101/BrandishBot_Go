@@ -25,7 +25,7 @@ func NewSubscriber(hub *Hub, bus event.Bus) *Subscriber {
 // Subscribe registers handlers for all relevant event types
 func (s *Subscriber) Subscribe() {
 	// Subscribe to job level up events
-	s.bus.Subscribe(event.Type(domain.EventJobLevelUp), s.handleJobLevelUp)
+	s.bus.Subscribe(event.Type(domain.EventTypeJobLevelUp), s.handleJobLevelUp)
 
 	// Subscribe to progression cycle completed events
 	s.bus.Subscribe(event.ProgressionCycleCompleted, s.handleCycleCompleted)
@@ -61,7 +61,7 @@ func (s *Subscriber) Subscribe() {
 
 	slog.Info("SSE subscriber registered for event types",
 		"types", []string{
-			string(domain.EventJobLevelUp),
+			string(domain.EventTypeJobLevelUp),
 			string(event.ProgressionCycleCompleted),
 			string(event.ProgressionVotingStarted),
 			string(event.ProgressionTargetSet),

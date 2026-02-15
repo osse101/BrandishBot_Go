@@ -27,23 +27,6 @@ func (i *Item) IsCurrency() bool {
 	return false
 }
 
-// Item tag constants (from item_types / tags in items.json)
-const (
-	CompostableTag = "compostable"
-	NoUseTag       = "no-use"
-)
-
-// Content type constants (from "type" field in items.json)
-const (
-	ContentTypeWeapon    = "weapon"
-	ContentTypeExplosive = "explosive"
-	ContentTypeDefense   = "defense"
-	ContentTypeHealing   = "healing"
-	ContentTypeMaterial  = "material"
-	ContentTypeContainer = "container"
-	ContentTypeUtility   = "utility"
-	ContentTypeMagical   = "magical"
-)
 
 // HasTag checks if a tags slice contains the specified tag.
 func HasTag(tags []string, tag string) bool {
