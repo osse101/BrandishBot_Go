@@ -192,9 +192,26 @@ func runLinter() error {
 }
 
 func runUnitTests() error {
-	PrintInfo("Running unit tests...")
+	PrintInfo("Analyzing changed packages for unit tests...")
+
+	packages, err := getChangedPackages(true) // true = check staged changes
+	if err != nil {
+		PrintWarning("Failed to detect changed packages: %v. Running all tests.", err)
+		packages = []string{"./..."}
+	}
+
+	if len(packages) == 0 {
+		PrintInfo("No Go packages changed. Skipping unit tests.")
+		return nil
+	}
+
+	PrintInfo("Running unit tests on: %v", packages)
+
+	args := []string{"test", "-short"}
+	args = append(args, packages...)
+
 	//nolint:forbidigo
-	if err := runCommandVerbose("go", "test", "-short", "./..."); err != nil {
+	if err := runCommandVerbose("go", args...); err != nil {
 		return fmt.Errorf("unit tests failed")
 	}
 	return nil
