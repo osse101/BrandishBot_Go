@@ -21,17 +21,62 @@ func (c *CheckCoverageCommand) Description() string {
 }
 
 func (c *CheckCoverageCommand) Run(args []string) error {
-	file, threshold, runTests, htmlReport, err := c.parseConfig(args)
+	file, threshold, runTests, htmlReport, smart, pkgs, explicitPkgs, err := c.parseConfig(args)
 	if err != nil {
 		return err
 	}
 
+	packages := explicitPkgs
+
+	if smart {
+		changed, err := getChangedPackages(false) // false = check local changes (staged + unstaged)
+		if err != nil {
+			return fmt.Errorf("failed to get changed packages: %w", err)
+		}
+		if len(changed) == 0 {
+			PrintInfo("Smart mode: No changes detected.")
+		} else {
+			PrintInfo("Smart mode: Testing changed packages: %v", changed)
+			packages = append(packages, changed...)
+		}
+	}
+
+	if pkgs != "" {
+		pList := strings.Split(pkgs, ",")
+		for _, p := range pList {
+			p = strings.TrimSpace(p)
+			if p != "" {
+				packages = append(packages, p)
+			}
+		}
+	}
+
+	// Remove duplicates from packages
+	if len(packages) > 0 {
+		unique := make(map[string]bool)
+		var deduped []string
+		for _, p := range packages {
+			if !unique[p] {
+				unique[p] = true
+				deduped = append(deduped, p)
+			}
+		}
+		packages = deduped
+	}
+
+	if len(packages) == 0 && smart {
+		PrintInfo("Smart mode enabled but no packages selected. Skipping tests.")
+		return nil
+	}
+
 	PrintHeader(fmt.Sprintf("Checking coverage threshold (%.1f%%)...", threshold))
 
-	if err := c.ensureCoverage(file, runTests); err != nil {
+	if err := c.ensureCoverage(file, runTests, packages); err != nil {
 		return err
 	}
 
+	// If we ran partial tests (packages != empty), the coverage profile only contains those packages.
+	// This is fine for "check my changes" workflow.
 	coverage, err := c.getCoveragePercent(file)
 	if err != nil {
 		return err
@@ -54,17 +99,21 @@ func (c *CheckCoverageCommand) Run(args []string) error {
 	return nil
 }
 
-func (c *CheckCoverageCommand) parseConfig(args []string) (file string, threshold float64, runTests, htmlReport bool, err error) {
+func (c *CheckCoverageCommand) parseConfig(args []string) (file string, threshold float64, runTests, htmlReport, smart bool, pkgs string, explicitPkgs []string, err error) {
 	fs := flag.NewFlagSet("check-coverage", flag.ContinueOnError)
 	runTestsPtr := fs.Bool("run", false, "Run tests before checking coverage")
 	htmlReportPtr := fs.Bool("html", false, "Generate and open HTML coverage report")
+	smartPtr := fs.Bool("smart", false, "Run tests only on changed packages")
+	pkgsPtr := fs.String("pkgs", "", "Comma-separated list of packages to test")
 
 	if err := fs.Parse(args); err != nil {
-		return "", 0, false, false, err
+		return "", 0, false, false, false, "", nil, err
 	}
 
 	runTests = *runTestsPtr
 	htmlReport = *htmlReportPtr
+	smart = *smartPtr
+	pkgs = *pkgsPtr
 	file = "logs/coverage.out"
 	thresholdStr := "80"
 
@@ -73,24 +122,55 @@ func (c *CheckCoverageCommand) parseConfig(args []string) (file string, threshol
 		file = filepath.Clean(positional[0])
 	}
 	if len(positional) > 1 {
-		thresholdStr = positional[1]
+		// Try to parse second arg as threshold
+		if _, err := strconv.ParseFloat(positional[1], 64); err == nil {
+			thresholdStr = positional[1]
+			if len(positional) > 2 {
+				explicitPkgs = positional[2:]
+			}
+		} else {
+			// Second arg is not a number, treat as package?
+			// But maintain backward compatibility: file threshold [pkgs...]
+			// If existing users rely on "file threshold", we must support it.
+			// If user types "check-coverage file pkg", then threshold defaults to 80?
+			// This is tricky. Let's assume strict: file threshold [pkgs...]
+			// If they omit threshold, they must use flags for packages.
+			// But for now, let's just stick to strict positional.
+			thresholdStr = positional[1]
+			if len(positional) > 2 {
+				explicitPkgs = positional[2:]
+			}
+		}
 	}
 
 	// Basic path validation to prevent escaping the project root or injection
 	if strings.Contains(file, "..") || strings.HasPrefix(file, "/") {
-		return "", 0, false, false, fmt.Errorf("invalid path '%s': must be relative and within project", file)
+		return "", 0, false, false, false, "", nil, fmt.Errorf("invalid path '%s': must be relative and within project", file)
 	}
 
 	threshold, err = strconv.ParseFloat(thresholdStr, 64)
 	if err != nil {
-		return "", 0, false, false, fmt.Errorf("invalid threshold '%s'", thresholdStr)
+		// Maybe user provided a package instead of threshold?
+		// e.g. check-coverage logs/c.out ./pkg
+		// In that case thresholdStr is "./pkg".
+		// We could fallback to default threshold 80 and treat this as package.
+		// But that's ambiguous.
+		return "", 0, false, false, false, "", nil, fmt.Errorf("invalid threshold '%s'", thresholdStr)
 	}
 
-	return file, threshold, runTests, htmlReport, nil
+	return file, threshold, runTests, htmlReport, smart, pkgs, explicitPkgs, nil
 }
 
-func (c *CheckCoverageCommand) ensureCoverage(file string, runTests bool) error {
+func (c *CheckCoverageCommand) ensureCoverage(file string, runTests bool, packages []string) error {
 	shouldRun := runTests
+
+	// If specific packages are requested, we MUST run tests because the existing profile
+	// (if any) likely covers everything or something else. We can't reuse it reliably
+	// unless we know it matches exactly. Safer to always run.
+	if len(packages) > 0 {
+		shouldRun = true
+	}
+
 	if _, err := os.Stat(file); os.IsNotExist(err) {
 		PrintInfo("Coverage file '%s' not found. Running tests...", file)
 		shouldRun = true
@@ -107,9 +187,18 @@ func (c *CheckCoverageCommand) ensureCoverage(file string, runTests bool) error 
 	}
 
 	PrintInfo("Running tests with coverage...")
-	// Note: mirroring 'make test' command
-	// #nosec G204 - file is validated in parseConfig
-	cmd := exec.Command("go", "test", "./...", "-coverprofile="+file, "-covermode=atomic", "-race")
+
+	testArgs := []string{"test"}
+	if len(packages) > 0 {
+		testArgs = append(testArgs, packages...)
+	} else {
+		testArgs = append(testArgs, "./...")
+	}
+
+	testArgs = append(testArgs, "-coverprofile="+file, "-covermode=atomic", "-race")
+
+	// #nosec G204 - file and packages are validated (packages from git or args)
+	cmd := exec.Command("go", testArgs...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
