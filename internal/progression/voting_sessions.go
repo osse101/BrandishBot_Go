@@ -170,11 +170,7 @@ func (s *service) handleSingleOptionAutoSelect(ctx context.Context, progress *do
 	s.cachedProgressID = progress.ID
 	s.mu.Unlock()
 
-	if s.bus != nil {
-		if err := s.bus.Publish(ctx, event.NewProgressionTargetEvent(node.NodeKey, targetLevel, true, sessionID)); err != nil {
-			log.Error("Failed to publish progression target set event", "error", err)
-		}
-	}
+	s.publishTargetSetEvent(ctx, node, targetLevel, sessionID)
 
 	log.Info("Auto-selected target set", "nodeKey", node.NodeKey, "targetLevel", targetLevel, "sessionID", sessionID)
 
@@ -285,6 +281,8 @@ func (s *service) EndVoting(ctx context.Context) (*domain.ProgressionVotingOptio
 			s.cachedTargetCost = winner.NodeDetails.UnlockCost
 			s.cachedProgressID = progress.ID
 			s.mu.Unlock()
+
+			s.publishTargetSetEvent(ctx, winner.NodeDetails, winner.TargetLevel, session.ID)
 		}
 	}
 
@@ -615,6 +613,8 @@ func (s *service) setupNewTarget(ctx context.Context, progressID int, node *doma
 	s.cachedTargetCost = node.UnlockCost
 	s.cachedProgressID = progressID
 	s.mu.Unlock()
+
+	s.publishTargetSetEvent(ctx, node, level, sessionID)
 
 	return sessionID, nil
 }

@@ -28,10 +28,12 @@ The new "Auto-Select" feature (bypassing votes when only one node is available) 
 ## Status Update (2026-01-29)
 
 ### Audit Findings
+
 - **Graceful Shutdown**: Usage of `s.wg.Add(1)` and `defer s.wg.Done()` was verified in `handleSingleOptionAutoSelect`, `AddContribution`, and `CheckAndUnlockNode` in `internal/progression/voting_sessions.go`. All spawned goroutines appear to be correctly tracked.
 - **Integration Tests**: `service_integration_test.go` and `auto_select_test.go` exist in `internal/progression/`.
 
 **Next Steps**:
+
 - Final verification of all `go` routines across the entire module.
 - Confirmation that `auto_select_test.go` covers the specific transition scenarios mentioned (auto-select -> next cycle).
 
@@ -49,3 +51,13 @@ The new "Auto-Select" feature (bypassing votes when only one node is available) 
 
 - **Graceful Shutdown**: Re-verified `internal/progression/voting_sessions.go`. All `go func()` invocations (in `AddContribution`, `handleSingleOptionAutoSelect`, `CheckAndUnlockNode`) are wrapped with `s.wg.Add(1)` and `defer s.wg.Done()`. This component is definitively **Resolved**.
 - **Auto-Select**: Pending final automated verification for SSE consistency. Status remains **In Progress**.
+
+## Status Update (2026-02-15)
+
+- **Auto-Select SSE Consistency**: **Resolved**.
+  - Identified and fixed gaps in event publishing: `setupNewTarget` and `EndVoting` were not emitting `ProgressionTargetSet` events, which could leave SSE clients out of sync during transitions or after manual voting.
+  - Implemented `s.publishTargetSetEvent` helper and added it to both transition and voting completion paths in `internal/progression/voting_sessions.go`.
+  - Added a new integration test `internal/progression/sse_event_test.go` that verifies `ProgressionTargetSet` is emitted during:
+    - Initial voting session start (both auto-select and manual paths).
+    - Post-unlock transitions to new targets.
+- **Overall Issue**: **Resolved**. Both graceful shutdown and auto-select consistency have been verified with automated tests.
