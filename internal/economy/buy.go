@@ -8,7 +8,6 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
-	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
 func (s *service) BuyItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (int, error) {
@@ -16,7 +15,7 @@ func (s *service) BuyItem(ctx context.Context, platform, platformID, username, i
 	log.Info(LogMsgBuyItemCalled, "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity)
 
 	// 1. Validate request
-	if err := validateBuyRequest(quantity); err != nil {
+	if err := validateQuantity(quantity); err != nil {
 		return 0, err
 	}
 
@@ -108,89 +107,6 @@ func (s *service) GetBuyablePrices(ctx context.Context) ([]domain.Item, error) {
 	return filtered, nil
 }
 
-// validateBuyRequest validates the buy request parameters
-func validateBuyRequest(quantity int) error {
-	if quantity <= 0 {
-		return fmt.Errorf(ErrMsgInvalidQuantityFmt, quantity, domain.ErrInvalidInput)
-	}
-	if quantity > domain.MaxTransactionQuantity {
-		return fmt.Errorf(ErrMsgQuantityExceedsMaxFmt, quantity, domain.MaxTransactionQuantity, domain.ErrInvalidInput)
-	}
-	return nil
-}
-
-// getBuyEntities retrieves and validates user and item for a buy transaction
-func (s *service) getBuyEntities(ctx context.Context, platform, platformID, itemName string) (*domain.User, *domain.Item, error) {
-	user, err := s.repo.GetUserByPlatformID(ctx, platform, platformID)
-	if err != nil {
-		return nil, nil, fmt.Errorf(ErrMsgGetUserFailed, err)
-	}
-	if user == nil {
-		return nil, nil, domain.ErrUserNotFound
-	}
-
-	// Resolve public name to internal name
-	resolvedName, err := s.resolveItemName(ctx, itemName)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to resolve item %q: %w", itemName, err)
-	}
-
-	item, err := s.repo.GetItemByName(ctx, resolvedName)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get item %q: %w", resolvedName, err)
-	}
-	if item == nil {
-		return nil, nil, fmt.Errorf("item not found: %q: %w", resolvedName, domain.ErrItemNotFound)
-	}
-
-	return user, item, nil
-}
-
-func (s *service) checkBuyEligibility(ctx context.Context, item *domain.Item) error {
-	// Check if item is buyable
-	isBuyable, err := s.repo.IsItemBuyable(ctx, item.InternalName)
-	if err != nil {
-		return fmt.Errorf(ErrMsgCheckBuyableFailed, err)
-	}
-	if !isBuyable {
-		return fmt.Errorf(ErrMsgItemNotBuyableFmt, item.InternalName, domain.ErrNotBuyable)
-	}
-
-	// Check if item is unlocked (progression)
-	if s.progressionService != nil {
-		unlocked, err := s.progressionService.IsItemUnlocked(ctx, item.InternalName)
-		if err != nil {
-			return fmt.Errorf("failed to check unlock status: %w", err)
-		}
-		if !unlocked {
-			return domain.ErrItemLocked
-		}
-	}
-	return nil
-}
-
-func (s *service) getMoneyBalance(ctx context.Context, tx repository.EconomyTx, userID string) (int, int, error) {
-	moneyItem, err := s.repo.GetItemByName(ctx, domain.ItemMoney)
-	if err != nil {
-		return 0, 0, fmt.Errorf(ErrMsgGetMoneyItemFailed, err)
-	}
-	if moneyItem == nil {
-		return 0, 0, fmt.Errorf(ErrMsgItemNotFoundFmt, domain.ItemMoney, domain.ErrItemNotFound)
-	}
-
-	inventory, err := tx.GetInventory(ctx, userID)
-	if err != nil {
-		return 0, 0, fmt.Errorf(ErrMsgGetInventoryFailed, err)
-	}
-
-	moneySlotIndex, moneyBalance := utils.FindRandomSlot(inventory, moneyItem.ID, s.rnd)
-	if moneyBalance <= 0 {
-		return 0, 0, domain.ErrInsufficientFunds
-	}
-
-	return moneySlotIndex, moneyBalance, nil
-}
-
 func (s *service) calculatePurchaseDetails(ctx context.Context, item *domain.Item, requestedQuantity, moneyBalance int) (int, int) {
 	log := logger.FromContext(ctx)
 	itemCategory := getItemCategory(item)
@@ -209,29 +125,6 @@ func (s *service) calculatePurchaseDetails(ctx context.Context, item *domain.Ite
 	return actualQuantity, cost
 }
 
-// processBuyTransaction handles the inventory updates for buying an item
-func processBuyTransaction(inventory *domain.Inventory, item *domain.Item, moneySlotIndex, actualQuantity, cost int) {
-	// Deduct money
-	if inventory.Slots[moneySlotIndex].Quantity == cost {
-		inventory.Slots = append(inventory.Slots[:moneySlotIndex], inventory.Slots[moneySlotIndex+1:]...)
-	} else {
-		inventory.Slots[moneySlotIndex].Quantity -= cost
-	}
-
-	// Add purchased item
-	itemFound := false
-	for i, slot := range inventory.Slots {
-		if slot.ItemID == item.ID {
-			inventory.Slots[i].Quantity += actualQuantity
-			itemFound = true
-			break
-		}
-	}
-	if !itemFound {
-		inventory.Slots = append(inventory.Slots, domain.InventorySlot{ItemID: item.ID, Quantity: actualQuantity})
-	}
-}
-
 func (s *service) finalizePurchase(ctx context.Context, userID string, item *domain.Item, quantity, cost int) {
 	// Publish item.bought event (job handler awards Merchant XP, quest handler tracks progress)
 	if s.publisher != nil {
@@ -248,19 +141,4 @@ func (s *service) finalizePurchase(ctx context.Context, userID string, item *dom
 			},
 		})
 	}
-}
-
-// calculateAffordableQuantity determines how many items can be purchased with available money
-func calculateAffordableQuantity(desired, unitPrice, balance int) (quantity, cost int) {
-	if unitPrice == 0 {
-		return desired, 0
-	}
-	if balance < unitPrice {
-		return 0, 0
-	}
-	maxAffordable := balance / unitPrice
-	if desired <= maxAffordable {
-		return desired, desired * unitPrice
-	}
-	return maxAffordable, maxAffordable * unitPrice
 }

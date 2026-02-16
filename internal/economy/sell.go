@@ -16,7 +16,7 @@ func (s *service) SellItem(ctx context.Context, platform, platformID, username, 
 	log.Info(LogMsgSellItemCalled, "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity)
 
 	// Validate request
-	if err := validateBuyRequest(quantity); err != nil { // Reuse same validation
+	if err := validateQuantity(quantity); err != nil { // Reuse same validation
 		return 0, 0, err
 	}
 
@@ -80,73 +80,6 @@ func (s *service) SellItem(ctx context.Context, platform, platformID, username, 
 
 	log.Info(LogMsgItemSold, "username", username, "item", itemName, "quantity", actualSellQuantity, "moneyGained", moneyGained)
 	return moneyGained, actualSellQuantity, nil
-}
-
-// getSellEntities retrieves and validates all required entities for a sell transaction
-func (s *service) getSellEntities(ctx context.Context, platform, platformID, itemName string) (*domain.User, *domain.Item, *domain.Item, error) {
-	user, err := s.repo.GetUserByPlatformID(ctx, platform, platformID)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf(ErrMsgGetUserFailed, err)
-	}
-	if user == nil {
-		return nil, nil, nil, domain.ErrUserNotFound
-	}
-
-	// Resolve public name to internal name
-	resolvedName, err := s.resolveItemName(ctx, itemName)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
-	item, err := s.repo.GetItemByName(ctx, resolvedName)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf(ErrMsgGetItemFailed, err)
-	}
-	if item == nil {
-		return nil, nil, nil, fmt.Errorf(ErrMsgItemNotFoundFmt, resolvedName, domain.ErrItemNotFound)
-	}
-
-	moneyItem, err := s.repo.GetItemByName(ctx, domain.ItemMoney)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf(ErrMsgGetMoneyItemFailed, err)
-	}
-	if moneyItem == nil {
-		return nil, nil, nil, fmt.Errorf(ErrMsgItemNotFoundFmt, domain.ItemMoney, domain.ErrItemNotFound)
-	}
-
-	return user, item, moneyItem, nil
-}
-
-// processSellTransaction handles the inventory updates for selling an item
-func (s *service) processSellTransaction(ctx context.Context, inventory *domain.Inventory, item, moneyItem *domain.Item, itemSlotIndex, actualSellQuantity int) int {
-	sellPrice := s.calculateSellPriceWithModifier(ctx, item.BaseValue)
-	moneyGained := actualSellQuantity * sellPrice
-
-	// Remove sold items
-	if inventory.Slots[itemSlotIndex].Quantity <= actualSellQuantity {
-		inventory.Slots = append(inventory.Slots[:itemSlotIndex], inventory.Slots[itemSlotIndex+1:]...)
-	} else {
-		inventory.Slots[itemSlotIndex].Quantity -= actualSellQuantity
-	}
-
-	// Add money
-	moneyFound := false
-	for i, slot := range inventory.Slots {
-		if slot.ItemID == moneyItem.ID && slot.QualityLevel == domain.QualityCommon {
-			inventory.Slots[i].Quantity += moneyGained
-			moneyFound = true
-			break
-		}
-	}
-	if !moneyFound {
-		inventory.Slots = append(inventory.Slots, domain.InventorySlot{
-			ItemID:       moneyItem.ID,
-			Quantity:     moneyGained,
-			QualityLevel: domain.QualityCommon,
-		})
-	}
-
-	return moneyGained
 }
 
 func (s *service) GetSellablePrices(ctx context.Context) ([]domain.Item, error) {
