@@ -69,3 +69,5 @@ internal/user -> mocks -> internal/user (IMPORT CYCLE!)
 **Status Update 2026-01-29**: Confirmed benchmarks are still missing in `internal/crafting` and `internal/gamble`. This item remains open.
 
 **Status Update 2026-01-30**: Checked `internal/crafting/service_test.go` and `internal/gamble/service_test.go` and confirmed no benchmarks exist. This item remains open.
+
+**Status Update 2026-02-15**: Benchmarks are still missing in `internal/crafting` and `internal/gamble`.

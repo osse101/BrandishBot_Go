@@ -312,21 +312,25 @@ Payload: map[string]interface{}{
 }
 ```
 
-### ✅ DO: Validate Payload in Handlers
+### ✅ DO: Use Type-Safe Payload Decoding
+
+Use `event.DecodePayload[T]` to safely extract typed payloads instead of manual map assertions.
 
 ```go
+type MyEventPayload struct {
+    UserID    string `json:"user_id"`
+    Timestamp int64  `json:"timestamp"`
+}
+
 func (h *EventHandler) HandleEvent(ctx context.Context, e event.Event) error {
-    payload, ok := e.Payload.(map[string]interface{})
-    if !ok {
-        return fmt.Errorf("invalid payload type")
+    payload, err := event.DecodePayload[MyEventPayload](e.Payload)
+    if err != nil {
+        return fmt.Errorf("invalid payload: %w", err)
     }
     
-    userID, ok := payload["user_id"].(string)
-    if !ok || userID == "" {
-        return fmt.Errorf("missing or invalid user_id")
-    }
-    
-    // ... process event ...
+    // Use strongly-typed payload
+    log.Info("Processing", "user", payload.UserID)
+    return nil
 }
 ```
 
