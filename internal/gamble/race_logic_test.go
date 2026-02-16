@@ -36,9 +36,7 @@ func TestStartGamble_Concurrent_RaceCondition(t *testing.T) {
 	inv1 := &domain.Inventory{Slots: []domain.InventorySlot{{ItemID: 1, Quantity: 5}}}
 	inv2 := &domain.Inventory{Slots: []domain.InventorySlot{{ItemID: 1, Quantity: 5}}}
 
-	ts.repo.On("GetInventory", ctx, "user1").Return(inv1, nil).Maybe()
-	ts.repo.On("GetInventory", ctx, "user2").Return(inv2, nil).Maybe()
-
+	// Inventory retrieval moved inside transaction
 	ts.repo.On("BeginGambleTx", ctx).Return(tx, nil).Twice()
 
 	tx.On("GetInventory", ctx, "user1").Return(inv1, nil)
@@ -117,9 +115,10 @@ func TestJoinGamble_SameUserTwice_ShouldReject(t *testing.T) {
 
 	tx := new(MockTx)
 	inventory := &domain.Inventory{Slots: []domain.InventorySlot{{ItemID: 1, Quantity: 5}}}
-	ts.repo.On("GetInventory", ctx, "user1").Return(inventory, nil).Maybe()
+
 	ts.repo.On("BeginGambleTx", ctx).Return(tx, nil)
 	tx.On("GetInventory", ctx, "user1").Return(inventory, nil)
+
 	tx.On("UpdateInventory", ctx, "user1", mock.Anything).Return(nil)
 	tx.On("Rollback", ctx).Return(nil)
 
@@ -223,4 +222,46 @@ func TestConsumeItem_MultipleItemsRemoval(t *testing.T) {
 	_, err = consumeItem(inventory, 3, 2)
 	assert.NoError(t, err)
 	assert.Empty(t, inventory.Slots)
+}
+
+func TestStartGamble_RaceCondition_InventoryOverwrite(t *testing.T) {
+	// Demonstrates that StartGamble reads inventory INSIDE the transaction,
+	// preventing race conditions.
+
+	ts := setupService(nil, false)
+	ctx := context.Background()
+	user := &domain.User{ID: "user1"}
+	bets := []domain.LootboxBet{{ItemName: "lootbox_tier1", Quantity: 1}}
+
+	ts.repo.On("GetActiveGamble", ctx).Return(nil, nil)
+	ts.repo.On("GetUserByPlatformID", ctx, "twitch", "123").Return(user, nil)
+
+	lootboxItem := &domain.Item{ID: 1, InternalName: domain.ItemLootbox1}
+	ts.repo.On("GetItemByName", ctx, "lootbox_tier1").Return(lootboxItem, nil)
+	ts.repo.On("GetItemByID", ctx, 1).Return(lootboxItem, nil)
+
+	tx := new(MockTx)
+	inventory := &domain.Inventory{Slots: []domain.InventorySlot{{ItemID: 1, Quantity: 1}}}
+
+	ts.repo.On("BeginGambleTx", ctx).Return(tx, nil).Once()
+
+	// Expectation: GetInventory called on TX (FOR UPDATE)
+	tx.On("GetInventory", ctx, "user1").Return(inventory, nil).Once()
+
+	// Expectation: UpdateInventory called with modified inventory (0 quantity)
+	tx.On("UpdateInventory", ctx, "user1", mock.MatchedBy(func(inv domain.Inventory) bool {
+		return len(inv.Slots) == 0 // Item consumed
+	})).Return(nil)
+
+	tx.On("Commit", ctx).Return(nil)
+	tx.On("Rollback", ctx).Return(nil).Maybe()
+
+	ts.repo.On("CreateGamble", ctx, mock.Anything).Return(nil)
+	ts.repo.On("JoinGamble", ctx, mock.Anything).Return(nil)
+	ts.namingResolver.On("ResolvePublicName", "lootbox_tier1").Return("", false)
+	ts.eventBus.On("Publish", ctx, mock.Anything).Return(nil)
+	ts.resilientPub.On("PublishWithRetry", mock.Anything, mock.Anything).Maybe()
+
+	_, err := ts.svc.StartGamble(ctx, "twitch", "123", "user1", bets)
+	assert.NoError(t, err)
 }
