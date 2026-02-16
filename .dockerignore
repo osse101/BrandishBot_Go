@@ -43,6 +43,8 @@ docs/
 # Test files
 *_test.go
 testdata/
+mocks/
+tests/
 
 # Temporary files
 tmp/
@@ -55,3 +57,7 @@ client/
 # Artifacts (agent brain data)
 .gemini/
 .jules/
+
+# Other directories
+backups/
+benchmarks/
