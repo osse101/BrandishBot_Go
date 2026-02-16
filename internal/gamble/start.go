@@ -94,38 +94,12 @@ func (s *service) StartGamble(ctx context.Context, platform, platformID, usernam
 		return nil, err
 	}
 
-	inventory, err := s.repo.GetInventory(ctx, user.ID)
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", ErrContextFailedToGetInventory, err)
-	}
-
-	// Create a local copy of bets to avoid modifying the caller's slice and race conditions
-	gambleBets := make([]domain.LootboxBet, len(bets))
-	copy(gambleBets, bets)
-
-	// Consume bet items from inventory using resolved IDs
-	for i := range gambleBets {
-		itemID := resolvedItemIDs[i]
-		qualityLevel, err := consumeItem(inventory, itemID, gambleBets[i].Quantity)
-		if err != nil {
-			return nil, fmt.Errorf("%s (item %d): %w", ErrContextFailedToConsumeBet, itemID, err)
-		}
-		gambleBets[i].QualityLevel = qualityLevel
-	}
-
-	participant := &domain.Participant{
-		GambleID:    gamble.ID,
-		UserID:      user.ID,
-		LootboxBets: gambleBets,
-		Username:    username,
-	}
-
-	if err := s.executeGambleStartTx(ctx, user.ID, inventory, gamble, participant); err != nil {
+	if err := s.executeGambleStartTx(ctx, user.ID, username, bets, resolvedItemIDs, gamble); err != nil {
 		return nil, err
 	}
 
 	s.publishGambleStartedEvent(ctx, gamble)
-	s.publishGambleParticipatedEvent(ctx, gamble.ID.String(), user.ID, calculateTotalLootboxes(gambleBets), "start")
+	s.publishGambleParticipatedEvent(ctx, gamble.ID.String(), user.ID, calculateTotalLootboxes(bets), "start")
 
 	return gamble, nil
 }
@@ -194,12 +168,32 @@ func (s *service) createGambleRecord(initiatorID string) *domain.Gamble {
 	}
 }
 
-func (s *service) executeGambleStartTx(ctx context.Context, userID string, inventory *domain.Inventory, gamble *domain.Gamble, participant *domain.Participant) error {
+func (s *service) executeGambleStartTx(ctx context.Context, userID, username string, bets []domain.LootboxBet, resolvedItemIDs []int, gamble *domain.Gamble) error {
 	tx, err := s.repo.BeginGambleTx(ctx)
 	if err != nil {
 		return fmt.Errorf("%s: %w", ErrContextFailedToBeginTx, err)
 	}
 	defer repository.SafeRollback(ctx, tx)
+
+	// Get Inventory with lock
+	inventory, err := tx.GetInventory(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("%s: %w", ErrContextFailedToGetInventory, err)
+	}
+
+	// Create a local copy of bets to avoid modifying the caller's slice and race conditions
+	gambleBets := make([]domain.LootboxBet, len(bets))
+	copy(gambleBets, bets)
+
+	// Consume bet items from inventory using resolved IDs
+	for i := range gambleBets {
+		itemID := resolvedItemIDs[i]
+		qualityLevel, err := consumeItem(inventory, itemID, gambleBets[i].Quantity)
+		if err != nil {
+			return fmt.Errorf("%s (item %d): %w", ErrContextFailedToConsumeBet, itemID, err)
+		}
+		gambleBets[i].QualityLevel = qualityLevel
+	}
 
 	if err := tx.UpdateInventory(ctx, userID, *inventory); err != nil {
 		return fmt.Errorf("%s: %w", ErrContextFailedToUpdateInventory, err)
@@ -210,6 +204,13 @@ func (s *service) executeGambleStartTx(ctx context.Context, userID string, inven
 			return domain.ErrGambleAlreadyActive
 		}
 		return fmt.Errorf("%s: %w", ErrContextFailedToCreateGamble, err)
+	}
+
+	participant := &domain.Participant{
+		GambleID:    gamble.ID,
+		UserID:      userID,
+		LootboxBets: gambleBets,
+		Username:    username,
 	}
 
 	if err := s.repo.JoinGamble(ctx, participant); err != nil {

@@ -71,7 +71,6 @@ func TestStartGamble_Success(t *testing.T) {
 	tx := new(MockTx)
 
 	ts.repo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "123").Return(user, nil)
-	ts.repo.On("GetInventory", ctx, "user1").Return(inventory, nil)
 	ts.repo.On("GetActiveGamble", ctx).Return(nil, nil)
 
 	// Naming resolver
@@ -82,6 +81,7 @@ func TestStartGamble_Success(t *testing.T) {
 	ts.repo.On("GetItemByName", ctx, "lootbox_tier1").Return(lootboxItem, nil)
 
 	ts.repo.On("BeginGambleTx", ctx).Return(tx, nil)
+	tx.On("GetInventory", ctx, "user1").Return(inventory, nil)
 	tx.On("UpdateInventory", ctx, "user1", mock.Anything).Return(nil)
 	tx.On("Commit", ctx).Return(nil)
 	tx.On("Rollback", ctx).Return(nil).Maybe()
@@ -183,6 +183,8 @@ func TestStartGamble_InsufficientLootboxes(t *testing.T) {
 	user := &domain.User{ID: "user1"}
 	bets := []domain.LootboxBet{{ItemName: "lootbox_tier1", Quantity: 5}}
 	inventory := &domain.Inventory{Slots: []domain.InventorySlot{{ItemID: 1, Quantity: 2}}}
+	tx := new(MockTx)
+
 	ts.repo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "123").Return(user, nil)
 	ts.repo.On("GetActiveGamble", ctx).Return(nil, nil)
 
@@ -191,7 +193,10 @@ func TestStartGamble_InsufficientLootboxes(t *testing.T) {
 	// Item validation
 	lootboxItem := &domain.Item{ID: 1, InternalName: domain.ItemLootbox1}
 	ts.repo.On("GetItemByName", ctx, "lootbox_tier1").Return(lootboxItem, nil)
-	ts.repo.On("GetInventory", ctx, "user1").Return(inventory, nil)
+
+	ts.repo.On("BeginGambleTx", ctx).Return(tx, nil)
+	tx.On("GetInventory", ctx, "user1").Return(inventory, nil)
+	tx.On("Rollback", ctx).Return(nil).Maybe()
 
 	gamble, err := ts.svc.StartGamble(ctx, domain.PlatformTwitch, "123", "testuser", bets)
 
@@ -207,6 +212,8 @@ func TestStartGamble_LootboxNotInInventory(t *testing.T) {
 	user := &domain.User{ID: "user1"}
 	bets := []domain.LootboxBet{{ItemName: "lootbox_tier1", Quantity: 1}}
 	inventory := &domain.Inventory{Slots: []domain.InventorySlot{{ItemID: 1, Quantity: 5}}}
+	tx := new(MockTx)
+
 	ts.repo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "123").Return(user, nil)
 	ts.repo.On("GetActiveGamble", ctx).Return(nil, nil)
 
@@ -215,7 +222,10 @@ func TestStartGamble_LootboxNotInInventory(t *testing.T) {
 	// Item validation - testing with non-existent item ID
 	nonExistentItem := &domain.Item{ID: 99, InternalName: domain.ItemLootbox2}
 	ts.repo.On("GetItemByName", ctx, "lootbox_tier1").Return(nonExistentItem, nil)
-	ts.repo.On("GetInventory", ctx, "user1").Return(inventory, nil)
+
+	ts.repo.On("BeginGambleTx", ctx).Return(tx, nil)
+	tx.On("GetInventory", ctx, "user1").Return(inventory, nil)
+	tx.On("Rollback", ctx).Return(nil).Maybe()
 
 	gamble, err := ts.svc.StartGamble(ctx, domain.PlatformTwitch, "123", "testuser", bets)
 
@@ -885,7 +895,6 @@ func TestAsyncXPAward(t *testing.T) {
 	tx := new(MockTx)
 
 	ts.repo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "123").Return(user, nil)
-	ts.repo.On("GetInventory", ctx, "user1").Return(inventory, nil)
 	ts.repo.On("GetActiveGamble", ctx).Return(nil, nil)
 
 	ts.namingResolver.On("ResolvePublicName", "lootbox_tier1").Return("", false)
@@ -894,6 +903,7 @@ func TestAsyncXPAward(t *testing.T) {
 	ts.repo.On("GetItemByName", ctx, "lootbox_tier1").Return(lootboxItem, nil)
 
 	ts.repo.On("BeginGambleTx", ctx).Return(tx, nil)
+	tx.On("GetInventory", ctx, "user1").Return(inventory, nil)
 	tx.On("UpdateInventory", ctx, "user1", mock.Anything).Return(nil)
 	tx.On("Commit", ctx).Return(nil)
 	tx.On("Rollback", ctx).Return(nil).Maybe()
