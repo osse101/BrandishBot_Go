@@ -90,6 +90,9 @@ help:
 # Database connection string from environment
 DB_URL ?= postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=disable
 
+# Base reference for smart testing (defaults to origin/main)
+BASE_REF ?= origin/main
+
 # Migration commands
 migrate-up:
 	@echo "Running migrations..."
@@ -114,8 +117,11 @@ migrate-create:
 # Development commands
 test:
 	@echo "Running tests..."
-	@mkdir -p logs
-	@go test ./... -coverprofile=logs/coverage.out -covermode=atomic -race
+	@go run ./cmd/devtool check-coverage -run logs/coverage.out 0
+
+test-smart:
+	@echo "Running smart tests (changed packages vs $(BASE_REF))..."
+	@go run ./cmd/devtool check-coverage -smart -base $(BASE_REF) -exclude ./cmd/devtool -run logs/coverage.out 80
 
 unit:
 	@echo "Running unit tests (fast)..."

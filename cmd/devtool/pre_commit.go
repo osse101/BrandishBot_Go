@@ -194,7 +194,7 @@ func runLinter() error {
 func runUnitTests() error {
 	PrintInfo("Analyzing changed packages for unit tests...")
 
-	packages, err := getChangedPackages(true) // true = check staged changes
+	packages, err := getChangedPackages("", true) // true = check staged changes
 	if err != nil {
 		PrintWarning("Failed to detect changed packages: %v. Running all tests.", err)
 		packages = []string{"./..."}

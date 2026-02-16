@@ -9,9 +9,9 @@ import (
 
 // getChangedPackages returns a list of Go packages that have changed.
 // If stagedOnly is true, it checks staged changes (for pre-commit).
-// If stagedOnly is false, it checks local changes against HEAD.
+// If stagedOnly is false, it checks changes against baseRef (default "HEAD").
 // If go.mod or go.sum changed, returns ./... to test everything.
-func getChangedPackages(stagedOnly bool) ([]string, error) {
+func getChangedPackages(baseRef string, stagedOnly bool) ([]string, error) {
 	var out string
 	var err error
 
@@ -19,8 +19,11 @@ func getChangedPackages(stagedOnly bool) ([]string, error) {
 		//nolint:forbidigo
 		out, err = getCommandOutput("git", "diff", "--cached", "--name-only", "--diff-filter=ACMR")
 	} else {
+		if baseRef == "" {
+			baseRef = "HEAD"
+		}
 		//nolint:forbidigo
-		out, err = getCommandOutput("git", "diff", "HEAD", "--name-only", "--diff-filter=ACMR")
+		out, err = getCommandOutput("git", "diff", baseRef, "--name-only", "--diff-filter=ACMR")
 	}
 
 	if err != nil {
