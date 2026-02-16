@@ -1,16 +1,12 @@
 package economy
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/osse101/BrandishBot_Go/internal/config"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
-	"github.com/osse101/BrandishBot_Go/internal/logger"
-	"github.com/osse101/BrandishBot_Go/internal/progression"
 )
 
 // loadWeeklySales loads the weekly sales configuration from file
@@ -53,34 +49,4 @@ func (s *service) getCurrentWeeklySale() *domain.WeeklySale {
 	}
 
 	return nil
-}
-
-// applyWeeklySaleDiscount applies the current weekly sale discount to a buy price
-// Returns the discounted price. Requires feature_weekly_discount to be unlocked.
-func (s *service) applyWeeklySaleDiscount(ctx context.Context, basePrice int, itemCategory string) int {
-	// Check if weekly discount feature is unlocked
-	if s.progressionService != nil {
-		unlocked, err := s.progressionService.IsFeatureUnlocked(ctx, progression.FeatureWeeklyDiscount)
-		if err != nil {
-			logger.FromContext(ctx).Warn("Failed to check if weekly discount is unlocked", "error", err)
-			return basePrice
-		}
-		if !unlocked {
-			return basePrice
-		}
-	}
-
-	sale := s.getCurrentWeeklySale()
-	if sale == nil {
-		return basePrice
-	}
-
-	// Check if item category matches the sale
-	if sale.TargetCategory != nil && !strings.EqualFold(*sale.TargetCategory, itemCategory) {
-		return basePrice
-	}
-
-	// Apply discount
-	discount := float64(basePrice) * (sale.DiscountPercent / 100.0)
-	return basePrice - int(discount)
 }
