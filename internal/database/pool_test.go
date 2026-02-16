@@ -28,7 +28,11 @@ func TestMain(m *testing.M) {
 
 	var terminate func()
 
-	if !testing.Short() {
+	// Check if external DB connection string is provided
+	if connStr := os.Getenv("TEST_DB_CONN_STRING"); connStr != "" {
+		testDBConnString = connStr
+	} else if !testing.Short() {
+		// Only try to start container if no external DB provided AND not in short mode
 		ctx := context.Background()
 		var connStr string
 		connStr, terminate = setupContainer(ctx)

@@ -9,7 +9,10 @@ import (
 // InventoryLookupLinearScanThreshold defines when to switch from linear scan to map-based lookup.
 // Benchmarks show linear scan is faster for small M (items to add) even with large N (inventory size).
 // Map overhead ~30µs vs Linear ~2µs for M=5, N=1000
-const InventoryLookupLinearScanThreshold = 10
+// InventoryLookupLinearScanThreshold defines when to switch from linear scan to map-based lookup.
+// Benchmarks show linear scan is faster for small M (items to add) even with large N (inventory size).
+// Map overhead ~30µs vs Linear ~2µs for M=5, N=1000
+const InventoryLookupLinearScanThreshold = 50
 
 // FindSlot finds a slot with the given item ID in an inventory (ignores QualityLevel).
 // Use FindSlotWithQuality when QualityLevel matters for stacking.

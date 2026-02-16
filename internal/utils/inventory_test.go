@@ -435,9 +435,9 @@ func TestAddItemsToInventory(t *testing.T) {
 
 		slotMap := BuildSlotMap(inventory)
 
-		// Add 12 items to trigger map-based path (>= 10)
-		items := make([]domain.InventorySlot, 12)
-		for i := 0; i < 12; i++ {
+		// Add 60 items to trigger map-based path (>= 50)
+		items := make([]domain.InventorySlot, 60)
+		for i := 0; i < 60; i++ {
 			items[i] = domain.InventorySlot{ItemID: (i + 1) * 10, Quantity: i + 1, QualityLevel: domain.QualityCommon}
 		}
 
@@ -447,10 +447,10 @@ func TestAddItemsToInventory(t *testing.T) {
 		assert.Equal(t, 6, inventory.Slots[0].Quantity)  // 10: 5 + 1
 		assert.Equal(t, 12, inventory.Slots[1].Quantity) // 20: 10 + 2
 		// Rest should be added
-		assert.Equal(t, 12, len(inventory.Slots))
+		assert.Equal(t, 60, len(inventory.Slots))
 		// Verify map was updated with new items
 		assert.Equal(t, 2, slotMap[SlotKey{ItemID: 30, QualityLevel: domain.QualityCommon}])   // Third item added at index 2
-		assert.Equal(t, 11, slotMap[SlotKey{ItemID: 120, QualityLevel: domain.QualityCommon}]) // Last item added at index 11
+		assert.Equal(t, 59, slotMap[SlotKey{ItemID: 600, QualityLevel: domain.QualityCommon}]) // Last item added at index 59
 	})
 }
 
