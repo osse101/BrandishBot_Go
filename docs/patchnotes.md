@@ -1,16 +1,3 @@
-# Patch Notes (Week of Feb 15, 2026)
-
-## New Features
-*   **Search System Overhaul**: The `/search` command has been completely reworked!
-    *   **Diminishing Returns**: To balance the economy, searches are now limited to 6 highly effective searches per day (rolling 24h).
-    *   **Quality System**: Your daily activity now affects loot quality. Frequent searchers will see quality degradation, but streaks and job levels can boost it back up.
-    *   **Explorer Job**: High-level Explorers now find better loot!
-*   **Event System**: Improved backend event handling for smoother integrations.
-
-## System Updates
-*   **User Service Refactor**: Major under-the-hood improvements to the User Service for better performance and maintainability.
-*   **Documentation**: Added comprehensive guides for the Search system.
-
 # Patch Notes (Week of Feb 13, 2026)
 
 ## New Features

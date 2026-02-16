@@ -24,9 +24,9 @@ To prevent excessive farming while rewarding daily engagement, the system uses a
 
 - **Threshold**: **6 searches per day** (rolling 24-hour window).
 - **Effect**: After the 6th search in a day:
-    - **Success Rate**: Drops to **10%** (from 80%).
     - **XP Multiplier**: Drops to **10%** (from 100%).
     - **Message**: Appends `(Exhausted)` to the result.
+    - **Success Rate**: Remains **80%** (unchanged).
 
 ---
 
@@ -110,7 +110,6 @@ const (
     SearchSuccessRate                = 0.8
     SearchCriticalRate               = 0.05
     SearchDailyDiminishmentThreshold = 6
-    SearchDiminishedSuccessRate      = 0.1
     SearchCooldownDuration           = 30 * time.Minute
 )
 ```
