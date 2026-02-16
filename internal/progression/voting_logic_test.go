@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
@@ -37,6 +38,30 @@ func TestFindWinningOption_WithVotes(t *testing.T) {
 			expected: 102,
 		},
 		{
+			name: "tie broken by LastHighestVoteAt (nil vs non-nil)",
+			options: []domain.ProgressionVotingOption{
+				{ID: 1, NodeID: 101, VoteCount: 5, LastHighestVoteAt: nil},
+				{ID: 2, NodeID: 102, VoteCount: 5, LastHighestVoteAt: &now}, // wins (non-nil)
+			},
+			expected: 102,
+		},
+		{
+			name: "tie broken by LastHighestVoteAt (non-nil vs nil)",
+			options: []domain.ProgressionVotingOption{
+				{ID: 1, NodeID: 101, VoteCount: 5, LastHighestVoteAt: &now}, // wins (non-nil)
+				{ID: 2, NodeID: 102, VoteCount: 5, LastHighestVoteAt: nil},
+			},
+			expected: 101,
+		},
+		{
+			name: "tie with both LastHighestVoteAt nil",
+			options: []domain.ProgressionVotingOption{
+				{ID: 1, NodeID: 101, VoteCount: 5, LastHighestVoteAt: nil},
+				{ID: 2, NodeID: 102, VoteCount: 5, LastHighestVoteAt: nil},
+			},
+			expected: 101, // First one wins (implementation detail)
+		},
+		{
 			name: "all zero votes - random selection",
 			options: []domain.ProgressionVotingOption{
 				{ID: 1, NodeID: 101, VoteCount: 0},
@@ -58,7 +83,7 @@ func TestFindWinningOption_WithVotes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			winner := findWinningOption(tt.options)
-			assert.NotNil(t, winner, "winner should not be nil")
+			require.NotNil(t, winner, "winner should not be nil")
 
 			if tt.expected == -1 {
 				// For random selection, just verify it's one of the options
@@ -92,15 +117,16 @@ func TestFindWinningOption_ZeroVotesRandomness(t *testing.T) {
 	}
 
 	results := make(map[int]int)
-	iterations := 100
+	iterations := 1000
 
 	for i := 0; i < iterations; i++ {
 		winner := findWinningOption(options)
+		require.NotNil(t, winner, "winner should not be nil")
 		results[winner.NodeID]++
 	}
 
 	// Verify all options were selected at least once (probabilistic test)
-	// With 100 iterations and 4 options, each should appear ~25 times
+	// With 1000 iterations and 4 options, each should appear ~250 times.
 	// We'll just check that at least 2 different options were selected
 	assert.GreaterOrEqual(t, len(results), 2, "random selection should pick different options")
 }
@@ -114,39 +140,69 @@ func TestSelectRandomNodes(t *testing.T) {
 		{ID: 5, NodeKey: "node5"},
 	}
 
-	tests := []struct {
-		name          string
-		count         int
-		expectedCount int
-	}{
-		{
-			name:          "select 4 from 5",
-			count:         4,
-			expectedCount: 4,
-		},
-		{
-			name:          "select more than available",
-			count:         10,
-			expectedCount: 5,
-		},
-		{
-			name:          "select exact count",
-			count:         5,
-			expectedCount: 5,
-		},
-	}
+	t.Run("select 4 from 5", func(t *testing.T) {
+		selected := selectRandomNodes(nodes, 4)
+		assert.Equal(t, 4, len(selected), "unexpected selection count")
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			selected := selectRandomNodes(nodes, tt.count)
-			assert.Equal(t, tt.expectedCount, len(selected), "unexpected selection count")
+		// Verify no duplicates
+		seen := make(map[int]bool)
+		for _, node := range selected {
+			assert.False(t, seen[node.ID], "duplicate node selected")
+			seen[node.ID] = true
+		}
+	})
 
-			// Verify no duplicates
-			seen := make(map[int]bool)
-			for _, node := range selected {
-				assert.False(t, seen[node.ID], "duplicate node selected")
-				seen[node.ID] = true
-			}
-		})
-	}
+	t.Run("select more than available", func(t *testing.T) {
+		selected := selectRandomNodes(nodes, 10)
+		assert.Equal(t, 5, len(selected), "unexpected selection count")
+		assert.Equal(t, nodes, selected, "should return original slice if count >= len")
+		if len(nodes) > 0 {
+			assert.Same(t, &nodes[0], &selected[0], "should return original underlying array")
+		}
+	})
+
+	t.Run("select exact count", func(t *testing.T) {
+		selected := selectRandomNodes(nodes, 5)
+		assert.Equal(t, 5, len(selected), "unexpected selection count")
+		assert.Equal(t, nodes, selected, "should return original slice if count == len")
+		if len(nodes) > 0 {
+			assert.Same(t, &nodes[0], &selected[0], "should return original underlying array")
+		}
+	})
+
+	t.Run("select 0", func(t *testing.T) {
+		selected := selectRandomNodes(nodes, 0)
+		assert.Empty(t, selected, "should return empty slice")
+		assert.NotNil(t, selected, "should return empty slice, not nil")
+	})
+
+	t.Run("nil input", func(t *testing.T) {
+		selected := selectRandomNodes(nil, 5)
+		assert.Empty(t, selected, "should return empty/nil slice")
+	})
+
+	t.Run("preserves original slice order", func(t *testing.T) {
+		originalOrder := make([]int, len(nodes))
+		for i, n := range nodes {
+			originalOrder[i] = n.ID
+		}
+
+		_ = selectRandomNodes(nodes, 3)
+
+		for i, n := range nodes {
+			assert.Equal(t, originalOrder[i], n.ID, "original slice should not be modified")
+		}
+	})
+
+	t.Run("returns copy when count < len", func(t *testing.T) {
+		selected := selectRandomNodes(nodes, 3)
+		if len(nodes) > 0 && len(selected) > 0 {
+			assert.NotSame(t, &nodes[0], &selected[0], "should return a new underlying array")
+		}
+
+		// Verify modifying result slice doesn't modify original slice
+		originalFirstID := nodes[0].ID
+		selected[0] = &domain.ProgressionNode{ID: 999}
+		assert.Equal(t, originalFirstID, nodes[0].ID, "modifying result slice should not affect original slice")
+	})
 }
