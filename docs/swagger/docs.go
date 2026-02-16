@@ -3743,10 +3743,10 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "max": {
-                    "description": "For between assertions"
+                    "description": "Between assertions - Upper bound"
                 },
                 "min": {
-                    "description": "For between assertions"
+                    "description": "Between assertions - Lower bound"
                 },
                 "path": {
                     "description": "JSONPath-like path to the value to check",

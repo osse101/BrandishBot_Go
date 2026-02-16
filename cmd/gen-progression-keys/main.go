@@ -67,9 +67,7 @@ func generateKeysFile(tree ProgressionTree) string {
 	var sb strings.Builder
 	sb.WriteString(`package progression
 
-// Feature and item keys used throughout the progression system
-// This file is auto-generated from configs/progression_tree.json
-// Do NOT edit manually - run: make generate
+// Auto-generated progression keys (configs/progression_tree.json). DO NOT EDIT MANUALLY. Run: make generate.
 `)
 
 	sb.WriteString("\nconst (\n")

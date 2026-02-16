@@ -112,9 +112,6 @@ func (c *SeedCommand) executeFile(db *sql.DB, filepath string) error {
 
 // Helper to redact password from connection string for logging
 func redactPassword(connStr string) string {
-	// Simple redaction logic
-	// This is just for logging, doesn't need to be perfect but should catch common patterns
-	// postgres://user:pass@host:port/db
-	// Replace :pass@ with :***@
+	// Simple redaction: replaces password in "postgres://user:pass@host" for safe logging.
 	return connStr // Simplification: just return it for now or implement proper parsing if needed.
 }

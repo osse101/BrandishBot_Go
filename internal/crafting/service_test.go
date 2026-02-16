@@ -127,10 +127,7 @@ func TestDisassembleItem(t *testing.T) {
 		assert.NoError(t, err)
 		assert.True(t, result.IsPerfectSalvage)
 
-		// Logic: 1 item disassembled -> 1 source consumed.
-		// Recipe Output: 1 Lootbox0.
-		// Perfect Salvage: ceil(1 * 1.5) = 2.
-		// Total Output: 1 * 2 = 2.
+		// Logic: 1 item -> 1 output. Perfect salvage (x1.5) -> 2 outputs.
 		assert.Equal(t, 2, result.Outputs[domain.ItemLootbox0])
 
 		inv, _ := repo.GetInventory(ctx, "user-alice")
@@ -520,9 +517,7 @@ func TestUpgradeItem(t *testing.T) {
 		svc.rnd = func() float64 { return 1.0 } // Prevent masterwork
 		ctx := context.Background()
 
-		// Setup: Create a recipe requiring 2 materials: 2x lootbox0 + 1x lootbox1 -> lootbox2
-		// This consumes 3 items per craft.
-		// We will test mixing qualities to verify average calculation.
+		// Test recipe: 2x tier0 + 1x tier1 -> tier2. Verify quality averaging across mixed inputs.
 		repo.Lock()
 		repo.recipes[99] = &domain.Recipe{
 			ID:           99,
@@ -535,16 +530,7 @@ func TestUpgradeItem(t *testing.T) {
 		repo.Unlock()
 		repo.UnlockRecipe(ctx, "user-alice", 99)
 
-		// Scenario:
-		// We want to craft 1 item.
-		// Needs 2x lootbox0 and 1x lootbox1.
-		// We provide:
-		// - 2x lootbox0 of Quality COMMON (value 3)
-		// - 1x lootbox1 of Quality RARE (value 5)
-		// Total Value: (2*3) + (1*5) = 6 + 5 = 11
-		// Total Count: 3
-		// Average: (11 + 3/2) / 3 = 12 / 3 = 4 -> UNCOMMON
-		// Output should be UNCOMMON.
+		// 1x craft requires 2x common (3) + 1x rare (5). Average (11+1.5)/3 = 4 -> UNCOMMON.
 
 		repo.UpdateInventory(ctx, "user-alice", domain.Inventory{Slots: []domain.InventorySlot{
 			{ItemID: TestItemID1, Quantity: 2, QualityLevel: domain.QualityCommon},
@@ -1110,9 +1096,7 @@ func TestUpgradeItem_TransactionFailures(t *testing.T) {
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to commit transaction")
 
-		// Note: Our mock doesn't support true transaction isolation, so inventory changes
-		// persist even on commit failure. In a real database, the transaction would be rolled back.
-		// The important thing is that the service correctly returns the error.
+		// Mock doesn't support isolation; inventory changes persist on commit failure. Real DB would rollback.
 		repo.ResetErrorFlags()
 	})
 }
@@ -1248,9 +1232,7 @@ func TestDisassembleItem_TransactionFailures(t *testing.T) {
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to commit transaction")
 
-		// Note: Our mock doesn't support true transaction isolation, so inventory changes
-		// persist even on commit failure. In a real database, the transaction would be rolled back.
-		// The important thing is that the service correctly returns the error.
+		// Mock doesn't support isolation; inventory changes persist on commit failure. Real DB would rollback.
 		repo.ResetErrorFlags()
 	})
 }
@@ -1470,9 +1452,7 @@ func TestDisassembleItem_MultipleOutputs(t *testing.T) {
 		assert.True(t, result.IsPerfectSalvage)
 		assert.Equal(t, PerfectSalvageMultiplier, result.Multiplier)
 
-		// Verify perfect salvage multiplier applied to all outputs
-		// For lootbox0: base 2 * 1.5 = 3 (ceil)
-		// For lootbox1: base 1 * 1.5 = 2 (ceil)
+		// Perfect salvage: base * 1.5 (ceil) for lootbox0 (2->3) and lootbox1 (1->2).
 		assert.Equal(t, 3, result.Outputs[domain.ItemLootbox0], "perfect salvage should apply 1.5x multiplier to lootbox0")
 		assert.Equal(t, 2, result.Outputs[domain.ItemLootbox1], "perfect salvage should apply 1.5x multiplier to lootbox1")
 	})
@@ -1588,11 +1568,7 @@ func TestDisassembleItem_QualityInheritance(t *testing.T) {
 		svc.rnd = func() float64 { return 1.0 } // No perfect salvage
 		ctx := context.Background()
 
-		// Setup: Disassemble Lootbox1 -> Lootbox0
-		// We have 2 Lootbox1 items to disassemble (requires 1 per disassemble).
-		// Item 1: Quality Common (3)
-		// Item 2: Quality Rare (5)
-		// Average Quality = (3 + 5) / 2 = 4 (Uncommon)
+		// Avg quality: Common (3) + Rare (5) / 2 = 4 (Uncommon) for disassembled Lootbox1 items.
 		repo.UpdateInventory(ctx, "user-alice", domain.Inventory{Slots: []domain.InventorySlot{
 			{ItemID: TestItemID2, Quantity: 1, QualityLevel: domain.QualityCommon},
 			{ItemID: TestItemID2, Quantity: 1, QualityLevel: domain.QualityRare},

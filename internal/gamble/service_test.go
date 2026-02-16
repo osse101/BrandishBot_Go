@@ -662,10 +662,7 @@ func TestExecuteGamble_NearMiss(t *testing.T) {
 	ctx := context.Background()
 	gambleID := uuid.New()
 
-	// Setup 2 participants
-	// User1: Wins with 100
-	// User2: Loses with 95 (Within 5%, should trigger NearMiss)
-	// User3: Loses with 50 (Should NOT trigger NearMiss)
+	// Test case: User1 (100) wins; User2 (95) near miss; User3 (50) no near miss.
 
 	gamble := &domain.Gamble{
 		ID:    gambleID,
@@ -737,10 +734,7 @@ func TestExecuteGamble_CriticalFailure(t *testing.T) {
 	ctx := context.Background()
 	gambleID := uuid.New()
 
-	// Setup 3 participants
-	// User1: 100
-	// User2: 100
-	// User3: 10 (Avg = 70. Threshold = 14. 10 <= 14 => Critical Fail)
+	// Test case: User3 (10) should critical fail against avg (70) and threshold (14).
 
 	gamble := &domain.Gamble{
 		ID:    gambleID,
@@ -804,9 +798,7 @@ func TestExecuteGamble_CriticalFailure(t *testing.T) {
 }
 
 func TestExecuteGamble_TieBreak(t *testing.T) {
-	// Deterministic RNG: always pick index 1
-	// With users "userA" and "userB", sorted order is ["userA", "userB"].
-	// Index 1 is "userB".
+	// Deterministic tie-break: sorted ["userA", "userB"]; index 1 should be "userB".
 	mockRng := func(n int) int { return 1 }
 
 	ts := setupService(mockRng, false)

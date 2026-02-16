@@ -269,10 +269,7 @@ func TestHandler_Mine(t *testing.T) {
 	})
 
 	t.Run("Mine targets self if no active chatters", func(t *testing.T) {
-		// Using fresh service/repo for cleaner state
-		// ...
-		// (Previous test code was fine, but we'll leave it as is for now)
-		// For the loop tests, we'll create new subtests
+		// Verify fall-back to self-target when no other active users.
 	})
 
 	t.Run("Mine looping: Places multiple mines", func(t *testing.T) {

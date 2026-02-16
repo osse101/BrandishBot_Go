@@ -142,9 +142,7 @@ func TestGetDisplayName_ThemeSelection(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Mock active theme by temporarily setting it
-			// Note: This test shows the display name selection works
-			// The actual theme detection is tested separately
+			// Mock active theme: validates display name selection logic; theme detection tested elsewhere.
 			_ = r.GetDisplayName(tt.item, domain.QualityLevel(""))
 
 			// Since we can't control time in GetDisplayName,

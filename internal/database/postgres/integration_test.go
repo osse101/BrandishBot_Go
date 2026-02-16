@@ -196,9 +196,7 @@ func TestUserRepository_Integration(t *testing.T) {
 
 		// We can reuse the user from previous test or create new
 		user := &domain.User{Username: "tx_user"}
-		// Note: UpsertUser uses its own tx, so we can't use the tx interface for it directly
-		// unless we refactor UpsertUser to take a DB interface.
-		// But we can test GetInventory/UpdateInventory with the tx.
+		// Note: UpsertUser uses internal tx; testing transaction support via GetInventory/UpdateInventory instead.
 
 		// Create user outside tx first
 		if err := repo.UpsertUser(ctx, user); err != nil {

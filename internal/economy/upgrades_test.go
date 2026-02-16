@@ -197,9 +197,7 @@ func TestUpgradeEconomy1_IntegrationWithSellItem(t *testing.T) {
 	mockTx.On("Commit", ctx).Return(nil)
 	mockTx.On("Rollback", ctx).Return(nil)
 
-	// Level 3 upgrade: 1.15x multiplier
-	// Base sell price: 40, Modified: 40 * 1.15 = 46
-	// Selling 2 items: 2 * 46 = 92
+	// Level 3: 1.15x multiplier (40 -> 46). Selling 2 items yields 92.
 	mockProgression.On("GetModifiedValue", ctx, "economy_bonus", 40.0).
 		Return(46.0, nil, nil)
 
@@ -223,9 +221,7 @@ func TestUpgradeEconomy1_RoundingBehavior(t *testing.T) {
 	service := NewService(mockRepo, nil, nil, mockProgression)
 	ctx := context.Background()
 
-	// Item that produces fractional result: base value 15
-	// Base sell: 15 * 0.40 = 6
-	// Modified: 6 * 1.05 = 6.3 -> should round down to 6
+	// Test fractional rounding: 15 base -> 6 sell -> 6.3 modified -> 6 rounded.
 	allItems := []domain.Item{
 		{ID: 1, InternalName: "test_item", BaseValue: 15},
 	}
@@ -247,9 +243,7 @@ func TestUpgradeEconomy1_RoundingBehavior(t *testing.T) {
 	mockProgression.AssertExpectations(t)
 }
 
-// TestUpgradeEconomy1_BuyPriceNotAffected verifies buy prices are unaffected
-// Design decision: economy_bonus only affects SELL prices, not buy prices
-// This prevents the modifier from being too powerful (better buying AND selling)
+// Test: economy_bonus affects only SELL prices; BUY prices remain unaffected for balance.
 func TestUpgradeEconomy1_BuyPriceNotAffected(t *testing.T) {
 	// ARRANGE
 	mockRepo := &MockRepository{}

@@ -117,9 +117,7 @@ func extractUserID(r *http.Request) string {
 		return userID
 	}
 
-	// For POST requests, we'd need to parse the body
-	// But that would consume the body, so we rely on handlers to track engagement
-	// or use context to pass user_id
+	// POST requests: parsing body would consume it; handlers should track engagement or use context ID.
 
 	return EmptyUserID
 }

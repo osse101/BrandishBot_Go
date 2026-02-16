@@ -15,9 +15,7 @@ const (
 	// MaxVotingOptions is the maximum number of options shown in a voting session
 	MaxVotingOptions = 4
 
-	// MaxRolloverPoints is the maximum number of contribution points that can rollover
-	// to the next node after an unlock. This prevents a single massive contribution
-	// from clearing multiple nodes in the tree at once.
+	// MaxRolloverPoints: caps points transferred to next node to prevent rapid chain-unlocks from massive contributions.
 	MaxRolloverPoints = 200
 )
 

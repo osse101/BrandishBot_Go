@@ -46,10 +46,7 @@ func TestGetEngagementVelocity(t *testing.T) {
 		repo.dailyTotals = make(map[time.Time]int)
 		now := time.Now() // This is "today"
 
-		// 6 days ago (oldest): 10
-		// ...
-		// 0 days ago (newest): 70
-		// Chronologically: 10, 20, 30, 40, 50, 60, 70
+		// Trend: 10, 20, 30, 40, 50, 60, 70 (Chronologically)
 		for i := 0; i < 7; i++ {
 			// i=0 is today (70). i=6 is 6 days ago (10).
 			val := (7 - i) * 10

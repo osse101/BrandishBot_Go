@@ -375,7 +375,8 @@ func NewMemoryBus() *MemoryBus {
 	}
 }
 
-// Publish publishes an event to all subscribers
+// Publish publishes an event to all subscribers.
+// Note: Currently executes handlers synchronously. Future versions may use a worker pool.
 func (b *MemoryBus) Publish(ctx context.Context, event Event) error {
 	b.mu.RLock()
 	handlers, ok := b.handlers[event.Type]
@@ -385,9 +386,6 @@ func (b *MemoryBus) Publish(ctx context.Context, event Event) error {
 		return nil
 	}
 
-	// For now, we execute handlers synchronously.
-	// In the future, or with configuration, we could dispatch these to a worker pool
-	// or run them in goroutines.
 	var errs []error
 	for _, handler := range handlers {
 		if err := handler(ctx, event); err != nil {

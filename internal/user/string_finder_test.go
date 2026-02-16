@@ -10,10 +10,7 @@ import (
 )
 
 func TestStringFinder_FindMatches(t *testing.T) {
-	// Create a fresh StringFinder for testing
-	// Instead of relying on NewStringFinder and modifying private fields,
-	// we reconstruct it or use a helper if possible.
-	// Since we changed internal structure, we need to adapt the test setup.
+	// Test setup: reconstructs StringFinder manually to adapt to internal structure changes without using NewStringFinder.
 
 	// Create blank finder
 	sf := &StringFinder{

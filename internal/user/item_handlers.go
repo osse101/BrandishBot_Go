@@ -86,10 +86,7 @@ func (s *service) processLootboxDrops(ctx context.Context, user *domain.User, in
 
 	stats := s.aggregateDropsAndUpdateInventory(inventory, drops, &msgBuilder)
 
-	// User Request: "All lootbox open messages were too verbose and should be at the level I gave as example"
-	// Example: "Opened Junkbox and received: 1 Shiny credit" or " ... 5 Shiny credits"
-	// LevelUp Philosophy: "If a number goes up, the player should feel it."
-	// Removing explicit Value output as per user request to reduce verbosity
+	// Open messages are simplified per user request (e.g., "Opened Junkbox and received: 5 Shiny credits").
 
 	if stats.hasLegendary {
 		if s.statsService != nil && user != nil {

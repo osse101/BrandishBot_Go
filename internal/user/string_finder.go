@@ -75,9 +75,7 @@ func (sf *StringFinder) compile() {
 		escapedPatterns = append(escapedPatterns, regexp.QuoteMeta(p))
 	}
 
-	// (?i) case insensitive
-	// \b word boundaries
-	// (p1|p2|...) alternation
+	// Regex flags: (?i) case-insensitive, \b word boundaries, (...) alternation group.
 	regexStr := `(?i)\b(` + strings.Join(escapedPatterns, "|") + `)\b`
 	compiledRegex := regexp.MustCompile(regexStr)
 

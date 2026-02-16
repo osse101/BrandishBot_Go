@@ -13,9 +13,7 @@ func (s *service) ApplyShield(ctx context.Context, user *domain.User, quantity i
 	log := logger.FromContext(ctx)
 	log.Info("ApplyShield called", "userID", user.ID, "quantity", quantity, "is_mirror", isMirror)
 
-	// For now, shields are stored in user metadata or a simple map
-	// This is a placeholder implementation - full implementation would need persistent storage
-	// The shield check would be integrated into the weapon handler
+	// Placeholder: shields currently transient. Needs persistent storage and weapon handler integration.
 
 	// TODO: Implement persistent shield storage
 	// For now, just log and return success

@@ -846,9 +846,7 @@ func TestUseItem_Lootbox0(t *testing.T) {
 		t.Fatalf("UseItem failed: %v", err)
 	}
 
-	// Message format changed
-	// "Opened a junkbox and received: 5 Shiny credits"
-	// We check if it contains expected parts
+	// Verify message parts after format change (e.g., "Opened a junkbox and received: 5 Shiny credits").
 	if !strings.Contains(msg, "Opened") || !strings.Contains(msg, "junkbox") {
 		t.Errorf("Expected message to contain 'Opened' and 'junkbox', got '%s'", msg)
 	}

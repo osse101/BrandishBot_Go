@@ -55,9 +55,7 @@ var searchQualityLevels = []domain.QualityLevel{
 // calculateSearchQuality determines the quality level for search results based on a point system
 func (s *service) calculateSearchQuality(ctx context.Context, userID string, isCritical bool, params searchParams) domain.QualityLevel {
 	log := logger.FromContext(ctx)
-	// 1. Determine base index based on daily count (current count includes the one we just did)
-	// Bracket mapping: 1=uncommon, 2-5=common, 6-9=poor, 10-14=junk, 15+=cursed
-	// 1. Determine base index based on daily count
+	// 1. Determine base quality index by daily count (1: uncommon, 2-5: common, 6-9: poor, 10-14: junk, 15+: cursed).
 	baseIndex := s.calculateBaseQualityIndex(params.dailyCount)
 
 	// 2. Add points for bonuses

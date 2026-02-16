@@ -143,12 +143,7 @@ func (m *benchMockEventBus) Subscribe(topic event.Type, handler event.Handler) {
 // BenchmarkHandler_HandleMessage benchmarks the full HTTP handler
 func BenchmarkHandler_HandleMessage(b *testing.B) {
 	mockUserService := &benchMockUserService{}
-	mockProgressionService := mocks.NewMockProgressionService(b) // Keep this for now or replace if needed
-	// Actually handling progression service might be complex, let's see if we can use the testify one if we configure it correctly,
-	// or just stub it. Ideally we stub everything.
-	// For now, let's just stub the method we know is called if any.
-	// But wait, the handler likely doesn't call progression service directly in the hot path unless there's a match?
-
+	mockProgressionService := mocks.NewMockProgressionService(b)
 	mockEventBus := &benchMockEventBus{}
 
 	handler := HandleMessageHandler(mockUserService, mockProgressionService, mockEventBus)

@@ -276,10 +276,7 @@ func TestHarvest_Workflow(t *testing.T) {
 			}
 			sort.Strings(keys)
 
-			// Assign IDs based on index (1-based) to distinguish items
-			// But note: map iteration order is random, so we must sort keys first if we want deterministic IDs
-			// or just map name->ID explicitly in the test setup.
-			// Here we loop through sorted keys
+			// Assign unique IDs (1-based) to sorted keys for deterministic test item resolution.
 			for i, name := range keys {
 				mockItems = append(mockItems, domain.Item{InternalName: name, ID: i + 1, PublicName: name})
 			}

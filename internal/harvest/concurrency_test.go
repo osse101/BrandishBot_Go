@@ -124,9 +124,7 @@ func TestHarvest_GracefulShutdown(t *testing.T) {
 
 	assert.NoError(t, err)
 
-	// Should take at least the publish delay (minus minimal overhead)
-	// We use 50ms as a safe lower bound for 100ms delay to account for potential scheduling jitter,
-	// though usually it should be close to 100ms.
+	// Verify Shutdown waits for async tasks. Uses 50ms lower bound for 100ms delay to account for jitter.
 	assert.GreaterOrEqual(t, elapsed.Milliseconds(), int64(50), "Shutdown should wait for async XP award")
 
 	// Verify bus was called

@@ -54,9 +54,7 @@ func checkHostile(inputs ...string) error {
 			return fmt.Errorf("hostile input detected: null byte")
 		}
 
-		// Shell redirection, pipes, and command substitution patterns.
-		// These are blocked because even if exec.Command is generally safe,
-		// these arguments might eventually be passed to a shell-executing process.
+		// Block shell redirection and pipes to prevent potential downstream shell injection.
 		dangerousPats := []string{"|", "`", "$(", "&&", "||", ">", "<"}
 		for _, p := range dangerousPats {
 			if strings.Contains(s, p) {

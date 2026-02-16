@@ -60,9 +60,7 @@ func handleRecipeAutocomplete(s *discordgo.Session, i *discordgo.InteractionCrea
 	recipes, err := client.GetUnlockedRecipes(domain.PlatformDiscord, user.ID, user.Username)
 	if err != nil {
 		slog.Error("Failed to get recipes for autocomplete", "error", err)
-		// Fallback to all recipes if getting unlocked fails? Or just return error choice
-		// Let's try to get all recipes as fallback if unlocked fails?
-		// No, usually if backend fails we probably can't get all either.
+		// Failed to get recipes; choosing not to fallback to all recipes as backend is likely completely down.
 	}
 
 	var choices []*discordgo.ApplicationCommandOptionChoice

@@ -82,13 +82,9 @@ func (h *SubscriptionHandler) HandleGetUserSubscription(w http.ResponseWriter, r
 
 	log := logger.FromContext(r.Context())
 
-	// Note: This endpoint expects platform_id, but our service uses userID
-	// We'll need to lookup the user first via userRepo in the service
-	// For now, we'll assume the calling code provides the internal userID
+	// Note: expects platform_id; needs user ID lookup via repository in future implementation.
 
-	// This is a simplified implementation - in production, you'd want to:
-	// 1. Add a method to subscription service that takes platform+platformID
-	// 2. Or add userRepo to this handler to lookup userID first
+	// Simplified: production needs platform ID lookup or service method taking platform/ID.
 
 	log.Warn("GetUserSubscription endpoint needs platform_id -> userID lookup",
 		"platform", platform,

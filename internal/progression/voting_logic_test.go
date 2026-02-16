@@ -125,9 +125,7 @@ func TestFindWinningOption_ZeroVotesRandomness(t *testing.T) {
 		results[winner.NodeID]++
 	}
 
-	// Verify all options were selected at least once (probabilistic test)
-	// With 1000 iterations and 4 options, each should appear ~250 times.
-	// We'll just check that at least 2 different options were selected
+	// Probabilistic check: verify at least 2 different options selected across 1000 iterations.
 	assert.GreaterOrEqual(t, len(results), 2, "random selection should pick different options")
 }
 

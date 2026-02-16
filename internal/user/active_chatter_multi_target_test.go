@@ -139,9 +139,7 @@ func TestActiveChatterTracker_GetRandomTargets_Randomness(t *testing.T) {
 		}
 	}
 
-	// With 100 iterations selecting 5 from 20 users, we should see most users
-	// Each user has 5/20 = 25% chance per iteration, so expected ~25 times
-	// We should see at least 10 different users (conservative check)
+	// Probabilistic check: verify at least 10 different users selected over 100 iterations.
 	if len(usersSeen) < 10 {
 		t.Errorf("Expected to see at least 10 different users over %d iterations, saw %d", iterations, len(usersSeen))
 	}

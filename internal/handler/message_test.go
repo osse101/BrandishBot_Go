@@ -122,10 +122,6 @@ func TestHandleMessageHandler(t *testing.T) {
 			req := httptest.NewRequest(tt.method, "/message/handle", bytes.NewReader(reqBody))
 			rec := httptest.NewRecorder()
 
-			// Add basic logger to context to prevent nil pointer if handler uses it
-			// (Assuming logger.FromContext handles nil gracefully or we might need to inject one)
-			// In this codebase, it seems logger.FromContext retrieves from context or returns default.
-
 			handler(rec, req)
 
 			assert.Equal(t, tt.expectedStatus, rec.Code)

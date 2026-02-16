@@ -249,9 +249,7 @@ func (c *CheckCoverageCommand) parseConfig(args []string) (file string, threshol
 func (c *CheckCoverageCommand) ensureCoverage(file string, runTests bool, packages []string, verbose bool) error {
 	shouldRun := runTests
 
-	// If specific packages are requested, we MUST run tests because the existing profile
-	// (if any) likely covers everything or something else. We can't reuse it reliably
-	// unless we know it matches exactly. Safer to always run.
+	// Test requirements: specific package requests force a fresh test run to ensure accurate coverage profiling.
 	if len(packages) > 0 {
 		shouldRun = true
 	}

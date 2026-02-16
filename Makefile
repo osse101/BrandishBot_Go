@@ -145,6 +145,7 @@ test-coverage-check:
 lint:
 	@echo "Running linters..."
 	@$(LINT) run ./...
+	@go run ./cmd/devtool check-comments
 
 lint-fix:
 	@echo "Running linters with auto-fix..."

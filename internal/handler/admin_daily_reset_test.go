@@ -109,8 +109,8 @@ func TestHandleGetResetStatus(t *testing.T) {
 			},
 			expectedStatus: http.StatusOK,
 			verifyBody: func(t *testing.T, body map[string]interface{}) {
-				// Check that fields exist. Exact time parsing might be tricky due to float64 vs string depending on how it's marshaled,
-				// but usually time.Time marshals to RFC3339 string.
+				// Check that fields exist. Exact time parsing might be tricky due to float64 vs string
+				// depending on how it's marshaled, but usually time.Time marshals to RFC3339 string.
 				assert.NotEmpty(t, body["last_reset_time"])
 				assert.NotEmpty(t, body["next_reset_time"])
 				assert.Equal(t, float64(5), body["records_affected"])

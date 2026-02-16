@@ -12,8 +12,7 @@ import (
 )
 
 // MockRepository implements Repository for testing
-//
-// IMPORTANT: This mock is NOT thread-safe by design. Per docs/architecture/journal.md,
+// Summary: This mock is NOT thread-safe by design. Per docs/architecture/journal.md,
 // application-level locks (mutexes) are an anti-pattern that don't work in multi-instance
 // deployments. Real thread-safety is provided by database transactions with row-level locking.
 //
@@ -1017,7 +1016,7 @@ func setupTestTree(repo *MockRepository) {
 		NodeType:    "upgrade",
 		DisplayName: "Cooldown Reduction",
 		Description: "Reduce cooldowns",
-		MaxLevel:    5, // 5 levels
+		MaxLevel:    5,
 		UnlockCost:  1500,
 		SortOrder:   40,
 		CreatedAt:   time.Now(),
@@ -1025,8 +1024,6 @@ func setupTestTree(repo *MockRepository) {
 	repo.nodes[cooldownID] = cooldown
 	repo.nodesByKey["upgrade_cooldown_reduction"] = cooldown
 
-	// Setup prerequisite relationships (v2.0 junction table simulation)
-	// These mirror the old parent-child relationships
 	repo.prerequisites[moneyID] = []int{rootID}           // money requires root
 	repo.prerequisites[economyID] = []int{moneyID}        // economy requires money
 	repo.prerequisites[gambleID] = []int{economyID}       // gamble requires economy

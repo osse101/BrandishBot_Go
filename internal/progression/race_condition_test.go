@@ -110,9 +110,7 @@ func testConcurrentAddContribution(ctx context.Context, t *testing.T, svc Servic
 func testConcurrentVoting(ctx context.Context, t *testing.T, svc Service, repo Repository, pool *pgxpool.Pool) {
 	cleanupProgressionState(ctx, t, pool)
 
-	// This test validates that concurrent voting doesn't lose votes or corrupt state
-	// We test the voting option increment logic, not the full VoteForUnlock flow
-	// (which requires user creation)
+	// Test concurrent voting: validate no lost votes or state corruption. Focuses on IncrementOptionVote logic.
 
 	// Start a voting session
 	if err := svc.StartVotingSession(ctx, nil); err != nil {

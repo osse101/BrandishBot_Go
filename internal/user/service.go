@@ -50,12 +50,7 @@ type service struct {
 	devMode         bool        // When true, bypasses cooldowns
 	userCache       *userCache  // In-memory cache for user lookups
 
-	// Item cache: in-memory cache for item metadata (name, description, value, etc.)
-	// Purpose: Reduce database queries for frequently accessed item data
-	// Thread-safety: Protected by itemCacheMu (RWMutex)
-	// Invalidation: Cache is populated on-demand and persists for server lifetime
-	//               Item metadata is assumed immutable - if items are modified in DB,
-	//               server restart is required to refresh cache
+	// Item cache: in-memory item metadata to reduce DB queries; assumed immutable (requires restart to refresh).
 	itemCacheByName map[string]domain.Item // Primary cache by internal name
 	itemIDToName    map[int]string         // Index for ID -> name lookups
 	itemCacheMu     sync.RWMutex           // Protects both maps

@@ -23,9 +23,7 @@ func (c *PreCommitCommand) Description() string {
 func (c *PreCommitCommand) Run(args []string) error {
 	PrintHeader("Running pre-commit checks...")
 
-	// 1. Migration Protections
-	// Run this before checking stagedFiles count because deletions/renames
-	// might not be in the ACM filter but still need protection.
+	// 1. Migration Protections (capture deletes/renames before ACM filter check)
 	if err := checkMigrationProtections(); err != nil {
 		return err
 	}

@@ -47,9 +47,7 @@ func (p *Pool) worker() {
 			// In a real app, we might want to pass a context with timeout
 			ctx := context.Background()
 			if err := job.Process(ctx); err != nil {
-				// Log error but don't crash worker
-				// We need a way to log here. For now, we'll assume a global logger or just print
-				// Ideally, inject logger into Pool
+				// Log job error but continue worker loop; ideally inject logger into Pool.
 				logger.FromContext(ctx).Error(LogMsgWorkerJobFailed, "error", err)
 			}
 		case <-p.quit:

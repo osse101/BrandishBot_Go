@@ -255,9 +255,7 @@ func TestAwardXP_GuaranteedCriticalSuccess(t *testing.T) {
 
 	// No level-up expected (200 total XP is still level 1 with new curve)
 
-	// Act
-	// baseAmount = 100
-	// EpiphanyMultiplier is 2.0
+	// Test case: baseAmount=100 with EpiphanyMultiplier=2.0 (crit success).
 	result, err := svc.AwardXP(ctx, "user_crit", "warrior", 100, "test", domain.JobXPMetadata{})
 
 	// Assert

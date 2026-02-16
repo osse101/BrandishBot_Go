@@ -285,9 +285,7 @@ func (s *service) AddItems(ctx context.Context, platform, platformID, username s
 		s.itemCacheMu.Unlock()
 	}
 
-	// Convert items to InventorySlots for the helper
-	// Also verifies that all items were found
-	// Items default to COMMON quality level
+	// Build slots list: converts item names to IDs and sets default COMMON quality levels.
 	slotsToAdd := make([]domain.InventorySlot, 0, len(items))
 	for itemName, quantity := range items {
 		itemID, ok := itemIDMap[itemName]

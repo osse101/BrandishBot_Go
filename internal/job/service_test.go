@@ -563,10 +563,7 @@ func TestAwardXP_MaxLevel(t *testing.T) {
 	jobKey := JobKeyBlacksmith
 	jobID := 1
 
-	// DefaultMaxLevel is 10.
-	// XP for Level 11 is roughly: 100 * sum(i^1.5 for i=1..11).
-	// Let's just set CurrentXP to a very high number that definitely exceeds Level 10 requirement.
-	// We verify that despite having enough XP for level >10, the Level field is clamped.
+	// Test level clamping: with CurrentXP exceeding level 10 requirements, verified level remains at DefaultMaxLevel (10).
 	startXP := int64(50000)
 	awardAmount := 10 // Small amount to avoid daily cap
 

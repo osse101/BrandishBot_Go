@@ -67,9 +67,7 @@ func (w *DailyResetWorker) scheduleNext() {
 		default:
 		}
 
-		// Jitter protection: if the timer triggered early (jitter > 10s),
-		// simply reschedule for the remaining time.
-		// If duration is > 23h, it means we are actually on time or slightly LATE.
+		// Jitter protection
 		rem := timeUntilNextReset()
 		if rem > 10*time.Second && rem < 23*time.Hour {
 			w.scheduleNext()

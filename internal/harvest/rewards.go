@@ -188,7 +188,8 @@ func getRewardTiers() []domain.HarvestReward {
 				itemLootbox1: true,
 			},
 		},
-		// Tier 10: 168 hours (1 week) - +1 lootbox2, +20 money (total: 97 money, 8 stick, 3 lootbox0, 2 lootbox1, 1 lootbox2 if unlocked)
+		// Tier 10: 168 hours (1 week) - +1 lootbox2, +20 money
+		// (total: 97 money, 8 stick, 3 lootbox0, 2 lootbox1, 1 lootbox2 if unlocked)
 		{
 			MaxHours: 168.0,
 			Items: map[string]int{

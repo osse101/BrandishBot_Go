@@ -278,13 +278,10 @@ func TestForceInstantUnlock_Reliability(t *testing.T) {
 	// Unlock Node success
 	mockRepo.On("UnlockNode", mock.Anything, 100, 1, "instant_override", 0).Return(nil)
 
-	// Complete Unlock FAILURE - This is what we want to test being handled
-	// Return int 0 and error
+	// Test resilience: mock CompleteUnlock to return a critical DB error and verify execution continues.
 	mockRepo.On("CompleteUnlock", mock.Anything, 5, 0).Return(0, errors.New("critical db fail"))
 
-	// Start Voting Session (Async)
-	// Expect GetAllNodes call from StartVotingSession -> GetAvailableUnlocks
-	// Return empty list so it stops there elegantly
+	// Async Voting Session: returns empty node list from GetAllNodes to stop execution elegantly.
 	mockRepo.On("GetAllNodes", mock.Anything).Return([]*domain.ProgressionNode{}, nil)
 
 	// Get Unlock (final return)

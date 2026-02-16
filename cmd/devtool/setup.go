@@ -33,10 +33,7 @@ func (c *SetupCommand) Run(args []string) error {
 			return fmt.Errorf("failed to create .env: %w", err)
 		}
 		PrintSuccess(".env created")
-		// Reload .env into current process
-		// (Main already loaded it, but it didn't exist then. We might need to reload if we want to use the vars immediately)
-		// but typically we'd need to restart or use godotenv.Load() again.
-		// Since we are in the same process, we can try to rely on defaults or just warn the user.
+		// Note: .env created after initial load; subsequent steps may need reload.
 		PrintInfo("Note: .env created. You might need to re-run if env vars are missing.")
 	} else {
 		PrintSuccess(".env already exists")

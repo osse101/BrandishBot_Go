@@ -32,6 +32,7 @@ func main() {
 	registry.Register(&WaitForDBCommand{})
 	registry.Register(&EntrypointCommand{})
 	registry.Register(&SeedCommand{})
+	registry.Register(&CheckCommentsCommand{})
 
 	if len(os.Args) < 2 {
 		registry.PrintHelp()
@@ -53,9 +54,7 @@ func main() {
 
 	args := os.Args[2:]
 	if err := cmd.Run(args); err != nil {
-		// Ensure error is printed if the command failed
-		// Some commands print their own errors using UI helpers, but we print here to be safe
-		// and ensure the user knows why it exited with 1.
+		// Fallback error printing if the command didn't handle it.
 		fmt.Printf("Error: %v\n", err)
 		os.Exit(1)
 	}

@@ -173,9 +173,7 @@ func (s *service) ReduceTimeoutPlatform(ctx context.Context, platform, username 
 // Note: This method REPLACES the existing timeout (does not accumulate).
 // For accumulating timeouts, use AddTimeout.
 func (s *service) TimeoutUser(ctx context.Context, username string, duration time.Duration, reason string) error {
-	// Legacy behavior: use AddTimeout with twitch platform
-	// Note: The original TimeoutUser replaced timeouts, but we're now using accumulating AddTimeout
-	// for consistency. If true replacement behavior is needed, we'd need to clear first.
+	// Legacy support: uses AddTimeout (twitch); note that it accumulates rather than replaces.
 	return s.AddTimeout(ctx, domain.PlatformTwitch, username, duration, reason)
 }
 

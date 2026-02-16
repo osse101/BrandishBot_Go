@@ -1013,10 +1013,7 @@ func TestSellItem_NamingResolution(t *testing.T) {
 func TestBuyItem_WeeklySale(t *testing.T) {
 	t.Parallel()
 
-	// Define fixed time for test
-	// Week 1 of 2024 is Jan 1 - Jan 7.
-	// ISOWeek returns year, week.
-	// Let's use a fixed time.
+	// Fixed time for test: Jan 3 2024 (ISO Week 1).
 	fixedTime := time.Date(2024, 1, 3, 12, 0, 0, 0, time.UTC) // Wed, Jan 3 2024. ISO Week 1.
 	_, weekNum := fixedTime.ISOWeek()
 	weekOffset := (weekNum - 1) % 4
@@ -1109,10 +1106,7 @@ func TestBuyItem_WeeklySale(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, 1, qty)
 
-			// Verify cost by checking inventory update (since BuyItem doesn't return cost)
-			// We can inspect the calls to UpdateInventory or check the calculation logic implicitly by ensuring success
-			// But to be sure about the COST, we should inspect the inventory passed to UpdateInventory
-			// However, since we are mocking, we can't easily see the resulting inventory state without capturing arguments.
+			// Verify cost by inspecting inventory update results in mock call arguments.
 
 			// Let's capture the argument to UpdateInventory
 			// Calls: 0=GetInventory (check funds), 1=GetInventory (process), 2=UpdateInventory
