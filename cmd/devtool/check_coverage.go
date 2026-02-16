@@ -21,24 +21,24 @@ func (c *CheckCoverageCommand) Description() string {
 }
 
 func (c *CheckCoverageCommand) Run(args []string) error {
-	file, threshold, runTests, htmlReport, smart, pkgs, explicitPkgs, err := c.parseConfig(args)
+	file, threshold, runTests, htmlReport, smart, pkgs, explicitPkgs, baseRef, verbose, exclude, err := c.parseConfig(args)
 	if err != nil {
 		return err
 	}
 
-	packages, err := c.resolvePackages(smart, pkgs, explicitPkgs)
+	packages, err := c.resolvePackages(smart, pkgs, explicitPkgs, baseRef, exclude)
 	if err != nil {
 		return err
 	}
 
 	if len(packages) == 0 && smart {
-		PrintInfo("Smart mode enabled but no packages selected. Skipping tests.")
+		PrintInfo("Smart mode enabled but no packages selected (or all excluded). Skipping tests.")
 		return nil
 	}
 
 	PrintHeader(fmt.Sprintf("Checking coverage threshold (%.1f%%)...", threshold))
 
-	if err := c.ensureCoverage(file, runTests, packages); err != nil {
+	if err := c.ensureCoverage(file, runTests, packages, verbose); err != nil {
 		return err
 	}
 
@@ -65,11 +65,12 @@ func (c *CheckCoverageCommand) Run(args []string) error {
 	PrintSuccess("Coverage meets threshold.")
 	return nil
 }
-func (c *CheckCoverageCommand) resolvePackages(smart bool, pkgs string, explicitPkgs []string) ([]string, error) {
+
+func (c *CheckCoverageCommand) resolvePackages(smart bool, pkgs string, explicitPkgs []string, baseRef string, exclude string) ([]string, error) {
 	packages := explicitPkgs
 
 	if smart {
-		changed, err := getChangedPackages(false) // false = check local changes (staged + unstaged)
+		changed, err := getChangedPackages(baseRef, false) // false = check local changes (staged + unstaged)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get changed packages: %w", err)
 		}
@@ -104,24 +105,53 @@ func (c *CheckCoverageCommand) resolvePackages(smart bool, pkgs string, explicit
 		packages = deduped
 	}
 
+	// Filter excluded packages
+	if exclude != "" {
+		excludedSet := make(map[string]bool)
+		for _, ex := range strings.Split(exclude, ",") {
+			ex = strings.TrimSpace(ex)
+			if ex != "" {
+				excludedSet[ex] = true
+			}
+		}
+
+		if len(excludedSet) > 0 {
+			var filtered []string
+			for _, p := range packages {
+				if !excludedSet[p] {
+					filtered = append(filtered, p)
+				} else {
+					PrintInfo("Excluding package: %s", p)
+				}
+			}
+			packages = filtered
+		}
+	}
+
 	return packages, nil
 }
 
-func (c *CheckCoverageCommand) parseConfig(args []string) (file string, threshold float64, runTests, htmlReport, smart bool, pkgs string, explicitPkgs []string, err error) {
+func (c *CheckCoverageCommand) parseConfig(args []string) (file string, threshold float64, runTests, htmlReport, smart bool, pkgs string, explicitPkgs []string, baseRef string, verbose bool, exclude string, err error) {
 	fs := flag.NewFlagSet("check-coverage", flag.ContinueOnError)
 	runTestsPtr := fs.Bool("run", false, "Run tests before checking coverage")
 	htmlReportPtr := fs.Bool("html", false, "Generate and open HTML coverage report")
 	smartPtr := fs.Bool("smart", false, "Run tests only on changed packages")
 	pkgsPtr := fs.String("pkgs", "", "Comma-separated list of packages to test")
+	baseRefPtr := fs.String("base", "", "Base reference for git diff (smart mode only)")
+	verbosePtr := fs.Bool("v", false, "Verbose output")
+	excludePtr := fs.String("exclude", "", "Comma-separated list of packages to exclude")
 
 	if err := fs.Parse(args); err != nil {
-		return "", 0, false, false, false, "", nil, err
+		return "", 0, false, false, false, "", nil, "", false, "", err
 	}
 
 	runTests = *runTestsPtr
 	htmlReport = *htmlReportPtr
 	smart = *smartPtr
 	pkgs = *pkgsPtr
+	baseRef = *baseRefPtr
+	verbose = *verbosePtr
+	exclude = *excludePtr
 	file = "logs/coverage.out"
 	thresholdStr := "80"
 
@@ -139,11 +169,6 @@ func (c *CheckCoverageCommand) parseConfig(args []string) (file string, threshol
 		} else {
 			// Second arg is not a number, treat as package?
 			// But maintain backward compatibility: file threshold [pkgs...]
-			// If existing users rely on "file threshold", we must support it.
-			// If user types "check-coverage file pkg", then threshold defaults to 80?
-			// This is tricky. Let's assume strict: file threshold [pkgs...]
-			// If they omit threshold, they must use flags for packages.
-			// But for now, let's just stick to strict positional.
 			thresholdStr = positional[1]
 			if len(positional) > 2 {
 				explicitPkgs = positional[2:]
@@ -153,23 +178,18 @@ func (c *CheckCoverageCommand) parseConfig(args []string) (file string, threshol
 
 	// Basic path validation to prevent escaping the project root or injection
 	if strings.Contains(file, "..") || strings.HasPrefix(file, "/") {
-		return "", 0, false, false, false, "", nil, fmt.Errorf("invalid path '%s': must be relative and within project", file)
+		return "", 0, false, false, false, "", nil, "", false, "", fmt.Errorf("invalid path '%s': must be relative and within project", file)
 	}
 
 	threshold, err = strconv.ParseFloat(thresholdStr, 64)
 	if err != nil {
-		// Maybe user provided a package instead of threshold?
-		// e.g. check-coverage logs/c.out ./pkg
-		// In that case thresholdStr is "./pkg".
-		// We could fallback to default threshold 80 and treat this as package.
-		// But that's ambiguous.
-		return "", 0, false, false, false, "", nil, fmt.Errorf("invalid threshold '%s'", thresholdStr)
+		return "", 0, false, false, false, "", nil, "", false, "", fmt.Errorf("invalid threshold '%s'", thresholdStr)
 	}
 
-	return file, threshold, runTests, htmlReport, smart, pkgs, explicitPkgs, nil
+	return file, threshold, runTests, htmlReport, smart, pkgs, explicitPkgs, baseRef, verbose, exclude, nil
 }
 
-func (c *CheckCoverageCommand) ensureCoverage(file string, runTests bool, packages []string) error {
+func (c *CheckCoverageCommand) ensureCoverage(file string, runTests bool, packages []string, verbose bool) error {
 	shouldRun := runTests
 
 	// If specific packages are requested, we MUST run tests because the existing profile
@@ -197,6 +217,11 @@ func (c *CheckCoverageCommand) ensureCoverage(file string, runTests bool, packag
 	PrintInfo("Running tests with coverage...")
 
 	testArgs := []string{"test"}
+
+	if verbose {
+		testArgs = append(testArgs, "-v")
+	}
+
 	if len(packages) > 0 {
 		testArgs = append(testArgs, packages...)
 	} else {
