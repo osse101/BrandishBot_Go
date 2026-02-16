@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -67,68 +68,124 @@ func (c *CheckCoverageCommand) Run(args []string) error {
 }
 
 func (c *CheckCoverageCommand) resolvePackages(smart bool, pkgs string, explicitPkgs []string, baseRef string, exclude string) ([]string, error) {
-	packages := explicitPkgs
+	pkgSet := make(map[string]struct{})
 
+	// 1. Add explicitly requested packages (positional and -pkgs flag)
+	for _, p := range explicitPkgs {
+		c.addPackage(pkgSet, p)
+	}
+	for _, p := range c.splitCommaList(pkgs) {
+		c.addPackage(pkgSet, p)
+	}
+
+	// 2. Add changed packages in smart mode
 	if smart {
-		changed, err := getChangedPackages(baseRef, false) // false = check local changes (staged + unstaged)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get changed packages: %w", err)
-		}
-		if len(changed) == 0 {
-			PrintInfo("Smart mode: No changes detected.")
-		} else {
-			PrintInfo("Smart mode: Testing changed packages: %v", changed)
-			packages = append(packages, changed...)
+		if err := c.resolveSmartPackages(pkgSet, baseRef); err != nil {
+			return nil, err
 		}
 	}
 
-	if pkgs != "" {
-		pList := strings.Split(pkgs, ",")
-		for _, p := range pList {
-			p = strings.TrimSpace(p)
-			if p != "" {
-				packages = append(packages, p)
-			}
+	// 3. Remove excluded packages
+	c.filterExcludedPackages(pkgSet, exclude)
+
+	return c.toSortedSlice(pkgSet), nil
+}
+
+func (c *CheckCoverageCommand) addPackage(pkgSet map[string]struct{}, pkg string) {
+	pkg = c.normalizePkgPath(pkg)
+	if pkg != "" {
+		pkgSet[pkg] = struct{}{}
+	}
+}
+
+func (c *CheckCoverageCommand) normalizePkgPath(p string) string {
+	p = strings.TrimSpace(p)
+	if p == "" || p == "./..." || strings.HasPrefix(p, "./") {
+		return p
+	}
+	if p == "..." {
+		return "./..."
+	}
+	// Basic normalization for local packages: ensure they start with ./
+	// unless they look like absolute paths or full import paths (containing dots)
+	if !strings.Contains(p, ".") && !strings.HasPrefix(p, "/") && p != "." {
+		return "./" + p
+	}
+	if p == "." {
+		return "./"
+	}
+	return p
+}
+
+func (c *CheckCoverageCommand) resolveSmartPackages(pkgSet map[string]struct{}, baseRef string) error {
+	changed, err := getChangedPackages(baseRef, false)
+	if err != nil {
+		return fmt.Errorf("failed to get changed packages: %w", err)
+	}
+	if len(changed) == 0 {
+		PrintInfo("Smart mode: No changes detected.")
+	} else {
+		PrintInfo("Smart mode: Testing changed packages: %v", changed)
+		for _, p := range changed {
+			pkgSet[p] = struct{}{}
 		}
 	}
+	return nil
+}
 
-	// Remove duplicates from packages
-	if len(packages) > 0 {
-		unique := make(map[string]bool)
-		var deduped []string
-		for _, p := range packages {
-			if !unique[p] {
-				unique[p] = true
-				deduped = append(deduped, p)
-			}
-		}
-		packages = deduped
+func (c *CheckCoverageCommand) filterExcludedPackages(pkgSet map[string]struct{}, exclude string) {
+	excluded := c.splitCommaList(exclude)
+	if len(excluded) == 0 {
+		return
 	}
 
-	// Filter excluded packages
-	if exclude != "" {
-		excludedSet := make(map[string]bool)
-		for _, ex := range strings.Split(exclude, ",") {
-			ex = strings.TrimSpace(ex)
-			if ex != "" {
-				excludedSet[ex] = true
-			}
-		}
+	exPaths := make([]string, 0, len(excluded))
+	for _, ex := range excluded {
+		exPaths = append(exPaths, c.normalizePkgPath(ex))
+	}
 
-		if len(excludedSet) > 0 {
-			var filtered []string
-			for _, p := range packages {
-				if !excludedSet[p] {
-					filtered = append(filtered, p)
-				} else {
-					PrintInfo("Excluding package: %s", p)
+	for p := range pkgSet {
+		for _, ex := range exPaths {
+			// Exact match or wildcard match (e.g. ./internal/... matches ./internal and ./internal/foo)
+			isExcluded := (p == ex)
+			if !isExcluded && strings.HasSuffix(ex, "/...") {
+				base := strings.TrimSuffix(ex, "/...")
+				if p == base || strings.HasPrefix(p, base+"/") {
+					isExcluded = true
 				}
 			}
-			packages = filtered
+
+			if isExcluded {
+				PrintInfo("Excluding package: %s", p)
+				delete(pkgSet, p)
+				break
+			}
 		}
 	}
+}
 
-	return packages, nil
+func (c *CheckCoverageCommand) splitCommaList(s string) []string {
+	if s == "" {
+		return nil
+	}
+	parts := strings.Split(s, ",")
+	result := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			result = append(result, p)
+		}
+	}
+	return result
+}
+
+func (c *CheckCoverageCommand) toSortedSlice(pkgSet map[string]struct{}) []string {
+	packages := make([]string, 0, len(pkgSet))
+	for p := range pkgSet {
+		packages = append(packages, p)
+	}
+	sort.Strings(packages)
+	return packages
 }
 
 func (c *CheckCoverageCommand) parseConfig(args []string) (file string, threshold float64, runTests, htmlReport, smart bool, pkgs string, explicitPkgs []string, baseRef string, verbose bool, exclude string, err error) {
