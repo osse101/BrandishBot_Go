@@ -220,6 +220,10 @@ When running background commands:
 ✅ CORRECT: Use tracked command ID for cleanup
 ```
 
+### Coding Patterns
+
+- **Event Payloads**: Use `event.DecodePayload[T](e.Payload)` for type-safe event handling. Avoid manual map assertions.
+
 ### Debugging Workflow
 
 1. Read relevant journal before investigating

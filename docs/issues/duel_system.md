@@ -223,3 +223,10 @@ CREATE TABLE duels (
 
 - Confirmed `Accept` method in `internal/duel/service.go` remains unimplemented.
 - Confirmed Discord commands are not registered.
+
+## Status Update (2026-02-15)
+
+**Implementation Status: No Change**
+
+- Confirmed `Accept` method in `internal/duel/service.go` remains unimplemented.
+- **Status**: Open

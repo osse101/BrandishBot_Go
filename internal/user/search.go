@@ -127,7 +127,6 @@ func (s *service) calculateSearchParameters(ctx context.Context, user *domain.Us
 	}
 
 	if params.isDiminished {
-		params.successThreshold = SearchDiminishedSuccessRate
 		params.xpMultiplier = SearchDiminishedXPMultiplier
 		log.Info(LogMsgDiminishedReturnsApplied, "username", user.Username, "dailyCount", dailyCount)
 	}

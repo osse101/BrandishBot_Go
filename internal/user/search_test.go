@@ -822,7 +822,7 @@ func TestHandleSearch_DiminishingReturns(t *testing.T) {
 
 	// 2. Diminished Search (Count 6) - threshold is 6
 	statsSvc.mockCounts[domain.StatsEventSearch] = 6
-	// Force success even with diminished rate (0.1)
+	// Force success (success rate remains 0.8, but we verify diminished flag effects like message)
 	svc.rnd = func() float64 { return 0.05 }
 	// Reset cooldown manually
 	delete(repo.cooldowns[user.ID], domain.ActionSearch)

@@ -59,9 +59,6 @@ const SearchCriticalFailRate = 0.05
 // SearchDailyDiminishmentThreshold is the number of searches per day after which returns are diminished
 const SearchDailyDiminishmentThreshold = 6
 
-// SearchDiminishedSuccessRate is the success rate when diminished returns are active (10%)
-const SearchDiminishedSuccessRate = 0.1
-
 // SearchDiminishedXPMultiplier is the XP multiplier when diminished returns are active (10%)
 const SearchDiminishedXPMultiplier = 0.1
 
