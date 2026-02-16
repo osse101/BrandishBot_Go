@@ -511,7 +511,7 @@ func (s *service) handlePostUnlockTransition(ctx context.Context, unlockedNodeID
 	log := logger.FromContext(ctx)
 
 	// 1. Resolve parallel/frozen session to find next target
-	newTargetNode, newTargetLevel := s.resolveNextTarget(ctx)
+	newTargetNode, newTargetLevel, resolvedSessionID := s.resolveNextTarget(ctx)
 
 	// 2. Setup the new target
 	if newTargetNode == nil {
@@ -520,7 +520,7 @@ func (s *service) handlePostUnlockTransition(ctx context.Context, unlockedNodeID
 		return
 	}
 
-	sessionID, err := s.setupNewTarget(ctx, newProgressID, newTargetNode, newTargetLevel)
+	sessionID, err := s.setupNewTarget(ctx, newProgressID, newTargetNode, newTargetLevel, resolvedSessionID)
 	if err != nil {
 		log.Error("Failed to setup new target", "error", err)
 		return
@@ -532,13 +532,15 @@ func (s *service) handlePostUnlockTransition(ctx context.Context, unlockedNodeID
 	// 4. Initialize voting for the cycle AFTER the next one
 	s.initNextVotingCycle(ctx, newTargetNode)
 
-	// End the placeholder session
-	if err := s.repo.EndVotingSession(ctx, sessionID, nil); err != nil {
-		log.Warn("Failed to end placeholder session", "error", err)
+	// End the placeholder session ONLY if we created a new one
+	if resolvedSessionID == 0 {
+		if err := s.repo.EndVotingSession(ctx, sessionID, nil); err != nil {
+			log.Warn("Failed to end placeholder session", "error", err)
+		}
 	}
 }
 
-func (s *service) resolveNextTarget(ctx context.Context) (*domain.ProgressionNode, int) {
+func (s *service) resolveNextTarget(ctx context.Context) (*domain.ProgressionNode, int, int) {
 	log := logger.FromContext(ctx)
 
 	// Check parallel/frozen/recent session
@@ -554,20 +556,20 @@ func (s *service) resolveNextTarget(ctx context.Context) (*domain.ProgressionNod
 		winner := s.resolveSessionWinner(ctx, session)
 		if winner != nil && winner.NodeDetails != nil {
 			log.Info("Found target from voting session", "sessionID", session.ID, "status", session.Status, "winnerNodeID", winner.NodeID)
-			return winner.NodeDetails, winner.TargetLevel
+			return winner.NodeDetails, winner.TargetLevel, session.ID
 		}
 	}
 
 	// Fallback to random if no winner found
 	available, err := s.GetAvailableUnlocks(ctx)
 	if err != nil || len(available) == 0 {
-		return nil, 0
+		return nil, 0, 0
 	}
 
 	newTargetNode := available[utils.SecureRandomInt(len(available))]
 	newTargetLevel := s.calculateNextTargetLevel(ctx, newTargetNode)
 	log.Info("No active vote, picked random next target", "nodeKey", newTargetNode.NodeKey)
-	return newTargetNode, newTargetLevel
+	return newTargetNode, newTargetLevel, 0
 }
 
 func (s *service) resolveSessionWinner(ctx context.Context, session *domain.ProgressionVotingSession) *domain.ProgressionVotingOption {
@@ -597,11 +599,21 @@ func (s *service) resolveSessionWinner(ctx context.Context, session *domain.Prog
 	return winner
 }
 
-func (s *service) setupNewTarget(ctx context.Context, progressID int, node *domain.ProgressionNode, level int) (int, error) {
-	// Create placeholder for FK
-	sessionID, err := s.repo.CreateVotingSession(ctx)
-	if err != nil {
-		return 0, err
+func (s *service) setupNewTarget(ctx context.Context, progressID int, node *domain.ProgressionNode, level int, resolvedSessionID int) (int, error) {
+	sessionID := resolvedSessionID
+	var err error
+
+	if sessionID == 0 {
+		// Create placeholder for FK
+		sessionID, err = s.repo.CreateVotingSession(ctx)
+		if err != nil {
+			return 0, err
+		}
+
+		// Ensure the placeholder session has at least one option (bug fix)
+		if err = s.repo.AddVotingOption(ctx, sessionID, node.ID, level); err != nil {
+			logger.FromContext(ctx).Warn("Failed to add voting option to placeholder session", "nodeID", node.ID, "error", err)
+		}
 	}
 
 	if err := s.repo.SetUnlockTarget(ctx, progressID, node.ID, level, sessionID); err != nil {
@@ -620,7 +632,6 @@ func (s *service) setupNewTarget(ctx context.Context, progressID int, node *doma
 }
 
 func (s *service) initNextVotingCycle(ctx context.Context, currentTarget *domain.ProgressionNode) {
-	log := logger.FromContext(ctx)
 	available, err := s.GetAvailableUnlocks(ctx)
 	if err != nil {
 		return
@@ -633,11 +644,8 @@ func (s *service) initNextVotingCycle(ctx context.Context, currentTarget *domain
 		}
 	}
 
-	if len(remaining) >= 2 {
+	if len(remaining) >= 1 {
 		_ = s.startVotingWithOptions(ctx, remaining, &currentTarget.ID)
-	} else if len(remaining) == 1 {
-		log.Info("Only one option remaining, no voting needed for next cycle")
-		s.publishVotingStartedEvent(ctx, 0, remaining, currentTarget.DisplayName)
 	}
 }
 

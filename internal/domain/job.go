@@ -6,6 +6,16 @@ import (
 	"github.com/google/uuid"
 )
 
+// Job keys for referencing specific jobs across various services
+const (
+	JobKeyBlacksmith = "job_blacksmith"
+	JobKeyExplorer   = "job_explorer"
+	JobKeyMerchant   = "job_merchant"
+	JobKeyGambler    = "job_gambler"
+	JobKeyFarmer     = "job_farmer"
+	JobKeyScholar    = "job_scholar"
+)
+
 // Job represents a profession that users can level up
 type Job struct {
 	ID                 int       `json:"id"`

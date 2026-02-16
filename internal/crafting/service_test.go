@@ -31,7 +31,7 @@ func TestUpgradeItem_LevelRequirements(t *testing.T) {
 		repo.Unlock()
 
 		// Set user's level to 5
-		mockJob.SetJobLevel("user-alice", "blacksmith", 5)
+		mockJob.SetJobLevel("user-alice", domain.JobKeyBlacksmith, 5)
 
 		repo.UpdateInventory(ctx, "user-alice", domain.Inventory{Slots: []domain.InventorySlot{
 			{ItemID: TestItemID1, Quantity: 1},
@@ -58,7 +58,7 @@ func TestUpgradeItem_LevelRequirements(t *testing.T) {
 		repo.Unlock()
 
 		// Set user's level to 4
-		mockJob.SetJobLevel("user-alice", "blacksmith", 4)
+		mockJob.SetJobLevel("user-alice", domain.JobKeyBlacksmith, 4)
 
 		repo.UpdateInventory(ctx, "user-alice", domain.Inventory{Slots: []domain.InventorySlot{
 			{ItemID: TestItemID1, Quantity: 1},

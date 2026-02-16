@@ -1,5 +1,7 @@
 package job
 
+import "github.com/osse101/BrandishBot_Go/internal/domain"
+
 // XP formula constants
 const (
 	// BaseXP is the base XP value used in level calculations
@@ -26,12 +28,12 @@ const (
 
 // Job keys for referencing specific jobs
 const (
-	JobKeyBlacksmith = "blacksmith"
-	JobKeyExplorer   = "explorer"
-	JobKeyMerchant   = "merchant"
-	JobKeyGambler    = "gambler"
-	JobKeyFarmer     = "farmer"
-	JobKeyScholar    = "scholar"
+	JobKeyBlacksmith = domain.JobKeyBlacksmith
+	JobKeyExplorer   = domain.JobKeyExplorer
+	JobKeyMerchant   = domain.JobKeyMerchant
+	JobKeyGambler    = domain.JobKeyGambler
+	JobKeyFarmer     = domain.JobKeyFarmer
+	JobKeyScholar    = domain.JobKeyScholar
 )
 
 // XP award amounts for different actions

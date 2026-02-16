@@ -25,7 +25,7 @@ func (s *service) UpgradeItem(ctx context.Context, platform, platformID, usernam
 	if recipe.RequiredJobLevel > 0 {
 		if s.jobService != nil {
 			// Get user's Blacksmith level
-			currentLevel, err := s.jobService.GetJobLevel(ctx, user.ID, "blacksmith")
+			currentLevel, err := s.jobService.GetJobLevel(ctx, user.ID, domain.JobKeyBlacksmith)
 			if err != nil {
 				log.Error("Failed to check job level", "error", err, "userID", user.ID)
 				// Fail safe: if we can't check level, don't allow crafting high-tier items

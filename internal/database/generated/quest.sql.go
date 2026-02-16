@@ -9,7 +9,6 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -187,12 +186,12 @@ func (q *Queries) CreateQuestProgressForUser(ctx context.Context, arg CreateQues
 	return i, err
 }
 
-const deactivateAllQuests = `-- name: DeactivateAllQuests :exec
-UPDATE quests SET active = FALSE WHERE active = TRUE
+const deleteAllQuests = `-- name: DeleteAllQuests :exec
+DELETE FROM quests
 `
 
-func (q *Queries) DeactivateAllQuests(ctx context.Context) error {
-	_, err := q.db.Exec(ctx, deactivateAllQuests)
+func (q *Queries) DeleteAllQuests(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, deleteAllQuests)
 	return err
 }
 
@@ -528,17 +527,6 @@ type IncrementQuestProgressParams struct {
 func (q *Queries) IncrementQuestProgress(ctx context.Context, arg IncrementQuestProgressParams) error {
 	_, err := q.db.Exec(ctx, incrementQuestProgress, arg.UserID, arg.QuestID, arg.ProgressCurrent)
 	return err
-}
-
-const resetInactiveQuestProgress = `-- name: ResetInactiveQuestProgress :execresult
-DELETE FROM quest_progress
-WHERE quest_id IN (
-    SELECT quest_id FROM quests WHERE active = FALSE
-)
-`
-
-func (q *Queries) ResetInactiveQuestProgress(ctx context.Context) (pgconn.CommandTag, error) {
-	return q.db.Exec(ctx, resetInactiveQuestProgress)
 }
 
 const updateWeeklyQuestResetState = `-- name: UpdateWeeklyQuestResetState :exec

@@ -50,7 +50,7 @@ type Querier interface {
 	CreateUnlockProgress(ctx context.Context) (int32, error)
 	CreateUser(ctx context.Context, username string) (uuid.UUID, error)
 	CreateVotingSession(ctx context.Context) (int32, error)
-	DeactivateAllQuests(ctx context.Context) error
+	DeleteAllQuests(ctx context.Context) error
 	DeleteInventory(ctx context.Context, userID uuid.UUID) error
 	DeleteSubscription(ctx context.Context, arg DeleteSubscriptionParams) error
 	DeleteUser(ctx context.Context, userID uuid.UUID) error
@@ -214,7 +214,6 @@ type Querier interface {
 	RelockNode(ctx context.Context, arg RelockNodeParams) error
 	ResetCompostBin(ctx context.Context, userID uuid.UUID) error
 	ResetDailyJobXP(ctx context.Context) (pgconn.CommandTag, error)
-	ResetInactiveQuestProgress(ctx context.Context) (pgconn.CommandTag, error)
 	ResumeVotingSession(ctx context.Context, id int32) error
 	SaveExpeditionJournalEntry(ctx context.Context, arg SaveExpeditionJournalEntryParams) error
 	SaveExpeditionParticipantRewards(ctx context.Context, arg SaveExpeditionParticipantRewardsParams) error

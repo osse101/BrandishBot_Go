@@ -12,7 +12,7 @@ type QuestRepository interface {
 	GetActiveQuests(ctx context.Context) ([]domain.Quest, error)
 	GetActiveQuestsForWeek(ctx context.Context, year, weekNumber int) ([]domain.Quest, error)
 	CreateQuest(ctx context.Context, template domain.QuestTemplate, year, weekNumber int) (*domain.Quest, error)
-	DeactivateAllQuests(ctx context.Context) error
+	DeleteAllQuests(ctx context.Context) error
 
 	// User quest progress
 	GetUserQuestProgress(ctx context.Context, userID string) ([]domain.QuestProgress, error)
@@ -23,7 +23,6 @@ type QuestRepository interface {
 	ClaimQuestReward(ctx context.Context, userID string, questID int) error
 
 	// Weekly reset
-	ResetWeeklyQuests(ctx context.Context) (int64, error)
 	GetWeeklyQuestResetState(ctx context.Context) (lastReset time.Time, weekNum, year int, err error)
 	UpdateWeeklyQuestResetState(ctx context.Context, resetTime time.Time, weekNum, year, questsGenerated int, progressReset int64) error
 }

@@ -16,8 +16,8 @@ INSERT INTO quests (
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 RETURNING *;
 
--- name: DeactivateAllQuests :exec
-UPDATE quests SET active = FALSE WHERE active = TRUE;
+-- name: DeleteAllQuests :exec
+DELETE FROM quests;
 
 -- name: GetUserQuestProgress :many
 SELECT
@@ -90,11 +90,6 @@ WHERE qp.user_id = $1
   AND qp.claimed_at IS NULL
 ORDER BY qp.completed_at ASC;
 
--- name: ResetInactiveQuestProgress :execresult
-DELETE FROM quest_progress
-WHERE quest_id IN (
-    SELECT quest_id FROM quests WHERE active = FALSE
-);
 
 -- name: GetWeeklyQuestResetState :one
 SELECT * FROM weekly_quest_reset_state WHERE id = 1;

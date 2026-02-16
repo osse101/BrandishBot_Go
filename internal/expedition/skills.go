@@ -8,12 +8,12 @@ import (
 
 // SkillJobMap maps each expedition skill to its corresponding job key
 var SkillJobMap = map[domain.ExpeditionSkill]string{
-	domain.SkillFortitude:  "blacksmith",
-	domain.SkillPerception: "explorer",
-	domain.SkillSurvival:   "farmer",
-	domain.SkillCunning:    "gambler",
-	domain.SkillPersuasion: "merchant",
-	domain.SkillKnowledge:  "scholar",
+	domain.SkillFortitude:  domain.JobKeyBlacksmith,
+	domain.SkillPerception: domain.JobKeyExplorer,
+	domain.SkillSurvival:   domain.JobKeyFarmer,
+	domain.SkillCunning:    domain.JobKeyGambler,
+	domain.SkillPersuasion: domain.JobKeyMerchant,
+	domain.SkillKnowledge:  domain.JobKeyScholar,
 }
 
 // SkillContribution represents one member's contribution to a skill check

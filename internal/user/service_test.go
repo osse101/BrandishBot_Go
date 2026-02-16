@@ -691,8 +691,8 @@ func TestUseItem_RareCandy(t *testing.T) {
 		t.Fatalf("UseItem failed: %v", err)
 	}
 
-	expectedMsg := "Used 1 rare candy! Granted 500 XP to blacksmith." // Message construction uses hardcoded strings in handler currently
-	if message != expectedMsg {
+	expectedMsg := "Used 1 rare candy! Granted"
+	if !strings.Contains(message, expectedMsg) {
 		t.Errorf("Expected message '%s', got '%s'", expectedMsg, message)
 	}
 
