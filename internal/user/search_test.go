@@ -85,7 +85,7 @@ func (m *mockJobService) GetUserByPlatformID(ctx context.Context, platform, plat
 	return nil, nil
 }
 func (m *mockJobService) CalculateLevel(totalXP int64) int { return 0 }
-func (m *mockJobService) GetXPForLevel(level int) int64 { return 0 }
+func (m *mockJobService) GetXPForLevel(level int) int64    { return 0 }
 func (m *mockJobService) GetXPProgress(currentXP int64) (currentLevel int, xpToNext int64) {
 	return 0, 0
 }
@@ -1028,11 +1028,6 @@ func TestHandleSearch_JobBonus(t *testing.T) {
 	_, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
 	require.NoError(t, err)
 
-	// ASSERT
-	// Level 50 / 5 = 10 bonus points
-	// Base index for 1st search is 4 (UNCOMMON)
-	// 4 + 10 = 14 (max index is 7 LEGENDARY)
-	// Should be Legendary
 	inv, _ := repo.GetInventory(context.Background(), user.ID)
 	require.NotEmpty(t, inv.Slots)
 	assert.Equal(t, domain.QualityLegendary, inv.Slots[0].QualityLevel, "High job level should yield Legendary quality")
@@ -1059,10 +1054,6 @@ func TestHandleSearch_XPEvent(t *testing.T) {
 	_, err = svc.HandleSearch(ctx, domain.PlatformTwitch, "testuser123", TestUsername)
 	require.NoError(t, err)
 
-	// Wait for async publish (ResilientPublisher is async)
-	// But MockBus.Publish is called synchronously by ResilientPublisher's worker?
-	// No, ResilientPublisher puts into channel.
-	// We need to wait a bit.
 	require.Eventually(t, func() bool {
 		return len(mockBus.PublishedEvents) >= 1
 	}, time.Second, 10*time.Millisecond)
@@ -1109,10 +1100,6 @@ func TestHandleSearch_StreakBonus(t *testing.T) {
 	// ASSERT
 	assert.Contains(t, msg, "Streak", "Message should mention streak bonus")
 
-	// Verify quality
-	// Base index (1st search) = 4 (Uncommon)
-	// Streak 5 -> +1
-	// Result = 5 (Rare)
 	inv, _ := repo.GetInventory(context.Background(), user.ID)
 	require.NotEmpty(t, inv.Slots)
 	assert.Equal(t, domain.QualityRare, inv.Slots[0].QualityLevel, "Streak 5 should bump quality to Rare")

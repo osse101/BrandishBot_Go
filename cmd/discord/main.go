@@ -159,6 +159,7 @@ func getCommandFactories(bot *discord.Bot, infoLoader *info.Loader) []CommandFac
 		// Compost commands
 		discord.CompostDepositCommand,
 		discord.CompostHarvestCommand,
+		discord.CompostStatusCommand,
 
 		// Slots commands
 		discord.SlotsCommand,
@@ -212,6 +213,14 @@ func getCommandFactories(bot *discord.Bot, infoLoader *info.Loader) []CommandFac
 		discord.AddItemCommand,
 		discord.RemoveItemCommand,
 		discord.AdminAwardXPCommand,
+		discord.UserLookupCommand,
+		discord.RecentUsersCommand,
+		discord.ActiveChattersCommand,
+		discord.EventsCommand,
+		discord.DailyResetCommand,
+		discord.ResetStatusCommand,
+		discord.MetricsCommand,
+		discord.SimulationCommand,
 
 		// Admin timeout commands
 		discord.AdminTimeoutClearCommand,

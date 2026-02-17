@@ -195,7 +195,7 @@ func getOwnedItemChoices(client *APIClient, user *discordgo.User, focusedValue s
 		}
 	}
 
-	var choices []*discordgo.ApplicationCommandOptionChoice
+	choices := make([]*discordgo.ApplicationCommandOptionChoice, 0, len(itemOrder))
 	for _, name := range itemOrder {
 		item := grouped[name]
 		choices = append(choices, &discordgo.ApplicationCommandOptionChoice{

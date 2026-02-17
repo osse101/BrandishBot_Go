@@ -1391,3 +1391,162 @@ type UserJobsResponse struct {
 	PrimaryJob string        `json:"primary_job"`
 	Jobs       []JobProgress `json:"jobs"`
 }
+
+// AdminUserLookupResult represents the result of a user lookup
+type AdminUserLookupResult struct {
+	ID         string `json:"id"`
+	Platform   string `json:"platform"`
+	PlatformID string `json:"platform_id"`
+	Username   string `json:"username"`
+	CreatedAt  string `json:"created_at"`
+}
+
+// AdminUserLookup retrieves user details (admin only)
+func (c *APIClient) AdminUserLookup(platform, username string) (*AdminUserLookupResult, error) {
+	params := url.Values{}
+	params.Set("platform", platform)
+	params.Set("username", username)
+
+	path := fmt.Sprintf("/api/v1/admin/users/lookup?%s", params.Encode())
+	var result AdminUserLookupResult
+	if err := c.doRequestAndParse(http.MethodGet, path, nil, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// AdminGetRecentUsers retrieves recently active users (admin only)
+func (c *APIClient) AdminGetRecentUsers(limit int) ([]domain.User, error) {
+	params := url.Values{}
+	params.Set("limit", fmt.Sprintf("%d", limit))
+
+	path := fmt.Sprintf("/api/v1/admin/users/recent?%s", params.Encode())
+	var result []domain.User
+	if err := c.doRequestAndParse(http.MethodGet, path, nil, &result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+// AdminGetActiveChatters retrieves active chatters within a time window (admin only)
+func (c *APIClient) AdminGetActiveChatters(minutes int) ([]domain.User, error) {
+	params := url.Values{}
+	params.Set("minutes", fmt.Sprintf("%d", minutes))
+
+	path := fmt.Sprintf("/api/v1/admin/users/active?%s", params.Encode())
+	var result []domain.User
+	if err := c.doRequestAndParse(http.MethodGet, path, nil, &result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+// AdminGetEvents retrieves recent system events (admin only)
+func (c *APIClient) AdminGetEvents(limit int) ([]string, error) {
+	params := url.Values{}
+	params.Set("limit", fmt.Sprintf("%d", limit))
+
+	path := fmt.Sprintf("/api/v1/admin/events?%s", params.Encode())
+	var result []string
+	if err := c.doRequestAndParse(http.MethodGet, path, nil, &result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+// AdminManualDailyReset triggers the daily reset manually (admin only)
+func (c *APIClient) AdminManualDailyReset() (string, error) {
+	return c.doAction(http.MethodPost, "/api/v1/admin/jobs/reset-daily-xp", nil)
+}
+
+// AdminGetResetStatus retrieves the daily reset status (admin only)
+func (c *APIClient) AdminGetResetStatus() (*domain.DailyResetStatus, error) {
+	var result domain.DailyResetStatus
+	if err := c.doRequestAndParse(http.MethodGet, "/api/v1/admin/jobs/reset-status", nil, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// AdminGetMetrics retrieves system metrics (admin only)
+func (c *APIClient) AdminGetMetrics() (map[string]interface{}, error) {
+	var result map[string]interface{}
+	if err := c.doRequestAndParse(http.MethodGet, "/api/v1/admin/metrics", nil, &result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+// AdminSignalSSE sends a signal to connected SSE clients (admin only)
+func (c *APIClient) AdminSignalSSE(eventType string, payload map[string]interface{}) (string, error) {
+	req := map[string]interface{}{
+		"event_type": eventType,
+		"payload":    payload,
+	}
+	return c.doAction(http.MethodPost, "/api/v1/admin/sse/broadcast", req)
+}
+
+// ScenarioCapability represents a simulation capability
+type ScenarioCapability struct {
+	ID          string   `json:"id"`
+	Description string   `json:"description"`
+	Params      []string `json:"params"`
+}
+
+// ScenarioDefinition represents a predefined scenario
+type ScenarioDefinition struct {
+	ID          string   `json:"id"`
+	Description string   `json:"description"`
+	Steps       []string `json:"steps"`
+}
+
+// ScenarioRunResult represents the result of a scenario run
+type ScenarioRunResult struct {
+	ScenarioID string `json:"scenario_id"`
+	Status     string `json:"status"`
+	Logs       string `json:"logs"`
+}
+
+// AdminGetScenarioCapabilities retrieves available simulation capabilities (admin only)
+func (c *APIClient) AdminGetScenarioCapabilities() ([]ScenarioCapability, error) {
+	var result []ScenarioCapability
+	if err := c.doRequestAndParse(http.MethodGet, "/api/v1/admin/simulate/capabilities", nil, &result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+// AdminGetScenarios retrieves available scenarios (admin only)
+func (c *APIClient) AdminGetScenarios() ([]ScenarioDefinition, error) {
+	var result []ScenarioDefinition
+	if err := c.doRequestAndParse(http.MethodGet, "/api/v1/admin/simulate/scenarios", nil, &result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+// AdminRunScenario runs a simulation scenario (admin only)
+func (c *APIClient) AdminRunScenario(scenarioID string, params map[string]string) (*ScenarioRunResult, error) {
+	req := map[string]interface{}{
+		"scenario_id": scenarioID,
+		"parameters":  params,
+	}
+	var result ScenarioRunResult
+	if err := c.doRequestAndParse(http.MethodPost, "/api/v1/admin/simulate/run", req, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// AdminRunCustomScenario runs a custom simulation scenario (admin only)
+func (c *APIClient) AdminRunCustomScenario(name, steps string) (*ScenarioRunResult, error) {
+	req := map[string]interface{}{
+		"name":  name,
+		"steps": steps,
+	}
+	var result ScenarioRunResult
+	if err := c.doRequestAndParse(http.MethodPost, "/api/v1/admin/simulate/run-custom", req, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
