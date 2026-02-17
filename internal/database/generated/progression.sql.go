@@ -1040,7 +1040,7 @@ FROM user_votes
 WHERE session_id = $1
 `
 
-func (q *Queries) GetSessionVoters(ctx context.Context, sessionID pgtype.Int4) ([]string, error) {
+func (q *Queries) GetSessionVoters(ctx context.Context, sessionID int32) ([]string, error) {
 	rows, err := q.db.Query(ctx, getSessionVoters, sessionID)
 	if err != nil {
 		return nil, err
@@ -1220,8 +1220,8 @@ SELECT EXISTS(
 `
 
 type HasUserVotedInSessionParams struct {
-	UserID    string      `json:"user_id"`
-	SessionID pgtype.Int4 `json:"session_id"`
+	UserID    string `json:"user_id"`
+	SessionID int32  `json:"session_id"`
 }
 
 // Read-only check for whether a user has voted in a session.
@@ -1244,8 +1244,8 @@ SELECT EXISTS(
 `
 
 type HasUserVotedInSessionForUpdateParams struct {
-	UserID    string      `json:"user_id"`
-	SessionID pgtype.Int4 `json:"session_id"`
+	UserID    string `json:"user_id"`
+	SessionID int32  `json:"session_id"`
 }
 
 // Locks the user's vote record for the session to prevent concurrent vote attempts.
@@ -1439,14 +1439,16 @@ func (q *Queries) RecordReset(ctx context.Context, arg RecordResetParams) error 
 
 const recordUserSessionVote = `-- name: RecordUserSessionVote :exec
 INSERT INTO user_votes (user_id, session_id, option_id, node_id, target_level)
-VALUES ($1, $2, $3, $4, 1)
+VALUES ($1, $2, $3, $4, $5)
+ON CONFLICT (user_id, session_id) DO NOTHING
 `
 
 type RecordUserSessionVoteParams struct {
-	UserID    string      `json:"user_id"`
-	SessionID pgtype.Int4 `json:"session_id"`
-	OptionID  pgtype.Int4 `json:"option_id"`
-	NodeID    int32       `json:"node_id"`
+	UserID      string      `json:"user_id"`
+	SessionID   int32       `json:"session_id"`
+	OptionID    pgtype.Int4 `json:"option_id"`
+	NodeID      int32       `json:"node_id"`
+	TargetLevel int32       `json:"target_level"`
 }
 
 func (q *Queries) RecordUserSessionVote(ctx context.Context, arg RecordUserSessionVoteParams) error {
@@ -1455,14 +1457,15 @@ func (q *Queries) RecordUserSessionVote(ctx context.Context, arg RecordUserSessi
 		arg.SessionID,
 		arg.OptionID,
 		arg.NodeID,
+		arg.TargetLevel,
 	)
 	return err
 }
 
 const recordUserVote = `-- name: RecordUserVote :exec
-INSERT INTO user_votes (user_id, node_id, target_level)
-VALUES ($1, $2, $3)
-ON CONFLICT (user_id, node_id, target_level) DO NOTHING
+INSERT INTO user_votes (user_id, node_id, target_level, session_id)
+VALUES ($1, $2, $3, 0)
+ON CONFLICT (user_id, session_id) DO NOTHING
 `
 
 type RecordUserVoteParams struct {
@@ -1527,8 +1530,6 @@ func (q *Queries) SetUnlockTarget(ctx context.Context, arg SetUnlockTargetParams
 const startVoting = `-- name: StartVoting :exec
 INSERT INTO progression_voting (node_id, target_level, vote_count, voting_ends_at, is_active)
 VALUES ($1, $2, 0, $3, true)
-ON CONFLICT (node_id, target_level) DO UPDATE
-SET voting_started_at = CURRENT_TIMESTAMP, voting_ends_at = $3, is_active = true, vote_count = 0
 `
 
 type StartVotingParams struct {

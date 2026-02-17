@@ -475,7 +475,7 @@ type UserVote struct {
 	NodeID      int32            `json:"node_id"`
 	TargetLevel int32            `json:"target_level"`
 	VotedAt     pgtype.Timestamp `json:"voted_at"`
-	SessionID   pgtype.Int4      `json:"session_id"`
+	SessionID   int32            `json:"session_id"`
 	OptionID    pgtype.Int4      `json:"option_id"`
 }
 

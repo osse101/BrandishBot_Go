@@ -181,17 +181,17 @@ func (_c *MockRepository_BeginTx_Call) RunAndReturn(run func(context.Context) (r
 	return _c
 }
 
-// CheckAndRecordVoteAtomic provides a mock function with given fields: ctx, userID, sessionID, optionID, nodeID
-func (_m *MockRepository) CheckAndRecordVoteAtomic(ctx context.Context, userID string, sessionID int, optionID int, nodeID int) error {
-	ret := _m.Called(ctx, userID, sessionID, optionID, nodeID)
+// CheckAndRecordVoteAtomic provides a mock function with given fields: ctx, userID, sessionID, optionID, nodeID, targetLevel
+func (_m *MockRepository) CheckAndRecordVoteAtomic(ctx context.Context, userID string, sessionID int, optionID int, nodeID int, targetLevel int) error {
+	ret := _m.Called(ctx, userID, sessionID, optionID, nodeID, targetLevel)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CheckAndRecordVoteAtomic")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, int, int, int) error); ok {
-		r0 = rf(ctx, userID, sessionID, optionID, nodeID)
+	if rf, ok := ret.Get(0).(func(context.Context, string, int, int, int, int) error); ok {
+		r0 = rf(ctx, userID, sessionID, optionID, nodeID, targetLevel)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -210,13 +210,14 @@ type MockRepository_CheckAndRecordVoteAtomic_Call struct {
 //   - sessionID int
 //   - optionID int
 //   - nodeID int
-func (_e *MockRepository_Expecter) CheckAndRecordVoteAtomic(ctx interface{}, userID interface{}, sessionID interface{}, optionID interface{}, nodeID interface{}) *MockRepository_CheckAndRecordVoteAtomic_Call {
-	return &MockRepository_CheckAndRecordVoteAtomic_Call{Call: _e.mock.On("CheckAndRecordVoteAtomic", ctx, userID, sessionID, optionID, nodeID)}
+//   - targetLevel int
+func (_e *MockRepository_Expecter) CheckAndRecordVoteAtomic(ctx interface{}, userID interface{}, sessionID interface{}, optionID interface{}, nodeID interface{}, targetLevel interface{}) *MockRepository_CheckAndRecordVoteAtomic_Call {
+	return &MockRepository_CheckAndRecordVoteAtomic_Call{Call: _e.mock.On("CheckAndRecordVoteAtomic", ctx, userID, sessionID, optionID, nodeID, targetLevel)}
 }
 
-func (_c *MockRepository_CheckAndRecordVoteAtomic_Call) Run(run func(ctx context.Context, userID string, sessionID int, optionID int, nodeID int)) *MockRepository_CheckAndRecordVoteAtomic_Call {
+func (_c *MockRepository_CheckAndRecordVoteAtomic_Call) Run(run func(ctx context.Context, userID string, sessionID int, optionID int, nodeID int, targetLevel int)) *MockRepository_CheckAndRecordVoteAtomic_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(int), args[3].(int), args[4].(int))
+		run(args[0].(context.Context), args[1].(string), args[2].(int), args[3].(int), args[4].(int), args[5].(int))
 	})
 	return _c
 }
@@ -226,7 +227,7 @@ func (_c *MockRepository_CheckAndRecordVoteAtomic_Call) Return(_a0 error) *MockR
 	return _c
 }
 
-func (_c *MockRepository_CheckAndRecordVoteAtomic_Call) RunAndReturn(run func(context.Context, string, int, int, int) error) *MockRepository_CheckAndRecordVoteAtomic_Call {
+func (_c *MockRepository_CheckAndRecordVoteAtomic_Call) RunAndReturn(run func(context.Context, string, int, int, int, int) error) *MockRepository_CheckAndRecordVoteAtomic_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -2291,17 +2292,17 @@ func (_c *MockRepository_RecordReset_Call) RunAndReturn(run func(context.Context
 	return _c
 }
 
-// RecordUserSessionVote provides a mock function with given fields: ctx, userID, sessionID, optionID, nodeID
-func (_m *MockRepository) RecordUserSessionVote(ctx context.Context, userID string, sessionID int, optionID int, nodeID int) error {
-	ret := _m.Called(ctx, userID, sessionID, optionID, nodeID)
+// RecordUserSessionVote provides a mock function with given fields: ctx, userID, sessionID, optionID, nodeID, targetLevel
+func (_m *MockRepository) RecordUserSessionVote(ctx context.Context, userID string, sessionID int, optionID int, nodeID int, targetLevel int) error {
+	ret := _m.Called(ctx, userID, sessionID, optionID, nodeID, targetLevel)
 
 	if len(ret) == 0 {
 		panic("no return value specified for RecordUserSessionVote")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, int, int, int) error); ok {
-		r0 = rf(ctx, userID, sessionID, optionID, nodeID)
+	if rf, ok := ret.Get(0).(func(context.Context, string, int, int, int, int) error); ok {
+		r0 = rf(ctx, userID, sessionID, optionID, nodeID, targetLevel)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -2320,13 +2321,14 @@ type MockRepository_RecordUserSessionVote_Call struct {
 //   - sessionID int
 //   - optionID int
 //   - nodeID int
-func (_e *MockRepository_Expecter) RecordUserSessionVote(ctx interface{}, userID interface{}, sessionID interface{}, optionID interface{}, nodeID interface{}) *MockRepository_RecordUserSessionVote_Call {
-	return &MockRepository_RecordUserSessionVote_Call{Call: _e.mock.On("RecordUserSessionVote", ctx, userID, sessionID, optionID, nodeID)}
+//   - targetLevel int
+func (_e *MockRepository_Expecter) RecordUserSessionVote(ctx interface{}, userID interface{}, sessionID interface{}, optionID interface{}, nodeID interface{}, targetLevel interface{}) *MockRepository_RecordUserSessionVote_Call {
+	return &MockRepository_RecordUserSessionVote_Call{Call: _e.mock.On("RecordUserSessionVote", ctx, userID, sessionID, optionID, nodeID, targetLevel)}
 }
 
-func (_c *MockRepository_RecordUserSessionVote_Call) Run(run func(ctx context.Context, userID string, sessionID int, optionID int, nodeID int)) *MockRepository_RecordUserSessionVote_Call {
+func (_c *MockRepository_RecordUserSessionVote_Call) Run(run func(ctx context.Context, userID string, sessionID int, optionID int, nodeID int, targetLevel int)) *MockRepository_RecordUserSessionVote_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(int), args[3].(int), args[4].(int))
+		run(args[0].(context.Context), args[1].(string), args[2].(int), args[3].(int), args[4].(int), args[5].(int))
 	})
 	return _c
 }
@@ -2336,7 +2338,7 @@ func (_c *MockRepository_RecordUserSessionVote_Call) Return(_a0 error) *MockRepo
 	return _c
 }
 
-func (_c *MockRepository_RecordUserSessionVote_Call) RunAndReturn(run func(context.Context, string, int, int, int) error) *MockRepository_RecordUserSessionVote_Call {
+func (_c *MockRepository_RecordUserSessionVote_Call) RunAndReturn(run func(context.Context, string, int, int, int, int) error) *MockRepository_RecordUserSessionVote_Call {
 	_c.Call.Return(run)
 	return _c
 }

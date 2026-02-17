@@ -23,7 +23,6 @@ func TestUnlockAllFeatures(t *testing.T) {
 	// Verify features are unlocked
 	features := []string{
 		FeatureEconomy,
-		FeatureEconomy,
 		FeatureUpgrade,
 		FeatureDisassemble,
 	}

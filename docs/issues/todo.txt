@@ -1,1 +1,3 @@
-Update discord command /vote to use index instead of name
+Voting_Session returns no options
+Voting on Same option in different sessions causes unique key violation, should be tied to session not vote option
+GetInventory needs sperator between money and items

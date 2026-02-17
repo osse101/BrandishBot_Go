@@ -40,8 +40,8 @@ type Progression interface {
 	ResumeVotingSession(ctx context.Context, sessionID int) error // Resume frozen voting session
 	GetSessionVoters(ctx context.Context, sessionID int) ([]string, error)
 	HasUserVotedInSession(ctx context.Context, userID string, sessionID int) (bool, error)
-	RecordUserSessionVote(ctx context.Context, userID string, sessionID, optionID, nodeID int) error
-	CheckAndRecordVoteAtomic(ctx context.Context, userID string, sessionID, optionID, nodeID int) error
+	RecordUserSessionVote(ctx context.Context, userID string, sessionID, optionID, nodeID, targetLevel int) error
+	CheckAndRecordVoteAtomic(ctx context.Context, userID string, sessionID, optionID, nodeID, targetLevel int) error
 
 	// Unlock progress tracking
 	CreateUnlockProgress(ctx context.Context) (int, error)

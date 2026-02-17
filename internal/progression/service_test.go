@@ -681,7 +681,7 @@ func (m *MockRepository) HasUserVotedInSession(ctx context.Context, userID strin
 	return false, nil
 }
 
-func (m *MockRepository) RecordUserSessionVote(ctx context.Context, userID string, sessionID, optionID, nodeID int) error {
+func (m *MockRepository) RecordUserSessionVote(ctx context.Context, userID string, sessionID, optionID, nodeID, targetLevel int) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.sessionVotes[sessionID] == nil {
@@ -691,7 +691,7 @@ func (m *MockRepository) RecordUserSessionVote(ctx context.Context, userID strin
 	return nil
 }
 
-func (m *MockRepository) CheckAndRecordVoteAtomic(ctx context.Context, userID string, sessionID, optionID, nodeID int) error {
+func (m *MockRepository) CheckAndRecordVoteAtomic(ctx context.Context, userID string, sessionID, optionID, nodeID, targetLevel int) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -701,10 +701,12 @@ func (m *MockRepository) CheckAndRecordVoteAtomic(ctx context.Context, userID st
 	}
 
 	// Increment vote count for the option
-	for i, opt := range m.sessionOptions[sessionID] {
-		if opt.ID == optionID {
-			m.sessionOptions[sessionID][i].VoteCount++
-			break
+	if options, ok := m.sessionOptions[sessionID]; ok {
+		for i, opt := range options {
+			if opt.ID == optionID {
+				m.sessionOptions[sessionID][i].VoteCount++
+				break
+			}
 		}
 	}
 

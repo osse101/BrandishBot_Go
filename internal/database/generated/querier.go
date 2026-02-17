@@ -137,7 +137,7 @@ type Querier interface {
 	GetSellablePrices(ctx context.Context) ([]GetSellablePricesRow, error)
 	GetSessionByID(ctx context.Context, id int32) (GetSessionByIDRow, error)
 	GetSessionOptions(ctx context.Context, sessionID int32) ([]GetSessionOptionsRow, error)
-	GetSessionVoters(ctx context.Context, sessionID pgtype.Int4) ([]string, error)
+	GetSessionVoters(ctx context.Context, sessionID int32) ([]string, error)
 	// Get top users by mega jackpots hit for a time period
 	GetSlotsLeaderboardByMegaJackpots(ctx context.Context, arg GetSlotsLeaderboardByMegaJackpotsParams) ([]GetSlotsLeaderboardByMegaJackpotsRow, error)
 	// Get top users by net profit (total payout - total bet) for a time period

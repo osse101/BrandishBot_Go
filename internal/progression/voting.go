@@ -25,7 +25,7 @@ func (s *service) VoteForUnlock(ctx context.Context, platform, platformID, usern
 	}
 
 	// 3. Record vote atomically
-	if err := s.repo.CheckAndRecordVoteAtomic(ctx, user.ID, session.ID, selectedOption.ID, selectedOption.NodeID); err != nil {
+	if err := s.repo.CheckAndRecordVoteAtomic(ctx, user.ID, session.ID, selectedOption.ID, selectedOption.NodeID, selectedOption.TargetLevel); err != nil {
 		return err
 	}
 
