@@ -352,7 +352,30 @@ This allows mockery to generate mocks locally even when interface is defined els
 | Dec 2024 | Externalize pool config | Environment-specific tuning |
 | Jan 2026 | Dual Mock Pattern | Type safety + testing flexibility |
 | Jan 2026 | In-package mock generation | Co-location + scalability |
+| Feb 2026 | Semantic Handler Split | Improve maintainability and reduce file complexity |
+| Feb 2026 | Extract Inventory Utils | Centralize core logic and improve testability |
 
 ---
 
-*Last updated: January 2026*
+## Handler Structuring Architecture
+
+### Lesson 11: Semantic Handler Separation and Logic Extraction
+
+**Key Insight:** Monolithic handler files (e.g., `crafting.go`, `user.go`) become unmaintainable as features grow. Splitting handlers into semantic files (e.g., `upgrade.go`, `disassemble.go`) improves readability and testability.
+
+**Refactoring Pattern:**
+1.  **Split Handlers:** Instead of one large `crafting.go` handler file, use distinct files for distinct operations:
+    *   `internal/handler/upgrade.go`: Item upgrade logic and recipes.
+    *   `internal/handler/disassemble.go`: Item disassembly logic.
+2.  **Extract Shared Logic:** Common low-level logic (e.g., inventory slot management) should be extracted to utility packages to avoid duplication and improve testability.
+    *   `internal/utils/inventory.go`: Contains core inventory algorithms (FindSlot, AddItems, ConsumeItems).
+    *   `internal/utils/quality.go`: Contains quality level calculations.
+
+**Benefits:**
+- **Reduced File Size:** Smaller files are easier to read and review.
+- **Focused Tests:** `upgrade_test.go` only tests upgrades, `disassemble_test.go` only tests disassembly.
+- **Reusable Utilities:** Inventory logic in `utils` can be used by any service without circular dependencies or code duplication.
+
+---
+
+*Last updated: February 2026*
