@@ -323,23 +323,40 @@ func backupDatabase(env, composeFile string) error {
 }
 
 func runSmokeTests(port string) error {
-	urls := []string{
-		fmt.Sprintf("http://localhost:%s/healthz", port),
-		fmt.Sprintf("http://localhost:%s/progression/tree", port),
+	apiKey := os.Getenv("API_KEY")
+	client := &http.Client{Timeout: 5 * time.Second}
+
+	testCases := []struct {
+		url          string
+		needsAuth    bool
+		expectedCode int
+	}{
+		{url: fmt.Sprintf("http://localhost:%s/healthz", port), needsAuth: false, expectedCode: 200},
+		{url: fmt.Sprintf("http://localhost:%s/api/v1/progression/tree", port), needsAuth: true, expectedCode: 200},
 	}
 
-	for _, url := range urls {
-		//nolint:gosec // G107: URL is constructed from controlled localhost endpoints for smoke testing
-		resp, err := http.Get(url)
+	for _, tc := range testCases {
+		req, err := http.NewRequest("GET", tc.url, nil)
 		if err != nil {
-			PrintWarning("Smoke test failed for %s: %v", url, err)
+			PrintWarning("Failed to create request for %s: %v", tc.url, err)
+			continue
+		}
+
+		if tc.needsAuth && apiKey != "" {
+			req.Header.Set("X-API-Key", apiKey)
+		}
+
+		resp, err := client.Do(req)
+		if err != nil {
+			PrintWarning("Smoke test failed for %s: %v", tc.url, err)
 			continue
 		}
 		resp.Body.Close()
-		if resp.StatusCode == 200 {
-			PrintSuccess("✓ %s responding", url)
+
+		if resp.StatusCode == tc.expectedCode {
+			PrintSuccess("✓ %s responding (%d)", tc.url, resp.StatusCode)
 		} else {
-			PrintWarning("✗ %s returned %d", url, resp.StatusCode)
+			PrintWarning("✗ %s returned %d (expected %d)", tc.url, resp.StatusCode, tc.expectedCode)
 		}
 	}
 	return nil
