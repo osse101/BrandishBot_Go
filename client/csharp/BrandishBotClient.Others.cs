@@ -40,97 +40,15 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<Gamble> GetActiveGamble()
         {
-            return await GetAsync<Gamble>("/api/v1/gamble/get");
-        }
-
-        #endregion
-
-        #region Account Linking
-
-        /// <summary>
-        /// Initiate account linking process
-        /// </summary>
-        public async Task<SuccessResponse> InitiateLinking(string platform, string platformId, string username)
-        {
-            return await PostAsync<SuccessResponse>("/api/v1/link/initiate", new
-            {
-                platform = platform,
-                platform_id = platformId,
-                username = username
-            });
+            return await GetAsync<Gamble>("/api/v1/gamble/active");
         }
 
         /// <summary>
-        /// Claim a linking code from another platform
+        /// Get gamble details by ID
         /// </summary>
-        public async Task<SuccessResponse> ClaimLinkingCode(string platform, string platformId, string username, string code)
+        public async Task<Gamble> GetGamble(string gambleId)
         {
-            return await PostAsync<SuccessResponse>("/api/v1/link/claim", new
-            {
-                platform = platform,
-                platform_id = platformId,
-                username = username,
-                code = code
-            });
-        }
-
-        /// <summary>
-        /// Confirm account linking
-        /// </summary>
-        public async Task<SuccessResponse> ConfirmLinking(string platform, string platformId)
-        {
-            return await PostAsync<SuccessResponse>("/api/v1/link/confirm", new
-            {
-                platform = platform,
-                platform_id = platformId
-            });
-        }
-
-        /// <summary>
-        /// Unlink accounts
-        /// </summary>
-        public async Task<SuccessResponse> UnlinkAccounts(string platform, string platformId, string targetPlatform)
-        {
-            return await PostAsync<SuccessResponse>("/api/v1/link/unlink", new
-            {
-                platform = platform,
-                platform_id = platformId,
-                target_platform = targetPlatform
-            });
-        }
-
-        /// <summary>
-        /// Get linking status for a user
-        /// </summary>
-        public async Task<LinkingStatus> GetLinkingStatus(string platform, string platformId)
-        {
-            var query = BuildQuery(
-                "platform=" + platform,
-                "platform_id=" + platformId
-            );
-            return await GetAsync<LinkingStatus>("/api/v1/link/status" + query);
-        }
-
-        #endregion
-
-        #region Predictions
-
-        /// <summary>
-        /// Process a prediction outcome from Twitch/YouTube
-        /// </summary>
-        public async Task<PredictionResult> ProcessPredictionOutcome(
-            string platform,
-            PredictionWinner winner,
-            int totalPointsSpent,
-            List<PredictionParticipant> participants)
-        {
-            return await PostAsync<PredictionResult>("/api/v1/prediction", new
-            {
-                platform = platform,
-                winner = winner,
-                total_points_spent = totalPointsSpent,
-                participants = participants
-            });
+            return await GetAsync<Gamble>("/api/v1/gamble/get?id=" + gambleId);
         }
 
         #endregion

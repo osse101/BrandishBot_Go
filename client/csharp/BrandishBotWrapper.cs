@@ -2120,4 +2120,443 @@ public class CPHInline
     }
 
     #endregion
+
+    #region Progression Extensions
+
+    public bool GetContributionLeaderboard()
+    {
+        EnsureInitialized();
+        try
+        {
+            var result = client.GetContributionLeaderboard().Result;
+            var formatted = ResponseFormatter.FormatLeaderboard(result);
+            CPH.SetArgument("response", formatted);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            LogException("GetContributionLeaderboard", ex);
+            return false;
+        }
+    }
+
+    public bool GetEstimate()
+    {
+        EnsureInitialized();
+        if (!GetInputString(0, "node_key", true, out string nodeKey, ref _)) return false;
+
+        try
+        {
+            var result = client.GetEstimate(nodeKey).Result;
+            CPH.SetArgument("response", result);
+            return true;
+        }
+        catch (Exception ex)
+        {
+             CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
+             return true;
+        }
+    }
+
+    #endregion
+
+    #region Quests
+
+    public bool GetActiveQuests()
+    {
+        EnsureInitialized();
+        try
+        {
+            var result = client.GetActiveQuests().Result;
+            var formatted = ResponseFormatter.FormatActiveQuests(result);
+            CPH.SetArgument("response", formatted);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            LogException("GetActiveQuests", ex);
+            return false;
+        }
+    }
+
+    public bool GetUserQuestProgress()
+    {
+        EnsureInitialized();
+        if (!ValidateContext(out string platform, out string platformId, out string username, ref _)) return false;
+
+        try
+        {
+            var result = client.GetUserQuestProgress(platform, platformId, username).Result;
+            var formatted = ResponseFormatter.FormatQuestProgress(result);
+            CPH.SetArgument("response", formatted);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            LogException("GetUserQuestProgress", ex);
+            return false;
+        }
+    }
+
+    public bool ClaimQuestReward()
+    {
+        EnsureInitialized();
+        string error = null;
+        if (!ValidateContext(out string platform, out string platformId, out string username, ref error)) return false;
+        if (!GetInputString(0, "quest_key", true, out string questKey, ref error))
+        {
+             CPH.SetArgument("response", $"{error} Usage: !claimQuest <quest_key>");
+             return true;
+        }
+
+        try
+        {
+            var result = client.ClaimQuestReward(platform, platformId, username, questKey).Result;
+            CPH.SetArgument("response", result.Message);
+            return true;
+        }
+        catch (Exception ex)
+        {
+             CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
+             return true;
+        }
+    }
+
+    #endregion
+
+    #region Linking
+
+    public bool InitiateLinking()
+    {
+        EnsureInitialized();
+        if (!ValidateContext(out string platform, out string platformId, out string username, ref _)) return false;
+
+        try
+        {
+            var result = client.InitiateLinking(platform, platformId, username).Result;
+            CPH.SetArgument("response", result.Message);
+            return true;
+        }
+        catch (Exception ex)
+        {
+             CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
+             return true;
+        }
+    }
+
+    public bool ClaimLinkingCode()
+    {
+        EnsureInitialized();
+        string error = null;
+        if (!ValidateContext(out string platform, out string platformId, out string username, ref error)) return false;
+        if (!GetInputString(0, "code", true, out string code, ref error))
+        {
+             CPH.SetArgument("response", $"{error} Usage: !link <code_from_other_platform>");
+             return true;
+        }
+
+        try
+        {
+            var result = client.ClaimLinkingCode(platform, platformId, username, code).Result;
+            CPH.SetArgument("response", result.Message);
+            return true;
+        }
+        catch (Exception ex)
+        {
+             CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
+             return true;
+        }
+    }
+
+    public bool ConfirmLinking()
+    {
+        EnsureInitialized();
+        if (!ValidateContext(out string platform, out string platformId, out _, ref _)) return false;
+
+        try
+        {
+            var result = client.ConfirmLinking(platform, platformId).Result;
+            CPH.SetArgument("response", result.Message);
+            return true;
+        }
+        catch (Exception ex)
+        {
+             CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
+             return true;
+        }
+    }
+
+    public bool UnlinkAccounts()
+    {
+        EnsureInitialized();
+        string error = null;
+        if (!ValidateContext(out string platform, out string platformId, out _, ref error)) return false;
+        if (!GetInputString(0, "target_platform", true, out string targetPlatform, ref error))
+        {
+             CPH.SetArgument("response", $"{error} Usage: !unlink <target_platform>");
+             return true;
+        }
+
+        try
+        {
+            var result = client.UnlinkAccounts(platform, platformId, targetPlatform).Result;
+            CPH.SetArgument("response", result.Message);
+            return true;
+        }
+        catch (Exception ex)
+        {
+             CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
+             return true;
+        }
+    }
+
+    public bool GetLinkingStatus()
+    {
+        EnsureInitialized();
+        if (!ValidateContext(out string platform, out string platformId, out _, ref _)) return false;
+
+        try
+        {
+            var result = client.GetLinkingStatus(platform, platformId).Result;
+            var formatted = ResponseFormatter.FormatLinkingStatus(result);
+            CPH.SetArgument("response", formatted);
+            return true;
+        }
+        catch (Exception ex)
+        {
+             CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
+             return true;
+        }
+    }
+
+    #endregion
+
+    #region Admin
+
+    public bool AdminForceEndVoting()
+    {
+        EnsureInitialized();
+        try
+        {
+            var result = client.AdminForceEndVoting().Result;
+            CPH.SetArgument("response", result.Message);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            LogException("AdminForceEndVoting", ex);
+            return false;
+        }
+    }
+
+    public bool AdminInstantUnlock()
+    {
+        EnsureInitialized();
+        if (!GetInputString(0, "node_key", true, out string nodeKey, ref _)) return false;
+
+        try
+        {
+            var result = client.AdminInstantUnlock(nodeKey).Result;
+            CPH.SetArgument("response", result.Message);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            LogException("AdminInstantUnlock", ex);
+            return false;
+        }
+    }
+
+    public bool AdminUserLookup()
+    {
+        EnsureInitialized();
+        string error = "";
+        if (!GetInputString(0, "username", true, out string username, ref error)) return false;
+        // Platform optional, default to current context or generic
+        string platform = "twitch"; 
+        if (CPH.TryGetArg("userType", out string p)) platform = p;
+
+        try
+        {
+            var result = client.AdminUserLookup(platform, username).Result;
+            CPH.SetArgument("response", $"User: {result.User.Username}, ID: {result.User.Id}");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            LogException("AdminUserLookup", ex);
+            return false;
+        }
+    }
+
+    public bool AdminGetRecentUsers()
+    {
+        EnsureInitialized();
+        int limit = 10;
+        if (CPH.TryGetArg("input0", out string l) && int.TryParse(l, out int val)) limit = val;
+
+        try
+        {
+            var result = client.AdminGetRecentUsers(limit).Result;
+            CPH.SetArgument("response", $"Found {result.Count} recent users");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            LogException("AdminGetRecentUsers", ex);
+            return false;
+        }
+    }
+
+    public bool AdminAwardJobXP()
+    {
+        EnsureInitialized();
+        string error = "";
+        if (!GetInputString(0, "username", true, out string username, ref error) ||
+            !GetInputString(1, "job_key", true, out string jobKey, ref error) ||
+            !GetInputInt(2, "amount", 100, out int amount, ref error))
+        {
+            CPH.LogWarn(error);
+            return false;
+        }
+        string platform = "twitch";
+
+        try
+        {
+             var result = client.AdminAwardJobXP(platform, username, jobKey, amount).Result;
+             CPH.SetArgument("response", result.Message);
+             return true;
+        }
+        catch (Exception ex)
+        {
+            LogException("AdminAwardJobXP", ex);
+            return false;
+        }
+    }
+
+    public bool AdminManualDailyReset()
+    {
+        EnsureInitialized();
+        try
+        {
+            var result = client.AdminManualDailyReset().Result;
+            CPH.SetArgument("response", result.Message);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            LogException("AdminManualDailyReset", ex);
+            return false;
+        }
+    }
+
+    public bool AdminGetResetStatus()
+    {
+        EnsureInitialized();
+        try
+        {
+            var result = client.AdminGetResetStatus().Result;
+            CPH.SetArgument("response", $"Next reset: {result.NextReset}");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            LogException("AdminGetResetStatus", ex);
+            return false;
+        }
+    }
+
+    #endregion
+
+    #region Farming (Harvest & Compost)
+
+    public bool HarvestReward()
+    {
+        EnsureInitialized();
+        if (!ValidateContext(out string platform, out string platformId, out string username, ref _)) return false;
+
+        try
+        {
+            var result = client.Harvest(platform, platformId, username).Result;
+            var formatted = ResponseFormatter.FormatHarvest(result); 
+            string responseMsg = formatted ?? $"{result.Message}. Gained: {string.Join(", ", result.ItemsGained.Keys)}";
+            CPH.SetArgument("response", responseMsg);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            LogException("HarvestReward", ex);
+            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
+            return true;
+        }
+    }
+
+    public bool CompostDeposit()
+    {
+        EnsureInitialized();
+        string error = null;
+        if (!ValidateContext(out string platform, out string platformId, out _, ref error)) return false;
+
+        if (!GetInputString(0, "item", true, out string itemName, ref error) ||
+            !GetInputInt(1, "quantity", 1, out int quantity, ref error))
+        {
+             CPH.SetArgument("response", $"{error} Usage: !compost <item_name> [quantity]");
+             return true;
+        }
+
+        try
+        {
+            var items = new List<CompostDepositItem>
+            {
+                new CompostDepositItem { Name = itemName, Quantity = quantity }
+            };
+
+            var result = client.CompostDeposit(platform, platformId, items).Result;
+            CPH.SetArgument("response", result.Message);
+            return true;
+        }
+        catch (Exception ex)
+        {
+             CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
+             return true;
+        }
+    }
+
+    public bool CompostHarvest()
+    {
+        EnsureInitialized();
+        if (!ValidateContext(out string platform, out string platformId, out string username, ref _)) return false;
+
+        try
+        {
+            var result = client.CompostHarvest(platform, platformId, username).Result;
+            CPH.SetArgument("response", result.Message);
+            return true;
+        }
+        catch (Exception ex)
+        {
+             CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
+             return true;
+        }
+    }
+
+    public bool CompostStatus()
+    {
+        EnsureInitialized();
+        if (!ValidateContext(out string platform, out string platformId, out _, ref _)) return false;
+
+        try
+        {
+            var result = client.CompostStatus(platform, platformId).Result;
+            CPH.SetArgument("response", $"Status: {result.State}. Items: {result.Items.Count}/{result.Capacity}");
+            return true;
+        }
+        catch (Exception ex)
+        {
+             CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
+             return true;
+        }
+    }
+
+    #endregion
 }

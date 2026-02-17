@@ -5,6 +5,21 @@ namespace BrandishBot.Client
 {
     public partial class BrandishBotClient
     {
+        #region Farming (Harvest & Compost)
+
+        /// <summary>
+        /// Harvest accumulated rewards
+        /// </summary>
+        public async Task<HarvestResponse> Harvest(string platform, string platformId, string username)
+        {
+            return await PostAsync<HarvestResponse>("/api/v1/harvest", new
+            {
+                platform = platform,
+                platform_id = platformId,
+                username = username
+            });
+        }
+
         /// <summary>
         /// Deposit items into the user's compost bin.
         /// Auto-starts composting on first deposit. Additional deposits extend the timer.
@@ -40,9 +55,10 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<CompostStatusResponse> CompostStatus(string platform, string platformId)
         {
-            var query = "?platform=" + System.Uri.EscapeDataString(platform)
-                      + "&platform_id=" + System.Uri.EscapeDataString(platformId);
+            var query = BuildQuery("platform=" + platform, "platform_id=" + platformId);
             return await GetAsync<CompostStatusResponse>("/api/v1/compost/status" + query);
         }
+
+        #endregion
     }
 }
