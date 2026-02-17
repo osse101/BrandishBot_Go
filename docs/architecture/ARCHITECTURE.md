@@ -84,9 +84,9 @@ BrandishBot_Go/
 │   ├── event/                    # Event bus & publisher
 │   ├── eventlog/                 # Event logging service
 │   ├── sse/                      # Server-Sent Events hub
-│   ├── user/                     # User service
+│   ├── user/                     # User service (registration, timeout, search)
 │   ├── economy/                  # Economy system (buy/sell)
-│   ├── crafting/                 # Crafting & disassembly
+│   ├── crafting/                 # Crafting & disassembly service
 │   ├── progression/              # Progression tree & voting
 │   ├── gamble/                   # Gamble sessions
 │   ├── lootbox/                  # Loot table & drops
@@ -104,7 +104,7 @@ BrandishBot_Go/
 │   ├── logger/                   # Structured logging (Zap)
 │   ├── metrics/                  # Prometheus metrics
 │   ├── features/                 # Feature flags
-│   └── utils/                    # Shared utilities
+│   └── utils/                    # Shared utilities (math, inventory, quality)
 ├── configs/
 │   ├── items/                    # Item definitions & aliases
 │   ├── recipes/                  # Crafting recipes
@@ -305,9 +305,12 @@ Business logic with event publishing:
 
 HTTP request handlers organized by feature:
 
-- **user.go**: Registration, inventory, timeout, search
+- **user.go**: Registration, timeout
+- **inventory.go**: Inventory management (add, remove, use)
+- **search.go**: User search with cooldowns
 - **economy.go**: Prices, buy, sell
-- **crafting.go**: Upgrade, disassemble, recipes
+- **upgrade.go**: Item upgrades, recipes
+- **disassemble.go**: Item disassembly
 - **progression.go**: Tree, voting, engagement, admin controls
 - **gamble.go**: Start, join, retrieve sessions
 - **job.go**: List jobs, user jobs, XP awards
