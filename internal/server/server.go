@@ -97,6 +97,10 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 		infoLoader := info.NewLoader("configs/info")
 		r.Get("/info", handler.HandleGetInfo(infoLoader))
 
+		// Crafting routes
+		craftingHandler := handler.NewCraftingHandler(craftingService, userRepo, progressionService, eventBus)
+		r.Get("/recipes", craftingHandler.HandleGetRecipes)
+
 		// User routes
 		r.Route("/user", func(r chi.Router) {
 			r.Post("/register", handler.HandleRegisterUser(userService))
@@ -113,17 +117,13 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 				r.Post("/sell", handler.HandleSellItem(economyService, progressionService, eventBus))
 				r.Post("/buy", handler.HandleBuyItem(economyService, progressionService, eventBus))
 				r.Post("/use", handler.HandleUseItem(userService, progressionService, eventBus))
-				r.Post("/upgrade", handler.HandleUpgradeItem(craftingService, progressionService, eventBus))
-				r.Post("/disassemble", handler.HandleDisassembleItem(craftingService, progressionService, eventBus))
+				r.Post("/upgrade", craftingHandler.HandleUpgradeItem)
+				r.Post("/disassemble", craftingHandler.HandleDisassembleItem)
 			})
 		})
 
 		r.Post("/message/handle", handler.HandleMessageHandler(userService, progressionService, eventBus))
 		r.Post("/test", handler.HandleTest(userService))
-
-		// Crafting routes
-		craftingHandler := handler.NewCraftingHandler(craftingService, userRepo)
-		r.Get("/recipes", craftingHandler.HandleGetRecipes())
 
 		r.Route("/prices", func(r chi.Router) {
 			r.Get("/", handler.HandleGetPrices(economyService))
