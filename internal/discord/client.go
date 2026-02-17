@@ -881,23 +881,21 @@ func (c *APIClient) GetVotingSession() (*domain.ProgressionVotingSession, error)
 
 	// Handles "no active session" message wrapper if needed, but endpoint returns direct object or "session": null
 	// Checking for the map wrapper first just in case
-	var raw map[string]interface{}
-	bodyBytes, _ := io.ReadAll(resp.Body)
-	resp.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
-
-	if err := json.NewDecoder(io.NopCloser(bytes.NewBuffer(bodyBytes))).Decode(&raw); err == nil {
-		if _, ok := raw["message"]; ok {
-			// e.g. "No active voting session"
-			return nil, nil
-		}
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	var session domain.ProgressionVotingSession
-	if err := json.NewDecoder(io.NopCloser(bytes.NewBuffer(bodyBytes))).Decode(&session); err != nil {
+	// Correctly decode the nested response
+	var sessionResp struct {
+		Session *domain.ProgressionVotingSession `json:"session"`
+		Message string                           `json:"message"`
+	}
+	if err := json.NewDecoder(io.NopCloser(bytes.NewBuffer(bodyBytes))).Decode(&sessionResp); err != nil {
 		return nil, fmt.Errorf("failed to decode session: %w", err)
 	}
 
-	return &session, nil
+	return sessionResp.Session, nil
 }
 
 // HandleMessage sends a chat message to the server for processing

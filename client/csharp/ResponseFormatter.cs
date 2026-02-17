@@ -204,7 +204,19 @@ namespace BrandishBot.Client
         [Obsolete("Use FormatVotingOptions(VotingSession) instead")]
         public static string FormatVotingOptions(string jsonResponse)
         {
-             return FormatVotingOptions(Newtonsoft.Json.JsonConvert.DeserializeObject<VotingSession>(jsonResponse));
+            try
+            {
+                // Try to handle wrapped response first
+                var response = Newtonsoft.Json.JsonConvert.DeserializeObject<VotingSessionResponse>(jsonResponse);
+                if (response?.Session != null)
+                {
+                    return FormatVotingOptions(response.Session);
+                }
+            }
+            catch { }
+
+            // Fallback to direct VotingSession deserialization for backward compatibility
+            return FormatVotingOptions(Newtonsoft.Json.JsonConvert.DeserializeObject<VotingSession>(jsonResponse));
         }
 
         /// <summary>
@@ -263,7 +275,7 @@ namespace BrandishBot.Client
             if (status.ActiveSession != null)
             {
                 string startedAt = FormatShortTimestamp(status.ActiveSession.StartedAt);
-                var nodeKeys = status.ActiveSession.Options?.ConvertAll(o => o.NodeKey) ?? new List<string>();
+                var nodeKeys = status.ActiveSession.Options?.ConvertAll(o => o.NodeDetails?.NodeKey ?? "unknown") ?? new List<string>();
                 string keysStr = nodeKeys.Count > 0 ? string.Join(", ", nodeKeys) : "unknown";
                 parts.Add($"Session: {keysStr} ({startedAt})");
             }

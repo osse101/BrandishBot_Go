@@ -29,6 +29,7 @@ type Progression interface {
 
 	// Voting session operations
 	CreateVotingSession(ctx context.Context) (int, error)
+	CreateVotingSessionWithOptions(ctx context.Context, options []domain.ProgressionVotingOption) (int, error)
 	AddVotingOption(ctx context.Context, sessionID, nodeID, targetLevel int) error
 	GetActiveSession(ctx context.Context) (*domain.ProgressionVotingSession, error)
 	GetActiveOrFrozenSession(ctx context.Context) (*domain.ProgressionVotingSession, error) // Get session with status 'voting' or 'frozen'

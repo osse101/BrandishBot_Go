@@ -515,6 +515,63 @@ func (_c *MockRepository_CreateVotingSession_Call) RunAndReturn(run func(context
 	return _c
 }
 
+// CreateVotingSessionWithOptions provides a mock function with given fields: ctx, options
+func (_m *MockRepository) CreateVotingSessionWithOptions(ctx context.Context, options []domain.ProgressionVotingOption) (int, error) {
+	ret := _m.Called(ctx, options)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateVotingSessionWithOptions")
+	}
+
+	var r0 int
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, []domain.ProgressionVotingOption) (int, error)); ok {
+		return rf(ctx, options)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, []domain.ProgressionVotingOption) int); ok {
+		r0 = rf(ctx, options)
+	} else {
+		r0 = ret.Get(0).(int)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, []domain.ProgressionVotingOption) error); ok {
+		r1 = rf(ctx, options)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockRepository_CreateVotingSessionWithOptions_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateVotingSessionWithOptions'
+type MockRepository_CreateVotingSessionWithOptions_Call struct {
+	*mock.Call
+}
+
+// CreateVotingSessionWithOptions is a helper method to define mock.On call
+//   - ctx context.Context
+//   - options []domain.ProgressionVotingOption
+func (_e *MockRepository_Expecter) CreateVotingSessionWithOptions(ctx interface{}, options interface{}) *MockRepository_CreateVotingSessionWithOptions_Call {
+	return &MockRepository_CreateVotingSessionWithOptions_Call{Call: _e.mock.On("CreateVotingSessionWithOptions", ctx, options)}
+}
+
+func (_c *MockRepository_CreateVotingSessionWithOptions_Call) Run(run func(ctx context.Context, options []domain.ProgressionVotingOption)) *MockRepository_CreateVotingSessionWithOptions_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]domain.ProgressionVotingOption))
+	})
+	return _c
+}
+
+func (_c *MockRepository_CreateVotingSessionWithOptions_Call) Return(_a0 int, _a1 error) *MockRepository_CreateVotingSessionWithOptions_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockRepository_CreateVotingSessionWithOptions_Call) RunAndReturn(run func(context.Context, []domain.ProgressionVotingOption) (int, error)) *MockRepository_CreateVotingSessionWithOptions_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // EndVotingSession provides a mock function with given fields: ctx, sessionID, winningOptionID
 func (_m *MockRepository) EndVotingSession(ctx context.Context, sessionID int, winningOptionID *int) error {
 	ret := _m.Called(ctx, sessionID, winningOptionID)

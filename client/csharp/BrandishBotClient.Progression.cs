@@ -66,7 +66,8 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<VotingSession> GetVotingSession()
         {
-            return await GetAsync<VotingSession>("/api/v1/progression/session");
+            var response = await GetAsync<VotingSessionResponse>("/api/v1/progression/session");
+            return response?.Session;
         }
 
         /// <summary>

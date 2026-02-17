@@ -84,16 +84,18 @@ func (s *service) startVotingWithMultipleOptions(ctx context.Context, available 
 		return selected[i].NodeKey < selected[j].NodeKey
 	})
 
-	sessionID, err := s.repo.CreateVotingSession(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to create session: %w", err)
-	}
-
+	options := make([]domain.ProgressionVotingOption, 0, len(selected))
 	for _, node := range selected {
 		targetLevel := s.calculateNextTargetLevel(ctx, node)
-		if err = s.repo.AddVotingOption(ctx, sessionID, node.ID, targetLevel); err != nil {
-			log.Warn("Failed to add voting option", "nodeID", node.ID, "error", err)
-		}
+		options = append(options, domain.ProgressionVotingOption{
+			NodeID:      node.ID,
+			TargetLevel: targetLevel,
+		})
+	}
+
+	sessionID, err := s.repo.CreateVotingSessionWithOptions(ctx, options)
+	if err != nil {
+		return fmt.Errorf("failed to create session: %w", err)
 	}
 
 	log.Info("Started new voting session", "sessionID", sessionID, "options", len(selected))
@@ -148,14 +150,16 @@ func (s *service) handleSingleOptionAutoSelect(ctx context.Context, progress *do
 	targetLevel := s.calculateNextTargetLevel(ctx, node)
 
 	// Create a voting session to satisfy FK constraint
-	sessionID, err := s.repo.CreateVotingSession(ctx)
+	// Create a voting session with the single option atomically
+	options := []domain.ProgressionVotingOption{
+		{
+			NodeID:      node.ID,
+			TargetLevel: targetLevel,
+		},
+	}
+	sessionID, err := s.repo.CreateVotingSessionWithOptions(ctx, options)
 	if err != nil {
 		return fmt.Errorf("failed to create auto-select session: %w", err)
-	}
-
-	// Add the single option to the session
-	if err = s.repo.AddVotingOption(ctx, sessionID, node.ID, targetLevel); err != nil {
-		log.Warn("Failed to add voting option for auto-select", "nodeID", node.ID, "error", err)
 	}
 
 	// Set the unlock target with a valid session ID
@@ -602,15 +606,16 @@ func (s *service) setupNewTarget(ctx context.Context, progressID int, node *doma
 	var err error
 
 	if sessionID == 0 {
-		// Create placeholder for FK
-		sessionID, err = s.repo.CreateVotingSession(ctx)
+		// Create placeholder for FK atomically with its option
+		options := []domain.ProgressionVotingOption{
+			{
+				NodeID:      node.ID,
+				TargetLevel: level,
+			},
+		}
+		sessionID, err = s.repo.CreateVotingSessionWithOptions(ctx, options)
 		if err != nil {
 			return 0, err
-		}
-
-		// Ensure the placeholder session has at least one option (bug fix)
-		if err = s.repo.AddVotingOption(ctx, sessionID, node.ID, level); err != nil {
-			logger.FromContext(ctx).Warn("Failed to add voting option to placeholder session", "nodeID", node.ID, "error", err)
 		}
 	}
 
@@ -743,13 +748,15 @@ func (s *service) setInitialTarget(ctx context.Context, available []*domain.Prog
 	}
 
 	targetLevel := s.calculateNextTargetLevel(ctx, node)
-	sessionID, err := s.repo.CreateVotingSession(ctx)
+	options := []domain.ProgressionVotingOption{
+		{
+			NodeID:      node.ID,
+			TargetLevel: targetLevel,
+		},
+	}
+	sessionID, err := s.repo.CreateVotingSessionWithOptions(ctx, options)
 	if err != nil {
 		return fmt.Errorf("failed to create voting session: %w", err)
-	}
-
-	if err = s.repo.AddVotingOption(ctx, sessionID, node.ID, targetLevel); err != nil {
-		log.Warn("Failed to add voting option for initial target", "nodeID", node.ID, "error", err)
 	}
 
 	if err := s.repo.SetUnlockTarget(ctx, progress.ID, node.ID, targetLevel, sessionID); err != nil {
@@ -794,16 +801,18 @@ func (s *service) startVotingWithOptions(ctx context.Context, options []*domain.
 		return selected[i].NodeKey < selected[j].NodeKey
 	})
 
-	sessionID, err := s.repo.CreateVotingSession(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to create session: %w", err)
-	}
-
+	optionsList := make([]domain.ProgressionVotingOption, 0, len(selected))
 	for _, node := range selected {
 		targetLevel := s.calculateNextTargetLevel(ctx, node)
-		if err = s.repo.AddVotingOption(ctx, sessionID, node.ID, targetLevel); err != nil {
-			log.Warn("Failed to add voting option", "nodeID", node.ID, "error", err)
-		}
+		optionsList = append(optionsList, domain.ProgressionVotingOption{
+			NodeID:      node.ID,
+			TargetLevel: targetLevel,
+		})
+	}
+
+	sessionID, err := s.repo.CreateVotingSessionWithOptions(ctx, optionsList)
+	if err != nil {
+		return fmt.Errorf("failed to create session: %w", err)
 	}
 
 	log.Info("Started new voting session via startVotingWithOptions", "sessionID", sessionID, "options", len(selected))

@@ -125,13 +125,28 @@ namespace BrandishBot.Client
         public UnlockProgress ActiveUnlockProgress { get; set; }
     }
 
+    public class VotingSessionResponse
+    {
+        [JsonProperty("session")]
+        public VotingSession Session { get; set; }
+
+        [JsonProperty("message")]
+        public string Message { get; set; }
+
+        [JsonProperty("is_completed")]
+        public bool IsCompleted { get; set; }
+    }
+
     public class VotingSession
     {
-        [JsonProperty("session_id")]
-        public string SessionId { get; set; }
+        [JsonProperty("id")]
+        public int Id { get; set; }
 
         [JsonProperty("started_at")]
         public DateTime StartedAt { get; set; }
+
+        [JsonProperty("status")]
+        public string Status { get; set; }
 
         [JsonProperty("options")]
         public List<VotingOption> Options { get; set; }
@@ -139,6 +154,9 @@ namespace BrandishBot.Client
 
     public class VotingOption
     {
+        [JsonProperty("id")]
+        public int Id { get; set; }
+
         [JsonProperty("node_key")]
         public string NodeKey { get; set; }
 

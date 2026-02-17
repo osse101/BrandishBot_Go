@@ -248,6 +248,7 @@ const getActiveOrFrozenSession = `-- name: GetActiveOrFrozenSession :one
 SELECT id, started_at, ended_at, voting_deadline, winning_option_id, status
 FROM progression_voting_sessions
 WHERE status IN ('voting', 'frozen')
+  AND EXISTS (SELECT 1 FROM progression_voting_options WHERE session_id = progression_voting_sessions.id)
 ORDER BY started_at DESC
 LIMIT 1
 `
@@ -279,6 +280,7 @@ const getActiveSession = `-- name: GetActiveSession :one
 SELECT id, started_at, ended_at, voting_deadline, winning_option_id, status
 FROM progression_voting_sessions
 WHERE status = ('voting')::text
+  AND EXISTS (SELECT 1 FROM progression_voting_options WHERE session_id = progression_voting_sessions.id)
 ORDER BY started_at DESC
 LIMIT 1
 `

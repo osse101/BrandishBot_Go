@@ -527,6 +527,37 @@ func (m *MockRepository) CreateVotingSession(ctx context.Context) (int, error) {
 	return sessionID, nil
 }
 
+func (m *MockRepository) CreateVotingSessionWithOptions(ctx context.Context, options []domain.ProgressionVotingOption) (int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.sessionCounter++
+	sessionID := m.sessionCounter
+
+	// Populate NodeDetails and IDs for options
+	populatedOptions := make([]domain.ProgressionVotingOption, len(options))
+	for i, opt := range options {
+		opt.ID = i + 1
+		opt.SessionID = sessionID
+		if node, ok := m.nodes[opt.NodeID]; ok {
+			opt.NodeDetails = node
+		}
+		populatedOptions[i] = opt
+	}
+
+	m.sessions[sessionID] = &domain.ProgressionVotingSession{
+		ID:              sessionID,
+		Status:          "voting",
+		StartedAt:       time.Now(),
+		Options:         populatedOptions,
+		WinningOptionID: nil,
+	}
+
+	m.sessionOptions[sessionID] = populatedOptions
+	m.sessionVotes[sessionID] = make(map[string]bool)
+
+	return sessionID, nil
+}
+
 func (m *MockRepository) AddVotingOption(ctx context.Context, sessionID, nodeID, targetLevel int) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()

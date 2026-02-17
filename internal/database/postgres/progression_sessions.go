@@ -23,6 +23,36 @@ func (r *progressionRepository) CreateVotingSession(ctx context.Context) (int, e
 	return int(sessionID), nil
 }
 
+func (r *progressionRepository) CreateVotingSessionWithOptions(ctx context.Context, options []domain.ProgressionVotingOption) (int, error) {
+	txHelper, err := beginTx(ctx, r.pool, r.q)
+	if err != nil {
+		return 0, err
+	}
+	defer SafeRollback(ctx, txHelper.Tx())
+
+	sessionID, err := txHelper.Queries().CreateVotingSession(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create voting session: %w", err)
+	}
+
+	for _, opt := range options {
+		err = txHelper.Queries().AddVotingOption(ctx, generated.AddVotingOptionParams{
+			SessionID:   sessionID,
+			NodeID:      int32(opt.NodeID),
+			TargetLevel: int32(opt.TargetLevel),
+		})
+		if err != nil {
+			return 0, fmt.Errorf("failed to add voting option: %w", err)
+		}
+	}
+
+	if err := txHelper.Commit(ctx); err != nil {
+		return 0, fmt.Errorf("failed to commit session creation: %w", err)
+	}
+
+	return int(sessionID), nil
+}
+
 func (r *progressionRepository) AddVotingOption(ctx context.Context, sessionID, nodeID, targetLevel int) error {
 	err := r.q.AddVotingOption(ctx, generated.AddVotingOptionParams{
 		SessionID:   int32(sessionID),

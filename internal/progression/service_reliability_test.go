@@ -100,6 +100,11 @@ func (m *ReliabilityMockRepository) CreateVotingSession(ctx context.Context) (in
 	return args.Int(0), args.Error(1)
 }
 
+func (m *ReliabilityMockRepository) CreateVotingSessionWithOptions(ctx context.Context, options []domain.ProgressionVotingOption) (int, error) {
+	args := m.Called(ctx, options)
+	return args.Int(0), args.Error(1)
+}
+
 func (m *ReliabilityMockRepository) GetUnlock(ctx context.Context, nodeID int, level int) (*domain.ProgressionUnlock, error) {
 	args := m.Called(ctx, nodeID, level)
 	if args.Get(0) == nil {
