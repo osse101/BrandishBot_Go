@@ -116,9 +116,6 @@ func handleJobAutocomplete(s *discordgo.Session, i *discordgo.InteractionCreate)
 // handleItemAutocomplete provides autocomplete suggestions for item names
 // onlyOwned: if true, only shows items from user's inventory
 // filterFunc: optional custom filter function
-// handleItemAutocomplete provides autocomplete suggestions for item names
-// onlyOwned: if true, only shows items from user's inventory
-// filterFunc: optional custom filter function
 func handleItemAutocomplete(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient, onlyOwned bool, filterFunc func(string) bool) {
 	user := getInteractionUser(i)
 
@@ -167,19 +164,44 @@ func getOwnedItemChoices(client *APIClient, user *discordgo.User, focusedValue s
 		return getCommonItemChoices(focusedValue)
 	}
 
-	var choices []*discordgo.ApplicationCommandOptionChoice
+	// Group items by PublicName to show as a single stack in autocomplete (merging different qualities)
+	type groupedItem struct {
+		Name     string
+		Quantity int
+	}
+	grouped := make(map[string]*groupedItem)
+	var itemOrder []string
+
 	for _, item := range inventory {
-		itemNameLower := strings.ToLower(item.PublicName)
-		if focusedValue == "" || strings.Contains(itemNameLower, focusedValue) {
-			if filterFunc != nil && !filterFunc(item.PublicName) {
-				continue
-			}
-			displayName := fmt.Sprintf("%s (x%d)", item.PublicName, item.Quantity)
-			choices = append(choices, &discordgo.ApplicationCommandOptionChoice{
-				Name:  displayName,
-				Value: item.PublicName,
-			})
+		// Apply custom filter if provided
+		if filterFunc != nil && !filterFunc(item.PublicName) {
+			continue
 		}
+
+		// Apply focus filter
+		itemNameLower := strings.ToLower(item.PublicName)
+		if focusedValue != "" && !strings.Contains(itemNameLower, focusedValue) {
+			continue
+		}
+
+		if existing, ok := grouped[item.PublicName]; ok {
+			existing.Quantity += item.Quantity
+		} else {
+			grouped[item.PublicName] = &groupedItem{
+				Name:     item.PublicName,
+				Quantity: item.Quantity,
+			}
+			itemOrder = append(itemOrder, item.PublicName)
+		}
+	}
+
+	var choices []*discordgo.ApplicationCommandOptionChoice
+	for _, name := range itemOrder {
+		item := grouped[name]
+		choices = append(choices, &discordgo.ApplicationCommandOptionChoice{
+			Name:  fmt.Sprintf("%s (x%d)", item.Name, item.Quantity),
+			Value: item.Name,
+		})
 		if len(choices) >= 25 {
 			break
 		}
