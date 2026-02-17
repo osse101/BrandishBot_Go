@@ -79,36 +79,38 @@ namespace BrandishBot.Client
 
             foreach (var item in inventory.Items)
             {
-                // Group by public name for display
-                // Money is handled specially with an emoji
                 if (item.InternalName == "item_money" || item.PublicName?.ToLower() == "money")
                 {
                     money += item.Quantity;
+                    continue;
                 }
+
+                string displayName = !string.IsNullOrEmpty(item.PublicName) ? item.PublicName : item.InternalName;
+                if (string.IsNullOrEmpty(displayName)) displayName = "Unknown Item";
+
+                if (mergedItems.ContainsKey(displayName))
+                    mergedItems[displayName] += item.Quantity;
                 else
-                {
-                    string displayName = !string.IsNullOrEmpty(item.PublicName) ? item.PublicName : item.InternalName;
-                    if (string.IsNullOrEmpty(displayName)) displayName = "Unknown Item";
-
-                    if (mergedItems.ContainsKey(displayName))
-                        mergedItems[displayName] += item.Quantity;
-                    else
-                        mergedItems[displayName] = item.Quantity;
-                }
+                    mergedItems[displayName] = item.Quantity;
             }
 
-            var formattedItems = new List<string>();
+            var sections = new List<string>();
             if (money > 0)
+                sections.Add($"💰 {money}");
+
+            if (mergedItems.Count > 0)
             {
-                formattedItems.Add($"💰 {money}");
+                var sortedNames = new List<string>(mergedItems.Keys);
+                sortedNames.Sort();
+                var items = new List<string>();
+                foreach (var name in sortedNames)
+                {
+                    items.Add($"{mergedItems[name]}x {name}");
+                }
+                sections.Add(string.Join(", ", items));
             }
 
-            foreach (var kvp in mergedItems)
-            {
-                formattedItems.Add($"{kvp.Value}x {kvp.Key}");
-            }
-
-            return string.Join(" ", formattedItems);
+            return sections.Count > 0 ? string.Join(" | ", sections) : "Empty inventory";
         }
 
         /// <summary>
