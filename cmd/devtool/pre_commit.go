@@ -203,6 +203,14 @@ func runUnitTests() error {
 		return nil
 	}
 
+	// Expand to include dependent packages
+	expanded, err := GetDependentPackages(packages)
+	if err != nil {
+		PrintWarning("Failed to resolve dependent packages: %v. Running tests on changed packages only.", err)
+	} else {
+		packages = expanded
+	}
+
 	PrintInfo("Running unit tests on: %v", packages)
 
 	args := []string{"test", "-short"}
@@ -473,6 +481,7 @@ func checkEnvSync() error {
 		"ALLOW_MIGRATION_SQUASH": true, // Development-only flag for migration squashing
 		"CREATE_BACKUP":          true, // Optional backup creation flag
 		"TEST_DB_CONN":           true, // Optional test database connection string
+		"TEST_DB_CONN_STRING":    true, // Optional test database connection string (alternative)
 	}
 
 	lines = strings.Split(out, "\n")
