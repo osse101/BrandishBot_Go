@@ -122,13 +122,21 @@ func (c *CheckCoverageCommand) resolveSmartPackages(pkgSet map[string]struct{}, 
 	if err != nil {
 		return fmt.Errorf("failed to get changed packages: %w", err)
 	}
+
 	if len(changed) == 0 {
 		PrintInfo("Smart mode: No changes detected.")
-	} else {
-		PrintInfo("Smart mode: Testing changed packages: %v", changed)
-		for _, p := range changed {
-			pkgSet[p] = struct{}{}
-		}
+		return nil
+	}
+
+	// Expand to include dependent packages
+	expanded, err := GetDependentPackages(changed)
+	if err != nil {
+		return fmt.Errorf("failed to get dependent packages: %w", err)
+	}
+
+	PrintInfo("Smart mode: Testing changed packages and dependents: %v", expanded)
+	for _, p := range expanded {
+		pkgSet[p] = struct{}{}
 	}
 	return nil
 }
