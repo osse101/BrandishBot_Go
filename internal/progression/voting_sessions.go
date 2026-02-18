@@ -78,7 +78,7 @@ func (s *service) getFilteredAvailableNodes(ctx context.Context, progress *domai
 
 func (s *service) startVotingWithMultipleOptions(ctx context.Context, available []*domain.ProgressionNode, unlockedNodeID *int) error {
 	log := logger.FromContext(ctx)
-	selected := selectRandomNodes(available, MaxVotingOptions)
+	selected := selectRandomNodes(available, MaxVotingOptions, nil)
 
 	sort.Slice(selected, func(i, j int) bool {
 		return selected[i].NodeKey < selected[j].NodeKey
@@ -257,7 +257,7 @@ func (s *service) EndVoting(ctx context.Context) (*domain.ProgressionVotingOptio
 		return nil, fmt.Errorf("no active voting session")
 	}
 
-	winner := findWinningOption(session.Options)
+	winner := findWinningOption(session.Options, nil)
 	if winner == nil {
 		return nil, fmt.Errorf("no voting options found")
 	}
@@ -591,7 +591,7 @@ func (s *service) resolveSessionWinner(ctx context.Context, session *domain.Prog
 		_ = s.repo.ResumeVotingSession(ctx, session.ID)
 	}
 
-	winner := findWinningOption(session.Options)
+	winner := findWinningOption(session.Options, nil)
 	if winner != nil {
 		winnerID := winner.ID
 		if err := s.repo.EndVotingSession(ctx, session.ID, &winnerID); err != nil {
@@ -794,7 +794,7 @@ func (s *service) startVotingWithOptions(ctx context.Context, options []*domain.
 		return fmt.Errorf("no options provided for voting")
 	}
 
-	selected := selectRandomNodes(options, MaxVotingOptions)
+	selected := selectRandomNodes(options, MaxVotingOptions, nil)
 
 	// Enforce consistent ordering of options (sort by NodeKey)
 	sort.Slice(selected, func(i, j int) bool {
@@ -830,70 +830,6 @@ func (s *service) startVotingWithOptions(ctx context.Context, options []*domain.
 }
 
 // Helper functions
-
-func selectRandomNodes(nodes []*domain.ProgressionNode, count int) []*domain.ProgressionNode {
-	if len(nodes) <= count {
-		return nodes
-	}
-
-	// Fisher-Yates shuffle
-	shuffled := make([]*domain.ProgressionNode, len(nodes))
-	copy(shuffled, nodes)
-
-	for i := len(shuffled) - 1; i > 0; i-- {
-		j := utils.SecureRandomInt(i + 1)
-		shuffled[i], shuffled[j] = shuffled[j], shuffled[i]
-	}
-
-	return shuffled[:count]
-}
-
-func findWinningOption(options []domain.ProgressionVotingOption) *domain.ProgressionVotingOption {
-	if len(options) == 0 {
-		return nil
-	}
-
-	// Check if all options have 0 votes
-	allZeroVotes := true
-	for _, opt := range options {
-		if opt.VoteCount > 0 {
-			allZeroVotes = false
-			break
-		}
-	}
-
-	// If 0 votes total, pick random option
-	if allZeroVotes {
-		randomIndex := utils.SecureRandomInt(len(options))
-		return &options[randomIndex]
-	}
-
-	// Normal tie-breaking with votes
-	// Checked for empty slice above
-	winner := &options[0]
-	for i := 1; i < len(options); i++ {
-		opt := &options[i]
-
-		// Higher vote count wins
-		if opt.VoteCount > winner.VoteCount {
-			winner = opt
-			continue
-		}
-
-		// Tie-breaker: first to reach highest vote (LastHighestVoteAt)
-		if opt.VoteCount == winner.VoteCount {
-			if opt.LastHighestVoteAt != nil && winner.LastHighestVoteAt != nil {
-				if opt.LastHighestVoteAt.Before(*winner.LastHighestVoteAt) {
-					winner = opt
-				}
-			} else if opt.LastHighestVoteAt != nil {
-				winner = opt
-			}
-		}
-	}
-
-	return winner
-}
 
 // InitializeProgressionState ensures the progression system is in a valid state on startup
 // If no active target exists, it picks a random available node
