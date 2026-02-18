@@ -1,6 +1,8 @@
 package user
 
 import (
+	"encoding/json"
+	"os"
 	"regexp"
 	"sort"
 	"strings"
@@ -20,29 +22,79 @@ type StringFinder struct {
 
 // FinderRule defines a pattern to look for and the code to return if found
 type FinderRule struct {
-	PatternStr string
-	Code       string
-	Priority   int
+	PatternStr string `json:"pattern"`
+	Code       string `json:"code"`
+	Priority   int    `json:"priority"`
 }
 
-// NewStringFinder creates a new StringFinder with default rules
-func NewStringFinder() *StringFinder {
+// NewStringFinder creates a new StringFinder with rules loaded from the given path
+func NewStringFinder(configPath string) *StringFinder {
 	sf := &StringFinder{
 		ruleMap: make(map[string][]FinderRule),
 	}
-	sf.loadDefaultRules()
-	sf.compile()
+
+	if configPath != "" {
+		if err := sf.LoadRules(configPath); err != nil {
+			// Fallback to default rules if loading fails
+			sf.loadDefaultRules()
+		}
+	} else {
+		sf.loadDefaultRules()
+	}
+
+	sf.Compile()
 	return sf
 }
 
-func (sf *StringFinder) loadDefaultRules() {
-	// These would ideally come from a config or DB
-	sf.addRule("Bapanada", "OBS", 10)
-	sf.addRule("gary", "OBS", 10)
-	sf.addRule("shedinja", "OBS", 10)
+// LoadRules loads rules from a JSON file
+func (sf *StringFinder) LoadRules(path string) error {
+	file, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	var rules []FinderRule
+	if err := json.NewDecoder(file).Decode(&rules); err != nil {
+		return err
+	}
+
+	sf.mu.Lock()
+	defer sf.mu.Unlock()
+
+	for _, rule := range rules {
+		sf.addRuleUnsafe(rule.PatternStr, rule.Code, rule.Priority)
+	}
+
+	return nil
 }
 
-func (sf *StringFinder) addRule(patternStr, code string, priority int) {
+func (sf *StringFinder) loadDefaultRules() {
+	// These are now fallbacks if config is missing
+	sf.AddRule("Bapanada", "OBS", 10)
+	sf.AddRule("gary", "OBS", 10)
+	sf.AddRule("shedinja", "OBS", 10)
+}
+
+// AddRule adds a new rule and recompiles the regex
+func (sf *StringFinder) AddRule(patternStr, code string, priority int) {
+	sf.mu.Lock()
+	defer sf.mu.Unlock()
+	sf.addRuleUnsafe(patternStr, code, priority)
+	sf.compileUnsafe()
+}
+
+// RemoveRule removes a rule by pattern and recompiles
+func (sf *StringFinder) RemoveRule(patternStr string) {
+	sf.mu.Lock()
+	defer sf.mu.Unlock()
+
+	lowerPattern := strings.ToLower(patternStr)
+	delete(sf.ruleMap, lowerPattern)
+	sf.compileUnsafe()
+}
+
+func (sf *StringFinder) addRuleUnsafe(patternStr, code string, priority int) {
 	lowerPattern := strings.ToLower(patternStr)
 	rule := FinderRule{
 		PatternStr: patternStr,
@@ -50,13 +102,26 @@ func (sf *StringFinder) addRule(patternStr, code string, priority int) {
 		Priority:   priority,
 	}
 
+	existingRules := sf.ruleMap[lowerPattern]
+	for _, r := range existingRules {
+		if r.Code == code && r.Priority == priority {
+			return // Already exists
+		}
+	}
+
 	sf.ruleMap[lowerPattern] = append(sf.ruleMap[lowerPattern], rule)
 }
 
-// compile builds the optimized regex from the added rules
-// Note: This method acquires a write lock to safely update the regex
-func (sf *StringFinder) compile() {
+// Compile builds the optimized regex from the added rules safely
+func (sf *StringFinder) Compile() {
+	sf.mu.Lock()
+	defer sf.mu.Unlock()
+	sf.compileUnsafe()
+}
+
+func (sf *StringFinder) compileUnsafe() {
 	if len(sf.ruleMap) == 0 {
+		sf.optimizedRegex = nil
 		return
 	}
 
@@ -79,10 +144,7 @@ func (sf *StringFinder) compile() {
 	regexStr := `(?i)\b(` + strings.Join(escapedPatterns, "|") + `)\b`
 	compiledRegex := regexp.MustCompile(regexStr)
 
-	// Acquire write lock to safely update the regex
-	sf.mu.Lock()
 	sf.optimizedRegex = compiledRegex
-	sf.mu.Unlock()
 }
 
 // FindMatches searches the message for known strings and returns the matches

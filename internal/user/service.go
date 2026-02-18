@@ -109,7 +109,7 @@ func NewService(repo repository.User, trapRepo repository.TrapRepository, statsS
 		lootboxService:       lootboxService,
 		publisher:            publisher,
 		statsService:         statsService,
-		stringFinder:         NewStringFinder(),
+		stringFinder:         NewStringFinder("configs/string_finder_rules.json"),
 		namingResolver:       namingResolver,
 		cooldownService:      cooldownService,
 		jobService:           jobService,
@@ -171,4 +171,19 @@ func (s *service) GetActiveChatters() []ActiveChatter {
 		result[i] = ActiveChatter(c)
 	}
 	return result
+}
+
+// AddTemporaryStringRule adds a temporary rule to the string finder
+func (s *service) AddTemporaryStringRule(pattern, code string, priority int) {
+	s.stringFinder.AddRule(pattern, code, priority)
+}
+
+// RemoveTemporaryStringRule removes a temporary rule from the string finder
+func (s *service) RemoveTemporaryStringRule(pattern string) {
+	s.stringFinder.RemoveRule(pattern)
+}
+
+// ReloadStringRules reloads the string finder rules from the config file
+func (s *service) ReloadStringRules() error {
+	return s.stringFinder.LoadRules("configs/string_finder_rules.json")
 }
