@@ -61,3 +61,10 @@ client/
 # Other directories
 backups/
 benchmarks/
+
+# Admin dashboard build artifacts
+internal/admin/dist/
+web/admin/dist/
+
+# System files
+.DS_Store
