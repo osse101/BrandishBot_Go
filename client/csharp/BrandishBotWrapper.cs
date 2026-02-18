@@ -1895,7 +1895,8 @@ public class CPHInline
         try
         {
             var result = client.HandleMessage(platform, platformId, username, message).Result;
-            CPH.SetArgument("response", result);
+            string jsonResult = Newtonsoft.Json.JsonConvert.SerializeObject(result);
+            CPH.SetArgument("response", jsonResult);
             return true;
         }
         catch (Exception ex)
