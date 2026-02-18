@@ -22,12 +22,12 @@ func (c *CheckCoverageCommand) Description() string {
 }
 
 func (c *CheckCoverageCommand) Run(args []string) error {
-	file, threshold, runTests, htmlReport, smart, pkgs, explicitPkgs, baseRef, verbose, exclude, err := c.parseConfig(args)
+	file, threshold, runTests, htmlReport, smart, pkgs, baseRef, verbose, exclude, err := c.parseConfig(args)
 	if err != nil {
 		return err
 	}
 
-	packages, err := c.resolvePackages(smart, pkgs, explicitPkgs, baseRef, exclude)
+	packages, err := c.resolvePackages(smart, pkgs, baseRef, exclude)
 	if err != nil {
 		return err
 	}
@@ -67,13 +67,10 @@ func (c *CheckCoverageCommand) Run(args []string) error {
 	return nil
 }
 
-func (c *CheckCoverageCommand) resolvePackages(smart bool, pkgs string, explicitPkgs []string, baseRef string, exclude string) ([]string, error) {
+func (c *CheckCoverageCommand) resolvePackages(smart bool, pkgs string, baseRef string, exclude string) ([]string, error) {
 	pkgSet := make(map[string]struct{})
 
-	// 1. Add explicitly requested packages (positional and -pkgs flag)
-	for _, p := range explicitPkgs {
-		c.addPackage(pkgSet, p)
-	}
+	// 1. Add explicitly requested packages (from -pkgs flag)
 	for _, p := range c.splitCommaList(pkgs) {
 		c.addPackage(pkgSet, p)
 	}
@@ -196,8 +193,11 @@ func (c *CheckCoverageCommand) toSortedSlice(pkgSet map[string]struct{}) []strin
 	return packages
 }
 
-func (c *CheckCoverageCommand) parseConfig(args []string) (file string, threshold float64, runTests, htmlReport, smart bool, pkgs string, explicitPkgs []string, baseRef string, verbose bool, exclude string, err error) {
+func (c *CheckCoverageCommand) parseConfig(args []string) (file string, threshold float64, runTests, htmlReport, smart bool, pkgs string, baseRef string, verbose bool, exclude string, err error) {
 	fs := flag.NewFlagSet("check-coverage", flag.ContinueOnError)
+
+	filePtr := fs.String("file", "logs/coverage.out", "Path to coverage output file")
+	thresholdPtr := fs.Float64("threshold", 80.0, "Coverage threshold percentage")
 	runTestsPtr := fs.Bool("run", false, "Run tests before checking coverage")
 	htmlReportPtr := fs.Bool("html", false, "Generate and open HTML coverage report")
 	smartPtr := fs.Bool("smart", false, "Run tests only on changed packages")
@@ -207,9 +207,11 @@ func (c *CheckCoverageCommand) parseConfig(args []string) (file string, threshol
 	excludePtr := fs.String("exclude", "", "Comma-separated list of packages to exclude")
 
 	if err := fs.Parse(args); err != nil {
-		return "", 0, false, false, false, "", nil, "", false, "", err
+		return "", 0, false, false, false, "", "", false, "", err
 	}
 
+	file = filepath.Clean(*filePtr)
+	threshold = *thresholdPtr
 	runTests = *runTestsPtr
 	htmlReport = *htmlReportPtr
 	smart = *smartPtr
@@ -217,41 +219,18 @@ func (c *CheckCoverageCommand) parseConfig(args []string) (file string, threshol
 	baseRef = *baseRefPtr
 	verbose = *verbosePtr
 	exclude = *excludePtr
-	file = "logs/coverage.out"
-	thresholdStr := "80"
 
-	positional := fs.Args()
-	if len(positional) > 0 {
-		file = filepath.Clean(positional[0])
-	}
-	if len(positional) > 1 {
-		// Try to parse second arg as threshold
-		if _, err := strconv.ParseFloat(positional[1], 64); err == nil {
-			thresholdStr = positional[1]
-			if len(positional) > 2 {
-				explicitPkgs = positional[2:]
-			}
-		} else {
-			// Second arg is not a number, treat as package?
-			// But maintain backward compatibility: file threshold [pkgs...]
-			thresholdStr = positional[1]
-			if len(positional) > 2 {
-				explicitPkgs = positional[2:]
-			}
-		}
+	// Deprecated positional args handling removed to simplify.
+	if len(fs.Args()) > 0 {
+		PrintWarning("Positional arguments are deprecated and ignored: %v. Use flags instead.", fs.Args())
 	}
 
-	// Basic path validation to prevent escaping the project root or injection
+	// Basic path validation
 	if strings.Contains(file, "..") || strings.HasPrefix(file, "/") {
-		return "", 0, false, false, false, "", nil, "", false, "", fmt.Errorf("invalid path '%s': must be relative and within project", file)
+		return "", 0, false, false, false, "", "", false, "", fmt.Errorf("invalid path '%s': must be relative and within project", file)
 	}
 
-	threshold, err = strconv.ParseFloat(thresholdStr, 64)
-	if err != nil {
-		return "", 0, false, false, false, "", nil, "", false, "", fmt.Errorf("invalid threshold '%s'", thresholdStr)
-	}
-
-	return file, threshold, runTests, htmlReport, smart, pkgs, explicitPkgs, baseRef, verbose, exclude, nil
+	return file, threshold, runTests, htmlReport, smart, pkgs, baseRef, verbose, exclude, nil
 }
 
 func (c *CheckCoverageCommand) ensureCoverage(file string, runTests bool, packages []string, verbose bool) error {
@@ -356,5 +335,13 @@ func (c *CheckCoverageCommand) generateHTMLReport(file string) error {
 		return err
 	}
 	PrintSuccess("HTML report generated: %s", htmlFile)
+
+	// Attempt to open in browser
+	PrintInfo("Opening report in browser...")
+	if err := OpenBrowser(htmlFile); err != nil {
+		PrintWarning("Failed to open browser: %v", err)
+		// Don't fail the command, just warn
+	}
+
 	return nil
 }

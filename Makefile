@@ -117,11 +117,11 @@ migrate-create:
 # Development commands
 test:
 	@echo "Running tests..."
-	@go run ./cmd/devtool check-coverage -run logs/coverage.out 0
+	@go run ./cmd/devtool check-coverage -run -file logs/coverage.out -threshold 0
 
 test-smart:
 	@echo "Running smart tests (changed packages vs $(BASE_REF))..."
-	@go run ./cmd/devtool check-coverage -smart -base $(BASE_REF) -exclude ./cmd/devtool -run logs/coverage.out 80
+	@go run ./cmd/devtool check-coverage -smart -base $(BASE_REF) -exclude ./cmd/devtool -run -file logs/coverage.out -threshold 80
 
 unit:
 	@echo "Running unit tests (fast)..."
@@ -137,10 +137,10 @@ watch:
 	fi
 
 test-coverage:
-	@go run ./cmd/devtool check-coverage --html logs/coverage.out 0
+	@go run ./cmd/devtool check-coverage -html -file logs/coverage.out -threshold 0
 
 test-coverage-check:
-	@go run ./cmd/devtool check-coverage logs/coverage.out 80
+	@go run ./cmd/devtool check-coverage -file logs/coverage.out -threshold 80
 
 lint:
 	@echo "Running linters..."
