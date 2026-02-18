@@ -113,7 +113,7 @@ make build          # Build Go binary with embedded dashboard
 
 ### Prerequisites
 
-- Go 1.25+
+- Go 1.24+
 - PostgreSQL 15+
 - Docker & Docker Compose (recommended)
 
@@ -285,4 +285,4 @@ See [AGENTS.md](./AGENTS.md) for development guidelines and architecture details
 
 ## License
 
-MIThread safety.
+MIT License
