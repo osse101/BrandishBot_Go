@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/google/uuid"
 
@@ -111,21 +110,4 @@ func (s *service) executeGambleJoinTx(ctx context.Context, userID string, gamble
 	}
 
 	return tx.Commit(ctx)
-}
-
-func (s *service) getAndValidateActiveGamble(ctx context.Context, gambleID uuid.UUID) (*domain.Gamble, error) {
-	gamble, err := s.repo.GetGamble(ctx, gambleID)
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", ErrContextFailedToGetGamble, err)
-	}
-	if gamble == nil {
-		return nil, domain.ErrGambleNotFound
-	}
-	if gamble.State != domain.GambleStateJoining {
-		return nil, domain.ErrNotInJoiningState
-	}
-	if time.Now().After(gamble.JoinDeadline) {
-		return nil, domain.ErrJoinDeadlinePassed
-	}
-	return gamble, nil
 }
