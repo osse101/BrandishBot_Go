@@ -1010,7 +1010,7 @@ public class CPHInline
         else
         {
             // Self-mode: query own stats
-            if (!ValidateContext(out string _, out string platformId, out string username, ref error))
+            if (!ValidateContext(out string discarded, out string platformId, out string username, ref error))
             {
                 CPH.LogWarn($"GetUserStats Failed: {error}");
                 return false;
@@ -1508,7 +1508,7 @@ public class CPHInline
              // If it didn't exist, it returned true with default 0.
         }
         
-        if (amount == 0 && CPH.TryGetArg("input0", out string _))
+        if (amount == 0 && CPH.TryGetArg("input0", out string discardedInput))
         {
              // If they typed something and we got 0 (and no error), it means default?
              // Helper returns false if malformed.
@@ -1575,7 +1575,7 @@ public class CPHInline
         else
         {
             // Self-mode: query own jobs
-            if (!ValidateContext(out string _, out string platformId, out string username, ref error))
+            if (!ValidateContext(out string discarded, out string platformId, out string username, ref error))
             {
                 CPH.LogWarn($"GetUserJobs Failed: {error}");
                 return false;
@@ -1606,7 +1606,7 @@ public class CPHInline
         string error = null;
         
         // Context is admin
-        if (!ValidateContext(out string platform, out string platformId, out string _, ref error))
+        if (!ValidateContext(out string platform, out string platformId, out string discardedUsername, ref error))
         {
             CPH.LogWarn($"AwardJobXP Failed: {error}");
             return false;
@@ -1684,7 +1684,7 @@ public class CPHInline
         else
         {
             // Self-mode: query own recipes
-            if (!ValidateContext(out string _, out string platformId, out string username, ref error))
+            if (!ValidateContext(out string discarded, out string platformId, out string username, ref error))
             {
                 CPH.LogWarn($"GetUnlockedRecipes Failed: {error}");
                 return false;
@@ -1726,7 +1726,7 @@ public class CPHInline
         try
         {
             var result = client.InitiateLinking(platform, platformId, username).Result;
-            var formatted = ResponseFormatter.FormatMessage(result);
+            var formatted = ResponseFormatter.FormatLinkInitiate(result);
             CPH.SetArgument("response", formatted);
             return true;
         }
@@ -1762,7 +1762,7 @@ public class CPHInline
         try
         {
             var result = client.ClaimLinkingCode(platform, platformId, username, code).Result;
-            var formatted = ResponseFormatter.FormatMessage(result);
+            var formatted = ResponseFormatter.FormatLinkClaim(result);
             CPH.SetArgument("response", formatted);
             return true;
         }
@@ -1783,7 +1783,7 @@ public class CPHInline
         EnsureInitialized();
         string error = null;
 
-        if (!ValidateContext(out string platform, out string platformId, out string _, ref error))
+        if (!ValidateContext(out string platform, out string platformId, out string discardedUsername, ref error))
         {
             CPH.LogWarn($"ConfirmLinking Failed: {error}");
             return false;
@@ -1792,7 +1792,7 @@ public class CPHInline
         try
         {
             var result = client.ConfirmLinking(platform, platformId).Result;
-            var formatted = ResponseFormatter.FormatMessage(result);
+            var formatted = ResponseFormatter.FormatLinkConfirm(result);
             CPH.SetArgument("response", formatted);
             return true;
         }
@@ -1813,7 +1813,7 @@ public class CPHInline
         EnsureInitialized();
         string error = null;
 
-        if (!ValidateContext(out string platform, out string platformId, out string _, ref error))
+        if (!ValidateContext(out string platform, out string platformId, out string discardedUsername, ref error))
         {
             CPH.LogWarn($"UnlinkAccounts Failed: {error}");
             return false;
@@ -1849,7 +1849,7 @@ public class CPHInline
         EnsureInitialized();
         string error = null;
 
-        if (!ValidateContext(out string platform, out string platformId, out string _, ref error))
+        if (!ValidateContext(out string platform, out string platformId, out string discardedUsername, ref error))
         {
             CPH.LogWarn($"GetLinkingStatus Failed: {error}");
             return false;
@@ -2143,7 +2143,8 @@ public class CPHInline
     public bool GetEstimate()
     {
         EnsureInitialized();
-        if (!GetInputString(0, "node_key", true, out string nodeKey, ref _)) return false;
+        string error = null;
+        if (!GetInputString(0, "node_key", true, out string nodeKey, ref error)) return false;
 
         try
         {
@@ -2182,7 +2183,8 @@ public class CPHInline
     public bool GetUserQuestProgress()
     {
         EnsureInitialized();
-        if (!ValidateContext(out string platform, out string platformId, out string username, ref _)) return false;
+        string error = null;
+        if (!ValidateContext(out string platform, out string platformId, out string username, ref error)) return false;
 
         try
         {
@@ -2224,112 +2226,6 @@ public class CPHInline
 
     #endregion
 
-    #region Linking
-
-    public bool InitiateLinking()
-    {
-        EnsureInitialized();
-        if (!ValidateContext(out string platform, out string platformId, out string username, ref _)) return false;
-
-        try
-        {
-            var result = client.InitiateLinking(platform, platformId, username).Result;
-            CPH.SetArgument("response", result.Message);
-            return true;
-        }
-        catch (Exception ex)
-        {
-             CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
-             return true;
-        }
-    }
-
-    public bool ClaimLinkingCode()
-    {
-        EnsureInitialized();
-        string error = null;
-        if (!ValidateContext(out string platform, out string platformId, out string username, ref error)) return false;
-        if (!GetInputString(0, "code", true, out string code, ref error))
-        {
-             CPH.SetArgument("response", $"{error} Usage: !link <code_from_other_platform>");
-             return true;
-        }
-
-        try
-        {
-            var result = client.ClaimLinkingCode(platform, platformId, username, code).Result;
-            CPH.SetArgument("response", result.Message);
-            return true;
-        }
-        catch (Exception ex)
-        {
-             CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
-             return true;
-        }
-    }
-
-    public bool ConfirmLinking()
-    {
-        EnsureInitialized();
-        if (!ValidateContext(out string platform, out string platformId, out _, ref _)) return false;
-
-        try
-        {
-            var result = client.ConfirmLinking(platform, platformId).Result;
-            CPH.SetArgument("response", result.Message);
-            return true;
-        }
-        catch (Exception ex)
-        {
-             CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
-             return true;
-        }
-    }
-
-    public bool UnlinkAccounts()
-    {
-        EnsureInitialized();
-        string error = null;
-        if (!ValidateContext(out string platform, out string platformId, out _, ref error)) return false;
-        if (!GetInputString(0, "target_platform", true, out string targetPlatform, ref error))
-        {
-             CPH.SetArgument("response", $"{error} Usage: !unlink <target_platform>");
-             return true;
-        }
-
-        try
-        {
-            var result = client.UnlinkAccounts(platform, platformId, targetPlatform).Result;
-            CPH.SetArgument("response", result.Message);
-            return true;
-        }
-        catch (Exception ex)
-        {
-             CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
-             return true;
-        }
-    }
-
-    public bool GetLinkingStatus()
-    {
-        EnsureInitialized();
-        if (!ValidateContext(out string platform, out string platformId, out _, ref _)) return false;
-
-        try
-        {
-            var result = client.GetLinkingStatus(platform, platformId).Result;
-            var formatted = ResponseFormatter.FormatLinkingStatus(result);
-            CPH.SetArgument("response", formatted);
-            return true;
-        }
-        catch (Exception ex)
-        {
-             CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
-             return true;
-        }
-    }
-
-    #endregion
 
     #region Admin
 
@@ -2352,7 +2248,8 @@ public class CPHInline
     public bool AdminInstantUnlock()
     {
         EnsureInitialized();
-        if (!GetInputString(0, "node_key", true, out string nodeKey, ref _)) return false;
+        string error = null;
+        if (!GetInputString(0, "node_key", true, out string nodeKey, ref error)) return false;
 
         try
         {
@@ -2473,14 +2370,14 @@ public class CPHInline
     public bool HarvestReward()
     {
         EnsureInitialized();
-        if (!ValidateContext(out string platform, out string platformId, out string username, ref _)) return false;
+        string error = null;
+        if (!ValidateContext(out string platform, out string platformId, out string username, ref error)) return false;
 
         try
         {
             var result = client.Harvest(platform, platformId, username).Result;
             var formatted = ResponseFormatter.FormatHarvest(result); 
-            string responseMsg = formatted ?? $"{result.Message}. Gained: {string.Join(", ", result.ItemsGained.Keys)}";
-            CPH.SetArgument("response", responseMsg);
+            CPH.SetArgument("response", formatted);
             return true;
         }
         catch (Exception ex)
@@ -2495,7 +2392,7 @@ public class CPHInline
     {
         EnsureInitialized();
         string error = null;
-        if (!ValidateContext(out string platform, out string platformId, out _, ref error)) return false;
+        if (!ValidateContext(out string platform, out string platformId, out string discardedUsername, ref error)) return false;
 
         if (!GetInputString(0, "item", true, out string itemName, ref error) ||
             !GetInputInt(1, "quantity", 1, out int quantity, ref error))
@@ -2508,7 +2405,7 @@ public class CPHInline
         {
             var items = new List<CompostDepositItem>
             {
-                new CompostDepositItem { Name = itemName, Quantity = quantity }
+                new CompostDepositItem { ItemName = itemName, Quantity = quantity }
             };
 
             var result = client.CompostDeposit(platform, platformId, items).Result;
@@ -2525,7 +2422,8 @@ public class CPHInline
     public bool CompostHarvest()
     {
         EnsureInitialized();
-        if (!ValidateContext(out string platform, out string platformId, out string username, ref _)) return false;
+        string error = null;
+        if (!ValidateContext(out string platform, out string platformId, out string username, ref error)) return false;
 
         try
         {
@@ -2543,12 +2441,20 @@ public class CPHInline
     public bool CompostStatus()
     {
         EnsureInitialized();
-        if (!ValidateContext(out string platform, out string platformId, out _, ref _)) return false;
+        string error = null;
+        if (!ValidateContext(out string platform, out string platformId, out string discardedUsername, ref error)) return false;
 
         try
         {
             var result = client.CompostStatus(platform, platformId).Result;
-            CPH.SetArgument("response", $"Status: {result.State}. Items: {result.Items.Count}/{result.Capacity}");
+            if (result.Status != null)
+            {
+                CPH.SetArgument("response", $"Status: {result.Status.Status}. Items: {result.Status.ItemCount}/{result.Status.Capacity}");
+            }
+            else
+            {
+                CPH.SetArgument("response", "Compost bin status unavailable.");
+            }
             return true;
         }
         catch (Exception ex)

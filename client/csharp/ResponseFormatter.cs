@@ -340,6 +340,80 @@ namespace BrandishBot.Client
 
             return $"Leaderboard [{metric}]: " + string.Join(" | ", lines);
         }
+
+        /// <summary>
+        /// Format contribution leaderboard entries
+        /// </summary>
+        public static string FormatLeaderboard(List<ContributionLeaderboardEntry> entries)
+        {
+            if (entries == null || entries.Count == 0)
+                return "Contribution leaderboard is empty.";
+
+            var lines = new List<string>();
+            foreach (var entry in entries)
+            {
+                lines.Add($"{entry.Rank}. {entry.Username}: {entry.TotalContribution}");
+            }
+
+            return "🏆 Contribution Leaderboard: " + string.Join(" | ", lines);
+        }
+
+        /// <summary>
+        /// Format active quests
+        /// </summary>
+        public static string FormatActiveQuests(List<Quest> quests)
+        {
+            if (quests == null || quests.Count == 0)
+                return "No active quests available.";
+
+            var formatted = quests.ConvertAll(q => $"{q.DisplayName} ({q.QuestKey})");
+            return "Active Quests: " + string.Join(" | ", formatted);
+        }
+
+        /// <summary>
+        /// Format quest progress
+        /// </summary>
+        public static string FormatQuestProgress(List<UserQuestProgress> progressList)
+        {
+            if (progressList == null || progressList.Count == 0)
+                return "No active quest progress found.";
+
+            var entries = new List<string>();
+            foreach (var progress in progressList)
+            {
+                var parts = new List<string>();
+                if (progress.Progress != null)
+                {
+                    foreach (var kvp in progress.Progress)
+                    {
+                        parts.Add($"{kvp.Key}: {kvp.Value}");
+                    }
+                }
+                string status = progress.Status ?? "unknown";
+                entries.Add($"{progress.QuestKey} [{status}] (" + string.Join(", ", parts) + ")");
+            }
+
+            return "Quest Progress: " + string.Join(" | ", entries);
+        }
+
+        /// <summary>
+        /// Format harvest result
+        /// </summary>
+        public static string FormatHarvest(HarvestResponse result)
+        {
+            if (result == null) return "Harvest processed.";
+            
+            if (result.ItemsGained == null || result.ItemsGained.Count == 0)
+                return result.Message ?? "Nothing to harvest right now.";
+
+            var items = new List<string>();
+            foreach (var kvp in result.ItemsGained)
+            {
+                items.Add($"{kvp.Value}x {kvp.Key}");
+            }
+
+            return $"{result.Message} Gained: " + string.Join(", ", items);
+        }
         /// <summary>
         /// Format account linking status
         /// </summary>
@@ -349,6 +423,43 @@ namespace BrandishBot.Client
                 return "Account is not linked to any other platform.";
 
             return $"Account linked to: {string.Join(", ", status.LinkedPlatforms)}";
+        }
+
+        /// <summary>
+        /// Format link initiation response
+        /// </summary>
+        public static string FormatLinkInitiate(LinkInitiateResponse response)
+        {
+            if (response == null || string.IsNullOrEmpty(response.Token))
+                return "Failed to initiate linking: No token received.";
+
+            string expireMsg = response.ExpiresIn > 0 ? $" (Expires in {response.ExpiresIn / 60}m)" : "";
+            return $"Linking code: {response.Token}{expireMsg}. Run '!claimCode {response.Token}' on your other platform.";
+        }
+
+        /// <summary>
+        /// Format link claim response
+        /// </summary>
+        public static string FormatLinkClaim(LinkClaimResponse response)
+        {
+            if (response == null) return "Claim request failed.";
+            if (response.AwaitingConfirmation)
+            {
+                return $"Code claimed! Please return to {response.SourcePlatform} and run '!confirmLink' to complete the process.";
+            }
+            return "Code claimed successfully.";
+        }
+
+        /// <summary>
+        /// Format link confirmation response
+        /// </summary>
+        public static string FormatLinkConfirm(LinkConfirmResponse response)
+        {
+            if (response == null || !response.Success)
+                return "Confirmation failed. Please check the process.";
+
+            string platforms = response.LinkedPlatforms != null ? string.Join(", ", response.LinkedPlatforms) : "none";
+            return $"Account linked successfully! Current platforms: {platforms}";
         }
 
         /// <summary>

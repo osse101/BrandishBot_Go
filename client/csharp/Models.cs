@@ -421,6 +421,33 @@ namespace BrandishBot.Client
         public List<string> LinkedPlatforms { get; set; }
     }
 
+    public class LinkInitiateResponse
+    {
+        [JsonProperty("token")]
+        public string Token { get; set; }
+
+        [JsonProperty("expires_in")]
+        public int ExpiresIn { get; set; }
+    }
+
+    public class LinkClaimResponse
+    {
+        [JsonProperty("source_platform")]
+        public string SourcePlatform { get; set; }
+
+        [JsonProperty("awaiting_confirmation")]
+        public bool AwaitingConfirmation { get; set; }
+    }
+
+    public class LinkConfirmResponse
+    {
+        [JsonProperty("success")]
+        public bool Success { get; set; }
+
+        [JsonProperty("linked_platforms")]
+        public List<string> LinkedPlatforms { get; set; }
+    }
+
     public class VersionInfo
     {
         [JsonProperty("version")]

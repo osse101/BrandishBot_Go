@@ -10,9 +10,9 @@ namespace BrandishBot.Client
         /// <summary>
         /// Initiate account linking process
         /// </summary>
-        public async Task<SuccessResponse> InitiateLinking(string platform, string platformId, string username)
+        public async Task<LinkInitiateResponse> InitiateLinking(string platform, string platformId, string username)
         {
-            return await PostAsync<SuccessResponse>("/api/v1/link/initiate", new
+            return await PostAsync<LinkInitiateResponse>("/api/v1/link/initiate", new
             {
                 platform = platform,
                 platform_id = platformId,
@@ -23,23 +23,23 @@ namespace BrandishBot.Client
         /// <summary>
         /// Claim a linking code from another platform
         /// </summary>
-        public async Task<SuccessResponse> ClaimLinkingCode(string platform, string platformId, string username, string code)
+        public async Task<LinkClaimResponse> ClaimLinkingCode(string platform, string platformId, string username, string code)
         {
-            return await PostAsync<SuccessResponse>("/api/v1/link/claim", new
+            return await PostAsync<LinkClaimResponse>("/api/v1/link/claim", new
             {
                 platform = platform,
                 platform_id = platformId,
                 username = username,
-                code = code
+                token = code
             });
         }
 
         /// <summary>
         /// Confirm account linking
         /// </summary>
-        public async Task<SuccessResponse> ConfirmLinking(string platform, string platformId)
+        public async Task<LinkConfirmResponse> ConfirmLinking(string platform, string platformId)
         {
-            return await PostAsync<SuccessResponse>("/api/v1/link/confirm", new
+            return await PostAsync<LinkConfirmResponse>("/api/v1/link/confirm", new
             {
                 platform = platform,
                 platform_id = platformId
