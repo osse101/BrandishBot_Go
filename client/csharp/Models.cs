@@ -95,17 +95,17 @@ namespace BrandishBot.Client
         [JsonProperty("user")]
         public User User { get; set; }
 
-        [JsonProperty("found_strings")]
-        public List<FoundString> FoundStrings { get; set; }
+        [JsonProperty("matches")]
+        public List<FoundString> Matches { get; set; }
     }
 
     public class FoundString
     {
-        [JsonProperty("trigger")]
-        public string Trigger { get; set; }
+        [JsonProperty("code")]
+        public string Code { get; set; }
 
-        [JsonProperty("match")]
-        public string Match { get; set; }
+        [JsonProperty("value")]
+        public string Value { get; set; }
     }
 
     // --- Progression Models ---
