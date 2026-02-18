@@ -516,6 +516,36 @@ func TestHandleBuyItem(t *testing.T) {
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   ErrMsgGenericServerError,
 		},
+		{
+			name: "Negative Quantity",
+			requestBody: BuyItemRequest{
+				Platform:   domain.PlatformTwitch,
+				PlatformID: "test-id",
+				Username:   "testuser",
+				ItemName:   domain.ItemBlaster,
+				Quantity:   -1,
+			},
+			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService) {
+				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureEconomy).Return(true, nil)
+			},
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "Invalid request",
+		},
+		{
+			name: "Quantity Too Large",
+			requestBody: BuyItemRequest{
+				Platform:   domain.PlatformTwitch,
+				PlatformID: "test-id",
+				Username:   "testuser",
+				ItemName:   domain.ItemBlaster,
+				Quantity:   10001,
+			},
+			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService) {
+				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureEconomy).Return(true, nil)
+			},
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "Invalid request",
+		},
 	}
 
 	for _, tt := range tests {
@@ -678,6 +708,26 @@ func TestHandleGetInventory(t *testing.T) {
 			expectedBody:   "Filter 'upgrade' is locked",
 		},
 		{
+			name:           "Missing Platform",
+			username:       "testuser",
+			platform:       "",
+			platformID:     "test-platformid",
+			filter:         "",
+			setupMock:      func(m *mocks.MockUserService, p *mocks.MockProgressionService) {},
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "Missing platform query parameter",
+		},
+		{
+			name:           "Missing PlatformID",
+			username:       "testuser",
+			platform:       domain.PlatformDiscord,
+			platformID:     "",
+			filter:         "",
+			setupMock:      func(m *mocks.MockUserService, p *mocks.MockProgressionService) {},
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "Missing platform_id query parameter",
+		},
+		{
 			name:           "Missing Username",
 			username:       "",
 			platform:       domain.PlatformDiscord,
@@ -816,6 +866,102 @@ func TestHandleGetInventory(t *testing.T) {
 			}
 			mockUser.AssertExpectations(t)
 			mockProg.AssertExpectations(t)
+		})
+	}
+}
+
+func TestHandleGetInventoryByUsername(t *testing.T) {
+	InitValidator()
+
+	tests := []struct {
+		name           string
+		username       string
+		platform       string
+		filter         string
+		setupMock      func(*mocks.MockUserService)
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name:       "Success",
+			username:   "testuser",
+			platform:   domain.PlatformDiscord,
+			filter:     "",
+			setupMock: func(m *mocks.MockUserService) {
+				items := []user.InventoryItem{
+					{InternalName: domain.ItemBlaster, PublicName: "missile", Quantity: 1, QualityLevel: "COMMON"},
+				}
+				m.On("GetInventoryByUsername", mock.Anything, domain.PlatformDiscord, "testuser", "").Return(items, nil)
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody:   `"items":[{"item_name":"weapon_blaster","public_name":"missile","quantity":1,"quality_level":"COMMON"}]`,
+		},
+		{
+			name:       "Success with Filter",
+			username:   "testuser",
+			platform:   domain.PlatformDiscord,
+			filter:     domain.FilterTypeUpgrade,
+			setupMock: func(m *mocks.MockUserService) {
+				items := []user.InventoryItem{
+					{InternalName: domain.ItemLootbox0, PublicName: "junkbox", Quantity: 1, QualityLevel: "COMMON"},
+				}
+				m.On("GetInventoryByUsername", mock.Anything, domain.PlatformDiscord, "testuser", domain.FilterTypeUpgrade).Return(items, nil)
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody:   `"items":[{"item_name":"lootbox_tier0","public_name":"junkbox","quantity":1,"quality_level":"COMMON"}]`,
+		},
+		{
+			name:           "Missing Username",
+			username:       "",
+			platform:       domain.PlatformDiscord,
+			filter:         "",
+			setupMock:      func(m *mocks.MockUserService) {},
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "Missing username query parameter",
+		},
+		{
+			name:       "Service Error",
+			username:   "testuser",
+			platform:   domain.PlatformDiscord,
+			filter:     "",
+			setupMock: func(m *mocks.MockUserService) {
+				m.On("GetInventoryByUsername", mock.Anything, domain.PlatformDiscord, "testuser", "").Return(nil, errors.New(ErrMsgGenericServerError))
+			},
+			expectedStatus: http.StatusInternalServerError,
+			expectedBody:   ErrMsgGenericServerError,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockUser := mocks.NewMockUserService(t)
+			tt.setupMock(mockUser)
+
+			handler := HandleGetInventoryByUsername(mockUser)
+
+			// Build URL with query parameters
+			params := []string{}
+			if tt.platform != "" {
+				params = append(params, "platform="+tt.platform)
+			}
+			if tt.username != "" {
+				params = append(params, "username="+tt.username)
+			}
+			if tt.filter != "" {
+				params = append(params, "filter="+tt.filter)
+			}
+			url := "/user/inventory-by-username"
+			if len(params) > 0 {
+				url += "?" + strings.Join(params, "&")
+			}
+			req := httptest.NewRequest("GET", url, nil)
+			w := httptest.NewRecorder()
+
+			handler.ServeHTTP(w, req)
+			if tt.expectedBody != "" {
+				assert.Contains(t, w.Body.String(), tt.expectedBody)
+			}
+			mockUser.AssertExpectations(t)
 		})
 	}
 }
