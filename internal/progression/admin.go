@@ -140,7 +140,7 @@ func (s *service) ForceInstantUnlock(ctx context.Context) (*domain.ProgressionUn
 	}
 
 	// Find winning option
-	winner := findWinningOption(session.Options)
+	winner := findWinningOption(session.Options, nil)
 	if winner == nil {
 		return nil, domain.ErrNoActiveSession
 	}

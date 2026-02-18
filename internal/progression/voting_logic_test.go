@@ -69,7 +69,7 @@ func TestFindWinningOption_WithVotes(t *testing.T) {
 				{ID: 3, NodeID: 103, VoteCount: 0},
 				{ID: 4, NodeID: 104, VoteCount: 0},
 			},
-			expected: -1, // any is valid
+			expected: -1, // any is valid (handled in check)
 		},
 		{
 			name: "single option",
@@ -82,7 +82,7 @@ func TestFindWinningOption_WithVotes(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			winner := findWinningOption(tt.options)
+			winner := findWinningOption(tt.options, nil)
 			require.NotNil(t, winner, "winner should not be nil")
 
 			if tt.expected == -1 {
@@ -103,12 +103,12 @@ func TestFindWinningOption_WithVotes(t *testing.T) {
 }
 
 func TestFindWinningOption_EmptyOptions(t *testing.T) {
-	winner := findWinningOption([]domain.ProgressionVotingOption{})
+	winner := findWinningOption([]domain.ProgressionVotingOption{}, nil)
 	assert.Nil(t, winner, "winner should be nil for empty options")
 }
 
 func TestFindWinningOption_ZeroVotesRandomness(t *testing.T) {
-	// Test that 0-vote selection is actually random by running multiple times
+	// Test that 0-vote selection uses the provided RNG
 	options := []domain.ProgressionVotingOption{
 		{ID: 1, NodeID: 101, VoteCount: 0},
 		{ID: 2, NodeID: 102, VoteCount: 0},
@@ -116,17 +116,14 @@ func TestFindWinningOption_ZeroVotesRandomness(t *testing.T) {
 		{ID: 4, NodeID: 104, VoteCount: 0},
 	}
 
-	results := make(map[int]int)
-	iterations := 1000
-
-	for i := 0; i < iterations; i++ {
-		winner := findWinningOption(options)
-		require.NotNil(t, winner, "winner should not be nil")
-		results[winner.NodeID]++
+	// Mock RNG to always return index 2 (NodeID 103)
+	mockRNG := func(max int) int {
+		return 2
 	}
 
-	// Probabilistic check: verify at least 2 different options selected across 1000 iterations.
-	assert.GreaterOrEqual(t, len(results), 2, "random selection should pick different options")
+	winner := findWinningOption(options, mockRNG)
+	require.NotNil(t, winner, "winner should not be nil")
+	assert.Equal(t, 103, winner.NodeID, "should return option at mocked index")
 }
 
 func TestSelectRandomNodes(t *testing.T) {
@@ -139,7 +136,7 @@ func TestSelectRandomNodes(t *testing.T) {
 	}
 
 	t.Run("select 4 from 5", func(t *testing.T) {
-		selected := selectRandomNodes(nodes, 4)
+		selected := selectRandomNodes(nodes, 4, nil)
 		assert.Equal(t, 4, len(selected), "unexpected selection count")
 
 		// Verify no duplicates
@@ -151,7 +148,7 @@ func TestSelectRandomNodes(t *testing.T) {
 	})
 
 	t.Run("select more than available", func(t *testing.T) {
-		selected := selectRandomNodes(nodes, 10)
+		selected := selectRandomNodes(nodes, 10, nil)
 		assert.Equal(t, 5, len(selected), "unexpected selection count")
 		assert.Equal(t, nodes, selected, "should return original slice if count >= len")
 		if len(nodes) > 0 {
@@ -160,7 +157,7 @@ func TestSelectRandomNodes(t *testing.T) {
 	})
 
 	t.Run("select exact count", func(t *testing.T) {
-		selected := selectRandomNodes(nodes, 5)
+		selected := selectRandomNodes(nodes, 5, nil)
 		assert.Equal(t, 5, len(selected), "unexpected selection count")
 		assert.Equal(t, nodes, selected, "should return original slice if count == len")
 		if len(nodes) > 0 {
@@ -169,13 +166,13 @@ func TestSelectRandomNodes(t *testing.T) {
 	})
 
 	t.Run("select 0", func(t *testing.T) {
-		selected := selectRandomNodes(nodes, 0)
+		selected := selectRandomNodes(nodes, 0, nil)
 		assert.Empty(t, selected, "should return empty slice")
 		assert.NotNil(t, selected, "should return empty slice, not nil")
 	})
 
 	t.Run("nil input", func(t *testing.T) {
-		selected := selectRandomNodes(nil, 5)
+		selected := selectRandomNodes(nil, 5, nil)
 		assert.Empty(t, selected, "should return empty/nil slice")
 	})
 
@@ -185,7 +182,7 @@ func TestSelectRandomNodes(t *testing.T) {
 			originalOrder[i] = n.ID
 		}
 
-		_ = selectRandomNodes(nodes, 3)
+		_ = selectRandomNodes(nodes, 3, nil)
 
 		for i, n := range nodes {
 			assert.Equal(t, originalOrder[i], n.ID, "original slice should not be modified")
@@ -193,7 +190,7 @@ func TestSelectRandomNodes(t *testing.T) {
 	})
 
 	t.Run("returns copy when count < len", func(t *testing.T) {
-		selected := selectRandomNodes(nodes, 3)
+		selected := selectRandomNodes(nodes, 3, nil)
 		if len(nodes) > 0 && len(selected) > 0 {
 			assert.NotSame(t, &nodes[0], &selected[0], "should return a new underlying array")
 		}
@@ -202,5 +199,22 @@ func TestSelectRandomNodes(t *testing.T) {
 		originalFirstID := nodes[0].ID
 		selected[0] = &domain.ProgressionNode{ID: 999}
 		assert.Equal(t, originalFirstID, nodes[0].ID, "modifying result slice should not affect original slice")
+	})
+
+	t.Run("deterministic shuffle", func(t *testing.T) {
+		// Mock RNG to always return 0.
+		// Fisher-Yates: for i from n-1 down to 1: swap(i, rng(i+1))
+		// Result: [2, 3, 4, 5, 1]
+		// Selection (count=3): [2, 3, 4]
+
+		mockRNG := func(max int) int {
+			return 0
+		}
+
+		selected := selectRandomNodes(nodes, 3, mockRNG)
+		require.Equal(t, 3, len(selected))
+		assert.Equal(t, 2, selected[0].ID)
+		assert.Equal(t, 3, selected[1].ID)
+		assert.Equal(t, 4, selected[2].ID)
 	})
 }
