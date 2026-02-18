@@ -115,12 +115,7 @@
     "ModifierConfig": {
       "type": "object",
       "description": "Configuration for upgrade-type nodes that modify game values",
-      "required": [
-        "feature_key",
-        "modifier_type",
-        "base_value",
-        "per_level_value"
-      ],
+      "required": ["feature_key", "modifier_type", "base_value", "per_level_value"],
       "properties": {
         "feature_key": {
           "type": "string",

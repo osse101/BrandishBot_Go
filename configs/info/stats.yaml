@@ -1,7 +1,7 @@
 name: stats
 title: Stats & Leaderboards
 icon: 📊
-color: "#1ABC9C"
+color: '#1ABC9C'
 
 discord:
   description: |
@@ -88,4 +88,4 @@ discord:
     Climb the leaderboards! 🚀
 
 streamerbot:
-  description: "Stats: Track progress and compete! !stats !leaderboard. View engagement, money, items, and more. Real-time rankings!"
+  description: 'Stats: Track progress and compete! !stats !leaderboard. View engagement, money, items, and more. Real-time rankings!'

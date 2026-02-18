@@ -9,6 +9,7 @@
 ---
 
 ## Table of Contents
+
 1. [Problem Statement](#problem-statement)
 2. [Goals & Non-Goals](#goals--non-goals)
 3. [Architecture Overview](#architecture-overview)
@@ -48,6 +49,7 @@ repo.UpdateCooldown(ctx, user.ID, "search", now)
 ### Desired State
 
 Centralized cooldown service with:
+
 - ✅ Built-in race prevention
 - ✅ Consistent API across all features
 - ✅ Pluggable backend (Postgres, Redis, hybrid)
@@ -123,14 +125,14 @@ type Service interface {
     // CheckCooldown checks if a user's action is on cooldown
     // Returns: (onCooldown bool, remaining time.Duration, error)
     CheckCooldown(ctx context.Context, userID, action string) (bool, time.Duration, error)
-    
+
     // EnforceCooldown atomically checks cooldown and executes action if allowed
     // This is the primary method - prevents race conditions
     EnforceCooldown(ctx context.Context, userID, action string, fn func() error) error
-    
+
     // ResetCooldown manually resets a cooldown (admin/testing)
     ResetCooldown(ctx context.Context, userID, action string) error
-    
+
     // GetLastUsed returns when action was last performed (for UI display)
     GetLastUsed(ctx context.Context, userID, action string) (*time.Time, error)
 }
@@ -158,18 +160,18 @@ func (e ErrOnCooldown) Error() string {
 // In user service
 func (s *service) HandleSearch(ctx context.Context, platform, platformID, username string) (string, error) {
     user := s.getUserOrRegister(ctx, platform, platformID, username)
-    
+
     // Single call handles everything atomically
     err := s.cooldownService.EnforceCooldown(ctx, user.ID, "search", func() error {
         // This only executes if cooldown passed
         return s.executeSearch(ctx, user)
     })
-    
+
     if errors.Is(err, cooldown.ErrOnCooldown{}) {
         remaining := err.(cooldown.ErrOnCooldown).Remaining
         return fmt.Sprintf("Search on cooldown: %v remaining", remaining), nil
     }
-    
+
     return result, err
 }
 ```
@@ -181,6 +183,7 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 ### Option 1: Postgres Backend (Default)
 
 **Pros:**
+
 - ✅ No new infrastructure
 - ✅ ACID guarantees
 - ✅ Works with existing schema
@@ -196,26 +199,27 @@ func (b *postgresBackend) EnforceCooldown(ctx, userID, action, fn) error {
     // Start transaction
     tx, err := b.db.Begin(ctx)
     defer tx.Rollback(ctx)
-    
+
     // LOCKED check (SELECT FOR UPDATE)
     lastUsed, err := b.getLastUsedLocked(tx, userID, action)
     if stillOnCooldown(lastUsed) {
         return ErrOnCooldown{Remaining: remaining}
     }
-    
+
     // Execute user function
     if err := fn(); err != nil {
         return err
     }
-    
+
     // Update cooldown
     b.updateCooldownTx(tx, userID, action, time.Now())
-    
+
     return tx.Commit()
 }
 ```
 
 **Performance:**
+
 - **Fast path (on cooldown):** 1-2ms (rejected without transaction)
 - **Slow path (allowed):** 5-10ms (full transaction)
 
@@ -224,11 +228,13 @@ func (b *postgresBackend) EnforceCooldown(ctx, userID, action, fn) error {
 ### Option 2: Redis Backend (Scalable)
 
 **Pros:**
+
 - ✅ Sub-millisecond latency
 - ✅ Naturally atomic (SET NX)
 - ✅ Horizontal scaling
 
 **Cons:**
+
 - ⚠️ Requires Redis infrastructure
 - ⚠️ Data split between systems
 
@@ -241,25 +247,26 @@ type redisBackend struct {
 
 func (b *redisBackend) EnforceCooldown(ctx, userID, action, fn) error {
     key := fmt.Sprintf("cooldown:%s:%s", action, userID)
-    
+
     // Atomic check: try to set key with NX (only if not exists)
     ok, err := b.client.SetNX(ctx, key, "1", duration).Result()
     if err != nil {
         return err
     }
-    
+
     if !ok {
         // Key exists = on cooldown
         ttl, _ := b.client.TTL(ctx, key).Result()
         return ErrOnCooldown{Remaining: ttl}
     }
-    
+
     // Key was set = we acquired the cooldown lock
     return fn()
 }
 ```
 
 **Performance:**
+
 - **Check + set:** <1ms
 - **TTL query:** <1ms
 
@@ -278,18 +285,18 @@ type hybridBackend struct {
 func (b *hybridBackend) EnforceCooldown(ctx, userID, action, fn) error {
     // Fast path: Try Redis first
     err := b.redis.EnforceCooldown(ctx, userID, action, fn)
-    
+
     if err == nil {
         // Success! Async persist to Postgres for durability
         go b.postgres.updateCooldownAsync(userID, action, time.Now())
         return nil
     }
-    
+
     // Redis failed (down/timeout) - fallback to Postgres
     if isRedisError(err) {
         return b.postgres.EnforceCooldown(ctx, userID, action, fn)
     }
-    
+
     // On cooldown or other error
     return err
 }
@@ -340,6 +347,7 @@ func (s *service) HandleSearch(...) (string, error) {
 ### Phase 3: Migrate Other Features
 
 Gradually migrate other cooldown uses:
+
 - Economy daily claims
 - PvP attack cooldowns
 - Crafting cooldowns (if any)
@@ -347,6 +355,7 @@ Gradually migrate other cooldown uses:
 ### Phase 4: Remove Old Code
 
 Once all migrated:
+
 - Remove `GetLastCooldown`, `UpdateCooldown` from user repository
 - Clean up `user_cooldowns` table schema if needed
 
@@ -359,30 +368,30 @@ Once all migrated:
 ```go
 func TestCooldownService_EnforceCooldown_Success(t *testing.T) {
     svc := cooldown.NewPostgresService(testDB, cooldown.Config{})
-    
+
     executed := false
     err := svc.EnforceCooldown(ctx, "user123", "search", func() error {
         executed = true
         return nil
     })
-    
+
     assert.NoError(t, err)
     assert.True(t, executed)
 }
 
 func TestCooldownService_EnforceCooldown_OnCooldown(t *testing.T) {
     svc := cooldown.NewPostgresService(testDB, cooldown.Config{})
-    
+
     // First call succeeds
     svc.EnforceCooldown(ctx, "user123", "search", func() error { return nil })
-    
+
     // Second call immediately after should fail
     executed := false
     err := svc.EnforceCooldown(ctx, "user123", "search", func() error {
         executed = true
         return nil
     })
-    
+
     assert.Error(t, err)
     assert.ErrorIs(t, err, cooldown.ErrOnCooldown{})
     assert.False(t, executed) // Function not called
@@ -394,11 +403,11 @@ func TestCooldownService_EnforceCooldown_OnCooldown(t *testing.T) {
 ```go
 func TestCooldownService_ConcurrentRequests(t *testing.T) {
     svc := cooldown.NewPostgresService(realDB, cooldown.Config{})
-    
+
     // Fire 10 concurrent requests
     var successCount atomic.Int32
     var wg sync.WaitGroup
-    
+
     for i := 0; i < 10; i++ {
         wg.Add(1)
         go func() {
@@ -409,9 +418,9 @@ func TestCooldownService_ConcurrentRequests(t *testing.T) {
             })
         }()
     }
-    
+
     wg.Wait()
-    
+
     // Only ONE should succeed
     assert.Equal(t, int32(1), successCount.Load())
 }
@@ -427,7 +436,7 @@ type MockCooldownService struct {
 
 func (m *MockCooldownService) EnforceCooldown(ctx, userID, action, fn) error {
     m.Calls = append(m.Calls, action)
-    
+
     if m.AlwaysAllow {
         return fn()
     }
@@ -448,14 +457,14 @@ func (b *postgresBackend) EnforceCooldown(ctx, userID, action, fn) error {
     if stillOnCooldown(lastUsed) {
         return ErrOnCooldown{} // 1ms, no transaction
     }
-    
+
     // PHASE 2: Expensive locked check (only if passed Phase 1)
     tx := b.db.Begin(ctx)
     lastUsed, _ = b.getLastUsedLocked(tx, userID, action) // FOR UPDATE
     if stillOnCooldown(lastUsed) {
         return ErrOnCooldown{} // Race detected
     }
-    
+
     // Execute and update
     fn()
     b.updateCooldownTx(tx, userID, action, now)
@@ -464,6 +473,7 @@ func (b *postgresBackend) EnforceCooldown(ctx, userID, action, fn) error {
 ```
 
 **Latency Profile:**
+
 - Requests on cooldown: **1-2ms** (fast rejection)
 - Requests off cooldown: **5-10ms** (full transaction)
 
@@ -482,7 +492,7 @@ func (b *cachedBackend) CheckCooldown(ctx, userID, action) (bool, time.Duration,
     if cached, ok := b.cache.Get(userID + ":" + action); ok {
         return calculateRemaining(cached.(time.Time))
     }
-    
+
     // Miss - query backend
     lastUsed, _ := b.backend.GetLastUsed(ctx, userID, action)
     b.cache.Set(userID+":"+action, lastUsed, 10*time.Second)
@@ -571,32 +581,35 @@ type MetricsBackend struct {
 
 ## Decision Matrix
 
-| Feature | Postgres | Redis | Hybrid |
-|---------|----------|-------|--------|
-| No new infra | ✅ | ❌ | ❌ |
-| Performance | Good (5-10ms) | Excellent (<1ms) | Excellent |
-| Horizontal scaling | Limited | ✅ | ✅ |
-| ACID guarantees | ✅ | ❌ | ✅ (Postgres fallback) |
-| Complexity | Low | Medium | High |
-| **Recommendation** | **Start here** | When scaling | Future optimization |
+| Feature            | Postgres       | Redis            | Hybrid                 |
+| ------------------ | -------------- | ---------------- | ---------------------- |
+| No new infra       | ✅             | ❌               | ❌                     |
+| Performance        | Good (5-10ms)  | Excellent (<1ms) | Excellent              |
+| Horizontal scaling | Limited        | ✅               | ✅                     |
+| ACID guarantees    | ✅             | ❌               | ✅ (Postgres fallback) |
+| Complexity         | Low            | Medium           | High                   |
+| **Recommendation** | **Start here** | When scaling     | Future optimization    |
 
 ---
 
 ## Implementation Timeline
 
 ### Minimal (1-2 hours)
+
 - Create `internal/cooldown` package
 - Implement Postgres backend
 - Unit tests
 - Wire into main.go
 
 ### Full Migration (4-6 hours)
+
 - Migrate HandleSearch
 - Add integration tests
 - Performance benchmarks
 - Documentation
 
 ### Redis Support (8-12 hours)
+
 - Redis backend implementation
 - Hybrid backend
 - Distributed lock testing
@@ -607,6 +620,7 @@ type MetricsBackend struct {
 ## Acceptance Criteria
 
 ✅ **Must Have:**
+
 - [ ] Service interface defined
 - [ ] Postgres backend implemented
 - [ ] Race conditions eliminated
@@ -615,12 +629,14 @@ type MetricsBackend struct {
 - [ ] HandleSearch migrated successfully
 
 ✅ **Should Have:**
+
 - [ ] Config-based cooldown durations
 - [ ] Dev mode bypass
 - [ ] Admin reset capability
 - [ ] Performance benchmarks
 
 🎯 **Nice to Have:**
+
 - [ ] Redis backend
 - [ ] Metrics/monitoring
 - [ ] Cooldown groups

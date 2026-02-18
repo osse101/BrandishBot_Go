@@ -4,30 +4,30 @@ This document catalogs all events in the BrandishBot event system, their schemas
 
 ## Quick Reference
 
-| Event Type | Category | Source | When Emitted |
-|------------|----------|--------|--------------|
-| `job_level_up` | Progression | Job Service | User's job level increases |
-| `progression.cycle.completed` | Progression | Progression Service | Community vote cycle completes |
-| `user_registered` | User | User Service | New user registers |
-| `item_added` | Inventory | User Service | Item added to inventory |
-| `item_removed` | Inventory | User Service | Item removed from inventory |
-| `item_used` | Inventory | User Service | Consumable item used |
-| `item_sold` | Economy | Economy Service | Item sold to shop |
-| `item_bought` | Economy | Economy Service | Item purchased from shop |
-| `item_transferred` | Inventory | User Service | Item transferred to another user |
-| `message_received` | Chat | Handler | User sends message |
-| `search` | Activity | User Service | User performs search action |
-| `search_near_miss` | Activity | User Service | Search almost succeeded |
-| `search_critical_fail` | Activity | User Service | Search critically fails |
-| `search_critical_success` | Activity | User Service | Search critically succeeds |
-| `gamble_near_miss` | Gambling | Gamble Service | Gamble almost won |
-| `gamble_tie_break_lost` | Gambling | Gamble Service | Lost tie-breaker in gamble |
-| `gamble_critical_fail` | Gambling | Gamble Service | Gamble critically fails |
-| `daily_streak` | Engagement | Stats Service | User maintains daily streak |
-| `crafting_critical_success` | Crafting | Crafting Service | Crafting critically succeeds |
-| `crafting_perfect_salvage` | Crafting | Crafting Service | Perfect salvage while disassembling |
-| `lootbox_jackpot` | Lootbox | Lootbox Service | Lootbox jackpot won |
-| `lootbox_big_win` | Lootbox | Lootbox Service | Big win from lootbox |
+| Event Type                    | Category    | Source              | When Emitted                        |
+| ----------------------------- | ----------- | ------------------- | ----------------------------------- |
+| `job_level_up`                | Progression | Job Service         | User's job level increases          |
+| `progression.cycle.completed` | Progression | Progression Service | Community vote cycle completes      |
+| `user_registered`             | User        | User Service        | New user registers                  |
+| `item_added`                  | Inventory   | User Service        | Item added to inventory             |
+| `item_removed`                | Inventory   | User Service        | Item removed from inventory         |
+| `item_used`                   | Inventory   | User Service        | Consumable item used                |
+| `item_sold`                   | Economy     | Economy Service     | Item sold to shop                   |
+| `item_bought`                 | Economy     | Economy Service     | Item purchased from shop            |
+| `item_transferred`            | Inventory   | User Service        | Item transferred to another user    |
+| `message_received`            | Chat        | Handler             | User sends message                  |
+| `search`                      | Activity    | User Service        | User performs search action         |
+| `search_near_miss`            | Activity    | User Service        | Search almost succeeded             |
+| `search_critical_fail`        | Activity    | User Service        | Search critically fails             |
+| `search_critical_success`     | Activity    | User Service        | Search critically succeeds          |
+| `gamble_near_miss`            | Gambling    | Gamble Service      | Gamble almost won                   |
+| `gamble_tie_break_lost`       | Gambling    | Gamble Service      | Lost tie-breaker in gamble          |
+| `gamble_critical_fail`        | Gambling    | Gamble Service      | Gamble critically fails             |
+| `daily_streak`                | Engagement  | Stats Service       | User maintains daily streak         |
+| `crafting_critical_success`   | Crafting    | Crafting Service    | Crafting critically succeeds        |
+| `crafting_perfect_salvage`    | Crafting    | Crafting Service    | Perfect salvage while disassembling |
+| `lootbox_jackpot`             | Lootbox     | Lootbox Service     | Lootbox jackpot won                 |
+| `lootbox_big_win`             | Lootbox     | Lootbox Service     | Big win from lootbox                |
 
 ---
 
@@ -40,16 +40,18 @@ This document catalogs all events in the BrandishBot event system, their schemas
 **Published via:** ResilientPublisher (fire-and-forget with retry)
 
 **Payload Schema:**
+
 ```json
 {
   "user_id": "string (UUID)",
-  "job_key": "string (explorer|blacksmith)",  
+  "job_key": "string (explorer|blacksmith)",
   "new_level": "integer",
   "old_level": "integer"
 }
 ```
 
 **Metadata:**
+
 ```json
 {
   "source": "string (e.g. 'search', 'crafting')"
@@ -57,11 +59,13 @@ This document catalogs all events in the BrandishBot event system, their schemas
 ```
 
 **Subscribers:**
+
 - Stats Service: Records level-up statistics
 - Event Log: Persists event for audit trail
 - Metrics Collector: Tracks level-up metrics
 
 **Example:**
+
 ```go
 // Publishing
 eventType := event.Type(domain.EventJobLevelUp)
@@ -88,6 +92,7 @@ publisher.PublishWithRetry(ctx, event.Event{
 **Published via:** Event Bus (direct)
 
 **Payload Schema:**
+
 ```json
 {
   "cycle_id": "integer",
@@ -98,6 +103,7 @@ publisher.PublishWithRetry(ctx, event.Event{
 ```
 
 **Subscribers:**
+
 - Progression Notifier: Sends notifications to Discord and Streamer.bot
 - Event Log: Persists event for audit trail
 - Metrics Collector: Tracks cycle metrics
@@ -110,6 +116,7 @@ publisher.PublishWithRetry(ctx, event.Event{
 **Source:** `internal/progression/voting_sessions.go`
 
 **Payload Schema:**
+
 ```json
 {
   "node_key": "string",
@@ -120,6 +127,7 @@ publisher.PublishWithRetry(ctx, event.Event{
 ```
 
 **Subscribers:**
+
 - Progression Notifier: Updates UI/Stream overlay to show new target
 - Event Log: Persists event for audit trail
 
@@ -131,6 +139,7 @@ publisher.PublishWithRetry(ctx, event.Event{
 **Source:** `internal/user/service.go`
 
 **Payload Schema:**
+
 ```json
 {
   "user_id": "string (UUID)",
@@ -142,6 +151,7 @@ publisher.PublishWithRetry(ctx, event.Event{
 ```
 
 **Subscribers:**
+
 - Stats Service: Records registration event
 - Event Log: Persists for audit
 
@@ -153,6 +163,7 @@ publisher.PublishWithRetry(ctx, event.Event{
 **Source:** `internal/user/service.go`
 
 **Payload Schema:**
+
 ```json
 {
   "user_id": "string",
@@ -170,6 +181,7 @@ publisher.PublishWithRetry(ctx, event.Event{
 **Source:** `internal/user/service.go`
 
 **Payload Schema:**
+
 ```json
 {
   "user_id": "string",
@@ -187,6 +199,7 @@ publisher.PublishWithRetry(ctx, event.Event{
 **Source:** `internal/user/service.go`
 
 **Payload Schema:**
+
 ```json
 {
   "user_id": "string",
@@ -199,11 +212,12 @@ publisher.PublishWithRetry(ctx, event.Event{
 
 ---
 
-### search / search_* Events
+### search / search\_\* Events
 
 **Source:** `internal/user/service.go`
 
 **Common Payload:**
+
 ```json
 {
   "user_id": "string",
@@ -215,6 +229,7 @@ publisher.PublishWithRetry(ctx, event.Event{
 ```
 
 **Event Types:**
+
 - `search`: Normal search attempt
 - `search_near_miss`: Almost found something rare
 - `search_critical_fail`: Critically failed search
@@ -222,11 +237,12 @@ publisher.PublishWithRetry(ctx, event.Event{
 
 ---
 
-### gamble_* Events
+### gamble\_\* Events
 
 **Source:** `internal/gamble/service.go`
 
 **Common Payload:**
+
 ```json
 {
   "user_id": "string",
@@ -237,17 +253,19 @@ publisher.PublishWithRetry(ctx, event.Event{
 ```
 
 **Event Types:**
+
 - `gamble_near_miss`: Almost won
 - `gamble_tie_break_lost`: Lost tie-breaker
 - `gamble_critical_fail`: Spectacularly failed
 
 ---
 
-### crafting_* Events
+### crafting\_\* Events
 
 **Source:** `internal/crafting/service.go`
 
 **Payload:**
+
 ```json
 {
   "user_id": "string",
@@ -258,16 +276,18 @@ publisher.PublishWithRetry(ctx, event.Event{
 ```
 
 **Event Types:**
+
 - `crafting_critical_success`: Extra output or bonus
 - `crafting_perfect_salvage`: Recovered all materials perfectly
 
 ---
 
-### lootbox_* Events
+### lootbox\_\* Events
 
 **Source:** `internal/lootbox/service.go`
 
 **Payload:**
+
 ```json
 {
   "user_id": "string",
@@ -278,16 +298,18 @@ publisher.PublishWithRetry(ctx, event.Event{
 ```
 
 **Event Types:**
+
 - `lootbox_jackpot`: Hit the jackpot
 - `lootbox_big_win`: Significant win
 
 ---
 
-### trap_* Events
+### trap\_\* Events
 
 **Source:** `internal/user/service.go` and `internal/user/item_handlers.go`
 
 **Payload:**
+
 ```json
 {
   "trap_id": "string (UUID)",
@@ -302,6 +324,7 @@ publisher.PublishWithRetry(ctx, event.Event{
 ```
 
 **Event Types:**
+
 - `trap.triggered`: Trap successfully triggered on the target
 - `trap.self_triggered`: User tried to trap someone who already had a trap, triggering the existing trap on themselves
 
@@ -311,7 +334,7 @@ publisher.PublishWithRetry(ctx, event.Event{
 
 When adding a new event, use this template:
 
-```markdown
+````markdown
 ### event_name
 
 **Emitted when:** [Trigger condition]  
@@ -319,14 +342,17 @@ When adding a new event, use this template:
 **Published via:** [Event Bus | ResilientPublisher]
 
 **Payload Schema:**
+
 ```json
 {
   "field1": "type and description",
   "field2": "type and description"
 }
 ```
+````
 
 **Metadata:** (if applicable)
+
 ```json
 {
   "meta_field": "type and description"
@@ -334,14 +360,17 @@ When adding a new event, use this template:
 ```
 
 **Subscribers:**
+
 - Service 1: Purpose
 - Service 2: Purpose
 
 **Example:**
+
 ```go
 // Publishing code example
 ```
-```
+
+````
 
 ---
 
@@ -366,9 +395,10 @@ All event publishing follows the fire-and-forget pattern:
 Dead-letter events should be monitored:
 ```bash
 tail -f logs/event_deadletter.jsonl
-```
+````
 
 Each line is a JSON object with:
+
 - `timestamp`: When the event finally failed
 - `event`: The original event object
 - `attempts`: Number of retry attempts

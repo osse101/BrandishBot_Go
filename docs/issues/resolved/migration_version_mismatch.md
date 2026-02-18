@@ -19,6 +19,7 @@ Goose migration tool expects migrations to be numbered sequentially (0001, 0002,
 ## Symptoms
 
 ### Container Crash Loop
+
 ```
 goose run: error: found 2 missing migrations:
     version 26: migrations/0026_tune_progression_system.sql
@@ -27,6 +28,7 @@ ERROR: Migrations failed after 3 attempts
 ```
 
 ### Application Never Starts
+
 - Container continuously restarts
 - Old code keeps running (if any containers were already running)
 - New fixes/features never deploy
@@ -36,6 +38,7 @@ ERROR: Migrations failed after 3 attempts
 Database `goose_db_version` table contains mixed migration formats:
 
 **Current State**:
+
 ```sql
 version_id   | is_applied
 -------------+------------
@@ -46,6 +49,7 @@ version_id   | is_applied
 ```
 
 **Expected State**:
+
 ```sql
 version_id   | is_applied
 -------------+------------

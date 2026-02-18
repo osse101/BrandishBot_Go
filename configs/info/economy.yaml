@@ -1,7 +1,7 @@
 name: economy
 title: Economy System
 icon: 💰
-color: "#F1C40F"
+color: '#F1C40F'
 
 discord:
   description: |
@@ -61,4 +61,4 @@ discord:
     - **lootbox2** - Best loot, higher cost
 
 streamerbot:
-  description: "Economy: Buy/sell items, trade with players. !buy !sell !prices !give. Earn money by searching and selling loot."
+  description: 'Economy: Buy/sell items, trade with players. !buy !sell !prices !give. Earn money by searching and selling loot.'

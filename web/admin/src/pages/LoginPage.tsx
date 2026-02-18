@@ -24,16 +24,14 @@ export function LoginPage({ onLogin, isLoading, error }: Props) {
           <input
             type="password"
             value={key}
-            onChange={e => setKey(e.target.value)}
+            onChange={(e) => setKey(e.target.value)}
             placeholder="API Key"
             className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-gray-200 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 placeholder-gray-500"
             autoFocus
             disabled={isLoading}
           />
 
-          {error && (
-            <p className="mt-2 text-sm text-red-400">{error}</p>
-          )}
+          {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
 
           <button
             type="submit"

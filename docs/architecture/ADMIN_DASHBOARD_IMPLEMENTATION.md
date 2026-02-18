@@ -16,6 +16,7 @@ This document provides a complete record of the admin dashboard implementation.
 ### Backend (Go)
 
 #### Core Admin Package
+
 ```
 internal/admin/
 ├── embed.go               # //go:embed all:dist directive
@@ -24,6 +25,7 @@ internal/admin/
 ```
 
 #### Admin Handlers
+
 ```
 internal/handler/
 ├── admin_metrics.go       # GET /api/v1/admin/metrics - Prometheus → JSON
@@ -34,6 +36,7 @@ internal/handler/
 ### Frontend (React + TypeScript)
 
 #### Configuration Files
+
 ```
 web/admin/
 ├── package.json           # Dependencies (React 19, Vite 6, Tailwind 3)
@@ -45,6 +48,7 @@ web/admin/
 ```
 
 #### Source Files
+
 ```
 web/admin/src/
 ├── main.tsx               # React root + Router + ToastProvider
@@ -93,6 +97,7 @@ web/admin/src/
 ```
 
 ### Documentation
+
 ```
 docs/features/
 ├── ADMIN_DASHBOARD.md                  # Technical architecture & API reference
@@ -105,6 +110,7 @@ docs/architecture/
 ## Files Modified
 
 ### Backend Configuration
+
 ```
 internal/server/
 ├── server.go              # Added admin routes, imported eventlog, mounted /admin/*
@@ -118,6 +124,7 @@ cmd/app/
 ```
 
 ### Build Configuration
+
 ```
 Makefile                   # Added admin-install, admin-dev, admin-build, admin-clean
 Dockerfile                 # Added Node.js frontend build stage
@@ -128,6 +135,7 @@ README.md                  # Added Admin Dashboard section
 ## New Dependencies
 
 ### Frontend (NPM)
+
 ```json
 {
   "dependencies": {
@@ -149,7 +157,9 @@ README.md                  # Added Admin Dashboard section
 ```
 
 ### Backend (Go)
+
 No new dependencies — uses existing:
+
 - `github.com/prometheus/client_golang` (already present for metrics)
 - `github.com/prometheus/client_model` (for Prometheus types)
 
@@ -186,6 +196,7 @@ No new dependencies — uses existing:
 ## Build Artifacts
 
 ### Development Build
+
 ```
 web/admin/dist/
 ├── index.html             # Entry point (0.45 kB)
@@ -195,12 +206,14 @@ web/admin/dist/
 ```
 
 ### Production Build
+
 ```
 internal/admin/dist/       # Copied from web/admin/dist/
 └── (same structure as above, embedded via //go:embed)
 ```
 
 ### Go Binary
+
 ```
 bin/
 ├── app                    # Main API server (includes embedded admin SPA)
@@ -255,69 +268,85 @@ React state updates → EventCard renders
 ## Key Design Decisions
 
 ### 1. Embedded SPA vs. Separate Deployment
+
 **Decision**: Embed SPA into Go binary via `//go:embed`
 
 **Rationale**:
+
 - ✅ Single binary deployment
 - ✅ No CORS configuration needed (same-origin)
 - ✅ Version lock (frontend + backend always match)
 - ✅ Simplified deployment (no separate frontend server)
 
 **Trade-off**:
+
 - ❌ Requires rebuild for frontend changes
 - ✅ But: Quick rebuild (~1s for frontend, ~2s for Go)
 
 ### 2. API Key in sessionStorage vs. localStorage
+
 **Decision**: Use `sessionStorage`
 
 **Rationale**:
+
 - ✅ Cleared when tab closes (better security)
 - ✅ Not shared across tabs
 - ✅ Not persisted to disk
 
 **Trade-off**:
+
 - ❌ User must re-enter key after browser restart
 - ✅ But: Admin dashboard sessions should be short-lived
 
 ### 3. SSE with fetch() vs. EventSource
+
 **Decision**: Use `fetch()` + `ReadableStream`
 
 **Rationale**:
+
 - ✅ Allows custom headers (X-API-Key)
 - ✅ Full control over reconnection logic
 - ✅ Better error handling
 
 **Trade-off**:
+
 - ❌ More complex implementation
 - ✅ But: Only ~100 lines of code in useSSE hook
 
 ### 4. TypeScript Strict Mode
+
 **Decision**: Enable strict mode + all strict flags
 
 **Rationale**:
+
 - ✅ Catch bugs at compile time
 - ✅ Better IDE autocomplete
 - ✅ Enforce null checks
 
 **Trade-off**:
+
 - ❌ More verbose code (explicit null checks)
 - ✅ But: Prevents runtime errors
 
 ### 5. Tailwind CSS vs. Component Library
+
 **Decision**: Use Tailwind CSS (no component library)
 
 **Rationale**:
+
 - ✅ Small bundle size (16KB CSS)
 - ✅ Full design control
 - ✅ No dependency on external UI library versions
 
 **Trade-off**:
+
 - ❌ Manual component implementation
 - ✅ But: Only 9 shared components needed
 
 ## Performance
 
 ### Build Times
+
 ```
 Frontend build:     ~1.0s  (Vite + TypeScript + Tailwind)
 Go build:          ~2.5s  (with embedded assets)
@@ -325,6 +354,7 @@ Total:             ~3.5s
 ```
 
 ### Bundle Sizes
+
 ```
 CSS:        15.99 KB  (gzipped: 3.86 KB)
 JavaScript: 271.62 KB (gzipped: 82.65 KB)
@@ -333,6 +363,7 @@ Total:      287 KB    (gzipped: 86.81 KB)
 ```
 
 ### Runtime Performance
+
 ```
 Initial page load:  ~200ms  (embedded assets, no network latency)
 Health metrics:     ~5ms    (Prometheus gather + JSON serialization)
@@ -343,6 +374,7 @@ API calls:          ~2-50ms (depends on database query)
 ## Testing Coverage
 
 ### Backend Tests
+
 ```
 internal/admin/handler_test.go
 - ✅ SPA routing (/, /commands, /events serve index.html)
@@ -355,6 +387,7 @@ internal/server/security_test.go
 ```
 
 ### Frontend Tests
+
 ```
 TypeScript compiler:
 - ✅ All types check (tsc -b)
@@ -368,6 +401,7 @@ Build test:
 ```
 
 ### Integration Tests
+
 ```
 Manual tests:
 - ✅ Login flow (API key auth)
@@ -382,6 +416,7 @@ Manual tests:
 ## Deployment Checklist
 
 ### Pre-deployment
+
 - [x] Frontend builds without errors (`make admin-build`)
 - [x] Backend builds without errors (`make build`)
 - [x] All tests pass (`go test ./...`)
@@ -391,6 +426,7 @@ Manual tests:
 - [x] SSE connection establishes
 
 ### Deployment Steps
+
 1. Build frontend: `make admin-build`
 2. Build backend: `make build`
 3. Test binary: `./bin/app` (verify `/admin/` loads)
@@ -402,6 +438,7 @@ Manual tests:
 9. Verify all 4 pages load
 
 ### Post-deployment
+
 - [ ] Health checks green
 - [ ] Metrics displaying
 - [ ] SSE connection active
@@ -411,12 +448,14 @@ Manual tests:
 ## Extensibility Guide
 
 ### Adding a New Page
+
 1. Create `web/admin/src/pages/NewPage.tsx`
 2. Add route in `web/admin/src/App.tsx`
 3. Add nav item in `web/admin/src/components/layout/Sidebar.tsx`
 4. Rebuild: `make admin-build && make build`
 
 ### Adding a New Backend Endpoint
+
 1. Create handler in `internal/handler/admin_*.go`
 2. Register route in `internal/server/server.go`
 3. Add TypeScript type in `web/admin/src/api/types.ts`
@@ -424,6 +463,7 @@ Manual tests:
 5. Rebuild: `make build`
 
 ### Adding a New Metric
+
 1. Define metric in `internal/metrics/metrics.go`
 2. Add to `gatherMetrics()` in `internal/handler/admin_metrics.go`
 3. Update `AdminMetricsResponse` type
@@ -434,6 +474,7 @@ Manual tests:
 ## Future Enhancements
 
 ### Potential Features
+
 - [ ] JWT authentication (instead of API key)
 - [ ] User-specific permissions (read-only vs. admin)
 - [ ] Dashboard customization (drag-and-drop widgets)
@@ -446,6 +487,7 @@ Manual tests:
 - [ ] Audit log (track admin actions)
 
 ### Performance Improvements
+
 - [ ] Paginated user search results
 - [ ] Virtual scrolling for large event lists
 - [ ] Service worker for offline support
@@ -453,6 +495,7 @@ Manual tests:
 - [ ] Metric aggregation on backend (reduce data transfer)
 
 ### Developer Experience
+
 - [ ] Storybook for component documentation
 - [ ] E2E tests with Playwright
 - [ ] Hot module replacement in dev mode
@@ -462,6 +505,7 @@ Manual tests:
 ## Lessons Learned
 
 ### What Went Well
+
 ✅ `//go:embed` made deployment trivial
 ✅ TypeScript caught many bugs at compile time
 ✅ Tailwind CSS provided fast styling
@@ -470,12 +514,14 @@ Manual tests:
 ✅ Component composition reduced duplication
 
 ### What Could Be Improved
+
 ⚠️ SSE with custom headers more complex than EventSource
 ⚠️ No automated frontend tests (only manual testing)
 ⚠️ Large JavaScript bundle (271KB) — could use code splitting
 ⚠️ No PWA support (requires service worker)
 
 ### Recommendations for Next Implementation
+
 1. Add E2E tests from the start (Playwright)
 2. Use code splitting for pages (`React.lazy()`)
 3. Implement service worker for offline support
@@ -485,18 +531,21 @@ Manual tests:
 ## Maintenance
 
 ### Regular Tasks
+
 - **Weekly**: Check for dependency updates (`npm outdated`)
 - **Monthly**: Update React/TypeScript/Vite versions
 - **Quarterly**: Review bundle size, optimize if > 300KB
 - **Yearly**: Audit security (API key rotation, HTTPS enforcement)
 
 ### Breaking Changes to Watch
+
 - React 20+ (when released)
 - Vite 7+ (when released)
 - Go 1.26+ (check embed behavior)
 - Prometheus client updates (check metric types)
 
 ### Support Channels
+
 - GitHub Issues: Bug reports, feature requests
 - Documentation: `docs/features/ADMIN_DASHBOARD*.md` and `docs/architecture/ADMIN_DASHBOARD_IMPLEMENTATION.md`
 - Code comments: In-line explanations for complex logic

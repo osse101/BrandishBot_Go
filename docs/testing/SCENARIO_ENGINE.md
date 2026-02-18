@@ -5,6 +5,7 @@ The Scenario Engine is an admin testing framework that allows controlled manipul
 ## Overview
 
 The engine provides:
+
 - **State Injection**: Initialize users, inventories, and feature-specific state
 - **Temporal Warping**: Manipulate time-dependent features via direct DB timestamp updates
 - **Event Injection**: Trigger events without real user actions
@@ -26,13 +27,13 @@ The engine provides:
 
 ## API Endpoints
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/v1/admin/simulate/capabilities` | List available capabilities |
-| GET | `/api/v1/admin/simulate/scenarios` | List all pre-built scenarios |
-| GET | `/api/v1/admin/simulate/scenario?id=X` | Get specific scenario details |
-| POST | `/api/v1/admin/simulate/run` | Execute a pre-built scenario |
-| POST | `/api/v1/admin/simulate/run-custom` | Execute a custom scenario |
+| Method | Endpoint                               | Description                   |
+| ------ | -------------------------------------- | ----------------------------- |
+| GET    | `/api/v1/admin/simulate/capabilities`  | List available capabilities   |
+| GET    | `/api/v1/admin/simulate/scenarios`     | List all pre-built scenarios  |
+| GET    | `/api/v1/admin/simulate/scenario?id=X` | Get specific scenario details |
+| POST   | `/api/v1/admin/simulate/run`           | Execute a pre-built scenario  |
+| POST   | `/api/v1/admin/simulate/run-custom`    | Execute a custom scenario     |
 
 ## Running a Pre-built Scenario
 
@@ -72,9 +73,7 @@ curl -X POST http://localhost:8080/api/v1/admin/simulate/run \
         "username": "patient_farmer",
         "harvest_state_initialized": true
       },
-      "assertions": [
-        {"type": "not_empty", "path": "output.user_id", "passed": true}
-      ]
+      "assertions": [{ "type": "not_empty", "path": "output.user_id", "passed": true }]
     },
     {
       "step_name": "time_warp",
@@ -94,7 +93,7 @@ curl -X POST http://localhost:8080/api/v1/admin/simulate/run \
       "success": true,
       "duration_ms": 25,
       "output": {
-        "items_gained": {"money": 97, "lootbox1": 3},
+        "items_gained": { "money": 97, "lootbox1": 3 },
         "hours_since_harvest": 168.002
       }
     }
@@ -153,19 +152,19 @@ curl -X POST http://localhost:8080/api/v1/admin/simulate/run-custom \
 
 ### Harvest Feature
 
-| ID | Name | Description |
-|----|------|-------------|
-| `harvest_patient_farmer` | The Patient Farmer | Max tier (168h) harvest |
-| `harvest_spoiled` | Spoiled Harvest | Tests spoilage after 336h |
-| `harvest_first_time` | First Time Farmer | First harvest initialization |
-| `harvest_quick` | Quick Harvest | Minimum (1h) harvest |
+| ID                       | Name               | Description                  |
+| ------------------------ | ------------------ | ---------------------------- |
+| `harvest_patient_farmer` | The Patient Farmer | Max tier (168h) harvest      |
+| `harvest_spoiled`        | Spoiled Harvest    | Tests spoilage after 336h    |
+| `harvest_first_time`     | First Time Farmer  | First harvest initialization |
+| `harvest_quick`          | Quick Harvest      | Minimum (1h) harvest         |
 
 ### Quest Feature
 
-| ID | Name | Description |
-|----|------|-------------|
-| `quest_search_speedrun` | Search Speedrun | Trigger 10 searches, attempt claim |
-| `quest_item_progression` | Item Quest Progression | Inject buy/sell events |
+| ID                       | Name                   | Description                        |
+| ------------------------ | ---------------------- | ---------------------------------- |
+| `quest_search_speedrun`  | Search Speedrun        | Trigger 10 searches, attempt claim |
+| `quest_item_progression` | Item Quest Progression | Inject buy/sell events             |
 
 ## Capabilities
 
@@ -174,9 +173,11 @@ curl -X POST http://localhost:8080/api/v1/admin/simulate/run-custom \
 Manipulates time-dependent features by updating database timestamps directly.
 
 **Actions:**
+
 - `time_warp` - Set last action time to N hours ago
 
 **Parameters:**
+
 - `hours` (required): Number of hours to simulate elapsed
 
 ### EventInjector
@@ -184,32 +185,35 @@ Manipulates time-dependent features by updating database timestamps directly.
 Triggers feature events without real user actions.
 
 **Actions:**
+
 - `inject_event` - Inject a specific event type
 - `trigger_search` - Trigger search events (quest-specific)
 
 **Parameters:**
+
 - `event_type`: Type of event (`search`, `item_bought`, `item_sold`, `recipe_crafted`)
 - `count`: Number of events to inject
 - `metadata`: Additional event data
 
 ## Assertion Types
 
-| Type | Description | Parameters |
-|------|-------------|------------|
-| `equals` | Exact value match | `value` |
-| `greater_than` | Numeric comparison | `value` |
-| `less_than` | Numeric comparison | `value` |
-| `between` | Range check | `min`, `max` |
-| `contains` | String substring | `value` |
-| `not_empty` | Value exists and non-empty | - |
-| `empty` | Value is empty/null | - |
-| `true` | Boolean true | - |
-| `false` | Boolean false | - |
-| `error_contains` | Error message substring | `value` |
+| Type             | Description                | Parameters   |
+| ---------------- | -------------------------- | ------------ |
+| `equals`         | Exact value match          | `value`      |
+| `greater_than`   | Numeric comparison         | `value`      |
+| `less_than`      | Numeric comparison         | `value`      |
+| `between`        | Range check                | `min`, `max` |
+| `contains`       | String substring           | `value`      |
+| `not_empty`      | Value exists and non-empty | -            |
+| `empty`          | Value is empty/null        | -            |
+| `true`           | Boolean true               | -            |
+| `false`          | Boolean false              | -            |
+| `error_contains` | Error message substring    | `value`      |
 
 ### Path Notation
 
 Assertions use dot-notation paths:
+
 - `output.items_gained` - Step output field
 - `output.items_gained.money` - Nested field
 - `state.harvest_result` - Execution state
@@ -295,6 +299,7 @@ scenarioRegistry.Register(myProvider)
 ## Designing Complex Scenarios: Gamble Feature Example
 
 The gamble feature demonstrates a complex multi-user scenario with:
+
 - Multiple users participating
 - Variable bet items (different lootbox types)
 - State transitions: `joining` → `opening` → `completed`

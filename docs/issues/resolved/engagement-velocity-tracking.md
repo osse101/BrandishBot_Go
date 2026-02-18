@@ -8,6 +8,7 @@
 ## Problem
 
 Currently, the progression system tracks total contribution points but provides no visibility into:
+
 - How fast the community is progressing
 - When features might unlock
 - Whether engagement is increasing or decreasing over time
@@ -21,6 +22,7 @@ Add engagement velocity tracking to provide time-based metrics and unlock predic
 ### Core Features
 
 #### 1. Velocity Calculation
+
 Track contribution points over configurable time windows (7d, 14d, 30d) to calculate points/day velocity.
 
 ```go
@@ -28,11 +30,13 @@ func GetEngagementVelocity(ctx context.Context, days int) (*VelocityMetrics, err
 ```
 
 Returns:
+
 - `PointsPerDay` - Average daily contribution rate
 - `Trend` - "increasing", "stable", or "decreasing"
 - `SampleSize` - Number of data points used
 
 #### 2. Unlock Time Estimation
+
 Predict when a node will unlock based on current velocity and required points.
 
 ```go
@@ -40,12 +44,14 @@ func EstimateUnlockTime(ctx context.Context, nodeKey string) (*UnlockEstimate, e
 ```
 
 Returns:
+
 - `EstimatedDays` - Days until unlock at current velocity
 - `ConfidenceLevel` - "high", "medium", "low" based on velocity stability
 - `RequiredPoints` - Points still needed
 - `CurrentVelocity` - Points/day average
 
 #### 3. API Endpoints
+
 Add endpoints for frontend/Discord consumption:
 
 ```
@@ -56,6 +62,7 @@ GET /progression/estimate/:nodeKey
 ### Implementation Details
 
 **Database Schema**
+
 ```sql
 -- Option A: Aggregate daily
 CREATE TABLE progression_velocity (
@@ -69,12 +76,14 @@ CREATE TABLE progression_velocity (
 ```
 
 **Calculation Logic**
+
 - Query `engagement_metrics` grouped by day
 - Calculate rolling average
 - Detect trend using linear regression or simple comparison
 - Estimate unlock time: `days = remaining_points / avg_points_per_day`
 
 **Caching Strategy**
+
 - Cache velocity calculations for 1 hour
 - Invalidate on significant engagement spikes (>2x normal)
 - Recalculate estimates when voting sessions change
@@ -82,6 +91,7 @@ CREATE TABLE progression_velocity (
 ### API Response Examples
 
 **Velocity:**
+
 ```json
 {
   "points_per_day": 450.5,
@@ -93,6 +103,7 @@ CREATE TABLE progression_velocity (
 ```
 
 **Estimate:**
+
 ```json
 {
   "node_key": "feature_economy",

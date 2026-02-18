@@ -4,12 +4,12 @@ The lootbox system provides players with randomized rewards through a tiered str
 
 ## Lootbox Tiers
 
-| Tier | Public Name | Item Drop Rate | Consolation Money | Description |
-|---|---|---|---|---|
-| **Tier 0** | Junkbox | 30% | 1–10 | Basic resources and common items |
-| **Tier 1** | Lootbox | 50% | 10–100 | Balanced mix of utility and weapons |
-| **Tier 2** | Goldbox | 65% | 100–500 | Higher-quality weapons and rare items |
-| **Tier 3** | Diamondbox | 80% | 500–2500 | Premium weapons, magical items, and tier-2 containers |
+| Tier       | Public Name | Item Drop Rate | Consolation Money | Description                                           |
+| ---------- | ----------- | -------------- | ----------------- | ----------------------------------------------------- |
+| **Tier 0** | Junkbox     | 30%            | 1–10              | Basic resources and common items                      |
+| **Tier 1** | Lootbox     | 50%            | 10–100            | Balanced mix of utility and weapons                   |
+| **Tier 2** | Goldbox     | 65%            | 100–500           | Higher-quality weapons and rare items                 |
+| **Tier 3** | Diamondbox  | 80%            | 500–2500          | Premium weapons, magical items, and tier-2 containers |
 
 ## Drop Pipeline (v2)
 
@@ -45,16 +45,16 @@ The jitter term widens the spread as `item_drop_rate` decreases (lower-tier boxe
 
 Pools are shared across boxes and defined in `configs/loot_tables.json`. An entry can reference a specific item (`item_name`) or expand to all items of a content type (`item_type`):
 
-| Pool | Contents |
-|---|---|
-| `pool_utility` | Shovel, Video Filter, Stick, Scrap |
-| `pool_weapons_basic` | This, Grenade, Blaster |
-| `pool_weapons_premium` | Deez, Mirror Shield, Huge Blaster |
-| `pool_explosives` | All `explosive`-type items (auto-expanded) |
-| `pool_defense` | Shield, Mirror Shield |
-| `pool_healing` | Revive Small |
-| `pool_magical` | Rare Candy |
-| `pool_containers_t0/t1/t2` | Lootbox Tier 0/1/2 (nested containers) |
+| Pool                       | Contents                                   |
+| -------------------------- | ------------------------------------------ |
+| `pool_utility`             | Shovel, Video Filter, Stick, Scrap         |
+| `pool_weapons_basic`       | This, Grenade, Blaster                     |
+| `pool_weapons_premium`     | Deez, Mirror Shield, Huge Blaster          |
+| `pool_explosives`          | All `explosive`-type items (auto-expanded) |
+| `pool_defense`             | Shield, Mirror Shield                      |
+| `pool_healing`             | Revive Small                               |
+| `pool_magical`             | Rare Candy                                 |
+| `pool_containers_t0/t1/t2` | Lootbox Tier 0/1/2 (nested containers)     |
 
 Type expansion happens once at startup: `{"item_type": "explosive", "weight": 25}` inserts one weighted entry per matching item (each gets weight 25 independently).
 
@@ -62,22 +62,22 @@ Type expansion happens once at startup: `{"item_type": "explosive", "weight": 25
 
 Every item from the pool path rolls for quality. The roll is shifted by the box's own quality level:
 
-| Quality | Multiplier | Roll threshold (Common box) |
-|---|---|---|
-| Legendary | 2.0x | ≤ 1% |
-| Epic | 1.5x | ≤ 5% |
-| Rare | 1.25x | ≤ 15% |
-| Uncommon | 1.1x | ≤ 30% |
-| Common | 1.0x | ≤ 70% |
-| Poor | 0.8x | ≤ 85% |
-| Junk | 0.6x | ≤ 95% |
-| Cursed | 0.4x | > 95% |
+| Quality   | Multiplier | Roll threshold (Common box) |
+| --------- | ---------- | --------------------------- |
+| Legendary | 2.0x       | ≤ 1%                        |
+| Epic      | 1.5x       | ≤ 5%                        |
+| Rare      | 1.25x      | ≤ 15%                       |
+| Uncommon  | 1.1x       | ≤ 30%                       |
+| Common    | 1.0x       | ≤ 70%                       |
+| Poor      | 0.8x       | ≤ 85%                       |
+| Junk      | 0.6x       | ≤ 95%                       |
+| Cursed    | 0.4x       | > 95%                       |
 
 Higher-tier boxes shift all thresholds upward (+3% per quality tier above Common), making rare outcomes more likely. Junk/Poor boxes shift them downward.
 
 **Critical Upgrade** (progression-locked): 1% chance to upgrade the rolled quality by one tier.
 
-**Currency exception**: Currency items (e.g. Money) always receive Common quality, but their *quantity* is multiplied by the quality multiplier instead of their value.
+**Currency exception**: Currency items (e.g. Money) always receive Common quality, but their _quantity_ is multiplied by the quality multiplier instead of their value.
 
 ## Usage
 
@@ -90,13 +90,13 @@ Higher-tier boxes shift all thresholds upward (+3% per quality tier above Common
 
 ## Implementation
 
-| Layer | Location |
-|---|---|
-| Service | `internal/lootbox/service.go` |
-| Cache builder & pipeline | `internal/lootbox/processor.go` |
+| Layer                          | Location                                      |
+| ------------------------------ | --------------------------------------------- |
+| Service                        | `internal/lootbox/service.go`                 |
+| Cache builder & pipeline       | `internal/lootbox/processor.go`               |
 | Quality rolls & currency logic | `internal/lootbox/converter.go`, `quality.go` |
-| Config | `configs/loot_tables.json` |
-| Schema | `configs/schemas/loot_tables.schema.json` |
+| Config                         | `configs/loot_tables.json`                    |
+| Schema                         | `configs/schemas/loot_tables.schema.json`     |
 
 The cache (`map[string]*FlattenedLootbox`) is built once at startup via `GetAllItems` and is read-only during operation — no mutex required for concurrent opens.
 

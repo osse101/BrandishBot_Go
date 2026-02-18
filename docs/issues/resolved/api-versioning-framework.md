@@ -10,6 +10,7 @@
 ## Problem
 
 The API currently has no versioning mechanism, which creates risks for:
+
 - **Breaking changes:** No way to evolve API without breaking existing clients
 - **Client compatibility:** Can't track which client versions are in use
 - **Deprecation:** No strategy for sunsetting old endpoints
@@ -20,6 +21,7 @@ The API currently has no versioning mechanism, which creates risks for:
 Implement URL-based API versioning with immediate migration of all endpoints to `/api/v1/`.
 
 **Strategy:**
+
 - URL paths: `/api/v1/`, `/api/v2/`, etc.
 - Latest version available at `/api/` (currently redirect to v1)
 - Client version tracking via `X-Client-Version` header
@@ -70,18 +72,18 @@ func (vh *VersionedHandler) Register(version APIVersion, handler http.HandlerFun
 func (vh *VersionedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
     // Extract version from URL
     version := extractVersion(r.URL.Path)
-    
+
     // Use latest if no version specified
     if version == "" {
         version = string(vh.latest)
     }
-    
+
     handler, ok := vh.handlers[APIVersion(version)]
     if !ok {
         http.Error(w, "Unsupported API version", http.StatusNotFound)
         return
     }
-    
+
     // Add version to response header
     w.Header().Set("X-API-Version", version)
     handler(w, r)
@@ -128,7 +130,7 @@ func HandleGetAPIVersions(w http.ResponseWriter, r *http.Request) {
         "deprecated":      []string{},
         "backend_version": version.Version,
     }
-    
+
     w.Header().Set("Content-Type", "application/json")
     json.NewEncoder(w).Encode(response)
 }
@@ -164,7 +166,7 @@ Update `tools/BrandishBotClient.cs`:
 public class BrandishBotClient
 {
     private const string ClientVersion = "1.0.0";  // Update with releases
-    
+
     private HttpRequestMessage CreateRequest(string endpoint, HttpMethod method)
     {
         var request = new HttpRequestMessage(method, endpoint);
@@ -177,6 +179,7 @@ public class BrandishBotClient
 ## Implementation Checklist
 
 ### Phase 1: Infrastructure
+
 - [ ] Create `internal/handler/versioning.go`
 - [ ] Create `internal/handler/versioning_test.go`
   - [ ] Test version extraction from URLs
@@ -187,6 +190,7 @@ public class BrandishBotClient
 - [ ] Update `HandleGetAPIVersions` in `internal/handler/version.go`
 
 ### Phase 2: Migration
+
 - [ ] Migrate all endpoints to `/api/v1/` pattern:
   - [ ] `/api/v1/inventory`
   - [ ] `/api/v1/sell`
@@ -202,11 +206,13 @@ public class BrandishBotClient
 - [ ] Update route registration in `cmd/app/main.go`
 
 ### Phase 3: Client Updates
+
 - [ ] Update C# client to send `X-Client-Version` header
 - [ ] Update C# client to use `/api/v1/` endpoints
 - [ ] Test C# client compatibility
 
 ### Phase 4: Documentation
+
 - [ ] Create `docs/api_versioning.md`
   - [ ] Versioning strategy
   - [ ] How to add breaking changes (future v2)
@@ -216,6 +222,7 @@ public class BrandishBotClient
 - [ ] Add version examples to README
 
 ### Phase 5: Testing
+
 - [ ] Test version routing:
   ```bash
   curl http://localhost:8080/api/v1/version  # v1 explicitly
@@ -264,11 +271,13 @@ public class BrandishBotClient
 ## Future Phases (Not in this issue)
 
 **Phase 2: Breaking Changes (when needed)**
+
 - Create `/api/v2/` handlers
 - Deprecation notices in v1 responses
 - Client migration guide
 
 **Phase 3: Sunset Old Versions**
+
 - Remove deprecated versions after migration period
 - Minimum 6 months support window
 

@@ -150,7 +150,7 @@ export interface QuestProgress {
 
 export interface VelocityMetrics {
   points_per_day: number;
-  trend: "increasing" | "stable" | "decreasing";
+  trend: 'increasing' | 'stable' | 'decreasing';
   period_days: number;
   sample_size: number;
   total_points: number;

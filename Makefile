@@ -150,6 +150,15 @@ lint:
 lint-fix:
 	@echo "Running linters with auto-fix..."
 	@$(LINT) run --fix ./...
+	@npm run format
+
+format:
+	@echo "Formatting with Prettier..."
+	@npm run format
+
+format-check:
+	@echo "Checking formatting with Prettier..."
+	@npm run format:check
 
 install-hooks:
 	@echo "Installing git hooks..."

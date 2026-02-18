@@ -33,6 +33,7 @@ BrandishBot includes a native Discord bot with 21 slash commands providing compl
 ### Quick Start (Discord)
 
 1. **Configure** (add to `.env`):
+
 ```bash
 DISCORD_TOKEN=your_bot_token
 DISCORD_APP_ID=your_app_id
@@ -40,6 +41,7 @@ API_URL=http://localhost:8080
 ```
 
 2. **Start Discord Bot**:
+
 ```bash
 # Local development
 make build
@@ -50,6 +52,7 @@ make docker-up
 ```
 
 3. **Use Commands**:
+
 - `/info` - Get started
 - `/profile` - View your profile
 - `/search` - Find items
@@ -89,12 +92,14 @@ BrandishBot includes a web-based admin dashboard for system monitoring and admin
 ### Quick Start (Admin Dashboard)
 
 1. **Build the dashboard**:
+
 ```bash
 make admin-build    # Build React frontend
 make build          # Build Go binary with embedded dashboard
 ```
 
 2. **Run the server**:
+
 ```bash
 ./bin/app
 # Dashboard available at http://localhost:8080/admin/
@@ -107,6 +112,7 @@ make build          # Build Go binary with embedded dashboard
 ## Quick Start
 
 ### Prerequisites
+
 - Go 1.25+
 - PostgreSQL 15+
 - Docker & Docker Compose (recommended)
@@ -114,29 +120,33 @@ make build          # Build Go binary with embedded dashboard
 ### Setup
 
 1. **Clone and configure**:
+
 ```bash
 cp .env.example .env
 # Edit .env with your database credentials
 ```
 
 2. **Start database**:
+
 ```bash
 make docker-up
 ```
 
 3. **Run migrations**:
+
 ```bash
 make migrate-up
 ```
 
 4. **Start the server**:
+
 ```bash
 make run
 # Server will start on http://localhost:8080
 ```
 
 5. **View API documentation**:
-Visit http://localhost:8080/swagger/index.html
+   Visit http://localhost:8080/swagger/index.html
 
 ## Development
 
@@ -146,12 +156,14 @@ See **[Devtool Documentation](docs/tools/DEVTOOL.md)** for detailed usage.
 ### Makefile Commands
 
 **Migrations**:
+
 - `make migrate-up` - Run all pending migrations
 - `make migrate-down` - Rollback last migration
 - `make migrate-status` - Show migration status
 - `make migrate-create NAME=<name>` - Create new migration
 
 **Development**:
+
 - `make test` - Run tests with coverage
 - `make unit` - Run unit tests (fast)
 - `make test-coverage` - Generate HTML coverage report
@@ -159,6 +171,7 @@ See **[Devtool Documentation](docs/tools/DEVTOOL.md)** for detailed usage.
 - `make swagger` - Regenerate Swagger docs
 
 **Discord Bot**:
+
 - `make discord-run` - Run Discord bot locally
 - `make discord-logs` - View Discord logs (Docker)
 - `make docker-discord-build` - Build Discord image
@@ -166,6 +179,7 @@ See **[Devtool Documentation](docs/tools/DEVTOOL.md)** for detailed usage.
 - `make docker-discord-restart` - Restart Discord bot
 
 **Docker**:
+
 - `make docker-up` - Start services
 - `make docker-down` - Stop services
 - `make docker-logs` - View logs
@@ -204,31 +218,36 @@ See **[Devtool Documentation](docs/tools/DEVTOOL.md)** for detailed usage.
 ## API Endpoints
 
 ### Health
+
 - `GET /healthz` - Liveness check
 - `GET /readyz` - Readiness check (DB connectivity)
 
 ### User
+
 - `POST /user/register` - Register user
 - `GET /user/inventory` - Get inventory
 - `POST /user/item/add` - Add item
 - `POST /user/item/use` - Use item
 
 ### Crafting
+
 - `POST /user/item/upgrade` - Upgrade item
 - `POST /user/item/disassemble` - Disassemble item
 - `GET /recipes` - Get crafting recipes
 
 ### Economy
+
 - `POST /user/item/buy` - Buy item
 - `POST /user/item/sell` - Sell item
 - `GET /prices` - Get market prices
 
 ### Stats
+
 - `POST /stats/event` - Record event
 - `GET /stats/user` - Get user stats
 - `GET /stats/leaderboard` - Get leaderboard
 
-*See `/swagger/` for complete API documentation with request/response examples.*
+_See `/swagger/` for complete API documentation with request/response examples._
 
 ## Testing
 
@@ -248,11 +267,13 @@ make test-coverage
 BrandishBot uses an asynchronous event-driven architecture for decoupled, reliable service communication:
 
 📚 **Documentation:**
+
 - **[Event Catalog](docs/events/EVENT_CATALOG.md)** - All 22+ event types with schemas and examples
 - **[Architecture](docs/architecture/EVENT_SYSTEM.md)** - Event bus, ResilientPublisher, retry logic
 - **[Developer Guide](docs/development/EVENT_INTEGRATION.md)** - How to publish and subscribe to events
 
 **Key Features:**
+
 - 🔄 Automatic retry with exponential backoff (2s → 4s → 8s → 16s → 32s)
 - 📝 Dead-letter logging for permanently failed events
 - 🚫 Fire-and-forget: Domain operations never fail due to event errors

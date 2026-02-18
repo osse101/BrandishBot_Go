@@ -1,7 +1,7 @@
 name: overview
 title: BrandishBot Overview
 icon: ℹ️
-color: "#9B59B6"
+color: '#9B59B6'
 
 discord:
   description: |
@@ -53,4 +53,4 @@ discord:
     Start exploring with `/search` or check the `/leaderboard` to see top players!
 
 streamerbot:
-  description: "BrandishBot: Interactive gaming bot! !info <feature> for details. Economy, inventory, crafting, gambling, expeditions, quests, farming, progression."
+  description: 'BrandishBot: Interactive gaming bot! !info <feature> for details. Economy, inventory, crafting, gambling, expeditions, quests, farming, progression.'

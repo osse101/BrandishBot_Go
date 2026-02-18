@@ -7,6 +7,7 @@ RESOLVED
 When only one node is available for voting (e.g., `progression_system` at fresh start), the system still creates a voting session with 1 option and waits for votes/admin intervention.
 
 This creates unnecessary friction:
+
 - Users can only vote for one thing
 - Admin must manually end a pointless vote
 - Delays progression unnecessarily
@@ -48,6 +49,7 @@ ELSE:
 ## Implementation
 
 ### Location
+
 `internal/progression/voting_sessions.go` - `StartVotingSession()`
 
 ### Pseudo-code
@@ -55,21 +57,21 @@ ELSE:
 ```go
 func (s *service) StartVotingSession(ctx context.Context, unlockedNodeID *int) error {
     // ... existing code to get available nodes ...
-    
+
     available, err := s.GetAvailableUnlocks(ctx)
     if err != nil {
         return err
     }
-    
+
     if len(available) == 0 {
         return fmt.Errorf("no nodes available")
     }
-    
+
     // NEW: Auto-skip if only one option
     if len(available) == 1 {
         log.Info("Only one option available, auto-selecting",
             "nodeKey", available[0].NodeKey)
-        
+
         // Set as unlock target immediately
         progress, _ := s.repo.GetActiveUnlockProgress(ctx)
         if progress != nil {
@@ -77,17 +79,17 @@ func (s *service) StartVotingSession(ctx context.Context, unlockedNodeID *int) e
             if err != nil {
                 return err
             }
-            
+
             // Cache the unlock cost
             s.mu.Lock()
             s.cachedTargetCost = available[0].UnlockCost
             s.cachedProgressID = progress.ID
             s.mu.Unlock()
         }
-        
+
         return nil // Skip voting session creation
     }
-    
+
     // Continue with normal voting session...
 }
 ```

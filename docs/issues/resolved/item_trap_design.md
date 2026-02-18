@@ -11,6 +11,7 @@ The **Explosive Trap** is a tactical consumable that allows a player to booby-tr
 - **Tags:** `[consumable, tradeable, upgradeable, disassembleable, sellable, buyable]`
 
 ## Status
+
 **Implemented** (2026-01-30). This feature is live in the codebase.
 
 ---

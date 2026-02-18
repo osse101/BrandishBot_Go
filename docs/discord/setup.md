@@ -97,17 +97,20 @@ DISCORD_FORCE_COMMAND_UPDATE=true
 ## Step 6: Start the Bot
 
 **Local Development:**
+
 ```bash
 make build
 make discord-run
 ```
 
 **Docker:**
+
 ```bash
 make docker-up
 ```
 
 **Check logs:**
+
 ```bash
 make discord-logs
 ```
@@ -115,6 +118,7 @@ make discord-logs
 ## Step 7: Register Commands
 
 On first run, set:
+
 ```bash
 DISCORD_FORCE_COMMAND_UPDATE=true
 ```
@@ -122,38 +126,45 @@ DISCORD_FORCE_COMMAND_UPDATE=true
 This registers all 21 slash commands with Discord.
 
 **Verify in Discord:**
+
 - Type `/` in any channel
 - You should see BrandishBot commands!
 
 ## Step 8: Test Commands
 
 Try these commands:
+
 - `/ping` - Check bot status
-- `/profile` - View your profile  
+- `/profile` - View your profile
 - `/info` - Get help
 - `/search` - Find items
 
 ## Security Best Practices
 
 ### Token Security
+
 - ✅ Never commit `.env` to git
 - ✅ Use `.env.example` for templates
 - ✅ Rotate token if exposed
 - ✅ Restrict bot permissions
 
 ### Server Security
+
 - ✅ Keep bot private (disable public)
 - ✅ Only invite to trusted servers
 - ✅ Monitor bot usage
 - ✅ Set up admin-only channels
 
 ### API Key
+
 Generate secure API key:
+
 ```bash
 openssl rand -hex 32
 ```
 
 Add to `.env`:
+
 ```bash
 API_KEY=your_generated_key_here
 ```
@@ -161,21 +172,25 @@ API_KEY=your_generated_key_here
 ## Troubleshooting
 
 ### Bot Shows Offline
+
 - Check `DISCORD_TOKEN` is correct
 - Verify bot is running: `make discord-logs`
 - Check API is accessible: `curl http://localhost:8080/healthz`
 
 ### Commands Not Appearing
+
 - Run with `DISCORD_FORCE_COMMAND_UPDATE=true`
 - Wait 1-2 minutes for Discord to sync
 - Restart Discord app
 
 ### Permission Errors
+
 - Verify bot has required permissions
 - Check role hierarchy (bot role should be high)
 - Re-invite bot with updated permissions
 
 ### Connection Issues
+
 - Check internet connection
 - Verify Discord isn't down: https://discordstatus.com
 - Check firewall rules
@@ -183,13 +198,17 @@ API_KEY=your_generated_key_here
 ## Advanced Configuration
 
 ### Multiple Servers
+
 The bot can join multiple servers. Commands work in all.
 
 ### Custom Prefix
+
 Currently slash commands only. Prefix commands not implemented.
 
 ### Rate Limits
+
 Discord rate limits apply:
+
 - 50 commands/second global
 - 5 commands/second per user
 

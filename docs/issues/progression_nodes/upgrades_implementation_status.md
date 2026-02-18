@@ -7,6 +7,7 @@ This document tracks the minimal support implementation for progression upgrade 
 ### Tier 1
 
 #### upgrade_progression_basic
+
 - **Status**: ✅ Minimal support added
 - **Location**: `internal/progression/service.go:536-552`
 - **Implementation**: GetModifiedValue call added to RecordEngagement
@@ -16,12 +17,14 @@ This document tracks the minimal support implementation for progression upgrade 
 ### Tier 2
 
 #### upgrade_gamble_win_bonus
+
 - **Status**: ✅ Already implemented
 - **Location**: `internal/gamble/service.go:418`
 - **Implementation**: GetModifiedValue already in use
 - **Tests**: Stub created at `internal/gamble/upgrades_test.go` for verification
 
 #### upgrade_crafting_1
+
 - **Status**: ✅ Minimal support added
 - **Location**: `internal/crafting/service.go:320-335, 722-740`
 - **Implementation**:
@@ -32,6 +35,7 @@ This document tracks the minimal support implementation for progression upgrade 
 - **Tests**: Stub created at `internal/crafting/upgrades_test.go`
 
 #### upgrade_economy_1
+
 - **Status**: ⚠️ Partial - TODO comments only
 - **Location**: `internal/economy/service.go:203-206`
 - **Implementation**: TODO comments added, refactoring needed
@@ -42,12 +46,14 @@ This document tracks the minimal support implementation for progression upgrade 
 - **Tests**: Stub created at `internal/economy/upgrades_test.go`
 
 #### upgrade_exploration_1
+
 - **Status**: ⏸️ Blocked - Needs search/exploration service
 - **Location**: N/A - Service doesn't exist
 - **Implementation**: Skipped for now
 - **Next Steps**: Implement search/exploration service first
 
 #### upgrade_farming_1
+
 - **Status**: ⏸️ Blocked - Needs farming service
 - **Location**: N/A - Service doesn't exist
 - **Implementation**: Skipped for now
@@ -56,6 +62,7 @@ This document tracks the minimal support implementation for progression upgrade 
 ### Tier 3
 
 #### upgrade_progression_two
+
 - **Status**: ✅ Minimal support added (stacking)
 - **Location**: Same as upgrade_progression_basic
 - **Implementation**: Uses same GetModifiedValue call, stacks multiplicatively
@@ -63,12 +70,14 @@ This document tracks the minimal support implementation for progression upgrade 
 - **Tests**: Stub created at `internal/progression/upgrades_test.go`
 
 #### upgrade_job_xp_multiplier
+
 - **Status**: ✅ Already implemented
 - **Location**: `internal/job/service.go:512`
 - **Implementation**: GetModifiedValue already in use
 - **Tests**: Stub created at `internal/job/upgrades_test.go` for verification
 
 #### upgrade_job_level_cap
+
 - **Status**: ✅ Minimal support added
 - **Location**: `internal/job/service.go:532-543`
 - **Implementation**: GetModifiedValue call added to getMaxJobLevel
@@ -78,6 +87,7 @@ This document tracks the minimal support implementation for progression upgrade 
 ### Tier 4
 
 #### upgrade_progression_three
+
 - **Status**: ✅ Minimal support added (triple stacking)
 - **Location**: Same as upgrade_progression_basic
 - **Implementation**: Uses same GetModifiedValue call, stacks multiplicatively
@@ -89,12 +99,14 @@ This document tracks the minimal support implementation for progression upgrade 
 ## 📝 Summary
 
 ### By Status
+
 - ✅ **Already Implemented**: 2 (upgrade_gamble_win_bonus, upgrade_job_xp_multiplier)
 - ✅ **Minimal Support Added**: 5 (progression_basic, progression_two, progression_three, crafting_1, job_level_cap)
 - ⚠️ **Partial (TODO only)**: 1 (economy_1 - needs refactoring)
 - ⏸️ **Blocked**: 2 (exploration_1, farming_1 - need services)
 
 ### Total: 10 Upgrade Nodes
+
 - **7 / 10** have minimal support or better
 - **3 / 10** require additional work (1 refactoring, 2 new services)
 
@@ -103,6 +115,7 @@ This document tracks the minimal support implementation for progression upgrade 
 ## 🔧 Remaining Work
 
 ### High Priority
+
 1. **upgrade_economy_1**: Refactor calculateSellPrice to accept context
    - Create calculateSellPriceWithModifier
    - Update all callers to use context-aware version
@@ -114,6 +127,7 @@ This document tracks the minimal support implementation for progression upgrade 
    - Update all test files
 
 ### Medium Priority
+
 3. **All Upgrades**: Write actual tests (currently stubs with t.Skip)
    - Test modifier application at each level
    - Test stacking behavior (progression upgrades)
@@ -121,6 +135,7 @@ This document tracks the minimal support implementation for progression upgrade 
    - Integration tests with real services
 
 ### Low Priority (Future)
+
 4. **upgrade_exploration_1**: Implement search/exploration service
 5. **upgrade_farming_1**: Implement farming service
 
@@ -188,6 +203,7 @@ All test stubs created with TODO comments and t.Skip():
 6. **Clear path forward** for completing implementation
 
 The codebase is now ready for:
+
 - Admin testing by unlocking upgrades and observing effects
 - Incremental completion of each upgrade's tests
-- Easy location of implementation points via TODO(upgrade_*) comments
+- Easy location of implementation points via TODO(upgrade\_\*) comments

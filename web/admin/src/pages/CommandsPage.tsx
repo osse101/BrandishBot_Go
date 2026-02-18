@@ -6,7 +6,7 @@ import { ScenariosPanel } from '../components/commands/ScenariosPanel';
 import { TimeoutsPanel } from '../components/commands/TimeoutsPanel';
 
 const tabs = ['Progression', 'Jobs', 'Cache', 'Scenarios', 'Timeouts'] as const;
-type Tab = typeof tabs[number];
+type Tab = (typeof tabs)[number];
 
 export function CommandsPage() {
   const [activeTab, setActiveTab] = useState<Tab>('Progression');
@@ -16,7 +16,7 @@ export function CommandsPage() {
       <h2 className="text-xl font-semibold text-gray-100">Admin Commands</h2>
 
       <div className="flex gap-1 border-b border-gray-800">
-        {tabs.map(tab => (
+        {tabs.map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}

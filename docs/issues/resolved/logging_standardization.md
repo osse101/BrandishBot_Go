@@ -17,12 +17,12 @@ The project uses a structured logger (`internal/logger`) for most operations. Ho
 
 ## Related Files
 
--   `internal/database/database.go`
--   `internal/database/postgres/integration_test.go`
--   `internal/database/postgres/job.go`
--   `internal/user/service.go`
--   `internal/server/server.go`
--   `internal/worker/pool.go` (and other worker files)
+- `internal/database/database.go`
+- `internal/database/postgres/integration_test.go`
+- `internal/database/postgres/job.go`
+- `internal/user/service.go`
+- `internal/server/server.go`
+- `internal/worker/pool.go` (and other worker files)
 
 ## Proposed Enhancements
 
@@ -34,14 +34,14 @@ The project uses a structured logger (`internal/logger`) for most operations. Ho
 
 1.  **Identify Usage**: grep for `log.Println`, `fmt.Printf`, `fmt.Println` in `internal/`.
 2.  **Refactor**:
-    -   In `internal/database/database.go`: Use structured logger for connection status.
-    -   In `internal/server/server.go`: Use structured logger for server startup messages.
-    -   In `internal/user/service.go`: Replace `fmt.Printf` with `log.Info` or `log.Debug`.
-    -   In `internal/database/postgres/job.go`: Replace `fmt.Printf` with `log.Info`.
-    -   In tests (`integration_test.go`): `fmt.Printf` might be acceptable for test output, but consider using `t.Logf`.
+    - In `internal/database/database.go`: Use structured logger for connection status.
+    - In `internal/server/server.go`: Use structured logger for server startup messages.
+    - In `internal/user/service.go`: Replace `fmt.Printf` with `log.Info` or `log.Debug`.
+    - In `internal/database/postgres/job.go`: Replace `fmt.Printf` with `log.Info`.
+    - In tests (`integration_test.go`): `fmt.Printf` might be acceptable for test output, but consider using `t.Logf`.
 3.  **Verify**: Run the application and check logs to ensure messages appear in the correct format.
 
 ## Success Criteria
 
--   Zero usages of `log.Println` and `fmt.Printf` for application logging in `internal/`.
--   Consistent structured logging across the application.
+- Zero usages of `log.Println` and `fmt.Printf` for application logging in `internal/`.
+- Consistent structured logging across the application.

@@ -15,13 +15,16 @@ For detailed usage instructions, see the [Usage Guide](ADMIN_DASHBOARD_USAGE.md)
 ## Features
 
 ### 1. Health Dashboard (`/admin/`)
+
 - Server liveness & readiness checks
 - Build version information
 - Prometheus metrics (HTTP, events, business, SSE)
 - Real-time metric polling (5-10s intervals)
 
 ### 2. Admin Commands (`/admin/commands`)
+
 5 tabbed panels:
+
 - **Progression**: Unlock nodes, start/freeze voting, reset tree, add contributions
 - **Jobs**: Award XP, reset daily XP caps
 - **Cache**: View cache stats, reload aliases/weights
@@ -29,6 +32,7 @@ For detailed usage instructions, see the [Usage Guide](ADMIN_DASHBOARD_USAGE.md)
 - **Timeouts**: Clear user timeouts
 
 ### 3. Live Events (`/admin/events`)
+
 - SSE-powered real-time event feed
 - Event filtering by category (Gamble, Expedition, Progression, Jobs, Timeout, Economy)
 - Auto-scroll with pause-on-scroll
@@ -36,6 +40,7 @@ For detailed usage instructions, see the [Usage Guide](ADMIN_DASHBOARD_USAGE.md)
 - 500-event ring buffer
 
 ### 4. User Management (`/admin/users`)
+
 - User search by platform + username
 - Tabbed profile view:
   - Inventory
@@ -51,6 +56,7 @@ For detailed usage instructions, see the [Usage Guide](ADMIN_DASHBOARD_USAGE.md)
 ## Development
 
 ### Setup
+
 ```bash
 # Install dependencies
 make admin-install
@@ -63,13 +69,16 @@ make admin-build
 ```
 
 ### Build Pipeline
+
 1. `make admin-build` runs `npm ci && npm run build` in `web/admin/`
 2. Copies `web/admin/dist/` to `internal/admin/dist/`
 3. Go embeds `internal/admin/dist/` via `//go:embed all:dist`
 4. `make build` compiles the Go binary with embedded frontend
 
 ### Docker
+
 The `Dockerfile` includes a Node.js build stage that builds the frontend before the Go build stage:
+
 ```dockerfile
 FROM node:20-alpine AS frontend-builder
 WORKDIR /frontend
@@ -85,12 +94,15 @@ FROM golang:1.24-alpine AS builder
 ## Backend Endpoints
 
 ### New Endpoints
+
 - `GET /api/v1/admin/metrics` — JSON metrics from Prometheus
 - `GET /api/v1/admin/user/lookup?platform=X&username=Y` — User lookup
 - `GET /api/v1/admin/events?user_id=X&event_type=Y&since=Z&limit=N` — Event log query
 
 ### Existing Endpoints (26+)
+
 All existing admin endpoints are used by the dashboard:
+
 - `/api/v1/progression/admin/*` (9 endpoints)
 - `/api/v1/admin/jobs/*` (3 endpoints)
 - `/api/v1/admin/cache/*` (1 endpoint)
@@ -102,6 +114,7 @@ All existing admin endpoints are used by the dashboard:
 ## Architecture
 
 ### Frontend Structure
+
 ```
 web/admin/
 ├── src/
@@ -125,6 +138,7 @@ web/admin/
 ```
 
 ### Backend Structure
+
 ```
 internal/
 ├── admin/
@@ -140,6 +154,7 @@ internal/
 ## Authentication
 
 The dashboard uses API key authentication:
+
 1. User navigates to `/admin/` (public path, no auth required for HTML)
 2. LoginPage prompts for API key
 3. On submit, tests key with `GET /api/v1/admin/cache/stats`
@@ -150,6 +165,7 @@ The dashboard uses API key authentication:
 ## SSE Connection
 
 The SSE hook uses `fetch` + `ReadableStream` instead of `EventSource` to support custom headers:
+
 ```typescript
 const res = await fetch('/api/v1/events', {
   headers: { 'X-API-Key': apiKey },
@@ -183,17 +199,20 @@ make build && ./bin/app
 ## Common Tasks
 
 ### Add a New Admin Endpoint
+
 1. Create handler in `internal/handler/admin_*.go`
 2. Register route in `internal/server/server.go`
 3. Add API call in `web/admin/src/api/client.ts` (if needed)
 4. Use in a page component via `useApi` or `apiPost`
 
 ### Add a New Page
+
 1. Create `web/admin/src/pages/NewPage.tsx`
 2. Add route in `web/admin/src/App.tsx`
 3. Add nav item in `web/admin/src/components/layout/Sidebar.tsx`
 
 ### Update Metrics
+
 1. Add new metric in `internal/metrics/metrics.go`
 2. Update `gatherMetrics()` in `internal/handler/admin_metrics.go`
 3. Update `AdminMetricsResponse` type
@@ -203,22 +222,26 @@ make build && ./bin/app
 ## Troubleshooting
 
 **Frontend doesn't update after code changes:**
+
 ```bash
 make admin-build  # Rebuild frontend
 make build        # Rebuild Go binary with new embedded assets
 ```
 
 **API key not working:**
+
 - Check that `/admin` is in `PublicPaths` (server/constants.go)
 - Verify API key in browser DevTools → Application → Session Storage
 - Check server logs for auth failures
 
 **SSE not connecting:**
+
 - Verify `/api/v1/events` endpoint is working (check server logs)
 - Check browser DevTools → Network → EventSource or fetch requests
 - Ensure API key is sent with SSE request (custom header support)
 
 **Metrics empty:**
+
 - Verify Prometheus metrics are being collected (`/metrics` endpoint)
 - Check `prometheus.DefaultGatherer.Gather()` returns data
 - Ensure metric names match in `gatherMetrics()` switch cases

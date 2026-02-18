@@ -124,7 +124,7 @@
   },
   "lootboxes": {
     "lootbox_tier0": {
-      "item_drop_rate": 0.30,
+      "item_drop_rate": 0.3,
       "fixed_money": {
         "min": 1,
         "max": 10
@@ -149,7 +149,7 @@
       ]
     },
     "lootbox_tier1": {
-      "item_drop_rate": 0.50,
+      "item_drop_rate": 0.5,
       "fixed_money": {
         "min": 10,
         "max": 100
@@ -215,7 +215,7 @@
       ]
     },
     "lootbox_tier3": {
-      "item_drop_rate": 0.80,
+      "item_drop_rate": 0.8,
       "fixed_money": {
         "min": 500,
         "max": 2500

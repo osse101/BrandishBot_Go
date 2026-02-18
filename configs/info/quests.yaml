@@ -1,7 +1,7 @@
 name: quests
 title: Weekly Quests
 icon: 📜
-color: "#3498DB"
+color: '#3498DB'
 
 discord:
   description: |
@@ -23,4 +23,4 @@ discord:
     Quests reset every Monday. Don't miss out!
 
 streamerbot:
-  description: "Quests: Weekly challenges for Money and XP. !quests to view, !claimquest to collect rewards. Resets every Monday!"
+  description: 'Quests: Weekly challenges for Money and XP. !quests to view, !claimquest to collect rewards. Resets every Monday!'

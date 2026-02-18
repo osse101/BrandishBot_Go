@@ -42,7 +42,7 @@ type service struct {
 // In your method
 func (s *service) DoSomething(ctx context.Context, userID string) error {
     // ... domain logic ...
-    
+
     // Publish event (fire-and-forget, never fails)
     s.publisher.PublishWithRetry(ctx, event.Event{
         Type: event.Type(domain.EventMyNewFeature),
@@ -55,7 +55,7 @@ func (s *service) DoSomething(ctx context.Context, userID string) error {
             "source": "api",  // optional context
         },
     })
-    
+
     return nil  // Domain operation succeeds even if event fails
 }
 ```
@@ -101,18 +101,18 @@ func NewEventHandler(service Service) *EventHandler {
 
 func (h *EventHandler) HandleMyEvent(ctx context.Context, e event.Event) error {
     log := logger.FromContext(ctx)
-    
+
     // Extract payload
     payload, ok := e.Payload.(map[string]interface{})
     if !ok {
         return fmt.Errorf("invalid payload type")
     }
-    
+
     userID, ok := payload["user_id"].(string)
     if !ok {
         return fmt.Errorf("missing user_id in payload")
     }
-    
+
     // Process event
     log.Info("Processing event", "user_id", userID)
     return h.service.ProcessEvent(ctx, userID)
@@ -130,14 +130,14 @@ func (h *EventHandler) Register(bus event.Bus) {
 // cmd/app/main.go
 func main() {
     // ... initialization ...
-    
+
     // Create service
     myService := myservice.NewService(repo)
-    
+
     // Register event handler
     myEventHandler := myservice.NewEventHandler(myService)
     myEventHandler.Register(eventBus)
-    
+
     // ... rest of setup ...
 }
 ```
@@ -151,11 +151,13 @@ func main() {
 **Format:** `category_action` in `snake_case`
 
 **Good:**
+
 - `job_level_up` - Clear action
 - `item_transferred` - Descriptive
 - `search_critical_success` - Specific outcome
 
 **Bad:**
+
 - `JobLevelUp` - Wrong case
 - `job-level-up` - Wrong separator
 - `lvl_up` - Too abbreviated
@@ -174,6 +176,7 @@ func main() {
 ### Payload Field Names
 
 Use `snake_case` for consistency:
+
 ```go
 Payload: map[string]interface{}{
     "user_id": "...",        // Good
@@ -193,11 +196,11 @@ Payload: map[string]interface{}{
 func TestMyEventHandler(t *testing.T) {
     // Create mock bus
     mockBus := &MockBus{}
-    
+
     // Create handler
     service := myservice.NewService(mockRepo)
     handler := myservice.NewEventHandler(service)
-    
+
     // Test event handling
     err := handler.HandleMyEvent(context.Background(), event.Event{
         Type: event.Type(domain.EventMyNewFeature),
@@ -205,7 +208,7 @@ func TestMyEventHandler(t *testing.T) {
             "user_id": "test123",
         },
     })
-    
+
     assert.NoError(t, err)
     // Assert side effects...
 }
@@ -217,36 +220,36 @@ func TestMyEventHandler(t *testing.T) {
 func TestPublishWithRetry(t *testing.T) {
     // Create temp dead-letter file
     tmpFile := t.TempDir() + "/deadletter.jsonl"
-    
+
     // Create real event bus
     bus := event.NewMemoryBus()
-    
+
     // Create resilient publisher with short retry delay for testing
     publisher, err := event.NewResilientPublisher(
-        bus, 
+        bus,
         3,                       // 3 retries
         100*time.Millisecond,    // 100ms base delay
         tmpFile,
     )
     require.NoError(t, err)
     defer publisher.Shutdown(context.Background())
-    
+
     // Subscribe to event
     var received bool
     bus.Subscribe(event.Type(domain.EventMyNewFeature), func(ctx context.Context, e event.Event) error {
         received = true
         return nil
     })
-    
+
     // Publish event
     publisher.PublishWithRetry(context.Background(), event.Event{
         Type: event.Type(domain.EventMyNewFeature),
         Payload: map[string]interface{}{"test": "data"},
     })
-    
+
     // Wait for async processing
     time.Sleep(50 * time.Millisecond)
-    
+
     assert.True(t, received)
 }
 ```
@@ -256,18 +259,18 @@ func TestPublishWithRetry(t *testing.T) {
 ```go
 func TestEventHandlerError(t *testing.T) {
     bus := event.NewMemoryBus()
-    
+
     // Subscribe handler that fails
     bus.Subscribe(event.Type(domain.EventMyNewFeature), func(ctx context.Context, e event.Event) error {
         return fmt.Errorf("intentional failure")
     })
-    
+
     // Publish should return error (not using ResilientPublisher)
     err := bus.Publish(context.Background(), event.Event{
         Type: event.Type(domain.EventMyNewFeature),
         Payload: map[string]interface{}{},
     })
-    
+
     assert.Error(t, err)
     assert.Contains(t, err.Error(), "intentional failure")
 }
@@ -327,7 +330,7 @@ func (h *EventHandler) HandleEvent(ctx context.Context, e event.Event) error {
     if err != nil {
         return fmt.Errorf("invalid payload: %w", err)
     }
-    
+
     // Use strongly-typed payload
     log.Info("Processing", "user", payload.UserID)
     return nil
@@ -340,9 +343,9 @@ func (h *EventHandler) HandleEvent(ctx context.Context, e event.Event) error {
 func (h *EventHandler) HandleEvent(ctx context.Context, e event.Event) error {
     log := logger.FromContext(ctx)
     log.Info("Processing event", "type", e.Type)
-    
+
     // ... process ...
-    
+
     log.Debug("Event processed successfully", "type", e.Type)
     return nil
 }
@@ -386,12 +389,14 @@ Metadata: map[string]interface{}{
 ### Event Not Received by Subscriber
 
 **Check:**
+
 1. Is subscriber registered in `main.go`?
 2. Is event type spelled correctly?
 3. Is event actually being published? (add log before publish)
 4. Is subscriber handler returning an error? (check logs)
 
 **Debug:**
+
 ```go
 // Add logging to subscriber
 func (h *EventHandler) HandleEvent(ctx context.Context, e event.Event) error {
@@ -404,17 +409,20 @@ func (h *EventHandler) HandleEvent(ctx context.Context, e event.Event) error {
 ### Events in Dead-Letter Log
 
 **Investigation:**
+
 ```bash
 # View dead-letter log
 cat logs/event_deadletter.jsonl | jq
 ```
 
 **Common causes:**
+
 - Subscriber handler has a bug (check `last_error`)
 - Event payload is malformed
 - External dependency (Discord, DB) is down
 
 **Recovery:**
+
 - Fix the bug in subscriber
 - Optionally implement manual replay tool (future)
 
@@ -425,6 +433,7 @@ cat logs/event_deadletter.jsonl | jq
 **Cause:** Retry queue buffer (1000 events) is full
 
 **Solutions:**
+
 1. Fix failing subscribers (reduce error rate)
 2. Increase queue buffer size in `resilient_publisher.go`
 3. Add backpressure/rate limiting to publishers
@@ -436,15 +445,17 @@ cat logs/event_deadletter.jsonl | jq
 ### Complete Example: Adding Achievement Unlocked Event
 
 **1. Define event in `internal/domain/stats.go`:**
+
 ```go
 const EventAchievementUnlocked EventType = "achievement_unlocked"
 ```
 
 **2. Publish from achievement service:**
+
 ```go
 func (s *achievementService) UnlockAchievement(ctx context.Context, userID, achievementID string) error {
     // ... unlock logic ...
-    
+
     s.publisher.PublishWithRetry(ctx, event.Event{
         Type: event.Type(domain.EventAchievementUnlocked),
         Payload: map[string]interface{}{
@@ -453,21 +464,22 @@ func (s *achievementService) UnlockAchievement(ctx context.Context, userID, achi
             "unlocked_at": time.Now().Format(time.RFC3339),
         },
     })
-    
+
     return nil
 }
 ```
 
 **3. Create Discord subscriber:**
+
 ```go
 // internal/discord/achievement_handler.go
 func (h *AchievementHandler) HandleAchievementUnlocked(ctx context.Context, e event.Event) error {
     payload := e.Payload.(map[string]interface{})
     userID := payload["user_id"].(string)
     achievementID := payload["achievement_id"].(string)
-    
+
     return h.discord.SendMessage(userID, fmt.Sprintf(
-        "🏆 Achievement Unlocked: %s!", 
+        "🏆 Achievement Unlocked: %s!",
         achievementID,
     ))
 }
@@ -481,6 +493,7 @@ func (h *AchievementHandler) Register(bus event.Bus) {
 ```
 
 **4. Register in `cmd/app/main.go`:**
+
 ```go
 // Register achievement handler
 achievementHandler := discord.NewAchievementHandler(discordBot)
@@ -502,11 +515,13 @@ achievementHandler.Register(eventBus)
 ## Summary
 
 **Event Publishing:**
+
 1. Define event type in `internal/domain/stats.go`
 2. Use `ResilientPublisher.PublishWithRetry()` for critical events
 3. Fire-and-forget pattern - never fail domain operations
 
 **Event Subscribing:**
+
 1. Create handler function with signature `func(context.Context, event.Event) error`
 2. Register handler in `main.go` or event handler module
 3. Validate payload and log processing

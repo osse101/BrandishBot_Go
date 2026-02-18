@@ -159,7 +159,7 @@ Example:
 ```yaml
 # configs/info/farming.yaml
 streamerbot:
-  description: "NEW TEXT HERE"
+  description: 'NEW TEXT HERE'
 ```
 
 This keeps content centralized and consistent across all platforms!

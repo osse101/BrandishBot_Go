@@ -10,12 +10,12 @@ This directory contains implementation tasks for the 36 unimplemented progressio
 
 ### Node Distribution by Type
 
-| Type | Total | Implemented | Pending |
-|------|-------|-------------|---------|
-| Features | 11 | 8 | 3 |
-| Items | 19 | 2 | 17 |
-| Jobs | 6 | 0 | 6 |
-| Upgrades | 10 | 0 | 10 |
+| Type     | Total | Implemented | Pending |
+| -------- | ----- | ----------- | ------- |
+| Features | 11    | 8           | 3       |
+| Items    | 19    | 2           | 17      |
+| Jobs     | 6     | 0           | 6       |
+| Upgrades | 10    | 0           | 10      |
 
 ### Files in This Directory
 
@@ -36,6 +36,7 @@ Each task file contains a checklist of nodes to implement, organized by type. Ev
 **Prerequisites**: [comma-separated list]
 
 **Implementation Checklist**:
+
 - [ ] Add feature gate check in [handler/service file]
 - [ ] Update [relevant service method] to check unlock status
 - [ ] Add tests in [test file]
@@ -44,10 +45,12 @@ Each task file contains a checklist of nodes to implement, organized by type. Ev
 - [ ] Test unlocked behavior (should work normally)
 
 **Files to Modify**:
+
 - `[primary file]` - [what to change]
 - `[test file]` - [what to test]
 
 **Acceptance Criteria**:
+
 - ✓ Locked state returns 403 with clear error message
 - ✓ Unlocked state allows full functionality
 - ✓ Tests cover both locked and unlocked cases
@@ -58,11 +61,13 @@ Each task file contains a checklist of nodes to implement, organized by type. Ev
 ### For Items
 
 Items need unlock checks in:
+
 - **Inventory handlers** - `internal/handler/user.go`
 - **Item service** - `internal/item/service.go`
 - **Economy handlers** - `internal/handler/prices.go` (for buyable items)
 
 **Pattern**:
+
 ```go
 // Check if item is unlocked
 unlocked, err := s.progressionService.IsNodeUnlocked(ctx, progression.ItemXXX)
@@ -77,10 +82,12 @@ if !unlocked {
 ### For Jobs
 
 Jobs need unlock checks in:
+
 - **Job service** - `internal/job/service.go`
 - **Job handlers** - `internal/handler/job.go`
 
 **Pattern**:
+
 ```go
 // In job activation/XP award methods
 unlocked, err := s.progressionService.IsNodeUnlocked(ctx, progression.JobXXX)
@@ -97,12 +104,14 @@ if !unlocked {
 Upgrades need modifier application in relevant services. The modifier system is already implemented via `GetModifiedValue()`:
 
 **Pattern**:
+
 ```go
 // Apply modifier to base value
 modifiedValue := s.progressionService.GetModifiedValue(ctx, "feature_key", baseValue)
 ```
 
 **Implementation steps**:
+
 1. Identify where the base value is used
 2. Wrap it with `GetModifiedValue()`
 3. Add tests for modified vs unmodified values
@@ -112,6 +121,7 @@ modifiedValue := s.progressionService.GetModifiedValue(ctx, "feature_key", baseV
 Features need feature gate checks in handlers:
 
 **Pattern**:
+
 ```go
 // Check feature unlock
 unlocked, err := s.progressionService.IsNodeUnlocked(ctx, progression.FeatureXXX)
@@ -134,6 +144,7 @@ For each implemented node, add tests covering:
 3. **Modifier effects** (for upgrades) - Should apply correctly
 
 **Example test structure**:
+
 ```go
 func TestItemXXX_Locked(t *testing.T) {
     // Setup with item locked
@@ -183,6 +194,7 @@ Recommended order:
 ### Implemented (10 nodes with feature gates)
 
 **Features** (8):
+
 1. `progression_system` (auto-unlocked)
 2. `feature_economy`
 3. `feature_search`
@@ -192,9 +204,7 @@ Recommended order:
 7. `feature_farming`
 8. `feature_events`
 
-**Items** (2):
-9. `item_money`
-10. `item_lootbox0`
+**Items** (2): 9. `item_money` 10. `item_lootbox0`
 
 ### Pending Implementation (36 nodes)
 

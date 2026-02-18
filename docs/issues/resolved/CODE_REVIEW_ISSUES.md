@@ -47,11 +47,13 @@ These issues track the implementation of code review recommendations.
 ## Workflow
 
 When an issue is completed:
+
 1. Add `RESOLVED` at the top of the file
 2. Move to `docs/issues/resolved/` directory
 3. Update this index
 
 Example:
+
 ```bash
 # Mark as resolved
 echo -e "RESOLVED\n\n$(cat refactor-username-methods.md)" > refactor-username-methods.md

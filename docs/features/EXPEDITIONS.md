@@ -30,11 +30,11 @@ The expedition system is a cooperative multiplayer adventure feature. Players fo
 
 ### End Conditions
 
-| Condition | Result |
-|-----------|--------|
-| Turn 50 reached | **Win** — conscious members get bonus rewards |
-| Fatigue reaches 100 | **Exhaustion** — expedition ends early |
-| All members knocked out | **Total KO** — expedition ends early |
+| Condition               | Result                                        |
+| ----------------------- | --------------------------------------------- |
+| Turn 50 reached         | **Win** — conscious members get bonus rewards |
+| Fatigue reaches 100     | **Exhaustion** — expedition ends early        |
+| All members knocked out | **Total KO** — expedition ends early          |
 
 ---
 
@@ -54,23 +54,23 @@ Discord / Streamer.bot
 
 ### Layer Breakdown
 
-| Layer | Location | Responsibility |
-|-------|----------|----------------|
-| Domain types | `internal/domain/expedition.go` | State, turn, result, reward, journal structs |
-| Config loader | `internal/expedition/config.go` | Loads and validates `encounters.json` |
-| Engine | `internal/expedition/engine.go` | Pure-logic turn loop, no DB dependencies |
-| Skills | `internal/expedition/skills.go` | Probability-based skill checks using job levels |
-| Encounters | `internal/expedition/encounters.go` | Weighted encounter/outcome selection with progressive inversion |
-| Scaling | `internal/expedition/scaling.go` | Party-size scaling for KO/revive effects |
-| Journal | `internal/expedition/journal.go` | 3-part narrative generation from templates |
-| Journal format | `internal/expedition/journal_format.go` | Plain text and structured output formatting |
-| Service | `internal/expedition/service.go` | Orchestrates execution, rewards, DB persistence, events |
-| Repository | `internal/repository/expedition.go` | Interface for DB operations |
-| Postgres impl | `internal/database/postgres/expedition.go` | SQLC-backed repository implementation |
-| Worker | `internal/worker/expedition_worker.go` | Timer-based execution scheduler |
-| Handler | `internal/handler/expedition.go` | HTTP API handlers |
-| Discord commands | `internal/discord/cmd_expedition.go` | `/explore` and `/expedition-journal` |
-| Discord SSE | `internal/discord/sse_handlers.go` | Real-time Discord channel notifications |
+| Layer            | Location                                   | Responsibility                                                  |
+| ---------------- | ------------------------------------------ | --------------------------------------------------------------- |
+| Domain types     | `internal/domain/expedition.go`            | State, turn, result, reward, journal structs                    |
+| Config loader    | `internal/expedition/config.go`            | Loads and validates `encounters.json`                           |
+| Engine           | `internal/expedition/engine.go`            | Pure-logic turn loop, no DB dependencies                        |
+| Skills           | `internal/expedition/skills.go`            | Probability-based skill checks using job levels                 |
+| Encounters       | `internal/expedition/encounters.go`        | Weighted encounter/outcome selection with progressive inversion |
+| Scaling          | `internal/expedition/scaling.go`           | Party-size scaling for KO/revive effects                        |
+| Journal          | `internal/expedition/journal.go`           | 3-part narrative generation from templates                      |
+| Journal format   | `internal/expedition/journal_format.go`    | Plain text and structured output formatting                     |
+| Service          | `internal/expedition/service.go`           | Orchestrates execution, rewards, DB persistence, events         |
+| Repository       | `internal/repository/expedition.go`        | Interface for DB operations                                     |
+| Postgres impl    | `internal/database/postgres/expedition.go` | SQLC-backed repository implementation                           |
+| Worker           | `internal/worker/expedition_worker.go`     | Timer-based execution scheduler                                 |
+| Handler          | `internal/handler/expedition.go`           | HTTP API handlers                                               |
+| Discord commands | `internal/discord/cmd_expedition.go`       | `/explore` and `/expedition-journal`                            |
+| Discord SSE      | `internal/discord/sse_handlers.go`         | Real-time Discord channel notifications                         |
 
 ### Key Design Decisions
 
@@ -85,14 +85,14 @@ Discord / Streamer.bot
 
 Six expedition skills map 1:1 to six jobs:
 
-| Skill | Job |
-|-------|-----|
-| Fortitude | Blacksmith |
-| Perception | Explorer |
-| Survival | Farmer |
-| Cunning | Gambler |
-| Persuasion | Merchant |
-| Knowledge | Scholar |
+| Skill      | Job        |
+| ---------- | ---------- |
+| Fortitude  | Blacksmith |
+| Perception | Explorer   |
+| Survival   | Farmer     |
+| Cunning    | Gambler    |
+| Persuasion | Merchant   |
+| Knowledge  | Scholar    |
 
 ### Probability-Based Skill Check
 
@@ -187,19 +187,19 @@ The configuration file defines all encounter definitions, engine settings, and n
 
 ### Settings
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `base_fatigue_per_turn` | int | 5 | Fatigue added at the start of every turn |
-| `max_fatigue` | int | 100 | Expedition ends when fatigue reaches this value |
-| `max_turns` | int | 50 | Expedition wins if this many turns are completed |
-| `starting_purse` | int | 200 | Initial money pool shared by the party |
-| `skill_check_bonus_money` | int | 50 | Bonus money added to purse on non-negative outcomes |
-| `xp_formula_divisor` | int | 4 | XP per member = `ceil(partySize / divisor) + 1` |
-| `leader_bonus_reward` | string | `"lootbox_tier2"` | Extra item awarded to the expedition leader |
-| `win_bonus_reward` | string | `"xp_rarecandy"` | Extra item for conscious members on win |
-| `win_bonus_money` | int | 500 | Extra money for conscious members on win |
-| `party_scale_divisor` | int | 3 | Divisor for party-size scaling of KO/revive counts |
-| `temp_skill_bonus` | float | 0.3 | Contribution bonus from temporary skills |
+| Field                     | Type   | Default           | Description                                         |
+| ------------------------- | ------ | ----------------- | --------------------------------------------------- |
+| `base_fatigue_per_turn`   | int    | 5                 | Fatigue added at the start of every turn            |
+| `max_fatigue`             | int    | 100               | Expedition ends when fatigue reaches this value     |
+| `max_turns`               | int    | 50                | Expedition wins if this many turns are completed    |
+| `starting_purse`          | int    | 200               | Initial money pool shared by the party              |
+| `skill_check_bonus_money` | int    | 50                | Bonus money added to purse on non-negative outcomes |
+| `xp_formula_divisor`      | int    | 4                 | XP per member = `ceil(partySize / divisor) + 1`     |
+| `leader_bonus_reward`     | string | `"lootbox_tier2"` | Extra item awarded to the expedition leader         |
+| `win_bonus_reward`        | string | `"xp_rarecandy"`  | Extra item for conscious members on win             |
+| `win_bonus_money`         | int    | 500               | Extra money for conscious members on win            |
+| `party_scale_divisor`     | int    | 3                 | Divisor for party-size scaling of KO/revive counts  |
+| `temp_skill_bonus`        | float  | 0.3               | Contribution bonus from temporary skills            |
 
 ### Intro Narratives
 
@@ -231,30 +231,30 @@ Each encounter is keyed by its identifier (e.g., `"explore"`, `"combat_boss"`) a
 }
 ```
 
-| Field | Description |
-|-------|-------------|
-| `display_name` | Human-readable name |
-| `base_weight` | Base selection probability (all weights should sum to ~1.0 across encounters) |
-| `skills` | Skills that can be checked during this encounter (one is picked randomly per turn) |
-| `min_party` | Minimum conscious party members required; encounter is skipped if below threshold |
-| `outcomes` | Maps of `"positive"`, `"neutral"`, `"negative"` to outcome definitions |
+| Field          | Description                                                                        |
+| -------------- | ---------------------------------------------------------------------------------- |
+| `display_name` | Human-readable name                                                                |
+| `base_weight`  | Base selection probability (all weights should sum to ~1.0 across encounters)      |
+| `skills`       | Skills that can be checked during this encounter (one is picked randomly per turn) |
+| `min_party`    | Minimum conscious party members required; encounter is skipped if below threshold  |
+| `outcomes`     | Maps of `"positive"`, `"neutral"`, `"negative"` to outcome definitions             |
 
 ### 12 Encounter Types
 
-| Key | Display Name | Skills | Min Party | Base Weight |
-|-----|-------------|--------|-----------|-------------|
-| `explore` | Exploration | Perception, Survival | 1 | 0.18 |
-| `travel` | Travel | Survival, Fortitude | 1 | 0.15 |
-| `combat_skirmish` | Skirmish | Fortitude, Cunning | 1 | 0.12 |
-| `camp` | Camp | Knowledge, Survival | 1 | 0.10 |
-| `hazard` | Hazard | Survival, Fortitude | 1 | 0.08 |
-| `encounter` | Social Encounter | Persuasion, Cunning | 1 | 0.07 |
-| `discovery` | Discovery | Perception, Knowledge | 1 | 0.07 |
-| `combat_elite` | Elite Battle | Fortitude, Knowledge | 2 | 0.06 |
-| `treasure` | Treasure | Perception, Cunning | 1 | 0.05 |
-| `mystic` | Mystic Event | Knowledge, Persuasion | 1 | 0.05 |
-| `drama` | Party Drama | Persuasion, Cunning | 1 | 0.04 |
-| `combat_boss` | Boss Fight | Fortitude, Cunning, Persuasion | 3 | 0.03 |
+| Key               | Display Name     | Skills                         | Min Party | Base Weight |
+| ----------------- | ---------------- | ------------------------------ | --------- | ----------- |
+| `explore`         | Exploration      | Perception, Survival           | 1         | 0.18        |
+| `travel`          | Travel           | Survival, Fortitude            | 1         | 0.15        |
+| `combat_skirmish` | Skirmish         | Fortitude, Cunning             | 1         | 0.12        |
+| `camp`            | Camp             | Knowledge, Survival            | 1         | 0.10        |
+| `hazard`          | Hazard           | Survival, Fortitude            | 1         | 0.08        |
+| `encounter`       | Social Encounter | Persuasion, Cunning            | 1         | 0.07        |
+| `discovery`       | Discovery        | Perception, Knowledge          | 1         | 0.07        |
+| `combat_elite`    | Elite Battle     | Fortitude, Knowledge           | 2         | 0.06        |
+| `treasure`        | Treasure         | Perception, Cunning            | 1         | 0.05        |
+| `mystic`          | Mystic Event     | Knowledge, Persuasion          | 1         | 0.05        |
+| `drama`           | Party Drama      | Persuasion, Cunning            | 1         | 0.04        |
+| `combat_boss`     | Boss Fight       | Fortitude, Cunning, Persuasion | 3         | 0.03        |
 
 ### Outcome Definitions
 
@@ -280,16 +280,16 @@ Outcome weights within an encounter must sum to ~1.0 (validated on load).
 
 Effects are applied based on whether the skill check passed or failed:
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `fatigue_delta` | int | Change to fatigue (can be negative for recovery) |
-| `purse_delta` | int | Change to money pool (can be negative) |
-| `reward` | string | Item key added to the reward pool (empty = none) |
-| `ko_scale` | int | Base KO count (scaled by party size) |
-| `revive_scale` | int | Base revive count (scaled by party size) |
-| `debuff_primary` | bool | If true, the acting member is debuffed |
-| `temp_skill` | string | Grants a temporary skill to the acting member |
-| `shift_weights` | float | Shifts outcome weights toward positive for future turns |
+| Field            | Type   | Description                                             |
+| ---------------- | ------ | ------------------------------------------------------- |
+| `fatigue_delta`  | int    | Change to fatigue (can be negative for recovery)        |
+| `purse_delta`    | int    | Change to money pool (can be negative)                  |
+| `reward`         | string | Item key added to the reward pool (empty = none)        |
+| `ko_scale`       | int    | Base KO count (scaled by party size)                    |
+| `revive_scale`   | int    | Base revive count (scaled by party size)                |
+| `debuff_primary` | bool   | If true, the acting member is debuffed                  |
+| `temp_skill`     | string | Grants a temporary skill to the acting member           |
+| `shift_weights`  | float  | Shifts outcome weights toward positive for future turns |
 
 ### Narratives
 
@@ -305,9 +305,9 @@ Each narrative is a 3-part template:
 
 Parts are joined with `. ` separators. Available placeholders:
 
-| Placeholder | Replaced With |
-|-------------|---------------|
-| `{{primary}}` | The acting member's username |
+| Placeholder     | Replaced With                                                         |
+| --------------- | --------------------------------------------------------------------- |
+| `{{primary}}`   | The acting member's username                                          |
 | `{{secondary}}` | A random other conscious member's username (or "a companion" if none) |
 
 Multiple narratives can be defined per outcome; one is selected randomly each turn.
@@ -337,6 +337,7 @@ POST /api/v1/expedition/start
 ```
 
 **Request body:**
+
 ```json
 {
   "platform": "twitch",
@@ -347,6 +348,7 @@ POST /api/v1/expedition/start
 ```
 
 **Response (201):**
+
 ```json
 {
   "message": "Expedition started! Others can join.",
@@ -356,6 +358,7 @@ POST /api/v1/expedition/start
 ```
 
 **Error cases:**
+
 - 400: Missing/invalid fields
 - 409: Expedition already active, or on cooldown
 - 403: Expedition feature not unlocked (progression system)
@@ -367,6 +370,7 @@ POST /api/v1/expedition/join?id=<expedition_id>
 ```
 
 **Request body:**
+
 ```json
 {
   "platform": "twitch",
@@ -376,6 +380,7 @@ POST /api/v1/expedition/join?id=<expedition_id>
 ```
 
 **Response (200):**
+
 ```json
 {
   "message": "Joined expedition!"
@@ -389,6 +394,7 @@ GET /api/v1/expedition/get?id=<expedition_id>
 ```
 
 **Response (200):**
+
 ```json
 {
   "expedition": {
@@ -427,6 +433,7 @@ GET /api/v1/expedition/status
 ```
 
 **Response (200):**
+
 ```json
 {
   "has_active": false,
@@ -443,6 +450,7 @@ GET /api/v1/expedition/journal?id=<expedition_id>
 ```
 
 **Response (200):**
+
 ```json
 [
   {
@@ -530,12 +538,12 @@ Published when the expedition finishes.
 
 Multi-purpose command that checks the current expedition state and acts accordingly:
 
-| State | Behavior |
-|-------|----------|
+| State                             | Behavior                                      |
+| --------------------------------- | --------------------------------------------- |
 | No active expedition, no cooldown | Starts a new expedition (user becomes leader) |
-| Active expedition in Recruiting | Joins the existing expedition |
-| Active expedition in InProgress | Shows current status |
-| Cooldown active | Shows time remaining |
+| Active expedition in Recruiting   | Joins the existing expedition                 |
+| Active expedition in InProgress   | Shows current status                          |
+| Cooldown active                   | Shows time remaining                          |
 
 ### `/expedition-journal`
 

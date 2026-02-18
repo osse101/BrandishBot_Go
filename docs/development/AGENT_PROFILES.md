@@ -7,34 +7,39 @@ This document defines specialized agent profiles for common development tasks. U
 ## How to Activate Agents
 
 ### Method 1: Direct Prompt
+
 Copy the activation phrase and paste it as your message:
+
 ```
 @agent:feature-developer I need to add a new leaderboard endpoint for top crafters
 ```
 
 ### Method 2: Context Reference
+
 Reference the profile in your request:
+
 ```
 Using the API Sync Agent profile, update the sell endpoint to return transaction history
 ```
 
 ### Method 3: Task Tool with Specialized Instructions
+
 For complex tasks, spawn an agent with specific profile context.
 
 ---
 
 ## Agent Profile Directory
 
-| Profile | Use Case | Activation |
-|---------|----------|------------|
-| **Feature Developer** | Adding new features/endpoints | `@agent:feature-developer` |
-| **Refactor Master** | Eliminating duplication | `@agent:refactor-master` |
-| **API Sync Guardian** | Keeping clients synchronized | `@agent:api-sync` |
-| **Database Architect** | Migrations and SQLC queries | `@agent:database` |
-| **Test Engineer** | Writing tests and mocks | `@agent:test-engineer` |
-| **Discord Builder** | Adding Discord commands | `@agent:discord-builder` |
-| **Config Manager** | Managing JSON configs | `@agent:config-manager` |
-| **Bug Hunter** | Debugging and fixing issues | `@agent:bug-hunter` |
+| Profile                | Use Case                      | Activation                 |
+| ---------------------- | ----------------------------- | -------------------------- |
+| **Feature Developer**  | Adding new features/endpoints | `@agent:feature-developer` |
+| **Refactor Master**    | Eliminating duplication       | `@agent:refactor-master`   |
+| **API Sync Guardian**  | Keeping clients synchronized  | `@agent:api-sync`          |
+| **Database Architect** | Migrations and SQLC queries   | `@agent:database`          |
+| **Test Engineer**      | Writing tests and mocks       | `@agent:test-engineer`     |
+| **Discord Builder**    | Adding Discord commands       | `@agent:discord-builder`   |
+| **Config Manager**     | Managing JSON configs         | `@agent:config-manager`    |
+| **Bug Hunter**         | Debugging and fixing issues   | `@agent:bug-hunter`        |
 
 ---
 
@@ -47,6 +52,7 @@ For complex tasks, spawn an agent with specific profile context.
 **Purpose:** Add new features following the full architecture pattern.
 
 **Workflow:**
+
 1. Read `CLAUDE.md` architecture pattern section
 2. Create todo list with all layers (Handler → Service → Repository → Postgres)
 3. Ask clarifying questions using AskUserQuestion:
@@ -62,11 +68,13 @@ For complex tasks, spawn an agent with specific profile context.
 8. Verify clients if needed
 
 **Key Files:**
+
 - `docs/development/FEATURE_DEVELOPMENT_GUIDE.md`
 - `docs/development/CLIENT_WRAPPER_CHECKLIST.md`
 - `CLAUDE.md` - Architecture Pattern section
 
 **Example Usage:**
+
 ```
 @agent:feature-developer Add an endpoint to track user trading history with other users. Include Discord command.
 ```
@@ -80,6 +88,7 @@ For complex tasks, spawn an agent with specific profile context.
 **Purpose:** Identify and eliminate code duplication systematically.
 
 **Workflow:**
+
 1. Read `docs/discord/DISCORD_REFACTORING_PATTERNS.md` (essential reference)
 2. Read `docs/development/journal.md` for refactoring patterns
 3. Use Grep to identify duplicate patterns (3+ occurrences)
@@ -91,11 +100,13 @@ For complex tasks, spawn an agent with specific profile context.
 9. Run `make test` to ensure no breakage
 
 **Key Files:**
+
 - `docs/discord/DISCORD_REFACTORING_PATTERNS.md` ⭐ CRITICAL
 - `docs/development/journal.md`
 - Target scope (e.g., `internal/discord/`, `internal/handler/`)
 
 **Example Usage:**
+
 ```
 @agent:refactor-master Review internal/handler/ for duplicate validation logic and create shared utilities
 ```
@@ -117,6 +128,7 @@ For complex tasks, spawn an agent with specific profile context.
 **Purpose:** Keep Go Discord, C# Streamer.bot, and API handlers synchronized.
 
 **Workflow:**
+
 1. Read `docs/development/CLIENT_WRAPPER_CHECKLIST.md`
 2. If adding/modifying endpoint:
    - Update `internal/handler/*.go`
@@ -131,6 +143,7 @@ For complex tasks, spawn an agent with specific profile context.
 4. Run `make test` for Go changes
 
 **Key Files:**
+
 - `docs/development/CLIENT_WRAPPER_CHECKLIST.md` ⭐ CRITICAL
 - `internal/handler/` (Go API handlers)
 - `internal/discord/client.go` (Go Discord client)
@@ -138,6 +151,7 @@ For complex tasks, spawn an agent with specific profile context.
 - `internal/server/routes.go` (Route registration)
 
 **Example Usage:**
+
 ```
 @agent:api-sync Audit all clients for discrepancies
 
@@ -145,6 +159,7 @@ For complex tasks, spawn an agent with specific profile context.
 ```
 
 **Sync Checklist Template:**
+
 ```
 Endpoint: [METHOD] [PATH]
 - [ ] Handler in internal/handler/
@@ -163,6 +178,7 @@ Endpoint: [METHOD] [PATH]
 **Purpose:** Create migrations, SQLC queries, and repository implementations.
 
 **Workflow:**
+
 1. For migrations:
    - Create `migrations/XXXX_description.sql` with up/down
    - Run `make migrate-up`
@@ -184,6 +200,7 @@ Endpoint: [METHOD] [PATH]
    ```
 
 **Key Files:**
+
 - `migrations/` - Migration files
 - `internal/database/queries/*.sql` - SQLC queries
 - `internal/database/generated/` - Generated SQLC code
@@ -191,6 +208,7 @@ Endpoint: [METHOD] [PATH]
 - `docs/development/journal.md` - Transaction patterns
 
 **Example Usage:**
+
 ```
 @agent:database Create migration to add trade_history table with user_id, partner_id, item, timestamp
 
@@ -206,6 +224,7 @@ Endpoint: [METHOD] [PATH]
 **Purpose:** Write comprehensive tests and generate mocks.
 
 **Workflow:**
+
 1. Read `docs/testing/journal.md` for test patterns
 2. Identify test type:
    - Unit tests: Mock dependencies, test service logic
@@ -218,12 +237,14 @@ Endpoint: [METHOD] [PATH]
 7. Document edge cases tested
 
 **Key Files:**
+
 - `docs/testing/journal.md`
 - `.mockery.yaml` - Mock configuration
 - `internal/*/service_test.go` - Service tests
 - `internal/handler/*_test.go` - Handler tests
 
 **Test Pattern Template:**
+
 ```go
 func TestServiceMethod(t *testing.T) {
     tests := []struct {
@@ -246,6 +267,7 @@ func TestServiceMethod(t *testing.T) {
 ```
 
 **Example Usage:**
+
 ```
 @agent:test-engineer Write comprehensive tests for internal/crafting/service.go UpgradeItem method
 
@@ -261,6 +283,7 @@ func TestServiceMethod(t *testing.T) {
 **Purpose:** Add new Discord commands following established patterns.
 
 **Workflow:**
+
 1. Read existing commands in `internal/discord/cmd_*.go`
 2. Ask clarifying questions:
    - Command name and description?
@@ -279,6 +302,7 @@ func TestServiceMethod(t *testing.T) {
 6. Test with Discord bot: `make discord-run`
 
 **Key Files:**
+
 - `internal/discord/cmd_*.go` - Command implementations
 - `internal/discord/commands.go` - Registry
 - `internal/discord/client.go` - API client
@@ -286,11 +310,13 @@ func TestServiceMethod(t *testing.T) {
 - `cmd/discord/main.go` - Command registration
 
 **Example Usage:**
+
 ```
 @agent:discord-builder Create a /trade command that initiates a trade request between two users with item autocomplete
 ```
 
 **Discord Command Checklist:**
+
 ```
 - [ ] Command file created: internal/discord/cmd_[name].go
 - [ ] Command returns (*ApplicationCommand, CommandHandler)
@@ -311,6 +337,7 @@ func TestServiceMethod(t *testing.T) {
 **Purpose:** Manage JSON configuration files (items, recipes, progression, loot tables).
 
 **Workflow:**
+
 1. Identify config type and location:
    - Items: `configs/items.json`
    - Crafting recipes: `configs/recipes/crafting.json`
@@ -325,6 +352,7 @@ func TestServiceMethod(t *testing.T) {
 5. Restart services to reload: `make docker-down && make docker-up`
 
 **Key Files:**
+
 - `configs/*.json` - Configuration files
 - `internal/item/loader.go` - Item loader
 - `internal/crafting/recipe_loader.go` - Recipe loader
@@ -332,6 +360,7 @@ func TestServiceMethod(t *testing.T) {
 - `internal/lootbox/service.go` - Loot table loader
 
 **Example Usage:**
+
 ```
 @agent:config-manager Add new crafting recipe for "enchanted_sword" requiring 3 iron and 1 magic_essence
 
@@ -339,6 +368,7 @@ func TestServiceMethod(t *testing.T) {
 ```
 
 **Config Validation Checklist:**
+
 ```
 - [ ] JSON syntax valid (use linter/parser)
 - [ ] Schema matches existing entries
@@ -357,6 +387,7 @@ func TestServiceMethod(t *testing.T) {
 **Purpose:** Debug and fix issues systematically.
 
 **Workflow:**
+
 1. Read issue description and gather context
 2. Identify affected system/service from CLAUDE.md
 3. Use Grep to find relevant code:
@@ -373,12 +404,14 @@ func TestServiceMethod(t *testing.T) {
 11. Document in commit message
 
 **Key Files:**
+
 - `docs/development/journal.md` - Common patterns
 - `docs/architecture/journal.md` - Concurrency patterns
 - Service files in `internal/*/service.go`
 - Repository interfaces in `internal/repository/`
 
 **Debug Checklist:**
+
 ```
 - [ ] Issue reproduced/understood
 - [ ] Affected service/layer identified
@@ -391,6 +424,7 @@ func TestServiceMethod(t *testing.T) {
 ```
 
 **Example Usage:**
+
 ```
 @agent:bug-hunter Users report that voting for progression unlocks sometimes doesn't count their vote
 
@@ -402,6 +436,7 @@ func TestServiceMethod(t *testing.T) {
 ## Agent Combination Workflows
 
 ### Full Feature Development
+
 ```
 1. @agent:feature-developer Add user trading system
 2. @agent:database Create trade_offers and trade_history tables
@@ -411,6 +446,7 @@ func TestServiceMethod(t *testing.T) {
 ```
 
 ### Code Quality Sprint
+
 ```
 1. @agent:refactor-master Audit internal/handler/ for duplication
 2. @agent:bug-hunter Fix identified issues from refactoring
@@ -419,6 +455,7 @@ func TestServiceMethod(t *testing.T) {
 ```
 
 ### Config & Balance Update
+
 ```
 1. @agent:config-manager Update crafting recipes for balance changes
 2. @agent:config-manager Adjust loot table drop rates
@@ -430,22 +467,23 @@ func TestServiceMethod(t *testing.T) {
 
 ## Quick Reference: Agent Selection Matrix
 
-| Task Type | Primary Agent | Supporting Agents |
-|-----------|---------------|-------------------|
-| New API endpoint | Feature Developer | API Sync, Database, Test Engineer |
-| New Discord command | Discord Builder | Feature Developer (if new API needed) |
-| Database changes | Database Architect | Feature Developer, Test Engineer |
-| Bug fix | Bug Hunter | Test Engineer |
-| Reduce duplication | Refactor Master | Test Engineer |
-| Config changes | Config Manager | - |
-| Audit/sync | API Sync Guardian | - |
-| Testing | Test Engineer | - |
+| Task Type           | Primary Agent      | Supporting Agents                     |
+| ------------------- | ------------------ | ------------------------------------- |
+| New API endpoint    | Feature Developer  | API Sync, Database, Test Engineer     |
+| New Discord command | Discord Builder    | Feature Developer (if new API needed) |
+| Database changes    | Database Architect | Feature Developer, Test Engineer      |
+| Bug fix             | Bug Hunter         | Test Engineer                         |
+| Reduce duplication  | Refactor Master    | Test Engineer                         |
+| Config changes      | Config Manager     | -                                     |
+| Audit/sync          | API Sync Guardian  | -                                     |
+| Testing             | Test Engineer      | -                                     |
 
 ---
 
 ## Tips for Using Agents
 
 ### Do:
+
 - ✅ Activate agents with specific, clear requests
 - ✅ Provide context from error messages, logs, or user reports
 - ✅ Let agents ask clarifying questions (they use AskUserQuestion)
@@ -453,6 +491,7 @@ func TestServiceMethod(t *testing.T) {
 - ✅ Review agent-generated checklists before proceeding
 
 ### Don't:
+
 - ❌ Mix multiple agent contexts without clear separation
 - ❌ Skip verification steps (tests, linting)
 - ❌ Ignore agent questions (answer them for best results)
@@ -466,6 +505,7 @@ func TestServiceMethod(t *testing.T) {
 You can create custom agent profiles by copying and modifying these templates. Store custom profiles in `docs/agents/custom/`.
 
 **Template:**
+
 ```markdown
 ### [Agent Name] Agent
 
@@ -474,17 +514,21 @@ You can create custom agent profiles by copying and modifying these templates. S
 **Purpose:** [One-line description]
 
 **Workflow:**
+
 1. [Step 1]
 2. [Step 2]
-...
+   ...
 
 **Key Files:**
+
 - [File 1] - [Purpose]
 - [File 2] - [Purpose]
 
 **Example Usage:**
 ```
+
 @agent:[slug] [example command]
+
 ```
 
 **Checklist:**
@@ -497,6 +541,7 @@ You can create custom agent profiles by copying and modifying these templates. S
 ## Maintenance
 
 This document should be updated when:
+
 - New architectural patterns emerge
 - New services/systems are added
 - Common bug patterns are identified

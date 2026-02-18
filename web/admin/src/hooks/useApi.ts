@@ -21,29 +21,31 @@ export function useApi<T>(path: string | null, options?: RequestInit) {
     if (!path) return;
 
     let cancelled = false;
-    setState(s => ({ ...s, isLoading: true, error: null }));
+    setState((s) => ({ ...s, isLoading: true, error: null }));
 
     apiFetch<T>(path, optionsRef.current)
-      .then(data => {
+      .then((data) => {
         if (!cancelled) setState({ data, error: null, isLoading: false });
       })
-      .catch(err => {
+      .catch((err) => {
         if (!cancelled) {
           const message = err instanceof ApiError ? err.message : 'Request failed';
           setState({ data: null, error: message, isLoading: false });
         }
       });
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [path]);
 
   const refetch = useCallback(() => {
     if (!path) return;
-    setState(s => ({ ...s, isLoading: true, error: null }));
+    setState((s) => ({ ...s, isLoading: true, error: null }));
 
     apiFetch<T>(path, optionsRef.current)
-      .then(data => setState({ data, error: null, isLoading: false }))
-      .catch(err => {
+      .then((data) => setState({ data, error: null, isLoading: false }))
+      .catch((err) => {
         const message = err instanceof ApiError ? err.message : 'Request failed';
         setState({ data: null, error: message, isLoading: false });
       });

@@ -24,7 +24,7 @@ export function JobsPanel() {
         amount: Number(form.amount),
       });
       toast.success(`Awarded ${form.amount} XP to ${form.username}`);
-      setForm(f => ({ ...f, username: '', amount: '' }));
+      setForm((f) => ({ ...f, username: '', amount: '' }));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to award XP');
     } finally {
@@ -42,7 +42,7 @@ export function JobsPanel() {
             <label className="text-xs text-gray-500 block mb-1">Platform</label>
             <select
               value={form.platform}
-              onChange={e => setForm(f => ({ ...f, platform: e.target.value }))}
+              onChange={(e) => setForm((f) => ({ ...f, platform: e.target.value }))}
               className="px-2 py-1.5 bg-gray-800 border border-gray-700 rounded text-sm text-gray-200 focus:outline-none focus:border-blue-500"
             >
               <option value="twitch">Twitch</option>
@@ -54,7 +54,7 @@ export function JobsPanel() {
             <label className="text-xs text-gray-500 block mb-1">Username</label>
             <input
               value={form.username}
-              onChange={e => setForm(f => ({ ...f, username: e.target.value }))}
+              onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))}
               className="w-full px-2 py-1.5 bg-gray-800 border border-gray-700 rounded text-sm text-gray-200 focus:outline-none focus:border-blue-500"
               placeholder="username"
             />
@@ -63,7 +63,7 @@ export function JobsPanel() {
             <label className="text-xs text-gray-500 block mb-1">Job Key</label>
             <input
               value={form.job_key}
-              onChange={e => setForm(f => ({ ...f, job_key: e.target.value }))}
+              onChange={(e) => setForm((f) => ({ ...f, job_key: e.target.value }))}
               className="w-full px-2 py-1.5 bg-gray-800 border border-gray-700 rounded text-sm text-gray-200 focus:outline-none focus:border-blue-500"
               placeholder="e.g. miner"
             />
@@ -73,7 +73,7 @@ export function JobsPanel() {
             <input
               type="number"
               value={form.amount}
-              onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
+              onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
               className="w-full px-2 py-1.5 bg-gray-800 border border-gray-700 rounded text-sm text-gray-200 focus:outline-none focus:border-blue-500"
               placeholder="100"
             />
@@ -125,4 +125,3 @@ export function JobsPanel() {
     </div>
   );
 }
-

@@ -202,11 +202,6 @@ func TestSelectRandomNodes(t *testing.T) {
 	})
 
 	t.Run("deterministic shuffle", func(t *testing.T) {
-		// Mock RNG to always return 0.
-		// Fisher-Yates: for i from n-1 down to 1: swap(i, rng(i+1))
-		// Result: [2, 3, 4, 5, 1]
-		// Selection (count=3): [2, 3, 4]
-
 		mockRNG := func(max int) int {
 			return 0
 		}

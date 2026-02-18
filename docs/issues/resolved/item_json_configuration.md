@@ -9,6 +9,7 @@
 ## Problem
 
 Currently, items are defined solely in database migrations (SQL). This makes it difficult to:
+
 - Add new items without writing SQL migrations
 - modify item properties (tags, display names)
 - Visualize all available items in one place
@@ -102,6 +103,7 @@ type ItemDef struct {
 ### 3. Implement Sync Logic
 
 The `SyncToDatabase` method should:
+
 1. Load all existing items from the DB
 2. Iterate through `items.json`:
    - If item doesn't exist → **Insert** into `items` table
@@ -123,7 +125,7 @@ if cfg.SyncItems {
     if err != nil {
         // handle error
     }
-    
+
     result, err := itemLoader.SyncToDatabase(ctx, itemConfig, itemRepo)
     slog.Info("Items synced", "inserted", result.Inserted, "updated", result.Updated)
 }
@@ -141,7 +143,7 @@ if cfg.SyncItems {
 ✅ **Easy Updates**: Change public names or descriptions without SQL  
 ✅ **Tag Management**: Easily see and modify item behavior tags  
 ✅ **Version Control**: Track item evolution in Git  
-✅ **Validation**: Catch duplicate names or invalid values at startup  
+✅ **Validation**: Catch duplicate names or invalid values at startup
 
 ## Related Files
 

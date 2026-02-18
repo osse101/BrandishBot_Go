@@ -5,6 +5,7 @@
 The Weekly Quests & Weekly Sales system provides players with rotating weekly challenges and dynamic item discounts to encourage regular engagement and varied gameplay.
 
 **Key Components:**
+
 - **Weekly Quests**: 3 rotating challenges that reset every Monday with diverse objectives (buy items, sell items, earn money, craft recipes, perform searches)
 - **Weekly Sales**: Automatic item category discounts that rotate daily
 - **Progression Gating**: Feature locked behind `feature_weekly_quests` progression node
@@ -17,6 +18,7 @@ The Weekly Quests & Weekly Sales system provides players with rotating weekly ch
 ### How Quests Work
 
 #### Quest Selection
+
 - **Every Monday at 00:00 UTC**: The system selects 3 random quests from the quest pool
 - **Deterministic**: Same quests for all players that week (seeded by week number)
 - **Rotates weekly**: New quests appear every Monday, old progress is cleared
@@ -24,14 +26,17 @@ The Weekly Quests & Weekly Sales system provides players with rotating weekly ch
 #### Quest Types
 
 ##### 1. Buy Items (`buy_items`)
+
 **Objective**: Purchase X items of a specific category
 
 **Example**: "Buy 3 Weapons"
+
 - Triggers when player uses `/buy` or equivalent economy endpoint
 - Tracks quantity purchased
 - Auto-completes when threshold reached
 
 **Configuration**:
+
 ```json
 {
   "quest_key": "buy_weapon_items",
@@ -45,14 +50,17 @@ The Weekly Quests & Weekly Sales system provides players with rotating weekly ch
 ```
 
 ##### 2. Sell Items (`sell_items`)
+
 **Objective**: Sell X items (optionally of specific category)
 
 **Example**: "Sell 5 Weapons"
+
 - Triggers when player uses `/sell` or equivalent economy endpoint
 - Tracks quantity sold
 - Can be category-specific or accept any items
 
 **Configuration**:
+
 ```json
 {
   "quest_key": "sell_weapon_items",
@@ -66,14 +74,17 @@ The Weekly Quests & Weekly Sales system provides players with rotating weekly ch
 ```
 
 ##### 3. Earn Money (`earn_money`)
+
 **Objective**: Earn X money from selling items
 
 **Example**: "Earn 5000 money from selling items"
+
 - Triggers when player sells items
 - Tracks total money earned
 - Ignores item category
 
 **Configuration**:
+
 ```json
 {
   "quest_key": "earn_from_sales_medium",
@@ -86,14 +97,17 @@ The Weekly Quests & Weekly Sales system provides players with rotating weekly ch
 ```
 
 ##### 4. Craft Recipe (`craft_recipe`)
+
 **Objective**: Perform a specific crafting recipe X times
 
 **Example**: "Perform Upgrade Mine recipe 3 times"
+
 - Triggers when player performs recipe (upgrade/disassemble)
 - Tracks quantity of recipe completions
 - Specific to recipe identifier
 
 **Configuration**:
+
 ```json
 {
   "quest_key": "upgrade_mine_x3",
@@ -107,14 +121,17 @@ The Weekly Quests & Weekly Sales system provides players with rotating weekly ch
 ```
 
 ##### 5. Perform Searches (`perform_searches`)
+
 **Objective**: Perform X searches
 
 **Example**: "Perform 10 searches this week"
+
 - Triggers when player uses search functionality
 - Tracks search count
 - Simple counter-based progress
 
 **Configuration**:
+
 ```json
 {
   "quest_key": "search_items",
@@ -168,13 +185,14 @@ The Weekly Quests & Weekly Sales system provides players with rotating weekly ch
 
 When a player claims a completed quest:
 
-| Reward Type | Details |
-|---|---|
-| **Money** | Awarded immediately to inventory |
-| **Merchant XP** | Awarded to Merchant job (async) |
+| Reward Type       | Details                               |
+| ----------------- | ------------------------------------- |
+| **Money**         | Awarded immediately to inventory      |
+| **Merchant XP**   | Awarded to Merchant job (async)       |
 | **Notifications** | Discord embed or SSE event (optional) |
 
 **Base Rewards**:
+
 - Common quests: 500-750 money, 100-150 XP
 - Medium quests: 1000-1500 money, 200-300 XP
 - Challenging quests: 2000-3000 money, 400-600 XP
@@ -186,6 +204,7 @@ When a player claims a completed quest:
 ### How Sales Work
 
 #### Sale Rotation
+
 - **Every 7 Days**: Sales rotate to next category in schedule
 - **Day-of-Week Based**: Sales apply automatically based on current week offset
 - **No Configuration Needed**: Applies automatically on buy price calculation
@@ -194,12 +213,12 @@ When a player claims a completed quest:
 
 Default schedule (configurable in `configs/economy/weekly_sales.json`):
 
-| Week Offset | Category | Discount | Active Days |
-|---|---|---|---|
-| 0 | Weapon | 25% | Mon-Sun |
-| 1 | Armor | 20% | Mon-Sun |
-| 2 | Consumable | 30% | Mon-Sun |
-| 3 | Accessory | 15% | Mon-Sun |
+| Week Offset | Category   | Discount | Active Days |
+| ----------- | ---------- | -------- | ----------- |
+| 0           | Weapon     | 25%      | Mon-Sun     |
+| 1           | Armor      | 20%      | Mon-Sun     |
+| 2           | Consumable | 30%      | Mon-Sun     |
+| 3           | Accessory  | 15%      | Mon-Sun     |
 
 Then repeats on Week 4 (back to Weapon, etc.)
 
@@ -226,11 +245,13 @@ Example:
 ## API Endpoints
 
 ### Get Active Quests
+
 ```http
 GET /api/v1/quests/active
 ```
 
 **Response**:
+
 ```json
 [
   {
@@ -252,11 +273,13 @@ GET /api/v1/quests/active
 ```
 
 ### Get User Quest Progress
+
 ```http
 GET /api/v1/quests/progress?user_id={uuid}
 ```
 
 **Response**:
+
 ```json
 [
   {
@@ -278,6 +301,7 @@ GET /api/v1/quests/progress?user_id={uuid}
 ```
 
 ### Claim Quest Reward
+
 ```http
 POST /api/v1/quests/claim
 Content-Type: application/json
@@ -289,6 +313,7 @@ Content-Type: application/json
 ```
 
 **Response**:
+
 ```json
 {
   "money_earned": 800,
@@ -322,6 +347,7 @@ Content-Type: application/json
 ```
 
 **Required Fields**:
+
 - `quest_key`: Unique identifier (no spaces, snake_case)
 - `quest_type`: One of the 5 types listed above
 - `description`: Shown to players, use `{requirement}` for placeholder
@@ -330,6 +356,7 @@ Content-Type: application/json
 - `base_reward_xp`: Merchant XP awarded on claim
 
 **Optional Fields**:
+
 - `target_category`: For buy/sell items quests
 - `target_recipe_key`: For craft_recipe quests
 
@@ -350,6 +377,7 @@ Content-Type: application/json
 ```
 
 **Fields**:
+
 - `week_offset`: Position in rotation (0-indexed, repeats after schedule length)
 - `target_category`: Item category to discount (null = all items)
 - `discount_percent`: Percentage discount (0-100)
@@ -360,6 +388,7 @@ Content-Type: application/json
 ## Discord Commands
 
 ### /quests
+
 View current week's active quests and personal progress
 
 ```
@@ -382,6 +411,7 @@ Reward: 1500 money + 300 Merchant XP
 ```
 
 ### /claimquest
+
 Claim reward from a completed quest
 
 ```
@@ -397,6 +427,7 @@ Claim reward from a completed quest
 ## Integration Points
 
 ### Economy Service
+
 **Files**: `internal/economy/service.go`
 
 When a player buys or sells items, the economy service automatically tracks progress:
@@ -415,6 +446,7 @@ if s.questService != nil {
 ```
 
 ### Crafting Service
+
 **Files**: `internal/crafting/service.go`
 
 When a player performs crafting (upgrade/disassemble):
@@ -425,6 +457,7 @@ s.questService.OnRecipeCrafted(ctx, userID, recipe.Key, quantity)
 ```
 
 ### Search Handler
+
 **Files**: `internal/handler/user.go`
 
 When a player performs a search:
@@ -435,9 +468,11 @@ questService.OnSearch(ctx, user.ID)
 ```
 
 ### Weekly Reset Worker
+
 **Files**: `internal/worker/weekly_reset_worker.go`
 
 Runs every Monday at 00:00 UTC:
+
 1. Deactivates all active quests
 2. Deletes progress for inactive quests
 3. Generates 3 new random quests (deterministic seed)
@@ -450,6 +485,7 @@ Runs every Monday at 00:00 UTC:
 ### Unlock Requirements
 
 Quest feature is locked behind progression node:
+
 - **Node Key**: `feature_weekly_quests`
 - **Node Type**: Feature
 - **Tier**: 2 (Early unlock)
@@ -458,6 +494,7 @@ Quest feature is locked behind progression node:
 ### Access Control
 
 If feature is locked:
+
 - API endpoints return 403 Forbidden
 - Error message explains required nodes to unlock
 - Discord commands not available
@@ -468,12 +505,12 @@ If feature is locked:
 
 ### Published Events
 
-| Event Type | When | Payload |
-|---|---|---|
-| `quest.weekly_reset` | Monday 00:00 UTC | `reset_time`, `week_number`, `year`, `quests_generated` |
-| `quest.progress_updated` | During progress tracking | `user_id`, `quest_id`, `progress` |
-| `quest.completed` | Auto-complete threshold | `user_id`, `quest_id`, `quest_key` |
-| `quest.claimed` | Reward claimed | `user_id`, `quest_id`, `reward_money`, `reward_xp` |
+| Event Type               | When                     | Payload                                                 |
+| ------------------------ | ------------------------ | ------------------------------------------------------- |
+| `quest.weekly_reset`     | Monday 00:00 UTC         | `reset_time`, `week_number`, `year`, `quests_generated` |
+| `quest.progress_updated` | During progress tracking | `user_id`, `quest_id`, `progress`                       |
+| `quest.completed`        | Auto-complete threshold  | `user_id`, `quest_id`, `quest_key`                      |
+| `quest.claimed`          | Reward claimed           | `user_id`, `quest_id`, `reward_money`, `reward_xp`      |
 
 ### Event Subscribers
 
@@ -561,18 +598,21 @@ Result: All players see same quests, but rotation is unpredictable
 ## Performance Considerations
 
 ### Database
+
 - Quest definitions cached in memory at startup
 - Progress queries optimized with indexes
 - Weekly reset batches delete operations
 - Deterministic seeding prevents N+1 queries
 
 ### Async Operations
+
 - XP awards run in background goroutine
 - Event publishing non-blocking
 - SSE broadcasting asynchronous
 - Won't delay transaction completion
 
 ### Scalability
+
 - Minimal database writes (progress increments only)
 - No polling - event-driven architecture
 - Single weekly reset operation (non-blocking)
@@ -583,24 +623,28 @@ Result: All players see same quests, but rotation is unpredictable
 ## Troubleshooting
 
 ### Quests Not Showing Up
+
 1. Check feature is unlocked: `/api/v1/progression/tree` → look for `feature_weekly_quests`
 2. Verify migration applied: `psql -c "SELECT * FROM quests;"`
 3. Check server logs for weekly reset errors
 4. Verify current week has quests: `SELECT * FROM quests WHERE active=true;`
 
 ### Progress Not Tracking
+
 1. Verify questService is initialized in `cmd/app/main.go`
 2. Check economy service has questService dependency
 3. Monitor server logs for "Failed to track quest progress" warnings
 4. Verify item has valid category/types: `/api/v1/prices`
 
 ### Sales Not Applying
+
 1. Check weekly_sales.json is valid JSON
 2. Verify item categories match config
 3. Use `/api/v1/prices/buy` to see calculated prices
 4. Check current week offset: `(weekNum) % salesSchedule.length`
 
 ### Weekly Reset Not Firing
+
 1. Check worker logs for "Next weekly reset scheduled"
 2. Verify time zone is UTC (server should use UTC)
 3. Check database for reset state: `SELECT * FROM weekly_quest_reset_state;`

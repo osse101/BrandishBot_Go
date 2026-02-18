@@ -8,7 +8,7 @@ Simply call the `/version` endpoint to see what version is currently running:
 # Check local version
 curl http://localhost:8080/version
 
-# Check staging version  
+# Check staging version
 curl http://your-staging-server:8080/version
 
 # Check production version
@@ -16,6 +16,7 @@ curl http://your-prod-server:8080/version
 ```
 
 **Example Response:**
+
 ```json
 {
   "version": "53cf434-dirty",
@@ -30,7 +31,7 @@ curl http://your-prod-server:8080/version
 - **version**: Git tag or commit hash (e.g., `v1.2.3` or `53cf434`)
   - Includes `-dirty` if there are uncommitted changes
 - **go_version**: Go compiler version used to build the binary
-- **build_time**: UTC timestamp when the binary was built  
+- **build_time**: UTC timestamp when the binary was built
 - **git_commit**: Short git commit hash (first 7 characters)
 
 ## How It Works
@@ -41,7 +42,7 @@ Version information is injected at build time using Go's `-ldflags` flag:
 
 1. **Local Builds** (`make build`):
    - Runs `git describe --tags --always --dirty` to get version
-   - Injects current timestamp and git commit  
+   - Injects current timestamp and git commit
    - Embeds into `internal/handler.Version`, `BuildTime`, `GitCommit`
 
 2. **Docker Builds** (`make docker-build`):
@@ -52,6 +53,7 @@ Version information is injected at build time using Go's `-ldflags` flag:
 ### Deployment Workflow
 
 When you run:
+
 ```bash
 git pull
 make docker-build
@@ -59,6 +61,7 @@ make deploy-staging
 ```
 
 The build process:
+
 1. Gets current git info (`53cf434` from `git describe`)
 2. Builds image with that version embedded
 3. Deploys container with version baked in
@@ -68,6 +71,7 @@ The build process:
 **Scenario**: You commit changes but staging still shows old errors.
 
 **Check**:
+
 ```bash
 # What's your local HEAD?
 git log -1 --oneline
@@ -83,8 +87,9 @@ curl http://staging:8080/version
 ## Common Scenarios
 
 ### Scenario 1: Deployed Code is Old
+
 ```bash
-$ curl http://staging:8080/version  
+$ curl http://staging:8080/version
 {"version":"3d8e7b7","build_time":"2025-12-30_10:15:32"}
 
 $ git log -1 --oneline
@@ -92,6 +97,7 @@ $ git log -1 --oneline
 ```
 
 **Solution**: Redeploy
+
 ```bash
 cd /path/to/staging
 git pull
@@ -100,6 +106,7 @@ make deploy-staging
 ```
 
 ### Scenario 2: Local Changes Not Committed
+
 ```bash
 $ curl http://localhost:8080/version
 {"version":"53cf434-dirty",...}
@@ -108,6 +115,7 @@ $ curl http://localhost:8080/version
 The `-dirty` suffix means you have uncommitted changes. Commit them before deploying.
 
 ### Scenario 3: Verifying Successful Deployment
+
 ```bash
 # Before deploy
 curl http://staging:8080/version  # v1.2.0
@@ -120,6 +128,7 @@ curl http://staging:8080/version  # v1.2.1 ✓
 ##Automation Tips
 
 ### Add to Deployment Script
+
 ```bash
 #!/bin/bash
 echo "Current deployed version:"
@@ -134,6 +143,7 @@ curl -s http://staging:8080/version | jq .
 ```
 
 ### Pre-Deployment Check
+
 ```bash
 # Add to your workflow
 LOCAL_COMMIT=$(git rev-parse --short HEAD)
@@ -147,21 +157,25 @@ fi
 ```
 
 ### Health Check Dashboard
+
 Create a simple monitoring dashboard that polls `/version` and compares with your git repository to detect drift.
 
 ## Technical Details
 
 ### Version Handler Code
+
 Located in `/internal/handler/version.go`:
+
 ```go
 var (
     Version   = "dev"          // Set via -X flag
-    BuildTime = "unknown"      
-    GitCommit = "unset"        
+    BuildTime = "unknown"
+    GitCommit = "unset"
 )
 ```
 
 ### Build Command (Makefile)
+
 ```makefile
 VERSION=$$(git describe --tags --always --dirty 2>/dev/null || echo "dev")
 BUILD_TIME=$$(date -u '+%Y-%m-%d_%H:%M:%S')
@@ -171,6 +185,7 @@ go build -ldflags "-X github.com/osse101/BrandishBot_Go/internal/handler.Version
 ```
 
 ### Docker Build (Dockerfile)
+
 ```dockerfile
 ARG VERSION=dev
 ARG BUILD_TIME=unknown
@@ -182,14 +197,17 @@ RUN go build -ldflags="-X ...Version=${VERSION} -X ...BuildTime=${BUILD_TIME} ..
 ## Troubleshooting
 
 ### Version shows "dev"
+
 - Not built with `make build` or `make docker-build`
 - Built directly with `go build` (bypasses version injection)
 - **Fix**: Use `make build` instead
 
 ### Version shows old commit despite rebuilding
+
 - Docker cached old image layer
 - **Fix**: Use `make docker-build` (includes `--no-cache`)
 
 ### Build time shows "unknown"
+
 - System doesn't have `date` command or incorrect format
 - **Fix**: Ensure `date` is available in build environment

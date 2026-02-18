@@ -33,21 +33,21 @@ make db-export
 
 # Clean test DB and import
 make db-clean-test
-make migrate-up-test  
+make migrate-up-test
 make db-import
 ```
 
 ## Commands
 
-| Command | Purpose |
-|---------|---------|
-| `make db-test-up` | Start test DB (port 5433) |
-| `make db-test-down` | Stop test DB |
-| `make migrate-up-test` | Apply migrations |
-| `make db-seed-test` | Load seed data |
-| `make test-integration` | Run all integration tests |
-| `make db-export` | Export production to backup.sql |
-| `make db-import` | Import backup.sql to test |
-| `make db-clean-test` | Drop all tables |
+| Command                 | Purpose                         |
+| ----------------------- | ------------------------------- |
+| `make db-test-up`       | Start test DB (port 5433)       |
+| `make db-test-down`     | Stop test DB                    |
+| `make migrate-up-test`  | Apply migrations                |
+| `make db-seed-test`     | Load seed data                  |
+| `make test-integration` | Run all integration tests       |
+| `make db-export`        | Export production to backup.sql |
+| `make db-import`        | Import backup.sql to test       |
+| `make db-clean-test`    | Drop all tables                 |
 
 See [DATABASE_TESTING.md](./DATABASE_TESTING.md) for detailed documentation.

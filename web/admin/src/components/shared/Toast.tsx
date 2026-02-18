@@ -20,11 +20,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   const addToast = useCallback((type: ToastMessage['type'], text: string) => {
     const id = nextId++;
-    setToasts(prev => [...prev, { id, type, text }]);
+    setToasts((prev) => [...prev, { id, type, text }]);
   }, []);
 
   const removeToast = useCallback((id: number) => {
-    setToasts(prev => prev.filter(t => t.id !== id));
+    setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
   const value: ToastContextValue = {
@@ -36,7 +36,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     <ToastContext.Provider value={value}>
       {children}
       <div className="fixed bottom-4 right-4 flex flex-col gap-2 z-50">
-        {toasts.map(toast => (
+        {toasts.map((toast) => (
           <ToastItem key={toast.id} toast={toast} onDismiss={removeToast} />
         ))}
       </div>
@@ -60,7 +60,10 @@ function ToastItem({ toast, onDismiss }: { toast: ToastMessage; onDismiss: (id: 
     >
       <div className="flex items-center justify-between gap-2">
         <span>{toast.text}</span>
-        <button onClick={() => onDismiss(toast.id)} className="text-current opacity-60 hover:opacity-100">
+        <button
+          onClick={() => onDismiss(toast.id)}
+          className="text-current opacity-60 hover:opacity-100"
+        >
           &times;
         </button>
       </div>

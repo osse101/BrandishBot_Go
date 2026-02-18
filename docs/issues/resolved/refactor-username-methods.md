@@ -10,6 +10,7 @@ RESOLVED
 ## Problem
 
 Username-based inventory methods (`AddItemByUsername`, `RemoveItemByUsername`, `UseItemByUsername`, `GetInventoryByUsername`, `GiveItemByUsername`) contain ~500 lines of duplicated code with their platform ID counterparts. The only difference is the user lookup method:
+
 - Platform ID methods: Use `getUserOrRegister()` (auto-registration)
 - Username methods: Use `GetUserByPlatformUsername()` (lookup only)
 
@@ -49,7 +50,7 @@ func (s *service) addItemToUserInternal(ctx context.Context, user *domain.User, 
         return fmt.Errorf("failed to begin transaction: %w", err)
     }
     defer repository.SafeRollback(ctx, tx)
-    
+
     item, err := s.getItemByNameCached(ctx, itemName)
     if err != nil {
         return err
@@ -57,12 +58,12 @@ func (s *service) addItemToUserInternal(ctx context.Context, user *domain.User, 
     if item == nil {
         return fmt.Errorf("%w: %s", domain.ErrItemNotFound, itemName)
     }
-    
+
     inventory, err := tx.GetInventory(ctx, user.ID)
     if err != nil {
         return fmt.Errorf("failed to get inventory: %w", err)
     }
-    
+
     // Add item logic
     found := false
     for i, slot := range inventory.Slots {
@@ -75,16 +76,17 @@ func (s *service) addItemToUserInternal(ctx context.Context, user *domain.User, 
     if !found {
         inventory.Slots = append(inventory.Slots, domain.InventorySlot{ItemID: item.ID, Quantity: quantity})
     }
-    
+
     if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
         return fmt.Errorf("failed to update inventory: %w", err)
     }
-    
+
     return tx.Commit(ctx)
 }
 ```
 
 Create similar helpers:
+
 - `removeItemFromUserInternal(user, itemName, quantity)`
 - `useItemInternal(user, itemName, quantity, targetUsername)`
 - `getInventoryInternal(user, filter)`

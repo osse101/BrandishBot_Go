@@ -5,6 +5,7 @@ The `internal/worker` package implements a centralized worker pool system for ha
 ## Overview
 
 The system uses a `Pool` struct to manage a set of worker goroutines that process `Job` interfaces from a queue. This design allows for:
+
 - Efficient background processing
 - Graceful shutdown handling
 - Centralized error logging
@@ -80,26 +81,31 @@ pool.Stop() // Closes queue, waits for workers to finish current jobs
 The package includes several specialized workers for specific domains:
 
 ### 1. Daily Reset Worker (`DailyResetWorker`)
+
 - **File**: `daily_reset_worker.go`
 - **Purpose**: Handles daily reset tasks at 00:00 UTC+7.
 - **Tasks**: Resets daily limits (e.g., Job XP caps), clears temporary data.
 
 ### 2. Weekly Reset Worker (`WeeklyResetWorker`)
+
 - **File**: `weekly_reset_worker.go`
 - **Purpose**: Handles weekly reset tasks.
 - **Tasks**: Resets weekly quotas (e.g., Weekly Quests), processes weekly rewards.
 
 ### 3. Expedition Worker (`ExpeditionWorker`)
+
 - **File**: `expedition_worker.go`
 - **Purpose**: Manages expedition lifecycle.
 - **Tasks**: Processes expedition progress, handles completion events, distributes rewards.
 
 ### 4. Gamble Worker (`GambleWorker`)
+
 - **File**: `gamble_worker.go`
 - **Purpose**: Manages gambling sessions.
 - **Tasks**: Handles gamble timeouts, resolves active gambles if stuck.
 
 ### 5. Subscription Worker (`SubscriptionWorker`)
+
 - **File**: `subscription_worker.go`
 - **Purpose**: Manages subscription statuses.
 - **Tasks**: Checks for expired subscriptions, verifies status with external APIs (Twitch/YouTube).

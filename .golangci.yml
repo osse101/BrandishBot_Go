@@ -64,13 +64,13 @@ linters-settings:
         # Treat these custom wrappers as os/exec calls for security auditing
         # Some versions of gosec use CustomExec, others use audit_custom_functions
         CustomExec:
-          - "runCommand"
-          - "runCommandVerbose"
-          - "getCommandOutput"
+          - 'runCommand'
+          - 'runCommandVerbose'
+          - 'getCommandOutput'
         audit_custom_functions:
-          - "runCommand"
-          - "runCommandVerbose"
-          - "getCommandOutput"
+          - 'runCommand'
+          - 'runCommandVerbose'
+          - 'getCommandOutput'
 
   # Naked returns
   nakedret:
@@ -80,7 +80,7 @@ linters-settings:
   forbidigo:
     forbid:
       - p: ^(runCommand|runCommandVerbose|getCommandOutput)$
-        msg: "Use of generic command wrappers is discouraged. If used, ensure input is validated and add // #nosec G204"
+        msg: 'Use of generic command wrappers is discouraged. If used, ensure input is validated and add // #nosec G204'
 
   # Import organization
   gci:
@@ -152,12 +152,12 @@ issues:
     # G115: Integer overflow conversion - acceptable in database context where IDs fit in int32
     - linters:
         - gosec
-      text: "G115"
+      text: 'G115'
       path: internal/database/postgres/
 
     - linters:
         - gosec
-      text: "G115"
+      text: 'G115'
       path: internal/cooldown/postgres.go
 
     # Allow long lines in generated files

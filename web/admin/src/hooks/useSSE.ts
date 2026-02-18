@@ -83,7 +83,7 @@ export function useSSE(url: string, enabled: boolean) {
                     timestamp: parsed.timestamp || Date.now() / 1000,
                     payload: parsed.payload,
                   };
-                  setEvents(prev => {
+                  setEvents((prev) => {
                     const next = [...prev, event];
                     return next.length > MAX_EVENTS ? next.slice(-MAX_EVENTS) : next;
                   });

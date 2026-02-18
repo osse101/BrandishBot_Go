@@ -152,6 +152,7 @@ if isSubscribed {
 ### 1. New Subscription
 
 **Flow**:
+
 1. User subscribes on Twitch/YouTube
 2. Streamer.bot detects event → calls webhook
 3. BrandishBot receives event, creates subscription record (30-day expiry)
@@ -159,6 +160,7 @@ if isSubscribed {
 5. Cache is empty (will be populated on first check)
 
 **Webhook Payload**:
+
 ```json
 {
   "platform": "twitch",
@@ -173,6 +175,7 @@ if isSubscribed {
 ### 2. Renewal
 
 **Flow**:
+
 1. User renews subscription (or auto-renews)
 2. Streamer.bot calls webhook with `event_type: "renewed"`
 3. BrandishBot updates expiration date (+30 days)
@@ -182,6 +185,7 @@ if isSubscribed {
 ### 3. Upgrade/Downgrade
 
 **Flow**:
+
 1. User changes tier (e.g., Tier 1 → Tier 2)
 2. Streamer.bot calls webhook with `event_type: "upgraded"`
 3. BrandishBot updates `tier_id` and extends expiration
@@ -191,6 +195,7 @@ if isSubscribed {
 ### 4. Expiration
 
 **Flow**:
+
 1. Background worker runs (every 6 hours)
 2. Finds subscriptions where `expires_at < now` AND `status = 'active'`
 3. Marks subscription as `expired` in database
@@ -202,6 +207,7 @@ if isSubscribed {
 9. Cache is invalidated
 
 **Why check after expiry?**
+
 - Verifies actual platform state, not predictions
 - Handles auto-renewals that may occur at expiration time
 - Provides grace period for Streamer.bot to detect renewals
@@ -210,6 +216,7 @@ if isSubscribed {
 ### 5. Cancellation
 
 **Flow**:
+
 1. User cancels subscription (doesn't auto-renew)
 2. Streamer.bot calls webhook with `event_type: "cancelled"`
 3. BrandishBot marks status as `cancelled`
@@ -300,14 +307,14 @@ To adjust, modify this value in `NewService()`.
 
 The subscription service publishes the following events to the event bus:
 
-| Event Type | Trigger | Payload |
-|------------|---------|---------|
-| `subscription.activated` | New subscription | `{user_id, platform, tier_name, timestamp}` |
-| `subscription.renewed` | Subscription renewed | `{user_id, platform, tier_name, timestamp}` |
-| `subscription.upgraded` | Tier upgrade | `{user_id, platform, tier_name, timestamp}` |
-| `subscription.downgraded` | Tier downgrade | `{user_id, platform, tier_name, timestamp}` |
-| `subscription.expired` | Subscription expired | `{user_id, platform, tier_name, timestamp}` |
-| `subscription.cancelled` | Subscription cancelled | `{user_id, platform, tier_name, timestamp}` |
+| Event Type                | Trigger                | Payload                                     |
+| ------------------------- | ---------------------- | ------------------------------------------- |
+| `subscription.activated`  | New subscription       | `{user_id, platform, tier_name, timestamp}` |
+| `subscription.renewed`    | Subscription renewed   | `{user_id, platform, tier_name, timestamp}` |
+| `subscription.upgraded`   | Tier upgrade           | `{user_id, platform, tier_name, timestamp}` |
+| `subscription.downgraded` | Tier downgrade         | `{user_id, platform, tier_name, timestamp}` |
+| `subscription.expired`    | Subscription expired   | `{user_id, platform, tier_name, timestamp}` |
+| `subscription.cancelled`  | Subscription cancelled | `{user_id, platform, tier_name, timestamp}` |
 
 ### Subscribing to Events
 

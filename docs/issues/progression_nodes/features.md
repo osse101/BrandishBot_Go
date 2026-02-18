@@ -7,6 +7,7 @@
 ## Current Status (2026-02-02)
 
 **Implementation Progress**:
+
 - ✅ **Compost**: Fully implemented (Service, Repository, Engine, Handlers, Discord Commands).
 - ✅ **Expeditions**: Fully implemented (Service, Repository, Engine, Handlers, Discord Commands, Worker).
 - 🚧 **Duels**: Structurally implemented but missing business logic (`Accept` method), Repository implementation, and Discord commands.
@@ -556,17 +557,18 @@ Recommended implementation order:
 
 All three features have the following **structural foundation** implemented:
 
-| Component | Duels | Compost | Expeditions |
-|-----------|-------|---------|-------------|
-| Database Migration | ✅ 0010 | ✅ 0011 | ✅ 0012 |
-| Domain Types | ✅ duel.go | ✅ compost.go | ✅ expedition.go |
+| Component            | Duels                 | Compost                  | Expeditions                 |
+| -------------------- | --------------------- | ------------------------ | --------------------------- |
+| Database Migration   | ✅ 0010               | ✅ 0011                  | ✅ 0012                     |
+| Domain Types         | ✅ duel.go            | ✅ compost.go            | ✅ expedition.go            |
 | Repository Interface | ✅ repository/duel.go | ✅ repository/compost.go | ✅ repository/expedition.go |
-| Service Layer | ✅ duel/service.go | ✅ compost/service.go | ✅ expedition/service.go |
-| HTTP Handlers | ✅ handler/duel.go | ✅ handler/compost.go | ✅ handler/expedition.go |
-| Progression Checks | ✅ All handlers | ✅ All handlers | ✅ All handlers |
-| Build Status | ✅ Compiles | ✅ Compiles | ✅ Compiles |
+| Service Layer        | ✅ duel/service.go    | ✅ compost/service.go    | ✅ expedition/service.go    |
+| HTTP Handlers        | ✅ handler/duel.go    | ✅ handler/compost.go    | ✅ handler/expedition.go    |
+| Progression Checks   | ✅ All handlers       | ✅ All handlers          | ✅ All handlers             |
+| Build Status         | ✅ Compiles           | ✅ Compiles              | ✅ Compiles                 |
 
 **API Endpoints Created:**
+
 - **Duels**: 5 endpoints (challenge, accept, decline, get pending, get duel)
 - **Compost**: 3 endpoints (deposit, status, harvest)
 - **Expeditions**: 4 endpoints (start, join, get, get active)
@@ -577,16 +579,16 @@ All three features have the following **structural foundation** implemented:
 
 The following components need to be implemented for each feature:
 
-| Task | Duels | Compost | Expeditions |
-|------|-------|---------|-------------|
-| Postgres Repository | ⏳ | ✅ | ✅ |
-| Business Logic | ⏳ Accept() | ✅ | ✅ |
-| Route Registration | ⏳ | ✅ | ✅ |
-| Worker Integration | N/A | N/A | ✅ |
-| Discord Commands | ⏳ | ✅ | ✅ |
-| Client Wrappers | ⏳ | ⏳ | ⏳ |
-| Unit Tests | ⏳ | ⏳ | ⏳ |
-| Integration Tests | ⏳ | ⏳ | ⏳ |
+| Task                | Duels       | Compost | Expeditions |
+| ------------------- | ----------- | ------- | ----------- |
+| Postgres Repository | ⏳          | ✅      | ✅          |
+| Business Logic      | ⏳ Accept() | ✅      | ✅          |
+| Route Registration  | ⏳          | ✅      | ✅          |
+| Worker Integration  | N/A         | N/A     | ✅          |
+| Discord Commands    | ⏳          | ✅      | ✅          |
+| Client Wrappers     | ⏳          | ⏳      | ⏳          |
+| Unit Tests          | ⏳          | ⏳      | ⏳          |
+| Integration Tests   | ⏳          | ⏳      | ⏳          |
 
 ### Next Steps (Priority Order)
 

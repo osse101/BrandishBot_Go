@@ -29,6 +29,7 @@ if leveledUp {
 ## Proposed Solution
 
 Implement **fire-and-forget with retry queue** strategy:
+
 - XP awards always succeed (already committed to DB)
 - Failed events go to async retry queue
 - Background worker retries with exponential backoff
@@ -67,7 +68,7 @@ func NewResilientPublisher(bus Bus, maxRetries int, retryDelay time.Duration, de
     if err != nil {
         return nil, err
     }
-    
+
     rp := &ResilientPublisher{
         bus:        bus,
         retryQueue: make(chan Event, 1000), // Buffer 1000 events
@@ -76,11 +77,11 @@ func NewResilientPublisher(bus Bus, maxRetries int, retryDelay time.Duration, de
         shutdown:   make(chan struct{}),
         deadLetter: dl,
     }
-    
+
     // Start background retry worker
     rp.wg.Add(1)
     go rp.retryWorker()
-    
+
     return rp, nil
 }
 
@@ -91,7 +92,7 @@ func (rp *ResilientPublisher) PublishWithRetry(ctx context.Context, event Event)
         log.Warn("Event publish failed, queuing for retry",
             "event_type", event.Type,
             "error", err)
-        
+
         // Non-blocking send to retry queue
         select {
         case rp.retryQueue <- event:
@@ -106,7 +107,7 @@ func (rp *ResilientPublisher) PublishWithRetry(ctx context.Context, event Event)
 
 func (rp *ResilientPublisher) retryWorker() {
     defer rp.wg.Done()
-    
+
     for {
         select {
         case event := <-rp.retryQueue:
@@ -125,17 +126,17 @@ func (rp *ResilientPublisher) retryEvent(event Event, attempt int) {
         rp.deadLetter.Write(event)
         return
     }
-    
+
     // Exponential backoff: 2s, 4s, 8s, 16s, 32s
     time.Sleep(rp.retryDelay * time.Duration(1<<(attempt-1)))
-    
+
     ctx := context.Background()
     if err := rp.bus.Publish(ctx, event); err != nil {
         logger.Default().Warn("Event retry failed",
             "event_type", event.Type,
             "attempt", attempt,
             "error", err)
-        
+
         // Schedule next retry
         go rp.retryEvent(event, attempt+1)
     } else {
@@ -183,12 +184,12 @@ func NewDeadLetterWriter(path string) (*DeadLetterWriter, error) {
 func (dlw *DeadLetterWriter) Write(event Event) error {
     dlw.mu.Lock()
     defer dlw.mu.Unlock()
-    
+
     entry := map[string]interface{}{
         "timestamp": time.Now(),
         "event":     event,
     }
-    
+
     data, _ := json.Marshal(entry)
     _, err := dlw.file.Write(append(data, '\n'))
     return err
@@ -217,7 +218,7 @@ func NewService(repo Repository, prog progression.Service, stats stats.Service, 
     if err != nil {
         return nil, err
     }
-    
+
     return &Service{
         repo:      repo,
         prog:      prog,
@@ -239,7 +240,7 @@ if leveledUp {
             "timestamp": time.Now(),
         },
     }
-    
+
     // Fire and forget - never fails XP award
     s.publisher.PublishWithRetry(ctx, event)
 }
@@ -301,13 +302,15 @@ EVENT_DEADLETTER_PATH=./data/deadletter.jsonl
 ## Monitoring
 
 Check dead-letter log periodically:
+
 ```bash
 tail -f ./data/deadletter.jsonl
 ```
 
 If events are accumulating, investigate:
+
 - Event bus health
-- Subscriber errors  
+- Subscriber errors
 - Network issues
 
 ## Related Issues

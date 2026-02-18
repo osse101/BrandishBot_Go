@@ -5,11 +5,13 @@ Quick reference for setting up Streamer.bot actions that connect to the Brandish
 ## Initial Setup
 
 ### 1. Install C# Client
+
 - [ ] Copy `BrandishBotClient.cs` to Streamer.bot import directory
 - [ ] Import the file into Streamer.bot
 - [ ] Verify Newtonsoft.Json is available (built into Streamer.bot)
 
 ### 2. Create Initialization Action
+
 **Action Name**: `BrandishBot - Initialize`  
 **Trigger**: Manual / On Startup
 
@@ -28,6 +30,7 @@ else
 ```
 
 **Variables to Set**:
+
 - `apiUrl` = `http://localhost:8080` (or your server URL)
 - `apiKey` = Your API key from `.env` file
 
@@ -36,6 +39,7 @@ else
 ## Core User Commands
 
 ### 3. Search Command
+
 **Action Name**: `!search`  
 **Trigger**: Twitch Chat Command `!search`
 
@@ -57,6 +61,7 @@ CPH.SendMessage(result);
 ---
 
 ### 4. Inventory Command
+
 **Action Name**: `!inventory`  
 **Trigger**: Twitch Chat Command `!inventory`
 
@@ -80,6 +85,7 @@ CPH.SendMessage($"@{args["userName"]} inventory: {inventory}");
 ---
 
 ### 5. Open Lootbox Command
+
 **Action Name**: `!open <item> [quantity]`  
 **Trigger**: Twitch Chat Command `!open`
 
@@ -114,6 +120,7 @@ CPH.SendMessage(result);
 ---
 
 ### 6. Buy Item Command
+
 **Action Name**: `!buy <item> [quantity]`  
 **Trigger**: Twitch Chat Command `!buy`
 
@@ -145,6 +152,7 @@ CPH.SendMessage(result);
 ---
 
 ### 7. Sell Item Command
+
 **Action Name**: `!sell <item> [quantity]`  
 **Trigger**: Twitch Chat Command `!sell`
 
@@ -176,6 +184,7 @@ CPH.SendMessage(result);
 ---
 
 ### 8. Prices Command
+
 **Action Name**: `!prices`  
 **Trigger**: Twitch Chat Command `!prices`
 
@@ -192,6 +201,7 @@ CPH.SendMessage(prices);
 ## Progression Commands
 
 ### 9. Progression Tree Command
+
 **Action Name**: `!tree` or `!progression`  
 **Trigger**: Twitch Chat Command `!tree`
 
@@ -207,6 +217,7 @@ CPH.SendMessage("Check out the progression tree: [link to visualization]");
 ---
 
 ### 10. Vote Command
+
 **Action Name**: `!vote <node_key>`  
 **Trigger**: Twitch Chat Command `!vote`
 
@@ -229,6 +240,7 @@ CPH.SendMessage(result);
 ---
 
 ### 11. Voting Session Command
+
 **Action Name**: `!voting` or `!session`  
 **Trigger**: Twitch Chat Command `!voting`
 
@@ -244,6 +256,7 @@ CPH.SendMessage("Current voting options: " + session);
 ---
 
 ### 12. Unlock Progress Command
+
 **Action Name**: `!progress`  
 **Trigger**: Twitch Chat Command `!progress`
 
@@ -260,6 +273,7 @@ CPH.SendMessage(progress);
 ## Gamble Commands
 
 ### 13. Start Gamble Command
+
 **Action Name**: `!gamble <item> [quantity]`  
 **Trigger**: Twitch Chat Command `!gamble`
 
@@ -291,6 +305,7 @@ CPH.SendMessage(result);
 ---
 
 ### 14. Join Gamble Command
+
 **Action Name**: `!join <item> [quantity]`  
 **Trigger**: Twitch Chat Command `!join`
 
@@ -329,6 +344,7 @@ CPH.SendMessage(result);
 ## Engagement Tracking (Background)
 
 ### 15. Message Tracker
+
 **Action Name**: `Track Message`  
 **Trigger**: Twitch First Words, Twitch Chat Message (all messages)
 
@@ -356,6 +372,7 @@ if (!string.IsNullOrEmpty(result) && result.Contains("found"))
 ---
 
 ### 16. Follow Tracker
+
 **Action Name**: `Track Follow`  
 **Trigger**: Twitch Follow
 
@@ -376,6 +393,7 @@ await client.AdminAddContribution(5);  // 5 points for a follow
 ---
 
 ### 17. Subscribe Tracker
+
 **Action Name**: `Track Subscribe`  
 **Trigger**: Twitch Sub, Twitch ReSub
 
@@ -396,6 +414,7 @@ await client.AdminAddContribution(10);  // 10 points for a sub
 ---
 
 ### 18. Raid Tracker
+
 **Action Name**: `Track Raid`  
 **Trigger**: Twitch Raid
 
@@ -422,6 +441,7 @@ await client.AdminAddContribution(contribution);
 ## Admin Commands (Streamer Only)
 
 ### 19. Give Item Command
+
 **Action Name**: `!giveitem @user <item> [quantity]`  
 **Trigger**: Twitch Chat Command `!giveitem` (Moderator/Broadcaster only)
 
@@ -462,6 +482,7 @@ CPH.SendMessage(result);
 ---
 
 ### 20. Add Item Command (Admin)
+
 **Action Name**: `!additem @user <item> <quantity>`  
 **Trigger**: Twitch Chat Command `!additem` (Broadcaster only)
 
@@ -491,6 +512,7 @@ CPH.SendMessage(result);
 ---
 
 ### 21. Instant Unlock (Admin)
+
 **Action Name**: `!instantunlock`  
 **Trigger**: Twitch Chat Command `!instantunlock` (Broadcaster only)
 
@@ -507,6 +529,7 @@ CPH.SendMessage(result);
 ## Summary Checklist
 
 ### Essential Actions (Minimum Viable Integration)
+
 - [ ] Initialize action (run on startup)
 - [ ] !search command
 - [ ] !inventory command
@@ -514,6 +537,7 @@ CPH.SendMessage(result);
 - [ ] Message tracker (background engagement)
 
 ### Recommended Actions
+
 - [ ] !prices command
 - [ ] !buy / !sell commands
 - [ ] !vote command
@@ -521,6 +545,7 @@ CPH.SendMessage(result);
 - [ ] Follow/Sub/Raid trackers
 
 ### Optional Actions
+
 - [ ] Gamble commands
 - [ ] Admin commands (!giveitem, !additem)
 - [ ] Progression tree visualization
@@ -542,19 +567,23 @@ CPH.SendMessage(result);
 ## Troubleshooting
 
 ### "BrandishBot not initialized!"
+
 - Check that Initialize action ran successfully
 - Verify API URL and API Key are correct
 - Check that backend is running (`http://localhost:8080/healthz`)
 
 ### "Error: 401 Unauthorized"
+
 - API Key is incorrect
 - Check API_KEY in backend `.env` file matches client
 
 ### "Error: 500 Server Error"
+
 - Backend crashed or has a bug
 - Check backend logs: `docker compose -f docker-compose.production.yml logs -f app`
 
 ### Commands not responding
+
 - Check that action triggers are set correctly
 - Verify arguments (`userId`, `userName`, `rawInput`) are being passed
 - Enable debug logging in Streamer.bot
@@ -584,6 +613,7 @@ CPH.SendMessage(formatted.TrimEnd(',', ' '));
 ## Platform-Specific Notes
 
 ### Twitch Arguments Available
+
 - `userId` - User's Twitch ID
 - `userName` - User's Twitch username
 - `message` - Full message text
@@ -592,6 +622,7 @@ CPH.SendMessage(formatted.TrimEnd(',', ' '));
 - `isBroadcaster` - Is user the broadcaster?
 
 ### YouTube Integration
+
 Replace `Platform.Twitch` with `Platform.YouTube` and use YouTube-specific arguments.
 
 ---
@@ -608,5 +639,6 @@ Replace `Platform.Twitch` with `Platform.YouTube` and use YouTube-specific argum
 ---
 
 ## Related Files
+
 - [C# Client Source](../../client/csharp/BrandishBotClient.cs)
 - [API Endpoint Reference](../development/CLIENT_WRAPPER_CHECKLIST.md)

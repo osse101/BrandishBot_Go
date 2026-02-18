@@ -1,127 +1,124 @@
 {
-    "$schema": "http://json-schema.org/draft-07/schema#",
-    "$id": "loot_tables.schema.json",
-    "title": "Loot Tables Configuration v2",
-    "description": "BrandishBot pool-based lootbox definitions (v2)",
-    "type": "object",
-    "required": ["version", "pools", "lootboxes"],
-    "additionalProperties": false,
-    "properties": {
-        "version": {
-            "type": "string",
-            "description": "Schema version"
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "loot_tables.schema.json",
+  "title": "Loot Tables Configuration v2",
+  "description": "BrandishBot pool-based lootbox definitions (v2)",
+  "type": "object",
+  "required": ["version", "pools", "lootboxes"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Schema version"
+    },
+    "pools": {
+      "type": "object",
+      "description": "Named item pools used by lootboxes",
+      "additionalProperties": {
+        "$ref": "#/definitions/PoolDef"
+      }
+    },
+    "lootboxes": {
+      "type": "object",
+      "description": "Lootbox definitions referencing pools",
+      "additionalProperties": {
+        "$ref": "#/definitions/LootboxDef"
+      }
+    }
+  },
+  "definitions": {
+    "PoolDef": {
+      "type": "object",
+      "required": ["items"],
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "type": "array",
+          "description": "Items in this pool",
+          "items": {
+            "$ref": "#/definitions/PoolItemDef"
+          },
+          "minItems": 1
+        }
+      }
+    },
+    "PoolItemDef": {
+      "type": "object",
+      "required": ["weight"],
+      "additionalProperties": false,
+      "properties": {
+        "item_name": {
+          "type": "string",
+          "description": "Internal name of a specific item"
+        },
+        "item_type": {
+          "type": "string",
+          "description": "Content type to expand (e.g. 'explosive')"
+        },
+        "weight": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Relative selection weight"
+        }
+      },
+      "oneOf": [{ "required": ["item_name"] }, { "required": ["item_type"] }]
+    },
+    "LootboxDef": {
+      "type": "object",
+      "required": ["item_drop_rate", "fixed_money", "pools"],
+      "additionalProperties": false,
+      "properties": {
+        "item_drop_rate": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Probability [0,1] that a pool item drops (vs consolation money)"
+        },
+        "fixed_money": {
+          "$ref": "#/definitions/MoneyRange"
         },
         "pools": {
-            "type": "object",
-            "description": "Named item pools used by lootboxes",
-            "additionalProperties": {
-                "$ref": "#/definitions/PoolDef"
-            }
-        },
-        "lootboxes": {
-            "type": "object",
-            "description": "Lootbox definitions referencing pools",
-            "additionalProperties": {
-                "$ref": "#/definitions/LootboxDef"
-            }
+          "type": "array",
+          "description": "Weighted pool references for this lootbox",
+          "items": {
+            "$ref": "#/definitions/LootboxPoolRef"
+          },
+          "minItems": 1
         }
+      }
     },
-    "definitions": {
-        "PoolDef": {
-            "type": "object",
-            "required": ["items"],
-            "additionalProperties": false,
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "description": "Items in this pool",
-                    "items": {
-                        "$ref": "#/definitions/PoolItemDef"
-                    },
-                    "minItems": 1
-                }
-            }
+    "MoneyRange": {
+      "type": "object",
+      "required": ["min", "max"],
+      "additionalProperties": false,
+      "properties": {
+        "min": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Minimum consolation money amount"
         },
-        "PoolItemDef": {
-            "type": "object",
-            "required": ["weight"],
-            "additionalProperties": false,
-            "properties": {
-                "item_name": {
-                    "type": "string",
-                    "description": "Internal name of a specific item"
-                },
-                "item_type": {
-                    "type": "string",
-                    "description": "Content type to expand (e.g. 'explosive')"
-                },
-                "weight": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "description": "Relative selection weight"
-                }
-            },
-            "oneOf": [
-                {"required": ["item_name"]},
-                {"required": ["item_type"]}
-            ]
-        },
-        "LootboxDef": {
-            "type": "object",
-            "required": ["item_drop_rate", "fixed_money", "pools"],
-            "additionalProperties": false,
-            "properties": {
-                "item_drop_rate": {
-                    "type": "number",
-                    "minimum": 0.0,
-                    "maximum": 1.0,
-                    "description": "Probability [0,1] that a pool item drops (vs consolation money)"
-                },
-                "fixed_money": {
-                    "$ref": "#/definitions/MoneyRange"
-                },
-                "pools": {
-                    "type": "array",
-                    "description": "Weighted pool references for this lootbox",
-                    "items": {
-                        "$ref": "#/definitions/LootboxPoolRef"
-                    },
-                    "minItems": 1
-                }
-            }
-        },
-        "MoneyRange": {
-            "type": "object",
-            "required": ["min", "max"],
-            "additionalProperties": false,
-            "properties": {
-                "min": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "description": "Minimum consolation money amount"
-                },
-                "max": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "description": "Maximum consolation money amount"
-                }
-            }
-        },
-        "LootboxPoolRef": {
-            "type": "object",
-            "required": ["pool_name", "weight"],
-            "additionalProperties": false,
-            "properties": {
-                "pool_name": {
-                    "type": "string",
-                    "description": "Name of the pool to reference"
-                },
-                "weight": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "description": "Relative selection weight for this pool"
-                }
-            }
+        "max": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum consolation money amount"
         }
+      }
+    },
+    "LootboxPoolRef": {
+      "type": "object",
+      "required": ["pool_name", "weight"],
+      "additionalProperties": false,
+      "properties": {
+        "pool_name": {
+          "type": "string",
+          "description": "Name of the pool to reference"
+        },
+        "weight": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Relative selection weight for this pool"
+        }
+      }
     }
+  }
 }

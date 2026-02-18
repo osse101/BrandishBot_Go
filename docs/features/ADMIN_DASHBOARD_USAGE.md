@@ -89,21 +89,22 @@ File: `web/admin/vite.config.ts`
 ```typescript
 export default defineConfig({
   plugins: [react()],
-  base: '/admin/',           // Base path for assets
+  base: '/admin/', // Base path for assets
   server: {
-    port: 5173,              // Dev server port
+    port: 5173, // Dev server port
     proxy: {
-      '/api': 'http://localhost:8080',      // Proxy API calls
+      '/api': 'http://localhost:8080', // Proxy API calls
       '/healthz': 'http://localhost:8080',
       '/readyz': 'http://localhost:8080',
       '/version': 'http://localhost:8080',
       '/metrics': 'http://localhost:8080',
     },
   },
-})
+});
 ```
 
 **When to modify:**
+
 - ✅ Development — when backend runs on different port
 - ❌ Production — not used (frontend served by Go)
 
@@ -130,19 +131,23 @@ No configuration needed — this is the default.
 **Dashboard URL**: `http://192.168.1.100:8080/admin/`
 
 **Steps:**
+
 1. Ensure backend server binds to `0.0.0.0` instead of `127.0.0.1`:
+
    ```bash
    # In .env or environment
    PORT=8080  # Go's http.Server uses ":8080" which binds to all interfaces
    ```
 
 2. Configure firewall to allow port 8080:
+
    ```bash
    # Example: Ubuntu ufw
    sudo ufw allow 8080/tcp
    ```
 
 3. Access from browser:
+
    ```
    http://<server-ip>:8080/admin/
    ```
@@ -155,6 +160,7 @@ No configuration needed — this is the default.
 **Dashboard URL**: `http://localhost:9000/admin/`
 
 **Backend configuration:**
+
 ```bash
 # .env
 PORT=9000
@@ -168,6 +174,7 @@ No frontend changes needed — the dashboard is served at `http://localhost:9000
 **Backend URL**: `http://localhost:8080` (internal)
 
 **Nginx configuration:**
+
 ```nginx
 server {
     listen 80;
@@ -193,6 +200,7 @@ server {
 ```
 
 **BrandishBot configuration:**
+
 ```bash
 # .env
 TRUSTED_PROXIES=<nginx-server-ip>  # For accurate client IP logging
@@ -203,13 +211,14 @@ No frontend changes needed.
 #### Scenario 5: Docker Deployment
 
 **Docker Compose:**
+
 ```yaml
 version: '3.8'
 services:
   brandishbot:
     image: brandishbot:latest
     ports:
-      - "8080:8080"  # Map container port 8080 to host port 8080
+      - '8080:8080' # Map container port 8080 to host port 8080
     environment:
       - PORT=8080
       - API_KEY=${API_KEY}
@@ -224,14 +233,16 @@ services:
 ```
 
 **Access:**
+
 ```
 http://localhost:8080/admin/
 ```
 
 To use a different host port:
+
 ```yaml
 ports:
-  - "9000:8080"  # Host port 9000 → container port 8080
+  - '9000:8080' # Host port 9000 → container port 8080
 ```
 
 Access: `http://localhost:9000/admin/`
@@ -245,6 +256,7 @@ Access: `http://localhost:9000/admin/`
 **Path**: `/admin/`
 
 **Features**:
+
 - **Server Status**: Liveness (`/healthz`) and readiness (`/readyz`) checks
 - **Build Info**: Version, Go version, build time, git commit
 - **HTTP Metrics**: Request rate, latency (avg/p95), in-flight requests, error count
@@ -253,11 +265,13 @@ Access: `http://localhost:9000/admin/`
 - **SSE Status**: Number of connected SSE clients
 
 **Refresh Rates**:
+
 - Health checks: 10 seconds
 - Metrics: 5 seconds
 - Version info: 60 seconds
 
 **Use Cases**:
+
 - Monitor server health during deployments
 - Track request latency and error rates
 - Verify SSE connections are working
@@ -269,6 +283,7 @@ Access: `http://localhost:9000/admin/`
 **Tabs**:
 
 #### Progression Tab
+
 - **Unlock Node**: Unlock a specific progression node by index
 - **Relock Node**: Relock a previously unlocked node
 - **Start/Freeze/Force-End Voting**: Control voting sessions
@@ -278,19 +293,23 @@ Access: `http://localhost:9000/admin/`
 - **Unlock All Nodes**: ⚠️ Dangerous — Unlocks all nodes at once
 
 #### Jobs Tab
+
 - **Award XP**: Give XP to a user for a specific job
 - **Reset Daily XP**: ⚠️ Resets daily XP caps for all users
 
 #### Cache Tab
+
 - **View Cache Stats**: Display hit/miss rates and cache size
 - **Reload Aliases**: Reload item name aliases from config
 - **Reload Voting Weights**: Reload progression voting weights
 
 #### Scenarios Tab
+
 - **Run Scenario**: Execute predefined test scenarios
 - **Custom Scenario**: Run custom JSON-defined scenarios
 
 #### Timeouts Tab
+
 - **Clear Timeout**: Remove timeout from a specific user
 
 **Confirmation Dialogs**:
@@ -304,6 +323,7 @@ Errors are displayed as toast notifications. Successful actions show success toa
 **Path**: `/admin/events`
 
 **Features**:
+
 - **Real-time Event Stream**: SSE connection to `/api/v1/events`
 - **Event Filtering**: Filter by category (Gamble, Expedition, Progression, Jobs, Timeout, Economy)
 - **Auto-scroll**: Automatically scrolls to new events (pauses when user scrolls up)
@@ -312,6 +332,7 @@ Errors are displayed as toast notifications. Successful actions show success toa
 - **Connection Status**: Shows connected/connecting/disconnected state
 
 **Event Categories**:
+
 - 🟡 **Gamble**: `gamble.*` events (amber)
 - 🟢 **Expedition**: `expedition.*` events (emerald)
 - 🟣 **Progression**: `progression.*` events (purple)
@@ -320,6 +341,7 @@ Errors are displayed as toast notifications. Successful actions show success toa
 - 🟡 **Economy**: `item.*`, `economy.*` events (yellow)
 
 **Use Cases**:
+
 - Monitor live game events during testing
 - Debug event payloads in real-time
 - Watch for specific event types (e.g., progression unlocks)
@@ -334,10 +356,12 @@ If the SSE connection drops, it automatically reconnects with exponential backof
 **Features**:
 
 #### User Search
+
 - Search by platform (Twitch/Discord/YouTube) + username
 - Returns user profile with ID, platform links, creation date
 
 #### Profile Tabs
+
 - **Inventory**: View all items with quantities and quality levels
 - **Jobs**: View all job levels and XP progress
 - **Stats**: User statistics and event counts
@@ -345,12 +369,14 @@ If the SSE connection drops, it automatically reconnects with exponential backof
 - **Events**: User's event history (last 50 events)
 
 #### Admin Actions
+
 - **Add Item**: Give items to the user
 - **Remove Item**: Take items from the user
 - **Award XP**: Give XP for any job
 - **Clear Timeout**: Remove user timeout
 
 **Use Cases**:
+
 - Give items to users for compensation
 - Debug user inventory issues
 - Check quest progress
@@ -547,7 +573,7 @@ const EVENT_CATEGORIES: Record<string, { color: string; types: string[] }> = {
   // ... existing categories
   NewCategory: {
     color: 'bg-pink-500/20 text-pink-400 border-pink-500/30',
-    types: ['new_category.']
+    types: ['new_category.'],
   },
 };
 ```
@@ -646,6 +672,7 @@ Access via Ingress or LoadBalancer at `/admin/`
 ### Multi-Instance with Load Balancer
 
 **Setup**:
+
 - Multiple BrandishBot instances behind load balancer
 - Shared PostgreSQL database
 - Sticky sessions NOT required (API is stateless)
@@ -691,6 +718,7 @@ server {
 **Cause**: API key in browser doesn't match server
 
 **Solution**:
+
 1. Check server's API key:
    ```bash
    grep API_KEY .env
@@ -705,6 +733,7 @@ server {
 **Cause**: SSE connection failed
 
 **Solution**:
+
 1. Check if backend is running:
    ```bash
    curl http://localhost:8080/healthz
@@ -721,6 +750,7 @@ server {
 **Cause**: No metrics have been collected yet
 
 **Solution**:
+
 1. Generate some traffic:
    ```bash
    curl http://localhost:8080/version
@@ -737,6 +767,7 @@ server {
 **Cause**: Old frontend embedded in Go binary
 
 **Solution**:
+
 ```bash
 make admin-build    # Rebuild frontend
 make build          # Rebuild Go binary with new embedded assets
@@ -750,6 +781,7 @@ Hard refresh in browser: `Ctrl+Shift+R` (Windows/Linux) or `Cmd+Shift+R` (Mac)
 **Cause**: Server binding to localhost only, or firewall blocking
 
 **Solution**:
+
 1. Ensure server binds to all interfaces:
    ```bash
    # .env
@@ -770,6 +802,7 @@ Hard refresh in browser: `Ctrl+Shift+R` (Windows/Linux) or `Cmd+Shift+R` (Mac)
 **Cause**: Node version incompatibility or missing dependencies
 
 **Solution**:
+
 1. Check Docker build logs:
    ```bash
    docker build --no-cache -t brandishbot:debug .
@@ -788,6 +821,7 @@ Hard refresh in browser: `Ctrl+Shift+R` (Windows/Linux) or `Cmd+Shift+R` (Mac)
 **Cause**: Missing service dependencies or database connection
 
 **Solution**:
+
 1. Check server logs for error details
 2. Verify database is running:
    ```bash
@@ -803,12 +837,14 @@ Hard refresh in browser: `Ctrl+Shift+R` (Windows/Linux) or `Cmd+Shift+R` (Mac)
 ### API Key Management
 
 **DO**:
+
 - ✅ Use a strong, random API key (32+ characters)
 - ✅ Store in `.env` file (never commit to git)
 - ✅ Rotate periodically
 - ✅ Use different keys for dev/staging/production
 
 **DON'T**:
+
 - ❌ Use simple keys like "admin" or "password"
 - ❌ Share keys in public channels
 - ❌ Commit `.env` to version control
@@ -816,6 +852,7 @@ Hard refresh in browser: `Ctrl+Shift+R` (Windows/Linux) or `Cmd+Shift+R` (Mac)
 ### Network Security
 
 **Recommendations**:
+
 - 🔒 Use HTTPS in production (reverse proxy with SSL/TLS)
 - 🔒 Restrict admin dashboard to internal network or VPN
 - 🔒 Use firewall rules to limit access
@@ -824,6 +861,7 @@ Hard refresh in browser: `Ctrl+Shift+R` (Windows/Linux) or `Cmd+Shift+R` (Mac)
 ### Session Security
 
 The API key is stored in `sessionStorage` (not `localStorage`), which means:
+
 - ✅ Cleared when browser tab closes
 - ✅ Not shared across tabs
 - ✅ Not persisted to disk
@@ -841,8 +879,8 @@ File: `web/admin/src/pages/HealthPage.tsx`
 
 ```typescript
 // Change polling intervals:
-const health = usePolling<HealthResponse>('/healthz', 10000);  // 10s
-const metrics = usePolling<AdminMetrics>('/api/v1/admin/metrics', 5000);  // 5s
+const health = usePolling<HealthResponse>('/healthz', 10000); // 10s
+const metrics = usePolling<AdminMetrics>('/api/v1/admin/metrics', 5000); // 5s
 ```
 
 ### Custom SSE Reconnect Strategy
@@ -851,7 +889,7 @@ File: `web/admin/src/hooks/useSSE.ts`
 
 ```typescript
 // Adjust max delay and backoff multiplier:
-const MAX_RECONNECT_DELAY = 30000;  // 30s max
+const MAX_RECONNECT_DELAY = 30000; // 30s max
 const delay = Math.min(1000 * 2 ** retriesRef.current, MAX_RECONNECT_DELAY);
 ```
 
@@ -860,7 +898,7 @@ const delay = Math.min(1000 * 2 ** retriesRef.current, MAX_RECONNECT_DELAY);
 File: `web/admin/src/hooks/useSSE.ts`
 
 ```typescript
-const MAX_EVENTS = 500;  // Increase for more history
+const MAX_EVENTS = 500; // Increase for more history
 ```
 
 ---
@@ -870,21 +908,25 @@ const MAX_EVENTS = 500;  // Increase for more history
 ### Quick Configuration Checklist
 
 **When changing port**:
+
 - [ ] Update `PORT` in `.env`
 - [ ] Update URLs to `http://localhost:<new-port>/admin/`
 
 **When deploying to different server**:
+
 - [ ] Ensure server binds to `0.0.0.0` (default)
 - [ ] Configure firewall to allow port
 - [ ] Update `TRUSTED_PROXIES` if behind reverse proxy
 - [ ] Access at `http://<server-ip>:<port>/admin/`
 
 **When adding features**:
+
 - [ ] Backend: Add handler + route in Go
 - [ ] Frontend: Add page/component in React
 - [ ] Rebuild: `make admin-build && make build`
 
 **No configuration needed for**:
+
 - ✅ Changing backend port (frontend uses same-origin)
 - ✅ HTTPS (handled by reverse proxy)
 - ✅ Load balancing (stateless API)

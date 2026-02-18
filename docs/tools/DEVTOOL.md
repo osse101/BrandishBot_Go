@@ -5,6 +5,7 @@
 ## Overview
 
 The `devtool` binary is designed to be the single entry point for:
+
 - Development tasks (building, testing, coverage)
 - Database management (migrations, seeding)
 - Deployment workflows (build, push, deploy, rollback)
@@ -19,6 +20,7 @@ go run ./cmd/devtool <command> [flags]
 ```
 
 Or via `make`:
+
 ```bash
 make migrate-up  # Runs: go run ./cmd/devtool migrate up
 ```

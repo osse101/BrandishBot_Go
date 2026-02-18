@@ -1,13 +1,16 @@
 # Feature Proposal — Job System v1
 
 ## 1. Title
+
 **Short name:** Job System v1  
 **Canonical ID:** feature/job-system-v1
 
 ## 2. One-line summary
+
 A profession-based XP and leveling system where users accumulate experience in specific jobs through game activities, unlocking bonuses and gating content by job level.
 
 ## 3. Goal(s)
+
 - Provide persistent user progression through profession specialization
 - Create RPG-style identity through job levels (e.g., "Master Blacksmith")
 - Gate advanced content behind job level requirements
@@ -15,7 +18,9 @@ A profession-based XP and leveling system where users accumulate experience in s
 - Integrate with existing progression system for job unlock voting
 
 ## 4. Scope
+
 ### In scope
+
 - Per-user, per-job XP tracking
 - XP → Level scaling system
 - Job-specific bonuses (Blacksmith, Ranger, Merchant, etc.)
@@ -25,6 +30,7 @@ A profession-based XP and leveling system where users accumulate experience in s
 - Recipe/item level requirements
 
 ### Out of scope
+
 - Job class abilities (active skills)
 - Job quests or missions
 - Multi-job combinations or subclasses
@@ -32,11 +38,13 @@ A profession-based XP and leveling system where users accumulate experience in s
 - Job-specific equipment bonuses
 
 ## 5. Motivation
+
 Jobs add vertical progression that rewards consistent play. Unlike global progression unlocks, jobs are **personal** — each user develops their own specialization. This creates diverse player identities and encourages feature exploration.
 
 ---
 
 ## 6. References / Constraint Docs
+
 - Architecture constraints: [ARCHITECTURE.md](../architecture/ARCHITECTURE.md)
 - Security analysis: [SECURITY_ANALYSIS.md](../archived/SECURITY_ANALYSIS.md)
 - Migrations guide: [MIGRATIONS.md](../database/MIGRATIONS.md)
@@ -45,20 +53,21 @@ Jobs add vertical progression that rewards consistent play. Unlike global progre
 
 ## 7. Job Definitions
 
-| Job | Associated Features | XP Sources | Bonus Type |
-|-----|---------------------|------------|------------|
-| **Blacksmith** | Upgrade, Craft, Disassemble | Recipe quality, items disassembled | Recipe level requirements, upgrade success rate, disassembly yields |
-| **Explorer** | Search | Each search command | % chance for bonus money, amount scales with level |
-| **Merchant** | Buy, Sell | Transactions | Better prices (buy lower, sell higher) |
-| **Gambler** | Gamble | Lootbox value wagered | Increased prize when winning (small %) |
-| **Farmer** | Farm (future) | Harvests completed | Faster grow times, better yields |
-| **Scholar** | Community Progression | Actions contributing to global progression | XP bonus to all jobs, engagement score multiplier |
+| Job            | Associated Features         | XP Sources                                 | Bonus Type                                                          |
+| -------------- | --------------------------- | ------------------------------------------ | ------------------------------------------------------------------- |
+| **Blacksmith** | Upgrade, Craft, Disassemble | Recipe quality, items disassembled         | Recipe level requirements, upgrade success rate, disassembly yields |
+| **Explorer**   | Search                      | Each search command                        | % chance for bonus money, amount scales with level                  |
+| **Merchant**   | Buy, Sell                   | Transactions                               | Better prices (buy lower, sell higher)                              |
+| **Gambler**    | Gamble                      | Lootbox value wagered                      | Increased prize when winning (small %)                              |
+| **Farmer**     | Farm (future)               | Harvests completed                         | Faster grow times, better yields                                    |
+| **Scholar**    | Community Progression       | Actions contributing to global progression | XP bonus to all jobs, engagement score multiplier                   |
 
 ---
 
 ## 8. XP and Leveling System
 
 ### XP Scaling Formula
+
 Leveling is intentionally **slow** to encourage long-term engagement.
 
 ```
@@ -69,34 +78,36 @@ EXPONENT = 1.5
 ```
 
 | Level | XP Required | Cumulative XP |
-|-------|-------------|---------------|
-| 1 | 100 | 100 |
-| 2 | 283 | 383 |
-| 5 | 1,118 | 3,043 |
-| 10 | 3,162 | ~18,000 |
-| 20 | 8,944 | ~100,000 |
-| 50 | 35,355 | ~750,000 |
+| ----- | ----------- | ------------- |
+| 1     | 100         | 100           |
+| 2     | 283         | 383           |
+| 5     | 1,118       | 3,043         |
+| 10    | 3,162       | ~18,000       |
+| 20    | 8,944       | ~100,000      |
+| 50    | 35,355      | ~750,000      |
 
 ### Level Caps
+
 Levels are capped by the **Job XP** node in the progression tree:
 
 | Progression Unlock Level | Max Job Level |
-|--------------------------|---------------|
-| 1 (initial unlock) | 10 |
-| 2 | 20 |
-| 3 | 30 |
-| ... | +10 per level |
+| ------------------------ | ------------- |
+| 1 (initial unlock)       | 10            |
+| 2                        | 20            |
+| 3                        | 30            |
+| ...                      | +10 per level |
 
 ### XP Boost Progression Node
+
 A separate progression node **Job XP Boost** provides:
 
-| Boost Node Level | Effect |
-|------------------|--------|
-| 1 | +25% XP gain, all new users start at job level 1 |
-| 2 | +50% XP gain, all new users start at job level 2 |
-| 3 | +75% XP gain, all new users start at job level 3 |
-| 4 | +100% XP gain, all new users start at job level 5 |
-| ... | Continues scaling |
+| Boost Node Level | Effect                                            |
+| ---------------- | ------------------------------------------------- |
+| 1                | +25% XP gain, all new users start at job level 1  |
+| 2                | +50% XP gain, all new users start at job level 2  |
+| 3                | +75% XP gain, all new users start at job level 3  |
+| 4                | +100% XP gain, all new users start at job level 5 |
+| ...              | Continues scaling                                 |
 
 **Note**: Daily XP caps (if enabled) also scale with this node.
 
@@ -105,6 +116,7 @@ A separate progression node **Job XP Boost** provides:
 ## 9. Data Model (DDL Sketch)
 
 ### `jobs`
+
 Static job definitions (seeded at migration).
 
 ```sql
@@ -119,6 +131,7 @@ CREATE TABLE jobs (
 ```
 
 ### `user_jobs`
+
 Per-user job XP and level tracking.
 
 ```sql
@@ -137,6 +150,7 @@ CREATE INDEX idx_user_jobs_level ON user_jobs(current_level DESC);
 ```
 
 ### `job_xp_events`
+
 Audit log for XP gains (optional, for debugging/analytics).
 
 ```sql
@@ -154,6 +168,7 @@ CREATE INDEX idx_job_xp_events_user ON job_xp_events(user_id, recorded_at DESC);
 ```
 
 ### `job_level_bonuses`
+
 Configurable bonuses per job per level tier.
 
 ```sql
@@ -189,20 +204,22 @@ progression_system
 ### Multi-Level Nodes
 
 #### `jobs_xp` (Level Cap)
-| Level | Effect |
-|-------|--------|
-| 1 | Unlock job XP system, max job level 10 |
-| 2 | Max job level 20 |
-| 3 | Max job level 30 |
-| ... | +10 max level per unlock |
+
+| Level | Effect                                 |
+| ----- | -------------------------------------- |
+| 1     | Unlock job XP system, max job level 10 |
+| 2     | Max job level 20                       |
+| 3     | Max job level 30                       |
+| ...   | +10 max level per unlock               |
 
 #### `jobs_xp_boost` (XP Acceleration)
+
 | Level | XP Multiplier | New User Starting Level |
-|-------|---------------|-------------------------|
-| 1 | 1.25x | 1 |
-| 2 | 1.50x | 2 |
-| 3 | 1.75x | 3 |
-| 4 | 2.00x | 5 |
+| ----- | ------------- | ----------------------- |
+| 1     | 1.25x         | 1                       |
+| 2     | 1.50x         | 2                       |
+| 3     | 1.75x         | 3                       |
+| 4     | 2.00x         | 5                       |
 
 Each level requires a new vote and higher engagement score.
 
@@ -284,6 +301,7 @@ Response 200:
 ```
 
 ### Internal Events
+
 - `JobXPGained { user_id, job_key, xp_amount, new_level, leveled_up }`
 - `JobLevelUp { user_id, job_key, old_level, new_level, bonuses_unlocked[] }`
 
@@ -294,94 +312,102 @@ Response 200:
 > **Note**: All XP values are base amounts before the `jobs_xp_boost` multiplier.
 
 ### Blacksmith XP
+
 Awarded on successful **Upgrade**, **Craft**, or **Disassemble**:
 
 | Recipe Quality | XP Awarded |
-|----------------|------------|
-| Common | 10 |
-| Uncommon | 25 |
-| Rare | 50 |
-| Epic | 100 |
-| Legendary | 200 |
+| -------------- | ---------- |
+| Common         | 10         |
+| Uncommon       | 25         |
+| Rare           | 50         |
+| Epic           | 100        |
+| Legendary      | 200        |
 
 **Formula**: `base_xp × quantity × boost_multiplier`
 
 ### Explorer XP
+
 Awarded on **Search** command:
 
-| Action | XP Awarded |
-|--------|------------|
-| Search (any result) | 5 |
-| Bonus loot found | +10 |
+| Action              | XP Awarded |
+| ------------------- | ---------- |
+| Search (any result) | 5          |
+| Bonus loot found    | +10        |
 
 ### Merchant XP
+
 Awarded on **Buy** or **Sell**:
 
-| Transaction | XP Awarded |
-|-------------|------------|
-| Per item traded | 2 |
-| Bulk trade (10+) | +5 bonus |
+| Transaction      | XP Awarded |
+| ---------------- | ---------- |
+| Per item traded  | 2          |
+| Bulk trade (10+) | +5 bonus   |
 
 ### Gambler XP
+
 Awarded on **Gamble Join/Start**:
 
-| Action | XP Awarded |
-|--------|------------|
-| Per lootbox wagered | 20 |
-| Winning a gamble | +50 bonus |
+| Action              | XP Awarded |
+| ------------------- | ---------- |
+| Per lootbox wagered | 20         |
+| Winning a gamble    | +50 bonus  |
 
 ### Farmer XP
+
 Awarded on **Farm** actions:
 
-| Action | XP Awarded |
-|--------|------------|
-| Plant seeds | 5 |
-| Successful harvest | 25 |
-| Rare crop harvested | +50 bonus |
+| Action              | XP Awarded |
+| ------------------- | ---------- |
+| Plant seeds         | 5          |
+| Successful harvest  | 25         |
+| Rare crop harvested | +50 bonus  |
 
 ### Scholar XP
+
 Awarded on **Community Progression** contributions:
 
-| Action | XP Awarded |
-|--------|------------|
-| Vote cast | 10 |
-| Engagement milestone reached | 50 |
-| Progression node unlocked (participant) | 100 |
+| Action                                  | XP Awarded |
+| --------------------------------------- | ---------- |
+| Vote cast                               | 10         |
+| Engagement milestone reached            | 50         |
+| Progression node unlocked (participant) | 100        |
 
 ---
 
 ## 13. Bonus System
 
 ### Explorer Bonus Example
+
 ```go
 func (s *SearchService) ApplyExplorerBonus(ctx context.Context, userID string, baseReward int) (int, bool) {
     level, err := s.jobService.GetJobLevel(ctx, userID, "explorer")
     if err != nil || level == 0 {
         return baseReward, false
     }
-    
+
     // 25% base chance, +1% per level (max 50% at level 25)
     bonusChance := min(0.25 + float64(level)*0.01, 0.50)
-    
+
     if rand.Float64() < bonusChance {
         // Bonus amount scales with level: 10% + 2% per level
         bonusMultiplier := 1.10 + float64(level)*0.02
         bonusAmount := int(float64(baseReward) * (bonusMultiplier - 1))
         return baseReward + bonusAmount, true
     }
-    
+
     return baseReward, false
 }
 ```
 
 ### Gambler Bonus Example
+
 ```go
 func (s *GambleService) ApplyGamblerBonus(ctx context.Context, userID string, basePrize int) int {
     level, err := s.jobService.GetJobLevel(ctx, userID, "gambler")
     if err != nil || level == 0 {
         return basePrize
     }
-    
+
     // Small prize increase: 1% per level (max 25% at level 25)
     bonusPercent := min(float64(level)*0.01, 0.25)
     bonusAmount := int(float64(basePrize) * bonusPercent)
@@ -390,18 +416,20 @@ func (s *GambleService) ApplyGamblerBonus(ctx context.Context, userID string, ba
 ```
 
 ### Blacksmith Bonus Example
+
 Recipe level requirement check:
+
 ```go
 func (s *CraftingService) CanUseRecipe(ctx context.Context, userID string, recipe *Recipe) (bool, error) {
     if recipe.RequiredBlacksmithLevel == 0 {
         return true, nil
     }
-    
+
     level, err := s.jobService.GetJobLevel(ctx, userID, "blacksmith")
     if err != nil {
         return false, err
     }
-    
+
     return level >= recipe.RequiredBlacksmithLevel, nil
 }
 ```
@@ -413,23 +441,26 @@ func (s *CraftingService) CanUseRecipe(ctx context.Context, userID string, recip
 A user's **primary job** is their highest-level job. This determines their display title.
 
 ### Title Format
+
 ```
 {Rank} {JobName}
 ```
 
-| Level Range | Rank |
-|-------------|------|
-| 1-4 | Apprentice |
-| 5-9 | Journeyman |
-| 10-14 | Expert |
-| 15-19 | Master |
-| 20-29 | Grandmaster |
-| 30+ | Legendary |
+| Level Range | Rank        |
+| ----------- | ----------- |
+| 1-4         | Apprentice  |
+| 5-9         | Journeyman  |
+| 10-14       | Expert      |
+| 15-19       | Master      |
+| 20-29       | Grandmaster |
+| 30+         | Legendary   |
 
 **Example**: Level 15 Blacksmith → "Master Blacksmith"
 
 ### Tie-breaking
+
 If multiple jobs share the highest level, use:
+
 1. Most recently leveled
 2. Alphabetical order
 
@@ -450,6 +481,7 @@ If multiple jobs share the highest level, use:
 ## 16. Migrations
 
 ### Migration File
+
 **File**: `migrations/YYYYMMDDHHMMSS_create_job_tables.sql`
 
 ```sql
@@ -536,18 +568,21 @@ DROP TABLE IF EXISTS jobs;
 ## 17. Testing Requirements
 
 ### Unit Tests
+
 - XP calculation: `CalculateLevel()`, `GetXPForLevel()`, `GetXPProgress()`
 - Level cap enforcement
 - Bonus calculation: `GetJobBonus()`, `ApplyBonus()`
 - Primary job selection logic
 
 ### Integration Tests
+
 - XP attribution from feature usage (upgrade → blacksmith XP)
 - Level-up event emission
 - Bonus application in search/upgrade
 - Progression lock enforcement
 
 ### Concurrency Tests
+
 - Simultaneous XP gains for same user/job
 - Race condition on level-up
 
@@ -556,16 +591,17 @@ DROP TABLE IF EXISTS jobs;
 ## 18. Implementation Strategy
 
 ### Task Breakdown
-| Task | Size | Description |
-|------|------|-------------|
-| 1. DB schema | S | Migration with tables and seed data |
-| 2. Domain models | S | `Job`, `UserJob`, `JobXPEvent` structs |
-| 3. Repository | M | CRUD for user_jobs, job lookup, XP events |
-| 4. Service | L | XP award, level calc, bonus lookup, primary job |
-| 5. API handlers | S | GET /jobs, GET /jobs/{user_id}, POST /jobs/award-xp |
-| 6. Progression integration | M | Add job unlock nodes, check caps |
-| 7. Feature integration | L | Wire XP attribution into upgrade, search, etc. |
-| 8. Tests | M | Unit, integration, concurrency |
+
+| Task                       | Size | Description                                         |
+| -------------------------- | ---- | --------------------------------------------------- |
+| 1. DB schema               | S    | Migration with tables and seed data                 |
+| 2. Domain models           | S    | `Job`, `UserJob`, `JobXPEvent` structs              |
+| 3. Repository              | M    | CRUD for user_jobs, job lookup, XP events           |
+| 4. Service                 | L    | XP award, level calc, bonus lookup, primary job     |
+| 5. API handlers            | S    | GET /jobs, GET /jobs/{user_id}, POST /jobs/award-xp |
+| 6. Progression integration | M    | Add job unlock nodes, check caps                    |
+| 7. Feature integration     | L    | Wire XP attribution into upgrade, search, etc.      |
+| 8. Tests                   | M    | Unit, integration, concurrency                      |
 
 **Estimated Total**: 2-3 weeks (1 developer)
 
@@ -616,34 +652,36 @@ User                Bot                JobService           Database
 
 ## 21. Risks & Mitigations
 
-| Risk | Impact | Likelihood | Mitigation |
-|------|--------|------------|------------|
-| XP inflation | Medium | High | Daily caps scaling with boost node, market pricing |
-| Level cap confusion | Low | Medium | Clear UI messaging about unlock requirements |
-| Bonus exploitation | High | Medium | Rate limiting + reactionary shop pricing |
-| Performance on leaderboards | Medium | Low | Index on level, cache top rankings |
-| Complex integration | Medium | Medium | Progression system gates rollout naturally |
+| Risk                        | Impact | Likelihood | Mitigation                                         |
+| --------------------------- | ------ | ---------- | -------------------------------------------------- |
+| XP inflation                | Medium | High       | Daily caps scaling with boost node, market pricing |
+| Level cap confusion         | Low    | Medium     | Clear UI messaging about unlock requirements       |
+| Bonus exploitation          | High   | Medium     | Rate limiting + reactionary shop pricing           |
+| Performance on leaderboards | Medium | Low        | Index on level, cache top rankings                 |
+| Complex integration         | Medium | Medium     | Progression system gates rollout naturally         |
 
 ---
 
 ## 22. Decision Points
 
 ### DP1: XP Daily Cap ✅ DECIDED
+
 **Decision**: Daily cap per job, scaling with `jobs_xp_boost` node level.
 
 | Boost Level | Daily Cap per Job |
-|-------------|-------------------|
-| 0 (base) | 500 XP |
-| 1 | 625 XP |
-| 2 | 750 XP |
-| 3 | 875 XP |
-| 4 | 1000 XP |
+| ----------- | ----------------- |
+| 0 (base)    | 500 XP            |
+| 1           | 625 XP            |
+| 2           | 750 XP            |
+| 3           | 875 XP            |
+| 4           | 1000 XP           |
 
 **Rationale**: Market pricing will react to item demand, pricing out abuse. Daily caps provide a secondary safeguard.
 
 ---
 
 ### DP2: XP Event Logging
+
 - **Option A**: Log all XP events (full audit trail)
   - ✅ Debugging, analytics, leaderboards
   - ❌ Storage growth
@@ -656,11 +694,13 @@ User                Bot                JobService           Database
 ---
 
 ### DP3: Initial Job Rollout ✅ DECIDED
+
 **Decision**: Launch all 6 jobs with progression system gating the rollout.
 
 Each job is locked behind its own progression node. The community votes to unlock jobs as they see fit, providing natural staggered rollout without artificial limitations.
 
 **Job Dependencies**:
+
 - Blacksmith: Requires `upgrade` feature unlocked
 - Explorer: Requires `search` feature unlocked
 - Merchant: Requires `economy` feature unlocked

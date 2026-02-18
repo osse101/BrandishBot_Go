@@ -7,11 +7,13 @@
 ## 2025-12-23: Test Suite Fixes & Mock Management
 
 ### Context
+
 Fixing broken tests after refactoring cooldown service and adding new interface methods.
 
 ### What Worked ✅
 
 #### 1. **Systematic Diagnosis**
+
 - Created comprehensive test diagnosis document
 - Categorized failures by root cause
 - Prioritized fixes by impact
@@ -19,7 +21,9 @@ Fixing broken tests after refactoring cooldown service and adding new interface 
 **Lesson**: Always diagnose before fixing. Understanding the full scope prevents thrashing.
 
 #### 2. **Interface-First Verification**
+
 Before fixing mocks, checked actual interface signatures:
+
 ```bash
 grep "AddContribution" internal/progression/service.go
 ```
@@ -27,7 +31,9 @@ grep "AddContribution" internal/progression/service.go
 **Lesson**: Verify source of truth before making changes to mocks.
 
 #### 3. **Incremental Testing**
+
 After each fix, ran relevant test to verify:
+
 ```bash
 go test ./internal/handler -v -run TestHandleAddItem
 ```
@@ -39,12 +45,14 @@ go test ./internal/handler -v -run TestHandleAddItem
 #### 1. **Using `sed` for Multi-line Go Code Edits**
 
 **Problems Encountered**:
+
 - Tabs converted to spaces causing syntax errors
 - Line number shifts after deletions broke subsequent commands
 - Multi-line replacements created duplicate functions
 - Heredoc content had inconsistent whitespace
 
 **Example Failure**:
+
 ```bash
 # This created 3 duplicate functions!
 sed -i '914,918d' file.go
@@ -60,9 +68,10 @@ sed -i '913r /tmp/fix.txt' file.go
 **Problem**: First attempt at mockery config used unsupported options, generated files in wrong locations.
 
 **What Happened**:
+
 ```yaml
 # This failed:
-output: "{{.InterfaceDir}}/mocks"
+output: '{{.InterfaceDir}}/mocks'
 ```
 
 **Lesson**: For simpler cases, use command-line mockery per-interface rather than wrestling with config files.
@@ -74,6 +83,7 @@ output: "{{.InterfaceDir}}/mocks"
 ### Mock Testing
 
 #### Pattern: Transaction Mock Setup
+
 ```go
 // GOOD: Explicit transaction flow
 mockRepo.On("BeginTx", ctx).Return(mockTx, nil)
@@ -88,6 +98,7 @@ mockTx.On("Rollback", ctx).Return(nil).Maybe()
 **Lesson**: When service uses transactions, mocks must reflect the full transaction lifecycle.
 
 #### Pattern: Interface Implementation Completeness
+
 ```go
 // MockTx must implement ALL methods of repository.Tx
 type MockTx struct {
@@ -95,7 +106,7 @@ type MockTx struct {
 }
 
 func (m *MockTx) Commit(ctx context.Context) error
-func (m *MockTx) Rollback(ctx context.Context) error  
+func (m *MockTx) Rollback(ctx context.Context) error
 func (m *MockTx) GetInventory(...)
 func (m *MockTx) UpdateInventory(...)
 ```
@@ -106,23 +117,25 @@ func (m *MockTx) UpdateInventory(...)
 
 #### When to Use What
 
-| Tool | Best For | Avoid For |
-|------|----------|-----------|
-| `sed` | Single-line text, config files | Go code, tabs, multi-line |
-| `replace_file_content` | Single contiguous block | Multiple scattered changes |
-| `multi_replace_file_content` | Multiple non-contiguous blocks | Entire file rewrites |
-| Manual editing (IDE) | Complex refactors, syntax-sensitive | Bulk renames across files |
+| Tool                         | Best For                            | Avoid For                  |
+| ---------------------------- | ----------------------------------- | -------------------------- |
+| `sed`                        | Single-line text, config files      | Go code, tabs, multi-line  |
+| `replace_file_content`       | Single contiguous block             | Multiple scattered changes |
+| `multi_replace_file_content` | Multiple non-contiguous blocks      | Entire file rewrites       |
+| Manual editing (IDE)         | Complex refactors, syntax-sensitive | Bulk renames across files  |
 
 #### Example: Proper Tool Selection
 
 **Scenario**: Fix mock method signature
 
-**Bad**: 
+**Bad**:
+
 ```bash
 sed -i 's/AddContribution(ctx context.Context, userID string, value int, source string)/AddContribution(ctx context.Context, amount int)/'
 ```
 
 **Good**:
+
 ```go
 // Use replace_file_content with exact target
 TargetContent: `func (m *MockProgressionService) AddContribution(ctx context.Context, userID string, value int, source string) error {
@@ -141,17 +154,21 @@ ReplacementContent: `func (m *MockProgressionService) AddContribution(ctx contex
 ## Common Pitfalls
 
 ### 1. **Mock Drift**
+
 **Problem**: Hand-written mocks fall out of sync with interfaces.
 
 **Solutions**:
+
 - Auto-generate with mockery
 - Add CI check: `mockery --dry-run`
 - Document interface changes in PRs
 
 ### 2. **Test Dependencies**
+
 **Problem**: Tests break when service constructor signature changes.
 
 **Example**:
+
 ```go
 // Before: NewService(repo, stats, jobs, lootbox, naming)
 // After: NewService(repo, stats, jobs, lootbox, naming, cooldown, devMode)
@@ -159,14 +176,17 @@ ReplacementContent: `func (m *MockProgressionService) AddContribution(ctx contex
 ```
 
 **Solutions**:
+
 - Use test builders/factories
 - Consider functional options pattern
 - Document breaking changes
 
 ### 3. **Incomplete Transaction Mocks**
+
 **Problem**: Forgot to mock `Commit()` or `BeginTx()`.
 
 **Symptom**:
+
 ```
 panic: mock: I don't know what to return because the method call was unexpected.
         BeginTx(context.backgroundCtx)
@@ -179,6 +199,7 @@ panic: mock: I don't know what to return because the method call was unexpected.
 ## Automation Opportunities
 
 ### 1. **Mock Generation**
+
 ```makefile
 mock-generate:
 	@mockery --name=Service --dir=internal/user --output=internal/user/mocks
@@ -188,6 +209,7 @@ mock-check:
 ```
 
 ### 2. **Test Coverage Validation**
+
 ```makefile
 test-coverage-check:
 	@go test -coverprofile=coverage.out ./...
@@ -195,6 +217,7 @@ test-coverage-check:
 ```
 
 ### 3. **Interface Compatibility Check**
+
 ```bash
 # Check if mock implements interface
 go build -o /dev/null ./internal/handler/inventory_test.go
@@ -208,4 +231,4 @@ go build -o /dev/null ./internal/handler/inventory_test.go
 
 ---
 
-*Last Updated: 2025-12-23*
+_Last Updated: 2025-12-23_

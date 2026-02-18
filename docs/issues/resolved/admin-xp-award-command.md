@@ -23,11 +23,13 @@ Without this feature, admins must directly modify the database (risky and time-c
 Add an admin-only Discord command `/admin-award-xp` that allows administrators to award XP to any user's job.
 
 **Command:**
+
 ```
 /admin-award-xp @user job:explorer amount:1000 reason:"Bug compensation"
 ```
 
 **Features:**
+
 - Admin role permission check
 - Audit logging (all grants recorded)
 - Rate limiting (10 grants/minute)
@@ -58,37 +60,37 @@ func HandleAdminAwardXP(w http.ResponseWriter, r *http.Request, jobService job.S
         http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
         return
     }
-    
+
     var req struct {
         UserID  string `json:"user_id"`
         JobKey  string `json:"job_key"`
         Amount  int    `json:"amount"`
         Reason  string `json:"reason"`
     }
-    
+
     if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
         http.Error(w, "Invalid request body", http.StatusBadRequest)
         return
     }
-    
+
     // Validation
     if req.UserID == "" || req.JobKey == "" || req.Amount <= 0 {
         http.Error(w, "user_id, job_key, and positive amount required", http.StatusBadRequest)
         return
     }
-    
+
     if req.Amount > 10000 {
         http.Error(w, "amount exceeds maximum (10000)", http.StatusBadRequest)
         return
     }
-    
+
     log := logger.FromContext(r.Context())
     log.Info("Admin XP award requested",
         "user_id", req.UserID,
         "job_key", req.JobKey,
         "amount", req.Amount,
         "reason", req.Reason)
-    
+
     // Award XP
     result, err := jobService.AwardXP(
         r.Context(),
@@ -101,13 +103,13 @@ func HandleAdminAwardXP(w http.ResponseWriter, r *http.Request, jobService job.S
             "granted_by": r.Header.Get("X-Admin-ID"),
         },
     )
-    
+
     if err != nil {
         log.Error("Failed to award XP", "error", err)
         http.Error(w, err.Error(), http.StatusInternalServerError)
         return
     }
-    
+
     // Audit log
     auditLogger.Log(audit.AuditEvent{
         Action:   "admin_award_xp",
@@ -121,13 +123,13 @@ func HandleAdminAwardXP(w http.ResponseWriter, r *http.Request, jobService job.S
             "new_level": result.NewLevel,
         },
     })
-    
+
     response := map[string]interface{}{
         "success": true,
         "result":  result,
         "message": "XP awarded successfully",
     }
-    
+
     w.Header().Set("Content-Type", "application/json")
     json.NewEncoder(w).Encode(response)
 }
@@ -171,7 +173,7 @@ func NewLogger(path string) (*Logger, error) {
 func (al *Logger) Log(event AuditEvent) error {
     al.mu.Lock()
     defer al.mu.Unlock()
-    
+
     event.Timestamp = time.Now()
     data, _ := json.Marshal(event)
     _, err := al.file.Write(append(data, '\n'))
@@ -238,9 +240,9 @@ func (h *CommandHandler) HandleAdminAwardXP(s *discordgo.Session, i *discordgo.I
         respondError(s, i, "❌ This command requires administrator permissions")
         return
     }
-    
+
     options := parseOptions(i.ApplicationCommandData().Options)
-    
+
     targetUser := options["user"].UserValue(s)
     jobKey := options["job"].StringValue()
     amount := int(options["amount"].IntValue())
@@ -248,26 +250,26 @@ func (h *CommandHandler) HandleAdminAwardXP(s *discordgo.Session, i *discordgo.I
     if r, ok := options["reason"]; ok {
         reason = r.StringValue()
     }
-    
+
     // Call API
     resp, err := h.apiClient.AwardXP(targetUser.Username, jobKey, amount, reason)
     if err != nil {
         respondError(s, i, fmt.Sprintf("Failed to award XP: %v", err))
         return
     }
-    
+
     message := fmt.Sprintf("✅ Awarded %d XP to %s's %s job",
         amount, targetUser.Mention(), jobKey)
-    
+
     if resp.LeveledUp {
         message += fmt.Sprintf("\n🎉 %s leveled up to level %d!",
             targetUser.Mention(), resp.NewLevel)
     }
-    
+
     if reason != "" {
         message += fmt.Sprintf("\n📝 Reason: %s", reason)
     }
-    
+
     respondSuccess(s, i, message)
 }
 
@@ -276,7 +278,7 @@ func isAdmin(member *discordgo.Member) bool {
     if adminRoleID == "" {
         return false
     }
-    
+
     for _, roleID := range member.Roles {
         if roleID == adminRoleID {
             return true
@@ -308,38 +310,38 @@ func (c *APIClient) AwardXP(username, jobKey string, amount int, reason string) 
     if err != nil {
         return nil, fmt.Errorf("user not found: %w", err)
     }
-    
+
     payload := map[string]interface{}{
         "user_id": user.ID,
         "job_key": jobKey,
         "amount":  amount,
         "reason":  reason,
     }
-    
+
     body, err := json.Marshal(payload)
     if err != nil {
         return nil, err
     }
-    
+
     req, err := http.NewRequest("POST", c.baseURL+"/api/v1/admin/award-xp", bytes.NewBuffer(body))
     if err != nil {
         return nil, err
     }
-    
+
     req.Header.Set("Content-Type", "application/json")
     req.Header.Set("X-Admin-ID", "discord-bot")
-    
+
     resp, err := c.client.Do(req)
     if err != nil {
         return nil, err
     }
     defer resp.Body.Close()
-    
+
     if resp.StatusCode != http.StatusOK {
         body, _ := io.ReadAll(resp.Body)
         return nil, fmt.Errorf("API error: %s", string(body))
     }
-    
+
     var result struct {
         Success bool `json:"success"`
         Result  struct {
@@ -348,11 +350,11 @@ func (c *APIClient) AwardXP(username, jobKey string, amount int, reason string) 
             NewXP     int  `json:"new_xp"`
         } `json:"result"`
     }
-    
+
     if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
         return nil, err
     }
-    
+
     return &XPAwardResponse{
         Success:   result.Success,
         LeveledUp: result.Result.LeveledUp,
@@ -427,11 +429,13 @@ ADMIN_XP_RATE_LIMIT=10  # Max XP grants per minute
 ## Example Usage
 
 ### Discord Command
+
 ```
 /admin-award-xp @Alice job:explorer amount:1000 reason:"Bug compensation - lost search progress"
 ```
 
 **Response:**
+
 ```
 ✅ Awarded 1000 XP to @Alice's explorer job
 🎉 @Alice leveled up to level 5!
@@ -439,6 +443,7 @@ ADMIN_XP_RATE_LIMIT=10  # Max XP grants per minute
 ```
 
 ### Audit Log Entry
+
 ```json
 {
   "timestamp": "2026-01-03T02:30:00Z",

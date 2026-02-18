@@ -7,14 +7,17 @@ A collection of practical insights gained from expanding the BrandishBot_Go test
 ## Domain Model Changes
 
 ### Lesson 1: Field Renames Break Tests Silently
+
 **Problem:** When `Item.Name` was renamed to `Item.InternalName`, no compile error occurred in existing test files because Go allows arbitrary struct fields. Tests only failed at runtime.
 
-**Solution:** 
+**Solution:**
+
 - Run `go build ./...` before committing domain changes
 - Search codebase for old field names: `grep -r "Name:" internal/*_test.go`
 - Consider compile-time interface assertions for critical types
 
 **Pattern:**
+
 ```go
 // In domain struct changes, add deprecation annotations
 type Item struct {
@@ -28,14 +31,17 @@ type Item struct {
 ## Mock Management
 
 ### Lesson 2: Don't Duplicate Mocks Across Test Files
+
 **Problem:** Created `MockRepository` in `memory_test.go` when it already existed in `service_test.go`. Go doesn't allow duplicate type definitions in the same package.
 
 **Solution:**
+
 - Check for existing mocks: `grep -n "type Mock" internal/package/*_test.go`
 - Share mocks via `*_test.go` files in the same package
 - For cross-package mocks, create a `testutil` package
 
 **Pattern:**
+
 ```go
 // In memory_test.go - reuse existing mocks
 repo := new(MockRepository) // Defined in service_test.go
@@ -45,13 +51,16 @@ repo := new(MockRepository) // Defined in service_test.go
 ```
 
 ### Lesson 3: Mock Return Types Must Match Exactly
+
 **Problem:** `lootbox.DroppedItem{}` vs `domain.LootboxItem{}` caused type mismatches when mocking service calls.
 
 **Solution:**
+
 - Check interface definitions for exact return types
 - View existing tests for correct usage patterns
 
 **Pattern:**
+
 ```go
 // Check the interface first
 lootboxSvc.On("OpenLootbox", ...).Return([]lootbox.DroppedItem{}, nil)  ✅
@@ -63,14 +72,17 @@ lootboxSvc.On("OpenLootbox", ...).Return([]domain.LootboxItem{}, nil)   ❌
 ## Goroutine Leak Detection
 
 ### Lesson 4: Use Tolerance for Async Operations
+
 **Problem:** Services with background XP awards or event publishing spawn goroutines that complete after the test ends.
 
 **Solution:**
+
 - Add small sleep before goroutine count check
 - Use tolerance parameter in leak checker
 - Understand which services spawn background tasks
 
 **Pattern:**
+
 ```go
 checker := leaktest.NewGoroutineChecker(t)
 
@@ -81,14 +93,17 @@ checker.Check(1) // Tolerance of 1 goroutine
 ```
 
 ### Lesson 5: Not All Services Have Async Operations
+
 **Problem:** Assumed progression service had background goroutines like economy/gamble.
 
 **Reality:** Progression service is fully synchronous:
+
 - No XP awards spawned
 - Voting is pure state management
 - All operations complete inline
 
 **Insight:** Memory leak tests still valuable for:
+
 - Validating clean design
 - Catching future regressions if async logic is added
 - Documentation of service behavior
@@ -98,9 +113,11 @@ checker.Check(1) // Tolerance of 1 goroutine
 ## Struct Field Navigation
 
 ### Lesson 6: Use grep to Find Field Access Patterns
+
 **Problem:** `session.Options[0].NodeKey` didn't exist; needed `session.Options[0].NodeDetails.NodeKey`.
 
 **Solution:** Search existing tests for the correct pattern:
+
 ```bash
 grep -n "session.Options\[0\]." internal/progression/*_test.go
 ```
@@ -112,18 +129,22 @@ grep -n "session.Options\[0\]." internal/progression/*_test.go
 ## Go Syntax Gotchas
 
 ### Lesson 7: Go Uses `nil`, Not `null`
+
 **Problem:** JavaScript habit of writing `!= null` instead of `!= nil`.
 
 **Pattern:**
+
 ```go
 if session.Options[0].NodeDetails != nil { ✅
 if session.Options[0].NodeDetails != null { ❌ // Compile error
 ```
 
 ### Lesson 8: Struct Field Names in Tests
+
 **Problem:** Domain models evolve. Fields like `Name`, `ParentLevel` get renamed to `DisplayName`, `ParentUnlockLevel`.
 
 **Solution:**
+
 ```bash
 # Find struct definition first
 go doc domain.ProgressionNode
@@ -137,7 +158,9 @@ grep -A 20 "type ProgressionNode struct" internal/domain/*.go
 ## Test Organization
 
 ### Lesson 9: Integration Tests Should Skip in Short Mode
+
 **Pattern:**
+
 ```go
 func TestIntegration_ActualConfigFiles(t *testing.T) {
     if testing.Short() {
@@ -148,12 +171,15 @@ func TestIntegration_ActualConfigFiles(t *testing.T) {
 ```
 
 **Benefits:**
+
 - `go test ./... -short` runs fast for CI
 - `go test ./...` runs full suite including integration
 - Clear distinction between unit and integration tests
 
 ### Lesson 10: Testdata Directory for JSON Fixtures
+
 **Pattern:**
+
 ```
 internal/naming/
 ├── resolver.go
@@ -168,6 +194,7 @@ internal/naming/
 ```
 
 **Benefits:**
+
 - Fixtures versioned with tests
 - Easy to add edge cases
 - Self-documenting test scenarios
@@ -177,16 +204,18 @@ internal/naming/
 ## Coverage Strategies
 
 ### Lesson 11: Edge Cases Drive Coverage
+
 High coverage comes from testing edge cases, not happy paths:
 
-| Test Type | Coverage Value |
-|-----------|---------------|
-| Happy path only | ~50% |
-| + Error cases | ~70% |
-| + Edge cases | ~85% |
-| + Race conditions | ~90%+ |
+| Test Type         | Coverage Value |
+| ----------------- | -------------- |
+| Happy path only   | ~50%           |
+| + Error cases     | ~70%           |
+| + Edge cases      | ~85%           |
+| + Race conditions | ~90%+          |
 
 **High-value edge cases:**
+
 - Empty inputs
 - Missing fields
 - Malformed data
@@ -194,6 +223,7 @@ High coverage comes from testing edge cases, not happy paths:
 - Timeout scenarios
 
 ### Lesson 12: Use `-cover` Early and Often
+
 ```bash
 # Quick coverage check
 go test ./internal/naming -cover
@@ -208,17 +238,21 @@ go tool cover -html=coverage.out
 ## Race Detection
 
 ### Lesson 13: Always Run Race Detector
+
 **Pattern:**
+
 ```bash
 go test -race ./internal/naming
 ```
 
 **When to use:**
+
 - Adding concurrent test patterns
 - Testing services with mutex/RWMutex
 - Before merging any PR
 
 **Note:** Race detector is ~10x slower, so run selectively:
+
 ```bash
 # Fast unit tests
 go test ./... -short
@@ -232,7 +266,9 @@ go test -race ./...
 ## Documentation Value
 
 ### Lesson 14: Test Names Are Documentation
+
 **Good:**
+
 ```go
 func TestStartGamble_NoGoroutineLeak(t *testing.T)
 func TestLoadAliases_MalformedJSON(t *testing.T)
@@ -240,6 +276,7 @@ func TestGetDisplayName_FallbackBehavior(t *testing.T)
 ```
 
 **Bad:**
+
 ```go
 func TestService1(t *testing.T)
 func TestHandler(t *testing.T)
@@ -247,12 +284,13 @@ func Test_Issue_123(t *testing.T)
 ```
 
 ### Lesson 15: Comment Non-Obvious Test Setup
+
 ```go
 func TestExecuteGamble_NoGoroutineLeak(t *testing.T) {
     // ... mock setup ...
-    
+
     // NOTE: Gamble must be in "Joining" state to execute
-    // This test intentionally uses "Created" state to verify 
+    // This test intentionally uses "Created" state to verify
     // error path doesn't leak goroutines
     gamble := &domain.Gamble{State: domain.GambleStateCreated, ...}
 ```
@@ -298,11 +336,12 @@ Before adding tests to a new service:
 
 ---
 
-*Last updated: January 2026*
+_Last updated: January 2026_
 
 ## Test Design Principles
 
 ### Lesson 16: Defensive Nil Checks Are Counterproductive in Tests
+
 **Date:** January 26, 2026  
 **Context:** Fixed nil pointer dereference in `internal/progression/integration_test.go`
 
@@ -311,6 +350,7 @@ Test accessed `newSession.Options` without checking if `newSession` was nil firs
 
 **The Wrong Fix:**
 Added defensive nil check:
+
 ```go
 if newSession != nil {
     // Check session options
@@ -346,6 +386,7 @@ assert.NotEqual(t, session.ID, newSession.ID, "Should be a different session")
 **Key Principle:** If you know the test tree structure and what was unlocked, you should know exactly whether a session will be created or not.
 
 ### Lesson 17: Make Integration Tests Deterministic
+
 **Related to:** Lesson 16
 
 **Problem:** Tests voted for `session.Options[0]`:
@@ -356,6 +397,7 @@ service.VoteForUnlock(ctx, "discord", "user1", nodeKey)
 ```
 
 This was non-deterministic because:
+
 - If money wins: Only lootbox0 remains → no session created
 - If lootbox0 wins: 4 options remain → session created
 
@@ -382,36 +424,43 @@ Now the test always votes for lootbox0, making the outcome predictable and asser
 **General Testing Principles:**
 
 ✅ **Do:**
+
 - Assert expected behavior based on known state
 - Make tests deterministic
 - Fail loudly when behavior is incorrect
 - Document test expectations with comments explaining the "why"
 
 ❌ **Don't:**
+
 - Add defensive nil checks "just in case"
 - Write tests that handle multiple possible outcomes
 - Use `Options[0]` when the order matters for the test outcome
 - Future-proof tests against behavior changes (tests should break when behavior changes!)
 
 **Key Quotes:**
+
 > "Tests should verify expected behavior, not handle uncertainty."
 
 > "Nil checks mask real bugs. If the code unexpectedly doesn't create a session when it should, the nil-check branch will pass silently, hiding the bug. The test should FAIL loudly to expose the problem."
 
 ### Lesson 18: Handler Testing & Mock Accuracy
+
 **Date:** February 2026
 **Context:** Added tests for `AdminDailyResetHandler` and `CheckFeatureLocked` helper.
 
 **The Problem:**
+
 1. Tests failed because mock return types didn't match interface (e.g., returning `int` instead of `int64`, or `[]T` instead of `[]*T`).
 2. Tests failed because struct fields were assumed based on similar types (e.g., `LastReset` instead of `LastResetTime`).
 
 **Solution:**
+
 - Always check the interface definition before mocking (`int64`, pointers, etc.).
 - Always check the struct definition before instantiating expected objects.
 - Use `go test -v ./internal/package` to run all tests in the package to catch undefined references to other files in the same package.
 
 **Pattern:**
+
 ```go
 // Check interface: GetRequiredNodes returns []*domain.ProgressionNode
 svc.On("GetRequiredNodes", ...).Return([]*domain.ProgressionNode{}, nil)

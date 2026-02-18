@@ -5,6 +5,7 @@ The Trap & Item Interaction System allows users to use various items from their 
 ## Core Mechanics
 
 ### Traps (`trap`)
+
 A stealthy way to catch an unsuspecting user.
 
 - **Command**: `/use trap <target>`
@@ -14,6 +15,7 @@ A stealthy way to catch an unsuspecting user.
 - **Self-Trap**: If you target someone who already has a trap, you might accidentally step on it yourself!
 
 ### Mines (`mine`)
+
 A chaotic explosive that targets random active chatters.
 
 - **Command**: `/use mine`
@@ -22,6 +24,7 @@ A chaotic explosive that targets random active chatters.
 - **Consumption**: Consumes 1 Mine.
 
 ### Blasters (`blaster`, `big_blaster`, `huge_blaster`)
+
 Direct offensive tools to time out users immediately.
 
 - **Command**: `/use <item_name> <target>`
@@ -33,6 +36,7 @@ Direct offensive tools to time out users immediately.
 - **Quality Bonus**: Higher quality items (Uncommon, Rare, etc.) have increased duration.
 
 ### Area of Effect Weapons (`tnt`, `grenade`)
+
 Explosives that hit multiple or random targets.
 
 - **TNT**:
@@ -43,6 +47,7 @@ Explosives that hit multiple or random targets.
   - **Effect**: Hits 1 random active chatter with a 60-second timeout.
 
 ### Defensive Items (`shield`, `mirror_shield`)
+
 Protection against offensive items.
 
 - **Shield**:
@@ -53,6 +58,7 @@ Protection against offensive items.
   - **Effect**: Reflects the timeout back to the attacker.
 
 ### Support Items (`revive_small`, `revive_medium`, `revive_large`)
+
 Help a timed-out user return to chat sooner.
 
 - **Command**: `/use <item_name> <target>`

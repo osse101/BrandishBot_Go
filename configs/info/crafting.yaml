@@ -1,7 +1,7 @@
 name: crafting
 title: Crafting & Upgrading
 icon: 🔨
-color: "#E67E22"
+color: '#E67E22'
 
 discord:
   description: |
@@ -75,4 +75,4 @@ discord:
     Start crafting and build your arsenal! 🗡️
 
 streamerbot:
-  description: "Craft and upgrade items using materials found in the world. !upgrade !disassemble !recipes"
+  description: 'Craft and upgrade items using materials found in the world. !upgrade !disassemble !recipes'

@@ -7,10 +7,10 @@ services:
       POSTGRES_PASSWORD: testpass
       POSTGRES_DB: testdb
     ports:
-      - "5433:5432"  # Different port to avoid conflict with dev DB
+      - '5433:5432' # Different port to avoid conflict with dev DB
     volumes:
       - test_pgdata:/var/lib/postgresql/data
-      - ./scripts:/docker-entrypoint-initdb.d:ro  # Auto-load seed scripts
+      - ./scripts:/docker-entrypoint-initdb.d:ro # Auto-load seed scripts
     networks:
       - test_backend
     restart: unless-stopped

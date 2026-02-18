@@ -1,7 +1,7 @@
 name: commands
 title: Available Commands
 icon: ⚙️
-color: "#95A5A6"
+color: '#95A5A6'
 
 discord:
   description: |
@@ -97,4 +97,4 @@ discord:
     Need more help? Use `/info` with a specific feature name!
 
 streamerbot:
-  description: "Commands: !ping !profile !info !inventory !search !use !buy !sell !prices !give !explore !quests !harvest !recipes !upgrade !disassemble !gamble !stats !leaderboard !vote"
+  description: 'Commands: !ping !profile !info !inventory !search !use !buy !sell !prices !give !explore !quests !harvest !recipes !upgrade !disassemble !gamble !stats !leaderboard !vote'

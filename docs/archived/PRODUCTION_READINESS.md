@@ -56,7 +56,7 @@ When only one progression node is available for voting, the system now **auto-se
 if len(available) == 1 {
     node := available[0]
     log.Info("Only one option available, auto-selecting without voting", "nodeKey", node.NodeKey)
-    
+
     // Set as unlock target immediately (no voting session created)
     err = s.repo.SetUnlockTarget(ctx, progress.ID, node.ID, targetLevel, 0)
     // ...
@@ -66,22 +66,20 @@ if len(available) == 1 {
 
 #### Production Risks
 
-| Risk | Impact | Mitigation Status |
-|------|--------|-------------------|
-| **No event published** | Users/Discord don't know target was set | ❌ Not handled |
-| **Different code path** | Bypasses normal voting flow, may miss side effects | ⚠️ Partially tested |
-| **Edge case**: What if 0 nodes available next time? | Could cause issues when unlocking the last node | ❓ Unknown |
+| Risk                                                | Impact                                             | Mitigation Status   |
+| --------------------------------------------------- | -------------------------------------------------- | ------------------- |
+| **No event published**                              | Users/Discord don't know target was set            | ❌ Not handled      |
+| **Different code path**                             | Bypasses normal voting flow, may miss side effects | ⚠️ Partially tested |
+| **Edge case**: What if 0 nodes available next time? | Could cause issues when unlocking the last node    | ❓ Unknown          |
 
 #### Stabilization Required
 
 - [ ] **Add event publishing** for auto-selected targets
   - Currently only logs: `log.Info("Auto-selected target set", ...)`
   - Should publish `event.TargetSet` or similar
-  
 - [ ] **Test edge cases**:
   - What happens when the auto-selected node unlocks and there are no more nodes?
   - Does the system handle empty vote sessions gracefully?
-  
 - [ ] **Integration testing**:
   - Test on staging with progression tree that has single-option scenarios
   - Verify Discord/Streamer.bot notifications work (or don't incorrectly trigger)
@@ -90,8 +88,9 @@ if len(available) == 1 {
 
 > [!WARNING]
 > **Test on Staging First**
-> 
+>
 > This feature changes fundamental progression behavior. Deploy to staging and manually test:
+>
 > 1. Trigger scenario with only 1 available node
 > 2. Verify contribution tracking still works
 > 3. Verify unlock triggers correctly
@@ -101,7 +100,8 @@ if len(available) == 1 {
 
 ### 2. Lootbox Event Tracking (NEW FEATURE)
 
-**Files**: 
+**Files**:
+
 - `internal/user/lootbox_events_test.go` (NEW, 239 lines)
 - `internal/user/item_handlers.go` (modified)
 - `internal/domain/stats.go` (+3 events)
@@ -124,7 +124,7 @@ if stats.hasLegendary {
     msgBuilder.WriteString(" JACKPOT! 🎰✨")
 }
 
-// Big win tracking  
+// Big win tracking
 if stats.hasEpic {
     _ = s.statsService.RecordUserEvent(ctx, user.ID, domain.EventLootboxBigWin, ...)
     msgBuilder.WriteString(" BIG WIN! 💰")
@@ -139,12 +139,14 @@ if stats.totalValue > 0 && quantity >= BulkFeedbackThreshold {
 #### Production Readiness
 
 ✅ **Well-Tested** - `lootbox_events_test.go` has comprehensive coverage:
+
 - Tests jackpot scenarios
 - Tests big win scenarios
 - Tests bulk feedback threshold
 - Tests event recording
 
 ✅ **Defensive** - Errors are ignored (`_ = s.statsService.RecordUserEvent(...)`)
+
 - Won't break lootbox functionality if statsService fails
 
 ✅ **Safe to Deploy** - This is purely additive analytics
@@ -153,7 +155,7 @@ if stats.totalValue > 0 && quantity >= BulkFeedbackThreshold {
 
 > [!NOTE]
 > **Safe for Production**
-> 
+>
 > This feature is well-tested and defensive. Safe to deploy to production.
 
 ---
@@ -161,6 +163,7 @@ if stats.totalValue > 0 && quantity >= BulkFeedbackThreshold {
 ### 3. String Finder Refactoring
 
 **Files**:
+
 - `internal/user/string_finder.go` (refactored)
 - `internal/user/string_finder_test.go` (updated)
 
@@ -172,18 +175,19 @@ Code was refactored but functionality should be unchanged. This affects the **me
 
 #### Production Risks
 
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| **Regression** | Items not detected in messages | Run regression tests |
-| **Performance change** | Slower/faster parsing | Monitor production logs |
+| Risk                   | Impact                         | Mitigation              |
+| ---------------------- | ------------------------------ | ----------------------- |
+| **Regression**         | Items not detected in messages | Run regression tests    |
+| **Performance change** | Slower/faster parsing          | Monitor production logs |
 
 #### Stabilization Required
 
 - [ ] **Regression testing**:
+
   ```bash
   # Run unit tests
   go test ./internal/user -v -run TestStringFinder
-  
+
   # Integration test
   # Test actual message parsing with common scenarios
   ```
@@ -197,8 +201,9 @@ Code was refactored but functionality should be unchanged. This affects the **me
 
 > [!IMPORTANT]
 > **Regression Test Before Production**
-> 
+>
 > Message parsing is critical functionality. Test on staging:
+>
 > 1. Send messages with known item names
 > 2. Verify items are correctly detected
 > 3. Test edge cases (typos, partial matches, multiple items)
@@ -229,13 +234,13 @@ New mock implementation extracted from test files for reusability.
 
 Reviewed all goroutine usage for potential issues:
 
-| Service | Goroutines | Graceful Shutdown? | Production Ready? |
-|---------|------------|-------------------|-------------------|
-| `internal/user` | ✅ XP awards | ✅ Yes (`sync.WaitGroup`) | ✅ Yes |
-| `internal/progression` | ⚠️ Unlock triggers, voting | ⚠️ Partial | ⚠️ Needs review |
-| `internal/crafting` | ✅ XP awards | ✅ Yes (`sync.WaitGroup`) | ✅ Yes |
-| `internal/economy` | ✅ XP awards | ✅ Yes (`sync.WaitGroup`) | ✅ Yes |
-| `internal/discord` | ✅ Server goroutine | ❓ Unknown | ⚠️ Review needed |
+| Service                | Goroutines                 | Graceful Shutdown?        | Production Ready? |
+| ---------------------- | -------------------------- | ------------------------- | ----------------- |
+| `internal/user`        | ✅ XP awards               | ✅ Yes (`sync.WaitGroup`) | ✅ Yes            |
+| `internal/progression` | ⚠️ Unlock triggers, voting | ⚠️ Partial                | ⚠️ Needs review   |
+| `internal/crafting`    | ✅ XP awards               | ✅ Yes (`sync.WaitGroup`) | ✅ Yes            |
+| `internal/economy`     | ✅ XP awards               | ✅ Yes (`sync.WaitGroup`) | ✅ Yes            |
+| `internal/discord`     | ✅ Server goroutine        | ❓ Unknown                | ⚠️ Review needed  |
 
 #### Progression Service Concerns
 
@@ -257,6 +262,7 @@ default:
 ```
 
 **Issues**:
+
 1. ⚠️ Uses `context.Background()` - won't respect shutdown
 2. ❓ No `WaitGroup` tracking - may not wait for completion on shutdown
 3. ✅ Has semaphore to prevent concurrent unlocks (good)
@@ -269,6 +275,7 @@ go s.StartVotingSession(context.Background(), &node.ID)  // ⚠️ Background co
 ```
 
 **Issues**:
+
 1. ⚠️ Uses `context.Background()` - won't respect shutdown
 2. ❓ Fire-and-forget - no error handling
 
@@ -276,15 +283,16 @@ go s.StartVotingSession(context.Background(), &node.ID)  // ⚠️ Background co
 
 > [!CAUTION]
 > **Graceful Shutdown Not Implemented**
-> 
+>
 > The progression service launches goroutines without proper shutdown handling:
-> 
+>
 > **Required Changes**:
+>
 > 1. Add `sync.WaitGroup` to track async operations
 > 2. Add `Shutdown(ctx context.Context) error` method
 > 3. Wire up shutdown in `main.go`
 > 4. Use parent context instead of `context.Background()`
-> 
+>
 > **Impact if not fixed**: On deployment/restart, in-flight unlocks may be interrupted, leaving progression in inconsistent state.
 
 ---
@@ -295,11 +303,11 @@ go s.StartVotingSession(context.Background(), &node.ID)  // ⚠️ Background co
 
 The recent changes add new dependencies on `statsService`:
 
-| Feature | Stats Dependency | Fallback Behavior |
-|---------|------------------|-------------------|
-| Lootbox events | `RecordUserEvent` | ✅ Graceful (ignored if nil) |
+| Feature         | Stats Dependency                  | Fallback Behavior             |
+| --------------- | --------------------------------- | ----------------------------- |
+| Lootbox events  | `RecordUserEvent`                 | ✅ Graceful (ignored if nil)  |
 | Search tracking | `GetUserStats`, `RecordUserEvent` | ✅ Graceful (warnings logged) |
-| Search streaks | `GetUserCurrentStreak` | ✅ Graceful (warnings logged) |
+| Search streaks  | `GetUserCurrentStreak`            | ✅ Graceful (warnings logged) |
 
 #### Code Pattern (Good)
 
@@ -320,28 +328,31 @@ if s.statsService != nil {
 Based on new files, the following scenarios need integration testing:
 
 #### 1. Auto-Select Voting
+
 - [x] Single available node auto-selects correctly (`TestStartVotingSession_SingleOption_FixVerification`)
 - [x] Zero available nodes handled (`TestStartVotingSession_ZeroOptions_AllUnlocked`)
 - [x] Multi-level node auto-select (`TestStartVotingSession_MultiLevelNode_AutoSelect`)
 - [x] Contribution tracking works after auto-select (`TestAutoSelect_ContributionTracking`)
 
 #### 2. String Finder Refactoring
+
 - [x] All item types detected correctly (real rules: Bapanada, gary, shedinja → OBS)
 - [x] Edge cases: punctuation, newlines, tabs, case insensitivity (`TestStringFinder_EdgeCases`)
 - [x] Boundary cases: empty message, very long message (`TestStringFinder_BoundaryConditions`)
 - [x] Priority filtering works correctly (`TestStringFinder_PriorityFiltering`)
 
 #### 3. Lootbox Events
+
 - [x] BulkFeedbackThreshold boundary tests at/below/above threshold
 - [x] Jackpot and Big Win take precedence over bulk feedback
 
 #### 4. Progression Shutdown
+
 - [x] Goroutine leak tests exist in `memory_test.go`
 - [ ] Add WaitGroup + Shutdown method (tracked separately)
 - [ ] Use parent context instead of `context.Background()`
 
 ---
-
 
 ## Production Deployment Checklist
 
@@ -389,6 +400,7 @@ make deploy-production
 ### Post-Deployment Monitoring
 
 - [ ] **Check logs** for errors:
+
   ```bash
   docker compose -f docker-compose.production.yml logs -f app | grep -i error
   ```
@@ -399,7 +411,7 @@ make deploy-production
   - Progression unlock events
   - Vote participation
 
-- [ **] Watch for** goroutine leaks:
+- [ **] Watch for\*\* goroutine leaks:
   ```bash
   # If you have pprof enabled
   curl http://localhost:8080/debug/pprof/goroutine

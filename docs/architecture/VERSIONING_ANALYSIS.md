@@ -5,16 +5,16 @@
 
 ## Executive Summary
 
-| I/O Point | Current State | Versioning Recommended | Priority |
-| ----------- | --------------- | ------------------------ | ---------- |
-| API Endpoints | ✅ Versioned (`/api/v1/`) | Maintain current approach | ✅ Done |
-| Config Files (JSON) | ✅ Versioned (`progression_tree.json` has `"version": "2.0"`) | Add to other configs | 🟡 Medium |
-| Database Migrations | ✅ Versioned (goose migrations) | Maintain current approach | ✅ Done |
-| Event Schemas | ❌ No versioning | **Add schema versioning** | 🔴 High |
-| Log Format | ❌ No versioning | Add format version field | 🟢 Low |
-| Environment Config (.env) | ❌ No versioning | Add schema version checking | 🟡 Medium |
-| Cache Data | ❌ No versioning | Add version to cached objects | 🟡 Medium |
-| Dead-Letter Logs | ❌ No versioning | Add schema version | 🟢 Low |
+| I/O Point                 | Current State                                                 | Versioning Recommended        | Priority  |
+| ------------------------- | ------------------------------------------------------------- | ----------------------------- | --------- |
+| API Endpoints             | ✅ Versioned (`/api/v1/`)                                     | Maintain current approach     | ✅ Done   |
+| Config Files (JSON)       | ✅ Versioned (`progression_tree.json` has `"version": "2.0"`) | Add to other configs          | 🟡 Medium |
+| Database Migrations       | ✅ Versioned (goose migrations)                               | Maintain current approach     | ✅ Done   |
+| Event Schemas             | ❌ No versioning                                              | **Add schema versioning**     | 🔴 High   |
+| Log Format                | ❌ No versioning                                              | Add format version field      | 🟢 Low    |
+| Environment Config (.env) | ❌ No versioning                                              | Add schema version checking   | 🟡 Medium |
+| Cache Data                | ❌ No versioning                                              | Add version to cached objects | 🟡 Medium |
+| Dead-Letter Logs          | ❌ No versioning                                              | Add schema version            | 🟢 Low    |
 
 ---
 
@@ -60,7 +60,7 @@ r.Route("/api/v1", func(r chi.Router) {
 #### ❌ Other Config Files - Not Versioned
 
 - `configs/items/aliases.json` - No version field
-- `configs/items/themes.json` - No version field  
+- `configs/items/themes.json` - No version field
 - `configs/loot_tables.json` - No version field
 
 ### Problems Without Versioning
@@ -198,7 +198,7 @@ See `docs/issues/CODE_REVIEW_ISSUES.md` - "document-event-system.md" (item #3)
   "time": "2026-01-05T19:26:04Z",
   "level": "INFO",
   "msg": "Request started",
-  "request_id": "abc123",
+  "request_id": "abc123"
   // No version field
 }
 ```
@@ -274,14 +274,14 @@ func ValidateEnvSchema() error {
     if schemaVersion == "" {
         return errors.New("ENV_SCHEMA_VERSION not set - please update .env")
     }
-    
+
     required := GetRequiredVarsForVersion(schemaVersion)
     for _, varName := range required {
         if os.Getenv(varName) == "" {
             return fmt.Errorf("required env var %s missing", varName)
         }
     }
-    
+
     return nil
 }
 ```
@@ -316,6 +316,7 @@ func ValidateEnvSchema() error {
 3. **Silent Corruption**: Wrong data structure loaded from cache
 
 ### Recommendation
+
 🟡 **Add version to cached objects (MEDIUM PRIORITY)**
 
 #### Implementation
@@ -340,14 +341,14 @@ func (c *UserCache) Get(key string) (*User, bool) {
     if !ok {
         return nil, false
     }
-    
+
     // Version check
     if cached.Version != CurrentCacheVersion {
         // Invalidate old version
         delete(c.data, key)
         return nil, false
     }
-    
+
     return cached.User, true
 }
 ```

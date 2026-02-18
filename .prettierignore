@@ -1,0 +1,25 @@
+# Build artifacts and dependencies
+node_modules
+dist
+bin
+vendor
+
+# Logs and temporary files
+logs
+temp
+*.log
+
+# Go files (use gofmt/goimports)
+*.go
+
+# Database migrations (sometimes they have specific formatting)
+# migrations/
+
+# Docker
+.dockerignore
+
+# Mocks
+mocks/
+
+# Test data with intentional syntax errors
+internal/naming/testdata/malformed.json

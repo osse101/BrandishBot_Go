@@ -883,10 +883,10 @@ func TestHandleGetInventoryByUsername(t *testing.T) {
 		expectedBody   string
 	}{
 		{
-			name:       "Success",
-			username:   "testuser",
-			platform:   domain.PlatformDiscord,
-			filter:     "",
+			name:     "Success",
+			username: "testuser",
+			platform: domain.PlatformDiscord,
+			filter:   "",
 			setupMock: func(m *mocks.MockUserService) {
 				items := []user.InventoryItem{
 					{InternalName: domain.ItemBlaster, PublicName: "missile", Quantity: 1, QualityLevel: "COMMON"},
@@ -897,10 +897,10 @@ func TestHandleGetInventoryByUsername(t *testing.T) {
 			expectedBody:   `"items":[{"item_name":"weapon_blaster","public_name":"missile","quantity":1,"quality_level":"COMMON"}]`,
 		},
 		{
-			name:       "Success with Filter",
-			username:   "testuser",
-			platform:   domain.PlatformDiscord,
-			filter:     domain.FilterTypeUpgrade,
+			name:     "Success with Filter",
+			username: "testuser",
+			platform: domain.PlatformDiscord,
+			filter:   domain.FilterTypeUpgrade,
 			setupMock: func(m *mocks.MockUserService) {
 				items := []user.InventoryItem{
 					{InternalName: domain.ItemLootbox0, PublicName: "junkbox", Quantity: 1, QualityLevel: "COMMON"},
@@ -920,10 +920,10 @@ func TestHandleGetInventoryByUsername(t *testing.T) {
 			expectedBody:   "Missing username query parameter",
 		},
 		{
-			name:       "Service Error",
-			username:   "testuser",
-			platform:   domain.PlatformDiscord,
-			filter:     "",
+			name:     "Service Error",
+			username: "testuser",
+			platform: domain.PlatformDiscord,
+			filter:   "",
 			setupMock: func(m *mocks.MockUserService) {
 				m.On("GetInventoryByUsername", mock.Anything, domain.PlatformDiscord, "testuser", "").Return(nil, errors.New(ErrMsgGenericServerError))
 			},

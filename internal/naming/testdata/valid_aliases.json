@@ -4,14 +4,9 @@
   "last_updated": "2026-01-05",
   "aliases": {
     "lootbox_tier0": {
-      "default": [
-        "A test box",
-        "Another test box"
-      ],
+      "default": ["A test box", "Another test box"],
       "themes": {
-        "test_theme": [
-          "A themed test box"
-        ]
+        "test_theme": ["A themed test box"]
       }
     }
   }

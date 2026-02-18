@@ -2,7 +2,7 @@ name: Weekly Benchmarks
 
 on:
   schedule:
-    - cron: "0 2 * * 0" # 2 AM UTC every Sunday
+    - cron: '0 2 * * 0' # 2 AM UTC every Sunday
   workflow_dispatch: # Allow manual trigger
 
 jobs:
@@ -28,7 +28,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.24.0"
+          go-version: '1.24.0'
           cache: true
 
       - name: Install benchstat

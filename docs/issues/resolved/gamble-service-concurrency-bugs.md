@@ -13,6 +13,7 @@ RESOLVED
 ## Executive Summary
 
 The Gamble Service contains **7 critical concurrency bugs** that can lead to:
+
 - Race conditions causing duplicate gambles
 - Inventory duplication exploits
 - Data corruption
@@ -28,12 +29,15 @@ The Gamble Service contains **7 critical concurrency bugs** that can lead to:
 ### Severity: 10/10 (CRITICAL)
 
 ### Description
+
 Two users can simultaneously create gambles because the active gamble check is not atomic.
 
 ### Location
+
 [`service.go:103-109`](file:///home/osse1/projects/BrandishBot_Go/internal/gamble/service.go#L103-L109)
 
 ### Vulnerable Code
+
 ```go
 // Check for active gamble
 active, err := s.repo.GetActiveGamble(ctx)
@@ -48,6 +52,7 @@ tx, err := s.repo.BeginTx(ctx)
 ```
 
 ### Reproduction Steps
+
 1. User A calls `StartGamble` at time T
 2. User B calls `StartGamble` at time T+1ms
 3. Both check active gamble → both see `nil`
@@ -55,26 +60,27 @@ tx, err := s.repo.BeginTx(ctx)
 5. **Result**: Two active gambles exist
 
 ### Test Case
+
 ```go
 func TestStartGamble_Concurrent_RaceCondition(t *testing.T) {
     repo := new(MockRepository)
     s := NewService(repo, nil, new(MockLootboxService), nil, time.Minute, nil)
-    
+
     ctx := context.Background()
     user1 := &domain.User{ID: "user1"}
     user2 := &domain.User{ID: "user2"}
     bets := []domain.LootboxBet{{ItemID: 1, Quantity: 1}}
-    
+
     // Both see no active gamble
     repo.On("GetActiveGamble", ctx).Return(nil, nil)
-    
+
     // Setup mocks for successful flow
     repo.On("GetUserByPlatformID", ctx, "twitch", "123").Return(user1, nil)
     repo.On("GetUserByPlatformID", ctx, "twitch", "456").Return(user2, nil)
-    
+
     tx1, tx2 := new(MockTx), new(MockTx)
     inventory := &domain.Inventory{Slots: []domain.InventorySlot{{ItemID: 1, Quantity: 5}}}
-    
+
     repo.On("BeginTx", ctx).Return(tx1, nil).Once()
     repo.On("BeginTx", ctx).Return(tx2, nil).Once()
     tx1.On("GetInventory", ctx, "user1").Return(inventory, nil)
@@ -87,11 +93,11 @@ func TestStartGamble_Concurrent_RaceCondition(t *testing.T) {
     tx2.On("Rollback", ctx).Return(nil).Maybe()
     repo.On("CreateGamble", ctx, mock.Anything).Return(nil)
     repo.On("JoinGamble", ctx, mock.Anything).Return(nil)
-    
+
     // Launch concurrent StartGamble calls
     var wg sync.WaitGroup
     results := make(chan error, 2)
-    
+
     wg.Add(2)
     go func() {
         defer wg.Done()
@@ -103,17 +109,17 @@ func TestStartGamble_Concurrent_RaceCondition(t *testing.T) {
         _, err := s.StartGamble(ctx, "twitch", "456", "user2", bets)
         results <- err
     }()
-    
+
     wg.Wait()
     close(results)
-    
+
     var successCount int
     for err := range results {
         if err == nil {
             successCount++
         }
     }
-    
+
     // EXPECTED: Only 1 success
     // ACTUAL: Both succeed (BUG!)
     assert.Equal(t, 1, successCount)
@@ -121,9 +127,10 @@ func TestStartGamble_Concurrent_RaceCondition(t *testing.T) {
 ```
 
 ### Fix Recommendation
+
 ```go
 // Option 1: Database constraint
-ALTER TABLE gambles ADD CONSTRAINT single_active_gamble 
+ALTER TABLE gambles ADD CONSTRAINT single_active_gamble
     EXCLUDE USING gist (state WITH =) WHERE (state IN ('Joining', 'Opening'));
 
 // Option 2: Pessimistic locking
@@ -148,28 +155,32 @@ if active != nil {
 ### Severity: 9/10 (EXPLOIT)
 
 ### Description
+
 No validation prevents a user from joining the same gamble multiple times, allowing them to gain unfair advantage.
 
 ### Location
+
 [`service.go:194-271`](file:///home/osse1/projects/BrandishBot_Go/internal/gamble/service.go#L194-L271)
 
 ### Exploit Scenario
+
 1. Attacker starts gamble with 1 lootbox
 2. Attacker joins same gamble 10 more times with 1 lootbox each
 3. Attacker has 11/12 of items in pot (91% win chance if one other user joins)
 4. Attacker wins and receives all items
 
 ### Test Case
+
 ```go
 func TestJoinGamble_SameUserTwice_ShouldReject(t *testing.T) {
     repo := new(MockRepository)
     s := NewService(repo, nil, new(MockLootboxService), nil, time.Minute, nil)
-    
+
     ctx := context.Background()
     gambleID := uuid.New()
     user := &domain.User{ID: "user1"}
     bets := []domain.LootboxBet{{ItemID: 1, Quantity: 1}}
-    
+
     // Gamble already has this user
     gamble := &domain.Gamble{
         ID:           gambleID,
@@ -179,13 +190,13 @@ func TestJoinGamble_SameUserTwice_ShouldReject(t *testing.T) {
             {UserID: "user1", LootboxBets: []domain.LootboxBet{{ItemID: 1, Quantity: 1}}},
         },
     }
-    
+
     repo.On("GetUserByPlatformID", ctx, "twitch", "123").Return(user, nil)
     repo.On("GetGamble", ctx, gambleID).Return(gamble, nil)
-    
+
     // Try to join again - should fail
     err := s.JoinGamble(ctx, gambleID, "twitch", "123", "user1", bets)
-    
+
     // EXPECTED: Error "already joined"
     // ACTUAL: No error, user joins twice (BUG!)
     assert.Error(t, err)
@@ -194,6 +205,7 @@ func TestJoinGamble_SameUserTwice_ShouldReject(t *testing.T) {
 ```
 
 ### Fix Recommendation
+
 ```go
 // In JoinGamble, before transaction:
 for _, p := range gamble.Participants {
@@ -203,7 +215,7 @@ for _, p := range gamble.Participants {
 }
 
 // Also add database unique constraint:
-ALTER TABLE gamble_participants 
+ALTER TABLE gamble_participants
     ADD CONSTRAINT unique_user_per_gamble UNIQUE (gamble_id, user_id);
 ```
 
@@ -214,12 +226,15 @@ ALTER TABLE gamble_participants
 ### Severity: 9/10 (DATA CORRUPTION)
 
 ### Description
+
 Same user joining from concurrent requests can bypass inventory deduction due to lack of row-level locking.
 
 ### Location
+
 [`service.go:234-250`](file:///home/osse1/projects/BrandishBot_Go/internal/gamble/service.go#L234-L250)
 
 ### Vulnerable Code
+
 ```go
 // Get Inventory (no locking!)
 inventory, err := tx.GetInventory(ctx, user.ID)
@@ -241,6 +256,7 @@ if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
 ```
 
 ### Scenario
+
 1. User has 10 lootboxes
 2. Request A: Read inventory → 10 boxes
 3. Request B: Read inventory → 10 boxes (A hasn't committed)
@@ -249,6 +265,7 @@ if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
 6. **Result**: User joined twice but only spent 5 lootboxes (should be 10)
 
 ### Fix Recommendation
+
 ```go
 // Use SELECT FOR UPDATE
 inventory, err := tx.GetInventoryForUpdate(ctx, user.ID)
@@ -261,7 +278,7 @@ type Inventory struct {
 }
 
 // Update with version check
-UPDATE inventory 
+UPDATE inventory
 SET slots = $1, version = version + 1
 WHERE user_id = $2 AND version = $3
 ```
@@ -273,12 +290,15 @@ WHERE user_id = $2 AND version = $3
 ### Severity: 8/10 (DUPLICATE PROCESSING)
 
 ### Description
+
 State transition from `Joining` → `Opening` is not atomic, allowing duplicate execution.
 
 ### Location
+
 [`service.go:294-301`](file:///home/osse1/projects/BrandishBot_Go/internal/gamble/service.go#L294-L301)
 
 ### Vulnerable Code
+
 ```go
 // Check state (not atomic with update!)
 if gamble.State != domain.GambleStateJoining {
@@ -292,15 +312,16 @@ if err := s.repo.UpdateGambleState(ctx, id, domain.GambleStateOpening); err != n
 ```
 
 ### Test Case
+
 ```go
 func TestExecuteGamble_Concurrent_Idempotent(t *testing.T) {
     repo := new(MockRepository)
     lootboxSvc := new(MockLootboxService)
     s := NewService(repo, nil, lootboxSvc, nil, time.Minute, nil)
-    
+
     ctx := context.Background()
     gambleID := uuid.New()
-    
+
     gamble := &domain.Gamble{
         ID:    gambleID,
         State: domain.GambleStateJoining,
@@ -308,17 +329,17 @@ func TestExecuteGamble_Concurrent_Idempotent(t *testing.T) {
             {UserID: "user1", LootboxBets: []domain.LootboxBet{{ItemID: 1, Quantity: 1}}},
         },
     }
-    
+
     // Setup mocks to allow both executions
     repo.On("GetGamble", ctx, gambleID).Return(gamble, nil)
     repo.On("UpdateGambleState", ctx, gambleID, domain.GambleStateOpening).Return(nil)
-    
+
     lootboxItem := &domain.Item{ID: 1, InternalName: "box1"}
     drops := []lootbox.DroppedItem{{ItemID: 10, Quantity: 5, Value: 100}}
     repo.On("GetItemByID", ctx, 1).Return(lootboxItem, nil)
     lootboxSvc.On("OpenLootbox", ctx, "box1", 1).Return(drops, nil)
     repo.On("SaveOpenedItems", ctx, mock.Anything).Return(nil)
-    
+
     tx := new(MockTx)
     repo.On("BeginTx", ctx).Return(tx, nil)
     tx.On("GetInventory", ctx, "user1").Return(&domain.Inventory{}, nil)
@@ -326,11 +347,11 @@ func TestExecuteGamble_Concurrent_Idempotent(t *testing.T) {
     tx.On("Commit", ctx).Return(nil)
     tx.On("Rollback", ctx).Return(nil).Maybe()
     repo.On("CompleteGamble", ctx, mock.Anything).Return(nil)
-    
+
     // Execute concurrently
     var wg sync.WaitGroup
     results := make(chan error, 2)
-    
+
     wg.Add(2)
     go func() {
         defer wg.Done()
@@ -342,17 +363,17 @@ func TestExecuteGamble_Concurrent_Idempotent(t *testing.T) {
         _, err := s.ExecuteGamble(ctx, gambleID)
         results <- err
     }()
-    
+
     wg.Wait()
     close(results)
-    
+
     var successCount int
     for err := range results {
         if err == nil {
             successCount++
         }
     }
-    
+
     // EXPECTED: 1 execution
     // ACTUAL: Both execute (BUG!)
     assert.Equal(t, 1, successCount)
@@ -361,16 +382,17 @@ func TestExecuteGamble_Concurrent_Idempotent(t *testing.T) {
 ```
 
 ### Fix Recommendation
+
 ```go
 // Compare-and-swap approach
 func (r *repository) UpdateGambleStateIfMatches(
-    ctx context.Context, 
-    id uuid.UUID, 
+    ctx context.Context,
+    id uuid.UUID,
     expectedState, newState domain.GambleState,
 ) (rowsAffected int64, error) {
     result := r.db.Exec(`
-        UPDATE gambles 
-        SET state = $1 
+        UPDATE gambles
+        SET state = $1
         WHERE id = $2 AND state = $3
     `, newState, id, expectedState)
     return result.RowsAffected(), result.Error
@@ -392,18 +414,22 @@ if rowsAffected == 0 {
 ### Severity: 8/10 (PARTIAL FAILURES)
 
 ### Description
+
 `ExecuteGamble` performs multiple database operations outside a single transaction, risking partial failures.
 
 ### Location
+
 [`service.go:274-511`](file:///home/osse1/projects/BrandishBot_Go/internal/gamble/service.go#L274-L511)
 
 ### Operations NOT in Transaction
+
 - Line 299: `UpdateGambleState` (separate call)
-- Line 378: `SaveOpenedItems` (separate call)  
+- Line 378: `SaveOpenedItems` (separate call)
 - Line 447-491: Winner inventory update (separate transaction)
 - Line 502: `CompleteGamble` (separate call)
 
 ### Failure Scenario
+
 1. State updated to `Opening` ✅
 2. Items opened and saved ✅
 3. Winner inventory update **FAILS** ❌ (disk full, constraint violation, etc.)
@@ -411,11 +437,13 @@ if rowsAffected == 0 {
 5. **Result**: Gamble marked complete, but winner never got items!
 
 ### Impact
+
 - Permanent item loss for winner
 - No rollback mechanism
 - Manual database intervention required
 
 ### Fix Recommendation
+
 ```go
 func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.GambleResult, error) {
     // Single transaction for all operations
@@ -424,31 +452,31 @@ func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.Gamb
         return nil, err
     }
     defer repository.SafeRollback(ctx, tx)
-    
+
     // All operations use tx
     if err := tx.UpdateGambleState(ctx, id, domain.GambleStateOpening); err != nil {
         return nil, err
     }
-    
+
     // ... open lootboxes ...
-    
+
     if err := tx.SaveOpenedItems(ctx, allOpenedItems); err != nil {
         return nil, err
     }
-    
+
     if err := tx.UpdateInventory(ctx, winnerID, *inv); err != nil {
         return nil, err
     }
-    
+
     if err := tx.CompleteGamble(ctx, result); err != nil {
         return nil, err
     }
-    
+
     // Commit all or rollback all
     if err := tx.Commit(ctx); err != nil {
         return nil, err
     }
-    
+
     return result, nil
 }
 ```
@@ -458,12 +486,14 @@ func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.Gamb
 ## Additional Critical Issues
 
 ### Bug #6: Missing Deadline Enforcement
+
 **Location**: [`service.go:274`](file:///home/osse1/projects/BrandishBot_Go/internal/gamble/service.go#L274)  
 **Severity**: 7/10
 
 `ExecuteGamble` doesn't check if `JoinDeadline` has passed. Admin could execute early, preventing users from joining.
 
 **Fix**:
+
 ```go
 if time.Now().Before(gamble.JoinDeadline) {
     return nil, fmt.Errorf("cannot execute before deadline")
@@ -471,12 +501,14 @@ if time.Now().Before(gamble.JoinDeadline) {
 ```
 
 ### Bug #7: consumeItem Slice Mutation
+
 **Location**: [`service.go:532`](file:///home/osse1/projects/BrandishBot_Go/internal/gamble/service.go#L532)  
 **Severity**: 7/10
 
 Removing items during slice iteration can cause index issues when consuming multiple items.
 
 **Test Case**:
+
 ```go
 func TestConsumeItem_MultipleItemsRemoval(t *testing.T) {
     inventory := &domain.Inventory{
@@ -486,23 +518,25 @@ func TestConsumeItem_MultipleItemsRemoval(t *testing.T) {
             {ItemID: 3, Quantity: 2},
         },
     }
-    
+
     consumeItem(inventory, 1, 5) // Removes slot
     consumeItem(inventory, 2, 3) // Removes slot
     consumeItem(inventory, 3, 2) // Removes slot
-    
+
     // EXPECTED: Empty inventory
     assert.Empty(t, inventory.Slots)
 }
 ```
 
 ### Bug #8: No Lootbox Type Validation
+
 **Location**: [`service.go:134`](file:///home/osse1/projects/BrandishBot_Go/internal/gamble/service.go#L134)  
 **Severity**: 7/10
 
 Users can bet non-lootbox items (swords, armor, etc.).
 
 **Fix**:
+
 ```go
 for _, bet := range bets {
     item, err := s.repo.GetItemByID(ctx, bet.ItemID)
@@ -539,7 +573,9 @@ for _, bet := range bets {
 ---
 
 ## Test File Location
+
 See complete test suite: `/home/osse1/.gemini/antigravity/brain/e09da51e-04ff-4f54-8f3d-c33d70769a64/gamble_critical_tests_example.go`
 
 ## Full Audit Report
+
 See detailed audit: `/home/osse1/.gemini/antigravity/brain/e09da51e-04ff-4f54-8f3d-c33d70769a64/gamble_service_audit.md`

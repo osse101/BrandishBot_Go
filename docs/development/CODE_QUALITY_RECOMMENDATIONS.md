@@ -33,6 +33,7 @@ The codebase already follows many best practices:
 **Issue**: Constants are split across `constants.go` and `user.go`, creating potential confusion.
 
 **Current State:**
+
 ```go
 // internal/domain/constants.go
 const (
@@ -82,6 +83,7 @@ const (
 ```
 
 **Benefits:**
+
 - Single source of truth for all domain constants
 - Easier to find and update related constants
 - Reduces import confusion
@@ -94,6 +96,7 @@ const (
 **Issue**: `inventory.go` at 400 lines is at the upper limit and handles multiple distinct operations.
 
 **Current State:**
+
 - `inventory.go` contains: Add, Remove, Give, Sell, Buy, Use, GetInventory (7 endpoints)
 
 **Recommendation**: Split into logical groups:
@@ -135,6 +138,7 @@ func HandleBuyItem...
 ```
 
 **Benefits:**
+
 - Better code navigation
 - Easier to locate specific handlers
 - Prevents hitting 400-line limit
@@ -149,6 +153,7 @@ func HandleBuyItem...
 **Recommendation**: Add test coverage tracking
 
 1. **Create `Makefile` target**:
+
 ```makefile
 .PHONY: test-coverage
 test-coverage:
@@ -171,12 +176,14 @@ test-coverage-check:
 ```
 
 2. **Add to CI/CD** (if applicable):
+
 ```yaml
 - name: Test Coverage
   run: make test-coverage-check
 ```
 
 **Benefits:**
+
 - Enforces 80% coverage guideline (line 471)
 - Provides visibility into coverage gaps
 - Enables coverage tracking over time
@@ -188,6 +195,7 @@ test-coverage-check:
 **Issue**: Mix of error handling patterns across codebase.
 
 **Current patterns observed:**
+
 ```go
 // Pattern 1: Return nil for not found
 if err == pgx.ErrNoRows {
@@ -203,6 +211,7 @@ if user == nil {
 **Recommendation**: Standardize on custom errors with wrapping
 
 **Add to `internal/domain/errors.go`**:
+
 ```go
 package domain
 
@@ -220,6 +229,7 @@ var (
 ```
 
 **Update repository pattern**:
+
 ```go
 func (r *UserRepository) GetUserByUsername(ctx context.Context, username string) (*domain.User, error) {
     // ...
@@ -235,6 +245,7 @@ func (r *UserRepository) GetUserByUsername(ctx context.Context, username string)
 ```
 
 **Benefits:**
+
 - Consistent error handling across layers
 - Easier to test specific error cases
 - Better error messages for debugging
@@ -247,6 +258,7 @@ func (r *UserRepository) GetUserByUsername(ctx context.Context, username string)
 **Issue**: Complex service methods lack step-by-step comments.
 
 **Current state** (some methods):
+
 ```go
 func (s *service) GiveItem(...) error {
     // Some logic...
@@ -260,7 +272,7 @@ func (s *service) GiveItem(...) error {
 func (s *service) GiveItem(ctx context.Context, ownerUsername, receiverUsername, platform, itemName string, quantity int) error {
     log := logger.FromContext(ctx)
     log.Info("GiveItem called", "owner", ownerUsername, "receiver", receiverUsername)
-    
+
     // 1. Validate users exist
     owner, err := s.validateUser(ctx, ownerUsername)
     if err != nil {
@@ -270,33 +282,34 @@ func (s *service) GiveItem(ctx context.Context, ownerUsername, receiverUsername,
     if err != nil {
         return err
     }
-    
+
     // 2. Validate item exists
     item, err := s.validateItem(ctx, itemName)
     if err != nil {
         return err
     }
-    
+
     // 3. Acquire locks in consistent order (prevent deadlocks)
     firstLock, secondLock := s.getUserLock(owner.ID), s.getUserLock(receiver.ID)
     if owner.ID > receiver.ID {
         firstLock, secondLock = secondLock, firstLock
     }
-    
+
     firstLock.Lock()
     defer firstLock.Unlock()
-    
+
     if owner.ID != receiver.ID {
         secondLock.Lock()
         defer secondLock.Unlock()
     }
-    
+
     // 4. Execute transfer within transaction
     return s.executeGiveItemTx(ctx, owner, receiver, item, quantity)
 }
 ```
 
 **Benefits:**
+
 - Easier to understand complex logic flow
 - Matches guide pattern (line 240-277)
 - Helps new contributors
@@ -309,6 +322,7 @@ func (s *service) GiveItem(ctx context.Context, ownerUsername, receiverUsername,
 **Issue**: Repository interfaces are defined in service packages (`internal/user/service.go`), which creates coupling.
 
 **Current structure:**
+
 ```
 internal/user/service.go - Contains Repository interface
 internal/database/postgres/user.go - Implements interface
@@ -329,9 +343,9 @@ internal/repository/
 // internal/user/service.go
 
 // Repository defines the interface for user persistence.
-// 
+//
 // Implementation location: internal/database/postgres/user.go
-// 
+//
 // This interface is defined here (in the service package) to follow the
 // dependency inversion principle - the service layer defines what it needs,
 // and the database layer implements it.
@@ -341,6 +355,7 @@ type Repository interface {
 ```
 
 **Benefits:**
+
 - Better separation of concerns
 - Follows dependency inversion principle
 - Makes testing boundaries clearer
@@ -353,6 +368,7 @@ type Repository interface {
 **Issue**: Some handlers don't define explicit response types for simple cases.
 
 **Current pattern** (mixed):
+
 ```go
 // With response type
 type SearchResponse struct {
@@ -382,6 +398,7 @@ json.NewEncoder(w).Encode(SuccessResponse{Message: "Item added successfully"})
 ```
 
 **Benefits:**
+
 - Consistent API responses
 - Easier to parse for clients
 - Better API documentation
@@ -413,10 +430,10 @@ linters-settings:
   goconst:
     min-len: 3
     min-occurrences: 3
-  
+
   gosec:
     excludes:
-      - G104  # Audit errors not checked (we handle explicitly)
+      - G104 # Audit errors not checked (we handle explicitly)
 
 run:
   timeout: 5m
@@ -430,6 +447,7 @@ issues:
 ```
 
 **Add Makefile target**:
+
 ```makefile
 .PHONY: lint
 lint:
@@ -443,6 +461,7 @@ lint-fix:
 ```
 
 **Benefits:**
+
 - Catches common issues early
 - Enforces code quality standards
 - Reduces code review burden
@@ -461,6 +480,7 @@ lint-fix:
 This command runs UP, DOWN, and IDEMPOTENCY tests on a temporary test database to ensure migrations are reversible and safe.
 
 **Benefits:**
+
 - Ensures migrations are reversible
 - Catches migration errors early
 - Follows guide recommendation (line 79)
@@ -469,22 +489,22 @@ This command runs UP, DOWN, and IDEMPOTENCY tests on a temporary test database t
 
 ## 📊 Implementation Priority
 
-| Priority | Item | Effort | Impact |
-|----------|------|--------|--------|
-| **High** | 1. Consolidate domain constants | Low | High |
-| **High** | 4. Standardize error handling | Medium | High |
-| **High** | 8. Add linting configuration | Low | High |
-| **Medium** | 3. Add test coverage tracking | Low | Medium |
+| Priority   | Item                             | Effort | Impact |
+| ---------- | -------------------------------- | ------ | ------ |
+| **High**   | 1. Consolidate domain constants  | Low    | High   |
+| **High**   | 4. Standardize error handling    | Medium | High   |
+| **High**   | 8. Add linting configuration     | Low    | High   |
+| **Medium** | 3. Add test coverage tracking    | Low    | Medium |
 | **Medium** | 5. Improve service documentation | Medium | Medium |
-| **Medium** | 7. Standardize response types | Medium | Medium |
-| **Low** | 2. Split handler files | Medium | Low |
-| **Low** | 6. Repository interface location | High | Low |
-| **Low** | 9. Migration testing script | Low | Medium |
+| **Medium** | 7. Standardize response types    | Medium | Medium |
+| **Low**    | 2. Split handler files           | Medium | Low    |
+| **Low**    | 6. Repository interface location | High   | Low    |
+| **Low**    | 9. Migration testing script      | Low    | Medium |
 
 ## 🎯 Quick Wins (Start Here)
 
 1. **Consolidate constants** (`internal/domain/constants.go`) - 30 minutes
-2. **Add lint configuration** (`.golangci.yml`) - 30 minutes  
+2. **Add lint configuration** (`.golangci.yml`) - 30 minutes
 3. **Add test coverage Makefile targets** - 15 minutes
 4. **Define standard error types** (`internal/domain/errors.go`) - 30 minutes
 

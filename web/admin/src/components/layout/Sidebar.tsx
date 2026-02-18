@@ -15,7 +15,7 @@ export function Sidebar() {
         <p className="text-xs text-gray-500">Admin Dashboard</p>
       </div>
       <nav className="flex-1 p-2">
-        {navItems.map(item => (
+        {navItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}

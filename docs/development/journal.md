@@ -7,6 +7,7 @@ A collection of practical insights gained from BrandishBot_Go development, parti
 ## 2026-01-04: Resilient Event Publishing - Fire-and-Forget with Retry
 
 ### Context
+
 Implemented `ResilientPublisher` to decouple critical business logic (XP awards) from event system availability. Previously, event publishing failures were either ignored (loss of data) or could potentially block/fail the transaction (bad UX).
 
 ### The Pattern: Fire-and-Forget with Retry Queue
@@ -35,20 +36,24 @@ if err != nil {
 ### Key Learnings
 
 **1. Don't Fail the User for System Noise**
+
 - Users care about their XP/Loot. They shouldn't get an error just because the event bus (RabbitMQ/NATS/Internal) blipped.
 - Log the error, retry in background, keep the user happy.
 
 **2. Dead-Letter Queues are Essential**
+
 - Infinite retries choke the system.
 - Drop-on-fail loses data.
 - Dead-letter file allows post-mortem analysis and potential replay.
 
 **3. Integration Testing Asynchrony**
+
 - Testing background retries requires `time.Sleep` or channel synchronization.
 - Mock the underlying bus to simulate failures.
-- Verify the *eventual* outcome, not just the immediate return.
+- Verify the _eventual_ outcome, not just the immediate return.
 
 **4. Configuration is Key**
+
 - `EventMaxRetries`, `EventRetryDelay` should be configurable via env vars.
 - Allows tuning for different environments (faster retries in dev, more durable in prod).
 
@@ -67,6 +72,7 @@ publisher.PublishWithRetry(ctx, event) // Never returns error
 ## 2025-12-22: Cooldown Service - Check-Then-Lock Pattern for Race-Free Operations
 
 ### Context
+
 Implemented centralized cooldown service to eliminate RACE-001: HandleSearch had critical race condition where concurrent requests could bypass cooldowns by reading "no cooldown" simultaneously, then both proceeding.
 
 ### The Check-Then-Lock Pattern
@@ -83,7 +89,7 @@ if onCooldown {
 tx.Begin()
 lastUsed := SELECT ... FOR UPDATE  // Locks row
 if stillOnCooldown { return error }
-fn() // Execute user action  
+fn() // Execute user action
 UPDATE cooldown timestamp
 tx.Commit() // All or nothing!
 ```
@@ -91,17 +97,20 @@ tx.Commit() // All or nothing!
 ### Key Learnings
 
 **1. SELECT FOR UPDATE is Non-Negotiable for Atomicity**
+
 - Prevents concurrent modifications by locking the specific row
 - Works across multiple app instances (unlike application locks)
 - Row-level lock maintains high concurrency
 
 **2. When to Use Check-Then-Lock**
+
 - ✅ Fast path rejects most requests (rate limits, cooldowns)
 - ✅ Locked operation is expensive (writes, external APIs)
 - ✅ Correctness is critical (money, gameplay balance)
 - ❌ Skip if fast path rarely helps or lock contention too high
 
 **3. Service Architecture Benefits**
+
 - Code reduction: 230 → 80 lines (-65%) in HandleSearch
 - Reusability: One service handles all cooldown types
 - Testability: Easy to mock in tests
@@ -126,17 +135,18 @@ tx.Commit()
 ```
 
 ### Testing Insights
+
 - testcontainers migration files need explicit sorting (`sort.Strings()`)
 - Package visibility matters (`postgres` vs `postgres_test` for helpers)
 - Docker build success + manual testing often sufficient for complex scenarios
 
 ### Impact
+
 - Zero race conditions in production
 - Docker builds ✅ App deploys ✅
 - Pattern applicable to: inventory, currency, rate limits, resource allocation
 
 ---
-
 
 ## Concurrency & Locking
 
@@ -145,6 +155,7 @@ tx.Commit()
 **Problem:** Using `sync.Map` or similar constructs to create per-user locks causes unbounded memory growth. Every unique user ID creates a new mutex that's never garbage collected.
 
 **Original Pattern (DON'T DO THIS):**
+
 ```go
 type LockManager struct {
     locks sync.Map // Grows unboundedly
@@ -159,6 +170,7 @@ func (lm *LockManager) GetLock(key string) *sync.Mutex {
 **Solution:** Use database transactions with row-level locking instead. PostgreSQL's `SELECT ... FOR UPDATE` provides the same guarantees without memory leaks.
 
 **Pattern:**
+
 ```go
 tx, err := repo.BeginTx(ctx)
 defer repository.SafeRollback(ctx, tx)
@@ -178,6 +190,7 @@ tx.Commit(ctx)
 **Use Case:** When you need fast in-memory locks but want bounded memory.
 
 **Pattern:**
+
 ```go
 type LockManager struct {
     shards [256]sync.Mutex // Fixed size, no growth
@@ -193,6 +206,7 @@ func (lm *LockManager) GetLock(key string) *sync.Mutex {
 ```
 
 **Trade-offs:**
+
 - ✅ Constant memory usage
 - ✅ Fast lock acquisition
 - ❌ Hash collisions cause false contention
@@ -205,6 +219,7 @@ func (lm *LockManager) GetLock(key string) *sync.Mutex {
 **Problem:** Race condition when `wg.Add(1)` is called inside the goroutine.
 
 **Bug:**
+
 ```go
 go func() {
     s.wg.Add(1)  // ❌ Race condition!
@@ -216,6 +231,7 @@ go func() {
 If `Shutdown()` calls `wg.Wait()` before the goroutine starts, it will return immediately, killing the unregistered goroutine.
 
 **Solution:**
+
 ```go
 s.wg.Add(1)  // ✅ Register BEFORE spawning
 go func() {
@@ -240,21 +256,21 @@ func (s *service) ModifyInventory(ctx context.Context, ...) error {
         return fmt.Errorf("failed to begin transaction: %w", err)
     }
     defer repository.SafeRollback(ctx, tx)  // Safety net
-    
+
     // 2. Read with lock (uses FOR UPDATE)
     inventory, err := tx.GetInventory(ctx, userID)
     if err != nil {
         return err  // Rollback happens via defer
     }
-    
+
     // 3. Modify in memory
     inventory.Slots[idx].Quantity -= quantity
-    
+
     // 4. Write back
     if err := tx.UpdateInventory(ctx, userID, *inventory); err != nil {
         return err  // Rollback happens via defer
     }
-    
+
     // 5. Commit (explicit success path)
     return tx.Commit(ctx)
 }
@@ -267,11 +283,13 @@ func (s *service) ModifyInventory(ctx context.Context, ...) error {
 **Problem:** Without row locking, two concurrent requests can read the same inventory, both modify it, and the last write wins (losing the first modification).
 
 **SQL Pattern:**
+
 ```sql
 SELECT inventory_data FROM user_inventory WHERE user_id = $1 FOR UPDATE
 ```
 
 **Benefits:**
+
 - Prevents concurrent modifications to same row
 - Works across multiple application instances
 - PostgreSQL MVCC handles the blocking efficiently
@@ -300,6 +318,7 @@ The key insight: calling `Rollback()` on an already-committed transaction return
 ### Lesson 7: Services Need a Shutdown Method
 
 **Pattern:**
+
 ```go
 type Service interface {
     // ... existing methods ...
@@ -308,7 +327,7 @@ type Service interface {
 
 func (s *service) Shutdown(ctx context.Context) error {
     logger.FromContext(ctx).Info("Shutting down, waiting for background tasks...")
-    
+
     done := make(chan struct{})
     go func() {
         s.wg.Wait()
@@ -325,6 +344,7 @@ func (s *service) Shutdown(ctx context.Context) error {
 ```
 
 **Call during application shutdown:**
+
 ```go
 shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 defer cancel()
@@ -343,11 +363,13 @@ economyService.Shutdown(shutdownCtx)
 **Problem:** Returning `err.Error()` can leak database schema, query details, or stack traces.
 
 **Bad:**
+
 ```go
 http.Error(w, err.Error(), http.StatusInternalServerError)
 ```
 
 **Good:**
+
 ```go
 log.Error("Failed to buy item", "error", err)  // Log full error internally
 http.Error(w, "Failed to buy item", http.StatusInternalServerError)  // Generic to client
@@ -371,6 +393,7 @@ type Config struct {
 ```
 
 **Environment variables:**
+
 ```bash
 DB_MAX_CONNS=20
 DB_MAX_CONN_IDLE_TIME=5m
@@ -378,6 +401,7 @@ DB_MAX_CONN_LIFETIME=30m
 ```
 
 **Helper functions:**
+
 ```go
 func getEnvAsDuration(key string, defaultValue time.Duration) time.Duration {
     if value, err := time.ParseDuration(os.Getenv(key)); err == nil {
@@ -403,6 +427,7 @@ When refactoring from application-level locks to database transactions:
 6. **Update tests** - Fix mock repositories and remove lockManager parameters
 
 **Order of files to update:**
+
 1. Repository interface (add `BeginTx`)
 2. Repository implementation (add transaction type)
 3. Service methods (one by one)
@@ -418,7 +443,7 @@ When refactoring from application-level locks to database transactions:
 # Find all uses of a deprecated type/function
 grep -rn "lockManager" internal/
 
-# Check for compile errors across all packages  
+# Check for compile errors across all packages
 go build ./...
 
 # Find services using async patterns (goroutines)
@@ -451,6 +476,7 @@ Before making concurrency changes:
 ## 2026-01-03: Event Publishing for Auto-Selected Progression Targets
 
 ### Context
+
 Implemented `EventProgressionTargetSet` to support the "Auto-Skip Single Option Votes" feature. When only one progression node is available, the system automatically selects it and sets it as the target, bypassing the voting session.
 
 ### Implementation Pattern
@@ -482,6 +508,7 @@ if s.bus != nil {
 ```
 
 ### Key Learnings
+
 - **Event-Driven UX**: Even when user interaction is skipped (auto-select), publishing an event allows other systems (UI, Notifications) to inform the user about what happened.
 - **Mocking Strategy**: Tests using `MockRepository` need to be resilient to changes in service dependencies (like `event.Bus`). In this case, `bus` is nil in most tests, which simplifies testing core logic without mocking the bus everywhere.
 
@@ -492,62 +519,71 @@ if s.bus != nil {
 ## 2026-01-05: Repository Status Audit & Consolidated Knowledge
 
 ### Context
+
 A comprehensive audit of the repository memories and state was conducted to consolidate knowledge and remove obsolete references. This entry serves as a baseline for the current architectural state.
 
 ### 1. Tooling Consolidation (`cmd/devtool`)
+
 - **Legacy Removal**: All legacy bash scripts (`check_deps.sh`, `check_db.sh`, `unit_tests.sh`, etc.) have been removed.
 - **Unified Tool**: `cmd/devtool` is the central utility for all development tasks.
-    - **Setup**: `devtool setup` (handles .env, DB, deps).
-    - **Testing**: `devtool check-coverage`, `devtool test-migrations`.
-    - **Benchmarking**: `devtool bench` (supports `benchstat`).
-    - **Health**: `devtool doctor` (diagnoses env issues).
+  - **Setup**: `devtool setup` (handles .env, DB, deps).
+  - **Testing**: `devtool check-coverage`, `devtool test-migrations`.
+  - **Benchmarking**: `devtool bench` (supports `benchstat`).
+  - **Health**: `devtool doctor` (diagnoses env issues).
 - **Design**: Implements a Command pattern with a centralized Registry and standardized UI output (`ui.go`).
 
 ### 2. Service Maturity Status
+
 - **Expedition Service**: **Fully Implemented**. Includes `Engine` (pure logic), `Service` (orchestration), and Event Workflow.
 - **Duel Service**: **Partial Implementation**. `Accept` method is currently a placeholder (`not implemented`).
 - **Harvest Service**: **Production Ready**. Tier 1 rewards are always unlocked.
 - **Progression**: `StartVotingSession` is synchronous.
 
 ### 3. Testing & Mocking Architecture
+
 - **Dual Mock Pattern**:
-    - **Global Mocks** (`mocks/`): For Services, used by Handlers.
-    - **Local Mocks** (`internal/<pkg>/mocks/`): For Repositories, used by Services (prevents cycles).
+  - **Global Mocks** (`mocks/`): For Services, used by Handlers.
+  - **Local Mocks** (`internal/<pkg>/mocks/`): For Repositories, used by Services (prevents cycles).
 - **Specialized Mocks**:
-    - `internal/progression`: Uses a hand-rolled `MockRepository`.
-    - `internal/crafting`: Uses shared mocks in `testing_utils_test.go`.
+  - `internal/progression`: Uses a hand-rolled `MockRepository`.
+  - `internal/crafting`: Uses shared mocks in `testing_utils_test.go`.
 - **Execution**: Tests in `internal/handler` and `internal/cooldown` **must** be run as a package (`go test ./...`) to resolve dependencies.
 
 ### 4. Key Architectural Facts
+
 - **Error Handling**: `internal/handler` returns `text/plain` for validation errors and `application/json` for domain errors.
 - **Events**: `progression.target.set` tracks auto-selections.
 - **Database**: Migrations managed exclusively via `goose`.
 
-*Last updated: January 2026*
+_Last updated: January 2026_
 
 ---
 
 ## 2026-02-06: Admin Dashboard & Subscription System
 
 ### Context
+
 Major feature rollout including a React-based Admin Dashboard and a Subscription System integrated with Twitch/YouTube.
 
 ### Implementation Details
+
 - **Admin Dashboard**:
-    - Embedded React SPA (`web/admin/`) served via `//go:embed`.
-    - Features: Health checks, Admin commands, Live SSE events, User management.
-    - Auth: API Key based.
-    - Architecture: `internal/admin` handles serving, `internal/handler/admin_*.go` provides API.
+  - Embedded React SPA (`web/admin/`) served via `//go:embed`.
+  - Features: Health checks, Admin commands, Live SSE events, User management.
+  - Auth: API Key based.
+  - Architecture: `internal/admin` handles serving, `internal/handler/admin_*.go` provides API.
 - **Subscription System**:
-    - Tracks Tier 1/2/3 subscriptions and YouTube memberships.
-    - Background worker checks expirations and requests verification.
-    - Event-driven: Publishes `subscription.activated`, `subscription.renewed`, etc.
+  - Tracks Tier 1/2/3 subscriptions and YouTube memberships.
+  - Background worker checks expirations and requests verification.
+  - Event-driven: Publishes `subscription.activated`, `subscription.renewed`, etc.
 
 ### Documentation Updates
+
 - Consolidated documentation into `docs/features/`.
 - Moved `ADMIN_DASHBOARD.md`, `ADMIN_DASHBOARD_USAGE.md`, `SUBSCRIPTION_SYSTEM.md` to `docs/features/`.
 - Moved implementation details to `docs/architecture/ADMIN_DASHBOARD_IMPLEMENTATION.md`.
 
 ### Key Learnings
+
 - **Embedded SPA**: Using `//go:embed` simplifies deployment but requires a rebuild for frontend changes.
 - **SSE**: Using `fetch` with `ReadableStream` allows custom headers (API Key) unlike `EventSource`.

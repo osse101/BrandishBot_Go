@@ -26,15 +26,17 @@ Always extend the `BrandishBotClient` using partial classes. Create a new file `
 
 **CRITICAL requirement:** All user-supplied string parameters used in query strings MUST be URL-encoded using `System.Uri.EscapeDataString`.
 
-The `BuildQuery` helper method in `BrandishBotClient.cs` simply joins strings and **does not** perform encoding. You must encode values *before* passing them to `BuildQuery` or when constructing query strings manually.
+The `BuildQuery` helper method in `BrandishBotClient.cs` simply joins strings and **does not** perform encoding. You must encode values _before_ passing them to `BuildQuery` or when constructing query strings manually.
 
 #### Incorrect:
+
 ```csharp
 // ❌ VULNERABLE: Special characters in username will break the query
 var query = BuildQuery("platform=" + platform, "username=" + username);
 ```
 
 #### Correct:
+
 ```csharp
 // ✅ SAFE: All parameters are properly encoded
 var query = BuildQuery(

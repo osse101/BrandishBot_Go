@@ -28,6 +28,7 @@ The shield handler currently has a placeholder implementation. Full implementati
 - [ ] Add migration for database schema
 
 **Files to modify:**
+
 - `internal/user/service.go` - `ApplyShield()` method
 - `internal/user/item_handlers.go` - `handleWeapon()` to check for shields
 - `migrations/` - new migration file
@@ -35,6 +36,7 @@ The shield handler currently has a placeholder implementation. Full implementati
 ### 2. ~~Explosive/Trap System~~ [COMPLETED - 2026-01-30]
 
 **Status**: Implemented.
+
 - `user_traps` table exists.
 - `handleTrap` is fully implemented in `internal/user/item_handlers.go`.
 - `triggerTrap` is implemented in `internal/user/service.go` and hooked into message processing.
@@ -58,13 +60,13 @@ Currently, `handler_config` in items.json is not parsed. Timeout values are hard
 
 These items require stream platform integration:
 
-| Item | Description | Requirement |
-|------|-------------|-------------|
-| `sabotage_input` | Input delay on stream | OBS/Stream integration |
-| `sabotage_swap` | Control swap on stream | OBS/Stream integration |
-| `sabotage_input60` | Extended input delay | OBS/Stream integration |
-| `stream_poll` | Trigger stream poll | Twitch API |
-| `stream_fx` | Trigger stream effects | OBS WebSocket |
+| Item               | Description            | Requirement            |
+| ------------------ | ---------------------- | ---------------------- |
+| `sabotage_input`   | Input delay on stream  | OBS/Stream integration |
+| `sabotage_swap`    | Control swap on stream | OBS/Stream integration |
+| `sabotage_input60` | Extended input delay   | OBS/Stream integration |
+| `stream_poll`      | Trigger stream poll    | Twitch API             |
+| `stream_fx`        | Trigger stream effects | OBS WebSocket          |
 
 ### 5. Pre-existing Test Failures
 
@@ -74,6 +76,7 @@ These items require stream platform integration:
 Handler tests `TestHandleSellItem` and `TestHandleRemoveItem` have pre-existing failures unrelated to item migration. The tests expect old response format without `message` field.
 
 **Files to fix:**
+
 - `internal/handler/inventory_test.go`
 
 ---
