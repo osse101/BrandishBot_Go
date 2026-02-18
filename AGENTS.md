@@ -126,6 +126,7 @@ docs/
 ├── architecture/           # Architecture docs & journals
 │   ├── ARCHITECTURE.md     # System architecture overview
 │   ├── EVENT_SYSTEM.md     # Event system architecture
+│   ├── WORKER_POOL.md      # Worker pool architecture
 │   ├── journal.md          # 📓 Architecture journal
 │   └── cooldown-service.md # Service design doc
 ├── archived/               # Archived documentation

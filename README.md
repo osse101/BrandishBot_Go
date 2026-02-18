@@ -19,6 +19,7 @@ A high-performance game engine API for BrandishBot, built with Go. Provides inve
 - **Traps**: [Place hidden traps](docs/features/TRAPS.md) and mines on other users
 - **Statistics**: User and system stats with leaderboards
 - **Composting**: [Recycle items for rewards](docs/features/FARMING.md)
+- **Worker System**: [Background task processing](docs/architecture/WORKER_POOL.md) for scheduled events
 - **In Development**: Duels (PVP challenges)
 - **Discord Bot**: Full-featured Discord integration with slash commands
 - **Admin Dashboard**: [Web-based GUI](docs/features/ADMIN_DASHBOARD.md) for system monitoring and admin commands
