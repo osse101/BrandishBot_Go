@@ -199,7 +199,7 @@ func (c *CheckCoverageCommand) parseConfig(args []string) (file string, threshol
 	filePtr := fs.String("file", "logs/coverage.out", "Path to coverage output file")
 	thresholdPtr := fs.Float64("threshold", 80.0, "Coverage threshold percentage")
 	runTestsPtr := fs.Bool("run", false, "Run tests before checking coverage")
-	htmlReportPtr := fs.Bool("html", false, "Generate and open HTML coverage report")
+	htmlReportPtr := fs.Bool("html", false, "Generate HTML coverage report")
 	smartPtr := fs.Bool("smart", false, "Run tests only on changed packages")
 	pkgsPtr := fs.String("pkgs", "", "Comma-separated list of packages to test")
 	baseRefPtr := fs.String("base", "", "Base reference for git diff (smart mode only)")
@@ -335,13 +335,5 @@ func (c *CheckCoverageCommand) generateHTMLReport(file string) error {
 		return err
 	}
 	PrintSuccess("HTML report generated: %s", htmlFile)
-
-	// Attempt to open in browser
-	PrintInfo("Opening report in browser...")
-	if err := OpenBrowser(htmlFile); err != nil {
-		PrintWarning("Failed to open browser: %v", err)
-		// Don't fail the command, just warn
-	}
-
 	return nil
 }
