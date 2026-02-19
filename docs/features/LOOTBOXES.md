@@ -90,15 +90,28 @@ Higher-tier boxes shift all thresholds upward (+3% per quality tier above Common
 
 ## Implementation
 
+The lootbox package was refactored in v2 to separate concerns into semantic files:
+
 | Layer                          | Location                                      |
 | ------------------------------ | --------------------------------------------- |
-| Service                        | `internal/lootbox/service.go`                 |
-| Cache builder & pipeline       | `internal/lootbox/processor.go`               |
-| Quality rolls & currency logic | `internal/lootbox/converter.go`, `quality.go` |
+| Service Interface & Lifecycle  | `internal/lootbox/service.go`                 |
+| Cache Builder & Progression    | `internal/lootbox/cache.go`                   |
+| Pipeline Logic & RNG           | `internal/lootbox/engine.go`                  |
+| Results & Quality Logic        | `internal/lootbox/results.go`, `quality.go`   |
+| Configuration Types            | `internal/lootbox/config.go`                  |
+| Public Models                  | `internal/lootbox/models.go`                  |
 | Config                         | `configs/loot_tables.json`                    |
 | Schema                         | `configs/schemas/loot_tables.schema.json`     |
 
-The cache (`map[string]*FlattenedLootbox`) is built once at startup via `GetAllItems` and is read-only during operation — no mutex required for concurrent opens.
+The cache (`map[string]*FlattenedLootbox`) is built once at startup via `buildCache` and is read-only during operation — no mutex required for concurrent opens.
+
+### Progression Integration
+
+The cache builder in `internal/lootbox/cache.go` integrates with the **Progression Service** to filter pool items.
+
+- When building the cache, each item in a pool is checked against the progression tree (e.g., `item_missile` node).
+- If the item's node is locked, it is **excluded from the pool** entirely for that server run.
+- The service subscribes to `progression.node_unlocked` events to trigger a cache rebuild when new items are unlocked.
 
 ### Orphan Tracking
 
