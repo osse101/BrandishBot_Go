@@ -335,5 +335,10 @@ func (c *CheckCoverageCommand) generateHTMLReport(file string) error {
 		return err
 	}
 	PrintSuccess("HTML report generated: %s", htmlFile)
+
+	PrintInfo("Opening HTML report in browser...")
+	if err := OpenBrowser(htmlFile); err != nil {
+		PrintWarning("Failed to open browser: %v", err)
+	}
 	return nil
 }
