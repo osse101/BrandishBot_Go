@@ -22,6 +22,8 @@ func TestStartGamble_NoGoroutineLeak(t *testing.T) {
 	// Setup mocks (defined in service_test.go)
 	repo := new(MockRepository)
 	lootboxSvc := new(MockLootboxService)
+	eventBus := new(MockEventBus)
+	publisher := new(MockResilientPublisher)
 
 	user := &domain.User{ID: "user123", Username: "tester"}
 	tx := new(MockTx)
@@ -45,7 +47,11 @@ func TestStartGamble_NoGoroutineLeak(t *testing.T) {
 	repo.On("CreateGamble", mock.Anything, mock.Anything).Return(nil)
 	repo.On("JoinGamble", mock.Anything, mock.Anything).Return(nil)
 
-	svc := NewService(repo, nil, nil, lootboxSvc, 30*time.Second, nil, nil, nil)
+	// Expect event publishing
+	eventBus.On("Publish", mock.Anything, mock.Anything).Return(nil)
+	publisher.On("PublishWithRetry", mock.Anything, mock.Anything).Return()
+
+	svc := NewService(repo, eventBus, publisher, lootboxSvc, 30*time.Second, nil, nil, nil)
 	checker := leaktest.NewGoroutineChecker(t)
 
 	// Execute
@@ -65,23 +71,32 @@ func TestExecuteGamble_NoGoroutineLeak(t *testing.T) {
 	// Setup
 	repo := new(MockRepository)
 	lootboxSvc := new(MockLootboxService)
+	publisher := new(MockResilientPublisher)
+	tx := new(MockTx)
 
 	gambleID := uuid.New()
 	gamble := &domain.Gamble{
 		ID:    gambleID,
-		State: domain.GambleStateCreated,
+		State: domain.GambleStateJoining,
 		Participants: []domain.Participant{
 			{UserID: "user1", Username: "player1"},
 		},
 	}
 
 	repo.On("GetGamble", mock.Anything, gambleID).Return(gamble, nil)
-	repo.On("UpdateGambleState", mock.Anything, gambleID, mock.Anything).Return(nil)
-	repo.On("SaveOpenedItems", mock.Anything, mock.Anything).Return(nil)
-	repo.On("CompleteGamble", mock.Anything, mock.Anything).Return(nil)
+	repo.On("BeginGambleTx", mock.Anything).Return(tx, nil)
+	tx.On("UpdateGambleStateIfMatches", mock.Anything, gambleID, domain.GambleStateJoining, domain.GambleStateOpening).Return(int64(1), nil)
+	tx.On("SaveOpenedItems", mock.Anything, mock.Anything).Return(nil)
+	tx.On("CompleteGamble", mock.Anything, mock.Anything).Return(nil)
+	tx.On("Commit", mock.Anything).Return(nil)
+	tx.On("Rollback", mock.Anything).Return(nil)
+
 	lootboxSvc.On("OpenLootbox", mock.Anything, mock.Anything, mock.Anything).Return([]lootbox.DroppedItem{}, nil).Maybe()
 
-	svc := NewService(repo, nil, nil, lootboxSvc, 30*time.Second, nil, nil, nil)
+	// Expect completion event
+	publisher.On("PublishWithRetry", mock.Anything, mock.Anything).Return()
+
+	svc := NewService(repo, nil, publisher, lootboxSvc, 30*time.Second, nil, nil, nil)
 	checker := leaktest.NewGoroutineChecker(t)
 
 	// Execute
@@ -94,6 +109,70 @@ func TestExecuteGamble_NoGoroutineLeak(t *testing.T) {
 
 	// Allow time for any async operations
 	time.Sleep(50 * time.Millisecond)
+
+	// Check for leaks (allow small tolerance)
+	checker.Check(1)
+}
+
+func TestJoinGamble_NoGoroutineLeak(t *testing.T) {
+	// Setup
+	repo := new(MockRepository)
+	publisher := new(MockResilientPublisher)
+
+	gambleID := uuid.New()
+	initiatorID := "initiator1"
+	joinerID := "joiner1"
+
+	gamble := &domain.Gamble{
+		ID:          gambleID,
+		InitiatorID: initiatorID,
+		State:       domain.GambleStateJoining,
+		Participants: []domain.Participant{
+			{
+				UserID: initiatorID,
+				LootboxBets: []domain.LootboxBet{
+					{ItemName: domain.ItemLootbox1, Quantity: 1},
+				},
+			},
+		},
+	}
+
+	user := &domain.User{ID: joinerID, Username: "joiner"}
+	tx := new(MockTx)
+	inventory := &domain.Inventory{
+		Slots: []domain.InventorySlot{
+			{ItemID: 1, Quantity: 10}, // lootbox
+		},
+	}
+	lootboxItem := &domain.Item{ID: 1, InternalName: domain.ItemLootbox1}
+
+	// Mock expectations
+	repo.On("GetUserByPlatformID", mock.Anything, domain.PlatformDiscord, joinerID).Return(user, nil)
+	repo.On("GetGamble", mock.Anything, gambleID).Return(gamble, nil)
+	repo.On("GetItemByName", mock.Anything, domain.ItemLootbox1).Return(lootboxItem, nil)
+	repo.On("GetItemByID", mock.Anything, 1).Return(lootboxItem, nil)
+	repo.On("GetActiveGamble", mock.Anything).Return(gamble, nil)
+
+	repo.On("BeginGambleTx", mock.Anything).Return(tx, nil)
+	tx.On("GetInventory", mock.Anything, joinerID).Return(inventory, nil)
+	tx.On("UpdateInventory", mock.Anything, joinerID, mock.Anything).Return(nil)
+	repo.On("JoinGamble", mock.Anything, mock.Anything).Return(nil)
+	tx.On("Commit", mock.Anything).Return(nil)
+	tx.On("Rollback", mock.Anything).Return(nil)
+
+	// Expect participated event
+	publisher.On("PublishWithRetry", mock.Anything, mock.Anything).Return()
+
+	svc := NewService(repo, nil, publisher, nil, 30*time.Second, nil, nil, nil)
+	checker := leaktest.NewGoroutineChecker(t)
+
+	// Execute
+	ctx := context.Background()
+	err := svc.JoinGamble(ctx, gambleID, domain.PlatformDiscord, joinerID, "joiner")
+
+	if err != nil {
+		t.Logf("JoinGamble error (may be expected): %v", err)
+	}
 
 	// Check for leaks (allow small tolerance)
 	checker.Check(1)
