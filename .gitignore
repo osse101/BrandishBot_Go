@@ -57,6 +57,7 @@ tmp/
 # AI usage files and development artifacts
 .mcp.json
 .agent/*
+.agents/*
 .claude/*
 .Jules/*
 

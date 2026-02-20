@@ -45,8 +45,6 @@ func (s *PackageSelector) resolveSmartPackages(pkgSet map[string]struct{}) error
 
 	if len(changed) == 0 {
 		// No changes detected, but we return nil error so that explicit includes can still run if present
-		// If both are empty, the caller should decide what to do (e.g., skip tests or run all if intended).
-		// For check-coverage, we handle "smart but no packages" by skipping.
 		return nil
 	}
 

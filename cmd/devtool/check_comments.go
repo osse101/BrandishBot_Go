@@ -83,8 +83,13 @@ func (c *CheckCommentsCommand) worker(wg *sync.WaitGroup, paths <-chan string, e
 	for path := range paths {
 		v, err := c.checkFile(path, maxLen)
 		if err != nil {
-			errs <- err
-			return
+			// Do not return early. Report the error and keep draining the paths
+			// channel so the walker doesn't deadlock.
+			select {
+			case errs <- err:
+			default:
+			}
+			continue
 		}
 		if v > 0 {
 			mu.Lock()
