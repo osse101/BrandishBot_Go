@@ -61,6 +61,9 @@ func FindRandomSlot(inventory *domain.Inventory, itemID int, rnd func() float64)
 
 	// Randomly select one
 	randomIdx := int(rnd() * float64(len(matchingIndices)))
+	if randomIdx >= len(matchingIndices) {
+		randomIdx = len(matchingIndices) - 1
+	}
 	slotIdx := matchingIndices[randomIdx]
 	return slotIdx, inventory.Slots[slotIdx].Quantity
 }
@@ -175,6 +178,9 @@ func getShuffledIndices(inventory *domain.Inventory, itemID int, rnd func() floa
 		for i := len(matchingIndices) - 1; i > 0; i-- {
 			j := int(rnd() * float64(i+1))
 			// rnd() returns [0, 1), so j is in [0, i]
+			if j > i {
+				j = i
+			}
 			matchingIndices[i], matchingIndices[j] = matchingIndices[j], matchingIndices[i]
 		}
 	}
