@@ -1,3 +1,22 @@
+# Patch Notes (Week of Feb 20, 2026)
+
+## New Features
+
+- **Chat Interaction**: We've added a new "String Finder" system! The bot can now detect specific keywords in chat (like "Bapanada") and trigger fun responses.
+- **Timeout Stacking**: Timeouts are now smarter. If you get hit by multiple traps or weapons, the duration will stack instead of resetting.
+
+## System Updates
+
+- **Admin Tools**: Admins now have the ability to instantly clear user timeouts from the dashboard.
+- **Active Chatter Tracking**: We've improved how active chatters are tracked to provide better engagement insights.
+- **Lootbox Logic**: The loot distribution engine has been refined for better performance and consistency.
+- **Job System**: Job definitions have been seeded into the database, laying the groundwork for upcoming job-specific bonuses.
+
+## Bug Fixes
+
+- **General**: Various code cleanups and database optimizations to keep things running smoothly.
+- **Documentation**: Updated documentation for the new Chat Interaction system.
+
 # Patch Notes (Week of Feb 13, 2026)
 
 ## New Features
