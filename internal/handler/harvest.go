@@ -58,18 +58,19 @@ func (h *HarvestHandler) Harvest(w http.ResponseWriter, r *http.Request) {
 	// Call harvest service
 	response, err := h.harvestSvc.Harvest(r.Context(), req.Platform, req.PlatformID, req.Username)
 	if err != nil {
-		log.Error("Harvest failed", "error", err, "username", req.Username, "platform", req.Platform)
-
 		// Map specific errors to appropriate HTTP status codes
 		if errors.Is(err, domain.ErrHarvestTooSoon) {
+			log.Info("Harvest too soon", "error", err, "username", req.Username, "platform", req.Platform)
 			respondError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 		if errors.Is(err, domain.ErrUserNotFound) {
+			log.Error("Harvest user not found", "error", err, "username", req.Username, "platform", req.Platform)
 			respondError(w, http.StatusNotFound, "User not found")
 			return
 		}
 
+		log.Error("Harvest failed", "error", err, "username", req.Username, "platform", req.Platform)
 		statusCode, userMsg := mapServiceErrorToUserMessage(err)
 		respondError(w, statusCode, userMsg)
 		return

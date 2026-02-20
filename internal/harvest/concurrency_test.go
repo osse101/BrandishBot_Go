@@ -101,7 +101,7 @@ func TestHarvest_GracefulShutdown(t *testing.T) {
 	mockTx.On("GetHarvestStateWithLock", mock.Anything, userID).Return(&domain.HarvestState{LastHarvestedAt: lastHarvested}, nil)
 
 	// Job Bonus
-	mockJobSvc.On("GetJobBonus", mock.Anything, userID, "farmer", mock.Anything).Return(0.0, nil).Maybe()
+	mockJobSvc.On("GetJobBonus", mock.Anything, userID, "job_farmer", mock.Anything).Return(0.0, nil).Maybe()
 
 	// Progression/Items
 	mockProgressionSvc.On("IsItemUnlocked", mock.Anything, mock.Anything).Return(true, nil).Maybe()
@@ -153,7 +153,7 @@ func TestHarvest_ContextCancellation(t *testing.T) {
 	mockTx.On("GetHarvestStateWithLock", mock.Anything, userID).Return(&domain.HarvestState{LastHarvestedAt: lastHarvested}, nil)
 
 	// Job Bonus
-	mockJobSvc.On("GetJobBonus", mock.Anything, userID, "farmer", mock.Anything).Return(0.0, nil).Maybe()
+	mockJobSvc.On("GetJobBonus", mock.Anything, userID, "job_farmer", mock.Anything).Return(0.0, nil).Maybe()
 
 	// Progression/Items
 	mockProgressionSvc.On("IsItemUnlocked", mock.Anything, mock.Anything).Return(true, nil).Maybe()
