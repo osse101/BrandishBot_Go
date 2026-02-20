@@ -10,6 +10,8 @@ import (
 	"strings"
 )
 
+const generateTriggerPattern = `(\.sql$|interfaces\.go$|go\.mod$|go\.sum$|progression_tree\.json$)`
+
 type PreCommitCommand struct{}
 
 func (c *PreCommitCommand) Name() string {
@@ -144,9 +146,8 @@ func runGoFmt(files []string) error {
 }
 
 func checkGenerate(files []string) error {
-	// Trigger files: .sql$, interfaces.go$, go.mod$, go.sum$, progression_tree.json$
 	shouldRun := false
-	triggerPattern := regexp.MustCompile(`(\.sql$|interfaces\.go$|go\.mod$|go\.sum$|progression_tree\.json$)`)
+	triggerPattern := regexp.MustCompile(generateTriggerPattern)
 
 	for _, f := range files {
 		if triggerPattern.MatchString(f) {
@@ -192,7 +193,12 @@ func runLinter() error {
 func runUnitTests() error {
 	PrintInfo("Analyzing changed packages for unit tests...")
 
-	packages, err := getChangedPackages("", true) // true = check staged changes
+	selector := &PackageSelector{
+		SmartMode:  true,
+		StagedOnly: true,
+	}
+
+	packages, err := selector.SelectPackages()
 	if err != nil {
 		PrintWarning("Failed to detect changed packages: %v. Running all tests.", err)
 		packages = []string{"./..."}
@@ -201,14 +207,6 @@ func runUnitTests() error {
 	if len(packages) == 0 {
 		PrintInfo("No Go packages changed. Skipping unit tests.")
 		return nil
-	}
-
-	// Expand to include dependent packages
-	expanded, err := GetDependentPackages(packages)
-	if err != nil {
-		PrintWarning("Failed to resolve dependent packages: %v. Running tests on changed packages only.", err)
-	} else {
-		packages = expanded
 	}
 
 	PrintInfo("Running unit tests on: %v", packages)
