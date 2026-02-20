@@ -20,7 +20,7 @@ func TestHandleDisassembleItem(t *testing.T) {
 	tests := []struct {
 		name           string
 		requestBody    CraftingActionRequest
-		mockSetup      func(*mocks.MockCraftingService, *mocks.MockProgressionService, *mocks.MockEventBus)
+		mockSetup      func(*mocks.MockCraftingService, *mocks.MockProgressionService, *mocks.MockEventBus, *mocks.MockUserService)
 		expectedStatus int
 		expectedBody   string
 	}{
@@ -33,7 +33,7 @@ func TestHandleDisassembleItem(t *testing.T) {
 				Item:       "lootbox_tier1",
 				Quantity:   2,
 			},
-			mockSetup: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, b *mocks.MockEventBus) {
+			mockSetup: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, b *mocks.MockEventBus, u *mocks.MockUserService) {
 				p.On("IsFeatureUnlocked", mock.Anything, "feature_disassemble").Return(true, nil)
 				c.On("DisassembleItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", "lootbox_tier1", 2).
 					Return(&crafting.DisassembleResult{
@@ -42,10 +42,11 @@ func TestHandleDisassembleItem(t *testing.T) {
 						IsPerfectSalvage:  false,
 						Multiplier:        1.0,
 					}, nil)
+				u.On("GetUserIDByPlatformID", mock.Anything, domain.PlatformTwitch, "test-id").Return("", nil).Maybe()
 
 				b.On("Publish", mock.Anything, mock.MatchedBy(func(e interface{}) bool {
 					return true
-				})).Return(nil)
+				})).Return(nil).Maybe()
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `{"message":"Disassembled 2 items into: 4x lootbox_tier0","outputs":{"lootbox_tier0":4},"quantity_processed":2,"is_perfect_salvage":false,"multiplier":1}`,
@@ -59,7 +60,7 @@ func TestHandleDisassembleItem(t *testing.T) {
 				Item:       "lootbox_tier1",
 				Quantity:   1,
 			},
-			mockSetup: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, b *mocks.MockEventBus) {
+			mockSetup: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, b *mocks.MockEventBus, u *mocks.MockUserService) {
 				p.On("IsFeatureUnlocked", mock.Anything, "feature_disassemble").Return(false, nil)
 				// When locked, it tries to get required nodes to show helpful message
 				// IMPORTANT: Must return []*domain.ProgressionNode (slice of pointers)
@@ -77,7 +78,7 @@ func TestHandleDisassembleItem(t *testing.T) {
 				Item:       "lootbox_tier1",
 				Quantity:   1,
 			},
-			mockSetup: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, b *mocks.MockEventBus) {
+			mockSetup: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, b *mocks.MockEventBus, u *mocks.MockUserService) {
 				p.On("IsFeatureUnlocked", mock.Anything, "feature_disassemble").Return(true, nil)
 				c.On("DisassembleItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", "lootbox_tier1", 1).
 					Return(nil, errors.New(ErrMsgGenericServerError))
@@ -94,7 +95,7 @@ func TestHandleDisassembleItem(t *testing.T) {
 				Item:       "lootbox_tier1",
 				Quantity:   10,
 			},
-			mockSetup: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, b *mocks.MockEventBus) {
+			mockSetup: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, b *mocks.MockEventBus, u *mocks.MockUserService) {
 				p.On("IsFeatureUnlocked", mock.Anything, "feature_disassemble").Return(true, nil)
 				c.On("DisassembleItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", "lootbox_tier1", 10).
 					Return(&crafting.DisassembleResult{
@@ -103,8 +104,9 @@ func TestHandleDisassembleItem(t *testing.T) {
 						IsPerfectSalvage:  true,
 						Multiplier:        1.5,
 					}, nil)
+				u.On("GetUserIDByPlatformID", mock.Anything, domain.PlatformTwitch, "test-id").Return("", nil).Maybe()
 
-				b.On("Publish", mock.Anything, mock.Anything).Return(nil)
+				b.On("Publish", mock.Anything, mock.Anything).Return(nil).Maybe()
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `{"message":"PERFECT SALVAGE! You efficiently recovered more materials! (+50% Bonus): 30x lootbox_tier0","outputs":{"lootbox_tier0":30},"quantity_processed":10,"is_perfect_salvage":true,"multiplier":1.5}`,
@@ -117,9 +119,9 @@ func TestHandleDisassembleItem(t *testing.T) {
 			mockProgression := new(mocks.MockProgressionService)
 			mockBus := new(mocks.MockEventBus)
 
-			tc.mockSetup(mockCrafting, mockProgression, mockBus)
-
-			handler := HandleDisassembleItem(mockCrafting, mockProgression, mockBus)
+			mockUser := mocks.NewMockUserService(t)
+			tc.mockSetup(mockCrafting, mockProgression, mockBus, mockUser)
+			handler := HandleDisassembleItem(mockCrafting, mockUser, mockProgression, mockBus)
 
 			body, _ := json.Marshal(tc.requestBody)
 			req, _ := http.NewRequest("POST", "/user/item/disassemble", bytes.NewBuffer(body))

@@ -23,7 +23,7 @@ func TestHandleUpgradeItem(t *testing.T) {
 	tests := []struct {
 		name           string
 		requestBody    CraftingActionRequest
-		mockSetup      func(*mocks.MockCraftingService, *mocks.MockProgressionService, *mocks.MockEventBus)
+		mockSetup      func(*mocks.MockCraftingService, *mocks.MockProgressionService, *mocks.MockEventBus, *mocks.MockUserService)
 		expectedStatus int
 		expectedBody   string
 	}{
@@ -36,7 +36,7 @@ func TestHandleUpgradeItem(t *testing.T) {
 				Item:       domain.PublicNameJunkbox, // Assuming "junkbox" maps to Lootbox0
 				Quantity:   2,
 			},
-			mockSetup: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, b *mocks.MockEventBus) {
+			mockSetup: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, b *mocks.MockEventBus, u *mocks.MockUserService) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureUpgrade).Return(true, nil)
 				c.On("UpgradeItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.PublicNameJunkbox, 2).
 					Return(&crafting.Result{
@@ -45,11 +45,12 @@ func TestHandleUpgradeItem(t *testing.T) {
 						IsMasterwork:  false,
 						BonusQuantity: 0,
 					}, nil)
+				u.On("GetUserIDByPlatformID", mock.Anything, domain.PlatformTwitch, "test-id").Return("", nil).Maybe()
 
 				b.On("Publish", mock.Anything, mock.MatchedBy(func(e interface{}) bool {
 					// Add event matching logic if needed
 					return true
-				})).Return(nil)
+				})).Return(nil).Maybe()
 				p.On("RecordEngagement", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 			},
 			expectedStatus: http.StatusOK,
@@ -64,7 +65,7 @@ func TestHandleUpgradeItem(t *testing.T) {
 				Item:       domain.PublicNameJunkbox,
 				Quantity:   1,
 			},
-			mockSetup: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, b *mocks.MockEventBus) {
+			mockSetup: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, b *mocks.MockEventBus, u *mocks.MockUserService) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureUpgrade).Return(false, nil)
 				// When locked, it tries to get required nodes
 				// IMPORTANT: Must return []*domain.ProgressionNode (slice of pointers)
@@ -82,7 +83,7 @@ func TestHandleUpgradeItem(t *testing.T) {
 				Item:       domain.PublicNameJunkbox,
 				Quantity:   1,
 			},
-			mockSetup: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, b *mocks.MockEventBus) {
+			mockSetup: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, b *mocks.MockEventBus, u *mocks.MockUserService) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureUpgrade).Return(true, nil)
 				c.On("UpgradeItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.PublicNameJunkbox, 1).
 					Return(nil, errors.New(ErrMsgGenericServerError)) // Return nil result on error
@@ -95,7 +96,7 @@ func TestHandleUpgradeItem(t *testing.T) {
 			requestBody: CraftingActionRequest{
 				Platform: "", // Missing platform
 			},
-			mockSetup: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, b *mocks.MockEventBus) {
+			mockSetup: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, b *mocks.MockEventBus, u *mocks.MockUserService) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureUpgrade).Return(true, nil)
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -110,7 +111,7 @@ func TestHandleUpgradeItem(t *testing.T) {
 				Item:       domain.PublicNameJunkbox,
 				Quantity:   10,
 			},
-			mockSetup: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, b *mocks.MockEventBus) {
+			mockSetup: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, b *mocks.MockEventBus, u *mocks.MockUserService) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureUpgrade).Return(true, nil)
 				c.On("UpgradeItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.PublicNameJunkbox, 10).
 					Return(&crafting.Result{
@@ -119,8 +120,9 @@ func TestHandleUpgradeItem(t *testing.T) {
 						IsMasterwork:  true,
 						BonusQuantity: 10,
 					}, nil)
+				u.On("GetUserIDByPlatformID", mock.Anything, domain.PlatformTwitch, "test-id").Return("", nil).Maybe()
 
-				b.On("Publish", mock.Anything, mock.Anything).Return(nil)
+				b.On("Publish", mock.Anything, mock.Anything).Return(nil).Maybe()
 				p.On("RecordEngagement", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 			},
 			expectedStatus: http.StatusOK,
@@ -135,7 +137,7 @@ func TestHandleUpgradeItem(t *testing.T) {
 				Item:       domain.PublicNameJunkbox,
 				Quantity:   0,
 			},
-			mockSetup: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, b *mocks.MockEventBus) {
+			mockSetup: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, b *mocks.MockEventBus, u *mocks.MockUserService) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureUpgrade).Return(true, nil)
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -150,7 +152,7 @@ func TestHandleUpgradeItem(t *testing.T) {
 				Item:       domain.PublicNameJunkbox,
 				Quantity:   10000,
 			},
-			mockSetup: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, b *mocks.MockEventBus) {
+			mockSetup: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, b *mocks.MockEventBus, u *mocks.MockUserService) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureUpgrade).Return(true, nil)
 				c.On("UpgradeItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.PublicNameJunkbox, 10000).
 					Return(&crafting.Result{
@@ -159,8 +161,9 @@ func TestHandleUpgradeItem(t *testing.T) {
 						IsMasterwork:  false,
 						BonusQuantity: 0,
 					}, nil)
+				u.On("GetUserIDByPlatformID", mock.Anything, domain.PlatformTwitch, "test-id").Return("", nil).Maybe()
 
-				b.On("Publish", mock.Anything, mock.Anything).Return(nil)
+				b.On("Publish", mock.Anything, mock.Anything).Return(nil).Maybe()
 				p.On("RecordEngagement", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 			},
 			expectedStatus: http.StatusOK,
@@ -175,7 +178,7 @@ func TestHandleUpgradeItem(t *testing.T) {
 				Item:       domain.PublicNameJunkbox,
 				Quantity:   10001,
 			},
-			mockSetup: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, b *mocks.MockEventBus) {
+			mockSetup: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, b *mocks.MockEventBus, u *mocks.MockUserService) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureUpgrade).Return(true, nil)
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -190,7 +193,7 @@ func TestHandleUpgradeItem(t *testing.T) {
 				Item:       domain.PublicNameJunkbox,
 				Quantity:   1,
 			},
-			mockSetup: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, b *mocks.MockEventBus) {
+			mockSetup: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, b *mocks.MockEventBus, u *mocks.MockUserService) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureUpgrade).Return(true, nil)
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -205,7 +208,7 @@ func TestHandleUpgradeItem(t *testing.T) {
 				Item:       string(make([]byte, 101)),
 				Quantity:   1,
 			},
-			mockSetup: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, b *mocks.MockEventBus) {
+			mockSetup: func(c *mocks.MockCraftingService, p *mocks.MockProgressionService, b *mocks.MockEventBus, u *mocks.MockUserService) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureUpgrade).Return(true, nil)
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -219,9 +222,9 @@ func TestHandleUpgradeItem(t *testing.T) {
 			mockProgression := new(mocks.MockProgressionService)
 			mockBus := new(mocks.MockEventBus)
 
-			tc.mockSetup(mockCrafting, mockProgression, mockBus)
-
-			handler := HandleUpgradeItem(mockCrafting, mockProgression, mockBus)
+			mockUser := mocks.NewMockUserService(t)
+			tc.mockSetup(mockCrafting, mockProgression, mockBus, mockUser)
+			handler := HandleUpgradeItem(mockCrafting, mockUser, mockProgression, mockBus)
 
 			body, _ := json.Marshal(tc.requestBody)
 			req, _ := http.NewRequest("POST", "/user/item/upgrade", bytes.NewBuffer(body))

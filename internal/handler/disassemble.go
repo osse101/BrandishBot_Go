@@ -11,6 +11,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
+	"github.com/osse101/BrandishBot_Go/internal/user"
 )
 
 type DisassembleItemResponse struct {
@@ -33,7 +34,7 @@ type DisassembleItemResponse struct {
 // @Failure 403 {object} ErrorResponse "Feature locked"
 // @Failure 500 {object} ErrorResponse
 // @Router /user/item/disassemble [post]
-func HandleDisassembleItem(svc crafting.Service, progressionSvc progression.Service, eventBus event.Bus) http.HandlerFunc {
+func HandleDisassembleItem(svc crafting.Service, userSvc user.ManagementService, progressionSvc progression.Service, eventBus event.Bus) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
 
@@ -62,7 +63,9 @@ func HandleDisassembleItem(svc crafting.Service, progressionSvc progression.Serv
 			"outputs", result.Outputs)
 
 		// Track engagement for disassembling
-		trackCraftingEngagement(r.Context(), eventBus, req.Username, "item_disassembled", result.QuantityProcessed)
+		if userID, err := userSvc.GetUserIDByPlatformID(r.Context(), req.Platform, req.PlatformID); err == nil && userID != "" {
+			trackCraftingEngagement(r.Context(), eventBus, userID, "item_disassembled", result.QuantityProcessed)
+		}
 
 		// Construct user message
 		// Optimization: Use strings.Builder and avoid fmt.Sprintf in loop

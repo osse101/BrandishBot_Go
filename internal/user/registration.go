@@ -61,6 +61,27 @@ func (s *service) FindUserByPlatformID(ctx context.Context, platform, platformID
 	return user, nil
 }
 
+// GetUserIDByPlatformID resolves a user's internal UUID from their platform identity.
+// It checks the in-memory userCache first; only falls back to the DB on a miss.
+// Returns ("", nil) if the user is not yet registered (no auto-registration).
+func (s *service) GetUserIDByPlatformID(ctx context.Context, platform, platformID string) (string, error) {
+	if user, ok := s.userCache.Get(platform, platformID); ok {
+		return user.ID, nil
+	}
+
+	user, err := s.repo.GetUserByPlatformID(ctx, platform, platformID)
+	if err != nil {
+		return "", err
+	}
+	if user == nil {
+		return "", nil
+	}
+
+	// Warm the cache for subsequent lookups
+	s.userCache.Set(platform, platformID, user)
+	return user.ID, nil
+}
+
 // HandleIncomingMessage checks if a user exists for an incoming message, creates one if not, and finds string matches.
 func (s *service) HandleIncomingMessage(ctx context.Context, platform, platformID, username, message string) (*domain.MessageResult, error) {
 	log := logger.FromContext(ctx)

@@ -11,17 +11,20 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/middleware"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
+	"github.com/osse101/BrandishBot_Go/internal/user"
 )
 
 type GambleHandler struct {
 	service        gamble.Service
+	userSvc        user.ManagementService
 	progressionSvc progression.Service
 	eventBus       event.Bus
 }
 
-func NewGambleHandler(service gamble.Service, progressionSvc progression.Service, eventBus event.Bus) *GambleHandler {
+func NewGambleHandler(service gamble.Service, userSvc user.ManagementService, progressionSvc progression.Service, eventBus event.Bus) *GambleHandler {
 	return &GambleHandler{
 		service:        service,
+		userSvc:        userSvc,
 		progressionSvc: progressionSvc,
 		eventBus:       eventBus,
 	}
@@ -61,12 +64,14 @@ func (h *GambleHandler) HandleStartGamble(w http.ResponseWriter, r *http.Request
 	log := logger.FromContext(r.Context())
 
 	// Track engagement for gamble start
-	middleware.TrackEngagementFromContext(
-		middleware.WithUserID(r.Context(), req.Username),
-		h.eventBus,
-		"gamble_started",
-		1,
-	)
+	if userID, err := h.userSvc.GetUserIDByPlatformID(r.Context(), req.Platform, req.PlatformID); err == nil && userID != "" {
+		middleware.TrackEngagementFromContext(
+			middleware.WithUserID(r.Context(), userID),
+			h.eventBus,
+			"gamble_started",
+			1,
+		)
+	}
 
 	// Record contribution for gamble start (higher value)
 	if err := h.progressionSvc.RecordEngagement(r.Context(), req.Username, "gamble_started", 3); err != nil {
@@ -113,12 +118,14 @@ func (h *GambleHandler) HandleJoinGamble(w http.ResponseWriter, r *http.Request)
 	log := logger.FromContext(r.Context())
 
 	// Track engagement for gamble join
-	middleware.TrackEngagementFromContext(
-		middleware.WithUserID(r.Context(), req.Username),
-		h.eventBus,
-		"gamble_joined",
-		1,
-	)
+	if userID, err := h.userSvc.GetUserIDByPlatformID(r.Context(), req.Platform, req.PlatformID); err == nil && userID != "" {
+		middleware.TrackEngagementFromContext(
+			middleware.WithUserID(r.Context(), userID),
+			h.eventBus,
+			"gamble_joined",
+			1,
+		)
+	}
 
 	// Record contribution for gamble join
 	if err := h.progressionSvc.RecordEngagement(r.Context(), req.Username, "gamble_joined", 2); err != nil {

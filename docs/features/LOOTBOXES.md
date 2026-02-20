@@ -92,16 +92,16 @@ Higher-tier boxes shift all thresholds upward (+3% per quality tier above Common
 
 The lootbox package was refactored in v2 to separate concerns into semantic files:
 
-| Layer                          | Location                                      |
-| ------------------------------ | --------------------------------------------- |
-| Service Interface & Lifecycle  | `internal/lootbox/service.go`                 |
-| Cache Builder & Progression    | `internal/lootbox/cache.go`                   |
-| Pipeline Logic & RNG           | `internal/lootbox/engine.go`                  |
-| Results & Quality Logic        | `internal/lootbox/results.go`, `quality.go`   |
-| Configuration Types            | `internal/lootbox/config.go`                  |
-| Public Models                  | `internal/lootbox/models.go`                  |
-| Config                         | `configs/loot_tables.json`                    |
-| Schema                         | `configs/schemas/loot_tables.schema.json`     |
+| Layer                         | Location                                    |
+| ----------------------------- | ------------------------------------------- |
+| Service Interface & Lifecycle | `internal/lootbox/service.go`               |
+| Cache Builder & Progression   | `internal/lootbox/cache.go`                 |
+| Pipeline Logic & RNG          | `internal/lootbox/engine.go`                |
+| Results & Quality Logic       | `internal/lootbox/results.go`, `quality.go` |
+| Configuration Types           | `internal/lootbox/config.go`                |
+| Public Models                 | `internal/lootbox/models.go`                |
+| Config                        | `configs/loot_tables.json`                  |
+| Schema                        | `configs/schemas/loot_tables.schema.json`   |
 
 The cache (`map[string]*FlattenedLootbox`) is built once at startup via `buildCache` and is read-only during operation — no mutex required for concurrent opens.
 

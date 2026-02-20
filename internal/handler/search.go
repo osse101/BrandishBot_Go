@@ -61,12 +61,14 @@ func HandleSearch(svc user.Service, progressionSvc progression.Service, eventBus
 		}
 
 		// Track engagement
-		middleware.TrackEngagementFromContext(
-			middleware.WithUserID(r.Context(), req.Username),
-			eventBus,
-			"search",
-			1,
-		)
+		if userID, err := svc.GetUserIDByPlatformID(r.Context(), req.Platform, req.PlatformID); err == nil && userID != "" {
+			middleware.TrackEngagementFromContext(
+				middleware.WithUserID(r.Context(), userID),
+				eventBus,
+				"search",
+				1,
+			)
+		}
 
 		respondJSON(w, http.StatusOK, SearchResponse{
 			Message: resultMessage,

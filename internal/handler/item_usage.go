@@ -118,12 +118,14 @@ func HandleUseItem(svc user.Service, progressionSvc progression.Service, eventBu
 			log.Error("Failed to record use engagement", "error", err)
 			// Don't fail the request
 		}
-		middleware.TrackEngagementFromContext(
-			middleware.WithUserID(r.Context(), req.Username),
-			eventBus,
-			"item_used",
-			req.Quantity,
-		)
+		if userID, err := svc.GetUserIDByPlatformID(r.Context(), req.Platform, req.PlatformID); err == nil && userID != "" {
+			middleware.TrackEngagementFromContext(
+				middleware.WithUserID(r.Context(), userID),
+				eventBus,
+				"item_used",
+				req.Quantity,
+			)
+		}
 
 		// Publish item.used event
 		if err := PublishEvent(r.Context(), eventBus, "item.used", map[string]interface{}{

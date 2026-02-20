@@ -110,11 +110,11 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 				r.Post("/add", handler.HandleAddItemByUsername(userService))
 				r.Post("/remove", handler.HandleRemoveItemByUsername(userService))
 				r.Post("/give", handler.HandleGiveItem(userService))
-				r.Post("/sell", handler.HandleSellItem(economyService, progressionService, eventBus))
-				r.Post("/buy", handler.HandleBuyItem(economyService, progressionService, eventBus))
+				r.Post("/sell", handler.HandleSellItem(economyService, userService, progressionService, eventBus))
+				r.Post("/buy", handler.HandleBuyItem(economyService, userService, progressionService, eventBus))
 				r.Post("/use", handler.HandleUseItem(userService, progressionService, eventBus))
-				r.Post("/upgrade", handler.HandleUpgradeItem(craftingService, progressionService, eventBus))
-				r.Post("/disassemble", handler.HandleDisassembleItem(craftingService, progressionService, eventBus))
+				r.Post("/upgrade", handler.HandleUpgradeItem(craftingService, userService, progressionService, eventBus))
+				r.Post("/disassemble", handler.HandleDisassembleItem(craftingService, userService, progressionService, eventBus))
 			})
 		})
 
@@ -131,7 +131,7 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 		})
 
 		// Gamble routes
-		gambleHandler := handler.NewGambleHandler(gambleService, progressionService, eventBus)
+		gambleHandler := handler.NewGambleHandler(gambleService, userService, progressionService, eventBus)
 		r.Route("/gamble", func(r chi.Router) {
 			r.Post("/start", gambleHandler.HandleStartGamble)
 			r.Post("/join", gambleHandler.HandleJoinGamble)

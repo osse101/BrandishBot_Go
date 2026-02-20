@@ -50,16 +50,16 @@ func PublishEvent(ctx context.Context, eventBus event.Bus, eventType event.Type,
 // Parameters:
 //   - ctx: The request context
 //   - eventBus: The event bus to publish to
-//   - username: The username of the user performing the action
+//   - userID: The internal UUID of the user performing the action
 //   - eventType: The type of engagement event
 //   - quantity: The quantity/count for the engagement metric
 //
 // Example usage:
 //
-//	TrackEngagement(r.Context(), eventBus, req.Username, "item_sold", itemsSold)
-func TrackEngagement(ctx context.Context, eventBus event.Bus, username, eventType string, quantity int) {
+//	TrackEngagement(r.Context(), eventBus, userID, "item_sold", itemsSold)
+func TrackEngagement(ctx context.Context, eventBus event.Bus, userID, eventType string, quantity int) {
 	middleware.TrackEngagementFromContext(
-		middleware.WithUserID(ctx, username),
+		middleware.WithUserID(ctx, userID),
 		eventBus,
 		eventType,
 		quantity,

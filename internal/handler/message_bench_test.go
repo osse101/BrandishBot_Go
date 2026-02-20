@@ -130,6 +130,9 @@ func (m *benchMockUserService) Shutdown(ctx context.Context) error {
 func (m *benchMockUserService) GetActiveChatters() []user.ActiveChatter {
 	return nil
 }
+func (m *benchMockUserService) GetUserIDByPlatformID(ctx context.Context, platform, platformID string) (string, error) {
+	return "", nil
+}
 
 type benchMockEventBus struct{}
 

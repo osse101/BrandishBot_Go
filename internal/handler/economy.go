@@ -9,6 +9,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/middleware"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
+	"github.com/osse101/BrandishBot_Go/internal/user"
 )
 
 type SellItemRequest struct {
@@ -37,7 +38,7 @@ type SellItemResponse struct {
 // @Failure 403 {object} ErrorResponse "Economy feature locked"
 // @Failure 500 {object} ErrorResponse "Internal server error"
 // @Router /api/v1/user/item/sell [post]
-func HandleSellItem(svc economy.Service, progressionSvc progression.Service, eventBus event.Bus) http.HandlerFunc {
+func HandleSellItem(svc economy.Service, userSvc user.ManagementService, progressionSvc progression.Service, eventBus event.Bus) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Check if sell feature is unlocked
 		if CheckFeatureLocked(w, r, progressionSvc, progression.FeatureEconomy) {
@@ -66,12 +67,14 @@ func HandleSellItem(svc economy.Service, progressionSvc progression.Service, eve
 			"money_gained", moneyGained)
 
 		// Track engagement for selling
-		middleware.TrackEngagementFromContext(
-			middleware.WithUserID(r.Context(), req.Username),
-			eventBus,
-			"item_sold",
-			itemsSold,
-		)
+		if userID, err := userSvc.GetUserIDByPlatformID(r.Context(), req.Platform, req.PlatformID); err == nil && userID != "" {
+			middleware.TrackEngagementFromContext(
+				middleware.WithUserID(r.Context(), userID),
+				eventBus,
+				"item_sold",
+				itemsSold,
+			)
+		}
 
 		// Publish item.sold event
 		if err := PublishEvent(r.Context(), eventBus, "item.sold", map[string]interface{}{
@@ -116,7 +119,7 @@ type BuyItemResponse struct {
 // @Failure 403 {object} ErrorResponse "Feature locked"
 // @Failure 500 {object} ErrorResponse
 // @Router /api/v1/user/item/buy [post]
-func HandleBuyItem(svc economy.Service, progressionSvc progression.Service, eventBus event.Bus) http.HandlerFunc {
+func HandleBuyItem(svc economy.Service, userSvc user.ManagementService, progressionSvc progression.Service, eventBus event.Bus) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Check if buy feature is unlocked
 		if CheckFeatureLocked(w, r, progressionSvc, progression.FeatureEconomy) {
@@ -144,12 +147,14 @@ func HandleBuyItem(svc economy.Service, progressionSvc progression.Service, even
 			"items_bought", bought)
 
 		// Track engagement for buying
-		middleware.TrackEngagementFromContext(
-			middleware.WithUserID(r.Context(), req.Username),
-			eventBus,
-			"item_bought",
-			bought,
-		)
+		if userID, err := userSvc.GetUserIDByPlatformID(r.Context(), req.Platform, req.PlatformID); err == nil && userID != "" {
+			middleware.TrackEngagementFromContext(
+				middleware.WithUserID(r.Context(), userID),
+				eventBus,
+				"item_bought",
+				bought,
+			)
+		}
 
 		// Record contribution for buying
 		if err := progressionSvc.RecordEngagement(r.Context(), req.Username, "item_bought", bought); err != nil {
