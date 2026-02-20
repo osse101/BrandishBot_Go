@@ -37,7 +37,7 @@ Dockerfile*
 
 # Documentation (but keep swagger docs needed for build)
 *.md
-docs/
+docs/*
 !docs/swagger/
 
 # Test files
@@ -57,6 +57,9 @@ client/
 # Artifacts (agent brain data)
 .gemini/
 .jules/
+
+# Media files
+media/
 
 # Other directories
 backups/
