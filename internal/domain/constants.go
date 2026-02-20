@@ -514,3 +514,47 @@ const (
 	EventTypeSlotsWin         EventType = "slots_win"
 	EventTypeSlotsMegaJackpot EventType = "slots_mega_jackpot"
 )
+
+// ============================================================================
+// Compost Constants (Moved from compost.go)
+// ============================================================================
+
+// CompostBinStatus represents the state of a compost bin
+type CompostBinStatus string
+
+const (
+	CompostBinStatusIdle       CompostBinStatus = "idle"
+	CompostBinStatusComposting CompostBinStatus = "composting"
+	CompostBinStatusReady      CompostBinStatus = "ready"
+	CompostBinStatusSludge     CompostBinStatus = "sludge"
+)
+
+// ============================================================================
+// Duel Constants (Moved from duel.go)
+// ============================================================================
+
+// DuelState represents the state of a duel
+type DuelState string
+
+const (
+	DuelStatePending    DuelState = "pending"
+	DuelStateAccepted   DuelState = "accepted"
+	DuelStateInProgress DuelState = "in_progress"
+	DuelStateCompleted  DuelState = "completed"
+	DuelStateDeclined   DuelState = "declined"
+	DuelStateExpired    DuelState = "expired"
+)
+
+// ============================================================================
+// Job Constants (Moved from job.go)
+// ============================================================================
+
+// Job keys for referencing specific jobs across various services
+const (
+	JobKeyBlacksmith = "job_blacksmith"
+	JobKeyExplorer   = "job_explorer"
+	JobKeyMerchant   = "job_merchant"
+	JobKeyGambler    = "job_gambler"
+	JobKeyFarmer     = "job_farmer"
+	JobKeyScholar    = "job_scholar"
+)

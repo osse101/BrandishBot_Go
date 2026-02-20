@@ -2,16 +2,6 @@ package domain
 
 import "time"
 
-// CompostBinStatus represents the state of a compost bin
-type CompostBinStatus string
-
-const (
-	CompostBinStatusIdle       CompostBinStatus = "idle"
-	CompostBinStatusComposting CompostBinStatus = "composting"
-	CompostBinStatusReady      CompostBinStatus = "ready"
-	CompostBinStatusSludge     CompostBinStatus = "sludge"
-)
-
 // CompostBin represents a user's compost bin
 type CompostBin struct {
 	ID           string           `json:"id"`
