@@ -17,8 +17,8 @@ func CheckFeatureLocked(w http.ResponseWriter, r *http.Request, svc progression.
 	unlocked, err := svc.IsFeatureUnlocked(r.Context(), key)
 	if err != nil {
 		log.Error("Failed to check feature unlock status", "error", err, "feature", key)
-		statusCode, userMsg := mapServiceErrorToUserMessage(err)
-		respondError(w, statusCode, userMsg)
+		statusCode, userMsg := MapServiceErrorToUserMessage(err)
+		RespondError(w, statusCode, userMsg)
 		return true
 	}
 	if !unlocked {
@@ -39,7 +39,7 @@ func CheckFeatureLocked(w http.ResponseWriter, r *http.Request, svc progression.
 		nodes, err := svc.GetRequiredNodes(r.Context(), key)
 		if err != nil {
 			log.Error("Failed to get required nodes", "error", err, "feature", key)
-			respondError(w, http.StatusForbidden, ErrMsgFeatureLocked)
+			RespondError(w, http.StatusForbidden, ErrMsgFeatureLocked)
 			return true
 		}
 
@@ -53,7 +53,7 @@ func CheckFeatureLocked(w http.ResponseWriter, r *http.Request, svc progression.
 			msg = fmt.Sprintf(MsgLockedNodesFormat, strings.Join(names, ", "))
 		}
 
-		respondError(w, http.StatusForbidden, msg)
+		RespondError(w, http.StatusForbidden, msg)
 		return true
 	}
 	return false

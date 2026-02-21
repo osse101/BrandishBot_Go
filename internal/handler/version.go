@@ -32,7 +32,7 @@ func HandleVersion() http.HandlerFunc {
 			GitCommit: GitCommit,
 		}
 
-		respondJSON(w, http.StatusOK, info)
+		RespondJSON(w, http.StatusOK, info)
 	}
 }
 

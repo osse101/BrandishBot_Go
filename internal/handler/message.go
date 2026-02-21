@@ -53,8 +53,8 @@ func HandleMessageHandler(userService user.Service, progressionSvc progression.S
 				"platform", req.Platform,
 				"platform_id", req.PlatformID,
 				"username", req.Username)
-			statusCode, userMsg := mapServiceErrorToUserMessage(err)
-			respondError(w, statusCode, userMsg)
+			statusCode, userMsg := MapServiceErrorToUserMessage(err)
+			RespondError(w, statusCode, userMsg)
 			return
 		}
 
@@ -77,6 +77,6 @@ func HandleMessageHandler(userService user.Service, progressionSvc progression.S
 			"duration_ms", duration.Milliseconds(),
 			"matches_found", len(result.Matches))
 
-		respondJSON(w, http.StatusOK, result)
+		RespondJSON(w, http.StatusOK, result)
 	}
 }

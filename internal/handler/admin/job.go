@@ -1,6 +1,7 @@
-package handler
+package admin
 
 import (
+	"github.com/osse101/BrandishBot_Go/internal/handler"
 	"net/http"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
@@ -9,33 +10,33 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/user"
 )
 
-// AdminAwardXPRequest is the request body for admin XP awards
-type AdminAwardXPRequest struct {
+// AwardXPRequest is the request body for admin XP awards
+type AwardXPRequest struct {
 	Platform string `json:"platform"` // discord, twitch, youtube
 	Username string `json:"username"` // Platform username
 	JobKey   string `json:"job_key"`  // explorer, blacksmith, etc.
 	Amount   int    `json:"amount"`   //  XP amount to award
 }
 
-// AdminJobHandler handles admin job operations
-type AdminJobHandler struct {
+// JobHandler handles admin job operations
+type JobHandler struct {
 	jobService  job.Service
 	userService user.Service
 }
 
-// NewAdminJobHandler creates a new admin job handler
-func NewAdminJobHandler(jobService job.Service, userService user.Service) *AdminJobHandler {
-	return &AdminJobHandler{
+// NewJobHandler creates a new admin job handler
+func NewJobHandler(jobService job.Service, userService user.Service) *JobHandler {
+	return &JobHandler{
 		jobService:  jobService,
 		userService: userService,
 	}
 }
 
-// HandleAdminAwardXP awards XP to a user identified by platform and username
+// HandleAwardXP awards XP to a user identified by platform and username
 // POST /admin/job/award-xp
-func (h *AdminJobHandler) HandleAdminAwardXP(w http.ResponseWriter, r *http.Request) {
-	var req AdminAwardXPRequest
-	if err := DecodeAndValidateRequest(r, w, &req, "Admin award XP"); err != nil {
+func (h *JobHandler) HandleAwardXP(w http.ResponseWriter, r *http.Request) {
+	var req AwardXPRequest
+	if err := handler.DecodeAndValidateRequest(r, w, &req, "Admin award XP"); err != nil {
 		return
 	}
 
@@ -43,17 +44,17 @@ func (h *AdminJobHandler) HandleAdminAwardXP(w http.ResponseWriter, r *http.Requ
 
 	// Validate required fields
 	if req.Platform == "" || req.Username == "" || req.JobKey == "" {
-		http.Error(w, ErrMsgPlatformUsernameJobRequired, http.StatusBadRequest)
+		http.Error(w, handler.ErrMsgPlatformUsernameJobRequired, http.StatusBadRequest)
 		return
 	}
 
 	if req.Amount <= 0 {
-		http.Error(w, ErrMsgAmountMustBePositive, http.StatusBadRequest)
+		http.Error(w, handler.ErrMsgAmountMustBePositive, http.StatusBadRequest)
 		return
 	}
 
 	if req.Amount > 10000 {
-		http.Error(w, ErrMsgAmountExceedsMax, http.StatusBadRequest)
+		http.Error(w, handler.ErrMsgAmountExceedsMax, http.StatusBadRequest)
 		return
 	}
 
@@ -70,7 +71,7 @@ func (h *AdminJobHandler) HandleAdminAwardXP(w http.ResponseWriter, r *http.Requ
 			"error", err,
 			"platform", req.Platform,
 			"username", req.Username)
-		http.Error(w, ErrMsgUserNotFoundHTTP, http.StatusNotFound)
+		http.Error(w, handler.ErrMsgUserNotFoundHTTP, http.StatusNotFound)
 		return
 	}
 
@@ -92,8 +93,8 @@ func (h *AdminJobHandler) HandleAdminAwardXP(w http.ResponseWriter, r *http.Requ
 			"error", err,
 			"user_id", user.ID,
 			"job_key", req.JobKey)
-		statusCode, userMsg := mapServiceErrorToUserMessage(err)
-		respondError(w, statusCode, userMsg)
+		statusCode, userMsg := handler.MapServiceErrorToUserMessage(err)
+		handler.RespondError(w, statusCode, userMsg)
 		return
 	}
 
@@ -115,5 +116,5 @@ func (h *AdminJobHandler) HandleAdminAwardXP(w http.ResponseWriter, r *http.Requ
 		"result":     result,
 	}
 
-	respondJSON(w, http.StatusOK, response)
+	handler.RespondJSON(w, http.StatusOK, response)
 }

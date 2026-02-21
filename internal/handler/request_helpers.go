@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 )
@@ -47,7 +48,7 @@ func DecodeAndValidateRequest(r *http.Request, w http.ResponseWriter, req interf
 	// Validate the request struct
 	if err := GetValidator().ValidateStruct(req); err != nil {
 		validationErrs := FormatValidationError(err)
-		respondJSON(w, http.StatusBadRequest, ValidationErrorResponse{
+		RespondJSON(w, http.StatusBadRequest, ValidationErrorResponse{
 			Error:  ErrMsgInvalidRequestSummary,
 			Fields: validationErrs,
 		})
@@ -152,9 +153,19 @@ func handleFeatureAction[REQ any, RES any](
 
 	res, err := action(r.Context(), req)
 	if err != nil {
-		respondServiceError(w, r, opName, err)
+		RespondServiceError(w, r, opName, err)
 		return
 	}
 
-	respondJSON(w, http.StatusCreated, responseFactory(res))
+	RespondJSON(w, http.StatusCreated, responseFactory(res))
+}
+
+// IsValidPlatform checks if the platform is valid
+func IsValidPlatform(platform string) bool {
+	switch platform {
+	case domain.PlatformTwitch, domain.PlatformYoutube, domain.PlatformDiscord:
+		return true
+	default:
+		return false
+	}
 }

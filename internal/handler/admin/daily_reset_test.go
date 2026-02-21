@@ -1,4 +1,4 @@
-package handler
+package admin
 
 import (
 	"encoding/json"
@@ -16,10 +16,10 @@ import (
 	"github.com/osse101/BrandishBot_Go/mocks"
 )
 
-func TestNewAdminDailyResetHandler(t *testing.T) {
+func TestNewDailyResetHandler(t *testing.T) {
 	t.Parallel()
 	svc := mocks.NewMockJobService(t)
-	h := NewAdminDailyResetHandler(svc)
+	h := NewDailyResetHandler(svc)
 	assert.NotNil(t, h)
 	assert.Equal(t, svc, h.jobService)
 }
@@ -66,7 +66,7 @@ func TestHandleManualReset(t *testing.T) {
 				tc.setupMock(svc)
 			}
 
-			h := NewAdminDailyResetHandler(svc)
+			h := NewDailyResetHandler(svc)
 			req := httptest.NewRequest("POST", "/admin/jobs/reset-daily-xp", nil)
 			w := httptest.NewRecorder()
 
@@ -137,7 +137,7 @@ func TestHandleGetResetStatus(t *testing.T) {
 				tc.setupMock(svc)
 			}
 
-			h := NewAdminDailyResetHandler(svc)
+			h := NewDailyResetHandler(svc)
 			req := httptest.NewRequest("GET", "/admin/jobs/reset-status", nil)
 			w := httptest.NewRecorder()
 

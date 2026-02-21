@@ -56,8 +56,8 @@ func (h *GambleHandler) HandleStartGamble(w http.ResponseWriter, r *http.Request
 	gamble, err := h.service.StartGamble(r.Context(), req.Platform, req.PlatformID, req.Username, req.Bets)
 	if err != nil {
 		logger.FromContext(r.Context()).Error("Failed to start gamble", "error", err)
-		statusCode, userMsg := mapServiceErrorToUserMessage(err)
-		respondError(w, statusCode, userMsg)
+		statusCode, userMsg := MapServiceErrorToUserMessage(err)
+		RespondError(w, statusCode, userMsg)
 		return
 	}
 
@@ -83,7 +83,7 @@ func (h *GambleHandler) HandleStartGamble(w http.ResponseWriter, r *http.Request
 		Message:  "Gamble started! Others can join using the gamble ID.",
 		GambleID: gamble.ID.String(),
 	}
-	respondJSON(w, http.StatusCreated, response)
+	RespondJSON(w, http.StatusCreated, response)
 }
 
 type JoinGambleRequest struct {
@@ -110,8 +110,8 @@ func (h *GambleHandler) HandleJoinGamble(w http.ResponseWriter, r *http.Request)
 
 	if err := h.service.JoinGamble(r.Context(), gambleID, req.Platform, req.PlatformID, req.Username); err != nil {
 		logger.FromContext(r.Context()).Error("Failed to join gamble", "error", err)
-		statusCode, userMsg := mapServiceErrorToUserMessage(err)
-		respondError(w, statusCode, userMsg)
+		statusCode, userMsg := MapServiceErrorToUserMessage(err)
+		RespondError(w, statusCode, userMsg)
 		return
 	}
 
@@ -133,7 +133,7 @@ func (h *GambleHandler) HandleJoinGamble(w http.ResponseWriter, r *http.Request)
 		// Don't fail the request
 	}
 
-	respondJSON(w, http.StatusOK, map[string]string{"message": MsgJoinedGambleSuccess})
+	RespondJSON(w, http.StatusOK, map[string]string{"message": MsgJoinedGambleSuccess})
 }
 
 func (h *GambleHandler) HandleGetGamble(w http.ResponseWriter, r *http.Request) {
@@ -150,8 +150,8 @@ func (h *GambleHandler) HandleGetGamble(w http.ResponseWriter, r *http.Request) 
 	gamble, err := h.service.GetGamble(r.Context(), gambleID)
 	if err != nil {
 		logger.FromContext(r.Context()).Error("Failed to get gamble", "error", err)
-		statusCode, userMsg := mapServiceErrorToUserMessage(err)
-		respondError(w, statusCode, userMsg)
+		statusCode, userMsg := MapServiceErrorToUserMessage(err)
+		RespondError(w, statusCode, userMsg)
 		return
 	}
 	if gamble == nil {
@@ -159,24 +159,24 @@ func (h *GambleHandler) HandleGetGamble(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	respondJSON(w, http.StatusOK, gamble)
+	RespondJSON(w, http.StatusOK, gamble)
 }
 
 func (h *GambleHandler) HandleGetActiveGamble(w http.ResponseWriter, r *http.Request) {
 	gamble, err := h.service.GetActiveGamble(r.Context())
 	if err != nil {
 		logger.FromContext(r.Context()).Error("Failed to get active gamble", "error", err)
-		statusCode, userMsg := mapServiceErrorToUserMessage(err)
-		respondError(w, statusCode, userMsg)
+		statusCode, userMsg := MapServiceErrorToUserMessage(err)
+		RespondError(w, statusCode, userMsg)
 		return
 	}
 
 	if gamble == nil {
-		respondJSON(w, http.StatusOK, map[string]bool{"active": false})
+		RespondJSON(w, http.StatusOK, map[string]bool{"active": false})
 		return
 	}
 
-	respondJSON(w, http.StatusOK, map[string]interface{}{
+	RespondJSON(w, http.StatusOK, map[string]interface{}{
 		"active": true,
 		"gamble": gamble,
 	})

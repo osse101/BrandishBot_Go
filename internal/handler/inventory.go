@@ -42,14 +42,14 @@ func HandleAddItemByUsername(svc user.Service) http.HandlerFunc {
 
 		if err := svc.AddItemByUsername(r.Context(), req.Platform, req.Username, req.ItemName, req.Quantity); err != nil {
 			log.Error("Failed to add item by username", "error", err, "username", req.Username, "item", req.ItemName)
-			statusCode, userMsg := mapServiceErrorToUserMessage(err)
-			respondError(w, statusCode, userMsg)
+			statusCode, userMsg := MapServiceErrorToUserMessage(err)
+			RespondError(w, statusCode, userMsg)
 			return
 		}
 
 		log.Info("Item added successfully by username", "username", req.Username, "item", req.ItemName, "quantity", req.Quantity)
 
-		respondJSON(w, http.StatusOK, SuccessResponse{Message: MsgItemAddedSuccess})
+		RespondJSON(w, http.StatusOK, SuccessResponse{Message: MsgItemAddedSuccess})
 	}
 }
 
@@ -87,14 +87,14 @@ func HandleRemoveItemByUsername(svc user.Service) http.HandlerFunc {
 		removed, err := svc.RemoveItemByUsername(r.Context(), req.Platform, req.Username, req.ItemName, req.Quantity)
 		if err != nil {
 			log.Error("Failed to remove item by username", "error", err, "username", req.Username, "item", req.ItemName)
-			statusCode, userMsg := mapServiceErrorToUserMessage(err)
-			respondError(w, statusCode, userMsg)
+			statusCode, userMsg := MapServiceErrorToUserMessage(err)
+			RespondError(w, statusCode, userMsg)
 			return
 		}
 
 		log.Info("Item removed successfully by username", "username", req.Username, "item", req.ItemName, "removed", removed)
 
-		respondJSON(w, http.StatusOK, RemoveItemResponse{
+		RespondJSON(w, http.StatusOK, RemoveItemResponse{
 			Message: fmt.Sprintf("Removed %dx %s from %s", removed, req.ItemName, req.Username),
 			Removed: removed,
 		})
@@ -151,8 +151,8 @@ func HandleGetInventory(svc user.Service, progSvc progression.Service) http.Hand
 			unlocked, err := progSvc.IsFeatureUnlocked(r.Context(), featureKey)
 			if err != nil {
 				log.Error("Failed to check filter unlock", "error", err)
-				statusCode, userMsg := mapServiceErrorToUserMessage(err)
-				respondError(w, statusCode, userMsg)
+				statusCode, userMsg := MapServiceErrorToUserMessage(err)
+				RespondError(w, statusCode, userMsg)
 				return
 			}
 			if !unlocked {
@@ -167,14 +167,14 @@ func HandleGetInventory(svc user.Service, progSvc progression.Service) http.Hand
 		items, err := svc.GetInventory(r.Context(), platform, platformID, username, filter)
 		if err != nil {
 			log.Error("Failed to get inventory", "error", err, "username", username)
-			statusCode, userMsg := mapServiceErrorToUserMessage(err)
-			respondError(w, statusCode, userMsg)
+			statusCode, userMsg := MapServiceErrorToUserMessage(err)
+			RespondError(w, statusCode, userMsg)
 			return
 		}
 
 		log.Info("Inventory retrieved", "username", username, "item_count", len(items))
 
-		respondJSON(w, http.StatusOK, GetInventoryResponse{
+		RespondJSON(w, http.StatusOK, GetInventoryResponse{
 			Items: items,
 		})
 	}
@@ -210,14 +210,14 @@ func HandleGetInventoryByUsername(svc user.Service) http.HandlerFunc {
 		items, err := svc.GetInventoryByUsername(r.Context(), platform, username, filter)
 		if err != nil {
 			log.Error("Failed to get inventory by username", "error", err, "username", username)
-			statusCode, userMsg := mapServiceErrorToUserMessage(err)
-			respondError(w, statusCode, userMsg)
+			statusCode, userMsg := MapServiceErrorToUserMessage(err)
+			RespondError(w, statusCode, userMsg)
 			return
 		}
 
 		log.Info("Inventory retrieved by username", "username", username, "item_count", len(items))
 
-		respondJSON(w, http.StatusOK, GetInventoryResponse{
+		RespondJSON(w, http.StatusOK, GetInventoryResponse{
 			Items: items,
 		})
 	}

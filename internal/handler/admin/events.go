@@ -1,6 +1,7 @@
-package handler
+package admin
 
 import (
+	"github.com/osse101/BrandishBot_Go/internal/handler"
 	"net/http"
 	"strconv"
 	"time"
@@ -8,14 +9,14 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/eventlog"
 )
 
-// AdminEventsHandler handles admin event log queries
-type AdminEventsHandler struct {
+// EventsHandler handles admin event log queries
+type EventsHandler struct {
 	eventlogService eventlog.Service
 }
 
-// NewAdminEventsHandler creates a new admin events handler
-func NewAdminEventsHandler(eventlogService eventlog.Service) *AdminEventsHandler {
-	return &AdminEventsHandler{eventlogService: eventlogService}
+// NewEventsHandler creates a new admin events handler
+func NewEventsHandler(eventlogService eventlog.Service) *EventsHandler {
+	return &EventsHandler{eventlogService: eventlogService}
 }
 
 // EventsResponse contains event log query results
@@ -35,7 +36,7 @@ type EventLogEntry struct {
 
 // HandleGetEvents retrieves events based on query parameters
 // GET /api/v1/admin/events?user_id=X&event_type=Y&since=Z&limit=N
-func (h *AdminEventsHandler) HandleGetEvents(w http.ResponseWriter, r *http.Request) {
+func (h *EventsHandler) HandleGetEvents(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 
 	filter := eventlog.EventFilter{
@@ -53,7 +54,7 @@ func (h *AdminEventsHandler) HandleGetEvents(w http.ResponseWriter, r *http.Requ
 	if sinceStr := query.Get("since"); sinceStr != "" {
 		since, err := time.Parse(time.RFC3339, sinceStr)
 		if err != nil {
-			respondError(w, http.StatusBadRequest, "Invalid 'since' timestamp format (use RFC3339)")
+			handler.RespondError(w, http.StatusBadRequest, "Invalid 'since' timestamp format (use RFC3339)")
 			return
 		}
 		filter.Since = &since
@@ -62,7 +63,7 @@ func (h *AdminEventsHandler) HandleGetEvents(w http.ResponseWriter, r *http.Requ
 	if untilStr := query.Get("until"); untilStr != "" {
 		until, err := time.Parse(time.RFC3339, untilStr)
 		if err != nil {
-			respondError(w, http.StatusBadRequest, "Invalid 'until' timestamp format (use RFC3339)")
+			handler.RespondError(w, http.StatusBadRequest, "Invalid 'until' timestamp format (use RFC3339)")
 			return
 		}
 		filter.Until = &until
@@ -71,7 +72,7 @@ func (h *AdminEventsHandler) HandleGetEvents(w http.ResponseWriter, r *http.Requ
 	if limitStr := query.Get("limit"); limitStr != "" {
 		limit, err := strconv.Atoi(limitStr)
 		if err != nil || limit < 1 || limit > 1000 {
-			respondError(w, http.StatusBadRequest, "Invalid 'limit' (must be 1-1000)")
+			handler.RespondError(w, http.StatusBadRequest, "Invalid 'limit' (must be 1-1000)")
 			return
 		}
 		filter.Limit = limit
@@ -79,7 +80,7 @@ func (h *AdminEventsHandler) HandleGetEvents(w http.ResponseWriter, r *http.Requ
 
 	events, err := h.eventlogService.GetEvents(r.Context(), filter)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "Failed to retrieve events")
+		handler.RespondError(w, http.StatusInternalServerError, "Failed to retrieve events")
 		return
 	}
 
@@ -96,5 +97,5 @@ func (h *AdminEventsHandler) HandleGetEvents(w http.ResponseWriter, r *http.Requ
 		}
 	}
 
-	respondJSON(w, http.StatusOK, EventsResponse{Events: entries})
+	handler.RespondJSON(w, http.StatusOK, EventsResponse{Events: entries})
 }

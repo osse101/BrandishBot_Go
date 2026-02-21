@@ -55,8 +55,8 @@ func HandleSearch(svc user.Service, progressionSvc progression.Service, eventBus
 			} else {
 				log.Error("Search failed", "error", err, "username", req.Username)
 			}
-			statusCode, userMsg := mapServiceErrorToUserMessage(err)
-			respondError(w, statusCode, userMsg)
+			statusCode, userMsg := MapServiceErrorToUserMessage(err)
+			RespondError(w, statusCode, userMsg)
 			return
 		}
 
@@ -70,7 +70,7 @@ func HandleSearch(svc user.Service, progressionSvc progression.Service, eventBus
 			)
 		}
 
-		respondJSON(w, http.StatusOK, SearchResponse{
+		RespondJSON(w, http.StatusOK, SearchResponse{
 			Message: resultMessage,
 		})
 	}

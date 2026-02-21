@@ -60,7 +60,7 @@ func (h *ScenarioHandler) HandleGetCapabilities() http.HandlerFunc {
 			Features:     registry.Features(),
 		}
 
-		respondJSON(w, http.StatusOK, response)
+		RespondJSON(w, http.StatusOK, response)
 	}
 }
 
@@ -81,7 +81,7 @@ func (h *ScenarioHandler) HandleGetScenarios() http.HandlerFunc {
 			Total:     len(summaries),
 		}
 
-		respondJSON(w, http.StatusOK, response)
+		RespondJSON(w, http.StatusOK, response)
 	}
 }
 
@@ -98,7 +98,7 @@ func (h *ScenarioHandler) HandleGetScenario() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		scenarioID := r.URL.Query().Get("id")
 		if scenarioID == "" {
-			respondError(w, http.StatusBadRequest, "scenario ID required")
+			RespondError(w, http.StatusBadRequest, "scenario ID required")
 			return
 		}
 
@@ -106,14 +106,14 @@ func (h *ScenarioHandler) HandleGetScenario() http.HandlerFunc {
 		s, _, err := registry.GetScenario(scenarioID)
 		if err != nil {
 			if errors.Is(err, scenario.ErrScenarioNotFound) {
-				respondError(w, http.StatusNotFound, "scenario not found")
+				RespondError(w, http.StatusNotFound, "scenario not found")
 				return
 			}
-			respondError(w, http.StatusInternalServerError, err.Error())
+			RespondError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 
-		respondJSON(w, http.StatusOK, s)
+		RespondJSON(w, http.StatusOK, s)
 	}
 }
 
@@ -133,26 +133,26 @@ func (h *ScenarioHandler) HandleRunScenario() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req RunScenarioRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			respondError(w, http.StatusBadRequest, "invalid request body")
+			RespondError(w, http.StatusBadRequest, "invalid request body")
 			return
 		}
 
 		if req.ScenarioID == "" {
-			respondError(w, http.StatusBadRequest, "scenario_id required")
+			RespondError(w, http.StatusBadRequest, "scenario_id required")
 			return
 		}
 
 		result, err := h.engine.Execute(r.Context(), req.ScenarioID, req.Parameters)
 		if err != nil {
 			if errors.Is(err, scenario.ErrScenarioNotFound) {
-				respondError(w, http.StatusNotFound, "scenario not found")
+				RespondError(w, http.StatusNotFound, "scenario not found")
 				return
 			}
-			respondError(w, http.StatusInternalServerError, err.Error())
+			RespondError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 
-		respondJSON(w, http.StatusOK, result)
+		RespondJSON(w, http.StatusOK, result)
 	}
 }
 
@@ -172,30 +172,30 @@ func (h *ScenarioHandler) HandleRunCustomScenario() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req RunCustomScenarioRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			respondError(w, http.StatusBadRequest, "invalid request body")
+			RespondError(w, http.StatusBadRequest, "invalid request body")
 			return
 		}
 
 		if req.Scenario.ID == "" {
-			respondError(w, http.StatusBadRequest, "scenario.id required")
+			RespondError(w, http.StatusBadRequest, "scenario.id required")
 			return
 		}
 
 		if req.Scenario.Feature == "" {
-			respondError(w, http.StatusBadRequest, "scenario.feature required")
+			RespondError(w, http.StatusBadRequest, "scenario.feature required")
 			return
 		}
 
 		result, err := h.engine.ExecuteCustom(r.Context(), req.Scenario, req.Parameters)
 		if err != nil {
 			if errors.Is(err, scenario.ErrProviderNotFound) {
-				respondError(w, http.StatusNotFound, "provider not found for feature: "+req.Scenario.Feature)
+				RespondError(w, http.StatusNotFound, "provider not found for feature: "+req.Scenario.Feature)
 				return
 			}
-			respondError(w, http.StatusInternalServerError, err.Error())
+			RespondError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 
-		respondJSON(w, http.StatusOK, result)
+		RespondJSON(w, http.StatusOK, result)
 	}
 }

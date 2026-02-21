@@ -39,10 +39,10 @@ func (h *PredictionHandlers) HandleProcessOutcome() http.HandlerFunc {
 
 		result, err := h.service.ProcessOutcome(r.Context(), &req)
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, "Failed to process prediction outcome")
+			RespondError(w, http.StatusInternalServerError, "Failed to process prediction outcome")
 			return
 		}
 
-		respondJSON(w, http.StatusOK, result)
+		RespondJSON(w, http.StatusOK, result)
 	}
 }

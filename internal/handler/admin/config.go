@@ -1,6 +1,7 @@
-package handler
+package admin
 
 import (
+	"github.com/osse101/BrandishBot_Go/internal/handler"
 	"net/http"
 
 	"github.com/osse101/BrandishBot_Go/internal/logger"
@@ -26,7 +27,7 @@ func HandleReloadAliases(resolver naming.Resolver) http.HandlerFunc {
 
 		if err := resolver.Reload(); err != nil {
 			log.Error("Failed to reload naming resolver", "error", err)
-			respondError(w, http.StatusInternalServerError, ErrMsgReloadConfigFailed)
+			handler.RespondError(w, http.StatusInternalServerError, handler.ErrMsgReloadConfigFailed)
 			return
 		}
 
@@ -36,10 +37,10 @@ func HandleReloadAliases(resolver naming.Resolver) http.HandlerFunc {
 		log.Info("Naming resolver configuration reloaded successfully", "active_theme", activeTheme)
 
 		response := map[string]interface{}{
-			"message":      MsgConfigReloadedSuccess,
+			"message":      handler.MsgConfigReloadedSuccess,
 			"active_theme": activeTheme,
 		}
 
-		respondJSON(w, http.StatusOK, response)
+		handler.RespondJSON(w, http.StatusOK, response)
 	}
 }

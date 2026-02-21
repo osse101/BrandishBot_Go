@@ -77,12 +77,12 @@ type AcceptDuelResponse struct {
 func (h *DuelHandler) HandleAccept(w http.ResponseWriter, r *http.Request) {
 	duelIDStr := chi.URLParam(r, "id")
 	if duelIDStr == "" {
-		respondError(w, http.StatusBadRequest, "Missing duel ID")
+		RespondError(w, http.StatusBadRequest, "Missing duel ID")
 		return
 	}
 	duelID, err := uuid.Parse(duelIDStr)
 	if err != nil {
-		respondError(w, http.StatusBadRequest, "Invalid duel ID")
+		RespondError(w, http.StatusBadRequest, "Invalid duel ID")
 		return
 	}
 
@@ -93,7 +93,7 @@ func (h *DuelHandler) HandleAccept(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.service.Accept(r.Context(), req.Platform, req.PlatformID, duelID)
 	if err != nil {
-		respondServiceError(w, r, "Failed to accept duel", err)
+		RespondServiceError(w, r, "Failed to accept duel", err)
 		return
 	}
 
@@ -101,7 +101,7 @@ func (h *DuelHandler) HandleAccept(w http.ResponseWriter, r *http.Request) {
 		Message: "Duel completed!",
 		Result:  result,
 	}
-	respondJSON(w, http.StatusOK, response)
+	RespondJSON(w, http.StatusOK, response)
 }
 
 // DeclineDuelRequest represents a duel decline request
@@ -114,12 +114,12 @@ type DeclineDuelRequest struct {
 func (h *DuelHandler) HandleDecline(w http.ResponseWriter, r *http.Request) {
 	duelIDStr := chi.URLParam(r, "id")
 	if duelIDStr == "" {
-		respondError(w, http.StatusBadRequest, "Missing duel ID")
+		RespondError(w, http.StatusBadRequest, "Missing duel ID")
 		return
 	}
 	duelID, err := uuid.Parse(duelIDStr)
 	if err != nil {
-		respondError(w, http.StatusBadRequest, "Invalid duel ID")
+		RespondError(w, http.StatusBadRequest, "Invalid duel ID")
 		return
 	}
 
@@ -129,11 +129,11 @@ func (h *DuelHandler) HandleDecline(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.service.Decline(r.Context(), req.Platform, req.PlatformID, duelID); err != nil {
-		respondServiceError(w, r, "Failed to decline duel", err)
+		RespondServiceError(w, r, "Failed to decline duel", err)
 		return
 	}
 
-	respondJSON(w, http.StatusOK, map[string]string{"message": "Duel declined"})
+	RespondJSON(w, http.StatusOK, map[string]string{"message": "Duel declined"})
 }
 
 // HandleGetPending handles requests to get pending duels
@@ -145,31 +145,31 @@ func (h *DuelHandler) HandleGetPending(w http.ResponseWriter, r *http.Request) {
 
 	duels, err := h.service.GetPendingDuels(r.Context(), "twitch", username)
 	if err != nil {
-		respondServiceError(w, r, "Failed to get pending duels", err)
+		RespondServiceError(w, r, "Failed to get pending duels", err)
 		return
 	}
 
-	respondJSON(w, http.StatusOK, duels)
+	RespondJSON(w, http.StatusOK, duels)
 }
 
 // HandleGetDuel handles requests to get a specific duel
 func (h *DuelHandler) HandleGetDuel(w http.ResponseWriter, r *http.Request) {
 	duelIDStr := chi.URLParam(r, "id")
 	if duelIDStr == "" {
-		respondError(w, http.StatusBadRequest, "Missing duel ID")
+		RespondError(w, http.StatusBadRequest, "Missing duel ID")
 		return
 	}
 	duelID, err := uuid.Parse(duelIDStr)
 	if err != nil {
-		respondError(w, http.StatusBadRequest, "Invalid duel ID")
+		RespondError(w, http.StatusBadRequest, "Invalid duel ID")
 		return
 	}
 
 	duel, err := h.service.GetDuel(r.Context(), duelID)
 	if err != nil {
-		respondServiceError(w, r, "Failed to get duel", err)
+		RespondServiceError(w, r, "Failed to get duel", err)
 		return
 	}
 
-	respondJSON(w, http.StatusOK, duel)
+	RespondJSON(w, http.StatusOK, duel)
 }

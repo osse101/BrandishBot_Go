@@ -53,14 +53,14 @@ func HandleRecordEvent(svc stats.Service) http.HandlerFunc {
 
 		if err := svc.RecordUserEvent(r.Context(), req.UserID, domain.EventType(req.EventType), req.EventData); err != nil {
 			log.Error("Failed to record event", "error", err, "user_id", req.UserID, "event_type", req.EventType)
-			statusCode, userMsg := mapServiceErrorToUserMessage(err)
-			respondError(w, statusCode, userMsg)
+			statusCode, userMsg := MapServiceErrorToUserMessage(err)
+			RespondError(w, statusCode, userMsg)
 			return
 		}
 
 		log.Info("Event recorded successfully", "user_id", req.UserID, "event_type", req.EventType)
 
-		respondJSON(w, http.StatusOK, SuccessResponse{Message: MsgEventRecordedSuccess})
+		RespondJSON(w, http.StatusOK, SuccessResponse{Message: MsgEventRecordedSuccess})
 	}
 }
 
@@ -94,7 +94,7 @@ func (h *StatsHandler) HandleGetUserStats() http.HandlerFunc {
 		// Require either platform_id or username
 		if platformID == "" && username == "" {
 			log.Warn("Missing required parameter: either platform_id or username required")
-			respondError(w, http.StatusBadRequest, "Either platform_id or username is required")
+			RespondError(w, http.StatusBadRequest, "Either platform_id or username is required")
 			return
 		}
 
@@ -104,7 +104,7 @@ func (h *StatsHandler) HandleGetUserStats() http.HandlerFunc {
 			user, err := h.userRepo.GetUserByPlatformUsername(r.Context(), platform, username)
 			if err != nil {
 				log.Error("Failed to find user by username", "error", err, "platform", platform, "username", username)
-				respondError(w, http.StatusNotFound, "User not found")
+				RespondError(w, http.StatusNotFound, "User not found")
 				return
 			}
 			userID = user.ID
@@ -114,7 +114,7 @@ func (h *StatsHandler) HandleGetUserStats() http.HandlerFunc {
 			user, err := h.userRepo.GetUserByPlatformID(r.Context(), platform, platformID)
 			if err != nil {
 				log.Error("Failed to find user by platform_id", "error", err, "platform", platform, "platform_id", platformID)
-				respondError(w, http.StatusNotFound, "User not found")
+				RespondError(w, http.StatusNotFound, "User not found")
 				return
 			}
 			userID = user.ID
@@ -127,14 +127,14 @@ func (h *StatsHandler) HandleGetUserStats() http.HandlerFunc {
 		summary, err := h.service.GetUserStats(r.Context(), userID, period)
 		if err != nil {
 			log.Error("Failed to get user stats", "error", err, "user_id", userID)
-			statusCode, userMsg := mapServiceErrorToUserMessage(err)
-			respondError(w, statusCode, userMsg)
+			statusCode, userMsg := MapServiceErrorToUserMessage(err)
+			RespondError(w, statusCode, userMsg)
 			return
 		}
 
 		log.Info("User stats retrieved", "user_id", userID, "period", period, "total_events", summary.TotalEvents)
 
-		respondJSON(w, http.StatusOK, summary)
+		RespondJSON(w, http.StatusOK, summary)
 	}
 }
 
@@ -158,14 +158,14 @@ func HandleGetSystemStats(svc stats.Service) http.HandlerFunc {
 		summary, err := svc.GetSystemStats(r.Context(), period)
 		if err != nil {
 			log.Error("Failed to get system stats", "error", err)
-			statusCode, userMsg := mapServiceErrorToUserMessage(err)
-			respondError(w, statusCode, userMsg)
+			statusCode, userMsg := MapServiceErrorToUserMessage(err)
+			RespondError(w, statusCode, userMsg)
 			return
 		}
 
 		log.Info("System stats retrieved", "period", period, "total_events", summary.TotalEvents)
 
-		respondJSON(w, http.StatusOK, summary)
+		RespondJSON(w, http.StatusOK, summary)
 	}
 }
 
@@ -209,14 +209,14 @@ func HandleGetLeaderboard(svc stats.Service) http.HandlerFunc {
 		entries, err := svc.GetLeaderboard(r.Context(), domain.EventType(eventType), period, limit)
 		if err != nil {
 			log.Error("Failed to get leaderboard", "error", err, "event_type", eventType)
-			statusCode, userMsg := mapServiceErrorToUserMessage(err)
-			respondError(w, statusCode, userMsg)
+			statusCode, userMsg := MapServiceErrorToUserMessage(err)
+			RespondError(w, statusCode, userMsg)
 			return
 		}
 
 		log.Info("Leaderboard retrieved", "event_type", eventType, "period", period, "entries", len(entries))
 
-		respondJSON(w, http.StatusOK, map[string]interface{}{
+		RespondJSON(w, http.StatusOK, map[string]interface{}{
 			"event_type": eventType,
 			"period":     period,
 			"entries":    entries,

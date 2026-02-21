@@ -51,8 +51,8 @@ func HandleDisassembleItem(svc crafting.Service, userSvc user.ManagementService,
 		result, err := svc.DisassembleItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.Item, req.Quantity)
 		if err != nil {
 			log.Error("Failed to disassemble item", "error", err, "username", req.Username, "item", req.Item)
-			statusCode, userMsg := mapServiceErrorToUserMessage(err)
-			respondError(w, statusCode, userMsg)
+			statusCode, userMsg := MapServiceErrorToUserMessage(err)
+			RespondError(w, statusCode, userMsg)
 			return
 		}
 
@@ -94,7 +94,7 @@ func HandleDisassembleItem(svc crafting.Service, userSvc user.ManagementService,
 			message = fmt.Sprintf("PERFECT SALVAGE! You efficiently recovered more materials! (+50%% Bonus): %s", outputStr)
 		}
 
-		respondJSON(w, http.StatusOK, DisassembleItemResponse{
+		RespondJSON(w, http.StatusOK, DisassembleItemResponse{
 			Message:           message,
 			Outputs:           result.Outputs,
 			QuantityProcessed: result.QuantityProcessed,

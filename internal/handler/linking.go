@@ -62,12 +62,12 @@ func (h *LinkingHandlers) HandleInitiate() http.HandlerFunc {
 		token, err := h.svc.InitiateLink(r.Context(), req.Platform, req.PlatformID)
 		if err != nil {
 			log.Error("Failed to initiate link", "error", err)
-			statusCode, userMsg := mapServiceErrorToUserMessage(err)
-			respondError(w, statusCode, userMsg)
+			statusCode, userMsg := MapServiceErrorToUserMessage(err)
+			RespondError(w, statusCode, userMsg)
 			return
 		}
 
-		respondJSON(w, http.StatusOK, InitiateResponse{
+		RespondJSON(w, http.StatusOK, InitiateResponse{
 			Token:     token.Token,
 			ExpiresIn: int(token.ExpiresAt.Sub(token.CreatedAt).Seconds()),
 		})
@@ -96,7 +96,7 @@ func (h *LinkingHandlers) HandleClaim() http.HandlerFunc {
 			return
 		}
 
-		respondJSON(w, http.StatusOK, ClaimResponse{
+		RespondJSON(w, http.StatusOK, ClaimResponse{
 			SourcePlatform:       token.SourcePlatform,
 			AwaitingConfirmation: true,
 		})
@@ -125,7 +125,7 @@ func (h *LinkingHandlers) HandleConfirm() http.HandlerFunc {
 			return
 		}
 
-		respondJSON(w, http.StatusOK, result)
+		RespondJSON(w, http.StatusOK, result)
 	}
 }
 
@@ -148,12 +148,12 @@ func (h *LinkingHandlers) HandleUnlink() http.HandlerFunc {
 			// Step 1: Initiate unlink
 			if err := h.svc.InitiateUnlink(r.Context(), req.Platform, req.PlatformID, req.TargetPlatform); err != nil {
 				log.Error("Failed to initiate unlink", "error", err)
-				statusCode, userMsg := mapServiceErrorToUserMessage(err)
-				respondError(w, statusCode, userMsg)
+				statusCode, userMsg := MapServiceErrorToUserMessage(err)
+				RespondError(w, statusCode, userMsg)
 				return
 			}
 
-			respondJSON(w, http.StatusOK, UnlinkInitiateResponse{
+			RespondJSON(w, http.StatusOK, UnlinkInitiateResponse{
 				AwaitingConfirmation: true,
 				Message:              MsgConfirmWithinSeconds,
 			})
@@ -167,7 +167,7 @@ func (h *LinkingHandlers) HandleUnlink() http.HandlerFunc {
 			return
 		}
 
-		respondJSON(w, http.StatusOK, UnlinkConfirmResponse{
+		RespondJSON(w, http.StatusOK, UnlinkConfirmResponse{
 			Success: true,
 			Message: MsgPlatformUnlinked,
 		})
@@ -217,11 +217,11 @@ func (h *LinkingHandlers) HandleStatus() http.HandlerFunc {
 		status, err := h.svc.GetStatus(r.Context(), platform, platformID)
 		if err != nil {
 			log.Error("Failed to get link status", "error", err)
-			statusCode, userMsg := mapServiceErrorToUserMessage(err)
-			respondError(w, statusCode, userMsg)
+			statusCode, userMsg := MapServiceErrorToUserMessage(err)
+			RespondError(w, statusCode, userMsg)
 			return
 		}
 
-		respondJSON(w, http.StatusOK, status)
+		RespondJSON(w, http.StatusOK, status)
 	}
 }

@@ -100,8 +100,8 @@ func HandleUseItem(svc user.Service, progressionSvc progression.Service, eventBu
 		message, err := svc.UseItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.ItemName, req.Quantity, req.TargetUser)
 		if err != nil {
 			log.Error("Failed to use item", "error", err, "username", req.Username, "item", req.ItemName)
-			statusCode, userMsg := mapServiceErrorToUserMessage(err)
-			respondError(w, statusCode, userMsg)
+			statusCode, userMsg := MapServiceErrorToUserMessage(err)
+			RespondError(w, statusCode, userMsg)
 			return
 		}
 
@@ -138,7 +138,7 @@ func HandleUseItem(svc user.Service, progressionSvc progression.Service, eventBu
 			_ = err // Error already logged in PublishEvent
 		}
 
-		respondJSON(w, http.StatusOK, UseItemResponse{
+		RespondJSON(w, http.StatusOK, UseItemResponse{
 			Message: message,
 		})
 	}

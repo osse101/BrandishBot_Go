@@ -63,8 +63,8 @@ func HandleUpgradeItem(svc crafting.Service, userSvc user.ManagementService, pro
 		result, err := svc.UpgradeItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.Item, req.Quantity)
 		if err != nil {
 			log.Error("Failed to upgrade item", "error", err, "username", req.Username, "item", req.Item)
-			statusCode, userMsg := mapServiceErrorToUserMessage(err)
-			respondError(w, statusCode, userMsg)
+			statusCode, userMsg := MapServiceErrorToUserMessage(err)
+			RespondError(w, statusCode, userMsg)
 			return
 		}
 
@@ -91,7 +91,7 @@ func HandleUpgradeItem(svc crafting.Service, userSvc user.ManagementService, pro
 			message = fmt.Sprintf("MASTERWORK! Critical success! You received %dx %s (Bonus: +%d)", result.Quantity, result.ItemName, result.BonusQuantity)
 		}
 
-		respondJSON(w, http.StatusOK, UpgradeItemResponse{
+		RespondJSON(w, http.StatusOK, UpgradeItemResponse{
 			Message:          message,
 			NewItem:          result.ItemName,
 			QuantityUpgraded: result.Quantity,
@@ -138,13 +138,13 @@ func (h *CraftingHandler) HandleGetRecipes() http.HandlerFunc {
 				user, err := h.userRepo.GetUserByPlatformUsername(r.Context(), platform, username)
 				if err != nil {
 					log.Error("Failed to find user by username", "error", err, "platform", platform, "username", username)
-					respondError(w, http.StatusNotFound, "User not found")
+					RespondError(w, http.StatusNotFound, "User not found")
 					return
 				}
 				platformID = getPlatformID(user, platform)
 				if platformID == "" {
 					log.Error("User found but no platform ID", "username", username, "platform", platform)
-					respondError(w, http.StatusNotFound, "User not found on platform")
+					RespondError(w, http.StatusNotFound, "User not found on platform")
 					return
 				}
 				log.Debug("Resolved username to platform_id", "username", username, "platform_id", platformID)
@@ -153,14 +153,14 @@ func (h *CraftingHandler) HandleGetRecipes() http.HandlerFunc {
 			recipes, err := h.service.GetUnlockedRecipes(r.Context(), platform, platformID, username)
 			if err != nil {
 				log.Error("Failed to get unlocked recipes", "error", err, "username", username)
-				statusCode, userMsg := mapServiceErrorToUserMessage(err)
-				respondError(w, statusCode, userMsg)
+				statusCode, userMsg := MapServiceErrorToUserMessage(err)
+				RespondError(w, statusCode, userMsg)
 				return
 			}
 
 			log.Info("Unlocked recipes retrieved", "username", username, "count", len(recipes))
 
-			respondJSON(w, http.StatusOK, UnlockedRecipesResponse{
+			RespondJSON(w, http.StatusOK, UnlockedRecipesResponse{
 				Recipes: recipes,
 			})
 			return
@@ -174,26 +174,26 @@ func (h *CraftingHandler) HandleGetRecipes() http.HandlerFunc {
 			recipe, err := h.service.GetRecipe(r.Context(), itemName, platform, platformID, username)
 			if err != nil {
 				log.Error("Failed to get recipe", "error", err, "item", itemName)
-				statusCode, userMsg := mapServiceErrorToUserMessage(err)
-				respondError(w, statusCode, userMsg)
+				statusCode, userMsg := MapServiceErrorToUserMessage(err)
+				RespondError(w, statusCode, userMsg)
 				return
 			}
 
 			log.Info("Recipe retrieved", "item", itemName, "user", username)
 
-			respondJSON(w, http.StatusOK, recipe)
+			RespondJSON(w, http.StatusOK, recipe)
 			return
 		}
 
 		recipes, err := h.service.GetAllRecipes(r.Context())
 		if err != nil {
 			log.Error("Failed to get all recipes", "error", err)
-			statusCode, userMsg := mapServiceErrorToUserMessage(err)
-			respondError(w, statusCode, userMsg)
+			statusCode, userMsg := MapServiceErrorToUserMessage(err)
+			RespondError(w, statusCode, userMsg)
 			return
 		}
 
-		respondJSON(w, http.StatusOK, AllRecipesResponse{
+		RespondJSON(w, http.StatusOK, AllRecipesResponse{
 			Recipes: recipes,
 		})
 	}
