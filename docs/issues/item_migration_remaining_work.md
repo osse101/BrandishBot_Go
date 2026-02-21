@@ -81,14 +81,9 @@ Handler tests `TestHandleSellItem` and `TestHandleRemoveItem` have pre-existing 
 
 ---
 
-## Testing Checklist
+## Status Update (2026-02-15)
 
-After implementing remaining items:
-
-- [ ] Run `make generate` if SQLC changes needed
-- [ ] Run `make mocks` if interfaces changed
-- [ ] Run `make test` to verify no regressions
-- [ ] Test progression node sync with `make run`
-- [ ] Verify new items appear in `/api/v1/prices` endpoint
-- [ ] Test upgrade/disassemble recipes work
-- [ ] Test each new handler in isolation
+- **Shield System**: Remains unimplemented (no DB schema changes found).
+- **Deferred Items**: Remains pending stream integration.
+- **Handler Config Parsing**: Remains pending.
+- **Explosive/Trap System**: Confirmed as fully implemented.

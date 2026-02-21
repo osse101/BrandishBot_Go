@@ -12,13 +12,9 @@ The `internal/duel/service.go` method `Accept` is a placeholder.
 - **Root Cause**: Missing coin-flip/dice-roll logic and winner awarding logic.
 - **Location**: `internal/duel/service.go:90`.
 
-### 2. Compost System Incomplete
+### 2. Compost System Incomplete (Resolved)
 
-The `internal/compost/service.go` method `Harvest` and parts of `Deposit` are placeholders.
-
-- **Impact**: Users cannot recycle items or claim rewards.
-- **Root Cause**: Missing implementation logic.
-- **Location**: `internal/compost/service.go`.
+Previously incomplete, the Compost system (`internal/compost/`) is now fully implemented.
 
 ### 3. Expedition System (Resolved)
 
@@ -27,7 +23,7 @@ Previously incomplete, the Expedition system (`internal/expedition/service.go`) 
 ## Proposed Solution
 
 - Implement the resolution logic for Duels including random winner selection and reward distribution.
-- Implement the Compost system for item recycling.
+- ~~Implement the Compost system for item recycling.~~ (Done)
 - Add background workers or scheduler jobs to handle timeouts/expirations for Duels.
 
 ## Status Update (2026-01-30)
@@ -39,3 +35,8 @@ Verified that `internal/duel/service.go` (`Accept`) and `internal/expedition/ser
 - **Expeditions**: `ExecuteExpedition` is now implemented. Issue resolved for Expeditions.
 - **Duels**: Still incomplete.
 - **Compost**: Identified as incomplete. Added to this tracking issue.
+
+## Status Update (2026-02-15)
+
+- **Compost**: Fully implemented (`internal/compost/service.go`, `deposit.go`, `harvest.go`, `engine.go`). Issue resolved for Compost.
+- **Duels**: Still incomplete (`Accept` returns "not implemented").
