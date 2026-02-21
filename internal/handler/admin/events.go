@@ -1,12 +1,12 @@
 package admin
 
 import (
-	"github.com/osse101/BrandishBot_Go/internal/handler"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/eventlog"
+	"github.com/osse101/BrandishBot_Go/internal/handler"
 )
 
 // EventsHandler handles admin event log queries

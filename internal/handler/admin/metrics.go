@@ -1,17 +1,17 @@
 package admin
 
 import (
-	"github.com/osse101/BrandishBot_Go/internal/handler"
 	"net/http"
 
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 
+	"github.com/osse101/BrandishBot_Go/internal/handler"
 	"github.com/osse101/BrandishBot_Go/internal/sse"
 )
 
-// AdminMetricsResponse contains JSON-formatted metrics for the admin dashboard
-type AdminMetricsResponse struct {
+// MetricsResponse contains JSON-formatted metrics for the admin dashboard
+type MetricsResponse struct {
 	HTTP     HTTPMetrics     `json:"http"`
 	Events   EventMetrics    `json:"events"`
 	Business BusinessMetrics `json:"business"`
@@ -64,13 +64,13 @@ func (h *MetricsHandler) HandleGetMetrics(w http.ResponseWriter, r *http.Request
 	handler.RespondJSON(w, http.StatusOK, metrics)
 }
 
-func gatherMetrics() (*AdminMetricsResponse, error) {
+func gatherMetrics() (*MetricsResponse, error) {
 	metricFamilies, err := prometheus.DefaultGatherer.Gather()
 	if err != nil {
 		return nil, err
 	}
 
-	resp := &AdminMetricsResponse{
+	resp := &MetricsResponse{
 		HTTP: HTTPMetrics{
 			RequestsTotalByStatus: make(map[string]float64),
 		},
@@ -98,7 +98,7 @@ func gatherMetrics() (*AdminMetricsResponse, error) {
 	return resp, nil
 }
 
-func processHTTPMetric(mf *dto.MetricFamily, resp *AdminMetricsResponse) {
+func processHTTPMetric(mf *dto.MetricFamily, resp *MetricsResponse) {
 	for _, m := range mf.GetMetric() {
 		switch mf.GetName() {
 		case "http_requests_total":
@@ -118,7 +118,7 @@ func processHTTPMetric(mf *dto.MetricFamily, resp *AdminMetricsResponse) {
 	}
 }
 
-func processEventMetric(mf *dto.MetricFamily, resp *AdminMetricsResponse) {
+func processEventMetric(mf *dto.MetricFamily, resp *MetricsResponse) {
 	for _, m := range mf.GetMetric() {
 		eventType := getLabelValue(m, "type")
 		if eventType == "" {
@@ -133,7 +133,7 @@ func processEventMetric(mf *dto.MetricFamily, resp *AdminMetricsResponse) {
 	}
 }
 
-func processBusinessMetric(mf *dto.MetricFamily, resp *AdminMetricsResponse) {
+func processBusinessMetric(mf *dto.MetricFamily, resp *MetricsResponse) {
 	for _, m := range mf.GetMetric() {
 		item := getLabelValue(m, "item")
 		if item == "" {

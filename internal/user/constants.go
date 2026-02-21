@@ -36,7 +36,6 @@ const ArgsTargetUsername = "target_username"
 const ArgsJobName = "job_name"
 const ArgsPlatform = "platform"
 
-
 // ============================================================================
 // Validation Error Messages
 // ============================================================================
