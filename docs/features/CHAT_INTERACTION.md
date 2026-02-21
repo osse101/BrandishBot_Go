@@ -17,15 +17,16 @@ The **String Finder** (`internal/user/string_finder.go`) is a utility that scans
 
 If no external configuration is provided, the system defaults to the following triggers:
 
-| Pattern | Code | Priority |
-| :--- | :--- | :--- |
-| `Bapanada` | `OBS` | 10 |
-| `gary` | `OBS` | 10 |
-| `shedinja` | `OBS` | 10 |
+| Pattern    | Code  | Priority |
+| :--------- | :---- | :------- |
+| `Bapanada` | `OBS` | 10       |
+| `gary`     | `OBS` | 10       |
+| `shedinja` | `OBS` | 10       |
 
 ### Configuration
 
 Rules can be loaded from a JSON configuration file. Each rule consists of:
+
 - `pattern`: The string to search for.
 - `code`: An internal code used by the bot to determine the response type.
 - `priority`: Integer priority level.

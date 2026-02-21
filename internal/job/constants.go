@@ -53,7 +53,7 @@ const (
 	MerchantBonusPerLevel  = 0.5  // 0.5% price adjustment per level
 
 	// Scholar XP awards
-	ScholarXPPerEngagement = 5
+	ScholarXPPerEngagement = 2
 	ScholarBonusPerLevel   = 10.0 // 10% engagement value increase per level
 )
 

@@ -120,6 +120,8 @@ type ProgressionAllUnlockedPayloadV1 struct {
 // JobLevelUpPayloadV1 is the typed payload for job level up events
 type JobLevelUpPayloadV1 struct {
 	UserID   string `json:"user_id"`
+	Username string `json:"username,omitempty"`
+	Platform string `json:"platform,omitempty"`
 	JobKey   string `json:"job_key"`
 	OldLevel int    `json:"old_level"`
 	NewLevel int    `json:"new_level"`
@@ -227,12 +229,14 @@ func NewProgressionAllUnlockedEvent(message string) Event {
 }
 
 // NewJobLevelUpEvent creates a new job level up event
-func NewJobLevelUpEvent(userID, jobKey string, oldLevel, newLevel int, source string) Event {
+func NewJobLevelUpEvent(userID, username, platform, jobKey string, oldLevel, newLevel int, source string) Event {
 	return Event{
 		Version: EventSchemaVersion,
 		Type:    Type(domain.EventTypeJobLevelUp),
 		Payload: JobLevelUpPayloadV1{
 			UserID:   userID,
+			Username: username,
+			Platform: platform,
 			JobKey:   jobKey,
 			OldLevel: oldLevel,
 			NewLevel: newLevel,

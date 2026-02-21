@@ -1,3 +1,4 @@
-Voting_Session returns no options
-Voting on Same option in different sessions causes unique key violation, should be tied to session not vote option
-GetInventory needs sperator between money and items
+Scholar levelup too fast
+Levelup to twitch shows UserID instead of username
+Levelup to Discord shows generic user instead of username
+Levelup shows cross platform when it should be specific to the platform

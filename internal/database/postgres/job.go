@@ -44,6 +44,23 @@ func (r *JobRepository) GetUserByPlatformID(ctx context.Context, platform, platf
 	return mapUserAndLinks(ctx, r.q, row.UserID, row.Username)
 }
 
+func (r *JobRepository) GetUserByID(ctx context.Context, userID string) (*domain.User, error) {
+	userUUID, err := parseUserUUID(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	row, err := r.q.GetUserByID(ctx, userUUID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrUserNotFound
+		}
+		return nil, fmt.Errorf("failed to get user by id: %w", err)
+	}
+
+	return mapUserAndLinks(ctx, r.q, row.UserID, row.Username)
+}
+
 // GetAllJobs retrieves all job definitions
 func (r *JobRepository) GetAllJobs(ctx context.Context) ([]domain.Job, error) {
 	rows, err := r.q.GetAllJobs(ctx)

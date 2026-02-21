@@ -88,8 +88,14 @@ func (s *Subscriber) handleJobLevelUp(_ context.Context, evt event.Event) error 
 		}
 	}
 
+	// Only send to Streamerbot for Twitch platform
+	if payload.Platform != "" && payload.Platform != domain.PlatformTwitch {
+		return nil
+	}
+
 	args := map[string]string{
 		"user_id":   payload.UserID,
+		"username":  payload.Username,
 		"job_key":   payload.JobKey,
 		"old_level": fmt.Sprintf("%d", payload.OldLevel),
 		"new_level": fmt.Sprintf("%d", payload.NewLevel),

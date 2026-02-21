@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/bwmarrin/discordgo"
+
+	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
 // SSENotifier handles sending Discord notifications for SSE events
@@ -41,6 +43,8 @@ func (n *SSENotifier) RegisterHandlers(client *SSEClient) {
 // JobLevelUpPayload is the payload for job level up events
 type JobLevelUpPayload struct {
 	UserID   string `json:"user_id"`
+	Username string `json:"username,omitempty"`
+	Platform string `json:"platform,omitempty"`
 	JobKey   string `json:"job_key"`
 	OldLevel int    `json:"old_level"`
 	NewLevel int    `json:"new_level"`
@@ -106,12 +110,21 @@ func (n *SSENotifier) handleJobLevelUp(event SSEEvent) error {
 		return nil
 	}
 
-	// Format job name nicely
+	// Only send notifications for Discord platform or if it's a test
+	if payload.Platform != "" && payload.Platform != domain.PlatformDiscord && !payload.IsTest {
+		return nil
+	}
+
 	jobName := formatJobName(payload.JobKey)
+
+	userDisplay := "A user"
+	if payload.Username != "" {
+		userDisplay = fmt.Sprintf("**%s**", payload.Username)
+	}
 
 	embed := &discordgo.MessageEmbed{
 		Title:       fmt.Sprintf("Level Up! %s", jobName),
-		Description: fmt.Sprintf("A user has reached **level %d** in %s!", payload.NewLevel, jobName),
+		Description: fmt.Sprintf("%s has reached **level %d** in %s!", userDisplay, payload.NewLevel, jobName),
 		Color:       0xFFD700, // Gold
 		Fields: []*discordgo.MessageEmbedField{
 			{

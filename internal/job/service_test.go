@@ -75,6 +75,14 @@ func (m *MockRepository) GetUserByPlatformID(ctx context.Context, platform, plat
 	return args.Get(0).(*domain.User), args.Error(1)
 }
 
+func (m *MockRepository) GetUserByID(ctx context.Context, userID string) (*domain.User, error) {
+	args := m.Called(ctx, userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.User), args.Error(1)
+}
+
 func (m *MockRepository) GetUserJobsByPlatform(ctx context.Context, platform, platformID string) ([]domain.UserJob, error) {
 	args := m.Called(ctx, platform, platformID)
 	if args.Get(0) == nil {

@@ -68,7 +68,19 @@ func (m *MockRepo) GetUserJobs(ctx context.Context, userID string) ([]domain.Use
 }
 
 func (m *MockRepo) GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error) {
-	return nil, nil
+	args := m.Called(ctx, platform, platformID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.User), args.Error(1)
+}
+
+func (m *MockRepo) GetUserByID(ctx context.Context, userID string) (*domain.User, error) {
+	args := m.Called(ctx, userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.User), args.Error(1)
 }
 
 func (m *MockRepo) GetUserJobsByPlatform(ctx context.Context, platform, platformID string) ([]domain.UserJob, error) {
@@ -222,11 +234,16 @@ func TestAwardXP_GuaranteedCriticalSuccess(t *testing.T) {
 	mockRepo := new(MockRepo)
 	mockProg := new(MockProgression)
 	mockBus := new(MockBus)
+	pubMaxRetries := 3
+	pubTimeout := 100 * time.Millisecond
+
+	// Setup test values
+	testAwardXP := 100
 
 	// Use nil publisher as we aren't testing that part here, or mock if needed.
 	// The service helper allows nil publisher for basic ops, but let's be safe and provide one.
 	tmpFile := t.TempDir() + "/deadletter_crit.jsonl"
-	resilientPub, _ := event.NewResilientPublisher(mockBus, 3, 100*time.Millisecond, tmpFile)
+	resilientPub, _ := event.NewResilientPublisher(mockBus, pubMaxRetries, pubTimeout, tmpFile)
 	defer resilientPub.Shutdown(context.Background())
 
 	svc := NewService(mockRepo, mockProg, mockBus, resilientPub)
@@ -264,12 +281,12 @@ func TestAwardXP_GuaranteedCriticalSuccess(t *testing.T) {
 	// No level-up expected (200 total XP is still level 1 with new curve)
 
 	// Test case: baseAmount=100 with EpiphanyMultiplier=2.0 (crit success).
-	result, err := svc.AwardXP(ctx, "user_crit", "warrior", 100, "test", domain.JobXPMetadata{})
+	result, err := svc.AwardXP(ctx, "user_crit", "warrior", testAwardXP, "test", domain.JobXPMetadata{})
 
 	// Assert
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
-	expectedXP := 100 * 2
+	expectedXP := testAwardXP * EpiphanyMultiplier
 	assert.Equal(t, expectedXP, result.XPGained)
 
 	mockRepo.AssertExpectations(t)

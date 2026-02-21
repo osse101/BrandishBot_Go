@@ -11,6 +11,7 @@ import (
 type Job interface {
 	GetAllJobs(ctx context.Context) ([]domain.Job, error)
 	GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error)
+	GetUserByID(ctx context.Context, userID string) (*domain.User, error)
 	GetJobByKey(ctx context.Context, jobKey string) (*domain.Job, error)
 	GetUserJobs(ctx context.Context, userID string) ([]domain.UserJob, error)
 	GetUserJob(ctx context.Context, userID string, jobID int) (*domain.UserJob, error)

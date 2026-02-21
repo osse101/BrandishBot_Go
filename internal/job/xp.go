@@ -43,12 +43,15 @@ func (s *service) AwardXP(ctx context.Context, userID string, jobKey string, bas
 	newXP := currentProgress.CurrentXP + int64(actualAmount)
 	newLevel := s.calculateNewLevel(ctx, newXP)
 
+	username := metadata.Username
+	platform := metadata.Platform
+
 	now := time.Now()
 	if err := s.updateUserJobProgress(ctx, currentProgress, newXP, newLevel, actualAmount, &now); err != nil {
 		return nil, err
 	}
 
-	s.recordXPAndLevelUpEvents(ctx, userID, jobKey, job.ID, actualAmount, oldLevel, newLevel, source, metadata, &now)
+	s.recordXPAndLevelUpEvents(ctx, userID, username, platform, jobKey, job.ID, actualAmount, oldLevel, newLevel, source, metadata, &now)
 
 	return &domain.XPAwardResult{
 		JobKey:    jobKey,
@@ -63,6 +66,13 @@ func (s *service) AwardXPByPlatform(ctx context.Context, platform string, platfo
 	user, err := s.repo.GetUserByPlatformID(ctx, platform, platformID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+
+	if metadata.Username == "" {
+		metadata.Username = user.Username
+	}
+	if metadata.Platform == "" {
+		metadata.Platform = platform
 	}
 
 	return s.AwardXP(ctx, user.ID, jobKey, baseAmount, source, metadata)
@@ -141,7 +151,7 @@ func (s *service) updateUserJobProgress(ctx context.Context, progress *domain.Us
 	return nil
 }
 
-func (s *service) recordXPAndLevelUpEvents(ctx context.Context, userID, jobKey string, jobID int, actualAmount int, oldLevel, newLevel int, source string, metadata domain.JobXPMetadata, now *time.Time) {
+func (s *service) recordXPAndLevelUpEvents(ctx context.Context, userID, username, platform, jobKey string, jobID int, actualAmount int, oldLevel, newLevel int, source string, metadata domain.JobXPMetadata, now *time.Time) {
 	log := logger.FromContext(ctx)
 
 	// Record XP event
@@ -161,13 +171,13 @@ func (s *service) recordXPAndLevelUpEvents(ctx context.Context, userID, jobKey s
 	log.Info("Awarded job XP", "user_id", userID, "job", jobKey, "xp", actualAmount, "new_level", newLevel, "leveled_up", newLevel > oldLevel)
 
 	if newLevel > oldLevel {
-		s.handleLevelUp(ctx, userID, jobKey, oldLevel, newLevel, source)
+		s.handleLevelUp(ctx, userID, username, platform, jobKey, oldLevel, newLevel, source)
 	}
 }
 
-func (s *service) handleLevelUp(ctx context.Context, userID, jobKey string, oldLevel, newLevel int, source string) {
+func (s *service) handleLevelUp(ctx context.Context, userID, username, platform, jobKey string, oldLevel, newLevel int, source string) {
 	if s.publisher != nil {
-		s.publisher.PublishWithRetry(ctx, event.NewJobLevelUpEvent(userID, jobKey, oldLevel, newLevel, source))
+		s.publisher.PublishWithRetry(ctx, event.NewJobLevelUpEvent(userID, username, platform, jobKey, oldLevel, newLevel, source))
 	}
 }
 
