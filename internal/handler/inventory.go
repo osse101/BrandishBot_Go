@@ -193,7 +193,7 @@ func HandleGetInventory(svc user.Service, progSvc progression.Service) http.Hand
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /api/v1/user/inventory-by-username [get]
-func HandleGetInventoryByUsername(svc user.Service) http.HandlerFunc {
+func HandleGetInventoryByUsername(svc user.Service, progSvc progression.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromContext(r.Context())
 
@@ -204,6 +204,31 @@ func HandleGetInventoryByUsername(svc user.Service) http.HandlerFunc {
 			return
 		}
 		filter := r.URL.Query().Get("filter")
+
+		// Validate filter parameter
+		if filter != "" && !domain.IsValidFilterType(filter) {
+			log.Warn("Invalid filter parameter", "filter", filter)
+			http.Error(w, fmt.Sprintf(ErrMsgInvalidFilterType, filter), http.StatusBadRequest)
+			return
+		}
+
+		// Check filter unlock status
+		if filter != "" {
+			featureKey := fmt.Sprintf("feature_filter_%s", filter)
+			// We only check locks for the specific ones we added.
+			unlocked, err := progSvc.IsFeatureUnlocked(r.Context(), featureKey)
+			if err != nil {
+				log.Error("Failed to check filter unlock", "error", err)
+				statusCode, userMsg := mapServiceErrorToUserMessage(err)
+				respondError(w, statusCode, userMsg)
+				return
+			}
+			if !unlocked {
+				log.Warn("Filter locked", "filter", filter, "username", username)
+				http.Error(w, fmt.Sprintf(ErrMsgFilterLocked, filter), http.StatusForbidden)
+				return
+			}
+		}
 
 		log.Debug("Get inventory by username request", "username", username, "filter", filter)
 
