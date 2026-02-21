@@ -104,7 +104,7 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 			r.Get("/timeout", handler.HandleGetTimeout(userService))
 			r.Put("/timeout", handler.HandleSetTimeout(userService))
 			r.Get("/inventory", handler.HandleGetInventory(userService, progressionService))
-			r.Get("/inventory-by-username", handler.HandleGetInventoryByUsername(userService))
+			r.Get("/inventory-by-username", handler.HandleGetInventoryByUsername(userService, progressionService))
 			r.Post("/search", handler.HandleSearch(userService, progressionService, eventBus))
 
 			r.Route("/item", func(r chi.Router) {

@@ -66,6 +66,42 @@ func TestHandleAddItem(t *testing.T) {
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   ErrMsgGenericServerError,
 		},
+		{
+			name: "Invalid Platform",
+			requestBody: AddItemByUsernameRequest{
+				Platform: "invalid_platform",
+				Username: "testuser",
+				ItemName: domain.ItemBlaster,
+				Quantity: 1,
+			},
+			setupMock:      func(m *mocks.MockUserService) {},
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "Invalid request",
+		},
+		{
+			name: "Negative Quantity",
+			requestBody: AddItemByUsernameRequest{
+				Platform: domain.PlatformTwitch,
+				Username: "testuser",
+				ItemName: domain.ItemBlaster,
+				Quantity: -1,
+			},
+			setupMock:      func(m *mocks.MockUserService) {},
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "Invalid request",
+		},
+		{
+			name: "Empty Item Name",
+			requestBody: AddItemByUsernameRequest{
+				Platform: domain.PlatformTwitch,
+				Username: "testuser",
+				ItemName: "",
+				Quantity: 1,
+			},
+			setupMock:      func(m *mocks.MockUserService) {},
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "Invalid request",
+		},
 	}
 
 	for _, tt := range tests {
@@ -127,6 +163,30 @@ func TestHandleRemoveItem(t *testing.T) {
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   ErrMsgGenericServerError,
+		},
+		{
+			name: "Invalid Platform",
+			requestBody: RemoveItemByUsernameRequest{
+				Platform: "invalid_platform",
+				Username: "testuser",
+				ItemName: domain.ItemBlaster,
+				Quantity: 1,
+			},
+			setupMock:      func(m *mocks.MockUserService) {},
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "Invalid request",
+		},
+		{
+			name: "Negative Quantity",
+			requestBody: RemoveItemByUsernameRequest{
+				Platform: domain.PlatformTwitch,
+				Username: "testuser",
+				ItemName: domain.ItemBlaster,
+				Quantity: -1,
+			},
+			setupMock:      func(m *mocks.MockUserService) {},
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "Invalid request",
 		},
 	}
 
@@ -379,7 +439,7 @@ func TestHandleGetInventoryByUsername(t *testing.T) {
 		username       string
 		platform       string
 		filter         string
-		setupMock      func(*mocks.MockUserService)
+		setupMock      func(*mocks.MockUserService, *mocks.MockProgressionService)
 		expectedStatus int
 		expectedBody   string
 	}{
@@ -388,7 +448,7 @@ func TestHandleGetInventoryByUsername(t *testing.T) {
 			username: "testuser",
 			platform: domain.PlatformDiscord,
 			filter:   "",
-			setupMock: func(m *mocks.MockUserService) {
+			setupMock: func(m *mocks.MockUserService, p *mocks.MockProgressionService) {
 				items := []user.InventoryItem{
 					{InternalName: domain.ItemBlaster, PublicName: "missile", Quantity: 1, QualityLevel: "COMMON"},
 				}
@@ -402,21 +462,44 @@ func TestHandleGetInventoryByUsername(t *testing.T) {
 			username: "testuser",
 			platform: domain.PlatformDiscord,
 			filter:   domain.FilterTypeUpgrade,
-			setupMock: func(m *mocks.MockUserService) {
+			setupMock: func(m *mocks.MockUserService, p *mocks.MockProgressionService) {
 				items := []user.InventoryItem{
 					{InternalName: domain.ItemLootbox0, PublicName: "junkbox", Quantity: 1, QualityLevel: "COMMON"},
 				}
+				p.On("IsFeatureUnlocked", mock.Anything, "feature_filter_upgrade").Return(true, nil)
 				m.On("GetInventoryByUsername", mock.Anything, domain.PlatformDiscord, "testuser", domain.FilterTypeUpgrade).Return(items, nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `"items":[{"item_name":"lootbox_tier0","public_name":"junkbox","quantity":1,"quality_level":"COMMON"}]`,
 		},
 		{
+			name:     "Locked Filter",
+			username: "testuser",
+			platform: domain.PlatformDiscord,
+			filter:   domain.FilterTypeUpgrade,
+			setupMock: func(m *mocks.MockUserService, p *mocks.MockProgressionService) {
+				p.On("IsFeatureUnlocked", mock.Anything, "feature_filter_upgrade").Return(false, nil)
+			},
+			expectedStatus: http.StatusForbidden,
+			expectedBody:   "Filter 'upgrade' is locked",
+		},
+		{
+			name:     "Invalid Filter",
+			username: "testuser",
+			platform: domain.PlatformDiscord,
+			filter:   "invalid_filter",
+			setupMock: func(m *mocks.MockUserService, p *mocks.MockProgressionService) {
+				// No interactions expected
+			},
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "Invalid filter type",
+		},
+		{
 			name:           "Missing Username",
 			username:       "",
 			platform:       domain.PlatformDiscord,
 			filter:         "",
-			setupMock:      func(m *mocks.MockUserService) {},
+			setupMock:      func(m *mocks.MockUserService, p *mocks.MockProgressionService) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   "Missing username query parameter",
 		},
@@ -425,7 +508,7 @@ func TestHandleGetInventoryByUsername(t *testing.T) {
 			username: "testuser",
 			platform: domain.PlatformDiscord,
 			filter:   "",
-			setupMock: func(m *mocks.MockUserService) {
+			setupMock: func(m *mocks.MockUserService, p *mocks.MockProgressionService) {
 				m.On("GetInventoryByUsername", mock.Anything, domain.PlatformDiscord, "testuser", "").Return(nil, errors.New(ErrMsgGenericServerError))
 			},
 			expectedStatus: http.StatusInternalServerError,
@@ -436,9 +519,10 @@ func TestHandleGetInventoryByUsername(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockUser := mocks.NewMockUserService(t)
-			tt.setupMock(mockUser)
+			mockProg := mocks.NewMockProgressionService(t)
+			tt.setupMock(mockUser, mockProg)
 
-			handler := HandleGetInventoryByUsername(mockUser)
+			handler := HandleGetInventoryByUsername(mockUser, mockProg)
 
 			// Build URL with query parameters
 			params := []string{}
@@ -463,6 +547,7 @@ func TestHandleGetInventoryByUsername(t *testing.T) {
 				assert.Contains(t, w.Body.String(), tt.expectedBody)
 			}
 			mockUser.AssertExpectations(t)
+			mockProg.AssertExpectations(t)
 		})
 	}
 }
