@@ -33,7 +33,7 @@ func HandleHealthz() http.HandlerFunc {
 			Status: "ok",
 		}
 
-		respondJSON(w, http.StatusOK, response)
+		RespondJSON(w, http.StatusOK, response)
 	}
 }
 
@@ -59,7 +59,7 @@ func HandleReadyz(dbPool database.Pool) http.HandlerFunc {
 				Message: "database connection failed",
 			}
 
-			respondJSON(w, http.StatusServiceUnavailable, response)
+			RespondJSON(w, http.StatusServiceUnavailable, response)
 			return
 		}
 
@@ -67,6 +67,6 @@ func HandleReadyz(dbPool database.Pool) http.HandlerFunc {
 			Status: "ok",
 		}
 
-		respondJSON(w, http.StatusOK, response)
+		RespondJSON(w, http.StatusOK, response)
 	}
 }

@@ -85,11 +85,11 @@ func (h *ExpeditionHandler) HandleJoin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.service.JoinExpedition(r.Context(), req.Platform, req.PlatformID, req.Username, expeditionID); err != nil {
-		respondServiceError(w, r, "Failed to join expedition", err)
+		RespondServiceError(w, r, "Failed to join expedition", err)
 		return
 	}
 
-	respondJSON(w, http.StatusOK, map[string]string{"message": "Joined expedition!"})
+	RespondJSON(w, http.StatusOK, map[string]string{"message": "Joined expedition!"})
 }
 
 // HandleGet handles expedition get requests
@@ -108,11 +108,11 @@ func (h *ExpeditionHandler) HandleGetActive(w http.ResponseWriter, r *http.Reque
 
 	expedition, err := h.service.GetActiveExpedition(r.Context())
 	if err != nil {
-		respondServiceError(w, r, "Failed to get active expedition", err)
+		RespondServiceError(w, r, "Failed to get active expedition", err)
 		return
 	}
 
-	respondJSON(w, http.StatusOK, expedition)
+	RespondJSON(w, http.StatusOK, expedition)
 }
 
 // HandleGetJournal handles expedition journal requests
@@ -131,11 +131,11 @@ func (h *ExpeditionHandler) HandleGetStatus(w http.ResponseWriter, r *http.Reque
 
 	status, err := h.service.GetStatus(r.Context())
 	if err != nil {
-		respondServiceError(w, r, "Failed to get expedition status", err)
+		RespondServiceError(w, r, "Failed to get expedition status", err)
 		return
 	}
 
-	respondJSON(w, http.StatusOK, status)
+	RespondJSON(w, http.StatusOK, status)
 }
 
 func (h *ExpeditionHandler) parseExpeditionID(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {
@@ -145,7 +145,7 @@ func (h *ExpeditionHandler) parseExpeditionID(w http.ResponseWriter, r *http.Req
 	}
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		respondError(w, http.StatusBadRequest, "Invalid expedition ID")
+		RespondError(w, http.StatusBadRequest, "Invalid expedition ID")
 		return uuid.Nil, false
 	}
 	return id, true
@@ -163,9 +163,9 @@ func (h *ExpeditionHandler) handleByID(w http.ResponseWriter, r *http.Request, o
 
 	result, err := fn(r.Context(), expeditionID)
 	if err != nil {
-		respondServiceError(w, r, opName, err)
+		RespondServiceError(w, r, opName, err)
 		return
 	}
 
-	respondJSON(w, http.StatusOK, result)
+	RespondJSON(w, http.StatusOK, result)
 }

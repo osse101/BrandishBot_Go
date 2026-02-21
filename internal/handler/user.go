@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
@@ -72,8 +73,8 @@ func HandleRegisterUser(userService user.Service) http.HandlerFunc {
 		updatedUser, err := userService.RegisterUser(r.Context(), *user)
 		if err != nil {
 			log.Error("Failed to register user", "error", err, "username", req.Username)
-			statusCode, userMsg := mapServiceErrorToUserMessage(err)
-			respondError(w, statusCode, userMsg)
+			statusCode, userMsg := MapServiceErrorToUserMessage(err)
+			RespondError(w, statusCode, userMsg)
 			return
 		}
 
@@ -86,7 +87,7 @@ func HandleRegisterUser(userService user.Service) http.HandlerFunc {
 		if isNewUser {
 			statusCode = http.StatusCreated
 		}
-		respondJSON(w, statusCode, updatedUser)
+		RespondJSON(w, statusCode, updatedUser)
 	}
 }
 
@@ -144,12 +145,12 @@ func HandleGetTimeout(svc user.Service) http.HandlerFunc {
 		duration, err := svc.GetTimeoutPlatform(r.Context(), platform, username)
 		if err != nil {
 			log.Error("Failed to get timeout", "error", err, "platform", platform, "username", username)
-			statusCode, userMsg := mapServiceErrorToUserMessage(err)
-			respondError(w, statusCode, userMsg)
+			statusCode, userMsg := MapServiceErrorToUserMessage(err)
+			RespondError(w, statusCode, userMsg)
 			return
 		}
 
-		respondJSON(w, http.StatusOK, GetUserTimeoutResponse{
+		RespondJSON(w, http.StatusOK, GetUserTimeoutResponse{
 			Platform:         platform,
 			Username:         username,
 			IsTimedOut:       duration > 0,
@@ -164,4 +165,68 @@ type GetUserTimeoutResponse struct {
 	Username         string  `json:"username"`
 	IsTimedOut       bool    `json:"is_timed_out"`
 	RemainingSeconds float64 `json:"remaining_seconds"`
+}
+
+// SetTimeoutRequest represents the request to set/add a user timeout
+type SetTimeoutRequest struct {
+	Platform        string `json:"platform" validate:"required,platform"`
+	Username        string `json:"username" validate:"required,max=100"`
+	DurationSeconds int    `json:"duration_seconds" validate:"required,min=1,max=86400"`
+	Reason          string `json:"reason" validate:"max=255"`
+}
+
+// HandleSetTimeout applies or extends a timeout for a user
+// @Summary Set user timeout
+// @Description Apply or extend a timeout for a user (accumulates with existing timeout)
+// @Tags user
+// @Accept json
+// @Produce json
+// @Param request body SetTimeoutRequest true "Timeout details"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /user/timeout [put]
+func HandleSetTimeout(svc user.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromContext(r.Context())
+
+		var req SetTimeoutRequest
+		if err := DecodeAndValidateRequest(r, w, &req, "Set timeout"); err != nil {
+			return
+		}
+
+		// Validate platform
+		if !IsValidPlatform(req.Platform) {
+			RespondError(w, http.StatusBadRequest, "Invalid platform")
+			return
+		}
+
+		duration := time.Duration(req.DurationSeconds) * time.Second
+
+		if err := svc.AddTimeout(r.Context(), req.Platform, req.Username, duration, req.Reason); err != nil {
+			log.Error("Failed to set timeout", "error", err, "platform", req.Platform, "username", req.Username)
+			statusCode, userMsg := MapServiceErrorToUserMessage(err)
+			RespondError(w, statusCode, userMsg)
+			return
+		}
+
+		// Get the new total remaining timeout
+		remaining, _ := svc.GetTimeoutPlatform(r.Context(), req.Platform, req.Username)
+
+		log.Info("Timeout set successfully",
+			"platform", req.Platform,
+			"username", req.Username,
+			"added_duration", req.DurationSeconds,
+			"total_remaining", remaining.Seconds())
+
+		response := map[string]interface{}{
+			"message":                 "Timeout applied successfully",
+			"platform":                req.Platform,
+			"username":                req.Username,
+			"added_duration_seconds":  req.DurationSeconds,
+			"total_remaining_seconds": remaining.Seconds(),
+		}
+
+		RespondJSON(w, http.StatusOK, response)
+	}
 }

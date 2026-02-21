@@ -55,8 +55,8 @@ func HandleSellItem(svc economy.Service, userSvc user.ManagementService, progres
 		moneyGained, itemsSold, err := svc.SellItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.ItemName, req.Quantity)
 		if err != nil {
 			log.Error("Failed to sell item", "error", err, "username", req.Username, "item", req.ItemName)
-			statusCode, userMsg := mapServiceErrorToUserMessage(err)
-			respondError(w, statusCode, userMsg)
+			statusCode, userMsg := MapServiceErrorToUserMessage(err)
+			RespondError(w, statusCode, userMsg)
 			return
 		}
 
@@ -86,7 +86,7 @@ func HandleSellItem(svc economy.Service, userSvc user.ManagementService, progres
 			_ = err // Error already logged in PublishEvent
 		}
 
-		respondJSON(w, http.StatusOK, SellItemResponse{
+		RespondJSON(w, http.StatusOK, SellItemResponse{
 			Message:     fmt.Sprintf("Sold %dx %s for %d money", itemsSold, req.ItemName, moneyGained),
 			MoneyGained: moneyGained,
 			ItemsSold:   itemsSold,
@@ -136,8 +136,8 @@ func HandleBuyItem(svc economy.Service, userSvc user.ManagementService, progress
 		bought, err := svc.BuyItem(r.Context(), req.Platform, req.PlatformID, req.Username, req.ItemName, req.Quantity)
 		if err != nil {
 			log.Error("Failed to buy item", "error", err, "username", req.Username, "item", req.ItemName)
-			statusCode, userMsg := mapServiceErrorToUserMessage(err)
-			respondError(w, statusCode, userMsg)
+			statusCode, userMsg := MapServiceErrorToUserMessage(err)
+			RespondError(w, statusCode, userMsg)
 			return
 		}
 
@@ -172,7 +172,7 @@ func HandleBuyItem(svc economy.Service, userSvc user.ManagementService, progress
 			_ = err // Error already logged in PublishEvent
 		}
 
-		respondJSON(w, http.StatusOK, BuyItemResponse{
+		RespondJSON(w, http.StatusOK, BuyItemResponse{
 			Message:     fmt.Sprintf("Purchased %dx %s", bought, req.ItemName),
 			ItemsBought: bought,
 		})

@@ -51,6 +51,6 @@ func HandleTest(userService user.Service) http.HandlerFunc {
 			Message: fmt.Sprintf("Greetings, %s!", req.Username),
 		}
 
-		respondJSON(w, http.StatusOK, resp)
+		RespondJSON(w, http.StatusOK, resp)
 	}
 }

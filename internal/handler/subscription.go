@@ -41,8 +41,8 @@ func (h *SubscriptionHandler) HandleSubscriptionEvent(w http.ResponseWriter, r *
 
 	if err := h.service.HandleSubscriptionEvent(r.Context(), evt); err != nil {
 		log.Error("Failed to handle subscription event", "error", err, "platform", evt.Platform, "username", evt.Username)
-		statusCode, userMsg := mapServiceErrorToUserMessage(err)
-		respondError(w, statusCode, userMsg)
+		statusCode, userMsg := MapServiceErrorToUserMessage(err)
+		RespondError(w, statusCode, userMsg)
 		return
 	}
 
@@ -52,7 +52,7 @@ func (h *SubscriptionHandler) HandleSubscriptionEvent(w http.ResponseWriter, r *
 		"tier", evt.TierName,
 		"event_type", evt.EventType)
 
-	respondJSON(w, http.StatusOK, SuccessResponse{
+	RespondJSON(w, http.StatusOK, SuccessResponse{
 		Message: "Subscription event processed successfully",
 	})
 }
@@ -91,5 +91,5 @@ func (h *SubscriptionHandler) HandleGetUserSubscription(w http.ResponseWriter, r
 		"platform_id", platformID)
 
 	// Return not implemented for now
-	respondError(w, http.StatusNotImplemented, "User lookup by platform ID not yet implemented")
+	RespondError(w, http.StatusNotImplemented, "User lookup by platform ID not yet implemented")
 }

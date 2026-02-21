@@ -37,7 +37,7 @@ func (h *ProgressionHandlers) HandleGetTree() http.HandlerFunc {
 		tree, err := h.service.GetProgressionTree(r.Context())
 		if err != nil {
 			log.Error("Get progression tree: service error", "error", err)
-			respondError(w, http.StatusInternalServerError, ErrMsgGetProgressionTreeFailed)
+			RespondError(w, http.StatusInternalServerError, ErrMsgGetProgressionTreeFailed)
 			return
 		}
 
@@ -46,7 +46,7 @@ func (h *ProgressionHandlers) HandleGetTree() http.HandlerFunc {
 		}
 
 		log.Info("Get progression tree: success")
-		respondJSON(w, http.StatusOK, response)
+		RespondJSON(w, http.StatusOK, response)
 	}
 }
 
@@ -65,7 +65,7 @@ func (h *ProgressionHandlers) HandleGetAvailable() http.HandlerFunc {
 		available, err := h.service.GetAvailableUnlocks(r.Context())
 		if err != nil {
 			log.Error("Get available unlocks: service error", "error", err)
-			respondError(w, http.StatusInternalServerError, ErrMsgGetAvailableUnlocksFailed)
+			RespondError(w, http.StatusInternalServerError, ErrMsgGetAvailableUnlocksFailed)
 			return
 		}
 
@@ -74,7 +74,7 @@ func (h *ProgressionHandlers) HandleGetAvailable() http.HandlerFunc {
 		}
 
 		log.Info("Get available unlocks: success")
-		respondJSON(w, http.StatusOK, response)
+		RespondJSON(w, http.StatusOK, response)
 	}
 }
 
@@ -102,16 +102,16 @@ func (h *ProgressionHandlers) HandleVote() http.HandlerFunc {
 		err := h.service.VoteForUnlock(r.Context(), req.Platform, req.PlatformID, req.Username, req.OptionIndex)
 		if err != nil {
 			if errors.Is(err, domain.ErrUserAlreadyVoted) {
-				respondJSON(w, http.StatusOK, SuccessResponse{Message: MsgAlreadyVoted})
+				RespondJSON(w, http.StatusOK, SuccessResponse{Message: MsgAlreadyVoted})
 				return
 			}
 			log.Warn("Vote request: service error", "error", err, "platform", req.Platform, "platformID", req.PlatformID, "username", req.Username, "optionIndex", req.OptionIndex)
-			respondError(w, http.StatusBadRequest, err.Error())
+			RespondError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 
 		log.Info("Vote cast successfully", "platform", req.Platform, "platformID", req.PlatformID, "username", req.Username, "optionIndex", req.OptionIndex)
-		respondJSON(w, http.StatusOK, SuccessResponse{Message: MsgVoteRecordedSuccess})
+		RespondJSON(w, http.StatusOK, SuccessResponse{Message: MsgVoteRecordedSuccess})
 	}
 }
 
@@ -130,12 +130,12 @@ func (h *ProgressionHandlers) HandleGetStatus() http.HandlerFunc {
 		status, err := h.service.GetProgressionStatus(r.Context())
 		if err != nil {
 			log.Error("Get progression status: service error", "error", err)
-			respondError(w, http.StatusInternalServerError, ErrMsgGetProgressionStatusFailed)
+			RespondError(w, http.StatusInternalServerError, ErrMsgGetProgressionStatusFailed)
 			return
 		}
 
 		log.Info("Get progression status: success")
-		respondJSON(w, http.StatusOK, status)
+		RespondJSON(w, http.StatusOK, status)
 	}
 }
 
@@ -223,24 +223,24 @@ func (h *ProgressionHandlers) HandleGetEstimate() http.HandlerFunc {
 		nodeKey := chi.URLParam(r, "nodeKey")
 
 		if nodeKey == "" {
-			respondError(w, http.StatusBadRequest, "Node key is required")
+			RespondError(w, http.StatusBadRequest, "Node key is required")
 			return
 		}
 
 		estimate, err := h.service.EstimateUnlockTime(r.Context(), nodeKey)
 		if err != nil {
 			log.Error("Get unlock estimate: service error", "error", err, "nodeKey", nodeKey)
-			respondError(w, http.StatusInternalServerError, ErrMsgGetUnlockEstimateFailed)
+			RespondError(w, http.StatusInternalServerError, ErrMsgGetUnlockEstimateFailed)
 			return
 		}
 
 		if estimate == nil {
-			respondError(w, http.StatusNotFound, "Node not found")
+			RespondError(w, http.StatusNotFound, "Node not found")
 			return
 		}
 
 		log.Info("Get unlock estimate: success", "nodeKey", nodeKey)
-		respondJSON(w, http.StatusOK, estimate)
+		RespondJSON(w, http.StatusOK, estimate)
 	}
 }
 
@@ -276,12 +276,12 @@ func (h *ProgressionHandlers) HandleAdminUnlockAll() http.HandlerFunc {
 
 		if err := h.service.AdminUnlockAll(r.Context()); err != nil {
 			log.Error("Failed to unlock all nodes", "error", err)
-			respondError(w, http.StatusInternalServerError, err.Error())
+			RespondError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 
 		log.Info("Admin unlocked all nodes")
-		respondJSON(w, http.StatusOK, SuccessResponse{Message: MsgAllNodesUnlockedSuccess})
+		RespondJSON(w, http.StatusOK, SuccessResponse{Message: MsgAllNodesUnlockedSuccess})
 	}
 }
 
@@ -300,12 +300,12 @@ func (h *ProgressionHandlers) handleAdminNodeAction(action func(context.Context,
 
 		if err := action(r.Context(), req.NodeKey, req.Level); err != nil {
 			log.Error("Admin node action: service error", "error", err, "nodeKey", req.NodeKey, "level", req.Level)
-			respondError(w, http.StatusInternalServerError, err.Error())
+			RespondError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 
 		log.Info(logMsg, "nodeKey", req.NodeKey, "level", req.Level)
-		respondJSON(w, http.StatusOK, SuccessResponse{Message: successMsg})
+		RespondJSON(w, http.StatusOK, SuccessResponse{Message: successMsg})
 	}
 }
 
@@ -324,12 +324,12 @@ func (h *ProgressionHandlers) handleGetEngagementCommon(w http.ResponseWriter, r
 	breakdown, err := serviceFn(r.Context(), platform, val)
 	if err != nil {
 		log.Error(logMsg+": service error", "error", err, "platform", platform, paramName, val)
-		respondError(w, http.StatusInternalServerError, ErrMsgGetEngagementDataFailed)
+		RespondError(w, http.StatusInternalServerError, ErrMsgGetEngagementDataFailed)
 		return
 	}
 
 	log.Info(logMsg+": success", "platform", platform, paramName, val)
-	respondJSON(w, http.StatusOK, breakdown)
+	RespondJSON(w, http.StatusOK, breakdown)
 }
 
 func (h *ProgressionHandlers) handleGetSimpleMetric(w http.ResponseWriter, r *http.Request, paramName string, defaultVal int, serviceFn func(context.Context, int) (interface{}, error), logMsg, errMsg string) {
@@ -339,11 +339,11 @@ func (h *ProgressionHandlers) handleGetSimpleMetric(w http.ResponseWriter, r *ht
 	result, err := serviceFn(r.Context(), val)
 	if err != nil {
 		log.Error(logMsg+": service error", "error", err, paramName, val)
-		respondError(w, http.StatusInternalServerError, errMsg)
+		RespondError(w, http.StatusInternalServerError, errMsg)
 		return
 	}
 	log.Info(logMsg+": success", paramName, val)
-	respondJSON(w, http.StatusOK, result)
+	RespondJSON(w, http.StatusOK, result)
 }
 
 func (h *ProgressionHandlers) handleAdminAction(w http.ResponseWriter, r *http.Request, action func(context.Context) (interface{}, error), errLogMsg, infoLogMsg string, responseFactory func(interface{}) interface{}) {
@@ -351,12 +351,12 @@ func (h *ProgressionHandlers) handleAdminAction(w http.ResponseWriter, r *http.R
 	res, err := action(r.Context())
 	if err != nil {
 		log.Error(errLogMsg, "error", err)
-		respondError(w, http.StatusInternalServerError, err.Error())
+		RespondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	log.Info(infoLogMsg)
-	respondJSON(w, http.StatusOK, responseFactory(res))
+	RespondJSON(w, http.StatusOK, responseFactory(res))
 }
 
 // HandleAdminInstantUnlock forces immediate unlock of current vote leader
@@ -407,12 +407,12 @@ func (h *ProgressionHandlers) HandleAdminReset() http.HandlerFunc {
 		err := h.service.ResetProgressionTree(r.Context(), req.ResetBy, req.Reason, req.PreserveUserProgression)
 		if err != nil {
 			log.Error("Admin reset: service error", "error", err, "resetBy", req.ResetBy)
-			respondError(w, http.StatusInternalServerError, err.Error())
+			RespondError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 
 		log.Info("Admin reset progression tree", "resetBy", req.ResetBy, "reason", req.Reason)
-		respondJSON(w, http.StatusOK, SuccessResponse{Message: MsgProgressionResetSuccess})
+		RespondJSON(w, http.StatusOK, SuccessResponse{Message: MsgProgressionResetSuccess})
 	}
 }
 
@@ -431,7 +431,7 @@ func (h *ProgressionHandlers) HandleGetVotingSession() http.HandlerFunc {
 		session, err := h.service.GetActiveVotingSession(r.Context())
 		if err != nil {
 			log.Error("Get voting session: service error", "error", err)
-			respondError(w, http.StatusInternalServerError, ErrMsgGetVotingSessionFailed)
+			RespondError(w, http.StatusInternalServerError, ErrMsgGetVotingSessionFailed)
 			return
 		}
 
@@ -439,13 +439,13 @@ func (h *ProgressionHandlers) HandleGetVotingSession() http.HandlerFunc {
 			recentSession, err := h.service.GetMostRecentVotingSession(r.Context())
 			if err != nil {
 				log.Error("Get most recent session: service error", "error", err)
-				respondError(w, http.StatusInternalServerError, ErrMsgGetVotingSessionFailed)
+				RespondError(w, http.StatusInternalServerError, ErrMsgGetVotingSessionFailed)
 				return
 			}
 
 			if recentSession != nil && recentSession.Status == "completed" {
 				log.Info("Get voting session: returning completed session", "sessionID", recentSession.ID)
-				respondJSON(w, http.StatusOK, VotingSessionResponse{
+				RespondJSON(w, http.StatusOK, VotingSessionResponse{
 					Session:     recentSession,
 					Message:     "Voting has ended. Results are shown below.",
 					IsCompleted: true,
@@ -454,7 +454,7 @@ func (h *ProgressionHandlers) HandleGetVotingSession() http.HandlerFunc {
 			}
 
 			log.Info("Get voting session: no active session")
-			respondJSON(w, http.StatusOK, VotingSessionResponse{
+			RespondJSON(w, http.StatusOK, VotingSessionResponse{
 				Session: nil,
 				Message: MsgNoActiveVotingSession,
 			})
@@ -462,7 +462,7 @@ func (h *ProgressionHandlers) HandleGetVotingSession() http.HandlerFunc {
 		}
 
 		log.Info("Get voting session: success")
-		respondJSON(w, http.StatusOK, VotingSessionResponse{
+		RespondJSON(w, http.StatusOK, VotingSessionResponse{
 			Session: session,
 		})
 	}
@@ -483,13 +483,13 @@ func (h *ProgressionHandlers) HandleGetUnlockProgress() http.HandlerFunc {
 		progress, err := h.service.GetUnlockProgress(r.Context())
 		if err != nil {
 			log.Error("Get unlock progress: service error", "error", err)
-			respondError(w, http.StatusInternalServerError, ErrMsgGetUnlockProgressFailed)
+			RespondError(w, http.StatusInternalServerError, ErrMsgGetUnlockProgressFailed)
 			return
 		}
 
 		if progress == nil {
 			log.Info("Get unlock progress: no active progress")
-			respondJSON(w, http.StatusOK, UnlockProgressResponse{
+			RespondJSON(w, http.StatusOK, UnlockProgressResponse{
 				Message: MsgNoActiveUnlockProgress,
 			})
 			return
@@ -497,7 +497,7 @@ func (h *ProgressionHandlers) HandleGetUnlockProgress() http.HandlerFunc {
 
 		log.Info("Get unlock progress: success")
 		response := h.enrichUnlockProgress(r.Context(), progress)
-		respondJSON(w, http.StatusOK, response)
+		RespondJSON(w, http.StatusOK, response)
 	}
 }
 
@@ -561,21 +561,21 @@ func (h *ProgressionHandlers) HandleAdminEndVoting() http.HandlerFunc {
 		if err != nil {
 			if errors.Is(err, domain.ErrNoActiveSession) {
 				log.Warn("No active voting session to freeze")
-				respondError(w, http.StatusBadRequest, err.Error())
+				RespondError(w, http.StatusBadRequest, err.Error())
 				return
 			}
 			if errors.Is(err, domain.ErrSessionAlreadyFrozen) {
 				log.Info("Voting session already frozen")
-				respondJSON(w, http.StatusOK, SuccessResponse{Message: "Voting session already frozen"})
+				RespondJSON(w, http.StatusOK, SuccessResponse{Message: "Voting session already frozen"})
 				return
 			}
 			log.Error("Failed to freeze voting", "error", err)
-			respondError(w, http.StatusInternalServerError, err.Error())
+			RespondError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 
 		log.Info("Admin froze voting session")
-		respondJSON(w, http.StatusOK, SuccessResponse{Message: "Voting session frozen"})
+		RespondJSON(w, http.StatusOK, SuccessResponse{Message: "Voting session frozen"})
 	}
 }
 
@@ -618,26 +618,26 @@ func (h *ProgressionHandlers) HandleAdminStartVoting() http.HandlerFunc {
 		if err != nil {
 			if errors.Is(err, domain.ErrSessionAlreadyActive) {
 				log.Warn("Voting session already active")
-				respondError(w, http.StatusConflict, err.Error())
+				RespondError(w, http.StatusConflict, err.Error())
 				return
 			}
 			if errors.Is(err, domain.ErrNoNodesAvailable) {
 				log.Info("No nodes available for voting")
-				respondError(w, http.StatusBadRequest, err.Error())
+				RespondError(w, http.StatusBadRequest, err.Error())
 				return
 			}
 			if errors.Is(err, domain.ErrAccumulationInProgress) {
 				log.Warn("Cannot start voting while accumulation in progress")
-				respondError(w, http.StatusConflict, err.Error())
+				RespondError(w, http.StatusConflict, err.Error())
 				return
 			}
 			log.Error("Failed to start/resume voting session", "error", err)
-			respondError(w, http.StatusInternalServerError, err.Error())
+			RespondError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 
 		log.Info("Admin started/resumed voting session")
-		respondJSON(w, http.StatusOK, SuccessResponse{Message: MsgVotingSessionStartSuccess})
+		RespondJSON(w, http.StatusOK, SuccessResponse{Message: MsgVotingSessionStartSuccess})
 	}
 }
 
@@ -663,18 +663,18 @@ func (h *ProgressionHandlers) HandleAdminAddContribution() http.HandlerFunc {
 
 		if req.Amount <= 0 {
 			log.Warn("Admin add contribution: invalid amount", "amount", req.Amount)
-			respondError(w, http.StatusBadRequest, ErrMsgAmountMustBePositive)
+			RespondError(w, http.StatusBadRequest, ErrMsgAmountMustBePositive)
 			return
 		}
 
 		if err := h.service.AddContribution(r.Context(), req.Amount); err != nil {
 			log.Error("Admin add contribution: service error", "error", err, "amount", req.Amount)
-			respondError(w, http.StatusInternalServerError, err.Error())
+			RespondError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 
 		log.Info("Admin added contribution", "amount", req.Amount)
-		respondJSON(w, http.StatusOK, SuccessResponse{Message: MsgContributionAddedSuccess})
+		RespondJSON(w, http.StatusOK, SuccessResponse{Message: MsgContributionAddedSuccess})
 	}
 }
 
@@ -692,7 +692,7 @@ func (h *ProgressionHandlers) HandleAdminReloadWeights() http.HandlerFunc {
 		h.service.InvalidateWeightCache()
 
 		log.Info("Admin invalidated engagement weight cache")
-		respondJSON(w, http.StatusOK, SuccessResponse{Message: MsgWeightCacheInvalidated})
+		RespondJSON(w, http.StatusOK, SuccessResponse{Message: MsgWeightCacheInvalidated})
 	}
 }
 

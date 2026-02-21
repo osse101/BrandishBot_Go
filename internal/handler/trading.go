@@ -41,19 +41,19 @@ func HandleGiveItem(svc user.Service) http.HandlerFunc {
 		if req.OwnerPlatform == req.ReceiverPlatform &&
 			(req.Owner == req.Receiver || req.OwnerPlatformID == req.Receiver) {
 			log.Info("Self-gifting attempt detected", "user", req.Owner)
-			respondError(w, http.StatusBadRequest, "You can't give items to yourself! Nice try though.")
+			RespondError(w, http.StatusBadRequest, "You can't give items to yourself! Nice try though.")
 			return
 		}
 
 		if err := svc.GiveItem(r.Context(), req.OwnerPlatform, req.OwnerPlatformID, req.Owner, req.ReceiverPlatform, req.Receiver, req.ItemName, req.Quantity); err != nil {
 			log.Error("Failed to give item", "error", err, "owner", req.Owner, "receiver", req.Receiver, "item", req.ItemName)
-			statusCode, userMsg := mapServiceErrorToUserMessage(err)
-			respondError(w, statusCode, userMsg)
+			statusCode, userMsg := MapServiceErrorToUserMessage(err)
+			RespondError(w, statusCode, userMsg)
 			return
 		}
 
 		log.Info("Item transferred successfully", "owner", req.Owner, "receiver", req.Receiver, "item", req.ItemName, "quantity", req.Quantity)
 
-		respondJSON(w, http.StatusOK, SuccessResponse{Message: MsgItemTransferredSuccess})
+		RespondJSON(w, http.StatusOK, SuccessResponse{Message: MsgItemTransferredSuccess})
 	}
 }

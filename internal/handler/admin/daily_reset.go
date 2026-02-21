@@ -1,20 +1,21 @@
-package handler
+package admin
 
 import (
+	"github.com/osse101/BrandishBot_Go/internal/handler"
 	"net/http"
 
 	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 )
 
-// AdminDailyResetHandler handles admin endpoints for daily job XP reset management
-type AdminDailyResetHandler struct {
+// DailyResetHandler handles admin endpoints for daily job XP reset management
+type DailyResetHandler struct {
 	jobService job.Service
 }
 
-// NewAdminDailyResetHandler creates a new AdminDailyResetHandler
-func NewAdminDailyResetHandler(jobService job.Service) *AdminDailyResetHandler {
-	return &AdminDailyResetHandler{
+// NewDailyResetHandler creates a new DailyResetHandler
+func NewDailyResetHandler(jobService job.Service) *DailyResetHandler {
+	return &DailyResetHandler{
 		jobService: jobService,
 	}
 }
@@ -28,20 +29,20 @@ func NewAdminDailyResetHandler(jobService job.Service) *AdminDailyResetHandler {
 // @Success 200 {object} map[string]interface{}
 // @Failure 500 {object} map[string]interface{}
 // @Router /admin/jobs/reset-daily-xp [post]
-func (h *AdminDailyResetHandler) HandleManualReset(w http.ResponseWriter, r *http.Request) {
+func (h *DailyResetHandler) HandleManualReset(w http.ResponseWriter, r *http.Request) {
 	log := logger.FromContext(r.Context())
 	log.Info("Manual daily reset triggered")
 
 	recordsAffected, err := h.jobService.ResetDailyJobXP(r.Context())
 	if err != nil {
 		log.Error("Manual daily reset failed", "error", err)
-		respondError(w, http.StatusInternalServerError, "Failed to reset daily XP")
+		handler.RespondError(w, http.StatusInternalServerError, "Failed to reset daily XP")
 		return
 	}
 
 	log.Info("Manual daily reset completed", "records_affected", recordsAffected)
 
-	respondJSON(w, http.StatusOK, map[string]interface{}{
+	handler.RespondJSON(w, http.StatusOK, map[string]interface{}{
 		"success":          true,
 		"message":          "Daily XP reset completed",
 		"records_affected": recordsAffected,
@@ -57,15 +58,15 @@ func (h *AdminDailyResetHandler) HandleManualReset(w http.ResponseWriter, r *htt
 // @Success 200 {object} domain.DailyResetStatus
 // @Failure 500 {object} map[string]interface{}
 // @Router /admin/jobs/reset-status [get]
-func (h *AdminDailyResetHandler) HandleGetResetStatus(w http.ResponseWriter, r *http.Request) {
+func (h *DailyResetHandler) HandleGetResetStatus(w http.ResponseWriter, r *http.Request) {
 	log := logger.FromContext(r.Context())
 
 	status, err := h.jobService.GetDailyResetStatus(r.Context())
 	if err != nil {
 		log.Error("Failed to get reset status", "error", err)
-		respondError(w, http.StatusInternalServerError, "Failed to get reset status")
+		handler.RespondError(w, http.StatusInternalServerError, "Failed to get reset status")
 		return
 	}
 
-	respondJSON(w, http.StatusOK, status)
+	handler.RespondJSON(w, http.StatusOK, status)
 }

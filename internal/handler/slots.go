@@ -46,18 +46,18 @@ func (h *SlotsHandler) HandleSpinSlots(w http.ResponseWriter, r *http.Request) {
 	// Decode request
 	var req SpinSlotsRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "Invalid request body")
+		RespondError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
 	// Validate request
 	if req.Platform == "" || req.PlatformID == "" || req.Username == "" {
-		respondError(w, http.StatusBadRequest, "Missing required fields")
+		RespondError(w, http.StatusBadRequest, "Missing required fields")
 		return
 	}
 
 	if req.BetAmount < slots.MinBetAmount || req.BetAmount > slots.MaxBetAmount {
-		respondError(w, http.StatusBadRequest, "Bet amount must be between 10 and 10,000")
+		RespondError(w, http.StatusBadRequest, "Bet amount must be between 10 and 10,000")
 		return
 	}
 
@@ -70,18 +70,18 @@ func (h *SlotsHandler) HandleSpinSlots(w http.ResponseWriter, r *http.Request) {
 		errMsg := err.Error()
 		switch {
 		case strings.Contains(errMsg, "insufficient funds"):
-			respondError(w, http.StatusBadRequest, errMsg)
+			RespondError(w, http.StatusBadRequest, errMsg)
 		case strings.Contains(errMsg, "slots feature is not yet unlocked"):
-			respondError(w, http.StatusForbidden, errMsg)
+			RespondError(w, http.StatusForbidden, errMsg)
 		case strings.Contains(errMsg, "minimum bet") || strings.Contains(errMsg, "maximum bet"):
-			respondError(w, http.StatusBadRequest, errMsg)
+			RespondError(w, http.StatusBadRequest, errMsg)
 		default:
-			respondError(w, http.StatusInternalServerError, "Failed to process slots spin")
+			RespondError(w, http.StatusInternalServerError, "Failed to process slots spin")
 		}
 		return
 	}
 
-	respondJSON(w, http.StatusOK, result)
+	RespondJSON(w, http.StatusOK, result)
 }
 
 // SlotsResult is the response type (same as domain.SlotsResult but explicitly defined for API)

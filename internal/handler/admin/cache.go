@@ -1,19 +1,20 @@
-package handler
+package admin
 
 import (
+	"github.com/osse101/BrandishBot_Go/internal/handler"
 	"net/http"
 
 	"github.com/osse101/BrandishBot_Go/internal/user"
 )
 
-// AdminCacheHandler handles admin cache operations
-type AdminCacheHandler struct {
+// CacheHandler handles admin cache operations
+type CacheHandler struct {
 	userService user.Service
 }
 
-// NewAdminCacheHandler creates a new admin cache handler
-func NewAdminCacheHandler(userService user.Service) *AdminCacheHandler {
-	return &AdminCacheHandler{
+// NewCacheHandler creates a new admin cache handler
+func NewCacheHandler(userService user.Service) *CacheHandler {
+	return &CacheHandler{
 		userService: userService,
 	}
 }
@@ -26,7 +27,7 @@ func NewAdminCacheHandler(userService user.Service) *AdminCacheHandler {
 // @Produce json
 // @Success 200 {object} user.CacheStats
 // @Router /api/v1/admin/cache/stats [get]
-func (h *AdminCacheHandler) HandleGetCacheStats(w http.ResponseWriter, r *http.Request) {
+func (h *CacheHandler) HandleGetCacheStats(w http.ResponseWriter, r *http.Request) {
 	stats := h.userService.GetCacheStats()
-	respondJSON(w, http.StatusOK, stats)
+	handler.RespondJSON(w, http.StatusOK, stats)
 }

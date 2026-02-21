@@ -1,6 +1,7 @@
-package handler
+package admin
 
 import (
+	"github.com/osse101/BrandishBot_Go/internal/handler"
 	"net/http"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -38,29 +39,29 @@ type SSEMetrics struct {
 	ClientCount int `json:"client_count"`
 }
 
-// AdminMetricsHandler handles admin metrics requests
-type AdminMetricsHandler struct {
+// MetricsHandler handles admin metrics requests
+type MetricsHandler struct {
 	sseHub *sse.Hub
 }
 
-// NewAdminMetricsHandler creates a new admin metrics handler
-func NewAdminMetricsHandler(sseHub *sse.Hub) *AdminMetricsHandler {
-	return &AdminMetricsHandler{sseHub: sseHub}
+// NewMetricsHandler creates a new admin metrics handler
+func NewMetricsHandler(sseHub *sse.Hub) *MetricsHandler {
+	return &MetricsHandler{sseHub: sseHub}
 }
 
 // HandleGetMetrics returns JSON-formatted metrics from Prometheus
 // GET /api/v1/admin/metrics
-func (h *AdminMetricsHandler) HandleGetMetrics(w http.ResponseWriter, r *http.Request) {
+func (h *MetricsHandler) HandleGetMetrics(w http.ResponseWriter, r *http.Request) {
 	metrics, err := gatherMetrics()
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "Failed to gather metrics")
+		handler.RespondError(w, http.StatusInternalServerError, "Failed to gather metrics")
 		return
 	}
 
 	// Add SSE client count
 	metrics.SSE.ClientCount = h.sseHub.ClientCount()
 
-	respondJSON(w, http.StatusOK, metrics)
+	handler.RespondJSON(w, http.StatusOK, metrics)
 }
 
 func gatherMetrics() (*AdminMetricsResponse, error) {

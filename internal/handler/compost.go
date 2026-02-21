@@ -128,9 +128,9 @@ func (h *CompostHandler) HandleStatus(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.service.Harvest(r.Context(), platform, platformID, username)
 	if err != nil {
-		respondServiceError(w, r, "Compost status", err)
+		RespondServiceError(w, r, "Compost status", err)
 		return
 	}
 
-	respondJSON(w, http.StatusOK, result)
+	RespondJSON(w, http.StatusOK, result)
 }

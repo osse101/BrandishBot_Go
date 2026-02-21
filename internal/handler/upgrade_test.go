@@ -289,7 +289,7 @@ func TestHandleGetRecipes(t *testing.T) {
 			mockSetup: func(c *mocks.MockCraftingService, u *mocks.MockRepositoryUser) {
 				c.On("GetRecipe", mock.Anything, "invalid", "", "", "").Return(nil, fmt.Errorf("item not found: %w", domain.ErrItemNotFound))
 			},
-			expectedStatus: http.StatusBadRequest, // mapServiceErrorToUserMessage maps ItemNotFound to BadRequest
+			expectedStatus: http.StatusBadRequest, // MapServiceErrorToUserMessage maps ItemNotFound to BadRequest
 			expectedBody:   "Item not found",
 		},
 		{

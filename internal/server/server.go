@@ -23,6 +23,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/expedition"
 	"github.com/osse101/BrandishBot_Go/internal/gamble"
 	"github.com/osse101/BrandishBot_Go/internal/handler"
+	adminHandlers "github.com/osse101/BrandishBot_Go/internal/handler/admin"
 	"github.com/osse101/BrandishBot_Go/internal/harvest"
 	"github.com/osse101/BrandishBot_Go/internal/info"
 	"github.com/osse101/BrandishBot_Go/internal/job"
@@ -246,13 +247,13 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 		}
 
 		// Admin routes
-		adminJobHandler := handler.NewAdminJobHandler(jobService, userService)
-		adminDailyResetHandler := handler.NewAdminDailyResetHandler(jobService)
-		adminCacheHandler := handler.NewAdminCacheHandler(userService)
-		adminMetricsHandler := handler.NewAdminMetricsHandler(sseHub)
-		adminUserHandler := handler.NewAdminUserHandler(userRepo, userService)
-		adminEventsHandler := handler.NewAdminEventsHandler(eventlogService)
-		adminSSEHandler := handler.NewAdminSSEHandler(sseHub)
+		adminJobHandler := adminHandlers.NewJobHandler(jobService, userService)
+		adminDailyResetHandler := adminHandlers.NewDailyResetHandler(jobService)
+		adminCacheHandler := adminHandlers.NewCacheHandler(userService)
+		adminMetricsHandler := adminHandlers.NewMetricsHandler(sseHub)
+		adminUserHandler := adminHandlers.NewUserHandler(userRepo, userService)
+		adminEventsHandler := adminHandlers.NewEventsHandler(eventlogService)
+		adminSSEHandler := adminHandlers.NewSSEHandler(sseHub)
 		r.Route("/admin", func(r chi.Router) {
 			r.Get("/metrics", adminMetricsHandler.HandleGetMetrics)
 			r.Post("/sse/broadcast", adminSSEHandler.HandleBroadcast)
@@ -270,16 +271,16 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 
 			// Event log
 			r.Get("/events", adminEventsHandler.HandleGetEvents)
-			r.Post("/reload-aliases", handler.HandleReloadAliases(namingResolver))
+			r.Post("/reload-aliases", adminHandlers.HandleReloadAliases(namingResolver))
 
 			// Admin timeout routes
 			r.Route("/timeout", func(r chi.Router) {
-				r.Post("/clear", handler.HandleAdminClearTimeout(userService))
+				r.Post("/clear", adminHandlers.HandleClearTimeout(userService))
 			})
 
 			// Admin job routes
 			r.Route("/jobs", func(r chi.Router) {
-				r.Post("/award-xp", adminJobHandler.HandleAdminAwardXP)
+				r.Post("/award-xp", adminJobHandler.HandleAwardXP)
 				r.Post("/reset-daily-xp", adminDailyResetHandler.HandleManualReset)
 				r.Get("/reset-status", adminDailyResetHandler.HandleGetResetStatus)
 			})
