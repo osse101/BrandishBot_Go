@@ -33,6 +33,7 @@ func main() {
 	registry.Register(&EntrypointCommand{})
 	registry.Register(&SeedCommand{})
 	registry.Register(&CheckCommentsCommand{})
+	registry.Register(&DebugDBSessionsCommand{})
 
 	if len(os.Args) < 2 {
 		registry.PrintHelp()

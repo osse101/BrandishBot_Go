@@ -3,7 +3,6 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"os"
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -22,24 +21,7 @@ func (c *WaitForDBCommand) Description() string {
 func (c *WaitForDBCommand) Run(args []string) error {
 	PrintHeader("Waiting for database...")
 
-	// Helper to get env with fallback
-	getEnv := func(key, fallback string) string {
-		if value, ok := os.LookupEnv(key); ok {
-			return value
-		}
-		return fallback
-	}
-
-	dbURL := os.Getenv("DB_URL")
-	if dbURL == "" {
-		dbUser := getEnv("DB_USER", "dev")
-		dbPass := getEnv("DB_PASSWORD", "change_this_secure_password")
-		dbHost := getEnv("DB_HOST", "localhost")
-		dbPort := getEnv("DB_PORT", "5432")
-		dbName := getEnv("DB_NAME", "app")
-
-		dbURL = fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", dbUser, dbPass, dbHost, dbPort, dbName)
-	}
+	dbURL := GetDBURL()
 
 	maxRetries := 30
 	retryInterval := 2 * time.Second
