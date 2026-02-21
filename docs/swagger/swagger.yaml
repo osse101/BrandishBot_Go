@@ -1,5 +1,16 @@
 basePath: /
 definitions:
+  admin.ClearTimeoutRequest:
+    properties:
+      platform:
+        type: string
+      username:
+        maxLength: 100
+        type: string
+    required:
+    - platform
+    - username
+    type: object
   domain.ContributionBreakdown:
     properties:
       by_type:
@@ -463,17 +474,6 @@ definitions:
     properties:
       amount:
         type: integer
-    type: object
-  handler.AdminClearTimeoutRequest:
-    properties:
-      platform:
-        type: string
-      username:
-        maxLength: 100
-        type: string
-    required:
-    - platform
-    - username
     type: object
   handler.AdminEndVotingResponse:
     properties:
@@ -1256,7 +1256,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handler.AdminClearTimeoutRequest'
+          $ref: '#/definitions/admin.ClearTimeoutRequest'
       produces:
       - application/json
       responses:

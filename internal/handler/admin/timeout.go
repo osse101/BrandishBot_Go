@@ -22,8 +22,8 @@ type ClearTimeoutRequest struct {
 // @Produce json
 // @Param request body ClearTimeoutRequest true "Clear timeout request"
 // @Success 200 {object} map[string]interface{}
-// @Failure 400 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
+// @Failure 400 {object} handler.ErrorResponse
+// @Failure 500 {object} handler.ErrorResponse
 // @Router /admin/timeout/clear [post]
 func HandleClearTimeout(svc user.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

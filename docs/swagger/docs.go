@@ -152,7 +152,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handler.AdminClearTimeoutRequest"
+                            "$ref": "#/definitions/admin.ClearTimeoutRequest"
                         }
                     }
                 ],
@@ -2345,6 +2345,22 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "admin.ClearTimeoutRequest": {
+            "type": "object",
+            "required": [
+                "platform",
+                "username"
+            ],
+            "properties": {
+                "platform": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string",
+                    "maxLength": 100
+                }
+            }
+        },
         "domain.ContributionBreakdown": {
             "type": "object",
             "properties": {
@@ -3027,22 +3043,6 @@ const docTemplate = `{
             "properties": {
                 "amount": {
                     "type": "integer"
-                }
-            }
-        },
-        "handler.AdminClearTimeoutRequest": {
-            "type": "object",
-            "required": [
-                "platform",
-                "username"
-            ],
-            "properties": {
-                "platform": {
-                    "type": "string"
-                },
-                "username": {
-                    "type": "string",
-                    "maxLength": 100
                 }
             }
         },
