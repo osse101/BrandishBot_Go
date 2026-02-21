@@ -1,15 +1,15 @@
 package admin
 
 import (
-	"github.com/osse101/BrandishBot_Go/internal/handler"
 	"encoding/json"
 	"net/http"
 
+	"github.com/osse101/BrandishBot_Go/internal/handler"
 	"github.com/osse101/BrandishBot_Go/internal/sse"
 )
 
-// AdminSSEBroadcastRequest represents the request to broadcast an SSE event
-type AdminSSEBroadcastRequest struct {
+// SSEBroadcastRequest represents the request to broadcast an SSE event
+type SSEBroadcastRequest struct {
 	Type    string          `json:"type"`
 	Payload json.RawMessage `json:"payload"`
 }
@@ -27,7 +27,7 @@ func NewSSEHandler(sseHub *sse.Hub) *SSEHandler {
 // HandleBroadcast broadcasts a manual event to all SSE clients
 // POST /api/v1/admin/sse/broadcast
 func (h *SSEHandler) HandleBroadcast(w http.ResponseWriter, r *http.Request) {
-	var req AdminSSEBroadcastRequest
+	var req SSEBroadcastRequest
 	if err := handler.DecodeAndValidateRequest(r, w, &req, "BroadcastSSE"); err != nil {
 		return
 	}

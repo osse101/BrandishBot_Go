@@ -219,8 +219,8 @@ func HandleGetInventoryByUsername(svc user.Service, progSvc progression.Service)
 			unlocked, err := progSvc.IsFeatureUnlocked(r.Context(), featureKey)
 			if err != nil {
 				log.Error("Failed to check filter unlock", "error", err)
-				statusCode, userMsg := mapServiceErrorToUserMessage(err)
-				respondError(w, statusCode, userMsg)
+				statusCode, userMsg := MapServiceErrorToUserMessage(err)
+				RespondError(w, statusCode, userMsg)
 				return
 			}
 			if !unlocked {
