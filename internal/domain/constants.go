@@ -558,3 +558,60 @@ const (
 	JobKeyFarmer     = "job_farmer"
 	JobKeyScholar    = "job_scholar"
 )
+
+// ============================================================================
+// Search Mechanic Constants (Moved from internal/user/constants.go)
+// ============================================================================
+
+// Search Mechanic - Probability Thresholds
+const (
+	// SearchSuccessRate defines the probability of finding an item when searching (80%)
+	SearchSuccessRate = 0.8
+	// SearchCriticalRate defines the probability of a critical success when searching (5%)
+	SearchCriticalRate = 0.05
+	// SearchNearMissRate defines the probability of a near-miss result when searching (5%)
+	SearchNearMissRate = 0.05
+	// SearchCriticalFailRate defines the probability of a critical failure when searching (5%)
+	SearchCriticalFailRate = 0.05
+)
+
+// Search Mechanic - Diminishing Returns
+const (
+	// SearchDailyDiminishmentThreshold is the number of searches per day after which returns are diminished
+	SearchDailyDiminishmentThreshold = 6
+	// SearchDiminishedXPMultiplier is the XP multiplier when diminished returns are active (10%)
+	SearchDiminishedXPMultiplier = 0.1
+	// SearchFirstDailyGuaranteedRoll is the roll value that guarantees success for first search (0.0)
+	SearchFirstDailyGuaranteedRoll = 0.0
+)
+
+// ============================================================================
+// Item Handler Constants (Moved from internal/user/constants.go)
+// ============================================================================
+
+const (
+	// BulkFeedbackThreshold defines the number of lootboxes required to trigger "Nice haul" message
+	BulkFeedbackThreshold = 5
+	// BlasterTimeoutDuration is the default duration a user is timed out when hit by a blaster
+	BlasterTimeoutDuration = 60 * time.Second
+	// TrapCooldownDuration is the cooldown after a trap triggers to prevent immediate re-trapping
+	TrapCooldownDuration = 10 * time.Minute
+)
+
+// ============================================================================
+// Resource Generation Constants (Moved from internal/user/constants.go)
+// ============================================================================
+
+const (
+	// ShovelSticksPerUse defines how many sticks are generated per shovel use
+	ShovelSticksPerUse = 2
+)
+
+// ============================================================================
+// Inventory Limits (Moved from internal/user/constants.go)
+// ============================================================================
+
+const (
+	// MaxStackSize is the maximum quantity allowed for a single item stack when merging inventories
+	MaxStackSize = 999999
+)

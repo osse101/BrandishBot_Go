@@ -52,7 +52,7 @@ func TestMergeUsers(t *testing.T) {
 			},
 			expectedSlots: 1,
 			expectedQuantities: map[int]int{
-				1: MaxStackSize, // Should cap at 999999
+				1: domain.MaxStackSize, // Should cap at 999999
 			},
 		},
 		{

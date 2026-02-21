@@ -113,7 +113,7 @@ Published whenever a search is attempted (success or fail).
 
 ## Configuration
 
-Key constants defined in `internal/user/constants.go`:
+Key constants defined in `internal/domain/constants.go`:
 
 ```go
 const (

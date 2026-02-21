@@ -67,7 +67,7 @@ func (s *service) executeSearch(ctx context.Context, user *domain.User) (string,
 		if err != nil {
 			return "", err
 		}
-		isCritical = roll <= SearchCriticalRate
+		isCritical = roll <= domain.SearchCriticalRate
 		quantity = 1
 		if isCritical {
 			quantity = 2
@@ -120,14 +120,14 @@ func (s *service) calculateSearchParameters(ctx context.Context, user *domain.Us
 
 	params := searchParams{
 		isFirstSearchDaily: (dailyCount == 0),
-		isDiminished:       (dailyCount >= SearchDailyDiminishmentThreshold),
+		isDiminished:       (dailyCount >= domain.SearchDailyDiminishmentThreshold),
 		xpMultiplier:       1.0,
-		successThreshold:   SearchSuccessRate,
+		successThreshold:   domain.SearchSuccessRate,
 		dailyCount:         dailyCount,
 	}
 
 	if params.isDiminished {
-		params.xpMultiplier = SearchDiminishedXPMultiplier
+		params.xpMultiplier = domain.SearchDiminishedXPMultiplier
 		log.Info(LogMsgDiminishedReturnsApplied, "username", user.Username, "dailyCount", dailyCount)
 	}
 
@@ -144,7 +144,7 @@ func (s *service) calculateSearchParameters(ctx context.Context, user *domain.Us
 }
 
 func (s *service) processSearchSuccess(ctx context.Context, user *domain.User, roll float64, params searchParams) (string, error) {
-	isCritical := roll <= SearchCriticalRate
+	isCritical := roll <= domain.SearchCriticalRate
 	quantity := 1
 	if isCritical {
 		quantity = 2

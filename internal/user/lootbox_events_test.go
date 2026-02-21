@@ -270,8 +270,8 @@ func TestProcessLootboxDrops_JackpotEvents(t *testing.T) {
 // TestProcessLootboxDrops_BulkFeedbackThreshold tests the boundary conditions
 // for the "Nice haul!" bulk feedback message per TEST_GUIDANCE.md 5-case model
 func TestProcessLootboxDrops_BulkFeedbackThreshold(t *testing.T) {
-	// BulkFeedbackThreshold = 5 (defined in item_handlers.go)
-	// "Nice haul!" appears when: quantity >= BulkFeedbackThreshold AND no legendary/epic drops
+	// BulkFeedbackThreshold = 5 (defined in domain/constants.go)
+	// "Nice haul!" appears when: quantity >= domain.BulkFeedbackThreshold AND no legendary/epic drops
 
 	user := &domain.User{
 		ID:       "user-123",

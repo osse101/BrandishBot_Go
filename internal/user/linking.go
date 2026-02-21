@@ -61,7 +61,7 @@ func (s *service) getInventoriesForMerge(ctx context.Context, primaryUserID, sec
 }
 
 func (s *service) mergeInventories(primary, secondary *domain.Inventory) *domain.Inventory {
-	const maxStackSize = MaxStackSize
+	const maxStackSize = domain.MaxStackSize
 	if primary == nil {
 		primary = &domain.Inventory{Slots: []domain.InventorySlot{}}
 	}

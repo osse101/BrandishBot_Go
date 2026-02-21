@@ -116,7 +116,7 @@ func (s *service) processLootboxDrops(ctx context.Context, user *domain.User, in
 			}
 		}
 		msgBuilder.WriteString(MsgLootboxBigWin)
-	} else if stats.totalValue > 0 && quantity >= BulkFeedbackThreshold {
+	} else if stats.totalValue > 0 && quantity >= domain.BulkFeedbackThreshold {
 		// If opening many boxes and getting nothing special, at least acknowledge the haul
 		msgBuilder.WriteString(MsgLootboxNiceHaul)
 	}
@@ -192,7 +192,7 @@ func getWeaponTimeout(itemName string) time.Duration {
 	if timeout, ok := weaponTimeouts[itemName]; ok {
 		return timeout
 	}
-	return BlasterTimeoutDuration // default fallback
+	return domain.BlasterTimeoutDuration // default fallback
 }
 
 func (s *service) handleWeapon(ctx context.Context, _ *service, _ *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args ItemHandlerArgs) (string, error) {
@@ -727,7 +727,7 @@ func (s *service) handleResourceGenerator(ctx context.Context, _ *service, _ *do
 		return "", fmt.Errorf("failed to get stick item: %w", err)
 	}
 
-	sticksGenerated := quantity * ShovelSticksPerUse
+	sticksGenerated := quantity * domain.ShovelSticksPerUse
 	utils.AddItemsToInventory(inventory, []domain.InventorySlot{
 		{ItemID: stickItem.ID, Quantity: sticksGenerated, QualityLevel: domain.QualityCommon},
 	}, nil)

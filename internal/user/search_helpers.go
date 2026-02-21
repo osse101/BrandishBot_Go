@@ -116,7 +116,7 @@ func (s *service) formatSearchSuccessMessage(ctx context.Context, user *domain.U
 	}
 
 	// Show (Exhausted) only on the VERY FIRST search that hits the threshold
-	if params.dailyCount == SearchDailyDiminishmentThreshold {
+	if params.dailyCount == domain.SearchDailyDiminishmentThreshold {
 		resultMessage += " (Exhausted)"
 	}
 
@@ -125,10 +125,10 @@ func (s *service) formatSearchSuccessMessage(ctx context.Context, user *domain.U
 
 // determineSearchFailureType categorizes the type of search failure based on roll
 func determineSearchFailureType(roll, successThreshold float64) searchFailureType {
-	if roll <= successThreshold+SearchNearMissRate {
+	if roll <= successThreshold+domain.SearchNearMissRate {
 		return searchFailureNearMiss
 	}
-	if roll > 1.0-SearchCriticalFailRate {
+	if roll > 1.0-domain.SearchCriticalFailRate {
 		return searchFailureCritical
 	}
 	return searchFailureNormal
@@ -170,7 +170,7 @@ func (s *service) formatSearchFailureMessageWithMeta(message string, params sear
 	}
 
 	// Show (Exhausted) only on the VERY FIRST search that hits the threshold
-	if params.dailyCount == SearchDailyDiminishmentThreshold {
+	if params.dailyCount == domain.SearchDailyDiminishmentThreshold {
 		result += " (Exhausted)"
 	}
 
