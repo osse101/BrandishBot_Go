@@ -785,7 +785,7 @@ func TestHandleSearch_CriticalSuccess(t *testing.T) {
 	user := createTestUser()
 	repo.users[TestUsername] = user
 
-	// Force critical success: roll <= SearchCriticalRate (0.05)
+	// Force critical success: roll <= domain.SearchCriticalRate (0.05)
 	svc.rnd = func() float64 { return 0.01 }
 
 	// ACT
@@ -814,7 +814,7 @@ func TestHandleSearch_NormalSuccess(t *testing.T) {
 	user := createTestUser()
 	repo.users[TestUsername] = user
 
-	// Force normal success: SearchCriticalRate < roll <= SearchSuccessRate
+	// Force normal success: domain.SearchCriticalRate < roll <= domain.SearchSuccessRate
 	svc.rnd = func() float64 { return 0.5 }
 
 	// ACT
@@ -842,7 +842,7 @@ func TestHandleSearch_CriticalSuccess_Event(t *testing.T) {
 	user := createTestUser()
 	repo.users[TestUsername] = user
 
-	// Force critical success: roll <= SearchCriticalRate (0.05)
+	// Force critical success: roll <= domain.SearchCriticalRate (0.05)
 	svc.rnd = func() float64 { return 0.05 }
 
 	ctx := context.Background()
@@ -871,7 +871,7 @@ func TestHandleSearch_NearMiss(t *testing.T) {
 	user := createTestUser()
 	repo.users[TestUsername] = user
 
-	// Force near miss: successThreshold < roll <= successThreshold + NearMissRate
+	// Force near miss: successThreshold < roll <= successThreshold + domain.SearchNearMissRate
 	svc.rnd = func() float64 { return 0.81 }
 
 	// ACT
@@ -922,7 +922,7 @@ func TestHandleSearch_CriticalFail(t *testing.T) {
 	user := createTestUser()
 	repo.users[TestUsername] = user
 
-	// Force critical fail: roll > 1.0 - SearchCriticalFailRate
+	// Force critical fail: roll > 1.0 - domain.SearchCriticalFailRate
 	svc.rnd = func() float64 { return 0.96 }
 
 	// ACT
@@ -971,14 +971,14 @@ func TestHandleSearch_BoundaryConditions(t *testing.T) {
 		roll       float64
 		expectType string
 	}{
-		{"Exactly on critical threshold", SearchCriticalRate, "crit_success"},
-		{"Just above critical threshold", SearchCriticalRate + 0.001, "normal_success"},
-		{"Exactly on success threshold", SearchSuccessRate, "normal_success"},
-		{"Just above success threshold", SearchSuccessRate + 0.001, "near_miss"},
-		{"Edge of near miss range", SearchSuccessRate + SearchNearMissRate, "near_miss"},
-		{"Just beyond near miss range", SearchSuccessRate + SearchNearMissRate + 0.001, "normal_fail"},
-		{"Edge of crit fail range", 1.0 - SearchCriticalFailRate, "normal_fail"},
-		{"Just inside crit fail range", 1.0 - SearchCriticalFailRate + 0.001, "crit_fail"},
+		{"Exactly on critical threshold", domain.SearchCriticalRate, "crit_success"},
+		{"Just above critical threshold", domain.SearchCriticalRate + 0.001, "normal_success"},
+		{"Exactly on success threshold", domain.SearchSuccessRate, "normal_success"},
+		{"Just above success threshold", domain.SearchSuccessRate + 0.001, "near_miss"},
+		{"Edge of near miss range", domain.SearchSuccessRate + domain.SearchNearMissRate, "near_miss"},
+		{"Just beyond near miss range", domain.SearchSuccessRate + domain.SearchNearMissRate + 0.001, "normal_fail"},
+		{"Edge of crit fail range", 1.0 - domain.SearchCriticalFailRate, "normal_fail"},
+		{"Just inside crit fail range", 1.0 - domain.SearchCriticalFailRate + 0.001, "crit_fail"},
 		{"Minimum possible roll", 0.0, "crit_success"},
 		{"Maximum possible roll", 1.0, "crit_fail"},
 	}
