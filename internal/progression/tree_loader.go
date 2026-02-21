@@ -56,9 +56,6 @@ type NodeConfig struct {
 
 	SortOrder  int  `json:"sort_order"`
 	AutoUnlock bool `json:"auto_unlock"` // If true, node is auto-unlocked (skips voting)
-
-	// Modifier configuration for upgrade nodes
-	ModifierConfig *domain.ModifierConfig `json:"modifier_config,omitempty"`
 }
 
 // TreeLoader handles loading and validating progression tree configuration
@@ -400,8 +397,7 @@ func (t *treeLoader) needsUpdate(existing *domain.ProgressionNode, config *NodeC
 		existing.NodeType != config.Type ||
 		existing.Tier != config.Tier ||
 		existing.Size != config.Size ||
-		existing.Category != config.Category ||
-		!modifierConfigsEqual(existing.ModifierConfig, config.ModifierConfig)
+		existing.Category != config.Category
 }
 
 func (t *treeLoader) syncPrerequisitesAndModifiers(ctx context.Context, repo repository.Progression, nodeID int, config *NodeConfig, existingByKey map[string]*domain.ProgressionNode, insertedNodeIDs map[string]int) error {
@@ -412,31 +408,6 @@ func (t *treeLoader) syncPrerequisitesAndModifiers(ctx context.Context, repo rep
 		return fmt.Errorf("failed to sync dynamic prerequisites for '%s': %w", config.Key, err)
 	}
 	return nil
-}
-
-func modifierConfigsEqual(a, b *domain.ModifierConfig) bool {
-	if a == nil && b == nil {
-		return true
-	}
-	if a == nil || b == nil {
-		return false
-	}
-	return a.FeatureKey == b.FeatureKey &&
-		a.ModifierType == b.ModifierType &&
-		a.BaseValue == b.BaseValue &&
-		a.PerLevelValue == b.PerLevelValue &&
-		floatPtrsEqual(a.MaxValue, b.MaxValue) &&
-		floatPtrsEqual(a.MinValue, b.MinValue)
-}
-
-func floatPtrsEqual(a, b *float64) bool {
-	if a == nil && b == nil {
-		return true
-	}
-	if a == nil || b == nil {
-		return false
-	}
-	return *a == *b
 }
 
 // insertNode inserts a new node into the database
@@ -453,17 +424,16 @@ func insertNode(ctx context.Context, repo repository.Progression, config *NodeCo
 	}
 
 	return inserter.InsertNode(ctx, &domain.ProgressionNode{
-		NodeKey:        config.Key,
-		NodeType:       config.Type,
-		DisplayName:    config.Name,
-		Description:    config.Description,
-		MaxLevel:       config.MaxLevel,
-		UnlockCost:     unlockCost,
-		SortOrder:      config.SortOrder,
-		Tier:           config.Tier,
-		Size:           config.Size,
-		Category:       config.Category,
-		ModifierConfig: config.ModifierConfig,
+		NodeKey:     config.Key,
+		NodeType:    config.Type,
+		DisplayName: config.Name,
+		Description: config.Description,
+		MaxLevel:    config.MaxLevel,
+		UnlockCost:  unlockCost,
+		SortOrder:   config.SortOrder,
+		Tier:        config.Tier,
+		Size:        config.Size,
+		Category:    config.Category,
 	})
 }
 
@@ -481,17 +451,16 @@ func updateNode(ctx context.Context, repo repository.Progression, nodeID int, co
 	}
 
 	return updater.UpdateNode(ctx, nodeID, &domain.ProgressionNode{
-		NodeKey:        config.Key,
-		NodeType:       config.Type,
-		DisplayName:    config.Name,
-		Description:    config.Description,
-		MaxLevel:       config.MaxLevel,
-		UnlockCost:     unlockCost,
-		SortOrder:      config.SortOrder,
-		Tier:           config.Tier,
-		Size:           config.Size,
-		Category:       config.Category,
-		ModifierConfig: config.ModifierConfig,
+		NodeKey:     config.Key,
+		NodeType:    config.Type,
+		DisplayName: config.Name,
+		Description: config.Description,
+		MaxLevel:    config.MaxLevel,
+		UnlockCost:  unlockCost,
+		SortOrder:   config.SortOrder,
+		Tier:        config.Tier,
+		Size:        config.Size,
+		Category:    config.Category,
 	})
 }
 

@@ -62,7 +62,7 @@ func (s *service) RecordEngagement(ctx context.Context, userID string, metricTyp
 
 		// Apply progression rate modifier (stacks multiplicatively across all three upgrades)
 		// upgrade_progression_basic, upgrade_progression_two, upgrade_progression_three
-		modifiedScore, err := s.GetModifiedValue(ctx, "progression_rate", baseScore)
+		modifiedScore, err := s.GetModifiedValue(ctx, "", "progression_rate", baseScore)
 		if err != nil {
 			// Log warning but continue with base score if modifier fails
 			logger.FromContext(ctx).Warn("Failed to apply progression_rate modifier, using base score", "error", err)

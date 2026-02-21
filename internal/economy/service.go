@@ -28,7 +28,7 @@ type ProgressionService interface {
 	IsItemUnlocked(ctx context.Context, itemName string) (bool, error)
 	AreItemsUnlocked(ctx context.Context, itemNames []string) (map[string]bool, error)
 	IsFeatureUnlocked(ctx context.Context, featureKey string) (bool, error)
-	GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error)
+	GetModifiedValue(ctx context.Context, userID string, featureKey string, baseValue float64) (float64, error)
 }
 
 type service struct {

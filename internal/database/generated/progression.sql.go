@@ -410,10 +410,11 @@ func (q *Queries) GetAllNodes(ctx context.Context) ([]GetAllNodesRow, error) {
 }
 
 const getAllNodesByFeatureKey = `-- name: GetAllNodesByFeatureKey :many
-SELECT n.id, n.node_key, n.node_type, n.display_name, n.description, n.max_level, n.unlock_cost, n.sort_order, n.created_at, n.tier, n.size, n.category, n.modifier_config, n.dynamic_prerequisites, COALESCE(u.current_level, 0)::int as unlock_level
+SELECT n.id, n.node_key, n.node_type, n.display_name, n.description, n.max_level, n.unlock_cost, n.sort_order, n.created_at, n.tier, n.size, n.category, n.dynamic_prerequisites, COALESCE(u.current_level, 0)::int as unlock_level
 FROM progression_nodes n
 LEFT JOIN progression_unlocks u ON u.node_id = n.id
-WHERE n.modifier_config->>'feature_key' = $1
+JOIN bonus_config bc ON n.node_key = bc.node_key
+WHERE bc.feature_key = $1 AND bc.source_type = 'progression'
 ORDER BY n.tier ASC, n.id ASC
 `
 
@@ -430,13 +431,12 @@ type GetAllNodesByFeatureKeyRow struct {
 	Tier                 int32            `json:"tier"`
 	Size                 string           `json:"size"`
 	Category             string           `json:"category"`
-	ModifierConfig       []byte           `json:"modifier_config"`
 	DynamicPrerequisites []byte           `json:"dynamic_prerequisites"`
 	UnlockLevel          int32            `json:"unlock_level"`
 }
 
-func (q *Queries) GetAllNodesByFeatureKey(ctx context.Context, modifierConfig []byte) ([]GetAllNodesByFeatureKeyRow, error) {
-	rows, err := q.db.Query(ctx, getAllNodesByFeatureKey, modifierConfig)
+func (q *Queries) GetAllNodesByFeatureKey(ctx context.Context, featureKey string) ([]GetAllNodesByFeatureKeyRow, error) {
+	rows, err := q.db.Query(ctx, getAllNodesByFeatureKey, featureKey)
 	if err != nil {
 		return nil, err
 	}
@@ -457,7 +457,6 @@ func (q *Queries) GetAllNodesByFeatureKey(ctx context.Context, modifierConfig []
 			&i.Tier,
 			&i.Size,
 			&i.Category,
-			&i.ModifierConfig,
 			&i.DynamicPrerequisites,
 			&i.UnlockLevel,
 		); err != nil {
@@ -704,10 +703,11 @@ func (q *Queries) GetMostRecentSession(ctx context.Context) (GetMostRecentSessio
 }
 
 const getNodeByFeatureKey = `-- name: GetNodeByFeatureKey :one
-SELECT n.id, n.node_key, n.node_type, n.display_name, n.description, n.max_level, n.unlock_cost, n.sort_order, n.created_at, n.tier, n.size, n.category, n.modifier_config, n.dynamic_prerequisites, COALESCE(u.current_level, 0)::int as unlock_level
+SELECT n.id, n.node_key, n.node_type, n.display_name, n.description, n.max_level, n.unlock_cost, n.sort_order, n.created_at, n.tier, n.size, n.category, n.dynamic_prerequisites, COALESCE(u.current_level, 0)::int as unlock_level
 FROM progression_nodes n
 LEFT JOIN progression_unlocks u ON u.node_id = n.id
-WHERE n.modifier_config->>'feature_key' = $1
+JOIN bonus_config bc ON n.node_key = bc.node_key
+WHERE bc.feature_key = $1 AND bc.source_type = 'progression'
 LIMIT 1
 `
 
@@ -724,13 +724,12 @@ type GetNodeByFeatureKeyRow struct {
 	Tier                 int32            `json:"tier"`
 	Size                 string           `json:"size"`
 	Category             string           `json:"category"`
-	ModifierConfig       []byte           `json:"modifier_config"`
 	DynamicPrerequisites []byte           `json:"dynamic_prerequisites"`
 	UnlockLevel          int32            `json:"unlock_level"`
 }
 
-func (q *Queries) GetNodeByFeatureKey(ctx context.Context, modifierConfig []byte) (GetNodeByFeatureKeyRow, error) {
-	row := q.db.QueryRow(ctx, getNodeByFeatureKey, modifierConfig)
+func (q *Queries) GetNodeByFeatureKey(ctx context.Context, featureKey string) (GetNodeByFeatureKeyRow, error) {
+	row := q.db.QueryRow(ctx, getNodeByFeatureKey, featureKey)
 	var i GetNodeByFeatureKeyRow
 	err := row.Scan(
 		&i.ID,
@@ -745,7 +744,6 @@ func (q *Queries) GetNodeByFeatureKey(ctx context.Context, modifierConfig []byte
 		&i.Tier,
 		&i.Size,
 		&i.Category,
-		&i.ModifierConfig,
 		&i.DynamicPrerequisites,
 		&i.UnlockLevel,
 	)

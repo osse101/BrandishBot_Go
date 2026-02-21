@@ -96,21 +96,6 @@ definitions:
       user:
         $ref: '#/definitions/domain.User'
     type: object
-  domain.ModifierConfig:
-    properties:
-      base_value:
-        type: number
-      feature_key:
-        type: string
-      max_value:
-        type: number
-      min_value:
-        type: number
-      modifier_type:
-        type: string
-      per_level_value:
-        type: number
-    type: object
   domain.PredictionOutcomeRequest:
     properties:
       participants:
@@ -180,10 +165,6 @@ definitions:
         type: integer
       max_level:
         type: integer
-      modifier_config:
-        allOf:
-        - $ref: '#/definitions/domain.ModifierConfig'
-        description: Value modification configuration (nullable JSON in DB)
       node_key:
         type: string
       node_type:
@@ -242,10 +223,6 @@ definitions:
         type: boolean
       max_level:
         type: integer
-      modifier_config:
-        allOf:
-        - $ref: '#/definitions/domain.ModifierConfig'
-        description: Value modification configuration (nullable JSON in DB)
       node_key:
         type: string
       node_type:

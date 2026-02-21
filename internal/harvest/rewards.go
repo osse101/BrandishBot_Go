@@ -12,16 +12,16 @@ func (s *service) calculateBonuses(ctx context.Context, userID string) (float64,
 	yieldMultiplier := 1.0
 	growthMultiplier := 1.0
 
-	if yieldBonus, err := s.jobSvc.GetJobBonus(ctx, userID, "job_farmer", bonusTypeHarvestYield); err == nil {
-		yieldMultiplier += yieldBonus
+	if modifiedYield, err := s.progressionSvc.GetModifiedValue(ctx, userID, "harvest_yield", 1.0); err == nil {
+		yieldMultiplier = modifiedYield
 	} else {
-		log.Warn("Failed to get yield bonus", "error", err)
+		log.Warn("Failed to get modified harvest yield", "error", err)
 	}
 
-	if growthBonus, err := s.jobSvc.GetJobBonus(ctx, userID, "job_farmer", bonusTypeGrowthSpeed); err == nil {
-		growthMultiplier += growthBonus
+	if modifiedGrowth, err := s.progressionSvc.GetModifiedValue(ctx, userID, "growth_speed", 1.0); err == nil {
+		growthMultiplier = modifiedGrowth
 	} else {
-		log.Warn("Failed to get growth bonus", "error", err)
+		log.Warn("Failed to get modified growth speed", "error", err)
 	}
 	return yieldMultiplier, growthMultiplier
 }

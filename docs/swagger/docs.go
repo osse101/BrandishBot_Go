@@ -2490,29 +2490,6 @@ const docTemplate = `{
                 }
             }
         },
-        "domain.ModifierConfig": {
-            "type": "object",
-            "properties": {
-                "base_value": {
-                    "type": "number"
-                },
-                "feature_key": {
-                    "type": "string"
-                },
-                "max_value": {
-                    "type": "number"
-                },
-                "min_value": {
-                    "type": "number"
-                },
-                "modifier_type": {
-                    "type": "string"
-                },
-                "per_level_value": {
-                    "type": "number"
-                }
-            }
-        },
         "domain.PredictionOutcomeRequest": {
             "type": "object",
             "required": [
@@ -2615,14 +2592,6 @@ const docTemplate = `{
                 "max_level": {
                     "type": "integer"
                 },
-                "modifier_config": {
-                    "description": "Value modification configuration (nullable JSON in DB)",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/domain.ModifierConfig"
-                        }
-                    ]
-                },
                 "node_key": {
                     "type": "string"
                 },
@@ -2705,14 +2674,6 @@ const docTemplate = `{
                 },
                 "max_level": {
                     "type": "integer"
-                },
-                "modifier_config": {
-                    "description": "Value modification configuration (nullable JSON in DB)",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/domain.ModifierConfig"
-                        }
-                    ]
                 },
                 "node_key": {
                     "type": "string"

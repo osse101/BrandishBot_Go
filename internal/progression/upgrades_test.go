@@ -42,16 +42,20 @@ func TestUpgradeProgressionBasic_ModifierApplication(t *testing.T) {
 			node := &domain.ProgressionNode{
 				ID:      1,
 				NodeKey: "upgrade_progression_basic",
-				ModifierConfig: &domain.ModifierConfig{
-					FeatureKey:    "progression_rate",
-					ModifierType:  "multiplicative",
-					BaseValue:     1.0,
-					PerLevelValue: 0.1,
-				},
+
 				Tier: 1,
 			}
 			mockRepo.nodes[1] = node
 			mockRepo.nodesByKey["upgrade_progression_basic"] = node
+
+			mockRepo.bonusConfigs = append(mockRepo.bonusConfigs, domain.ModifierConfig{
+				NodeKey:       "upgrade_progression_basic",
+				SourceType:    "progression",
+				FeatureKey:    "progression_rate",
+				ModifierType:  "multiplicative",
+				BaseValue:     1.0,
+				PerLevelValue: 0.1,
+			})
 
 			// Unlock to specified level
 			if mockRepo.unlocks[1] == nil {
@@ -64,7 +68,7 @@ func TestUpgradeProgressionBasic_ModifierApplication(t *testing.T) {
 			}
 
 			// Test GetModifiedValue
-			result, err := svc.GetModifiedValue(ctx, "progression_rate", tt.baseValue)
+			result, err := svc.GetModifiedValue(ctx, "", "progression_rate", tt.baseValue)
 
 			// Verify (with small tolerance for floating point)
 			require.NoError(t, err)
@@ -104,31 +108,39 @@ func TestUpgradeProgressionTwo_StackingWithBasic(t *testing.T) {
 			node1 := &domain.ProgressionNode{
 				ID:      1,
 				NodeKey: "upgrade_progression_basic",
-				ModifierConfig: &domain.ModifierConfig{
-					FeatureKey:    "progression_rate",
-					ModifierType:  "multiplicative",
-					BaseValue:     1.0,
-					PerLevelValue: 0.1,
-				},
+
 				Tier: 1,
 			}
 			mockRepo.nodes[1] = node1
 			mockRepo.nodesByKey["upgrade_progression_basic"] = node1
 
+			mockRepo.bonusConfigs = append(mockRepo.bonusConfigs, domain.ModifierConfig{
+				NodeKey:       "upgrade_progression_basic",
+				SourceType:    "progression",
+				FeatureKey:    "progression_rate",
+				ModifierType:  "multiplicative",
+				BaseValue:     1.0,
+				PerLevelValue: 0.1,
+			})
+
 			// Create second node (tier 3)
 			node2 := &domain.ProgressionNode{
 				ID:      2,
 				NodeKey: "upgrade_progression_two",
-				ModifierConfig: &domain.ModifierConfig{
-					FeatureKey:    "progression_rate",
-					ModifierType:  "multiplicative",
-					BaseValue:     1.0,
-					PerLevelValue: 0.1,
-				},
+
 				Tier: 3,
 			}
 			mockRepo.nodes[2] = node2
 			mockRepo.nodesByKey["upgrade_progression_two"] = node2
+
+			mockRepo.bonusConfigs = append(mockRepo.bonusConfigs, domain.ModifierConfig{
+				NodeKey:       "upgrade_progression_two",
+				SourceType:    "progression",
+				FeatureKey:    "progression_rate",
+				ModifierType:  "multiplicative",
+				BaseValue:     1.0,
+				PerLevelValue: 0.1,
+			})
 
 			// Unlock both nodes
 			mockRepo.unlocks[1] = make(map[int]*domain.ProgressionUnlock)
@@ -146,7 +158,7 @@ func TestUpgradeProgressionTwo_StackingWithBasic(t *testing.T) {
 			}
 
 			// Test GetModifiedValue
-			result, err := svc.GetModifiedValue(ctx, "progression_rate", tt.baseValue)
+			result, err := svc.GetModifiedValue(ctx, "", "progression_rate", tt.baseValue)
 
 			// Verify (with small tolerance for floating point)
 			require.NoError(t, err)
@@ -186,44 +198,56 @@ func TestUpgradeProgressionThree_TripleStacking(t *testing.T) {
 			node1 := &domain.ProgressionNode{
 				ID:      1,
 				NodeKey: "upgrade_progression_basic",
-				ModifierConfig: &domain.ModifierConfig{
-					FeatureKey:    "progression_rate",
-					ModifierType:  "multiplicative",
-					BaseValue:     1.0,
-					PerLevelValue: 0.1,
-				},
+
 				Tier: 1,
 			}
 			mockRepo.nodes[1] = node1
 			mockRepo.nodesByKey["upgrade_progression_basic"] = node1
 
+			mockRepo.bonusConfigs = append(mockRepo.bonusConfigs, domain.ModifierConfig{
+				NodeKey:       "upgrade_progression_basic",
+				SourceType:    "progression",
+				FeatureKey:    "progression_rate",
+				ModifierType:  "multiplicative",
+				BaseValue:     1.0,
+				PerLevelValue: 0.1,
+			})
+
 			node2 := &domain.ProgressionNode{
 				ID:      2,
 				NodeKey: "upgrade_progression_two",
-				ModifierConfig: &domain.ModifierConfig{
-					FeatureKey:    "progression_rate",
-					ModifierType:  "multiplicative",
-					BaseValue:     1.0,
-					PerLevelValue: 0.1,
-				},
+
 				Tier: 3,
 			}
 			mockRepo.nodes[2] = node2
 			mockRepo.nodesByKey["upgrade_progression_two"] = node2
 
+			mockRepo.bonusConfigs = append(mockRepo.bonusConfigs, domain.ModifierConfig{
+				NodeKey:       "upgrade_progression_two",
+				SourceType:    "progression",
+				FeatureKey:    "progression_rate",
+				ModifierType:  "multiplicative",
+				BaseValue:     1.0,
+				PerLevelValue: 0.1,
+			})
+
 			node3 := &domain.ProgressionNode{
 				ID:      3,
 				NodeKey: "upgrade_progression_three",
-				ModifierConfig: &domain.ModifierConfig{
-					FeatureKey:    "progression_rate",
-					ModifierType:  "multiplicative",
-					BaseValue:     1.0,
-					PerLevelValue: 0.1,
-				},
+
 				Tier: 4,
 			}
 			mockRepo.nodes[3] = node3
 			mockRepo.nodesByKey["upgrade_progression_three"] = node3
+
+			mockRepo.bonusConfigs = append(mockRepo.bonusConfigs, domain.ModifierConfig{
+				NodeKey:       "upgrade_progression_three",
+				SourceType:    "progression",
+				FeatureKey:    "progression_rate",
+				ModifierType:  "multiplicative",
+				BaseValue:     1.0,
+				PerLevelValue: 0.1,
+			})
 
 			// Unlock all three nodes
 			mockRepo.unlocks[1] = make(map[int]*domain.ProgressionUnlock)
@@ -248,7 +272,7 @@ func TestUpgradeProgressionThree_TripleStacking(t *testing.T) {
 			}
 
 			// Test GetModifiedValue
-			result, err := svc.GetModifiedValue(ctx, "progression_rate", tt.baseValue)
+			result, err := svc.GetModifiedValue(ctx, "", "progression_rate", tt.baseValue)
 
 			// Verify (with small tolerance for floating point)
 			require.NoError(t, err)
@@ -272,16 +296,20 @@ func TestProgressionUpgrades_CacheInvalidation(t *testing.T) {
 	node := &domain.ProgressionNode{
 		ID:      1,
 		NodeKey: "upgrade_progression_basic",
-		ModifierConfig: &domain.ModifierConfig{
-			FeatureKey:    "progression_rate",
-			ModifierType:  "multiplicative",
-			BaseValue:     1.0,
-			PerLevelValue: 0.1,
-		},
+
 		Tier: 1,
 	}
 	mockRepo.nodes[1] = node
 	mockRepo.nodesByKey["upgrade_progression_basic"] = node
+
+	mockRepo.bonusConfigs = append(mockRepo.bonusConfigs, domain.ModifierConfig{
+		NodeKey:       "upgrade_progression_basic",
+		SourceType:    "progression",
+		FeatureKey:    "progression_rate",
+		ModifierType:  "multiplicative",
+		BaseValue:     1.0,
+		PerLevelValue: 0.1,
+	})
 
 	// Initial state: level 1
 	mockRepo.unlocks[1] = make(map[int]*domain.ProgressionUnlock)
@@ -292,12 +320,12 @@ func TestProgressionUpgrades_CacheInvalidation(t *testing.T) {
 	}
 
 	// First call - should return 1.1x and cache it
-	result1, err := svc.GetModifiedValue(ctx, "progression_rate", 100.0)
+	result1, err := svc.GetModifiedValue(ctx, "", "progression_rate", 100.0)
 	require.NoError(t, err)
 	assert.InDelta(t, 110.0, result1, 0.01)
 
 	// Verify cache hit on second call
-	result2, err := svc.GetModifiedValue(ctx, "progression_rate", 100.0)
+	result2, err := svc.GetModifiedValue(ctx, "", "progression_rate", 100.0)
 	require.NoError(t, err)
 	assert.InDelta(t, 110.0, result2, 0.01)
 
@@ -309,7 +337,7 @@ func TestProgressionUpgrades_CacheInvalidation(t *testing.T) {
 	}
 
 	// Cache should still return old value
-	result3, err := svc.GetModifiedValue(ctx, "progression_rate", 100.0)
+	result3, err := svc.GetModifiedValue(ctx, "", "progression_rate", 100.0)
 	require.NoError(t, err)
 	assert.InDelta(t, 110.0, result3, 0.01, "Cache should return stale value before invalidation")
 
@@ -317,7 +345,7 @@ func TestProgressionUpgrades_CacheInvalidation(t *testing.T) {
 	svc.modifierCache.InvalidateAll()
 
 	// Now should return new value (1.5x)
-	result4, err := svc.GetModifiedValue(ctx, "progression_rate", 100.0)
+	result4, err := svc.GetModifiedValue(ctx, "", "progression_rate", 100.0)
 	require.NoError(t, err)
 	assert.InDelta(t, 150.0, result4, 0.01, "Should return updated value after cache invalidation")
 }
@@ -334,7 +362,7 @@ func TestProgressionUpgrades_FallbackBehavior(t *testing.T) {
 	}
 
 	// Test with no modifiers configured - should return base value
-	result, err := svc.GetModifiedValue(ctx, "nonexistent_feature", 100.0)
+	result, err := svc.GetModifiedValue(ctx, "", "nonexistent_feature", 100.0)
 	require.NoError(t, err)
 	assert.Equal(t, 100.0, result, "Should return base value when no modifiers exist")
 }

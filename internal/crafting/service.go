@@ -50,12 +50,13 @@ type Service interface {
 
 // ProgressionService defines the interface for progression operations
 type ProgressionService interface {
-	GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error)
+	GetModifiedValue(ctx context.Context, userID string, featureKey string, baseValue float64) (float64, error)
 }
 
 // JobService defines the interface for checking job levels
 type JobService interface {
 	GetJobLevel(ctx context.Context, userID, jobKey string) (int, error)
+	IsJobFeatureUnlocked(ctx context.Context, userID string, featureKey string) (bool, error)
 }
 
 // Crafting balance constants are defined in constants.go

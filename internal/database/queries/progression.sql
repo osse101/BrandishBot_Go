@@ -339,14 +339,16 @@ ON CONFLICT (node_id, prerequisite_node_id) DO NOTHING;
 SELECT n.*, COALESCE(u.current_level, 0)::int as unlock_level
 FROM progression_nodes n
 LEFT JOIN progression_unlocks u ON u.node_id = n.id
-WHERE n.modifier_config->>'feature_key' = $1
+JOIN bonus_config bc ON n.node_key = bc.node_key
+WHERE bc.feature_key = $1 AND bc.source_type = 'progression'
 LIMIT 1;
 
 -- name: GetAllNodesByFeatureKey :many
 SELECT n.*, COALESCE(u.current_level, 0)::int as unlock_level
 FROM progression_nodes n
 LEFT JOIN progression_unlocks u ON u.node_id = n.id
-WHERE n.modifier_config->>'feature_key' = $1
+JOIN bonus_config bc ON n.node_key = bc.node_key
+WHERE bc.feature_key = $1 AND bc.source_type = 'progression'
 ORDER BY n.tier ASC, n.id ASC;
 
 -- name: GetDailyEngagementTotals :many

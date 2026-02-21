@@ -560,7 +560,7 @@ type MockProgressionService struct {
 	}
 }
 
-func (m *MockProgressionService) GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error) {
+func (m *MockProgressionService) GetModifiedValue(ctx context.Context, userID string, featureKey string, baseValue float64) (float64, error) {
 	m.mu.Lock()
 	m.calls = append(m.calls, struct {
 		ctx        context.Context
@@ -636,6 +636,10 @@ func (m *MockJobService) GetJobLevel(ctx context.Context, userID, jobKey string)
 		return userLevels[jobKey], nil
 	}
 	return 0, nil
+}
+
+func (m *MockJobService) IsJobFeatureUnlocked(ctx context.Context, userID, featureKey string) (bool, error) {
+	return true, nil
 }
 
 func (m *MockJobService) SetJobLevel(userID, jobKey string, level int) {

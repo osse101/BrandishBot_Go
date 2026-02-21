@@ -93,7 +93,7 @@ type MockProgression struct {
 }
 
 // GetModifiedValue implements ProgressionService
-func (m *MockProgression) GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error) {
+func (m *MockProgression) GetModifiedValue(ctx context.Context, userID string, featureKey string, baseValue float64) (float64, error) {
 	args := m.Called(ctx, featureKey, baseValue)
 	return args.Get(0).(float64), args.Error(1)
 }
@@ -110,6 +110,14 @@ func (m *MockProgression) IsNodeUnlocked(ctx context.Context, nodeKey string, le
 
 func (m *MockProgression) GetProgressionStatus(ctx context.Context) (*domain.ProgressionStatus, error) {
 	return nil, nil
+}
+
+func (m *MockProgression) GetJobUnlockConfig(ctx context.Context, featureKey string) (*domain.JobUnlockConfig, error) {
+	args := m.Called(ctx, featureKey)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.JobUnlockConfig), args.Error(1)
 }
 
 // Mock Stats

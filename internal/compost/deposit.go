@@ -12,12 +12,12 @@ import (
 
 // Deposit adds items to the user's compost bin, auto-starting if first deposit
 func (s *service) Deposit(ctx context.Context, platform, platformID string, items []DepositItem) (*domain.CompostBin, error) {
-	if err := s.validateFeature(ctx); err != nil {
+	user, bin, err := s.getUserAndBin(ctx, platform, platformID, true)
+	if err != nil {
 		return nil, err
 	}
 
-	user, bin, err := s.getUserAndBin(ctx, platform, platformID, true)
-	if err != nil {
+	if err := s.validateFeature(ctx, user.ID); err != nil {
 		return nil, err
 	}
 

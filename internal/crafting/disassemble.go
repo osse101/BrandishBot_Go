@@ -72,6 +72,11 @@ func (s *service) validateDisassembleInput(ctx context.Context, platform, platfo
 		return nil, nil, nil, err
 	}
 
+	jobUnlocked, err := s.jobService.IsJobFeatureUnlocked(ctx, user.ID, "feature_disassemble")
+	if err == nil && !jobUnlocked {
+		return nil, nil, nil, fmt.Errorf("disassemble requires job progression: %w", domain.ErrFeatureLocked)
+	}
+
 	item, err := s.validateItem(ctx, resolvedName)
 	if err != nil {
 		return nil, nil, nil, err
@@ -241,10 +246,10 @@ func (s *service) calculatePerfectSalvage(ctx context.Context, quantity int) int
 	// Note: Using same modifier key as masterwork since they're both "crafting success"
 	salvageChance := PerfectSalvageChance
 	if s.progressionSvc != nil {
-		if modifiedChance, err := s.progressionSvc.GetModifiedValue(ctx, "crafting_success_rate", PerfectSalvageChance); err == nil {
+		if modifiedChance, err := s.progressionSvc.GetModifiedValue(ctx, "", "crafting_success_rate", PerfectSalvageChance); err == nil {
 			salvageChance = modifiedChance
 		}
-		// Silently fall back to base chance on error (no logging in helper)
+		// TODO: Log on Error
 	}
 
 	count := 0

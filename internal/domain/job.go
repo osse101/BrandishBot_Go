@@ -104,3 +104,10 @@ type DailyResetStatus struct {
 	NextResetTime   time.Time `json:"next_reset_time"`
 	RecordsAffected int64     `json:"records_affected"`
 }
+
+// JobUnlockConfig defines the job level required to unlock a specific feature
+type JobUnlockConfig struct {
+	JobKey        string `json:"job_key"`
+	FeatureKey    string `json:"feature_key"`
+	RequiredLevel int    `json:"required_level"`
+}

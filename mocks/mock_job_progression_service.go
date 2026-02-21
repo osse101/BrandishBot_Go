@@ -5,6 +5,8 @@ package mocks
 import (
 	context "context"
 
+	domain "github.com/osse101/BrandishBot_Go/internal/domain"
+
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -21,9 +23,68 @@ func (_m *MockJobProgressionService) EXPECT() *MockJobProgressionService_Expecte
 	return &MockJobProgressionService_Expecter{mock: &_m.Mock}
 }
 
-// GetModifiedValue provides a mock function with given fields: ctx, featureKey, baseValue
-func (_m *MockJobProgressionService) GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error) {
-	ret := _m.Called(ctx, featureKey, baseValue)
+// GetJobUnlockConfig provides a mock function with given fields: ctx, featureKey
+func (_m *MockJobProgressionService) GetJobUnlockConfig(ctx context.Context, featureKey string) (*domain.JobUnlockConfig, error) {
+	ret := _m.Called(ctx, featureKey)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetJobUnlockConfig")
+	}
+
+	var r0 *domain.JobUnlockConfig
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (*domain.JobUnlockConfig, error)); ok {
+		return rf(ctx, featureKey)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) *domain.JobUnlockConfig); ok {
+		r0 = rf(ctx, featureKey)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*domain.JobUnlockConfig)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, featureKey)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockJobProgressionService_GetJobUnlockConfig_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetJobUnlockConfig'
+type MockJobProgressionService_GetJobUnlockConfig_Call struct {
+	*mock.Call
+}
+
+// GetJobUnlockConfig is a helper method to define mock.On call
+//   - ctx context.Context
+//   - featureKey string
+func (_e *MockJobProgressionService_Expecter) GetJobUnlockConfig(ctx interface{}, featureKey interface{}) *MockJobProgressionService_GetJobUnlockConfig_Call {
+	return &MockJobProgressionService_GetJobUnlockConfig_Call{Call: _e.mock.On("GetJobUnlockConfig", ctx, featureKey)}
+}
+
+func (_c *MockJobProgressionService_GetJobUnlockConfig_Call) Run(run func(ctx context.Context, featureKey string)) *MockJobProgressionService_GetJobUnlockConfig_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockJobProgressionService_GetJobUnlockConfig_Call) Return(_a0 *domain.JobUnlockConfig, _a1 error) *MockJobProgressionService_GetJobUnlockConfig_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockJobProgressionService_GetJobUnlockConfig_Call) RunAndReturn(run func(context.Context, string) (*domain.JobUnlockConfig, error)) *MockJobProgressionService_GetJobUnlockConfig_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetModifiedValue provides a mock function with given fields: ctx, userID, featureKey, baseValue
+func (_m *MockJobProgressionService) GetModifiedValue(ctx context.Context, userID string, featureKey string, baseValue float64) (float64, error) {
+	ret := _m.Called(ctx, userID, featureKey, baseValue)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetModifiedValue")
@@ -31,17 +92,17 @@ func (_m *MockJobProgressionService) GetModifiedValue(ctx context.Context, featu
 
 	var r0 float64
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, float64) (float64, error)); ok {
-		return rf(ctx, featureKey, baseValue)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, float64) (float64, error)); ok {
+		return rf(ctx, userID, featureKey, baseValue)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, float64) float64); ok {
-		r0 = rf(ctx, featureKey, baseValue)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, float64) float64); ok {
+		r0 = rf(ctx, userID, featureKey, baseValue)
 	} else {
 		r0 = ret.Get(0).(float64)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, float64) error); ok {
-		r1 = rf(ctx, featureKey, baseValue)
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, float64) error); ok {
+		r1 = rf(ctx, userID, featureKey, baseValue)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -56,15 +117,16 @@ type MockJobProgressionService_GetModifiedValue_Call struct {
 
 // GetModifiedValue is a helper method to define mock.On call
 //   - ctx context.Context
+//   - userID string
 //   - featureKey string
 //   - baseValue float64
-func (_e *MockJobProgressionService_Expecter) GetModifiedValue(ctx interface{}, featureKey interface{}, baseValue interface{}) *MockJobProgressionService_GetModifiedValue_Call {
-	return &MockJobProgressionService_GetModifiedValue_Call{Call: _e.mock.On("GetModifiedValue", ctx, featureKey, baseValue)}
+func (_e *MockJobProgressionService_Expecter) GetModifiedValue(ctx interface{}, userID interface{}, featureKey interface{}, baseValue interface{}) *MockJobProgressionService_GetModifiedValue_Call {
+	return &MockJobProgressionService_GetModifiedValue_Call{Call: _e.mock.On("GetModifiedValue", ctx, userID, featureKey, baseValue)}
 }
 
-func (_c *MockJobProgressionService_GetModifiedValue_Call) Run(run func(ctx context.Context, featureKey string, baseValue float64)) *MockJobProgressionService_GetModifiedValue_Call {
+func (_c *MockJobProgressionService_GetModifiedValue_Call) Run(run func(ctx context.Context, userID string, featureKey string, baseValue float64)) *MockJobProgressionService_GetModifiedValue_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(float64))
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(float64))
 	})
 	return _c
 }
@@ -74,7 +136,7 @@ func (_c *MockJobProgressionService_GetModifiedValue_Call) Return(_a0 float64, _
 	return _c
 }
 
-func (_c *MockJobProgressionService_GetModifiedValue_Call) RunAndReturn(run func(context.Context, string, float64) (float64, error)) *MockJobProgressionService_GetModifiedValue_Call {
+func (_c *MockJobProgressionService_GetModifiedValue_Call) RunAndReturn(run func(context.Context, string, string, float64) (float64, error)) *MockJobProgressionService_GetModifiedValue_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -168,8 +168,8 @@ func TestHarvest_Workflow(t *testing.T) {
 			mockJobSvc := new(mocks.MockJobService)
 
 			// Default job bonus expectations (0 bonus)
-			mockJobSvc.On("GetJobBonus", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(0.0, nil).Maybe()
-
+			mockProgressionSvc.On("GetModifiedValue", mock.Anything, mock.Anything, "harvest_yield", 1.0).Return(1.0, nil).Maybe()
+			mockProgressionSvc.On("GetModifiedValue", mock.Anything, mock.Anything, "growth_speed", 1.0).Return(1.0, nil).Maybe()
 			svc := NewService(mockHarvestRepo, mockUserRepo, mockProgressionSvc, mockJobSvc, nil)
 
 			// --- User Registration Workflow ---

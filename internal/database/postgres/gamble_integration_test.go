@@ -81,7 +81,7 @@ func setupGambleIntegrationTest(t *testing.T) (*UserRepository, gamble.Service) 
 
 type MockProgressionService struct{}
 
-func (m *MockProgressionService) GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error) {
+func (m *MockProgressionService) GetModifiedValue(ctx context.Context, userID string, featureKey string, baseValue float64) (float64, error) {
 	return baseValue, nil
 }
 

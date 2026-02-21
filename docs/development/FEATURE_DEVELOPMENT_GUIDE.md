@@ -357,7 +357,7 @@ Ask these questions:
 ```go
 // ProgressionService defines required progression methods
 type ProgressionService interface {
-    GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error)
+    GetModifiedValue(ctx context.Context, userID string, featureKey string, baseValue float64) (float64, error)
 }
 ```
 
@@ -387,9 +387,9 @@ func NewService(repo Repository, progressionSvc ProgressionService) Service {
 **Pattern with fallback (recommended):**
 
 ```go
-func (s *service) calculateReward(ctx context.Context, baseReward int) int {
+func (s *service) calculateReward(ctx context.Context, userID string, baseReward int) int {
     // Apply modifier if available
-    modified, err := s.progressionSvc.GetModifiedValue(ctx, "my_feature_reward_bonus", float64(baseReward))
+    modified, err := s.progressionSvc.GetModifiedValue(ctx, userID, "my_feature_reward_bonus", float64(baseReward))
     if err != nil {
         // Fallback to base value on error
         log.Warn("Failed to get modifier, using base value", "error", err)
@@ -406,7 +406,7 @@ baseDuration := 5 * time.Minute
 
 // Apply reduction modifier
 if s.progressionSvc != nil {
-    modifiedDuration, err := s.progressionSvc.GetModifiedValue(ctx, "my_cooldown_reduction", float64(baseDuration))
+    modifiedDuration, err := s.progressionSvc.GetModifiedValue(ctx, userID, "my_cooldown_reduction", float64(baseDuration))
     if err == nil {
         baseDuration = time.Duration(modifiedDuration)
     }
@@ -415,70 +415,62 @@ if s.progressionSvc != nil {
 
 ### Real-World Examples
 
-**Example 1: Job System XP Multiplier**
+#### Example 1: Job System XP Multiplier
 
 ```go
 // internal/job/service.go
-func (s *service) getXPMultiplier(ctx context.Context) float64 {
-    modified, err := s.progressionSvc.GetModifiedValue(ctx, "job_xp_multiplier", 1.0)
+func (s *service) getXPMultiplier(ctx context.Context, userID string) float64 {
+    modified, err := s.progressionSvc.GetModifiedValue(ctx, userID, "job_xp_multiplier", 1.0)
     if err != nil {
         return 1.0  // Default multiplier
     }
     return modified
 }
 
-// Usage: xp = baseXP * getXPMultiplier(ctx)
+// Usage: xp = baseXP * getXPMultiplier(ctx, userID)
 ```
 
-**Example 2: Gamble Win Bonus**
+#### Example 2: Gamble Win Bonus
 
 ```go
 // internal/gamble/service.go - in ExecuteGamble()
 totalValue := int64(drop.Value * drop.Quantity)
 
 if s.progressionSvc != nil {
-    modifiedValue, err := s.progressionSvc.GetModifiedValue(ctx, "gamble_win_bonus", float64(totalValue))
+    modifiedValue, err := s.progressionSvc.GetModifiedValue(ctx, userID, "gamble_win_bonus", float64(totalValue))
     if err == nil {
         totalValue = int64(modifiedValue)
     }
 }
 ```
 
-**Example 3: Cooldown Reduction**
+#### Example 3: Cooldown Reduction
 
 ```go
 // internal/cooldown/postgres.go
 cooldownDuration := b.config.GetCooldownDuration(action)
 
 if b.progressionSvc != nil && action == "search" {
-    modifiedDuration, err := b.progressionSvc.GetModifiedValue(ctx, "search_cooldown_reduction", float64(cooldownDuration))
+    modifiedDuration, err := b.progressionSvc.GetModifiedValue(ctx, userID, "search_cooldown_reduction", float64(cooldownDuration))
     if err == nil {
         cooldownDuration = time.Duration(modifiedDuration)
     }
 }
 ```
 
-### Adding Modifier Nodes to Progression Tree
+### Adding Modifier Nodes (Global & Job)
 
-**1. Add to `configs/progression_tree.json`:**
+BrandishBot_Go uses a unified `bonus_config` table to store scaling benefits. Modifiers can apply globally (from progression unlocks) or per-user (from job levels).
 
-```json
-{
-  "node_key": "upgrade_my_feature_bonus",
-  "name": "My Feature Bonus",
-  "type": "upgrade",
-  "description": "Increase my feature bonus by 10% per level",
-  "tier": 3,
-  "max_level": 5,
-  "prerequisites": ["feature_my_feature"],
-  "modifier_config": {
-    "feature_key": "my_feature_bonus",
-    "modifier_type": "multiplicative",
-    "base_value": 1.0,
-    "per_level_value": 0.1
-  }
-}
+**1. Inserting into `bonus_config`:**
+Instead of hardcoding modifiers in `progression_tree.json`, bonuses are inserted directly via database migrations into the new `bonus_config` table. Example:
+
+```sql
+INSERT INTO bonus_config (node_key, source_type, feature_key, modifier_type, base_value, per_level_value)
+VALUES ('job_farmer', 'job', 'growth_speed', 'multiplicative', 1.0, 0.05);
 ```
+
+**Note:** `source_type` can be `progression` (relies on global tier) or `job` (relies on individual user level).
 
 **2. Modifier types:**
 
@@ -510,7 +502,7 @@ Linear (base=3, perLevel=1):
 ```go
 type MockProgressionService struct{}
 
-func (m *MockProgressionService) GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error) {
+func (m *MockProgressionService) GetModifiedValue(ctx context.Context, userID string, featureKey string, baseValue float64) (float64, error) {
     return baseValue, nil  // Return unmodified for testing
 }
 ```
@@ -518,7 +510,26 @@ func (m *MockProgressionService) GetModifiedValue(ctx context.Context, featureKe
 **Or test with specific values:**
 
 ```go
-mockProg.On("GetModifiedValue", mock.Anything, "my_feature_bonus", 100.0).Return(150.0, nil)
+mockProg.On("GetModifiedValue", mock.Anything, "user-id", "my_feature_bonus", 100.0).Return(150.0, nil)
+```
+
+### Job Feature Unlocks
+
+For gating entire features behind specific job levels (rather than just adjusting math), utilize `job_unlock_config` and `job.Service`.
+
+**1. Inject JobService**
+
+```go
+unlocked, err := s.jobSvc.IsJobFeatureUnlocked(ctx, userID, "feature_compost")
+if err == nil && !unlocked {
+    return fmt.Errorf("requires job progression")
+}
+```
+
+**2. Insert into `job_unlock_config` database table via migration:**
+
+```sql
+INSERT INTO job_unlock_config (job_key, feature_key, required_level) VALUES ('farmer', 'feature_compost', 10);
 ```
 
 ### Checklist for Modifier Integration
@@ -526,12 +537,13 @@ mockProg.On("GetModifiedValue", mock.Anything, "my_feature_bonus", 100.0).Return
 - [ ] Add `ProgressionService` to your service interface
 - [ ] Inject `progressionSvc` in constructor and `main.go`
 - [ ] Identify numeric values to modify
-- [ ] Replace hardcoded values with `GetModifiedValue()` calls
+- [ ] Replace hardcoded values with `GetModifiedValue(ctx, userID, ...)` calls
 - [ ] Add fallback handling for errors
-- [ ] Create modifier node in `progression_tree.json`
-- [ ] Update test mocks to include `GetModifiedValue`
+- [ ] Create `bonus_config` row via SQL migration
+- [ ] (If needed) Create `job_unlock_config` row via SQL migration for gated features
+- [ ] Update test mocks to include `GetModifiedValue` with `userID` and `GetJobUnlockConfig`
 - [ ] Document feature key in code comments
-- [ ] Test with different progression levels
+- [ ] Test with different progression levels and jobs
 
 ---
 

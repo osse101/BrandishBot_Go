@@ -454,10 +454,13 @@ progression_nodes                progression_unlocks
 │description         │      │   ┌────────────────────┐
 │category            │      │   │session_id          │
 │unlock_description  │      │   │tier                │
-│modifier_type       │      │   │status (voting/frozen/completed)
-│modifier_value      │      │   │target_node_id      │
-│prerequisites       │      │   │votes_accumulated   │
-└────────────────────┘      │   │cost_to_unlock      │
+│prerequisites       │      │   │status (voting...)  │
+└────────────────────┘      │   │target_node_id      │
+                            │   │votes_accumulated   │
+                            │   │cost_to_unlock      │
+                            │   │started_at          │
+                            │   │ended_at            │
+                            │   └────────────────────┘
                             │   │started_at          │
 progression_voting_options  │   │ended_at            │
 ┌────────────────────┐      │   └────────────────────┘
@@ -515,6 +518,23 @@ jobs                           user_jobs
 │description     │            │level           │
 │max_level       │            │last_xp_at      │
 └────────────────┘            └────────────────┘
+```
+
+### Feature Modifiers & Unlocks
+
+```sql
+bonus_config                   job_unlock_config
+┌────────────────┐            ┌────────────────┐
+│id              │            │id              │
+│node_key        │            │job_key         │
+│source_type     │            │feature_key     │
+│feature_key     │            │required_level  │
+│modifier_type   │            └────────────────┘
+│base_value      │
+│per_level_value │
+│max_value       │
+│min_value       │
+└────────────────┘
 ```
 
 ### Stats & Leaderboards

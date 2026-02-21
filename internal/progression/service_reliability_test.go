@@ -324,3 +324,27 @@ func (m *ReliabilityMockRepository) UpsertSyncMetadata(ctx context.Context, meta
 	args := m.Called(ctx, metadata)
 	return args.Error(0)
 }
+
+func (m *ReliabilityMockRepository) GetBonusModifiers(ctx context.Context, featureKey string) ([]domain.ModifierConfig, error) {
+	args := m.Called(ctx, featureKey)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]domain.ModifierConfig), args.Error(1)
+}
+
+func (m *ReliabilityMockRepository) GetAllBonusModifiers(ctx context.Context) ([]domain.ModifierConfig, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]domain.ModifierConfig), args.Error(1)
+}
+
+func (m *ReliabilityMockRepository) GetJobUnlockConfig(ctx context.Context, featureKey string) (*domain.JobUnlockConfig, error) {
+	args := m.Called(ctx, featureKey)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.JobUnlockConfig), args.Error(1)
+}

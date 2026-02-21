@@ -841,6 +841,64 @@ func (_c *MockRepository_GetActiveUnlockProgress_Call) RunAndReturn(run func(con
 	return _c
 }
 
+// GetAllBonusModifiers provides a mock function with given fields: ctx
+func (_m *MockRepository) GetAllBonusModifiers(ctx context.Context) ([]domain.ModifierConfig, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetAllBonusModifiers")
+	}
+
+	var r0 []domain.ModifierConfig
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) ([]domain.ModifierConfig, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) []domain.ModifierConfig); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]domain.ModifierConfig)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockRepository_GetAllBonusModifiers_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAllBonusModifiers'
+type MockRepository_GetAllBonusModifiers_Call struct {
+	*mock.Call
+}
+
+// GetAllBonusModifiers is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockRepository_Expecter) GetAllBonusModifiers(ctx interface{}) *MockRepository_GetAllBonusModifiers_Call {
+	return &MockRepository_GetAllBonusModifiers_Call{Call: _e.mock.On("GetAllBonusModifiers", ctx)}
+}
+
+func (_c *MockRepository_GetAllBonusModifiers_Call) Run(run func(ctx context.Context)) *MockRepository_GetAllBonusModifiers_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockRepository_GetAllBonusModifiers_Call) Return(_a0 []domain.ModifierConfig, _a1 error) *MockRepository_GetAllBonusModifiers_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockRepository_GetAllBonusModifiers_Call) RunAndReturn(run func(context.Context) ([]domain.ModifierConfig, error)) *MockRepository_GetAllBonusModifiers_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetAllNodes provides a mock function with given fields: ctx
 func (_m *MockRepository) GetAllNodes(ctx context.Context) ([]*domain.ProgressionNode, error) {
 	ret := _m.Called(ctx)
@@ -1021,6 +1079,65 @@ func (_c *MockRepository_GetAllUnlocks_Call) Return(_a0 []*domain.ProgressionUnl
 }
 
 func (_c *MockRepository_GetAllUnlocks_Call) RunAndReturn(run func(context.Context) ([]*domain.ProgressionUnlock, error)) *MockRepository_GetAllUnlocks_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetBonusModifiers provides a mock function with given fields: ctx, featureKey
+func (_m *MockRepository) GetBonusModifiers(ctx context.Context, featureKey string) ([]domain.ModifierConfig, error) {
+	ret := _m.Called(ctx, featureKey)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetBonusModifiers")
+	}
+
+	var r0 []domain.ModifierConfig
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) ([]domain.ModifierConfig, error)); ok {
+		return rf(ctx, featureKey)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) []domain.ModifierConfig); ok {
+		r0 = rf(ctx, featureKey)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]domain.ModifierConfig)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, featureKey)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockRepository_GetBonusModifiers_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetBonusModifiers'
+type MockRepository_GetBonusModifiers_Call struct {
+	*mock.Call
+}
+
+// GetBonusModifiers is a helper method to define mock.On call
+//   - ctx context.Context
+//   - featureKey string
+func (_e *MockRepository_Expecter) GetBonusModifiers(ctx interface{}, featureKey interface{}) *MockRepository_GetBonusModifiers_Call {
+	return &MockRepository_GetBonusModifiers_Call{Call: _e.mock.On("GetBonusModifiers", ctx, featureKey)}
+}
+
+func (_c *MockRepository_GetBonusModifiers_Call) Run(run func(ctx context.Context, featureKey string)) *MockRepository_GetBonusModifiers_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockRepository_GetBonusModifiers_Call) Return(_a0 []domain.ModifierConfig, _a1 error) *MockRepository_GetBonusModifiers_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockRepository_GetBonusModifiers_Call) RunAndReturn(run func(context.Context, string) ([]domain.ModifierConfig, error)) *MockRepository_GetBonusModifiers_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1313,6 +1430,65 @@ func (_c *MockRepository_GetEngagementWeights_Call) Return(_a0 map[string]float6
 }
 
 func (_c *MockRepository_GetEngagementWeights_Call) RunAndReturn(run func(context.Context) (map[string]float64, error)) *MockRepository_GetEngagementWeights_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetJobUnlockConfig provides a mock function with given fields: ctx, featureKey
+func (_m *MockRepository) GetJobUnlockConfig(ctx context.Context, featureKey string) (*domain.JobUnlockConfig, error) {
+	ret := _m.Called(ctx, featureKey)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetJobUnlockConfig")
+	}
+
+	var r0 *domain.JobUnlockConfig
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (*domain.JobUnlockConfig, error)); ok {
+		return rf(ctx, featureKey)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) *domain.JobUnlockConfig); ok {
+		r0 = rf(ctx, featureKey)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*domain.JobUnlockConfig)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, featureKey)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockRepository_GetJobUnlockConfig_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetJobUnlockConfig'
+type MockRepository_GetJobUnlockConfig_Call struct {
+	*mock.Call
+}
+
+// GetJobUnlockConfig is a helper method to define mock.On call
+//   - ctx context.Context
+//   - featureKey string
+func (_e *MockRepository_Expecter) GetJobUnlockConfig(ctx interface{}, featureKey interface{}) *MockRepository_GetJobUnlockConfig_Call {
+	return &MockRepository_GetJobUnlockConfig_Call{Call: _e.mock.On("GetJobUnlockConfig", ctx, featureKey)}
+}
+
+func (_c *MockRepository_GetJobUnlockConfig_Call) Run(run func(ctx context.Context, featureKey string)) *MockRepository_GetJobUnlockConfig_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockRepository_GetJobUnlockConfig_Call) Return(_a0 *domain.JobUnlockConfig, _a1 error) *MockRepository_GetJobUnlockConfig_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockRepository_GetJobUnlockConfig_Call) RunAndReturn(run func(context.Context, string) (*domain.JobUnlockConfig, error)) *MockRepository_GetJobUnlockConfig_Call {
 	_c.Call.Return(run)
 	return _c
 }

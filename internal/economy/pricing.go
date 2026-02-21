@@ -23,7 +23,7 @@ func (s *service) calculateSellPriceWithModifier(ctx context.Context, baseValue 
 		return basePrice
 	}
 
-	modified, err := s.progressionService.GetModifiedValue(ctx, "economy_bonus", float64(basePrice))
+	modified, err := s.progressionService.GetModifiedValue(ctx, "", "economy_bonus", float64(basePrice))
 	if err != nil {
 		logger.FromContext(ctx).Warn("Failed to apply economy_bonus modifier, using base price", "error", err)
 		return basePrice

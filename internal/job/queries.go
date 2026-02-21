@@ -125,34 +125,6 @@ func (s *service) GetPrimaryJob(ctx context.Context, platform string, platformID
 	return primary, nil
 }
 
-// GetJobBonus returns the bonus value for a specific job and bonus type
-func (s *service) GetJobBonus(ctx context.Context, userID, jobKey, bonusType string) (float64, error) {
-	level, err := s.GetJobLevel(ctx, userID, jobKey)
-	if err != nil || level == 0 {
-		return 0, err
-	}
-
-	job, err := s.repo.GetJobByKey(ctx, jobKey)
-	if err != nil {
-		return 0, err
-	}
-
-	bonuses, err := s.repo.GetJobLevelBonuses(ctx, job.ID, level)
-	if err != nil {
-		return 0, err
-	}
-
-	// Find the highest applicable bonus of the requested type
-	var bestBonus float64
-	for _, bonus := range bonuses {
-		if bonus.BonusType == bonusType && bonus.BonusValue > bestBonus {
-			bestBonus = bonus.BonusValue
-		}
-	}
-
-	return bestBonus, nil
-}
-
 func (s *service) GetUserJobByPlatform(ctx context.Context, platform, platformID, jobKey string) (*domain.UserJob, error) {
 	user, err := s.repo.GetUserByPlatformID(ctx, platform, platformID)
 	if err != nil {

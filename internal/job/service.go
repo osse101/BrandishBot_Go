@@ -14,8 +14,9 @@ import (
 // ProgressionService defines the interface for progression system
 type ProgressionService interface {
 	IsFeatureUnlocked(ctx context.Context, featureKey string) (bool, error)
-	GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error)
+	GetModifiedValue(ctx context.Context, userID string, featureKey string, baseValue float64) (float64, error)
 	IsNodeUnlocked(ctx context.Context, nodeKey string, level int) (bool, error)
+	GetJobUnlockConfig(ctx context.Context, featureKey string) (*domain.JobUnlockConfig, error)
 }
 
 // Service defines the job system business logic
@@ -24,7 +25,8 @@ type Service interface {
 	GetUserJobs(ctx context.Context, userID string) ([]domain.UserJobInfo, error)
 	GetUserJobsByPlatform(ctx context.Context, platform, platformID string) ([]domain.UserJobInfo, error)
 	GetPrimaryJob(ctx context.Context, platform, platformID string) (*domain.UserJobInfo, error)
-	GetJobBonus(ctx context.Context, userID, jobKey string, bonusType string) (float64, error)
+
+	IsJobFeatureUnlocked(ctx context.Context, userID string, featureKey string) (bool, error)
 
 	// XP operations
 	AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata domain.JobXPMetadata) (*domain.XPAwardResult, error)

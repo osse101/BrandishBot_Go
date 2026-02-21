@@ -53,12 +53,12 @@ type Service interface {
 	EstimateUnlockTime(ctx context.Context, nodeKey string) (*domain.UnlockEstimate, error)
 
 	// Value modification
-	GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error)
-	GetModifierForFeature(ctx context.Context, featureKey string) (*ValueModifier, error)
+	GetModifiedValue(ctx context.Context, userID string, featureKey string, baseValue float64) (float64, error)
 
 	// Status
 	GetProgressionStatus(ctx context.Context) (*domain.ProgressionStatus, error)
 	GetRequiredNodes(ctx context.Context, nodeKey string) ([]*domain.ProgressionNode, error)
+	GetJobUnlockConfig(ctx context.Context, featureKey string) (*domain.JobUnlockConfig, error)
 
 	// Admin functions
 	AdminUnlock(ctx context.Context, nodeKey string, level int) error
@@ -140,6 +140,11 @@ func NewService(repo repository.Progression, userRepo repository.User, bus event
 // This should only be used in tests where there's no event bus to trigger automatic invalidation
 func (s *service) InvalidateUnlockCacheForTest() {
 	s.unlockCache.InvalidateAll()
+}
+
+// GetJobUnlockConfig retrieves job-specific unlocking rules for features like compost/disassemble.
+func (s *service) GetJobUnlockConfig(ctx context.Context, featureKey string) (*domain.JobUnlockConfig, error) {
+	return s.repo.GetJobUnlockConfig(ctx, featureKey)
 }
 
 // Shutdown gracefully shuts down the progression service

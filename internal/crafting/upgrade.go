@@ -160,7 +160,7 @@ func (s *service) calculateUpgradeOutput(ctx context.Context, userID string, ite
 	// Get modified masterwork chance (base 0.10 = 10%)
 	masterworkChance := MasterworkChance
 	if s.progressionSvc != nil {
-		if modifiedChance, err := s.progressionSvc.GetModifiedValue(ctx, "crafting_success_rate", MasterworkChance); err == nil {
+		if modifiedChance, err := s.progressionSvc.GetModifiedValue(ctx, "", "crafting_success_rate", MasterworkChance); err == nil {
 			masterworkChance = modifiedChance
 		} else {
 			log.Warn("Failed to apply crafting_success_rate modifier, using base chance", "error", err)

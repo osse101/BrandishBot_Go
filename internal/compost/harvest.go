@@ -15,12 +15,12 @@ import (
 
 // Harvest collects compost output, or returns status if not ready
 func (s *service) Harvest(ctx context.Context, platform, platformID, username string) (*domain.HarvestResult, error) {
-	if err := s.validateFeature(ctx); err != nil {
+	user, bin, err := s.getUserAndBin(ctx, platform, platformID, false)
+	if err != nil {
 		return nil, err
 	}
 
-	user, bin, err := s.getUserAndBin(ctx, platform, platformID, false)
-	if err != nil {
+	if err := s.validateFeature(ctx, user.ID); err != nil {
 		return nil, err
 	}
 
@@ -48,7 +48,7 @@ func (s *service) Harvest(ctx context.Context, platform, platformID, username st
 
 	// Calculate multiplier (base * progression bonuses)
 	multiplier := DefaultMultiplier
-	if bonus, err := s.progressionSvc.GetModifiedValue(ctx, progression.FeatureCompost, 1.0); err == nil {
+	if bonus, err := s.progressionSvc.GetModifiedValue(ctx, "", progression.FeatureCompost, 1.0); err == nil {
 		multiplier *= bonus
 	}
 

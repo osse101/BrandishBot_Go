@@ -126,7 +126,7 @@ func (s *service) calculateContribution(points int) int {
 
 // applyContributionModifier checks if the contribution boost is unlocked and applies it
 func (s *service) applyContributionModifier(ctx context.Context, baseContribution int) (int, error) {
-	modifiedValue, err := s.progressionService.GetModifiedValue(ctx, "contribution", float64(baseContribution))
+	modifiedValue, err := s.progressionService.GetModifiedValue(ctx, "", "contribution", float64(baseContribution))
 	if err != nil {
 		return baseContribution, err
 	}

@@ -33,8 +33,8 @@ func (m *MockJobService) GetPrimaryJob(ctx context.Context, platform, platformID
 	return &domain.UserJobInfo{JobKey: "explorer"}, nil
 }
 
-func (m *MockJobService) GetJobBonus(ctx context.Context, userID, jobKey string, bonusType string) (float64, error) {
-	return 0, nil
+func (m *MockJobService) IsJobFeatureUnlocked(ctx context.Context, userID, featureKey string) (bool, error) {
+	return false, nil
 }
 
 func (m *MockJobService) AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata domain.JobXPMetadata) (*domain.XPAwardResult, error) {

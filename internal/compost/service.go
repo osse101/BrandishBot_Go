@@ -8,6 +8,7 @@ import (
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/event"
+	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
@@ -34,6 +35,7 @@ type service struct {
 	repo           repository.CompostRepository
 	userRepo       repository.User
 	progressionSvc progression.Service
+	jobSvc         job.Service
 	publisher      *event.ResilientPublisher
 	engine         *Engine
 	wg             sync.WaitGroup
@@ -44,12 +46,14 @@ func NewService(
 	repo repository.CompostRepository,
 	userRepo repository.User,
 	progressionSvc progression.Service,
+	jobSvc job.Service,
 	publisher *event.ResilientPublisher,
 ) Service {
 	return &service{
 		repo:           repo,
 		userRepo:       userRepo,
 		progressionSvc: progressionSvc,
+		jobSvc:         jobSvc,
 		publisher:      publisher,
 		engine:         NewEngine(),
 	}
@@ -70,13 +74,21 @@ func (s *service) Shutdown(ctx context.Context) error {
 	}
 }
 
-func (s *service) validateFeature(ctx context.Context) error {
+func (s *service) validateFeature(ctx context.Context, userID string) error {
 	unlocked, err := s.progressionSvc.IsFeatureUnlocked(ctx, progression.FeatureCompost)
 	if err != nil {
 		return fmt.Errorf("failed to check compost feature: %w", err)
 	}
 	if !unlocked {
 		return fmt.Errorf("compost requires feature unlock: %w", domain.ErrFeatureLocked)
+	}
+	// Optional: Check job feature
+	if userID != "" {
+		jobUnlocked, err := s.jobSvc.IsJobFeatureUnlocked(ctx, userID, progression.FeatureCompost)
+		if err == nil && !jobUnlocked {
+			// If we successfully checked the job config and it is locked, block the user
+			return fmt.Errorf("compost requires job progression: %w", domain.ErrFeatureLocked)
+		}
 	}
 	return nil
 }

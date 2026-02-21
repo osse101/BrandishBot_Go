@@ -20,6 +20,11 @@ type Progression interface {
 	GetPrerequisites(ctx context.Context, nodeID int) ([]*domain.ProgressionNode, error) // Get prerequisites FOR this node
 	GetDependents(ctx context.Context, nodeID int) ([]*domain.ProgressionNode, error)    // Get nodes that depend ON this node
 
+	// Modifier (Bonus configs)
+	GetBonusModifiers(ctx context.Context, featureKey string) ([]domain.ModifierConfig, error)
+	GetAllBonusModifiers(ctx context.Context) ([]domain.ModifierConfig, error)
+	GetJobUnlockConfig(ctx context.Context, featureKey string) (*domain.JobUnlockConfig, error)
+
 	// Unlock operations
 	GetUnlock(ctx context.Context, nodeID int, level int) (*domain.ProgressionUnlock, error)
 	GetAllUnlocks(ctx context.Context) ([]*domain.ProgressionUnlock, error)

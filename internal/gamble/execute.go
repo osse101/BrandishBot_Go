@@ -121,7 +121,7 @@ func (s *service) openParticipantsLootboxes(ctx context.Context, gamble *domain.
 			for _, drop := range drops {
 				totalValue := int64(drop.Value * drop.Quantity)
 				if s.progressionSvc != nil {
-					modifiedValue, err := s.progressionSvc.GetModifiedValue(ctx, ProgressionFeatureGambleWinBonus, float64(totalValue))
+					modifiedValue, err := s.progressionSvc.GetModifiedValue(ctx, "", ProgressionFeatureGambleWinBonus, float64(totalValue))
 					if err == nil {
 						totalValue = int64(modifiedValue)
 					}

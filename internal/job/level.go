@@ -1,6 +1,8 @@
 package job
 
 import (
+	"context"
+	"fmt"
 	"math"
 )
 
@@ -58,4 +60,26 @@ func (s *service) calculateLevelAndNextXP(totalXP int64) (int, int64) {
 	nextLevel := level + 1
 	xpForNextLevel := int64(BaseXP * math.Pow(float64(nextLevel), LevelExponent))
 	return level, cumulative + xpForNextLevel
+}
+
+// IsJobFeatureUnlocked determines if a user has the required job level to access a specific feature
+func (s *service) IsJobFeatureUnlocked(ctx context.Context, userID string, featureKey string) (bool, error) {
+	// First, lookup the required job and level from progression config
+	config, err := s.progressionSvc.GetJobUnlockConfig(ctx, featureKey)
+	if err != nil {
+		// Log error or assume locked if not found
+		return false, fmt.Errorf("failed to fetch job unlock config for feature %s: %w", featureKey, err)
+	}
+
+	if config == nil {
+		return false, nil // No config means not unlocked by job
+	}
+
+	// Now check the user's level for that specific job
+	level, err := s.GetJobLevel(ctx, userID, config.JobKey)
+	if err != nil {
+		return false, fmt.Errorf("failed to get job level: %w", err)
+	}
+
+	return level >= config.RequiredLevel, nil
 }

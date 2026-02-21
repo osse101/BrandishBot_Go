@@ -200,7 +200,7 @@ func (b *postgresBackend) getEffectiveCooldown(ctx context.Context, action strin
 
 	// Apply progression modifiers (e.g., cooldown reduction for search)
 	if b.progressionSvc != nil && action == domain.ActionSearch {
-		modifiedDuration, err := b.progressionSvc.GetModifiedValue(ctx, FeatureKeySearchCooldownReduction, float64(duration))
+		modifiedDuration, err := b.progressionSvc.GetModifiedValue(ctx, "", FeatureKeySearchCooldownReduction, float64(duration))
 		if err == nil {
 			return time.Duration(modifiedDuration)
 		}

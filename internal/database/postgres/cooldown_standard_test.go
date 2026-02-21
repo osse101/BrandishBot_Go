@@ -19,7 +19,7 @@ type mockProgressionService struct {
 	modifiers map[string]float64
 }
 
-func (m *mockProgressionService) GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error) {
+func (m *mockProgressionService) GetModifiedValue(ctx context.Context, userID string, featureKey string, baseValue float64) (float64, error) {
 	if mod, ok := m.modifiers[featureKey]; ok {
 		// Modifier logic: usually subtracts from baseValue
 		// e.g. base 300s, mod 30s -> return 270s

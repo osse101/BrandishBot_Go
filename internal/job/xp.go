@@ -173,7 +173,7 @@ func (s *service) handleLevelUp(ctx context.Context, userID, jobKey string, oldL
 
 func (s *service) getXPMultiplier(ctx context.Context) float64 {
 	// Apply progression modifier for job XP multiplier
-	modified, err := s.progressionSvc.GetModifiedValue(ctx, "job_xp_multiplier", 1.0)
+	modified, err := s.progressionSvc.GetModifiedValue(ctx, "", "job_xp_multiplier", 1.0)
 	if err != nil {
 		log := logger.FromContext(ctx)
 		log.Warn("Failed to get job XP multiplier, using default", "error", err)
@@ -184,7 +184,7 @@ func (s *service) getXPMultiplier(ctx context.Context) float64 {
 
 func (s *service) getDailyCap(ctx context.Context) int {
 	// Apply progression modifier for daily job cap
-	modified, err := s.progressionSvc.GetModifiedValue(ctx, "job_daily_cap", float64(DefaultDailyCap))
+	modified, err := s.progressionSvc.GetModifiedValue(ctx, "", "job_daily_cap", float64(DefaultDailyCap))
 	if err != nil {
 		log := logger.FromContext(ctx)
 		log.Warn("Failed to get daily cap modifier, using default", "error", err)
@@ -196,7 +196,7 @@ func (s *service) getDailyCap(ctx context.Context) int {
 func (s *service) getMaxJobLevel(ctx context.Context) int {
 	// Apply progression modifier for job level cap (linear: +10 per level)
 	// Base cap is DefaultMaxLevel, upgrade_job_level_cap adds +10 per level (max +30 at level 3)
-	modified, err := s.progressionSvc.GetModifiedValue(ctx, "job_level_cap", float64(DefaultMaxLevel))
+	modified, err := s.progressionSvc.GetModifiedValue(ctx, "", "job_level_cap", float64(DefaultMaxLevel))
 	if err != nil {
 		log := logger.FromContext(ctx)
 		log.Warn("Failed to get job level cap modifier, using default", "error", err)

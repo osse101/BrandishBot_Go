@@ -53,6 +53,9 @@ type MockRepository struct {
 
 	// Sync metadata
 	syncMetadata map[string]*domain.SyncMetadata
+
+	// Bonus configs
+	bonusConfigs []domain.ModifierConfig
 }
 
 func NewMockRepository() *MockRepository {
@@ -77,6 +80,7 @@ func NewMockRepository() *MockRepository {
 		unlockProgress:    make(map[int]*domain.UnlockProgress),
 		dailyTotals:       make(map[time.Time]int),
 		syncMetadata:      make(map[string]*domain.SyncMetadata),
+		bonusConfigs:      make([]domain.ModifierConfig, 0),
 	}
 }
 
@@ -92,20 +96,6 @@ func (m *MockRepository) GetNodeByFeatureKey(ctx context.Context, featureKey str
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	// Find node with matching feature_key in ModifierConfig
-	for _, node := range m.nodes {
-		if node.ModifierConfig != nil && node.ModifierConfig.FeatureKey == featureKey {
-			// lock level for this node
-			levels, ok := m.unlocks[node.ID]
-			if !ok {
-				return nil, 0, nil
-			}
-			// highest level
-			for level := range levels {
-				return node, level, nil
-			}
-		}
-	}
 	return nil, 0, nil
 }
 
@@ -115,25 +105,6 @@ func (m *MockRepository) GetAllNodesByFeatureKey(ctx context.Context, featureKey
 
 	nodes := make([]*domain.ProgressionNode, 0)
 	levels := make([]int, 0)
-
-	// Find all nodes with matching feature_key in ModifierConfig (sorted by tier)
-	for _, node := range m.nodes {
-		if node.ModifierConfig != nil && node.ModifierConfig.FeatureKey == featureKey {
-			// Get unlock level for this node
-			nodeLevels, ok := m.unlocks[node.ID]
-			currentLevel := 0
-			if ok {
-				// Get highest unlock level
-				for level := range nodeLevels {
-					if level > currentLevel {
-						currentLevel = level
-					}
-				}
-			}
-			nodes = append(nodes, node)
-			levels = append(levels, currentLevel)
-		}
-	}
 
 	return nodes, levels, nil
 }
@@ -1382,4 +1353,38 @@ func TestMultiLevelUnlock(t *testing.T) {
 	if !level2 {
 		t.Error("Cooldown reduction level 2 should be unlocked")
 	}
+}
+
+func (m *MockRepository) GetBonusModifiers(ctx context.Context, featureKey string) ([]domain.ModifierConfig, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	var result []domain.ModifierConfig
+	for _, config := range m.bonusConfigs {
+		if config.FeatureKey == featureKey {
+			progressionLevel := 0
+			if config.SourceType == "progression" {
+				if node, ok := m.nodesByKey[config.NodeKey]; ok {
+					if levels, hasUnlocks := m.unlocks[node.ID]; hasUnlocks {
+						for level := range levels {
+							if level > progressionLevel {
+								progressionLevel = level
+							}
+						}
+					}
+				}
+			}
+			cfg := config
+			cfg.ProgressionLevel = progressionLevel
+			result = append(result, cfg)
+		}
+	}
+	return result, nil
+}
+
+func (m *MockRepository) GetAllBonusModifiers(ctx context.Context) ([]domain.ModifierConfig, error) {
+	return nil, nil
+}
+
+func (m *MockRepository) GetJobUnlockConfig(ctx context.Context, featureKey string) (*domain.JobUnlockConfig, error) {
+	return nil, nil
 }

@@ -51,14 +51,14 @@ type ModifierConfig struct {
 // GetModifiedValue retrieves a feature value modified by progression nodes
 // Returns the modified value or the baseValue on error (safe fallback)
 // Supports stacking multiple modifiers with the same feature_key (multiplicative)
-func (s *service) GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error) {
+func (s *service) GetModifiedValue(ctx context.Context, userID string, featureKey string, baseValue float64) (float64, error) {
 	// 1. Check cache first
 	if cached, ok := s.modifierCache.Get(featureKey); ok {
 		return cached.Value, nil
 	}
 
 	// 2. Get ALL modifiers for this feature
-	modifiers, err := s.GetAllModifiersForFeature(ctx, featureKey)
+	modifiers, err := s.GetAllModifiersForFeature(ctx, userID, featureKey)
 	if err != nil {
 		// Fallback to base value on error
 		return baseValue, err
@@ -82,54 +82,44 @@ func (s *service) GetModifiedValue(ctx context.Context, featureKey string, baseV
 	return value, nil
 }
 
-// GetModifierForFeature retrieves the modifier configuration and current level for a feature
-func (s *service) GetModifierForFeature(ctx context.Context, featureKey string) (*ValueModifier, error) {
-	// Query repository for node with this feature_key
-	node, currentLevel, err := s.repo.GetNodeByFeatureKey(ctx, featureKey)
+// GetAllModifiersForFeature retrieves ALL active modifiers for a feature key
+func (s *service) GetAllModifiersForFeature(ctx context.Context, userID string, featureKey string) ([]*ValueModifier, error) {
+	configs, err := s.repo.GetBonusModifiers(ctx, featureKey)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get node for feature %s: %w", featureKey, err)
-	}
-	if node == nil || node.ModifierConfig == nil {
-		// No modifier configured for this feature
-		return nil, nil
+		return nil, fmt.Errorf("failed to get bonus modifiers: %w", err)
 	}
 
-	// Build ValueModifier from node's ModifierConfig
-	modifier := &ValueModifier{
-		NodeKey:       node.NodeKey,
-		ModifierType:  ModifierType(node.ModifierConfig.ModifierType),
-		BaseValue:     node.ModifierConfig.BaseValue,
-		PerLevelValue: node.ModifierConfig.PerLevelValue,
-		CurrentLevel:  currentLevel,
-		MaxValue:      node.ModifierConfig.MaxValue,
-		MinValue:      node.ModifierConfig.MinValue,
-	}
+	modifiers := make([]*ValueModifier, 0, len(configs))
+	for _, config := range configs {
+		var currentLevel int
 
-	return modifier, nil
-}
+		// If this is a job bonus, get the user's specific job level
+		if config.SourceType == "job" {
+			if userID == "" || s.jobService == nil {
+				continue // Skip user-specific bonuses if no user context available
+			}
+			level, err := s.jobService.GetJobLevel(ctx, userID, config.NodeKey)
+			if err != nil {
+				// Don't fail the entire calculation; just log and skip this modifier
+				continue
+			}
+			currentLevel = level
+		} else if config.SourceType == "progression" {
+			currentLevel = config.ProgressionLevel
+		}
 
-// GetAllModifiersForFeature retrieves ALL modifiers for a feature key
-func (s *service) GetAllModifiersForFeature(ctx context.Context, featureKey string) ([]*ValueModifier, error) {
-	nodes, levels, err := s.repo.GetAllNodesByFeatureKey(ctx, featureKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get nodes for feature %s: %w", featureKey, err)
-	}
-
-	modifiers := make([]*ValueModifier, 0, len(nodes))
-	for i, node := range nodes {
-		if node.ModifierConfig != nil {
+		if currentLevel > 0 {
 			modifier := &ValueModifier{
-				NodeKey:       node.NodeKey,
-				ModifierType:  ModifierType(node.ModifierConfig.ModifierType),
-				BaseValue:     node.ModifierConfig.BaseValue,
-				PerLevelValue: node.ModifierConfig.PerLevelValue,
-				CurrentLevel:  levels[i],
-				MaxValue:      node.ModifierConfig.MaxValue,
-				MinValue:      node.ModifierConfig.MinValue,
+				NodeKey:       config.NodeKey,
+				ModifierType:  ModifierType(config.ModifierType),
+				BaseValue:     config.BaseValue,
+				PerLevelValue: config.PerLevelValue,
+				CurrentLevel:  currentLevel,
+				MaxValue:      config.MaxValue,
+				MinValue:      config.MinValue,
 			}
 			modifiers = append(modifiers, modifier)
 		}
 	}
-
 	return modifiers, nil
 }

@@ -9,6 +9,18 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type BonusConfig struct {
+	ID            int32          `json:"id"`
+	NodeKey       string         `json:"node_key"`
+	SourceType    string         `json:"source_type"`
+	FeatureKey    string         `json:"feature_key"`
+	ModifierType  string         `json:"modifier_type"`
+	BaseValue     pgtype.Numeric `json:"base_value"`
+	PerLevelValue pgtype.Numeric `json:"per_level_value"`
+	MaxValue      pgtype.Numeric `json:"max_value"`
+	MinValue      pgtype.Numeric `json:"min_value"`
+}
+
 type CompostBin struct {
 	ID           uuid.UUID          `json:"id"`
 	UserID       uuid.UUID          `json:"user_id"`
@@ -201,13 +213,11 @@ type Job struct {
 	CreatedAt          pgtype.Timestamptz `json:"created_at"`
 }
 
-type JobLevelBonuse struct {
-	ID          int32          `json:"id"`
-	JobID       int32          `json:"job_id"`
-	MinLevel    int32          `json:"min_level"`
-	BonusType   string         `json:"bonus_type"`
-	BonusValue  pgtype.Numeric `json:"bonus_value"`
-	Description pgtype.Text    `json:"description"`
+type JobUnlockConfig struct {
+	ID            int32  `json:"id"`
+	JobKey        string `json:"job_key"`
+	FeatureKey    string `json:"feature_key"`
+	RequiredLevel int32  `json:"required_level"`
 }
 
 type JobXpEvent struct {
@@ -255,8 +265,6 @@ type ProgressionNode struct {
 	Tier        int32            `json:"tier"`
 	Size        string           `json:"size"`
 	Category    string           `json:"category"`
-	// JSON configuration for value modification (feature_key, modifier_type, per_level_value, base_value, max_value, min_value)
-	ModifierConfig []byte `json:"modifier_config"`
 	// Dynamic prerequisites stored as JSON array: [{"type":"nodes_unlocked_below_tier","tier":2,"count":5}]
 	DynamicPrerequisites []byte `json:"dynamic_prerequisites"`
 }
