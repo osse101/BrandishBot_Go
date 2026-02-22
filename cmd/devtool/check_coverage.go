@@ -8,9 +8,25 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
+
+	"github.com/fsnotify/fsnotify"
 )
 
 type CheckCoverageCommand struct{}
+
+type CoverageConfig struct {
+	File       string
+	Threshold  float64
+	RunTests   bool
+	HTMLReport bool
+	Smart      bool
+	Packages   []string
+	BaseRef    string
+	Verbose    bool
+	Exclude    []string
+	Watch      bool
+}
 
 func (c *CheckCoverageCommand) Name() string {
 	return "check-coverage"
@@ -21,16 +37,24 @@ func (c *CheckCoverageCommand) Description() string {
 }
 
 func (c *CheckCoverageCommand) Run(args []string) error {
-	file, threshold, runTests, htmlReport, smart, pkgs, baseRef, verbose, exclude, err := c.parseConfig(args)
+	config, err := c.parseConfig(args)
 	if err != nil {
 		return err
 	}
 
+	if config.Watch {
+		return c.runWatchMode(config)
+	}
+
+	return c.runCoverageCheck(config)
+}
+
+func (c *CheckCoverageCommand) runCoverageCheck(config *CoverageConfig) error {
 	selector := &PackageSelector{
-		SmartMode:  smart,
-		BaseRef:    baseRef,
-		Includes:   c.splitCommaList(pkgs),
-		Excludes:   c.splitCommaList(exclude),
+		SmartMode:  config.Smart,
+		BaseRef:    config.BaseRef,
+		Includes:   config.Packages,
+		Excludes:   config.Exclude,
 		StagedOnly: false,
 	}
 
@@ -39,39 +63,155 @@ func (c *CheckCoverageCommand) Run(args []string) error {
 		return err
 	}
 
-	if len(packages) == 0 && smart {
+	if len(packages) == 0 && config.Smart {
 		PrintInfo("Smart mode enabled but no packages selected (or all excluded). Skipping tests.")
 		return nil
 	}
 
-	PrintHeader(fmt.Sprintf("Checking coverage threshold (%.1f%%)...", threshold))
+	PrintHeader(fmt.Sprintf("Checking coverage threshold (%.1f%%)...", config.Threshold))
 
-	if err := c.ensureCoverage(file, runTests, packages, verbose); err != nil {
+	if err := c.ensureCoverage(config.File, config.RunTests, packages, config.Verbose); err != nil {
 		return err
 	}
 
 	// If we ran partial tests (packages != empty), the coverage profile only contains those packages.
 	// This is fine for "check my changes" workflow.
-	coverage, err := c.getCoveragePercent(file)
+	coverage, err := c.getCoveragePercent(config.File)
 	if err != nil {
 		return err
 	}
 
 	PrintInfo("Total Coverage: %.1f%%", coverage)
 
-	if htmlReport {
-		if err := c.generateHTMLReport(file); err != nil {
+	if config.HTMLReport {
+		if err := c.generateHTMLReport(config.File); err != nil {
 			PrintWarning("Failed to generate HTML report: %v", err)
 		}
 	}
 
-	if coverage < threshold {
+	if coverage < config.Threshold {
 		PrintError("Coverage is below threshold.")
 		return fmt.Errorf("coverage below threshold")
 	}
 
 	PrintSuccess("Coverage meets threshold.")
 	return nil
+}
+
+func (c *CheckCoverageCommand) runWatchMode(config *CoverageConfig) error {
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		return fmt.Errorf("failed to create watcher: %w", err)
+	}
+	defer watcher.Close()
+
+	// Recursively add directories to watch
+	if err := c.addRecursiveWatch(watcher, "."); err != nil {
+		return fmt.Errorf("failed to add watch paths: %w", err)
+	}
+
+	PrintInfo("Watching for file changes...")
+	PrintInfo("Press Ctrl+C to exit.")
+
+	// Run initial check
+	if err := c.runCoverageCheck(config); err != nil {
+		PrintError("Initial check failed: %v", err)
+	}
+
+	var debounceTimer *time.Timer
+	debounceDuration := 200 * time.Millisecond
+
+	done := make(chan bool)
+
+	go func() {
+		for {
+			select {
+			case event, ok := <-watcher.Events:
+				if !ok {
+					return
+				}
+
+				// Handle new directories
+				if event.Op&fsnotify.Create == fsnotify.Create {
+					info, err := os.Stat(event.Name)
+					if err == nil && info.IsDir() {
+						if err := c.addRecursiveWatch(watcher, event.Name); err != nil {
+							PrintWarning("Failed to watch new directory %s: %v", event.Name, err)
+						}
+					}
+				}
+
+				// Filter for interesting events
+				if !strings.HasSuffix(event.Name, ".go") && !strings.HasSuffix(event.Name, ".mod") {
+					continue
+				}
+
+				// Ignore Chmod
+				if event.Op&fsnotify.Chmod == fsnotify.Chmod {
+					continue
+				}
+
+				// Debounce
+				if debounceTimer != nil {
+					debounceTimer.Stop()
+				}
+
+				debounceTimer = time.AfterFunc(debounceDuration, func() {
+					c.clearScreen()
+					PrintInfo("Change detected: %s", event.Name)
+					if err := c.runCoverageCheck(config); err != nil {
+						PrintError("Check failed: %v", err)
+					} else {
+						// Print timestamp of last success
+						PrintSuccess("Last success: %s", time.Now().Format("15:04:05"))
+					}
+					PrintInfo("Watching for file changes...")
+				})
+
+			case err, ok := <-watcher.Errors:
+				if !ok {
+					return
+				}
+				PrintError("Watcher error: %v", err)
+			}
+		}
+	}()
+
+	<-done
+	return nil
+}
+
+func (c *CheckCoverageCommand) addRecursiveWatch(watcher *fsnotify.Watcher, root string) error {
+	return filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			return nil
+		}
+
+		// Ignore hidden directories and common ignore patterns
+		base := filepath.Base(path)
+		if strings.HasPrefix(base, ".") && base != "." {
+			return filepath.SkipDir
+		}
+		if base == "vendor" || base == "node_modules" || base == "bin" || base == "dist" || base == "logs" || base == "mocks" {
+			return filepath.SkipDir
+		}
+
+		if err := watcher.Add(path); err != nil {
+			// Ignore error if path is gone (race condition)
+			if os.IsNotExist(err) {
+				return nil
+			}
+			return fmt.Errorf("failed to watch %s: %w", path, err)
+		}
+		return nil
+	})
+}
+
+func (c *CheckCoverageCommand) clearScreen() {
+	fmt.Print("\033[H\033[2J")
 }
 
 func (c *CheckCoverageCommand) splitCommaList(s string) []string {
@@ -89,7 +229,7 @@ func (c *CheckCoverageCommand) splitCommaList(s string) []string {
 	return result
 }
 
-func (c *CheckCoverageCommand) parseConfig(args []string) (file string, threshold float64, runTests, htmlReport, smart bool, pkgs string, baseRef string, verbose bool, exclude string, err error) {
+func (c *CheckCoverageCommand) parseConfig(args []string) (*CoverageConfig, error) {
 	fs := flag.NewFlagSet("check-coverage", flag.ContinueOnError)
 
 	filePtr := fs.String("file", "logs/coverage.out", "Path to coverage output file")
@@ -101,20 +241,13 @@ func (c *CheckCoverageCommand) parseConfig(args []string) (file string, threshol
 	baseRefPtr := fs.String("base", "", "Base reference for git diff (smart mode only)")
 	verbosePtr := fs.Bool("v", false, "Verbose output")
 	excludePtr := fs.String("exclude", "", "Comma-separated list of packages to exclude")
+	watchPtr := fs.Bool("watch", false, "Watch for file changes and re-run tests")
 
 	if err := fs.Parse(args); err != nil {
-		return "", 0, false, false, false, "", "", false, "", err
+		return nil, err
 	}
 
-	file = filepath.Clean(*filePtr)
-	threshold = *thresholdPtr
-	runTests = *runTestsPtr
-	htmlReport = *htmlReportPtr
-	smart = *smartPtr
-	pkgs = *pkgsPtr
-	baseRef = *baseRefPtr
-	verbose = *verbosePtr
-	exclude = *excludePtr
+	file := filepath.Clean(*filePtr)
 
 	// Deprecated positional args handling removed to simplify.
 	if len(fs.Args()) > 0 {
@@ -123,10 +256,21 @@ func (c *CheckCoverageCommand) parseConfig(args []string) (file string, threshol
 
 	// Basic path validation
 	if strings.Contains(file, "..") || strings.HasPrefix(file, "/") {
-		return "", 0, false, false, false, "", "", false, "", fmt.Errorf("invalid path '%s': must be relative and within project", file)
+		return nil, fmt.Errorf("invalid path '%s': must be relative and within project", file)
 	}
 
-	return file, threshold, runTests, htmlReport, smart, pkgs, baseRef, verbose, exclude, nil
+	return &CoverageConfig{
+		File:       file,
+		Threshold:  *thresholdPtr,
+		RunTests:   *runTestsPtr,
+		HTMLReport: *htmlReportPtr,
+		Smart:      *smartPtr,
+		Packages:   c.splitCommaList(*pkgsPtr),
+		BaseRef:    *baseRefPtr,
+		Verbose:    *verbosePtr,
+		Exclude:    c.splitCommaList(*excludePtr),
+		Watch:      *watchPtr,
+	}, nil
 }
 
 func (c *CheckCoverageCommand) ensureCoverage(file string, runTests bool, packages []string, verbose bool) error {

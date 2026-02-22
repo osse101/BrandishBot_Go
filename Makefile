@@ -90,8 +90,8 @@ help:
 # Database connection string from environment
 DB_URL ?= postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=disable
 
-# Base reference for smart testing (defaults to origin/main)
-BASE_REF ?= origin/main
+# Base reference for smart testing (defaults to origin/develop)
+BASE_REF ?= origin/develop
 
 # Migration commands
 migrate-up:
@@ -128,13 +128,9 @@ unit:
 	@go test -short ./...
 
 watch:
-	@echo "Watching for changes to run unit tests..."
-	@if command -v entr > /dev/null; then \
-		find . -name "*.go" | entr -c $(MAKE) unit; \
-	else \
-		echo "Error: 'entr' is not installed. Please install it to use this feature."; \
-		exit 1; \
-	fi
+	@echo "Watching for changes to run tests (smart mode)..."
+	@mkdir -p logs
+	@go run ./cmd/devtool check-coverage -watch -smart -base $(BASE_REF) -exclude ./cmd/devtool -run -file logs/coverage.out -threshold 80
 
 test-coverage:
 	@go run ./cmd/devtool check-coverage -html -file logs/coverage.out -threshold 0
