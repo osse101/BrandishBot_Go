@@ -10,10 +10,7 @@ import (
 )
 
 func TestStringFinder_FindMatches(t *testing.T) {
-	// Create a fresh StringFinder for testing
-	// Instead of relying on NewStringFinder and modifying private fields,
-	// we reconstruct it or use a helper if possible.
-	// Since we changed internal structure, we need to adapt the test setup.
+	// Test setup: reconstructs StringFinder manually to adapt to internal structure changes without using NewStringFinder.
 
 	// Create blank finder
 	sf := &StringFinder{
@@ -21,12 +18,12 @@ func TestStringFinder_FindMatches(t *testing.T) {
 	}
 
 	// Add test rules (using real production rules)
-	sf.addRule("Bapanada", "OBS", 10)
-	sf.addRule("gary", "OBS", 10)
-	sf.addRule("shedinja", "OBS", 10)
+	sf.AddRule("Bapanada", "OBS", 10)
+	sf.AddRule("gary", "OBS", 10)
+	sf.AddRule("shedinja", "OBS", 10)
 
 	// Compile regex
-	sf.compile()
+	sf.Compile()
 
 	tests := []struct {
 		name    string
@@ -140,9 +137,9 @@ func TestStringFinder_EdgeCases(t *testing.T) {
 	sf := &StringFinder{
 		ruleMap: make(map[string][]FinderRule),
 	}
-	sf.addRule("Bapanada", "OBS", 10)
-	sf.addRule("gary", "OBS", 10)
-	sf.compile()
+	sf.AddRule("Bapanada", "OBS", 10)
+	sf.AddRule("gary", "OBS", 10)
+	sf.Compile()
 
 	tests := []struct {
 		name        string
@@ -224,8 +221,8 @@ func TestStringFinder_BoundaryConditions(t *testing.T) {
 	sf := &StringFinder{
 		ruleMap: make(map[string][]FinderRule),
 	}
-	sf.addRule("Bapanada", "OBS", 10)
-	sf.compile()
+	sf.AddRule("Bapanada", "OBS", 10)
+	sf.Compile()
 
 	tests := []struct {
 		name        string
@@ -302,9 +299,9 @@ func TestStringFinder_PriorityFiltering(t *testing.T) {
 	sf := &StringFinder{
 		ruleMap: make(map[string][]FinderRule),
 	}
-	sf.addRule("high", "HIGH", 10)
-	sf.addRule("low", "LOW", 5)
-	sf.compile()
+	sf.AddRule("high", "HIGH", 10)
+	sf.AddRule("low", "LOW", 5)
+	sf.Compile()
 
 	tests := []struct {
 		name     string

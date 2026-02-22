@@ -32,8 +32,8 @@ type DataResponse struct {
 
 // Helper functions for responding
 
-// respondJSON sends a JSON response with the given status code and payload
-func respondJSON(w http.ResponseWriter, status int, payload interface{}) {
+// RespondJSON sends a JSON response with the given status code and payload
+func RespondJSON(w http.ResponseWriter, status int, payload interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 
@@ -54,17 +54,17 @@ func respondJSON(w http.ResponseWriter, status int, payload interface{}) {
 	}
 }
 
-// respondError sends a JSON error response
-func respondError(w http.ResponseWriter, status int, message string) {
-	respondJSON(w, status, ErrorResponse{Error: message})
+// RespondError sends a JSON error response
+func RespondError(w http.ResponseWriter, status int, message string) {
+	RespondJSON(w, status, ErrorResponse{Error: message})
 }
 
-// respondServiceError handles service-level errors by mapping them to user-friendly messages
+// RespondServiceError handles service-level errors by mapping them to user-friendly messages
 // and logging the internal error details.
-func respondServiceError(w http.ResponseWriter, r *http.Request, opName string, err error) {
+func RespondServiceError(w http.ResponseWriter, r *http.Request, opName string, err error) {
 	logger.FromContext(r.Context()).Error(opName, "error", err)
-	statusCode, userMsg := mapServiceErrorToUserMessage(err)
-	respondError(w, statusCode, userMsg)
+	statusCode, userMsg := MapServiceErrorToUserMessage(err)
+	RespondError(w, statusCode, userMsg)
 }
 
 // recordEngagement helper for consistently recording engagement and logging errors
@@ -137,10 +137,10 @@ const (
 	msgProgressionUnlockHint = ". Unlock it in the progression tree"
 )
 
-// mapServiceErrorToUserMessage maps domain errors to user-friendly HTTP responses
+// MapServiceErrorToUserMessage maps domain errors to user-friendly HTTP responses
 // This function converts internal service errors to appropriate HTTP status codes and messages
 // that users can understand and act upon.
-func mapServiceErrorToUserMessage(err error) (int, string) {
+func MapServiceErrorToUserMessage(err error) (int, string) {
 	if err == nil {
 		return http.StatusInternalServerError, ErrMsgUnknownError
 	}
@@ -164,7 +164,7 @@ func mapServiceErrorToUserMessage(err error) (int, string) {
 	// For wrapped errors with domain errors as the base, try unwrapping
 	if unwrapped := errors.Unwrap(err); unwrapped != nil {
 		// Recursively check the unwrapped error
-		return mapServiceErrorToUserMessage(unwrapped)
+		return MapServiceErrorToUserMessage(unwrapped)
 	}
 
 	// For error messages from tests/mocks that contain certain keywords, extract the message

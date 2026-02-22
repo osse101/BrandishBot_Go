@@ -36,10 +36,7 @@ func TestBuyItem_ZeroPrice(t *testing.T) {
 	mockRepo.On("BeginTx", ctx).Return(mockTx, nil)
 	mockTx.On("GetInventory", ctx, user.ID).Return(inventory, nil)
 
-	// Expectations
-	// It should update inventory with cost 0.
-	// Since cost is 0, money shouldn't change, but item quantity should increase.
-	// The service implementation calls UpdateInventory with the modified object.
+	// Expectation: Inventory updates with cost 0; money remains constant while item quantity increases.
 	mockTx.On("UpdateInventory", ctx, user.ID, mock.Anything).Return(nil)
 	mockTx.On("Commit", ctx).Return(nil)
 	mockTx.On("Rollback", ctx).Return(nil)

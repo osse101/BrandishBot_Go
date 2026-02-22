@@ -67,9 +67,7 @@ func Geometric(p float64) int {
 		return math.MaxInt
 	}
 
-	// Geometric distribution sampling using inverse transform method:
-	// k = floor(ln(U) / ln(1-p))
-	// where U is uniform in (0, 1]
+	// Geometric distribution sampling using inverse transform method: k = floor(ln(U) / ln(1-p)).
 
 	u := 1.0 - SecureRandomFloat() // SecureRandomFloat returns [0, 1), so u is (0, 1]
 

@@ -84,9 +84,9 @@ BrandishBot_Go/
 │   ├── event/                    # Event bus & publisher
 │   ├── eventlog/                 # Event logging service
 │   ├── sse/                      # Server-Sent Events hub
-│   ├── user/                     # User service
+│   ├── user/                     # User service (registration, timeout, search)
 │   ├── economy/                  # Economy system (buy/sell)
-│   ├── crafting/                 # Crafting & disassembly
+│   ├── crafting/                 # Crafting & disassembly service
 │   ├── progression/              # Progression tree & voting
 │   ├── gamble/                   # Gamble sessions
 │   ├── lootbox/                  # Loot table & drops
@@ -104,7 +104,7 @@ BrandishBot_Go/
 │   ├── logger/                   # Structured logging (Zap)
 │   ├── metrics/                  # Prometheus metrics
 │   ├── features/                 # Feature flags
-│   └── utils/                    # Shared utilities
+│   └── utils/                    # Shared utilities (math, inventory, quality)
 ├── configs/
 │   ├── items/                    # Item definitions & aliases
 │   ├── recipes/                  # Crafting recipes
@@ -305,9 +305,12 @@ Business logic with event publishing:
 
 HTTP request handlers organized by feature:
 
-- **user.go**: Registration, inventory, timeout, search
+- **user.go**: Registration, timeout
+- **inventory.go**: Inventory management (add, remove, use)
+- **search.go**: User search with cooldowns
 - **economy.go**: Prices, buy, sell
-- **crafting.go**: Upgrade, disassemble, recipes
+- **upgrade.go**: Item upgrades, recipes
+- **disassemble.go**: Item disassembly
 - **progression.go**: Tree, voting, engagement, admin controls
 - **gamble.go**: Start, join, retrieve sessions
 - **job.go**: List jobs, user jobs, XP awards
@@ -451,10 +454,13 @@ progression_nodes                progression_unlocks
 │description         │      │   ┌────────────────────┐
 │category            │      │   │session_id          │
 │unlock_description  │      │   │tier                │
-│modifier_type       │      │   │status (voting/frozen/completed)
-│modifier_value      │      │   │target_node_id      │
-│prerequisites       │      │   │votes_accumulated   │
-└────────────────────┘      │   │cost_to_unlock      │
+│prerequisites       │      │   │status (voting...)  │
+└────────────────────┘      │   │target_node_id      │
+                            │   │votes_accumulated   │
+                            │   │cost_to_unlock      │
+                            │   │started_at          │
+                            │   │ended_at            │
+                            │   └────────────────────┘
                             │   │started_at          │
 progression_voting_options  │   │ended_at            │
 ┌────────────────────┐      │   └────────────────────┘
@@ -512,6 +518,23 @@ jobs                           user_jobs
 │description     │            │level           │
 │max_level       │            │last_xp_at      │
 └────────────────┘            └────────────────┘
+```
+
+### Feature Modifiers & Unlocks
+
+```sql
+bonus_config                   job_unlock_config
+┌────────────────┐            ┌────────────────┐
+│id              │            │id              │
+│node_key        │            │job_key         │
+│source_type     │            │feature_key     │
+│feature_key     │            │required_level  │
+│modifier_type   │            └────────────────┘
+│base_value      │
+│per_level_value │
+│max_value       │
+│min_value       │
+└────────────────┘
 ```
 
 ### Stats & Leaderboards

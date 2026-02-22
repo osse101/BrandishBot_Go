@@ -13,16 +13,16 @@ export function clearApiKey(): void {
 }
 
 export class ApiError extends Error {
-  constructor(public status: number, message: string) {
+  constructor(
+    public status: number,
+    message: string
+  ) {
     super(message);
     this.name = 'ApiError';
   }
 }
 
-export async function apiFetch<T>(
-  path: string,
-  options: RequestInit = {},
-): Promise<T> {
+export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
   const apiKey = getApiKey();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -37,7 +37,7 @@ export async function apiFetch<T>(
   if (!res.ok) {
     let message = res.statusText;
     try {
-      const body = await res.json() as { error?: string };
+      const body = (await res.json()) as { error?: string };
       if (body.error) message = body.error;
     } catch {
       // ignore parse errors

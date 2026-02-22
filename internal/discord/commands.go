@@ -420,13 +420,11 @@ func sendEmbed(s *discordgo.Session, i *discordgo.InteractionCreate, embed *disc
 	}
 }
 
-// Footer constants for standardized embed footers.
-// Use these instead of magic strings to maintain consistency across all embeds.
-// This allows updating footer text globally by changing one constant.
+// Footer constants for consistent global branding and easy maintenance.
 const (
-	FooterBrandishBot      = "BrandishBot"       // Standard footer for user-facing commands
-	FooterBrandishBotAdmin = "BrandishBot Admin" // Footer for admin commands
-	FooterAdminAction      = "Admin Action"      // Footer for inventory management commands
+	FooterBrandishBot      = "BrandishBot"
+	FooterBrandishBotAdmin = "BrandishBot Admin"
+	FooterAdminAction      = "Admin Action"
 )
 
 // createEmbed creates a standard embed with optional footer customization.

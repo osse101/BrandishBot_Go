@@ -11,6 +11,7 @@ This guide documents patterns, strategies, and learnings from the Discord module
 ## Key Principle
 
 **Replace N-line duplicate patterns with 1-line helper calls** by identifying:
+
 1. The pattern (structure that repeats)
 2. The variation (what changes between instances)
 3. The abstraction (function that encapsulates the pattern)
@@ -21,22 +22,24 @@ This guide documents patterns, strategies, and learnings from the Discord module
 
 ### ✅ How to Find Duplications
 
-| Method | Command | Example |
-|--------|---------|---------|
-| **Grep for pattern** | `grep -n "pattern"` | `grep -n "InteractionResponseEdit"` |
-| **Count across files** | `grep -c "pattern" file.go` | Find top duplicators |
-| **Identify variations** | Manual inspection | See what changes between instances |
-| **Calculate savings** | `lines × occurrences` | 8 lines × 30 instances = 240 lines |
+| Method                  | Command                     | Example                             |
+| ----------------------- | --------------------------- | ----------------------------------- |
+| **Grep for pattern**    | `grep -n "pattern"`         | `grep -n "InteractionResponseEdit"` |
+| **Count across files**  | `grep -c "pattern" file.go` | Find top duplicators                |
+| **Identify variations** | Manual inspection           | See what changes between instances  |
+| **Calculate savings**   | `lines × occurrences`       | 8 lines × 30 instances = 240 lines  |
 
 ### ✅ When to Refactor
 
 **Good candidate for refactoring:**
+
 - Pattern repeats 3+ times
 - Code block is 5+ lines
 - Same logic, different data
 - Errors prone if not consistent
 
 **Not worth refactoring:**
+
 - Only appears 1-2 times
 - Will likely diverge in future
 - Already uses helpers
@@ -97,6 +100,7 @@ sendEmbed(s, i, embed)
 ```
 
 **Helper Structure:**
+
 ```go
 // New helper - encapsulates the pattern
 func sendEmbed(s *discordgo.Session, i *discordgo.InteractionCreate, embed *discordgo.MessageEmbed) {
@@ -136,6 +140,7 @@ if !ensureUserRegistered(s, i, client, user, friendlyError) {
 ```
 
 **Helper Design:**
+
 ```go
 // Handles both error cases with one boolean
 func ensureUserRegistered(s *discordgo.Session, i *discordgo.InteractionCreate,
@@ -186,6 +191,7 @@ const (
 ```
 
 **Benefits:**
+
 - Single point to update footer text
 - IDE autocomplete for valid options
 - Prevents typos
@@ -222,6 +228,7 @@ echo "$((lines * occurrences))"  # Output: 240 lines
 4. **Test locally** - Does it compile?
 
 Example decision tree:
+
 ```
 Pattern found 20+ times?
 ├─ YES: Continue to step 2
@@ -369,12 +376,14 @@ if !ensureUserRegistered(s, i, client, user, false) { return }
 ## Refactoring Checklist
 
 ### Before Starting
+
 - [ ] Run current tests - establish baseline
 - [ ] Count duplications with grep
 - [ ] Estimate lines to be saved
 - [ ] Decide which patterns to tackle (prioritize high-impact)
 
 ### During Implementation
+
 - [ ] Create helpers with clear names
 - [ ] Add documentation with usage examples
 - [ ] Test each helper independently
@@ -382,6 +391,7 @@ if !ensureUserRegistered(s, i, client, user, false) { return }
 - [ ] Build frequently to catch errors early
 
 ### After Completion
+
 - [ ] Verify zero old patterns remain (grep should find 0)
 - [ ] Build passes without errors
 - [ ] Run tests (should be identical behavior)
@@ -405,6 +415,7 @@ High Impact  ✅✅ Always         ✅✅ Always          ✅ Usually worth
 ```
 
 **Example Decision:**
+
 - Pattern appears 30 times (High Impact)
 - Saves 240 lines (High Impact)
 - Takes 45 minutes to implement (Medium Effort)
@@ -438,16 +449,16 @@ High Impact  ✅✅ Always         ✅✅ Always          ✅ Usually worth
 
 ## Discord Module Helpers Summary
 
-| Helper | Lines Reduced | Instances | Difficulty | Status |
-|--------|--------------|-----------|-----------|--------|
-| `deferResponse()` | 60 | 18 | ⭐ | ✅ Done |
-| `getInteractionUser()` | 12 | 4 | ⭐ | ✅ Done |
-| `getOptions()` | 5 | 10+ | ⭐ | ✅ Done |
-| `sendEmbed()` | 150+ | 23 | ⭐⭐ | ✅ Done |
-| `createEmbed()` | 50 | 30+ | ⭐⭐ | ✅ Done |
-| `ensureUserRegistered()` | 90 | 8 | ⭐⭐ | ✅ Done |
-| Footer constants | 0 (improve) | 25 | ⭐ | ✅ Done |
-| **TOTAL** | **~400 lines** | **120+** | **Avg ⭐⭐** | **✅ Done** |
+| Helper                   | Lines Reduced  | Instances | Difficulty   | Status      |
+| ------------------------ | -------------- | --------- | ------------ | ----------- |
+| `deferResponse()`        | 60             | 18        | ⭐           | ✅ Done     |
+| `getInteractionUser()`   | 12             | 4         | ⭐           | ✅ Done     |
+| `getOptions()`           | 5              | 10+       | ⭐           | ✅ Done     |
+| `sendEmbed()`            | 150+           | 23        | ⭐⭐         | ✅ Done     |
+| `createEmbed()`          | 50             | 30+       | ⭐⭐         | ✅ Done     |
+| `ensureUserRegistered()` | 90             | 8         | ⭐⭐         | ✅ Done     |
+| Footer constants         | 0 (improve)    | 25        | ⭐           | ✅ Done     |
+| **TOTAL**                | **~400 lines** | **120+**  | **Avg ⭐⭐** | **✅ Done** |
 
 ---
 
@@ -463,13 +474,13 @@ High Impact  ✅✅ Always         ✅✅ Always          ✅ Usually worth
 
 ### ⚠️ Challenges & Solutions
 
-| Challenge | Solution |
-|-----------|----------|
-| **Too many patterns** | Prioritize by impact (occurrences × lines saved) |
-| **Unsure if pattern is real** | Count it - if 3+ instances, probably yes |
-| **Variations in pattern** | Use boolean/enum parameters instead of multiple helpers |
-| **Breaking existing calls** | Always check usages before changing helper signature |
-| **Hard to test impact** | Use grep before/after to count instances |
+| Challenge                     | Solution                                                |
+| ----------------------------- | ------------------------------------------------------- |
+| **Too many patterns**         | Prioritize by impact (occurrences × lines saved)        |
+| **Unsure if pattern is real** | Count it - if 3+ instances, probably yes                |
+| **Variations in pattern**     | Use boolean/enum parameters instead of multiple helpers |
+| **Breaking existing calls**   | Always check usages before changing helper signature    |
+| **Hard to test impact**       | Use grep before/after to count instances                |
 
 ### 🎯 Best Practices
 
@@ -487,7 +498,7 @@ High Impact  ✅✅ Always         ✅✅ Always          ✅ Usually worth
 
 ### Checklist for Similar Refactoring
 
-- [ ] Identify high-duplication module (look for similar cmd_*.go files)
+- [ ] Identify high-duplication module (look for similar cmd\_\*.go files)
 - [ ] Grep for patterns that appear 3+ times
 - [ ] Calculate potential savings (estimate lines × occurrences)
 - [ ] Design helpers using "pattern → variations → abstraction"
@@ -536,10 +547,10 @@ This template ensures helpers are well-documented and easy to use.
 
 ## Version History
 
-| Version | Date | Changes |
-|---------|------|---------|
-| 1.0 | 2026-01-14 | Initial guide from Discord refactoring |
-| TBD | TBD | Additional patterns as discovered |
+| Version | Date       | Changes                                |
+| ------- | ---------- | -------------------------------------- |
+| 1.0     | 2026-01-14 | Initial guide from Discord refactoring |
+| TBD     | TBD        | Additional patterns as discovered      |
 
 ---
 
@@ -553,4 +564,4 @@ This template ensures helpers are well-documented and easy to use.
 
 **End of Guide**
 
-*For questions or additions to this guide, refer to the refactoring that generated these patterns: Discord module helper extraction (Jan 2026).*
+_For questions or additions to this guide, refer to the refactoring that generated these patterns: Discord module helper extraction (Jan 2026)._

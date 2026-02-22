@@ -51,7 +51,7 @@ Users can now request info using:
 ## How It Works
 
 1. **Platform Auto-Detection**: Uses `%userType%` from Streamerbot context (twitch/youtube)
-2. **API Call**: Calls `/api/v1/info?platform=twitch&feature=harvest`
+2. **API Call**: Calls `/api/v1/info?platform=twitch&feature=harvest` (parameters are URL-encoded automatically)
 3. **Smart Lookup**: Backend searches feature names first, then topic names if not found
 4. **Response Parsing**: Extracts `description` field which contains compact text optimized for chat
 5. **Output**: Sets `%response%` variable for chat message
@@ -143,6 +143,8 @@ Test the setup:
 
 **Empty response**: Check `ServerApiKey` is correct and API authentication is configured
 
+**Special characters in input**: The C# client automatically handles URL encoding for feature and topic names, so inputs with spaces or special characters work correctly.
+
 ## Content Updates
 
 To update info content:
@@ -157,7 +159,7 @@ Example:
 ```yaml
 # configs/info/farming.yaml
 streamerbot:
-  description: "NEW TEXT HERE"
+  description: 'NEW TEXT HERE'
 ```
 
 This keeps content centralized and consistent across all platforms!

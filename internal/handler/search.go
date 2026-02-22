@@ -55,20 +55,22 @@ func HandleSearch(svc user.Service, progressionSvc progression.Service, eventBus
 			} else {
 				log.Error("Search failed", "error", err, "username", req.Username)
 			}
-			statusCode, userMsg := mapServiceErrorToUserMessage(err)
-			respondError(w, statusCode, userMsg)
+			statusCode, userMsg := MapServiceErrorToUserMessage(err)
+			RespondError(w, statusCode, userMsg)
 			return
 		}
 
 		// Track engagement
-		middleware.TrackEngagementFromContext(
-			middleware.WithUserID(r.Context(), req.Username),
-			eventBus,
-			"search",
-			1,
-		)
+		if userID, err := svc.GetUserIDByPlatformID(r.Context(), req.Platform, req.PlatformID); err == nil && userID != "" {
+			middleware.TrackEngagementFromContext(
+				middleware.WithUserID(r.Context(), userID),
+				eventBus,
+				"search",
+				1,
+			)
+		}
 
-		respondJSON(w, http.StatusOK, SearchResponse{
+		RespondJSON(w, http.StatusOK, SearchResponse{
 			Message: resultMessage,
 		})
 	}

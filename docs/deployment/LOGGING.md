@@ -1,11 +1,13 @@
 # Structured JSON Logging - Phase 1 Complete
 
 ## Overview
+
 Implemented production-ready structured JSON logging with environment-based configuration for Milestone 1.
 
 ## Changes Made
 
 ### 1. Logger Configuration (`internal/logger/config.go`) - NEW
+
 - **Environment-based configs**: Production, Development, Default
 - **Configurable fields**:
   - Log level (debug, info, warn, error)
@@ -20,6 +22,7 @@ Implemented production-ready structured JSON logging with environment-based conf
   - `VERSION` - Application version
 
 ### 2. Enhanced Logger (`internal/logger/logger.go`) - MODIFIED
+
 - **JSON Handler**: slog.NewJSONHandler for production
 - **Text Handler**: slog.NewTextHandler for development
 - **Structured attributes**: Automatic service, version, environment fields
@@ -28,12 +31,14 @@ Implemented production-ready structured JSON logging with environment-based conf
 - **GenerateRequestID()**: UUID generation for request tracing
 
 ### 3. Main App Integration (`cmd/app/main.go` + `logger_init.go`) - MODIFIED
+
 - **initLogger()**: Environment-aware logger initialization
 - **Startup logging**: Structured startup messages with config details
 - **Error handling**: Proper error logging instead of panics
 
 ###4. Comprehensive Tests (`internal/logger/logger_test.go`) - NEW
 **5 Tests All Passing**:
+
 - ✅ TestJSONLogging - Verifies JSON output format
 - ✅ TestRequestIDContext - Tests request ID tracking
 - ✅ TestConfigDefaults - Validates default configuration
@@ -43,6 +48,7 @@ Implemented production-ready structured JSON logging with environment-based conf
 ## Usage Examples
 
 ### Production (JSON)
+
 ```bash
 export ENVIRONMENT=prod
 export LOG_FORMAT=json
@@ -60,6 +66,7 @@ export LOG_LEVEL=info
 ```
 
 ### Development (Text)
+
 ```bash
 export ENVIRONMENT=dev
 export LOG_FORMAT=text
@@ -70,6 +77,7 @@ time=2025-11-26T16:30:00Z level=DEBUG msg="Database connected" service=brandish-
 ```
 
 ### With Request ID
+
 ```go
 requestID := logger.GenerateRequestID()
 ctx := logger.WithRequestID(ctx, requestID)
@@ -81,16 +89,17 @@ log.Info("Processing request", "user", "john")
 
 ## Configuration Matrix
 
-| Environment | Format | Level | AddSource | Use Case |
-|-------------|--------|-------|-----------|----------|
-| Production  | JSON   | info  | false     | Production deployment |
+| Environment | Format | Level | AddSource | Use Case               |
+| ----------- | ------ | ----- | --------- | ---------------------- |
+| Production  | JSON   | info  | false     | Production deployment  |
 | Staging     | JSON   | info  | false     | Pre-production testing |
-| Development | text   | debug | true      | Local development |
-| Default     | *env*  | *env* | *env*     | Custom via env vars |
+| Development | text   | debug | true      | Local development      |
+| Default     | _env_  | _env_ | _env_     | Custom via env vars    |
 
 ## Structured Fields
 
 All log entries automatically include:
+
 - `time` - ISO8601 timestamp
 - `level` - Log level (DEBUG, INFO, WARN, ERROR)
 - `msg` - Log message
@@ -100,8 +109,9 @@ All log entries automatically include:
 - `request_id` - Request trace ID (when available)
 
 Custom fields can be added:
+
 ```go
-logger.Info("User action", 
+logger.Info("User action",
     "user_id", "123",
     "action", "purchase",
     "amount", 50.00)

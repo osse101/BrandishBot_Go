@@ -181,9 +181,7 @@ func (s *service) ConfirmLink(ctx context.Context, platform, platformID string) 
 
 	targetUser, err := s.userService.FindUserByPlatformID(ctx, token.TargetPlatform, token.TargetPlatformID)
 	if err != nil {
-		// Target doesn't exist - this logic path seems duplicated/confusing given source registration above.
-		// If source was just created, it has one platform. Testing target existence is correct.
-		// If target missing, just add platform to source.
+		// Target missing: just add the target platform to the existing (or newly registered) source user.
 
 		setPlatformID(sourceUser, token.TargetPlatform, token.TargetPlatformID)
 		// Update the existing/new source user with the second platform

@@ -1,7 +1,7 @@
 name: inventory
 title: Inventory Management
 icon: 🎒
-color: "#3498DB"
+color: '#3498DB'
 
 discord:
   description: |
@@ -66,4 +66,4 @@ discord:
     Collect as many items as you can find.
 
 streamerbot:
-  description: "Inventory: View items, search for loot, use items. !inventory !search !use"
+  description: 'Inventory: View items, search for loot, use items. !inventory !search !use'

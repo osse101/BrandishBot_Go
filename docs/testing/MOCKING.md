@@ -17,18 +17,18 @@ import (
 func TestHandleAddItem(t *testing.T) {
     // Create service mock (from global mocks)
     mockSvc := mocks.NewMockUserService(t)
-    
+
     // Create repository mock (from local package mocks)
     mockRepo := usermocks.NewMockRepository(t)
 
     // Set expectations
     mockSvc.On("AddItem", mock.Anything, "twitch", "id", "user", "Sword", 1).
         Return(nil)
-    
+
     // Use in test
     handler := HandleAddItem(mockSvc)
     // ... test code
-    
+
     // Verify expectations met
     mockSvc.AssertExpectations(t)
 }
@@ -47,11 +47,13 @@ make mocks
 Mocks are distributed to avoid import cycles:
 
 **Global Mocks (`mocks/` package):**
+
 - **Service Mocks:** `MockUserService`, `MockEconomyService`, `MockProgressionService`
 - **Core Interfaces:** `MockEventBus`, `MockDBPool`
 - Used primarily for testing Handlers and Controllers.
 
 **Local Mocks (`internal/<package>/mocks/`):**
+
 - **Repository Mocks:** `MockRepository` (within each domain package)
 - **Tx Mocks:** `MockTx` (transaction wrappers)
 - Used for testing Services without creating circular dependencies.
@@ -69,10 +71,10 @@ func TestHandler(t *testing.T) {
     // ✅ Use mockery for clean, type-safe handler tests
     mockSvc := mocks.NewMockUserService(t)
     mockBus := mocks.NewMockEventBus(t)
-    
+
     mockSvc.On("GetUser", "123").Return(user, nil)
     mockBus.On("Publish", mock.Anything, mock.Anything).Return(nil)
-    
+
     handler := NewHandler(mockSvc, mockBus)
     // ... test
 }
@@ -98,12 +100,12 @@ func (m *MockRepository) GetUser(id string) (*domain.User, error) {
 
 ### When to Use Which
 
-| Test Type | Use Mockery | Use Functional Mock |
-|-----------|-------------|---------------------|
-| Handler/Controller | ✅ Yes | ❌ No |
-| Service/Business Logic | Maybe | ✅ Preferred |
-| Repository/Data Layer | ✅ Yes | Only if complex |
-| Simple Utilities | ❌ No mocks needed | ❌ No mocks needed |
+| Test Type              | Use Mockery        | Use Functional Mock |
+| ---------------------- | ------------------ | ------------------- |
+| Handler/Controller     | ✅ Yes             | ❌ No               |
+| Service/Business Logic | Maybe              | ✅ Preferred        |
+| Repository/Data Layer  | ✅ Yes             | Only if complex     |
+| Simple Utilities       | ❌ No mocks needed | ❌ No mocks needed  |
 
 ## Mock Expectations
 
@@ -159,14 +161,14 @@ mock.On("ProcessItem", mock.Anything).Run(func(args mock.Arguments) {
 ```go
 func TestHandler_ErrorHandling(t *testing.T) {
     mockSvc := mocks.NewMockUserService(t)
-    
+
     // Setup error expectation
     mockSvc.On("GetUser", "missing").
         Return(nil, user.ErrNotFound)
-    
+
     handler := NewHandler(mockSvc)
     result, err := handler.GetUser("missing")
-    
+
     assert.Error(t, err)
     assert.ErrorIs(t, err, user.ErrNotFound)
 }
@@ -177,14 +179,14 @@ func TestHandler_ErrorHandling(t *testing.T) {
 ```go
 func TestHandler_PublishesEvent(t *testing.T) {
     mockBus := mocks.NewMockEventBus(t)
-    
+
     // Expect specific event
     mockBus.On("Publish", mock.Anything, mock.MatchedBy(func(evt event.Event) bool {
         return evt.Type == "user.created" && evt.UserID == "123"
     })).Return(nil)
-    
+
     // ... test that triggers event
-    
+
     mockBus.AssertExpectations(t)
 }
 ```
@@ -218,15 +220,15 @@ func TestUserService(t *testing.T) {
             wantErr: true,
         },
     }
-    
+
     for _, tt := range tests {
         t.Run(tt.name, func(t *testing.T) {
             mockRepo := mocks.NewMockUserRepository(t)
             tt.setupMock(mockRepo)
-            
+
             svc := user.NewService(mockRepo)
             _, err := svc.GetUser(context.Background(), tt.userID)
-            
+
             if tt.wantErr {
                 assert.Error(t, err)
             } else {
@@ -246,21 +248,22 @@ packages:
   github.com/osse101/BrandishBot_Go/internal/user:
     config:
       # Service mocks go to global mocks/ folder
-      filename: "mock_user_{{.InterfaceName | snakecase}}.go"
-      mockname: "MockUser{{.InterfaceName}}"
+      filename: 'mock_user_{{.InterfaceName | snakecase}}.go'
+      mockname: 'MockUser{{.InterfaceName}}'
     interfaces:
       Service:
       Repository:
         config:
           # Repository mocks go to internal/user/mocks/ folder
-          dir: "{{.InterfaceDir}}/mocks"
-          outpkg: "mocks"
-          filename: "mock_repository.go"
-          mockname: "MockRepository"
+          dir: '{{.InterfaceDir}}/mocks'
+          outpkg: 'mocks'
+          filename: 'mock_repository.go'
+          mockname: 'MockRepository'
           with-expecter: true
 ```
 
 **Key settings:**
+
 - **Service Mocks:** Generated in root `mocks/` for ease of use in handlers.
 - **Repository Mocks:** Generated in `internal/<pkg>/mocks/` to prevent import cycles.
 - `with-expecter: true` - Enables type-safe EXPECT() pattern.
@@ -273,8 +276,8 @@ packages:
 packages:
   github.com/osse101/BrandishBot_Go/internal/mypackage:
     config:
-      filename: "mock_mypackage_{{.InterfaceName | snakecase}}.go"
-      mockname: "MockMypackage{{.InterfaceName}}"
+      filename: 'mock_mypackage_{{.InterfaceName | snakecase}}.go'
+      mockname: 'MockMypackage{{.InterfaceName}}'
     interfaces:
       MyNewInterface:
 ```
@@ -329,12 +332,14 @@ mockSvc.On("Method", "exact", "args").Return(nil)  // More specific
 ## Best Practices
 
 ✅ **DO:**
+
 - Use mockery for handler/controller tests
 - Regenerate mocks when interfaces change
 - Use `mock.Anything` for irrelevant arguments
 - Verify expectations with `AssertExpectations(t)`
 
 ❌ **DON'T:**
+
 - Mock everything - keep functional mocks for complex state
 - Forget to call `AssertExpectations(t)`
 - Over-specify expectations (brittle tests)

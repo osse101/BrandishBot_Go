@@ -75,6 +75,14 @@ func (m *MockRepository) GetUserByPlatformID(ctx context.Context, platform, plat
 	return args.Get(0).(*domain.User), args.Error(1)
 }
 
+func (m *MockRepository) GetUserByID(ctx context.Context, userID string) (*domain.User, error) {
+	args := m.Called(ctx, userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.User), args.Error(1)
+}
+
 func (m *MockRepository) GetUserJobsByPlatform(ctx context.Context, platform, platformID string) ([]domain.UserJob, error) {
 	args := m.Called(ctx, platform, platformID)
 	if args.Get(0) == nil {
@@ -121,9 +129,17 @@ func (m *MockProgressionService) GetProgressionStatus(ctx context.Context) (*dom
 	return args.Get(0).(*domain.ProgressionStatus), args.Error(1)
 }
 
-func (m *MockProgressionService) GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error) {
+func (m *MockProgressionService) GetModifiedValue(ctx context.Context, userID string, featureKey string, baseValue float64) (float64, error) {
 	args := m.Called(ctx, featureKey, baseValue)
 	return args.Get(0).(float64), args.Error(1)
+}
+
+func (m *MockProgressionService) GetJobUnlockConfig(ctx context.Context, featureKey string) (*domain.JobUnlockConfig, error) {
+	args := m.Called(ctx, featureKey)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.JobUnlockConfig), args.Error(1)
 }
 
 // MockStatsService
@@ -563,10 +579,7 @@ func TestAwardXP_MaxLevel(t *testing.T) {
 	jobKey := JobKeyBlacksmith
 	jobID := 1
 
-	// DefaultMaxLevel is 10.
-	// XP for Level 11 is roughly: 100 * sum(i^1.5 for i=1..11).
-	// Let's just set CurrentXP to a very high number that definitely exceeds Level 10 requirement.
-	// We verify that despite having enough XP for level >10, the Level field is clamped.
+	// Test level clamping: with CurrentXP exceeding level 10 requirements, verified level remains at DefaultMaxLevel (10).
 	startXP := int64(50000)
 	awardAmount := 10 // Small amount to avoid daily cap
 
@@ -593,32 +606,6 @@ func TestAwardXP_MaxLevel(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, DefaultMaxLevel, result.NewLevel)
-}
-
-func TestGetJobBonus(t *testing.T) {
-	repo := new(MockRepository)
-	prog := new(MockProgressionService)
-	svc := NewService(repo, prog, nil, nil)
-	ctx := context.Background()
-
-	jobID := 1
-	jobKey := JobKeyExplorer
-	userID := "u1"
-
-	job := &domain.Job{ID: jobID, JobKey: jobKey}
-	userJob := &domain.UserJob{UserID: userID, JobID: jobID, CurrentLevel: 5}
-	bonuses := []domain.JobLevelBonus{
-		{BonusType: "chance", BonusValue: 0.1},
-		{BonusType: "chance", BonusValue: 0.25}, // Higher value should be picked
-	}
-
-	repo.On("GetJobByKey", ctx, jobKey).Return(job, nil).Twice() // Once for GetJobLevel, once in GetJobBonus
-	repo.On("GetUserJob", ctx, userID, jobID).Return(userJob, nil)
-	repo.On("GetJobLevelBonuses", ctx, jobID, 5).Return(bonuses, nil)
-
-	val, err := svc.GetJobBonus(ctx, userID, jobKey, "chance")
-	assert.NoError(t, err)
-	assert.Equal(t, 0.25, val)
 }
 
 func TestGetPrimaryJob(t *testing.T) {
@@ -859,80 +846,6 @@ func TestGetJobLevel_NoProgress(t *testing.T) {
 	level, err := svc.GetJobLevel(ctx, "u1", JobKeyBlacksmith)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, level)
-}
-
-// GetJobBonus Edge Cases
-
-func TestGetJobBonus_ZeroLevel(t *testing.T) {
-	repo := new(MockRepository)
-	prog := new(MockProgressionService)
-	svc := NewService(repo, prog, nil, nil)
-	ctx := context.Background()
-
-	job := &domain.Job{ID: 1, JobKey: JobKeyExplorer}
-	userJob := &domain.UserJob{UserID: "u1", JobID: 1, CurrentLevel: 0}
-
-	repo.On("GetJobByKey", ctx, JobKeyExplorer).Return(job, nil)
-	repo.On("GetUserJob", ctx, "u1", 1).Return(userJob, nil)
-	// GetJobBonus returns early if level is 0
-
-	val, err := svc.GetJobBonus(ctx, "u1", JobKeyExplorer, "chance")
-	assert.NoError(t, err)
-	assert.Equal(t, 0.0, val)
-}
-
-func TestGetJobBonus_NoBonusesConfigured(t *testing.T) {
-	repo := new(MockRepository)
-	prog := new(MockProgressionService)
-	svc := NewService(repo, prog, nil, nil)
-	ctx := context.Background()
-
-	job := &domain.Job{ID: 1, JobKey: JobKeyExplorer}
-	userJob := &domain.UserJob{UserID: "u1", JobID: 1, CurrentLevel: 5}
-
-	repo.On("GetJobByKey", ctx, JobKeyExplorer).Return(job, nil).Twice()
-	repo.On("GetUserJob", ctx, "u1", 1).Return(userJob, nil)
-	repo.On("GetJobLevelBonuses", ctx, 1, 5).Return([]domain.JobLevelBonus{}, nil)
-
-	val, err := svc.GetJobBonus(ctx, "u1", JobKeyExplorer, "chance")
-	assert.NoError(t, err)
-	assert.Equal(t, 0.0, val) // No bonuses configured
-}
-
-func TestGetJobBonus_MultipleBonusTypes(t *testing.T) {
-	repo := new(MockRepository)
-	prog := new(MockProgressionService)
-	svc := NewService(repo, prog, nil, nil)
-	ctx := context.Background()
-
-	job := &domain.Job{ID: 1, JobKey: JobKeyExplorer}
-	userJob := &domain.UserJob{UserID: "u1", JobID: 1, CurrentLevel: 10}
-	bonuses := []domain.JobLevelBonus{
-		{BonusType: "chance", BonusValue: 0.3},
-		{BonusType: "multiplier", BonusValue: 1.5}, // Different type
-		{BonusType: "chance", BonusValue: 0.2},     // Lower value of same type
-	}
-
-	repo.On("GetJobByKey", ctx, JobKeyExplorer).Return(job, nil).Twice()
-	repo.On("GetUserJob", ctx, "u1", 1).Return(userJob, nil)
-	repo.On("GetJobLevelBonuses", ctx, 1, 10).Return(bonuses, nil)
-
-	val, err := svc.GetJobBonus(ctx, "u1", JobKeyExplorer, "chance")
-	assert.NoError(t, err)
-	assert.Equal(t, 0.3, val) // Should pick highest of "chance" type
-}
-
-func TestGetJobBonus_RepositoryError(t *testing.T) {
-	repo := new(MockRepository)
-	prog := new(MockProgressionService)
-	svc := NewService(repo, prog, nil, nil)
-	ctx := context.Background()
-
-	repo.On("GetJobByKey", ctx, JobKeyExplorer).Return(nil, assert.AnError)
-
-	val, err := svc.GetJobBonus(ctx, "u1", JobKeyExplorer, "chance")
-	assert.Error(t, err)
-	assert.Equal(t, 0.0, val)
 }
 
 // AwardXP Advanced Scenarios

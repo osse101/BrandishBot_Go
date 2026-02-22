@@ -4,54 +4,24 @@
   "last_updated": "2026-02-01",
   "aliases": {
     "money": {
-      "default": [
-        "money",
-        "Shiny credit"
-      ],
+      "default": ["money", "Shiny credit"],
       "themes": {
-        "halloween": [
-          "Curse-touched coin",
-          "ghost-gold"
-        ],
-        "christmas": [
-          "Winter-frosted credit"
-        ]
+        "halloween": ["Curse-touched coin", "ghost-gold"],
+        "christmas": ["Winter-frosted credit"]
       }
     },
     "item_shovel": {
-      "default": [
-        "basic shovel",
-        "well-used spade",
-        "sturdy dirt-mover",
-        "rusty garden shovel"
-      ],
+      "default": ["basic shovel", "well-used spade", "sturdy dirt-mover", "rusty garden shovel"],
       "themes": {
-        "halloween": [
-          "grave-digging spade",
-          "bone-handled shovel"
-        ],
-        "christmas": [
-          "snow-clearing shovel",
-          "candy-cane spade"
-        ]
+        "halloween": ["grave-digging spade", "bone-handled shovel"],
+        "christmas": ["snow-clearing shovel", "candy-cane spade"]
       }
     },
     "item_stick": {
-      "default": [
-        "simple stick",
-        "sturdy branch",
-        "piece of gnarled wood",
-        "simple wooden stick"
-      ],
+      "default": ["simple stick", "sturdy branch", "piece of gnarled wood", "simple wooden stick"],
       "themes": {
-        "halloween": [
-          "brittle skeleton arm",
-          "twisted witch-wood branch"
-        ],
-        "christmas": [
-          "long peppermint stick",
-          "snapped pine branch"
-        ]
+        "halloween": ["brittle skeleton arm", "twisted witch-wood branch"],
+        "christmas": ["long peppermint stick", "snapped pine branch"]
       }
     },
     "item_shield": {
@@ -62,51 +32,26 @@
         "defensive plate"
       ],
       "themes": {
-        "halloween": [
-          "coffin-lid shield",
-          "web-covered buckler"
-        ],
-        "christmas": [
-          "giant cookie shield",
-          "festive wreath-guard"
-        ]
+        "halloween": ["coffin-lid shield", "web-covered buckler"],
+        "christmas": ["giant cookie shield", "festive wreath-guard"]
       }
     },
     "lootbox_tier0": {
-      "default": [
-        "dingy box",
-        "worn door box",
-        "cheap looking box",
-        "battered box"
-      ],
+      "default": ["dingy box", "worn door box", "cheap looking box", "battered box"],
       "themes": {
         "halloween": [
           "battered pumpkin container",
           "cheap looking skull chest",
           "spooky rattling box"
         ],
-        "christmas": [
-          "frosty gift box",
-          "tinsel-wrapped crate",
-          "snow-dusted parcel"
-        ]
+        "christmas": ["frosty gift box", "tinsel-wrapped crate", "snow-dusted parcel"]
       }
     },
     "lootbox_tier1": {
-      "default": [
-        "sturdy chest",
-        "well-crafted box",
-        "reliable container"
-      ],
+      "default": ["sturdy chest", "well-crafted box", "reliable container"],
       "themes": {
-        "halloween": [
-          "haunted treasure chest",
-          "glowing jack-o-lantern box"
-        ],
-        "christmas": [
-          "red velvet gift box",
-          "An ornate holiday chest"
-        ]
+        "halloween": ["haunted treasure chest", "glowing jack-o-lantern box"],
+        "christmas": ["red velvet gift box", "An ornate holiday chest"]
       }
     },
     "lootbox_tier2": {
@@ -116,14 +61,8 @@
         "An ornate gilded container"
       ],
       "themes": {
-        "halloween": [
-          "legendary cursed chest",
-          "phantom's treasure trove"
-        ],
-        "christmas": [
-          "Santa's special delivery",
-          "magical winter chest"
-        ]
+        "halloween": ["legendary cursed chest", "phantom's treasure trove"],
+        "christmas": ["Santa's special delivery", "magical winter chest"]
       }
     },
     "lootbox_tier3": {
@@ -134,31 +73,15 @@
         "legendary relic box"
       ],
       "themes": {
-        "halloween": [
-          "An ancient soul-reaper's chest",
-          "spectral void box"
-        ],
-        "christmas": [
-          "Santa's ultimate gift bundle",
-          "magical winter solstice vault"
-        ]
+        "halloween": ["An ancient soul-reaper's chest", "spectral void box"],
+        "christmas": ["Santa's ultimate gift bundle", "magical winter solstice vault"]
       }
     },
     "weapon_blaster": {
-      "default": [
-        "shiny ray gun",
-        "crackling energy weapon",
-        "humming blaster"
-      ],
+      "default": ["shiny ray gun", "crackling energy weapon", "humming blaster"],
       "themes": {
-        "halloween": [
-          "ghostly plasma gun",
-          "spectral beam cannon"
-        ],
-        "christmas": [
-          "candy cane cannon",
-          "snowball launcher"
-        ]
+        "halloween": ["ghostly plasma gun", "spectral beam cannon"],
+        "christmas": ["candy cane cannon", "snowball launcher"]
       }
     },
     "weapon_hugeblaster": {
@@ -169,23 +92,12 @@
         "titan-class ray gun"
       ],
       "themes": {
-        "halloween": [
-          "The Spectral Doomsday Cannon",
-          "Haunting Abyss Ray"
-        ],
-        "christmas": [
-          "The Northern Lights Projector",
-          "Giant Nutcracker Cannon"
-        ]
+        "halloween": ["The Spectral Doomsday Cannon", "Haunting Abyss Ray"],
+        "christmas": ["The Northern Lights Projector", "Giant Nutcracker Cannon"]
       }
     },
     "weapon_this": {
-      "default": [
-        "this",
-        "Exactly what you asked for",
-        "The 'this' weapon",
-        "literal 'this'"
-      ]
+      "default": ["this", "Exactly what you asked for", "The 'this' weapon", "literal 'this'"]
     },
     "revive_small": {
       "default": [
@@ -195,14 +107,8 @@
         "faintly glowing elixir"
       ],
       "themes": {
-        "halloween": [
-          "vial of zombie essence",
-          "witch's brew of restoration"
-        ],
-        "christmas": [
-          "bottle of magic eggnog",
-          "warm cup of holiday cheer"
-        ]
+        "halloween": ["vial of zombie essence", "witch's brew of restoration"],
+        "christmas": ["bottle of magic eggnog", "warm cup of holiday cheer"]
       }
     },
     "explosive_tnt": {
@@ -213,14 +119,8 @@
         "stack of TNT"
       ],
       "themes": {
-        "halloween": [
-          "volatile pumpkin bomb",
-          "cluster of unstable spirits"
-        ],
-        "christmas": [
-          "An explosive gift surprise",
-          "high-pressure coal blast"
-        ]
+        "halloween": ["volatile pumpkin bomb", "cluster of unstable spirits"],
+        "christmas": ["An explosive gift surprise", "high-pressure coal blast"]
       }
     },
     "xp_rarecandy": {
@@ -231,14 +131,8 @@
         "luminous skill-booster"
       ],
       "themes": {
-        "halloween": [
-          "haunted soul-sweet",
-          "Specter-flavored hard candy"
-        ],
-        "christmas": [
-          "magical peppermint swirl",
-          "sugarplum of wisdom"
-        ]
+        "halloween": ["haunted soul-sweet", "Specter-flavored hard candy"],
+        "christmas": ["magical peppermint swirl", "sugarplum of wisdom"]
       }
     },
     "item_grenade": {
@@ -249,14 +143,8 @@
         "ticking surprise"
       ],
       "themes": {
-        "halloween": [
-          "spooky smoke pellet",
-          "jack-o-lantern grenade"
-        ],
-        "christmas": [
-          "An explosive bauble",
-          "snowball packed with ice"
-        ]
+        "halloween": ["spooky smoke pellet", "jack-o-lantern grenade"],
+        "christmas": ["An explosive bauble", "snowball packed with ice"]
       }
     },
     "weapon_mirror": {
@@ -267,14 +155,8 @@
         "shimmering light-bender"
       ],
       "themes": {
-        "halloween": [
-          "haunted silver looking-glass",
-          "shadow-reflecting pane"
-        ],
-        "christmas": [
-          "polished ice wall",
-          "shiny golden ornament shield"
-        ]
+        "halloween": ["haunted silver looking-glass", "shadow-reflecting pane"],
+        "christmas": ["polished ice wall", "shiny golden ornament shield"]
       }
     },
     "item_scrap": {

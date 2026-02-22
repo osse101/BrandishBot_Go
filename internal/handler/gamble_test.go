@@ -21,7 +21,7 @@ func TestHandleStartGamble(t *testing.T) {
 	tests := []struct {
 		name           string
 		reqBody        interface{}
-		setupMocks     func(*mocks.MockGambleService, *mocks.MockProgressionService)
+		setupMocks     func(*mocks.MockGambleService, *mocks.MockProgressionService, *mocks.MockUserService)
 		expectedStatus int
 		expectedBody   string
 	}{
@@ -33,7 +33,7 @@ func TestHandleStartGamble(t *testing.T) {
 				Username:   "testuser",
 				Bets:       []domain.LootboxBet{},
 			},
-			setupMocks: func(mg *mocks.MockGambleService, mp *mocks.MockProgressionService) {
+			setupMocks: func(mg *mocks.MockGambleService, mp *mocks.MockProgressionService, mu *mocks.MockUserService) {
 				mp.On("IsFeatureUnlocked", mock.Anything, progression.FeatureGamble).Return(false, nil)
 				mp.On("GetRequiredNodes", mock.Anything, progression.FeatureGamble).Return([]*domain.ProgressionNode{{DisplayName: "Gamble Node"}}, nil)
 			},
@@ -43,7 +43,7 @@ func TestHandleStartGamble(t *testing.T) {
 		{
 			name:    "Invalid JSON",
 			reqBody: "invalid json",
-			setupMocks: func(mg *mocks.MockGambleService, mp *mocks.MockProgressionService) {
+			setupMocks: func(mg *mocks.MockGambleService, mp *mocks.MockProgressionService, mu *mocks.MockUserService) {
 				mp.On("IsFeatureUnlocked", mock.Anything, progression.FeatureGamble).Return(true, nil)
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -57,7 +57,7 @@ func TestHandleStartGamble(t *testing.T) {
 				Username:   "testuser",
 				Bets:       []domain.LootboxBet{},
 			},
-			setupMocks: func(mg *mocks.MockGambleService, mp *mocks.MockProgressionService) {
+			setupMocks: func(mg *mocks.MockGambleService, mp *mocks.MockProgressionService, mu *mocks.MockUserService) {
 				mp.On("IsFeatureUnlocked", mock.Anything, progression.FeatureGamble).Return(true, nil)
 				mg.On("StartGamble", mock.Anything, domain.PlatformDiscord, "123", "testuser", mock.Anything).Return(nil, errors.New(ErrMsgGenericServerError))
 			},
@@ -72,8 +72,9 @@ func TestHandleStartGamble(t *testing.T) {
 				Username:   "testuser",
 				Bets:       []domain.LootboxBet{},
 			},
-			setupMocks: func(mg *mocks.MockGambleService, mp *mocks.MockProgressionService) {
+			setupMocks: func(mg *mocks.MockGambleService, mp *mocks.MockProgressionService, mu *mocks.MockUserService) {
 				mp.On("IsFeatureUnlocked", mock.Anything, progression.FeatureGamble).Return(true, nil)
+				mu.On("GetUserIDByPlatformID", mock.Anything, "discord", "123").Return("", nil).Maybe() // Engagement tracking is called if feature is unlocked
 				mg.On("StartGamble", mock.Anything, "discord", "123", "testuser", mock.Anything).Return(&domain.Gamble{ID: uuid.MustParse("00000000-0000-0000-0000-000000000001")}, nil)
 			},
 			expectedStatus: http.StatusCreated,
@@ -87,11 +88,12 @@ func TestHandleStartGamble(t *testing.T) {
 			mockProgression := mocks.NewMockProgressionService(t)
 			mockEventBus := mocks.NewMockEventBus(t)
 			mockEventBus.On("Publish", mock.Anything, mock.Anything).Return(nil).Maybe()
-			handler := NewGambleHandler(mockGamble, mockProgression, mockEventBus)
+			mockUser := mocks.NewMockUserService(t)
+			handler := NewGambleHandler(mockGamble, mockUser, mockProgression, mockEventBus)
 
 			mockProgression.On("RecordEngagement", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 			if tt.setupMocks != nil {
-				tt.setupMocks(mockGamble, mockProgression)
+				tt.setupMocks(mockGamble, mockProgression, mockUser)
 			}
 
 			var body []byte
@@ -120,7 +122,7 @@ func TestHandleJoinGamble(t *testing.T) {
 		name           string
 		queryID        string
 		reqBody        interface{}
-		setupMocks     func(*mocks.MockGambleService)
+		setupMocks     func(*mocks.MockGambleService, *mocks.MockUserService)
 		expectedStatus int
 		expectedBody   string
 	}{
@@ -156,7 +158,8 @@ func TestHandleJoinGamble(t *testing.T) {
 				PlatformID: "123",
 				Username:   "testuser",
 			},
-			setupMocks: func(mg *mocks.MockGambleService) {
+			setupMocks: func(mg *mocks.MockGambleService, mu *mocks.MockUserService) {
+				mu.On("GetUserIDByPlatformID", mock.Anything, "discord", "123").Return("", nil).Maybe()
 				mg.On("JoinGamble", mock.Anything, validUUID, domain.PlatformDiscord, "123", "testuser").Return(errors.New(ErrMsgGenericServerError))
 			},
 			expectedStatus: http.StatusInternalServerError,
@@ -170,7 +173,8 @@ func TestHandleJoinGamble(t *testing.T) {
 				PlatformID: "123",
 				Username:   "testuser",
 			},
-			setupMocks: func(mg *mocks.MockGambleService) {
+			setupMocks: func(mg *mocks.MockGambleService, mu *mocks.MockUserService) {
+				mu.On("GetUserIDByPlatformID", mock.Anything, "discord", "123").Return("", nil).Maybe()
 				mg.On("JoinGamble", mock.Anything, validUUID, domain.PlatformDiscord, "123", "testuser").Return(nil)
 			},
 			expectedStatus: http.StatusOK,
@@ -186,10 +190,12 @@ func TestHandleJoinGamble(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mockGamble := mocks.NewMockGambleService(t)
 			// Progression service is not used in JoinGamble, so we can pass nil or a mock
-			handler := NewGambleHandler(mockGamble, mockProg, mockEventBus)
+			mockUser := mocks.NewMockUserService(t)
+			mockUser.On("GetUserIDByPlatformID", mock.Anything, mock.Anything, mock.Anything).Return("", nil).Maybe()
+			handler := NewGambleHandler(mockGamble, mockUser, mockProg, mockEventBus)
 
 			if tt.setupMocks != nil {
-				tt.setupMocks(mockGamble)
+				tt.setupMocks(mockGamble, mockUser)
 			}
 
 			var body []byte
@@ -217,7 +223,7 @@ func TestHandleGetGamble(t *testing.T) {
 	tests := []struct {
 		name           string
 		queryID        string
-		setupMocks     func(*mocks.MockGambleService)
+		setupMocks     func(*mocks.MockGambleService, *mocks.MockUserService)
 		expectedStatus int
 		expectedBody   string
 	}{
@@ -238,7 +244,7 @@ func TestHandleGetGamble(t *testing.T) {
 		{
 			name:    "Service Error",
 			queryID: validUUID.String(),
-			setupMocks: func(mg *mocks.MockGambleService) {
+			setupMocks: func(mg *mocks.MockGambleService, mu *mocks.MockUserService) {
 				mg.On("GetGamble", mock.Anything, validUUID).Return(nil, errors.New(ErrMsgGenericServerError))
 			},
 			expectedStatus: http.StatusInternalServerError,
@@ -247,7 +253,7 @@ func TestHandleGetGamble(t *testing.T) {
 		{
 			name:    "Not Found",
 			queryID: validUUID.String(),
-			setupMocks: func(mg *mocks.MockGambleService) {
+			setupMocks: func(mg *mocks.MockGambleService, mu *mocks.MockUserService) {
 				mg.On("GetGamble", mock.Anything, validUUID).Return(nil, nil)
 			},
 			expectedStatus: http.StatusNotFound,
@@ -256,7 +262,7 @@ func TestHandleGetGamble(t *testing.T) {
 		{
 			name:    "Success",
 			queryID: validUUID.String(),
-			setupMocks: func(mg *mocks.MockGambleService) {
+			setupMocks: func(mg *mocks.MockGambleService, mu *mocks.MockUserService) {
 				mg.On("GetGamble", mock.Anything, validUUID).Return(&domain.Gamble{ID: validUUID}, nil)
 			},
 			expectedStatus: http.StatusOK,
@@ -269,10 +275,12 @@ func TestHandleGetGamble(t *testing.T) {
 		mockEventBus := mocks.NewMockEventBus(t)
 		t.Run(tt.name, func(t *testing.T) {
 			mockGamble := mocks.NewMockGambleService(t)
-			handler := NewGambleHandler(mockGamble, mockProg, mockEventBus)
+			mockUser := mocks.NewMockUserService(t)
+			mockUser.On("GetUserIDByPlatformID", mock.Anything, mock.Anything, mock.Anything).Return("", nil).Maybe()
+			handler := NewGambleHandler(mockGamble, mockUser, mockProg, mockEventBus)
 
 			if tt.setupMocks != nil {
-				tt.setupMocks(mockGamble)
+				tt.setupMocks(mockGamble, mockUser)
 			}
 
 			req := httptest.NewRequest("GET", "/gamble?id="+tt.queryID, nil)

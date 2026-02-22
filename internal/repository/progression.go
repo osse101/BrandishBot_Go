@@ -20,6 +20,11 @@ type Progression interface {
 	GetPrerequisites(ctx context.Context, nodeID int) ([]*domain.ProgressionNode, error) // Get prerequisites FOR this node
 	GetDependents(ctx context.Context, nodeID int) ([]*domain.ProgressionNode, error)    // Get nodes that depend ON this node
 
+	// Modifier (Bonus configs)
+	GetBonusModifiers(ctx context.Context, featureKey string) ([]domain.ModifierConfig, error)
+	GetAllBonusModifiers(ctx context.Context) ([]domain.ModifierConfig, error)
+	GetJobUnlockConfig(ctx context.Context, featureKey string) (*domain.JobUnlockConfig, error)
+
 	// Unlock operations
 	GetUnlock(ctx context.Context, nodeID int, level int) (*domain.ProgressionUnlock, error)
 	GetAllUnlocks(ctx context.Context) ([]*domain.ProgressionUnlock, error)
@@ -29,6 +34,7 @@ type Progression interface {
 
 	// Voting session operations
 	CreateVotingSession(ctx context.Context) (int, error)
+	CreateVotingSessionWithOptions(ctx context.Context, options []domain.ProgressionVotingOption) (int, error)
 	AddVotingOption(ctx context.Context, sessionID, nodeID, targetLevel int) error
 	GetActiveSession(ctx context.Context) (*domain.ProgressionVotingSession, error)
 	GetActiveOrFrozenSession(ctx context.Context) (*domain.ProgressionVotingSession, error) // Get session with status 'voting' or 'frozen'
@@ -40,8 +46,8 @@ type Progression interface {
 	ResumeVotingSession(ctx context.Context, sessionID int) error // Resume frozen voting session
 	GetSessionVoters(ctx context.Context, sessionID int) ([]string, error)
 	HasUserVotedInSession(ctx context.Context, userID string, sessionID int) (bool, error)
-	RecordUserSessionVote(ctx context.Context, userID string, sessionID, optionID, nodeID int) error
-	CheckAndRecordVoteAtomic(ctx context.Context, userID string, sessionID, optionID, nodeID int) error
+	RecordUserSessionVote(ctx context.Context, userID string, sessionID, optionID, nodeID, targetLevel int) error
+	CheckAndRecordVoteAtomic(ctx context.Context, userID string, sessionID, optionID, nodeID, targetLevel int) error
 
 	// Unlock progress tracking
 	CreateUnlockProgress(ctx context.Context) (int, error)

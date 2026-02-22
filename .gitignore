@@ -57,14 +57,18 @@ tmp/
 # AI usage files and development artifacts
 .mcp.json
 .agent/*
+.agents/*
 .claude/*
-.jules/*
 .Jules/*
 
 # Benchmark results (keep baseline.txt, ignore temporary files)
 benchmarks/results/*.txt
 !benchmarks/results/baseline.txt
 benchmarks/profiles/*.prof
+
+# Node.js
+node_modules/
+package-lock.json
 
 # Admin dashboard build artifacts
 web/admin/node_modules/

@@ -39,6 +39,7 @@ func TestHandleSearch(t *testing.T) {
 				p.On("RecordEngagement", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 
 				u.On("HandleSearch", mock.Anything, domain.PlatformTwitch, "test-id", "testuser").Return("Found a sword!", nil)
+				u.On("GetUserIDByPlatformID", mock.Anything, domain.PlatformTwitch, "test-id").Return("", nil)
 				// Expect both engagement and search.performed events
 				e.On("Publish", mock.Anything, mock.MatchedBy(func(evt event.Event) bool {
 					return evt.Type == "engagement" || evt.Type == "search.performed"

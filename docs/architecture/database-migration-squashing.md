@@ -7,12 +7,14 @@ Migration squashing consolidates multiple development migrations into a single b
 ## When to Squash Migrations
 
 Consider squashing when:
+
 - You have accumulated many development migrations (20+)
 - Setting up fresh databases is slow
 - You're preparing for a major version release (v1.0, v2.0)
 - The migration history has become difficult to maintain
 
 **Do NOT squash if:**
+
 - You have active production databases with the old migrations
 - The project is less than 6 months old
 - You have fewer than 15 migrations
@@ -20,6 +22,7 @@ Consider squashing when:
 ## Prerequisites
 
 Before starting, ensure:
+
 - ✅ All current migrations are applied to production
 - ✅ All databases are backed up
 - ✅ Team is notified of upcoming changes
@@ -30,12 +33,14 @@ Before starting, ensure:
 ### Phase 1: Preparation
 
 1. **Create a git tag** for the pre-squash state:
+
    ```bash
    git tag pre-migration-squash
    git push origin pre-migration-squash
    ```
 
 2. **Archive original migrations**:
+
    ```bash
    mkdir -p migrations/archive/pre-v1
    cp migrations/*.sql migrations/archive/pre-v1/
@@ -50,6 +55,7 @@ Before starting, ensure:
 ### Phase 2: Schema Extraction
 
 4. **Extract the complete schema**:
+
    ```bash
    pg_dump \
      --schema-only \
@@ -63,7 +69,7 @@ Before starting, ensure:
    - Remove `SET` statements
    - Remove `SELECT pg_catalog.*` calls
    - **CRITICAL**: Remove any `CREATE TABLE` or constraints for `goose_db_version`
-   
+
    Goose manages its own version table. Including it in migrations will cause conflicts.
 
 6. **Extract seed data** from the database:
@@ -76,27 +82,29 @@ Before starting, ensure:
 ### Phase 3: Create Squashed Migration
 
 7. **Create the squashed migration file**:
+
    ```bash
    goose -dir migrations create initial_schema_v1 sql
    ```
 
 8. **Assemble the migration**:
+
    ```sql
    -- +goose Up
    -- ProjectName v1.0 - Initial Schema
    -- Squashed from N development migrations (date range)
-   
+
    [DDL from cleaned schema dump - excluding goose_db_version]
-   
+
    -- Seed data
-   INSERT INTO platforms (name) VALUES ('twitch'), ('youtube') 
+   INSERT INTO platforms (name) VALUES ('twitch'), ('youtube')
    ON CONFLICT DO NOTHING;
-   
+
    INSERT INTO items (internal_name, public_name, base_value) VALUES
        ('item1', 'Item 1', 100),
        ('item2', 'Item 2', 200)
    ON CONFLICT DO NOTHING;
-   
+
    -- +goose Down
    DROP TABLE IF EXISTS [tables in reverse dependency order];
    ```
@@ -109,38 +117,41 @@ Before starting, ensure:
 ### Phase 4: Testing
 
 10. **Test on fresh database**:
+
     ```bash
     # Remove old migrations (keep archive)
     rm migrations/[old_migration_files].sql
-    
+
     # Reset test database
     docker-compose -f docker-compose.test.yml down
     docker volume rm [test_volume]
     docker-compose -f docker-compose.test.yml up -d
-    
+
     # Apply squashed migration
     goose -dir migrations postgres "CONNECTION_STRING" up
     ```
 
 11. **Verify the database**:
+
     ```bash
     # Check migration status
     goose -dir migrations postgres "CONNECTION_STRING" status
-    
+
     # Count tables
-    psql -c "SELECT COUNT(*) FROM information_schema.tables 
+    psql -c "SELECT COUNT(*) FROM information_schema.tables
              WHERE table_schema='public' AND table_type='BASE TABLE';"
-    
+
     # Verify seed data
     psql -c "SELECT COUNT(*) FROM items;"
     psql -c "SELECT COUNT(*) FROM platforms;"
     ```
 
 12. **Run integration tests**:
+
     ```bash
     make test-integration
     ```
-    
+
     If tests fail, investigate and fix before proceeding.
 
 ### Phase 5: Cleanup
@@ -171,12 +182,13 @@ Before starting, ensure:
 **Cause**: INSERT statements missing columns that Go structs expect to scan.
 
 **Example**:
+
 ```sql
 -- ❌ Wrong
 INSERT INTO items (internal_name, public_name) VALUES ('box', 'Box');
 
--- ✅ Correct  
-INSERT INTO items (internal_name, public_name, default_display) 
+-- ✅ Correct
+INSERT INTO items (internal_name, public_name, default_display)
 VALUES ('box', 'Box', 'Treasure Box');
 ```
 
@@ -187,9 +199,10 @@ VALUES ('box', 'Box', 'Treasure Box');
 **Cause**: Using placeholder values instead of actual production data.
 
 **Solution**: Query production database and copy exact values:
+
 ```sql
 -- Extract actual values
-SELECT internal_name, public_name, default_display, base_value 
+SELECT internal_name, public_name, default_display, base_value
 FROM items WHERE internal_name IN ('item1', 'item2');
 ```
 
@@ -221,11 +234,13 @@ FROM items WHERE internal_name IN ('item1', 'item2');
 If something goes wrong:
 
 1. **Restore from git**:
+
    ```bash
    git checkout pre-migration-squash
    ```
 
 2. **Restore database** from backup:
+
    ```bash
    psql -U user -d database < backup.sql
    ```
@@ -244,6 +259,7 @@ After successful squashing:
 ## Architecture Decision
 
 Migrations are numbered sequentially. After squashing:
+
 - `0001_initial_schema_v1.sql` - Squashed baseline
 - `0002_add_new_feature.sql` - New migration after squash
 - `0003_another_feature.sql` - Next migration

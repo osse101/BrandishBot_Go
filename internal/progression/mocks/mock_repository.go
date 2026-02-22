@@ -181,17 +181,17 @@ func (_c *MockRepository_BeginTx_Call) RunAndReturn(run func(context.Context) (r
 	return _c
 }
 
-// CheckAndRecordVoteAtomic provides a mock function with given fields: ctx, userID, sessionID, optionID, nodeID
-func (_m *MockRepository) CheckAndRecordVoteAtomic(ctx context.Context, userID string, sessionID int, optionID int, nodeID int) error {
-	ret := _m.Called(ctx, userID, sessionID, optionID, nodeID)
+// CheckAndRecordVoteAtomic provides a mock function with given fields: ctx, userID, sessionID, optionID, nodeID, targetLevel
+func (_m *MockRepository) CheckAndRecordVoteAtomic(ctx context.Context, userID string, sessionID int, optionID int, nodeID int, targetLevel int) error {
+	ret := _m.Called(ctx, userID, sessionID, optionID, nodeID, targetLevel)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CheckAndRecordVoteAtomic")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, int, int, int) error); ok {
-		r0 = rf(ctx, userID, sessionID, optionID, nodeID)
+	if rf, ok := ret.Get(0).(func(context.Context, string, int, int, int, int) error); ok {
+		r0 = rf(ctx, userID, sessionID, optionID, nodeID, targetLevel)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -210,13 +210,14 @@ type MockRepository_CheckAndRecordVoteAtomic_Call struct {
 //   - sessionID int
 //   - optionID int
 //   - nodeID int
-func (_e *MockRepository_Expecter) CheckAndRecordVoteAtomic(ctx interface{}, userID interface{}, sessionID interface{}, optionID interface{}, nodeID interface{}) *MockRepository_CheckAndRecordVoteAtomic_Call {
-	return &MockRepository_CheckAndRecordVoteAtomic_Call{Call: _e.mock.On("CheckAndRecordVoteAtomic", ctx, userID, sessionID, optionID, nodeID)}
+//   - targetLevel int
+func (_e *MockRepository_Expecter) CheckAndRecordVoteAtomic(ctx interface{}, userID interface{}, sessionID interface{}, optionID interface{}, nodeID interface{}, targetLevel interface{}) *MockRepository_CheckAndRecordVoteAtomic_Call {
+	return &MockRepository_CheckAndRecordVoteAtomic_Call{Call: _e.mock.On("CheckAndRecordVoteAtomic", ctx, userID, sessionID, optionID, nodeID, targetLevel)}
 }
 
-func (_c *MockRepository_CheckAndRecordVoteAtomic_Call) Run(run func(ctx context.Context, userID string, sessionID int, optionID int, nodeID int)) *MockRepository_CheckAndRecordVoteAtomic_Call {
+func (_c *MockRepository_CheckAndRecordVoteAtomic_Call) Run(run func(ctx context.Context, userID string, sessionID int, optionID int, nodeID int, targetLevel int)) *MockRepository_CheckAndRecordVoteAtomic_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(int), args[3].(int), args[4].(int))
+		run(args[0].(context.Context), args[1].(string), args[2].(int), args[3].(int), args[4].(int), args[5].(int))
 	})
 	return _c
 }
@@ -226,7 +227,7 @@ func (_c *MockRepository_CheckAndRecordVoteAtomic_Call) Return(_a0 error) *MockR
 	return _c
 }
 
-func (_c *MockRepository_CheckAndRecordVoteAtomic_Call) RunAndReturn(run func(context.Context, string, int, int, int) error) *MockRepository_CheckAndRecordVoteAtomic_Call {
+func (_c *MockRepository_CheckAndRecordVoteAtomic_Call) RunAndReturn(run func(context.Context, string, int, int, int, int) error) *MockRepository_CheckAndRecordVoteAtomic_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -514,6 +515,63 @@ func (_c *MockRepository_CreateVotingSession_Call) RunAndReturn(run func(context
 	return _c
 }
 
+// CreateVotingSessionWithOptions provides a mock function with given fields: ctx, options
+func (_m *MockRepository) CreateVotingSessionWithOptions(ctx context.Context, options []domain.ProgressionVotingOption) (int, error) {
+	ret := _m.Called(ctx, options)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateVotingSessionWithOptions")
+	}
+
+	var r0 int
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, []domain.ProgressionVotingOption) (int, error)); ok {
+		return rf(ctx, options)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, []domain.ProgressionVotingOption) int); ok {
+		r0 = rf(ctx, options)
+	} else {
+		r0 = ret.Get(0).(int)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, []domain.ProgressionVotingOption) error); ok {
+		r1 = rf(ctx, options)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockRepository_CreateVotingSessionWithOptions_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateVotingSessionWithOptions'
+type MockRepository_CreateVotingSessionWithOptions_Call struct {
+	*mock.Call
+}
+
+// CreateVotingSessionWithOptions is a helper method to define mock.On call
+//   - ctx context.Context
+//   - options []domain.ProgressionVotingOption
+func (_e *MockRepository_Expecter) CreateVotingSessionWithOptions(ctx interface{}, options interface{}) *MockRepository_CreateVotingSessionWithOptions_Call {
+	return &MockRepository_CreateVotingSessionWithOptions_Call{Call: _e.mock.On("CreateVotingSessionWithOptions", ctx, options)}
+}
+
+func (_c *MockRepository_CreateVotingSessionWithOptions_Call) Run(run func(ctx context.Context, options []domain.ProgressionVotingOption)) *MockRepository_CreateVotingSessionWithOptions_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]domain.ProgressionVotingOption))
+	})
+	return _c
+}
+
+func (_c *MockRepository_CreateVotingSessionWithOptions_Call) Return(_a0 int, _a1 error) *MockRepository_CreateVotingSessionWithOptions_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockRepository_CreateVotingSessionWithOptions_Call) RunAndReturn(run func(context.Context, []domain.ProgressionVotingOption) (int, error)) *MockRepository_CreateVotingSessionWithOptions_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // EndVotingSession provides a mock function with given fields: ctx, sessionID, winningOptionID
 func (_m *MockRepository) EndVotingSession(ctx context.Context, sessionID int, winningOptionID *int) error {
 	ret := _m.Called(ctx, sessionID, winningOptionID)
@@ -783,6 +841,64 @@ func (_c *MockRepository_GetActiveUnlockProgress_Call) RunAndReturn(run func(con
 	return _c
 }
 
+// GetAllBonusModifiers provides a mock function with given fields: ctx
+func (_m *MockRepository) GetAllBonusModifiers(ctx context.Context) ([]domain.ModifierConfig, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetAllBonusModifiers")
+	}
+
+	var r0 []domain.ModifierConfig
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) ([]domain.ModifierConfig, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) []domain.ModifierConfig); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]domain.ModifierConfig)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockRepository_GetAllBonusModifiers_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAllBonusModifiers'
+type MockRepository_GetAllBonusModifiers_Call struct {
+	*mock.Call
+}
+
+// GetAllBonusModifiers is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockRepository_Expecter) GetAllBonusModifiers(ctx interface{}) *MockRepository_GetAllBonusModifiers_Call {
+	return &MockRepository_GetAllBonusModifiers_Call{Call: _e.mock.On("GetAllBonusModifiers", ctx)}
+}
+
+func (_c *MockRepository_GetAllBonusModifiers_Call) Run(run func(ctx context.Context)) *MockRepository_GetAllBonusModifiers_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockRepository_GetAllBonusModifiers_Call) Return(_a0 []domain.ModifierConfig, _a1 error) *MockRepository_GetAllBonusModifiers_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockRepository_GetAllBonusModifiers_Call) RunAndReturn(run func(context.Context) ([]domain.ModifierConfig, error)) *MockRepository_GetAllBonusModifiers_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetAllNodes provides a mock function with given fields: ctx
 func (_m *MockRepository) GetAllNodes(ctx context.Context) ([]*domain.ProgressionNode, error) {
 	ret := _m.Called(ctx)
@@ -963,6 +1079,65 @@ func (_c *MockRepository_GetAllUnlocks_Call) Return(_a0 []*domain.ProgressionUnl
 }
 
 func (_c *MockRepository_GetAllUnlocks_Call) RunAndReturn(run func(context.Context) ([]*domain.ProgressionUnlock, error)) *MockRepository_GetAllUnlocks_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetBonusModifiers provides a mock function with given fields: ctx, featureKey
+func (_m *MockRepository) GetBonusModifiers(ctx context.Context, featureKey string) ([]domain.ModifierConfig, error) {
+	ret := _m.Called(ctx, featureKey)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetBonusModifiers")
+	}
+
+	var r0 []domain.ModifierConfig
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) ([]domain.ModifierConfig, error)); ok {
+		return rf(ctx, featureKey)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) []domain.ModifierConfig); ok {
+		r0 = rf(ctx, featureKey)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]domain.ModifierConfig)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, featureKey)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockRepository_GetBonusModifiers_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetBonusModifiers'
+type MockRepository_GetBonusModifiers_Call struct {
+	*mock.Call
+}
+
+// GetBonusModifiers is a helper method to define mock.On call
+//   - ctx context.Context
+//   - featureKey string
+func (_e *MockRepository_Expecter) GetBonusModifiers(ctx interface{}, featureKey interface{}) *MockRepository_GetBonusModifiers_Call {
+	return &MockRepository_GetBonusModifiers_Call{Call: _e.mock.On("GetBonusModifiers", ctx, featureKey)}
+}
+
+func (_c *MockRepository_GetBonusModifiers_Call) Run(run func(ctx context.Context, featureKey string)) *MockRepository_GetBonusModifiers_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockRepository_GetBonusModifiers_Call) Return(_a0 []domain.ModifierConfig, _a1 error) *MockRepository_GetBonusModifiers_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockRepository_GetBonusModifiers_Call) RunAndReturn(run func(context.Context, string) ([]domain.ModifierConfig, error)) *MockRepository_GetBonusModifiers_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1255,6 +1430,65 @@ func (_c *MockRepository_GetEngagementWeights_Call) Return(_a0 map[string]float6
 }
 
 func (_c *MockRepository_GetEngagementWeights_Call) RunAndReturn(run func(context.Context) (map[string]float64, error)) *MockRepository_GetEngagementWeights_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetJobUnlockConfig provides a mock function with given fields: ctx, featureKey
+func (_m *MockRepository) GetJobUnlockConfig(ctx context.Context, featureKey string) (*domain.JobUnlockConfig, error) {
+	ret := _m.Called(ctx, featureKey)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetJobUnlockConfig")
+	}
+
+	var r0 *domain.JobUnlockConfig
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (*domain.JobUnlockConfig, error)); ok {
+		return rf(ctx, featureKey)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) *domain.JobUnlockConfig); ok {
+		r0 = rf(ctx, featureKey)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*domain.JobUnlockConfig)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, featureKey)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockRepository_GetJobUnlockConfig_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetJobUnlockConfig'
+type MockRepository_GetJobUnlockConfig_Call struct {
+	*mock.Call
+}
+
+// GetJobUnlockConfig is a helper method to define mock.On call
+//   - ctx context.Context
+//   - featureKey string
+func (_e *MockRepository_Expecter) GetJobUnlockConfig(ctx interface{}, featureKey interface{}) *MockRepository_GetJobUnlockConfig_Call {
+	return &MockRepository_GetJobUnlockConfig_Call{Call: _e.mock.On("GetJobUnlockConfig", ctx, featureKey)}
+}
+
+func (_c *MockRepository_GetJobUnlockConfig_Call) Run(run func(ctx context.Context, featureKey string)) *MockRepository_GetJobUnlockConfig_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockRepository_GetJobUnlockConfig_Call) Return(_a0 *domain.JobUnlockConfig, _a1 error) *MockRepository_GetJobUnlockConfig_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockRepository_GetJobUnlockConfig_Call) RunAndReturn(run func(context.Context, string) (*domain.JobUnlockConfig, error)) *MockRepository_GetJobUnlockConfig_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -2291,17 +2525,17 @@ func (_c *MockRepository_RecordReset_Call) RunAndReturn(run func(context.Context
 	return _c
 }
 
-// RecordUserSessionVote provides a mock function with given fields: ctx, userID, sessionID, optionID, nodeID
-func (_m *MockRepository) RecordUserSessionVote(ctx context.Context, userID string, sessionID int, optionID int, nodeID int) error {
-	ret := _m.Called(ctx, userID, sessionID, optionID, nodeID)
+// RecordUserSessionVote provides a mock function with given fields: ctx, userID, sessionID, optionID, nodeID, targetLevel
+func (_m *MockRepository) RecordUserSessionVote(ctx context.Context, userID string, sessionID int, optionID int, nodeID int, targetLevel int) error {
+	ret := _m.Called(ctx, userID, sessionID, optionID, nodeID, targetLevel)
 
 	if len(ret) == 0 {
 		panic("no return value specified for RecordUserSessionVote")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, int, int, int) error); ok {
-		r0 = rf(ctx, userID, sessionID, optionID, nodeID)
+	if rf, ok := ret.Get(0).(func(context.Context, string, int, int, int, int) error); ok {
+		r0 = rf(ctx, userID, sessionID, optionID, nodeID, targetLevel)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -2320,13 +2554,14 @@ type MockRepository_RecordUserSessionVote_Call struct {
 //   - sessionID int
 //   - optionID int
 //   - nodeID int
-func (_e *MockRepository_Expecter) RecordUserSessionVote(ctx interface{}, userID interface{}, sessionID interface{}, optionID interface{}, nodeID interface{}) *MockRepository_RecordUserSessionVote_Call {
-	return &MockRepository_RecordUserSessionVote_Call{Call: _e.mock.On("RecordUserSessionVote", ctx, userID, sessionID, optionID, nodeID)}
+//   - targetLevel int
+func (_e *MockRepository_Expecter) RecordUserSessionVote(ctx interface{}, userID interface{}, sessionID interface{}, optionID interface{}, nodeID interface{}, targetLevel interface{}) *MockRepository_RecordUserSessionVote_Call {
+	return &MockRepository_RecordUserSessionVote_Call{Call: _e.mock.On("RecordUserSessionVote", ctx, userID, sessionID, optionID, nodeID, targetLevel)}
 }
 
-func (_c *MockRepository_RecordUserSessionVote_Call) Run(run func(ctx context.Context, userID string, sessionID int, optionID int, nodeID int)) *MockRepository_RecordUserSessionVote_Call {
+func (_c *MockRepository_RecordUserSessionVote_Call) Run(run func(ctx context.Context, userID string, sessionID int, optionID int, nodeID int, targetLevel int)) *MockRepository_RecordUserSessionVote_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(int), args[3].(int), args[4].(int))
+		run(args[0].(context.Context), args[1].(string), args[2].(int), args[3].(int), args[4].(int), args[5].(int))
 	})
 	return _c
 }
@@ -2336,7 +2571,7 @@ func (_c *MockRepository_RecordUserSessionVote_Call) Return(_a0 error) *MockRepo
 	return _c
 }
 
-func (_c *MockRepository_RecordUserSessionVote_Call) RunAndReturn(run func(context.Context, string, int, int, int) error) *MockRepository_RecordUserSessionVote_Call {
+func (_c *MockRepository_RecordUserSessionVote_Call) RunAndReturn(run func(context.Context, string, int, int, int, int) error) *MockRepository_RecordUserSessionVote_Call {
 	_c.Call.Return(run)
 	return _c
 }

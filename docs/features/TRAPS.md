@@ -5,6 +5,7 @@ The Trap & Item Interaction System allows users to use various items from their 
 ## Core Mechanics
 
 ### Traps (`trap`)
+
 A stealthy way to catch an unsuspecting user.
 
 - **Command**: `/use trap <target>`
@@ -14,6 +15,7 @@ A stealthy way to catch an unsuspecting user.
 - **Self-Trap**: If you target someone who already has a trap, you might accidentally step on it yourself!
 
 ### Mines (`mine`)
+
 A chaotic explosive that targets random active chatters.
 
 - **Command**: `/use mine`
@@ -21,18 +23,23 @@ A chaotic explosive that targets random active chatters.
 - **Risk**: If no other users are active, or if you are just unlucky, you might drop the mine on your own foot!
 - **Consumption**: Consumes 1 Mine.
 
-### Blasters (`blaster`, `big_blaster`, `huge_blaster`)
+### Blasters & Missiles
+
 Direct offensive tools to time out users immediately.
 
 - **Command**: `/use <item_name> <target>`
 - **Effect**: Instantly times out the target user.
 - **Duration**:
   - `blaster`: 60 seconds
+  - `missile`: 60 seconds
+  - `this`: 101 seconds
+  - `deez`: 202 seconds
   - `big_blaster`: 600 seconds (10 minutes)
   - `huge_blaster`: 6000 seconds (100 minutes)
-- **Quality Bonus**: Higher quality items (Uncommon, Rare, etc.) have increased duration.
+- **Quality Bonus**: Higher quality items increase the duration (see [Quality Modifiers](#quality-modifiers)).
 
 ### Area of Effect Weapons (`tnt`, `grenade`)
+
 Explosives that hit multiple or random targets.
 
 - **TNT**:
@@ -43,6 +50,7 @@ Explosives that hit multiple or random targets.
   - **Effect**: Hits 1 random active chatter with a 60-second timeout.
 
 ### Defensive Items (`shield`, `mirror_shield`)
+
 Protection against offensive items.
 
 - **Shield**:
@@ -53,14 +61,16 @@ Protection against offensive items.
   - **Effect**: Reflects the timeout back to the attacker.
 
 ### Support Items (`revive_small`, `revive_medium`, `revive_large`)
+
 Help a timed-out user return to chat sooner.
 
 - **Command**: `/use <item_name> <target>`
 - **Effect**: Reduces the target's current timeout duration.
-- **Reduction**:
+- **Base Reduction**:
   - `revive_small`: 60 seconds
   - `revive_medium`: 600 seconds
   - `revive_large`: 6000 seconds
+- **Quality Bonus**: Higher quality items increase the reduction amount (see [Quality Modifiers](#quality-modifiers)).
 
 ### Utility Items
 
@@ -74,9 +84,30 @@ Help a timed-out user return to chat sooner.
   - **Command**: `/use stick`
   - **Effect**: A humble stick. Mostly used for crafting or as a joke weapon.
 
+## Quality Modifiers
+
+The quality of the item used (Common, Uncommon, Rare, etc.) directly affects the power of the item.
+
+- **Weapons/Traps**: Increases the timeout duration.
+- **Revives**: Increases the timeout reduction amount.
+
+| Quality Level | Duration Adjustment |
+| :------------ | :------------------ |
+| **Legendary** | +40 Seconds         |
+| **Epic**      | +30 Seconds         |
+| **Rare**      | +20 Seconds         |
+| **Uncommon**  | +10 Seconds         |
+| **Common**    | +0 Seconds          |
+| **Poor**      | -10 Seconds         |
+| **Junk**      | -20 Seconds         |
+| **Cursed**    | -30 Seconds         |
+
+_Example: A **Legendary Blaster** (60s base) will timeout a user for **100s** (60s + 40s)._
+_Example: A **Rare Revive Small** (60s base) will reduce a timeout by **80s** (60s + 20s)._
+
 ## Implementation Details
 
-The item logic is handled in `internal/user/item_handlers.go`. It interacts with the `TimeoutService` (Discord/Twitch integration) and the `Inventory` system.
+The item logic is handled in `internal/user/item_handlers.go` and executed via the **User Service** (`internal/user/service.go`).
 
-- **Active Chatter Tracking**: The system tracks users who have recently messaged to determine valid targets for random-target items (Mines, TNT).
-- **Quality Modifiers**: Item quality (Common, Uncommon, Rare, Epic, Legendary) scales the effect duration or power.
+- **Timeout System**: The User Service manages timeouts directly in-memory (`internal/user/timeout.go`). Timeouts accumulate if multiple are applied.
+- **Active Chatter Tracking**: The system tracks users who have recently messaged (`internal/user/active_chatter_tracker.go`) to determine valid targets for random-target items (Mines, TNT).

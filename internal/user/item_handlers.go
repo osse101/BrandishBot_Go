@@ -86,10 +86,7 @@ func (s *service) processLootboxDrops(ctx context.Context, user *domain.User, in
 
 	stats := s.aggregateDropsAndUpdateInventory(inventory, drops, &msgBuilder)
 
-	// User Request: "All lootbox open messages were too verbose and should be at the level I gave as example"
-	// Example: "Opened Junkbox and received: 1 Shiny credit" or " ... 5 Shiny credits"
-	// LevelUp Philosophy: "If a number goes up, the player should feel it."
-	// Removing explicit Value output as per user request to reduce verbosity
+	// Open messages are simplified per user request (e.g., "Opened Junkbox and received: 5 Shiny credits").
 
 	if stats.hasLegendary {
 		if s.statsService != nil && user != nil {
@@ -99,7 +96,7 @@ func (s *service) processLootboxDrops(ctx context.Context, user *domain.User, in
 				Value:  stats.totalValue,
 				Source: "lootbox",
 			}
-			if err := s.statsService.RecordUserEvent(ctx, user.ID, domain.EventLootboxJackpot, eventData); err != nil {
+			if err := s.statsService.RecordUserEvent(ctx, user.ID, domain.EventTypeLootboxJackpot, eventData); err != nil {
 				log := logger.FromContext(ctx)
 				log.Warn(LogWarnFailedToRecordLootboxJackpot, "error", err, "user_id", user.ID)
 			}
@@ -113,13 +110,13 @@ func (s *service) processLootboxDrops(ctx context.Context, user *domain.User, in
 				Value:  stats.totalValue,
 				Source: "lootbox",
 			}
-			if err := s.statsService.RecordUserEvent(ctx, user.ID, domain.EventLootboxBigWin, eventData); err != nil {
+			if err := s.statsService.RecordUserEvent(ctx, user.ID, domain.EventTypeLootboxBigWin, eventData); err != nil {
 				log := logger.FromContext(ctx)
 				log.Warn(LogWarnFailedToRecordLootboxBigWin, "error", err, "user_id", user.ID)
 			}
 		}
 		msgBuilder.WriteString(MsgLootboxBigWin)
-	} else if stats.totalValue > 0 && quantity >= BulkFeedbackThreshold {
+	} else if stats.totalValue > 0 && quantity >= domain.BulkFeedbackThreshold {
 		// If opening many boxes and getting nothing special, at least acknowledge the haul
 		msgBuilder.WriteString(MsgLootboxNiceHaul)
 	}
@@ -195,7 +192,7 @@ func getWeaponTimeout(itemName string) time.Duration {
 	if timeout, ok := weaponTimeouts[itemName]; ok {
 		return timeout
 	}
-	return BlasterTimeoutDuration // default fallback
+	return domain.BlasterTimeoutDuration // default fallback
 }
 
 func (s *service) handleWeapon(ctx context.Context, _ *service, _ *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args ItemHandlerArgs) (string, error) {
@@ -730,7 +727,7 @@ func (s *service) handleResourceGenerator(ctx context.Context, _ *service, _ *do
 		return "", fmt.Errorf("failed to get stick item: %w", err)
 	}
 
-	sticksGenerated := quantity * ShovelSticksPerUse
+	sticksGenerated := quantity * domain.ShovelSticksPerUse
 	utils.AddItemsToInventory(inventory, []domain.InventorySlot{
 		{ItemID: stickItem.ID, Quantity: sticksGenerated, QualityLevel: domain.QualityCommon},
 	}, nil)

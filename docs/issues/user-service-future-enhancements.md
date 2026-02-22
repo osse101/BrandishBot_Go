@@ -3,7 +3,7 @@
 **Status:** Backlog
 **Priority:** Low
 **Created:** 2026-01-16
-**Last Updated:** 2026-01-30
+**Last Updated:** 2026-02-15
 **Component:** `internal/user`
 
 ## Overview
@@ -27,6 +27,7 @@ func (s *service) AddItem(ctx context.Context, ...) error {
 ```
 
 **Benefits:**
+
 - Prevents resource exhaustion
 - Better failure detection
 - Improved user experience (fail fast)
@@ -55,6 +56,7 @@ func withUserOpResult[T any](...) (T, error) {
 ```
 
 **Benefits:**
+
 - End-to-end operation visibility
 - Performance bottleneck identification
 - Correlation with external services (database, cache)
@@ -105,6 +107,7 @@ func withUserOpResult[T any](...) (T, error) {
 ```
 
 **Benefits:**
+
 - Real-time operation monitoring
 - Alerting on high error rates
 - Capacity planning data
@@ -143,6 +146,7 @@ var strategies = map[userLookupMode]lookupStrategy{
 ```
 
 **Benefits:**
+
 - Eliminates all mode-based branching
 - Easy to add new lookup modes
 - Each strategy is independently testable
@@ -196,6 +200,7 @@ params := NewOperationParams().
 ```
 
 **Benefits:**
+
 - Self-documenting API
 - Compile-time safety
 - Optional parameter handling
@@ -225,6 +230,7 @@ func (s *service) withUserOp(...) error {
 ```
 
 **Benefits:**
+
 - Prevents abuse
 - Protects database from overload
 - Fair resource distribution
@@ -268,6 +274,7 @@ func (s *service) withUserOp(...) error {
 ```
 
 **Benefits:**
+
 - Fraud detection
 - User support investigations
 - Compliance requirements
@@ -281,6 +288,7 @@ func (s *service) withUserOp(...) error {
 ## Prioritization Criteria
 
 Implement enhancements when:
+
 1. **Timeouts:** Operation latencies exceed 1s regularly
 2. **Tracing:** Debugging slow operations becomes frequent
 3. **Metrics:** Need production visibility for SLAs
@@ -300,3 +308,7 @@ Implement enhancements when:
 - Current refactor: `docs/issues/user-service-refactor-improvement.md`
 - Architecture journal: `docs/architecture/journal.md`
 - Development patterns: `docs/development/journal.md`
+
+## Status Update (2026-02-15)
+
+Reviewed as part of codebase audit. No items have been picked up yet. All proposals remain relevant backlog items.

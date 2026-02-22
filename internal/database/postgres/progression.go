@@ -693,34 +693,24 @@ func (t *progressionTx) Rollback(ctx context.Context) error {
 
 // GetNodeByFeatureKey retrieves a node by its modifier feature_key and returns the current unlock level
 func (r *progressionRepository) GetNodeByFeatureKey(ctx context.Context, featureKey string) (*domain.ProgressionNode, int, error) {
-	row, err := r.q.GetNodeByFeatureKey(ctx, []byte(featureKey))
+	row, err := r.q.GetNodeByFeatureKey(ctx, featureKey)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to get node by feature key: %w", err)
 	}
 
-	// Parse ModifierConfig
-	var modifierConfig *domain.ModifierConfig
-	if len(row.ModifierConfig) > 0 {
-		modifierConfig = &domain.ModifierConfig{}
-		if err := json.Unmarshal(row.ModifierConfig, modifierConfig); err != nil {
-			return nil, 0, fmt.Errorf("failed to unmarshal modifier config: %w", err)
-		}
-	}
-
 	node := &domain.ProgressionNode{
-		ID:             int(row.ID),
-		NodeKey:        row.NodeKey,
-		NodeType:       row.NodeType,
-		DisplayName:    row.DisplayName,
-		Description:    row.Description.String,
-		MaxLevel:       int(row.MaxLevel.Int32),
-		UnlockCost:     int(row.UnlockCost.Int32),
-		Tier:           int(row.Tier),
-		Size:           row.Size,
-		Category:       row.Category,
-		SortOrder:      int(row.SortOrder.Int32),
-		CreatedAt:      row.CreatedAt.Time,
-		ModifierConfig: modifierConfig,
+		ID:          int(row.ID),
+		NodeKey:     row.NodeKey,
+		NodeType:    row.NodeType,
+		DisplayName: row.DisplayName,
+		Description: row.Description.String,
+		MaxLevel:    int(row.MaxLevel.Int32),
+		UnlockCost:  int(row.UnlockCost.Int32),
+		Tier:        int(row.Tier),
+		Size:        row.Size,
+		Category:    row.Category,
+		SortOrder:   int(row.SortOrder.Int32),
+		CreatedAt:   row.CreatedAt.Time,
 	}
 
 	return node, int(row.UnlockLevel), nil
@@ -728,7 +718,7 @@ func (r *progressionRepository) GetNodeByFeatureKey(ctx context.Context, feature
 
 // GetAllNodesByFeatureKey retrieves all nodes with the same feature_key and their unlock levels
 func (r *progressionRepository) GetAllNodesByFeatureKey(ctx context.Context, featureKey string) ([]*domain.ProgressionNode, []int, error) {
-	rows, err := r.q.GetAllNodesByFeatureKey(ctx, []byte(featureKey))
+	rows, err := r.q.GetAllNodesByFeatureKey(ctx, featureKey)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get nodes by feature key: %w", err)
 	}
@@ -737,29 +727,19 @@ func (r *progressionRepository) GetAllNodesByFeatureKey(ctx context.Context, fea
 	levels := make([]int, 0, len(rows))
 
 	for _, row := range rows {
-		// Parse ModifierConfig
-		var modifierConfig *domain.ModifierConfig
-		if len(row.ModifierConfig) > 0 {
-			modifierConfig = &domain.ModifierConfig{}
-			if err := json.Unmarshal(row.ModifierConfig, modifierConfig); err != nil {
-				return nil, nil, fmt.Errorf("failed to unmarshal modifier config: %w", err)
-			}
-		}
-
 		node := &domain.ProgressionNode{
-			ID:             int(row.ID),
-			NodeKey:        row.NodeKey,
-			NodeType:       row.NodeType,
-			DisplayName:    row.DisplayName,
-			Description:    row.Description.String,
-			MaxLevel:       int(row.MaxLevel.Int32),
-			UnlockCost:     int(row.UnlockCost.Int32),
-			Tier:           int(row.Tier),
-			Size:           row.Size,
-			Category:       row.Category,
-			SortOrder:      int(row.SortOrder.Int32),
-			CreatedAt:      row.CreatedAt.Time,
-			ModifierConfig: modifierConfig,
+			ID:          int(row.ID),
+			NodeKey:     row.NodeKey,
+			NodeType:    row.NodeType,
+			DisplayName: row.DisplayName,
+			Description: row.Description.String,
+			MaxLevel:    int(row.MaxLevel.Int32),
+			UnlockCost:  int(row.UnlockCost.Int32),
+			Tier:        int(row.Tier),
+			Size:        row.Size,
+			Category:    row.Category,
+			SortOrder:   int(row.SortOrder.Int32),
+			CreatedAt:   row.CreatedAt.Time,
 		}
 
 		nodes = append(nodes, node)
@@ -767,6 +747,91 @@ func (r *progressionRepository) GetAllNodesByFeatureKey(ctx context.Context, fea
 	}
 
 	return nodes, levels, nil
+}
+
+// GetBonusModifiers gets all active modifiers for a specific feature key across all sources (jobs, progression)
+func (r *progressionRepository) GetBonusModifiers(ctx context.Context, featureKey string) ([]domain.ModifierConfig, error) {
+	rows, err := r.q.GetBonusModifiersWithLevel(ctx, featureKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get bonus modifiers: %w", err)
+	}
+
+	configs := make([]domain.ModifierConfig, 0, len(rows))
+	for _, row := range rows {
+		var maxVal, minVal *float64
+		if row.MaxValue.Valid {
+			v, _ := row.MaxValue.Float64Value()
+			maxVal = &v.Float64
+		}
+		if row.MinValue.Valid {
+			v, _ := row.MinValue.Float64Value()
+			minVal = &v.Float64
+		}
+
+		baseVal, _ := row.BaseValue.Float64Value()
+		perLevelVal, _ := row.PerLevelValue.Float64Value()
+
+		configs = append(configs, domain.ModifierConfig{
+			NodeKey:          row.NodeKey,
+			SourceType:       row.SourceType,
+			FeatureKey:       row.FeatureKey,
+			ModifierType:     row.ModifierType, // Need to make sure domain matches string
+			BaseValue:        baseVal.Float64,
+			PerLevelValue:    perLevelVal.Float64,
+			MaxValue:         maxVal,
+			MinValue:         minVal,
+			ProgressionLevel: int(row.ProgressionLevel),
+		})
+	}
+	return configs, nil
+}
+
+// GetAllBonusModifiers retrieves every modifier setting from the db
+func (r *progressionRepository) GetAllBonusModifiers(ctx context.Context) ([]domain.ModifierConfig, error) {
+	rows, err := r.q.GetAllBonusModifiers(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all bonus modifiers: %w", err)
+	}
+
+	configs := make([]domain.ModifierConfig, 0, len(rows))
+	for _, row := range rows {
+		var maxVal, minVal *float64
+		if row.MaxValue.Valid {
+			v, _ := row.MaxValue.Float64Value()
+			maxVal = &v.Float64
+		}
+		if row.MinValue.Valid {
+			v, _ := row.MinValue.Float64Value()
+			minVal = &v.Float64
+		}
+
+		baseVal, _ := row.BaseValue.Float64Value()
+		perLevelVal, _ := row.PerLevelValue.Float64Value()
+
+		configs = append(configs, domain.ModifierConfig{
+			FeatureKey:    row.FeatureKey,
+			ModifierType:  row.ModifierType,
+			BaseValue:     baseVal.Float64,
+			PerLevelValue: perLevelVal.Float64,
+			MaxValue:      maxVal,
+			MinValue:      minVal,
+		})
+	}
+	return configs, nil
+}
+
+// GetJobUnlockConfig retrieves the job configuration needed to unlock a feature
+func (r *progressionRepository) GetJobUnlockConfig(ctx context.Context, featureKey string) (*domain.JobUnlockConfig, error) {
+	row, err := r.q.GetJobUnlockConfig(ctx, featureKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get job unlock config: %w", err)
+	}
+
+	return &domain.JobUnlockConfig{
+		JobKey:        row.JobKey,
+		FeatureKey:    row.FeatureKey,
+		RequiredLevel: int(row.RequiredLevel),
+	}, nil
 }
 
 func (r *progressionRepository) GetDailyEngagementTotals(ctx context.Context, since time.Time) (map[time.Time]int, error) {

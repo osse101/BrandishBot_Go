@@ -9,6 +9,7 @@
 ## Problem
 
 Currently, crafting recipes (upgrade and disassemble) are stored directly in the database, making them difficult to:
+
 - View and understand at a glance
 - Version control and track changes
 - Modify without writing SQL
@@ -20,6 +21,7 @@ This is similar to the problem that was solved for progression nodes with `progr
 ## Proposed Solution
 
 Create JSON configuration files for recipes with automatic database synchronization:
+
 - `configs/recipes/upgrades.json` - Upgrade/crafting recipes
 - `configs/recipes/disassembles.json` - Disassemble recipes
 
@@ -28,16 +30,19 @@ Create JSON configuration files for recipes with automatic database synchronizat
 Follow the **progression tree pattern** already implemented:
 
 **Config File**: [`configs/progression_tree.json`](file:///home/osse1/projects/BrandishBot_Go/configs/progression_tree.json)
+
 - JSON structure with version, description, and array of nodes
 - Each node has key, name, type, description, prerequisites, etc.
 - Support for modifiers and configuration options
 
 **Loader**: [`internal/progression/tree_loader.go`](file:///home/osse1/projects/BrandishBot_Go/internal/progression/tree_loader.go)
+
 - `Load()` - Reads and parses JSON
 - `Validate()` - Validates structure and business rules
 - `SyncToDatabase()` - Idempotent sync to database (insert/update/skip)
 
 **Initialization**: [`cmd/app/main.go:168-195`](file:///home/osse1/projects/BrandishBot_Go/cmd/app/main.go#L168-L195)
+
 ```go
 if cfg.SyncProgressionTree {
     treeLoader := progression.NewTreeLoader()
@@ -168,8 +173,8 @@ type RecipeCost struct {
 - Update existing recipes if changed
 - Mark orphaned recipes (in DB but not in config)
 - **Sync Associations**: Link disassemble recipes to upgrade recipes using `associated_upgrade` field. This writes to the `recipe_associations` table.
-   > [!IMPORTANT]
-   > Ensure that upgrade recipes are synced BEFORE disassemble recipes to ensure the `associated_upgrade` key works.
+  > [!IMPORTANT]
+  > Ensure that upgrade recipes are synced BEFORE disassemble recipes to ensure the `associated_upgrade` key works.
 - Return sync statistics
 
 ### 4. Add to Main Initialization
@@ -177,17 +182,17 @@ type RecipeCost struct {
 ```go
 if cfg.SyncRecipes {
     recipeLoader := crafting.NewRecipeLoader()
-    
+
     // Sync upgrade recipes
     upgradeConfig, err := recipeLoader.LoadUpgrades("configs/recipes/upgrades.json")
     // ... validation ...
     upgradeResult, err := recipeLoader.SyncUpgradesToDatabase(ctx, upgradeConfig, craftingRepo)
-    
+
     // Sync disassemble recipes
     disassembleConfig, err := recipeLoader.LoadDisassembles("configs/recipes/disassembles.json")
     // ... validation ...
     disassembleResult, err := recipeLoader.SyncDisassemblesToDatabase(ctx, disassembleConfig, craftingRepo)
-    
+
     slog.Info("Recipes synced",
         "upgrades_inserted", upgradeResult.RecipesInserted,
         "disassembles_inserted", disassembleResult.RecipesInserted)

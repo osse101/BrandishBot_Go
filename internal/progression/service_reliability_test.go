@@ -100,6 +100,11 @@ func (m *ReliabilityMockRepository) CreateVotingSession(ctx context.Context) (in
 	return args.Int(0), args.Error(1)
 }
 
+func (m *ReliabilityMockRepository) CreateVotingSessionWithOptions(ctx context.Context, options []domain.ProgressionVotingOption) (int, error) {
+	args := m.Called(ctx, options)
+	return args.Int(0), args.Error(1)
+}
+
 func (m *ReliabilityMockRepository) GetUnlock(ctx context.Context, nodeID int, level int) (*domain.ProgressionUnlock, error) {
 	args := m.Called(ctx, nodeID, level)
 	if args.Get(0) == nil {
@@ -156,10 +161,10 @@ func (m *ReliabilityMockRepository) GetSessionVoters(ctx context.Context, sessio
 func (m *ReliabilityMockRepository) HasUserVotedInSession(ctx context.Context, userID string, sessionID int) (bool, error) {
 	panic("not implemented")
 }
-func (m *ReliabilityMockRepository) RecordUserSessionVote(ctx context.Context, userID string, sessionID, optionID, nodeID int) error {
+func (m *ReliabilityMockRepository) RecordUserSessionVote(ctx context.Context, userID string, sessionID, optionID, nodeID, targetLevel int) error {
 	panic("not implemented")
 }
-func (m *ReliabilityMockRepository) CheckAndRecordVoteAtomic(ctx context.Context, userID string, sessionID, optionID, nodeID int) error {
+func (m *ReliabilityMockRepository) CheckAndRecordVoteAtomic(ctx context.Context, userID string, sessionID, optionID, nodeID, targetLevel int) error {
 	panic("not implemented")
 }
 func (m *ReliabilityMockRepository) CreateUnlockProgress(ctx context.Context) (int, error) {
@@ -278,13 +283,10 @@ func TestForceInstantUnlock_Reliability(t *testing.T) {
 	// Unlock Node success
 	mockRepo.On("UnlockNode", mock.Anything, 100, 1, "instant_override", 0).Return(nil)
 
-	// Complete Unlock FAILURE - This is what we want to test being handled
-	// Return int 0 and error
+	// Test resilience: mock CompleteUnlock to return a critical DB error and verify execution continues.
 	mockRepo.On("CompleteUnlock", mock.Anything, 5, 0).Return(0, errors.New("critical db fail"))
 
-	// Start Voting Session (Async)
-	// Expect GetAllNodes call from StartVotingSession -> GetAvailableUnlocks
-	// Return empty list so it stops there elegantly
+	// Async Voting Session: returns empty node list from GetAllNodes to stop execution elegantly.
 	mockRepo.On("GetAllNodes", mock.Anything).Return([]*domain.ProgressionNode{}, nil)
 
 	// Get Unlock (final return)
@@ -321,4 +323,28 @@ func (m *ReliabilityMockRepository) GetSyncMetadata(ctx context.Context, configN
 func (m *ReliabilityMockRepository) UpsertSyncMetadata(ctx context.Context, metadata *domain.SyncMetadata) error {
 	args := m.Called(ctx, metadata)
 	return args.Error(0)
+}
+
+func (m *ReliabilityMockRepository) GetBonusModifiers(ctx context.Context, featureKey string) ([]domain.ModifierConfig, error) {
+	args := m.Called(ctx, featureKey)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]domain.ModifierConfig), args.Error(1)
+}
+
+func (m *ReliabilityMockRepository) GetAllBonusModifiers(ctx context.Context) ([]domain.ModifierConfig, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]domain.ModifierConfig), args.Error(1)
+}
+
+func (m *ReliabilityMockRepository) GetJobUnlockConfig(ctx context.Context, featureKey string) (*domain.JobUnlockConfig, error) {
+	args := m.Called(ctx, featureKey)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.JobUnlockConfig), args.Error(1)
 }

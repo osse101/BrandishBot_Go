@@ -34,6 +34,7 @@ type ManagementService interface {
 	UpdateUser(ctx context.Context, user domain.User) error
 	FindUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error)
 	GetUserByPlatformUsername(ctx context.Context, platform, username string) (*domain.User, error)
+	GetUserIDByPlatformID(ctx context.Context, platform, platformID string) (string, error)
 }
 
 // AccountLinkingService handles account linking operations

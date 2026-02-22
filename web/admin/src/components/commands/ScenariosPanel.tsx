@@ -1,18 +1,18 @@
-import { useState } from "react";
-import { apiPost } from "../../api/client";
-import { useToast } from "../shared/Toast";
-import { useApi } from "../../hooks/useApi";
-import { JsonViewer } from "../shared/JsonViewer";
-import type { ScenarioInfo, ScenarioResult } from "../../api/types";
+import { useState } from 'react';
+import { apiPost } from '../../api/client';
+import { useToast } from '../shared/Toast';
+import { useApi } from '../../hooks/useApi';
+import { JsonViewer } from '../shared/JsonViewer';
+import type { ScenarioInfo, ScenarioResult } from '../../api/types';
 
 export function ScenariosPanel() {
   const toast = useToast();
   const scenarios = useApi<{ scenarios: ScenarioInfo[]; total: number }>(
-    "/api/v1/admin/simulate/scenarios",
+    '/api/v1/admin/simulate/scenarios'
   );
   const [result, setResult] = useState<ScenarioResult | null>(null);
   const [running, setRunning] = useState<string | null>(null);
-  const [customJson, setCustomJson] = useState("");
+  const [customJson, setCustomJson] = useState('');
   const [runningCustom, setRunningCustom] = useState(false);
 
   const runScenario = async (id: string) => {
@@ -24,7 +24,7 @@ export function ScenariosPanel() {
       });
       setResult(res);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Scenario failed");
+      toast.error(err instanceof Error ? err.message : 'Scenario failed');
     } finally {
       setRunning(null);
     }
@@ -35,15 +35,10 @@ export function ScenariosPanel() {
     setResult(null);
     try {
       const body = JSON.parse(customJson);
-      const res = await apiPost<ScenarioResult>(
-        "/api/v1/admin/simulate/run-custom",
-        body,
-      );
+      const res = await apiPost<ScenarioResult>('/api/v1/admin/simulate/run-custom', body);
       setResult(res);
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Invalid JSON or scenario failed",
-      );
+      toast.error(err instanceof Error ? err.message : 'Invalid JSON or scenario failed');
     } finally {
       setRunningCustom(false);
     }
@@ -53,15 +48,9 @@ export function ScenariosPanel() {
     <div className="space-y-6">
       {/* Available Scenarios */}
       <div className="bg-gray-900 rounded-lg border border-gray-800 p-4">
-        <h3 className="text-sm font-medium text-gray-300 mb-3">
-          Available Scenarios
-        </h3>
-        {scenarios.isLoading && (
-          <p className="text-sm text-gray-500">Loading...</p>
-        )}
-        {scenarios.error && (
-          <p className="text-sm text-red-400">{scenarios.error}</p>
-        )}
+        <h3 className="text-sm font-medium text-gray-300 mb-3">Available Scenarios</h3>
+        {scenarios.isLoading && <p className="text-sm text-gray-500">Loading...</p>}
+        {scenarios.error && <p className="text-sm text-red-400">{scenarios.error}</p>}
         {scenarios.data && (
           <div className="space-y-2">
             {scenarios.data.scenarios.map((s) => (
@@ -78,7 +67,7 @@ export function ScenariosPanel() {
                   disabled={running === s.id}
                   className="px-3 py-1 text-xs rounded-md bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-50 transition-colors"
                 >
-                  {running === s.id ? "Running..." : "Run"}
+                  {running === s.id ? 'Running...' : 'Run'}
                 </button>
               </div>
             ))}
@@ -88,9 +77,7 @@ export function ScenariosPanel() {
 
       {/* Custom Scenario */}
       <div className="bg-gray-900 rounded-lg border border-gray-800 p-4">
-        <h3 className="text-sm font-medium text-gray-300 mb-3">
-          Custom Scenario
-        </h3>
+        <h3 className="text-sm font-medium text-gray-300 mb-3">Custom Scenario</h3>
         <textarea
           value={customJson}
           onChange={(e) => setCustomJson(e.target.value)}
@@ -103,7 +90,7 @@ export function ScenariosPanel() {
           disabled={runningCustom || !customJson.trim()}
           className="mt-2 px-3 py-1.5 text-sm rounded-md bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-50 transition-colors"
         >
-          {runningCustom ? "Running..." : "Run Custom"}
+          {runningCustom ? 'Running...' : 'Run Custom'}
         </button>
       </div>
 
@@ -111,11 +98,9 @@ export function ScenariosPanel() {
       {result && (
         <div className="bg-gray-900 rounded-lg border border-gray-800 p-4">
           <h3 className="text-sm font-medium text-gray-300 mb-3">
-            Result:{" "}
-            <span
-              className={result.success ? "text-green-400" : "text-red-400"}
-            >
-              {result.success ? "Success" : "Failed"}
+            Result:{' '}
+            <span className={result.success ? 'text-green-400' : 'text-red-400'}>
+              {result.success ? 'Success' : 'Failed'}
             </span>
           </h3>
           <JsonViewer data={result} defaultExpanded />

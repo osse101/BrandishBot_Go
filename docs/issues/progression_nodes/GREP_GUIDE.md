@@ -64,6 +64,7 @@ grep -r "TODO(upgrade_economy_1)" internal/ | wc -l
 ## Quick Reference: File Locations
 
 ### Implementation Files
+
 - `internal/progression/service.go:536-552` - Progression rate modifier
 - `internal/crafting/service.go:320-335, 722-740` - Crafting success modifiers
 - `internal/economy/service.go:203-206` - Economy bonus (TODO only)
@@ -71,6 +72,7 @@ grep -r "TODO(upgrade_economy_1)" internal/ | wc -l
 - `internal/gamble/service.go:418` - Gamble win bonus (already implemented)
 
 ### Test Stub Files
+
 - `internal/progression/upgrades_test.go` - 5 test stubs
 - `internal/crafting/upgrades_test.go` - 4 test stubs
 - `internal/economy/upgrades_test.go` - 5 test stubs
@@ -78,5 +80,6 @@ grep -r "TODO(upgrade_economy_1)" internal/ | wc -l
 - `internal/gamble/upgrades_test.go` - 6 test stubs
 
 ### Documentation
+
 - `docs/issues/progression_nodes/upgrades.md` - Full requirements
 - `docs/issues/progression_nodes/upgrades_implementation_status.md` - Status tracking

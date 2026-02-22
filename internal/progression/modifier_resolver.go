@@ -20,9 +20,7 @@ func ApplyModifier(modifier *ValueModifier, baseValue float64) float64 {
 		result = baseValue + (float64(level) * modifier.PerLevelValue)
 
 	case ModifierTypeFixed:
-		// baseValue + (level * perLevelValue)
-		// Ignores input baseValue, calculates from modifier's base
-		// Example: 0 + (2 * 10) = 20 at level 2
+		// ModifierTypeFixed: baseValue + (level * perLevelValue). Calculates from modifier's base, ignoring input baseValue.
 		result = modifier.BaseValue + (float64(level) * modifier.PerLevelValue)
 
 	case ModifierTypePercentage:

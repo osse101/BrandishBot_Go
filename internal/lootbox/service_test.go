@@ -136,8 +136,7 @@ func TestGatekeeperPass_ItemDropped(t *testing.T) {
 		"sword":          swordItem(2, "sword", 10),
 	}}
 
-	// ItemDropRate=1.0 → gatekeeper always passes → item always drops.
-	// rnd sequence: [gatekeeper=0.5, pool=0.5, item=0.5, quality=0.5, upgradeCheck=0.9]
+	// ItemDropRate=1.0: gatekeeper always passes (e.g., rnd seq: [gate=0.5, pool=0.5, item=0.5, qual=0.5]).
 	s, err := buildSimpleService(t, repo, 1.0, 0, 10,
 		[]PoolItemDef{{ItemName: "sword", Weight: 1}},
 		[]float64{0.5, 0.5, 0.5, 0.5, 0.9},
@@ -156,9 +155,7 @@ func TestGatekeeperFail_MoneyOnly(t *testing.T) {
 		"sword":          swordItem(2, "sword", 10),
 	}}
 
-	// ItemDropRate=0.0 → gatekeeper always fails (0.5 >= 0.0) → consolation money always.
-	// rnd per open: [gatekeeper=0.5, base=0.5, jitter=0.5] → base=50*(1)+0=0... wait.
-	// moneyMin=100, moneyMax=100 → base=0.5*(100-100)+100=100, jitter=1+(0.5-0.5)*1=1, amount=100
+	// ItemDropRate=0.0: gatekeeper always fails (consolation money); fixed 100 money setup.
 	s, err := buildSimpleService(t, repo, 0.0, 100, 100,
 		[]PoolItemDef{{ItemName: "sword", Weight: 1}},
 		[]float64{0.5},
@@ -182,11 +179,7 @@ func TestMoneyJitter_Proportional(t *testing.T) {
 		domain.ItemMoney: moneyItem(),
 	}}
 
-	// ItemDropRate=0.5 → gatekeeper fails when rnd >= 0.5.
-	// We want to test jitter: rnd=[0.9(gate fail), 0.8(base), 0.8(jitter)]
-	// base = 0.8*(100-50)+50 ≈ 89.999... (0.8 is not exact in float64)
-	// jitter = 1+(0.8-0.5)*(1-0.5) ≈ 1.1499...
-	// amount = round(89.999... * 1.1499...) = round(103.499...) = 103
+	// Test jitter calculation with specific rnd sequence.
 	rolls := []float64{0.9, 0.8, 0.8}
 	s, err := buildSimpleService(t, repo, 0.5, 50, 100,
 		[]PoolItemDef{{ItemName: domain.ItemMoney, Weight: 1}},
@@ -254,9 +247,7 @@ func TestSameItem_QuantitySummed(t *testing.T) {
 		"sword":          swordItem(2, "sword", 10),
 	}}
 
-	// Two pool entries for the same item → both select "sword" → quantities sum.
-	// With rnd=0.5 and equal weights (1,1), roll=0 for pool, item selection varies.
-	// Actually, same item regardless of which "slot" selects, so still aggregated.
+	// Duplicate item entries in a pool should result in summed quantities (aggregation).
 	pools := map[string]PoolDef{
 		"pool_a": {Items: []PoolItemDef{
 			{ItemName: "sword", Weight: 1},
@@ -292,9 +283,7 @@ func TestPoolSelection_WeightedRoll(t *testing.T) {
 		"sword_b":        swordItem(3, "sword_b", 20),
 	}}
 
-	// pool_a weight=30, pool_b weight=70. TotalPoolWeight=100.
-	// With rnd=0.1 for pool → roll=10 → cumul[0]=30 > 10 → pool_a (sword_a).
-	// With rnd=0.5 for pool → roll=50 → cumul[0]=30 <= 50, cumul[1]=100 > 50 → pool_b (sword_b).
+	// Verify weighted pool selection: low roll (0.1) -> pool_a; high roll (0.5) -> pool_b.
 	pools := map[string]PoolDef{
 		"pool_a": {Items: []PoolItemDef{{ItemName: "sword_a", Weight: 1}}},
 		"pool_b": {Items: []PoolItemDef{{ItemName: "sword_b", Weight: 1}}},
@@ -343,9 +332,7 @@ func TestItemSelection_WeightedRoll(t *testing.T) {
 		"item_rare":      swordItem(3, "item_rare", 100),
 	}}
 
-	// item_common weight=70, item_rare weight=30. TotalWeight=100.
-	// rnd=0.1 for item → roll=10 → item_common (cumul=70 > 10).
-	// rnd=0.8 for item → roll=80 → item_rare  (cumul=70 <= 80, cumul=100 > 80).
+	// Verify weighted item selection: low roll (0.1) -> common; high roll (0.8) -> rare.
 	pools := map[string]PoolDef{
 		"pool_a": {Items: []PoolItemDef{
 			{ItemName: "item_common", Weight: 70},

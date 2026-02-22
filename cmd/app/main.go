@@ -217,7 +217,7 @@ func main() {
 	slog.Info("Harvest service initialized")
 
 	// Initialize Compost Service
-	compostService := compost.NewService(repos.Compost, repos.User, progressionService, resilientPublisher)
+	compostService := compost.NewService(repos.Compost, repos.User, progressionService, jobService, resilientPublisher)
 	slog.Info("Compost service initialized")
 
 	// Initialize Gamble Worker

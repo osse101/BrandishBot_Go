@@ -12,8 +12,7 @@ import (
 )
 
 // MockRepository implements Repository for testing
-//
-// IMPORTANT: This mock is NOT thread-safe by design. Per docs/architecture/journal.md,
+// Summary: This mock is NOT thread-safe by design. Per docs/architecture/journal.md,
 // application-level locks (mutexes) are an anti-pattern that don't work in multi-instance
 // deployments. Real thread-safety is provided by database transactions with row-level locking.
 //
@@ -54,6 +53,9 @@ type MockRepository struct {
 
 	// Sync metadata
 	syncMetadata map[string]*domain.SyncMetadata
+
+	// Bonus configs
+	bonusConfigs []domain.ModifierConfig
 }
 
 func NewMockRepository() *MockRepository {
@@ -78,6 +80,7 @@ func NewMockRepository() *MockRepository {
 		unlockProgress:    make(map[int]*domain.UnlockProgress),
 		dailyTotals:       make(map[time.Time]int),
 		syncMetadata:      make(map[string]*domain.SyncMetadata),
+		bonusConfigs:      make([]domain.ModifierConfig, 0),
 	}
 }
 
@@ -93,20 +96,6 @@ func (m *MockRepository) GetNodeByFeatureKey(ctx context.Context, featureKey str
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	// Find node with matching feature_key in ModifierConfig
-	for _, node := range m.nodes {
-		if node.ModifierConfig != nil && node.ModifierConfig.FeatureKey == featureKey {
-			// lock level for this node
-			levels, ok := m.unlocks[node.ID]
-			if !ok {
-				return nil, 0, nil
-			}
-			// highest level
-			for level := range levels {
-				return node, level, nil
-			}
-		}
-	}
 	return nil, 0, nil
 }
 
@@ -116,25 +105,6 @@ func (m *MockRepository) GetAllNodesByFeatureKey(ctx context.Context, featureKey
 
 	nodes := make([]*domain.ProgressionNode, 0)
 	levels := make([]int, 0)
-
-	// Find all nodes with matching feature_key in ModifierConfig (sorted by tier)
-	for _, node := range m.nodes {
-		if node.ModifierConfig != nil && node.ModifierConfig.FeatureKey == featureKey {
-			// Get unlock level for this node
-			nodeLevels, ok := m.unlocks[node.ID]
-			currentLevel := 0
-			if ok {
-				// Get highest unlock level
-				for level := range nodeLevels {
-					if level > currentLevel {
-						currentLevel = level
-					}
-				}
-			}
-			nodes = append(nodes, node)
-			levels = append(levels, currentLevel)
-		}
-	}
 
 	return nodes, levels, nil
 }
@@ -528,6 +498,37 @@ func (m *MockRepository) CreateVotingSession(ctx context.Context) (int, error) {
 	return sessionID, nil
 }
 
+func (m *MockRepository) CreateVotingSessionWithOptions(ctx context.Context, options []domain.ProgressionVotingOption) (int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.sessionCounter++
+	sessionID := m.sessionCounter
+
+	// Populate NodeDetails and IDs for options
+	populatedOptions := make([]domain.ProgressionVotingOption, len(options))
+	for i, opt := range options {
+		opt.ID = i + 1
+		opt.SessionID = sessionID
+		if node, ok := m.nodes[opt.NodeID]; ok {
+			opt.NodeDetails = node
+		}
+		populatedOptions[i] = opt
+	}
+
+	m.sessions[sessionID] = &domain.ProgressionVotingSession{
+		ID:              sessionID,
+		Status:          "voting",
+		StartedAt:       time.Now(),
+		Options:         populatedOptions,
+		WinningOptionID: nil,
+	}
+
+	m.sessionOptions[sessionID] = populatedOptions
+	m.sessionVotes[sessionID] = make(map[string]bool)
+
+	return sessionID, nil
+}
+
 func (m *MockRepository) AddVotingOption(ctx context.Context, sessionID, nodeID, targetLevel int) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -682,7 +683,7 @@ func (m *MockRepository) HasUserVotedInSession(ctx context.Context, userID strin
 	return false, nil
 }
 
-func (m *MockRepository) RecordUserSessionVote(ctx context.Context, userID string, sessionID, optionID, nodeID int) error {
+func (m *MockRepository) RecordUserSessionVote(ctx context.Context, userID string, sessionID, optionID, nodeID, targetLevel int) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.sessionVotes[sessionID] == nil {
@@ -692,7 +693,7 @@ func (m *MockRepository) RecordUserSessionVote(ctx context.Context, userID strin
 	return nil
 }
 
-func (m *MockRepository) CheckAndRecordVoteAtomic(ctx context.Context, userID string, sessionID, optionID, nodeID int) error {
+func (m *MockRepository) CheckAndRecordVoteAtomic(ctx context.Context, userID string, sessionID, optionID, nodeID, targetLevel int) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -702,10 +703,12 @@ func (m *MockRepository) CheckAndRecordVoteAtomic(ctx context.Context, userID st
 	}
 
 	// Increment vote count for the option
-	for i, opt := range m.sessionOptions[sessionID] {
-		if opt.ID == optionID {
-			m.sessionOptions[sessionID][i].VoteCount++
-			break
+	if options, ok := m.sessionOptions[sessionID]; ok {
+		for i, opt := range options {
+			if opt.ID == optionID {
+				m.sessionOptions[sessionID][i].VoteCount++
+				break
+			}
 		}
 	}
 
@@ -1017,7 +1020,7 @@ func setupTestTree(repo *MockRepository) {
 		NodeType:    "upgrade",
 		DisplayName: "Cooldown Reduction",
 		Description: "Reduce cooldowns",
-		MaxLevel:    5, // 5 levels
+		MaxLevel:    5,
 		UnlockCost:  1500,
 		SortOrder:   40,
 		CreatedAt:   time.Now(),
@@ -1025,8 +1028,6 @@ func setupTestTree(repo *MockRepository) {
 	repo.nodes[cooldownID] = cooldown
 	repo.nodesByKey["upgrade_cooldown_reduction"] = cooldown
 
-	// Setup prerequisite relationships (v2.0 junction table simulation)
-	// These mirror the old parent-child relationships
 	repo.prerequisites[moneyID] = []int{rootID}           // money requires root
 	repo.prerequisites[economyID] = []int{moneyID}        // economy requires money
 	repo.prerequisites[gambleID] = []int{economyID}       // gamble requires economy
@@ -1352,4 +1353,38 @@ func TestMultiLevelUnlock(t *testing.T) {
 	if !level2 {
 		t.Error("Cooldown reduction level 2 should be unlocked")
 	}
+}
+
+func (m *MockRepository) GetBonusModifiers(ctx context.Context, featureKey string) ([]domain.ModifierConfig, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	var result []domain.ModifierConfig
+	for _, config := range m.bonusConfigs {
+		if config.FeatureKey == featureKey {
+			progressionLevel := 0
+			if config.SourceType == "progression" {
+				if node, ok := m.nodesByKey[config.NodeKey]; ok {
+					if levels, hasUnlocks := m.unlocks[node.ID]; hasUnlocks {
+						for level := range levels {
+							if level > progressionLevel {
+								progressionLevel = level
+							}
+						}
+					}
+				}
+			}
+			cfg := config
+			cfg.ProgressionLevel = progressionLevel
+			result = append(result, cfg)
+		}
+	}
+	return result, nil
+}
+
+func (m *MockRepository) GetAllBonusModifiers(ctx context.Context) ([]domain.ModifierConfig, error) {
+	return nil, nil
+}
+
+func (m *MockRepository) GetJobUnlockConfig(ctx context.Context, featureKey string) (*domain.JobUnlockConfig, error) {
+	return nil, nil
 }

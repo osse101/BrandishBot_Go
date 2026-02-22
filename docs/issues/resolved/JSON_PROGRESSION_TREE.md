@@ -3,15 +3,17 @@
 ## Problem
 
 Currently, the progression tree is defined via SQL migrations, which makes it:
+
 - Hard to visualize the full tree structure
 - Difficult to modify (requires new migration)
 - Error-prone (manual ID references, easy to break parent/child relationships)
 - Impossible to version control meaningfully (just SQL dumps)
 
 **Example of Current Approach:**
+
 ```sql
 -- Migration 0015
-INSERT INTO progression_nodes (node_key, unlock_cost, parent_node_id) 
+INSERT INTO progression_nodes (node_key, unlock_cost, parent_node_id)
 VALUES ('feature_upgrade', 50, 12);  -- What's 12? Have to look it up!
 ```
 
@@ -20,6 +22,7 @@ VALUES ('feature_upgrade', 50, 12);  -- What's 12? Have to look it up!
 Define the progression tree in a **JSON configuration file** that gets loaded/validated on server startup.
 
 ### File Location
+
 `configs/progression_tree.json`
 
 ### Example Structure
@@ -37,10 +40,7 @@ Define the progression tree in a **JSON configuration file** that gets loaded/va
       "max_level": 1,
       "parent": null,
       "auto_unlock": true,
-      "children": [
-        "item_money",
-        "feature_economy"
-      ]
+      "children": ["item_money", "feature_economy"]
     },
     {
       "key": "item_money",
@@ -49,9 +49,7 @@ Define the progression tree in a **JSON configuration file** that gets loaded/va
       "unlock_cost": 100,
       "max_level": 1,
       "parent": "progression_system",
-      "children": [
-        "feature_economy"
-      ]
+      "children": ["feature_economy"]
     },
     {
       "key": "feature_economy",
@@ -60,10 +58,7 @@ Define the progression tree in a **JSON configuration file** that gets loaded/va
       "unlock_cost": 150,
       "max_level": 1,
       "parent": "item_money",
-      "children": [
-        "feature_upgrade",
-        "feature_sell"
-      ]
+      "children": ["feature_upgrade", "feature_sell"]
     },
     {
       "key": "feature_upgrade",
@@ -90,21 +85,25 @@ Define the progression tree in a **JSON configuration file** that gets loaded/va
 ## Implementation Plan
 
 ### Phase 1: Loader
+
 - Create `internal/progression/tree_loader.go`
 - Parse JSON file
 - Validate structure (no cycles, all parents exist, unique keys)
 - Convert to database inserts (idempotent)
 
 ### Phase 2: Migration
+
 - Keep existing migrations for backward compatibility
 - Add new migration that reads JSON and populates DB
 - Tool to export current DB tree to JSON (one-time migration helper)
 
 ### Phase 3: Validation
+
 - Startup check: Load JSON, compare to DB, warn if mismatch
 - Admin command: `/progression reload-tree` (dev only)
 
 ### Phase 4: Features
+
 - Support for `auto_unlock: true` (skips voting)
 - Support for `hidden: true` (admin-only unlocks)
 - Support for `requires_all_children: true` (AND vs OR logic)
@@ -134,17 +133,17 @@ func LoadTreeConfig(path string) (*TreeConfig, error) {
     if err != nil {
         return nil, err
     }
-    
+
     var config TreeConfig
     if err := json.Unmarshal(data, &config); err != nil {
         return nil, err
     }
-    
+
     // Validate
     if err := validateTree(&config); err != nil {
         return nil, fmt.Errorf("invalid tree: %w", err)
     }
-    
+
     return &config, nil
 }
 
@@ -168,18 +167,21 @@ func validateTree(config *TreeConfig) error {
 ## Tooling Ideas
 
 ### Visualization
+
 ```bash
 $ make progression-tree-diagram
 # Generates docs/progression_tree.svg using Graphviz
 ```
 
 ### Validation
+
 ```bash
 $ make progression-tree-validate
 # Checks JSON for errors before deploy
 ```
 
 ### Diff Viewer
+
 ```bash
 $ make progression-tree-diff
 # Shows what changed between DB and JSON

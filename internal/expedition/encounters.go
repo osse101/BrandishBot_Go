@@ -74,9 +74,7 @@ func (e *Engine) rollOutcome(encounter *EncounterDef) domain.OutcomeType {
 		weight float64
 	}
 
-	// Get weight shift modifier for this encounter type (shifts toward positive)
-	// Positive shift_weights values increase positive outcome weight
-	// and decrease negative outcome weight
+	// Apply weight shift: positive shift increases positive outcome weight and decreases negative weight.
 	shift := 0.0
 	for name := range e.config.Encounters {
 		if mod, ok := e.weightMods[domain.EncounterType(name)]; ok {

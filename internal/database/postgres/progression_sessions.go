@@ -23,6 +23,36 @@ func (r *progressionRepository) CreateVotingSession(ctx context.Context) (int, e
 	return int(sessionID), nil
 }
 
+func (r *progressionRepository) CreateVotingSessionWithOptions(ctx context.Context, options []domain.ProgressionVotingOption) (int, error) {
+	txHelper, err := beginTx(ctx, r.pool, r.q)
+	if err != nil {
+		return 0, err
+	}
+	defer SafeRollback(ctx, txHelper.Tx())
+
+	sessionID, err := txHelper.Queries().CreateVotingSession(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create voting session: %w", err)
+	}
+
+	for _, opt := range options {
+		err = txHelper.Queries().AddVotingOption(ctx, generated.AddVotingOptionParams{
+			SessionID:   sessionID,
+			NodeID:      int32(opt.NodeID),
+			TargetLevel: int32(opt.TargetLevel),
+		})
+		if err != nil {
+			return 0, fmt.Errorf("failed to add voting option: %w", err)
+		}
+	}
+
+	if err := txHelper.Commit(ctx); err != nil {
+		return 0, fmt.Errorf("failed to commit session creation: %w", err)
+	}
+
+	return int(sessionID), nil
+}
+
 func (r *progressionRepository) AddVotingOption(ctx context.Context, sessionID, nodeID, targetLevel int) error {
 	err := r.q.AddVotingOption(ctx, generated.AddVotingOptionParams{
 		SessionID:   int32(sessionID),
@@ -180,7 +210,7 @@ func (r *progressionRepository) GetActiveOrFrozenSession(ctx context.Context) (*
 }
 
 func (r *progressionRepository) GetSessionVoters(ctx context.Context, sessionID int) ([]string, error) {
-	rows, err := r.q.GetSessionVoters(ctx, pgtype.Int4{Int32: int32(sessionID), Valid: true})
+	rows, err := r.q.GetSessionVoters(ctx, int32(sessionID))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get session voters: %w", err)
 	}
@@ -194,16 +224,17 @@ func (r *progressionRepository) GetSessionVoters(ctx context.Context, sessionID 
 func (r *progressionRepository) HasUserVotedInSession(ctx context.Context, userID string, sessionID int) (bool, error) {
 	return r.q.HasUserVotedInSession(ctx, generated.HasUserVotedInSessionParams{
 		UserID:    userID,
-		SessionID: pgtype.Int4{Int32: int32(sessionID), Valid: true},
+		SessionID: int32(sessionID),
 	})
 }
 
-func (r *progressionRepository) RecordUserSessionVote(ctx context.Context, userID string, sessionID, optionID, nodeID int) error {
+func (r *progressionRepository) RecordUserSessionVote(ctx context.Context, userID string, sessionID, optionID, nodeID, targetLevel int) error {
 	err := r.q.RecordUserSessionVote(ctx, generated.RecordUserSessionVoteParams{
-		UserID:    userID,
-		SessionID: pgtype.Int4{Int32: int32(sessionID), Valid: true},
-		OptionID:  pgtype.Int4{Int32: int32(optionID), Valid: true},
-		NodeID:    int32(nodeID),
+		UserID:      userID,
+		SessionID:   int32(sessionID),
+		OptionID:    pgtype.Int4{Int32: int32(optionID), Valid: true},
+		NodeID:      int32(nodeID),
+		TargetLevel: int32(targetLevel),
 	})
 
 	if err != nil {
@@ -216,7 +247,7 @@ func (r *progressionRepository) RecordUserSessionVote(ctx context.Context, userI
 // CheckAndRecordVoteAtomic atomically checks if a user has voted and records their vote if they haven't.
 // This method uses SELECT FOR UPDATE to prevent race conditions when multiple concurrent vote requests arrive.
 // Returns domain.ErrUserAlreadyVoted if the user has already voted in this session.
-func (r *progressionRepository) CheckAndRecordVoteAtomic(ctx context.Context, userID string, sessionID, optionID, nodeID int) error {
+func (r *progressionRepository) CheckAndRecordVoteAtomic(ctx context.Context, userID string, sessionID, optionID, nodeID, targetLevel int) error {
 	// Begin transaction
 	txHelper, err := beginTx(ctx, r.pool, r.q)
 	if err != nil {
@@ -227,7 +258,7 @@ func (r *progressionRepository) CheckAndRecordVoteAtomic(ctx context.Context, us
 	// Check if user has already voted with row lock
 	hasVoted, err := txHelper.Queries().HasUserVotedInSessionForUpdate(ctx, generated.HasUserVotedInSessionForUpdateParams{
 		UserID:    userID,
-		SessionID: pgtype.Int4{Int32: int32(sessionID), Valid: true},
+		SessionID: int32(sessionID),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to check vote status: %w", err)
@@ -245,10 +276,11 @@ func (r *progressionRepository) CheckAndRecordVoteAtomic(ctx context.Context, us
 
 	// Record the user's vote
 	err = txHelper.Queries().RecordUserSessionVote(ctx, generated.RecordUserSessionVoteParams{
-		UserID:    userID,
-		SessionID: pgtype.Int4{Int32: int32(sessionID), Valid: true},
-		OptionID:  pgtype.Int4{Int32: int32(optionID), Valid: true},
-		NodeID:    int32(nodeID),
+		UserID:      userID,
+		SessionID:   int32(sessionID),
+		OptionID:    pgtype.Int4{Int32: int32(optionID), Valid: true},
+		NodeID:      int32(nodeID),
+		TargetLevel: int32(targetLevel),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to record user vote: %w", err)

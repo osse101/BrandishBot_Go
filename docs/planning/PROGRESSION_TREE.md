@@ -41,35 +41,47 @@ Additional Branch from feature_economy:
 ## Unlock Path Analysis
 
 ### Tier 1: Foundation (Root Level)
+
 **Cost: 0 (Auto-unlocked)**
+
 - `progression_system` - Enables the entire progression system
 
 ### Tier 2: First Choices (Direct from Root)
+
 **Cost: 500 each**
+
 - `item_money` → Unlocks money item (prerequisite for economy)
 - `item_lootbox0` → Unlocks basic lootbox (prerequisite for crafting/upgrades)
 
 ### Tier 3: Core Features (1 step from root)
+
 **Cost: 1000-1500**
+
 - `feature_economy` (from money) → Unlocks marketplace features
 - `feature_upgrade` (from lootbox0) → Unlocks item upgrading
 - `feature_disassemble` (from lootbox0) → Unlocks item disassembly
 - `feature_search` (from lootbox0) → Unlocks search/filtering
 
 ### Tier 4: Sub-Features (2 steps from root)
+
 **Cost: 800-1200**
+
 - `feature_buy` (from economy) → Buy items from market
 - `feature_sell` (from economy) → Sell items to market
 - `item_lootbox1` (from upgrade) → Advanced lootbox with better rewards
 
 ### Tier 5: Advanced Features (3+ steps from root)
+
 **Cost: 2500-3000**
+
 - `feature_gamble` (from economy) → High risk/reward gambling
 - `feature_duel` (from lootbox1) → PvP combat
 - `feature_expedition` (from search) → Adventure system
 
 ### Special: Multi-Level Upgrade
+
 **5 Levels Available**
+
 - `upgrade_cooldown_reduction` (from economy)
   - Level 1: Cost 1500
   - Level 2: Cost 1500
@@ -83,31 +95,37 @@ Additional Branch from feature_economy:
 ## Unlock Sequence Recommendations
 
 ### Week 1-2: Foundation
+
 1. ✅ `progression_system` (auto)
 2. 🗳️ `item_money` (500)
 3. 🗳️ `item_lootbox0` (500)
 
 ### Week 3-4: Economy Basics
-4. 🗳️ `feature_economy` (1500) *requires money*
-5. 🗳️ `feature_buy` (800) *requires economy*
-6. 🗳️ `feature_sell` (800) *requires economy*
+
+4. 🗳️ `feature_economy` (1500) _requires money_
+5. 🗳️ `feature_buy` (800) _requires economy_
+6. 🗳️ `feature_sell` (800) _requires economy_
 
 ### Week 5-6: Crafting System
-7. 🗳️ `feature_upgrade` (1500) *requires lootbox0*
-8. 🗳️ `feature_disassemble` (1000) *requires lootbox0*
+
+7. 🗳️ `feature_upgrade` (1500) _requires lootbox0_
+8. 🗳️ `feature_disassemble` (1000) _requires lootbox0_
 
 ### Week 7-8: Utility & Search
-9. 🗳️ `feature_search` (1000) *requires lootbox0*
-10. 🗳️ `item_lootbox1` (1200) *requires upgrade*
+
+9. 🗳️ `feature_search` (1000) _requires lootbox0_
+10. 🗳️ `item_lootbox1` (1200) _requires upgrade_
 
 ### Week 9-10: Incremental Upgrades
+
 11. 🗳️ `upgrade_cooldown_reduction` Level 1 (1500)
 12. 🗳️ `upgrade_cooldown_reduction` Level 2 (1500)
 
 ### Week 11+: Advanced Content
-13. 🗳️ `feature_gamble` (2500) *requires economy*
-14. 🗳️ `feature_duel` (3000) *requires lootbox1*
-15. 🗳️ `feature_expedition` (3000) *requires search*
+
+13. 🗳️ `feature_gamble` (2500) _requires economy_
+14. 🗳️ `feature_duel` (3000) _requires lootbox1_
+15. 🗳️ `feature_expedition` (3000) _requires search_
 
 **Total Weeks**: ~15 weeks to fully unlock everything
 
@@ -118,25 +136,25 @@ Additional Branch from feature_economy:
 ```mermaid
 graph TD
     ROOT[progression_system<br/>UNLOCKED<br/>Cost: 0]
-    
+
     ROOT --> MONEY[item_money<br/>Cost: 500]
     ROOT --> LB0[item_lootbox0<br/>Cost: 500]
-    
+
     MONEY --> ECON[feature_economy<br/>Cost: 1500]
-    
+
     ECON --> BUY[feature_buy<br/>Cost: 800]
     ECON --> SELL[feature_sell<br/>Cost: 800]
     ECON --> CDR[upgrade_cooldown_reduction<br/>5 levels × 1500]
     ECON --> GAMB[feature_gamble<br/>Cost: 2500]
-    
+
     LB0 --> UPG[feature_upgrade<br/>Cost: 1500]
     LB0 --> DIS[feature_disassemble<br/>Cost: 1000]
     LB0 --> SRCH[feature_search<br/>Cost: 1000]
-    
+
     UPG --> LB1[item_lootbox1<br/>Cost: 1200]
     LB1 --> DUEL[feature_duel<br/>Cost: 3000]
     SRCH --> EXP[feature_expedition<br/>Cost: 3000]
-    
+
     style ROOT fill:#90EE90
     style MONEY fill:#FFE4B5
     style LB0 fill:#FFE4B5
@@ -154,6 +172,7 @@ graph TD
 ```
 
 **Legend**:
+
 - 🟢 Green: Auto-unlocked (Root)
 - 🟡 Yellow: Tier 2 (500 cost)
 - 🔵 Blue: Tier 3 (1000-1500 cost)
@@ -167,14 +186,14 @@ graph TD
 
 ### Gated Features (Require Unlocks)
 
-| Feature | Node Required | Cost to Unlock | Impact |
-|---------|--------------|----------------|---------|
-| **Buy Items** | `feature_buy` | 800 + 1500 + 500 = **2800** | Can purchase from market |
-| **Sell Items** | `feature_sell` | 800 + 1500 + 500 = **2800** | Can sell to market |  
-| **Upgrade Items** | `feature_upgrade` | 1500 + 500 = **2000** | Can improve item quality |
-| **Disassemble Items** | `feature_disassemble` | 1000 + 500 = **1500** | Can break down items |
+| Feature               | Node Required         | Cost to Unlock              | Impact                   |
+| --------------------- | --------------------- | --------------------------- | ------------------------ |
+| **Buy Items**         | `feature_buy`         | 800 + 1500 + 500 = **2800** | Can purchase from market |
+| **Sell Items**        | `feature_sell`        | 800 + 1500 + 500 = **2800** | Can sell to market       |
+| **Upgrade Items**     | `feature_upgrade`     | 1500 + 500 = **2000**       | Can improve item quality |
+| **Disassemble Items** | `feature_disassemble` | 1000 + 500 = **1500**       | Can break down items     |
 
-*Cost includes all prerequisites*
+_Cost includes all prerequisites_
 
 ### Always Available (Not Gated)
 
@@ -190,19 +209,23 @@ graph TD
 ## Engagement Score Requirements
 
 Based on default weights:
+
 - 1 message = 1 point
 - 1 command = 2 points
 - 1 item crafted = 3 points
 - 1 item used = 1.5 points
 
 ### To Unlock `feature_buy` (2800 total):
+
 - Option A: **2800 messages**
 - Option B: **1400 commands**
 - Option C: **933 items crafted**
 - Option D: **Mix** - 1000 messages + 300 commands + 200 crafted + 200 used
 
 ### Community Example:
+
 With 100 active users contributing equally for `item_money` (500 cost):
+
 - Each user needs ~5 messages OR
 - Each user needs 2-3 commands OR
 - Each user needs 1-2 items crafted
@@ -282,6 +305,7 @@ item_lootbox2 (from lootbox1)
 ---
 
 **See Also**:
+
 - [API Documentation](../api/PROGRESSION_API.md)
 - [Admin Guide](../usage/PROGRESSION_ADMIN.md)
 - [Database Schema](../../migrations/0014_create_progression_tables.up.sql)

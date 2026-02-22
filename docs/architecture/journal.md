@@ -41,14 +41,15 @@ A collection of architectural insights from BrandishBot_Go development, focusing
 
 PostgreSQL's default `READ COMMITTED` is sufficient for most operations when combined with `FOR UPDATE`:
 
-| Isolation Level | Phantom Reads | Non-Repeatable Reads | Use Case |
-|-----------------|---------------|---------------------|----------|
-| Read Uncommitted | Yes | Yes | Never use |
-| Read Committed | Yes | No | Default, good for most ops |
-| Repeatable Read | No | No | Complex multi-row reads |
-| Serializable | No | No | Financial systems |
+| Isolation Level  | Phantom Reads | Non-Repeatable Reads | Use Case                   |
+| ---------------- | ------------- | -------------------- | -------------------------- |
+| Read Uncommitted | Yes           | Yes                  | Never use                  |
+| Read Committed   | Yes           | No                   | Default, good for most ops |
+| Repeatable Read  | No            | No                   | Complex multi-row reads    |
+| Serializable     | No            | No                   | Financial systems          |
 
 **For inventory operations:** `READ COMMITTED` + `FOR UPDATE` is optimal:
+
 - Prevents lost updates
 - Minimal locking overhead
 - Good throughput
@@ -66,7 +67,7 @@ type Repository interface {
     // Standard operations (use internal connection)
     GetInventory(ctx context.Context, userID string) (*domain.Inventory, error)
     UpdateInventory(ctx context.Context, userID string, inv domain.Inventory) error
-    
+
     // Transaction support
     BeginTx(ctx context.Context) (Tx, error)
 }
@@ -91,7 +92,7 @@ Services that spawn background goroutines need explicit lifecycle methods:
 type Service interface {
     // Business operations
     DoOperation(ctx context.Context, ...) error
-    
+
     // Lifecycle
     Shutdown(ctx context.Context) error
 }
@@ -130,6 +131,7 @@ tx, _ := s.repo.BeginTx(ctx)
 ```
 
 This provides no additional safety but adds:
+
 - Memory overhead (lock storage)
 - CPU overhead (lock contention)
 - Complexity (two failure modes)
@@ -158,11 +160,11 @@ type Config struct {
 
 **Recommended Defaults:**
 
-| Setting | Dev | Staging | Production |
-|---------|-----|---------|------------|
-| MaxConns | 10 | 20 | 50-100 |
-| MaxConnIdleTime | 30m | 10m | 5m |
-| MaxConnLifetime | 1h | 30m | 30m |
+| Setting         | Dev | Staging | Production |
+| --------------- | --- | ------- | ---------- |
+| MaxConns        | 10  | 20      | 50-100     |
+| MaxConnIdleTime | 30m | 10m     | 5m         |
+| MaxConnLifetime | 1h  | 30m     | 30m        |
 
 ---
 
@@ -186,6 +188,7 @@ Internal errors should never cross the API boundary:
 ```
 
 **Pattern:**
+
 ```go
 func HandleBuyItem(w http.ResponseWriter, r *http.Request) {
     result, err := service.BuyItem(ctx, ...)
@@ -220,6 +223,7 @@ For multi-instance deployments, the database serves as the single source of trut
 ```
 
 **Implications:**
+
 - Application can be stateless (no shared memory between instances)
 - Horizontal scaling is straightforward
 - Database connection pool sizing becomes critical
@@ -235,12 +239,14 @@ When scaling horizontally, consider:
 3. **Event processing** → Consider message queue (not just in-memory bus)
 
 **Current Architecture (suitable for single-digit instances):**
+
 ```
 Instance 1: [Job Scheduler] [Event Bus] [HTTP Server]
 Instance 2: [Job Scheduler] [Event Bus] [HTTP Server]
 ```
 
 **Future Architecture (for high scale):**
+
 ```
 ┌────────────────┐     ┌────────────────┐
 │ HTTP Instances │────▶│  Message Queue │────▶ Workers
@@ -269,16 +275,16 @@ grep -B5 -A5 "BeginTx" internal/ | grep -A5 -B5 "Lock()"
 
 ## Architecture Decision Records (ADRs)
 
-| Date | Decision | Rationale |
-|------|----------|-----------|
-| Dec 2024 | Remove LockManager | Memory leaks, doesn't work multi-instance |
-| Dec 2024 | Add FOR UPDATE | Row-level locking for consistency |
-| Dec 2024 | Add Service.Shutdown() | Graceful shutdown for background tasks |
-| Dec 2024 | Externalize pool config | Environment-specific tuning |
+| Date     | Decision                | Rationale                                 |
+| -------- | ----------------------- | ----------------------------------------- |
+| Dec 2024 | Remove LockManager      | Memory leaks, doesn't work multi-instance |
+| Dec 2024 | Add FOR UPDATE          | Row-level locking for consistency         |
+| Dec 2024 | Add Service.Shutdown()  | Graceful shutdown for background tasks    |
+| Dec 2024 | Externalize pool config | Environment-specific tuning               |
 
 ---
 
-*Last updated: December 2024*
+_Last updated: December 2024_
 
 ## Mock Generation Architecture
 
@@ -287,6 +293,7 @@ grep -B5 -A5 "BeginTx" internal/ | grep -A5 -B5 "Lock()"
 **Key Insight:** Different test scenarios benefit from different mock approaches. Generated mocks provide type safety and behavior verification, while stateful fakes enable integration-style testing.
 
 **Pattern Implemented:**
+
 ```
 internal/<package>/
 ├── repository.go           # Wrapper or local interface
@@ -296,24 +303,27 @@ internal/<package>/
 ```
 
 **Why In-Package over Root Mocks:**
+
 - Co-location: Mock lives with interface definition
 - Ownership: Clear package boundaries
 - Scalability: Better for large codebases (27+ packages)
 - Navigation: Easier IDE discovery
 
 **Configuration (`.mockery.yaml`):**
+
 ```yaml
 internal/<pkg>:
   interfaces:
     Repository:
       config:
-        dir: "{{.InterfaceDir}}/mocks"
-        outpkg: "mocks"
-        filename: "mock_repository.go"
+        dir: '{{.InterfaceDir}}/mocks'
+        outpkg: 'mocks'
+        filename: 'mock_repository.go'
         with-expecter: true
 ```
 
 **Wrapper Interface Pattern** (for external types):
+
 ```go
 // internal/user/repository.go
 type Repository interface {
@@ -324,17 +334,20 @@ type Repository interface {
 This allows mockery to generate mocks locally even when interface is defined elsewhere, avoiding import cycles.
 
 **Benefits:**
+
 - Zero maintenance: `make mocks` regenerates on interface changes
 - Type safety: Compiler catches breaking changes
 - Dual approach: Generated mocks + stateful fakes where needed
 - ROI: Positive after ~6 interface changes
 
 **Trade-offs:**
+
 - Wrapper overhead: ~60 lines for 7 packages (negligible)
 - Initial setup: 4 hours for 8 packages
 - Learning curve: Team needs to understand dual approach
 
 **Metrics (8 packages migrated):**
+
 - Generated mocks: 6,800+ lines
 - Wrapper interfaces: 60 lines total
 - Duplicates removed: 11 files (~200KB)
@@ -344,15 +357,40 @@ This allows mockery to generate mocks locally even when interface is defined els
 
 ## Architecture Decision Records (ADRs)
 
-| Date | Decision | Rationale |
-|------|----------|-----------|
-| Dec 2024 | Remove LockManager | Memory leaks, doesn't work multi-instance |
-| Dec 2024 | Add FOR UPDATE | Row-level locking for consistency |
-| Dec 2024 | Add Service.Shutdown() | Graceful shutdown for background tasks |
-| Dec 2024 | Externalize pool config | Environment-specific tuning |
-| Jan 2026 | Dual Mock Pattern | Type safety + testing flexibility |
-| Jan 2026 | In-package mock generation | Co-location + scalability |
+| Date     | Decision                   | Rationale                                          |
+| -------- | -------------------------- | -------------------------------------------------- |
+| Dec 2024 | Remove LockManager         | Memory leaks, doesn't work multi-instance          |
+| Dec 2024 | Add FOR UPDATE             | Row-level locking for consistency                  |
+| Dec 2024 | Add Service.Shutdown()     | Graceful shutdown for background tasks             |
+| Dec 2024 | Externalize pool config    | Environment-specific tuning                        |
+| Jan 2026 | Dual Mock Pattern          | Type safety + testing flexibility                  |
+| Jan 2026 | In-package mock generation | Co-location + scalability                          |
+| Feb 2026 | Semantic Handler Split     | Improve maintainability and reduce file complexity |
+| Feb 2026 | Extract Inventory Utils    | Centralize core logic and improve testability      |
 
 ---
 
-*Last updated: January 2026*
+## Handler Structuring Architecture
+
+### Lesson 11: Semantic Handler Separation and Logic Extraction
+
+**Key Insight:** Monolithic handler files (e.g., `crafting.go`, `user.go`) become unmaintainable as features grow. Splitting handlers into semantic files (e.g., `upgrade.go`, `disassemble.go`) improves readability and testability.
+
+**Refactoring Pattern:**
+
+1.  **Split Handlers:** Instead of one large `crafting.go` handler file, use distinct files for distinct operations:
+    - `internal/handler/upgrade.go`: Item upgrade logic and recipes.
+    - `internal/handler/disassemble.go`: Item disassembly logic.
+2.  **Extract Shared Logic:** Common low-level logic (e.g., inventory slot management) should be extracted to utility packages to avoid duplication and improve testability.
+    - `internal/utils/inventory.go`: Contains core inventory algorithms (FindSlot, AddItems, ConsumeItems).
+    - `internal/utils/quality.go`: Contains quality level calculations.
+
+**Benefits:**
+
+- **Reduced File Size:** Smaller files are easier to read and review.
+- **Focused Tests:** `upgrade_test.go` only tests upgrades, `disassemble_test.go` only tests disassembly.
+- **Reusable Utilities:** Inventory logic in `utils` can be used by any service without circular dependencies or code duplication.
+
+---
+
+_Last updated: February 2026_

@@ -33,11 +33,6 @@ DO UPDATE SET
 INSERT INTO job_xp_events (id, user_id, job_id, xp_amount, source_type, source_metadata, recorded_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7);
 
--- name: GetJobLevelBonuses :many
-SELECT id, job_id, min_level, bonus_type, bonus_value, description
-FROM job_level_bonuses
-WHERE job_id = $1 AND min_level <= $2
-ORDER BY min_level DESC;
 
 -- name: ResetDailyJobXP :execresult
 UPDATE user_jobs

@@ -28,20 +28,23 @@ Create comprehensive unit tests in `internal/event/resilient_publisher_test.go` 
 ### Test Cases
 
 #### 1. Successful Publish (No Retry)
+
 - **Given**: Event published through ResilientPublisher
 - **When**: Underlying bus.Publish succeeds on first attempt
 - **Then**: Event is published, no retry queued, no dead-letter entry
 
 #### 2. Failed Publish → Retry → Success
+
 - **Given**: Event published through ResilientPublisher
 - **When**: First publish fails, second attempt succeeds
-- **Then**: 
+- **Then**:
   - Event is queued for retry
   - Retry happens after delay (~2s)
   - Event eventually succeeds
   - No dead-letter entry
 
 #### 3. Retry Exhaustion → Dead Letter
+
 - **Given**: ResilientPublisher with maxRetries=3
 - **When**: Event fails all 3 retry attempts
 - **Then**:
@@ -50,6 +53,7 @@ Create comprehensive unit tests in `internal/event/resilient_publisher_test.go` 
   - Dead-letter file contains JSON entry with event details
 
 #### 4. Retry Queue Overflow
+
 - **Given**: ResilientPublisher with full retry queue (1000 events)
 - **When**: Another event fails to publish
 - **Then**:
@@ -57,6 +61,7 @@ Create comprehensive unit tests in `internal/event/resilient_publisher_test.go` 
   - Warning logged about queue overflow
 
 #### 5. Graceful Shutdown
+
 - **Given**: ResilientPublisher with pending retries in queue
 - **When**: Shutdown is called
 - **Then**:
@@ -66,6 +71,7 @@ Create comprehensive unit tests in `internal/event/resilient_publisher_test.go` 
   - Shutdown completes within timeout
 
 #### 6. Exponential Backoff Timing
+
 - **Given**: Event fails multiple times
 - **When**: Retries are scheduled
 - **Then**:
@@ -84,23 +90,23 @@ type mockBus struct {
 // Test with actual ResilientPublisher and temp dead-letter file
 func TestResilientPublisher_BasicRetry(t *testing.T) {
     tmpFile := t.TempDir() + "/deadletter.jsonl"
-    
+
     // Mock bus that fails once, then succeeds
     bus := &mockBus{failCount: 1}
-    
+
     rp, err := event.NewResilientPublisher(bus, 3, 100*time.Millisecond, tmpFile)
     require.NoError(t, err)
     defer rp.Shutdown(context.Background())
-    
+
     // Publish event
     rp.PublishWithRetry(context.Background(), testEvent)
-    
+
     // Wait for retry
     time.Sleep(200 * time.Millisecond)
-    
+
     // Assert event was published after retry
     assert.Equal(t, 2, len(bus.calls)) // 1 failed + 1 retry
-    
+
     // No dead-letter entry
     content, _ := os.ReadFile(tmpFile)
     assert.Empty(t, content)

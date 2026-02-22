@@ -95,17 +95,17 @@ namespace BrandishBot.Client
         [JsonProperty("user")]
         public User User { get; set; }
 
-        [JsonProperty("found_strings")]
-        public List<FoundString> FoundStrings { get; set; }
+        [JsonProperty("matches")]
+        public List<FoundString> Matches { get; set; }
     }
 
     public class FoundString
     {
-        [JsonProperty("trigger")]
-        public string Trigger { get; set; }
+        [JsonProperty("code")]
+        public string Code { get; set; }
 
-        [JsonProperty("match")]
-        public string Match { get; set; }
+        [JsonProperty("value")]
+        public string Value { get; set; }
     }
 
     // --- Progression Models ---
@@ -125,13 +125,28 @@ namespace BrandishBot.Client
         public UnlockProgress ActiveUnlockProgress { get; set; }
     }
 
+    public class VotingSessionResponse
+    {
+        [JsonProperty("session")]
+        public VotingSession Session { get; set; }
+
+        [JsonProperty("message")]
+        public string Message { get; set; }
+
+        [JsonProperty("is_completed")]
+        public bool IsCompleted { get; set; }
+    }
+
     public class VotingSession
     {
-        [JsonProperty("session_id")]
-        public string SessionId { get; set; }
+        [JsonProperty("id")]
+        public int Id { get; set; }
 
         [JsonProperty("started_at")]
         public DateTime StartedAt { get; set; }
+
+        [JsonProperty("status")]
+        public string Status { get; set; }
 
         [JsonProperty("options")]
         public List<VotingOption> Options { get; set; }
@@ -139,6 +154,9 @@ namespace BrandishBot.Client
 
     public class VotingOption
     {
+        [JsonProperty("id")]
+        public int Id { get; set; }
+
         [JsonProperty("node_key")]
         public string NodeKey { get; set; }
 
@@ -398,6 +416,33 @@ namespace BrandishBot.Client
     {
         [JsonProperty("is_linked")]
         public bool IsLinked { get; set; }
+
+        [JsonProperty("linked_platforms")]
+        public List<string> LinkedPlatforms { get; set; }
+    }
+
+    public class LinkInitiateResponse
+    {
+        [JsonProperty("token")]
+        public string Token { get; set; }
+
+        [JsonProperty("expires_in")]
+        public int ExpiresIn { get; set; }
+    }
+
+    public class LinkClaimResponse
+    {
+        [JsonProperty("source_platform")]
+        public string SourcePlatform { get; set; }
+
+        [JsonProperty("awaiting_confirmation")]
+        public bool AwaitingConfirmation { get; set; }
+    }
+
+    public class LinkConfirmResponse
+    {
+        [JsonProperty("success")]
+        public bool Success { get; set; }
 
         [JsonProperty("linked_platforms")]
         public List<string> LinkedPlatforms { get; set; }
@@ -760,4 +805,164 @@ namespace BrandishBot.Client
         [JsonProperty("tier_level")]
         public int TierLevel { get; set; }
     }
+
+    // --- Quest Models ---
+
+    public class Quest
+    {
+        [JsonProperty("quest_key")]
+        public string QuestKey { get; set; }
+
+        [JsonProperty("display_name")]
+        public string DisplayName { get; set; }
+
+        [JsonProperty("description")]
+        public string Description { get; set; }
+
+        [JsonProperty("requirements")]
+        public List<QuestRequirement> Requirements { get; set; }
+        
+        [JsonProperty("available_until")]
+        public DateTime? AvailableUntil { get; set; }
+    }
+
+    public class HarvestResponse
+    {
+        [JsonProperty("items_gained")]
+        public Dictionary<string, int> ItemsGained { get; set; }
+
+        [JsonProperty("hours_since_harvest")]
+        public double HoursSinceHarvest { get; set; }
+
+        [JsonProperty("next_harvest_at")]
+        public DateTime NextHarvestAt { get; set; }
+
+        [JsonProperty("message")]
+        public string Message { get; set; }
+    }
+
+    public class QuestRequirement
+    {
+        [JsonProperty("type")]
+        public string Type { get; set; }
+
+        [JsonProperty("target")]
+        public string Target { get; set; }
+
+        [JsonProperty("amount")]
+        public int Amount { get; set; }
+        
+        [JsonProperty("current_amount")]
+        public int CurrentAmount { get; set; }
+
+        [JsonProperty("is_completed")]
+        public bool IsCompleted { get; set; }
+    }
+
+    public class UserQuestProgress
+    {
+        [JsonProperty("quest_key")]
+        public string QuestKey { get; set; }
+
+        [JsonProperty("status")]
+        public string Status { get; set; }
+
+        [JsonProperty("progress")]
+        public Dictionary<string, int> Progress { get; set; }
+        
+        [JsonProperty("completed_at")]
+        public DateTime? CompletedAt { get; set; }
+
+        [JsonProperty("expires_at")]
+        public DateTime? ExpiresAt { get; set; }
+    }
+    
+    public class QuestListResponse
+    {
+         [JsonProperty("quests")]
+         public List<Quest> Quests { get; set; }
+    }
+
+    // --- Scenario Models ---
+
+    public class ScenarioCapability
+    {
+        [JsonProperty("name")]
+        public string Name { get; set; }
+
+        [JsonProperty("description")]
+        public string Description { get; set; }
+    }
+
+    public class ScenarioDefinition
+    {
+        [JsonProperty("id")]
+        public string Id { get; set; }
+
+        [JsonProperty("name")]
+        public string Name { get; set; }
+
+        [JsonProperty("description")]
+        public string Description { get; set; }
+        
+        [JsonProperty("parameters")]
+        public Dictionary<string, string> Parameters { get; set; }
+    }
+
+    public class ScenarioRunResult
+    {
+        [JsonProperty("scenario_id")]
+        public string ScenarioId { get; set; }
+
+        [JsonProperty("success")]
+        public bool Success { get; set; }
+
+        [JsonProperty("message")]
+        public string Message { get; set; }
+
+        [JsonProperty("logs")]
+        public List<string> Logs { get; set; }
+    }
+
+    // --- Admin/Additional Models ---
+
+    public class AdminUserLookupResponse
+    {
+        [JsonProperty("user")]
+        public User User { get; set; }
+        
+        [JsonProperty("stats")]
+        public StatsSummary Stats { get; set; }
+        
+        [JsonProperty("inventory")]
+        public List<Item> Inventory { get; set; }
+    }
+
+    public class ResetStatusResponse
+    {
+        [JsonProperty("last_reset")]
+        public DateTime LastReset { get; set; }
+
+        [JsonProperty("next_reset")]
+        public DateTime NextReset { get; set; }
+
+        [JsonProperty("is_reset_due")]
+        public bool IsResetDue { get; set; }
+    }
+    
+    public class ContributionLeaderboardEntry
+    {
+        [JsonProperty("user_id")]
+        public string UserId { get; set; }
+
+        [JsonProperty("username")]
+        public string Username { get; set; }
+        
+        [JsonProperty("total_contribution")]
+        public int TotalContribution { get; set; }
+        
+        [JsonProperty("rank")]
+        public int Rank { get; set; }
+    }
 }
+

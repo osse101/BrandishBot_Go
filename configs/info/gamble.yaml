@@ -1,7 +1,7 @@
 name: gamble
 title: Gambling System
 icon: 🎲
-color: "#E74C3C"
+color: '#E74C3C'
 
 discord:
   description: |
@@ -21,11 +21,11 @@ discord:
     Use `/info topic:[topic]` to learn more about each system!
 
 streamerbot:
-  description: "Gambling System: Risk items/currency to win big! Earn Gambler XP from all activities. Topics: gambler-job, gamble-lootboxes, slots, duel."
+  description: 'Gambling System: Risk items/currency to win big! Earn Gambler XP from all activities. Topics: gambler-job, gamble-lootboxes, slots, duel.'
 
 topics:
   gambler-job:
-    command: "/job-progress"
+    command: '/job-progress'
     discord:
       description: |
         **Gambler Job** 🎲
@@ -45,7 +45,7 @@ topics:
 
         Check your progress: `/job-progress`
     streamerbot:
-      description: "Gambler Job: Level up via gambling activities. XP from bets + win bonuses. Check !job-progress."
+      description: 'Gambler Job: Level up via gambling activities. XP from bets + win bonuses. Check !job-progress.'
 
   gamble-lootboxes:
     discord:
@@ -85,7 +85,7 @@ topics:
         - Player with highest total value wins everything.
         - Tie-breaker: Random selection among tied players.
     streamerbot:
-      description: "Lootbox Gambling: Bet boxes against others. Winner takes all! !gamble !join-gamble. Highest value wins."
+      description: 'Lootbox Gambling: Bet boxes against others. Winner takes all! !gamble !join-gamble. Highest value wins.'
 
   slots:
     discord:
@@ -115,7 +115,7 @@ topics:
         - **House Edge**: 92% RTP means the house has a slight advantage.
         - **Gambler XP**: Earn XP with every spin based on bet size.
     streamerbot:
-      description: "Slots: Bet money (10-10k). Match symbols to win! 🍋🍒🔔💰7️⃣💎⭐ 92% RTP. Earn Gambler XP."
+      description: 'Slots: Bet money (10-10k). Match symbols to win! 🍋🍒🔔💰7️⃣💎⭐ 92% RTP. Earn Gambler XP.'
 
   duel:
     discord:
@@ -145,4 +145,4 @@ topics:
         - **Self-Duel**: You lose your stick and get a timeout for shame.
         - **Joey (NPC)**: Dueling the local legend is suicide. He always wins.
     streamerbot:
-      description: "Duel: Challenge players to 1v1! Costs 1 stick + wager. 50/50 odds. Winner takes all. Loser gets timed out."
+      description: 'Duel: Challenge players to 1v1! Costs 1 stick + wager. 50/50 odds. Winner takes all. Loser gets timed out.'

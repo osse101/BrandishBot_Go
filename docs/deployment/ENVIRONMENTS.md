@@ -7,24 +7,30 @@ This guide explains how to run BrandishBot in different environments and the key
 **Purpose**: Coding, testing, debugging, and running migrations manually.
 
 ### Prerequisites
+
 Run `make check-deps` to verify:
+
 - Go 1.25+
 - Docker & Docker Compose (for database)
 - Make
 - Goose (for migrations)
 
 ### Workflow
+
 1. **Start Database**:
+
    ```bash
    make docker-up  # Starts Postgres in Docker
    ```
 
 2. **Run Migrations**:
+
    ```bash
    make migrate-up
    ```
 
 3. **Run Application**:
+
    ```bash
    make run
    # OR
@@ -37,6 +43,7 @@ Run `make check-deps` to verify:
    ```
 
 ### Key Features
+
 - **Hot Reload**: Not enabled by default (requires `air`), but you can restart `go run` quickly.
 - **Direct DB Access**: Database port `5432` is exposed to localhost.
 - **Logs**: Output to stdout in text format (readable).
@@ -49,16 +56,19 @@ Run `make check-deps` to verify:
 **Purpose**: Deployment, stability, isolation.
 
 ### Prerequisites
+
 - Docker & Docker Compose ONLY (Go/Make/Goose NOT required on host)
 
 ### Workflow
+
 1. **Deploy & Start**:
    ```bash
    docker compose up -d --build
    ```
-   *That's it!*
+   _That's it!_
 
 ### How It Works
+
 - **Containerized App**: The app runs inside a lightweight Alpine Linux container.
 - **Auto-Migrations**: The container entrypoint (`devtool entrypoint`) automatically runs migrations before starting the app.
 - **Internal Networking**: App talks to DB via internal Docker network (`db:5432`).
@@ -66,15 +76,16 @@ Run `make check-deps` to verify:
 
 ### Key Differences
 
-| Feature | Local Dev | Dockerized Server |
-|---------|-----------|-------------------|
-| **Runtime** | Native Go binary on host | Alpine Linux Container |
-| **Database** | Docker container (localhost:5432) | Docker container (db:5432) |
-| **Migrations** | Manual (`goose up`) | Automatic (on startup) |
-| **Logs** | Text format (stdout) | JSON/Text (configurable) |
-| **Dependencies** | Go, Make, Goose required | Only Docker required |
+| Feature          | Local Dev                         | Dockerized Server          |
+| ---------------- | --------------------------------- | -------------------------- |
+| **Runtime**      | Native Go binary on host          | Alpine Linux Container     |
+| **Database**     | Docker container (localhost:5432) | Docker container (db:5432) |
+| **Migrations**   | Manual (`goose up`)               | Automatic (on startup)     |
+| **Logs**         | Text format (stdout)              | JSON/Text (configurable)   |
+| **Dependencies** | Go, Make, Goose required          | Only Docker required       |
 
 ### Troubleshooting Docker
+
 ```bash
 # View logs
 docker compose logs -f app
@@ -93,10 +104,12 @@ docker compose exec app /bin/sh
 **Purpose**: Pre-production testing, QA validation, integration testing.
 
 ### Prerequisites
+
 - Docker & Docker Compose ONLY
 - Copy of production environment variables (`.env`)
 
 ### Deployment
+
 ```bash
 # Deploy to staging (from staging branch)
 git checkout staging
@@ -107,6 +120,7 @@ go run ./cmd/devtool deploy staging v1.2.0-rc1
 ```
 
 ### Configuration
+
 - **Port**: 8081 (to avoid conflicts with local dev)
 - **Database**: Separate volume (`pgdata-staging`)
 - **Compose File**: `docker compose.staging.yml`
@@ -114,6 +128,7 @@ go run ./cmd/devtool deploy staging v1.2.0-rc1
 - **Restart Policy**: `unless-stopped`
 
 ### Testing
+
 ```bash
 # Run integration tests against staging
 API_URL=http://localhost:8081 make test-staging
@@ -126,6 +141,7 @@ docker compose -f docker compose.staging.yml logs -f app
 ```
 
 ### Key Features
+
 - Isolated from production database
 - Production-like resource constraints
 - Full integration test suite
@@ -138,10 +154,12 @@ docker compose -f docker compose.staging.yml logs -f app
 **Purpose**: Live deployment serving real users.
 
 ### Prerequisites
+
 - Docker & Docker Compose ONLY
 - Production environment variables (`.env` with production credentials)
 
 ### Deployment
+
 ```bash
 # Deploy to production (from production branch)
 git checkout production
@@ -152,6 +170,7 @@ go run ./cmd/devtool deploy production v1.2.0
 ```
 
 ### Configuration
+
 - **Port**: 8080
 - **Database**: Production volume (`pgdata-production`)
 - **Compose File**: `docker compose.production.yml`
@@ -160,6 +179,7 @@ go run ./cmd/devtool deploy production v1.2.0
 - **Security**: Database port NOT exposed externally
 
 ### Monitoring
+
 ```bash
 # Check health
 make health-check-prod
@@ -172,6 +192,7 @@ docker stats
 ```
 
 ### Rollback
+
 ```bash
 # Emergency rollback
 make rollback-production
@@ -181,6 +202,7 @@ go run ./cmd/devtool rollback production
 ```
 
 ### Key Features
+
 - Maximum resource allocation
 - Database not exposed externally (security)
 - Automatic pre-deployment backups
@@ -191,18 +213,18 @@ go run ./cmd/devtool rollback production
 
 ## Environment Comparison
 
-| Feature | Local Dev | Staging | Production |
-|---------|-----------|---------|------------|
-| **Runtime** | Native Go | Docker Container | Docker Container |
-| **Database** | Docker (port 5432) | Docker (port 5433) | Docker (internal only) |
-| **Port** | 8080 | 8081 | 8080 |
-| **Migrations** | Manual | Automatic | Automatic |
-| **Backups** | Manual | Auto (on deploy) | Auto (on deploy) |
-| **Resource Limits** | None | 1 CPU / 512M RAM | 2 CPU / 1GB RAM |
-| **Restart Policy** | N/A | unless-stopped | always |
-| **Health Checks** | Optional | Required | Required |
-| **Deployment** | `make run` | `make deploy-staging` | `make deploy-production` |
-| **Rollback** | N/A | `make rollback-staging` | `make rollback-production` |
+| Feature             | Local Dev          | Staging                 | Production                 |
+| ------------------- | ------------------ | ----------------------- | -------------------------- |
+| **Runtime**         | Native Go          | Docker Container        | Docker Container           |
+| **Database**        | Docker (port 5432) | Docker (port 5433)      | Docker (internal only)     |
+| **Port**            | 8080               | 8081                    | 8080                       |
+| **Migrations**      | Manual             | Automatic               | Automatic                  |
+| **Backups**         | Manual             | Auto (on deploy)        | Auto (on deploy)           |
+| **Resource Limits** | None               | 1 CPU / 512M RAM        | 2 CPU / 1GB RAM            |
+| **Restart Policy**  | N/A                | unless-stopped          | always                     |
+| **Health Checks**   | Optional           | Required                | Required                   |
+| **Deployment**      | `make run`         | `make deploy-staging`   | `make deploy-production`   |
+| **Rollback**        | N/A                | `make rollback-staging` | `make rollback-production` |
 
 ---
 

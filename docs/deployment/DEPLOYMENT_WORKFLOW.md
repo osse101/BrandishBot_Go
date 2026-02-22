@@ -3,6 +3,7 @@
 This document describes the complete deployment workflow for BrandishBot from development to production.
 
 ## Table of Contents
+
 - [Git Branch Strategy](#git-branch-strategy)
 - [Build Lifecycle](#build-lifecycle)
 - [Deployment Procedures](#deployment-procedures)
@@ -43,6 +44,7 @@ make push-production
 ```
 
 This will tag and push:
+
 - `yourusername/brandishbot:v1.2.3` (Version tag)
 - `yourusername/brandishbot:latest-staging` (Environment tag)
 
@@ -72,13 +74,12 @@ gitGraph
 
 ### Branch Definitions
 
-| Branch | Purpose | Protected | Deployed To |
-|--------|---------|-----------|-------------|
-| `develop` | Active development, feature integration | Yes | Local dev only |
-| `staging` | Pre-release testing, QA validation | Yes | Staging server |
-| `production` | Production-ready code | Yes | Production server |
-| `master` | Legacy/historical (keep for compatibility) | Yes | Not deployed |
-
+| Branch       | Purpose                                    | Protected | Deployed To       |
+| ------------ | ------------------------------------------ | --------- | ----------------- |
+| `develop`    | Active development, feature integration    | Yes       | Local dev only    |
+| `staging`    | Pre-release testing, QA validation         | Yes       | Staging server    |
+| `production` | Production-ready code                      | Yes       | Production server |
+| `master`     | Legacy/historical (keep for compatibility) | Yes       | Not deployed      |
 
 ## Server-Side Deployment (Remote)
 
@@ -88,12 +89,12 @@ This method is for servers that **do not build code** but instead pull pre-built
 
 The server only needs **Docker** and these specific files:
 
-| File | Purpose |
-|------|---------|
-| `.env` | Environment secrets and config |
-| `bin/devtool` | CLI tool for deployment |
-| `docker-compose.staging.yml` | Config for staging |
-| `docker-compose.production.yml` | Config for production |
+| File                            | Purpose                        |
+| ------------------------------- | ------------------------------ |
+| `.env`                          | Environment secrets and config |
+| `bin/devtool`                   | CLI tool for deployment        |
+| `docker-compose.staging.yml`    | Config for staging             |
+| `docker-compose.production.yml` | Config for production          |
 
 **You do NOT need:** Source code, Go compiler (if using pre-built binary), `Makefile`, or migrating tools (built into the image).
 
@@ -111,6 +112,7 @@ Use `devtool` to manage the lifecycle:
 
 > [!IMPORTANT]
 > Configure these protection rules in your Git hosting:
+>
 > - `staging`: Require PR from `develop`, require status checks
 > - `production`: Require PR from `staging`, require manual approval
 > - `develop`: Require PR from feature branches
@@ -124,6 +126,7 @@ Use `devtool` to manage the lifecycle:
 **Branch**: `develop`
 
 1. Create feature branch from `develop`:
+
    ```bash
    git checkout develop
    git pull origin develop
@@ -131,6 +134,7 @@ Use `devtool` to manage the lifecycle:
    ```
 
 2. Develop and test locally:
+
    ```bash
    make test
    make test-integration
@@ -138,6 +142,7 @@ Use `devtool` to manage the lifecycle:
    ```
 
 3. Commit and push feature branch:
+
    ```bash
    git add .
    git commit -m "feat: add my new feature"
@@ -181,6 +186,7 @@ go run ./cmd/devtool deploy staging v1.2.0-rc1
 ```
 
 **What happens during deployment:**
+
 1. Pre-deployment health check (if staging is running)
 2. Database backup created
 3. Docker image built with tag `v1.2.0-rc1`
@@ -249,6 +255,7 @@ go run ./cmd/devtool deploy production v1.2.0
 ```
 
 **Deployment flow:**
+
 1. **Confirmation prompt**: Type 'yes' to continue
 2. **Pre-deployment health check**: Validates current production is healthy
 3. **Database backup**: Creates timestamped backup file
@@ -289,6 +296,7 @@ docker compose -f docker compose.production.yml logs -f --tail=100 app
 ### When to Rollback
 
 Rollback immediately if:
+
 - Health checks fail repeatedly
 - Database migrations cause data corruption
 - Critical bugs discovered in production
@@ -316,6 +324,7 @@ go run ./cmd/devtool rollback production
 ```
 
 **Rollback process:**
+
 1. Lists last 10 Docker images (if version not specified)
 2. Prompts for target version to rollback to
 3. **Confirmation prompt** (production only)
@@ -327,10 +336,11 @@ go run ./cmd/devtool rollback production
 > [!CAUTION]
 > **Database Rollback**  
 > The rollback script will prompt to restore a database backup. Only do this if:
+>
 > - The failed deployment included destructive migrations
 > - Data corruption occurred
 > - You are certain the backup is from before the issue
-> 
+>
 > Database restoration is **irreversible** and will lose any data created after the backup.
 
 ### Emergency Rollback (Manual)
@@ -357,22 +367,24 @@ curl http://localhost:8080/healthz
 
 ### Expected Downtime
 
-| Deployment Type | Downtime | Notes |
-|----------------|----------|-------|
-| Staging | ~2-5 seconds | No users affected |
-| Production | ~2-5 seconds | Brief connection interruption |
-| Database migrations (simple) | +1-2 seconds | Most migrations are fast |
-| Database migrations (complex) | +5-30 seconds | Large data alterations |
-| Rollback | ~2-5 seconds | Same as deployment |
+| Deployment Type               | Downtime      | Notes                         |
+| ----------------------------- | ------------- | ----------------------------- |
+| Staging                       | ~2-5 seconds  | No users affected             |
+| Production                    | ~2-5 seconds  | Brief connection interruption |
+| Database migrations (simple)  | +1-2 seconds  | Most migrations are fast      |
+| Database migrations (complex) | +5-30 seconds | Large data alterations        |
+| Rollback                      | ~2-5 seconds  | Same as deployment            |
 
 ### Minimizing Disruption
 
 **During deployment:**
+
 - Database is never stopped (stays running)
 - Containers recreated without `down` command
 - Health checks ensure app is ready before marking successful
 
 **For users:**
+
 - Discord bot: Brief disconnect (~2-5 sec)
 - API clients: May see 1-2 failed requests during restart
 - Active requests: Terminated (graceful shutdown not yet implemented)
@@ -380,6 +392,7 @@ curl http://localhost:8080/healthz
 ### Future Improvements (Zero-Downtime)
 
 For true zero-downtime deployment:
+
 1. Add nginx load balancer with 2+ app instances
 2. Implement graceful shutdown (drain connections before stop)
 3. Use backward-compatible database migrations
@@ -509,7 +522,8 @@ API_URL=http://localhost:8081 make test-staging
 ### Health checks timeout
 
 **Symptom**: Deployment waits 60 seconds then fails  
-**Solution**: 
+**Solution**:
+
 - Check app logs: `docker compose -f docker compose.production.yml logs app`
 - Verify database migrations completed
 - Check for errors in entrypoint script
@@ -518,6 +532,7 @@ API_URL=http://localhost:8081 make test-staging
 
 **Symptom**: Entrypoint script reports migration errors  
 **Solution**:
+
 - Rollback to previous version
 - Fix migration on `develop` branch
 - Test migration on staging before re-deploying
@@ -526,6 +541,7 @@ API_URL=http://localhost:8081 make test-staging
 
 **Symptom**: Previous version also fails health checks  
 **Solution**:
+
 - Check if database schema is incompatible
 - Restore database backup from before failed deployment
 - Manual intervention may be required

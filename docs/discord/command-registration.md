@@ -7,6 +7,7 @@ The Discord bot now uses intelligent command registration that avoids unnecessar
 ### How It Works
 
 **On Startup:**
+
 1. Fetches currently registered commands from Discord
 2. Compares them with local command definitions
 3. **Only updates if changes are detected**
@@ -32,18 +33,21 @@ This forces a full command refresh on next startup.
 ### Example Usage
 
 **Normal startup (commands unchanged):**
+
 ```bash
 ./bin/discord_bot
 # Output: Commands unchanged, skipping registration (count: 21)
 ```
 
 **After adding new commands:**
+
 ```bash
 DISCORD_FORCE_COMMAND_UPDATE=true ./bin/discord_bot
 # Output: Force update enabled - replacing all commands (count: 21)
 ```
 
 **After modifying existing commands:**
+
 ```bash
 # No flag needed - auto-detected!
 ./bin/discord_bot
@@ -53,8 +57,9 @@ DISCORD_FORCE_COMMAND_UPDATE=true ./bin/discord_bot
 ### What's Compared
 
 The system compares:
+
 - Command name
-- Command description  
+- Command description
 - Number of options
 - Option types, names, descriptions, required status
 - Choice values (for dropdowns)
@@ -62,6 +67,7 @@ The system compares:
 ### Docker/.env Configuration
 
 Add to `.env`:
+
 ```bash
 DISCORD_FORCE_COMMAND_UPDATE=false  # Default
 ```

@@ -10,6 +10,8 @@ import (
 	"strings"
 )
 
+const generateTriggerPattern = `(\.sql$|interfaces\.go$|go\.mod$|go\.sum$|progression_tree\.json$)`
+
 type PreCommitCommand struct{}
 
 func (c *PreCommitCommand) Name() string {
@@ -23,9 +25,7 @@ func (c *PreCommitCommand) Description() string {
 func (c *PreCommitCommand) Run(args []string) error {
 	PrintHeader("Running pre-commit checks...")
 
-	// 1. Migration Protections
-	// Run this before checking stagedFiles count because deletions/renames
-	// might not be in the ACM filter but still need protection.
+	// 1. Migration Protections (capture deletes/renames before ACM filter check)
 	if err := checkMigrationProtections(); err != nil {
 		return err
 	}
@@ -146,9 +146,8 @@ func runGoFmt(files []string) error {
 }
 
 func checkGenerate(files []string) error {
-	// Trigger files: .sql$, interfaces.go$, go.mod$, go.sum$, progression_tree.json$
 	shouldRun := false
-	triggerPattern := regexp.MustCompile(`(\.sql$|interfaces\.go$|go\.mod$|go\.sum$|progression_tree\.json$)`)
+	triggerPattern := regexp.MustCompile(generateTriggerPattern)
 
 	for _, f := range files {
 		if triggerPattern.MatchString(f) {
@@ -192,9 +191,31 @@ func runLinter() error {
 }
 
 func runUnitTests() error {
-	PrintInfo("Running unit tests...")
+	PrintInfo("Analyzing changed packages for unit tests...")
+
+	selector := &PackageSelector{
+		SmartMode:  true,
+		StagedOnly: true,
+	}
+
+	packages, err := selector.SelectPackages()
+	if err != nil {
+		PrintWarning("Failed to detect changed packages: %v. Running all tests.", err)
+		packages = []string{"./..."}
+	}
+
+	if len(packages) == 0 {
+		PrintInfo("No Go packages changed. Skipping unit tests.")
+		return nil
+	}
+
+	PrintInfo("Running unit tests on: %v", packages)
+
+	args := []string{"test", "-short"}
+	args = append(args, packages...)
+
 	//nolint:forbidigo
-	if err := runCommandVerbose("go", "test", "-short", "./..."); err != nil {
+	if err := runCommandVerbose("go", args...); err != nil {
 		return fmt.Errorf("unit tests failed")
 	}
 	return nil
@@ -458,6 +479,7 @@ func checkEnvSync() error {
 		"ALLOW_MIGRATION_SQUASH": true, // Development-only flag for migration squashing
 		"CREATE_BACKUP":          true, // Optional backup creation flag
 		"TEST_DB_CONN":           true, // Optional test database connection string
+		"TEST_DB_CONN_STRING":    true, // Optional test database connection string (alternative)
 	}
 
 	lines = strings.Split(out, "\n")

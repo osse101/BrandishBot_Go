@@ -31,11 +31,11 @@ func (h *QuestHandler) GetActiveQuests(w http.ResponseWriter, r *http.Request) {
 
 	quests, err := h.questService.GetActiveQuests(ctx)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "Failed to retrieve quests")
+		RespondError(w, http.StatusInternalServerError, "Failed to retrieve quests")
 		return
 	}
 
-	respondJSON(w, http.StatusOK, quests)
+	RespondJSON(w, http.StatusOK, quests)
 }
 
 // GetUserQuestProgress returns user's quest progress
@@ -49,18 +49,18 @@ func (h *QuestHandler) GetUserQuestProgress(w http.ResponseWriter, r *http.Reque
 
 	userID := r.URL.Query().Get("user_id")
 	if userID == "" {
-		respondError(w, http.StatusBadRequest, "user_id is required")
+		RespondError(w, http.StatusBadRequest, "user_id is required")
 		return
 	}
 
 	progress, err := h.questService.GetUserQuestProgress(ctx, userID)
 	if err != nil {
 		log.Error("Failed to get quest progress", "error", err)
-		respondError(w, http.StatusInternalServerError, "Failed to retrieve quest progress")
+		RespondError(w, http.StatusInternalServerError, "Failed to retrieve quest progress")
 		return
 	}
 
-	respondJSON(w, http.StatusOK, progress)
+	RespondJSON(w, http.StatusOK, progress)
 }
 
 // ClaimQuestReward claims a completed quest's reward
@@ -78,14 +78,14 @@ func (h *QuestHandler) ClaimQuestReward(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "Invalid request body")
+		RespondError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
 	money, err := h.questService.ClaimQuestReward(ctx, req.UserID, req.QuestID)
 	if err != nil {
 		log.Error("Failed to claim quest reward", "error", err)
-		respondError(w, http.StatusInternalServerError, "Failed to claim reward")
+		RespondError(w, http.StatusInternalServerError, "Failed to claim reward")
 		return
 	}
 
@@ -94,5 +94,5 @@ func (h *QuestHandler) ClaimQuestReward(w http.ResponseWriter, r *http.Request) 
 		"message":      "Quest reward claimed successfully",
 	}
 
-	respondJSON(w, http.StatusOK, resp)
+	RespondJSON(w, http.StatusOK, resp)
 }

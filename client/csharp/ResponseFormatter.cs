@@ -79,36 +79,38 @@ namespace BrandishBot.Client
 
             foreach (var item in inventory.Items)
             {
-                // Group by public name for display
-                // Money is handled specially with an emoji
                 if (item.InternalName == "item_money" || item.PublicName?.ToLower() == "money")
                 {
                     money += item.Quantity;
+                    continue;
                 }
+
+                string displayName = !string.IsNullOrEmpty(item.PublicName) ? item.PublicName : item.InternalName;
+                if (string.IsNullOrEmpty(displayName)) displayName = "Unknown Item";
+
+                if (mergedItems.ContainsKey(displayName))
+                    mergedItems[displayName] += item.Quantity;
                 else
-                {
-                    string displayName = !string.IsNullOrEmpty(item.PublicName) ? item.PublicName : item.InternalName;
-                    if (string.IsNullOrEmpty(displayName)) displayName = "Unknown Item";
-
-                    if (mergedItems.ContainsKey(displayName))
-                        mergedItems[displayName] += item.Quantity;
-                    else
-                        mergedItems[displayName] = item.Quantity;
-                }
+                    mergedItems[displayName] = item.Quantity;
             }
 
-            var formattedItems = new List<string>();
+            var sections = new List<string>();
             if (money > 0)
+                sections.Add($"💰 {money}");
+
+            if (mergedItems.Count > 0)
             {
-                formattedItems.Add($"💰 {money}");
+                var sortedNames = new List<string>(mergedItems.Keys);
+                sortedNames.Sort();
+                var items = new List<string>();
+                foreach (var name in sortedNames)
+                {
+                    items.Add($"{mergedItems[name]}x {name}");
+                }
+                sections.Add(string.Join(", ", items));
             }
 
-            foreach (var kvp in mergedItems)
-            {
-                formattedItems.Add($"{kvp.Value}x {kvp.Key}");
-            }
-
-            return string.Join(" ", formattedItems);
+            return sections.Count > 0 ? string.Join(" | ", sections) : "Empty inventory";
         }
 
         /// <summary>
@@ -204,7 +206,19 @@ namespace BrandishBot.Client
         [Obsolete("Use FormatVotingOptions(VotingSession) instead")]
         public static string FormatVotingOptions(string jsonResponse)
         {
-             return FormatVotingOptions(Newtonsoft.Json.JsonConvert.DeserializeObject<VotingSession>(jsonResponse));
+            try
+            {
+                // Try to handle wrapped response first
+                var response = Newtonsoft.Json.JsonConvert.DeserializeObject<VotingSessionResponse>(jsonResponse);
+                if (response?.Session != null)
+                {
+                    return FormatVotingOptions(response.Session);
+                }
+            }
+            catch { }
+
+            // Fallback to direct VotingSession deserialization for backward compatibility
+            return FormatVotingOptions(Newtonsoft.Json.JsonConvert.DeserializeObject<VotingSession>(jsonResponse));
         }
 
         /// <summary>
@@ -263,7 +277,7 @@ namespace BrandishBot.Client
             if (status.ActiveSession != null)
             {
                 string startedAt = FormatShortTimestamp(status.ActiveSession.StartedAt);
-                var nodeKeys = status.ActiveSession.Options?.ConvertAll(o => o.NodeKey) ?? new List<string>();
+                var nodeKeys = status.ActiveSession.Options?.ConvertAll(o => o.NodeDetails?.NodeKey ?? "unknown") ?? new List<string>();
                 string keysStr = nodeKeys.Count > 0 ? string.Join(", ", nodeKeys) : "unknown";
                 parts.Add($"Session: {keysStr} ({startedAt})");
             }
@@ -326,6 +340,80 @@ namespace BrandishBot.Client
 
             return $"Leaderboard [{metric}]: " + string.Join(" | ", lines);
         }
+
+        /// <summary>
+        /// Format contribution leaderboard entries
+        /// </summary>
+        public static string FormatLeaderboard(List<ContributionLeaderboardEntry> entries)
+        {
+            if (entries == null || entries.Count == 0)
+                return "Contribution leaderboard is empty.";
+
+            var lines = new List<string>();
+            foreach (var entry in entries)
+            {
+                lines.Add($"{entry.Rank}. {entry.Username}: {entry.TotalContribution}");
+            }
+
+            return "🏆 Contribution Leaderboard: " + string.Join(" | ", lines);
+        }
+
+        /// <summary>
+        /// Format active quests
+        /// </summary>
+        public static string FormatActiveQuests(List<Quest> quests)
+        {
+            if (quests == null || quests.Count == 0)
+                return "No active quests available.";
+
+            var formatted = quests.ConvertAll(q => $"{q.DisplayName} ({q.QuestKey})");
+            return "Active Quests: " + string.Join(" | ", formatted);
+        }
+
+        /// <summary>
+        /// Format quest progress
+        /// </summary>
+        public static string FormatQuestProgress(List<UserQuestProgress> progressList)
+        {
+            if (progressList == null || progressList.Count == 0)
+                return "No active quest progress found.";
+
+            var entries = new List<string>();
+            foreach (var progress in progressList)
+            {
+                var parts = new List<string>();
+                if (progress.Progress != null)
+                {
+                    foreach (var kvp in progress.Progress)
+                    {
+                        parts.Add($"{kvp.Key}: {kvp.Value}");
+                    }
+                }
+                string status = progress.Status ?? "unknown";
+                entries.Add($"{progress.QuestKey} [{status}] (" + string.Join(", ", parts) + ")");
+            }
+
+            return "Quest Progress: " + string.Join(" | ", entries);
+        }
+
+        /// <summary>
+        /// Format harvest result
+        /// </summary>
+        public static string FormatHarvest(HarvestResponse result)
+        {
+            if (result == null) return "Harvest processed.";
+            
+            if (result.ItemsGained == null || result.ItemsGained.Count == 0)
+                return result.Message ?? "Nothing to harvest right now.";
+
+            var items = new List<string>();
+            foreach (var kvp in result.ItemsGained)
+            {
+                items.Add($"{kvp.Value}x {kvp.Key}");
+            }
+
+            return $"{result.Message} Gained: " + string.Join(", ", items);
+        }
         /// <summary>
         /// Format account linking status
         /// </summary>
@@ -335,6 +423,43 @@ namespace BrandishBot.Client
                 return "Account is not linked to any other platform.";
 
             return $"Account linked to: {string.Join(", ", status.LinkedPlatforms)}";
+        }
+
+        /// <summary>
+        /// Format link initiation response
+        /// </summary>
+        public static string FormatLinkInitiate(LinkInitiateResponse response)
+        {
+            if (response == null || string.IsNullOrEmpty(response.Token))
+                return "Failed to initiate linking: No token received.";
+
+            string expireMsg = response.ExpiresIn > 0 ? $" (Expires in {response.ExpiresIn / 60}m)" : "";
+            return $"Linking code: {response.Token}{expireMsg}. Run '!claimCode {response.Token}' on your other platform.";
+        }
+
+        /// <summary>
+        /// Format link claim response
+        /// </summary>
+        public static string FormatLinkClaim(LinkClaimResponse response)
+        {
+            if (response == null) return "Claim request failed.";
+            if (response.AwaitingConfirmation)
+            {
+                return $"Code claimed! Please return to {response.SourcePlatform} and run '!confirmLink' to complete the process.";
+            }
+            return "Code claimed successfully.";
+        }
+
+        /// <summary>
+        /// Format link confirmation response
+        /// </summary>
+        public static string FormatLinkConfirm(LinkConfirmResponse response)
+        {
+            if (response == null || !response.Success)
+                return "Confirmation failed. Please check the process.";
+
+            string platforms = response.LinkedPlatforms != null ? string.Join(", ", response.LinkedPlatforms) : "none";
+            return $"Account linked successfully! Current platforms: {platforms}";
         }
 
         /// <summary>

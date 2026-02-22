@@ -178,9 +178,6 @@ func TestInfoCommand_NotFound(t *testing.T) {
 
 	handler(ctx.Session, interaction, ctx.APIClient)
 
-	// The friendly error message (from respondFriendlyError -> formatFriendlyError)
-	// typically prefixes "❌ " for unknown errors or returns specific messages.
-	// Since "Info not found" is not a specific mapped error in formatFriendlyError,
-	// it will be returned as "❌ Info not found..."
+	// Verify friendly error formatting (unmapped errors prefixed with "❌ ").
 	assert.Contains(t, sentContent, "Info not found")
 }

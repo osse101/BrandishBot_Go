@@ -19,18 +19,19 @@ type ProgressionNode struct {
 
 	SortOrder int       `json:"sort_order"`
 	CreatedAt time.Time `json:"created_at"`
-	// Value modification configuration (nullable JSON in DB)
-	ModifierConfig *ModifierConfig `json:"modifier_config,omitempty"`
 }
 
 // ModifierConfig defines how a progression node modifies feature values
 type ModifierConfig struct {
-	FeatureKey    string   `json:"feature_key"`
-	ModifierType  string   `json:"modifier_type"`
-	PerLevelValue float64  `json:"per_level_value"`
-	BaseValue     float64  `json:"base_value"`
-	MaxValue      *float64 `json:"max_value,omitempty"`
-	MinValue      *float64 `json:"min_value,omitempty"`
+	NodeKey          string   `json:"node_key"`
+	SourceType       string   `json:"source_type"`
+	FeatureKey       string   `json:"feature_key"`
+	ModifierType     string   `json:"modifier_type"`
+	PerLevelValue    float64  `json:"per_level_value"`
+	BaseValue        float64  `json:"base_value"`
+	MaxValue         *float64 `json:"max_value,omitempty"`
+	MinValue         *float64 `json:"min_value,omitempty"`
+	ProgressionLevel int      `json:"progression_level,omitempty"`
 }
 
 // ProgressionUnlock represents a globally unlocked node

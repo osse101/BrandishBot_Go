@@ -68,7 +68,19 @@ func (m *MockRepo) GetUserJobs(ctx context.Context, userID string) ([]domain.Use
 }
 
 func (m *MockRepo) GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error) {
-	return nil, nil
+	args := m.Called(ctx, platform, platformID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.User), args.Error(1)
+}
+
+func (m *MockRepo) GetUserByID(ctx context.Context, userID string) (*domain.User, error) {
+	args := m.Called(ctx, userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.User), args.Error(1)
 }
 
 func (m *MockRepo) GetUserJobsByPlatform(ctx context.Context, platform, platformID string) ([]domain.UserJob, error) {
@@ -93,7 +105,7 @@ type MockProgression struct {
 }
 
 // GetModifiedValue implements ProgressionService
-func (m *MockProgression) GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error) {
+func (m *MockProgression) GetModifiedValue(ctx context.Context, userID string, featureKey string, baseValue float64) (float64, error) {
 	args := m.Called(ctx, featureKey, baseValue)
 	return args.Get(0).(float64), args.Error(1)
 }
@@ -110,6 +122,14 @@ func (m *MockProgression) IsNodeUnlocked(ctx context.Context, nodeKey string, le
 
 func (m *MockProgression) GetProgressionStatus(ctx context.Context) (*domain.ProgressionStatus, error) {
 	return nil, nil
+}
+
+func (m *MockProgression) GetJobUnlockConfig(ctx context.Context, featureKey string) (*domain.JobUnlockConfig, error) {
+	args := m.Called(ctx, featureKey)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.JobUnlockConfig), args.Error(1)
 }
 
 // Mock Stats
@@ -214,11 +234,16 @@ func TestAwardXP_GuaranteedCriticalSuccess(t *testing.T) {
 	mockRepo := new(MockRepo)
 	mockProg := new(MockProgression)
 	mockBus := new(MockBus)
+	pubMaxRetries := 3
+	pubTimeout := 100 * time.Millisecond
+
+	// Setup test values
+	testAwardXP := 100
 
 	// Use nil publisher as we aren't testing that part here, or mock if needed.
 	// The service helper allows nil publisher for basic ops, but let's be safe and provide one.
 	tmpFile := t.TempDir() + "/deadletter_crit.jsonl"
-	resilientPub, _ := event.NewResilientPublisher(mockBus, 3, 100*time.Millisecond, tmpFile)
+	resilientPub, _ := event.NewResilientPublisher(mockBus, pubMaxRetries, pubTimeout, tmpFile)
 	defer resilientPub.Shutdown(context.Background())
 
 	svc := NewService(mockRepo, mockProg, mockBus, resilientPub)
@@ -255,15 +280,13 @@ func TestAwardXP_GuaranteedCriticalSuccess(t *testing.T) {
 
 	// No level-up expected (200 total XP is still level 1 with new curve)
 
-	// Act
-	// baseAmount = 100
-	// EpiphanyMultiplier is 2.0
-	result, err := svc.AwardXP(ctx, "user_crit", "warrior", 100, "test", domain.JobXPMetadata{})
+	// Test case: baseAmount=100 with EpiphanyMultiplier=2.0 (crit success).
+	result, err := svc.AwardXP(ctx, "user_crit", "warrior", testAwardXP, "test", domain.JobXPMetadata{})
 
 	// Assert
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
-	expectedXP := 100 * 2
+	expectedXP := testAwardXP * EpiphanyMultiplier
 	assert.Equal(t, expectedXP, result.XPGained)
 
 	mockRepo.AssertExpectations(t)

@@ -3,6 +3,7 @@
 This document provides clear guidelines on what changes can be safely hotfixed to a live production environment versus changes that require a full deployment cycle.
 
 ## Table of Contents
+
 - [Quick Reference](#quick-reference)
 - [Safe to Hotfix](#safe-to-hotfix)
 - [Requires Full Deployment](#requires-full-deployment)
@@ -17,40 +18,40 @@ This document provides clear guidelines on what changes can be safely hotfixed t
 
 ### ✅ Safe to Hotfix (Low Risk)
 
-| Change Type | Risk Level | Downtime | Testing Required |
-|------------|------------|----------|------------------|
-| **Configuration Changes** | Low | None | Smoke test |
-| **Environment Variables** | Low | Container restart (2-5s) | Validation |
-| **Log Level Adjustments** | Very Low | None | Log verification |
-| **Discord Embed Text** | Very Low | None | Visual check |
-| **Error Messages** | Low | None | Error flow test |
-| **Feature Flags** | Low | None | Toggle verification |
-| **Typo Fixes (UI Text)** | Very Low | None | Visual check |
-| **Documentation Updates** | Very Low | None | None |
+| Change Type               | Risk Level | Downtime                 | Testing Required    |
+| ------------------------- | ---------- | ------------------------ | ------------------- |
+| **Configuration Changes** | Low        | None                     | Smoke test          |
+| **Environment Variables** | Low        | Container restart (2-5s) | Validation          |
+| **Log Level Adjustments** | Very Low   | None                     | Log verification    |
+| **Discord Embed Text**    | Very Low   | None                     | Visual check        |
+| **Error Messages**        | Low        | None                     | Error flow test     |
+| **Feature Flags**         | Low        | None                     | Toggle verification |
+| **Typo Fixes (UI Text)**  | Very Low   | None                     | Visual check        |
+| **Documentation Updates** | Very Low   | None                     | None                |
 
 ### ⚠️ Requires Testing on Staging First (Medium Risk)
 
-| Change Type | Risk Level | Why Staging Is Required |
-|------------|------------|-------------------------|
-| **Bug Fixes (Logic)** | Medium | May have unintended side effects |
-| **API Response Changes** | Medium | May break Discord bot or clients |
-| **New Command Handlers** | Medium | Needs integration testing |
-| **Constants/Rates Changes** | Medium | Impacts game balance |
-| **Validation Rules** | Medium | May reject valid input or allow invalid |
-| **Cache TTL Changes** | Low-Medium | Performance impact unknown |
+| Change Type                 | Risk Level | Why Staging Is Required                 |
+| --------------------------- | ---------- | --------------------------------------- |
+| **Bug Fixes (Logic)**       | Medium     | May have unintended side effects        |
+| **API Response Changes**    | Medium     | May break Discord bot or clients        |
+| **New Command Handlers**    | Medium     | Needs integration testing               |
+| **Constants/Rates Changes** | Medium     | Impacts game balance                    |
+| **Validation Rules**        | Medium     | May reject valid input or allow invalid |
+| **Cache TTL Changes**       | Low-Medium | Performance impact unknown              |
 
 ### 🛑 Never Hotfix (High Risk)
 
-| Change Type | Risk Level | Why Full Deployment Is Required |
-|------------|------------|----------------------------------|
-| **Database Migrations** | Critical | Data loss risk, requires backups |
-| **Schema Changes** | Critical | Backward compatibility issues |
-| **API Signature Changes** | High | Breaking changes for clients |
-| **Dependency Updates** | High | Untested compatibility issues |
-| **New Dependencies** | High | Build required, compatibility unknown |
-| **Refactoring** | Medium-High | Extensive testing needed |
-| **Concurrency Changes** | High | Race condition risks |
-| **Security Changes** | High | Requires security review |
+| Change Type               | Risk Level  | Why Full Deployment Is Required       |
+| ------------------------- | ----------- | ------------------------------------- |
+| **Database Migrations**   | Critical    | Data loss risk, requires backups      |
+| **Schema Changes**        | Critical    | Backward compatibility issues         |
+| **API Signature Changes** | High        | Breaking changes for clients          |
+| **Dependency Updates**    | High        | Untested compatibility issues         |
+| **New Dependencies**      | High        | Build required, compatibility unknown |
+| **Refactoring**           | Medium-High | Extensive testing needed              |
+| **Concurrency Changes**   | High        | Race condition risks                  |
+| **Security Changes**      | High        | Requires security review              |
 
 ---
 
@@ -61,17 +62,20 @@ These changes have minimal risk and can be deployed directly to production after
 ### 1. Configuration Changes (Non-Breaking)
 
 **Examples:**
+
 - Adjusting timeouts (request timeout, Discord timeout)
 - Changing retry counts
 - Modifying batch sizes
 - Updating webhook URLs
 
 **Why Safe:**
+
 - No code changes required
 - Can be reverted by changing config back
 - No database impact
 
 **Hotfix Process:**
+
 ```bash
 # 1. Update .env file
 nano .env
@@ -86,6 +90,7 @@ docker compose -f docker-compose.production.yml logs --tail=50 app
 ```
 
 **Testing Required:**
+
 - ✅ Health check passes
 - ✅ Log shows new value loaded
 - ✅ Related functionality works (e.g., Discord commands respond)
@@ -95,15 +100,18 @@ docker compose -f docker-compose.production.yml logs --tail=50 app
 ### 2. Log Level Adjustments
 
 **Examples:**
+
 - Changing `LOG_LEVEL` from `info` to `debug` (for troubleshooting)
 - Changing back from `debug` to `info` (to reduce log noise)
 
 **Why Safe:**
+
 - No functional changes
 - Only affects log output
 - Instantly reversible
 
 **Hotfix Process:**
+
 ```bash
 # 1. Update .env
 nano .env
@@ -117,6 +125,7 @@ docker compose -f docker-compose.production.yml logs --tail=100 app
 ```
 
 **Testing Required:**
+
 - ✅ Verify log level change in output
 
 ---
@@ -124,21 +133,25 @@ docker compose -f docker-compose.production.yml logs --tail=100 app
 ### 3. Discord Embed Text / UI Messages
 
 **Examples:**
+
 - Fixing typos in Discord messages
 - Improving wording of user-facing messages
 - Updating help text
 
 **Why Safe:**
+
 - Cosmetic changes only
 - No logic changes
 - No database impact
 
 **Files You Can Modify:**
+
 - `internal/discord/embeds.go`
 - Discord command descriptions in `internal/discord/cmd_*.go`
 - Error messages in `internal/handler/errors.go` (if just text, not logic)
 
 **Hotfix Process:**
+
 ```bash
 # 1. Fix the typo
 git checkout production
@@ -157,6 +170,7 @@ make deploy-production
 ```
 
 **Testing Required:**
+
 - ✅ Visual verification in Discord
 - ✅ No errors in logs
 
@@ -165,15 +179,18 @@ make deploy-production
 ### 4. Feature Flags (Toggle Existing Features)
 
 **Examples:**
+
 - Enabling/disabling `DEV_MODE`
 - Toggling `DISCORD_FORCE_COMMAND_UPDATE`
 
 **Why Safe:**
+
 - Designed to be toggled
 - No code changes
 - Instant rollback by toggling back
 
 **Hotfix Process:**
+
 ```bash
 # 1. Update .env
 nano .env
@@ -187,6 +204,7 @@ docker compose -f docker-compose.production.yml restart app discord
 ```
 
 **Testing Required:**
+
 - ✅ Feature behaves as expected with flag on/off
 - ✅ No unintended side effects
 
@@ -195,15 +213,18 @@ docker compose -f docker-compose.production.yml restart app discord
 ### 5. Error Message Wording
 
 **Examples:**
+
 - Clarifying error messages for users
 - Adding more helpful error context
 - Fixing grammar in error strings
 
 **Why Safe:**
+
 - No change to error handling logic
 - Only changes user-facing text
 
 **Hotfix Process:**
+
 ```bash
 git checkout production
 nano internal/handler/errors.go
@@ -216,6 +237,7 @@ make deploy-production
 ```
 
 **Testing Required:**
+
 - ✅ Trigger the error condition
 - ✅ Verify new message appears
 - ✅ Error handling logic unchanged
@@ -229,6 +251,7 @@ These changes have higher risk and **must** go through the full staging → prod
 ### 1. Database Migrations
 
 **Examples:**
+
 - Adding a new table
 - Adding/removing columns
 - Changing column types
@@ -236,12 +259,14 @@ These changes have higher risk and **must** go through the full staging → prod
 - Adding constraints
 
 **Why Not Safe:**
+
 - **Data loss risk**: Wrong migration can corrupt data
 - **Rollback complexity**: Requires database restore
 - **Backward compatibility**: Old app version may break with new schema
 - **Testing required**: Must test migration on staging database first
 
 **Full Deployment Process:**
+
 ```bash
 # 1. Create migration on develop
 git checkout develop
@@ -272,6 +297,7 @@ make deploy-production
 ```
 
 **Testing Required:**
+
 - ✅ Migration runs successfully on staging
 - ✅ Existing data is not affected
 - ✅ New schema is correct
@@ -280,7 +306,7 @@ make deploy-production
 
 > [!CAUTION]
 > **Never hotfix migrations**
-> 
+>
 > Database migrations can cause irreversible data loss. Always test on staging first and have a backup plan.
 
 ---
@@ -288,17 +314,20 @@ make deploy-production
 ### 2. API Signature Changes
 
 **Examples:**
+
 - Adding a required parameter to an endpoint
 - Changing response structure
 - Renaming fields in JSON responses
 - Changing HTTP status codes
 
 **Why Not Safe:**
+
 - **Breaking changes**: Existing clients (Discord bot, Streamer.bot) may break
 - **Integration testing**: Need to test all clients against new API
 - **Rollback complexity**: Clients may have already updated
 
 **Full Deployment Process:**
+
 ```bash
 # 1. Make changes on develop
 git checkout develop
@@ -328,6 +357,7 @@ make deploy-production
 ```
 
 **Testing Required:**
+
 - ✅ All API clients tested against new signatures
 - ✅ Backward compatibility verified (if applicable)
 - ✅ Error handling tested
@@ -338,17 +368,20 @@ make deploy-production
 ### 3. Dependency Updates
 
 **Examples:**
+
 - Updating Go dependencies (`go get -u`)
 - Updating Docker base image version
 - Adding new external libraries
 
 **Why Not Safe:**
+
 - **Compatibility issues**: New versions may have breaking changes
 - **Build required**: Can't be done with just config changes
 - **Security risks**: New dependencies may have vulnerabilities
 - **Testing needed**: Behavior may change subtly
 
 **Full Deployment Process:**
+
 ```bash
 # 1. Update dependencies on develop
 git checkout develop
@@ -380,6 +413,7 @@ make deploy-production
 ```
 
 **Testing Required:**
+
 - ✅ All tests pass
 - ✅ No new vulnerabilities (`go list -m -json all | nancy sleuth`)
 - ✅ No performance degradation
@@ -390,18 +424,21 @@ make deploy-production
 ### 4. Refactoring / Code Restructuring
 
 **Examples:**
+
 - Moving functions between files
 - Renaming internal variables/functions
 - Changing function signatures (internal)
 - Restructuring packages
 
 **Why Not Safe:**
+
 - **Regression risk**: May introduce subtle bugs
 - **Extensive testing**: Need to verify all affected code paths
 - **Code review**: Should be reviewed by team
 - **Not urgent**: Refactoring is never urgent enough to bypass staging
 
 **Full Deployment Process:**
+
 - **Always** go through develop → staging → production
 - **Always** include comprehensive tests
 - **Never** rush refactoring into production
@@ -411,18 +448,21 @@ make deploy-production
 ### 5. Concurrency / Race Condition Fixes
 
 **Examples:**
+
 - Adding mutexes
 - Changing goroutine behavior
 - Fixing race conditions
 - Modifying transaction handling
 
 **Why Not Safe:**
+
 - **Critical bugs**: Race conditions are hard to test
 - **Production risk**: May cause deadlocks or panics
 - **Testing difficulty**: Race conditions may only appear under load
 - **Staging validation**: Must run under realistic load
 
 **Full Deployment Process:**
+
 ```bash
 # 1. Fix on develop
 git checkout develop
@@ -447,6 +487,7 @@ make deploy-production
 ```
 
 **Testing Required:**
+
 - ✅ Race detector passes (`go test -race`)
 - ✅ Load testing on staging
 - ✅ No deadlocks observed
@@ -457,18 +498,21 @@ make deploy-production
 ### 6. Security Changes
 
 **Examples:**
+
 - Fixing authentication bypass
 - Patching SQL injection
 - Updating API key validation
 - Fixing XSS vulnerabilities
 
 **Why Not Safe:**
+
 - **Security review needed**: Changes must be reviewed carefully
 - **Testing required**: Security fixes can break legitimate use cases
 - **Rollback plan**: If fix breaks functionality, need quick rollback
 - **Coordination**: May need to rotate API keys, notify users
 
 **Full Deployment Process:**
+
 ```bash
 # For CRITICAL security issues (active exploit):
 # Use Emergency Hotfix Process (see below)
@@ -499,6 +543,7 @@ docker compose -f docker-compose.production.yml logs -f app | grep -i "security\
 ```
 
 **Testing Required:**
+
 - ✅ Security vulnerability is fixed
 - ✅ Legitimate use cases still work
 - ✅ No new vulnerabilities introduced
@@ -506,7 +551,7 @@ docker compose -f docker-compose.production.yml logs -f app | grep -i "security\
 
 > [!WARNING]
 > **Critical Security Vulnerabilities**
-> 
+>
 > If there's an **active exploit** happening in production, use the Emergency Hotfix Process. Otherwise, use full deployment cycle.
 
 ---
@@ -726,12 +771,14 @@ docker compose -f docker-compose.production.yml exec -i db psql -U $DB_USER -d $
 Use this checklist when you need to hotfix production in an emergency:
 
 ### Pre-Hotfix
+
 - [ ] Severity assessment: Is this truly an emergency?
 - [ ] Impact: What's broken? How many users affected?
 - [ ] Can we rollback instead of hotfixing forward?
 - [ ] Do we have a recent backup?
 
 ### During Hotfix
+
 - [ ] Create hotfix branch (or work directly on production for true emergency)
 - [ ] Make minimal changes - fix ONLY the critical issue
 - [ ] Test locally (even if just 30 seconds of manual testing)
@@ -741,6 +788,7 @@ Use this checklist when you need to hotfix production in an emergency:
 - [ ] Monitor logs in real-time for 5 minutes
 
 ### Post-Hotfix
+
 - [ ] Verify fix resolves the issue
 - [ ] Check for new errors in logs
 - [ ] Run smoke tests
@@ -750,6 +798,7 @@ Use this checklist when you need to hotfix production in an emergency:
 - [ ] Schedule proper fix with full testing if this was a quick patch
 
 ### If Hotfix Fails
+
 - [ ] Rollback immediately
 - [ ] Restore database backup if needed
 - [ ] Investigate root cause
@@ -763,35 +812,35 @@ Use this checklist when you need to hotfix production in an emergency:
 ```mermaid
 graph TD
     Start[Change Needed] --> Emergency{Is Production Down?}
-    
+
     Emergency -->|Yes| Critical[Critical Emergency]
     Emergency -->|No| Type{What Type of Change?}
-    
+
     Critical --> EmergencyFix[Emergency Hotfix Process]
     EmergencyFix --> Deploy[Deploy Immediately]
     Deploy --> MonitorClose[Monitor Closely]
     MonitorClose --> BackportLater[Backport to Develop/Staging Later]
-    
+
     Type -->|Config/Env Var| SafeHotfix[Safe to Hotfix]
     Type -->|UI Text/Typo| SafeHotfix
     Type -->|Log Level| SafeHotfix
-    
+
     Type -->|Bug Fix| Staging[Test on Staging First]
     Type -->|Logic Change| Staging
     Type -->|New Feature| Staging
-    
+
     Type -->|Database Migration| FullDeploy[Full Deployment Required]
     Type -->|API Changes| FullDeploy
     Type -->|Dependencies| FullDeploy
     Type -->|Refactoring| FullDeploy
     Type -->|Concurrency Fix| FullDeploy
-    
+
     SafeHotfix --> HotfixBranch[Create Hotfix Branch]
     HotfixBranch --> QuickTest[Quick Local Test]
     QuickTest --> DirectDeploy[Deploy to Production]
     DirectDeploy --> Verify[Smoke Test]
     Verify --> Backport[Backport to Dev/Staging]
-    
+
     Staging --> DevBranch[Fix on Develop]
     DevBranch --> MergeStaging[Merge to Staging]
     MergeStaging --> TestStaging[Test on Staging]
@@ -800,7 +849,7 @@ graph TD
     FixIssues --> MergeStaging
     StagingOK -->|Yes| MergeProd[Merge to Production]
     MergeProd --> DeployProd[Deploy Production]
-    
+
     FullDeploy --> DevBranch
 ```
 

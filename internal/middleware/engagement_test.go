@@ -119,10 +119,7 @@ func TestUserIDKey(t *testing.T) {
 	})
 }
 
-// Note: Full middleware integration tests are better suited for integration tests
-// or end-to-end tests where you can properly test the async goroutine behavior
-// and mock the full progression.Service interface. These unit tests focus on
-// the synchronous, deterministic helper functions.
+// Unit tests focus on synchronous helpers; use integration tests for async middleware behavior.
 
 // MockEventBus is a mock implementation of event.Bus
 type MockEventBus struct {

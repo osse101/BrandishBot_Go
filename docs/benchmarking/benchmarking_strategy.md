@@ -53,21 +53,25 @@ Based on code analysis, the following areas are performance-critical:
 > These requirements guide the benchmarking implementation:
 
 ### Performance Goals
+
 - **Primary Focus:** Latency (endpoint-to-response time)
 - **Target Throughput:** ~20 requests/second (current expected load)
 - **Scope:** Hot path benchmarking (critical endpoints), efficient but lazy benchmarking for others
 
 ### Benchmarking Approach
+
 - **Database:** Mock DB for benchmarks (faster, more reproducible)
 - **Middleware:** Include middleware overhead (full endpoint-to-response measurement)
 - **Individual Components:** Also measure individual steps on the path separately
 
 ### Environment
+
 - **Primary:** Dev environment for regular testing
 - **Secondary:** Staging for reference measurements
 - **Production:** Profiling only (debugging purposes)
 
 ### Deliverables
+
 - **Makefile Commands:** Simple, easy-to-use benchmark targets
 - **Profiling Guide:** Documentation for the team
 - **CI/CD:** Nightly benchmarks against master (non-blocking)
@@ -93,6 +97,7 @@ func BenchmarkHandleMessage(b *testing.B) {
 ### Supplementary Libraries
 
 1. **[benchstat](https://pkg.go.dev/golang.org/x/perf/cmd/benchstat)** - Statistical comparison
+
    ```bash
    benchstat old.txt new.txt
    ```
@@ -102,6 +107,7 @@ func BenchmarkHandleMessage(b *testing.B) {
    - Access at `/debug/pprof/` when server running
 
 3. **[vegeta](https://github.com/tsenart/vegeta)** - HTTP load testing
+
    ```bash
    echo "POST http://localhost:8080/message/handle" | vegeta attack -rate=100 -duration=30s | vegeta report
    ```
@@ -146,6 +152,7 @@ BrandishBot_Go/
 **Target:** Individual functions with mocked dependencies
 
 **Examples:**
+
 - Validation logic
 - Cache hit/miss paths
 - Item lookup optimization (already exists in `utils/inventory_test.go`)
@@ -155,7 +162,7 @@ BrandishBot_Go/
 func BenchmarkGetItemByNameCached(b *testing.B) {
     s := setupServiceWithCache()
     ctx := context.Background()
-    
+
     b.ResetTimer()
     for i := 0; i < b.N; i++ {
         s.getItemByNameCached(ctx, "lootbox0")
@@ -168,6 +175,7 @@ func BenchmarkGetItemByNameCached(b *testing.B) {
 **Target:** Full service operations with real PostgreSQL
 
 **Examples:**
+
 - `HandleIncomingMessage` with user creation
 - `AddItem` transaction performance
 - `GetInventory` with large inventories
@@ -176,7 +184,7 @@ func BenchmarkGetItemByNameCached(b *testing.B) {
 func BenchmarkHandleIncomingMessage_NewUser(b *testing.B) {
     db := setupTestDB(b) // testcontainers
     service := user.NewService(...)
-    
+
     b.ResetTimer()
     for i := 0; i < b.N; i++ {
         service.HandleIncomingMessage(ctx, "twitch", fmt.Sprintf("user_%d", i), "testuser", "hi")
@@ -191,7 +199,7 @@ func BenchmarkHandleIncomingMessage_NewUser(b *testing.B) {
 ```go
 func BenchmarkHandleMessageHandler(b *testing.B) {
     handler := HandleMessageHandler(mockService, mockProgression, mockBus)
-    
+
     b.ResetTimer()
     for i := 0; i < b.N; i++ {
         req := httptest.NewRequest("POST", "/message/handle", body)
@@ -216,12 +224,14 @@ curl http://localhost:8080/debug/pprof/profile?seconds=30 > cpu.prof
 ## Key Metrics to Track
 
 ### Per-Operation Metrics
+
 - **Latency** (p50, p95, p99)
 - **Throughput** (ops/sec)
 - **Memory allocations** (`-benchmem`)
 - **Bytes allocated per operation**
 
 ### System Metrics (During Load Tests)
+
 - **Database connection pool utilization**
 - **Goroutine count**
 - **Heap allocations**
@@ -245,21 +255,21 @@ func BenchmarkExample(b *testing.B) {
     // Setup (not timed)
     ctx := context.Background()
     service := setupService()
-    
+
     // Reset timer to exclude setup
     b.ResetTimer()
-    
+
     // Run benchmark
     for i := 0; i < b.N; i++ {
         b.StopTimer()  // Pause for expensive setup if needed
         input := generateInput(i)
         b.StartTimer()
-        
+
         result, err := service.Operation(ctx, input)
         if err != nil {
             b.Fatal(err)
         }
-        
+
         // Prevent compiler optimization
         _ = result
     }
@@ -278,7 +288,7 @@ func BenchmarkInventoryOperations(b *testing.B) {
         {"Medium", 100},
         {"Large", 1000},
     }
-    
+
     for _, tc := range cases {
         b.Run(tc.name, func(b *testing.B) {
             // Benchmark with tc.slotSize
@@ -381,29 +391,29 @@ name: Nightly Benchmarks
 
 on:
   schedule:
-    - cron: '0 2 * * *'  # 2 AM UTC daily
-  workflow_dispatch:  # Allow manual trigger
+    - cron: '0 2 * * *' # 2 AM UTC daily
+  workflow_dispatch: # Allow manual trigger
 
 jobs:
   benchmark:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
           go-version: '1.21'
-      
+
       - name: Run benchmarks
         run: make bench-save
-      
+
       - name: Upload results
         uses: actions/upload-artifact@v3
         with:
           name: benchmark-results
           path: benchmarks/results/
-      
+
       - name: Compare with previous
         continue-on-error: true
         run: |
@@ -415,17 +425,20 @@ jobs:
 ## Success Metrics
 
 ### Phase 1: Baseline (First 2 weeks)
+
 - [ ] Benchmarks for all handler endpoints
 - [ ] Service layer operation benchmarks
 - [ ] Database query benchmarks
 - [ ] Document baseline results
 
 ### Phase 2: Optimization (Ongoing)
+
 - [ ] Identify operations with >10ms p95 latency
 - [ ] Reduce memory allocations by 20%
 - [ ] Achieve <5ms p99 for cached operations
 
 ### Phase 3: Monitoring (Long-term)
+
 - [ ] Automated benchmark comparison on PRs
 - [ ] Performance regression alerts
 - [ ] Quarterly performance reviews
@@ -433,15 +446,18 @@ jobs:
 ## Verification Plan
 
 ### 1. Validate Benchmark Infrastructure
+
 - Run existing benchmarks: `go test -bench=. ./internal/utils`
 - Verify profiling endpoints: `curl http://localhost:8080/debug/pprof/`
 
 ### 2. Create Sample Benchmarks
+
 - Add handler benchmark for `HandleMessageHandler`
 - Add service benchmark for `HandleIncomingMessage`
 - Run and document results
 
 ### 3. Load Testing
+
 - Create vegeta target file for `/message/handle`
 - Run 60s load test at 50 req/sec
 - Collect CPU profile during load test

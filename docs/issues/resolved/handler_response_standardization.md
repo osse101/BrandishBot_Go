@@ -41,6 +41,6 @@ The codebase currently contains duplicate logic for encoding JSON responses and 
 
 ## Success Criteria
 
--   Reduction in lines of code in handler files.
--   Consistent usage of `respondJSON` and `respondError`.
--   No regression in API behavior.
+- Reduction in lines of code in handler files.
+- Consistent usage of `respondJSON` and `respondError`.
+- No regression in API behavior.

@@ -20,6 +20,7 @@ db-1  | 2025-12-21 18:01:30.571 UTC [63] FATAL:  database "dev" does not exist
 ## Configuration
 
 **Correct settings** (per `.env`):
+
 - `DB_USER=dev`
 - `DB_NAME=app`
 - `DB_HOST=db` (in Docker) or `localhost` (local)
@@ -30,6 +31,7 @@ All application code uses these values correctly.
 ## Investigation Results
 
 ### ✅ Verified Working
+
 - App successfully connects to `app` database
 - Migrations run successfully
 - All healthchecks pass (`/healthz` returns 200)
@@ -37,6 +39,7 @@ All application code uses these values correctly.
 - No hardcoded "dev" database references in code
 
 ### ❌ Ruled Out
+
 - **Deploy script**: Fixed to load `.env` properly (commit e1fdea1)
 - **Hardcoded values**: No `DB_NAME=dev` or `database=dev` found in codebase
 - **Discord bot**: Does not connect to database (API-only)
@@ -45,6 +48,7 @@ All application code uses these values correctly.
 ### 🔍 Suspected Sources
 
 Unknown process making connections every 10 seconds. Possibilities:
+
 1. **Health monitoring tool** running in background
 2. **IDE database plugin** with old connection settings
 3. **Previous docker-compose network** with lingering connections

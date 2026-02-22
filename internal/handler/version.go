@@ -16,9 +16,9 @@ type VersionInfo struct {
 
 // Build-time variables (injected via ldflags)
 var (
-	Version   = "dev"     // Set via -X flag at build time
-	BuildTime = "unknown" // Set via -X flag at build time
-	GitCommit = "unset"   // Set via -X flag at build time
+	Version   = "dev"     // App version
+	BuildTime = "unknown" // Build timestamp
+	GitCommit = "unset"   // Git commit hash
 )
 
 // HandleVersion returns version information about the application
@@ -32,7 +32,7 @@ func HandleVersion() http.HandlerFunc {
 			GitCommit: GitCommit,
 		}
 
-		respondJSON(w, http.StatusOK, info)
+		RespondJSON(w, http.StatusOK, info)
 	}
 }
 

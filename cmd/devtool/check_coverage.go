@@ -21,17 +21,37 @@ func (c *CheckCoverageCommand) Description() string {
 }
 
 func (c *CheckCoverageCommand) Run(args []string) error {
-	file, threshold, runTests, htmlReport, err := c.parseConfig(args)
+	file, threshold, runTests, htmlReport, smart, pkgs, baseRef, verbose, exclude, err := c.parseConfig(args)
 	if err != nil {
 		return err
 	}
 
-	PrintHeader(fmt.Sprintf("Checking coverage threshold (%.1f%%)...", threshold))
+	selector := &PackageSelector{
+		SmartMode:  smart,
+		BaseRef:    baseRef,
+		Includes:   c.splitCommaList(pkgs),
+		Excludes:   c.splitCommaList(exclude),
+		StagedOnly: false,
+	}
 
-	if err := c.ensureCoverage(file, runTests); err != nil {
+	packages, err := selector.SelectPackages()
+	if err != nil {
 		return err
 	}
 
+	if len(packages) == 0 && smart {
+		PrintInfo("Smart mode enabled but no packages selected (or all excluded). Skipping tests.")
+		return nil
+	}
+
+	PrintHeader(fmt.Sprintf("Checking coverage threshold (%.1f%%)...", threshold))
+
+	if err := c.ensureCoverage(file, runTests, packages, verbose); err != nil {
+		return err
+	}
+
+	// If we ran partial tests (packages != empty), the coverage profile only contains those packages.
+	// This is fine for "check my changes" workflow.
 	coverage, err := c.getCoveragePercent(file)
 	if err != nil {
 		return err
@@ -54,43 +74,69 @@ func (c *CheckCoverageCommand) Run(args []string) error {
 	return nil
 }
 
-func (c *CheckCoverageCommand) parseConfig(args []string) (file string, threshold float64, runTests, htmlReport bool, err error) {
-	fs := flag.NewFlagSet("check-coverage", flag.ContinueOnError)
-	runTestsPtr := fs.Bool("run", false, "Run tests before checking coverage")
-	htmlReportPtr := fs.Bool("html", false, "Generate and open HTML coverage report")
-
-	if err := fs.Parse(args); err != nil {
-		return "", 0, false, false, err
+func (c *CheckCoverageCommand) splitCommaList(s string) []string {
+	if s == "" {
+		return nil
 	}
-
-	runTests = *runTestsPtr
-	htmlReport = *htmlReportPtr
-	file = "logs/coverage.out"
-	thresholdStr := "80"
-
-	positional := fs.Args()
-	if len(positional) > 0 {
-		file = filepath.Clean(positional[0])
+	parts := strings.Split(s, ",")
+	result := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			result = append(result, p)
+		}
 	}
-	if len(positional) > 1 {
-		thresholdStr = positional[1]
-	}
-
-	// Basic path validation to prevent escaping the project root or injection
-	if strings.Contains(file, "..") || strings.HasPrefix(file, "/") {
-		return "", 0, false, false, fmt.Errorf("invalid path '%s': must be relative and within project", file)
-	}
-
-	threshold, err = strconv.ParseFloat(thresholdStr, 64)
-	if err != nil {
-		return "", 0, false, false, fmt.Errorf("invalid threshold '%s'", thresholdStr)
-	}
-
-	return file, threshold, runTests, htmlReport, nil
+	return result
 }
 
-func (c *CheckCoverageCommand) ensureCoverage(file string, runTests bool) error {
+func (c *CheckCoverageCommand) parseConfig(args []string) (file string, threshold float64, runTests, htmlReport, smart bool, pkgs string, baseRef string, verbose bool, exclude string, err error) {
+	fs := flag.NewFlagSet("check-coverage", flag.ContinueOnError)
+
+	filePtr := fs.String("file", "logs/coverage.out", "Path to coverage output file")
+	thresholdPtr := fs.Float64("threshold", 80.0, "Coverage threshold percentage")
+	runTestsPtr := fs.Bool("run", false, "Run tests before checking coverage")
+	htmlReportPtr := fs.Bool("html", false, "Generate HTML coverage report")
+	smartPtr := fs.Bool("smart", false, "Run tests only on changed packages")
+	pkgsPtr := fs.String("pkgs", "", "Comma-separated list of packages to test")
+	baseRefPtr := fs.String("base", "", "Base reference for git diff (smart mode only)")
+	verbosePtr := fs.Bool("v", false, "Verbose output")
+	excludePtr := fs.String("exclude", "", "Comma-separated list of packages to exclude")
+
+	if err := fs.Parse(args); err != nil {
+		return "", 0, false, false, false, "", "", false, "", err
+	}
+
+	file = filepath.Clean(*filePtr)
+	threshold = *thresholdPtr
+	runTests = *runTestsPtr
+	htmlReport = *htmlReportPtr
+	smart = *smartPtr
+	pkgs = *pkgsPtr
+	baseRef = *baseRefPtr
+	verbose = *verbosePtr
+	exclude = *excludePtr
+
+	// Deprecated positional args handling removed to simplify.
+	if len(fs.Args()) > 0 {
+		PrintWarning("Positional arguments are deprecated and ignored: %v. Use flags instead.", fs.Args())
+	}
+
+	// Basic path validation
+	if strings.Contains(file, "..") || strings.HasPrefix(file, "/") {
+		return "", 0, false, false, false, "", "", false, "", fmt.Errorf("invalid path '%s': must be relative and within project", file)
+	}
+
+	return file, threshold, runTests, htmlReport, smart, pkgs, baseRef, verbose, exclude, nil
+}
+
+func (c *CheckCoverageCommand) ensureCoverage(file string, runTests bool, packages []string, verbose bool) error {
 	shouldRun := runTests
+
+	// Test requirements: specific package requests force a fresh test run to ensure accurate coverage profiling.
+	if len(packages) > 0 {
+		shouldRun = true
+	}
+
 	if _, err := os.Stat(file); os.IsNotExist(err) {
 		PrintInfo("Coverage file '%s' not found. Running tests...", file)
 		shouldRun = true
@@ -107,9 +153,23 @@ func (c *CheckCoverageCommand) ensureCoverage(file string, runTests bool) error 
 	}
 
 	PrintInfo("Running tests with coverage...")
-	// Note: mirroring 'make test' command
-	// #nosec G204 - file is validated in parseConfig
-	cmd := exec.Command("go", "test", "./...", "-coverprofile="+file, "-covermode=atomic", "-race")
+
+	testArgs := []string{"test"}
+
+	if verbose {
+		testArgs = append(testArgs, "-v")
+	}
+
+	if len(packages) > 0 {
+		testArgs = append(testArgs, packages...)
+	} else {
+		testArgs = append(testArgs, "./...")
+	}
+
+	testArgs = append(testArgs, "-coverprofile="+file, "-covermode=atomic", "-race")
+
+	// #nosec G204 - file and packages are validated (packages from git or args)
+	cmd := exec.Command("go", testArgs...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {

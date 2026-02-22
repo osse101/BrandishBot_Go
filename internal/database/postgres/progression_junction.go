@@ -23,9 +23,7 @@ func (r *progressionRepository) GetDependents(ctx context.Context, nodeID int) (
 	if err != nil {
 		return nil, fmt.Errorf("failed to query dependents: %w", err)
 	}
-	// Note: although these look identical, the row types are different (GetNodePrerequisitesRow vs GetNodeDependentsRow)
-	// so the linter detects the logic but we can't easily unify the mapping loop without interface/generics.
-	// We'll rename local variables significantly to break dupl token sequence.
+	// Different row types (Prerequisites vs Dependents) prevent loop unification; renamed vars to bypass dupl linter.
 	finalNodes := make([]*domain.ProgressionNode, 0, len(rows))
 	for _, dr := range rows {
 		finalNodes = append(finalNodes, mapProgressionNodeFields(dr.ID, dr.NodeKey, dr.NodeType, dr.DisplayName, dr.Description, dr.MaxLevel, dr.UnlockCost, dr.Tier, dr.Size, dr.Category, dr.SortOrder, dr.CreatedAt))

@@ -50,7 +50,7 @@ type Querier interface {
 	CreateUnlockProgress(ctx context.Context) (int32, error)
 	CreateUser(ctx context.Context, username string) (uuid.UUID, error)
 	CreateVotingSession(ctx context.Context) (int32, error)
-	DeactivateAllQuests(ctx context.Context) error
+	DeleteAllQuests(ctx context.Context) error
 	DeleteInventory(ctx context.Context, userID uuid.UUID) error
 	DeleteSubscription(ctx context.Context, arg DeleteSubscriptionParams) error
 	DeleteUser(ctx context.Context, userID uuid.UUID) error
@@ -69,6 +69,7 @@ type Querier interface {
 	GetActiveTrapForUpdate(ctx context.Context, targetID uuid.UUID) (UserTrap, error)
 	GetActiveUnlockProgress(ctx context.Context) (ProgressionUnlockProgress, error)
 	GetActiveVoting(ctx context.Context) (ProgressionVoting, error)
+	GetAllBonusModifiers(ctx context.Context) ([]GetAllBonusModifiersRow, error)
 	// Crafting Recipe Repository Queries
 	GetAllCraftingRecipes(ctx context.Context) ([]GetAllCraftingRecipesRow, error)
 	GetAllDisassembleRecipes(ctx context.Context) ([]GetAllDisassembleRecipesRow, error)
@@ -76,11 +77,13 @@ type Querier interface {
 	GetAllItems(ctx context.Context) ([]GetAllItemsRow, error)
 	GetAllJobs(ctx context.Context) ([]Job, error)
 	GetAllNodes(ctx context.Context) ([]GetAllNodesRow, error)
-	GetAllNodesByFeatureKey(ctx context.Context, modifierConfig []byte) ([]GetAllNodesByFeatureKeyRow, error)
+	GetAllNodesByFeatureKey(ctx context.Context, featureKey string) ([]GetAllNodesByFeatureKeyRow, error)
 	GetAllRecipes(ctx context.Context) ([]GetAllRecipesRow, error)
 	GetAllTiers(ctx context.Context) ([]SubscriptionTier, error)
 	GetAllUnlocks(ctx context.Context) ([]ProgressionUnlock, error)
 	GetAssociatedUpgradeRecipeID(ctx context.Context, disassembleRecipeID int32) (int32, error)
+	GetBonusModifiers(ctx context.Context, featureKey string) ([]GetBonusModifiersRow, error)
+	GetBonusModifiersWithLevel(ctx context.Context, featureKey string) ([]GetBonusModifiersWithLevelRow, error)
 	GetBuyablePrices(ctx context.Context) ([]GetBuyablePricesRow, error)
 	GetClaimedTokenForSource(ctx context.Context, arg GetClaimedTokenForSourceParams) (GetClaimedTokenForSourceRow, error)
 	// Compost Bin Queries
@@ -117,7 +120,8 @@ type Querier interface {
 	GetItemsByIDs(ctx context.Context, dollar_1 []int32) ([]GetItemsByIDsRow, error)
 	GetItemsByNames(ctx context.Context, dollar_1 []string) ([]GetItemsByNamesRow, error)
 	GetJobByKey(ctx context.Context, jobKey string) (Job, error)
-	GetJobLevelBonuses(ctx context.Context, arg GetJobLevelBonusesParams) ([]JobLevelBonuse, error)
+	GetJobFeatureUnlockConfigs(ctx context.Context) ([]GetJobFeatureUnlockConfigsRow, error)
+	GetJobUnlockConfig(ctx context.Context, featureKey string) (GetJobUnlockConfigRow, error)
 	GetLastCompletedExpedition(ctx context.Context) (Expedition, error)
 	GetLastCooldown(ctx context.Context, arg GetLastCooldownParams) (pgtype.Timestamptz, error)
 	GetLastCooldownForUpdate(ctx context.Context, arg GetLastCooldownForUpdateParams) (pgtype.Timestamptz, error)
@@ -125,7 +129,7 @@ type Querier interface {
 	GetLogEventsByType(ctx context.Context, arg GetLogEventsByTypeParams) ([]Event, error)
 	GetLogEventsByUser(ctx context.Context, arg GetLogEventsByUserParams) ([]Event, error)
 	GetMostRecentSession(ctx context.Context) (GetMostRecentSessionRow, error)
-	GetNodeByFeatureKey(ctx context.Context, modifierConfig []byte) (GetNodeByFeatureKeyRow, error)
+	GetNodeByFeatureKey(ctx context.Context, featureKey string) (GetNodeByFeatureKeyRow, error)
 	GetNodeByID(ctx context.Context, id int32) (GetNodeByIDRow, error)
 	GetNodeByKey(ctx context.Context, nodeKey string) (GetNodeByKeyRow, error)
 	GetNodeDependents(ctx context.Context, prerequisiteNodeID int32) ([]GetNodeDependentsRow, error)
@@ -137,7 +141,7 @@ type Querier interface {
 	GetSellablePrices(ctx context.Context) ([]GetSellablePricesRow, error)
 	GetSessionByID(ctx context.Context, id int32) (GetSessionByIDRow, error)
 	GetSessionOptions(ctx context.Context, sessionID int32) ([]GetSessionOptionsRow, error)
-	GetSessionVoters(ctx context.Context, sessionID pgtype.Int4) ([]string, error)
+	GetSessionVoters(ctx context.Context, sessionID int32) ([]string, error)
 	// Get top users by mega jackpots hit for a time period
 	GetSlotsLeaderboardByMegaJackpots(ctx context.Context, arg GetSlotsLeaderboardByMegaJackpotsParams) ([]GetSlotsLeaderboardByMegaJackpotsRow, error)
 	// Get top users by net profit (total payout - total bet) for a time period
@@ -214,7 +218,6 @@ type Querier interface {
 	RelockNode(ctx context.Context, arg RelockNodeParams) error
 	ResetCompostBin(ctx context.Context, userID uuid.UUID) error
 	ResetDailyJobXP(ctx context.Context) (pgconn.CommandTag, error)
-	ResetInactiveQuestProgress(ctx context.Context) (pgconn.CommandTag, error)
 	ResumeVotingSession(ctx context.Context, id int32) error
 	SaveExpeditionJournalEntry(ctx context.Context, arg SaveExpeditionJournalEntryParams) error
 	SaveExpeditionParticipantRewards(ctx context.Context, arg SaveExpeditionParticipantRewardsParams) error

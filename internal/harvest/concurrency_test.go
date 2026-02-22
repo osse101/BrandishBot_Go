@@ -55,7 +55,7 @@ func (m *mockEventBus) CallCount() int {
 	return m.callCount
 }
 
-func setupHarvestService(t *testing.T, bus *mockEventBus) (Service, *mocks.MockRepositoryHarvestRepository, *mocks.MockRepositoryUser, *mocks.MockProgressionService, *mocks.MockJobService) {
+func setupHarvestService(t *testing.T, bus *mockEventBus) (Service, *mocks.MockRepositoryHarvestRepository, *mocks.MockRepositoryUser, *mocks.MockProgressionService) {
 	mockHarvestRepo := mocks.NewMockRepositoryHarvestRepository(t)
 	mockUserRepo := new(mocks.MockRepositoryUser)
 	mockProgressionSvc := new(mocks.MockProgressionService)
@@ -74,7 +74,7 @@ func setupHarvestService(t *testing.T, bus *mockEventBus) (Service, *mocks.MockR
 	})
 
 	svc := NewService(mockHarvestRepo, mockUserRepo, mockProgressionSvc, mockJobSvc, rp)
-	return svc, mockHarvestRepo, mockUserRepo, mockProgressionSvc, mockJobSvc
+	return svc, mockHarvestRepo, mockUserRepo, mockProgressionSvc
 }
 
 func TestHarvest_GracefulShutdown(t *testing.T) {
@@ -82,7 +82,7 @@ func TestHarvest_GracefulShutdown(t *testing.T) {
 	bus := &mockEventBus{
 		publishDelay: 100 * time.Millisecond,
 	}
-	svc, mockHarvestRepo, mockUserRepo, mockProgressionSvc, mockJobSvc := setupHarvestService(t, bus)
+	svc, mockHarvestRepo, mockUserRepo, mockProgressionSvc := setupHarvestService(t, bus)
 
 	// Setup User and Harvest State
 	userID := "user-shutdown-test"
@@ -101,8 +101,8 @@ func TestHarvest_GracefulShutdown(t *testing.T) {
 	mockTx.On("GetHarvestStateWithLock", mock.Anything, userID).Return(&domain.HarvestState{LastHarvestedAt: lastHarvested}, nil)
 
 	// Job Bonus
-	mockJobSvc.On("GetJobBonus", mock.Anything, userID, "farmer", mock.Anything).Return(0.0, nil).Maybe()
-
+	mockProgressionSvc.On("GetModifiedValue", mock.Anything, mock.Anything, "harvest_yield", 1.0).Return(1.0, nil).Maybe()
+	mockProgressionSvc.On("GetModifiedValue", mock.Anything, mock.Anything, "growth_speed", 1.0).Return(1.0, nil).Maybe()
 	// Progression/Items
 	mockProgressionSvc.On("IsItemUnlocked", mock.Anything, mock.Anything).Return(true, nil).Maybe()
 
@@ -124,9 +124,7 @@ func TestHarvest_GracefulShutdown(t *testing.T) {
 
 	assert.NoError(t, err)
 
-	// Should take at least the publish delay (minus minimal overhead)
-	// We use 50ms as a safe lower bound for 100ms delay to account for potential scheduling jitter,
-	// though usually it should be close to 100ms.
+	// Verify Shutdown waits for async tasks. Uses 50ms lower bound for 100ms delay to account for jitter.
 	assert.GreaterOrEqual(t, elapsed.Milliseconds(), int64(50), "Shutdown should wait for async XP award")
 
 	// Verify bus was called
@@ -136,7 +134,7 @@ func TestHarvest_GracefulShutdown(t *testing.T) {
 func TestHarvest_ContextCancellation(t *testing.T) {
 	// Setup with no significant delay
 	bus := &mockEventBus{}
-	svc, mockHarvestRepo, mockUserRepo, mockProgressionSvc, mockJobSvc := setupHarvestService(t, bus)
+	svc, mockHarvestRepo, mockUserRepo, mockProgressionSvc := setupHarvestService(t, bus)
 
 	// Setup User and Harvest State
 	userID := "user-ctx-test"
@@ -155,8 +153,8 @@ func TestHarvest_ContextCancellation(t *testing.T) {
 	mockTx.On("GetHarvestStateWithLock", mock.Anything, userID).Return(&domain.HarvestState{LastHarvestedAt: lastHarvested}, nil)
 
 	// Job Bonus
-	mockJobSvc.On("GetJobBonus", mock.Anything, userID, "farmer", mock.Anything).Return(0.0, nil).Maybe()
-
+	mockProgressionSvc.On("GetModifiedValue", mock.Anything, mock.Anything, "harvest_yield", 1.0).Return(1.0, nil).Maybe()
+	mockProgressionSvc.On("GetModifiedValue", mock.Anything, mock.Anything, "growth_speed", 1.0).Return(1.0, nil).Maybe()
 	// Progression/Items
 	mockProgressionSvc.On("IsItemUnlocked", mock.Anything, mock.Anything).Return(true, nil).Maybe()
 

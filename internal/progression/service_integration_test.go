@@ -458,9 +458,7 @@ func testSessionLifecycle(ctx context.Context, t *testing.T, svc Service, repo R
 func testZeroCostAutoUnlock(ctx context.Context, t *testing.T, svc Service, repo Repository, pool *pgxpool.Pool) {
 	cleanupProgressionState(ctx, t, pool)
 
-	// Find or create a zero-cost node for testing
-	// For this test, we'll rely on the progression tree having zero-cost nodes
-	// If none exist, we skip this test
+	// Test zero-cost node path using available tree nodes (skips if none exist).
 
 	nodes, err := repo.GetAllNodes(ctx)
 	if err != nil {

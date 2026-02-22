@@ -3,6 +3,7 @@
 This document describes the production deployment strategy for running both staging and production environments on the same server without interference.
 
 ## Table of Contents
+
 - [Overview](#overview)
 - [Environment Isolation Strategy](#environment-isolation-strategy)
 - [Network Isolation](#network-isolation)
@@ -37,13 +38,13 @@ BrandishBot supports running **staging** and **production** environments simulta
 
 Each environment is completely isolated using Docker Compose's project separation:
 
-| Isolation Layer | Staging | Production | Result |
-|----------------|---------|------------|--------|
-| **Docker Compose File** | `docker-compose.staging.yml` | `docker-compose.production.yml` | Separate container orchestration |
-| **Docker Network** | `backend-staging` | `backend-production` | No network communication between environments |
-| **Docker Volume** | `pgdata-staging` | `pgdata-production` | Separate databases |
-| **Container Names** | `brandishbot_go-app-staging-1` | `brandishbot_go-app-production-1` | No name conflicts |
-| **Port Mapping** | `8081:8080` (app)<br/>`5433:5432` (db) | `8080:8080` (app)<br/>*not exposed* (db) | No port conflicts |
+| Isolation Layer         | Staging                                | Production                               | Result                                        |
+| ----------------------- | -------------------------------------- | ---------------------------------------- | --------------------------------------------- |
+| **Docker Compose File** | `docker-compose.staging.yml`           | `docker-compose.production.yml`          | Separate container orchestration              |
+| **Docker Network**      | `backend-staging`                      | `backend-production`                     | No network communication between environments |
+| **Docker Volume**       | `pgdata-staging`                       | `pgdata-production`                      | Separate databases                            |
+| **Container Names**     | `brandishbot_go-app-staging-1`         | `brandishbot_go-app-production-1`        | No name conflicts                             |
+| **Port Mapping**        | `8081:8080` (app)<br/>`5433:5432` (db) | `8080:8080` (app)<br/>_not exposed_ (db) | No port conflicts                             |
 
 ### Container Architecture
 
@@ -56,7 +57,7 @@ graph TB
         PA -->|Internal Network| PDB
         PD -->|API Calls| PA
     end
-    
+
     subgraph Staging["Staging Environment (Port 8081)"]
         SA[App Container<br/>brandishbot:latest-staging]
         SD[Discord Bot Container<br/>brandishbot-discord:latest-staging]
@@ -64,10 +65,10 @@ graph TB
         SA -->|Internal Network| SDB
         SD -->|API Calls| SA
     end
-    
+
     User -->|http://localhost:8080| PA
     Tester -->|http://localhost:8081| SA
-    
+
     style Production fill:#ffcccc
     style Staging fill:#ccffcc
 ```
@@ -81,6 +82,7 @@ graph TB
 Each environment has its own isolated bridge network:
 
 **Staging Network:**
+
 ```yaml
 networks:
   backend-staging:
@@ -88,6 +90,7 @@ networks:
 ```
 
 **Production Network:**
+
 ```yaml
 networks:
   backend-production:
@@ -122,12 +125,12 @@ docker network inspect brandishbot_go_backend-production
 
 ### Port Mapping
 
-| Environment | Component | Internal Port | External Port | Notes |
-|------------|-----------|---------------|---------------|-------|
-| **Production** | App | 8080 | 8080 | Main production API |
-| **Production** | Database | 5432 | *not exposed* | Security: DB not accessible externally |
-| **Staging** | App | 8080 | 8081 | Mapped to avoid conflict with production |
-| **Staging** | Database | 5432 | 5433 | Exposed for testing/debugging |
+| Environment    | Component | Internal Port | External Port | Notes                                    |
+| -------------- | --------- | ------------- | ------------- | ---------------------------------------- |
+| **Production** | App       | 8080          | 8080          | Main production API                      |
+| **Production** | Database  | 5432          | _not exposed_ | Security: DB not accessible externally   |
+| **Staging**    | App       | 8080          | 8081          | Mapped to avoid conflict with production |
+| **Staging**    | Database  | 5432          | 5433          | Exposed for testing/debugging            |
 
 ### Why These Ports?
 
@@ -161,6 +164,7 @@ docker compose -f docker-compose.production.yml exec db psql -U $DB_USER -d $DB_
 Each environment has its own persistent Docker volume:
 
 **Staging:**
+
 ```yaml
 volumes:
   pgdata-staging:
@@ -168,6 +172,7 @@ volumes:
 ```
 
 **Production:**
+
 ```yaml
 volumes:
   pgdata-production:
@@ -176,12 +181,12 @@ volumes:
 
 ### Database Configuration
 
-| Setting | Staging | Production |
-|---------|---------|------------|
-| **Volume** | `pgdata-staging` | `pgdata-production` |
-| **Data Path** | `/var/lib/docker/volumes/brandishbot_go_pgdata-staging/_data` | `/var/lib/docker/volumes/brandishbot_go_pgdata-production/_data` |
-| **External Access** | ✅ Port 5433 | ❌ Not exposed |
-| **Backups** | Auto on deploy | Auto on deploy |
+| Setting             | Staging                                                       | Production                                                       |
+| ------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------- |
+| **Volume**          | `pgdata-staging`                                              | `pgdata-production`                                              |
+| **Data Path**       | `/var/lib/docker/volumes/brandishbot_go_pgdata-staging/_data` | `/var/lib/docker/volumes/brandishbot_go_pgdata-production/_data` |
+| **External Access** | ✅ Port 5433                                                  | ❌ Not exposed                                                   |
+| **Backups**         | Auto on deploy                                                | Auto on deploy                                                   |
 
 ### Migration Isolation
 
@@ -214,6 +219,7 @@ docker compose -f docker-compose.staging.yml exec db pg_dump -U $DB_USER -d $DB_
 Both environments share the same `.env` file but use different values for certain variables:
 
 **Shared Variables** (same in both environments):
+
 - `DB_USER`
 - `DB_PASSWORD`
 - `DB_NAME`
@@ -222,15 +228,16 @@ Both environments share the same `.env` file but use different values for certai
 
 **Environment-Specific Variables** (set in docker-compose files):
 
-| Variable | Staging | Production |
-|----------|---------|------------|
-| `ENVIRONMENT` | `staging` | `production` |
-| `DB_HOST` | `db` (internal) | `db` (internal) |
-| `API_URL` | `http://app:8080` | `http://app:8080` |
+| Variable      | Staging           | Production        |
+| ------------- | ----------------- | ----------------- |
+| `ENVIRONMENT` | `staging`         | `production`      |
+| `DB_HOST`     | `db` (internal)   | `db` (internal)   |
+| `API_URL`     | `http://app:8080` | `http://app:8080` |
 
 ### Setting Environment Variables
 
 **In `.env` file:**
+
 ```bash
 # Database Configuration
 DB_USER=brandishbot
@@ -246,6 +253,7 @@ DISCORD_TOKEN=your_bot_token
 ```
 
 **In `docker-compose.staging.yml`:**
+
 ```yaml
 environment:
   - ENVIRONMENT=staging
@@ -253,6 +261,7 @@ environment:
 ```
 
 **In `docker-compose.production.yml`:**
+
 ```yaml
 environment:
   - ENVIRONMENT=production
@@ -263,7 +272,7 @@ environment:
 
 > [!WARNING]
 > **Never commit `.env` to version control**
-> 
+>
 > - Add `.env` to `.gitignore` (already configured)
 > - Use `.env.example` as a template
 > - Rotate secrets regularly (especially `API_KEY` and `DB_PASSWORD`)
@@ -276,23 +285,25 @@ environment:
 
 Production gets priority resource allocation:
 
-| Environment | Component | CPU Limit | Memory Limit | CPU Reserved | Memory Reserved |
-|------------|-----------|-----------|--------------|--------------|-----------------|
-| **Production** | App | 2.0 cores | 1 GB | 0.5 cores | 256 MB |
-| **Production** | Discord Bot | 1.0 cores | 512 MB | 0.25 cores | 128 MB |
-| **Production** | Database | 1.0 cores | 1 GB | 0.5 cores | 512 MB |
-| **Staging** | App | 1.0 cores | 512 MB | 0.25 cores | 128 MB |
-| **Staging** | Discord Bot | 0.5 cores | 256 MB | 0.1 cores | 64 MB |
-| **Staging** | Database | *(no limit)* | *(no limit)* | *(none)* | *(none)* |
+| Environment    | Component   | CPU Limit    | Memory Limit | CPU Reserved | Memory Reserved |
+| -------------- | ----------- | ------------ | ------------ | ------------ | --------------- |
+| **Production** | App         | 2.0 cores    | 1 GB         | 0.5 cores    | 256 MB          |
+| **Production** | Discord Bot | 1.0 cores    | 512 MB       | 0.25 cores   | 128 MB          |
+| **Production** | Database    | 1.0 cores    | 1 GB         | 0.5 cores    | 512 MB          |
+| **Staging**    | App         | 1.0 cores    | 512 MB       | 0.25 cores   | 128 MB          |
+| **Staging**    | Discord Bot | 0.5 cores    | 256 MB       | 0.1 cores    | 64 MB           |
+| **Staging**    | Database    | _(no limit)_ | _(no limit)_ | _(none)_     | _(none)_        |
 
 ### Server Resource Requirements
 
 **Minimum Server Specs:**
+
 - **CPU**: 4 cores (to support both environments)
 - **RAM**: 4 GB (production: ~2.5 GB, staging: ~1 GB, system: 0.5 GB)
 - **Disk**: 20 GB (code, images, databases, logs)
 
 **Recommended Server Specs:**
+
 - **CPU**: 6-8 cores
 - **RAM**: 8 GB
 - **Disk**: 50 GB SSD
@@ -352,6 +363,7 @@ nano .env
 ```
 
 **Required variables to set:**
+
 - `DB_USER` / `DB_PASSWORD` / `DB_NAME`
 - `API_KEY` (generate with `openssl rand -hex 32`)
 - `DISCORD_TOKEN` / `DISCORD_APP_ID` / `DISCORD_GUILD_ID`
@@ -541,11 +553,13 @@ docker compose -f docker-compose.staging.yml exec app sh -c 'echo $ENVIRONMENT'
 ### Problem: Port Already in Use
 
 **Symptom:**
+
 ```
 Error: bind: address already in use
 ```
 
 **Solution:**
+
 ```bash
 # Check which process is using the port
 sudo lsof -i :8080
@@ -562,11 +576,13 @@ sudo systemctl stop <service_name>
 ### Problem: Containers Can't Connect to Database
 
 **Symptom:**
+
 ```
 Error: could not connect to database
 ```
 
 **Solution:**
+
 ```bash
 # Check database container is running
 docker compose -f docker-compose.production.yml ps db
@@ -585,12 +601,14 @@ docker compose -f docker-compose.production.yml exec app env | grep DB_HOST
 ### Problem: Staging Can't Access Database on Port 5433
 
 **Symptom:**
+
 ```bash
 psql -h localhost -p 5433 -U $DB_USER -d $DB_NAME
 # Error: could not connect to server
 ```
 
 **Solution:**
+
 ```bash
 # Verify port is exposed in docker-compose.staging.yml
 grep -A 2 "ports:" docker-compose.staging.yml
@@ -606,11 +624,13 @@ docker compose -f docker-compose.staging.yml restart db
 ### Problem: Out of Memory
 
 **Symptom:**
+
 ```
 Error: Cannot allocate memory
 ```
 
 **Solution:**
+
 ```bash
 # Check current memory usage
 docker stats --no-stream
@@ -628,6 +648,7 @@ sudo sync && echo 3 | sudo tee /proc/sys/vm/drop_caches
 **Symptom:** Staging changes appear in production
 
 **Solution:**
+
 ```bash
 # Verify you're on the right branch
 git branch
@@ -650,11 +671,13 @@ make deploy-production
 ### Problem: Disk Space Full
 
 **Symptom:**
+
 ```
 Error: No space left on device
 ```
 
 **Solution:**
+
 ```bash
 # Check disk usage
 df -h
@@ -687,18 +710,21 @@ rm backups/backup_staging_*.sql  # Keep production backups!
 
 > [!NOTE]
 > The current setup runs **two separate Discord bots** (one for staging, one for production).
-> 
+>
 > If you want to use the **same Discord bot** for both environments, you need to route commands based on context:
 
 **Option 1:** Use separate Discord guilds (servers)
+
 - Staging bot in Test Discord Server
 - Production bot in Live Discord Server
 
 **Option 2:** Use command prefixes
+
 - Staging: `/staging-` prefix (e.g., `/staging-inventory`)
 - Production: `/` prefix (e.g., `/inventory`)
 
 **Option 3:** Use a single bot with environment detection
+
 - Modify `internal/discord` to check `ENVIRONMENT` variable
 - Route commands to correct API (`http://app:8080` resolves differently in each network)
 
@@ -735,13 +761,13 @@ docker compose -f docker-compose.staging.yml down
 
 ### Key Isolation Mechanisms
 
-| Mechanism | How It's Achieved | Benefit |
-|-----------|-------------------|---------|
-| **Network Isolation** | Separate Docker bridge networks | Containers can't communicate across environments |
-| **Port Isolation** | Different external port mappings | No port conflicts |
-| **Database Isolation** | Separate Docker volumes | Independent data storage |
-| **Resource Isolation** | Docker resource limits | Production gets priority |
-| **Container Isolation** | Separate compose projects | Independent lifecycle management |
+| Mechanism               | How It's Achieved                | Benefit                                          |
+| ----------------------- | -------------------------------- | ------------------------------------------------ |
+| **Network Isolation**   | Separate Docker bridge networks  | Containers can't communicate across environments |
+| **Port Isolation**      | Different external port mappings | No port conflicts                                |
+| **Database Isolation**  | Separate Docker volumes          | Independent data storage                         |
+| **Resource Isolation**  | Docker resource limits           | Production gets priority                         |
+| **Container Isolation** | Separate compose projects        | Independent lifecycle management                 |
 
 ### Quick Commands Reference
 

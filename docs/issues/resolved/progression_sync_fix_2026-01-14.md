@@ -9,6 +9,7 @@
 **Root Cause:** The `configs` directory was not mounted as a volume in the app container. The app was reading a stale copy baked into the Docker image at build time.
 
 **Evidence:**
+
 - Host file: Hash `0667f115...`, Modified 2026-01-14, Size 7472 bytes
 - Container file: Hash `3200dc35...`, Modified 2026-01-11, Size 6893 bytes
 - Discord container had the volume mount, but app container didn't
@@ -19,7 +20,7 @@
 app:
   volumes:
     - ./logs:/app/logs
-    - ./configs:/app/configs:ro  # <-- Added this line
+    - ./configs:/app/configs:ro # <-- Added this line
 ```
 
 ### 2. Existing Nodes Missing New Structure Fields
@@ -27,6 +28,7 @@ app:
 **Symptom:** All nodes in database had `tier=0`, `size=NULL`, `category=NULL` even though the schema supported these fields
 
 **Root Causes:**
+
 1. The `needsUpdate` comparison in `internal/progression/tree_loader.go:287-291` didn't check tier, size, or category
 2. The `insertNode()` and `updateNode()` functions had these fields commented out (lines 355-358, 383-386)
 
@@ -35,6 +37,7 @@ app:
 **File: `internal/progression/tree_loader.go`**
 
 1. Updated comparison logic (line 286-294):
+
 ```go
 if existing, ok := existingByKey[nodeConfig.Key]; ok {
     needsUpdate := existing.DisplayName != nodeConfig.Name ||
@@ -48,6 +51,7 @@ if existing, ok := existingByKey[nodeConfig.Key]; ok {
 ```
 
 2. Uncommented fields in `insertNode()` (line 347-358):
+
 ```go
 return inserter.InsertNode(ctx, &domain.ProgressionNode{
     NodeKey:     config.Key,
@@ -64,6 +68,7 @@ return inserter.InsertNode(ctx, &domain.ProgressionNode{
 ```
 
 3. Uncommented fields in `updateNode()` (line 374-385):
+
 ```go
 return updater.UpdateNode(ctx, nodeID, &domain.ProgressionNode{
     NodeKey:     config.Key,
@@ -82,9 +87,11 @@ return updater.UpdateNode(ctx, nodeID, &domain.ProgressionNode{
 ## Verification Results
 
 ### Initial State (Before Fixes)
+
 ```sql
 SELECT node_key, tier, size, category FROM progression_nodes LIMIT 3;
 ```
+
 ```
       node_key      | tier | size | category
 --------------------+------+------+----------
@@ -94,6 +101,7 @@ SELECT node_key, tier, size, category FROM progression_nodes LIMIT 3;
 ```
 
 ### After Fixes + Rebuild
+
 ```
 Progression tree sync completed: inserted=0 updated=18 skipped=0 auto_unlocked=0
 ```
@@ -101,6 +109,7 @@ Progression tree sync completed: inserted=0 updated=18 skipped=0 auto_unlocked=0
 ```sql
 SELECT node_key, tier, size, category, unlock_cost FROM progression_nodes ORDER BY sort_order LIMIT 6;
 ```
+
 ```
       node_key       | tier |  size  | category | unlock_cost
 ---------------------+------+--------+----------+-------------
@@ -113,6 +122,7 @@ SELECT node_key, tier, size, category, unlock_cost FROM progression_nodes ORDER 
 ```
 
 ### Sync Detection Test
+
 Changed `item_money` description in config file, restarted app:
 
 ```
@@ -137,6 +147,7 @@ CREATE TABLE progression_nodes (
 ```
 
 SQLC queries also correctly handled these fields in:
+
 - `internal/database/queries/progression.sql` (lines 21-28)
 - Domain model in `internal/domain/progression.go` (lines 16-18)
 

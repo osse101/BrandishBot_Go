@@ -37,65 +37,6 @@ const ArgsJobName = "job_name"
 const ArgsPlatform = "platform"
 
 // ============================================================================
-// Search Mechanic - Probability Thresholds
-// ============================================================================
-
-// SearchSuccessRate defines the probability of finding an item when searching (80%)
-const SearchSuccessRate = 0.8
-
-// SearchCriticalRate defines the probability of a critical success when searching (5%)
-const SearchCriticalRate = 0.05
-
-// SearchNearMissRate defines the probability of a near-miss result when searching (5%)
-const SearchNearMissRate = 0.05
-
-// SearchCriticalFailRate defines the probability of a critical failure when searching (5%)
-const SearchCriticalFailRate = 0.05
-
-// ============================================================================
-// Search Mechanic - Diminishing Returns
-// ============================================================================
-
-// SearchDailyDiminishmentThreshold is the number of searches per day after which returns are diminished
-const SearchDailyDiminishmentThreshold = 6
-
-// SearchDiminishedSuccessRate is the success rate when diminished returns are active (10%)
-const SearchDiminishedSuccessRate = 0.1
-
-// SearchDiminishedXPMultiplier is the XP multiplier when diminished returns are active (10%)
-const SearchDiminishedXPMultiplier = 0.1
-
-// SearchFirstDailyGuaranteedRoll is the roll value that guarantees success for first search (0.0)
-const SearchFirstDailyGuaranteedRoll = 0.0
-
-// ============================================================================
-// Item Handler Constants
-// ============================================================================
-
-// BulkFeedbackThreshold defines the number of lootboxes required to trigger "Nice haul" message
-const BulkFeedbackThreshold = 5
-
-// BlasterTimeoutDuration is the default duration a user is timed out when hit by a blaster
-const BlasterTimeoutDuration = 60 * time.Second
-
-// TrapCooldownDuration is the cooldown after a trap triggers to prevent immediate re-trapping
-const TrapCooldownDuration = 10 * time.Minute
-
-// ============================================================================
-// Resource Generation Constants
-// ============================================================================
-
-// ShovelSticksPerUse defines how many sticks are generated per shovel use
-const ShovelSticksPerUse = 2
-
-// ============================================================================
-// Inventory Limits
-// ============================================================================
-
-// MaxStackSize is the maximum quantity allowed for a single item stack when merging inventories
-const MaxStackSize = 999999
-
-// ============================================================================
 // Validation Error Messages
 // ============================================================================
 

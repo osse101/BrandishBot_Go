@@ -1,7 +1,7 @@
 name: expeditions
 title: Cooperative Multiplayer Adventures
 icon: 🗺️
-color: "#9B59B6"
+color: '#9B59B6'
 
 discord:
   description: |
@@ -28,4 +28,4 @@ discord:
     Use `/expedition-journal [id]` to read the story of a completed expedition!
 
 streamerbot:
-  description: "Expeditions: Cooperative multiplayer adventures! !explore to start/join. Job levels determine success. Earn money/XP/loot."
+  description: 'Expeditions: Cooperative multiplayer adventures! !explore to start/join. Job levels determine success. Earn money/XP/loot.'

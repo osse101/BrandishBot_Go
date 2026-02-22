@@ -23,56 +23,93 @@ export function ProgressionPanel() {
       {/* Voting Controls */}
       <Section title="Voting Controls">
         <div className="flex flex-wrap gap-2">
-          <ActionButton label="Start Voting" onClick={async () => {
-            await apiPost('/api/v1/progression/admin/start-voting');
-            toast.success('Voting started');
-            session.refetch();
-          }} />
-          <ActionButton label="End Voting (Freeze)" onClick={async () => {
-            await apiPost('/api/v1/progression/admin/end-voting');
-            toast.success('Voting frozen');
-            session.refetch();
-          }} />
-          <ActionButton label="Force End Voting" variant="warning" onClick={async () => {
-            await apiPost('/api/v1/progression/admin/force-end-voting');
-            toast.success('Voting force-ended');
-            session.refetch();
-          }} />
-          <ActionButton label="Instant Unlock Leader" onClick={async () => {
-            await apiPost('/api/v1/progression/admin/instant-unlock');
-            toast.success('Leader node unlocked');
-            session.refetch();
-          }} />
+          <ActionButton
+            label="Start Voting"
+            onClick={async () => {
+              await apiPost('/api/v1/progression/admin/start-voting');
+              toast.success('Voting started');
+              session.refetch();
+            }}
+          />
+          <ActionButton
+            label="End Voting (Freeze)"
+            onClick={async () => {
+              await apiPost('/api/v1/progression/admin/end-voting');
+              toast.success('Voting frozen');
+              session.refetch();
+            }}
+          />
+          <ActionButton
+            label="Force End Voting"
+            variant="warning"
+            onClick={async () => {
+              await apiPost('/api/v1/progression/admin/force-end-voting');
+              toast.success('Voting force-ended');
+              session.refetch();
+            }}
+          />
+          <ActionButton
+            label="Instant Unlock Leader"
+            onClick={async () => {
+              await apiPost('/api/v1/progression/admin/instant-unlock');
+              toast.success('Leader node unlocked');
+              session.refetch();
+            }}
+          />
         </div>
       </Section>
 
       {/* Unlock/Relock Node */}
       <Section title="Node Management">
-        <FormRow label="Unlock Node" fields={['node_index']} onSubmit={async (vals) => {
-          await apiPost('/api/v1/progression/admin/unlock', { node_index: Number(vals.node_index) });
-          toast.success('Node unlocked');
-        }} />
-        <FormRow label="Relock Node" fields={['node_index']} onSubmit={async (vals) => {
-          await apiPost('/api/v1/progression/admin/relock', { node_index: Number(vals.node_index) });
-          toast.success('Node relocked');
-        }} />
-        <FormRow label="Add Contribution" fields={['platform', 'username', 'amount']} onSubmit={async (vals) => {
-          await apiPost('/api/v1/progression/admin/contribution', {
-            platform: vals.platform,
-            username: vals.username,
-            amount: Number(vals.amount),
-          });
-          toast.success('Contribution added');
-        }} />
+        <FormRow
+          label="Unlock Node"
+          fields={['node_index']}
+          onSubmit={async (vals) => {
+            await apiPost('/api/v1/progression/admin/unlock', {
+              node_index: Number(vals.node_index),
+            });
+            toast.success('Node unlocked');
+          }}
+        />
+        <FormRow
+          label="Relock Node"
+          fields={['node_index']}
+          onSubmit={async (vals) => {
+            await apiPost('/api/v1/progression/admin/relock', {
+              node_index: Number(vals.node_index),
+            });
+            toast.success('Node relocked');
+          }}
+        />
+        <FormRow
+          label="Add Contribution"
+          fields={['platform', 'username', 'amount']}
+          onSubmit={async (vals) => {
+            await apiPost('/api/v1/progression/admin/contribution', {
+              platform: vals.platform,
+              username: vals.username,
+              amount: Number(vals.amount),
+            });
+            toast.success('Contribution added');
+          }}
+        />
       </Section>
 
       {/* Dangerous Actions */}
       <Section title="Dangerous Actions">
-        <ActionButton label="Reset Tree" variant="danger" onClick={() => setShowResetConfirm(true)} />
-        <ActionButton label="Unlock All Nodes" variant="danger" onClick={async () => {
-          await apiPost('/api/v1/progression/admin/unlock-all');
-          toast.success('All nodes unlocked');
-        }} />
+        <ActionButton
+          label="Reset Tree"
+          variant="danger"
+          onClick={() => setShowResetConfirm(true)}
+        />
+        <ActionButton
+          label="Unlock All Nodes"
+          variant="danger"
+          onClick={async () => {
+            await apiPost('/api/v1/progression/admin/unlock-all');
+            toast.success('All nodes unlocked');
+          }}
+        />
       </Section>
 
       {showResetConfirm && (
@@ -102,7 +139,11 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function ActionButton({ label, variant = 'default', onClick }: {
+function ActionButton({
+  label,
+  variant = 'default',
+  onClick,
+}: {
   label: string;
   variant?: 'default' | 'warning' | 'danger';
   onClick: () => void | Promise<void>;
@@ -138,13 +179,17 @@ function ActionButton({ label, variant = 'default', onClick }: {
   );
 }
 
-function FormRow({ label, fields, onSubmit }: {
+function FormRow({
+  label,
+  fields,
+  onSubmit,
+}: {
   label: string;
   fields: string[];
   onSubmit: (values: Record<string, string>) => Promise<void>;
 }) {
   const [values, setValues] = useState<Record<string, string>>(
-    Object.fromEntries(fields.map(f => [f, '']))
+    Object.fromEntries(fields.map((f) => [f, '']))
   );
   const [loading, setLoading] = useState(false);
   const toast = useToast();
@@ -154,7 +199,7 @@ function FormRow({ label, fields, onSubmit }: {
     setLoading(true);
     try {
       await onSubmit(values);
-      setValues(Object.fromEntries(fields.map(f => [f, ''])));
+      setValues(Object.fromEntries(fields.map((f) => [f, ''])));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Action failed');
     } finally {
@@ -164,12 +209,12 @@ function FormRow({ label, fields, onSubmit }: {
 
   return (
     <form onSubmit={handleSubmit} className="flex items-end gap-2 mb-2">
-      {fields.map(field => (
+      {fields.map((field) => (
         <div key={field} className="flex-1">
           <label className="text-xs text-gray-500 block mb-1">{field}</label>
           <input
             value={values[field]}
-            onChange={e => setValues(v => ({ ...v, [field]: e.target.value }))}
+            onChange={(e) => setValues((v) => ({ ...v, [field]: e.target.value }))}
             className="w-full px-2 py-1.5 bg-gray-800 border border-gray-700 rounded text-sm text-gray-200 focus:outline-none focus:border-blue-500"
             placeholder={field}
           />
@@ -185,4 +230,3 @@ function FormRow({ label, fields, onSubmit }: {
     </form>
   );
 }
-

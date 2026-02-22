@@ -78,11 +78,7 @@ func TestVotingFlow_Complete(t *testing.T) {
 	isUnlocked, _ := repo.IsNodeUnlocked(ctx, winner.NodeDetails.NodeKey, 1)
 	assert.True(t, isUnlocked)
 
-	// Step 8: Verify new session is started
-	// After unlocking lootbox0, 4 options become available:
-	// - money (root child, still available)
-	// - upgrade, disassemble, search (lootbox0 children, now unlocked)
-	// Since 4 options remain (≥2), a new voting session SHOULD be created.
+	// Step 8: Verify new session is started (4 options available: money, upgrade, disassemble, search)
 	time.Sleep(100 * time.Millisecond)
 	newProgress, _ := repo.GetActiveUnlockProgress(ctx)
 	assert.NotNil(t, newProgress)
@@ -161,8 +157,6 @@ func TestVotingFlow_AutoNextSession(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	// After unlocking lootbox0, 4 options become available:
-	// - money (root child, still available)
-	// - upgrade, disassemble, search (lootbox0 children, now unlocked)
 	// Since 4 options remain (≥2), a voting session SHOULD be created.
 	newProgress, _ := repo.GetActiveUnlockProgress(ctx)
 	assert.NotNil(t, newProgress)

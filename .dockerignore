@@ -14,6 +14,7 @@ coverage.html
 
 # Dependencies
 vendor/
+**/node_modules/
 
 # Logs
 logs/
@@ -36,17 +37,37 @@ Dockerfile*
 
 # Documentation (but keep swagger docs needed for build)
 *.md
-docs/
+docs/*
 !docs/swagger/
 
 # Test files
 *_test.go
 testdata/
+mocks/
+tests/
 
 # Temporary files
 tmp/
 temp/
 *.tmp
 
+# C# Client (not needed for docker build)
+client/
+
 # Artifacts (agent brain data)
 .gemini/
+.jules/
+
+# Media files
+media/
+
+# Other directories
+backups/
+benchmarks/
+
+# Admin dashboard build artifacts
+internal/admin/dist/
+web/admin/dist/
+
+# System files
+.DS_Store

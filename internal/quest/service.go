@@ -139,16 +139,13 @@ func (s *service) ResetWeeklyQuests(ctx context.Context) error {
 	now := time.Now().UTC()
 	year, week := now.ISOWeek()
 
-	// Deactivate all active quests
-	if err := s.repo.DeactivateAllQuests(ctx); err != nil {
-		return fmt.Errorf("failed to deactivate quests: %w", err)
+	// Delete all quests (and their progress via cascade)
+	if err := s.repo.DeleteAllQuests(ctx); err != nil {
+		return fmt.Errorf("failed to delete old quests: %w", err)
 	}
 
-	// Delete progress for inactive quests
-	result, err := s.repo.ResetWeeklyQuests(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to reset quest progress: %w", err)
-	}
+	// Progress is already reset via cascade delete
+	result := int64(0)
 
 	// Generate new quests
 	if err := s.GenerateWeeklyQuests(ctx, year, week); err != nil {

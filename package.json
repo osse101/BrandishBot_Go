@@ -1,0 +1,11 @@
+{
+  "name": "brandishbot-go-root",
+  "private": true,
+  "devDependencies": {
+    "prettier": "^3.4.2"
+  },
+  "scripts": {
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  }
+}

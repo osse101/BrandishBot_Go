@@ -29,12 +29,11 @@ func (f *fakeBenchRepository) UpsertUser(ctx context.Context, user *domain.User)
 }
 
 func (f *fakeBenchRepository) GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error) {
-	// Simulate cache miss for new user benchmark
-	return nil, domain.ErrUserNotFound
+	return &domain.User{ID: "bench-user-id", Username: "benchuser"}, nil
 }
 
 func (f *fakeBenchRepository) GetUserByPlatformUsername(ctx context.Context, platform, username string) (*domain.User, error) {
-	return nil, domain.ErrUserNotFound
+	return &domain.User{ID: "bench-user-id", Username: username}, nil
 }
 
 func (f *fakeBenchRepository) GetUserByID(ctx context.Context, userID string) (*domain.User, error) {

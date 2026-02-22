@@ -6,6 +6,7 @@ RESOLVED
 **Resolution Summary:** All recommendations have been implemented. The engagement weight cache TTL was already increased to 5 minutes, and the admin command `/admin-reload-weights` has been added to allow manual cache invalidation.
 
 **Implementation Details:**
+
 - Discord Command: `/admin-reload-weights` added in `cmd_progression_extended.go`
 - API Endpoint: `POST /api/admin/progression/reload-weights` added in `progression.go`
 - Route registered in `server.go`
@@ -17,15 +18,16 @@ RESOLVED
 
 Analysis of caching strategies in the progression system, focusing on engagement weights and unlock threshold caching.
 
-
 ---
 
 ## Cache #1: Engagement Weights
 
 ### Purpose
+
 Cache database-stored engagement metric weights to reduce DB load during high message volume.
 
 ### Implementation
+
 ```go
 // service.go
 type service struct {
@@ -36,11 +38,13 @@ type service struct {
 ```
 
 ### Current Configuration
+
 - **TTL**: 60 seconds
 - **Invalidation**: Time-based expiry only
 - **Thread Safety**: Yes (RWMutex)
 
 ### Usage Pattern
+
 ```
 RecordEngagement("message", 1)
   ↓
@@ -55,10 +59,12 @@ ELSE:
 ### Performance Impact
 
 **Without Cache (theoretical):**
+
 - 100 messages/minute = 100 DB queries for weights
 - 1000 messages/minute = 1000 DB queries
 
 **With Cache (actual):**
+
 - 100 messages/minute = ~2 DB queries (1 initial + 1 refresh)
 - 1000 messages/minute = ~17 DB queries (1 per 60s)
 - **Reduction: 98-99% fewer queries**
@@ -66,6 +72,7 @@ ELSE:
 ### Question: Does 60s TTL Make Sense?
 
 **Analysis:**
+
 - Engagement weights rarely change (only on admin update)
 - If weights change mid-cache, contributions will use old weight for up to 60s
 - **Impact of stale weights**: Minimal
@@ -76,14 +83,15 @@ ELSE:
 
 **Recommendation: TTL can be longer**
 
-| TTL | Pros | Cons |
-|-----|------|------|
-| **60s (current)** | Safe, responsive to changes | 17 DB queries/1000 messages |
-| **5 minutes** | Better performance (3 queries/1000) | 5 min lag on weight updates |
-| **15 minutes** | Excellent performance (1 query/1000) | 15 min lag on updates |
-| **Until manual invalidate** | Best performance (1 query ever) | Requires restart or admin command |
+| TTL                         | Pros                                 | Cons                              |
+| --------------------------- | ------------------------------------ | --------------------------------- |
+| **60s (current)**           | Safe, responsive to changes          | 17 DB queries/1000 messages       |
+| **5 minutes**               | Better performance (3 queries/1000)  | 5 min lag on weight updates       |
+| **15 minutes**              | Excellent performance (1 query/1000) | 15 min lag on updates             |
+| **Until manual invalidate** | Best performance (1 query ever)      | Requires restart or admin command |
 
-**Suggested Change:** 
+**Suggested Change:**
+
 - Increase to **5 minutes** (300s)
 - Add admin command: `/progression reload-weights` for manual invalidate
 - 99.7% reduction in DB queries vs no cache
@@ -94,9 +102,11 @@ ELSE:
 ## Cache #2: Unlock Threshold Cost
 
 ### Purpose
+
 Enable instant unlock detection without DB query per contribution.
 
 ### Implementation
+
 ```go
 type service struct {
     mu               sync.RWMutex
@@ -106,11 +116,13 @@ type service struct {
 ```
 
 ### Current Configuration
+
 - **TTL**: None (manual invalidation only)
 - **Invalidation**: On voting session end (target changes)
 - **Thread Safety**: Yes (RWMutex)
 
 ### Usage Pattern
+
 ```
 AddContribution(amount)
   ↓
@@ -126,6 +138,7 @@ Check cache:
 ### Performance Impact
 
 **Cost of Check:**
+
 - 1 extra DB query per contribution (re-fetch progress)
 - But enables instant unlock detection
 - Alternative: Poll every N seconds (worse)
@@ -133,6 +146,7 @@ Check cache:
 ### Question: Does This Need Expiry?
 
 **Analysis:**
+
 - Cache is set when voting ends and target is chosen
 - Cache is valid until that specific target unlocks
 - Once unlocked, new progress row created (different ID)
@@ -157,11 +171,13 @@ Check cache:
 **Recommendation: No expiry needed**
 
 This cache is **event-driven**, not time-driven. It should be invalidated by:
+
 - Unlock completion (new progress created)
 - Admin target override (set cache to new values)
 - Never by time
 
 **Suggested Changes:**
+
 - Remove any time-based expiry logic (there is none currently ✓)
 - Add cache invalidation to admin override commands
 - Document that cache is session-scoped
@@ -171,25 +187,31 @@ This cache is **event-driven**, not time-driven. It should be invalidated by:
 ## Cache #3: Proposed - Available Unlocks
 
 ### Current Behavior
+
 Every call to `GetAvailableUnlocks()` queries:
+
 - All nodes
 - All current unlocks
 - Filters based on prerequisites
 
 This is called:
+
 - At voting session start
 - By admin commands
 - Potentially by UI (future)
 
 ### Proposal
+
 Cache the list of available nodes with short TTL (30s).
 
 **Benefits:**
+
 - Reduces load during admin tree browsing
 - Allows rapid voting session restarts
 - Supports future UI without DB spam
 
 **TTL Rationale:**
+
 - Available nodes change only when unlock happens
 - Unlocks are infrequent (minutes to hours apart)
 - 30s lag is acceptable
@@ -198,22 +220,24 @@ Cache the list of available nodes with short TTL (30s).
 
 ## Comparison Table
 
-| Cache | Current TTL | Purpose | Query Reduction | Stale Data Risk | Recommended TTL |
-|-------|------------|---------|-----------------|-----------------|----------------|
-| **Engagement Weights** | 60s | Reduce weight lookups | 98% | Very Low (weights rarely change) | **5 min** |
-| **Unlock Threshold** | None | Instant unlock detection | N/A (enables feature) | Low (ID mismatch safe) | **None (event-driven)** ✓ |
-| **Available Unlocks** | None | - | - | - | **30s (proposed)** |
+| Cache                  | Current TTL | Purpose                  | Query Reduction       | Stale Data Risk                  | Recommended TTL           |
+| ---------------------- | ----------- | ------------------------ | --------------------- | -------------------------------- | ------------------------- |
+| **Engagement Weights** | 60s         | Reduce weight lookups    | 98%                   | Very Low (weights rarely change) | **5 min**                 |
+| **Unlock Threshold**   | None        | Instant unlock detection | N/A (enables feature) | Low (ID mismatch safe)           | **None (event-driven)** ✓ |
+| **Available Unlocks**  | None        | -                        | -                     | -                                | **30s (proposed)**        |
 
 ---
 
 ## Recommendations Summary
 
 ### Immediate
+
 1. ✅ Keep unlock threshold cache with no expiry (correct as-is)
 2. 🔧 Increase engagement weight TTL to 5 minutes
 3. 🔧 Add `/progression reload-weights` admin command
 
 ### Future
+
 4. 📋 Implement available unlocks cache (30s TTL)
 5. 📋 Add metrics/monitoring for cache hit rates
 6. 📋 Consider Redis for multi-instance deployments
@@ -229,7 +253,7 @@ Cache the list of available nodes with short TTL (30s).
 func (s *service) cacheWeights(weights map[string]float64) {
     s.weightsMu.Lock()
     defer s.weightsMu.Unlock()
-    
+
     s.cachedWeights = weights
     s.weightsExpiry = time.Now().Add(5 * time.Minute) // was 60s
 }
@@ -242,7 +266,7 @@ func (s *service) cacheWeights(weights map[string]float64) {
 func (s *service) InvalidateWeightCache() {
     s.weightsMu.Lock()
     defer s.weightsMu.Unlock()
-    
+
     s.cachedWeights = nil
     s.weightsExpiry = time.Time{} // Zero time = expired
 }

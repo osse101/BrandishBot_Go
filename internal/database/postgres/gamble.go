@@ -206,7 +206,8 @@ func (r *GambleRepository) SaveOpenedItems(ctx context.Context, items []domain.G
 	return tx.Commit(ctx)
 }
 
-// CompleteGamble marks the gamble as completed (state update is handled by UpdateGambleState, this might be redundant or for result storage?)
+// CompleteGamble marks the gamble as completed.
+// State update is handled by UpdateGambleState, this might be redundant or for result storage?
 // The service calls UpdateGambleState separately.
 // The interface has CompleteGamble(ctx, result).
 // We should probably update state AND maybe store the result if we had a results table.

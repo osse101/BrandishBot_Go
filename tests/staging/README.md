@@ -19,14 +19,14 @@ API_URL=https://staging.example.com:8080 API_KEY=your-key make test-staging
 
 ## Test Files
 
-| File | Description | Test Count |
-|------|-------------|------------|
-| `main_test.go` | Test setup and configuration | - |
-| `health_test.go` | Health check endpoint | 1 |
-| `smoke_test.go` | Basic progression tree | 1 |
-| `progression_test.go` | Progression system tests | 4 |
-| `user_test.go` | User and economy tests | 4 |
-| `stats_test.go` | Statistics endpoints | 4 |
+| File                  | Description                  | Test Count |
+| --------------------- | ---------------------------- | ---------- |
+| `main_test.go`        | Test setup and configuration | -          |
+| `health_test.go`      | Health check endpoint        | 1          |
+| `smoke_test.go`       | Basic progression tree       | 1          |
+| `progression_test.go` | Progression system tests     | 4          |
+| `user_test.go`        | User and economy tests       | 4          |
+| `stats_test.go`       | Statistics endpoints         | 4          |
 
 **Total: 11 tests**
 

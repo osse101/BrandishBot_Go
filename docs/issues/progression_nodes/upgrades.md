@@ -15,12 +15,14 @@ All upgrades use the modifier system via `GetModifiedValue()` in the progression
 **Prerequisites**: progression_system, -total_nodes_unlocked:5
 
 **Modifier Config**:
+
 - **feature_key**: `progression_rate`
 - **modifier_type**: `multiplicative`
 - **base_value**: 1.0
 - **per_level_value**: 0.1 (10% per level)
 
 **Implementation Checklist**:
+
 - [ ] Identify where progression rate is calculated
 - [ ] Wrap base progression rate with `GetModifiedValue(ctx, "progression_rate", baseRate)`
 - [ ] Add tests for modified progression rate at levels 1-5
@@ -29,10 +31,12 @@ All upgrades use the modifier system via `GetModifiedValue()` in the progression
 - [ ] Verify formula: `modifiedRate = baseRate * (1.0 + 0.1 * level)`
 
 **Files to Modify**:
+
 - `internal/progression/service.go` - Apply modifier to engagement contribution calculations
 - `internal/progression/service_test.go` - Add modifier tests
 
 **Acceptance Criteria**:
+
 - ✓ Level 1: 10% faster progression (1.1x multiplier)
 - ✓ Level 5: 50% faster progression (1.5x multiplier)
 - ✓ Modifier applies to engagement point contributions
@@ -51,12 +55,14 @@ All upgrades use the modifier system via `GetModifiedValue()` in the progression
 **Prerequisites**: feature_gamble
 
 **Modifier Config**:
+
 - **feature_key**: `gamble_win_bonus`
 - **modifier_type**: `multiplicative`
 - **base_value**: 1.0
 - **per_level_value**: 0.05 (5% per level)
 
 **Implementation Checklist**:
+
 - [ ] Find gamble winnings calculation in `internal/gamble/service.go`
 - [ ] Wrap winnings with `GetModifiedValue(ctx, "gamble_win_bonus", baseWinnings)`
 - [ ] Add tests for modified winnings at levels 1-5
@@ -65,10 +71,12 @@ All upgrades use the modifier system via `GetModifiedValue()` in the progression
 - [ ] Verify formula: `modifiedWinnings = baseWinnings * (1.0 + 0.05 * level)`
 
 **Files to Modify**:
+
 - `internal/gamble/service.go` - Apply modifier in ExecuteGamble when calculating winnings
 - `internal/gamble/service_test.go` - Add modifier tests
 
 **Acceptance Criteria**:
+
 - ✓ Level 1: 5% bonus on winnings (1.05x multiplier)
 - ✓ Level 5: 25% bonus on winnings (1.25x multiplier)
 - ✓ Modifier applies to all gamble winnings
@@ -85,12 +93,14 @@ All upgrades use the modifier system via `GetModifiedValue()` in the progression
 **Prerequisites**: item_shovel
 
 **Modifier Config**:
+
 - **feature_key**: `search_quality`
 - **modifier_type**: `multiplicative`
 - **base_value**: 1.0
 - **per_level_value**: 0.1 (10% per level)
 
 **Implementation Checklist**:
+
 - [ ] Identify search/exploration quality calculation (TBD - search service)
 - [ ] Wrap search quality with `GetModifiedValue(ctx, "search_quality", baseQuality)`
 - [ ] Add tests for improved search results at levels 1-5
@@ -99,10 +109,12 @@ All upgrades use the modifier system via `GetModifiedValue()` in the progression
 - [ ] Verify formula: `modifiedQuality = baseQuality * (1.0 + 0.1 * level)`
 
 **Files to Modify**:
+
 - TBD - Search/exploration service (needs implementation)
 - TBD - Search service tests
 
 **Acceptance Criteria**:
+
 - ✓ Level 1: 10% better search quality (1.1x multiplier)
 - ✓ Level 5: 50% better search quality (1.5x multiplier)
 - ✓ Modifier improves item find rate or rarity
@@ -121,12 +133,14 @@ All upgrades use the modifier system via `GetModifiedValue()` in the progression
 **Prerequisites**: item_scrap
 
 **Modifier Config**:
+
 - **feature_key**: `crafting_success_rate`
 - **modifier_type**: `multiplicative`
 - **base_value**: 1.0
 - **per_level_value**: 0.1 (10% per level)
 
 **Implementation Checklist**:
+
 - [ ] Find crafting success rate in `internal/crafting/service.go`
 - [ ] Wrap success rate with `GetModifiedValue(ctx, "crafting_success_rate", baseRate)`
 - [ ] Add tests for improved success rate at levels 1-5
@@ -135,10 +149,12 @@ All upgrades use the modifier system via `GetModifiedValue()` in the progression
 - [ ] Verify formula: `modifiedRate = baseRate * (1.0 + 0.1 * level)`
 
 **Files to Modify**:
+
 - `internal/crafting/service.go` - Apply modifier to masterwork chance and success rates
 - `internal/crafting/service_test.go` - Add modifier tests
 
 **Acceptance Criteria**:
+
 - ✓ Level 1: 10% better crafting success (1.1x multiplier)
 - ✓ Level 5: 50% better crafting success (1.5x multiplier)
 - ✓ Modifier applies to masterwork chance and salvage rate
@@ -155,12 +171,14 @@ All upgrades use the modifier system via `GetModifiedValue()` in the progression
 **Prerequisites**: item_stick
 
 **Modifier Config**:
+
 - **feature_key**: `farming_yield`
 - **modifier_type**: `multiplicative`
 - **base_value**: 1.0
 - **per_level_value**: 0.1 (10% per level)
 
 **Implementation Checklist**:
+
 - [ ] Identify farming yield calculation (TBD - farming service)
 - [ ] Wrap yield with `GetModifiedValue(ctx, "farming_yield", baseYield)`
 - [ ] Add tests for improved farming yield at levels 1-5
@@ -169,10 +187,12 @@ All upgrades use the modifier system via `GetModifiedValue()` in the progression
 - [ ] Verify formula: `modifiedYield = baseYield * (1.0 + 0.1 * level)`
 
 **Files to Modify**:
+
 - TBD - Farming service (needs implementation)
 - TBD - Farming service tests
 
 **Acceptance Criteria**:
+
 - ✓ Level 1: 10% better farming yield (1.1x multiplier)
 - ✓ Level 5: 50% better farming yield (1.5x multiplier)
 - ✓ Modifier increases crop/resource output
@@ -191,12 +211,14 @@ All upgrades use the modifier system via `GetModifiedValue()` in the progression
 **Prerequisites**: item_script
 
 **Modifier Config**:
+
 - **feature_key**: `economy_bonus`
 - **modifier_type**: `multiplicative`
 - **base_value**: 1.0
 - **per_level_value**: 0.05 (5% per level)
 
 **Implementation Checklist**:
+
 - [ ] Find economy transaction values in `internal/economy/service.go`
 - [ ] Wrap buy/sell prices with `GetModifiedValue(ctx, "economy_bonus", basePrice)`
 - [ ] Add tests for better prices at levels 1-5
@@ -205,10 +227,12 @@ All upgrades use the modifier system via `GetModifiedValue()` in the progression
 - [ ] Verify formula: `modifiedBonus = baseBonus * (1.0 + 0.05 * level)`
 
 **Files to Modify**:
+
 - `internal/economy/service.go` - Apply modifier to buy/sell calculations
 - `internal/economy/service_test.go` - Add modifier tests
 
 **Acceptance Criteria**:
+
 - ✓ Level 1: 5% economy bonus (1.05x multiplier)
 - ✓ Level 5: 25% economy bonus (1.25x multiplier)
 - ✓ Modifier improves buy prices or sell prices
@@ -227,12 +251,14 @@ All upgrades use the modifier system via `GetModifiedValue()` in the progression
 **Prerequisites**: job_scholar, -nodes_unlocked_below_tier:2:15
 
 **Modifier Config**:
+
 - **feature_key**: `job_xp_multiplier`
 - **modifier_type**: `multiplicative`
 - **base_value**: 1.0
 - **per_level_value**: 0.1 (10% per level)
 
 **Implementation Checklist**:
+
 - [ ] Find job XP award in `internal/job/service.go`
 - [ ] Wrap XP amount with `GetModifiedValue(ctx, "job_xp_multiplier", baseXP)`
 - [ ] Add tests for increased XP at levels 1-5
@@ -241,10 +267,12 @@ All upgrades use the modifier system via `GetModifiedValue()` in the progression
 - [ ] Verify formula: `modifiedXP = baseXP * (1.0 + 0.1 * level)`
 
 **Files to Modify**:
+
 - `internal/job/service.go` - Apply modifier in AwardXP
 - `internal/job/service_test.go` - Add modifier tests
 
 **Acceptance Criteria**:
+
 - ✓ Level 1: 10% more XP (1.1x multiplier)
 - ✓ Level 5: 50% more XP (1.5x multiplier)
 - ✓ Modifier applies to all job XP gains
@@ -263,12 +291,14 @@ All upgrades use the modifier system via `GetModifiedValue()` in the progression
 **Prerequisites**: job_scholar
 
 **Modifier Config**:
+
 - **feature_key**: `progression_rate`
 - **modifier_type**: `multiplicative`
 - **base_value**: 1.0
 - **per_level_value**: 0.1 (10% per level)
 
 **Implementation Checklist**:
+
 - [ ] Verify modifier stacks with upgrade_progression_basic
 - [ ] Test combined effect at different levels
 - [ ] Verify formula: `totalMultiplier = (1.0 + 0.1 * level1) * (1.0 + 0.1 * level2)`
@@ -276,12 +306,14 @@ All upgrades use the modifier system via `GetModifiedValue()` in the progression
 - [ ] Test with both upgrades at max level
 
 **Files to Modify**:
+
 - `internal/progression/service.go` - Already implemented, verify stacking
 - `internal/progression/service_test.go` - Add stacking tests
 
 **Acceptance Criteria**:
+
 - ✓ Stacks multiplicatively with upgrade_progression_basic
-- ✓ Level 5 + Level 5 basic = 2.25x total multiplier (1.5 * 1.5)
+- ✓ Level 5 + Level 5 basic = 2.25x total multiplier (1.5 \* 1.5)
 - ✓ Tests verify stacking at various levels
 
 **Effect**: Further accelerates progression rate.
@@ -295,12 +327,14 @@ All upgrades use the modifier system via `GetModifiedValue()` in the progression
 **Prerequisites**: job_scholar
 
 **Modifier Config**:
+
 - **feature_key**: `job_level_cap`
 - **modifier_type**: `linear`
 - **base_value**: 0
 - **per_level_value**: 10 (additive)
 
 **Implementation Checklist**:
+
 - [ ] Find job level cap in `internal/job/service.go`
 - [ ] Wrap cap with `GetModifiedValue(ctx, "job_level_cap", baseCapmin/max)`
 - [ ] Add tests for increased cap at levels 1-3
@@ -309,10 +343,12 @@ All upgrades use the modifier system via `GetModifiedValue()` in the progression
 - [ ] Verify formula: `modifiedCap = baseCap + (10 * level)`
 
 **Files to Modify**:
+
 - `internal/job/service.go` - Apply modifier to level cap checks
 - `internal/job/service_test.go` - Add modifier tests
 
 **Acceptance Criteria**:
+
 - ✓ Level 1: +10 to min/max job levels
 - ✓ Level 3: +30 to min/max job levels
 - ✓ Modifier applies to all jobs
@@ -331,12 +367,14 @@ All upgrades use the modifier system via `GetModifiedValue()` in the progression
 **Prerequisites**: upgrade_progression_two
 
 **Modifier Config**:
+
 - **feature_key**: `progression_rate`
 - **modifier_type**: `multiplicative`
 - **base_value**: 1.0
 - **per_level_value**: 0.1 (10% per level)
 
 **Implementation Checklist**:
+
 - [ ] Verify modifier stacks with upgrade_progression_basic and upgrade_progression_two
 - [ ] Test triple stacking at different levels
 - [ ] Verify formula: `total = (1.0 + 0.1*L1) * (1.0 + 0.1*L2) * (1.0 + 0.1*L3)`
@@ -344,12 +382,14 @@ All upgrades use the modifier system via `GetModifiedValue()` in the progression
 - [ ] Test with all three upgrades at max level
 
 **Files to Modify**:
+
 - `internal/progression/service.go` - Already implemented, verify triple stacking
 - `internal/progression/service_test.go` - Add triple stacking tests
 
 **Acceptance Criteria**:
+
 - ✓ Stacks with both previous progression upgrades
-- ✓ Level 5 + Level 5 tier 2 + Level 5 tier 1 = 3.375x total (1.5 * 1.5 * 1.5)
+- ✓ Level 5 + Level 5 tier 2 + Level 5 tier 1 = 3.375x total (1.5 _ 1.5 _ 1.5)
 - ✓ Tests verify triple stacking
 
 **Effect**: Maximum progression rate acceleration for endgame.
@@ -404,20 +444,24 @@ func TestUpgradeXXX_ModifierStacking(t *testing.T) {
 ## Modifier Stacking Rules
 
 ### Progression Rate Upgrades
+
 All three progression upgrades stack **multiplicatively**:
-- Basic (Tier 1): 1.0 + 0.1*L1
-- Tier 2: 1.0 + 0.1*L2
-- Tier 3: 1.0 + 0.1*L3
-- **Total**: (1.0 + 0.1*L1) × (1.0 + 0.1*L2) × (1.0 + 0.1*L3)
+
+- Basic (Tier 1): 1.0 + 0.1\*L1
+- Tier 2: 1.0 + 0.1\*L2
+- Tier 3: 1.0 + 0.1\*L3
+- **Total**: (1.0 + 0.1*L1) × (1.0 + 0.1*L2) × (1.0 + 0.1\*L3)
 
 **Max Effect**: 1.5 × 1.5 × 1.5 = **3.375x** progression rate
 
 ### Other Modifiers
+
 Each modifier affects its own feature key independently - no cross-stacking.
 
 ## Priority
 
 Recommended implementation order:
+
 1. **upgrade_progression_basic** - Core mechanic
 2. **upgrade_job_xp_multiplier** - Already implemented, verify
 3. **upgrade_gamble_win_bonus** - Gamble service exists

@@ -733,6 +733,64 @@ func (_c *MockUserService_GetUserByPlatformUsername_Call) RunAndReturn(run func(
 	return _c
 }
 
+// GetUserIDByPlatformID provides a mock function with given fields: ctx, platform, platformID
+func (_m *MockUserService) GetUserIDByPlatformID(ctx context.Context, platform string, platformID string) (string, error) {
+	ret := _m.Called(ctx, platform, platformID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetUserIDByPlatformID")
+	}
+
+	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) (string, error)); ok {
+		return rf(ctx, platform, platformID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) string); ok {
+		r0 = rf(ctx, platform, platformID)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = rf(ctx, platform, platformID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockUserService_GetUserIDByPlatformID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetUserIDByPlatformID'
+type MockUserService_GetUserIDByPlatformID_Call struct {
+	*mock.Call
+}
+
+// GetUserIDByPlatformID is a helper method to define mock.On call
+//   - ctx context.Context
+//   - platform string
+//   - platformID string
+func (_e *MockUserService_Expecter) GetUserIDByPlatformID(ctx interface{}, platform interface{}, platformID interface{}) *MockUserService_GetUserIDByPlatformID_Call {
+	return &MockUserService_GetUserIDByPlatformID_Call{Call: _e.mock.On("GetUserIDByPlatformID", ctx, platform, platformID)}
+}
+
+func (_c *MockUserService_GetUserIDByPlatformID_Call) Run(run func(ctx context.Context, platform string, platformID string)) *MockUserService_GetUserIDByPlatformID_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockUserService_GetUserIDByPlatformID_Call) Return(_a0 string, _a1 error) *MockUserService_GetUserIDByPlatformID_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockUserService_GetUserIDByPlatformID_Call) RunAndReturn(run func(context.Context, string, string) (string, error)) *MockUserService_GetUserIDByPlatformID_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GiveItem provides a mock function with given fields: ctx, ownerPlatform, ownerPlatformID, ownerUsername, receiverPlatform, receiverUsername, itemName, quantity
 func (_m *MockUserService) GiveItem(ctx context.Context, ownerPlatform string, ownerPlatformID string, ownerUsername string, receiverPlatform string, receiverUsername string, itemName string, quantity int) error {
 	ret := _m.Called(ctx, ownerPlatform, ownerPlatformID, ownerUsername, receiverPlatform, receiverUsername, itemName, quantity)

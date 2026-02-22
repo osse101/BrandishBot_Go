@@ -3,6 +3,7 @@
 This directory contains feature information text files for the `/info` command.
 
 Each `.txt` file corresponds to a feature option in the command:
+
 - `overview.txt` - General BrandishBot information
 - `economy.txt` - Economy system details
 - `inventory.txt` - Inventory management

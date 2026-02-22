@@ -349,3 +349,269 @@ const (
 	QuestTypePerformSearches = "perform_searches" // Perform X searches
 	// Extensible: add new quest types as needed
 )
+
+// ============================================================================
+// Item Constants (Moved from item.go)
+// ============================================================================
+
+// Item tag constants (from item_types / tags in items.json)
+const (
+	CompostableTag = "compostable"
+	NoUseTag       = "no-use"
+)
+
+// Content type constants (from "type" field in items.json)
+const (
+	ContentTypeWeapon    = "weapon"
+	ContentTypeExplosive = "explosive"
+	ContentTypeDefense   = "defense"
+	ContentTypeHealing   = "healing"
+	ContentTypeMaterial  = "material"
+	ContentTypeContainer = "container"
+	ContentTypeUtility   = "utility"
+	ContentTypeMagical   = "magical"
+)
+
+// ============================================================================
+// Subscription Constants (Moved from subscription.go)
+// ============================================================================
+
+// Subscription status constants
+const (
+	SubscriptionStatusActive    = "active"
+	SubscriptionStatusExpired   = "expired"
+	SubscriptionStatusCancelled = "cancelled"
+)
+
+// Subscription event types (for event bus)
+const (
+	EventTypeSubscriptionActivated  = "subscription.activated"
+	EventTypeSubscriptionRenewed    = "subscription.renewed"
+	EventTypeSubscriptionUpgraded   = "subscription.upgraded"
+	EventTypeSubscriptionDowngraded = "subscription.downgraded"
+	EventTypeSubscriptionExpired    = "subscription.expired"
+	EventTypeSubscriptionCancelled  = "subscription.cancelled"
+)
+
+// History event types
+const (
+	HistoryEventTypeSubscribed = "subscribed"
+	HistoryEventTypeRenewed    = "renewed"
+	HistoryEventTypeUpgraded   = "upgraded"
+	HistoryEventTypeDowngraded = "downgraded"
+	HistoryEventTypeCancelled  = "cancelled"
+	HistoryEventTypeExpired    = "expired"
+)
+
+// Configuration constants
+const (
+	DefaultSubscriptionDuration = 30 * 24 * time.Hour // 30 days
+	SubscriptionGracePeriod     = 24 * time.Hour      // 24-hour grace before expiration
+)
+
+// ============================================================================
+// Expedition Constants (Moved from expedition.go)
+// ============================================================================
+
+// ExpeditionState represents the state of an expedition
+type ExpeditionState string
+
+const (
+	ExpeditionStateCreated    ExpeditionState = "Created"
+	ExpeditionStateRecruiting ExpeditionState = "Recruiting"
+	ExpeditionStateInProgress ExpeditionState = "InProgress"
+	ExpeditionStateCompleted  ExpeditionState = "Completed"
+)
+
+// Expedition event constants
+const (
+	EventExpeditionStarted   = "ExpeditionStarted"
+	EventExpeditionCompleted = "ExpeditionCompleted"
+	EventExpeditionTurn      = "ExpeditionTurn"
+)
+
+// EncounterType represents the type of encounter in an expedition
+type EncounterType string
+
+const (
+	EncounterExplore       EncounterType = "explore"
+	EncounterTravel        EncounterType = "travel"
+	EncounterCombatSkirmsh EncounterType = "combat_skirmish"
+	EncounterCombatElite   EncounterType = "combat_elite"
+	EncounterCombatBoss    EncounterType = "combat_boss"
+	EncounterCamp          EncounterType = "camp"
+	EncounterHazard        EncounterType = "hazard"
+	EncounterDiscovery     EncounterType = "discovery"
+	EncounterEncounter     EncounterType = "encounter"
+	EncounterTreasure      EncounterType = "treasure"
+	EncounterMystic        EncounterType = "mystic"
+	EncounterDrama         EncounterType = "drama"
+)
+
+// OutcomeType represents the outcome category of an encounter
+type OutcomeType string
+
+const (
+	OutcomePositive OutcomeType = "positive"
+	OutcomeNeutral  OutcomeType = "neutral"
+	OutcomeNegative OutcomeType = "negative"
+)
+
+// ExpeditionSkill represents a skill used in expeditions, mapped 1:1 to jobs
+type ExpeditionSkill string
+
+const (
+	SkillFortitude  ExpeditionSkill = "fortitude"
+	SkillPerception ExpeditionSkill = "perception"
+	SkillSurvival   ExpeditionSkill = "survival"
+	SkillCunning    ExpeditionSkill = "cunning"
+	SkillPersuasion ExpeditionSkill = "persuasion"
+	SkillKnowledge  ExpeditionSkill = "knowledge"
+)
+
+// ============================================================================
+// Stats Constants (Moved from stats.go)
+// ============================================================================
+
+// EventType represents the type of event being tracked
+type EventType string
+
+const (
+	StatsEventUserRegistered  EventType = "user_registered"
+	StatsEventItemAdded       EventType = "item_added"
+	StatsEventItemRemoved     EventType = "item_removed"
+	StatsEventItemUsed        EventType = "item_used"
+	StatsEventItemSold        EventType = "item_sold"
+	StatsEventItemBought      EventType = "item_bought"
+	StatsEventItemTransferred EventType = "item_transferred"
+	StatsEventMessageReceived EventType = "message_received"
+
+	// Gamble events
+	StatsEventGambleNearMiss     EventType = "gamble_near_miss"
+	StatsEventGambleTieBreakLost EventType = "gamble_tie_break_lost"
+	StatsEventGambleCriticalFail EventType = "gamble_critical_fail"
+	StatsEventDailyStreak        EventType = "daily_streak"
+
+	// Search events
+	StatsEventSearch                EventType = "search"
+	StatsEventSearchNearMiss        EventType = "search_near_miss"
+	StatsEventSearchCriticalFail    EventType = "search_critical_fail"
+	StatsEventSearchCriticalSuccess EventType = "search_critical_success"
+
+	// Crafting events
+	EventTypeCraftingCriticalSuccess EventType = "crafting_critical_success"
+	EventTypeCraftingPerfectSalvage  EventType = "crafting_perfect_salvage"
+
+	// Job events
+	EventTypeJobLevelUp EventType = "job_level_up"
+
+	// Lootbox events
+	EventTypeLootboxJackpot EventType = "lootbox_jackpot"
+	EventTypeLootboxBigWin  EventType = "lootbox_big_win"
+
+	// Slots events
+	EventTypeSlotsSpin        EventType = "slots_spin"
+	EventTypeSlotsWin         EventType = "slots_win"
+	EventTypeSlotsMegaJackpot EventType = "slots_mega_jackpot"
+)
+
+// ============================================================================
+// Compost Constants (Moved from compost.go)
+// ============================================================================
+
+// CompostBinStatus represents the state of a compost bin
+type CompostBinStatus string
+
+const (
+	CompostBinStatusIdle       CompostBinStatus = "idle"
+	CompostBinStatusComposting CompostBinStatus = "composting"
+	CompostBinStatusReady      CompostBinStatus = "ready"
+	CompostBinStatusSludge     CompostBinStatus = "sludge"
+)
+
+// ============================================================================
+// Duel Constants (Moved from duel.go)
+// ============================================================================
+
+// DuelState represents the state of a duel
+type DuelState string
+
+const (
+	DuelStatePending    DuelState = "pending"
+	DuelStateAccepted   DuelState = "accepted"
+	DuelStateInProgress DuelState = "in_progress"
+	DuelStateCompleted  DuelState = "completed"
+	DuelStateDeclined   DuelState = "declined"
+	DuelStateExpired    DuelState = "expired"
+)
+
+// ============================================================================
+// Job Constants (Moved from job.go)
+// ============================================================================
+
+// Job keys for referencing specific jobs across various services
+const (
+	JobKeyBlacksmith = "job_blacksmith"
+	JobKeyExplorer   = "job_explorer"
+	JobKeyMerchant   = "job_merchant"
+	JobKeyGambler    = "job_gambler"
+	JobKeyFarmer     = "job_farmer"
+	JobKeyScholar    = "job_scholar"
+)
+
+// ============================================================================
+// Search Mechanic Constants (Moved from internal/user/constants.go)
+// ============================================================================
+
+// Search Mechanic - Probability Thresholds
+const (
+	// SearchSuccessRate defines the probability of finding an item when searching (80%)
+	SearchSuccessRate = 0.8
+	// SearchCriticalRate defines the probability of a critical success when searching (5%)
+	SearchCriticalRate = 0.05
+	// SearchNearMissRate defines the probability of a near-miss result when searching (5%)
+	SearchNearMissRate = 0.05
+	// SearchCriticalFailRate defines the probability of a critical failure when searching (5%)
+	SearchCriticalFailRate = 0.05
+)
+
+// Search Mechanic - Diminishing Returns
+const (
+	// SearchDailyDiminishmentThreshold is the number of searches per day after which returns are diminished
+	SearchDailyDiminishmentThreshold = 6
+	// SearchDiminishedXPMultiplier is the XP multiplier when diminished returns are active (10%)
+	SearchDiminishedXPMultiplier = 0.1
+	// SearchFirstDailyGuaranteedRoll is the roll value that guarantees success for first search (0.0)
+	SearchFirstDailyGuaranteedRoll = 0.0
+)
+
+// ============================================================================
+// Item Handler Constants (Moved from internal/user/constants.go)
+// ============================================================================
+
+const (
+	// BulkFeedbackThreshold defines the number of lootboxes required to trigger "Nice haul" message
+	BulkFeedbackThreshold = 5
+	// BlasterTimeoutDuration is the default duration a user is timed out when hit by a blaster
+	BlasterTimeoutDuration = 60 * time.Second
+	// TrapCooldownDuration is the cooldown after a trap triggers to prevent immediate re-trapping
+	TrapCooldownDuration = 10 * time.Minute
+)
+
+// ============================================================================
+// Resource Generation Constants (Moved from internal/user/constants.go)
+// ============================================================================
+
+const (
+	// ShovelSticksPerUse defines how many sticks are generated per shovel use
+	ShovelSticksPerUse = 2
+)
+
+// ============================================================================
+// Inventory Limits (Moved from internal/user/constants.go)
+// ============================================================================
+
+const (
+	// MaxStackSize is the maximum quantity allowed for a single item stack when merging inventories
+	MaxStackSize = 999999
+)

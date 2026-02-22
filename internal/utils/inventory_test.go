@@ -189,8 +189,62 @@ func TestFindSlotWithQuality(t *testing.T) {
 		}
 
 		index, quantity := FindSlotWithQuality(inventory, 2, domain.QualityCommon)
-
 		assert.Equal(t, -1, index, "Should not find slot with different ItemID")
+		assert.Equal(t, 0, quantity)
+	})
+}
+
+// TestFindRandomSlot verifies random slot lookup
+func TestFindRandomSlot(t *testing.T) {
+	t.Run("finds item when only one slot exists", func(t *testing.T) {
+		inventory := &domain.Inventory{
+			Slots: []domain.InventorySlot{
+				{ItemID: 1, Quantity: 10},
+			},
+		}
+
+		index, quantity := FindRandomSlot(inventory, 1, func() float64 { return 0.5 })
+		assert.Equal(t, 0, index)
+		assert.Equal(t, 10, quantity)
+	})
+
+	t.Run("randomly selects from multiple slots", func(t *testing.T) {
+		inventory := &domain.Inventory{
+			Slots: []domain.InventorySlot{
+				{ItemID: 1, Quantity: 10},
+				{ItemID: 1, Quantity: 20},
+			},
+		}
+
+		index1, _ := FindRandomSlot(inventory, 1, func() float64 { return 0.0 })
+		assert.Equal(t, 0, index1)
+
+		index2, _ := FindRandomSlot(inventory, 1, func() float64 { return 0.999 })
+		assert.Equal(t, 1, index2)
+	})
+
+	t.Run("handles RNG returning 1.0 (safety test)", func(t *testing.T) {
+		inventory := &domain.Inventory{
+			Slots: []domain.InventorySlot{
+				{ItemID: 1, Quantity: 10},
+				{ItemID: 1, Quantity: 20},
+			},
+		}
+
+		// Should not panic even if RNG returns 1.0
+		index, _ := FindRandomSlot(inventory, 1, func() float64 { return 1.0 })
+		assert.Equal(t, 1, index)
+	})
+
+	t.Run("returns -1 when item not found", func(t *testing.T) {
+		inventory := &domain.Inventory{
+			Slots: []domain.InventorySlot{
+				{ItemID: 2, Quantity: 10},
+			},
+		}
+
+		index, quantity := FindRandomSlot(inventory, 1, func() float64 { return 0.5 })
+		assert.Equal(t, -1, index)
 		assert.Equal(t, 0, quantity)
 	})
 }
@@ -435,9 +489,9 @@ func TestAddItemsToInventory(t *testing.T) {
 
 		slotMap := BuildSlotMap(inventory)
 
-		// Add 12 items to trigger map-based path (>= 10)
-		items := make([]domain.InventorySlot, 12)
-		for i := 0; i < 12; i++ {
+		// Add 60 items to trigger map-based path (>= 50)
+		items := make([]domain.InventorySlot, 60)
+		for i := 0; i < 60; i++ {
 			items[i] = domain.InventorySlot{ItemID: (i + 1) * 10, Quantity: i + 1, QualityLevel: domain.QualityCommon}
 		}
 
@@ -447,10 +501,10 @@ func TestAddItemsToInventory(t *testing.T) {
 		assert.Equal(t, 6, inventory.Slots[0].Quantity)  // 10: 5 + 1
 		assert.Equal(t, 12, inventory.Slots[1].Quantity) // 20: 10 + 2
 		// Rest should be added
-		assert.Equal(t, 12, len(inventory.Slots))
+		assert.Equal(t, 60, len(inventory.Slots))
 		// Verify map was updated with new items
 		assert.Equal(t, 2, slotMap[SlotKey{ItemID: 30, QualityLevel: domain.QualityCommon}])   // Third item added at index 2
-		assert.Equal(t, 11, slotMap[SlotKey{ItemID: 120, QualityLevel: domain.QualityCommon}]) // Last item added at index 11
+		assert.Equal(t, 59, slotMap[SlotKey{ItemID: 600, QualityLevel: domain.QualityCommon}]) // Last item added at index 59
 	})
 }
 
@@ -627,5 +681,18 @@ func TestConsumeItems(t *testing.T) {
 		err := ConsumeItems(inventory, 1, 10, func() float64 { return 0.0 })
 		assert.Error(t, err)
 		assert.Equal(t, 5, inventory.Slots[0].Quantity, "Inventory should remain unchanged on error")
+	})
+
+	t.Run("handles RNG returning 1.0 (safety test)", func(t *testing.T) {
+		inventory := &domain.Inventory{
+			Slots: []domain.InventorySlot{
+				{ItemID: 1, Quantity: 10},
+				{ItemID: 1, Quantity: 10},
+			},
+		}
+
+		// Should not panic even if RNG returns 1.0
+		err := ConsumeItems(inventory, 1, 5, func() float64 { return 1.0 })
+		assert.NoError(t, err)
 	})
 }

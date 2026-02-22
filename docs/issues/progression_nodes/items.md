@@ -11,6 +11,7 @@
 **Prerequisites**: item_money
 
 **Implementation Checklist**:
+
 - [ ] Add feature gate check in weapon/targeting system
 - [ ] Update item use handler to check unlock status
 - [ ] Add tests for locked/unlocked states
@@ -19,11 +20,13 @@
 - [ ] Test unlocked behavior (weapon works normally)
 
 **Files to Modify**:
+
 - `internal/handler/user.go` - Add unlock check in item use handler
 - `internal/user/service.go` - Check unlock before allowing missile use
 - `internal/user/service_test.go` - Add locked/unlocked tests
 
 **Acceptance Criteria**:
+
 - ✓ Locked state returns 403 with error "Missile not unlocked"
 - ✓ Unlocked state allows missile usage
 - ✓ Tests cover both states
@@ -37,6 +40,7 @@
 **Prerequisites**: item_money, -total_nodes_unlocked:5
 
 **Implementation Checklist**:
+
 - [ ] Add feature gate check in item handler
 - [ ] Update item service to check unlock status
 - [ ] Add tests for locked/unlocked states
@@ -45,11 +49,13 @@
 - [ ] Test unlocked behavior (filter works)
 
 **Files to Modify**:
+
 - `internal/handler/user.go` - Add unlock check
 - `internal/item/service.go` - Verify unlock before use
 - `internal/item/service_test.go` - Add tests
 
 **Acceptance Criteria**:
+
 - ✓ Locked state returns 403 error
 - ✓ Unlocked state allows video filter application
 - ✓ Tests verify both locked and unlocked states
@@ -63,6 +69,7 @@
 **Prerequisites**: item_lootbox0
 
 **Implementation Checklist**:
+
 - [ ] Add unlock check in lootbox opening handler
 - [ ] Update lootbox service to verify unlock
 - [ ] Add tests for locked/unlocked lootbox1
@@ -71,11 +78,13 @@
 - [ ] Test unlocked behavior (can open lootbox1)
 
 **Files to Modify**:
+
 - `internal/lootbox/service.go` - Add unlock verification in OpenLootbox
 - `internal/lootbox/service_test.go` - Add locked/unlocked tests
 - `internal/handler/gamble.go` - Verify unlock before opening
 
 **Acceptance Criteria**:
+
 - ✓ Cannot open lootbox1 when locked
 - ✓ Can open lootbox1 when unlocked
 - ✓ Error message clearly indicates unlock required
@@ -89,6 +98,7 @@
 **Prerequisites**: feature_farming
 
 **Implementation Checklist**:
+
 - [ ] Add unlock check in inventory handler
 - [ ] Update item service to verify unlock
 - [ ] Add tests for acquiring/using stick when locked/unlocked
@@ -97,11 +107,13 @@
 - [ ] Test unlocked behavior
 
 **Files to Modify**:
+
 - `internal/handler/user.go` - Add unlock check for stick acquisition
 - `internal/item/service.go` - Verify unlock
 - `internal/item/service_test.go` - Add tests
 
 **Acceptance Criteria**:
+
 - ✓ Cannot acquire stick when locked
 - ✓ Can acquire/use stick when unlocked
 - ✓ Tests cover both states
@@ -117,6 +129,7 @@
 **Prerequisites**: feature_search
 
 **Implementation Checklist**:
+
 - [ ] Add unlock check in search/exploration handler
 - [ ] Update search service to verify shovel unlock
 - [ ] Add tests for shovel-dependent search features
@@ -125,11 +138,13 @@
 - [ ] Test unlocked behavior (full search capability)
 
 **Files to Modify**:
+
 - `internal/handler/user.go` - Add shovel unlock check
 - `internal/item/service.go` - Verify unlock before use
 - `internal/item/service_test.go` - Add locked/unlocked tests
 
 **Acceptance Criteria**:
+
 - ✓ Search features limited when shovel locked
 - ✓ Full search capability when shovel unlocked
 - ✓ Clear error messaging
@@ -143,6 +158,7 @@
 **Prerequisites**: weapon_missile
 
 **Implementation Checklist**:
+
 - [ ] Add unlock check in weapon handler
 - [ ] Update item use to verify grenade unlock
 - [ ] Add tests for grenade usage when locked/unlocked
@@ -151,11 +167,13 @@
 - [ ] Test unlocked behavior (random timeout works)
 
 **Files to Modify**:
+
 - `internal/handler/user.go` - Add grenade unlock check
 - `internal/user/service.go` - Verify unlock before use
 - `internal/user/service_test.go` - Add tests
 
 **Acceptance Criteria**:
+
 - ✓ Cannot use grenade when locked
 - ✓ Grenade random timeout works when unlocked
 - ✓ Tests cover both states
@@ -169,6 +187,7 @@
 **Prerequisites**: feature_upgrade
 
 **Implementation Checklist**:
+
 - [ ] Add unlock check in crafting/disassemble handlers
 - [ ] Update crafting service to verify scrap unlock
 - [ ] Add tests for scrap acquisition/use when locked/unlocked
@@ -177,11 +196,13 @@
 - [ ] Test unlocked behavior (scrap available)
 
 **Files to Modify**:
+
 - `internal/crafting/service.go` - Check scrap unlock in DisassembleItem
 - `internal/crafting/service_test.go` - Add locked/unlocked tests
 - `internal/handler/disassemble.go` - Verify unlock
 
 **Acceptance Criteria**:
+
 - ✓ Scrap not available when locked
 - ✓ Scrap drops from disassembly when unlocked
 - ✓ Tests verify unlock gating
@@ -195,6 +216,7 @@
 **Prerequisites**: feature_economy
 
 **Implementation Checklist**:
+
 - [ ] Add unlock check in economy handlers
 - [ ] Update economy service to verify script unlock
 - [ ] Add tests for script currency when locked/unlocked
@@ -203,11 +225,13 @@
 - [ ] Test unlocked behavior (script currency active)
 
 **Files to Modify**:
+
 - `internal/economy/service.go` - Add script unlock check
 - `internal/economy/service_test.go` - Add tests
 - `internal/handler/prices.go` - Verify unlock for script transactions
 
 **Acceptance Criteria**:
+
 - ✓ Script currency unavailable when locked
 - ✓ Script transactions work when unlocked
 - ✓ Clear error messaging
@@ -221,6 +245,7 @@
 **Prerequisites**: item_lootbox1, job_gambler
 
 **Implementation Checklist**:
+
 - [ ] Add unlock check in lootbox handler
 - [ ] Update lootbox service to verify lootbox2 unlock
 - [ ] Add tests for opening lootbox2 when locked/unlocked
@@ -229,11 +254,13 @@
 - [ ] Test unlocked behavior (rare items available)
 
 **Files to Modify**:
+
 - `internal/lootbox/service.go` - Add lootbox2 unlock check
 - `internal/lootbox/service_test.go` - Add tests
 - `internal/handler/gamble.go` - Verify unlock
 
 **Acceptance Criteria**:
+
 - ✓ Cannot open lootbox2 when locked
 - ✓ Can open lootbox2 with rare items when unlocked
 - ✓ Tests cover unlock gating
@@ -247,6 +274,7 @@
 **Prerequisites**: weapon_missile
 
 **Implementation Checklist**:
+
 - [ ] Add unlock check in item handler
 - [ ] Update shield blocking logic to verify unlock
 - [ ] Add tests for shield defense when locked/unlocked
@@ -255,11 +283,13 @@
 - [ ] Test unlocked behavior (blocks next attack)
 
 **Files to Modify**:
+
 - `internal/handler/user.go` - Add shield unlock check
 - `internal/user/service.go` - Verify unlock before use
 - `internal/user/service_test.go` - Add tests
 
 **Acceptance Criteria**:
+
 - ✓ Shield unavailable when locked
 - ✓ Shield blocks attacks when unlocked
 - ✓ Tests verify unlock gating
@@ -273,6 +303,7 @@
 **Prerequisites**: upgrade_progression_basic
 
 **Implementation Checklist**:
+
 - [ ] Add unlock check in job XP handler
 - [ ] Update job service to verify rare candy unlock
 - [ ] Add tests for instant XP when locked/unlocked
@@ -281,11 +312,13 @@
 - [ ] Test unlocked behavior (instant XP grant)
 
 **Files to Modify**:
+
 - `internal/job/service.go` - Add rare candy unlock check in AwardXP
 - `internal/job/service_test.go` - Add tests
 - `internal/handler/job.go` - Verify unlock
 
 **Acceptance Criteria**:
+
 - ✓ Rare candy unavailable when locked
 - ✓ Instant XP grant works when unlocked
 - ✓ Tests cover unlock gating
@@ -301,6 +334,7 @@
 **Prerequisites**: item_grenade
 
 **Implementation Checklist**:
+
 - [ ] Add unlock check in weapon handler
 - [ ] Update item use to verify "this" unlock
 - [ ] Add tests for 101s timeout when locked/unlocked
@@ -309,11 +343,13 @@
 - [ ] Test unlocked behavior (101s timeout)
 
 **Files to Modify**:
+
 - `internal/handler/user.go` - Add "this" unlock check
 - `internal/user/service.go` - Verify unlock before use
 - `internal/user/service_test.go` - Add tests
 
 **Acceptance Criteria**:
+
 - ✓ Cannot use "this" when locked
 - ✓ 101s timeout works when unlocked
 - ✓ Tests verify unlock gating
@@ -327,6 +363,7 @@
 **Prerequisites**: item_shield
 
 **Implementation Checklist**:
+
 - [ ] Add unlock check in timeout handler
 - [ ] Update user service to verify revive unlock
 - [ ] Add tests for timeout reduction when locked/unlocked
@@ -335,11 +372,13 @@
 - [ ] Test unlocked behavior (60s timeout reduction)
 
 **Files to Modify**:
+
 - `internal/handler/user.go` - Add revive unlock check
 - `internal/user/service.go` - Verify unlock before use
 - `internal/user/service_test.go` - Add tests
 
 **Acceptance Criteria**:
+
 - ✓ Revive unavailable when locked
 - ✓ 60s timeout reduction works when unlocked
 - ✓ Tests cover unlock gating
@@ -353,6 +392,7 @@
 **Prerequisites**: item_lootbox2
 
 **Implementation Checklist**:
+
 - [ ] Add unlock check in lootbox handler
 - [ ] Update lootbox service to verify lootbox3 unlock
 - [ ] Add tests for epic/legendary drops when locked/unlocked
@@ -361,11 +401,13 @@
 - [ ] Test unlocked behavior (legendary chance)
 
 **Files to Modify**:
+
 - `internal/lootbox/service.go` - Add lootbox3 unlock check
 - `internal/lootbox/service_test.go` - Add tests
 - `internal/handler/gamble.go` - Verify unlock
 
 **Acceptance Criteria**:
+
 - ✓ Cannot open lootbox3 when locked
 - ✓ Epic/legendary drops available when unlocked
 - ✓ Tests verify unlock gating
@@ -381,6 +423,7 @@
 **Prerequisites**: item_this, -nodes_unlocked_below_tier:2:20
 
 **Implementation Checklist**:
+
 - [ ] Add unlock check in weapon handler
 - [ ] Update item use to verify TNT unlock
 - [ ] Add tests for massive explosive effect when locked/unlocked
@@ -389,11 +432,13 @@
 - [ ] Test unlocked behavior (massive effect)
 
 **Files to Modify**:
+
 - `internal/handler/user.go` - Add TNT unlock check
 - `internal/user/service.go` - Verify unlock before use
 - `internal/user/service_test.go` - Add tests
 
 **Acceptance Criteria**:
+
 - ✓ TNT unavailable when locked
 - ✓ Massive explosive effect when unlocked
 - ✓ Tests verify unlock gating
@@ -407,6 +452,7 @@
 **Prerequisites**: weapon_missile, -nodes_unlocked_below_tier:2:20
 
 **Implementation Checklist**:
+
 - [ ] Add unlock check in weapon handler
 - [ ] Update item use to verify huge missile unlock
 - [ ] Add tests for 100-minute timeout when locked/unlocked
@@ -415,11 +461,13 @@
 - [ ] Test unlocked behavior (100min timeout)
 
 **Files to Modify**:
+
 - `internal/handler/user.go` - Add huge missile unlock check
 - `internal/user/service.go` - Verify unlock before use
 - `internal/user/service_test.go` - Add tests
 
 **Acceptance Criteria**:
+
 - ✓ Huge missile unavailable when locked
 - ✓ 100-minute timeout works when unlocked
 - ✓ Tests verify unlock gating
@@ -433,6 +481,7 @@
 **Prerequisites**: item_shield, item_revives
 
 **Implementation Checklist**:
+
 - [ ] Add unlock check in weapon/defense handler
 - [ ] Update shield logic to verify mirror shield unlock
 - [ ] Add tests for attack reflection when locked/unlocked
@@ -441,11 +490,13 @@
 - [ ] Test unlocked behavior (attacks reflected)
 
 **Files to Modify**:
+
 - `internal/handler/user.go` - Add mirror shield unlock check
 - `internal/user/service.go` - Verify unlock before use
 - `internal/user/service_test.go` - Add tests
 
 **Acceptance Criteria**:
+
 - ✓ Mirror shield unavailable when locked
 - ✓ Attack reflection works when unlocked
 - ✓ Tests verify unlock gating
@@ -495,6 +546,7 @@ func TestItemXXX_Unlocked(t *testing.T) {
 ## Priority
 
 Recommended implementation order:
+
 1. Basic weapons (missile, grenade)
 2. Lootboxes (lootbox1, lootbox2, lootbox3)
 3. Defense items (shield, mirror shield, revives)

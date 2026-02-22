@@ -11,7 +11,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
 
-// MockRepository is a stateful "fake" implementation of Repository for testing.
+// FakeRepository is a stateful "fake" implementation of Repository for testing.
 // It stores state in memory (maps) to enable integration-style unit tests.
 //
 // IMPORTANT: This mock must remain in the user package to avoid import cycles.

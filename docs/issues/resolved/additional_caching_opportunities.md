@@ -18,40 +18,48 @@
 
 ### What Doesn't Need Caching ❌
 
-
 #### 1. Inventory (Phase 1 - REJECTED)
 
 **Reason:** Usage pattern analysis shows caching provides minimal value.
+
 - **Typical pattern:** Long break → `!inventory` → 1s → mutate inventory → 1s → `!inventory` → long break
 - **Cache hit potential:** Very low due to immediate mutations after reads
 - **User tolerance:** Slight delay is acceptable for inventory queries
 - **Decision:** Don't implement - ROI too low
 
 #### 2. Progression Tree (Phase 2 - LOW PRIORITY)
+
 **Current implementation:** [`GetProgressionTree`](file:///home/osse1/projects/BrandishBot_Go/internal/progression/service.go#L113-L160)
+
 - Queries: `GetAllNodes`, `GetAllUnlocks`, `GetDependents` (per node)
 - **Used by:** Admin command `/admin-tree-status` only
 - **Frequency:** Very low (admin-only operation)
 - **Decision:** Not worth caching - low access frequency, admin can tolerate latency
 
 #### 3. Leaderboards (Phase 3 - REJECTED)
+
 **Reason:** Low frequency command, doesn't need optimization
+
 - **Access:** Only via `/leaderboard` API and Discord commands
 - **Frequency:** Low
 - **Decision:** Current implementation is fine
 
 #### 4. System Stats (Phase 4 - REJECTED)
+
 **Reason:** Same as leaderboards - low frequency, admin/monitoring only
+
 - **Decision:** Not needed
 
 ## Summary
 
 **Before investigation:**
+
 - Proposed 4 caching phases (inventory, progression tree, leaderboards, stats)
 - Estimated 10 hours of work
 - Expected significant performance gains
 
 **After investigation:**
+
 - ✅ Most valuable caching already done (users, items, modifiers, weights)
 - ❌ Remaining opportunities have low ROI due to:
   - Unfavorable access patterns (inventory)
@@ -67,6 +75,7 @@
 ### Background
 
 **Existing Caching:**
+
 1. ✅ **Item metadata** - Already cached in [`service.go`](file:///home/osse1/projects/BrandishBot_Go/internal/user/service.go#L114-L122)
 2. ✅ **User lookups** - Recently implemented ([`cache.go`](file:///home/osse1/projects/BrandishBot_Go/internal/user/cache.go))
 3. ✅ **Progression modifiers** - Cached ([`progression/cache.go`](file:///home/osse1/projects/BrandishBot_Go/internal/progression/cache.go))
@@ -92,6 +101,7 @@
 **REJECTED REASON:** User analysis shows inventory mutations happen immediately after reads, making cache ineffective.
 
 **Access Pattern:**
+
 - `/inventory` endpoint (read-heavy)
 - Discord `/inventory` command (very frequent)
 - Quest completion checks
@@ -109,6 +119,7 @@
 **ANALYSIS:** `GetProgressionTree` is only called from `/admin-tree-status` Discord command (admin-only, low frequency).
 
 **Access Pattern:**
+
 - Tree structure rarely changes (only on admin updates)
 - Heavy read traffic (every `/progression/*` endpoint)
 
@@ -133,26 +144,26 @@ func (s *service) GetTree(ctx context.Context) (*domain.ProgressionTree, error) 
         return tree, nil
     }
     s.treeCacheMu.RUnlock()
-    
+
     // Fetch from DB
     tree, err := s.repo.GetProgressionTree(ctx)
     if err != nil {
         return nil, err
     }
-    
+
     // Cache for 10 minutes (tree changes rarely)
     s.treeCacheMu.Lock()
     s.treeCache = tree
     s.treeCacheExpiry = time.Now().Add(10 * time.Minute)
     s.treeCacheMu.Unlock()
-    
+
     return tree, nil
 }
 
 // Explicit invalidation on tree updates
 func (s *service) AdminUnlock(...) error {
     // ... unlock logic ...
-    
+
     s.InvalidateTreeCache()
     return nil
 }
@@ -161,6 +172,7 @@ func (s *service) AdminUnlock(...) error {
 **Invalidation:** Manual on admin operations (unlock, relock, instant unlock, JSON sync)
 
 **Expected Impact:**
+
 - **Cache hit rate:** ~99% (tree changes rarely)
 - **DB query reduction:** ~99% for tree queries
 - **P95 latency:** Progression endpoints: 15ms → 2ms

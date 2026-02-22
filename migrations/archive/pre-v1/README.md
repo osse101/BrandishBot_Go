@@ -22,6 +22,7 @@ These migrations represent the development history from November 2025 through Ja
 ## Recovery
 
 If you need to recreate the migration history:
+
 1. These files are preserved exactly as they were
 2. The goose version table was at version 29 before squashing
 3. Database schema dump taken: January 5, 2026 02:56 UTC

@@ -66,7 +66,8 @@ namespace BrandishBot.Client
         /// </summary>
         public async Task<VotingSession> GetVotingSession()
         {
-            return await GetAsync<VotingSession>("/api/v1/progression/session");
+            var response = await GetAsync<VotingSessionResponse>("/api/v1/progression/session");
+            return response?.Session;
         }
 
         /// <summary>
@@ -75,6 +76,22 @@ namespace BrandishBot.Client
         public async Task<UnlockProgress> GetUnlockProgress()
         {
             return await GetAsync<UnlockProgress>("/api/v1/progression/unlock-progress");
+        }
+
+        /// <summary>
+        /// Get contribution leaderboard
+        /// </summary>
+        public async Task<List<ContributionLeaderboardEntry>> GetContributionLeaderboard()
+        {
+            return await GetAsync<List<ContributionLeaderboardEntry>>("/api/v1/progression/leaderboard");
+        }
+
+        /// <summary>
+        /// Get estimated unlock date for a node
+        /// </summary>
+        public async Task<string> GetEstimate(string nodeKey)
+        {
+            return await GetAsync<string>("/api/v1/progression/estimate/" + nodeKey);
         }
     }
 }

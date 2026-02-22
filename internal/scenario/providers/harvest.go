@@ -180,9 +180,7 @@ func (p *HarvestProvider) executeTimeWarp(ctx context.Context, step scenario.Ste
 		return nil, err
 	}
 
-	// Calculate the new timestamp
-	// We warp backward in time by setting last_harvested_at to (now - hours)
-	// This makes it look like the user harvested `hours` ago
+	// Time warp: calculates new timestamp by subtracting hours from current time to simulate past harvest.
 	newTimestamp := time.Now().Add(-time.Duration(params.Hours * float64(time.Hour)))
 
 	// Update database directly

@@ -86,12 +86,7 @@ func TestAutoSelectFKConstraintBug(t *testing.T) {
 	t.Run("ZeroCostAutoUnlock", func(t *testing.T) {
 		cleanupProgressionState(ctx, t, testPool)
 
-		// This tests the scenario where:
-		// 1. Auto-select creates session
-		// 2. Zero-cost node triggers immediate unlock
-		// 3. Unlock ends the session
-		// 4. New session is started
-		// All of this should happen without FK violations
+		// Test scenario: Auto-select session -> Zero-cost auto-unlock -> End session -> New session. Verify no FK violations.
 
 		err := svc.StartVotingSession(ctx, nil)
 		if err != nil && !strings.Contains(err.Error(), "no nodes available") {

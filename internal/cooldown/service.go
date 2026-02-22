@@ -10,7 +10,7 @@ import (
 
 // ProgressionService defines the interface for progression system
 type ProgressionService interface {
-	GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error)
+	GetModifiedValue(ctx context.Context, userID string, featureKey string, baseValue float64) (float64, error)
 }
 
 // Service manages action cooldowns for users

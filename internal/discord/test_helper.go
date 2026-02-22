@@ -25,9 +25,7 @@ func (m *MockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 // 2. Mock Discord Session (with intercepted HTTP client)
 // 3. APIClient configured to talk to Mock Backend
 func NewTestContext(t *testing.T) (*httptest.Server, *APIClient, *discordgo.Session, *MockRoundTripper) {
-	// 1. Mock Backend API
-	// Default handler returns 200 OK with empty JSON to prevent crashes if unlimited
-	// Tests should override the mux handler or use a specific one
+	// 1. Mock Backend API (default 200 OK with empty JSON; override in specific tests).
 	mux := http.NewServeMux()
 	server := httptest.NewServer(mux)
 
@@ -62,11 +60,7 @@ func NewTestContext(t *testing.T) (*httptest.Server, *APIClient, *discordgo.Sess
 
 // Helper to register a backend handler
 func RegisterBackendHandler(server *httptest.Server, method, path string, handler http.HandlerFunc) {
-	// Note: httptest.Server uses a mux that doesn't support method matching easily without wrapper
-	// We'll rely on the caller to configure the mux passed to NewTestContext if they need complex routing
-	// Or we can just modify the mux?
-	// The problem is httptest.NewServer takes a handler.
-	// Let's modify NewTestContext to return the mux.
+	// Mock backend handler registration wrapper.
 }
 
 // Simplified version for easier usage

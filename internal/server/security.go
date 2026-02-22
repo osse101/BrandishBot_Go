@@ -133,10 +133,6 @@ func SecurityLoggingMiddleware(trustedProxies []string, detector *SuspiciousActi
 				return
 			}
 
-			// Add IP to context for other handlers
-			// log := logger.FromContext(r.Context())
-			// log = log.With("client_ip", ip)
-
 			// Continue with request
 			next.ServeHTTP(w, r)
 		})
@@ -166,9 +162,7 @@ func extractIP(r *http.Request, trustedProxies []string) string {
 	if isTrusted {
 		forwarded := r.Header.Get(HeaderForwardedFor)
 		if forwarded != "" {
-			// For X-Forwarded-For: client, proxy1, proxy2
-			// We want the rightmost IP (the one that connected to our trusted proxy)
-			// since we trust the proxy to accurately report the previous hop.
+			// X-Forwarded-For: client, proxy1, proxy2. Returns rightmost IP from trusted proxy reporting previous hop.
 			ips := strings.Split(forwarded, ",")
 			return strings.TrimSpace(ips[len(ips)-1])
 		}

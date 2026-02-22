@@ -19,11 +19,11 @@ go tool pprof -http=:8080 benchmarks/profiles/cpu.prof
 
 ### Benchmarks vs Profiling
 
-| Tool | Purpose | When to Use |
-|------|---------|-------------|
-| **Benchmarks** | Measure performance quantitatively | Compare before/after changes, track trends |
-| **CPU Profiling** | Identify where CPU time is spent | Find slow functions/algorithms |
-| **Memory Profiling** | Find allocations and memory leaks | Reduce GC pressure, optimize memory |
+| Tool                 | Purpose                            | When to Use                                |
+| -------------------- | ---------------------------------- | ------------------------------------------ |
+| **Benchmarks**       | Measure performance quantitatively | Compare before/after changes, track trends |
+| **CPU Profiling**    | Identify where CPU time is spent   | Find slow functions/algorithms             |
+| **Memory Profiling** | Find allocations and memory leaks  | Reduce GC pressure, optimize memory        |
 
 ## Benchmarking Workflow
 
@@ -34,12 +34,14 @@ make bench-hot
 ```
 
 **Output:**
+
 ```
 BenchmarkHandler_HandleMessage-8     5000    250000 ns/op    4096 B/op    45 allocs/op
 BenchmarkService_HandleIncomingMsg-8 10000   150000 ns/op    2048 B/op    25 allocs/op
 ```
 
 **What to look for:**
+
 - `ns/op` - nanoseconds per operation (lower is better)
 - `B/op` - bytes allocated per operation (lower is better)
 - `allocs/op` - number of allocations (lower is better)
@@ -61,6 +63,7 @@ make bench-compare
 ```
 
 **Example output (if benchstat installed):**
+
 ```
 name                         old time/op  new time/op  delta
 Handler_HandleMessage-8      250µs ± 2%   180µs ± 3%  -28.00%
@@ -93,16 +96,19 @@ This opens an interactive web UI at `http://localhost:8080`.
 ### Step 3: Interpret the Flame Graph
 
 **Flame Graph View:**
+
 - **Width** = % of total CPU time
 - **Height** = call stack depth
 - **Hover** = function name and stats
 
 **Look for:**
+
 - **Wide flames** = hot functions (spend most time here)
 - **Tall stacks** = deep call chains
 - **Flat boxes** = functions doing actual work
 
 **Example findings:**
+
 ```
 json.Unmarshal           ████████░░ 40%  <-- Hot! Consider caching
 database.Query           ████░░░░░░ 20%
@@ -151,6 +157,7 @@ In pprof UI, use **"alloc_space"** view:
 ```
 
 **Red flags:**
+
 - Large allocations in tight loops
 - JSON marshal/unmarshal in hot paths
 - String concatenation (use `strings.Builder` instead)
@@ -158,13 +165,14 @@ In pprof UI, use **"alloc_space"** view:
 ### Common Optimizations
 
 1. **Pre-allocate slices**
+
    ```go
    // Bad
    items := []Item{}
    for _, id := range ids {
        items = append(items, fetchItem(id))
    }
-   
+
    // Good
    items := make([]Item, 0, len(ids))
    for _, id := range ids {
@@ -173,6 +181,7 @@ In pprof UI, use **"alloc_space"** view:
    ```
 
 2. **Reuse objects**
+
    ```go
    // Use sync.Pool for frequently allocated objects
    var bufferPool = sync.Pool{
@@ -183,12 +192,13 @@ In pprof UI, use **"alloc_space"** view:
    ```
 
 3. **Avoid unnecessary allocations**
+
    ```go
-// Bad (allocates on every call)
+   // Bad (allocates on every call)
    func formatUsername(username string) string {
        return "User: " + username
    }
-   
+
    // Good (single allocation with builder)
    func formatUsername(username string) string {
        var b strings.Builder
@@ -216,6 +226,7 @@ curl http://localhost:8080/debug/pprof/goroutine > goroutine.prof
 ```
 
 **Analyze:**
+
 ```bash
 go tool pprof -http=:8080 cpu.prof
 ```
@@ -242,12 +253,14 @@ Before optimizing, ask:
 ## Tips & Best Practices
 
 ### ✅ Do
+
 - **Profile before optimizing** - "Premature optimization is the root of all evil"
 - **Focus on hot paths** - 80% of time spent in 20% of code
 - **Measure the impact** - Use benchstat to compare results
 - **Keep baselines** - Track performance over time
 
 ### ❌ Don't
+
 - **Don't guess** - Profile to find actual bottlenecks
 - **Don't micro-optimize** - Big wins come from algorithm/architecture changes
 - **Don't optimize cold code** - Focus on frequently-executed paths

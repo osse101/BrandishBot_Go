@@ -96,10 +96,7 @@ func TestService_ConcurrentAccess(t *testing.T) {
 	service := NewService(mockRepo, nil, nil, nil)
 	ctx := context.Background()
 
-	// We'll simulate concurrent reads (GetSellablePrices) and writes (BuyItem)
-	// Note: We can't easily simulate concurrent DB access without a real DB or sophisticated mock logic.
-	// But we can verify that the service doesn't race on its own fields (like if it had a map cache).
-	// Since `service` is stateless except for `wg`, this is mostly a sanity check.
+	// Sanity check: verify service doesn't race on its own fields.
 
 	var wg sync.WaitGroup
 	concurrency := 10

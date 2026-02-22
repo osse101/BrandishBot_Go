@@ -50,11 +50,7 @@ type userCache struct {
 // newUserCache creates a new user cache with the specified configuration.
 func newUserCache(config CacheConfig) *userCache {
 	c := &userCache{}
-	// Use callback to track evictions if needed, currently lru/expirable doesn't expose explicit eviction callback easily
-	// in the constructor for expirable, but we can track size.
-	// expirable.LRU does typically have an EvictCallback in the underlying LRU but expirable wrapper simplifies it.
-	// We will track hits/misses. Tracking evictions might need a wrapper or different library usage if strict.
-	// For now, we will track what we can.
+	// Tracking evictions: using onEvict callback to increment eviction counter; tracks hits/misses as available.
 
 	onEvict := func(key string, value *cachedUserEntry) {
 		c.evictions.Add(1)

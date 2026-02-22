@@ -15,9 +15,7 @@ const (
 	// MaxVotingOptions is the maximum number of options shown in a voting session
 	MaxVotingOptions = 4
 
-	// MaxRolloverPoints is the maximum number of contribution points that can rollover
-	// to the next node after an unlock. This prevents a single massive contribution
-	// from clearing multiple nodes in the tree at once.
+	// MaxRolloverPoints: caps points transferred to next node to prevent rapid chain-unlocks from massive contributions.
 	MaxRolloverPoints = 200
 )
 
@@ -80,22 +78,24 @@ func (s *service) getFilteredAvailableNodes(ctx context.Context, progress *domai
 
 func (s *service) startVotingWithMultipleOptions(ctx context.Context, available []*domain.ProgressionNode, unlockedNodeID *int) error {
 	log := logger.FromContext(ctx)
-	selected := selectRandomNodes(available, MaxVotingOptions)
+	selected := selectRandomNodes(available, MaxVotingOptions, nil)
 
 	sort.Slice(selected, func(i, j int) bool {
 		return selected[i].NodeKey < selected[j].NodeKey
 	})
 
-	sessionID, err := s.repo.CreateVotingSession(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to create session: %w", err)
-	}
-
+	options := make([]domain.ProgressionVotingOption, 0, len(selected))
 	for _, node := range selected {
 		targetLevel := s.calculateNextTargetLevel(ctx, node)
-		if err = s.repo.AddVotingOption(ctx, sessionID, node.ID, targetLevel); err != nil {
-			log.Warn("Failed to add voting option", "nodeID", node.ID, "error", err)
-		}
+		options = append(options, domain.ProgressionVotingOption{
+			NodeID:      node.ID,
+			TargetLevel: targetLevel,
+		})
+	}
+
+	sessionID, err := s.repo.CreateVotingSessionWithOptions(ctx, options)
+	if err != nil {
+		return fmt.Errorf("failed to create session: %w", err)
 	}
 
 	log.Info("Started new voting session", "sessionID", sessionID, "options", len(selected))
@@ -150,14 +150,16 @@ func (s *service) handleSingleOptionAutoSelect(ctx context.Context, progress *do
 	targetLevel := s.calculateNextTargetLevel(ctx, node)
 
 	// Create a voting session to satisfy FK constraint
-	sessionID, err := s.repo.CreateVotingSession(ctx)
+	// Create a voting session with the single option atomically
+	options := []domain.ProgressionVotingOption{
+		{
+			NodeID:      node.ID,
+			TargetLevel: targetLevel,
+		},
+	}
+	sessionID, err := s.repo.CreateVotingSessionWithOptions(ctx, options)
 	if err != nil {
 		return fmt.Errorf("failed to create auto-select session: %w", err)
-	}
-
-	// Add the single option to the session
-	if err = s.repo.AddVotingOption(ctx, sessionID, node.ID, targetLevel); err != nil {
-		log.Warn("Failed to add voting option for auto-select", "nodeID", node.ID, "error", err)
 	}
 
 	// Set the unlock target with a valid session ID
@@ -170,11 +172,7 @@ func (s *service) handleSingleOptionAutoSelect(ctx context.Context, progress *do
 	s.cachedProgressID = progress.ID
 	s.mu.Unlock()
 
-	if s.bus != nil {
-		if err := s.bus.Publish(ctx, event.NewProgressionTargetEvent(node.NodeKey, targetLevel, true, sessionID)); err != nil {
-			log.Error("Failed to publish progression target set event", "error", err)
-		}
-	}
+	s.publishTargetSetEvent(ctx, node, targetLevel, sessionID)
 
 	log.Info("Auto-selected target set", "nodeKey", node.NodeKey, "targetLevel", targetLevel, "sessionID", sessionID)
 
@@ -259,7 +257,7 @@ func (s *service) EndVoting(ctx context.Context) (*domain.ProgressionVotingOptio
 		return nil, fmt.Errorf("no active voting session")
 	}
 
-	winner := findWinningOption(session.Options)
+	winner := findWinningOption(session.Options, nil)
 	if winner == nil {
 		return nil, fmt.Errorf("no voting options found")
 	}
@@ -285,6 +283,8 @@ func (s *service) EndVoting(ctx context.Context) (*domain.ProgressionVotingOptio
 			s.cachedTargetCost = winner.NodeDetails.UnlockCost
 			s.cachedProgressID = progress.ID
 			s.mu.Unlock()
+
+			s.publishTargetSetEvent(ctx, winner.NodeDetails, winner.TargetLevel, session.ID)
 		}
 	}
 
@@ -513,7 +513,7 @@ func (s *service) handlePostUnlockTransition(ctx context.Context, unlockedNodeID
 	log := logger.FromContext(ctx)
 
 	// 1. Resolve parallel/frozen session to find next target
-	newTargetNode, newTargetLevel := s.resolveNextTarget(ctx)
+	newTargetNode, newTargetLevel, resolvedSessionID := s.resolveNextTarget(ctx)
 
 	// 2. Setup the new target
 	if newTargetNode == nil {
@@ -522,7 +522,7 @@ func (s *service) handlePostUnlockTransition(ctx context.Context, unlockedNodeID
 		return
 	}
 
-	sessionID, err := s.setupNewTarget(ctx, newProgressID, newTargetNode, newTargetLevel)
+	sessionID, err := s.setupNewTarget(ctx, newProgressID, newTargetNode, newTargetLevel, resolvedSessionID)
 	if err != nil {
 		log.Error("Failed to setup new target", "error", err)
 		return
@@ -534,13 +534,15 @@ func (s *service) handlePostUnlockTransition(ctx context.Context, unlockedNodeID
 	// 4. Initialize voting for the cycle AFTER the next one
 	s.initNextVotingCycle(ctx, newTargetNode)
 
-	// End the placeholder session
-	if err := s.repo.EndVotingSession(ctx, sessionID, nil); err != nil {
-		log.Warn("Failed to end placeholder session", "error", err)
+	// End the placeholder session ONLY if we created a new one
+	if resolvedSessionID == 0 {
+		if err := s.repo.EndVotingSession(ctx, sessionID, nil); err != nil {
+			log.Warn("Failed to end placeholder session", "error", err)
+		}
 	}
 }
 
-func (s *service) resolveNextTarget(ctx context.Context) (*domain.ProgressionNode, int) {
+func (s *service) resolveNextTarget(ctx context.Context) (*domain.ProgressionNode, int, int) {
 	log := logger.FromContext(ctx)
 
 	// Check parallel/frozen/recent session
@@ -556,20 +558,20 @@ func (s *service) resolveNextTarget(ctx context.Context) (*domain.ProgressionNod
 		winner := s.resolveSessionWinner(ctx, session)
 		if winner != nil && winner.NodeDetails != nil {
 			log.Info("Found target from voting session", "sessionID", session.ID, "status", session.Status, "winnerNodeID", winner.NodeID)
-			return winner.NodeDetails, winner.TargetLevel
+			return winner.NodeDetails, winner.TargetLevel, session.ID
 		}
 	}
 
 	// Fallback to random if no winner found
 	available, err := s.GetAvailableUnlocks(ctx)
 	if err != nil || len(available) == 0 {
-		return nil, 0
+		return nil, 0, 0
 	}
 
 	newTargetNode := available[utils.SecureRandomInt(len(available))]
 	newTargetLevel := s.calculateNextTargetLevel(ctx, newTargetNode)
 	log.Info("No active vote, picked random next target", "nodeKey", newTargetNode.NodeKey)
-	return newTargetNode, newTargetLevel
+	return newTargetNode, newTargetLevel, 0
 }
 
 func (s *service) resolveSessionWinner(ctx context.Context, session *domain.ProgressionVotingSession) *domain.ProgressionVotingOption {
@@ -589,7 +591,7 @@ func (s *service) resolveSessionWinner(ctx context.Context, session *domain.Prog
 		_ = s.repo.ResumeVotingSession(ctx, session.ID)
 	}
 
-	winner := findWinningOption(session.Options)
+	winner := findWinningOption(session.Options, nil)
 	if winner != nil {
 		winnerID := winner.ID
 		if err := s.repo.EndVotingSession(ctx, session.ID, &winnerID); err != nil {
@@ -599,11 +601,22 @@ func (s *service) resolveSessionWinner(ctx context.Context, session *domain.Prog
 	return winner
 }
 
-func (s *service) setupNewTarget(ctx context.Context, progressID int, node *domain.ProgressionNode, level int) (int, error) {
-	// Create placeholder for FK
-	sessionID, err := s.repo.CreateVotingSession(ctx)
-	if err != nil {
-		return 0, err
+func (s *service) setupNewTarget(ctx context.Context, progressID int, node *domain.ProgressionNode, level int, resolvedSessionID int) (int, error) {
+	sessionID := resolvedSessionID
+	var err error
+
+	if sessionID == 0 {
+		// Create placeholder for FK atomically with its option
+		options := []domain.ProgressionVotingOption{
+			{
+				NodeID:      node.ID,
+				TargetLevel: level,
+			},
+		}
+		sessionID, err = s.repo.CreateVotingSessionWithOptions(ctx, options)
+		if err != nil {
+			return 0, err
+		}
 	}
 
 	if err := s.repo.SetUnlockTarget(ctx, progressID, node.ID, level, sessionID); err != nil {
@@ -616,11 +629,12 @@ func (s *service) setupNewTarget(ctx context.Context, progressID int, node *doma
 	s.cachedProgressID = progressID
 	s.mu.Unlock()
 
+	s.publishTargetSetEvent(ctx, node, level, sessionID)
+
 	return sessionID, nil
 }
 
 func (s *service) initNextVotingCycle(ctx context.Context, currentTarget *domain.ProgressionNode) {
-	log := logger.FromContext(ctx)
 	available, err := s.GetAvailableUnlocks(ctx)
 	if err != nil {
 		return
@@ -633,11 +647,8 @@ func (s *service) initNextVotingCycle(ctx context.Context, currentTarget *domain
 		}
 	}
 
-	if len(remaining) >= 2 {
+	if len(remaining) >= 1 {
 		_ = s.startVotingWithOptions(ctx, remaining, &currentTarget.ID)
-	} else if len(remaining) == 1 {
-		log.Info("Only one option remaining, no voting needed for next cycle")
-		s.publishVotingStartedEvent(ctx, 0, remaining, currentTarget.DisplayName)
 	}
 }
 
@@ -737,13 +748,15 @@ func (s *service) setInitialTarget(ctx context.Context, available []*domain.Prog
 	}
 
 	targetLevel := s.calculateNextTargetLevel(ctx, node)
-	sessionID, err := s.repo.CreateVotingSession(ctx)
+	options := []domain.ProgressionVotingOption{
+		{
+			NodeID:      node.ID,
+			TargetLevel: targetLevel,
+		},
+	}
+	sessionID, err := s.repo.CreateVotingSessionWithOptions(ctx, options)
 	if err != nil {
 		return fmt.Errorf("failed to create voting session: %w", err)
-	}
-
-	if err = s.repo.AddVotingOption(ctx, sessionID, node.ID, targetLevel); err != nil {
-		log.Warn("Failed to add voting option for initial target", "nodeID", node.ID, "error", err)
 	}
 
 	if err := s.repo.SetUnlockTarget(ctx, progress.ID, node.ID, targetLevel, sessionID); err != nil {
@@ -781,23 +794,25 @@ func (s *service) startVotingWithOptions(ctx context.Context, options []*domain.
 		return fmt.Errorf("no options provided for voting")
 	}
 
-	selected := selectRandomNodes(options, MaxVotingOptions)
+	selected := selectRandomNodes(options, MaxVotingOptions, nil)
 
 	// Enforce consistent ordering of options (sort by NodeKey)
 	sort.Slice(selected, func(i, j int) bool {
 		return selected[i].NodeKey < selected[j].NodeKey
 	})
 
-	sessionID, err := s.repo.CreateVotingSession(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to create session: %w", err)
-	}
-
+	optionsList := make([]domain.ProgressionVotingOption, 0, len(selected))
 	for _, node := range selected {
 		targetLevel := s.calculateNextTargetLevel(ctx, node)
-		if err = s.repo.AddVotingOption(ctx, sessionID, node.ID, targetLevel); err != nil {
-			log.Warn("Failed to add voting option", "nodeID", node.ID, "error", err)
-		}
+		optionsList = append(optionsList, domain.ProgressionVotingOption{
+			NodeID:      node.ID,
+			TargetLevel: targetLevel,
+		})
+	}
+
+	sessionID, err := s.repo.CreateVotingSessionWithOptions(ctx, optionsList)
+	if err != nil {
+		return fmt.Errorf("failed to create session: %w", err)
 	}
 
 	log.Info("Started new voting session via startVotingWithOptions", "sessionID", sessionID, "options", len(selected))
@@ -815,70 +830,6 @@ func (s *service) startVotingWithOptions(ctx context.Context, options []*domain.
 }
 
 // Helper functions
-
-func selectRandomNodes(nodes []*domain.ProgressionNode, count int) []*domain.ProgressionNode {
-	if len(nodes) <= count {
-		return nodes
-	}
-
-	// Fisher-Yates shuffle
-	shuffled := make([]*domain.ProgressionNode, len(nodes))
-	copy(shuffled, nodes)
-
-	for i := len(shuffled) - 1; i > 0; i-- {
-		j := utils.SecureRandomInt(i + 1)
-		shuffled[i], shuffled[j] = shuffled[j], shuffled[i]
-	}
-
-	return shuffled[:count]
-}
-
-func findWinningOption(options []domain.ProgressionVotingOption) *domain.ProgressionVotingOption {
-	if len(options) == 0 {
-		return nil
-	}
-
-	// Check if all options have 0 votes
-	allZeroVotes := true
-	for _, opt := range options {
-		if opt.VoteCount > 0 {
-			allZeroVotes = false
-			break
-		}
-	}
-
-	// If 0 votes total, pick random option
-	if allZeroVotes {
-		randomIndex := utils.SecureRandomInt(len(options))
-		return &options[randomIndex]
-	}
-
-	// Normal tie-breaking with votes
-	// Checked for empty slice above
-	winner := &options[0]
-	for i := 1; i < len(options); i++ {
-		opt := &options[i]
-
-		// Higher vote count wins
-		if opt.VoteCount > winner.VoteCount {
-			winner = opt
-			continue
-		}
-
-		// Tie-breaker: first to reach highest vote (LastHighestVoteAt)
-		if opt.VoteCount == winner.VoteCount {
-			if opt.LastHighestVoteAt != nil && winner.LastHighestVoteAt != nil {
-				if opt.LastHighestVoteAt.Before(*winner.LastHighestVoteAt) {
-					winner = opt
-				}
-			} else if opt.LastHighestVoteAt != nil {
-				winner = opt
-			}
-		}
-	}
-
-	return winner
-}
 
 // InitializeProgressionState ensures the progression system is in a valid state on startup
 // If no active target exists, it picks a random available node

@@ -46,14 +46,14 @@ func HandleGetInfo(loader *info.Loader) http.HandlerFunc {
 		if feature != "" && topic != "" {
 			topicData, ok := loader.GetTopic(feature, topic)
 			if !ok {
-				respondError(w, http.StatusNotFound, fmt.Sprintf("Topic '%s' not found in feature '%s'", topic, feature))
+				RespondError(w, http.StatusNotFound, fmt.Sprintf("Topic '%s' not found in feature '%s'", topic, feature))
 				return
 			}
 			response.Feature = feature
 			response.Topic = topic
 			response.Link = ""
 			response.Description = formatter.FormatTopic(topicData, platform)
-			respondJSON(w, http.StatusOK, response)
+			RespondJSON(w, http.StatusOK, response)
 			return
 		}
 
@@ -64,7 +64,7 @@ func HandleGetInfo(loader *info.Loader) http.HandlerFunc {
 				// Feature not found - try searching topics across all features
 				topicData, featureName, found := loader.SearchTopic(feature)
 				if !found {
-					respondError(w, http.StatusNotFound, fmt.Sprintf("Feature or topic '%s' not found", feature))
+					RespondError(w, http.StatusNotFound, fmt.Sprintf("Feature or topic '%s' not found", feature))
 					return
 				}
 				// Found as a topic in another feature
@@ -72,19 +72,19 @@ func HandleGetInfo(loader *info.Loader) http.HandlerFunc {
 				response.Topic = feature
 				response.Link = ""
 				response.Description = formatter.FormatTopic(topicData, platform)
-				respondJSON(w, http.StatusOK, response)
+				RespondJSON(w, http.StatusOK, response)
 				return
 			}
 			response.Feature = feature
 			response.Link = ""
 			response.Description = formatter.FormatFeature(featureData, platform)
-			respondJSON(w, http.StatusOK, response)
+			RespondJSON(w, http.StatusOK, response)
 			return
 		}
 
 		// Handle general info list
 		allFeatures := loader.GetAllFeatures()
 		response.Description = formatter.FormatFeatureList(allFeatures, platform, gistLink)
-		respondJSON(w, http.StatusOK, response)
+		RespondJSON(w, http.StatusOK, response)
 	}
 }

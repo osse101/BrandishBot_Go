@@ -152,7 +152,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handler.AdminClearTimeoutRequest"
+                            "$ref": "#/definitions/admin.ClearTimeoutRequest"
                         }
                     }
                 ],
@@ -2345,6 +2345,22 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "admin.ClearTimeoutRequest": {
+            "type": "object",
+            "required": [
+                "platform",
+                "username"
+            ],
+            "properties": {
+                "platform": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string",
+                    "maxLength": 100
+                }
+            }
+        },
         "domain.ContributionBreakdown": {
             "type": "object",
             "properties": {
@@ -2490,29 +2506,6 @@ const docTemplate = `{
                 }
             }
         },
-        "domain.ModifierConfig": {
-            "type": "object",
-            "properties": {
-                "base_value": {
-                    "type": "number"
-                },
-                "feature_key": {
-                    "type": "string"
-                },
-                "max_value": {
-                    "type": "number"
-                },
-                "min_value": {
-                    "type": "number"
-                },
-                "modifier_type": {
-                    "type": "string"
-                },
-                "per_level_value": {
-                    "type": "number"
-                }
-            }
-        },
         "domain.PredictionOutcomeRequest": {
             "type": "object",
             "required": [
@@ -2615,14 +2608,6 @@ const docTemplate = `{
                 "max_level": {
                     "type": "integer"
                 },
-                "modifier_config": {
-                    "description": "Value modification configuration (nullable JSON in DB)",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/domain.ModifierConfig"
-                        }
-                    ]
-                },
                 "node_key": {
                     "type": "string"
                 },
@@ -2705,14 +2690,6 @@ const docTemplate = `{
                 },
                 "max_level": {
                     "type": "integer"
-                },
-                "modifier_config": {
-                    "description": "Value modification configuration (nullable JSON in DB)",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/domain.ModifierConfig"
-                        }
-                    ]
                 },
                 "node_key": {
                     "type": "string"
@@ -3066,22 +3043,6 @@ const docTemplate = `{
             "properties": {
                 "amount": {
                     "type": "integer"
-                }
-            }
-        },
-        "handler.AdminClearTimeoutRequest": {
-            "type": "object",
-            "required": [
-                "platform",
-                "username"
-            ],
-            "properties": {
-                "platform": {
-                    "type": "string"
-                },
-                "username": {
-                    "type": "string",
-                    "maxLength": 100
                 }
             }
         },
@@ -3743,10 +3704,10 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "max": {
-                    "description": "For between assertions"
+                    "description": "Between assertions - Upper bound"
                 },
                 "min": {
-                    "description": "For between assertions"
+                    "description": "Between assertions - Lower bound"
                 },
                 "path": {
                     "description": "JSONPath-like path to the value to check",

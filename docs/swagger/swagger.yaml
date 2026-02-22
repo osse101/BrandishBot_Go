@@ -1,5 +1,16 @@
 basePath: /
 definitions:
+  admin.ClearTimeoutRequest:
+    properties:
+      platform:
+        type: string
+      username:
+        maxLength: 100
+        type: string
+    required:
+    - platform
+    - username
+    type: object
   domain.ContributionBreakdown:
     properties:
       by_type:
@@ -96,21 +107,6 @@ definitions:
       user:
         $ref: '#/definitions/domain.User'
     type: object
-  domain.ModifierConfig:
-    properties:
-      base_value:
-        type: number
-      feature_key:
-        type: string
-      max_value:
-        type: number
-      min_value:
-        type: number
-      modifier_type:
-        type: string
-      per_level_value:
-        type: number
-    type: object
   domain.PredictionOutcomeRequest:
     properties:
       participants:
@@ -180,10 +176,6 @@ definitions:
         type: integer
       max_level:
         type: integer
-      modifier_config:
-        allOf:
-        - $ref: '#/definitions/domain.ModifierConfig'
-        description: Value modification configuration (nullable JSON in DB)
       node_key:
         type: string
       node_type:
@@ -242,10 +234,6 @@ definitions:
         type: boolean
       max_level:
         type: integer
-      modifier_config:
-        allOf:
-        - $ref: '#/definitions/domain.ModifierConfig'
-        description: Value modification configuration (nullable JSON in DB)
       node_key:
         type: string
       node_type:
@@ -486,17 +474,6 @@ definitions:
     properties:
       amount:
         type: integer
-    type: object
-  handler.AdminClearTimeoutRequest:
-    properties:
-      platform:
-        type: string
-      username:
-        maxLength: 100
-        type: string
-    required:
-    - platform
-    - username
     type: object
   handler.AdminEndVotingResponse:
     properties:
@@ -958,9 +935,9 @@ definitions:
   scenario.Assertion:
     properties:
       max:
-        description: For between assertions
+        description: Between assertions - Upper bound
       min:
-        description: For between assertions
+        description: Between assertions - Lower bound
       path:
         description: JSONPath-like path to the value to check
         type: string
@@ -1279,7 +1256,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handler.AdminClearTimeoutRequest'
+          $ref: '#/definitions/admin.ClearTimeoutRequest'
       produces:
       - application/json
       responses:

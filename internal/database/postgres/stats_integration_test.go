@@ -36,7 +36,7 @@ func TestStatsRepository_Integration(t *testing.T) {
 	t.Run("RecordEvent", func(t *testing.T) {
 		event := &domain.StatsEvent{
 			UserID:    testUser.ID,
-			EventType: domain.EventItemAdded,
+			EventType: domain.StatsEventItemAdded,
 			EventData: map[string]interface{}{
 				"item_id":  1,
 				"quantity": 10,
@@ -60,13 +60,13 @@ func TestStatsRepository_Integration(t *testing.T) {
 		events := []domain.StatsEvent{
 			{
 				UserID:    testUser.ID,
-				EventType: domain.EventItemAdded,
+				EventType: domain.StatsEventItemAdded,
 				EventData: map[string]interface{}{"item": "sword"},
 				CreatedAt: now.Add(-1 * time.Hour),
 			},
 			{
 				UserID:    testUser.ID,
-				EventType: domain.EventItemUsed,
+				EventType: domain.StatsEventItemUsed,
 				EventData: map[string]interface{}{"item": "potion"},
 				CreatedAt: now.Add(-30 * time.Minute),
 			},
@@ -104,9 +104,9 @@ func TestStatsRepository_Integration(t *testing.T) {
 
 		// Record events of different types
 		eventTypes := []domain.EventType{
-			domain.EventItemAdded,
-			domain.EventItemAdded,
-			domain.EventItemUsed,
+			domain.StatsEventItemAdded,
+			domain.StatsEventItemAdded,
+			domain.StatsEventItemUsed,
 		}
 
 		for _, eventType := range eventTypes {
@@ -124,7 +124,7 @@ func TestStatsRepository_Integration(t *testing.T) {
 		// Query by type
 		startTime := now.Add(-1 * time.Hour)
 		endTime := now.Add(1 * time.Hour)
-		retrieved, err := statsRepo.GetEventsByType(ctx, domain.EventItemAdded, startTime, endTime)
+		retrieved, err := statsRepo.GetEventsByType(ctx, domain.StatsEventItemAdded, startTime, endTime)
 		if err != nil {
 			t.Fatalf("GetEventsByType failed: %v", err)
 		}
@@ -136,8 +136,8 @@ func TestStatsRepository_Integration(t *testing.T) {
 
 		// Verify all are of correct type
 		for _, event := range retrieved {
-			if event.EventType != domain.EventItemAdded {
-				t.Errorf("expected event type %s, got %s", domain.EventItemAdded, event.EventType)
+			if event.EventType != domain.StatsEventItemAdded {
+				t.Errorf("expected event type %s, got %s", domain.StatsEventItemAdded, event.EventType)
 			}
 		}
 	})
@@ -158,7 +158,7 @@ func TestStatsRepository_Integration(t *testing.T) {
 		for i := 0; i < 3; i++ {
 			event := &domain.StatsEvent{
 				UserID:    testUser.ID,
-				EventType: domain.EventMessageReceived,
+				EventType: domain.StatsEventMessageReceived,
 				CreatedAt: now,
 			}
 			if err := statsRepo.RecordEvent(ctx, event); err != nil {
@@ -169,7 +169,7 @@ func TestStatsRepository_Integration(t *testing.T) {
 		// Record 1 event for anotherUser
 		event := &domain.StatsEvent{
 			UserID:    anotherUser.ID,
-			EventType: domain.EventMessageReceived,
+			EventType: domain.StatsEventMessageReceived,
 			CreatedAt: now,
 		}
 		if err := statsRepo.RecordEvent(ctx, event); err != nil {
@@ -179,7 +179,7 @@ func TestStatsRepository_Integration(t *testing.T) {
 		// Get top users
 		startTime := now.Add(-1 * time.Hour)
 		endTime := now.Add(1 * time.Hour)
-		topUsers, err := statsRepo.GetTopUsers(ctx, domain.EventMessageReceived, startTime, endTime, 10)
+		topUsers, err := statsRepo.GetTopUsers(ctx, domain.StatsEventMessageReceived, startTime, endTime, 10)
 		if err != nil {
 			t.Fatalf("GetTopUsers failed: %v", err)
 		}
@@ -203,9 +203,9 @@ func TestStatsRepository_Integration(t *testing.T) {
 
 		// Record various events
 		eventTypes := []domain.EventType{
-			domain.EventItemSold,
-			domain.EventItemSold,
-			domain.EventItemBought,
+			domain.StatsEventItemSold,
+			domain.StatsEventItemSold,
+			domain.StatsEventItemBought,
 		}
 
 		for _, eventType := range eventTypes {
@@ -227,12 +227,12 @@ func TestStatsRepository_Integration(t *testing.T) {
 			t.Fatalf("GetEventCounts failed: %v", err)
 		}
 
-		if counts[domain.EventItemSold] < 2 {
-			t.Errorf("expected at least 2 item_sold events, got %d", counts[domain.EventItemSold])
+		if counts[domain.StatsEventItemSold] < 2 {
+			t.Errorf("expected at least 2 item_sold events, got %d", counts[domain.StatsEventItemSold])
 		}
 
-		if counts[domain.EventItemBought] < 1 {
-			t.Errorf("expected at least 1 item_bought event, got %d", counts[domain.EventItemBought])
+		if counts[domain.StatsEventItemBought] < 1 {
+			t.Errorf("expected at least 1 item_bought event, got %d", counts[domain.StatsEventItemBought])
 		}
 	})
 
@@ -241,10 +241,10 @@ func TestStatsRepository_Integration(t *testing.T) {
 
 		// Record various events for specific user
 		eventTypes := []domain.EventType{
-			domain.EventItemTransferred,
-			domain.EventItemTransferred,
-			domain.EventItemTransferred,
-			domain.EventItemRemoved,
+			domain.StatsEventItemTransferred,
+			domain.StatsEventItemTransferred,
+			domain.StatsEventItemTransferred,
+			domain.StatsEventItemRemoved,
 		}
 
 		for _, eventType := range eventTypes {
@@ -266,12 +266,12 @@ func TestStatsRepository_Integration(t *testing.T) {
 			t.Fatalf("GetUserEventCounts failed: %v", err)
 		}
 
-		if counts[domain.EventItemTransferred] < 3 {
-			t.Errorf("expected at least 3 item_transferred events, got %d", counts[domain.EventItemTransferred])
+		if counts[domain.StatsEventItemTransferred] < 3 {
+			t.Errorf("expected at least 3 item_transferred events, got %d", counts[domain.StatsEventItemTransferred])
 		}
 
-		if counts[domain.EventItemRemoved] < 1 {
-			t.Errorf("expected at least 1 item_removed event, got %d", counts[domain.EventItemRemoved])
+		if counts[domain.StatsEventItemRemoved] < 1 {
+			t.Errorf("expected at least 1 item_removed event, got %d", counts[domain.StatsEventItemRemoved])
 		}
 	})
 
@@ -282,7 +282,7 @@ func TestStatsRepository_Integration(t *testing.T) {
 		for i := 0; i < 5; i++ {
 			event := &domain.StatsEvent{
 				UserID:    testUser.ID,
-				EventType: domain.EventUserRegistered,
+				EventType: domain.StatsEventUserRegistered,
 				CreatedAt: now,
 			}
 			if err := statsRepo.RecordEvent(ctx, event); err != nil {
@@ -320,7 +320,7 @@ func TestStatsRepository_Integration(t *testing.T) {
 		// Record event in the past
 		pastEvent := &domain.StatsEvent{
 			UserID:    isolatedUser.ID,
-			EventType: domain.EventItemAdded,
+			EventType: domain.StatsEventItemAdded,
 			CreatedAt: pastTime,
 		}
 		if err := statsRepo.RecordEvent(ctx, pastEvent); err != nil {

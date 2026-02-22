@@ -32,6 +32,7 @@ Enhance the recently implemented user lookup cache with instrumentation, explici
 ## Background
 
 User lookup caching was implemented in Optimization 3 ([`internal/user/cache.go`](file:///home/osse1/projects/BrandishBot_Go/internal/user/cache.go)) with:
+
 - LRU cache, 1000 user capacity
 - 5-minute TTL
 - Cache-first lookup in [`getUserOrRegister()`](file:///home/osse1/projects/BrandishBot_Go/internal/user/service.go#L1024-L1063)
@@ -68,6 +69,7 @@ func (s *service) GetCacheStats() CacheStats {
 ```
 
 **Metrics to expose:**
+
 - `user_cache_hit_total` (counter)
 - `user_cache_miss_total` (counter)
 - `user_cache_hit_rate` (gauge, computed)
@@ -78,8 +80,9 @@ func (s *service) GetCacheStats() CacheStats {
 Invalidate cache on user updates to prevent stale data:
 
 **Update Points:**
+
 - [`RegisterUser()`](file:///home/osse1/projects/BrandishBot_Go/internal/user/service.go#L167-L190) - Auto-register new user
-- [`UpdateUser()`](file:///home/osse1/projects/BrandishBot_Go/internal/user/service.go#L194-L202) - Profile updates  
+- [`UpdateUser()`](file:///home/osse1/projects/BrandishBot_Go/internal/user/service.go#L194-L202) - Profile updates
 - [`MergeUsers()`](file:///home/osse1/projects/BrandishBot_Go/internal/user/linking.go#L11-L68) - Account linking
 
 ```go
@@ -88,11 +91,11 @@ func (s *service) RegisterUser(ctx context.Context, user domain.User) (domain.Us
     if err != nil {
         return domain.User{}, err
     }
-    
+
     // Cache the newly registered user
     platform, platformID := getPlatformFromUser(user)
     s.userCache.Set(platform, platformID, registered)
-    
+
     return *registered, nil
 }
 
@@ -100,11 +103,11 @@ func (s *service) UpdateUser(ctx context.Context, user domain.User) error {
     if err := s.repo.UpdateUser(ctx, user); err != nil {
         return err
     }
-    
+
     // Invalidate cache to force refresh on next lookup
     platform, platformID := getPlatformFromUser(user)
     s.userCache.Invalidate(platform, platformID)
-    
+
     return nil
 }
 ```
@@ -114,12 +117,14 @@ func (s *service) UpdateUser(ctx context.Context, user domain.User) error {
 Create Grafana dashboard tracking:
 
 **Panels:**
+
 1. Cache hit rate (target: >60%)
 2. Cache size over time
 3. DB query reduction (compare to pre-cache baseline)
 4. P95/P99 latency for `/message/handle`
 
 **Alerts:**
+
 - Cache hit rate <40% (investigate cache size/TTL)
 - Anomalous cache miss spike (possible bug)
 
@@ -139,6 +144,7 @@ func newUserCacheFromConfig(cfg CacheConfig) *userCache {
 ```
 
 **Environment Variables:**
+
 - `USER_CACHE_SIZE` (default: 1000)
 - `USER_CACHE_TTL` (default: 5m)
 

@@ -16,7 +16,7 @@ export function TimeoutsPanel() {
         username: form.username,
       });
       toast.success(`Timeout cleared for ${form.username}`);
-      setForm(f => ({ ...f, username: '' }));
+      setForm((f) => ({ ...f, username: '' }));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to clear timeout');
     } finally {
@@ -33,7 +33,7 @@ export function TimeoutsPanel() {
             <label className="text-xs text-gray-500 block mb-1">Platform</label>
             <select
               value={form.platform}
-              onChange={e => setForm(f => ({ ...f, platform: e.target.value }))}
+              onChange={(e) => setForm((f) => ({ ...f, platform: e.target.value }))}
               className="px-2 py-1.5 bg-gray-800 border border-gray-700 rounded text-sm text-gray-200 focus:outline-none focus:border-blue-500"
             >
               <option value="twitch">Twitch</option>
@@ -45,7 +45,7 @@ export function TimeoutsPanel() {
             <label className="text-xs text-gray-500 block mb-1">Username</label>
             <input
               value={form.username}
-              onChange={e => setForm(f => ({ ...f, username: e.target.value }))}
+              onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))}
               className="w-full px-2 py-1.5 bg-gray-800 border border-gray-700 rounded text-sm text-gray-200 focus:outline-none focus:border-blue-500"
               placeholder="username"
             />

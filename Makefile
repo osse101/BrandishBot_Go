@@ -90,6 +90,9 @@ help:
 # Database connection string from environment
 DB_URL ?= postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=disable
 
+# Base reference for smart testing (defaults to origin/main)
+BASE_REF ?= origin/main
+
 # Migration commands
 migrate-up:
 	@echo "Running migrations..."
@@ -114,8 +117,11 @@ migrate-create:
 # Development commands
 test:
 	@echo "Running tests..."
-	@mkdir -p logs
-	@go test ./... -coverprofile=logs/coverage.out -covermode=atomic -race
+	@go run ./cmd/devtool check-coverage -run -file logs/coverage.out -threshold 0
+
+test-smart:
+	@echo "Running smart tests (changed packages vs $(BASE_REF))..."
+	@go run ./cmd/devtool check-coverage -smart -base $(BASE_REF) -exclude ./cmd/devtool -run -file logs/coverage.out -threshold 80
 
 unit:
 	@echo "Running unit tests (fast)..."
@@ -131,18 +137,28 @@ watch:
 	fi
 
 test-coverage:
-	@go run ./cmd/devtool check-coverage --html logs/coverage.out 0
+	@go run ./cmd/devtool check-coverage -html -file logs/coverage.out -threshold 0
 
 test-coverage-check:
-	@go run ./cmd/devtool check-coverage logs/coverage.out 80
+	@go run ./cmd/devtool check-coverage -file logs/coverage.out -threshold 80
 
 lint:
 	@echo "Running linters..."
 	@$(LINT) run ./...
+	@go run ./cmd/devtool check-comments
 
 lint-fix:
 	@echo "Running linters with auto-fix..."
 	@$(LINT) run --fix ./...
+	@npm run format
+
+format:
+	@echo "Formatting with Prettier..."
+	@npm run format
+
+format-check:
+	@echo "Checking formatting with Prettier..."
+	@npm run format:check
 
 install-hooks:
 	@echo "Installing git hooks..."

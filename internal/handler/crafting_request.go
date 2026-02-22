@@ -28,6 +28,6 @@ func decodeCraftingRequest(r *http.Request, w http.ResponseWriter, actionName st
 
 // trackCraftingEngagement publishes engagement tracking for a crafting action
 // Deprecated: Use TrackEngagement from event_helpers.go instead
-func trackCraftingEngagement(ctx context.Context, eventBus event.Bus, username, eventType string, quantity int) {
-	TrackEngagement(ctx, eventBus, username, eventType, quantity)
+func trackCraftingEngagement(ctx context.Context, eventBus event.Bus, userID, eventType string, quantity int) {
+	TrackEngagement(ctx, eventBus, userID, eventType, quantity)
 }

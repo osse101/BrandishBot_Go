@@ -93,9 +93,7 @@ func TestPricesEndpoint(t *testing.T) {
 
 // TestRecipesEndpoint tests the crafting recipes endpoint
 func TestRecipesEndpoint(t *testing.T) {
-	// Needs either item or user, providing generic query
-	// Requires platform/platform_id if user is provided
-	// Use the same user registered in TestUserRegistration or another known one
+	// Test requirements: recipe lookup needs item or user (with platform/ID); uses fresh registered user.
 	// Register a fresh user
 	ts := time.Now().Unix()
 	username := fmt.Sprintf("RecipeUser_%d", ts)

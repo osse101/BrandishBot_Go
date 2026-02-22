@@ -7,18 +7,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// DuelState represents the state of a duel
-type DuelState string
-
-const (
-	DuelStatePending    DuelState = "pending"
-	DuelStateAccepted   DuelState = "accepted"
-	DuelStateInProgress DuelState = "in_progress"
-	DuelStateCompleted  DuelState = "completed"
-	DuelStateDeclined   DuelState = "declined"
-	DuelStateExpired    DuelState = "expired"
-)
-
 // DuelStakes represents the stakes/bet terms of a duel
 type DuelStakes struct {
 	TimeoutDuration int    `json:"timeout_duration"` // Seconds

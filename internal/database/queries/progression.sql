@@ -62,9 +62,7 @@ LIMIT 1;
 
 -- name: StartVoting :exec
 INSERT INTO progression_voting (node_id, target_level, vote_count, voting_ends_at, is_active)
-VALUES ($1, $2, 0, $3, true)
-ON CONFLICT (node_id, target_level) DO UPDATE
-SET voting_started_at = CURRENT_TIMESTAMP, voting_ends_at = $3, is_active = true, vote_count = 0;
+VALUES ($1, $2, 0, $3, true);
 
 -- name: GetVoting :one
 SELECT id, node_id, target_level, vote_count, voting_started_at, voting_ends_at, is_active
@@ -88,9 +86,9 @@ SELECT EXISTS(
 );
 
 -- name: RecordUserVote :exec
-INSERT INTO user_votes (user_id, node_id, target_level)
-VALUES ($1, $2, $3)
-ON CONFLICT (user_id, node_id, target_level) DO NOTHING;
+INSERT INTO user_votes (user_id, node_id, target_level, session_id)
+VALUES ($1, $2, $3, 0)
+ON CONFLICT (user_id, session_id) DO NOTHING;
 
 -- name: UnlockUserProgression :exec
 INSERT INTO user_progression (user_id, progression_type, progression_key, metadata)
@@ -169,6 +167,7 @@ VALUES ($1, $2, $3, 0);
 SELECT id, started_at, ended_at, voting_deadline, winning_option_id, status
 FROM progression_voting_sessions
 WHERE status = ('voting')::text
+  AND EXISTS (SELECT 1 FROM progression_voting_options WHERE session_id = progression_voting_sessions.id)
 ORDER BY started_at DESC
 LIMIT 1;
 
@@ -230,6 +229,7 @@ WHERE id = $1 AND status = 'frozen';
 SELECT id, started_at, ended_at, voting_deadline, winning_option_id, status
 FROM progression_voting_sessions
 WHERE status IN ('voting', 'frozen')
+  AND EXISTS (SELECT 1 FROM progression_voting_options WHERE session_id = progression_voting_sessions.id)
 ORDER BY started_at DESC
 LIMIT 1;
 
@@ -260,7 +260,8 @@ SELECT EXISTS(
 
 -- name: RecordUserSessionVote :exec
 INSERT INTO user_votes (user_id, session_id, option_id, node_id, target_level)
-VALUES ($1, $2, $3, $4, 1);
+VALUES ($1, $2, $3, $4, $5)
+ON CONFLICT (user_id, session_id) DO NOTHING;
 
 -- name: CreateUnlockProgress :one
 INSERT INTO progression_unlock_progress (contributions_accumulated)
@@ -338,14 +339,16 @@ ON CONFLICT (node_id, prerequisite_node_id) DO NOTHING;
 SELECT n.*, COALESCE(u.current_level, 0)::int as unlock_level
 FROM progression_nodes n
 LEFT JOIN progression_unlocks u ON u.node_id = n.id
-WHERE n.modifier_config->>'feature_key' = $1
+JOIN bonus_config bc ON n.node_key = bc.node_key
+WHERE bc.feature_key = $1 AND bc.source_type = 'progression'
 LIMIT 1;
 
 -- name: GetAllNodesByFeatureKey :many
 SELECT n.*, COALESCE(u.current_level, 0)::int as unlock_level
 FROM progression_nodes n
 LEFT JOIN progression_unlocks u ON u.node_id = n.id
-WHERE n.modifier_config->>'feature_key' = $1
+JOIN bonus_config bc ON n.node_key = bc.node_key
+WHERE bc.feature_key = $1 AND bc.source_type = 'progression'
 ORDER BY n.tier ASC, n.id ASC;
 
 -- name: GetDailyEngagementTotals :many

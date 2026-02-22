@@ -11,8 +11,6 @@ import (
 )
 
 // This test reproduces the issue where auto-select wasn't handling FK constraints properly.
-// FIX: Now we create a session, immediately complete it, and use a valid session ID.
-// This preserves FK integrity while still auto-selecting the single option.
 func TestStartVotingSession_SingleOption_FixVerification(t *testing.T) {
 	repo := NewMockRepository()
 	// Manually setup the tree to have exactly 1 available node.

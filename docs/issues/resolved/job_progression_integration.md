@@ -17,8 +17,8 @@ Integrating these systems will allow the game economy and player progression to 
 
 ## Related Files
 
--   `internal/job/service.go`
--   `internal/progression/service.go` (and interface)
+- `internal/job/service.go`
+- `internal/progression/service.go` (and interface)
 
 ## Proposed Enhancements
 
@@ -30,19 +30,19 @@ Integrating these systems will allow the game economy and player progression to 
 
 1.  **Define Progression Keys**: Identify or create the specific progression node keys (e.g., `jobs_xp_boost`, `jobs_xp`).
 2.  **Implement `getXPMultiplier`**:
-    -   Call `progressionSvc.GetNodeLevel("jobs_xp_boost")`.
-    -   Map the level to a multiplier (e.g., Level 0 = 1.0x, Level 1 = 1.1x, etc.).
+    - Call `progressionSvc.GetNodeLevel("jobs_xp_boost")`.
+    - Map the level to a multiplier (e.g., Level 0 = 1.0x, Level 1 = 1.1x, etc.).
 3.  **Implement `getDailyCap`**:
-    -   Call `progressionSvc.GetNodeLevel("jobs_xp_boost")` (or a separate node).
-    -   Scale the cap (e.g., Cap = Base + (Level * Bonus)).
+    - Call `progressionSvc.GetNodeLevel("jobs_xp_boost")` (or a separate node).
+    - Scale the cap (e.g., Cap = Base + (Level \* Bonus)).
 4.  **Implement `getMaxJobLevel`**:
-    -   Call `progressionSvc.GetNodeLevel("jobs_xp")`.
-    -   Map level to max level cap (e.g., Level 1 = 10, Level 2 = 20).
+    - Call `progressionSvc.GetNodeLevel("jobs_xp")`.
+    - Map level to max level cap (e.g., Level 1 = 10, Level 2 = 20).
 5.  **Update `AwardXP`**: Ensure it uses these dynamic values.
 6.  **Tests**: Update unit tests to mock `ProgressionService` responses and verify dynamic scaling.
 
 ## Success Criteria
 
--   `AwardXP` uses dynamic values from the progression system.
--   Hardcoded defaults are used only as fallbacks.
--   Unit tests verify correct scaling behavior.
+- `AwardXP` uses dynamic values from the progression system.
+- Hardcoded defaults are used only as fallbacks.
+- Unit tests verify correct scaling behavior.

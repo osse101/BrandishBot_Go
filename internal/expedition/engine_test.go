@@ -131,7 +131,7 @@ func testParty(count int) []*domain.PartyMemberState {
 		party[i] = &domain.PartyMemberState{
 			UserID:      uuid.New(),
 			Username:    "player" + string(rune('A'+i)),
-			JobLevels:   map[string]int{"blacksmith": 5, "explorer": 10, "farmer": 3, "gambler": 7, "merchant": 2, "scholar": 8},
+			JobLevels:   map[string]int{domain.JobKeyBlacksmith: 5, domain.JobKeyExplorer: 10, domain.JobKeyFarmer: 3, domain.JobKeyGambler: 7, domain.JobKeyMerchant: 2, domain.JobKeyScholar: 8},
 			IsConscious: true,
 		}
 	}
@@ -213,8 +213,8 @@ func TestEngineRun_AllKnockedOut(t *testing.T) {
 
 func TestFindMaxJobLevel(t *testing.T) {
 	party := testParty(2)
-	party[0].JobLevels = map[string]int{"blacksmith": 15, "explorer": 3}
-	party[1].JobLevels = map[string]int{"blacksmith": 5, "explorer": 20}
+	party[0].JobLevels = map[string]int{domain.JobKeyBlacksmith: 15, domain.JobKeyExplorer: 3}
+	party[1].JobLevels = map[string]int{domain.JobKeyBlacksmith: 5, domain.JobKeyExplorer: 20}
 
 	max := FindMaxJobLevel(party)
 	assert.Equal(t, 20, max)
@@ -222,7 +222,7 @@ func TestFindMaxJobLevel(t *testing.T) {
 
 func TestFindMaxJobLevel_AllZero(t *testing.T) {
 	party := []*domain.PartyMemberState{
-		{JobLevels: map[string]int{"blacksmith": 0}},
+		{JobLevels: map[string]int{domain.JobKeyBlacksmith: 0}},
 	}
 	max := FindMaxJobLevel(party)
 	assert.Equal(t, 1, max) // Minimum 1 to avoid division by zero
@@ -233,7 +233,7 @@ func TestResolveSkillCheck_HighLevel_AlwaysPass(t *testing.T) {
 		{
 			UserID:      uuid.New(),
 			Username:    "tank",
-			JobLevels:   map[string]int{"blacksmith": 100},
+			JobLevels:   map[string]int{domain.JobKeyBlacksmith: 100},
 			IsConscious: true,
 		},
 	}
@@ -258,7 +258,7 @@ func TestResolveSkillCheck_ZeroLevel_AlwaysFail(t *testing.T) {
 		{
 			UserID:      uuid.New(),
 			Username:    "noob",
-			JobLevels:   map[string]int{"blacksmith": 0},
+			JobLevels:   map[string]int{domain.JobKeyBlacksmith: 0},
 			IsConscious: true,
 		},
 	}
@@ -278,8 +278,8 @@ func TestResolveSkillCheck_ZeroLevel_AlwaysFail(t *testing.T) {
 
 func TestResolveSkillCheck_Distribution(t *testing.T) {
 	party := []*domain.PartyMemberState{
-		{UserID: uuid.New(), Username: "A", JobLevels: map[string]int{"blacksmith": 10}, IsConscious: true},
-		{UserID: uuid.New(), Username: "B", JobLevels: map[string]int{"blacksmith": 5}, IsConscious: true},
+		{UserID: uuid.New(), Username: "A", JobLevels: map[string]int{domain.JobKeyBlacksmith: 10}, IsConscious: true},
+		{UserID: uuid.New(), Username: "B", JobLevels: map[string]int{domain.JobKeyBlacksmith: 5}, IsConscious: true},
 	}
 	maxLevel := 15 // max across all jobs
 
@@ -310,7 +310,7 @@ func TestResolveSkillCheck_TempSkillBonus(t *testing.T) {
 		{
 			UserID:      uuid.New(),
 			Username:    "scout",
-			JobLevels:   map[string]int{"explorer": 3},
+			JobLevels:   map[string]int{domain.JobKeyExplorer: 3},
 			IsConscious: true,
 			TempSkills:  []domain.ExpeditionSkill{domain.SkillPerception},
 		},

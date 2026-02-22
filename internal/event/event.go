@@ -120,6 +120,8 @@ type ProgressionAllUnlockedPayloadV1 struct {
 // JobLevelUpPayloadV1 is the typed payload for job level up events
 type JobLevelUpPayloadV1 struct {
 	UserID   string `json:"user_id"`
+	Username string `json:"username,omitempty"`
+	Platform string `json:"platform,omitempty"`
 	JobKey   string `json:"job_key"`
 	OldLevel int    `json:"old_level"`
 	NewLevel int    `json:"new_level"`
@@ -227,12 +229,14 @@ func NewProgressionAllUnlockedEvent(message string) Event {
 }
 
 // NewJobLevelUpEvent creates a new job level up event
-func NewJobLevelUpEvent(userID, jobKey string, oldLevel, newLevel int, source string) Event {
+func NewJobLevelUpEvent(userID, username, platform, jobKey string, oldLevel, newLevel int, source string) Event {
 	return Event{
 		Version: EventSchemaVersion,
-		Type:    Type(domain.EventJobLevelUp),
+		Type:    Type(domain.EventTypeJobLevelUp),
 		Payload: JobLevelUpPayloadV1{
 			UserID:   userID,
+			Username: username,
+			Platform: platform,
 			JobKey:   jobKey,
 			OldLevel: oldLevel,
 			NewLevel: newLevel,
@@ -375,7 +379,8 @@ func NewMemoryBus() *MemoryBus {
 	}
 }
 
-// Publish publishes an event to all subscribers
+// Publish publishes an event to all subscribers.
+// Note: Currently executes handlers synchronously. Future versions may use a worker pool.
 func (b *MemoryBus) Publish(ctx context.Context, event Event) error {
 	b.mu.RLock()
 	handlers, ok := b.handlers[event.Type]
@@ -385,9 +390,6 @@ func (b *MemoryBus) Publish(ctx context.Context, event Event) error {
 		return nil
 	}
 
-	// For now, we execute handlers synchronously.
-	// In the future, or with configuration, we could dispatch these to a worker pool
-	// or run them in goroutines.
 	var errs []error
 	for _, handler := range handlers {
 		if err := handler(ctx, event); err != nil {

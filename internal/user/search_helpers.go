@@ -55,9 +55,7 @@ var searchQualityLevels = []domain.QualityLevel{
 // calculateSearchQuality determines the quality level for search results based on a point system
 func (s *service) calculateSearchQuality(ctx context.Context, userID string, isCritical bool, params searchParams) domain.QualityLevel {
 	log := logger.FromContext(ctx)
-	// 1. Determine base index based on daily count (current count includes the one we just did)
-	// Bracket mapping: 1=uncommon, 2-5=common, 6-9=poor, 10-14=junk, 15+=cursed
-	// 1. Determine base index based on daily count
+	// 1. Determine base quality index by daily count (1: uncommon, 2-5: common, 6-9: poor, 10-14: junk, 15+: cursed).
 	baseIndex := s.calculateBaseQualityIndex(params.dailyCount)
 
 	// 2. Add points for bonuses
@@ -118,7 +116,7 @@ func (s *service) formatSearchSuccessMessage(ctx context.Context, user *domain.U
 	}
 
 	// Show (Exhausted) only on the VERY FIRST search that hits the threshold
-	if params.dailyCount == SearchDailyDiminishmentThreshold {
+	if params.dailyCount == domain.SearchDailyDiminishmentThreshold {
 		resultMessage += " (Exhausted)"
 	}
 
@@ -127,10 +125,10 @@ func (s *service) formatSearchSuccessMessage(ctx context.Context, user *domain.U
 
 // determineSearchFailureType categorizes the type of search failure based on roll
 func determineSearchFailureType(roll, successThreshold float64) searchFailureType {
-	if roll <= successThreshold+SearchNearMissRate {
+	if roll <= successThreshold+domain.SearchNearMissRate {
 		return searchFailureNearMiss
 	}
-	if roll > 1.0-SearchCriticalFailRate {
+	if roll > 1.0-domain.SearchCriticalFailRate {
 		return searchFailureCritical
 	}
 	return searchFailureNormal
@@ -172,7 +170,7 @@ func (s *service) formatSearchFailureMessageWithMeta(message string, params sear
 	}
 
 	// Show (Exhausted) only on the VERY FIRST search that hits the threshold
-	if params.dailyCount == SearchDailyDiminishmentThreshold {
+	if params.dailyCount == domain.SearchDailyDiminishmentThreshold {
 		result += " (Exhausted)"
 	}
 

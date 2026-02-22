@@ -69,7 +69,7 @@ type mockProgressionService struct {
 	mockGetModifiedValue func(ctx context.Context, featureKey string, baseValue float64) (float64, error)
 }
 
-func (m *mockProgressionService) GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error) {
+func (m *mockProgressionService) GetModifiedValue(ctx context.Context, userID string, featureKey string, baseValue float64) (float64, error) {
 	if m.mockGetModifiedValue != nil {
 		return m.mockGetModifiedValue(ctx, featureKey, baseValue)
 	}

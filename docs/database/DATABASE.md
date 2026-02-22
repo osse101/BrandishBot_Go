@@ -13,6 +13,7 @@ make check-db
 ```
 
 ### How It Works
+
 - Database runs in Docker
 - Port 5432 is bound to **localhost only** (`127.0.0.1:5432`)
 - ✅ You can run `go run cmd/app/main.go` on your computer
@@ -20,6 +21,7 @@ make check-db
 - ✅ Only your computer can connect to it
 
 ### Configuration
+
 ```env
 DB_HOST=localhost
 DB_PORT=5432  # This is still needed!
@@ -39,12 +41,14 @@ docker compose up -d
 ```
 
 In this mode:
+
 - Database is **only accessible via internal Docker network**
 - No external port exposure
 - Application connects to `db:5432` (Docker service name)
 - Highest security - database completely isolated from network
 
 ### Configuration for Docker
+
 ```env
 DB_HOST=db  # Use Docker service name instead of localhost
 ```
@@ -59,6 +63,7 @@ DB_HOST=db  # Use Docker service name instead of localhost
 ## Troubleshooting
 
 If you see "failed to connect to database":
+
 1. Check if database is running: `docker compose ps db`
 2. View database logs: `docker compose logs db`
 3. Restart database: `docker compose restart db`

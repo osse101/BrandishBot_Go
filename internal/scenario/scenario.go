@@ -76,8 +76,8 @@ type Assertion struct {
 	Type   AssertionType `json:"type"`
 	Path   string        `json:"path"` // JSONPath-like path to the value to check
 	Value  interface{}   `json:"value,omitempty"`
-	Min    interface{}   `json:"min,omitempty"`    // For between assertions
-	Max    interface{}   `json:"max,omitempty"`    // For between assertions
+	Min    interface{}   `json:"min,omitempty"`    // Between assertions - Lower bound
+	Max    interface{}   `json:"max,omitempty"`    // Between assertions - Upper bound
 	Reason string        `json:"reason,omitempty"` // Human-readable reason for the assertion
 }
 

@@ -3,6 +3,7 @@ RESOLVED
 # Add Integration Tests for UserService and Async Operations
 
 ## Priority: Medium
+
 ## Labels: `testing`, `enhancement`, `good-first-issue`
 
 ---
@@ -16,7 +17,7 @@ Recent concurrency bug fixes revealed the value of comprehensive integration tes
 1. **AddItem Lost Updates** ([fixed 2025-12-27](file:///home/osse1/projects/BrandishBot_Go/internal/database/postgres/user.go#L40-L65))
    - **Symptom**: 19 out of 20 concurrent inventory additions were lost
    - **Root Cause**: `SELECT FOR UPDATE` on non-existent inventory rows returned no lock
-   - **Test**: `TestConcurrentAddItem_Integration` 
+   - **Test**: `TestConcurrentAddItem_Integration`
    - **Fix**: Ensure row exists before locking with `INSERT ON CONFLICT DO NOTHING`
 
 2. **Cooldown Race Condition** ([fixed 2025-12-27](file:///home/osse1/projects/BrandishBot_Go/internal/cooldown/postgres.go#L79-L127))
@@ -48,18 +49,19 @@ While our integration test coverage is excellent (12/12 tests passing, 100%), th
 **Why**: Would have caught the AddItem race condition earlier in the development cycle.
 
 **Test Scenarios**:
+
 ```go
 func TestUserService_InventoryOperations_Integration(t *testing.T) {
     t.Run("Concurrent GiveItem Between Users", func(t *testing.T) {
         // Test 10 concurrent transfers from userA to userB
         // Verify both inventories update correctly with no lost transfers
     })
-    
+
     t.Run("UseItem Handler Execution", func(t *testing.T) {
         // Test item handlers execute correctly in real DB context
         // Verify inventory updates and handler side effects
     })
-    
+
     t.Run("AddItem to Full Inventory", func(t *testing.T) {
         // Test boundary conditions and error handling
     })
@@ -77,6 +79,7 @@ func TestUserService_InventoryOperations_Integration(t *testing.T) {
 **Why**: Async operations can hide bugs that only appear during graceful shutdown.
 
 **Test Scenarios**:
+
 ```go
 func TestUserService_AsyncXPAward_Integration(t *testing.T) {
     t.Run("Shutdown Waits for XP Awards", func(t *testing.T) {
@@ -84,7 +87,7 @@ func TestUserService_AsyncXPAward_Integration(t *testing.T) {
         // Call service.Shutdown()
         // Verify all awards complete before shutdown returns
     })
-    
+
     t.Run("XP Awards Don't Block Main Flow", func(t *testing.T) {
         // Verify search completion doesn't wait for XP award
     })
@@ -104,6 +107,7 @@ func TestUserService_AsyncXPAward_Integration(t *testing.T) {
 **Why**: Similar to AddItem but involves two users' inventories.
 
 **Test Scenarios**:
+
 ```go
 func TestConcurrentGiveItem_Integration(t *testing.T) {
     // 20 concurrent transfers: userA -> userB
@@ -123,12 +127,13 @@ func TestConcurrentGiveItem_Integration(t *testing.T) {
 **Why**: Validates XP/level calculations with real persistence.
 
 **Test Scenarios**:
+
 ```go
 func TestJobService_XPCalculation_Integration(t *testing.T) {
     t.Run("Level Up Thresholds", func(t *testing.T) {
         // Award XP incrementally and verify level-ups
     })
-    
+
     t.Run("Critical Success Multipliers", func(t *testing.T) {
         // Verify bonus XP calculations persist correctly
     })

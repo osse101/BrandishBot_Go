@@ -1,7 +1,7 @@
 name: jobs
 title: Jobs & Skills
 icon: 🛠️
-color: "#E67E22"
+color: '#E67E22'
 
 discord:
   description: |
@@ -30,4 +30,4 @@ discord:
     *   **Passive Bonuses**: (Coming Soon) Better prices, more loot, and special abilities.
 
 streamerbot:
-  description: "Jobs: Level up RPG skills! Blacksmith, Explorer, Farmer, Gambler, Merchant, Scholar. Higher levels = better rewards! !job-progress"
+  description: 'Jobs: Level up RPG skills! Blacksmith, Explorer, Farmer, Gambler, Merchant, Scholar. Higher levels = better rewards! !job-progress'

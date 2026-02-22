@@ -28,6 +28,7 @@ The shield handler currently has a placeholder implementation. Full implementati
 - [ ] Add migration for database schema
 
 **Files to modify:**
+
 - `internal/user/service.go` - `ApplyShield()` method
 - `internal/user/item_handlers.go` - `handleWeapon()` to check for shields
 - `migrations/` - new migration file
@@ -35,6 +36,7 @@ The shield handler currently has a placeholder implementation. Full implementati
 ### 2. ~~Explosive/Trap System~~ [COMPLETED - 2026-01-30]
 
 **Status**: Implemented.
+
 - `user_traps` table exists.
 - `handleTrap` is fully implemented in `internal/user/item_handlers.go`.
 - `triggerTrap` is implemented in `internal/user/service.go` and hooked into message processing.
@@ -58,13 +60,13 @@ Currently, `handler_config` in items.json is not parsed. Timeout values are hard
 
 These items require stream platform integration:
 
-| Item | Description | Requirement |
-|------|-------------|-------------|
-| `sabotage_input` | Input delay on stream | OBS/Stream integration |
-| `sabotage_swap` | Control swap on stream | OBS/Stream integration |
-| `sabotage_input60` | Extended input delay | OBS/Stream integration |
-| `stream_poll` | Trigger stream poll | Twitch API |
-| `stream_fx` | Trigger stream effects | OBS WebSocket |
+| Item               | Description            | Requirement            |
+| ------------------ | ---------------------- | ---------------------- |
+| `sabotage_input`   | Input delay on stream  | OBS/Stream integration |
+| `sabotage_swap`    | Control swap on stream | OBS/Stream integration |
+| `sabotage_input60` | Extended input delay   | OBS/Stream integration |
+| `stream_poll`      | Trigger stream poll    | Twitch API             |
+| `stream_fx`        | Trigger stream effects | OBS WebSocket          |
 
 ### 5. Pre-existing Test Failures
 
@@ -74,18 +76,14 @@ These items require stream platform integration:
 Handler tests `TestHandleSellItem` and `TestHandleRemoveItem` have pre-existing failures unrelated to item migration. The tests expect old response format without `message` field.
 
 **Files to fix:**
+
 - `internal/handler/inventory_test.go`
 
 ---
 
-## Testing Checklist
+## Status Update (2026-02-15)
 
-After implementing remaining items:
-
-- [ ] Run `make generate` if SQLC changes needed
-- [ ] Run `make mocks` if interfaces changed
-- [ ] Run `make test` to verify no regressions
-- [ ] Test progression node sync with `make run`
-- [ ] Verify new items appear in `/api/v1/prices` endpoint
-- [ ] Test upgrade/disassemble recipes work
-- [ ] Test each new handler in isolation
+- **Shield System**: Remains unimplemented (no DB schema changes found).
+- **Deferred Items**: Remains pending stream integration.
+- **Handler Config Parsing**: Remains pending.
+- **Explosive/Trap System**: Confirmed as fully implemented.

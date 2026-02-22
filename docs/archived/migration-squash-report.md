@@ -13,6 +13,7 @@
 Successfully consolidated 29 development migrations (spanning November 2025 - January 2026) into a single, production-ready baseline migration (`0001_initial_schema_v1.sql`). The squashed migration creates 38 tables with complete seed data and has been validated against both Docker deployment and integration tests.
 
 **Results:**
+
 - ✅ Single 761-line migration file
 - ✅ All 38 tables created correctly
 - ✅ Production-validated seed data included
@@ -40,27 +41,31 @@ Based on industry best practices and lessons learned from this implementation:
    - Verify no pending migrations in development
 
 3. **Archive Original Migrations**
+
    ```bash
    mkdir -p migrations/archive/pre-v1
    cp migrations/*.sql migrations/archive/pre-v1/
    ```
+
    - Create `README.md` in archive documenting reason and date
    - Add archive to `.gitignore` if not tracking history
 
 ### Phase 2: Schema Extraction
 
 4. **Apply All Migrations to Fresh Database**
+
    ```bash
    # Clean slate
    docker-compose down
    docker volume rm <postgres_volume>
    docker-compose up -d
-   
+
    # Verify all 29 migrations apply
    goose status
    ```
 
 5. **Extract Complete Schema**
+
    ```bash
    pg_dump \
      --schema-only \
@@ -86,9 +91,10 @@ Based on industry best practices and lessons learned from this implementation:
      - **Runtime:** Data synced from config files
 
 8. **Extract Seed Data from Production**
+
    ```sql
    -- Query actual production values
-   SELECT internal_name, public_name, default_display 
+   SELECT internal_name, public_name, default_display
    FROM items WHERE internal_name LIKE 'lootbox%';
    ```
 
@@ -100,15 +106,16 @@ Based on industry best practices and lessons learned from this implementation:
 ### Phase 4: Migration File Assembly
 
 10. **Create Squashed Migration**
+
     ```sql
     -- +goose Up
     -- ProjectName v1.0 - Initial Schema
     -- Squashed from N development migrations (date range)
-    
+
     [DDL statements from schema dump]
-    
+
     [Seed data statements]
-    
+
     -- +goose Down
     [DROP statements in reverse dependency order]
     ```
@@ -121,20 +128,23 @@ Based on industry best practices and lessons learned from this implementation:
 ### Phase 5: Testing & Validation
 
 12. **Test Fresh Database Creation**
+
     ```bash
     # Complete fresh test
     docker-compose down
     docker volume rm <postgres_volume>
     docker-compose up
-    
+
     # Verify table count
     docker exec <container> psql -c "\dt" | wc -l
     ```
 
 13. **Run Integration Tests**
+
     ```bash
     make test
     ```
+
     - Document any failures
     - Decide if failures are acceptable (test-specific vs. schema issues)
 
@@ -165,6 +175,7 @@ Based on industry best practices and lessons learned from this implementation:
 ### Critical Issues Encountered
 
 #### 1. **NULL Column Values Cause Scan Errors**
+
 **Problem:** Go's database scanner cannot scan NULL into `*string` fields.
 
 ```sql
@@ -172,13 +183,14 @@ Based on industry best practices and lessons learned from this implementation:
 INSERT INTO items (internal_name, public_name, item_description, base_value) VALUES ...
 
 -- ✅ Correct: Include all non-nullable display fields
-INSERT INTO items (internal_name, public_name, item_description, base_value, default_display) VALUES 
+INSERT INTO items (internal_name, public_name, item_description, base_value, default_display) VALUES
     ('money', 'money', 'Currency', 1, 'Coins');
 ```
 
 **Lesson:** Always check Go struct definitions and include all scanned fields in seed data.
 
 #### 2. **pg_dump Includes Non-SQL Artifacts**
+
 **Problem:** `pg_dump` output includes psql-specific meta-commands that goose cannot execute.
 
 ```sql
@@ -190,6 +202,7 @@ SELECT pg_catalog.set_config('search_path', '', false);
 ```
 
 **Solution:**
+
 ```bash
 # Remove all psql meta-commands and session config
 sed -i '/^\\/d; /^SET /d; /^SELECT pg_catalog/d' migration.sql
@@ -198,6 +211,7 @@ sed -i '/^\\/d; /^SET /d; /^SELECT pg_catalog/d' migration.sql
 **Lesson:** Always clean `pg_dump` output before using in migration files.
 
 #### 3. **Column Name Mismatches**
+
 **Problem:** Database column names don't match what seeds expect.
 
 ```sql
@@ -213,6 +227,7 @@ INSERT INTO items (internal_name, ...) VALUES ...
 **Lesson:** Query the actual database schema, don't assume column names.
 
 #### 4. **Seed Data Must Match Production**
+
 **Problem:** Using invented seed values that don't match production causes test failures.
 
 ```sql
@@ -224,6 +239,7 @@ INSERT INTO items (internal_name, ...) VALUES ...
 ```
 
 **Solution:** Query production database for exact values:
+
 ```sql
 SELECT internal_name, public_name, default_display FROM items;
 ```
@@ -231,14 +247,17 @@ SELECT internal_name, public_name, default_display FROM items;
 **Lesson:** Always extract seed data from the actual migrated database, not from assumptions.
 
 #### 5. **Test-Specific Seeds vs. Runtime Sync**
+
 **Problem:** Some data is synced at runtime from config files, creating false test failures.
 
 **Example:**
+
 - Progression tree nodes are synced from `progression_tree.json` at startup
 - Tests need minimal seed data to pass
 - Full tree doesn't need to be in migration
 
 **Solution:**
+
 ```sql
 -- Minimal seed for tests (full tree synced at runtime)
 INSERT INTO progression_nodes (node_key, node_type, display_name, ...)
@@ -247,6 +266,7 @@ ON CONFLICT DO NOTHING;
 ```
 
 **Lesson:** Distinguish between:
+
 - **Essential seeds:** Required for app to function
 - **Test seeds:** Minimal data for tests to pass
 - **Runtime data:** Synced from config files
@@ -258,6 +278,7 @@ ON CONFLICT DO NOTHING;
 Use this checklist for future squashing operations:
 
 ### Pre-Squash
+
 - [ ] Full database backup created
 - [ ] Git tag created for pre-squash state
 - [ ] All current migrations applied to production
@@ -265,6 +286,7 @@ Use this checklist for future squashing operations:
 - [ ] Original migrations archived to `migrations/archive/`
 
 ### Schema Extraction
+
 - [ ] Fresh database created and all migrations applied
 - [ ] Schema extracted using `pg_dump --schema-only`
 - [ ] Psql meta-commands removed (`\` lines)
@@ -273,6 +295,7 @@ Use this checklist for future squashing operations:
 - [ ] Only DDL statements remain
 
 ### Seed Data
+
 - [ ] Required seed data identified from original migrations
 - [ ] Production database queried for actual values
 - [ ] All non-nullable columns included in INSERT statements
@@ -280,6 +303,7 @@ Use this checklist for future squashing operations:
 - [ ] Column names verified against actual schema
 
 ### Migration File
+
 - [ ] Goose directives added (`-- +goose Up/Down`)
 - [ ] No duplicate goose directives
 - [ ] Schema DDL section complete
@@ -288,6 +312,7 @@ Use this checklist for future squashing operations:
 - [ ] File saved as `0001_initial_schema_v1.sql`
 
 ### Testing
+
 - [ ] Fresh database test: Volume removed, containers rebuilt
 - [ ] Verify correct table count created
 - [ ] Integration tests run and results documented
@@ -296,6 +321,7 @@ Use this checklist for future squashing operations:
 - [ ] Core functionality tested
 
 ### Documentation & Cleanup
+
 - [ ] Archive README created with squash details
 - [ ] Project migration docs updated
 - [ ] Git commit with clear message
@@ -303,6 +329,7 @@ Use this checklist for future squashing operations:
 - [ ] Team notified of migration changes
 
 ### Post-Deployment Monitoring
+
 - [ ] Production deployment tested in staging first
 - [ ] Migration rollback tested
 - [ ] Application logs monitored for errors
@@ -313,17 +340,19 @@ Use this checklist for future squashing operations:
 ## Best Practices Summary
 
 ### DO ✅
+
 - **Always backup** before squashing
 - **Extract from actual database**, not from migration files
 - **Test on fresh database** multiple times
 - **Include all required columns** in seed data
-- **Use production values** for seed data  
+- **Use production values** for seed data
 - **Add `ON CONFLICT`** clauses for idempotency
 - **Archive original migrations** with documentation
 - **Version control** squash commits with tags
 - **Test in staging** before production
 
 ### DON'T ❌
+
 - **Don't assume** column names without verification
 - **Don't invent** seed data values
 - **Don't skip** meta-command cleaning from pg_dump
@@ -353,12 +382,14 @@ migrations/
 ## Metrics
 
 ### Before Squashing
+
 - **Migration Files:** 29
 - **Total Lines:** ~1,500+
 - **Maintenance Burden:** High (tracking 29 files)
 - **Fresh DB Setup Time:** ~5-10 seconds (apply 29 migrations)
 
 ### After Squashing
+
 - **Migration Files:** 1 (+ 29 archived)
 - **Total Lines:** 764
 - **Maintenance Burden:** Low (single file)
@@ -389,7 +420,6 @@ migrations/
 - [PostgreSQL pg_dump Manual](https://www.postgresql.org/docs/current/app-pgdump.html)
 - [Migration Best Practices](https://www.prisma.io/dataguide/types/relational/migration-strategies)
 
-
 ---
 
 ## Post-Squash Analysis & Verification
@@ -403,6 +433,7 @@ After completing the initial squash, a thorough comparison was performed between
 The archived migrations revealed a critical schema evolution that impacted seed data:
 
 **Migration 0022 (add_item_naming.sql):**
+
 - Renamed column: `item_name` → `internal_name`
 - Added columns: `public_name`, `handler`, `default_display`
 - Renamed items:
@@ -412,22 +443,26 @@ The archived migrations revealed a critical schema evolution that impacted seed 
   - `blaster` → `weapon_blaster`
 
 **Migration 0028 (progression_prerequisites_junction.sql):**
+
 - Removed column: `parent_node_id` from `progression_nodes`
 - Added table: `progression_prerequisites` (many-to-many junction)
 
 #### Issues Found & Resolved
 
 **1. Duplicate Goose Directive (CRITICAL)**
+
 - **Issue**: Lines 1 and 5-7 contained duplicate `-- +goose Up` directives
 - **Impact**: Violates goose migration rules, unpredictable execution behavior
 - **Resolution**: Removed duplicate directive (lines 5-7)
 
 **2. Missing Item Type Assignment**
+
 - **Issue**: `weapon_blaster` only assigned 'upgradeable' type, missing 'consumable'
 - **Expected**: Both types per original migration 0008
 - **Resolution**: Updated type assignment to include both 'upgradeable' and 'consumable'
 
 **3. Progression Tree Seed Strategy**
+
 - **Observation**: Only 1 progression node seeded vs. 14 in original migration 0015
 - **Clarification**: This is **intentional** - `progression_tree.json` is the source of truth
 - **Runtime Behavior**: Application syncs full tree from JSON when `SYNC_PROGRESSION_TREE` env var is set
@@ -437,26 +472,28 @@ The archived migrations revealed a critical schema evolution that impacted seed 
 
 All integration tests passed successfully (9/9 test suites, 100%):
 
-| Test Suite | Status | Details |
-|------------|--------|---------|
-| `TestConcurrentAddItem_Integration` | ✅ PASS | Concurrent operations work correctly |
-| `TestUserRepository_Integration` | ✅ PASS | All 9 subtests passed |
-| `TestLinking_EndToEndFlow_Integration` | ✅ PASS | Account linking flow works |
-| `TestLinking_TokenExpiration_Integration` | ✅ PASS | Token expiration handled |
-| `TestLinking_MergeTwoExistingUsers_Integration` | ✅ PASS | User merge logic works |
-| `TestUserService_AsyncXPAward_Integration` | ✅ PASS | Async XP awards processed |
-| `TestGetUserByPlatformUsername_Integration` | ✅ PASS | Username lookup works |
-| `TestUsernameBasedMethods_Integration` | ✅ PASS | All username methods work |
-| `TestCooldownService_ConcurrentRequests_Integration` | ✅ PASS | Cooldowns handle concurrency |
+| Test Suite                                           | Status  | Details                              |
+| ---------------------------------------------------- | ------- | ------------------------------------ |
+| `TestConcurrentAddItem_Integration`                  | ✅ PASS | Concurrent operations work correctly |
+| `TestUserRepository_Integration`                     | ✅ PASS | All 9 subtests passed                |
+| `TestLinking_EndToEndFlow_Integration`               | ✅ PASS | Account linking flow works           |
+| `TestLinking_TokenExpiration_Integration`            | ✅ PASS | Token expiration handled             |
+| `TestLinking_MergeTwoExistingUsers_Integration`      | ✅ PASS | User merge logic works               |
+| `TestUserService_AsyncXPAward_Integration`           | ✅ PASS | Async XP awards processed            |
+| `TestGetUserByPlatformUsername_Integration`          | ✅ PASS | Username lookup works                |
+| `TestUsernameBasedMethods_Integration`               | ✅ PASS | All username methods work            |
+| `TestCooldownService_ConcurrentRequests_Integration` | ✅ PASS | Cooldowns handle concurrency         |
 
 #### Database State Verification
 
 **Tables Created**: 38 tables ✅
+
 - All foreign key relationships intact
 - All indexes created successfully
 - All sequences configured correctly
 
 **Seed Data Verified**:
+
 - ✅ **Items**: 5 items (lootbox_tier0, lootbox_tier1, lootbox_tier2, money, weapon_blaster)
 - ✅ **Item Types**: 6 types (consumable, upgradeable, sellable, buyable, currency, disassembleable)
 - ✅ **Item Type Assignments**: All items properly typed
@@ -464,6 +501,7 @@ All integration tests passed successfully (9/9 test suites, 100%):
 - ✅ **Progression Nodes**: 1 root node (full tree synced from JSON at runtime)
 
 **Column Naming**:
+
 - ✅ `items` table uses `internal_name`, `public_name`, `default_display`, `handler`
 - ✅ All item references use new internal naming scheme
 - ✅ `progression_nodes` uses `tier`, `size`, `category` (no `parent_node_id`)
@@ -472,6 +510,7 @@ All integration tests passed successfully (9/9 test suites, 100%):
 ### Conclusion
 
 The squashed migration successfully consolidates all 29 development migrations into a single, production-ready baseline. All identified issues have been resolved:
+
 - Duplicate goose directive removed
 - Blaster item type corrected
 - Progression tree sync strategy documented
@@ -482,15 +521,13 @@ The migration is now ready for production deployment with 100% integration test 
 
 ## Change Log
 
-| Date | Action | Result |
-|------|--------|--------|
-| 2026-01-05 | Squashed 29 migrations to v1.0 baseline | ✅ Success |
-| 2026-01-05 | Fixed NULL column scan errors | ✅ Resolved |
-| 2026-01-05 | Updated seed data with production values | ✅ Complete |
-| 2026-01-05 | Validated Docker deployment | ✅ Working |
+| Date       | Action                                       | Result      |
+| ---------- | -------------------------------------------- | ----------- |
+| 2026-01-05 | Squashed 29 migrations to v1.0 baseline      | ✅ Success  |
+| 2026-01-05 | Fixed NULL column scan errors                | ✅ Resolved |
+| 2026-01-05 | Updated seed data with production values     | ✅ Complete |
+| 2026-01-05 | Validated Docker deployment                  | ✅ Working  |
 | 2026-01-05 | Fixed duplicate goose directive in migration | ✅ Resolved |
-| 2026-01-05 | Added consumable type to weapon_blaster | ✅ Complete |
-| 2026-01-05 | Verified integration tests (100% pass rate) | ✅ Passing |
-| 2026-01-05 | Added auto-unlock for progression root node | ✅ Complete |
-
-
+| 2026-01-05 | Added consumable type to weapon_blaster      | ✅ Complete |
+| 2026-01-05 | Verified integration tests (100% pass rate)  | ✅ Passing  |
+| 2026-01-05 | Added auto-unlock for progression root node  | ✅ Complete |

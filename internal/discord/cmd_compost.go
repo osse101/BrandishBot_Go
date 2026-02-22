@@ -136,3 +136,61 @@ func CompostHarvestCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 
 	return cmd, handler
 }
+
+// CompostStatusCommand returns the compost status command definition and handler
+func CompostStatusCommand() (*discordgo.ApplicationCommand, CommandHandler) {
+	cmd := &discordgo.ApplicationCommand{
+		Name:        "compost-status",
+		Description: "Check the status of your compost bin",
+	}
+
+	handler := func(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
+		if !deferResponse(s, i) {
+			return
+		}
+
+		user := getInteractionUser(i)
+
+		// Status check doesn't strictly need registration, but good for tracking
+		if !ensureUserRegistered(s, i, client, user, false) {
+			return
+		}
+
+		result, err := client.CompostStatus(domain.PlatformDiscord, user.ID)
+		if err != nil {
+			slog.Error("Failed to check compost status", "error", err, "user", user.Username)
+			respondFriendlyError(s, i, err.Error())
+			return
+		}
+
+		description := ""
+		color := 0x95a5a6
+
+		if result.Harvested {
+			description = fmt.Sprintf("♻️ **Compost Harvested!**\n\n%s", result.Output.Message)
+			color = 0x2ecc71
+		} else if result.Status != nil {
+			status := result.Status
+			description = fmt.Sprintf("**Status:** %s\n**Capacity:** %d/%d\n",
+				status.Status, status.ItemCount, status.Capacity)
+
+			if status.TimeLeft != "" {
+				description += fmt.Sprintf("**Time Remaining:** %s", status.TimeLeft)
+			}
+
+			if status.Status == domain.CompostBinStatusComposting {
+				color = 0x3498db
+			} else if status.Status == domain.CompostBinStatusReady {
+				color = 0x2ecc71
+				description += "\n\n**Ready to Harvest!**"
+			}
+		} else {
+			description = "Unknown status"
+		}
+
+		embed := createEmbed("Compost Bin Status", description, color, "")
+		sendEmbed(s, i, embed)
+	}
+
+	return cmd, handler
+}

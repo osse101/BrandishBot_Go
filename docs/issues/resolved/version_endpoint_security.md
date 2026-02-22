@@ -7,7 +7,7 @@ RESOLVED
 **Category**: Security  
 **Created**: 2025-12-31  
 **Resolved**: 2026-01-05  
-**Environment**: Production  
+**Environment**: Production
 
 ## Resolution
 
@@ -28,11 +28,12 @@ This means the `/version` endpoint requires API key authentication via the `X-AP
 ✅ Version information only accessible with valid API key  
 ✅ Prevents public enumeration of deployed code versions  
 ✅ Reduces information disclosure risk  
-✅ Maintains operational utility for authorized teams  
+✅ Maintains operational utility for authorized teams
 
 ### Verification
 
 To verify this implementation:
+
 ```bash
 # Without API key - should return 401
 curl http://localhost:8080/version
@@ -58,11 +59,13 @@ The `/version` endpoint was added to help identify deployment desyncs (see [VERS
 ## Security Concerns
 
 ### Information Disclosure
+
 - **Risk**: Attackers can identify exact code version running
 - **Impact**: Makes it easier to research known vulnerabilities for that specific commit
 - **Severity**: LOW - Public endpoints and error messages already leak some version info
 
 ### Fingerprinting
+
 - **Risk**: Easier application profiling and attack surface mapping
 - **Impact**: Slightly reduces attacker effort during reconnaissance
 - **Severity**: LOW - Similar data available from HTTP headers and timing attacks
@@ -77,6 +80,7 @@ The `/version` endpoint was added to help identify deployment desyncs (see [VERS
 ## Proposed Solutions
 
 ### Option 1: Add Authentication (Recommended)
+
 Require API key for `/version` in production:
 
 ```go
@@ -91,6 +95,7 @@ r.Group(func(r chi.Router) {
 **Cons**: Requires API key for ops teams
 
 ### Option 2: Environment-Based Redaction
+
 Limit information in production:
 
 ```go
@@ -105,6 +110,7 @@ if os.Getenv("ENVIRONMENT") == "production" {
 **Cons**: Less useful for debugging production issues
 
 ### Option 3: Rate Limiting
+
 Add rate limiting to prevent automated scanning:
 
 ```go
@@ -115,6 +121,7 @@ r.With(RateLimitMiddleware(10, time.Minute)).Get("/version", ...)
 **Cons**: Doesn't prevent information disclosure, just slows it
 
 ### Option 4: Internal-Only Endpoint
+
 Move to `/internal/version` or admin-only route:
 
 ```go

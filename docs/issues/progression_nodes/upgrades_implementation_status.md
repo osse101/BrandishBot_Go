@@ -7,6 +7,7 @@ This document tracks the minimal support implementation for progression upgrade 
 ### Tier 1
 
 #### upgrade_progression_basic
+
 - **Status**: ✅ Minimal support added
 - **Location**: `internal/progression/service.go:536-552`
 - **Implementation**: GetModifiedValue call added to RecordEngagement
@@ -16,12 +17,14 @@ This document tracks the minimal support implementation for progression upgrade 
 ### Tier 2
 
 #### upgrade_gamble_win_bonus
+
 - **Status**: ✅ Already implemented
 - **Location**: `internal/gamble/service.go:418`
 - **Implementation**: GetModifiedValue already in use
 - **Tests**: Stub created at `internal/gamble/upgrades_test.go` for verification
 
 #### upgrade_crafting_1
+
 - **Status**: ✅ Minimal support added
 - **Location**: `internal/crafting/service.go:320-335, 722-740`
 - **Implementation**:
@@ -32,6 +35,7 @@ This document tracks the minimal support implementation for progression upgrade 
 - **Tests**: Stub created at `internal/crafting/upgrades_test.go`
 
 #### upgrade_economy_1
+
 - **Status**: ⚠️ Partial - TODO comments only
 - **Location**: `internal/economy/service.go:203-206`
 - **Implementation**: TODO comments added, refactoring needed
@@ -42,20 +46,23 @@ This document tracks the minimal support implementation for progression upgrade 
 - **Tests**: Stub created at `internal/economy/upgrades_test.go`
 
 #### upgrade_exploration_1
-- **Status**: ⏸️ Blocked - Needs search/exploration service
-- **Location**: N/A - Service doesn't exist
-- **Implementation**: Skipped for now
-- **Next Steps**: Implement search/exploration service first
+
+- **Status**: ⏸️ Blocked - User service needs logic update
+- **Location**: `internal/user/search.go`
+- **Implementation**: Search logic exists but does not currently query progression modifiers for XP or success rate.
+- **Next Steps**: Update `calculateSearchParameters` in `internal/user/search.go` to use `GetModifiedValue`.
 
 #### upgrade_farming_1
-- **Status**: ⏸️ Blocked - Needs farming service
-- **Location**: N/A - Service doesn't exist
-- **Implementation**: Skipped for now
-- **Next Steps**: Implement farming service first
+
+- **Status**: ✅ Minimal support added
+- **Location**: `internal/harvest/rewards.go`
+- **Implementation**: `calculateBonuses` calls `GetModifiedValue` for `harvest_yield` and `growth_speed`.
+- **Tests**: N/A
 
 ### Tier 3
 
 #### upgrade_progression_two
+
 - **Status**: ✅ Minimal support added (stacking)
 - **Location**: Same as upgrade_progression_basic
 - **Implementation**: Uses same GetModifiedValue call, stacks multiplicatively
@@ -63,12 +70,14 @@ This document tracks the minimal support implementation for progression upgrade 
 - **Tests**: Stub created at `internal/progression/upgrades_test.go`
 
 #### upgrade_job_xp_multiplier
+
 - **Status**: ✅ Already implemented
 - **Location**: `internal/job/service.go:512`
 - **Implementation**: GetModifiedValue already in use
 - **Tests**: Stub created at `internal/job/upgrades_test.go` for verification
 
 #### upgrade_job_level_cap
+
 - **Status**: ✅ Minimal support added
 - **Location**: `internal/job/service.go:532-543`
 - **Implementation**: GetModifiedValue call added to getMaxJobLevel
@@ -78,6 +87,7 @@ This document tracks the minimal support implementation for progression upgrade 
 ### Tier 4
 
 #### upgrade_progression_three
+
 - **Status**: ✅ Minimal support added (triple stacking)
 - **Location**: Same as upgrade_progression_basic
 - **Implementation**: Uses same GetModifiedValue call, stacks multiplicatively
@@ -89,20 +99,23 @@ This document tracks the minimal support implementation for progression upgrade 
 ## 📝 Summary
 
 ### By Status
+
 - ✅ **Already Implemented**: 2 (upgrade_gamble_win_bonus, upgrade_job_xp_multiplier)
-- ✅ **Minimal Support Added**: 5 (progression_basic, progression_two, progression_three, crafting_1, job_level_cap)
+- ✅ **Minimal Support Added**: 6 (progression_basic, progression_two, progression_three, crafting_1, job_level_cap, farming_1)
 - ⚠️ **Partial (TODO only)**: 1 (economy_1 - needs refactoring)
-- ⏸️ **Blocked**: 2 (exploration_1, farming_1 - need services)
+- ⏸️ **Blocked**: 1 (exploration_1 - user service logic update)
 
 ### Total: 10 Upgrade Nodes
-- **7 / 10** have minimal support or better
-- **3 / 10** require additional work (1 refactoring, 2 new services)
+
+- **8 / 10** have minimal support or better
+- **2 / 10** require additional work (1 refactoring, 1 logic update)
 
 ---
 
 ## 🔧 Remaining Work
 
 ### High Priority
+
 1. **upgrade_economy_1**: Refactor calculateSellPrice to accept context
    - Create calculateSellPriceWithModifier
    - Update all callers to use context-aware version
@@ -114,15 +127,18 @@ This document tracks the minimal support implementation for progression upgrade 
    - Update all test files
 
 ### Medium Priority
+
 3. **All Upgrades**: Write actual tests (currently stubs with t.Skip)
    - Test modifier application at each level
    - Test stacking behavior (progression upgrades)
    - Test fallback when progression service unavailable
    - Integration tests with real services
 
+4. **upgrade_exploration_1**: Update search logic in `internal/user/search.go` to support modifiers.
+
 ### Low Priority (Future)
-4. **upgrade_exploration_1**: Implement search/exploration service
-5. **upgrade_farming_1**: Implement farming service
+
+5. (None)
 
 ---
 
@@ -150,13 +166,17 @@ All test stubs created with TODO comments and t.Skip():
    - Update callers
    - Test modifier application
 
-3. **Write actual tests** (1 day per service)
+3. **Update User/Search logic** (1-2 hours)
+   - Inject progression service into user service search flow
+   - Apply modifiers to XP and success rate
+
+4. **Write actual tests** (1 day per service)
    - Remove t.Skip() from test stubs
    - Implement test logic per TODO comments
    - Verify modifier application
    - Test stacking (progression upgrades)
 
-4. **Manual testing** (1-2 hours)
+5. **Manual testing** (1-2 hours)
    - Admin unlock upgrades to various levels
    - Verify modifiers apply in-game
    - Test with real users
@@ -167,6 +187,7 @@ All test stubs created with TODO comments and t.Skip():
 
 - [ ] Wire crafting ProgressionService dependency
 - [ ] Refactor economy calculateSellPrice for context
+- [ ] Update `internal/user/search.go` to use modifiers
 - [ ] Implement progression rate tests (basic, two, three)
 - [ ] Implement crafting success rate tests
 - [ ] Implement economy bonus tests
@@ -188,6 +209,7 @@ All test stubs created with TODO comments and t.Skip():
 6. **Clear path forward** for completing implementation
 
 The codebase is now ready for:
+
 - Admin testing by unlocking upgrades and observing effects
 - Incremental completion of each upgrade's tests
-- Easy location of implementation points via TODO(upgrade_*) comments
+- Easy location of implementation points via TODO(upgrade\_\*) comments

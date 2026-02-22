@@ -142,66 +142,6 @@ func (_c *MockRepository_GetJobByKey_Call) RunAndReturn(run func(context.Context
 	return _c
 }
 
-// GetJobLevelBonuses provides a mock function with given fields: ctx, jobID, level
-func (_m *MockRepository) GetJobLevelBonuses(ctx context.Context, jobID int, level int) ([]domain.JobLevelBonus, error) {
-	ret := _m.Called(ctx, jobID, level)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetJobLevelBonuses")
-	}
-
-	var r0 []domain.JobLevelBonus
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, int, int) ([]domain.JobLevelBonus, error)); ok {
-		return rf(ctx, jobID, level)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, int, int) []domain.JobLevelBonus); ok {
-		r0 = rf(ctx, jobID, level)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]domain.JobLevelBonus)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, int, int) error); ok {
-		r1 = rf(ctx, jobID, level)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockRepository_GetJobLevelBonuses_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetJobLevelBonuses'
-type MockRepository_GetJobLevelBonuses_Call struct {
-	*mock.Call
-}
-
-// GetJobLevelBonuses is a helper method to define mock.On call
-//   - ctx context.Context
-//   - jobID int
-//   - level int
-func (_e *MockRepository_Expecter) GetJobLevelBonuses(ctx interface{}, jobID interface{}, level interface{}) *MockRepository_GetJobLevelBonuses_Call {
-	return &MockRepository_GetJobLevelBonuses_Call{Call: _e.mock.On("GetJobLevelBonuses", ctx, jobID, level)}
-}
-
-func (_c *MockRepository_GetJobLevelBonuses_Call) Run(run func(ctx context.Context, jobID int, level int)) *MockRepository_GetJobLevelBonuses_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(int), args[2].(int))
-	})
-	return _c
-}
-
-func (_c *MockRepository_GetJobLevelBonuses_Call) Return(_a0 []domain.JobLevelBonus, _a1 error) *MockRepository_GetJobLevelBonuses_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockRepository_GetJobLevelBonuses_Call) RunAndReturn(run func(context.Context, int, int) ([]domain.JobLevelBonus, error)) *MockRepository_GetJobLevelBonuses_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // GetLastDailyResetTime provides a mock function with given fields: ctx
 func (_m *MockRepository) GetLastDailyResetTime(ctx context.Context) (time.Time, int64, error) {
 	ret := _m.Called(ctx)
@@ -261,6 +201,65 @@ func (_c *MockRepository_GetLastDailyResetTime_Call) Return(_a0 time.Time, _a1 i
 }
 
 func (_c *MockRepository_GetLastDailyResetTime_Call) RunAndReturn(run func(context.Context) (time.Time, int64, error)) *MockRepository_GetLastDailyResetTime_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetUserByID provides a mock function with given fields: ctx, userID
+func (_m *MockRepository) GetUserByID(ctx context.Context, userID string) (*domain.User, error) {
+	ret := _m.Called(ctx, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetUserByID")
+	}
+
+	var r0 *domain.User
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (*domain.User, error)); ok {
+		return rf(ctx, userID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) *domain.User); ok {
+		r0 = rf(ctx, userID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*domain.User)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, userID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockRepository_GetUserByID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetUserByID'
+type MockRepository_GetUserByID_Call struct {
+	*mock.Call
+}
+
+// GetUserByID is a helper method to define mock.On call
+//   - ctx context.Context
+//   - userID string
+func (_e *MockRepository_Expecter) GetUserByID(ctx interface{}, userID interface{}) *MockRepository_GetUserByID_Call {
+	return &MockRepository_GetUserByID_Call{Call: _e.mock.On("GetUserByID", ctx, userID)}
+}
+
+func (_c *MockRepository_GetUserByID_Call) Run(run func(ctx context.Context, userID string)) *MockRepository_GetUserByID_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockRepository_GetUserByID_Call) Return(_a0 *domain.User, _a1 error) *MockRepository_GetUserByID_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockRepository_GetUserByID_Call) RunAndReturn(run func(context.Context, string) (*domain.User, error)) *MockRepository_GetUserByID_Call {
 	_c.Call.Return(run)
 	return _c
 }

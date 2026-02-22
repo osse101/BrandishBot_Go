@@ -172,7 +172,7 @@ func TestProcessLootboxDrops_JackpotEvents(t *testing.T) {
 		mockStats.On("RecordUserEvent",
 			mock.Anything,
 			user.ID,
-			domain.EventLootboxJackpot,
+			domain.EventTypeLootboxJackpot,
 			mock.MatchedBy(func(data *domain.LootboxEventData) bool {
 				return data.Source == "lootbox" && data.Item == "lootbox_tier1"
 			}),
@@ -216,7 +216,7 @@ func TestProcessLootboxDrops_JackpotEvents(t *testing.T) {
 		mockStats.On("RecordUserEvent",
 			mock.Anything,
 			user.ID,
-			domain.EventLootboxBigWin,
+			domain.EventTypeLootboxBigWin,
 			mock.MatchedBy(func(data *domain.LootboxEventData) bool {
 				return data.Source == "lootbox" && data.Item == "lootbox_tier1"
 			}),
@@ -270,8 +270,8 @@ func TestProcessLootboxDrops_JackpotEvents(t *testing.T) {
 // TestProcessLootboxDrops_BulkFeedbackThreshold tests the boundary conditions
 // for the "Nice haul!" bulk feedback message per TEST_GUIDANCE.md 5-case model
 func TestProcessLootboxDrops_BulkFeedbackThreshold(t *testing.T) {
-	// BulkFeedbackThreshold = 5 (defined in item_handlers.go)
-	// "Nice haul!" appears when: quantity >= BulkFeedbackThreshold AND no legendary/epic drops
+	// BulkFeedbackThreshold = 5 (defined in domain/constants.go)
+	// "Nice haul!" appears when: quantity >= domain.BulkFeedbackThreshold AND no legendary/epic drops
 
 	user := &domain.User{
 		ID:       "user-123",
@@ -369,7 +369,7 @@ func TestProcessLootboxDrops_BulkFeedbackThreshold(t *testing.T) {
 
 		mockNaming.On("GetDisplayName", "legendary_sword", domain.QualityLegendary).Return("Legendary Sword")
 		mockNaming.On("GetDisplayName", "lootbox_tier1", domain.QualityLevel("")).Return("Lootbox Tier 1")
-		mockStats.On("RecordUserEvent", mock.Anything, user.ID, domain.EventLootboxJackpot, mock.Anything).Return(nil)
+		mockStats.On("RecordUserEvent", mock.Anything, user.ID, domain.EventTypeLootboxJackpot, mock.Anything).Return(nil)
 
 		msg, err := svc.processLootboxDrops(ctx, user, inventory, lootboxItem, 10, legendaryDrops)
 
@@ -398,7 +398,7 @@ func TestProcessLootboxDrops_BulkFeedbackThreshold(t *testing.T) {
 
 		mockNaming.On("GetDisplayName", "epic_shield", domain.QualityEpic).Return("Epic Shield")
 		mockNaming.On("GetDisplayName", "lootbox_tier1", domain.QualityLevel("")).Return("Lootbox Tier 1")
-		mockStats.On("RecordUserEvent", mock.Anything, user.ID, domain.EventLootboxBigWin, mock.Anything).Return(nil)
+		mockStats.On("RecordUserEvent", mock.Anything, user.ID, domain.EventTypeLootboxBigWin, mock.Anything).Return(nil)
 
 		msg, err := svc.processLootboxDrops(ctx, user, inventory, lootboxItem, 10, epicDrops)
 

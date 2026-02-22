@@ -93,9 +93,9 @@ func (r *QuestRepository) CreateQuest(ctx context.Context, template domain.Quest
 	return &quest, nil
 }
 
-// DeactivateAllQuests deactivates all active quests
-func (r *QuestRepository) DeactivateAllQuests(ctx context.Context) error {
-	return r.q.DeactivateAllQuests(ctx)
+// DeleteAllQuests deletes all quests
+func (r *QuestRepository) DeleteAllQuests(ctx context.Context) error {
+	return r.q.DeleteAllQuests(ctx)
 }
 
 // GetUserQuestProgress gets all quest progress for a user
@@ -193,15 +193,6 @@ func (r *QuestRepository) GetUnclaimedCompletedQuests(ctx context.Context, userI
 		progress[i] = mapQuestProgressRowUnclaimed(row)
 	}
 	return progress, nil
-}
-
-// ResetWeeklyQuests deletes progress for inactive quests
-func (r *QuestRepository) ResetWeeklyQuests(ctx context.Context) (int64, error) {
-	result, err := r.q.ResetInactiveQuestProgress(ctx)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
 }
 
 // GetWeeklyQuestResetState gets the last weekly reset state

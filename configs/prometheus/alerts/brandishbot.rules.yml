@@ -17,8 +17,8 @@ groups:
           severity: warning
           component: api
         annotations:
-          summary: "High HTTP error rate on {{ $labels.job }}"
-          description: "Error rate is {{ $value | humanizePercentage }} (threshold: 5%)"
+          summary: 'High HTTP error rate on {{ $labels.job }}'
+          description: 'Error rate is {{ $value | humanizePercentage }} (threshold: 5%)'
 
       # High API Latency
       - alert: HighAPILatency
@@ -31,8 +31,8 @@ groups:
           severity: warning
           component: api
         annotations:
-          summary: "High API latency on {{ $labels.job }}"
-          description: "95th percentile latency is {{ $value }}s (threshold: 1s)"
+          summary: 'High API latency on {{ $labels.job }}'
+          description: '95th percentile latency is {{ $value }}s (threshold: 1s)'
 
       # Event Handler Errors
       - alert: EventHandlerErrors
@@ -43,8 +43,8 @@ groups:
           severity: warning
           component: events
         annotations:
-          summary: "Event handler errors detected"
-          description: "Error rate: {{ $value }} errors/sec for event type {{ $labels.type }}"
+          summary: 'Event handler errors detected'
+          description: 'Error rate: {{ $value }} errors/sec for event type {{ $labels.type }}'
 
       # High In-Flight Requests
       - alert: HighInFlightRequests
@@ -55,8 +55,8 @@ groups:
           severity: warning
           component: api
         annotations:
-          summary: "High number of concurrent requests"
-          description: "{{ $value }} requests in flight (threshold: 100)"
+          summary: 'High number of concurrent requests'
+          description: '{{ $value }} requests in flight (threshold: 100)'
 
   - name: brandishbot_business_alerts
     interval: 60s
@@ -72,8 +72,8 @@ groups:
           severity: info
           component: economy
         annotations:
-          summary: "Unusual item trading activity"
-          description: "High item trading rate detected: {{ $value }} items/sec"
+          summary: 'Unusual item trading activity'
+          description: 'High item trading rate detected: {{ $value }} items/sec'
 
       # Money Flow Imbalance
       - alert: MoneyFlowImbalance
@@ -86,5 +86,5 @@ groups:
           severity: info
           component: economy
         annotations:
-          summary: "Economy imbalance detected"
-          description: "Money flow imbalance: {{ $value }} units/sec difference"
+          summary: 'Economy imbalance detected'
+          description: 'Money flow imbalance: {{ $value }} units/sec difference'

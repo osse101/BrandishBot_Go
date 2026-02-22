@@ -168,8 +168,8 @@ func TestHarvest_Workflow(t *testing.T) {
 			mockJobSvc := new(mocks.MockJobService)
 
 			// Default job bonus expectations (0 bonus)
-			mockJobSvc.On("GetJobBonus", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(0.0, nil).Maybe()
-
+			mockProgressionSvc.On("GetModifiedValue", mock.Anything, mock.Anything, "harvest_yield", 1.0).Return(1.0, nil).Maybe()
+			mockProgressionSvc.On("GetModifiedValue", mock.Anything, mock.Anything, "growth_speed", 1.0).Return(1.0, nil).Maybe()
 			svc := NewService(mockHarvestRepo, mockUserRepo, mockProgressionSvc, mockJobSvc, nil)
 
 			// --- User Registration Workflow ---
@@ -276,10 +276,7 @@ func TestHarvest_Workflow(t *testing.T) {
 			}
 			sort.Strings(keys)
 
-			// Assign IDs based on index (1-based) to distinguish items
-			// But note: map iteration order is random, so we must sort keys first if we want deterministic IDs
-			// or just map name->ID explicitly in the test setup.
-			// Here we loop through sorted keys
+			// Assign unique IDs (1-based) to sorted keys for deterministic test item resolution.
 			for i, name := range keys {
 				mockItems = append(mockItems, domain.Item{InternalName: name, ID: i + 1, PublicName: name})
 			}

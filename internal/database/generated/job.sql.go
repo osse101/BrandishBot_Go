@@ -66,45 +66,6 @@ func (q *Queries) GetJobByKey(ctx context.Context, jobKey string) (Job, error) {
 	return i, err
 }
 
-const getJobLevelBonuses = `-- name: GetJobLevelBonuses :many
-SELECT id, job_id, min_level, bonus_type, bonus_value, description
-FROM job_level_bonuses
-WHERE job_id = $1 AND min_level <= $2
-ORDER BY min_level DESC
-`
-
-type GetJobLevelBonusesParams struct {
-	JobID    int32 `json:"job_id"`
-	MinLevel int32 `json:"min_level"`
-}
-
-func (q *Queries) GetJobLevelBonuses(ctx context.Context, arg GetJobLevelBonusesParams) ([]JobLevelBonuse, error) {
-	rows, err := q.db.Query(ctx, getJobLevelBonuses, arg.JobID, arg.MinLevel)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []JobLevelBonuse
-	for rows.Next() {
-		var i JobLevelBonuse
-		if err := rows.Scan(
-			&i.ID,
-			&i.JobID,
-			&i.MinLevel,
-			&i.BonusType,
-			&i.BonusValue,
-			&i.Description,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const getLastDailyResetTime = `-- name: GetLastDailyResetTime :one
 SELECT last_reset_time, records_affected
 FROM daily_reset_state WHERE id = 1

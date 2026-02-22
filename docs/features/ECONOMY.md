@@ -5,6 +5,7 @@ The Economy system drives player progression by allowing the exchange of currenc
 ## Core Mechanics
 
 ### Buying Items (`/buy`)
+
 - **Requirements**:
   - The item must be **Buyable** (configured in database).
   - The player must have **Sufficient Funds** (Money).
@@ -16,6 +17,7 @@ The Economy system drives player progression by allowing the exchange of currenc
 - **Quest Tracking**: Purchases count towards relevant Weekly Quests.
 
 ### Selling Items (`/sell`)
+
 - **Requirements**:
   - The player must have the item in their **Inventory**.
   - The item must be **Sellable** (configured in database).
@@ -26,6 +28,7 @@ The Economy system drives player progression by allowing the exchange of currenc
 - **Quest Tracking**: Sales count towards relevant Weekly Quests.
 
 ## Weekly Sales
+
 - **Rotation**: Discounts rotate weekly between item categories (e.g., Weapon -> Armor -> Consumable).
 - **Schedule**: Defined in `configs/economy/weekly_sales.json`.
 - **Eligibility**: Requires `feature_weekly_discount` to be unlocked.
@@ -33,22 +36,29 @@ The Economy system drives player progression by allowing the exchange of currenc
 ## API Endpoints
 
 ### Get Sell Prices
+
 ```http
 GET /api/v1/prices
 ```
+
 Returns a list of all sellable items and their current sell prices (including bonuses).
 
 ### Get Buy Prices
+
 ```http
 GET /api/v1/prices/buy
 ```
+
 Returns a list of all buyable items and their current buy prices (including discounts).
 
 ### Buy Item
+
 ```http
 POST /api/v1/user/item/buy
 ```
+
 **Body**:
+
 ```json
 {
   "platform": "twitch",
@@ -60,10 +70,13 @@ POST /api/v1/user/item/buy
 ```
 
 ### Sell Item
+
 ```http
 POST /api/v1/user/item/sell
 ```
+
 **Body**:
+
 ```json
 {
   "platform": "twitch",

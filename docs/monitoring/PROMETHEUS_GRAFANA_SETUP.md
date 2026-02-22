@@ -19,11 +19,13 @@ This guide covers the monitoring infrastructure for BrandishBot_Go, including Pr
 ```
 
 **Components:**
+
 - **API Server** (`app:8080/metrics`) - Exposes Prometheus metrics
 - **Prometheus** (`prometheus:9090`) - Scrapes metrics, stores time-series data
 - **Grafana** (`grafana:3000`) - Visualizes metrics with pre-built dashboards
 
 **Metrics Exposed:**
+
 - HTTP request metrics (rate, latency, errors)
 - Business metrics (items sold/bought, money flow, crafting)
 - Event system metrics (events published, handler errors)
@@ -35,6 +37,7 @@ This guide covers the monitoring infrastructure for BrandishBot_Go, including Pr
 ### Development Environment
 
 1. **Start the monitoring stack:**
+
    ```bash
    make monitoring-up
    ```
@@ -44,6 +47,7 @@ This guide covers the monitoring infrastructure for BrandishBot_Go, including Pr
    - Grafana: http://localhost:3000 (login: `admin` / `admin`)
 
 3. **Generate test traffic:**
+
    ```bash
    make test
    # OR manually trigger API calls
@@ -57,6 +61,7 @@ This guide covers the monitoring infrastructure for BrandishBot_Go, including Pr
 ### Production Environment
 
 1. **Configure secure credentials:**
+
    ```bash
    # Edit .env file
    GRAFANA_ADMIN_USER=admin
@@ -65,6 +70,7 @@ This guide covers the monitoring infrastructure for BrandishBot_Go, including Pr
    ```
 
 2. **Start production stack:**
+
    ```bash
    docker-compose -f docker-compose.production.yml up -d prometheus grafana
    ```
@@ -89,6 +95,7 @@ This guide covers the monitoring infrastructure for BrandishBot_Go, including Pr
 ## Environment-Specific Configurations
 
 ### Development (`docker-compose.yml`)
+
 - **Ports:** Prometheus 9090, Grafana 3000 (exposed)
 - **Scrape interval:** 15s
 - **Retention:** 15 days
@@ -96,12 +103,14 @@ This guide covers the monitoring infrastructure for BrandishBot_Go, including Pr
 - **Target:** `app:8080/metrics`
 
 ### Staging (`docker-compose.staging.yml`)
+
 - **Ports:** Prometheus 9091, Grafana 3001 (avoid conflicts)
 - **Scrape interval:** 20s
 - **Retention:** 7 days
 - **Target:** `app:8081/metrics` (staging API port)
 
 ### Production (`docker-compose.production.yml`)
+
 - **Ports:** NOT exposed externally (security)
 - **Scrape interval:** 30s
 - **Retention:** 30 days
@@ -116,6 +125,7 @@ This guide covers the monitoring infrastructure for BrandishBot_Go, including Pr
 ### Prometheus Configuration
 
 **Base config:** `configs/prometheus/prometheus.yml`
+
 ```yaml
 scrape_configs:
   - job_name: 'brandishbot-api'
@@ -126,10 +136,12 @@ scrape_configs:
 ```
 
 **Production overrides:** `configs/prometheus/prometheus.production.yml`
+
 - Increased scrape interval (30s)
 - External labels for multi-cluster setups
 
 **Staging overrides:** `configs/prometheus/prometheus.staging.yml`
+
 - Target: `app:8081` (staging port)
 - 20s scrape interval
 
@@ -138,22 +150,26 @@ scrape_configs:
 **Location:** `configs/prometheus/alerts/brandishbot.rules.yml`
 
 **Pre-configured alerts:**
+
 - `HighHTTPErrorRate` - 5xx errors > 5% for 5 minutes
 - `HighAPILatency` - p95 latency > 1s for 5 minutes
 - `EventHandlerErrors` - Event errors > 0.1/sec for 5 minutes
 - `HighInFlightRequests` - Concurrent requests > 100 for 5 minutes
 
 **Alert severity levels:**
+
 - `warning` - Requires attention, not urgent
 - `critical` - Requires immediate action (future use)
 
 ### Grafana Provisioning
 
 **Datasource:** `configs/grafana/provisioning/datasources/prometheus.yml`
+
 - Auto-configures Prometheus as default datasource
 - No manual setup required
 
 **Dashboard provider:** `configs/grafana/provisioning/dashboards/default.yml`
+
 - Loads dashboards from `configs/grafana/dashboards/`
 - Dashboards appear automatically on first startup
 
@@ -162,9 +178,11 @@ scrape_configs:
 ## Available Dashboards
 
 ### 1. System Health
+
 **File:** `configs/grafana/dashboards/system-health.json`
 
 **Panels:**
+
 - **Request Rate by Method** - GET/POST/PUT/DELETE req/sec
 - **Latency Percentiles** - p50, p95, p99 response times
 - **In-Flight Requests** - Current concurrent requests (gauge)
@@ -173,14 +191,17 @@ scrape_configs:
 - **Latency Heatmap** - Request duration distribution
 
 **Use cases:**
+
 - Monitor API health and performance
 - Identify slow endpoints
 - Track error rates
 
 ### 2. Business Metrics
+
 **File:** `configs/grafana/dashboards/business-metrics.json`
 
 **Panels:**
+
 - **Item Trading Activity** - Items sold/bought rates
 - **Top Items by Volume** - Most traded items (table)
 - **Money Flow** - Money earned vs spent
@@ -190,14 +211,17 @@ scrape_configs:
 - **Items Crafted (1h)** - Total crafting activity (gauge)
 
 **Use cases:**
+
 - Monitor economy health
 - Identify popular items
 - Track crafting trends
 
 ### 3. Events
+
 **File:** `configs/grafana/dashboards/events.json`
 
 **Panels:**
+
 - **Events Published by Type** - Event breakdown (stacked)
 - **Event Handler Errors by Type** - Error tracking
 - **Event Type Distribution (1h)** - Pie chart of event types
@@ -208,6 +232,7 @@ scrape_configs:
 - **Event Rate (1m)** - Current event throughput (stat)
 
 **Use cases:**
+
 - Monitor event bus health
 - Identify problematic event handlers
 - Track event throughput
@@ -217,6 +242,7 @@ scrape_configs:
 ## Makefile Commands
 
 ### Start/Stop
+
 ```bash
 # Start monitoring stack
 make monitoring-up
@@ -229,6 +255,7 @@ make monitoring-restart
 ```
 
 ### Monitoring
+
 ```bash
 # Check health status
 make monitoring-status
@@ -238,6 +265,7 @@ make monitoring-logs
 ```
 
 ### Configuration Management
+
 ```bash
 # Hot reload Prometheus config (no restart needed)
 make prometheus-reload
@@ -252,17 +280,21 @@ make prometheus-reload
 **Symptom:** Targets show as "DOWN" in Prometheus UI (http://localhost:9090/targets)
 
 **Checks:**
+
 1. Verify API server is running:
+
    ```bash
    curl http://localhost:8080/healthz
    ```
 
 2. Check Prometheus can reach API:
+
    ```bash
    docker-compose exec prometheus wget -O- http://app:8080/metrics
    ```
 
 3. Check Docker network:
+
    ```bash
    docker network inspect brandishbot_go_backend
    ```
@@ -277,17 +309,20 @@ make prometheus-reload
 **Symptom:** Dashboards don't appear or show "No data"
 
 **Checks:**
+
 1. Verify Prometheus datasource:
    - Grafana → Configuration → Data sources → Prometheus
    - URL should be `http://prometheus:9090`
    - Click "Test" button
 
 2. Check dashboard provisioning:
+
    ```bash
    docker-compose exec grafana ls -la /etc/grafana/dashboards/
    ```
 
 3. Verify Grafana logs:
+
    ```bash
    docker-compose logs grafana | grep -i error
    ```
@@ -302,17 +337,20 @@ make prometheus-reload
 **Symptom:** Prometheus using > 2GB RAM
 
 **Solutions:**
+
 1. Reduce retention time:
+
    ```yaml
    # In docker-compose.yml
    command:
-     - '--storage.tsdb.retention.time=7d'  # Reduce from 15d
+     - '--storage.tsdb.retention.time=7d' # Reduce from 15d
    ```
 
 2. Reduce scrape frequency:
+
    ```yaml
    # In prometheus.yml
-   scrape_interval: 30s  # Increase from 15s
+   scrape_interval: 30s # Increase from 15s
    ```
 
 3. Add resource limits (production only):
@@ -329,6 +367,7 @@ make prometheus-reload
 **Symptom:** Alert shows in Prometheus but doesn't trigger
 
 **Checks:**
+
 1. Check alert evaluation:
    - Navigate to http://localhost:9090/alerts
    - Verify alert is "Pending" or "Firing"
@@ -347,12 +386,15 @@ make prometheus-reload
 **Symptom:** Cannot login to Grafana
 
 **Solutions:**
+
 1. Reset admin password:
+
    ```bash
    docker-compose exec grafana grafana-cli admin reset-admin-password newpassword
    ```
 
 2. Check environment variables:
+
    ```bash
    docker-compose exec grafana env | grep GRAFANA
    ```
@@ -369,11 +411,13 @@ make prometheus-reload
 ### Prometheus Query Optimization
 
 **Slow queries:**
+
 - Use `rate()` instead of `irate()` for smoother graphs
 - Avoid high cardinality labels (e.g., user IDs)
 - Use recording rules for complex queries
 
 **Example recording rule:**
+
 ```yaml
 # In configs/prometheus/alerts/brandishbot.rules.yml
 groups:
@@ -387,6 +431,7 @@ groups:
 ### Grafana Dashboard Performance
 
 **Best practices:**
+
 - Use time range selectors (1h, 6h, 24h)
 - Limit table rows (`topk(10, ...)`)
 - Use variables for dynamic filtering
@@ -397,11 +442,13 @@ groups:
 ## Security Best Practices
 
 ### Development
+
 - ✅ Default credentials (admin/admin) acceptable
 - ✅ Ports exposed on localhost only
 - ⚠️ Use SSH tunnel for remote access
 
 ### Production
+
 - ✅ Strong admin password in `.env`
 - ✅ Ports NOT exposed externally
 - ✅ Reverse proxy with TLS (Nginx/Caddy)
@@ -414,6 +461,7 @@ groups:
 ## Backup and Restore
 
 ### Backup Prometheus Data
+
 ```bash
 # Stop Prometheus
 docker-compose stop prometheus
@@ -426,6 +474,7 @@ docker-compose start prometheus
 ```
 
 ### Restore Prometheus Data
+
 ```bash
 # Stop Prometheus
 docker-compose stop prometheus
@@ -438,6 +487,7 @@ docker-compose start prometheus
 ```
 
 ### Backup Grafana Dashboards
+
 ```bash
 # Export all dashboards (requires API token)
 curl -H "Authorization: Bearer YOUR_API_TOKEN" \
@@ -456,11 +506,12 @@ curl -H "Authorization: Bearer YOUR_API_TOKEN" \
 To add alerting notifications (Slack, email, etc.):
 
 1. Add Alertmanager service to `docker-compose.yml`:
+
    ```yaml
    alertmanager:
      image: prom/alertmanager:latest
      ports:
-       - "9093:9093"
+       - '9093:9093'
      volumes:
        - ./configs/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
      networks:
@@ -468,6 +519,7 @@ To add alerting notifications (Slack, email, etc.):
    ```
 
 2. Configure Prometheus to use Alertmanager:
+
    ```yaml
    # In prometheus.yml
    alerting:
@@ -483,6 +535,7 @@ To add alerting notifications (Slack, email, etc.):
 To add custom business metrics:
 
 1. Update `internal/metrics/collector.go`:
+
    ```go
    // Add metric definition
    myCustomMetric := promauto.NewCounterVec(
@@ -495,6 +548,7 @@ To add custom business metrics:
    ```
 
 2. Record metric in business logic:
+
    ```go
    myCustomMetric.WithLabelValues("value1", "value2").Inc()
    ```

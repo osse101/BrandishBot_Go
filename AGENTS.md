@@ -6,27 +6,30 @@ This document provides AI agents with structured guidance on navigating, underst
 
 ## 📚 Quick Navigation by Task Type
 
-| If You're Working On...           | Start Here                                                                    | Journal to Update                                            |
-| --------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| **New Feature Development**       | [FEATURE_DEVELOPMENT_GUIDE.md](docs/development/FEATURE_DEVELOPMENT_GUIDE.md) | [docs/development/journal.md](docs/development/journal.md)   |
-| **Architecture/Design Decisions** | [ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md)                          | [docs/architecture/journal.md](docs/architecture/journal.md) |
-| **Writing Tests**                 | [TEST_GUIDANCE.md](docs/testing/TEST_GUIDANCE.md)                             | [docs/testing/journal.md](docs/testing/journal.md)           |
-| **Database Operations**           | [DATABASE.md](docs/database/DATABASE.md), [MIGRATIONS.md](docs/database/MIGRATIONS.md)          | [docs/development/journal.md](docs/development/journal.md)   |
-| **Deployment**                    | [DEPLOYMENT_WORKFLOW.md](docs/deployment/DEPLOYMENT_WORKFLOW.md)              | N/A                                                          |
-| **Feature Planning/Proposals**    | [gamble_feature.md](docs/planning/gamble_feature.md) (template example)       | [docs/development/journal.md](docs/development/journal.md)   |
-| **Benchmarking**                  | [README.md](docs/benchmarking/README.md)                                      | [docs/benchmarking/journal.md](docs/benchmarking/journal.md) |
-| **API Documentation**             | [API_COVERAGE.md](docs/api/API_COVERAGE.md)                                   | [docs/development/journal.md](docs/development/journal.md)   |
+| If You're Working On...           | Start Here                                                                             | Journal to Update                                            |
+| --------------------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| **New Feature Development**       | [FEATURE_DEVELOPMENT_GUIDE.md](docs/development/FEATURE_DEVELOPMENT_GUIDE.md)          | [docs/development/journal.md](docs/development/journal.md)   |
+| **Architecture/Design Decisions** | [ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md)                                   | [docs/architecture/journal.md](docs/architecture/journal.md) |
+| **Writing Tests**                 | [TEST_GUIDANCE.md](docs/testing/TEST_GUIDANCE.md)                                      | [docs/testing/journal.md](docs/testing/journal.md)           |
+| **Database Operations**           | [DATABASE.md](docs/database/DATABASE.md), [MIGRATIONS.md](docs/database/MIGRATIONS.md) | [docs/development/journal.md](docs/development/journal.md)   |
+| **Deployment**                    | [DEPLOYMENT_WORKFLOW.md](docs/deployment/DEPLOYMENT_WORKFLOW.md)                       | N/A                                                          |
+| **Feature Planning/Proposals**    | [gamble_feature.md](docs/planning/gamble_feature.md) (template example)                | [docs/development/journal.md](docs/development/journal.md)   |
+| **Benchmarking**                  | [README.md](docs/benchmarking/README.md)                                               | [docs/benchmarking/journal.md](docs/benchmarking/journal.md) |
+| **API Documentation**             | [API_COVERAGE.md](docs/api/API_COVERAGE.md)                                            | [docs/development/journal.md](docs/development/journal.md)   |
 
 ---
 
 ## 🎯 Action-Trigger Guide
 
-| Trigger (Situation)                | Action (Resource/Skill)                                                               |
+| Trigger (Situation)                | Action (Resource/Skill/Workflow)                                                      |
 | ---------------------------------- | ------------------------------------------------------------------------------------- |
 | **Need to check/run migrations**   | View **[Goose Skill](.agent/skills/goose/SKILL.md)**                                  |
 | **Need to inspect database**       | View **[Postgres Skill](.agent/skills/postgres/SKILL.md)**                            |
 | **Need to run tests**              | View **[Testing Skill](.agent/skills/testing/SKILL.md)**                              |
-| **Need to deploy/rollback**        | View **[Deployment Skill](.agent/skills/deployment/SKILL.md)**                        |
+| **Need to deploy/rollback**        | View **[Deploy Workflow](.agent/workflows/deploy.md)**                                |
+| **Need to fix linter errors**      | View **[Lint-Fix Workflow](.agent/workflows/lint-fix.md)**                            |
+| **Need to refactor a service**     | View **[Refactor-Service Workflow](.agent/workflows/refactor-service.md)**            |
+| **Need to add an API endpoint**    | View **[Add-Endpoint Workflow](.agent/workflows/add-endpoint.md)**                    |
 | **Need to create Discord command** | View **[Discord Skill](.agent/skills/discord/SKILL.md)**                              |
 | **Need to modify progression**     | View **[Progression Skill](.agent/skills/progression/SKILL.md)**                      |
 | **Need to create a new feature**   | Follow **[Feature Development Guide](docs/development/FEATURE_DEVELOPMENT_GUIDE.md)** |
@@ -101,7 +104,12 @@ BrandishBot_Go/
 │   ├── domain/             # Domain models and constants
 │   ├── handler/            # HTTP handlers
 │   ├── server/             # Server configuration and routing
-│   └── [feature]/          # Feature-specific packages (user, economy, harvest, etc.)
+│   ├── [feature]/          # Feature-specific packages (user, economy, harvest, etc.)
+│   ├── expedition/         # Expedition system (passive rewards)
+│   ├── prediction/         # User prediction system
+│   ├── quest/              # Quest and achievement tracking
+│   ├── scenario/           # Contextual game scenarios
+│   └── subscription/       # User subscription management
 ├── configs/                # JSON configuration files
 ├── migrations/             # Database migration files
 ├── scripts/                # Deployment and utility scripts (no legacy bash scripts)
@@ -118,6 +126,7 @@ docs/
 ├── architecture/           # Architecture docs & journals
 │   ├── ARCHITECTURE.md     # System architecture overview
 │   ├── EVENT_SYSTEM.md     # Event system architecture
+│   ├── WORKER_POOL.md      # Worker pool architecture
 │   ├── journal.md          # 📓 Architecture journal
 │   └── cooldown-service.md # Service design doc
 ├── archived/               # Archived documentation
@@ -211,6 +220,10 @@ When running background commands:
 ❌ AVOID: Searching for processes by port (unreliable)
 ✅ CORRECT: Use tracked command ID for cleanup
 ```
+
+### Coding Patterns
+
+- **Event Payloads**: Use `event.DecodePayload[T](e.Payload)` for type-safe event handling. Avoid manual map assertions.
 
 ### Debugging Workflow
 
@@ -327,4 +340,4 @@ When stuck or unsure:
 
 ---
 
-~This guidance was last updated: January 2026~
+~This guidance was last updated: February 2026~

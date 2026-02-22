@@ -11,9 +11,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
-// This file contains tests for crafting upgrade node modifier application.
-// Tests verify that the crafting_success_rate modifier correctly applies to
-// both masterwork crafting and perfect salvage operations.
+// Crafting upgrade tests: verifies crafting_success_rate modifier application to masterwork and perfect salvage.
 
 // TestUpgradeCrafting1_MasterworkModifier_Level1 verifies 10% boost at level 1
 func TestUpgradeCrafting1_MasterworkModifier_Level1(t *testing.T) {

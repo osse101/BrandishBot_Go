@@ -29,14 +29,11 @@
     "explore": {
       "display_name": "Exploration",
       "base_weight": 0.18,
-      "skills": [
-        "perception",
-        "survival"
-      ],
+      "skills": ["perception", "survival"],
       "min_party": 1,
       "outcomes": {
         "positive": {
-          "weight": 0.30,
+          "weight": 0.3,
           "skill_pass": {
             "effects": {
               "fatigue_delta": 0,
@@ -186,10 +183,7 @@
     "travel": {
       "display_name": "Travel",
       "base_weight": 0.15,
-      "skills": [
-        "survival",
-        "fortitude"
-      ],
+      "skills": ["survival", "fortitude"],
       "min_party": 1,
       "outcomes": {
         "positive": {
@@ -233,7 +227,7 @@
           }
         },
         "neutral": {
-          "weight": 0.50,
+          "weight": 0.5,
           "skill_pass": {
             "effects": {
               "fatigue_delta": 2,
@@ -317,10 +311,7 @@
     "combat_skirmish": {
       "display_name": "Skirmish",
       "base_weight": 0.12,
-      "skills": [
-        "fortitude",
-        "cunning"
-      ],
+      "skills": ["fortitude", "cunning"],
       "min_party": 1,
       "outcomes": {
         "positive": {
@@ -364,7 +355,7 @@
           }
         },
         "neutral": {
-          "weight": 0.40,
+          "weight": 0.4,
           "skill_pass": {
             "effects": {
               "fatigue_delta": 5,
@@ -445,14 +436,11 @@
     "combat_elite": {
       "display_name": "Elite Battle",
       "base_weight": 0.06,
-      "skills": [
-        "fortitude",
-        "knowledge"
-      ],
+      "skills": ["fortitude", "knowledge"],
       "min_party": 2,
       "outcomes": {
         "positive": {
-          "weight": 0.20,
+          "weight": 0.2,
           "skill_pass": {
             "effects": {
               "fatigue_delta": 5,
@@ -569,11 +557,7 @@
     "combat_boss": {
       "display_name": "Boss Fight",
       "base_weight": 0.03,
-      "skills": [
-        "fortitude",
-        "cunning",
-        "persuasion"
-      ],
+      "skills": ["fortitude", "cunning", "persuasion"],
       "min_party": 3,
       "outcomes": {
         "positive": {
@@ -585,7 +569,7 @@
               "reward": "lootbox_tier3",
               "ko_scale": 0,
               "revive_scale": 1,
-              "shift_weights": 0.10
+              "shift_weights": 0.1
             },
             "narratives": [
               {
@@ -618,7 +602,7 @@
           }
         },
         "neutral": {
-          "weight": 0.30,
+          "weight": 0.3,
           "skill_pass": {
             "effects": {
               "fatigue_delta": 10,
@@ -694,15 +678,12 @@
     },
     "camp": {
       "display_name": "Camp",
-      "base_weight": 0.10,
-      "skills": [
-        "knowledge",
-        "survival"
-      ],
+      "base_weight": 0.1,
+      "skills": ["knowledge", "survival"],
       "min_party": 1,
       "outcomes": {
         "positive": {
-          "weight": 0.40,
+          "weight": 0.4,
           "skill_pass": {
             "effects": {
               "fatigue_delta": -10,
@@ -743,7 +724,7 @@
           }
         },
         "neutral": {
-          "weight": 0.40,
+          "weight": 0.4,
           "skill_pass": {
             "effects": {
               "fatigue_delta": -5,
@@ -783,7 +764,7 @@
           }
         },
         "negative": {
-          "weight": 0.20,
+          "weight": 0.2,
           "skill_pass": {
             "effects": {
               "fatigue_delta": 3,
@@ -822,14 +803,11 @@
     "hazard": {
       "display_name": "Hazard",
       "base_weight": 0.08,
-      "skills": [
-        "survival",
-        "fortitude"
-      ],
+      "skills": ["survival", "fortitude"],
       "min_party": 1,
       "outcomes": {
         "positive": {
-          "weight": 0.20,
+          "weight": 0.2,
           "skill_pass": {
             "effects": {
               "fatigue_delta": 0,
@@ -865,7 +843,7 @@
           }
         },
         "neutral": {
-          "weight": 0.40,
+          "weight": 0.4,
           "skill_pass": {
             "effects": {
               "fatigue_delta": 5,
@@ -905,7 +883,7 @@
           }
         },
         "negative": {
-          "weight": 0.40,
+          "weight": 0.4,
           "skill_pass": {
             "effects": {
               "fatigue_delta": 8,
@@ -945,10 +923,7 @@
     "discovery": {
       "display_name": "Discovery",
       "base_weight": 0.07,
-      "skills": [
-        "perception",
-        "knowledge"
-      ],
+      "skills": ["perception", "knowledge"],
       "min_party": 1,
       "outcomes": {
         "positive": {
@@ -1033,7 +1008,7 @@
           }
         },
         "negative": {
-          "weight": 0.20,
+          "weight": 0.2,
           "skill_pass": {
             "effects": {
               "fatigue_delta": 5,
@@ -1072,14 +1047,11 @@
     "encounter": {
       "display_name": "Social Encounter",
       "base_weight": 0.07,
-      "skills": [
-        "persuasion",
-        "cunning"
-      ],
+      "skills": ["persuasion", "cunning"],
       "min_party": 1,
       "outcomes": {
         "positive": {
-          "weight": 0.30,
+          "weight": 0.3,
           "skill_pass": {
             "effects": {
               "fatigue_delta": -3,
@@ -1194,10 +1166,7 @@
     "treasure": {
       "display_name": "Treasure",
       "base_weight": 0.05,
-      "skills": [
-        "perception",
-        "cunning"
-      ],
+      "skills": ["perception", "cunning"],
       "min_party": 1,
       "outcomes": {
         "positive": {
@@ -1241,7 +1210,7 @@
           }
         },
         "neutral": {
-          "weight": 0.40,
+          "weight": 0.4,
           "skill_pass": {
             "effects": {
               "fatigue_delta": 0,
@@ -1316,14 +1285,11 @@
     "mystic": {
       "display_name": "Mystic Event",
       "base_weight": 0.05,
-      "skills": [
-        "knowledge",
-        "persuasion"
-      ],
+      "skills": ["knowledge", "persuasion"],
       "min_party": 1,
       "outcomes": {
         "positive": {
-          "weight": 0.30,
+          "weight": 0.3,
           "skill_pass": {
             "effects": {
               "fatigue_delta": -5,
@@ -1440,14 +1406,11 @@
     "drama": {
       "display_name": "Party Drama",
       "base_weight": 0.04,
-      "skills": [
-        "persuasion",
-        "cunning"
-      ],
+      "skills": ["persuasion", "cunning"],
       "min_party": 1,
       "outcomes": {
         "positive": {
-          "weight": 0.30,
+          "weight": 0.3,
           "skill_pass": {
             "effects": {
               "fatigue_delta": -5,
@@ -1488,7 +1451,7 @@
           }
         },
         "neutral": {
-          "weight": 0.40,
+          "weight": 0.4,
           "skill_pass": {
             "effects": {
               "fatigue_delta": 0,
@@ -1523,7 +1486,7 @@
           }
         },
         "negative": {
-          "weight": 0.30,
+          "weight": 0.3,
           "skill_pass": {
             "effects": {
               "fatigue_delta": 3,

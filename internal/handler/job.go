@@ -37,7 +37,7 @@ func (h *JobHandler) HandleGetUserJobs(w http.ResponseWriter, r *http.Request) {
 	// Require either platform_id or username
 	if platformID == "" && username == "" {
 		log.Warn("Missing required parameter: either platform_id or username required")
-		respondError(w, http.StatusBadRequest, "Either platform_id or username is required")
+		RespondError(w, http.StatusBadRequest, "Either platform_id or username is required")
 		return
 	}
 
@@ -46,13 +46,13 @@ func (h *JobHandler) HandleGetUserJobs(w http.ResponseWriter, r *http.Request) {
 		user, err := h.userRepo.GetUserByPlatformUsername(r.Context(), platform, username)
 		if err != nil {
 			log.Error("Failed to find user by username", "error", err, "platform", platform, "username", username)
-			respondError(w, http.StatusNotFound, "User not found")
+			RespondError(w, http.StatusNotFound, "User not found")
 			return
 		}
 		platformID = getPlatformID(user, platform)
 		if platformID == "" {
 			log.Error("User found but no platform ID", "username", username, "platform", platform)
-			respondError(w, http.StatusNotFound, "User not found on platform")
+			RespondError(w, http.StatusNotFound, "User not found on platform")
 			return
 		}
 		log.Debug("Resolved username to platform_id", "username", username, "platform_id", platformID)
@@ -61,14 +61,14 @@ func (h *JobHandler) HandleGetUserJobs(w http.ResponseWriter, r *http.Request) {
 	userJobs, err := h.service.GetUserJobsByPlatform(r.Context(), platform, platformID)
 	if err != nil {
 		log.Error("Failed to get user jobs", "error", err, "platform", platform, "platform_id", platformID)
-		statusCode, userMsg := mapServiceErrorToUserMessage(err)
-		respondError(w, statusCode, userMsg)
+		statusCode, userMsg := MapServiceErrorToUserMessage(err)
+		RespondError(w, statusCode, userMsg)
 		return
 	}
 
 	primaryJob, _ := h.service.GetPrimaryJob(r.Context(), platform, platformID)
 
-	respondJSON(w, http.StatusOK, GetUserJobsResponse{
+	RespondJSON(w, http.StatusOK, GetUserJobsResponse{
 		Platform:   platform,
 		PlatformID: platformID,
 		PrimaryJob: primaryJob,
@@ -114,10 +114,10 @@ func (h *JobHandler) HandleAwardXP(w http.ResponseWriter, r *http.Request) {
 			"platform_id", req.PlatformID,
 			"job_key", req.JobKey,
 		)
-		statusCode, userMsg := mapServiceErrorToUserMessage(err)
-		respondError(w, statusCode, userMsg)
+		statusCode, userMsg := MapServiceErrorToUserMessage(err)
+		RespondError(w, statusCode, userMsg)
 		return
 	}
 
-	respondJSON(w, http.StatusOK, result)
+	RespondJSON(w, http.StatusOK, result)
 }

@@ -122,7 +122,7 @@ func TestProgressionRepository_Integration(t *testing.T) {
 		userID := "integration_user"
 		if len(session.Options) > 0 {
 			optionID := session.Options[0].ID
-			err = repo.RecordUserSessionVote(ctx, userID, sessionID, optionID, money.ID)
+			err = repo.RecordUserSessionVote(ctx, userID, sessionID, optionID, money.ID, 1)
 			if err != nil {
 				t.Fatalf("RecordUserSessionVote failed: %v", err)
 			}

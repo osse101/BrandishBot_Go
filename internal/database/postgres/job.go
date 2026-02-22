@@ -44,6 +44,23 @@ func (r *JobRepository) GetUserByPlatformID(ctx context.Context, platform, platf
 	return mapUserAndLinks(ctx, r.q, row.UserID, row.Username)
 }
 
+func (r *JobRepository) GetUserByID(ctx context.Context, userID string) (*domain.User, error) {
+	userUUID, err := parseUserUUID(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	row, err := r.q.GetUserByID(ctx, userUUID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrUserNotFound
+		}
+		return nil, fmt.Errorf("failed to get user by id: %w", err)
+	}
+
+	return mapUserAndLinks(ctx, r.q, row.UserID, row.Username)
+}
+
 // GetAllJobs retrieves all job definitions
 func (r *JobRepository) GetAllJobs(ctx context.Context) ([]domain.Job, error) {
 	rows, err := r.q.GetAllJobs(ctx)
@@ -226,37 +243,6 @@ func (r *JobRepository) RecordJobXPEvent(ctx context.Context, event *domain.JobX
 	}
 
 	return nil
-}
-
-// GetJobLevelBonuses retrieves bonuses for a job at or below a given level
-func (r *JobRepository) GetJobLevelBonuses(ctx context.Context, jobID int, level int) ([]domain.JobLevelBonus, error) {
-	rows, err := r.q.GetJobLevelBonuses(ctx, generated.GetJobLevelBonusesParams{
-		JobID:    int32(jobID),
-		MinLevel: int32(level),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to query job bonuses: %w", err)
-	}
-
-	bonuses := make([]domain.JobLevelBonus, 0, len(rows))
-	for _, row := range rows {
-		// Convert pgtype.Numeric to float64 with proper error handling
-		bonusValue, err := numericToFloat64(row.BonusValue)
-		if err != nil {
-			return nil, fmt.Errorf("failed to convert bonus value for job %d: %w", row.JobID, err)
-		}
-
-		bonuses = append(bonuses, domain.JobLevelBonus{
-			ID:          int(row.ID),
-			JobID:       int(row.JobID),
-			MinLevel:    int(row.MinLevel),
-			BonusType:   row.BonusType,
-			BonusValue:  bonusValue,
-			Description: row.Description.String,
-		})
-	}
-
-	return bonuses, nil
 }
 
 // ResetDailyJobXP resets the xp_gained_today counter for all users

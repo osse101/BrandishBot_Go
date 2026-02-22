@@ -71,7 +71,6 @@ func TestStartGamble_Success(t *testing.T) {
 	tx := new(MockTx)
 
 	ts.repo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "123").Return(user, nil)
-	ts.repo.On("GetInventory", ctx, "user1").Return(inventory, nil)
 	ts.repo.On("GetActiveGamble", ctx).Return(nil, nil)
 
 	// Naming resolver
@@ -82,6 +81,7 @@ func TestStartGamble_Success(t *testing.T) {
 	ts.repo.On("GetItemByName", ctx, "lootbox_tier1").Return(lootboxItem, nil)
 
 	ts.repo.On("BeginGambleTx", ctx).Return(tx, nil)
+	tx.On("GetInventory", ctx, "user1").Return(inventory, nil)
 	tx.On("UpdateInventory", ctx, "user1", mock.Anything).Return(nil)
 	tx.On("Commit", ctx).Return(nil)
 	tx.On("Rollback", ctx).Return(nil).Maybe()
@@ -108,120 +108,156 @@ func TestStartGamble_Success(t *testing.T) {
 	ts.eventBus.AssertExpectations(t)
 }
 
-func TestStartGamble_NoBets(t *testing.T) {
-	ts := setupService(nil, false)
-	ctx := context.Background()
-	bets := []domain.LootboxBet{}
+func TestStartGamble_Errors(t *testing.T) {
+	tests := []struct {
+		name          string
+		bets          []domain.LootboxBet
+		setupMocks    func(ts *testService, ctx context.Context, tx *MockTx)
+		expectedError error
+	}{
+		{
+			name:          "No Bets",
+			bets:          []domain.LootboxBet{},
+			setupMocks:    func(ts *testService, ctx context.Context, tx *MockTx) {},
+			expectedError: domain.ErrAtLeastOneLootboxRequired,
+		},
+		{
+			name:          "Invalid Bet Quantity",
+			bets:          []domain.LootboxBet{{ItemName: "lootbox_tier1", Quantity: 0}},
+			setupMocks:    func(ts *testService, ctx context.Context, tx *MockTx) {},
+			expectedError: domain.ErrBetQuantityMustBePositive,
+		},
+		{
+			name:          "Excessive Bet Quantity",
+			bets:          []domain.LootboxBet{{ItemName: "lootbox_tier1", Quantity: domain.MaxTransactionQuantity + 1}},
+			setupMocks:    func(ts *testService, ctx context.Context, tx *MockTx) {},
+			expectedError: domain.ErrQuantityTooHigh,
+		},
+		{
+			name: "User Not Found",
+			bets: []domain.LootboxBet{{ItemName: "lootbox_tier1", Quantity: 1}},
+			setupMocks: func(ts *testService, ctx context.Context, tx *MockTx) {
+				ts.repo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "123").Return(nil, nil)
+			},
+			expectedError: domain.ErrUserNotFound,
+		},
+		{
+			name: "Active Gamble Exists",
+			bets: []domain.LootboxBet{{ItemName: "lootbox_tier1", Quantity: 1}},
+			setupMocks: func(ts *testService, ctx context.Context, tx *MockTx) {
+				user := &domain.User{ID: "user1"}
+				activeGamble := &domain.Gamble{ID: uuid.New(), State: domain.GambleStateJoining}
 
-	gamble, err := ts.svc.StartGamble(ctx, domain.PlatformTwitch, "123", "testuser", bets)
+				ts.repo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "123").Return(user, nil)
+				ts.repo.On("GetActiveGamble", ctx).Return(activeGamble, nil)
+			},
+			expectedError: domain.ErrGambleAlreadyActive,
+		},
+		{
+			name: "Insufficient Lootboxes",
+			bets: []domain.LootboxBet{{ItemName: "lootbox_tier1", Quantity: 5}},
+			setupMocks: func(ts *testService, ctx context.Context, tx *MockTx) {
+				user := &domain.User{ID: "user1"}
+				inventory := &domain.Inventory{Slots: []domain.InventorySlot{{ItemID: 1, Quantity: 2}}}
 
-	assert.Error(t, err)
-	assert.Nil(t, gamble)
-	assert.ErrorIs(t, err, domain.ErrAtLeastOneLootboxRequired)
+				ts.repo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "123").Return(user, nil)
+				ts.repo.On("GetActiveGamble", ctx).Return(nil, nil)
+
+				ts.namingResolver.On("ResolvePublicName", "lootbox_tier1").Return("", false)
+
+				lootboxItem := &domain.Item{ID: 1, InternalName: domain.ItemLootbox1}
+				ts.repo.On("GetItemByName", ctx, "lootbox_tier1").Return(lootboxItem, nil)
+
+				ts.repo.On("BeginGambleTx", ctx).Return(tx, nil)
+				tx.On("GetInventory", ctx, "user1").Return(inventory, nil)
+				tx.On("Rollback", ctx).Return(nil).Maybe()
+			},
+			expectedError: domain.ErrInsufficientQuantity,
+		},
+		{
+			name: "Lootbox Not In Inventory",
+			bets: []domain.LootboxBet{{ItemName: "lootbox_tier1", Quantity: 1}},
+			setupMocks: func(ts *testService, ctx context.Context, tx *MockTx) {
+				user := &domain.User{ID: "user1"}
+				inventory := &domain.Inventory{Slots: []domain.InventorySlot{{ItemID: 1, Quantity: 5}}}
+
+				ts.repo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "123").Return(user, nil)
+				ts.repo.On("GetActiveGamble", ctx).Return(nil, nil)
+
+				ts.namingResolver.On("ResolvePublicName", "lootbox_tier1").Return("", false)
+
+				nonExistentItem := &domain.Item{ID: 99, InternalName: domain.ItemLootbox2}
+				ts.repo.On("GetItemByName", ctx, "lootbox_tier1").Return(nonExistentItem, nil)
+
+				ts.repo.On("BeginGambleTx", ctx).Return(tx, nil)
+				tx.On("GetInventory", ctx, "user1").Return(inventory, nil)
+				tx.On("Rollback", ctx).Return(nil).Maybe()
+			},
+			expectedError: domain.ErrItemNotFound,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ts := setupService(nil, false)
+			ctx := context.Background()
+			tx := new(MockTx)
+
+			tt.setupMocks(ts, ctx, tx)
+
+			gamble, err := ts.svc.StartGamble(ctx, domain.PlatformTwitch, "123", "testuser", tt.bets)
+
+			assert.Error(t, err)
+			assert.Nil(t, gamble)
+			assert.ErrorIs(t, err, tt.expectedError)
+			ts.repo.AssertExpectations(t)
+			tx.AssertExpectations(t)
+		})
+	}
 }
 
-func TestStartGamble_InvalidBetQuantity(t *testing.T) {
+func TestStartGamble_ContextCancelled(t *testing.T) {
 	ts := setupService(nil, false)
-	ctx := context.Background()
-	bets := []domain.LootboxBet{{ItemName: "lootbox_tier1", Quantity: 0}}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // Cancel immediately
 
-	gamble, err := ts.svc.StartGamble(ctx, domain.PlatformTwitch, "123", "testuser", bets)
-
-	assert.Error(t, err)
-	assert.Nil(t, gamble)
-	assert.ErrorIs(t, err, domain.ErrBetQuantityMustBePositive)
-}
-
-func TestStartGamble_ExcessiveBetQuantity(t *testing.T) {
-	ts := setupService(nil, false)
-	ctx := context.Background()
-	bets := []domain.LootboxBet{{ItemName: "lootbox_tier1", Quantity: domain.MaxTransactionQuantity + 1}}
-
-	gamble, err := ts.svc.StartGamble(ctx, domain.PlatformTwitch, "123", "testuser", bets)
-
-	assert.Error(t, err)
-	assert.Nil(t, gamble)
-	assert.ErrorIs(t, err, domain.ErrQuantityTooHigh)
-}
-
-func TestStartGamble_UserNotFound(t *testing.T) {
-	ts := setupService(nil, false)
-	ctx := context.Background()
 	bets := []domain.LootboxBet{{ItemName: "lootbox_tier1", Quantity: 1}}
 
-	ts.repo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "123").Return(nil, nil)
+	// We expect the first repository call to fail with context Canceled.
+	// Note: We need to match the context cancellation error.
+	ts.repo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "123").Return(nil, context.Canceled)
 
 	gamble, err := ts.svc.StartGamble(ctx, domain.PlatformTwitch, "123", "testuser", bets)
 
 	assert.Error(t, err)
 	assert.Nil(t, gamble)
-	assert.ErrorIs(t, err, domain.ErrUserNotFound)
+	assert.ErrorIs(t, err, context.Canceled)
 	ts.repo.AssertExpectations(t)
 }
 
-func TestStartGamble_ActiveGambleExists(t *testing.T) {
+func TestStartGamble_BeginTxError(t *testing.T) {
 	ts := setupService(nil, false)
 	ctx := context.Background()
 	user := &domain.User{ID: "user1"}
 	bets := []domain.LootboxBet{{ItemName: "lootbox_tier1", Quantity: 1}}
-	activeGamble := &domain.Gamble{ID: uuid.New(), State: domain.GambleStateJoining}
 
-	ts.repo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "123").Return(user, nil)
-	ts.repo.On("GetActiveGamble", ctx).Return(activeGamble, nil)
-
-	gamble, err := ts.svc.StartGamble(ctx, domain.PlatformTwitch, "123", "testuser", bets)
-
-	assert.Error(t, err)
-	assert.Nil(t, gamble)
-	assert.ErrorIs(t, err, domain.ErrGambleAlreadyActive)
-	ts.repo.AssertExpectations(t)
-}
-
-func TestStartGamble_InsufficientLootboxes(t *testing.T) {
-	ts := setupService(nil, false)
-	ctx := context.Background()
-	user := &domain.User{ID: "user1"}
-	bets := []domain.LootboxBet{{ItemName: "lootbox_tier1", Quantity: 5}}
-	inventory := &domain.Inventory{Slots: []domain.InventorySlot{{ItemID: 1, Quantity: 2}}}
 	ts.repo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "123").Return(user, nil)
 	ts.repo.On("GetActiveGamble", ctx).Return(nil, nil)
 
 	ts.namingResolver.On("ResolvePublicName", "lootbox_tier1").Return("", false)
 
-	// Item validation
 	lootboxItem := &domain.Item{ID: 1, InternalName: domain.ItemLootbox1}
 	ts.repo.On("GetItemByName", ctx, "lootbox_tier1").Return(lootboxItem, nil)
-	ts.repo.On("GetInventory", ctx, "user1").Return(inventory, nil)
+
+	// Simulate failure to begin transaction
+	expectedErr := errors.New("tx error")
+	ts.repo.On("BeginGambleTx", ctx).Return(nil, expectedErr)
 
 	gamble, err := ts.svc.StartGamble(ctx, domain.PlatformTwitch, "123", "testuser", bets)
 
 	assert.Error(t, err)
 	assert.Nil(t, gamble)
-	assert.ErrorIs(t, err, domain.ErrInsufficientQuantity)
-	ts.repo.AssertExpectations(t)
-}
-
-func TestStartGamble_LootboxNotInInventory(t *testing.T) {
-	ts := setupService(nil, false)
-	ctx := context.Background()
-	user := &domain.User{ID: "user1"}
-	bets := []domain.LootboxBet{{ItemName: "lootbox_tier1", Quantity: 1}}
-	inventory := &domain.Inventory{Slots: []domain.InventorySlot{{ItemID: 1, Quantity: 5}}}
-	ts.repo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "123").Return(user, nil)
-	ts.repo.On("GetActiveGamble", ctx).Return(nil, nil)
-
-	ts.namingResolver.On("ResolvePublicName", "lootbox_tier1").Return("", false)
-
-	// Item validation - testing with non-existent item ID
-	nonExistentItem := &domain.Item{ID: 99, InternalName: domain.ItemLootbox2}
-	ts.repo.On("GetItemByName", ctx, "lootbox_tier1").Return(nonExistentItem, nil)
-	ts.repo.On("GetInventory", ctx, "user1").Return(inventory, nil)
-
-	gamble, err := ts.svc.StartGamble(ctx, domain.PlatformTwitch, "123", "testuser", bets)
-
-	assert.Error(t, err)
-	assert.Nil(t, gamble)
-	assert.ErrorIs(t, err, domain.ErrItemNotFound)
+	assert.ErrorIs(t, err, expectedErr)
 	ts.repo.AssertExpectations(t)
 }
 
@@ -272,107 +308,99 @@ func TestJoinGamble_Success(t *testing.T) {
 	tx.AssertExpectations(t)
 }
 
-func TestJoinGamble_GambleNotFound(t *testing.T) {
-	ts := setupService(nil, false)
-	ctx := context.Background()
-	gambleID := uuid.New()
-	user := &domain.User{ID: "user2"}
-	ts.repo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "456").Return(user, nil)
-	ts.repo.On("GetGamble", ctx, gambleID).Return(nil, nil)
+func TestJoinGamble_Errors(t *testing.T) {
+	tests := []struct {
+		name          string
+		setupMocks    func(ts *testService, ctx context.Context, gambleID uuid.UUID, tx *MockTx)
+		expectedError error
+	}{
+		{
+			name: "Gamble Not Found",
+			setupMocks: func(ts *testService, ctx context.Context, gambleID uuid.UUID, tx *MockTx) {
+				user := &domain.User{ID: "user2"}
+				ts.repo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "456").Return(user, nil)
+				ts.repo.On("GetGamble", ctx, gambleID).Return(nil, nil)
+			},
+			expectedError: domain.ErrGambleNotFound,
+		},
+		{
+			name: "Wrong State",
+			setupMocks: func(ts *testService, ctx context.Context, gambleID uuid.UUID, tx *MockTx) {
+				user := &domain.User{ID: "user2"}
+				gamble := &domain.Gamble{
+					ID:           gambleID,
+					InitiatorID:  "initiator_user",
+					State:        domain.GambleStateOpening,
+					JoinDeadline: time.Now().Add(time.Minute),
+				}
+				ts.repo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "456").Return(user, nil)
+				ts.repo.On("GetGamble", ctx, gambleID).Return(gamble, nil)
+			},
+			expectedError: domain.ErrNotInJoiningState,
+		},
+		{
+			name: "Deadline Passed",
+			setupMocks: func(ts *testService, ctx context.Context, gambleID uuid.UUID, tx *MockTx) {
+				user := &domain.User{ID: "user2"}
+				gamble := &domain.Gamble{
+					ID:           gambleID,
+					InitiatorID:  "initiator_user",
+					State:        domain.GambleStateJoining,
+					JoinDeadline: time.Now().Add(-time.Minute), // Past deadline
+				}
+				ts.repo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "456").Return(user, nil)
+				ts.repo.On("GetGamble", ctx, gambleID).Return(gamble, nil)
+			},
+			expectedError: domain.ErrJoinDeadlinePassed,
+		},
+		{
+			name: "Insufficient Lootboxes",
+			setupMocks: func(ts *testService, ctx context.Context, gambleID uuid.UUID, tx *MockTx) {
+				user := &domain.User{ID: "user2"}
+				inventory := &domain.Inventory{Slots: []domain.InventorySlot{{ItemID: 1, Quantity: 2}}}
+				gamble := &domain.Gamble{
+					ID:           gambleID,
+					InitiatorID:  "initiator_user",
+					State:        domain.GambleStateJoining,
+					JoinDeadline: time.Now().Add(time.Minute),
+					Participants: []domain.Participant{
+						{UserID: "initiator_user", GambleID: gambleID, LootboxBets: []domain.LootboxBet{{ItemName: domain.ItemLootbox1, Quantity: 10}}},
+					},
+				}
 
-	err := ts.svc.JoinGamble(ctx, gambleID, domain.PlatformTwitch, "456", "joiner")
+				ts.repo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "456").Return(user, nil)
+				ts.repo.On("GetGamble", ctx, gambleID).Return(gamble, nil)
 
-	assert.Error(t, err)
-	assert.ErrorIs(t, err, domain.ErrGambleNotFound)
-	ts.repo.AssertExpectations(t)
-}
+				ts.namingResolver.On("ResolvePublicName", domain.ItemLootbox1).Return("", false)
 
-func TestJoinGamble_WrongState(t *testing.T) {
-	ts := setupService(nil, false)
-	ctx := context.Background()
-	gambleID := uuid.New()
-	user := &domain.User{ID: "user2"}
-	gamble := &domain.Gamble{
-		ID:           gambleID,
-		InitiatorID:  "initiator_user",
-		State:        domain.GambleStateOpening,
-		JoinDeadline: time.Now().Add(time.Minute),
-		Participants: []domain.Participant{
-			{UserID: "initiator_user", GambleID: gambleID, LootboxBets: []domain.LootboxBet{{ItemName: domain.ItemLootbox1, Quantity: 1}}},
+				lootboxItem := &domain.Item{ID: 1, InternalName: domain.ItemLootbox1}
+				ts.repo.On("GetItemByName", ctx, domain.ItemLootbox1).Return(lootboxItem, nil)
+
+				ts.repo.On("BeginGambleTx", ctx).Return(tx, nil)
+				tx.On("GetInventory", ctx, "user2").Return(inventory, nil)
+				tx.On("Rollback", ctx).Return(nil).Maybe()
+			},
+			expectedError: domain.ErrInsufficientQuantity,
 		},
 	}
 
-	ts.repo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "456").Return(user, nil)
-	ts.repo.On("GetGamble", ctx, gambleID).Return(gamble, nil)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ts := setupService(nil, false)
+			ctx := context.Background()
+			gambleID := uuid.New()
+			tx := new(MockTx)
 
-	err := ts.svc.JoinGamble(ctx, gambleID, domain.PlatformTwitch, "456", "joiner")
+			tt.setupMocks(ts, ctx, gambleID, tx)
 
-	assert.Error(t, err)
-	assert.ErrorIs(t, err, domain.ErrNotInJoiningState)
-	ts.repo.AssertExpectations(t)
-}
+			err := ts.svc.JoinGamble(ctx, gambleID, domain.PlatformTwitch, "456", "joiner")
 
-func TestJoinGamble_DeadlinePassed(t *testing.T) {
-	ts := setupService(nil, false)
-	ctx := context.Background()
-	gambleID := uuid.New()
-	user := &domain.User{ID: "user2"}
-	gamble := &domain.Gamble{
-		ID:           gambleID,
-		InitiatorID:  "initiator_user",
-		State:        domain.GambleStateJoining,
-		JoinDeadline: time.Now().Add(-time.Minute), // Past deadline
-		Participants: []domain.Participant{
-			{UserID: "initiator_user", GambleID: gambleID, LootboxBets: []domain.LootboxBet{{ItemName: domain.ItemLootbox1, Quantity: 1}}},
-		},
+			assert.Error(t, err)
+			assert.ErrorIs(t, err, tt.expectedError)
+			ts.repo.AssertExpectations(t)
+			tx.AssertExpectations(t)
+		})
 	}
-
-	ts.repo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "456").Return(user, nil)
-	ts.repo.On("GetGamble", ctx, gambleID).Return(gamble, nil)
-
-	err := ts.svc.JoinGamble(ctx, gambleID, domain.PlatformTwitch, "456", "joiner")
-
-	assert.Error(t, err)
-	assert.ErrorIs(t, err, domain.ErrJoinDeadlinePassed)
-	ts.repo.AssertExpectations(t)
-}
-
-func TestJoinGamble_InsufficientLootboxes(t *testing.T) {
-	ts := setupService(nil, false)
-	ctx := context.Background()
-	gambleID := uuid.New()
-	user := &domain.User{ID: "user2"}
-	inventory := &domain.Inventory{Slots: []domain.InventorySlot{{ItemID: 1, Quantity: 2}}}
-	gamble := &domain.Gamble{
-		ID:           gambleID,
-		InitiatorID:  "initiator_user",
-		State:        domain.GambleStateJoining,
-		JoinDeadline: time.Now().Add(time.Minute),
-		Participants: []domain.Participant{
-			{UserID: "initiator_user", GambleID: gambleID, LootboxBets: []domain.LootboxBet{{ItemName: domain.ItemLootbox1, Quantity: 10}}},
-		},
-	}
-	tx := new(MockTx)
-
-	ts.repo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "456").Return(user, nil)
-	ts.repo.On("GetGamble", ctx, gambleID).Return(gamble, nil)
-
-	ts.namingResolver.On("ResolvePublicName", domain.ItemLootbox1).Return("", false)
-
-	// Item validation
-	lootboxItem := &domain.Item{ID: 1, InternalName: domain.ItemLootbox1}
-	ts.repo.On("GetItemByName", ctx, domain.ItemLootbox1).Return(lootboxItem, nil)
-
-	ts.repo.On("BeginGambleTx", ctx).Return(tx, nil)
-	tx.On("GetInventory", ctx, "user2").Return(inventory, nil)
-	tx.On("Rollback", ctx).Return(nil).Maybe()
-
-	err := ts.svc.JoinGamble(ctx, gambleID, domain.PlatformTwitch, "456", "joiner")
-
-	assert.Error(t, err)
-	assert.ErrorIs(t, err, domain.ErrInsufficientQuantity)
-	ts.repo.AssertExpectations(t)
-	tx.AssertExpectations(t)
 }
 
 // ========================================
@@ -652,10 +680,7 @@ func TestExecuteGamble_NearMiss(t *testing.T) {
 	ctx := context.Background()
 	gambleID := uuid.New()
 
-	// Setup 2 participants
-	// User1: Wins with 100
-	// User2: Loses with 95 (Within 5%, should trigger NearMiss)
-	// User3: Loses with 50 (Should NOT trigger NearMiss)
+	// Test case: User1 (100) wins; User2 (95) near miss; User3 (50) no near miss.
 
 	gamble := &domain.Gamble{
 		ID:    gambleID,
@@ -727,10 +752,7 @@ func TestExecuteGamble_CriticalFailure(t *testing.T) {
 	ctx := context.Background()
 	gambleID := uuid.New()
 
-	// Setup 3 participants
-	// User1: 100
-	// User2: 100
-	// User3: 10 (Avg = 70. Threshold = 14. 10 <= 14 => Critical Fail)
+	// Test case: User3 (10) should critical fail against avg (70) and threshold (14).
 
 	gamble := &domain.Gamble{
 		ID:    gambleID,
@@ -794,9 +816,7 @@ func TestExecuteGamble_CriticalFailure(t *testing.T) {
 }
 
 func TestExecuteGamble_TieBreak(t *testing.T) {
-	// Deterministic RNG: always pick index 1
-	// With users "userA" and "userB", sorted order is ["userA", "userB"].
-	// Index 1 is "userB".
+	// Deterministic tie-break: sorted ["userA", "userB"]; index 1 should be "userB".
 	mockRng := func(n int) int { return 1 }
 
 	ts := setupService(mockRng, false)
@@ -885,7 +905,6 @@ func TestAsyncXPAward(t *testing.T) {
 	tx := new(MockTx)
 
 	ts.repo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "123").Return(user, nil)
-	ts.repo.On("GetInventory", ctx, "user1").Return(inventory, nil)
 	ts.repo.On("GetActiveGamble", ctx).Return(nil, nil)
 
 	ts.namingResolver.On("ResolvePublicName", "lootbox_tier1").Return("", false)
@@ -894,6 +913,7 @@ func TestAsyncXPAward(t *testing.T) {
 	ts.repo.On("GetItemByName", ctx, "lootbox_tier1").Return(lootboxItem, nil)
 
 	ts.repo.On("BeginGambleTx", ctx).Return(tx, nil)
+	tx.On("GetInventory", ctx, "user1").Return(inventory, nil)
 	tx.On("UpdateInventory", ctx, "user1", mock.Anything).Return(nil)
 	tx.On("Commit", ctx).Return(nil)
 	tx.On("Rollback", ctx).Return(nil).Maybe()

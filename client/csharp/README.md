@@ -148,7 +148,7 @@ public class CPHInline
             "http://localhost:8080",
             "your-api-key"
         );
-        
+
         try
         {
             var response = await BrandishBotClient.Instance.HandleMessage(
@@ -159,7 +159,7 @@ public class CPHInline
                 CPH.GetGlobalVar<bool>("isModerator"),
                 CPH.GetGlobalVar<bool>("isSubscriber")
             );
-            
+
             CPH.SendMessage(response);  // Send result to chat
             return true;
         }

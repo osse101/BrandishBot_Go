@@ -28,6 +28,7 @@ Response buffer pooling was implemented but showed no measurable allocation redu
 ## Background
 
 **Optimization 1 (easyjson) failed** because JSON wasn't the bottleneck:
+
 - Handler benchmarks: 50 allocs/op, 8.4KB/op
 - JSON accounts for only ~15 of 50 allocations (~30%)
 - HTTP infrastructure + middleware = ~35 allocations (~70%)
@@ -37,6 +38,7 @@ Response buffer pooling was implemented but showed no measurable allocation redu
 ## Progress
 
 ### Response Buffer Pooling (Implemented)
+
 - **Implementation:** Added `internal/handler/pool.go` and modified `respondJSON` to use a `sync.Pool` of `bytes.Buffer`.
 - **Result:** Benchmarks showed no reduction in allocations (49 allocs/op -> 49 allocs/op).
 - **Analysis:** This is likely due to `httptest.ResponseRecorder` used in benchmarks overshadowing the gain by allocating its own buffers, or `json.Encoder` already pooling internal buffers efficiently. However, the change avoids growing `http.ResponseWriter` internal buffers (if any) and reduces garbage for the intermediate serialization buffer, which is good practice for high-throughput scenarios.
@@ -55,17 +57,20 @@ Response buffer pooling was implemented but showed no measurable allocation redu
 Based on profiling analysis:
 
 **HTTP Infrastructure (~20 allocs):**
+
 - HTTP request parsing: ~8 allocs
 - Response buffers: ~5 allocs
 - Header maps: ~4 allocs
 - URL parsing: ~3 allocs
 
 **Middleware (~15 allocs):**
+
 - Context values: ~7 allocs (logger, request ID, user ID)
 - Engagement tracking: ~5 allocs
 - Metrics collection: ~3 allocs
 
 **JSON Serialization (~15 allocs):**
+
 - Request unmarshal: ~7 allocs
 - Response marshal: ~8 allocs
 
@@ -93,7 +98,7 @@ func withPooledContext(ctx context.Context, ...) context.Context {
     cv.logger = logger
     cv.requestID = id
     cv.userID = userID
-    
+
     // Return context with pooled value
     // Make sure to return to pool after request!
 }
@@ -142,7 +147,7 @@ func HandleMessageHandler(...) http.HandlerFunc {
             buf.Reset()
             responseBufferPool.Put(buf)
         }()
-        
+
         // Encode to buffer, then write
         json.NewEncoder(buf).Encode(result)
         w.Write(buf.Bytes())
@@ -178,6 +183,7 @@ func writeJSON(w http.ResponseWriter, data interface{}) error {
 ### ❌ Custom HTTP Server
 
 Replacing `http.Server` with custom implementation:
+
 - **High complexity**
 - **Marginal gains** (HTTP overhead is ~8/50 allocs)
 - **Maintenance burden**
@@ -185,6 +191,7 @@ Replacing `http.Server` with custom implementation:
 ### ❌ Removing Middleware
 
 Disabling metrics or engagement tracking:
+
 - **Business value loss** outweighs performance gains
 - Metrics are critical for observability
 - Engagement drives progression system
@@ -192,13 +199,16 @@ Disabling metrics or engagement tracking:
 ## Implementation Priority
 
 ### High Priority (Try First)
+
 1. **Context Value Pooling** - Biggest single win (-7 allocs)
 2. **Response Buffer Pooling** - Easy, safe (-3-5 allocs) (COMPLETED)
 
 ### Medium Priority
+
 3. **Lazy Middleware** - Conditional execution (-0-5 allocs, depends on traffic)
 
 ### Low Priority
+
 4. **Static Headers** - Minimal gain (-2 allocs)
 
 ## Benchmarking Plan
@@ -220,7 +230,7 @@ make bench-compare
 # Expected cumulative improvement:
 # Context pooling:    50 → 43 allocs (-14%)
 # Buffer pooling:     43 → 40 allocs (-20% total)
-# Lazy middleware:    40 → 37 allocs (-26% total)  
+# Lazy middleware:    40 → 37 allocs (-26% total)
 # Static headers:     37 → 35 allocs (-30% total)
 ```
 
@@ -244,11 +254,13 @@ make bench-compare
 ## When to Implement
 
 **Triggers:**
+
 1. P95 latency for `/message/handle` >10ms in production
 2. High request volume (>100 req/s) causing GC pressure
 3. Profiling shows handler allocations dominating CPU time
 
 **Current State:** NOT URGENT
+
 - Latency: 4.8µs (excellent)
 - Request volume: ~20 req/s (well below capacity)
 - No GC issues observed
@@ -260,11 +272,13 @@ make bench-compare
 If drastic performance improvement needed, consider [`valyala/fasthttp`](https://github.com/valyala/fasthttp):
 
 **Pros:**
+
 - 10x fewer allocations than `net/http`
 - Zero-copy request/response
 - Built-in pooling
 
 **Cons:**
+
 - Not `net/http` compatible (complete rewrite)
 - Less ecosystem support
 - Higher complexity

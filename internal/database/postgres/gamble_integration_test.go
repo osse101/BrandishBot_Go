@@ -29,9 +29,7 @@ func setupGambleIntegrationTest(t *testing.T) (*UserRepository, gamble.Service) 
 		return nil, nil
 	}
 
-	// 2. Setup Lootbox Service with deterministic loot table (v2 format).
-	// ItemDropRate=0.0 → gatekeeper always fails → consolation path always fires.
-	// With rnd=0.5: base=0.5*(100-100)+100=100, jitter=1+(0.5-0.5)*1=1, amount=100.
+	// 2. Setup Lootbox Service: deterministic v2 table (ItemDropRate=0.0; rnd=0.5 -> 100 money).
 	lootConfig := lootbox.LootTableConfig{
 		Version: "2.0",
 		Pools: map[string]lootbox.PoolDef{
@@ -83,7 +81,7 @@ func setupGambleIntegrationTest(t *testing.T) (*UserRepository, gamble.Service) 
 
 type MockProgressionService struct{}
 
-func (m *MockProgressionService) GetModifiedValue(ctx context.Context, featureKey string, baseValue float64) (float64, error) {
+func (m *MockProgressionService) GetModifiedValue(ctx context.Context, userID string, featureKey string, baseValue float64) (float64, error) {
 	return baseValue, nil
 }
 
@@ -124,18 +122,14 @@ func TestGambleLifecycle_Integration(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, moneyItem)
 
-	// Seed Inventory
-	// User A: 5 lootboxes
-	// User B: 5 lootboxes
+	// Seed Inventory: 5 lootboxes for both users.
 	invA := domain.Inventory{Slots: []domain.InventorySlot{{ItemID: lbItem.ID, Quantity: 5}}}
 	invB := domain.Inventory{Slots: []domain.InventorySlot{{ItemID: lbItem.ID, Quantity: 5}}}
 
 	require.NoError(t, repo.UpdateInventory(ctx, userA.ID, invA))
 	require.NoError(t, repo.UpdateInventory(ctx, userB.ID, invB))
 
-	// --- Step 2: Start Gamble ---
-	// User A starts gamble betting 2 lootboxes
-	// Lootbox returns 100 money each. Total value = 200.
+	// Step 2: User A bets 2 lootboxes (100 value each -> 200 total).
 	betsA := []domain.LootboxBet{{ItemName: domain.ItemLootbox1, Quantity: 2}}
 	gamble, err := svc.StartGamble(ctx, domain.PlatformTwitch, userA.TwitchID, userA.Username, betsA)
 	require.NoError(t, err)
@@ -160,12 +154,7 @@ func TestGambleLifecycle_Integration(t *testing.T) {
 	// Mock time passing by setting join deadline to the past
 	time.Sleep(2 * time.Second)
 
-	// --- Step 4: Execute Gamble ---
-	// Expected Outcome:
-	// User A Value: 200
-	// User B Value: 100
-	// Winner: User A
-	// Winner receives: (2+1) * 100 money = 300 money.
+	// Step 4: User A (200) vs User B (100). Winner A receives 400 (all roll Common quality).
 
 	result, err := svc.ExecuteGamble(ctx, gamble.ID)
 	require.NoError(t, err)
