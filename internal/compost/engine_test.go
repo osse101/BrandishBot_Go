@@ -43,106 +43,215 @@ func TestCalculateSludgeAt(t *testing.T) {
 	assert.Equal(t, readyAt.Add(168*time.Hour), sludgeAt)
 }
 
-func TestCalculateInputValue_Mixed(t *testing.T) {
+func TestCalculateInputValue(t *testing.T) {
 	engine := NewEngine()
-	items := []domain.CompostBinItem{
-		{BaseValue: 100, Quantity: 2, QualityLevel: domain.QualityCommon},   // 100 * 1.0 * 2 = 200
-		{BaseValue: 50, Quantity: 1, QualityLevel: domain.QualityLegendary}, // 50 * 2.0 * 1 = 100
-		{BaseValue: 30, Quantity: 3, QualityLevel: domain.QualityJunk},      // 30 * 0.6 * 3 = 54
+
+	tests := []struct {
+		name     string
+		items    []domain.CompostBinItem
+		expected int
+	}{
+		{
+			name: "Mixed items",
+			items: []domain.CompostBinItem{
+				{BaseValue: 100, Quantity: 2, QualityLevel: domain.QualityCommon},   // 100 * 1.0 * 2 = 200
+				{BaseValue: 50, Quantity: 1, QualityLevel: domain.QualityLegendary}, // 50 * 2.0 * 1 = 100
+				{BaseValue: 30, Quantity: 3, QualityLevel: domain.QualityJunk},      // 30 * 0.6 * 3 = 54
+			},
+			expected: 354,
+		},
+		{
+			name:     "Empty items",
+			items:    nil,
+			expected: 0,
+		},
 	}
 
-	value := engine.CalculateInputValue(items)
-	assert.Equal(t, 354, value)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			value := engine.CalculateInputValue(tt.items)
+			assert.Equal(t, tt.expected, value)
+		})
+	}
 }
 
-func TestCalculateInputValue_Empty(t *testing.T) {
+func TestDetermineDominantType(t *testing.T) {
 	engine := NewEngine()
-	value := engine.CalculateInputValue(nil)
-	assert.Equal(t, 0, value)
-}
 
-func TestDetermineDominantType_Single(t *testing.T) {
-	engine := NewEngine()
-	items := []domain.CompostBinItem{
-		{BaseValue: 100, Quantity: 1, QualityLevel: domain.QualityCommon, ContentTypes: []string{"weapon"}},
-		{BaseValue: 100, Quantity: 1, QualityLevel: domain.QualityCommon, ContentTypes: []string{"weapon"}},
+	tests := []struct {
+		name     string
+		items    []domain.CompostBinItem
+		expected string
+	}{
+		{
+			name: "Single type",
+			items: []domain.CompostBinItem{
+				{BaseValue: 100, Quantity: 1, QualityLevel: domain.QualityCommon, ContentTypes: []string{"weapon"}},
+				{BaseValue: 100, Quantity: 1, QualityLevel: domain.QualityCommon, ContentTypes: []string{"weapon"}},
+			},
+			expected: "weapon",
+		},
+		{
+			name: "Mixed types",
+			items: []domain.CompostBinItem{
+				{BaseValue: 100, Quantity: 3, QualityLevel: domain.QualityCommon, ContentTypes: []string{"weapon"}},   // 300
+				{BaseValue: 200, Quantity: 2, QualityLevel: domain.QualityCommon, ContentTypes: []string{"material"}}, // 400
+			},
+			expected: "material",
+		},
+		{
+			name:     "Empty items",
+			items:    nil,
+			expected: domain.ContentTypeMaterial,
+		},
+		{
+			name: "Items with no content types",
+			items: []domain.CompostBinItem{
+				{BaseValue: 100, Quantity: 1, QualityLevel: domain.QualityCommon, ContentTypes: nil},
+			},
+			expected: domain.ContentTypeMaterial,
+		},
 	}
 
-	dominant := engine.DetermineDominantType(items)
-	assert.Equal(t, "weapon", dominant)
-}
-
-func TestDetermineDominantType_Mixed(t *testing.T) {
-	engine := NewEngine()
-	items := []domain.CompostBinItem{
-		{BaseValue: 100, Quantity: 3, QualityLevel: domain.QualityCommon, ContentTypes: []string{"weapon"}},   // 300
-		{BaseValue: 200, Quantity: 2, QualityLevel: domain.QualityCommon, ContentTypes: []string{"material"}}, // 400
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dominant := engine.DetermineDominantType(tt.items)
+			assert.Equal(t, tt.expected, dominant)
+		})
 	}
-
-	dominant := engine.DetermineDominantType(items)
-	assert.Equal(t, "material", dominant)
 }
 
-func TestDetermineDominantType_Empty(t *testing.T) {
-	engine := NewEngine()
-
-	// No items
-	dominant := engine.DetermineDominantType(nil)
-	assert.Equal(t, domain.ContentTypeMaterial, dominant)
-
-	// Items with no content types
-	items := []domain.CompostBinItem{
-		{BaseValue: 100, Quantity: 1, QualityLevel: domain.QualityCommon, ContentTypes: nil},
-	}
-	dominant = engine.DetermineDominantType(items)
-	assert.Equal(t, domain.ContentTypeMaterial, dominant)
-}
-
-func TestCalculateOutput_Normal(t *testing.T) {
+func TestCalculateOutput(t *testing.T) {
 	engine := NewEngine()
 	allItems := []domain.Item{
 		{InternalName: "weapon_big", BaseValue: 200, ContentType: []string{"weapon"}},
-		{InternalName: "weapon_small", BaseValue: 50, ContentType: []string{"weapon"}},
+		{InternalName: "weapon_med", BaseValue: 45, ContentType: []string{"weapon"}},
+		{InternalName: "weapon_small", BaseValue: 30, ContentType: []string{"weapon"}},
 		{InternalName: "material_iron", BaseValue: 10, ContentType: []string{"material"}},
 	}
 
-	// inputValue=100, multiplier=0.5 -> outputValue=50
-	output := engine.CalculateOutput(100, "weapon", false, allItems, 0.5)
-	assert.False(t, output.IsSludge)
-	assert.Equal(t, 50, output.TotalValue)
-	// Should pick weapon_small (base_value=50 <= 50)
-	assert.Equal(t, 1, output.Items["weapon_small"])
-	assert.Equal(t, "Composting complete!", output.Message)
-}
-
-func TestCalculateOutput_Sludge(t *testing.T) {
-	engine := NewEngine()
-
-	output := engine.CalculateOutput(100, "weapon", true, nil, 0.5)
-	assert.True(t, output.IsSludge)
-	assert.Equal(t, 10, output.Items["compost_sludge"]) // 100/10 = 10
-	assert.Equal(t, "Your compost sat too long and turned to sludge!", output.Message)
-}
-
-func TestCalculateOutput_SludgeMinimumOne(t *testing.T) {
-	engine := NewEngine()
-
-	output := engine.CalculateOutput(5, "weapon", true, nil, 0.5)
-	assert.True(t, output.IsSludge)
-	assert.Equal(t, 1, output.Items["compost_sludge"]) // 5/10 = 0, clamped to 1
-}
-
-func TestCalculateOutput_NoMatchingItemsFallback(t *testing.T) {
-	engine := NewEngine()
-	allItems := []domain.Item{
-		{InternalName: "material_iron", BaseValue: 10, ContentType: []string{"material"}},
+	tests := []struct {
+		name         string
+		inputValue   int
+		dominantType string
+		isSludge     bool
+		items        []domain.Item
+		multiplier   float64
+		check        func(t *testing.T, output *domain.CompostOutput)
+	}{
+		{
+			name:         "Normal output",
+			inputValue:   100,
+			dominantType: "weapon",
+			isSludge:     false,
+			items:        allItems,
+			multiplier:   0.45, // 100 * 0.45 = 45
+			check: func(t *testing.T, output *domain.CompostOutput) {
+				assert.False(t, output.IsSludge)
+				assert.Equal(t, 45, output.TotalValue)
+				// Should pick weapon_med (base_value=45 <= 45)
+				assert.Equal(t, 1, output.Items["weapon_med"])
+				assert.Equal(t, "Composting complete!", output.Message)
+			},
+		},
+		{
+			name:         "Sludge output",
+			inputValue:   100,
+			dominantType: "weapon",
+			isSludge:     true,
+			items:        nil,
+			multiplier:   0.5,
+			check: func(t *testing.T, output *domain.CompostOutput) {
+				assert.True(t, output.IsSludge)
+				assert.Equal(t, 10, output.Items["compost_sludge"]) // 100/10 = 10
+				assert.Equal(t, "Your compost sat too long and turned to sludge!", output.Message)
+			},
+		},
+		{
+			name:         "Sludge minimum one",
+			inputValue:   5,
+			dominantType: "weapon",
+			isSludge:     true,
+			items:        nil,
+			multiplier:   0.5,
+			check: func(t *testing.T, output *domain.CompostOutput) {
+				assert.True(t, output.IsSludge)
+				assert.Equal(t, 1, output.Items["compost_sludge"]) // 5/10 = 0, clamped to 1
+			},
+		},
+		{
+			name:         "No matching items fallback",
+			inputValue:   100,
+			dominantType: "weapon",
+			isSludge:     false,
+			items: []domain.Item{
+				{InternalName: "material_iron", BaseValue: 10, ContentType: []string{"material"}},
+			},
+			multiplier: 0.5,
+			check: func(t *testing.T, output *domain.CompostOutput) {
+				assert.False(t, output.IsSludge)
+				assert.Equal(t, 50, output.Items["money"])
+				assert.Contains(t, output.Message, "converted to money")
+			},
+		},
+		{
+			name:         "Output value < 1 clamped",
+			inputValue:   1,
+			dominantType: "weapon",
+			isSludge:     false,
+			items:        allItems,
+			multiplier:   0.1, // 1 * 0.1 = 0.1 -> 0 (round) -> clamped to 1
+			check: func(t *testing.T, output *domain.CompostOutput) {
+				assert.False(t, output.IsSludge)
+				assert.Equal(t, 1, output.TotalValue)
+				// Should pick something worth 1 or less if possible, or fail to find item <= 1 unless we have cheap items.
+				// Since cheapest is 10, it should fallback to money or pick nothing?
+				// Logic: finds item where item.BaseValue <= outputValue. 10 <= 1 is False.
+				// So it should fallback to money.
+				assert.Equal(t, 1, output.Items["money"])
+			},
+		},
+		{
+			name:         "Highest base value selection",
+			inputValue:   100,
+			dominantType: "weapon",
+			isSludge:     false,
+			items:        allItems,
+			multiplier:   0.40, // 100 * 0.40 = 40
+			check: func(t *testing.T, output *domain.CompostOutput) {
+				// Available weapons: big(200), med(45), small(30)
+				// Target: 40.
+				// Sorted: 200, 45, 30.
+				// 200 <= 40? No.
+				// 45 <= 40? No.
+				// 30 <= 40? Yes.
+				// Pick weapon_small. Qty = 40/30 = 1.
+				assert.Equal(t, 1, output.Items["weapon_small"])
+				assert.Equal(t, 40, output.TotalValue)
+			},
+		},
+		{
+			name:         "Quantity calculation clamped to 1",
+			inputValue:   100,
+			dominantType: "weapon",
+			isSludge:     false,
+			items:        allItems,
+			multiplier:   0.35, // 100 * 0.35 = 35
+			check: func(t *testing.T, output *domain.CompostOutput) {
+				// Target: 35.
+				// weapon_small (30).
+				// Qty = 35 / 30 = 1.
+				assert.Equal(t, 1, output.Items["weapon_small"])
+			},
+		},
 	}
 
-	// Dominant type is "weapon" but no weapon items exist -> fallback to money
-	output := engine.CalculateOutput(100, "weapon", false, allItems, 0.5)
-	assert.False(t, output.IsSludge)
-	assert.Equal(t, 50, output.Items["money"])
-	assert.Contains(t, output.Message, "converted to money")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			output := engine.CalculateOutput(tt.inputValue, tt.dominantType, tt.isSludge, tt.items, tt.multiplier)
+			tt.check(t, output)
+		})
+	}
 }
 
 func TestTotalItemCount(t *testing.T) {
