@@ -27,7 +27,7 @@ The Daily Reset system manages the recurring daily tasks required for the game e
 - **Events**: Publishes `daily_reset_completed` event upon success.
 - **Retry**: Includes jitter protection and retry logic via `ResilientPublisher`.
 
-### Job Service (`internal/job/service.go`)
+### Job Service (`internal/job/daily_reset.go`)
 
 - **Logic**: `ResetDailyJobXP` executes the database update.
 - **State**: `UpdateDailyResetTime` records the successful reset.

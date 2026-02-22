@@ -47,8 +47,9 @@ If you wait longer than **336 hours (2 weeks)**, your crops will spoil!
 
 The system is implemented in `internal/harvest/`.
 
-- **Service**: `internal/harvest/service.go`
-- **Tiers**: `internal/harvest/reward_tiers.go`
+- **Service Interface**: `internal/harvest/service.go`
+- **Core Logic**: `internal/harvest/harvest.go`
+- **Rewards**: `internal/harvest/rewards.go`
 - **Persistence**: Harvest state is stored in the database, tracking `last_harvested_at`.
 
 ### Technical Implementation
