@@ -31,7 +31,7 @@ func (s *service) ensureUser(ctx context.Context, platform, platformID, username
 	return user, nil
 }
 
-func (s *service) checkFarmingUnlocked(ctx context.Context) error {
+func (s *service) ensureFarmingUnlocked(ctx context.Context) error {
 	unlocked, err := s.progressionSvc.IsFeatureUnlocked(ctx, "feature_farming")
 	if err != nil {
 		return fmt.Errorf("failed to check farming feature unlock: %w", err)

@@ -2,12 +2,16 @@ package harvest
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
+	"github.com/osse101/BrandishBot_Go/internal/repository"
+	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
-func (s *service) calculateBonuses(ctx context.Context, userID string) (float64, float64) {
+func (s *service) getBonusMultipliers(ctx context.Context, userID string) (float64, float64) {
 	log := logger.FromContext(ctx)
 	yieldMultiplier := 1.0
 	growthMultiplier := 1.0
@@ -93,6 +97,81 @@ func (s *service) calculateRewards(ctx context.Context, hoursElapsed float64, yi
 	log.Info("Rewards calculated", "rewards", rewards, "tierCount", maxTierIndex+1)
 
 	return rewards
+}
+
+func (s *service) handleEmptyHarvest(ctx context.Context, tx repository.HarvestTx, userID string, now time.Time, hoursElapsed float64) (*domain.HarvestResponse, error) {
+	logger.FromContext(ctx).Warn("No rewards available - all items locked by progression")
+
+	if err := tx.UpdateHarvestState(ctx, userID, now); err != nil {
+		return nil, fmt.Errorf("failed to update harvest state: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return &domain.HarvestResponse{
+		ItemsGained:       map[string]int{},
+		HoursSinceHarvest: hoursElapsed,
+		NextHarvestAt:     now.Add(time.Hour),
+		Message:           "No rewards available - unlock progression nodes to receive harvest items!",
+	}, nil
+}
+
+func (s *service) applyHarvestRewards(ctx context.Context, tx repository.HarvestTx, userID string, rewards map[string]int) error {
+	log := logger.FromContext(ctx)
+
+	// 1. Get inventory
+	inventory, err := tx.GetInventory(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("failed to get inventory: %w", err)
+	}
+
+	// 2. Get item IDs
+	itemNames := make([]string, 0, len(rewards))
+	for name := range rewards {
+		itemNames = append(itemNames, name)
+	}
+
+	items, err := s.userRepo.GetItemsByNames(ctx, itemNames)
+	if err != nil {
+		return fmt.Errorf("failed to get item details: %w", err)
+	}
+
+	itemNameToID := make(map[string]int)
+	for _, item := range items {
+		itemNameToID[item.InternalName] = item.ID
+	}
+
+	// 3. Update inventory structure
+	for name, qty := range rewards {
+		if qty <= 0 {
+			continue
+		}
+		id, ok := itemNameToID[name]
+		if !ok {
+			log.Warn("Item not found in database, skipping", "itemName", name)
+			continue
+		}
+
+		slotIndex, _ := utils.FindSlot(inventory, id)
+		if slotIndex != -1 {
+			inventory.Slots[slotIndex].Quantity += qty
+		} else {
+			inventory.Slots = append(inventory.Slots, domain.InventorySlot{
+				ItemID:       id,
+				Quantity:     qty,
+				QualityLevel: domain.QualityCommon,
+			})
+		}
+	}
+
+	// 4. Update database
+	if err := tx.UpdateInventory(ctx, userID, *inventory); err != nil {
+		return fmt.Errorf("failed to update inventory: %w", err)
+	}
+
+	return nil
 }
 
 // getRewardTiers returns the harvest reward tier configuration
