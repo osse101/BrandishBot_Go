@@ -1,0 +1,6 @@
+
+[1;33m=== Building Binaries ===[0m
+[0;34mℹ Building bin/app...[0m
+[0;32m✓ Built: bin/app[0m
+[0;34mℹ Building bin/discord_bot...[0m
+[0;32m✓ Built: bin/discord_bot[0m

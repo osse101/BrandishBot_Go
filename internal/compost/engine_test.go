@@ -204,10 +204,7 @@ func TestCalculateOutput(t *testing.T) {
 			check: func(t *testing.T, output *domain.CompostOutput) {
 				assert.False(t, output.IsSludge)
 				assert.Equal(t, 1, output.TotalValue)
-				// Should pick something worth 1 or less if possible, or fail to find item <= 1 unless we have cheap items.
-				// Since cheapest is 10, it should fallback to money or pick nothing?
-				// Logic: finds item where item.BaseValue <= outputValue. 10 <= 1 is False.
-				// So it should fallback to money.
+				// Should fallback to money since cheapest item is 10, which is > 1.
 				assert.Equal(t, 1, output.Items["money"])
 			},
 		},
@@ -219,13 +216,7 @@ func TestCalculateOutput(t *testing.T) {
 			items:        allItems,
 			multiplier:   0.40, // 100 * 0.40 = 40
 			check: func(t *testing.T, output *domain.CompostOutput) {
-				// Available weapons: big(200), med(45), small(30)
-				// Target: 40.
-				// Sorted: 200, 45, 30.
-				// 200 <= 40? No.
-				// 45 <= 40? No.
-				// 30 <= 40? Yes.
-				// Pick weapon_small. Qty = 40/30 = 1.
+				// Pick highest base value <= 40: weapon_small (30) is the only one <= 40, so we get 1.
 				assert.Equal(t, 1, output.Items["weapon_small"])
 				assert.Equal(t, 40, output.TotalValue)
 			},
@@ -238,9 +229,7 @@ func TestCalculateOutput(t *testing.T) {
 			items:        allItems,
 			multiplier:   0.35, // 100 * 0.35 = 35
 			check: func(t *testing.T, output *domain.CompostOutput) {
-				// Target: 35.
-				// weapon_small (30).
-				// Qty = 35 / 30 = 1.
+				// Target 35 / base weapon_small 30 = 1.
 				assert.Equal(t, 1, output.Items["weapon_small"])
 			},
 		},

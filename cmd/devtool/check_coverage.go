@@ -98,6 +98,7 @@ func (c *CheckCoverageCommand) runCoverageCheck(config *CoverageConfig) error {
 	return nil
 }
 
+//nolint:gocyclo // Watcher event loop is self-contained and straight-forward
 func (c *CheckCoverageCommand) runWatchMode(config *CoverageConfig) error {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
