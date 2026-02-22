@@ -4,3 +4,4 @@ benchmarks/results/baseline.txt
 .env.example
 .gitattributes
 .github/workflows/weekly-benchmark.yml
+.github/workflows/test.yml
