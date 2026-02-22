@@ -21,8 +21,16 @@ jobs:
           go-version: '1.24.0'
           cache: true
 
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
       - name: Install Dependencies
-        run: go mod download
+        run: |
+          go mod download
+          npm ci
 
       - name: Verify Mocks
         run: |
@@ -33,10 +41,11 @@ jobs:
             exit 1
           fi
 
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
-        with:
-          version: v1.64.8
+      - name: Format Check
+        run: make format-check
+
+      - name: Lint
+        run: make lint
 
       - name: Run Tests & Check Coverage
         run: |
