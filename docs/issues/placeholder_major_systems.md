@@ -40,3 +40,9 @@ Verified that `internal/duel/service.go` (`Accept`) and `internal/expedition/ser
 
 - **Compost**: Fully implemented (`internal/compost/service.go`, `deposit.go`, `harvest.go`, `engine.go`). Issue resolved for Compost.
 - **Duels**: Still incomplete (`Accept` returns "not implemented").
+
+## Status Update (2026-02-28)
+
+- **Compost**: Resolved. Fully functional.
+- **Expeditions**: Resolved. Fully functional with worker support.
+- **Duels**: PENDING. `Accept` method still returns "not implemented". This is the last remaining item in this tracking issue.

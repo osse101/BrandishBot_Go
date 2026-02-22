@@ -83,5 +83,5 @@ POST /api/v1/jobs/award-xp
 
 - **Service**: `internal/job/service.go`
 - **Repository**: `internal/repository/job.go`
-- **Database**: `jobs`, `user_jobs`, `job_xp_events`, `job_level_bonuses` tables.
+- **Database**: `jobs`, `user_jobs`, `job_xp_events`, `bonus_config` tables.
 - **Daily Reset**: Handled by [Daily Reset System](./DAILY_RESET.md).
