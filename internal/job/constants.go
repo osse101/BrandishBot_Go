@@ -39,18 +39,18 @@ const (
 // XP award amounts for different actions
 const (
 	// Blacksmith XP awards
-	BlacksmithXPPerItem = 10
+	BlacksmithXPPerItem = 25
 
 	// Gambler XP awards
-	GamblerXPPerLootbox = 20
-	GamblerWinBonus     = 20
+	GamblerXPPerLootbox = 50
+	GamblerWinBonus     = 50
 
 	// Explorer XP awards
-	ExplorerXPPerItem = 20
+	ExplorerXPPerItem = 45
 
 	// Merchant XP awards (value-based)
-	MerchantXPValueDivisor = 10.0 // XP = ceil(transactionValue / divisor)
-	MerchantBonusPerLevel  = 0.5  // 0.5% price adjustment per level
+	MerchantXPValueDivisor = 5.0 // XP = ceil(transactionValue / divisor)
+	MerchantBonusPerLevel  = 0.5 // 0.5% price adjustment per level
 
 	// Scholar XP awards
 	ScholarXPPerEngagement = 2
