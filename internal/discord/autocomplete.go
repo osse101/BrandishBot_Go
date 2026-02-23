@@ -237,9 +237,9 @@ func handleGambleItemAutocomplete(s *discordgo.Session, i *discordgo.Interaction
 	// Filter to only show lootbox items
 	lootboxFilter := func(itemName string) bool {
 		// Use prefix check for precision - avoids matching non-lootbox items like "toolbox"
-		return strings.HasPrefix(itemName, "lootbox") ||
-			itemName == "junkbox" ||
-			itemName == "goldbox"
+		return strings.HasPrefix(itemName, domain.PublicNameLootbox) ||
+			itemName == domain.PublicNameJunkbox ||
+			itemName == domain.PublicNameGoldbox
 	}
 
 	handleItemAutocomplete(s, i, client, true, lootboxFilter)
@@ -251,11 +251,11 @@ func getCommonItemChoices(filter string) []*discordgo.ApplicationCommandOptionCh
 		Name  string
 		Value string
 	}{
-		{"Money", "money"},
-		{"Junkbox (Tier 0)", "junkbox"},
-		{"Lootbox (Tier 1)", "lootbox"},
-		{"Goldbox (Tier 2)", "goldbox"},
-		{"Missile", "missile"},
+		{"Money", domain.PublicNameMoney},
+		{"Junkbox (Tier 0)", domain.PublicNameJunkbox},
+		{"Lootbox (Tier 1)", domain.PublicNameLootbox},
+		{"Goldbox (Tier 2)", domain.PublicNameGoldbox},
+		{"Missile", domain.PublicNameMissile},
 	}
 
 	var choices []*discordgo.ApplicationCommandOptionChoice
@@ -278,9 +278,9 @@ func getBuyableItemChoices(filter string) []*discordgo.ApplicationCommandOptionC
 		Name  string
 		Value string
 	}{
-		{"Junkbox (Tier 0) - Cheapest", "junkbox"},
-		{"Lootbox (Tier 1) - Common", "lootbox"},
-		{"Goldbox (Tier 2) - Rare", "goldbox"},
+		{"Junkbox (Tier 0) - Cheapest", domain.PublicNameJunkbox},
+		{"Lootbox (Tier 1) - Common", domain.PublicNameLootbox},
+		{"Goldbox (Tier 2) - Rare", domain.PublicNameGoldbox},
 	}
 
 	var choices []*discordgo.ApplicationCommandOptionChoice

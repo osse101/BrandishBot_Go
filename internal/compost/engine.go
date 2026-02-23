@@ -75,7 +75,7 @@ func (e *Engine) CalculateOutput(inputValue int, dominantType string, isSludge b
 			sludgeQty = 1
 		}
 		return &domain.CompostOutput{
-			Items:      map[string]int{"compost_sludge": sludgeQty},
+			Items:      map[string]int{domain.ItemSludge: sludgeQty},
 			IsSludge:   true,
 			TotalValue: sludgeQty,
 			Message:    MsgHarvestSludge,
@@ -117,7 +117,7 @@ func (e *Engine) CalculateOutput(inputValue int, dominantType string, isSludge b
 
 	// Fallback: give money
 	return &domain.CompostOutput{
-		Items:      map[string]int{"money": outputValue},
+		Items:      map[string]int{domain.ItemMoney: outputValue},
 		IsSludge:   false,
 		TotalValue: outputValue,
 		Message:    MsgHarvestFallback,

@@ -782,7 +782,7 @@ func (s *service) pluralize(name string, quantity int) string {
 	// Common uncountable or collective nouns in game context
 	lower := strings.ToLower(baseName)
 	switch lower {
-	case "money", "ghost-gold", "coins", "scrap", "junk", "credits":
+	case domain.PublicNameMoney, "ghost-gold", "coins", "scrap", "junk", "credits":
 		return baseName + suffix
 	}
 	if strings.HasSuffix(lower, " coins") {
