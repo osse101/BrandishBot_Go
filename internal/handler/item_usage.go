@@ -15,7 +15,7 @@ type UseItemRequest struct {
 	PlatformID string `json:"platform_id" validate:"required"`
 	Username   string `json:"username" validate:"required,max=100,excludesall=\x00\n\r\t"`
 	ItemName   string `json:"item_name" validate:"required,max=100"`
-	Quantity   int    `json:"quantity" validate:"min=1,max=10000"`
+	Quantity   int    `json:"quantity" validate:"omitempty,min=1,max=10000"`
 	TargetUser string `json:"target_user,omitempty" validate:"omitempty,max=100,excludesall=\x00\n\r\t"`
 }
 
