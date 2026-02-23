@@ -25,10 +25,10 @@ func NewExpeditionHandler(service expedition.Service, progressionSvc progression
 
 // StartExpeditionRequest represents an expedition start request
 type StartExpeditionRequest struct {
-	Platform       string `json:"platform"`
-	PlatformID     string `json:"platform_id"`
-	Username       string `json:"username"`
-	ExpeditionType string `json:"expedition_type"`
+	Platform       string `json:"platform" validate:"required,platform"`
+	PlatformID     string `json:"platform_id" validate:"required"`
+	Username       string `json:"username" validate:"required"`
+	ExpeditionType string `json:"expedition_type" validate:"required"`
 }
 
 // StartExpeditionResponse represents an expedition start response
@@ -62,9 +62,9 @@ func (h *ExpeditionHandler) formatStartResponse(e *domain.Expedition) interface{
 
 // JoinExpeditionRequest represents an expedition join request
 type JoinExpeditionRequest struct {
-	Platform   string `json:"platform"`
-	PlatformID string `json:"platform_id"`
-	Username   string `json:"username"`
+	Platform   string `json:"platform" validate:"required,platform"`
+	PlatformID string `json:"platform_id" validate:"required"`
+	Username   string `json:"username" validate:"required"`
 }
 
 // HandleJoin handles expedition join requests

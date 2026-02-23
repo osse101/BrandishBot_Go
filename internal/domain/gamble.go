@@ -20,8 +20,8 @@ type Gamble struct {
 
 // LootboxBet represents a wager of a specific lootbox item
 type LootboxBet struct {
-	ItemName     string       `json:"item_name"`
-	Quantity     int          `json:"quantity"`
+	ItemName     string       `json:"item_name" validate:"required"`
+	Quantity     int          `json:"quantity" validate:"min=1"`
 	QualityLevel QualityLevel `json:"quality_level,omitempty"`
 }
 

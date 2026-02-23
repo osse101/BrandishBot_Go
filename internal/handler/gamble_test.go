@@ -31,7 +31,7 @@ func TestHandleStartGamble(t *testing.T) {
 				Platform:   "discord",
 				PlatformID: "123",
 				Username:   "testuser",
-				Bets:       []domain.LootboxBet{},
+				Bets:       []domain.LootboxBet{{ItemName: "lootbox_tier1", Quantity: 1}},
 			},
 			setupMocks: func(mg *mocks.MockGambleService, mp *mocks.MockProgressionService, mu *mocks.MockUserService) {
 				mp.On("IsFeatureUnlocked", mock.Anything, progression.FeatureGamble).Return(false, nil)
@@ -55,7 +55,7 @@ func TestHandleStartGamble(t *testing.T) {
 				Platform:   "discord",
 				PlatformID: "123",
 				Username:   "testuser",
-				Bets:       []domain.LootboxBet{},
+				Bets:       []domain.LootboxBet{{ItemName: "lootbox_tier1", Quantity: 1}},
 			},
 			setupMocks: func(mg *mocks.MockGambleService, mp *mocks.MockProgressionService, mu *mocks.MockUserService) {
 				mp.On("IsFeatureUnlocked", mock.Anything, progression.FeatureGamble).Return(true, nil)
@@ -70,7 +70,7 @@ func TestHandleStartGamble(t *testing.T) {
 				Platform:   "discord",
 				PlatformID: "123",
 				Username:   "testuser",
-				Bets:       []domain.LootboxBet{},
+				Bets:       []domain.LootboxBet{{ItemName: "lootbox_tier1", Quantity: 1}},
 			},
 			setupMocks: func(mg *mocks.MockGambleService, mp *mocks.MockProgressionService, mu *mocks.MockUserService) {
 				mp.On("IsFeatureUnlocked", mock.Anything, progression.FeatureGamble).Return(true, nil)
