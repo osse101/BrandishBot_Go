@@ -60,7 +60,7 @@ const (
 // XP source types for tracking and special behavior
 const (
 	SourceEngagement     = "engagement"      // Engagement XP
-	SourceSearch         = "search"          // Search XP
+	SourceSearch         = domain.ActionSearch          // Search XP
 	SourceRareCandy      = "rarecandy"       // Rare candy usage - bypasses daily cap
 	SourceHarvest        = "harvest"         // Harvest XP - bypasses daily cap
 	SourcePrediction     = "prediction"      // Prediction XP

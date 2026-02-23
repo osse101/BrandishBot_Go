@@ -1,6 +1,10 @@
 package user
 
-import "time"
+import (
+	"time"
+
+	"github.com/osse101/BrandishBot_Go/internal/domain"
+)
 
 // ============================================================================
 // Cache Configuration
@@ -351,7 +355,7 @@ const (
 // ============================================================================
 
 const (
-	XPSourceSearch = "search"
+	XPSourceSearch = domain.ActionSearch
 )
 
 // ============================================================================
