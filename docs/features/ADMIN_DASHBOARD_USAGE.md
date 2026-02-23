@@ -18,6 +18,13 @@ This guide covers how to use the BrandishBot admin dashboard, including setup, c
 
 ## Quick Start
 
+### Tech Stack
+
+- **Frontend**: React 19, TypeScript
+- **Build Tool**: Vite
+- **Styling**: Tailwind CSS
+- **Communication**: REST API (Polling) + Server-Sent Events (SSE)
+
 ### Local Development
 
 ```bash
