@@ -182,7 +182,7 @@ func (q *Queries) GetAssociatedUpgradeRecipeID(ctx context.Context, disassembleR
 }
 
 const getBuyablePrices = `-- name: GetBuyablePrices :many
-SELECT DISTINCT i.internal_name, i.public_name, i.base_value
+SELECT DISTINCT i.item_id, i.internal_name, i.public_name, i.default_display, i.item_description, i.base_value
 FROM items i
 INNER JOIN item_type_assignments ita ON i.item_id = ita.item_id
 INNER JOIN item_types it ON ita.item_type_id = it.item_type_id
@@ -191,9 +191,12 @@ ORDER BY i.public_name
 `
 
 type GetBuyablePricesRow struct {
-	InternalName string      `json:"internal_name"`
-	PublicName   pgtype.Text `json:"public_name"`
-	BaseValue    pgtype.Int4 `json:"base_value"`
+	ItemID          int32       `json:"item_id"`
+	InternalName    string      `json:"internal_name"`
+	PublicName      pgtype.Text `json:"public_name"`
+	DefaultDisplay  pgtype.Text `json:"default_display"`
+	ItemDescription pgtype.Text `json:"item_description"`
+	BaseValue       pgtype.Int4 `json:"base_value"`
 }
 
 func (q *Queries) GetBuyablePrices(ctx context.Context) ([]GetBuyablePricesRow, error) {
@@ -205,7 +208,14 @@ func (q *Queries) GetBuyablePrices(ctx context.Context) ([]GetBuyablePricesRow, 
 	var items []GetBuyablePricesRow
 	for rows.Next() {
 		var i GetBuyablePricesRow
-		if err := rows.Scan(&i.InternalName, &i.PublicName, &i.BaseValue); err != nil {
+		if err := rows.Scan(
+			&i.ItemID,
+			&i.InternalName,
+			&i.PublicName,
+			&i.DefaultDisplay,
+			&i.ItemDescription,
+			&i.BaseValue,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -598,7 +608,7 @@ func (q *Queries) GetRecipeByTargetItemID(ctx context.Context, targetItemID int3
 }
 
 const getSellablePrices = `-- name: GetSellablePrices :many
-SELECT DISTINCT i.internal_name, i.public_name, i.base_value
+SELECT DISTINCT i.item_id, i.internal_name, i.public_name, i.default_display, i.item_description, i.base_value
 FROM items i
 INNER JOIN item_type_assignments ita ON i.item_id = ita.item_id
 INNER JOIN item_types it ON ita.item_type_id = it.item_type_id
@@ -607,9 +617,12 @@ ORDER BY i.public_name
 `
 
 type GetSellablePricesRow struct {
-	InternalName string      `json:"internal_name"`
-	PublicName   pgtype.Text `json:"public_name"`
-	BaseValue    pgtype.Int4 `json:"base_value"`
+	ItemID          int32       `json:"item_id"`
+	InternalName    string      `json:"internal_name"`
+	PublicName      pgtype.Text `json:"public_name"`
+	DefaultDisplay  pgtype.Text `json:"default_display"`
+	ItemDescription pgtype.Text `json:"item_description"`
+	BaseValue       pgtype.Int4 `json:"base_value"`
 }
 
 func (q *Queries) GetSellablePrices(ctx context.Context) ([]GetSellablePricesRow, error) {
@@ -621,7 +634,14 @@ func (q *Queries) GetSellablePrices(ctx context.Context) ([]GetSellablePricesRow
 	var items []GetSellablePricesRow
 	for rows.Next() {
 		var i GetSellablePricesRow
-		if err := rows.Scan(&i.InternalName, &i.PublicName, &i.BaseValue); err != nil {
+		if err := rows.Scan(
+			&i.ItemID,
+			&i.InternalName,
+			&i.PublicName,
+			&i.DefaultDisplay,
+			&i.ItemDescription,
+			&i.BaseValue,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

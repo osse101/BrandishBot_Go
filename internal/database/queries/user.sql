@@ -122,7 +122,7 @@ GROUP BY i.item_id
 ORDER BY i.item_id;
 
 -- name: GetSellablePrices :many
-SELECT DISTINCT i.internal_name, i.public_name, i.base_value
+SELECT DISTINCT i.item_id, i.internal_name, i.public_name, i.default_display, i.item_description, i.base_value
 FROM items i
 INNER JOIN item_type_assignments ita ON i.item_id = ita.item_id
 INNER JOIN item_types it ON ita.item_type_id = it.item_type_id
@@ -197,7 +197,7 @@ ON CONFLICT (user_id, action_name) DO UPDATE
 SET last_used_at = EXCLUDED.last_used_at;
 
 -- name: GetBuyablePrices :many
-SELECT DISTINCT i.internal_name, i.public_name, i.base_value
+SELECT DISTINCT i.item_id, i.internal_name, i.public_name, i.default_display, i.item_description, i.base_value
 FROM items i
 INNER JOIN item_type_assignments ita ON i.item_id = ita.item_id
 INNER JOIN item_types it ON ita.item_type_id = it.item_type_id

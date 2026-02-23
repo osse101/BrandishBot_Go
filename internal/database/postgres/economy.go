@@ -108,11 +108,14 @@ func (r *EconomyRepository) GetSellablePrices(ctx context.Context) ([]domain.Ite
 
 	items := make([]domain.Item, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, domain.Item{
-			InternalName: row.InternalName,
-			PublicName:   row.PublicName.String,
-			BaseValue:    int(row.BaseValue.Int32),
-		})
+		items = append(items, mapPriceRow(
+			row.ItemID,
+			row.InternalName,
+			row.PublicName.String,
+			row.DefaultDisplay.String,
+			row.ItemDescription.String,
+			row.BaseValue.Int32,
+		))
 	}
 
 	return items, nil
@@ -132,12 +135,26 @@ func (r *EconomyRepository) GetBuyablePrices(ctx context.Context) ([]domain.Item
 
 	items := make([]domain.Item, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, domain.Item{
-			InternalName: row.InternalName,
-			PublicName:   row.PublicName.String,
-			BaseValue:    int(row.BaseValue.Int32),
-		})
+		items = append(items, mapPriceRow(
+			row.ItemID,
+			row.InternalName,
+			row.PublicName.String,
+			row.DefaultDisplay.String,
+			row.ItemDescription.String,
+			row.BaseValue.Int32,
+		))
 	}
 
 	return items, nil
+}
+
+func mapPriceRow(itemID int32, internalName string, publicName, defaultDisplay, description string, baseValue int32) domain.Item {
+	return domain.Item{
+		ID:             int(itemID),
+		InternalName:   internalName,
+		PublicName:     publicName,
+		DefaultDisplay: defaultDisplay,
+		Description:    description,
+		BaseValue:      int(baseValue),
+	}
 }

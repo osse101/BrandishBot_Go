@@ -62,9 +62,7 @@ func TestHarvest_Success(t *testing.T) {
 	mockProgressionSvc.On("GetModifiedValue", ctx, user.ID, featureSpoilExtension, 0.0).Return(0.0, nil)
 	mockProgressionSvc.On("GetModifiedValue", ctx, user.ID, featureHarvestTier, 3.0).Return(9.0, nil) // Max tier available
 
-	// 4. calculateRewards internal logic -> IsItemUnlocked calls
-	// For 5 hours (Tier 2): Money (12). No unlocks needed for money.
-	// Tier 2: 5 hours. Items: Money.
+	// 4. calculateRewards: 5 hours (Tier 2) -> 12 money (no unlocks needed)
 
 	// 5. fireAsyncEvents -> PublishWithRetry
 	mockPublisher.On("PublishWithRetry", mock.Anything, mock.MatchedBy(func(evt event.Event) bool {
