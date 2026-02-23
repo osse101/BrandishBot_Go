@@ -15,23 +15,23 @@ func (s *service) Harvest(ctx context.Context, platform, platformID, username st
 	log := logger.FromContext(ctx)
 	log.Info("Harvest called", "platform", platform, "platformID", platformID, "username", username)
 
-	user, err := s.ensureUser(ctx, platform, platformID, username)
+	user, err := s.getOrRegisterUser(ctx, platform, platformID, username)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := s.ensureFarmingUnlocked(ctx); err != nil {
+	if err := s.requireFarmingFeature(ctx); err != nil {
 		return nil, err
 	}
 
-	if initialResp, err := s.initializeHarvestStateIfNeeded(ctx, user.ID); err != nil || initialResp != nil {
+	if initialResp, err := s.ensureHarvestState(ctx, user.ID); err != nil || initialResp != nil {
 		return initialResp, err
 	}
 
-	return s.performHarvestTransaction(ctx, user)
+	return s.executeHarvest(ctx, user)
 }
 
-func (s *service) performHarvestTransaction(ctx context.Context, user *domain.User) (*domain.HarvestResponse, error) {
+func (s *service) executeHarvest(ctx context.Context, user *domain.User) (*domain.HarvestResponse, error) {
 	tx, err := s.harvestRepo.BeginTx(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to begin transaction: %w", err)
@@ -51,18 +51,18 @@ func (s *service) performHarvestTransaction(ctx context.Context, user *domain.Us
 		return nil, fmt.Errorf("%w: next harvest available at %s", domain.ErrHarvestTooSoon, nextHarvest.Format(time.RFC3339))
 	}
 
-	yieldMultiplier, growthMultiplier := s.getBonusMultipliers(ctx, user.ID)
+	yieldMultiplier, growthMultiplier := s.getHarvestMultipliers(ctx, user.ID)
 	effectiveHours := hoursElapsed * growthMultiplier
 
-	rewards, message := s.calculateHarvestRewards(ctx, effectiveHours, yieldMultiplier)
+	rewards, message := s.calculateRewardsAndMessage(ctx, effectiveHours, yieldMultiplier)
 
-	s.fireAsyncEvents(ctx, user.ID, hoursElapsed)
+	s.publishEvents(ctx, user.ID, hoursElapsed)
 
 	if len(rewards) == 0 {
-		return s.handleEmptyHarvest(ctx, tx, user.ID, now, hoursElapsed)
+		return s.recordEmptyHarvest(ctx, tx, user.ID, now, hoursElapsed)
 	}
 
-	if err := s.applyHarvestRewards(ctx, tx, user.ID, rewards); err != nil {
+	if err := s.grantRewards(ctx, tx, user.ID, rewards); err != nil {
 		return nil, err
 	}
 

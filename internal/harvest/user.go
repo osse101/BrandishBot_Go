@@ -8,7 +8,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
-func (s *service) ensureUser(ctx context.Context, platform, platformID, username string) (*domain.User, error) {
+func (s *service) getOrRegisterUser(ctx context.Context, platform, platformID, username string) (*domain.User, error) {
 	user, err := s.userRepo.GetUserByPlatformID(ctx, platform, platformID)
 	if err != nil {
 		if errors.Is(err, domain.ErrUserNotFound) {
@@ -31,7 +31,7 @@ func (s *service) ensureUser(ctx context.Context, platform, platformID, username
 	return user, nil
 }
 
-func (s *service) ensureFarmingUnlocked(ctx context.Context) error {
+func (s *service) requireFarmingFeature(ctx context.Context) error {
 	unlocked, err := s.progressionSvc.IsFeatureUnlocked(ctx, "feature_farming")
 	if err != nil {
 		return fmt.Errorf("failed to check farming feature unlock: %w", err)

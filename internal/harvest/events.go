@@ -8,16 +8,16 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/event"
 )
 
-func (s *service) fireAsyncEvents(ctx context.Context, userID string, hoursElapsed float64) {
+func (s *service) publishEvents(ctx context.Context, userID string, hoursElapsed float64) {
 	s.wg.Add(1)
 	go func() {
 		defer s.wg.Done()
 		asyncCtx := context.WithoutCancel(ctx)
-		s.awardFarmerXP(asyncCtx, userID, hoursElapsed)
+		s.publishHarvestCompletionEvent(asyncCtx, userID, hoursElapsed)
 	}()
 }
 
-func (s *service) awardFarmerXP(ctx context.Context, userID string, hoursElapsed float64) {
+func (s *service) publishHarvestCompletionEvent(ctx context.Context, userID string, hoursElapsed float64) {
 	if hoursElapsed < farmerXPThreshold {
 		return
 	}

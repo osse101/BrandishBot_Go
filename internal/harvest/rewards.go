@@ -3,7 +3,6 @@ package harvest
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
@@ -11,7 +10,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
-func (s *service) getBonusMultipliers(ctx context.Context, userID string) (float64, float64) {
+func (s *service) getHarvestMultipliers(ctx context.Context, userID string) (float64, float64) {
 	log := logger.FromContext(ctx)
 	yieldMultiplier := 1.0
 	growthMultiplier := 1.0
@@ -30,7 +29,7 @@ func (s *service) getBonusMultipliers(ctx context.Context, userID string) (float
 	return yieldMultiplier, growthMultiplier
 }
 
-func (s *service) calculateHarvestRewards(ctx context.Context, hoursElapsed float64, yieldMultiplier float64) (map[string]int, string) {
+func (s *service) calculateRewardsAndMessage(ctx context.Context, hoursElapsed float64, yieldMultiplier float64) (map[string]int, string) {
 	if hoursElapsed > spoiledThreshold {
 		logger.FromContext(ctx).Info("Harvest spoiled", "hours", hoursElapsed)
 		return map[string]int{
@@ -38,12 +37,12 @@ func (s *service) calculateHarvestRewards(ctx context.Context, hoursElapsed floa
 			itemStick:    3,
 		}, "Your crops spoiled! You salvaged 1 Decent Lootbox and 3 Sticks."
 	}
-	return s.calculateRewards(ctx, hoursElapsed, yieldMultiplier), "Harvest successful!"
+	return s.computeRewardItems(ctx, hoursElapsed, yieldMultiplier), "Harvest successful!"
 }
 
-// calculateRewards calculates the total rewards for a given elapsed time
+// computeRewardItems calculates the total rewards for a given elapsed time
 // Accumulates ALL items from all tiers up to and including the current tier
-func (s *service) calculateRewards(ctx context.Context, hoursElapsed float64, yieldMultiplier float64) map[string]int {
+func (s *service) computeRewardItems(ctx context.Context, hoursElapsed float64, yieldMultiplier float64) map[string]int {
 	log := logger.FromContext(ctx)
 	rewards := make(map[string]int)
 	tiers := getRewardTiers()
@@ -99,26 +98,7 @@ func (s *service) calculateRewards(ctx context.Context, hoursElapsed float64, yi
 	return rewards
 }
 
-func (s *service) handleEmptyHarvest(ctx context.Context, tx repository.HarvestTx, userID string, now time.Time, hoursElapsed float64) (*domain.HarvestResponse, error) {
-	logger.FromContext(ctx).Warn("No rewards available - all items locked by progression")
-
-	if err := tx.UpdateHarvestState(ctx, userID, now); err != nil {
-		return nil, fmt.Errorf("failed to update harvest state: %w", err)
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return nil, fmt.Errorf("failed to commit transaction: %w", err)
-	}
-
-	return &domain.HarvestResponse{
-		ItemsGained:       map[string]int{},
-		HoursSinceHarvest: hoursElapsed,
-		NextHarvestAt:     now.Add(time.Hour),
-		Message:           "No rewards available - unlock progression nodes to receive harvest items!",
-	}, nil
-}
-
-func (s *service) applyHarvestRewards(ctx context.Context, tx repository.HarvestTx, userID string, rewards map[string]int) error {
+func (s *service) grantRewards(ctx context.Context, tx repository.HarvestTx, userID string, rewards map[string]int) error {
 	log := logger.FromContext(ctx)
 
 	// 1. Get inventory
