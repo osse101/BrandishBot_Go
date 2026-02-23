@@ -18,13 +18,16 @@ func NewEngine() *Engine {
 }
 
 // CalculateReadyAt computes when composting will finish
-func (e *Engine) CalculateReadyAt(startedAt time.Time, totalItemCount int) time.Time {
-	return startedAt.Add(WarmupDuration + time.Duration(totalItemCount)*PerItemDuration)
+func (e *Engine) CalculateReadyAt(startedAt time.Time, totalItemCount int, speedMultiplier float64) time.Time {
+	baseDuration := float64(WarmupDuration + time.Duration(totalItemCount)*PerItemDuration)
+	reducedDuration := time.Duration(baseDuration * (1.0 - speedMultiplier))
+	return startedAt.Add(reducedDuration)
 }
 
 // CalculateSludgeAt computes when ready compost turns to sludge
-func (e *Engine) CalculateSludgeAt(readyAt time.Time) time.Time {
-	return readyAt.Add(SludgeTimeout)
+func (e *Engine) CalculateSludgeAt(readyAt time.Time, sludgeExtHours float64) time.Time {
+	extDuration := time.Duration(sludgeExtHours * float64(time.Hour))
+	return readyAt.Add(SludgeTimeout + extDuration)
 }
 
 // CalculateInputValue sums the weighted values of all bin items

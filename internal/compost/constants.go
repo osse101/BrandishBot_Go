@@ -19,3 +19,10 @@ const (
 	MsgHarvestComplete = "Composting complete!"
 	MsgHarvestFallback = "Composting complete! (converted to money)"
 )
+
+const (
+	featureCompostYield    = "compost_yield"
+	featureCompostSpeed    = "compost_speed"
+	featureSludgeExtension = "sludge_extension"
+	featureCompostCapacity = "compost_capacity"
+)

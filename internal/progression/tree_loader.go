@@ -54,8 +54,9 @@ type NodeConfig struct {
 	// Prerequisites (breaking: was single parent, now supports multiple)
 	Prerequisites []string `json:"prerequisites"` // List of node keys that must be unlocked first (AND logic)
 
-	SortOrder  int  `json:"sort_order"`
-	AutoUnlock bool `json:"auto_unlock"` // If true, node is auto-unlocked (skips voting)
+	SortOrder       int                     `json:"sort_order"`
+	AutoUnlock      bool                    `json:"auto_unlock"` // If true, node is auto-unlocked (skips voting)
+	ModifierConfigs []domain.ModifierConfig `json:"modifier_configs,omitempty"`
 }
 
 // TreeLoader handles loading and validating progression tree configuration
@@ -406,6 +407,9 @@ func (t *treeLoader) syncPrerequisitesAndModifiers(ctx context.Context, repo rep
 	}
 	if err := syncDynamicPrerequisites(ctx, repo, nodeID, config.Prerequisites); err != nil {
 		return fmt.Errorf("failed to sync dynamic prerequisites for '%s': %w", config.Key, err)
+	}
+	if err := syncBonusModifiers(ctx, repo, config); err != nil {
+		return fmt.Errorf("failed to sync bonus modifiers for '%s': %w", config.Key, err)
 	}
 	return nil
 }

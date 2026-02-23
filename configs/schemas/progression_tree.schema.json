@@ -106,8 +106,11 @@
           "default": false,
           "description": "If true, this node is unlocked automatically when prerequisites are met"
         },
-        "modifier_config": {
-          "$ref": "#/definitions/ModifierConfig"
+        "modifier_configs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ModifierConfig"
+          }
         }
       },
       "additionalProperties": false

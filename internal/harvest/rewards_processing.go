@@ -16,13 +16,13 @@ func (s *service) getBonusMultipliers(ctx context.Context, userID string) (float
 	yieldMultiplier := 1.0
 	growthMultiplier := 1.0
 
-	if modifiedYield, err := s.progressionSvc.GetModifiedValue(ctx, userID, "harvest_yield", 1.0); err == nil {
+	if modifiedYield, err := s.progressionSvc.GetModifiedValue(ctx, userID, featureHarvestYield, 1.0); err == nil {
 		yieldMultiplier = modifiedYield
 	} else {
 		log.Warn("Failed to get modified harvest yield", "error", err)
 	}
 
-	if modifiedGrowth, err := s.progressionSvc.GetModifiedValue(ctx, userID, "growth_speed", 1.0); err == nil {
+	if modifiedGrowth, err := s.progressionSvc.GetModifiedValue(ctx, userID, featureGrowthSpeed, 1.0); err == nil {
 		growthMultiplier = modifiedGrowth
 	} else {
 		log.Warn("Failed to get modified growth speed", "error", err)
@@ -30,20 +30,30 @@ func (s *service) getBonusMultipliers(ctx context.Context, userID string) (float
 	return yieldMultiplier, growthMultiplier
 }
 
-func (s *service) calculateHarvestRewards(ctx context.Context, hoursElapsed float64, yieldMultiplier float64) (map[string]int, string) {
-	if hoursElapsed > spoiledThreshold {
+func (s *service) calculateHarvestRewards(ctx context.Context, userID string, hoursElapsed float64, yieldMultiplier float64) (map[string]int, string) {
+	spoilExtension := 0.0
+	if ext, err := s.progressionSvc.GetModifiedValue(ctx, userID, featureSpoilExtension, 0.0); err == nil {
+		spoilExtension = ext
+	}
+
+	limitIndexFloat, _ := s.progressionSvc.GetModifiedValue(ctx, userID, featureHarvestTier, 3.0)
+	limitIndex := int(limitIndexFloat)
+
+	effectiveSpoiledThreshold := spoiledThreshold + spoilExtension
+
+	if hoursElapsed > effectiveSpoiledThreshold {
 		logger.FromContext(ctx).Info("Harvest spoiled", "hours", hoursElapsed)
 		return map[string]int{
 			itemLootbox1: 1,
 			itemStick:    3,
 		}, "Your crops spoiled! You salvaged 1 Decent Lootbox and 3 Sticks."
 	}
-	return s.calculateRewards(ctx, hoursElapsed, yieldMultiplier), "Harvest successful!"
+	return s.calculateRewards(ctx, hoursElapsed, yieldMultiplier, limitIndex), "Harvest successful!"
 }
 
 // calculateRewards calculates the total rewards for a given elapsed time
 // Accumulates ALL items from all tiers up to and including the current tier
-func (s *service) calculateRewards(ctx context.Context, hoursElapsed float64, yieldMultiplier float64) map[string]int {
+func (s *service) calculateRewards(ctx context.Context, hoursElapsed float64, yieldMultiplier float64, limitIndex int) map[string]int {
 	log := logger.FromContext(ctx)
 	rewards := make(map[string]int)
 	tiers := getRewardTiers()
@@ -56,6 +66,11 @@ func (s *service) calculateRewards(ctx context.Context, hoursElapsed float64, yi
 		} else {
 			break // Tiers are ordered, so we can stop here
 		}
+	}
+
+	// Apply layer gating based on resolved progression limits:
+	if maxTierIndex > limitIndex {
+		maxTierIndex = limitIndex
 	}
 
 	// No tier reached

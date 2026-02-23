@@ -11,6 +11,16 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const clearBonusModifiersForNode = `-- name: ClearBonusModifiersForNode :exec
+DELETE FROM bonus_config
+WHERE node_key = $1
+`
+
+func (q *Queries) ClearBonusModifiersForNode(ctx context.Context, nodeKey string) error {
+	_, err := q.db.Exec(ctx, clearBonusModifiersForNode, nodeKey)
+	return err
+}
+
 const getAllBonusModifiers = `-- name: GetAllBonusModifiers :many
 SELECT node_key, source_type, feature_key, modifier_type, base_value, per_level_value, max_value, min_value
 FROM bonus_config
@@ -201,4 +211,37 @@ func (q *Queries) GetJobUnlockConfig(ctx context.Context, featureKey string) (Ge
 	var i GetJobUnlockConfigRow
 	err := row.Scan(&i.JobKey, &i.FeatureKey, &i.RequiredLevel)
 	return i, err
+}
+
+const insertBonusModifier = `-- name: InsertBonusModifier :exec
+INSERT INTO bonus_config (
+    node_key, source_type, feature_key, modifier_type, base_value, per_level_value, max_value, min_value
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7, $8
+)
+`
+
+type InsertBonusModifierParams struct {
+	NodeKey       string         `json:"node_key"`
+	SourceType    string         `json:"source_type"`
+	FeatureKey    string         `json:"feature_key"`
+	ModifierType  string         `json:"modifier_type"`
+	BaseValue     pgtype.Numeric `json:"base_value"`
+	PerLevelValue pgtype.Numeric `json:"per_level_value"`
+	MaxValue      pgtype.Numeric `json:"max_value"`
+	MinValue      pgtype.Numeric `json:"min_value"`
+}
+
+func (q *Queries) InsertBonusModifier(ctx context.Context, arg InsertBonusModifierParams) error {
+	_, err := q.db.Exec(ctx, insertBonusModifier,
+		arg.NodeKey,
+		arg.SourceType,
+		arg.FeatureKey,
+		arg.ModifierType,
+		arg.BaseValue,
+		arg.PerLevelValue,
+		arg.MaxValue,
+		arg.MinValue,
+	)
+	return err
 }

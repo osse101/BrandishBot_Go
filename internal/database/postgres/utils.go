@@ -65,6 +65,13 @@ func numericToFloat64(n pgtype.Numeric) (float64, error) {
 	return val.Float64, nil
 }
 
+// float64ToNumeric safely converts float64 to pgtype.Numeric.
+func float64ToNumeric(f float64) pgtype.Numeric {
+	var n pgtype.Numeric
+	_ = n.Scan(fmt.Sprintf("%f", f))
+	return n
+}
+
 // txHelper wraps common transaction begin logic.
 // Returns a transaction and queries instance with the transaction applied.
 type txHelper struct {

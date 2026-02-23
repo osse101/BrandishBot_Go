@@ -25,6 +25,9 @@ func (s *service) Deposit(ctx context.Context, platform, platformID string, item
 		return nil, err
 	}
 
+	capacityFloat, _ := s.progressionSvc.GetModifiedValue(ctx, user.ID, featureCompostCapacity, 3.0)
+	bin.Capacity = int(capacityFloat)
+
 	resolved, err := s.resolveDepositItems(ctx, items)
 	if err != nil {
 		return nil, err
@@ -38,6 +41,7 @@ func (s *service) Deposit(ctx context.Context, platform, platformID string, item
 		return nil, err
 	}
 
+	// Make sure capacity is intact for the returned structure
 	return bin, nil
 }
 
@@ -163,8 +167,11 @@ func (s *service) updateBinWithDeposits(bin *domain.CompostBin, resolved []resol
 		bin.StartedAt = &now
 	}
 
-	readyAt := s.engine.CalculateReadyAt(*bin.StartedAt, bin.ItemCount)
+	compostSpeedMult, _ := s.progressionSvc.GetModifiedValue(context.Background(), bin.UserID, "compost_speed", 0.0) // Context missing in signature, fallback
+	sludgeExt, _ := s.progressionSvc.GetModifiedValue(context.Background(), bin.UserID, "sludge_extension", 0.0)
+
+	readyAt := s.engine.CalculateReadyAt(*bin.StartedAt, bin.ItemCount, compostSpeedMult)
 	bin.ReadyAt = &readyAt
-	sludgeAt := s.engine.CalculateSludgeAt(readyAt)
+	sludgeAt := s.engine.CalculateSludgeAt(readyAt, sludgeExt)
 	bin.SludgeAt = &sludgeAt
 }

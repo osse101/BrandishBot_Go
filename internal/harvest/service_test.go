@@ -172,7 +172,7 @@ func TestCalculateRewards(t *testing.T) {
 			if tt.yieldMultiplier > 0 {
 				multiplier = tt.yieldMultiplier
 			}
-			rewards := svc.calculateRewards(context.Background(), tt.hoursElapsed, multiplier)
+			rewards := svc.calculateRewards(context.Background(), tt.hoursElapsed, multiplier, 9) // 9 allows all tiers
 
 			// Assert
 			assert.Equal(t, tt.expectedReward, rewards)

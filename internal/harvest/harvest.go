@@ -54,7 +54,7 @@ func (s *service) performHarvestTransaction(ctx context.Context, user *domain.Us
 	yieldMultiplier, growthMultiplier := s.getBonusMultipliers(ctx, user.ID)
 	effectiveHours := hoursElapsed * growthMultiplier
 
-	rewards, message := s.calculateHarvestRewards(ctx, effectiveHours, yieldMultiplier)
+	rewards, message := s.calculateHarvestRewards(ctx, user.ID, effectiveHours, yieldMultiplier)
 
 	s.fireAsyncEvents(ctx, user.ID, hoursElapsed)
 

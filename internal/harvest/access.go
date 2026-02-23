@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/progression"
 )
 
 func (s *service) ensureUser(ctx context.Context, platform, platformID, username string) (*domain.User, error) {
@@ -14,11 +15,11 @@ func (s *service) ensureUser(ctx context.Context, platform, platformID, username
 		if errors.Is(err, domain.ErrUserNotFound) {
 			newUser := &domain.User{Username: username}
 			switch platform {
-			case "discord":
+			case domain.PlatformDiscord:
 				newUser.DiscordID = platformID
-			case "twitch":
+			case domain.PlatformTwitch:
 				newUser.TwitchID = platformID
-			case "youtube":
+			case domain.PlatformYoutube:
 				newUser.YoutubeID = platformID
 			}
 			if err := s.userRepo.UpsertUser(ctx, newUser); err != nil {
@@ -32,7 +33,7 @@ func (s *service) ensureUser(ctx context.Context, platform, platformID, username
 }
 
 func (s *service) ensureFarmingUnlocked(ctx context.Context) error {
-	unlocked, err := s.progressionSvc.IsFeatureUnlocked(ctx, "feature_farming")
+	unlocked, err := s.progressionSvc.IsFeatureUnlocked(ctx, progression.FeatureFarming)
 	if err != nil {
 		return fmt.Errorf("failed to check farming feature unlock: %w", err)
 	}

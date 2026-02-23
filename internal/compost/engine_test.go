@@ -14,7 +14,7 @@ func TestCalculateReadyAt(t *testing.T) {
 	start := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 
 	// Warmup (1h) + 3 items * 30m = 2h 30m
-	readyAt := engine.CalculateReadyAt(start, 3)
+	readyAt := engine.CalculateReadyAt(start, 3, 0.0)
 	expected := start.Add(1*time.Hour + 3*30*time.Minute)
 	assert.Equal(t, expected, readyAt)
 }
@@ -24,11 +24,11 @@ func TestCalculateReadyAt_ExtendExisting(t *testing.T) {
 	start := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 
 	// First deposit: 2 items
-	readyAt1 := engine.CalculateReadyAt(start, 2)
+	readyAt1 := engine.CalculateReadyAt(start, 2, 0.0)
 	assert.Equal(t, start.Add(1*time.Hour+2*30*time.Minute), readyAt1)
 
 	// After adding 3 more, total = 5
-	readyAt2 := engine.CalculateReadyAt(start, 5)
+	readyAt2 := engine.CalculateReadyAt(start, 5, 0.0)
 	assert.Equal(t, start.Add(1*time.Hour+5*30*time.Minute), readyAt2)
 
 	// Adding more items extends the time
@@ -39,7 +39,7 @@ func TestCalculateSludgeAt(t *testing.T) {
 	engine := NewEngine()
 	readyAt := time.Date(2026, 1, 2, 14, 30, 0, 0, time.UTC)
 
-	sludgeAt := engine.CalculateSludgeAt(readyAt)
+	sludgeAt := engine.CalculateSludgeAt(readyAt, 0.0)
 	assert.Equal(t, readyAt.Add(168*time.Hour), sludgeAt)
 }
 
