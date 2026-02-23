@@ -59,20 +59,20 @@ const (
 
 // XP source types for tracking and special behavior
 const (
-	SourceEngagement     = "engagement"      // Engagement XP
-	SourceSearch         = domain.ActionSearch          // Search XP
-	SourceRareCandy      = "rarecandy"       // Rare candy usage - bypasses daily cap
-	SourceHarvest        = "harvest"         // Harvest XP - bypasses daily cap
-	SourcePrediction     = "prediction"      // Prediction XP
-	SourceQuest          = "quest"           // Quest XP
-	SourceUpgrade        = "upgrade"         // Item upgrade XP
-	SourceDisassemble    = "disassemble"     // Item disassemble XP
-	SourceSlots          = "slots"           // Slots XP
-	SourceCompostHarvest = "compost_harvest" // Compost harvest XP
-	SourceExpedition     = "expedition"      // Expedition XP
-	SourceGambleWin      = "win"             // Gamble win XP
-	SourceSell           = "sell"            // Item sell XP
-	SourceBuy            = "buy"             // Item buy XP
+	SourceEngagement     = "engagement"        // Engagement XP
+	SourceSearch         = domain.ActionSearch // Search XP
+	SourceRareCandy      = "rarecandy"         // Rare candy usage - bypasses daily cap
+	SourceHarvest        = "harvest"           // Harvest XP - bypasses daily cap
+	SourcePrediction     = "prediction"        // Prediction XP
+	SourceQuest          = "quest"             // Quest XP
+	SourceUpgrade        = "upgrade"           // Item upgrade XP
+	SourceDisassemble    = "disassemble"       // Item disassemble XP
+	SourceSlots          = "slots"             // Slots XP
+	SourceCompostHarvest = "compost_harvest"   // Compost harvest XP
+	SourceExpedition     = "expedition"        // Expedition XP
+	SourceGambleWin      = "win"               // Gamble win XP
+	SourceSell           = "sell"              // Item sell XP
+	SourceBuy            = "buy"               // Item buy XP
 )
 
 // Log source constants for better tracking in logs
