@@ -1,12 +1,14 @@
 # API Coverage Reference
 
-> **Last Updated:** 2026-01-07  
+> **Last Updated:** 2026-02-23 (See [docs/issues/update_api_coverage.md](../issues/update_api_coverage.md))
 > **Maintainer:** Development Team  
 > **Purpose:** Master reference for maintaining API consistency across Discord, Server, and C# Client
 
+> ⚠️ **Warning:** This document is partially outdated. The statistics below have been updated, but the detailed tables may not reflect all recent additions.
+
 ## Quick Reference
 
-**Current Coverage**: 93% Streamer.bot, 100% Discord, 100% API endpoints
+**Current Coverage**: 95% Streamer.bot, 100% Discord, 100% API endpoints
 
 This document is the **single source of truth** for keeping these three systems synchronized:
 
@@ -163,17 +165,16 @@ This document is the **single source of truth** for keeping these three systems 
 
 | System                 | Total | Complete | Missing | %    |
 | ---------------------- | ----- | -------- | ------- | ---- |
-| **API Endpoints**      | 59    | 59       | 0       | 100% |
-| **Discord Commands**   | 41    | 41       | 0       | 100% |
-| **C# Client Methods**  | 59    | 59       | 0       | 100% |
-| **C# Wrapper Methods** | 59    | 56       | 3       | 95%  |
+| **API Endpoints**      | 97    | 97       | 0       | 100% |
+| **Discord Commands**   | 60    | 60       | 0       | 100% |
+| **C# Client Methods**  | 94    | 94       | 0       | 100% |
+| **C# Wrapper Methods** | 67    | 65       | 2       | 97%  |
 
 ### Missing Items
 
 **C# Wrapper** (Low Priority):
 
 - `RecordEvent()` - Internal background tracking
-- `GetUnlockedRecipes()` - Rarely needed in Streamer.bot
 - `GiveItemByUsername()` - Backend not implemented
 
 ---
@@ -257,13 +258,13 @@ public bool FeatureAction()
 
 ```bash
 # Count API endpoints
-grep -E "r\.(Post|Get)" internal/server/server.go | wc -l
+grep -E "r\.(Post|Get|Put|Delete|Patch)" internal/server/server.go | wc -l
 
-# Count Discord commands
-ls internal/discord/cmd_*.go | wc -l
+# Count Discord commands (explicit + helper created)
+expr $(grep "&discordgo.ApplicationCommand{" internal/discord/cmd_*.go | wc -l) + $(grep "CreateItemQuantityCommand" internal/discord/cmd_*.go | wc -l)
 
 # Count C# client methods
-grep "public async Task" client/csharp/BrandishBotClient.cs | wc -l
+grep "public async Task" client/csharp/*.cs | wc -l
 
 # Count C# wrapper methods
 grep "public bool" client/csharp/BrandishBotWrapper.cs | wc -l
@@ -271,5 +272,5 @@ grep "public bool" client/csharp/BrandishBotWrapper.cs | wc -l
 
 ---
 
-**Document Version**: 1.1  
-**Last Review**: 2026-01-07
+**Document Version**: 1.2
+**Last Review**: 2026-02-23
