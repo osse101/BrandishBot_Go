@@ -1,3 +1,16 @@
+# Patch Notes (Week of Feb 23, 2026)
+
+## Developer Experience
+
+- **Devtool Upgrade**: `cmd/devtool` now supports strict flags, a `-watch` mode for rapid feedback loops using `fsnotify`, and a `-smart` mode to only run tests for changed packages.
+- **Admin Dashboard Tech Stack**: The admin dashboard has been modernized with React 19, Vite, TypeScript, and Tailwind CSS.
+
+## System Updates
+
+- **Code Refactoring**: Active Chatter Tracking logic has been split into semantic files (`active_chatter_*.go`) for better maintainability.
+- **Job System**: `bonus_config` table introduced to unify progression and job bonuses.
+- **Documentation**: Updated `DEVTOOL.md`, `ADMIN_DASHBOARD_USAGE.md`, `JOBS.md`, and `TRAPS.md` to reflect recent changes.
+
 # Patch Notes (Week of Feb 20, 2026)
 
 ## New Features

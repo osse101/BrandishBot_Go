@@ -8,7 +8,7 @@ The Job system provides RPG-style progression for players, allowing them to leve
 | :------------- | :-------------------- | :------------------------------------------- |
 | **Blacksmith** | Crafting & Creation   | Upgrading items, Disassembling items.        |
 | **Merchant**   | Trading & Economy     | Buying items, Selling items.                 |
-| **Farmer**     | Resource Gathering    | Harvesting crops, Composting (In Dev).       |
+| **Farmer**     | Resource Gathering    | Harvesting crops, Composting.                |
 | **Gambler**    | Risk & Reward         | Opening lootboxes, Spinning slots, Gambling. |
 | **Scholar**    | Knowledge & Discovery | Performing searches, Analyzing items.        |
 | **Explorer**   | Adventure & Travel    | Leading expeditions, Discovering locations.  |
