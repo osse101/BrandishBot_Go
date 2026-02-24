@@ -51,7 +51,7 @@ func (s *service) BuyItem(ctx context.Context, platform, platformID, username, i
 
 	// 7. Process inventory updates
 	inventory, _ := tx.GetInventory(ctx, user.ID) // already fetched in getMoneyBalance
-	processBuyTransaction(inventory, item, moneySlotIndex, actualQuantity, cost)
+	processBuyTransaction(inventory, item.ID, moneySlotIndex, actualQuantity, cost)
 
 	if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
 		return 0, fmt.Errorf(ErrMsgUpdateInventoryFailed, err)

@@ -10,7 +10,7 @@ import (
 )
 
 // processBuyTransaction handles the inventory updates for buying an item
-func processBuyTransaction(inventory *domain.Inventory, item *domain.Item, moneySlotIndex, actualQuantity, cost int) {
+func processBuyTransaction(inventory *domain.Inventory, itemID, moneySlotIndex, actualQuantity, cost int) {
 	// Deduct money
 	if inventory.Slots[moneySlotIndex].Quantity == cost {
 		inventory.Slots = append(inventory.Slots[:moneySlotIndex], inventory.Slots[moneySlotIndex+1:]...)
@@ -21,22 +21,19 @@ func processBuyTransaction(inventory *domain.Inventory, item *domain.Item, money
 	// Add purchased item
 	itemFound := false
 	for i, slot := range inventory.Slots {
-		if slot.ItemID == item.ID {
+		if slot.ItemID == itemID {
 			inventory.Slots[i].Quantity += actualQuantity
 			itemFound = true
 			break
 		}
 	}
 	if !itemFound {
-		inventory.Slots = append(inventory.Slots, domain.InventorySlot{ItemID: item.ID, Quantity: actualQuantity})
+		inventory.Slots = append(inventory.Slots, domain.InventorySlot{ItemID: itemID, Quantity: actualQuantity})
 	}
 }
 
 // processSellTransaction handles the inventory updates for selling an item
-func (s *service) processSellTransaction(ctx context.Context, inventory *domain.Inventory, item, moneyItem *domain.Item, itemSlotIndex, actualSellQuantity int) int {
-	sellPrice := s.calculateSellPriceWithModifier(ctx, item.BaseValue)
-	moneyGained := actualSellQuantity * sellPrice
-
+func processSellTransaction(inventory *domain.Inventory, itemID, moneyItemID, itemSlotIndex, actualSellQuantity, moneyGained int) {
 	// Remove sold items
 	if inventory.Slots[itemSlotIndex].Quantity <= actualSellQuantity {
 		inventory.Slots = append(inventory.Slots[:itemSlotIndex], inventory.Slots[itemSlotIndex+1:]...)
@@ -47,7 +44,7 @@ func (s *service) processSellTransaction(ctx context.Context, inventory *domain.
 	// Add money
 	moneyFound := false
 	for i, slot := range inventory.Slots {
-		if slot.ItemID == moneyItem.ID && slot.QualityLevel == domain.QualityCommon {
+		if slot.ItemID == moneyItemID && slot.QualityLevel == domain.QualityCommon {
 			inventory.Slots[i].Quantity += moneyGained
 			moneyFound = true
 			break
@@ -55,13 +52,11 @@ func (s *service) processSellTransaction(ctx context.Context, inventory *domain.
 	}
 	if !moneyFound {
 		inventory.Slots = append(inventory.Slots, domain.InventorySlot{
-			ItemID:       moneyItem.ID,
+			ItemID:       moneyItemID,
 			Quantity:     moneyGained,
 			QualityLevel: domain.QualityCommon,
 		})
 	}
-
-	return moneyGained
 }
 
 func (s *service) getMoneyBalance(ctx context.Context, tx repository.EconomyTx, userID string) (int, int, error) {
