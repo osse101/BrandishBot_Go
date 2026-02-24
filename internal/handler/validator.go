@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/go-playground/validator/v10"
+
+	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
 // Validator wraps the validator instance
@@ -80,9 +82,9 @@ func FormatValidationError(err error) map[string]string {
 
 // ValidPlatforms defines supported platforms
 var ValidPlatforms = map[string]bool{
-	"twitch":  true,
-	"youtube": true,
-	"discord": true,
+	domain.PlatformTwitch:  true,
+	domain.PlatformYoutube: true,
+	domain.PlatformDiscord: true,
 }
 
 // Custom validation function for platform

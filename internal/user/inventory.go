@@ -349,42 +349,50 @@ func (s *service) GiveItem(ctx context.Context, ownerPlatform, ownerPlatformID, 
 		"receiverPlatform", receiverPlatform, "receiverUsername", receiverUsername,
 		"item", itemName, "quantity", quantity)
 
+	// 1. Validate and retrieve owner (auto-register if new)
 	owner, err := s.getUserOrRegister(ctx, ownerPlatform, ownerPlatformID, ownerUsername)
 	if err != nil {
 		log.Error("Failed to get owner", "error", err)
 		return domain.ErrUserNotFound
 	}
 
+	// 2. Validate and retrieve receiver (must exist)
 	receiver, err := s.GetUserByPlatformUsername(ctx, receiverPlatform, receiverUsername)
 	if err != nil {
 		log.Error("Failed to get receiver", "error", err)
 		return domain.ErrUserNotFound
 	}
 
+	// 3. Validate quantity
 	if quantity <= 0 || quantity > domain.MaxTransactionQuantity {
 		log.Error("Quantity validation failed", "error", domain.ErrInvalidInput)
 		return domain.ErrInvalidInput
 	}
 
+	// 4. Validate item exists
 	item, err := s.validateItem(ctx, itemName)
 	if err != nil {
 		log.Error("Failed to get item", "error", err)
 		return domain.ErrItemNotFound
 	}
 
+	// 5. Execute transfer within transaction
 	return s.executeGiveItemTx(ctx, owner, receiver, item, quantity)
 }
 
 func (s *service) executeGiveItemTx(ctx context.Context, owner, receiver *domain.User, item *domain.Item, quantity int) error {
 	log := logger.FromContext(ctx)
 
+	// 6. Acquire transaction and locks
 	return s.withTx(ctx, func(tx repository.UserTx) error {
+		// 7. Get owner inventory (locks row)
 		ownerInventory, err := tx.GetInventory(ctx, owner.ID)
 		if err != nil {
 			log.Error("Failed to get owner inventory", "error", err)
 			return domain.ErrFailedToGetInventory
 		}
 
+		// 8. Verify owner has item
 		// Find item in owner's inventory using random selection (in case multiple slots with different quality levels exist)
 		ownerSlotIndex, ownerSlotQty := utils.FindRandomSlot(ownerInventory, item.ID, s.rnd)
 		if ownerSlotIndex == -1 {

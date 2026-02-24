@@ -52,7 +52,7 @@ func (s *service) Challenge(ctx context.Context, platform, platformID, opponentU
 	}
 
 	// Get opponent
-	opponent, err := s.repo.GetUserByPlatformID(ctx, "twitch", opponentUsername) // TODO: Make platform configurable
+	opponent, err := s.repo.GetUserByPlatformID(ctx, domain.PlatformTwitch, opponentUsername) // TODO: Make platform configurable
 	if err != nil {
 		return nil, fmt.Errorf("failed to get opponent: %w", err)
 	}
