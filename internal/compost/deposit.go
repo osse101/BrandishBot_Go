@@ -67,8 +67,15 @@ func (s *service) executeDepositTransaction(ctx context.Context, userID string, 
 	if err != nil {
 		return fmt.Errorf("failed to lock bin: %w", err)
 	}
+
+	// Preserve dynamic capacity which is not stored in DB
+	currentCapacity := bin.Capacity
+
 	// Copy data to the original bin pointer to maintain state for the caller
 	*bin = *binLocked
+
+	// Restore dynamic capacity
+	bin.Capacity = currentCapacity
 
 	inv, err := tx.GetInventory(ctx, userID)
 	if err != nil {
@@ -87,7 +94,7 @@ func (s *service) executeDepositTransaction(ctx context.Context, userID string, 
 		return fmt.Errorf("failed to update inventory: %w", err)
 	}
 
-	s.updateBinWithDeposits(bin, resolved)
+	s.updateBinWithDeposits(ctx, bin, resolved)
 
 	if err := tx.UpdateBin(ctx, bin); err != nil {
 		return fmt.Errorf("failed to update bin: %w", err)
@@ -145,7 +152,7 @@ func (s *service) resolveDepositItems(ctx context.Context, items []DepositItem) 
 	return resolved, nil
 }
 
-func (s *service) updateBinWithDeposits(bin *domain.CompostBin, resolved []resolvedDeposit) {
+func (s *service) updateBinWithDeposits(ctx context.Context, bin *domain.CompostBin, resolved []resolvedDeposit) {
 	now := time.Now()
 	for _, r := range resolved {
 		bin.Items = append(bin.Items, domain.CompostBinItem{
@@ -167,8 +174,8 @@ func (s *service) updateBinWithDeposits(bin *domain.CompostBin, resolved []resol
 		bin.StartedAt = &now
 	}
 
-	compostSpeedMult, _ := s.progressionSvc.GetModifiedValue(context.Background(), bin.UserID, "compost_speed", 0.0) // Context missing in signature, fallback
-	sludgeExt, _ := s.progressionSvc.GetModifiedValue(context.Background(), bin.UserID, "sludge_extension", 0.0)
+	compostSpeedMult, _ := s.progressionSvc.GetModifiedValue(ctx, bin.UserID, "compost_speed", 0.0)
+	sludgeExt, _ := s.progressionSvc.GetModifiedValue(ctx, bin.UserID, "sludge_extension", 0.0)
 
 	readyAt := s.engine.CalculateReadyAt(*bin.StartedAt, bin.ItemCount, compostSpeedMult)
 	bin.ReadyAt = &readyAt
