@@ -2,3 +2,4 @@ Scholar levelup too fast
 Levelup to twitch shows UserID instead of username
 Levelup to Discord shows generic user instead of username
 Levelup shows cross platform when it should be specific to the platform
+BUG: Job Level Up event payload has empty username because `AwardXP` relies on `metadata.Username` which is often missing. Fix callers to provide username or `AwardXP` to fetch it.

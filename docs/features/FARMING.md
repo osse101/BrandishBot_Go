@@ -109,6 +109,6 @@ If you leave your finished compost in the bin for too long (**1 Week** after fin
 
 The compost system uses a "Garbage In, Value Out" engine in `internal/compost/engine.go`.
 
-- **Service**: `internal/compost/service.go` handles transactions and validation.
-- **Engine**: Pure logic for calculating ready times and outputs.
+- **Service**: Service logic is split across `internal/compost/service.go` (lifecycle), `internal/compost/deposit.go` (deposit logic), and `internal/compost/harvest.go` (harvest logic).
+- **Engine**: `internal/compost/engine.go` contains pure logic for calculating ready times and outputs.
 - **Events**: Publishes `compost.harvested` for stats and notifications.
