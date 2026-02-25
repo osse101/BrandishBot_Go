@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
@@ -24,6 +25,8 @@ func (s *service) useItemInternal(ctx context.Context, user *domain.User, platfo
 	}
 
 	var message string
+	var eventToPublish func() error
+
 	err = s.withTx(ctx, func(tx repository.UserTx) error {
 		inventory, err := tx.GetInventory(ctx, user.ID)
 		if err != nil {
@@ -66,8 +69,26 @@ func (s *service) useItemInternal(ctx context.Context, user *domain.User, platfo
 			return domain.ErrFailedToUpdateInventory
 		}
 
+		eventToPublish = func() error {
+			if s.publisher != nil {
+				s.publisher.PublishWithRetry(ctx, event.NewItemUsedEvent(
+					user.ID,
+					itemToUse.InternalName,
+					quantity,
+					map[string]interface{}{"target": targetName},
+				))
+			}
+			return nil
+		}
+
 		return nil
 	})
+
+	if err == nil && eventToPublish != nil {
+		if pubErr := eventToPublish(); pubErr != nil {
+			log.Warn("Failed to publish item used event", "error", pubErr)
+		}
+	}
 
 	return message, err
 }

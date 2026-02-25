@@ -119,3 +119,30 @@ type ItemUsedPayload struct {
 	Metadata  interface{} `json:"metadata"`
 	Timestamp int64       `json:"timestamp"`
 }
+
+// ItemAddedPayload is the event payload for item.added events
+type ItemAddedPayload struct {
+	UserID    string `json:"user_id"`
+	ItemName  string `json:"item_name"`
+	Quantity  int    `json:"quantity"`
+	Source    string `json:"source"`
+	Timestamp int64  `json:"timestamp"`
+}
+
+// ItemRemovedPayload is the event payload for item.removed events
+type ItemRemovedPayload struct {
+	UserID    string `json:"user_id"`
+	ItemName  string `json:"item_name"`
+	Quantity  int    `json:"quantity"`
+	Source    string `json:"source"`
+	Timestamp int64  `json:"timestamp"`
+}
+
+// ItemTransferredPayload is the event payload for item.transferred events
+type ItemTransferredPayload struct {
+	FromUserID string `json:"from_user_id"`
+	ToUserID   string `json:"to_user_id"`
+	ItemName   string `json:"item_name"`
+	Quantity   int    `json:"quantity"`
+	Timestamp  int64  `json:"timestamp"`
+}

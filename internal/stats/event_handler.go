@@ -47,6 +47,12 @@ func (h *EventHandler) Register(bus event.Bus) {
 	// Economy events
 	bus.Subscribe(event.Type(domain.EventTypeItemSold), h.HandleItemSold)
 	bus.Subscribe(event.Type(domain.EventTypeItemBought), h.HandleItemBought)
+
+	// Inventory events
+	bus.Subscribe(event.Type(domain.EventTypeItemAdded), h.HandleItemAdded)
+	bus.Subscribe(event.Type(domain.EventTypeItemRemoved), h.HandleItemRemoved)
+	bus.Subscribe(event.Type(domain.EventTypeItemTransferred), h.HandleItemTransferred)
+	bus.Subscribe(event.Type(domain.EventTypeItemUsed), h.HandleItemUsed)
 }
 
 // HandleItemSold handles item sold events to record stats
@@ -106,6 +112,73 @@ func (h *EventHandler) HandleItemUpgraded(ctx context.Context, evt event.Event) 
 		}
 	}
 
+	return nil
+}
+
+// HandleItemAdded handles item added events
+func (h *EventHandler) HandleItemAdded(ctx context.Context, evt event.Event) error {
+	log := logger.FromContext(ctx)
+
+	payload, err := event.DecodePayload[domain.ItemAddedPayload](evt.Payload)
+	if err != nil {
+		return fmt.Errorf("failed to decode item added payload: %w", err)
+	}
+
+	if err := h.service.RecordUserEvent(ctx, payload.UserID, domain.StatsEventItemAdded, payload); err != nil {
+		log.Warn("Failed to record item added stat", "error", err, "user_id", payload.UserID)
+	}
+	return nil
+}
+
+// HandleItemRemoved handles item removed events
+func (h *EventHandler) HandleItemRemoved(ctx context.Context, evt event.Event) error {
+	log := logger.FromContext(ctx)
+
+	payload, err := event.DecodePayload[domain.ItemRemovedPayload](evt.Payload)
+	if err != nil {
+		return fmt.Errorf("failed to decode item removed payload: %w", err)
+	}
+
+	if err := h.service.RecordUserEvent(ctx, payload.UserID, domain.StatsEventItemRemoved, payload); err != nil {
+		log.Warn("Failed to record item removed stat", "error", err, "user_id", payload.UserID)
+	}
+	return nil
+}
+
+// HandleItemTransferred handles item transferred events
+func (h *EventHandler) HandleItemTransferred(ctx context.Context, evt event.Event) error {
+	log := logger.FromContext(ctx)
+
+	payload, err := event.DecodePayload[domain.ItemTransferredPayload](evt.Payload)
+	if err != nil {
+		return fmt.Errorf("failed to decode item transferred payload: %w", err)
+	}
+
+	// Record for sender
+	if err := h.service.RecordUserEvent(ctx, payload.FromUserID, domain.StatsEventItemTransferred, payload); err != nil {
+		log.Warn("Failed to record item transferred stat (sender)", "error", err, "user_id", payload.FromUserID)
+	}
+
+	// Record for receiver
+	if err := h.service.RecordUserEvent(ctx, payload.ToUserID, domain.StatsEventItemTransferred, payload); err != nil {
+		log.Warn("Failed to record item transferred stat (receiver)", "error", err, "user_id", payload.ToUserID)
+	}
+
+	return nil
+}
+
+// HandleItemUsed handles item used events
+func (h *EventHandler) HandleItemUsed(ctx context.Context, evt event.Event) error {
+	log := logger.FromContext(ctx)
+
+	payload, err := event.DecodePayload[domain.ItemUsedPayload](evt.Payload)
+	if err != nil {
+		return fmt.Errorf("failed to decode item used payload: %w", err)
+	}
+
+	if err := h.service.RecordUserEvent(ctx, payload.UserID, domain.StatsEventItemUsed, payload); err != nil {
+		log.Warn("Failed to record item used stat", "error", err, "user_id", payload.UserID)
+	}
 	return nil
 }
 
