@@ -250,6 +250,15 @@ const (
 	// EventTypeItemBought is published when an item is bought through the economy system
 	EventTypeItemBought = "item.bought"
 
+	// EventTypeItemAdded is published when an item is added to a user's inventory
+	EventTypeItemAdded = "item.added"
+
+	// EventTypeItemRemoved is published when an item is removed from a user's inventory
+	EventTypeItemRemoved = "item.removed"
+
+	// EventTypeItemTransferred is published when an item is transferred between users
+	EventTypeItemTransferred = "item.transferred"
+
 	// EventTypeItemUpgraded is published when an item is upgraded through crafting
 	EventTypeItemUpgraded = "item.upgraded"
 
