@@ -110,6 +110,7 @@ func (h *EventHandler) HandleSlotsCompleted(ctx context.Context, evt event.Event
 
 	metadata := domain.JobXPMetadata{
 		Source:       SourceSlots,
+		Username:     payload.Username,
 		BetAmount:    payload.BetAmount,
 		PayoutAmount: payload.PayoutAmount,
 		TriggerType:  payload.TriggerType,

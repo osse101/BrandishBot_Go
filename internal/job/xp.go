@@ -12,15 +12,9 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 )
 
-// AwardXP awards XP to a user for a specific job
 func (s *service) AwardXP(ctx context.Context, userID string, jobKey string, baseAmount int, source string, metadata domain.JobXPMetadata) (*domain.XPAwardResult, error) {
-	// Check if specific job is unlocked
-	jobUnlocked, err := s.progressionSvc.IsNodeUnlocked(ctx, jobKey, 1)
-	if err != nil {
-		return nil, fmt.Errorf("failed to check job unlock: %w", err)
-	}
-	if !jobUnlocked {
-		return nil, fmt.Errorf("job %s is not unlocked: %w", jobKey, domain.ErrFeatureLocked)
+	if err := s.validateJobUnlocked(ctx, jobKey); err != nil {
+		return nil, err
 	}
 
 	job, err := s.repo.GetJobByKey(ctx, jobKey)
@@ -43,15 +37,14 @@ func (s *service) AwardXP(ctx context.Context, userID string, jobKey string, bas
 	newXP := currentProgress.CurrentXP + int64(actualAmount)
 	newLevel := s.calculateNewLevel(ctx, newXP)
 
-	username := metadata.Username
-	platform := metadata.Platform
+	s.enrichMetadata(ctx, userID, &metadata)
 
 	now := time.Now()
 	if err := s.updateUserJobProgress(ctx, currentProgress, newXP, newLevel, actualAmount, &now); err != nil {
 		return nil, err
 	}
 
-	s.recordXPAndLevelUpEvents(ctx, userID, username, platform, jobKey, job.ID, actualAmount, oldLevel, newLevel, source, metadata, &now)
+	s.recordXPAndLevelUpEvents(ctx, userID, metadata.Username, metadata.Platform, jobKey, job.ID, actualAmount, oldLevel, newLevel, source, metadata, &now)
 
 	return &domain.XPAwardResult{
 		JobKey:    jobKey,
@@ -60,6 +53,44 @@ func (s *service) AwardXP(ctx context.Context, userID string, jobKey string, bas
 		NewLevel:  newLevel,
 		LeveledUp: newLevel > oldLevel,
 	}, nil
+}
+
+func (s *service) validateJobUnlocked(ctx context.Context, jobKey string) error {
+	jobUnlocked, err := s.progressionSvc.IsNodeUnlocked(ctx, jobKey, 1)
+	if err != nil {
+		return fmt.Errorf("failed to check job unlock: %w", err)
+	}
+	if !jobUnlocked {
+		return fmt.Errorf("job %s is not unlocked: %w", jobKey, domain.ErrFeatureLocked)
+	}
+	return nil
+}
+
+func (s *service) enrichMetadata(ctx context.Context, userID string, metadata *domain.JobXPMetadata) {
+	if metadata.Username != "" && metadata.Platform != "" {
+		return
+	}
+
+	user, err := s.repo.GetUserByID(ctx, userID)
+	if err != nil || user == nil {
+		return
+	}
+
+	if metadata.Username == "" {
+		metadata.Username = user.Username
+	}
+
+	if metadata.Platform == "" {
+		// Fallback to first available platform
+		switch {
+		case user.TwitchID != "":
+			metadata.Platform = domain.PlatformTwitch
+		case user.DiscordID != "":
+			metadata.Platform = domain.PlatformDiscord
+		case user.YoutubeID != "":
+			metadata.Platform = domain.PlatformYoutube
+		}
+	}
 }
 
 func (s *service) AwardXPByPlatform(ctx context.Context, platform string, platformID string, jobKey string, baseAmount int, source string, metadata domain.JobXPMetadata) (*domain.XPAwardResult, error) {

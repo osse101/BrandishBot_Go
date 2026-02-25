@@ -209,6 +209,7 @@ func TestAwardXP_PublishesEventOnLevelUp(t *testing.T) {
 	mockProg.On("GetModifiedValue", mock.Anything, "job_xp_multiplier", mock.Anything).Return(1.0, nil)
 	mockProg.On("GetModifiedValue", mock.Anything, "job_level_cap", mock.Anything).Return(float64(10), nil)
 	mockProg.On("GetModifiedValue", mock.Anything, "job_daily_cap", mock.Anything).Return(250.0, nil)
+	mockRepo.On("GetUserByID", ctx, "user123").Return(&domain.User{ID: "user123", Username: "testuser", TwitchID: "t1"}, nil)
 
 	// Execute - Award XP (capped at daily limit of 250)
 	// Starting at level 1 with 0 XP, +250 brings to 250 total (still level 1)
@@ -272,6 +273,7 @@ func TestAwardXP_GuaranteedCriticalSuccess(t *testing.T) {
 	mockProg.On("GetModifiedValue", mock.Anything, "job_xp_multiplier", mock.Anything).Return(1.0, nil)
 	mockProg.On("GetModifiedValue", mock.Anything, "job_level_cap", mock.Anything).Return(float64(10), nil)
 	mockProg.On("GetModifiedValue", mock.Anything, "job_daily_cap", mock.Anything).Return(250.0, nil)
+	mockRepo.On("GetUserByID", ctx, "user_crit").Return(&domain.User{ID: "user_crit", Username: "testuser", TwitchID: "t1"}, nil)
 
 	// Epiphany bonus now publishes EventTypeJobXPCritical via the resilient publisher → event bus
 	mockBus.On("Publish", mock.Anything, mock.MatchedBy(func(e event.Event) bool {
@@ -330,6 +332,7 @@ func TestAwardXP_GuaranteedNoCriticalSuccess(t *testing.T) {
 	mockProg.On("GetModifiedValue", mock.Anything, "job_xp_multiplier", mock.Anything).Return(1.0, nil)
 	mockProg.On("GetModifiedValue", mock.Anything, "job_level_cap", mock.Anything).Return(float64(10), nil)
 	mockProg.On("GetModifiedValue", mock.Anything, "job_daily_cap", mock.Anything).Return(250.0, nil)
+	mockRepo.On("GetUserByID", ctx, "user_nocrit").Return(&domain.User{ID: "user_nocrit", Username: "testuser", TwitchID: "t1"}, nil)
 
 	// No level-up expected (100 awarded stays within daily cap, total is still level 1)
 
