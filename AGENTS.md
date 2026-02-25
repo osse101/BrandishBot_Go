@@ -23,15 +23,15 @@ This document provides AI agents with structured guidance on navigating, underst
 
 | Trigger (Situation)                | Action (Resource/Skill/Workflow)                                                      |
 | ---------------------------------- | ------------------------------------------------------------------------------------- |
-| **Need to check/run migrations**   | View **[Goose Skill](.agent/skills/goose/SKILL.md)**                                  |
-| **Need to inspect database**       | View **[Postgres Skill](.agent/skills/postgres/SKILL.md)**                            |
-| **Need to run tests**              | View **[Testing Skill](.agent/skills/testing/SKILL.md)**                              |
-| **Need to deploy/rollback**        | View **[Deploy Workflow](.agent/workflows/deploy.md)**                                |
-| **Need to fix linter errors**      | View **[Lint-Fix Workflow](.agent/workflows/lint-fix.md)**                            |
-| **Need to refactor a service**     | View **[Refactor-Service Workflow](.agent/workflows/refactor-service.md)**            |
-| **Need to add an API endpoint**    | View **[Add-Endpoint Workflow](.agent/workflows/add-endpoint.md)**                    |
-| **Need to create Discord command** | View **[Discord Skill](.agent/skills/discord/SKILL.md)**                              |
-| **Need to modify progression**     | View **[Progression Skill](.agent/skills/progression/SKILL.md)**                      |
+| **Need to check/run migrations**   | View **[MIGRATIONS.md](docs/database/MIGRATIONS.md)**                                 |
+| **Need to inspect database**       | View **[DATABASE.md](docs/database/DATABASE.md)**                                     |
+| **Need to run tests**              | View **[TEST_GUIDANCE.md](docs/testing/TEST_GUIDANCE.md)**                            |
+| **Need to deploy/rollback**        | View **[DEPLOYMENT_WORKFLOW.md](docs/deployment/DEPLOYMENT_WORKFLOW.md)**             |
+| **Need to fix linter errors**      | View **[CODE_QUALITY_RECOMMENDATIONS.md](docs/development/CODE_QUALITY_RECOMMENDATIONS.md)** |
+| **Need to refactor a service**     | View **[FEATURE_DEVELOPMENT_GUIDE.md](docs/development/FEATURE_DEVELOPMENT_GUIDE.md)** |
+| **Need to add an API endpoint**    | View **[FEATURE_DEVELOPMENT_GUIDE.md](docs/development/FEATURE_DEVELOPMENT_GUIDE.md)** |
+| **Need to create Discord command** | View **[DISCORD_REFACTORING_PATTERNS.md](docs/discord/DISCORD_REFACTORING_PATTERNS.md)** |
+| **Need to modify progression**     | View **[PROGRESSION_GUIDANCE.md](docs/development/PROGRESSION_GUIDANCE.md)**          |
 | **Need to create a new feature**   | Follow **[Feature Development Guide](docs/development/FEATURE_DEVELOPMENT_GUIDE.md)** |
 | **Need to fix a complex bug**      | Check **[Journals](#-journal-files)** for similar past issues                         |
 | **Encountering currency/locking**  | Review **[Concurrency Guidelines](#-concurrency-guidelines)**                         |
