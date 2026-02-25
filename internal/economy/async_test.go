@@ -114,3 +114,63 @@ func TestService_ConcurrentAccess(t *testing.T) {
 
 	wg.Wait()
 }
+
+// TestBuyItem_ConcurrentAccess simulates multiple goroutines buying items for the same user concurrently.
+func TestBuyItem_ConcurrentAccess(t *testing.T) {
+	// ARRANGE
+	mockRepo := &MockRepository{}
+	service := NewService(mockRepo, nil, nil, nil)
+	ctx := context.Background()
+
+	user := createTestUser()
+	item := createTestItem(10, domain.PublicNameLootbox, 100)
+	moneyItem := createMoneyItem()
+
+	// Setup inventory with enough money for all concurrent requests
+	initialMoney := 1000000
+	baseInventory := createInventoryWithMoney(initialMoney)
+
+	// Mocks setup
+	// Note: In real scenarios, these would be called concurrently.
+	// We use mock.Anything for contexts as they might differ per request if generated or wrapped.
+	mockRepo.On("GetUserByPlatformID", mock.Anything, domain.PlatformTwitch, "").Return(user, nil)
+	mockRepo.On("GetItemByName", mock.Anything, domain.PublicNameLootbox).Return(item, nil)
+	mockRepo.On("IsItemBuyable", mock.Anything, domain.PublicNameLootbox).Return(true, nil)
+	mockRepo.On("GetItemByName", mock.Anything, domain.ItemMoney).Return(moneyItem, nil)
+
+	mockTx := &MockTx{}
+	mockRepo.On("BeginTx", mock.Anything).Return(mockTx, nil)
+
+	// Important: Return a new copy of inventory for each call to simulate DB fetching
+	// and to prevent race conditions in the test mock itself (since service modifies the returned pointer)
+	mockTx.On("GetInventory", mock.Anything, user.ID).Return(func(ctx context.Context, uid string) *domain.Inventory {
+		newInv := &domain.Inventory{
+			Slots: make([]domain.InventorySlot, len(baseInventory.Slots)),
+		}
+		copy(newInv.Slots, baseInventory.Slots)
+		return newInv
+	}, nil)
+
+	mockTx.On("UpdateInventory", mock.Anything, user.ID, mock.Anything).Return(nil)
+	mockTx.On("Commit", mock.Anything).Return(nil)
+	// Rollback might be called by SafeRollback defer if commit logic is not detected by it?
+	// Usually SafeRollback checks if committed. If Commit succeeds, Rollback shouldn't be called.
+	// But let's allow it just in case logic differs.
+	mockTx.On("Rollback", mock.Anything).Return(nil).Maybe()
+
+	var wg sync.WaitGroup
+	concurrency := 10
+
+	// ACT
+	for i := 0; i < concurrency; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			// Each goroutine attempts to buy 1 item
+			_, err := service.BuyItem(ctx, domain.PlatformTwitch, "", "testuser", domain.PublicNameLootbox, 1)
+			assert.NoError(t, err)
+		}()
+	}
+
+	wg.Wait()
+}

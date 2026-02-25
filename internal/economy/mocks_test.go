@@ -82,6 +82,12 @@ func (m *MockTx) GetInventory(ctx context.Context, userID string) (*domain.Inven
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
+
+	// Allow passing a generator function for concurrent tests to avoid race conditions
+	if fn, ok := args.Get(0).(func(context.Context, string) *domain.Inventory); ok {
+		return fn(ctx, userID), args.Error(1)
+	}
+
 	return args.Get(0).(*domain.Inventory), args.Error(1)
 }
 
