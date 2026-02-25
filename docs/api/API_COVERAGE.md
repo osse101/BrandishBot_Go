@@ -308,6 +308,16 @@ public bool FeatureAction()
 
 ---
 
+## Related Documentation
+
+- [Server Routes](../../internal/server/server.go) - All API endpoints
+- [Discord Commands](../../internal/discord/) - Bot commands
+- [C# Client](../../client/csharp/BrandishBotClient.cs) - API client
+- [C# Wrapper](../../client/csharp/BrandishBotWrapper.cs) - Streamer.bot integration
+- [Client README](../../client/csharp/README.md) - C# usage guide
+
+---
+
 ## Maintenance
 
 **Update this document when:**
