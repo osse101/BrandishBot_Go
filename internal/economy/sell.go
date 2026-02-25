@@ -54,7 +54,7 @@ func (s *service) SellItem(ctx context.Context, platform, platformID, username, 
 	sellPrice := s.calculateSellPriceWithModifier(ctx, item.BaseValue)
 	moneyGained := actualSellQuantity * sellPrice
 
-	processSellTransaction(inventory, item.ID, moneyItem.ID, itemSlotIndex, actualSellQuantity, moneyGained)
+	processSellTransaction(inventory, moneyItem.ID, itemSlotIndex, actualSellQuantity, moneyGained)
 
 	// Save updated inventory
 	if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {

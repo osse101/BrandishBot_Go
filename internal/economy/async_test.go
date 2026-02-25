@@ -130,8 +130,6 @@ func TestBuyItem_ConcurrentAccess(t *testing.T) {
 	initialMoney := 1000000
 	baseInventory := createInventoryWithMoney(initialMoney)
 
-	// Mocks setup
-	// Note: In real scenarios, these would be called concurrently.
 	// We use mock.Anything for contexts as they might differ per request if generated or wrapped.
 	mockRepo.On("GetUserByPlatformID", mock.Anything, domain.PlatformTwitch, "").Return(user, nil)
 	mockRepo.On("GetItemByName", mock.Anything, domain.PublicNameLootbox).Return(item, nil)
@@ -153,9 +151,7 @@ func TestBuyItem_ConcurrentAccess(t *testing.T) {
 
 	mockTx.On("UpdateInventory", mock.Anything, user.ID, mock.Anything).Return(nil)
 	mockTx.On("Commit", mock.Anything).Return(nil)
-	// Rollback might be called by SafeRollback defer if commit logic is not detected by it?
 	// Usually SafeRollback checks if committed. If Commit succeeds, Rollback shouldn't be called.
-	// But let's allow it just in case logic differs.
 	mockTx.On("Rollback", mock.Anything).Return(nil).Maybe()
 
 	var wg sync.WaitGroup

@@ -284,9 +284,7 @@ func TestBuyItem_ContextCancellation(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel() // Cancel immediately
 
-		// Expect the first DB call to fail with context canceled
 		// We use mock.Anything for context because the exact context pointer might be tricky if wrappers were involved (though not here)
-		// but checking against the cancelled context is fine.
 		mockRepo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "").Return(nil, context.Canceled)
 
 		// ACT
@@ -320,7 +318,6 @@ func TestBuyItem_ContextCancellation(t *testing.T) {
 		mockRepo.On("BeginTx", ctx).Return(mockTx, nil)
 
 		// Simulate cancellation during GetInventory (called by getMoneyBalance)
-		// We setup expectation for GetInventory.
 		// Note: The service calls getMoneyBalance which calls tx.GetInventory(ctx, userID)
 		mockTx.On("GetInventory", ctx, user.ID).Run(func(args mock.Arguments) {
 			cancel() // Cancel the context to simulate a timeout or manual cancellation

@@ -25,7 +25,7 @@ func (s *service) useItemInternal(ctx context.Context, user *domain.User, platfo
 	}
 
 	var message string
-	var eventToPublish func() error
+	var eventToPublish func()
 
 	err = s.withTx(ctx, func(tx repository.UserTx) error {
 		inventory, err := tx.GetInventory(ctx, user.ID)
@@ -69,7 +69,7 @@ func (s *service) useItemInternal(ctx context.Context, user *domain.User, platfo
 			return domain.ErrFailedToUpdateInventory
 		}
 
-		eventToPublish = func() error {
+		eventToPublish = func() {
 			if s.publisher != nil {
 				s.publisher.PublishWithRetry(ctx, event.NewItemUsedEvent(
 					user.ID,
@@ -78,16 +78,13 @@ func (s *service) useItemInternal(ctx context.Context, user *domain.User, platfo
 					map[string]interface{}{"target": targetName},
 				))
 			}
-			return nil
 		}
 
 		return nil
 	})
 
 	if err == nil && eventToPublish != nil {
-		if pubErr := eventToPublish(); pubErr != nil {
-			log.Warn("Failed to publish item used event", "error", pubErr)
-		}
+		eventToPublish()
 	}
 
 	return message, err

@@ -33,7 +33,7 @@ func processBuyTransaction(inventory *domain.Inventory, itemID, moneySlotIndex, 
 }
 
 // processSellTransaction handles the inventory updates for selling an item
-func processSellTransaction(inventory *domain.Inventory, itemID, moneyItemID, itemSlotIndex, actualSellQuantity, moneyGained int) {
+func processSellTransaction(inventory *domain.Inventory, moneyItemID, itemSlotIndex, actualSellQuantity, moneyGained int) {
 	// Remove sold items
 	if inventory.Slots[itemSlotIndex].Quantity <= actualSellQuantity {
 		inventory.Slots = append(inventory.Slots[:itemSlotIndex], inventory.Slots[itemSlotIndex+1:]...)
