@@ -2977,6 +2977,12 @@ const docTemplate = `{
                 "internal_id": {
                     "type": "string"
                 },
+                "platform_usernames": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
                 "twitch_id": {
                     "type": "string"
                 },

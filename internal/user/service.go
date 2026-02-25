@@ -69,8 +69,15 @@ var _ ManagementService = (*service)(nil)
 var _ AccountLinkingService = (*service)(nil)
 var _ GameplayService = (*service)(nil)
 
-// setPlatformID sets the appropriate platform-specific ID field on a user
-func setPlatformID(user *domain.User, platform, platformID string) {
+// setPlatformInfo sets the appropriate platform-specific ID and username on a user
+func setPlatformInfo(user *domain.User, platform, platformID, platformUsername string) {
+	if user.PlatformUsernames == nil {
+		user.PlatformUsernames = make(map[string]string)
+	}
+	if platformUsername != "" {
+		user.PlatformUsernames[platform] = platformUsername
+	}
+
 	switch platform {
 	case domain.PlatformTwitch:
 		user.TwitchID = platformID

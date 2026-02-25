@@ -29,10 +29,11 @@ WHERE user_id = $2;
 SELECT platform_id FROM platforms WHERE name = $1;
 
 -- name: UpsertUserPlatformLink :exec
-INSERT INTO user_platform_links (user_id, platform_id, platform_user_id)
-VALUES ($1, $2, $3)
+INSERT INTO user_platform_links (user_id, platform_id, platform_user_id, platform_username)
+VALUES ($1, $2, $3, $4)
 ON CONFLICT (user_id, platform_id) DO UPDATE
-SET platform_user_id = EXCLUDED.platform_user_id;
+SET platform_user_id = EXCLUDED.platform_user_id, 
+    platform_username = COALESCE(EXCLUDED.platform_username, user_platform_links.platform_username);
 
 -- name: GetUserByPlatformID :one
 SELECT u.user_id, u.username
@@ -42,7 +43,7 @@ JOIN platforms p ON upl.platform_id = p.platform_id
 WHERE p.name = $1 AND upl.platform_user_id = $2;
 
 -- name: GetUserPlatformLinks :many
-SELECT p.name, upl.platform_user_id
+SELECT p.name, upl.platform_user_id, upl.platform_username
 FROM user_platform_links upl
 JOIN platforms p ON upl.platform_id = p.platform_id
 WHERE upl.user_id = $1;

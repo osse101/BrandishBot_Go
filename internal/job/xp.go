@@ -76,10 +76,6 @@ func (s *service) enrichMetadata(ctx context.Context, userID string, metadata *d
 		return
 	}
 
-	if metadata.Username == "" {
-		metadata.Username = user.Username
-	}
-
 	if metadata.Platform == "" {
 		// Fallback to first available platform
 		switch {
@@ -91,6 +87,18 @@ func (s *service) enrichMetadata(ctx context.Context, userID string, metadata *d
 			metadata.Platform = domain.PlatformYoutube
 		}
 	}
+
+	if metadata.Username == "" {
+		// Use platform-specific username if available, otherwise global username
+		if platformName := metadata.Platform; platformName != "" {
+			if pu, ok := user.PlatformUsernames[platformName]; ok && pu != "" {
+				metadata.Username = pu
+			}
+		}
+		if metadata.Username == "" {
+			metadata.Username = user.Username
+		}
+	}
 }
 
 func (s *service) AwardXPByPlatform(ctx context.Context, platform string, platformID string, jobKey string, baseAmount int, source string, metadata domain.JobXPMetadata) (*domain.XPAwardResult, error) {
@@ -100,7 +108,11 @@ func (s *service) AwardXPByPlatform(ctx context.Context, platform string, platfo
 	}
 
 	if metadata.Username == "" {
-		metadata.Username = user.Username
+		if pu, ok := user.PlatformUsernames[platform]; ok && pu != "" {
+			metadata.Username = pu
+		} else {
+			metadata.Username = user.Username
+		}
 	}
 	if metadata.Platform == "" {
 		metadata.Platform = platform

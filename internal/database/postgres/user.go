@@ -120,10 +120,19 @@ func (r *UserRepository) UpsertUser(ctx context.Context, user *domain.User) erro
 			return fmt.Errorf("failed to get platform id for %s: %w", platformName, err)
 		}
 
+		platformUsername := ""
+		if user.PlatformUsernames != nil {
+			platformUsername = user.PlatformUsernames[platformName]
+		}
+
 		err = q.UpsertUserPlatformLink(ctx, generated.UpsertUserPlatformLinkParams{
 			UserID:         userUUID,
 			PlatformID:     platformID,
 			PlatformUserID: externalID,
+			PlatformUsername: pgtype.Text{
+				String: platformUsername,
+				Valid:  platformUsername != "",
+			},
 		})
 		if err != nil {
 			return fmt.Errorf("failed to upsert link for %s: %w", platformName, err)

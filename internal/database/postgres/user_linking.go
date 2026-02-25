@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/osse101/BrandishBot_Go/internal/database/generated"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
@@ -24,10 +25,11 @@ func (r *UserRepository) GetUserByID(ctx context.Context, userID string) (*domai
 	}
 
 	user := domain.User{
-		ID:        row.UserID.String(),
-		Username:  row.Username,
-		CreatedAt: row.CreatedAt.Time,
-		UpdatedAt: row.UpdatedAt.Time,
+		ID:                row.UserID.String(),
+		Username:          row.Username,
+		PlatformUsernames: make(map[string]string),
+		CreatedAt:         row.CreatedAt.Time,
+		UpdatedAt:         row.UpdatedAt.Time,
 	}
 
 	links, err := r.q.GetUserPlatformLinks(ctx, row.UserID)
@@ -36,6 +38,9 @@ func (r *UserRepository) GetUserByID(ctx context.Context, userID string) (*domai
 	}
 
 	for _, link := range links {
+		if link.PlatformUsername.Valid {
+			user.PlatformUsernames[link.Name] = link.PlatformUsername.String
+		}
 		switch link.Name {
 		case "twitch":
 			user.TwitchID = link.PlatformUserID
@@ -71,7 +76,7 @@ func (r *UserRepository) UpdateUser(ctx context.Context, user domain.User) error
 	}
 
 	// Helper function to update platform link
-	updatePlatformLink := func(platformName, platformUserID string) error {
+	updatePlatformLink := func(platformName, platformUserID, platformUsername string) error {
 		if platformUserID == "" {
 			return q.DeleteUserPlatformLink(ctx, generated.DeleteUserPlatformLinkParams{
 				UserID: userUUID,
@@ -88,17 +93,21 @@ func (r *UserRepository) UpdateUser(ctx context.Context, user domain.User) error
 			UserID:         userUUID,
 			PlatformID:     platformID,
 			PlatformUserID: platformUserID,
+			PlatformUsername: pgtype.Text{
+				String: platformUsername,
+				Valid:  platformUsername != "",
+			},
 		})
 	}
 
 	// Update each platform
-	if err := updatePlatformLink("twitch", user.TwitchID); err != nil {
+	if err := updatePlatformLink("twitch", user.TwitchID, user.PlatformUsernames["twitch"]); err != nil {
 		return fmt.Errorf("failed to update twitch link: %w", err)
 	}
-	if err := updatePlatformLink("youtube", user.YoutubeID); err != nil {
+	if err := updatePlatformLink("youtube", user.YoutubeID, user.PlatformUsernames["youtube"]); err != nil {
 		return fmt.Errorf("failed to update youtube link: %w", err)
 	}
-	if err := updatePlatformLink("discord", user.DiscordID); err != nil {
+	if err := updatePlatformLink("discord", user.DiscordID, user.PlatformUsernames["discord"]); err != nil {
 		return fmt.Errorf("failed to update discord link: %w", err)
 	}
 
@@ -139,7 +148,7 @@ func (r *UserRepository) MergeUsersInTransaction(ctx context.Context, primaryUse
 	}
 
 	// 4. Update primary user's platform links with merged data
-	updatePlatformLink := func(platformName, platformUserID string) error {
+	updatePlatformLink := func(platformName, platformUserID, platformUsername string) error {
 		if platformUserID == "" {
 			return nil
 		}
@@ -151,16 +160,20 @@ func (r *UserRepository) MergeUsersInTransaction(ctx context.Context, primaryUse
 			UserID:         primUUID,
 			PlatformID:     platformID,
 			PlatformUserID: platformUserID,
+			PlatformUsername: pgtype.Text{
+				String: platformUsername,
+				Valid:  platformUsername != "",
+			},
 		})
 	}
 
-	if err := updatePlatformLink("twitch", mergedUser.TwitchID); err != nil {
+	if err := updatePlatformLink("twitch", mergedUser.TwitchID, mergedUser.PlatformUsernames["twitch"]); err != nil {
 		return fmt.Errorf("failed to update twitch link: %w", err)
 	}
-	if err := updatePlatformLink("youtube", mergedUser.YoutubeID); err != nil {
+	if err := updatePlatformLink("youtube", mergedUser.YoutubeID, mergedUser.PlatformUsernames["youtube"]); err != nil {
 		return fmt.Errorf("failed to update youtube link: %w", err)
 	}
-	if err := updatePlatformLink("discord", mergedUser.DiscordID); err != nil {
+	if err := updatePlatformLink("discord", mergedUser.DiscordID, mergedUser.PlatformUsernames["discord"]); err != nil {
 		return fmt.Errorf("failed to update discord link: %w", err)
 	}
 

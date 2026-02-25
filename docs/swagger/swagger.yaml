@@ -428,6 +428,10 @@ definitions:
         type: string
       internal_id:
         type: string
+      platform_usernames:
+        additionalProperties:
+          type: string
+        type: object
       twitch_id:
         type: string
       updated_at:

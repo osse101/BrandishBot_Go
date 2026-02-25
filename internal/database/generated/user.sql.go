@@ -754,15 +754,16 @@ func (q *Queries) GetUserByPlatformUsername(ctx context.Context, arg GetUserByPl
 }
 
 const getUserPlatformLinks = `-- name: GetUserPlatformLinks :many
-SELECT p.name, upl.platform_user_id
+SELECT p.name, upl.platform_user_id, upl.platform_username
 FROM user_platform_links upl
 JOIN platforms p ON upl.platform_id = p.platform_id
 WHERE upl.user_id = $1
 `
 
 type GetUserPlatformLinksRow struct {
-	Name           string `json:"name"`
-	PlatformUserID string `json:"platform_user_id"`
+	Name             string      `json:"name"`
+	PlatformUserID   string      `json:"platform_user_id"`
+	PlatformUsername pgtype.Text `json:"platform_username"`
 }
 
 func (q *Queries) GetUserPlatformLinks(ctx context.Context, userID uuid.UUID) ([]GetUserPlatformLinksRow, error) {
@@ -774,7 +775,7 @@ func (q *Queries) GetUserPlatformLinks(ctx context.Context, userID uuid.UUID) ([
 	var items []GetUserPlatformLinksRow
 	for rows.Next() {
 		var i GetUserPlatformLinksRow
-		if err := rows.Scan(&i.Name, &i.PlatformUserID); err != nil {
+		if err := rows.Scan(&i.Name, &i.PlatformUserID, &i.PlatformUsername); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -895,19 +896,26 @@ func (q *Queries) UpdateUserTimestamp(ctx context.Context, userID uuid.UUID) err
 }
 
 const upsertUserPlatformLink = `-- name: UpsertUserPlatformLink :exec
-INSERT INTO user_platform_links (user_id, platform_id, platform_user_id)
-VALUES ($1, $2, $3)
+INSERT INTO user_platform_links (user_id, platform_id, platform_user_id, platform_username)
+VALUES ($1, $2, $3, $4)
 ON CONFLICT (user_id, platform_id) DO UPDATE
-SET platform_user_id = EXCLUDED.platform_user_id
+SET platform_user_id = EXCLUDED.platform_user_id, 
+    platform_username = COALESCE(EXCLUDED.platform_username, user_platform_links.platform_username)
 `
 
 type UpsertUserPlatformLinkParams struct {
-	UserID         uuid.UUID `json:"user_id"`
-	PlatformID     int32     `json:"platform_id"`
-	PlatformUserID string    `json:"platform_user_id"`
+	UserID           uuid.UUID   `json:"user_id"`
+	PlatformID       int32       `json:"platform_id"`
+	PlatformUserID   string      `json:"platform_user_id"`
+	PlatformUsername pgtype.Text `json:"platform_username"`
 }
 
 func (q *Queries) UpsertUserPlatformLink(ctx context.Context, arg UpsertUserPlatformLinkParams) error {
-	_, err := q.db.Exec(ctx, upsertUserPlatformLink, arg.UserID, arg.PlatformID, arg.PlatformUserID)
+	_, err := q.db.Exec(ctx, upsertUserPlatformLink,
+		arg.UserID,
+		arg.PlatformID,
+		arg.PlatformUserID,
+		arg.PlatformUsername,
+	)
 	return err
 }

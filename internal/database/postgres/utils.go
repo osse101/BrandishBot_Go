@@ -120,8 +120,9 @@ func textToPtr(t pgtype.Text) *string {
 // mapUserAndLinks maps database rows to a User domain object
 func mapUserAndLinks(ctx context.Context, q *generated.Queries, userID uuid.UUID, username string) (*domain.User, error) {
 	user := domain.User{
-		ID:       userID.String(),
-		Username: username,
+		ID:                userID.String(),
+		Username:          username,
+		PlatformUsernames: make(map[string]string),
 	}
 
 	links, err := q.GetUserPlatformLinks(ctx, userID)
@@ -130,6 +131,9 @@ func mapUserAndLinks(ctx context.Context, q *generated.Queries, userID uuid.UUID
 	}
 
 	for _, link := range links {
+		if link.PlatformUsername.Valid {
+			user.PlatformUsernames[link.Name] = link.PlatformUsername.String
+		}
 		switch link.Name {
 		case "twitch":
 			user.TwitchID = link.PlatformUserID
