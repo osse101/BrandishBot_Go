@@ -49,9 +49,9 @@ This document is the **single source of truth** for keeping these three systems 
 
 ### Info (`/api/v1/info`)
 
-| API Endpoint      | Discord | C# Client | C# Wrapper | Notes           |
-| ----------------- | ------- | --------- | ---------- | --------------- |
-| `GET /info` 🎯    | `/info` | ✅        | ✅         | System info     |
+| API Endpoint   | Discord | C# Client | C# Wrapper | Notes       |
+| -------------- | ------- | --------- | ---------- | ----------- |
+| `GET /info` 🎯 | `/info` | ✅        | ✅         | System info |
 
 ### User Management (`/api/v1/user`)
 
@@ -66,18 +66,18 @@ This document is the **single source of truth** for keeping these three systems 
 
 ### Items (`/api/v1/user/item`)
 
-| API Endpoint                    | Discord              | C# Client | C# Wrapper | Notes          |
-| ------------------------------- | -------------------- | --------- | ---------- | -------------- |
-| `POST /item/add`                | —                    | ✅        | ❌         | Admin          |
-| `POST /item/add-by-username`    | `/admin-add-item` 🔒 | ✅        | ✅         | Admin          |
-| `POST /item/remove`             | —                    | ✅        | ❌         | Admin          |
-| `POST /item/remove-by-username` | `/admin-remove-item` 🔒| ✅      | ✅         | Admin          |
-| `POST /item/give`               | `/give`              | ✅        | ✅         | Transfer items |
-| `POST /item/sell`               | `/sell`              | ✅        | ✅         | Sell items     |
-| `POST /item/buy`                | `/buy`               | ✅        | ✅         | Buy from shop  |
-| `POST /item/use`                | `/use`               | ✅        | ✅         | Use consumable |
-| `POST /item/upgrade`            | `/upgrade`           | ✅        | ✅         | Craft upgrade  |
-| `POST /item/disassemble`        | `/disassemble`       | ✅        | ✅         | Break down     |
+| API Endpoint                    | Discord                 | C# Client | C# Wrapper | Notes          |
+| ------------------------------- | ----------------------- | --------- | ---------- | -------------- |
+| `POST /item/add`                | —                       | ✅        | ❌         | Admin          |
+| `POST /item/add-by-username`    | `/admin-add-item` 🔒    | ✅        | ✅         | Admin          |
+| `POST /item/remove`             | —                       | ✅        | ❌         | Admin          |
+| `POST /item/remove-by-username` | `/admin-remove-item` 🔒 | ✅        | ✅         | Admin          |
+| `POST /item/give`               | `/give`                 | ✅        | ✅         | Transfer items |
+| `POST /item/sell`               | `/sell`                 | ✅        | ✅         | Sell items     |
+| `POST /item/buy`                | `/buy`                  | ✅        | ✅         | Buy from shop  |
+| `POST /item/use`                | `/use`                  | ✅        | ✅         | Use consumable |
+| `POST /item/upgrade`            | `/upgrade`              | ✅        | ✅         | Craft upgrade  |
+| `POST /item/disassemble`        | `/disassemble`          | ✅        | ✅         | Break down     |
 
 ### Economy & Crafting
 
@@ -99,23 +99,23 @@ This document is the **single source of truth** for keeping these three systems 
 
 ### Expeditions (`/api/v1/expedition`)
 
-| API Endpoint           | Discord              | C# Client | C# Wrapper | Notes             |
-| ---------------------- | -------------------- | --------- | ---------- | ----------------- |
-| `POST /expedition/start` | `/explore`         | ✅        | ✅         | Start expedition  |
-| `POST /expedition/join`  | `/explore`         | ✅        | ✅         | Join expedition   |
-| `GET /expedition/get`    | —                  | ✅        | ✅         | Get details       |
-| `GET /expedition/active` | —                  | ✅        | ✅         | Get active        |
-| `GET /expedition/journal`| `/expedition-journal`| ✅      | ✅         | Get journal       |
-| `GET /expedition/status` | —                  | ✅        | ✅         | System status     |
+| API Endpoint              | Discord               | C# Client | C# Wrapper | Notes            |
+| ------------------------- | --------------------- | --------- | ---------- | ---------------- |
+| `POST /expedition/start`  | `/explore`            | ✅        | ✅         | Start expedition |
+| `POST /expedition/join`   | `/explore`            | ✅        | ✅         | Join expedition  |
+| `GET /expedition/get`     | —                     | ✅        | ✅         | Get details      |
+| `GET /expedition/active`  | —                     | ✅        | ✅         | Get active       |
+| `GET /expedition/journal` | `/expedition-journal` | ✅        | ✅         | Get journal      |
+| `GET /expedition/status`  | —                     | ✅        | ✅         | System status    |
 
 ### Farming (`/api/v1/harvest`, `/api/v1/compost`)
 
-| API Endpoint             | Discord             | C# Client | C# Wrapper | Notes             |
-| ------------------------ | ------------------- | --------- | ---------- | ----------------- |
-| `POST /harvest`          | `/harvest`          | ✅        | ✅         | Harvest crops     |
-| `POST /compost/deposit`  | `/compost-deposit`  | ✅        | ✅         | Add to compost    |
-| `POST /compost/harvest`  | `/compost-harvest`  | ✅        | ✅         | Harvest compost   |
-| `GET /compost/status`    | `/compost-status`   | ✅        | ✅         | Compost status    |
+| API Endpoint            | Discord            | C# Client | C# Wrapper | Notes           |
+| ----------------------- | ------------------ | --------- | ---------- | --------------- |
+| `POST /harvest`         | `/harvest`         | ✅        | ✅         | Harvest crops   |
+| `POST /compost/deposit` | `/compost-deposit` | ✅        | ✅         | Add to compost  |
+| `POST /compost/harvest` | `/compost-harvest` | ✅        | ✅         | Harvest compost |
+| `GET /compost/status`   | `/compost-status`  | ✅        | ✅         | Compost status  |
 
 ### Stats (`/api/v1/stats`)
 
@@ -137,40 +137,40 @@ This document is the **single source of truth** for keeping these three systems 
 
 ### Quests (`/api/v1/quests`)
 
-| API Endpoint             | Discord             | C# Client | C# Wrapper | Notes             |
-| ------------------------ | ------------------- | --------- | ---------- | ----------------- |
-| `GET /quests/active`     | `/quests`           | ✅        | ✅         | Active quests     |
-| `GET /quests/progress`   | `/quests`           | ✅        | ✅         | User progress     |
-| `POST /quests/claim`     | `/claimquest`       | ✅        | ✅         | Claim reward      |
+| API Endpoint           | Discord       | C# Client | C# Wrapper | Notes         |
+| ---------------------- | ------------- | --------- | ---------- | ------------- |
+| `GET /quests/active`   | `/quests`     | ✅        | ✅         | Active quests |
+| `GET /quests/progress` | `/quests`     | ✅        | ✅         | User progress |
+| `POST /quests/claim`   | `/claimquest` | ✅        | ✅         | Claim reward  |
 
 ### Progression (`/api/v1/progression`)
 
-| API Endpoint                       | Discord            | C# Client | C# Wrapper | Notes          |
-| ---------------------------------- | ------------------ | --------- | ---------- | -------------- |
-| `GET /progression/tree`            | —                  | ✅        | ✅         | Full tree      |
-| `GET /progression/available`       | —                  | ✅        | ✅         | Unlockable     |
-| `POST /progression/vote`           | `/vote`            | ✅        | ✅         | Vote for node  |
-| `GET /progression/status`          | —                  | ✅        | ✅         | Global status  |
-| `GET /progression/engagement`      | `/engagement`      | ✅        | ✅         | Contributions  |
-| `GET /progression/engagement-by-username`| —            | ✅        | ✅         | Lookup contrib |
-| `GET /progression/leaderboard`     | —                  | ✅        | ✅         | Rankings       |
-| `GET /progression/session`         | `/voting-session`  | ✅        | ✅         | Voting session |
-| `GET /progression/unlock-progress` | `/unlock-progress` | ✅        | ✅         | Progress       |
-| `GET /progression/estimate/{nodeKey}`| —                | ✅        | ✅         | Cost estimate  |
+| API Endpoint                              | Discord            | C# Client | C# Wrapper | Notes          |
+| ----------------------------------------- | ------------------ | --------- | ---------- | -------------- |
+| `GET /progression/tree`                   | —                  | ✅        | ✅         | Full tree      |
+| `GET /progression/available`              | —                  | ✅        | ✅         | Unlockable     |
+| `POST /progression/vote`                  | `/vote`            | ✅        | ✅         | Vote for node  |
+| `GET /progression/status`                 | —                  | ✅        | ✅         | Global status  |
+| `GET /progression/engagement`             | `/engagement`      | ✅        | ✅         | Contributions  |
+| `GET /progression/engagement-by-username` | —                  | ✅        | ✅         | Lookup contrib |
+| `GET /progression/leaderboard`            | —                  | ✅        | ✅         | Rankings       |
+| `GET /progression/session`                | `/voting-session`  | ✅        | ✅         | Voting session |
+| `GET /progression/unlock-progress`        | `/unlock-progress` | ✅        | ✅         | Progress       |
+| `GET /progression/estimate/{nodeKey}`     | —                  | ✅        | ✅         | Cost estimate  |
 
 ### Progression Admin (`/api/v1/progression/admin`) 🔒
 
-| API Endpoint                 | Discord                  | C# Client | C# Wrapper | Notes          |
-| ---------------------------- | ------------------------ | --------- | ---------- | -------------- |
-| `POST /admin/unlock`         | `/admin-unlock`          | ✅        | ✅         | Force unlock   |
-| `POST /admin/unlock-all`     | —                        | ✅        | ✅         | Unlock all     |
-| `POST /admin/relock`         | `/admin-relock`          | ✅        | ✅         | Force relock   |
-| `POST /admin/instant-unlock` | `/admin-instant-resolve` | ✅        | ✅         | Instant unlock |
-| `POST /admin/start-voting`   | `/admin-start-voting`    | ✅        | ✅         | Start voting   |
-| `POST /admin/end-voting`     | `/admin-end-voting`      | ✅        | ✅         | End voting     |
-| `POST /admin/force-end-voting`| —                       | ✅        | ✅         | Force end      |
-| `POST /admin/reset`          | `/admin-reset-tree`      | ✅        | ✅         | Reset tree     |
-| `POST /admin/contribution`   | `/admin-contribution`    | ✅        | ✅         | Add points     |
+| API Endpoint                   | Discord                  | C# Client | C# Wrapper | Notes          |
+| ------------------------------ | ------------------------ | --------- | ---------- | -------------- |
+| `POST /admin/unlock`           | `/admin-unlock`          | ✅        | ✅         | Force unlock   |
+| `POST /admin/unlock-all`       | —                        | ✅        | ✅         | Unlock all     |
+| `POST /admin/relock`           | `/admin-relock`          | ✅        | ✅         | Force relock   |
+| `POST /admin/instant-unlock`   | `/admin-instant-resolve` | ✅        | ✅         | Instant unlock |
+| `POST /admin/start-voting`     | `/admin-start-voting`    | ✅        | ✅         | Start voting   |
+| `POST /admin/end-voting`       | `/admin-end-voting`      | ✅        | ✅         | End voting     |
+| `POST /admin/force-end-voting` | —                        | ✅        | ✅         | Force end      |
+| `POST /admin/reset`            | `/admin-reset-tree`      | ✅        | ✅         | Reset tree     |
+| `POST /admin/contribution`     | `/admin-contribution`    | ✅        | ✅         | Add points     |
 
 ### Account Linking (`/api/v1/link`)
 
@@ -184,22 +184,22 @@ This document is the **single source of truth** for keeping these three systems 
 
 ### Prediction (`/api/v1/prediction`)
 
-| API Endpoint             | Discord             | C# Client | C# Wrapper | Notes             |
-| ------------------------ | ------------------- | --------- | ---------- | ----------------- |
-| `POST /prediction`       | —                   | ✅        | ✅         | Process outcome   |
+| API Endpoint       | Discord | C# Client | C# Wrapper | Notes           |
+| ------------------ | ------- | --------- | ---------- | --------------- |
+| `POST /prediction` | —       | ✅        | ✅         | Process outcome |
 
 ### Subscriptions (`/api/v1/subscriptions`)
 
-| API Endpoint                 | Discord | C# Client | C# Wrapper | Notes               |
-| ---------------------------- | ------- | --------- | ---------- | ------------------- |
-| `POST /subscriptions/event`  | —       | ✅        | ❌         | Webhook handler     |
-| `GET /subscriptions/user`    | —       | ✅        | ❌         | User subscription   |
+| API Endpoint                | Discord | C# Client | C# Wrapper | Notes             |
+| --------------------------- | ------- | --------- | ---------- | ----------------- |
+| `POST /subscriptions/event` | —       | ✅        | ❌         | Webhook handler   |
+| `GET /subscriptions/user`   | —       | ✅        | ❌         | User subscription |
 
 ### Events (`/api/v1/events`)
 
-| API Endpoint      | Discord | C# Client | C# Wrapper | Notes           |
-| ----------------- | ------- | --------- | ---------- | --------------- |
-| `GET /events`     | —       | ✅        | ❌         | SSE Stream      |
+| API Endpoint  | Discord | C# Client | C# Wrapper | Notes      |
+| ------------- | ------- | --------- | ---------- | ---------- |
+| `GET /events` | —       | ✅        | ❌         | SSE Stream |
 
 ### Admin Utilities (`/api/v1/admin`) 🔒
 
