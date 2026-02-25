@@ -6,7 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"strings"
+	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -18,12 +18,10 @@ import (
 )
 
 func TestHandleAddItem(t *testing.T) {
-	// Initialize validator
-	InitValidator()
-
 	tests := []struct {
 		name           string
 		requestBody    interface{}
+		rawBody        string // For sending raw/invalid JSON
 		setupMock      func(*mocks.MockUserService)
 		expectedStatus int
 		expectedBody   string
@@ -50,7 +48,7 @@ func TestHandleAddItem(t *testing.T) {
 			},
 			setupMock:      func(m *mocks.MockUserService) {},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Invalid request",
+			expectedBody:   ErrMsgInvalidRequestSummary,
 		},
 		{
 			name: "Service Error",
@@ -76,7 +74,7 @@ func TestHandleAddItem(t *testing.T) {
 			},
 			setupMock:      func(m *mocks.MockUserService) {},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Invalid request",
+			expectedBody:   ErrMsgInvalidRequestSummary,
 		},
 		{
 			name: "Negative Quantity",
@@ -88,7 +86,7 @@ func TestHandleAddItem(t *testing.T) {
 			},
 			setupMock:      func(m *mocks.MockUserService) {},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Invalid request",
+			expectedBody:   ErrMsgInvalidRequestSummary,
 		},
 		{
 			name: "Empty Item Name",
@@ -100,7 +98,14 @@ func TestHandleAddItem(t *testing.T) {
 			},
 			setupMock:      func(m *mocks.MockUserService) {},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Invalid request",
+			expectedBody:   ErrMsgInvalidRequestSummary,
+		},
+		{
+			name:           "Malformed JSON",
+			rawBody:        `{invalid-json`,
+			setupMock:      func(m *mocks.MockUserService) {},
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   ErrMsgInvalidRequest,
 		},
 	}
 
@@ -111,7 +116,12 @@ func TestHandleAddItem(t *testing.T) {
 
 			handler := HandleAddItemByUsername(mockSvc)
 
-			body, _ := json.Marshal(tt.requestBody)
+			var body []byte
+			if tt.rawBody != "" {
+				body = []byte(tt.rawBody)
+			} else {
+				body, _ = json.Marshal(tt.requestBody)
+			}
 			req := httptest.NewRequest("POST", "/user/item/add-by-username", bytes.NewBuffer(body))
 			w := httptest.NewRecorder()
 
@@ -127,11 +137,10 @@ func TestHandleAddItem(t *testing.T) {
 }
 
 func TestHandleRemoveItem(t *testing.T) {
-	InitValidator()
-
 	tests := []struct {
 		name           string
 		requestBody    interface{}
+		rawBody        string // For sending raw/invalid JSON
 		setupMock      func(*mocks.MockUserService)
 		expectedStatus int
 		expectedBody   string
@@ -174,7 +183,7 @@ func TestHandleRemoveItem(t *testing.T) {
 			},
 			setupMock:      func(m *mocks.MockUserService) {},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Invalid request",
+			expectedBody:   ErrMsgInvalidRequestSummary,
 		},
 		{
 			name: "Negative Quantity",
@@ -186,7 +195,14 @@ func TestHandleRemoveItem(t *testing.T) {
 			},
 			setupMock:      func(m *mocks.MockUserService) {},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Invalid request",
+			expectedBody:   ErrMsgInvalidRequestSummary,
+		},
+		{
+			name:           "Malformed JSON",
+			rawBody:        `{invalid-json`,
+			setupMock:      func(m *mocks.MockUserService) {},
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   ErrMsgInvalidRequest,
 		},
 	}
 
@@ -197,7 +213,12 @@ func TestHandleRemoveItem(t *testing.T) {
 
 			handler := HandleRemoveItemByUsername(mockSvc)
 
-			body, _ := json.Marshal(tt.requestBody)
+			var body []byte
+			if tt.rawBody != "" {
+				body = []byte(tt.rawBody)
+			} else {
+				body, _ = json.Marshal(tt.requestBody)
+			}
 			req := httptest.NewRequest("POST", "/user/item/remove-by-username", bytes.NewBuffer(body))
 			w := httptest.NewRecorder()
 
@@ -213,17 +234,16 @@ func TestHandleRemoveItem(t *testing.T) {
 }
 
 func TestHandleGetInventory(t *testing.T) {
-	InitValidator()
-
 	tests := []struct {
-		name           string
-		username       string
-		platform       string
-		platformID     string
-		filter         string
-		setupMock      func(*mocks.MockUserService, *mocks.MockProgressionService)
-		expectedStatus int
-		expectedBody   string
+		name             string
+		username         string
+		platform         string
+		platformID       string
+		filter           string
+		setupMock        func(*mocks.MockUserService, *mocks.MockProgressionService)
+		expectedStatus   int
+		expectedResponse *GetInventoryResponse
+		expectedError    string
 	}{
 		{
 			name:       "Success",
@@ -238,7 +258,11 @@ func TestHandleGetInventory(t *testing.T) {
 				m.On("GetInventory", mock.Anything, domain.PlatformDiscord, "test-platformid", "testuser", "").Return(items, nil)
 			},
 			expectedStatus: http.StatusOK,
-			expectedBody:   `"items":[{"item_name":"weapon_blaster","public_name":"missile","quantity":1,"quality_level":"COMMON"}]`,
+			expectedResponse: &GetInventoryResponse{
+				Items: []user.InventoryItem{
+					{InternalName: domain.ItemBlaster, PublicName: "missile", Quantity: 1, QualityLevel: "COMMON"},
+				},
+			},
 		},
 		{
 			name:       "Success with Filter",
@@ -254,7 +278,11 @@ func TestHandleGetInventory(t *testing.T) {
 				m.On("GetInventory", mock.Anything, domain.PlatformDiscord, "test-platformid", "testuser", domain.FilterTypeUpgrade).Return(items, nil)
 			},
 			expectedStatus: http.StatusOK,
-			expectedBody:   `"items":[{"item_name":"lootbox_tier0","public_name":"junkbox","quantity":1,"quality_level":"COMMON"}]`,
+			expectedResponse: &GetInventoryResponse{
+				Items: []user.InventoryItem{
+					{InternalName: domain.ItemLootbox0, PublicName: "junkbox", Quantity: 1, QualityLevel: "COMMON"},
+				},
+			},
 		},
 		{
 			name:       "Filter Locked",
@@ -266,7 +294,7 @@ func TestHandleGetInventory(t *testing.T) {
 				p.On("IsFeatureUnlocked", mock.Anything, "feature_filter_upgrade").Return(false, nil)
 			},
 			expectedStatus: http.StatusForbidden,
-			expectedBody:   "Filter 'upgrade' is locked",
+			expectedError:  "Filter 'upgrade' is locked",
 		},
 		{
 			name:           "Missing Platform",
@@ -276,7 +304,7 @@ func TestHandleGetInventory(t *testing.T) {
 			filter:         "",
 			setupMock:      func(m *mocks.MockUserService, p *mocks.MockProgressionService) {},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Missing platform query parameter",
+			expectedError:  "Missing platform query parameter",
 		},
 		{
 			name:           "Missing PlatformID",
@@ -286,7 +314,7 @@ func TestHandleGetInventory(t *testing.T) {
 			filter:         "",
 			setupMock:      func(m *mocks.MockUserService, p *mocks.MockProgressionService) {},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Missing platform_id query parameter",
+			expectedError:  "Missing platform_id query parameter",
 		},
 		{
 			name:           "Missing Username",
@@ -296,7 +324,7 @@ func TestHandleGetInventory(t *testing.T) {
 			filter:         "",
 			setupMock:      func(m *mocks.MockUserService, p *mocks.MockProgressionService) {},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Missing username query parameter",
+			expectedError:  "Missing username query parameter",
 		},
 		{
 			name:       "Service Error",
@@ -308,7 +336,7 @@ func TestHandleGetInventory(t *testing.T) {
 				m.On("GetInventory", mock.Anything, domain.PlatformDiscord, "test-platformid", "testuser", "").Return(nil, errors.New(ErrMsgGenericServerError))
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   ErrMsgGenericServerError,
+			expectedError:  ErrMsgGenericServerError,
 		},
 		{
 			name:       "Sellable Filter - Unlocked",
@@ -324,7 +352,11 @@ func TestHandleGetInventory(t *testing.T) {
 				m.On("GetInventory", mock.Anything, domain.PlatformDiscord, "test-platformid", "testuser", domain.FilterTypeSellable).Return(items, nil)
 			},
 			expectedStatus: http.StatusOK,
-			expectedBody:   `"items":[{"item_name":"lootbox_tier1","public_name":"lootbox","quantity":5,"quality_level":"COMMON"}]`,
+			expectedResponse: &GetInventoryResponse{
+				Items: []user.InventoryItem{
+					{InternalName: domain.ItemLootbox1, PublicName: "lootbox", Quantity: 5, QualityLevel: "COMMON"},
+				},
+			},
 		},
 		{
 			name:       "Sellable Filter - Locked",
@@ -336,7 +368,7 @@ func TestHandleGetInventory(t *testing.T) {
 				p.On("IsFeatureUnlocked", mock.Anything, "feature_filter_sellable").Return(false, nil)
 			},
 			expectedStatus: http.StatusForbidden,
-			expectedBody:   "Filter 'sellable' is locked",
+			expectedError:  "Filter 'sellable' is locked",
 		},
 		{
 			name:       "Consumable Filter - Unlocked",
@@ -352,7 +384,11 @@ func TestHandleGetInventory(t *testing.T) {
 				m.On("GetInventory", mock.Anything, domain.PlatformDiscord, "test-platformid", "testuser", domain.FilterTypeConsumable).Return(items, nil)
 			},
 			expectedStatus: http.StatusOK,
-			expectedBody:   `"items":[{"item_name":"lootbox_tier0","public_name":"junkbox","quantity":3,"quality_level":"COMMON"}]`,
+			expectedResponse: &GetInventoryResponse{
+				Items: []user.InventoryItem{
+					{InternalName: domain.ItemLootbox0, PublicName: "junkbox", Quantity: 3, QualityLevel: "COMMON"},
+				},
+			},
 		},
 		{
 			name:       "Consumable Filter - Locked",
@@ -364,7 +400,7 @@ func TestHandleGetInventory(t *testing.T) {
 				p.On("IsFeatureUnlocked", mock.Anything, "feature_filter_consumable").Return(false, nil)
 			},
 			expectedStatus: http.StatusForbidden,
-			expectedBody:   "Filter 'consumable' is locked",
+			expectedError:  "Filter 'consumable' is locked",
 		},
 		{
 			name:       "Unknown Filter - Invalid",
@@ -376,7 +412,7 @@ func TestHandleGetInventory(t *testing.T) {
 				// No expectations - validation happens before service call
 			},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Invalid filter type 'unknown'",
+			expectedError:  "Invalid filter type 'unknown'",
 		},
 		{
 			name:       "Filter Check Error",
@@ -388,7 +424,7 @@ func TestHandleGetInventory(t *testing.T) {
 				p.On("IsFeatureUnlocked", mock.Anything, "feature_filter_upgrade").Return(false, domain.ErrDatabaseError)
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   ErrMsgGenericServerError,
+			expectedError:  ErrMsgGenericServerError,
 		},
 	}
 
@@ -401,29 +437,36 @@ func TestHandleGetInventory(t *testing.T) {
 			handler := HandleGetInventory(mockUser, mockProg)
 
 			// Build URL with query parameters
-			params := []string{}
+			u, _ := url.Parse("/user/inventory")
+			q := u.Query()
 			if tt.platform != "" {
-				params = append(params, "platform="+tt.platform)
+				q.Set("platform", tt.platform)
 			}
 			if tt.platformID != "" {
-				params = append(params, "platform_id="+tt.platformID)
+				q.Set("platform_id", tt.platformID)
 			}
 			if tt.username != "" {
-				params = append(params, "username="+tt.username)
+				q.Set("username", tt.username)
 			}
 			if tt.filter != "" {
-				params = append(params, "filter="+tt.filter)
+				q.Set("filter", tt.filter)
 			}
-			url := "/user/inventory"
-			if len(params) > 0 {
-				url += "?" + strings.Join(params, "&")
-			}
-			req := httptest.NewRequest("GET", url, nil)
+			u.RawQuery = q.Encode()
+
+			req := httptest.NewRequest("GET", u.String(), nil)
 			w := httptest.NewRecorder()
 
 			handler.ServeHTTP(w, req)
-			if tt.expectedBody != "" {
-				assert.Contains(t, w.Body.String(), tt.expectedBody)
+			assert.Equal(t, tt.expectedStatus, w.Code)
+
+			if tt.expectedResponse != nil {
+				var resp GetInventoryResponse
+				err := json.Unmarshal(w.Body.Bytes(), &resp)
+				assert.NoError(t, err)
+				assert.Equal(t, tt.expectedResponse, &resp)
+			}
+			if tt.expectedError != "" {
+				assert.Contains(t, w.Body.String(), tt.expectedError)
 			}
 			mockUser.AssertExpectations(t)
 			mockProg.AssertExpectations(t)
@@ -432,16 +475,15 @@ func TestHandleGetInventory(t *testing.T) {
 }
 
 func TestHandleGetInventoryByUsername(t *testing.T) {
-	InitValidator()
-
 	tests := []struct {
-		name           string
-		username       string
-		platform       string
-		filter         string
-		setupMock      func(*mocks.MockUserService, *mocks.MockProgressionService)
-		expectedStatus int
-		expectedBody   string
+		name             string
+		username         string
+		platform         string
+		filter           string
+		setupMock        func(*mocks.MockUserService, *mocks.MockProgressionService)
+		expectedStatus   int
+		expectedResponse *GetInventoryResponse
+		expectedError    string
 	}{
 		{
 			name:     "Success",
@@ -455,7 +497,11 @@ func TestHandleGetInventoryByUsername(t *testing.T) {
 				m.On("GetInventoryByUsername", mock.Anything, domain.PlatformDiscord, "testuser", "").Return(items, nil)
 			},
 			expectedStatus: http.StatusOK,
-			expectedBody:   `"items":[{"item_name":"weapon_blaster","public_name":"missile","quantity":1,"quality_level":"COMMON"}]`,
+			expectedResponse: &GetInventoryResponse{
+				Items: []user.InventoryItem{
+					{InternalName: domain.ItemBlaster, PublicName: "missile", Quantity: 1, QualityLevel: "COMMON"},
+				},
+			},
 		},
 		{
 			name:     "Success with Filter",
@@ -470,7 +516,11 @@ func TestHandleGetInventoryByUsername(t *testing.T) {
 				m.On("GetInventoryByUsername", mock.Anything, domain.PlatformDiscord, "testuser", domain.FilterTypeUpgrade).Return(items, nil)
 			},
 			expectedStatus: http.StatusOK,
-			expectedBody:   `"items":[{"item_name":"lootbox_tier0","public_name":"junkbox","quantity":1,"quality_level":"COMMON"}]`,
+			expectedResponse: &GetInventoryResponse{
+				Items: []user.InventoryItem{
+					{InternalName: domain.ItemLootbox0, PublicName: "junkbox", Quantity: 1, QualityLevel: "COMMON"},
+				},
+			},
 		},
 		{
 			name:     "Locked Filter",
@@ -481,7 +531,7 @@ func TestHandleGetInventoryByUsername(t *testing.T) {
 				p.On("IsFeatureUnlocked", mock.Anything, "feature_filter_upgrade").Return(false, nil)
 			},
 			expectedStatus: http.StatusForbidden,
-			expectedBody:   "Filter 'upgrade' is locked",
+			expectedError:  "Filter 'upgrade' is locked",
 		},
 		{
 			name:     "Invalid Filter",
@@ -492,7 +542,7 @@ func TestHandleGetInventoryByUsername(t *testing.T) {
 				// No interactions expected
 			},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Invalid filter type",
+			expectedError:  "Invalid filter type",
 		},
 		{
 			name:           "Missing Username",
@@ -501,7 +551,7 @@ func TestHandleGetInventoryByUsername(t *testing.T) {
 			filter:         "",
 			setupMock:      func(m *mocks.MockUserService, p *mocks.MockProgressionService) {},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Missing username query parameter",
+			expectedError:  "Missing username query parameter",
 		},
 		{
 			name:     "Service Error",
@@ -512,7 +562,7 @@ func TestHandleGetInventoryByUsername(t *testing.T) {
 				m.On("GetInventoryByUsername", mock.Anything, domain.PlatformDiscord, "testuser", "").Return(nil, errors.New(ErrMsgGenericServerError))
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   ErrMsgGenericServerError,
+			expectedError:  ErrMsgGenericServerError,
 		},
 	}
 
@@ -525,26 +575,33 @@ func TestHandleGetInventoryByUsername(t *testing.T) {
 			handler := HandleGetInventoryByUsername(mockUser, mockProg)
 
 			// Build URL with query parameters
-			params := []string{}
+			u, _ := url.Parse("/user/inventory-by-username")
+			q := u.Query()
 			if tt.platform != "" {
-				params = append(params, "platform="+tt.platform)
+				q.Set("platform", tt.platform)
 			}
 			if tt.username != "" {
-				params = append(params, "username="+tt.username)
+				q.Set("username", tt.username)
 			}
 			if tt.filter != "" {
-				params = append(params, "filter="+tt.filter)
+				q.Set("filter", tt.filter)
 			}
-			url := "/user/inventory-by-username"
-			if len(params) > 0 {
-				url += "?" + strings.Join(params, "&")
-			}
-			req := httptest.NewRequest("GET", url, nil)
+			u.RawQuery = q.Encode()
+
+			req := httptest.NewRequest("GET", u.String(), nil)
 			w := httptest.NewRecorder()
 
 			handler.ServeHTTP(w, req)
-			if tt.expectedBody != "" {
-				assert.Contains(t, w.Body.String(), tt.expectedBody)
+			assert.Equal(t, tt.expectedStatus, w.Code)
+
+			if tt.expectedResponse != nil {
+				var resp GetInventoryResponse
+				err := json.Unmarshal(w.Body.Bytes(), &resp)
+				assert.NoError(t, err)
+				assert.Equal(t, tt.expectedResponse, &resp)
+			}
+			if tt.expectedError != "" {
+				assert.Contains(t, w.Body.String(), tt.expectedError)
 			}
 			mockUser.AssertExpectations(t)
 			mockProg.AssertExpectations(t)
