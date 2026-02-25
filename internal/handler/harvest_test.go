@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -17,12 +16,6 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/handler"
 	"github.com/osse101/BrandishBot_Go/mocks"
 )
-
-func TestMain(m *testing.M) {
-	// Initialize validator once for all tests in this package to avoid race conditions
-	handler.InitValidator()
-	os.Exit(m.Run())
-}
 
 func TestHarvestHandler_Harvest(t *testing.T) {
 	t.Parallel()
