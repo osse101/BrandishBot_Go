@@ -24,7 +24,7 @@ func (m *MockResilientPublisher) PublishWithRetry(ctx context.Context, evt event
 	m.Called(ctx, evt)
 }
 
-func setupServiceTest(t *testing.T) (Service, *mocks.MockRepositoryHarvestRepository, *mocks.MockRepositoryUser, *mocks.MockProgressionService, *mocks.MockJobService, *MockResilientPublisher) {
+func setupServiceTest() (Service, *mocks.MockRepositoryHarvestRepository, *mocks.MockRepositoryUser, *mocks.MockProgressionService, *MockResilientPublisher) {
 	mockRepo := new(mocks.MockRepositoryHarvestRepository)
 	mockUserRepo := new(mocks.MockRepositoryUser)
 	mockProgressionSvc := new(mocks.MockProgressionService)
@@ -32,11 +32,11 @@ func setupServiceTest(t *testing.T) (Service, *mocks.MockRepositoryHarvestReposi
 	mockPublisher := new(MockResilientPublisher)
 
 	svc := NewService(mockRepo, mockUserRepo, mockProgressionSvc, mockJobSvc, mockPublisher)
-	return svc, mockRepo, mockUserRepo, mockProgressionSvc, mockJobSvc, mockPublisher
+	return svc, mockRepo, mockUserRepo, mockProgressionSvc, mockPublisher
 }
 
 func TestHarvest_Success(t *testing.T) {
-	svc, mockRepo, mockUserRepo, mockProgressionSvc, _, mockPublisher := setupServiceTest(t)
+	svc, mockRepo, mockUserRepo, mockProgressionSvc, mockPublisher := setupServiceTest()
 	mockTx := new(mocks.MockRepositoryHarvestTx)
 	ctx := context.Background()
 
@@ -108,7 +108,7 @@ func TestHarvest_Success(t *testing.T) {
 }
 
 func TestHarvest_Spoiled(t *testing.T) {
-	svc, mockRepo, mockUserRepo, mockProgressionSvc, _, mockPublisher := setupServiceTest(t)
+	svc, mockRepo, mockUserRepo, mockProgressionSvc, mockPublisher := setupServiceTest()
 	mockTx := new(mocks.MockRepositoryHarvestTx)
 	ctx := context.Background()
 
@@ -167,7 +167,7 @@ func TestHarvest_Spoiled(t *testing.T) {
 }
 
 func TestHarvest_TooSoon(t *testing.T) {
-	svc, mockRepo, mockUserRepo, mockProgressionSvc, _, _ := setupServiceTest(t)
+	svc, mockRepo, mockUserRepo, mockProgressionSvc, _ := setupServiceTest()
 	mockTx := new(mocks.MockRepositoryHarvestTx)
 	ctx := context.Background()
 
@@ -191,7 +191,7 @@ func TestHarvest_TooSoon(t *testing.T) {
 }
 
 func TestHarvest_EmptyRewards(t *testing.T) {
-	svc, mockRepo, mockUserRepo, mockProgressionSvc, _, mockPublisher := setupServiceTest(t)
+	svc, mockRepo, mockUserRepo, mockProgressionSvc, mockPublisher := setupServiceTest()
 	mockTx := new(mocks.MockRepositoryHarvestTx)
 	ctx := context.Background()
 
@@ -235,7 +235,7 @@ func TestHarvest_EmptyRewards(t *testing.T) {
 }
 
 func TestHarvest_TransactionRollback(t *testing.T) {
-	svc, mockRepo, mockUserRepo, mockProgressionSvc, _, mockPublisher := setupServiceTest(t)
+	svc, mockRepo, mockUserRepo, mockProgressionSvc, mockPublisher := setupServiceTest()
 	mockTx := new(mocks.MockRepositoryHarvestTx)
 	ctx := context.Background()
 
@@ -283,7 +283,7 @@ func TestHarvest_TransactionRollback(t *testing.T) {
 }
 
 func TestHarvest_ProgressionFailure(t *testing.T) {
-	svc, mockRepo, mockUserRepo, mockProgressionSvc, _, mockPublisher := setupServiceTest(t)
+	svc, mockRepo, mockUserRepo, mockProgressionSvc, mockPublisher := setupServiceTest()
 	mockTx := new(mocks.MockRepositoryHarvestTx)
 	ctx := context.Background()
 

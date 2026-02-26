@@ -51,8 +51,8 @@ func TestHarvest(t *testing.T) {
 		user := &domain.User{ID: userID}
 		readyAt := time.Now().Add(1 * time.Hour)
 		bin := &domain.CompostBin{
-			UserID: userID,
-			Status: domain.CompostBinStatusComposting,
+			UserID:  userID,
+			Status:  domain.CompostBinStatusComposting,
 			ReadyAt: &readyAt,
 		}
 
@@ -79,12 +79,12 @@ func TestHarvest(t *testing.T) {
 		user := &domain.User{ID: userID}
 		readyAt := time.Now().Add(-1 * time.Hour)
 		bin := &domain.CompostBin{
-			UserID: userID,
-			Status: domain.CompostBinStatusComposting, // Lazy update will change this to Ready
-			ReadyAt: &readyAt,
-			InputValue: 100,
+			UserID:       userID,
+			Status:       domain.CompostBinStatusComposting, // Lazy update will change this to Ready
+			ReadyAt:      &readyAt,
+			InputValue:   100,
 			DominantType: "organic",
-			ItemCount: 10,
+			ItemCount:    10,
 		}
 		item := domain.Item{InternalName: "apple", ID: 1, BaseValue: 10}
 
@@ -125,11 +125,11 @@ func TestHarvest(t *testing.T) {
 		readyAt := time.Now().Add(-2 * time.Hour)
 		sludgeAt := time.Now().Add(-1 * time.Hour)
 		bin := &domain.CompostBin{
-			UserID: userID,
-			Status: domain.CompostBinStatusComposting, // Lazy update will change this to Sludge
-			ReadyAt: &readyAt,
-			SludgeAt: &sludgeAt,
-			InputValue: 100,
+			UserID:       userID,
+			Status:       domain.CompostBinStatusComposting, // Lazy update will change this to Sludge
+			ReadyAt:      &readyAt,
+			SludgeAt:     &sludgeAt,
+			InputValue:   100,
 			DominantType: "organic",
 		}
 		item := domain.Item{InternalName: "sludge", ID: 99, BaseValue: 1}
