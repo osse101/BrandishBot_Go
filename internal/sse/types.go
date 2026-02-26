@@ -3,6 +3,8 @@ package sse
 // JobLevelUpPayload represents the SSE payload for job level up events
 type JobLevelUpPayload struct {
 	UserID   string `json:"user_id"`
+	Username string `json:"username,omitempty"`
+	Platform string `json:"platform,omitempty"`
 	JobKey   string `json:"job_key"`
 	OldLevel int    `json:"old_level"`
 	NewLevel int    `json:"new_level"`

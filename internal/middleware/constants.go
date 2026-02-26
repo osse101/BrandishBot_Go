@@ -22,6 +22,10 @@ const (
 const (
 	// QueryParamUsername is the query parameter name for username
 	QueryParamUsername = "username"
+	// QueryParamPlatform is the query parameter name for platform
+	QueryParamPlatform = "platform"
+	// QueryParamPlatformID is the query parameter name for platform ID
+	QueryParamPlatformID = "platform_id"
 )
 
 // Metadata Keys

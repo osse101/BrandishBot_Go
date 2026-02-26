@@ -63,7 +63,7 @@ func HandleMessageHandler(userService user.Service, progressionSvc progression.S
 
 		// Track engagement for message
 		middleware.TrackEngagementFromContext(
-			middleware.WithUserID(ctx, result.User.ID),
+			middleware.WithPlatform(middleware.WithUserID(ctx, result.User.ID), req.Platform),
 			eventBus,
 			"message",
 			1,

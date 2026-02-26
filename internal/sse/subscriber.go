@@ -98,6 +98,8 @@ func (s *Subscriber) handleJobLevelUp(_ context.Context, evt event.Event) error 
 	// Build SSE payload
 	ssePayload := JobLevelUpPayload{
 		UserID:   payload.UserID,
+		Username: payload.Username,
+		Platform: payload.Platform,
 		JobKey:   payload.JobKey,
 		OldLevel: payload.OldLevel,
 		NewLevel: payload.NewLevel,

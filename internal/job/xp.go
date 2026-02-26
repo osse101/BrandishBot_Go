@@ -67,38 +67,61 @@ func (s *service) validateJobUnlocked(ctx context.Context, jobKey string) error 
 }
 
 func (s *service) enrichMetadata(ctx context.Context, userID string, metadata *domain.JobXPMetadata) {
-	if metadata.Username != "" && metadata.Platform != "" {
+	// If both already set and valid, we're good
+	if metadata.Username != "" && metadata.Platform != "" && !s.isUUID(metadata.Username) {
 		return
 	}
 
 	user, err := s.repo.GetUserByID(ctx, userID)
 	if err != nil || user == nil {
+		if err != nil {
+			logger.FromContext(ctx).Warn("enrichMetadata failed to fetch user", "user_id", userID, "error", err)
+		}
 		return
 	}
 
 	if metadata.Platform == "" {
-		// Fallback to first available platform
-		switch {
-		case user.TwitchID != "":
-			metadata.Platform = domain.PlatformTwitch
-		case user.DiscordID != "":
-			metadata.Platform = domain.PlatformDiscord
-		case user.YoutubeID != "":
-			metadata.Platform = domain.PlatformYoutube
+		metadata.Platform = s.detectUserPlatform(user)
+	}
+
+	// Try to get a better username if current is empty or a UUID
+	if metadata.Username == "" || s.isUUID(metadata.Username) {
+		metadata.Username = s.resolveBestUsername(user, metadata.Platform)
+	}
+}
+
+func (s *service) detectUserPlatform(user *domain.User) string {
+	switch {
+	case user.TwitchID != "":
+		return domain.PlatformTwitch
+	case user.DiscordID != "":
+		return domain.PlatformDiscord
+	case user.YoutubeID != "":
+		return domain.PlatformYoutube
+	default:
+		return ""
+	}
+}
+
+func (s *service) resolveBestUsername(user *domain.User, platform string) string {
+	// Try platform-specific username first
+	if platform != "" {
+		if pu, ok := user.PlatformUsernames[platform]; ok && pu != "" {
+			return pu
 		}
 	}
 
-	if metadata.Username == "" {
-		// Use platform-specific username if available, otherwise global username
-		if platformName := metadata.Platform; platformName != "" {
-			if pu, ok := user.PlatformUsernames[platformName]; ok && pu != "" {
-				metadata.Username = pu
-			}
-		}
-		if metadata.Username == "" {
-			metadata.Username = user.Username
-		}
+	// Fallback to global username if still needed
+	if user.Username != "" && !s.isUUID(user.Username) {
+		return user.Username
 	}
+
+	return user.Username // Final fallback
+}
+
+func (s *service) isUUID(str string) bool {
+	_, err := uuid.Parse(str)
+	return err == nil
 }
 
 func (s *service) AwardXPByPlatform(ctx context.Context, platform string, platformID string, jobKey string, baseAmount int, source string, metadata domain.JobXPMetadata) (*domain.XPAwardResult, error) {

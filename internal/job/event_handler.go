@@ -349,6 +349,7 @@ func (h *EventHandler) HandleEngagement(ctx context.Context, evt event.Event) er
 	result, err := h.service.AwardXP(ctx, metric.UserID, JobKeyScholar, ScholarXPPerEngagement, SourceEngagement, domain.JobXPMetadata{
 		Source:     SourceEngagement,
 		MetricType: metric.MetricType,
+		Platform:   metric.Platform,
 	})
 	if err != nil {
 		if errors.Is(err, domain.ErrFeatureLocked) {

@@ -29,10 +29,10 @@ func (e *EngagementTracker) Track(metricType string, getValue func(*http.Request
 			// Call the actual handler first
 			next.ServeHTTP(w, r)
 
-			// Track engagement after successful execution
 			// Extract user ID from request context or body
 			userID := extractUserID(r)
 			if userID != EmptyUserID {
+				platform := extractPlatform(r)
 				value := DefaultMetricValue
 				if getValue != nil {
 					value = getValue(r)
@@ -44,6 +44,7 @@ func (e *EngagementTracker) Track(metricType string, getValue func(*http.Request
 					Type:    domain.EventTypeEngagement,
 					Payload: &domain.EngagementMetric{
 						UserID:      userID,
+						Platform:    platform,
 						MetricType:  metricType,
 						MetricValue: value,
 						RecordedAt:  time.Now(),
@@ -68,6 +69,7 @@ func (e *EngagementTracker) TrackCommand(next http.Handler) http.Handler {
 		// Track command usage
 		userID := extractUserID(r)
 		if userID != EmptyUserID {
+			platform := extractPlatform(r)
 			metadata := map[string]interface{}{
 				MetadataKeyEndpoint: r.URL.Path,
 				MetadataKeyMethod:   r.Method,
@@ -75,6 +77,7 @@ func (e *EngagementTracker) TrackCommand(next http.Handler) http.Handler {
 
 			metric := &domain.EngagementMetric{
 				UserID:      userID,
+				Platform:    platform,
 				MetricType:  MetricTypeCommand,
 				MetricValue: DefaultMetricValue,
 				RecordedAt:  time.Now(),
@@ -122,12 +125,31 @@ func extractUserID(r *http.Request) string {
 	return EmptyUserID
 }
 
+// extractPlatform extracts platform from request
+func extractPlatform(r *http.Request) string {
+	// Try context first
+	if platform := r.Context().Value(PlatformKey); platform != nil {
+		if p, ok := platform.(string); ok {
+			return p
+		}
+	}
+
+	// Try query parameter
+	if platform := r.URL.Query().Get(QueryParamPlatform); platform != "" {
+		return platform
+	}
+
+	return ""
+}
+
 // contextKey is a custom type for context keys to avoid collisions
 type contextKey string
 
 const (
 	// UserIDKey is the context key for user ID
 	UserIDKey contextKey = "user_id"
+	// PlatformKey is the context key for platform
+	PlatformKey contextKey = "platform"
 	// EngagementMetricKey is the context key for engagement metric type
 	EngagementMetricKey contextKey = "engagement_metric"
 )
@@ -135,6 +157,11 @@ const (
 // WithUserID adds user ID to request context
 func WithUserID(ctx context.Context, userID string) context.Context {
 	return context.WithValue(ctx, UserIDKey, userID)
+}
+
+// WithPlatform adds platform to request context
+func WithPlatform(ctx context.Context, platform string) context.Context {
+	return context.WithValue(ctx, PlatformKey, platform)
 }
 
 // GetUserID retrieves user ID from context
@@ -147,6 +174,16 @@ func GetUserID(ctx context.Context) string {
 	return EmptyUserID
 }
 
+// GetPlatform retrieves platform from context
+func GetPlatform(ctx context.Context) string {
+	if platform := ctx.Value(PlatformKey); platform != nil {
+		if p, ok := platform.(string); ok {
+			return p
+		}
+	}
+	return ""
+}
+
 // TrackEngagementFromContext records engagement using info from context
 func TrackEngagementFromContext(ctx context.Context, eventBus event.Bus, metricType string, value int) {
 	userID := GetUserID(ctx)
@@ -154,8 +191,11 @@ func TrackEngagementFromContext(ctx context.Context, eventBus event.Bus, metricT
 		return
 	}
 
+	platform := GetPlatform(ctx)
+
 	metric := &domain.EngagementMetric{
 		UserID:      userID,
+		Platform:    platform,
 		MetricType:  metricType,
 		MetricValue: value,
 		RecordedAt:  time.Now(),
