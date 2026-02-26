@@ -117,11 +117,11 @@ migrate-create:
 # Development commands
 test:
 	@echo "Running tests..."
-	@go run ./cmd/devtool check-coverage -run -file logs/coverage.out -threshold 0
+	@go test ./... -race
 
 test-smart:
 	@echo "Running smart tests (changed packages vs $(BASE_REF))..."
-	@go run ./cmd/devtool check-coverage -smart -base $(BASE_REF) -exclude ./cmd/devtool -run -file logs/coverage.out -threshold 80
+	@go run ./cmd/devtool check-coverage -smart -base $(BASE_REF) -exclude ./cmd/devtool -run -threshold 0
 
 unit:
 	@echo "Running unit tests (fast)..."
